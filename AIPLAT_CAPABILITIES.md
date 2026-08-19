@@ -588,6 +588,13 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| get_result_verifier | `core/harness/integration.py` | ✅ | 自动同步 | 已合入 |
+| get_dataset_manager | `core/harness/integration.py` | ✅ | 自动同步 | 已合入 |
+| get_job_manager | `core/harness/integration.py` | ✅ | 自动同步 | 已合入 |
+| get_skill_discovery | `core/harness/integration.py` | ✅ | 自动同步 | 已合入 |
+| get_mcp_client_manager | `core/harness/integration.py` | ✅ | 自动同步 | 已合入 |
+| TenantStoreProtocol | `core/services/tenant_store_protocol.py` | ✅ | 自动同步 | 已合入 |
+| PipelineStageMixin | `core/harness/execution/pipeline_stage.py` | ✅ | 自动同步 | 已合入 |
 | PipelineEvalMixin | `core/harness/execution/pipeline_eval.py` | ✅ | 自动同步 | 已合入 |
 | PipelinePromptMixin | `core/harness/execution/pipeline_prompt.py` | ✅ | 自动同步 | 已合入 |
 | PipelineStateMixin | `core/harness/execution/pipeline_state.py` | ✅ | 自动同步 | 已合入 |
@@ -1189,6 +1196,7 @@ scan_hash: 8f9548ec24f4
 ## 十一、扩展与学习
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| get_channel_adapter | `aiPlat-app/channels/adapter.py` | ✅ | 自动同步 | 已合入 |
 | ChannelAdapters | `aiPlat-app/channels/adapters/` | ✅ | 多渠道扩展: Discord/WeCom/Email/DingTalk (P1-A4) | 已合入 |
 | ChannelDispatcher | `aiPlat-app/channels/adapter.py` | ✅ | 统一调度 7 渠道 (3 内置 + 4 扩展) | 已合入 |
 | LearnNudgeHook | `core/harness/learning/learn_nudge_hook.py` | ✅ | 会话内实时学习触发 (POST_OBSERVE, P1-A1) | 已合入 |
@@ -1529,6 +1537,7 @@ scan_hash: 8f9548ec24f4
 ## 二十一、平台治理
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| TenantStore | `aiPlat-platform/tenants/tenant_store.py` | ✅ | 自动同步 | 已合入 |
 | DomainMaturity | `harness/knowledge/domain_maturity.py` | ✅ | 自动同步 | 已合入 |
 | ScenarioSelector | `harness/knowledge/scenario_selector.py` | ✅ | 自动同步 | 已合入 |
 | PathPlanner | `harness/knowledge/path_planner.py` | ✅ | 自动同步 | 已合入 |

@@ -48,7 +48,7 @@ def _init_platform_runtime() -> None:
     from core.api.core_facade import AgentManager  # v2.5
     from core.api.core_facade import SkillManager  # v2.5
     from core.api.core_facade import ExecutionStore, ExecutionStoreConfig  # v2.5
-    from core.api.core_facade import AgentDiscovery, AgentLoader, AgentRegistry, get_agent_registry_facade as get_agent_registry
+    from core.api.core_facade import AgentDiscovery, AgentLoader, AgentRegistry, get_agent_registry  # P0-B4: 统一入口
 
     db_path = os.path.expanduser(os.getenv("AIPLAT_EXECUTION_DB_PATH", "~/.aiplat/aiplat_executions.sqlite3"))
     store = ExecutionStore(ExecutionStoreConfig(db_path=db_path))

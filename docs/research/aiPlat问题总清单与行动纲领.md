@@ -43,8 +43,8 @@
 | P0-B1 | **SDK Agent.bind_skill/bind_tool 引用未初始化属性 → AttributeError** | `agent.py:70,79` | **✅ 已修复**：`agent.py:58-59` `_skills`/`_tools` 已初始化 |
 | P0-B2 | **MFA（TOTP/WebAuthn）全仓零实现**（admin 全权限无二步验证） | 全仓 grep 0 命中 | **✅ 已修复（2026-08-18）**：`auth/mfa.py` RFC 6238 TOTP + 端点 + admin 强制（阶段 1+3）；WebAuthn 可选未做 |
 | P0-B3 | **3 个子系统整体未接线**：arena（Elo 竞技场）/ voice_loop / wake_agent | 全仓 0 生产调用者 | **✅ 已修复**：三者各 ≥10 个生产调用文件（已接线） |
-| P0-B4 | **CoreFacade getter 冗余**（抽样 50% 无外部调用者：get_policy_gate/get_context_bus/get_retrieval_crag 等 15/30）——能力经类直用生效，facade 接口成摆设（违反 §10 入口唯一性） | 抽样实测 | **⚠️ 部分**：get_policy_gate/get_context_bus 已有外部调用者；get_retrieval_crag 等仍 0 调用者（2026-08-18 复核），待清理或接线 |
-| P0-B5 | **9 个默认关闭的 opt-in flag**（RL/学习调度/灰度/会话检索/toolsets/OTel 等默认 false）——部署方不知晓则能力静默不生效 | grep `"false"` 实测 | **⚠️ 部分**：部分仍默认 false（AIPLAT_ENABLE_PRUNE_SCHEDULER/LEARNING_SCHEDULER 等）——行为配置属设计选择，建议文档化各 flag 语义（2026-08-18 复核） |
+| P0-B4 | **CoreFacade getter 冗余**（抽样 50% 无外部调用者：get_policy_gate/get_context_bus/get_retrieval_crag 等 15/30）——能力经类直用生效，facade 接口成摆设（违反 §10 入口唯一性） | 抽样实测 | **✅ 已修复（2026-08-19）**：get_agent_registry_facade 删除（统一 get_agent_registry）+ _get_trend_alias 清理；91 个 get_* 符号 0 调用者清零 |
+| P0-B5 | **9 个默认关闭的 opt-in flag**（RL/学习调度/灰度/会话检索/toolsets/OTel 等默认 false）——部署方不知晓则能力静默不生效 | grep `"false"` 实测 | **✅ 已修复（2026-08-19）**：49 个 opt-in flag 语义文档化 → `docs/standards/规范-功能开关与配置.md`（分组 + 用途 + 位置 + 登记义务） |
 
 ### C. 治理体系自身（来自：元审计 + 四元同步）
 
@@ -52,7 +52,7 @@
 |---|---|---|---|
 | P0-C1 | **standards/ 3 份规范全部 status: draft**（未定稿） | 3 份文件头部 | **✅ 已修复（2026-08-18）**：9/9 规范全部 approved |
 | P0-C2 | **规范 vs 代码矛盾**：mTLS(规范) vs API key(实际)、request_id=run_id(job_scheduler:273)、request_dedup 未实现 | `authenticator.py`/`job_scheduler.py:273` | **✅ 已修复**：规范已消歧（不再提 mTLS）+ request_dedup 表已实现 |
-| P0-C3 | **registry→文档 56% 漂移**（80/142 符号不在 CAPABILITIES，含 ModelManager） | 实测 | **⚠️ 部分**：`sync_registry_to_docs.py` 已建 + pre-commit 提示机制；漂移未自动清零（每次 commit 提示 --fix） |
+| P0-C3 | **registry→文档 56% 漂移**（80/142 符号不在 CAPABILITIES，含 ModelManager） | 实测 | **✅ 已修复（2026-08-19）**：9 符号补登（190 全同步）+ pre-commit Step 2.7 自动补登（根治漂移提示） |
 | P0-C4 | **能力登记三口径不一致**（944/807/780） | registry 实测 | **✅ 已修复（351f816a）**：frontmatter 口径统一 + 校验防护 |
 | P0-C5 | **cap check / check_doc_sync / generate_impact_matrix / check_code_doc_gap 4 机制未接线** | grep 空 | **✅ 已修复**：4 机制全部接线（cap check pre-commit + check_doc_sync.sh + generate_impact_matrix.yml:139 + check_code_doc_gap pre-commit-hook.sh:120） |
 | P0-C6 | **宪法测试未在 CI 生效**（CI constitution job 实际红） | 24 failed 实跑 | **✅ 已修复**：宪法 143 passed + CI（architecture-guard.yml:29 + contracts-guard.yml:131） |
@@ -340,7 +340,7 @@ pytest aiPlat-platform/tests/test_builder.py -q --tb=short
 
 | 文件 | 行数 | 角色 | 判定 |
 |---|---|:--:|---|
-| `core/harness/execution/pipeline_engine.py` | 12281 | PipelineEngine 单类 ~11700 行 / 112 方法 / 10+ 生产引用 | ⚠️ **唯一真 God Object**——超出聚合点范畴；但拆分风险极高（状态耦合 + 测试面大），且 §93 类大小门禁只覆盖 platform 层。**记录为已知债务，建议后续专项拆分（按方法域分组：stages/hitl/deploy/reflection）**，不在本轮冒险 |
+| `core/harness/execution/pipeline_engine.py` | 12281 → **8288** | PipelineEngine 单类 + 5 Mixin（healing/state/prompt/eval/stage）| ✅ **已拆分（P2-A4，PR #16-19）**：12281→8288 行，4 Phase Mixin 迁移 -3993 行，`_run_stages_from` 保留主类；God Object 债务已消除 |
 | `platform/api/rest/routes.py` | 7287 | 153 顶层符号 REST 聚合 | ✅ §5.1 允许的聚合点 |
 | `core/harness/execution/loop/_facade.py` | 4576 | ReActLoop 类 4120 行 | ⚠️ 单类偏大但属 facade 聚合，暂记录债务 |
 | `core/management/skill_manager.py` | 4012 | 管理聚合 | ✅ 聚合点 |
@@ -368,4 +368,4 @@ pytest aiPlat-platform/tests/test_builder.py -q --tb=short
 | **合计 (53 核对)** | **53** | **0** | **0** | **全部 DONE**（C4 已修 351f816a，等效 53/53） |
 
 **本轮已修复**：P0-C4（frontmatter 口径 + 校验防护）、P0-A8（security 注册）、P2-A4（pipeline_engine 大文件拆分，4 Phase 收官）、P0-A3（tenant 表迁移 platform）、P1-A3（子代理 provider 接线）、P1-A4（多渠道 7 适配器）、P0-A1（harness→apps 服务调用收敛 DI）、P0-A2（api→CoreFacade 收敛）、P0-A5/P0-A10（文档修正 + E2E 20/20）、P0-A4/A6/A7/A9、P0-B1/B2/B3、P0-C2/C5/C6、P1-A1/A2/A5/A6、P1-B1-B3/B8-B13、P2 全组（2026-08-18 全量核对补标）。
-**遗留 PARTIAL 优先项**（2026-08-18 复核，3 项部分）：P0-B4（CoreFacade getter 冗余：get_retrieval_crag 等 0 调用者）、P0-B5（opt-in flags 语义文档化）、P0-C3（registry→docs 漂移自动清零）。其余全部 DONE（53 项核对）。
+**遗留 PARTIAL 优先项**：**无**（2026-08-19 复核：P0-B4 删除冗余 getter 清零、P0-B5 规范-功能开关与配置.md 文档化 49 flag、P0-C3 pre-commit 自动补登根治——3 项部分全部闭环）。其余全部 DONE（53 项核对）。
