@@ -6,6 +6,8 @@
 > 用途：与 aiPlat、DeepSeek Harness、Claude Code 三方能力对标（主报告：`aiPlat核心能力对标报告.md`）
 > 说明：本文件为对标调研底稿，供复核追溯；核心结论已整合进主报告。
 
+> **2026-08-19 状态补充**：本底稿为 2026-08-15 调研快照，Hermes 侧信息未再更新；aiPlat 侧对标状态已按最新基线核对——学习闭环借鉴项 **P1-A1 nudge（`learn_nudge_hook.py`）/ P1-A2 curator（`skill_curator.py`）/ P2-6 goal judge（`event_loop._judge_goal_condition`）均已实现落地**，行动纲领 **53/53 全 DONE**（详见 `aiPlat改进方案.md`、`aiPlat问题总清单与行动纲领.md`）。
+
 ## 0. 一句话定位（修正版）
 
 Hermes 是 Nous Research 开源的**个人/团队级自我进化 Agent**：单一 AIAgent 核心循环驱动 CLI/Gateway(20+ IM 平台)/ACP/API Server/Python 库全部入口；核心差异化 = **内建学习闭环（后台 review → 记忆/技能写入 → 可选审批发布）+ 三层持久记忆 + 7 种终端执行后端 + 统一 Gateway 多渠道**。MIT 协议，Python，当前 v0.20.1。
@@ -99,6 +101,8 @@ Hermes 是 Nous Research 开源的**个人/团队级自我进化 Agent**：单�
 
 成熟度：**最成熟/最独特的差异化能力**；"eval"环节由 review agent 的 LLM 判断承担（无公开独立评分器，待确认）。
 
+> **aiPlat 对标状态（2026-08-19）**：本闭环的 nudge 触发与 Curator 维护两环节已作为借鉴项落地——P1-A1 nudge（`learn_nudge_hook.py`）、P1-A2 curator（`skill_curator.py`），见 `aiPlat改进方案.md`。
+
 ## 7. 记忆系统（四层）
 
 | 层 | 内容 |
@@ -126,6 +130,8 @@ Hermes 是 Nous Research 开源的**个人/团队级自我进化 Agent**：单�
 - https://hermes-agent.nousresearch.com/docs/user-guide/features/skills
 
 成熟度：**中等偏成熟**（skill 化 + 持续目标循环 + 看板，非独立 planner 组件）。
+
+> **aiPlat 对标状态（2026-08-19）**：`/goal` 的 judge 环节已作为借鉴项落地——P2-6 goal judge（`event_loop._judge_goal_condition`），见 `aiPlat改进方案.md`。
 
 ## 9. 沙箱 / 权限 / 审批
 
@@ -225,6 +231,6 @@ Hermes 是 Nous Research 开源的**个人/团队级自我进化 Agent**：单�
 
 ## 与 aiPlat 对标的三点直接结论
 
-1. **Hermes 最强差异化 = 学习闭环 + 多渠道 Gateway + 7 执行后端**；aiPlat 若对标，学习闭环（nudge→review→写入门控→审批发布→Curator 维护）是最值得吸收的机制设计。
+1. **Hermes 最强差异化 = 学习闭环 + 多渠道 Gateway + 7 执行后端**；aiPlat 若对标，学习闭环（nudge→review→写入门控→审批发布→Curator 维护）是最值得吸收的机制设计。**借鉴状态（2026-08-19）**：该闭环的 nudge / Curator / goal judge 三个环节已在 aiPlat 落地（P1-A1 `learn_nudge_hook.py`、P1-A2 `skill_curator.py`、P2-6 `_judge_goal_condition`），见 `aiPlat改进方案.md` 与 `aiPlat问题总清单与行动纲领.md`（53/53 DONE）。
 2. **Hermes 弱项 = 治理平台化**（审批是交互式 HITL，无可观测事件总线/审计留痕/发布灰度）——正是 aiPlat 的增强区。
 3. **设计哲学高度趋同**：prompt cache 神圣化、narrow waist/工具阶梯、模型解析中心化——三方（aiPlat/Hermes/Claude Code）在架构约束上已形成共识。
