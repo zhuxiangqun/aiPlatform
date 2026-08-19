@@ -80,6 +80,19 @@ fallback:
   safe_model_alt: qwen2.5-coder:7b
   safe_model_ram_limit: 4
 
+# ── Purpose → env var mapping (P2-6 config-driven; get_default_model derives
+#    from here, built-in map in code remains as fallback for old configs) ──
+env_model_map:
+  agent: [AIPLAT_AGENT_MODEL, AIPLAT_DEFAULT_AGENT_MODEL]
+  reasoning: [AIPLAT_AGENT_MODEL, AIPLAT_DEFAULT_AGENT_MODEL]
+  document: [AIPLAT_DOC_LLM_MODEL]
+  code_gen: [AIPLAT_CODE_GEN_MODEL]
+  code: [AIPLAT_CODE_GEN_MODEL]
+  query_translation: [AIPLAT_QUERY_MODEL]
+  wiki_curation: [AIPLAT_WIKI_CURATION_MODEL]
+  reranker: [AIPLAT_RERANK_MODEL]
+  eval_code: [AIPLAT_EVAL_MODEL]
+
 # ── Scoring weights (v2.2 dynamic) ──
 default_scoring_weights:
   source_bias: 1.0

@@ -505,10 +505,13 @@ def _score_model(
         score += 20
 
     # 7. Latency: API models have network overhead
+    #    weights["latency"] is negative (latency is a negative factor); the
+    #    penalty value is also negative — multiply by abs(weight) so the
+    #    combination stays a penalty (P0-1 sign fix: -20 × -2.5 must be -50).
     latency_penalty = 0
     if _ds == "api":
         latency_penalty = -20
-    score += int(latency_penalty * weights.get("latency", -1.0))
+    score += int(latency_penalty * abs(weights.get("latency", -1.0)))
 
     # 8. Load: concurrency pressure (v3 new)
     load_penalty = 0
@@ -556,7 +559,7 @@ def _score_model(
     hist_latency_penalty = 0
     if p95 > 10:    hist_latency_penalty = -40
     elif p95 > 5:   hist_latency_penalty = -20
-    score += int(hist_latency_penalty * weights.get("latency", -1.0))
+    score += int(hist_latency_penalty * abs(weights.get("latency", -1.0)))
 
     # 12. Concurrency capacity
     max_cc = getattr(model, 'max_concurrency', 0) or 0
@@ -565,11 +568,11 @@ def _score_model(
     elif max_cc >= 10:  concurrency_score = 15
     score += int(concurrency_score * weights.get("concurrency", 1.0))
 
-    # 13. Cost
+    # 13. Cost (same sign rule as latency: cost weight is negative, penalty × abs(weight))
     model_costs = profile_data.get("model_cost", {})
     cost = model_costs.get(model.name, 0.0) if model_costs else 0.0
-    if cost > 0.01:   score += int(-10 * weights.get("cost", -1.0))
-    elif cost > 0.001: score += int(-5 * weights.get("cost", -1.0))
+    if cost > 0.01:   score += int(-10 * abs(weights.get("cost", -1.0)))
+    elif cost > 0.001: score += int(-5 * abs(weights.get("cost", -1.0)))
 
     # 14. Dynamic boost: real-world performance
     score += _calculate_dynamic_boost(model.name)
@@ -1010,7 +1013,11 @@ class ModelManager:
     def get_default_model(self, purpose: str = "default") -> str:
         """Resolve purpose to model name via env vars (unique resolution point).
 
-        Covers all 9 purposes for centralized, env-driven model selection.
+        P1-4 fix: the resolved env value is validated against the registry — an
+        env var pointing to an unregistered model is ignored (warning logged).
+        P2-6: env mapping derives from llm_profile.yaml `env_model_map`
+        (config-driven), with the built-in map as fallback so old configs keep
+        working unchanged.
         """
         purpose_env_map = {
             "agent":       ("AIPLAT_AGENT_MODEL", "AIPLAT_DEFAULT_AGENT_MODEL"),
@@ -1024,14 +1031,50 @@ class ModelManager:
             "reranker":    ("AIPLAT_RERANK_MODEL",),
             "eval_code":   ("AIPLAT_EVAL_MODEL",),
         }
+
+        # P2-6: extend/override mapping from llm_profile.yaml env_model_map.
+        try:
+            import yaml as _yaml
+            from pathlib import Path as _Path
+            config_path = os.getenv("AIPLAT_LLM_CONFIG_PATH",
+                str(_Path(__file__).resolve().parent.parent.parent.parent /
+                    "config" / "infra" / "llm_profile.yaml"))
+            _pdata = _yaml.safe_load(open(config_path)) or {}
+            _env_map = _pdata.get("env_model_map", {})
+            if isinstance(_env_map, dict):
+                for _k, _v in _env_map.items():
+                    if isinstance(_v, (list, tuple)) and _v:
+                        purpose_env_map[str(_k)] = tuple(str(x) for x in _v)
+                    elif isinstance(_v, str) and _v.strip():
+                        purpose_env_map[str(_k)] = (_v.strip(),)
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "get_default_model: env_model_map unavailable, using built-in map",
+                exc_info=True)
+
+        resolved = ""
         if purpose in purpose_env_map:
             for env_name in purpose_env_map[purpose]:
                 val = os.getenv(env_name, "").strip()
                 if val:
-                    return val
-        return (os.getenv("AIPLAT_DEFAULT_CHAT_MODEL", "").strip()
-                or os.getenv("AIPLAT_LLM_MODEL", "").strip()
-                or os.getenv("AIPLAT_DEFAULT_MODEL", "").strip())
+                    resolved = val
+                    break
+        if not resolved:
+            resolved = (os.getenv("AIPLAT_DEFAULT_CHAT_MODEL", "").strip()
+                        or os.getenv("AIPLAT_LLM_MODEL", "").strip()
+                        or os.getenv("AIPLAT_DEFAULT_MODEL", "").strip())
+        if not resolved:
+            return ""
+
+        # P1-4: validate against registry — never return a model name that is
+        # not registered (or disabled); the caller falls back to scoring.
+        found = self._find_model_by_name(resolved)
+        if found is None or not found.enabled:
+            logging.getLogger("infra.model").warning(
+                "get_default_model(%s): env model '%s' not in registry or disabled — ignoring",
+                purpose, resolved)
+            return ""
+        return resolved
 
     def get_credentials(self, provider: str) -> dict:
         """Resolve API credentials for a provider via credential pool.
@@ -1072,7 +1115,10 @@ class ModelManager:
 
         profiles = profile_data.get("purpose_profiles", {})
         profile = profiles.get(purpose, {"prefer": ["chat"], "avoid": []})
-        fallback_model = profile_data.get("fallback", {}).get("ultimate_model", "deepseek-chat")
+        # P0-2/P1-3 fix: fallback must come from config and be validated against the
+        # registry — the old `ultimate_model` key does not exist in llm_profile.yaml
+        # and the hardcoded default "deepseek-chat" was returned without existence check.
+        fallback_model = profile_data.get("fallback", {}).get("safe_model", "")
 
         # Read explicit model_overrides (preferred model, not hard override)
         overrides = profile_data.get("model_overrides", {})
@@ -1104,6 +1150,8 @@ class ModelManager:
                 pass
 
         scored = []
+        res = collect_platform_resources()
+        best_api_model = None
         for m in chat_models:
             caps = set(m.capabilities or ["chat"]) | set(m.tags or [])
             # Inherit provider-level capabilities (e.g., 'reasoning' from DeepSeek provider)
@@ -1137,101 +1185,40 @@ class ModelManager:
             if "code_generation" in prof_model_caps.get("strength_areas", []):
                 caps.add("code")
 
-            score = 0
-
-            # Resource-aware scoring: hard-block models too large for available RAM
-            # Skip for remote/external providers (Ollama runs in separate process, API models are remote)
+            # ── Resource-aware hard block: models larger than free RAM cannot load ──
+            # (soft resource pressure is scored inside _score_model #1; keep the
+            #  hard block here so oversized models never enter the candidate list)
             _provider = getattr(m, 'provider', '')
             if available_ram_bytes > 0 and hasattr(m, 'size') and m.size and _provider not in ("ollama", "openai", "deepseek", "anthropic", "openrouter"):
-                model_bytes = m.size
-                usage_ratio = model_bytes / available_ram_bytes
-                if usage_ratio > 1.0:
+                if m.size / available_ram_bytes > 1.0:
                     continue  # hard block: model larger than free RAM — cannot load
-                elif usage_ratio > 0.8:
-                    score -= 100  # very tight fit
-                elif usage_ratio > 0.5:
-                    score -= 30   # moderate pressure
-                elif usage_ratio > 0.3:
-                    score -= 10   # slight pressure
 
-            if profile.get("prefer_local"):
-                if m.source.value == "local":
-                    score += 120
-                elif m.source.value == "external":
-                    score += 60
-                else:
-                    score += 40
-            elif profile.get("prefer_external"):
-                if m.source.value == "external":
-                    score += 120
-                elif m.source.value == "local":
-                    score += 40
-                else:
-                    score += 60
-            elif m.source.value == "config":
-                score += 100
+            # ── Unified v3 scoring (P1-5 双轨收敛) ──
+            # Same _score_model as unified_pipeline; no separate v2 scoring logic.
+            # Pre-compute best API model once for quality-gated local preference (#15).
+            if best_api_model is None:
+                api_candidates = [cand for cand in chat_models
+                                  if getattr(getattr(cand, 'source', None), 'value', '') == "external"]
+                if api_candidates:
+                    api_scored = [(_score_model(cand, purpose, profile, res, {}, profile_data, None), cand)
+                                  for cand in api_candidates]
+                    api_scored.sort(key=lambda x: x[0], reverse=True)
+                    best_api_model = api_scored[0][1]
 
-            if "reasoning" in caps:
-                if profile.get("prefer", [""])[0] == "reasoning":
-                    score += 80
-                else:
-                    score += 30
-            else:
-                if profile.get("prefer", [""])[0] != "reasoning":
-                    score -= 20
-
-            if "function_call" in caps:
-                score += 20
-
-            # ── Quality feedback (v3.0: dynamic, programmatic validation) ──
-            try:
-                from .quality_validator import get_quality_tracker
-                qs = get_quality_tracker().get(m.name, purpose)
-                score += int(qs * 80)  # -80 to +80
-            except Exception as e:
-                logging.debug(str(e), exc_info=True)
-
-            # ── Concurrency capacity (from model tags or env) ──
-            max_cc = getattr(m, 'max_concurrency', 0) or 0
-            if max_cc >= 50:
-                score += 30
-            elif max_cc >= 10:
-                score += 15
-            elif max_cc > 0:
-                score += 5
-
-            # ── v3.0: Latency penalty (P95 > threshold) ──
-            try:
-                from .latency_tracker import get_latency_tracker
-                lt = get_latency_tracker()
-                p95 = lt.p95_latency_seconds(m.name)
-                if p95 > 10:
-                    score -= 40
-                elif p95 > 5:
-                    score -= 20
-            except Exception as e:
-                logging.debug(str(e), exc_info=True)
-
-            # ── v3.0: Congestion penalty (rate limiting / overload) ──
-            try:
-                from .latency_tracker import get_latency_tracker
-                penalty = get_latency_tracker().congestion_penalty(m.name)
-                score -= int(penalty)
-            except Exception as e:
-                logging.debug(str(e), exc_info=True)
-
-            # ── v3.0: Cost penalty (per 1k tokens) ──
-            model_costs = profile_data.get("model_cost", {})
-            cost_per_1k = model_costs.get(m.name, 0.0) if model_costs else 0.0
-            if cost_per_1k > 0.01:
-                score -= 10
-            elif cost_per_1k > 0.001:
-                score -= 5
-
+            score = _score_model(m, purpose, profile, res, {}, profile_data, best_api_model)
             scored.append((score, m.name))
 
         if not scored:
-            return [fallback_model] if fallback_model else []
+            # P0-2 fix: fallback must exist in the registry — never return a
+            # model name that is not registered (old code returned the hardcoded
+            # 'deepseek-chat' even when the registry was empty).
+            if fallback_model and self._find_model_by_name(fallback_model):
+                return [fallback_model]
+            import logging as _fb_logging
+            _fb_logging.getLogger("infra.model").warning(
+                f"No eligible model for purpose='{purpose}'; "
+                f"fallback_model='{fallback_model}' missing or not in registry")
+            return []
 
         scored.sort(key=lambda x: (x[0], x[1] == fallback_model), reverse=True)
         result = [name for score, name in scored]
@@ -1403,15 +1390,38 @@ class ModelManager:
             name = self.get_default_model("default")
         if not name:
             return None
-        # Search by name first (user-friendly), then by ID
-        # Prefer LOCAL models over EXTERNAL (faster, no API key needed)
+        # Search by name first (user-friendly), then by ID.
+        # P2-7 fix: prefer LOCAL over EXTERNAL only when quality-gated — the old
+        # unconditional local-first could pick a much worse model when both a
+        # local and an API model share the same name. Reuses _within_quality_band
+        # (same gate as unified_pipeline #15).
         best = None
+        local_match = None
         for m in self._models.values():
             if m.name == name:
                 if m.source == ModelSource.LOCAL:
-                    return m
-                if best is None:
+                    local_match = m
+                elif best is None:
                     best = m
+        if local_match is not None:
+            if best is None:
+                return local_match  # pure local env — no API counterpart
+            try:
+                import yaml as _yaml
+                from pathlib import Path as _Path
+                _config_path = os.getenv("AIPLAT_LLM_CONFIG_PATH",
+                    str(_Path(__file__).resolve().parent.parent.parent.parent /
+                        "config" / "infra" / "llm_profile.yaml"))
+                _pdata = _yaml.safe_load(open(_config_path)) or {}
+            except Exception:
+                _pdata = {}
+            if _has_sufficient_data(local_match, min_successes=5) and \
+                    _within_quality_band(local_match, best, _pdata):
+                return local_match
+            logging.getLogger("infra.model").info(
+                "select(%s): local model '%s' not within quality band of API '%s' — using API",
+                name, local_match.name, best.name)
+            return best
         if best is not None:
             return best
         return self._models.get(name)
