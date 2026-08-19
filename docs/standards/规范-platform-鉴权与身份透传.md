@@ -115,3 +115,16 @@ platform 对外提供：
 - **身份**：渠道消息经 platform 解析为 `{ tenant_id, actor_id }` 后透传下游（见 §1-2），适配器本身不承载业务逻辑。
 
 > **对照**：Hermes 20+ IM 平台统一 Gateway — aiPlat Gateway 控制面已就绪，适配器层按需扩展。
+
+---
+
+## 9. 管理员 MFA 强制（P0-5 阶段 3，2026-08-18）
+
+admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
+
+- **强制点**：`POST /tenant/api-keys` — admin（`actor_role == admin`）未启用 MFA → 422 `mfa_required`（禁止创建新 API Key）；
+- **启用流程**：`POST /platform/auth/mfa/setup`（生成 TOTP 密钥 + 扫码 URI）→ `POST /platform/auth/mfa/verify`（校验后激活 `mfa_enabled`）→ 后续登录/建 key 走 TOTP；
+- **实现**：`auth/mfa.py`（RFC 6238 零依赖 TOTP）+ `auth/mfa.py::require_mfa_for_role`；
+- **验证**：`pytest aiPlat-platform/tests/test_mfa.py -q`（9 passed，含端点强制/放行）。
+
+> **对照**：Claude Code enterprise 治理基线 — 管理员账号 MFA 是破坏半径控制的最低门槛。
