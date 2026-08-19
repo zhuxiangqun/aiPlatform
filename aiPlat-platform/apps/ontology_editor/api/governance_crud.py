@@ -111,7 +111,7 @@ async def cycle_history(domain_id: str = Query(""), limit: int = Query(10)):
 async def pending_requests(domain_id: str = Query("")):
     u"""List pending change requests."""
     try:
-        from core.api.core_facade import list_pending
+        from core.harness.infrastructure.gates.ontology_approval import list_pending  # P0-A2 修复: 恢复原模块(定义处)
         pending = list_pending(domain_id)
         return {"requests": pending, "total": len(pending)}
     except Exception as e:
@@ -134,7 +134,7 @@ async def approve_request(request_id: str, data: Dict[str, Any]):
 async def reject_request(request_id: str, data: Dict[str, Any]):
     u"""Reject a change request."""
     try:
-        from core.api.core_facade import reject
+        from core.harness.infrastructure.gates.ontology_approval import reject  # P0-A2 修复: 恢复原模块(定义处)
         rejected_by = data.get("rejected_by", "governance_admin")
         reason = data.get("reason", "")
         return reject(request_id, rejected_by, reason)
@@ -146,7 +146,7 @@ async def reject_request(request_id: str, data: Dict[str, Any]):
 async def approval_history(domain_id: str = Query(""), limit: int = Query(50)):
     u"""Approval history."""
     try:
-        from core.api.core_facade import get_history
+        from core.harness.infrastructure.gates.ontology_approval import get_history  # P0-A2 修复: 恢复原模块(定义处)
         history = get_history(domain_id, limit)
         return {"history": history, "total": len(history)}
     except Exception as e:

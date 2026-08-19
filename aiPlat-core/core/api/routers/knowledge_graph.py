@@ -22,7 +22,7 @@ from typing import Any, AsyncIterator, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from starlette.responses import StreamingResponse
-from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
+from core.api.core_facade import best_model_for_purpose
 
 router = APIRouter(prefix="/knowledge-graph")
 
@@ -68,7 +68,7 @@ def get_code_graph(
     """
     try:
         from core.harness.knowledge.code_graph import effective_cycles
-        from core.api.core_facade import build_graph, default_roots, repo_root, count_cycles, health_score  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import build_graph, default_roots, repo_root, count_cycles, health_score
 
         r = repo_root()
         roots = [(r / d).resolve() for d in default_roots()]
@@ -178,7 +178,7 @@ def get_code_graph(
 def get_architecture_view() -> Dict[str, Any]:
     """Return aggregated architecture data for Sankey (cross-layer flows) and Treemap (intra-layer module structure)."""
     try:
-        from core.api.core_facade import build_graph, default_roots, repo_root  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import build_graph, default_roots, repo_root
         from collections import defaultdict
 
         r = repo_root()
@@ -257,7 +257,7 @@ def get_architecture_view() -> Dict[str, Any]:
 def get_capability_graph() -> Dict[str, Any]:
     """Return capability dependency graph (agent/skill/tool/MCP/workflow) in ECharts force-layout format."""
     try:
-        from core.api.core_facade import build_capability_graph  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import build_capability_graph
         g = build_capability_graph()
         nodes_dict = g.nodes
         edges_list = g.edges
@@ -318,7 +318,7 @@ def get_wiki_graph(
 ) -> Dict[str, Any]:
     """Return wiki knowledge graph in ECharts force-layout format (3rd tab)."""
     try:
-        from core.api.core_facade import build_graph as build_wiki_graph  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import build_graph as build_wiki_graph
         data = build_wiki_graph(category=category, keyword=keyword, source=source, max_nodes=max_nodes)
         return {
             "nodes": data.get("nodes", []),
@@ -340,7 +340,7 @@ def get_wiki_graph(
 def get_node_detail(node_id: str) -> Dict[str, Any]:
     """Return details for a graph node: code, capability, or wiki."""
     try:
-        from core.api.core_facade import build_graph, default_roots, repo_root, blast  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import build_graph, default_roots, repo_root, blast
 
         r = repo_root()
         roots = [(r / d).resolve() for d in default_roots()]
@@ -384,7 +384,7 @@ def get_node_detail(node_id: str) -> Dict[str, Any]:
         # ── Capability graph node (agent:, skill:, tool:, etc.) ──
         if ":" in node_id:
             try:
-                from core.api.core_facade import build_capability_graph  # P0-A2: 经 CoreFacade
+                from core.api.core_facade import build_capability_graph
                 g = build_capability_graph()
                 if node_id in g.nodes:
                     n = g.nodes[node_id]
@@ -405,7 +405,7 @@ def get_node_detail(node_id: str) -> Dict[str, Any]:
 
         # ── Wiki graph node ──
         try:
-            from core.api.core_facade import build_graph as build_wiki  # P0-A2: 经 CoreFacade
+            from core.api.core_facade import build_graph as build_wiki
             w = build_wiki(keyword=node_id.split("/")[-1], max_nodes=50)
             for node in w.get("nodes", []):
                 if node.get("name", "") == node_id or node.get("id", "") == node_id:
@@ -435,7 +435,7 @@ def get_node_detail(node_id: str) -> Dict[str, Any]:
 def search_nodes(q: str = Query(...), limit: int = Query(20)) -> List[Dict[str, Any]]:
     """Fuzzy search nodes by name/path."""
     try:
-        from core.api.core_facade import build_graph, default_roots, repo_root  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import build_graph, default_roots, repo_root
 
         r = repo_root()
         roots = [(r / d).resolve() for d in default_roots()]
@@ -522,7 +522,7 @@ def global_search(q: str = Query("", min_length=2)) -> Dict[str, Any]:
 
         # ── Wiki graph ──
         try:
-            from core.api.core_facade import build_graph as build_wiki  # P0-A2: 经 CoreFacade
+            from core.api.core_facade import build_graph as build_wiki
             w = build_wiki(keyword=q, max_nodes=20)
             for node in w.get("nodes", []):
                 results["wiki"].append({
@@ -549,8 +549,8 @@ async def graph_ask(req: Dict[str, Any]) -> Dict[str, Any]:
     if not question:
         raise HTTPException(status_code=400, detail="question is required")
     try:
-        from core.api.core_facade import create_selected_adapter  # P0-A2: 经 CoreFacade
-        from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import create_selected_adapter
+        from core.api.core_facade import best_model_for_purpose
 
         model_name = best_model_for_purpose("query_translation")
         if not model_name:
@@ -558,10 +558,10 @@ async def graph_ask(req: Dict[str, Any]) -> Dict[str, Any]:
 
         model = create_selected_adapter(model_name=model_name)
 
-        from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import _async_prompt_resolve
         prompt = await _async_prompt_resolve("graph-ask", question=question)
 
-        from core.api.core_facade import sys_llm_generate  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import sys_llm_generate
         resp = await sys_llm_generate(
             model,
             [{"role": "system", "content": await _async_prompt_resolve("graph-system-role")},
@@ -693,7 +693,7 @@ def _describe_layer(layer: str = "core", question_type: str = "capabilities") ->
     if question_type == "capabilities":
         # ── Module hierarchy + top symbols ──
         try:
-            from core.api.core_facade import build_graph, default_roots, repo_root  # P0-A2: 经 CoreFacade
+            from core.api.core_facade import build_graph, default_roots, repo_root
             r = repo_root()
             roots = [(r / d).resolve() for d in default_roots()]
             nodes, _, _ = build_graph(r, roots)
@@ -723,7 +723,7 @@ def _describe_layer(layer: str = "core", question_type: str = "capabilities") ->
 
         # ── Capability graph (agents, skills, tools) ──
         try:
-            from core.api.core_facade import build_capability_graph  # P0-A2: 经 CoreFacade
+            from core.api.core_facade import build_capability_graph
             g = build_capability_graph()
             agents = [n.get("label", nid) for nid, n in g.nodes.items()
                       if n.get("type") == "agent"][:10]
@@ -742,7 +742,7 @@ def _describe_layer(layer: str = "core", question_type: str = "capabilities") ->
     elif question_type == "relationships":
         # ── Cross-layer import flows ──
         try:
-            from core.api.core_facade import build_graph, default_roots, repo_root  # P0-A2: 经 CoreFacade
+            from core.api.core_facade import build_graph, default_roots, repo_root
             r = repo_root()
             roots = [(r / d).resolve() for d in default_roots()]
             _, edges, _ = build_graph(r, roots)
@@ -777,7 +777,7 @@ def _describe_layer(layer: str = "core", question_type: str = "capabilities") ->
         route_pattern = _re.compile(r'@\w+\.(?:get|post|put|delete|patch)\s*\(\s*"([^"]+)"')
         endpoints = []
         try:
-            from core.api.core_facade import build_graph, default_roots, repo_root  # P0-A2: 经 CoreFacade
+            from core.api.core_facade import build_graph, default_roots, repo_root
             r = repo_root()
             roots = [(r / d).resolve() for d in default_roots()]
             nodes, _, _ = build_graph(r, roots)
@@ -827,7 +827,7 @@ async def graph_chat(req: Dict[str, Any]) -> StreamingResponse:
                 yield "data: [DONE]\n\n"
                 return
 
-            from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
+            from core.api.core_facade import _async_prompt_resolve
             prompt = await _async_prompt_resolve("graph-chat-stream",
                 context=_ctx_to_prompt(ctx, max_chars=2000),
                 question=question,
@@ -852,7 +852,7 @@ async def graph_chat(req: Dict[str, Any]) -> StreamingResponse:
 def get_layer_stats() -> Dict[str, Any]:
     """Return per-layer statistics."""
     try:
-        from core.api.core_facade import build_graph, default_roots, repo_root  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import build_graph, default_roots, repo_root
 
         r = repo_root()
         roots = [(r / d).resolve() for d in default_roots()]
@@ -940,9 +940,14 @@ async def list_domain_rules(domain_id: str = "ai-knowledge"):
 def _get_stats_sync() -> Dict[str, Any]:
     """Synchronous stats computation — run in thread pool executor."""
     try:
-        from core.api.core_facade import (  # P0-A2: 经 CoreFacade
-            build_graph, default_roots, repo_root, health_score, count_cycles, effective_cycles
+        from core.api.core_facade import (
+            build_graph,
+            default_roots,
+            repo_root,
+            health_score,
+            count_cycles,
         )
+        from core.harness.knowledge.code_graph import effective_cycles  # P0-A2 修复: 恢复原模块(定义处)
         r = repo_root()
         roots = [(r / d).resolve() for d in default_roots()]
         nodes, edges, _ = build_graph(r, roots)

@@ -34,7 +34,7 @@ async def evaluate_entity(domain_id: str, model_name: str, entity: str = Query("
     try:
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)
-        from core.api.core_facade import evaluate
+        from core.harness.knowledge.scoring_engine import evaluate  # P0-A2 修复: 恢复原模块(定义处)
         from core.api.core_facade import load_models
         models = {m.name: m for m in load_models(schema)}
         model = models.get(model_name)
@@ -91,7 +91,7 @@ async def get_alerts(domain_id: str, model_name: str):
     try:
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)
-        from core.api.core_facade import get_alerts
+        from core.harness.knowledge.scoring_engine import get_alerts  # P0-A2 修复: 恢复原模块(定义处)
         from core.api.core_facade import load_models
         models = {m.name: m for m in load_models(schema)}
         model = models.get(model_name)

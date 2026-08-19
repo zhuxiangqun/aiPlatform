@@ -81,7 +81,7 @@ from auth.deps import require_auth, require_admin
 
 from storage import sqlite as platform_store  # type: ignore
 
-from core.api.core_facade import create_infra_database_client
+from core.harness.infrastructure.infra_bridge import create_infra_database_client  # P0-A2 修复: 恢复原模块(定义处)
 
 from core.api.facades.service_facade import llm_generate
 
@@ -2487,7 +2487,7 @@ async def kb_delete_document(doc_id: str, request: Request):
 
     try:
 
-        from core.api.core_facade import search_pages, delete_page  # v2.5: CoreFacade
+        from core.api.core_facade import search_pages, delete_page
 
         pages = search_pages(limit=10000)
 
@@ -2513,7 +2513,7 @@ async def kb_delete_document(doc_id: str, request: Request):
 
     try:
 
-        from core.api.core_facade import cleanup_stale_entities_by_doc  # v2.5: CoreFacade
+        from core.api.core_facade import cleanup_stale_entities_by_doc
 
         cleanup_stale_entities_by_doc(doc_id=doc_id, dry_run=False)
 
@@ -2561,9 +2561,9 @@ async def kb_ingest_url(request: Request):
 
     try:
 
-        from core.api.core_facade import get_semantic_cache  # v2.5: CoreFacade
+        from core.api.core_facade import get_semantic_cache
 
-        from core.api.core_facade import _run_coro_blocking  # v2.5
+        from core.api.core_facade import _run_coro_blocking
 
         cache = get_semantic_cache()
 
@@ -2742,7 +2742,7 @@ async def kb_reingest_document(doc_id: str, request: Request):
 
     try:
 
-        from core.api.core_facade import cleanup_stale_entities_by_doc  # v2.5: CoreFacade
+        from core.api.core_facade import cleanup_stale_entities_by_doc
 
         cleanup_stale_entities_by_doc(doc_id=doc_id, dry_run=False)
 
@@ -2752,9 +2752,9 @@ async def kb_reingest_document(doc_id: str, request: Request):
 
     try:
 
-        from core.api.core_facade import get_semantic_cache  # v2.5: CoreFacade
+        from core.api.core_facade import get_semantic_cache
 
-        from core.api.core_facade import _run_coro_blocking  # v2.5
+        from core.api.core_facade import _run_coro_blocking
 
         cache = get_semantic_cache()
 
@@ -5125,7 +5125,7 @@ async def gateway_execute(body: Dict[str, Any], request: Request):
 
         status = "success" if (isinstance(result, dict) and result.get("ok")) else "failure"
 
-        from core.api.core_facade import get_execution_store  # v2.5: CoreFacade
+        from core.api.core_facade import get_execution_store
 
         store = get_execution_store()
 
@@ -6093,7 +6093,7 @@ async def marketplace_publish(request: Request):
 
     try:
 
-        from core.api.core_facade import SkillSimulator  # v2.5: CoreFacade
+        from core.api.core_facade import SkillSimulator
 
         sim = SkillSimulator()
 
@@ -6147,7 +6147,7 @@ async def ontology_impact(urn: str, direction: str = "downstream", depth: int = 
 
     """
 
-    from core.api.core_facade import get_triple_store  # v2.5: CoreFacade
+    from core.api.core_facade import get_triple_store
 
     store = get_triple_store()
 
@@ -6173,7 +6173,7 @@ async def ontology_triples_by_predicate(predicate: str):
 
     """按关系类型查询所有三元组。"""
 
-    from core.api.core_facade import get_triple_store  # v2.5: CoreFacade
+    from core.api.core_facade import get_triple_store
 
     store = get_triple_store()
 
@@ -6189,7 +6189,7 @@ async def ontology_rescan(request: Request):
 
     """手动触发全量跨域依赖扫描。"""
 
-    from core.api.core_facade import scan_and_populate  # v2.5: CoreFacade
+    from core.api.core_facade import scan_and_populate
 
     stats = await scan_and_populate()
 
@@ -6719,9 +6719,9 @@ async def kb_create_with_ai(request: Request):
 
         from core.api.facades.service_facade import llm_generate
 
-        from core.api.core_facade import _sync_resolve as _async_prompt_resolve  # v2.5
+        from core.api.core_facade import _sync_resolve as _async_prompt_resolve
 
-        from core.api.core_facade import best_model_for_purpose  # v2.5
+        from core.api.core_facade import best_model_for_purpose
 
         sp = await _async_prompt_resolve("kb-doc-writer", title=title, prompt=prompt)
 
@@ -7131,7 +7131,7 @@ async def vault_send_to_wiki(body: dict):
 
 async def vault_wiki_backlinks(doc_id: str):
 
-    from core.api.core_facade import search_pages  # v2.5: CoreFacade
+    from core.api.core_facade import search_pages
 
     pages = search_pages(limit=1000)
 

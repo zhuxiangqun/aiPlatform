@@ -70,9 +70,10 @@ async def get_entity_marking_info(
     resolve_effective: bool = True,
 ):
     u"""Get explicit + effective markings for an entity, with propagation traces."""
-    from core.api.core_facade import (  # P0-A2: 经 CoreFacade
-        get_entity_markings, get_propagation_tree,
+    from core.api.core_facade import (
+        get_entity_markings,
     )
+    from core.harness.knowledge.knowledge_markings import get_propagation_tree  # P0-A2 修复: 恢复原模块(定义处)
     if resolve_effective:
         result = get_propagation_tree(entity_uri, collection_id=collection)
     else:
