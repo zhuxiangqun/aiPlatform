@@ -77,3 +77,37 @@ def test_full_state_event_cross_check(tmp_path):
     assert state.get("phase") == "done"
     assert state.get("event_derived", {}).get("phase") == "done"
     assert state.get("state_event_consistent") is True
+
+
+def test_full_state_drift_flags_and_warns(tmp_path, caplog):
+    """P3-1: dual-track drift must be visible — inconsistent snapshot/event
+    phases set state_event_consistent=False and raise a WARNING (read path
+    stays side-effect free, never blocks)."""
+    import logging
+
+    sys.path.insert(0, ".")
+    store = _fresh_store(tmp_path)
+
+    # event log says done, snapshot row still in initial phase → drift
+    store.create_run("run_drift", "proj_drift", total_stages=1)
+    store.append_run_event("run_drift", "pipeline_finished", "",
+                           {"phase": "done", "current_stage_idx": 1, "pass_rate": 0.9})
+
+    with caplog.at_level(logging.WARNING, logger="core.harness.execution.pipeline_run_store"):
+        state = store.get_full_state_from_run_id("run_drift")
+
+    assert state.get("phase") != "done"           # snapshot not updated
+    assert state.get("event_derived", {}).get("phase") == "done"
+    assert state.get("state_event_consistent") is False
+    assert any("drift" in r.message and "run_drift" in r.message for r in caplog.records)
+
+
+def test_full_state_no_events_no_drift_flag(tmp_path):
+    """No events on disk → cross-check skipped (flag absent, no warning)."""
+    sys.path.insert(0, ".")
+    store = _fresh_store(tmp_path)
+
+    store.create_run("run_plain", "proj_plain", total_stages=1)
+    state = store.get_full_state_from_run_id("run_plain")
+    assert "state_event_consistent" not in state
+    assert "event_derived" not in state

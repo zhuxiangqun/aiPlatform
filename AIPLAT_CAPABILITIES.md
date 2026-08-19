@@ -1,6 +1,6 @@
 ---
-total_capabilities: 1048
-last_updated: 2026-08-18
+total_capabilities: 1050
+last_updated: 2026-08-19
 version: "30.1"
 auto_sync: true
 core_guarantees:
@@ -568,7 +568,7 @@ scan_hash: 8f9548ec24f4
 
 > 代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-20 — 942✅）
+> 评分：98/100（2026-07-20 — 1059✅）
 
 ---
 
@@ -939,7 +939,9 @@ scan_hash: 8f9548ec24f4
 | InProcessProvider | `` | ✅ | 自动同步 | 已合入 |
 | ProviderResult | `` | ✅ | 自动同步 | 已合入 |
 | ProviderCapabilities | `` | ✅ | 自动同步 | 已合入 |
-| SubagentProviders | `apps/agents/subagent/providers.py` | ✅ | 子代理 provider 抽象 (in_process/acp, P1-A3) | 已合入 |
+| SubagentProviders | `apps/agents/subagent/providers.py` | ✅ | 子代理 provider 抽象 (in_process/acp/process, P1-A3 + P3-2) | 已合入 |
+| ProcessProvider | `apps/agents/subagent/providers.py` | ✅ | fork 式子进程隔离传输 (P3-2, DSH fork 借鉴), python -m process_runner | 已合入 |
+| process_runner | `apps/agents/subagent/process_runner.py` | ✅ | 子进程执行器: stdin JSON → stdout ProviderResult (P3-2) | 已合入 |
 | ACPClient | `core/acp/client.py` | ✅ | ACP WebSocket client — start/continue 包装 chat 协议 (P1-A3) | 待合入 |
 | SubagentCoordinator | `apps/agents/subagent/coordinator.py` | ✅ | 自动同步 | 已合入 |
 | run_voice_brainstorm | `` | ✅ | 自动同步 | 已合入 |
@@ -1587,7 +1589,7 @@ scan_hash: 8f9548ec24f4
 | wiki_scenes | api/routers/wiki_scenes.py | ✅ | 自动同步 | 已合入 |
 | diagnostics_capability | api/routers/diagnostics_capability.py | ✅ | 自动同步 | 已合入 |
 | fde_dashboard_v2 | apps/fde/api/fde_dashboard_v2.py | ✅ | 自动同步 | 已合入 |
-| schemas_policy | aiPlat-platform/auth/schemas_policy.py | ✅ | 自动同步 | 已合入 |
+| schemas_policy | ⚠️ deprecated aiPlat-platform/auth/schemas_policy.py | ✅ | 自动同步 | 已合入 |
 | learning_releases | apps/learning/api/learning_releases.py | ✅ | 自动同步 | 已合入 |
 | learning_misc | apps/learning/api/learning_misc.py | ✅ | 自动同步 | 已合入 |
 | prompt_templates | apps/prompt/api/prompt_templates.py | ✅ | 自动同步 | 已合入 |
@@ -1965,7 +1967,7 @@ scan_hash: 8f9548ec24f4
 | 知识引擎（本体） | 134 | 0 | 134 |
 | RAG 检索 | 42 | 0 | 42 |
 | 知识基础设施 | 29 | 0 | 29 |
-| Agent 系统 | 36 | 0 | 36 |
+| Agent 系统 | 38 | 0 | 38 |
 | Skill 系统 | 54 | 0 | 54 |
 | 安全与治理 | 48 | 0 | 48 |
 | 可观测性 | 18 | 0 | 18 |
@@ -2005,7 +2007,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1048** | **0** | **1048** |
+| **总计** | **1050** | **0** | **1050** |
 
 ---
 

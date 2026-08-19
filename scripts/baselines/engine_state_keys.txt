@@ -136,3 +136,5 @@ app_name|OK|generic pipeline
 error_message|OK|generic pipeline
 finished_at|OK|generic pipeline
 started_at|OK|generic pipeline
+event_derived|OK|generic pipeline (P2-A1 event-sourced derived view)
+state_event_consistent|OK|generic pipeline (P2-A1 state/event cross-check flag)

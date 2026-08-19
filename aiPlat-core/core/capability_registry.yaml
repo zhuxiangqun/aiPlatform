@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-08-16"
 total_capability_domains: 34
-total_capabilities: 1032
+total_capabilities: 1033
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -370,8 +370,16 @@ domains:
       - symbol: SubagentProvider
       - symbol: InProcessProvider
       - symbol: ACPProvider
+      - symbol: ProcessProvider
+        type: class
+        signature: 'Fork-style provider: subprocess isolation (P3-2).'
+        module: aiPlat-core/core/apps/agents/subagent/providers.py
       - symbol: get_provider_factories
       - symbol: default_provider_name
+      - symbol: main
+        type: function
+        signature: 'Read JSON {name, task, context} from stdin, emit JSON result to stdout.'
+        module: aiPlat-core/core/apps/agents/subagent/process_runner.py
         type: function
         signature: 'default_provider_name()'
         module: aiPlat-core/core/apps/agents/subagent/providers.py
