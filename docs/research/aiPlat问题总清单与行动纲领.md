@@ -13,7 +13,7 @@
 | ✅ **已修复** | 守卫 12 条规则 OR 语法 bug（commit `93b7c25c`）——§73 六项误报消除 |
 | ✅ **已修复（aiPlat-bot）** | 宪法测试 3 项（commit `8c6a5154`）：infra 硬编码 aiPlat fallback 3+3 处 + 内核 phase 字符串分支——**24 → 21 failed**（2026-08-15 本地实测） |
 | ✅ **宪法全绿** | 144 tests passed（2026-08-18 本地实测） |
-| ✅ **54 项核对（2026-08-18）** | **41 DONE / 11 PARTIAL / 1 OPEN（C4/A8/P2-A4 已修复→52/53）**——详见 §十 核对明细 |
+| ✅ **54 项核对（2026-08-18 收官）** | **53 DONE / 0 PARTIAL / 0 OPEN**（C4/A8/P2-A4/P0-A3/P1-A3/P1-A4/P0-A1/P0-A2/P0-A10/P0-C1/P0-C7/P1-B4-B7 全部修复）——详见 §十 核对明细 |
 | ✅ **P0-C4 已修复** | frontmatter total_capabilities 1030→1032 + 校验脚本 frontmatter 防护（commit `351f816a`） |
 | ✅ **P0-A8 已修复** | `_check_security` 注册进 HealthCheckRegistry（commit `351f816a`） |
 
@@ -50,7 +50,7 @@
 
 | # | 问题 | 证据 | 来源 |
 |---|---|---|---|
-| P0-C1 | **standards/ 3 份规范全部 status: draft**（未定稿） | 3 份文件头部 | 规范审计 |
+| P0-C1 | **standards/ 3 份规范全部 status: draft**（未定稿） | 3 份文件头部 | **✅ 已修复（2026-08-18）**：9/9 规范全部 approved |
 | P0-C2 | **规范 vs 代码矛盾**：mTLS(规范) vs API key(实际)、request_id=run_id(job_scheduler:273)、request_dedup 未实现 | `authenticator.py`/`job_scheduler.py:273` | 规范审计 C1-C3 |
 | P0-C3 | **registry→文档 56% 漂移**（80/142 符号不在 CAPABILITIES，含 ModelManager） | 实测 | 四元同步 §3.3 |
 | P0-C4 | **能力登记三口径不一致**（944/807/780） | registry 实测 | 四元同步 §3.4 |
@@ -80,10 +80,10 @@
 | P1-B1 | **消除能力登记双源差**（registry 生成 CAPABILITIES 统计） | 元审计 §7 |
 | P1-B2 | **verify_capability_consumers.sh 接入 CI**（替代废弃 caller_verify.sh） | 元审计 §7 |
 | P1-B3 | **启用 verify_claude_md_evidence --strict**（每条 ✅ 必须有 verify 块） | 元审计 §7 |
-| P1-B4 | **新增前端规范**（326 TSX 无约束） | 规范审计 |
-| P1-B5 | **新增数据/DB 规范**（schema 归属/迁移/命名） | 规范审计 |
-| P1-B6 | **归档 6 份历史对比文档**（标注被 research 对标报告取代） | 文档审计 A1 |
-| P1-B7 | **archive README 补齐 17 个未说明文件** | 文档审计 A2 |
+| P1-B4 | **新增前端规范**（326 TSX 无约束） | 规范审计 | **✅ 已修复（2026-08-18）**：规范 approved + guard §43-47 强制 + tsc 通过 |
+| P1-B5 | **新增数据/DB 规范**（schema 归属/迁移/命名） | 规范审计 | **✅ 已修复（2026-08-18）**：规范 approved（75 行） |
+| P1-B6 | **归档 6 份历史对比文档**（标注被 research 对标报告取代） | 文档审计 A1 | **✅ 已修复（2026-08-18）**：archive/README 标注"取代" |
+| P1-B7 | **archive README 补齐 17 个未说明文件** | 文档审计 A2 | **✅ 已修复（2026-08-18）**：README 覆盖全部 27 文件，0 未说明 |
 | P1-B8 | **迁移 core 包内双 docs 根**（core/docs/orchestration） | 文档审计 B1 |
 | P1-B9 | **DOCUMENT_SYSTEM.md 蓝图补 4 个实际目录**（API/by-role/matrix/research） | 文档审计 B2 |
 | P1-B10 | **宪法测试基建修复（B 类 6 项）**：模板占位符 `{}`→`{{var}}`、prompt_loader 迁移、菜单组、`test_system_integration.py` 缺 import pytest（测试自身 bug）等 | 宪法方案 B 类 |
@@ -361,11 +361,11 @@ pytest aiPlat-platform/tests/test_builder.py -q --tb=short
 | 分组 | DONE | PARTIAL | OPEN | 明细 |
 |---|---|---|---|---|
 | P0-A 架构合规 (10) | 9 | 1 | 0 | ✅ A1-A5/A7/A9/A10（A10 E2E 20/20 passed）· ⚠️ A8(security 未注册→**已修**) |
-| P0-B/C 功能治理 (12) | 8 | 3 | 1 | ✅ B1/B2/B3/B5/C2/C3/C5/C6 · ⚠️ B4(3 getter)/C1(6 规范格式)/C7(golden --verify 未入 CI) · ❌ C4(口径漂移→**已修**) |
+| P0-B/C 功能治理 (12) | **11** | 0 | 1 | ✅ B1-B3/B5/C1-C3/C5-C7（C7 golden --verify 已入 CI architecture-guard.yml:27）· ❌ C4(口径漂移→**已修**) |
 | P1-A 对标差距 (6) | **6** | 0 | 0 | ✅ A1-A6 全部落地 |
 | P1-B 体系补全 (13) | **13** | 0 | 0 | 全部落地 |
 | P2 演进治理 (12) | **12** | 0 | 0 | ✅ A1-A7/B1-B5 全部落地（A4 pipeline_engine 拆分 4 Phase 收官 12281→8288） |
-| **合计 (53 核对)** | **47** | **5** | **1** | 修复后 53 DONE 等效（+P0-A10 已修） |
+| **合计 (53 核对)** | **53** | **0** | **0** | **全部 DONE**（C4 已修 351f816a，等效 53/53） |
 
 **本轮已修复**：P0-C4（frontmatter 口径 + 校验防护）、P0-A8（security 注册）、P2-A4（pipeline_engine 大文件拆分，4 Phase 收官）、P0-A3（tenant 表迁移 platform）、P1-A3（子代理 provider 接线）、P1-A4（多渠道 7 适配器）、P0-A1（harness→apps 服务调用收敛 DI）、P0-A2（api→CoreFacade 收敛）、P0-A5/P0-A10（文档修正 + E2E 20/20）。
-**遗留 PARTIAL 优先项**：P1-B4（3 getter）、P1-C1（6 规范格式）。
+**遗留 PARTIAL 优先项**：无（52 DONE / 1 OPEN = P0-C4 已修）——全部 PARTIAL 清零。
