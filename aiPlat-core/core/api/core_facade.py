@@ -3077,6 +3077,13 @@ def _invalidate_domain_caches(domain_id: str) -> None:
 # ═══════════════════════════════════════════════════════════════
 
 from core.harness.integration import KernelRuntime, get_harness, get_agent_registry  # P0-B4 canonical re-export (统一入口)
+from core.harness.infrastructure.infra_bridge import create_infra_database_client  # P0-A2 修复 canonical re-export
+from core.harness.evaluation.rag_evaluator import get_rag_evaluator, EvalSample  # P0-A2 修复 canonical re-export
+from core.harness.infrastructure.gates.ontology_approval import list_pending, reject, get_history  # P0-A2 修复 canonical re-export
+from core.harness.knowledge.scoring_engine import evaluate, get_alerts  # P0-A2 修复 canonical re-export
+from core.harness.knowledge.metric_engine import scorecard, compute  # P0-A2 修复 canonical re-export
+from core.harness.knowledge.context_bus import assemble_field_assessment  # P0-A2 修复 canonical re-export
+from core.harness.knowledge.system_diagnostician import SystemDiagnostician  # P0-A2 修复 canonical re-export
 from core.harness.knowledge.db import get_knowledge_db
 
 from core.harness.knowledge.wiki_engine import search_pages  # v2.5: platform→CoreFacade  # noqa: boundary — CoreFacade canonical re-export

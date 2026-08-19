@@ -31,9 +31,9 @@ async def list_writebacks(collection: str = "default"):
 @router.post("/writebacks", response_model=Dict[str, Any])
 async def register_writeback_endpoint(req: WritebackRegisterRequest, collection: str = "default"):
     u"""Register a new writeback target."""
-    from core.api.core_facade import (  # P0-A2: 经 CoreFacade
-        register_writeback, WriteBackConfig, WriteBackTarget,
-    )
+    from core.harness.knowledge.knowledge_writeback import register_writeback  # P0-A2 修复: 恢复原模块(定义处)
+    from core.harness.knowledge.knowledge_writeback import WriteBackConfig  # P0-A2 修复: 恢复原模块(定义处)
+    from core.harness.knowledge.knowledge_writeback import WriteBackTarget  # P0-A2 修复: 恢复原模块(定义处)
     try:
         target = WriteBackTarget(req.target_type)
     except ValueError:

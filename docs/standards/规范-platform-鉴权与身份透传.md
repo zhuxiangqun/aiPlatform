@@ -138,3 +138,13 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 - **约束**：新增平台侧访问 agent registry 的代码一律 `from core.api.core_facade import get_agent_registry`（唯一入口，§10 API 入口唯一性）。
 
 > **对照**：入口唯一性治理 — 同一能力（agent registry）全系统仅一个公共入口，禁止 facade 层维护重复 getter。
+
+---
+
+## 11. P0-A2 收敛回归修复（2026-08-19）
+
+`knowledge-graph/stats` 500 根因为 P0-A2 收敛时部分符号（如 `effective_cycles`）未在 CoreFacade re-export → ImportError。全仓审计后：
+
+- **core 侧** 40 个缺失符号恢复原模块导入（core 内部 api→harness 允许）；
+- **platform 侧** 9 个符号（`create_infra_database_client`/`get_rag_evaluator`/`EvalSample`/`list_pending`/`reject`/`get_history`/`evaluate`/`get_alerts`/`compute`/`assemble_field_assessment`/`SystemDiagnostician`）**经 CoreFacade canonical re-export**（platform 必须经 CoreFacade，§92）；
+- 约束：**新增 platform 侧经 CoreFacade 访问的符号，必须先确认 CoreFacade 模块级 re-export 存在**（缺失 = 运行时 ImportError = 500）。

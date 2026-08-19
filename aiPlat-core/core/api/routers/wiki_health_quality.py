@@ -42,9 +42,8 @@ async def get_ontology_health_score(collection: str = "default"):
 @router.get("/quality/{entity_uri:path}", response_model=Dict[str, Any])
 async def get_entity_quality(entity_uri: str, collection: str = "default"):
     u"""Get quality score and signal history for an ontology entity."""
-    from core.api.core_facade import (  # P0-A2: 经 CoreFacade
-        get_entity_quality_score, get_quality_signals,
-    )
+    from core.harness.knowledge.knowledge_quality import get_entity_quality_score  # P0-A2 修复: 恢复原模块(定义处)
+    from core.harness.knowledge.knowledge_quality import get_quality_signals  # P0-A2 修复: 恢复原模块(定义处)
     score = get_entity_quality_score(entity_uri, collection_id=collection)
     signals = get_quality_signals(entity_uri, limit=20, collection_id=collection)
     return {"quality": score, "recent_signals": signals}

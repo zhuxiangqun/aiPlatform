@@ -257,3 +257,10 @@ pytest -q \
   - `python3 scripts/sync_registry_to_docs.py`（✅ 190 符号全同步）
   - `grep -c 'AIPLAT_' docs/standards/规范-功能开关与配置.md`（≥40）
   - `python3 -c "import ast; ast.parse(open('aiPlat-core/core/api/core_facade.py').read()); print('OK')"`
+
+### 1.24 P0-A2 收敛回归修复（2026-08-19）
+- MUST：全仓 `from core.api.core_facade import X` 的 X 均在 CoreFacade 模块级（缺失符号 = 0）
+- MUST：`GET /api/core/knowledge-graph/stats` 端点核心逻辑 `_get_stats_sync` 可运行（无 ImportError）
+- 自动化验收：
+  - `python3 -c "from core.api.routers.knowledge_graph import _get_stats_sync; r=_get_stats_sync(); assert r.get('total_files',0)>0"`
+  - `grep -rn 'from core.api.core_facade import' aiPlat-core/core/ aiPlat-platform/ --include='*.py' | grep -v __pycache__ | wc -l`（AST 校验缺失=0）

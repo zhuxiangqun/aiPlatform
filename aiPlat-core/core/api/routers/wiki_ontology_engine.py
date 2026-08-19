@@ -172,7 +172,7 @@ async def cleanup_cross_domain_nodes(domain_id: str):
 
     """
 
-    from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import GraphIndex
 
     from core.harness.knowledge.ontology_loader import load_ontology_from_yaml, load_all_domains
 
@@ -274,7 +274,7 @@ async def backfill_summaries(domain_id: str, collection: str = "", limit: int = 
 
     from core.harness.knowledge.wiki_engine import read_page, write_page, list_all_pages
 
-    from core.api.core_facade import DomainRouter  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import DomainRouter
 
 
 
@@ -479,7 +479,7 @@ async def build_instances_batch(domain_id: str, collection: str = "", limit: int
 
     from core.harness.knowledge.wiki_engine import read_page, write_page, list_all_pages
 
-    from core.api.core_facade import DomainRouter  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import DomainRouter
 
     import asyncio
 
@@ -679,9 +679,9 @@ async def build_cross_page_edges(domain_id: str):
 
     from core.harness.knowledge.wiki_engine import read_page, list_all_pages
 
-    from core.api.core_facade import load_ontology_from_yaml  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import load_ontology_from_yaml
 
-    from core.api.core_facade import DomainRouter  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import DomainRouter
 
     from pathlib import Path as _Path
 
@@ -1941,7 +1941,7 @@ async def get_graph_stats(domain_id: str):
 
     """Get graph statistics: nodes, edges, inferred edges."""
 
-    from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import GraphIndex
 
     graph = GraphIndex.load(domain_id)
 
@@ -1991,7 +1991,7 @@ async def cross_source_resolve(req: dict):
 
     from core.harness.ontology_engine.entity_resolver import EntityResolver
 
-    from core.api.core_facade import load_ontology_from_yaml  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import load_ontology_from_yaml
 
     from pathlib import Path as _Path
 
@@ -2067,7 +2067,7 @@ async def resolve_entities(req: dict):
 
     from core.harness.ontology_engine.entity_resolver import EntityResolver
 
-    from core.api.core_facade import load_ontology_from_yaml  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import load_ontology_from_yaml
 
     from pathlib import Path as _Path
 
@@ -2175,11 +2175,11 @@ async def get_state_statistics(
 
     """
 
-    from core.api.core_facade import (  # P0-A2: 经 CoreFacade
-
-        get_entity_window_stats, get_domain_transition_rate, get_state_distribution
-
+    from core.api.core_facade import (
+        get_state_distribution,
     )
+    from core.harness.ontology_engine.state_history import get_entity_window_stats  # P0-A2 修复: 恢复原模块(定义处)
+    from core.harness.ontology_engine.state_history import get_domain_transition_rate  # P0-A2 修复: 恢复原模块(定义处)
 
 
 
@@ -2277,7 +2277,7 @@ async def graph_traverse(req: dict):
 
 
 
-    from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import GraphIndex
 
     from core.harness.ontology_engine.graph_traversal import traverse as _traverse
 
@@ -2555,7 +2555,7 @@ async def run_knowledge_synthesis(req: dict):
 
     domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
 
-    from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import GraphIndex
 
     from core.harness.ontology_engine.knowledge_synthesis import KnowledgeSynthesizer
 
@@ -2591,7 +2591,7 @@ async def create_graph_snapshot(domain_id: str, label: str = ""):
 
     """Create a versioned snapshot of the current graph state."""
 
-    from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import GraphIndex
 
     graph = GraphIndex.load(domain_id)
 
@@ -2611,7 +2611,7 @@ async def create_graph_snapshot(domain_id: str, label: str = ""):
 
 async def list_graph_snapshots(domain_id: str):
 
-    from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import GraphIndex
 
     graph = GraphIndex.load(domain_id)
 
@@ -2631,7 +2631,7 @@ async def restore_graph_snapshot(domain_id: str, req: dict):
 
         raise HTTPException(status_code=400, detail="snapshot_id required")
 
-    from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import GraphIndex
 
     graph = GraphIndex.load(domain_id)
 
@@ -2661,7 +2661,7 @@ async def generate_ontology_sdk(domain_id: str, language: str = "python"):
 
     """
 
-    from core.api.core_facade import load_ontology_from_yaml  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import load_ontology_from_yaml
 
     from pathlib import Path as _Path
 
@@ -2805,9 +2805,9 @@ async def run_graph_inference(req: dict):
 
 
 
-    from core.api.core_facade import load_ontology_from_yaml  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import load_ontology_from_yaml
 
-    from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import GraphIndex
 
     from core.harness.ontology_engine.graph_inference import GraphInference
 
@@ -2973,7 +2973,7 @@ async def sync_search_index(domain_id: str):
     Wiki pages, rebuilds FTS5 index. Returns count of pages synced.
     """
     try:
-        from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import GraphIndex
         graph = GraphIndex.load(domain_id)
         node_count = len(graph._nodes)
         class_count = len(graph.get_entity_classes())
@@ -2992,7 +2992,7 @@ async def sync_search_index(domain_id: str):
         
         # Invalidate domain router cache
         try:
-            from core.api.core_facade import DomainRouter  # P0-A2: 经 CoreFacade
+            from core.api.core_facade import DomainRouter
             DomainRouter()._built = False
         except Exception:
             pass  # noqa: best-effort
@@ -3029,7 +3029,7 @@ async def sync_search_index_all():
         for db_file in sorted(_glob.glob(_os.path.join(graph_dir, "*.db"))):
             domain_id = _os.path.splitext(_os.path.basename(db_file))[0]
             try:
-                from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
+                from core.api.core_facade import GraphIndex
                 graph = GraphIndex.load(domain_id)
                 node_count = len(graph._nodes)
                 if node_count == 0:
@@ -3055,7 +3055,7 @@ async def sync_search_index_all():
     
     # Invalidate domain router cache
     try:
-        from core.api.core_facade import DomainRouter  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import DomainRouter
         DomainRouter()._built = False
     except Exception:
         pass  # noqa: best-effort

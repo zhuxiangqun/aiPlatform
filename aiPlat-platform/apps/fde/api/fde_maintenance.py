@@ -20,7 +20,7 @@ async def fde_diagnose():
     systemic issues. Returns findings, correlations, and overall health.
     """
     try:
-        from core.api.core_facade import SystemDiagnostician
+        from core.api.core_facade import SystemDiagnostician  # P0-A2 修复: CoreFacade 已补 re-export
         sd = SystemDiagnostician()
         return sd.diagnose()
     except HTTPException:
@@ -40,7 +40,7 @@ async def fde_heal():
     """
     try:
         from core.api.core_facade import SystemHealer
-        from core.api.core_facade import SystemDiagnostician
+        from core.api.core_facade import SystemDiagnostician  # P0-A2 修复: CoreFacade 已补 re-export
         sd = SystemDiagnostician()
         diagnosis = sd.diagnose()
         healer = SystemHealer()
@@ -90,7 +90,7 @@ async def fde_self_check():
 
     # Step 1: Diagnose
     try:
-        from core.api.core_facade import SystemDiagnostician
+        from core.api.core_facade import SystemDiagnostician  # P0-A2 修复: CoreFacade 已补 re-export
         sd = SystemDiagnostician()
         results["diagnosis"] = sd.diagnose()
     except Exception as e:

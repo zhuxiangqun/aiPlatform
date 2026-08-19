@@ -89,7 +89,9 @@ async def run_evaluation(body: Dict[str, Any]):
 
     conn = _connect()
     try:
-        from core.api.core_facade import _ensure_eval_schema, get_rag_evaluator, EvalSample
+        from core.api.core_facade import _ensure_eval_schema
+        from core.api.core_facade import get_rag_evaluator  # P0-A2 修复: CoreFacade 已补 re-export
+        from core.api.core_facade import EvalSample  # P0-A2 修复: CoreFacade 已补 re-export
         _ensure_eval_schema(conn)
 
         if tag:

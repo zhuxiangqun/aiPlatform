@@ -22,9 +22,11 @@ class ProfileRequest(BaseModel):
 @router.post("/profile", response_model=Dict[str, Any])
 async def create_learner_profile(req: ProfileRequest):
     """Create or update a learner profile."""
-    from core.api.core_facade import (  # P0-A2: 经 CoreFacade
-        LearnerProfile, TargetRole, CurrentLevel, save_learner_profile, load_learner_profile,
-    )
+    from core.harness.knowledge.learning_ontology import LearnerProfile  # P0-A2 修复: 恢复原模块(定义处)
+    from core.harness.knowledge.learning_ontology import TargetRole  # P0-A2 修复: 恢复原模块(定义处)
+    from core.harness.knowledge.learning_ontology import CurrentLevel  # P0-A2 修复: 恢复原模块(定义处)
+    from core.harness.knowledge.learning_ontology import save_learner_profile  # P0-A2 修复: 恢复原模块(定义处)
+    from core.harness.knowledge.learning_ontology import load_learner_profile  # P0-A2 修复: 恢复原模块(定义处)
     existing = load_learner_profile(req.learner_id)
     profile = LearnerProfile(
         learner_id=req.learner_id,
@@ -208,8 +210,8 @@ async def ask_learning_coach(
     )
 
     try:
-        from core.api.core_facade import sys_llm_generate  # P0-A2: 经 CoreFacade
-        from core.api.core_facade import _sync_resolve  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import sys_llm_generate
+        from core.api.core_facade import _sync_resolve
         prompt = _sync_resolve("learning-coach-chat",
             path_name=path_name, context=context, question=question)
         result = await sys_llm_generate(

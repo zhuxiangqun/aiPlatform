@@ -2159,7 +2159,7 @@ async def fde_health():
 
     # ── 6. ContextBus layer check ──
     try:
-        from core.api.core_facade import assemble_field_assessment
+        from core.api.core_facade import assemble_field_assessment  # P0-A2 修复: CoreFacade 已补 re-export
         _, diag = assemble_field_assessment(
             {"industry": "health-check", "company_name": "self-test", "pain_points": "test"},
             []
@@ -2436,7 +2436,7 @@ def _get_convergence_status() -> dict:
 def _get_pipeline_health() -> str:
     """Quick ContextBus pipeline health check — returns 'ok' | 'degraded' | 'error'."""
     try:
-        from core.api.core_facade import assemble_field_assessment
+        from core.api.core_facade import assemble_field_assessment  # P0-A2 修复: CoreFacade 已补 re-export
         _, diag = assemble_field_assessment(
             {"industry": "health-check", "company_name": "self-test", "pain_points": "test"},
             [],

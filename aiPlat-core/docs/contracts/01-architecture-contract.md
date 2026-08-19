@@ -145,3 +145,5 @@ aiPlat 逻辑上分为：
 - **harness→apps 收敛（P0-A1, 2026-08-18）**：9 处 harness lazy 直导 apps 服务改为经 integration.py DI 工厂（`get_subagent_coordinator`/`get_agent_registry`/`get_mcp_client_manager`/`get_skill_discovery`/`get_job_manager`/`get_dataset_manager`/`get_result_verifier`，新增 5 工厂）。宪法白名单 38→25；data type / static util / optional lazy（skill_execution_record/browser_test_engine/video_parser/quality.types/finetune.schemas）保留白名单（非服务调用）。
 
 - **api→CoreFacade 收敛（P0-A2, 2026-08-18）**：54 个 api 文件 292 行 harness 直导改经 CoreFacade（执行引擎核心模块直导清零）；CoreFacade 模块级补 `sys_llm_generate` re-export；修复 wiki.py 死 self-import；69/69 routers 导入通过。knowledge 域（wiki/ontology/code_graph）直导为知识检索能力，渐进跟进。
+
+- **P0-A2 收敛回归修复（2026-08-19）**：knowledge-graph/stats 500 根因（CoreFacade 未 re-export `effective_cycles`）→ 全仓 AST 审计 `from core.api.core_facade import` 缺失符号：core 侧 40 符号恢复原模块导入（core 内部 api→harness 允许）、platform 侧 9 符号 CoreFacade canonical re-export（§92 platform 必须经 CoreFacade）；triple_scanner 移除引用不存在 API 的死代码（`CoreFacade.get_pipeline_stages` 全仓无定义）。约束：新增 platform 经 CoreFacade 访问的符号必须先确认 re-export 存在。

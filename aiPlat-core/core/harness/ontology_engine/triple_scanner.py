@@ -156,24 +156,9 @@ async def scan_and_populate(store: TripleStore = None) -> Dict[str, Any]:
         logging.debug(str(e), exc_info=True)
 
     # ── 4. Pipeline → Wiki (from PipelineStageConfig) ──
-    try:
-        from core.harness.integration import get_agent_discovery
-        discovery = get_agent_discovery()()
-        for agent_id in (getattr(discovery, 'list_ids', lambda: [])() or []):
-            try:
-                from core.api.core_facade import CoreFacade
-                stages = CoreFacade.get_pipeline_stages(agent_id) or []
-                for stage in (stages if isinstance(stages, list) else []):
-                    stage_id = f"{agent_id}:{stage.get('phase', 'unknown')}"
-                    stage_urn = _make_urn("pipeline", stage_id)
-                    for kb in _normalize_list(stage.get("knowledge_bases", [])):
-                        triples.append((stage_urn, "depends_on_wiki",
-                                       _make_urn("wiki", kb),
-                                       1.0, "code_scan", {}))
-            except Exception as e:
-                logging.debug(str(e), exc_info=True)
-    except Exception as e:
-        logging.debug(str(e), exc_info=True)
+    # P0-A2 修复 (2026-08-19): 原实现引用不存在的 CoreFacade.get_pipeline_stages
+    # （全仓无 class CoreFacade / get_pipeline_stages），属存量死路径——移除。
+    # 若未来需要 pipeline→wiki 边，从 builder_project_service 的 stage 配置接入。
 
     # ── 4.5. Cross-domain bridges ────────────────────────
     try:
