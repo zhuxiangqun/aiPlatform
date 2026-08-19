@@ -277,3 +277,10 @@ pytest -q \
 - 自动化验收：
   - `python3 -c "from core.schemas_builder import PipelineConfig, PipelineStageConfig; c=PipelineConfig(stages=[PipelineStageConfig(id='s1', agent_id='a', prompt='p')], max_tokens_per_run=1000); assert len(c.stages)==1"`
   - `pytest tests/constitution/test_core_internal_boundaries.py -q`（3 passed）
+
+### 1.27 守卫盲区修复（2026-08-19）
+- MUST：scripts/guard_undefined_names.py 存在且接入 architecture_guard.sh（AST 级未定义符号检查）
+- MUST：pipeline_execution.py 无 PipelineEngine 直构/直导（全部经 create_pipeline_engine）
+- 自动化验收：
+  - python3 scripts/guard_undefined_names.py（0 new）
+  - pytest tests/unit/test_pipeline_execution_undefined_names.py -q（4 passed）

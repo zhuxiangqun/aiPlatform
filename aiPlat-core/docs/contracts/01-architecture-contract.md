@@ -149,3 +149,5 @@ aiPlat 逻辑上分为：
 - **P0-A2 收敛回归修复（2026-08-19）**：knowledge-graph/stats 500 根因（CoreFacade 未 re-export `effective_cycles`）→ 全仓 AST 审计 `from core.api.core_facade import` 缺失符号：core 侧 40 符号恢复原模块导入（core 内部 api→harness 允许）、platform 侧 9 符号 CoreFacade canonical re-export（§92 platform 必须经 CoreFacade）；triple_scanner 移除引用不存在 API 的死代码（`CoreFacade.get_pipeline_stages` 全仓无定义）。约束：新增 platform 经 CoreFacade 访问的符号必须先确认 re-export 存在。
 
 - **P0-A1 DI 工厂 fallback 修复（2026-08-19）**：系统性验证 integration.py 全部 `_resolve_or_import` fallback（13 个）——修复 2 个坏路径：`get_mcp_client_manager`（指向不存在的函数 → 改 `MCPClientManager` 类，修复前 profile.list_servers 静默降级）与 `get_agent_registry`（指向不存在的模块 `agents.registry` → 改 `agents.discovery:AgentRegistry`）。约束：新增 DI 工厂时 fallback 的 `module:attr` 必须真实存在（P0-A2/P0-A1 两次教训）。
+
+- **守卫盲区修复（2026-08-19）**：ruff F821 被 pyproject.toml ignore（eval/exec 误报）+ py_compile 只查语法 → PipelineConfig 未 import（NameError）长期漏检（应用工厂 rebuild 无输出）。新增 AST 级守卫 scripts/guard_undefined_names.py（函数内未 import 大写符号检查），接入 architecture_guard.sh；pipeline_execution 全部 PipelineEngine 直构改 create_pipeline_engine（宪法 A2 合规）；防回归测试 tests/unit/test_pipeline_execution_undefined_names.py。

@@ -87,7 +87,13 @@ PID_EV=$!
 python3 scripts/rule_golden_sample.py &
 PID_RULE=$!
 
+# guard_undefined_names (2026-08-19): AST 级函数内未定义符号（NameError 隐患）
+# 背景: ruff F821 被 pyproject ignore + py_compile 只查语法 → PipelineConfig 案例漏检
+python3 scripts/guard_undefined_names.py &
+PID_UNDEF=$!
+
 wait $PID_AST || FAIL_AST=1
+wait $PID_UNDEF || FAIL_UNDEF=1
 wait $PID_FE || FAIL_FE=1
 wait $PID_ARCH || FAIL_ARCH=1
 [ "$PID_CAP" != "0" ] && { wait $PID_CAP || FAIL_CAP=1; }
