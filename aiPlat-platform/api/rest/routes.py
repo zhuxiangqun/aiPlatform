@@ -81,7 +81,7 @@ from auth.deps import require_auth, require_admin
 
 from storage import sqlite as platform_store  # type: ignore
 
-from core.harness.infrastructure.infra_bridge import create_infra_database_client  # P0-A2 修复: 恢复原模块(定义处)
+from core.api.core_facade import create_infra_database_client  # P0-A2 修复: CoreFacade 已补 re-export
 
 from core.api.facades.service_facade import llm_generate
 

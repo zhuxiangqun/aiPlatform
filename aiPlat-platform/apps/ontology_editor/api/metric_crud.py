@@ -32,7 +32,7 @@ async def get_metric_value(domain_id: str, metric_name: str, days: int = Query(3
     try:
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)
-        from core.harness.knowledge.metric_engine import compute  # P0-A2 修复: 恢复原模块(定义处)
+        from core.api.core_facade import compute  # P0-A2 修复: CoreFacade 已补 re-export
         from core.api.core_facade import load_metrics
         metrics = {m.name: m for m in load_metrics(schema)}
         metric = metrics.get(metric_name)
