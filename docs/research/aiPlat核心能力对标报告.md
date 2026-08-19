@@ -1,9 +1,10 @@
 # aiPlat 核心能力对标报告：aiPlat vs Claude Code vs DeepSeek Harness vs Hermes
 
-> **分析方式**：以 aiPlat 实际代码为分析对象（43 万行 Python、1,719 次 commit、CoreFacade 210 接口、PipelineEngine 8,288 行——原 12,281 行，2026-08-19 P2-A4 拆分收官），结合 DeepSeek Harness 本地源码（`/Users/apple/workdata/person/deepseek-harness/`，0.1.0-rc.5）一手分析，以及 Claude Code 的权威 web 调研（官方文档 + 第三方分析）。Hermes 初版为文档级调研（官方文档站 + GitHub API 实测），**2026-08-15 补充最新版 v0.20.1 源码级验证**（`/Users/apple/workdata/person/openSource/hermes-agent-main/`，见 §17.1）。
+> **分析方式**：以 aiPlat 实际代码为分析对象（43 万行 Python、1,926 次 commit、CoreFacade 368 个导出符号（176 def/class + 192 re-export）、PipelineEngine 8,285 行——原 12,281 行，2026-08-19 P2-A4 拆分收官），结合 DeepSeek Harness 本地源码（`/Users/apple/workdata/person/deepseek-harness/`，0.1.0-rc.5）一手分析，以及 Claude Code 的权威 web 调研（官方文档 + 第三方分析）。Hermes 初版为文档级调研（官方文档站 + GitHub API 实测），**2026-08-15 补充最新版 v0.20.1 源码级验证**（`/Users/apple/workdata/person/openSource/hermes-agent-main/`，见 §17.1）。
 > **结论原则**：代码事实优先于文档宣称；每条 aiPlat 能力均附 `文件:行号` 证据。
 > **调研时点**：2026-08-15（2026-08-19 已按行动纲领基线复核更新，见下）
 > **2026-08-19 状态更新**：行动纲领 **53 DONE / 0 PARTIAL / 0 OPEN**（54 项核对、53 项有效）；改进方案 P0/P1/P2 全部落地；宪法测试 **143 passed**（全绿）；能力数 **1032/1039**（`capability_registry.yaml` total=1032，`AIPLAT_CAPABILITIES.md` total=1039，口径不同：registry 登记 vs 扫描）；架构守卫 0 ERROR；规范 9/9 approved。**§16.3/§18/§20/§21 的差距结论已按新基线重审**——原"6 项完全缺失 + 8 项部分具备"经 P1-A/P2 批次补齐后仅剩 G6（CC/Codex hooks 协议桥）一项未纳入行动纲领（见 §20.1 状态列与 §20.2 汇总）。
+> **2026-08-19 回归修复批（PR #33/#34/#35，当日增量复核）**：基线复核后又闭环 3 个实测缺陷，本报告 aiPlat 侧数字已同步——① **P0-A1 DI fallback 修复**（PR #33）：`integration.py` 13 个 `_resolve_or_import` fallback 全量验证，修复 2 个坏路径（`get_mcp_client_manager` 指向不存在的函数 → 改类 `MCPClientManager`；`get_agent_registry` 指向不存在的模块 → 改 `agents.discovery:AgentRegistry`）；② **应用工厂 rebuild 修复**（PR #34）：`pipeline_execution.py` 存量 `PipelineConfig` 未 import NameError（P0-A2 前已存在，`_execute_pipeline` 每次 run 立即 failed），补 import + 3 处 `PipelineEngine` 直构改 `create_pipeline_engine`（宪法 A2）；③ **守卫盲区修复**（PR #35）：用户实证质疑"守卫为何没抓到 NameError"——根因 4 层（ruff F821 被 `pyproject.toml` ignore / py_compile 只查语法 / F821 ratchet 基于空输出空转 / 该路径无测试），新增 **AST 级未定义符号守卫**（`scripts/guard_undefined_names.py`，接入 `architecture_guard.sh`，基线 0 findings）+ 防回归测试（4 passed）。**§19 架构守卫表述已更新**：规则数 172→**190**（`arch_guard_rules.yaml` 实测）+ 第 17 维"Python 未定义变量"从 ruff F821 ratchet（实际被 ignore 空转）升级为 AST 级真检查。commit 数 1,719→**1,926**；CoreFacade 210 接口→**368 导出符号**；PipelineEngine 8,288→**8,285 行**。三方可对标结论不受上述修复影响（均为 aiPlat 侧质量修复，非能力增减）。
 
 ---
 
@@ -22,7 +23,7 @@
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes |
 |---|---|---|---|---|
-| 执行引擎 | **PipelineEngine 8,288 行**（原 12,281 行，2026-08-19 P2-A4 拆分收官为 5 个 Mixin：healing/state/prompt/eval/stage），声明式 `PipelineStageConfig` 驱动阶段流水线（`pipeline_engine.py:553`），含 HITL 暂停/恢复、token 预算、重试、快照 | 单进程 LLM→工具→观察循环；SDK 提供可编程 AgentLoop | 事件驱动 step/turn 双层循环（`packages/core/agent-loop`），turn=零或多个 step | AIAgent 类（~9,200 行）单一核心循环驱动全部入口 |
+| 执行引擎 | **PipelineEngine 8,285 行**（原 12,281 行，2026-08-19 P2-A4 拆分收官为 5 个 Mixin：healing/state/prompt/eval/stage），声明式 `PipelineStageConfig` 驱动阶段流水线（`pipeline_engine.py:553`），含 HITL 暂停/恢复、token 预算、重试、快照 | 单进程 LLM→工具→观察循环；SDK 提供可编程 AgentLoop | 事件驱动 step/turn 双层循环（`packages/core/agent-loop`），turn=零或多个 step | AIAgent 类（~9,200 行）单一核心循环驱动全部入口 |
 | 编排模式 | 6 种 `routing_mode`（static/llm/debate/swarm/roundtable/moa）+ 5 种 `pipeline_mode`（chain/router/parallel/orchestrator/evaluator_optimizer）+ DAG 并行（`_execute_dag`） | Dynamic workflows（2026 新特性）：phases 串行/并行、fan-out、HITL 检查点 | workflow 引擎（worker-thread provider），模型写编排脚本 `agent()/pipeline()/parallel()` 扇出子代理 | 单循环 + delegate_task 并行 batch（默认 3 并发）+ orchestrator 模式 |
 | HITL/审批 | **一等能力**：approve_session（`:1974`）/reject_session（`:2266`）/rollback（`:2536`）/resume_from_checkpoint（`:2621`） | plan/act 双阶段，Plan 批准后才执行 | plan mode 作为 logged state，`exit_plan_mode` 工具 | approvals 交互式确认（smart/manual/off） |
 | 可观测执行 | trace_id/span_id 全 syscall 覆盖 + graph trace 事件 + 决策溯源（`decision_trace.py`） | transcript 保存 + hooks | 事件源会话日志（模型可见 ⟺ 日志不变量） | 会话 DB 记录 + insights 分析 |
@@ -174,7 +175,7 @@
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes |
 |---|---|---|---|---|
-| 接口 | CoreFacade 210 接口 + REST（72 core routers + 573 platform endpoints）+ aiplat-sdk + ACP + A2A + Gateway 统一代理 | CLI + headless SDK（TS/Python）+ IDE 插件 + GitHub Actions | ACP + JSON-RPC SDK + typert RPC + Web GUI（3080）+ Python SDK | CLI/TUI + **Gateway 20+ IM 平台** + ACP + API Server + Python Library |
+| 接口 | CoreFacade 368 个导出符号（176 def/class + 192 re-export） + REST（72 core routers + 573 platform endpoints）+ aiplat-sdk + ACP + A2A + Gateway 统一代理 | CLI + headless SDK（TS/Python）+ IDE 插件 + GitHub Actions | ACP + JSON-RPC SDK + typert RPC + Web GUI（3080）+ Python SDK | CLI/TUI + **Gateway 20+ IM 平台** + ACP + API Server + Python Library |
 | 消息渠道 | **7 渠道适配器**（telegram/slack/webchat/discord/wecom/email/dingtalk，`channels/adapter.py:16-23` + `get_channel_adapter`，2026-08-19 P1-A4 收官，PR #22）+ Gateway 配对/幂等/DLQ | 无 IM | 无 IM | **20+ 平台**（Telegram/Discord/Slack/WhatsApp/Signal/SMS/Email/HA/Mattermost/Matrix/DingTalk/Feishu/WeCom/QQ/LINE 等） |
 | IDE | aiplat-vscode 扩展 + ACP | VS Code/JetBrains 官方 | ACP 服务器（任何 ACP 客户端可驱动） | VS Code/Zed/JetBrains（ACP） |
 | 治理面 | 管理端 Web（**325 TSX 前端文件**，tsc 0 错误 + 50 诊断页面 + RBAC 菜单，2026-08-19 基线） | Console + 企业迁移 | Web GUI（VitePress） | 个人 CLI/IM 为主 |
@@ -225,7 +226,7 @@
 
 ### 16.1 aiPlat 的 5 个标志性差异化能力（代码证据）
 
-1. **声明式交付流水线引擎**（`pipeline_engine.py:553`，8,288 行——原 12,281 行，2026-08-19 P2-A4 拆分收官为 5 个 Mixin：`pipeline_healing/state/prompt/eval/stage.py`，PR #16-19）：PipelineStageConfig 字段驱动一切行为分叉（execution_backend 双后端、routing_mode 六形态、failure_strategy 退化、hitl 审批），HITL 审批/驳回/回滚/断点续跑全闭环。三方中唯一。
+1. **声明式交付流水线引擎**（`pipeline_engine.py:553`，8,285 行——原 12,281 行，2026-08-19 P2-A4 拆分收官为 5 个 Mixin：`pipeline_healing/state/prompt/eval/stage.py`，PR #16-19）：PipelineStageConfig 字段驱动一切行为分叉（execution_backend 双后端、routing_mode 六形态、failure_strategy 退化、hitl 审批），HITL 审批/驳回/回滚/断点续跑全闭环。三方中唯一。
 2. **Syscall 封口 + Gate 治理执行层**（`syscalls/skill.py:57` + `policy_gate.py:275`）：唯一强制通道 + 单点执法 + 3D 权限 + 风险评分 + 确定性采样审批。治理深度远超三方。
 3. **自演进操作系统**（`evolution_engine.py:121` 14 步夜间流水线 + AutoLearner + SelfHealGate + LoRAAutoTrigger）：唯一实现"系统自我修改 + 自动训练触发"（SFT/RL）的完整闭环。
 4. **上下文工程**（`context_bus.py:42` 10 层 + `memory/manager.py:417` 四层记忆 + `cache_aware_router.py:47`）：对标 Hermes 四层记忆但更重——语义重排 + 温度剪枝 + 5 级压缩 + CacheAwareRouter。
@@ -239,7 +240,7 @@
 | **交付闭环最工程化** | 审批→回归→可回滚→全链路可追溯（approve/reject/rollback/resume + run_events + 决策溯源） |
 | **知识引擎独一无二** | SECI 四阶段 + 本体状态机 + GraphIndex + GraphRAG（CRAG 4 级）+ Knowledge Pipeline v3 |
 | **自我进化最完整** | 14 步夜间流水线 + 失败→技能→沙盒→审批闭环 + SFT/RL 训练触发 + 跨租户聚合 |
-| **引擎层去业务化** | 内核无关原则（CLAUDE.md §8）+ PipelineStageConfig 唯一约定接口 + 架构守卫 172 规则自动执法 |
+| **引擎层去业务化** | 内核无关原则（CLAUDE.md §8）+ PipelineStageConfig 唯一约定接口 + 架构守卫 190 规则自动执法 |
 
 ### 16.3 aiPlat 相对三方的劣势/差距区（2026-08-19 复核：原 8 项差距中 7 项已由行动纲领 P1/P2 批次补齐）
 
@@ -270,7 +271,7 @@
 
 | 系统 | 分析方法 | 证据来源 |
 |---|---|---|
-| aiPlat | 代码全量分析（4 个并行子代理 40+ 关键文件 + 主代理交叉验证） | 本仓库 `aiPlat-core/`（CoreFacade 210 接口、PipelineEngine 8,288 行（P2-A4 拆分后 5 Mixin）、policy_gate.py、evolution_engine.py、context_bus.py、seci_engine.py 等） |
+| aiPlat | 代码全量分析（4 个并行子代理 40+ 关键文件 + 主代理交叉验证） | 本仓库 `aiPlat-core/`（CoreFacade 368 个导出符号（176 def/class + 192 re-export）、PipelineEngine 8,285 行（P2-A4 拆分后 5 Mixin）、policy_gate.py、evolution_engine.py、context_bus.py、seci_engine.py 等） |
 | DeepSeek Harness | 本地源码一手分析（docs + 源码双重交叉验证） | `/Users/apple/workdata/person/deepseek-harness/`（packages/core/agent-loop、core/tools、session、subagent、workflow、sandbox 等） |
 | Claude Code | web 调研（官方文档优先 + 第三方分析） | [How Claude Code works](https://code.claude.com/docs/en/how-claude-code-works)、[Workflows docs](https://code.claude.com/docs/en/workflows)、[Sandboxing](https://code.claude.com/docs/en/sandboxing)、[Sessions](https://code.claude.com/docs/en/sessions)、[Checkpointing](https://code.claude.com/docs/en/checkpointing) |
 | Hermes | 文档级调研（初版）+ **v0.20.1 源码级验证**（2026-08-15 补充，与 DSH 同深度） | 文档：[hermes-agent](https://github.com/NousResearch/hermes-agent)（230,763 stars / MIT / v0.20.1）、[官方文档站](https://hermes-agent.nousresearch.com/docs/developer-guide/architecture)；源码：`/Users/apple/workdata/person/openSource/hermes-agent-main/`（14 维度逐一验证，12 项成立 / 2 项部分成立，见 §17.4） |
@@ -446,7 +447,7 @@ flowchart LR
 
 | 系统 | 控制平面 | 数据/执行平面 | 治理集成度 |
 |---|---|---|---|
-| **aiPlat** | 管理端 Web（325 TSX 前端文件，2026-08-19）+ platform API + RBAC 三层（permission/route/menu）+ 审批中心 + 诊断中心（50 页面） | CoreFacade 210 接口 → Syscall 封口（tool/llm/skill）→ 四大 Gate → 执行引擎 | **最高**：审批/回滚/审计/发布灰度贯穿 UI-API-落库 |
+| **aiPlat** | 管理端 Web（325 TSX 前端文件，2026-08-19）+ platform API + RBAC 三层（permission/route/menu）+ 审批中心 + 诊断中心（50 页面） | CoreFacade 368 个导出符号（176 def/class + 192 re-export） → Syscall 封口（tool/llm/skill）→ 四大 Gate → 执行引擎 | **最高**：审批/回滚/审计/发布灰度贯穿 UI-API-落库 |
 | **Claude Code** | CLI/IDE + Console（组织/席位）+ Server-managed settings（远程强制策略）+ ZDR | AgentLoop → 工具执行引擎 → Linux 沙箱（seccomp/landlock） | 高：企业策略远程强制，但审计细节官方透明度低 |
 | **DSH** | Web GUI（VitePress，loopback only）+ profile/bundle 配置树 + ACP | 插件树（tools/session/agent-loop 全可替换） | 中：配置驱动强，但无企业级 RBAC/审计平台化 |
 | **Hermes** | CLI/TUI + Gateway 多渠道控制面 + API Server | AIAgent 核心循环 → 7 种终端后端 | 低：交互式审批（smart/manual/off），无审计留痕平台化 |
@@ -457,12 +458,12 @@ flowchart LR
 
 | 系统 | 分层 | 依赖约束 | 门面/边界机制 |
 |---|---|---|---|
-| **aiPlat** | 4 层：infra → core → platform → management（+ app） | **严格单向**：`app → platform → core → infra`，禁止反向/跨层（CLAUDE.md §5.7 + BOUNDARY.yaml + 172 条 arch_guard 规则自动执法） | **CoreFacade 210 接口**（platform→core 唯一通道）+ Syscall 封口（引擎外部交互唯一通道） |
+| **aiPlat** | 4 层：infra → core → platform → management（+ app） | **严格单向**：`app → platform → core → infra`，禁止反向/跨层（CLAUDE.md §5.7 + BOUNDARY.yaml + 190 条 arch_guard 规则自动执法） | **CoreFacade 368 个导出符号（176 def/class + 192 re-export）**（platform→core 唯一通道）+ Syscall 封口（引擎外部交互唯一通道） |
 | **DSH** | 插件树（无分层，同构） | 无特权核心，一切插件可替换；依赖通过 Cordis Service 注入 | 能力缝三角色（Definition/Provider/Consumer）+ `declare module` 声明合并 |
 | **Claude Code** | 单进程核心 + 生态层（plugins/skills/MCP/hooks） | 核心闭源不可扩展；生态经标准协议接入 | MCP 协议 + hooks 生命周期 + CLAUDE.md 三级记忆 |
 | **Hermes** | 单核心循环 + 边缘层（tools/skills/plugins/多入口） | 核心 narrow waist；边缘插件化（四类插件） | registry 自注册 + AST 自动发现 + footprint ladder |
 
-**对标结论**：aiPlat 的依赖约束是四者中最严格、最自动化的（172 条守卫规则 + 宪法测试强制）；DSH 的依赖约束是"架构性"的（插件隔离本身即约束）；Claude Code/Hermes 依赖约束最弱（靠生态纪律）。
+**对标结论**：aiPlat 的依赖约束是四者中最严格、最自动化的（190 条守卫规则 + 宪法测试强制）；DSH 的依赖约束是"架构性"的（插件隔离本身即约束）；Claude Code/Hermes 依赖约束最弱（靠生态纪律）。
 
 ### 19.5 扩展机制架构（从"扩展点怎么设计"看）
 
@@ -492,10 +493,10 @@ flowchart LR
 |---|---|---|---|---|
 | 核心可替换性 | 引擎层去业务化 + 门面；历史耦合已大幅消化（P0-A1 harness→apps 收敛 DI、P0-A2 api→CoreFacade 292 行清零、P2-A4 拆分收官，2026-08-19） | **最高**（一切插件，模型适配器/工具/会话/循环全可替换） | 最低（核心闭源） | 中高（核心循环稳定，边缘插件化） |
 | 无特权扩展 | ✅（apps.yaml 注册 + 白名单 handler） | ✅（bundle 挂载） | ❌（需官方生态） | ✅（四类插件） |
-| 架构守卫 | **172 条规则自动执法**（唯一有宪法级守卫的系统） | 生成式文档 freshness 门禁 + 100% 覆盖率门禁 | 无公开守卫 | 无公开守卫 |
+| 架构守卫 | **190 条规则 + AST 未定义符号守卫自动执法**（`arch_guard_rules.yaml` 190 规则 + `guard_undefined_names.py` 强化第 17 维"Python 未定义变量"为 AST 级真检查，唯一有宪法级守卫的系统） | 生成式文档 freshness 门禁 + 100% 覆盖率门禁 | 无公开守卫 | 无公开守卫 |
 | 文档纪律 | CLAUDE.md 五级规约 + 能力登记 + 证据验证强制 | 每个包 README 强制 Known Limitations + 1010 篇设计记录 | 官方文档 + 社区镜像 | 官方文档站 + 3.7MB llms-full |
 
-**对标结论**：aiPlat 的"架构守卫 172 规则 + 宪法测试 + 能力登记 + 证据验证"是四者中唯一的**工程化架构治理体系**（DSH 有纪律但偏文档化，Claude Code/Hermes 无守卫）；DSH 的可替换性最高；aiPlat 的历史耦合限制已由改进方案 P0/P2 落地解除（P0-A1/A2 收敛 + P2-A4 拆分，2026-08-19 基线 53/53 DONE）。
+**对标结论**：aiPlat 的"架构守卫 190 规则 + AST 未定义符号守卫 + 宪法测试 + 能力登记 + 证据验证"是四者中唯一的**工程化架构治理体系**（DSH 有纪律但偏文档化，Claude Code/Hermes 无守卫）；DSH 的可替换性最高；aiPlat 的历史耦合限制已由改进方案 P0/P2 落地解除（P0-A1/A2 收敛 + P2-A4 拆分，2026-08-19 基线 53/53 DONE）。**守卫体系自我进化（2026-08-19 盲区修复）**：用户实证质疑"增强了守卫为何没抓到 `PipelineConfig` 未 import 的 NameError"→ 实证根因 4 层（ruff F821 被 ignore / py_compile 只查语法 / F821 ratchet 基于空输出空转 / 路径无测试覆盖）→ 新增 AST 级未定义符号守卫（`scripts/guard_undefined_names.py`，基线 0 findings）+ 防回归测试，使"未 import 大写符号"类缺陷在 commit 前被拦截——守卫体系从"规则扫描"升级为"规则 + AST 语义双轨"。
 
 ### 19.8 架构维度汇总评分
 
@@ -504,13 +505,13 @@ flowchart LR
 | 组织哲学清晰度 | ★★★★（分层单向） | ★★★★★（一切皆插件） | ★★★（单进程+生态） | ★★★★（窄腰+边缘） |
 | 状态管理范式 | ★★★★（状态+事件双轨） | ★★★★★（纯事件源） | ★★★（文件+快照） | ★★★☆（SQLite+策展） |
 | 控制/数据平面平台化 | ★★★★★（管理端+诊断中心） | ★★★（配置驱动） | ★★★★（企业策略强制） | ★★★（Gateway 广但治理浅） |
-| 依赖约束自动化 | ★★★★★（172 规则守卫） | ★★★★（插件隔离） | ★★★（生态纪律） | ★★★（无守卫） |
+| 依赖约束自动化 | ★★★★★（190 规则守卫） | ★★★★（插件隔离） | ★★★（生态纪律） | ★★★（无守卫） |
 | 扩展机制架构 | ★★★★（四级阶梯+白名单） | ★★★★★（一切插件+卸载回滚） | ★★★★（plugins/MCP） | ★★★★（四类插件+阶梯） |
 | 部署拓扑 | ★★★★（6 服务可扩展） | ★★★（单进程） | ★★★（单进程） | ★★★（单进程+serverless） |
 | 可演进性 | ★★★★（守卫强但耦合存在） | ★★★★★（可替换性最高） | ★★★（闭源） | ★★★★（边缘插件化） |
 
 **架构对比核心结论**：
-1. **aiPlat 的架构定位**：四者中唯一的"分层单体 + 治理内核 + 多服务部署"架构——架构强项在**治理体系**（172 规则守卫 + 控制/数据平面双平台化 + 状态事件双轨）；原架构弱项（模块间历史耦合、状态/事件一致性）已由行动纲领 P0/P2 批次落地解除（P0-A1/A2 收敛 + P2-A1 折叠派生 + P2-A4 拆分，2026-08-19 基线 53/53 DONE）。
+1. **aiPlat 的架构定位**：四者中唯一的"分层单体 + 治理内核 + 多服务部署"架构——架构强项在**治理体系**（190 规则守卫 + 控制/数据平面双平台化 + 状态事件双轨）；原架构弱项（模块间历史耦合、状态/事件一致性）已由行动纲领 P0/P2 批次落地解除（P0-A1/A2 收敛 + P2-A1 折叠派生 + P2-A4 拆分，2026-08-19 基线 53/53 DONE）。
 2. **DSH 是架构纯度的标杆**：一切皆插件 + 纯事件源 + 无特权核心，是"可替换性"与"可重放性"的最优解；代价是 pre-release 无兼容承诺、上层能力受限。
 3. **aiPlat 可借鉴的架构改进**（详见改进方案）：P2-1 事件源双写（向 DSH 的单一真相源演进）、P2-2 运行时扩展缝（受限白名单内）、P2-4 守卫误报修正（治理体系自身的质量）。
 
@@ -540,7 +541,7 @@ flowchart LR
 | G12 | **工作流 worker 隔离执行** | DSH（worker-thread） | 有 PipelineEngine + WorkflowService（拓扑排序执行）但**无独立 worker 隔离** | ⚠️ 部分具备（编排有，隔离无） | `builder_workflow_service.py:51` | ✅ **已补齐（P2-A5）**：阶段执行隔离（`pipeline_engine.py`/`sandbox.py` `create_sandbox` + `stage.sandbox` 配置） |
 | G13 | **每 turn judge 的持久化 goals** | Hermes（goals.py:1006） | 有 goal 触发器（`event_loop.py:35` Trigger cron/webhook/goal）但**无 judge 模型每 turn 判定** | ⚠️ 部分具备（goal 触发有，judge 无） | `execution/event_loop.py` | ✅ **已补齐（P2-A6）**：`event_loop.py:283 _judge_goal_condition` goal 条件判定 |
 | G14 | **no-agent 纯脚本 cron** | Hermes（cron/jobs.py:1571 no_agent） | 有 cron 触发器（`event_loop.py`）但**无纯脚本零 LLM 模式** | ⚠️ 部分具备 | `execution/event_loop.py` | ✅ **已补齐（P2-A7）**：`event_loop.py:220,374` cron `mode=script` 纯脚本零 LLM 模式 |
-| G15 | **单文件巨兽的可维护性反例** | Hermes（run_agent.py 9005 行） | PipelineEngine 12,281 行——**同样存在**大文件问题 | ⚠️ 两者皆弱（非 aiPlat 独缺） | `pipeline_engine.py`（12k 行） | ✅ **aiPlat 侧已治理（P2-A4，PR #16-19）**：12,281→8,288 行 + 5 个 Mixin（healing/state/prompt/eval/stage）；Hermes run_agent.py 9005 行未拆分 |
+| G15 | **单文件巨兽的可维护性反例** | Hermes（run_agent.py 9005 行） | PipelineEngine 12,281 行——**同样存在**大文件问题 | ⚠️ 两者皆弱（非 aiPlat 独缺） | `pipeline_engine.py`（12k 行） | ✅ **aiPlat 侧已治理（P2-A4，PR #16-19）**：12,281→8,285 行 + 5 个 Mixin（healing/state/prompt/eval/stage）；Hermes run_agent.py 9005 行未拆分 |
 
 ### 20.2 缺口汇总与优先级（2026-08-19 复核）
 
@@ -549,7 +550,7 @@ flowchart LR
 | ❌ **完全缺失**（aiPlat 无此能力） | **1** | G6 CC/Codex hooks 协议桥 | 未纳入 53 项行动纲领（剩余唯一缺失项） |
 | ✅ **已补齐**（2026-08-19，原 ❌/⚠️ → ✅） | **12** | G1 nudge、G2 Curator、G3 事件折叠、G4 运行时扩展缝、G5 ManagedPolicy、G8 agentskills、G9 渠道 7、G10 provider 插件化、G11 子代理 provider、G12 worker/阶段隔离、G13 goal judge、G14 no-agent cron | P1-A1/A2/A3/A4/A5/A6 + P2-A1/A2/A3/A5/A6/A7（P1-A 对标差距 6/6 + P2 演进治理 12/12 全 DONE） |
 | ✅ **已具备**（不构成缺口） | 1 | G7 checkpoint/rewind | — |
-| ✅ **aiPlat 侧已治理**（原双方皆弱） | 1 | G15 单文件巨兽（P2-A4 拆分收官） | P2-A4（12,281→8,288 行 + 5 Mixin） |
+| ✅ **aiPlat 侧已治理**（原双方皆弱） | 1 | G15 单文件巨兽（P2-A4 拆分收官） | P2-A4（12,281→8,285 行 + 5 Mixin） |
 
 **结论（更新）**：2026-08-15 初版判定 aiPlat 有 **6 项完全缺失** 与 **8 项部分具备** 的三方独有能力，优先级最高的是 G1/G5/G11/G8（对应改进方案 P1 批次的四个核心项）。**2026-08-19 基线（行动纲领 53/53 DONE）复核：上述 12 项已全部补齐，仅剩 G6（CC/Codex hooks 协议桥）一项完全缺失**——该证明"维度由 aiPlat 定义会漏掉这些缺口"的反向扫描方法论有效，且 P1-A/P2 批次按此方法论精准闭环。**下一轮补齐候选**：G6 hooks 协议桥 + 渠道广度延伸（7→更多）+ coding 场景前端（diff/checkpoint 回放）。
 
