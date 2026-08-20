@@ -284,3 +284,12 @@ pytest -q \
 - 自动化验收：
   - python3 scripts/guard_undefined_names.py（0 new）
   - pytest tests/unit/test_pipeline_execution_undefined_names.py -q（4 passed）
+
+### 1.28 模型选择去除 env 干预（2026-08-19）
+- MUST：`core.harness.utils.model_injection` 无 `create_adapter_with_fallback`（死代码已删）
+- MUST：`generate_with_fallback` 候选来自 `select_by_purpose_list`（infra 评分），无 `AIPLAT_{purpose}_MODEL` env 覆盖
+- MUST：`_build_preferences` 不读 `AIPLAT_*_MODEL` env（仅 YAML model_overrides）
+- MUST：`pipeline_state.py` 含 `import logging`（checkpoint OSError 路径不崩溃）
+- 自动化验收：
+  - `python3 -c "import core.harness.utils.model_injection as mi; assert not hasattr(mi, 'create_adapter_with_fallback'); assert callable(mi.generate_with_fallback)"`
+  - `pytest core/tests/unit/test_builder_pipeline_e2e.py -q`（5 passed）

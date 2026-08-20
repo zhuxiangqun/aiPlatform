@@ -3,6 +3,7 @@
 > **对象**：aiPlat-infra 模型选择策略（`infra/management/model/manager.py` 1790 行 + `llm_profile.yaml`）+ core 消费链（`model_injection.py`）。
 > **时点**：2026-08-19。**方法**：全链路代码阅读 + 本机实测（无 env / 有 env 两场景），每条结论附 `文件:行号` 证据与验证命令。
 > **结论先行**：策略框架（purpose 需求驱动 + 资源感知 + 降级链 + safe 保底）设计正确，但存在 **1 个评分符号反转 bug（P0）** 与 **1 个 fallback 无校验缺陷（P0）**，以及 3 个完整性问题（P1-P2）。
+> **后续简化（2026-08-19 用户决策）**：按"LLM 全部在 infra 注册表声明、不使用 env"原则，删除死代码 `create_adapter_with_fallback`（0 生产 caller，被 `generate_with_fallback` 取代）、去除 `generate_with_fallback` 与 `_build_preferences` 的 env 覆盖/偏好（候选纯 infra 评分）；顺手修复 `pipeline_state.py` 存量缺 `import logging`（OSError 处理路径崩溃）。详见 §6。
 
 ---
 
@@ -120,3 +121,42 @@ asyncio.run(m())
 
 - 全部结论为**源码级阳性证据**（`文件:行号`）+ 本机实测输出；无阴性推断。
 - P0-1/P0-2 已实测复现；P1/P2 为代码阅读结论（逻辑明确，未逐一构造场景复现）。
+
+---
+
+## 6. 后续简化（2026-08-19 用户决策：LLM 全在 infra 注册表声明，不使用 env）
+
+### 6.1 三层链路澄清（"双轨"的真相）
+
+模型选择不是两条选型策略（P1-5 已收敛为一套 v3 评分），而是三层职责：
+
+| 层 | 函数 | 职责 | 状态 |
+|---|---|---|---|
+| 选型 | `best_model_for_purpose → unified_pipeline` | 单选（评分+降级+safe 保底） | 唯一选型策略 |
+| 候选列表 | `select_by_purpose_list` | 评分排序（供执行层容错） | 已统一 v3 评分（P1-5） |
+| 执行容错 | `generate_with_fallback` | top1 超时→top2 自动切换 + 失败回写学习 | 活跃（3 个生产调用者：wiki_engine/wiki_ontology_domains） |
+| ~~旧死代码~~ | `create_adapter_with_fallback` | 被 generate_with_fallback 取代 | **0 生产 caller，已删除** |
+
+### 6.2 删除与去除（本次落地）
+
+| 变更 | 内容 | 验证 |
+|---|---|---|
+| 删除 `create_adapter_with_fallback` | 0 生产 caller 的死代码（-84 行） | `grep -c create_adapter_with_fallback` → 0 |
+| `generate_with_fallback` 去 env 覆盖 | 候选纯 `select_by_purpose_list`（infra 注册表评分），删除 `AIPLAT_{purpose}_MODEL` 覆盖段 | AST OK + 3 调用者不受影响 |
+| `_build_preferences` 去 env 偏好 | 仅保留 YAML `model_overrides`（配置驱动）；docstring 同步 | AST OK |
+| 顺手修复 `pipeline_state.py` | 存量缺 `import logging`（OSError 处理路径 NameError） | test_builder_pipeline_e2e 5 passed |
+
+**保留（非选择干预）**：`get_default_model` 的 env 解析（P1-4 已校验，env 未设置时返回空、无副作用）；`create_selected_adapter` 的 `AIPLAT_LLM_MODEL` 兼容兜底（显式传 model_name 时不受影响）。
+
+### 6.3 自我学习能力（完整闭环实证）
+
+**有**——运行时结果回写 → 下次评分自适应：
+
+| 信号 | 写入侧 | 消费侧 |
+|---|---|---|
+| 健康（成功/失败/延迟） | `_record_success`/`_record_failure`（generate_with_fallback 成功/超时/异常分支）→ ModelHealthStore | `_score_model` #14 dynamic boost（成功率+15/失败率-15/延迟-10）+ `_filter_health`（>50% 失败率丢弃）+ #15 quality-gated local |
+| 质量 | `_record_quality_and_metrics_async` → QualityValidator.validate（ontology/chat/clarify 3 验证器）→ `get_quality_tracker().update`（EWMA α=0.3） | `_score_model` #10（-80~+80） |
+| 延迟 | `record_latency` → LatencyTracker p95 | `_score_model` #11 + congestion 惩罚 |
+| 短期失败记忆 | `_FAILURE_TRACKER`（3 次/5 分钟） | `_is_model_degraded` 跳过 |
+
+**边界**：① 是**选择策略自适应**（非模型权重训练）——符合 infra 层职责；② 探索信号弱（冷启动仅 calls<5 +2 分，稳定优先）——如需探索可后续加 epsilon-greedy/随机候选；③ quality 的 `business_score` 写入侧未确认（不影响主闭环）。
