@@ -10,6 +10,7 @@ Manages AI models from three sources:
 import asyncio
 import logging
 import os
+import random
 import subprocess
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timezone
@@ -575,7 +576,7 @@ def _score_model(
     elif cost > 0.001: score += int(-5 * abs(weights.get("cost", -1.0)))
 
     # 14. Dynamic boost: real-world performance
-    score += _calculate_dynamic_boost(model.name)
+    score += _calculate_dynamic_boost(model.name, profile_data)
 
     # 15. Quality-gated local preference: local-first when comparable to best API model.
     #     Administrative override (prefer_local in YAML) already applied +120 above;
@@ -659,7 +660,7 @@ def _within_quality_band(local_model, best_api_model, profile_data) -> bool:
     return True
 
 
-def _calculate_dynamic_boost(model_name: str) -> float:
+def _calculate_dynamic_boost(model_name: str, profile_data: dict = None) -> float:
     """Dynamic scoring factor from ModelHealthStore (range [-10, +10]).
 
     Returns 0 on cold start (no health data yet), ensuring static
@@ -695,7 +696,13 @@ def _calculate_dynamic_boost(model_name: str) -> float:
     else:
         latency_penalty = 0.0
 
-    exploration_bonus = 2.0 if calls < 5 else 0.0               # cold start
+    # P2 exploration: cold-start bonus is config-driven (llm_profile
+    # model_exploration.cold_bonus/cold_threshold); default 2.0 / 5 keeps
+    # the original stable-first behaviour.
+    _expl = (profile_data or {}).get("model_exploration", {}) or {}
+    _cold_bonus = float(_expl.get("cold_bonus", 2.0))
+    _cold_thresh = int(_expl.get("cold_threshold", 5))
+    exploration_bonus = _cold_bonus if calls < _cold_thresh else 0.0
 
     return max(-10.0, min(10.0,
         health_bonus + failure_penalty + business_bonus
@@ -1283,8 +1290,15 @@ class ModelManager:
                        if _hard_filter(m, res)[0] and soft_fn(m)]
             if passed:
                 if level_name != "full":
+                    # P2-8: degraded levels (-cap-hlt / none) drop the health filter —
+                    # log which candidates are health-poor so the relaxation is observable.
+                    _health_bad = [
+                        m.name for m in passed if not _filter_health(m)
+                    ]
                     logging.getLogger(__name__).warning(
-                        "Model selection degraded to level=%s for purpose=%s", level_name, purpose)
+                        "Model selection degraded to level=%s for purpose=%s; "
+                        "candidates with poor health (failure_rate>50%%): %s",
+                        level_name, purpose, _health_bad or "none")
 
                 # Pre-compute best API model for quality-gated comparison (#15)
                 best_api_model = None
@@ -1302,6 +1316,19 @@ class ModelManager:
                                         best_api_model=best_api_model), m)
                           for m in passed]
                 scored.sort(key=lambda x: x[0], reverse=True)
+
+                # P2 exploration: optional epsilon-greedy (default 0.0 = stable-first,
+                # unchanged behaviour). With explore_epsilon > 0, pick a non-top
+                # candidate with that probability so new/cold models get sampled.
+                _expl_cfg = (profile_data or {}).get("model_exploration", {}) or {}
+                _eps = float(_expl_cfg.get("explore_epsilon", 0.0))
+                if _eps > 0.0 and len(scored) > 1 and random.random() < _eps:
+                    _pick = scored[random.randint(1, len(scored) - 1)]
+                    logging.getLogger(__name__).info(
+                        "Model exploration: epsilon=%.2f picked '%s' (score %.1f) over top '%s' (%.1f)",
+                        _eps, _pick[1].name, _pick[0], scored[0][1].name, scored[0][0])
+                    return _pick[1].name
+
                 return scored[0][1].name
 
         # ── Safe Model 保底：优先 API，再本地安全模型 ──
