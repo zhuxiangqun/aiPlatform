@@ -49,7 +49,6 @@ class DomainRouter:
 
         q = query.lower()
 
-        q = query.lower()
 
         # ── Tier 1: Label match (<1ms) ──
         for label, did in self._label_index.items():
