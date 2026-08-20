@@ -58,3 +58,53 @@ class TestGraphEnhanceQuery:
         # params tuple: tenant_id, token, token, doc_ids..., limit
         n_params = 1 + 2 + 2 + 1  # tenant(1), token×2, doc_ids(2), limit(1) = 6
         assert n_placeholders == n_params
+
+
+class TestKbWiring:
+    """P0-3: extraction pipeline wires kb_graph + kb_embeddings (both were shells)."""
+
+    def test_wire_kb_persists_triples_and_vectors(self, tmp_path, monkeypatch):
+        """_wire_kb writes doc triples to kb_graph and chunks to kb_elements/kb_embeddings."""
+        import os
+        import sqlite3
+
+        monkeypatch.setenv("AIPLAT_KB_TENANTS_DIR", str(tmp_path / "kb_tenants"))
+        monkeypatch.setenv("AIPLAT_EMBED_BACKEND", "hash")
+        import asyncio
+
+        from core.harness.knowledge_pipeline.extractor import (
+            ExtractedRelation, ExtractionPipeline)
+
+        pipe = ExtractionPipeline()
+        rels = [ExtractedRelation(source_entity="用户认证", relation_type="依赖",
+                                  target_entity="认证服务", confidence=0.9)]
+        chunks = [{"offset": 0, "text": "用户认证依赖认证服务", "doc_name": "d"}]
+        asyncio.run(pipe._wire_kb(rels, chunks, "test-doc", "default"))
+
+        # kb_graph readable via graph_enhance_query (was permanently empty)
+        from core.harness.knowledge.graph import graph_enhance_query
+        assert len(graph_enhance_query("认证", tenant_id="default")) >= 1
+
+        # kb_elements / kb_embeddings rows exist
+        db = os.path.join(str(tmp_path / "kb_tenants"), "default", "kb.sqlite3")
+        conn = sqlite3.connect(db)
+        assert conn.execute("SELECT COUNT(*) FROM kb_elements").fetchone()[0] >= 1
+        assert conn.execute("SELECT COUNT(*) FROM kb_embeddings").fetchone()[0] >= 1
+        conn.close()
+
+    def test_sqlite_retriever_creates_schema(self, tmp_path, monkeypatch):
+        """SqliteEmbeddingRetriever auto-creates kb_elements/kb_embeddings on first use."""
+        import os
+        import sqlite3
+
+        monkeypatch.setenv("AIPLAT_KB_TENANTS_DIR", str(tmp_path / "kb_tenants3"))
+        from core.harness.knowledge.sqlite_retriever import SqliteEmbeddingRetriever
+
+        r = SqliteEmbeddingRetriever(tenant_id="default")
+        conn = r._connect()
+        assert conn is not None  # old code returned None (no DB file)
+        n = conn.execute(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN "
+            "('kb_elements','kb_embeddings')").fetchone()[0]
+        assert n == 2
+        conn.close()

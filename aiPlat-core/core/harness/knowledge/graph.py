@@ -94,9 +94,10 @@ def _store_triples(tenant_id: str, doc_id: str, triples: list) -> None:
     if not triples:
         return
     db_path = _graph_db_path(tenant_id)
-    if not os.path.exists(db_path):
-        return
     try:
+        # P0-3: create the graph DB on first write (old code silently returned
+        # when the file did not exist, keeping kb_graph permanently empty).
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
         conn = sqlite3.connect(db_path)
         conn.execute("PRAGMA busy_timeout=3000")
         _ensure_graph_schema(conn)
