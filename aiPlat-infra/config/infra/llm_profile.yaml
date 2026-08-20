@@ -93,6 +93,14 @@ env_model_map:
   reranker: [AIPLAT_RERANK_MODEL]
   eval_code: [AIPLAT_EVAL_MODEL]
 
+# ── 学习探索（P2 遗留优化，2026-08-19）：冷启动加分配置化 + 可选 epsilon-greedy ──
+# cold_bonus/cold_threshold: 冷启动模型（调用数 < threshold）的探索加分（默认 2.0/5 保持原行为）
+# explore_epsilon: 0 = 稳定优先（默认）；>0 = 以该概率随机选次优候选（探索新模型）
+model_exploration:
+  cold_bonus: 2.0
+  cold_threshold: 5
+  explore_epsilon: 0.0
+
 # ── Scoring weights (v2.2 dynamic) ──
 default_scoring_weights:
   source_bias: 1.0

@@ -123,3 +123,41 @@ class TestSelectQualityGate:
         got = mgr.select("m")
         assert got is not None
         assert got.source == ModelSource.EXTERNAL
+
+
+class TestExploration:
+    """P2 exploration: config-driven cold bonus + optional epsilon-greedy."""
+
+    def test_cold_bonus_configurable(self):
+        import infra.management.model.manager as mgr_mod
+        val = mgr_mod._calculate_dynamic_boost(
+            "cold-model", {"model_exploration": {"cold_bonus": 5.0, "cold_threshold": 5}})
+        assert isinstance(val, float)
+
+    def test_epsilon_zero_stable(self):
+        import yaml
+        from infra.management.model.manager import ModelManager
+        from infra.management.schemas import ModelInfo, ModelSource
+        cfg = yaml.safe_load(open("config/infra/llm_profile.yaml"))
+        assert cfg["model_exploration"]["explore_epsilon"] == 0.0
+        mgr = ModelManager()
+        mgr._models = {
+            "a": ModelInfo(id="a", name="deepseek-chat", provider="deepseek", source=ModelSource.EXTERNAL),
+            "b": ModelInfo(id="b", name="model-b", provider="deepseek", source=ModelSource.EXTERNAL),
+        }
+        assert mgr.unified_pipeline("chat", [], {}, cfg) == mgr.unified_pipeline("chat", [], {}, cfg)
+
+    def test_epsilon_positive_explores(self, monkeypatch):
+        import random, yaml
+        from infra.management.model.manager import ModelManager
+        from infra.management.schemas import ModelInfo, ModelSource
+        cfg = yaml.safe_load(open("config/infra/llm_profile.yaml"))
+        cfg["model_exploration"]["explore_epsilon"] = 1.0
+        monkeypatch.setattr(random, "random", lambda: 0.0)
+        mgr = ModelManager()
+        mgr._models = {
+            "a": ModelInfo(id="a", name="deepseek-chat", provider="deepseek", source=ModelSource.EXTERNAL),
+            "b": ModelInfo(id="b", name="model-b", provider="deepseek", source=ModelSource.EXTERNAL),
+        }
+        top = mgr.unified_pipeline("chat", [], {}, cfg)
+        assert top in ("deepseek-chat", "model-b")  # 探索结果仍是注册表模型

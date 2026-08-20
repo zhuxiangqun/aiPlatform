@@ -3,7 +3,7 @@
 > **对象**：aiPlat-infra 模型选择策略（`infra/management/model/manager.py` + `llm_profile.yaml`）+ core 消费链（`model_injection.py`）。
 > **方法**：全链路代码阅读 + 本机实测（无 env / 有 env 两场景），每条结论附 `文件:行号` 证据与验证命令。
 > **阶段**：① 审计（发现 2 P0 + 4 P1/P2）→ ② 修复 6 项（PR #41）→ ③ 用户决策简化（去 env + 删死代码，PR #42）。
-> **现状结论**：策略框架（purpose 需求驱动 + 资源感知 + 降级链 + safe 保底 + **自我学习闭环**）正确且完整；原 8 项问题 **7 项已修复**（P0-1/P0-2/P1-3/P1-4/P1-5/P2-6/P2-7），仅 **P2-8（降级丢 health 过滤）为设计可接受的遗留**；模型选择已**完全基于 infra 注册表**（无 env 干预）。
+> **现状结论**：策略框架（purpose 需求驱动 + 资源感知 + 降级链 + safe 保底 + **自我学习闭环**）正确且完整；原 8 项问题 **7 项已修复**（P0-1/P0-2/P1-3/P1-4/P1-5/P2-6/P2-7），遗留项（P2-8/探索/business_score）**已全部闭环**；模型选择已**完全基于 infra 注册表**（无 env 干预）。
 
 ---
 
@@ -59,13 +59,13 @@ env 解析（保留，非选择干预）：get_default_model (manager.py:1013) �
 
 **保留（非选择干预）**：`get_default_model` 的 env 解析（P1-4 已校验，env 未设返回空、无副作用）；`create_selected_adapter` 的 `AIPLAT_LLM_MODEL` 兼容兜底（显式传 model_name 不受影响）。
 
-### 2.3 遗留（设计可接受，非阻断）
+### 2.3 遗留项处理（2026-08-19 全部闭环）
 
-| # | 问题 | 现状 | 处理 |
+| # | 原问题 | 处理 | 证据 |
 |---|---|---|---|
-| P2-8 | 降级到 `-cap-hlt` 层时 health 过滤被去掉（`manager.py:1290`） | 降级链本意就是逐级放宽（有 degradation WARNING 日志） | 如需严格：降级时补健康 detail 日志（0.5 天，可选） |
-| — | 学习探索信号弱（冷启动仅 calls<5 +2 分） | 稳定优先的设计选择 | 如需探索：epsilon-greedy/随机候选（可选） |
-| — | quality 的 `business_score` 写入侧未确认 | 不影响主闭环（成功/失败/延迟/质量分已足够） | 确认写入链（可选） |
+| P2-8 | 降级到 `-cap-hlt` 层时 health 过滤被去掉 | ✅ **已处理**：降级日志补充被 health 排除的候选明细（模型名 + 失败率>50% 标记），放宽可观测 | `manager.py` 降级循环（_health_bad detail） |
+| — | 学习探索信号弱（冷启动仅 +2 分） | ✅ **已处理**：冷启动加分配置化（`model_exploration.cold_bonus/cold_threshold`）+ 可选 epsilon-greedy（`explore_epsilon`，默认 0.0 稳定优先不变）；单测 3 个 | `llm_profile.yaml` model_exploration 节；`manager.py` _calculate_dynamic_boost + unified_pipeline |
+| — | `business_score` 写入侧未确认 | ✅ **已确认**：完整闭环——pipeline_runs 昨日 pass_rate → `kpi_tracker.py:68`（cron 触发）→ `set_business_score` → health store → `_calculate_dynamic_boost` biz | `kpi_tracker.py:45-68`、`scheduler/cron.py:401`、`model_health_store.py:175` |
 
 ---
 
