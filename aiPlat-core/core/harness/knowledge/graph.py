@@ -139,7 +139,6 @@ def graph_enhance_query(
         results = []
         for token in tokens[:3]:
             where = " AND doc_id IN ({})".format(",".join("?" * len(doc_ids))) if doc_ids else ""
-            params = [tenant_id, f"%{token}%"] + (doc_ids or [])
             rows = conn.execute(
                 f"SELECT DISTINCT doc_id, source_entity, relation, target_entity FROM kb_graph WHERE tenant_id=? AND (source_entity LIKE ? OR target_entity LIKE ?) {where} LIMIT ?",
                 (tenant_id, f"%{token}%", f"%{token}%", *([*doc_ids] if doc_ids else []), max_related * 2),

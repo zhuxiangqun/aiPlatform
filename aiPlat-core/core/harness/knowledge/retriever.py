@@ -201,7 +201,8 @@ class KnowledgeRetriever:
         self._hyde_model = hyde_model
         self._adaptive_routing = adaptive_routing
 
-    async def search(self, query: str, limit: int = 10) -> List[KnowledgeResult]:
+    async def search(self, query: str, limit: int = 10,
+                         tenant_id: str = "") -> List[KnowledgeResult]:
         # Adaptive routing: adjust strategy based on query complexity (P1)
         effective_strategy = self._retrieval_strategy
         effective_rerank = self._rerank_enabled
@@ -224,7 +225,7 @@ class KnowledgeRetriever:
             if hyde_text:
                 search_query = hyde_text
 
-        knowledge_query = KnowledgeQuery(query=search_query, limit=limit)
+        knowledge_query = KnowledgeQuery(query=search_query, limit=limit, tenant_id=tenant_id)
         results = await self._retriever.retrieve(knowledge_query)
 
 
@@ -301,11 +302,13 @@ class KnowledgeRetriever:
         query: str,
         knowledge_type: KnowledgeType,
         limit: int = 10,
+        tenant_id: str = "",
     ) -> List[KnowledgeResult]:
         knowledge_query = KnowledgeQuery(
             query=query,
             types=[knowledge_type],
             limit=limit,
+            tenant_id=tenant_id,
         )
         return await self._retriever.retrieve(knowledge_query)
 
