@@ -333,7 +333,54 @@ class ExtractionPipeline:
             logger.info("Extraction %s → %s (confidence=%.2f, %d entities, %d relations)",
                         extraction_id, result.status, avg_conf, len(all_entities), len(all_relations))
 
+        # ── P0-3 接线：抽取结果 → kb_graph（文档三元组）+ kb_embeddings（向量库）──
+        # Best-effort: 无 LLM/embedding 模型时静默跳过，不阻断抽取主流程。
+        try:
+            await self._wire_kb(all_relations, chunks, doc_name, tenant_id)
+        except Exception:
+            logger.debug("kb wiring (graph/vector) failed", exc_info=True)
         return [result]
+
+    async def _wire_kb(self, relations, chunks, doc_name, tenant_id) -> None:
+        """P0-3: persist extraction output into kb_graph + kb_embeddings.
+
+        - kb_graph: extracted relations as doc-level triples, consumed by
+          graph_enhance_query (doc expansion in syscall retrieval).
+        - kb_embeddings: chunk embeddings via embed_texts_semantic; skipped
+          per-chunk when no embedding is produced (no model / hash backend).
+        """
+        import uuid as _uuid
+        # 1. kb_graph: doc-level triples from extracted relations
+        triples = [
+            {"source_entity": r.source_entity, "relation": r.relation_type,
+             "target_entity": r.target_entity}
+            for r in relations
+        ]
+        if triples:
+            from core.harness.knowledge.graph import _store_triples
+            _store_triples(tenant_id, doc_name, triples)
+            logger.info("kb_graph: %d triples stored for '%s' (tenant=%s)",
+                        len(triples), doc_name, tenant_id)
+        # 2. kb_embeddings: chunk-level vector entries
+        if chunks:
+            from core.harness.knowledge.embedder import embed_texts_semantic
+            from core.harness.knowledge.sqlite_retriever import SqliteEmbeddingRetriever
+            from core.harness.knowledge.types import (
+                KnowledgeEntry, KnowledgeMetadata, KnowledgeSource, KnowledgeType)
+            embeds = embed_texts_semantic([c["text"] for c in chunks])
+            entries = []
+            for i, chunk in enumerate(chunks):
+                embedding = (embeds[i] if embeds and i < len(embeds) and embeds[i] else None)
+                entries.append(KnowledgeEntry(
+                    id=str(_uuid.uuid4()), type=KnowledgeType.DOCUMENT,
+                    content=chunk["text"], title=doc_name, embedding=embedding,
+                    metadata=KnowledgeMetadata(source=KnowledgeSource.SYSTEM,
+                                               tags=[tenant_id])))
+            retriever = SqliteEmbeddingRetriever(tenant_id=tenant_id)
+            await retriever.add_batch(entries)
+            with_emb = sum(1 for e in entries if e.embedding)
+            logger.info("kb_embeddings: %d/%d chunks stored (tenant=%s)",
+                        with_emb, len(entries), tenant_id)
 
     def _route_status(self, confidence: float) -> str:
         if confidence >= 0.85:

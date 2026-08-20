@@ -74,6 +74,25 @@ _log = logging.getLogger("knowledge.sqlite_retriever")
 
 
 
+_KB_SCHEMA = """
+CREATE TABLE IF NOT EXISTS kb_elements (
+    element_id TEXT PRIMARY KEY, doc_id TEXT, type TEXT,
+    page_idx INTEGER, text TEXT, meta_json TEXT, tenant_id TEXT);
+CREATE TABLE IF NOT EXISTS kb_embeddings (
+    element_id TEXT PRIMARY KEY, vector_json TEXT, tenant_id TEXT);
+CREATE INDEX IF NOT EXISTS idx_kb_elems_tenant ON kb_elements(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_kb_emb_tenant ON kb_embeddings(tenant_id);
+"""
+
+
+def _ensure_kb_schema(conn) -> None:
+    """P0-3: create kb_elements/kb_embeddings tables on demand (the class
+    previously documented the schema but never created it — the vector KB
+    was a half-built shell with no DDL)."""
+    conn.executescript(_KB_SCHEMA)
+    conn.commit()
+
+
 class SqliteEmbeddingRetriever(IRetriever):
 
     def __init__(
@@ -110,18 +129,12 @@ class SqliteEmbeddingRetriever(IRetriever):
 
     def _connect(self) -> sqlite3.Connection | None:
 
-        if not os.path.exists(self._db_path):
-
-            return None
-
         try:
-
+            os.makedirs(os.path.dirname(self._db_path), exist_ok=True)
             conn = sqlite3.connect(self._db_path)
-
             conn.execute("PRAGMA journal_mode=WAL")
-
             conn.row_factory = sqlite3.Row
-
+            _ensure_kb_schema(conn)
             return conn
 
         except Exception:
