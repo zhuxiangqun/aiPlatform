@@ -408,6 +408,15 @@ class EvolutionRunner:
             from core.harness.knowledge.knowledge_ontology import add_suggestions_from_patterns
             add_suggestions_from_patterns(self.collection_id)
             suggestions_added = 1
+            # P-补全: best-effort persist learned ontology as OWL/Turtle so the
+            # "docs → concepts → OWL" output is produced alongside the suggestions
+            # (file: ~/.aiplat/ontologies/{collection_id}.learned.ttl).
+            try:
+                from core.harness.knowledge.knowledge_ontology import write_suggestions_owl_file
+                write_suggestions_owl_file(self.collection_id)
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "write_suggestions_owl_file failed", exc_info=True)
 
         # ── Step 4: Rebuild A-Box and verify ──
         from core.harness.knowledge.knowledge_abox_builder import rebuild_full

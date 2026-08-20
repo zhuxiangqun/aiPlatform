@@ -3089,6 +3089,7 @@ from core.harness.knowledge.db import get_knowledge_db
 from core.harness.knowledge.wiki_engine import search_pages  # v2.5: platform→CoreFacade  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.knowledge.semantic_cache import get_semantic_cache  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.knowledge.knowledge_ontology import validate_page_against_schema  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.knowledge.knowledge_ontology import export_suggestions_to_owl, write_suggestions_owl_file  # noqa: boundary — ontology learning output (P-补全)
 from core.harness.infrastructure.infra_ocr_adapter import BBox, OCRToken, create_infra_ocr_adapter  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.models.spec_lifecycle import get_spec_lifecycle, RevisionTrigger  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.ontology_engine.triple_store import get_triple_store  # v2.5  # noqa: boundary — CoreFacade canonical re-export
