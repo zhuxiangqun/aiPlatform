@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1054
+total_capabilities: 1061
 last_updated: 2026-08-19
 version: "30.1"
 auto_sync: true
@@ -738,6 +738,10 @@ scan_hash: 8f9548ec24f4
 | Webhook 写回 | harness/ontology_engine/engine.py:294 | ✅ | state transition → call_webhook | 已合入 |
 | 场景推演沙箱 | API: simulate-scenarios | ✅ | 多方案对比推演 | 已合入 |
 | 本体分层治变 (tier) | `knowledge/knowledge_ontology.py` + `knowledge/ontology_loader.py` | ✅ | P2-L1: OntologyClass.tier (core/logic/edge, 默认logic) + YAML 解析/校验 | 已合入 |
+| tier 分级审批 | `knowledge/versioned_ontology_store.py` | ✅ | P2-L1: approve_proposal 按 tier 分级（core 架构评审/logic 产品侧/edge 自服务）+ apply tier gate（edge→logic 需复用证明≥3） | 已合入 |
+| 立项四问评估 | `core/apps/fde/service/four_questions.py` + `fde_diagnostics_v2.py` | ✅ | P2-L0: 反复/跨系统/Owner+指标/Action 四问 → 总分+结论+MVP tier 建议（GET/POST /fde/diagnostics/four-questions） | 已合入 |
+| Action 阶梯 Lv | `harness/infrastructure/action_contract.py` | ✅ | P2-L5: ActionLevel lv1_readonly→lv4_auto_close，默认 Lv2 保守 | 已合入 |
+| 自动闭环误报率门 | `harness/ontology_engine/action_registry.py` | ✅ | P2-L5: compute_closure_gate — Lv4 历史误报 <0.5% 才自动闭环，超标降级人工确认 | 已合入 |
 | ShardedGraphIndex | harness/ontology_engine/sharded_graph.py | ✅ | 跨域分片图索引 | 已合入 |
 | 跨域本体桥接 | harness/ontology_engine/triple_store.py` + `harness/ontology_engine/triple_scanner.py | ✅ | 统一三元组存储 + BFS多跳遍历 + 5数据源自动扫描 + 3 API端点 | 已合入 |
 | 审批工作流引擎 | harness/ontology_engine/approval.py | ✅ | submit/approve/reject/changes + 超时升级 + 告警通道 | 已合入 |
@@ -940,6 +944,7 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_four_questions | `core/apps/fde/service/four_questions.py` | ✅ | 自动同步 | 已合入 |
 | default_provider_name | `core/apps/agents/base.py` | ✅ | 自动同步 | 已合入 |
 | get_provider_factories | `` | ✅ | 自动同步 | 已合入 |
 | ACPProvider | `` | ✅ | 自动同步 | 已合入 |
@@ -1456,6 +1461,7 @@ scan_hash: 8f9548ec24f4
 ## 十六、工具生态
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| CLOSURE_FP_RATE_MAX | `core/harness/infrastructure/action_contract.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Browser 自动化 | apps/tools/browser.py` + `apps/tools/browser_test_engine.py | ✅ | Playwright 全浏览器自动化，BFS遍历/RPA/截图 | 已合入 |
 | Test Case Generator | apps/tools/test_case_generator.py | ✅ | 页面分析 → 结构化 Excel 测试用例 | 已合入 |
@@ -1971,7 +1977,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 67 | 0 | 67 |
 | 记忆子系统 | 38 | 0 | 38 |
-| 知识引擎（本体） | 138 | 0 | 138 |
+| 知识引擎（本体） | 145 | 0 | 145 |
 | RAG 检索 | 42 | 0 | 42 |
 | 知识基础设施 | 29 | 0 | 29 |
 | Agent 系统 | 38 | 0 | 38 |
@@ -2014,7 +2020,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1054** | **0** | **1054** |
+| **总计** | **1061** | **0** | **1061** |
 
 ---
 
