@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-08-16"
 total_capability_domains: 34
-total_capabilities: 1038
+total_capabilities: 1041
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -191,6 +191,10 @@ domains:
     section_name: "知识引擎（本体）"
     caps_count: 130
     provides:
+      - symbol: normalize_tier
+        type: function
+        signature: "P2-L1 治理分层归一化：core/logic/edge，未知值回退 logic"
+        module: aiPlat-core/core/harness/knowledge/knowledge_ontology.py
       - symbol: "GraphIndex"
       - symbol: build_wiki_to_agent_bridge
       - symbol: build_model_usage_bridge
@@ -204,6 +208,14 @@ domains:
       - symbol: build_wiki_to_agent_bridge
       - symbol: build_model_usage_bridge
       - symbol: build_prompt_to_agent_bridge
+      - symbol: SirgAuditor
+        type: class
+        signature: "Audit actual reasoning against the ontology's required rule chain."
+        module: aiPlat-core/core/harness/ontology_engine/sirg_auditor.py
+      - symbol: audit_trace_rules
+        type: function
+        signature: "Convenience: audit against a live GraphInference's rule set."
+        module: aiPlat-core/core/harness/ontology_engine/sirg_auditor.py
       - symbol: publish_business_action
       - symbol: compile_ontology_constraints
       - symbol: compile_axiom_rules
@@ -372,6 +384,10 @@ domains:
     section_name: "Agent 系统"
     caps_count: 24
     provides:
+      - symbol: evaluate_four_questions
+        type: function
+        signature: "P2-L0 立项四问评估：反复/跨系统/Owner+指标/Action → 总分+结论+MVP tier"
+        module: aiPlat-core/core/apps/fde/service/four_questions.py
       - symbol: "BaseAgent"
       - symbol: run_voice_brainstorm
       - symbol: run_voice_brainstorm
@@ -854,6 +870,18 @@ domains:
         type: "class"
         signature: "SQLite/PostgreSQL/MySQL 三后端"
         module: "core/apps/tools/database.py"
+      - symbol: ActionLevel
+        type: class
+        signature: "P2-L5 Action 阶梯：lv1_readonly → lv4_auto_close"
+        module: aiPlat-core/core/harness/infrastructure/action_contract.py
+      - symbol: CLOSURE_FP_RATE_MAX
+        type: pattern
+        signature: "P2-L5 自动闭环误报率门阈值 0.5%"
+        module: aiPlat-core/core/harness/infrastructure/action_contract.py
+      - symbol: compute_closure_gate
+        type: function
+        signature: "P2-L5 误报率门：历史误报 < 0.5% 才允许 Lv4 自动闭环"
+        module: aiPlat-core/core/harness/ontology_engine/action_registry.py
     breaks: []
     consumers_expected:
       - module: "core/harness/syscalls/tool.py"

@@ -50,6 +50,24 @@ class RiskLevel(str, Enum):
     CRITICAL = "critical"
 
 
+class ActionLevel(str, Enum):
+    """Action 阶梯（P2-L5）— 从"只读建议"到"自动闭环"的自主度分级。
+
+    Lv1 READONLY   只读/建议：不产生业务副作用，任何人可执行
+    Lv2 CONFIRMED  人工确认：执行前需角色确认（默认，保守）
+    Lv3 RULE_BOUND 规则受限：满足预定义规则时可自动执行
+    Lv4 AUTO_CLOSE 自动闭环：无需人工确认，但必须通过误报率门（FP < 0.5%）
+    """
+    LV1_READONLY = "lv1_readonly"
+    LV2_CONFIRMED = "lv2_confirmed"
+    LV3_RULE_BOUND = "lv3_rule_bound"
+    LV4_AUTO_CLOSE = "lv4_auto_close"
+
+
+# 自动闭环误报率门（P2-L5）：Lv4 自动闭环前，该 action 历史误报率必须 < 0.5%
+CLOSURE_FP_RATE_MAX = 0.005
+
+
 # ═══════════════════════════════════════════════════════════
 # Core Model
 # ═══════════════════════════════════════════════════════════
@@ -98,6 +116,11 @@ class ActionContractModel(BaseModel):
     max_concurrent: int = 0
     audit: bool = True
     preconditions: List[Dict] = Field(default_factory=list)
+
+    # ── Action 阶梯（P2-L5）──
+    action_level: ActionLevel = ActionLevel.LV2_CONFIRMED
+    """自主度阶梯：Lv1 只读建议 → Lv2 人工确认 → Lv3 规则受限 → Lv4 自动闭环。
+    Lv4 必须通过误报率门（CLOSURE_FP_RATE_MAX = 0.5%）才允许闭环。"""
 
     # ═══ 决策节流（v3.1 — MSS 启示二：防橡皮图章效应）═══
     throttle_limit: int = Field(100, ge=0, description="每小时最大执行次数，0=不限")

@@ -1,8 +1,15 @@
 # 本体三层分离设计（P2-L1：稳定核心 / 可变逻辑 / 实验边缘）
 
 > **目的**：为 aiPlat 本体引入"分层治变"能力——让本体变更的治理规则按影响半径分级，解决"业务变化快，架构跟不上"的行业死穴。
-> **状态**：**设计文档（2026-08-19，文档先行）**——程序暂停期间先定设计，后续代码实施（ontology YAML 加 `tier` 字段）以此为据。
+> **状态**：**设计已实施（2026-08-21）**——tier 字段 + 分级审批 + 审计分组已落地，本文档为实施依据与验收基准。
 > **关联**：《企业级AI可信落地全景图-aiPlat对照.md》§3.5 P2-L1 项。
+
+> **实施对照（2026-08-21）**：
+> - `OntologyClass.tier`（`knowledge_ontology.py`，默认 `logic`）+ `normalize_tier` 归一化
+> - `ontology_loader.load_ontology_from_yaml` 解析 `tier`；`validate_ontology_yaml` 校验非法值
+> - `versioned_ontology_store.approve_proposal` 按 tier 分级审批；`apply_proposal` 加 tier gate（core 需架构评审、edge→logic 需 `promotion_proof.reuse_count ≥ 3`）
+> - `ontology_audit` 报告新增 `tier_distribution` + 分组建议
+> - 测试：`core/tests/unit/test_harness/test_knowledge/test_ontology_tier.py`（10 例）
 
 ---
 
@@ -78,10 +85,10 @@ domains:
         required_fields: [note, expires_at]
 ```
 
-**代码侧变化（设计约定，本轮不实施）**：
-- `ontology_loader.load_ontology_from_yaml`：解析 `tier` 字段 → `OntologyClass.tier`
-- `versioned_ontology_store.apply_proposal`：按 tier 分级审批（core 需全员 / logic 需产品 / edge 自服务）
-- 变更审计：`ontology_audit` 报告按 tier 分组，展示各 tier 变更频率与未决 Proposal
+**代码侧变化（2026-08-21 已实施）**：
+- `ontology_loader.load_ontology_from_yaml`：解析 `tier` 字段 → `OntologyClass.tier` ✅
+- `versioned_ontology_store.apply_proposal`：按 tier 分级审批（core 需全员/架构评审 / logic 需产品确认 / edge 自服务）✅（`approve_proposal` + `apply_proposal` tier gate）
+- 变更审计：`ontology_audit` 报告按 tier 分组，展示各 tier 变更频率与未决 Proposal ✅（`tier_distribution` + 分组建议）
 
 ## 5. 验收标准（设计完成度）
 

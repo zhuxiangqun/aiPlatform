@@ -258,6 +258,25 @@ class AsyncActionRegistry:
                     else:
                         return await self._enqueue_approval(c, entity_id, domain_id, params, actor)
 
+            # ── Step 4.5: Action 阶梯量化门（P2-L5）──
+            # Lv4 自动闭环必须通过误报率门（历史误报 < 0.5%），否则降级为人工确认
+            if not _bypass_approval:
+                from core.harness.infrastructure.action_contract import ActionLevel
+                if getattr(c, "action_level", ActionLevel.LV2_CONFIRMED) == ActionLevel.LV4_AUTO_CLOSE:
+                    gate = await self.compute_closure_gate(action_id)
+                    if not gate.get("allowed"):
+                        # 误报率超标 → 走人工审批（若未声明审批则返回 gate 拒绝）
+                        if c.require_approval:
+                            return await self._enqueue_approval(c, entity_id, domain_id, params, actor)
+                        await self._write_audit(c, entity_id, domain_id, current_state, current_state,
+                                                "closure_gated", constraint, params, entity_snapshot, actor, role)
+                        return {
+                            "status": "closure_gated",
+                            "reason": gate.get("reason", "auto-close gate failed"),
+                            "fp_rate": gate.get("fp_rate"),
+                            "constraint_type": "action_level",
+                        }
+
             # ── Step 5: execute handler ──
             handler = self._get_handler(action_id)
             if not handler:
@@ -326,6 +345,62 @@ class AsyncActionRegistry:
         return {"status": "rejected", "reason": reason}
 
     # ═══════════════════════════════════════════════════════
+    # Action 阶梯量化门（P2-L5）
+    # ═══════════════════════════════════════════════════════
+
+    async def compute_closure_gate(self, action_id: str) -> Dict[str, Any]:
+        """计算 Action 自动闭环误报率门（Lv4 专用）。
+
+        误报 = 历史审计中人工纠正过的执行（result_status 为
+        rejected / corrected / rolled_back / overridden 等）。
+
+        返回 {action_id, level, total, false_positives, fp_rate, allowed}
+        Lv4 且 fp_rate < CLOSURE_FP_RATE_MAX(0.5%) → allowed=True；否则降级人工确认。
+        """
+        from core.harness.infrastructure.action_contract import (
+            ActionLevel,
+            CLOSURE_FP_RATE_MAX,
+        )
+        c = self._contracts.get(action_id)
+        if not c:
+            return {"action_id": action_id, "allowed": False, "reason": "unknown action"}
+        level = getattr(c, "action_level", ActionLevel.LV2_CONFIRMED)
+
+        # 非 Lv4 不需要误报率门（默认保守：不允许闭环）
+        if level != ActionLevel.LV4_AUTO_CLOSE:
+            return {
+                "action_id": action_id, "level": str(level),
+                "total": 0, "false_positives": 0, "fp_rate": 0.0,
+                "allowed": False, "reason": f"level {level.value} is not lv4_auto_close",
+            }
+
+        await self._store.initialize()
+        records = await self._store.list_audit(entity_id="", domain_id="", limit=10000)
+        action_records = [r for r in records if r.get("action_id") == action_id]
+        total = len(action_records)
+        fp_markers = {"rejected", "corrected", "rolled_back", "overridden", "false_positive"}
+        false_positives = sum(
+            1 for r in action_records
+            if str(r.get("result_status", "")).lower() in fp_markers
+        )
+        fp_rate = (false_positives / total) if total else 0.0
+        allowed = fp_rate < CLOSURE_FP_RATE_MAX
+        return {
+            "action_id": action_id,
+            "level": str(level),
+            "total": total,
+            "false_positives": false_positives,
+            "fp_rate": round(fp_rate, 4),
+            "fp_rate_max": CLOSURE_FP_RATE_MAX,
+            "allowed": allowed,
+            "reason": (
+                f"fp_rate={fp_rate:.4f} < {CLOSURE_FP_RATE_MAX} — auto-close allowed"
+                if allowed
+                else f"fp_rate={fp_rate:.4f} ≥ {CLOSURE_FP_RATE_MAX} — downgrade to human confirmation"
+            ),
+        }
+
+    # ═══════════════════════════════════════════════════════
     # Private helpers
     # ═══════════════════════════════════════════════════════
 
@@ -344,7 +419,17 @@ class AsyncActionRegistry:
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
             g = GraphIndex.load(domain_id)
-            return g.get(entity_id)
+            node = g.get_node(entity_id)
+            if node is None:
+                return None
+            return {
+                "id": node.entity_id,
+                "name": node.entity_name,
+                "class": node.class_name,
+                "state": (node.metadata or {}).get("state", ""),
+                "domain": domain_id,
+                "metadata": node.metadata or {},
+            }
         except Exception as e:
             logger.error("Failed to load entity %s/%s: %s", domain_id, entity_id, e, exc_info=True)
             return None

@@ -18,6 +18,40 @@ _EVIDENCE_SOURCE_INDUSTRY = "行业普遍痛点"
 
 
 # ════════════════════════════════════════════════════════════
+# L0 战略罗盘：立项四问评估（P2-L0）
+# ════════════════════════════════════════════════════════════
+
+@router.get("/four-questions", response_model=FdeItemResponse)
+async def four_questions_meta():
+    """立项四问元信息：问题清单 + 权重 + 阈值（供前端渲染评估卡）。"""
+    from core.apps.fde.service.four_questions import FOUR_QUESTIONS, GO_THRESHOLD, CONDITIONAL_THRESHOLD
+    return {
+        "ok": True,
+        "meta": {
+            "questions": FOUR_QUESTIONS,
+            "go_threshold": GO_THRESHOLD,
+            "conditional_threshold": CONDITIONAL_THRESHOLD,
+            "note": "总分 0-100；≥75 立项，50-74 有条件立项，<50 沙盘验证",
+        },
+    }
+
+
+@router.post("/four-questions/evaluate", response_model=FdeItemResponse)
+async def four_questions_evaluate(body: Dict[str, Any]):
+    """立项四问评估：输入决策属性 → 逐问得分 + 总分 + 结论 + MVP 本体建议 tier。
+
+    Body: {title, recurrence(daily|weekly|monthly|rare), systems_count(int),
+           has_owner(bool), metrics(list), action_writeback(str|None)}
+    """
+    from core.apps.fde.service.four_questions import evaluate_four_questions
+    try:
+        result = evaluate_four_questions(body or {})
+        return {"ok": True, "evaluation": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+# ════════════════════════════════════════════════════════════
 # T: FDE Trend Analysis — time-series growth and health metrics
 # ════════════════════════════════════════════════════════════
 

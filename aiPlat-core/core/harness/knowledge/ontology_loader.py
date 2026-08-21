@@ -25,6 +25,7 @@ from core.harness.knowledge.knowledge_ontology import (
     OntologyObjectProperty,
     OntologyDataProperty,
     OntologyAxiom,
+    normalize_tier,
 )
 
 
@@ -114,6 +115,7 @@ def load_ontology_from_yaml(file_path: str) -> OntologyDomain:
                 synonyms=list(cls_def.get("synonyms", []) or []),
                 confidence_threshold=float(cls_def.get("confidence_threshold", 0.7)),
                 implements=list(cls_def.get("implements", []) or []),  # P1: Interface
+                tier=normalize_tier(cls_def.get("tier")),  # P2-L1: 治理分层 (core/logic/edge)
             ))
 
     # ── Load object properties ──
@@ -211,6 +213,12 @@ def validate_ontology_yaml(yaml_text: str) -> dict:
     classes = data.get("classes", {})
     if not classes or not isinstance(classes, dict):
         errors.append("classes must be a non-empty dict")
+    else:
+        for cls_name, cls_def in classes.items():
+            if isinstance(cls_def, dict) and cls_def.get("tier") is not None:
+                tier = normalize_tier(cls_def.get("tier"))
+                if tier != str(cls_def.get("tier")).strip().lower():
+                    errors.append(f"class '{cls_name}' has invalid tier: {cls_def.get('tier')} (valid: core|logic|edge)")
 
     props = data.get("object_properties", [])
     if not isinstance(props, list):
