@@ -215,6 +215,28 @@ check_management_docs() {
 }
 check_management_docs
 
+# ══════════════════════════════════════════════════════════════
+# Rule 6: research docs status-markers vs code reality (doc→code 对账)
+# 调用独立脚本 scripts/check_research_docs_freshness.py
+# 扫描 docs/research/*.md 状态标记与代码符号引用，验证不矛盾/不过时。
+# WARNING 级，--ci 时阻断（防止专项审计文档停在旧时点）。
+# ══════════════════════════════════════════════════════════════
+check_research_docs_freshness() {
+    echo ""
+    echo "━━━ Rule 6: research docs status markers vs code ━━━"
+    local out rc
+    out=$(python3 "$WORKSPACE/scripts/check_research_docs_freshness.py" "$WORKSPACE" 2>&1)
+    rc=$?
+    echo "$out"
+    if [ "$rc" -gt 0 ] && [ "${CI_MODE:-}" = "true" ]; then
+        VIOLATIONS=$((VIOLATIONS + rc))
+    elif [ "$rc" -gt 0 ]; then
+        echo -e "  ${YELLOW}(WARNING — Rule 6 提示，本地不阻断; CI 强制)${NC}"
+    fi
+}
+check_research_docs_freshness
+
+
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
 if [ "$VIOLATIONS" -eq 0 ]; then

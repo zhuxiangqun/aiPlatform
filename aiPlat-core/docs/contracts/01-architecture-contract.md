@@ -181,3 +181,5 @@ aiPlat 逻辑上分为：
 - **数字人页面实时数据感知（P2-4, 2026-08-21）**：前端 `lib/pageDataBridge.ts` 数据桥（reportPageData/getPageData/pageDataToText）+ FloatingDigitalHuman context 附数据；后端 handler→generate_answer→MaterialsChat 注入 `[当前页面数据: ...]` 到 enhanced_question；诊断概览页示范接入。12 项测试。
 
 - **数字人页面数据感知批量接入（P2-4 扩展, 2026-08-21）**：8 个管理页面接入 pageDataBridge（诊断概览/告警/治理/Agent/模型/可观测性/运行记录/本体编辑器），每页一个 useEffect + reportPageData。
+
+- **文档同步守卫 Rule 6（2026-08-22）**：`verify_doc_sync.sh` 新增 research 文档新鲜度对账（独立脚本 check_research_docs_freshness.py）：① 状态标记矛盾检测（已修复 vs 待修/空壳）；② 代码符号引用验证；③ `最后验证：DATE` 时间戳 vs 代码 mtime。审计报告新增自校验字段约定。8 项工具自测。
