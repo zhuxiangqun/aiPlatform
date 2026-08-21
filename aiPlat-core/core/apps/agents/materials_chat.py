@@ -591,12 +591,13 @@ class MaterialsChatAgent(BaseAgent):
             page_label = (run_context or {}).get("current_page_label", "")
             if page_label:
                 try:
-                    from core.harness.knowledge.wiki_retriever import WikiPageRetriever
-                    wiki_retriever = WikiPageRetriever(
-                        wiki_titles=["manuals / management-ui-operation-manual"],
-                        collection_ids=[collection_id],
-                    )
-                    wiki_docs = wiki_retriever._load_pages()
+                    # P1-2: search-based page loading — was a hardcoded manual title
+                    # ("manuals / management-ui-operation-manual") + full _load_pages
+                    # (up to 1000 pages). Search by page_label directly so no business
+                    # title is baked into core/apps and large wikis stay cheap.
+                    from core.harness.knowledge.wiki_engine import search_pages
+                    wiki_docs = search_pages(
+                        query=page_label, limit=20, collection_id=collection_id)
                     if wiki_docs:
                         wiki_chunks = _extract_wiki_chunks_for_page(wiki_docs, page_label)
                         if wiki_chunks:
