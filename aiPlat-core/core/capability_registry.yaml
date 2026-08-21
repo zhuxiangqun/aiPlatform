@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-08-16"
 total_capability_domains: 34
-total_capabilities: 1035
+total_capabilities: 1038
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -204,6 +204,18 @@ domains:
       - symbol: build_wiki_to_agent_bridge
       - symbol: build_model_usage_bridge
       - symbol: build_prompt_to_agent_bridge
+      - symbol: publish_business_action
+      - symbol: compile_ontology_constraints
+      - symbol: compile_axiom_rules
+        type: function
+        signature: 'Return axiom constraints as a plain list (for JSON-Schema-style use).'
+        module: aiPlat-core/core/harness/knowledge/ontology_constraint_compiler.py
+        type: function
+        signature: 'Compile ontology axioms + class constraints into a prompt hard-rules block.'
+        module: aiPlat-core/core/harness/knowledge/ontology_constraint_compiler.py
+        type: function
+        signature: 'Publish a completed business action: emit audit event + incremental update.'
+        module: aiPlat-core/core/harness/ontology_engine/business_event_bridge.py
         type: function
         signature: '复用 prompt_loader 调用点扫描建立 Prompt→Agent 三元组。'
         module: aiPlat-core/core/harness/knowledge/cross_domain_bridge.py

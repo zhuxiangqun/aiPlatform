@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1050
+total_capabilities: 1053
 last_updated: 2026-08-19
 version: "30.1"
 auto_sync: true
@@ -707,6 +707,9 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| compile_axiom_rules | `core/harness/ontology_engine/graph_index.py` | ✅ | 自动同步 | 已合入 |
+| compile_ontology_constraints | `` | ✅ | 自动同步 | 已合入 |
+| publish_business_action | `core/harness/ontology_engine/graph_index.py` | ✅ | 自动同步 | 已合入 |
 | WikiEngine | `harness/knowledge/wiki_engine.py` | ✅ | 自动同步 | 已合入 |
 | build_prompt_to_agent_bridge | `` | ✅ | 自动同步 | 已合入 |
 | build_model_usage_bridge | `` | ✅ | 自动同步 | 已合入 |
@@ -1964,7 +1967,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 67 | 0 | 67 |
 | 记忆子系统 | 38 | 0 | 38 |
-| 知识引擎（本体） | 134 | 0 | 134 |
+| 知识引擎（本体） | 137 | 0 | 137 |
 | RAG 检索 | 42 | 0 | 42 |
 | 知识基础设施 | 29 | 0 | 29 |
 | Agent 系统 | 38 | 0 | 38 |
@@ -2007,7 +2010,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1050** | **0** | **1050** |
+| **总计** | **1053** | **0** | **1053** |
 
 ---
 
