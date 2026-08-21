@@ -262,7 +262,46 @@ class GraphRAGRetriever:
 
     async def _vector_search(self, query: str, domain_id: str, top_k: int,
                              filter_doc_ids: Optional[Set[str]] = None) -> List[Dict[str, Any]]:
-        """Search vector store for relevant chunks. Falls back to wiki search."""
+        """Search vector store for relevant chunks. Falls back to wiki search.
+
+        P-补全: real semantic vector search against kb_embeddings first
+        (SqliteEmbeddingRetriever, true similarity); wiki FTS remains the
+        fallback when the vector store is empty/unavailable. Tries the
+        domain tenant then "default" to match either extractor write path.
+        """
+        # ── 1. True semantic vector search (kb_embeddings) ──
+        try:
+            from core.harness.knowledge.sqlite_retriever import SqliteEmbeddingRetriever
+            from core.harness.knowledge.types import KnowledgeQuery
+            chunks = []
+            for tenant in {domain_id, "default"}:
+                try:
+                    retriever = SqliteEmbeddingRetriever(tenant_id=tenant)
+                    results = await retriever.retrieve(KnowledgeQuery(query=query, limit=top_k))
+                except Exception:
+                    results = []
+                for r in results:
+                    text = str(r.entry.content or "")
+                    if not text:
+                        continue
+                    if filter_doc_ids:
+                        title = str(r.entry.title or "")
+                        if not any(did in title for did in filter_doc_ids):
+                            continue
+                    chunks.append({
+                        "title": str(r.entry.title or ""),
+                        "content": text[:500],
+                        "source": f"vector:{tenant}",
+                        "score": float(r.score or 0.0),
+                    })
+                if chunks:
+                    break  # vectors found in this tenant
+            if chunks:
+                return chunks[:top_k]
+        except Exception:
+            logger.debug("vector store search failed, falling back to wiki", exc_info=True)
+
+        # ── 2. Fallback: wiki FTS search (previous behaviour) ──
         try:
             from core.harness.knowledge.wiki_engine import search_pages
             pages = search_pages(query=query, limit=top_k, collection_id=domain_id)
@@ -285,21 +324,3 @@ class GraphRAGRetriever:
             logger.debug("Vector search failed, returning empty", exc_info=True)
             return []
 
-    # ═══════════════════════════════════════════════════════
-    # Context injection for ActionRegistry
-    # ═══════════════════════════════════════════════════════
-
-    async def get_entity_context(self, entity_id: str, domain_id: str,
-                                  action_context: str = "") -> Dict[str, Any]:
-        """Pre-load entity context for action execution awareness."""
-        result = await self.retrieve(
-            query=action_context or entity_id,
-            domain_id=domain_id,
-            top_k=5,
-        )
-        return {
-            "entity_id": entity_id,
-            "related_entities": result.get("entities", []),
-            "reasoning_paths": result.get("reasoning_paths", []),
-            "mode": result.get("mode", "unknown"),
-        }
