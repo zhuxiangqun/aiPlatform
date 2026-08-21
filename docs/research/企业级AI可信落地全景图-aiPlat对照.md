@@ -114,7 +114,7 @@
 | **P1-L3** | 本体公理约束编译（SWRL/ABox → 生成前 System Prompt/JSON Schema） | ⏳ 待实施 | 复用 `_sync_resolve` 注入机制（1 天） |
 | **P1-L4a** | EAEV 反事实扰动 | ⏳ 待实施 | hallucination_tracker 加扰动函数（1 天） |
 | **P1-L4b** | SIRG 推理链 vs 规则链一致性 | ⏳ 待实施 | graph_inference 推理链导出（1-2 天） |
-| **P2-L1** | 本体三层分离（tier 字段） | ⏳ 待实施 | ontology YAML 加 `tier: core|logic|edge`（1 天） |
+| **P2-L1** | 本体三层分离（tier 字段） | ⏳ **设计已定（见 plan-tier-ontology-layering.md）** | ontology YAML 加 `tier: core|logic|edge`（1 天，按设计实施） |
 | **P2-L0** | 立项四问工具化 | ⏳ 待实施 | FDE 诊断卡四问评估（0.5 天） |
 | **P2-L5** | Action 阶梯量化门 | ⏳ 待实施 | Lv 标注 + 自动闭环误报率门（0.5 天） |
 
