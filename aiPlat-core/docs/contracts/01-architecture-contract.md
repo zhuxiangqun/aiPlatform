@@ -173,3 +173,5 @@ aiPlat 逻辑上分为：
 
 - **P2-L0 立项四问（2026-08-21）**：`core/apps/fde/service/four_questions.py`（evaluate_four_questions：四问加权评分 → 总分 + go/conditional/sandbox + MVP tier 建议）；platform FDE 端点 `GET/POST /fde/diagnostics/four-questions` 经 core.apps.fde.service 访问（与 rapid_insight 同模式）。6 项测试。
 - **P2-L5 Action 阶梯量化门（2026-08-21）**：`ActionContractModel.action_level`（ActionLevel lv1-4，默认 lv2_confirmed）+ `compute_closure_gate`（Lv4 误报率门 <0.5% 才闭环，超标降级人工确认）+ `_get_entity` 修复（get_node + dict 化）。7 项测试。
+
+- **数字人管线 P0/P1 修复（2026-08-21）**：`voice_pipeline.py` —— registry 解析改 discovery 单例（`core.apps.agents.get_agent_registry`）+ 直接创建兜底（模型解析失败降级空 model 名）；transcribe 改 segment 顺序拼接（List[Dict] → text）；入口应用 `digital_human` ControlProfile。6 项测试。

@@ -1273,7 +1273,7 @@ scan_hash: 8f9548ec24f4
 | graph_extract | harness/syscalls/graph_extract.py | ✅ | 自动同步 | 已合入 |
 | async_utils | harness/utils/async_utils.py | ✅ | 自动同步 | 已合入 |
 | trajectory_collector | `harness/digital_human/trajectory_collector.py` | ✅ | 自动同步 | 已合入 |
-| voice_pipeline | `harness/digital_human/voice_pipeline.py` | ✅ | 自动同步 | 已合入 |
+| voice_pipeline | `harness/digital_human/voice_pipeline.py` | ✅ | ASR→Agent→TTS 编排；P0-1 修复（discovery 单例解析 + 直接创建兜底）+ P0-2 修复（segment 拼接） | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | harness/learning/experience_vector.py | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | ToolDriftDetector | harness/learning/tool_drift_detector.py | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |

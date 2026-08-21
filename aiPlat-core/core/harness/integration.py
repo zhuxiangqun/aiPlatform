@@ -39,9 +39,13 @@ def _ensure_di():
         _di_container = DIContainer()
 
         # Register lazy factories (not imports — only loaded when resolved)
-        def _agent_registry_factory():
-            from core.apps.agents import AgentRegistry  # noqa
-            return AgentRegistry()
+        def _agent_registry_factory(*_args, **_kwargs):
+            # P0-1 修复: 必须返回 discovery 模块级单例（server 启动时 AgentManager
+            # _bridge_to_registry 把 workspace agents 注册进该单例）。
+            # 此前直接 AgentRegistry() 新建空实例，且 DI resolve 传参导致 TypeError
+            # → voice_pipeline 等调用方永远拿到空的 registry → materials_chat 取不到。
+            from core.apps.agents import get_agent_registry as _discovery_get
+            return _discovery_get()
 
         def _skill_registry_factory():
             from core.api.core_facade import get_skill_registry  # noqa
@@ -171,8 +175,12 @@ def get_tool_registry():
 
 
 def get_agent_registry():
-    """Resolve agent registry."""
-    return _resolve_or_import("AgentRegistry", "core.apps.agents.discovery:AgentRegistry")()
+    """Resolve agent registry (P0-1: 返回 discovery 模块级单例实例，与 server/AgentManager 同源)."""
+    resolved = _resolve_or_import("AgentRegistry", "core.apps.agents.discovery:AgentRegistry")
+    if isinstance(resolved, type):
+        # Fallback 路径拿到的是类（legacy）→ 实例化为单例
+        return resolved()
+    return resolved
 
 
 def get_skill_registry():

@@ -114,7 +114,18 @@ async def transcribe(audio_bytes: bytes) -> str:
 
             result = whisper.transcribe(tmp_path)
 
-            text = result.get("text", "") if isinstance(result, dict) else str(result)
+            # P0-2 修复: InfraAudioAdapter.transcribe 返回 List[Dict]（segment 列表），
+            # 之前用 str(result) 会把整个列表序列化成 "[{'start_ms': ...}, ...]" 垃圾文本。
+            # 正确做法: 按时间顺序拼接各 segment 的文本。
+            if isinstance(result, list):
+                text = "".join(
+                    str(seg.get("text", "") or "") for seg in result
+                    if isinstance(seg, dict)
+                )
+            elif isinstance(result, dict):
+                text = str(result.get("text", "") or "")
+            else:
+                text = str(result or "")
 
         else:
 
@@ -153,13 +164,55 @@ async def generate_answer(text: str, page_context = "") -> Tuple[str, bytes]:
 
     try:
 
+        # P1-1 修复: 应用数字人专属 ControlProfile（口语化/中高温/宽松门控，control_presets.yaml）
         from core.harness.meta.profile_registry import set_profile_override
 
-        from core.harness.integration import get_agent_registry  # P0-A1: DI 解析
+        try:
+            set_profile_override("digital_human", session_id="digital_human")
+        except Exception:
+            logger.debug("profile override failed", exc_info=True)
 
-        registry = get_agent_registry()
+        # P0-1 修复: 统一走 integration 入口（CoreFacade 同源，line 3079 re-export）。
+        # integration.get_agent_registry 现在返回 discovery 模块级单例（DI 工厂修复，
+        # server 启动时 AgentManager._bridge_to_registry 把 workspace agents 注册进该单例）。
+        # 此前 DI 解析 lambda 工厂 TypeError → fallback 空实例，materials_chat 恒 None → echo。
+        from core.harness.integration import get_agent_registry as _get_discovery_registry
+
+        registry = _get_discovery_registry()
 
         agent = registry.get("materials_chat")
+
+        if agent is None:
+            # 兜底: 单例未初始化时经 CoreFacade.create_agent 创建（harness 不直导 apps）
+            logger.warning("MaterialsChatAgent not in registry — attempting direct creation")
+            try:
+                from core.api.core_facade import create_agent as _facade_create_agent
+                from core.harness.interfaces import AgentConfig
+                from core.harness.utils.model_injection import best_model_for_agent_type
+
+                # 模型解析可能因环境无可用模型抛错；此时传空 model，由 agent 内部默认解析。
+                try:
+                    _model = best_model_for_agent_type("materials_chat")
+                except Exception as _e:
+                    logger.warning("Model resolution failed (%s) — using empty model name", _e)
+                    _model = ""
+
+                agent = _facade_create_agent(
+                    agent_type="materials_chat",
+                    config=AgentConfig(
+                        name="materials_chat",
+                        model=_model,
+                        temperature=0.4,
+                        max_tokens=2000,
+                        timeout=30,
+                        max_retries=2,
+                        metadata={"name": "materials_chat", "agent_type": "materials_chat"},
+                    ),
+                )
+                logger.info("MaterialsChatAgent created directly (registry empty)")
+            except Exception as e:
+                logger.warning("Direct MaterialsChatAgent creation failed: %s", e)
+                agent = None
 
         if agent is None:
 
