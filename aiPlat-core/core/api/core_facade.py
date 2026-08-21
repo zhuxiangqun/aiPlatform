@@ -3091,6 +3091,14 @@ from core.harness.knowledge.semantic_cache import get_semantic_cache  # v2.5  # 
 from core.harness.knowledge.knowledge_ontology import validate_page_against_schema  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.knowledge.knowledge_ontology import export_suggestions_to_owl, write_suggestions_owl_file  # noqa: boundary — ontology learning output (P-补全)
 from core.harness.knowledge.ontology_constraint_compiler import compile_ontology_constraints, compile_axiom_rules  # noqa: boundary — P1-L3 ontology constraint compiler (生成前逻辑锁)
+from core.harness.ontology_engine.sirg_auditor import SirgAuditor, audit_trace_rules  # noqa: boundary — P1-L4b SIRG reasoning audit
+
+def sirg_audit(inference, fired_rule_ids, conclusion_relation):
+    """P1-L4b: SIRG reasoning audit facade — compare fired rules vs required
+    rule chain for a conclusion (跨文件调用 SirgAuditor.from_inference)."""
+    from core.harness.ontology_engine.sirg_auditor import SirgAuditor
+    auditor = SirgAuditor.from_inference(inference)
+    return auditor.audit_reasoning(fired_rule_ids, conclusion_relation)
 from core.harness.infrastructure.infra_ocr_adapter import BBox, OCRToken, create_infra_ocr_adapter  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.models.spec_lifecycle import get_spec_lifecycle, RevisionTrigger  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.ontology_engine.triple_store import get_triple_store  # v2.5  # noqa: boundary — CoreFacade canonical re-export
