@@ -108,3 +108,24 @@ class TestKbWiring:
             "('kb_elements','kb_embeddings')").fetchone()[0]
         assert n == 2
         conn.close()
+
+
+class TestEmbedBackend:
+    """P-补全: default embed backend is semantic (real vectors), hash stays explicit."""
+
+    def test_default_backend_semantic(self, monkeypatch):
+        monkeypatch.delenv("AIPLAT_EMBED_BACKEND", raising=False)
+        from core.harness.knowledge.embedder import _backend_name
+        assert _backend_name() == "semantic"
+
+    def test_explicit_hash_overrides(self, monkeypatch):
+        monkeypatch.setenv("AIPLAT_EMBED_BACKEND", "hash")
+        from core.harness.knowledge.embedder import _backend_name
+        assert _backend_name() == "hash"
+
+    def test_semantic_no_model_safe(self, monkeypatch):
+        """No model available → embed_text_semantic returns None (skipped writes)."""
+        monkeypatch.delenv("AIPLAT_EMBED_BACKEND", raising=False)
+        from core.harness.knowledge import embedder
+        monkeypatch.setattr(embedder, "_get_semantic_model", lambda: None)
+        assert embedder.embed_text_semantic("x") is None
