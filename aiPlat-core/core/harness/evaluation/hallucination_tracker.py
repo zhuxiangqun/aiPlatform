@@ -106,6 +106,14 @@ class HallucinationTracker:
             claim.source_evidence = evidence[:200] if evidence else ""
             claim.source_page = evidence.get("page", "") if isinstance(evidence, dict) else ""
             claim.confidence = confidence
+            # EAEV 2.0 (P1-L4a): counterfactual perturbation — memory-inertia
+            # check on the claim (best-effort, never breaks evaluation)
+            try:
+                pert = self.counterfactual_perturb(claim.text, retrieved_context)
+                if pert.get("memory_inertia"):
+                    claim.quality_flag = "needs_review"
+            except Exception:
+                pass  # noqa: perturbation-best-effort
 
             if judgment == "entailment":
                 supported += 1
@@ -239,6 +247,40 @@ class HallucinationTracker:
             return "neutral", best_match, best_score
         else:
             return "neutral", None, 0.0
+
+    def counterfactual_perturb(
+        self, claim: str, context: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """EAEV 2.0 (P1-L4a): counterfactual perturbation — memory-inertia check.
+
+        Replace the most frequent entity in the claim with a clearly unrelated
+        token, then re-verify against the SAME context. If alignment collapses
+        (large drift) while the original claim aligned strongly, the entity was
+        carried by pretraining memory, not grounded in evidence — flag it.
+        """
+        import re as _re
+
+        entities = self._extract_entities(claim)
+        if not entities:
+            return {"perturbed": False, "reason": "no_entity"}
+        target = max(set(entities), key=entities.count)
+        perturbed_claim = _re.sub(_re.escape(target), f"{target}【扰动】", claim)
+        if perturbed_claim == claim:
+            return {"perturbed": False, "reason": "replace_failed"}
+
+        _, _, orig_conf = self._verify_claim(claim, context)
+        judgment, _, conf = self._verify_claim(perturbed_claim, context)
+        drift = abs(float(orig_conf or 0.0) - float(conf or 0.0))
+        return {
+            "perturbed": True,
+            "entity": target,
+            "original_confidence": round(float(orig_conf or 0.0), 3),
+            "perturbed_confidence": round(float(conf or 0.0), 3),
+            "drift": round(drift, 3),
+            "memory_inertia": drift > 0.3 and float(orig_conf or 0.0) > 0.6,
+            "judgment": judgment,
+        }
+
 
     def _verify_with_graph(self, claim: str) -> Dict[str, Any]:
         """使用知识图谱验证声明 (aiPlat 独有)。
