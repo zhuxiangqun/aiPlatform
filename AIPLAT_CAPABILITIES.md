@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1063
+total_capabilities: 1064
 last_updated: 2026-08-19
 version: "30.1"
 auto_sync: true
@@ -944,6 +944,8 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| collect_turn | `core/harness/digital_human/trajectory_collector.py` | ✅ | 自动同步 | 已合入 |
+| voice_chat_handler | `core/harness/digital_human/voice_pipeline.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_four_questions | `core/apps/fde/service/four_questions.py` | ✅ | 自动同步 | 已合入 |
 | default_provider_name | `core/apps/agents/base.py` | ✅ | 自动同步 | 已合入 |
 | get_provider_factories | `` | ✅ | 自动同步 | 已合入 |
@@ -1273,6 +1275,7 @@ scan_hash: 8f9548ec24f4
 | graph_extract | harness/syscalls/graph_extract.py | ✅ | 自动同步 | 已合入 |
 | async_utils | harness/utils/async_utils.py | ✅ | 自动同步 | 已合入 |
 | trajectory_collector | `harness/digital_human/trajectory_collector.py` | ✅ | P1-2 闭环：轨迹→ShareGPT 数据集（export_sharegpt_dataset → ~/.aiplat/training） | 已合入 |
+| research 文档新鲜度守卫 | `scripts/check_research_docs_freshness.py` | ✅ | Rule 6：状态标记矛盾检测 + 符号引用验证 + 最后验证时间戳对账（--ci 阻断） | 已合入 |
 | voice_pipeline | `harness/digital_human/voice_pipeline.py` | ✅ | ASR→Agent→TTS 编排；P0 修复 + P1-3 格式链 + P2-1 WS 鉴权 + session 隔离 + P2-4 页面数据感知（8 管理页接入 pageDataBridge） | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | harness/learning/experience_vector.py | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
@@ -1980,13 +1983,13 @@ scan_hash: 8f9548ec24f4
 | 知识引擎（本体） | 145 | 0 | 145 |
 | RAG 检索 | 42 | 0 | 42 |
 | 知识基础设施 | 29 | 0 | 29 |
-| Agent 系统 | 43 | 0 | 43 |
+| Agent 系统 | 39 | 0 | 39 |
 | Skill 系统 | 54 | 0 | 54 |
 | 安全与治理 | 48 | 0 | 48 |
 | 可观测性 | 18 | 0 | 18 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
-| 扩展与学习 | 128 | 0 | 128 |
+| 扩展与学习 | 129 | 0 | 129 |
 | Gate 系统 | 17 | 0 | 17 |
 | 评估系统 | 18 | 0 | 18 |
 | MCP 协议 | 9 | 0 | 9 |
@@ -2020,7 +2023,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1067** | **0** | **1067** |
+| **总计** | **1064** | **0** | **1064** |
 
 ---
 
