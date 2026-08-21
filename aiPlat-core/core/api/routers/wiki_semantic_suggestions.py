@@ -20,6 +20,20 @@ class SemanticSuggestRequest(BaseModel):
     include_llm: bool = True
 
 
+@router.get("/suggestions", response_model=Dict[str, Any])
+async def list_pending_suggestions(collection: str = "default"):
+    """List pending ontology learning suggestions (new_class / new_property /
+    new_subclass / merge_classes) for the management UI panel.
+
+    (P-补全) Reads the same suggestions tracking file that
+    add_suggestions_from_patterns / generate_semantic_suggestions write.
+    """
+    from core.harness.knowledge.knowledge_ontology import load_pending_suggestions
+
+    suggestions = load_pending_suggestions(collection)
+    return {"collection": collection, "count": len(suggestions), "suggestions": suggestions}
+
+
 @router.post("/suggestions/semantic", response_model=Dict[str, Any])
 async def generate_semantic_suggestions_endpoint(req: SemanticSuggestRequest = Body(default=None)):
     u"""Generate semantic ontology evolution suggestions via LLM (Tier 2).

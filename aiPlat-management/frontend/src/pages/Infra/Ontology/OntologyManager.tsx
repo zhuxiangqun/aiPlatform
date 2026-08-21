@@ -4,6 +4,7 @@ import { Button, Modal, toast, Input } from '../../../components/ui';
 import OntologyGraph from '../../../components/wiki/OntologyGraph';
 import WikiHealthDashboard from '../../../components/wiki/WikiHealthDashboard';
 import GrillPanel from '../../../components/grilling/GrillPanel';
+import OntologyLearningPanel from '../../../components/ontology/OntologyLearningPanel';
 
 const WIKI_API = '/api/core';
 
@@ -413,6 +414,7 @@ const OntologyManager: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-100">本体模型管理</h1>
+        <OntologyLearningPanel collection="default" />
           <p className="text-sm text-gray-500 mt-1">创建和管理领域本体模型</p>
         </div>
         <div className="flex gap-2">
