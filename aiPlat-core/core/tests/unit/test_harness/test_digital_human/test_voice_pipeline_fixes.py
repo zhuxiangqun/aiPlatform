@@ -71,17 +71,25 @@ def test_transcribe_empty_segments(monkeypatch):
 # ═══════════════════════════════════════════════════════════
 
 def test_generate_answer_uses_discovery_registry(monkeypatch):
-    """generate_answer 必须从 discovery 单例取 agent，而非 integration DI（P0-1）。"""
+    """generate_answer 必须从 integration 入口解析（其内部已是 discovery 单例），且不直导 apps。"""
     import inspect
     from core.harness.digital_human import voice_pipeline
     src = inspect.getsource(voice_pipeline)
-    # 不应再 import integration 的 get_agent_registry
-    assert "from core.harness.integration import get_agent_registry" not in src
-    assert "from core.apps.agents import get_agent_registry as _get_discovery_registry" in src
+    # 不应直导 core.apps（harness→apps 边界）
+    assert "from core.apps.agents import" not in src
+    assert "from core.harness.integration import get_agent_registry" in src
+    assert "from core.api.core_facade import create_agent" in src  # 兜底经 facade
+
+
+def test_integration_registry_is_discovery_singleton(monkeypatch):
+    """P0-1 根因修复验证: integration.get_agent_registry 现在返回 discovery 单例（非空实例）。"""
+    from core.harness.integration import get_agent_registry as di_get
+    from core.apps.agents import get_agent_registry as app_get
+    assert di_get() is app_get()
 
 
 def test_generate_answer_direct_creation_fallback(monkeypatch):
-    """单例为空时兜底直接创建 MaterialsChatAgent，不再退化 echo。"""
+    """单例为空时兜底经 CoreFacade.create_agent 创建，不再退化 echo。"""
     from core.harness.digital_human import voice_pipeline
 
     captured = {}
@@ -99,16 +107,14 @@ def test_generate_answer_direct_creation_fallback(monkeypatch):
     async def fake_tts(text, **kw):
         return b"TTSAUDIO"
 
-    monkeypatch.setattr("core.apps.agents.get_agent_registry", lambda: FakeRegistry())
+    monkeypatch.setattr("core.harness.integration.get_agent_registry", lambda: FakeRegistry())
     monkeypatch.setattr("core.harness.syscalls.tts.sys_tts_generate", fake_tts)
 
-    import core.apps.agents.materials_chat as mc_mod
+    def fake_create_agent(agent_type, config):
+        assert agent_type == "materials_chat"
+        return FakeAgent()
 
-    class FakeMCAgent(FakeAgent):
-        def __init__(self, config):
-            self._config = config
-
-    monkeypatch.setattr(mc_mod, "MaterialsChatAgent", FakeMCAgent)
+    monkeypatch.setattr("core.api.core_facade.create_agent", fake_create_agent)
 
     async def run():
         return await voice_pipeline.generate_answer("你好，介绍一下系统")
