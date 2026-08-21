@@ -77,6 +77,13 @@ async def generate_semantic_suggestions(
         fields = _detect_field_gaps(pages, confidence_threshold)
         for f in fields[:quota]:
             suggestions.append(f)
+        quota = max_suggestions - len(suggestions)
+
+    # Dimension 3: is-a hierarchy inference (LLM-judged subclassOf)
+    if quota > 0:
+        hier = await _detect_hierarchies(pages, onto, confidence_threshold, llm_model)
+        for h in hier[:quota]:
+            suggestions.append(h)
 
     suggestions.sort(key=lambda s: s.get("confidence", 0), reverse=True)
     return suggestions[:max_suggestions]
@@ -328,4 +335,97 @@ def _safe_json_parse(content: str) -> Dict[str, Any]:
     try:
         return _json.loads(text)
     except _json.JSONDecodeError:
+        return {}
+
+
+# ── Dimension 3: is-a hierarchy inference (P-补全 2026-08-19) ──
+# LLM judges whether a concept is a subclass of another, producing
+# "new_subclass" suggestions that export_suggestions_to_owl turns into
+# rdfs:subClassOf axioms in the learned .ttl/.owl.
+
+async def _detect_hierarchies(
+    pages: List[Dict],
+    onto: Any,
+    confidence_threshold: float,
+    llm_model: str = "",
+) -> List[Dict[str, Any]]:
+    u"""Detect is-a (subclassOf) pairs among concept pages.
+
+    Embedding fast screening (related but not identical pairs, 0.35-0.95
+    similarity) + lightweight LLM binary judgment — same cost pattern as
+    semantic merges; LLM calls are capped to the top 5 pairs per category.
+    """
+    suggestions: List[Dict[str, Any]] = []
+    by_category: Dict[str, List[Dict]] = {}
+    for p in pages:
+        cat = p.get("category", p.get("_category", "entities"))
+        by_category.setdefault(cat, []).append(p)
+    for cat, cat_pages in by_category.items():
+        if len(cat_pages) < 3:
+            continue
+        try:
+            from core.harness.knowledge.embedder import (
+                embed_texts_semantic, hash_embed, cosine_similarity)
+            texts = [
+                f"{p.get('title', '')}: {str(p.get('summary', p.get('_body', '')))[:300]}"
+                for p in cat_pages
+            ]
+            embeddings = embed_texts_semantic(texts)
+            if embeddings is None:
+                embeddings = [hash_embed(t, 128) for t in texts]
+            pairs = []
+            for i in range(len(cat_pages)):
+                for j in range(len(cat_pages)):
+                    if i == j:
+                        continue
+                    sim = cosine_similarity(embeddings[i], embeddings[j])
+                    if 0.35 <= sim < 0.95:  # related but not identical
+                        pairs.append((i, j, sim))
+            pairs.sort(key=lambda x: x[2], reverse=True)
+        except Exception:
+            continue
+        for i, j, sim in pairs[:5]:  # cap LLM cost
+            ti = str(cat_pages[i].get("title", "")).strip()
+            tj = str(cat_pages[j].get("title", "")).strip()
+            if not ti or not tj or ti == tj:
+                continue
+            judge = await _llm_judge_hierarchy(ti, tj, sim, llm_model)
+            if judge.get("is_subclass") and judge.get("confidence", 0) >= confidence_threshold:
+                suggestions.append({
+                    "type": "new_subclass",
+                    "status": "pending",
+                    "description": f"层次: {ti} 是 {tj} 的子类",
+                    "subject": ti,
+                    "parent": tj,
+                    "confidence": round(float(judge.get("confidence", 0)), 3),
+                    "rationale": str(judge.get("reasoning", ""))[:200],
+                })
+    return suggestions
+
+
+async def _llm_judge_hierarchy(
+    subject: str, parent: str, similarity: float, model_override: str = "",
+) -> Dict[str, Any]:
+    u"""Lightweight LLM binary judgment: is 'subject' a subclass of 'parent'?
+    Returns {"is_subclass": bool, "confidence": float, "reasoning": str} or {}."""
+    try:
+        from core.harness.syscalls.llm import sys_llm_generate
+        from core.harness.utils.model_injection import best_model_for_purpose
+        prompt = (
+            f"You are an ontology curator. Two concepts have semantic "
+            f"similarity {similarity:.2f}.\n\n"
+            f"Concept A: \"{subject}\"\nConcept B: \"{parent}\"\n\n"
+            f"Is A a subclass/specialization of B (is-a relationship)? "
+            f"Reply with JSON only: "
+            f'{{"is_subclass": true/false, "confidence": 0.0-1.0, '
+            f'"reasoning": "one sentence"}}'
+        )
+        resp = await sys_llm_generate(
+            None, [{"role": "user", "content": prompt}],
+            model_name=model_override or best_model_for_purpose("chat"),
+            temperature=0.1,
+        )
+        raw = getattr(resp, "content", "") or str(resp)
+        return _safe_json_parse(raw)
+    except Exception:
         return {}
