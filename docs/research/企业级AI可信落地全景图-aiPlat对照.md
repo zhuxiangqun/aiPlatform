@@ -2,7 +2,7 @@
 
 > **背景**：以六层"决策操作系统"框架（战略罗盘 / 静态知识底座 / 动态感知 / 混合推理 / 双重可信审计 / 受控行动与进化）为标尺，对照 aiPlat 现状。
 > **方法**：逐层代码实证（`文件:行号`），与框架要求逐一比对，标注成熟度与差距。
-> **总体结论**：**六层全覆盖**（无缺失层，对照三方只有 aiPlat 同时具备本体+推理+审计+Action+进化）；**原 3 个真实缺口已全部闭环**（L2 业务事件流 P0-L2 #58、L4 反事实扰动+SIRG #62/#63、L3 本体公理约束编译 #62，2026-08-19~21）；**3 个强项已验证**（本体学习闭环、Action 阶梯+本体版本管理、证据验证基础）；**治理强化**：P2-L1 本体分层治变（core/logic/edge 分级审批 + 升格复用证明）已实施。
+> **总体结论**：**六层全覆盖**（无缺失层，对照三方只有 aiPlat 同时具备本体+推理+审计+Action+进化）；**原 3 个真实缺口已全部闭环**（L2 业务事件流 P0-L2 #58、L4 反事实扰动+SIRG #62/#63、L3 本体公理约束编译 #62，2026-08-19~21）；**3 个强项已验证**（本体学习闭环、Action 阶梯+本体版本管理、证据验证基础）；**P2 治理强化全落地**（#64）：L1 本体分层治变（tier 分级审批 + 升格复用证明）、L0 立项四问工具化、L5 Action 阶梯 Lv 标注 + 自动闭环误报率门（FP<0.5%）。
 
 ---
 
@@ -21,13 +21,13 @@
 
 ## 2. 逐层详析
 
-### L0 战略罗盘（方向盘）—— ⭐⭐⭐ 方法论有，工具化缺
+### L0 战略罗盘（方向盘）—— ⭐⭐⭐⭐ 方法论有 + 已工具化（P2-L0 四问评估）
 
 **框架要求**：立项四问（决策反复发生 / 跨 3+ 系统 / 有 Owner+量化指标 / 可写回 Action）+ MVP 本体分层实施。
 
 **aiPlat 现状**：
 - ✅ FDE 诊断→证据映射→覆盖率→改进→交付→评分→对比→基准→目标分解→自主部署→外部发现 是 aiPlat 的核心定位（第 5 层架构）
-- ❌ "立项四问"未工具化：FDE 诊断卡无"决策性价比"评估步骤；MVP 本体 vs 全域本体无显式分层引导
+- ✅ **立项四问已工具化（P2-L0）**：`core/apps/fde/service/four_questions.py`——四问（反复/跨系统/Owner+指标/Action）→ 0-100 分 + go/conditional/sandbox 结论 + MVP 本体 tier 建议；FDE 诊断卡端点 `GET/POST /fde/diagnostics/four-questions`
 
 **改进建议**：FDE 诊断卡加"四问"评估步骤（0.5 天）。
 
@@ -77,7 +77,7 @@
 
 **改进建议（P1）**：① 反事实扰动模块（替换高置信实体重验，1 天）；② 在 `graph_inference` 基础上做"推理链 vs 规则链"一致性报告（1-2 天）。
 
-### L5 受控行动与现场进化（副驾+修路队）—— ⭐⭐⭐⭐ 强
+### L5 受控行动与现场进化（副驾+修路队）—— ⭐⭐⭐⭐⭐ 强（P2-L5 量化门已加）
 
 **框架要求**：Action 阶梯（Lv1 只读→Lv4 自动闭环，逐级真实业务考验）；FDE 学习回路（例外→SWRL/对象升格）；Branch/Proposal/Rebase 本体版本管理；驳回数据反哺（原因标签）。
 
@@ -86,7 +86,7 @@
 - ✅ **本体版本管理**：`versioned_ontology_store`（`create_proposal:78` / `list_proposals:99` / `apply_proposal:104`）——框架"Branch/Proposal/Rebase"的 Proposal 骨架
 - ✅ **驳回原因反哺**：`proposal_store.rejected_reason`（`:57/79`）
 - ✅ **FDE 学习回路**：aiPlat 定位即 FDE（例外→技能/规则沉淀，AutoLearner/evolution_runner）
-- ⚠️ 小差距：Action 阶梯的 Lv 划分与"误报率<0.5% 才自动闭环"的量化门未见显式声明
+- ✅ **量化门已显式（P2-L5）**：`ActionLevel`（lv1_readonly→lv4_auto_close，默认 Lv2 保守）+ `compute_closure_gate`（Lv4 自动闭环需历史误报 <0.5%，超标降级人工确认）
 
 **改进建议**：Action 阶梯加显式 Lv 标注 + 自动闭环量化门（0.5 天）。
 
@@ -114,11 +114,11 @@
 | **P1-L3** | 本体公理约束编译（SWRL/ABox → 生成前 System Prompt/JSON Schema） | ✅ **已实施** | #62：`ontology_constraint_compiler`（AXIOMS/类字段 → 硬规则）+ `prompt_assembler` opt-in 注入（`meta.inject_ontology_contract`，默认不注入保 prompt cache） |
 | **P1-L4a** | EAEV 反事实扰动 | ✅ **已实施** | #62：`counterfactual_perturb` 实体替换→同上下文重验→漂移>0.3 且原置信>0.6 判记忆惯性，best-effort 接入 evaluate |
 | **P1-L4b** | SIRG 推理链 vs 规则链一致性 | ✅ **已实施** | #63：`sirg_auditor`（rule_chain_for + audit_reasoning），缺失规则→违规报告；推理链取可观测执行面 |
-| **P2-L1** | 本体三层分离（tier 字段） | ✅ **已实施** | 本轮：`OntologyClass.tier`（core/logic/edge，默认 logic 兼容存量）+ loader 解析/校验 + `versioned_ontology_store` 分级审批（core 需架构评审 / logic 产品确认 / edge 自服务）+ edge→logic 升格需复用证明（reuse_count≥3）+ ontology_audit 按 tier 分组 |
-| **P2-L0** | 立项四问工具化 | ⏳ 待实施 | FDE 诊断卡四问评估（0.5 天） |
-| **P2-L5** | Action 阶梯量化门 | ⏳ 待实施 | Lv 标注 + 自动闭环误报率门（0.5 天） |
+| **P2-L1** | 本体三层分离（tier 字段） | ✅ **已实施** | #64：`OntologyClass.tier`（core/logic/edge，默认 logic 兼容存量）+ loader 解析/校验 + `versioned_ontology_store` 分级审批（core 需架构评审 / logic 产品侧 / edge 自服务）+ edge→logic 升格需复用证明（reuse_count≥3）+ ontology_audit 按 tier 分组 |
+| **P2-L0** | 立项四问工具化 | ✅ **已实施** | #64：`four_questions.evaluate_four_questions`（反复/跨系统/Owner+指标/Action 四问 → 0-100 分 + go/conditional/sandbox 结论 + MVP tier 建议）+ FDE 诊断卡端点（GET/POST /fde/diagnostics/four-questions） |
+| **P2-L5** | Action 阶梯量化门 | ✅ **已实施** | #64：`ActionLevel`（lv1_readonly→lv4_auto_close，默认 Lv2 保守）+ `compute_closure_gate`（Lv4 自动闭环需历史误报 <0.5%，超标降级人工确认）+ 修复 `_get_entity`（`g.get()`→`get_node`，GraphIndex 实体加载此前恒失败） |
 
-**执行原则**：程序修改暂停于 P0-L2 之后（2026-08-19），文档先行同步；后续按 P1 → P2 顺序恢复实施。P0-L2 + P1 全部（L3/L4a/L4b）+ P2-L1 已闭环，剩 P2-L0 / P2-L5 两项。
+**执行原则**：程序修改暂停于 P0-L2 之后（2026-08-19），文档先行同步；后续按 P1 → P2 顺序恢复实施。**P0 + P1 全部 + P2 全部（L1/L0/L5）已闭环**，路线图仅剩后续扩展方向（见 §3.6）。
 
 ---
 
