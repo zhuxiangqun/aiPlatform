@@ -265,6 +265,16 @@ class AsyncActionRegistry:
 
             exec_status, to_state, result = await self._invoke_handler(c, handler, entity, params, actor, current_state)
 
+            # ── P0-L2 业务事件桥：动作成功 → EventBus + GraphIndex 增量更新 ──
+            if exec_status in ("executed", "done", "completed", "success", "ok"):
+                try:
+                    from core.harness.ontology_engine.business_event_bridge import publish_business_action
+                    await publish_business_action(
+                        action_id=action_id, entity_id=entity_id, domain_id=domain_id,
+                        result=result, status=exec_status, actor=actor)
+                except Exception:
+                    pass  # noqa: business-bridge-best-effort
+
             # ── Step 6: audit ──
             if c.audit:
                 await self._write_audit(c, entity_id, domain_id, current_state, to_state,
