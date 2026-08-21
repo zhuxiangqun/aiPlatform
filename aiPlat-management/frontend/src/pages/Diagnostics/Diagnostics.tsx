@@ -7,6 +7,7 @@ import { diagnosticsApi } from '../../services';
 import CategoryDetailPanel from './CategoryDetailPanel';
 import ModelTierPanel from '../../components/model/ModelTierPanel';
 import ControlProfilePanel from '../../components/model/ControlProfilePanel';
+import { reportPageData, clearPageData } from '../../lib/pageDataBridge';
 
 type Health = {
   layer: string;
@@ -327,6 +328,22 @@ const Diagnostics: React.FC = () => {
   const unhealthyLayers = (['infra', 'core', 'platform', 'app'] as const).filter(
     l => health[l]?.status && health[l]!.status !== 'healthy' && health[l]!.status !== 'error'
   );
+
+  // P2-4: 向数字人上报当前诊断页的实时状态（健康概览 + 最近诊断结果）
+  useEffect(() => {
+    const layerStatus: Record<string, string> = {};
+    (['infra', 'core', 'platform', 'app'] as const).forEach(l => {
+      if (health[l]?.status) layerStatus[l] = health[l]!.status;
+    });
+    reportPageData('/diagnostics', {
+      layerStatus,
+      unhealthyLayers: unhealthyLayers.join(','),
+      guardResult: guardResult ? (guardResult.passed !== undefined ? `guard=${guardResult.passed ? 'PASS' : 'FAIL'}` : undefined) : undefined,
+      diagRunId: diagRunId || undefined,
+      diagMode: diagMode || undefined,
+    });
+    return () => clearPageData('/diagnostics');
+  }, [health, guardResult, diagRunId, diagMode, unhealthyLayers]);
 
   // Compute recommended tools from Layer Health + unified diagnostic results
   const recommendedTools = useMemo(() => {

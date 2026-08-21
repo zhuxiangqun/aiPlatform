@@ -387,6 +387,10 @@ class MaterialsChatAgent(BaseAgent):
             page_label = (run_context or {}).get("current_page_label", "")
             if page_label:
                 enhanced_question = f"[当前页面: {page_label}] {enhanced_question}"
+            # P2-4: 页面实时数据注入（数字人各画面问答）——页面上报的结构化数据摘要
+            page_data = (run_context or {}).get("page_data", "")
+            if page_data:
+                enhanced_question = f"{enhanced_question}\n[当前页面数据: {page_data}]"
             retrieval_policy = choose_retrieval_policy(analysis=analysis, scope=scope, doc_kinds=doc_kinds)
             answer_strategy = choose_answer_strategy(analysis=analysis, retrieval_policy=retrieval_policy)
 

@@ -194,3 +194,74 @@ def test_transcribe_detects_webm_suffix(monkeypatch, tmp_path):
     text = asyncio.run(transcribe(b"\x1a\x45\xdf\xa3fake-webm"))
     assert text == "你好"
     assert captured["suffix"] == "webm"
+
+
+# ═══════════════════════════════════════════════════════════
+# P2-4: 页面实时数据注入链路
+# ═══════════════════════════════════════════════════════════
+
+def test_generate_answer_injects_page_data(monkeypatch):
+    """page_data 参数注入 run_ctx，最终进入 AgentContext.variables._run_context。"""
+    from core.harness.digital_human import voice_pipeline
+
+    captured = {}
+
+    class FakeRegistry:
+        def get(self, name):
+            return None
+
+    class FakeAgent:
+        async def execute(self, ctx):
+            captured["run_ctx"] = (ctx.variables or {}).get("_run_context", {})
+            from core.harness.interfaces import AgentResult
+            return AgentResult(success=True, output={"answer": "根据页面数据回答"})
+
+    async def fake_tts(text, **kw):
+        return b""
+
+    monkeypatch.setattr("core.harness.integration.get_agent_registry", lambda: FakeRegistry())
+    monkeypatch.setattr("core.harness.syscalls.tts.sys_tts_generate", fake_tts)
+    monkeypatch.setattr("core.api.core_facade.create_agent", lambda agent_type, config: FakeAgent())
+
+    async def run():
+        return await voice_pipeline.generate_answer(
+            "当前系统健康吗",
+            page_context={"route": "/diagnostics", "label": "诊断概览"},
+            session_id="dh_test",
+            page_data="layerStatus: infra=healthy, core=degraded; unhealthyLayers: core",
+        )
+
+    answer, _ = asyncio.run(run())
+    assert answer == "根据页面数据回答"
+    assert captured["run_ctx"]["page_data"] == "layerStatus: infra=healthy, core=degraded; unhealthyLayers: core"
+    assert captured["run_ctx"]["current_page_label"] == "诊断概览"
+
+
+def test_page_data_empty_does_not_inject(monkeypatch):
+    """无 page_data 时不注入该字段（保持既有行为）。"""
+    from core.harness.digital_human import voice_pipeline
+
+    captured = {}
+
+    class FakeRegistry:
+        def get(self, name):
+            return None
+
+    class FakeAgent:
+        async def execute(self, ctx):
+            captured["run_ctx"] = (ctx.variables or {}).get("_run_context", {})
+            from core.harness.interfaces import AgentResult
+            return AgentResult(success=True, output={"answer": "ok"})
+
+    async def fake_tts(text, **kw):
+        return b""
+
+    monkeypatch.setattr("core.harness.integration.get_agent_registry", lambda: FakeRegistry())
+    monkeypatch.setattr("core.harness.syscalls.tts.sys_tts_generate", fake_tts)
+    monkeypatch.setattr("core.api.core_facade.create_agent", lambda agent_type, config: FakeAgent())
+
+    async def run():
+        return await voice_pipeline.generate_answer("你好")
+
+    asyncio.run(run())
+    assert "page_data" not in captured["run_ctx"]

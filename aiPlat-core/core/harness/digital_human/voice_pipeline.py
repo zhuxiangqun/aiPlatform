@@ -159,7 +159,7 @@ async def transcribe(audio_bytes: bytes) -> str:
 
 
 
-async def generate_answer(text: str, page_context = "", session_id: str = "digital_human") -> Tuple[str, bytes]:
+async def generate_answer(text: str, page_context = "", session_id: str = "digital_human", page_data: str = "") -> Tuple[str, bytes]:
     """Send text to MaterialsChatAgent, get answer + TTS audio.
     
     page_context: str (old format: route path) or dict (new format: {route, label, group, groupLabel})
@@ -235,6 +235,8 @@ async def generate_answer(text: str, page_context = "", session_id: str = "digit
             from core.harness.interfaces import AgentContext
 
             run_ctx = {"entity_type": "数字人助手", "priority": "normal"}
+            if page_data:
+                run_ctx["page_data"] = page_data
             if isinstance(page_context, dict):
                 run_ctx["current_page"] = page_context.get("route", "")
                 run_ctx["current_page_label"] = page_context.get("label", "")
@@ -350,6 +352,7 @@ async def voice_chat_handler(websocket, session_id: str = "digital_human"):
     audio_buffer = io.BytesIO()
     page_context = ""
     conn_session = session_id
+    conn_page_data = ""
 
 
 
@@ -391,12 +394,14 @@ async def voice_chat_handler(websocket, session_id: str = "digital_human"):
                     page_context = ctx_data
                 if msg.get("session"):
                     conn_session = str(msg.get("session"))[:64]
+                if isinstance(ctx_data, dict) and ctx_data.get("data"):
+                    conn_page_data = str(ctx_data["data"])[:800]
 
             elif msg_type == "text":
 
                 user_text = msg.get("data", "")
 
-                answer, audio = await generate_answer(user_text, page_context, session_id=conn_session)
+                answer, audio = await generate_answer(user_text, page_context, session_id=conn_session, page_data=conn_page_data)
 
                 resp = {
 
@@ -428,7 +433,7 @@ async def voice_chat_handler(websocket, session_id: str = "digital_human"):
 
                     if text:
 
-                        answer, audio = await generate_answer(text, page_context, session_id=conn_session)
+                        answer, audio = await generate_answer(text, page_context, session_id=conn_session, page_data=conn_page_data)
 
                         resp = {
 

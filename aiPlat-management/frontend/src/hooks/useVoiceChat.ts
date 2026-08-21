@@ -165,9 +165,9 @@ export function useVoiceChat() {
     }
   }, []);
 
-  const sendContext = useCallback((context: string | { route: string; label?: string; group?: string; groupLabel?: string }) => {
+  const sendContext = useCallback((context: string | { route: string; label?: string; group?: string; groupLabel?: string; data?: string }) => {
     const payload = typeof context === 'string'
-      ? { route: context, label: '', group: '', groupLabel: '' }
+      ? { route: context, label: '', group: '', groupLabel: '', data: '' }
       : context;
     pendingContextRef.current = JSON.stringify(payload);
     const session = sessionRef.current;  // P2-3: 每次连接带稳定 session，隔离多用户对话记忆
