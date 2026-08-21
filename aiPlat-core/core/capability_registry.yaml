@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-08-16"
 total_capability_domains: 34
-total_capabilities: 1038
+total_capabilities: 1040
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -191,6 +191,10 @@ domains:
     section_name: "知识引擎（本体）"
     caps_count: 130
     provides:
+      - symbol: normalize_tier
+        type: function
+        signature: "P2-L1 治理分层归一化：core/logic/edge，未知值回退 logic"
+        module: aiPlat-core/core/harness/knowledge/knowledge_ontology.py
       - symbol: "GraphIndex"
       - symbol: build_wiki_to_agent_bridge
       - symbol: build_model_usage_bridge
@@ -204,6 +208,14 @@ domains:
       - symbol: build_wiki_to_agent_bridge
       - symbol: build_model_usage_bridge
       - symbol: build_prompt_to_agent_bridge
+      - symbol: SirgAuditor
+        type: class
+        signature: "Audit actual reasoning against the ontology's required rule chain."
+        module: aiPlat-core/core/harness/ontology_engine/sirg_auditor.py
+      - symbol: audit_trace_rules
+        type: function
+        signature: "Convenience: audit against a live GraphInference's rule set."
+        module: aiPlat-core/core/harness/ontology_engine/sirg_auditor.py
       - symbol: publish_business_action
       - symbol: compile_ontology_constraints
       - symbol: compile_axiom_rules

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1053
+total_capabilities: 1054
 last_updated: 2026-08-19
 version: "30.1"
 auto_sync: true
@@ -707,6 +707,9 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| audit_trace_rules | `core/harness/ontology_engine/sirg_auditor.py` | ✅ | 自动同步 | 已合入 |
+| SirgAuditor | `core/harness/ontology_engine/sirg_auditor.py` | ✅ | 自动同步 | 已合入 |
+| normalize_tier | `core/harness/knowledge/knowledge_ontology.py` | ✅ | 自动同步 | 已合入 |
 | compile_axiom_rules | `core/harness/ontology_engine/graph_index.py` | ✅ | 自动同步 | 已合入 |
 | compile_ontology_constraints | `` | ✅ | 自动同步 | 已合入 |
 | publish_business_action | `core/harness/ontology_engine/graph_index.py` | ✅ | 自动同步 | 已合入 |
@@ -734,6 +737,7 @@ scan_hash: 8f9548ec24f4
 | 数据源连接器 | harness/ontology_engine/data_source.py | ✅ | SQL/API/File → 本体实例映射 | 已合入 |
 | Webhook 写回 | harness/ontology_engine/engine.py:294 | ✅ | state transition → call_webhook | 已合入 |
 | 场景推演沙箱 | API: simulate-scenarios | ✅ | 多方案对比推演 | 已合入 |
+| 本体分层治变 (tier) | `knowledge/knowledge_ontology.py` + `knowledge/ontology_loader.py` | ✅ | P2-L1: OntologyClass.tier (core/logic/edge, 默认logic) + YAML 解析/校验 | 已合入 |
 | ShardedGraphIndex | harness/ontology_engine/sharded_graph.py | ✅ | 跨域分片图索引 | 已合入 |
 | 跨域本体桥接 | harness/ontology_engine/triple_store.py` + `harness/ontology_engine/triple_scanner.py | ✅ | 统一三元组存储 + BFS多跳遍历 + 5数据源自动扫描 + 3 API端点 | 已合入 |
 | 审批工作流引擎 | harness/ontology_engine/approval.py | ✅ | submit/approve/reject/changes + 超时升级 + 告警通道 | 已合入 |
@@ -1967,7 +1971,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 67 | 0 | 67 |
 | 记忆子系统 | 38 | 0 | 38 |
-| 知识引擎（本体） | 137 | 0 | 137 |
+| 知识引擎（本体） | 138 | 0 | 138 |
 | RAG 检索 | 42 | 0 | 42 |
 | 知识基础设施 | 29 | 0 | 29 |
 | Agent 系统 | 38 | 0 | 38 |
@@ -2010,7 +2014,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1053** | **0** | **1053** |
+| **总计** | **1054** | **0** | **1054** |
 
 ---
 

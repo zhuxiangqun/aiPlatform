@@ -250,6 +250,29 @@ async def list_ontology_proposals(
         raise HTTPException(status_code=500, detail=str(e)[:300])
 
 
+@router.post("/ontology/proposals/{proposal_id}/approve")
+async def approve_ontology_proposal(proposal_id: str, body: Dict[str, Any]):
+    """P2-L1: tier-gated approval — core→全员/架构评审, logic→产品经理确认, edge→自服务."""
+    try:
+        from core.api.core_facade import ActionStore
+        store = ActionStore()
+        await store.initialize()
+        proposal = await store.get_ontology_proposal(proposal_id)
+        if not proposal:
+            raise HTTPException(status_code=404, detail="Proposal not found")
+
+        domain_id = proposal.get("domain_id", "fde-delivery")
+        vstore = VersionedOntologyStore(domain_id)
+        result = await vstore.approve_proposal(proposal_id, approver_role=str(body.get("approver_role", "")))
+        if not result.get("success"):
+            raise HTTPException(status_code=403, detail=result.get("reason", "approval rejected"))
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
 @router.post("/ontology/proposals/{proposal_id}/apply")
 async def apply_ontology_proposal(proposal_id: str):
     """Apply an approved ontology proposal."""

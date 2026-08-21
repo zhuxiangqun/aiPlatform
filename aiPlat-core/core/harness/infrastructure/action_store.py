@@ -296,6 +296,17 @@ class ActionStore:
             await db.commit()
             return cur.rowcount > 0
 
+    async def update_ontology_proposal_impact(self, proposal_id: str, impact: str) -> bool:
+        """Persist updated impact_analysis (P2-L1: records tier approval evidence)."""
+        import aiosqlite
+        async with aiosqlite.connect(self.db_path) as db:
+            cur = await db.execute(
+                "UPDATE ontology_proposals SET impact_analysis = ? WHERE proposal_id = ?",
+                (impact, proposal_id),
+            )
+            await db.commit()
+            return cur.rowcount > 0
+
     async def list_ontology_proposals(self, domain_id: str) -> List[Dict[str, Any]]:
         import aiosqlite
         async with aiosqlite.connect(self.db_path) as db:

@@ -62,6 +62,9 @@ class OntologyAuditReport:
 
     unused_state_transitions: List[Dict[str, str]] = field(default_factory=list)
 
+    tier_distribution: Dict[str, int] = field(default_factory=dict)
+    """P2-L1: 各治理层类的数量 — {core: n, logic: n, edge: n}（按 ontology YAML tier 字段分组）"""
+
     warnings: List[str] = field(default_factory=list)
 
     recommendations: List[str] = field(default_factory=list)
@@ -89,6 +92,8 @@ class OntologyAuditReport:
             "state_transition_counts": self.state_transition_counts,
 
             "unused_state_transitions": self.unused_state_transitions,
+
+            "tier_distribution": self.tier_distribution,
 
             "warnings": self.warnings,
 
@@ -219,6 +224,22 @@ class OntologyAuditor:
             real_orphans = [cn for cn in key_orphans if classes.get(cn, {}).get("label", cn) not in graph_class_names]
 
             report.orphan_classes = sorted(real_orphans)
+
+            # P2-L1: tier distribution — count classes per governance tier (default logic)
+            from core.harness.knowledge.knowledge_ontology import normalize_tier, TIER_CORE, TIER_LOGIC, TIER_EDGE
+            tier_counts = {TIER_CORE: 0, TIER_LOGIC: 0, TIER_EDGE: 0}
+            for _cls_name, cls_def in classes.items():
+                tier = normalize_tier(cls_def.get("tier")) if isinstance(cls_def, dict) else TIER_LOGIC
+                tier_counts[tier] = tier_counts.get(tier, 0) + 1
+            report.tier_distribution = tier_counts
+            if tier_counts.get(TIER_CORE, 0) > 0:
+                report.recommendations.append(
+                    f"{tier_counts[TIER_CORE]} core-tier 类（承重墙）需全员/架构评审，变更必须走版本化 Proposal"
+                )
+            if tier_counts.get(TIER_EDGE, 0) > 0:
+                report.recommendations.append(
+                    f"{tier_counts[TIER_EDGE]} edge-tier 类（实验边缘）绝不自动升格，需复用证明（≥3 次真实命中）"
+                )
 
 
 

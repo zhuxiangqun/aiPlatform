@@ -50,6 +50,25 @@ NS = {
 }
 
 # ══════════════════════════════════════════════════════════════
+# Tier governance levels (P2-L1) — 分层治变
+# ══════════════════════════════════════════════════════════════
+
+TIER_CORE = "core"    # 稳定核心（承重墙）：身份/血缘/权限/Action 语义 — 全员审批，变更即版本化 Proposal
+TIER_LOGIC = "logic"  # 可变逻辑（软装）：评分/阈值/审批/工具范围 — 产品侧确认（默认，兼容存量）
+TIER_EDGE = "edge"    # 实验边缘（沙盘）：一次性假设/临时概念 — 自服务，绝不自动升格
+
+VALID_TIERS = (TIER_CORE, TIER_LOGIC, TIER_EDGE)
+TIER_ORDER = {TIER_CORE: 3, TIER_LOGIC: 2, TIER_EDGE: 1}  # 数值越大越"承重"
+
+
+def normalize_tier(value: Any) -> str:
+    """Normalize a raw YAML tier value to one of VALID_TIERS; unknown → logic."""
+    if isinstance(value, str) and value.strip().lower() in VALID_TIERS:
+        return value.strip().lower()
+    return TIER_LOGIC
+
+
+# ══════════════════════════════════════════════════════════════
 # T-Box: Class Hierarchy (dataclass representation)
 # ══════════════════════════════════════════════════════════════
 
@@ -89,6 +108,8 @@ class OntologyClass:
     """同义词列表，用于域路由器T1 label匹配扩展 (e.g. ["k8s", "kubernetes"])"""
     confidence_threshold: float = 0.7
     """本体映射置信度阈值，低于此值不启用 target_class 过滤 (domain router T2 使用)"""
+    tier: str = "logic"
+    """治理分层 (P2-L1): core=稳定核心(全员审批, 变更即版本化Proposal) / logic=可变逻辑(产品侧确认) / edge=实验边缘(自服务, 绝不自动升格)。默认 logic 兼容存量 YAML。"""
 
 
 @dataclass
