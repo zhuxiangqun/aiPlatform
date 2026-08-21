@@ -166,3 +166,4 @@ aiPlat 逻辑上分为：
 - **本体学习管理面板（2026-08-19）**：`GET /ontology/suggestions`（建议列表）+ 前端 `OntologyLearningPanel`（建议展示/刷新/OWL 导出）。
 - **P0-L2 业务事件桥（2026-08-19）**：Action 执行成功 → `BUSINESS_ACTION` 事件（EventBus 审计）+ `business_event_bridge` 即时增量更新 GraphIndex（替代定期 ABox 重建）。
 - **P1-L3 本体约束编译（2026-08-19）**：`compile_ontology_constraints`（AXIOMS+类字段 → 硬规则）+ `prompt_assembler` opt-in 注入（inject_ontology_contract）。
+- **P1-L4a 反事实扰动（2026-08-19）**：`hallucination_tracker.counterfactual_perturb`——实体替换重验 + 漂移判定记忆惯性幻觉。

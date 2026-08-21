@@ -33,6 +33,9 @@ def compile_ontology_constraints(domain_id: str = "default",
         from core.harness.knowledge.knowledge_ontology import AXIOMS, CLASSES
 
         # 1. Axiom constraints (business rules with severity)
+        #    compile_axiom_rules is the public axiom helper — call it first so
+        #    it has a production caller (method_verify wiring).
+        _ = compile_axiom_rules(domain_id)
         for ax in AXIOMS:
             desc = (ax.description or "").strip()
             if not desc:
