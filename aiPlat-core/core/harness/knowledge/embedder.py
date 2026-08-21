@@ -105,7 +105,11 @@ def embed_texts_semantic(texts: List[str]) -> Optional[List[List[float]]]:
 # ── Unified embed_text (router) ───────────────────────────────────────────
 
 def _backend_name() -> str:
-    return os.getenv("AIPLAT_EMBED_BACKEND", "hash").lower().strip()
+    # P-补全: default backend is now "semantic" (real embedding via
+    # InfraEmbeddingAdapter when a model is configured); hash stays as an
+    # explicit offline/test mode. Without a model, _get_semantic_model()
+    # returns None and callers skip vector writes — safe degradation.
+    return os.getenv("AIPLAT_EMBED_BACKEND", "semantic").lower().strip()
 
 
 async def embed_text(text: str, dim: int = 128) -> List[float]:

@@ -161,3 +161,4 @@ aiPlat 逻辑上分为：
 - **本体学习补全（2026-08-19）**：suggestions → OWL/Turtle 输出（export_suggestions_to_owl / write_suggestions_owl_file / _infer_parent_from_label），接线至 evolution_runner（建议生成后自动落盘 `{collection_id}.learned.ttl`，可经 ontology_importer 导入或 Protégé 加载）。层次推导：精确标签→同义词→包含→ConceptPage 兜底。
 - **P1-2 + 学习端点（2026-08-19）**：materials_chat 页面感知检索改 `search_pages` 搜索式（去硬编码 title + 全量加载）；新增 `GET /export/learned`（export_suggestions_to_owl + write_suggestions_owl_file 的 HTTP 入口）。
 - **本体学习增强（2026-08-19）**：LLM 层次发现（Dimension 3：embedding 预筛 + `_llm_judge_hierarchy` is-a 判断 → `new_subclass` 建议）+ `export_suggestions_to_owl` 输出 `rdfs:subClassOf` 公理（subject 标签直接使用）。
+- **真语义 embedding 默认化（2026-08-19）**：embed 后端默认 semantic（InfraEmbeddingAdapter 真实向量；无模型安全降级 None，hash 仅显式离线/测试）。
