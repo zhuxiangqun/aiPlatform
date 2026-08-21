@@ -14,20 +14,35 @@ export function useVoiceChat() {
   const chunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const silenceTimerRef = useRef<any>(null);
+  const maxTimerRef = useRef<any>(null);
   const pendingContextRef = useRef<string>('');
+  // P2-3: 每次会话一个稳定 session（多用户/多标签页隔离对话记忆与轨迹）
+  const sessionRef = useRef<string>(`dh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 
-    // Production (vite preview): no proxy, connect directly to core on 8002
-    const isProdOn5173 = import.meta.env.PROD && window.location.host.includes(':5173');
-    const host = isProdOn5173 ? window.location.host.replace(':5173', ':8002') : window.location.host;
-    const wsUrl = `${protocol}//${host}/ws/voice-chat`;
+    // P2-2 修复: 生产环境 WS 地址可配置。优先 VITE_WS_URL（部署时指向后端），
+    // 其次 dev(5173) 时替换端口到 core 8002；否则默认同域 /ws/voice-chat。
+    const configured = (import.meta.env.VITE_WS_URL as string | undefined)?.trim();
+    const wsToken = (import.meta.env.VITE_VOICE_WS_TOKEN as string | undefined)?.trim();
+    let wsUrl: string;
+    if (configured) {
+      wsUrl = configured.endsWith('/ws/voice-chat') ? configured : `${configured.replace(/\/$/, '')}/ws/voice-chat`;
+    } else if (import.meta.env.PROD && window.location.host.includes(':5173')) {
+      wsUrl = `${protocol}//${window.location.host.replace(':5173', ':8002')}/ws/voice-chat`;
+    } else {
+      wsUrl = `${protocol}//${window.location.host}/ws/voice-chat`;
+    }
+    // P2-1: 后端配置 AIPLAT_VOICE_WS_TOKEN 时，前端经 VITE_VOICE_WS_TOKEN 携带同名令牌
+    if (wsToken) {
+      wsUrl += `${wsUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(wsToken)}`;
+    }
     const ws = new WebSocket(wsUrl);
 
     // 5s connect timeout (only in dev mode with proxy)
-    const connectTimeout = !isProdOn5173 ? setTimeout(() => {
+    const connectTimeout = !import.meta.env.PROD ? setTimeout(() => {
       if (ws.readyState !== WebSocket.OPEN) {
         ws.close();
         setError('语音服务未启动（需要后端 8002 端口运行）');
@@ -51,7 +66,10 @@ export function useVoiceChat() {
           setAnswer(data.text);
           setMessages(prev => [...prev, { role: 'assistant', text: data.text }]);
           if (data.audio && audioRef.current) {
-            audioRef.current.src = `data:audio/mp3;base64,${data.audio}`;
+            // P1-3 修复: 按后端返回的 format 设置 MIME（Piper TTS 输出 WAV），
+            // 不再硬编码 audio/mp3 导致声明与实际格式不符。
+            const fmt = (data.format || 'wav').replace(/^audio\//, '');
+            audioRef.current.src = `data:audio/${fmt};base64,${data.audio}`;
             audioRef.current.play().catch(() => {});
             audioRef.current.onended = () => setStatus('idle');
           } else {
@@ -65,7 +83,7 @@ export function useVoiceChat() {
     };
     ws.onerror = () => {
       setError('语音服务未启动（需要后端 8002 端口运行）');
-      if (status === 'thinking') setStatus('idle');
+      setStatus('idle');  // P2-3 修复: 不再引用过期的 status 闭包变量
     };
     ws.onclose = () => { wsRef.current = null; };
 
@@ -108,6 +126,7 @@ export function useVoiceChat() {
 
       recorder.onstop = async () => {
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+        if (maxTimerRef.current) clearTimeout(maxTimerRef.current);
         if (chunksRef.current.length === 0) {
           setStatus('idle');
           return;
@@ -124,8 +143,10 @@ export function useVoiceChat() {
 
       recorder.start();
       setStatus('listening');
-      // Auto-stop after 10s max
+      // P2-3 修复: 独立的 10s 最大时长上限（注释声明过但从未实现），
+      // 与 1.5s 静默超时分开管理，两者先到先停。
       silenceTimerRef.current = setTimeout(() => stopRecording(), 1500);
+      maxTimerRef.current = setTimeout(() => stopRecording(), 10000);
     } catch {
       setError('Microphone access denied');
     }
@@ -149,8 +170,9 @@ export function useVoiceChat() {
       ? { route: context, label: '', group: '', groupLabel: '' }
       : context;
     pendingContextRef.current = JSON.stringify(payload);
+    const session = sessionRef.current;  // P2-3: 每次连接带稳定 session，隔离多用户对话记忆
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: 'context', data: payload }));
+      wsRef.current.send(JSON.stringify({ type: 'context', data: payload, session }));
     }
   }, []);
 

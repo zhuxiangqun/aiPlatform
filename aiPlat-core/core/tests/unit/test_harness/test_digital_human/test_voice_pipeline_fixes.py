@@ -129,3 +129,68 @@ def test_generate_answer_echo_fallback_only_when_no_agent(monkeypatch):
     from core.harness.digital_human import voice_pipeline
     src = open(voice_pipeline.__file__).read()
     assert '收到:' in src  # fallback 保留
+
+
+# ═══════════════════════════════════════════════════════════
+# P1-2: 轨迹 → ShareGPT 数据集闭环
+# ═══════════════════════════════════════════════════════════
+
+def test_export_sharegpt_dataset(monkeypatch, tmp_path):
+    """数字人轨迹聚合为训练侧 ShareGPT JSONL（与 auto_trigger 格式一致）。"""
+    import json as _json
+    from pathlib import Path as _Path
+    from core.harness.digital_human import trajectory_collector as _tc
+    traj_dir = tmp_path / "trajectories"
+    traj_dir.mkdir()
+    _tc._TRAJ_DIR = _Path(str(traj_dir))  # 模块级常量直接指向 tmp（env 已被模块缓存）
+
+    from core.harness.digital_human.trajectory_collector import collect_turn, export_sharegpt_dataset
+    collect_turn("sess_a", "user", "你好")
+    collect_turn("sess_a", "assistant", "你好！有什么可以帮你？")
+    collect_turn("sess_b", "user", "单轮噪音")
+
+    out_dir = tmp_path / "training"
+    r = export_sharegpt_dataset(output_dir=str(out_dir), min_turns=2)
+    assert r["samples"] == 1
+    assert r["skipped_sessions"] == ["sess_b"]
+    data = _json.loads(open(r["output_path"]).read())
+    assert data["conversations"] == [
+        {"from": "human", "value": "你好"},
+        {"from": "gpt", "value": "你好！有什么可以帮你？"},
+    ]
+    # 与 auto_trigger._convert_to_sharegpt 的输出结构一致（from/value 字段名）
+    assert data["conversations"][0]["from"] == "human"
+
+
+def test_export_sharegpt_empty(monkeypatch, tmp_path):
+    from pathlib import Path as _Path
+    from core.harness.digital_human import trajectory_collector as _tc
+    traj_dir = tmp_path / "trajectories"
+    traj_dir.mkdir()
+    _tc._TRAJ_DIR = _Path(str(traj_dir))
+    from core.harness.digital_human.trajectory_collector import export_sharegpt_dataset
+    r = export_sharegpt_dataset(output_dir=str(tmp_path / "training"))
+    assert r["samples"] == 0
+
+
+# ═══════════════════════════════════════════════════════════
+# P1-3: ASR 容器格式嗅探
+# ═══════════════════════════════════════════════════════════
+
+def test_transcribe_detects_webm_suffix(monkeypatch, tmp_path):
+    """webm 魔数 → 临时文件用 .webm 后缀（不再误导为 .wav）。"""
+    captured = {}
+
+    class FakeWhisper:
+        def transcribe(self, path):
+            captured["suffix"] = path.split(".")[-1]
+            return [{"text": "你好"}]
+
+    async def fake_get_whisper():
+        return FakeWhisper()
+
+    monkeypatch.setattr("core.harness.digital_human.voice_pipeline._get_whisper", fake_get_whisper)
+    # webm EBML 魔数
+    text = asyncio.run(transcribe(b"\x1a\x45\xdf\xa3fake-webm"))
+    assert text == "你好"
+    assert captured["suffix"] == "webm"

@@ -2531,6 +2531,20 @@ try:
 
     @app.websocket("/ws/voice-chat")
     async def ws_voice_chat(websocket: WebSocket):
+        # P2-1 修复: WS 鉴权 — 配置 AIPLAT_VOICE_WS_TOKEN 后，客户端必须在 query/token
+        # 或首次消息携带同名令牌，否则拒绝握手。未配置令牌时保持开放（开发/内网兼容）。
+        import os as _os, json as _json
+        _expected = _os.getenv("AIPLAT_VOICE_WS_TOKEN", "").strip()
+        if _expected:
+            _provided = (websocket.query_params.get("token") or "").strip()
+            if not _provided:
+                # 允许首帧携带 {"type":"auth","token":"..."}，但需在 accept 前不可读帧；
+                # 因此仅支持 query/token 或 subprotocol——WebSocket 规范下握手前只能读 query。
+                await websocket.close(code=4401, reason="missing token")
+                return
+            if _provided != _expected:
+                await websocket.close(code=4403, reason="invalid token")
+                return
         await websocket.accept()
         try:
             await voice_chat_handler(websocket)
