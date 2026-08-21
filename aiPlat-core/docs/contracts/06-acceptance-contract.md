@@ -321,3 +321,11 @@ pytest -q \
   - `pytest aiPlat-core/core/tests/unit/test_harness/test_digital_human/test_voice_pipeline_fixes.py -q`（12 passed）
   - `python3 -c "from core.harness.integration import get_agent_registry as a; from core.apps.agents import get_agent_registry as b; assert a() is b()"`（单例同源）
   - 前端 tsc + build：`cd aiPlat-management/frontend && npx tsc --noEmit && npm run build`（exit 0）
+
+### 1.32 文档新鲜度守卫 Rule 6（2026-08-22）
+- MUST：`scripts/check_research_docs_freshness.py` 存在且可运行（`python3 scripts/check_research_docs_freshness.py <workspace>` 返回 0）
+- MUST：`verify_doc_sync.sh` 含 Rule 6 调用（`check_research_docs_freshness`），`--ci` 模式下 research 文档违规计入阻断
+- MUST：审计报告头部支持 `> **最后验证：YYYY-MM-DD**` 自校验字段
+- 自动化验收：
+  - `python3 -m pytest tests/tool_correctness/test_research_docs_freshness.py -q`（8 passed）
+  - `grep -c "check_research_docs_freshness" scripts/verify_doc_sync.sh`（≥2：定义 + 调用）
