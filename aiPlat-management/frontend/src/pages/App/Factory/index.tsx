@@ -5,6 +5,7 @@ import { Plus, Send, Loader2, Clock, CheckCircle, XCircle, ExternalLink, BarChar
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { projectApi, builderTeamApi, workspaceAgentApi, type ProjectItem, type ProjectRun } from '../../../services';
+import { reportPageData, clearPageData } from '../../../lib/pageDataBridge';
 import { Card, CardContent, Button, Textarea, toast } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
 import type { BuilderSession } from '../../../services';
@@ -1578,6 +1579,31 @@ const FactoryPage: React.FC = () => {
   }, []);
 
   useEffect(() => { loadAll(); }, [loadAll]);
+
+  // P2-4: 向数字人上报应用工厂实时状态（项目数/阶段/通过率/选中项目）
+  useEffect(() => {
+    const stageCount: Record<string, number> = {};
+    Object.values(projectStates).forEach((ph: string) => {
+      const key = ph || 'unknown';
+      stageCount[key] = (stageCount[key] || 0) + 1;
+    });
+    const runningCount = Object.values(projectStates).filter(ph => ['executing', 'running', 'pending'].includes(ph)).length;
+    const doneCount = Object.values(projectStates).filter(ph => ['done', 'completed'].includes(ph)).length;
+    const avgPassRate = Object.values(projectPassRates).length
+      ? Math.round(Object.values(projectPassRates).reduce((a, b) => a + (b || 0), 0) / Object.values(projectPassRates).length * 100) / 100
+      : undefined;
+    reportPageData('/app/factory', {
+      projectCount: projects.length,
+      deployedAppCount: deployedApps.length,
+      stageCount,
+      running: runningCount,
+      done: doneCount,
+      avgPassRate,
+      selectedProject: selectedProject?.name || undefined,
+      selectedProjectPhase: selectedProject ? (projectStates[selectedProject.project_id] || undefined) : undefined,
+    });
+    return () => clearPageData('/app/factory');
+  }, [projects, deployedApps, projectStates, projectPassRates, selectedProject]);
 
   const create = async () => {
     if (!desc.trim()) { toast.warning('请输入应用描述'); return; }
