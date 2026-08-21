@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Shield, CheckCircle, AlertTriangle, Activity, RefreshCw, FileText } from 'lucide-react';
 import { apiClient } from '../../services/apiClient';
+import { reportPageData, clearPageData } from '../../lib/pageDataBridge';
 
 interface MechanismStatus {
   status: string;
@@ -43,6 +44,24 @@ export default function GovernanceDashboard() {
   if (!data) return <div style={{ padding: 20, color: '#f88', fontFamily: 'monospace' }}>Failed to load governance data</div>;
 
   const hColor = data.health_level === 'good' ? '#4a4' : data.health_level === 'warning' ? '#aa4' : '#a44';
+
+  // P2-4: 向数字人上报治理仪表盘实时状态
+  useEffect(() => {
+    const mechanism = Object.fromEntries(
+      Object.entries(data.mechanism_status || {}).map(([k, v]) => [k, v.status])
+    );
+    const attentionCount = Object.values(data.mechanism_status || {}).filter(v => v.status !== 'good').length;
+    reportPageData('/governance', {
+      overallHealth: data.overall_health,
+      healthLevel: data.health_level,
+      pendingApprovals: data.pending_approvals,
+      todayCalls: data.audit_summary?.total_events_today || 0,
+      deniedCalls: data.audit_summary?.denied_calls || 0,
+      mechanismsNeedingAttention: attentionCount,
+      mechanismStatus: mechanism,
+    });
+    return () => clearPageData('/governance');
+  }, [data]);
 
   return (
     <div style={{ padding: 24, fontFamily: 'monospace', fontSize: 13, background: '#0f0f1a', minHeight: '100vh', color: '#d0d0d0' }}>

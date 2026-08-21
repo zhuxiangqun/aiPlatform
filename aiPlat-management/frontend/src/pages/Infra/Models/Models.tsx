@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { reportPageData, clearPageData } from '../../../lib/pageDataBridge';
 import { motion } from 'framer-motion';
 import { Plus, RotateCw, Network, Settings, Trash2, Laptop, Key, Save, Sliders } from 'lucide-react';
 import { Table, Button, Modal, Select, toast } from '../../../components/ui';
@@ -386,6 +387,21 @@ const Models: React.FC = () => {
       ),
     },
   ];
+
+  // P2-4: 向数字人上报模型管理页实时状态
+  useEffect(() => {
+    const statusCount: Record<string, number> = {};
+    models.forEach(m => { statusCount[m.status] = (statusCount[m.status] || 0) + 1; });
+    reportPageData('/infra/models', {
+      totalModels: models.length,
+      statusCount,
+      enabled: statusCount['enabled'] || 0,
+      disabled: statusCount['disabled'] || 0,
+      unhealthy: (statusCount['unhealthy'] || 0) + (statusCount['error'] || 0),
+      providerCount: providers.length,
+    });
+    return () => clearPageData('/infra/models');
+  }, [models, providers]);
 
   return (
     <div className="space-y-6">

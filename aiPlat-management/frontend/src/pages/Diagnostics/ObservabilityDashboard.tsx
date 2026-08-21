@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { reportPageData, clearPageData } from '../../lib/pageDataBridge';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, BarChart3, Brain, Clock, AlertTriangle, Activity, Zap, Database, BellRing, ExternalLink, Settings, Save } from 'lucide-react';
 import { diagnosticsApi } from '../../services';
@@ -165,6 +166,18 @@ const ObservabilityDashboard: React.FC = () => {
 
   const maxThroughput = Math.max(1, ...throughput.map((p: any) => p.count));
   const maxErrorTotal = Math.max(1, ...error_timeline.map((p: any) => p.total));
+
+  // P2-4: 向数字人上报可观测性实时状态
+  useEffect(() => {
+    reportPageData('/diagnostics/observability', {
+      activeRuns: stats?.active_runs || 0,
+      llmCalls: stats?.llm_stats?.total_calls ?? stats?.llm_stats?.calls ?? undefined,
+      llmErrorRate: stats?.llm_stats?.error_rate ?? undefined,
+      topErrors: (stats?.top_errors || []).slice(0, 3).map(e => `${e.error || e.type || ''}:${e.count || 0}`).join('; '),
+      syscallKinds: Object.keys(stats?.syscall_by_kind || {}).join(','),
+    });
+    return () => clearPageData('/diagnostics/observability');
+  }, [stats]);
 
   return (
     <div style={{ padding: '24px 32px', maxWidth: 1200, color: '#e5e7eb' }}>

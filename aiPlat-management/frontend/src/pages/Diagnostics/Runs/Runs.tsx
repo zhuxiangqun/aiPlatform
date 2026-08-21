@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { reportPageData, clearPageData } from '../../../lib/pageDataBridge';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Copy, RefreshCw, Ban, RotateCcw } from 'lucide-react';
 
@@ -366,6 +367,20 @@ const Runs: React.FC = () => {
     ],
     []
   );
+
+  // P2-4: 向数字人上报运行记录页实时状态
+  useEffect(() => {
+    const eventKinds: Record<string, number> = {};
+    events.forEach((e: any) => { const k = e.event || e.type || 'unknown'; eventKinds[k] = (eventKinds[k] || 0) + 1; });
+    reportPageData('/diagnostics/runs', {
+      runId: runId || undefined,
+      runStatus: run?.status || undefined,
+      eventCount: events.length,
+      eventKinds,
+      lastSeq,
+    });
+    return () => clearPageData('/diagnostics/runs');
+  }, [runId, run, events, lastSeq]);
 
   return (
     <div className="space-y-4">
