@@ -129,3 +129,43 @@ class TestEmbedBackend:
         from core.harness.knowledge import embedder
         monkeypatch.setattr(embedder, "_get_semantic_model", lambda: None)
         assert embedder.embed_text_semantic("x") is None
+
+
+class TestGraphRAGVectorSearch:
+    """P-补全: GraphRAG _vector_search hits kb_embeddings first, wiki fallback."""
+
+    def test_vector_priority_with_kb_data(self, tmp_path, monkeypatch):
+        """With vectors present, _vector_search returns vector results (not wiki)."""
+        import asyncio
+
+        from core.harness.knowledge_pipeline.retriever import GraphRAGRetriever
+        from core.harness.knowledge.sqlite_retriever import SqliteEmbeddingRetriever
+        from core.harness.knowledge.types import (
+            KnowledgeEntry, KnowledgeMetadata, KnowledgeResult, KnowledgeSource,
+            KnowledgeType)
+
+        async def fake_retrieve(self, query):
+            entry = KnowledgeEntry(
+                id="e1", type=KnowledgeType.DOCUMENT,
+                content="用户认证依赖认证服务实现", title="auth-doc",
+                metadata=KnowledgeMetadata(source=KnowledgeSource.SYSTEM))
+            return [KnowledgeResult(entry=entry, score=0.9)]
+
+        monkeypatch.setattr(SqliteEmbeddingRetriever, "retrieve", fake_retrieve)
+        gr = GraphRAGRetriever()
+        chunks = asyncio.run(gr._vector_search("认证", "default", top_k=5))
+        assert chunks, "expected vector results"
+        assert any("vector:" in str(c.get("source", "")) for c in chunks), \
+            "results must come from the vector store, not wiki"
+        assert any(c.get("title") == "auth-doc" for c in chunks)
+
+    def test_empty_vector_falls_back(self, tmp_path, monkeypatch):
+        """Empty vector store → wiki FTS fallback path (no crash)."""
+        import asyncio
+
+        monkeypatch.setenv("AIPLAT_KB_TENANTS_DIR", str(tmp_path / "kb_empty"))
+        from core.harness.knowledge_pipeline.retriever import GraphRAGRetriever
+
+        gr = GraphRAGRetriever()
+        chunks = asyncio.run(gr._vector_search("认证", "default", top_k=5))
+        assert isinstance(chunks, list)  # empty or wiki results, never raises
