@@ -177,3 +177,5 @@ aiPlat 逻辑上分为：
 - **数字人管线 P0/P1 修复（2026-08-21）**：`voice_pipeline.py` —— registry 解析改 discovery 单例（`core.apps.agents.get_agent_registry`）+ 直接创建兜底（模型解析失败降级空 model 名）；transcribe 改 segment 顺序拼接（List[Dict] → text）；入口应用 `digital_human` ControlProfile。6 项测试。
 
 - **数字人 P1/P2 修复（2026-08-21）**：① TTS 格式链（format 字段 + wav MIME + webm 魔数嗅探）；② 轨迹闭环（export_sharegpt_dataset → ~/.aiplat/training，会话结束触发）；③ WS 鉴权（AIPLAT_VOICE_WS_TOKEN，query token 校验）；④ 生产 WS 路径（VITE_WS_URL 优先）；⑤ session 隔离 + onerror 闭包 + 录音 10s 上限。10 项测试。
+
+- **数字人页面实时数据感知（P2-4, 2026-08-21）**：前端 `lib/pageDataBridge.ts` 数据桥（reportPageData/getPageData/pageDataToText）+ FloatingDigitalHuman context 附数据；后端 handler→generate_answer→MaterialsChat 注入 `[当前页面数据: ...]` 到 enhanced_question；诊断概览页示范接入。12 项测试。

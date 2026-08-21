@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useWakeWord } from '../../hooks/useWakeWord';
 import { useVoiceChat, ChatStatus } from '../../hooks/useVoiceChat';
 import { getPageInfo } from '../../pageManifest';
+import { getPageData, pageDataToText } from '../../lib/pageDataBridge';
 import AnimatedAvatar from './AnimatedAvatar';
 
 export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: string }) {
@@ -21,10 +22,12 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
   useEffect(() => {
     if (currentRoute) {
       const meta = getPageInfo(currentRoute);
+      // P2-4: 附带当前页面上报的实时数据（页面自愿上报，未上报则为空字符串）
+      const pageData = pageDataToText(getPageData(currentRoute));
       if (meta) {
-        sendContext({ route: currentRoute, label: meta.label, group: meta.group, groupLabel: meta.groupLabel });
+        sendContext({ route: currentRoute, label: meta.label, group: meta.group, groupLabel: meta.groupLabel, data: pageData });
       } else {
-        sendContext({ route: currentRoute });
+        sendContext({ route: currentRoute, data: pageData });
       }
     }
   }, [currentRoute, sendContext]);
