@@ -2,7 +2,7 @@
 
 > **背景**：以六层"决策操作系统"框架（战略罗盘 / 静态知识底座 / 动态感知 / 混合推理 / 双重可信审计 / 受控行动与进化）为标尺，对照 aiPlat 现状。
 > **方法**：逐层代码实证（`文件:行号`），与框架要求逐一比对，标注成熟度与差距。
-> **总体结论**：**六层全覆盖**（无缺失层，对照三方只有 aiPlat 同时具备本体+推理+审计+Action+进化）；**原 3 个真实缺口，L2 业务事件流已闭环（P0-L2 事件桥，2026-08-19）**，剩 **2 个**（L4 反事实扰动+SIRG、L3 本体公理约束编译）；**3 个强项已验证**（本体学习闭环、Action 阶梯+本体版本管理、证据验证基础）。
+> **总体结论**：**六层全覆盖**（无缺失层，对照三方只有 aiPlat 同时具备本体+推理+审计+Action+进化）；**原 3 个真实缺口已全部闭环**（L2 业务事件流 P0-L2 #58、L4 反事实扰动+SIRG #62/#63、L3 本体公理约束编译 #62，2026-08-19~21）；**3 个强项已验证**（本体学习闭环、Action 阶梯+本体版本管理、证据验证基础）；**治理强化**：P2-L1 本体分层治变（core/logic/edge 分级审批 + 升格复用证明）已实施。
 
 ---
 
@@ -106,19 +106,19 @@
 
 ---
 
-## 3.5 路线图执行进度（2026-08-19 更新）
+## 3.5 路线图执行进度（2026-08-21 更新）
 
 | 优先级 | 项 | 状态 | 实施 |
 |---|---|---|---|
 | **P0-L2** | 业务事件流（GPS 层） | ✅ **已实施** | #58：Action 成功 → EventBus + business_event_bridge 即时 GraphIndex 增量更新（替代定期 ABox 重建） |
-| **P1-L3** | 本体公理约束编译（SWRL/ABox → 生成前 System Prompt/JSON Schema） | ⏳ 待实施 | 复用 `_sync_resolve` 注入机制（1 天） |
-| **P1-L4a** | EAEV 反事实扰动 | ⏳ 待实施 | hallucination_tracker 加扰动函数（1 天） |
-| **P1-L4b** | SIRG 推理链 vs 规则链一致性 | ⏳ 待实施 | graph_inference 推理链导出（1-2 天） |
-| **P2-L1** | 本体三层分离（tier 字段） | ⏳ **设计已定（见 plan-tier-ontology-layering.md）** | ontology YAML 加 `tier: core|logic|edge`（1 天，按设计实施） |
+| **P1-L3** | 本体公理约束编译（SWRL/ABox → 生成前 System Prompt/JSON Schema） | ✅ **已实施** | #62：`ontology_constraint_compiler`（AXIOMS/类字段 → 硬规则）+ `prompt_assembler` opt-in 注入（`meta.inject_ontology_contract`，默认不注入保 prompt cache） |
+| **P1-L4a** | EAEV 反事实扰动 | ✅ **已实施** | #62：`counterfactual_perturb` 实体替换→同上下文重验→漂移>0.3 且原置信>0.6 判记忆惯性，best-effort 接入 evaluate |
+| **P1-L4b** | SIRG 推理链 vs 规则链一致性 | ✅ **已实施** | #63：`sirg_auditor`（rule_chain_for + audit_reasoning），缺失规则→违规报告；推理链取可观测执行面 |
+| **P2-L1** | 本体三层分离（tier 字段） | ✅ **已实施** | 本轮：`OntologyClass.tier`（core/logic/edge，默认 logic 兼容存量）+ loader 解析/校验 + `versioned_ontology_store` 分级审批（core 需架构评审 / logic 产品确认 / edge 自服务）+ edge→logic 升格需复用证明（reuse_count≥3）+ ontology_audit 按 tier 分组 |
 | **P2-L0** | 立项四问工具化 | ⏳ 待实施 | FDE 诊断卡四问评估（0.5 天） |
 | **P2-L5** | Action 阶梯量化门 | ⏳ 待实施 | Lv 标注 + 自动闭环误报率门（0.5 天） |
 
-**执行原则**：程序修改暂停于 P0-L2 之后（2026-08-19），文档先行同步；后续按 P1 → P2 顺序恢复实施。
+**执行原则**：程序修改暂停于 P0-L2 之后（2026-08-19），文档先行同步；后续按 P1 → P2 顺序恢复实施。P0-L2 + P1 全部（L3/L4a/L4b）+ P2-L1 已闭环，剩 P2-L0 / P2-L5 两项。
 
 ---
 

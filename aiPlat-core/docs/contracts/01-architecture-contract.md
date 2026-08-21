@@ -168,3 +168,5 @@ aiPlat 逻辑上分为：
 - **P1-L3 本体约束编译（2026-08-19）**：`compile_ontology_constraints`（AXIOMS+类字段 → 硬规则）+ `prompt_assembler` opt-in 注入（inject_ontology_contract）。
 - **P1-L4a 反事实扰动（2026-08-19）**：`hallucination_tracker.counterfactual_perturb`——实体替换重验 + 漂移判定记忆惯性幻觉。
 - **P1-L4b SIRG（2026-08-19）**：`sirg_auditor`——规则链提取 + 推理链 vs 规则链一致性审计（缺失规则 → 违规报告）。
+
+- **P2-L1 本体分层治变（2026-08-21）**：`OntologyClass.tier`（core/logic/edge，默认 logic）+ loader 解析/校验 + `versioned_ontology_store` 分级审批（`approve_proposal`：core 需架构评审角色、logic 产品侧、edge 自服务）+ `apply_proposal` tier gate（core 需架构评审证据；edge→logic 需 `promotion_proof.reuse_count ≥ 3`）+ `ontology_audit.tier_distribution` 分组。契约：本体变更治理按影响半径分级；新增 `POST /ontology/proposals/{id}/approve` 审批端点（platform apps/fde 经 CoreFacade 访问）。10 项测试。
