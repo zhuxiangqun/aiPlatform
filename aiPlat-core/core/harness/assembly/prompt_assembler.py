@@ -249,6 +249,19 @@ class MessageFormatter:
 
                         prompt.insert(0, {"role": "system", "content": contract})
 
+
+            # ── P1-L3 本体公理约束注入（生成前逻辑锁，opt-in）──
+            # 显式 meta.inject_ontology_contract 时编译本体 AXIOMS/类约束为
+            # 硬规则注入 system prompt——AI 开口前知道业务红线。默认不注入。
+            if meta.get("inject_ontology_contract"):
+                from core.harness.knowledge.ontology_constraint_compiler import compile_ontology_constraints
+                ocontract = compile_ontology_constraints()
+                if ocontract and msgs:
+                    sys_idx = next((i for i, m in enumerate(msgs) if m.get("role") == "system"), None)
+                    if sys_idx is not None:
+                        msgs[sys_idx]["content"] = str(msgs[sys_idx].get("content", "")) + "\n" + ocontract
+                    else:
+                        msgs.insert(0, {"role": "system", "content": ocontract})
         except Exception as e:
 
             logging.debug(str(e), exc_info=True)

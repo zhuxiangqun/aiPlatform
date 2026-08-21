@@ -707,6 +707,7 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| publish_business_action | `core/harness/ontology_engine/graph_index.py` | ✅ | 自动同步 | 已合入 |
 | WikiEngine | `harness/knowledge/wiki_engine.py` | ✅ | 自动同步 | 已合入 |
 | build_prompt_to_agent_bridge | `` | ✅ | 自动同步 | 已合入 |
 | build_model_usage_bridge | `` | ✅ | 自动同步 | 已合入 |
