@@ -4,6 +4,7 @@ import { RotateCw, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Table, Button, Modal, toast } from '../../components/ui';
 import PageHeader from '../../components/common/PageHeader';
 import { alertingApi } from '../../services';
+import { reportPageData, clearPageData } from '../../lib/pageDataBridge';
 
 interface Alert {
   id: string;
@@ -208,6 +209,18 @@ const Alerts: React.FC = () => {
   const criticalCount = alerts.filter(a => a.severity === 'critical' && a.status === 'firing').length;
   const warningCount = alerts.filter(a => a.severity === 'warning' && a.status === 'firing').length;
   const infoCount = alerts.filter(a => a.severity === 'info' && a.status === 'firing').length;
+
+  // P2-4: 向数字人上报告警中心实时状态
+  useEffect(() => {
+    reportPageData('/alerts', {
+      firingCritical: criticalCount,
+      firingWarning: warningCount,
+      firingInfo: infoCount,
+      firingTotal: criticalCount + warningCount + infoCount,
+      activeTab,
+    });
+    return () => clearPageData('/alerts');
+  }, [criticalCount, warningCount, infoCount, activeTab]);
 
   return (
     <div className="space-y-6">

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { reportPageData, clearPageData } from '../../lib/pageDataBridge';
 import { Box, ChevronRight, Plus, Trash2, Save, RefreshCw, Sparkles, ChevronDown } from 'lucide-react';
 import { apiClient } from '../../services/apiClient';
 
@@ -220,6 +221,19 @@ export default function OntologyEditor() {
     });
     setEditing(true);
   };
+
+  // P2-4: 向数字人上报本体编辑器实时状态
+  useEffect(() => {
+    const classCount = schema?.classes ? Object.keys(schema.classes).length : 0;
+    reportPageData('/ontology-editor', {
+      domainCount: domains.length,
+      selectedDomain: selectedDomain || undefined,
+      classCount,
+      selectedClass: selectedClass || undefined,
+      hasSchema: !!schema,
+    });
+    return () => clearPageData('/ontology-editor');
+  }, [domains, selectedDomain, schema, selectedClass]);
 
   return (
     <div style={{ display: 'flex', height: '100vh', fontFamily: 'monospace', fontSize: 13 }}>

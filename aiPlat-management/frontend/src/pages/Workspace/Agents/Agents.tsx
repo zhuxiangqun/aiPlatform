@@ -14,6 +14,7 @@ import ImportBar from '../../../components/workspace/ImportBar';
 import { ChatPanel } from '../../../components/core';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
 import { StatusBadge } from '../../../utils/statusLabel';
+import { reportPageData, clearPageData } from '../../../lib/pageDataBridge';
 
 const WorkspaceAgents: React.FC = () => {
   const { agents, loading, fetchAgents, startAgent, stopAgent, deleteAgent } = useWorkspaceAgentStore();
@@ -369,6 +370,20 @@ const WorkspaceAgents: React.FC = () => {
     { value: 'listed', label: '已上架 (listed)' },
     { value: 'deprecated', label: '已废弃 (deprecated)' },
   ];
+
+  // P2-4: 向数字人上报 Agent 管理页实时状态
+  useEffect(() => {
+    const statusCount: Record<string, number> = {};
+    agents.forEach(a => { statusCount[a.status] = (statusCount[a.status] || 0) + 1; });
+    reportPageData('/workspace/agents', {
+      totalAgents: agents.length,
+      statusCount,
+      running: statusCount['running'] || 0,
+      ready: statusCount['ready'] || 0,
+      error: (statusCount['error'] || 0) + (statusCount['failed'] || 0),
+    });
+    return () => clearPageData('/workspace/agents');
+  }, [agents]);
 
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">

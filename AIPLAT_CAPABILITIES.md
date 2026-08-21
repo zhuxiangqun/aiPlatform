@@ -1273,7 +1273,7 @@ scan_hash: 8f9548ec24f4
 | graph_extract | harness/syscalls/graph_extract.py | ✅ | 自动同步 | 已合入 |
 | async_utils | harness/utils/async_utils.py | ✅ | 自动同步 | 已合入 |
 | trajectory_collector | `harness/digital_human/trajectory_collector.py` | ✅ | P1-2 闭环：轨迹→ShareGPT 数据集（export_sharegpt_dataset → ~/.aiplat/training） | 已合入 |
-| voice_pipeline | `harness/digital_human/voice_pipeline.py` | ✅ | ASR→Agent→TTS 编排；P0 修复 + P1-3 格式链 + P2-1 WS 鉴权 + session 隔离 + P2-4 页面数据感知（page_data → 注入 prompt） | 已合入 |
+| voice_pipeline | `harness/digital_human/voice_pipeline.py` | ✅ | ASR→Agent→TTS 编排；P0 修复 + P1-3 格式链 + P2-1 WS 鉴权 + session 隔离 + P2-4 页面数据感知（8 管理页接入 pageDataBridge） | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | harness/learning/experience_vector.py | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | ToolDriftDetector | harness/learning/tool_drift_detector.py | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |

@@ -309,3 +309,15 @@ pytest -q \
 - 自动化验收：
   - 后端端点注册：`grep -c "suggestions" aiPlat-core/core/api/routers/wiki_semantic_suggestions.py`（GET 端点存在）
   - 前端 tsc：`cd aiPlat-management/frontend && npx tsc --noEmit`（exit 0）
+
+### 1.31 数字人管线（2026-08-21）
+- MUST：`integration.get_agent_registry()` 与 `core.apps.agents.get_agent_registry()` 返回同一 discovery 单例实例（P0-1 修复）
+- MUST：`voice_pipeline.transcribe` 对 `List[Dict]`（segment 列表）按顺序拼接文本，不产生 `str(list)` 垃圾
+- MUST：`voice_pipeline.generate_answer` 支持 `page_data` 参数并注入 `run_ctx['page_data']`；无 page_data 时不注入该字段
+- MUST：`trajectory_collector.export_sharegpt_dataset` 聚合轨迹为 ShareGPT JSONL（`conversations: [{from: human/gpt, value}]`）
+- MUST：WS `/ws/voice-chat` 在配置 `AIPLAT_VOICE_WS_TOKEN` 后校验 `?token=`（未配置保持开放）
+- MUST：前端 `lib/pageDataBridge.ts` 提供 `reportPageData/getPageData/pageDataToText`；页面上报数据随 context 发送（`data` 字段）
+- 自动化验收：
+  - `pytest aiPlat-core/core/tests/unit/test_harness/test_digital_human/test_voice_pipeline_fixes.py -q`（12 passed）
+  - `python3 -c "from core.harness.integration import get_agent_registry as a; from core.apps.agents import get_agent_registry as b; assert a() is b()"`（单例同源）
+  - 前端 tsc + build：`cd aiPlat-management/frontend && npx tsc --noEmit && npm run build`（exit 0）
