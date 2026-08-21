@@ -293,3 +293,12 @@ pytest -q \
 - 自动化验收：
   - `python3 -c "import core.harness.utils.model_injection as mi; assert not hasattr(mi, 'create_adapter_with_fallback'); assert callable(mi.generate_with_fallback)"`
   - `pytest core/tests/unit/test_builder_pipeline_e2e.py -q`（5 passed）
+
+### 1.29 本体学习输出 + P1-2 页面感知优化（2026-08-19）
+- MUST：`export_suggestions_to_owl` 将 pending new_class/new_property 建议序列化为含 `owl:Class`/`rdfs:subClassOf` 的 OWL/Turtle
+- MUST：`write_suggestions_owl_file` 落盘 `~/.aiplat/ontologies/{collection_id}.learned.ttl`
+- MUST：`GET /export/learned` 端点返回学习本体（`classes`/`properties`/`persisted`/`ttl`）
+- MUST：materials_chat 页面感知检索不再硬编码 `manuals / management-ui-operation-manual`（改 `search_pages(page_label)`）
+- 自动化验收：
+  - `pytest core/tests/unit/test_harness/test_knowledge/test_ontology_learning.py -q`（5 passed）
+  - `grep -c "manuals / management-ui-operation-manual" aiPlat-core/core/apps/agents/materials_chat.py`（注释命中 1，无代码硬编码）
