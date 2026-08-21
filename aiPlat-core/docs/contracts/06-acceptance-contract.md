@@ -302,3 +302,10 @@ pytest -q \
 - 自动化验收：
   - `pytest core/tests/unit/test_harness/test_knowledge/test_ontology_learning.py -q`（5 passed）
   - `grep -c "manuals / management-ui-operation-manual" aiPlat-core/core/apps/agents/materials_chat.py`（注释命中 1，无代码硬编码）
+
+### 1.30 本体学习管理面板（2026-08-19）
+- MUST：`GET /ontology/suggestions` 返回 pending 建议列表（new_class/new_property/new_subclass/merge_classes）
+- MUST：前端 `OntologyLearningPanel` 挂载于本体模型管理页（建议展示 + OWL 导出按钮调 `GET /ontology/export/learned`）
+- 自动化验收：
+  - 后端端点注册：`grep -c "suggestions" aiPlat-core/core/api/routers/wiki_semantic_suggestions.py`（GET 端点存在）
+  - 前端 tsc：`cd aiPlat-management/frontend && npx tsc --noEmit`（exit 0）

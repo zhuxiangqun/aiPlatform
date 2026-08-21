@@ -163,3 +163,4 @@ aiPlat 逻辑上分为：
 - **本体学习增强（2026-08-19）**：LLM 层次发现（Dimension 3：embedding 预筛 + `_llm_judge_hierarchy` is-a 判断 → `new_subclass` 建议）+ `export_suggestions_to_owl` 输出 `rdfs:subClassOf` 公理（subject 标签直接使用）。
 - **真语义 embedding 默认化（2026-08-19）**：embed 后端默认 semantic（InfraEmbeddingAdapter 真实向量；无模型安全降级 None，hash 仅显式离线/测试）。
 - **GraphRAG 取块真向量化（2026-08-19）**：`_vector_search` 优先 kb_embeddings（SqliteEmbeddingRetriever 真语义，domain/default 双租户），wiki FTS 降级为 fallback。
+- **本体学习管理面板（2026-08-19）**：`GET /ontology/suggestions`（建议列表）+ 前端 `OntologyLearningPanel`（建议展示/刷新/OWL 导出）。
