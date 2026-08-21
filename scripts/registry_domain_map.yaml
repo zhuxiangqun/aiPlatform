@@ -11,6 +11,8 @@ mapping:
     domain: knowledge-engine-ontology
   - pattern: "core/harness/syscalls/"
     domain: syscalls-runtime
+  - pattern: "core/harness/digital_human/"
+    domain: agent-system
   - pattern: "core/harness/infrastructure/"
     domain: infrastructure-layer
   - pattern: "core/harness/evaluation/"
