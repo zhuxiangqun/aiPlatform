@@ -382,8 +382,24 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 24
+    caps_count: 28
     provides:
+      - symbol: voice_chat_handler
+        type: function
+        signature: "数字人 WS 会话处理（ASR→Agent→TTS，页面数据感知+session 隔离）"
+        module: aiPlat-core/core/harness/digital_human/voice_pipeline.py
+      - symbol: generate_answer
+        type: function
+        signature: "数字人问答（MaterialsChatAgent + page_data 注入 + TTS）"
+        module: aiPlat-core/core/harness/digital_human/voice_pipeline.py
+      - symbol: export_sharegpt_dataset
+        type: function
+        signature: "P1-2 轨迹闭环：对话→ShareGPT JSONL → ~/.aiplat/training"
+        module: aiPlat-core/core/harness/digital_human/trajectory_collector.py
+      - symbol: collect_turn
+        type: function
+        signature: "数字人对话轨迹采集（~/.aiplat/trajectories）"
+        module: aiPlat-core/core/harness/digital_human/trajectory_collector.py
       - symbol: evaluate_four_questions
         type: function
         signature: "P2-L0 立项四问评估：反复/跨系统/Owner+指标/Action → 总分+结论+MVP tier"
