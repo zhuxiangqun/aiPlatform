@@ -1510,3 +1510,101 @@ def expand_query_with_synonyms(query: str) -> List[str]:
 def reset_synonyms() -> None:
     global _SYNONYM_MAP
     _SYNONYM_MAP = None
+
+
+# ═══════════════════════════════════════════════════════════════
+# Ontology Learning: suggestions → OWL/Turtle (P-补全 2026-08-19)
+# Previously, pattern suggestions only produced human-review code snippets.
+# These functions serialize the same suggestions directly into a loadable
+# .ttl/.owl ontology (Protégé / GraphDB / Stardog compatible), closing the
+# "docs → concepts → OWL" loop.
+# ═══════════════════════════════════════════════════════════════
+
+def _parse_suggestion_label(suggestion: Dict[str, Any]) -> str:
+    """Extract a class/property label from a pending suggestion description."""
+    desc = str(suggestion.get("description") or "")
+    label = desc.replace(" ", "").replace("高频概念:", "").split("(")[0].strip()
+    return label or "NewConcept"
+
+
+def _infer_parent_from_label(label: str, existing: List[OntologyClass]) -> str:
+    """Ontology-learning tier: infer subclassOf parent by matching the learned
+    concept label against existing classes (exact → synonym → containment).
+    Falls back to the generic ConceptPage root."""
+    for cls in existing:
+        if label == cls.label:
+            return cls.uri
+    for cls in existing:
+        if label in (cls.synonyms or []):
+            return cls.uri
+    for cls in existing:
+        if len(cls.label) >= 2 and cls.label in label:
+            return cls.uri
+    return f"{AI}ConceptPage"
+
+
+def export_suggestions_to_owl(collection_id: str = "default",
+                              format: str = "turtle") -> str:
+    """Ontology learning output: pending suggestions → standard OWL/Turtle.
+
+    Same prefixes/serialization conventions as export_to_owl_rdf; only the
+    learned T-Box (classes + properties) is emitted — ABox triples are not
+    part of the learning output.
+    """
+    suggestions = load_pending_suggestions(collection_id)
+    lines = [
+        "@prefix aiplat: <http://aiplat.local/knowledge#> .",
+        "@prefix owl: <http://www.w3.org/2002/07/owl#> .",
+        "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .",
+        "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .",
+        "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .",
+        "@prefix dc: <http://purl.org/dc/elements/1.1/> .",
+        "",
+        "<http://aiplat.local/knowledge#> rdf:type owl:Ontology .",
+        "",
+    ]
+    seen = set()
+    for s in suggestions:
+        if s.get("status") != "pending":
+            continue
+        stype = s.get("type", "")
+        label = _parse_suggestion_label(s)
+        sname = _safe_uri(label)
+        if stype == "new_class" and sname not in seen:
+            seen.add(sname)
+            parent = _infer_parent_from_label(label, CLASSES)
+            lines.append(f"### {label} (learned from patterns — human review recommended)")
+            lines.append(f"{AI}{sname} rdf:type owl:Class ;")
+            lines.append(f'    rdfs:label "{label}" ;')
+            lines.append(f"    rdfs:subClassOf {parent} ;")
+            lines.append(f'    dc:description "{str(s.get("description") or "")}" .')
+            lines.append("")
+        elif stype == "new_property" and sname not in seen:
+            seen.add(sname)
+            lines.append(f"{AI}{sname} rdf:type owl:ObjectProperty ;")
+            lines.append(f'    rdfs:label "{label}" .')
+            lines.append("")
+    return "\n".join(lines)
+
+
+def write_suggestions_owl_file(collection_id: str = "default",
+                               format: str = "turtle") -> Optional[str]:
+    """Persist learned suggestions as an OWL/Turtle file under ~/.aiplat/ontologies/.
+
+    Returns the file path, or None when there is nothing to write (no pending
+    class/property suggestions). The file is named {collection_id}.learned.ttl
+    so it can be reviewed, imported (ontology_importer) or loaded by Protégé.
+    """
+    ttl = export_suggestions_to_owl(collection_id, format=format)
+    if "owl:Class" not in ttl:
+        return None
+    import os as _os
+    base = _os.path.expanduser(_os.getenv("AIPLAT_HOME", "~/.aiplat"))
+    ont_dir = _os.path.join(base, "ontologies")
+    _os.makedirs(ont_dir, exist_ok=True)
+    path = _os.path.join(ont_dir, f"{collection_id}.learned.ttl")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(ttl)
+    logging.getLogger(__name__).info(
+        "Learned ontology written: %s (%d chars)", path, len(ttl))
+    return path
