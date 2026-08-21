@@ -100,7 +100,17 @@ async def transcribe(audio_bytes: bytes) -> str:
 
         import tempfile
 
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+        # P1-3 修复: 前端 MediaRecorder 录的是 audio/webm（Chrome/Firefox），但临时文件
+        # 一直用 .wav 后缀 → 解码器被扩展名误导。按字节魔数嗅探真实容器格式：
+        #   webm/ogg/opus: 0x1A 0x45 0xDF 0xA3 (EBML)
+        #   wav: RIFF....WAVE
+        _suffix = ".wav"
+        if audio_bytes[:4] == b"\x1a\x45\xdf\xa3":
+            _suffix = ".webm"
+        elif audio_bytes[:4] == b"OggS":
+            _suffix = ".ogg"
+
+        with tempfile.NamedTemporaryFile(suffix=_suffix, delete=False) as tmp:
 
             tmp.write(audio_bytes)
 
@@ -149,7 +159,7 @@ async def transcribe(audio_bytes: bytes) -> str:
 
 
 
-async def generate_answer(text: str, page_context = "") -> Tuple[str, bytes]:
+async def generate_answer(text: str, page_context = "", session_id: str = "digital_human") -> Tuple[str, bytes]:
     """Send text to MaterialsChatAgent, get answer + TTS audio.
     
     page_context: str (old format: route path) or dict (new format: {route, label, group, groupLabel})
@@ -168,7 +178,7 @@ async def generate_answer(text: str, page_context = "") -> Tuple[str, bytes]:
         from core.harness.meta.profile_registry import set_profile_override
 
         try:
-            set_profile_override("digital_human", session_id="digital_human")
+            set_profile_override("digital_human", session_id=session_id)
         except Exception:
             logger.debug("profile override failed", exc_info=True)
 
@@ -233,7 +243,7 @@ async def generate_answer(text: str, page_context = "") -> Tuple[str, bytes]:
                 run_ctx["current_page"] = page_context
 
             ctx = AgentContext(
-                session_id="digital_human",
+                session_id=session_id,
                 user_id="system",
                 variables={
                     "message": text,
@@ -290,9 +300,9 @@ async def generate_answer(text: str, page_context = "") -> Tuple[str, bytes]:
 
         from core.harness.digital_human.trajectory_collector import collect_turn
 
-        collect_turn("dh_session", "user", text)
+        collect_turn(session_id, "user", text)
 
-        collect_turn("dh_session", "assistant", answer)
+        collect_turn(session_id, "assistant", answer)
 
     except Exception:
 
@@ -327,7 +337,7 @@ async def voice_chat_handler(websocket, session_id: str = "digital_human"):
 
         {"type": "text", "data": "transcribed text"}
 
-        {"type": "answer", "text": "answer", "audio": "<base64 mp3>"}
+        {"type": "answer", "text": "answer", "audio": "<base64 wav>", "format": "wav"}
 
         {"type": "error", "data": "..."}
 
@@ -339,6 +349,7 @@ async def voice_chat_handler(websocket, session_id: str = "digital_human"):
 
     audio_buffer = io.BytesIO()
     page_context = ""
+    conn_session = session_id
 
 
 
@@ -378,12 +389,14 @@ async def voice_chat_handler(websocket, session_id: str = "digital_human"):
                     page_context = ctx_data
                 else:
                     page_context = ctx_data
+                if msg.get("session"):
+                    conn_session = str(msg.get("session"))[:64]
 
             elif msg_type == "text":
 
                 user_text = msg.get("data", "")
 
-                answer, audio = await generate_answer(user_text, page_context)
+                answer, audio = await generate_answer(user_text, page_context, session_id=conn_session)
 
                 resp = {
 
@@ -392,6 +405,8 @@ async def voice_chat_handler(websocket, session_id: str = "digital_human"):
                     "text": answer,
 
                     "audio": base64.b64encode(audio).decode() if audio else "",
+
+                    "format": "wav",  # P1-3: TTS 实际输出格式（Piper WAV），前端按此设置播放 MIME
 
                 }
 
@@ -413,7 +428,7 @@ async def voice_chat_handler(websocket, session_id: str = "digital_human"):
 
                     if text:
 
-                        answer, audio = await generate_answer(text, page_context)
+                        answer, audio = await generate_answer(text, page_context, session_id=conn_session)
 
                         resp = {
 
@@ -422,6 +437,8 @@ async def voice_chat_handler(websocket, session_id: str = "digital_human"):
                             "text": answer,
 
                             "audio": base64.b64encode(audio).decode() if audio else "",
+
+                            "format": "wav",  # P1-3: TTS 实际输出格式（Piper WAV）
 
                         }
 
@@ -440,3 +457,13 @@ async def voice_chat_handler(websocket, session_id: str = "digital_human"):
         except Exception:
 
             logging.getLogger(__name__).debug('voice_chat_handler failed', exc_info=True)
+
+    finally:
+
+        # P1-2 闭环: 会话结束（含异常）时把轨迹聚合导出为 ShareGPT 数据集，
+        # 落入 ~/.aiplat/training/sft_digital_human_*.jsonl 供 SFT 训练消费。
+        try:
+            from core.harness.digital_human.trajectory_collector import export_sharegpt_dataset
+            export_sharegpt_dataset()
+        except Exception:
+            logging.getLogger(__name__).debug('trajectory export failed', exc_info=True)

@@ -175,3 +175,5 @@ aiPlat 逻辑上分为：
 - **P2-L5 Action 阶梯量化门（2026-08-21）**：`ActionContractModel.action_level`（ActionLevel lv1-4，默认 lv2_confirmed）+ `compute_closure_gate`（Lv4 误报率门 <0.5% 才闭环，超标降级人工确认）+ `_get_entity` 修复（get_node + dict 化）。7 项测试。
 
 - **数字人管线 P0/P1 修复（2026-08-21）**：`voice_pipeline.py` —— registry 解析改 discovery 单例（`core.apps.agents.get_agent_registry`）+ 直接创建兜底（模型解析失败降级空 model 名）；transcribe 改 segment 顺序拼接（List[Dict] → text）；入口应用 `digital_human` ControlProfile。6 项测试。
+
+- **数字人 P1/P2 修复（2026-08-21）**：① TTS 格式链（format 字段 + wav MIME + webm 魔数嗅探）；② 轨迹闭环（export_sharegpt_dataset → ~/.aiplat/training，会话结束触发）；③ WS 鉴权（AIPLAT_VOICE_WS_TOKEN，query token 校验）；④ 生产 WS 路径（VITE_WS_URL 优先）；⑤ session 隔离 + onerror 闭包 + 录音 10s 上限。10 项测试。
