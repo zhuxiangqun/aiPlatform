@@ -37,11 +37,33 @@ def _ontology_base() -> str:
 
 # P2-L1: 治理规则矩阵 — tier 所需审批角色（对应 plan-tier-ontology-layering.md §3）
 #   core → 全员/架构评审（阻断）  logic → 产品侧确认  edge → 自服务
-TIER_APPROVAL_ROLES = {
-    TIER_CORE: ("governance_admin", "admin"),          # 架构评审角色
-    TIER_LOGIC: ("governance_admin", "admin", "operator", "product_manager"),
-    TIER_EDGE: ("*",),                                 # 自服务：任意角色
+# 角色矩阵为治理配置，放在同级 tier_approval_roles.yaml（内核无关约束：角色名不写死在 harness 代码）。
+_DEFAULT_TIER_APPROVAL_ROLES = {
+    TIER_CORE: ("governance_admin", "admin"),
+    TIER_LOGIC: ("governance_admin", "admin", "operator"),  # 完整产品侧角色见 YAML 配置
+    TIER_EDGE: ("*",),
 }
+
+
+def load_tier_approval_roles() -> Dict[str, tuple]:
+    """Load tier→approval-roles matrix from tier_approval_roles.yaml (fallback to safe default)."""
+    cfg_path = os.path.join(os.path.dirname(__file__), "tier_approval_roles.yaml")
+    try:
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            raw = yaml.safe_load(f) or {}
+        roles = raw.get("tier_approval_roles") or {}
+        result = {}
+        for tier, role_list in roles.items():
+            if isinstance(role_list, list):
+                result[tier] = tuple(str(r) for r in role_list)
+        if result:
+            return result
+    except Exception:
+        logger.debug("Failed to load tier_approval_roles.yaml, using defaults", exc_info=True)
+    return dict(_DEFAULT_TIER_APPROVAL_ROLES)
+
+
+TIER_APPROVAL_ROLES = load_tier_approval_roles()
 
 # edge → logic 升格所需的复用证明最小命中次数（复用 add_suggestions_from_patterns 聚类数据）
 PROMOTION_REUSE_THRESHOLD = 3

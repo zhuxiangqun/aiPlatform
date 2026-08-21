@@ -1,0 +1,13 @@
+# tier 分级审批角色矩阵（P2-L1 配置驱动）
+# 对应设计：docs/research/plan-tier-ontology-layering.md §3 治理规则矩阵
+# 配置放在 YAML（而非代码）以满足"内核无关"约束：角色名是治理配置，不是内核知识。
+# 用途：versioned_ontology_store.approve_proposal 按提案 max_tier 检查审批者角色。
+#
+# 语义：
+#   core  → 稳定核心（承重墙）：需全员/架构评审角色审批（阻断）
+#   logic → 可变逻辑（软装）：产品侧角色确认
+#   edge  → 实验边缘（沙盘）：自服务（"*" = 任意角色）
+tier_approval_roles:
+  core: ["governance_admin", "admin"]
+  logic: ["governance_admin", "admin", "operator", "product_manager"]
+  edge: ["*"]
