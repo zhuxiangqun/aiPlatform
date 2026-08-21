@@ -20,6 +20,7 @@ class EventType(Enum):
     LOOP_COMPLETED = "loop_completed"
     LOOP_ERROR = "loop_error"
     MESSAGE_SENT = "message_sent"
+    BUSINESS_ACTION = "business_action"
     MESSAGE_RECEIVED = "message_received"
     CONTEXT_UPDATED = "context_updated"
     ADAPTER_CALLED = "adapter_called"
