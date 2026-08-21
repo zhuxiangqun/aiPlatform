@@ -1584,6 +1584,21 @@ def export_suggestions_to_owl(collection_id: str = "default",
             lines.append(f"{AI}{sname} rdf:type owl:ObjectProperty ;")
             lines.append(f'    rdfs:label "{label}" .')
             lines.append("")
+        elif stype == "new_subclass":
+            # LLM-judged is-a axiom: subject rdfs:subClassOf parent (direct,
+            # no label inference — both come from the suggestion).
+            subj_label = str(s.get("subject") or label).strip()
+            sname2 = _safe_uri(subj_label)
+            if sname2 in seen:
+                continue
+            seen.add(sname2)
+            parent_uri = f"{AI}{_safe_uri(str(s.get('parent') or 'ConceptPage'))}"
+            lines.append(f"### {subj_label} (is-a hierarchy, human review recommended)")
+            lines.append(f"{AI}{sname2} rdf:type owl:Class ;")
+            lines.append(f'    rdfs:label "{subj_label}" ;')
+            lines.append(f"    rdfs:subClassOf {parent_uri} ;")
+            lines.append(f'    dc:description "{str(s.get("description") or "")}" .')
+            lines.append("")
     return "\n".join(lines)
 
 

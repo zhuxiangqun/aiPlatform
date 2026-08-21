@@ -54,6 +54,32 @@ class TestSuggestionsToOwl:
         monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
         assert ko.write_suggestions_owl_file("empty") is None
 
+    def test_new_subclass_axiom(self, tmp_path, monkeypatch):
+        """LLM-judged is-a suggestion → rdfs:subClassOf axiom with subject label."""
+        import core.harness.knowledge.knowledge_ontology as ko
+
+        monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+        ko.save_suggestions([
+            {"id": "h1", "type": "new_subclass", "status": "pending",
+             "description": "层次: 用户认证 是 认证 的子类",
+             "subject": "用户认证", "parent": "认证", "confidence": 0.9},
+        ], "default")
+        ttl = ko.export_suggestions_to_owl("default")
+        assert "rdfs:label \"用户认证\"" in ttl
+        assert "rdfs:subClassOf http://aiplat.local/knowledge#认证" in ttl
+
+
+class TestHierarchyDimension:
+    def test_llm_module_has_hierarchy_detectors(self):
+        import core.harness.knowledge.knowledge_evolution_llm as kllm
+
+        assert hasattr(kllm, "_detect_hierarchies")
+        assert hasattr(kllm, "_llm_judge_hierarchy")
+        # Dimension 3 wired into generate_semantic_suggestions
+        import inspect
+        src = inspect.getsource(kllm.generate_semantic_suggestions)
+        assert "_detect_hierarchies" in src
+
 
 class TestParentInference:
     def test_exact_label_match(self):
