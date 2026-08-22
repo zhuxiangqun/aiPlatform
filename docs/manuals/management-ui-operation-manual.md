@@ -95,15 +95,15 @@
 
 ## 🤖 AI 应用工厂
 
-### 应用生命周期
-#### 新建应用
-- **路由**: `/studio`
-- **功能**: 快速创建新的 AI 应用项目。引导用户选择行业域、配置应用类型（知识问答/智能体/流程自动化），并自动生成初始项目骨架和流水线配置。
-- **操作指南**:
-  - **创建流程**：在输入框用自然语言描述需求（如"构建一个电商后台管理系统，支持商品SKU管理、库存预警、订单状态流转"），AI PM 会与你对话澄清需求 → 自动生成 PRD → 确认后创建项目。
-  - **项目名称**：可选填，留空则 AI 自动从需求描述中提取。
-  - **选择团队**：高级选项，可指定预配置的 Agent 团队（含 PM/Architect/Programmer/QA 等角色）。留空则 AI 自动推荐。
-  - **注意事项**：每次发送需求消息会自动创建 session，如果之前已创建过相同项目但未完成，返回"我的项目"页面可找到并继续。建议先完成一次完整对话再点"开始构建"，避免创建多个同名空项目。
+### 应用工厂（AI App Factory）
+- **路由**: `/app/factory`（全局唯一入口，替代旧 `/studio` 与 `/app/builder` 的项目创建）
+- **功能**: 把"一句话业务需求"变成"已部署的 AI 应用"的自动化产线。三种模式（顶部 Tab 切换，记忆上次选择）：
+  - **快速开始**（默认）：选能力（来自 workbench capabilities）→ 填描述 → 一键启动，跟踪 run 进度。
+  - **对话式**：和 AI 聊天澄清需求（PM agent + 知识库检索增强），自动组队执行。
+  - **高级配置**：项目列表 + 全生命周期详情（PRD 编辑/阶段产物/HITL 审批/修复回滚/部署预览）。
+- **生命周期**（后端 `builder_project_service.py`，40+ 端点）：对话澄清需求 → PRD 生成与确认（`confirm`）→ 自动组队（`recommend-team`，AI 推断 + Agent 历史性能表）→ 流水线执行（core PipelineEngine：架构→代码→测试）→ HITL 审批（`approve/reject`）→ 失败自动修复（`fix`/`regenerate`）→ 回滚（`rollback/{stage}`/`rollback-prd`）→ 部署（`deploy`，按测试通过率计算 pass_rate）→ 已部署应用预览（`/app/apps`）。
+- **双入口说明**：`/app/factory`（AIFactory，3 模式容器）与 `/app/builder/projects`（ProjectsPage，纯列表 255 行）共用同一后端 `/platform/builder/projects`——factory 是完整入口，builder/projects 是精简列表视图。
+- **数字人感知**（2026-08-22 起）：应用工厂页已接入 `reportPageData('/app/factory', ...)`——数字人可回答"有几个项目在跑？""平均通过率多少？""当前选中项目什么阶段？"。
 
 #### FDE 工作台
 - **路由**: `/diagnostics/fde`

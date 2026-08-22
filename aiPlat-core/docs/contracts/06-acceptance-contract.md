@@ -329,3 +329,12 @@ pytest -q \
 - 自动化验收：
   - `python3 -m pytest tests/tool_correctness/test_research_docs_freshness.py -q`（8 passed）
   - `grep -c "check_research_docs_freshness" scripts/verify_doc_sync.sh`（≥2：定义 + 调用）
+
+### 1.33 应用工厂页面感知（2026-08-22）
+- MUST：`frontend/src/pages/App/Factory/index.tsx` 含 `reportPageData('/app/factory', ...)`（项目数/阶段/通过率/选中项目）
+- MUST：`/app/factory`（AIFactory 3 模式）与 `/app/builder/projects`（ProjectsPage）共用后端 `/platform/builder/projects`
+- MUST：应用工厂生命周期端点完整（chat/confirm/recommend-team/start/approve/reject/fix/rollback/deploy）
+- 自动化验收：
+  - `grep -c "reportPageData('/app/factory'" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
+  - `grep -c "start_pipeline\|deploy_to_app" aiPlat-platform/builder/builder_project_service.py`（≥2）
+  - 前端 tsc + build：`cd aiPlat-management/frontend && npx tsc --noEmit && npm run build`（exit 0）
