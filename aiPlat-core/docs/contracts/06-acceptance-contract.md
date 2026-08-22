@@ -338,3 +338,12 @@ pytest -q \
   - `grep -c "reportPageData('/app/factory'" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
   - `grep -c "start_pipeline\|deploy_to_app" aiPlat-platform/builder/builder_project_service.py`（≥2）
   - 前端 tsc + build：`cd aiPlat-management/frontend && npx tsc --noEmit && npm run build`（exit 0）
+
+### 1.34 应用工厂双模式 + pass_rate 标注（2026-08-22）
+- MUST：`team_planner` 的 mode 判断存在（prompt 含 `agent`/`code` 两种模式说明），`mode ∈ (agent, code)` 才接受
+- MUST：`deploy_to_app` 写入 `pass_rate_source`（`real_pytest` / `estimated`），estimated 时附 `pass_rate_estimate_reason`
+- MUST：`~/.aiplat/teams/default.yaml`（agent 模式）与 `code.yaml`（code 模式）存在，code 模式含 `uses_file_output`/`deploy_files_to_disk`
+- 自动化验收：
+  - `grep -c "mode" aiPlat-core/core/harness/execution/team_planner.py`（≥5，mode 判断 + 输出）
+  - `grep -c "pass_rate_source" aiPlat-platform/builder/builder_project_service.py`（≥1）
+  - `ls ~/.aiplat/teams/`（含 default.yaml + code.yaml）
