@@ -1760,9 +1760,13 @@ class BuilderProjectService:
             _code = _final_state.get("code", {})
             _arch = _final_state.get("architecture", {})
             _test_pr = _final_state.get("_test_pass_rate", None)
+            _pr_source = "none"
+            _pr_reason = ""
             if _test_pr is not None:
                 _pr = _test_pr  # use real pytest results
+                _pr_source = "real_pytest"
             else:
+                # 估算：无真实测试结果时按产物完整度粗估（P2-4b 揭露：字数≠质量）
                 _arch_ok = isinstance(_arch, dict) and len(_arch.get("raw_output", "") if isinstance(_arch, dict) else "") > 500
                 _code_ok = isinstance(_code, dict) and len(_code.get("raw_output", "") if isinstance(_code, dict) else "") > 500
                 _tests_ok = _final_state.get("_has_tests", False)
@@ -1776,8 +1780,13 @@ class BuilderProjectService:
                     _pr = 0.3
                 else:
                     _pr = 0
+                _pr_source = "estimated"
+                _pr_reason = "no real pytest result — estimated from artifact length (arch>500/code>500/has_tests); treat as indicative only"
             if proj.get("runs"):
                 proj["runs"][-1]["pass_rate"] = _pr
+                proj["runs"][-1]["pass_rate_source"] = _pr_source
+                if _pr_reason:
+                    proj["runs"][-1]["pass_rate_estimate_reason"] = _pr_reason
                 self._save_projects()
         deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
         return _deploy_to_app_for_project(project_id, deploy_dir or "", proj)
