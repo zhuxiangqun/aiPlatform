@@ -187,3 +187,5 @@ aiPlat 逻辑上分为：
 - **应用工厂页面感知 + 双入口梳理（2026-08-22）**：FactoryPage 接入 pageDataBridge（/app/factory）；确认 /app/factory 与 /app/builder/projects 共用 projectApi 后端，factory 为完整入口。
 
 - **应用工厂双模式 + pass_rate 标注（2026-08-22）**：team_planner mode 自动判断（agent/code）→ 团队模板映射；deploy_to_app 的 pass_rate 加 pass_rate_source（real_pytest/estimated）+ 估算原因字段。
+
+- **应用工厂全面分析报告（2026-08-22）**：docs/research/应用工厂分析报告.md —— 双模式自动路由/生命周期 9 环节/权限模型/5 项诚实标注/评分表。

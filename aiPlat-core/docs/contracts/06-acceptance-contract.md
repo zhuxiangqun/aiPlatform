@@ -347,3 +347,11 @@ pytest -q \
   - `grep -c "mode" aiPlat-core/core/harness/execution/team_planner.py`（≥5，mode 判断 + 输出）
   - `grep -c "pass_rate_source" aiPlat-platform/builder/builder_project_service.py`（≥1）
   - `ls ~/.aiplat/teams/`（含 default.yaml + code.yaml）
+
+### 1.35 应用工厂分析报告（2026-08-22）
+- MUST：`docs/research/应用工厂分析报告.md` 存在且含双模式自动路由说明（mode: agent/code）
+- MUST：报告中的代码引用可通过 Rule 6 校验（`python3 scripts/check_research_docs_freshness.py <workspace>` 返回 0）
+- 自动化验收：
+  - `ls docs/research/应用工厂分析报告.md`（存在）
+  - `grep -c "planning_agent" docs/research/应用工厂分析报告.md`（≥1）
+  - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
