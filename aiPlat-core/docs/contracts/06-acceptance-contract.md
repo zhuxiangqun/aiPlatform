@@ -355,3 +355,11 @@ pytest -q \
   - `ls docs/research/应用工厂分析报告.md`（存在）
   - `grep -c "planning_agent" docs/research/应用工厂分析报告.md`（≥1）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
+
+### 1.36 SystemGraph 路径修复 + guard 冲突修复（2026-08-22）
+- MUST：`SystemGraph/index.tsx` 的 code-intel API 用 `/api/platform/apps/diagnostics/code-intel/*`（匹配 platform misc 挂载）
+- MUST：`guard_frontend.py` 支持跨层同名文件（core/api/routers/code_intel.py vs platform/apps/misc/api/code_intel.py）——完整相对路径优先于 basename
+- 自动化验收：
+  - `grep -c "api/platform/apps/diagnostics/code-intel" aiPlat-management/frontend/src/pages/SystemGraph/index.tsx`（≥5）
+  - `python3 scripts/guard_frontend.py`（exit 0，无 path_mismatch ERROR）
+  - `grep -c "rel_path" scripts/guard_frontend.py`（≥1，完整路径优先逻辑）
