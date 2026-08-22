@@ -1276,6 +1276,7 @@ scan_hash: 8f9548ec24f4
 | async_utils | harness/utils/async_utils.py | ✅ | 自动同步 | 已合入 |
 | trajectory_collector | `harness/digital_human/trajectory_collector.py` | ✅ | P1-2 闭环：轨迹→ShareGPT 数据集（export_sharegpt_dataset → ~/.aiplat/training） | 已合入 |
 | research 文档新鲜度守卫 | `scripts/check_research_docs_freshness.py` | ✅ | Rule 6：状态标记矛盾检测 + 符号引用验证 + 最后验证时间戳对账（--ci 阻断） | 已合入 |
+| 应用工厂页面感知 | `frontend/src/pages/App/Factory/index.tsx` | ✅ | P2-4 扩展：/app/factory 上报项目数/阶段/通过率/选中项目 → 数字人可答状态类问题 | 已合入 |
 | voice_pipeline | `harness/digital_human/voice_pipeline.py` | ✅ | ASR→Agent→TTS 编排；P0 修复 + P1-3 格式链 + P2-1 WS 鉴权 + session 隔离 + P2-4 页面数据感知（8 管理页接入 pageDataBridge） | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | harness/learning/experience_vector.py | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
