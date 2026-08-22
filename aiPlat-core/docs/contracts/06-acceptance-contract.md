@@ -363,3 +363,11 @@ pytest -q \
   - `grep -c "api/platform/apps/diagnostics/code-intel" aiPlat-management/frontend/src/pages/SystemGraph/index.tsx`（≥5）
   - `python3 scripts/guard_frontend.py`（exit 0，无 path_mismatch ERROR）
   - `grep -c "rel_path" scripts/guard_frontend.py`（≥1，完整路径优先逻辑）
+
+### 1.37 L2 导入既有代码设计 + Rule 6 plan 豁免（2026-08-22）
+- MUST：`docs/research/plan-app-factory-l2-import-repo.md` 存在（L2 设计：import-repo API/prompt 注入/安全/回滚/验收）
+- MUST：`check_research_docs_freshness.py` 对 `plan-` 前缀设计文档跳过引用对账（`is_plan` 逻辑）
+- 自动化验收：
+  - `ls docs/research/plan-app-factory-l2-import-repo.md`（存在）
+  - `grep -c "is_plan" scripts/check_research_docs_freshness.py`（≥2：定义 + 使用）
+  - `python3 scripts/check_research_docs_freshness.py .`（exit 0）

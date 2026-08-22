@@ -154,6 +154,8 @@ def main() -> int:
             continue
         if any(k in md for k in SKIP_DOC):
             continue
+        # 设计文档（plan- 前缀）描述未来规划，目标态路径不参与现状对账
+        is_plan = md.startswith('plan-')
         path = os.path.join(research_dir, md)
         try:
             text = open(path, encoding="utf-8").read()
@@ -163,6 +165,8 @@ def main() -> int:
         # 1) 反引号代码引用 → 验证符号存在
         refs = re.findall(r"`([^`]{3,120})`", text)
         for ref in refs:
+            if is_plan:
+                continue
             if not re.search(r"\.py\b|\.tsx?\b|\.yaml\b|def |class |[a-z_]+\.[a-z_]+", ref):
                 continue
             if not symbol_exists(ref, basenames, contents, workspace, files):

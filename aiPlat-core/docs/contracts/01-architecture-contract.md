@@ -191,3 +191,6 @@ aiPlat 逻辑上分为：
 - **应用工厂全面分析报告（2026-08-22）**：docs/research/应用工厂分析报告.md —— 双模式自动路由/生命周期 9 环节/权限模型/5 项诚实标注/评分表。
 
 - **SystemGraph code-intel 路径修复（2026-08-22）**：前端 5 处 /api/core/diagnostics/code-intel/* → /api/platform/apps/diagnostics/code-intel/*（匹配 platform misc 挂载）。core diagnostics / knowledge-graph 路径不变。
+
+- **L2 设计：导入既有代码（2026-08-22）**：plan-app-factory-l2-import-repo.md —— import-repo 输入通道（zip/路径→manifest→prompt 注入被引用文件），安全/回滚/验收完整，约 2 天。
+- **Rule 6 plan 文档豁免（2026-08-22）**：check_research_docs_freshness.py 对 plan- 前缀设计文档跳过引用对账（目标态路径非现状）。
