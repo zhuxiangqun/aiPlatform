@@ -7,7 +7,7 @@ from __future__ import annotations
 import json as _json
 import logging
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import JSONResponse
@@ -218,6 +218,37 @@ async def project_update_prd(project_id: str, body: Dict[str, Any], _auth: str =
     """Update PRD directly without going through PM chat again."""
     prd = body.get("prd", body)
     return await _get_svc().update_prd(project_id, prd)
+
+
+@router.post("/projects/{project_id}/import-repo", response_model=StatusResponse)
+async def project_import_repo(
+    project_id: str,
+    request: Request,
+    file: Optional[UploadFile] = File(default=None),
+    existing_path: str = Form(default=""),
+    _auth: str = Depends(require_builder_access),
+):
+    """L2: import existing code (zip upload or AIPLAT_HOME path) → manifest → state."""
+    if file is not None:
+        zip_bytes = await file.read()
+        if not zip_bytes:
+            raise HTTPException(400, detail="上传的 zip 为空")
+        return await _get_svc().import_repo(project_id, zip_bytes=zip_bytes)
+    if existing_path:
+        return await _get_svc().import_repo(project_id, existing_path=existing_path)
+    raise HTTPException(400, detail="需要 zip 文件上传或 existing_path 二选一")
+
+
+@router.get("/projects/{project_id}/imported-files", response_model=StatusResponse)
+async def project_imported_files(project_id: str, _auth: str = Depends(require_builder_access)):
+    """L2: imported manifest for frontend file selection (勾选 + 修改意图)."""
+    return await _get_svc().list_imported_files(project_id)
+
+
+@router.get("/import-stats", response_model=StatusResponse)
+async def import_stats(_auth: str = Depends(require_builder_access)):
+    """L2 telemetry: skip_pytest_gate ratio — >40% triggers L3 priority alert."""
+    return await _get_svc().get_import_stats()
 
 
 @router.post("/projects/{project_id}/rebuild", response_model=StatusResponse)

@@ -402,6 +402,21 @@ const ProjectPanel: React.FC<{
   const [editContent, setEditContent] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
+  // ── L2: import existing code (plan-app-factory-l2) ──
+  const [showImportPanel, setShowImportPanel] = useState(false);
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualAgreed, setManualAgreed] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importZip, setImportZip] = useState<File | null>(null);
+  const [importPath, setImportPath] = useState('');
+  const [importedFiles, setImportedFiles] = useState<Array<{ path: string; size: number; lang: string }>>([]);
+  const [importMeta, setImportMeta] = useState<{ has_tests: boolean; missing_deps: string[] } | null>(null);
+  const [selectedIntents, setSelectedIntents] = useState<Record<string, string>>({});
+  const [skipGate, setSkipGate] = useState(false);
+  const [savingModify, setSavingModify] = useState(false);
+  const [l2Stats, setL2Stats] = useState<any>(null);
+  const [regeneratedWarnings, setRegeneratedWarnings] = useState<string[]>([]);
+
   // Check for PRD on mount (may have been generated in a previous session)
   useEffect(() => {
     const raw = project as any;
@@ -444,6 +459,16 @@ const ProjectPanel: React.FC<{
       setDeployChecked(true);
     })();
   }, [project.project_id]);
+
+  // ── L2: surface regenerated warnings (Build-Log style, §3.9 条件 2) ──
+  useEffect(() => {
+    const runs = runHistory as any[];
+    if (!runs?.length) return;
+    const latest = runs[runs.length - 1];
+    if (Array.isArray(latest?.regenerated_warnings) && latest.regenerated_warnings.length) {
+      setRegeneratedWarnings(latest.regenerated_warnings);
+    }
+  }, [runHistory]);
 
   // ── Poll pipeline state during execution ──
   useEffect(() => {
@@ -759,6 +784,78 @@ const ProjectPanel: React.FC<{
     } catch (e: any) { toastGateError(e, '操作失败'); }
   };
 
+  // ── L2: import existing code handlers ──
+  const loadImportStats = async () => {
+    try {
+      const r = await projectApi.getImportStats() as any;
+      setL2Stats(r);
+    } catch { /* ignore */ }
+  };
+
+  const handleOpenImport = async () => {
+    if (!project.project_id) return;
+    setShowManualModal(true);          // 《预期管理手册》弹窗 — 首次必读
+    setShowImportPanel(true);
+    loadImportStats();
+    try {
+      const r = await projectApi.listImportedFiles(project.project_id) as any;
+      if (r?.files?.length) {
+        setImportedFiles(r.files);
+        setImportMeta({ has_tests: !!r.has_tests, missing_deps: r.missing_deps || [] });
+      }
+    } catch { /* no import yet */ }
+  };
+
+  const handleImportSubmit = async () => {
+    if (!project.project_id) return;
+    if (!importZip && !importPath.trim()) { toast('请选择 zip 文件或填写路径'); return; }
+    setImporting(true);
+    try {
+      const fd = new FormData();
+      if (importZip) fd.append('file', importZip);
+      if (importPath.trim()) fd.append('existing_path', importPath.trim());
+      const r = await projectApi.importRepo(project.project_id, fd) as any;
+      if (r?.status === 'ok') {
+        toast.success(`已导入 ${r.imported_files} 个文件`);
+        const list = await projectApi.listImportedFiles(project.project_id) as any;
+        setImportedFiles(list?.files || []);
+        setImportMeta({ has_tests: !!list?.has_tests, missing_deps: list?.missing_deps || [] });
+        setImportZip(null); setImportPath('');
+      } else {
+        toast.error(r?.detail || '导入失败');
+      }
+    } catch (e: any) { toastGateError(e, '导入失败'); }
+    setImporting(false);
+  };
+
+  const handleApplyModify = async () => {
+    if (!project.project_id) return;
+    const modifyFiles = importedFiles
+      .filter(f => (selectedIntents[f.path] || '').trim())
+      .map(f => ({ path: f.path, intent: (selectedIntents[f.path] || '').trim() }));
+    if (!modifyFiles.length) { toast.error('请至少勾选一个文件并填写修改意图'); return; }
+    // security 类变更二次确认（§3.8）
+    const scopeText = modifyFiles.map(m => m.path + ' ' + m.intent).join(' ');
+    if (skipGate && /login|auth|password|pay|token|session|admin|verification/i.test(scopeText)) {
+      if (!confirm('⚠️ 涉及认证/支付/权限类变更，跳过测试门禁风险较高。确定继续？')) return;
+    }
+    setSavingModify(true);
+    try {
+      const prd = { ...(confirmedPrd || {}), modify_files: modifyFiles, skip_pytest_gate: skipGate };
+      await projectApi.updatePrd(project.project_id, prd as any);
+      toast.success('修改意图已保存，开始重建（被改文件将整体重写）');
+      setShowImportPanel(false);
+      setShowManualModal(false);
+      await projectApi.rebuild(project.project_id);
+      // 刷新状态进入构建中
+      try {
+        const st = await projectApi.getState(project.project_id) as any;
+        await _refreshFromState((st as any)?.state);
+      } catch { window.location.reload(); }
+    } catch (e: any) { toastGateError(e, '保存失败'); }
+    setSavingModify(false);
+  };
+
   const handleEditStage = (stageKey: string, currentRaw: any) => {
     const content = typeof currentRaw === 'string' ? currentRaw : JSON.stringify(currentRaw, null, 2);
     setEditingStage(stageKey);
@@ -966,6 +1063,15 @@ const ProjectPanel: React.FC<{
         {/* Progress */}
         {phase === 'done' ? (
           <div className="space-y-2">
+            {/* L2: regenerated warnings — no diff view in L2, must surface for manual review (§3.9) */}
+            {regeneratedWarnings.length > 0 && (
+              <div className="p-3 rounded bg-amber-500/10 border border-amber-500/40 text-xs space-y-1">
+                <div className="text-amber-300 font-semibold">⚠️ 以下文件已被整体重写（非合并）— 请人工 Review Diff</div>
+                {regeneratedWarnings.map((w, i) => (
+                  <div key={i} className="text-amber-200/90 font-mono text-[10px]">{w}</div>
+                ))}
+              </div>
+            )}
             <div className="p-3 rounded bg-green-500/10 border border-green-500/30 text-sm text-green-300">
               ✅ 构建完成
               {agentMode && (
@@ -1191,6 +1297,86 @@ const ProjectPanel: React.FC<{
             </div>
           </div>
         )}
+
+        {/* L2: 导入既有代码（plan-app-factory-l2-import-repo.md §3.4/§3.8/§3.9） */}
+        <div className="p-3 rounded border border-purple-500/30 bg-purple-500/5 text-xs space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-purple-300 font-semibold">📥 导入既有代码（L2）</span>
+            <Button variant="ghost" size="sm" className="ml-auto" onClick={handleOpenImport}>导入 / 管理</Button>
+          </div>
+          {l2Stats?.l3_priority_alert && (
+            <div className="text-amber-300 text-[10px]">
+              📊 全系统跳过测试门禁率 {Math.round((l2Stats.skip_ratio || 0) * 100)}% &gt; 40% — 逃生舱被当常规路径，建议优先规划 L3 增量合并引擎
+            </div>
+          )}
+          {showImportPanel && (
+            <div className="space-y-2 pt-2 border-t border-dark-border">
+              {/* 红字重写警告（§3.4 三层强制之一） */}
+              <div className="p-2 rounded bg-red-500/10 border border-red-500/40 text-red-300 text-[10px] leading-relaxed">
+                ⚠️ 当前版本将根据旧代码<strong>【重写】</strong>勾选的文件，而非合并改动。
+                请确认已备份，且你接受"该文件整体重生成"的结果。
+              </div>
+              {/* 上传 zip / 路径 */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-gray-400">上传 zip：</label>
+                <input type="file" accept=".zip" onChange={e => setImportZip(e.target.files?.[0] || null)}
+                  className="text-[10px] text-gray-300" />
+                <label className="text-[10px] text-gray-400">或 AIPLAT_HOME 内路径：</label>
+                <input value={importPath} onChange={e => setImportPath(e.target.value)}
+                  placeholder="如 ~/.aiplat/legacy_app（仅限 AIPLAT_HOME 内目录）"
+                  className="w-full bg-dark-hover border border-dark-border rounded px-2 py-1 text-[10px] font-mono text-gray-200" />
+                <Button variant="secondary" size="sm" onClick={handleImportSubmit} loading={importing}>导入</Button>
+              </div>
+              {/* 文件列表：勾选 + 意图绑定（§3.2/§4） */}
+              {importedFiles.length > 0 && (
+                <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                  <div className="text-[10px] text-gray-400">
+                    共 {importedFiles.length} 个文件 — 勾选并填写"修改意图"（改这个文件干什么），空意图不能提交
+                  </div>
+                  {!importMeta?.has_tests && (
+                    <div className="text-[10px] text-amber-300">⚠️ 未检测到 tests/ 目录，pytest 门禁无法运行。</div>
+                  )}
+                  {importMeta?.missing_deps?.length ? (
+                    <div className="text-[10px] text-amber-300/90">
+                      依赖预检：{importMeta.missing_deps.slice(0, 5).join('、')}
+                      {importMeta.missing_deps.length > 5 ? ' …' : ''}
+                    </div>
+                  ) : null}
+                  {importedFiles.map(f => (
+                    <div key={f.path} className="flex items-start gap-2">
+                      <input type="checkbox"
+                        checked={!!(selectedIntents[f.path] || '').trim()}
+                        onChange={e => setSelectedIntents(prev => ({
+                          ...prev, [f.path]: e.target.checked ? (prev[f.path] || '') : '' }))}
+                        className="mt-1" />
+                      <div className="flex-1 space-y-0.5">
+                        <div className="text-[10px] font-mono text-gray-300">
+                          {f.path} <span className="text-gray-600">({f.size}B)</span>
+                        </div>
+                        <input value={selectedIntents[f.path] || ''}
+                          onChange={e => setSelectedIntents(prev => ({ ...prev, [f.path]: e.target.value }))}
+                          placeholder="修改意图，如：登录增加验证码校验"
+                          className="w-full bg-dark-hover border border-dark-border rounded px-2 py-0.5 text-[10px] text-gray-200" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* 测试门禁逃生（§3.8）：无 tests/ 时才展示 */}
+              {importMeta && !importMeta.has_tests && importedFiles.length > 0 && (
+                <label className="flex items-center gap-1.5 text-[10px] text-gray-300 cursor-pointer">
+                  <input type="checkbox" checked={skipGate} onChange={e => setSkipGate(e.target.checked)} />
+                  跳过测试门禁（代码即使跑不通测试也能部署，通过率为估算值）
+                </label>
+              )}
+              {importedFiles.length > 0 && (
+                <Button variant="primary" size="sm" onClick={handleApplyModify} loading={savingModify}>
+                  保存修改意图并重建
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Actions — show for team_ready / done / failed so user can always rebuild */}
         <div className="flex flex-wrap gap-2">
@@ -1525,6 +1711,36 @@ const ProjectPanel: React.FC<{
         content={fullscreenContent}
         onClose={() => { setFullscreenContent(''); setFullscreenTitle(''); }}
       />
+
+      {/* L2: 《预期管理手册》弹窗（§3.9 条件 1 — 首次导入必读，同意才能继续） */}
+      {showManualModal && (
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4"
+          onClick={() => { setManualAgreed(false); setShowManualModal(false); setShowImportPanel(false); }}>
+          <div className="bg-dark-card border border-dark-border rounded-lg max-w-2xl max-h-[80vh] overflow-y-auto p-5 text-xs space-y-3"
+            onClick={e => e.stopPropagation()}>
+            <h3 className="text-sm font-bold text-gray-100">📘 应用工厂 L2 代码导入模式 — 用户预期管理手册（必读）</h3>
+            <div className="text-gray-300 space-y-2 text-[11px] leading-relaxed">
+              <p><b className="text-red-300">一句话核心认知：</b>L2 不是"找茬修改器"，而是"整体重铸机"。
+                你的旧代码是<b>原料</b>不是<b>地基</b>——AI 会把整块铁熔了按新需求重铸一把新剑，而不是在旧剑上焊个新把手。</p>
+              <p>⚠️ <b>重写 ≠ 合并</b>：勾选的文件会被<b>整体重写</b>（不是"在第 100 行插 5 行"）。
+                对外接口（函数名/类名/API 路由路径）会被强制保留，但内部特殊边界处理、性能 Hack、隐式全局变量可能被标准写法替换。</p>
+              <p>⚠️ <b>"保持风格"是玄学</b>：最终代码看起来会像"AI 写的，但套了你原来的函数名"。生僻写法（元类/装饰器嵌套/猴子补丁）大概率被重写。</p>
+              <p>⚠️ <b>无测试门禁可能失效</b>：老项目无 tests/ 时可跳过测试门禁——代码即使跑不通测试也能部署（通过率为估算值，非实测）。
+                <b className="text-amber-300">登录/支付/权限类变更强烈建议不要跳过，自行手动测一遍。</b></p>
+              <p>✅ <b>后悔药只有一颗</b>：不满意 → 「回滚 PRD」→ 从 imported/ 备份目录找回原件 → 重新勾选重写。
+                试错成本 = 一次生成的时间，不要在生成结果上打补丁。</p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button variant="primary" size="sm" onClick={() => { setManualAgreed(true); setShowManualModal(false); }}>
+                同意以上规则，点击继续
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => { setManualAgreed(false); setShowManualModal(false); setShowImportPanel(false); }}>
+                退出此功能
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };

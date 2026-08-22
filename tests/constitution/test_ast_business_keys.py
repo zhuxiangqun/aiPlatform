@@ -63,6 +63,9 @@ FRAMEWORK_KEYS = {
     "output_dir",  # framework-level: project output directory set by builder
     "description",  # engine-level: project/task description (generic, not business artifact)
     "cost_used_usd",  # engine-level: cumulative stage cost tracking (generic)
+    # L2: imported existing-code context (generic — platform-assembled payload,
+    # engine only reads referenced files and appends; plan-app-factory-l2)
+    "imported_repo",
     # P2-A1 event-sourced framework keys (pipeline_run_store event fold view)
     "event_derived", "state_event_consistent",
 }

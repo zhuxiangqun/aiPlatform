@@ -394,3 +394,19 @@ pytest -q \
   - `grep -c "埋点" docs/research/plan-app-factory-l2-import-repo.md`（≥2：§3.8 表格 + §3.9 条件 3）
   - `grep -c "pre-check-import" docs/research/plan-app-factory-l2-import-repo.md`（≥2：决策痕迹，兼容 1.38）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
+
+### 1.40 L2 实施（import-repo + prompt 注入 + 门禁逃生 + 警告/埋点）（2026-08-22）
+- MUST：`POST /projects/{id}/import-repo`（zip/路径→manifest，zip-slip 防护/密钥过滤/限额）+ `GET /projects/{id}/imported-files` + `GET /import-stats` 端点存在（builder.py）
+- MUST：modify_files {path, intent} 校验（空 intent 拒绝）+ rebuild config 传递 `imported_repo`（含 behavior_prompt/intent_anchor_block）+ `skip_pytest_gate`
+- MUST：core 侧 `PipelineStageConfig.inject_imported_context` 字段 + `_run_stage_skill` 注入（行为契约/意图锚点/被引用文件全文/清单）+ skip gate（test_execution_mode=pytest 短路，APPROVED_SKIPPED）
+- MUST：deploy_to_app 对 skip 场景 reason 标注 + `regenerated_warnings`（Build Log 刷屏警告，§3.9 条件 2）
+- MUST：前端 Factory 页含导入入口/文件勾选+意图输入/红字重写警告/门禁开关/手册弹窗/regenerated 警告展示
+- 自动化验收：
+  - `grep -c "import-repo" aiPlat-platform/api/routers/builder.py`（≥1）
+  - `grep -c "_safe_extract_zip" aiPlat-platform/builder/builder_project_service.py`（≥2：定义 + 调用）
+  - `grep -c "inject_imported_context" aiPlat-core/core/schemas_builder.py aiPlat-core/core/harness/execution/pipeline_engine.py`（≥2）
+  - `grep -c "APPROVED_SKIPPED" aiPlat-core/core/harness/execution/pipeline_engine.py aiPlat-core/core/harness/execution/pipeline_eval.py`（≥2）
+  - `grep -c "regenerated_warnings" aiPlat-platform/builder/builder_project_service.py`（≥1）
+  - `grep -c "导入既有代码（L2）" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
+  - `python3 -m pytest aiPlat-platform/tests/test_l2_import_repo.py aiPlat-platform/tests/test_l2_import_helpers.py aiPlat-core/core/tests/unit/test_harness/test_l2_import_context.py -q`（≥34 passed）
+  - `python3 scripts/check_research_docs_freshness.py .`（exit 0）

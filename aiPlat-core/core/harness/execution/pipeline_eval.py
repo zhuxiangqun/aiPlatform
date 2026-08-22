@@ -192,6 +192,25 @@ class PipelineEvalMixin:
 
         test_dir = os.path.join(output_dir, os.getenv("AIPLAT_TEST_DIR", "test"))
 
+        # ── L2: skip_pytest_gate — user explicitly opted out of the real pytest
+        #     gate (e.g. legacy imported repo has no tests). Mark state so the
+        #     platform deploy path falls back to estimated pass rate (with reason).
+        if state.get("skip_pytest_gate"):
+            state["_test_pass_rate"] = None
+            state["_has_tests"] = False
+            state["_skip_pytest_gate"] = True
+            state["_test_gate_skipped_reason"] = (
+                "user skipped pytest gate (L2 import mode) — pass_rate will be estimated, not measured"
+            )
+            state[result_key] = {
+                "pass": False, "pass_rate": 0, "score": {"overall": 0},
+                "recommendation": "APPROVED_SKIPPED",
+                "error": "pytest_gate_skipped",
+                "reason": state["_test_gate_skipped_reason"],
+                "test_cases": [], "issues": [],
+            }
+            return state
+
         os.makedirs(test_dir, exist_ok=True)
 
         test_file = os.getenv("AIPLAT_TEST_FILE", "test_api.py")

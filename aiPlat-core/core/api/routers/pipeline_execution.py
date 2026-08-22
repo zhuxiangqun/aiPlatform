@@ -384,6 +384,9 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
                 "pass_rate": 0.0,
                 "issues": {},
                 "context": {},
+                # L2 — imported existing-code context (platform assembles; engine injects)
+                "imported_repo": config.get("imported_repo") or None,
+                "skip_pytest_gate": bool(config.get("skip_pytest_gate", False)),
             }
 
             # ── v3.1: Event-driven engine — run() handles full lifecycle incl HITL ──

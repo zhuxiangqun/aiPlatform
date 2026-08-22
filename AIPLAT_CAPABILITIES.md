@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1067
+total_capabilities: 1068
 last_updated: 2026-08-19
 version: "30.1"
 auto_sync: true
@@ -588,6 +588,7 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| imported_repo context injection | `core/harness/execution/pipeline_engine.py` | ✅ | 自动同步 | 已合入 |
 | get_result_verifier | `core/harness/integration.py` | ✅ | 自动同步 | 已合入 |
 | get_dataset_manager | `core/harness/integration.py` | ✅ | 自动同步 | 已合入 |
 | get_job_manager | `core/harness/integration.py` | ✅ | 自动同步 | 已合入 |
@@ -1632,6 +1633,7 @@ scan_hash: 8f9548ec24f4
 | MinerU PDF 提取 | platform/kb/poc/mineru_extract.py | ✅ | 结构化PDF内容提取 + 表格 | 已合入 |
 | Video Retrieval | platform/kb/intelligence/video_retrieval.py | ✅ | 时间索引视频内容检索 + 转录对齐 | 已合入 |
 | Builder Project Service | platform/builder/builder_project_service.py | ✅ | 全功能应用项目CRUD + 双模式自动路由（agent→配置/code→代码，team_planner mode 判断）+ pass_rate 来源标注（real_pytest/estimated） | 已合入 |
+| L2 导入既有代码 | platform/builder/builder_project_service.py + core/harness/execution/pipeline_engine.py | ✅ | import-repo API（zip/路径→manifest→_final_state.imported_repo，zip-slip 防护/密钥过滤/50MB·500文件·2MB 限额/has_tests/missing_deps）+ prompt 注入（行为契约"重写而非合并"+ {path,intent} 意图锚点 + 被引用文件全文）+ skip_pytest_gate 逃生（estimated + 原因）+ Build Log regenerated 警告 + 埋点（>40% 触发 L3 告警） | 已合入 |
 | 租户自助入驻 | [API] — register/verify-email | ✅ | 注册→邮箱验证→激活→返回API Key | 已合入 |
 | 租户自助门户 | [API] — tenant/* | ✅ | 仪表板/API Key管理/用量/计费面板 | 已合入 |
 | 运营大盘 | [API] — ops/overview | ✅ | 跨租户聚合：租户数/Token/活跃度，platform_admin only | 已合入 |
@@ -2001,7 +2003,7 @@ scan_hash: 8f9548ec24f4
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 6 | 0 | 6 |
 | Arena & 调度 | 7 | 0 | 7 |
-| 平台治理 | 80 | 0 | 80 |
+| 平台治理 | 81 | 0 | 81 |
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 8 | 0 | 8 |
@@ -2024,7 +2026,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1067** | **0** | **1067** |
+| **总计** | **1068** | **0** | **1068** |
 
 ---
 

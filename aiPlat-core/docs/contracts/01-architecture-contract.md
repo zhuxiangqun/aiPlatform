@@ -194,3 +194,4 @@ aiPlat 逻辑上分为：
 
 - **L2 设计：导入既有代码（2026-08-22）**：plan-app-factory-l2-import-repo.md —— import-repo 输入通道（zip/路径→manifest→prompt 注入被引用文件），安全/回滚/验收完整，约 2 天。
 - **Rule 6 plan 文档豁免（2026-08-22）**：check_research_docs_freshness.py 对 plan- 前缀设计文档跳过引用对账（目标态路径非现状）。
+- **L2 实施：导入既有代码（2026-08-22）**：import-repo 通道落地 —— platform 组装业务文案（`behavior_prompt` 重写契约 + `intent_anchor_block` 意图锚点），core 引擎仅做通用注入（`PipelineStageConfig.inject_imported_context` 配置驱动，读被引用文件全文 + 清单附加到 stage 输入，零业务文案，符合 §Harness Contract）；`skip_pytest_gate` 逃生（`test_execution_mode=pytest` 短路 → APPROVED_SKIPPED）；deploy `regenerated_warnings` 刷屏 + skip 比率埋点（>40% → L3 告警）。契约要点：L2 = 整文件重写非增量合并，回滚靠 imported/ 原件 + prev 快照；引擎不持有任何 L2 业务字符串（全部由 platform 组装传入 state.imported_repo）。
