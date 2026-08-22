@@ -148,3 +148,20 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 - **core 侧** 40 个缺失符号恢复原模块导入（core 内部 api→harness 允许）；
 - **platform 侧** 9 个符号（`create_infra_database_client`/`get_rag_evaluator`/`EvalSample`/`list_pending`/`reject`/`get_history`/`evaluate`/`get_alerts`/`compute`/`assemble_field_assessment`/`SystemDiagnostician`）**经 CoreFacade canonical re-export**（platform 必须经 CoreFacade，§92）；
 - 约束：**新增 platform 侧经 CoreFacade 访问的符号，必须先确认 CoreFacade 模块级 re-export 存在**（缺失 = 运行时 ImportError = 500）。
+
+---
+
+## 12. L2 导入既有代码端点权限（2026-08-22）
+
+`aiPlat-platform/api/routers/builder.py` 新增 3 个 L2 端点，权限与既有 builder 端点一致：
+
+| 端点 | 权限 | 说明 |
+|---|---|---|
+| `POST /projects/{id}/import-repo` | `require_builder_access` | 导入 zip（`File`）或 AIPLAT_HOME 内路径（`existing_path`）→ manifest |
+| `GET /projects/{id}/imported-files` | `require_builder_access` | 已导入文件清单（勾选 + 修改意图） |
+| `GET /import-stats` | `require_builder_access` | skip_pytest_gate 埋点统计（>40% → L3 优先级告警） |
+
+**约束**：
+- `existing_path` 白名单限制在 AIPLAT_HOME 内（跨目录导入需管理员确认，复用 `require_admin_access` 模式，L2 设计 §3.5）；
+- import-repo 接受任意登录 builder 用户上传 zip —— zip 仅解压到 `~/.aiplat/apps/{pid}/imported/`（zip-slip 防护 + 密钥过滤 + 体积限额），不触碰其他用户/系统路径；
+- 统计端点仅返回聚合比率，不含项目明细（避免通过 skip 统计反推他人项目状态）。
