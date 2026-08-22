@@ -185,3 +185,5 @@ aiPlat 逻辑上分为：
 - **文档同步守卫 Rule 6（2026-08-22）**：`verify_doc_sync.sh` 新增 research 文档新鲜度对账（独立脚本 check_research_docs_freshness.py）：① 状态标记矛盾检测（已修复 vs 待修/空壳）；② 代码符号引用验证；③ `最后验证：DATE` 时间戳 vs 代码 mtime。审计报告新增自校验字段约定。8 项工具自测。
 
 - **应用工厂页面感知 + 双入口梳理（2026-08-22）**：FactoryPage 接入 pageDataBridge（/app/factory）；确认 /app/factory 与 /app/builder/projects 共用 projectApi 后端，factory 为完整入口。
+
+- **应用工厂双模式 + pass_rate 标注（2026-08-22）**：team_planner mode 自动判断（agent/code）→ 团队模板映射；deploy_to_app 的 pass_rate 加 pass_rate_source（real_pytest/estimated）+ 估算原因字段。

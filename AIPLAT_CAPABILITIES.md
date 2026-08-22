@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1064
+total_capabilities: 1067
 last_updated: 2026-08-19
 version: "30.1"
 auto_sync: true
@@ -1631,7 +1631,7 @@ scan_hash: 8f9548ec24f4
 | KB Intelligence | platform/kb/intelligence/service.py | ✅ | URL抓取/HTML→text/格式检测/视频URL转录 | 已合入 |
 | MinerU PDF 提取 | platform/kb/poc/mineru_extract.py | ✅ | 结构化PDF内容提取 + 表格 | 已合入 |
 | Video Retrieval | platform/kb/intelligence/video_retrieval.py | ✅ | 时间索引视频内容检索 + 转录对齐 | 已合入 |
-| Builder Project Service | platform/builder/builder_project_service.py | ✅ | 全功能应用项目CRUD | 已合入 |
+| Builder Project Service | platform/builder/builder_project_service.py | ✅ | 全功能应用项目CRUD + 双模式自动路由（agent→配置/code→代码，team_planner mode 判断）+ pass_rate 来源标注（real_pytest/estimated） | 已合入 |
 | 租户自助入驻 | [API] — register/verify-email | ✅ | 注册→邮箱验证→激活→返回API Key | 已合入 |
 | 租户自助门户 | [API] — tenant/* | ✅ | 仪表板/API Key管理/用量/计费面板 | 已合入 |
 | 运营大盘 | [API] — ops/overview | ✅ | 跨租户聚合：租户数/Token/活跃度，platform_admin only | 已合入 |
@@ -1984,13 +1984,13 @@ scan_hash: 8f9548ec24f4
 | 知识引擎（本体） | 145 | 0 | 145 |
 | RAG 检索 | 42 | 0 | 42 |
 | 知识基础设施 | 29 | 0 | 29 |
-| Agent 系统 | 39 | 0 | 39 |
+| Agent 系统 | 41 | 0 | 41 |
 | Skill 系统 | 54 | 0 | 54 |
 | 安全与治理 | 48 | 0 | 48 |
 | 可观测性 | 18 | 0 | 18 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
-| 扩展与学习 | 129 | 0 | 129 |
+| 扩展与学习 | 130 | 0 | 130 |
 | Gate 系统 | 17 | 0 | 17 |
 | 评估系统 | 18 | 0 | 18 |
 | MCP 协议 | 9 | 0 | 9 |
@@ -2024,7 +2024,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1064** | **0** | **1064** |
+| **总计** | **1067** | **0** | **1067** |
 
 ---
 
