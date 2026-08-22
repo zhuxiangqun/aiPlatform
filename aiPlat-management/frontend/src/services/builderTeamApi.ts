@@ -252,6 +252,30 @@ export const projectApi = {
     );
   },
 
+  /** L2: import existing code (zip upload or AIPLAT_HOME path) → manifest. */
+  importRepo: async (projectId: string, form: FormData) => {
+    return apiClient.post<{
+      status: string; imported_files: number; manifest: Array<Record<string, unknown>>;
+      has_tests: boolean; missing_deps: string[];
+    }>(`/platform/builder/projects/${projectId}/import-repo`, form);
+  },
+
+  /** L2: imported manifest for file selection (勾选 + 修改意图). */
+  listImportedFiles: async (projectId: string) => {
+    return apiClient.get<{
+      status: string; files: Array<{ path: string; size: number; lang: string }>;
+      has_tests: boolean; missing_deps: string[]; imported_at: string; total: number;
+    }>(`/platform/builder/projects/${projectId}/imported-files`);
+  },
+
+  /** L2 telemetry: skip_pytest_gate ratio — >40% triggers L3 priority alert. */
+  getImportStats: async () => {
+    return apiClient.get<{
+      status: string; skip_gate_projects: number; total_projects: number;
+      total_runs: number; skip_ratio: number; l3_priority_alert: boolean;
+    }>('/platform/builder/import-stats');
+  },
+
   /** Re-run pipeline with existing PRD (e.g., after editing PRD). */
   rebuild: async (projectId: string) => {
     return apiClient.post<{ status: string; detail: string }>(

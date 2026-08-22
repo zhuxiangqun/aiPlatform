@@ -264,6 +264,10 @@ class PipelineStageConfig(BaseModel):
     tdd_enforce: bool = False
     context_isolation: str = "shared"   # "shared" | "isolated"
     context_profile: str = "code"        # "minimal" | "code" | "debug" | "deep"
+    # L2 — imported existing-code context (config-driven, generic: any stage may
+    # declare it needs imported-repo context; engine reads state.imported_repo and
+    # appends referenced-file full text + manifest + behavior prompt block).
+    inject_imported_context: bool = False
     # Phase 11 — config-driven post-execution (replaces hardcoded business logic in engine)
     chain_skill_after: str = ""          # Auto-execute another skill after this stage completes
     deploy_files_to_disk: bool = False   # Parse ## FILE: blocks from output, write to project dir

@@ -129,6 +129,10 @@ domains:
         type: "class"
         signature: "classify(error_message, exception_type)→failure_type"
         module: "core/harness/execution/failure_classifier.py"
+      - symbol: "imported_repo context injection"
+        type: "behavior"
+        signature: "L2: inject_imported_context stage flag → append imported manifest/referenced-file full text/behavior block; skip_pytest_gate short-circuit on test_execution_mode=pytest"
+        module: "core/harness/execution/pipeline_engine.py"
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"

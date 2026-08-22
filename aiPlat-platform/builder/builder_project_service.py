@@ -75,6 +75,22 @@ _BUILDER_STATES_DIR = os.path.join(
     "builder_states",
 )
 
+# ── L2: import existing code (plan-app-factory-l2-import-repo.md §3.3/§3.5/§3.6) ──
+_L2_IMPORT_MAX_ZIP_BYTES = int(os.getenv("AIPLAT_L2_IMPORT_MAX_ZIP_MB", "50")) * 1024 * 1024
+_L2_IMPORT_MAX_FILES = int(os.getenv("AIPLAT_L2_IMPORT_MAX_FILES", "500"))
+_L2_IMPORT_MAX_FILE_BYTES = int(os.getenv("AIPLAT_L2_IMPORT_MAX_FILE_MB", "2")) * 1024 * 1024
+_L2_SENSITIVE_RE = re.compile(
+    r"(^|/)(\.env[^/]*|.*\.pem$|.*\.key$|.*\.p12$|secrets?/|credentials?\.(json|yaml|yml)$|\.git/)",
+    re.IGNORECASE,
+)
+_L2_DEPS_FILES = ("requirements.txt", "go.mod", "package.json", "pyproject.toml")
+_L2_BEHAVIOR_PROMPT = (
+    "## 行为契约（重写而非合并）\n"
+    "对 modify_files 中列出的文件：必须基于注入的旧文件内容【重写】该文件以满足变更需求。\n"
+    "重写时保留：原有对外接口（函数签名/类名/路由路径）、关键边界处理、注释中标记的已知坑。\n"
+    "未在 modify_files 中的文件一律不得触碰、不得覆盖。"
+)
+
 
 def _semantic_output(agent_id: str, phase: str) -> str:
     """Map agent_id to semantic output artifact name — reads from AGENT.md frontmatter."""
@@ -87,6 +103,161 @@ def _semantic_output(agent_id: str, phase: str) -> str:
         logging.getLogger("aiplat.builder").warning(
             "Failed to get agent frontmatter for %s: %s", agent_id, str(e)[:200])
     return phase or "artifact"
+
+
+# ── L2: import helpers (plan-app-factory-l2-import-repo.md §3.3/§3.6 security) ──
+
+def _safe_extract_zip(zip_bytes: bytes, import_root: str) -> None:
+    """Extract zip with zip-slip protection: every entry's resolved path must
+    stay inside import_root. Rejects absolute paths, '..' traversal, symlinks."""
+    import zipfile
+    import io
+    _root_abs = os.path.abspath(import_root)
+    if len(zip_bytes) > _L2_IMPORT_MAX_ZIP_BYTES:
+        raise ValueError(f"zip 超过上限 {_L2_IMPORT_MAX_ZIP_BYTES // (1024*1024)}MB")
+    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+        for info in zf.infolist():
+            name = info.filename
+            if name.startswith("/") or "\\" in name:
+                raise ValueError(f"zip-slip: 非法路径 {name}")
+            target = os.path.abspath(os.path.join(_root_abs, name))
+            if not target.startswith(_root_abs + os.sep):
+                raise ValueError(f"zip-slip: 路径越界 {name}")
+            if name.endswith("/"):
+                continue
+            try:
+                data = zf.read(info)
+            except RuntimeError as e:
+                raise ValueError(f"zip 读取失败（疑似加密/损坏）：{e}") from e
+            if len(data) > _L2_IMPORT_MAX_FILE_BYTES:
+                raise ValueError(f"单文件超过上限 {_L2_IMPORT_MAX_FILE_BYTES // (1024*1024)}MB：{name}")
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            with open(target, "wb") as fh:
+                fh.write(data)
+
+
+def _copy_existing_path(existing_path: str, import_root: str) -> None:
+    """Copy a user-specified directory into import_root — whitelisted to
+    AIPLAT_HOME/~/ .aiplat only (L2 §3.5: existing_path 白名单)."""
+    import shutil as _sh
+    _home = os.path.abspath(os.path.expanduser(
+        os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))))
+    _src = os.path.abspath(os.path.expanduser(existing_path))
+    if not os.path.isdir(_src):
+        raise ValueError(f"路径不存在或不是目录：{existing_path}")
+    if not (_src == _home or _src.startswith(_home + os.sep)):
+        raise ValueError("existing_path 仅允许 AIPLAT_HOME 内的目录（跨目录导入需管理员确认）")
+    for root, _dirs, files in os.walk(_src):
+        for fn in files:
+            full = os.path.join(root, fn)
+            rel = os.path.relpath(full, _src)
+            if _L2_SENSITIVE_RE.search(rel):
+                continue
+            size = os.path.getsize(full)
+            if size > _L2_IMPORT_MAX_FILE_BYTES:
+                continue
+            target = os.path.join(import_root, rel)
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            try:
+                _sh.copy2(full, target)
+            except OSError:
+                continue
+
+
+def _scan_imported(import_root: str) -> tuple:
+    """Scan import_root into manifest [{path,size,sha256,lang,first_line}].
+    Skips sensitive files (.env/*.pem/secrets/.git). Returns (manifest, too_many)."""
+    import hashlib
+    manifest = []
+    too_many = False
+    for root, _dirs, files in os.walk(import_root):
+        for fn in sorted(files):
+            full = os.path.join(root, fn)
+            rel = os.path.relpath(full, import_root)
+            if _L2_SENSITIVE_RE.search(rel):
+                continue
+            if len(manifest) >= _L2_IMPORT_MAX_FILES:
+                too_many = True
+                break
+            try:
+                size = os.path.getsize(full)
+            except OSError:
+                continue
+            if size > _L2_IMPORT_MAX_FILE_BYTES:
+                continue
+            lang = os.path.splitext(fn)[1].lstrip(".").lower() or "txt"
+            first_line = ""
+            try:
+                with open(full, "r", encoding="utf-8", errors="replace") as fh:
+                    first_line = fh.readline()[:120].strip()
+            except OSError:
+                pass  # noqa: cleanup-best-effort — unreadable file → empty preview, still listed
+            sha = ""
+            try:
+                with open(full, "rb") as fh:
+                    sha = hashlib.sha256(fh.read(1 << 20)).hexdigest()[:16]
+            except OSError:
+                pass  # noqa: cleanup-best-effort — unreadable file → empty hash, still listed
+            manifest.append({
+                "path": rel, "size": size, "lang": lang,
+                "sha256": sha, "first_line": first_line,
+            })
+        if too_many:
+            break
+    return manifest, too_many
+
+
+def _detect_tests(import_root: str) -> bool:
+    """True if the imported repo has a tests/ or test/ directory (§3.8)."""
+    for cand in ("tests", "test"):
+        if os.path.isdir(os.path.join(import_root, cand)):
+            return True
+    return False
+
+
+def _detect_missing_deps(import_root: str) -> list:
+    """Scan requirements.txt/go.mod/package.json/pyproject.toml and return the
+    declared dependency list as pre-check hints (info only, non-blocking; §3.8)."""
+    hints = []
+    for fname in _L2_DEPS_FILES:
+        fpath = os.path.join(import_root, fname)
+        if not os.path.isfile(fpath):
+            continue
+        try:
+            with open(fpath, "r", encoding="utf-8", errors="replace") as fh:
+                content = fh.read(200_000)
+        except OSError:
+            continue
+        if fname in ("requirements.txt",):
+            for line in content.splitlines():
+                line = line.strip()
+                if line and not line.startswith("#") and not line.startswith("-"):
+                    pkg = re.split(r"[<>=!~; \[]", line, maxsplit=1)[0].strip()
+                    if pkg:
+                        hints.append(f"{fname}: {pkg}")
+        elif fname == "go.mod":
+            for line in content.splitlines():
+                m = re.match(r"^\s*([a-zA-Z0-9_\-\./]+)\s+v[0-9]", line)
+                if m:
+                    hints.append(f"go.mod: {m.group(1)}")
+        elif fname == "package.json":
+            import json as _j
+            try:
+                _pkg = _j.loads(content)
+            except Exception:
+                continue
+            for section in ("dependencies", "devDependencies"):
+                deps = _pkg.get(section) or {}
+                for k in list(deps.keys())[:50]:
+                    hints.append(f"package.json({section}): {k}")
+        elif fname == "pyproject.toml":
+            for line in content.splitlines():
+                line = line.strip()
+                if line and not line.startswith("#") and not line.startswith("["):
+                    pkg = re.split(r"[<>=!~; \[]", line, maxsplit=1)[0].strip()
+                    if pkg and pkg not in ("dependencies", "optional-dependencies"):
+                        hints.append(f"pyproject.toml: {pkg}")
+    return hints[:200]
 
 
 def _create_skill_loader():
@@ -1205,6 +1376,7 @@ class BuilderProjectService:
             if runs:
                 runs[-1]["phase"] = state.get("phase", "done")
                 runs[-1]["pass_rate"] = state.get("_test_pass_rate", 0)
+                runs[-1]["skip_pytest_gate"] = state.get("_skip_pytest_gate", False)
                 runs[-1]["tokens_used"] = state.get("tokens_used", 0)
                 runs[-1]["iteration"] = state.get("iteration", 0)
                 runs[-1]["error"] = state.get("error", "")
@@ -1387,10 +1559,125 @@ class BuilderProjectService:
         self._sessions.pop(project_id, None)
         return {"project_id": project_id, "phase": "dialogue"}
 
+    async def import_repo(self, project_id: str, *, zip_bytes: bytes = b"", existing_path: str = "") -> Dict[str, Any]:
+        """L2: import existing code into the project (zip upload or local path).
+
+        Design: plan-app-factory-l2-import-repo.md §3.3/§3.6 — import_root is
+        isolated from the deploy dir (~/.aiplat/apps/{pid}/imported vs current/),
+        manifest carries {path,size,sha256,lang,first_line}, has_tests/missing_deps
+        drive the pytest-gate escape (§3.8).
+        """
+        self._reload_if_stale()
+        proj = self._projects.get(project_id) or {}
+        if not proj:
+            return {"status": "error", "detail": "项目不存在"}
+
+        _apps_home = os.path.join(
+            os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "apps", project_id)
+        import_root = os.path.join(_apps_home, "imported")
+        os.makedirs(import_root, exist_ok=True)
+
+        # ── Snapshot previous import (rollback: user can compare against prev) ──
+        prev_root = os.path.join(_apps_home, "imported.prev")
+        if os.path.isdir(import_root) and any(os.scandir(import_root)):
+            try:
+                import shutil as _sh
+                if os.path.isdir(prev_root):
+                    _sh.rmtree(prev_root)
+                _sh.copytree(import_root, prev_root)
+            except OSError:
+                _log.warning("L2: failed to snapshot previous import for %s", project_id)
+
+        if zip_bytes:
+            _safe_extract_zip(zip_bytes, import_root)
+        elif existing_path:
+            _copy_existing_path(existing_path, import_root)
+        else:
+            return {"status": "error", "detail": "需要 zip 上传或 existing_path 二选一"}
+
+        # ── Scan manifest (sensitive files skipped; limits enforced) ──
+        manifest, too_many = _scan_imported(import_root)
+        if too_many:
+            return {"status": "error",
+                    "detail": f"文件数超过上限 {_L2_IMPORT_MAX_FILES}，请压缩后重试"}
+        if not manifest:
+            return {"status": "error", "detail": "未扫描到可导入文件（敏感/密钥文件已跳过）"}
+
+        has_tests = _detect_tests(import_root)
+        missing_deps = _detect_missing_deps(import_root)
+
+        proj["imported_repo"] = {
+            "root": import_root,
+            "prev_root": prev_root if os.path.isdir(prev_root) else "",
+            "manifest": manifest,
+            "has_tests": has_tests,
+            "missing_deps": missing_deps,
+            "imported_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        }
+        proj["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        self._save_projects()
+        _log.info("L2: imported %d files for project %s (has_tests=%s, deps=%s)",
+                  len(manifest), project_id, has_tests, len(missing_deps))
+        return {
+            "status": "ok",
+            "imported_files": len(manifest),
+            "manifest": manifest[:100],
+            "has_tests": has_tests,
+            "missing_deps": missing_deps,
+        }
+
+    async def list_imported_files(self, project_id: str) -> Dict[str, Any]:
+        """L2: return imported manifest for frontend file selection."""
+        proj = self._projects.get(project_id, {})
+        imp = proj.get("imported_repo") or {}
+        manifest = imp.get("manifest") or []
+        return {
+            "status": "ok",
+            "files": [{"path": m.get("path", ""), "size": m.get("size", 0), "lang": m.get("lang", "")}
+                      for m in manifest],
+            "has_tests": bool(imp.get("has_tests", False)),
+            "missing_deps": imp.get("missing_deps") or [],
+            "imported_at": imp.get("imported_at", ""),
+            "total": len(manifest),
+        }
+
+    async def get_import_stats(self) -> Dict[str, Any]:
+        """L2: skip_pytest_gate telemetry — >40% ratio triggers L3 priority alert (§3.9 条件 3)."""
+        total_runs = 0
+        skip_count = 0
+        for pid, proj in self._projects.items():
+            runs = proj.get("runs") or []
+            total_runs += len(runs)
+            if (proj.get("confirmed_prd") or {}).get("skip_pytest_gate"):
+                skip_count += 1
+        ratio = round(skip_count / total_runs, 3) if total_runs else 0.0
+        return {
+            "status": "ok",
+            "skip_gate_projects": skip_count,
+            "total_projects": len(self._projects),
+            "total_runs": total_runs,
+            "skip_ratio": ratio,
+            "l3_priority_alert": ratio > 0.4,
+            "note": ">40% skip_pytest_gate → 逃生舱被当常规路径，应提前规划 L3（增量合并引擎）",
+        }
+
     async def update_prd(self, project_id: str, prd: dict) -> Dict[str, Any]:
         """Directly update the confirmed PRD without re-running PM chat."""
         import logging as _log2
         proj = self._projects.get(project_id, {})
+        if not proj:
+            return {"status": "error", "detail": "项目不存在"}
+        # L2: modify_files must be [{path, intent}] — empty intent rejected (§3.2/§4)
+        _mf = prd.get("modify_files") if isinstance(prd, dict) else None
+        if _mf is not None:
+            if not isinstance(_mf, list) or not _mf:
+                return {"status": "error", "detail": "modify_files 必须是非空数组"}
+            for item in _mf:
+                if not isinstance(item, dict) or not str(item.get("path") or "").strip():
+                    return {"status": "error", "detail": "modify_files 每项必须含 path"}
+                if not str(item.get("intent") or "").strip():
+                    return {"status": "error",
+                            "detail": f"文件 {item.get('path')} 必须填写修改意图（intent）"}
         if not proj:
             return {"status": "error", "detail": "项目不存在"}
         proj["confirmed_prd"] = prd
@@ -1499,6 +1786,25 @@ class BuilderProjectService:
                 for s in stages
             ],
         }
+
+        # ── L2: pass imported-repo context + pytest-gate escape to Core (§3.3/§3.5/§3.8) ──
+        # Platform assembles the business text (behavior contract, intent anchors);
+        # Core engine only reads files and appends the blocks (generic, §5.8 boundary).
+        _prd = proj.get("confirmed_prd") or {}
+        _modify = _prd.get("modify_files") if isinstance(_prd, dict) else None
+        _imported = proj.get("imported_repo")
+        if _imported and isinstance(_modify, list) and _modify:
+            _imp_payload = dict(_imported)
+            _imp_payload["modify_files"] = _modify
+            _imp_payload["behavior_prompt"] = _L2_BEHAVIOR_PROMPT
+            _intent_lines = [f"- {m.get('path')} — 意图：{m.get('intent') or ''}"
+                             for m in _modify if isinstance(m, dict) and m.get("path")]
+            if _intent_lines:
+                _imp_payload["intent_anchor_block"] = (
+                    "## files to modify (user-confirmed paths + intents)\n"
+                    + "\n".join(_intent_lines))
+            config["imported_repo"] = _imp_payload
+        config["skip_pytest_gate"] = bool(_prd.get("skip_pytest_gate", False))
 
         client = PipelineOrchestratorClient()
         result = await client.trigger_run(project_id, config)
@@ -1782,11 +2088,24 @@ class BuilderProjectService:
                     _pr = 0
                 _pr_source = "estimated"
                 _pr_reason = "no real pytest result — estimated from artifact length (arch>500/code>500/has_tests); treat as indicative only"
+                # L2 (§3.8): user explicitly skipped the pytest gate → make the reason explicit
+                if _final_state.get("_skip_pytest_gate"):
+                    _pr_reason = ("user skipped pytest gate (L2 import mode) — "
+                                  "pass_rate is estimated (LLM/artifact heuristics), NOT measured")
             if proj.get("runs"):
                 proj["runs"][-1]["pass_rate"] = _pr
                 proj["runs"][-1]["pass_rate_source"] = _pr_source
                 if _pr_reason:
                     proj["runs"][-1]["pass_rate_estimate_reason"] = _pr_reason
+                # L2 (§3.9 条件 2): Build-Log-style regenerated warning — no diff view in L2,
+                # so every rewritten file must be surfaced for manual review.
+                _modify = (proj.get("confirmed_prd") or {}).get("modify_files")
+                if isinstance(_modify, list) and _modify:
+                    _warns = [f"Warning: File {m.get('path')} has been regenerated, "
+                              "please review diff manually." for m in _modify
+                              if isinstance(m, dict) and m.get("path")]
+                    if _warns:
+                        proj["runs"][-1]["regenerated_warnings"] = _warns
                 self._save_projects()
         deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
         return _deploy_to_app_for_project(project_id, deploy_dir or "", proj)

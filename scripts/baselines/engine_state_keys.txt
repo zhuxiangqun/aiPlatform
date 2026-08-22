@@ -138,3 +138,7 @@ finished_at|OK|generic pipeline
 started_at|OK|generic pipeline
 event_derived|OK|generic pipeline (P2-A1 event-sourced derived view)
 state_event_consistent|OK|generic pipeline (P2-A1 state/event cross-check flag)
+imported_repo|OK|generic pipeline (L2: imported existing-code context payload, platform-assembled)
+skip_pytest_gate|OK|generic pipeline (L2: user-opted pytest gate escape, config-driven)
+_skip_pytest_gate|OK|engine-internal (L2: gate-skip marker)
+_test_gate_skipped_reason|OK|engine-internal (L2: gate-skip reason surfaced to deploy)

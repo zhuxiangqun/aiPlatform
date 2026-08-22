@@ -3951,6 +3951,32 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         if not _skill_name:
             return state
 
+        # ── L2: skip_pytest_gate — generic gate on test-execution stages ──
+        # Config-driven: stages declare test_execution_mode="pytest" (team YAML/AGENT.md);
+        # when the user explicitly opted out of the real pytest gate, mark state so the
+        # platform deploy path falls back to estimated pass rate (with reason).
+        if (state.get("skip_pytest_gate")
+                and getattr(stage, 'test_execution_mode', '') == "pytest"):
+            state["_test_pass_rate"] = None
+            state["_has_tests"] = False
+            state["_skip_pytest_gate"] = True
+            state["_test_gate_skipped_reason"] = (
+                "user skipped pytest gate (L2 import mode) — pass_rate will be estimated, not measured"
+            )
+            _skip_key = getattr(stage, 'test_result_key', '') or getattr(stage, 'output_artifact', '') or _skill_name
+            state[_skip_key] = {
+                "pass": False, "pass_rate": 0, "score": {"overall": 0},
+                "recommendation": "APPROVED_SKIPPED",
+                "error": "pytest_gate_skipped",
+                "reason": state["_test_gate_skipped_reason"],
+                "test_cases": [], "issues": [],
+            }
+            state["_progress"] = {"stage": _skill_name, "status": "completed",
+                                  "elapsed_sec": 0, "backend": "skipped_gate", "current_step": 0}
+            logging.getLogger("pipeline_engine").warning(
+                "Skill %s: pytest gate skipped (skip_pytest_gate=true)", _skill_name)
+            return state
+
         import os as _os, logging as _log
         import time as _time
         _t0 = _time.time()
@@ -4096,6 +4122,62 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         _arch_mode = getattr(stage, 'architecture_mode', '') or ''
         if _arch_mode:
             _context = f"## architecture_mode\n{_arch_mode}\n\n" + _context
+
+        # ── L2: imported existing-code context injection (generic, config-driven) ──
+        # Enabled per-stage via PipelineStageConfig.inject_imported_context. Engine only
+        # reads referenced files + appends the platform-assembled prompt block
+        # (behavior contract / intent anchors live in state.imported_repo, assembled
+        # by the platform layer — no business knowledge is hardcoded here).
+        try:
+            if getattr(stage, 'inject_imported_context', False) and state.get("imported_repo"):
+                _imp = state["imported_repo"]
+                if isinstance(_imp, dict):
+                    _root = str(_imp.get("root") or "")
+                    _manifest = _imp.get("manifest") or []
+                    _modify = _imp.get("modify_files") or []
+                    _ctx_block = ["\n\n## imported existing code (imported_repo)"]
+                    # 1) Behavior contract — assembled by platform (business text, §3.4)
+                    _behavior = str(_imp.get("behavior_prompt") or "")
+                    if _behavior:
+                        _ctx_block.append(_behavior)
+                    # 2) Intent anchors — assembled by platform (path + declared intent, no guessing)
+                    _anchor = str(_imp.get("intent_anchor_block") or "")
+                    if _anchor:
+                        _ctx_block.append(_anchor)
+                    # 3) Full text of referenced files (rewrite basis; 200KB cap each)
+                    if _root and _os.path.isdir(_root):
+                        _root_abs = _os.path.abspath(_root)
+                        for _m in _modify:
+                            if not isinstance(_m, dict):
+                                continue
+                            _rel = str(_m.get("path") or "").lstrip("/")
+                            if not _rel or ".." in _rel.split("/"):
+                                continue
+                            _fp = _os.path.join(_root_abs, _rel)
+                            if not _os.path.isfile(_fp) or not _fp.startswith(_root_abs + _os.sep):
+                                continue
+                            try:
+                                with open(_fp, "r", encoding="utf-8", errors="replace") as _fh:
+                                    _body = _fh.read(200_000)
+                                _ctx_block.append(
+                                    f"## file: {_rel} (full content, rewrite basis)\n{_body}")
+                            except OSError:
+                                continue
+                    # 4) Manifest listing for the rest (paths only, token-lean)
+                    _mod_paths = {str(_m.get("path") or "") for _m in _modify if isinstance(_m, dict)}
+                    _rest = [m for m in _manifest if isinstance(m, dict)
+                             and m.get("path") not in _mod_paths]
+                    if _rest:
+                        _list = "\n".join(
+                            f"- {m.get('path','')} ({m.get('size',0)}B)" for m in _rest[:200])
+                        if _list:
+                            _ctx_block.append(
+                                f"## imported file listing (do NOT touch unless listed above)\n{_list}")
+                    if len(_ctx_block) > 1:
+                        _context += "\n\n".join(_ctx_block)
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "swallowing non-critical exception", exc_info=True)  # best-effort context injection
 
         # ── 3. Inject document schema into system prompt ──
         # Read $ref from SKILL.md YAML frontmatter (not hardcoded artifact key mapping)
