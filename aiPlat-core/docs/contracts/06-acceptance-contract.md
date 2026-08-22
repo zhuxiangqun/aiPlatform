@@ -371,3 +371,14 @@ pytest -q \
   - `ls docs/research/plan-app-factory-l2-import-repo.md`（存在）
   - `grep -c "is_plan" scripts/check_research_docs_freshness.py`（≥2：定义 + 使用）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
+
+### 1.38 L2 评审意见并入（重写契约 + 意图绑定 + 测试门禁/依赖预检）（2026-08-22）
+- MUST：设计文档明确"重写而非合并"行为契约（§3.4 行为契约 + 前端红字警告 + prompt 行为指令）
+- MUST：modify_files 升级为 {path, intent} 意图绑定（§3.2/§3.5/§4），空意图不能提交
+- MUST：测试门禁逃生（§3.8）：tests/ 检测 + `skip_pytest_gate` 字段 + pre-check-import 依赖预检
+- 自动化验收：
+  - `grep -c "重写而非合并" docs/research/plan-app-factory-l2-import-repo.md`（≥2：§3.4 标题 + §3.4 正文）
+  - `grep -c "intent" docs/research/plan-app-factory-l2-import-repo.md`（≥4：API/注入/验收/前端）
+  - `grep -c "skip_pytest_gate" docs/research/plan-app-factory-l2-import-repo.md`（≥2：§3.8 + §4）
+  - `grep -c "pre-check-import" docs/research/plan-app-factory-l2-import-repo.md`（≥2：§3.2 + §3.8）
+  - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
