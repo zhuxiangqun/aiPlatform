@@ -382,3 +382,15 @@ pytest -q \
   - `grep -c "skip_pytest_gate" docs/research/plan-app-factory-l2-import-repo.md`（≥2：§3.8 + §4）
   - `grep -c "pre-check-import" docs/research/plan-app-factory-l2-import-repo.md`（≥2：§3.2 + §3.8）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
+
+### 1.39 L2 终审条件并入（手册 + Build Log 警告 + 埋点 + missing_deps）（2026-08-22）
+- MUST：`docs/research/plan-app-factory-l2-expected-behavior-manual.md` 存在（《L2 模式预期管理手册》交付物：重写≠合并/风格玄学/门禁失效三硬边界 + Checklist + 后悔路径）
+- MUST：设计文档含 §3.9 交付条件（手册引用 + Build Log regenerated 警告 + skip_pytest_gate 埋点 >40% 触发 L3 优先级告警）
+- MUST：依赖预检并入 import_repo 响应（missing_deps 字段，pre-check-import 独立接口降级，保留决策痕迹 ≥2 处）
+- 自动化验收：
+  - `ls docs/research/plan-app-factory-l2-expected-behavior-manual.md`（存在）
+  - `grep -c "missing_deps" docs/research/plan-app-factory-l2-import-repo.md`（≥3：§3.2 响应 + §3.8 表格 + §6 工作量）
+  - `grep -c "has been regenerated" docs/research/plan-app-factory-l2-import-repo.md`（≥1：§3.9 条件 2）
+  - `grep -c "埋点" docs/research/plan-app-factory-l2-import-repo.md`（≥2：§3.8 表格 + §3.9 条件 3）
+  - `grep -c "pre-check-import" docs/research/plan-app-factory-l2-import-repo.md`（≥2：决策痕迹，兼容 1.38）
+  - `python3 scripts/check_research_docs_freshness.py .`（exit 0）

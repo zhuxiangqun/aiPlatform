@@ -61,24 +61,23 @@
 ```
 POST /projects/{project_id}/import-repo
   body: { source: "zip_upload" | "existing_path", zip?: UploadFile, path?: str }
-  → { status, imported_files: int, manifest_path, manifest }
+  → { status, imported_files: int, manifest_path, manifest,
+      has_tests: bool,                          # tests/ 目录检测（门禁逃生判定）
+      missing_deps: ["pymysql>=1.0"] }          # 依赖预检（扫描 requirements.txt/go.mod/package.json；
+                                                #   仅信息提示不阻塞；评审终审：pre-check-import 独立接口
+                                                #   降级并入本响应，省 0.25 天强化日志可读性）
 
 GET  /projects/{project_id}/imported-files
   → { files: [{path, size, lang, has_tests}], total }
      （供前端展示导入了什么，用户勾选"这次改哪些" + 填写每文件修改意图）
 
-POST /projects/{project_id}/pre-check-import
-  body: { path: "src/auth/login.py" }（可为空 = 全项目）
-  → { deps: [{file: "requirements.txt", missing: ["pymysql>=1.0"]}], warn: "tests/ 不存在，pytest 门禁将无法运行" }
-     （依赖预检：扫描 requirements.txt/go.mod/package.json，提示缺失依赖可能导致测试失败；
-       tests/ 目录检测：无测试 → 返回 Warning，前端展示"可跳过测试门禁"开关）
-
 POST /projects/{project_id}/update-prd
   body: { prd: { ..., modify_files: [
            {path: "src/auth/login.py", intent: "登录增加验证码校验"},
            {path: "src/models/user.py", intent: "用户表增加验证码字段"}
-         ], scope_note: "..." } }
-  → 现有端点复用（builder.py:216 已存在），modify_files 由纯路径数组升级为"路径 + 意图"绑定
+         ], skip_pytest_gate: false, scope_note: "..." } }
+  → 现有端点复用（builder.py:216 已存在），modify_files 由纯路径数组升级为"路径 + 意图"绑定；
+    skip_pytest_gate 由前端高级配置开关写入（security 类变更二次确认）
 ```
 
 ### 3.3 核心实现：`import_repo`（builder_project_service.py 新增）
@@ -183,11 +182,25 @@ async def import_repo(self, project_id: str, *, zip_bytes: bytes = b"", existing
 
 | 检测 | 时机 | 行为 |
 |---|---|---|
-| `tests/` 目录检测 | `import_repo` 扫描 manifest 时（`has_tests` 标记进 manifest） | 无 tests/ → 导入响应带 `warn: "项目无测试用例，pytest 门禁无法运行"`，前端展示 Warning 横幅 + 高级配置"跳过测试门禁"开关 |
-| 依赖预检 | `pre-check-import` 接口（§3.2） | 扫描 `requirements.txt` / `go.mod` / `package.json`，对缺失声明依赖给出提示（不阻塞，仅预警） |
+| `tests/` 目录检测 | `import_repo` 扫描 manifest 时（`has_tests` 标记进 manifest） | 无 tests/ → 导入响应带 `has_tests: false`，前端展示 Warning 横幅 + 高级配置"跳过测试门禁"开关 |
+| 依赖预检 | `import_repo` 扫描时一并完成（原 `pre-check-import` 独立接口已按终审降级并入） | 扫描 `requirements.txt` / `go.mod` / `package.json`，缺失声明依赖填入响应 `missing_deps` 字段（仅信息提示，不阻塞） |
 | 门禁逃生 | 用户勾选"跳过测试门禁" → 写入 PRD 配置字段 `skip_pytest_gate: true` | `pipeline_eval.py` 检测该字段：true 时 `pass_rate_source` 走 `estimated`（LLM 估算）而非 `real_pytest`，流水线不卡死；**估算必须带 `pass_rate_estimate_reason`**（复用现有 deploy_to_app 字段） |
+| **埋点监控（终审补充）** | `skip_pytest_gate` 每次开启记一次（execution_store 计数） | 统计开启频率；**>40% 用户跳过 → 触发 L3（增量合并引擎）优先级告警**，说明逃生舱被当成常规路径 |
 
 **边界**：跳过门禁是**用户显式选择**（前端开关 + PRD 字段），默认不跳过；security 类变更（涉及认证/支付）即使勾选跳过，前端二次确认。
+
+### 3.9 交付条件（评审终审 —— 3 个硬性条件）
+
+| # | 条件 | 具体实现 | 验收 |
+|---|---|---|---|
+| 1 | **预期管理手册** | 随 L2 交付《L2 模式预期管理手册》（`plan-app-factory-l2-expected-behavior-manual.md`，一页纸）：核心比喻"旧代码是原料不是地基——熔铁重铸，不是焊把手"；3 个硬边界（重写≠合并 / 风格是玄学 / 门禁可能失效）+ 成功操作 Checklist + 唯一后悔路径（回滚 PRD + imported/ 原件） | 验收 12 |
+| 2 | **Build Log 刷屏警告** | 部署成功后，Build Log 对每个被重写文件打印：`Warning: File {path} has been regenerated, please review diff manually.`（无 Diff 视图也必须刷屏提示，养成人工 Review 习惯） | 验收 13 |
+| 3 | **监控埋点** | `skip_pytest_gate` 每次开启写入 execution_store 计数；**开启频率 >40% 触发 L3（增量合并引擎）开发优先级告警**（逃生舱被当常规路径的信号） | 验收 14 |
+
+**残余风险登记（设计层面无解，靠产品定位/手册消化）**：
+- "保持风格"是玄学：验收只保接口不保代码气质；AI 可能用标准库重写生僻写法 → 手册"硬边界 2"告知
+- 回滚依赖用户：无 Diff 视图（L3 才有），用户需手动对比 `imported/` 原件 → Build Log 刷屏 + 手册"后悔药"章节
+- `skip_pytest_gate` 滥用无法技术拦截 → 埋点阈值预警 + 事后审计日志追责（"给了用户开枪的权利"）
 
 ## 4. 前端改动（最小）
 
@@ -198,6 +211,7 @@ async def import_repo(self, project_id: str, *, zip_bytes: bytes = b"", existing
 | **修改意图绑定**（评审补充） | 文件列表勾选区 | 每个勾选文件必须填写一句"修改意图"（如"登录增加验证码"），**空意图不能提交**（提交按钮 disabled + 红字提示"请为每个文件填写修改意图"） |
 | **重写警告**（评审补充） | 勾选区顶部红字横幅 | ⚠️ **当前版本将根据旧代码重写该文件，而非合并改动。请确认已备份，且你接受"该文件整体重生成"的结果。** |
 | 测试门禁开关（评审补充） | 高级配置折叠区 | 导入响应含 `has_tests=false` 警告时展示："项目无测试用例，pytest 门禁无法运行" + "跳过测试门禁"开关（写入 `skip_pytest_gate`）；security 类变更二次确认 |
+| **预期管理手册入口**（终审补充） | 首次进入导入流程弹窗 | 展示《L2 模式预期管理手册》全文 + "同意以上规则，点击继续 / 否则退出"（帮助文档常驻入口） |
 | PRD 编辑框提示 | 现有 PRD 编辑 | 提示可引用 `imported/xxx.py` 路径，且 modify_files 已由勾选+意图生成 |
 
 ## 5. 验收标准
@@ -214,18 +228,21 @@ async def import_repo(self, project_id: str, *, zip_bytes: bytes = b"", existing
 | 8 | **行为契约生效（评审补充）**：prompt 含"重写而非合并"指令；生成后对外接口保留 | 单测：mock 生成结果断言 prompt 含行为契约文案；集成：导入含 `def login(` 的 login.py → 要求加验证码 → 断言产出仍含 `def login(` / 路由路径 |
 | 9 | **意图绑定生效（评审补充）**：modify_files 为 {path, intent}，prompt 注入含 intent，空 intent 被拒绝 | 单测：update-prd 传空 intent → 422；mock 断言 prompt 含 "意图：登录增加验证码校验" |
 | 10 | **测试门禁逃生（评审补充）**：无 tests/ → 导入响应含 has_tests=false + 前端可勾选 skip_pytest_gate → pipeline_eval 走 estimated 不卡死 | 集成：导入无 tests/ 的项目 → skip_pytest_gate=true → 断言 pass_rate_source=estimated + estimate_reason 非空 |
-| 11 | **依赖预检（评审补充）**：pre-check-import 返回依赖清单与缺失提示 | 单测：构造含 requirements.txt 的 zip → 断言响应含 deps 列表 |
+| 11 | **依赖预检（评审补充）**：import_repo 响应含 missing_deps（不单独做接口） | 单测：构造含 requirements.txt 的 zip → 断言 import_repo 响应含 missing_deps 列表 |
+| 12 | **预期管理手册交付（终审条件）**：手册随 L2 交付且设计文档引用 | `ls docs/research/plan-app-factory-l2-expected-behavior-manual.md` + grep 设计文档 §3.9 引用 |
+| 13 | **Build Log 刷屏警告（终审条件）**：部署成功后打印 regenerated 警告 | 集成：部署后断言日志含 "has been regenerated, please review diff manually" |
+| 14 | **埋点监控（终审条件）**：skip_pytest_gate 开启计数可查询，>40% 触发 L3 优先级告警 | 单测：开启 3 次 → 计数=3；模拟 5 次中 3 次跳过 → 告警标志触发 |
 
 ## 6. 工作量
 
 | 模块 | 工作量 |
 |---|---|
-| 后端 `import_repo` + manifest + 安全 | 0.5 天 |
+| 后端 `import_repo` + manifest + 安全 + `missing_deps`/`has_tests` 检测（并入响应） | 0.5 天 |
 | code_generation prompt 注入（含行为契约指令 + 意图锚点）+ 引擎通用读文件 | 0.5 天 |
-| `pre-check-import` 依赖预检 + tests/ 检测 + `skip_pytest_gate` 逃生 | 0.25 天 |
+| Build Log regenerated 警告 + `skip_pytest_gate` 埋点计数 | 0.25 天 |
 | 回滚/快照 | 0.25 天 |
-| 前端（上传/列表/勾选/意图输入/红字警告/门禁开关） | 0.5 天 |
-| 测试（10-12 例）+ 契约同步 | 0.5 天 |
+| 前端（上传/列表/勾选/意图输入/红字警告/门禁开关/手册弹窗） | 0.5 天 |
+| 测试（12-14 例）+ 契约同步 | 0.5 天 |
 | **合计** | **约 2.5 天** |
 
 ## 7. 与后续层级的关系
@@ -241,4 +258,7 @@ async def import_repo(self, project_id: str, *, zip_bytes: bytes = b"", existing
 3. **代码风格一致性**：靠 prompt 指令约束（"保持现有风格"），无自动 lint/格式化门——可后续加。
 4. **existing_path 的权限**：白名单限制在 AIPLAT_HOME 内，跨目录导入需管理员确认（复用 `require_admin_access` 模式）。
 5. **重写语义误用（评审指出）**：用户误以为"只加几行"而接受重写结果 → 已在 §3.4 用前端红字警告 + prompt 行为指令 + 接口保留验收三层缓解；仍存残余风险（AI 无法 100% 保留所有细节），L3 diff 合并彻底解决。**这是 L2 上线前必须让用户认知到的边界。**
-6. **测试真空期（评审指出）**：老项目无测试/依赖缺失导致 real_pytest 卡死 → §3.8 的 tests/ 检测 + skip_pytest_gate 逃生 + pre-check 依赖预检缓解；estimated 通过率可信度低于 real_pytest，需在 PRD 中显式展示估算原因。
+6. **测试真空期（评审指出）**：老项目无测试/依赖缺失导致 real_pytest 卡死 → §3.8 的 tests/ 检测 + skip_pytest_gate 逃生 + missing_deps 依赖预检缓解；estimated 通过率可信度低于 real_pytest，需在 PRD 中显式展示估算原因。
+7. **"保持风格"玄学（终审确认）**：prompt 要求"保持现有风格"，但模型对风格理解主观，生僻写法（元类/装饰器嵌套/猴子补丁）大概率被标准写法重写。验收只保接口不保气质——设计层面无解，靠手册"硬边界 2"消化。
+8. **回滚依赖用户（终审确认）**：L2 无 Diff 视图（L3 才有），用户部署后发现逻辑变化需手动对比 `imported/` 原件 → §3.9 条件 2 的 Build Log 刷屏警告 + 手册"后悔药"章节消化。
+9. **skip_pytest_gate 滥用（终审确认）**：系统无法判断"改登录验证码"是否安全类（关键词硬匹配），用户可能为省事跳过测试 → 技术无法拦截（"给了用户开枪的权利"），靠 §3.9 条件 3 埋点阈值（>40% 触发 L3 优先级）+ 事后审计日志追责消化。
