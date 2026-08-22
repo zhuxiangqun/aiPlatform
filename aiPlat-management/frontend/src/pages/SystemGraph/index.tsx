@@ -71,14 +71,14 @@ const SystemGraph: React.FC = () => {
       let url: string;
       if (tab === 'code') {
         url = codeMode === 'symbol'
-          ? '/api/core/diagnostics/code-intel/scan?mode=symbol&limit=500'
+          ? '/api/platform/apps/diagnostics/code-intel/scan?mode=symbol&limit=500'
           : `/api/core/knowledge-graph/code`;
         if (c) {
           lastCenter.current = c;
           url += (url.includes('?') ? '&' : '?') + `center=${encodeURIComponent(c)}&depth=${d || 2}`;
         }
       } else if (tab === 'domain') {
-        url = '/api/core/diagnostics/code-intel/domain-view';
+        url = '/api/platform/apps/diagnostics/code-intel/domain-view';
       } else {
         url = tab === 'capability'
           ? '/api/core/knowledge-graph/capability'
@@ -99,7 +99,7 @@ const SystemGraph: React.FC = () => {
     try {
       const url = tab === 'capability'
         ? '/api/core/knowledge-graph/capability'
-        : '/api/core/diagnostics/code-intel/tour?limit=30';
+        : '/api/platform/apps/diagnostics/code-intel/tour?limit=30';
       const res = await fetch(url);
       const data = await res.json();
 
@@ -131,7 +131,7 @@ const SystemGraph: React.FC = () => {
   // ── Export Graph as committable JSON ──
   const exportGraph = async () => {
     try {
-      const res = await fetch('/api/core/diagnostics/code-intel/export');
+      const res = await fetch('/api/platform/apps/diagnostics/code-intel/export');
       const data = await res.json();
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -489,7 +489,7 @@ const SystemGraph: React.FC = () => {
                 setDiffLoading(true);
                 try {
                   // Call blast radius API
-                  const res = await fetch(`/api/core/diagnostics/code-intel/blast?file=${encodeURIComponent(file)}`);
+                  const res = await fetch(`/api/platform/apps/diagnostics/code-intel/blast?file=${encodeURIComponent(file)}`);
                   const data = await res.json();
                   const affected: string[] = data.affected || [];
                   const matchSet = new Set<string>([file, ...affected]);
