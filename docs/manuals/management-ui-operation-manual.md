@@ -102,6 +102,11 @@
   - **对话式**：和 AI 聊天澄清需求（PM agent + 知识库检索增强），自动组队执行。
   - **高级配置**：项目列表 + 全生命周期详情（PRD 编辑/阶段产物/HITL 审批/修复回滚/部署预览）。
 - **生命周期**（后端 `builder_project_service.py`，40+ 端点）：对话澄清需求 → PRD 生成与确认（`confirm`）→ 自动组队（`recommend-team`，AI 推断 + Agent 历史性能表）→ 流水线执行（core PipelineEngine：架构→代码→测试）→ HITL 审批（`approve/reject`）→ 失败自动修复（`fix`/`regenerate`）→ 回滚（`rollback/{stage}`/`rollback-prd`）→ 部署（`deploy`，按测试通过率计算 pass_rate）→ 已部署应用预览（`/app/apps`）。
+- **双模式自动路由**（核心机制，`team_planner.py:471-476`）：规划 Agent 分析 PRD 后**先输出 `mode` 字段**自动判断采用哪套处理：
+  - **`agent` 模式**（→ `~/.aiplat/teams/default.yaml`）：需求核心是**自然语言交互/对话/多轮问答**（聊天机器人、问答助手）。产出 **AGENT.md + SKILL.md 配置 + app_page.json 页面协议**——"AI 应用"路线，不生成原生代码，由平台预置组件动态渲染。
+  - **`code` 模式**（→ `~/.aiplat/teams/code.yaml`）：需求核心是**确定性计算/API/CRUD/性能敏感**（上传转码、数据分析、表单）。产出**真实源代码**（`programmer_agent` → `code_generation`，`uses_file_output` + `deploy_files_to_disk` 落盘）+ 真 pytest 测试。
+  - 判断标准："核心是自然语言交互还是确定性计算/API？只有这两种，不输出 hybrid"。
+- **pass_rate 来源标注**（2026-08-22 起）：运行记录里的 `pass_rate` 带 `pass_rate_source` 字段——`real_pytest`（真实测试通过率，可信）或 `estimated`（无真实测试时按产物完整度估算，仅作参考，附 `pass_rate_estimate_reason`）。
 - **双入口说明**：`/app/factory`（AIFactory，3 模式容器）与 `/app/builder/projects`（ProjectsPage，纯列表 255 行）共用同一后端 `/platform/builder/projects`——factory 是完整入口，builder/projects 是精简列表视图。
 - **数字人感知**（2026-08-22 起）：应用工厂页已接入 `reportPageData('/app/factory', ...)`——数字人可回答"有几个项目在跑？""平均通过率多少？""当前选中项目什么阶段？"。
 
