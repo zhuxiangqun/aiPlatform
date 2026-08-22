@@ -1,6 +1,6 @@
 # L2 设计：应用工厂"导入既有代码"输入通道（从 0→1 生成器 → 1→100 演进器第一步）
 
-> **状态**：设计文档（2026-08-22，待评审）
+> **状态**：✅ **已实施**（2026-08-22，PR #80 合并；实施落地记录见 §9，与设计的差异已标注）
 > **目标**：让应用工厂第一次具备"接触既有代码"的能力——用户导入现有仓库，AI 看得见既有文件、按变更需求增量修改，而非从零全量重生成。
 > **关联**：《应用工厂分析报告.md》§"从 1 到 100"三缺口中的缺口 1（输入只认需求文字，不认既有代码）。
 
@@ -262,3 +262,39 @@ async def import_repo(self, project_id: str, *, zip_bytes: bytes = b"", existing
 7. **"保持风格"玄学（终审确认）**：prompt 要求"保持现有风格"，但模型对风格理解主观，生僻写法（元类/装饰器嵌套/猴子补丁）大概率被标准写法重写。验收只保接口不保气质——设计层面无解，靠手册"硬边界 2"消化。
 8. **回滚依赖用户（终审确认）**：L2 无 Diff 视图（L3 才有），用户部署后发现逻辑变化需手动对比 `imported/` 原件 → §3.9 条件 2 的 Build Log 刷屏警告 + 手册"后悔药"章节消化。
 9. **skip_pytest_gate 滥用（终审确认）**：系统无法判断"改登录验证码"是否安全类（关键词硬匹配），用户可能为省事跳过测试 → 技术无法拦截（"给了用户开枪的权利"），靠 §3.9 条件 3 埋点阈值（>40% 触发 L3 优先级）+ 事后审计日志追责消化。
+
+---
+
+## 9. 实施落地记录（2026-08-22，PR #80）
+
+### 9.1 落地范围（14 项验收全部通过）
+
+| 模块 | 落地位置 | 状态 |
+|---|---|---|
+| import-repo API（zip/路径→manifest→proj.imported_repo） | `aiPlat-platform/builder/builder_project_service.py` `import_repo()` | ✅ |
+| 安全（zip-slip/白名单/密钥过滤/限额/prev 快照） | 同文件 `_safe_extract_zip`/`_copy_existing_path`/`_scan_imported`/`_L2_SENSITIVE_RE` | ✅ |
+| has_tests / missing_deps 检测 | `_detect_tests`/`_detect_missing_deps`（并入 import-repo 响应，§3.2 终审结论） | ✅ |
+| imported-files / import-stats 端点 | `aiPlat-platform/api/routers/builder.py` | ✅ |
+| modify_files {path,intent} 校验（空 intent 拒绝） | `update_prd()` | ✅ |
+| rebuild 传递 imported_repo + skip_pytest_gate | `_rebuild_via_core()`（config 带 behavior_prompt/intent_anchor_block） | ✅ |
+| 引擎注入（inject_imported_context） | `aiPlat-core/core/harness/execution/pipeline_engine.py` `_run_stage_skill` | ✅ |
+| skip_pytest_gate 短路（APPROVED_SKIPPED） | pipeline_engine + pipeline_eval 双保险 | ✅ |
+| deploy regenerated_warnings + skip reason | `deploy_to_app()` | ✅ |
+| 前端（导入/勾选/意图/红字警告/门禁/手册弹窗/warnings） | `aiPlat-management/frontend/src/pages/App/Factory/index.tsx` + `builderTeamApi.ts` | ✅ |
+| 本机团队配置 | `~/.aiplat/teams/code.yaml`：programmer 加 `inject_imported_context: true`、test_executor 加 `test_execution_mode: pytest` | ✅ |
+
+### 9.2 与设计的差异（代码优先原则标注）
+
+| 设计（§） | 实际实现 | 说明 |
+|---|---|---|
+| §3.5 引擎"读被引用文件 + 拼进 stage 输入" | 行为契约文案（`behavior_prompt`）与意图锚点块（`intent_anchor_block`）由 **platform 组装**后经 `state.imported_repo` 传入，引擎只做"读文件 + 附加平台文本" | 更严格符合 §5.8 引擎零业务文案；引擎层无任何 L2 业务字符串（constitution AST 白名单仅加 `imported_repo` 一个 framework key） |
+| §3.8 skip 检测在 `pipeline_eval.py` | 主 gate 在 `_run_stage_skill`（`test_execution_mode=pytest` 配置驱动短路），`pipeline_eval._exec_test_runner` 保留同逻辑分支 | 覆盖 code.yaml 的 test_executor（handler 路径）与 TDD 路径双场景；判定完全配置驱动 |
+| §3.9 埋点"execution_store 计数" | `GET /import-stats` 统计 `confirmed_prd.skip_pytest_gate` 的项目数 / 项目总数比率 | 实现更轻（无新存储表），语义等价（>40% 触发 `l3_priority_alert`） |
+| §3.3 `_final_state.imported_repo` | 存 `proj.imported_repo`（platform projects.json），rebuild 时组装进 core config | 与现有 builder 状态归属一致（core state 只承载运行期上下文） |
+
+### 9.3 验证
+
+- 测试：`aiPlat-core/core/tests/unit/test_harness/test_l2_import_context.py`（4）+ `aiPlat-platform/tests/test_l2_import_repo.py`（20 静态）+ `test_l2_import_helpers.py`（10 动态）= **34 passed**
+- 架构守卫 exit 0（含 silent-except/NameError/engine-guard 修复）；前端 tsc + build 通过；constitution 12 passed
+- contracts 同步：acceptance 1.40（8 项自动化验收）+ 鉴权规范 §12 + run spec 四十九轮 + boundary 追加 + constitution FRAMEWORK_KEYS
+- 真实流水线生效前提：`~/.aiplat/teams/code.yaml` 已配 `inject_imported_context`/`test_execution_mode`
