@@ -446,7 +446,8 @@ def _propagate_platform_app_prefixes(prefix_map: dict[str, str]):
                 content,
             ):
                 mod_name, alias = m.group(1), m.group(2)
-                imports[alias] = f"{mod_name}.py"
+                # 用 app 相对路径（{app}/api/{mod}.py）作 key，避免跨层同名文件 basename 冲突
+                imports[alias] = f"{app_dir.name}/api/{mod_name}.py"
 
             # Find router.include_router(_yyy_router [, ...])
             for m in re.finditer(r"router\.include_router\s*\(\s*(\w+)", content):
@@ -476,6 +477,10 @@ def _propagate_platform_app_prefixes(prefix_map: dict[str, str]):
                     except Exception:
                         pass
                     prefix_map[child_file] = parent_prefix + parent_self_prefix
+                    # 同时按 basename 冗余注册（供旧逻辑 fallback），但不覆盖已存在的完整路径
+                    child_basename = child_file.split("/")[-1]
+                    if child_basename not in prefix_map or prefix_map[child_basename] == "/api/core":
+                        prefix_map[child_basename] = parent_prefix + parent_self_prefix
                     changed = True
                     break
 
@@ -521,8 +526,12 @@ def _extract_backend_routes() -> list[dict]:
                 self_prefix_match = re.search(r"APIRouter\s*\(\s*prefix\s*=\s*['\"]([^'\"]+)['\"]", content[:5000])
                 if self_prefix_match:
                     router_self_prefix = self_prefix_match.group(1)
-                # Check mount prefix map
-                if fn in mount_prefixes:
+                # Check mount prefix map — 完整相对路径优先（避免跨层同名文件 basename 冲突，
+                # 如 core/api/routers/code_intel.py 与 platform/apps/misc/api/code_intel.py）
+                rel_path = str(fp).replace(str(WORKSPACE_ROOT) + os.sep, "").replace(os.sep, "/")
+                if rel_path in mount_prefixes:
+                    mount_prefix = mount_prefixes[rel_path]
+                elif fn in mount_prefixes:
                     mount_prefix = mount_prefixes[fn]
                 elif "aiPlat-core" in str(fp) and fn not in ("server.py",):
                     for candidate in [os.path.basename(fp)]:
