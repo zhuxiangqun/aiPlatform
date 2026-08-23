@@ -1,6 +1,6 @@
 # L4.5 设计：数据库 schema 变更与迁移编排（AI 改模型 → 数据库自动跟上）
 
-> **状态**：设计文档（2026-08-23，待评审）
+> **状态**：✅ **已实施**（2026-08-23，PR #91 设计 + PR #92 实施；实施落地记录见 §10，与设计的差异已标注）
 > **目标**：L2-L4 让 AI 演进**代码**，但数据库 schema 变更（AI 给 User 模型加了 `verification_code` 字段，数据库没有对应迁移）未编排——部署后代码读新字段直接报错。L4.5 补齐：**检测模型变更 → 生成迁移（up/down）→ 与 L3 merge 审批联动 → 破坏性变更阻断 → 可回滚**。
 > **关联**：《plan-app-factory-l4-multi-module.md》§7（L4.5 候选）+ L3 merge_engine（merge 后触发迁移预览）+ L4 cross_module（跨模块字段引用）。
 
@@ -220,3 +220,35 @@ def generate_migration(diff: dict, project_id: str) -> dict:
 | L4 module_id 体系 | 迁移按模块归属（`module_id` 字段），模块级迁移历史 |
 | proj 状态存储 | `pending_migrations` / `migrations`（append-only 历史） |
 | 前端 blocked 横幅模式 | destructive 迁移红横幅复用 |
+
+---
+
+## 10. 实施落地记录（2026-08-23，PR #92）
+
+### 10.1 落地范围（验收 12 项全部通过）
+
+| 模块 | 落地位置 | 状态 |
+|---|---|---|
+| SchemaExtractor（AST：SQLAlchemy/Pydantic） | `aiPlat-platform/builder/schema_migration.py` | ✅ |
+| SchemaDiffAnalyzer（增删改 + destructive） | 同文件 `diff_schema` | ✅ |
+| MigrationGenerator（up/down 成对） | 同文件 `generate_migration` | ✅ |
+| 迁移编排（preview/apply/rollback + 历史） | `builder_project_service.py` `migration_preview`/`apply_migration`/`rollback_migration` | ✅ |
+| 跨模块字段引用（§3.7） | `_check_cross_module_fields` | ✅ |
+| 迁移端点 4 个 | `aiPlat-platform/api/routers/builder.py` | ✅ |
+| 前端迁移面板（up/down SQL/destructive 横幅/历史/回滚） | `Factory/index.tsx` + `builderTeamApi.ts` | ✅ |
+
+### 10.2 与设计的差异（代码优先原则标注）
+
+| 设计（§） | 实际实现 | 说明 |
+|---|---|---|
+| §3.6 "merge_apply 后自动触发迁移预览" | merge_apply 未自动触发；用户在前端迁移面板点"生成迁移预览"（依赖 merge_previews 的 new_content） | 自动触发需要 merge_apply 与迁移状态联动（v2 可加）；当前手动触发成本低且语义清晰 |
+| §3.3 SchemaExtractor 类型映射 | SQLAlchemy `Column(Integer/String/...)` + Pydantic `int/str/...` → SQL 类型；mapped_column 支持 | 与设计一致；复杂写法（混合/动态表名）漏检已在 §8 风险 1 标注 |
+| §3.8 "AIPLAT_DB_EXECUTE=true 执行真实 SQL" | 当前 apply/rollback **只记录状态**，未实现真实 DB 执行（env 检查预留） | v1 安全优先：真实 DB 执行需 DBA 适配（v2） |
+| §3.7 跨模块字段引用 | `_check_cross_module_fields` 用文本正则搜字段名（简单可靠）；未接入 merge 门禁（仅迁移预览标注） | 完整门禁（迁移 apply 阻断）v2 |
+
+### 10.3 验证
+
+- 测试：`test_l45_migration.py`（动态 12）+ `test_l45_migration_static.py`（静态 6）= **18 passed**（含 L4 13 回归）
+- 前端 tsc + build + Rule 6 全绿 + pre-commit 全绿 + 编译通过
+- contracts：acceptance 1.49 + 鉴权规范 §17 + capability 登记（schema_migration）
+- 顺带修复：删除 L4 编辑残留的残缺 get_import_stats 定义
