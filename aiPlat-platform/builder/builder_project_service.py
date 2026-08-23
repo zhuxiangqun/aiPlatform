@@ -1820,14 +1820,16 @@ class BuilderProjectService:
 
     # ── L3: incremental merge (plan-app-factory-l3 §3.3/§3.5) ──
 
-    async def merge_preview(self, project_id: str) -> Dict[str, Any]:
+    async def merge_preview(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
         """L3: build per-file merge previews — new versions from pipeline output vs
-        imported originals, plus impact analysis, syntax + interface checks."""
+        imported originals, plus impact analysis, syntax + interface checks.
+        L4 v1.5: module_id scopes the imported repo; cross-module contract status
+        is attached when the project is multi-module."""
         from builder.merge_engine import (
             analyze_impact, build_merge_preview, verify_interface_preserved, syntax_check)
         self._reload_if_stale()
         proj = self._projects.get(project_id) or {}
-        imp = proj.get("imported_repo") or {}
+        imp = self._module_repo(project_id, module_id)
         import_root = str(imp.get("root") or "")
         if not import_root or not os.path.isdir(import_root):
             return {"status": "error", "detail": "未导入既有代码，请先导入"}
@@ -1866,10 +1868,25 @@ class BuilderProjectService:
             pv["syntax"] = syntax_check(content, path)
             previews.append(pv)
         proj["merge_previews"] = previews
+        proj["merge_module"] = module_id
         proj["merge_impact"] = impact
+        # L4 v1.5: cross-module contract status for multi-module projects
+        cross_contracts: Dict[str, Any] = {"ok": True, "broken": [], "checked": [], "note": ""}
+        if module_id != "default" and (proj.get("module_repos") or {}):
+            try:
+                from builder.cross_module import analyze_cross_module, verify_changed_module_contracts
+                roots = self._module_roots(project_id)
+                modules = [{"module_id": mid, "root": root} for mid, root in roots.items()]
+                result = analyze_cross_module(modules, os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")))
+                cross_contracts = verify_changed_module_contracts(module_id, previews, result["graph"])
+                cross_contracts["note"] = "依赖方模块引用的端点/实体在变更模块新版本中的存活性检查"
+            except Exception as e:
+                _log.warning("cross-module contract check failed: %s", str(e)[:200])
+        proj["merge_cross_contracts"] = cross_contracts
         proj["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
         self._save_projects()
-        return {"status": "ok", "previews": previews, "impact": impact}
+        return {"status": "ok", "previews": previews, "impact": impact,
+                "module_id": module_id, "cross_contracts": cross_contracts}
 
     async def list_merge_previews(self, project_id: str) -> Dict[str, Any]:
         """L3: return stored merge previews + impact analysis."""
@@ -1892,7 +1909,8 @@ class BuilderProjectService:
         previews = proj.get("merge_previews") or []
         if not previews:
             return {"status": "error", "detail": "没有合并预览，请先运行 merge-preview"}
-        imp = proj.get("imported_repo") or {}
+        module_id = str(proj.get("merge_module") or "default")
+        imp = self._module_repo(project_id, module_id)
         import_root = str(imp.get("root") or "")
         deploy_dir = proj.get("deploy_dir") or os.path.join(
             os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
@@ -1906,6 +1924,16 @@ class BuilderProjectService:
                     "detail": "必须审批全部文件（原子化）：未通过的文件："
                               + "、".join(missing_approval[:10])
                               + "。请驳回并重新生成，或修改为通过后再应用。"}
+
+        # ── L4 v1.5: cross-module contract gate — dependents' referenced
+        #     endpoints/entities must survive in the changed module's new versions ──
+        cross_contracts = proj.get("merge_cross_contracts") or {}
+        if cross_contracts.get("broken"):
+            _broken_txt = "；".join(
+                f"{b.get('dependent')} {b.get('kind')} {b.get('ref')}" for b in cross_contracts["broken"][:10])
+            return {"status": "error", "code": "contract_gate_failed",
+                    "detail": "跨模块契约断裂，禁止合并：" + _broken_txt
+                              + "。请修复变更模块的对外接口后重新生成。"}
 
         # ── P0-02: concurrency guard — imported originals unchanged since generation ──
         snapshot = proj.get("pre_gen_snapshot") or {}

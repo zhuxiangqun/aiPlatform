@@ -6,6 +6,7 @@ from builder.cross_module import (
     impact_closure,
     topological_order,
     scan_module_contracts,
+    verify_changed_module_contracts,
 )
 
 
@@ -102,3 +103,47 @@ class TestTopologicalOrder:
         }
         order = topological_order(["a", "b"], graph)
         assert set(order) == {"a", "b"}  # cycle → fallback, no hang
+
+
+class TestContractGate:
+    """L4 v1.5 §3.5: cross-module merge contract gate."""
+
+    def _graph(self, tmp_path, auth_files, billing_files):
+        auth = _mod(tmp_path, "auth", auth_files)
+        billing = _mod(tmp_path, "billing", billing_files)
+        return analyze_cross_module([auth, billing], str(tmp_path))["graph"]
+
+    def test_route_preserved_ok(self, tmp_path):
+        graph = self._graph(tmp_path,
+                            {"main.py": "@router.post('/api/auth/login')\ndef login(): pass\n"},
+                            {"client.py": "fetch('/api/auth/login')\n"})
+        previews = [{"path": "main.py", "new_content": "@router.post('/api/auth/login')\ndef login(): return 1\n"}]
+        r = verify_changed_module_contracts("auth", previews, graph)
+        assert r["ok"] is True and r["broken"] == []
+
+    def test_route_missing_broken(self, tmp_path):
+        graph = self._graph(tmp_path,
+                            {"main.py": "@router.post('/api/auth/login')\ndef login(): pass\n"},
+                            {"client.py": "fetch('/api/auth/login')\n"})
+        # new version deleted the route
+        previews = [{"path": "main.py", "new_content": "def login(): return 1\n"}]
+        r = verify_changed_module_contracts("auth", previews, graph)
+        assert r["ok"] is False
+        assert any(b["kind"] == "api" and b["ref"] == "/api/auth/login" for b in r["broken"])
+        assert any(b["dependent"] == "billing" for b in r["broken"])
+
+    def test_entity_missing_broken(self, tmp_path):
+        graph = self._graph(tmp_path,
+                            {"models.py": "class User:\n    pass\n"},
+                            {"svc.py": "from auth.models import User\n"})
+        previews = [{"path": "models.py", "new_content": "class Account:\n    pass\n"}]
+        r = verify_changed_module_contracts("auth", previews, graph)
+        assert r["ok"] is False
+        assert any(b["kind"] == "entity" and b["ref"] == "User" for b in r["broken"])
+
+    def test_no_dependents_ok(self, tmp_path):
+        graph = self._graph(tmp_path,
+                            {"a.py": "def f(): pass\n"},
+                            {"b.py": "def g(): pass\n"})
+        r = verify_changed_module_contracts("a", [], graph)
+        assert r["ok"] is True

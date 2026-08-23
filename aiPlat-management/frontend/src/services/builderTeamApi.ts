@@ -276,13 +276,16 @@ export const projectApi = {
     }>('/platform/builder/import-stats');
   },
 
-  /** L3: build per-file merge previews (pipeline output vs imported originals). */
-  mergePreview: async (projectId: string) => {
+  /** L3: build per-file merge previews (pipeline output vs imported originals).
+      L4 v1.5: optional module_id scopes the imported repo + cross-module contract check. */
+  mergePreview: async (projectId: string, moduleId?: string) => {
     return apiClient.post<{
       status: string;
       previews: Array<Record<string, unknown>>;
       impact: Record<string, unknown>;
-    }>(`/platform/builder/projects/${projectId}/merge-preview`);
+      module_id?: string;
+      cross_contracts?: { ok: boolean; broken: Array<Record<string, string>>; checked: string[]; note?: string };
+    }>(`/platform/builder/projects/${projectId}/merge-preview`, { module_id: moduleId || 'default' });
   },
 
   /** L3: stored merge previews + impact analysis. */

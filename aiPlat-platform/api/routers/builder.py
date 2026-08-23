@@ -254,9 +254,11 @@ async def import_stats(_auth: str = Depends(require_builder_access)):
 # ---- L3: incremental merge (plan-app-factory-l3) ----
 
 @router.post("/projects/{project_id}/merge-preview", response_model=StatusResponse)
-async def project_merge_preview(project_id: str, _auth: str = Depends(require_builder_access)):
-    """L3: build per-file merge previews (pipeline output vs imported originals)."""
-    return await _get_svc().merge_preview(project_id)
+async def project_merge_preview(project_id: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
+    """L3: build per-file merge previews (pipeline output vs imported originals).
+    L4 v1.5: optional module_id scopes the imported repo + cross-module contract check."""
+    module_id = str(body.get("module_id") or "default")
+    return await _get_svc().merge_preview(project_id, module_id=module_id)
 
 
 @router.get("/projects/{project_id}/merge-previews", response_model=StatusResponse)

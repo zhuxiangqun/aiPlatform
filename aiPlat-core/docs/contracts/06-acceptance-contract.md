@@ -484,3 +484,15 @@ pytest -q \
   - `grep -c "✅ \*\*已实施\*\*" docs/research/plan-app-factory-l4-multi-module.md`（≥1）
   - `grep -c "多模块编排（L4" docs/manuals/management-ui-operation-manual.md`（≥1）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
+
+### 1.47 L4 v1.5 跨模块 merge 契约门禁（2026-08-23）
+- MUST：`verify_changed_module_contracts`（cross_module.py）——依赖方（depended_by）引用的端点/实体在变更模块新版本中缺失 → broken 列表
+- MUST：merge_preview 支持 module_id（记录 merge_module）+ 多模块时附加 cross_contracts；merge_apply 前 broken → error contract_gate_failed 阻断
+- MUST：前端 mergePreview 带 module_id + 审批界面显示跨模块契约状态（断裂红横幅/通过绿条）
+- 自动化验收：
+  - `grep -c "def verify_changed_module_contracts" aiPlat-platform/builder/cross_module.py`（≥1）
+  - `grep -c "contract_gate_failed" aiPlat-platform/builder/builder_project_service.py`（≥1）
+  - `grep -c "merge_module" aiPlat-platform/builder/builder_project_service.py`（≥2：merge_preview 写 + merge_apply 读）
+  - `grep -c "cross_contracts" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥2）
+  - `python3 -m pytest aiPlat-platform/tests/test_l4_cross_module.py -q`（14 passed，含 TestContractGate 4 例）
+  - `python3 scripts/check_research_docs_freshness.py .`（exit 0）

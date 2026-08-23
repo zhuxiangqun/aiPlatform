@@ -442,6 +442,8 @@ const ProjectPanel: React.FC<{
   const [moduleImpact, setModuleImpact] = useState<any>(null);
   const [orchestrateResult, setOrchestrateResult] = useState<any>(null);
   const [orchestrating, setOrchestrating] = useState(false);
+  // L4 v1.5: cross-module contract status on merge preview
+  const [mergeCrossContracts, setMergeCrossContracts] = useState<any>(null);
 
   // Check for PRD on mount (may have been generated in a previous session)
   useEffect(() => {
@@ -910,13 +912,18 @@ const ProjectPanel: React.FC<{
     if (!project.project_id) return;
     setBuildingPreview(true);
     try {
-      const r = await projectApi.mergePreview(project.project_id) as any;
+      const r = await projectApi.mergePreview(project.project_id, selectedModule) as any;
       if (r?.status === 'ok') {
         setMergePreviews(r.previews || []);
         setMergeImpact(r.impact || null);
+        setMergeCrossContracts(r.cross_contracts || null);
         setMergeDecisions({});
         setShowMergeReview(true);
-        toast.success(`已生成 ${r.previews?.length || 0} 个文件的合并预览`);
+        if (r.cross_contracts?.broken?.length) {
+          toast.error(`⚠️ 跨模块契约断裂 ${r.cross_contracts.broken.length} 处，合并将被阻断`);
+        } else {
+          toast.success(`已生成 ${r.previews?.length || 0} 个文件的合并预览`);
+        }
       } else {
         toast.error(r?.detail || '生成合并预览失败');
       }
@@ -2090,6 +2097,22 @@ const ProjectPanel: React.FC<{
                 影响面分析：自动加入 {mergeImpact.auto_added.length} 个文件
                 （{mergeImpact.auto_added.join('、')}）— 仅供参考，可在下方逐文件驳回
               </div>
+            )}
+            {/* L4 v1.5: 跨模块契约状态 */}
+            {mergeCrossContracts && (
+              mergeCrossContracts.broken?.length > 0 ? (
+                <div className="p-2 rounded bg-red-500/10 border border-red-500/50 text-[10px] text-red-300 space-y-0.5">
+                  <div className="font-semibold">⛔ 跨模块契约断裂 — 合并将被阻断（L4 v1.5 门禁）</div>
+                  {mergeCrossContracts.broken.map((b: any, i: number) => (
+                    <div key={i}>· {b.detail}</div>
+                  ))}
+                  <div className="text-red-300/70">请修复变更模块的对外接口后重新生成。</div>
+                </div>
+              ) : (
+                <div className="p-2 rounded bg-green-500/10 border border-green-500/30 text-[10px] text-green-300">
+                  ✓ 跨模块契约通过（依赖方引用的 {mergeCrossContracts.checked?.length || 0} 处端点/实体在新版本中存活）
+                </div>
+              )
             )}
             {/* 逐文件 diff 审批 */}
             {mergePreviews.length === 0 && (
