@@ -328,6 +328,35 @@ async def project_module_orchestrate(project_id: str, body: Dict[str, Any], _aut
     return await _get_svc().module_orchestrate(project_id, module_ids)
 
 
+# ---- L4.5: DB schema migration (plan-app-factory-l45) ----
+
+@router.post("/projects/{project_id}/migration-preview", response_model=StatusResponse)
+async def project_migration_preview(project_id: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
+    """L4.5: schema diff (imported vs post-merge) → migration up/down preview."""
+    module_id = str(body.get("module_id") or "default")
+    return await _get_svc().migration_preview(project_id, module_id=module_id)
+
+
+@router.get("/projects/{project_id}/migrations", response_model=StatusResponse)
+async def project_list_migrations(project_id: str, _auth: str = Depends(require_builder_access)):
+    """L4.5: migration history + pending."""
+    return await _get_svc().list_migrations(project_id)
+
+
+@router.post("/projects/{project_id}/migrations/apply", response_model=StatusResponse)
+async def project_apply_migrations(project_id: str, body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
+    """L4.5: apply pending migrations (destructive requires confirmed=true)."""
+    migration_ids = body.get("migration_ids") or []
+    confirmed = bool(body.get("confirmed", False))
+    return await _get_svc().apply_migration(project_id, migration_ids, confirmed=confirmed)
+
+
+@router.post("/projects/{project_id}/migrations/{migration_id}/rollback", response_model=StatusResponse)
+async def project_rollback_migration(project_id: str, migration_id: str, _auth: str = Depends(require_builder_access)):
+    """L4.5: apply down script + mark rolled_back."""
+    return await _get_svc().rollback_migration(project_id, migration_id)
+
+
 @router.post("/projects/{project_id}/rebuild", response_model=StatusResponse)
 async def project_rebuild(project_id: str, _auth: str = Depends(require_builder_access)):
     """Re-run pipeline with existing PRD data (e.g., after editing PRD)."""

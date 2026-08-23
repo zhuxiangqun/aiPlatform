@@ -444,6 +444,12 @@ const ProjectPanel: React.FC<{
   const [orchestrating, setOrchestrating] = useState(false);
   // L4 v1.5: cross-module contract status on merge preview
   const [mergeCrossContracts, setMergeCrossContracts] = useState<any>(null);
+  // ── L4.5: DB migration ──
+  const [migrationPreview, setMigrationPreview] = useState<any>(null);
+  const [migrationHistory, setMigrationHistory] = useState<any>({ migrations: [], pending: [] });
+  const [generatingMigration, setGeneratingMigration] = useState(false);
+  const [applyingMigration, setApplyingMigration] = useState(false);
+  const [confirmDestructive, setConfirmDestructive] = useState(false);
 
   // Check for PRD on mount (may have been generated in a previous session)
   useEffect(() => {
@@ -1046,6 +1052,62 @@ const ProjectPanel: React.FC<{
     setOrchestrating(false);
   };
 
+  // ── L4.5: migration handlers ──
+  const loadMigrationHistory = async () => {
+    if (!project?.project_id) return;
+    try {
+      const r = await projectApi.listMigrations(project.project_id) as any;
+      setMigrationHistory(r || { migrations: [], pending: [] });
+    } catch { /* ignore */ }
+  };
+
+  const handleMigrationPreview = async () => {
+    if (!project?.project_id) return;
+    setGeneratingMigration(true);
+    try {
+      const r = await projectApi.migrationPreview(project.project_id, selectedModule) as any;
+      if (r?.status === 'ok') {
+        setMigrationPreview(r);
+        if (!r.has_changes) toast.success('无模型变更，不需要迁移');
+        else if (r.destructive) toast.warning('⚠️ 存在破坏性变更，需显式确认');
+        else toast.success('迁移预览已生成');
+        await loadMigrationHistory();
+      } else { toast.error(r?.detail || '生成迁移预览失败'); }
+    } catch (e: any) { toastGateError(e, '生成迁移预览失败'); }
+    setGeneratingMigration(false);
+  };
+
+  const handleApplyMigration = async () => {
+    if (!project?.project_id || !migrationPreview?.migration) return;
+    const mig = migrationPreview.migration;
+    if (mig.destructive && !confirmDestructive) {
+      toast.error('破坏性迁移需勾选"我了解数据影响"后确认应用');
+      return;
+    }
+    setApplyingMigration(true);
+    try {
+      const r = await projectApi.applyMigrations(project.project_id, [mig.id], confirmDestructive) as any;
+      if (r?.status === 'ok') {
+        toast.success(`迁移已应用：${r.applied?.join(', ') || ''}`);
+        setMigrationPreview(null);
+        setConfirmDestructive(false);
+        await loadMigrationHistory();
+      } else { toast.error(r?.detail || '应用迁移失败'); }
+    } catch (e: any) { toastGateError(e, '应用迁移失败'); }
+    setApplyingMigration(false);
+  };
+
+  const handleRollbackMigration = async (id: string) => {
+    if (!project?.project_id) return;
+    if (!confirm(`应用 down 脚本回滚迁移 ${id}？`)) return;
+    try {
+      const r = await projectApi.rollbackMigration(project.project_id, id) as any;
+      if (r?.status === 'ok') toast.success(`已回滚：${id}`);
+      else toast.error(r?.detail || '回滚失败');
+      await loadMigrationHistory();
+    } catch (e: any) { toastGateError(e, '回滚失败'); }
+  };
+
   const handleEditStage = (stageKey: string, currentRaw: any) => {
     const content = typeof currentRaw === 'string' ? currentRaw : JSON.stringify(currentRaw, null, 2);
     setEditingStage(stageKey);
@@ -1578,6 +1640,80 @@ const ProjectPanel: React.FC<{
                   ))}
                 </div>
               )}
+              {/* L4.5: 数据库迁移 */}
+              <div className="pt-1 border-t border-dark-border space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-teal-300 font-medium">🗄️ 数据库迁移（L4.5）— 模型变更自动生成 up/down DDL</span>
+                  <Button variant="ghost" size="sm" className="ml-auto" onClick={loadMigrationHistory}>历史</Button>
+                  <Button variant="secondary" size="sm" onClick={handleMigrationPreview} loading={generatingMigration}>
+                    生成迁移预览
+                  </Button>
+                </div>
+                {/* 迁移预览 */}
+                {migrationPreview?.has_changes && migrationPreview.migration && (
+                  <div className="p-2 rounded bg-amber-500/10 border border-amber-500/40 space-y-1">
+                    <div className="text-[10px] text-amber-200 font-medium">
+                      迁移 {migrationPreview.migration.id}
+                      {migrationPreview.destructive && <span className="text-red-300 ml-2">⛔ 破坏性变更</span>}
+                    </div>
+                    {/* destructive 红横幅 + 确认勾选 */}
+                    {migrationPreview.destructive && (
+                      <div className="p-1.5 rounded bg-red-500/10 border border-red-500/40 text-[10px] text-red-300">
+                        破坏性变更（{[
+                          ...Object.keys(migrationPreview.migration.summary?.removed_columns || {}).map(t =>
+                            `删列 ${t}.${migrationPreview.migration.summary.removed_columns[t].join(',')}`),
+                          ...Object.keys(migrationPreview.migration.summary?.type_changed || {}).map(t =>
+                            `类型变更 ${t}.${Object.keys(migrationPreview.migration.summary.type_changed[t]).join(',')}`),
+                          ...(migrationPreview.migration.summary?.removed_tables || []).map(t => `删表 ${t}`),
+                        ].join('；')}）
+                        <label className="flex items-center gap-1 mt-1 cursor-pointer">
+                          <input type="checkbox" checked={confirmDestructive} onChange={e => setConfirmDestructive(e.target.checked)} />
+                          我了解数据影响，确认应用
+                        </label>
+                      </div>
+                    )}
+                    {/* 跨模块字段引用 */}
+                    {migrationPreview.cross_refs?.length > 0 && (
+                      <div className="text-[10px] text-red-300/90">
+                        ⚠️ 跨模块字段引用：{migrationPreview.cross_refs.map((c: any) => `${c.module}(${c.file} 引用 ${c.field})`).join('、')}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div>
+                        <div className="text-[10px] text-gray-400">UP</div>
+                        <pre className="bg-black/40 rounded p-1.5 text-[9px] font-mono text-green-300 whitespace-pre-wrap max-h-24 overflow-auto">{migrationPreview.migration.up_sql}</pre>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-gray-400">DOWN</div>
+                        <pre className="bg-black/40 rounded p-1.5 text-[9px] font-mono text-amber-300 whitespace-pre-wrap max-h-24 overflow-auto">{migrationPreview.migration.down_sql}</pre>
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <Button variant="primary" size="sm" onClick={handleApplyMigration} loading={applyingMigration}>应用迁移</Button>
+                      <Button variant="ghost" size="sm" onClick={() => setMigrationPreview(null)}>收起</Button>
+                      <span className="ml-auto text-[10px] text-gray-500">默认仅记录状态；AIPLAT_DB_EXECUTE=true 才执行真实 SQL</span>
+                    </div>
+                  </div>
+                )}
+                {/* 迁移历史 */}
+                {(migrationHistory.migrations?.length > 0 || migrationHistory.pending?.length > 0) && (
+                  <div className="text-[10px] text-gray-400 space-y-0.5">
+                    {migrationHistory.pending?.map((m: any) => (
+                      <div key={m.id} className="text-amber-300">⏳ {m.id}（待应用{m.destructive ? '·破坏性' : ''}）[{m.module_id}]</div>
+                    ))}
+                    {migrationHistory.migrations?.map((m: any) => (
+                      <div key={m.id} className="flex items-center gap-2">
+                        <span className={m.status === 'rolled_back' ? 'text-gray-500' : 'text-green-300'}>
+                          {m.status === 'applied' ? '✅' : '↩️'} {m.id}（{m.status}）[{m.module_id}]
+                        </span>
+                        {m.status === 'applied' && (
+                          <button className="text-red-300 underline" onClick={() => handleRollbackMigration(m.id)}>回滚</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

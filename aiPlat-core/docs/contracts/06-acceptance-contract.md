@@ -507,3 +507,15 @@ pytest -q \
   - `grep -c "MigrationGenerator" docs/research/plan-app-factory-l45-db-migration.md`（≥3：§3.5 + §5 + §6）
   - `grep -c "destructive" docs/research/plan-app-factory-l45-db-migration.md`（≥4：§3.4 定义 + §3.5 + §3.8 + §5）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
+
+### 1.49 L4.5 数据库迁移编排实施（2026-08-23）
+- MUST：`aiPlat-platform/builder/schema_migration.py` 存在（extract_schema/diff_schema/generate_migration）
+- MUST：迁移端点（migration-preview/migrations/apply/rollback）+ 破坏性迁移需显式确认（destructive_migration_requires_confirmation）+ 跨模块字段引用（_check_cross_module_fields）
+- MUST：前端迁移面板（生成预览/up-down SQL/destructive 横幅/确认勾选/历史/回滚）
+- 自动化验收：
+  - `grep -c "def extract_schema\|def diff_schema\|def generate_migration" aiPlat-platform/builder/schema_migration.py`（≥3）
+  - `grep -c "destructive_migration_requires_confirmation" aiPlat-platform/builder/builder_project_service.py`（≥1）
+  - `grep -c "migration-preview" aiPlat-platform/api/routers/builder.py`（≥1）
+  - `grep -c "数据库迁移（L4.5）" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
+  - `python3 -m pytest aiPlat-platform/tests/test_l45_migration.py aiPlat-platform/tests/test_l45_migration_static.py -q`（18 passed）
+  - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
