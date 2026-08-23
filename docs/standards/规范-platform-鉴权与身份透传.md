@@ -230,3 +230,21 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 - `module_id` 仅路由到当前项目 `modules/{mid}/` 子目录（服务层 `_module_repo` 白名单），不可越权读其他项目/模块；
 - 跨模块契约检查（`verify_changed_module_contracts`）只读当前项目各模块的**已导入代码**（静态分析），不触发任何执行；
 - `merge_apply` 的 `contract_gate_failed` 阻断不改变权限模型（仍是 `require_builder_access`）——门禁是**工程正确性**约束（依赖方引用断裂禁止合并），非权限约束。
+
+---
+
+## 17. L4.5 迁移端点权限（2026-08-23）
+
+`aiPlat-platform/api/routers/builder.py` 新增 4 个 L4.5 迁移端点：
+
+| 端点 | 权限 | 说明 |
+|---|---|---|
+| `POST /projects/{id}/migration-preview` | `require_builder_access` | schema diff（imported vs merge 后）→ 迁移 up/down 预览（只读） |
+| `GET /projects/{id}/migrations` | `require_builder_access` | 迁移历史 + pending |
+| `POST /projects/{id}/migrations/apply` | `require_builder_access` | 应用迁移（destructive 需 `confirmed=true`） |
+| `POST /projects/{id}/migrations/{id}/rollback` | `require_builder_access` | 应用 down 回滚 |
+
+**约束**：
+- 迁移**默认仅记录状态**，不执行真实 SQL——仅当 `AIPLAT_DB_EXECUTE=true` 时对配置的 DB 执行（安全红线，§3.8）；权限模型不变（工程正确性门禁，非权限约束）；
+- destructive 迁移（删列/类型变更/删表）必须 `confirmed=true` 显式确认，否则拒绝（`destructive_migration_requires_confirmation`）；
+- `migration-preview` 只读当前项目已导入代码（AST 静态分析），不触发执行、不读其他项目。
