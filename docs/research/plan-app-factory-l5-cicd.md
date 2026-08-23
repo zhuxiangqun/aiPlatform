@@ -212,12 +212,14 @@ async def set_release_status(self, project_id, version, status) -> dict:
 | 发布端点 5 个（release/releases/canary/full/rollback） | `aiPlat-platform/api/routers/builder.py` | ✅ |
 | 迁移先行门禁 + estimated 准入提示 | `builder_project_service.py` `create_release` | ✅ |
 | 前端发布区（版本徽标/金丝雀控制/回滚/estimated 提示） | `Factory/index.tsx` + `builderTeamApi.ts` | ✅ |
+| **v2 infra 桥接 + 金丝雀权重**（infra_bridge.deploy_app_service + canary_weight） | `infra_bridge.py` + `core_facade.py` + `release_engine.py` + 前端 | ✅ |
 
 ### 10.2 与设计的差异（代码优先原则标注）
 
 | 设计（§） | 实际实现 | 说明 |
 |---|---|---|
-| §3.6 infra deploy_service 集成 | **v1 未实现**——platform 直导 infra 违反单向依赖（platform→core→infra），`_infra_deploy_service` 改为 core facade v2 预留（env 开关保留语义 + 日志标注） | 架构守卫拦截后修正；infra 集成需先在 core 暴露 deploy facade（v2） |
+| §3.6 infra deploy_service 集成 | **✅ v2 已交付（2026-08-23）**：`infra_bridge.deploy_app_service`（core→infra 唯一桥接点，standalone-safe no-op）+ `CoreFacade.deploy_app_service` re-export——platform 经 facade 调用（修复 v1 直导违规的正式实现，platform→core→infra 单向依赖） | `AIPLAT_L5_INFRA_DEPLOY=true` 时注册服务（namespace=aiplat-apps） |
+| §3.5 金丝雀"状态标记" | **✅ v2 升级为权重路由**：`canary_weight`（0/10/50/100，canary 设权重默认 10，full 强制 100，rollback 置 0），前端 10/50/100 可调；权重为路由配置表达（部署环境消费） | v2 交付；真实流量路由仍需部署环境（网关）支持 |
 | §3.2 building 状态 | create_release 直接写产物并置 ready（building 为瞬时状态，未持久化） | 产物写入即 ready，符合"自动进入 ready"设计 |
 | §3.1 版本目录基线 | 基线 = imported 原件 + merge_previews new_content 覆盖（未含迁移后 schema 变更） | 迁移与发布分离（迁移先行门禁保证顺序） |
 
