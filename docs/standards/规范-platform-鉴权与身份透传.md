@@ -267,3 +267,17 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 - `release`/`full`/`rollback` 为**写操作**（切 current 指针/生成版本产物），但仅影响当前项目自己的 releases/ 目录（版本路径由服务层 `release_root` 固定），不越权写其他项目；
 - 迁移先行门禁（pending_migrations → 拒绝发布）是**工程正确性**约束（迁移未应用就发布会 schema 不同步），非权限约束；
 - `canary` 为状态标记（v1 无真实流量路由）；`AIPLAT_L5_INFRA_DEPLOY=true` 时 release 会调 infra deploy_service 注册服务（namespace=aiplat-apps）——该 env 默认关闭，需运维显式开启。
+
+---
+
+## 19. L5 v2 端点扩展（2026-08-23）
+
+`POST /projects/{id}/releases/{v}/canary` 签名扩展：
+
+| 端点 | 变更 | 权限 |
+|---|---|---|
+| `POST .../releases/{v}/canary` | body 增加可选 `canary_weight`（0/10/50/100，路由百分比） | `require_builder_access`（不变） |
+
+**约束**：
+- `canary_weight` 是**路由配置表达**（v2 无真实流量路由，权重由部署环境消费）——仅写入当前项目自己的发布记录，无跨项目影响；
+- `AIPLAT_L5_INFRA_DEPLOY=true` 时 `create_release` 经 **CoreFacade.deploy_app_service → infra_bridge** 注册服务（namespace=aiplat-apps）——platform 不直导 infra（单向依赖 platform → core → infra）；env 默认关闭。
