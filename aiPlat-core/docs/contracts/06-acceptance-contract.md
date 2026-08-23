@@ -410,3 +410,13 @@ pytest -q \
   - `grep -c "导入既有代码（L2）" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
   - `python3 -m pytest aiPlat-platform/tests/test_l2_import_repo.py aiPlat-platform/tests/test_l2_import_helpers.py aiPlat-core/core/tests/unit/test_harness/test_l2_import_context.py -q`（≥34 passed）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
+
+### 1.41 L3 增量合并引擎设计文档（2026-08-22）
+- MUST：`docs/research/plan-app-factory-l3-incremental-engine.md` 存在（L3 设计：ImpactAnalyzer/DiffMerger/incremental_merge 策略/审批门禁/验收 10 项/约 3.25 天）
+- MUST：设计文档含 `merge_strategy` 字段设计（full_rewrite 默认 / incremental_merge）+ 与 L2 衔接清单（§9）
+- 自动化验收：
+  - `ls docs/research/plan-app-factory-l3-incremental-engine.md`（存在）
+  - `grep -c "merge_strategy" docs/research/plan-app-factory-l3-incremental-engine.md`（≥3：§3.2 字段 + §5 验收 + §9 衔接）
+  - `grep -c "ImpactAnalyzer" docs/research/plan-app-factory-l3-incremental-engine.md`（≥3：§3.3 + §5 + §6）
+  - `grep -c "DiffMerger" docs/research/plan-app-factory-l3-incremental-engine.md`（≥3：§3.5 + §5 + §6）
+  - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
