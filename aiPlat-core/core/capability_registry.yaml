@@ -139,7 +139,7 @@ domains:
         module: "aiPlat-platform/builder/merge_engine.py"
       - symbol: "cross_module"
         type: "module"
-        signature: "L4: CrossModuleAnalyzer (API/entity/event contract refs → module dependency graph + impact closure) + topological orchestration order"
+        signature: "L4: CrossModuleAnalyzer (API/entity/event contract refs → module dependency graph + impact closure + topological order) + v1.5 merge contract gate (verify_changed_module_contracts)"
         module: "aiPlat-platform/builder/cross_module.py"
     breaks: []
     consumers_expected:

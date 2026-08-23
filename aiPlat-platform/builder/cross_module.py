@@ -22,7 +22,7 @@ _API_CALL_RE = re.compile(
     re.MULTILINE,
 )
 _IMPORT_RE = re.compile(
-    r"^\s*(?:from\s+([\w.]+)\s+import\s+[\w\s,*]+|import\s+[\w.]+)\s*(?:#.*)?$",
+    r"^\s*(?:from\s+([\w.]+)\s+import\s+([\w\s,*]+)|import\s+([\w.]+))(?:\s*#.*)?$",
     re.MULTILINE,
 )
 _PUBLISH_RE = re.compile(r"(?:publish|emit|broadcast)\s*\(\s*[\"']([\w.\-]+)[\"']", re.MULTILINE)
@@ -94,8 +94,15 @@ def _module_calls_target(module_files: Dict[str, str], target: Dict[str, Any],
         target_key = _module_key(target.get("module_id", ""))
         for m in _IMPORT_RE.finditer(content):
             mod = (m.group(1) or "").strip()
+            symbols = (m.group(2) or "").strip()
             if target_key in mod.replace(".", "_") and ("models" in mod or "entity" in mod):
-                evidence["entities"].append({"line_file": rel, "import": mod})
+                # symbols like "User, Account" — each is an entity the dependent relies on
+                for sym in re.split(r"[,\s]+", symbols):
+                    sym = sym.strip().lstrip("*")
+                    if sym and sym.isidentifier() and sym != "as":
+                        evidence["entities"].append({"line_file": rel, "import": mod, "symbol": sym})
+                if not symbols:
+                    evidence["entities"].append({"line_file": rel, "import": mod})
     return evidence
 
 
@@ -177,3 +184,75 @@ def topological_order(module_ids: List[str], graph: Dict[str, Any]) -> List[str]
             ordered.extend(sorted(remaining))
             break
     return ordered
+
+
+def _new_version_text(previews: List[Dict[str, Any]]) -> str:
+    """Concatenated new-version content of approved/available previews."""
+    parts = []
+    for pv in previews or []:
+        content = pv.get("new_content")
+        if isinstance(content, str) and content:
+            parts.append(content)
+    return "\n".join(parts)
+
+
+def verify_changed_module_contracts(
+    changed_module: str,
+    previews: List[Dict[str, Any]],
+    graph: Dict[str, Any],
+) -> Dict[str, Any]:
+    """L4 v1.5 §3.5: cross-module merge contract gate.
+
+    For every module that depends on `changed_module`, check that the endpoints /
+    entities it references still exist in the changed module's NEW versions
+    (concatenated preview content). Missing → broken contracts listed, merge
+    must be blocked (contract_gate_failed).
+
+    Returns: {ok: bool, broken: [{dependent, kind, ref, detail}], checked: [...]}
+    """
+    new_text = _new_version_text(previews)
+    broken: List[Dict[str, str]] = []
+    checked: List[str] = []
+
+    dependents = graph.get(changed_module, {}).get("depended_by", [])
+    for dep in dependents:
+        ev = (graph.get(dep, {}).get("evidence") or {}).get(changed_module) or {}
+        # API contract: dependent calls X → X must still be declared in new version
+        for item in ev.get("apis") or []:
+            route = item.get("route", "")
+            if not route:
+                continue
+            checked.append(f"{dep}→{route}")
+            if not _route_declared(new_text, route):
+                broken.append({
+                    "dependent": dep,
+                    "kind": "api",
+                    "ref": route,
+                    "detail": f"{dep} 调用 {route}，但变更模块新版本中未找到该端点声明",
+                })
+        # Entity contract: dependent imports entity class → class name must survive
+        for item in ev.get("entities") or []:
+            sym = item.get("symbol") or ""
+            cls = sym if sym else (item.get("import", "").rsplit(".", 1)[-1])
+            if not cls:
+                continue
+            checked.append(f"{dep}→entity {cls}")
+            if not re.search(rf"\bclass\s+{re.escape(cls)}\b", new_text):
+                broken.append({
+                    "dependent": dep,
+                    "kind": "entity",
+                    "ref": cls,
+                    "detail": f"{dep} 依赖实体 {cls}，但变更模块新版本中未找到该类的定义",
+                })
+    return {"ok": not broken, "broken": broken, "checked": checked}
+
+
+def _route_declared(code_text: str, route: str) -> bool:
+    """Does the code declare this route (exact or trailing-suffix match)?"""
+    if not route:
+        return True
+    declared = _API_DECL_RE.findall(code_text)
+    if route in declared:
+        return True
+    # suffix match: dependent may call a sub-path of a declared base route
+    return any(route.endswith(d) or d in route for d in declared)

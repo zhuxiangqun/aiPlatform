@@ -234,6 +234,7 @@ def analyze_cross_module(modules: dict, workspace_root: str) -> dict:
 | rebuild module_id（模块级 imported_repo + P0-02 快照按模块） | 同文件 `rebuild_project`/`_rebuild_via_core` | ✅ |
 | 编排端点（cross-module-impact / module-orchestrate） | `aiPlat-platform/api/routers/builder.py` | ✅ |
 | 前端模块面板（声明/列表/导入/影响展示/编排结果） | `Factory/index.tsx` + `builderTeamApi.ts` | ✅ |
+| **v1.5 跨模块 merge 契约门禁**（verify_changed_module_contracts + contract_gate_failed） | `cross_module.py` + `builder_project_service.py` + 前端审批界面 | ✅ |
 
 ### 10.2 与设计的差异（代码优先原则标注）
 
@@ -241,8 +242,8 @@ def analyze_cross_module(modules: dict, workspace_root: str) -> dict:
 |---|---|---|
 | §3.1 modules.json 文件 | **存于 `proj`（projects.json）而非独立 modules.json 文件** | 与现有 builder 状态归属一致（L2 imported_repo 同样存 proj），避免新增存储层；目录结构（modules/{mid}/imported|current）与设计一致 |
 | §3.4 编排"依赖顺序触发" | `module_orchestrate` 顺序调用 `rebuild_project(module_id=...)`（每模块独立 rebuild），未实现模块级流水线并发 | 复用现有项目级流水线，模块级 imported_repo 注入；并发是后续优化 |
-| §3.5 契约门禁"依赖方端点缺失阻断" | 后端已提供契约证据（evidence）；前端影响展示含证据行；**跨模块 merge-apply 门禁**（依赖方引用端点缺失 → 阻断）留作 v1.5（当前 merge 是模块内独立审批） | 设计 §3.5 的完整门禁需要跨模块 merge 状态联动，本轮先交付"影响可见 + 证据展示"，门禁在编排流程成熟后补 |
-| 前端"契约门禁横幅" | 影响展示含依赖证据行（line_file/route/topic），未单独做 blocked 横幅 | 与 L3 blocked 横幅模式对齐待 v1.5 |
+| §3.5 契约门禁"依赖方端点缺失阻断" | **✅ v1.5 已交付（2026-08-23）**：`verify_changed_module_contracts`（cross_module.py）在 merge_preview 时对依赖方引用的端点/实体做新版本存活检查，broken → merge_apply 返回 `contract_gate_failed` 阻断 + detail 列出断裂引用 | v1.5 实现：merge_preview/merge_apply 支持 module_id，多模块项目自动附加契约检查；前端红横幅展示断裂详情 |
+| 前端"契约门禁横幅" | **✅ v1.5 已交付**：审批界面顶部跨模块契约状态——断裂红横幅（列出断裂依赖）+ 通过绿条（存活数） | 与 L3 blocked 横幅模式对齐 |
 
 ### 10.3 验证
 
