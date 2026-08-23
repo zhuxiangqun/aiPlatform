@@ -137,6 +137,10 @@ domains:
         type: "module"
         signature: "L3: ImpactAnalyzer (affected-file set via Python first-order imports) + DiffMerger (unified-diff preview, syntax/interface checks, apply with deploy.prev snapshot)"
         module: "aiPlat-platform/builder/merge_engine.py"
+      - symbol: "cross_module"
+        type: "module"
+        signature: "L4: CrossModuleAnalyzer (API/entity/event contract refs → module dependency graph + impact closure) + topological orchestration order"
+        module: "aiPlat-platform/builder/cross_module.py"
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"

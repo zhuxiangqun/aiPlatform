@@ -1570,13 +1570,14 @@ class BuilderProjectService:
         self._sessions.pop(project_id, None)
         return {"project_id": project_id, "phase": "dialogue"}
 
-    async def import_repo(self, project_id: str, *, zip_bytes: bytes = b"", existing_path: str = "") -> Dict[str, Any]:
+    async def import_repo(self, project_id: str, *, zip_bytes: bytes = b"", existing_path: str = "", module_id: str = "default") -> Dict[str, Any]:
         """L2: import existing code into the project (zip upload or local path).
 
         Design: plan-app-factory-l2-import-repo.md §3.3/§3.6 — import_root is
         isolated from the deploy dir (~/.aiplat/apps/{pid}/imported vs current/),
         manifest carries {path,size,sha256,lang,first_line}, has_tests/missing_deps
-        drive the pytest-gate escape (§3.8).
+        drive the pytest-gate escape (§3.8). L4: module_id routes the import to a
+        named module's imported/ (default → legacy layout).
         """
         self._reload_if_stale()
         proj = self._projects.get(project_id) or {}
@@ -1585,7 +1586,7 @@ class BuilderProjectService:
 
         _apps_home = os.path.join(
             os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "apps", project_id)
-        import_root = os.path.join(_apps_home, "imported")
+        import_root = self._module_root(project_id, module_id)
         os.makedirs(import_root, exist_ok=True)
 
         # ── Snapshot previous import (rollback: user can compare against prev) ──
@@ -1617,20 +1618,27 @@ class BuilderProjectService:
         has_tests = _detect_tests(import_root)
         missing_deps = _detect_missing_deps(import_root)
 
-        proj["imported_repo"] = {
+        _repo = {
             "root": import_root,
             "prev_root": prev_root if os.path.isdir(prev_root) else "",
             "manifest": manifest,
             "has_tests": has_tests,
             "missing_deps": missing_deps,
+            "module_id": module_id,
             "imported_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         }
+        if module_id == "default":
+            proj["imported_repo"] = _repo
+        else:
+            # L4: multi-module — store per-module repo
+            proj.setdefault("module_repos", {})[module_id] = _repo
         proj["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
         self._save_projects()
-        _log.info("L2: imported %d files for project %s (has_tests=%s, deps=%s)",
-                  len(manifest), project_id, has_tests, len(missing_deps))
+        _log.info("L2: imported %d files for project %s module=%s (has_tests=%s, deps=%s)",
+                  len(manifest), project_id, module_id, has_tests, len(missing_deps))
         return {
             "status": "ok",
+            "module_id": module_id,
             "imported_files": len(manifest),
             "manifest": manifest[:100],
             "has_tests": has_tests,
@@ -1651,6 +1659,144 @@ class BuilderProjectService:
             "imported_at": imp.get("imported_at", ""),
             "total": len(manifest),
         }
+
+    async def get_import_stats(self) -> Dict[str, Any]:
+        """L2: skip_pytest_gate telemetry — >40% ratio triggers L3 priority alert (§3.9 条件 3)."""
+        total_runs = 0
+        skip_count = 0
+        for pid, proj in self._projects.items():
+            runs = proj.get("runs") or []
+
+    # ── L4: multi-module (plan-app-factory-l4 §3.1/§3.3/§3.4) ──
+
+    def _module_root(self, project_id: str, module_id: str = "default") -> str:
+        """Resolve a module's imported/ root. default → legacy layout."""
+        _apps_home = os.path.join(
+            os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "apps", project_id)
+        if module_id == "default":
+            return os.path.join(_apps_home, "imported")
+        return os.path.join(_apps_home, "modules", module_id, "imported")
+
+    def _module_repo(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
+        """Per-module imported repo payload (default → proj.imported_repo)."""
+        proj = self._projects.get(project_id, {})
+        if module_id == "default":
+            return proj.get("imported_repo") or {}
+        return (proj.get("module_repos") or {}).get(module_id) or {}
+
+    def _module_roots(self, project_id: str) -> Dict[str, str]:
+        """{module_id: imported_root} for all declared modules (incl. implicit default)."""
+        proj = self._projects.get(project_id, {})
+        roots = {}
+        if proj.get("imported_repo") or self._has_legacy_import(project_id):
+            roots["default"] = self._module_root(project_id, "default")
+        for mid in (proj.get("modules") or []):
+            mid_id = mid.get("module_id") if isinstance(mid, dict) else str(mid)
+            if mid_id:
+                roots[mid_id] = self._module_root(project_id, mid_id)
+        return roots
+
+    def _has_legacy_import(self, project_id: str) -> bool:
+        return os.path.isdir(self._module_root(project_id, "default")) and any(
+            os.scandir(self._module_root(project_id, "default")))
+
+    async def create_modules(self, project_id: str, modules: List[Dict]) -> Dict[str, Any]:
+        """L4: declare project modules (modules.json semantics, stored on project)."""
+        self._reload_if_stale()
+        proj = self._projects.get(project_id) or {}
+        if not proj:
+            return {"status": "error", "detail": "项目不存在"}
+        if not modules or not isinstance(modules, list):
+            return {"status": "error", "detail": "modules 必须是非空数组 [{module_id, description}]"}
+        cleaned = []
+        for m in modules:
+            mid = str(m.get("module_id") or "").strip()
+            if not mid or mid == "default":
+                return {"status": "error", "detail": "module_id 必填且不能为 'default'（保留单模块语义）"}
+            cleaned.append({
+                "module_id": mid,
+                "description": str(m.get("description") or ""),
+                "root": f"modules/{mid}",
+                "created_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            })
+        proj["modules"] = cleaned
+        proj["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        self._save_projects()
+        return {"status": "ok", "modules": cleaned, "total": len(cleaned)}
+
+    async def list_modules(self, project_id: str) -> Dict[str, Any]:
+        """L4: module list — declared modules + implicit default when legacy import exists."""
+        proj = self._projects.get(project_id, {})
+        modules = []
+        if self._has_legacy_import(project_id):
+            modules.append({"module_id": "default", "description": "单模块（默认）",
+                            "root": "imported", "imported": True})
+        for m in (proj.get("modules") or []):
+            mid = m.get("module_id") if isinstance(m, dict) else str(m)
+            rep = self._module_repo(project_id, mid)
+            modules.append({
+                "module_id": mid,
+                "description": (m.get("description") if isinstance(m, dict) else ""),
+                "root": (m.get("root") if isinstance(m, dict) else f"modules/{mid}"),
+                "imported": bool(rep),
+                "file_count": len((rep.get("manifest") or []) if isinstance(rep, dict) else []),
+            })
+        return {"status": "ok", "modules": modules, "total": len(modules)}
+
+    async def cross_module_impact(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
+        """L4 §3.3: cross-module impact analysis for a changed module."""
+        from builder.cross_module import analyze_cross_module, impact_closure
+        roots = self._module_roots(project_id)
+        if not roots:
+            return {"status": "error", "detail": "未导入任何模块代码"}
+        if module_id not in roots:
+            return {"status": "error", "detail": f"模块 {module_id} 不存在"}
+        modules = [{"module_id": mid, "root": root} for mid, root in roots.items()]
+        result = analyze_cross_module(modules, os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")))
+        closure = impact_closure(module_id, result["graph"])
+        return {
+            "status": "ok",
+            "graph": result["graph"],
+            "contracts": result["contracts"],
+            "closure": closure,
+            "changed_module": module_id,
+            "note": "静态分析仅供参考，编排集可在前端调整",
+        }
+
+    async def module_orchestrate(self, project_id: str, module_ids: List[str]) -> Dict[str, Any]:
+        """L4 §3.4: orchestrate pipelines for changed modules in dependency order.
+
+        Affected set = changed modules + everything that depends on them.
+        Sequential (v1) topological order — dependency first, then dependents.
+        """
+        from builder.cross_module import analyze_cross_module, impact_closure, topological_order
+        roots = self._module_roots(project_id)
+        if not roots:
+            return {"status": "error", "detail": "未导入任何模块代码"}
+        if not module_ids:
+            return {"status": "error", "detail": "module_ids 不能为空"}
+        modules = [{"module_id": mid, "root": root} for mid, root in roots.items()]
+        result = analyze_cross_module(modules, os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")))
+        closure: List[str] = []
+        for mid in module_ids:
+            for m in impact_closure(mid, result["graph"]):
+                if m not in closure:
+                    closure.append(m)
+        ordered = topological_order(closure, result["graph"])
+        # Trigger rebuild per module (sequential): rebuild with module_id
+        results = []
+        for mid in ordered:
+            _repo = self._module_repo(project_id, mid)
+            if not _repo:
+                results.append({"module_id": mid, "skipped": True, "reason": "未导入代码"})
+                continue
+            try:
+                await self.rebuild_project(project_id, module_id=mid)
+                results.append({"module_id": mid, "triggered": True})
+            except Exception as e:
+                results.append({"module_id": mid, "triggered": False, "error": str(e)[:200]})
+        return {"status": "ok", "closure": closure, "order": ordered, "results": results,
+                "note": "v1 顺序编排（依赖先于依赖方），未受影响模块不重跑"}
 
     async def get_import_stats(self) -> Dict[str, Any]:
         """L2: skip_pytest_gate telemetry — >40% ratio triggers L3 priority alert (§3.9 条件 3)."""
@@ -1831,7 +1977,7 @@ class BuilderProjectService:
         _log2.getLogger("aiplat.builder").info("PRD updated for %s", project_id)
         return {"status": "ok", "detail": "PRD 已更新"}
 
-    async def rebuild_project(self, project_id: str) -> Dict[str, Any]:
+    async def rebuild_project(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
         """Re-run the pipeline with the existing confirmed PRD. Re-recommends team to pick up latest config changes."""
         self._reload_if_stale()
         proj = self._projects.get(project_id, {})
@@ -1843,7 +1989,7 @@ class BuilderProjectService:
         _prd = proj.get("confirmed_prd") or {}
         if str(_prd.get("merge_strategy") or "") == "incremental_merge":
             _mf = _prd.get("modify_files")
-            _imp = proj.get("imported_repo") or {}
+            _imp = self._module_repo(project_id, module_id)
             if isinstance(_mf, list) and _mf and _imp.get("root"):
                 from builder.merge_engine import snapshot_affected_files
                 _paths = [str(m.get("path") or "") for m in _mf
@@ -1883,7 +2029,7 @@ class BuilderProjectService:
 
         # Delegate pipeline execution to Core server (8002) via HTTP API.
         # Core owns all LLM infrastructure — no direct PipelineEngine import.
-        return await self._rebuild_via_core(project_id, proj)
+        return await self._rebuild_via_core(project_id, proj, module_id=module_id)
 
     async def _get_state_via_core(self, project_id: str) -> Dict[str, Any]:
         """Read pipeline state from Core server HTTP API."""
@@ -1911,7 +2057,7 @@ class BuilderProjectService:
             ],
         }
 
-    async def _rebuild_via_core(self, project_id: str, proj: dict) -> Dict[str, Any]:
+    async def _rebuild_via_core(self, project_id: str, proj: dict, module_id: str = "default") -> Dict[str, Any]:
         """Trigger pipeline execution via Core server HTTP API."""
         from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
 
@@ -1949,7 +2095,8 @@ class BuilderProjectService:
         # Core engine only reads files and appends the blocks (generic, §5.8 boundary).
         _prd = proj.get("confirmed_prd") or {}
         _modify = _prd.get("modify_files") if isinstance(_prd, dict) else None
-        _imported = proj.get("imported_repo")
+        # L4: per-module imported repo (default → legacy proj.imported_repo)
+        _imported = self._module_repo(project_id, module_id)
         # L3: merge strategy drives which behavior contract is injected
         _merge_strategy = str(_prd.get("merge_strategy", "full_rewrite") or "full_rewrite")
         if _imported and isinstance(_modify, list) and _modify:
