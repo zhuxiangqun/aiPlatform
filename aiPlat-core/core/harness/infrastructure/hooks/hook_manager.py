@@ -128,6 +128,13 @@ class HookManager(IHookManager):
             load_workspace_hooks(hook_manager=self)
         except Exception as e:
             logging.debug(str(e), exc_info=True)
+        # Optional: CC/Codex hooks.json protocol bridge (G6, 配置存在时装载)
+        try:
+            from .cc_bridge import load_cc_hooks_if_configured
+
+            load_cc_hooks_if_configured(self)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     
     def register(self, hook: Hook) -> None:
         """Register a hook"""

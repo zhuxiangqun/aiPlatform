@@ -591,7 +591,7 @@ domains:
   observability:
     section: "八"
     section_name: "可观测性"
-    caps_count: 16
+    caps_count: 18
     provides:
       - symbol: "EventBus"
         type: "class"
@@ -601,6 +601,14 @@ domains:
         type: "class"
         signature: "aggregate metrics across layers"
         module: "core/harness/observability/metrics/__init__.py"
+      - symbol: "CCHookBridge"
+        type: "class"
+        signature: "CC/Codex hooks.json 协议桥：外部事件→HookPhase command handler（G6, 配置存在时装载）"
+        module: "core/harness/infrastructure/hooks/cc_bridge.py"
+      - symbol: "register_cc_hooks"
+        type: "function"
+        signature: "解析 hooks.json 并注册 command hooks 进 HookManager"
+        module: "core/harness/infrastructure/hooks/cc_bridge.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"

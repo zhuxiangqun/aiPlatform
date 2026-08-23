@@ -8,6 +8,7 @@
 > **2026-08-19 回归修复批（PR #33/#34/#35，当日增量复核）**：基线复核后又闭环 3 个实测缺陷，本报告 aiPlat 侧数字已同步——① **P0-A1 DI fallback 修复**（PR #33）：`integration.py` 13 个 `_resolve_or_import` fallback 全量验证，修复 2 个坏路径（`get_mcp_client_manager` 指向不存在的函数 → 改类 `MCPClientManager`；`get_agent_registry` 指向不存在的模块 → 改 `agents.discovery:AgentRegistry`）；② **应用工厂 rebuild 修复**（PR #34）：`pipeline_execution.py` 存量 `PipelineConfig` 未 import NameError（P0-A2 前已存在，`_execute_pipeline` 每次 run 立即 failed），补 import + 3 处 `PipelineEngine` 直构改 `create_pipeline_engine`（宪法 A2）；③ **守卫盲区修复**（PR #35）：用户实证质疑"守卫为何没抓到 NameError"——根因 4 层（ruff F821 被 `pyproject.toml` ignore / py_compile 只查语法 / F821 ratchet 基于空输出空转 / 该路径无测试），新增 **AST 级未定义符号守卫**（`scripts/guard_undefined_names.py`，接入 `architecture_guard.sh`，基线 0 findings）+ 防回归测试（4 passed）。**§19 架构守卫表述已更新**：规则数 172→**190**（`arch_guard_rules.yaml` 实测）+ 第 17 维"Python 未定义变量"从 ruff F821 ratchet（实际被 ignore 空转）升级为 AST 级真检查。commit 数 1,719→**1,926**；CoreFacade 210 接口→**368 导出符号**；PipelineEngine 8,288→**8,285 行**。三方可对标结论不受上述修复影响（均为 aiPlat 侧质量修复，非能力增减）。
 > **吸收程度核验**：本报告"已补齐"标注的源码级实证见 **《对标吸收与架构纯度评估.md》**（6 项差距吸收程度逐项核验 + 架构纯度改善建议，2026-08-19）。
 > **2026-08-23 L2-L5 演进后复核**：应用工厂大工程（PR #77-#100，24 个 PR）落地——**L2 导入既有代码 → L3 增量合并（原子审批/哈希锁/AST 门禁）→ L4 多模块编排（跨模块影响/契约门禁）→ L4.5 数据库迁移（up/down DDL/破坏性阻断）→ L5 受控发布（版本化/金丝雀权重/infra 桥接）**（详见 `应用工厂分析报告.md` §9 与各 `plan-app-factory-l*.md`）。aiPlat 侧最新数字：PipelineEngine **8,371 行**、CoreFacade 163 def/class（+`deploy_app_service`）、capability_registry **211 symbols**、commit **2,041**、acceptance 契约 **1.52**、L2-L5 能力测试 **124 例**（+constitution 33 + freshness 8 = 165+ 全绿）。**新增 §22：应用工厂演进对标**——aiPlat 的"交付流水线一等公民"差异化在此维度进一步放大（三方均无对应物）。
+> **2026-08-23 G6 hooks 桥闭环复核**：对标报告 §20 唯一完全缺失项 **G6（CC/Codex hooks 协议桥）已实施**（`cc_bridge.py` + `cc_bridge_rules.py`，plan-g6-hooks-bridge 独立批次）——§16.3/§18/§20/§21 中"仅剩 G6 缺失"的结论全部更新为 **G1-G15 全 15 项补齐**（12 项 2026-08-19 行动纲领 + P3-2 子代理第 3 传输 + G6 hooks 桥）。详见 §20.1/§20.2 状态列与《对标吸收与架构纯度评估.md》§2.3。
 
 ---
 
@@ -388,7 +389,7 @@
 
 1. **aiPlat 最强**：企业治理（防篡改审计 + 多租户 + 计费 + RBAC）、交付流水线（HITL/回滚/断点续跑）、自我进化（夜间流水线 + 训练触发）、知识引擎（SECI + 本体 + GraphRAG）。
 2. **aiPlat 最弱（2026-08-19 复核后）**：渠道广度（7 渠道 vs Hermes 22 平台）、模型 provider 生态家族数（插件化已建但家族数远少于 Hermes 38）、Skill 开放生态规模（已对接 agentskills.io 但社区规模小）、事件源纯度（已实现折叠派生但仍是"状态+事件"双轨，非纯事件源）。
-3. **最值得吸收的三项外部能力——2026-08-19 已全部落地**（行动纲领 P1-A 对标差距 6/6 DONE）：① Hermes 的会话内实时学习 nudge + Curator 技能维护 → **P1-A1 nudge（`learn_nudge_hook.py`）+ P1-A2 Curator（`skill_curator.py`）**；② DSH 的子代理 provider 多样性 + 事件源会话 → **P1-A3 子代理 provider（`providers.py` InProcess/ACP）+ P2-A1 run_events 折叠派生（`pipeline_run_store.py:266`）**；③ Claude Code 的 Server-managed settings（企业远程强制策略）→ **P1-A6 ManagedPolicy（`aiPlat-platform/auth/schemas_policy.py:119`）**。**更新后的"下一批最值得吸收项"**：G6 CC/Codex hooks 协议桥（§20 中唯一仍完全缺失）、Hermes 22 平台渠道广度延伸（当前 7）、Claude Code checkpoint/rewind 用户级 UI（coding 场景前端）。
+3. **最值得吸收的三项外部能力——2026-08-19 已全部落地**（行动纲领 P1-A 对标差距 6/6 DONE）：① Hermes 的会话内实时学习 nudge + Curator 技能维护 → **P1-A1 nudge（`learn_nudge_hook.py`）+ P1-A2 Curator（`skill_curator.py`）**；② DSH 的子代理 provider 多样性 + 事件源会话 → **P1-A3 子代理 provider（`providers.py` InProcess/ACP）+ P2-A1 run_events 折叠派生（`pipeline_run_store.py:266`）**；③ Claude Code 的 Server-managed settings（企业远程强制策略）→ **P1-A6 ManagedPolicy（`aiPlat-platform/auth/schemas_policy.py:119`）**。**2026-08-23 更新："下一批最值得吸收项"中的 G6 CC/Codex hooks 协议桥已实施**（`cc_bridge.py`，见 §20.1 G6 行）——剩余候选：Hermes 22 平台渠道广度延伸（当前 7）、Claude Code checkpoint/rewind 用户级 UI（coding 场景前端）。
 
 *报告基于 2026-08-15 代码快照与 web 调研，**2026-08-19 已按行动纲领基线（53 DONE / 143 passed / 能力 1032/1039）复核更新 aiPlat 侧结论**；三方信息可能随版本更新；aiPlat 侧证据可在本仓库 `grep -rn` 复核。*
 
@@ -526,7 +527,7 @@ flowchart LR
 
 ### 20.1 缺口矩阵（按缺口性质分类）
 
-> **2026-08-19 状态更新**：本表初版（2026-08-15）判定 6 ❌ 缺失 + 8 ⚠️ 部分具备；经行动纲领 **53/53 DONE**（P1-A 对标差距 6/6 + P2 演进治理 12/12）后，**G1-G5、G8-G14 共 12 项已补齐（✅）**，G15 已由 aiPlat 侧治理，**仅 G6（CC/Codex hooks 协议桥）仍 ❌ 缺失**（未纳入 53 项行动纲领）。闭合项均附代码证据 + 对应行动纲领项。
+> **2026-08-19 状态更新**：本表初版（2026-08-15）判定 6 ❌ 缺失 + 8 ⚠️ 部分具备；经行动纲领 **53/53 DONE**（P1-A 对标差距 6/6 + P2 演进治理 12/12）后，**G1-G5、G8-G14 共 12 项已补齐（✅）**，G15 已由 aiPlat 侧治理，**仅 G6（CC/Codex hooks 协议桥）仍 ❌ 缺失**（未纳入 53 项行动纲领）。闭合项均附代码证据 + 对应行动纲领项。**2026-08-23 G6 独立批次落地：G1-G15 全 15 项补齐（见 G6 行）。**
 
 | # | 能力（三方参照） | 来源系统 | aiPlat 现状 | 缺口性质 | aiPlat 证据 / 缺失证据 | 2026-08-19 状态 |
 |---|---|---|---|---|---|---|
@@ -535,7 +536,7 @@ flowchart LR
 | G3 | **事件源会话单一真相源**（模型可见 ⟺ 日志） | DSH（`docs/architecture.md:92-96`） | 有 `run_events` 表（`execution_store_schema.py:67`）但状态快照为主，事件非"单一真相源" | ⚠️ **部分具备**（事件表有，折叠派生无） | 状态型 `pipeline_run_store.py:54` | ✅ **已补齐（P2-A1）**：`pipeline_run_store.py:266` 事件折叠派生状态（崩溃恢复可重建；默认快照路径保留） |
 | G4 | **运行时自修改**（动态插件 define/run/undefine） | DSH（cordis-host-runner） | PluginManager 是 DB 管理（注册/启停/回滚），**无运行时代码注入** | ❌ **缺失** | `apps/plugins/manager.py:8` | ✅ **已补齐（P2-A2）**：运行时扩展缝（`core_facade.py:29,58`，handler 白名单 + 审批门控，做成安全边界而非 DSH 式 opt-in） |
 | G5 | **Server-managed settings**（企业远程强制策略，本地不可覆盖） | Claude Code | 有 tenant policy（`audit_mixin.py:253` get_tenant_policy）但**无"managed 强制层"**（本地可覆盖） | ❌ **缺失** | `schemas_policy.py`（无 managed 标志） | ✅ **已补齐（P1-A6）**：`ManagedPolicy`（`aiPlat-platform/auth/schemas_policy.py:119`）+ admin 端点（`api/routers/policy.py:89`） |
-| G6 | **CC/Codex hooks 协议桥**（复用三方 hooks.json） | DSH（hooks-claude-code/codex） | 有 HookManager（`hook_manager.py:111`）但**无 CC/Codex 协议兼容层** | ❌ **缺失** | `infrastructure/hooks/`（无协议桥） | ❌ **仍缺失**（未纳入 2026-08-19 行动纲领 53 项；§20 唯一剩余完全缺失项） |
+| G6 | **CC/Codex hooks 协议桥**（复用三方 hooks.json） | DSH（hooks-claude-code/codex） | 有 HookManager（`hook_manager.py:111`）但**无 CC/Codex 协议兼容层** | ❌ **缺失** | `infrastructure/hooks/`（无协议桥） | ✅ **已补齐（2026-08-23 G6 独立批次）**：`cc_bridge.py`（hooks.json 解析 + `CCHookBridge` command handler 执行器 + `register_cc_hooks`/`load_cc_hooks_if_configured`）+ `cc_bridge_rules.py`（CC 7/30 + Codex 4/10 事件→`HookPhase` 数据驱动映射表）；`HookManager.__init__` 配置存在时装载（`~/.aiplat/hooks.json` / `AIPLAT_CC_HOOKS_PATH`，默认关）；command handler shell=False/超时/fail-open；http/mcp_tool/prompt/agent 跳过记 WARNING、unmapped 事件不静默执行（对齐 DSH 诚实披露）。测试 15 个。**G1-G15 全 15 项补齐（gap 矩阵清零）** |
 | G7 | **Checkpointing /rewind 用户级回滚** | Claude Code | **有**：`file_checkpoint.py:69` checkpoint_file + `restore_file_checkpoint:180` + snapshot | ✅ **具备** | `execution/file_checkpoint.py` | ✅ 已具备（不变） |
 | G8 | **agentskills.io 开放标准对接** | Hermes（skills_tool.py:28-44） | SkillMarketplace 有内部市场（`skill_marketplace.py:30`）但**无开放标准/Hub 对接** | ❌ **缺失** | `knowledge/skill_marketplace.py`（git clone 内部安装） | ✅ **已补齐（P1-A5）**：agentskills.io 对接（`harness/knowledge/skill_marketplace.py` + platform `api/routers/skill_marketplace.py`） |
 | G9 | **多渠道 Gateway 广度**（22 平台） | Hermes（plugins/platforms/ 22 适配器） | 仅 3 适配器（Telegram/Slack/WebChat，`channels/adapter.py:44`）但 Gateway 控制面已就绪 | ⚠️ **部分具备**（控制面有，适配器少） | `aiPlat-app/channels/` | ✅ **已补齐（P1-A4，PR #22）**：7 渠道（`channels/adapter.py:16-23` get_channel_adapter：telegram/slack/webchat/discord/wecom/email/dingtalk）；相对 Hermes 22 平台广度仍有差距 |
@@ -546,16 +547,16 @@ flowchart LR
 | G14 | **no-agent 纯脚本 cron** | Hermes（cron/jobs.py:1571 no_agent） | 有 cron 触发器（`event_loop.py`）但**无纯脚本零 LLM 模式** | ⚠️ 部分具备 | `execution/event_loop.py` | ✅ **已补齐（P2-A7）**：`event_loop.py:220,374` cron `mode=script` 纯脚本零 LLM 模式 |
 | G15 | **单文件巨兽的可维护性反例** | Hermes（run_agent.py 9005 行） | PipelineEngine 12,281 行——**同样存在**大文件问题 | ⚠️ 两者皆弱（非 aiPlat 独缺） | `pipeline_engine.py`（12k 行） | ✅ **aiPlat 侧已治理（P2-A4，PR #16-19）**：12,281→8,285 行 + 5 个 Mixin（healing/state/prompt/eval/stage）；Hermes run_agent.py 9005 行未拆分 |
 
-### 20.2 缺口汇总与优先级（2026-08-19 复核）
+### 20.2 缺口汇总与优先级（2026-08-23 G6 闭环后复核）
 
 | 缺口类别 | 数量 | 清单 | 对应行动纲领/改进方案 |
 |---|---|---|---|
-| ❌ **完全缺失**（aiPlat 无此能力） | **1** | G6 CC/Codex hooks 协议桥 | 未纳入 53 项行动纲领（剩余唯一缺失项） |
-| ✅ **已补齐**（2026-08-19，原 ❌/⚠️ → ✅） | **12** | G1 nudge、G2 Curator、G3 事件折叠、G4 运行时扩展缝、G5 ManagedPolicy、G8 agentskills、G9 渠道 7、G10 provider 插件化、G11 子代理 provider、G12 worker/阶段隔离、G13 goal judge、G14 no-agent cron | P1-A1/A2/A3/A4/A5/A6 + P2-A1/A2/A3/A5/A6/A7（P1-A 对标差距 6/6 + P2 演进治理 12/12 全 DONE） |
+| ❌ **完全缺失**（aiPlat 无此能力） | **0** | （已清零） | — |
+| ✅ **已补齐**（原 ❌/⚠️ → ✅） | **13** | G1 nudge、G2 Curator、G3 事件折叠、G4 运行时扩展缝、G5 ManagedPolicy、G6 CC/Codex hooks 桥、G8 agentskills、G9 渠道 7、G10 provider 插件化、G11 子代理 provider、G12 worker/阶段隔离、G13 goal judge、G14 no-agent cron | P1-A1/A2/A3/A4/A5/A6 + P2-A1/A2/A3/A5/A6/A7（P1-A 对标差距 6/6 + P2 演进治理 12/12 全 DONE）+ **G6 独立批次（2026-08-23，`cc_bridge.py` 15 测试）** |
 | ✅ **已具备**（不构成缺口） | 1 | G7 checkpoint/rewind | — |
 | ✅ **aiPlat 侧已治理**（原双方皆弱） | 1 | G15 单文件巨兽（P2-A4 拆分收官） | P2-A4（12,281→8,285 行 + 5 Mixin） |
 
-**结论（更新）**：2026-08-15 初版判定 aiPlat 有 **6 项完全缺失** 与 **8 项部分具备** 的三方独有能力，优先级最高的是 G1/G5/G11/G8（对应改进方案 P1 批次的四个核心项）。**2026-08-19 基线（行动纲领 53/53 DONE）复核：上述 12 项已全部补齐，仅剩 G6（CC/Codex hooks 协议桥）一项完全缺失**——该证明"维度由 aiPlat 定义会漏掉这些缺口"的反向扫描方法论有效，且 P1-A/P2 批次按此方法论精准闭环。**下一轮补齐候选**：G6 hooks 协议桥 + 渠道广度延伸（7→更多）+ coding 场景前端（diff/checkpoint 回放）。
+**结论（更新）**：2026-08-15 初版判定 aiPlat 有 **6 项完全缺失** 与 **8 项部分具备** 的三方独有能力，优先级最高的是 G1/G5/G11/G8（对应改进方案 P1 批次的四个核心项）。**2026-08-19 基线（行动纲领 53/53 DONE）复核：12 项已补齐，仅剩 G6 一项完全缺失**——该证明"维度由 aiPlat 定义会漏掉这些缺口"的反向扫描方法论有效，且 P1-A/P2 批次按此方法论精准闭环。**2026-08-23 G6 独立批次落地（`cc_bridge.py` + `cc_bridge_rules.py`，CC 7/30 + Codex 4/10 事件映射 + command handler 执行 + 15 测试）：G1-G15 全 15 项补齐，§20 gap 矩阵清零**。**下一轮候选**：渠道广度延伸（7→更多）+ coding 场景前端（diff/checkpoint 回放）。
 
 ---
 
@@ -587,7 +588,7 @@ flowchart LR
 | 类别 | 数量 | 维度 |
 |---|---|---|
 | **aiPlat 主动优势区**（显著强于 ≥2 方） | 7 | 执行引擎、工具治理、上下文工程、工作流、沙箱/审批、企业治理、模型适配（治理侧） |
-| **aiPlat 被动差距区**（弱于 ≥1 方，且为结构性缺口；2026-08-19 复核） | **1** | 扩展机制/生态面：G6 CC/Codex hooks 协议桥（唯一仍完全缺失） |
+| **aiPlat 被动差距区**（弱于 ≥1 方，且为结构性缺口；2026-08-23 复核） | **0** | （已清零——G6 hooks 协议桥 2026-08-23 落地，见 §20.1 G6 行；剩余差距均为"接入面"广度而非结构性缺口） |
 | **广度差距**（机制已补齐，规模仍落后；2026-08-19 新增分类） | 2 | 多渠道（7 vs 22 平台）、模型 provider 生态（插件化已建，家族数仍少） |
 | **持平/中性** | 3 | 规划、持久化（各有侧重）、自我进化（不同维度） |
 | **双方皆弱**（非差距，共同短板） | 0 | G15 已由 aiPlat 侧治理（P2-A4 拆分收官）；Hermes 侧未变 |
@@ -596,7 +597,7 @@ flowchart LR
 
 1. **aiPlat 的 7 个主动优势区集中在"企业级治理闭环"**：执行引擎、工具治理、沙箱/审批、企业治理、工作流——这些是 aiPlat 相对三方的**结构性优势**（不是单点领先，是"治理体系"整体领先），且全部有代码证据（Syscall 封口、多 Gate、RBAC、审计链、PipelineEngine）。
 
-2. **aiPlat 的 4 个被动差距区恰好是"生态面"而非"治理面"**：子代理传输多样性、Skill 开放生态、多渠道广度、provider 插件化——都是"对外连接/生态"能力，不是内核能力。**结论（2026-08-19 更新）：该判断已被行动纲领 P1-A 批次（6/6 DONE）精准验证并闭环**——4 个差距区全部补齐（P1-A3/A5/A4/A6 + P2-A3），证明"aiPlat 的差距是'接入面'差距，不是'内核面'差距"的结论成立且可快速补齐；当前仅剩 G6（hooks 协议桥）未纳入行动纲领。
+2. **aiPlat 的 4 个被动差距区恰好是"生态面"而非"治理面"**：子代理传输多样性、Skill 开放生态、多渠道广度、provider 插件化——都是"对外连接/生态"能力，不是内核能力。**结论（2026-08-23 更新）：该判断已被行动纲领 P1-A 批次（6/6 DONE）精准验证并闭环**——4 个差距区全部补齐（P1-A3/A5/A4/A6 + P2-A3）+ G6 hooks 协议桥（2026-08-23 独立批次），证明"aiPlat 的差距是'接入面'差距，不是'内核面'差距"的结论成立且可快速补齐；**当前结构性差距清零（G1-G15 全补齐）**。
 
 3. **没有任何维度 aiPlat 全面垫底**：14 个能力维度中，aiPlat 在 7 个维度占优、4 个维度弱于某方、3 个持平——**最弱项（多渠道 ★★★）与最强项（企业治理 ★★★★★）的差距说明 aiPlat 是"偏科但优势集中"的系统**。
 
@@ -621,7 +622,7 @@ flowchart LR
 | **Hermes 侧能力事实**（v0.20.1 源码级验证） | ✅ **高（阳性，源码级）** | `/Users/apple/workdata/person/openSource/hermes-agent-main/` 直接读源码，§17.4 有 8 项文档差异实证 |
 | **Claude Code 侧能力事实** | ⚠️ **中（文档级）** | 闭源无源码，基于官方文档+第三方；§17.1 已标注 |
 | **§16 优势/劣势结论** | ✅ 高 | 基于上述源码级事实推导；弱势区的"结构性缺口"经 §20 反向扫描确认 |
-| **§20 能力缺口矩阵（G1-G15）** | ✅ 高（阳性缺口） | 缺口是"grep 确认 aiPlat 无此能力"的阳性事实；**2026-08-19 复核：12 项已补齐（附代码证据），仅 G6 仍缺失** |
+| **§20 能力缺口矩阵（G1-G15）** | ✅ 高（阳性缺口） | 缺口是"grep 确认 aiPlat 无此能力"的阳性事实；**2026-08-19 复核：12 项已补齐（附代码证据），仅 G6 仍缺失；2026-08-23 G6 落地：G1-G15 全 15 项补齐（gap 矩阵清零）** |
 | **§21 逐维度优劣判定（"最强"归属）** | ⚠️ 中 | 综合判断（能力深度+治理深度），非单一可复现指标；CC 侧置信度低 |
 | **§15 速览评分（★★★★★）** | ⚠️ 中 | 主观评分，仅作速览；精确对比以 §1-14 的带证据条目为准 |
 | **任何"某系统没有 X"的阴性结论** | ⚠️ 有盲区 | 如"Claude Code 官方无内置学习闭环"——基于文档未见，无法 100% 排除（闭源） |

@@ -2,7 +2,8 @@
 
 > **背景**：对标报告 §20 能力缺口矩阵中**唯一仍完全缺失**的项（G6）——aiPlat `HookManager` 有 HookPhase 枚举与触发机制，但无 CC/Codex hooks.json 协议兼容层。DSH 已实现 CC 7/30 + Codex 5/10 事件子集（见对标报告 §17.3），证明可行。
 > **时点**：2026-08-19（P3-1/P3-2 已实施后；本规划为独立批次，工作量约 3-5 天）
-> **关联**：《对标吸收与架构纯度评估.md》§2.3 改善项 3（⏳ 待独立批次）
+> **状态**：✅ **已实施（2026-08-23）**——`cc_bridge.py` + `cc_bridge_rules.py` + `HookManager.__init__` 接线 + 15 测试全绿（§4 验收 1-5 逐项落地，见文末实施记录）。
+> **关联**：《对标吸收与架构纯度评估.md》§2.3 改善项 3（⏳ 待独立批次 → ✅ 2026-08-23 实施）
 
 ---
 
@@ -83,3 +84,18 @@ tests/unit/test_harness/test_cc_hooks_bridge.py  ← 测试（新）
 | `docs/research/对标吸收与架构纯度评估.md` | §2.3 改善项 3 状态 ⏳ → ✅ |
 | `AIPLAT_CAPABILITIES.md` + `capability_registry.yaml` | 补登 cc_bridge 符号 |
 | `docs/standards/规范-core-run_id-trace_id-request_id.md` | 若触及 run 生命周期事件（session/hook 属会话层，视触发面决定） |
+
+---
+
+## 7. 实施记录（2026-08-23，独立批次落地）
+
+| # | 验收项 | 落地 |
+|---|--------|------|
+| 1 | hooks.json 解析（CC 格式） | `load_hooks_json`：CC 嵌套 `{"hooks":{Event:[{"hooks":[...]}]}}` + Codex 数组 `[{hook_event_name, command}]` 双格式；非 command handler（http/mcp_tool/prompt/agent）跳过记 WARNING；缺失文件 FileNotFoundError |
+| 2 | 事件映射表覆盖度 | `cc_bridge_rules.py`：CC 7/30 映射（SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/Stop/SubagentStart/SubagentStop）+ Codex 4/10（SessionStart/PreToolUse/PostToolUse/SessionEnd）；unmapped 返回 None 不崩溃 |
+| 3 | command handler 执行 | `CCHookBridge(Hook)`：`_run_command` shell=False（shlex 拆词）+ `asyncio.to_thread` + 超时 30s + stdout/stderr 捕获（截 2000）+ 结构化结果（对齐 syscall 可观测） |
+| 4 | 失败 fail-open | command not found → exit 127 WARNING 不抛；超时 → WARNING 不抛；CC 语义 `{"continue": false}`/updatedInput 记日志不生效（对齐 DSH 限制披露） |
+| 5 | 接线 | `HookManager.__init__` 新增 `load_cc_hooks_if_configured`（默认关：`~/.aiplat/hooks.json` / `AIPLAT_CC_HOOKS_PATH` 存在时装载）→ 生产 caller `hook_manager.py:133` |
+| 6 | 全量回归 | 15 测试全绿（`test_cc_hooks_bridge.py`）；py_compile OK |
+
+**差异标注**（vs 设计 §3.3）：设计写 `cc_bridge.py` 内联事件映射，实施拆出 `cc_bridge_rules.py` 数据驱动映射表（对齐"配置驱动"原则，便于扩展与覆盖度断言）；command 执行从设计"shell=True"改为 **shell=False + shlex 拆词**（安全强化，防注入）。
