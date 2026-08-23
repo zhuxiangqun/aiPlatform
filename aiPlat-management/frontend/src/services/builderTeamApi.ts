@@ -311,6 +311,50 @@ export const projectApi = {
     }>(`/platform/builder/projects/${projectId}/analyze-impact`, { modify_files: modifyFiles });
   },
 
+  // ── L4: multi-module (plan-app-factory-l4) ──
+
+  /** L4: declare project modules. */
+  createModules: async (projectId: string, modules: Array<{ module_id: string; description: string }>) => {
+    return apiClient.post<{ status: string; modules: Array<Record<string, unknown>>; total: number }>(
+      `/platform/builder/projects/${projectId}/modules`, { modules }
+    );
+  },
+
+  /** L4: module list (declared + implicit default). */
+  listModules: async (projectId: string) => {
+    return apiClient.get<{
+      status: string;
+      modules: Array<{ module_id: string; description: string; root: string; imported: boolean; file_count: number }>;
+      total: number;
+    }>(`/platform/builder/projects/${projectId}/modules`);
+  },
+
+  /** L4: import code into a named module. */
+  importModuleRepo: async (projectId: string, moduleId: string, form: FormData) => {
+    return apiClient.post<{
+      status: string; module_id: string; imported_files: number; has_tests: boolean;
+    }>(`/platform/builder/projects/${projectId}/modules/${moduleId}/import-repo`, form);
+  },
+
+  /** L4: cross-module impact analysis for a changed module. */
+  crossModuleImpact: async (projectId: string, moduleId: string) => {
+    return apiClient.post<{
+      status: string;
+      graph: Record<string, { depends_on: string[]; depended_by: string[]; evidence: Record<string, unknown> }>;
+      contracts: Record<string, unknown>;
+      closure: string[];
+      changed_module: string;
+    }>(`/platform/builder/projects/${projectId}/cross-module-impact`, { module_id: moduleId });
+  },
+
+  /** L4: orchestrate pipelines for changed modules in dependency order. */
+  moduleOrchestrate: async (projectId: string, moduleIds: string[]) => {
+    return apiClient.post<{
+      status: string; closure: string[]; order: string[];
+      results: Array<{ module_id: string; triggered?: boolean; skipped?: boolean; reason?: string; error?: string }>;
+    }>(`/platform/builder/projects/${projectId}/module-orchestrate`, { module_ids: moduleIds });
+  },
+
   /** Re-run pipeline with existing PRD (e.g., after editing PRD). */
   rebuild: async (projectId: string) => {
     return apiClient.post<{ status: string; detail: string }>(

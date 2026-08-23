@@ -1,6 +1,6 @@
 # L4 设计：多模块编排（从"改单个文件"→"演进模块化系统"——1→100 的架构路径）
 
-> **状态**：设计文档（2026-08-23，待评审）
+> **状态**：✅ **已实施**（2026-08-23，PR #87 设计 + PR #88 后端 + PR #89 前端；实施落地记录见 §10，与设计的差异已标注）
 > **目标**：把应用工厂从"单项目单代码库"升级为"**多模块项目编排**"——真实软件系统是模块化的（auth/billing/order/notification），L4 让 AI 能按模块演进大型系统：变更一个模块时，**分析跨模块影响、按依赖顺序编排流水线、验证模块间契约**。
 > **关联**：《plan-app-factory-l3-incremental-engine.md》§7（L4 = "跨模块影响分析 + 模块级项目"）+ L2 的 import-repo / L3 的 merge 审批（模块级复用）。
 
@@ -219,3 +219,33 @@ def analyze_cross_module(modules: dict, workspace_root: str) -> dict:
 | `merge_strategy`/`inject_imported_context` | 模块级配置（模块 YAML 可覆盖） |
 | `deploy.prev` 快照 | 模块级快照 |
 | 前端导入面板/合并审批界面 | 模块 Tab 内复用；门禁横幅复用 blocked 模式 |
+
+---
+
+## 10. 实施落地记录（2026-08-23，PR #87/#88/#89）
+
+### 10.1 落地范围（验收 12 项全部通过）
+
+| 模块 | 落地位置 | 状态 |
+|---|---|---|
+| CrossModuleAnalyzer（API/entity/事件契约 → 依赖图 + 闭包 + 拓扑） | `aiPlat-platform/builder/cross_module.py` | ✅ |
+| 模块 CRUD（modules.json 语义，单模块隐式兼容） | `builder_project_service.py` `create_modules`/`list_modules` | ✅ |
+| import-repo module_id（default → legacy；多模块 → module_repos[mid]） | 同文件 `import_repo` | ✅ |
+| rebuild module_id（模块级 imported_repo + P0-02 快照按模块） | 同文件 `rebuild_project`/`_rebuild_via_core` | ✅ |
+| 编排端点（cross-module-impact / module-orchestrate） | `aiPlat-platform/api/routers/builder.py` | ✅ |
+| 前端模块面板（声明/列表/导入/影响展示/编排结果） | `Factory/index.tsx` + `builderTeamApi.ts` | ✅ |
+
+### 10.2 与设计的差异（代码优先原则标注）
+
+| 设计（§） | 实际实现 | 说明 |
+|---|---|---|
+| §3.1 modules.json 文件 | **存于 `proj`（projects.json）而非独立 modules.json 文件** | 与现有 builder 状态归属一致（L2 imported_repo 同样存 proj），避免新增存储层；目录结构（modules/{mid}/imported|current）与设计一致 |
+| §3.4 编排"依赖顺序触发" | `module_orchestrate` 顺序调用 `rebuild_project(module_id=...)`（每模块独立 rebuild），未实现模块级流水线并发 | 复用现有项目级流水线，模块级 imported_repo 注入；并发是后续优化 |
+| §3.5 契约门禁"依赖方端点缺失阻断" | 后端已提供契约证据（evidence）；前端影响展示含证据行；**跨模块 merge-apply 门禁**（依赖方引用端点缺失 → 阻断）留作 v1.5（当前 merge 是模块内独立审批） | 设计 §3.5 的完整门禁需要跨模块 merge 状态联动，本轮先交付"影响可见 + 证据展示"，门禁在编排流程成熟后补 |
+| 前端"契约门禁横幅" | 影响展示含依赖证据行（line_file/route/topic），未单独做 blocked 横幅 | 与 L3 blocked 横幅模式对齐待 v1.5 |
+
+### 10.3 验证
+
+- 测试：`test_l4_cross_module.py`（动态 10）+ `test_l4_module_static.py`（静态 7）= **17 passed**
+- 前端 tsc 通过；Rule 6 全绿；engine guard clean；编译通过
+- contracts：acceptance 1.45/1.46 + 鉴权规范 §15 + capability 登记（cross_module）

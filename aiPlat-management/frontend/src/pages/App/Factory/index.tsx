@@ -431,6 +431,18 @@ const ProjectPanel: React.FC<{
     auto_added: string[]; analysis: Record<string, string[]>;
   } | null>(null);
 
+  // ── L4: multi-module (plan-app-factory-l4) ──
+  const [modules, setModules] = useState<Array<{ module_id: string; description: string; root: string; imported: boolean; file_count: number }>>([]);
+  const [selectedModule, setSelectedModule] = useState('default');
+  const [showModulePanel, setShowModulePanel] = useState(false);
+  const [moduleNamesInput, setModuleNamesInput] = useState('');
+  const [creatingModules, setCreatingModules] = useState(false);
+  const [moduleImporting, setModuleImporting] = useState(false);
+  const [moduleFile, setModuleFile] = useState<File | null>(null);
+  const [moduleImpact, setModuleImpact] = useState<any>(null);
+  const [orchestrateResult, setOrchestrateResult] = useState<any>(null);
+  const [orchestrating, setOrchestrating] = useState(false);
+
   // Check for PRD on mount (may have been generated in a previous session)
   useEffect(() => {
     const raw = project as any;
@@ -960,6 +972,73 @@ const ProjectPanel: React.FC<{
     } catch (e: any) { toastGateError(e, '重新生成失败'); }
   };
 
+  // ── L4: multi-module handlers ──
+  const loadModules = async () => {
+    if (!project?.project_id) return;
+    try {
+      const r = await projectApi.listModules(project.project_id) as any;
+      setModules(r?.modules || []);
+    } catch { /* ignore */ }
+  };
+
+  const handleCreateModules = async () => {
+    if (!project?.project_id) return;
+    const names = moduleNamesInput.split(/[,，\s]+/).map(s => s.trim()).filter(Boolean);
+    if (!names.length) { toast.error('请输入模块名（逗号分隔）'); return; }
+    setCreatingModules(true);
+    try {
+      const r = await projectApi.createModules(project.project_id,
+        names.map(n => ({ module_id: n, description: n }))) as any;
+      if (r?.status === 'ok') {
+        toast.success(`已声明 ${r.total} 个模块`);
+        setModuleNamesInput('');
+        await loadModules();
+      } else { toast.error(r?.detail || '声明模块失败'); }
+    } catch (e: any) { toastGateError(e, '声明模块失败'); }
+    setCreatingModules(false);
+  };
+
+  const handleModuleImport = async () => {
+    if (!project?.project_id || !moduleFile) return;
+    setModuleImporting(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', moduleFile);
+      const r = await projectApi.importModuleRepo(project.project_id, selectedModule, fd) as any;
+      if (r?.status === 'ok') {
+        toast.success(`模块 ${r.module_id} 已导入 ${r.imported_files} 个文件`);
+        setModuleFile(null);
+        await loadModules();
+      } else { toast.error(r?.detail || '导入失败'); }
+    } catch (e: any) { toastGateError(e, '导入失败'); }
+    setModuleImporting(false);
+  };
+
+  const handleCrossModuleImpact = async (moduleId: string) => {
+    if (!project?.project_id) return;
+    try {
+      const r = await projectApi.crossModuleImpact(project.project_id, moduleId) as any;
+      if (r?.status === 'ok') {
+        setModuleImpact({ ...r, for_module: moduleId });
+        toast.success(`影响闭包：${r.closure?.join(' → ') || moduleId}`);
+      } else { toast.error(r?.detail || '影响分析失败'); }
+    } catch (e: any) { toastGateError(e, '影响分析失败'); }
+  };
+
+  const handleOrchestrate = async (moduleId: string) => {
+    if (!project?.project_id) return;
+    if (!confirm(`按依赖顺序编排受影响模块（变更 ${moduleId} 的影响闭包）？`)) return;
+    setOrchestrating(true);
+    try {
+      const r = await projectApi.moduleOrchestrate(project.project_id, [moduleId]) as any;
+      if (r?.status === 'ok') {
+        setOrchestrateResult(r);
+        toast.success(`编排完成：${r.order?.join(' → ') || ''}`);
+      } else { toast.error(r?.detail || '编排失败'); }
+    } catch (e: any) { toastGateError(e, '编排失败'); }
+    setOrchestrating(false);
+  };
+
   const handleEditStage = (stageKey: string, currentRaw: any) => {
     const content = typeof currentRaw === 'string' ? currentRaw : JSON.stringify(currentRaw, null, 2);
     setEditingStage(stageKey);
@@ -1407,6 +1486,94 @@ const ProjectPanel: React.FC<{
             </div>
           </div>
         )}
+
+        {/* L4: 多模块编排（plan-app-factory-l4 §4） */}
+        <div className="p-3 rounded border border-teal-500/30 bg-teal-500/5 text-xs space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-teal-300 font-semibold">🧩 多模块编排（L4）</span>
+            <Button variant="ghost" size="sm" className="ml-auto"
+              onClick={() => { setShowModulePanel(v => !v); if (!showModulePanel) loadModules(); }}>
+              {showModulePanel ? '收起' : '模块管理'}
+            </Button>
+          </div>
+          {showModulePanel && (
+            <div className="space-y-2 pt-2 border-t border-dark-border">
+              {/* 声明模块 */}
+              <div className="flex gap-1.5">
+                <input value={moduleNamesInput} onChange={e => setModuleNamesInput(e.target.value)}
+                  placeholder="声明模块（逗号分隔，如 auth,billing,order）"
+                  className="flex-1 bg-dark-hover border border-dark-border rounded px-2 py-1 text-[10px] text-gray-200" />
+                <Button variant="secondary" size="sm" onClick={handleCreateModules} loading={creatingModules}>声明</Button>
+              </div>
+              {/* 模块列表 */}
+              {modules.length === 0 && (
+                <div className="text-[10px] text-gray-500">未声明模块（默认单模块模式，L2/L3 不受影响）</div>
+              )}
+              <div className="space-y-1.5">
+                {modules.map(m => {
+                  const active = selectedModule === m.module_id;
+                  return (
+                    <div key={m.module_id} className={`rounded border p-1.5 flex items-center gap-2 flex-wrap ${active ? 'border-teal-500/50 bg-teal-500/10' : 'border-dark-border'}`}>
+                      <label className="flex items-center gap-1.5 text-[11px] cursor-pointer">
+                        <input type="radio" name="module" checked={active}
+                          onChange={() => setSelectedModule(m.module_id)} />
+                        <span className="font-mono text-teal-200">{m.module_id}</span>
+                        <span className="text-gray-500">({m.file_count} 文件{m.imported ? ' ✓已导入' : ''})</span>
+                      </label>
+                      <div className="ml-auto flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => handleCrossModuleImpact(m.module_id)}>影响分析</Button>
+                        <Button variant="secondary" size="sm" onClick={() => handleOrchestrate(m.module_id)} loading={orchestrating}>编排</Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* 选中模块导入 */}
+              {modules.length > 0 && (
+                <div className="flex gap-1.5 items-center">
+                  <label className="text-[10px] text-gray-400">导入到 [{selectedModule}]：</label>
+                  <input type="file" accept=".zip" onChange={e => setModuleFile(e.target.files?.[0] || null)}
+                    className="text-[10px] text-gray-300 flex-1" />
+                  <Button variant="secondary" size="sm" onClick={handleModuleImport} loading={moduleImporting}
+                    disabled={!moduleFile}>导入</Button>
+                </div>
+              )}
+              {/* 跨模块影响展示 */}
+              {moduleImpact && (
+                <div className="p-2 rounded bg-teal-500/10 border border-teal-500/30 text-[10px] space-y-1">
+                  <div className="text-teal-200 font-medium">影响分析 [{moduleImpact.for_module}]</div>
+                  <div className="text-gray-300">影响闭包：{moduleImpact.closure?.join(' → ') || moduleImpact.for_module}</div>
+                  {Object.entries(moduleImpact.graph || {}).map(([mid, g]: [string, any]) => (
+                    <div key={mid} className="text-gray-400">
+                      <span className="font-mono text-teal-300/90">{mid}</span>
+                      {g.depends_on?.length > 0 && <span> → 依赖 {g.depends_on.join(', ')}</span>}
+                      {g.depended_by?.length > 0 && <span> ← 被 {g.depended_by.join(', ')} 依赖</span>}
+                      {g.evidence && Object.keys(g.evidence).length > 0 && (
+                        <div className="pl-3 text-gray-500">
+                          {Object.entries(g.evidence).map(([t, ev]: [string, any]) => (
+                            <div key={t}>· {t}: {(ev as any[]).map((e: any) => e.line_file || e.route || e.topic || '').filter(Boolean).join(', ')}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* 编排结果 */}
+              {orchestrateResult && (
+                <div className="p-2 rounded bg-blue-500/10 border border-blue-500/30 text-[10px] space-y-0.5">
+                  <div className="text-blue-200 font-medium">编排结果</div>
+                  <div className="text-gray-300">顺序：{orchestrateResult.order?.join(' → ')}</div>
+                  {(orchestrateResult.results || []).map((r: any, i: number) => (
+                    <div key={i} className="text-gray-400">
+                      {r.module_id}: {r.triggered ? '✓ 已触发' : r.skipped ? `跳过（${r.reason}）` : `✗ ${r.error || ''}`}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* L2: 导入既有代码（plan-app-factory-l2-import-repo.md §3.4/§3.8/§3.9） */}
         <div className="p-3 rounded border border-purple-500/30 bg-purple-500/5 text-xs space-y-2">
