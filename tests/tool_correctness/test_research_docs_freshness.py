@@ -36,6 +36,14 @@ def test_symbol_exists_real_file():
     assert symbol_exists("knowledge_ontology.py", basenames, contents, WS, files) is True
 
 
+def test_code_files_includes_aiplat_app():
+    """2026-08-23 工具扩展：aiPlat-app 纳入搜索根（渠道适配器等 app 层引用可对账）。"""
+    files = code_files(WS)
+    basenames, contents = build_matchers(files)
+    assert any(b == "whatsapp.py" or b == "lark.py" or b == "teams.py" for b in basenames)
+    assert symbol_exists("whatsapp.py", basenames, contents, WS, files) is True
+
+
 def test_symbol_exists_class_name():
     """类名引用（ClassName.tier）→ 类在代码中定义即 True。"""
     files = code_files(WS)

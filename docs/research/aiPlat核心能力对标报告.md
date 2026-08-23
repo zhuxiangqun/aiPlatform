@@ -180,7 +180,7 @@
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes |
 |---|---|---|---|---|
 | 接口 | CoreFacade 368 个导出符号（176 def/class + 192 re-export） + REST（72 core routers + 573 platform endpoints）+ aiplat-sdk + ACP + A2A + Gateway 统一代理 | CLI + headless SDK（TS/Python）+ IDE 插件 + GitHub Actions | ACP + JSON-RPC SDK + typert RPC + Web GUI（3080）+ Python SDK | CLI/TUI + **Gateway 20+ IM 平台** + ACP + API Server + Python Library |
-| 消息渠道 | **7 渠道适配器**（telegram/slack/webchat/discord/wecom/email/dingtalk，`channels/adapter.py:16-23` + `get_channel_adapter`，2026-08-19 P1-A4 收官，PR #22）+ Gateway 配对/幂等/DLQ | 无 IM | 无 IM | **20+ 平台**（Telegram/Discord/Slack/WhatsApp/Signal/SMS/Email/HA/Mattermost/Matrix/DingTalk/Feishu/WeCom/QQ/LINE 等） |
+| 消息渠道 | **10 渠道适配器**（telegram/slack/webchat/discord/wecom/email/dingtalk/whatsapp/lark/teams，`channels/adapter.py:15-25` + `get_channel_adapter`；2026-08-19 P1-A4 收官 PR #22 + 2026-08-23 广度延伸 7→10）+ Gateway 配对/幂等/DLQ | 无 IM | 无 IM | **20+ 平台**（Telegram/Discord/Slack/WhatsApp/Signal/SMS/Email/HA/Mattermost/Matrix/DingTalk/Feishu/WeCom/QQ/LINE 等） |
 | IDE | aiplat-vscode 扩展 + ACP | VS Code/JetBrains 官方 | ACP 服务器（任何 ACP 客户端可驱动） | VS Code/Zed/JetBrains（ACP） |
 | 治理面 | 管理端 Web（**325 TSX 前端文件**，tsc 0 错误 + 50 诊断页面 + RBAC 菜单，2026-08-19 基线） | Console + 企业迁移 | Web GUI（VitePress） | 个人 CLI/IM 为主 |
 
@@ -220,7 +220,7 @@
 | 模型适配 | ★★★★★（统一解析 + infra 权威） | ★★★☆（官方模型为主） | ★★★★（adapter 注册表 + 热切换） | ★★★★（30+ provider 插件化） |
 | 自我进化 | ★★★★★（14 步夜间 + 训练触发 + 自愈） | ★★（官方无） | ★★★☆（运行时自修改） | ★★★★★（学习闭环标杆） |
 | 扩展机制 | ★★★★（四级阶梯 + 模块注册） | ★★★★（plugins + hooks） | ★★★★★（一切皆插件） | ★★★★（四类插件） |
-| 多渠道 | ★★★☆（Web + **7 渠道** + ACP/A2A，2026-08-19 P1-A4） | ★★★（CLI/IDE/CI） | ★★★（ACP + SDK + Web） | ★★★★★（20+ IM Gateway） |
+| 多渠道 | ★★★★（Web + **10 渠道** + ACP/A2A；2026-08-19 P1-A4 + 2026-08-23 广度延伸 7→10） | ★★★（CLI/IDE/CI） | ★★★（ACP + SDK + Web） | ★★★★★（20+ IM Gateway） |
 | 企业治理 | ★★★★★（审计/租户/计费/治理流水线） | ★★★☆（server-managed + ZDR） | ★★（无） | ★★（无） |
 | 开源状态 | 自研（非开源） | 闭源商业（2025-2026 领先） | 开源（DSH，一切皆插件，pre-release） | 开源（MIT，230K+ stars，2026-02 发布） |
 
@@ -256,7 +256,7 @@
 | **Skill 生态开放度** | Hermes agentskills.io 开放标准 + Hub 市场 + 230K stars 社区；Claude Code skills marketplace | aiPlat SkillMarketplace 已实现（`skill_marketplace.py:30` git clone 安装）但无开放标准/Hub 生态，可对接 agentskills.io | ✅ **已补齐（P1-A5）**：agentskills.io 对接（`harness/knowledge/skill_marketplace.py` + platform `api/routers/skill_marketplace.py`）；开放生态规模仍小 |
 | **子代理 provider 多样性** | DSH 6 种 provider（in-process/fork/ACP/Claude Code/Codex/dsh-sdk）+ continuable 编排 | aiPlat SubagentCoordinator 功能完整但传输单一（进程内），可增加 ACP/外部运行时子代理后端 | ✅ **已补齐（P1-A3，PR #21）**：`SubagentProvider` 抽象 + `InProcessProvider`/`ACPProvider` 双实现（`apps/agents/subagent/providers.py:49,81,119`），`execute_parallel(provider=)`/`send_message`/`get_instance_status` 三态接线 |
 | **事件源架构纯度** | DSH append-only SessionEvent 日志为唯一真相源（模型可见 ⟺ 日志），fork/resume/replay/UI 全从同一流派生 | aiPlat 的 PipelineRunStore 是状态型（SQLite 行），可借鉴事件源模型增强回放/审计一致性 | ✅ **已补齐（P2-A1）**：run_events 事件折叠派生状态（`pipeline_run_store.py:266` fold 实现），事件可回放/崩溃恢复；状态快照查询路径保留 |
-| **多渠道矩阵** | Hermes 20+ IM 平台 Gateway | aiPlat 仅 Telegram/Slack/WebChat 三适配器 + Gateway 架构（`gateway/router.py:30`），扩展空间大 | ✅ **已补齐（P1-A4，PR #22）**：7 渠道（telegram/slack/webchat/discord/wecom/email/dingtalk，`channels/adapter.py:16-23`）；相对 Hermes 22 平台广度仍有差距 |
+| **多渠道矩阵** | Hermes 20+ IM 平台 Gateway | aiPlat 仅 Telegram/Slack/WebChat 三适配器 + Gateway 架构（`gateway/router.py:30`），扩展空间大 | ✅ **已补齐（P1-A4，PR #22）+ 2026-08-23 广度延伸**：10 渠道（telegram/slack/webchat/discord/wecom/email/dingtalk/whatsapp/lark/teams，`channels/adapter.py:15-25`）；相对 Hermes 22 平台广度仍有差距（10/22） |
 | **模型 provider 生态** | Hermes 30+ provider 家族插件化；Claude Code 官方模型质量 | aiPlat 解析链严谨但 provider 面较窄（env 自动发现 + Ollama/LM Studio 等），可插件化扩展 | ✅ **已补齐（P2-A3）**：provider 元数据配置化（`infra/management/model/manager.py:1601`，`config/providers.yaml`），新增 provider 无需改代码 |
 | **运行时自修改** | DSH 动态 Cordis 插件 define/run/undefine（opt-in） | aiPlat 的 EvolutionEngine 是"离线夜间演化"，无"运行中挂载/卸载插件"能力（安全边界需谨慎） | ✅ **已补齐（P2-A2）**：运行时扩展缝（`core_facade.py:29,58`，可调用 handler 白名单 + 审批门控，做成安全边界而非 DSH 式 opt-in） |
 | **前端产品完成度（coding 场景）** | Claude Code IDE 插件 + checkpoint UI + diff 视图 | aiPlat 前端管理面强（325 TSX 文件）但 coding 场景交互（diff/checkpoint 回放）弱 | ⚠️ **未变**（不在行动纲领 53 项覆盖内；2026-08-19 基线未涉及 coding 场景前端） |
@@ -388,8 +388,8 @@
 **aiPlat 在三方对标中的定位**：aiPlat 不是"又一个 coding agent"，而是**企业级 FDE 操作系统**——它的差异化不在单点能力（每项单点能力三方都有类似物），而在于**将治理、审计、审批、知识、交付闭环组合成平台**。核心结论：
 
 1. **aiPlat 最强**：企业治理（防篡改审计 + 多租户 + 计费 + RBAC）、交付流水线（HITL/回滚/断点续跑）、自我进化（夜间流水线 + 训练触发）、知识引擎（SECI + 本体 + GraphRAG）。
-2. **aiPlat 最弱（2026-08-19 复核后）**：渠道广度（7 渠道 vs Hermes 22 平台）、模型 provider 生态家族数（插件化已建但家族数远少于 Hermes 38）、Skill 开放生态规模（已对接 agentskills.io 但社区规模小）、事件源纯度（已实现折叠派生但仍是"状态+事件"双轨，非纯事件源）。
-3. **最值得吸收的三项外部能力——2026-08-19 已全部落地**（行动纲领 P1-A 对标差距 6/6 DONE）：① Hermes 的会话内实时学习 nudge + Curator 技能维护 → **P1-A1 nudge（`learn_nudge_hook.py`）+ P1-A2 Curator（`skill_curator.py`）**；② DSH 的子代理 provider 多样性 + 事件源会话 → **P1-A3 子代理 provider（`providers.py` InProcess/ACP）+ P2-A1 run_events 折叠派生（`pipeline_run_store.py:266`）**；③ Claude Code 的 Server-managed settings（企业远程强制策略）→ **P1-A6 ManagedPolicy（`aiPlat-platform/auth/schemas_policy.py:119`）**。**2026-08-23 更新："下一批最值得吸收项"中的 G6 CC/Codex hooks 协议桥已实施**（`cc_bridge.py`，见 §20.1 G6 行）——剩余候选：Hermes 22 平台渠道广度延伸（当前 7）、Claude Code checkpoint/rewind 用户级 UI（coding 场景前端）。
+2. **aiPlat 最弱（2026-08-19 复核后）**：渠道广度（7 渠道 vs Hermes 22 平台；**2026-08-23 延伸至 10**）、模型 provider 生态家族数（插件化已建但家族数远少于 Hermes 38）、Skill 开放生态规模（已对接 agentskills.io 但社区规模小）、事件源纯度（已实现折叠派生但仍是"状态+事件"双轨，非纯事件源）。
+3. **最值得吸收的三项外部能力——2026-08-19 已全部落地**（行动纲领 P1-A 对标差距 6/6 DONE）：① Hermes 的会话内实时学习 nudge + Curator 技能维护 → **P1-A1 nudge（`learn_nudge_hook.py`）+ P1-A2 Curator（`skill_curator.py`）**；② DSH 的子代理 provider 多样性 + 事件源会话 → **P1-A3 子代理 provider（`providers.py` InProcess/ACP）+ P2-A1 run_events 折叠派生（`pipeline_run_store.py:266`）**；③ Claude Code 的 Server-managed settings（企业远程强制策略）→ **P1-A6 ManagedPolicy（`aiPlat-platform/auth/schemas_policy.py:119`）**。**2026-08-23 更新："下一批最值得吸收项"中的 G6 CC/Codex hooks 协议桥已实施**（`cc_bridge.py`，见 §20.1 G6 行）；**渠道广度已延伸 7→10**（+whatsapp/lark/teams）——剩余候选：渠道广度继续延伸（10→更多，对齐 Hermes 22）、Claude Code checkpoint/rewind 用户级 UI（coding 场景前端）。
 
 *报告基于 2026-08-15 代码快照与 web 调研，**2026-08-19 已按行动纲领基线（53 DONE / 143 passed / 能力 1032/1039）复核更新 aiPlat 侧结论**；三方信息可能随版本更新；aiPlat 侧证据可在本仓库 `grep -rn` 复核。*
 
@@ -539,7 +539,7 @@ flowchart LR
 | G6 | **CC/Codex hooks 协议桥**（复用三方 hooks.json） | DSH（hooks-claude-code/codex） | 有 HookManager（`hook_manager.py:111`）但**无 CC/Codex 协议兼容层** | ❌ **缺失** | `infrastructure/hooks/`（无协议桥） | ✅ **已补齐（2026-08-23 G6 独立批次）**：`cc_bridge.py`（hooks.json 解析 + `CCHookBridge` command handler 执行器 + `register_cc_hooks`/`load_cc_hooks_if_configured`）+ `cc_bridge_rules.py`（CC 7/30 + Codex 4/10 事件→`HookPhase` 数据驱动映射表）；`HookManager.__init__` 配置存在时装载（`~/.aiplat/hooks.json` / `AIPLAT_CC_HOOKS_PATH`，默认关）；command handler shell=False/超时/fail-open；http/mcp_tool/prompt/agent 跳过记 WARNING、unmapped 事件不静默执行（对齐 DSH 诚实披露）。测试 15 个。**G1-G15 全 15 项补齐（gap 矩阵清零）** |
 | G7 | **Checkpointing /rewind 用户级回滚** | Claude Code | **有**：`file_checkpoint.py:69` checkpoint_file + `restore_file_checkpoint:180` + snapshot | ✅ **具备** | `execution/file_checkpoint.py` | ✅ 已具备（不变） |
 | G8 | **agentskills.io 开放标准对接** | Hermes（skills_tool.py:28-44） | SkillMarketplace 有内部市场（`skill_marketplace.py:30`）但**无开放标准/Hub 对接** | ❌ **缺失** | `knowledge/skill_marketplace.py`（git clone 内部安装） | ✅ **已补齐（P1-A5）**：agentskills.io 对接（`harness/knowledge/skill_marketplace.py` + platform `api/routers/skill_marketplace.py`） |
-| G9 | **多渠道 Gateway 广度**（22 平台） | Hermes（plugins/platforms/ 22 适配器） | 仅 3 适配器（Telegram/Slack/WebChat，`channels/adapter.py:44`）但 Gateway 控制面已就绪 | ⚠️ **部分具备**（控制面有，适配器少） | `aiPlat-app/channels/` | ✅ **已补齐（P1-A4，PR #22）**：7 渠道（`channels/adapter.py:16-23` get_channel_adapter：telegram/slack/webchat/discord/wecom/email/dingtalk）；相对 Hermes 22 平台广度仍有差距 |
+| G9 | **多渠道 Gateway 广度**（22 平台） | Hermes（plugins/platforms/ 22 适配器） | 仅 3 适配器（Telegram/Slack/WebChat，`channels/adapter.py:44`）但 Gateway 控制面已就绪 | ⚠️ **部分具备**（控制面有，适配器少） | `aiPlat-app/channels/` | ✅ **已补齐（P1-A4，PR #22）+ 2026-08-23 广度延伸**：10 渠道（`channels/adapter.py:15-25` get_channel_adapter：telegram/slack/webchat/discord/wecom/email/dingtalk/whatsapp/lark/teams）；相对 Hermes 22 平台广度仍有差距（10/22） |
 | G10 | **模型 provider 插件化**（38 家族） | Hermes（providers/ 38 profiles） | ModelManager env 发现 + Ollama/LM Studio 等，**无目录插件化** | ⚠️ **部分具备**（统一解析有，插件化无） | `infra/management/model/manager.py:664` | ✅ **已补齐（P2-A3）**：provider 元数据配置化（`infra/management/model/manager.py:1601`，`config/providers.yaml`），新增 provider 免改代码 |
 | G11 | **子代理 provider 多样性**（6 种传输） | DSH（subagent 6 providers） | SubagentCoordinator 仅进程内单实现 | ❌ **缺失** | `apps/agents/subagent/`（单实现） | ✅ **已补齐（P1-A3，PR #21）**：`SubagentProvider` + `InProcessProvider`/`ACPProvider`（`apps/agents/subagent/providers.py:49,81,119`），`execute_parallel(provider=)`/`send_message`/`get_instance_status`（三态）接线 |
 | G12 | **工作流 worker 隔离执行** | DSH（worker-thread） | 有 PipelineEngine + WorkflowService（拓扑排序执行）但**无独立 worker 隔离** | ⚠️ 部分具备（编排有，隔离无） | `builder_workflow_service.py:51` | ✅ **已补齐（P2-A5）**：阶段执行隔离（`pipeline_engine.py`/`sandbox.py` `create_sandbox` + `stage.sandbox` 配置） |
@@ -552,7 +552,7 @@ flowchart LR
 | 缺口类别 | 数量 | 清单 | 对应行动纲领/改进方案 |
 |---|---|---|---|
 | ❌ **完全缺失**（aiPlat 无此能力） | **0** | （已清零） | — |
-| ✅ **已补齐**（原 ❌/⚠️ → ✅） | **13** | G1 nudge、G2 Curator、G3 事件折叠、G4 运行时扩展缝、G5 ManagedPolicy、G6 CC/Codex hooks 桥、G8 agentskills、G9 渠道 7、G10 provider 插件化、G11 子代理 provider、G12 worker/阶段隔离、G13 goal judge、G14 no-agent cron | P1-A1/A2/A3/A4/A5/A6 + P2-A1/A2/A3/A5/A6/A7（P1-A 对标差距 6/6 + P2 演进治理 12/12 全 DONE）+ **G6 独立批次（2026-08-23，`cc_bridge.py` 15 测试）** |
+| ✅ **已补齐**（原 ❌/⚠️ → ✅） | **13** | G1 nudge、G2 Curator、G3 事件折叠、G4 运行时扩展缝、G5 ManagedPolicy、G6 CC/Codex hooks 桥、G8 agentskills、G9 渠道 10、G10 provider 插件化、G11 子代理 provider、G12 worker/阶段隔离、G13 goal judge、G14 no-agent cron | P1-A1/A2/A3/A4/A5/A6 + P2-A1/A2/A3/A5/A6/A7（P1-A 对标差距 6/6 + P2 演进治理 12/12 全 DONE）+ **G6 独立批次（2026-08-23，`cc_bridge.py` 15 测试）** + **渠道广度延伸（2026-08-23，7→10）** |
 | ✅ **已具备**（不构成缺口） | 1 | G7 checkpoint/rewind | — |
 | ✅ **aiPlat 侧已治理**（原双方皆弱） | 1 | G15 单文件巨兽（P2-A4 拆分收官） | P2-A4（12,281→8,285 行 + 5 Mixin） |
 

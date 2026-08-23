@@ -37,6 +37,7 @@ def code_files(workspace: str) -> list:
         os.path.join(workspace, "aiPlat-infra/infra"),
         os.path.join(workspace, "aiPlat-infra/config"),
         os.path.join(workspace, "aiPlat-platform"),
+        os.path.join(workspace, "aiPlat-app"),
         os.path.join(workspace, "aiPlat-management/frontend/src"),
         os.path.join(workspace, ".github/workflows"),
         os.path.join(workspace, "scripts"),
