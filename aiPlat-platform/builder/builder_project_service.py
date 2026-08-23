@@ -1965,16 +1965,24 @@ class BuilderProjectService:
                 "releases_root": release_root(project_id)}
 
     async def _infra_deploy_service(self, project_id: str, module_id: str, version: str) -> bool:
-        """L5 §3.6: optional infra deploy_service registration.
+        """L5 §3.6/v2: register service via CoreFacade → infra bridge.
 
-        v1: platform must NOT import infra directly (single-direction
-        platform → core → infra). Infra integration is deferred until a core
-        facade exposes deploy_service (v2); env switch kept as opt-in marker.
+        platform must not import infra directly — sanctioned path is
+        CoreFacade.deploy_app_service (bridge, standalone-safe no-op).
         """
-        if os.getenv("AIPLAT_L5_INFRA_DEPLOY", "false").lower() in ("true", "1", "yes"):
-            _log.info("L5 infra deploy requested but deferred to v2 (needs core facade): %s/%s v%s",
-                      project_id, module_id, version)
-        return False
+        if os.getenv("AIPLAT_L5_INFRA_DEPLOY", "false").lower() not in ("true", "1", "yes"):
+            return False
+        try:
+            from core.api.core_facade import deploy_app_service
+            return deploy_app_service(
+                name=f"{project_id}-{module_id}",
+                namespace="aiplat-apps",
+                image=f"aiplat-release:{version}",
+                config={"release": version, "project_id": project_id, "module_id": module_id},
+            )
+        except Exception as e:
+            _log.warning("L5 infra deploy via facade skipped: %s", str(e)[:200])
+            return False
 
     async def list_releases(self, project_id: str) -> Dict[str, Any]:
         """L5: release history + current pointer target."""
@@ -1986,14 +1994,15 @@ class BuilderProjectService:
                 "total": len(releases)}
 
     async def set_release_status(self, project_id: str, version: str,
-                                 status: str, target_version: str = "") -> Dict[str, Any]:
-        """L5: canary / full / rollback state transitions."""
+                                 status: str, target_version: str = "",
+                                 canary_weight: int = 0) -> Dict[str, Any]:
+        """L5: canary / full / rollback state transitions (canary_weight for routing)."""
         from builder.release_engine import set_release_status as _engine_set
         proj = self._projects.get(project_id, {})
         releases = proj.get("releases") or []
         try:
             rel = _engine_set(project_id, releases, version, status,
-                              target_version=target_version)
+                              target_version=target_version, canary_weight=canary_weight)
         except ValueError as e:
             return {"status": "error", "detail": str(e)}
         proj["releases"] = releases

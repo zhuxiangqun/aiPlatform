@@ -114,6 +114,7 @@ def create_release(project_id: str, module_id: str, src_dir: str,
         "module_id": module_id,
         "status": _READY,
         "pass_rate_source": pass_rate_source,
+        "canary_weight": 0,  # L5 v2: routing weight (0=off, 10/50/100=percent)
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "files": len(new_files or {}),
     }
@@ -122,11 +123,13 @@ def create_release(project_id: str, module_id: str, src_dir: str,
 
 
 def set_release_status(project_id: str, releases: List[Dict], version: str,
-                       target: str, *, target_version: str = "") -> Dict[str, Any]:
+                       target: str, *, target_version: str = "",
+                       canary_weight: int = 0) -> Dict[str, Any]:
     """Transition a release to canary/full, or roll back (switch current pointer).
 
     Rollback: current release → rolled_back; current pointer switches to
     target_version (a historical release, default = latest other applied one).
+    L5 v2: canary sets canary_weight (routing percent); full forces 100.
     """
     rel = next((r for r in releases if r.get("version") == version), None)
     if not rel:
@@ -136,11 +139,15 @@ def set_release_status(project_id: str, releases: List[Dict], version: str,
         raise ValueError(f"状态不允许从 {current} → {target}（合法：{_VALID_TRANSITIONS.get(current, set())}）")
     rel["status"] = target
     now = time.strftime("%Y-%m-%dT%H:%M:%S")
-    if target == _FULL:
+    if target == _CANARY:
+        rel["canary_weight"] = int(canary_weight) if canary_weight else int(rel.get("canary_weight") or 10)
+    elif target == _FULL:
         rel["full_at"] = now
+        rel["canary_weight"] = 100  # full = 100% routing
         _write_pointer(project_id, version)
     elif target == _ROLLED_BACK:
         rel["rolled_back_at"] = now
+        rel["canary_weight"] = 0
         # switch pointer to target_version (or latest non-rolled-back other release)
         target_version = target_version or _latest_active(releases, version)
         if target_version:

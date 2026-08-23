@@ -85,3 +85,37 @@ class TestApplyRelease:
         release = apply_release("p1", str(src), {})
         assert release["status"] == "ready"
         assert os.path.isfile(os.path.join(tmp_path, "apps", "p1", "current.txt"))
+
+
+class TestCanaryWeight:
+    """L5 v2: canary_weight routing (0/10/50/100; full → 100; rollback → 0)."""
+
+    def _releases(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+        src = tmp_path / "imported"
+        src.mkdir(parents=True, exist_ok=True)
+        (src / "a.py").write_text("a\n")
+        return [create_release("p1", "default", str(src), {}, "real_pytest")]
+
+    def test_canary_sets_weight(self, tmp_path, monkeypatch):
+        releases = self._releases(tmp_path, monkeypatch)
+        rel = set_release_status("p1", releases, releases[0]["version"], "canary", canary_weight=50)
+        assert rel["status"] == "canary"
+        assert rel["canary_weight"] == 50
+
+    def test_canary_default_weight_10(self, tmp_path, monkeypatch):
+        releases = self._releases(tmp_path, monkeypatch)
+        rel = set_release_status("p1", releases, releases[0]["version"], "canary")
+        assert rel["canary_weight"] == 10
+
+    def test_full_forces_100(self, tmp_path, monkeypatch):
+        releases = self._releases(tmp_path, monkeypatch)
+        set_release_status("p1", releases, releases[0]["version"], "canary", canary_weight=10)
+        rel = set_release_status("p1", releases, releases[0]["version"], "full")
+        assert rel["canary_weight"] == 100
+
+    def test_rollback_resets_weight(self, tmp_path, monkeypatch):
+        releases = self._releases(tmp_path, monkeypatch)
+        set_release_status("p1", releases, releases[0]["version"], "canary", canary_weight=50)
+        rel = set_release_status("p1", releases, releases[0]["version"], "rolled_back")
+        assert rel["canary_weight"] == 0

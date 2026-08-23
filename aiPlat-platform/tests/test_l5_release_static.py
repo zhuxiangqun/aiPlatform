@@ -48,3 +48,28 @@ class TestL5EngineModule:
         content = RELEASE_ENGINE.read_text()
         assert "releases" in content and "current" in content
         assert "_write_pointer" in content
+
+
+class TestL5V2Facade:
+    """L5 v2: infra deploy via CoreFacade (no platform→infra direct import)."""
+
+    def test_facade_exposes_deploy(self):
+        content = (ROOT / "aiPlat-core" / "core" / "api" / "core_facade.py").read_text()
+        assert "def deploy_app_service" in content
+
+    def test_bridge_has_deploy(self):
+        content = (ROOT / "aiPlat-core" / "core" / "harness" / "infrastructure" / "infra_bridge.py").read_text()
+        assert "def deploy_app_service" in content
+
+    def test_platform_uses_facade_not_infra(self):
+        content = BUILDER_SERVICE.read_text()
+        assert "from core.api.core_facade import deploy_app_service" in content
+        assert "from infra" not in content  # no direct infra import
+
+    def test_canary_weight_field(self):
+        content = RELEASE_ENGINE.read_text()
+        assert "canary_weight" in content
+
+    def test_canary_endpoint_weight(self):
+        content = BUILDER_ROUTER.read_text()
+        assert "canary_weight" in content

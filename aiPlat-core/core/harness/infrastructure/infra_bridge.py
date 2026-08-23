@@ -132,3 +132,33 @@ def create_infra_database_client(db_path: str) -> Any:
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA synchronous=NORMAL")
     return conn
+
+
+def deploy_app_service(name: str, namespace: str, image: str,
+                       config: Optional[Dict[str, Any]] = None) -> bool:
+    """L5 v2: register a service deployment via infra's ServiceManager.
+
+    Platform must NOT import infra directly (single-direction platform → core →
+    infra). This bridge is the sanctioned path. Standalone mode or unavailable
+    infra → returns False (no-op), never raises.
+
+    callers: aiPlat-platform/builder/builder_project_service.py (via CoreFacade)
+    """
+    if not _check_infra_available():
+        logger.info("infra not available — L5 deploy skipped: %s/%s", namespace, name)
+        return False
+    try:
+        from infra.management.service.manager import ServiceManager  # noqa: infra 桥接（本文件为唯一入口）
+        mgr = ServiceManager(standalone_mode=False)
+        _svc = mgr.deploy_service({
+            "name": name,
+            "namespace": namespace,
+            "type": "aiplat-app",
+            "image": image,
+            "replicas": 1,
+            "config": config or {},
+        })
+        return _svc is not None
+    except Exception as e:  # noqa: BLE001 — bridge must degrade gracefully
+        logger.warning("L5 infra deploy skipped: %s", str(e)[:200])
+        return False

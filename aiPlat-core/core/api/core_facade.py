@@ -1735,6 +1735,17 @@ def kb_create_infra_db_client(db_path: str) -> Any:
 create_infra_database_client = kb_create_infra_db_client
 
 
+def deploy_app_service(name: str, namespace: str, image: str,
+                       config: Optional[Dict[str, Any]] = None) -> bool:
+    """L5 v2: register a service deployment via infra bridge (platform → core → infra).
+
+    Platform must not import infra directly; this CoreFacade method is the
+    sanctioned path. Standalone/unavailable infra → returns False (no-op).
+    """
+    from core.harness.infrastructure.infra_bridge import deploy_app_service as _bridge_deploy
+    return _bridge_deploy(name, namespace, image, config)
+
+
 def kb_classify_document(elements: Any, kind: str) -> Any:
     """Classify document content type."""
     from core.apps.document_intelligence.classifier import classify_document

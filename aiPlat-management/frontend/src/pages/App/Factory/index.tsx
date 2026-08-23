@@ -1135,12 +1135,12 @@ const ProjectPanel: React.FC<{
     setCreatingRelease(false);
   };
 
-  const handleReleaseTransition = async (version: string, action: 'canary' | 'full' | 'rollback') => {
+  const handleReleaseTransition = async (version: string, action: 'canary' | 'full' | 'rollback', canaryWeight?: number) => {
     if (!project?.project_id) return;
     if (action === 'rollback' && !confirm(`回滚发布 ${version}（切换 current 到历史版本）？`)) return;
     setTransitioningRelease(version);
     try {
-      const r = await projectApi.releaseTransition(project.project_id, version, action) as any;
+      const r = await projectApi.releaseTransition(project.project_id, version, action, '', canaryWeight) as any;
       if (r?.status === 'ok') {
         toast.success(`发布 ${version} → ${action}`);
         await loadReleases();
@@ -1775,10 +1775,15 @@ const ProjectPanel: React.FC<{
                             <span className="text-gray-600">[{r.module_id}] pass_rate={r.pass_rate_source}</span>
                             <span className="ml-auto flex gap-1">
                               {st === 'ready' && (
-                                <button className="text-blue-300 underline" onClick={() => handleReleaseTransition(r.version, 'canary')}>开始金丝雀</button>
+                                <button className="text-blue-300 underline" onClick={() => handleReleaseTransition(r.version, 'canary', 10)}>开始金丝雀</button>
                               )}
                               {st === 'canary' && (
                                 <>
+                                  <span className="text-gray-500">权重 {r.canary_weight || 10}%</span>
+                                  {[10, 50, 100].map(w => (
+                                    <button key={w} className="text-gray-400 underline"
+                                      onClick={() => handleReleaseTransition(r.version, 'canary', w)}>{w}%</button>
+                                  ))}
                                   <button className="text-green-300 underline" onClick={() => handleReleaseTransition(r.version, 'full')}>提升全量</button>
                                   <button className="text-red-300 underline" onClick={() => handleReleaseTransition(r.version, 'rollback')}>回滚</button>
                                 </>
