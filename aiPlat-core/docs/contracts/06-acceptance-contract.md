@@ -473,3 +473,14 @@ pytest -q \
   - `grep -c "module-orchestrate" aiPlat-platform/api/routers/builder.py`（≥1）
   - `python3 -m pytest aiPlat-platform/tests/test_l4_cross_module.py aiPlat-platform/tests/test_l4_module_static.py -q`（17 passed）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
+
+### 1.46 L4 前端 + 文档同步（2026-08-23）
+- MUST：前端 Factory 含模块面板（声明/列表/导入/影响展示/编排结果）+ builderTeamApi 模块 API
+- MUST：L4 设计文档状态 ✅ 已实施 + §10 实施记录（差异标注）
+- MUST：操作手册含多模块编排（L4）章节
+- 自动化验收：
+  - `grep -c "多模块编排（L4）" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
+  - `grep -c "createModules\|listModules\|importModuleRepo\|crossModuleImpact\|moduleOrchestrate" aiPlat-management/frontend/src/services/builderTeamApi.ts`（≥5）
+  - `grep -c "✅ \*\*已实施\*\*" docs/research/plan-app-factory-l4-multi-module.md`（≥1）
+  - `grep -c "多模块编排（L4" docs/manuals/management-ui-operation-manual.md`（≥1）
+  - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
