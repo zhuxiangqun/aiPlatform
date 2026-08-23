@@ -1965,22 +1965,16 @@ class BuilderProjectService:
                 "releases_root": release_root(project_id)}
 
     async def _infra_deploy_service(self, project_id: str, module_id: str, version: str) -> bool:
-        """L5 §3.6: optional infra deploy_service registration (non-standalone)."""
-        try:
-            from infra.management.service.manager import ServiceManager  # noqa: platform→infra 可选集成
-            mgr = ServiceManager(standalone_mode=False)
-            await mgr.deploy_service({
-                "name": f"{project_id}-{module_id}",
-                "namespace": "aiplat-apps",
-                "type": "aiplat-app",
-                "image": f"aiplat-release:{version}",
-                "replicas": 1,
-                "config": {"release": version, "project_id": project_id, "module_id": module_id},
-            })
-            return True
-        except Exception as e:
-            _log.warning("L5 infra deploy skipped: %s", str(e)[:200])
-            return False
+        """L5 §3.6: optional infra deploy_service registration.
+
+        v1: platform must NOT import infra directly (single-direction
+        platform → core → infra). Infra integration is deferred until a core
+        facade exposes deploy_service (v2); env switch kept as opt-in marker.
+        """
+        if os.getenv("AIPLAT_L5_INFRA_DEPLOY", "false").lower() in ("true", "1", "yes"):
+            _log.info("L5 infra deploy requested but deferred to v2 (needs core facade): %s/%s v%s",
+                      project_id, module_id, version)
+        return False
 
     async def list_releases(self, project_id: str) -> Dict[str, Any]:
         """L5: release history + current pointer target."""
