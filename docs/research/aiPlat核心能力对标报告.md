@@ -6,6 +6,7 @@
 > **2026-08-19 状态更新**：行动纲领 **53 DONE / 0 PARTIAL / 0 OPEN**（54 项核对、53 项有效）；改进方案 P0/P1/P2 全部落地；宪法测试 **143 passed**（全绿）；能力数 **1032/1039**（`capability_registry.yaml` total=1032，`AIPLAT_CAPABILITIES.md` total=1039，口径不同：registry 登记 vs 扫描）；架构守卫 0 ERROR；规范 9/9 approved。**§16.3/§18/§20/§21 的差距结论已按新基线重审**——原"6 项完全缺失 + 8 项部分具备"经 P1-A/P2 批次补齐后仅剩 G6（CC/Codex hooks 协议桥）一项未纳入行动纲领（见 §20.1 状态列与 §20.2 汇总）。
 > **2026-08-19 回归修复批（PR #33/#34/#35，当日增量复核）**：基线复核后又闭环 3 个实测缺陷，本报告 aiPlat 侧数字已同步——① **P0-A1 DI fallback 修复**（PR #33）：`integration.py` 13 个 `_resolve_or_import` fallback 全量验证，修复 2 个坏路径（`get_mcp_client_manager` 指向不存在的函数 → 改类 `MCPClientManager`；`get_agent_registry` 指向不存在的模块 → 改 `agents.discovery:AgentRegistry`）；② **应用工厂 rebuild 修复**（PR #34）：`pipeline_execution.py` 存量 `PipelineConfig` 未 import NameError（P0-A2 前已存在，`_execute_pipeline` 每次 run 立即 failed），补 import + 3 处 `PipelineEngine` 直构改 `create_pipeline_engine`（宪法 A2）；③ **守卫盲区修复**（PR #35）：用户实证质疑"守卫为何没抓到 NameError"——根因 4 层（ruff F821 被 `pyproject.toml` ignore / py_compile 只查语法 / F821 ratchet 基于空输出空转 / 该路径无测试），新增 **AST 级未定义符号守卫**（`scripts/guard_undefined_names.py`，接入 `architecture_guard.sh`，基线 0 findings）+ 防回归测试（4 passed）。**§19 架构守卫表述已更新**：规则数 172→**190**（`arch_guard_rules.yaml` 实测）+ 第 17 维"Python 未定义变量"从 ruff F821 ratchet（实际被 ignore 空转）升级为 AST 级真检查。commit 数 1,719→**1,926**；CoreFacade 210 接口→**368 导出符号**；PipelineEngine 8,288→**8,285 行**。三方可对标结论不受上述修复影响（均为 aiPlat 侧质量修复，非能力增减）。
 > **吸收程度核验**：本报告"已补齐"标注的源码级实证见 **《对标吸收与架构纯度评估.md》**（6 项差距吸收程度逐项核验 + 架构纯度改善建议，2026-08-19）。
+> **2026-08-23 L2-L5 演进后复核**：应用工厂大工程（PR #77-#100，24 个 PR）落地——**L2 导入既有代码 → L3 增量合并（原子审批/哈希锁/AST 门禁）→ L4 多模块编排（跨模块影响/契约门禁）→ L4.5 数据库迁移（up/down DDL/破坏性阻断）→ L5 受控发布（版本化/金丝雀权重/infra 桥接）**（详见 `应用工厂分析报告.md` §9 与各 `plan-app-factory-l*.md`）。aiPlat 侧最新数字：PipelineEngine **8,371 行**、CoreFacade 163 def/class（+`deploy_app_service`）、capability_registry **211 symbols**、commit **2,041**、acceptance 契约 **1.52**、L2-L5 能力测试 **124 例**（+constitution 33 + freshness 8 = 165+ 全绿）。**新增 §22：应用工厂演进对标**——aiPlat 的"交付流水线一等公民"差异化在此维度进一步放大（三方均无对应物）。
 
 ---
 
@@ -24,7 +25,7 @@
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes |
 |---|---|---|---|---|
-| 执行引擎 | **PipelineEngine 8,285 行**（原 12,281 行，2026-08-19 P2-A4 拆分收官为 5 个 Mixin：healing/state/prompt/eval/stage），声明式 `PipelineStageConfig` 驱动阶段流水线（`pipeline_engine.py:553`），含 HITL 暂停/恢复、token 预算、重试、快照 | 单进程 LLM→工具→观察循环；SDK 提供可编程 AgentLoop | 事件驱动 step/turn 双层循环（`packages/core/agent-loop`），turn=零或多个 step | AIAgent 类（~9,200 行）单一核心循环驱动全部入口 |
+| 执行引擎 | **PipelineEngine 8,371 行**（原 12,281 行，2026-08-19 P2-A4 拆分收官为 5 个 Mixin：healing/state/prompt/eval/stage；2026-08-23 L2-L5 增补 imported 上下文注入/skip_pytest_gate/UNCHANGED 剔除），声明式 `PipelineStageConfig` 驱动阶段流水线（`pipeline_engine.py:553`），含 HITL 暂停/恢复、token 预算、重试、快照 | 单进程 LLM→工具→观察循环；SDK 提供可编程 AgentLoop | 事件驱动 step/turn 双层循环（`packages/core/agent-loop`），turn=零或多个 step | AIAgent 类（~9,200 行）单一核心循环驱动全部入口 |
 | 编排模式 | 6 种 `routing_mode`（static/llm/debate/swarm/roundtable/moa）+ 5 种 `pipeline_mode`（chain/router/parallel/orchestrator/evaluator_optimizer）+ DAG 并行（`_execute_dag`） | Dynamic workflows（2026 新特性）：phases 串行/并行、fan-out、HITL 检查点 | workflow 引擎（worker-thread provider），模型写编排脚本 `agent()/pipeline()/parallel()` 扇出子代理 | 单循环 + delegate_task 并行 batch（默认 3 并发）+ orchestrator 模式 |
 | HITL/审批 | **一等能力**：approve_session（`:1974`）/reject_session（`:2266`）/rollback（`:2536`）/resume_from_checkpoint（`:2621`） | plan/act 双阶段，Plan 批准后才执行 | plan mode 作为 logged state，`exit_plan_mode` 工具 | approvals 交互式确认（smart/manual/off） |
 | 可观测执行 | trace_id/span_id 全 syscall 覆盖 + graph trace 事件 + 决策溯源（`decision_trace.py`） | transcript 保存 + hooks | 事件源会话日志（模型可见 ⟺ 日志不变量） | 会话 DB 记录 + insights 分析 |
@@ -625,3 +626,25 @@ flowchart LR
 | **任何"某系统没有 X"的阴性结论** | ⚠️ 有盲区 | 如"Claude Code 官方无内置学习闭环"——基于文档未见，无法 100% 排除（闭源） |
 
 **一句话**：本报告"说某系统有什么"的结论高可信（源码/文档实证）；"说某系统没什么"的结论（尤其闭源 CC）保留阴性盲区——标注"官方无此声明/待确认"处即为此类。
+
+
+---
+
+## 22. 应用工厂演进对标：aiPlat 交付流水线 vs 三方（L2-L5，2026-08-23）
+
+> L2-L5 是 aiPlat 区别于三方的**结构性差异化**的进一步放大——三方均无"既有代码导入 → 增量合并审批 → 多模块编排 → 数据库迁移 → 受控发布"的完整交付链路。
+
+| 能力 | aiPlat（L2-L5） | Claude Code | DeepSeek Harness | Hermes |
+|---|---|---|---|---|
+| 既有代码导入 | ✅ `import-repo`（zip/路径→manifest→意图锚点，zip-slip/密钥过滤） | ⚠️ 可读工作区文件（无"导入项目"概念） | ⚠️ 无（插件可挂文件工具） | ⚠️ 无 |
+| 增量合并审批 | ✅ L3：全文件输出+系统 diff、逐文件原子审批、语法/接口 AST 门禁、哈希锁、噪音折叠 | ⚠️ diff 查看/apply 有，无"审批门禁"治理层 | ⚠️ 无 | ⚠️ 无 |
+| 多模块编排 | ✅ L4：模块 CRUD + 跨模块影响（API/entity/事件契约→依赖图）+ 拓扑顺序 + 契约门禁 | ⚠️ monorepo 支持（无影响分析/编排） | ⚠️ 无 | ⚠️ 无 |
+| 数据库迁移 | ✅ L4.5：AST 模型 diff→up/down DDL、破坏性阻断、回滚 | ⚠️ 无内置（可调工具） | ⚠️ 无 | ⚠️ 无 |
+| 受控发布 | ✅ L5：版本化产物 + 发布状态机（ready→canary→full→rolled_back）+ 金丝雀权重 + infra 桥接 | ⚠️ SDK/CI 集成（无发布状态机） | ⚠️ 无 | ⚠️ 无 |
+
+**结论**：L2-L5 把 aiPlat 从"生成器"升级为"**可治理的软件演进引擎**"——aiPlat 的差异化从 §1 的"交付流水线引擎"深化为"**代码/数据库/发布三同步的受控演进**"。三方（尤其 CC）在 agentic coding 单点能力上仍领先，但"演进全链路治理"无对应物。
+
+**Claude Code 最新特性（v2.1.139，2026-08）**：`--agent` 权限模式、Dynamic Workflows、Checkpointing、Server-managed Settings、artifacts 支持——单 agent 工作流体验持续增强，但均为"编码工具"范畴，无交付/演进治理层。
+**Hermes 最新特性（v0.20.5 = v2026.8.19，2026-08）**：实时语音打断、A2A 协议（agent-to-agent links）、500 次工具调用、Bot Mode（数字员工）——渠道与执行广度继续扩张，仍无"既有代码演进"交付链路。
+
+（资料来源：Claude Code changelog `code.claude.com/docs/en/changelog` + anthropics/claude-code releases；Hermes releases `github.com/NousResearch/hermes-agent/releases/tag/v2026.8.19` + runtimewire 分析。）
