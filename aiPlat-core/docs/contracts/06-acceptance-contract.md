@@ -436,3 +436,18 @@ pytest -q \
   - `grep -c "合并审批（L3" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
   - `python3 -m pytest aiPlat-platform/tests/test_l3_merge_engine.py aiPlat-platform/tests/test_l3_merge_static.py -q`（17 passed）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
+
+### 1.43 L3 评审 P0 暗坑补丁（2026-08-23）
+- MUST：merge_apply 原子化（全部受影响文件 approved 才应用，缺失/驳回 → error code atomic_approval_required）
+- MUST：哈希快照锁（rebuild 时对 imported/ 受影响文件 sha256 快照存 pre_gen_snapshot，merge_apply 前 verify_snapshot 不一致 → error code concurrent_modification）
+- MUST：前端应用按钮常灰（全部通过才可点）+ 驳回 → 重新生成（handleRegenerateAfterReject）+ 确定性门禁红横幅（P0-03）
+- MUST：P1-04 diff 噪音过滤（_categorize_hunk formatting/logic）+ P1-05 analyze-impact 端点 + 影响面取消二次确认
+- 自动化验收：
+  - `grep -c "atomic_approval_required" aiPlat-platform/builder/builder_project_service.py`（≥1）
+  - `grep -c "pre_gen_snapshot" aiPlat-platform/builder/builder_project_service.py`（≥2：rebuild 写 + merge_apply 读）
+  - `grep -c "def snapshot_affected_files\|def verify_snapshot" aiPlat-platform/builder/merge_engine.py`（≥2）
+  - `grep -c "def _categorize_hunk" aiPlat-platform/builder/merge_engine.py`（≥1）
+  - `grep -c "analyze-impact" aiPlat-platform/api/routers/builder.py`（≥1）
+  - `grep -c "驳回文件需重新生成\|确定性门禁阻断" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
+  - `python3 -m pytest aiPlat-platform/tests/test_l3_merge_engine.py aiPlat-platform/tests/test_l3_merge_static.py -q`（25 passed）
+  - `python3 scripts/check_research_docs_freshness.py .`（exit 0）

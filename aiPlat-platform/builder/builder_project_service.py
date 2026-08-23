@@ -1736,10 +1736,12 @@ class BuilderProjectService:
     async def merge_apply(self, project_id: str, decisions: Dict[str, str]) -> Dict[str, Any]:
         """L3: apply approved previews after human review (design §3.5/§3.7).
 
-        Rejected files fall back to imported originals. Syntax/interface failures
-        block approval of that file. deploy_dir snapshotted to deploy.prev first.
+        L3-P0-01 atomic gate: every preview path must be approved; any missing or
+        rejected path → 422-style error (rejected = regenerate, never partial apply).
+        L3-P0-02 concurrency guard: imported originals must match the pre-generation
+        sha256 snapshot, otherwise the merge is refused (409 semantics).
         """
-        from builder.merge_engine import apply_merge
+        from builder.merge_engine import apply_merge, verify_snapshot
         proj = self._projects.get(project_id, {})
         previews = proj.get("merge_previews") or []
         if not previews:
@@ -1749,18 +1751,38 @@ class BuilderProjectService:
         deploy_dir = proj.get("deploy_dir") or os.path.join(
             os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
             "output", project_id, "deploy")
+
+        # ── P0-01: atomic gate — all preview paths must be approved ──
+        preview_paths = [pv.get("path", "") for pv in previews if pv.get("path")]
+        missing_approval = [p for p in preview_paths if decisions.get(p) != "approved"]
+        if missing_approval:
+            return {"status": "error", "code": "atomic_approval_required",
+                    "detail": "必须审批全部文件（原子化）：未通过的文件："
+                              + "、".join(missing_approval[:10])
+                              + "。请驳回并重新生成，或修改为通过后再应用。"}
+
+        # ── P0-02: concurrency guard — imported originals unchanged since generation ──
+        snapshot = proj.get("pre_gen_snapshot") or {}
+        if snapshot:
+            _ok, _changed = verify_snapshot(import_root, snapshot)
+            if not _ok:
+                return {"status": "error", "code": "concurrent_modification",
+                        "detail": "以下文件在生成期间已被外部修改，请重新导入或重新生成："
+                                  + "、".join(_changed[:10])}
+
         # Gate: syntax/interface failures block approval (design §3.6)
         for pv in previews:
             path = pv.get("path", "")
-            if decisions.get(path) != "approved":
-                continue
             if not (pv.get("syntax") or {}).get("ok", True):
                 return {"status": "error",
                         "detail": f"{path} 语法验证失败（{pv['syntax'].get('error')}），禁止合并"}
             if not (pv.get("interface") or {}).get("ok", True):
                 return {"status": "error",
                         "detail": f"{path} 对外接口缺失（{', '.join(pv['interface'].get('missing') or [])}），禁止合并"}
-        result = apply_merge(project_id, import_root, deploy_dir, previews, decisions)
+        try:
+            result = apply_merge(project_id, import_root, deploy_dir, previews, decisions)
+        except ValueError as e:
+            return {"status": "error", "code": "atomic_approval_required", "detail": str(e)}
         if result.get("applied"):
             _warns = [f"Warning: File {p} has been regenerated, please review diff manually."
                       for p in result["applied"]]
@@ -1768,8 +1790,21 @@ class BuilderProjectService:
                 proj["runs"][-1]["regenerated_warnings"] = _warns
                 proj["runs"][-1]["merge_applied"] = len(result["applied"])
             proj["deploy_dir"] = deploy_dir
+            proj.pop("pre_gen_snapshot", None)  # consumed
             self._save_projects()
         return result
+
+    async def analyze_impact_for(self, project_id: str, modify_files: List[Dict]) -> Dict[str, Any]:
+        """L3-P1-05 backend: impact analysis on demand (frontend shows auto-added
+        files with reasons + uncheck confirmation)."""
+        from builder.merge_engine import analyze_impact
+        proj = self._projects.get(project_id, {})
+        imp = proj.get("imported_repo") or {}
+        import_root = str(imp.get("root") or "")
+        if not import_root or not os.path.isdir(import_root):
+            return {"status": "error", "detail": "未导入既有代码，请先导入"}
+        impact = analyze_impact(import_root, modify_files or [], imp.get("manifest") or [])
+        return {"status": "ok", "impact": impact}
 
     async def update_prd(self, project_id: str, prd: dict) -> Dict[str, Any]:
         """Directly update the confirmed PRD without re-running PM chat."""
@@ -1804,6 +1839,18 @@ class BuilderProjectService:
             return {"status": "error", "detail": "项目不存在"}
         if not proj.get("confirmed_prd"):
             return {"status": "error", "detail": "没有已确认的 PRD，请先完成 PM 对话"}
+        # L3-P0-02: snapshot affected imported files before generation (concurrency guard)
+        _prd = proj.get("confirmed_prd") or {}
+        if str(_prd.get("merge_strategy") or "") == "incremental_merge":
+            _mf = _prd.get("modify_files")
+            _imp = proj.get("imported_repo") or {}
+            if isinstance(_mf, list) and _mf and _imp.get("root"):
+                from builder.merge_engine import snapshot_affected_files
+                _paths = [str(m.get("path") or "") for m in _mf
+                          if isinstance(m, dict) and m.get("path")]
+                proj["pre_gen_snapshot"] = snapshot_affected_files(str(_imp["root"]), _paths)
+                proj.pop("merge_previews", None)  # stale previews invalidated
+                self._save_projects()
         # Clear previous pipeline state AND output cache (prevents stale artifact skipping)
         self._runs.pop(project_id, None)
         import shutil

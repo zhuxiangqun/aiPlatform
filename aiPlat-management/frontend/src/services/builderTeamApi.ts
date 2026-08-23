@@ -303,6 +303,14 @@ export const projectApi = {
     }>(`/platform/builder/projects/${projectId}/merge-apply`, { decisions });
   },
 
+  /** L3-P1-05: impact analysis on demand (auto-added files with reasons). */
+  analyzeImpact: async (projectId: string, modifyFiles: Array<{ path: string; intent: string }>) => {
+    return apiClient.post<{
+      status: string;
+      impact: { affected: string[]; auto_added: string[]; analysis: Record<string, string[]> };
+    }>(`/platform/builder/projects/${projectId}/analyze-impact`, { modify_files: modifyFiles });
+  },
+
   /** Re-run pipeline with existing PRD (e.g., after editing PRD). */
   rebuild: async (projectId: string) => {
     return apiClient.post<{ status: string; detail: string }>(

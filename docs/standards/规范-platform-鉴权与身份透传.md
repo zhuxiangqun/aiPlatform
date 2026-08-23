@@ -182,3 +182,17 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 - `merge-apply` 是**写操作**且**不可逆自动回退**（虽有 deploy.prev 快照），接受任意 builder 用户调用——但**审批门禁在前端强制**（逐文件通过/驳回），后端仅做语法/接口验证拦截（§3.6）；后续如需严格化可升级为 `require_admin_access` 或加 HITL 双签；
 - merge-preview 读取 `_final_state` 与 `imported/` 原件，仅限本项目路径（不越权读其他项目）；
 - decisions 中未提及的文件一律不应用（默认保留 imported 原件）。
+
+---
+
+## 14. L3 P0 补丁端点权限（2026-08-23）
+
+`aiPlat-platform/api/routers/builder.py` 新增 1 个 L3 影响面分析端点：
+
+| 端点 | 权限 | 说明 |
+|---|---|---|
+| `POST /projects/{id}/analyze-impact` | `require_builder_access` | 影响面分析（勾选文件 + Python 一阶 import 引用 → auto_added 建议列表） |
+
+**约束**：
+- 该端点为**只读分析**（不写文件/状态），接受任意 builder 用户调用；分析结果仅作建议，最终文件集由用户在勾选区决定（取消自动加入文件有二次确认）；
+- 不泄露其他项目内容——只分析当前项目 imported/ 内的文件。

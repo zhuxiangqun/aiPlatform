@@ -7,6 +7,9 @@ from builder.merge_engine import (
     syntax_check,
     verify_interface_preserved,
     apply_merge,
+    snapshot_affected_files,
+    verify_snapshot,
+    _categorize_hunk,
 )
 
 
@@ -77,7 +80,7 @@ class TestDiffMerger:
 
 
 class TestApplyMerge:
-    def test_apply_approved_and_snapshot(self, tmp_path):
+    def test_apply_atomic_all_approved(self, tmp_path):
         import_root = tmp_path / "imported"
         _write(import_root, "a.py", "old a\n")
         _write(import_root, "b.py", "old b\n")
@@ -90,19 +93,87 @@ class TestApplyMerge:
             {"path": "b.py", "new_content": "new b\n"},
         ]
         result = apply_merge("p1", str(import_root), str(deploy_dir), previews,
-                             {"a.py": "approved", "b.py": "rejected"})
-        assert result["applied"] == ["a.py"]
-        assert result["rejected"] == ["b.py"]
-        # approved: new version written; rejected: original preserved
+                             {"a.py": "approved", "b.py": "approved"})
+        assert result["applied"] == ["a.py", "b.py"]
+        assert result["rejected"] == []
         assert (deploy_dir / "a.py").read_text() == "new a\n"
-        assert (deploy_dir / "b.py").read_text() == "old b\n"
+        assert (deploy_dir / "b.py").read_text() == "new b\n"
         # snapshot created with pre-merge content
         assert (tmp_path / "deploy.prev").is_dir()
         assert (tmp_path / "deploy.prev" / "a.py").read_text() == "old a\n"
+
+    def test_apply_partial_approval_rejected_atomically(self, tmp_path):
+        """L3-P0-01: any missing/rejected path → ValueError, nothing written."""
+        import_root = tmp_path / "imported"
+        _write(import_root, "a.py", "old a\n")
+        _write(import_root, "b.py", "old b\n")
+        deploy_dir = tmp_path / "deploy"
+        _write(deploy_dir, "a.py", "old a\n")
+        _write(deploy_dir, "b.py", "old b\n")
+        previews = [
+            {"path": "a.py", "new_content": "new a\n"},
+            {"path": "b.py", "new_content": "new b\n"},
+        ]
+        with pytest.raises(ValueError, match="原子化"):
+            apply_merge("p2", str(import_root), str(deploy_dir), previews,
+                        {"a.py": "approved", "b.py": "rejected"})
+        # nothing written
+        assert (deploy_dir / "a.py").read_text() == "old a\n"
+        assert (deploy_dir / "b.py").read_text() == "old b\n"
 
     def test_apply_missing_preview_ignored(self, tmp_path):
         import_root = tmp_path / "imported"
         _write(import_root, "a.py", "old\n")
         deploy_dir = tmp_path / "deploy"
-        result = apply_merge("p2", str(import_root), str(deploy_dir), [], {"a.py": "approved"})
-        assert result["applied"] == []
+        with pytest.raises(ValueError, match="没有合并预览"):
+            apply_merge("p3", str(import_root), str(deploy_dir), [], {"a.py": "approved"})
+
+
+class TestSnapshotGuard:
+    """L3-P0-02: sha256 snapshot before generation, verify before apply."""
+
+    def test_snapshot_and_verify_unchanged(self, tmp_path):
+        _write(tmp_path, "a.py", "old a\n")
+        snap = snapshot_affected_files(str(tmp_path), ["a.py", "missing.py"])
+        assert "a.py" in snap
+        assert "missing.py" not in snap  # nonexistent skipped
+        ok, changed = verify_snapshot(str(tmp_path), snap)
+        assert ok is True and changed == []
+
+    def test_verify_detects_external_modification(self, tmp_path):
+        _write(tmp_path, "a.py", "old a\n")
+        snap = snapshot_affected_files(str(tmp_path), ["a.py"])
+        # external modification during generation
+        _write(tmp_path, "a.py", "user edited a\n")
+        ok, changed = verify_snapshot(str(tmp_path), snap)
+        assert ok is False and changed == ["a.py"]
+
+    def test_verify_detects_deleted_file(self, tmp_path):
+        _write(tmp_path, "a.py", "old a\n")
+        snap = snapshot_affected_files(str(tmp_path), ["a.py"])
+        (tmp_path / "a.py").unlink()
+        ok, changed = verify_snapshot(str(tmp_path), snap)
+        assert ok is False and "a.py" in changed
+
+
+class TestHunkCategorization:
+    """L3-P1-04: formatting (whitespace-only) vs logic hunks."""
+
+    def test_formatting_hunk(self):
+        lines = ["@@ -1,3 +1,3 @@", "-a=1", "+a = 1"]
+        assert _categorize_hunk(lines) == "formatting"
+
+    def test_blank_line_hunk(self):
+        lines = ["@@ -1,2 +1,3 @@", "-", "+"]
+        assert _categorize_hunk(lines) == "formatting"
+
+    def test_logic_hunk(self):
+        lines = ["@@ -1,3 +1,3 @@", "-return 'old'", "+return 'new'"]
+        assert _categorize_hunk(lines) == "logic"
+
+    def test_preview_marks_logic_changes(self):
+        old = "def login():\n    return 'old'\n\n\n"
+        new = "def login():\n    return 'new'\n\n\n"
+        pv = build_merge_preview(old, new, "a.py")
+        assert pv["logic_changes"] >= 1
+        assert any(h.get("category") == "logic" for h in pv["hunks"])
