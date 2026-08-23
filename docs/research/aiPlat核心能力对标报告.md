@@ -9,7 +9,7 @@
 > **吸收程度核验**：本报告"已补齐"标注的源码级实证见 **《对标吸收与架构纯度评估.md》**（6 项差距吸收程度逐项核验 + 架构纯度改善建议，2026-08-19）。
 > **2026-08-23 L2-L5 演进后复核**：应用工厂大工程（PR #77-#100，24 个 PR）落地——**L2 导入既有代码 → L3 增量合并（原子审批/哈希锁/AST 门禁）→ L4 多模块编排（跨模块影响/契约门禁）→ L4.5 数据库迁移（up/down DDL/破坏性阻断）→ L5 受控发布（版本化/金丝雀权重/infra 桥接）**（详见 `应用工厂分析报告.md` §9 与各 `plan-app-factory-l*.md`）。aiPlat 侧最新数字：PipelineEngine **8,371 行**、CoreFacade 163 def/class（+`deploy_app_service`）、capability_registry **211 symbols**、commit **2,041**、acceptance 契约 **1.52**、L2-L5 能力测试 **124 例**（+constitution 33 + freshness 8 = 165+ 全绿）。**新增 §22：应用工厂演进对标**——aiPlat 的"交付流水线一等公民"差异化在此维度进一步放大（三方均无对应物）。
 > **2026-08-23 G6 hooks 桥闭环复核**：对标报告 §20 唯一完全缺失项 **G6（CC/Codex hooks 协议桥）已实施**（`cc_bridge.py` + `cc_bridge_rules.py`，plan-g6-hooks-bridge 独立批次）——§16.3/§18/§20/§21 中"仅剩 G6 缺失"的结论全部更新为 **G1-G15 全 15 项补齐**（12 项 2026-08-19 行动纲领 + P3-2 子代理第 3 传输 + G6 hooks 桥）。详见 §20.1/§20.2 状态列与《对标吸收与架构纯度评估.md》§2.3。
-> **2026-08-24 六系统扩列复核**：本报告从 4 系统扩为 **6 系统**——新增 **Codex-Harness**（OpenAI 2026-08-19 开源，Apache-2.0，Rust 137 crate；本列为**文档级/Web 调研口径**，无本地源码，证据为官方博客 + 源码文档 + 权威第三方拆解）与 **hermes-agent**（Hermes 的开源代码本体，v0.20.1；本列为**源码级口径**，本地源码实证）。Hermes 列保持文档级口径、hermes-agent 列源码级口径——沿用本报告 §21.5"文档级标注清楚，不冒充源码级"的可信度原则。**新增对标维度**：协议面/可嵌入性（app-server/SDK/exec）、Thread/Turn/Item 公开原语、竞品资产导入、OS 原生沙箱、断点续跑/fork、背压语义——已并入 §1-§15 各维度与 §19 架构对比。详见《Codex-Harness开源借鉴分析报告.md》（2026-08-24）。
+> **2026-08-24 六系统扩列复核**：本报告从 4 系统扩为 **6 系统**——新增 **Codex-Harness**（OpenAI 2026-08-19 开源，Apache-2.0，Rust；**2026-08-24 源码到本地后已升级为源码级口径**：142 crate / 3,279 .rs，见 §17.5）与 **hermes-agent**（Hermes 的开源代码本体，v0.20.1；源码级口径，本地源码实证）。Hermes 列保持文档级口径、Codex-Harness 列与 hermes-agent 列均为源码级口径——沿用本报告 §21.5"文档级标注清楚，不冒充源码级"的可信度原则。**新增对标维度**：协议面/可嵌入性（app-server/SDK/exec）、Thread/Turn/Item 公开原语、竞品资产导入、OS 原生沙箱、断点续跑/fork、背压语义——已并入 §1-§15 各维度与 §19 架构对比。详见《Codex-Harness开源借鉴分析报告.md》（2026-08-24）。
 
 ---
 
@@ -21,7 +21,7 @@
 | **Claude Code** | 终端/IDE/CI 的 agentic coding 工具（Anthropic 官方） | Dynamic Workflows + Checkpointing + Server-managed Settings + ZDR |
 | **DeepSeek Harness (dsh)** | 一切皆插件的 agent harness（DeepSeek AI 开源，Cordis 驱动） | 插件化架构纯度 + 6 种子代理 provider + 事件源会话 + 自修改 |
 | **Hermes** | 个人/团队自我进化 Agent（NousResearch 开源，MIT，文档级口径） | 内建学习闭环 + 多渠道 Gateway（20+ 平台）+ 7 种执行后端 |
-| **Codex-Harness** | OpenAI 官方 agent harness（2026-08-19 开源，Apache-2.0，Rust） | 产品级可嵌入运行时：Thread/Turn/Item 协议 + app-server（JSON-RPC stdio）+ exec/SDK 三层入口 + OS 原生沙箱 |
+| **Codex-Harness** | OpenAI 官方 agent harness（2026-08-19 开源，Apache-2.0，Rust；2026-08-24 源码级验证） | 产品级可嵌入运行时：Thread/Turn/Item 协议 + app-server（JSON-RPC stdio）+ exec/SDK 三层入口 + OS 原生沙箱 |
 | **hermes-agent** | Hermes 的开源代码本体（NousResearch，MIT，v0.20.1，源码级口径） | 与 Hermes 同源，源码级验证列：学习闭环全链路真实 + 22 平台 + 38 provider + 8 类插件注册接口 |
 
 ---
@@ -58,7 +58,7 @@
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes | Codex-Harness | hermes-agent |
 |---|---|---|---|---|---|---|
 | 组装 | ContextBus 10 层注入（`context_bus.py:42`，历史案例/跨域类比/证据规则/图遍历等）+ 4 子系统入口 | 系统提示 + 工具 schema 组装 | PromptSection 组装（order 约定 + waterfall 权威化） | 三层分级 system prompt（stable/context/volatile） | retained reasoning（推理链保留注入） | 三层分级 prompt（stable/context/volatile，**"会话内绝不重渲染"** `system_prompt.py:338-346`） |
-| 记忆 | **四层记忆**（Working→Episodic→Semantic→Task Skills，`memory/manager.py:246`）+ 跨会话共享 + 投毒防御 | 三级 CLAUDE.md（企业/用户/项目） | session 日志为唯一真相源 + agent-instructions 加载 AGENTS.md/CLAUDE.md | 三层记忆（SQLite 会话库 + MEMORY.md/USER.md 策展 + 8+ 外部 MemoryProvider） | 无独立记忆层（thread/turn 级上下文延续，文档级未见） | 三层记忆（SQLite 会话库 + MEMORY.md/USER.md 策展，同 Hermes） |
+| 记忆 | **四层记忆**（Working→Episodic→Semantic→Task Skills，`memory/manager.py:246`）+ 跨会话共享 + 投毒防御 | 三级 CLAUDE.md（企业/用户/项目） | session 日志为唯一真相源 + agent-instructions 加载 AGENTS.md/CLAUDE.md | 三层记忆（SQLite 会话库 + MEMORY.md/USER.md 策展 + 8+ 外部 MemoryProvider） | ThreadMemoryMode 会话级记忆开关（`app-server-protocol/v2/thread.rs:1061` Enabled/Disabled）+ 竞品会话导入为 memories；无四层记忆架构 | 三层记忆（SQLite 会话库 + MEMORY.md/USER.md 策展 + 8+ 外部 MemoryProvider，同 Hermes） |
 | 压缩 | **5 级压缩**（70%-99%）+ 温度感知剪枝 + 语义相关性重排（`_re_rank_messages:198`） | Auto-compact（96% 阈值）+ /compact + Context editing | compaction 能力缝（自动/手动 + surface replace） | 双压缩（网关 85% + Agent 50% 阈值）+ 可插拔 ContextEngine | **retained reasoning + context compaction**（ARC-AGI-3：13.3%→38.3%，token 降至 1/6，官方实证） | **三路径压缩**（`context_compressor.py` / `conversation_compression.py:822` / OpenAI Native Compaction `native_compaction.py:109`）+ 4 breakpoint caching |
 | Cache 保护 | **CacheAwareRouter**（`cache_aware_router.py:47`，D1-D6 哈希冻结） | prompt cache 隐式依赖 | 无显式 cache 保护层 | **"per-conversation prompt caching is sacred"** 设计铁律 | prompt cache 友好（compaction 实证，无显式保护层声明） | **prompt cache 三层缓存优先**（`system_prompt.py:338-346` + `prompt_caching.py:21`，"缓存神圣"铁律同 Hermes） |
 
@@ -73,7 +73,7 @@
 | 子代理 | SubagentCoordinator（`apps/agents/subagent/coordinator.py:43`，隔离上下文 + 800 字符摘要返回 + 权限分级）+ ParallelExecutor（map-reduce） | Task 工具动态子代理 + `.claude/agents/*.md` 声明式 | **6 种 provider 并存**（in-process/fork/ACP/Claude Code/Codex/dsh-sdk）+ continuable 编排（`continuation.ts` 1483 行） | delegate_task 完全隔离子代理（fresh conversation）+ worktree 隔离 | subagent 能力内建（turn 级子代理）；**无 6 provider 多样性** | delegate_task 完全隔离（fresh conversation）+ **steer_subagent/interrupt_subagent**（`delegate_tool.py:237,213`）+ **worktree 默认关**（`:775-786`） |
 | 协作模式 | AgentMessageBus 消息通信 + MultiAgent（fanout/pipeline/supervisor 模式）+ SwarmBroker 竞标 + Roundtable + Debate | fan-out 池（workflows） | subagent/subagent_fork 工具 + report 机制 | orchestrator + workers + 合成 | 无 fan-out 池/消息总线（turn 驱动） | orchestrator + workers + 合成（同 Hermes） |
 | 规划 | TeamPlanner 团队组建（`team_planner.py:422`）+ ChainPlanner + IntentAnalyzer + PlanEngine | plan mode 只读调研 | plan mode（logged state） | /plan skill + /goal 持续目标 + Kanban | goal/turn 驱动（无独立 plan mode） | /goal 每 turn fail-open judge（`goals.py:18`）+ plan 为普通 skill（同 Hermes） |
-| 深度控制 | 权限分级（ToolPermissionLevel）+ 摘要截断 + read_only ≤500 token | 子代理定义可指定 tools/model | depthLimit/toolFilter/persona 能力旗标 fail-loud | max_spawn_depth 1-3 + delegation 模型路由 | turn 级子代理（文档级未见深度旗标） | max_spawn_depth 1-3 + delegation 模型路由（同 Hermes） |
+| 深度控制 | 权限分级（ToolPermissionLevel）+ 摘要截断 + read_only ≤500 token | 子代理定义可指定 tools/model | depthLimit/toolFilter/persona 能力旗标 fail-loud | max_spawn_depth 1-3 + delegation 模型路由 | MultiAgentV2 子代理（`agent/control_tests.rs` subagent_developer_instructions）；turn 级内建 | max_spawn_depth 1-3 + delegation 模型路由（同 Hermes） |
 
 **aiPlat 差异点**：多 Agent 编排形态最丰富（6 种 routing 形态 + 消息总线 + 竞标/辩论/圆桌）；DSH 的子代理 provider 多样性（6 种传输）是六者中最强的单一能力。
 
@@ -85,7 +85,7 @@
 |---|---|---|---|---|---|---|
 | 定义 | SKILL.md frontmatter（20+ 字段，`apps/skills/registry.py:108`）双目录（engine 53 个 + workspace） | `.claude/skills/<name>/SKILL.md`（frontmatter name/description） | `.dsh/skills`/`.agents/skills` 6 档 rank 发现 + skill 工具注入 | `~/.hermes/skills/` 唯一事实源，兼容 agentskills.io 开放标准 | skills crate + AGENTS.md（渐进披露） | `~/.hermes/skills/` 唯一事实源 + agentskills.io 开放标准（同 Hermes） |
 | 执行 | **3 种 execution_type**（prompt/handler/hybrid/python_class，`registry.py:1432` 自动探测） | LLM 自动发现加载 | 目录 bundle 注入 durable reminder + skill 工具加载正文 | 渐进式披露（skills_list→skill_view）+ /learn 自动生成 | AGENTS.md 渐进披露（skills crate） | 渐进式披露（skills_list→skill_view）+ **skill_manage 运行时建技能**（`skill_manager_tool.py:908`） |
-| 治理 | **SkillsGuard 70+ 威胁模式** + effects 副作用声明 + 版本回滚 + 依赖图 + 市场安装 | 无强制校验 | SkillInvocationPolicy（model/user 双开关） | write_approval 审批发布 + Curator 维护 | 无强制校验（文档级未见） | write_approval 审批发布 + **Curator 维护**（同 Hermes） |
+| 治理 | **SkillsGuard 70+ 威胁模式** + effects 副作用声明 + 版本回滚 + 依赖图 + 市场安装 | 无强制校验 | SkillInvocationPolicy（model/user 双开关） | write_approval 审批发布 + Curator 维护 | skills crate（`skills/src/loading.rs:114` load_roots）+ AGENTS.md 渐进披露；无 SkillsGuard 式威胁扫描 | write_approval 审批发布 + **Curator 维护**（同 Hermes） |
 | 进化 | skill_evolver 跨租户演化 + AutoLearner 失败→技能草稿→沙盒→审批 | 社区自进化技能 | 无内置进化 | **学习闭环核心**（nudge→review→写入→审批→Curator） | **无学习闭环**（重 harness 工程优化，非技能进化） | **学习闭环核心**（nudge→review→写入→审批→Curator，同 Hermes，`curator.py:1`） |
 
 **aiPlat 差异点**：Skill 治理最严（威胁扫描 + 副作用声明 + 版本回滚）；Hermes/hermes-agent 的 Skill 生态（开放标准 + Hub + 学习闭环沉淀）是六者中最强的"技能成长"机制。
@@ -144,9 +144,9 @@
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes | Codex-Harness | hermes-agent |
 |---|---|---|---|---|---|---|
 | 解析 | **best_model_for_purpose 统一选型**（`model_injection.py:1675`，session override→非 LLM 捷径→偏好→infra 统一评分→safe_model 保底） | /model 切换 Claude 系列 + Bedrock/Vertex/Gateway 第三方 | adapter 注册表（registerAdapter + 原子热切换）+ DeepSeek providers（v4-flash/v4-pro + pi-ai 多协议） | 30+ provider 家族统一 resolver（插件目录扩展零分支） | **与 OpenAI 模型强绑定**（核心针对自家模型深度优化） | 30+ provider 家族统一 resolver（`auth.py:250-495`） |
-| 目录 | **ModelManager（infra 唯一权威）**（`infra/management/model/manager.py:664`：发现/健康/启用禁用/成功率滚动/5 分钟 TTL 恢复） | 官方模型为主 | 模型无关协议 + provider 路由 | 插件化 model-providers | OpenAI 系模型为主（文档级） | 插件化 model-providers（38 家族实测，同 Hermes） |
+| 目录 | **ModelManager（infra 唯一权威）**（`infra/management/model/manager.py:664`：发现/健康/启用禁用/成功率滚动/5 分钟 TTL 恢复） | 官方模型为主 | 模型无关协议 + provider 路由 | 插件化 model-providers | OpenAI 系模型强绑定（`core/src/` gpt_5_1/gpt_5_2/gpt_5_codex prompt 专属） | 插件化 model-providers（38 家族实测，同 Hermes） |
 | 适配器 | 唯一 InfraLLMAdapter + Embedding/Reranker/Audio/OCR 适配器族（BaseModelAdapter 统一工厂） | MCP 模型无关 | LlmRuntime + StreamChunk 协议 | 3 种 wire 协议自动探测 | 无 provider 插件化（强绑定） | 3 种 wire 协议自动探测 + **MoA 虚拟 provider**（`run_agent.py:5143`）+ **Copilot-ACP 后端**（`copilot_acp_client.py:73`） |
-| 成本 | cost_budget 每阶段 + token 预算 + 语义缓存 + 本地模型优先 | 无显式成本控制 | token-meter 估算 | 计费 + 用量追踪 + insights 成本分析 | 无显式成本控制（文档级未见） | 计费 + 用量追踪 + insights 成本分析（同 Hermes） |
+| 成本 | cost_budget 每阶段 + token 预算 + 语义缓存 + 本地模型优先 | 无显式成本控制 | token-meter 估算 | 计费 + 用量追踪 + insights 成本分析 | 无显式成本预算字段（源码未见 cost_budget 等价物） | 计费 + 用量追踪 + insights 成本分析（同 Hermes） |
 
 **aiPlat 差异点**：模型治理最严（统一解析链 + infra 唯一权威 + 本地模型 OOM 防护 + 成功率滚动）；Hermes provider 生态最开放（30+ 家族插件化）。
 
@@ -200,8 +200,8 @@
 | 审计 | **per-tenant SHA256 哈希链防篡改**（`audit_mixin.py:16`）+ 审计导出 CSV + 推理轨迹审计 | 企业审计日志（细节待确认）+ ZDR | session telemetry + OTel | 无审计留痕平台化 | 无企业级审计（单用户运行时） | 无审计留痕平台化（同 Hermes） |
 | 治理 | 治理流水线 6 步 + cron（`governance_pipeline.py:87`）+ 配额/限流 + 租户策略 policy-as-code + 计费（`billing/meter.py:34`） | Server-managed settings + 模型路由 | 无 | 无 | 无多租户企业治理（单用户运行时） | 无（同 Hermes） |
 | 多租户 | **三层多租户**（tenant_id 透传 + 分库 + 检索阻断 `wiki_retriever.py:306`）+ 租户配额套餐 | 组织/席位 | 无 | 无 | 无多租户（单用户运行时） | 无（同 Hermes） |
-| 诊断 | 健康检查注册表（依赖感知并行）+ 20+ 诊断端点 + 11 规则根因诊断 + SLA 监控 + Prometheus + 决策溯源 | analytics + hooks | OTel | insights 命令 | 无诊断中心（文档级未见） | insights 命令（同 Hermes） |
-| RAG | **CRAG 4 级（5 层）回退**（Ontology→FTS5→HyDE→Web，`retrieval_crag.py:59`）+ 检索质量门 + 查询重写 + 检索后治理 | WebSearch/WebFetch 工具 | web capability（search/fetch providers） | web_search/web_extract 工具 | 无内置 RAG（文档级未见） | web_search/web_extract 工具（同 Hermes） |
+| 诊断 | 健康检查注册表（依赖感知并行）+ 20+ 诊断端点 + 11 规则根因诊断 + SLA 监控 + Prometheus + 决策溯源 | analytics + hooks | OTel | insights 命令 | analytics crate + cloud-tasks 遥测；无 aiPlat 式诊断中心 | insights 命令（同 Hermes） |
+| RAG | **CRAG 4 级（5 层）回退**（Ontology→FTS5→HyDE→Web，`retrieval_crag.py:59`）+ 检索质量门 + 查询重写 + 检索后治理 | WebSearch/WebFetch 工具 | web capability（search/fetch providers） | web_search/web_extract 工具 | 无内置 RAG 引擎（源码未见检索器）；靠 MCP 工具外部检索 | web_search/web_extract 工具（同 Hermes） |
 
 **aiPlat 差异点**：企业治理最完整（防篡改审计 + 多租户 + 计费 + 配额 + 治理流水线 + 诊断中心），这是 aiPlat 相对六方最显著的差异化区；Claude Code 的 Server-managed settings/ZDR 是唯一的企业远程策略能力；Hermes/DSH 无企业级治理。
 
@@ -209,7 +209,7 @@
 
 ## 15. 六方核心能力速览表（横向）
 
-| 能力维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes（文档级） | Codex-Harness（文档级） | hermes-agent（源码级） |
+| 能力维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes（文档级） | Codex-Harness（源码级） | hermes-agent（源码级） |
 |---|---|---|---|---|---|---|
 | 定位 | 企业 FDE 操作系统 | IDE/终端 coding agent | 插件化 agent harness | 自我进化个人/团队 Agent | 产品级可嵌入 agent 运行时 | Hermes 代码本体（v0.20.1） |
 | 执行引擎 | PipelineEngine（8.3k 行声明式，5 Mixin） | AgentLoop（单进程） | step/turn 事件循环 | AIAgent（9.2k 行） | codex-rs Rust core（137 crate）+ Tokio | conversation_loop.py（8,070 行） |
@@ -390,36 +390,38 @@
 
 **对标影响**：源码验证**强化而非推翻** Hermes 列结论——学习闭环/多渠道/provider 生态三项标志性能力全部源码证实；新增差异是工具数 87（比文档更多）、安全为配置层约束（在 §15 沙箱/审批评分的对标公平性上，Hermes 的 ★★★ 维持——无不可绕过的强制执法）。
 
-### 17.5 Codex-Harness 文档级调研（2026-08-24 补充，新增列）
+### 17.5 Codex-Harness 源码级验证（2026-08-24 升级：文档级 → 源码级）
 
-> 本地无 openai/codex 源码（`/Users/apple/Documents/Codex` 为空残留目录），本列为**文档级口径**。证据来源：官方博客 [Codex as a platform: build on the open agent harness](https://developers.openai.com/blog/codex-as-a-platform)、[openai/codex 仓库文档](https://github.com/openai/codex)、[Codex App-Server JSON-RPC 协议拆解](https://codex.danielvaughan.com/2026/03/28/codex-app-server-json-rpc-protocol/)、[Codex CLI Sandbox Internals](https://codex.danielvaughan.com/2026/05/03/codex-cli-sandbox-internals-seatbelt-bubblewrap-landlock-windows-dacl/)、[DeepWiki codex](https://deepwiki.com/openai/codex/) + 用户提供的官方公告分析。沿用 §21.5"文档级标注清楚，不冒充源码级"原则。
+> **源码**：`/Users/apple/workdata/person/openSource/codex-main/`（openai/codex，Apache-2.0，142 crate / 3,279 个 .rs 文件，2026-08-24 下载）。原文档级口径（官方博客 + openai/codex 文档 + 权威第三方拆解）经源码逐项核实，**下表"源码证据"列全部 grep 实证**。沿用 §21.5 可信度原则：本列现与 DSH/Hermes/hermes-agent 同为**源码级**。
 
-**核心架构（文档级确认）**
+**核心架构（源码级确认）**
 
-| 机制 | 事实 | 来源标注 |
+| 机制 | 事实 | 源码证据 |
 |---|---|---|
-| 工程主体 | `codex-rs`：Rust 单体仓库，137 crate（core/tui/cli/exec/protocol/sandboxing/state/thread-store/tools/mcp/skills/plugins/hooks） | openai/codex + 第三方拆解 |
-| 三级抽象 | **Thread（会话）→ Turn（轮次）→ Item（条目）**：thread/start、thread/resume、thread/fork；ephemeral:true 纯内存临时会话 | app-server 协议文档 |
-| 三层集成入口 | ① `codex exec`（单次非交互，CI/脚本）② Codex SDK（TS/Python 程序化启停 + 流式事件）③ `app-server`（JSON-RPC over stdio/WS 持久内核，断连重连 + steer + interrupt + 人工审批） | 官方公告 + SDK 文档 |
-| 协议细节 | JSON-RPC 2.0；背压 -32001（建议指数退避重试）；approval request 暂停当前 Turn 等 allow | app-server 协议拆解 |
-| 沙箱 | OS 原生隔离：Linux Bubblewrap+Landlock、macOS Seatbelt、Windows AppContainer/DACL | Codex Sandbox Internals |
-| 状态持久化 | SQLite thread-store：会话状态 + 断点续跑 + fork | DeepWiki + PR |
-| Harness 优化实证 | ARC-AGI-3 上 GPT-5.6 Sol：默认 13.3% → +retained reasoning + context compaction = 38.3%，token 降至 1/6 | OpenAI 官博 |
-| 竞品导入 | Claude Code / Claude Cowork / Cursor 资产非破坏性迁入：AGENTS/CLAUDE.md、Skills、MCP、Hooks、subagents、近 30 天会话，源端不动一字节 | 官方公告 |
-| 模型绑定 | 与 OpenAI 模型强绑定（核心针对自家模型深度优化） | 官方 + 第三方 |
-| 开源范围 | CLI + App Server + SDK 开源（Apache-2.0）；**IDE Extension 与 Codex Cloud 不开源**；外部贡献走 Issue/设计讨论而非直接 PR | 官方 |
+| 工程主体 | `codex-rs`：Rust 单体仓库，**142 crate / 3,279 个 .rs**（app-server/protocol/core/cli/exec/sandboxing/state/bwrap…，含 code-mode/codex_thread/thread_manager 等） | `codex-rs/`（142 个 Cargo.toml，find 实测） |
+| 三级抽象 | **Thread → Turn → Item**：`ThreadManager`（`core/src/thread_manager.rs:218`）+ `ThreadConfigSnapshot`（`core/src/codex_thread.rs:79`）+ TurnContext（`session/turn_context.rs:144`）；协议含 `thread/start`/`thread/resume`/`thread/rollback`/`thread/fork`/`thread/read`（`app-server-protocol/src/protocol/v2/thread_data.rs:267` + `v2/thread.rs:66`） | 源码实证 |
+| 三层集成入口 | ① `codex-exec`（单次非交互，`exec/src/main.rs`，arg0 分发到 codex-linux-sandbox）② **SDK（TS）**（`sdk/typescript/src/`：thread.ts/exec.ts/events.ts/items.ts）③ `app-server`：**JSON-RPC over stdio**（`app-server-transport/src/transport/stdio.rs:24` start_stdio_connection）+ WebSocket（`transport/websocket.rs`）+ Unix socket | 源码实证 |
+| 协议细节 | JSON-RPC 方法（`app-server-client/src/lib.rs:1913` `thread/start`）；approval_mode 协议（`protocol/v2/config.rs:193,201,265` AppToolApproval/AskForApproval）；approvals_reviewer 路由 | 源码实证 |
+| 沙箱 | **OS 原生隔离**：`sandboxing/`（landlock_tests/manager_tests 验证 Landlock + seccomp + Seatbelt）+ `bwrap/` crate（Bubblewrap）；exec arg0 分发到 codex-linux-sandbox（Landlock+seccomp） | 源码实证 |
+| 状态持久化 | SQLite：`state/src/lib.rs:1`（SQLite-backed state，含 WAL-reset corruption fix 编译断言）；thread history/queue/goals migrations | 源码实证 |
+| compaction | `core/src/compact.rs`（build_compaction_initial_context/run_compact_task/CompactionAnalyticsDetails 含 retained_image_count）——retained reasoning + context compaction 实现在此 | 源码实证 |
+| Harness 优化实证 | ARC-AGI-3 上 GPT-5.6 Sol：默认 13.3% → +retained reasoning + context compaction = 38.3%，token 降至 1/6 | OpenAI 官博（性能数据文档级） |
+| 竞品导入 | **`tui/src/external_agent_config_migration/`**：source.rs 枚举 claude-code/cursor（`source.rs:34-35`）；**Claude Code settings.json + 会话记忆（.claude/projects session.jsonl → codex/memories/extensions/external_agent_import，`mod.rs:826`）+ Cursor cli-config.json（`mod.rs:902`）**；另 `core-plugins/src/command_migration/` | 源码实证 |
+| 模型绑定 | `core/src/` 含 gpt_5_1_prompt.md/gpt_5_2_prompt.md/gpt_5_codex_prompt.md（OpenAI 系专属 prompt）；模型强绑定 | 源码实证 |
+| 开源范围 | Apache-2.0 LICENSE；IDE Extension 与 Codex Cloud 不开源（官方公告，文档级） | LICENSE + 官方 |
 
-**Codex-Harness 文档级标志性能力（3 项）**
-1. **协议面完整**：Thread/Turn/Item 公开原语 + app-server（JSON-RPC stdio）+ exec + 官方 SDK——"运行时能力做成可嵌入协议"是六者中最完整的。
-2. **OS 原生沙箱**：Bubblewrap/Landlock/Seatbelt/AppContainer 真进程隔离（非检查式）。
-3. **竞品资产一键迁入**：从 Claude Code/Cursor 导入 SOP/记忆/MCP 授权/slash command/会话（获客战略）。
+**Codex-Harness 源码级标志性能力（4 项）**
+1. **协议面完整**：Thread/Turn/Item 公开原语 + app-server（JSON-RPC stdio/WS/unix-socket 三传输）+ exec + TS SDK——"运行时能力做成可嵌入协议"是六者中最完整的。
+2. **OS 原生沙箱**：sandboxing crate（Landlock/seccomp/Seatbelt）+ bwrap crate（Bubblewrap）+ arg0 分发到 codex-linux-sandbox——真进程隔离（非检查式）。
+3. **竞品资产一键迁入（含会话记忆）**：Claude Code settings.json + `.claude/projects` 会话 JSONL 迁移为 codex memories + Cursor 配置（`external_agent_config_migration/mod.rs:826,902`）。
+4. **compaction + retained reasoning 深度工程化**（`compact.rs`：inline auto-compact + retained_image 追踪）。
 
-**Codex-Harness 文档级明显限制（3 项）**
-1. **模型强绑定**（OpenAI 系），无多租户企业治理（vs aiPlat 的审计/租户/计费/治理流水线）。
+**Codex-Harness 源码级明显限制（3 项）**
+1. **模型强绑定**（OpenAI 系专属 prompt），无多租户企业治理（vs aiPlat 的审计/租户/计费/治理流水线）。
 2. **无自我进化闭环**（重 harness 工程优化，非系统自修改）。
 3. **无独立工作流引擎**（vs aiPlat 可视化画布 + 12 节点；Codex 是 turn 驱动）。
 
-**对标影响**：Codex 开源对 aiPlat 的价值不在能力对标（aiPlat 内核大多已有对应物），而在**协议面工程姿势**——详见《Codex-Harness开源借鉴分析报告.md》（P0-a stdio JSON-RPC 内核、P0-b 会话导入、P1 SDK、P1 OS 沙箱）。
+**对标影响**：Codex 开源对 aiPlat 的价值不在能力对标（aiPlat 内核大多已有对应物），而在**协议面工程姿势**——详见《Codex-Harness开源借鉴分析报告.md》（P0-a stdio JSON-RPC 内核、P0-b 会话导入、P1 SDK、P1 OS 沙箱）。**源码级新增发现**：竞品导入实含**会话记忆级**（.claude/projects → memories），比 aiPlat 现有 format_adapters 格式桥更进一步——直接支撑 G18（会话/记忆级导入）待实施项的必要性。
 
 ### 17.6 hermes-agent v0.20.1 源码级验证（2026-08-24 补充，新增列）
 
@@ -702,7 +704,7 @@ flowchart LR
 
 ### 21.4 优劣分析的方法学说明（诚实标注）
 
-- 优势/劣势判定基于 §17 的证据基线：aiPlat/DSH/Hermes/hermes-agent 为**源码级**（可复核 `文件:行号`），Claude Code/Codex-Harness 为**文档级**（闭源/本地无源码，§17.1/§17.5 已标注）——涉及 CC/Codex 的优劣判定置信度低于源码级四列。
+- 优势/劣势判定基于 §17 的证据基线：aiPlat/DSH/Hermes/hermes-agent 为**源码级**（可复核 `文件:行号`），Claude Code/Codex-Harness 为**文档级**（闭源/本地无源码，§17.1/§17.5 已标注）——涉及 CC 的优劣判定置信度低于源码级五列（Codex-Harness 2026-08-24 已升级源码级）。
 - ★ 评分与"最强"判定综合了**能力深度**（实现完整度）与**治理深度**（是否可治理），非单一指标。
 - "被动差距区"仅指 aiPlat 弱于某方且构成结构性缺口（§20 的 ❌/⚠️）；"持平"不排除某方在子能力上领先（如 Hermes 学习闭环在"实时性"上领先 aiPlat 的夜间批量）。
 
@@ -716,7 +718,7 @@ flowchart LR
 | **DSH 侧能力事实**（本地 checkout 一手分析） | ✅ **高（阳性，源码级）** | `/Users/apple/workdata/person/deepseek-harness/` 直接读源码 |
 | **Hermes 侧能力事实**（v0.20.1 源码级验证） | ✅ **高（阳性，源码级）** | `/Users/apple/workdata/person/openSource/hermes-agent-main/` 直接读源码，§17.4 有 8 项文档差异实证 |
 | **hermes-agent 侧能力事实**（新增列） | ✅ **高（阳性，源码级）** | 与 Hermes 同源码（`hermes-agent-main/` v0.20.1），新增维度经子代理独立源码核查（协议面/导入/Thread 抽象等） |
-| **Codex-Harness 侧能力事实**（新增列） | ⚠️ **中（文档级）** | 本地无源码（`/Users/apple/Documents/Codex` 为空残留），基于官方博客 + openai/codex 文档 + 权威第三方拆解（137 crate/Thread-Turn-Item/app-server/exec/SDK/沙箱）；**沿用"文档级标注清楚，不冒充源码级"原则** |
+| **Codex-Harness 侧能力事实**（新增列，2026-08-24 升级） | ✅ **高（阳性，源码级）** | `/Users/apple/workdata/person/openSource/codex-main/` 直接读源码（142 crate / 3,279 .rs）；§17.5 各机制均附文件:行号实证；仅"ARC-AGI-3 性能数据/IDE Extension 不开源"为文档级（官方公告） |
 | **Claude Code 侧能力事实** | ⚠️ **中（文档级）** | 闭源无源码，基于官方文档+第三方；§17.1 已标注 |
 | **§16 优势/劣势结论** | ✅ 高 | 基于上述源码级事实推导；弱势区的"结构性缺口"经 §20 反向扫描确认 |
 | **§20 能力缺口矩阵（G1-G19）** | ✅ 高（阳性缺口） | 缺口是"grep 确认 aiPlat 无此能力"的阳性事实；**2026-08-19 复核：12 项已补齐，仅 G6 缺失；2026-08-23 G6 落地：G1-G15 全补齐；2026-08-24 Codex 扩列：新增 G16-G19（协议面 2 真缺口 + 导入/沙箱 2 收尾）** |
