@@ -496,3 +496,14 @@ pytest -q \
   - `grep -c "cross_contracts" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥2）
   - `python3 -m pytest aiPlat-platform/tests/test_l4_cross_module.py -q`（14 passed，含 TestContractGate 4 例）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
+
+### 1.48 L4.5 数据库迁移编排设计文档（2026-08-23）
+- MUST：`docs/research/plan-app-factory-l45-db-migration.md` 存在（L4.5 设计：SchemaExtractor/SchemaDiffAnalyzer/MigrationGenerator/破坏性门禁/验收 12 项/约 4.25 天）
+- MUST：设计文档含迁移编排数据流（merge_apply → schema diff → 迁移预览审批）+ 破坏性变更定义（§3.4）+ 与 L2/L3/L4 衔接清单（§9）
+- 自动化验收：
+  - `ls docs/research/plan-app-factory-l45-db-migration.md`（存在）
+  - `grep -c "SchemaExtractor" docs/research/plan-app-factory-l45-db-migration.md`（≥3：§3.3 + §5 + §6）
+  - `grep -c "SchemaDiffAnalyzer" docs/research/plan-app-factory-l45-db-migration.md`（≥3：§3.4 + §5 + §6）
+  - `grep -c "MigrationGenerator" docs/research/plan-app-factory-l45-db-migration.md`（≥3：§3.5 + §5 + §6）
+  - `grep -c "destructive" docs/research/plan-app-factory-l45-db-migration.md`（≥4：§3.4 定义 + §3.5 + §3.8 + §5）
+  - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
