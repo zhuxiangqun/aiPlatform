@@ -4662,6 +4662,10 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         _log.warning("deploy: writing files to %s", _target)
 
         _count = 0
+        # L3: drop "## UNCHANGED: <path>" markers (generic output-format convention —
+        # file declared unchanged by the producer must not pollute ## FILE: blocks;
+        # the platform merge layer decides what to copy from the imported originals).
+        _result = _re.sub(r'^#{2,4}\s*UNCHANGED:\s*[^\n]*$', '', _result, flags=_re.MULTILINE)
         for _block in _re.split(r'^#{2,4}\s*FILE:\s*', _result, flags=_re.MULTILINE)[1:]:
             _lines = _block.strip().split("\n", 1)
             if len(_lines) < 2:

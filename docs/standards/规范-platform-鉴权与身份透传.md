@@ -165,3 +165,20 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 - `existing_path` 白名单限制在 AIPLAT_HOME 内（跨目录导入需管理员确认，复用 `require_admin_access` 模式，L2 设计 §3.5）；
 - import-repo 接受任意登录 builder 用户上传 zip —— zip 仅解压到 `~/.aiplat/apps/{pid}/imported/`（zip-slip 防护 + 密钥过滤 + 体积限额），不触碰其他用户/系统路径；
 - 统计端点仅返回聚合比率，不含项目明细（避免通过 skip 统计反推他人项目状态）。
+
+---
+
+## 13. L3 增量合并端点权限（2026-08-23）
+
+`aiPlat-platform/api/routers/builder.py` 新增 3 个 L3 合并端点，权限与既有 builder 端点一致：
+
+| 端点 | 权限 | 说明 |
+|---|---|---|
+| `POST /projects/{id}/merge-preview` | `require_builder_access` | 生成合并预览（流水线新版本 vs imported 原件 diff + 影响面分析） |
+| `GET /projects/{id}/merge-previews` | `require_builder_access` | 查询已生成预览 |
+| `POST /projects/{id}/merge-apply` | `require_builder_access` | 应用审批通过的合并（逐文件 decisions） |
+
+**约束**：
+- `merge-apply` 是**写操作**且**不可逆自动回退**（虽有 deploy.prev 快照），接受任意 builder 用户调用——但**审批门禁在前端强制**（逐文件通过/驳回），后端仅做语法/接口验证拦截（§3.6）；后续如需严格化可升级为 `require_admin_access` 或加 HITL 双签；
+- merge-preview 读取 `_final_state` 与 `imported/` 原件，仅限本项目路径（不越权读其他项目）；
+- decisions 中未提及的文件一律不应用（默认保留 imported 原件）。

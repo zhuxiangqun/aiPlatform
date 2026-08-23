@@ -276,6 +276,33 @@ export const projectApi = {
     }>('/platform/builder/import-stats');
   },
 
+  /** L3: build per-file merge previews (pipeline output vs imported originals). */
+  mergePreview: async (projectId: string) => {
+    return apiClient.post<{
+      status: string;
+      previews: Array<Record<string, unknown>>;
+      impact: Record<string, unknown>;
+    }>(`/platform/builder/projects/${projectId}/merge-preview`);
+  },
+
+  /** L3: stored merge previews + impact analysis. */
+  listMergePreviews: async (projectId: string) => {
+    return apiClient.get<{
+      status: string;
+      previews: Array<Record<string, unknown>>;
+      impact: Record<string, unknown>;
+      total: number;
+    }>(`/platform/builder/projects/${projectId}/merge-previews`);
+  },
+
+  /** L3: apply approved merge previews (human review gate). */
+  mergeApply: async (projectId: string, decisions: Record<string, string>) => {
+    return apiClient.post<{
+      status: string; applied: string[]; rejected: string[]; failed: unknown[];
+      warnings: string[];
+    }>(`/platform/builder/projects/${projectId}/merge-apply`, { decisions });
+  },
+
   /** Re-run pipeline with existing PRD (e.g., after editing PRD). */
   rebuild: async (projectId: string) => {
     return apiClient.post<{ status: string; detail: string }>(

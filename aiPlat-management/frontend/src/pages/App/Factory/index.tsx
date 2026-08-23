@@ -417,6 +417,15 @@ const ProjectPanel: React.FC<{
   const [l2Stats, setL2Stats] = useState<any>(null);
   const [regeneratedWarnings, setRegeneratedWarnings] = useState<string[]>([]);
 
+  // ── L3: incremental merge (plan-app-factory-l3) ──
+  const [mergeStrategy, setMergeStrategy] = useState<'full_rewrite' | 'incremental_merge'>('full_rewrite');
+  const [mergePreviews, setMergePreviews] = useState<any[]>([]);
+  const [mergeImpact, setMergeImpact] = useState<any>(null);
+  const [mergeDecisions, setMergeDecisions] = useState<Record<string, string>>({});
+  const [showMergeReview, setShowMergeReview] = useState(false);
+  const [buildingPreview, setBuildingPreview] = useState(false);
+  const [applyingMerge, setApplyingMerge] = useState(false);
+
   // Check for PRD on mount (may have been generated in a previous session)
   useEffect(() => {
     const raw = project as any;
@@ -841,9 +850,16 @@ const ProjectPanel: React.FC<{
     }
     setSavingModify(true);
     try {
-      const prd = { ...(confirmedPrd || {}), modify_files: modifyFiles, skip_pytest_gate: skipGate };
+      const prd = {
+        ...(confirmedPrd || {}),
+        modify_files: modifyFiles,
+        skip_pytest_gate: skipGate,
+        merge_strategy: mergeStrategy,
+      };
       await projectApi.updatePrd(project.project_id, prd as any);
-      toast.success('修改意图已保存，开始重建（被改文件将整体重写）');
+      toast.success(mergeStrategy === 'incremental_merge'
+        ? '修改意图已保存，开始增量构建（完成后可生成合并预览）'
+        : '修改意图已保存，开始重建（被改文件将整体重写）');
       setShowImportPanel(false);
       setShowManualModal(false);
       await projectApi.rebuild(project.project_id);
@@ -854,6 +870,54 @@ const ProjectPanel: React.FC<{
       } catch { window.location.reload(); }
     } catch (e: any) { toastGateError(e, '保存失败'); }
     setSavingModify(false);
+  };
+
+  // ── L3: merge review handlers ──
+  const handleGenerateMergePreview = async () => {
+    if (!project.project_id) return;
+    setBuildingPreview(true);
+    try {
+      const r = await projectApi.mergePreview(project.project_id) as any;
+      if (r?.status === 'ok') {
+        setMergePreviews(r.previews || []);
+        setMergeImpact(r.impact || null);
+        setMergeDecisions({});
+        setShowMergeReview(true);
+        toast.success(`已生成 ${r.previews?.length || 0} 个文件的合并预览`);
+      } else {
+        toast.error(r?.detail || '生成合并预览失败');
+      }
+    } catch (e: any) { toastGateError(e, '生成合并预览失败'); }
+    setBuildingPreview(false);
+  };
+
+  const handleToggleMergeDecision = (path: string, verdict: string) => {
+    setMergeDecisions(prev => {
+      const next = { ...prev };
+      if (verdict === 'approved') next[path] = 'approved';
+      else if (verdict === 'rejected') next[path] = 'rejected';
+      else delete next[path];
+      return next;
+    });
+  };
+
+  const handleApplyMerge = async () => {
+    if (!project.project_id) return;
+    const approved = mergePreviews.filter(p => mergeDecisions[p.path] === 'approved');
+    if (!approved.length) { toast.error('请至少通过一个文件'); return; }
+    setApplyingMerge(true);
+    try {
+      const r = await projectApi.mergeApply(project.project_id, mergeDecisions) as any;
+      if (r?.status === 'ok') {
+        toast.success(`已应用 ${r.applied?.length || 0} 个文件（驳回 ${r.rejected?.length || 0}）`);
+        if (r.warnings?.length) setRegeneratedWarnings(r.warnings);
+        setShowMergeReview(false);
+        setMergePreviews([]);
+      } else {
+        toast.error(r?.detail || '应用合并失败');
+      }
+    } catch (e: any) { toastGateError(e, '应用合并失败'); }
+    setApplyingMerge(false);
   };
 
   const handleEditStage = (stageKey: string, currentRaw: any) => {
@@ -1074,6 +1138,12 @@ const ProjectPanel: React.FC<{
             )}
             <div className="p-3 rounded bg-green-500/10 border border-green-500/30 text-sm text-green-300">
               ✅ 构建完成
+              {mergeStrategy === 'incremental_merge' && (
+                <Button variant="secondary" size="sm" className="ml-3"
+                  onClick={handleGenerateMergePreview} loading={buildingPreview}>
+                  🔀 生成合并预览（L3 增量审批）
+                </Button>
+              )}
               {agentMode && (
                 <a href={`/app/apps/${project.project_id}`} target="_blank" rel="noreferrer" className="ml-3 text-primary underline text-xs flex items-center gap-1 inline-flex">
                   <ExternalLink className="w-3 h-3" /> 使用应用
@@ -1315,6 +1385,29 @@ const ProjectPanel: React.FC<{
               <div className="p-2 rounded bg-red-500/10 border border-red-500/40 text-red-300 text-[10px] leading-relaxed">
                 ⚠️ 当前版本将根据旧代码<strong>【重写】</strong>勾选的文件，而非合并改动。
                 请确认已备份，且你接受"该文件整体重生成"的结果。
+              </div>
+              {/* L3: 修改模式（plan-app-factory-l3 §3.2/§4） */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-gray-400">修改模式：</label>
+                <div className="flex gap-2 text-[10px]">
+                  <label className={`flex-1 p-1.5 rounded border cursor-pointer ${mergeStrategy === 'full_rewrite' ? 'border-blue-500/60 bg-blue-500/10 text-blue-200' : 'border-dark-border bg-dark-hover text-gray-300'}`}>
+                    <input type="radio" name="merge_strategy" className="mr-1"
+                      checked={mergeStrategy === 'full_rewrite'}
+                      onChange={() => setMergeStrategy('full_rewrite')} />
+                    整文件重写（L2，默认）
+                  </label>
+                  <label className={`flex-1 p-1.5 rounded border cursor-pointer ${mergeStrategy === 'incremental_merge' ? 'border-green-500/60 bg-green-500/10 text-green-200' : 'border-dark-border bg-dark-hover text-gray-300'}`}>
+                    <input type="radio" name="merge_strategy" className="mr-1"
+                      checked={mergeStrategy === 'incremental_merge'}
+                      onChange={() => setMergeStrategy('incremental_merge')} />
+                    增量合并（L3）— 改动逐文件审批
+                  </label>
+                </div>
+                {mergeStrategy === 'incremental_merge' && (
+                  <div className="text-[10px] text-green-300/80">
+                    L3 只重生成受影响文件；构建完成后将生成 diff 预览，需逐文件审批后才应用。
+                  </div>
+                )}
               </div>
               {/* 上传 zip / 路径 */}
               <div className="flex flex-col gap-1.5">
@@ -1738,6 +1831,87 @@ const ProjectPanel: React.FC<{
                 退出此功能
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* L3: 合并审批界面（plan-app-factory-l3 §3.5/§4） */}
+      {showMergeReview && (
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4"
+          onClick={() => setShowMergeReview(false)}>
+          <div className="bg-dark-card border border-dark-border rounded-lg max-w-3xl max-h-[85vh] overflow-y-auto p-5 text-xs space-y-3 w-full"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-100">🔀 合并审批（L3 增量模式）</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowMergeReview(false)}>✕</Button>
+            </div>
+            {/* 影响面分析（§3.3） */}
+            {mergeImpact?.auto_added?.length > 0 && (
+              <div className="p-2 rounded bg-purple-500/10 border border-purple-500/30 text-[10px] text-purple-200">
+                影响面分析：自动加入 {mergeImpact.auto_added.length} 个文件
+                （{mergeImpact.auto_added.join('、')}）— 仅供参考，可在下方逐文件驳回
+              </div>
+            )}
+            {/* 逐文件 diff 审批 */}
+            {mergePreviews.length === 0 && (
+              <div className="text-gray-400 text-[11px] py-4 text-center">无合并预览（流水线未产出新版本）</div>
+            )}
+            <div className="space-y-3">
+              {mergePreviews.map(pv => {
+                const approved = mergeDecisions[pv.path] === 'approved';
+                const rejected = mergeDecisions[pv.path] === 'rejected';
+                const syntaxOk = pv.syntax?.ok !== false;
+                const interfaceOk = pv.interface?.ok !== false;
+                const blocked = !syntaxOk || !interfaceOk;
+                return (
+                  <div key={pv.path} className={`rounded border p-2 ${blocked ? 'border-red-500/50 bg-red-500/5' : approved ? 'border-green-500/40 bg-green-500/5' : rejected ? 'border-gray-600 bg-dark-hover' : 'border-dark-border'}`}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-[11px] text-gray-200">{pv.path}</span>
+                      <span className="text-[10px] text-gray-500">
+                        +{pv.changed_lines}/-{pv.unchanged_lines} 行
+                      </span>
+                      {!syntaxOk && <span className="text-[10px] text-red-400">❌ 语法: {pv.syntax?.error}</span>}
+                      {!interfaceOk && (
+                        <span className="text-[10px] text-red-400">
+                          ❌ 接口缺失: {(pv.interface?.missing || []).join(', ')}
+                        </span>
+                      )}
+                      <div className="ml-auto flex gap-1">
+                        <Button variant="ghost" size="sm"
+                          className={rejected ? '!bg-gray-600/40' : ''}
+                          onClick={() => handleToggleMergeDecision(pv.path, 'rejected')}>驳回</Button>
+                        <Button variant="primary" size="sm"
+                          disabled={blocked}
+                          className={approved ? '!bg-green-600/50' : ''}
+                          onClick={() => handleToggleMergeDecision(pv.path, 'approved')}>
+                          {approved ? '已通过 ✓' : '通过'}
+                        </Button>
+                      </div>
+                    </div>
+                    {/* diff 内容 */}
+                    <pre className="mt-1.5 max-h-44 overflow-auto bg-black/40 rounded p-2 text-[10px] font-mono leading-tight">
+                      {(pv.hunks || []).map((h: any, i: number) => (
+                        <div key={i}>
+                          <div className="text-blue-400">{h.header}</div>
+                          {h.lines.map((l: string, j: number) => (
+                            <div key={j} className={l.startsWith('+') ? 'text-green-400' : l.startsWith('-') ? 'text-red-400' : 'text-gray-500'}>{l}</div>
+                          ))}
+                        </div>
+                      ))}
+                      {!pv.hunks?.length && <div className="text-gray-600">（无 diff 内容）</div>}
+                    </pre>
+                  </div>
+                );
+              })}
+            </div>
+            {mergePreviews.length > 0 && (
+              <div className="flex gap-2 pt-2 border-t border-dark-border">
+                <Button variant="primary" size="sm" onClick={handleApplyMerge} loading={applyingMerge}>
+                  应用已通过的文件（{mergePreviews.filter(p => mergeDecisions[p.path] === 'approved').length}）
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => { setMergeDecisions({}); setShowMergeReview(false); }}>取消</Button>
+                <span className="ml-auto text-[10px] text-gray-500">未通过的文件将保留 imported/ 原件</span>
+              </div>
+            )}
           </div>
         </div>
       )}

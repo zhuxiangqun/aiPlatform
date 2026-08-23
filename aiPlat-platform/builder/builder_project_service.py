@@ -91,6 +91,17 @@ _L2_BEHAVIOR_PROMPT = (
     "未在 modify_files 中的文件一律不得触碰、不得覆盖。"
 )
 
+# L3 — incremental merge behavior contract (plan-app-factory-l3 §3.4)
+_L3_INCREMENT_PROMPT = (
+    "## 行为契约（增量修改）\n"
+    "对以下受影响文件：基于注入的旧文件内容进行【增量修改】——\n"
+    "1. 只修改与变更需求相关的区域；其余代码必须与旧文件【逐字节一致】（包括注释、格式、顺序）\n"
+    "2. 输出每个受影响文件的【完整新版本】（## FILE: 格式），不要输出 diff 片段\n"
+    "3. 保留：原有对外接口（函数签名/类名/路由路径）、关键边界处理、注释中标记的已知坑\n"
+    "4. 若某文件无需任何修改，明确标注 \"## UNCHANGED: <path>\"（不输出新版本）\n"
+    "5. 未列出的文件一律不得触碰。"
+)
+
 
 def _semantic_output(agent_id: str, phase: str) -> str:
     """Map agent_id to semantic output artifact name — reads from AGENT.md frontmatter."""
@@ -1661,6 +1672,105 @@ class BuilderProjectService:
             "note": ">40% skip_pytest_gate → 逃生舱被当常规路径，应提前规划 L3（增量合并引擎）",
         }
 
+    # ── L3: incremental merge (plan-app-factory-l3 §3.3/§3.5) ──
+
+    async def merge_preview(self, project_id: str) -> Dict[str, Any]:
+        """L3: build per-file merge previews — new versions from pipeline output vs
+        imported originals, plus impact analysis, syntax + interface checks."""
+        from builder.merge_engine import (
+            analyze_impact, build_merge_preview, verify_interface_preserved, syntax_check)
+        self._reload_if_stale()
+        proj = self._projects.get(project_id) or {}
+        imp = proj.get("imported_repo") or {}
+        import_root = str(imp.get("root") or "")
+        if not import_root or not os.path.isdir(import_root):
+            return {"status": "error", "detail": "未导入既有代码，请先导入"}
+        # Read pipeline output (code_generation raw_output with ## FILE: blocks)
+        out_dir = os.path.join(
+            os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
+        final_path = os.path.join(out_dir, "_final_state.json")
+        code_text = ""
+        if os.path.isfile(final_path):
+            try:
+                with open(final_path, "r", encoding="utf-8") as fh:
+                    fs = json.load(fh)
+                _code = fs.get("code") or fs.get("agent_app") or {}
+                code_text = _code.get("raw_output", "") if isinstance(_code, dict) else str(_code)
+            except Exception as e:
+                _log.warning("merge_preview: failed to read final state: %s", str(e)[:200])
+        new_files = _parse_file_blocks(code_text)
+        if not new_files:
+            return {"status": "error", "detail": "流水线未产出新版本代码（## FILE: 块为空）"}
+        # Impact analysis (advisory — frontend shows auto-added files, user may opt out)
+        modify_files = (proj.get("confirmed_prd") or {}).get("modify_files") or []
+        impact = analyze_impact(import_root, modify_files, imp.get("manifest") or [])
+        previews = []
+        for path, content in new_files.items():
+            orig_path = os.path.join(import_root, path)
+            original = ""
+            if os.path.isfile(orig_path):
+                try:
+                    with open(orig_path, "r", encoding="utf-8", errors="replace") as fh:
+                        original = fh.read()
+                except OSError:
+                    pass  # noqa: cleanup-best-effort — treat as empty original
+            pv = build_merge_preview(original, content, path)
+            pv["new_content"] = content
+            pv["interface"] = verify_interface_preserved(original, content, path)
+            pv["syntax"] = syntax_check(content, path)
+            previews.append(pv)
+        proj["merge_previews"] = previews
+        proj["merge_impact"] = impact
+        proj["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        self._save_projects()
+        return {"status": "ok", "previews": previews, "impact": impact}
+
+    async def list_merge_previews(self, project_id: str) -> Dict[str, Any]:
+        """L3: return stored merge previews + impact analysis."""
+        proj = self._projects.get(project_id, {})
+        previews = proj.get("merge_previews") or []
+        impact = proj.get("merge_impact") or {}
+        return {"status": "ok", "previews": previews, "impact": impact,
+                "total": len(previews)}
+
+    async def merge_apply(self, project_id: str, decisions: Dict[str, str]) -> Dict[str, Any]:
+        """L3: apply approved previews after human review (design §3.5/§3.7).
+
+        Rejected files fall back to imported originals. Syntax/interface failures
+        block approval of that file. deploy_dir snapshotted to deploy.prev first.
+        """
+        from builder.merge_engine import apply_merge
+        proj = self._projects.get(project_id, {})
+        previews = proj.get("merge_previews") or []
+        if not previews:
+            return {"status": "error", "detail": "没有合并预览，请先运行 merge-preview"}
+        imp = proj.get("imported_repo") or {}
+        import_root = str(imp.get("root") or "")
+        deploy_dir = proj.get("deploy_dir") or os.path.join(
+            os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+            "output", project_id, "deploy")
+        # Gate: syntax/interface failures block approval (design §3.6)
+        for pv in previews:
+            path = pv.get("path", "")
+            if decisions.get(path) != "approved":
+                continue
+            if not (pv.get("syntax") or {}).get("ok", True):
+                return {"status": "error",
+                        "detail": f"{path} 语法验证失败（{pv['syntax'].get('error')}），禁止合并"}
+            if not (pv.get("interface") or {}).get("ok", True):
+                return {"status": "error",
+                        "detail": f"{path} 对外接口缺失（{', '.join(pv['interface'].get('missing') or [])}），禁止合并"}
+        result = apply_merge(project_id, import_root, deploy_dir, previews, decisions)
+        if result.get("applied"):
+            _warns = [f"Warning: File {p} has been regenerated, please review diff manually."
+                      for p in result["applied"]]
+            if proj.get("runs"):
+                proj["runs"][-1]["regenerated_warnings"] = _warns
+                proj["runs"][-1]["merge_applied"] = len(result["applied"])
+            proj["deploy_dir"] = deploy_dir
+            self._save_projects()
+        return result
+
     async def update_prd(self, project_id: str, prd: dict) -> Dict[str, Any]:
         """Directly update the confirmed PRD without re-running PM chat."""
         import logging as _log2
@@ -1787,16 +1897,20 @@ class BuilderProjectService:
             ],
         }
 
-        # ── L2: pass imported-repo context + pytest-gate escape to Core (§3.3/§3.5/§3.8) ──
+        # ── L2/L3: pass imported-repo context + pytest-gate escape to Core (§3.3/§3.5/§3.8) ──
         # Platform assembles the business text (behavior contract, intent anchors);
         # Core engine only reads files and appends the blocks (generic, §5.8 boundary).
         _prd = proj.get("confirmed_prd") or {}
         _modify = _prd.get("modify_files") if isinstance(_prd, dict) else None
         _imported = proj.get("imported_repo")
+        # L3: merge strategy drives which behavior contract is injected
+        _merge_strategy = str(_prd.get("merge_strategy", "full_rewrite") or "full_rewrite")
         if _imported and isinstance(_modify, list) and _modify:
             _imp_payload = dict(_imported)
             _imp_payload["modify_files"] = _modify
-            _imp_payload["behavior_prompt"] = _L2_BEHAVIOR_PROMPT
+            _imp_payload["behavior_prompt"] = (
+                _L3_INCREMENT_PROMPT if _merge_strategy == "incremental_merge"
+                else _L2_BEHAVIOR_PROMPT)
             _intent_lines = [f"- {m.get('path')} — 意图：{m.get('intent') or ''}"
                              for m in _modify if isinstance(m, dict) and m.get("path")]
             if _intent_lines:
@@ -1805,6 +1919,7 @@ class BuilderProjectService:
                     + "\n".join(_intent_lines))
             config["imported_repo"] = _imp_payload
         config["skip_pytest_gate"] = bool(_prd.get("skip_pytest_gate", False))
+        config["merge_strategy"] = _merge_strategy
 
         client = PipelineOrchestratorClient()
         result = await client.trigger_run(project_id, config)
@@ -2211,6 +2326,26 @@ def _run_tests_for_project(project_id: str, deploy_dir: str) -> dict:
     if deploy_dir:
         results["e2e_smoke"] = {"passed": True, "reason": "deploy_directory_exists"}
     return results
+
+
+def _parse_file_blocks(code_text: str) -> Dict[str, str]:
+    """Parse '## FILE: path\\n<content>' blocks from code_generation output (L3 merge)."""
+    if not code_text or "## FILE:" not in code_text:
+        return {}
+    blocks = re.split(r'^##\s*FILE:\s*', code_text, flags=re.MULTILINE)
+    out: Dict[str, str] = {}
+    for block in blocks[1:]:
+        lines = block.strip().split("\n", 1)
+        if len(lines) < 2:
+            continue
+        fpath = lines[0].strip()
+        fcontent = lines[1].strip()
+        if fcontent.startswith("yaml\n"):
+            fcontent = fcontent[4:]
+        fcontent = re.sub(r'^```\w*\n?', '', fcontent)
+        fcontent = re.sub(r'\n?```\s*$', '', fcontent)
+        out[fpath] = fcontent
+    return out
 
 
 def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> dict:

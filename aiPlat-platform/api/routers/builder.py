@@ -251,6 +251,27 @@ async def import_stats(_auth: str = Depends(require_builder_access)):
     return await _get_svc().get_import_stats()
 
 
+# ---- L3: incremental merge (plan-app-factory-l3) ----
+
+@router.post("/projects/{project_id}/merge-preview", response_model=StatusResponse)
+async def project_merge_preview(project_id: str, _auth: str = Depends(require_builder_access)):
+    """L3: build per-file merge previews (pipeline output vs imported originals)."""
+    return await _get_svc().merge_preview(project_id)
+
+
+@router.get("/projects/{project_id}/merge-previews", response_model=StatusResponse)
+async def project_merge_previews(project_id: str, _auth: str = Depends(require_builder_access)):
+    """L3: stored merge previews + impact analysis."""
+    return await _get_svc().list_merge_previews(project_id)
+
+
+@router.post("/projects/{project_id}/merge-apply", response_model=StatusResponse)
+async def project_merge_apply(project_id: str, body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
+    """L3: apply approved merge previews (human review gate)."""
+    decisions = body.get("decisions") or {}
+    return await _get_svc().merge_apply(project_id, decisions)
+
+
 @router.post("/projects/{project_id}/rebuild", response_model=StatusResponse)
 async def project_rebuild(project_id: str, _auth: str = Depends(require_builder_access)):
     """Re-run pipeline with existing PRD data (e.g., after editing PRD)."""

@@ -420,3 +420,19 @@ pytest -q \
   - `grep -c "ImpactAnalyzer" docs/research/plan-app-factory-l3-incremental-engine.md`（≥3：§3.3 + §5 + §6）
   - `grep -c "DiffMerger" docs/research/plan-app-factory-l3-incremental-engine.md`（≥3：§3.5 + §5 + §6）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
+
+### 1.42 L3 增量合并引擎实施（2026-08-22）
+- MUST：`aiPlat-platform/builder/merge_engine.py` 存在（ImpactAnalyzer 影响面分析 + DiffMerger diff 预览/语法/接口验证/apply_merge 快照）
+- MUST：`PipelineStageConfig` 含 `merge_strategy`（full_rewrite 默认 / incremental_merge）+ `merge_review_required`
+- MUST：merge 端点（merge-preview/merge-previews/merge-apply）+ `_L3_INCREMENT_PROMPT`（增量行为契约：逐字节一致/UNCHANGED）+ rebuild 按 merge_strategy 选 prompt
+- MUST：引擎 `_deploy_file_blocks` 剔除 `## UNCHANGED:` 标记（通用输出约定）
+- MUST：前端 Factory 含修改模式单选 + 合并审批界面（逐文件 diff/通过/驳回）
+- 自动化验收：
+  - `grep -c "merge_strategy" aiPlat-core/core/schemas_builder.py`（≥2：字段定义 + 注释）
+  - `grep -c "analyze_impact\|build_merge_preview\|apply_merge" aiPlat-platform/builder/merge_engine.py`（≥3）
+  - `grep -c "merge-preview" aiPlat-platform/api/routers/builder.py`（≥1）
+  - `grep -c "_L3_INCREMENT_PROMPT" aiPlat-platform/builder/builder_project_service.py`（≥2：定义 + 使用）
+  - `grep -c "UNCHANGED" aiPlat-core/core/harness/execution/pipeline_engine.py`（≥1）
+  - `grep -c "合并审批（L3" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
+  - `python3 -m pytest aiPlat-platform/tests/test_l3_merge_engine.py aiPlat-platform/tests/test_l3_merge_static.py -q`（17 passed）
+  - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
