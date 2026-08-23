@@ -147,7 +147,7 @@ domains:
         module: "aiPlat-platform/builder/schema_migration.py"
       - symbol: "release_engine"
         type: "module"
-        signature: "L5: versioned artifacts (releases/v{ts}/current + pointer) + release state machine (building→ready→canary→full→rolled_back) + canary/promote/rollback with append-only history"
+        signature: "L5: versioned artifacts (releases/v{ts}/current + pointer) + release state machine (building→ready→canary→full→rolled_back) + canary/promote/rollback with append-only history + v2 canary_weight routing + infra deploy via CoreFacade.deploy_app_service bridge"
         module: "aiPlat-platform/builder/release_engine.py"
     breaks: []
     consumers_expected:

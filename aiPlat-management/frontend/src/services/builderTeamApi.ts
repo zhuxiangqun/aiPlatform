@@ -417,11 +417,11 @@ export const projectApi = {
     }>(`/platform/builder/projects/${projectId}/releases`);
   },
 
-  /** L5: state transitions (canary/full/rollback). */
-  releaseTransition: async (projectId: string, version: string, action: 'canary' | 'full' | 'rollback', targetVersion?: string) => {
+  /** L5: state transitions (canary/full/rollback). canary_weight sets routing %. */
+  releaseTransition: async (projectId: string, version: string, action: 'canary' | 'full' | 'rollback', targetVersion?: string, canaryWeight?: number) => {
     return apiClient.post<{ status: string; release: Record<string, unknown> }>(
       `/platform/builder/projects/${projectId}/releases/${version}/${action}`,
-      { target_version: targetVersion || '' }
+      { target_version: targetVersion || '', canary_weight: canaryWeight || 0 }
     );
   },
 

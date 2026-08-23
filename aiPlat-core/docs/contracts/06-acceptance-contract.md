@@ -542,3 +542,14 @@ pytest -q \
   - `grep -c "发布流水线（L5）" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
   - `python3 -m pytest aiPlat-platform/tests/test_l5_release.py aiPlat-platform/tests/test_l5_release_static.py -q`（14 passed）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
+
+### 1.52 L5 v2 infra 集成 + 金丝雀权重（2026-08-23）
+- MUST：`infra_bridge.deploy_app_service`（core 桥接，standalone-safe no-op）+ `CoreFacade.deploy_app_service` re-export + platform 经 facade 调用（无 infra 直导）
+- MUST：发布记录含 `canary_weight`（0/10/50/100；canary 设权重，full 强制 100，rollback 置 0）+ canary 端点支持 canary_weight
+- 自动化验收：
+  - `grep -c "def deploy_app_service" aiPlat-core/core/harness/infrastructure/infra_bridge.py aiPlat-core/core/api/core_facade.py`（≥2）
+  - `grep -c "from core.api.core_facade import deploy_app_service" aiPlat-platform/builder/builder_project_service.py`（≥1）
+  - `grep -c "from infra" aiPlat-platform/builder/builder_project_service.py`（=0，无直导）
+  - `grep -c "canary_weight" aiPlat-platform/builder/release_engine.py`（≥4：create_release + canary/full/rollback）
+  - `python3 -m pytest aiPlat-platform/tests/test_l5_release.py aiPlat-platform/tests/test_l5_release_static.py -q`（23 passed）
+  - `python3 scripts/check_research_docs_freshness.py .`（exit 0）

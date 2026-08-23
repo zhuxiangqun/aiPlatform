@@ -373,9 +373,10 @@ async def project_list_releases(project_id: str, _auth: str = Depends(require_bu
 
 
 @router.post("/projects/{project_id}/releases/{version}/canary", response_model=StatusResponse)
-async def project_release_canary(project_id: str, version: str, _auth: str = Depends(require_builder_access)):
-    """L5: ready → canary (golden-ratio validation marker)."""
-    return await _get_svc().set_release_status(project_id, version, "canary")
+async def project_release_canary(project_id: str, version: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
+    """L5: ready → canary (golden-ratio validation marker; canary_weight sets routing %)."""
+    weight = int(body.get("canary_weight") or 0)
+    return await _get_svc().set_release_status(project_id, version, "canary", canary_weight=weight)
 
 
 @router.post("/projects/{project_id}/releases/{version}/full", response_model=StatusResponse)
