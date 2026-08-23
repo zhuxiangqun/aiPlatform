@@ -358,6 +358,45 @@ export const projectApi = {
     }>(`/platform/builder/projects/${projectId}/module-orchestrate`, { module_ids: moduleIds });
   },
 
+  // ── L4.5: DB schema migration (plan-app-factory-l45) ──
+
+  /** L4.5: schema diff (imported vs post-merge) → migration up/down preview. */
+  migrationPreview: async (projectId: string, moduleId?: string) => {
+    return apiClient.post<{
+      status: string;
+      migration: {
+        id: string; up_sql: string; down_sql: string; destructive: boolean;
+        summary: Record<string, unknown>; cross_refs: Array<Record<string, string>>;
+      } | null;
+      has_changes: boolean; destructive?: boolean; cross_refs?: Array<Record<string, string>>;
+    }>(`/platform/builder/projects/${projectId}/migration-preview`, { module_id: moduleId || 'default' });
+  },
+
+  /** L4.5: migration history + pending. */
+  listMigrations: async (projectId: string) => {
+    return apiClient.get<{
+      status: string;
+      migrations: Array<Record<string, unknown>>;
+      pending: Array<Record<string, unknown>>;
+      total_applied: number; total_pending: number;
+    }>(`/platform/builder/projects/${projectId}/migrations`);
+  },
+
+  /** L4.5: apply pending migrations (destructive requires confirmed). */
+  applyMigrations: async (projectId: string, migrationIds: string[], confirmed: boolean) => {
+    return apiClient.post<{ status: string; applied: string[] }>(
+      `/platform/builder/projects/${projectId}/migrations/apply`,
+      { migration_ids: migrationIds, confirmed }
+    );
+  },
+
+  /** L4.5: apply down script + mark rolled_back. */
+  rollbackMigration: async (projectId: string, migrationId: string) => {
+    return apiClient.post<{ status: string; migration_id: string; down_sql: string }>(
+      `/platform/builder/projects/${projectId}/migrations/${migrationId}/rollback`
+    );
+  },
+
   /** Re-run pipeline with existing PRD (e.g., after editing PRD). */
   rebuild: async (projectId: string) => {
     return apiClient.post<{ status: string; detail: string }>(

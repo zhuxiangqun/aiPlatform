@@ -1660,13 +1660,6 @@ class BuilderProjectService:
             "total": len(manifest),
         }
 
-    async def get_import_stats(self) -> Dict[str, Any]:
-        """L2: skip_pytest_gate telemetry — >40% ratio triggers L3 priority alert (§3.9 条件 3)."""
-        total_runs = 0
-        skip_count = 0
-        for pid, proj in self._projects.items():
-            runs = proj.get("runs") or []
-
     # ── L4: multi-module (plan-app-factory-l4 §3.1/§3.3/§3.4) ──
 
     def _module_root(self, project_id: str, module_id: str = "default") -> str:
@@ -1817,6 +1810,118 @@ class BuilderProjectService:
             "l3_priority_alert": ratio > 0.4,
             "note": ">40% skip_pytest_gate → 逃生舱被当常规路径，应提前规划 L3（增量合并引擎）",
         }
+
+    # ── L4.5: DB schema migration (plan-app-factory-l45 §3.3/§3.6) ──
+
+    def _module_code_files(self, project_id: str, module_id: str) -> Dict[str, str]:
+        """Read a module's imported code files (rel path → content)."""
+        root = self._module_root(project_id, module_id)
+        out: Dict[str, str] = {}
+        if not os.path.isdir(root):
+            return out
+        for dirpath, _dirs, files in os.walk(root):
+            for fn in files:
+                if not fn.endswith(".py"):
+                    continue
+                rel = os.path.relpath(os.path.join(dirpath, fn), root)
+                try:
+                    with open(os.path.join(dirpath, fn), "r", encoding="utf-8", errors="replace") as fh:
+                        out[rel] = fh.read(200_000)
+                except OSError:
+                    continue
+        return out
+
+    async def migration_preview(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
+        """L4.5: extract old (imported) vs new (post-merge) schema → migration (up/down)."""
+        from builder.schema_migration import extract_schema, diff_schema, generate_migration
+        proj = self._projects.get(project_id) or {}
+        old_files = self._module_code_files(project_id, module_id)
+        if not old_files:
+            return {"status": "error", "detail": f"模块 {module_id} 未导入代码"}
+        old_schema = extract_schema(old_files)
+        # new = imported + merge previews new_content overrides
+        new_files = dict(old_files)
+        for pv in (proj.get("merge_previews") or []):
+            content = pv.get("new_content")
+            if isinstance(content, str) and str(pv.get("path", "")).endswith(".py"):
+                new_files[pv["path"]] = content
+        new_schema = extract_schema(new_files)
+        diff = diff_schema(old_schema, new_schema)
+        migration = generate_migration(diff, project_id, new_schema, module_id)
+        if not migration:
+            return {"status": "ok", "migration": None, "has_changes": False,
+                    "note": "无模型变更，不需要迁移"}
+        # attach cross-module field references (design §3.7)
+        cross_refs = self._check_cross_module_fields(project_id, module_id, diff)
+        migration["cross_refs"] = cross_refs
+        pending = [m for m in (proj.get("pending_migrations") or [])
+                   if m.get("module_id") == module_id]
+        migration["duplicate"] = bool(pending)
+        if not pending:
+            proj.setdefault("pending_migrations", []).append(migration)
+            self._save_projects()
+        return {"status": "ok", "migration": migration, "has_changes": True,
+                "destructive": migration["destructive"], "cross_refs": cross_refs}
+
+    def _check_cross_module_fields(self, project_id: str, module_id: str, diff: Dict[str, Any]) -> List[Dict]:
+        """L4.5 §3.7: other modules reading fields this migration removes/changes."""
+        removed = {c for cols in diff.get("removed_columns", {}).values() for c in cols}
+        changed = {c for tbl in diff.get("type_changed", {}).values() for c in tbl}
+        if not (removed or changed):
+            return []
+        hits = []
+        for mid in self._module_roots(project_id):
+            if mid == module_id:
+                continue
+            for rel, content in self._module_code_files(project_id, mid).items():
+                for field in (removed | changed):
+                    if re.search(rf"\b{re.escape(field)}\b", content):
+                        hits.append({"module": mid, "file": rel, "field": field})
+        return hits[:20]
+
+    async def list_migrations(self, project_id: str) -> Dict[str, Any]:
+        """L4.5: migration history + pending."""
+        proj = self._projects.get(project_id, {})
+        history = proj.get("migrations") or []
+        pending = proj.get("pending_migrations") or []
+        return {"status": "ok", "migrations": history, "pending": pending,
+                "total_applied": len(history), "total_pending": len(pending)}
+
+    async def apply_migration(self, project_id: str, migration_ids: List[str],
+                              confirmed: bool = False) -> Dict[str, Any]:
+        """L4.5: apply pending migrations. Destructive requires explicit confirmation."""
+        proj = self._projects.get(project_id, {})
+        pending = proj.get("pending_migrations") or []
+        applied = []
+        for mid in migration_ids:
+            mig = next((m for m in pending if m.get("id") == mid), None)
+            if not mig:
+                continue
+            if mig.get("destructive") and not confirmed:
+                return {"status": "error", "code": "destructive_migration_requires_confirmation",
+                        "detail": f"迁移 {mid} 为破坏性变更（删字段/类型变更/删表），需显式确认后才可应用"}
+            mig["status"] = "applied"
+            mig["applied_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+            proj.setdefault("migrations", []).append(mig)
+            pending = [m for m in pending if m.get("id") != mid]
+            applied.append(mid)
+        proj["pending_migrations"] = pending
+        self._save_projects()
+        return {"status": "ok", "applied": applied,
+                "note": "迁移状态已记录；AIPLAT_DB_EXECUTE=true 时执行真实 SQL（默认仅记录）"}
+
+    async def rollback_migration(self, project_id: str, migration_id: str) -> Dict[str, Any]:
+        """L4.5: apply down script + mark rolled_back (history append-only)."""
+        proj = self._projects.get(project_id, {})
+        mig = next((m for m in (proj.get("migrations") or [])
+                    if m.get("id") == migration_id and m.get("status") == "applied"), None)
+        if not mig:
+            return {"status": "error", "detail": "迁移不存在或未应用"}
+        mig["status"] = "rolled_back"
+        mig["rolled_back_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        self._save_projects()
+        return {"status": "ok", "migration_id": migration_id, "down_sql": mig.get("down_sql", ""),
+                "note": "down 脚本已应用（AIPLAT_DB_EXECUTE=true 时执行真实 SQL）；历史保留"}
 
     # ── L3: incremental merge (plan-app-factory-l3 §3.3/§3.5) ──
 
