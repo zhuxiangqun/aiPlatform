@@ -1015,6 +1015,32 @@ class PolicyGate:
 
             logging.debug(str(e), exc_info=True)
 
+            # Security audit (安全体系审计报告 §4.1 方案 B): skill-permission
+            # resolver degraded → fail-open (deny rule skipped). Record a
+            # security_degraded event so the bypass is traceable; behaviour
+            # unchanged (decision falls through to subsequent checks).
+            try:
+                from core.services.execution_store import get_execution_store
+
+                _store = get_execution_store()
+                if _store is not None and hasattr(_store, "add_audit_log"):
+                    await _store.add_audit_log(
+                        action="security_degraded",
+                        kind="skill_permission_resolver_unavailable",
+                        status="warn",
+                        tenant_id=str(tenant_id) if tenant_id else None,
+                        actor_id=user_id or None,
+                        resource_type="tool",
+                        resource_id=str(tool_name or "")[:80],
+                        detail={
+                            "skill": str(locals().get("sname") or "")[:120],
+                            "error": str(e)[:200],
+                            "note": "fail-open: skill deny/ask rule skipped (policy infra unavailable)",
+                        },
+                    )
+            except Exception:
+                pass  # noqa: cleanup-best-effort — audit is best-effort
+
         try:
 
             runtime = get_kernel_runtime()
