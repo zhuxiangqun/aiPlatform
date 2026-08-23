@@ -564,3 +564,15 @@ pytest -q \
   - `grep -c "安全降级审计事件" aiPlat-core/docs/contracts/01-architecture-contract.md`（≥1：附录 B 登记）
   - `grep -c "security_degraded" aiPlat-core/core/tests/unit/test_gates/test_policy_gate_skill_load_permissions.py`（≥1：test_security_degraded_audit_wired）
   - `python3 -m pytest aiPlat-core/core/tests/unit/test_gates/test_policy_gate_skill_load_permissions.py -q`（3 passed，需可写 AIPLAT_HOME）
+
+### 1.54 G6 CC/Codex hooks 协议桥（2026-08-23）
+- MUST：`cc_bridge.py` 存在——`load_hooks_json`（CC 嵌套 `{"hooks":{Event:[...]}}` + Codex 数组 `[{hook_event_name, command}]` 双格式解析，非 command handler 跳过）+ `CCHookBridge`（command handler 执行器：shell=False shlex 拆词、超时、stdout/stderr 捕获、结构化结果）+ `register_cc_hooks`/`load_cc_hooks_if_configured`
+- MUST：`cc_bridge_rules.py` 数据驱动映射表（CC 7/30 + Codex 4/10 事件→HookPhase）；unmapped 事件 fail-open 不静默执行
+- MUST：`HookManager.__init__` 配置存在时装载（`~/.aiplat/hooks.json` / `AIPLAT_CC_HOOKS_PATH`，默认关）；command not found/timeout 不抛（fail-open）
+- 契约登记：边界契约 `01-architecture-contract.md` 附录 B（G6 条目）+ run spec 五十三轮
+- 自动化验收：
+  - `grep -c "def load_hooks_json\|def register_cc_hooks\|def load_cc_hooks_if_configured\|class CCHookBridge" aiPlat-core/core/harness/infrastructure/hooks/cc_bridge.py`（≥4）
+  - `grep -c "load_cc_hooks_if_configured" aiPlat-core/core/harness/infrastructure/hooks/hook_manager.py`（≥1：生产接线）
+  - `grep -c "SessionStart\|PreToolUse\|PostToolUse\|SessionEnd" aiPlat-core/core/harness/infrastructure/hooks/cc_bridge_rules.py`（≥4：映射表）
+  - `grep -c "G6 CC/Codex hooks 协议桥" aiPlat-core/docs/contracts/01-architecture-contract.md`（≥1：附录 B 登记）
+  - `python3 -m pytest aiPlat-core/core/tests/unit/test_harness/test_cc_hooks_bridge.py -q`（15 passed）
