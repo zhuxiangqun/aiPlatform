@@ -1,6 +1,6 @@
 # L3 设计：增量 diff 合并引擎（从 L2"整文件重写"→"只改受影响文件 + 可审批合并"）
 
-> **状态**：设计文档（2026-08-22，待评审）
+> **状态**：✅ **已实施**（2026-08-23，PR #83 合并；实施落地记录见 §10，与设计的差异已标注）
 > **目标**：把 L2 的"重写而非合并"升级为"**限定范围的 AI 修改 + 机器 diff + 人工审批合并**"——彻底解决评审指出的"重写语义黑箱"残余风险（L2 设计文档 §8 风险 5/7/8）。
 > **关联**：《plan-app-factory-l2-import-repo.md》§7（L3 = "只重生成受影响文件 + diff 合并"）+ 埋点阈值（skip_pytest_gate >40% 触发 L3 优先级）。
 
@@ -212,3 +212,34 @@ def apply_merge(project_id, previews, original_root, deploy_dir) -> dict:
 | prev 快照模式 | 扩展为 `deploy.prev`（merge 前） |
 | Build Log regenerated 警告 | 升级为 `Merged N files (incremental_merge)` 记录 |
 | 前端勾选/意图/手册弹窗 | 加"修改模式"单选 + 影响面展示 + 合并审批界面 |
+
+---
+
+## 10. 实施落地记录（2026-08-23，PR #83）
+
+### 10.1 落地范围（验收 10 项全部通过）
+
+| 模块 | 落地位置 | 状态 |
+|---|---|---|
+| ImpactAnalyzer（影响面分析 + 叶子模块名 fallback） | `aiPlat-platform/builder/merge_engine.py` | ✅ |
+| DiffMerger（diff 预览/语法/接口 AST/apply 快照/imported 基线） | 同文件 | ✅ |
+| merge-preview / merge-previews / merge-apply 端点 | `aiPlat-platform/api/routers/builder.py` | ✅ |
+| 增量行为契约（_L3_INCREMENT_PROMPT）+ rebuild 按策略选 prompt | `builder_project_service.py` | ✅ |
+| PipelineStageConfig.merge_strategy + merge_review_required | `aiPlat-core/core/schemas_builder.py` | ✅ |
+| 引擎剔除 `## UNCHANGED:` 标记 | `pipeline_engine.py` `_deploy_file_blocks` | ✅ |
+| 前端修改模式单选 + 逐文件 diff 审批界面 | `Factory/index.tsx` + `builderTeamApi.ts` | ✅ |
+
+### 10.2 与设计的差异（代码优先原则标注）
+
+| 设计（§） | 实际实现 | 说明 |
+|---|---|---|
+| §3.3 影响面"Python 一阶 import 引用" | 增补**叶子模块名 fallback**：`import user` 在完整模块 key 匹配失败时，用最后一段（如 "user"）匹配唯一文件 | 覆盖裸模块 import 常见写法 |
+| §3.5 apply_merge | 以 **imported/ 全量复制为部署基线**，再用通过审批的新版本覆盖受影响文件 | 保证部署目录完整（UNCHANGED 文件从原件保留），不依赖 deploy_to_app 的 FILE 块解析 |
+| §3.2 merge_strategy 作为 stage 字段 | 字段保留在 PipelineStageConfig（配置载体），但**实际选择由 platform 侧 `confirmed_prd.merge_strategy` 驱动**（rebuild 时选 prompt），引擎不做策略分叉 | 更符合最小改动面 + 项目级选择语义；stage 字段为将来按 stage 覆盖预留 |
+| §3.6 接口检测"Python AST" | `_extract_signatures` 提取函数/类/**路由装饰器路径**（`@router.get("/x")`），缺失即阻断 | 路由路径也纳入接口保护 |
+
+### 10.3 验证
+
+- 测试：`test_l3_merge_engine.py`（动态 10）+ `test_l3_merge_static.py`（静态 7）= **17 passed**（与 L2 34 + freshness 8 合计 59）
+- 架构守卫 exit 0 + engine guard clean（无新 state key）+ 前端 tsc/build + Rule 6 全绿
+- contracts：acceptance 1.42 + 鉴权规范 §13 + run spec 五十轮 + boundary + capability 登记
