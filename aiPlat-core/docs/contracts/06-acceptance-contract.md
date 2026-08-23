@@ -519,3 +519,13 @@ pytest -q \
   - `grep -c "数据库迁移（L4.5）" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
   - `python3 -m pytest aiPlat-platform/tests/test_l45_migration.py aiPlat-platform/tests/test_l45_migration_static.py -q`（18 passed）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
+
+### 1.50 L5 模块级 CI/CD 与灰度发布设计文档（2026-08-23）
+- MUST：`docs/research/plan-app-factory-l5-cicd.md` 存在（L5 设计：版本化产物/发布状态机（building/ready/canary/full/rolled_back）/金丝雀灰度/回滚/验收 8 项/约 3 天）
+- MUST：设计文档含发布状态机定义（§3.2）+ 与 infra deploy_service 衔接（§3.6）+ 与 L2/L3/L4/L4.5 衔接清单（§9）
+- 自动化验收：
+  - `ls docs/research/plan-app-factory-l5-cicd.md`（存在）
+  - `grep -c "canary" docs/research/plan-app-factory-l5-cicd.md`（≥5：§3.2 状态机 + §3.5 + §5 + §7 + §9）
+  - `grep -c "rolled_back" docs/research/plan-app-factory-l5-cicd.md`（≥3：§3.2 + §3.5 + §5）
+  - `grep -c "releases/v" docs/research/plan-app-factory-l5-cicd.md`（≥2：§3.1 + §3.4）
+  - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
