@@ -133,6 +133,10 @@ domains:
         type: "behavior"
         signature: "L2: inject_imported_context stage flag → append imported manifest/referenced-file full text/behavior block; skip_pytest_gate short-circuit on test_execution_mode=pytest"
         module: "core/harness/execution/pipeline_engine.py"
+      - symbol: "merge_engine"
+        type: "module"
+        signature: "L3: ImpactAnalyzer (affected-file set via Python first-order imports) + DiffMerger (unified-diff preview, syntax/interface checks, apply with deploy.prev snapshot)"
+        module: "aiPlat-platform/builder/merge_engine.py"
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"

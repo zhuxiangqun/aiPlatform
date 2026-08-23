@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1068
+total_capabilities: 1069
 last_updated: 2026-08-19
 version: "30.1"
 auto_sync: true
@@ -1634,6 +1634,7 @@ scan_hash: 8f9548ec24f4
 | Video Retrieval | platform/kb/intelligence/video_retrieval.py | ✅ | 时间索引视频内容检索 + 转录对齐 | 已合入 |
 | Builder Project Service | platform/builder/builder_project_service.py | ✅ | 全功能应用项目CRUD + 双模式自动路由（agent→配置/code→代码，team_planner mode 判断）+ pass_rate 来源标注（real_pytest/estimated） | 已合入 |
 | L2 导入既有代码 | platform/builder/builder_project_service.py + core/harness/execution/pipeline_engine.py | ✅ | import-repo API（zip/路径→manifest→_final_state.imported_repo，zip-slip 防护/密钥过滤/50MB·500文件·2MB 限额/has_tests/missing_deps）+ prompt 注入（行为契约"重写而非合并"+ {path,intent} 意图锚点 + 被引用文件全文）+ skip_pytest_gate 逃生（estimated + 原因）+ Build Log regenerated 警告 + 埋点（>40% 触发 L3 告警） | 已合入 |
+| L3 增量合并引擎 | platform/builder/merge_engine.py + core/harness/execution/pipeline_engine.py | ✅ | merge_strategy（full_rewrite/incremental_merge）+ ImpactAnalyzer 影响面分析（Python 一阶 import）+ DiffMerger（unified diff 预览/语法 py_compile/接口 AST 验证/apply 前 deploy.prev 快照）+ 增量行为契约（逐字节一致/UNCHANGED）+ 前端逐文件 diff 审批（通过/驳回） | 已合入 |
 | 租户自助入驻 | [API] — register/verify-email | ✅ | 注册→邮箱验证→激活→返回API Key | 已合入 |
 | 租户自助门户 | [API] — tenant/* | ✅ | 仪表板/API Key管理/用量/计费面板 | 已合入 |
 | 运营大盘 | [API] — ops/overview | ✅ | 跨租户聚合：租户数/Token/活跃度，platform_admin only | 已合入 |
@@ -1981,7 +1982,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 67 | 0 | 67 |
+| Harness 执行引擎 | 68 | 0 | 68 |
 | 记忆子系统 | 38 | 0 | 38 |
 | 知识引擎（本体） | 145 | 0 | 145 |
 | RAG 检索 | 42 | 0 | 42 |
@@ -2026,7 +2027,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1068** | **0** | **1068** |
+| **总计** | **1069** | **0** | **1069** |
 
 ---
 

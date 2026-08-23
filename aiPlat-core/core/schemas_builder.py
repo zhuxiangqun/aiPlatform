@@ -268,6 +268,11 @@ class PipelineStageConfig(BaseModel):
     # declare it needs imported-repo context; engine reads state.imported_repo and
     # appends referenced-file full text + manifest + behavior prompt block).
     inject_imported_context: bool = False
+    # L3 — merge strategy for imported-code modification (plan-app-factory-l3):
+    # "full_rewrite" = L2 behavior (rewrite whole file, behavior contract prompt)
+    # "incremental_merge" = only affected files, diff preview + human merge approval
+    merge_strategy: str = "full_rewrite"
+    merge_review_required: bool = False   # incremental_merge forces this (approval gate)
     # Phase 11 — config-driven post-execution (replaces hardcoded business logic in engine)
     chain_skill_after: str = ""          # Auto-execute another skill after this stage completes
     deploy_files_to_disk: bool = False   # Parse ## FILE: blocks from output, write to project dir
