@@ -61,3 +61,41 @@ class TestL3EngineUnchanged:
         content = PIPELINE_ENGINE.read_text()
         assert "UNCHANGED" in content
         assert "_re.sub(r'^#{2,4}\\s*UNCHANGED:" in content
+
+
+class TestL3P0Patches:
+    """L3 评审 P0 暗坑补丁（原子审批/哈希锁/AST 阻断）。"""
+
+    def test_atomic_gate_message(self):
+        content = BUILDER_SERVICE.read_text()
+        assert "必须审批全部文件（原子化）" in content
+        assert "atomic_approval_required" in content
+
+    def test_atomic_gate_in_engine(self):
+        content = MERGE_ENGINE.read_text()
+        assert "P0-01 atomic gate" in content
+        assert "missing_approval" in content
+
+    def test_snapshot_functions(self):
+        content = MERGE_ENGINE.read_text()
+        assert "def snapshot_affected_files" in content
+        assert "def verify_snapshot" in content
+
+    def test_rebuild_takes_snapshot(self):
+        content = BUILDER_SERVICE.read_text()
+        assert "pre_gen_snapshot" in content
+        assert "snapshot_affected_files" in content
+
+    def test_concurrent_modification_code(self):
+        content = BUILDER_SERVICE.read_text()
+        assert "concurrent_modification" in content
+        assert "生成期间已被外部修改" in content
+
+    def test_analyze_impact_endpoint(self):
+        content = BUILDER_ROUTER.read_text()
+        assert "analyze-impact" in content
+
+    def test_hunk_categorization(self):
+        content = MERGE_ENGINE.read_text()
+        assert "def _categorize_hunk" in content
+        assert "formatting" in content and "logic" in content

@@ -155,6 +155,23 @@ def _group_hunks(diff_lines: List[str]) -> List[Dict[str, Any]]:
     return hunks
 
 
+def _categorize_hunk(hunk_lines: List[str]) -> str:
+    """L3-P1-04: classify a hunk as 'formatting' vs 'logic'.
+
+    A hunk is formatting when the set of added lines equals the set of removed
+    lines after stripping all whitespace — i.e. only spacing/blank lines changed.
+    Any non-whitespace content difference → 'logic'."""
+    added = [re.sub(r"\s+", "", l[1:]) for l in hunk_lines
+             if l.startswith("+") and not l.startswith("+++") and l[1:].strip()]
+    removed = [re.sub(r"\s+", "", l[1:]) for l in hunk_lines
+               if l.startswith("-") and not l.startswith("---") and l[1:].strip()]
+    has_change = any(l.startswith(("+", "-")) and not l.startswith(("+++", "---"))
+                     for l in hunk_lines)
+    if has_change and added == removed:
+        return "formatting"
+    return "logic"
+
+
 def build_merge_preview(original: str, new: str, path: str) -> Dict[str, Any]:
     """New-vs-original unified diff → preview (three-way: base=imported original)."""
     diff_lines = list(difflib.unified_diff(
@@ -164,11 +181,16 @@ def build_merge_preview(original: str, new: str, path: str) -> Dict[str, Any]:
     changed = sum(1 for l in diff_lines
                   if l.startswith(("+", "-")) and not l.startswith(("+++", "---")))
     unchanged = max(len(original.splitlines()) - changed, 0)
+    hunks = _group_hunks(diff_lines)
+    for h in hunks:
+        h["category"] = _categorize_hunk(h.get("lines") or [])
+    logic_changes = sum(1 for h in hunks if h.get("category") == "logic")
     return {
         "path": path,
         "changed_lines": changed,
         "unchanged_lines": unchanged,
-        "hunks": _group_hunks(diff_lines),
+        "logic_changes": logic_changes,
+        "hunks": hunks,
         "diff_text": "".join(diff_lines),
         "has_changes": changed > 0,
     }
@@ -225,15 +247,66 @@ def verify_interface_preserved(original: str, new: str, path: str) -> Dict[str, 
     }
 
 
+def snapshot_affected_files(import_root: str, paths: List[str]) -> Dict[str, str]:
+    """L3-P0-02: sha256 snapshot of affected imported files before generation."""
+    snap: Dict[str, str] = {}
+    for rel in paths:
+        full = os.path.join(import_root, rel)
+        if os.path.isfile(full):
+            try:
+                with open(full, "rb") as fh:
+                    snap[rel] = _sha256(fh.read())
+            except OSError:
+                continue
+    return snap
+
+
+def verify_snapshot(import_root: str, snapshot: Dict[str, str]) -> Tuple[bool, List[str]]:
+    """L3-P0-02: verify imported files still match the pre-generation snapshot."""
+    changed = []
+    for rel, old_hash in (snapshot or {}).items():
+        full = os.path.join(import_root, rel)
+        if not os.path.isfile(full):
+            changed.append(rel)
+            continue
+        try:
+            with open(full, "rb") as fh:
+                new_hash = _sha256(fh.read())
+            if new_hash != old_hash:
+                changed.append(rel)
+        except OSError:
+            changed.append(rel)
+    return (not changed, changed)
+
+
+def _sha256(data: bytes) -> str:
+    import hashlib
+    return hashlib.sha256(data).hexdigest()
+
+
 def apply_merge(project_id: str, import_root: str, deploy_dir: str,
                 previews: List[Dict], decisions: Dict[str, str]) -> Dict[str, Any]:
     """Apply approved previews: write new versions to deploy_dir, copy the rest
     of the imported originals as baseline, snapshot deploy_dir to deploy.prev first.
 
-    decisions: {path: "approved" | "rejected"} — rejected files fall back to the
-    imported original (no change applied).
+    L3-P0-01: atomic approval — every preview path MUST be "approved", otherwise
+    the merge is refused (rejected = regenerate, never partial apply).
+
+    decisions: {path: "approved"} only; any missing/rejected path → ValueError.
     """
     os.makedirs(deploy_dir, exist_ok=True)
+
+    # ── P0-01 atomic gate: all previews must be approved ──
+    preview_paths = [p.get("path", "") for p in previews if isinstance(p, dict) and p.get("path")]
+    if not preview_paths:
+        raise ValueError("没有合并预览，无法应用。请先运行 merge-preview。")
+    missing_approval = [p for p in preview_paths if (decisions or {}).get(p) != "approved"]
+    if missing_approval:
+        raise ValueError(
+            "必须审批全部文件（原子化）：未通过的文件："
+            + "、".join(missing_approval[:10])
+            + "。请驳回并重新生成，或修改为通过后再应用。")
+
     # 1) Snapshot current deploy dir before merge (design §3.7)
     prev = os.path.join(os.path.dirname(deploy_dir), "deploy.prev")
     if os.path.isdir(deploy_dir) and any(os.scandir(deploy_dir)):
@@ -251,17 +324,12 @@ def apply_merge(project_id: str, import_root: str, deploy_dir: str,
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
                 shutil.copy2(src, dst)
 
-    # 3) Apply approved new versions
-    applied, rejected, failed = [], [], []
-    by_path = {p.get("path", ""): p for p in previews if isinstance(p, dict) and p.get("path")}
-    for path, verdict in (decisions or {}).items():
-        preview = by_path.get(path)
-        if not preview:
-            continue
-        if verdict != "approved":
-            rejected.append(path)
-            continue
-        new_content = preview.get("new_content", "")
+    # 3) Apply approved new versions (all are approved by the gate above)
+    applied: List[str] = []
+    failed: List[Dict[str, Any]] = []
+    for pv in previews:
+        path = pv.get("path", "")
+        new_content = pv.get("new_content", "")
         dst = os.path.join(deploy_dir, path)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         try:
@@ -275,7 +343,7 @@ def apply_merge(project_id: str, import_root: str, deploy_dir: str,
         "status": "ok",
         "project_id": project_id,
         "applied": applied,
-        "rejected": rejected,
+        "rejected": [],
         "failed": failed,
         "merged_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "warnings": [

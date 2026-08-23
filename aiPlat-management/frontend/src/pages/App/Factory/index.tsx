@@ -425,6 +425,11 @@ const ProjectPanel: React.FC<{
   const [showMergeReview, setShowMergeReview] = useState(false);
   const [buildingPreview, setBuildingPreview] = useState(false);
   const [applyingMerge, setApplyingMerge] = useState(false);
+  // P1-04/05: formatting-fold + impact-analysis confirmation
+  const [showFormatting, setShowFormatting] = useState(false);
+  const [impactAnalysis, setImpactAnalysis] = useState<{
+    auto_added: string[]; analysis: Record<string, string[]>;
+  } | null>(null);
 
   // Check for PRD on mount (may have been generated in a previous session)
   useEffect(() => {
@@ -478,6 +483,22 @@ const ProjectPanel: React.FC<{
       setRegeneratedWarnings(latest.regenerated_warnings);
     }
   }, [runHistory]);
+
+  // ── L3-P1-05: impact analysis while selecting files (auto-added with reasons) ──
+  useEffect(() => {
+    if (!project?.project_id || !importedFiles.length) return;
+    const checked = importedFiles
+      .filter(f => (selectedIntents[f.path] || '').trim())
+      .map(f => ({ path: f.path, intent: (selectedIntents[f.path] || '').trim() }));
+    if (!checked.length) { setImpactAnalysis(null); return; }
+    const t = setTimeout(async () => {
+      try {
+        const r = await projectApi.analyzeImpact(project.project_id, checked) as any;
+        setImpactAnalysis(r?.impact || null);
+      } catch { /* ignore */ }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [selectedIntents, importedFiles, project.project_id]);
 
   // ── Poll pipeline state during execution ──
   useEffect(() => {
@@ -903,13 +924,18 @@ const ProjectPanel: React.FC<{
 
   const handleApplyMerge = async () => {
     if (!project.project_id) return;
-    const approved = mergePreviews.filter(p => mergeDecisions[p.path] === 'approved');
-    if (!approved.length) { toast.error('请至少通过一个文件'); return; }
+    const allApproved = mergePreviews.length > 0 &&
+      mergePreviews.every(p => mergeDecisions[p.path] === 'approved');
+    if (!allApproved) {
+      // P0-01: atomic approval — rejected → regenerate, never partial apply
+      toast.error('必须审批全部文件（原子化）。请驳回并重新生成，或修改为通过后再应用。');
+      return;
+    }
     setApplyingMerge(true);
     try {
       const r = await projectApi.mergeApply(project.project_id, mergeDecisions) as any;
       if (r?.status === 'ok') {
-        toast.success(`已应用 ${r.applied?.length || 0} 个文件（驳回 ${r.rejected?.length || 0}）`);
+        toast.success(`已应用 ${r.applied?.length || 0} 个文件`);
         if (r.warnings?.length) setRegeneratedWarnings(r.warnings);
         setShowMergeReview(false);
         setMergePreviews([]);
@@ -918,6 +944,20 @@ const ProjectPanel: React.FC<{
       }
     } catch (e: any) { toastGateError(e, '应用合并失败'); }
     setApplyingMerge(false);
+  };
+
+  // P0-01: rejected → regenerate whole affected set (rule is explicit in UI)
+  const handleRegenerateAfterReject = async () => {
+    if (!project.project_id) return;
+    if (!confirm('将基于全部受影响文件重新生成（被驳回的文件不会再应用）。确定？')) return;
+    try {
+      setShowMergeReview(false);
+      await projectApi.rebuild(project.project_id);
+      try {
+        const st = await projectApi.getState(project.project_id) as any;
+        await _refreshFromState((st as any)?.state);
+      } catch { window.location.reload(); }
+    } catch (e: any) { toastGateError(e, '重新生成失败'); }
   };
 
   const handleEditStage = (stageKey: string, currentRaw: any) => {
@@ -1455,6 +1495,39 @@ const ProjectPanel: React.FC<{
                   ))}
                 </div>
               )}
+              {/* L3-P1-05: 影响面分析（自动加入文件 + 原因 + 取消二次确认） */}
+              {impactAnalysis?.auto_added?.length > 0 && (
+                <div className="p-2 rounded bg-purple-500/10 border border-purple-500/30 space-y-1">
+                  <div className="text-[10px] text-purple-200">
+                    影响面分析：{impactAnalysis.auto_added.length} 个文件被自动加入
+                  </div>
+                  {impactAnalysis.auto_added.map(f => {
+                    const reason = (() => {
+                      for (const [main, rels] of Object.entries(impactAnalysis.analysis || {})) {
+                        if ((rels as string[]).includes(f)) return `被 ${main} 引用`;
+                      }
+                      return 'import 关联';
+                    })();
+                    return (
+                      <div key={f} className="flex items-center gap-1.5 text-[10px]">
+                        <span className="font-mono text-purple-200/90">{f}</span>
+                        <span className="text-gray-500">（{reason}）</span>
+                        {!selectedIntents[f]?.trim() && (
+                          <button
+                            className="ml-auto text-red-300 hover:text-red-200 underline"
+                            onClick={() => {
+                              if (window.confirm(`取消修改 ${f} 可能导致新代码调用失败（${reason}）。确认取消？`)) {
+                                setSelectedIntents(prev => ({ ...prev, [f]: '' }));
+                              }
+                            }}>
+                            取消加入
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
               {/* 测试门禁逃生（§3.8）：无 tests/ 时才展示 */}
               {importMeta && !importMeta.has_tests && importedFiles.length > 0 && (
                 <label className="flex items-center gap-1.5 text-[10px] text-gray-300 cursor-pointer">
@@ -1864,6 +1937,14 @@ const ProjectPanel: React.FC<{
                 const blocked = !syntaxOk || !interfaceOk;
                 return (
                   <div key={pv.path} className={`rounded border p-2 ${blocked ? 'border-red-500/50 bg-red-500/5' : approved ? 'border-green-500/40 bg-green-500/5' : rejected ? 'border-gray-600 bg-dark-hover' : 'border-dark-border'}`}>
+                    {/* P0-03: 确定性门禁阻断横幅 */}
+                    {blocked && (
+                      <div className="mb-1.5 p-1.5 rounded bg-red-500/15 border border-red-500/50 text-[10px] text-red-300">
+                        ⛔ 确定性门禁阻断：{!syntaxOk ? `语法错误（${pv.syntax?.error}）` : ''}
+                        {!interfaceOk ? `对外接口缺失（${(pv.interface?.missing || []).join(', ')}）` : ''}
+                        — 该文件禁止通过，只能驳回
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-mono text-[11px] text-gray-200">{pv.path}</span>
                       <span className="text-[10px] text-gray-500">
@@ -1887,29 +1968,45 @@ const ProjectPanel: React.FC<{
                         </Button>
                       </div>
                     </div>
-                    {/* diff 内容 */}
+                    {/* diff 内容 — P1-04: formatting hunks folded by default */}
                     <pre className="mt-1.5 max-h-44 overflow-auto bg-black/40 rounded p-2 text-[10px] font-mono leading-tight">
-                      {(pv.hunks || []).map((h: any, i: number) => (
+                      {(pv.hunks || []).filter((h: any) => showFormatting || h.category !== 'formatting').map((h: any, i: number) => (
                         <div key={i}>
-                          <div className="text-blue-400">{h.header}</div>
+                          <div className={`${h.category === 'formatting' ? 'text-gray-500 italic' : 'text-blue-400'}`}>
+                            {h.header}{h.category === 'formatting' ? '（格式噪音）' : ''}
+                          </div>
                           {h.lines.map((l: string, j: number) => (
                             <div key={j} className={l.startsWith('+') ? 'text-green-400' : l.startsWith('-') ? 'text-red-400' : 'text-gray-500'}>{l}</div>
                           ))}
                         </div>
                       ))}
                       {!pv.hunks?.length && <div className="text-gray-600">（无 diff 内容）</div>}
+                      {pv.logic_changes === 0 && pv.changed_lines > 0 && (
+                        <div className="text-gray-600 mt-1">仅格式变动（空格/缩进/空行）</div>
+                      )}
                     </pre>
                   </div>
                 );
               })}
             </div>
             {mergePreviews.length > 0 && (
-              <div className="flex gap-2 pt-2 border-t border-dark-border">
-                <Button variant="primary" size="sm" onClick={handleApplyMerge} loading={applyingMerge}>
-                  应用已通过的文件（{mergePreviews.filter(p => mergeDecisions[p.path] === 'approved').length}）
-                </Button>
+              <div className="flex gap-2 pt-2 border-t border-dark-border items-center">
+                <label className="flex items-center gap-1 text-[10px] text-gray-400 cursor-pointer">
+                  <input type="checkbox" checked={showFormatting} onChange={e => setShowFormatting(e.target.checked)} />
+                  显示格式噪音
+                </label>
+                {mergePreviews.some(p => mergeDecisions[p.path] === 'rejected') ? (
+                  <Button variant="secondary" size="sm" onClick={handleRegenerateAfterReject}>
+                    ♻️ 驳回文件需重新生成（全部文件）
+                  </Button>
+                ) : (
+                  <Button variant="primary" size="sm" onClick={handleApplyMerge} loading={applyingMerge}
+                    disabled={!mergePreviews.every(p => mergeDecisions[p.path] === 'approved')}>
+                    应用合并（{mergePreviews.filter(p => mergeDecisions[p.path] === 'approved').length}/{mergePreviews.length} 已通过）
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" onClick={() => { setMergeDecisions({}); setShowMergeReview(false); }}>取消</Button>
-                <span className="ml-auto text-[10px] text-gray-500">未通过的文件将保留 imported/ 原件</span>
+                <span className="ml-auto text-[10px] text-gray-500">原子化：全部通过才应用；驳回 → 重新生成</span>
               </div>
             )}
           </div>

@@ -272,6 +272,13 @@ async def project_merge_apply(project_id: str, body: Dict[str, Any], _auth: str 
     return await _get_svc().merge_apply(project_id, decisions)
 
 
+@router.post("/projects/{project_id}/analyze-impact", response_model=StatusResponse)
+async def project_analyze_impact(project_id: str, body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
+    """L3-P1-05: impact analysis on demand (auto-added files with reasons)."""
+    modify_files = body.get("modify_files") or []
+    return await _get_svc().analyze_impact_for(project_id, modify_files)
+
+
 @router.post("/projects/{project_id}/rebuild", response_model=StatusResponse)
 async def project_rebuild(project_id: str, _auth: str = Depends(require_builder_access)):
     """Re-run pipeline with existing PRD data (e.g., after editing PRD)."""
