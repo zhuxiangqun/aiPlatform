@@ -553,3 +553,14 @@ pytest -q \
   - `grep -c "canary_weight" aiPlat-platform/builder/release_engine.py`（≥4：create_release + canary/full/rollback）
   - `python3 -m pytest aiPlat-platform/tests/test_l5_release.py aiPlat-platform/tests/test_l5_release_static.py -q`（23 passed）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
+
+### 1.53 安全降级审计事件（方案 B, 2026-08-23）
+- MUST：`policy_gate` skill_load 权限规则 except 路径（权限解析器降级 fail-open）记录 `security_degraded` 审计事件——`execution_store.add_audit_log(action="security_degraded", kind="skill_permission_resolver_unavailable", status="warn", ...)` 含 tenant/actor/tool/skill/error 上下文
+- MUST：审计为 best-effort（store 不可用静默跳过，`# noqa: cleanup-best-effort`），fail-open 行为不变（决策不受审计失败影响）
+- 契约登记：边界契约 `01-architecture-contract.md` 附录 B + 治理契约 `05-governance-release-contract.md` §6 + run spec 五十二轮
+- 自动化验收：
+  - `grep -c "security_degraded" aiPlat-core/core/harness/infrastructure/gates/policy_gate.py`（≥2：action + kind）
+  - `grep -c "security_degraded" aiPlat-core/docs/contracts/05-governance-release-contract.md`（≥1：§6）
+  - `grep -c "安全降级审计事件" aiPlat-core/docs/contracts/01-architecture-contract.md`（≥1：附录 B 登记）
+  - `grep -c "security_degraded" aiPlat-core/core/tests/unit/test_gates/test_policy_gate_skill_load_permissions.py`（≥1：test_security_degraded_audit_wired）
+  - `python3 -m pytest aiPlat-core/core/tests/unit/test_gates/test_policy_gate_skill_load_permissions.py -q`（3 passed，需可写 AIPLAT_HOME）

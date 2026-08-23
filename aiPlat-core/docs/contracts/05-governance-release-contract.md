@@ -40,3 +40,12 @@
 - policy audit logs（策略判定记录）
 - tool/skill 统计（成功率/耗时/错误码分布）
 
+## 6. 安全降级可审计（MUST，2026-08-23 方案 B）
+
+权限基础设施不可用（如 DB 初始化失败导致 skill 权限解析器降级）时，决策链 **MUST** 保留 fail-open 放行（deny/ask 规则跳过，后续检查链继续），但降级路径 **MUST** 记录 `security_degraded` 审计事件（`execution_store.add_audit_log`）：
+- `action=security_degraded`、`kind=skill_permission_resolver_unavailable`、`status=warn`
+- 附 tenant_id / actor_id / resource_type=tool / resource_id / skill / error 上下文
+- 审计写入为 best-effort（store 本身不可用则静默跳过，`# noqa: cleanup-best-effort`），行为与决策不受审计失败影响
+
+**契约要点**：fail-open 保留（安全决策观察点），降级必留审计痕迹；fail-closed（方案 A）保留为安全负责人后续选项。
+
