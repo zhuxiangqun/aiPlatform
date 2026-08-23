@@ -302,6 +302,7 @@ bash scripts/check_doc_sync.sh   # 新增符号已登记
 |---|---|---|---|
 | 子代理 provider 多样性 | P1-A3 | ✅（PR #21） | SubagentProvider + InProcessProvider/ACPProvider（`providers.py:49,81,119`），execute_parallel(provider=)/send_message/get_instance_status 三态 |
 | 多渠道 7 渠道 | P1-A4 | ✅（PR #22） | get_channel_adapter：telegram/slack/webchat/discord/wecom/email/dingtalk |
+| 渠道广度延伸（7→10） | 2026-08-23 批次 | ✅ | +whatsapp/lark/teams（`channels/adapters/whatsapp.py`/`lark.py`/`teams.py`），`ChannelType` 补枚举 + `ADAPTERS` 注册 |
 | 会话内 nudge + Curator | P1-A1 + P1-A2 | ✅ | `learn_nudge_hook.py` + `skill_curator.py` |
 | agentskills.io 对接 | P1-A5 | ✅ | `skill_marketplace.py`（core + platform） |
 | ManagedPolicy 托管策略 | P1-A6 | ✅ | `aiPlat-platform/auth/schemas_policy.py:119` |

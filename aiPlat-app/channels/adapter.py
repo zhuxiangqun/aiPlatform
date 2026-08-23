@@ -21,6 +21,8 @@ class ChannelType(str, Enum):
     WHATSAPP = "whatsapp"
     EMAIL = "email"
     DINGTALK = "dingtalk"
+    LARK = "lark"
+    TEAMS = "teams"
 
 
 @dataclass
@@ -172,8 +174,9 @@ def get_channel_adapter(name: str) -> ChannelAdapter:
     """Get a channel adapter instance by channel name (P1-A4 acceptance).
 
     ``name`` is a ChannelType value (e.g. 'telegram', 'slack', 'webchat',
-    'discord', 'wecom', 'email', 'dingtalk', 'whatsapp'). Extended adapters
-    (Discord/WeCom/Email/DingTalk) resolve via the adapters registry.
+    'discord', 'wecom', 'email', 'dingtalk', 'whatsapp', 'lark', 'teams').
+    Extended adapters (Discord/WeCom/Email/DingTalk/WhatsApp/Lark/Teams)
+    resolve via the adapters registry.
     ``wecom`` is accepted as an alias of ``wechat`` (WeComAdapter).
     """
     _aliases = {"wecom": "wechat"}

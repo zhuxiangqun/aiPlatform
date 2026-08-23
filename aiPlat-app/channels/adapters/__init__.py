@@ -10,6 +10,9 @@ from .discord import DiscordAdapter
 from .wecom import WeComAdapter
 from .email import EmailAdapter
 from .dingtalk import DingTalkAdapter
+from .whatsapp import WhatsAppAdapter
+from .lark import LarkAdapter
+from .teams import TeamsAdapter
 
 # channel → adapter class
 ADAPTERS = {
@@ -17,9 +20,15 @@ ADAPTERS = {
     ChannelType.WECHAT: WeComAdapter,
     ChannelType.EMAIL: EmailAdapter,
     ChannelType.DINGTALK: DingTalkAdapter,
+    ChannelType.WHATSAPP: WhatsAppAdapter,
+    ChannelType.LARK: LarkAdapter,
+    ChannelType.TEAMS: TeamsAdapter,
 }
 
-__all__ = ["ADAPTERS", "DiscordAdapter", "WeComAdapter", "EmailAdapter", "DingTalkAdapter"]
+__all__ = [
+    "ADAPTERS", "DiscordAdapter", "WeComAdapter", "EmailAdapter", "DingTalkAdapter",
+    "WhatsAppAdapter", "LarkAdapter", "TeamsAdapter",
+]
 
 
 def get_adapter(channel: ChannelType):
