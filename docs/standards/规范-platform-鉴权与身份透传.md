@@ -215,3 +215,18 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 - 模块路径白名单：`module_id` 仅用于 `modules/{mid}/` 子目录路由（服务层 `_module_root` 校验，防 `../` 越界访问其他模块/项目）；
 - `module-orchestrate` 触发 rebuild 是写操作，但每模块流水线与单模块 rebuild 同等权限（`require_builder_access`）；若需严格化可升级 `require_admin_access`；
 - 跨模块分析只读当前项目内模块代码，不越权读其他项目。
+
+---
+
+## 16. L4 v1.5 跨模块契约门禁端点（2026-08-23）
+
+`aiPlat-platform/api/routers/builder.py` 的 `merge-preview` 端点签名扩展：
+
+| 端点 | 变更 | 权限 |
+|---|---|---|
+| `POST /projects/{id}/merge-preview` | body 增加可选 `module_id`（默认 default）——多模块项目按模块生成预览 + 跨模块契约检查 | `require_builder_access`（不变） |
+
+**约束**：
+- `module_id` 仅路由到当前项目 `modules/{mid}/` 子目录（服务层 `_module_repo` 白名单），不可越权读其他项目/模块；
+- 跨模块契约检查（`verify_changed_module_contracts`）只读当前项目各模块的**已导入代码**（静态分析），不触发任何执行；
+- `merge_apply` 的 `contract_gate_failed` 阻断不改变权限模型（仍是 `require_builder_access`）——门禁是**工程正确性**约束（依赖方引用断裂禁止合并），非权限约束。
