@@ -529,3 +529,16 @@ pytest -q \
   - `grep -c "rolled_back" docs/research/plan-app-factory-l5-cicd.md`（≥3：§3.2 + §3.5 + §5）
   - `grep -c "releases/v" docs/research/plan-app-factory-l5-cicd.md`（≥2：§3.1 + §3.4）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
+
+### 1.51 L5 发布流水线实施（2026-08-23）
+- MUST：`aiPlat-platform/builder/release_engine.py` 存在（create_release/set_release_status/current 指针/状态机 building→ready→canary→full→rolled_back）
+- MUST：发布端点（release/releases/canary/full/rollback）+ 迁移先行门禁（pending_migrations）+ infra 可选集成（AIPLAT_L5_INFRA_DEPLOY）
+- MUST：前端发布区（版本徽标/金丝雀控制/回滚/estimated 提示）
+- 自动化验收：
+  - `grep -c "def create_release\|def set_release_status\|def _write_pointer" aiPlat-platform/builder/release_engine.py`（≥3）
+  - `grep -c "_VALID_TRANSITIONS" aiPlat-platform/builder/release_engine.py`（≥1）
+  - `grep -c "releases/{version}/canary" aiPlat-platform/api/routers/builder.py`（≥1）
+  - `grep -c "pending_migrations" aiPlat-platform/builder/builder_project_service.py`（≥2：迁移门禁）
+  - `grep -c "发布流水线（L5）" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
+  - `python3 -m pytest aiPlat-platform/tests/test_l5_release.py aiPlat-platform/tests/test_l5_release_static.py -q`（14 passed）
+  - `python3 scripts/check_research_docs_freshness.py .`（exit 0）

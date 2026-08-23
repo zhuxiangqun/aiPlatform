@@ -450,6 +450,10 @@ const ProjectPanel: React.FC<{
   const [generatingMigration, setGeneratingMigration] = useState(false);
   const [applyingMigration, setApplyingMigration] = useState(false);
   const [confirmDestructive, setConfirmDestructive] = useState(false);
+  // ── L5: release ──
+  const [releases, setReleases] = useState<any>({ releases: [], current: '' });
+  const [creatingRelease, setCreatingRelease] = useState(false);
+  const [transitioningRelease, setTransitioningRelease] = useState('');
 
   // Check for PRD on mount (may have been generated in a previous session)
   useEffect(() => {
@@ -1108,6 +1112,43 @@ const ProjectPanel: React.FC<{
     } catch (e: any) { toastGateError(e, '回滚失败'); }
   };
 
+  // ── L5: release handlers ──
+  const loadReleases = async () => {
+    if (!project?.project_id) return;
+    try {
+      const r = await projectApi.listReleases(project.project_id) as any;
+      setReleases(r || { releases: [], current: '' });
+    } catch { /* ignore */ }
+  };
+
+  const handleCreateRelease = async () => {
+    if (!project?.project_id) return;
+    setCreatingRelease(true);
+    try {
+      const r = await projectApi.createRelease(project.project_id, selectedModule) as any;
+      if (r?.status === 'ok') {
+        toast.success(`发布 ${r.release?.version} 已创建（${r.release?.status}）`);
+        if (r.estimated_hint) toast.warning('⚠️ 通过率为估算值，建议先跑真实测试再全量');
+        await loadReleases();
+      } else { toast.error(r?.detail || '创建发布失败'); }
+    } catch (e: any) { toastGateError(e, '创建发布失败'); }
+    setCreatingRelease(false);
+  };
+
+  const handleReleaseTransition = async (version: string, action: 'canary' | 'full' | 'rollback') => {
+    if (!project?.project_id) return;
+    if (action === 'rollback' && !confirm(`回滚发布 ${version}（切换 current 到历史版本）？`)) return;
+    setTransitioningRelease(version);
+    try {
+      const r = await projectApi.releaseTransition(project.project_id, version, action) as any;
+      if (r?.status === 'ok') {
+        toast.success(`发布 ${version} → ${action}`);
+        await loadReleases();
+      } else { toast.error(r?.detail || '状态切换失败'); }
+    } catch (e: any) { toastGateError(e, '状态切换失败'); }
+    setTransitioningRelease('');
+  };
+
   const handleEditStage = (stageKey: string, currentRaw: any) => {
     const content = typeof currentRaw === 'string' ? currentRaw : JSON.stringify(currentRaw, null, 2);
     setEditingStage(stageKey);
@@ -1713,6 +1754,48 @@ const ProjectPanel: React.FC<{
                     ))}
                   </div>
                 )}
+                {/* L5: 发布流水线 */}
+                <div className="pt-1 border-t border-dark-border space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-blue-300 font-medium">🚀 发布流水线（L5）— 版本化 + 金丝雀灰度</span>
+                    <Button variant="ghost" size="sm" className="ml-auto" onClick={loadReleases}>版本</Button>
+                    <Button variant="secondary" size="sm" onClick={handleCreateRelease} loading={creatingRelease}>
+                      创建发布
+                    </Button>
+                  </div>
+                  {releases.releases?.length > 0 && (
+                    <div className="text-[10px] space-y-0.5">
+                      <div className="text-gray-500">当前指针：{releases.current?.includes('releases') ? releases.current.split('releases/')[1]?.split('/')[0] : '（未设置）'}</div>
+                      {releases.releases.map((r: any) => {
+                        const st = r.status;
+                        const color = st === 'full' ? 'text-green-300' : st === 'canary' ? 'text-amber-300' : st === 'rolled_back' ? 'text-gray-500' : st === 'ready' ? 'text-blue-300' : 'text-gray-400';
+                        return (
+                          <div key={r.version} className="flex items-center gap-2 flex-wrap">
+                            <span className={`font-mono ${color}`}>[{st}] {r.version}</span>
+                            <span className="text-gray-600">[{r.module_id}] pass_rate={r.pass_rate_source}</span>
+                            <span className="ml-auto flex gap-1">
+                              {st === 'ready' && (
+                                <button className="text-blue-300 underline" onClick={() => handleReleaseTransition(r.version, 'canary')}>开始金丝雀</button>
+                              )}
+                              {st === 'canary' && (
+                                <>
+                                  <button className="text-green-300 underline" onClick={() => handleReleaseTransition(r.version, 'full')}>提升全量</button>
+                                  <button className="text-red-300 underline" onClick={() => handleReleaseTransition(r.version, 'rollback')}>回滚</button>
+                                </>
+                              )}
+                              {st === 'full' && (
+                                <button className="text-red-300 underline" onClick={() => handleReleaseTransition(r.version, 'rollback')}>回滚</button>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="text-[10px] text-gray-500">
+                    状态机：ready → canary（金丝雀验证）→ full（全量）→ rolled_back（回滚）；版本历史 append-only，可回退任意版本
+                  </div>
+                </div>
               </div>
             </div>
           )}

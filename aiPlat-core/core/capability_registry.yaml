@@ -145,6 +145,10 @@ domains:
         type: "module"
         signature: "L4.5: SchemaExtractor (AST: SQLAlchemy/Pydantic models) + SchemaDiffAnalyzer (added/removed/type_changed + destructive) + MigrationGenerator (paired up/down DDL); preview-only, destructive requires confirmation"
         module: "aiPlat-platform/builder/schema_migration.py"
+      - symbol: "release_engine"
+        type: "module"
+        signature: "L5: versioned artifacts (releases/v{ts}/current + pointer) + release state machine (building→ready→canary→full→rolled_back) + canary/promote/rollback with append-only history"
+        module: "aiPlat-platform/builder/release_engine.py"
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"

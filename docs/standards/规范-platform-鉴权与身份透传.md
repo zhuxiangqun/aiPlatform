@@ -248,3 +248,22 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 - 迁移**默认仅记录状态**，不执行真实 SQL——仅当 `AIPLAT_DB_EXECUTE=true` 时对配置的 DB 执行（安全红线，§3.8）；权限模型不变（工程正确性门禁，非权限约束）；
 - destructive 迁移（删列/类型变更/删表）必须 `confirmed=true` 显式确认，否则拒绝（`destructive_migration_requires_confirmation`）；
 - `migration-preview` 只读当前项目已导入代码（AST 静态分析），不触发执行、不读其他项目。
+
+---
+
+## 18. L5 发布端点权限（2026-08-23）
+
+`aiPlat-platform/api/routers/builder.py` 新增 5 个 L5 发布端点：
+
+| 端点 | 权限 | 说明 |
+|---|---|---|
+| `POST /projects/{id}/release` | `require_builder_access` | 创建版本化发布（merge 后代码 → releases/v{ts}） |
+| `GET /projects/{id}/releases` | `require_builder_access` | 发布历史 + current 指针 |
+| `POST /projects/{id}/releases/{v}/canary` | `require_builder_access` | ready → canary（金丝雀验证标记） |
+| `POST /projects/{id}/releases/{v}/full` | `require_builder_access` | canary → full（提升全量，current 指针切换） |
+| `POST /projects/{id}/releases/{v}/rollback` | `require_builder_access` | 回滚（指针切历史版本） |
+
+**约束**：
+- `release`/`full`/`rollback` 为**写操作**（切 current 指针/生成版本产物），但仅影响当前项目自己的 releases/ 目录（版本路径由服务层 `release_root` 固定），不越权写其他项目；
+- 迁移先行门禁（pending_migrations → 拒绝发布）是**工程正确性**约束（迁移未应用就发布会 schema 不同步），非权限约束；
+- `canary` 为状态标记（v1 无真实流量路由）；`AIPLAT_L5_INFRA_DEPLOY=true` 时 release 会调 infra deploy_service 注册服务（namespace=aiplat-apps）——该 env 默认关闭，需运维显式开启。

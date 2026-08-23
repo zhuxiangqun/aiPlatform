@@ -1923,6 +1923,84 @@ class BuilderProjectService:
         return {"status": "ok", "migration_id": migration_id, "down_sql": mig.get("down_sql", ""),
                 "note": "down 脚本已应用（AIPLAT_DB_EXECUTE=true 时执行真实 SQL）；历史保留"}
 
+    # ── L5: module-level release (plan-app-factory-l5 §3.1/§3.2/§3.5) ──
+
+    async def create_release(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
+        """L5: merge post-merge code into a versioned artifact (building → ready)."""
+        from builder.release_engine import create_release as _engine_release, release_root
+        proj = self._projects.get(project_id) or {}
+        src_dir = self._module_root(project_id, module_id)
+        if not os.path.isdir(src_dir):
+            return {"status": "error", "detail": f"模块 {module_id} 未导入代码"}
+        # overlay merge new versions
+        new_files = {}
+        for pv in (proj.get("merge_previews") or []):
+            content = pv.get("new_content")
+            if isinstance(content, str) and pv.get("path"):
+                new_files[pv["path"]] = content
+        # release gate: pending migrations first (design §9)
+        pending = [m for m in (proj.get("pending_migrations") or [])
+                   if m.get("module_id") == module_id]
+        gate = None
+        if pending:
+            gate = f"有 {len(pending)} 个待应用迁移，请先应用再发布"
+            return {"status": "error", "code": "pending_migrations",
+                    "detail": gate}
+        # pass_rate source for admission hint
+        pr_source = "unknown"
+        runs = proj.get("runs") or []
+        if runs and isinstance(runs[-1], dict):
+            pr_source = runs[-1].get("pass_rate_source", "unknown") or "unknown"
+        release = _engine_release(project_id, module_id, src_dir, new_files, pr_source)
+        proj.setdefault("releases", []).append(release)
+        proj["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        self._save_projects()
+        # optional infra integration (design §3.6)
+        infra_ok = False
+        if os.getenv("AIPLAT_L5_INFRA_DEPLOY", "false").lower() in ("true", "1", "yes"):
+            infra_ok = await self._infra_deploy_service(project_id, module_id, release["version"])
+        return {"status": "ok", "release": release,
+                "estimated_hint": pr_source == "estimated",
+                "infra_deployed": infra_ok,
+                "releases_root": release_root(project_id)}
+
+    async def _infra_deploy_service(self, project_id: str, module_id: str, version: str) -> bool:
+        """L5 §3.6: optional infra deploy_service registration.
+
+        v1: platform must NOT import infra directly (single-direction
+        platform → core → infra). Infra integration is deferred until a core
+        facade exposes deploy_service (v2); env switch kept as opt-in marker.
+        """
+        if os.getenv("AIPLAT_L5_INFRA_DEPLOY", "false").lower() in ("true", "1", "yes"):
+            _log.info("L5 infra deploy requested but deferred to v2 (needs core facade): %s/%s v%s",
+                      project_id, module_id, version)
+        return False
+
+    async def list_releases(self, project_id: str) -> Dict[str, Any]:
+        """L5: release history + current pointer target."""
+        from builder.release_engine import current_dir
+        proj = self._projects.get(project_id, {})
+        releases = proj.get("releases") or []
+        cur = current_dir(project_id)
+        return {"status": "ok", "releases": releases, "current": cur or "",
+                "total": len(releases)}
+
+    async def set_release_status(self, project_id: str, version: str,
+                                 status: str, target_version: str = "") -> Dict[str, Any]:
+        """L5: canary / full / rollback state transitions."""
+        from builder.release_engine import set_release_status as _engine_set
+        proj = self._projects.get(project_id, {})
+        releases = proj.get("releases") or []
+        try:
+            rel = _engine_set(project_id, releases, version, status,
+                              target_version=target_version)
+        except ValueError as e:
+            return {"status": "error", "detail": str(e)}
+        proj["releases"] = releases
+        proj["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        self._save_projects()
+        return {"status": "ok", "release": rel}
+
     # ── L3: incremental merge (plan-app-factory-l3 §3.3/§3.5) ──
 
     async def merge_preview(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:

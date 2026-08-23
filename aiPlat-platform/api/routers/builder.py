@@ -357,6 +357,41 @@ async def project_rollback_migration(project_id: str, migration_id: str, _auth: 
     return await _get_svc().rollback_migration(project_id, migration_id)
 
 
+# ---- L5: module-level release (plan-app-factory-l5) ----
+
+@router.post("/projects/{project_id}/release", response_model=StatusResponse)
+async def project_create_release(project_id: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
+    """L5: create versioned release from merge post-code (building → ready)."""
+    module_id = str(body.get("module_id") or "default")
+    return await _get_svc().create_release(project_id, module_id=module_id)
+
+
+@router.get("/projects/{project_id}/releases", response_model=StatusResponse)
+async def project_list_releases(project_id: str, _auth: str = Depends(require_builder_access)):
+    """L5: release history + current pointer."""
+    return await _get_svc().list_releases(project_id)
+
+
+@router.post("/projects/{project_id}/releases/{version}/canary", response_model=StatusResponse)
+async def project_release_canary(project_id: str, version: str, _auth: str = Depends(require_builder_access)):
+    """L5: ready → canary (golden-ratio validation marker)."""
+    return await _get_svc().set_release_status(project_id, version, "canary")
+
+
+@router.post("/projects/{project_id}/releases/{version}/full", response_model=StatusResponse)
+async def project_release_full(project_id: str, version: str, _auth: str = Depends(require_builder_access)):
+    """L5: canary → full (promote, current pointer switches)."""
+    return await _get_svc().set_release_status(project_id, version, "full")
+
+
+@router.post("/projects/{project_id}/releases/{version}/rollback", response_model=StatusResponse)
+async def project_release_rollback(project_id: str, version: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
+    """L5: roll back — current pointer switches to target_version (or latest active)."""
+    target_version = str(body.get("target_version") or "")
+    return await _get_svc().set_release_status(project_id, version, "rolled_back",
+                                               target_version=target_version)
+
+
 @router.post("/projects/{project_id}/rebuild", response_model=StatusResponse)
 async def project_rebuild(project_id: str, _auth: str = Depends(require_builder_access)):
     """Re-run pipeline with existing PRD data (e.g., after editing PRD)."""

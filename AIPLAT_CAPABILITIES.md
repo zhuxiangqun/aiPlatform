@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1071
+total_capabilities: 1073
 last_updated: 2026-08-19
 version: "30.1"
 auto_sync: true
@@ -1637,6 +1637,7 @@ scan_hash: 8f9548ec24f4
 | L3 增量合并引擎 | platform/builder/merge_engine.py + core/harness/execution/pipeline_engine.py | ✅ | merge_strategy（full_rewrite/incremental_merge）+ ImpactAnalyzer 影响面分析（Python 一阶 import）+ DiffMerger（unified diff 预览/语法 py_compile/接口 AST 验证/apply 前 deploy.prev 快照）+ 增量行为契约（逐字节一致/UNCHANGED）+ 前端逐文件 diff 审批（通过/驳回） | 已合入 |
 | L4 多模块编排（后端） | platform/builder/cross_module.py + builder_project_service.py | ✅ | modules CRUD（modules.json 语义，单模块隐式兼容）+ import-repo/rebuild 支持 module_id（模块级 imported/）+ CrossModuleAnalyzer（API/entity/事件契约引用→模块依赖图+影响闭包）+ ModuleOrchestrator（拓扑顺序编排，未受影响模块不重跑）+ cross-module-impact/module-orchestrate 端点 + v1.5 跨模块 merge 契约门禁（verify_changed_module_contracts） | 已合入 |
 | L4.5 数据库迁移编排 | platform/builder/schema_migration.py + builder_project_service.py | ✅ | SchemaExtractor（AST：SQLAlchemy/Pydantic 模型提取）+ SchemaDiffAnalyzer（字段/表增删改 + destructive 判定）+ MigrationGenerator（up/down DDL 成对）+ migration-preview/apply/rollback 端点（破坏性需显式确认）+ 跨模块字段引用阻断 + 迁移历史（append-only） | 已合入 |
+| L5 发布流水线 | platform/builder/release_engine.py + builder_project_service.py | ✅ | 版本化产物（releases/v{ts}/current + 指针）+ 发布状态机（building→ready→canary→full→rolled_back）+ 金丝雀灰度（提升全量/回滚）+ 迁移先行门禁 + infra deploy_service 可选集成（AIPLAT_L5_INFRA_DEPLOY）+ 版本历史 append-only | 已合入 |
 | 租户自助入驻 | [API] — register/verify-email | ✅ | 注册→邮箱验证→激活→返回API Key | 已合入 |
 | 租户自助门户 | [API] — tenant/* | ✅ | 仪表板/API Key管理/用量/计费面板 | 已合入 |
 | 运营大盘 | [API] — ops/overview | ✅ | 跨租户聚合：租户数/Token/活跃度，platform_admin only | 已合入 |
@@ -2006,7 +2007,7 @@ scan_hash: 8f9548ec24f4
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 6 | 0 | 6 |
 | Arena & 调度 | 7 | 0 | 7 |
-| 平台治理 | 83 | 0 | 83 |
+| 平台治理 | 85 | 0 | 85 |
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 8 | 0 | 8 |
@@ -2029,7 +2030,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1071** | **0** | **1071** |
+| **总计** | **1073** | **0** | **1073** |
 
 ---
 

@@ -397,6 +397,34 @@ export const projectApi = {
     );
   },
 
+  // ── L5: module-level release (plan-app-factory-l5) ──
+
+  /** L5: create versioned release from merge post-code (building → ready). */
+  createRelease: async (projectId: string, moduleId?: string) => {
+    return apiClient.post<{
+      status: string;
+      release: { version: string; status: string; pass_rate_source: string; module_id: string };
+      estimated_hint?: boolean; infra_deployed?: boolean;
+    }>(`/platform/builder/projects/${projectId}/release`, { module_id: moduleId || 'default' });
+  },
+
+  /** L5: release history + current pointer. */
+  listReleases: async (projectId: string) => {
+    return apiClient.get<{
+      status: string;
+      releases: Array<{ version: string; status: string; module_id: string; pass_rate_source: string; created_at: string }>;
+      current: string; total: number;
+    }>(`/platform/builder/projects/${projectId}/releases`);
+  },
+
+  /** L5: state transitions (canary/full/rollback). */
+  releaseTransition: async (projectId: string, version: string, action: 'canary' | 'full' | 'rollback', targetVersion?: string) => {
+    return apiClient.post<{ status: string; release: Record<string, unknown> }>(
+      `/platform/builder/projects/${projectId}/releases/${version}/${action}`,
+      { target_version: targetVersion || '' }
+    );
+  },
+
   /** Re-run pipeline with existing PRD (e.g., after editing PRD). */
   rebuild: async (projectId: string) => {
     return apiClient.post<{ status: string; detail: string }>(
