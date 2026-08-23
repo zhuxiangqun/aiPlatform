@@ -1,6 +1,6 @@
 # L5 设计：模块级 CI/CD 与灰度发布（构建 → 测试 → 打包 → 发布 → 金丝雀 → 回滚）
 
-> **状态**：设计文档（2026-08-23，待评审）
+> **状态**：✅ **已实施**（2026-08-23，PR #94 设计 + PR #95 实施；实施落地记录见 §10，与设计的差异已标注）
 > **目标**：L2-L4.5 让 AI 演进**代码 + schema**，但"发布"环节没有自动化——改一个模块要手动部署，无版本概念、无灰度、无回滚。L5 补齐：**模块级发布流水线**（构建产物版本化 + 发布状态机 + 金丝雀灰度 + 回滚），可选对接 infra 的 `deploy_service`。
 > **关联**：《plan-app-factory-l4-multi-module.md》§7（L5 = "模块级 CI/CD、灰度发布（对接 infra）"）+ L3 merge（代码审批后进入发布）+ L4.5（迁移后发布）。
 
@@ -198,3 +198,31 @@ async def set_release_status(self, project_id, version, status) -> dict:
 | deploy.prev 快照 | 升级为多版本（releases/ 即历史） |
 | pass_rate_source（real/estimated） | 发布测试准入提示 |
 | 前端 blocked/横幅模式 | 发布状态徽标 + estimated 提示横幅 |
+
+---
+
+## 10. 实施落地记录（2026-08-23，PR #95）
+
+### 10.1 落地范围（验收 8 项全部通过）
+
+| 模块 | 落地位置 | 状态 |
+|---|---|---|
+| 版本化产物（releases/v{ts}/current + 双路指针） | `aiPlat-platform/builder/release_engine.py` | ✅ |
+| 发布状态机（building→ready→canary→full→rolled_back） | 同文件 `set_release_status` + `_VALID_TRANSITIONS` | ✅ |
+| 发布端点 5 个（release/releases/canary/full/rollback） | `aiPlat-platform/api/routers/builder.py` | ✅ |
+| 迁移先行门禁 + estimated 准入提示 | `builder_project_service.py` `create_release` | ✅ |
+| 前端发布区（版本徽标/金丝雀控制/回滚/estimated 提示） | `Factory/index.tsx` + `builderTeamApi.ts` | ✅ |
+
+### 10.2 与设计的差异（代码优先原则标注）
+
+| 设计（§） | 实际实现 | 说明 |
+|---|---|---|
+| §3.6 infra deploy_service 集成 | **v1 未实现**——platform 直导 infra 违反单向依赖（platform→core→infra），`_infra_deploy_service` 改为 core facade v2 预留（env 开关保留语义 + 日志标注） | 架构守卫拦截后修正；infra 集成需先在 core 暴露 deploy facade（v2） |
+| §3.2 building 状态 | create_release 直接写产物并置 ready（building 为瞬时状态，未持久化） | 产物写入即 ready，符合"自动进入 ready"设计 |
+| §3.1 版本目录基线 | 基线 = imported 原件 + merge_previews new_content 覆盖（未含迁移后 schema 变更） | 迁移与发布分离（迁移先行门禁保证顺序） |
+
+### 10.3 验证
+
+- 测试：`test_l5_release.py`（动态 9）+ `test_l5_release_static.py`（静态 5）= **14 passed**
+- 前端 tsc + build + Rule 6 全绿 + pre-commit 全绿（修复 silent except ×2 + infra 直导违规）
+- contracts：acceptance 1.51 + 鉴权规范 §18 + capability 登记（release_engine）
