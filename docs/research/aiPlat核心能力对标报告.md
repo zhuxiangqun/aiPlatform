@@ -1,6 +1,7 @@
 # aiPlat 核心能力对标报告：aiPlat vs Claude Code vs DeepSeek Harness vs Hermes
 
 > **分析方式**：以 aiPlat 实际代码为分析对象（43 万行 Python、1,926 次 commit、CoreFacade 368 个导出符号（176 def/class + 192 re-export）、PipelineEngine 8,285 行——原 12,281 行，2026-08-19 P2-A4 拆分收官），结合 DeepSeek Harness 本地源码（`/Users/apple/workdata/person/deepseek-harness/`，0.1.0-rc.5）一手分析，以及 Claude Code 的权威 web 调研（官方文档 + 第三方分析）。Hermes 初版为文档级调研（官方文档站 + GitHub API 实测），**2026-08-15 补充最新版 v0.20.1 源码级验证**（`/Users/apple/workdata/person/openSource/hermes-agent-main/`，见 §17.1）。
+> **2026-08-23 Hermes v0.20.5 补充调研**：v0.20.5（v2026.8.19）为 v0.20.0（The Herald Release，2026.8.3）后的补丁版——核心新特性在 v0.20.0：实时语音打断、A2A 协议（agent-to-agent links）、500 次工具调用上限、Bot Mode（数字员工）。**本地源码仍为 v0.20.1，新特性为文档级调研**（官方 release `github.com/NousResearch/hermes-agent/releases/tag/v2026.8.3` + 第三方深度分析）；与本地 v0.20.1 源码级验证并列为两个口径（§21.5 可信度原则：文档级标注清楚，不冒充源码级）。
 > **结论原则**：代码事实优先于文档宣称；每条 aiPlat 能力均附 `文件:行号` 证据。
 > **调研时点**：2026-08-15（2026-08-19 已按行动纲领基线复核更新，见下）
 > **2026-08-19 状态更新**：行动纲领 **53 DONE / 0 PARTIAL / 0 OPEN**（54 项核对、53 项有效）；改进方案 P0/P1/P2 全部落地；宪法测试 **143 passed**（全绿）；能力数 **1032/1039**（`capability_registry.yaml` total=1032，`AIPLAT_CAPABILITIES.md` total=1039，口径不同：registry 登记 vs 扫描）；架构守卫 0 ERROR；规范 9/9 approved。**§16.3/§18/§20/§21 的差距结论已按新基线重审**——原"6 项完全缺失 + 8 项部分具备"经 P1-A/P2 批次补齐后仅剩 G6（CC/Codex hooks 协议桥）一项未纳入行动纲领（见 §20.1 状态列与 §20.2 汇总）。
@@ -645,6 +646,6 @@ flowchart LR
 **结论**：L2-L5 把 aiPlat 从"生成器"升级为"**可治理的软件演进引擎**"——aiPlat 的差异化从 §1 的"交付流水线引擎"深化为"**代码/数据库/发布三同步的受控演进**"。三方（尤其 CC）在 agentic coding 单点能力上仍领先，但"演进全链路治理"无对应物。
 
 **Claude Code 最新特性（v2.1.139，2026-08）**：`--agent` 权限模式、Dynamic Workflows、Checkpointing、Server-managed Settings、artifacts 支持——单 agent 工作流体验持续增强，但均为"编码工具"范畴，无交付/演进治理层。
-**Hermes 最新特性（v0.20.5 = v2026.8.19，2026-08）**：实时语音打断、A2A 协议（agent-to-agent links）、500 次工具调用、Bot Mode（数字员工）——渠道与执行广度继续扩张，仍无"既有代码演进"交付链路。
+**Hermes 最新特性（v0.20.5 = v2026.8.19，2026-08；核心新特性在 v0.20.0 The Herald Release 2026.8.3）**：① **实时语音打断**（voice interruption，双向语音会话）；② **A2A 协议**（agent-to-agent links，跨 Agent 直接通信）；③ **500 次工具调用上限**（长任务单会话能力）；④ **Bot Mode**（数字员工模式，从聊天对象到可交付任务）。这些是**渠道与执行广度**的扩张（Hermes 一贯强项），仍无"既有代码演进"交付链路（aiPlat L2-L5 独占）。注：本地源码 v0.20.1 未含上述新特性实现（文档级调研标注）。
 
 （资料来源：Claude Code changelog `code.claude.com/docs/en/changelog` + anthropics/claude-code releases；Hermes releases `github.com/NousResearch/hermes-agent/releases/tag/v2026.8.19` + runtimewire 分析。）
