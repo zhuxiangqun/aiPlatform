@@ -461,3 +461,15 @@ pytest -q \
   - `grep -c "CrossModuleAnalyzer" docs/research/plan-app-factory-l4-multi-module.md`（≥3：§3.3 + §5 + §6）
   - `grep -c "ModuleOrchestrator" docs/research/plan-app-factory-l4-multi-module.md`（≥3：§3.4 + §5 + §6）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
+
+### 1.45 L4 多模块后端实施（2026-08-23）
+- MUST：`aiPlat-platform/builder/cross_module.py` 存在（scan_module_contracts/analyze_cross_module/impact_closure/topological_order）
+- MUST：模块 CRUD（create_modules/list_modules）+ import-repo 支持 module_id（default → legacy 布局，多模块 → module_repos）+ rebuild 支持 module_id
+- MUST：cross-module-impact / module-orchestrate 端点（依赖顺序编排 + 未受影响模块不重跑）
+- 自动化验收：
+  - `grep -c "def scan_module_contracts\|def analyze_cross_module\|def impact_closure\|def topological_order" aiPlat-platform/builder/cross_module.py`（≥4）
+  - `grep -c "async def create_modules\|async def module_orchestrate\|async def cross_module_impact" aiPlat-platform/builder/builder_project_service.py`（≥3）
+  - `grep -c "module_id: str = \"default\"" aiPlat-platform/builder/builder_project_service.py`（≥2：import_repo + rebuild）
+  - `grep -c "module-orchestrate" aiPlat-platform/api/routers/builder.py`（≥1）
+  - `python3 -m pytest aiPlat-platform/tests/test_l4_cross_module.py aiPlat-platform/tests/test_l4_module_static.py -q`（17 passed）
+  - `python3 scripts/check_research_docs_freshness.py .`（exit 0）

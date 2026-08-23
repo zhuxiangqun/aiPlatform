@@ -279,6 +279,53 @@ async def project_analyze_impact(project_id: str, body: Dict[str, Any], _auth: s
     return await _get_svc().analyze_impact_for(project_id, modify_files)
 
 
+# ---- L4: multi-module (plan-app-factory-l4) ----
+
+@router.post("/projects/{project_id}/modules", response_model=StatusResponse)
+async def project_create_modules(project_id: str, body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
+    """L4: declare project modules (modules.json semantics)."""
+    modules = body.get("modules") or []
+    return await _get_svc().create_modules(project_id, modules)
+
+
+@router.get("/projects/{project_id}/modules", response_model=StatusResponse)
+async def project_list_modules(project_id: str, _auth: str = Depends(require_builder_access)):
+    """L4: module list (declared + implicit default)."""
+    return await _get_svc().list_modules(project_id)
+
+
+@router.post("/projects/{project_id}/modules/{module_id:path}/import-repo", response_model=StatusResponse)
+async def project_module_import_repo(
+    project_id: str, module_id: str,
+    file: Optional[UploadFile] = File(default=None),
+    existing_path: str = Form(default=""),
+    _auth: str = Depends(require_builder_access),
+):
+    """L4: import code into a named module (L2 import-repo reuse)."""
+    if file is not None:
+        zip_bytes = await file.read()
+        if not zip_bytes:
+            raise HTTPException(400, detail="上传的 zip 为空")
+        return await _get_svc().import_repo(project_id, zip_bytes=zip_bytes, module_id=module_id)
+    if existing_path:
+        return await _get_svc().import_repo(project_id, existing_path=existing_path, module_id=module_id)
+    raise HTTPException(400, detail="需要 zip 文件上传或 existing_path 二选一")
+
+
+@router.post("/projects/{project_id}/cross-module-impact", response_model=StatusResponse)
+async def project_cross_module_impact(project_id: str, body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
+    """L4 §3.3: cross-module impact analysis for a changed module."""
+    module_id = str(body.get("module_id") or "default")
+    return await _get_svc().cross_module_impact(project_id, module_id)
+
+
+@router.post("/projects/{project_id}/module-orchestrate", response_model=StatusResponse)
+async def project_module_orchestrate(project_id: str, body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
+    """L4 §3.4: orchestrate pipelines for changed modules in dependency order."""
+    module_ids = body.get("module_ids") or []
+    return await _get_svc().module_orchestrate(project_id, module_ids)
+
+
 @router.post("/projects/{project_id}/rebuild", response_model=StatusResponse)
 async def project_rebuild(project_id: str, _auth: str = Depends(require_builder_access)):
     """Re-run pipeline with existing PRD data (e.g., after editing PRD)."""
