@@ -196,3 +196,22 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 **约束**：
 - 该端点为**只读分析**（不写文件/状态），接受任意 builder 用户调用；分析结果仅作建议，最终文件集由用户在勾选区决定（取消自动加入文件有二次确认）；
 - 不泄露其他项目内容——只分析当前项目 imported/ 内的文件。
+
+---
+
+## 15. L4 多模块端点权限（2026-08-23）
+
+`aiPlat-platform/api/routers/builder.py` 新增 5 个 L4 端点，权限与既有 builder 端点一致：
+
+| 端点 | 权限 | 说明 |
+|---|---|---|
+| `POST /projects/{id}/modules` | `require_builder_access` | 声明项目模块（modules.json 语义） |
+| `GET /projects/{id}/modules` | `require_builder_access` | 模块列表（含隐式 default） |
+| `POST /projects/{id}/modules/{module_id}/import-repo` | `require_builder_access` | 模块级代码导入（L2 复用，module_id 路由到 modules/{mid}/imported/） |
+| `POST /projects/{id}/cross-module-impact` | `require_builder_access` | 跨模块影响分析（只读） |
+| `POST /projects/{id}/module-orchestrate` | `require_builder_access` | 模块编排（依赖顺序触发 rebuild） |
+
+**约束**：
+- 模块路径白名单：`module_id` 仅用于 `modules/{mid}/` 子目录路由（服务层 `_module_root` 校验，防 `../` 越界访问其他模块/项目）；
+- `module-orchestrate` 触发 rebuild 是写操作，但每模块流水线与单模块 rebuild 同等权限（`require_builder_access`）；若需严格化可升级 `require_admin_access`；
+- 跨模块分析只读当前项目内模块代码，不越权读其他项目。
