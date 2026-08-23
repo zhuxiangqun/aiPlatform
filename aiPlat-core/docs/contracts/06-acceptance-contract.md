@@ -451,3 +451,13 @@ pytest -q \
   - `grep -c "驳回文件需重新生成\|确定性门禁阻断" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
   - `python3 -m pytest aiPlat-platform/tests/test_l3_merge_engine.py aiPlat-platform/tests/test_l3_merge_static.py -q`（25 passed）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
+
+### 1.44 L4 多模块编排设计文档（2026-08-23）
+- MUST：`docs/research/plan-app-factory-l4-multi-module.md` 存在（L4 设计：modules.json/CrossModuleAnalyzer/ModuleOrchestrator/契约门禁/验收 12 项/约 4.5 天）
+- MUST：设计文档含模块级项目结构（modules.json 数据模型）+ 单模块隐式兼容（module_id=default）+ 与 L2/L3 衔接清单（§9）
+- 自动化验收：
+  - `ls docs/research/plan-app-factory-l4-multi-module.md`（存在）
+  - `grep -c "modules.json" docs/research/plan-app-factory-l4-multi-module.md`（≥4：§1/§3.1 结构/§3.2/§5 验收）
+  - `grep -c "CrossModuleAnalyzer" docs/research/plan-app-factory-l4-multi-module.md`（≥3：§3.3 + §5 + §6）
+  - `grep -c "ModuleOrchestrator" docs/research/plan-app-factory-l4-multi-module.md`（≥3：§3.4 + §5 + §6）
+  - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
