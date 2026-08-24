@@ -1658,7 +1658,7 @@ scan_hash: 8f9548ec24f4
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 | InfraBridge | `harness/infrastructure/infra_bridge.py` | ✅ | 自动同步 | 已合入 |
 | create_llm_client | `aiPlat-infra/infra/llm/factory.py` | ✅ | 自动同步 | 已合入 |
-| ModelManager | `aiPlat-infra/infra/management/model/manager.py` | ✅ | 自动同步 | 已合入 |
+| ModelManager | `aiPlat-infra/infra/management/model/manager.py` + `config/providers.yaml` | ✅ | 自动同步；provider 生态 14 家族（2026-08-24 扩展：+qwen/groq/mistral/cohere/cerebras/together/xai/novita，YAML 驱动零代码） | 已合入 |
 |------|------|:---:|------|------|
 | Model Health Checker | infra/management/model/health_checker.py | ✅ | 模型可用性/延迟/质量健康监控 | 已合入 |
 | Local Model Scanner | infra/management/model/local_model_scanner.py | ✅ | 自动发现 Ollama/LM Studio/vLLM/oMLX 本地模型 | 已合入 |

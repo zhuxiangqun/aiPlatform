@@ -161,3 +161,25 @@ class TestExploration:
         }
         top = mgr.unified_pipeline("chat", [], {}, cfg)
         assert top in ("deepseek-chat", "model-b")  # 探索结果仍是注册表模型
+
+
+class TestProviderBreadth:
+    """2026-08-24 生态广度：providers.yaml 新增家族可被 ModelManager 发现（防回归）。"""
+
+    def test_api_provider_ids_include_new_families(self):
+        from infra.management.model.manager import _api_provider_ids
+
+        ids = _api_provider_ids()
+        # 基础 4 + 新增主流家族（Qwen/Groq/Mistral/Cohere/Cerebras/Together/xAI/Novita）
+        for expected in ("openai", "deepseek", "anthropic", "openrouter",
+                         "qwen", "groq", "mistral", "cohere",
+                         "cerebras", "together", "xai", "novita"):
+            assert expected in ids, f"provider '{expected}' not discovered"
+
+    def test_providers_yaml_has_14_entries(self):
+        cfg = yaml.safe_load(open("config/providers.yaml"))
+        assert len(cfg["providers"]) >= 14
+        # 所有 external provider 都带 env_key（API key 契约）
+        for p in cfg["providers"]:
+            if p["type"] == "external" and p.get("requires_api_key"):
+                assert p.get("env_key"), f"external provider {p['id']} missing env_key"

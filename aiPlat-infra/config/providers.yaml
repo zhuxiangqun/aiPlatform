@@ -63,12 +63,88 @@ providers:
     capabilities: [chat, embedding]
     enabled: true
 
+# ── 2026-08-24 生态广度延伸（对齐 Hermes 38 provider 家族方向）──
+# 全部为 OpenAI 兼容端点（复用 openai_compatible.py，零代码改动）；
+# base_url_env 缺省时走 openai_compatible 默认 /v1（自动补全）。
+
+  - id: qwen
+    name: Qwen (DashScope)
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning, code]
+    env_key: DASHSCOPE_API_KEY
+    base_url_env: DASHSCOPE_BASE_URL
+    enabled: true
+
+  - id: groq
+    name: Groq
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning]
+    env_key: GROQ_API_KEY
+    base_url_env: GROQ_BASE_URL
+    enabled: true
+
+  - id: mistral
+    name: Mistral
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning, code]
+    env_key: MISTRAL_API_KEY
+    base_url_env: MISTRAL_BASE_URL
+    enabled: true
+
+  - id: cohere
+    name: Cohere
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning]
+    env_key: COHERE_API_KEY
+    base_url_env: COHERE_BASE_URL
+    enabled: true
+
+  - id: cerebras
+    name: Cerebras
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning]
+    env_key: CEREBRAS_API_KEY
+    base_url_env: CEREBRAS_BASE_URL
+    enabled: true
+
+  - id: together
+    name: Together AI
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning, embedding]
+    env_key: TOGETHER_API_KEY
+    base_url_env: TOGETHER_BASE_URL
+    enabled: true
+
+  - id: xai
+    name: xAI (Grok)
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning]
+    env_key: XAI_API_KEY
+    base_url_env: XAI_BASE_URL
+    enabled: true
+
+  - id: novita
+    name: Novita AI
+    type: external
+    requires_api_key: true
+    capabilities: [chat, code, image]
+    env_key: NOVITA_API_KEY
+    base_url_env: NOVITA_BASE_URL
+    enabled: true
+
 # ── 新增 provider 示例（取消注释即可启用） ──
-#  - id: qwen
-#    name: Qwen
+#  - id: gemini
+#    name: Google Gemini (OpenAI 兼容端点)
 #    type: external
 #    requires_api_key: true
-#    capabilities: [chat, reasoning, code]
-#    env_key: DASHSCOPE_API_KEY
-#    base_url_env: DASHSCOPE_BASE_URL
+#    capabilities: [chat, reasoning, embedding]
+#    env_key: GEMINI_API_KEY
+#    base_url_env: GEMINI_BASE_URL
 #    enabled: true
