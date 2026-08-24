@@ -75,7 +75,7 @@ check_stale_entries() {
         # Search broadly for the file across all project dirs
         local found=$(find "$WORKSPACE/aiPlat-core" "$WORKSPACE/aiPlat-platform" \
             "$WORKSPACE/aiPlat-infra" "$WORKSPACE/aiPlat-management" "$WORKSPACE/scripts" \
-            "$WORKSPACE/custom_handlers" \
+            "$WORKSPACE/custom_handlers" "$WORKSPACE/aiplat-sdk" \
             -name "$basename" -not -path "*/__pycache__/*" 2>/dev/null | head -1)
 
         if [ -z "$found" ]; then

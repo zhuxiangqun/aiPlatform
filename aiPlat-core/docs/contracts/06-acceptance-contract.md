@@ -608,3 +608,13 @@ pytest -q \
   - `grep -c "memory/import" aiPlat-platform/api/routers/memory_import.py aiPlat-platform/api/rest/routes.py`（≥2：端点 + 注册）
   - `grep -c "P0-b" aiPlat-core/docs/contracts/01-architecture-contract.md`（≥1：附录 B 登记）
   - `python3 -m pytest aiPlat-core/core/tests/unit/test_harness/test_import_claude_sessions.py -q`（10 passed）
+
+### 1.57 SDK stdio 内核客户端（P1, 2026-08-24）
+- MUST：`aiplat-sdk/aiplat/stdio.py` 存在——`StdioKernelClient`（spawn `python -m core.acp.stdio_server` + JSON-RPC over stdio：thread/start|status|events|resume|approve|reject|rollback|cancel + stream_events 流式监听 + 错误信封）+ 可注入 transport（测试用）
+- MUST：`StdioKernelClient`/`StdioKernelError` 从 `aiplat.__init__` 导出；README 示例含 stdio 用法
+- 契约登记：边界契约 `01-architecture-contract.md` 附录 B（P1 SDK 条目）+ run spec 五十七轮
+- 自动化验收：
+  - `grep -c "class StdioKernelClient\|async def thread_start\|async def thread_approve\|async def stream_events" aiplat-sdk/aiplat/stdio.py`（≥4）
+  - `grep -c "StdioKernelClient" aiplat-sdk/aiplat/__init__.py`（≥1：导出）
+  - `cd aiplat-sdk && python3 -m pytest tests/test_stdio_client.py -q`（8 passed，含真实内核集成）
+  - `grep -c "P1 SDK" aiPlat-core/docs/contracts/01-architecture-contract.md`（≥1：附录 B 登记）
