@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aiplat-sdk"
-version = "0.1.0"
+version = "0.2.0"
 description = "aiPlat Agent SDK — 3 lines to create and execute an AI Agent"
 readme = "README.md"
 requires-python = ">=3.11"

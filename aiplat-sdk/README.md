@@ -102,3 +102,38 @@ pip install -e .
 | `Pipeline` | `run(input)` | Execute the pipeline |
 | `ReActLoop` | `execute(task)` | Direct harness control |
 | `Config` | — | Agent configuration (model, max_steps, etc.) |
+
+## stdio 持久内核（P1，对接 P0-a）
+
+`StdioKernelClient` 封装 `python -m core.acp.stdio_server` 的 JSON-RPC over stdio 协议，
+程序化启停 Thread（会话）+ 流式监听事件：
+
+```python
+import asyncio
+from aiplat import StdioKernelClient
+
+async def main():
+    async with StdioKernelClient() as kernel:
+        # 启动会话（Thread）
+        thread = await kernel.thread_start("p1", "build auth module")
+        # 流式监听 run_events（item.event）
+        async for event in kernel.stream_events(thread["thread_id"]):
+            print(event["event_type"])
+        # HITL 审批
+        await kernel.thread_approve(thread["thread_id"], thread["state"], feedback="ok")
+        # 或拒绝并带反馈
+        # await kernel.thread_reject(thread["thread_id"], thread["state"], feedback="redo")
+        await kernel.thread_cancel(thread["thread_id"])
+
+asyncio.run(main())
+```
+
+| Class | Method | Description |
+|-------|--------|-------------|
+| `StdioKernelClient` | `thread_start(project, requirement)` | 启动 Thread → {thread_id, state, run_id} |
+| `StdioKernelClient` | `thread_events(thread_id, after_seq)` | 拉取 run_events 事件流 |
+| `StdioKernelClient` | `stream_events(thread_id)` | 轮询式流式监听（异步生成器） |
+| `StdioKernelClient` | `thread_approve/reject/rollback/resume/cancel` | HITL 审批 + 生命周期控制 |
+| `StdioKernelClient` | `start()/close()` | spawn/终止内核进程（支持 async with） |
+
+> 依赖：需可导入 `core.acp.stdio_server`（内核模块位于 aiPlat-core）。`AIPLAT_STDIO_PYTHON` 可指定解释器。

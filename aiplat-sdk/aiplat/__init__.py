@@ -18,12 +18,20 @@ Usage:
     pipeline.add_stage("retrieve", skill="knowledge_retrieval")
     pipeline.add_stage("analyze", agent=agent)
     result = await pipeline.run(input_data)
+
+    # stdio 持久内核（P0-a 对接）
+    from aiplat import StdioKernelClient
+    async with StdioKernelClient() as kernel:
+        thread = await kernel.thread_start("p1", "build auth")
+        async for event in kernel.stream_events(thread["thread_id"]):
+            print(event)
 """
 
 from .agent import Agent
 from .pipeline import Pipeline
 from .harness import ReActLoop
 from .config import Config
+from .stdio import StdioKernelClient, StdioKernelError
 
-__version__ = "0.1.0"
-__all__ = ["Agent", "Pipeline", "ReActLoop", "Config"]
+__version__ = "0.2.0"
+__all__ = ["Agent", "Pipeline", "ReActLoop", "Config", "StdioKernelClient", "StdioKernelError"]

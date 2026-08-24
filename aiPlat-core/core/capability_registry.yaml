@@ -599,7 +599,7 @@ domains:
   observability:
     section: "八"
     section_name: "可观测性"
-    caps_count: 20
+    caps_count: 21
     provides:
       - symbol: "EventBus"
         type: "class"
@@ -625,6 +625,10 @@ domains:
         type: "function"
         signature: "创建 stdio JSON-RPC kernel 实例（server 启动 AIPLAT_STDIO_KERNEL=1 时接线）"
         module: "core/api/core_facade.py"
+      - symbol: "StdioKernelClient"
+        type: "class"
+        signature: "SDK stdio 内核客户端：spawn core.acp.stdio_server + thread/start|approve|reject|events + stream_events（P1, 对标 Codex SDK）"
+        module: "aiplat-sdk/aiplat/stdio.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
