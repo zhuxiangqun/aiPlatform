@@ -281,3 +281,17 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 **约束**：
 - `canary_weight` 是**路由配置表达**（v2 无真实流量路由，权重由部署环境消费）——仅写入当前项目自己的发布记录，无跨项目影响；
 - `AIPLAT_L5_INFRA_DEPLOY=true` 时 `create_release` 经 **CoreFacade.deploy_app_service → infra_bridge** 注册服务（namespace=aiplat-apps）——platform 不直导 infra（单向依赖 platform → core → infra）；env 默认关闭。
+
+## 20. P0-b 记忆导入端点权限（2026-08-24）
+
+`POST /platform/memory/import` + `GET /platform/memory/import/status`：
+
+| 端点 | 变更 | 权限 |
+|---|---|---|
+| `POST /platform/memory/import` | body：`{"base_path": "~/.claude/projects", "max_sessions": 50}`；导入 Claude Code 会话 JSONL → MemoryManager（source_tag=claude_import + provenance 溯源） | `require_auth`（平台管理员/运营角色；写入全局记忆需身份透传） |
+| `GET /platform/memory/import/status` | 返回导入能力信息（来源路径/上限/source_tag） | `require_auth` |
+
+**约束**：
+- 记忆导入经 **CoreFacade.import_claude_memories → MemoryManager.save_interaction**（platform 不直写 SQLite，单向依赖 platform → core）；
+- 导入为**只读消费**（不改 Claude 源文件，对齐 Codex"源端不动一字节"）；单会话失败 best-effort 不阻断；
+- 记忆条目带防投毒溯源三字段（source_tag/trust_weight/provenance，对齐记忆系统 §5.12）——导入来源显式标记 `claude_import`，不冒充用户/系统原生来源。
