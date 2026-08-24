@@ -599,7 +599,7 @@ domains:
   observability:
     section: "八"
     section_name: "可观测性"
-    caps_count: 21
+    caps_count: 22
     provides:
       - symbol: "EventBus"
         type: "class"
@@ -629,6 +629,10 @@ domains:
         type: "class"
         signature: "SDK stdio 内核客户端：spawn core.acp.stdio_server + thread/start|approve|reject|events + stream_events（P1, 对标 Codex SDK）"
         module: "aiplat-sdk/aiplat/stdio.py"
+      - symbol: "build_os_sandbox_cmd"
+        type: "function"
+        signature: "OS 原生沙箱命令包装：bwrap/seatbelt 可选执行器，fail-open fallback（P1, 对标 Codex sandboxing）"
+        module: "core/harness/infrastructure/os_sandbox.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"

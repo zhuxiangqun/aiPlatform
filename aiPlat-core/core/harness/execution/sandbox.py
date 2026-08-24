@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import signal
 import subprocess
@@ -101,8 +102,19 @@ class StageSandbox:
         self._env["AIPLAT_SANDBOX_MAX_PROCS"] = str(self._max_processes)
 
         try:
+            # P1 OS sandbox (G19): wrap worker subprocess when AIPLAT_SANDBOX=bwrap/seatbelt
+            worker_cmd = [sys.executable, worker_script, input_file]
+            try:
+                from core.harness.infrastructure.os_sandbox import build_os_sandbox_cmd
+                worker_cmd = build_os_sandbox_cmd(
+                    worker_cmd,
+                    workdir=project_dir or os.getcwd(),
+                    network=False,
+                )
+            except Exception:  # noqa: BLE001 — OS sandbox wrap failed, fallback to original cmd (fail-open)
+                logging.getLogger(__name__).debug("os sandbox wrap failed, fallback", exc_info=True)
             proc = await asyncio.create_subprocess_exec(
-                sys.executable, worker_script, input_file,
+                *worker_cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 env=self._env,

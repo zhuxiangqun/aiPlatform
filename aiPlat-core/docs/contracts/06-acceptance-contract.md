@@ -618,3 +618,14 @@ pytest -q \
   - `grep -c "StdioKernelClient" aiplat-sdk/aiplat/__init__.py`（≥1：导出）
   - `cd aiplat-sdk && python3 -m pytest tests/test_stdio_client.py -q`（8 passed，含真实内核集成）
   - `grep -c "P1 SDK" aiPlat-core/docs/contracts/01-architecture-contract.md`（≥1：附录 B 登记）
+
+### 1.58 OS 原生沙箱执行器（P1, 2026-08-24）
+- MUST：`core/harness/infrastructure/os_sandbox.py` 存在——`detect_sandbox_mode`（bwrap/seatbelt/无探测 + AIPLAT_SANDBOX 开关）+ `build_os_sandbox_cmd`（bwrap：--ro-bind 系统路径 + --bind 工作区/tmp + --unshare-net 可选；seatbelt：sandbox-exec deny-default profile）+ fail-open fallback（无沙箱返回原命令）
+- MUST：接线——`StageSandbox.run` 包装 worker 子进程（`sandbox.py`）+ `CoreFacade.get_os_sandbox_status`（诊断）
+- 契约登记：边界契约 `01-architecture-contract.md` 附录 B（P1 OS 沙箱条目）+ run spec 五十八轮
+- 自动化验收：
+  - `grep -c "def detect_sandbox_mode\|def build_os_sandbox_cmd\|def sandbox_env_ready" aiPlat-core/core/harness/infrastructure/os_sandbox.py`（≥3）
+  - `grep -c "build_os_sandbox_cmd" aiPlat-core/core/harness/execution/sandbox.py`（≥1：StageSandbox 接线）
+  - `grep -c "def get_os_sandbox_status" aiPlat-core/core/api/core_facade.py`（≥1）
+  - `grep -c "P1 OS 沙箱" aiPlat-core/docs/contracts/01-architecture-contract.md`（≥1：附录 B 登记）
+  - `python3 -m pytest aiPlat-core/core/tests/unit/test_harness/test_os_sandbox.py -q`（10 passed）
