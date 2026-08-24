@@ -6277,6 +6277,8 @@ app.include_router(apps_router)
 
 from api.routers.change_control import router as change_control_router  # noqa: E402
 
+from api.routers.memory_import import router as memory_import_router  # noqa: E402
+
 from api.routers.approvals import router as approvals_router  # noqa: E402
 
 from api.routers.onboarding import router as onboarding_router  # noqa: E402
@@ -6284,6 +6286,8 @@ from api.routers.onboarding import router as onboarding_router  # noqa: E402
 from api.routers.gate_policies import router as gate_policies_router  # noqa: E402
 
 app.include_router(change_control_router)
+
+app.include_router(memory_import_router)
 
 app.include_router(approvals_router)
 
