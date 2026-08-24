@@ -129,3 +129,4 @@ export type { StudioSession, StudioProject, PipelineState, DeployResult } from '
 export { packagesApi } from './coreApi';
 export { overviewApi } from './coreApi';
 export { finetuneApi } from './coreApi';
+export { checkpointApi } from './coreApi';

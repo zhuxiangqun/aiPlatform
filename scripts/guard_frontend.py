@@ -497,8 +497,9 @@ def _extract_backend_routes() -> list[dict]:
         WORKSPACE_ROOT / "aiPlat-management",
     ]
     route_patterns = [
-        # Standard decorator: @router.get("/path"), @app.post("/path")
-        (re.compile(r"@(?:api_router|router|app)\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['\"]([^'\"]*)['\"]"), "method"),
+        # Standard decorator: @router.get("/path"), @app.post("/path"),
+        # @file_router.get("/path") — 多 router 文件（如 execution_snapshots.py 的 file_router）
+        (re.compile(r"@([a-z_]*_router|app|router)\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['\"]([^'\"]*)['\"]"), "method"),
         # Flask-style: @app.route("/path")
         (re.compile(r"@(?:app|router)\s*\.\s*route\s*\(\s*['\"]([^'\"]+)['\"]"), "flask_route"),
         # Dynamic registration: router.route("path", method, ...)
@@ -522,10 +523,21 @@ def _extract_backend_routes() -> list[dict]:
                 # Determine mount prefix for this file
                 mount_prefix = ""
                 router_self_prefix = ""
-                # Extract router's own prefix: router = APIRouter(prefix="/wiki")
-                self_prefix_match = re.search(r"APIRouter\s*\(\s*prefix\s*=\s*['\"]([^'\"]+)['\"]", content[:5000])
-                if self_prefix_match:
-                    router_self_prefix = self_prefix_match.group(1)
+                # Extract ALL router definitions: xyz_router = APIRouter(prefix="/wiki") — 多 router 文件支持
+                # （如 execution_snapshots.py 同时定义 router 与 file_router）
+                router_defs: dict[str, str] = {}
+                for rdm in re.finditer(
+                    r"([a-z_]+_router|router)\s*=\s*APIRouter\s*\(\s*prefix\s*=\s*['\"]([^'\"]+)['\"]",
+                    content[:5000],
+                ):
+                    router_defs[rdm.group(1)] = rdm.group(2)
+                if router_defs:
+                    # 默认取第一个（router 主变量）
+                    router_self_prefix = next(iter(router_defs.values()))
+                else:
+                    self_prefix_match = re.search(r"APIRouter\s*\(\s*prefix\s*=\s*['\"]([^'\"]+)['\"]", content[:5000])
+                    if self_prefix_match:
+                        router_self_prefix = self_prefix_match.group(1)
                 # Check mount prefix map — 完整相对路径优先（避免跨层同名文件 basename 冲突，
                 # 如 core/api/routers/code_intel.py 与 platform/apps/misc/api/code_intel.py）
                 rel_path = str(fp).replace(str(WORKSPACE_ROOT) + os.sep, "").replace(os.sep, "/")
@@ -553,8 +565,11 @@ def _extract_backend_routes() -> list[dict]:
                         if pat_type in ("flask_route", "dynamic_route", "api_route"):
                             method = "ALL"  # dynamic/flask routes serve all methods
                             path = m.group(1)
+                            route_self_prefix = router_self_prefix
                         else:
-                            method, path = m.group(1).upper(), m.group(2)
+                            method, path = m.group(2).upper(), m.group(3)
+                            # 多 router 文件：按 decorator 的 router 变量名匹配对应 prefix
+                            route_self_prefix = router_defs.get(m.group(1), router_self_prefix)
                         # Apply effective prefix for router-based routes (not top-level @app routes)
                         is_top_level = bool(re.search(r"@app\.", content[:m.start()+10]))
                         # raw = route path independent of the (unreliable) MOUNT prefix,
@@ -563,9 +578,9 @@ def _extract_backend_routes() -> list[dict]:
                         if is_top_level:
                             raw_path = path
                         else:
-                            raw_path = router_self_prefix + path
+                            raw_path = route_self_prefix + path
                         if effective_prefix and not is_top_level:
-                            path = effective_prefix + path
+                            path = (mount_prefix + route_self_prefix) + path
                         entries.append({
                             "method": method,
                             "path": path,

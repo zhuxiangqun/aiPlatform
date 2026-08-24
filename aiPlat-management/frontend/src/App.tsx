@@ -45,6 +45,7 @@ const WorkflowRunPage = lazy(() => import('./pages/Core/Workflows/WorkflowRunPag
 const CoreVariables = lazy(() => import('./pages/Core/Variables/Variables'));
 const CoreCredentials = lazy(() => import('./pages/Core/Credentials/Credentials'));
 const CoreMemory = lazy(() => import('./pages/Core/Memory/Memory'));
+const FileCheckpoints = lazy(() => import('./pages/Core/Checkpoints/FileCheckpoints'));
 const CoreJobs = lazy(() => import('./pages/Core/Jobs/Jobs'));
 const CoreSkillPacks = lazy(() => import('./pages/Core/SkillPacks'));
 const WorkspaceAgents = lazy(() => import('./pages/Workspace/Agents/Agents'));
@@ -186,6 +187,7 @@ const router = createBrowserRouter([
       { path: 'core/variables', element: withSuspense(CoreVariables) },
       { path: 'core/credentials', element: withSuspense(CoreCredentials) },
       { path: 'core/memory', element: withSuspense(CoreMemory) },
+      { path: 'core/checkpoints', element: withSuspense(FileCheckpoints) },
       { path: 'core/skill-packs', element: withSuspense(CoreSkillPacks) },
       { path: 'core/jobs', element: withSuspense(CoreJobs) },
       { path: 'prompts/app', element: withSuspense(PromptApp) },
