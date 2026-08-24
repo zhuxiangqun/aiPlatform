@@ -1,6 +1,6 @@
 ---
-total_capabilities: 1074
-last_updated: 2026-08-23
+total_capabilities: 1075
+last_updated: 2026-08-24
 version: "30.2"
 auto_sync: true
 core_guarantees:
@@ -1112,6 +1112,7 @@ scan_hash: 8f9548ec24f4
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 | AuditLog | `harness/infrastructure/audit.py` | ✅ | 自动同步 | 已合入 |
 | MetricsAggregator | `harness/observability/metrics/__init__.py` | ✅ | 自动同步 | 已合入 |
+| **StdioKernel（P0-a）** | `core/acp/stdio_server.py` + `core/api/core_facade.py` | ✅ | stdio JSON-RPC 持久内核：thread/start\|resume\|approve\|reject\|events 映射 PipelineSession + run_events；JSON-RPC 2.0 + 背压 -32001；入口 `python -m core.acp.stdio_server`（对标 Codex app-server） | 已合入 |
 |------|------|:---:|------|------|
 | trace_id / span_id | harness/observation/event_schema.py | ✅ | 每次 syscall 携带 | 已合入 |
 | EventBus | harness/observation/event_bus.py | ✅ | 发布/订阅 syscall 事件 | 已合入 |
@@ -1994,7 +1995,7 @@ scan_hash: 8f9548ec24f4
 | Agent 系统 | 41 | 0 | 41 |
 | Skill 系统 | 54 | 0 | 54 |
 | 安全与治理 | 48 | 0 | 48 |
-| 可观测性 | 18 | 0 | 18 |
+| 可观测性 | 19 | 0 | 19 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 130 | 0 | 130 |
@@ -2031,7 +2032,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1074** | **0** | **1074** |
+| **总计** | **1075** | **0** | **1075** |
 
 ---
 

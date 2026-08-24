@@ -1438,6 +1438,17 @@ async def lifespan(app: FastAPI):
 
     asyncio.create_task(_recover_orphan_pipelines())
 
+    # ── Stdio JSON-RPC kernel (P0-a, 对标 Codex app-server; AIPLAT_STDIO_KERNEL=1 启用) ──
+    # 外部程序 spawn `python -m core.acp.stdio_server` 即可使用（独立进程入口）；
+    # 此处仅做进程内实例创建与 env 日志提示，供 server 生命周期内复用。
+    if os.environ.get("AIPLAT_STDIO_KERNEL", "false").lower() in ("1", "true", "yes"):
+        try:
+            from core.api.core_facade import start_stdio_kernel
+            _stdio_kernel = start_stdio_kernel()
+            logging.info("stdio JSON-RPC kernel ready (AIPLAT_STDIO_KERNEL=1); use `python -m core.acp.stdio_server` for stdio transport")
+        except Exception as e:
+            logging.warning("stdio kernel init failed: %s", str(e)[:200], exc_info=True)
+
     # ── Docs → Wiki auto-sync (v2.3) ──
     # B: 启动时自动导入 docs/ 到 Wiki（可通过 AIPLAT_DOCS_AUTO_SYNC=false 关闭）
     #    使用后台线程执行，避免阻塞 health check

@@ -583,3 +583,17 @@ pytest -q \
   - `grep -c "SessionStart\|PreToolUse\|PostToolUse\|SessionEnd" aiPlat-core/core/harness/infrastructure/hooks/cc_bridge_rules.py`（≥4：映射表）
   - `grep -c "G6 CC/Codex hooks 协议桥" aiPlat-core/docs/contracts/01-architecture-contract.md`（≥1：附录 B 登记）
   - `python3 -m pytest aiPlat-core/core/tests/unit/test_harness/test_cc_hooks_bridge.py -q`（15 passed）
+
+### 1.55 stdio JSON-RPC 持久内核（P0-a, 2026-08-24）
+- MUST：`core/acp/stdio_server.py` 存在——`StdioKernel`（JSON-RPC 2.0 over stdio JSONL）+ `handle_request` 分发 + `_event_loop` 主循环；方法：initialize/shutdown/thread/start/status/events/resume/approve/reject/rollback/cancel
+- MUST：Thread 映射到已有能力——`thread/start`→`create_pipeline_session().start`、`thread/approve|reject`→`session.approve|reject`（HITL）、`thread/events`→`PipelineRunStore.list_run_events`、`thread/cancel`→`cancel_pipeline`
+- MUST：JSON-RPC 2.0 错误信封（-32700 parse/-32601 method not found/-32602 invalid params/-32603 internal）；背压 `-32001`（并发超限建议指数退避，对齐 codex）
+- MUST：独立进程入口 `python -m core.acp.stdio_server`（外部程序/CI spawn 驱动）；`CoreFacade.start_stdio_kernel` + server 启动 env 门控（`AIPLAT_STDIO_KERNEL=1`）
+- 契约登记：边界契约 `01-architecture-contract.md` 附录 B（P0-a 条目）+ run spec 五十五轮
+- 自动化验收：
+  - `grep -c "class StdioKernel\|def handle_request\|def _event_loop\|thread_start\|thread_approve" aiPlat-core/core/acp/stdio_server.py`（≥6）
+  - `grep -c "def start_stdio_kernel" aiPlat-core/core/api/core_facade.py`（≥1）
+  - `grep -c "start_stdio_kernel" aiPlat-core/core/server.py`（≥1：生产接线）
+  - `grep -c "P0-a" aiPlat-core/docs/contracts/01-architecture-contract.md`（≥1：附录 B 登记）
+  - `python3 -m pytest aiPlat-core/core/tests/unit/test_harness/test_stdio_kernel.py -q`（13 passed）
+  - `python3 -c "import subprocess,sys; p=subprocess.run([sys.executable,'-m','core.acp.stdio_server'],input='{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}\\n{\"jsonrpc\":\"2.0\",\"id\":99,\"method\":\"shutdown\",\"params\":{}}\\n',capture_output=True,text=True,timeout=30,cwd='aiPlat-core'); assert p.returncode==0 and 'protocol_version' in p.stdout and 'shutdown' in p.stdout"`（进程级 smoke：initialize+shutdown 往返）
