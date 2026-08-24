@@ -180,6 +180,79 @@ class TestChannelAdapter:
         assert resp["replyToken"] == "rt1"
         assert resp["messages"][0]["text"] == "hi"
 
+    def test_get_channel_adapter_extended_18_channels(self):
+        """渠道广度延伸 14→18：qq/reddit/github/sms 可解析。"""
+        from channels.adapter import get_channel_adapter
+
+        for name in ["qq", "reddit", "github", "sms"]:
+            adapter = get_channel_adapter(name)
+            assert adapter is not None, name
+            assert hasattr(adapter, "parse_message")
+            assert hasattr(adapter, "format_response")
+
+    def test_qq_adapter_parses_bot_message(self):
+        """QQ 机器人回调 → ChannelMessage。"""
+        from channels.adapter import get_channel_adapter
+
+        adapter = get_channel_adapter("qq")
+        msg = adapter.parse_message({"event": {"message": {
+            "id": "m1", "content": "qq hello", "chat_id": "g1", "from_id": "u1"}}})
+        assert msg.text == "qq hello"
+        assert msg.chat_id == "g1"
+        assert msg.user_id == "u1"
+        assert msg.channel.value == "qq"
+        resp = adapter.format_response(type("R", (), {"message_id": "g1", "text": "hi", "markdown": None, "buttons": None})())
+        assert resp["msg_type"] == "text"
+        assert resp["content"] == "hi"
+
+    def test_reddit_adapter_parses_comment(self):
+        """Reddit comment → ChannelMessage。"""
+        from channels.adapter import get_channel_adapter
+
+        adapter = get_channel_adapter("reddit")
+        msg = adapter.parse_message({"data": {
+            "name": "t1_c1", "author": "alice", "subreddit": "programming",
+            "body": "reddit hello", "link_title": "a post"}})
+        assert msg.text == "reddit hello"
+        assert msg.chat_id == "r/programming"
+        assert msg.user_id == "alice"
+        assert msg.metadata["link_title"] == "a post"
+        resp = adapter.format_response(type("R", (), {"message_id": "t1_c1", "text": "hi", "markdown": None, "buttons": None})())
+        assert resp["body"] == "hi"
+
+    def test_github_adapter_parses_issue_comment(self):
+        """GitHub webhook (comment) → ChannelMessage。"""
+        from channels.adapter import get_channel_adapter
+
+        adapter = get_channel_adapter("github")
+        msg = adapter.parse_message({
+            "action": "created", "repository": {"full_name": "org/repo"},
+            "issue": {"number": 5}, "sender": {"login": "bob"},
+            "comment": {"id": 100, "body": "github hello", "user": {"login": "bob"}},
+        })
+        assert "github hello" in msg.text
+        assert msg.chat_id == "org/repo#5"
+        assert msg.user_id == "bob"
+        assert msg.metadata["action"] == "created"
+        resp = adapter.format_response(type("R", (), {"message_id": "org/repo#5", "text": "hi", "markdown": None, "buttons": None})())
+        assert resp["body"] == "hi"
+
+    def test_sms_adapter_parses_twilio(self):
+        """Twilio-style SMS webhook → ChannelMessage。"""
+        from channels.adapter import get_channel_adapter
+
+        adapter = get_channel_adapter("sms")
+        msg = adapter.parse_message({
+            "From": "+15551234567", "To": "+15559876543",
+            "Body": "sms hello", "MessageSid": "SM1"})
+        assert msg.text == "sms hello"
+        assert msg.user_id == "+15551234567"
+        assert "+15551234567" in msg.chat_id
+        assert msg.channel.value == "sms"
+        resp = adapter.format_response(type("R", (), {"message_id": "+15551234567", "text": "hi", "markdown": None, "buttons": None})())
+        assert resp["To"] == "+15551234567"
+        assert resp["Body"] == "hi"
+
     def test_get_channel_adapter_unknown_raises(self):
         from channels.adapter import get_channel_adapter
 
