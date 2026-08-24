@@ -3249,6 +3249,17 @@ async def import_claude_memories(
     )
 
 
+def get_os_sandbox_status() -> Dict[str, Any]:
+    """返回 OS 原生沙箱模式诊断（P1, 对标 Codex sandboxing）。
+
+    {mode: bwrap|seatbelt|none, available, enabled, active, env}——
+    供诊断端点/运维面板查看 AIPLAT_SANDBOX 生效状态。
+    """
+    from core.harness.infrastructure.os_sandbox import sandbox_env_ready
+
+    return sandbox_env_ready()
+
+
 def get_document_categories() -> list:
     """Get supported document category labels (from ConverterRegistry — single source of truth)."""
     from core.harness.document.protocol import get_document_registry
