@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1078
+total_capabilities: 1079
 last_updated: 2026-08-24
 version: "30.2"
 auto_sync: true
@@ -669,6 +669,7 @@ scan_hash: 8f9548ec24f4
 | MemoryManager.save_memory_rules | `harness/memory/manager.py` | ✅ | 自动同步 | 已合入 |
 | MemoryManager.load_memory_rules | `harness/memory/manager.py` | ✅ | 自动同步 | 已合入 |
 | SemanticMemoryModal | `aiPlat-management/frontend/src/components/SemanticMemoryModal.tsx` | ✅ | 自动同步 | 已合入 |
+| **文件 Checkpoint UI** | `aiPlat-management/frontend/src/pages/Core/Checkpoints/FileCheckpoints.tsx` + `services/coreApi.ts`（checkpointApi） | ✅ | coding 场景前端：checkpoint 列表/查看/恢复（Hermes Layer 1 物理安全网接入，对标报告 §16.3 ⚠️未变项闭环） | 已合入 |
 | Memory rules JSON | `harness/memory/manager.py` | ✅ | 自动同步 | 已合入 |
 | LongTermMemoryMixin | `services/execution_store/ltm_mixin.py` | ✅ | 自动同步 | 已合入 |
 | MemoryEntry | `harness/memory/base.py` | ✅ | 自动同步 | 已合入 |
@@ -1991,7 +1992,7 @@ scan_hash: 8f9548ec24f4
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 69 | 0 | 69 |
-| 记忆子系统 | 39 | 0 | 39 |
+| 记忆子系统 | 40 | 0 | 40 |
 | 知识引擎（本体） | 145 | 0 | 145 |
 | RAG 检索 | 42 | 0 | 42 |
 | 知识基础设施 | 29 | 0 | 29 |
@@ -2035,7 +2036,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1078** | **0** | **1078** |
+| **总计** | **1079** | **0** | **1079** |
 
 ---
 

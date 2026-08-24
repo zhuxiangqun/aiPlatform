@@ -1,7 +1,7 @@
 import {
   Activity, AlertTriangle, BarChart3, Bell, BookOpen, Bot, Box, Brain,
   Code, Cpu, Database, FileText, Flame, FolderGit, FolderOpen,
-  GitBranch, HardDrive, Key, Layers, LayoutDashboard, Link,
+  GitBranch, HardDrive, History, Key, Layers, LayoutDashboard, Link,
   ListOrdered, MessageSquare, Monitor, Network, Package, Palette,
   PenTool, Play, Plug, Rocket, Search, Server, Settings, Share2,
   Shield, ShoppingBag, Sparkles, Terminal, TrendingUp, Users, Wrench,
@@ -146,6 +146,7 @@ export const menuItems: MenuEntry[] = [
     { key: '/core/mcp', icon: Plug, label: '引擎 MCP' },
     { key: '/core/workflows', icon: GitBranch, label: 'Workflow' },
     { key: '/core/memory', icon: Brain, label: 'Memory' },
+    { key: '/core/checkpoints', icon: History, label: '文件 Checkpoint' },
     // ── 接入配置 ──
     { key: '_sub_config', subLabel: '接入配置' },
     { key: '/platform/gateway', icon: Network, label: 'API 网关' },

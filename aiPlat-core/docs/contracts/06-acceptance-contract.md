@@ -636,3 +636,12 @@ pytest -q \
   - `grep -c "def get_os_sandbox_status" aiPlat-core/core/api/core_facade.py`（≥1）
   - `grep -c "P1 OS 沙箱" aiPlat-core/docs/contracts/01-architecture-contract.md`（≥1：附录 B 登记）
   - `python3 -m pytest aiPlat-core/core/tests/unit/test_harness/test_os_sandbox.py -q`（10 passed）
+
+### 1.59 前端 coding 场景：文件 Checkpoint UI（2026-08-24，对标报告 §16.3 ⚠️未变项闭环）
+- MUST：`FileCheckpoints.tsx` 存在——checkpoint 列表（session/路径过滤 + 刷新）+ 查看内容（Modal + 代码块渲染）+ 恢复（confirm + restore 调用），经 `checkpointApi`（services 统一出口）调 `/platform/execution/file-checkpoints`
+- MUST：路由注册（`App.tsx` `core/checkpoints`）+ 侧边栏菜单（`pageManifest.ts`）
+- 契约登记：run spec 六十轮（前端 UI 属展示层，无 backend 契约变更）
+- 自动化验收：
+  - `grep -c "checkpointApi" aiPlat-management/frontend/src/services/coreApi.ts aiPlat-management/frontend/src/services/index.ts`（≥2：API 定义 + 统一出口）
+  - `grep -c "core/checkpoints" aiPlat-management/frontend/src/App.tsx aiPlat-management/frontend/src/pageManifest.ts`（≥2：路由 + 菜单）
+  - `cd aiPlat-management/frontend && npx tsc --noEmit`（0 error）+ `npm run build`（exit 0）

@@ -2536,3 +2536,23 @@ export const finetuneApi = {
   // Providers
   listProviders: async () => apiClient.get<{ providers: any[] }>('/core/finetune/providers'),
 };
+
+// ── File checkpoints (Hermes Layer 1: physical safety net) ──
+export const checkpointApi = {
+  list: async (params?: { session_id?: string; path?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.session_id) qs.set('session_id', params.session_id);
+    if (params?.path) qs.set('path', params.path);
+    const query = qs.toString();
+    return apiClient.get<{ session_id: string; count: number; items: any[] }>(
+      `/platform/execution/file-checkpoints${query ? '?' + query : ''}`);
+  },
+  get: async (checkpointId: string, session_id?: string) => {
+    const qs = session_id ? `?session_id=${encodeURIComponent(session_id)}` : '';
+    return apiClient.get<any>(`/platform/execution/file-checkpoints/${checkpointId}${qs}`);
+  },
+  restore: async (checkpointId: string, session_id?: string) => {
+    const qs = session_id ? `?session_id=${encodeURIComponent(session_id)}` : '';
+    return apiClient.post<any>(`/platform/execution/file-checkpoints/${checkpointId}/restore${qs}`, {});
+  },
+};
