@@ -1221,8 +1221,8 @@ scan_hash: 8f9548ec24f4
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 | get_channel_adapter | `aiPlat-app/channels/adapter.py` | ✅ | 自动同步 | 已合入 |
-| ChannelAdapters | `aiPlat-app/channels/adapters/` | ✅ | 多渠道扩展: Discord/WeCom/Email/DingTalk/WhatsApp/Lark/Teams/Signal/Matrix/Mattermost/Line (P1-A4 + 2026-08-23/24 广度延伸 7→14) | 已合入 |
-| ChannelDispatcher | `aiPlat-app/channels/adapter.py` | ✅ | 统一调度 14 渠道 (3 内置 + 11 扩展) | 已合入 |
+| ChannelAdapters | `aiPlat-app/channels/adapters/` | ✅ | 多渠道扩展: Discord/WeCom/Email/DingTalk/WhatsApp/Lark/Teams/Signal/Matrix/Mattermost/Line/QQ/Reddit/GitHub/SMS (P1-A4 + 2026-08-23/24 广度延伸 7→18) | 已合入 |
+| ChannelDispatcher | `aiPlat-app/channels/adapter.py` | ✅ | 统一调度 18 渠道 (3 内置 + 15 扩展) | 已合入 |
 | LearnNudgeHook | `core/harness/learning/learn_nudge_hook.py` | ✅ | 会话内实时学习触发 (POST_OBSERVE, P1-A1) | 已合入 |
 | SkillCurator | `core/harness/learning/skill_curator.py` | ✅ | 技能生命周期维护 active→stale→archived (P1-A2) | 已合入 |
 | ModelTierPanel MoA card | `aiPlat-management/frontend/src/components/model/ModelTierPanel.tsx` | ✅ | 自动同步 | 已合入 |

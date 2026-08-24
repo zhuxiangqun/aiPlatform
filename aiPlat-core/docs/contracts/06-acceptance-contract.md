@@ -234,6 +234,13 @@ pytest -q \
   - `python3 -c "import sys; sys.path.insert(0,'aiPlat-app'); from channels.adapter import get_channel_adapter; [get_channel_adapter(n) for n in ['signal','matrix','mattermost','line']]; print('OK')"`
   - `cd aiPlat-app && pytest tests/test_cli_and_channels.py -q`（15 passed）
 
+### 1.18d 渠道广度延伸三批（QQ/Reddit/GitHub/SMS, 2026-08-24）
+- MUST：`qq`/`reddit`/`github`/`sms` 适配器实现 `parse_message`（统一 `ChannelMessage`）+ `format_response`（渠道原生响应），注册进 `ADAPTERS`
+- MUST：`get_channel_adapter` 可解析 **18 渠道**（3 内置 + 15 扩展）
+- 自动化验收：
+  - `python3 -c "import sys; sys.path.insert(0,'aiPlat-app'); from channels.adapter import get_channel_adapter; [get_channel_adapter(n) for n in ['qq','reddit','github','sms']]; print('OK')"`
+  - `cd aiPlat-app && pytest tests/test_cli_and_channels.py -q`（20 passed）
+
 ### 1.19 harness→apps 收敛（P0-A1, 2026-08-18）
 - MUST：integration.py 含 5 个新工厂（`get_mcp_client_manager`/`get_skill_discovery`/`get_job_manager`/`get_dataset_manager`/`get_result_verifier`），DI-first fallback direct import
 - MUST：9 个 harness 文件不再直导 apps 服务（dynamic_orchestrator/delegate_tool/voice_pipeline/profile/learning/training×3/pipeline_engine-quality）

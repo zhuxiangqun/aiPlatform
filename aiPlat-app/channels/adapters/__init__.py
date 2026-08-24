@@ -17,6 +17,10 @@ from .signal import SignalAdapter
 from .matrix import MatrixAdapter
 from .mattermost import MattermostAdapter
 from .line import LineAdapter
+from .qq import QQAdapter
+from .reddit import RedditAdapter
+from .github import GitHubAdapter
+from .sms import SMSAdapter
 
 # channel → adapter class
 ADAPTERS = {
@@ -31,12 +35,17 @@ ADAPTERS = {
     ChannelType.MATRIX: MatrixAdapter,
     ChannelType.MATTERMOST: MattermostAdapter,
     ChannelType.LINE: LineAdapter,
+    ChannelType.QQ: QQAdapter,
+    ChannelType.REDDIT: RedditAdapter,
+    ChannelType.GITHUB: GitHubAdapter,
+    ChannelType.SMS: SMSAdapter,
 }
 
 __all__ = [
     "ADAPTERS", "DiscordAdapter", "WeComAdapter", "EmailAdapter", "DingTalkAdapter",
     "WhatsAppAdapter", "LarkAdapter", "TeamsAdapter",
     "SignalAdapter", "MatrixAdapter", "MattermostAdapter", "LineAdapter",
+    "QQAdapter", "RedditAdapter", "GitHubAdapter", "SMSAdapter",
 ]
 
 
