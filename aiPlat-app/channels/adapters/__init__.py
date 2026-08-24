@@ -13,6 +13,10 @@ from .dingtalk import DingTalkAdapter
 from .whatsapp import WhatsAppAdapter
 from .lark import LarkAdapter
 from .teams import TeamsAdapter
+from .signal import SignalAdapter
+from .matrix import MatrixAdapter
+from .mattermost import MattermostAdapter
+from .line import LineAdapter
 
 # channel → adapter class
 ADAPTERS = {
@@ -23,11 +27,16 @@ ADAPTERS = {
     ChannelType.WHATSAPP: WhatsAppAdapter,
     ChannelType.LARK: LarkAdapter,
     ChannelType.TEAMS: TeamsAdapter,
+    ChannelType.SIGNAL: SignalAdapter,
+    ChannelType.MATRIX: MatrixAdapter,
+    ChannelType.MATTERMOST: MattermostAdapter,
+    ChannelType.LINE: LineAdapter,
 }
 
 __all__ = [
     "ADAPTERS", "DiscordAdapter", "WeComAdapter", "EmailAdapter", "DingTalkAdapter",
     "WhatsAppAdapter", "LarkAdapter", "TeamsAdapter",
+    "SignalAdapter", "MatrixAdapter", "MattermostAdapter", "LineAdapter",
 ]
 
 
