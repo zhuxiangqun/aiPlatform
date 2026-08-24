@@ -645,3 +645,15 @@ pytest -q \
   - `grep -c "checkpointApi" aiPlat-management/frontend/src/services/coreApi.ts aiPlat-management/frontend/src/services/index.ts`（≥2：API 定义 + 统一出口）
   - `grep -c "core/checkpoints" aiPlat-management/frontend/src/App.tsx aiPlat-management/frontend/src/pageManifest.ts`（≥2：路由 + 菜单）
   - `cd aiPlat-management/frontend && npx tsc --noEmit`（0 error）+ `npm run build`（exit 0）
+
+### 1.60 continuable 子代理编排（2026-08-24，对标报告 §21.1 "continuable 编排仍缺"闭环）
+- MUST：`coordinator.continue_execution(instance_id, message)` 存在——复用 `execute_single` 创建的 agent（`SubagentInstance.agent_ref`），向同一会话追加消息重执行（conversational agent `_conversation_history` 天然多轮）；fail-loud（未知 instance / 无 agent_ref → 明确错误）
+- MUST：`execute_single` 返回真实 instance key（`SubagentResult.instance_id`，格式 `{session_id}:{name}`，非 `inproc:{name}` 占位）
+- MUST：`InProcessProvider.continuation` 委托 coordinator（`capabilities.continuation=True` 名实相符）；`coordinator.send_message` → in_process continuation 成功
+- 契约登记：边界契约 `01-architecture-contract.md` 附录 B（continuable 条目）+ run spec 六十一轮
+- 自动化验收：
+  - `grep -c "async def continue_execution" aiPlat-core/core/apps/agents/subagent/coordinator.py`（≥1）
+  - `grep -c "agent_ref" aiPlat-core/core/apps/agents/subagent/config.py`（≥1：SubagentInstance 保留 agent）
+  - `grep -c "instance_id=_inst_key\|instance_id=getattr" aiPlat-core/core/apps/agents/subagent/coordinator.py aiPlat-core/core/apps/agents/subagent/providers.py`（≥2：真实 key 返回 + provider 使用）
+  - `grep -c "continuable 编排" aiPlat-core/docs/contracts/01-architecture-contract.md`（≥1：附录 B 登记）
+  - `python3 -m pytest aiPlat-core/core/tests/unit/test_agents/test_subagent_providers.py -q`（24 passed）

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1079
+total_capabilities: 1080
 last_updated: 2026-08-24
 version: "30.2"
 auto_sync: true
@@ -958,6 +958,7 @@ scan_hash: 8f9548ec24f4
 | ProviderResult | `` | ✅ | 自动同步 | 已合入 |
 | ProviderCapabilities | `` | ✅ | 自动同步 | 已合入 |
 | SubagentProviders | `apps/agents/subagent/providers.py` | ✅ | 子代理 provider 抽象 (in_process/acp/process, P1-A3 + P3-2) | 已合入 |
+| **continue_execution** | `apps/agents/subagent/coordinator.py` | ✅ | continuable 编排：复用保留 agent 续接已完结子代理（DSH send_message 对齐，2026-08-24） | 已合入 |
 | ProcessProvider | `apps/agents/subagent/providers.py` | ✅ | fork 式子进程隔离传输 (P3-2, DSH fork 借鉴), python -m process_runner | 已合入 |
 | process_runner | `apps/agents/subagent/process_runner.py` | ✅ | 子进程执行器: stdin JSON → stdout ProviderResult (P3-2) | 已合入 |
 | ACPClient | `core/acp/client.py` | ✅ | ACP WebSocket client — start/continue 包装 chat 协议 (P1-A3) | 待合入 |
@@ -1996,7 +1997,7 @@ scan_hash: 8f9548ec24f4
 | 知识引擎（本体） | 145 | 0 | 145 |
 | RAG 检索 | 42 | 0 | 42 |
 | 知识基础设施 | 29 | 0 | 29 |
-| Agent 系统 | 41 | 0 | 41 |
+| Agent 系统 | 42 | 0 | 42 |
 | Skill 系统 | 54 | 0 | 54 |
 | 安全与治理 | 48 | 0 | 48 |
 | 可观测性 | 21 | 0 | 21 |
@@ -2036,7 +2037,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1079** | **0** | **1079** |
+| **总计** | **1080** | **0** | **1080** |
 
 ---
 

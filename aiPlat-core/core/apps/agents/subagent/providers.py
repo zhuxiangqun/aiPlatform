@@ -103,18 +103,35 @@ class InProcessProvider(SubagentProvider):
             if hasattr(result, "success") and not result.success:
                 return ProviderResult(ok=False, error=str(result.error or "subagent failed"))
             output = getattr(result, "output", None) or getattr(result, "summary", None) or str(result)
+            # continuable 编排：使用 coordinator 返回的真实 instance key（可续）
+            inst_id = getattr(result, "instance_id", "") or f"inproc:{name}"
             return ProviderResult(
                 ok=True, output=str(output),
-                instance_id=f"inproc:{name}", can_continue=True,
+                instance_id=inst_id, can_continue=bool(inst_id),
             )
         except Exception as e:
             logger.debug("in_process provider start failed: %s", e, exc_info=True)
             return ProviderResult(ok=False, error=str(e)[:300])
 
     async def continuation(self, instance_id: str, message: str) -> ProviderResult:
-        # In-process instances can be resumed by re-running with appended context
-        return ProviderResult(ok=False, error="in-process continuation via new start",
-                              can_continue=False)
+        # In-process instances resume via the retained agent (DSH continuable):
+        # coordinator 保留 execute_single 创建的 agent，向同一会话追加消息重执行。
+        if self._coordinator is None:
+            return ProviderResult(ok=False, error="coordinator not wired",
+                                  instance_id=instance_id, can_continue=False)
+        try:
+            result = await self._coordinator.continue_execution(instance_id, message)
+            return ProviderResult(
+                ok=result.success,
+                output=str(result.output or ""),
+                error=str(result.error or ""),
+                instance_id=instance_id,
+                can_continue=result.success,
+            )
+        except Exception as e:
+            logger.debug("in_process continuation failed: %s", e, exc_info=True)
+            return ProviderResult(ok=False, error=str(e)[:300],
+                                  instance_id=instance_id, can_continue=False)
 
 
 class ACPProvider(SubagentProvider):

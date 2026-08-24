@@ -410,7 +410,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 28
+    caps_count: 29
     provides:
       - symbol: voice_chat_handler
         type: function
@@ -446,6 +446,10 @@ domains:
         type: class
         signature: 'Fork-style provider: subprocess isolation (P3-2).'
         module: aiPlat-core/core/apps/agents/subagent/providers.py
+      - symbol: continue_execution
+        type: function
+        signature: 'continuable 编排：复用保留 agent 续接已完结子代理（DSH send_message 对齐，2026-08-24）'
+        module: aiPlat-core/core/apps/agents/subagent/coordinator.py
       - symbol: get_provider_factories
       - symbol: default_provider_name
       - symbol: main
