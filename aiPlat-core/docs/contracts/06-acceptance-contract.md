@@ -597,3 +597,14 @@ pytest -q \
   - `grep -c "P0-a" aiPlat-core/docs/contracts/01-architecture-contract.md`（≥1：附录 B 登记）
   - `python3 -m pytest aiPlat-core/core/tests/unit/test_harness/test_stdio_kernel.py -q`（13 passed）
   - `python3 -c "import subprocess,sys; p=subprocess.run([sys.executable,'-m','core.acp.stdio_server'],input='{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}\\n{\"jsonrpc\":\"2.0\",\"id\":99,\"method\":\"shutdown\",\"params\":{}}\\n',capture_output=True,text=True,timeout=30,cwd='aiPlat-core'); assert p.returncode==0 and 'protocol_version' in p.stdout and 'shutdown' in p.stdout"`（进程级 smoke：initialize+shutdown 往返）
+
+### 1.56 竞品会话/记忆导入（P0-b, 2026-08-24）
+- MUST：`core/harness/memory/import_claude_sessions.py` 存在——`parse_claude_session`（Claude JSONL user/assistant 配对、system-reminder 跳过、text/block-list content 提取）+ `find_claude_sessions`（~/.claude/projects|transcripts 递归查找）+ `import_claude_sessions`（→ MemoryManager.save_interaction，source_tag=claude_import + provenance 溯源）
+- MUST：`CoreFacade.import_claude_memories` facade + platform `POST /platform/memory/import` + `GET /platform/memory/import/status`（经 CoreFacade 调用，require_auth）
+- 契约登记：边界契约 `01-architecture-contract.md` 附录 B（P0-b 条目）+ run spec 五十六轮
+- 自动化验收：
+  - `grep -c "def parse_claude_session\|def find_claude_sessions\|def import_claude_sessions" aiPlat-core/core/harness/memory/import_claude_sessions.py`（≥3）
+  - `grep -c "def import_claude_memories" aiPlat-core/core/api/core_facade.py`（≥1）
+  - `grep -c "memory/import" aiPlat-platform/api/routers/memory_import.py aiPlat-platform/api/rest/routes.py`（≥2：端点 + 注册）
+  - `grep -c "P0-b" aiPlat-core/docs/contracts/01-architecture-contract.md`（≥1：附录 B 登记）
+  - `python3 -m pytest aiPlat-core/core/tests/unit/test_harness/test_import_claude_sessions.py -q`（10 passed）

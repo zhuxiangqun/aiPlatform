@@ -168,12 +168,20 @@ domains:
   memory-subsystem:
     section: "二"
     section_name: "记忆子系统"
-    caps_count: 31
+    caps_count: 33
     provides:
       - symbol: "MemoryManager"
         type: "class"
         signature: "build_context, save_interaction, save_task_skill"
         module: "core/harness/memory/manager.py"
+      - symbol: "import_claude_sessions"
+        type: "function"
+        signature: "Claude Code 会话 JSONL → MemoryManager（P0-b：解析/查找/导入，source_tag=claude_import + provenance 溯源）"
+        module: "core/harness/memory/import_claude_sessions.py"
+      - symbol: "import_claude_memories"
+        type: "function"
+        signature: "CoreFacade facade：platform POST /memory/import 入口"
+        module: "core/api/core_facade.py"
       - symbol: "WorkingMemory"
         type: "class"
         signature: "deque sliding window, 30K tokens"

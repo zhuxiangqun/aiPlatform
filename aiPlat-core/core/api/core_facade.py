@@ -3228,6 +3228,27 @@ def start_stdio_kernel() -> Any:
     return StdioKernel()
 
 
+async def import_claude_memories(
+    base_path: str = "",
+    max_sessions: int = 50,
+) -> Dict[str, Any]:
+    """导入 Claude Code 会话 JSONL → MemoryManager（P0-b，对标 Codex external_agent_config_migration）。
+
+    解析 ~/.claude/projects|transcripts/*.jsonl 为对话轮次，写入 episodic/semantic
+    记忆（source_tag=claude_import + provenance 溯源）。返回 {imported, sessions,
+    turns, skipped, errors}。供 platform POST /memory/import 调用。
+    """
+    from core.harness.memory.import_claude_sessions import import_claude_sessions
+    from core.harness.memory.manager import MemoryManager
+
+    mm = MemoryManager()
+    return await import_claude_sessions(
+        memory_manager=mm,
+        base_path=base_path or None,
+        max_sessions=max_sessions,
+    )
+
+
 def get_document_categories() -> list:
     """Get supported document category labels (from ConverterRegistry — single source of truth)."""
     from core.harness.document.protocol import get_document_registry
