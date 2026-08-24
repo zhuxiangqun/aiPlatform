@@ -13,6 +13,37 @@
 
 ---
 
+## 0.1 业务语言导读（给非技术读者的快速入口）
+
+> 本报告正文有大量技术表格（代码/文件/行号），是给工程师做能力对标用的证据。**如果你只想知道"aiPlat 在六个系统里到底是什么水平、值不值得看"，读这一节就够了。** 详细技术证据在 §1-§22（按需查阅）。
+
+**这六个系统分别是什么？（一句话）**
+
+| 系统 | 通俗定位 | 类比 |
+|---|---|---|
+| **aiPlat** | 一个"企业级 AI 操作系统"：既能编排多个 AI 角色协作干活，又自带审批、审计、知识库和交付流水线 | 像个有规矩的"AI 项目指挥部" |
+| **Claude Code** | 一个非常好用的"AI 编程助手"（在终端里帮你写代码） | 像个资深程序员 |
+| **DeepSeek Harness (dsh)** | 一套"一切都能插拔"的 AI 运行框架——模型、工具、流程全是积木，可自由拼装 | 像个万能乐高套装 |
+| **Hermes** | 一个会"自我学习进化"的个人 AI——用得多会自动变聪明 | 像个越用越懂你的助手 |
+| **Codex-Harness** | OpenAI 开源的"AI 运行时引擎"——不直接面向用户，而是让别的产品能嵌入 AI 能力 | 像个可以装进任何产品的"AI 发动机" |
+| **hermes-agent** | 就是 Hermes 的源代码本体（本报告用源码核实过它） | 与 Hermes 同一台机器 |
+
+**aiPlat 强在哪里？（3 句话）**
+1. **企业治理最完整**：审批、审计、多租户、计费——别的系统基本没有，这是 aiPlat 的护城河。
+2. **交付流水线一等公民**：AI 干活的全过程（规划→执行→审批→回滚→发布）被做成平台能力，六者中唯一。
+3. **知识引擎独有**：本体/知识图谱/检索——不是简单问答，是真正的企业知识管理。
+
+**aiPlat 弱在哪里？（3 句话）**
+1. **对外协议面最薄**：别的系统能"嵌入"到你的程序里（Codex 有 SDK、hermes-agent 有五面协议），aiPlat 此前只有内部接口——本报告后几轮已补齐（stdio 内核 + SDK，见 §20 G16/G17）。
+2. **生态规模小**：模型 provider 家族数（14 vs Hermes 38）、消息渠道数（14 vs Hermes 22）、技能社区规模都比 Hermes 小——机制已建，规模需时间。
+3. **无自我进化闭环的完整度**：aiPlat 有夜间自进化，但 Hermes 的"会话内实时学习"更敏捷（已吸收为 nudge 机制）。
+
+**六者一句话评级（★ 越多越强，来自 §15）**：企业治理 aiPlat ★★★★★ 一骑绝尘；执行引擎/上下文工程/自我进化 aiPlat 与 Hermes 并列领先；协议面/生态面 Codex-Harness 与 Hermes 领先、aiPlat 后发追赶。
+
+**怎么读**：想快速了解结论 → §0.1（本页）+ §16 结论 + §18；想逐维度对比 → §1-§14 每节首行的"通俗说"；想看代码证据 → 各节表格 + §17 调研方法 + §19 架构对比。*本导读 2026-08-24 新增，与正文结论一致。*
+
+---
+
 ## 0. 一句话定位
 
 | 系统 | 定位 | 核心差异化 |
@@ -27,6 +58,7 @@
 ---
 
 ## 1. Agent 循环与执行模型
+> **通俗说**：AI 怎么"干活"——aiPlat 是"流水线式"（多步骤规划好再执行，可暂停审批续跑），Claude Code/Codex 是"对话式"（边聊边干），DSH/Hermes 是"事件循环"（每步触发下一步）。aiPlat 的差异化在把整个执行过程做成了可治理的交付流水线。
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes | Codex-Harness | hermes-agent |
 |---|---|---|---|---|---|---|
@@ -41,6 +73,7 @@
 ---
 
 ## 2. 工具系统
+> **通俗说**：AI 能"动手"做什么、受什么约束——aiPlat 给所有工具调用设了统一安检门（审批/审计/权限），治理最严；Hermes 工具最多最灵活但约束较松。
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes | Codex-Harness | hermes-agent |
 |---|---|---|---|---|---|---|
@@ -54,6 +87,7 @@
 ---
 
 ## 3. 上下文管理
+> **通俗说**：AI 的"记忆"怎么管理和省成本——六者都有上下文压缩/缓存；aiPlat 是四层记忆 + 五级压缩，Codex 有官方实证的压缩优化（同一模型提升近 3 倍效果）。
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes | Codex-Harness | hermes-agent |
 |---|---|---|---|---|---|---|
@@ -67,6 +101,7 @@
 ---
 
 ## 4. 子代理与多 Agent 编排
+> **通俗说**：能不能让多个 AI 分工协作——aiPlat 编排形态最丰富（竞标/辩论/圆桌等 6 种），DSH 的"续接已完结子代理"能力 aiPlat 已补齐。
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes | Codex-Harness | hermes-agent |
 |---|---|---|---|---|---|---|
@@ -80,6 +115,7 @@
 ---
 
 ## 5. Skill 系统
+> **通俗说**：AI 的"技能包"怎么管理和成长——Hermes/hermes-agent 生态最开放（agentskills.io + 自学习沉淀），aiPlat 治理最严但社区规模小。
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes | Codex-Harness | hermes-agent |
 |---|---|---|---|---|---|---|
@@ -93,6 +129,7 @@
 ---
 
 ## 6. 工作流
+> **通俗说**：能不能把流程画出来让 AI 跑——aiPlat 有可视化画布（12 种节点）独一份；其余系统基本没有独立工作流引擎。
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes | Codex-Harness | hermes-agent |
 |---|---|---|---|---|---|---|
@@ -105,6 +142,7 @@
 ---
 
 ## 7. 规划
+> **通俗说**：AI 动手前会不会先想清楚——六者都有规划能力；aiPlat 是四级规划链（规则→LLM→模板→DAG），Hermes/hermes-agent 靠每轮目标判定。
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes | Codex-Harness | hermes-agent |
 |---|---|---|---|---|---|---|
@@ -114,6 +152,7 @@
 ---
 
 ## 8. 沙箱 / 权限 / 审批
+> **通俗说**：AI 干活的安全边界——aiPlat 审批/权限治理最完整（不可绕过）；Codex 有 OS 级沙箱（bubblewrap 真隔离）aiPlat 已跟进；Hermes 偏个人配置（可整体关掉）。
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes | Codex-Harness | hermes-agent |
 |---|---|---|---|---|---|---|
@@ -127,6 +166,7 @@
 ---
 
 ## 9. 会话持久化
+> **通俗说**：AI 干到一半断了能不能续——六者都能持久化；aiPlat 有防篡改审计链 + 决策溯源（企业刚需），Codex 有会话级分支（fork）aiPlat 可借鉴。
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes | Codex-Harness | hermes-agent |
 |---|---|---|---|---|---|---|
@@ -140,6 +180,7 @@
 ---
 
 ## 10. 模型适配
+> **通俗说**：能用哪些大模型——aiPlat 解析/治理最规范（唯一权威注册表），Hermes 生态最广（38 家族）；aiPlat 已扩到 14 家族追赶中。
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes | Codex-Harness | hermes-agent |
 |---|---|---|---|---|---|---|
@@ -153,6 +194,7 @@
 ---
 
 ## 11. 自修改 / 自我进化
+> **通俗说**：AI 会不会越用越聪明——Hermes/hermes-agent 有会话内实时学习闭环（标杆），aiPlat 有夜间自进化 + 训练触发，Codex/Claude Code 基本没有。
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes | Codex-Harness | hermes-agent |
 |---|---|---|---|---|---|---|
@@ -166,6 +208,7 @@
 ---
 
 ## 12. 扩展机制
+> **通俗说**：能不能给 AI 加新能力而不改内核——DSH 一切皆插件最纯，Codex 有完整扩展体系，aiPlat 有四级成本阶梯（便宜的先试）。
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes | Codex-Harness | hermes-agent |
 |---|---|---|---|---|---|---|
@@ -180,6 +223,7 @@
 ---
 
 ## 13. 多渠道 / 接口
+> **通俗说**：AI 能从哪些入口进来（微信/飞书/终端/API）——Hermes/hermes-agent 渠道最多（22 平台），aiPlat 已扩到 14 追赶；协议面（能否嵌入你的程序）Codex 最完整、aiPlat 后发补齐。
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes | Codex-Harness | hermes-agent |
 |---|---|---|---|---|---|---|
@@ -193,6 +237,7 @@
 ---
 
 ## 14. 企业治理与可观测性
+> **通俗说**：企业能不能管住 AI（审计/租户/计费/监控）——这是 aiPlat 的绝对主场，其余五个系统基本没有企业级治理。
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes | Codex-Harness | hermes-agent |
 |---|---|---|---|---|---|---|
