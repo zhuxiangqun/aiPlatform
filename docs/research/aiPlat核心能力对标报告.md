@@ -1,6 +1,6 @@
 # aiPlat 核心能力对标报告：aiPlat vs Claude Code vs DeepSeek Harness vs Hermes
 
-> **分析方式**：以 aiPlat 实际代码为分析对象（43 万行 Python、1,926 次 commit、CoreFacade 368 个导出符号（176 def/class + 192 re-export）、PipelineEngine 8,285 行——原 12,281 行，2026-08-19 P2-A4 拆分收官），结合 DeepSeek Harness 本地源码（`/Users/apple/workdata/person/deepseek-harness/`，0.1.0-rc.5）一手分析，以及 Claude Code 的权威 web 调研（官方文档 + 第三方分析）。Hermes 初版为文档级调研（官方文档站 + GitHub API 实测），**2026-08-15 补充最新版 v0.20.1 源码级验证**（`/Users/apple/workdata/person/openSource/hermes-agent-main/`，见 §17.1）。**2026-08-24 扩列**：新增 **Codex-Harness**（文档级：官方博客 + openai/codex 文档 + 权威第三方拆解，本地无源码）与 **hermes-agent**（源码级：同 hermes-agent-main v0.20.1，新增维度独立核查）两列，形成六系统对比（aiPlat / Claude Code / DSH / Hermes / Codex-Harness / hermes-agent）。
+> **分析方式**：以 aiPlat 实际代码为分析对象（43 万行 Python、1,926 次 commit、CoreFacade 368 个导出符号（176 def/class + 192 re-export）、PipelineEngine 8,285 行——原 12,281 行，2026-08-19 P2-A4 拆分收官），结合 DeepSeek Harness 本地源码（`/Users/apple/workdata/person/deepseek-harness/`，0.1.0-rc.5）一手分析。Claude Code 初版为权威 web 调研（官方文档 + 第三方分析），**2026-08-24 补充打包产物级验证**（本地 npm 包 `@anthropic-ai/claude-code@2.1.70`，`cli.js` 12MB 打包 JS——闭源产物，可 grep 事件/常量/提示词但不可读逻辑，见 §17.1）。Hermes 初版为文档级调研（官方文档站 + GitHub API 实测），**2026-08-15 补充最新版 v0.20.1 源码级验证**（`/Users/apple/workdata/person/openSource/hermes-agent-main/`，见 §17.1）。**2026-08-24 扩列**：新增 **Codex-Harness**（**源码级**：本地 `/Users/apple/workdata/person/openSource/codex-main/`，142 crate，见 §17.5）与 **hermes-agent**（源码级：同 hermes-agent-main v0.20.1，新增维度独立核查）两列，形成六系统对比（aiPlat / Claude Code / DSH / Hermes / Codex-Harness / hermes-agent）。
 > **2026-08-23 Hermes v0.20.5 补充调研**：v0.20.5（v2026.8.19）为 v0.20.0（The Herald Release，2026.8.3）后的补丁版——核心新特性在 v0.20.0：实时语音打断、A2A 协议（agent-to-agent links）、500 次工具调用上限、Bot Mode（数字员工）。**本地源码仍为 v0.20.1，新特性为文档级调研**（官方 release `github.com/NousResearch/hermes-agent/releases/tag/v2026.8.3` + 第三方深度分析）；与本地 v0.20.1 源码级验证并列为两个口径（§21.5 可信度原则：文档级标注清楚，不冒充源码级）。
 > **结论原则**：代码事实优先于文档宣称；每条 aiPlat 能力均附 `文件:行号` 证据。
 > **调研时点**：2026-08-15（2026-08-19 已按行动纲领基线复核更新，见下）
@@ -9,7 +9,7 @@
 > **吸收程度核验**：本报告"已补齐"标注的源码级实证见 **《对标吸收与架构纯度评估.md》**（6 项差距吸收程度逐项核验 + 架构纯度改善建议，2026-08-19）。
 > **2026-08-23 L2-L5 演进后复核**：应用工厂大工程（PR #77-#100，24 个 PR）落地——**L2 导入既有代码 → L3 增量合并（原子审批/哈希锁/AST 门禁）→ L4 多模块编排（跨模块影响/契约门禁）→ L4.5 数据库迁移（up/down DDL/破坏性阻断）→ L5 受控发布（版本化/金丝雀权重/infra 桥接）**（详见 `应用工厂分析报告.md` §9 与各 `plan-app-factory-l*.md`）。aiPlat 侧最新数字：PipelineEngine **8,371 行**、CoreFacade 163 def/class（+`deploy_app_service`）、capability_registry **211 symbols**、commit **2,041**、acceptance 契约 **1.52**、L2-L5 能力测试 **124 例**（+constitution 33 + freshness 8 = 165+ 全绿）。**新增 §22：应用工厂演进对标**——aiPlat 的"交付流水线一等公民"差异化在此维度进一步放大（三方均无对应物）。
 > **2026-08-23 G6 hooks 桥闭环复核**：对标报告 §20 唯一完全缺失项 **G6（CC/Codex hooks 协议桥）已实施**（`cc_bridge.py` + `cc_bridge_rules.py`，plan-g6-hooks-bridge 独立批次）——§16.3/§18/§20/§21 中"仅剩 G6 缺失"的结论全部更新为 **G1-G15 全 15 项补齐**（12 项 2026-08-19 行动纲领 + P3-2 子代理第 3 传输 + G6 hooks 桥）。详见 §20.1/§20.2 状态列与《对标吸收与架构纯度评估.md》§2.3。
-> **2026-08-24 六系统扩列复核**：本报告从 4 系统扩为 **6 系统**——新增 **Codex-Harness**（OpenAI 2026-08-19 开源，Apache-2.0，Rust；**2026-08-24 源码到本地后已升级为源码级口径**：142 crate / 3,279 .rs，见 §17.5）与 **hermes-agent**（Hermes 的开源代码本体，v0.20.1；源码级口径，本地源码实证）。Hermes 列保持文档级口径、Codex-Harness 列与 hermes-agent 列均为源码级口径——沿用本报告 §21.5"文档级标注清楚，不冒充源码级"的可信度原则。**新增对标维度**：协议面/可嵌入性（app-server/SDK/exec）、Thread/Turn/Item 公开原语、竞品资产导入、OS 原生沙箱、断点续跑/fork、背压语义——已并入 §1-§15 各维度与 §19 架构对比。详见《Codex-Harness开源借鉴分析报告.md》（2026-08-24）。
+> **2026-08-24 六系统扩列复核**：本报告从 4 系统扩为 **6 系统**——新增 **Codex-Harness**（OpenAI 2026-08-19 开源，Apache-2.0，Rust；**2026-08-24 源码到本地后已升级为源码级口径**：142 crate / 3,279 .rs，见 §17.5）与 **hermes-agent**（Hermes 的开源代码本体，v0.20.1；源码级口径，本地源码实证）。Hermes 列保持文档级口径、Codex-Harness 列与 hermes-agent 列均为源码级口径——沿用本报告 §21.5"文档级标注清楚，不冒充源码级"的可信度原则。**2026-08-24 Claude Code 口径升级**：发现本地 npm 包 `@anthropic-ai/claude-code@2.1.70`（cli.js 12MB 打包 JS），Claude Code 列从"文档级"升级为**打包产物级（半源码）**——hooks/checkpoint/plan/permissions/managed/dynamic/MCP/skills 均可 grep 实证（§17.1.1），实现逻辑仍文档级。**新增对标维度**：协议面/可嵌入性（app-server/SDK/exec）、Thread/Turn/Item 公开原语、竞品资产导入、OS 原生沙箱、断点续跑/fork、背压语义——已并入 §1-§15 各维度与 §19 架构对比。详见《Codex-Harness开源借鉴分析报告.md》（2026-08-24）。
 
 ---
 
@@ -286,8 +286,31 @@
 |---|---|---|
 | aiPlat | 代码全量分析（4 个并行子代理 40+ 关键文件 + 主代理交叉验证） | 本仓库 `aiPlat-core/`（CoreFacade 368 个导出符号（176 def/class + 192 re-export）、PipelineEngine 8,285 行（P2-A4 拆分后 5 Mixin）、policy_gate.py、evolution_engine.py、context_bus.py、seci_engine.py 等） |
 | DeepSeek Harness | 本地源码一手分析（docs + 源码双重交叉验证） | `/Users/apple/workdata/person/deepseek-harness/`（packages/core/agent-loop、core/tools、session、subagent、workflow、sandbox 等） |
-| Claude Code | web 调研（官方文档优先 + 第三方分析） | [How Claude Code works](https://code.claude.com/docs/en/how-claude-code-works)、[Workflows docs](https://code.claude.com/docs/en/workflows)、[Sandboxing](https://code.claude.com/docs/en/sandboxing)、[Sessions](https://code.claude.com/docs/en/sessions)、[Checkpointing](https://code.claude.com/docs/en/checkpointing) |
+| Claude Code | web 调研（官方文档优先 + 第三方分析）+ **2026-08-24 打包产物级验证**（本地 npm 包 v2.1.70，cli.js 可 grep） | [How Claude Code works](https://code.claude.com/docs/en/how-claude-code-works)、[Workflows docs](https://code.claude.com/docs/en/workflows)、[Sandboxing](https://code.claude.com/docs/en/sandboxing)、[Sessions](https://code.claude.com/docs/en/sessions)、[Checkpointing](https://code.claude.com/docs/en/checkpointing)；打包产物：`/Users/apple/.npm-global/lib/node_modules/@anthropic-ai/claude-code/cli.js`（12MB，grep 实证见 §17.1.1） |
 | Hermes | 文档级调研（初版）+ **v0.20.1 源码级验证**（2026-08-15 补充，与 DSH 同深度） | 文档：[hermes-agent](https://github.com/NousResearch/hermes-agent)（230,763 stars / MIT / v0.20.1）、[官方文档站](https://hermes-agent.nousresearch.com/docs/developer-guide/architecture)；源码：`/Users/apple/workdata/person/openSource/hermes-agent-main/`（14 维度逐一验证，12 项成立 / 2 项部分成立，见 §17.4） |
+| Codex-Harness | **源码级**（2026-08-24 本地源码实证） | `/Users/apple/workdata/person/openSource/codex-main/`（142 crate / 3,279 .rs，见 §17.5） |
+| hermes-agent | **源码级**（2026-08-24 独立核查） | `/Users/apple/workdata/person/openSource/hermes-agent-main/`（v0.20.1，19 维分析，见 §17.6 + `docs/hermes-agent-v0.20.1-source-analysis.md`） |
+
+### 17.1.1 Claude Code 打包产物级验证（2026-08-24 补充）
+
+> **产物**：本地 npm 包 `@anthropic-ai/claude-code@2.1.70`（`/Users/apple/.npm-global/lib/node_modules/@anthropic-ai/claude-code/cli.js`，12MB 打包 JS + vendor/ 原生模块）。**口径**：闭源打包产物——可 grep 事件名/常量/提示词/配置键验证"有该能力"，但**不可读实现逻辑**（混淆 JS），逻辑层结论仍依赖官方文档。本小节为"打包产物级（半源码）"实证，§21.5 可信度标注同步更新。
+
+**grep 实证（cli.js，2026-08-24）**
+
+| 机制（文档级论断） | cli.js 命中 | 结论 |
+|---|---|---|
+| hooks 生命周期事件 | SessionStart(35)/PreToolUse(52)/PostToolUse(78)/UserPromptSubmit(24)/Stop(174)/SubagentStop(23)/PreCompact(21)/PostCompact(6)/SessionEnd(18)/Notification(240) | ✅ 实证（≥9 事件） |
+| Checkpointing + /rewind | checkpoint(10) + rewind(51) | ✅ 实证 |
+| plan mode | plan mode/plan_mode(44) | ✅ 实证 |
+| permission modes | permissionMode(98)/acceptEdits(40)/bypassPermissions(43)/defaultMode(15) | ✅ 实证 |
+| Server-managed settings | managed(46) | ✅ 实证（字符串层） |
+| Dynamic Workflows | dynamic(50) | ✅ 实证（字符串层） |
+| 项目上下文文件 | CLAUDE.md(56+39)/SKILL.md(17)/MEMORY.md(7)；**AGENTS.md(0)** | ⚠️ 该版本以 CLAUDE.md 为主（AGENTS.md 未命中——与"CC 认 CLAUDE.md、Hermes/Codex 更宽"的既有结论一致） |
+| MCP 集成 | mcp(235) | ✅ 实证 |
+| skills | skills(69) | ✅ 实证 |
+| 沙箱/权限 CLI | --dangerously-skip-permissions(4)/dangerouslySkipPermissions(6)/additionalDirectories(13) | ✅ 实证（5 模式 + 目录白名单） |
+
+**对标影响**：打包产物级验证**强化而非推翻** Claude Code 列结论——hooks/checkpoint/plan/permissions/managed/dynamic/MCP/skills 全部在产物中可 grep 到，文档级论断获得"半源码"佐证；逻辑实现细节（如 approval 流程内部）仍为文档级口径。§21.5 中 Claude Code 可信度从"⚠️ 中（文档级）"升级为"✅ 中高（打包产物级）"。
 
 ### 17.2 存疑/待确认项
 
@@ -474,7 +497,7 @@
 
 ## 19. 架构对比分析（补充章节）
 
-> 说明：前 18 章对比的是"能力面"（能做什么）；本章补充"架构面"（怎么组织）——整体范式、状态管理、控制/数据平面、分层、扩展架构、部署拓扑、可演进性。aiPlat 侧证据为代码实测，DSH 侧为本地源码一手分析，**Hermes 侧为 v0.20.1 源码级验证**（2026-08-15 补充，见 §17.4），Claude Code 侧为权威文档调研（闭源，无源码可分析）。
+> 说明：前 18 章对比的是"能力面"（能做什么）；本章补充"架构面"（怎么组织）——整体范式、状态管理、控制/数据平面、分层、扩展架构、部署拓扑、可演进性。aiPlat 侧证据为代码实测，DSH 侧为本地源码一手分析，**Hermes 侧为 v0.20.1 源码级验证**（2026-08-15 补充，见 §17.4），Claude Code 侧为打包产物级验证（本地 npm v2.1.70 cli.js grep 实证，见 §17.1.1；实现逻辑仍文档级）。
 
 ### 19.1 整体架构范式（六系统的组织哲学）
 
@@ -704,7 +727,7 @@ flowchart LR
 
 ### 21.4 优劣分析的方法学说明（诚实标注）
 
-- 优势/劣势判定基于 §17 的证据基线：aiPlat/DSH/Hermes/hermes-agent 为**源码级**（可复核 `文件:行号`），Claude Code/Codex-Harness 为**文档级**（闭源/本地无源码，§17.1/§17.5 已标注）——涉及 CC 的优劣判定置信度低于源码级五列（Codex-Harness 2026-08-24 已升级源码级）。
+- 优势/劣势判定基于 §17 的证据基线：aiPlat/DSH/Hermes/Codex-Harness/hermes-agent 为**源码级**（可复核 `文件:行号`），Claude Code 为**打包产物级**（本地 npm 包 v2.1.70 cli.js 可 grep，§17.1.1 已标注）——涉及 CC 的优劣判定置信度仍低于源码级五列（打包产物可验证"有该能力"，不可读实现逻辑）。
 - ★ 评分与"最强"判定综合了**能力深度**（实现完整度）与**治理深度**（是否可治理），非单一指标。
 - "被动差距区"仅指 aiPlat 弱于某方且构成结构性缺口（§20 的 ❌/⚠️）；"持平"不排除某方在子能力上领先（如 Hermes 学习闭环在"实时性"上领先 aiPlat 的夜间批量）。
 
@@ -719,7 +742,7 @@ flowchart LR
 | **Hermes 侧能力事实**（v0.20.1 源码级验证） | ✅ **高（阳性，源码级）** | `/Users/apple/workdata/person/openSource/hermes-agent-main/` 直接读源码，§17.4 有 8 项文档差异实证 |
 | **hermes-agent 侧能力事实**（新增列） | ✅ **高（阳性，源码级）** | 与 Hermes 同源码（`hermes-agent-main/` v0.20.1），新增维度经子代理独立源码核查（协议面/导入/Thread 抽象等） |
 | **Codex-Harness 侧能力事实**（新增列，2026-08-24 升级） | ✅ **高（阳性，源码级）** | `/Users/apple/workdata/person/openSource/codex-main/` 直接读源码（142 crate / 3,279 .rs）；§17.5 各机制均附文件:行号实证；仅"ARC-AGI-3 性能数据/IDE Extension 不开源"为文档级（官方公告） |
-| **Claude Code 侧能力事实** | ⚠️ **中（文档级）** | 闭源无源码，基于官方文档+第三方；§17.1 已标注 |
+| **Claude Code 侧能力事实** | ✅ **中高（打包产物级，2026-08-24 升级）** | 本地 npm 包 `@anthropic-ai/claude-code@2.1.70` cli.js（12MB 打包 JS）grep 实证：hooks 9+ 事件/checkpoint+rewind/plan mode/permissionMode×4/managed/dynamic/MCP 235/skills 69（见 §17.1.1）；**不可读实现逻辑**（混淆 JS），逻辑层结论仍文档级 |
 | **§16 优势/劣势结论** | ✅ 高 | 基于上述源码级事实推导；弱势区的"结构性缺口"经 §20 反向扫描确认 |
 | **§20 能力缺口矩阵（G1-G19）** | ✅ 高（阳性缺口） | 缺口是"grep 确认 aiPlat 无此能力"的阳性事实；**2026-08-19 复核：12 项已补齐，仅 G6 缺失；2026-08-23 G6 落地：G1-G15 全补齐；2026-08-24 Codex 扩列：新增 G16-G19（协议面 2 真缺口 + 导入/沙箱 2 收尾）** |
 | **§21 逐维度优劣判定（"最强"归属）** | ⚠️ 中 | 综合判断（能力深度+治理深度），非单一可复现指标；CC/Codex 侧置信度低（文档级） |
