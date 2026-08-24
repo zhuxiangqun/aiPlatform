@@ -90,3 +90,11 @@ app 负责把 session_id 传给 platform（再转发给 core），用于：
 ## 附：2026-08-19 更新 — Agent Registry 引用收敛
 
 `aiPlat-platform/api/routers/conversations.py` 的 `get_agent_registry` 引用已统一经 CoreFacade（`get_agent_registry_facade` 冗余删除，P0-B4）。会话/对话链路本身无语义变化。
+
+## 7. 变更记录（2026-08-24）— P0-b 记忆导入会话语义
+
+`POST /platform/memory/import` 导入 Claude Code 会话时，记忆条目以 `session_id=claude:{session_id}` 为 key（`core/harness/memory/import_claude_sessions.py`）：
+
+- **会话语义**：导入会话是**只读外部会话**（Claude Code 历史对话），非 aiPlat 本平台会话——`claude:` 前缀显式区分来源域，不与平台原生 session_id 冲突（run_id ↔ session_id 关联语义不变）；
+- **记忆隔离**：导入记忆走 `MemoryManager.save_interaction(session_id="claude:...")`，四层记忆按 session 隔离正常生效；`provenance` 记录源文件路径可溯源；
+- **契约不变**：per-session lane 串行化、conversation_key 语义、audit 回放（run_id ↔ session_id）均未改变——导入是新增只读通道，不触碰平台会话生命周期。
