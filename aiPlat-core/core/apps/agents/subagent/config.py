@@ -79,6 +79,7 @@ class SubagentInstance:
     # Runtime context
     messages: List[Dict[str, Any]] = field(default_factory=list)
     tool_calls: List[Dict[str, Any]] = field(default_factory=list)
+    agent_ref: Any = None  # 保留 agent 实例（continuable 编排：continuation 复用同一会话）
     
     # Metrics
     created_at: Optional[str] = None

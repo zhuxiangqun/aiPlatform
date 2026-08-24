@@ -38,6 +38,7 @@ class SubagentResult:
     tool_calls: List[Dict] = field(default_factory=list)
     tokens_used: int = 0
     duration_ms: int = 0
+    instance_id: str = ""  # continuable 编排：可续的 instance key（inproc:{session}:{name}）
 
 
 class SubagentCoordinator:
@@ -127,11 +128,13 @@ class SubagentCoordinator:
         """
         start_time = datetime.now(timezone.utc)
         try:
+            _session_id = f"task-{datetime.now(timezone.utc).timestamp()}"
             instance = await self.create_instance(
                 name=subagent_name,
-                session_id=f"task-{datetime.now(timezone.utc).timestamp()}"
+                session_id=_session_id
             )
             instance.state = "running"
+            _inst_key = f"{_session_id}:{subagent_name}"  # continuable 编排 instance key
             instance.started_at = datetime.now(timezone.utc).isoformat()
 
             # Build conversation context from system prompt + task
@@ -175,6 +178,7 @@ class SubagentCoordinator:
                 },
                 system_prompt=instance.config.system_prompt,
             )
+            instance.agent_ref = agent  # continuable 编排：保留 agent 复用会话
 
             available_tools = instance.config.allowed_tools[:]
             tool_registry = get_tool_registry()
@@ -267,6 +271,7 @@ class SubagentCoordinator:
                     output=summarized,
                     tokens_used=getattr(result, "tokens_used", 0) or 0,
                     duration_ms=duration,
+                    instance_id=_inst_key,
                 )
             else:
                 duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
@@ -276,6 +281,7 @@ class SubagentCoordinator:
                     success=False,
                     error=str(getattr(result, "error", "Agent execution failed")),
                     duration_ms=duration,
+                    instance_id=_inst_key,
                 )
         except Exception as e:
             logger.error(f"Subagent '{subagent_name}' failed: {e}")
@@ -285,6 +291,77 @@ class SubagentCoordinator:
                 success=False,
                 error=str(e),
                 duration_ms=duration,
+            )
+
+    async def continue_execution(
+        self,
+        instance_id: str,
+        message: str,
+    ) -> SubagentResult:
+        """Continue a settled subagent via its retained agent (DSH continuable).
+
+        复用 execute_single 创建的 conversational agent：向同一会话追加
+        用户消息后重新执行——保留多轮上下文（conversational agent 的
+        _conversation_history 天然支持）。instance_id 格式 "inproc:{name}"。
+
+        Fail-loud：未知 instance / agent 不可续 → 返回错误（不静默）。
+        """
+        if instance_id not in self._active_instances:
+            return SubagentResult(
+                subagent_name=instance_id,
+                success=False,
+                error=f"unknown subagent instance: {instance_id}",
+            )
+        instance = self._active_instances[instance_id]
+        agent = getattr(instance, "agent_ref", None)
+        if agent is None:
+            return SubagentResult(
+                subagent_name=instance_id,
+                success=False,
+                error=f"subagent '{instance_id}' has no retained agent (cannot continue)",
+            )
+        start_time = datetime.now(timezone.utc)
+        try:
+            import uuid as _uuid
+            from core.harness.interfaces.agent import AgentContext
+
+            instance.state = "running"
+            agent_ctx = AgentContext(
+                session_id=instance.session_id,
+                user_id="subagent_coordinator",
+                messages=[{"role": "user", "content": message}],
+                variables={"_run_id": f"run_{_uuid.uuid4().hex[:16]}"},
+            )
+            result = await agent.execute(agent_ctx)
+            if result.success:
+                output = result.output or ""
+                if isinstance(output, dict):
+                    output = output.get("content", str(output))
+                summarized = await self._summarize_output(str(output), max_chars=800)
+                duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
+                instance.state = "completed"
+                instance.completed_at = datetime.now(timezone.utc).isoformat()
+                return SubagentResult(
+                    subagent_name=instance_id,
+                    success=True,
+                    output=summarized,
+                    tokens_used=getattr(result, "tokens_used", 0) or 0,
+                    duration_ms=duration,
+                )
+            instance.state = "error"
+            return SubagentResult(
+                subagent_name=instance_id,
+                success=False,
+                error=str(getattr(result, "error", "agent continuation failed")),
+                duration_ms=int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000),
+            )
+        except Exception as e:
+            logger.error(f"Subagent continuation '{instance_id}' failed: {e}")
+            return SubagentResult(
+                subagent_name=instance_id,
+                success=False,
+                error=str(e),
+                duration_ms=int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000),
             )
 
     async def execute_with_provider(

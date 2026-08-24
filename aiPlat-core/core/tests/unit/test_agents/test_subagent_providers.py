@@ -201,6 +201,88 @@ class TestProcessRunnerModule:
         assert data["ok"] is False
 
 
+class FakeAgent:
+    """Fake conversational agent: 记录 execute 调用，返回成功。"""
+
+    def __init__(self):
+        self.executions = 0
+
+    async def execute(self, ctx):
+        self.executions += 1
+        msg = ctx.messages[-1].get("content", "")
+        return type("R", (), {
+            "success": True,
+            "output": f"reply-to:{msg[:20]}",
+            "tokens_used": 10,
+        })()
+
+
+def _make_coordinator_with_agent():
+    """构造注入了 FakeAgent + 假 registry 的 coordinator（execute_single 成功路径）。"""
+    import asyncio
+
+    from core.apps.agents.subagent.config import SubagentConfig
+
+    agent_holder = {}
+
+    def _create_agent_fn(agent_type="conversational", config=None, system_prompt=""):
+        agent = FakeAgent()
+        agent_holder["agent"] = agent
+        return agent
+
+    async def _get_tool_registry_fn():
+        return type("T", (), {"get": lambda n: None})()
+
+    c = SubagentCoordinator(create_agent_fn=_create_agent_fn, get_tool_registry_fn=_get_tool_registry_fn)
+    # 注入假 registry，避免真实 get_subagent_registry 初始化
+    class FakeRegistry:
+        def __init__(self):
+            self._cfg = SubagentConfig(name="ghost-agent", description="test")
+        def get(self, name):
+            return self._cfg if name == "ghost-agent" else None
+    c._registry = FakeRegistry()
+    return c, agent_holder
+
+
+class TestInProcessContinuation:
+    def test_continuation_returns_real_instance_id(self):
+        """start 返回 coordinator 的真实 instance key（可续），而非 inproc:{name} 占位。"""
+        c, _ = _make_coordinator_with_agent()
+        prov = InProcessProvider(c)
+        r = asyncio_run(prov.start("ghost-agent", "do task"))
+        assert r.ok is True
+        assert r.instance_id.startswith("task-")  # 真实 key：{session}:{name}
+        assert r.can_continue is True
+
+    def test_continuation_resumes_via_retained_agent(self):
+        """continuation 复用 execute_single 创建的 agent 追加消息重执行。"""
+        c, holder = _make_coordinator_with_agent()
+        prov = InProcessProvider(c)
+        r1 = asyncio_run(prov.start("ghost-agent", "first task"))
+        assert r1.ok and r1.can_continue
+        # 第二次执行走 coordinator.continue_execution → 同一 agent
+        r2 = asyncio_run(prov.continuation(r1.instance_id, "follow up"))
+        assert r2.ok is True
+        assert "follow" in r2.output
+        assert holder["agent"].executions >= 1
+
+    def test_continuation_unknown_instance_fails_loud(self):
+        c, _ = _make_coordinator_with_agent()
+        prov = InProcessProvider(c)
+        r = asyncio_run(prov.continuation("task-123:ghost-agent", "hi"))
+        assert r.ok is False
+        assert "unknown" in r.error.lower() or "no retained" in r.error.lower()
+
+    def test_send_message_via_coordinator_continuable(self):
+        """coordinator.send_message 经 in_process provider 成功续接（DSH send_message）。"""
+        c, _ = _make_coordinator_with_agent()
+        prov = InProcessProvider(c)
+        start = asyncio_run(prov.start("ghost-agent", "task"))
+        res = asyncio_run(c.send_message(start.instance_id, "more"))
+        assert res.success is True
+        assert "more" in res.output
+
+
 def asyncio_run(coro):
     import asyncio
 
