@@ -657,3 +657,13 @@ pytest -q \
   - `grep -c "instance_id=_inst_key\|instance_id=getattr" aiPlat-core/core/apps/agents/subagent/coordinator.py aiPlat-core/core/apps/agents/subagent/providers.py`（≥2：真实 key 返回 + provider 使用）
   - `grep -c "continuable 编排" aiPlat-core/docs/contracts/01-architecture-contract.md`（≥1：附录 B 登记）
   - `python3 -m pytest aiPlat-core/core/tests/unit/test_agents/test_subagent_providers.py -q`（24 passed）
+
+### 1.61 模型 provider 生态广度（2026-08-24，对标报告 §21.1 "家族数远少于 38"收窄）
+- MUST：`aiPlat-infra/config/providers.yaml` 含 **≥14 provider**（基础 6 + 新增 qwen/groq/mistral/cohere/cerebras/together/xai/novita 8 家族）——全部 OpenAI 兼容端点（复用 openai_compatible.py，零代码）
+- MUST：所有 external + requires_api_key 的 provider 带 `env_key`（API key 契约）；`base_url_env` 缺省走 openai_compatible 默认 /v1（自动补全）
+- MUST：`ModelManager._api_provider_ids()` 可发现 ≥12 外部 API provider（YAML 驱动，非 fallback 硬编码集）
+- 契约登记：run spec 六十二轮（infra 配置驱动，无 harness 契约变更）
+- 自动化验收：
+  - `python3 -c "import yaml; d=yaml.safe_load(open('aiPlat-infra/config/providers.yaml')); assert len(d['providers'])>=14; print('OK')"`
+  - `python3 -c "import sys; sys.path.insert(0,'aiPlat-infra'); from infra.management.model.manager import _api_provider_ids; ids=_api_provider_ids(); assert all(x in ids for x in ['qwen','groq','mistral','cohere','cerebras','together','xai','novita']); print('OK')"`
+  - `cd aiPlat-infra && python3 -m pytest infra/tests/unit/test_model_selection.py -q`（16 passed，含 2 新增生态广度防回归）
