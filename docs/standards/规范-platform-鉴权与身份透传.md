@@ -295,3 +295,17 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 - 记忆导入经 **CoreFacade.import_claude_memories → MemoryManager.save_interaction**（platform 不直写 SQLite，单向依赖 platform → core）；
 - 导入为**只读消费**（不改 Claude 源文件，对齐 Codex"源端不动一字节"）；单会话失败 best-effort 不阻断；
 - 记忆条目带防投毒溯源三字段（source_tag/trust_weight/provenance，对齐记忆系统 §5.12）——导入来源显式标记 `claude_import`，不冒充用户/系统原生来源。
+
+## 21. 文件 Checkpoint 端点权限（2026-08-24）
+
+`/platform/execution/file-checkpoints`（file_router，补挂载存量缺口）：
+
+| 端点 | 变更 | 权限 |
+|---|---|---|
+| `GET /platform/execution/file-checkpoints` | 列出文件 checkpoint（session_id/path 过滤） | `file_checkpoint_list`（RBAC） |
+| `GET /platform/execution/file-checkpoints/{id}` | 获取 checkpoint 内容 | `file_checkpoint_read`（RBAC） |
+| `POST /platform/execution/file-checkpoints/{id}/restore` | 恢复文件到 checkpoint 时点（写回磁盘） | `file_checkpoint_restore`（RBAC） |
+
+**约束**：
+- 端点此前已定义（execution_snapshots.py file_router）但**未挂载**（routes.py include_router 缺失）——本轮补挂载，属存量接线缺口修复，权限语义不变（RBAC 单点校验）；
+- 前端 `/core/checkpoints` 页面经 checkpointApi（services 统一出口）调用，恢复操作有前端 confirm 二次确认（防误恢复）。
