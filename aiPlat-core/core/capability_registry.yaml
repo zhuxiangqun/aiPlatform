@@ -591,7 +591,7 @@ domains:
   observability:
     section: "八"
     section_name: "可观测性"
-    caps_count: 18
+    caps_count: 20
     provides:
       - symbol: "EventBus"
         type: "class"
@@ -609,6 +609,14 @@ domains:
         type: "function"
         signature: "解析 hooks.json 并注册 command hooks 进 HookManager"
         module: "core/harness/infrastructure/hooks/cc_bridge.py"
+      - symbol: "StdioKernel"
+        type: "class"
+        signature: "stdio JSON-RPC 持久内核：thread/start|resume|approve|reject|events 映射 PipelineSession + run_events（P0-a, 对标 Codex app-server）"
+        module: "core/acp/stdio_server.py"
+      - symbol: "start_stdio_kernel"
+        type: "function"
+        signature: "创建 stdio JSON-RPC kernel 实例（server 启动 AIPLAT_STDIO_KERNEL=1 时接线）"
+        module: "core/api/core_facade.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"

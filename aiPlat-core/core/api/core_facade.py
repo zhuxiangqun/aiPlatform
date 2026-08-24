@@ -3215,6 +3215,19 @@ def cancel_pipeline(run_id: str) -> Any:
         return {"ok": False, "run_id": run_id, "status": "error", "error": str(e)}
 
 
+def start_stdio_kernel() -> Any:
+    """Start the stdio JSON-RPC persistent kernel (P0-a, 对标 Codex app-server).
+
+    外部程序/CI/SRE 面板 spawn `python -m core.acp.stdio_server` 即可通过
+    stdin/stdout JSONL 驱动 Thread（thread/start|resume|approve|reject|
+    rollback|cancel + item.event 流式）。本函数返回 kernel 实例供进程内
+    使用/测试（server 启动时若 AIPLAT_STDIO_KERNEL=1 则后台启动）。
+    """
+    from core.acp.stdio_server import StdioKernel
+
+    return StdioKernel()
+
+
 def get_document_categories() -> list:
     """Get supported document category labels (from ConverterRegistry — single source of truth)."""
     from core.harness.document.protocol import get_document_registry
