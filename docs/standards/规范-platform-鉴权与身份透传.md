@@ -309,3 +309,8 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 **约束**：
 - 端点此前已定义（execution_snapshots.py file_router）但**未挂载**（routes.py include_router 缺失）——本轮补挂载，属存量接线缺口修复，权限语义不变（RBAC 单点校验）；
 - 前端 `/core/checkpoints` 页面经 checkpointApi（services 统一出口）调用，恢复操作有前端 confirm 二次确认（防误恢复）。
+
+## 补充：Skill 市场外部发现端点鉴权（2026-08-25）
+
+- `GET /skills/marketplace/external`（Skill 开放生态收尾）：`require_auth`（登录即可发现外部 Skill，只读 best-effort）；`POST /skills/install`/`DELETE /skills/uninstall/{name}` 保持 `require_admin`（写操作）
+- 外部 Skill 发现不返回任何 API key/secret（仅名称/描述/版本元数据），无敏感数据透传

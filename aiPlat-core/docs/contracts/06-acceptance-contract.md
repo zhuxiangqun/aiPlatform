@@ -707,3 +707,13 @@ pytest -q \
   - `python3 -c "import yaml; d=yaml.safe_load(open('aiPlat-infra/config/providers.yaml')); assert len(d['providers'])>=22; print('OK')"`
   - `python3 -c "import sys; sys.path.insert(0,'aiPlat-infra'); from infra.management.model.manager import _api_provider_ids; ids=_api_provider_ids(); assert all(x in ids for x in ['siliconflow','moonshot','minimax','zhipu','baichuan','stepfun','deepinfra','fireworks']); print('OK')"`
   - `cd aiPlat-infra && python3 -m pytest infra/tests/unit/test_model_selection.py -q`（16 passed，含生态广度防回归升级 22 家族）
+
+
+### 1.65 Skill 开放生态收尾（2026-08-25，G8 agentskills.io 对接完善）
+- MUST：`GET /skills/marketplace/external` 端点存在（`aiPlat-platform/api/routers/skill_marketplace.py`）——接线 `SkillMarketplace.discover_external`（P1-A5 已有，此前 0 生产 caller）；`source=agentskills.io` 支持、`limit` 参数；unsupported source → 400
+- MUST：外部源不可达返回 error 列表（best-effort，不抛异常、不阻断本地 marketplace）；`supports_external_source("agentskills.io")` 为 True
+- 契约登记：边界契约 `01-architecture-contract.md` 附录 B（Skill 生态收尾）+ run spec 六十九轮
+- 自动化验收：
+  - `grep -c "marketplace/external" aiPlat-platform/api/routers/skill_marketplace.py`（≥1：端点注册）
+  - `grep -c "discover_external" aiPlat-platform/api/routers/skill_marketplace.py`（≥1：接线）
+  - `cd aiPlat-platform && python3 -m pytest tests/test_skill_marketplace_external.py -q`（5 passed）

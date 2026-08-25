@@ -108,6 +108,26 @@ async def list_marketplace(_auth: str = Depends(require_auth)):
     }
 
 
+@router.get("/marketplace/external", response_model=StatusResponse)
+async def discover_external_skills(source: str = "agentskills.io",
+                                   limit: int = 50,
+                                   _auth: str = Depends(require_auth)):
+    """Discover skills from an external open standard source (agentskills.io).
+
+    Wires SkillMarketplace.discover_external（P1-A5 对接的 HTTP 入口）。
+    Best-effort：外部源不可达时返回 error 列表（不阻断本地 marketplace）。
+    """
+    from core.api.core_facade import get_skill_marketplace
+    m = get_skill_marketplace()
+    if not m.supports_external_source(source):
+        raise HTTPException(400, f"unsupported external source: {source}")
+    items = m.discover_external(source=source, limit=limit)
+    # 单条 error 标记（best-effort 语义，非整体失败）
+    if items and items[0].get("error"):
+        return {"external_source": source, "skills": [], "error": items[0]["error"]}
+    return {"external_source": source, "skills": items, "total": len(items)}
+
+
 @router.post("/install", response_model=StatusResponse)
 async def install_skill(req: InstallRequest, _auth: str = Depends(require_admin)):
     """Install a skill from source URL or local path."""
