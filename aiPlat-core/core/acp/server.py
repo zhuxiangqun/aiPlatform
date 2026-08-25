@@ -23,6 +23,11 @@ import uvicorn
 
 app = FastAPI(title="aiPlat ACP Server", version="1.0.0")
 
+# 协议级背压（对齐 stdio -32001 语义）：ACP WS 活跃连接上限。
+# AIPLAT_ACP_MAX_CONNECTIONS=0 默认关闭（行为与现状一致）；>0 时超限拒绝新连接。
+ACP_MAX_CONNECTIONS = int(os.environ.get("AIPLAT_ACP_MAX_CONNECTIONS", "0"))
+_active_ws_connections = 0
+
 
 
 class ACPHandler:
@@ -331,7 +336,21 @@ Code: ```\n{code[:8000]}\n```"""
 
 async def acp_websocket(ws: WebSocket):
 
+    global _active_ws_connections
+
+    # 协议级背压（对齐 stdio -32001 语义）：活跃连接数超限时拒绝新连接
+    if ACP_MAX_CONNECTIONS > 0 and _active_ws_connections >= ACP_MAX_CONNECTIONS:
+        await ws.accept()
+        await ws.send_text(json.dumps(
+            {"type": "error", "code": -32001,
+             "content": f"Server overloaded (active={_active_ws_connections}), "
+                        "retry with exponential backoff"}))
+        await ws.close(code=1013)  # 1013 = Try Again Later
+        return
+
     await ws.accept()
+
+    _active_ws_connections += 1
 
     handler = ACPHandler()
 
@@ -365,6 +384,8 @@ async def acp_websocket(ws: WebSocket):
 
             logging.getLogger(__name__).debug('acp_websocket failed', exc_info=True)
     finally:
+
+        _active_ws_connections -= 1
 
         print(f"  [ACP] Client disconnected: {client}")
 
