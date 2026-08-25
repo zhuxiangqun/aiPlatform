@@ -181,3 +181,72 @@ class TestP1_8CrossModuleGateFalsePositive:
         assert "module_root" in sig.parameters, "P1-8 未修复：verify 无 module_root 参数"
         from builder.cross_module import _new_version_text
         assert "module_root" in inspect.signature(_new_version_text).parameters
+
+
+# ---- P1-9: 并行实现收敛（节点→stage 转换 / PRD 解析） ----
+
+class TestP1_9ParallelImplementationsConverged:
+    """§10 API 唯一性：同一能力收敛到唯一实现。"""
+
+    def test_nodes_to_stages_single_impl(self):
+        """行为证据：app_service._build_stages_from_nodes 委托 workflow_service 唯一实现，
+        且产出含全量字段（修复前精简版缺 output_artifact/hitl 等）。"""
+        from builder.builder_workflow_service import WorkflowService
+        from builder.builder_app_service import AppService
+
+        nodes = [
+            {"id": "n1", "data": {"label": "PM", "type": "agent",
+             "config": {"agentId": "pm_agent", "outputArtifact": "prd", "hitl": True}}},
+            {"id": "n2", "data": {"label": "Arch", "type": "llm",
+             "config": {"agentId": "architect_agent"}}},
+        ]
+        edges = [{"source": "n1", "target": "n2"}]
+
+        app_stages = AppService()._build_stages_from_nodes(nodes, edges)
+        wf_stages = WorkflowService()._nodes_to_stages(nodes, edges)
+
+        # 两处产出一致（收敛到同一实现）
+        assert app_stages == wf_stages, "P1-9 未收敛：两处转换产出不一致"
+        # 全量字段存在（精简版缺失 → 委托后补齐）
+        assert app_stages[0]["output_artifact"] == "prd"
+        assert app_stages[0]["hitl"] is True
+        assert app_stages[1]["output_artifact"] in ("llm_output", "stage_output")
+        assert app_stages[1]["agent_type"] in ("react", "conversational")
+        # 拓扑排序生效：n1 在 n2 前
+        assert [s["id"] for s in app_stages] == ["n1", "n2"]
+
+    def test_app_service_delegates_not_duplicates(self):
+        """静态证据：app_service._build_stages_from_nodes 体内无重复转换（委托调用）。"""
+        from pathlib import Path
+        import inspect
+        from builder.builder_app_service import AppService
+        body = inspect.getsource(AppService._build_stages_from_nodes)
+        assert "WorkflowService()._nodes_to_stages" in body, \
+            "P1-9 未修复：app_service 未委托唯一实现"
+        assert "out_map" not in body, "P1-9 未修复：app_service 仍内联重复转换"
+
+    def test_session_prd_parsing_delegates(self):
+        """行为证据：session 版 _parse_markdown_prd 与 service 版结果一致（含 PRD_READY）。"""
+        from builder.builder_session import BuilderSessionService
+        from builder.builder_project_service import BuilderProjectService
+
+        md = ("<!-- PRD_READY -->\n# 项目名称：测试项目\n\n## 项目背景\n背景\n"
+              "## 功能需求\n### FR-01: 功能一\n- **用户故事**：作为用户，我想测试\n"
+              "- **优先级**：P0\n- **验收标准**：\n  - AC1: 正向\n## 范围\n新增Agent")
+
+        session_result = BuilderSessionService()._parse_markdown_prd(md)
+        service_result = BuilderProjectService._parse_markdown_prd(md)
+
+        assert session_result == service_result, "P1-9 未收敛：PRD 解析两处结果不一致"
+        assert session_result.get("title") == "测试项目"
+        assert session_result.get("functional_requirements"), "应解析出功能需求"
+
+    def test_session_prd_delegation_static(self):
+        """静态证据：session 版方法体是委托调用，无重复解析逻辑。"""
+        from pathlib import Path
+        import inspect
+        from builder.builder_session import BuilderSessionService
+        body = inspect.getsource(BuilderSessionService._parse_markdown_prd)
+        assert "BuilderProjectService._parse_markdown_prd" in body, \
+            "P1-9 未修复：session 版未委托 service 版"
+        assert "re.match(r\"^## \"" not in body, "P1-9 未修复：session 版仍内联解析"

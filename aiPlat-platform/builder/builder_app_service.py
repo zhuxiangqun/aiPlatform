@@ -115,23 +115,11 @@ class AppService:
         return await wfs.execute(workflow_id, launch_name=run_name or "")
 
     def _build_stages_from_nodes(self, nodes: list, edges: list) -> list:
-        stages = []
-        for i, n in enumerate(nodes):
-            d = n.get("data", {}) or {}
-            cfg = d.get("config", {}) or {}
-            nt = d.get("type", "agent")
-            stages.append({
-                "id": n.get("id", f"n_{i}"),
-                "agent_id": cfg.get("agentId", nt),
-                "agent_name": d.get("label", "Node"),
-                "type": nt,
-                "order": i,
-                "depends_on": [e.get("source") for e in edges if e.get("target") == n.get("id")],
-                "config": cfg,
-                "node_type": nt,
-                "node_config": cfg,
-            })
-        return stages
+        # P1-9 收敛（§10 防并行实现）：委托 workflow_service._nodes_to_stages 唯一实现。
+        # 原精简版缺 output_artifact/hitl/model/agent_type 等字段（PipelineStageConfig
+        # extra=ignore 兜底，只增不减）。
+        from builder.builder_workflow_service import WorkflowService
+        return WorkflowService()._nodes_to_stages(nodes, edges)
 
     async def run_api(self, app_id: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """API mode: sync execute and return output."""
