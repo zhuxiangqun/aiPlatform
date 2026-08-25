@@ -674,3 +674,15 @@ pytest -q \
   - `python3 -c "import yaml; d=yaml.safe_load(open('aiPlat-infra/config/providers.yaml')); assert len(d['providers'])>=14; print('OK')"`
   - `python3 -c "import sys; sys.path.insert(0,'aiPlat-infra'); from infra.management.model.manager import _api_provider_ids; ids=_api_provider_ids(); assert all(x in ids for x in ['qwen','groq','mistral','cohere','cerebras','together','xai','novita']); print('OK')"`
   - `cd aiPlat-infra && python3 -m pytest infra/tests/unit/test_model_selection.py -q`（16 passed，含 2 新增生态广度防回归）
+
+### 1.62 aiplat exec 单次执行 CLI（2026-08-25，Codex-Harness 借鉴 P2 "codex exec 对齐"）
+- MUST：`aiplat-sdk/aiplat/exec.py` 存在——`exec_script`（--script 零 LLM subprocess：入口白名单 {bash,sh,python3,python}，白名单外 exit_code=125 fail-closed）+ `exec_pipeline`（经 `StdioKernelClient` spawn stdio 内核 → thread/start → 轮询 thread/status 直到 done/failed/cancelled/paused，超时 best-effort thread/cancel）+ `main`（argparse，requirement 或 --script 至少其一，--json 输出）
+- MUST：pyproject `[project.scripts] aiplat = aiplat.exec:main`；`aiplat.__init__` 导出 `exec_script`/`exec_pipeline`/`exec_main`
+- 契约登记：边界契约 `01-architecture-contract.md` 附录 B（exec CLI 条目）+ run spec 六十六轮
+- 自动化验收：
+  - `grep -c "def exec_script" aiplat-sdk/aiplat/exec.py`（≥1）
+  - `grep -c "def exec_pipeline" aiplat-sdk/aiplat/exec.py`（≥1）
+  - `grep -c "aiplat = \"aiplat.exec:main\"" aiplat-sdk/pyproject.toml`（≥1：console script 注册）
+  - `grep -c "exec_script" aiplat-sdk/aiplat/__init__.py`（≥1：SDK 导出）
+  - `cd aiplat-sdk && python3 -m pytest tests/test_exec_cli.py -q`（8 passed）
+  - `python3 -m aiplat.exec --script "python3 -c 'print(42)'" --json`（exit 0 + status ok）
