@@ -886,6 +886,7 @@ scan_hash: 8f9548ec24f4
 | adaptive_context | harness/knowledge/adaptive_context.py | ✅ | 自动同步 | 已合入 |
 | wiki_indexer | harness/knowledge/wiki_indexer.py | ✅ | 自动同步 | 已合入 |
 | skill_marketplace | harness/knowledge/skill_marketplace.py | ✅ | agentskills.io 对接: export/discover_external/install_external (P1-A5) | 已合入 |
+| discover_external_skills 端点 | `aiPlat-platform/api/routers/skill_marketplace.py` | ✅ | GET /skills/marketplace/external：接线 discover_external 为 HTTP 入口（source=agentskills.io + limit，unsupported 400，不可达 best-effort） | 待合入 |
 | recon_subgraph | harness/knowledge/recon_subgraph.py | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 统一知识检索 | harness/syscalls/retrieval.py:569 | ✅ | 并行 Wiki + KB，RRF 三路融合 | 已合入 |
@@ -2006,7 +2007,7 @@ scan_hash: 8f9548ec24f4
 | Harness 执行引擎 | 69 | 0 | 69 |
 | 记忆子系统 | 41 | 0 | 41 |
 | 知识引擎（本体） | 145 | 0 | 145 |
-| RAG 检索 | 42 | 0 | 42 |
+| RAG 检索 | 43 | 0 | 43 |
 | 知识基础设施 | 29 | 0 | 29 |
 | Agent 系统 | 42 | 0 | 42 |
 | Skill 系统 | 54 | 0 | 54 |

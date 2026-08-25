@@ -295,6 +295,15 @@ def get_context_bus() -> Any:
     return assemble_field_assessment
 
 
+def get_skill_marketplace(db_path: str = "") -> Any:
+    """Get SkillMarketplace (P1-A5 agentskills.io 对接, CoreFacade canonical 入口).
+
+    Platform 经此获取 SkillMarketplace 实例（禁止直导 core.harness.knowledge）。
+    """
+    from core.harness.knowledge.skill_marketplace import SkillMarketplace
+    return SkillMarketplace(db_path=db_path) if db_path else SkillMarketplace()
+
+
 def list_pending_heal_fixes() -> Any:
     """List pending self-heal fixes awaiting human approval."""
     from core.harness.evaluation.self_heal_gate import SelfHealGate

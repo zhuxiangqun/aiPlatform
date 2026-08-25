@@ -217,3 +217,6 @@ aiPlat 逻辑上分为：
 - **协议级背压统一语义（2026-08-25）**：`BackpressureMiddleware`（`core/server.py`）——全局 inflight 并发计数，`AIPLAT_BACKPRESSURE_MAX_INFLIGHT>0` 时超限请求返回 **429 + Retry-After**（指数退避 2^overflow，上限 60s，对齐 codex -32001 语义）；`backpressure_stats()` 诊断暴露。ACP WS 层（`core/acp/server.py`）`AIPLAT_ACP_MAX_CONNECTIONS>0` 时活跃连接超限拒绝新连接（错误帧 `-32001` + WS 关闭码 1013）。契约：背压为**可选加固层**（两 env 默认 0=关闭，行为与现状一致）；过载语义统一为"建议指数退避重试"（HTTP=Retry-After 头，WS/stdio=-32001）；syscall 三通道唯一性与单向依赖链不变。
 
 - **aiplat exec 单次执行 CLI（2026-08-25）**：`aiplat-sdk/aiplat/exec.py`——`aiplat exec "requirement"` 经 `StdioKernelClient` spawn stdio 内核跑 PipelineSession（thread/start→轮询 status→JSON）；`aiplat exec --script "bash|sh|python3|python ..."` 零 LLM subprocess（对齐 P2-A7 fail-closed 入口白名单，白名单外 exit_code=125 拒绝）。pyproject `[project.scripts] aiplat` + SDK 导出。契约：CLI 纯客户端（复用 SDK stdio client）；--script 零 LLM 且 fail-closed；JSON 输出 CI 友好；syscall 三通道唯一性与单向依赖链不变。
+
+
+- **Skill 开放生态收尾（2026-08-25）**：`GET /skills/marketplace/external` 端点（`aiPlat-platform/api/routers/skill_marketplace.py`）接线 `SkillMarketplace.discover_external`（P1-A5 agentskills.io 对接的 HTTP 入口，此前 0 生产 caller）——`source=agentskills.io` + `limit`；unsupported source → 400；外部源不可达返回 error 列表（best-effort 不阻断本地 marketplace）；安装仍走 `POST /skills/install`（admin + source_url fail-loud）。契约：外部 Skill 发现为只读 best-effort 能力；agentskills.io 为开放标准源（`EXTERNAL_SOURCES` 注册表可扩展）。

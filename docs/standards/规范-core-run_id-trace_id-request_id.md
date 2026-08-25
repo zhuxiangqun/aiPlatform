@@ -182,3 +182,6 @@ management 展示层建议以：
 
 
 - **落地记录（2026-08-25 六十八轮）**：模型 provider 生态广度二批（14→22，向 Hermes 38 方向继续收窄）——`aiPlat-infra/config/providers.yaml` 新增 8 个 OpenAI 兼容 provider 家族：siliconflow(SiliconFlow)/moonshot(Kimi)/minimax/zhipu(GLM)/baichuan/stepfun(阶跃星辰)/deepinfra/fireworks（各带 env_key + base_url_env，复用 openai_compatible.py 零代码）。provider 总数 14→22（外部 API 21 + ollama local）；`ModelManager._api_provider_ids()` YAML 驱动自动发现 21 个 external。契约：模型选择候选必须来自 infra 注册表（env 不干预，对齐 §12 模型解析中心化）；新增 provider 零代码（仅 YAML）。测试：`test_model_selection.py` 16 例（生态广度防回归升级：22 家族可发现 + providers.yaml ≥22 + external env_key 契约）。
+
+
+- **落地记录（2026-08-25 六十九轮）**：Skill 开放生态收尾（对标报告 §19.1 G8 agentskills.io 对接完善）——`discover_external_skills` 端点（`aiPlat-platform/api/routers/skill_marketplace.py`，`GET /skills/marketplace/external?source=agentskills.io&limit=N`）：接线 `SkillMarketplace.discover_external`（P1-A5 已有但此前 0 生产 caller）为 HTTP 入口；unsupported source → 400；外部源不可达返回 error 列表（best-effort 不阻断本地 marketplace）。契约：外部 Skill 发现是**只读 best-effort 能力**（网络失败不阻断本地 marketplace）；安装仍走既有 `POST /skills/install`（admin + source_url 必填 fail-loud）；agentskills.io 为开放标准源（`EXTERNAL_SOURCES` 注册表可扩展）。测试：`test_skill_marketplace_external.py` 5 例（源支持判定/不可达 best-effort/mock 索引解析/端点 400/端点 200 mock）。
