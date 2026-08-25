@@ -271,3 +271,77 @@ class TestChannelAdapter:
                                                 "channel": {"id": "c1"}, "content": "hello"}})
         assert msg.text == "hello"
         assert msg.chat_id == "c1"
+
+    def test_get_channel_adapter_22_channels(self):
+        """渠道广度延伸 18→22：google_chat/homeassistant/irc/ntfy 可解析。"""
+        from channels.adapter import get_channel_adapter
+
+        for name in ["google_chat", "homeassistant", "irc", "ntfy"]:
+            adapter = get_channel_adapter(name)
+            assert adapter is not None, name
+            assert hasattr(adapter, "parse_message")
+            assert hasattr(adapter, "format_response")
+
+    def test_google_chat_adapter_parses_event(self):
+        """Google Chat event → ChannelMessage。"""
+        from channels.adapter import get_channel_adapter
+
+        adapter = get_channel_adapter("google_chat")
+        msg = adapter.parse_message({
+            "type": "MESSAGE",
+            "space": {"name": "spaces/AAA", "type": "ROOM"},
+            "message": {"name": "spaces/AAA/messages/1",
+                        "sender": {"name": "users/alice"},
+                        "text": "google hello",
+                        "thread": {"name": "spaces/AAA/threads/t1"}}})
+        assert msg.text == "google hello"
+        assert msg.chat_id == "spaces/AAA"
+        assert msg.user_id == "users/alice"
+        assert msg.channel.value == "google_chat"
+        resp = adapter.format_response(type("R", (), {"message_id": "1", "text": "hi", "markdown": None, "buttons": None})())
+        assert resp["text"] == "hi"
+
+    def test_homeassistant_adapter_parses_event(self):
+        """Home Assistant event → ChannelMessage。"""
+        from channels.adapter import get_channel_adapter
+
+        adapter = get_channel_adapter("homeassistant")
+        msg = adapter.parse_message({
+            "origin": "ha",
+            "event": {"id": 1, "event_type": "call_service",
+                      "data": {"entity_id": "light.living", "message": "ha hello"}}})
+        assert msg.text == "ha hello"
+        assert msg.chat_id == "light.living"
+        assert msg.channel.value == "homeassistant"
+        resp = adapter.format_response(type("R", (), {"message_id": "light.living", "text": "hi", "markdown": None, "buttons": None})())
+        assert resp["message"] == "hi"
+
+    def test_irc_adapter_parses_privmsg(self):
+        """IRC PRIVMSG → ChannelMessage。"""
+        from channels.adapter import get_channel_adapter
+
+        adapter = get_channel_adapter("irc")
+        msg = adapter.parse_message({
+            "prefix": "nick!user@host", "command": "PRIVMSG",
+            "params": ["#room", "irc hello"]})
+        assert msg.text == "irc hello"
+        assert msg.chat_id == "#room"
+        assert msg.user_id == "nick"
+        assert msg.channel.value == "irc"
+        resp = adapter.format_response(type("R", (), {"message_id": "#room", "text": "hi", "markdown": None, "buttons": None})())
+        assert resp["command"] == "PRIVMSG"
+
+    def test_ntfy_adapter_parses_publish(self):
+        """ntfy.sh publish → ChannelMessage。"""
+        from channels.adapter import get_channel_adapter
+
+        adapter = get_channel_adapter("ntfy")
+        msg = adapter.parse_message({
+            "id": "n1", "topic": "alerts", "title": "Alert",
+            "message": "ntfy hello", "priority": 5, "tags": ["warning"]})
+        assert "ntfy hello" in msg.text
+        assert "Alert" in msg.text
+        assert msg.chat_id == "alerts"
+        assert msg.channel.value == "ntfy"
+        resp = adapter.format_response(type("R", (), {"message_id": "alerts", "text": "hi", "markdown": None, "buttons": None})())
+        assert resp["message"] == "hi"

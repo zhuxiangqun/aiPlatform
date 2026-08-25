@@ -21,6 +21,10 @@ from .qq import QQAdapter
 from .reddit import RedditAdapter
 from .github import GitHubAdapter
 from .sms import SMSAdapter
+from .google_chat import GoogleChatAdapter
+from .homeassistant import HomeAssistantAdapter
+from .irc import IRCAdapter
+from .ntfy import NtfyAdapter
 
 # channel → adapter class
 ADAPTERS = {
@@ -39,6 +43,10 @@ ADAPTERS = {
     ChannelType.REDDIT: RedditAdapter,
     ChannelType.GITHUB: GitHubAdapter,
     ChannelType.SMS: SMSAdapter,
+    ChannelType.GOOGLE_CHAT: GoogleChatAdapter,
+    ChannelType.HOMEASSISTANT: HomeAssistantAdapter,
+    ChannelType.IRC: IRCAdapter,
+    ChannelType.NTFY: NtfyAdapter,
 }
 
 __all__ = [
@@ -46,6 +54,7 @@ __all__ = [
     "WhatsAppAdapter", "LarkAdapter", "TeamsAdapter",
     "SignalAdapter", "MatrixAdapter", "MattermostAdapter", "LineAdapter",
     "QQAdapter", "RedditAdapter", "GitHubAdapter", "SMSAdapter",
+    "GoogleChatAdapter", "HomeAssistantAdapter", "IRCAdapter", "NtfyAdapter",
 ]
 
 
