@@ -31,6 +31,10 @@ class ChannelType(str, Enum):
     REDDIT = "reddit"
     GITHUB = "github"
     SMS = "sms"
+    GOOGLE_CHAT = "google_chat"
+    HOMEASSISTANT = "homeassistant"
+    IRC = "irc"
+    NTFY = "ntfy"
 
 
 @dataclass
