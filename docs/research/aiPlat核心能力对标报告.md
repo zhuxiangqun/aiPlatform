@@ -175,7 +175,7 @@
 | 回滚 | 快照（`snapshot.py:30`）+ 文件级 checkpoint（`file_checkpoint.py:69` 哈希去重 + 每路径 50 版本） | **Checkpointing**（git 式 + /rewind） | fork(source, boundary) + surface replace | /undo /retry /stop | thread/fork + resume（会话级分支） | /undo /retry /stop + 会话 fork（`api_server.py:2074`） |
 | 决策留痕 | 决策捕获（`decision_capture.py:66`）+ 根因定位（`decision_trace.py:125`） | 无 | 事件源天然留痕 | 无 | thread-store 事件流（turn 级） | 无（轨迹存储 `<think>` 标签，`trajectory.py:30`） |
 
-**aiPlat 差异点**：唯一具备"防篡改哈希链审计 + 决策溯源 + 断点续跑"三重留痕的企业系统；DSH 的事件源会话日志是架构上最优雅的持久化模型；**Codex/hermes-agent 的会话级 fork（从历史节点分化新会话）是 aiPlat 可借鉴的**（P2-A1 replay_run_events 已有回放基础，缺 fork 分化入口）。
+**aiPlat 差异点**：唯一具备"防篡改哈希链审计 + 决策溯源 + 断点续跑"三重留痕的企业系统；DSH 的事件源会话日志是架构上最优雅的持久化模型；**Codex/hermes-agent 的会话级 fork（从历史节点分化新会话）已借鉴落地**（2026-08-25：`fork_run_from_events` 折叠源事件 → 新 run 继承分叉点 + `pipeline_forked` 血缘事件，子 run 状态可纯从自身事件重建）。
 
 ---
 
@@ -306,7 +306,7 @@
 | **学习闭环的触发与维护机制** | Hermes 的 nudge 阈值（每 10 prompt → memory review、每 10 工具迭代 → skill review）+ Curator 后台维护（active→stale→archived） | aiPlat 有 AutoLearner 但触发更多依赖夜间流水线批量，可引入 Hermes 式会话内实时 nudge + 技能生命周期维护 | ✅ **已补齐（P1-A1 + P1-A2）**：会话内实时 nudge（`harness/learning/learn_nudge_hook.py`）+ Curator 技能生命周期维护（`harness/learning/skill_curator.py`、`harness/knowledge/skill_curator.py`） |
 | **Skill 生态开放度** | Hermes agentskills.io 开放标准 + Hub 市场 + 230K stars 社区；Claude Code skills marketplace | aiPlat SkillMarketplace 已实现（`skill_marketplace.py:30` git clone 安装）但无开放标准/Hub 生态，可对接 agentskills.io | ✅ **已补齐（P1-A5）**：agentskills.io 对接（`harness/knowledge/skill_marketplace.py` + platform `api/routers/skill_marketplace.py`）；开放生态规模仍小 |
 | **子代理 provider 多样性** | DSH 6 种 provider（in-process/fork/ACP/Claude Code/Codex/dsh-sdk）+ continuable 编排 | aiPlat SubagentCoordinator 功能完整但传输单一（进程内），可增加 ACP/外部运行时子代理后端 | ✅ **已补齐（P1-A3，PR #21）**：`SubagentProvider` 抽象 + `InProcessProvider`/`ACPProvider` 双实现（`apps/agents/subagent/providers.py:49,81,119`），`execute_parallel(provider=)`/`send_message`/`get_instance_status` 三态接线 |
-| **事件源架构纯度** | DSH append-only SessionEvent 日志为唯一真相源（模型可见 ⟺ 日志），fork/resume/replay/UI 全从同一流派生 | aiPlat 的 PipelineRunStore 是状态型（SQLite 行），可借鉴事件源模型增强回放/审计一致性 | ✅ **已补齐（P2-A1）**：run_events 事件折叠派生状态（`pipeline_run_store.py:266` fold 实现），事件可回放/崩溃恢复；状态快照查询路径保留 |
+| **事件源架构纯度** | DSH append-only SessionEvent 日志为唯一真相源（模型可见 ⟺ 日志），fork/resume/replay/UI 全从同一流派生 | aiPlat 的 PipelineRunStore 是状态型（SQLite 行），可借鉴事件源模型增强回放/审计一致性 | ✅ **已补齐（P2-A1 + 2026-08-25 Fork 会话）**：run_events 事件折叠派生状态（`pipeline_run_store.py` fold 实现），事件可回放/崩溃恢复；**fork 分化入口已落地**——`fork_run_from_events` 折叠源事件 → 新 run 继承分叉点（stage/pass_rate）+ `pipeline_forked` 血缘事件（子 run 状态可纯从自身事件重建）+ `list_forked_runs` 血缘查询 + `POST /pipeline/pipelines/runs/{run_id}/fork` / `GET .../forks`（对齐 Codex thread/fork、DSH fork）；状态快照查询路径保留 |
 | **多渠道矩阵** | Hermes 20+ IM 平台 Gateway | aiPlat 仅 Telegram/Slack/WebChat 三适配器 + Gateway 架构（`gateway/router.py:30`），扩展空间大 | ✅ **已补齐（P1-A4，PR #22）+ 2026-08-23 广度延伸**：10 渠道（telegram/slack/webchat/discord/wecom/email/dingtalk/whatsapp/lark/teams，`channels/adapter.py:15-25`）；相对 Hermes 22 平台广度仍有差距（10/22） |
 | **模型 provider 生态** | Hermes 30+ provider 家族插件化；Claude Code 官方模型质量 | aiPlat 解析链严谨但 provider 面较窄（env 自动发现 + Ollama/LM Studio 等），可插件化扩展 | ✅ **已补齐（P2-A3）**：provider 元数据配置化（`infra/management/model/manager.py:1601`，`config/providers.yaml`），新增 provider 无需改代码 |
 | **运行时自修改** | DSH 动态 Cordis 插件 define/run/undefine（opt-in） | aiPlat 的 EvolutionEngine 是"离线夜间演化"，无"运行中挂载/卸载插件"能力（安全边界需谨慎） | ✅ **已补齐（P2-A2）**：运行时扩展缝（`core_facade.py:29,58`，可调用 handler 白名单 + 审批门控，做成安全边界而非 DSH 式 opt-in） |
@@ -533,7 +533,7 @@
 **aiPlat 在六方对标中的定位**：aiPlat 不是"又一个 coding agent"，而是**企业级 FDE 操作系统**——它的差异化不在单点能力（每项单点能力六方都有类似物），而在于**将治理、审计、审批、知识、交付闭环组合成平台**。核心结论：
 
 1. **aiPlat 最强**：企业治理（防篡改审计 + 多租户 + 计费 + RBAC）、交付流水线（HITL/回滚/断点续跑）、自我进化（夜间流水线 + 训练触发）、知识引擎（SECI + 本体 + GraphRAG）。
-2. **aiPlat 最弱（2026-08-24 Codex 扩列后）**：渠道广度（10 渠道 vs Hermes/hermes-agent 22 平台）、模型 provider 生态家族数（插件化已建但家族数远少于 38）、Skill 开放生态规模（已对接 agentskills.io 但社区规模小）、事件源纯度（已实现折叠派生但仍是"状态+事件"双轨）、**协议面/可嵌入性（G16 stdio JSON-RPC 内核、G17 SDK 包——Codex-Harness 开源后新增的最值得借鉴维度）**、**竞品会话级导入（G18）**、**OS 原生沙箱（G19）**。
+2. **aiPlat 最弱（2026-08-24 Codex 扩列后）**：渠道广度（18 渠道 vs Hermes/hermes-agent 22 平台）、模型 provider 生态家族数（插件化已建但家族数 14 vs 38）、Skill 开放生态规模（已对接 agentskills.io 但社区规模小）、**协议面/可嵌入性（G16 stdio JSON-RPC 内核、G17 SDK 包——Codex-Harness 开源后新增的最值得借鉴维度）**、**竞品会话级导入（G18）**、**OS 原生沙箱（G19）**。
 3. **最值得吸收的外部能力——2026-08-19 已全部落地**（行动纲领 P1-A 对标差距 6/6 DONE）：① Hermes 的会话内实时学习 nudge + Curator 技能维护 → **P1-A1 nudge（`learn_nudge_hook.py`）+ P1-A2 Curator（`skill_curator.py`）**；② DSH 的子代理 provider 多样性 + 事件源会话 → **P1-A3 子代理 provider（`providers.py` InProcess/ACP）+ P2-A1 run_events 折叠派生（`pipeline_run_store.py:266`）**；③ Claude Code 的 Server-managed settings（企业远程强制策略）→ **P1-A6 ManagedPolicy（`aiPlat-platform/auth/schemas_policy.py:119`）**。**2026-08-23 更新：G6 CC/Codex hooks 协议桥已实施**（`cc_bridge.py`）；**渠道广度已延伸 7→10**（+whatsapp/lark/teams）。**2026-08-24 Codex-Harness 扩列更新**：下一批最值得吸收项 = **协议面（stdio JSON-RPC 内核 P0-a、SDK P1）** + **竞品会话/记忆级导入（P0-b）** + **OS 沙箱可选执行器（P1）**（详见《Codex-Harness开源借鉴分析报告.md》）；渠道广度继续延伸（10→更多，对齐 Hermes 22）与 Claude Code checkpoint/rewind 用户级 UI 保留为候选。
 
 *报告基于 2026-08-15 代码快照与 web 调研，**2026-08-19 已按行动纲领基线（53 DONE / 143 passed / 能力 1032/1039）复核更新 aiPlat 侧结论**，**2026-08-23 L2-L5/G6/渠道 10 已复核**，**2026-08-24 扩为六系统（+Codex-Harness 文档级 + hermes-agent 源码级）**；六方信息可能随版本更新；aiPlat 侧证据可在本仓库 `grep -rn` 复核。*
@@ -602,7 +602,7 @@ flowchart LR
 | **Claude Code** | 文件 + SQLite：会话持久化到 `~/.claude/projects/`（transcript.jsonl）+ 检查点（git 式快照） | 官方 Sessions/Checkpointing 文档 | 简单直观；/rewind 回滚 | 无统一事件模型；跨会话关联弱 |
 | **Hermes** | SQLite 会话库（WAL + FTS5）+ 策展记忆文件（MEMORY.md/USER.md 冻结快照注入） | `~/.hermes/state.db` 官方文档 | 检索快（FTS5 三虚拟表）；prompt cache 友好 | 会话历史与策展记忆两层分离；无事件回放模型 |
 
-**对标结论**：DSH 的事件源是架构上最优雅的（单一真相源），aiPlat 的状态+事件双轨是工程上最实用的（查询快 + 审计全），两者差异本质是"日志可重建" vs "状态可治理"——aiPlat 的 `run_events` 表（schema.py:67）已是向事件源演进的基础，且 **2026-08-19 已落地折叠派生（P2-A1，`pipeline_run_store.py:266`）**：事件可回放/崩溃恢复，状态快照查询路径保留（默认快照、`from_events` 增强路径）。
+**对标结论**：DSH 的事件源是架构上最优雅的（单一真相源），aiPlat 的状态+事件双轨是工程上最实用的（查询快 + 审计全），两者差异本质是"日志可重建" vs "状态可治理"——aiPlat 的 `run_events` 表（schema.py:67）已是向事件源演进的基础，且 **2026-08-19 已落地折叠派生（P2-A1，`pipeline_run_store.py`）**：事件可回放/崩溃恢复，状态快照查询路径保留（默认快照、`from_events` 增强路径）；**2026-08-25 追加 fork 分化入口（对齐 Codex thread/fork、DSH fork）**：`fork_run_from_events` + `pipeline_forked` 血缘事件 + `list_forked_runs` 血缘查询——子 run 状态可纯从自身事件重建，事件源纯度差距进一步收窄。
 
 ### 19.3 控制平面 vs 数据平面
 
@@ -691,7 +691,7 @@ flowchart LR
 |---|---|---|---|---|---|---|
 | G1 | **会话内实时学习 nudge**（每 10 turn/迭代后台 review） | Hermes（`agent_init.py:1744,1860`） | 有记忆 nudge（`memory/manager.py:1104` get_nudge ~10 turns），但**无"技能"实时 review**（AutoLearner 仅夜间批量 process_pending） | ⚠️ **部分具备**（记忆 nudge 有，技能实时 review 缺） | 记忆 nudge 存在；技能侧见 `evolution_engine.py:289`（夜间批量） | ✅ **已补齐（P1-A1）**：`harness/learning/learn_nudge_hook.py` 会话内实时 nudge 钩子 |
 | G2 | **Curator 技能生命周期维护**（active→stale→archived） | Hermes（`curator.py:305`） | SkillRegistry 有 `SkillBindingStats.recent_results` 但**无主动归档机制** | ❌ **缺失** | `apps/skills/registry.py:108`（无生命周期维护） | ✅ **已补齐（P1-A2）**：`harness/learning/skill_curator.py` + `harness/knowledge/skill_curator.py`（active→stale→archived 生命周期维护） |
-| G3 | **事件源会话单一真相源**（模型可见 ⟺ 日志） | DSH（`docs/architecture.md:92-96`） | 有 `run_events` 表（`execution_store_schema.py:67`）但状态快照为主，事件非"单一真相源" | ⚠️ **部分具备**（事件表有，折叠派生无） | 状态型 `pipeline_run_store.py:54` | ✅ **已补齐（P2-A1）**：`pipeline_run_store.py:266` 事件折叠派生状态（崩溃恢复可重建；默认快照路径保留） |
+| G3 | **事件源会话单一真相源**（模型可见 ⟺ 日志） | DSH（`docs/architecture.md:92-96`） | 有 `run_events` 表（`execution_store_schema.py:67`）但状态快照为主，事件非"单一真相源" | ⚠️ **部分具备**（事件表有，折叠派生无） | 状态型 `pipeline_run_store.py:54` | ✅ **已补齐（P2-A1）**：`pipeline_run_store.py:266` 事件折叠派生状态（崩溃恢复可重建；默认快照路径保留）。**2026-08-25 fork 分化入口追加**：`fork_run_from_events`（折叠源事件→新 run 继承分叉点 + `pipeline_forked` 血缘事件，子 run 状态可纯从自身事件重建）+ `list_forked_runs` 血缘查询 + `POST /pipeline/pipelines/runs/{run_id}/fork`/`GET .../forks`（对齐 Codex thread/fork、DSH fork） |
 | G4 | **运行时自修改**（动态插件 define/run/undefine） | DSH（cordis-host-runner） | PluginManager 是 DB 管理（注册/启停/回滚），**无运行时代码注入** | ❌ **缺失** | `apps/plugins/manager.py:8` | ✅ **已补齐（P2-A2）**：运行时扩展缝（`core_facade.py:29,58`，handler 白名单 + 审批门控，做成安全边界而非 DSH 式 opt-in） |
 | G5 | **Server-managed settings**（企业远程强制策略，本地不可覆盖） | Claude Code | 有 tenant policy（`audit_mixin.py:253` get_tenant_policy）但**无"managed 强制层"**（本地可覆盖） | ❌ **缺失** | `schemas_policy.py`（无 managed 标志） | ✅ **已补齐（P1-A6）**：`ManagedPolicy`（`aiPlat-platform/auth/schemas_policy.py:119`）+ admin 端点（`api/routers/policy.py:89`） |
 | G6 | **CC/Codex hooks 协议桥**（复用三方 hooks.json） | DSH（hooks-claude-code/codex） | 有 HookManager（`hook_manager.py:111`）但**无 CC/Codex 协议兼容层** | ❌ **缺失** | `infrastructure/hooks/`（无协议桥） | ✅ **已补齐（2026-08-23 G6 独立批次）**：`cc_bridge.py`（hooks.json 解析 + `CCHookBridge` command handler 执行器 + `register_cc_hooks`/`load_cc_hooks_if_configured`）+ `cc_bridge_rules.py`（CC 7/30 + Codex 4/10 事件→`HookPhase` 数据驱动映射表）；`HookManager.__init__` 配置存在时装载（`~/.aiplat/hooks.json` / `AIPLAT_CC_HOOKS_PATH`，默认关）；command handler shell=False/超时/fail-open；http/mcp_tool/prompt/agent 跳过记 WARNING、unmapped 事件不静默执行（对齐 DSH 诚实披露）。测试 15 个。**G1-G15 全 15 项补齐（gap 矩阵清零）** |
@@ -715,7 +715,7 @@ flowchart LR
 |---|---|---|---|
 | ❌ **完全缺失**（aiPlat 无此能力） | **2** | G17 官方 SDK 包、G19 OS 原生沙箱隔离 | **待实施**（见《Codex-Harness开源借鉴分析报告.md》P1：aiplat-sdk + bubblewrap 可选执行器） |
 | ⚠️ **部分具备**（需收尾） | **2** | G16 app-server 式 stdio JSON-RPC 协议内核、G18 竞品会话/记忆级导入 | **待实施**（见 Codex-Harness 借鉴报告 P0-a/P0-b：`core/acp/stdio_server.py` + 会话 JSONL→MemoryManager 导入） |
-| ✅ **已补齐**（原 ❌/⚠️ → ✅） | **13** | G1 nudge、G2 Curator、G3 事件折叠、G4 运行时扩展缝、G5 ManagedPolicy、G6 CC/Codex hooks 桥、G8 agentskills、G9 渠道 10、G10 provider 插件化、G11 子代理 provider、G12 worker/阶段隔离、G13 goal judge、G14 no-agent cron | P1-A1/A2/A3/A4/A5/A6 + P2-A1/A2/A3/A5/A6/A7（P1-A 对标差距 6/6 + P2 演进治理 12/12 全 DONE）+ **G6 独立批次（2026-08-23，`cc_bridge.py` 15 测试）** + **渠道广度延伸（2026-08-23，7→10）** |
+| ✅ **已补齐**（原 ❌/⚠️ → ✅） | **13** | G1 nudge、G2 Curator、G3 事件折叠（+fork 分化）、G4 运行时扩展缝、G5 ManagedPolicy、G6 CC/Codex hooks 桥、G8 agentskills、G9 渠道 18、G10 provider 插件化、G11 子代理 provider、G12 worker/阶段隔离、G13 goal judge、G14 no-agent cron | P1-A1/A2/A3/A4/A5/A6 + P2-A1/A2/A3/A5/A6/A7（P1-A 对标差距 6/6 + P2 演进治理 12/12 全 DONE）+ **G6 独立批次（2026-08-23，`cc_bridge.py` 15 测试）** + **渠道广度延伸（2026-08-23~24，7→18）** + **G3 fork 分化入口（2026-08-25，`fork_run_from_events` + 血缘查询）** |
 | ✅ **已具备**（不构成缺口） | 1 | G7 checkpoint/rewind | — |
 | ✅ **aiPlat 侧已治理**（原双方皆弱） | 1 | G15 单文件巨兽（P2-A4 拆分收官） | P2-A4（12,281→8,285 行 + 5 Mixin） |
 
@@ -739,7 +739,7 @@ flowchart LR
 | 工作流 | **aiPlat** | 优（可视化画布 vs 声明式） | 优（12 节点画布 vs 脚本） | 优（独立引擎 vs 无） | 优（独立引擎 vs 无独立工作流引擎） | 优（同 Hermes） | **主动优势区** |
 | 规划 | **平**（各有所长） | 平（4 级链 vs plan mode） | 优（规划链 vs logged plan） | 平（规划链 vs /goal judge） | 平（4 级链 vs goal/turn 驱动） | 平（同 Hermes /goal judge） | 中性 |
 | 沙箱/审批 | **aiPlat**（治理）/ **Codex**（OS 隔离） | 优（RBAC+审批生命周期 vs 5 模式） | 平（RBAC vs 3 平台 presets） | 优（不可绕过 vs 配置层 mode=off） | **劣/平**（进程内检查 vs OS 原生沙箱 Bubblewrap/Seatbelt，G19 待实施；审批协议 aiPlat 更强） | 优（不可绕过 vs mode=off） | 主动优势区（审批）/ 被动差距区（G19 OS 隔离） |
-| 持久化 | **平**（aiPlat/DSH/Codex） | 优（哈希链审计+决策溯源 vs transcript） | 平（状态+事件 vs 纯事件源，各有所长） | 优（企业审计 vs SQLite 会话） | 平（双写+事件 vs SQLite thread-store+resume/fork；fork 是 Codex 独有） | 优（企业审计 vs SQLite/FTS5） | 主动优势区（审计）/ 事件源（G3）→ **已补齐**（P2-A1 折叠派生） |
+| 持久化 | **平**（aiPlat/DSH/Codex） | 优（哈希链审计+决策溯源 vs transcript） | 平（状态+事件 vs 纯事件源，各有所长） | 优（企业审计 vs SQLite 会话） | 平（双写+事件 vs SQLite thread-store+resume/fork；fork 已对齐 2026-08-25） | 优（企业审计 vs SQLite/FTS5） | 主动优势区（审计）/ 事件源（G3）→ **已补齐**（P2-A1 折叠派生 + fork 分化入口） |
 | 模型适配 | **aiPlat**（治理）/ **Hermes**（生态） | 优（统一解析+infra 权威 vs 官方模型） | 优（ModelManager vs adapter 注册表） | **生态广度仍窄**（插件化已建 P2-A3，但家族数远少于 38） | **优**（模型无关 vs OpenAI 强绑定） | **生态广度仍窄**（同 Hermes 38 家族） | 治理优势区 / 生态差距区（G10）→ **已补齐机制，广度仍窄** |
 | 自我进化 | **平**（aiPlat/Hermes 不同维度） | **优**（14 步夜间+训练触发 vs 官方无） | 优（学习闭环 vs 运行时自修改） | 平（aiPlat 系统级 vs Hermes Agent 级） | 优（14 步夜间+训练 vs 无自进化） | 平（aiPlat 系统级 vs hermes-agent 学习闭环） | 主动优势区 / 实时性（G1）→ **已补齐**（P1-A1 nudge + P1-A2 Curator） |
 | 扩展机制 | **DSH**（纯度）/ **Codex**（体系） | 优（四级阶梯 vs plugins） | **平/接近**（运行时扩展缝已补 P2-A2；卸载回滚语义仍弱于 DSH"注册即 effect、卸载即回滚"） | 平（四级阶梯 vs 8 类插件） | 平（四级阶梯 vs tools/mcp/skills/plugins/hooks 全 crate 体系） | 平（四级阶梯 vs 8 类注册接口） | 被动差距区（架构纯度）→ **已补齐运行时缝** |
@@ -768,7 +768,7 @@ flowchart LR
 
 4. **优势区 vs 差距区的本质差异**：优势区（治理/内核）是**难复制**的（需要多年工程积累 + 治理体系），差距区（生态/协议/接入）是**易补齐**的（P1 四项均可在 1-2 周内落地；G16/G17 的 stdio 内核与 SDK 约 1-3 天，见借鉴报告）。**这个结构对 aiPlat 非常有利——且已被 2026-08-19 基线验证**：P1-A 对标差距 6 项全部在行动纲领周期内落地，差距区确实"易补齐"。
 
-5. **"持平"维度的真实含义**：上下文工程（aiPlat vs DSH/Hermes/Codex 平）与持久化（aiPlat vs DSH/Codex 平）不是"一样好"，而是**取向不同**——aiPlat 走"状态可治理"（快查询+审计），DSH 走"日志可重建"（纯事件源），Codex 走"会话可恢复+可 fork"（SQLite thread-store），Hermes 走"缓存友好"（冻结快照）。四者各解决一类问题，企业场景下 aiPlat 的取向更匹配（要审计/回滚/多租户）；**Codex 的 thread/fork（从历史节点分化新会话）是 aiPlat 可借鉴的（P2-A1 replay_run_events 已有基础）**。
+5. **"持平"维度的真实含义**：上下文工程（aiPlat vs DSH/Hermes/Codex 平）与持久化（aiPlat vs DSH/Codex 平）不是"一样好"，而是**取向不同**——aiPlat 走"状态可治理"（快查询+审计），DSH 走"日志可重建"（纯事件源），Codex 走"会话可恢复+可 fork"（SQLite thread-store），Hermes 走"缓存友好"（冻结快照）。四者各解决一类问题，企业场景下 aiPlat 的取向更匹配（要审计/回滚/多租户）；**Codex 的 thread/fork（从历史节点分化新会话）已借鉴落地（2026-08-25：`fork_run_from_events` + `pipeline_forked` 血缘事件 + `list_forked_runs`，`POST /pipeline/pipelines/runs/{run_id}/fork`）——事件源纯度差距收窄，子 run 状态可纯从自身事件重建**。
 
 ### 21.4 优劣分析的方法学说明（诚实标注）
 

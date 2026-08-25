@@ -1,6 +1,6 @@
 ---
-total_capabilities: 1080
-last_updated: 2026-08-24
+total_capabilities: 1082
+last_updated: 2026-08-25
 version: "30.2"
 auto_sync: true
 core_guarantees:
@@ -664,6 +664,7 @@ scan_hash: 8f9548ec24f4
 ## 二、记忆子系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| import_claude_memories | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | **Claude 会话导入（P0-b）** | `core/harness/memory/import_claude_sessions.py` + `core/api/core_facade.py` + `aiPlat-platform/api/routers/memory_import.py` | ✅ | Claude Code 会话 JSONL → MemoryManager（parse/find/import；source_tag=claude_import + provenance 防投毒溯源；POST /platform/memory/import） | 已合入 |
 | SystemReminders.check_and_inject | `harness/memory/reminders.py` | ✅ | 自动同步 | 已合入 |
 | MemoryManager.save_memory_rules | `harness/memory/manager.py` | ✅ | 自动同步 | 已合入 |
@@ -1113,6 +1114,10 @@ scan_hash: 8f9548ec24f4
 ## 八、可观测性
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| build_os_sandbox_cmd | `core/harness/infrastructure/os_sandbox.py` | ✅ | 自动同步 | 已合入 |
+| start_stdio_kernel | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| register_cc_hooks | `core/harness/infrastructure/hooks/cc_bridge.py` | ✅ | 自动同步 | 已合入 |
+| CCHookBridge | `core/harness/infrastructure/hooks/cc_bridge.py` | ✅ | 自动同步 | 已合入 |
 | AuditLog | `harness/infrastructure/audit.py` | ✅ | 自动同步 | 已合入 |
 | MetricsAggregator | `harness/observability/metrics/__init__.py` | ✅ | 自动同步 | 已合入 |
 | **StdioKernel（P0-a）** | `core/acp/stdio_server.py` + `core/api/core_facade.py` | ✅ | stdio JSON-RPC 持久内核：thread/start\|resume\|approve\|reject\|events 映射 PipelineSession + run_events；JSON-RPC 2.0 + 背压 -32001；入口 `python -m core.acp.stdio_server`（对标 Codex app-server） | 已合入 |
@@ -1700,6 +1705,8 @@ scan_hash: 8f9548ec24f4
 | Intent Analyzer | core/orchestration/intent_analyzer.py | ✅ | 意图分类与分解 | 已合入 |
 | RunEventTimeline | `frontend/src/components/Builder/RunEventTimeline.tsx` | ✅ | Pipeline run 事件回放 UI（seq/type/payload 时间线） | 待合入 |
 | list_run_events | `core/api/routers/runs.py` | ✅ | GET /runs/{run_id}/events 事件源回放查询 | 待合入 |
+| fork_run_from_events | `core/harness/execution/pipeline_run_store.py` | ✅ | 事件源纯度——Fork 会话：折叠源事件→新 run 继承分叉点（stage/pass_rate），pipeline_forked 记录血缘 | 待合入 |
+| list_forked_runs | `core/harness/execution/pipeline_run_store.py` | ✅ | Fork 血缘查询（parent_run_id→子 run_ids）；POST /pipeline/pipelines/runs/{id}/fork + GET /{id}/forks | 待合入 |
 
 ---
 
@@ -2017,7 +2024,7 @@ scan_hash: 8f9548ec24f4
 | 平台治理 | 85 | 0 | 85 |
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
-| 编排系统 | 8 | 0 | 8 |
+| 编排系统 | 10 | 0 | 10 |
 | 管理 & 质量 | 28 | 0 | 28 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
@@ -2037,7 +2044,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1080** | **0** | **1080** |
+| **总计** | **1082** | **0** | **1082** |
 
 ---
 
