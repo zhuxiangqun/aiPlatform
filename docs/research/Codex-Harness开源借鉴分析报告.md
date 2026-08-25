@@ -9,7 +9,7 @@
 
 ## 0. 一句话结论
 
-Codex Harness 开源对 aiPlat 的价值不在"它有什么能力"（aiPlat 大多已有对应物），而在**三个工程化姿势**：① 把运行时能力做成**可嵌入的公开协议**（app-server/JSON-RPC/SDK）——aiPlat 有内核但协议面薄；② **Thread/Turn/Item 三层抽象**显式化——aiPlat 的 run_events 事件流已具备同构数据，但未提升为产品级公开原语；③ **竞品资产非破坏性导入**是获客战略——aiPlat 已有 L2 代码导入 + format_adapters 格式桥，但缺"Agent 记忆/授权/会话"级导入。**最值得立即借鉴的是协议面（JSON-RPC app-server 式持久内核）+ 竞品导入收尾（会话/记忆级）**。
+Codex Harness 开源对 aiPlat 的价值不在"它有什么能力"（aiPlat 大多已有对应物），而在**三个工程化姿势**：① 把运行时能力做成**可嵌入的公开协议**（app-server/JSON-RPC/SDK）——**P0-a stdio JSON-RPC 内核（`core/acp/stdio_server.py`）+ P1 aiplat-sdk 已实施（2026-08-24/25）**，协议面已补齐；② **Thread/Turn/Item 三层抽象**显式化——run_events 事件流已具备同构数据，**已通过 stdio 内核 thread/* 协议提升为产品级公开原语（P0-a，2026-08-24）**；③ **竞品资产非破坏性导入**是获客战略——L2 代码导入 + format_adapters 格式桥已有，**会话/记忆级导入已补齐（P0-b，`import_claude_sessions.py`，2026-08-24）**；剩余 REAL 缺口为**授权/凭据级导入**（import_claude_sessions.py 无凭据处理，安全边界内保留）。
 
 ---
 
@@ -36,43 +36,43 @@ Codex Harness 开源对 aiPlat 的价值不在"它有什么能力"（aiPlat 大�
 
 ### P0（建议尽快做，成本低/中，收益明确）
 
-**2.1 协议面：app-server 式 JSON-RPC over stdio 持久内核（❌ 真缺口）**
+**2.1 协议面：app-server 式 JSON-RPC over stdio 持久内核（✅ 已实施，P0-a）**
 
-现状：ACP server 是 WebSocket 版（`core/acp/server.py`），面向 IDE；**无 stdio JSON-RPC 持久会话内核**——即"外部程序/CI/运维面板可 spawn 一个 aiPlat 内核进程，通过 stdin/stdout JSON 行驱动 Thread，断线后 thread/resume 恢复"。
+现状（2026-08-25 复核）：**P0-a 已实施（core/acp/stdio_server.py）**——stdio JSON-RPC 持久会话内核已落地：外部程序/CI/运维面板可 `python -m core.acp.stdio_server` spawn 内核进程，经 stdin/stdout JSON 行驱动 Thread（thread/start|status|events|resume|approve|reject|rollback|cancel，含背压 -32001），断线后 thread/resume 恢复（见 §1 表 #2 ✅ 行）；ACP WebSocket 版（`core/acp/server.py`）仍面向 IDE。
 
-借鉴价值：Codex 的 app-server 把"会话/审批/steer"从黑盒变成可嵌入协议——aiPlat 的审批（ApprovalGate + HITL resume）和事件流（run_events）都已就绪，**缺的只是把已有内核能力暴露为 stdio JSON-RPC 协议层**（类似 ACP 但更薄、面向程序而非 IDE）。
+借鉴价值：Codex 的 app-server 把"会话/审批/steer"从黑盒变成可嵌入协议——aiPlat 的审批（ApprovalGate + HITL resume）和事件流（run_events）都已就绪，**已通过 stdio JSON-RPC 协议层补齐**（类似 ACP 但更薄、面向程序而非 IDE）。
 
-成本估算：中（1-2 天）——可复用 ACP server 的 handler 逻辑，新增 thread/start、thread/resume、item.event 流式 + approval.request/allow/deny 方法（均为**拟新增协议方法名**，非现有代码），映射到已有 run_events/HITL。
+成本估算：中（1-2 天）——可复用 ACP server 的 handler 逻辑，新增 thread/start、thread/resume、item.event 流式 + approval.request/allow/deny 方法（均为**拟新增协议方法名**，非现有代码），映射到已有 run_events/HITL。（2026-08-25 复核：P0-a 已实现，估算成立）
 
-接线点：`core/acp/`（新增 `stdio_server.py`）+ `CoreFacade`（方法映射）。
+接线点：`core/acp/`（新增 `stdio_server.py`）+ `CoreFacade`（方法映射）。（2026-08-25 复核：已落地，入口 `python -m core.acp.stdio_server`）
 
-**2.2 竞品导入收尾：会话/记忆/授权级导入（⚠️ 部分具备）**
+**2.2 竞品导入收尾：会话/记忆级导入（✅ 已实施，P0-b）；授权/凭据级导入（⚠️ REAL 保留）**
 
-现状：L2 import-repo 导入**代码**；format_adapters 导入 **AGENT.md/SKILL.md/MCP 配置**；claude_md 引擎读取 **CLAUDE.md**。但 Codex 导入的还有：**近 30 天会话历史、MCP 授权状态、slash command、subagent 定义**——即"Agent 记忆"。
+现状（2026-08-25 复核）：**P0-b 已实施（core/harness/memory/import_claude_sessions.py）**——L2 import-repo 导入**代码**、format_adapters 导入 **AGENT.md/SKILL.md/MCP 配置**、claude_md 引擎读取 **CLAUDE.md** 之外，Codex 导入的**近 30 天会话历史**已落地：Claude JSONL → parse_claude_session → MemoryManager.save_interaction（source_tag=claude_import + provenance 防投毒溯源，只读消费不动源文件，见 §1 表 #10 ✅ 行）；**REAL 保留项**：授权/凭据级导入（import_claude_sessions.py 无凭据处理，安全边界内保留），slash command/subagent 定义迁移亦不在 P0-b 范围。
 
-借鉴价值：aiPlat 记忆系统（四层 MemoryManager + SQLite long_term_memories）已有载体；缺的是"从 Claude Code/Cursor 会话导出 JSONL → aiPlat episodic/semantic 记忆"的导入通道（类似 L2 之于代码）。
+借鉴价值：aiPlat 记忆系统（四层 MemoryManager + SQLite long_term_memories）已有载体；**"Claude JSONL → episodic/semantic 记忆"导入通道已补齐**（类似 L2 之于代码，source_tag=claude_import）；剩余授权/凭据级导入为 REAL 保留项。
 
-成本估算：低-中（1-2 天）——Claude Code 会话导出是 JSONL（`~/.claude/projects/*.jsonl`），解析后灌入 MemoryManager.save_interaction 即可；顺带把 skills 导入已有通道（agentskills.io）复用。
+成本估算：低-中（1-2 天）——Claude Code 会话导出是 JSONL（`~/.claude/projects/*.jsonl`），解析后灌入 MemoryManager.save_interaction 即可；顺带把 skills 导入已有通道（agentskills.io）复用。（2026-08-25 复核：P0-b 已实现，估算成立）
 
-接线点：`core/harness/memory/`（新增 `import_claude_sessions.py`）+ platform 端点（`POST /memory/import`）。
+接线点：`core/harness/memory/`（新增 `import_claude_sessions.py`）+ platform 端点（`POST /memory/import`）。（2026-08-25 复核：`import_claude_sessions.py` 已落地）
 
 ### P1（建议后续做，成本中/高）
 
-**2.3 SDK 包（TS/Python）（❌ 真缺口）**
+**2.3 SDK 包（TS/Python）（✅ 已实施，P1）**
 
-现状：CoreFacade 是进程内门面，REST 是 HTTP 面；**无 pip/npm 包**让外部程序程序化启停 run + 流式监听事件。
+现状（2026-08-25 复核）：**P1 已实施（aiplat-sdk）**——`aiplat-sdk/aiplat/stdio.py`（StdioKernelClient 程序化启停 Thread：thread_start/status/events/resume/approve/reject/rollback/cancel + stream_events 流式监听）与 `aiplat-sdk/aiplat/exec.py`（`aiplat exec` CLI，codex exec 对齐）已发布为 pip 包（见 §1 表 #4 ✅ 行）；外部程序可 import aiplat-sdk 一行启停 run + 流式监听事件。
 
-借鉴价值：Codex SDK 让"在你的代码里启停 Thread"成为一行 import。aiPlat 若做 `aiplat-sdk`（Python 优先），本质是**把已有 REST 端点封装成类型化客户端 + 事件订阅**（SSE/WS 已有），成本不高但需要独立包维护。
+借鉴价值：Codex SDK 让"在你的代码里启停 Thread"成为一行 import。aiPlat 已做 `aiplat-sdk`（P1，2026-08-24，Python 优先），本质是**把 stdio 内核协议封装成类型化客户端 + 流式事件订阅**（StdioKernelClient + stream_events）。
 
-成本估算：中（2-3 天，Python 包 + 事件订阅封装 + 示例）。
+成本估算：中（2-3 天，Python 包 + 事件订阅封装 + 示例）。（2026-08-25 复核：P1 已实现，估算成立）
 
-**2.4 OS 原生沙箱升级（⚠️ 部分具备）**
+**2.4 OS 原生沙箱升级（✅ 已实施，P1）**
 
-现状：SandboxGate 是进程内检查（路径/网络/限流），非 OS 隔离——恶意命令在 gate 通过后仍以进程身份执行。
+现状（2026-08-25 复核）：**P1 已实施（core/harness/infrastructure/os_sandbox.py）**——bwrap/seatbelt 可选执行器已落地（只读系统路径 + 可写工作区 + 默认网络隔离 + 无 bwrap/seatbelt 环境 fail-open fallback，`AIPLAT_SANDBOX=bwrap/seatbelt` 开关，见 §1 表 #5 ✅ 行）；SandboxGate 进程内检查（路径/网络/限流）保留为第一道防线，OS 隔离为第二道。
 
-借鉴价值：Codex 用 Bubblewrap/Seatbelt 做真隔离。aiPlat 可先做 **Linux bubblewrap 可选执行器**（`AIPLAT_SANDBOX=bwrap` 时命令执行包 bwrap 参数，保留现有 subprocess 调用链为 fallback——与方案 B fail-open 哲学一致）。
+借鉴价值：Codex 用 Bubblewrap/Seatbelt 做真隔离。aiPlat 已实现（P1，2026-08-24）**Linux bubblewrap + macOS seatbelt 可选执行器**（`AIPLAT_SANDBOX=bwrap/seatbelt` 时命令执行包 bwrap/seatbelt 参数，保留现有 subprocess 调用链为 fallback——与方案 B fail-open 哲学一致）。
 
-成本估算：中-高（3-5 天，含跨平台探测 + 降级链 + 测试）。
+成本估算：中-高（3-5 天，含跨平台探测 + 降级链 + 测试）。（2026-08-25 复核：P1 已实现，估算成立）
 
 ### P2（参考方向，不急于做）
 
@@ -98,8 +98,8 @@ Codex Harness 开源对 aiPlat 的价值不在"它有什么能力"（aiPlat 大�
 
 Codex 开源的战略是**两手**：① 把 runtime 开放成可嵌入协议（拉新开发者）；② 竞品资产一键迁入（撬存量用户）。aiPlat 的对标动作：
 
-- **协议面是当前最薄处**：aiPlat 内核能力（审批/事件/记忆/沙箱）远超协议面暴露。P0 的 stdio JSON-RPC 内核 + P1 的 SDK 是把"能力"变成"平台"的关键两步——与 Codex app-server 开源同构。
-- **导入战略已有底座**：L2 代码导入 + format_adapters 格式桥是"资产迁入"的前半段；补齐**会话/记忆级导入**（P0-2.2）即完成 Codex 式"整包搬进"。
+- **协议面已补齐（P0-a/P1，2026-08-24/25）**：aiPlat 内核能力（审批/事件/记忆/沙箱）此前远超协议面暴露；stdio JSON-RPC 内核（`core/acp/stdio_server.py`）+ aiplat-sdk 关键两步已落地，把"能力"变成"平台"——与 Codex app-server 开源同构。
+- **导入战略已闭环（P0-b，2026-08-24）**：L2 代码导入 + format_adapters 格式桥 + **会话/记忆级导入**（`import_claude_sessions.py`，source_tag=claude_import）已完成 Codex 式"整包搬进"；剩余 REAL 为授权/凭据级导入（安全边界内保留）。
 - **不借鉴的**：Rust 重写（aiPlat Python 生态与 DI/门面治理成熟，语言是姿势差异非能力差异）；模型绑定（aiPlat 模型无关是差异化优势，保持）。
 
 ---
@@ -108,7 +108,7 @@ Codex 开源的战略是**两手**：① 把 runtime 开放成可嵌入协议（
 
 aiPlat 与 Codex Harness 的能力差距**不在内核，在协议面**：
 - 内核层（审批/压缩/持久化/扩展/沙箱检查）：**已对齐或部分具备**，无需大改；
-- 协议层（app-server/SDK/exec）：**真缺口 2 项**（stdio JSON-RPC 内核、官方 SDK），是"产品→平台"的关键；
-- 导入层：**收尾 1 项**（会话/记忆级导入），复用已有 format_adapters + MemoryManager 即可。
+- 协议层（app-server/SDK/exec）：**P0-a/P1/P2 已实施（2026-08-24/25）**——stdio JSON-RPC 内核（`core/acp/stdio_server.py`）、aiplat-sdk、`aiplat exec` 全部落地，"产品→平台"关键两步已完成；
+- 导入层：**收尾已完成（P0-b，2026-08-24）**——会话/记忆级导入复用 format_adapters + MemoryManager 落地；剩余 REAL 为授权/凭据级导入。
 
-**建议批次**：P0-a stdio JSON-RPC 内核（复用 ACP handler + run_events/HITL）→ P0-b 会话/记忆导入（复用 format_adapters + MemoryManager）→ P1 SDK 包 → P1 OS 沙箱可选执行器。全程 clause-sync + acceptance 登记。
+**建议批次**：P0-a stdio JSON-RPC 内核（复用 ACP handler + run_events/HITL）→ P0-b 会话/记忆导入（复用 format_adapters + MemoryManager）→ P1 SDK 包 → P1 OS 沙箱可选执行器。（2026-08-25 复核：四批已全部实施完成，见 §1 表 ✅ 行）全程 clause-sync + acceptance 登记。

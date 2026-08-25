@@ -42,7 +42,7 @@
 |---|---|---|---|
 | P0-B1 | **SDK Agent.bind_skill/bind_tool 引用未初始化属性 → AttributeError** | `agent.py:70,79` | **✅ 已修复**：`agent.py:58-59` `_skills`/`_tools` 已初始化 |
 | P0-B2 | **MFA（TOTP/WebAuthn）全仓零实现**（admin 全权限无二步验证） | 全仓 grep 0 命中 | **✅ 已修复（2026-08-18）**：`auth/mfa.py` RFC 6238 TOTP + 端点 + admin 强制（阶段 1+3）；WebAuthn 可选未做 |
-| P0-B3 | **3 个子系统整体未接线**：arena（Elo 竞技场）/ voice_loop / wake_agent | 全仓 0 生产调用者 | **✅ 已修复**：三者各 ≥10 个生产调用文件（已接线） |
+| P0-B3 | **3 个子系统整体未接线**：arena（Elo 竞技场）/ voice_loop / wake_agent | 全仓 0 生产调用者 | **✅ 已修复**：已全部接线（各 ≥10 caller，2026-08-19 复核） |
 | P0-B4 | **CoreFacade getter 冗余**（抽样 50% 无外部调用者：get_policy_gate/get_context_bus/get_retrieval_crag 等 15/30）——能力经类直用生效，facade 接口成摆设（违反 §10 入口唯一性） | 抽样实测 | **✅ 已修复（2026-08-19）**：get_agent_registry_facade 删除（统一 get_agent_registry）+ _get_trend_alias 清理；91 个 get_* 符号 0 调用者清零 |
 | P0-B5 | **9 个默认关闭的 opt-in flag**（RL/学习调度/灰度/会话检索/toolsets/OTel 等默认 false）——部署方不知晓则能力静默不生效 | grep `"false"` 实测 | **✅ 已修复（2026-08-19）**：49 个 opt-in flag 语义文档化 → `docs/standards/规范-功能开关与配置.md`（分组 + 用途 + 位置 + 登记义务） |
 
@@ -51,7 +51,7 @@
 | # | 问题 | 证据 | 来源 |
 |---|---|---|---|
 | P0-C1 | **standards/ 3 份规范全部 status: draft**（未定稿） | 3 份文件头部 | **✅ 已修复（2026-08-18）**：9/9 规范全部 approved |
-| P0-C2 | **规范 vs 代码矛盾**：mTLS(规范) vs API key(实际)、request_id=run_id(job_scheduler:273)、request_dedup 未实现 | `authenticator.py`/`job_scheduler.py:273` | **✅ 已修复**：规范已消歧（不再提 mTLS）+ request_dedup 表已实现 |
+| P0-C2 | **规范 vs 代码矛盾**：mTLS(规范) vs API key(实际)、request_id=run_id(job_scheduler:273)、request_dedup 未实现 | `authenticator.py`/`job_scheduler.py:273` | **✅ 已修复**：规范已消歧（不再提 mTLS）+ request_dedup 已实现（建表 `execution_store_schema.py:177` + 幂等校验 `runs_mixin.py:25,44`） |
 | P0-C3 | **registry→文档 56% 漂移**（80/142 符号不在 CAPABILITIES，含 ModelManager） | 实测 | **✅ 已修复（2026-08-19）**：9 符号补登（190 全同步）+ pre-commit Step 2.7 自动补登（根治漂移提示） |
 | P0-C4 | **能力登记三口径不一致**（944/807/780） | registry 实测 | **✅ 已修复（351f816a）**：frontmatter 口径统一 + 校验防护 |
 | P0-C5 | **cap check / check_doc_sync / generate_impact_matrix / check_code_doc_gap 4 机制未接线** | grep 空 | **✅ 已修复**：4 机制全部接线（cap check pre-commit + check_doc_sync.sh + generate_impact_matrix.yml:139 + check_code_doc_gap pre-commit-hook.sh:120） |
@@ -102,7 +102,7 @@
 | P2-A1 | 事件源会话双写（run_events 折叠派生） | 改进 P2-1 | **✅ 已落地** |
 | P2-A2 | 运行时扩展缝（白名单 handler 热注册） | 改进 P2-2 | **✅ 已落地** |
 | P2-A3 | 模型 provider 插件化（目录扫描） | 改进 P2-3 | **✅ 已落地** |
-| P2-A4 | 守卫自身误报修正 + 大文件拆分 | 改进 P2-4 | **✅ 已完成（PR #16-19，12281→8288 行）** |
+| P2-A4 | 守卫自身误报修正 + 大文件拆分 | 改进 P2-4 | **✅ 已收官（PR #16-19，12281→8288 行 + 5 Mixin）** |
 | P2-A5 | PipelineEngine 阶段执行隔离（worker/subprocess） | 改进 P2-5 | **✅ 已落地**：sandbox create_sandbox + stage.sandbox 分派 |
 | P2-A6 | goal 达成度 judge 判定 | 改进 P2-6 | **✅ 已落地**：event_loop `_judge_goal_condition` |
 | P2-A7 | cron no-agent 纯脚本模式 | 改进 P2-7 | **✅ 已落地**：event_loop mode=script |
@@ -126,7 +126,7 @@
 | **P0** | 23 项 | A 架构合规 10 + B 功能缺陷 5 + C 治理体系 7 |
 | **P1** | 19 项 | A 对标差距 6 + B 体系补全 13 |
 | **P2** | 12 项 | A 架构演进 7 + B 工程治理 5 |
-| **合计** | **54 项** | 已修复 4（12 条守卫 bug + 宪法 3 项） |
+| **合计** | **54 项** | 已修复 4（12 条守卫 bug + 宪法 3 项）（2026-08-25 复核：54 项已全量闭环，53/53 DONE，详见 §十） |
 
 ---
 
@@ -249,7 +249,7 @@ Phase 5：P2 演进（按需，可与 Phase 4 部分并行）
   [5.4] P2-B2 --write-baseline review 门禁（0.5 天，治理加固）
   [5.5] P2-A2 运行时扩展缝（2 天，安全敏感需审批流程先行）
   [5.7] P2-A3 模型 provider 插件化（按需）
-  [5.8] P2-A4 守卫误报修正 + 大文件拆分（3 天）→ **✅ 已完成（2026-08-18，PR #16/#17/#18/#19，12281→8288 行）**
+  [5.8] P2-A4 守卫误报修正 + 大文件拆分（3 天）→ **✅ 已收官（2026-08-18，PR #16/#17/#18/#19，12281→8288 行 + 5 Mixin）**
   [5.9] P2-A6 goal judge / P2-A7 no-agent cron（2.5 天）
   [5.10] P2-B3 多租户/性能/错误处理规范（2-3 天）
   [5.11] P2-B5 CodeGraph 纳入未提交新文件（0.5 天）
@@ -316,10 +316,10 @@ pytest aiPlat-platform/tests/test_builder.py -q --tb=short
 
 1. **P0 的真实违规集中在"规范写了没执行"**——24 项宪法违规（P0-A1~A8）证明架构/内核/职责规范被违反，但守卫误报掩盖 + 宪法测试未接线导致长期未暴露
 2. **治理体系自身是最大盲区**——P0-C7（规则无黄金样本）是 12 条守卫 bug 的根因，必须先于一切新规则建立
-3. **对标差距（P1-A1~A6）全部是"接入面/生态面"**（学习闭环/子代理/渠道/Skill 生态/托管策略）——易补齐，1-2 周
+3. **对标差距（P1-A1~A6）全部是"接入面/生态面"**（学习闭环/子代理/渠道/Skill 生态/托管策略）——易补齐，1-2 周（2026-08-18/19 全量闭环后未更新，复核已实现）
 4. **执行顺序有硬依赖**：先修守卫自检（P0-C7）→ 再修宪法违规（P0-A）→ 否则新问题会被旧噪音掩盖
 
-**行动起点建议**：Batch 1 中先做 P0-B1（SDK，0.25 天）+ P0-C7（规则黄金样本，1 天）——一个最快见效，一个防止再引入治理盲区。
+**行动起点建议**：Batch 1 中先做 P0-B1（SDK，0.25 天）+ P0-C7（规则黄金样本，1 天）——一个最快见效，一个防止再引入治理盲区。（2026-08-18/19 全量闭环后未更新，复核已实现）
 
 ---
 
@@ -350,7 +350,7 @@ pytest aiPlat-platform/tests/test_builder.py -q --tb=short
 | `core/api/routers/diagnostics.py` / `wiki.py` | 3366/3366 | 路由聚合 | ✅ 聚合点 |
 | `core/harness/knowledge/wiki_engine.py` | 3104 | wiki 引擎聚合 | ✅ 聚合点 |
 
-**结论**：10 处 >500 行中 9 处为 §5.1 允许的聚合点（路由/facade/schema 聚合），1 处（pipeline_engine.py）为真 God Object。拆分风险高收益低，本轮**仅记录为已知债务**，不拆分；pipeline_engine 拆分列为独立专项（方向 2b 运行时扩展缝落地时同步评估 stage 方法域外迁）。
+**结论**：10 处 >500 行中 9 处为 §5.1 允许的聚合点（路由/facade/schema 聚合），1 处（pipeline_engine.py）为真 God Object。拆分风险高收益低，本轮**仅记录为已知债务**，不拆分；pipeline_engine 拆分列为独立专项（方向 2b 运行时扩展缝落地时同步评估 stage 方法域外迁）。（2026-08-25 复核：pipeline_engine 已按 P2-A4 拆分收官（12281→8288 行 + 5 Mixin），本条"仅记录债务、不拆分"结论已过期）
 
 ---
 
@@ -361,7 +361,7 @@ pytest aiPlat-platform/tests/test_builder.py -q --tb=short
 | 分组 | DONE | PARTIAL | OPEN | 明细 |
 |---|---|---|---|---|
 | P0-A 架构合规 (10) | **10** | 0 | 0 | ✅ A1-A10 全部（A4 platform_function_boundary/A6 ast_business_keys/A7 system_prompt_flow/A8 sysgraph_registration/A9 §57 全绿；A10 E2E 20/20） |
-| P0-B/C 功能治理 (12) | **12** | 0 | 0 | ✅ B1-B3/B5/C1-C7 全部（C4 口径漂移已修 351f816a；C5 4 机制接线；C6 宪法 CI）· ⚠️ B4/B5/C3 部分（见表格） |
+| P0-B/C 功能治理 (12) | **12** | 0 | 0 | ✅ B1-B5/C1-C7 全部（C4 口径漂移已修 351f816a；C5 4 机制接线；C6 宪法 CI）· B4/B5/C3 已闭环（2026-08-19 复核，见表格） |
 | P1-A 对标差距 (6) | **6** | 0 | 0 | ✅ A1-A6 全部落地 |
 | P1-B 体系补全 (13) | **13** | 0 | 0 | 全部落地 |
 | P2 演进治理 (12) | **12** | 0 | 0 | ✅ A1-A7/B1-B5 全部落地（A4 pipeline_engine 拆分 4 Phase 收官 12281→8288） |
