@@ -557,7 +557,7 @@ from core.harness.execution.pipeline_state import PipelineStateMixin
 
 
 from core.harness.execution.pipeline_prompt import PipelinePromptMixin
-from core.harness.execution.pipeline_eval import PipelineEvalMixin
+from core.harness.execution.pipeline_eval import PipelineEvalMixin, _apply_skip_pytest_gate
 from core.harness.execution.pipeline_stage import PipelineStageMixin
 
 
@@ -3953,29 +3953,16 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
         # ── L2: skip_pytest_gate — generic gate on test-execution stages ──
         # Config-driven: stages declare test_execution_mode="pytest" (team YAML/AGENT.md);
-        # when the user explicitly opted out of the real pytest gate, mark state so the
-        # platform deploy path falls back to estimated pass rate (with reason).
+        # 落盘收敛到共享 _apply_skip_pytest_gate（P1-7，防与 _exec_test_runner 双份漂移）。
         if (state.get("skip_pytest_gate")
                 and getattr(stage, 'test_execution_mode', '') == "pytest"):
-            state["_test_pass_rate"] = None
-            state["_has_tests"] = False
-            state["_skip_pytest_gate"] = True
-            state["_test_gate_skipped_reason"] = (
-                "user skipped pytest gate (L2 import mode) — pass_rate will be estimated, not measured"
-            )
             _skip_key = getattr(stage, 'test_result_key', '') or getattr(stage, 'output_artifact', '') or _skill_name
-            state[_skip_key] = {
-                "pass": False, "pass_rate": 0, "score": {"overall": 0},
-                "recommendation": "APPROVED_SKIPPED",
-                "error": "pytest_gate_skipped",
-                "reason": state["_test_gate_skipped_reason"],
-                "test_cases": [], "issues": [],
-            }
-            state["_progress"] = {"stage": _skill_name, "status": "completed",
-                                  "elapsed_sec": 0, "backend": "skipped_gate", "current_step": 0}
-            logging.getLogger("pipeline_engine").warning(
-                "Skill %s: pytest gate skipped (skip_pytest_gate=true)", _skill_name)
-            return state
+            if _apply_skip_pytest_gate(state, _skip_key):
+                state["_progress"] = {"stage": _skill_name, "status": "completed",
+                                      "elapsed_sec": 0, "backend": "skipped_gate", "current_step": 0}
+                logging.getLogger("pipeline_engine").warning(
+                    "Skill %s: pytest gate skipped (skip_pytest_gate=true)", _skill_name)
+                return state
 
         import os as _os, logging as _log
         import time as _time
@@ -4616,7 +4603,9 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
             import asyncio as _asyncio
             _result = await _asyncio.wait_for(
                 self._stage_runner.run(_prompt, state, stage=_chain_stage),
-                timeout=getattr(stage, 'stage_timeout_seconds', 300),
+                # P1-6 修复（2026-08-25）：原引用未定义变量 stage → NameError 被吞 →
+                # 链式技能永不执行。改用本函数内已定义的 _chain_stage（PipelineStageConfig）。
+                timeout=getattr(_chain_stage, 'stage_timeout_seconds', 300),
             )
             state.pop("_sys_prompt", None)
         except _asyncio.TimeoutError:
