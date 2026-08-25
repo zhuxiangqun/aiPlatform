@@ -686,3 +686,13 @@ pytest -q \
   - `grep -c "exec_script" aiplat-sdk/aiplat/__init__.py`（≥1：SDK 导出）
   - `cd aiplat-sdk && python3 -m pytest tests/test_exec_cli.py -q`（8 passed）
   - `python3 -m aiplat.exec --script "python3 -c 'print(42)'" --json`（exit 0 + status ok）
+
+
+### 1.64 渠道广度延伸四批（2026-08-25，渠道 18→22 对齐 Hermes 22 收官）
+- MUST：`aiPlat-app/channels/adapters/` 含 **22 渠道**（3 内置 + 19 扩展）——新增 google_chat/homeassistant/irc/ntfy 4 适配器（Google Chat event / Home Assistant 事件 / IRC PRIVMSG / ntfy.sh publish）
+- MUST：`ChannelType` 补 GOOGLE_CHAT/HOMEASSISTANT/IRC/NTFY 枚举 + `ADAPTERS` 注册；`get_channel_adapter(name)` 动态解析 22 渠道（未知渠道 ValueError）
+- 契约登记：边界契约 `01-architecture-contract.md` 附录 B（渠道四批收官）+ run spec 六十七轮
+- 自动化验收：
+  - `python3 -c "import sys; sys.path.insert(0,'aiPlat-app'); from channels.adapter import ChannelType; assert len(ChannelType)==22; print('OK')"`
+  - `python3 -c "import sys; sys.path.insert(0,'aiPlat-app'); from channels.adapters import ADAPTERS; assert len(ADAPTERS)==19; print('OK')"`
+  - `cd aiPlat-app && python3 -m pytest tests/test_cli_and_channels.py -q`（25 passed）
