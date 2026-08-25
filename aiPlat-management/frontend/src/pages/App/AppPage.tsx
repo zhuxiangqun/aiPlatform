@@ -2,11 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader2, ChevronRight, Check } from 'lucide-react';
 import { Card, Button } from '../../components/ui';
-import { FileUploadStage } from '../../components/AppStages/FileUploadStage';
-import { ProgressPoller } from '../../components/AppStages/ProgressPoller';
-import { ResultDashboard } from '../../components/AppStages/ResultDashboard';
-import { DataFormStage } from '../../components/AppStages/DataFormStage';
-import { DataTableStage } from '../../components/AppStages/DataTableStage';
+import { resolveStageComponent } from '../../components/AppStages';
 import { ChatWidget } from '../../components/ui/ChatWidget';
 import { projectApi } from '../../services';
 
@@ -111,13 +107,8 @@ export const AppPage: React.FC = () => {
     const input = resolveInput(stage.config?.input, stageResults);
     const props = { config: stage.config, onExecute: executeSkill, skill: stage.skill, stageInput: input, projectId };
 
-    const Component =
-      stage.component === 'file_upload' ? FileUploadStage :
-      stage.component === 'progress_poller' ? ProgressPoller :
-      stage.component === 'result_dashboard' ? ResultDashboard :
-      stage.component === 'data_form' ? DataFormStage :
-      stage.component === 'data_table' ? DataTableStage :
-      null;
+    // 组件注册表解析（2026-08-25：替代硬编码 5 分支，新增组件无需改本文件）
+    const Component = resolveStageComponent(stage.component);
 
     if (!Component) return <Card className="p-4"><p className="text-sm text-gray-400">未知组件: {stage.component}</p></Card>;
 

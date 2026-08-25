@@ -85,9 +85,28 @@ export const DataFormStage: React.FC<Props> = ({ config, onExecute, skill, proje
                 </label>
               ))}
             </div>
+          ) : f.type === 'select' && f.options ? (
+            <select
+              value={values[f.name] || ''}
+              onChange={e => setValues(v => ({ ...v, [f.name]: e.target.value }))}
+              className="w-full px-3 py-1.5 rounded text-xs bg-dark-hover border border-dark-border text-gray-200 focus:outline-none focus:border-primary"
+            >
+              <option value="">{f.hint || '请选择...'}</option>
+              {f.options.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          ) : f.type === 'textarea' ? (
+            <textarea
+              value={values[f.name] || ''}
+              onChange={e => setValues(v => ({ ...v, [f.name]: e.target.value }))}
+              placeholder={f.hint || ''}
+              rows={f.min_length && f.min_length > 50 ? 6 : 3}
+              className="w-full px-3 py-1.5 rounded text-xs bg-dark-hover border border-dark-border text-gray-200 focus:outline-none focus:border-primary resize-y"
+            />
           ) : (
             <Input
-              type={f.type === 'password' ? 'password' : f.type === 'email' ? 'email' : 'text'}
+              type={f.type === 'password' ? 'password' : f.type === 'email' ? 'email' : f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
               value={values[f.name] || ''}
               onChange={e => setValues(v => ({ ...v, [f.name]: e.target.value }))}
               placeholder={f.hint || ''}
