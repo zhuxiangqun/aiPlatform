@@ -290,6 +290,14 @@ class PipelineRunStore:
             payload = e.get("payload") or {}
             if evt == "pipeline_started":
                 phase = "executing"
+            elif evt == "pipeline_forked":
+                # Fork 会话：继承分叉点状态（事件源纯度——子 run 状态可从自身事件重建）
+                phase = "executing"
+                current_stage_idx = int(payload.get("current_stage_idx") or current_stage_idx)
+                try:
+                    pass_rate = float(payload.get("pass_rate") or pass_rate)
+                except (TypeError, ValueError):
+                    pass  # noqa: schema-idempotent
             elif evt in terminal:
                 last_terminal = evt
                 phase = terminal_phase[evt]
@@ -322,6 +330,72 @@ class PipelineRunStore:
             "last_terminal_event": last_terminal or None,
             "derived": True,  # marker: this is the event-sourced view
         }
+
+    def fork_run_from_events(
+        self,
+        source_run_id: str,
+        new_run_id: str,
+        project_id: str = "",
+        *,
+        note: str = "",
+    ) -> Optional[Dict[str, Any]]:
+        """Fork a new run from an existing run's event log (DSH fork / Codex thread/fork aligned).
+
+        Event-sourced fork: folds the source run's events (replay_run_events)
+        into a derived state, then creates a new pipeline_runs row initialized
+        from that state. The new run inherits the source's stage progress /
+        pass_rate / phase, and records a ``parent_run_id`` in its events so the
+        fork lineage is traceable (parent_run_id → child fork).
+
+        Returns the new run's folded state, or None when the source has no
+        events (nothing to fork).
+        """
+        folded = self.replay_run_events(source_run_id)
+        if folded is None:
+            return None
+        import json as _json
+        import time as _time_fork
+        # 新 run 记录：继承源 run 的进度/通过率，phase 归位 executing（从分叉点继续）
+        now = str(_time_fork.time())
+        self._execute(
+            """INSERT OR REPLACE INTO pipeline_runs
+               (run_id, project_id, phase, current_stage_idx, total_stages,
+                tokens_used, tokens_budget, pass_rate, error_message,
+                started_at, finished_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                new_run_id, project_id or "", "executing",
+                int(folded.get("current_stage_idx") or 0),
+                int(folded.get("stages_visited") and len(folded["stages_visited"]) or 0),
+                int(folded.get("tokens_used") or 0),
+                int(folded.get("tokens_budget") or 0),
+                float(folded.get("pass_rate") or 0.0),
+                "", now, "", now,
+            ),
+        )
+        # 事件溯源：fork 血缘写入新 run 的事件日志（append-only，不污染源）。
+        # pipeline_forked 携带继承的分叉点状态（current_stage_idx / pass_rate），
+        # 使新 run 的状态可纯从自身事件日志重建（replay_run_events 会折叠该事件）。
+        self.append_run_event(
+            new_run_id, "pipeline_forked",
+            payload={"parent_run_id": source_run_id,
+                     "note": note or "forked from event replay",
+                     "source_event_count": int(folded.get("event_count") or 0),
+                     "current_stage_idx": int(folded.get("current_stage_idx") or 0),
+                     "pass_rate": float(folded.get("pass_rate") or 0.0)},
+        )
+        return folded
+
+    def list_forked_runs(self, parent_run_id: str, limit: int = 50) -> List[str]:
+        """List run_ids forked from a given parent (fork lineage query)."""
+        rows = self._get_conn().execute(
+            """SELECT run_id FROM pipeline_run_events
+               WHERE event_type = 'pipeline_forked'
+                 AND json_extract(payload, '$.parent_run_id') = ?
+               ORDER BY seq DESC LIMIT ?""",
+            (parent_run_id, limit),
+        ).fetchall()
+        return [r[0] for r in rows]
 
     def update_run_progress(
         self,

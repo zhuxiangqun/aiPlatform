@@ -609,3 +609,41 @@ async def resume_pipeline_run(run_id: str, body: dict = Body(default_factory=dic
         raise HTTPException(status_code=400, detail=str(e)[:200])
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+# ═══ 事件源纯度：Fork 会话 + 血缘查询 ═══
+
+@router.post("/pipelines/runs/{run_id}/fork", response_model=Dict[str, Any])
+async def fork_pipeline_run(run_id: str, body: dict = Body(default_factory=dict)):
+    """Fork a new run from an existing run's append-only event log.
+
+    事件源纯度对齐（DSH fork / Codex thread-fork）：源 run 事件折叠为派生状态，
+    新 run 继承分叉点进度/通过率并从 executing 继续；fork 血缘（parent_run_id）
+    写入新 run 的事件日志，源事件日志不被污染。子 run 状态可纯从自身事件重建。
+    """
+    from core.api.core_facade import get_pipeline_run_store
+
+    store = get_pipeline_run_store()
+    new_run_id = str(body.get("new_run_id") or "").strip()
+    if not new_run_id:
+        raise HTTPException(status_code=400, detail="new_run_id is required")
+    project_id = str(body.get("project_id") or "")
+    note = str(body.get("note") or "")
+
+    folded = store.fork_run_from_events(
+        run_id, new_run_id, project_id=project_id, note=note)
+    if folded is None:
+        raise HTTPException(status_code=404,
+                            detail=f"Source run has no event log to fork: {run_id}")
+    return {"status": "forked", "run_id": new_run_id,
+            "parent_run_id": run_id, "fork_point": folded}
+
+
+@router.get("/pipelines/runs/{run_id}/forks", response_model=Dict[str, Any])
+async def list_pipeline_forks(run_id: str, limit: int = 50):
+    """List run_ids forked from the given parent (fork lineage 血缘查询)."""
+    from core.api.core_facade import get_pipeline_run_store
+
+    store = get_pipeline_run_store()
+    children = store.list_forked_runs(run_id, limit=int(limit))
+    return {"parent_run_id": run_id, "forked_runs": children, "count": len(children)}

@@ -3,7 +3,7 @@
 > **分析对象**：OpenAI 2026-08-19 开源的 `openai/codex`（Apache-2.0）——`codex-rs`（Rust 单体仓库，137 crate）、App Server（JSON-RPC over stdio 持久会话内核）、Codex SDK（TS/Python）、Thread/Turn/Item 三级抽象、平台原生沙箱、SQLite 状态持久化。
 > **分析问题**：aiPlat（Python，43 万行 + 应用工厂 L2-L5）可以借鉴什么？哪些已有对应物、哪些是真缺口、借鉴优先级如何？
 > **分析方法**：对 Codex Harness 的每个核心机制，先在 aiPlat 代码中搜索对应实现（附证据），再判定"已有/部分具备/真缺口"，最后给借鉴建议（成本阶梯）。
-> **最后验证：2026-08-24**（verify 命令：grep 各维度代码证据；证据见各节）
+> **最后验证：2026-08-25**（verify 命令：grep 各维度代码证据；证据见各节）
 
 ---
 
@@ -22,7 +22,7 @@ Codex Harness 开源对 aiPlat 的价值不在"它有什么能力"（aiPlat 大�
 | 3 | **codex exec：单次非交互入口** | P2-A7 no-agent script 模式（`event_loop.py:374` 判 `t.params.mode == "script"` 零 LLM 直接执行）+ 应用工厂双模式路由（`team_planner.py:50` mode: agent/code）——**有单次执行概念，但无独立 exec 命令/CI 入口** | ⚠️ 部分具备 |
 | 4 | **Codex SDK（TS/Python）程序化启停 Thread + 流式事件** | CoreFacade（163 def/class 唯一门面）+ REST API；**无官方 SDK 包**（无 `pip install aiplat-sdk`/`npm i @aiplat/sdk`） | ❌ 真缺口 |
 | 5 | **平台原生沙箱**（Linux Bubblewrap+Landlock / macOS Seatbelt / Windows AppContainer） | SandboxGate（`sandbox_gate.py:39`，路径白名单/网络白名单/限流/资源预算/危险模式）——**进程内检查式沙箱，非 OS 原生隔离**；另有 pipeline_sandbox.py | ⚠️ 部分具备 |
-| 6 | **SQLite 会话状态持久化 + thread/resume/fork** | SQLite 持久化（pipeline_runs + pipeline_run_events 双写）+ checkpoint（`langgraph/core.py:55` enable_checkpoints + record_checkpoint）+ 断点续跑（pipeline_engine HITL resume）——**持久化与恢复已具备**；fork/分支有 `ontology_branch.py`（本体层，非 Thread 层） | ⚠️ 部分具备（resume ✅，fork 非会话级） |
+| 6 | **SQLite 会话状态持久化 + thread/resume/fork** | SQLite 持久化（pipeline_runs + pipeline_run_events 双写）+ checkpoint（`langgraph/core.py:55` enable_checkpoints + record_checkpoint）+ 断点续跑（pipeline_engine HITL resume）——**持久化与恢复已具备**；fork/分支有 `ontology_branch.py`（本体层，非 Thread 层） | ✅ **已补齐（2026-08-25）**：`fork_run_from_events` 会话级 fork（折叠源事件→新 run 继承分叉点 + `pipeline_forked` 血缘事件，子 run 状态可纯从自身事件重建）+ `list_forked_runs` 血缘查询 + `POST /pipeline/pipelines/runs/{run_id}/fork`/`GET .../forks` |
 | 7 | **人工审批协议**（approval request 暂停 Turn 等 allow） | ApprovalGate（`approval_gate.py:154`，危险命令检测 CRITICAL/HIGH/MEDIUM/LOW）+ HITL 事件驱动 resume（`pipeline_engine.py:587` v3.1）+ 前端 Approvals 页（`pages/Core/Learning/Approvals/Approvals.tsx`）——**审批闭环已具备** | ✅ 已有 |
 | 8 | **背压机制**（过载返回 -32001 + 指数退避） | resilience_gate（`resilience_gate.py`，golden-ratio hash 退避抖动）+ rate_limit_tracker——**限流/退避已有**，但无协议层 -32001 语义 | ⚠️ 部分具备 |
 | 9 | **retained reasoning + context compaction**（ARC-AGI-3：13.3%→38.3%，token 1/6） | 5 级上下文压缩（`memory/compression.py:149` AGGRESSIVE 0.96-0.99 / EMERGENCY 0.99-1.0）+ 温度感知剪枝 + 语义相关性排序（P0-2/P0-3）+ 工具输出预算帽——**compaction 已深度实现**；retained reasoning 有近似物（`pipeline_engine.py:3201` <1KB 小输出保留，大输出 stub） | ✅ 已有（compaction）/ ⚠️ retained 部分 |
@@ -76,7 +76,7 @@ Codex Harness 开源对 aiPlat 的价值不在"它有什么能力"（aiPlat 大�
 
 ### P2（参考方向，不急于做）
 
-- **Thread/fork 会话级分支**：ontology_branch 是本体层分支；可借鉴 thread/fork 做"从 run 某 checkpoint 分化新 run"（需 run_events 回放能力，P2-A1 已有 replay_run_events 基础）。
+- **~~Thread/fork 会话级分支~~（✅ 已实施 2026-08-25）**：`fork_run_from_events` 折叠源 run 事件 → 新 run 继承分叉点（stage/pass_rate）并从 executing 继续；`pipeline_forked` 事件（append-only，含 parent_run_id + 继承状态）使**子 run 状态可纯从自身事件重建**（`replay_run_events` 折叠该事件）；`list_forked_runs` 血缘查询；`POST /pipeline/pipelines/runs/{run_id}/fork` + `GET .../forks`。测试 3 例（继承+purity / 无事件 None / 血缘逆序+limit），`test_pipeline_run_events.py` 9 例全绿。
 - **协议级背压 -32001 语义**：resilience_gate 已有退避；可在 HTTP/WS 层统一"过载→429+Retry-After"语义（Codex 用 JSON-RPC 错误码）。
 - **exec 单次入口命令**：把 P2-A7 script 模式 + 应用工厂双模式包装成 `aiplat exec` CLI（CI 友好、JSON 输出）。
 

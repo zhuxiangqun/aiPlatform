@@ -1184,7 +1184,7 @@ domains:
   orchestration-system:
     section: "二十四"
     section_name: "编排系统"
-    caps_count: 6
+    caps_count: 8
     provides:
       - symbol: "IntentAnalyzer"
         type: "class"
@@ -1202,12 +1202,22 @@ domains:
         type: "function"
         signature: "GET /runs/{run_id}/events — 事件源回放查询（after_seq 增量）"
         module: "aiPlat-core/core/api/routers/runs.py"
+      - symbol: "fork_run_from_events"
+        type: "function"
+        signature: "事件源纯度——Fork 会话：折叠源 run 事件 → 新 run 继承分叉点（stage/pass_rate），pipeline_forked 事件记录血缘；POST /pipeline/pipelines/runs/{run_id}/fork"
+        module: "aiPlat-core/core/harness/execution/pipeline_run_store.py"
+      - symbol: "list_forked_runs"
+        type: "function"
+        signature: "Fork 血缘查询（parent_run_id → 子 run_ids，json_extract payload）；GET /pipeline/pipelines/runs/{run_id}/forks"
+        module: "aiPlat-core/core/harness/execution/pipeline_run_store.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
         reason: "Pipeline 编排"
       - module: "aiPlat-platform/apps/fde/orchestration/builder.py"
         reason: "FDEBuilderOrch 编排"
+      - module: "core/api/routers/pipeline_execution.py"
+        reason: "fork/forks 端点经 CoreFacade 取 store"
 
   # ══════════════════════════════════════════════════════════════
   # 二十五、管理 & 质量 (21 caps)
