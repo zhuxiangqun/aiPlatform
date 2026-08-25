@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1089
+total_capabilities: 1091
 last_updated: 2026-08-25
 version: "30.2"
 auto_sync: true
@@ -1122,6 +1122,8 @@ scan_hash: 8f9548ec24f4
 | MetricsAggregator | `harness/observability/metrics/__init__.py` | ✅ | 自动同步 | 已合入 |
 | **StdioKernel（P0-a）** | `core/acp/stdio_server.py` + `core/api/core_facade.py` | ✅ | stdio JSON-RPC 持久内核：thread/start\|resume\|approve\|reject\|events 映射 PipelineSession + run_events；JSON-RPC 2.0 + 背压 -32001；入口 `python -m core.acp.stdio_server`（对标 Codex app-server） | 已合入 |
 | **StdioKernelClient（P1）** | `aiplat-sdk/aiplat/stdio.py` | ✅ | SDK stdio 内核客户端：spawn 内核 + thread/start\|approve\|reject\|events + stream_events 流式监听；可注入 transport（对标 Codex SDK 程序化启停 Thread） | 已合入 |
+| **aiplat exec CLI（P2）** | `aiplat-sdk/aiplat/exec.py` + pyproject `[project.scripts] aiplat` | ✅ | 单次执行入口（codex exec 对齐）：`aiplat exec "req"` 经 stdio 内核跑流水线（thread/start→轮询→JSON）；`--script` 零 LLM fail-closed 白名单（bash/sh/python3/python） | 待合入 |
+| **exec_script / exec_pipeline** | `aiplat-sdk/aiplat/exec.py` | ✅ | SDK 导出的单次执行函数：script 零 LLM 执行 / 流水线经 StdioKernelClient 轮询（超时 best-effort cancel） | 待合入 |
 | **OS 原生沙箱（P1）** | `core/harness/infrastructure/os_sandbox.py` + `core/harness/execution/sandbox.py` | ✅ | bubblewrap/seatbelt 可选命令包装器：只读系统路径 + 可写工作区 + 默认网络隔离 + fail-open fallback（对标 Codex sandboxing；AIPLAT_SANDBOX=bwrap/seatbelt） | 已合入 |
 |------|------|:---:|------|------|
 | trace_id / span_id | harness/observation/event_schema.py | ✅ | 每次 syscall 携带 | 已合入 |
@@ -2009,7 +2011,7 @@ scan_hash: 8f9548ec24f4
 | Agent 系统 | 42 | 0 | 42 |
 | Skill 系统 | 54 | 0 | 54 |
 | 安全与治理 | 48 | 0 | 48 |
-| 可观测性 | 25 | 0 | 25 |
+| 可观测性 | 27 | 0 | 27 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 130 | 0 | 130 |
@@ -2046,7 +2048,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1089** | **0** | **1089** |
+| **总计** | **1091** | **0** | **1091** |
 
 ---
 

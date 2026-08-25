@@ -44,6 +44,14 @@ def test_code_files_includes_aiplat_app():
     assert symbol_exists("whatsapp.py", basenames, contents, WS, files) is True
 
 
+def test_code_files_includes_aiplat_sdk():
+    """2026-08-25 工具扩展：aiplat-sdk 纳入搜索根（exec.py/stdio.py 等 SDK 引用可对账）。"""
+    files = code_files(WS)
+    basenames, contents = build_matchers(files)
+    assert symbol_exists("aiplat-sdk/aiplat/exec.py", basenames, contents, WS, files) is True
+    assert any(b == "exec.py" or b == "stdio.py" for b in basenames)
+
+
 def test_symbol_exists_class_name():
     """类名引用（ClassName.tier）→ 类在代码中定义即 True。"""
     files = code_files(WS)
