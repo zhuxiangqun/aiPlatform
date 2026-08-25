@@ -24,6 +24,8 @@ def _get_svc():
     return _svc
 
 _log = logging.getLogger(__name__)
+# P1-11 修复（2026-08-25）：app 服务 base URL 可配置（跨进程硬编码 localhost:8004 收敛）
+_APP_BASE_URL = os.getenv("AIPLAT_APP_BASE_URL", "http://localhost:8004").rstrip("/")
 from builder.builder_team_service import BuilderTeamService
 from builder.builder_auth import require_builder_access, require_admin_access
 from core.schemas_builder import (
@@ -172,7 +174,7 @@ async def project_file_upload(
         raise HTTPException(status_code=413, detail="file_too_large")
     _dst.write_bytes(_data)
 
-    _file_url = f"http://localhost:8004/app/sessions/{project_id}/uploads/{_unique}"
+    _file_url = f"{_APP_BASE_URL}/app/sessions/{project_id}/uploads/{_unique}"
     return {
         "ok": True,
         "file_name": file.filename,

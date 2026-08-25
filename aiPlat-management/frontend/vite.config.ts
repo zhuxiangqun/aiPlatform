@@ -98,6 +98,12 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
+      // P1-11: app 服务（8004）——前端走相对路径 /app 由 proxy 转发，消除硬编码
+      '/app': {
+        target: 'http://localhost:8004',
+        changeOrigin: true,
+        timeout: 600000,
+      },
       '/ws': {
         target: 'http://localhost:8002',
         ws: true,
