@@ -35,7 +35,7 @@
 
 **aiPlat 弱在哪里？（3 句话）**
 1. **对外协议面最薄**：别的系统能"嵌入"到你的程序里（Codex 有 SDK、hermes-agent 有五面协议），aiPlat 此前只有内部接口——本报告后几轮已补齐（stdio 内核 + SDK，见 §20 G16/G17）。
-2. **生态规模小**：模型 provider 家族数（22 vs Hermes 38，2026-08-25 二批扩展）、消息渠道数（22 = Hermes 22，**已追平**）、技能社区规模都比 Hermes 小——机制已建，规模需时间。
+2. **生态规模小**：模型 provider 家族数（30 vs Hermes 38，2026-08-25 三批扩展）、消息渠道数（22 = Hermes 22，**已追平**）、技能社区规模都比 Hermes 小——机制已建，规模需时间。
 3. **无自我进化闭环的完整度**：aiPlat 有夜间自进化，但 Hermes 的"会话内实时学习"更敏捷（已吸收为 nudge 机制）。
 
 **六者一句话评级（★ 越多越强，来自 §15）**：企业治理 aiPlat ★★★★★ 一骑绝尘；执行引擎/上下文工程/自我进化 aiPlat 与 Hermes 并列领先；协议面/生态面 Codex-Harness 与 Hermes 领先、aiPlat 后发追赶。
@@ -180,7 +180,7 @@
 ---
 
 ## 10. 模型适配
-> **通俗说**：能用哪些大模型——aiPlat 解析/治理最规范（唯一权威注册表），Hermes 生态最广（38 家族）；aiPlat 已扩到 22 家族追赶中。
+> **通俗说**：能用哪些大模型——aiPlat 解析/治理最规范（唯一权威注册表），Hermes 生态最广（38 家族）；aiPlat 已扩到 30 家族追赶中。
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes | Codex-Harness | hermes-agent |
 |---|---|---|---|---|---|---|
@@ -534,7 +534,7 @@
 **aiPlat 在六方对标中的定位**：aiPlat 不是"又一个 coding agent"，而是**企业级 FDE 操作系统**——它的差异化不在单点能力（每项单点能力六方都有类似物），而在于**将治理、审计、审批、知识、交付闭环组合成平台**。核心结论：
 
 1. **aiPlat 最强**：企业治理（防篡改审计 + 多租户 + 计费 + RBAC）、交付流水线（HITL/回滚/断点续跑）、自我进化（夜间流水线 + 训练触发）、知识引擎（SECI + 本体 + GraphRAG）。
-2. **aiPlat 最弱（2026-08-25 更新）**：渠道广度（22 渠道 = Hermes/hermes-agent 22 平台，**已追平**）、模型 provider 生态家族数（插件化已建，家族数 22 vs 38，继续收窄）、Skill 开放生态规模（已对接 agentskills.io 但社区规模小）、**协议面/可嵌入性、竞品会话级导入、OS 原生沙箱（G16-G19）已补齐**（2026-08-24/25：stdio 内核 P0-a + SDK P1 + exec CLI P2 + 会话导入 P0-b + OS 沙箱 P1）。
+2. **aiPlat 最弱（2026-08-25 更新）**：渠道广度（22 渠道 = Hermes/hermes-agent 22 平台，**已追平**）、模型 provider 生态家族数（插件化已建，家族数 30 vs 38，继续收窄）、Skill 开放生态规模（已对接 agentskills.io 但社区规模小）、**协议面/可嵌入性、竞品会话级导入、OS 原生沙箱（G16-G19）已补齐**（2026-08-24/25：stdio 内核 P0-a + SDK P1 + exec CLI P2 + 会话导入 P0-b + OS 沙箱 P1）。
 3. **最值得吸收的外部能力——2026-08-19 已全部落地**（行动纲领 P1-A 对标差距 6/6 DONE）：① Hermes 的会话内实时学习 nudge + Curator 技能维护 → **P1-A1 nudge（`learn_nudge_hook.py`）+ P1-A2 Curator（`skill_curator.py`）**；② DSH 的子代理 provider 多样性 + 事件源会话 → **P1-A3 子代理 provider（`providers.py` InProcess/ACP）+ P2-A1 run_events 折叠派生（`pipeline_run_store.py:266`）**；③ Claude Code 的 Server-managed settings（企业远程强制策略）→ **P1-A6 ManagedPolicy（`aiPlat-platform/auth/schemas_policy.py:119`）**。**2026-08-23 更新：G6 CC/Codex hooks 协议桥已实施**（`cc_bridge.py`）；**渠道广度已延伸 7→10**（+whatsapp/lark/teams）。**2026-08-24 Codex-Harness 扩列更新**：下一批最值得吸收项 = **协议面（stdio JSON-RPC 内核 P0-a、SDK P1）** + **竞品会话/记忆级导入（P0-b）** + **OS 沙箱可选执行器（P1）**（详见《Codex-Harness开源借鉴分析报告.md》）；渠道广度继续延伸（10→更多，对齐 Hermes 22）与 Claude Code checkpoint/rewind 用户级 UI 保留为候选。
 
 *报告基于 2026-08-15 代码快照与 web 调研，**2026-08-19 已按行动纲领基线（53 DONE / 143 passed / 能力 1032/1039）复核更新 aiPlat 侧结论**，**2026-08-23 L2-L5/G6/渠道 10 已复核，2026-08-25 渠道 22 收官**，**2026-08-24 扩为六系统（+Codex-Harness 文档级 + hermes-agent 源码级）**；六方信息可能随版本更新；aiPlat 侧证据可在本仓库 `grep -rn` 复核。*
@@ -741,7 +741,7 @@ flowchart LR
 | 规划 | **平**（各有所长） | 平（4 级链 vs plan mode） | 优（规划链 vs logged plan） | 平（规划链 vs /goal judge） | 平（4 级链 vs goal/turn 驱动） | 平（同 Hermes /goal judge） | 中性 |
 | 沙箱/审批 | **aiPlat**（治理）/ **Codex**（OS 隔离） | 优（RBAC+审批生命周期 vs 5 模式） | 平（RBAC vs 3 平台 presets） | 优（不可绕过 vs 配置层 mode=off） | **劣/平**（进程内检查 vs OS 原生沙箱 Bubblewrap/Seatbelt，G19 待实施；审批协议 aiPlat 更强） | 优（不可绕过 vs mode=off） | 主动优势区（审批）/ 被动差距区（G19 OS 隔离） |
 | 持久化 | **平**（aiPlat/DSH/Codex） | 优（哈希链审计+决策溯源 vs transcript） | 平（状态+事件 vs 纯事件源，各有所长） | 优（企业审计 vs SQLite 会话） | 平（双写+事件 vs SQLite thread-store+resume/fork；fork 已对齐 2026-08-25） | 优（企业审计 vs SQLite/FTS5） | 主动优势区（审计）/ 事件源（G3）→ **已补齐**（P2-A1 折叠派生 + fork 分化入口） |
-| 模型适配 | **aiPlat**（治理）/ **Hermes**（生态） | 优（统一解析+infra 权威 vs 官方模型） | 优（ModelManager vs adapter 注册表） | **生态广度仍窄**（插件化已建 P2-A3，但家族数 22/38） | **优**（模型无关 vs OpenAI 强绑定） | **生态广度仍窄**（同 Hermes 38 家族） | 治理优势区 / 生态差距区（G10）→ **已补齐机制，广度仍窄** |
+| 模型适配 | **aiPlat**（治理）/ **Hermes**（生态） | 优（统一解析+infra 权威 vs 官方模型） | 优（ModelManager vs adapter 注册表） | **生态广度仍窄**（插件化已建 P2-A3，但家族数 30/38） | **优**（模型无关 vs OpenAI 强绑定） | **生态广度仍窄**（同 Hermes 38 家族） | 治理优势区 / 生态差距区（G10）→ **已补齐机制，广度仍窄** |
 | 自我进化 | **平**（aiPlat/Hermes 不同维度） | **优**（14 步夜间+训练触发 vs 官方无） | 优（学习闭环 vs 运行时自修改） | 平（aiPlat 系统级 vs Hermes Agent 级） | 优（14 步夜间+训练 vs 无自进化） | 平（aiPlat 系统级 vs hermes-agent 学习闭环） | 主动优势区 / 实时性（G1）→ **已补齐**（P1-A1 nudge + P1-A2 Curator） |
 | 扩展机制 | **DSH**（纯度）/ **Codex**（体系） | 优（四级阶梯 vs plugins） | **平/接近**（运行时扩展缝已补 P2-A2；卸载回滚语义仍弱于 DSH"注册即 effect、卸载即回滚"） | 平（四级阶梯 vs 8 类插件） | 平（四级阶梯 vs tools/mcp/skills/plugins/hooks 全 crate 体系） | 平（四级阶梯 vs 8 类注册接口） | 被动差距区（架构纯度）→ **已补齐运行时缝** |
 | 多渠道 | **Hermes** | 平（Web+ACP/A2A vs CLI/IDE） | 优（ACP/A2A+SDK vs ACP 子集） | **劣**（10 渠道 vs 22 平台，P1-A4 已从 3 扩至 10） | 平（10 渠道+ACP/A2A vs app-server JSON-RPC 协议） | **劣**（10 渠道 vs 22 平台） | 被动差距区（G9）→ **已补齐机制，广度仍落后** |
