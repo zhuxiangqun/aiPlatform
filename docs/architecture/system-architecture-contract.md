@@ -107,6 +107,19 @@ platform 在调用下游服务时 **MUST** 注入/透传：
 
 回归测试：`aiPlat-core/core/tests/unit/test_pipeline_engine_p0_fixes.py`（P0-3/P0-4，6 项）+ `aiPlat-platform/tests/test_builder_p0_fixes.py`（P0-1/P0-2/P0-5，12 项）。
 
+### 5.2 应用工厂 P1 修复契约（MUST，2026-08-25）
+
+同源审计（§7.5.4）的 4 项 P1 修复固化：
+
+| # | 契约 | 实现位置 | 违反后果 |
+|---|------|---------|---------|
+| 1 | 团队模板 HITL 合并：`TeamTemplate.stages` 是 YAML dict 列表，**必须** dict 访问（`.get`）；对模板项做属性访问（AttributeError 被吞）使 v3.1 HITL gates 静默失效 | `aiPlat-platform/builder/builder_project_service.py` | HITL 门禁不生效 |
+| 2 | `PipelineEngine._exec_test_runner` 上游代码落盘块**必须**位于 `continue` 之前（可执行）；写文件误放 except 内 continue 之后 = 被测代码从不落盘 | `aiPlat-core/core/harness/execution/pipeline_eval.py` | 测试永远空目录运行，pass_rate 失真 |
+| 3 | builder 项目删除权限**必须**与创建对齐（`require_admin_access`）：`DELETE /projects/{id}`、`POST /projects/batch-delete` 不得低于 create 的权限等级 | `aiPlat-platform/api/routers/builder.py` | 授权反向（低权限可删高权限创建的资源） |
+| 4 | merge apply **必须**如实上报部分失败：`failed` 非空时 status 不得为 `ok`（用 `partial` + detail 透传失败数） | `aiPlat-platform/builder/merge_engine.py` | 前端误报成功，掩盖写入失败 |
+
+回归测试：`aiPlat-core/core/tests/unit/test_pipeline_eval_p1_fixes.py`（P1-2，2 项）+ `aiPlat-platform/tests/test_builder_p1_fixes.py`（P1-1/P1-3/P1-4，5 项）。
+
 ---
 
 ## 6. 层内细化规范（References）

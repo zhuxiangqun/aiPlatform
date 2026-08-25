@@ -339,12 +339,16 @@ def apply_merge(project_id: str, import_root: str, deploy_dir: str,
         except OSError as e:
             failed.append({"path": path, "error": str(e)})
 
+    # 审计 P1-4 修复（2026-08-25）：部分文件写入失败时必须如实上报状态，
+    # 禁止 failed 非空仍返回 "ok"（前端按 status==='ok' 提示成功，掩盖失败）。
+    _partial = bool(failed)
     return {
-        "status": "ok",
+        "status": "partial" if _partial else "ok",
         "project_id": project_id,
         "applied": applied,
         "rejected": [],
         "failed": failed,
+        "detail": "" if not _partial else f"{len(failed)} 个文件写入失败（OSError），已应用 {len(applied)} 个",
         "merged_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "warnings": [
             f"Merged {len(applied)} files (incremental_merge) — please review diff manually."

@@ -1232,11 +1232,17 @@ class BuilderProjectService:
                             from core.api.core_facade import load_team_template
                             tmpl = load_team_template("default")
                             if tmpl and tmpl.stages:
-                                _hitl_map = {s.agent_id: s for s in tmpl.stages if s.hitl}
+                                # TeamTemplate.stages 是 YAML dict 列表（team_planner.py:61
+                                # List[Dict[str, Any]]）——必须 dict 访问；属性访问 AttributeError
+                                # 被吞 → v3.1 HITL gates 静默失效（审计 P1-1 修复 2026-08-25）
+                                _hitl_map = {
+                                    s.get("agent_id"): s for s in tmpl.stages
+                                    if s.get("hitl") and s.get("agent_id")
+                                }
                                 for ts in team_stages:
                                     if ts.agent_id in _hitl_map:
                                         ts.hitl = True
-                                        ts.hitl_phase = _hitl_map[ts.agent_id].hitl_phase or "review"
+                                        ts.hitl_phase = _hitl_map[ts.agent_id].get("hitl_phase") or "review"
                         except Exception:
                             pass  # noqa: cleanup-best-effort
                         team_req = TeamAssembleRequest(
