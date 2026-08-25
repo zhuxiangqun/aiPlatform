@@ -21,6 +21,34 @@ from core.harness.execution.phase import PipelinePhase
 from core.schemas_builder import PipelineStageConfig
 
 
+def _apply_skip_pytest_gate(state: Dict[str, Any], result_key: str) -> bool:
+    """L2 skip_pytest_gate unified persistence (P1-7 fix, 2026-08-25).
+
+    When the user explicitly opted out of the real pytest gate (e.g. legacy
+    imported repo has no tests), mark state so the platform deploy path falls
+    back to estimated pass rate (with reason). Single source of truth — shared
+    by `_run_stage_skill` (llm backend) and `_exec_test_runner` to prevent
+    dual-implementation drift. Returns True if skipped (caller should return
+    early with state).
+    """
+    if not state.get("skip_pytest_gate"):
+        return False
+    state["_test_pass_rate"] = None
+    state["_has_tests"] = False
+    state["_skip_pytest_gate"] = True
+    state["_test_gate_skipped_reason"] = (
+        "user skipped pytest gate (L2 import mode) — pass_rate will be estimated, not measured"
+    )
+    state[result_key] = {
+        "pass": False, "pass_rate": 0, "score": {"overall": 0},
+        "recommendation": "APPROVED_SKIPPED",
+        "error": "pytest_gate_skipped",
+        "reason": state["_test_gate_skipped_reason"],
+        "test_cases": [], "issues": [],
+    }
+    return True
+
+
 class PipelineEvalMixin:
     """Test execution, tri-evaluation, retry loop, output verification."""
 
@@ -192,23 +220,8 @@ class PipelineEvalMixin:
 
         test_dir = os.path.join(output_dir, os.getenv("AIPLAT_TEST_DIR", "test"))
 
-        # ── L2: skip_pytest_gate — user explicitly opted out of the real pytest
-        #     gate (e.g. legacy imported repo has no tests). Mark state so the
-        #     platform deploy path falls back to estimated pass rate (with reason).
-        if state.get("skip_pytest_gate"):
-            state["_test_pass_rate"] = None
-            state["_has_tests"] = False
-            state["_skip_pytest_gate"] = True
-            state["_test_gate_skipped_reason"] = (
-                "user skipped pytest gate (L2 import mode) — pass_rate will be estimated, not measured"
-            )
-            state[result_key] = {
-                "pass": False, "pass_rate": 0, "score": {"overall": 0},
-                "recommendation": "APPROVED_SKIPPED",
-                "error": "pytest_gate_skipped",
-                "reason": state["_test_gate_skipped_reason"],
-                "test_cases": [], "issues": [],
-            }
+        # ── L2: skip_pytest_gate — 收敛到共享 helper（P1-7，防双份漂移）──
+        if _apply_skip_pytest_gate(state, result_key):
             return state
 
         os.makedirs(test_dir, exist_ok=True)

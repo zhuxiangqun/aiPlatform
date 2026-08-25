@@ -109,7 +109,7 @@ platform 在调用下游服务时 **MUST** 注入/透传：
 
 ### 5.2 应用工厂 P1 修复契约（MUST，2026-08-25）
 
-同源审计（§7.5.4）的 4 项 P1 修复固化：
+同源审计（§7.5.4）的 6 项 P1 修复固化：
 
 | # | 契约 | 实现位置 | 违反后果 |
 |---|------|---------|---------|
@@ -117,8 +117,10 @@ platform 在调用下游服务时 **MUST** 注入/透传：
 | 2 | `PipelineEngine._exec_test_runner` 上游代码落盘块**必须**位于 `continue` 之前（可执行）；写文件误放 except 内 continue 之后 = 被测代码从不落盘 | `aiPlat-core/core/harness/execution/pipeline_eval.py` | 测试永远空目录运行，pass_rate 失真 |
 | 3 | builder 项目删除权限**必须**与创建对齐（`require_admin_access`）：`DELETE /projects/{id}`、`POST /projects/batch-delete` 不得低于 create 的权限等级 | `aiPlat-platform/api/routers/builder.py` | 授权反向（低权限可删高权限创建的资源） |
 | 4 | merge apply **必须**如实上报部分失败：`failed` 非空时 status 不得为 `ok`（用 `partial` + detail 透传失败数） | `aiPlat-platform/builder/merge_engine.py` | 前端误报成功，掩盖写入失败 |
+| 5 | `_run_chained_skill` **禁止**引用函数签名之外的变量：超时读取必须用函数内已定义的 `_chain_stage`（未定义 `stage` → NameError 被吞 → 链式技能永不执行） | `aiPlat-core/core/harness/execution/pipeline_engine.py` | 链式技能静默失效 |
+| 6 | skip_pytest_gate 落盘**必须**收敛到唯一实现 `_apply_skip_pytest_gate`（§10 防并行实现）；禁止在 `_run_stage_skill` 与 `_exec_test_runner` 各自内联 APPROVED_SKIPPED 落盘 | `aiPlat-core/core/harness/execution/pipeline_eval.py`（helper）+ `pipeline_engine.py`/`pipeline_eval.py`（调用点） | 双份漂移、字段语义不一致 |
 
-回归测试：`aiPlat-core/core/tests/unit/test_pipeline_eval_p1_fixes.py`（P1-2，2 项）+ `aiPlat-platform/tests/test_builder_p1_fixes.py`（P1-1/P1-3/P1-4，5 项）。
+回归测试：`aiPlat-core/core/tests/unit/test_pipeline_eval_p1_fixes.py`（P1-2，2 项）+ `aiPlat-platform/tests/test_builder_p1_fixes.py`（P1-1/P1-3/P1-4，5 项）+ `aiPlat-core/core/tests/unit/test_pipeline_engine_p1b_fixes.py`（P1-6/P1-7，5 项）。
 
 ---
 

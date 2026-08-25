@@ -105,12 +105,15 @@ class TestL2CoreWiring:
     def test_skip_gate_in_engine(self):
         content = PIPELINE_ENGINE.read_text()
         assert "skip_pytest_gate" in content
-        assert "APPROVED_SKIPPED" in content
+        # P1-7 收敛（2026-08-25）：落盘收敛到共享 _apply_skip_pytest_gate（pipeline_eval.py），
+        # 引擎侧保留入口判断 + 调用点
+        assert "_apply_skip_pytest_gate" in content
 
     def test_skip_gate_in_eval(self):
         content = PIPELINE_EVAL.read_text()
         assert "skip_pytest_gate" in content
         assert "pytest_gate_skipped" in content
+        assert "APPROVED_SKIPPED" in content  # 唯一落盘实现（共享 helper）
 
 
 class TestL2DeployWarnings:
