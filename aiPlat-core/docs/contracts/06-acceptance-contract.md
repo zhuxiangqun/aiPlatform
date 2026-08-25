@@ -727,3 +727,15 @@ pytest -q \
   - `python3 -c "import yaml; d=yaml.safe_load(open('aiPlat-infra/config/providers.yaml')); assert len(d['providers'])>=30; print('OK')"`
   - `python3 -c "import sys; sys.path.insert(0,'aiPlat-infra'); from infra.management.model.manager import _api_provider_ids; ids=_api_provider_ids(); assert all(x in ids for x in ['gemini','nvidia','huggingface','upstage','arcee','zai','xiaomi','nous']); print('OK')"`
   - `cd aiPlat-infra && python3 -m pytest infra/tests/unit/test_model_selection.py -q`（16 passed，含生态广度防回归升级 30 家族）
+
+### 1.67 知识管理审计 REAL 项修复（2026-08-25，P2-1/P2-3/P2-4/Q3）
+- MUST：quality gate 真正降级——`retriever.py` gate 块在策略分支前执行；gate 失败 + `AIPLAT_DEEP_RESEARCH_ENABLED` → `_ddg_search` web 结果并入（source_category=web_fallback），否则仅打标记
+- MUST：`knowledge-extraction` 模板注册 prompt_loader（`_sync_resolve` 可解析 + ${chunk_text} 变量替换）；`EntityExtractor._effective_class_types` 域本体配置驱动（无域回退默认集）
+- MUST：`DomainRouter._t1_label_match`/`_t2_embed_score` 共享助手存在（classify/suggest/per_domain_cost 复用）
+- MUST：`knowledge_abox_builder._map_to_domain_class`（wiki category→域 TBox 类）+ `_add_data_validated`（prop 域 TBox 校验）
+- 契约登记：边界契约 `01-architecture-contract.md` 附录 B（知识管理修复）+ run spec 七十一轮
+- 自动化验收：
+  - `grep -c "_add_data_validated" aiPlat-core/core/harness/knowledge/knowledge_abox_builder.py`（≥6）
+  - `grep -c "_t1_label_match\|_t2_embed_score" aiPlat-core/core/harness/knowledge/domain_router.py`（≥4）
+  - `grep -c "knowledge-extraction" aiPlat-core/core/harness/knowledge_pipeline/extractor.py`（≥1）
+  - `cd aiPlat-core && python3 -m pytest core/tests/unit/test_harness/test_knowledge/test_knowledge_audit_p2.py -q`（10 passed）

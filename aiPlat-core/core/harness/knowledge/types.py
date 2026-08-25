@@ -20,6 +20,7 @@ class KnowledgeType(Enum):
     FACT = "fact"
     RELATION = "relation"
     METADATA = "metadata"
+    WEB = "web"
 
 
 class KnowledgeSource(Enum):

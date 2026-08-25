@@ -228,6 +228,50 @@ class KnowledgeRetriever:
         knowledge_query = KnowledgeQuery(query=search_query, limit=limit, tenant_id=tenant_id)
         results = await self._retriever.retrieve(knowledge_query)
 
+        # CRAG quality gate: if retrieved chunks are low quality, flag for web search fallback.
+        # v2.10 (2026-08-25): 真正降级——gate 失败且深度检索启用时，执行外部 web 搜索 fallback
+        # （DuckDuckGo 零依赖）并把结果并入返回集；否则仅打标记（向后兼容，metadata 消费方不受影响）。
+        if effective_qgate and results:
+            try:
+                from .retrieval_quality_gate import check_quality
+                chunks = [r.entry.content for r in results]
+                gate = check_quality(chunks, query, threshold=self._quality_threshold)
+                for r in results:
+                    r.metadata = dict(getattr(r, 'metadata', None) or {})
+                    r.metadata["_quality_gate"] = gate["action"]
+                    r.metadata["_avg_relevance"] = gate["avg_score"]
+                if not gate.get("pass") and gate.get("action") == "switch_to_web_search":
+                    # 真正降级：deep research 启用时走外部 web 搜索（对齐 retrieval_crag Level 4）
+                    import os as _os
+                    if _os.getenv("AIPLAT_DEEP_RESEARCH_ENABLED", "false").lower() in ("true", "1", "yes"):
+                        try:
+                            from core.harness.syscalls.retrieval_crag import _ddg_search
+                            web = await _ddg_search(query, max_results=max(limit - len(results), 1))
+                            for i, w in enumerate(web or []):
+                                title = str(w.get("title", "web"))[:200]
+                                url = str(w.get("url", ""))
+                                snippet = str(w.get("snippet", ""))[:500]
+                                entry = KnowledgeEntry(
+                                    id=f"web:{uuid.uuid4().hex[:8]}",
+                                    type=KnowledgeType.WEB,
+                                    content=f"## {title}\n来源: {url}\n\n{snippet}" if snippet else f"## {title}\n来源: {url}",
+                                    title=title,
+                                    metadata=KnowledgeMetadata(source=KnowledgeSource.WEB),
+                                )
+                                results.append(KnowledgeResult(
+                                    entry=entry, score=1.0 - i * 0.01,
+                                    source_page=url, source_category="web_fallback",
+                                    highlight=f"web:{i+1} {title} ({url})",
+                                ))
+                            logging.getLogger("aiplat.retrieval").info(
+                                "Quality gate fallback: web search appended %d docs (avg_relevance=%s)",
+                                len(web or []), gate["avg_score"])
+                        except Exception as _e:  # noqa: BLE001
+                            logging.debug("quality-gate web fallback failed: %s", _e)
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+
+
 
         if effective_strategy == "keyword_only":
             chunks = [r.entry.content for r in results] if results else []
@@ -262,18 +306,6 @@ class KnowledgeRetriever:
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
 
-        # CRAG quality gate: if retrieved chunks are low quality, flag for web search fallback
-        if effective_qgate and results:
-            try:
-                from .retrieval_quality_gate import check_quality
-                chunks = [r.entry.content for r in results]
-                gate = check_quality(chunks, query, threshold=self._quality_threshold)
-                for r in results:
-                    r.metadata = dict(getattr(r, 'metadata', None) or {})
-                    r.metadata["_quality_gate"] = gate["action"]
-                    r.metadata["_avg_relevance"] = gate["avg_score"]
-            except Exception as e:
-                logging.debug(str(e), exc_info=True)
 
         # Provenance stale filter — exclude results from known-stale sources
         if results:
@@ -288,7 +320,6 @@ class KnowledgeRetriever:
                         if str(getattr(r, 'source_page', '') or getattr(r.entry, 'title', '')) not in stale_ids
                     ]
                     if len(results) < before:
-                        import logging
                         logging.getLogger("aiplat.retrieval").info(
                             f"Provenance stale filter: {before - len(results)}/{before} results excluded"
                         )
