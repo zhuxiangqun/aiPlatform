@@ -781,7 +781,7 @@ domains:
   gate-system:
     section: "十二"
     section_name: "Gate 系统"
-    caps_count: 17
+    caps_count: 19
     provides:
       - symbol: "ErrorTranslator"
         type: "class"
@@ -799,12 +799,22 @@ domains:
         type: "class"
         signature: "decorrelated jitter + golden-ratio hash"
         module: "core/harness/infrastructure/gates/resilience_gate.py"
+      - symbol: "BackpressureMiddleware"
+        type: "class"
+        signature: "协议级背压：inflight 超限 → 429 + Retry-After 指数退避（AIPLAT_BACKPRESSURE_MAX_INFLIGHT 门控，对齐 codex -32001）"
+        module: "aiPlat-core/core/server.py"
+      - symbol: "backpressure_stats"
+        type: "function"
+        signature: "背压诊断：inflight / max / enabled / retry_after_semantics"
+        module: "aiPlat-core/core/server.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
         reason: "Pipeline 阶段 Gate 检查"
       - module: "core/harness/infrastructure/integration.py"
         reason: "8 Gate 统一出口"
+      - module: "core/server.py"
+        reason: "BackpressureMiddleware 挂载 + backpressure_stats 诊断"
 
   # ══════════════════════════════════════════════════════════════
   # 十三、评估系统 (13 caps)

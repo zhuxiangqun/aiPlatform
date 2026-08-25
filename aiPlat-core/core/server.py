@@ -76,6 +76,57 @@ class ServerReadinessMiddleware(BaseHTTPMiddleware):
                 headers={"Retry-After": "3"},
             )
         return await call_next(request)
+
+
+# ── 协议级背压（对齐 codex -32001：过载 → 429 + Retry-After 指数退避语义） ──
+# HTTP/WS 层统一"过载 → 429 + Retry-After"：并发 inflight 请求超限时拒绝新请求，
+# Retry-After 按指数退避给出（client 按建议延迟重试）。AIPLAT_BACKPRESSURE_MAX_INFLIGHT=0
+# 默认关闭（行为与现状一致）；>0 时启用（对齐 Codex JSON-RPC -32001 语义的 HTTP 表达）。
+_BACKPRESSURE_MAX_INFLIGHT = int(os.getenv("AIPLAT_BACKPRESSURE_MAX_INFLIGHT", "0"))
+_backpressure_inflight = 0  # asyncio 单事件循环内计数（uvicorn 单 worker 语义）
+
+
+def backpressure_stats() -> Dict[str, Any]:
+    """背压诊断：当前 inflight / 上限 / 是否启用（供诊断面板与测试断言）。"""
+    return {
+        "inflight": _backpressure_inflight,
+        "max_inflight": _BACKPRESSURE_MAX_INFLIGHT,
+        "enabled": _BACKPRESSURE_MAX_INFLIGHT > 0,
+        "retry_after_semantics": "exponential_backoff",
+    }
+
+
+def _backpressure_retry_after() -> int:
+    """指数退避 Retry-After：随超限程度指数增长，上限 60s（对齐 -32001 语义）。"""
+    overflow = _backpressure_inflight - _BACKPRESSURE_MAX_INFLIGHT
+    if overflow <= 0:
+        return 1
+    return min(60, 2 ** min(overflow, 6))  # 2^1=2s ... 2^6=64 → cap 60
+
+
+class BackpressureMiddleware(BaseHTTPMiddleware):
+    """并发过载背压：inflight 请求数超过上限 → 429 + Retry-After（指数退避）。
+
+    AIPLAT_BACKPRESSURE_MAX_INFLIGHT=0（默认）关闭，行为与现状完全一致；
+    >0 时启用协议级背压（对齐 Codex JSON-RPC -32001 语义的 HTTP 表达）。
+    """
+    async def dispatch(self, request, call_next):
+        global _backpressure_inflight
+        if _BACKPRESSURE_MAX_INFLIGHT <= 0:
+            return await call_next(request)
+        _backpressure_inflight += 1
+        try:
+            if _backpressure_inflight > _BACKPRESSURE_MAX_INFLIGHT:
+                retry_after = _backpressure_retry_after()
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Server overloaded, retry after backoff",
+                             "retry_after": retry_after},
+                    headers={"Retry-After": str(retry_after)},
+                )
+            return await call_next(request)
+        finally:
+            _backpressure_inflight -= 1
 from core.harness.integration import get_harness, KernelRuntime
 from core.harness.utils.model_injection import best_model_for_purpose
 import uuid
@@ -1937,6 +1988,9 @@ app.add_middleware(
 
 # Reject requests before server is fully initialized
 app.add_middleware(ServerReadinessMiddleware)
+
+# 协议级背压：并发 inflight 超限 → 429 + Retry-After（指数退避语义，对齐 -32001）
+app.add_middleware(BackpressureMiddleware)
 
 # ── OpenTelemetry + Prometheus (Phase 0.2) ────────────────────────────
 # Lazy-load to avoid import overhead when disabled.

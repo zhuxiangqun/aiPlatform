@@ -24,7 +24,7 @@ Codex Harness 开源对 aiPlat 的价值不在"它有什么能力"（aiPlat 大�
 | 5 | **平台原生沙箱**（Linux Bubblewrap+Landlock / macOS Seatbelt / Windows AppContainer） | SandboxGate（`sandbox_gate.py:39`，路径白名单/网络白名单/限流/资源预算/危险模式）——**进程内检查式沙箱，非 OS 原生隔离**；另有 pipeline_sandbox.py | ⚠️ 部分具备 |
 | 6 | **SQLite 会话状态持久化 + thread/resume/fork** | SQLite 持久化（pipeline_runs + pipeline_run_events 双写）+ checkpoint（`langgraph/core.py:55` enable_checkpoints + record_checkpoint）+ 断点续跑（pipeline_engine HITL resume）——**持久化与恢复已具备**；fork/分支有 `ontology_branch.py`（本体层，非 Thread 层） | ✅ **已补齐（2026-08-25）**：`fork_run_from_events` 会话级 fork（折叠源事件→新 run 继承分叉点 + `pipeline_forked` 血缘事件，子 run 状态可纯从自身事件重建）+ `list_forked_runs` 血缘查询 + `POST /pipeline/pipelines/runs/{run_id}/fork`/`GET .../forks` |
 | 7 | **人工审批协议**（approval request 暂停 Turn 等 allow） | ApprovalGate（`approval_gate.py:154`，危险命令检测 CRITICAL/HIGH/MEDIUM/LOW）+ HITL 事件驱动 resume（`pipeline_engine.py:587` v3.1）+ 前端 Approvals 页（`pages/Core/Learning/Approvals/Approvals.tsx`）——**审批闭环已具备** | ✅ 已有 |
-| 8 | **背压机制**（过载返回 -32001 + 指数退避） | resilience_gate（`resilience_gate.py`，golden-ratio hash 退避抖动）+ rate_limit_tracker——**限流/退避已有**，但无协议层 -32001 语义 | ⚠️ 部分具备 |
+| 8 | **背压机制**（过载返回 -32001 + 指数退避） | resilience_gate（`resilience_gate.py`，golden-ratio hash 退避抖动）+ rate_limit_tracker——**限流/退避已有**，但无协议层 -32001 语义 | ✅ **已补齐（2026-08-25）**：`BackpressureMiddleware`（`core/server.py`）inflight 超限 → **429 + Retry-After** 指数退避（2^overflow 上限 60s，`AIPLAT_BACKPRESSURE_MAX_INFLIGHT` 门控）；ACP WS 活跃连接超限 → 错误帧 `-32001` + 关闭码 1013；stdio 内核已有 -32001（P0-a）——三协议层语义统一 |
 | 9 | **retained reasoning + context compaction**（ARC-AGI-3：13.3%→38.3%，token 1/6） | 5 级上下文压缩（`memory/compression.py:149` AGGRESSIVE 0.96-0.99 / EMERGENCY 0.99-1.0）+ 温度感知剪枝 + 语义相关性排序（P0-2/P0-3）+ 工具输出预算帽——**compaction 已深度实现**；retained reasoning 有近似物（`pipeline_engine.py:3201` <1KB 小输出保留，大输出 stub） | ✅ 已有（compaction）/ ⚠️ retained 部分 |
 | 10 | **竞品资产非破坏性导入**（Claude Code/Cursor→AGENTS/CLAUDE.md、Skills、MCP、Hooks、subagents、30 天会话） | L2 import-repo（`builder_project_service.py:1573` import_repo，代码导入）+ format_adapters（`management/format_adapters.py`，agentskills.io/Hermes SOUL.md/AGENTS.md/MCP JSON→原生格式）+ claude_md 上下文引擎（`context/engine.py:113` 注入 CLAUDE.md）——**格式桥已有，但缺"会话/记忆/授权"级导入** | ⚠️ 部分具备 |
 | 11 | **扩展体系**（tools/MCP/skills/plugins/hooks） | 全齐：MCP（`apps/mcp/` 8 文件 server/client/protocol）、Hooks（`infrastructure/hooks/` 7 文件含 G6 cc_bridge）、Skills（engine/workspace + agentskills.io）、plugins（`apps/plugins/manager.py`） | ✅ 已有 |
@@ -77,7 +77,7 @@ Codex Harness 开源对 aiPlat 的价值不在"它有什么能力"（aiPlat 大�
 ### P2（参考方向，不急于做）
 
 - **~~Thread/fork 会话级分支~~（✅ 已实施 2026-08-25）**：`fork_run_from_events` 折叠源 run 事件 → 新 run 继承分叉点（stage/pass_rate）并从 executing 继续；`pipeline_forked` 事件（append-only，含 parent_run_id + 继承状态）使**子 run 状态可纯从自身事件重建**（`replay_run_events` 折叠该事件）；`list_forked_runs` 血缘查询；`POST /pipeline/pipelines/runs/{run_id}/fork` + `GET .../forks`。测试 3 例（继承+purity / 无事件 None / 血缘逆序+limit），`test_pipeline_run_events.py` 9 例全绿。
-- **协议级背压 -32001 语义**：resilience_gate 已有退避；可在 HTTP/WS 层统一"过载→429+Retry-After"语义（Codex 用 JSON-RPC 错误码）。
+- **~~协议级背压 -32001 语义~~（✅ 已实施 2026-08-25）**：`BackpressureMiddleware`（`core/server.py`）——全局 inflight 并发计数，`AIPLAT_BACKPRESSURE_MAX_INFLIGHT>0` 时超限请求返回 **429 + Retry-After**（`_backpressure_retry_after` 指数退避 2^overflow，上限 60s，对齐 codex -32001）；`backpressure_stats()` 诊断。ACP WS 层：`AIPLAT_ACP_MAX_CONNECTIONS>0` 时活跃连接超限拒绝新连接（错误帧 `-32001` + 关闭码 1013）。三协议层语义统一：HTTP=Retry-After 头、WS/stdio=-32001。测试 5 例（`test_backpressure_protocol.py`）。
 - **exec 单次入口命令**：把 P2-A7 script 模式 + 应用工厂双模式包装成 `aiplat exec` CLI（CI 友好、JSON 输出）。
 
 ---

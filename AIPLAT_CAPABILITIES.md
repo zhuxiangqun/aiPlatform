@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1082
+total_capabilities: 1089
 last_updated: 2026-08-25
 version: "30.2"
 auto_sync: true
@@ -1367,6 +1367,8 @@ scan_hash: 8f9548ec24f4
 | ContextGate | harness/infrastructure/gates/context_gate.py | ✅ | Token预算强制执行 + 上下文去重/陈旧校验 | 已合入 |
 | SchemaGate | harness/infrastructure/gates/schema_gate.py | ✅ | JSON Schema 强制校验，Agent输出在下游阶段前验证 | 已合入 |
 | ResilienceGate | harness/infrastructure/gates/resilience_gate.py | ✅ | 可配置重试策略 + 回退链 + 熔断器包装 | 已合入 |
+| BackpressureMiddleware | core/server.py | ✅ | 协议级背压：inflight 超限 → 429 + Retry-After 指数退避（AIPLAT_BACKPRESSURE_MAX_INFLIGHT 门控，对齐 codex -32001） | 待合入 |
+| backpressure_stats | core/server.py | ✅ | 背压诊断：inflight / max / enabled / retry_after_semantics | 待合入 |
 | TraceGate | harness/infrastructure/gates/trace_gate.py | ✅ | 最佳努力追踪span包装，syscall审计 | 已合入 |
 | SandboxGate | harness/infrastructure/gates/sandbox_gate.py | ✅ | 沙箱执行门 + 结果校验 | 已合入 |
 | ErrorTranslator | harness/infrastructure/gates/error_translator.py | ✅ | 7级分类流水线 + 15种FailoverReason + 4 recovery flags + 智能重试 | 已合入 |
@@ -2000,18 +2002,18 @@ scan_hash: 8f9548ec24f4
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 69 | 0 | 69 |
-| 记忆子系统 | 40 | 0 | 40 |
+| 记忆子系统 | 41 | 0 | 41 |
 | 知识引擎（本体） | 145 | 0 | 145 |
 | RAG 检索 | 42 | 0 | 42 |
 | 知识基础设施 | 29 | 0 | 29 |
 | Agent 系统 | 42 | 0 | 42 |
 | Skill 系统 | 54 | 0 | 54 |
 | 安全与治理 | 48 | 0 | 48 |
-| 可观测性 | 21 | 0 | 21 |
+| 可观测性 | 25 | 0 | 25 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 130 | 0 | 130 |
-| Gate 系统 | 17 | 0 | 17 |
+| Gate 系统 | 19 | 0 | 19 |
 | 评估系统 | 18 | 0 | 18 |
 | MCP 协议 | 9 | 0 | 9 |
 | A2A 协议 | 9 | 0 | 9 |
@@ -2044,7 +2046,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1082** | **0** | **1082** |
+| **总计** | **1089** | **0** | **1089** |
 
 ---
 
