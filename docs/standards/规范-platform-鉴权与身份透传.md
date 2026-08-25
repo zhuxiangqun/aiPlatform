@@ -314,3 +314,18 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 
 - `GET /skills/marketplace/external`（Skill 开放生态收尾）：`require_auth`（登录即可发现外部 Skill，只读 best-effort）；`POST /skills/install`/`DELETE /skills/uninstall/{name}` 保持 `require_admin`（写操作）
 - 外部 Skill 发现不返回任何 API key/secret（仅名称/描述/版本元数据），无敏感数据透传
+
+## 补充：部署签名验证 fail-closed（2026-08-25，审计 P0-5 修复）
+
+`POST /platform/builder/projects/{id}/deploy-to-app`（`deploy_project_to_app`，`require_builder_access`）的**项目签名验证**改为 fail-closed：
+
+| 场景 | 修复前（fail-open） | 修复后（fail-closed） |
+|---|---|---|
+| 验证抛异常（签名服务不可用等） | warning 后**跳过验证继续部署** | `raise HTTPException(403)` **拒绝部署** |
+| 签名不通过（`verified=False`） | 403（不变） | 403（不变） |
+| 项目无签名 / 无 manifest | 跳过验证，正常部署 | 跳过验证，正常部署（签名验证仅对签名项目生效） |
+
+**约束**：
+- 验证路径仅对 `metadata.provenance.signature` 存在的项目生效；无签名项目不受影响（验证是**加固**而非**门槛**）；
+- 实现位于 `aiPlat-platform/api/routers/builder.py:508-532`；错误信息含 `detail` 透传（对齐系统契约 §5 错误透传）；
+- 回归测试：`aiPlat-platform/tests/test_builder_p0_fixes.py::TestP0_5DeploySignatureFailClosed`（4 项：异常→403、验证通过→部署、无签名→跳过验证）。

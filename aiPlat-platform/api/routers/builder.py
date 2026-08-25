@@ -527,7 +527,8 @@ async def deploy_project_to_app(project_id: str, _auth: str = Depends(require_bu
                         raise HTTPException(status_code=403, detail=f"Project signature verification failed before deploy")
     except HTTPException: raise
     except Exception:
-        _log.warning("部署签名验证失败，跳过: project_id=%s", project_id, exc_info=True)
+        _log.warning("拒绝部署（fail-closed）: 签名验证异常 project_id=%s", project_id, exc_info=True)
+        raise HTTPException(status_code=403, detail="Project signature verification failed before deploy")
     return await _get_svc().deploy_to_app(project_id)
 
 

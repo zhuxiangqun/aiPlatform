@@ -11,6 +11,7 @@ import logging
 import os
 import time
 import uuid
+import ast
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -955,7 +956,7 @@ class BuilderProjectService:
                 for parser in [
                     lambda s: _json.loads(s),                           # standard JSON
                     lambda s: _json.loads(s.replace("'", '"')),         # single-quoted keys
-                    lambda s: eval(s),                                  # Python dict literal
+                    lambda s: ast.literal_eval(s),                      # Python dict literal (安全, P0-2)
                 ]:
                     try:
                         prd = parser(json_str)
@@ -2196,6 +2197,33 @@ class BuilderProjectService:
         self._save_projects()
         _log2.getLogger("aiplat.builder").info("PRD updated for %s", project_id)
         return {"status": "ok", "detail": "PRD 已更新"}
+
+    async def start_pipeline(self, project_id: str) -> Dict[str, Any]:
+        """启动/触发项目流水线执行（P0-1 修复, 2026-08-25）。
+
+        原接线断裂：builder_app_service / builder_workflow_service / api/routers/builder.py
+        共 6 处调用本方法但类中无定义 → 运行 AttributeError。本方法委托
+        rebuild_project（复用已确认 PRD + _rebuild_via_core 经 Core HTTP 执行路径），
+        与 /projects/{id}/start 和 /sessions/{id}/start 端点语义一致。
+        """
+        proj = self._projects.get(project_id, {})
+        if not proj:
+            return {"status": "error", "detail": "项目不存在"}
+        if not proj.get("confirmed_prd"):
+            return {"status": "error", "detail": "没有已确认的 PRD，请先完成 PM 对话"}
+        result = await self.rebuild_project(project_id)
+        return {"status": "ok", "run_id": project_id, **result}
+
+    async def start_pipeline_background(self, project_id: str) -> Dict[str, Any]:
+        """异步启动流水线（P0-1 修复, 2026-08-25）：不阻塞调用方，后台触发执行。"""
+        proj = self._projects.get(project_id, {})
+        if not proj:
+            return {"status": "error", "detail": "项目不存在"}
+        if not proj.get("confirmed_prd"):
+            return {"status": "error", "detail": "没有已确认的 PRD，请先完成 PM 对话"}
+        import asyncio as _asyncio
+        _asyncio.create_task(self.rebuild_project(project_id))
+        return {"status": "accepted", "run_id": project_id, "detail": "后台构建已触发"}
 
     async def rebuild_project(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
         """Re-run the pipeline with the existing confirmed PRD. Re-recommends team to pick up latest config changes."""

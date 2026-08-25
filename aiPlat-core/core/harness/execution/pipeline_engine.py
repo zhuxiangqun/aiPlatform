@@ -4221,7 +4221,29 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 from core.harness.utils.prompt_loader import _sync_resolve
 
                 # 3.5a. Classify requirement to domain (runs in thread pool to avoid blocking event loop)
-            _domain_text = _desc or str(_prd.get("title", "")) if isinstance(_prd, dict) else ""
+                # P0-4 修复（2026-08-25）：_prd 此前未定义 → NameError 被吞 → 域注入 100% 失效。
+                # 从 state 解析 PRD dict：prd_data 键优先，否则尝试 description 尾部 JSON。
+                _prd = {}
+                try:
+                    _pd = state.get("prd_data")
+                    if isinstance(_pd, dict):
+                        _prd = _pd
+                    else:
+                        import json as _prd_json
+                        _desc_str = str(_desc or "")
+                        if _desc_str:
+                            # description 尾部可能带 prd_data 的 JSON dump
+                            _tail = _desc_str[-4000:]
+                            _start = _tail.find("{")
+                            _end = _tail.rfind("}")
+                            if 0 <= _start < _end:
+                                _cand = _tail[_start:_end + 1]
+                                _parsed = _prd_json.loads(_cand)
+                                if isinstance(_parsed, dict):
+                                    _prd = _parsed
+                except Exception:
+                    _prd = {}
+                _domain_text = _desc or str(_prd.get("title", "")) if isinstance(_prd, dict) else ""
             if not _domain_text:
                 _domain_text = getattr(stage, 'phase', '') or _skill_name
             _domain_id = ""
@@ -4682,7 +4704,13 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
             # Strip leaked YAML terminators from JSON files (trailing ---)
             if _fname.endswith(".json") and _content.rstrip().endswith("---"):
                 _content = _re.sub(r'\n?---\s*$', '', _content)
-            _full = _os2.path.join(_target, _fname)
+            # P0-3 修复（2026-08-25）：LLM 可控文件名经 _safe_join 约束——
+            # 防路径穿越（../ 逃逸 _target 写任意路径）；穿越尝试跳过该文件并告警。
+            try:
+                _full = _safe_join(_target, _fname)
+            except ValueError as _ve:
+                _log.warning("deploy: blocked path traversal: %s (%s)", _fname, _ve)
+                continue
             try:
                 _os2.makedirs(_os2.path.dirname(_full), exist_ok=True)
                 with open(_full, "w", encoding="utf-8") as _fw:
