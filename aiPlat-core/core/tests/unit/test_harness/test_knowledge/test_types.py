@@ -14,7 +14,7 @@ Tests cover:
 import pytest
 from datetime import datetime
 
-from harness.knowledge.types import (
+from core.harness.knowledge.types import (
     KnowledgeType,
     KnowledgeSource,
     KnowledgeStatus,

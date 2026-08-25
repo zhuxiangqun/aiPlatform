@@ -12,7 +12,7 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
-from harness.memory.session import Session, SessionManager
+from core.harness.memory.session import Session, SessionManager
 
 
 class TestSession:

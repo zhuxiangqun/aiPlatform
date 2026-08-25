@@ -739,3 +739,16 @@ pytest -q \
   - `grep -c "_t1_label_match\|_t2_embed_score" aiPlat-core/core/harness/knowledge/domain_router.py`（≥4）
   - `grep -c "knowledge-extraction" aiPlat-core/core/harness/knowledge_pipeline/extractor.py`（≥1）
   - `cd aiPlat-core && python3 -m pytest core/tests/unit/test_harness/test_knowledge/test_knowledge_audit_p2.py -q`（10 passed）
+
+### 1.68 治理/架构路线图 REAL 项修复（2026-08-25，P3 图索引 + roadmap §0.2/§0.3）
+- MUST：`code_graph.py` 增量同步含新文件发现（未索引 .py 文件浅层入图，≤100 上限）
+- MUST：`scripts/coupling_metrics.py` 存在（AST import-degree：avg_degree/max_degree(non-agg)/top-20 + `--baseline` ratchet + `--write-baseline`）；`scripts/baselines/coupling_baseline.json` 已生成
+- MUST：`core/harness` 一级子目录全量 BOUNDARY.yaml（48/48）；架构守卫 §94b 检查缺 BOUNDARY 目录 FAIL
+- MUST：记忆测试 6 文件导入路径迁移 `harness.memory.*` → `core.harness.memory.*`（可收集）
+- 契约登记：边界契约 `01-architecture-contract.md` 附录 B（治理修复）+ run spec 七十二轮
+- 自动化验收：
+  - `grep -c "new_files" aiPlat-core/core/harness/knowledge/code_graph.py`（≥2：发现 + 上限）
+  - `grep -c "avg_degree" scripts/coupling_metrics.py`（≥2）
+  - `find aiPlat-core/core/harness -maxdepth 1 -name BOUNDARY.yaml | grep -v __pycache__ | wc -l` 与 `ls -d aiPlat-core/core/harness/*/ | grep -v __pycache__ | wc -l` 相等
+  - `grep -c "harness.memory" aiPlat-core/core/tests/unit/test_harness/test_memory/*.py` → 0
+  - `python3 scripts/coupling_metrics.py --baseline scripts/baselines/coupling_baseline.json` → baseline OK

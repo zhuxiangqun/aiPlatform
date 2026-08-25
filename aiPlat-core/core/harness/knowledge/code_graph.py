@@ -785,6 +785,46 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                             edges.append({"from": rel, "to": d})
                             nodes[rel].setdefault("out", []).append(d)
 
+            # P3 治理闭环（2026-08-25）：增量同步补"新文件发现"——扫描仓库中未被索引的
+            # 新 .py 文件（git 未跟踪/新增），消除"图索引漏检未提交新文件"漏检窗口。
+            # 只做浅层发现（存在性 + import 依赖 + 符号），不做全量重建（保持增量成本）。
+            if 0 < len(stale_files) <= 100:
+                try:
+                    new_files: List[Path] = []
+                    for dp, _dn, fn in os.walk(_repo_root):
+                        if any(x in dp for x in (".git", "__pycache__", ".venv", "node_modules")):
+                            continue
+                        for name in fn:
+                            if not name.endswith(".py"):
+                                continue
+                            f = Path(dp) / name
+                            rel = str(f.relative_to(_repo_root))
+                            if rel not in nodes:
+                                new_files.append(f)
+                    # 上限保护：新增文件过多视为首次全量（避免增量退化为全扫）
+                    if 0 < len(new_files) <= 100:
+                        for f in new_files:
+                            rel = str(f.relative_to(_repo_root))
+                            nodes[rel] = {"id": rel, "path": rel, "ext": ".py",
+                                          "out": [], "in": 0, "issue_count": 0,
+                                          "symbols": [], "_mtime": f.stat().st_mtime}
+                            try:
+                                nodes[rel]["symbols"] = _extract_symbols_ast(f)
+                            except Exception:
+                                logging.getLogger("code_graph").debug("Symbol extraction failed", exc_info=True)
+                            for mod, _is_top in _extract_py_imports_ast(f):
+                                tgt = resolve_py_module(_repo_root, f, mod)
+                                if tgt and tgt.exists():
+                                    rel_to = str(tgt.relative_to(_repo_root))
+                                    nodes.setdefault(rel_to, {"id": rel_to, "path": rel_to, "ext": tgt.suffix.lower(),
+                                                              "out": [], "in": 0, "issue_count": 0, "symbols": []})
+                                    edges.append({"from": rel, "to": rel_to})
+                                    nodes[rel].setdefault("out", []).append(rel_to)
+                        logging.getLogger("code_graph").info(
+                            "Incremental sync: discovered %d new file(s)", len(new_files))
+                except Exception as _e:  # noqa: BLE001
+                    logging.getLogger("code_graph").debug("new-file discovery failed: %s", _e)
+
                 # Save incrementally updated graph
             try:
                 from core.harness.knowledge.code_graph_persist import save_graph, clear_cross_edges_cache

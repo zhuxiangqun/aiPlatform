@@ -26,3 +26,10 @@ repos:
         language: python
         files: '\.(yaml|yml|md)$'
         pass_filenames: false
+
+# ── 2026-08-25 治理收尾：pre-commit 框架未安装（环境无 pre-commit 二进制），
+#    实际生效的是手工 git hook（.git/hooks/pre-commit，324 行：compile/cap/doc-sync/
+#    wiring/route/arch-guard/engine-guard 全覆盖，内容与本文件 comprehensive 钩子等效）。
+#    本文件保留为声明式参考 + CI 可移植配置；两套 hook 通过 scripts/pre-commit-hook.sh
+#    单一入口对齐（手工 hook 与 comprehensive 钩子均调用同一脚本族），避免静默分叉。
+#    若未来环境安装 pre-commit 框架，直接 `pre-commit install` 即可接管（无需改钩子内容）。

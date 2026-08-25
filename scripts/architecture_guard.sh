@@ -463,6 +463,23 @@ else
     echo "✅"
 fi
 
+# ── §94b: BOUNDARY.yaml 全量目录审计（roadmap Phase 0.3 闭环, 2026-08-25） ──
+# core/harness 下每个一级子目录必须有 BOUNDARY.yaml（声明 layer + 依赖方向 + known_debt）。
+echo -n "§94b: BOUNDARY.yaml 目录覆盖: "
+_BOUNDARY_MISSING=$(for d in aiPlat-core/core/harness/*/; do
+    base=$(basename "$d")
+    [ "$base" = "__pycache__" ] && continue
+    [ -f "$d/BOUNDARY.yaml" ] || echo "$base"
+done)
+if [ -n "$_BOUNDARY_MISSING" ]; then
+    echo "❌ 缺 BOUNDARY.yaml 的目录:"
+    echo "$_BOUNDARY_MISSING" | sed 's/^/     /'
+    echo "   → 每个 harness 一级子目录必须声明 BOUNDARY.yaml（layer/rationale/known_debt）"
+    FAIL=1
+else
+    echo "✅"
+fi
+
 # ── §73: Capability consumer verification (replaces deprecated caller_verify.sh) ──
 # Phase 2.5 method-level wiring runs in phase_check.sh (method_verify.sh + wiring tests).
 echo -n "§73: capability consumers wired: "

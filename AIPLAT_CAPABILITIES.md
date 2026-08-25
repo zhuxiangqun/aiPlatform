@@ -1,4 +1,6 @@
 ---
+total_capabilities: 1099
+
 total_capabilities: 1095
 last_updated: 2026-08-25
 version: "30.2"
@@ -1064,7 +1066,10 @@ scan_hash: 8f9548ec24f4
 ## 七、安全与治理
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| arch_guard_b84 | `scripts/architecture_guard.sh` | ✅ | 自动同步 | 已合入 |
 | PromptAuditRules | `core/harness/audit/prompt_audit_rules.py` | ✅ | 提示词审计规则 | 已合入 |
+| coupling_metrics | `scripts/coupling_metrics.py` + `scripts/baselines/coupling_baseline.json` | ✅ | 耦合度量基线：AST import-degree → avg_degree/max_degree(non-agg)/top-20 + baseline ratchet（roadmap §0.2） | 待合入 |
+| §94b BOUNDARY 覆盖 | `scripts/architecture_guard.sh` | ✅ | harness 48 一级子目录 BOUNDARY.yaml 全量覆盖检查（roadmap §0.3，缺则 FAIL） | 待合入 |
 | ManagedPolicy | `aiPlat-platform/auth/schemas_policy.py` | ✅ | 企业远程托管策略 (managed 键本地不可覆盖, P1-A6) | 已合入 |
 | PIIDetector | `harness/infrastructure/pii_detector.py` | ✅ | 自动同步 | 已合入 |
 | prompt_auditor | harness/audit/prompt_auditor.py | ✅ | 自动同步 | 已合入 |
@@ -2009,12 +2014,12 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 69 | 0 | 69 |
 | 记忆子系统 | 41 | 0 | 41 |
-| 知识引擎（本体） | 145 | 0 | 145 |
+| 知识引擎（本体） | 146 | 0 | 146 |
 | RAG 检索 | 46 | 0 | 46 |
 | 知识基础设施 | 29 | 0 | 29 |
 | Agent 系统 | 42 | 0 | 42 |
 | Skill 系统 | 54 | 0 | 54 |
-| 安全与治理 | 48 | 0 | 48 |
+| 安全与治理 | 51 | 0 | 51 |
 | 可观测性 | 27 | 0 | 27 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
@@ -2052,6 +2057,8 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
+| **总计** | **1099** | **0** | **1099** |
+
 | **总计** | **1095** | **0** | **1095** |
 
 ---
