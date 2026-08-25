@@ -122,3 +122,62 @@ class TestP1_4MergePartialFailure:
         assert result["applied"] == ["a.txt"]
         assert result["failed"] == []
         assert (deploy_dir / "a.txt").read_text() == "A"
+
+
+# ---- P1-8: 跨模块门禁误报（漏再生文件） ----
+
+class TestP1_8CrossModuleGateFalsePositive:
+    def test_unmodified_file_declarations_included(self, tmp_path):
+        """行为证据：依赖方引用的 route 声明在未修改文件（再生文件）里 → 不得误判 broken。
+
+        修复前 _new_version_text 只拼 previews（被修改文件）→ route 声明在未修改
+        文件 → false positive 阻断合法合并；修复后 module_root 内未修改文件一并纳入。
+        """
+        from builder.cross_module import verify_changed_module_contracts
+
+        module_root = tmp_path / "m2"
+        module_root.mkdir()
+        # 未修改文件：声明了依赖方引用的 route（本次 merge 未改它）
+        (module_root / "router.py").write_text(
+            'from fastapi import APIRouter\nrouter = APIRouter()\n'
+            '@router.get("/api/items")\ndef list_items():\n    return []\n'
+        )
+        # 被修改文件（previews）：新版本不再包含该 route
+        previews = [{"path": "changed.py", "new_content": "x = 1\n"}]
+
+        graph = {
+            "m2": {"depended_by": ["m1"], "depends_on": []},
+            "m1": {"depended_by": [], "depends_on": ["m2"],
+                   "evidence": {"m2": {"apis": [{"route": "/api/items"}], "entities": []}}},
+        }
+
+        # 修复前语义：不传 module_root → 只扫 previews → 误判 broken
+        broken_without_root = verify_changed_module_contracts("m2", previews, graph)
+        assert broken_without_root["ok"] is False, "前置条件：仅扫 previews 应误判 broken"
+
+        # 修复后：传 module_root → 未修改文件声明被纳入 → ok
+        result = verify_changed_module_contracts("m2", previews, graph, module_root=str(module_root))
+        assert result["ok"] is True, f"P1-8 未修复：仍误判 broken: {result['broken']}"
+        assert result["checked"] == ["m1→/api/items"]
+
+    def test_preview_paths_not_double_counted(self, tmp_path):
+        """previews 里的文件不重复纳入（其 new_content 已含新版本）。"""
+        from builder.cross_module import _new_version_text
+
+        module_root = tmp_path / "m2b"
+        module_root.mkdir()
+        (module_root / "changed.py").write_text("OLD_CONTENT\n")
+        previews = [{"path": "changed.py", "new_content": "NEW_CONTENT\n"}]
+
+        text = _new_version_text(previews, module_root=str(module_root))
+        assert "NEW_CONTENT" in text
+        assert "OLD_CONTENT" not in text, "preview 覆盖的文件不应再读旧内容"
+
+    def test_verify_accepts_module_root(self):
+        """静态证据：verify_changed_module_contracts 签名带 module_root 并透传。"""
+        import inspect
+        from builder.cross_module import verify_changed_module_contracts
+        sig = inspect.signature(verify_changed_module_contracts)
+        assert "module_root" in sig.parameters, "P1-8 未修复：verify 无 module_root 参数"
+        from builder.cross_module import _new_version_text
+        assert "module_root" in inspect.signature(_new_version_text).parameters

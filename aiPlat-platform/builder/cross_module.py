@@ -186,13 +186,33 @@ def topological_order(module_ids: List[str], graph: Dict[str, Any]) -> List[str]
     return ordered
 
 
-def _new_version_text(previews: List[Dict[str, Any]]) -> str:
-    """Concatenated new-version content of approved/available previews."""
+def _new_version_text(previews: List[Dict[str, Any]], module_root: str = "") -> str:
+    """Concatenated new-version content of approved/available previews.
+
+    P1-8 修复（2026-08-25）：传入 module_root 时，追加模块内**未修改**文件
+    （含再生文件）的现有内容——仅扫 previews 会漏掉依赖方引用的
+    端点/实体声明所在文件 → 误判 broken（false positive 阻断合法合并）。
+    """
+    import os as _os
     parts = []
     for pv in previews or []:
         content = pv.get("new_content")
         if isinstance(content, str) and content:
             parts.append(content)
+    if module_root and _os.path.isdir(module_root):
+        preview_paths = {pv.get("path", "") for pv in previews or []}
+        for _root, _dirs, _files in _os.walk(module_root):
+            for _fn in sorted(_files):
+                if not _fn.endswith(".py"):
+                    continue
+                _rel = _os.path.relpath(_os.path.join(_root, _fn), module_root)
+                if _rel in preview_paths:
+                    continue  # new content already included via preview
+                try:
+                    with open(_os.path.join(_root, _fn), "r", encoding="utf-8", errors="replace") as _fh:
+                        parts.append(_fh.read())
+                except OSError:
+                    pass  # noqa: cleanup-best-effort
     return "\n".join(parts)
 
 
@@ -200,6 +220,7 @@ def verify_changed_module_contracts(
     changed_module: str,
     previews: List[Dict[str, Any]],
     graph: Dict[str, Any],
+    module_root: str = "",
 ) -> Dict[str, Any]:
     """L4 v1.5 §3.5: cross-module merge contract gate.
 
@@ -210,7 +231,7 @@ def verify_changed_module_contracts(
 
     Returns: {ok: bool, broken: [{dependent, kind, ref, detail}], checked: [...]}
     """
-    new_text = _new_version_text(previews)
+    new_text = _new_version_text(previews, module_root)
     broken: List[Dict[str, str]] = []
     checked: List[str] = []
 

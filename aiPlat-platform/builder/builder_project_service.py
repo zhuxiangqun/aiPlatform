@@ -2077,7 +2077,8 @@ class BuilderProjectService:
                 roots = self._module_roots(project_id)
                 modules = [{"module_id": mid, "root": root} for mid, root in roots.items()]
                 result = analyze_cross_module(modules, os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")))
-                cross_contracts = verify_changed_module_contracts(module_id, previews, result["graph"])
+                cross_contracts = verify_changed_module_contracts(
+                    module_id, previews, result["graph"], module_root=roots.get(module_id, ""))
                 cross_contracts["note"] = "依赖方模块引用的端点/实体在变更模块新版本中的存活性检查"
             except Exception as e:
                 _log.warning("cross-module contract check failed: %s", str(e)[:200])
