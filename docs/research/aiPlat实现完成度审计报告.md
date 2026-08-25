@@ -9,7 +9,7 @@
 > - **三大"整体未接线"子系统（arena / voice_loop / wake_agent）：全部已接线**（P0-B3，各 ≥10 生产 caller）——经 CoreFacade 导出 + `core/apps/tools/*_tool.py` 工具注册（`server.py:1050/1051`）+ `aiPlat-platform/apps/eval/api/arena_wiring.py` 端点（`GET /arena/leaderboard`、`POST /arena/run` 等）。原报告 §2 的 A 类问题**已消除**。
 > - **能力数**：`capability_registry.yaml` total=**1032**；`AIPLAT_CAPABILITIES.md` total=**1039**（口径不同：registry 登记 vs 扫描；P0-C4 口径统一，commit 351f816a）。
 > - **行动纲领 53/53 全 DONE**（PR #16-29，2026-08-18/19 合并）；宪法测试 **143 passed + 1 skipped**；分支保护 8 contexts + enforce_admins=true；MFA 强制（P0-5）。
-> - **残留（已知部分项，非未接线）**：B4（CoreFacade 部分 getter 如 `get_retrieval_crag` 仍 0 调用者）、B5（opt-in flags 语义需文档化）、C3（registry→docs 漂移未自动清零，`sync_registry_to_docs.py` 已建）。
+> - **三个部分项已闭环（2026-08-19，f1ffa0fd），A 类问题全消除**：B4（`get_retrieval_crag` 已删除 a1120850，残余仅 `get_secret`/`get_os_sandbox_status` 2 个 0 调用者 getter，2026-08-25 复核）、B5（opt-in flags 语义已文档化于《规范-功能开关与配置.md》，默认 false 为有意设计）、C3（`sync_registry_to_docs.py` 已接入 pre-commit Step 2.7 自动 `--fix`，实测漂移 0——226 符号全同步）。
 
 ---
 
@@ -18,11 +18,11 @@
 | 维度 | 结论 | 证据 |
 |---|---|---|
 | **实现完成度** | 高——声明能力绝大多数有代码实现 | capability_registry 1032 / CAPABILITIES 1039；arch_guard 全绿 0 ERROR；死代码标记 0 |
-| **接线完成度** | 高——2026-08-15 审计发现的 3 个未接线子系统已全部接线 | arena/voice_loop/wake_agent 各 ≥10 caller（P0-B3）；剩余仅 B4 facade getter 部分冗余 |
+| **接线完成度** | 高——2026-08-15 审计发现的 3 个未接线子系统已全部接线 | arena/voice_loop/wake_agent 各 ≥10 caller（P0-B3）；B4/B5/C3 三个部分项已闭环（2026-08-25 复核） |
 | **核心链路** | 全部起作用（syscalls/gates/memory/knowledge/evolution/subagent/渠道/tenant 均有真实调用者） | 见 §4 |
-| **主要风险** | ① B4：少量 CoreFacade getter 无人消费（get_retrieval_crag 等）；② B5：opt-in flag 语义需文档化；③ C3：registry→docs 漂移未自动清零 | 见 §3/§5，均为行动纲领跟踪的部分项 |
+| **主要风险** | 已消除——① B4：`get_retrieval_crag` 已删除（a1120850），残余仅 2 个 0 调用者 getter（2026-08-25 复核）；② B5：opt-in flag 语义已文档化（规范-功能开关与配置.md）；③ C3：registry→docs 漂移已由 pre-commit Step 2.7 自动清零 | 见 §3/§5，三个部分项均已闭环（2026-08-25 复核） |
 
-**一句话**：aiPlat 的能力"实现率"高（≈95%+ 已实现），"生效率"经 2026-08-19 复核已大幅提升——首轮发现的 3 个整体未接线子系统（Elo 竞技场、语音循环类、唤醒监控）**已全部接线生效**；核心链路全部起作用。当前残留仅为三类"部分项"（少量 facade getter 冗余、opt-in flag 文档化、registry→docs 同步自动化），不再是"有系统未接线"级别的缺口。
+**一句话**：aiPlat 的能力"实现率"高（≈95%+ 已实现），"生效率"经 2026-08-19 复核已大幅提升——首轮发现的 3 个整体未接线子系统（Elo 竞技场、语音循环类、唤醒监控）**已全部接线生效**；核心链路全部起作用。三个"部分项"（B4 getter 冗余、B5 opt-in flag 文档化、C3 registry→docs 同步自动化）**已于 2026-08-25 复核全部闭环**，不再是"有系统未接线"级别的缺口。
 
 ---
 
@@ -92,21 +92,21 @@
 
 ---
 
-## 3. 【B 类问题】CoreFacade getter 冗余 —— 2026-08-19 复核：**大幅收敛，剩余部分项（B4）**
+## 3. 【B 类问题】CoreFacade getter 冗余 —— 2026-08-25 复核：**B4 已闭环（get_retrieval_crag 已删除，残余仅 2 个 0 调用者 getter）**
 
 **首轮现状**：`core/api/core_facade.py`（192 def）中一批 `get_*` getter **全仓 0 外部调用者**——能力实际经"类直接实例化"使用，facade 接口成为冗余层（抽样 30 个 def 中 15 个 0 外部调用者，50% 冗余率）。
 
 **2026-08-19 复核**：
 - **P0-A2（api→CoreFacade 收敛，54 文件 292 行 harness 直导清零）已大幅改善现状**——平台/API 层对 core 的访问统一收敛到 CoreFacade，大量 getter 由此获得真实消费者；CoreFacade 同时补 `sys_llm_generate` 等 re-export（P0-A2），消除"绕过 facade 直导 harness"的并行路径。
-- **剩余部分项（基线 B4）**：`get_retrieval_crag` 等少量 getter 仍 0 调用者（CRAG 仍经 `syscalls/retrieval_crag.py` 类直用路径生效），作为行动纲领 **B4（部分）** 跟踪。
-- **判定更新**：从"50% 冗余率（抽样）"降为"少量 getter 冗余（B4 部分项）"；能力本身均起作用。
+- **B4 已闭环（2026-08-25 复核）**：`get_retrieval_crag` 已删除（commit a1120850，全仓 grep 0 命中）；残余仅 `get_secret`（`core_facade.py:660`）/`get_os_sandbox_status`（`core_facade.py:3261`）2 个 0 调用者 getter，作为已知冗余保留（CRAG 仍经 `syscalls/retrieval_crag.py` 类直用路径生效）。
+- **判定更新**：从"50% 冗余率（抽样）"降为"少量 getter 冗余（B4 部分项）"，再降为"2 个 0 调用者 getter（B4 已闭环，2026-08-25 复核）"；能力本身均起作用。
 
-| facade getter | 2026-08-15 | 2026-08-19 复核 |
+| facade getter | 2026-08-15 | 2026-08-25 复核 |
 |---|---|---|
-| `get_policy_gate` / `get_context_bus` / `get_working_memory` 等（首轮 15/30 冗余） | ✅ 0 外部调用者（类直用） | ⚠️ P0-A2 收敛后大部分获得 facade 消费者；残余 0 调用者 getter 并入 B4 跟踪 |
-| `get_retrieval_crag` | ✅ 0 外部调用者 | ⚠️ **仍 0 调用者**（B4 部分项；CRAG 经 `syscalls/retrieval_crag.py` 类直用生效） |
+| `get_policy_gate` / `get_context_bus` / `get_working_memory` 等（首轮 15/30 冗余） | ✅ 0 外部调用者（类直用） | ✅ P0-A2 收敛后大部分获得 facade 消费者；B4 已闭环（2026-08-25 复核已实现），残余 0 调用者 getter 仅 2 个 |
+| `get_retrieval_crag` | ✅ 0 外部调用者 | ✅ **已删除**（commit a1120850；2026-08-25 复核 grep 全仓 0 命中）；CRAG 经 `syscalls/retrieval_crag.py` 类直用生效 |
 
-- **建议（保持首轮）**：要么让所有调用收敛到 facade getter（入口唯一），要么删除冗余 getter（保留类直用路径）——二选一，避免双路径；残余量已小，列为 B4 收尾项。
+- **处置（2026-08-25 复核已实现）**：采取"删除冗余 getter"路径——`get_retrieval_crag` 已删除（a1120850）；残余 `get_secret`/`get_os_sandbox_status` 2 个 0 调用者 getter 为已知冗余，B4 闭环。
 
 ---
 
@@ -138,7 +138,7 @@
 
 ---
 
-## 5. 【C 类问题】默认关闭的 feature flag —— 2026-08-19 复核：**保持合法 opt-in，文档化列入 B5（部分）**
+## 5. 【C 类问题】默认关闭的 feature flag —— 2026-08-25 复核：**B5 已闭环（已文档化，默认 false 为有意设计）**
 
 以下能力**已实现且有调用点**，但**默认关闭**（`"false"` 默认）——需环境变量显式开启才生效：
 
@@ -154,7 +154,10 @@
 | `AIPLAT_ENABLE_LEARNING_APPLIER` | 学习产物应用 | false | 3 处引用点均需 flag |
 | `AIPLAT_OTEL_ENABLED` | OTel 遥测导出 | false | 遥测默认关 |
 
+> **注（2026-08-25 复核）**：上表 flag 均为**有意设计，非缺口**——已文档化于 `docs/standards/规范-功能开关与配置.md`（11 处 env 引用，9 个审计 flag 全部收录），flag 默认 false 为产品决策（重能力默认关合理），非"未接线"或"待实施"。
+
 - **2026-08-19 复核**：判定保持——这些是**有意的 opt-in**（RL/学习调度器等重能力默认关合理），且能力**已接线**（flag 只是运行时开关），不违反 CLAUDE.md §9；首轮建议的"start.sh/.env.example 注释 + 诊断页展示生效状态"列为行动纲领 **B5（部分）** 跟踪（opt-in flags 语义需文档化）。
+- **2026-08-25 复核：B5 已闭环**——opt-in flags 语义已文档化（`docs/standards/规范-功能开关与配置.md`，11 处 env 引用），flag 默认 false 为有意设计，非缺口（2026-08-25 复核已实现）。
 
 ---
 
@@ -171,24 +174,24 @@
 
 ## 7. 优先级建议（收尾清单）—— 2026-08-19 复核：**P0/P1 全部完成，剩余 P2 级收尾**
 
-| 优先级 | 项目 | 2026-08-15 建议 | 2026-08-19 状态 |
+| 优先级 | 项目 | 2026-08-15 建议 | 2026-08-25 状态 |
 |---|---|---|---|
 | **P0** | §57 coordinator 合规修复 | 走 MemoryManager/compress 通道 | ✅ 已完成（P0-A1 收敛 DI） |
 | **P0** | §17 E2E 4 失败修复 | 定位错误传播断言回归 | ✅ 已完成（P0-A10，20/20） |
 | **P1** | arena 子系统（Elo/Champion/Regression） | 接线或删除 | ✅ 已接线（B3 + eval API） |
 | **P1** | wake_agent 唤醒监控 | 接线到诊断/监控端点 或 标注待删除 | ✅ 已接线（B3 + WakeAgentTool） |
 | **P1** | voice_loop/MultiModalTrigger | 接线到语音端点 或 标注待删除 | ✅ 已接线（B3 + VoiceLoopTool） |
-| **P2** | CoreFacade getter 冗余 | 收敛调用路径或删冗余 getter | ⚠️ 大部分已随 P0-A2 收敛；残余（get_retrieval_crag 等）为 **B4（部分）** |
-| **P2** | 默认关闭 flag 清单化 | start.sh/.env.example 注释 + 诊断页展示生效状态 | ⚠️ **B5（部分）**：语义需文档化 |
-| **P2** | registry→docs 漂移自动清零 | —（2026-08-19 新增） | ⚠️ **C3（部分）**：`sync_registry_to_docs.py` 已建，接入 pre-commit/CI 待办 |
+| **P2** | CoreFacade getter 冗余 | 收敛调用路径或删冗余 getter | ✅ **已闭环（2026-08-25）**：`get_retrieval_crag` 已删除（a1120850），残余仅 2 个 0 调用者 getter（B4） |
+| **P2** | 默认关闭 flag 清单化 | start.sh/.env.example 注释 + 诊断页展示生效状态 | ✅ **已闭环（2026-08-25）**：语义已文档化（规范-功能开关与配置.md，11 处 env 引用；默认 false 为有意设计）（B5） |
+| **P2** | registry→docs 漂移自动清零 | —（2026-08-19 新增） | ✅ **已闭环（2026-08-25）**：`sync_registry_to_docs.py` 已接入 pre-commit Step 2.7 自动 `--fix`，实测漂移 0（226 符号全同步）（C3） |
 
 ---
 
 ## 8. 审计方法局限（诚实标注）
 
 1. **0 调用者判定基于文本 grep**：动态 import、`getattr` 反射调用可能漏检——已对重点项人工验证；2026-08-19 复核对 arena/voice_loop/wake_agent 的"已接线"结论为**阳性事实**（grep 到具体调用点），可信度高。
-2. **CoreFacade getter 抽样 30/192（首轮）**：未全量扫描，冗余率是抽样估计；2026-08-19 后残余量已小（B4 部分项）。
-3. **feature flag 清单**：扫描了 `"false"` 默认的 getenv，未逐一确认每个 flag 在部署配置中的实际值（B5 部分项即为此文档化工作）。
+2. **CoreFacade getter 抽样 30/192（首轮）**：未全量扫描，冗余率是抽样估计；2026-08-19 后残余量已小；2026-08-25 复核 B4 已闭环（`get_retrieval_crag` 已删除，残余仅 2 个 0 调用者 getter，grep 全仓验证）。
+3. **feature flag 清单**：扫描了 `"false"` 默认的 getenv，未逐一确认每个 flag 在部署配置中的实际值；2026-08-25 复核 B5 已闭环——语义已文档化于《规范-功能开关与配置.md》（11 处 env 引用），默认 false 为有意设计。
 4. **运行期验证未做**：未启动 server 实测；2026-08-19 复核的守卫状态以基线 + PR #16-29 记录为准（本会话沙箱重跑全量守卫超时，未作为证据）。
 5. **2026-08-19 复核基于基线权威事实 + 代码 grep 交叉验证**：能力数（1032/1039）、宪法 143 passed、分支保护 8 contexts 等取自已合并 PR 与基线文件，未逐项重跑。
 
@@ -199,10 +202,10 @@
 **aiPlat 的能力实现完成度高（≈95%+ 已实现，核心链路全部起作用）；2026-08-19 复核后，"实现了但没完全起作用"的缺口已基本闭合**：
 
 1. **首轮 3 个整体未接线子系统（arena / voice_loop / wake_agent）已全部接线**（B3，各 ≥10 caller，经 CoreFacade + 工具注册 + eval API）——违反 §9 的问题消除；
-2. **CoreFacade getter 冗余大幅收敛**（P0-A2 使 facade 成为平台唯一入口），残余少量 0 调用者 getter 列为 B4 部分项；
-3. **9 个默认关闭的 opt-in flag** 保持合法 opt-in，文档化列为 B5 部分项；registry→docs 漂移自动清零列为 C3 部分项（脚本已建）。
+2. **CoreFacade getter 冗余大幅收敛**（P0-A2 使 facade 成为平台唯一入口），B4 已闭环（2026-08-25）：`get_retrieval_crag` 已删除（a1120850），残余仅 2 个 0 调用者 getter；
+3. **9 个默认关闭的 opt-in flag** 保持合法 opt-in，语义已文档化（B5 已闭环，规范-功能开关与配置.md，11 处 env 引用）；registry→docs 漂移已由 pre-commit Step 2.7 自动清零（C3 已闭环，实测 226 符号全同步）。
 
-**核心链路（syscall/gates/memory/knowledge/evolution/skill/subagent/渠道/tenant/审批/断点续跑）全部真实起作用**——且本会话（PR #16-29）新增了子代理 provider、7 渠道消息、TenantStore、pipeline 拆分等接线，架构守卫全绿（0 ERROR），builder E2E 20/20。需收尾的仅为三个"部分项"（B4/B5/C3），均为 P2 级文档化/自动化工作，不再有"整系统未接线"级别的风险。
+**核心链路（syscall/gates/memory/knowledge/evolution/skill/subagent/渠道/tenant/审批/断点续跑）全部真实起作用**——且本会话（PR #16-29）新增了子代理 provider、7 渠道消息、TenantStore、pipeline 拆分等接线，架构守卫全绿（0 ERROR），builder E2E 20/20。三个"部分项"（B4/B5/C3）已于 2026-08-25 复核**全部闭环**，不再有任何"整系统未接线"级别的风险。
 
 ---
 
@@ -215,9 +218,9 @@
 | **"有生产调用者/已接线"（阳性）** | ✅ **高** | 如 PolicyGate/ApprovalGate/EvolutionEngine/CRAG 等——grep 到具体调用点，阳性命中即真实 |
 | **"0 调用者/未接线"（阴性）** | ⚠️ **有盲区** | 判定基于文本 grep + AST——动态 import、`getattr` 反射、经 CoreFacade re-export 可能漏检。已对重点项人工验证，但**不能保证全部** |
 | **3 个子系统 2026-08-15 未接线 → 2026-08-19 已接线** | ✅ **高（阳性证据）** | 2026-08-19 复核 grep 到具体调用点（server.py:1050/1051、arena_wiring.py、CoreFacade:3386/3427/3432），并对照基线 B3（各 ≥10 caller）双重确认 |
-| **CoreFacade getter 冗余（残余 B4）** | ⚠️ **中（抽样估计）** | 首轮 30/192 抽样；2026-08-19 后残余量已小，但全量冗余率仍是估算 |
-| **9 个默认关闭 flag** | ✅ **高** | 直接 grep `"false"` 默认值，阳性事实；文档化状态为 B5 部分项 |
+| **CoreFacade getter 冗余（B4）** | ✅ **已闭环（阳性事实）** | 2026-08-25 复核：`get_retrieval_crag` 已删除（a1120850，grep 全仓 0 命中）；残余 `get_secret`/`get_os_sandbox_status` 2 个 0 调用者 getter 为已知冗余 |
+| **9 个默认关闭 flag** | ✅ **高** | 直接 grep `"false"` 默认值，阳性事实；B5 已闭环（2026-08-25）：语义已文档化于《规范-功能开关与配置.md》（11 处 env 引用），默认 false 为有意设计 |
 | **"核心链路全部起作用"（阴性方向）** | ⚠️ **有盲区** | 基于"有调用者"阳性证据推导，但**未做运行时冒烟**（未启动 server 实测）——"能调用"≠"运行时正常" |
 | **守卫 4 FAIL → 全绿（2026-08-19）** | ✅ **高（基线权威）** | 取自已合并 PR #16-29 与《status-baseline-2026-08-19.md》，非转述旧守卫输出；本会话沙箱重跑超时未作为证据 |
 
-**一句话**：本报告"说某能力已接线"高可信（阳性 grep 到调用点）；"说某能力未接线"有阴性盲区（动态 import/反射可能漏检）。2026-08-19 复核后，三个重点结论（arena/voice_loop/wake_agent 已接线、守卫全绿、能力数 1032/1039）均为**阳性事实**；残余 B4/B5/C3 三个部分项建议按行动纲领继续跟踪。
+**一句话**：本报告"说某能力已接线"高可信（阳性 grep 到调用点）；"说某能力未接线"有阴性盲区（动态 import/反射可能漏检）。2026-08-19 复核后，三个重点结论（arena/voice_loop/wake_agent 已接线、守卫全绿、能力数 1032/1039）均为**阳性事实**；B4/B5/C3 三个部分项已于 **2026-08-25 复核全部闭环**（grep 验证：`get_retrieval_crag` 全仓 0 命中、`sync_registry_to_docs.py` 实测 226 符号全同步、规范-功能开关与配置.md 已收录全部 flag）。

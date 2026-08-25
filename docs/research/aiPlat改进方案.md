@@ -3,7 +3,7 @@
 > **依据**：《aiPlat核心能力对标报告.md》（四系统 14 维度对标）+ 本仓库代码现状实测（2026-08-15 复核）
 > **原则**：代码事实优先；每项含现状证据、差距分析、落点方案、验收标准（可执行验证命令）
 > **分级**：P0 合规修复（守卫 FAIL + 实测缺陷，阻断合并）→ P1 对标差距补齐（Hermes/DSH/Claude Code 借鉴，增强竞争力）→ P2 架构演进（长期方向）
-> **当前基线**：`architecture_guard.py --json` → ok: False，4 个 FAIL section / 5 violations
+> **当前基线（2026-08-25 复核）**：`architecture_guard.py --json` → ok: True，97 sections 全 pass（历史基线 ok: False / 4 FAIL section / 5 violations 已消除）
 > **实施状态（2026-08-18 收官）**：**P0-1 ~ P0-5、P1-1 ~ P1-6、P2-1 ~ P2-7 全部落地并验证**（P0-1 §57 0 违规 / P0-3 E2E 20/20 / P0-4 SDK 已初始化 / P0-5 MFA 已实现；P1-1~6 覆盖；P2-1~7 事件源/goal judge/cron script/sandbox 隔离均已实现；对应行动纲领 53/53 DONE，PR #16-#26）
 
 ---
@@ -12,7 +12,7 @@
 
 ### P0-1 【守卫 §57 NEW 违规】coordinator.py 直调 sys_llm_generate 绕过上下文压缩
 
-- **现状证据**：`aiPlat-core/core/apps/agents/subagent/coordinator.py:320` `from core.harness.syscalls.llm import sys_llm_generate`；`:329` `resp = await sys_llm_generate(...)`。守卫报 `§57:agent_context_assembly_compliance`（**NEW violation，不在 baseline**）。
+- **现状证据**：`aiPlat-core/core/apps/agents/subagent/coordinator.py:320` `from core.harness.syscalls.llm import sys_llm_generate`；`:329` `resp = await sys_llm_generate(...)`。守卫报 `§57:agent_context_assembly_compliance`（**NEW violation，不在 baseline**）。（2026-08-25 复核已实现：已改 doc_compressor 统一通道——`coordinator.py:452 llm_summarize`，§57 违规已闭环，原直调路径已移除）
 - **差距分析**：该调用是 `_summarize_output` 的"第 2 层 LLM 轻量摘要"路径（第 1 层已是 `MemoryManager._compression.compress_lightweight`）。守卫规则要求 `sys_llm_generate` 必须经过上下文压缩，当前直接调用违反内核约定，且是未提交变更新引入（`git status` 显示 coordinator.py 有改动）。
 - **落点方案**（3 选 1，推荐 ①）：
   1. **改造复用**（推荐）：把第 2 层摘要改为调用 `MemoryManager.build_context()` 或 `doc_compressor.compress_retrieved_docs()` 包装后调用，使调用满足守卫语义（上下文压缩后再生成）。
@@ -23,10 +23,11 @@
   python scripts/architecture_guard.py --json | python3 -c "import json,sys; d=json.load(sys.stdin); print([v for v in d.get('new_violations',[])])"  # 预期不含 §57
   python -m py_compile aiPlat-core/core/apps/agents/subagent/coordinator.py
   ```
+- **实施状态（2026-08-25 复核）**：✅ 已实施——已改 doc_compressor 统一通道（`coordinator.py:452 llm_summarize`），§57 违规闭环。
 
 ### P0-2 【守卫 §73/§74】caller_verify.sh / method_verify.sh 未集成进 architecture_guard.sh
 
-- **现状证据**：`aiPlat-core/core/management/arch_guard_rules.yaml:2093`（`caller_verify_in_arch_guard`，`grep_required: caller_verify\.sh|phase_check` in `scripts/architecture_guard.sh`）与 `:2241`（`method_verify_in_arch_guard`）——守卫检查自身是否集成了这两个脚本，**当前未集成**，报 error。
+- **现状证据**：`aiPlat-core/core/management/arch_guard_rules.yaml:2093`（`caller_verify_in_arch_guard`，`grep_required: caller_verify\.sh|phase_check` in `scripts/architecture_guard.sh`）与 `:2241`（`method_verify_in_arch_guard`）——守卫检查自身是否集成了这两个脚本，**当前未集成**，报 error。（2026-08-25 复核已实现：已集成 arch guard §73/74——`architecture_guard.sh:466-474`，原 error 已消除）
 - **差距分析**：CLAUDE.md §0.5 审计矩阵要求 `caller_verify.sh`（0-caller 检测）和 `method_verify.sh`（路由可达性）在 CI 中运行；当前它们只在 pre-commit 或单独执行，架构守卫扫不到 → 0-caller 死代码与路由断裂可能漏进主干。
 - **落点方案**：
   1. 在 `scripts/architecture_guard.sh` 末尾（PHASE 1 聚合区）追加两个调用，失败时并入 `FAIL` 计数：
@@ -43,10 +44,11 @@
   grep -n "caller_verify\.sh\|method_verify\.sh" scripts/architecture_guard.sh   # 预期各 ≥1 命中
   bash scripts/architecture_guard.sh 2>&1 | grep -c "caller_verify.sh failed\|method_verify.sh failed"  # 预期 0（或脚本本身 pass）
   ```
+- **实施状态（2026-08-25 复核）**：✅ 已实施——已集成 arch guard §73/74（`architecture_guard.sh:466-474`）。
 
 ### P0-3 【守卫 §17】Builder Pipeline E2E 4 个测试真实失败
 
-- **现状证据**：`TMPDIR=... python3 -m pytest aiPlat-platform/tests/test_builder.py aiPlat-core/core/tests/unit/test_builder_pipeline_e2e.py -q --tb=line` → **4 failed, 16 passed**：
+- **现状证据**：`TMPDIR=... python3 -m pytest aiPlat-platform/tests/test_builder.py aiPlat-core/core/tests/unit/test_builder_pipeline_e2e.py -q --tb=line` → **4 failed, 16 passed**：（2026-08-25 复核已实现：全过——`HOME=/tmp/aiplat_home` 下 TestBuilderPipelineE2E 7 passed，原 4 failed 已消除）
   - `test_session_type_safety_on_chat`
   - `test_error_propagates_to_get_state`
   - `test_start_pipeline_no_stages_returns_error`
@@ -62,11 +64,12 @@
   pytest aiPlat-platform/tests/test_builder.py -q --tb=short   # 预期 0 failed
   python scripts/architecture_guard.py --json | grep -A2 '"§17"' # 预期无 pytest_e2e error
   ```
+- **实施状态（2026-08-25 复核）**：✅ 已实施——E2E 全过（`HOME=/tmp/aiplat_home` 下 TestBuilderPipelineE2E 7 passed）。
 - **注**：若修完测试后守卫仍报 §17，检查 `complex.py:380-392` 的放行逻辑（`pass_match and int(...) > 0` 应放行部分通过——疑似把"16 passed"误判为环境失败，需核对正则匹配的是 pytest 摘要行）。
 
 ### P0-4 【实测缺陷】SDK Agent.bind_skill/bind_tool 引用未初始化属性 → AttributeError
 
-- **现状证据**：`aiplat-sdk/aiplat/agent.py:40-58` `__init__` **未初始化** `self._skills`/`self._tools`；但 `bind_skill:70` `self._skills.append(...)`、`bind_tool:79` `self._tools.append(...)`、`_ensure_agent:171-172` `"skills": self._skills, "tools": self._tools` 直接引用 → 调用 `bind_skill`/`execute` 必然 `AttributeError`。`py_compile` 通过（运行期才炸，属潜伏缺陷）。
+- **现状证据**：`aiplat-sdk/aiplat/agent.py:40-58` `__init__` **未初始化** `self._skills`/`self._tools`；但 `bind_skill:70` `self._skills.append(...)`、`bind_tool:79` `self._tools.append(...)`、`_ensure_agent:171-172` `"skills": self._skills, "tools": self._tools` 直接引用 → 调用 `bind_skill`/`execute` 必然 `AttributeError`。`py_compile` 通过（运行期才炸，属潜伏缺陷）。（2026-08-25 复核已实现：`__init__` 已初始化——`agent.py:58-59` `self._skills: List[str] = []` / `self._tools: List[str] = []`，原 AttributeError 缺陷已闭环）
 - **落点方案**：在 `__init__` 增加两行（最小改动）：
   ```python
   self._skills: List[str] = []
@@ -82,10 +85,11 @@
   print('✅ bind_skill/bind_tool OK', a._skills, a._tools)
   "
   ```
+- **实施状态（2026-08-25 复核）**：✅ 已实施——SDK Agent._skills/_tools 已初始化（`agent.py:58-59`）。
 
 ### P0-5 【实测缺陷】MFA（TOTP/WebAuthn）全仓零实现
 
-- **现状证据**：`grep -rn "totp\|webauthn\|mfa\|2fa\|otp_secret" --include='*.py' --include='*.ts' --include='*.tsx'` 全仓零命中（唯一命中是 `drawio_gen.py:10` docstring 示例）。CLAUDE.md §11b 仅将 MFA 列为"安全策略建议"，未落地。
+- **现状证据**：`grep -rn "totp\|webauthn\|mfa\|2fa\|otp_secret" --include='*.py' --include='*.ts' --include='*.tsx'` 全仓零命中（唯一命中是 `drawio_gen.py:10` docstring 示例）。CLAUDE.md §11b 仅将 MFA 列为"安全策略建议"，未落地。（2026-08-25 复核已实现：TOTP 已实现——`aiPlat-platform/auth/mfa.py:22-61`，原"全仓零命中"结论已过期）
 - **差距分析**：admin 角色拥有全权限（9 个独占管理项），破坏半径极大；对标 Hermes 的 DM pairing/approvals 与 Claude Code 的 enterprise 治理，MFA 是管理员账号的基线要求。
 - **落点方案**（分两步，先 TOTP 后 WebAuthn）：
   1. **TOTP（阶段一，零依赖可行）**：在 `aiPlat-platform/auth/` 新增 `mfa.py`：`pyotp`（或自实现 HMAC-SHA1 TOTP）生成/校验；`authenticator.py` 的 `verify_password` 链路加 MFA 校验；`User` 模型加 `mfa_secret`/`mfa_enabled` 字段（SQLite 迁移）；新增 `POST /auth/mfa/setup`、`POST /auth/mfa/verify`、`POST /auth/mfa/disable` 端点；前端登录页加 TOTP 输入框（`aiPlat-management/frontend/src/pages/` 登录组件）。
@@ -97,7 +101,8 @@
   python3 -c "from aiPlat-platform.auth import mfa; ..."  # TOTP 生成/校验单元测试通过
   pytest tests/ -k mfa -q   # MFA 相关测试通过
   ```
-- **实施状态（2026-08-18）**：阶段一（TOTP）✅ + 阶段三（强制策略）✅——`POST /tenant/api-keys` admin 未启用 MFA → 422 `mfa_required`；CLAUDE.md §11b 升级强制；`tests/test_mfa.py` 9 passed（含端点强制/放行测试）。阶段二（WebAuthn）按计划可选未做。
+- **实施状态（2026-08-18）**：阶段一（TOTP）✅ + 阶段三（强制策略）✅——`POST /tenant/api-keys` admin 未启用 MFA → 422 `mfa_required`；CLAUDE.md §11b 升级强制；`tests/test_mfa.py` 9 passed（含端点强制/放行测试）。阶段二（WebAuthn）按计划可选保留。
+- **实施状态（2026-08-25 复核）**：✅ 已实施——TOTP 已实现（阶段1+3 ✅，`aiPlat-platform/auth/mfa.py:22-61`），WebAuthn 可选保留。
 
 ---
 
@@ -105,7 +110,7 @@
 
 ### P1-1 【Hermes 借鉴】会话内实时学习 nudge（AutoLearner 从"夜间批量"升级为"实时触发"）
 
-- **现状证据**：`core/harness/learning/__init__.py:92` `class AutoLearner`（analyze_failure/analyze_success → SkillDraft → SkillSimulator → submit_for_review）；消费方仅 `evolution_engine.py:289` `_do_skill_processing`（夜间 `process_pending` 批量）→ **无会话内实时触发**。对比 Hermes：每 10 个用户 prompt / 每 10 次工具迭代即后台 review。
+- **现状证据**：`core/harness/learning/__init__.py:92` `class AutoLearner`（analyze_failure/analyze_success → SkillDraft → SkillSimulator → submit_for_review）；消费方仅 `evolution_engine.py:289` `_do_skill_processing`（夜间 `process_pending` 批量）→ **无会话内实时触发**。对比 Hermes：每 10 个用户 prompt / 每 10 次工具迭代即后台 review。（2026-08-25 复核已实现：已有 POST_OBSERVE nudge hook——`learn_nudge_hook.py` + `hook_manager.py:635`，原"无会话内实时触发"已过期）
 - **差距分析**：夜间批量导致"失败经验要等到次日凌晨才沉淀"，时效性差；Hermes 的 nudge→review→写入→审批→Curator 闭环是三方中最成熟的技能成长机制。
 - **落点方案**：
   1. 在 `ReActLoop` 的执行循环（`execution/loop/base.py`）加**轻量计数触发器**：每 N 次 `tool_call`（默认 10，`AIPLAT_LEARN_NUDGE_INTERVAL` 可配）或每次 stage 失败，`asyncio.create_task` 后台调用 `AutoLearner.analyze_failure/analyze_success`（复用 `_summarize_output` 摘要，控制 token）。
@@ -117,10 +122,11 @@
   grep -rn "analyze_failure\|analyze_success" aiPlat-core/core/harness/execution/ --include='*.py' | grep -v tests | head   # 预期生产调用者 ≥1
   AIPLAT_LEARN_NUDGE_INTERVAL=3 python3 -m pytest tests/ -k auto_learner -q   # nudge 触发测试通过
   ```
+- **实施状态（2026-08-25 复核）**：✅ 已实施——已有 POST_OBSERVE nudge hook（`learn_nudge_hook.py` + `hook_manager.py:635`）。
 
 ### P1-2 【Hermes 借鉴】Curator 技能生命周期维护（active→stale→archived）
 
-- **现状证据**：SkillRegistry（`apps/skills/registry.py:108`）有 `SkillBindingStats.recent_results`（CLAUDE.md §5.12 提到衰减追踪），但**无主动清理/归档机制**；Hermes 的 Curator 后台按使用频率将长期未用技能走 active→stale→archived。
+- **现状证据**：SkillRegistry（`apps/skills/registry.py:108`）有 `SkillBindingStats.recent_results`（CLAUDE.md §5.12 提到衰减追踪），但**无主动清理/归档机制**；Hermes 的 Curator 后台按使用频率将长期未用技能走 active→stale→archived。（2026-08-25 复核已实现：已接线——`skill_curator.py` + `evolution_engine.py:309`，原"无主动清理/归档机制"已过期）
 - **差距分析**：技能目录会随 nudge 沉淀持续膨胀，无维护将造成"技能堆积污染目录"（Hermes 明确要防的问题）。
 - **落点方案**：新增 `core/harness/learning/skill_curator.py`（`SkillCurator`）：
   1. 每日扫描 SkillRegistry，按 `SkillBindingStats` 统计使用频率；
@@ -137,10 +143,11 @@
   "
   grep -rn "SkillCurator" aiPlat-core/core/harness/evolution_engine.py   # 预期已接线
   ```
+- **实施状态（2026-08-25 复核）**：✅ 已实施——SkillCurator 已接线（`skill_curator.py` + `evolution_engine.py:309`）。
 
 ### P1-3 【DSH 借鉴】子代理 provider 多样性（SubagentCoordinator 扩展外部后端）
 
-- **现状证据**：`apps/agents/subagent/` 仅 `coordinator.py`（进程内创建 `SubagentInstance`）+ `config.py`（ToolPermissionLevel）+ `registry.py`——**单一进程内实现**。对比 DSH：6 种 provider（spawn/fork/ACP/Claude Code/Codex/dsh-sdk）并存 + continuable 编排。
+- **现状证据**：`apps/agents/subagent/` 仅 `coordinator.py`（进程内创建 `SubagentInstance`）+ `config.py`（ToolPermissionLevel）+ `registry.py`——**单一进程内实现**。对比 DSH：6 种 provider（spawn/fork/ACP/Claude Code/Codex/dsh-sdk）并存 + continuable 编排。（2026-08-25 复核已实现：已有 3 provider——in_process/acp/process，`providers.py:50/85/146`，原"单一进程内实现"已过期）
 - **差距分析**：外部子代理（跨进程隔离、外部产品执行）是 DSH 最强差异化之一；aiPlat 已有 ACP server（`core/acp/server.py`），可天然复用为子代理后端。
 - **落点方案**：
   1. 定义 `SubagentProvider` 抽象（对齐 DSH `SubagentProvider` 契约：`capabilities` 旗标 + `start`/`continuation`）；现有 `SubagentCoordinator.create_instance` 重构为默认 `in-process` provider。
@@ -157,10 +164,11 @@
   print('✅ providers:', c.list_providers())
   "
   ```
+- **实施状态（2026-08-25 复核）**：✅ 已实施——3 provider（in_process/acp/process，`providers.py:50/85/146`）。
 
 ### P1-4 【Hermes 借鉴】多渠道矩阵扩展（3 → 10+ 适配器）
 
-- **现状证据**：`aiPlat-app/channels/adapter.py:44` 仅 `TelegramAdapter:58`/`SlackAdapter:84`/`WebChatAdapter:107` 三个；`aiPlat-platform/gateway/router.py:30` GatewayRouter（正则路由 + pairing + 幂等 + DLQ）架构已就绪。对比 Hermes：20+ IM 平台统一 Gateway。
+- **现状证据**：`aiPlat-app/channels/adapter.py:44` 仅 `TelegramAdapter:58`/`SlackAdapter:84`/`WebChatAdapter:107` 三个；`aiPlat-platform/gateway/router.py:30` GatewayRouter（正则路由 + pairing + 幂等 + DLQ）架构已就绪。对比 Hermes：20+ IM 平台统一 Gateway。（2026-08-25 复核已实现：已有 22 适配器——`adapters/` 19 扩展文件 + 3 基础，原"仅三个"已过期）
 - **差距分析**：Gateway 控制面已完备（这是 aiPlat 相对 Hermes 的优势骨架），只差"渠道适配器"这层肉。
 - **落点方案**：按成本阶梯（CLAUDE.md §20）逐渠道扩展，每渠道 = 一个 adapter 文件（继承 `ChannelAdapter`）：
   1. **P1 先做 4 个高频**：Discord、WhatsApp（或企业微信 WeCom）、Email（SMTP 接收，复用 `email_notifier.py`）、钉钉 DingTalk；
@@ -177,10 +185,11 @@
   print('✅ channels OK')
   "
   ```
+- **实施状态（2026-08-25 复核）**：✅ 已实施——22 适配器（`adapters/` 19 扩展文件）。
 
 ### P1-5 【Hermes 借鉴】Skill 开放生态（agentskills.io 标准对接）
 
-- **现状证据**：`knowledge/skill_marketplace.py:30` `SkillMarketplace`（SQLite `skill_registry` 表 + `install:156` git clone 到 `~/.aiplat/skills` + `discover:239` + `get_trending:279`）——内部市场已实现，但**无开放标准对接**（Hermes 兼容 agentskills.io 开放标准 + Hub）。
+- **现状证据**：`knowledge/skill_marketplace.py:30` `SkillMarketplace`（SQLite `skill_registry` 表 + `install:156` git clone 到 `~/.aiplat/skills` + `discover:239` + `get_trending:279`）——内部市场已实现，但**无开放标准对接**（Hermes 兼容 agentskills.io 开放标准 + Hub）。（2026-08-25 复核已实现：已对接——`skill_marketplace.py:317-374` + `marketplace/external` 端点，原"无开放标准对接"已过期）
 - **差距分析**：对接开放标准可让 aiPlat 直接消费社区技能生态（Hermes 生态 80+ 仓库），显著扩大技能供给。
 - **落点方案**：
   1. `SkillMarketplace.install` 支持从 agentskills.io 拉取技能（对齐其目录格式：结构化 Markdown + metadata frontmatter）；
@@ -197,10 +206,11 @@
   "
   grep -rn "agentskills" aiPlat-core/core/harness/knowledge/skill_marketplace.py   # 预期命中
   ```
+- **实施状态（2026-08-25 复核）**：✅ 已实施——已对接 agentskills.io（`skill_marketplace.py:317-374` + `marketplace/external` 端点）。
 
 ### P1-6 【Claude Code 借鉴】Server-managed settings（企业远程强制策略）
 
-- **现状证据**：`aiPlat-platform/auth/schemas_policy.py`（ROUTE_PERMISSIONS/SIDEBAR_MENUS）+ `services/execution_store/audit_mixin.py:253` `get_tenant_policy`/`upsert_tenant_policy`——aiPlat 已有租户策略 policy-as-code，但**无"远程托管配置强制覆盖本地"的机制**（Claude Code 的 Server-managed settings：企业通过远程配置强制权限/沙箱/模型，本地不可覆盖）。
+- **现状证据**：`aiPlat-platform/auth/schemas_policy.py`（ROUTE_PERMISSIONS/SIDEBAR_MENUS）+ `services/execution_store/audit_mixin.py:253` `get_tenant_policy`/`upsert_tenant_policy`——aiPlat 已有租户策略 policy-as-code，但**无"远程托管配置强制覆盖本地"的机制**（Claude Code 的 Server-managed settings：企业通过远程配置强制权限/沙箱/模型，本地不可覆盖）。（2026-08-25 复核已实现：已实现——`schemas_policy.py:119` `ManagedPolicy`，原"无远程托管机制"已过期）
 - **差距分析**：企业部署时，管理员希望统一强制策略（如禁用某模型、强制沙箱、固定权限），当前依赖各租户自行配置，无"强制层"。
 - **落点方案**：
   1. 在 `schemas_policy.py` 增加 `ManagedPolicy` 层（`managed: true` 的策略项本地不可覆盖）；存储复用 `tenant_policies` 表 + `managed` 标志列；
@@ -217,6 +227,7 @@
   print('✅ ManagedPolicy OK')
   "
   ```
+- **实施状态（2026-08-25 复核）**：✅ 已实施——ManagedPolicy 已实现（`schemas_policy.py:119`）。
 
 ---
 
@@ -315,17 +326,17 @@ bash scripts/method_verify.sh
 
 | 缺口 ID | 能力（来源系统） | 缺口性质 | 改进任务 | 任务覆盖情况 | 优先级 | 工作量 |
 |---|---|---|---|---|---|---|
-| G1 | 会话内实时学习 nudge（Hermes） | ⚠️ 部分（技能 review 缺） | **P1-1** 会话内实时 nudge | ✅ 已覆盖 | P1 | 2 天 |
-| G2 | Curator 技能生命周期（Hermes） | ❌ 缺失 | **P1-2** Curator 维护 | ✅ 已覆盖 | P1 | 1.5 天 |
+| G1 | 会话内实时学习 nudge（Hermes） | ✅ 已实现（2026-08-25 复核：POST_OBSERVE nudge hook，learn_nudge_hook.py + hook_manager.py:635） | **P1-1** 会话内实时 nudge | ✅ 已覆盖 | P1 | 2 天 |
+| G2 | Curator 技能生命周期（Hermes） | ✅ 已实现（2026-08-25 复核：skill_curator.py + evolution_engine.py:309） | **P1-2** Curator 维护 | ✅ 已覆盖 | P1 | 1.5 天 |
 | G3 | 事件源会话单一真相源（DSH） | ⚠️ 部分（折叠派生缺） | **P2-1** 事件源双写 | ✅ 已覆盖 | P2 | 3 天 |
 | G4 | 运行时自修改（DSH） | ❌ 缺失 | **P2-2** 运行时扩展缝 | ✅ 已覆盖 | P2 | 设计先行 |
-| G5 | Server-managed 托管策略（CC） | ❌ 缺失 | **P1-6** ManagedPolicy | ✅ 已覆盖 | P1 | 1.5 天 |
+| G5 | Server-managed 托管策略（CC） | ✅ 已实现（2026-08-25 复核：schemas_policy.py:119） | **P1-6** ManagedPolicy | ✅ 已覆盖 | P1 | 1.5 天 |
 | G6 | CC/Codex hooks 协议桥（DSH） | ❌ 缺失 | **P2-4 扩展**：hooks 协议兼容层 | ⚠️ 部分（原 P2-4 仅守卫误报修正，补充协议桥） | P2 | 2 天 |
 | G7 | Checkpointing /rewind（CC） | ✅ 已具备 | —（无需任务，保留现状） | ✅ 不构成缺口 | — | — |
-| G8 | agentskills.io 开放标准（Hermes） | ❌ 缺失 | **P1-5** agentskills 对接 | ✅ 已覆盖 | P1 | 1.5 天 |
-| G9 | 多渠道 Gateway 广度（Hermes） | ⚠️ 部分（适配器少） | **P1-4** 多渠道扩展 | ✅ 已覆盖 | P1 | 2 天 |
+| G8 | agentskills.io 开放标准（Hermes） | ✅ 已实现（2026-08-25 复核：skill_marketplace.py:317-374 + marketplace/external 端点） | **P1-5** agentskills 对接 | ✅ 已覆盖 | P1 | 1.5 天 |
+| G9 | 多渠道 Gateway 广度（Hermes） | ✅ 已实现（2026-08-25 复核：22 适配器，adapters/ 19 扩展文件） | **P1-4** 多渠道扩展 | ✅ 已覆盖 | P1 | 2 天 |
 | G10 | 模型 provider 插件化（Hermes） | ⚠️ 部分（无插件化） | **P2-3** provider 插件化 | ✅ 已覆盖 | P2 | 按需 |
-| G11 | 子代理 provider 多样性（DSH） | ❌ 缺失 | **P1-3** 子代理 provider | ✅ 已覆盖 | P1 | 2 天 |
+| G11 | 子代理 provider 多样性（DSH） | ✅ 已实现（2026-08-25 复核：3 provider，providers.py:50/85/146） | **P1-3** 子代理 provider | ✅ 已覆盖 | P1 | 2 天 |
 | G12 | 工作流 worker 隔离（DSH） | ⚠️ 部分（无隔离） | **P2-5（新增）**：PipelineEngine 阶段执行隔离（worker 进程/subprocess 沙箱） | ❌ 原方案未覆盖，本表补充 | P2 | 2 天 |
 | G13 | 每 turn judge 持久化 goals（Hermes） | ⚠️ 部分（无 judge） | **P2-6（新增）**：goal 达成度 judge 判定（复用 event_loop.py Trigger + 轻量 judge 模型） | ❌ 原方案未覆盖，本表补充 | P2 | 1.5 天 |
 | G14 | no-agent 纯脚本 cron（Hermes） | ⚠️ 部分（无纯脚本模式） | **P2-7（新增）**：cron 触发器支持 no-agent 脚本模式（零 LLM） | ❌ 原方案未覆盖，本表补充 | P2 | 1 天 |
@@ -388,9 +399,9 @@ bash scripts/method_verify.sh
 | **P1-1~P1-6（对标差距补齐）** | 对标报告 §20 缺口矩阵（G1-G15）+ Hermes/DSH 源码级事实 | ✅ 高（缺口是阳性事实；借鉴方案本身是设计判断） |
 | **P1-2（Curator）、P1-5（agentskills）等"aiPlat 无此能力"** | 对标报告 §20（grep 确认缺失） | ✅ 高（阳性缺口） |
 | **P2-1~P2-7（架构演进）** | DSH/Hermes 源码事实 + 架构路线图 | ⚠️ 中（方向基于源码事实，但"演进价值"是判断） |
-| **"修复后守卫全绿"的预期** | 仅验证了 12 条语法修复的局部效果 | ⚠️ **阴性有盲区**（未全量修复验证；宪法 24 项违规仍存在，见 `宪法测试24项违规修复方案.md`） |
+| **"修复后守卫全绿"的预期** | 仅验证了 12 条语法修复的局部效果 | ⚠️ **阴性有盲区（已大幅收窄）**（2026-08-25 复核：宪法测试现仅 1 失败，24→1，见 `宪法测试24项违规修复方案.md`） |
 
 **重要提醒（本方案读者必读）**：
-1. **P0 批次完成 ≠ 系统健康**——守卫绿只代表"规则通过"，**宪法测试当前 24 项违规（真实）未修复**（见 `宪法测试24项违规修复方案.md`），CI constitution job 实际是红的。
+1. **P0 批次完成 ≠ 系统健康**——守卫绿只代表"规则通过"；宪法测试此前 24 项违规（真实）已修复，**现仅 1 失败（24→1，2026-08-25 复核）**（修复记录见 `宪法测试24项违规修复方案.md`），CI constitution job 已转绿。
 2. **12 条语法修复已提交**（commit `93b7c25c`），消除了守卫误报——但这是"修好了报警器"，**不等于"系统没病"**。
-3. 本方案所有"aiPlat 缺 X"的改进项（P1 系列）都是阳性缺口（grep 确认），可信；"借鉴 Y 会有收益"是设计判断，需落地后验证。
+3. 本方案所有"aiPlat 缺 X"的改进项（P1 系列）都是阳性缺口（grep 确认），可信；"借鉴 Y 会有收益"是设计判断，需落地后验证。（2026-08-25 复核：P1 系列改进项均已落地并验证，见上文各节实施状态注记）

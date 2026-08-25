@@ -45,7 +45,7 @@ Phase 0（基线固化）✅ → Phase 1（状态/事件一致性）✅ → Phas
 
 > **2026-08-19 复核**：`scripts/coupling_metrics.py` 未见基线独立证据（2026-08-19 基线未单列）；但"基线 ratchet 门禁"机制已由 **P2-B2（--write-baseline review 门禁）** 建立（review 时对比 baseline，仅允许下降）。耦合实降目标由 **P0-A1（harness→apps 收敛 DI，宪法白名单 38→25）+ P0-A2（api→CoreFacade，54 文件 292 行 harness 直导清零）+ P2-A4（pipeline_engine 12281→8288 行拆分）** 达成。
 
-- **现状证据**：CLAUDE.md（aiPlat-core）要求"真实降低 `avg_degree` 与'非聚合点 max_degree'"，但 `scripts/` 下**无耦合度量工具**（grep avg_degree 仅命中 CLAUDE.md 文本）
+- **现状证据**：CLAUDE.md（aiPlat-core）要求"真实降低 `avg_degree` 与'非聚合点 max_degree'"，但 `scripts/` 下**无耦合度量工具**（avg_degree 已在代码中计算（cross-import 分析），coupling_metrics.py 独立工具仍缺（REAL 保留））
 - **任务**：
   1. 新增 `scripts/coupling_metrics.py`：AST 扫描 core 下每个 .py 的 import 依赖，输出 `avg_degree`（平均入边+出边）、`max_degree`、top-20 高耦合模块、非聚合点 max_degree（排除已知聚合点如 core_facade/integration）
   2. 跑出基线快照 → `scripts/baselines/coupling_baseline.json`

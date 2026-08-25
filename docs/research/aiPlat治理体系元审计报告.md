@@ -7,6 +7,8 @@
 
 > **2026-08-19 状态更新**：对照最新基线（53 DONE / 0 PARTIAL / 0 OPEN 行动纲领；宪法测试 143 passed + 1 skipped 全绿；9/9 规范 approved；架构守卫全绿 0 ERROR）复核本报告全部结论。**本报告首版发现的治理缺陷已全部修复**：①宪法测试 24 failed → **143 passed + 1 skipped**（8c6a5154 宪法修复 + P0-A1/A3 收敛）；②守卫 12 条 OR 语法 bug → **已修复（93b7c25c）**，architecture_guard.sh 全绿；③能力登记三口径（944/807/780/142）→ **已统一（351f816a）**：registry total=1032、CAPABILITIES total=1039（口径差异：registry 登记 vs 扫描）；④verify_capability_consumers **已进 CI**（P1-B2）；⑤证据验证 --strict **25 passed**（P1-B3）；⑥MFA 从建议升级为**强制**（P0-5 阶段3）。下文各节以"**2026-08-19 复核**"标注最新状态，原审计发现保留作为历史证据。
 
+> **2026-08-25 复核增补**：①宪法测试**大部分已修复（现 1 失败）**——`test_import_graph_is_dag_between_layers` 检出 `aiPlat-platform/api/routers/channels.py:96` 导入 `aiPlat-app/channels/adapter.py`（platform→app 跨层导入，P1-A4 afac159c，2026-08-19 引入）；②§1.3 的 2 条真问题（meta_agent、wiring 测试）**均已闭环**——MetaAgent 已原生实现于 2026-08-18（P0-C7，1d2fb323）；③verify_capability_consumers 接线确认在 `.github/workflows/architecture-guard.yml:45` 与 `scripts/architecture_guard.sh` §73。pre-commit 框架未装（§5）与图索引漏检（§11）两处残余项不变。
+
 ---
 
 ## 0. 总体判定（先给结论）
@@ -19,7 +21,7 @@
 | **是否已实现（接线生效）** | ✅ 基本实现 → ✅ **实现（2026-08-19 复核）** | 真实生效链：git hook → architecture_guard.sh → .py ratchet + 图索引 + evidence 验证；CI 有独立 job；verify_capability_consumers 已入 architecture-guard.yml:45 |
 | **如何运作** | 见 §5 执行链路图 | 多层：git hook(--quick) → pre-commit 框架(未安装) → CI(全量) → capability_convergence |
 
-**一句话总结**：这套体系**真实存在、真实接线、真实能阻断**（不是文档口号），核心引擎（ArchYAMLRule + 图索引 + ratchet）设计合理；**2026-08-19 复核：首版发现的 1 个系统性检测 bug（12 条规则 OR 语法错误）已修复（93b7c25c），2 个接线缺口（verify_capability_consumers 未进 CI、能力登记数字不一致）均已闭环（P1-B2 进 CI / 351f816a 口径统一），宪法测试从 24 failed 修复为 143 passed 全绿**。残余项：pre-commit 框架未安装、规则自检（黄金样本）机制未建、图索引不含未提交新文件（详见 §5/§7/§11）。
+**一句话总结**：这套体系**真实存在、真实接线、真实能阻断**（不是文档口号），核心引擎（ArchYAMLRule + 图索引 + ratchet）设计合理；**2026-08-19 复核：首版发现的 1 个系统性检测 bug（12 条规则 OR 语法错误）已修复（93b7c25c），2 个接线缺口（verify_capability_consumers 未进 CI、能力登记数字不一致）均已闭环（P1-B2 进 CI / 351f816a 口径统一），宪法测试从 24 failed 修复为 143 passed 全绿**（2026-08-25 复核：大部分已修复，现 1 失败——`channels.py:96` 跨层导入，P1-A4 引入）。残余项：pre-commit 框架未安装、规则自检（黄金样本）机制未建、图索引不含未提交新文件（详见 §5/§7/§11）。
 
 ---
 
@@ -47,7 +49,7 @@
 
 ### 1.3 误报规则清单（12 条，全部需修复）→ **2026-08-19 复核：已全部修复（93b7c25c）**
 
-> **2026-08-19 复核**：下列 12 条 pattern 均已修复（`\|` → `|`）。修复后 10 条变 PASS（误报消除），2 条真问题（meta_agent 未实现、wiring 测试缺失）在后续行动纲领中闭环处理（MetaAgent 相关以行动纲领 P1-A5 agentskills.io 等替代方案落地）。下表为修复前的原始清单。
+> **2026-08-19 复核**：下列 12 条 pattern 均已修复（`\|` → `|`）。修复后 10 条变 PASS（误报消除），2 条真问题（meta_agent 未实现、wiring 测试缺失）在后续行动纲领中闭环处理（MetaAgent 相关以行动纲领 P1-A5 agentskills.io 等替代方案落地）。**2026-08-25 复核：2 条真问题均已闭环**——MetaAgent 已原生实现于 2026-08-18（P0-C7，commit 1d2fb323：`core/harness/meta/meta_agent.py` 的 `get_meta_agent()`，`evolution_engine.py:275` meta_analysis 调用；接线断言测试 `tests/wiring/test_meta_agent_wired.py`，c0ae8a23），wiring 测试已补齐（`tests/wiring/integration/test_reflector.py` 等已存在 + P1-B2 五层检查进 CI）。下表为修复前的原始清单。
 
 | 规则 id | 级别 | 修复后命中数（正确语法实测） | 真阳性？ |
 |---|---|---|---|
@@ -61,10 +63,10 @@
 | hallucination_tracker_wired | info | 3 | ❌ 误报（有接线） |
 | parallel_executor_wired | info | 2 | ❌ 误报（有接线） |
 | lora_trigger_hooked | info | 2 | ❌ 误报 |
-| meta_agent_module | info | **0** | ✅ **真阳性**（MetaAgent 确实未实现） |
-| wiring_integration_tests_present | info | **0** | ✅ **真阳性**（接线集成测试确实缺失） |
+| meta_agent_module | info | **0** | ✅ **真阳性**（MetaAgent 确实未实现；**2026-08-25 复核已实现**：2026-08-18 P0-C7，1d2fb323，现命中 `meta_agent.py`） |
+| wiring_integration_tests_present | info | **0** | ✅ **真阳性**（接线集成测试确实缺失；**2026-08-25 复核已实现**：`tests/wiring/integration/test_reflector.py` 等已存在） |
 
-**关键洞察**：修复语法后，10 条变 PASS（误报消除），2 条仍 0 命中——**这 2 条才是真问题**（MetaAgent 未实现、接线测试缺失）。**错误语法让"假 FAIL"与"真 FAIL"无法区分**——10 条噪音掩盖了 2 条真问题，这就是"误报淹没真违规"的实证。
+**关键洞察**：修复语法后，10 条变 PASS（误报消除），2 条仍 0 命中——**这 2 条才是真问题**（MetaAgent 未实现、接线测试缺失）。**错误语法让"假 FAIL"与"真 FAIL"无法区分**——10 条噪音掩盖了 2 条真问题，这就是"误报淹没真违规"的实证。**（2026-08-25 复核：2 条真问题均已闭环——MetaAgent 已实现 P0-C7、wiring 测试已建，见上表加注）**
 
 ### 1.4 修复方向（最小改动）→ **2026-08-19 复核：已实际落地（93b7c25c）**
 
@@ -86,9 +88,9 @@ pattern: 'ErrorReflector|on_error_reflector|reflect_on_error'
 
 ---
 
-## 2. 宪法测试（144 个测试）——真实存在，无 xfail 掩盖 → **2026-08-19 复核：24 failed → 143 passed + 1 skipped 全绿**
+## 2. 宪法测试（144 个测试）——真实存在，无 xfail 掩盖 → **2026-08-19 复核：24 failed → 143 passed + 1 skipped 全绿**；**2026-08-25 复核：大部分已修复（现 1 失败）**——`channels.py:96` platform→app 跨层导入（P1-A4 afac159c 引入）
 
-> **2026-08-19 复核**：首版实跑的 **24 failed / 119 passed / 1 skipped** 已全部修复——commit 8c6a5154（宪法修复：infra 硬编码 + phase 字符串）+ P0-A1（harness→apps 收敛，白名单 38→25）+ P0-A3（tenant 表迁移）+ P0-A10（Builder E2E 20/20）。复核实测 **143 passed + 1 skipped（全绿）**，含 test_core_internal_boundaries / kernel_agnostic / layer_boundaries / infra_agnostic 11 / platform_function_boundary / ast_business_keys / system_prompt_flow 5 / sysgraph_registration 5 等；1 skipped 为条件跳过（非掩盖）。C6 宪法 CI 已接线、C7 golden --verify 已入 CI。
+> **2026-08-19 复核**：首版实跑的 **24 failed / 119 passed / 1 skipped** 已全部修复——commit 8c6a5154（宪法修复：infra 硬编码 + phase 字符串）+ P0-A1（harness→apps 收敛，白名单 38→25）+ P0-A3（tenant 表迁移）+ P0-A10（Builder E2E 20/20）。复核实测 **143 passed + 1 skipped（全绿）**，含 test_core_internal_boundaries / kernel_agnostic / layer_boundaries / infra_agnostic 11 / platform_function_boundary / ast_business_keys / system_prompt_flow 5 / sysgraph_registration 5 等；1 skipped 为条件跳过（非掩盖）。C6 宪法 CI 已接线、C7 golden --verify 已入 CI。**2026-08-25 复核：大部分已修复（现 1 失败）**——`test_import_graph_is_dag_between_layers` 检出 `aiPlat-platform/api/routers/channels.py:96` 导入 `aiPlat-app/channels/adapter.py`（platform→app 跨层导入，P1-A4 afac159c，2026-08-19 引入）；此前的 24 项首版违规保持清零。
 
 | 项 | 数值 | 说明 |
 |---|---|---|
@@ -98,7 +100,7 @@ pattern: 'ErrorReflector|on_error_reflector|reflect_on_error'
 | skip | 1 处 | 条件跳过（ImportError/目录不存在/非 venv/模块不可导入）——合理，非掩盖 |
 | CI | `architecture-guard.yml` 有独立 "Run constitution tests" job | 真实接线（C6） |
 
-**判定（2026-08-19 复核，修正首版）**：首版实跑 **24 failed / 119 passed / 1 skipped**（10% 失败率）反映的**真实违规已全部修复**：kernel_agnostic 检测到的 3 处业务 phase 字符串分支 + 5 处 core 管理 tenant_quotas 表，随 8c6a5154 宪法修复 + P0-A1/A3 收敛闭环。当前 **143 passed + 1 skipped 全绿**——宪法测试**有效拦截真实违规，且违规存量已清零**，CI constitution job 由红转绿。
+**判定（2026-08-19 复核，修正首版）**：首版实跑 **24 failed / 119 passed / 1 skipped**（10% 失败率）反映的**真实违规已全部修复**：kernel_agnostic 检测到的 3 处业务 phase 字符串分支 + 5 处 core 管理 tenant_quotas 表，随 8c6a5154 宪法修复 + P0-A1/A3 收敛闭环。**2026-08-25 复核：当前大部分已修复（现 1 失败）**——`test_import_graph_is_dag_between_layers` 检出 `channels.py:96` platform→app 跨层导入（P1-A4 afac159c，2026-08-19 引入）；首版 24 项违规存量已清零，宪法测试**仍有效拦截真实违规**（新增违规即被检出）。
 
 ---
 
@@ -167,7 +169,7 @@ pattern: 'ErrorReflector|on_error_reflector|reflect_on_error'
   │    └─ pre-commit 框架未安装 → 此配置完全是摆设 ⚠️
   │
   └─ [CI 全量] .github/workflows/
-       ├─ architecture-guard.yml → bash architecture_guard.sh（全量非 quick）+ pytest constitution + caller_verify.sh + phase_check.sh
+       ├─ architecture-guard.yml → guard job: bash architecture_guard.sh（全量非 quick）+ rule_golden_sample --verify + pytest constitution；wiring job: verify_capability_consumers.sh + phase_check.sh
        ├─ aiplat-contracts-guard.yml → 契约链接/binding/架构文档守卫
        ├─ ci.yml → ruff/mypy/radon/pytest(coverage≥80)
        └─ docs-verify.yml / verification.yml
@@ -208,7 +210,7 @@ pattern: 'ErrorReflector|on_error_reflector|reflect_on_error'
 | 优先级 | 项目 | 工作量 | 验收 | 2026-08-19 状态 |
 |---|---|---|---|---|
 | **P0** | 修复 12 条规则的 `\|` → `(A\|B\|C)` 语法 | 0.5 天 | `architecture_guard.py --json` §73 六项误报消除；meta_agent/wiring_tests 2 条保留为真 FAIL | ✅ **已落地（93b7c25c）**：守卫全绿 0 ERROR |
-| **P0** | 修复后确认：10 条 PASS + 2 条真 FAIL → 针对真 FAIL 决策 | 0.5 天 | 守卫无噪音，真问题浮出 | ✅ **已闭环**：MetaAgent 以 P1-A5 skill_marketplace 等替代方案落地；wiring 测试并入 verify_capability_consumers（P1-B2） |
+| **P0** | 修复后确认：10 条 PASS + 2 条真 FAIL → 针对真 FAIL 决策 | 0.5 天 | 守卫无噪音，真问题浮出 | ✅ **已闭环（2026-08-25 复核）**：MetaAgent 已实现于 2026-08-18（P0-C7，1d2fb323 get_meta_agent）；wiring 测试并入 verify_capability_consumers（P1-B2）+ tests/wiring/ 补齐 |
 | **P1** | 消除能力登记双源差：统一由 capability_registry 生成 CAPABILITIES 统计 | 1 天 | 两文件数字一致 | ✅ **已落地（351f816a，P0-C4）**：registry 1032 / docs 1039，口径统一（登记 vs 扫描） |
 | **P1** | verify_capability_consumers.sh 接入 CI（architecture-guard.yml wiring job）替代已废弃的 caller_verify.sh | 0.5 天 | CI wiring job 跑新脚本 | ✅ **已落地（P1-B2）**：architecture-guard.yml:45 + architecture_guard.sh:463 |
 | **P1** | 启用 verify_claude_md_evidence --strict | 0.5 天 | 存量补齐 verify 注释后开启 | ✅ **已落地（P1-B3）**：--strict 25 passed |
@@ -227,7 +229,7 @@ pattern: 'ErrorReflector|on_error_reflector|reflect_on_error'
 - ✅ **设计合理**：多层强制（本地快检/CI 全量/文档验证）、ratchet 渐进债务、规则数据化（YAML）可版本控制
 - ✅ **2026-08-19 复核：首版 1 个系统性缺陷 + 3 个完备性缺口全部闭环**：
   - 12 条规则 OR 语法错误 → **已修复（93b7c25c）**，守卫全绿 0 ERROR，信号噪音清除
-  - 宪法测试 24 failed → **143 passed + 1 skipped 全绿**（8c6a5154 宪法修复 + P0-A1/A3 收敛）——治理体系检测到的真违规**已全部修复**
+  - 宪法测试 24 failed → **143 passed + 1 skipped 全绿**（8c6a5154 宪法修复 + P0-A1/A3 收敛）——治理体系检测到的真违规**已全部修复**（**2026-08-25 复核：大部分已修复，现 1 失败**——新增违规 `channels.py:96` platform→app 跨层导入，P1-A4 afac159c 引入，体系仍能检出新增违规）
   - 能力登记双源差 → **已统一（351f816a）**：registry 1032 / docs 1039（口径差异非缺失）
   - verify_capability_consumers 未接线 → **已进 CI（P1-B2）**
 - ⚠️ **残余项**：pre-commit 框架未安装（手工 hook 已补齐大部分功能）、规则自检黄金样本未建、图索引不含未提交新文件（见 §5/§11）
@@ -260,7 +262,7 @@ pattern: 'ErrorReflector|on_error_reflector|reflect_on_error'
   - `test_kernel_agnostic::test_no_phase_string_branching` → "Harness MUST NOT branch on business phase strings. Found **3 violations**"
   - `test_kernel_agnostic::test_no_tenant_quotas_table_in_core` → "Core MUST NOT manage tenant_quotas table directly. Found **5 violations**"
   - `test_property_based::test_prompt_loader_defaults_registered` → 模板 `atomic-splitter-llm-split` 用 `{}` 而非 `{{var}}` 占位符
-- **结论修正**：宪法测试**有效且真实拦截违规**，但**当前代码存在未修复违规**（内核无关原则被违反、prompt 模板规范被违反）→ **CI 的 constitution job 实际处于红状态**（或 CI 未运行此测试/未阻断）。这推翻了首版"设计合理、未发现问题"的乐观判断——**治理体系检测到了问题，但问题未被修复**。
+- **结论修正**：宪法测试**有效且真实拦截违规**，但**当前代码存在未修复违规**（内核无关原则被违反、prompt 模板规范被违反）→ **CI 的 constitution job 实际处于红状态**（或 CI 未运行此测试/未阻断）。这推翻了首版"设计合理、未发现问题"的乐观判断——**治理体系检测到了问题，但问题未被修复**。（**2026-08-25 复核：该 24 项违规大部分已修复**——现 1 失败：`channels.py:96` platform→app 跨层导入，P1-A4 afac159c 引入）
 
 ### 10.2 局限④（807 vs 944 差异未核对）→ 已解决，口径澄清
 
@@ -291,9 +293,9 @@ pattern: 'ErrorReflector|on_error_reflector|reflect_on_error'
 | §69 PII 检测 | fail（误报） | **pass** |
 | §72 经验向量 | fail（误报） | **pass** |
 | 剩余真问题 | 被 6 项噪音掩盖 | **2 项浮出**：caller_verify_in_arch_guard（工具链）、wiring_integration_tests_present（测试缺失） |
-| meta_agent_module | fail（误报性 FAIL） | **真阳性确认**（MetaAgent 确实未实现，info 提示） |
+| meta_agent_module | fail（误报性 FAIL） | **真阳性确认**（MetaAgent 确实未实现，info 提示；**2026-08-25 复核已实现**：P0-C7，1d2fb323） |
 
-**与首版 §1.3 预测完全一致**：10 条变 PASS（误报消除），2 条真问题（meta_agent 未实现、wiring 测试缺失）浮出——**"误报淹没真违规"的实证闭环完成**。
+**与首版 §1.3 预测完全一致**：10 条变 PASS（误报消除），2 条真问题（meta_agent 未实现、wiring 测试缺失）浮出——**"误报淹没真违规"的实证闭环完成**。**（2026-08-25 复核：2 条真问题均已闭环——MetaAgent 已实现 P0-C7、wiring 测试已建）**
 
 **注意**：本修复改动了 `arch_guard_rules.yaml`（12 行 pattern），git 状态为未提交修改——建议按 CLAUDE.md 规则作为独立 commit 提交（`fix: arch_guard 12条规则 OR 语法修复（\| → |）消除系统性误报`），并跑 `bash scripts/architecture_guard.sh` + `pytest tests/constitution/` 确认。
 
@@ -302,21 +304,21 @@ pattern: 'ErrorReflector|on_error_reflector|reflect_on_error'
 | 维度 | 首版判定 | 修正后判定 |
 |---|---|---|
 | 是否正确（检测逻辑） | ⚠️ 部分错误（12 条语法 bug） | ⚠️ **已修复**（12 条语法已改，误报消除；但规则自检机制仍未建立） |
-| 是否完备（覆盖面） | ⚠️ 部分完备 | ⚠️ 部分完备（**宪法测试 24 失败暴露内核无关/模板规范违规未修复**——覆盖面够，但存量违规未治理） |
+| 是否完备（覆盖面） | ⚠️ 部分完备 | ⚠️ 部分完备（**宪法测试 24 失败暴露内核无关/模板规范违规未修复**——覆盖面够，但存量违规未治理；**2026-08-25 复核：大部分已修复，现 1 失败**） |
 | 是否已实现（接线生效） | ✅ 基本实现 | ✅ 实现（但 **CI constitution job 实际红**、**新增未提交文件不入守卫扫描**——2 个生效缺口） |
-| **最重要的新增发现** | — | **宪法测试检测到 24 个真实违规（含内核无关原则 3+5 处）——治理体系有效，但违规存量未修复** |
+| **最重要的新增发现** | — | **宪法测试检测到 24 个真实违规（含内核无关原则 3+5 处）——治理体系有效，但违规存量未修复**（**2026-08-25 复核：大部分已修复，现 1 失败**：`channels.py:96` 跨层导入） |
 
 ### 10.6 【2026-08-19 复核】实证结果全部闭环
 
 | §10 实证发现 | 2026-08-19 状态 | 依据 |
 |---|---|---|
-| 宪法 24 failed（内核 phase 分支 3 处、tenant_quotas 表 5 处等） | ✅ **已修复**：143 passed + 1 skipped 全绿 | 8c6a5154（宪法修复）+ P0-A1（harness→apps 收敛，白名单 38→25）+ P0-A3（tenant 表迁移） |
+| 宪法 24 failed（内核 phase 分支 3 处、tenant_quotas 表 5 处等） | ✅ **已修复**：143 passed + 1 skipped 全绿（**2026-08-25 复核：大部分已修复，现 1 失败**——`channels.py:96` platform→app 跨层导入） | 8c6a5154（宪法修复）+ P0-A1（harness→apps 收敛，白名单 38→25）+ P0-A3（tenant 表迁移）；新增违规源自 P1-A4 afac159c |
 | 三口径数字（944/807/780/142） | ✅ **已统一**：registry 1032 / docs 1039 | 351f816a（P0-C4 口径统一 + P0-A8 security 注册） |
 | 12 条 `\|` 语法 bug 修复验证 | ✅ **已落地**：守卫全绿 0 ERROR | 93b7c25c |
 | §73 wiring 六项误报 | ✅ **已消除** | 93b7c25c（§10.4 已验证） |
 | 接线测试缺失（wiring_integration_tests_present） | ✅ **已闭环**：verify_capability_consumers 五层检查进 CI | P1-B2（architecture-guard.yml:45） |
-| meta_agent_module 真阳性 | ✅ **已处置**：以 P1-A5 skill_marketplace（agentskills.io 对齐）等替代方案落地 | 行动纲领 P1-A5 |
-| CI constitution job 红 | ✅ **已转绿** | 143 passed + 1 skipped |
+| meta_agent_module 真阳性 | ✅ **已实现（2026-08-25 复核）**：MetaAgent 原生实现于 2026-08-18（P0-C7，1d2fb323）——`core/harness/meta/meta_agent.py` get_meta_agent() + evolution_engine.py:275 meta_analysis 调用 + tests/wiring/test_meta_agent_wired.py 接线断言（c0ae8a23）；此前"P1-A5 替代方案"说法已过时 | P0-C7（1d2fb323） |
+| CI constitution job 红 | ✅ **已转绿**（2026-08-19）；**2026-08-25 复核：现 1 失败** | 143 passed + 1 skipped；当前 `test_import_graph_is_dag_between_layers` 检出 `channels.py:96` 跨层导入 |
 | 新增未提交文件不入图索引 | ⚠️ **仍为残余项** | 见 §11.3 盲区 1 |
 
 **修正后的最终元审计结论（2026-08-19 复核）**：
