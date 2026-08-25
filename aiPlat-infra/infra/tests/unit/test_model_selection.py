@@ -170,15 +170,17 @@ class TestProviderBreadth:
         from infra.management.model.manager import _api_provider_ids
 
         ids = _api_provider_ids()
-        # 基础 4 + 新增主流家族（Qwen/Groq/Mistral/Cohere/Cerebras/Together/xAI/Novita）
+        # 基础 6 + 2026-08-24 首批 8 家族 + 2026-08-25 二批 8 家族
         for expected in ("openai", "deepseek", "anthropic", "openrouter",
                          "qwen", "groq", "mistral", "cohere",
-                         "cerebras", "together", "xai", "novita"):
+                         "cerebras", "together", "xai", "novita",
+                         "siliconflow", "moonshot", "minimax", "zhipu",
+                         "baichuan", "stepfun", "deepinfra", "fireworks"):
             assert expected in ids, f"provider '{expected}' not discovered"
 
-    def test_providers_yaml_has_14_entries(self):
+    def test_providers_yaml_has_22_entries(self):
         cfg = yaml.safe_load(open("config/providers.yaml"))
-        assert len(cfg["providers"]) >= 14
+        assert len(cfg["providers"]) >= 22
         # 所有 external provider 都带 env_key（API key 契约）
         for p in cfg["providers"]:
             if p["type"] == "external" and p.get("requires_api_key"):
