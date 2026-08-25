@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1099
+total_capabilities: 1103
 
 total_capabilities: 1095
 last_updated: 2026-08-25
@@ -1085,6 +1085,10 @@ scan_hash: 8f9548ec24f4
 | FileUploadStage | `aiPlat-management/frontend/src/components/AppStages/FileUploadStage.tsx` | ✅ | 自动同步 | 已合入 |
 | ProgressPoller | `aiPlat-management/frontend/src/components/AppStages/ProgressPoller.tsx` | ✅ | 自动同步 | 已合入 |
 | ResultDashboard | `aiPlat-management/frontend/src/components/AppStages/ResultDashboard.tsx` | ✅ | 自动同步 | 已合入 |
+| APP_STAGE_REGISTRY | `aiPlat-management/frontend/src/components/AppStages/index.ts` | ✅ | AppStage 组件注册表：8 种组件映射替代 AppPage 硬编码分发（2026-08-25，新增组件无需改 AppPage） | 待合入 |
+| MarkdownViewerStage | `aiPlat-management/frontend/src/components/AppStages/MarkdownViewerStage.tsx` | ✅ | 文本/报告/分析产物 markdown 展示组件（agent 模式新增，2026-08-25） | 待合入 |
+| StatCardsStage | `aiPlat-management/frontend/src/components/AppStages/StatCardsStage.tsx` | ✅ | KPI 指标卡片组件（agent 模式新增，2026-08-25） | 待合入 |
+| KanbanBoardStage | `aiPlat-management/frontend/src/components/AppStages/KanbanBoardStage.tsx` | ✅ | 看板列状态流转组件（agent 模式新增，2026-08-25） | 待合入 |
 | KnowledgeFactoryPage | `aiPlat-management/frontend/src/pages/KnowledgeFactory/KnowledgeFactoryPage.tsx` | ✅ | 自动同步 | 已合入 |
 | AppLayout | `aiPlat-management/frontend/src/components/layout/AppLayout.tsx` | ✅ | 自动同步 | 已合入 |
 | SystemOverview | `aiPlat-management/frontend/src/pages/SystemOverview/SystemOverview.tsx` | ✅ | 自动同步 | 已合入 |
@@ -2019,7 +2023,7 @@ scan_hash: 8f9548ec24f4
 | 知识基础设施 | 29 | 0 | 29 |
 | Agent 系统 | 42 | 0 | 42 |
 | Skill 系统 | 54 | 0 | 54 |
-| 安全与治理 | 51 | 0 | 51 |
+| 安全与治理 | 55 | 0 | 55 |
 | 可观测性 | 27 | 0 | 27 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
@@ -2057,7 +2061,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1099** | **0** | **1099** |
+| **总计** | **1103** | **0** | **1103** |
 
 | **总计** | **1095** | **0** | **1095** |
 
