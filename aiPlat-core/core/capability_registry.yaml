@@ -572,8 +572,16 @@ domains:
   security-and-governance:
     section: "七"
     section_name: "安全与治理"
-    caps_count: 36
+    caps_count: 38
     provides:
+      - symbol: "coupling_metrics"
+        type: "script"
+        signature: "耦合度量基线：AST import-degree → avg_degree/max_degree(non-agg)/top-20 + baseline ratchet（roadmap §0.2，2026-08-25）"
+        module: "scripts/coupling_metrics.py"
+      - symbol: "arch_guard_b84"
+        type: "check"
+        signature: "§94b BOUNDARY.yaml 目录覆盖检查（harness 一级子目录必须声明 layer/rationale/known_debt，roadmap §0.3，2026-08-25）"
+        module: "scripts/architecture_guard.sh"
       - symbol: "PolicyGate"
         type: "class"
         signature: "check_tool, check_agent, _check_arch_boundary"

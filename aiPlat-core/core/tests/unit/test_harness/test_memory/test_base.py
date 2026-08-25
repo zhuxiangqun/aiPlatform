@@ -12,7 +12,7 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
-from harness.memory.base import (
+from core.harness.memory.base import (
     MemoryType,
     MemoryScope,
     MemoryEntry,

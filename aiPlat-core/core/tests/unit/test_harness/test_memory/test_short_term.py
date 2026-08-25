@@ -12,8 +12,8 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
-from harness.memory.short_term import ShortTermMemory, ConversationMemory
-from harness.memory.base import MemoryEntry, MemoryType, MemoryScope
+from core.harness.memory.short_term import ShortTermMemory, ConversationMemory
+from core.harness.memory.base import MemoryEntry, MemoryType, MemoryScope
 
 
 class TestShortTermMemory:

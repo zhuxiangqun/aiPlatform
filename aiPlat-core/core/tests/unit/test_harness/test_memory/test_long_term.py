@@ -12,8 +12,8 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
-from harness.memory.long_term import LongTermMemory, SemanticMemory
-from harness.memory.base import MemoryEntry, MemoryType, MemoryScope
+from core.harness.memory.long_term import LongTermMemory, SemanticMemory
+from core.harness.memory.base import MemoryEntry, MemoryType, MemoryScope
 
 
 class TestLongTermMemory:

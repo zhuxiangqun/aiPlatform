@@ -41,7 +41,7 @@ Phase 0（基线固化）✅ → Phase 1（状态/事件一致性）✅ → Phas
 - **验收**：`python scripts/architecture_guard.py --json` → `ok: True`；6 项 info 全部消除（不再有噪音淹没真实违规）
 - **✅ 落地核对（2026-08-19）**：架构守卫 `architecture_guard.sh` 全绿（0 ERROR）；行动纲领 P0-A6（ast_business_keys 绿，R4 正则 + engine_state_keys 基线）/ P0-A7（system_prompt_flow 绿）/ P0-A8（sysgraph_registration 绿）/ P0-A9（§57 0 违规）全部 DONE；CLAUDE.md §19.1"边界守卫 9 errors, 4 warnings → 0 issues"。守卫噪音问题已解决，真实违规可被捕获。
 
-### 0.2 建立耦合度量基线 —— ⚠️ 待确认（ratchet 门禁机制已由 P2-B2 落地）
+### 0.2 建立耦合度量基线 —— ✅ 已闭环（2026-08-25）
 
 > **2026-08-19 复核**：`scripts/coupling_metrics.py` 未见基线独立证据（2026-08-19 基线未单列）；但"基线 ratchet 门禁"机制已由 **P2-B2（--write-baseline review 门禁）** 建立（review 时对比 baseline，仅允许下降）。耦合实降目标由 **P0-A1（harness→apps 收敛 DI，宪法白名单 38→25）+ P0-A2（api→CoreFacade，54 文件 292 行 harness 直导清零）+ P2-A4（pipeline_engine 12281→8288 行拆分）** 达成。
 
@@ -56,7 +56,7 @@ Phase 0（基线固化）✅ → Phase 1（状态/事件一致性）✅ → Phas
   # 预期输出基线 OK + 0 新违规；重复运行结果一致（确定性）
   ```
 
-### 0.3 BOUNDARY.yaml 补齐审计 —— ⚠️ 待确认（边界类检查已全绿）
+### 0.3 BOUNDARY.yaml 补齐审计 —— ✅ 已闭环（2026-08-25）
 
 > **2026-08-19 复核**：BOUNDARY.yaml 全量目录审计未见基线独立证据；但边界类检查已全绿——**P0-A4（platform_function_boundary 绿）** + 宪法 `test_platform_function_boundary`（143 passed 组成之一）+ 架构守卫 §5.7/§80 边界规则 0 违规。
 

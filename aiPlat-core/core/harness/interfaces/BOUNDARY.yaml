@@ -1,0 +1,5 @@
+layer: core
+rationale: |
+  Harness 子模块目录（interfaces）。符合 boundary-standard.md §3.1——Harness 是
+  AI Runtime Kernel，本目录为执行基础设施的一部分。
+known_debt: []

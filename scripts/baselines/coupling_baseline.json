@@ -1,0 +1,90 @@
+{
+  "module_count": 978,
+  "avg_degree": 2.327,
+  "max_degree_non_aggregation": 214,
+  "max_degree_non_aggregation_modules": [
+    "api/core_facade.py"
+  ],
+  "top_20_high_coupling": [
+    {
+      "module": "api/core_facade.py",
+      "degree": 214
+    },
+    {
+      "module": "server.py",
+      "degree": 94
+    },
+    {
+      "module": "api/routers/diagnostics.py",
+      "degree": 53
+    },
+    {
+      "module": "harness/execution/pipeline_engine.py",
+      "degree": 52
+    },
+    {
+      "module": "api/routers/wiki.py",
+      "degree": 38
+    },
+    {
+      "module": "harness/integration.py",
+      "degree": 36
+    },
+    {
+      "module": "apps/agents/materials_chat.py",
+      "degree": 36
+    },
+    {
+      "module": "harness/execution/loop/_facade.py",
+      "degree": 30
+    },
+    {
+      "module": "harness/integration/agent.py",
+      "degree": 24
+    },
+    {
+      "module": "harness/evolution_engine.py",
+      "degree": 23
+    },
+    {
+      "module": "harness/syscalls/llm.py",
+      "degree": 22
+    },
+    {
+      "module": "api/routers/workspace_skills.py",
+      "degree": 22
+    },
+    {
+      "module": "harness/knowledge/wiki_engine.py",
+      "degree": 21
+    },
+    {
+      "module": "api/routers/workspace_agents.py",
+      "degree": 20
+    },
+    {
+      "module": "harness/syscalls/skill.py",
+      "degree": 19
+    },
+    {
+      "module": "apps/skills/registry.py",
+      "degree": 18
+    },
+    {
+      "module": "harness/memory/manager.py",
+      "degree": 17
+    },
+    {
+      "module": "harness/ontology_engine/engine.py",
+      "degree": 17
+    },
+    {
+      "module": "harness/infrastructure/gates/policy_gate.py",
+      "degree": 17
+    },
+    {
+      "module": "harness/syscalls/retrieval.py",
+      "degree": 17
+    }
+  ]
+}
