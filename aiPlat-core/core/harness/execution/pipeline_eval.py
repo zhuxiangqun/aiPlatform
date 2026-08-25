@@ -253,17 +253,19 @@ class PipelineEvalMixin:
 
                     full = _safe_join(output_dir, path)
 
-                except ValueError:
-
-                    logging.getLogger("pipeline_engine").warning("test_runner path traversal blocked: %s", path)
-
-                    continue
-
+                    # 审计 P1-2 修复（2026-08-25）：写文件块原先误放在 except ValueError
+                    # 内且位于 continue 之后 → 不可达 → 上游代码从不落盘，测试永远在空目录跑。
                     os.makedirs(os.path.dirname(full), exist_ok=True)
 
                     with open(full, "w", encoding="utf-8") as fh:
 
                         fh.write(content)
+
+                except ValueError:
+
+                    logging.getLogger("pipeline_engine").warning("test_runner path traversal blocked: %s", path)
+
+                    continue
 
                 except OSError:
 

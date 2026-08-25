@@ -329,3 +329,18 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 - 验证路径仅对 `metadata.provenance.signature` 存在的项目生效；无签名项目不受影响（验证是**加固**而非**门槛**）；
 - 实现位于 `aiPlat-platform/api/routers/builder.py:508-532`；错误信息含 `detail` 透传（对齐系统契约 §5 错误透传）；
 - 回归测试：`aiPlat-platform/tests/test_builder_p0_fixes.py::TestP0_5DeploySignatureFailClosed`（4 项：异常→403、验证通过→部署、无签名→跳过验证）。
+
+## 补充：builder 项目删除权限对齐 admin（2026-08-25，审计 P1-3 修复）
+
+`POST /projects`（create）原为 `require_admin_access`，但破坏性操作 `DELETE /projects/{id}`、`POST /projects/batch-delete` 仅为 `require_builder_access` —— **授权反向**（低权限可删除高权限创建的资源）。已升级对齐：
+
+| 端点 | 修复前 | 修复后 |
+|---|---|---|
+| `POST /projects`（create） | `require_admin_access` | `require_admin_access`（不变） |
+| `DELETE /projects/{id}` | `require_builder_access` | `require_admin_access` |
+| `POST /projects/batch-delete` | `require_builder_access` | `require_admin_access` |
+
+**约束**：
+- 删除不可逆（batch-delete 破坏半径更大），权限不得低于 create；
+- 实现位于 `aiPlat-platform/api/routers/builder.py:113-119`；
+- 回归测试：`aiPlat-platform/tests/test_builder_p1_fixes.py::TestP1_3AuthConsistency`。

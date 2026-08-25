@@ -111,12 +111,14 @@ async def get_project(project_id: str, _auth: str = Depends(require_builder_acce
     return await _get_svc().get_project(project_id)
 
 @router.delete("/projects/{project_id}", response_model=StatusResponse)
-async def delete_project(project_id: str, _auth: str = Depends(require_builder_access)):
+async def delete_project(project_id: str, _auth: str = Depends(require_admin_access)):
+    # 审计 P1-3 修复（2026-08-25）：create 需 admin 但破坏性 delete 仅 builder —— 授权反向。
+    # 删除不可逆，升级为 require_admin_access 与 create 对齐。
     ok = await _get_svc().delete_project(project_id)
     return {"status": "ok" if ok else "error", "detail": "" if ok else "项目不存在"}
 
 @router.post("/projects/batch-delete", response_model=StatusResponse)
-async def batch_delete_projects(req: Dict[str, Any], _auth: str = Depends(require_builder_access)):
+async def batch_delete_projects(req: Dict[str, Any], _auth: str = Depends(require_admin_access)):
     """Batch delete projects. Body: { "project_ids": ["prj_xxx", ...], "pass_rate_below": 0.01 }"""
     project_ids = req.get("project_ids")
     pass_rate_below = req.get("pass_rate_below")
