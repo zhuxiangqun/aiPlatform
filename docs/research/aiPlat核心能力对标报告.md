@@ -161,7 +161,7 @@
 | 审批 | **ApprovalGate + ApprovalManager 完整生命周期**（创建/审批/拒绝/超时/回调）+ REST 端点 + Action Contract v3（EntityLock + 哈希链审计） | 高风险操作交互式提示 | approval/ask/never 双策略 + fail-closed | smart/manual/off 模式 + 破坏性命令三选确认 | **审批协议化**：approval request 经 JSON-RPC 推给客户端，暂停当前 Turn 等 allow | smart/manual/off + 破坏性命令确认 + write_approval 暂存门（`write_approval.py:114`） |
 | 治理 | **最高**：审计链 + 审批中心 + 变化控制 + 发布灰度 | Server-managed settings（企业强制） | 无企业级策略 | 偏个人使用强度 | 无多租户治理 | 偏个人使用强度 |
 
-**aiPlat 差异点**：治理闭环最完整——审批/回滚/重试/停止 + 发布灰度 + 自动回归门禁做成平台一等能力，贯穿 UI/API/落库事件；Claude Code 的 Server-managed settings 是六者中唯一的企业远程强制策略；**Codex 的 OS 原生沙箱（真进程隔离）是 aiPlat 可借鉴的**（G19：当前 SandboxGate 为进程内检查，非 OS 隔离）；**Codex 的审批协议化（approval request 推送暂停 Turn）与 aiPlat 的 HITL 事件驱动 resume 同构**——aiPlat 审批能力更强，缺的是协议暴露。
+**aiPlat 差异点**：治理闭环最完整——审批/回滚/重试/停止 + 发布灰度 + 自动回归门禁做成平台一等能力，贯穿 UI/API/落库事件；Claude Code 的 Server-managed settings 是六者中唯一的企业远程强制策略；**Codex 的 OS 原生沙箱（真进程隔离）已借鉴落地（G19：2026-08-24 `os_sandbox.py` bwrap/seatbelt 可选执行器）**；**Codex 的审批协议化（approval request 推送暂停 Turn）与 aiPlat 的 HITL 事件驱动 resume 同构**——aiPlat 审批能力更强，缺的是协议暴露。
 
 ---
 
@@ -216,9 +216,9 @@
 | 成本阶梯 | Hook→Skill→Tool→MCP 四级阶梯（CLAUDE.md §20 强制） | hooks + skills + MCP | 能力缝（Service Definition/Provider/Consumer）强制模式 | AGENTS.md footprint ladder（扩展已有代码→CLI+skill→service-gated tool→plugin→MCP） | crate 边界即扩展边界（编译期） | footprint ladder（check_fn 零足迹） |
 | 配置驱动 | AGENT.md/SKILL.md YAML + PipelineStageConfig 90+ 字段 + apps.yaml 模块注册 | CLAUDE.md + settings.json | patch 覆盖任意配置行 | config.yaml + SOUL.md + .hermes.md | AGENTS.md + config | AGENTS.md/CLAUDE.md/.cursorrules/SOUL.md 一视同仁（`coding_context.py:82-86`） |
 | 兼容桥 | ACP（WebSocket）+ A2A（REST/SSE） | hooks 生命周期 | **CC/Codex hooks 桥**（CC 7/30 + Codex 5/10 事件）+ ACP v1 官方服务器 | ACP（JSON-RPC stdio）+ TUI gateway | **竞品资产迁入**：Claude Code/Cursor 的 AGENTS/CLAUDE.md/Skills/MCP/Hooks/subagents/30 天会话一键导入 | ACP stdio + MCP serve + A2A + Copilot-ACP 反向消费（`copilot_acp_client.py:73`） |
-| 竞品资产导入 | L2 import-repo（代码，`builder_project_service.py:1573`）+ format_adapters（AGENT.md/SKILL.md/MCP 配置，`management/format_adapters.py`）+ claude_md 引擎（CLAUDE.md 读取，`context/engine.py:113`）；**缺会话/记忆级**（G18） | 原生格式（双向） | AGENTS.md 兼容读取 | AGENTS.md/SOUL.md/MCP 配置导入 | **六类资产一键迁入**（AGENTS/CLAUDE.md/Skills/MCP/Hooks/subagents/30 天会话，源端不动） | AGENTS.md/CLAUDE.md/.cursorrules/SOUL.md 上下文读取 + skills_hub 从 `.claude/skills/` 导入（`skills_hub.py:1964,2173`）；**无 subagents/会话历史导入** |
+| 竞品资产导入 | L2 import-repo（代码，`builder_project_service.py:1573`）+ format_adapters（AGENT.md/SKILL.md/MCP 配置，`management/format_adapters.py`）+ claude_md 引擎（CLAUDE.md 读取，`context/engine.py:113`）；**会话/记忆级已补齐（G18：2026-08-24 `import_claude_sessions.py`）** | 原生格式（双向） | AGENTS.md 兼容读取 | AGENTS.md/SOUL.md/MCP 配置导入 | **六类资产一键迁入**（AGENTS/CLAUDE.md/Skills/MCP/Hooks/subagents/30 天会话，源端不动） | AGENTS.md/CLAUDE.md/.cursorrules/SOUL.md 上下文读取 + skills_hub 从 `.claude/skills/` 导入（`skills_hub.py:1964,2173`）；**无 subagents/会话历史导入** |
 
-**aiPlat 差异点**：扩展机制最结构化（四级成本阶梯 + 声明式模块注册）；DSH 的插件化架构纯度最高（一切可替换、注册即 effect、卸载即回滚）；**Codex 的"竞品资产一键迁入"（六类资产）是 aiPlat 获客战略最值得借鉴的**——aiPlat 已有格式桥（format_adapters）与代码导入（L2），缺会话/记忆级收尾（G18）。
+**aiPlat 差异点**：扩展机制最结构化（四级成本阶梯 + 声明式模块注册）；DSH 的插件化架构纯度最高（一切可替换、注册即 effect、卸载即回滚）；**Codex 的"竞品资产一键迁入"（六类资产）已借鉴**——aiPlat 已有格式桥（format_adapters）与代码导入（L2），**会话/记忆级收尾已完成（G18：2026-08-24 `import_claude_sessions.py`）**。
 
 ---
 
@@ -312,9 +312,9 @@
 | **模型 provider 生态** | Hermes 30+ provider 家族插件化；Claude Code 官方模型质量 | aiPlat 解析链严谨但 provider 面较窄（env 自动发现 + Ollama/LM Studio 等），可插件化扩展 | ✅ **已补齐（P2-A3）**：provider 元数据配置化（`infra/management/model/manager.py:1601`，`config/providers.yaml`），新增 provider 无需改代码 |
 | **运行时自修改** | DSH 动态 Cordis 插件 define/run/undefine（opt-in） | aiPlat 的 EvolutionEngine 是"离线夜间演化"，无"运行中挂载/卸载插件"能力（安全边界需谨慎） | ✅ **已补齐（P2-A2）**：运行时扩展缝（`core_facade.py:29,58`，可调用 handler 白名单 + 审批门控，做成安全边界而非 DSH 式 opt-in） |
 | **前端产品完成度（coding 场景）** | Claude Code IDE 插件 + checkpoint UI + diff 视图 | aiPlat 前端管理面强（325 TSX 文件）但 coding 场景交互（diff/checkpoint 回放）弱 | ⚠️ **未变**（不在行动纲领 53 项覆盖内；2026-08-19 基线未涉及 coding 场景前端） |
-| **协议面/可嵌入性（Codex 扩列新增，G16/G17）** | Codex-Harness：app-server（JSON-RPC over stdio 持久内核）+ exec + TS/Python SDK | aiPlat 有 CoreFacade（进程内门面）+ REST + ACP（WebSocket），**无 stdio JSON-RPC 内核/官方 SDK 包**——把内核能力暴露为可嵌入协议 | ❌ **待实施（P0-a/P1，见 Codex-Harness 借鉴报告）**：`core/acp/stdio_server.py` + aiplat-sdk |
-| **竞品会话/记忆级导入（Codex 扩列新增，G18）** | Codex-Harness：Claude Code/Cursor 资产一键迁入（AGENTS/CLAUDE.md/Skills/MCP/Hooks/subagents/30 天会话） | aiPlat 有 L2 代码导入 + format_adapters 格式桥 + claude_md 引擎，**缺会话历史 JSONL→MemoryManager 通道** | ❌ **待实施（P0-b，见 Codex-Harness 借鉴报告）**：会话 JSONL 导入通道 |
-| **OS 原生沙箱（Codex 扩列新增，G19）** | Codex-Harness：Bubblewrap/Landlock/Seatbelt/AppContainer 真进程隔离 | aiPlat SandboxGate 是进程内检查（路径/网络/限流），**非 OS 原生隔离** | ❌ **待实施（P1，见 Codex-Harness 借鉴报告）**：Linux bubblewrap 可选执行器（保留现状 fail-open fallback） |
+| **协议面/可嵌入性（Codex 扩列新增，G16/G17）** | Codex-Harness：app-server（JSON-RPC over stdio 持久内核）+ exec + TS/Python SDK | CoreFacade + REST + ACP（WebSocket）+ **stdio JSON-RPC 内核（P0-a）+ aiplat-sdk（P1）+ aiplat exec CLI（P2）** | ✅ **已补齐（P0-a+P1+P2，2026-08-24/25）**：`core/acp/stdio_server.py`（JSON-RPC over stdio 持久内核，thread 协议 + 背压 -32001）+ `aiplat-sdk`（StdioKernelClient + `aiplat exec` CLI） |
+| **竞品会话/记忆级导入（Codex 扩列新增，G18）** | Codex-Harness：Claude Code/Cursor 资产一键迁入（AGENTS/CLAUDE.md/Skills/MCP/Hooks/subagents/30 天会话） | L2 代码导入 + format_adapters 格式桥 + claude_md 引擎 + **Claude JSONL 会话→MemoryManager 通道（P0-b）** | ✅ **已补齐（P0-b，2026-08-24）**：`core/harness/memory/import_claude_sessions.py`（会话 JSONL 导入，source_tag=claude_import + provenance 防投毒，只读消费） |
+| **OS 原生沙箱（Codex 扩列新增，G19）** | Codex-Harness：Bubblewrap/Landlock/Seatbelt/AppContainer 真进程隔离 | SandboxGate 进程内检查 + **OS 原生可选执行器（P1）** | ✅ **已补齐（P1，2026-08-24）**：`core/harness/infrastructure/os_sandbox.py`（bwrap/seatbelt 可选命令包装器：只读系统路径 + 可写工作区 + 默认网络隔离 + fail-open fallback，`AIPLAT_SANDBOX=bwrap/seatbelt`） |
 
 ### 16.4 六方可借鉴 aiPlat 的点（互证 aiPlat 优势）
 
@@ -490,7 +490,7 @@
 2. **无自我进化闭环**（重 harness 工程优化，非系统自修改）。
 3. **无独立工作流引擎**（vs aiPlat 可视化画布 + 12 节点；Codex 是 turn 驱动）。
 
-**对标影响**：Codex 开源对 aiPlat 的价值不在能力对标（aiPlat 内核大多已有对应物），而在**协议面工程姿势**——详见《Codex-Harness开源借鉴分析报告.md》（P0-a stdio JSON-RPC 内核、P0-b 会话导入、P1 SDK、P1 OS 沙箱）。**源码级新增发现**：竞品导入实含**会话记忆级**（.claude/projects → memories），比 aiPlat 现有 format_adapters 格式桥更进一步——直接支撑 G18（会话/记忆级导入）待实施项的必要性。
+**对标影响**：Codex 开源对 aiPlat 的价值不在能力对标（aiPlat 内核大多已有对应物），而在**协议面工程姿势**——详见《Codex-Harness开源借鉴分析报告.md》（P0-a stdio JSON-RPC 内核、P0-b 会话导入、P1 SDK、P1 OS 沙箱）。**源码级新增发现**：竞品导入实含**会话记忆级**（.claude/projects → memories）——已借 P0-b 落地（G18：`import_claude_sessions.py`，2026-08-24）。
 
 ### 17.6 hermes-agent v0.20.1 源码级验证（2026-08-24 补充，新增列）
 
@@ -507,7 +507,7 @@
 | **性能/优化机制** | ✅ | reasoning 以 `<think>` 标签嵌入 content 供轨迹存储（`conversation_loop.py:1953`）；压缩三路径（`context_compressor.py`/`conversation_compression.py:822`/OpenAI Native Compaction `native_compaction.py:109`）；prompt cache 三层缓存（`system_prompt.py:338-346` + `prompt_caching.py:21`） |
 
 **关键修正（相对 Hermes 文档口径）**
-1. **协议面比文档更广**：hermes-agent 实有 **ACP stdio server + OpenAI 兼容 API + REST/SSE + MCP + A2A 五面协议**（此前报告 Hermes 列仅记 API server + ACP）——**协议面（G16 类）hermes-agent 与 Codex 同属"已具备"，aiPlat 是六者中协议面最薄**（无 stdio 内核/SDK）。
+1. **协议面比文档更广**：hermes-agent 实有 **ACP stdio server + OpenAI 兼容 API + REST/SSE + MCP + A2A 五面协议**（此前报告 Hermes 列仅记 API server + ACP）——**协议面（G16 类）hermes-agent 与 Codex 同属"已具备"**——aiPlat 已补齐（G16 stdio 内核 P0-a + G17 SDK P1 + exec CLI P2，2026-08-24/25）。
 2. **规划非强制**：无 `/plan` 命令（plan 只是普通 skill），judge 为 fail-open——此前 Hermes 列记"/plan + /goal"需修正为"/goal 每 turn judge + plan 为普通 skill"。
 3. **无强制隔离沙箱**：审批制（smart/manual/off）非沙箱，terminal 直接执行——与 §17.4 结论一致（安全为配置层约束）。
 
@@ -525,7 +525,7 @@
 4. 规划非强制（无 /plan 命令，judge fail-open `goals.py:18`）
 5. worktree 隔离默认关闭（`delegate_tool.py:775-786`）；竞品 subagents/会话历史不可导入
 
-**对标影响**：hermes-agent 列源码验证**显著强化协议面结论**——hermes-agent 与 Codex-Harness 都已具备 ACP/stdio 协议面（hermes-agent 甚至五面协议），**aiPlat 是六者中协议面最薄的一个**（只有 WebSocket ACP + REST，无 stdio JSON-RPC 持久内核、无官方 SDK 包）——这直接支撑 §20 G16/G17 待实施项与《Codex-Harness开源借鉴分析报告.md》P0-a 建议。
+**对标影响**：hermes-agent 列源码验证**显著强化协议面结论**——hermes-agent 与 Codex-Harness 都已具备 ACP/stdio 协议面（hermes-agent 甚至五面协议），**aiPlat 协议面已补齐**（G16 stdio JSON-RPC 持久内核 P0-a + G17 aiplat-sdk P1 + exec CLI P2，2026-08-24/25）——协议面从"最薄"转为"已对齐"。
 
 ---
 
@@ -534,7 +534,7 @@
 **aiPlat 在六方对标中的定位**：aiPlat 不是"又一个 coding agent"，而是**企业级 FDE 操作系统**——它的差异化不在单点能力（每项单点能力六方都有类似物），而在于**将治理、审计、审批、知识、交付闭环组合成平台**。核心结论：
 
 1. **aiPlat 最强**：企业治理（防篡改审计 + 多租户 + 计费 + RBAC）、交付流水线（HITL/回滚/断点续跑）、自我进化（夜间流水线 + 训练触发）、知识引擎（SECI + 本体 + GraphRAG）。
-2. **aiPlat 最弱（2026-08-25 更新）**：渠道广度（22 渠道 = Hermes/hermes-agent 22 平台，**已追平**）、模型 provider 生态家族数（插件化已建，家族数 22 vs 38，继续收窄）、Skill 开放生态规模（已对接 agentskills.io 但社区规模小）、**协议面/可嵌入性（G16 stdio JSON-RPC 内核、G17 SDK 包——Codex-Harness 开源后新增的最值得借鉴维度）**、**竞品会话级导入（G18）**、**OS 原生沙箱（G19）**。
+2. **aiPlat 最弱（2026-08-25 更新）**：渠道广度（22 渠道 = Hermes/hermes-agent 22 平台，**已追平**）、模型 provider 生态家族数（插件化已建，家族数 22 vs 38，继续收窄）、Skill 开放生态规模（已对接 agentskills.io 但社区规模小）、**协议面/可嵌入性、竞品会话级导入、OS 原生沙箱（G16-G19）已补齐**（2026-08-24/25：stdio 内核 P0-a + SDK P1 + exec CLI P2 + 会话导入 P0-b + OS 沙箱 P1）。
 3. **最值得吸收的外部能力——2026-08-19 已全部落地**（行动纲领 P1-A 对标差距 6/6 DONE）：① Hermes 的会话内实时学习 nudge + Curator 技能维护 → **P1-A1 nudge（`learn_nudge_hook.py`）+ P1-A2 Curator（`skill_curator.py`）**；② DSH 的子代理 provider 多样性 + 事件源会话 → **P1-A3 子代理 provider（`providers.py` InProcess/ACP）+ P2-A1 run_events 折叠派生（`pipeline_run_store.py:266`）**；③ Claude Code 的 Server-managed settings（企业远程强制策略）→ **P1-A6 ManagedPolicy（`aiPlat-platform/auth/schemas_policy.py:119`）**。**2026-08-23 更新：G6 CC/Codex hooks 协议桥已实施**（`cc_bridge.py`）；**渠道广度已延伸 7→10**（+whatsapp/lark/teams）。**2026-08-24 Codex-Harness 扩列更新**：下一批最值得吸收项 = **协议面（stdio JSON-RPC 内核 P0-a、SDK P1）** + **竞品会话/记忆级导入（P0-b）** + **OS 沙箱可选执行器（P1）**（详见《Codex-Harness开源借鉴分析报告.md》）；渠道广度继续延伸（10→更多，对齐 Hermes 22）与 Claude Code checkpoint/rewind 用户级 UI 保留为候选。
 
 *报告基于 2026-08-15 代码快照与 web 调研，**2026-08-19 已按行动纲领基线（53 DONE / 143 passed / 能力 1032/1039）复核更新 aiPlat 侧结论**，**2026-08-23 L2-L5/G6/渠道 10 已复核，2026-08-25 渠道 22 收官**，**2026-08-24 扩为六系统（+Codex-Harness 文档级 + hermes-agent 源码级）**；六方信息可能随版本更新；aiPlat 侧证据可在本仓库 `grep -rn` 复核。*
@@ -705,22 +705,22 @@ flowchart LR
 | G13 | **每 turn judge 的持久化 goals** | Hermes（goals.py:1006） | 有 goal 触发器（`event_loop.py:35` Trigger cron/webhook/goal）但**无 judge 模型每 turn 判定** | ⚠️ 部分具备（goal 触发有，judge 无） | `execution/event_loop.py` | ✅ **已补齐（P2-A6）**：`event_loop.py:283 _judge_goal_condition` goal 条件判定 |
 | G14 | **no-agent 纯脚本 cron** | Hermes（cron/jobs.py:1571 no_agent） | 有 cron 触发器（`event_loop.py`）但**无纯脚本零 LLM 模式** | ⚠️ 部分具备 | `execution/event_loop.py` | ✅ **已补齐（P2-A7）**：`event_loop.py:220,374` cron `mode=script` 纯脚本零 LLM 模式 |
 | G15 | **单文件巨兽的可维护性反例** | Hermes（run_agent.py 9005 行） | PipelineEngine 12,281 行——**同样存在**大文件问题 | ⚠️ 两者皆弱（非 aiPlat 独缺） | `pipeline_engine.py`（12k 行） | ✅ **aiPlat 侧已治理（P2-A4，PR #16-19）**：12,281→8,285 行 + 5 个 Mixin（healing/state/prompt/eval/stage）；Hermes run_agent.py 9005 行未拆分 |
-| G16 | **app-server 式协议内核**（JSON-RPC over stdio 持久会话 + steer/interrupt/审批协议） | Codex-Harness（app-server，2026-08-19 开源） | 有 ACP server（`core/acp/server.py`，FastAPI WebSocket，IDE 集成）+ A2A（REST/SSE）但**无 stdio JSON-RPC 持久内核**；审批（ApprovalGate + HITL resume）已具备但未暴露为可嵌入协议 | ⚠️ **部分具备**（审批/事件已具备，协议面缺 stdio JSON-RPC） | `core/acp/server.py`（WebSocket 版）+ `approval_gate.py:154` + HITL（`pipeline_engine.py:587`） | ❌ **待实施（P0-a，见 Codex-Harness 借鉴报告）**：`core/acp/stdio_server.py` 新协议层，映射 run_events/HITL |
-| G17 | **官方 SDK 包**（TS/Python 程序化启停 run + 流式事件） | Codex-Harness（Codex SDK） | CoreFacade（163 def/class 门面）+ REST API；**无 pip/npm SDK 包** | ❌ **缺失** | `core/api/core_facade.py`（进程内门面，非外部包） | ❌ **待实施（P1，见 Codex-Harness 借鉴报告）**：aiplat-sdk（Python 优先，封装 REST + SSE/WS 事件订阅） |
-| G18 | **竞品会话/记忆级导入**（Claude Code/Cursor 30 天会话 → 记忆） | Codex-Harness（竞品资产一键迁入） | L2 import-repo 导入代码（`builder_project_service.py:1573`）+ format_adapters 导入 AGENT.md/SKILL.md/MCP 配置（`management/format_adapters.py`）+ claude_md 引擎读取 CLAUDE.md（`context/engine.py:113`）；**缺"会话历史/记忆"级导入** | ⚠️ **部分具备**（格式桥/代码导入有，会话记忆导入缺） | `format_adapters.py`（格式级）+ `memory/manager.py`（四层记忆载体已有） | ❌ **待实施（P0-b，见 Codex-Harness 借鉴报告）**：Claude Code 会话 JSONL → MemoryManager 导入通道 |
-| G19 | **OS 原生沙箱隔离**（Bubblewrap/Seatbelt/AppContainer 真进程隔离） | Codex-Harness（sandboxing crate） | SandboxGate 是进程内检查（`sandbox_gate.py:39` 路径/网络/限流白名单），**非 OS 原生隔离** | ⚠️ **部分具备**（检查式有，OS 隔离无） | `sandbox_gate.py:39`（进程内检查） | ❌ **待实施（P1，见 Codex-Harness 借鉴报告）**：Linux bubblewrap 可选执行器，保留现状为 fail-open fallback |
+| G16 | **app-server 式协议内核**（JSON-RPC over stdio 持久会话 + steer/interrupt/审批协议） | Codex-Harness（app-server，2026-08-19 开源） | 有 ACP server（WebSocket）+ A2A；审批已具备 | ⚠️ **部分具备**（审批/事件已具备，协议面缺 stdio JSON-RPC） | `core/acp/server.py` + `approval_gate.py:154` + HITL | ✅ **已补齐（P0-a，2026-08-24）**：`core/acp/stdio_server.py` JSON-RPC over stdio 持久内核（thread/start|status|events|resume|approve|reject|rollback|cancel + 背压 -32001，映射 run_events/HITL） |
+| G17 | **官方 SDK 包**（TS/Python 程序化启停 run + 流式事件） | Codex-Harness（Codex SDK） | CoreFacade（163 def/class 门面）+ REST API；**无 pip/npm SDK 包** | ❌ **缺失** | `core/api/core_facade.py`（进程内门面，非外部包） | ✅ **已补齐（P1，2026-08-24）+ P2 exec CLI（2026-08-25）**：`aiplat-sdk`（StdioKernelClient 程序化启停 Thread + stream_events；`aiplat exec` 单次执行 CLI，codex exec 对齐） |
+| G18 | **竞品会话/记忆级导入**（Claude Code/Cursor 30 天会话 → 记忆） | Codex-Harness（竞品资产一键迁入） | L2 import-repo 导入代码 + format_adapters 格式桥 + claude_md 引擎；**缺会话历史 JSONL→MemoryManager 通道** | ⚠️ **部分具备**（格式桥有，会话级缺） | `builder_project_service.py:1573` + `format_adapters.py` | ✅ **已补齐（P0-b，2026-08-24）**：`core/harness/memory/import_claude_sessions.py`（Claude JSONL 会话→MemoryManager，source_tag=claude_import + provenance 防投毒，只读消费） |
+| G19 | **OS 原生沙箱隔离**（Bubblewrap/Seatbelt/AppContainer 真进程隔离） | Codex-Harness（sandboxing crate） | SandboxGate 是进程内检查（`sandbox_gate.py:39` 路径/网络/限流白名单），**非 OS 原生隔离** | ⚠️ **部分具备**（检查式有，OS 隔离无） | `sandbox_gate.py:39`（进程内检查） | ✅ **已补齐（P1，2026-08-24）**：`core/harness/infrastructure/os_sandbox.py`（bwrap/seatbelt 可选执行器：只读系统路径 + 可写工作区 + 默认网络隔离 + fail-open fallback，`AIPLAT_SANDBOX=bwrap/seatbelt`） |
 
 ### 20.2 缺口汇总与优先级（2026-08-24 Codex-Harness 扩列后复核）
 
 | 缺口类别 | 数量 | 清单 | 对应行动纲领/改进方案 |
 |---|---|---|---|
-| ❌ **完全缺失**（aiPlat 无此能力） | **2** | G17 官方 SDK 包、G19 OS 原生沙箱隔离 | **待实施**（见《Codex-Harness开源借鉴分析报告.md》P1：aiplat-sdk + bubblewrap 可选执行器） |
-| ⚠️ **部分具备**（需收尾） | **2** | G16 app-server 式 stdio JSON-RPC 协议内核、G18 竞品会话/记忆级导入 | **待实施**（见 Codex-Harness 借鉴报告 P0-a/P0-b：`core/acp/stdio_server.py` + 会话 JSONL→MemoryManager 导入） |
+| ❌ **完全缺失**（aiPlat 无此能力） | **0** | —（G16-G19 已全部补齐，2026-08-24/25） | — |
+| ⚠️ **部分具备**（需收尾） | **0** | —（G16 stdio 内核 P0-a / G17 SDK P1 / G18 会话导入 P0-b / G19 OS 沙箱 P1 已全部落地） | — |
 | ✅ **已补齐**（原 ❌/⚠️ → ✅） | **13** | G1 nudge、G2 Curator、G3 事件折叠（+fork 分化）、G4 运行时扩展缝、G5 ManagedPolicy、G6 CC/Codex hooks 桥、G8 agentskills、G9 渠道 22、G10 provider 插件化、G11 子代理 provider、G12 worker/阶段隔离、G13 goal judge、G14 no-agent cron | P1-A1/A2/A3/A4/A5/A6 + P2-A1/A2/A3/A5/A6/A7（P1-A 对标差距 6/6 + P2 演进治理 12/12 全 DONE）+ **G6 独立批次（2026-08-23，`cc_bridge.py` 15 测试）** + **渠道广度延伸（2026-08-23~25，7→22 收官）** + **G3 fork 分化入口（2026-08-25，`fork_run_from_events` + 血缘查询）** |
 | ✅ **已具备**（不构成缺口） | 1 | G7 checkpoint/rewind | — |
 | ✅ **aiPlat 侧已治理**（原双方皆弱） | 1 | G15 单文件巨兽（P2-A4 拆分收官） | P2-A4（12,281→8,285 行 + 5 Mixin） |
 
-**结论（更新）**：2026-08-15 初版判定 aiPlat 有 **6 项完全缺失** 与 **8 项部分具备** 的三方独有能力，优先级最高的是 G1/G5/G11/G8（对应改进方案 P1 批次的四个核心项）。**2026-08-19 基线（行动纲领 53/53 DONE）复核：12 项已补齐，仅剩 G6 一项完全缺失**——该证明"维度由 aiPlat 定义会漏掉这些缺口"的反向扫描方法论有效，且 P1-A/P2 批次按此方法论精准闭环。**2026-08-23 G6 独立批次落地：G1-G15 全 15 项补齐，§20 首轮 gap 矩阵清零**。**2026-08-24 Codex-Harness 扩列**：以 Codex-Harness 为锚新增 G16-G19（协议面/导入/沙箱），**真缺口 2 项（SDK、OS 沙箱）+ 收尾 2 项（stdio JSON-RPC 协议内核、会话级导入）**——全部落在"协议面"与"导入收尾"，与《Codex-Harness开源借鉴分析报告.md》P0/P1 建议一致。**下一轮候选**：P0-a stdio JSON-RPC 内核 → P0-b 会话/记忆导入 → P1 SDK → P1 OS 沙箱。
+**结论（更新）**：2026-08-15 初版判定 aiPlat 有 **6 项完全缺失** 与 **8 项部分具备** 的三方独有能力，优先级最高的是 G1/G5/G11/G8（对应改进方案 P1 批次的四个核心项）。**2026-08-19 基线（行动纲领 53/53 DONE）复核：12 项已补齐，仅剩 G6 一项完全缺失**——该证明"维度由 aiPlat 定义会漏掉这些缺口"的反向扫描方法论有效，且 P1-A/P2 批次按此方法论精准闭环。**2026-08-23 G6 独立批次落地：G1-G15 全 15 项补齐，§20 首轮 gap 矩阵清零**。**2026-08-24 Codex-Harness 扩列**：以 Codex-Harness 为锚新增 G16-G19（协议面/导入/沙箱），**真缺口 2 项（SDK、OS 沙箱）+ 收尾 2 项（stdio JSON-RPC 协议内核、会话级导入）**。**2026-08-24/25 已全部落地**：P0-a stdio JSON-RPC 内核（`core/acp/stdio_server.py`）→ P0-b 会话/记忆导入（`import_claude_sessions.py`）→ P1 SDK（`aiplat-sdk`）→ P1 OS 沙箱（`os_sandbox.py`）→ P2 exec CLI（`aiplat exec`）——**G16-G19 四行全转 ✅，§20.2 待实施清零**。
 
 ---
 
@@ -763,7 +763,7 @@ flowchart LR
 
 1. **aiPlat 的 7 个主动优势区集中在"企业级治理闭环"**：执行引擎、工具治理、沙箱/审批、企业治理、工作流——这些是 aiPlat 相对六方的**结构性优势**（不是单点领先，是"治理体系"整体领先），且全部有代码证据（Syscall 封口、多 Gate、RBAC、审计链、PipelineEngine）。
 
-2. **aiPlat 的被动差距区从"生态面"扩展出"协议面"（2026-08-24 Codex 扩列更新）**：原 4 个被动差距区（子代理传输、Skill 生态、多渠道、provider 插件化）是"生态面/接入面"——已全部补齐（P1-A3/A5/A4/A6 + P2-A3 + G6 + 渠道 22）；**Codex-Harness 开源新增 3 个"协议面"差距**：协议可嵌入性（G16 stdio JSON-RPC 内核、G17 SDK 包）、竞品资产导入（G18 会话/记忆级）、OS 原生沙箱（G19）——**这些仍是"接入面/协议面"而非"内核面"**，证明"aiPlat 的差距是接入面差距"结论依旧成立，且与《Codex-Harness开源借鉴分析报告.md》的 P0/P1 建议一致（协议面是当前最薄处）。
+2. **aiPlat 的被动差距区从"生态面"扩展出"协议面"（2026-08-24 Codex 扩列更新）**：原 4 个被动差距区（子代理传输、Skill 生态、多渠道、provider 插件化）是"生态面/接入面"——已全部补齐（P1-A3/A5/A4/A6 + P2-A3 + G6 + 渠道 22）；**Codex-Harness 开源新增 3 个"协议面"差距**：协议可嵌入性（G16 stdio JSON-RPC 内核、G17 SDK 包）、竞品资产导入（G18 会话/记忆级）、OS 原生沙箱（G19）——**2026-08-24/25 已全部补齐**（P0-a stdio 内核 + P0-b 会话导入 + P1 SDK + P1 OS 沙箱 + P2 exec CLI），验证"aiPlat 的差距是接入面差距"结论，且协议面从"最薄"转为"已对齐"。
 
 3. **没有任何维度 aiPlat 全面垫底**：16 个能力维度中，aiPlat 在 8 个维度占优、4 个维度弱于某方、4 个持平——**最弱项（协议面 ★★★☆）与最强项（企业治理 ★★★★★）的差距说明 aiPlat 是"偏科但优势集中"的系统**；Codex-Harness 的唯一"最强"维度（协议面/可嵌入）恰是 aiPlat 下一步最该补的。
 
