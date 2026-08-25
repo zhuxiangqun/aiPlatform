@@ -32,6 +32,8 @@ from .pipeline import Pipeline
 from .harness import ReActLoop
 from .config import Config
 from .stdio import StdioKernelClient, StdioKernelError
+from .exec import exec_script, exec_pipeline, main as exec_main
 
 __version__ = "0.2.0"
-__all__ = ["Agent", "Pipeline", "ReActLoop", "Config", "StdioKernelClient", "StdioKernelError"]
+__all__ = ["Agent", "Pipeline", "ReActLoop", "Config", "StdioKernelClient", "StdioKernelError",
+           "exec_script", "exec_pipeline", "exec_main"]

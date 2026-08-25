@@ -19,7 +19,7 @@ Codex Harness 开源对 aiPlat 的价值不在"它有什么能力"（aiPlat 大�
 |---|---|---|---|
 | 1 | **Thread/Turn/Item 三层抽象** | run_events 事件流（`pipeline_run_store.py:122` append-only 表 + `append_run_event`，事件类型 stage_started/completed/skipped/paused/failed/hitl_requested/hitl_resolved/run_phase_changed）——**数据同构但命名/协议未公开** | ⚠️ 部分具备 |
 | 2 | **app-server：JSON-RPC over stdio 持久内核**（断连重连/steer/interrupt/审批） | ACP server（`core/acp/server.py`，FastAPI WebSocket，`ws://localhost:8005/acp`，IDE 集成）+ A2A（REST/SSE）；**无 JSON-RPC over stdio 持久会话内核** | ⚠️ 部分具备（WebSocket 有，stdio JSON-RPC 无） |
-| 3 | **codex exec：单次非交互入口** | P2-A7 no-agent script 模式（`event_loop.py:374` 判 `t.params.mode == "script"` 零 LLM 直接执行）+ 应用工厂双模式路由（`team_planner.py:50` mode: agent/code）——**有单次执行概念，但无独立 exec 命令/CI 入口** | ⚠️ 部分具备 |
+| 3 | **codex exec：单次非交互入口** | P2-A7 no-agent script 模式（`event_loop.py:374` 判 `t.params.mode == "script"` 零 LLM 直接执行）+ 应用工厂双模式路由（`team_planner.py:50` mode: agent/code）——**有单次执行概念，但无独立 exec 命令/CI 入口** | ✅ **已补齐（2026-08-25）**：`aiplat exec` CLI（`aiplat-sdk/aiplat/exec.py` + `[project.scripts] aiplat`）：`aiplat exec "req"` 经 `StdioKernelClient` 跑流水线（thread/start→轮询 status→JSON）；`--script` 零 LLM fail-closed 白名单（bash/sh/python3/python，白名单外 exit_code=125） |
 | 4 | **Codex SDK（TS/Python）程序化启停 Thread + 流式事件** | CoreFacade（163 def/class 唯一门面）+ REST API；**无官方 SDK 包**（无 `pip install aiplat-sdk`/`npm i @aiplat/sdk`） | ❌ 真缺口 |
 | 5 | **平台原生沙箱**（Linux Bubblewrap+Landlock / macOS Seatbelt / Windows AppContainer） | SandboxGate（`sandbox_gate.py:39`，路径白名单/网络白名单/限流/资源预算/危险模式）——**进程内检查式沙箱，非 OS 原生隔离**；另有 pipeline_sandbox.py | ⚠️ 部分具备 |
 | 6 | **SQLite 会话状态持久化 + thread/resume/fork** | SQLite 持久化（pipeline_runs + pipeline_run_events 双写）+ checkpoint（`langgraph/core.py:55` enable_checkpoints + record_checkpoint）+ 断点续跑（pipeline_engine HITL resume）——**持久化与恢复已具备**；fork/分支有 `ontology_branch.py`（本体层，非 Thread 层） | ✅ **已补齐（2026-08-25）**：`fork_run_from_events` 会话级 fork（折叠源事件→新 run 继承分叉点 + `pipeline_forked` 血缘事件，子 run 状态可纯从自身事件重建）+ `list_forked_runs` 血缘查询 + `POST /pipeline/pipelines/runs/{run_id}/fork`/`GET .../forks` |
@@ -78,7 +78,7 @@ Codex Harness 开源对 aiPlat 的价值不在"它有什么能力"（aiPlat 大�
 
 - **~~Thread/fork 会话级分支~~（✅ 已实施 2026-08-25）**：`fork_run_from_events` 折叠源 run 事件 → 新 run 继承分叉点（stage/pass_rate）并从 executing 继续；`pipeline_forked` 事件（append-only，含 parent_run_id + 继承状态）使**子 run 状态可纯从自身事件重建**（`replay_run_events` 折叠该事件）；`list_forked_runs` 血缘查询；`POST /pipeline/pipelines/runs/{run_id}/fork` + `GET .../forks`。测试 3 例（继承+purity / 无事件 None / 血缘逆序+limit），`test_pipeline_run_events.py` 9 例全绿。
 - **~~协议级背压 -32001 语义~~（✅ 已实施 2026-08-25）**：`BackpressureMiddleware`（`core/server.py`）——全局 inflight 并发计数，`AIPLAT_BACKPRESSURE_MAX_INFLIGHT>0` 时超限请求返回 **429 + Retry-After**（`_backpressure_retry_after` 指数退避 2^overflow，上限 60s，对齐 codex -32001）；`backpressure_stats()` 诊断。ACP WS 层：`AIPLAT_ACP_MAX_CONNECTIONS>0` 时活跃连接超限拒绝新连接（错误帧 `-32001` + 关闭码 1013）。三协议层语义统一：HTTP=Retry-After 头、WS/stdio=-32001。测试 5 例（`test_backpressure_protocol.py`）。
-- **exec 单次入口命令**：把 P2-A7 script 模式 + 应用工厂双模式包装成 `aiplat exec` CLI（CI 友好、JSON 输出）。
+- **~~exec 单次入口命令~~（✅ 已实施 2026-08-25）**：`aiplat exec` CLI（`aiplat-sdk/aiplat/exec.py` + pyproject `[project.scripts] aiplat`）——默认流水线模式：`aiplat exec "requirement"` 经 `StdioKernelClient` spawn stdio 内核 → `thread/start` → 轮询 `thread/status` 直到 done（超时 best-effort cancel），返回最终状态 JSON；`--script` 模式零 LLM 直接 subprocess（对齐 P2-A7 fail-closed 入口白名单 bash/sh/python3/python，白名单外 exit_code=125 拒绝，绝不静默 fallback）。`aiplat.__init__` 导出 `exec_script`/`exec_pipeline`/`exec_main`。测试 8 例（`test_exec_cli.py`）。
 
 ---
 

@@ -44,6 +44,9 @@ Documentation = "https://github.com/zhuxiangqun/aiPlatform/blob/main/aiplat-sdk/
 Repository = "https://github.com/zhuxiangqun/aiPlatform"
 Issues = "https://github.com/zhuxiangqun/aiPlatform/issues"
 
+[project.scripts]
+aiplat = "aiplat.exec:main"
+
 [tool.setuptools.packages.find]
 include = ["aiplat*"]
 

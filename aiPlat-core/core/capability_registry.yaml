@@ -603,7 +603,7 @@ domains:
   observability:
     section: "八"
     section_name: "可观测性"
-    caps_count: 22
+    caps_count: 24
     provides:
       - symbol: "EventBus"
         type: "class"
@@ -633,6 +633,14 @@ domains:
         type: "class"
         signature: "SDK stdio 内核客户端：spawn core.acp.stdio_server + thread/start|approve|reject|events + stream_events（P1, 对标 Codex SDK）"
         module: "aiplat-sdk/aiplat/stdio.py"
+      - symbol: "exec_script"
+        type: "function"
+        signature: "aiplat exec --script：零 LLM subprocess（fail-closed 入口白名单 bash/sh/python3/python，白名单外 exit_code=125）"
+        module: "aiplat-sdk/aiplat/exec.py"
+      - symbol: "exec_pipeline"
+        type: "function"
+        signature: "aiplat exec：经 StdioKernelClient 跑 PipelineSession（thread/start→轮询 status→JSON，超时 best-effort cancel）"
+        module: "aiplat-sdk/aiplat/exec.py"
       - symbol: "build_os_sandbox_cmd"
         type: "function"
         signature: "OS 原生沙箱命令包装：bwrap/seatbelt 可选执行器，fail-open fallback（P1, 对标 Codex sandboxing）"
