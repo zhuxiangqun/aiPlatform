@@ -717,3 +717,13 @@ pytest -q \
   - `grep -c "marketplace/external" aiPlat-platform/api/routers/skill_marketplace.py`（≥1：端点注册）
   - `grep -c "discover_external" aiPlat-platform/api/routers/skill_marketplace.py`（≥1：接线）
   - `cd aiPlat-platform && python3 -m pytest tests/test_skill_marketplace_external.py -q`（5 passed）
+
+### 1.66 模型 provider 生态广度三批（2026-08-25，向 Hermes 38 方向继续收窄）
+- MUST：`aiPlat-infra/config/providers.yaml` 含 **≥30 provider**（基础 6 + 一批 8 + 二批 8 + 三批 8：gemini/nvidia/huggingface/upstage/arcee/zai/xiaomi/nous）——全部 OpenAI 兼容端点（复用 openai_compatible.py，零代码）
+- MUST：所有 external + requires_api_key 的 provider 带 `env_key`（API key 契约）
+- MUST：`ModelManager._api_provider_ids()` 可发现 ≥28 外部 API provider（YAML 驱动，非 fallback 硬编码集）
+- 契约登记：run spec 七十轮（infra 配置驱动，无 harness 契约变更）
+- 自动化验收：
+  - `python3 -c "import yaml; d=yaml.safe_load(open('aiPlat-infra/config/providers.yaml')); assert len(d['providers'])>=30; print('OK')"`
+  - `python3 -c "import sys; sys.path.insert(0,'aiPlat-infra'); from infra.management.model.manager import _api_provider_ids; ids=_api_provider_ids(); assert all(x in ids for x in ['gemini','nvidia','huggingface','upstage','arcee','zai','xiaomi','nous']); print('OK')"`
+  - `cd aiPlat-infra && python3 -m pytest infra/tests/unit/test_model_selection.py -q`（16 passed，含生态广度防回归升级 30 家族）

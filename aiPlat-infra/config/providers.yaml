@@ -220,3 +220,75 @@ providers:
 #    env_key: GEMINI_API_KEY
 #    base_url_env: GEMINI_BASE_URL
 #    enabled: true
+
+  - id: gemini
+    name: Google Gemini (OpenAI 兼容端点)
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning, embedding]
+    env_key: GEMINI_API_KEY
+    base_url_env: GEMINI_BASE_URL
+    enabled: true
+
+  - id: nvidia
+    name: NVIDIA NIM
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning]
+    env_key: NVIDIA_API_KEY
+    base_url_env: NVIDIA_BASE_URL
+    enabled: true
+
+  - id: huggingface
+    name: Hugging Face Inference
+    type: external
+    requires_api_key: true
+    capabilities: [chat, embedding]
+    env_key: HUGGINGFACE_API_KEY
+    base_url_env: HUGGINGFACE_BASE_URL
+    enabled: true
+
+  - id: upstage
+    name: Upstage (Solar)
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning]
+    env_key: UPSTAGE_API_KEY
+    base_url_env: UPSTAGE_BASE_URL
+    enabled: true
+
+  - id: arcee
+    name: Arcee AI
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning]
+    env_key: ARCEE_API_KEY
+    base_url_env: ARCEE_BASE_URL
+    enabled: true
+
+  - id: zai
+    name: Z.ai (GLM 海外版)
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning, embedding]
+    env_key: ZAI_API_KEY
+    base_url_env: ZAI_BASE_URL
+    enabled: true
+
+  - id: xiaomi
+    name: Xiaomi MiLM
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning]
+    env_key: XIAOMI_API_KEY
+    base_url_env: XIAOMI_BASE_URL
+    enabled: true
+
+  - id: nous
+    name: Nous Research (Hermes 系)
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning]
+    env_key: NOUS_API_KEY
+    base_url_env: NOUS_BASE_URL
+    enabled: true
