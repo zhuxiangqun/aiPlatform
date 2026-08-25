@@ -283,74 +283,11 @@ class BuilderSessionService:
         return None
 
     def _parse_markdown_prd(self, reply: str) -> Dict[str, Any]:
-        """Parse structured Markdown PRD into a dict."""
-        prd: Dict[str, Any] = {}
+        """Parse structured Markdown PRD into a dict.
 
-        # Extract sections by ## headings
-        sections: Dict[str, str] = {}
-        current_key = ""
-        for line in reply.split("\n"):
-            m = re.match(r"^## (.+)", line)
-            if m:
-                current_key = m.group(1).strip()
-                sections[current_key] = ""
-            elif current_key:
-                sections[current_key] += line + "\n"
-
-        # Title
-        title_match = re.search(r"^# (.+)", reply, re.MULTILINE)
-        if title_match:
-            prd["title"] = title_match.group(1).strip()
-            if prd["title"].startswith("项目名称："):
-                prd["title"] = prd["title"][5:].strip()
-
-        # Background
-        bg = sections.get("项目背景", "").strip()
-        if bg:
-            prd["background"] = bg
-
-        # Goal
-        goal = sections.get("项目目标", "").strip()
-        if goal:
-            prd["goal"] = goal
-
-        # User roles → list
-        roles_section = sections.get("用户角色", "")
-        user_stories = []
-        for role_match in re.finditer(r"-\s*\*\*(.+?)\*\*[：:](.+)", roles_section or ""):
-            user_stories.append({"role": role_match.group(1).strip(),
-                                 "description": role_match.group(2).strip()})
-
-        # Functional requirements
-        func_section = sections.get("功能需求", "")
-        fr_items = []
-        for fr_match in re.finditer(
-            r"###\s*(.+?)\n(.*?)(?=\n###|\n##|\Z)", func_section or "", re.DOTALL
-        ):
-            fr_name = fr_match.group(1).strip()
-            fr_body = fr_match.group(2)
-            user_story_match = re.search(r"用户故事[：:]\s*(.+)", fr_body)
-            priority_match = re.search(r"优先级[：:]\s*(.+)", fr_body)
-            acs = re.findall(r"AC\d+:\s*(.+)", fr_body)
-            fr_items.append({
-                "id": fr_name.split(":", 1)[0].strip() if ":" in fr_name else fr_name,
-                "name": fr_name.split(":", 1)[1].strip() if ":" in fr_name else fr_name,
-                "description": user_story_match.group(1).strip() if user_story_match else "",
-                "acceptance_criteria": acs,
-                "priority": priority_match.group(1).strip() if priority_match else "P0",
-                "passes": False,
-            })
-        if fr_items:
-            prd["functional_requirements"] = fr_items
-
-        # Scope
-        scope = sections.get("范围", "").strip()
-        if scope:
-            prd["scope"] = scope
-
-        # Wrap in standard format for downstream compatibility
-        if not prd.get("user_stories"):
-            prd["user_stories"] = user_stories or fr_items
-
-        return prd if prd.get("title") else None
-
+        P1-9 收敛（§10 防并行实现）：委托 BuilderProjectService._parse_markdown_prd
+        （功能超集：PRD_READY 剥离/多 section 别名/标题前缀），本 deprecated 文件
+        不再维护独立解析。
+        """
+        from builder.builder_project_service import BuilderProjectService
+        return BuilderProjectService._parse_markdown_prd(reply)

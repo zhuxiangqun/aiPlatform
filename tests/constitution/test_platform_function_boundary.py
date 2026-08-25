@@ -28,6 +28,7 @@ ALLOWED_ORCHESTRATORS: Set[Tuple[str, str]] = {
     ("builder/builder_project_service.py", "reject_stage"),
     ("builder/builder_project_service.py", "rollback_stage"),
     ("builder/builder_workflow_service.py", "execute"),
+    ("builder/builder_workflow_service.py", "_nodes_to_stages"),  # execute 的辅助方法（P1-9 收敛抽取）
     ("builder/builder_session.py", "chat"),
     ("builder/builder_session.py", "create_session"),
     ("kb/intelligence/llm.py", "chat_complete"),

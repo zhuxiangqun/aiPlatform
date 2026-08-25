@@ -118,8 +118,31 @@ class WorkflowService:
         if mgr and wf:
             _verify_workflow_signature(mgr, wf)
 
-        nodes = wf_dict.get("nodes") or []
-        edges = wf_dict.get("edges") or []
+        stages = self._nodes_to_stages(wf_dict.get("nodes") or [], wf_dict.get("edges") or [])
+        from builder.builder_project_service import _get_project_service
+        from core.schemas_builder import ProjectCreateRequest
+        svc = _get_project_service()
+        proj = await svc.create_project(ProjectCreateRequest(
+            name=launch_name or wf_dict.get("name", "workflow"),
+            description=wf_dict.get("description", ""),
+            stages=stages,
+        ))
+        from storage.sqlite import record_workflow_run
+        record_workflow_run(workflow_id, proj.project_id, launch_name or wf_dict.get("name", ""))
+        # Fire pipeline in background — API returns immediately, frontend polls /runs
+        import sys
+        print("### start_pipeline_background called for", proj.project_id, file=sys.stderr)
+        svc.start_pipeline_background(proj.project_id)
+        return {"project_id": proj.project_id, "workflow_id": workflow_id, "run_id": proj.project_id}
+
+    def _nodes_to_stages(self, nodes: list, edges: list) -> list:
+        """## platform:allowed — 节点→PipelineStageConfig dict 转换（唯一实现，P1-9 §10 防并行实现）。
+
+        原为 execute() 内联逻辑（继承 execute 的 ## platform:allowed 白名单：
+        agent frontmatter 发现用于阶段模型/类型路由）；app_service 精简版
+        已收敛为委托本方法。extra 字段由 PipelineStageConfig model_config.extra=ignore
+        兜底，下游只增不减。
+        """
         stages = []
         for i, n in enumerate(nodes):
             d = n.get("data", {}) or {}
@@ -199,21 +222,7 @@ class WorkflowService:
                 stages = [stage_map[sid] for sid in ordered]
                 for i, s in enumerate(stages):
                     s["order"] = i
-        from builder.builder_project_service import _get_project_service
-        from core.schemas_builder import ProjectCreateRequest
-        svc = _get_project_service()
-        proj = await svc.create_project(ProjectCreateRequest(
-            name=launch_name or wf_dict.get("name", "workflow"),
-            description=wf_dict.get("description", ""),
-            stages=stages,
-        ))
-        from storage.sqlite import record_workflow_run
-        record_workflow_run(workflow_id, proj.project_id, launch_name or wf_dict.get("name", ""))
-        # Fire pipeline in background — API returns immediately, frontend polls /runs
-        import sys
-        print("### start_pipeline_background called for", proj.project_id, file=sys.stderr)
-        svc.start_pipeline_background(proj.project_id)
-        return {"project_id": proj.project_id, "workflow_id": workflow_id, "run_id": proj.project_id}
+        return stages
 
     async def list_runs(self, workflow_id: str) -> list:
         return list_workflow_runs(workflow_id)  # noqa: F821
