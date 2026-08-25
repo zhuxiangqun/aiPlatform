@@ -696,3 +696,14 @@ pytest -q \
   - `python3 -c "import sys; sys.path.insert(0,'aiPlat-app'); from channels.adapter import ChannelType; assert len(ChannelType)==22; print('OK')"`
   - `python3 -c "import sys; sys.path.insert(0,'aiPlat-app'); from channels.adapters import ADAPTERS; assert len(ADAPTERS)==19; print('OK')"`
   - `cd aiPlat-app && python3 -m pytest tests/test_cli_and_channels.py -q`（25 passed）
+
+
+### 1.63 模型 provider 生态广度二批（2026-08-25，向 Hermes 38 方向继续收窄）
+- MUST：`aiPlat-infra/config/providers.yaml` 含 **≥22 provider**（基础 6 + 2026-08-24 首批 8 + 2026-08-25 二批 8：siliconflow/moonshot/minimax/zhipu/baichuan/stepfun/deepinfra/fireworks）——全部 OpenAI 兼容端点（复用 openai_compatible.py，零代码）
+- MUST：所有 external + requires_api_key 的 provider 带 `env_key`（API key 契约）；`base_url_env` 缺省走 openai_compatible 默认 /v1
+- MUST：`ModelManager._api_provider_ids()` 可发现 ≥20 外部 API provider（YAML 驱动，非 fallback 硬编码集）
+- 契约登记：run spec 六十八轮（infra 配置驱动，无 harness 契约变更）
+- 自动化验收：
+  - `python3 -c "import yaml; d=yaml.safe_load(open('aiPlat-infra/config/providers.yaml')); assert len(d['providers'])>=22; print('OK')"`
+  - `python3 -c "import sys; sys.path.insert(0,'aiPlat-infra'); from infra.management.model.manager import _api_provider_ids; ids=_api_provider_ids(); assert all(x in ids for x in ['siliconflow','moonshot','minimax','zhipu','baichuan','stepfun','deepinfra','fireworks']); print('OK')"`
+  - `cd aiPlat-infra && python3 -m pytest infra/tests/unit/test_model_selection.py -q`（16 passed，含生态广度防回归升级 22 家族）

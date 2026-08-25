@@ -139,6 +139,78 @@ providers:
     base_url_env: NOVITA_BASE_URL
     enabled: true
 
+  - id: siliconflow
+    name: SiliconFlow
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning, embedding]
+    env_key: SILICONFLOW_API_KEY
+    base_url_env: SILICONFLOW_BASE_URL
+    enabled: true
+
+  - id: moonshot
+    name: Moonshot AI (Kimi)
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning]
+    env_key: MOONSHOT_API_KEY
+    base_url_env: MOONSHOT_BASE_URL
+    enabled: true
+
+  - id: minimax
+    name: MiniMax
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning]
+    env_key: MINIMAX_API_KEY
+    base_url_env: MINIMAX_BASE_URL
+    enabled: true
+
+  - id: zhipu
+    name: Zhipu AI (GLM)
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning, embedding]
+    env_key: ZHIPU_API_KEY
+    base_url_env: ZHIPU_BASE_URL
+    enabled: true
+
+  - id: baichuan
+    name: Baichuan AI
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning]
+    env_key: BAICHUAN_API_KEY
+    base_url_env: BAICHUAN_BASE_URL
+    enabled: true
+
+  - id: stepfun
+    name: StepFun (阶跃星辰)
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning]
+    env_key: STEPFUN_API_KEY
+    base_url_env: STEPFUN_BASE_URL
+    enabled: true
+
+  - id: deepinfra
+    name: DeepInfra
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning, embedding]
+    env_key: DEEPINFRA_API_KEY
+    base_url_env: DEEPINFRA_BASE_URL
+    enabled: true
+
+  - id: fireworks
+    name: Fireworks AI
+    type: external
+    requires_api_key: true
+    capabilities: [chat, code, image]
+    env_key: FIREWORKS_API_KEY
+    base_url_env: FIREWORKS_BASE_URL
+    enabled: true
+
 # ── 新增 provider 示例（取消注释即可启用） ──
 #  - id: gemini
 #    name: Google Gemini (OpenAI 兼容端点)
