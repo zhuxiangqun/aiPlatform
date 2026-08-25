@@ -68,7 +68,7 @@ def build_abox(partial: Optional[str] = None, *, collection_id: str = "default")
     
     # ── Step 1: Load Wiki pages ──
     wiki_pages = _scan_wiki_pages(partial, collection_id=collection_id)
-    _build_wiki_triples(onto, wiki_pages)
+    _build_wiki_triples(onto, wiki_pages, collection_id=collection_id)
     
     # ── Step 2: Load KB documents ──
     kb_docs = _scan_kb_documents(partial)
@@ -195,10 +195,13 @@ def _scan_kb_documents(partial: Optional[str] = None) -> List[Dict[str, Any]]:
 # Triple Builders
 # ══════════════════════════════════════════════════════════════
 
-def _build_wiki_triples(onto: KnowledgeOntology, pages: List[Dict[str, Any]]) -> None:
+def _build_wiki_triples(onto: KnowledgeOntology, pages: List[Dict[str, Any]],
+                        collection_id: str = "default") -> None:
     """Build triples from Wiki page frontmatter data."""
     from core.harness.knowledge.knowledge_ontology import OntologyTriple
     now = datetime.now(timezone.utc).isoformat()
+    _domain_id = None if collection_id in ("default", "common") else collection_id
+    _domain_props = _domain_property_names(_domain_id)
     
     for fm in pages:
         title = str(fm.get("title", "")).strip()
@@ -208,8 +211,11 @@ def _build_wiki_triples(onto: KnowledgeOntology, pages: List[Dict[str, Any]]) ->
         page_uri = f"{AI}{_safe_uri(title)}"
         category = str(fm.get("category", fm.get("_category", "entities")))
         
-        # Class assignment
-        if category == "entities":
+        # Class assignment（Q3：优先映射域 TBox 类，回退通用类型）
+        domain_class = _map_to_domain_class(category, _domain_id)
+        if domain_class:
+            onto.triples.append(OntologyTriple(page_uri, "rdf:type", f"{AI}{_safe_uri(domain_class)}"))
+        elif category == "entities":
             onto.triples.append(OntologyTriple(page_uri, "rdf:type", f"{AI}ConceptPage"))
         elif category == "topics":
             onto.triples.append(OntologyTriple(page_uri, "rdf:type", f"{AI}TopicPage"))
@@ -217,34 +223,36 @@ def _build_wiki_triples(onto: KnowledgeOntology, pages: List[Dict[str, Any]]) ->
             onto.triples.append(OntologyTriple(page_uri, "rdf:type", f"{AI}WikiPage"))
         
         # Data properties
-        _add_data(onto, page_uri, "title", str(title))
-        _add_data(onto, page_uri, "category", category)
+        _add_data_validated(onto, page_uri, "title", str(title), _domain_props)
+        _add_data_validated(onto, page_uri, "category", category, _domain_props)
         
         summary = str(fm.get("summary", ""))[:300]
         if summary:
-            _add_data(onto, page_uri, "summary", summary)
+            _add_data_validated(onto, page_uri, "summary", summary, _domain_props)
         
         tags = fm.get("tags", []) or []
         for t in (tags if isinstance(tags, list) else [tags]):
-            _add_data(onto, page_uri, "tags", str(t))
+            _add_data_validated(onto, page_uri, "tags", str(t), _domain_props)
         
-        _add_data(onto, page_uri, "created_at", fm.get("created_at", now))
-        _add_data(onto, page_uri, "updated_at", fm.get("last_updated", now))
+        _add_data_validated(onto, page_uri, "created_at", fm.get("created_at", now), _domain_props)
+        _add_data_validated(onto, page_uri, "updated_at", fm.get("last_updated", now), _domain_props)
 
         # Lifecycle state (Phase 1 — entity lifecycle state machine)
         lifecycle = fm.get("lifecycle_state", "published")
-        _add_data(onto, page_uri, "lifecycleState", lifecycle)
+        _add_data_validated(onto, page_uri, "lifecycleState", lifecycle, _domain_props)
 
         # Generation provenance
         gen = fm.get("_generated_by")
         if gen:
             import json as _json
-            _add_data(onto, page_uri, "generatedBy", _json.dumps(gen, ensure_ascii=False) if isinstance(gen, dict) else str(gen))
+            _add_data_validated(onto, page_uri, "generatedBy",
+                                _json.dumps(gen, ensure_ascii=False) if isinstance(gen, dict) else str(gen),
+                                _domain_props)
 
         # Quality score (Phase 4 — accumulated from pipeline feedback)
         quality_score = fm.get("quality_score")
         if quality_score is not None:
-            _add_data(onto, page_uri, "qualityScore", str(quality_score))
+            _add_data_validated(onto, page_uri, "qualityScore", str(quality_score), _domain_props)
 
         # Source articles → hasSource (only kb: prefix maps to KBDocument)
         for src in (fm.get("source_articles") or []):
@@ -357,6 +365,77 @@ def _add_data(onto: KnowledgeOntology, subject: str, prop: str, value: str) -> N
         onto.triples.append(OntologyTriple(
             subject, f"{AI}{prop}", f'"{value}"'
         ))
+
+
+def _add_data_validated(onto: KnowledgeOntology, subject: str, prop: str, value: str,
+                        domain_props: Optional[Set[str]]) -> None:
+    """Q3：_add_data 的 TBox 校验版——domain_props 非空且 prop 不在域 property 集时跳过（日志记录）。
+
+    无域（domain_props=None）或 prop 在 TBox 中 → 正常写入（向后兼容）；
+    域 TBox 明确无该 property → 跳过并 debug 日志（防 ABox 与域本体 schema 漂移）。
+    """
+    if domain_props and prop not in domain_props:
+        logging.getLogger(__name__).debug(
+            "ABox skip prop '%s' (not in domain TBox properties)", prop)
+        return
+    _add_data(onto, subject, prop, value)
+
+
+# Q3 闭环（2026-08-25）：域 TBox 感知——ABox 类归属从域本体 YAML 类清单映射，
+# 而非硬编码通用类型；data property 写前校验存在于域 TBox。加载失败或无域时回退默认。
+def _domain_class_labels(domain_id: str) -> Optional[Set[str]]:
+    """读域本体 YAML 的类标签集合（含 synonyms/categories）。无域或失败返回 None。"""
+    if not domain_id:
+        return None
+    try:
+        path = os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}.yaml")
+        if not os.path.exists(path):
+            return None
+        from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+        domain = load_ontology_from_yaml(path)
+        labels: Set[str] = set()
+        for cls in domain.classes:
+            labels.add(cls.label)
+            labels.update(cls.allowed_categories or [])
+            labels.update(cls.synonyms or [])
+        return labels if labels else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _domain_property_names(domain_id: str) -> Optional[Set[str]]:
+    """读域本体 YAML 的 data/object property 名集合。无域或失败返回 None。"""
+    if not domain_id:
+        return None
+    try:
+        path = os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}.yaml")
+        if not os.path.exists(path):
+            return None
+        from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+        domain = load_ontology_from_yaml(path)
+        names: Set[str] = set()
+        for p in getattr(domain, "properties", []) or []:
+            names.add(getattr(p, "name", "") or getattr(p, "label", ""))
+        for r in getattr(domain, "relations", []) or []:
+            names.add(getattr(r, "name", "") or getattr(r, "label", ""))
+        return names if names else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _map_to_domain_class(category: str, domain_id: str) -> str:
+    """将 wiki category 映射到域 TBox 类。精确标签→同义词/类别包含→空（调用方回退通用类型）。"""
+    labels = _domain_class_labels(domain_id)
+    if not labels:
+        return ""
+    cat_lower = str(category).lower()
+    for label in labels:
+        if str(label).lower() == cat_lower:
+            return str(label)
+    for label in labels:
+        if str(label).lower() in cat_lower or cat_lower in str(label).lower():
+            return str(label)
+    return ""
 
 
 def _safe_uri(name: str) -> str:

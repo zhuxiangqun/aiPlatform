@@ -220,3 +220,5 @@ aiPlat 逻辑上分为：
 
 
 - **Skill 开放生态收尾（2026-08-25）**：`GET /skills/marketplace/external` 端点（`aiPlat-platform/api/routers/skill_marketplace.py`）接线 `SkillMarketplace.discover_external`（P1-A5 agentskills.io 对接的 HTTP 入口，此前 0 生产 caller）——`source=agentskills.io` + `limit`；unsupported source → 400；外部源不可达返回 error 列表（best-effort 不阻断本地 marketplace）；安装仍走 `POST /skills/install`（admin + source_url fail-loud）。契约：外部 Skill 发现为只读 best-effort 能力；agentskills.io 为开放标准源（`EXTERNAL_SOURCES` 注册表可扩展）。
+
+- **知识管理审计 REAL 项修复（2026-08-25）**：quality gate 真正降级（`retriever.py` gate 块移至策略分支前，`AIPLAT_DEEP_RESEARCH_ENABLED` 时 web fallback 并入）；EXTRACTION_PROMPT 注册 prompt_loader（`knowledge-extraction`）；VALID_CLASS_TYPES 域本体配置驱动；DomainRouter T1/T2 共享助手去重；ABox TBox 感知（`_map_to_domain_class` + `_add_data_validated` prop 校验）；GraphSyncHandler 同步 ABox 缓存。契约：kb_graph（文档级三元组）与 GraphIndex（本体实例图）语义边界不变（各自真相源），ABox 缓存随 wiki 变更失效；quality gate 降级为可选（deep research 未启用时仅打标记，向后兼容）。

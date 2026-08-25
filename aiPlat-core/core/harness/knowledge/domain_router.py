@@ -40,6 +40,25 @@ class DomainRouter:
     # Public API
     # ═══════════════════════════════════════════════════════════════
 
+    # P2-4 闭环（2026-08-25）：T1/T2 匹配逻辑抽取为共享助手，消除 classify/suggest/per_domain_cost 三处重复
+    def _t1_label_match(self, q: str, did: Optional[str] = None) -> Optional[str]:
+        """Tier 1: label/category/synonym substring match。did=None → 任意域。"""
+        for label, label_did in self._label_index.items():
+            if len(label) >= 2 and label in q:
+                if did is None or label_did == did:
+                    return label_did
+        return None
+
+    def _t2_embed_score(self, query: str, did: str) -> Optional[float]:
+        """Tier 2: 单域 embedding 余弦相似度。embed 不可用时返回 None。"""
+        qvec = self._embed(query)
+        if qvec is None or did not in self._domain_vectors:
+            return None
+        dvec = self._domain_vectors[did]
+        import numpy as np
+        norm = np.linalg.norm(qvec) * np.linalg.norm(dvec)
+        return float(np.dot(qvec, dvec) / (norm + 1e-8))
+
     def classify(self, query: str) -> Optional[str]:
         u"""3-tier domain classification. Returns domain_id or None if no match."""
         self._ensure_built()
@@ -51,30 +70,27 @@ class DomainRouter:
 
 
         # ── Tier 1: Label match (<1ms) ──
-        for label, did in self._label_index.items():
-            if len(label) >= 2 and label in q:
-                self._route_stats["t1_hits"] += 1; self._route_stats["total"] += 1
-                return did
+        hit = self._t1_label_match(q)
+        if hit is not None:
+            self._route_stats["t1_hits"] += 1; self._route_stats["total"] += 1
+            return hit
 
         # ── Tier 2: Embedding cosine similarity (~50ms) ──
-        qvec = self._embed(query)
-        if qvec is not None:
-            best_did, best_score, runner_up = None, 0.0, 0.0
-            for did, dvec in self._domain_vectors.items():
-                norm = np.linalg.norm(qvec) * np.linalg.norm(dvec)
-                score = float(np.dot(qvec, dvec) / (norm + 1e-8))
-                if score > best_score:
-                    runner_up = best_score
-                    best_score = score
-                    best_did = did
+        best_did, best_score, runner_up = None, 0.0, 0.0
+        for did in domains:
+            score = self._t2_embed_score(query, did)
+            if score is not None and score > best_score:
+                runner_up = best_score
+                best_score = score
+                best_did = did
 
-            routing_cfg = self._load_registry().get("routing", {}).get("embedding", {})
-            min_conf = routing_cfg.get("min_confidence", 0.4)
-            min_margin = routing_cfg.get("min_margin", 0.08)
+        routing_cfg = self._load_registry().get("routing", {}).get("embedding", {})
+        min_conf = routing_cfg.get("min_confidence", 0.4)
+        min_margin = routing_cfg.get("min_margin", 0.08)
 
-            if best_did and best_score >= min_conf and (best_score - runner_up) >= min_margin:
-                self._route_stats["t2_hits"] += 1; self._route_stats["total"] += 1
-                return best_did
+        if best_did and best_score >= min_conf and (best_score - runner_up) >= min_margin:
+            self._route_stats["t2_hits"] += 1; self._route_stats["total"] += 1
+            return best_did
 
         # ── Tier 3: LLM classification (~300ms, rare) ──
         self._route_stats["t3_hits"] += 1; self._route_stats["total"] += 1
@@ -92,14 +108,11 @@ class DomainRouter:
     def suggest(self, query: str, top_k: int = 3) -> List[tuple[str, float]]:
         """返回 top-k 候选领域及相似度分数。即使未达路由阈值也返回，用于用户手动选择。"""
         self._ensure_built()
-        qvec = self._embed(query)
-        if qvec is None:
-            return []
         scores = []
-        for did, dvec in self._domain_vectors.items():
-            norm = np.linalg.norm(qvec) * np.linalg.norm(dvec)
-            score = float(np.dot(qvec, dvec) / (norm + 1e-8))
-            scores.append((did, score))
+        for did in self.list_domains():
+            score = self._t2_embed_score(query, did)
+            if score is not None:
+                scores.append((did, score))
         scores.sort(key=lambda x: x[1], reverse=True)
         return scores[:top_k]
 
@@ -135,19 +148,13 @@ class DomainRouter:
         q = query.lower()
         breakdown = {}
         for did in domains:
-            # T1 check
-            for label, lid in self._label_index.items():
-                if lid == did and len(label) >= 2 and label in q:
-                    breakdown[did] = {"tier": "T1_label", "tokens": 0}
-                    break
+            # T1 check（复用共享助手）
+            if self._t1_label_match(q, did=did) is not None:
+                breakdown[did] = {"tier": "T1_label", "tokens": 0}
             else:
-                # T2 check
-                qvec = self._embed(query)
-                if qvec is not None and did in self._domain_vectors:
-                    dvec = self._domain_vectors[did]
-                    import numpy as np
-                    norm = np.linalg.norm(qvec) * np.linalg.norm(dvec)
-                    score = float(np.dot(qvec, dvec) / (norm + 1e-8))
+                # T2 check（复用共享助手）
+                score = self._t2_embed_score(query, did)
+                if score is not None:
                     if score >= 0.4:
                         breakdown[did] = {"tier": "T2_embedding", "tokens": 0, "confidence": round(score, 3)}
                     else:

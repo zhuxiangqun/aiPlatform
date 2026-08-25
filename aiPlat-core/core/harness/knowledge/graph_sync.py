@@ -40,6 +40,14 @@ class GraphSyncHandler:
             clear_cache()
         except Exception as e:
             logging.debug(str(e), exc_info=True)
+        # 2026-08-25: ABox 缓存同步失效——wiki 变更时 GraphIndex（本体实例图）也需重建，
+        # 避免 kb_graph（文档级三元组）与 GraphIndex（本体实例图）双图库查询不一致
+        # （知识管理审计 Q3 收尾；语义边界不变：各自真相源，本步保证 ABox 缓存不陈旧）。
+        try:
+            from core.harness.knowledge.knowledge_abox_builder import invalidate_abox_cache
+            invalidate_abox_cache()
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     @classmethod
     async def wire(cls):

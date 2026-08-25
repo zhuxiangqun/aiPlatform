@@ -90,6 +90,21 @@ EXTRACTION_PROMPT = """你是企业知识抽取专家。从以下文本中抽取
 待抽取文本:
 {chunk_text}"""
 
+# P2-3 闭环（2026-08-25）：EXTRACTION_PROMPT 注册进 prompt_loader（模板治理，§17 内容归属）。
+# prompt_loader 约定 ${var} 占位符；模块常量用 .format() 的 {var}——注册时转换占位符。
+# 模块级常量保留向后兼容；新路径经 prompt_loader._sync_resolve("knowledge-extraction") 读取。
+try:
+    from core.harness.utils.prompt_loader import _register as _register_prompt
+    _register_prompt(
+        "knowledge-extraction",
+        EXTRACTION_PROMPT.replace("{chunk_text}", "${chunk_text}"),
+        category="knowledge",
+        variables=["chunk_text"],
+        version="1.0.0",
+    )
+except Exception:  # noqa: BLE001  # 注册失败不影响导入（prompt_loader 为可选依赖）
+    pass
+
 
 # ═══════════════════════════════════════════════════════════
 # Step 1: Document Ingestor
@@ -123,21 +138,66 @@ class DocumentIngestor:
 class EntityExtractor:
     """Call LLM to extract entities and relations from a text chunk."""
 
+    # P2-3/Q3 闭环（2026-08-25）：VALID_CLASS_TYPES 从硬编码改为配置驱动——
+    # 有 domain_id 时读域本体 YAML 类清单（ontology_loader），无则回退通用默认集。
+    # 硬编码默认集保留为兜底（非域上下文抽取仍可用）。
     VALID_CLASS_TYPES = {"人物", "组织", "产品", "地点", "时间", "事件", "文档", "概念", "方法"}
     VALID_RELATION_TYPES = {"属于", "参与", "负责", "包含", "依赖", "导致", "演化为", "部署于", "开始于", "结束于"}
 
+    @staticmethod
+    def _domain_class_types(domain_id: str) -> Optional[set]:
+        """读域本体 YAML 的类清单（含 synonyms/categories）；无 domain 或加载失败返回 None。"""
+        if not domain_id:
+            return None
+        try:
+            import os as _os
+            path = _os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}.yaml")
+            if not _os.path.exists(path):
+                return None
+            from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+            domain = load_ontology_from_yaml(path)
+            labels = set()
+            for cls in domain.classes:
+                labels.add(cls.label)
+                labels.update(cls.allowed_categories or [])
+                labels.update(cls.synonyms or [])
+            return labels if labels else None
+        except Exception:  # noqa: BLE001
+            return None
+
+    def _effective_class_types(self, domain_id: str) -> set:
+        return self._domain_class_types(domain_id) or self.VALID_CLASS_TYPES
+
     async def extract(self, chunk: Dict[str, Any], domain_id: str = "") -> Dict[str, Any]:
         """Extract entities + relations from one chunk via LLM."""
-        prompt = EXTRACTION_PROMPT.format(chunk_text=chunk["text"])
+        # P2-3：提示词经 prompt_loader 解析（模板治理），域类清单注入
+        class_types = self._effective_class_types(domain_id)
+        class_list = ", ".join(sorted(class_types))
+        prompt = self._build_prompt(chunk["text"], class_list)
 
         try:
             # Use the system LLM call
             result_text = await self._call_llm(prompt)
             parsed = self._parse_response(result_text, chunk["doc_name"], chunk["offset"])
+            # 过滤非法 class_type（域类清单外）——Q3 校验落地
+            if parsed.get("entities"):
+                parsed["entities"] = [
+                    e for e in parsed["entities"]
+                    if not e.get("class_type") or e["class_type"] in class_types
+                ]
             return parsed
         except Exception as e:
             logger.warning("Extraction failed for chunk at offset %d: %s", chunk.get("offset", 0), e, exc_info=True)
             return {"entities": [], "relations": [], "overall_confidence": 0.0}
+
+    @staticmethod
+    def _build_prompt(chunk_text: str, class_list: str) -> str:
+        """构建抽取提示词：优先 prompt_loader 注册模板，回退模块级 EXTRACTION_PROMPT。"""
+        try:
+            from core.harness.utils.prompt_loader import _sync_resolve
+            return _sync_resolve("knowledge-extraction", chunk_text=chunk_text)
+        except Exception:  # noqa: BLE001
+            return EXTRACTION_PROMPT.format(chunk_text=chunk_text)
 
     async def _call_llm(self, prompt: str) -> str:
         """Call LLM via the harness syscall channel."""
