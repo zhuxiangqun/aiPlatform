@@ -109,7 +109,7 @@ platform 在调用下游服务时 **MUST** 注入/透传：
 
 ### 5.2 应用工厂 P1 修复契约（MUST，2026-08-25）
 
-同源审计（§7.5.4）的 8 项 P1 修复固化：
+同源审计（§7.5.4）的 9 项 P1 修复固化：
 
 | # | 契约 | 实现位置 | 违反后果 |
 |---|------|---------|---------|
@@ -121,8 +121,9 @@ platform 在调用下游服务时 **MUST** 注入/透传：
 | 6 | skip_pytest_gate 落盘**必须**收敛到唯一实现 `_apply_skip_pytest_gate`（§10 防并行实现）；禁止在 `_run_stage_skill` 与 `_exec_test_runner` 各自内联 APPROVED_SKIPPED 落盘 | `aiPlat-core/core/harness/execution/pipeline_eval.py`（helper）+ `pipeline_engine.py`/`pipeline_eval.py`（调用点） | 双份漂移、字段语义不一致 |
 | 7 | 跨模块 merge 契约门禁的存活性检查文本**必须**包含模块内未修改文件（再生文件）的现有内容；仅扫 previews 新内容会漏掉依赖方引用声明 → 误判 broken 阻断合法合并 | `aiPlat-platform/builder/cross_module.py`（`_new_version_text`/`verify_changed_module_contracts`）+ `builder_project_service.py`（传 module_root） | 合法合并被误阻断 |
 | 8 | 并行实现收敛（§10 唯一实现）：节点→stage 转换**唯一**实现为 `WorkflowService._nodes_to_stages`（`AppService._build_stages_from_nodes` 必须委托，禁止内联精简版）；Markdown PRD 解析**唯一**实现为 `BuilderProjectService._parse_markdown_prd`（`BuilderSessionService` 必须委托） | `aiPlat-platform/builder/builder_workflow_service.py` + `builder_app_service.py` + `builder_session.py` | 双份漂移、字段语义不一致 |
+| 9 | app 服务 base URL **禁止**硬编码 `http://localhost:8004`：后端必须经 `AIPLAT_APP_BASE_URL` 环境变量（默认 8004）；前端必须走 `/app` 相对路径（vite proxy 转发），不得直连 8004 | `aiPlat-platform/api/routers/builder.py`（`_APP_BASE_URL`）+ `aiPlat-management/frontend/vite.config.ts`（`/app` proxy）+ `AppPage.tsx`/`Factory/index.tsx`（相对路径） | 跨进程/部署环境端口耦合，生产无法同源承载 |
 
-回归测试：`aiPlat-core/core/tests/unit/test_pipeline_eval_p1_fixes.py`（P1-2，2 项）+ `aiPlat-platform/tests/test_builder_p1_fixes.py`（P1-1/P1-3/P1-4/P1-8/P1-9，12 项）+ `aiPlat-core/core/tests/unit/test_pipeline_engine_p1b_fixes.py`（P1-6/P1-7，5 项）。
+回归测试：`aiPlat-core/core/tests/unit/test_pipeline_eval_p1_fixes.py`（P1-2，2 项）+ `aiPlat-platform/tests/test_builder_p1_fixes.py`（P1-1/P1-3/P1-4/P1-8/P1-9/P1-11，14 项）+ `aiPlat-core/core/tests/unit/test_pipeline_engine_p1b_fixes.py`（P1-6/P1-7，5 项）。
 
 ---
 

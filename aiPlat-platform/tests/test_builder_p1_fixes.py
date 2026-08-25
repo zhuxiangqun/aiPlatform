@@ -250,3 +250,36 @@ class TestP1_9ParallelImplementationsConverged:
         assert "BuilderProjectService._parse_markdown_prd" in body, \
             "P1-9 未修复：session 版未委托 service 版"
         assert "re.match(r\"^## \"" not in body, "P1-9 未修复：session 版仍内联解析"
+
+
+# ---- P1-11: localhost:8004 硬编码收敛 ----
+
+class TestP1_11AppBaseUrlConfigurable:
+    """跨进程/前端硬编码 http://localhost:8004 收敛（环境变量 + vite proxy）。"""
+
+    def test_backend_uses_configurable_base_url(self):
+        """后端返回的 app URL 必须用 _APP_BASE_URL（环境变量可覆盖），无硬编码。"""
+        from pathlib import Path
+        router_src = (Path(__file__).resolve().parents[2]
+                      / "aiPlat-platform" / "api" / "routers" / "builder.py").read_text(encoding="utf-8")
+        assert '_APP_BASE_URL = os.getenv("AIPLAT_APP_BASE_URL"' in router_src, \
+            "P1-11 未修复：后端缺 _APP_BASE_URL 配置常量"
+        assert 'http://localhost:8004/app/sessions/' not in router_src, \
+            "P1-11 未修复：后端仍硬编码 localhost:8004"
+        assert "{_APP_BASE_URL}/app/sessions/" in router_src, \
+            "P1-11 未修复：文件 URL 未用 _APP_BASE_URL"
+
+    def test_frontend_no_hardcoded_8004(self):
+        """前端不得再出现 http://localhost:8004（走 vite proxy 相对路径）。"""
+        from pathlib import Path
+        mgmt = Path(__file__).resolve().parents[2] / "aiPlat-management" / "frontend" / "src"
+        hits = []
+        for p in [mgmt / "pages/App/AppPage.tsx", mgmt / "pages/App/Factory/index.tsx"]:
+            src = p.read_text(encoding="utf-8")
+            if "http://localhost:8004" in src:
+                hits.append(str(p))
+        assert not hits, f"P1-11 未修复：前端仍硬编码 8004: {hits}"
+        # vite proxy 已配置 /app → 8004
+        vite_cfg = (mgmt.parent / "vite.config.ts").read_text(encoding="utf-8")
+        assert "'/app': {" in vite_cfg and "http://localhost:8004" in vite_cfg, \
+            "P1-11 未修复：vite proxy 未配置 /app → 8004"

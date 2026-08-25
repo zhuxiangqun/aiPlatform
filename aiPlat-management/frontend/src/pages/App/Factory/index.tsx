@@ -491,7 +491,7 @@ const ProjectPanel: React.FC<{
           // Extract app_url from description or build it
           const desc = deployed.description || '';
           const urlMatch = desc.match(/https?:\/\/[^\s]+/);
-          setDeployUrl(urlMatch ? urlMatch[0] : `http://localhost:8004/app/sessions/${project.project_id}`);
+          setDeployUrl(urlMatch ? urlMatch[0] : `/app/sessions/${project.project_id}`);
         }
       } catch { /* ignore */ }
       setDeployChecked(true);
@@ -2696,7 +2696,7 @@ const FactoryPage: React.FC = () => {
               className="rounded-lg border border-green-500/30 bg-green-500/5 p-4 cursor-pointer hover:border-green-400/50 transition-colors"
               onClick={() => {
                 const pid = (a.id || a.app_id || '').replace('factory_', '');
-                setSelectedApp(a.app_url || `http://localhost:8004/app/sessions/${pid}`);
+                setSelectedApp(a.app_url || `/app/sessions/${pid}`);
               }}
             >
               <div className="flex items-start justify-between mb-2">

@@ -49,7 +49,8 @@ export const AppPage: React.FC = () => {
         // Fallback: fetch app_page.json from deployed app server
         if (!raw || !raw.includes('"app_name"')) {
           try {
-            const appRes = await fetch(`http://localhost:8004/app/sessions/${projectId}/app_page.json`);
+            // P1-11: 相对路径走 vite proxy（/app → 8004），生产由反代同源承载
+            const appRes = await fetch(`/app/sessions/${projectId}/app_page.json`);
             if (appRes.ok) raw = await appRes.text();
           } catch {}
         }
