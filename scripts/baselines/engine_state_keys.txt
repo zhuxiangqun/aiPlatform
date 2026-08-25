@@ -142,3 +142,4 @@ imported_repo|OK|generic pipeline (L2: imported existing-code context payload, p
 skip_pytest_gate|OK|generic pipeline (L2: user-opted pytest gate escape, config-driven)
 _skip_pytest_gate|OK|engine-internal (L2: gate-skip marker)
 _test_gate_skipped_reason|OK|engine-internal (L2: gate-skip reason surfaced to deploy)
+prd_data|OK|generic pipeline (engine's own initialize()/core_facade.start() prd_data param — P0-4 domain-injection reads it back from state)

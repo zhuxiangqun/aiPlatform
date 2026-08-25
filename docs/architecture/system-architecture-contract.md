@@ -93,6 +93,20 @@ platform 在调用下游服务时 **MUST** 注入/透传：
 - platform 作为网关层，对下游（core/app）的非 2xx 响应，**MUST 透传可诊断信息**（至少包含 `detail` 或等价字段）。  
 - 禁止仅返回“500 Internal Server Error”而吞掉上游错误上下文（除非涉及敏感信息，需要脱敏/替换）。
 
+### 5.1 部署与执行完整性（MUST，2026-08-25 P0 修复固化）
+
+以下契约约束 builder 应用工厂的**执行安全**与**接线完整性**，来自 `docs/research/应用工厂分析报告.md` §7.5 实现代码审计的 5 个 P0 缺陷修复：
+
+| # | 契约 | 实现位置 | 违反后果 |
+|---|------|---------|---------|
+| 1 | builder 流水线启动入口 `start_pipeline` / `start_pipeline_background` 必须由 `BuilderProjectService` 定义并委托 `rebuild_project`（PRD 前置检查：无 `confirmed_prd` 拒绝启动） | `aiPlat-platform/builder/builder_project_service.py` | AttributeError / 静默空跑 |
+| 2 | PRD 解析**禁止** `eval()` 执行 LLM 返回字符串（任意代码执行）；Python dict 字面量解析必须用 `ast.literal_eval` | `aiPlat-platform/builder/builder_project_service.py` | RCE |
+| 3 | `PipelineEngine._deploy_result_files` 写 LLM 声明的 `## FILE:` 时**必须**经 `_safe_join` 约束（防 `../` 穿越逃逸 `deploy_files_target_dir`）；穿越尝试跳过该文件并告警 | `aiPlat-core/core/harness/execution/pipeline_engine.py` | 任意路径写文件 |
+| 4 | `_run_stage_skill` 域注入段使用 `_prd` 前**必须**先解析（`state.prd_data` 优先 → `description` 尾部 JSON 兜底 → `{}`），禁止引用未定义变量（NameError 被吞 → 注入静默失效） | `aiPlat-core/core/harness/execution/pipeline_engine.py` | 域分类 100% 失效 |
+| 5 | 部署签名验证**失败即拒绝**（fail-closed）：验证抛异常或签名不通过时，`POST /platform/builder/projects/{id}/deploy-to-app` 必须返回 403，**禁止** warning 后跳过继续部署 | `aiPlat-platform/api/routers/builder.py` | 未验签项目部署上线 |
+
+回归测试：`aiPlat-core/core/tests/unit/test_pipeline_engine_p0_fixes.py`（P0-3/P0-4，6 项）+ `aiPlat-platform/tests/test_builder_p0_fixes.py`（P0-1/P0-2/P0-5，12 项）。
+
 ---
 
 ## 6. 层内细化规范（References）
