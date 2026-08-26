@@ -723,13 +723,22 @@ class SkillRegistry:
             workspace = os.path.expanduser(os.getenv("AIPLAT_WORKSPACE_SKILLS", "~/.aiplat/skills"))
             from core.apps.skills.discovery import SkillDiscovery
             discovery = SkillDiscovery(base_path="", workspace_path=workspace)
-            for name, skill in discovery._discovered.items():
+            # 修复 2026-08-26：discover() 是 async——此前未 await 导致 _discovered 恒空，
+            # 子目录 SKILL.md（应用工厂生成物注册形态）从不进入平台注册。
+            # asyncio.run 在已有 event loop 的线程会抛 RuntimeError → 降级只走 scan_folder。
+            import asyncio
+            try:
+                found = asyncio.run(discovery.discover()) or {}
+            except RuntimeError:
+                found = {}
+            for name, skill in found.items():
                 if self.get(name) is None:
                     from core.apps.skills.registry import _GenericSkill as GenSkill
                     from core.harness.interfaces import SkillConfig as SC
                     sc = SC(
                         name=skill.name,
                         description=skill.description or "",
+                        effects=list(getattr(skill, "effects", []) or []),  # 修复：未透传 effects → 注册被 _pre_register_validate 静默拒
                         metadata={"category": skill.category or "general", "body": skill.sop_markdown or ""},
                     )
                     s = GenSkill(config=sc)
@@ -767,6 +776,10 @@ class SkillRegistry:
         count = 0
         for fname in sorted(os.listdir(skills_dir)):
             if not fname.endswith(".md"):
+                continue
+            # 跳过模板/占位文件（SKILL_TEMPLATE.md 等——创作模板不应注册为可执行 Skill，
+            # 同 SBA ".template 后缀防 loader 误扫" 设计，2026-08-26）
+            if "TEMPLATE" in fname or fname.startswith("_"):
                 continue
             fullpath = os.path.join(skills_dir, fname)
             if not os.path.isfile(fullpath):

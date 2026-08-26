@@ -26,6 +26,11 @@ status: enabled
 triggers:
   - 查询
   - 检索
+effects:
+  - type: read
+    resources: [filesystem:~/.aiplat]
+    idempotent: true
+    rollback_available: false
 input_schema:
   query:
     type: string
@@ -150,6 +155,11 @@ version: 1.0.0
 status: enabled
 triggers:
   - 分析视频
+effects:
+  - type: read
+    resources: [filesystem:~/.aiplat]
+    idempotent: true
+    rollback_available: false
 input_schema:
   video_id:
     type: string
@@ -206,6 +216,11 @@ status: enabled
 triggers:
   - 分析视频
   - 解析视频
+effects:
+  - type: read
+    resources: [filesystem:~/.aiplat]
+    idempotent: true
+    rollback_available: false
 input_schema:
   video_id:
     type: string
@@ -244,6 +259,11 @@ version: 1.0.0
 status: enabled
 triggers:
   - 上传视频
+effects:
+  - type: read
+    resources: [filesystem:~/.aiplat]
+    idempotent: true
+    rollback_available: false
 input_schema:
   q:
     type: string
@@ -271,6 +291,11 @@ status: enabled
 triggers:
   - 上传视频
   - 解析视频
+effects:
+  - type: read
+    resources: [filesystem:~/.aiplat]
+    idempotent: true
+    rollback_available: false
 input_schema:
   q:
     type: string
@@ -318,6 +343,11 @@ status: enabled
 triggers:
   - 上传视频
   - 解析视频
+effects:
+  - type: read
+    resources: [filesystem:~/.aiplat]
+    idempotent: true
+    rollback_available: false
 input_schema:
   video_id:
     type: string
