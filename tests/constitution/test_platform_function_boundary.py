@@ -36,9 +36,7 @@ ALLOWED_ORCHESTRATORS: Set[Tuple[str, str]] = {
     ("kb/intelligence/summarize.py", "summarize_document"),
 }
 
-KNOWN_DEBT_FILES: Set[str] = {
-    "builder/builder_roles.py",
-}
+KNOWN_DEBT_FILES: Set[str] = set()
 
 # P0-A4: business API functions that delegate LLM via CoreFacade (合规委托).
 # These are platform business features (clarify/industry/prompt/eval) whose

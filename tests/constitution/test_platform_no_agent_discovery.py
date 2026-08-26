@@ -19,12 +19,7 @@ from typing import Dict, List, Set
 WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
 PLATFORM_BUILDER = WORKSPACE_ROOT / "aiPlat-platform" / "builder"
 
-KNOWN_DEBT: Dict[str, str] = {
-    "builder_roles.py": (
-        "_load_agent_md and _role_agent_md_path "
-        "to be moved to core agent frontmatter loader"
-    ),
-}
+KNOWN_DEBT: Dict[str, str] = {}
 
 
 def _module_functions(fp: Path) -> List[str]:
