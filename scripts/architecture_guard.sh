@@ -506,6 +506,27 @@ else
     FAIL=1
 fi
 
+# ── §96: workspace agent 符合度 ratchet（2026-08-26） ──
+# 校验 ~/.aiplat/agents/*/AGENT.md（行数≤100/交接5字段/无model硬编码/输出格式归属 SKILL.md）。
+# ratchet 模式：存量违规入基线容忍，新增违规阻断（同 ruff F821 先例）——推动逐步治理。
+echo -n "§96: workspace agent 符合度: "
+_NEW_AGENT=$(python3 -c "
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('ac', 'aiPlat-platform/builder/agent_conformance.py')
+ac = importlib.util.module_from_spec(spec); spec.loader.exec_module(ac)
+cur = ac.validate_agents_dir()
+base = ac.load_baseline()
+diff = ac.ratchet_diff(cur, base)
+print(json.dumps(diff, ensure_ascii=False))
+" 2>&1)
+if [ "$_NEW_AGENT" = "{}" ]; then
+    echo "✅"
+else
+    echo "❌ 新增违规: $_NEW_AGENT"
+    echo "   → 修复新增违规；批量治理后运行: python3 -c \"import importlib.util; s=importlib.util.spec_from_file_location('ac','aiPlat-platform/builder/agent_conformance.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.save_baseline(m.validate_agents_dir())\" 更新基线"
+    FAIL=1
+fi
+
 # ── §73: Capability consumer verification (replaces deprecated caller_verify.sh) ──
 # Phase 2.5 method-level wiring runs in phase_check.sh (method_verify.sh + wiring tests).
 echo -n "§73: capability consumers wired: "
