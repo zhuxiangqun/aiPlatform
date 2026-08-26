@@ -121,3 +121,54 @@ SOP
     def test_unknown_kind_rejected(self):
         with pytest.raises(ValueError):
             validate_text(GOOD_SKILL, "unknown")
+
+
+class TestTemplateContractAlignment:
+    """B1 骨架化：agent_engineering 生成规范中的 SKILL.md 模板必须与 conformance 契约对齐。"""
+
+    def test_skill_template_contains_contract_fields(self):
+        """静态证据：生成规范模板含全部契约必填字段。"""
+        spec = (ROOT / "aiPlat-core" / "core" / "engine" / "skills"
+                / "agent_engineering" / "SKILL.md").read_text(encoding="utf-8")
+        for field in ["execution_type: prompt", "input_schema:", "output_schema:",
+                      "version: 1.0.0", "status: enabled", "description:"]:
+            assert field in spec, f"生成规范模板缺契约字段 {field!r}"
+        # 明确禁止 input/output 列表格式
+        assert "禁止 input 列表" in spec
+
+    def test_template_conformant_skill_passes(self):
+        """端到端：按模板骨架填写的 SKILL.md（含 3 执步）通过 conformance 校验。"""
+        template_filled = """---
+name: video_analysis
+description: 分析视频内容，生成场景/物体/字幕结果
+execution_type: prompt
+version: 1.0.0
+status: enabled
+input_schema:
+  video_id:
+    type: string
+    required: true
+    description: 视频ID
+output_schema:
+  analysis_result:
+    type: object
+    required: true
+    description: 分析结果（场景/物体/字幕）
+---
+
+# 视频分析
+
+## 输入校验
+- 格式校验: video_id 必须为非空字符串
+- 校验失败 → 返回"video_id 不能为空"
+
+## 核心处理
+1. 加载视频元数据
+2. 执行场景切分与物体识别
+
+## 错误处理
+- 输入无效 → 提示修正
+- 超时 → 提示重试
+"""
+        assert validate_text(template_filled, "skill") == [], \
+            validate_text(template_filled, "skill")

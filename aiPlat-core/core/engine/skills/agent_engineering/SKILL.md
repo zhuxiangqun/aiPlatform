@@ -245,6 +245,49 @@ scoring_dimensions:
 - ...
 ```
 
+### SKILL.md 模板（每个 Skill 必须按此骨架输出，字段不得删减——B1 骨架化 2026-08-26）
+
+> 下面的 `yaml` 代码块仅作文档展示；**实际生成的 SKILL.md 文件首行必须是 `---`（无任何代码块标记）**，否则注册时被 conformance 契约拒绝。
+
+```
+---
+name: {skill_name}                   # 必填：kebab-case
+description: {一句话描述，含触发场景}  # 必填：触发路由/description 命中率依赖它
+execution_type: prompt               # 必填：本 pipeline 一律 prompt（不生成 handler.py）
+version: 1.0.0                       # 必填：版本（注册回滚依赖）
+status: enabled                      # 必填
+input_schema:                        # 必填：对象格式（禁止 input 列表，registry 读 input_schema）
+  {参数名}:
+    type: string                     # string/integer/object/array
+    required: true
+    description: {参数说明}
+output_schema:                       # 必填：对象格式
+  {结果名}:
+    type: object
+    required: true
+    description: {结果说明}
+---
+# {Skill 显示名}
+
+## 输入校验
+- 格式校验: ...
+- 范围校验: ...
+- 白名单校验: ...
+- 校验失败 → 返回明确错误消息（如"不支持的文件格式,仅支持 MP4/MOV/AVI/MKV"）
+
+## 核心处理
+1. [Step 1] ...
+2. [Step 2] ...
+
+## 错误处理
+- 输入无效 → 友好提示+修正指引
+- 处理超时 → 超时提示+重试建议
+- 资源不存在 → "不存在"提示+替代方案
+- 内部异常 → 通用错误+建议联系管理员
+```
+
+frontmatter 字段与 `generated_conformance.yaml` 契约严格对齐：`execution_type` / `input_schema` / `output_schema` / `version` / `status: enabled` / `description` 全部必填；首行必须是 `---`。生成后由注册循环 conformance 校验兜底，缺字段会被拒绝注册。
+
 ## 反模式 (Agent Engineer 自身的)
 
 | ❌ 错误 | ✅ 正确 |
