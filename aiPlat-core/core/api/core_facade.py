@@ -828,6 +828,26 @@ def validate_pipeline_stages(stages: List[Any]) -> Dict[str, Any]:
                 f"{prefix} ({sid}): unknown failure_strategy '{failure_strategy}' — will use 'fail_pipeline'"
             )
 
+    # ── Change Contract 产物 key 链校验（SBA 原则 12, 2026-08-26） ──
+    # 语义翻译（PRD→stage）与实现绑定（stage 产物 key）由同一契约贯通：
+    # 下游 stage 的 input_artifacts 引用必须存在于上游 output_artifact 中（或内置来源），
+    # 防止"上游改了产物 key、下游仍读旧 key"的隐性断裂。
+    output_keys = set()
+    for st in stages:
+        _oa = getattr(st, 'output_artifact', '') or ''
+        if _oa:
+            output_keys.add(_oa)
+    _builtin_inputs = {"description", "user_input", "requirement", "start.inputs"}
+    for st in stages:
+        prefix = f"stage[{stages.index(st)}]"
+        sid = getattr(st, 'id', f'stage_{stages.index(st)}')
+        for ia in (getattr(st, 'input_artifacts', None) or []):
+            if isinstance(ia, str) and ia.strip() and ia not in output_keys and ia not in _builtin_inputs:
+                diagnostics["errors"].append(
+                    f"{prefix} ({sid}): input_artifact '{ia}' 无上游 output_artifact 提供"
+                    "（Change Contract 断裂——上游产物 key 与下游消费不一致）"
+                )
+
     diagnostics["valid"] = len(diagnostics["errors"]) == 0
     return diagnostics
 
