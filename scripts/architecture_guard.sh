@@ -480,6 +480,32 @@ else
     echo "✅"
 fi
 
+# ── §95: 生成物 conformance 契约自举校验（SBA 借鉴, 2026-08-26） ──
+# 校验器对真实生成物基线（frozen fixture）必须保持"旧格式必拒"——防 conformance
+# 契约被改弱后静默放行不合格生成物（校验器自指守卫）。
+echo -n "§95: 生成物 conformance 契约有效性: "
+_CONF_RESULT=$(python3 -c "
+import importlib.util
+spec = importlib.util.spec_from_file_location(
+    'gc', 'aiPlat-platform/builder/generated_conformance.py')
+gc = importlib.util.module_from_spec(spec); spec.loader.exec_module(gc)
+base = 'aiPlat-platform/tests/fixtures/generated'
+legacy_skill = gc.validate_file(f'{base}/video_sense_legacy_skill.md', 'skill')
+legacy_agent = gc.validate_file(f'{base}/video_sense_legacy_agent.md', 'agent')
+problems = []
+if not legacy_skill:
+    problems.append('legacy SKILL 应被拒却通过（契约被改弱？）')
+if not legacy_agent:
+    problems.append('legacy AGENT 应被拒却通过（契约被改弱？）')
+print('; '.join(problems) if problems else 'OK')
+" 2>&1)
+if [ "$_CONF_RESULT" = "OK" ]; then
+    echo "✅"
+else
+    echo "❌ $_CONF_RESULT"
+    FAIL=1
+fi
+
 # ── §73: Capability consumer verification (replaces deprecated caller_verify.sh) ──
 # Phase 2.5 method-level wiring runs in phase_check.sh (method_verify.sh + wiring tests).
 echo -n "§73: capability consumers wired: "
