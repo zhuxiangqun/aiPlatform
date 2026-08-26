@@ -121,6 +121,17 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
    - `rag` — 以知识检索为主（引擎授予 full: 上下文+安全+检索+工具调用）
 3. 确定 Agent 的显示名和描述
 
+### Step 1.5: 派生验收标准（SBA 原则 17：需求是根，Plan 只拥有达成它的细节，2026-08-26）
+
+**生成任何 SKILL.md / AGENT.md 之前，先列出 PRD 的验收契约：**
+
+1. 从 PRD 的 `functional_requirements` 提取每个需求的 `acceptance_criteria`（AC 清单），形成"验收标准表"（需求 → AC 列表）。
+2. 每个生成的 SKILL.md 的 `completion_criterion` **必须引用**该 Skill 对应的验收项（逐条映射：哪个 SKILL 满足哪个 AC），不得写与 PRD 验收无关的空泛标准（如"输出正确结果"）。
+3. 若 PRD 未提供 acceptance_criteria，显式标注"验收未定义：{需求名}"并给出一组可验证的默认验收（输入→预期输出→可检查的边界），不得静默跳过。
+4. **禁止**：生成物偷换/缩窄 PRD 验收（例如 PRD 要求"支持上传 MP4"，生成物只做"支持 URL 导入"却标记完成）——验收冲突必须回写 PRD 重新确认。
+
+> 验收标准表只出现在生成过程的推理中（不落盘为独立文件）；SKILL.md 的 `completion_criterion` 是它的可检查投影。
+
 ### Step 2: 分解功能为 Skills
 对 PRD 的每个 `functional_requirement`:
 1. 判断是独立的能力单元还是内部步骤
