@@ -42,7 +42,7 @@ FORBIDDEN_STATE_KEYS = {
 # Allowed exceptions: files where these keys are legitimate
 EXEMPT_FILES = {
     "schemas_builder.py", "builder_session.py", "builder_project_service.py",
-    "builder_roles.py", "builder_team_service.py",
+    "builder_team_service.py",
 }
 
 # Framework-level keys that are always allowed

@@ -94,7 +94,6 @@ class TestNoHardcodedBusinessRoleNames:
     # Files exempt from these checks (docstrings, schemas, integration, configs)
     EXEMPT_PATTERNS = [
         r"schemas_builder\.py$",     # Schema definitions
-        r"builder_roles\.py$",       # Role factory (known debt)
         r"agent_insight_service\.py$", # Metrics layer (allowed exception)
         r"integration\.py$",         # Integration layer
         r"multi_agent\.py$",         # Multi-agent coordinator
@@ -186,7 +185,7 @@ class TestNoPhaseStringBranching:
         pattern = r"(if.*phase\s*[=!]=.*['\"]|if.*['\"]\s*in\s*phase)"
         hits = _grep_files(files, pattern)
 
-        exempt = re.compile(r"(tests/|schemas_|integration\.py|builder_roles\.py)")
+        exempt = re.compile(r"(tests/|schemas_|integration\.py)")
         filtered = [(f, l, s) for f, l, s in hits if not exempt.search(str(f))]
 
         assert not filtered, (
