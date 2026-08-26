@@ -5,6 +5,8 @@ Extracted from builder_project_service.py — method bodies unchanged.
 
 from __future__ import annotations
 
+import os  # P1-18 修复：deploy_to_app 原文件依赖模块级 import os，拆分后 Mixin 文件需自带
+import time  # noqa: F401 — deploy_to_app/get_health_report 方法体使用（P1-14 拆分遗留）
 
 
 
@@ -65,6 +67,17 @@ class BuilderDeployMixin:
                     if _warns:
                         proj["runs"][-1]["regenerated_warnings"] = _warns
                 self._save_projects()
+        # P1-18 证据门控（SBA 原则 10：产物完整/成功退出码 ≠ 阶段完成，2026-08-26）：
+        # 真实 pytest 全失败（pass_rate=0）→ 拒绝部署，要求先修复测试。
+        # 无测试证据（estimated / skip_pytest_gate）→ 放行但已标记风险（estimated 0 不阻断）。
+        import logging as _log_dep
+        _dl = _log_dep.getLogger("aiplat.builder")
+        if _pr_source == "real_pytest" and _pr is not None and float(_pr) <= 0:
+            _dl.warning("Deploy blocked by evidence gate: pass_rate=0 (real pytest all failed) project=%s",
+                        project_id)
+            return {"status": "error",
+                    "detail": "测试证据显示 pass_rate=0（真实 pytest 全失败）——拒绝部署（证据门控）。"
+                              "请先修复测试并重建，或确认后重试。"}
         deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
         return _deploy_to_app_for_project(project_id, deploy_dir or "", proj)
     async def get_agent_insight(self, agent_id: str) -> Dict[str, Any]:
