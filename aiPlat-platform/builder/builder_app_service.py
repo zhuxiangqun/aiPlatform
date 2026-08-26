@@ -108,11 +108,6 @@ class AppService:
                     pass  # noqa: cleanup-best-effort
         return delete_app(app_id)
 
-    async def _run_workflow(self, workflow_id: str, user_input: str, run_name: str = "") -> Dict[str, Any]:
-        """Run a workflow with user input injected into Start node."""
-        from builder.builder_workflow_service import WorkflowService
-        wfs = WorkflowService()
-        return await wfs.execute(workflow_id, launch_name=run_name or "")
 
     def _build_stages_from_nodes(self, nodes: list, edges: list) -> list:
         # P1-9 收敛（§10 防并行实现）：委托 workflow_service._nodes_to_stages 唯一实现。
