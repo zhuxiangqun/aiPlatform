@@ -173,3 +173,105 @@ def _parse_frontmatter(text: str) -> Dict[str, Any]:
 def validate_generated_file_and_report(path: str, kind: str) -> List[str]:
     """校验并返回违规；供注册循环调用（违规则跳过注册）。"""
     return validate_file(path, kind)
+
+
+# ── 原则 13：失败经验立即写回并接入下次动作（SBA, 2026-08-26） ──
+# conformance 拒绝（失败）→ 审计落盘 → 聚合出"生成规范改进建议"（哪些字段频繁缺失），
+# 供 agent_engineering 模板迭代——失败不沉淀为被动日志，而是可行动的改进信号。
+
+def _rejections_path() -> str:
+    """拒绝审计文件路径：AIPLAT_HOME/builder/conformance_rejections.jsonl。"""
+    import os as _os
+    _home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
+    _dir = _os.path.join(_home, "builder")
+    _os.makedirs(_dir, exist_ok=True)
+    return _os.path.join(_dir, "conformance_rejections.jsonl")
+
+
+def record_rejection(project_id: str, kind: str, path: str, violations: List[str]) -> None:
+    """记录一次生成物拒绝（append 审计 JSONL），best-effort 不抛异常。"""
+    import json as _json
+    import time as _t
+    try:
+        with open(_rejections_path(), "a", encoding="utf-8") as f:
+            f.write(_json.dumps({
+                "ts": _t.time(),
+                "project_id": project_id,
+                "kind": kind,
+                "path": path,
+                "violations": list(violations),
+            }, ensure_ascii=False) + "\n")
+    except Exception:
+        pass  # noqa: cleanup-best-effort — 审计失败不影响主流程
+
+
+def aggregate_rejections(limit: int = 10) -> Dict[str, Any]:
+    """聚合拒绝审计：统计 top 缺失字段/断言类型（→ 生成规范改进建议）。
+
+    返回 {total, by_kind: {skill: n, agent: n}, top_violations: [(断言类型, 次数)],
+          top_fields: [(缺失字段, 次数)], suggestion}。
+    """
+    import collections
+    import json as _json
+    _path = _rejections_path()
+    total = 0
+    by_kind = collections.Counter()
+    by_assert = collections.Counter()
+    by_field = collections.Counter()
+    if not os.path.isfile(_path):
+        return {"total": 0, "by_kind": {}, "top_violations": [], "top_fields": [],
+                "suggestion": "暂无 conformance 拒绝记录——生成物均通过契约校验。"}
+    try:
+        with open(_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = _json.loads(line)
+                except Exception:
+                    continue
+                total += 1
+                by_kind[rec.get("kind", "?")] += 1
+                for v in rec.get("violations", []):
+                    _tag = _violation_tag(v)
+                    by_assert[_tag] += 1
+                    if _tag in ("must_contain", "per_field_must_contain"):
+                        _f = _violation_field(v)
+                        if _f:
+                            by_field[_f] += 1
+    except Exception:
+        return {"total": total, "by_kind": dict(by_kind),
+                "top_violations": by_assert.most_common(limit),
+                "top_fields": by_field.most_common(limit), "suggestion": ""}
+    top_fields = by_field.most_common(limit)
+    _sugg = ""
+    if top_fields:
+        _names = "、".join(f"`{f}`({n} 次)" for f, n in top_fields[:5])
+        _sugg = (f"生成规范建议：模板高频缺失字段 {_names}——agent_engineering 模板应补强"
+                 "这些字段的必填说明/示例，减少同型拒绝（SBA 原则 13 失败写回）。")
+    return {"total": total, "by_kind": dict(by_kind),
+            "top_violations": by_assert.most_common(limit),
+            "top_fields": top_fields, "suggestion": _sugg}
+
+
+def _violation_tag(v: str) -> str:
+    """从违规消息提取断言类型（first_line_must_be / must_contain / ...）。"""
+    for tag in ("first_line_must_be", "must_contain_in_order", "must_contain",
+                "must_not_contain", "per_field_must_contain", "body_max_lines",
+                "triggers_in_description"):
+        if v.startswith(tag):
+            return tag
+    return "other"
+
+
+def _violation_field(v: str) -> str:
+    """从 per_field/must_contain 违规消息提取缺失字段名。"""
+    import re as _re
+    m = _re.search(r"\[([^\]]+)\]", v)
+    if m:
+        return m.group(1)
+    m = _re.search(r"缺少 '([^']+)'", v)
+    if m:
+        return m.group(1).rstrip(":")
+    return ""
