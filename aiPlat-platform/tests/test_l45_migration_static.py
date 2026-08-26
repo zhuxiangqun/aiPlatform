@@ -5,6 +5,16 @@ ROOT = Path(__file__).resolve().parents[2]
 
 BUILDER_ROUTER = ROOT / "aiPlat-platform" / "api" / "routers" / "builder.py"
 BUILDER_SERVICE = ROOT / "aiPlat-platform" / "builder" / "builder_project_service.py"
+def _service_sources() -> str:
+    """P1-14 God Class 拆分：BuilderProjectService 方法分布在主类 + L2L5/Deploy Mixin
+    （方法经 MRO 可达），静态断言拼接三文件。"""
+    _root = ROOT / "aiPlat-platform" / "builder"
+    return (
+        (_root / "builder_project_service.py").read_text()
+        + "\n" + (_root / "builder_l2l5_mixin.py").read_text()
+        + "\n" + (_root / "builder_deploy_mixin.py").read_text()
+    )
+
 SCHEMA_MIGRATION = ROOT / "aiPlat-platform" / "builder" / "schema_migration.py"
 
 
@@ -18,18 +28,18 @@ class TestL45Endpoints:
 
 class TestL45Service:
     def test_methods(self):
-        content = BUILDER_SERVICE.read_text()
+        content = _service_sources()
         for m in ("async def migration_preview", "async def list_migrations",
                   "async def apply_migration", "async def rollback_migration",
                   "def _check_cross_module_fields", "def _module_code_files"):
             assert m in content, f"missing {m}"
 
     def test_schema_migration_caller(self):
-        content = BUILDER_SERVICE.read_text()
+        content = _service_sources()
         assert "from builder.schema_migration import" in content
 
     def test_destructive_confirmation(self):
-        content = BUILDER_SERVICE.read_text()
+        content = _service_sources()
         assert "destructive_migration_requires_confirmation" in content
         assert "显式确认" in content
 

@@ -119,13 +119,23 @@ class TestL2CoreWiring:
 class TestL2DeployWarnings:
     """Build-Log regenerated warning + skip reason (§3.9 条件 2)."""
 
+    @staticmethod
+    def _builder_sources() -> str:
+        """P1-14 God Class 拆分后：BuilderProjectService 的方法分布在主类 + L2L5/Deploy Mixin，
+        语义断言改为拼接三文件（方法均经 MRO 可达 BuilderProjectService）。"""
+        return (
+            BUILDER_SERVICE.read_text()
+            + "\n" + (ROOT / "aiPlat-platform" / "builder" / "builder_l2l5_mixin.py").read_text()
+            + "\n" + (ROOT / "aiPlat-platform" / "builder" / "builder_deploy_mixin.py").read_text()
+        )
+
     def test_regenerated_warnings(self):
-        content = BUILDER_SERVICE.read_text()
+        content = self._builder_sources()
         assert "regenerated_warnings" in content
         assert "has been regenerated" in content
         assert "review diff manually" in content
 
     def test_skip_reason_on_deploy(self):
-        content = BUILDER_SERVICE.read_text()
+        content = self._builder_sources()
         assert "_skip_pytest_gate" in content
         assert "user skipped pytest gate" in content
