@@ -23,9 +23,11 @@ skill:
     - "version:"
     - "status: enabled"
     - "description:"
+    - "triggers:"          # B2 路由-知识分离：触发短语声明（description 命中率依赖）
   per_field_must_contain:
     input_schema: ["type", "required", "description"]
     output_schema: ["type", "required", "description"]
+  body_max_lines: 150      # B2 上下文预算：frontmatter 后正文 ≤150 行（防大而全）
   must_not_contain:
     - "```markdown"
     - "```yaml"

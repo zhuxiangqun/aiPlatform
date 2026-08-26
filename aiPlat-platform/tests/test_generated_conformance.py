@@ -22,6 +22,9 @@ description: 演示技能
 execution_type: prompt
 version: 1.0.0
 status: enabled
+triggers:
+  - 查询
+  - 检索
 input_schema:
   query:
     type: string
@@ -144,6 +147,8 @@ description: 分析视频内容，生成场景/物体/字幕结果
 execution_type: prompt
 version: 1.0.0
 status: enabled
+triggers:
+  - 分析视频
 input_schema:
   video_id:
     type: string
@@ -172,3 +177,55 @@ output_schema:
 """
         assert validate_text(template_filled, "skill") == [], \
             validate_text(template_filled, "skill")
+
+
+class TestB2RoutingContextBudget:
+    """B2 路由-知识分离：trigger 声明 + 上下文预算。"""
+
+    def test_missing_triggers_rejected(self):
+        """缺 triggers 触发短语声明 → 拒绝（路由命中率无法保证）。"""
+        no_triggers = GOOD_SKILL.replace("triggers:\n  - 查询\n  - 检索\n", "")
+        violations = validate_text(no_triggers, "skill")
+        assert any("triggers:" in v for v in violations), violations
+
+    def test_body_over_budget_rejected(self):
+        """正文超过 body_max_lines 预算（大而全）→ 拒绝（上下文预算）。"""
+        long_body = GOOD_SKILL + "\n## 补充\n" + "\n".join(f"第{i}行冗余说明" for i in range(200))
+        violations = validate_text(long_body, "skill")
+        assert any("body_max_lines" in v for v in violations), violations
+
+    def test_template_conformant_with_triggers_passes(self):
+        """带 triggers + 预算内正文的 SKILL.md 通过校验。"""
+        full = """---
+name: video_analysis
+description: 分析视频内容，生成场景/物体/字幕结果
+execution_type: prompt
+version: 1.0.0
+status: enabled
+triggers:
+  - 分析视频
+  - 解析视频
+input_schema:
+  video_id:
+    type: string
+    required: true
+    description: 视频ID
+output_schema:
+  analysis_result:
+    type: object
+    required: true
+    description: 分析结果
+---
+
+# 视频分析
+
+## 输入校验
+- 格式校验: video_id 非空
+
+## 核心处理
+1. 加载元数据
+
+## 错误处理
+- 输入无效 → 提示
+"""
+        assert validate_text(full, "skill") == [], validate_text(full, "skill")

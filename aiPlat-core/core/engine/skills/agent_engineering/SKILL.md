@@ -256,6 +256,9 @@ description: {一句话描述，含触发场景}  # 必填：触发路由/descri
 execution_type: prompt               # 必填：本 pipeline 一律 prompt（不生成 handler.py）
 version: 1.0.0                       # 必填：版本（注册回滚依赖）
 status: enabled                      # 必填
+triggers:                            # 必填：B2 路由-知识分离——触发短语清单（用户自然语言命中路由）
+  - {触发短语1，如"上传视频"/"解析视频"}
+  - {触发短语2}
 input_schema:                        # 必填：对象格式（禁止 input 列表，registry 读 input_schema）
   {参数名}:
     type: string                     # string/integer/object/array
