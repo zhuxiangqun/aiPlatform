@@ -114,6 +114,23 @@ def validate_text(text: str, kind: str, contract: Optional[Dict[str, Any]] = Non
                 "（上下文预算——知识应拆分到独立文件，而非堆进单个 SKILL.md）"
             )
 
+    # 7. description/triggers 一致性（B2 深化：每个触发短语必须出现在 description 中，
+    #    保证"用户自然语言 → trigger → description 命中"的路由链成立）
+    if rules.get("triggers_in_description"):
+        _desc = fm.get("description")
+        _triggers = fm.get("triggers")
+        if not isinstance(_desc, str) or not _desc.strip():
+            violations.append("triggers_in_description: frontmatter 缺 description（字符串）")
+        elif not isinstance(_triggers, list) or not _triggers:
+            violations.append("triggers_in_description: frontmatter 缺 triggers（列表）")
+        else:
+            for _t in _triggers:
+                if not isinstance(_t, str) or _t not in _desc:
+                    violations.append(
+                        f"triggers_in_description: 触发短语 {_t!r} 未出现在 description 中"
+                        "（路由命中一致性——用户说触发短语应能命中 description）"
+                    )
+
     return violations
 
 

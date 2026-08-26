@@ -18,7 +18,7 @@ from builder.generated_conformance import load_contract, validate_text
 
 GOOD_SKILL = """---
 name: demo_skill
-description: 演示技能
+description: 演示技能：支持查询与检索操作
 execution_type: prompt
 version: 1.0.0
 status: enabled
@@ -143,7 +143,7 @@ class TestTemplateContractAlignment:
         """端到端：按模板骨架填写的 SKILL.md（含 3 执步）通过 conformance 校验。"""
         template_filled = """---
 name: video_analysis
-description: 分析视频内容，生成场景/物体/字幕结果
+description: 分析视频并解析视频内容，生成场景/物体/字幕结果
 execution_type: prompt
 version: 1.0.0
 status: enabled
@@ -198,7 +198,7 @@ class TestB2RoutingContextBudget:
         """带 triggers + 预算内正文的 SKILL.md 通过校验。"""
         full = """---
 name: video_analysis
-description: 分析视频内容，生成场景/物体/字幕结果
+description: 分析视频并解析视频内容，生成场景/物体/字幕结果
 execution_type: prompt
 version: 1.0.0
 status: enabled
@@ -229,3 +229,118 @@ output_schema:
 - 输入无效 → 提示
 """
         assert validate_text(full, "skill") == [], validate_text(full, "skill")
+
+
+class TestB2DescriptionTriggerConsistency:
+    """B2 深化：触发短语必须出现在 description 中（路由命中一致）。"""
+
+    def test_trigger_not_in_description_rejected(self):
+        md = """---
+name: demo_skill
+description: 演示技能（不含触发短语）
+execution_type: prompt
+version: 1.0.0
+status: enabled
+triggers:
+  - 上传视频
+input_schema:
+  q:
+    type: string
+    required: true
+    description: 查询
+output_schema:
+  r:
+    type: string
+    required: true
+    description: 结果
+---
+
+# 演示
+"""
+        violations = validate_text(md, "skill")
+        assert any("triggers_in_description" in v and "上传视频" in v for v in violations), violations
+
+    def test_all_triggers_in_description_passes(self):
+        md = """---
+name: demo_skill
+description: 上传视频并解析视频内容，生成分析结果
+execution_type: prompt
+version: 1.0.0
+status: enabled
+triggers:
+  - 上传视频
+  - 解析视频
+input_schema:
+  q:
+    type: string
+    required: true
+    description: 查询
+output_schema:
+  r:
+    type: string
+    required: true
+    description: 结果
+---
+
+# 演示
+"""
+        assert validate_text(md, "skill") == [], validate_text(md, "skill")
+
+
+class TestC3RealArtifactBaseline:
+    """C3 生成物验收基线：真实生成产物（frozen fixture）作为 conformance 回归基线。"""
+
+    FIXTURES = ROOT / "aiPlat-platform" / "tests" / "fixtures" / "generated"
+
+    def test_legacy_skill_rejected(self):
+        """真实旧产物（video_sense，5 字段 + 首行残留）必须被拒——证明 conformance 有效。"""
+        from builder.generated_conformance import validate_file
+        violations = validate_file(str(self.FIXTURES / "video_sense_legacy_skill.md"), "skill")
+        assert len(violations) >= 3, violations
+        assert any("first_line_must_be" in v for v in violations), "应捕获首行残留"
+        assert any("input_schema:" in v for v in violations), "应捕获缺 input_schema"
+
+    def test_legacy_agent_rejected(self):
+        """真实旧 AGENT.md（首行 markdown 残留）必须被拒。"""
+        from builder.generated_conformance import validate_file
+        violations = validate_file(str(self.FIXTURES / "video_sense_legacy_agent.md"), "agent")
+        assert any("first_line_must_be" in v for v in violations), violations
+
+    def test_new_template_artifact_passes(self):
+        """新模板规范产物（含 triggers + description 一致 + 三执步 + 预算内）通过——验收基线的"应然"侧。"""
+        new_skill = """---
+name: video_analysis
+description: 上传视频并解析视频内容，生成场景、物体、字幕分析结果
+execution_type: prompt
+version: 1.0.0
+status: enabled
+triggers:
+  - 上传视频
+  - 解析视频
+input_schema:
+  video_id:
+    type: string
+    required: true
+    description: 视频ID
+output_schema:
+  analysis_result:
+    type: object
+    required: true
+    description: 分析结果（场景/物体/字幕）
+---
+
+# 视频分析
+
+## 输入校验
+- 格式校验: video_id 必须非空
+- 校验失败 → 返回"video_id 不能为空"
+
+## 核心处理
+1. 加载视频元数据
+2. 执行场景切分与物体识别
+
+## 错误处理
+- 输入无效 → 提示修正
+- 处理超时 → 提示重试
+"""
+        assert validate_text(new_skill, "skill") == [], validate_text(new_skill, "skill")
