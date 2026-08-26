@@ -5,6 +5,7 @@
 - 合规生成物通过；缺治理字段/首行残留/input-output 列表格式 → 拒绝
 - 契约文件可加载、断言类型齐全
 """
+import os
 import sys
 from pathlib import Path
 
@@ -344,3 +345,43 @@ output_schema:
 - 处理超时 → 提示重试
 """
         assert validate_text(new_skill, "skill") == [], validate_text(new_skill, "skill")
+
+
+class TestPrinciple13FailureWriteback:
+    """原则 13：conformance 拒绝（失败）→ 审计写回 → 聚合出规范改进建议。"""
+
+    def test_record_and_aggregate(self, tmp_path, monkeypatch):
+        """记录拒绝 → 聚合统计 top 缺失字段 + 生成建议。"""
+        from builder.generated_conformance import (
+            aggregate_rejections, record_rejection,
+            _rejections_path,
+        )
+        monkeypatch.setenv("AIPLAT_HOME", str(tmp_path / "home"))
+        # 清空审计
+        _p = _rejections_path()
+        if os.path.exists(_p):
+            os.remove(_p)
+
+        record_rejection("prj_a", "skill", "/x/a/SKILL.md",
+                         ["must_contain: 缺少 'input_schema:'",
+                          "must_contain: 缺少 'version:'"])
+        record_rejection("prj_a", "skill", "/x/b/SKILL.md",
+                         ["must_contain: 缺少 'input_schema:'",
+                          "per_field_must_contain[output_schema]: 值缺少 'type'"])
+        record_rejection("prj_b", "agent", "/x/c/AGENT.md",
+                         ["first_line_must_be: 期望首行为 '---'"])
+
+        agg = aggregate_rejections()
+        assert agg["total"] == 3
+        assert agg["by_kind"] == {"skill": 2, "agent": 1}
+        top_fields = {f for f, _ in agg["top_fields"]}
+        assert "input_schema" in top_fields, f"input_schema 应高频缺失: {agg['top_fields']}"
+        assert agg["suggestion"], "应有生成规范改进建议"
+        assert "agent_engineering" in agg["suggestion"], agg["suggestion"]
+
+    def test_empty_aggregate(self, tmp_path, monkeypatch):
+        from builder.generated_conformance import aggregate_rejections
+        monkeypatch.setenv("AIPLAT_HOME", str(tmp_path / "empty_home"))
+        agg = aggregate_rejections()
+        assert agg["total"] == 0
+        assert "暂无" in agg["suggestion"]

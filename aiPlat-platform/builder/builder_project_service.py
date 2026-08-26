@@ -2230,7 +2230,7 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
     try:
         import shutil
         import logging as _log_dep
-        from builder.generated_conformance import validate_file
+        from builder.generated_conformance import validate_file, record_rejection
         _agents_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "agents")
         _skills_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "skills")
         _blog = _log_dep.getLogger("aiplat.builder")
@@ -2245,6 +2245,7 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                         _rejected += 1
                         _blog.warning("Deploy: 跳过注册不合规 AGENT.md %s: %s",
                                       _src, "; ".join(_violations[:3]))
+                        record_rejection(project_id, "agent", _src, _violations)  # 原则 13 失败写回
                         continue
                     _dst = os.path.join(_agents_dir, _agent_name, "AGENT.md")
                     os.makedirs(os.path.dirname(_dst), exist_ok=True)
@@ -2257,6 +2258,7 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                         _rejected += 1
                         _blog.warning("Deploy: 跳过注册不合规 SKILL.md %s: %s",
                                       _src, "; ".join(_violations[:3]))
+                        record_rejection(project_id, "skill", _src, _violations)  # 原则 13 失败写回
                         continue
                     _dst = os.path.join(_skills_dir, _skill_name, "SKILL.md")
                     os.makedirs(os.path.dirname(_dst), exist_ok=True)
