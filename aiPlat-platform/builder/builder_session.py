@@ -180,52 +180,40 @@ class BuilderSessionService:
         return self._build_state(session_id)
 
     async def approve_architecture(self, session_id: str) -> BuilderSessionStateResponse:
-        session = self._sessions.get(session_id)
-        if not session:
-            raise ValueError("session not found")
-        state = session.get("_pipeline_state")
-        if not state:
-            raise ValueError("no pipeline state")
-        pipeline = self._get_or_create_session(session_id)
-        state = await pipeline.approve(dict(state))
-        self._update_session_from_state(session_id, state)
+        # P1-13 收敛（§10 防并行实现）：委托 BuilderProjectService.approve_stage
+        # （v3.1 Core HTTP 唯一实现）——原本地 pipeline.approve（PipelineSession 旧语义）
+        # 与生产路径不一致；router 已直连 project_service，此处保持 API 兼容。
+        from builder.builder_project_service import _get_project_service
+        result = await _get_project_service().approve_stage(session_id)
+        if isinstance(result, dict) and result.get("status") == "error":
+            raise ValueError(str(result.get("detail", "approve failed")))
+        phase = result.get("phase", "executing") if isinstance(result, dict) else "executing"
+        session = self._sessions.setdefault(session_id, {})
+        session["phase"] = phase
+        if session.get("_pipeline_state") is None:
+            session["_pipeline_state"] = {"phase": phase}
         return self._build_state(session_id)
 
     async def reject_architecture(self, session_id: str, feedback: str) -> BuilderSessionStateResponse:
-        session = self._sessions.get(session_id)
-        if not session:
-            raise ValueError("session not found")
-        state = session.get("_pipeline_state")
-        if not state:
-            raise ValueError("no pipeline state")
-        pipeline = self._get_or_create_session(session_id)
-        state = await pipeline.reject(dict(state), feedback)
-        self._update_session_from_state(session_id, state)
+        # P1-13 收敛（§10 防并行实现）：委托 BuilderProjectService.reject_stage（Core HTTP）
+        from builder.builder_project_service import _get_project_service
+        result = await _get_project_service().reject_stage(session_id, feedback)
+        if isinstance(result, dict) and result.get("status") == "error":
+            raise ValueError(str(result.get("detail", "reject failed")))
+        phase = result.get("phase", "executing") if isinstance(result, dict) else "executing"
+        session = self._sessions.setdefault(session_id, {})
+        session["phase"] = phase
+        if session.get("_pipeline_state") is None:
+            session["_pipeline_state"] = {"phase": phase}
         return self._build_state(session_id)
 
     async def approve_test_plan(self, session_id: str) -> BuilderSessionStateResponse:
-        session = self._sessions.get(session_id)
-        if not session:
-            raise ValueError("session not found")
-        state = session.get("_pipeline_state")
-        if not state:
-            raise ValueError("no pipeline state")
-        pipeline = self._get_or_create_session(session_id)
-        state = await pipeline.approve(dict(state))
-        self._update_session_from_state(session_id, state)
-        return self._build_state(session_id)
+        # P1-13 收敛（§10 防并行实现）：委托 Core HTTP 唯一实现
+        return await self.approve_architecture(session_id)
 
     async def reject_test_plan(self, session_id: str, feedback: str) -> BuilderSessionStateResponse:
-        session = self._sessions.get(session_id)
-        if not session:
-            raise ValueError("session not found")
-        state = session.get("_pipeline_state")
-        if not state:
-            raise ValueError("no pipeline state")
-        pipeline = self._get_or_create_session(session_id)
-        state = await pipeline.reject(dict(state), feedback)
-        self._update_session_from_state(session_id, state)
-        return self._build_state(session_id)
+        # P1-13 收敛（§10 防并行实现）：委托 Core HTTP 唯一实现
+        return await self.reject_architecture(session_id, feedback)
 
     async def get_state(self, session_id: str) -> BuilderSessionStateResponse:
         return self._build_state(session_id)

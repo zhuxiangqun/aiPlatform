@@ -131,22 +131,24 @@ class BuilderTeamService:
         return {"team_id": team_id, "phase": state.get("phase"), "state": state}
 
     async def approve_stage(self, team_id: str) -> Dict[str, Any]:
-        session = self._sessions.get(team_id)
-        if not session:
-            raise ValueError("no session")
-        state = self._runs.get(team_id, {})
-        state = await session.approve(dict(state))
-        self._runs[team_id] = state
-        return {"team_id": team_id, "phase": state.get("phase"), "state": state}
+        # P1-13 收敛（§10 防并行实现）：委托 BuilderProjectService.approve_stage
+        # （v3.1 Core HTTP 唯一实现）——原本地 session.approve（PipelineSession 旧语义）
+        # 与生产路径不一致。
+        from builder.builder_project_service import _get_project_service
+        result = await _get_project_service().approve_stage(team_id)
+        state = result.get("state", {}) if isinstance(result, dict) else {}
+        return {"team_id": team_id,
+                "phase": result.get("phase", "executing") if isinstance(result, dict) else "executing",
+                "state": state}
 
     async def reject_stage(self, team_id: str, feedback: str) -> Dict[str, Any]:
-        session = self._sessions.get(team_id)
-        if not session:
-            raise ValueError("no session")
-        state = self._runs.get(team_id, {})
-        state = await session.reject(dict(state), feedback)
-        self._runs[team_id] = state
-        return {"team_id": team_id, "phase": state.get("phase"), "state": state}
+        # P1-13 收敛（§10 防并行实现）：委托 Core HTTP 唯一实现
+        from builder.builder_project_service import _get_project_service
+        result = await _get_project_service().reject_stage(team_id, feedback)
+        state = result.get("state", {}) if isinstance(result, dict) else {}
+        return {"team_id": team_id,
+                "phase": result.get("phase", "executing") if isinstance(result, dict) else "executing",
+                "state": state}
 
     async def get_team_state(self, team_id: str) -> Dict[str, Any]:
         return self._runs.get(team_id, {"team_id": team_id, "phase": "unknown"})

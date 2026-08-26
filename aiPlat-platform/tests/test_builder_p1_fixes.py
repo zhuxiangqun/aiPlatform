@@ -333,3 +333,67 @@ class TestP1_12StateReadConverged:
         m = m[:m.index("\n    async def ")] if "\n    async def " in m else m
         assert "await self._get_state_via_core(project_id)" in m, \
             "P1-12 未修复：get_project_state 未复用唯一实现"
+
+
+# ---- P1-13: HITL 审批三套收敛（委托 Core HTTP 唯一实现） ----
+
+class TestP1_13HitlApprovalConverged:
+    """§10 API 唯一性：team_service / builder_session 的 HITL 审批委托 project_service（Core HTTP）。"""
+
+    def test_team_service_delegates_to_project_service(self):
+        """行为证据：BuilderTeamService.approve_stage 委托 project_service（mock），
+        不再走本地 session.approve 旧语义。"""
+        from unittest.mock import AsyncMock, patch
+        from builder.builder_team_service import BuilderTeamService
+
+        svc = BuilderTeamService()
+        fake = AsyncMock(return_value={"project_id": "t1", "phase": "executing",
+                                       "status": "ok", "state": {"phase": "executing"}})
+
+        async def _run():
+            with patch("builder.builder_project_service._get_project_service", return_value=type("S", (), {"approve_stage": fake})()):
+                return await svc.approve_stage("t1")
+
+        import asyncio
+        result = asyncio.run(_run())
+        assert result["team_id"] == "t1"
+        assert result["phase"] == "executing"
+        fake.assert_awaited_once_with("t1")
+
+    def test_team_service_no_local_approve(self):
+        """静态证据：team_service 不再用 session.approve 本地语义。"""
+        from pathlib import Path
+        src = (Path(__file__).resolve().parents[2]
+               / "aiPlat-platform" / "builder" / "builder_team_service.py").read_text(encoding="utf-8")
+        m = src[src.index("async def approve_stage"):]
+        m = m[:m.index("\n    async def ") if "\n    async def " in m else len(m)]
+        assert "await session.approve(dict(state))" not in m, \
+            "P1-13 未修复：team_service 仍走本地 session.approve"
+        assert "_get_project_service().approve_stage" in m, "P1-13 未修复：未委托 project_service"
+
+    def test_session_service_delegates_to_project_service(self):
+        """行为证据：BuilderSessionService.approve_architecture 委托 project_service。"""
+        from unittest.mock import AsyncMock, patch
+        from builder.builder_session import BuilderSessionService
+
+        svc = BuilderSessionService()
+        fake = AsyncMock(return_value={"project_id": "s1", "phase": "executing", "status": "ok"})
+
+        async def _run():
+            with patch("builder.builder_project_service._get_project_service", return_value=type("S", (), {"approve_stage": fake})()):
+                return await svc.approve_architecture("s1")
+
+        import asyncio
+        result = asyncio.run(_run())
+        assert result.phase in ("executing", "failed", "dialogue"), f"unexpected phase: {result.phase}"
+        fake.assert_awaited_once_with("s1")
+
+    def test_session_no_local_pipeline_approve(self):
+        """静态证据：builder_session 不再用 pipeline.approve 本地语义。"""
+        from pathlib import Path
+        src = (Path(__file__).resolve().parents[2]
+               / "aiPlat-platform" / "builder" / "builder_session.py").read_text(encoding="utf-8")
+        assert "pipeline.approve(dict(state))" not in src, \
+            "P1-13 未修复：builder_session 仍走本地 pipeline.approve"
+        assert "pipeline.reject(dict(state)" not in src, \
+            "P1-13 未修复：builder_session 仍走本地 pipeline.reject"
