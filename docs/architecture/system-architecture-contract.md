@@ -109,7 +109,7 @@ platform 在调用下游服务时 **MUST** 注入/透传：
 
 ### 5.2 应用工厂 P1 修复契约（MUST，2026-08-25）
 
-同源审计（§7.5.4）的 10 项 P1 修复固化：
+同源审计（§7.5.4）的 11 项 P1 修复固化：
 
 | # | 契约 | 实现位置 | 违反后果 |
 |---|------|---------|---------|
@@ -123,8 +123,9 @@ platform 在调用下游服务时 **MUST** 注入/透传：
 | 8 | 并行实现收敛（§10 唯一实现）：节点→stage 转换**唯一**实现为 `WorkflowService._nodes_to_stages`（`AppService._build_stages_from_nodes` 必须委托，禁止内联精简版）；Markdown PRD 解析**唯一**实现为 `BuilderProjectService._parse_markdown_prd`（`BuilderSessionService` 必须委托） | `aiPlat-platform/builder/builder_workflow_service.py` + `builder_app_service.py` + `builder_session.py` | 双份漂移、字段语义不一致 |
 | 9 | app 服务 base URL **禁止**硬编码 `http://localhost:8004`：后端必须经 `AIPLAT_APP_BASE_URL` 环境变量（默认 8004）；前端必须走 `/app` 相对路径（vite proxy 转发），不得直连 8004 | `aiPlat-platform/api/routers/builder.py`（`_APP_BASE_URL`）+ `aiPlat-management/frontend/vite.config.ts`（`/app` proxy）+ `AppPage.tsx`/`Factory/index.tsx`（相对路径） | 跨进程/部署环境端口耦合，生产无法同源承载 |
 | 10 | pipeline 状态读取**必须**收敛到 SQLite 直读（`_get_state_via_core` 唯一实现，`get_project_state` 复用）；禁止走 Core HTTP 状态端点（单 worker 事件循环被流水线阻塞时超时） | `aiPlat-platform/builder/builder_project_service.py` | HTTP 超时 → 状态读取失败 |
+| 11 | 引擎层模型用途推断**必须**配置驱动（§5.29/v4.1）：禁止按技能名关键词（architecture/design/code/generation/test）推断 `skill_model_purpose`；解析链 = team YAML 显式 → AGENT.md frontmatter → SKILL.md frontmatter → 默认 `chat` | `aiPlat-core/core/harness/execution/team_planner.py`（`_load_skill_frontmatter`）+ 7 个 engine SKILL.md（`skill_model_purpose` 声明） | 业务/能力类型推断违反内核无关原则 |
 
-回归测试：`aiPlat-core/core/tests/unit/test_pipeline_eval_p1_fixes.py`（P1-2，2 项）+ `aiPlat-platform/tests/test_builder_p1_fixes.py`（P1-1/P1-3/P1-4/P1-8/P1-9/P1-11/P1-12，17 项）+ `aiPlat-core/core/tests/unit/test_pipeline_engine_p1b_fixes.py`（P1-6/P1-7，5 项）。
+回归测试：`aiPlat-core/core/tests/unit/test_pipeline_eval_p1_fixes.py`（P1-2，2 项）+ `aiPlat-platform/tests/test_builder_p1_fixes.py`（P1-1/P1-3/P1-4/P1-8/P1-9/P1-11/P1-12，17 项）+ `aiPlat-core/core/tests/unit/test_team_planner_p1_fixes.py`（P1-5，4 项）+ `aiPlat-core/core/tests/unit/test_pipeline_engine_p1b_fixes.py`（P1-6/P1-7，5 项）。
 
 ---
 

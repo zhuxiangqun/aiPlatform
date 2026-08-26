@@ -123,6 +123,32 @@ def load_team_template(name: str) -> Optional[TeamTemplate]:
         return None
 
 
+def _load_skill_frontmatter(skill_name: str) -> Dict[str, Any]:
+    """Load SKILL.md frontmatter for a skill (engine + workspace dirs).
+
+    P1-5 fix (2026-08-25): config-driven model-purpose source — skills declare
+    `skill_model_purpose` in their own frontmatter instead of the engine
+    inferring it from skill-name keywords (CLAUDE.md §5.29/v4.1).
+    """
+    import os as _os
+    import yaml as _yaml
+    _here = _os.path.dirname(_os.path.abspath(__file__))
+    candidates = [
+        _os.path.join(_here, "..", "..", "engine", "skills", skill_name, "SKILL.md"),
+        _os.path.expanduser(f"~/.aiplat/skills/{skill_name}/SKILL.md"),
+    ]
+    for p in candidates:
+        try:
+            raw = open(p, "r", encoding="utf-8").read()
+            if raw.startswith("---"):
+                fm = _yaml.safe_load(raw.split("---", 2)[1]) or {}
+                if isinstance(fm, dict):
+                    return fm
+        except Exception:
+            continue
+    return {}
+
+
 # ── Agent discovery ──────────────────────────────────────────────
 
 def list_available_agents() -> List[AgentCatalogEntry]:
@@ -270,14 +296,16 @@ def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
         stage["phase"] = str(fm.get("phase") or fm.get("phase_description") or "")
 
     # ── Model routing ──
+    # P1-5 fix (2026-08-25): config-driven only — skill-name keyword inference
+    # violates CLAUDE.md §5.29/v4.1 (no business/capability inference by name
+    # matching in core). Resolution chain: team YAML explicit → AGENT.md
+    # frontmatter → SKILL.md frontmatter → default "chat".
     if not stage.get("skill_model_purpose"):
-        _skill = str(stage.get("skill_name", "")).lower()
-        if "architecture" in _skill or "design" in _skill:
-            stage["skill_model_purpose"] = "reasoning"
-        elif "code" in _skill or "generation" in _skill or "test" in _skill:
-            stage["skill_model_purpose"] = "code_gen"
-        else:
-            stage["skill_model_purpose"] = "chat"
+        stage["skill_model_purpose"] = str(
+            fm.get("skill_model_purpose")
+            or _load_skill_frontmatter(str(stage.get("skill_name", ""))).get("skill_model_purpose")
+            or "chat"
+        )
 
     # Pre-resolve model name so frontend can preview without running pipeline
     if not stage.get("resolved_model"):

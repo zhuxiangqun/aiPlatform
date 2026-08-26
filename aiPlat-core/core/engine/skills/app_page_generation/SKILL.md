@@ -6,6 +6,7 @@ description: >-
   输出声明式组件配置,平台AppPage动态渲染。不生成原生代码。
 category: generation
 version: 1.0.0
+skill_model_purpose: code_gen
 status: enabled
 execution_mode: prompt
 execution_type: prompt

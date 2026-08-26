@@ -6,6 +6,7 @@ description: >
   代码模式: 读取pytest文件，subprocess执行，解析输出。
 category: execution
 version: 2.2.0
+skill_model_purpose: code_gen
 status: enabled
 execution_type: handler
 tags:

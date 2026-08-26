@@ -5,6 +5,7 @@ display_name: E2E 测试自动生成
 description: 输入任意URL，自动探索站点、生成Playwright测试套件、运行测试、修复失败、补充覆盖。涉及代码生成和测试审查。 涉及测试用例相关操作。
   主要进行生成。
 version: 1.0.0
+skill_model_purpose: code_gen
 category: execution
 status: enabled
 triggers:
