@@ -283,3 +283,53 @@ class TestP1_11AppBaseUrlConfigurable:
         vite_cfg = (mgmt.parent / "vite.config.ts").read_text(encoding="utf-8")
         assert "'/app': {" in vite_cfg and "http://localhost:8004" in vite_cfg, \
             "P1-11 未修复：vite proxy 未配置 /app → 8004"
+
+
+# ---- P1-12: 状态读取三路径收敛（HTTP → SQLite 唯一实现） ----
+
+class TestP1_12StateReadConverged:
+    """§10 API 唯一性：_get_state_via_core 与 get_project_state 收敛到 SQLite 直读。"""
+
+    def test_get_state_via_core_reads_sqlite(self):
+        """行为证据：_get_state_via_core 经 SQLite run store 读取（不再走 Core HTTP）。"""
+        from unittest.mock import patch, MagicMock
+        from builder.builder_project_service import BuilderProjectService
+
+        svc = BuilderProjectService(team_service=None)
+
+        fake_store = MagicMock()
+        fake_store.get_full_state.return_value = {
+            "phase": "done", "project_id": "prj_x", "some": "data",
+        }
+
+        async def _run():
+            with patch("core.api.core_facade.get_pipeline_run_store", return_value=fake_store):
+                return await svc._get_state_via_core("prj_x")
+
+        import asyncio
+        result = asyncio.run(_run())
+        assert result["project_id"] == "prj_x"
+        assert result["phase"] == "done"
+        assert result["state"]["some"] == "data"
+        fake_store.get_full_state.assert_called_once_with("prj_x")
+
+    def test_no_http_client_in_state_read(self):
+        """静态证据：_get_state_via_core 不再 import PipelineOrchestratorClient（HTTP 路径已收敛）。"""
+        from pathlib import Path
+        src = (Path(__file__).resolve().parents[2]
+               / "aiPlat-platform" / "builder" / "builder_project_service.py").read_text(encoding="utf-8")
+        m = src[src.index("async def _get_state_via_core"):]
+        m = m[:m.index("\n    async def ")] if "\n    async def " in m else m
+        assert "PipelineOrchestratorClient" not in m, \
+            "P1-12 未修复：_get_state_via_core 仍走 HTTP 客户端"
+        assert "get_pipeline_run_store" in m, "P1-12 未修复：未收敛到 SQLite 直读"
+
+    def test_get_project_state_reuses_converged_reader(self):
+        """get_project_state 委托 _get_state_via_core（唯一实现）。"""
+        from pathlib import Path
+        src = (Path(__file__).resolve().parents[2]
+               / "aiPlat-platform" / "builder" / "builder_project_service.py").read_text(encoding="utf-8")
+        m = src[src.index("async def get_project_state"):]
+        m = m[:m.index("\n    async def ")] if "\n    async def " in m else m
+        assert "await self._get_state_via_core(project_id)" in m, \
+            "P1-12 未修复：get_project_state 未复用唯一实现"

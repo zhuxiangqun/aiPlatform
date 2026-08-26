@@ -2287,10 +2287,26 @@ class BuilderProjectService:
         return await self._rebuild_via_core(project_id, proj, module_id=module_id)
 
     async def _get_state_via_core(self, project_id: str) -> Dict[str, Any]:
-        """Read pipeline state from Core server HTTP API."""
-        from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
-        client = PipelineOrchestratorClient()
-        return await client.get_state(project_id)
+        """Read pipeline state — 收敛到 SQLite 直读（P1-12 §10 唯一实现）。
+
+        原走 Core HTTP API（get_project_state 注释已说明：单 worker 事件循环被
+        流水线阻塞时 HTTP 可能超时）。SQLite WAL 允许并发读，100% 可用。
+        返回结构 {project_id, phase, state} 与 HTTP 客户端一致（get_health_report
+        等调用方按 core_state.get("state") 消费，保持兼容）。
+        """
+        import asyncio
+        from core.api.core_facade import get_pipeline_run_store
+
+        def _read() -> Dict[str, Any]:
+            store = get_pipeline_run_store()
+            state = store.get_full_state(project_id) or {}
+            return {
+                "project_id": project_id,
+                "phase": state.get("phase", "idle"),
+                "state": state,
+            }
+
+        return await asyncio.to_thread(_read)
 
     def _build_stage_config(self, project_id: str, proj: dict) -> Dict[str, Any]:
         """Build the pipeline config dict shared by rebuild + stage-level operations."""
@@ -2416,28 +2432,14 @@ class BuilderProjectService:
         }
 
     async def get_project_state(self, project_id: str) -> Dict[str, Any]:
-        """Read pipeline state directly from SQLite — never blocked by Core's event loop.
+        """Read pipeline state from SQLite — never blocked by Core's event loop.
 
         The Core server's HTTP endpoint for state can time out during LLM execution
-        (single-worker event loop blocked by pipeline). This method bypasses Core
-        entirely and reads the shared SQLite DB directly in a thread pool.
-
-        SQLite WAL mode allows concurrent reads while Core writes, so this is
-        both safe and 100% available regardless of pipeline activity.
+        (single-worker event loop blocked by pipeline). SQLite WAL allows concurrent
+        reads while Core writes — 100% available regardless of pipeline activity.
+        P1-12 收敛（§10）：读取逻辑统一到 `_get_state_via_core`（唯一实现）。
         """
-        import asyncio
-        from core.api.core_facade import get_pipeline_run_store
-
-        def _read():
-            store = get_pipeline_run_store()
-            state = store.get_full_state(project_id)
-            return {
-                "project_id": project_id,
-                "phase": state.get("phase", "idle"),
-                "state": state,
-            }
-
-        result = await asyncio.to_thread(_read)
+        result = await self._get_state_via_core(project_id)
 
         # When pipeline completes on Core, sync run phase so project card shows correct status
         if result.get("phase") in ("done", "failed"):
