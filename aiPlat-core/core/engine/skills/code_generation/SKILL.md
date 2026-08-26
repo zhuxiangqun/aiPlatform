@@ -105,6 +105,15 @@ skip_when: 跳过条件：用户仅询问概念、对比工具而非实际写代
 
 # 代码生成（Engine）
 
+## 输出格式（backend 模式——API 路由+model 落盘 JSON，AGENT.md 引用此节，2026-08-26 归属迁移）
+```json
+{
+  "files": [{"path": "backend/models/task.py", "content": "..."}],
+  "routes_created": ["POST /api/tasks", "GET /api/tasks"],
+  "models_verified": ["Task", "CreateTaskRequest"]
+}
+```
+
 ## SOP
 1. 解析需求：语言/框架/代码风格/测试要求。
 2. 生成代码：## FILE: 格式，每文件包含完整实现。
