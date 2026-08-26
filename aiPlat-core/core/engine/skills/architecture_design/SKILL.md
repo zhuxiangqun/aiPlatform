@@ -4,6 +4,7 @@ display_name: 系统架构设计
 description: 根据PRD需求设计完整、详细、可落地的系统架构，输出结构化JSON。触发条件：pipeline architecture阶段。跳过条件：纯文本需求（无技术约束）。
 category: design
 version: 1.0.0
+skill_model_purpose: reasoning
 status: enabled
 execution_type: prompt
 triggers:

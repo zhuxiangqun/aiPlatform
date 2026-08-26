@@ -6,6 +6,7 @@ description: '根据需求描述生成代码（## FILE: 格式）。触发条件
 category: generation
 uses_file_output: true
 version: 1.0.0
+skill_model_purpose: code_gen
 status: enabled
 protected: true
 idempotent: false

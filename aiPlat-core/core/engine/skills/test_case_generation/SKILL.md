@@ -6,6 +6,7 @@ description: >-
   触发条件：QA阶段自动触发。
 category: analysis
 version: 2.1.0
+skill_model_purpose: code_gen
 status: enabled
 execution_mode: prompt
 execution_type: prompt
