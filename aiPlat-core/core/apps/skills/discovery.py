@@ -84,7 +84,10 @@ class SKILLMD_parser:
             category=data.get("category", "general"),
             tags=data.get("tags", []),
             capabilities=data.get("capabilities", []),
-            trigger_conditions=data.get("trigger_conditions", []),  # Skill 触发条件（路由表）
+            trigger_conditions=data.get("trigger_conditions")
+                                 or data.get("triggers")          # B2: 生成物（agent_engineering）声明 triggers，
+                                 or data.get("trigger_keywords")  #     与 registry.match 读 triggers 对齐，统一三字段
+                                 or [],                           #     防止生成物注册后 SkillMatcher 路由 miss
             input_schema=data.get("input_schema", {}),
             output_schema=data.get("output_schema", {}),
             examples=data.get("examples", []),
