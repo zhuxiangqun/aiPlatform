@@ -100,6 +100,63 @@ skip_when: code_generation已处理代码模式
 
 若 PRD 没有独立的「下载」交互，则不要硬造下载 stage。
 
+## 输出格式（完整模板——AGENT.md 引用此节，2026-08-26 归属迁移）
+
+用 `## FILE:` 格式，输出一个 app_page.json：
+
+```json
+{
+  "app_name": "video_sense",
+  "app_title": "智能视频理解",
+  "project_id": "{project_id}",
+  "mode": "wizard",
+  "stages": [
+    {
+      "id": "upload",
+      "title": "上传视频",
+      "skill": "video_upload",
+      "component": "file_upload",
+      "config": {
+        "accept": "video/*",
+        "max_size_mb": 500,
+        "label": "选择视频文件",
+        "hint": "支持 MP4/MOV/AVI/MKV，最大 500MB"
+      },
+      "next": "progress"
+    },
+    {
+      "id": "progress",
+      "title": "分析中",
+      "skill": "check_progress",
+      "component": "progress_poller",
+      "config": {
+        "status_field": "status",
+        "poll_ms": 3000,
+        "stages": ["uploading", "analyzing", "generating", "completed"],
+        "labels": {"uploading":"上传中","analyzing":"AI分析中","generating":"生成结果"},
+        "input": {"task_id": "{{upload.task_id}}"}
+      },
+      "next": "results"
+    },
+    {
+      "id": "results",
+      "title": "分析结果",
+      "skill": "result_presentation",
+      "component": "result_dashboard",
+      "config": {
+        "sections": [
+          {"key": "tags", "label": "标签识别", "type": "tag_cloud"},
+          {"key": "speech", "label": "语音识别", "type": "text_block"},
+          {"key": "summary", "label": "AI 摘要", "type": "markdown"}
+        ],
+        "input": {"task_id": "{{progress.task_id}}"}
+      }
+    }
+  ],
+  "side_chat": {"enabled": true, "hint": "对结果有疑问?点我问"}
+}
+```
+
 ## SOP
 
 ### 修复模式（最高优先级 — 上下文出现 `## 🛑 REGENERATE WITH FEEDBACK` 时执行）
