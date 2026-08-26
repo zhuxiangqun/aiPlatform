@@ -2222,31 +2222,50 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
         logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     # ── Register generated agents & skills to workspace ──
+    # P1-17 生成物契约校验（2026-08-26）：借鉴 SBA conformance 模式——注册前用
+    # generated_conformance.py 校验（治理字段/schema 字段名/首行残留），不合规则跳过注册，
+    # 防止"LLM 碰运气"产物污染工作区。
     _reg_count = 0
+    _rejected = 0
     try:
         import shutil
+        import logging as _log_dep
+        from builder.generated_conformance import validate_file
         _agents_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "agents")
         _skills_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "skills")
+        _blog = _log_dep.getLogger("aiplat.builder")
         # Scan recursively for AGENT.md and SKILL.md files (may be nested under app dir)
         for _root, _dirs, _files in os.walk(_app_home):
             for _f in _files:
                 _src = os.path.join(_root, _f)
                 if _f == "AGENT.md":
                     _agent_name = os.path.basename(_root)
+                    _violations = validate_file(_src, "agent")
+                    if _violations:
+                        _rejected += 1
+                        _blog.warning("Deploy: 跳过注册不合规 AGENT.md %s: %s",
+                                      _src, "; ".join(_violations[:3]))
+                        continue
                     _dst = os.path.join(_agents_dir, _agent_name, "AGENT.md")
                     os.makedirs(os.path.dirname(_dst), exist_ok=True)
                     shutil.copy2(_src, _dst)
                     _reg_count += 1
                 elif _f == "SKILL.md":
                     _skill_name = os.path.basename(_root)
+                    _violations = validate_file(_src, "skill")
+                    if _violations:
+                        _rejected += 1
+                        _blog.warning("Deploy: 跳过注册不合规 SKILL.md %s: %s",
+                                      _src, "; ".join(_violations[:3]))
+                        continue
                     _dst = os.path.join(_skills_dir, _skill_name, "SKILL.md")
                     os.makedirs(os.path.dirname(_dst), exist_ok=True)
                     shutil.copy2(_src, _dst)
                     _reg_count += 1
-        if _reg_count > 0:
-            import logging as _log_dep
-            _log_dep.getLogger("aiplat.builder").info(
-                "Deploy: registered %d agents/skills from %s", _reg_count, _app_home)
+        if _reg_count > 0 or _rejected > 0:
+            _blog.info(
+                "Deploy: registered %d agents/skills from %s (rejected %d by conformance)",
+                _reg_count, _app_home, _rejected)
     except Exception:
         logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # best-effort
 

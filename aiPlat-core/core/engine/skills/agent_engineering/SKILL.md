@@ -46,7 +46,8 @@ idempotent: false
 completion_criterion: |
   1. 生成至少1个AGENT.md文件
   2. 每个核心功能对应至少1个SKILL.md
-  3. SKILL.md的input/output字段能串联
+  3. SKILL.md的 input_schema/output_schema 字段能串联（对象格式：每个字段含 name/type/required/description，
+     禁止使用 input/output 列表格式——registry/discovery 只解析 input_schema/output_schema）
   4. AGENT.md的SOP正确引用所有Skills
 keywords:
   objects:
@@ -144,8 +145,9 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 
 **Skill 拆分原则**:
 - 一个 Skill 做一件事(单一职责)
-- input/output 字段要明确(类型+必填标记)
-- 所有 Skill 的 input/output 能串联成完整链路
+- SKILL.md frontmatter 必须用 input_schema/output_schema 对象格式（字段: name/type/required/description）
+- 禁止用 input/output 列表格式（registry 读 input_schema/output_schema，列表格式导致 schema 丢失）
+- 所有 Skill 的 input_schema/output_schema 能串联成完整链路
 - 优先复用平台已有的 Engine Skill(39个),不重复造
 
 ### Step 3: 生成 AGENT.md
@@ -263,7 +265,7 @@ scoring_dimensions:
 - [ ] 每个核心功能对应 1 个 SKILL.md（由负责的 Agent 的 `required_skills` 引用）
 - [ ] 多 Agent 时: orchestrator_agent 的 SOP 描述如何分发到子 Agent
 - [ ] agent_manifest.json 的 skill_routing 覆盖所有 Skill
-- [ ] 所有 Skill 的 input/output 字段完整
+- [ ] 所有 Skill 的 input_schema/output_schema 字段完整（对象格式，非 input/output 列表）
 - [ ] scoring_dimensions 已定义(3-4个维度)
 - [ ] 优先使用 execution_type: prompt
 - [ ] 没有生成 Python 或 React 代码

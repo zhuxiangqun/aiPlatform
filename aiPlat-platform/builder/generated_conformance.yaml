@@ -1,0 +1,47 @@
+# 应用工厂生成物契约（Generated-Artifact Conformance, 2026-08-26）
+# 借鉴 skill-based-architecture 的 conformance 模式：生成物不是"LLM 碰运气"，
+# 而是可机器验收的契约。校验器：builder/generated_conformance.py
+# 挂点：builder_project_service.py 注册循环（AGENT.md/SKILL.md 复制到工作区前）。
+#
+# 契约类型：
+#   first_line_must_be   — 文件首行必须等于该字符串（防 ```markdown / 空行 残留）
+#   must_contain         — 必须包含的子串（治理字段存在性）
+#   must_not_contain     — 禁止包含的子串
+#   must_contain_in_order— 必须按顺序出现的一组子串
+#   per_must_contain     — 每个 frontmatter 字段必须包含的子串（按字段名，如 effects:）
+
+skill:
+  first_line_must_be: "---"
+  must_contain_in_order:
+    - "---"
+    - "name:"
+    - "---"
+  must_contain:
+    - "execution_type:"
+    - "input_schema:"
+    - "output_schema:"
+    - "version:"
+    - "status: enabled"
+    - "description:"
+  per_field_must_contain:
+    input_schema: ["type", "required", "description"]
+    output_schema: ["type", "required", "description"]
+  must_not_contain:
+    - "```markdown"
+    - "```yaml"
+    - "```json"
+
+agent:
+  first_line_must_be: "---"
+  must_contain_in_order:
+    - "---"
+    - "name:"
+    - "---"
+  must_contain:
+    - "display_name:"
+    - "agent_type:"
+    - "## SOP"
+    - "## 反模式"
+  must_not_contain:
+    - "```markdown"
+    - "```yaml"
