@@ -109,7 +109,7 @@ platform 在调用下游服务时 **MUST** 注入/透传：
 
 ### 5.2 应用工厂 P1 修复契约（MUST，2026-08-25）
 
-同源审计（§7.5.4）的 13 项 P1 修复固化：
+同源审计（§7.5.4）的 14 项 P1 修复固化 + 生成物契约（SBA 借鉴）：
 
 | # | 契约 | 实现位置 | 违反后果 |
 |---|------|---------|---------|
@@ -126,6 +126,7 @@ platform 在调用下游服务时 **MUST** 注入/透传：
 | 11 | 引擎层模型用途推断**必须**配置驱动（§5.29/v4.1）：禁止按技能名关键词（architecture/design/code/generation/test）推断 `skill_model_purpose`；解析链 = team YAML 显式 → AGENT.md frontmatter → SKILL.md frontmatter → 默认 `chat` | `aiPlat-core/core/harness/execution/team_planner.py`（`_load_skill_frontmatter`）+ 7 个 engine SKILL.md（`skill_model_purpose` 声明） | 业务/能力类型推断违反内核无关原则 |
 | 12 | HITL 审批**必须**收敛到 `BuilderProjectService.approve_stage`/`reject_stage`（v3.1 Core HTTP 唯一实现）；`BuilderTeamService`/`BuilderSessionService` 的 approve/reject **禁止**走本地 `session.approve`/`pipeline.approve`（PipelineSession 旧语义，与生产路径不一致） | `aiPlat-platform/builder/builder_team_service.py` + `builder_session.py`（委托） | 三套审批语义漂移 |
 | 13 | `BuilderProjectService` **禁止**超过 1000 行/40 方法（God Class 红线）：L2-L5（导入/合并/模块/迁移/发布）必须放 `BuilderL2L5Mixin`，部署/健康/洞察必须放 `BuilderDeployMixin`；核心类只保留 CRUD/对话/流水线 | `aiPlat-platform/builder/builder_project_service.py`（核心类 2421→目标 ≤1000 行）+ `builder_l2l5_mixin.py` + `builder_deploy_mixin.py` | 类职责混杂、维护成本指数增长 |
+| 14 | 应用工厂生成物（AGENT.md/SKILL.md）注册前**必须**经 `generated_conformance` 契约校验（借鉴 SBA conformance 模式）：首行必须是 `---`（防 ```markdown/空行 残留）、必须含治理字段（execution_type/input_schema/output_schema/version/status/effects）、`input_schema`/`output_schema` 必须为对象格式（含 type/required/description）；不通过则**跳过注册**并告警 | `aiPlat-platform/builder/generated_conformance.py` + `generated_conformance.yaml` + `builder_project_service.py` 注册循环；`aiPlat-core/core/engine/skills/agent_engineering/SKILL.md`（生成规范要求 input_schema/output_schema 对象格式） | 生成物缺治理字段/schema 丢失/格式残留污染工作区 |
 
 回归测试：`aiPlat-core/core/tests/unit/test_pipeline_eval_p1_fixes.py`（P1-2，2 项）+ `aiPlat-platform/tests/test_builder_p1_fixes.py`（P1-1/P1-3/P1-4/P1-8/P1-9/P1-11/P1-12/P1-13，21 项）+ `aiPlat-core/core/tests/unit/test_team_planner_p1_fixes.py`（P1-5，4 项）+ `aiPlat-core/core/tests/unit/test_pipeline_engine_p1b_fixes.py`（P1-6/P1-7，5 项）。
 
