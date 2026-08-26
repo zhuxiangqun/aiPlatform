@@ -104,6 +104,16 @@ def validate_text(text: str, kind: str, contract: Optional[Dict[str, Any]] = Non
                 if req not in val_str:
                     violations.append(f"per_field_must_contain[{field}]: 值缺少 {req!r}")
 
+    # 6. 上下文预算（B2 路由-知识分离：正文行数上限，防大而全）
+    max_body = rules.get("body_max_lines")
+    if max_body is not None:
+        body_lines = _body_line_count(text)
+        if body_lines > int(max_body):
+            violations.append(
+                f"body_max_lines: 正文 {body_lines} 行超过预算 {max_body} 行"
+                "（上下文预算——知识应拆分到独立文件，而非堆进单个 SKILL.md）"
+            )
+
     return violations
 
 
@@ -115,6 +125,17 @@ def validate_file(path: str, kind: str, contract: Optional[Dict[str, Any]] = Non
     except OSError as e:
         return [f"file unreadable: {e}"]
     return validate_text(text, kind, contract)
+
+
+def _body_line_count(text: str) -> int:
+    """frontmatter 之后的正文行数（含空行），用于上下文预算检查。"""
+    if not text.startswith("---"):
+        return len(text.split("\n"))
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return 0
+    body = parts[2].strip("\n")
+    return len(body.split("\n")) if body else 0
 
 
 def _parse_frontmatter(text: str) -> Dict[str, Any]:
