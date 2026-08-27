@@ -794,6 +794,7 @@ scan_hash: 8f9548ec24f4
 | FDE追问端点 | platform/apps/fde/api/fde.py` + `apps/skills/registry.py:1896-1914 | ✅ | POST /fde/ask — 基于诊断上下文回答后续问题，复用域图谱+历史+方案原型全链路(HMESI B0) | 已合入 |
 | FDE证据等级映射 | apps/skills/registry.py:1817 | ✅ | 诊断报告返回时附加evidence_map数组(每条§1结论的证据等级+来源)→前端可直接渲染颜色标签(HMESI C0) | 已合入 |
 | 证据树（Evidence Tree） | scripts/verify_claude_md_evidence.py --tree（build_evidence_tree） | ✅ | CLAUDE.md 证据声明的层级化证据树（HarnessEval 借鉴）：branches→sub_branches→evidence（tool/input/expect/actual/status）+ route_reason（路由决策可审计）+ known_gaps（✅ 声明无验证命令的已知盲区）；`--out` 落盘；architecture_guard 经 AIPLAT_EVIDENCE_TREE_OUT 接线 | 已合入 |
+| 经验回写 L2 链路（experience_feedback） | governance/experience_feedback/experience_feedback.py（register_failure/record_verification/confirm_promotion） | ✅ | gotchas 登记→两次独立验证→升级状态机（HarnessEval × SBA §5.5）：confidence<0.7 拒收、同 case 重复不计数、连续 2 次失败判 rejected、低风险自动 promoted/高风险 require_review 人工确认、升级只生成规则草案不改写 SKILL.md；architecture_guard 失败自动登记接线；AIPLAT_EXPERIENCE_FILE 配置存储 | 已合入 |
 | FDE交付反馈API | platform/apps/fde/api/fde.py | ✅ | POST /fde/delivery/feedback — 标记Session+Action状态→更新交付率统计→触发§4.6ROI重新计算(HMESI D) | 已合入 |
 | FDE诊断自优化 | apps/skills/registry.py:1827-1863 | ✅ | 基于历史交付率(≥60%/30-60%/<30%)自动调整§1置信度标注策略+§6方案推荐排序(HMESI E) | 已合入 |
 | FDE多角色模拟 | apps/skills/registry.py:1865-1881 | ✅ | 生成前注入CIO/开发者/终端用户三视角采纳风险评估表→§7标注各角色风险信号+降级规则(HMESI F) | 已合入 |

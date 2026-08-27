@@ -553,6 +553,12 @@ fi
 echo ""; sep
 if [ "$FAIL" -ne 0 ]; then
     echo "  ARCHITECTURE GUARD: one or more checks FAILED (all checks ran — see above)"
+    # ── L2 经验回写（HarnessEval × SBA §5.5）：守卫失败自动登记为待验证经验 ──
+    # 记录失败是安全的（gotchas=可逆日志）；验证/升级由后续运行或人工触发。
+    _EF="aiPlat-platform/governance/experience_feedback/experience_feedback.py"
+    python3 "$_EF" --register --rule "architecture-guard-fail" \
+        --content "架构守卫执行失败（详见本次守卫日志）" --source architecture_guard \
+        --confidence 0.9 --risk low >/dev/null 2>&1 || true
     sep; exit 1
 else
     echo "  ARCHITECTURE GUARD: all checks passed"
