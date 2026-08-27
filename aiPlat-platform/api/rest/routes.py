@@ -57,7 +57,7 @@ from typing import Any, Dict, Optional, List
 
 
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, UploadFile, File, Form
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, UploadFile, File, Form
 
 from fastapi.responses import FileResponse, JSONResponse
 
@@ -7307,5 +7307,44 @@ async def governance_eval_observability():
     """评测观测聚合视图：最近一次评测的证据树/路由决策/经验状态（诊断面板消费）。"""
     from governance.eval_observability import aggregate
     return aggregate()
+
+
+# ── 后台任务托管（prime-agent 断线续跑借鉴）：长任务脱离终端运行，状态/输出可随时查询 ──
+
+@app.get("/governance/jobs")
+async def governance_jobs_list():
+    """后台任务列表（含实时状态刷新）。"""
+    from governance.daemon_jobs import DaemonJobStore
+    return {"jobs": DaemonJobStore().list()}
+
+
+@app.post("/governance/jobs")
+async def governance_jobs_start(payload: dict = Body(...)):
+    """启动后台任务：{name, command, cwd?}——新会话组，终端关闭不终止。"""
+    from governance.daemon_jobs import DaemonJobStore
+    return DaemonJobStore().start(
+        str(payload.get("name", "")), str(payload.get("command", "")),
+        cwd=str(payload["cwd"]) if payload.get("cwd") else None)
+
+
+@app.get("/governance/jobs/{job_id}")
+async def governance_job_status(job_id: str):
+    """查询单个后台任务状态（running/finished/failed/killed + exit_code）。"""
+    from governance.daemon_jobs import DaemonJobStore
+    return DaemonJobStore().status(job_id)
+
+
+@app.get("/governance/jobs/{job_id}/output")
+async def governance_job_output(job_id: str, lines: int = 50):
+    """读取后台任务输出尾部（attach）。"""
+    from governance.daemon_jobs import DaemonJobStore
+    return DaemonJobStore().attach(job_id, max(1, min(lines, 500)))
+
+
+@app.post("/governance/jobs/{job_id}/kill")
+async def governance_job_kill(job_id: str):
+    """终止后台任务（连同其会话组子进程）。"""
+    from governance.daemon_jobs import DaemonJobStore
+    return DaemonJobStore().kill(job_id)
 
 
