@@ -54,7 +54,16 @@ jobs:
           # 2026-08-26 修复：内嵌多行 Python 抽到 scripts/verify_doc_stale.py
           # （YAML literal block 多行字符串缩进破坏解析——workflow 启动即失败）
           STALE=$(python3 scripts/verify_doc_stale.py "$DAYS")
-          echo "stale_design=${STALE}" >> $GITHUB_OUTPUT
+          if [ -n "${STALE}" ]; then
+            # GITHUB_OUTPUT 多行值必须用 heredoc 分隔符语法（防 Invalid format）
+            {
+              echo "stale_design<<STALE_EOF"
+              echo "${STALE}"
+              echo "STALE_EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "stale_design=" >> "$GITHUB_OUTPUT"
+          fi
         env:
           AIPLAT_DOC_DESIGN_STALE_DAYS: ${{ vars.AIPLAT_DOC_DESIGN_STALE_DAYS || '90' }}
 

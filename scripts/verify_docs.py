@@ -714,8 +714,6 @@ def main():
         print(f"\u26a0\ufe0f 告警: {len(warnings)} 个（不阻断）")
         for w in warnings:
             print(f"  {w}")
-        with open(os.environ.get('GITHUB_OUTPUT', '/dev/null'), 'a') as f:
-            f.write(f"warnings={chr(10).join(warnings)}\n")
         sys.exit(0)
     else:
         print("\u2705 所有验证通过！文档系统健康。")
