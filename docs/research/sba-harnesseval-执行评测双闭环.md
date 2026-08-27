@@ -184,6 +184,7 @@ python3 scripts/verify_claude_md_evidence.py --strict      # 回归：默认行�
 | 守卫路由决策记录 | `architecture_guard.sh` `AIPLAT_GUARD_TRACE_OUT` 落盘 routing_trace（run_id/mode/route_trace[check, enabled, reason_selected, reason_skipped, result]/failed_guards/verdict）——为什么启用/跳过某项检查可审计 | ✅ 已合入 |
 | 外部事实交叉 | `verify_claude_md_evidence.py` evidence 节点 `cross_checks`（grep 检索路径存在性验证，防"自洽的谎言"）；默认模式打印 `⚠ CROSS-CHECK` WARN 不阻断。上线即捕获 **A2 假阳性**（`builder.py` 路径已迁移，原验证命令基于缺失文件自证通过）并修复 A2 验证命令 | ✅ 已合入 |
 | 评测观测产物进 CI | `architecture-guard.yml` 守卫 job 设置 `AIPLAT_EVIDENCE_TREE_OUT`/`AIPLAT_GUARD_TRACE_OUT` 落盘 → `upload-artifact`（eval-artifacts，`if: always()`）——每次 PR 的证据树 + 路由决策可下载审计（诊断面板消费的数据侧前置） | ✅ 已合入 |
+| 诊断面板消费 | `governance/eval_observability.py`（aggregate 聚合三产物）+ 端点 `GET /governance/eval-observability` + Governance 面板"评测观测"区块（证据树 score/known_gaps/cross_check_issues + 路由 trace verdict/skipped + 经验状态计数）——前端 `npm run build` 通过 | ✅ 已合入 |
 | 兜底门槛① | `MIN_CONFIDENCE=0.7` 以下拒收（只提示不登记） | ✅ 实现内建 |
 | 兜底门槛② | `risk=high` 升级需 `confirm_promotion` 人工确认（`promoted:review` 态） | ✅ 实现内建 |
 | 原则 14 门槛 | 连续 2 次独立验证成功才升级；同 case 重复不计数；连续 2 次失败判 rejected | ✅ 实现内建 |

@@ -7300,3 +7300,12 @@ from apps.ontology_editor.api.router import router as ontology_editor_router  # 
 app.include_router(ontology_editor_router, prefix="/api/platform/apps")
 
 
+# ── 评测观测（HarnessEval 落地）：证据树 + 守卫路由 trace + 经验状态聚合（诊断面板数据源） ──
+
+@app.get("/governance/eval-observability")
+async def governance_eval_observability():
+    """评测观测聚合视图：最近一次评测的证据树/路由决策/经验状态（诊断面板消费）。"""
+    from governance.eval_observability import aggregate
+    return aggregate()
+
+
