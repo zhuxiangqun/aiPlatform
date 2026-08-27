@@ -15,13 +15,17 @@ _ga = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(_ga)
 
 
-def test_discover_modules():
-    """扫真实 governance/：顶层 .py + 有 __init__.py 的子目录均为模块。"""
-    mods = _ga.discover_modules()
-    for expected in ("agent_messages", "daemon_jobs", "eval_observability",
-                     "experience_feedback", "audit", "quota", "rate_limit"):
-        assert expected in mods, f"missing {expected}"
-    assert "__init__" not in mods
+def test_discover_families():
+    """扫真实平台：governance 模块 + apps/* + builder + kb 均为能力族。"""
+    fams = _ga.discover_families()
+    for expected in ("governance/agent_messages", "governance/daemon_jobs",
+                     "governance/eval_observability", "governance/experience_feedback",
+                     "governance/audit", "governance/quota", "governance/rate_limit",
+                     "apps/eval", "apps/fde", "apps/prompt", "apps/value", "apps/misc",
+                     "apps/learning", "apps/workbench", "apps/ontology_editor",
+                     "builder", "kb"):
+        assert expected in fams, f"missing {expected}"
+    assert "__init__" not in [f.split("/")[-1] for f in fams]
 
 
 def test_rule_a_missing_entry():
