@@ -66,7 +66,7 @@ ALL_PIDS=()
 # ══════════════════════════════════════════════════════════════
 echo ""; sep; echo "  GUARD SCRIPTS: ast_behavior + frontend + architecture + capability + evidence (bg)"; sep
 
-FAIL_AST=0; FAIL_FE=0; FAIL_ARCH=0; FAIL_CAP=0; FAIL_EV=0
+FAIL_AST=0; FAIL_FE=0; FAIL_ARCH=0; FAIL_CAP=0; FAIL_EV=0; FAIL_UNDEF=0; FAIL_RULE=0
 
 python3 scripts/guard_ast_behavior.py "$@" &
 PID_AST=$!
@@ -104,6 +104,8 @@ wait $PID_RULE || FAIL_RULE=1
 [ "$FAIL_ARCH" -ne 0 ] && FAIL=1
 [ "$FAIL_CAP" -ne 0 ] && FAIL=1
 [ "$FAIL_EV" -ne 0 ] && FAIL=1
+[ "$FAIL_UNDEF" -ne 0 ] && FAIL=1
+[ "$FAIL_RULE" -ne 0 ] && FAIL=1
 
 # ══════════════════════════════════════════════════════════════
 # Phase 2 — parallel secondary checks (CI: run this separately)
