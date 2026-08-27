@@ -536,6 +536,33 @@ async def deploy_project_to_app(project_id: str, _auth: str = Depends(require_bu
     return await _get_svc().deploy_to_app(project_id)
 
 
+# ---- Generated-app runtime (2026-08-27, artifact-side wiring: daemon_jobs 生成物适用 已接线) ----
+@router.post("/projects/{project_id}/runtime/launch", response_model=StatusResponse)
+async def launch_generated_app(project_id: str, _auth: str = Depends(require_builder_access)):
+    """检测生成 app 入口并经 daemon_jobs 托管启动（生成 app 运行能力，自动测试前置）。"""
+    return await _get_svc().runtime_launch(project_id)
+
+
+@router.get("/projects/{project_id}/runtime", response_model=StatusResponse)
+async def get_generated_app_runtime(project_id: str, _auth: str = Depends(require_builder_access)):
+    """生成 app 运行状态（daemon job 存活 + 端口 + 入口类型）。"""
+    return await _get_svc().runtime_status(project_id)
+
+
+@router.post("/projects/{project_id}/runtime/stop", response_model=StatusResponse)
+async def stop_generated_app(project_id: str, _auth: str = Depends(require_builder_access)):
+    """停止生成 app（daemon_jobs kill 会话组 + 清理运行记录）。"""
+    return await _get_svc().runtime_stop(project_id)
+
+
+@router.post("/projects/{project_id}/runtime/smoke", response_model=StatusResponse)
+async def smoke_test_generated_app(project_id: str, body: Dict[str, Any] = {},
+                                   _auth: str = Depends(require_builder_access)):
+    """生成 app 冒烟测试：detect → launch → HTTP 健康探测 → 报告（keep_alive=false 默认测试后停止）。"""
+    keep_alive = bool((body or {}).get("keep_alive", False))
+    return await _get_svc().runtime_smoke(project_id, keep_alive=keep_alive)
+
+
 @router.get("/agent-insight/{agent_id}", response_model=StatusResponse)
 async def get_agent_insight(agent_id: str, _auth: str = Depends(require_builder_access)):
     """Get insight metrics for a single agent."""
