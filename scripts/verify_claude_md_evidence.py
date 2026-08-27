@@ -141,6 +141,44 @@ def extract_unverified_strict(filepath: Path) -> list[dict]:
     return unverified
 
 
+_CROSS_GREP_RE = re.compile(r"^grep\s+(?:-[^\s]+\s+)*['\"](?P<pat>[^'\"]*)['\"]\s*(?P<rest>.*)$")
+
+
+def _cross_check_paths(cmd_str: str) -> list[dict]:
+    """外部事实交叉验证：解析 grep 命令中的检索路径，验证其真实存在。
+
+    防"自洽的谎言"（HarnessEval §3.2）：grep 命令可能基于缺失/错写的路径
+    自证通过（`grep -rn 'xxx' 不存在的目录 | wc -l` → 0 被判 PASS），
+    用文件系统事实做独立交叉验证。
+    """
+    if 'grep' not in cmd_str:
+        return []
+    # 只解析第一个命令段（管道前）；用正则提取引号 pattern，剩余 token 才可能是路径。
+    # 无引号 pattern 的命令（如 `grep -c xxx file`）无法可靠区分 pattern/路径 → 跳过。
+    seg = cmd_str.split('|')[0].strip()
+    m = _CROSS_GREP_RE.match(seg)
+    if not m:
+        return []
+    rest = m.group('rest')
+    tokens = rest.split()
+    paths = []
+    for t in tokens:
+        if t.startswith('-') or t.startswith(("'", '"')) or '\\' in t:
+            continue  # 选项 / pattern 残留 / 转义
+        if t.startswith('2>') or t.startswith('>') or t.startswith('&') or t == '/dev/null':
+            continue  # 重定向
+        if '*' in t or '?' in t:
+            continue  # glob——shell 展开，Path 不展开（如 skills/*/SKILL.md 属正常）
+        paths.append(t.strip("'\""))
+    results = []
+    for raw in paths:
+        p = Path(raw)
+        if not p.is_absolute():
+            p = ROOT / p
+        results.append({"type": "path_exists", "target": raw, "exists": p.exists()})
+    return results
+
+
 def run_evidence(cmd_str: str, expected: str, operator: str = 'eq',
                  line_num: int = 0, claude_path: str = '') -> tuple[bool, str, int, str]:
     """Run one evidence command. Returns (passed, detail, actual_num, actual_raw)."""
@@ -243,6 +281,7 @@ def build_evidence_tree(files: list[Path], quick_mode: bool = False) -> dict:
             passed, detail, actual_num, actual_raw = run_evidence(
                 claim['cmd'], claim['expected'], claim.get('operator', 'eq'),
                 claim['line'], claim['file'])
+            cross = _cross_check_paths(claim['cmd'])
             node['evidence'].append({
                 'tool': 'shell:grep',
                 'input': claim['cmd'],
@@ -252,7 +291,14 @@ def build_evidence_tree(files: list[Path], quick_mode: bool = False) -> dict:
                 'raw': actual_raw[:200],
                 'status': 'pass' if passed else 'fail',
                 'detail': detail,
+                # 外部事实交叉：检索路径存在性（防命令基于缺失路径自证通过）
+                'cross_checks': cross,
             })
+            missing = [c['target'] for c in cross if not c['exists']]
+            if missing:
+                node['cross_check_warning'] = True
+                totals.setdefault('cross_warn', 0)
+                totals['cross_warn'] += len(missing)
             node['verdict'] = 'pass' if passed else 'fail'
             if passed:
                 totals['pass'] += 1
@@ -282,6 +328,7 @@ def build_evidence_tree(files: list[Path], quick_mode: bool = False) -> dict:
 
     total = totals['pass'] + totals['fail'] + totals['skip']
     verdict = 'pass' if totals['fail'] == 0 else 'fail'
+    cross_issues = totals.get('cross_warn', 0)
     return {
         'case_id': f"claude-md-evidence@{__import__('datetime').date.today().isoformat()}",
         'harness': 'verify_claude_md_evidence.py',
@@ -289,10 +336,12 @@ def build_evidence_tree(files: list[Path], quick_mode: bool = False) -> dict:
             'score': 1.0 if verdict == 'pass' else 0.0,
             'confidence': 'high' if totals['fail'] == 0 and not known_gaps else 'medium',
             'summary': (f"{totals['pass']} passed, {totals['fail']} failed, "
-                        f"{totals['skip']} skipped, {len(known_gaps)} known_gaps"),
+                        f"{totals['skip']} skipped, {len(known_gaps)} known_gaps, "
+                        f"{cross_issues} cross_check_issues"),
         },
         'branches': branches,
         'known_gaps': known_gaps,
+        'cross_check_issues': cross_issues,
     }
 
 
@@ -375,6 +424,10 @@ def main() -> int:
             print(f"    ❌ FAIL ({detail})")
             print(f"       Cmd: {claim['cmd'][:120]}")
             failures += 1
+        # 外部事实交叉：检索路径存在性（WARN 不阻断——防'自洽的谎言'）
+        for cc in _cross_check_paths(claim['cmd']):
+            if not cc['exists']:
+                print(f"    ⚠ CROSS-CHECK: 检索路径不存在: {cc['target']}（命令可能自证通过）")
 
     print(f"\nResults: {passes} passed, {failures} failed, {skipped} skipped")
     if strict_failures:

@@ -394,7 +394,7 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
     | 编号 | 章节 | 内容 | 分类 |
     |------|------|------|------|
     | A | §1 | `workflow_manager.py → `platform/storage/sqlite.py` 跨层导入 | **✅ 已修复** — 当前 `core/management/workflow_manager.py` 已无任何 platform 层 import。跨层导入链路已消除。 （验证：grep -rn 'from.*platform.*import' aiPlat-core/core/management/ --include='*.py' → 空） |
-    | A2 | — | `builder.py` 直导 `core.harness.knowledge.*`（2026-07-18 发现→修复） | **✅ 已修复 (2026-07-18)** — 3 处直导改为 `from core.api.core_facade import`：`DomainRouter`、`capability_health_report`、`build_capability_graph`。CoreFacade 已增加 canonical re-export。 （验证：grep -rn 'from core.harness' aiPlat-platform/apps/fde/orchestration/builder.py → 0） |
+    | A2 | — | `builder.py` 直导 `core.harness.knowledge.*`（2026-07-18 发现→修复） | **✅ 已修复 (2026-07-18)** — 3 处直导改为 `from core.api.core_facade import`：`DomainRouter`、`capability_health_report`、`build_capability_graph`。CoreFacade 已增加 canonical re-export。 （验证：grep -rn 'from core.harness' aiPlat-platform/ --include='*.py' | grep -v '/tests/' | wc -l → 0） |
     | B | §35 | 2 个 execute 端点（引擎 + 工作区）被标记为 WARNING | **永久告警** — 2 是正确数量，若增至 ≥3 升级为 ERROR |
     | C | §40 | 模型注册/路由迁移 | **✅ 已完成 (2026-06-29)** — `model_router.py` 已删除，`get_model_registry()` 重命名为 `get_model_manager()`，llm.py 和 base.py 迁移到 `model_injection.create_selected_adapter()`。infra `ModelManager.select()` 已确认存在。 |
     | D | §65 | 4 个检索函数缺 tenant_id | **✅ 已修复 (2026-07-01)** — `KnowledgeQuery` 增加 `tenant_id` 字段，`WikiPageRetriever.retrieve()` tenant_id 不匹配时返回空结果（WARNING→ERROR 阻断），非只读放行。 |（验证：grep -c 'tenant_id: str' aiPlat-core/core/harness/knowledge/types.py → 1）
