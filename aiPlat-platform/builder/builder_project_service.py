@@ -2114,6 +2114,13 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
         return real_tests(project_id, deploy_dir=deploy_dir or None, install_deps=install_deps)
 
+    async def runtime_auto_repair(self, project_id: str, max_rounds: int = 2) -> Dict[str, Any]:
+        """自动修复闭环：真实测试失败 → LLM 修复生成代码 → 写回部署目录 → 重跑验证。"""
+        from builder.app_runtime import auto_repair
+        proj = self._projects.get(project_id, {})
+        deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
+        return await auto_repair(project_id, deploy_dir=deploy_dir or None, max_rounds=max_rounds)
+
     async def runtime_smoke(self, project_id: str, keep_alive: bool = False) -> Dict[str, Any]:
         """生成 app 冒烟测试（启动 + 健康探测 + 报告）。"""
         from builder.app_runtime import smoke_test

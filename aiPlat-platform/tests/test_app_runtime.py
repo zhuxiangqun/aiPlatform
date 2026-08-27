@@ -170,3 +170,35 @@ def test_real_tests_no_cases(env):
     _write_app(env, "rt3", {"index.html": "<html>hi</html>"})
     r = real_tests("rt3", deploy_dir=str(env / "home" / "apps" / "rt3" / "current"))
     assert r["detected"] is False
+
+
+# ── 自动修复闭环 ──
+def test_auto_repair_already_passing(env):
+    """测试已通过 → auto_repair 0 轮直接返回 repaired=True（不调 LLM）。"""
+    import asyncio
+    from builder.app_runtime import auto_repair
+    _write_app(env, "ar1", {
+        "backend/app.py": "def add(a, b):\n    return a + b\n",
+        "backend/tests/test_api.py":
+            "import sys, os\nsys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))\n"
+            "from app import add\n\ndef test_add():\n    assert add(1, 2) == 3\n",
+    })
+    r = asyncio.run(auto_repair("ar1", deploy_dir=str(env / "home" / "apps" / "ar1" / "current")))
+    assert r["repaired"] is True
+    assert r["rounds"] == 0
+    assert r["reason"] == "already passing"
+
+
+def test_sync_repair_writeback(env):
+    """修复写回：work 目录修复的 .py 写回部署目录（同相对路径覆盖）。"""
+    from builder.app_runtime import _sync_repair_writeback
+    home = env / "home" / "apps" / "ar2" / "current"
+    work = env / "work" / "app"  # work 与 home 同构（auto_repair 的 tmp/app 布局）
+    _write_app(env, "ar2", {"backend/app.py": "def add(a, b):\n    return a + b\n"})
+    work_b = work / "backend"
+    work_b.mkdir(parents=True, exist_ok=True)
+    (work_b / "app.py").write_text("def add(a, b):\n    return a * b\n  # fixed\n", encoding="utf-8")
+    written = _sync_repair_writeback(str(work), str(home))
+    assert "backend/app.py" in written
+    fixed = (home / "backend" / "app.py").read_text(encoding="utf-8")
+    assert "a * b" in fixed  # 修复内容已写回

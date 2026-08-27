@@ -572,6 +572,15 @@ async def real_tests_generated_app(project_id: str, body: Dict[str, Any] = {},
     return await _get_svc().runtime_real_tests(project_id, install_deps=install_deps)
 
 
+@router.post("/projects/{project_id}/runtime/auto-repair", response_model=StatusResponse)
+async def auto_repair_generated_app(project_id: str, body: Dict[str, Any] = {},
+                                    _auth: str = Depends(require_builder_access)):
+    """自动修复闭环：真实测试失败 → LLM 修复生成代码 → 写回部署目录 → 重跑验证。
+    max_rounds 默认 2（LLM 修复轮次上限）。"""
+    max_rounds = int((body or {}).get("max_rounds", 2))
+    return await _get_svc().runtime_auto_repair(project_id, max_rounds=max_rounds)
+
+
 @router.get("/agent-insight/{agent_id}", response_model=StatusResponse)
 async def get_agent_insight(agent_id: str, _auth: str = Depends(require_builder_access)):
     """Get insight metrics for a single agent."""
