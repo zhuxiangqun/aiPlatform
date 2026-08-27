@@ -577,3 +577,171 @@ def _apply_counts(val: str, key: str, passed: int, failed: int, errors: int, ski
 def subprocess_timeout():
     import subprocess as _sp
     return _sp.TimeoutExpired
+
+
+# ── 自动修复闭环（测试失败 → LLM 修复生成代码 → 重跑验证）──
+async def auto_repair(project_id: str, deploy_dir: Optional[str] = None,
+                      max_rounds: int = 2, timeout_sec: float = 120.0) -> Dict[str, Any]:
+    """测试经理真实测试失败后自动修复：real_tests → 失败则 LLM 修复 → 写回部署目录 → 重跑。
+
+    修复只作用于生成物部署目录（deploy_dir/backend 下被 pytest 判失败的 .py 文件），
+    与 test_executor 的 auto-repair 同模式（LLM 按测试输出修复 → 重跑 → 改进才采纳）。
+
+    返回 {repaired, rounds, initial, final, test_report, writeback_files}：
+      repaired = 最终测试通过（或相比初始改进）；writeback_files = 写回部署目录的文件。
+    """
+    import subprocess as _sp
+    import tempfile as _tf
+    import shutil as _sh
+    import sys as _sys
+
+    home = deploy_dir or _app_home(project_id)
+    initial = real_tests(project_id, deploy_dir=home, install_deps=False, timeout_sec=timeout_sec)
+    if initial.get("test_passed"):
+        return {"repaired": True, "rounds": 0, "initial": initial, "final": initial,
+                "test_report": initial.get("test_report"), "writeback_files": [],
+                "reason": "already passing"}
+
+    try:
+        from core.api.core_facade import best_model_for_purpose
+        from core.api.facades.service_facade import llm_generate
+    except Exception:
+        return {"repaired": False, "rounds": 0, "initial": initial, "final": initial,
+                "test_report": initial.get("test_report"), "writeback_files": [],
+                "reason": "llm_generate unavailable"}
+
+    # 复制部署目录到可写临时工作区（修复文件 → 验证 → 写回）
+    tmp = _tf.mkdtemp(prefix=f"aiplat_repair_{project_id[:12]}_")
+    writeback: List[str] = []
+    try:
+        work = os.path.join(tmp, "app")
+        _sh.copytree(home, work, dirs_exist_ok=True)
+
+        # conftest（同 real_tests）
+        conftest = os.path.join(work, "conftest.py")
+        if not os.path.isfile(conftest):
+            with open(conftest, "w", encoding="utf-8") as cf:
+                cf.write(
+                    "import sys, os\n"
+                    "_root = os.path.dirname(os.path.abspath(__file__))\n"
+                    "for _d in os.listdir(_root):\n"
+                    "    _p = os.path.join(_root, _d)\n"
+                    "    if os.path.isdir(_p) and _p not in sys.path:\n"
+                    "        sys.path.insert(0, _p)\n"
+                    "sys.path.insert(0, _root)\n")
+
+        final = initial
+        last_log = ""
+        for rnd in range(1, max_rounds + 1):
+            report = final.get("test_report") or {}
+            test_log = (report.get("test_log_tail") or "") or last_log
+            if not test_log:
+                break
+            last_log = test_log
+            # 收集生成代码文件（backend 下非测试 .py）
+            code_files = []
+            backend_root = os.path.join(work, "backend") if os.path.isdir(os.path.join(work, "backend")) else work
+            _skip = ("__pycache__", "tests", "test", ".git", "node_modules")
+            for root, _dirs, files in os.walk(backend_root):
+                if set(root.split(os.sep)) & set(_skip):
+                    continue
+                for f in files:
+                    if f.endswith(".py"):
+                        code_files.append(os.path.join(root, f))
+            if not code_files:
+                break
+            code_text = "\n\n".join(
+                f"## FILE: {os.path.relpath(p, work)}\n" + open(p, encoding="utf-8", errors="ignore").read()
+                for p in sorted(code_files))
+
+            _prompt = (
+                "生成的应用自动测试失败。根据测试输出修复生成代码（只输出需要修改文件的完整 ## FILE: 内容）。\n\n"
+                f"## 测试输出\n{test_log[:2500]}\n\n"
+                f"## 生成代码\n{code_text[:5000]}\n\n"
+                "只输出需要修改的文件的完整内容，格式：\n"
+                "## FILE: <相对路径>\n<完整文件内容>\n"
+                "不要输出未修改的文件。"
+            )
+            resp = await llm_generate(
+                None, [{"role": "user", "content": _prompt}],
+                model_name=best_model_for_purpose("code_gen"), max_tokens=8000,
+                temperature=0.2,
+            )
+            fix_text = (getattr(resp, "content", "") or str(resp)).strip()
+            if not fix_text or len(fix_text) < 50:
+                break
+            # 应用修复到工作区
+            import re as _re2
+            for block in _re2.split(r'^#{2,4}\s*FILE:\s*', fix_text, flags=_re2.MULTILINE)[1:]:
+                lines2 = block.strip().split("\n", 1)
+                if len(lines2) < 2:
+                    continue
+                rel = lines2[0].strip()
+                content2 = _re2.sub(r'^```\w*\n?', '', lines2[1].strip())
+                content2 = _re2.sub(r'\n?```\s*$', '', content2)
+                full2 = os.path.join(work, rel)
+                if not os.path.abspath(full2).startswith(os.path.abspath(work)):
+                    continue  # 路径逃逸防护
+                os.makedirs(os.path.dirname(full2), exist_ok=True)
+                with open(full2, "w", encoding="utf-8") as fw2:
+                    fw2.write(content2)
+
+            # 重跑测试
+            rel_cases = [os.path.relpath(c, home) for c in _discover_test_cases(home)]
+            targets = [os.path.join(work, rel) for rel in rel_cases if os.path.exists(os.path.join(work, rel))]
+            proc = _sp.run(
+                [_sys.executable, "-m", "pytest", *targets, "--tb=short", "-q",
+                 "--no-header", "-p", "no:cacheprovider"],
+                capture_output=True, text=True, timeout=int(timeout_sec),
+                cwd=work, env={**os.environ, "PYTHONPATH": work},
+            )
+            new_log = proc.stdout + "\n" + proc.stderr
+            p2 = f2 = e2 = 0
+            for pat, key in [(r'(\d+)\s+passed', "p"), (r'(\d+)\s+failed', "f"), (r'(\d+)\s+error', "e")]:
+                m = _re2.search(pat, new_log)
+                if m:
+                    n = int(m.group(1))
+                    p2, f2, e2 = (n if key == "p" else p2, n if key == "f" else f2, n if key == "e" else e2)
+            improved = p2 > (final.get("passed") or 0) or (f2 + e2) < ((final.get("failed") or 0) + (final.get("errors") or 0))
+            final = {"test_passed": f2 == 0 and e2 == 0 and p2 > 0, "detected": True,
+                     "passed": p2, "failed": f2, "errors": e2, "skipped": 0,
+                     "test_report": _build_test_report(new_log, p2, f2, e2, 0, project_id),
+                     "e2e_smoke": final.get("e2e_smoke")}
+            if improved:
+                writeback = _sync_repair_writeback(work, home)
+                if final.get("test_passed"):
+                    return {"repaired": True, "rounds": rnd, "initial": initial, "final": final,
+                            "test_report": final.get("test_report"), "writeback_files": writeback,
+                            "reason": f"auto-repair round {rnd} passed"}
+            else:
+                break
+        return {"repaired": False, "rounds": max_rounds, "initial": initial, "final": final,
+                "test_report": final.get("test_report"), "writeback_files": writeback,
+                "reason": "no improvement after repair rounds"}
+    finally:
+        _sh.rmtree(tmp, ignore_errors=True)
+
+
+def _sync_repair_writeback(work: str, home: str) -> List[str]:
+    """把修复后的 .py 文件从 work 写回部署目录 home（仅覆盖同相对路径的 .py）。"""
+    import shutil as _sh
+    _skip = ("__pycache__", "tests", "test", ".git", "node_modules", "conftest")
+    written: List[str] = []
+    for root, _dirs, files in os.walk(work):
+        # 路径段匹配（避免 "test" 子串误匹配 pytest 临时目录等无关路径）
+        _parts = set(root.split(os.sep))
+        if _parts & set(_skip):
+            continue
+        for f in files:
+            if not f.endswith(".py"):
+                continue
+            src = os.path.join(root, f)
+            rel = os.path.relpath(src, work)
+            dst = os.path.join(home, rel)
+            if os.path.exists(dst):
+                try:
+                    _sh.copy2(src, dst)
+                    written.append(rel)
+                except OSError:
+                    pass  # noqa: cleanup-best-effort — 单个文件写回失败不中断
+    return written
