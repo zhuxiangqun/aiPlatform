@@ -563,6 +563,15 @@ async def smoke_test_generated_app(project_id: str, body: Dict[str, Any] = {},
     return await _get_svc().runtime_smoke(project_id, keep_alive=keep_alive)
 
 
+@router.post("/projects/{project_id}/runtime/real-tests", response_model=StatusResponse)
+async def real_tests_generated_app(project_id: str, body: Dict[str, Any] = {},
+                                   _auth: str = Depends(require_builder_access)):
+    """测试经理真实测试：递归发现生成物测试用例（backend/tests/ 等）→ 可写临时目录跑 pytest
+    → test_report（含 bug_summary）。install_deps 默认 true（自动装缺失依赖）。"""
+    install_deps = bool((body or {}).get("install_deps", True))
+    return await _get_svc().runtime_real_tests(project_id, install_deps=install_deps)
+
+
 @router.get("/agent-insight/{agent_id}", response_model=StatusResponse)
 async def get_agent_insight(agent_id: str, _auth: str = Depends(require_builder_access)):
     """Get insight metrics for a single agent."""

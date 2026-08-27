@@ -116,3 +116,52 @@ def test_smoke_failure_registers_experience(env):
     status = st.status()
     rules = [j.get("rule_id", "") for j in status if isinstance(j, dict)]
     assert any("generated-smoke-" in rl for rl in rules), f"未登记冒烟失败经验: {rules}"
+
+
+# ── 真实测试（测试经理模式：递归发现 → pytest 执行 → test_report）──
+# 注意：测试用例必须零第三方依赖（纯 Python + pytest），保证 CI 无网络/无 flask 也能跑通真实链路。
+def test_real_tests_pass(env):
+    """生成物自带测试用例（backend/tests/）→ 递归发现 + pytest 执行通过。"""
+    from builder.app_runtime import real_tests
+    _write_app(env, "rt1", {
+        "backend/app.py": "def add(a, b):\n    return a + b\n",
+        "backend/tests/test_api.py":
+            "import sys, os\nsys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))\n"
+            "from app import add\n\ndef test_add():\n"
+            "    assert add(1, 2) == 3\n",
+    })
+    r = real_tests("rt1", deploy_dir=str(env / "home" / "apps" / "rt1" / "current"),
+                   install_deps=False, timeout_sec=30)
+    assert r["detected"] is True
+    assert r["test_passed"] is True
+    report = r["test_report"]
+    assert report["test_results"]["passed"] >= 1
+    assert report["test_results"]["failed"] == 0
+    assert report["bug_summary"]["total_bugs"] == 0
+
+
+def test_real_tests_failure_bug_summary(env):
+    """测试用例断言失败 → test_report 含 bug_summary（failed_tests + suggested_fix）。"""
+    from builder.app_runtime import real_tests
+    _write_app(env, "rt2", {
+        "backend/app.py": "def add(a, b):\n    return a - b\n",  # 实现错误：减法
+        "backend/tests/test_api.py":
+            "import sys, os\nsys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))\n"
+            "from app import add\n\ndef test_add():\n"
+            "    assert add(2, 3) == 5  # 期望失败：真实业务断言\n",
+    })
+    r = real_tests("rt2", deploy_dir=str(env / "home" / "apps" / "rt2" / "current"),
+                   install_deps=False, timeout_sec=30)
+    assert r["detected"] is True
+    assert r["test_passed"] is False
+    assert r["test_report"]["test_results"]["failed"] >= 1
+    assert r["test_report"]["bug_summary"]["total_bugs"] >= 1
+    assert r["test_report"]["bug_summary"]["failed_tests"]
+
+
+def test_real_tests_no_cases(env):
+    """无测试用例 → detected=False。"""
+    from builder.app_runtime import real_tests
+    _write_app(env, "rt3", {"index.html": "<html>hi</html>"})
+    r = real_tests("rt3", deploy_dir=str(env / "home" / "apps" / "rt3" / "current"))
+    assert r["detected"] is False

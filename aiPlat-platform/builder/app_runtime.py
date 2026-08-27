@@ -9,6 +9,8 @@
   health_check     — HTTP 轮询健康探测（2xx/3xx = up）
   stop             — 经 daemon_jobs kill（连同会话组）
   smoke_test       — 完整闭环：detect → launch → health → 报告
+  real_tests       — 测试经理真实测试：递归发现生成物测试用例（backend/tests/ 等）→
+                     可写临时目录执行 pytest（装依赖 + PYTHONPATH）→ test_report（含 bug_summary）
 
 安全边界：
   - 只在 AIPLAT_HOME/apps/{project_id}/current 内运行（白名单入口，不执行任意命令）
@@ -23,7 +25,7 @@ import re
 import time
 import urllib.request
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 # ── 端口分配：每个 project 固定派生端口（避免多 app 冲突），可被 --port 注入的入口使用 ──
 _PORT_BASE = 18000
@@ -36,6 +38,13 @@ def _derive_port(project_id: str) -> int:
     for ch in project_id:
         h = (h * 31 + ord(ch)) & 0x7FFFFFFF
     return _PORT_BASE + (h % _PORT_SPAN)
+
+
+def _now_ms() -> str:
+    """毫秒级 UTC 时间戳（同秒多次调用稳定排序）。"""
+    import time as _t
+    base = _t.strftime("%Y-%m-%dT%H:%M:%S", _t.gmtime())
+    return f"{base}.{int(_t.time() % 1 * 1000):03d}Z"
 
 
 def _app_home(project_id: str) -> str:
@@ -356,3 +365,180 @@ def run_tests_with_smoke(project_id: str, deploy_dir: str,
     else:
         results["all_passed"] = False
     return results
+
+
+# ── 真实测试（测试经理模式：递归发现测试用例 → pytest 执行 → test_report）──
+def _discover_test_cases(deploy_dir: str) -> List[str]:
+    """递归发现生成物测试用例文件（backend/tests/、tests/、test/ 任意层级 test_*.py）。"""
+    found: List[str] = []
+    if not deploy_dir or not os.path.isdir(deploy_dir):
+        return found
+    for root, _dirs, files in os.walk(deploy_dir):
+        if any(skip in root for skip in ("__pycache__", ".git", "node_modules", ".venv", "venv")):
+            continue
+        for f in files:
+            if f.startswith("test_") and f.endswith(".py"):
+                found.append(os.path.join(root, f))
+    return sorted(found)
+
+
+def _install_requirements(work_dir: str) -> List[str]:
+    """best-effort pip install：读 work_dir 下所有 requirements.txt 装缺失依赖。"""
+    import subprocess as _sp
+    missing: List[str] = []
+    for root, _dirs, files in os.walk(work_dir):
+        if "requirements.txt" in files:
+            req = os.path.join(root, "requirements.txt")
+            try:
+                with open(req, encoding="utf-8", errors="ignore") as f:
+                    lines = [l.strip() for l in f if l.strip() and not l.startswith("#") and "-e " not in l]
+                for line in lines:
+                    pkg = line.split("==")[0].split(">=")[0].split("<")[0].strip().lower().replace("_", "-")
+                    if not pkg or pkg.startswith(("git+", "http")):
+                        continue
+                    try:
+                        __import__(pkg.replace("-", "_"))
+                    except ImportError:
+                        missing.append(line)
+                if missing:
+                    _sp.run([_python(), "-m", "pip", "install", "-q", *missing],
+                            capture_output=True, text=True, timeout=180)
+            except Exception:
+                pass  # noqa: cleanup-best-effort — 装依赖失败由 pytest 结果呈现
+    return missing
+
+
+def _build_test_report(test_log: str, passed: int, failed: int, errors: int,
+                       skipped: int, project_id: str) -> Dict[str, Any]:
+    """构造标准 test_report（对齐 test_executor：header/meta/test_results/bug_summary）。"""
+    import re as _re
+    bugs = []
+    for _m in _re.finditer(r'^(FAILED|ERROR)\s+(.+)', test_log or "", flags=_re.MULTILINE):
+        _name = _m.group(2).strip()
+        if _name and _name not in bugs:
+            bugs.append(_name)
+    _is_env = "ModuleNotFoundError" in (test_log or "")
+    _is_cfg = "ValidationError" in (test_log or "") or "extra_forbidden" in (test_log or "")
+    if _is_env:
+        _fix = ("环境依赖缺失（ModuleNotFoundError）：请在 requirements.txt 声明该依赖，"
+                "或改用 Mock/降级方案。\n" + (test_log or "")[-1500:])
+    elif _is_cfg:
+        _fix = ("配置校验失败（pydantic ValidationError / extra_forbidden）：.env 中的环境变量"
+                "未在 Settings 类声明，或存在非法输入。请修复 app/core/config.py 的 Settings 声明。\n"
+                + (test_log or "")[-2000:])
+    else:
+        _fix = ("代码实现未通过测试：请修复生成的后端代码（含跨文件 import 一致性、业务逻辑）。\n"
+                + (test_log or "")[-2000:])
+    return {
+        "header": {"title": f"生成 app 真实测试报告（{project_id}）",
+                   "generated_at": _now_ms()},
+        "meta": {"project_id": project_id, "test_engine": "pytest",
+                 "summary": f"{passed} passed, {failed} failed, {errors} errors, {skipped} skipped"},
+        "test_results": {"passed": passed, "failed": failed, "errors": errors, "skipped": skipped,
+                         "total": passed + failed + errors + skipped},
+        "bug_summary": {"total_bugs": len(bugs) if bugs else failed + errors,
+                        "failed_tests": bugs, "suggested_fix": _fix},
+        "test_log_tail": (test_log or "")[-2500:],
+    }
+
+
+def real_tests(project_id: str, deploy_dir: Optional[str] = None,
+               install_deps: bool = True, timeout_sec: float = 120.0) -> Dict[str, Any]:
+    """测试经理真实测试：递归发现测试用例 → 可写临时目录跑 pytest → test_report。
+
+    与 smoke_test 的区别：smoke 只验证"能启动"；real_tests 执行生成物自带测试用例
+    （backend/tests/test_*.py，pytest + httpx 真实业务断言），验证功能正确性。
+
+    返回 {test_passed, detected, test_report, e2e_smoke}：
+      test_passed = 所有发现用例通过且冒烟通过。
+    """
+    import subprocess as _sp
+    import shutil as _sh
+    import tempfile as _tf
+    import sys as _sys
+
+    home = deploy_dir or _app_home(project_id)
+    cases = _discover_test_cases(home)
+    if not cases:
+        return {"test_passed": False, "detected": False,
+                "reason": "未发现测试用例（backend/tests/ 等目录无 test_*.py）",
+                "test_report": None,
+                "e2e_smoke": {"passed": False, "reason": "no test cases"}}
+
+    # 复制到可写临时目录（生成物目录可能只读，且避免污染部署产物）。
+    # 保持 home 同构：tmp/app 镜像 home，rel 路径在 work 下直接可达。
+    tmp = _tf.mkdtemp(prefix=f"aiplat_realtest_{project_id[:12]}_")
+    try:
+        work = os.path.join(tmp, "app")
+        _sh.copytree(home, work, dirs_exist_ok=True)
+
+        if install_deps:
+            _install_requirements(work)
+
+        # conftest：让 pytest 能 import app.*（backend 子目录入 PYTHONPATH）
+        conftest = os.path.join(work, "conftest.py")
+        if not os.path.isfile(conftest):
+            with open(conftest, "w", encoding="utf-8") as cf:
+                cf.write(
+                    "import sys, os\n"
+                    "_root = os.path.dirname(os.path.abspath(__file__))\n"
+                    "for _d in os.listdir(_root):\n"
+                    "    _p = os.path.join(_root, _d)\n"
+                    "    if os.path.isdir(_p) and _p not in sys.path:\n"
+                    "        sys.path.insert(0, _p)\n"
+                    "sys.path.insert(0, _root)\n")
+
+        # 相对测试路径（work 与 home 同构 → rel 直接映射）
+        rel_cases = [os.path.relpath(c, home) for c in cases]
+        pytest_targets = [os.path.join(work, rel) for rel in rel_cases if os.path.exists(os.path.join(work, rel))]
+        if not pytest_targets:
+            return {"test_passed": False, "detected": True,
+                    "reason": "测试用例复制后不可达（结构与预期不符）",
+                    "test_report": None,
+                    "e2e_smoke": {"passed": False, "reason": "tests not reachable"}}
+
+        proc = _sp.run(
+            [_sys.executable, "-m", "pytest", *pytest_targets, "--tb=short", "-q",
+             "--no-header", "-p", "no:cacheprovider"],
+            capture_output=True, text=True, timeout=int(timeout_sec),
+            cwd=work, env={**os.environ, "PYTHONPATH": work},
+        )
+        log = proc.stdout + "\n" + proc.stderr
+        passed = failed = errors = skipped = 0
+        import re as _re
+        for pat, key in [(r'(\d+)\s+passed', "passed"), (r'(\d+)\s+failed', "failed"),
+                         (r'(\d+)\s+error', "errors"), (r'(\d+)\s+skipped', "skipped")]:
+            m = _re.search(pat, log)
+            if m:
+                passed, failed, errors, skipped = _apply_counts(m.group(1), key, passed, failed, errors, skipped)
+        report = _build_test_report(log, passed, failed, errors, skipped, project_id)
+        test_passed = failed == 0 and errors == 0 and passed > 0
+
+        # 冒烟联动：测试通过且可运行时，补一次启动探测（生成 app 真实可用性）
+        smoke = smoke_test(project_id, keep_alive=False, timeout_sec=25.0)
+        return {"test_passed": test_passed, "detected": True,
+                "passed": passed, "failed": failed, "errors": errors, "skipped": skipped,
+                "test_report": report, "e2e_smoke": smoke.get("e2e_smoke")}
+    except subprocess_timeout():
+        return {"test_passed": False, "detected": True, "reason": "pytest 超时",
+                "test_report": None, "e2e_smoke": {"passed": False, "reason": "timeout"}}
+    finally:
+        _sh.rmtree(tmp, ignore_errors=True)
+
+
+def _apply_counts(val: str, key: str, passed: int, failed: int, errors: int, skipped: int):
+    n = int(val or 0)
+    if key == "passed":
+        passed = n
+    elif key == "failed":
+        failed = n
+    elif key == "errors":
+        errors = n
+    else:
+        skipped = n
+    return passed, failed, errors, skipped
+
+
+def subprocess_timeout():
+    import subprocess as _sp
+    return _sp.TimeoutExpired
