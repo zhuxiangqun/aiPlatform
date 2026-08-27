@@ -794,10 +794,10 @@ scan_hash: 8f9548ec24f4
 | FDE追问端点 | platform/apps/fde/api/fde.py` + `apps/skills/registry.py:1896-1914 | ✅ | POST /fde/ask — 基于诊断上下文回答后续问题，复用域图谱+历史+方案原型全链路(HMESI B0) | 已合入 |
 | FDE证据等级映射 | apps/skills/registry.py:1817 | ✅ | 诊断报告返回时附加evidence_map数组(每条§1结论的证据等级+来源)→前端可直接渲染颜色标签(HMESI C0) | 已合入 |
 | 证据树（Evidence Tree） | scripts/verify_claude_md_evidence.py --tree（build_evidence_tree） | ✅ | CLAUDE.md 证据声明的层级化证据树（HarnessEval 借鉴）：branches→sub_branches→evidence（tool/input/expect/actual/status）+ route_reason（路由决策可审计）+ known_gaps（✅ 声明无验证命令的已知盲区）+ cross_checks（外部事实交叉：grep 检索路径存在性验证，防"自洽的谎言"——A2 假阳性即由此捕获）；`--out` 落盘；architecture_guard 经 AIPLAT_EVIDENCE_TREE_OUT 接线 | 已合入 |
-| 经验回写 L2 链路（experience_feedback） | governance/experience_feedback/experience_feedback.py（ExperienceStore/register_failure/record_verification/confirm_promotion） | ✅ | gotchas 登记→两次独立验证→升级状态机（HarnessEval × SBA §5.5）：confidence<0.7 拒收、同 case 重复不计数、连续 2 次失败判 rejected、低风险自动 promoted/高风险 require_review 人工确认、升级只生成规则草案不改写 SKILL.md；architecture_guard 失败自动登记接线；AIPLAT_EXPERIENCE_FILE 配置存储 | 已合入 |
-| 评测观测聚合（eval-observability） | governance/eval_observability.py（aggregate）+ api/rest/routes.py 端点 GET /governance/eval-observability（governance_eval_observability）+ Governance 面板"评测观测"区块 | ✅ | 聚合证据树/守卫路由 trace/经验状态三产物为统一视图（HarnessEval 诊断面板数据源）：sources 存在性、evidence_tree verdict+known_gaps+cross_check_issues、guard_trace verdict+skipped_checks+failed_guards、experiences by_status；前端 Governance/index.tsx 消费展示 | 已合入 |
-| 后台任务托管（daemon jobs） | governance/daemon_jobs.py（DaemonJobStore/start/list/status/attach/kill）+ api/rest/routes.py 端点 /governance/jobs*（governance_jobs_list/governance_jobs_start/governance_job_status/governance_job_output/governance_job_kill） | ✅ | prime-agent 断线续跑借鉴：长任务以新会话组后台运行（终端关闭不终止）、输出重定向文件、JSON 注册表（AIPLAT_DAEMON_JOBS_FILE）、状态含退出码（ps stat 僵尸判定 + 输出尾部 [daemon] exit= 标记）、kill 连同会话组；CLI --start/--status/--attach/--kill | 已合入 |
-| agent 消息总线（agent_messages） | governance/agent_messages.py（AgentMessageStore/register/unregister/send/inbox/list_agents）+ api/rest/routes.py 端点 /governance/agents*（governance_agents_list/governance_agent_register/governance_agent_unregister/governance_agent_send/governance_agent_inbox） | ✅ | prime-agent agent_message.send 借鉴：运行中 agent/任务注册（pid 心跳）→ 点对点互发消息（不经用户中转）→ 收件箱（pending/read + 未读过滤 + mark-read）；收件箱保留最近 500 条；CLI --register/--unregister/--send/--inbox/--agents | 已合入 |
+| 经验回写 L2 链路（experience_feedback） | governance/experience_feedback/experience_feedback.py（ExperienceStore/register_failure/record_verification/confirm_promotion） | ✅ | gotchas 登记→两次独立验证→升级状态机（HarnessEval × SBA §5.5）：confidence<0.7 拒收、同 case 重复不计数、连续 2 次失败判 rejected、低风险自动 promoted/高风险 require_review 人工确认、升级只生成规则草案不改写 SKILL.md；architecture_guard 失败自动登记接线；AIPLAT_EXPERIENCE_FILE 配置存储；生成物适用：待接线（生成 agent 失败经验回写，生成物侧接线立项） | 已合入 |
+| 评测观测聚合（eval-observability） | governance/eval_observability.py（aggregate）+ api/rest/routes.py 端点 GET /governance/eval-observability（governance_eval_observability）+ Governance 面板"评测观测"区块 | ✅ | 聚合证据树/守卫路由 trace/经验状态三产物为统一视图（HarnessEval 诊断面板数据源）：sources 存在性、evidence_tree verdict+known_gaps+cross_check_issues、guard_trace verdict+skipped_checks+failed_guards、experiences by_status；前端 Governance/index.tsx 消费展示；生成物不适用（理由：平台评测产物只读聚合视图，供 Governance 面板消费） | 已合入 |
+| 后台任务托管（daemon jobs） | governance/daemon_jobs.py（DaemonJobStore/start/list/status/attach/kill）+ api/rest/routes.py 端点 /governance/jobs*（governance_jobs_list/governance_jobs_start/governance_job_status/governance_job_output/governance_job_kill） | ✅ | prime-agent 断线续跑借鉴：长任务以新会话组后台运行（终端关闭不终止）、输出重定向文件、JSON 注册表（AIPLAT_DAEMON_JOBS_FILE）、状态含退出码（ps stat 僵尸判定 + 输出尾部 [daemon] exit= 标记）、kill 连同会话组；CLI --start/--status/--attach/--kill；生成物适用：待接线（生成应用长任务可经 daemon_jobs 托管续跑） | 已合入 |
+| agent 消息总线（agent_messages） | governance/agent_messages.py（AgentMessageStore/register/unregister/send/inbox/list_agents）+ api/rest/routes.py 端点 /governance/agents*（governance_agents_list/governance_agent_register/governance_agent_unregister/governance_agent_send/governance_agent_inbox） | ✅ | prime-agent agent_message.send 借鉴：运行中 agent/任务注册（pid 心跳）→ 点对点互发消息（不经用户中转）→ 收件箱（pending/read + 未读过滤 + mark-read）；收件箱保留最近 500 条；CLI --register/--unregister/--send/--inbox/--agents；生成物适用：待接线（生成多 agent 协作可经消息总线互发） | 已合入 |
 | FDE交付反馈API | platform/apps/fde/api/fde.py | ✅ | POST /fde/delivery/feedback — 标记Session+Action状态→更新交付率统计→触发§4.6ROI重新计算(HMESI D) | 已合入 |
 | FDE诊断自优化 | apps/skills/registry.py:1827-1863 | ✅ | 基于历史交付率(≥60%/30-60%/<30%)自动调整§1置信度标注策略+§6方案推荐排序(HMESI E) | 已合入 |
 | FDE多角色模拟 | apps/skills/registry.py:1865-1881 | ✅ | 生成前注入CIO/开发者/终端用户三视角采纳风险评估表→§7标注各角色风险信号+降级规则(HMESI F) | 已合入 |
@@ -1112,7 +1112,7 @@ scan_hash: 8f9548ec24f4
 | PII 检测脱敏 | services/pii_detector.py | ✅ | 手机/身份证/邮箱/银行卡/地址/IP，Presidio+正则双引擎 | 已合入 |
 | 合规报告 SOC2/ISO27001 | management/compliance_checks.py | ✅ | 12检查 + SOC2 CC/ISO27001 A映射 + 自动报告生成 | 已合入 |
 | 架构契约上下文注入 | harness/utils/prompt_loader.py` → `harness/assembly/prompt_assembler.py | ✅ | coding-contract 模板在代码生成前注入 Agent system prompt（6条核心约束） | 已合入 |
-| 审计日志防篡改 | ../../aiPlat-platform/governance/audit/logger.py | ✅ | SHA-256 链式哈希 + verify_integrity() | 已合入 |
+| 审计日志防篡改 | ../../aiPlat-platform/governance/audit/logger.py | ✅ | SHA-256 链式哈希 + verify_integrity()；生成物不适用（理由：平台横切审计，生成应用由平台侧强制执行） | 已合入 |
 | 对象级权限 | policy/object_permission.py | ✅ | 每实体/每动作/每角色细粒度控制，支持本体继承 | 已合入 |
 | 字段级安全 | policy/field_level_security.py | ✅ | 单元/字段级数据可见性，Palantir CBAC对齐 | 已合入 |
 | 技能签名验证 | security/skill_signature_gate.py | ✅ | Ed25519 签名校验 + 可信公钥注册表 | 已合入 |
@@ -1660,8 +1660,8 @@ scan_hash: 8f9548ec24f4
 |------|------|:---:|------|------|
 | Change Control | platform/api/routers/change_control.py | ✅ | 变更请求跟踪/审计/autosmoke强制执行 | 已合入 |
 | Tenant Onboarding | platform/api/routers/onboarding.py | ✅ | 租户引导：LLM配置/执行后端/密钥迁移/信任密钥 | 已合入 |
-| Quota Manager | platform/governance/quota/quota_manager.py | ✅ | 资源配额管理与强制执行 | 已合入 |
-| Rate Limiter | platform/governance/rate_limit/limiter.py | ✅ | 单进程 in-memory + Redis 分布式令牌桶（原子Lua脚本） | 已合入 |
+| Quota Manager | platform/governance/quota/quota_manager.py | ✅ | 资源配额管理与强制执行；生成物不适用（理由：平台租户配额强制，生成应用受平台侧约束） | 已合入 |
+| Rate Limiter | platform/governance/rate_limit/limiter.py | ✅ | 单进程 in-memory + Redis 分布式令牌桶（原子Lua脚本）；生成物不适用（理由：平台网关限流，生成应用走平台代理） | 已合入 |
 | Billing Meter | platform/billing/meter.py | ✅ | 用量计量与计费结算 | 已合入 |
 | MQ WriteBack 适配器 | harness/knowledge/knowledge_writeback.py | ✅ | Kafka/RabbitMQ 消息队列写回 + none降级LOG_ONLY | 已合入 |
 | KB Intelligence | platform/kb/intelligence/service.py | ✅ | URL抓取/HTML→text/格式检测/视频URL转录 | 已合入 |
