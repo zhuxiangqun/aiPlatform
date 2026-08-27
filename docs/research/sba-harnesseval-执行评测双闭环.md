@@ -181,6 +181,7 @@ python3 scripts/verify_claude_md_evidence.py --strict      # 回归：默认行�
 | 证据树 schema | `verify_claude_md_evidence.py --tree`（branches/sub_branches/evidence/route_reason/known_gaps） | ✅ 已合入（PR #164） |
 | L2 回写链路本体 | `aiPlat-platform/governance/experience_feedback/`（register_failure / record_verification / confirm_promotion 状态机） | ✅ 已合入 |
 | 守卫失败自动登记 | `architecture_guard.sh` FAIL 分支自动 `--register architecture-guard-fail`（gotchas 登记；验证/升级由后续运行或人工触发） | ✅ 已合入 |
+| 守卫路由决策记录 | `architecture_guard.sh` `AIPLAT_GUARD_TRACE_OUT` 落盘 routing_trace（run_id/mode/route_trace[check, enabled, reason_selected, reason_skipped, result]/failed_guards/verdict）——为什么启用/跳过某项检查可审计 | ✅ 已合入 |
 | 兜底门槛① | `MIN_CONFIDENCE=0.7` 以下拒收（只提示不登记） | ✅ 实现内建 |
 | 兜底门槛② | `risk=high` 升级需 `confirm_promotion` 人工确认（`promoted:review` 态） | ✅ 实现内建 |
 | 原则 14 门槛 | 连续 2 次独立验证成功才升级；同 case 重复不计数；连续 2 次失败判 rejected | ✅ 实现内建 |

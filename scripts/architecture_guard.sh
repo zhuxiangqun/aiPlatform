@@ -551,6 +551,61 @@ fi
 
 # ── Aggregate ──
 echo ""; sep
+
+# ── §0.4c: 守卫路由决策记录（HarnessEval routing_trace 借鉴——启用/跳过原因可审计） ──
+# 由 AIPLAT_GUARD_TRACE_OUT 环境变量启用；默认关闭，不影响门禁。
+# 产物：{run_id, mode, route_trace[{check, enabled, reason_selected, reason_skipped, result}], failed_guards, verdict}
+if [ -n "${AIPLAT_GUARD_TRACE_OUT:-}" ]; then
+    mkdir -p "$(dirname "$AIPLAT_GUARD_TRACE_OUT")" 2>/dev/null || true
+    python3 - "$AIPLAT_GUARD_TRACE_OUT" "$QUICK_MODE" "$FAIL" "$FAIL_AST" "$FAIL_FE" "$FAIL_ARCH" "$FAIL_CAP" "$FAIL_EV" "$FAIL_UNDEF" "$FAIL_RULE" "${CI:-}" <<'PYEOF' >/dev/null 2>&1 || true
+import json, os, sys, time
+out, mode, fail = sys.argv[1], sys.argv[2], sys.argv[3]
+vals = {"FAIL_AST": sys.argv[4], "FAIL_FE": sys.argv[5], "FAIL_ARCH": sys.argv[6],
+        "FAIL_CAP": sys.argv[7], "FAIL_EV": sys.argv[8], "FAIL_UNDEF": sys.argv[9],
+        "FAIL_RULE": sys.argv[10]}
+is_ci = sys.argv[11] == "true"
+quick = mode == "true"
+trace = {
+    "run_id": "arch-guard-" + time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()),
+    "harness": "architecture_guard.sh",
+    "mode": "quick" if quick else "full",
+    "route_trace": [
+        {"check": "phase1_guard_scripts", "enabled": True,
+         "reason_selected": "核心守卫脚本（AST/frontend/arch/evidence/undefined/rule golden）",
+         "reason_skipped": None,
+         "result": "pass" if fail == "0" else "fail"},
+        {"check": "phase2_secondary", "enabled": quick,
+         "reason_selected": "quick 模式跑 lightweight frontmatter+doc-sync 后台检查",
+         "reason_skipped": "full 模式由独立 CI job 执行",
+         "result": "run" if quick else "skipped"},
+        {"check": "capability_convergence", "enabled": (not quick),
+         "reason_selected": "非 quick 且未设 SKIP_CAP_CONV 时执行能力收敛检查",
+         "reason_skipped": "quick 模式或 SKIP_CAP_CONV 设置",
+         "result": "skipped" if quick else ("pass" if vals["FAIL_CAP"] == "0" else "fail")},
+        {"check": "phase3_engine_agnostic", "enabled": True,
+         "reason_selected": "引擎层去业务化检查（§77-79）", "reason_skipped": None,
+         "result": "run"},
+        {"check": "phase4_genericity", "enabled": True,
+         "reason_selected": "core/infra 通用性检查（§80-88）", "reason_skipped": None,
+         "result": "run"},
+        {"check": "phase5.5_compliance", "enabled": True,
+         "reason_selected": "流程合规检查（§89-96 + §73 能力消费者）", "reason_skipped": None,
+         "result": "run"},
+        {"check": "§90_engine_hook_install", "enabled": (not is_ci),
+         "reason_selected": "本地开发环境检查 pre-commit hook 安装",
+         "reason_skipped": "CI/GitHub Actions 环境不需要本地 hook",
+         "result": "skipped" if is_ci else "run"},
+    ],
+    "failed_guards": [k for k, v in vals.items() if v == "1"],
+    "verdict": "pass" if fail == "0" else "fail",
+}
+os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+with open(out, "w", encoding="utf-8") as f:
+    json.dump(trace, f, ensure_ascii=False, indent=2)
+PYEOF
+    echo "  → guard route trace: $AIPLAT_GUARD_TRACE_OUT"
+fi
+
 if [ "$FAIL" -ne 0 ]; then
     echo "  ARCHITECTURE GUARD: one or more checks FAILED (all checks ran — see above)"
     # ── L2 经验回写（HarnessEval × SBA §5.5）：守卫失败自动登记为待验证经验 ──
