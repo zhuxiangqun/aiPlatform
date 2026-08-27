@@ -233,8 +233,30 @@ export const projectApi = {
 
   /** Run tests (E2E smoke + repo tests) on a completed project. */
   test: async (projectId: string) => {
-    return apiClient.post<{ project_id: string; all_passed: boolean; e2e_smoke: Record<string, unknown>; repo_tests: Record<string, unknown> }>(
+    return apiClient.post<{ project_id: string; all_passed: boolean; e2e_smoke: Record<string, unknown>; repo_tests: Record<string, unknown>; real_tests?: Record<string, unknown> }>(
       `/platform/builder/projects/${projectId}/test`
+    );
+  },
+
+  /** 最近一次真实测试报告（含 bug_summary/suggested_fix）。 */
+  lastTestReport: async (projectId: string) => {
+    return apiClient.get<Record<string, unknown>>(`/platform/builder/projects/${projectId}/last-test-report`);
+  },
+
+  /** 生成 app 运行时：daemon_jobs 托管启动。 */
+  runtimeLaunch: async (projectId: string) => {
+    return apiClient.post<Record<string, unknown>>(`/platform/builder/projects/${projectId}/runtime/launch`);
+  },
+
+  /** 生成 app 运行时：停止（kill 会话组）。 */
+  runtimeStop: async (projectId: string) => {
+    return apiClient.post<Record<string, unknown>>(`/platform/builder/projects/${projectId}/runtime/stop`);
+  },
+
+  /** 生成 app 自动修复：测试失败 → LLM 修复 → 写回部署目录 → 重跑。 */
+  autoRepair: async (projectId: string, maxRounds = 2) => {
+    return apiClient.post<Record<string, unknown>>(
+      `/platform/builder/projects/${projectId}/runtime/auto-repair`, { max_rounds: maxRounds }
     );
   },
 

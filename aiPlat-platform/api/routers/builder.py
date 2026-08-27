@@ -462,6 +462,15 @@ async def run_project_tests(project_id: str, _auth: str = Depends(require_builde
     return await _get_svc().run_tests(project_id)
 
 
+@router.get("/projects/{project_id}/last-test-report", response_model=StatusResponse)
+async def get_last_test_report(project_id: str, _auth: str = Depends(require_builder_access)):
+    """最近一次真实测试报告（含 bug_summary/suggested_fix），未测试过返回 404。"""
+    report = await _get_svc().get_last_test_report(project_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail="no_test_report")
+    return report
+
+
 @router.post("/projects/{project_id}/regenerate", response_model=StatusResponse)
 async def regenerate_project_stage(project_id: str, req: Dict[str, Any], _auth: str = Depends(require_builder_access)):
     """Regenerate a specific stage with human feedback, then resume pipeline."""
