@@ -2085,11 +2085,28 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         """Run E2E smoke + repo tests for a completed project pipeline.
 
         2026-08-27 升级：e2e_smoke 从"目录存在"假通过 → 真实冒烟
-        （检测入口 → daemon_jobs 托管启动 → HTTP 健康探测，见 builder/app_runtime.py）。
+        （检测入口 → daemon_jobs 托管启动 → HTTP 健康探测，见 builder/app_runtime.py）；
+        repo_tests 升级为测试经理真实测试（递归发现用例 → pytest → test_report + bug_summary）。
+        结果持久化到项目状态 last_test_report（前端展示 bug 清单 + suggested_fix）。
         """
         proj = self._projects.get(project_id, {})
         deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
-        return _run_tests_for_project(project_id, deploy_dir or "")
+        result = _run_tests_for_project(project_id, deploy_dir or "")
+        # 持久化 test_report（含 bug_summary）→ 前端/后续消费
+        try:
+            rt = result.get("real_tests") or {}
+            if rt.get("test_report"):
+                proj["last_test_report"] = {
+                    "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    "test_passed": bool(rt.get("test_passed")),
+                    "test_report": rt["test_report"],
+                    "e2e_smoke": result.get("e2e_smoke"),
+                }
+                self._save_projects()
+        except Exception:
+            logging.getLogger("aiplat.builder").debug(
+                "test_report 持久化失败 project_id=%s", project_id, exc_info=True)  # best-effort
+        return result
 
     # ── 生成 app 运行时（2026-08-27，生成物侧接线：daemon_jobs 生成物适用 待接线 → 已接线）──
     async def runtime_launch(self, project_id: str) -> Dict[str, Any]:
@@ -2113,6 +2130,11 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         proj = self._projects.get(project_id, {})
         deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
         return real_tests(project_id, deploy_dir=deploy_dir or None, install_deps=install_deps)
+
+    async def get_last_test_report(self, project_id: str) -> Optional[Dict[str, Any]]:
+        """最近一次真实测试报告（run_tests 持久化的 last_test_report）。"""
+        proj = self._projects.get(project_id, {})
+        return proj.get("last_test_report") or None
 
     async def runtime_auto_repair(self, project_id: str, max_rounds: int = 2) -> Dict[str, Any]:
         """自动修复闭环：真实测试失败 → LLM 修复生成代码 → 写回部署目录 → 重跑验证。"""

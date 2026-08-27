@@ -257,6 +257,42 @@ const ProjectDetailPage: React.FC = () => {
     finally { setDeploying(false); }
   }, [id]);
 
+  // ── 生成 app 运行时（launch/stop/auto-repair，2026-08-27）──
+  const [runtime, setRuntime] = useState<Record<string, unknown> | null>(null);
+  const [runtimeBusy, setRuntimeBusy] = useState(false);
+  const handleRuntimeLaunch = useCallback(async () => {
+    if (!id) return;
+    setRuntimeBusy(true);
+    try {
+      const r = await projectApi.runtimeLaunch(id);
+      setRuntime(r as Record<string, unknown>);
+      toast.success('已启动生成 app');
+    } catch (e) { toastGateError(e, '启动失败'); }
+    finally { setRuntimeBusy(false); }
+  }, [id]);
+  const handleRuntimeStop = useCallback(async () => {
+    if (!id) return;
+    setRuntimeBusy(true);
+    try {
+      await projectApi.runtimeStop(id);
+      setRuntime(null);
+      toast.success('已停止生成 app');
+    } catch (e) { toastGateError(e, '停止失败'); }
+    finally { setRuntimeBusy(false); }
+  }, [id]);
+  const handleAutoRepair = useCallback(async () => {
+    if (!id) return;
+    setRuntimeBusy(true);
+    try {
+      const r = await projectApi.autoRepair(id);
+      setRuntime({ ...(runtime || {}), repair: r as Record<string, unknown> });
+      const rep = (r as Record<string, unknown>).repaired;
+      if (rep) toast.success('自动修复成功（测试已通过）');
+      else toast.error('自动修复未完全通过');
+    } catch (e) { toastGateError(e, '自动修复失败'); }
+    finally { setRuntimeBusy(false); }
+  }, [id, runtime]);
+
   const [showReject, setShowReject] = useState(false);
   const [rejectFeedback, setRejectFeedback] = useState('');
   const rejectHITL = useCallback(() => {
@@ -632,10 +668,49 @@ const ProjectDetailPage: React.FC = () => {
             {testResult && (
               <div className={`mt-3 p-3 rounded text-xs ${(testResult.all_passed as boolean) ? 'bg-green-500/10 text-green-300' : 'bg-red-500/10 text-red-300'}`}>
                 <p className="font-semibold mb-2">{(testResult.all_passed as boolean) ? '✓ 所有测试通过' : '✗ 部分测试未通过'}</p>
-                <details className="mt-1">
-                  <summary className="cursor-pointer text-gray-400">详细结果</summary>
-                  <pre className="mt-2 text-[11px] whitespace-pre-wrap font-mono">{JSON.stringify({ e2e: testResult.e2e_smoke, repo: testResult.repo_tests }, null, 2)}</pre>
-                </details>
+                {(() => {
+                  // 测试经理真实测试报告（real_tests → test_report，结构特征判断而非硬编码 key）
+                  const rt = (testResult.real_tests as Record<string, unknown> | undefined) ?? {};
+                  const report = (rt.test_report as Record<string, unknown> | undefined) ?? {};
+                  const results = (report.test_results as Record<string, unknown> | undefined) ?? {};
+                  const bugs = (report.bug_summary as Record<string, unknown> | undefined) ?? {};
+                  const failedTests = Array.isArray(bugs.failed_tests) ? (bugs.failed_tests as string[]) : [];
+                  const hasReport = results && typeof results.total === 'number';
+                  if (!hasReport) {
+                    return (
+                      <details className="mt-1">
+                        <summary className="cursor-pointer text-gray-400">详细结果</summary>
+                        <pre className="mt-2 text-[11px] whitespace-pre-wrap font-mono">{JSON.stringify({ e2e: testResult.e2e_smoke, repo: testResult.repo_tests }, null, 2)}</pre>
+                      </details>
+                    );
+                  }
+                  return (
+                    <div className="mt-2 space-y-2">
+                      <div className="flex gap-3 text-[11px]">
+                        <span className="text-green-400">通过 {String(results.passed ?? 0)}</span>
+                        <span className="text-red-400">失败 {String(results.failed ?? 0)}</span>
+                        <span className="text-yellow-400">错误 {String(results.errors ?? 0)}</span>
+                        <span className="text-gray-400">跳过 {String(results.skipped ?? 0)}</span>
+                      </div>
+                      {failedTests.length > 0 && (
+                        <div className="bg-red-500/10 rounded p-2">
+                          <p className="font-semibold text-red-300 mb-1">Bug 清单（{String(bugs.total_bugs ?? failedTests.length)}）</p>
+                          <ul className="space-y-0.5">
+                            {failedTests.slice(0, 8).map((t: string, i: number) => (
+                              <li key={i} className="truncate" title={t}>{t}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {typeof bugs.suggested_fix === 'string' && bugs.suggested_fix.length > 0 && (
+                        <div className="bg-blue-500/10 rounded p-2">
+                          <p className="font-semibold text-blue-300 mb-1">修复建议</p>
+                          <p className="whitespace-pre-wrap break-words text-[11px] text-gray-200">{(bugs.suggested_fix as string).slice(0, 600)}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -662,6 +737,50 @@ const ProjectDetailPage: React.FC = () => {
                     {String(deployResult.app_url || '-')}
                   </a>
                 </p>
+              </div>
+            )}
+          </div>
+
+          {/* Runtime section: 生成 app 运行控制（daemon_jobs 托管 + 自动修复） */}
+          <div className="p-4 rounded-lg border border-cyan-500/30 bg-cyan-500/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-cyan-300 flex items-center gap-2">
+                  <Play className="w-4 h-4" />生成 app 运行时
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">daemon_jobs 托管启动 / 停止 / 测试失败自动修复</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={handleRuntimeLaunch} loading={runtimeBusy} icon={<Play className="w-4 h-4" />}>
+                  启动
+                </Button>
+                <Button variant="secondary" onClick={handleRuntimeStop} loading={runtimeBusy} icon={<X className="w-4 h-4" />}>
+                  停止
+                </Button>
+                <Button variant="primary" onClick={handleAutoRepair} loading={runtimeBusy} icon={<Sparkles className="w-4 h-4" />}>
+                  自动修复
+                </Button>
+              </div>
+            </div>
+            {runtime && (
+              <div className="mt-3 p-3 rounded text-xs bg-cyan-500/10 text-cyan-200">
+                <p className="font-semibold">
+                  {runtime.kind ? `入口类型: ${String(runtime.kind)}` : ''}
+                  {runtime.port ? ` · 端口: ${String(runtime.port)}` : ''}
+                  {runtime.pid ? ` · PID: ${String(runtime.pid)}` : ''}
+                  {runtime.job_id ? ` · Job: ${String(runtime.job_id)}` : ''}
+                </p>
+                {runtime.error && <p className="mt-1 text-red-300">错误: {String(runtime.error)}</p>}
+                {(runtime.repair as Record<string, unknown> | undefined) && (
+                  <div className="mt-2 space-y-1">
+                    <p className={(runtime.repair as Record<string, unknown>).repaired ? 'text-green-300' : 'text-yellow-300'}>
+                      自动修复: {(runtime.repair as Record<string, unknown>).repaired ? '已通过' : '未完全通过'}
+                      {' · '}轮次: {String((runtime.repair as Record<string, unknown>).rounds ?? 0)}
+                      {((runtime.repair as Record<string, unknown>).writeback_files as string[] | undefined)?.length
+                        ? ` · 写回 ${String(((runtime.repair as Record<string, unknown>).writeback_files as string[]).length)} 个文件` : ''}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
