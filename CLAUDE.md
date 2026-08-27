@@ -657,3 +657,21 @@ git diff --stat HEAD | grep "+" | grep -E "new file|create mode" | wc -l
 
 **设计依据**：CacheAwareRouter 通过 D1/D2 离散化哈希键检测变化。如果 cache key 变了，模型提供商侧的缓存前缀失效，后续每次调用都重新计算全量上下文。对抗方式：在 CacheAwareRouter.evaluate() 返回 `freeze=["D1","D2"]` 时，只允许 D3-D6 通过 overlay 追加。详见 `harness/meta/cache_aware_router.py`。
 
+
+## 23. 平台能力生成物适用性（强制——2026-08-27，防平台-产物脱节）
+
+**背景**：评测侧闭环（证据树/经验回写/守卫 trace/观测）与通用基础设施（daemon 续跑/消息总线）落地时未评估应用工厂生成物适用性——平台与产物"两张皮"。生成 agent 只有生成时刻的静态校验（conformance），运行时闭环未接线。
+
+**强制规则**：新增 `aiPlat-platform/governance/` 下能力模块时，必须同时：
+1. 在 `AIPLAT_CAPABILITIES.md` 登记条目（含模块路径）；
+2. 条目**必须**含「生成物」适用性评估声明——适用（标注接线状态：已接线/待接线）或不适用（附理由，如"平台横切治理，生成应用由平台侧强制执行"）；
+3. 适用且待接线的，须在对应生成物模板/流程中预留接线点或在归档文档记录立项。
+
+**守卫**：`architecture_guard.sh §97`（`scripts/check_generated_artifact_wiring.py`）——每个 governance 模块必须有 CAPABILITIES 条目且含"生成物"标注，违反即阻断（CI 强制）。
+
+**现状**（2026-08-27 标注）：experience_feedback / daemon_jobs / agent_messages 生成物适用（待接线）；eval_observability / audit / quota / rate_limit 生成物不适用（平台治理侧）。
+
+**验证命令**：
+```bash
+python3 scripts/check_generated_artifact_wiring.py   # ✅ 7 governance 模块均含生成物适用性评估
+```

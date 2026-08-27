@@ -538,6 +538,17 @@ else
     FAIL=1
 fi
 
+# ── §97: 平台能力生成物适用性（2026-08-27，防平台-产物脱节） ──
+# 每个 governance 能力模块必须：① CAPABILITIES 有条目 ② 条目含"生成物"适用性评估声明。
+echo -n "§97: 生成物适用性评估: "
+if python3 scripts/check_generated_artifact_wiring.py >/dev/null 2>&1; then
+    echo "✅"
+else
+    echo "❌ 存在 governance 模块缺 CAPABILITIES 条目或「生成物」适用性标注"
+    echo "   Run: python3 scripts/check_generated_artifact_wiring.py 查看详情"
+    FAIL=1
+fi
+
 # ── §73: Capability consumer verification (replaces deprecated caller_verify.sh) ──
 # Phase 2.5 method-level wiring runs in phase_check.sh (method_verify.sh + wiring tests).
 echo -n "§73: capability consumers wired: "
