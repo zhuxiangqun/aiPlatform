@@ -2082,10 +2082,35 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         }
 
     async def run_tests(self, project_id: str) -> Dict[str, Any]:
-        """Run E2E smoke + repo tests for a completed project pipeline."""
+        """Run E2E smoke + repo tests for a completed project pipeline.
+
+        2026-08-27 升级：e2e_smoke 从"目录存在"假通过 → 真实冒烟
+        （检测入口 → daemon_jobs 托管启动 → HTTP 健康探测，见 builder/app_runtime.py）。
+        """
         proj = self._projects.get(project_id, {})
         deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
         return _run_tests_for_project(project_id, deploy_dir or "")
+
+    # ── 生成 app 运行时（2026-08-27，生成物侧接线：daemon_jobs 生成物适用 待接线 → 已接线）──
+    async def runtime_launch(self, project_id: str) -> Dict[str, Any]:
+        """检测生成 app 入口并经 daemon_jobs 托管启动。"""
+        from builder.app_runtime import launch
+        return launch(project_id)
+
+    async def runtime_status(self, project_id: str) -> Dict[str, Any]:
+        """生成 app 运行状态（daemon job 存活 + 端口 + 入口）。"""
+        from builder.app_runtime import status
+        return status(project_id)
+
+    async def runtime_stop(self, project_id: str) -> Dict[str, Any]:
+        """停止生成 app（daemon_jobs kill 会话组 + 清理记录）。"""
+        from builder.app_runtime import stop
+        return stop(project_id)
+
+    async def runtime_smoke(self, project_id: str, keep_alive: bool = False) -> Dict[str, Any]:
+        """生成 app 冒烟测试（启动 + 健康探测 + 报告）。"""
+        from builder.app_runtime import smoke_test
+        return smoke_test(project_id, keep_alive=keep_alive)
 
 
 
@@ -2122,8 +2147,16 @@ def _run_tests_for_project(project_id: str, deploy_dir: str) -> dict:
                 results["all_passed"] = r.returncode == 0
             except Exception as e:
                 results["repo_tests"] = {"passed": False, "error": str(e)}
-    if deploy_dir:
-        results["e2e_smoke"] = {"passed": True, "reason": "deploy_directory_exists"}
+    # 2026-08-27 升级：真实 e2e 冒烟（detect → daemon_jobs 启动 → HTTP 健康探测），
+    # 替换原"deploy_directory_exists"假通过（生成物侧接线，daemon_jobs 生成物适用 已接线）。
+    from builder.app_runtime import smoke_test
+    smoke = smoke_test(project_id, keep_alive=False)
+    results["e2e_smoke"] = smoke.get("e2e_smoke") or {"passed": False, "reason": smoke.get("reason")}
+    results["smoke"] = smoke
+    if results["repo_tests"] and results["repo_tests"].get("passed"):
+        results["all_passed"] = bool(results["e2e_smoke"].get("passed"))
+    else:
+        results["all_passed"] = False
     return results
 
 
