@@ -1,12 +1,14 @@
 """test_generated_governance_wiring.py — 生成物侧治理接线测试（CLAUDE.md §23）。
 
 覆盖：① conformance 拒绝 → experience_feedback 登记（生成物失败经验回写）；
-② 注册成功 → runtime_governance.md sidecar 预置。
+② 注册成功 → runtime_governance.md sidecar 预置；③ 注册成功 → 生成 agent 上线
+消息总线（agent_messages 生成物侧接线）；④ sidecar daemon CLI 入口可执行（冒烟）。
 """
 from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -59,3 +61,28 @@ def test_sidecar_generated_on_registration(env):
     assert "运行时治理入口" in content
     # AGENT.md 本体不被侵入
     assert "runtime_governance" not in agent_md.read_text(encoding="utf-8")
+
+
+def test_generated_agent_registered_to_bus(env):
+    """注册成功 → 生成 agent 上线消息总线（agent_messages 生成物侧接线）。"""
+    from builder.builder_project_service import _register_generated_agent_to_bus
+    _register_generated_agent_to_bus("demo-agent")
+    # 默认存储路径 = $AIPLAT_HOME/agent_messages.json（fixture 已指向 tmp）
+    from governance.agent_messages import AgentMessageStore
+    store = AgentMessageStore()
+    agents = {a["agent_id"]: a for a in store.list_agents()}
+    assert "demo-agent" in agents
+    assert agents["demo-agent"]["kind"] == "generated-agent"
+
+
+def test_sidecar_daemon_cli_entry_executable(env):
+    """sidecar 中 daemon 断线续跑 CLI 入口真实可执行（冒烟，生成物侧待接线入口验证）。"""
+    _djs = Path(__file__).resolve().parents[1] / "governance/daemon_jobs.py"
+    assert _djs.exists()
+    r = subprocess.run(
+        [sys.executable, str(_djs), "--status"],
+        capture_output=True, text=True, timeout=30,
+        env={**os.environ, "AIPLAT_DAEMON_JOBS_FILE": str(env / "daemon_jobs.json")})
+    assert r.returncode == 0
+    out = r.stdout.strip()
+    assert '"jobs"' in out  # --status 无 id 时返回 {"jobs": [...]}
