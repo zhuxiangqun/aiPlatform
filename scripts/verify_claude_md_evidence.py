@@ -142,7 +142,8 @@ def extract_unverified_strict(filepath: Path) -> list[dict]:
 
 
 def run_evidence(cmd_str: str, expected: str, operator: str = 'eq',
-                 line_num: int = 0, claude_path: str = '') -> tuple[bool, str]:
+                 line_num: int = 0, claude_path: str = '') -> tuple[bool, str, int, str]:
+    """Run one evidence command. Returns (passed, detail, actual_num, actual_raw)."""
     workspace_root = str(ROOT)
     cmd_str_resolved = cmd_str.strip()
 
@@ -161,7 +162,7 @@ def run_evidence(cmd_str: str, expected: str, operator: str = 'eq',
     try:
         expected_num = int(exp_val)
     except ValueError:
-        return False, f"Line {line_num}: Cannot parse expected '{expected}'"
+        return False, f"Line {line_num}: Cannot parse expected '{expected}'", -1, ''
 
     try:
         if '|' in cmd_str_resolved:
@@ -186,17 +187,125 @@ def run_evidence(cmd_str: str, expected: str, operator: str = 'eq',
             passed = actual_num == expected_num
             detail = f"got {actual_num} (expected {expected_num})"
 
-        return passed, detail
+        return passed, detail, actual_num, stdout
     except subprocess.TimeoutExpired:
-        return False, f"Line {line_num}: Command timed out after 15s"
+        return False, f"Line {line_num}: Command timed out after 15s", -1, ''
     except Exception as e:
-        return False, f"Line {line_num}: Error: {e}"
+        return False, f"Line {line_num}: Error: {e}", -1, ''
+
+
+def build_evidence_tree(files: list[Path], quick_mode: bool = False) -> dict:
+    """Build a hierarchical evidence tree (HarnessEval Evidence Tree pattern).
+
+    Structure: root → per-file branch → per-claim sub_branch → evidence leaf.
+    Includes route_reason (why this check was enabled), verdict per node, and
+    known_gaps (✅ claims without verification — the evaluator's explicit blind spots).
+    """
+    all_claims = []
+    for f in files:
+        all_claims.extend(extract_claims(f))
+
+    by_file: dict[str, list[dict]] = {}
+    for c in all_claims:
+        by_file.setdefault(c['file'], []).append(c)
+
+    branches = []
+    totals = {'pass': 0, 'fail': 0, 'skip': 0}
+    for fpath in sorted(by_file):
+        fname = os.path.relpath(fpath, ROOT)
+        sub = []
+        file_pass = True
+        for claim in by_file[fpath]:
+            node = {
+                'claim': claim.get('desc') or claim['cmd'][:80],
+                'skill': 'claude_md_evidence.grep',
+                'route_reason': (
+                    f"{'HTML 注释' if claim['format'] == 'html' else '内联'}证据声明"
+                    f"（{fname}:L{claim['line']}）"
+                ),
+                'evidence': [],
+                'verdict': 'pass',
+            }
+            if quick_mode and len(claim['cmd']) > 200:
+                node['verdict'] = 'skipped'
+                node['evidence'].append({
+                    'tool': 'shell',
+                    'input': claim['cmd'][:200],
+                    'expect': claim['expected'],
+                    'operator': claim.get('operator', 'eq'),
+                    'status': 'skipped',
+                    'note': 'quick 模式跳过长命令',
+                })
+                totals['skip'] += 1
+                sub.append(node)
+                continue
+
+            passed, detail, actual_num, actual_raw = run_evidence(
+                claim['cmd'], claim['expected'], claim.get('operator', 'eq'),
+                claim['line'], claim['file'])
+            node['evidence'].append({
+                'tool': 'shell:grep',
+                'input': claim['cmd'],
+                'expect': claim['expected'],
+                'operator': claim.get('operator', 'eq'),
+                'actual': actual_num,
+                'raw': actual_raw[:200],
+                'status': 'pass' if passed else 'fail',
+                'detail': detail,
+            })
+            node['verdict'] = 'pass' if passed else 'fail'
+            if passed:
+                totals['pass'] += 1
+            else:
+                totals['fail'] += 1
+                file_pass = False
+            sub.append(node)
+
+        branches.append({
+            'claim': f"CLAUDE.md 文件 {fname} 的证据声明全部通过",
+            'skill': 'claude_md_evidence.file_verify',
+            'route_reason': '文件包含（验证：grep …）或 <!-- verify: --> 证据声明',
+            'sub_branches': sub,
+            'verdict': 'pass' if file_pass else 'fail',
+        })
+
+    # ── known_gaps: ✅ claims without verification (evaluator's explicit blind spots) ──
+    known_gaps = []
+    for f in files:
+        for u in extract_unverified_strict(f):
+            known_gaps.append({
+                'claim': u['raw_line'][:150],
+                'file': os.path.relpath(u['file'], ROOT),
+                'line': u['line'],
+                'gap': '✅ 声明未附带可执行验证（缺少 grep/验证命令）',
+            })
+
+    total = totals['pass'] + totals['fail'] + totals['skip']
+    verdict = 'pass' if totals['fail'] == 0 else 'fail'
+    return {
+        'case_id': f"claude-md-evidence@{__import__('datetime').date.today().isoformat()}",
+        'harness': 'verify_claude_md_evidence.py',
+        'verdict': {
+            'score': 1.0 if verdict == 'pass' else 0.0,
+            'confidence': 'high' if totals['fail'] == 0 and not known_gaps else 'medium',
+            'summary': (f"{totals['pass']} passed, {totals['fail']} failed, "
+                        f"{totals['skip']} skipped, {len(known_gaps)} known_gaps"),
+        },
+        'branches': branches,
+        'known_gaps': known_gaps,
+    }
 
 
 def main() -> int:
     quick_mode = '--quick' in sys.argv
     workspace_only = '--workspace' in sys.argv
     strict_mode = '--strict' in sys.argv
+    tree_mode = '--tree' in sys.argv
+    tree_out = ''
+    if '--out' in sys.argv:
+        idx = sys.argv.index('--out')
+        if idx + 1 < len(sys.argv):
+            tree_out = sys.argv[idx + 1]
 
     if workspace_only:
         files = [ROOT / 'CLAUDE.md']
@@ -204,6 +313,20 @@ def main() -> int:
             files = []
     else:
         files = find_claude_md_files()
+
+    # ── Evidence Tree mode: hierarchical JSON (HarnessEval pattern) ──
+    if tree_mode:
+        import json
+        tree = build_evidence_tree(files, quick_mode)
+        payload = json.dumps(tree, ensure_ascii=False, indent=2)
+        if tree_out:
+            Path(tree_out).parent.mkdir(parents=True, exist_ok=True)
+            Path(tree_out).write_text(payload, encoding='utf-8')
+            print(f"Evidence tree written to {tree_out}")
+            print(f"  {tree['verdict']['summary']}")
+        else:
+            print(payload)
+        return 0 if tree['verdict']['score'] == 1.0 else 1
 
     # ── Strict: find unverified claims ──
     strict_failures = 0
@@ -242,7 +365,7 @@ def main() -> int:
             skipped += 1
             continue
 
-        passed, detail = run_evidence(
+        passed, detail, actual_num, actual_raw = run_evidence(
             claim['cmd'], claim['expected'], claim.get('operator', 'eq'),
             claim['line'], claim['file'])
         if passed:
