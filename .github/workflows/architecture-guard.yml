@@ -23,6 +23,20 @@ jobs:
           pip install -e ./aiPlat-platform 2>/dev/null || true
       - name: Run architecture guard
         run: bash scripts/architecture_guard.sh
+        env:
+          # 评测观测产物（HarnessEval 落地）：守卫运行时落盘证据树 + 路由决策 trace，
+          # 上传为 CI artifact 供审计（为什么过/为什么挂、跳过了哪些检查）。
+          AIPLAT_EVIDENCE_TREE_OUT: ${{ runner.temp }}/eval_artifacts/evidence_tree.json
+          AIPLAT_GUARD_TRACE_OUT: ${{ runner.temp }}/eval_artifacts/guard_trace.json
+      - name: Upload evaluation artifacts (evidence tree + route trace)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-artifacts
+          path: |
+            ${{ runner.temp }}/eval_artifacts/evidence_tree.json
+            ${{ runner.temp }}/eval_artifacts/guard_trace.json
+          if-no-files-found: ignore
       - name: Golden sample verify (P0-C7 — rules must have real hits)
         run: python3 scripts/rule_golden_sample.py --verify
       - name: Run constitution tests
