@@ -68,7 +68,8 @@ def detect_runtime(project_id: str, app_home: Optional[str] = None) -> Dict[str,
         return p if os.path.isfile(p) else None
 
     # 1) FastAPI：backend/app/main.py 或 app/main.py（uvicorn 入口）
-    for main_rel in [("backend", "app", "main.py"), ("app", "main.py"), ("main.py"), ("backend", "main.py")]:
+    for main_rel in [("backend", "app", "main.py"), ("app", "main.py"),
+                     ("main.py",), ("backend", "main.py")]:
         p = _find_file(*main_rel)
         if p:
             try:
@@ -87,7 +88,7 @@ def detect_runtime(project_id: str, app_home: Optional[str] = None) -> Dict[str,
                 pass  # noqa: cleanup-best-effort — 读取生成代码失败跳过该候选入口
 
     # 2) Flask：backend/app.py 或 app.py
-    for app_rel in [("backend", "app.py"), ("app.py"), ("server.py"), ("backend", "server.py")]:
+    for app_rel in [("backend", "app.py"), ("app.py",), ("server.py",), ("backend", "server.py")]:
         p = _find_file(*app_rel)
         if p:
             try:
@@ -103,7 +104,7 @@ def detect_runtime(project_id: str, app_home: Optional[str] = None) -> Dict[str,
                 pass  # noqa: cleanup-best-effort — 读取生成代码失败跳过该候选入口
 
     # 3) Node：backend/package.json（server 入口）
-    for pkg_rel in [("backend", "package.json"), ("package.json")]:
+    for pkg_rel in [("backend", "package.json"), ("package.json",)]:
         p = _find_file(*pkg_rel)
         if p:
             try:
@@ -268,12 +269,37 @@ def status(project_id: str) -> Dict[str, Any]:
 
 
 # ── 冒烟测试（自动测试闭环）──
+def _register_smoke_failure(project_id: str, rule_suffix: str, detail: str) -> None:
+    """冒烟失败 → L2 经验回写（生成物侧接线，2026-08-27）。
+
+    生成 app 起不来 = 生成失败经验（机器判定，confidence=1.0）→ experience_feedback
+    登记，与 conformance 拒绝登记同源（CLAUDE.md §23 生成物适用：已接线）。
+    best-effort 不抛异常：经验登记失败不影响冒烟结果。
+    """
+    import importlib.util as _iu
+    import sys as _sys
+    try:
+        _spec = _iu.spec_from_file_location(
+            "experience_feedback",
+            str(Path(__file__).resolve().parents[1] / "governance/experience_feedback/experience_feedback.py"))
+        _mod = _iu.module_from_spec(_spec)
+        _sys.modules["experience_feedback"] = _mod
+        _spec.loader.exec_module(_mod)
+        _mod.register_failure(
+            f"generated-smoke-{rule_suffix}",
+            f"生成 app 冒烟失败（{project_id}）：{detail}",
+            source="app_runtime", confidence=1.0, risk="low")
+    except Exception:
+        pass  # noqa: cleanup-best-effort — 经验登记失败不影响冒烟结果
+
+
 def smoke_test(project_id: str, keep_alive: bool = False,
                timeout_sec: float = 30.0) -> Dict[str, Any]:
     """完整闭环：detect → launch → health → 报告。
 
     keep_alive=False（默认）：测试后 stop（不留后台进程）；
     keep_alive=True：保留运行，供人工验证（返回 port）。
+    失败路径（launch 失败 / 健康探测不通过）→ L2 经验回写（生成物失败经验）。
     """
     det = detect_runtime(project_id)
     if not det.get("found"):
@@ -282,6 +308,8 @@ def smoke_test(project_id: str, keep_alive: bool = False,
                 "e2e_smoke": {"passed": False, "reason": det.get("reason", "no runtime")}}
     launched = launch(project_id)
     if not launched.get("started"):
+        _register_smoke_failure(project_id, "launch-failed",
+                                launched.get("error", "daemon start failed"))
         return {"smoke_passed": False, "detected": True,
                 "error": launched.get("error", "launch failed"),
                 "e2e_smoke": {"passed": False, "reason": launched.get("error", "launch failed")}}
@@ -299,6 +327,11 @@ def smoke_test(project_id: str, keep_alive: bool = False,
                           "port": h.get("port"),
                           "elapsed_sec": h.get("elapsed_sec")},
         }
+        if not h.get("healthy"):
+            _register_smoke_failure(
+                project_id, "unhealthy",
+                f"{launched.get('kind')} 入口在 {launched.get('port')} 端口未在 {timeout_sec}s 内就绪"
+                f"（{h.get('error', 'no response')}）")
         return result
     finally:
         if not keep_alive:
