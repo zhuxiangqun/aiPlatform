@@ -157,6 +157,11 @@ def test_real_tests_failure_bug_summary(env):
     assert r["test_report"]["test_results"]["failed"] >= 1
     assert r["test_report"]["bug_summary"]["total_bugs"] >= 1
     assert r["test_report"]["bug_summary"]["failed_tests"]
+    # 测试失败 → L2 经验回写（generated-test-failed）
+    from governance.experience_feedback.experience_feedback import ExperienceStore
+    st = ExperienceStore()
+    rules = [j.get("rule_id", "") for j in st.status() if isinstance(j, dict)]
+    assert any("generated-test-failed" in rl for rl in rules), f"未登记测试失败经验: {rules}"
 
 
 def test_real_tests_no_cases(env):

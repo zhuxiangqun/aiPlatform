@@ -302,6 +302,33 @@ def _register_smoke_failure(project_id: str, rule_suffix: str, detail: str) -> N
         pass  # noqa: cleanup-best-effort — 经验登记失败不影响冒烟结果
 
 
+def _register_test_failure(project_id: str, summary: str, suggested_fix: str) -> None:
+    """真实测试失败 → L2 经验回写（生成物失败经验，与 conformance/smoke 同源）。
+
+    测试经理发现的功能 bug（断言失败/配置错误/环境缺失）= 生成失败经验（机器判定，
+    confidence=1.0）→ experience_feedback 登记（rule=generated-test-failed）。
+    best-effort 不抛异常：经验登记失败不影响测试结果。
+    """
+    import importlib.util as _iu
+    import sys as _sys
+    try:
+        _spec = _iu.spec_from_file_location(
+            "experience_feedback",
+            str(Path(__file__).resolve().parents[1] / "governance/experience_feedback/experience_feedback.py"))
+        _mod = _iu.module_from_spec(_spec)
+        _sys.modules["experience_feedback"] = _mod
+        _spec.loader.exec_module(_mod)
+        content = f"生成 app 真实测试失败（{project_id}）：{summary}"
+        if suggested_fix:
+            content += f"。建议修复：{suggested_fix[:500]}"
+        _mod.register_failure(
+            "generated-test-failed",
+            content,
+            source="app_runtime", confidence=1.0, risk="low")
+    except Exception:
+        pass  # noqa: cleanup-best-effort — 经验登记失败不影响测试结果
+
+
 def smoke_test(project_id: str, keep_alive: bool = False,
                timeout_sec: float = 30.0) -> Dict[str, Any]:
     """完整闭环：detect → launch → health → 报告。
@@ -514,12 +541,20 @@ def real_tests(project_id: str, deploy_dir: Optional[str] = None,
         report = _build_test_report(log, passed, failed, errors, skipped, project_id)
         test_passed = failed == 0 and errors == 0 and passed > 0
 
+        # 真实测试失败 → L2 经验回写（生成物失败经验，与 conformance/smoke 同源）
+        if not test_passed:
+            _register_test_failure(
+                project_id,
+                f"{failed} failed / {errors} errors / {passed} passed",
+                (report.get("bug_summary") or {}).get("suggested_fix", ""))
+
         # 冒烟联动：测试通过且可运行时，补一次启动探测（生成 app 真实可用性）
         smoke = smoke_test(project_id, keep_alive=False, timeout_sec=25.0)
         return {"test_passed": test_passed, "detected": True,
                 "passed": passed, "failed": failed, "errors": errors, "skipped": skipped,
                 "test_report": report, "e2e_smoke": smoke.get("e2e_smoke")}
     except subprocess_timeout():
+        _register_test_failure(project_id, "pytest 超时", "")
         return {"test_passed": False, "detected": True, "reason": "pytest 超时",
                 "test_report": None, "e2e_smoke": {"passed": False, "reason": "timeout"}}
     finally:
