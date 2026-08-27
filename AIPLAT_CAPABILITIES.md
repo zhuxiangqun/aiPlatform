@@ -657,6 +657,7 @@ scan_hash: 8f9548ec24f4
 | Decorrelated Jitter | harness/infrastructure/gates/resilience_gate.py | ✅ | golden-ratio hash退避抖动，避免惊群效应 | 已合入 |
 | **Action Registry v3** | `harness/infrastructure/action_contract.py` + `action_registry.py` + `action_store.py` + `entity_lock.py` | ✅ | 企业级可治理 AI 执行层：`ActionContractModel`（Pydantic v2 + 实体约束 + handler白名单安全沙箱）、`AsyncActionRegistry`（7步执行流水线 + 审批回调 + 审计持久化）、`EntityLock`（mutex/stake双语义锁）、`ActionStore`（aiosqlite + entity_snapshot不可变审计）、`builtin_actions`（2业务+4legacy+YAML自助注册）、`builtin_handlers`（4个可调用handler）、`action_routes.py`（REST API + FDE AcceptTab前端动作卡片）、StateMachine零停机桥接 | 已合入 |
 | **Knowledge Pipeline v3** | `harness/knowledge_pipeline/extractor.py` + `resolver.py` + `retriever.py` | ✅ | 知识生命周期三层管线：`DocumentIngestor`（文档分块）→ `EntityExtractor`（LLM驱动9实体+10关系自动抽取，置信度三级路由≥0.85自动/0.60-0.85待审/<0.60丢弃）→ `DraftYamlWriter`（YAML草稿输出）→ `CrossDomainResolver`（三级匹配：精确键0.6+Jaro-Winkler名称0.25+向量余弦0.15）→ `GraphRAGRetriever`（实体路由→BFS 2跳子图→定向向量检索→推理路径注入） | 已合入 |
+| **Knowledge Pipeline 生成物适用性** | 生成 agent 运行时知识检索接入 | ⚠️ | 生成物适用：**待评估**（生成 agent/SKILL.md 是否应检索平台知识库——弱适用，需生成物侧接线评估，2026-08-27 审计标注） | 待评估 |
 | **CC/Codex hooks 协议桥（G6）** | `harness/infrastructure/hooks/cc_bridge.py` + `cc_bridge_rules.py` | ✅ | 直接消费 Claude Code / Codex `hooks.json`：事件映射表（CC 7/30 + Codex 4/10 → HookPhase 子集）+ command handler 执行（shell=False/超时/fail-open）+ 默认关（`~/.aiplat/hooks.json` 或 `AIPLAT_CC_HOOKS_PATH` 存在时装载）；http/mcp_tool/prompt/agent handler 跳过记 WARNING，unmapped 事件不静默执行（对齐 DSH hooks 桥诚实披露） | 已合入 |
 | **service-domain 参考实现** | `~/.aiplat/ontologies/service-domain.yaml` + `~/.aiplat/actions/service-domain_actions.yaml` + `custom_handlers/service_handlers.py` + `~/.aiplat/tests/service-domain_tests.yaml` + `scripts/sop_validate.py` + `docs/manuals/fde/06-sop-domain-delivery.md` | ✅ | 生产级参考实现：6类实体+6种关系+4态状态机+inference_rules + 5个动作（assign/start/submit/complete/reopen）+ 5个async handler + 12条测试用例 + SOP验证脚本6/6 PASS + 5天标准交付流程文档 | 已合入 |
 | FDE 动作闭环 | platform/apps/fde/api/fde.py:1688-1807,2198-2300 | ✅ | StateTransition实体化(每次状态变更创建记录)→has_transition关系→GET timeline查看完整生命周期(Palantir L4) | 已合入 |
@@ -1654,7 +1655,7 @@ scan_hash: 8f9548ec24f4
 | workspace_skills | api/routers/workspace_skills.py | ✅ | 自动同步 | 已合入 |
 | workspace_tools | api/routers/workspace_tools.py | ✅ | 自动同步 | 已合入 |
 | kb_eval | aiPlat-platform/apps/eval/api/kb_eval.py | ✅ | 自动同步 | 已合入 |
-| runs_eval | aiPlat-platform/apps/eval/api/runs_eval.py | ✅ | 自动同步 | 已合入 |
+| runs_eval | aiPlat-platform/apps/eval/api/runs_eval.py | ✅ | 自动同步；生成物适用：**已接线**（直接评测 builder 生成项目 project_id——生成应用质量评测闭环） | 已合入 |
 | skill_evals | aiPlat-platform/apps/eval/api/skill_evals.py | ✅ | 自动同步 | 已合入 |
 | catalog | aiPlat-platform/apps/misc/api/catalog.py | ✅ | 自动同步 | 已合入 |
 | personas | aiPlat-platform/apps/misc/api/personas.py | ✅ | 自动同步 | 已合入 |
