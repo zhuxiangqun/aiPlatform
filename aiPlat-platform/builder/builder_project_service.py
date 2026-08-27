@@ -49,6 +49,35 @@ def _scan_agent_security(agent_id: str, sop_body: str) -> None:
             _log.warning("Security: AGENT.md '%s' %s. Body will be stripped.", agent_id, description)
             raise ValueError(f"AGENT.md '{agent_id}' contains dangerous content: {description}")
 
+
+def _write_runtime_governance_sidecar(agent_md_path: str) -> None:
+    """生成物侧接线（CLAUDE.md §23）：注册成功时在 AGENT.md 旁预置运行时治理入口。
+
+    列出生成 agent 可用的平台治理端点（经验回写/断线续跑/消息总线）——
+    生成物运行时可据此接入平台闭环（不侵入 AGENT.md 本体，避免 conformance 校验破坏）。
+    """
+    import os as _os
+    _dir = _os.path.dirname(agent_md_path)
+    _sidecar = _os.path.join(_dir, "runtime_governance.md")
+    _agent = _os.path.basename(_dir)
+    try:
+        with open(_sidecar, "w", encoding="utf-8") as f:
+            f.write(
+                "# 运行时治理入口（生成物侧接线，自动生成）\n\n"
+                f"生成 agent「{_agent}」运行时可用以下平台治理端点（CLAUDE.md §23）：\n\n"
+                "## 失败经验回写（L2 状态机：登记→两次验证→升级）\n"
+                "- 失败时登记：`python3 aiPlat-platform/governance/experience_feedback/experience_feedback.py "
+                "--register --rule <rule> --content \"<失败描述>\" --source generated-agent --confidence 0.9`\n"
+                "- 查看状态：`--status`；验证成功：`--verify --rule <rule> --case <case> --outcome success`\n\n"
+                "## 长任务断线续跑\n"
+                "- `python3 aiPlat-platform/governance/daemon_jobs.py --start --name <n> --command \"<cmd>\"`；"
+                "状态 `--status` / 输出 `--attach <id>`\n\n"
+                "## 多 agent 协作（消息总线）\n"
+                "- 注册 `--register --agent <id> --pid <n>`；互发 `--send --from <a> --to <b> --message \"<text>\"`；"
+                "收件箱 `--inbox --agent <id>`\n")
+    except Exception:
+        pass  # noqa: cleanup-best-effort — sidecar 生成失败不影响注册主流程
+
 _AIPLAT_PM_AGENT = os.getenv("AIPLAT_PM_AGENT", "pm_agent")
 
 _AIPLAT_CHAT_NOT_IN_DIALOGUE = os.getenv(
@@ -2250,6 +2279,8 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                     _dst = os.path.join(_agents_dir, _agent_name, "AGENT.md")
                     os.makedirs(os.path.dirname(_dst), exist_ok=True)
                     shutil.copy2(_src, _dst)
+                    # 生成物侧接线（CLAUDE.md §23）：注册成功时预置运行时治理入口 sidecar
+                    _write_runtime_governance_sidecar(_dst)
                     _reg_count += 1
                 elif _f == "SKILL.md":
                     _skill_name = os.path.basename(_root)

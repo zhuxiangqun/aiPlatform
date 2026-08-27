@@ -669,7 +669,7 @@ git diff --stat HEAD | grep "+" | grep -E "new file|create mode" | wc -l
 
 **守卫**：`architecture_guard.sh §97`（`scripts/check_generated_artifact_wiring.py`）——**每个平台能力族**（governance 模块 + apps/* + builder + kb，当前 17 个）必须有 CAPABILITIES 条目且含"生成物"标注，违反即阻断（CI 强制）。
 
-**现状**（2026-08-27 标注）：生成物适用——builder（制造者/已接线）、apps/eval（runs_eval 已接线）、governance experience_feedback/daemon_jobs/agent_messages（待接线）、kb（待评估）；生成物不适用——governance eval_observability/audit/quota/rate_limit、apps/fde/learning/misc/ontology_editor/prompt/value/workbench（平台内部能力）。
+**现状**（2026-08-27 标注）：生成物适用——builder（制造者/已接线）、apps/eval（runs_eval 已接线）、governance experience_feedback（**已接线**：conformance 拒绝自动登记 + runtime_governance.md sidecar）、daemon_jobs/agent_messages（待接线——sidecar 已预置入口）、kb（待评估）；生成物不适用——governance eval_observability/audit/quota/rate_limit、apps/fde/learning/misc/ontology_editor/prompt/value/workbench（平台内部能力）。
 
 **验证命令**：
 ```bash

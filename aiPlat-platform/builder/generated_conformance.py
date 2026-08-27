@@ -189,7 +189,12 @@ def _rejections_path() -> str:
 
 
 def record_rejection(project_id: str, kind: str, path: str, violations: List[str]) -> None:
-    """记录一次生成物拒绝（append 审计 JSONL），best-effort 不抛异常。"""
+    """记录一次生成物拒绝（append 审计 JSONL）+ L2 经验回写（生成物侧接线，2026-08-27）。
+
+    best-effort 不抛异常：审计/经验登记失败不影响主流程。
+    生成物 conformance 拒绝 = 生成失败经验（机器判定，confidence=1.0）→ experience_feedback
+    登记（CLAUDE.md §23 生成物适用：待接线 → 已接线）。
+    """
     import json as _json
     import time as _t
     try:
@@ -203,6 +208,23 @@ def record_rejection(project_id: str, kind: str, path: str, violations: List[str
             }, ensure_ascii=False) + "\n")
     except Exception:
         pass  # noqa: cleanup-best-effort — 审计失败不影响主流程
+    # ── L2 经验回写：生成失败登记为待验证经验（生成物侧接线） ──
+    try:
+        import importlib.util as _iu
+        import sys as _sys
+        _spec = _iu.spec_from_file_location(
+            "experience_feedback",
+            str(Path(__file__).resolve().parents[1] / "governance/experience_feedback/experience_feedback.py"))
+        _mod = _iu.module_from_spec(_spec)
+        # dataclass 装饰器需要模块已注册进 sys.modules（Experience 含 @dataclass）
+        _sys.modules["experience_feedback"] = _mod
+        _spec.loader.exec_module(_mod)
+        _mod.register_failure(
+            f"generated-conformance-reject-{kind}",
+            f"生成物 {kind} 契约校验拒绝：{path}（{len(violations)} 项违规：{'; '.join(violations[:3])}）",
+            source="generated_conformance", confidence=1.0, risk="low")
+    except Exception:
+        pass  # noqa: cleanup-best-effort — 经验登记失败不影响主流程
 
 
 def aggregate_rejections(limit: int = 10) -> Dict[str, Any]:
