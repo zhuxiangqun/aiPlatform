@@ -174,6 +174,33 @@ python3 scripts/verify_claude_md_evidence.py --strict      # 回归：默认行�
 - ITBench-AA / otel-demo / readiness_probe：真实（IBM K8s 沙箱基准）；
 - "45 分钟→10 分钟" AWS DevOps Agent 案例：无直接来源，**待核实**，不得写入正式结论。
 
+### 5.5.5 落地状态（2026-08-27 已实施）
+
+| 项 | 实现 | 状态 |
+|:---|:---|:---|
+| 证据树 schema | `verify_claude_md_evidence.py --tree`（branches/sub_branches/evidence/route_reason/known_gaps） | ✅ 已合入（PR #164） |
+| L2 回写链路本体 | `aiPlat-platform/governance/experience_feedback/`（register_failure / record_verification / confirm_promotion 状态机） | ✅ 已合入 |
+| 守卫失败自动登记 | `architecture_guard.sh` FAIL 分支自动 `--register architecture-guard-fail`（gotchas 登记；验证/升级由后续运行或人工触发） | ✅ 已合入 |
+| 兜底门槛① | `MIN_CONFIDENCE=0.7` 以下拒收（只提示不登记） | ✅ 实现内建 |
+| 兜底门槛② | `risk=high` 升级需 `confirm_promotion` 人工确认（`promoted:review` 态） | ✅ 实现内建 |
+| 原则 14 门槛 | 连续 2 次独立验证成功才升级；同 case 重复不计数；连续 2 次失败判 rejected | ✅ 实现内建 |
+
+状态机（10 项 pytest 全过 + CLI 冒烟）：
+
+```text
+register_failure(confidence≥0.7) → pending
+  ├─ record_verification(success) ×2（独立 case）→ promoted（low 自动 / high 需人工确认）
+  └─ record_verification(fail) ×2 → rejected（经验无效）
+```
+
+存储：JSON（`AIPLAT_EXPERIENCE_FILE` 配置，默认 `$AIPLAT_HOME/experience_feedback.json`）。
+验证命令：
+
+```bash
+pytest aiPlat-platform/tests/test_experience_feedback.py -q          # 10 passed
+python3 aiPlat-platform/governance/experience_feedback/experience_feedback.py --status
+```
+
 ## 6. 结论
 
 从"尺子"到"探针"：AI 工程化正在把提示词工程升级为工作流工程、把模型评测升级为系统审计。若 SBA 的军规是写给 Agent 的《罗伯特议事规则》，HarnessEval 就是写给人类的《证据法与审计准则》——让 AI 系统在复杂真实环境中**既能可靠行动，又能被清晰问责**。
