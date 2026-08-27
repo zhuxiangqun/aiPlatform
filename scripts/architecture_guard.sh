@@ -107,6 +107,15 @@ wait $PID_RULE || FAIL_RULE=1
 [ "$FAIL_UNDEF" -ne 0 ] && FAIL=1
 [ "$FAIL_RULE" -ne 0 ] && FAIL=1
 
+# ── §0.4b: 证据树落盘（HarnessEval Evidence Tree 借鉴——层级化证据 + known_gaps） ──
+# 由 AIPLAT_EVIDENCE_TREE_OUT 环境变量启用；默认关闭，不影响现有门禁行为。
+# 产物：{case_id, verdict, branches→sub_branches→evidence(route_reason), known_gaps}
+if [ -n "${AIPLAT_EVIDENCE_TREE_OUT:-}" ]; then
+    mkdir -p "$(dirname "$AIPLAT_EVIDENCE_TREE_OUT")" 2>/dev/null || true
+    python3 scripts/verify_claude_md_evidence.py --tree --out "$AIPLAT_EVIDENCE_TREE_OUT" >/dev/null 2>&1 || true
+    echo "  → evidence tree: $AIPLAT_EVIDENCE_TREE_OUT"
+fi
+
 # ══════════════════════════════════════════════════════════════
 # Phase 2 — parallel secondary checks (CI: run this separately)
 # Full guard mode runs Phase 1 only; Phase 2 runs as CI job.
