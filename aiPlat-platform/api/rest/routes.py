@@ -7348,3 +7348,42 @@ async def governance_job_kill(job_id: str):
     return DaemonJobStore().kill(job_id)
 
 
+# ── agent 消息总线（prime-agent agent_message.send 借鉴）：运行中 agent/任务点对点互发 ──
+
+@app.get("/governance/agents")
+async def governance_agents_list():
+    """在线 agent/任务列表（pid 存活刷新心跳）。"""
+    from governance.agent_messages import AgentMessageStore
+    return {"agents": AgentMessageStore().list_agents()}
+
+
+@app.post("/governance/agents/{agent_id}/register")
+async def governance_agent_register(agent_id: str, payload: dict = Body(default={})):
+    """agent 上线注册：{pid?, kind?}。"""
+    from governance.agent_messages import AgentMessageStore
+    return AgentMessageStore().register(agent_id, meta=payload)
+
+
+@app.post("/governance/agents/{agent_id}/unregister")
+async def governance_agent_unregister(agent_id: str):
+    """agent 下线。"""
+    from governance.agent_messages import AgentMessageStore
+    return AgentMessageStore().unregister(agent_id)
+
+
+@app.post("/governance/agents/messages")
+async def governance_agent_send(payload: dict = Body(...)):
+    """agent 点对点发消息：{from, to, message}——不经用户中转。"""
+    from governance.agent_messages import AgentMessageStore
+    return AgentMessageStore().send(
+        str(payload.get("from", "")), str(payload.get("to", "")),
+        str(payload.get("message", "")))
+
+
+@app.get("/governance/agents/{agent_id}/messages")
+async def governance_agent_inbox(agent_id: str, unread: bool = False, mark_read: bool = False):
+    """查收件箱（可选只看未读 / 标记已读）。"""
+    from governance.agent_messages import AgentMessageStore
+    return AgentMessageStore().inbox(agent_id, unread_only=unread, mark_read=mark_read)
+
+

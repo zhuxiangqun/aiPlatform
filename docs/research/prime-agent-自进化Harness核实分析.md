@@ -74,7 +74,7 @@ IPython 内 bash 是字符串命令、文件编辑是代码生成——prompt �
 ## 5. 借鉴建议（按优先级）
 
 1. **daemon 断线续跑**（P1）：长任务（pipeline、多轮实施）后台进程托管 + reattach + 心跳/持久目标——补齐长周期任务最后一块拼图；**✅ 已落地（2026-08-27）**：`governance/daemon_jobs.py`（DaemonJobStore：start 新会话组 / status ps-stat 僵尸判定+退出码标记 / attach 输出尾部 / kill 会话组）+ 端点 `/governance/jobs*`（契约第 27 条）+ CLI（--start/--status/--attach/--kill）；
-2. **agent 消息总线**（P2）：agent_message.send 式运行中 agent 直连互发（我们现有 subagent 结果回传，但无运行时互发）；
+2. **agent 消息总线**（P2）：agent_message.send 式运行中 agent 直连互发（我们现有 subagent 结果回传，但无运行时互发）；**✅ 已落地（2026-08-27）**：`governance/agent_messages.py`（AgentMessageStore：register 心跳 / send 点对点 / inbox pending/read / list_agents 在线判定）+ 端点 `/governance/agents*`（契约第 28 条）+ CLI；
 3. **prompt-as-a-variable 的数据走变量**（P3）：大文件读取/工具输出落持久存储，对话只放引用——与 ContextBus 结合。
 
 ## 6. 结论
