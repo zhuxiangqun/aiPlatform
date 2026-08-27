@@ -871,7 +871,7 @@ scan_hash: 8f9548ec24f4
 | 智能澄清对话 | apps/fde/api/fde.py` + `frontend/src/pages/Diagnostics/FdeDashboard.tsx | ✅ | POST /fde/assess/dialog(多轮状态机)→_compute_readiness gaps驱动追问→就绪度≥60自动触发诊断+前端Dialog | 已合入 |
 | 多子系统上下文 | harness/knowledge/context_bus.py:345-405 | ✅ | assemble_agent/skill/pipeline_context()→Agent(3层)/Skill(2层)/Pipeline(3层)各自轻量注入→总线覆盖全系统 | 已合入 |
 | Agent领域上下文 | harness/knowledge/context_bus.py:408-452 | ✅ | SESSION_START hook→所有Agent启动时自动注入术语字典+数字员工→领域知识全局可用 | 已合入 |
-| 质量总线 | platform/apps/fde/api/fde_quality_summary.py:15 | ✅ | GET /fde/quality-summary — 跨子系统质量聚合(FDE/SECI/Convergence/ContextBus四维评分)→统一0-100评分 | 已合入 |
+| 质量总线 | platform/apps/fde/api/fde_quality_summary.py:15 | ✅ | GET /fde/quality-summary — 跨子系统质量聚合(FDE/SECI/Convergence/ContextBus四维评分)→统一0-100评分；生成物适用：不适用（理由：平台横切质量聚合，生成应用质量评测闭环由 apps/eval runs_eval 已接线强制执行——直接评测 builder 生成项目 project_id） | 已合入 |
 | FDE趋势分析 | platform/apps/fde/api/fde.py:2431-2550 | ✅ | GET /fde/trends — 时间序列统计(会话数/交付率/就绪度趋势)+术语增长曲线+行业分布(T) | 已合入 |
 | FDE统一搜索 | platform/apps/fde/api/fde.py:2578-2710 | ✅ | GET /fde/search?q=&scope= — 跨实体全文检索(会话/行动/术语/证据/行业)合并排序(U) | 已合入 |
 | FDE质量评分 | platform/apps/fde/api/fde.py:2717-2820 | ✅ | GET /fde/sessions/{id}/quality — 四维加权评分(证据覆盖率+行动完成率+术语覆盖率+状态变迁)0-100(V) | 已合入 |
