@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os  # P1-18 修复：deploy_to_app 原文件依赖模块级 import os，拆分后 Mixin 文件需自带
 import time  # noqa: F401 — deploy_to_app/get_health_report 方法体使用（P1-14 拆分遗留）
+from typing import Any, Dict  # P1-18 补充：签名注解 Dict/Any 需模块级导入（拆分遗留）
 
 
 
