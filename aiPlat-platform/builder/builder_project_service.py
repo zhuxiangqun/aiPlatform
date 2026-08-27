@@ -2107,6 +2107,13 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         from builder.app_runtime import stop
         return stop(project_id)
 
+    async def runtime_real_tests(self, project_id: str, install_deps: bool = True) -> Dict[str, Any]:
+        """测试经理真实测试：递归发现生成物测试用例 → pytest 执行 → test_report（含 bug_summary）。"""
+        from builder.app_runtime import real_tests
+        proj = self._projects.get(project_id, {})
+        deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
+        return real_tests(project_id, deploy_dir=deploy_dir or None, install_deps=install_deps)
+
     async def runtime_smoke(self, project_id: str, keep_alive: bool = False) -> Dict[str, Any]:
         """生成 app 冒烟测试（启动 + 健康探测 + 报告）。"""
         from builder.app_runtime import smoke_test
@@ -2133,28 +2140,22 @@ def _stage_status_for_graph(stage, graph_trace: List[Dict], idx: int, current_id
 
 
 def _run_tests_for_project(project_id: str, deploy_dir: str) -> dict:
-    import subprocess, os
+    import os
     results: dict = {"all_passed": False, "e2e_smoke": None, "repo_tests": None}
-    if deploy_dir and os.path.isdir(deploy_dir):
-        test_dir = os.path.join(deploy_dir, "tests")
-        if not os.path.isdir(test_dir):
-            test_dir = os.path.join(deploy_dir, "test")
-        if os.path.isdir(test_dir):
-            try:
-                import sys as _sys
-                r = subprocess.run([_sys.executable, "-m", "pytest", test_dir, "-q"], capture_output=True, text=True, timeout=60)
-                results["repo_tests"] = {"passed": r.returncode == 0, "output": r.stdout[:2000]}
-                results["all_passed"] = r.returncode == 0
-            except Exception as e:
-                results["repo_tests"] = {"passed": False, "error": str(e)}
-    # 2026-08-27 升级：真实 e2e 冒烟（detect → daemon_jobs 启动 → HTTP 健康探测），
-    # 替换原"deploy_directory_exists"假通过（生成物侧接线，daemon_jobs 生成物适用 已接线）。
-    from builder.app_runtime import smoke_test
-    smoke = smoke_test(project_id, keep_alive=False)
-    results["e2e_smoke"] = smoke.get("e2e_smoke") or {"passed": False, "reason": smoke.get("reason")}
-    results["smoke"] = smoke
-    if results["repo_tests"] and results["repo_tests"].get("passed"):
-        results["all_passed"] = bool(results["e2e_smoke"].get("passed"))
+    # 2026-08-27 升级：测试经理真实测试——递归发现生成物测试用例（backend/tests/ 等），
+    # 可写临时目录跑 pytest → test_report（含 bug_summary）；替换原"仅根目录 tests/"浅扫描。
+    from builder.app_runtime import real_tests
+    rt = real_tests(project_id, deploy_dir=deploy_dir or None)
+    if rt.get("detected"):
+        results["repo_tests"] = {"passed": rt.get("test_passed", False),
+                                 "output": (rt.get("test_report") or {}).get("meta", {}).get("summary", ""),
+                                 "report": rt.get("test_report")}
+        results["all_passed"] = bool(rt.get("test_passed"))
+    # 真实 e2e 冒烟（detect → daemon_jobs 启动 → HTTP 健康探测）
+    results["e2e_smoke"] = rt.get("e2e_smoke") or {"passed": False, "reason": rt.get("reason")}
+    results["real_tests"] = rt
+    if results["all_passed"] and results["e2e_smoke"].get("passed"):
+        results["all_passed"] = True
     else:
         results["all_passed"] = False
     return results
