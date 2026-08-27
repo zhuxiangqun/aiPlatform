@@ -99,3 +99,20 @@ def test_smoke_test_keep_alive_then_stop(env):
     # 停止后不再服务（端口关闭）
     h2 = health_check("smoke2", timeout_sec=5, interval_sec=0.3)
     assert h2["healthy"] is False
+
+
+def test_smoke_failure_registers_experience(env):
+    """冒烟失败 → experience_feedback 登记（生成物失败经验回写，与 conformance 拒绝同源）。"""
+    from builder.app_runtime import smoke_test
+    # Flask 入口但启动即崩溃 → detect 成功、launch 后健康探测失败 → 经验登记
+    _write_app(env, "smokefail", {
+        "app.py": "from flask import Flask\napp = Flask(__name__)\nraise SystemExit(1)\n",
+    })
+    r = smoke_test("smokefail", keep_alive=False, timeout_sec=8)
+    assert r["smoke_passed"] is False
+    # 经验登记到 ExperienceStore（default 存储在 AIPLAT_HOME 下）
+    from governance.experience_feedback.experience_feedback import ExperienceStore
+    st = ExperienceStore()
+    status = st.status()
+    rules = [j.get("rule_id", "") for j in status if isinstance(j, dict)]
+    assert any("generated-smoke-" in rl for rl in rules), f"未登记冒烟失败经验: {rules}"
