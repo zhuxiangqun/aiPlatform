@@ -78,6 +78,28 @@ def _write_runtime_governance_sidecar(agent_md_path: str) -> None:
     except Exception:
         pass  # noqa: cleanup-best-effort — sidecar 生成失败不影响注册主流程
 
+
+def _register_generated_agent_to_bus(agent_name: str) -> None:
+    """生成物侧接线（CLAUDE.md §23）：注册成功时把生成 agent 上线消息总线。
+
+    生成 agent 部署即获得总线身份（kind=generated-agent），运行时多 agent 协作
+    可经 agent_messages 点对点互发（生成物适用：待接线 → 已接线，2026-08-27）。
+    best-effort 不抛异常：总线注册失败不影响注册主流程。
+    """
+    import importlib.util as _iu
+    import sys as _sys
+    try:
+        _spec = _iu.spec_from_file_location(
+            "agent_messages",
+            str(Path(__file__).resolve().parents[1] / "governance/agent_messages.py"))
+        _mod = _iu.module_from_spec(_spec)
+        _sys.modules["agent_messages"] = _mod
+        _spec.loader.exec_module(_mod)
+        _mod.AgentMessageStore().register(
+            agent_name, meta={"kind": "generated-agent"})
+    except Exception:
+        pass  # noqa: cleanup-best-effort — 总线注册失败不影响注册主流程
+
 _AIPLAT_PM_AGENT = os.getenv("AIPLAT_PM_AGENT", "pm_agent")
 
 _AIPLAT_CHAT_NOT_IN_DIALOGUE = os.getenv(
@@ -2281,6 +2303,8 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                     shutil.copy2(_src, _dst)
                     # 生成物侧接线（CLAUDE.md §23）：注册成功时预置运行时治理入口 sidecar
                     _write_runtime_governance_sidecar(_dst)
+                    # 生成物侧接线：生成 agent 部署即上线消息总线（多 agent 协作可互发）
+                    _register_generated_agent_to_bus(_agent_name)
                     _reg_count += 1
                 elif _f == "SKILL.md":
                     _skill_name = os.path.basename(_root)
