@@ -119,20 +119,16 @@ def test_smoke_failure_registers_experience(env):
 
 
 # ── 真实测试（测试经理模式：递归发现 → pytest 执行 → test_report）──
+# 注意：测试用例必须零第三方依赖（纯 Python + pytest），保证 CI 无网络/无 flask 也能跑通真实链路。
 def test_real_tests_pass(env):
     """生成物自带测试用例（backend/tests/）→ 递归发现 + pytest 执行通过。"""
     from builder.app_runtime import real_tests
     _write_app(env, "rt1", {
-        "backend/app.py": "from flask import Flask\napp = Flask(__name__)\n"
-                          "@app.route('/ping')\ndef ping():\n    return 'pong'\n",
-        "backend/requirements.txt": "flask\npytest\n",
+        "backend/app.py": "def add(a, b):\n    return a + b\n",
         "backend/tests/test_api.py":
             "import sys, os\nsys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))\n"
-            "from app import app\n\ndef test_ping():\n"
-            "    c = app.test_client()\n"
-            "    r = c.get('/ping')\n"
-            "    assert r.status_code == 200\n"
-            "    assert b'pong' in r.data\n",
+            "from app import add\n\ndef test_add():\n"
+            "    assert add(1, 2) == 3\n",
     })
     r = real_tests("rt1", deploy_dir=str(env / "home" / "apps" / "rt1" / "current"),
                    install_deps=False, timeout_sec=30)
@@ -148,15 +144,11 @@ def test_real_tests_failure_bug_summary(env):
     """测试用例断言失败 → test_report 含 bug_summary（failed_tests + suggested_fix）。"""
     from builder.app_runtime import real_tests
     _write_app(env, "rt2", {
-        "backend/app.py": "from flask import Flask\napp = Flask(__name__)\n"
-                          "@app.route('/ping')\ndef ping():\n    return 'pong'\n",
+        "backend/app.py": "def add(a, b):\n    return a - b\n",  # 实现错误：减法
         "backend/tests/test_api.py":
             "import sys, os\nsys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))\n"
-            "from app import app\n\ndef test_ping():\n"
-            "    c = app.test_client()\n"
-            "    r = c.get('/ping')\n"
-            "    assert r.status_code == 500  # 期望失败：真实业务断言\n"
-            "    assert b'pong' in r.data\n",
+            "from app import add\n\ndef test_add():\n"
+            "    assert add(2, 3) == 5  # 期望失败：真实业务断言\n",
     })
     r = real_tests("rt2", deploy_dir=str(env / "home" / "apps" / "rt2" / "current"),
                    install_deps=False, timeout_sec=30)
