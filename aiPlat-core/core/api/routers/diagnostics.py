@@ -149,15 +149,36 @@ def _load_check(module_name: str):
     return getattr(mod, actual_fn)
 
 def _get_or_build_graph():
-    """Return the shared code graph or build a new one if not available."""
+    """Return the shared code graph or build a new one if not available.
+
+    超时保护（2026-08-28）：代码图谱全量构建可能耗时数十秒（5 仓库 AST 解析），
+    诊断端点不应同步阻塞等待——超时（默认 15s）返回空图，诊断降级不挂起。
+    缓存命中时毫秒级返回，不受影响。
+    """
     global _SHARED_GRAPH
     nodes, edges, issues = _SHARED_GRAPH
     if nodes is not None and isinstance(nodes, dict) and len(nodes) > 0:
         return nodes, edges, issues
     from core.api.core_facade import repo_root, default_roots, build_graph
-    repo = repo_root()
-    abs_roots = [(repo / r).resolve() for r in default_roots()]
-    return build_graph(repo, abs_roots)  # noqa: build_graph_approved — canonical call site
+
+    _timeout = float(os.environ.get("AIPLAT_DIAG_GRAPH_BUILD_TIMEOUT", "15") or "15")
+    _result: list = [None, None, None]
+
+    def _build():
+        repo = repo_root()
+        abs_roots = [(repo / r).resolve() for r in default_roots()]
+        _result[0], _result[1], _result[2] = build_graph(repo, abs_roots)  # noqa: build_graph_approved
+
+    import threading as _th
+    t = _th.Thread(target=_build, daemon=True)
+    t.start()
+    t.join(timeout=_timeout)
+    if t.is_alive():
+        # 超时：返回空图，诊断降级（不阻塞端点；后台线程继续构建供下次命中）
+        logging.getLogger(__name__).warning(
+            "code_graph build exceeded %ss — diagnostics degraded (empty graph)", _timeout)
+        return {}, [], []
+    return _result[0] or {}, _result[1] or [], _result[2] or []
 
 
 # ── LLM review target selection ──

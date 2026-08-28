@@ -1533,8 +1533,9 @@ async def lifespan(app: FastAPI):
     # Cache warming: pre-build knowledge graphs on startup to avoid cold-start latency
     # ── Graph warmup disabled by default (saves ~100MB startup memory) ──
     # Both code_graph and capability_graph are lazily loaded on first API request.
-    # Enable with AIPLAT_WARM_GRAPHS=true if startup latency is critical.
-    if os.environ.get("AIPLAT_WARM_GRAPHS", "").lower() in ("true", "1", "yes"):
+    # 2026-08-28: 预热默认开启（AIPLAT_WARM_GRAPHS 默认 true）——避免冷启动首请求
+    # 触发同步全量构建（5 仓库可达数十秒）导致诊断端点 502；预热在后台线程完成。
+    if os.environ.get("AIPLAT_WARM_GRAPHS", "true").lower() in ("true", "1", "yes"):
         try:
             import asyncio as _aw
             def _warm_code_graph():
