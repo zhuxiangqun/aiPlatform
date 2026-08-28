@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1110
+total_capabilities: 1124
 
 total_capabilities: 1095
 last_updated: 2026-08-25
@@ -1458,6 +1458,7 @@ scan_hash: 8f9548ec24f4
 | MCP Runtime Wiring | apps/mcp/runtime.py | ✅ | MCP Server → ToolRegistry 运行时绑定 + PolicyGate | 已合入 |
 | MCP Client Manager | apps/mcp/client.py | ✅ | 多服务端客户端连接生命周期管理 | 已合入 |
 | MCP Production Policy | core/mcp/prod_policy.py | ✅ | 生产安全策略 (risk level, allowed tools) | 已合入 |
+| MCP 搜索 Server（aiplat-search） | workspace_seeds/mcps/search/mcp_server.py | ✅ | 搜索基础设施 MCP（AnySearch 借鉴 P1-1，2026-08-28）：JSON-RPC over stdio，三工具 search_web（结构化信源标注事实条目）/ search_routed（意图路由三通道分发）/ search_intent（意图判定）；server 启动自动物化到 ~/.aiplat/mcps/search（对齐 file_ops 等种子 MCP）；MCP_SEARCH_WEB_ENABLED=false 可关 web 通道（隐私场景） | 已合入 |
 
 ---
 
@@ -2037,10 +2038,10 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 69 | 0 | 69 |
+| Harness 执行引擎 | 69 | 1 | 70 |
 | 记忆子系统 | 41 | 0 | 41 |
-| 知识引擎（本体） | 150 | 0 | 150 |
-| RAG 检索 | 46 | 0 | 46 |
+| 知识引擎（本体） | 153 | 8 | 161 |
+| RAG 检索 | 47 | 0 | 47 |
 | 知识基础设施 | 29 | 0 | 29 |
 | Agent 系统 | 42 | 0 | 42 |
 | Skill 系统 | 54 | 0 | 54 |
@@ -2051,7 +2052,7 @@ scan_hash: 8f9548ec24f4
 | 扩展与学习 | 130 | 0 | 130 |
 | Gate 系统 | 19 | 0 | 19 |
 | 评估系统 | 18 | 0 | 18 |
-| MCP 协议 | 9 | 0 | 9 |
+| MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
 | 工具生态 | 22 | 0 | 22 |
@@ -2082,7 +2083,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1110** | **0** | **1110** |
+| **总计** | **1115** | **9** | **1124** |
 
 | **总计** | **1095** | **0** | **1095** |
 
