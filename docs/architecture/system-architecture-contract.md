@@ -139,7 +139,8 @@ core 层运行时数据库/状态文件路径**必须**经 `core.utils.paths.get
 | 时效窗口 | `check_model_health`（`aiPlat-core/core/diagnostics/checks/model_health.py`）：失败记录按 `last_failure_at` 距今 ≤7 天（`stale_days`）才计入 fail/warn；超期（历史残留，如旧模型集中失败后无新调用）忽略 |
 | 保守原则 | 有失败但 `last_failure_at` 缺失 → 无法确认时效，保守计入 fail（不放过疑似当前故障） |
 | 降级 | DB 表缺失/锁冲突 → warn 不崩溃；DB 路径经 `get_aiplat_home()` 解析 |
-| 验证 | 真实库（12 天前 6 模型历史失败）修复前 fail → 修复后 pass；当前健康模型（deepseek 系）不受影响 |
+| 图谱构建超时 | 诊断端点 `_get_or_build_graph`（`aiPlat-core/core/api/routers/diagnostics.py`）代码图谱全量构建为后台线程 + 超时降级：`AIPLAT_DIAG_GRAPH_BUILD_TIMEOUT` 默认 15s，超时返回空图（`{}, [], []`）不阻塞端点，后台线程继续构建供下次缓存命中；冷启动由 `server.py` 预热默认开启（`AIPLAT_WARM_GRAPHS` 默认 true）消除首个诊断请求的同步全量构建（5 仓库实测 68s） |
+| 验证 | 真实库（12 天前 6 模型历史失败）修复前 fail → 修复后 pass；当前健康模型（deepseek 系）不受影响；图谱超时单测（`test_diag_graph_timeout.py`）缓存命中毫秒返回 + 慢构建超时降级空图 |
 
 ### 5.2 应用工厂 P1 修复契约（MUST，2026-08-25）
 
