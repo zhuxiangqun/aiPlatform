@@ -948,6 +948,7 @@ scan_hash: 8f9548ec24f4
 | Wiki Structured Query | harness/knowledge/wiki_structured_query.py | ✅ | Wiki 结构化查询 | 已合入 |
 | Wiki Health Rules | harness/knowledge/wiki_health_rules.py | ✅ | Wiki 健康规则检查 | 已合入 |
 | Knowledge Quality | harness/knowledge/knowledge_quality.py | ✅ | 知识质量评分 | 已合入 |
+| Web 结果可信度评估（web_result_quality） | harness/knowledge/web_result_quality.py（assess_web_results/annotate_results）+ harness/syscalls/retrieval.py（sys_routed_retrieve web 通道注入 quality） | ✅ | Web 搜索结果可信度评估（AnySearch 借鉴 P1-2，2026-08-28）：信源域名权威度（官方/知名站 vs 低质站）+ 查询相关性（词重叠，对齐 CRAG quality gate）+ 多源一致性（source 多样性奖励）+ 条目置信度 → 单条 quality_score（0-1）与 avg_score；pass=use_results / fail=flag_for_human（结果污染风险人工复核）；sys_routed_retrieve 的 web 通道结果自动注入 quality 字段（可追溯 reason） | 已合入 |
 | Knowledge Growth | harness/knowledge/knowledge_growth.py | ✅ | 知识增长追踪 | 已合入 |
 | Knowledge Writeback | harness/knowledge/knowledge_writeback.py | ✅ | 知识写回 | 已合入 |
 | Knowledge Markings | harness/knowledge/knowledge_markings.py | ✅ | 知识标记与权限 | 已合入 |

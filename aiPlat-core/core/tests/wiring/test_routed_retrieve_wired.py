@@ -41,3 +41,12 @@ class TestRoutedRetrieveWired:
         assert routed is not None, "sys_routed_retrieve 未定义"
         calls = [n.func.id for n in ast.walk(routed) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)]
         assert "_route_intent" in calls, "_route_intent 未被 sys_routed_retrieve 调用"
+
+
+class TestWebResultQualityWired:
+
+    def test_assess_web_results_has_production_caller(self):
+        """assess_web_results 必须有非自身 production caller（sys_routed_retrieve）。"""
+        assert has_production_caller(
+            "assess_web_results", "web_result_quality.py"
+        ), "assess_web_results() has 0 production callers"
