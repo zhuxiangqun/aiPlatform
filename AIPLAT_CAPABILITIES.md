@@ -910,6 +910,7 @@ scan_hash: 8f9548ec24f4
 | recon_subgraph | harness/knowledge/recon_subgraph.py | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 统一知识检索 | harness/syscalls/retrieval.py:569 | ✅ | 并行 Wiki + KB，RRF 三路融合 | 已合入 |
+| 意图路由统一检索（sys_routed_retrieve） | harness/syscalls/retrieval.py（sys_routed_retrieve/_route_intent）+ apps/tools/routed_retrieve.py（RoutedRetrieveTool）+ server.py 工具注册 | ✅ | 查询理解驱动路由（AnySearch 借鉴 P0-2，2026-08-28）：轻量意图判定（code/knowledge/web 三通道，T1 关键词无 LLM）→ 路由到匹配通道（代码搜索/知识 RRF/Web 结构化）→ 统一事实条目 + 信源标注；通道不可用降级（code→knowledge→web），web 可关（include_web=False 隐私场景）；RoutedRetrieveTool 供 Agent 经 sys_tool_call 调用 | 已合入 |
 | KB 文档检索 | harness/syscalls/retrieval.py:40 | ✅ | hybrid: LIKE + FTS5 + FAISS 向量 | 已合入 |
 | Wiki 页面检索 | harness/syscalls/retrieval.py:467 | ✅ | FTS5 + embedding + 链接遍历 + 本体过滤 | 已合入 |
 | RRF 三路融合 | harness/knowledge/hybrid_retriever.py:53 | ✅ | Wiki+KB+Graph 统一 1/(k+rank) 融合 | 已合入 |

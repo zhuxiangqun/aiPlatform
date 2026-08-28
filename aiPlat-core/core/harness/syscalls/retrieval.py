@@ -1870,3 +1870,113 @@ def _normalize_scores(
             r["normalized_score"] = r.get("score", 0.0)
 
 
+
+# ════════════════════════════════════════════════════════════════
+# 意图路由统一检索（AnySearch 借鉴 P0-2，2026-08-28）
+# 查询理解驱动：先判定查询意图（代码/知识/通用事实），路由到匹配通道，
+# 避免全域盲搜（对齐"查询理解驱动智能路由"理念）。
+# ════════════════════════════════════════════════════════════════
+
+# 代码意图特征（关键词子串匹配，轻量 T1；不涉及业务域语义）
+_CODE_INTENT_HINTS = (
+    "python", "javascript", "typescript", "java", "golang", "rust",
+    "函数", "类", "模块", "报错", "异常", "bug", "api", "sdk",
+    "代码", "实现", "算法", "重构", "依赖", "库",
+)
+
+# 知识库意图特征（内部文档/专业术语倾向）
+_KB_INTENT_HINTS = (
+    "手册", "文档", "wiki", "规范", "标准", "流程", "制度",
+    "指南", "说明", "操作", "配置", "术语", "域",
+)
+
+
+def _route_intent(query: str) -> str:
+    """轻量意图判定：返回 code / knowledge / web（T1 关键词，无 LLM 依赖）。
+
+    判定优先级：代码特征 > 知识库特征 > 通用 web。
+    避免对业务域语义做推断（仅检索通道选择，不涉及业务概念）。
+    """
+    q = (query or "").lower()
+    code_hits = sum(1 for h in _CODE_INTENT_HINTS if h in q)
+    kb_hits = sum(1 for h in _KB_INTENT_HINTS if h in q)
+    if code_hits >= 1 and code_hits >= kb_hits:
+        return "code"
+    if kb_hits >= 2:
+        return "knowledge"
+    return "web"
+
+
+async def sys_routed_retrieve(query: str, *, top_k: int = 8, include_web: bool = True,
+                              tenant_id: str = "default", collection_id: str = "default",
+                              doc_ids: List[str] = None) -> Dict[str, Any]:
+    """意图路由统一检索：code/knowledge/web 三通道按查询意图分发。
+
+    返回 {route, results, sources}：
+      route    — 实际路由的通道（code/knowledge/web）
+      results  — 通道结果（统一为 {text, score, source} 事实条目形态）
+      sources  — 信源标注数组（source/url/text，对齐 web_search 结构化输出）
+
+    安全边界：
+      - 只读，不修改系统状态
+      - web 通道仅在 include_web=True 时启用（默认开，供 Agent 外部信息感知）
+      - 通道选择是"检索类型"判定，不推断业务域语义（§5.29 合规）
+    """
+    intent = _route_intent(query)
+    results: List[Dict[str, Any]] = []
+    sources: List[Dict[str, Any]] = []
+
+    if intent == "code":
+        try:
+            from core.harness.syscalls.code import sys_code_search
+            resp = await sys_code_search(query, max_results=top_k)
+            hits = (resp.get("results") or []) if isinstance(resp, dict) else (resp or [])
+            for h in hits:
+                if not isinstance(h, dict):
+                    continue
+                text = str(h.get("content") or h.get("text") or h.get("path") or "")
+                if not text:
+                    continue
+                results.append({"text": text[:800], "score": float(h.get("score", 0) or 0),
+                                "source": "code"})
+                sources.append({"source": "code", "url": str(h.get("path") or ""),
+                                "text": text[:300]})
+        except Exception:
+            intent = "knowledge"  # 代码检索不可用 → 降级知识通道
+
+    if intent == "knowledge":
+        try:
+            hits = sys_knowledge_retrieve(
+                query, doc_ids=doc_ids, tenant_id=tenant_id,
+                collection_id=collection_id, top_k=top_k)
+            for h in hits or []:
+                if not isinstance(h, dict):
+                    continue
+                text = str(h.get("text") or "")
+                if not text:
+                    continue
+                results.append({"text": text[:800], "score": float(h.get("score", 0) or 0),
+                                "source": "knowledge"})
+                sources.append({"source": "knowledge", "url": str(h.get("doc_id") or ""),
+                                "text": text[:300]})
+        except Exception:
+            intent = "web"  # 知识检索不可用 → 降级 web
+
+    if intent == "web" and include_web:
+        try:
+            from core.apps.tools.web.web_search import WebSearchTool
+            tool = WebSearchTool()
+            r = await tool.execute({"query": query, "limit": top_k, "structured": True})
+            for item in (r.get("results") or []):
+                if not isinstance(item, dict):
+                    continue
+                results.append({"text": str(item.get("evidence_snippet") or "")[:800],
+                                "score": float(item.get("confidence", 0) or 0),
+                                "source": item.get("source", "web")})
+                sources.append({"source": item.get("source", "web"),
+                                "url": str(item.get("source_url") or ""),
+                                "text": str(item.get("evidence_snippet") or "")[:300]})
+        except Exception:
+            pass  # noqa: cleanup-best-effort — web 不可用则返回空结果（不伪装命中）
+
+    return {"route": intent, "results": results[:top_k], "sources": sources[:top_k]}
