@@ -2031,6 +2031,7 @@ scan_hash: 8f9548ec24f4
 | Ontology REST API | api/routers/ontology_routes.py | ✅ | 统一知识本体查询API — POST /query、GET /impact/{urn}、GET /stats | 已合入 |
 | sys_ontology_context Syscall | harness/syscalls/ontology.py | ✅ | Agent ReActLoop中可调用的知识网络上下文查询 | 已合入 |
 | Ontology Health Check | diagnostics/checks/ontology_health.py | ✅ | 本体驱动健康检查 — 孤儿Skill/Tool/Agent检测、废弃模型检测、孤立Wiki检测 | 已合入 |
+| Model Health 诊断（model_health） | diagnostics/checks/model_health.py（check_model_health） | ✅ | 模型持久健康趋势（2026-08-28 时效窗口修复）：任一模型最近 7 天失败 ≥5 次且成功率 <50% → fail；成功率 <80% → warn；**仅历史失败（last_failure_at 超 7 天）→ 视为残留不计入**（修复历史失败永久拖累诊断——12 天前 ollama 集中失败曾致 1 项失败误报）；DB 路径经 get_aiplat_home 解析（AIPLAT_HOME 优先）；表缺失/锁冲突降级 warn 不崩溃 | 已合入 |
 
 ---
 

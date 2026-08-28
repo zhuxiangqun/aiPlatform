@@ -130,6 +130,17 @@ core 层运行时数据库/状态文件路径**必须**经 `core.utils.paths.get
 | 已修复 | `TripleStore`（`core/harness/ontology_engine/triple_store.py`）：`ontology_triples.sqlite3` 路径改经 `get_aiplat_home()`；其余存量硬编码（memory/file_store、knowledge_pipeline、management/* 等）为已知存量，逐步迁移 |
 | 验证 | 受限 HOME 启动 core server → `/api/core/diagnostics/*` 三端点 200 毫秒响应（修复前全超时） |
 
+### 5.1.3 诊断时效性契约（MUST，2026-08-28）
+
+诊断判定**必须反映当前状态**，历史残留不得永久拖累：
+
+| 契约 | 说明 |
+|------|------|
+| 时效窗口 | `check_model_health`（`aiPlat-core/core/diagnostics/checks/model_health.py`）：失败记录按 `last_failure_at` 距今 ≤7 天（`stale_days`）才计入 fail/warn；超期（历史残留，如旧模型集中失败后无新调用）忽略 |
+| 保守原则 | 有失败但 `last_failure_at` 缺失 → 无法确认时效，保守计入 fail（不放过疑似当前故障） |
+| 降级 | DB 表缺失/锁冲突 → warn 不崩溃；DB 路径经 `get_aiplat_home()` 解析 |
+| 验证 | 真实库（12 天前 6 模型历史失败）修复前 fail → 修复后 pass；当前健康模型（deepseek 系）不受影响 |
+
 ### 5.2 应用工厂 P1 修复契约（MUST，2026-08-25）
 
 同源审计（§7.5.4）的 14 项 P1 修复固化 + 生成物契约（SBA 借鉴）：
