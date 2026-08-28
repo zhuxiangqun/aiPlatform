@@ -1964,18 +1964,37 @@ async def sys_routed_retrieve(query: str, *, top_k: int = 8, include_web: bool =
 
     if intent == "web" and include_web:
         try:
-            from core.apps.tools.web.web_search import WebSearchTool
-            tool = WebSearchTool()
-            r = await tool.execute({"query": query, "limit": top_k, "structured": True})
-            for item in (r.get("results") or []):
-                if not isinstance(item, dict):
+            # 合规：harness 层不 import apps 层（§5.14 分层边界）。
+            # 直接 urllib 调 DuckDuckGo JSON Instant Answer（对齐 retrieval_crag._ddg_search 模式），
+            # 本地归一化为结构化事实条目（信源标注 + 多源去重）。
+            import urllib.parse as _urlparse
+            import urllib.request as _urlreq
+            import json as _json
+
+            _url = f"https://api.duckduckgo.com/?q={_urlparse.quote(query)}&format=json&no_html=1"
+            _req = _urlreq.Request(_url, headers={"User-Agent": "Mozilla/5.0"})
+            with _urlreq.urlopen(_req, timeout=15) as _resp:
+                _data = _json.loads(_resp.read().decode("utf-8", errors="ignore"))
+            _seen: set = set()
+            if _data.get("Abstract"):
+                _u = str(_data.get("AbstractURL") or "").strip()
+                if _u and _u not in _seen:
+                    _seen.add(_u)
+                    results.append({"text": str(_data.get("Abstract") or "")[:800],
+                                   "score": 0.7, "source": "ddg_abstract"})
+                    sources.append({"source": "ddg_abstract", "url": _u,
+                                   "text": str(_data.get("Abstract") or "")[:300]})
+            for _topic in _data.get("RelatedTopics", [])[:top_k]:
+                if not isinstance(_topic, dict) or not _topic.get("Text"):
                     continue
-                results.append({"text": str(item.get("evidence_snippet") or "")[:800],
-                                "score": float(item.get("confidence", 0) or 0),
-                                "source": item.get("source", "web")})
-                sources.append({"source": item.get("source", "web"),
-                                "url": str(item.get("source_url") or ""),
-                                "text": str(item.get("evidence_snippet") or "")[:300]})
+                _u = str(_topic.get("FirstURL") or "").strip()
+                if not _u or _u in _seen:
+                    continue
+                _seen.add(_u)
+                results.append({"text": str(_topic.get("Text") or "")[:800],
+                               "score": 0.5, "source": "ddg_related"})
+                sources.append({"source": "ddg_related", "url": _u,
+                               "text": str(_topic.get("Text") or "")[:300]})
         except Exception:
             pass  # noqa: cleanup-best-effort — web 不可用则返回空结果（不伪装命中）
 

@@ -46,22 +46,33 @@ def test_sys_routed_retrieve_code_channel(monkeypatch):
 
 
 def test_sys_routed_retrieve_web_channel(monkeypatch):
-    """通用意图 → 路由 web 通道，结构化信源标注。"""
+    """通用意图 → 路由 web 通道，结构化信源标注（urllib 直调 DDG，harness 层合规）。"""
+    import json as _json
     from core.harness.syscalls import retrieval as mod
 
-    class _FakeTool:
-        async def execute(self, args):
-            return {"success": True, "results": [
-                {"claim": "C", "source_title": "T", "source_url": "https://x.com",
-                 "evidence_snippet": "evidence", "source": "web", "confidence": 0.6},
-            ]}
-    monkeypatch.setattr("core.apps.tools.web.web_search.WebSearchTool", _FakeTool)
+    class _FakeResp:
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+        def read(self):
+            return _json.dumps({
+                "Heading": "News",
+                "AbstractURL": "https://x.com",
+                "Abstract": "今日新闻摘要",
+                "RelatedTopics": [],
+            }).encode("utf-8")
+
+    class _FakeUrlopen:
+        def __call__(self, req, timeout=15):
+            return _FakeResp()
+    monkeypatch.setattr("urllib.request.urlopen", _FakeUrlopen())
 
     import asyncio
     r = asyncio.run(mod.sys_routed_retrieve("今天新闻", top_k=5))
     assert r["route"] == "web"
     assert r["sources"][0]["url"] == "https://x.com"
-    assert r["sources"][0]["source"] == "web"
+    assert r["sources"][0]["source"] == "ddg_abstract"
 
 
 def test_sys_routed_retrieve_code_fallback(monkeypatch):
