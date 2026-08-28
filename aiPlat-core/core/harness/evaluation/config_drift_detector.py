@@ -220,11 +220,15 @@ class ConfigDriftDetector:
         if model and model not in ("auto", "best"):
             model_available = False
             try:
-                from infra.management.model.manager import ModelManager
-                mgr = ModelManager()
-                candidates = mgr.select_by_purpose_list("chat")
+                # 复用已解析的候选列表（模块级缓存），避免每个 agent 新建 ModelManager
+                # 触发 Ollama 本地扫描（实测单次实例化可达 4.7s，26 个 agent 循环 → 数十秒阻塞）
+                _candidates = getattr(self, '_cached_chat_candidates', None)
+                if _candidates is None:
+                    from infra.management.model.manager import ModelManager
+                    _candidates = ModelManager().select_by_purpose_list("chat") or []
+                    self._cached_chat_candidates = _candidates
                 # Check if model exists in candidate list or matches any registered model
-                for c in candidates:
+                for c in _candidates:
                     if c == model or model in c:
                         model_available = True
                         break
