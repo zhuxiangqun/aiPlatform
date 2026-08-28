@@ -1104,6 +1104,8 @@ async def lifespan(app: FastAPI):
         ("core.apps.tools.web.web_search", "WebSearchTool", {}),
         ("core.apps.tools.web.web_crawl", "WebCrawlTool", {}),
         ("core.apps.tools.web.web_crawl", "WebMapTool", {}),
+        # P0-2: 意图路由统一检索（AnySearch 借鉴，2026-08-28）
+        ("core.apps.tools.routed_retrieve", "RoutedRetrieveTool", {}),
     ]
     for module_path, cls_name, kwargs in _tool_modules:
         try:
