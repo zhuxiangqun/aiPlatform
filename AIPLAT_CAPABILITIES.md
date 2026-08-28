@@ -1989,7 +1989,7 @@ scan_hash: 8f9548ec24f4
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 |------|------|:---:|------|------|
-| WebSearchTool | apps/tools/web/web_search.py | ✅ | 统一搜索: DuckDuckGo HTML/JSON/浏览器三后端可选 | 已合入 |
+| WebSearchTool | apps/tools/web/web_search.py | ✅ | 统一搜索: DuckDuckGo HTML/JSON/浏览器三后端可选；**结构化模式（structured=true，2026-08-28，AnySearch 借鉴）**：返回信源标注事实条目（claim/source_title/source_url/evidence_snippet/confidence），url 去重 + 多后端交叉融合（JSON Instant Answer 命中提升置信度，弱交叉验证），面向 Agent 机器推理交付（剔除广告/HTML 噪声，机器可直接消费）；默认保持向后兼容 | 已合入 |
 | WebCrawlTool | apps/tools/web/web_crawl.py | ✅ | BFS全站抓取, 同源过滤, 深度限制 (对齐Firecrawl Crawl) | 已合入 |
 | WebMapTool | apps/tools/web/web_crawl.py | ✅ | URL发现+标题提取 (对齐Firecrawl Map) | 已合入 |
 | extract_text_from_html | harness/document/parsers.py | ✅ | HTML→纯文本统一入口, 替代4处重复实现 | 已合入 |
