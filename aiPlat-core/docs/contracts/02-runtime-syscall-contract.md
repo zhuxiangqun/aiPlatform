@@ -22,6 +22,10 @@
 - `sys_tool_call`
 - `sys_skill_call`
 
+检索类 syscall（非三通道，只读、不触发模型/工具执行）：
+- `sys_kb_retrieve` / `sys_wiki_retrieve` / `sys_knowledge_retrieve`（内部知识检索）
+- `sys_routed_retrieve`（意图路由统一检索，2026-08-28：code/knowledge/web 三通道按 `_route_intent` 分发；web 通道 urllib 直调 DuckDuckGo，**不 import apps 层**；通道不可用降级；返回结构化事实条目 + 信源标注）
+
 约束：
 - syscall **MUST NOT** 因“可选能力失败”导致主循环崩溃（best-effort + 降级）
 - syscall **MUST** 产生可观测事件（至少：开始/结束、耗时、错误码、关键统计）
