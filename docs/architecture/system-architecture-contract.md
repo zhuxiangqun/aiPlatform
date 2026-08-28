@@ -155,6 +155,17 @@ core 层运行时数据库/状态文件路径**必须**经 `core.utils.paths.get
 | 违反后果 | 注入 FDE 诊断语义会误导 LLM 跳过 skill SOP，产出污染 + 空壳产物（实测 2026-08-28：视频解析平台 PRD 混入「诊断自优化 (250条历史)」且 description/acceptance_criteria 全空） |
 | 验证 | `test_pipeline_context_clean.py`：流水线上下文为空 + FDE 层不在其中 |
 
+### 5.1.5 Syscall 事件存储契约（MUST，2026-08-28）
+
+LLM syscall 事件记录（`add_syscall_event`）**必须**写入 `execution_store`（`syscall_mixin` 提供），禁止使用 `get_tenant_store()`：
+
+| 契约 | 说明 |
+|------|------|
+| 存储归属 | `sys_llm_generate` 的 syscall 事件（trace/cost/usage）写入 `runtime.execution_store`（含 `add_syscall_event`）——与 llm.py 其他 6 处调用点一致 |
+| 禁止 | 平台 `TenantStore`（`aiPlat-platform/tenants/tenant_store.py`）仅承载租户配额/策略/用量，**不得**承担 syscall 事件记录；`get_tenant_store()` 不得作为 LLM syscall 事件的 store |
+| 违反后果 | platform 注入 tenant store 后每次 LLM 调用抛 `AttributeError: 'TenantStore' object has no attribute 'add_syscall_event'` → chat 端点超时 → 前端「发送失败，请重试」（实测 2026-08-28） |
+| 验证 | `test_llm_syscall_store.py`：llm.py store 获取走 execution_store + TenantStore 无 add_syscall_event |
+
 ### 5.2 应用工厂 P1 修复契约（MUST，2026-08-25）
 
 同源审计（§7.5.4）的 14 项 P1 修复固化 + 生成物契约（SBA 借鉴）：

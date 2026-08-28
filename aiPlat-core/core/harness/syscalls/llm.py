@@ -45,7 +45,6 @@ import time
 
 
 from core.harness.infrastructure.gates import TraceGate, ContextGate, ResilienceGate
-from core.services.tenant_store_protocol import get_tenant_store  # P0-A3: usage ledger via injected store
 
 from core.harness.kernel.runtime import get_kernel_runtime
 
@@ -2327,7 +2326,11 @@ async def sys_llm_generate(
 
         runtime = get_kernel_runtime()
 
-        store = get_tenant_store() or (getattr(runtime, "execution_store", None) if runtime else None)
+        # 2026-08-28 修复：syscall 事件记录（add_syscall_event）属于 execution_store，
+        # 不能用 get_tenant_store()（平台 TenantStore 仅租户配额/策略，无该方法）——
+        # 修复前 platform 注入 tenant store 后每次 LLM 调用抛 AttributeError，
+        # chat 端点超时 → 前端「发送失败，请重试」。与其他 5 处调用点一致。
+        store = getattr(runtime, "execution_store", None) if runtime else None
 
         if store is not None:
 
