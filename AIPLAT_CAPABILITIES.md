@@ -870,7 +870,7 @@ scan_hash: 8f9548ec24f4
 | Memory压缩健康 | compression.py:120-123` + `system_diagnostician.py:747-761 | ✅ | compression_stats属性暴露→compression_ineffective规则→压缩比<30%告警+agent↔compress关联(C) | 已合入 |
 | 技能生命周期管理 | harness/knowledge/skill_curator.py` + `harness/artifacts/registry.py` + `api/routers/system.py | ✅ | Hermes Agent式Curator→每7天审查(30d stale/90d archive/重叠合并)→GET /system/curate-skills | 已合入 |
 | 智能澄清对话 | apps/fde/api/fde.py` + `frontend/src/pages/Diagnostics/FdeDashboard.tsx | ✅ | POST /fde/assess/dialog(多轮状态机)→_compute_readiness gaps驱动追问→就绪度≥60自动触发诊断+前端Dialog | 已合入 |
-| 多子系统上下文 | harness/knowledge/context_bus.py:345-405 | ✅ | assemble_agent/skill/pipeline_context()→Agent(3层)/Skill(2层)/Pipeline(3层)各自轻量注入→总线覆盖全系统 | 已合入 |
+| 多子系统上下文 | harness/knowledge/context_bus.py:345-405 | ✅ | assemble_agent/skill/pipeline_context()→Agent(3层)/Skill(2层)各自轻量注入，Pipeline 上下文纯净为空（2026-08-28 修复：移除 FDE 诊断注入——诊断自优化/业务语义字典/FDE 交付跟踪引用 §1/§6/§7/§4.6 报告章节，注入产品流水线会污染 PRD/架构/代码产物，实测视频解析平台 PRD 混入「诊断自优化 (250条历史)」并产出空壳字段；领域上下文由 DomainRouter 域 prompt 承担）→总线覆盖全系统 | 已合入 |
 | Agent领域上下文 | harness/knowledge/context_bus.py:408-452 | ✅ | SESSION_START hook→所有Agent启动时自动注入术语字典+数字员工→领域知识全局可用 | 已合入 |
 | 质量总线 | platform/apps/fde/api/fde_quality_summary.py:15 | ✅ | GET /fde/quality-summary — 跨子系统质量聚合(FDE/SECI/Convergence/ContextBus四维评分)→统一0-100评分；生成物适用：不适用（理由：平台横切质量聚合，生成应用质量评测闭环由 apps/eval runs_eval 已接线强制执行——直接评测 builder 生成项目 project_id） | 已合入 |
 | FDE趋势分析 | platform/apps/fde/api/fde.py:2431-2550 | ✅ | GET /fde/trends — 时间序列统计(会话数/交付率/就绪度趋势)+术语增长曲线+行业分布(T) | 已合入 |
