@@ -107,6 +107,18 @@ platform 在调用下游服务时 **MUST** 注入/透传：
 
 回归测试：`aiPlat-core/core/tests/unit/test_pipeline_engine_p0_fixes.py`（P0-3/P0-4，6 项）+ `aiPlat-platform/tests/test_builder_p0_fixes.py`（P0-1/P0-2/P0-5，12 项）。
 
+### 5.1.1 意图路由统一检索契约（MUST，2026-08-28）
+
+`sys_routed_retrieve`（`aiPlat-core/core/harness/syscalls/retrieval.py`）是检索类 syscall（**非** LLM/tool/skill 三通道）：
+
+| 契约 | 说明 |
+|------|------|
+| 通道路由 | `_route_intent` 按查询意图判定 code/knowledge/web 三通道（T1 关键词，无 LLM），避免全域盲搜 |
+| harness 单向依赖 | web 通道 **禁止** import apps 层（§5.14），以 urllib 直调 DuckDuckGo JSON 实现 |
+| 降级语义 | 通道不可用降级（code→knowledge→web），web 可关（`include_web=False` 隐私场景）；失败返回空结果不伪装命中 |
+| 结构化交付 | 返回 `{route, results, sources}`：`results` 统一 `{text, score, source}` 事实条目，`sources` 信源标注（source/url/text） |
+| 接线 | `RoutedRetrieveTool`（`aiPlat-core/core/apps/tools/routed_retrieve.py`）经 server.py 工具注册表供 Agent `sys_tool_call` 调用 |
+
 ### 5.2 应用工厂 P1 修复契约（MUST，2026-08-25）
 
 同源审计（§7.5.4）的 14 项 P1 修复固化 + 生成物契约（SBA 借鉴）：
