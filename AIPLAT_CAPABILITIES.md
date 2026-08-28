@@ -886,9 +886,9 @@ scan_hash: 8f9548ec24f4
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 | WikiPageRetriever | `harness/knowledge/retrieval.py` | ✅ | 自动同步 | 已合入 |
 | wiki_engine | harness/knowledge/wiki_engine.py | ✅ | 自动同步 | 已合入 |
-| capability_graph | harness/knowledge/capability_graph.py | ✅ | 自动同步 | 已合入 |
+| capability_graph | harness/knowledge/capability_graph.py | ✅ | 能力图谱（agent/skill/tool/mcp/workflow 节点 + requires/uses/provides 边）；工作区扫描经 get_aiplat_home() 解析（2026-08-28 修复） | 已合入 |
 | sqlite_retriever | harness/knowledge/sqlite_retriever.py | ✅ | 自动同步 | 已合入 |
-| code_graph | harness/knowledge/code_graph.py | ✅ | 自动同步 | 已合入 |
+| code_graph | harness/knowledge/code_graph.py | ✅ | 代码图谱（AST imports/calls/symbols/routes，5 仓库全量 + mtime 增量 + 新文件发现）；经 get_aiplat_home() 解析（2026-08-28 修复） | 已合入 |
 | doc_compressor | harness/knowledge/doc_compressor.py | ✅ | 自动同步 | 已合入 |
 | ontology_query_mapper | harness/knowledge/ontology_query_mapper.py | ✅ | 自动同步 | 已合入 |
 | wiki_retriever | harness/knowledge/wiki_retriever.py | ✅ | 自动同步 | 已合入 |

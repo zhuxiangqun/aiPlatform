@@ -447,9 +447,8 @@ def _scan_agents(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
     _scan_agents_dir(engine_root, node_prefix="agent", nodes=nodes, edges=edges)
 
     # Workspace agents (~/.aiplat/agents/)
-    import os as _os
-    aiplat_home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
-    workspace_root = Path(aiplat_home) / "agents"
+    from core.utils.paths import get_aiplat_home
+    workspace_root = Path(get_aiplat_home()) / "agents"
     _scan_agents_dir(workspace_root, node_prefix="workspace_agent", nodes=nodes, edges=edges)
 
 
@@ -556,9 +555,8 @@ def _scan_skills(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
     _scan_skills_dir(engine_root, node_prefix="skill", nodes=nodes, edges=edges)
 
     # Workspace skills (~/.aiplat/skills/)
-    import os as _os
-    aiplat_home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
-    workspace_root = Path(aiplat_home) / "skills"
+    from core.utils.paths import get_aiplat_home
+    workspace_root = Path(get_aiplat_home()) / "skills"
     _scan_skills_dir(workspace_root, node_prefix="workspace_skill", nodes=nodes, edges=edges)
 
     # Mark workspace skills that are mirrors of engine skills

@@ -50,8 +50,9 @@ _DB_PATH: Optional[str] = None
 def _db_path() -> str:
     global _DB_PATH
     if _DB_PATH is None:
-        home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
-        _DB_PATH = os.path.join(home, "cap_graph.db")
+        # AIPLAT_HOME 优先（配置驱动，§5；复用权威路径解析，防路径漂移）
+        from core.utils.paths import get_aiplat_home
+        _DB_PATH = os.path.join(get_aiplat_home(), "cap_graph.db")
     return _DB_PATH
 
 
