@@ -1998,4 +1998,18 @@ async def sys_routed_retrieve(query: str, *, top_k: int = 8, include_web: bool =
         except Exception:
             pass  # noqa: cleanup-best-effort — web 不可用则返回空结果（不伪装命中）
 
+    # P1-2 可信度评估（AnySearch 借鉴）：web 结果注入 quality（域名权威+相关性+多源一致）
+    if intent == "web" and results:
+        try:
+            from core.harness.knowledge.web_result_quality import assess_web_results
+            _qa = assess_web_results(
+                [{"source_url": s.get("url", ""), "evidence_snippet": s.get("text", ""),
+                  "source": s.get("source", ""), "confidence": r_.get("score", 0)}
+                 for s, r_ in zip(sources, results)], query)
+            _result = {"route": intent, "results": results[:top_k], "sources": sources[:top_k],
+                       "quality": {k: _qa.get(k) for k in ("pass", "action", "avg_score", "reason")}}
+            return _result
+        except Exception:
+            pass  # noqa: cleanup-best-effort — 质量评估失败不影响检索结果
+
     return {"route": intent, "results": results[:top_k], "sources": sources[:top_k]}
