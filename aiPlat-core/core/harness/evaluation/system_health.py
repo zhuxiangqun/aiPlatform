@@ -1,15 +1,9 @@
 """
-
-import logging
 System Health Index — aggregated health score from 4 diagnostic subsystems.
-
-
 
 Combines OntologyAudit, StalenessMonitor, ConfigDriftDetector, and EvalMetrics
 
 into a single 0-100 health index with EWMA trend tracking and B+/B/B- sub-grading.
-
-
 
 Usage:
 
@@ -18,15 +12,11 @@ Usage:
     report = calc.compute()
 
     # → {health_index: 82, grade: "B", trend: "↑", sub_scores: {...}}
-
 """
-
-
 
 from __future__ import annotations
 
-
-
+import logging
 import os
 
 import json

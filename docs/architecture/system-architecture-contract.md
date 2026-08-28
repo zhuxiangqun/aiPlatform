@@ -140,7 +140,9 @@ core 层运行时数据库/状态文件路径**必须**经 `core.utils.paths.get
 | 保守原则 | 有失败但 `last_failure_at` 缺失 → 无法确认时效，保守计入 fail（不放过疑似当前故障） |
 | 降级 | DB 表缺失/锁冲突 → warn 不崩溃；DB 路径经 `get_aiplat_home()` 解析 |
 | 图谱构建超时 | 诊断端点 `_get_or_build_graph`（`aiPlat-core/core/api/routers/diagnostics.py`）代码图谱全量构建为后台线程 + 超时降级：`AIPLAT_DIAG_GRAPH_BUILD_TIMEOUT` 默认 15s，超时返回空图（`{}, [], []`）不阻塞端点，后台线程继续构建供下次缓存命中；冷启动由 `server.py` 预热默认开启（`AIPLAT_WARM_GRAPHS` 默认 true）消除首个诊断请求的同步全量构建（5 仓库实测 68s） |
-| 验证 | 真实库（12 天前 6 模型历史失败）修复前 fail → 修复后 pass；当前健康模型（deepseek 系）不受影响；图谱超时单测（`test_diag_graph_timeout.py`）缓存命中毫秒返回 + 慢构建超时降级空图 |
+| 事件循环防护 | 诊断端点（system-health/adoption-metrics/ontology-audit/ontology-audit-summary/drift-status）**必须**为同步 `def`（FastAPI 线程池执行），禁止 `async def` 内同步重活——uvicorn 单 worker（`-w 1 --threads 4`）事件循环被阻塞 7s+ 会导致所有并发请求（含 openapi/health）排队超时 502（2026-08-28 实测：system_health.compute 阻塞事件循环）；`system_health.py` 的 `import logging` 必须在模块级（docstring 之外） |
+| 模型发现缓存 | `config_drift_detector.scan_all_agents` 对多 agent 循环内的 `ModelManager` 查询**必须**复用候选列表（模块级缓存）——`ModelManager()` 首次实例化触发 `import sentence_transformers`（实测 5.1s）+ Ollama 扫描（4.7s），逐 agent 实例化导致单次 scan 6.5s 并随 agent 数放大 |
+| 验证 | 真实库（12 天前 6 模型历史失败）修复前 fail → 修复后 pass；当前健康模型（deepseek 系）不受影响；图谱超时单测（`test_diag_graph_timeout.py`）缓存命中毫秒返回 + 慢构建超时降级空图；并发验证：system-health + openapi + summary 同发均 <1s 返回（修复前 system-health 阻塞时其余超时） |
 
 ### 5.2 应用工厂 P1 修复契约（MUST，2026-08-25）
 

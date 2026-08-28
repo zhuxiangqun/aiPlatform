@@ -2859,7 +2859,7 @@ def _build_markdown_report(data: dict, collection: str, days: int = 30) -> str:
 # ── v2.9: Knowledge Drift Status API ──
 
 @router.get("/diagnostics/drift-status", response_model=Dict[str, Any])
-async def get_drift_status(collection: str = "", refresh: bool = False):
+def get_drift_status(collection: str = "", refresh: bool = False):
     """Knowledge drift scanner — reports which Wiki pages have stale source documents.
 
     Returns per-collection drift ratio, stale page lists, and suggested actions.
@@ -3010,7 +3010,7 @@ async def get_config_drift():
 # ── v2.9: System Health Index ──
 
 @router.get("/diagnostics/system-health", response_model=Dict[str, Any])
-async def get_system_health():
+def get_system_health():
     """Unified system health index: aggregates OntologyAudit, Staleness, ConfigDrift, EvalMetrics."""
     from core.harness.evaluation.system_health import SystemHealthCalculator
     calc = SystemHealthCalculator()
@@ -3115,7 +3115,7 @@ async def get_constraint_check():
 # ── v2.9: Ontology Audit API ──
 
 @router.get("/diagnostics/adoption-metrics", response_model=Dict[str, Any])
-async def get_adoption_metrics():
+def get_adoption_metrics():
     """Employee adoption and AI platform engagement metrics.
 
     Tracks agent usage, GrillingBridge engagement, HITL behavior,
@@ -3142,7 +3142,7 @@ async def get_adoption_metrics():
     }
 
 @router.get("/diagnostics/ontology-audit", response_model=Dict[str, Any])
-async def get_ontology_audit(domain_id: str = "ai-knowledge"):
+def get_ontology_audit(domain_id: str = "ai-knowledge"):
     """Ontology domain audit: class coverage, relation density, state machine activity."""
     from core.harness.knowledge.ontology_audit import OntologyAuditor
     auditor = OntologyAuditor()
@@ -3154,7 +3154,7 @@ async def get_ontology_audit(domain_id: str = "ai-knowledge"):
 
 
 @router.get("/diagnostics/ontology-audit/summary", response_model=Dict[str, Any])
-async def get_ontology_audit_summary():
+def get_ontology_audit_summary():
     """Quick summary: top orphan classes, worst relation coverage across all domains."""
     from core.harness.knowledge.ontology_audit import OntologyAuditor
     auditor = OntologyAuditor()
