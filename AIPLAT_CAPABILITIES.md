@@ -752,7 +752,7 @@ scan_hash: 8f9548ec24f4
 | Action 阶梯 Lv | `harness/infrastructure/action_contract.py` | ✅ | P2-L5: ActionLevel lv1_readonly→lv4_auto_close，默认 Lv2 保守 | 已合入 |
 | 自动闭环误报率门 | `harness/ontology_engine/action_registry.py` | ✅ | P2-L5: compute_closure_gate — Lv4 历史误报 <0.5% 才自动闭环，超标降级人工确认 | 已合入 |
 | ShardedGraphIndex | harness/ontology_engine/sharded_graph.py | ✅ | 跨域分片图索引 | 已合入 |
-| 跨域本体桥接 | harness/ontology_engine/triple_store.py` + `harness/ontology_engine/triple_scanner.py | ✅ | 统一三元组存储 + BFS多跳遍历 + 5数据源自动扫描 + 3 API端点 | 已合入 |
+| 跨域本体桥接 | harness/ontology_engine/triple_store.py` + `harness/ontology_engine/triple_scanner.py | ✅ | 统一三元组存储 + BFS多跳遍历 + 5数据源自动扫描 + 3 API端点；DB 路径经 core.utils.paths.get_aiplat_home() 解析（AIPLAT_HOME 优先，2026-08-28 修复硬编码 ~/.aiplat——受限环境启动 readonly 僵死） | 已合入 |
 | 审批工作流引擎 | harness/ontology_engine/approval.py | ✅ | submit/approve/reject/changes + 超时升级 + 告警通道 | 已合入 |
 | Interface 原语 (多态抽象) | harness/knowledge/ontology_loader.py | ✅ | 本体Interface定义 + implements声明 + get_entities_by_interface()查询 | 已合入 |
 | SQL Ontology Bridge | harness/knowledge/sql_ontology.py | ✅ | 三层架构(物理→语义→应用) + concept→SQL自动翻译 + virtual-first零摄取 | 已合入 |

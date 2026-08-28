@@ -120,6 +120,16 @@ platform 在调用下游服务时 **MUST** 注入/透传：
 | 可信度评估（2026-08-28） | web 通道结果经 `web_result_quality.assess_web_results`（`aiPlat-core/core/harness/knowledge/web_result_quality.py`）注入 `quality`：域名权威（官方/知名 vs 低质）+ 查询相关性 + 多源一致 + 置信度 → `avg_score`；`pass` → use_results / `flag_for_human`（结果污染风险人工复核，best-effort 不阻断检索） |
 | 接线 | `RoutedRetrieveTool`（`aiPlat-core/core/apps/tools/routed_retrieve.py`）经 server.py 工具注册表供 Agent `sys_tool_call` 调用 |
 
+### 5.1.2 运行时路径解析契约（MUST，2026-08-28）
+
+core 层运行时数据库/状态文件路径**必须**经 `core.utils.paths.get_aiplat_home()` 解析（AIPLAT_HOME 优先，回退 `~/.aiplat`）：
+
+| 契约 | 说明 |
+|------|------|
+| 禁止硬编码 `~/.aiplat` | `expanduser("~/.aiplat/xxx")` 绕过 AIPLAT_HOME（`paths.py` 已标注反模式）——受限环境（~/.aiplat 只读）下启动写库抛 `readonly database` → 服务僵死 |
+| 已修复 | `TripleStore`（`core/harness/ontology_engine/triple_store.py`）：`ontology_triples.sqlite3` 路径改经 `get_aiplat_home()`；其余存量硬编码（memory/file_store、knowledge_pipeline、management/* 等）为已知存量，逐步迁移 |
+| 验证 | 受限 HOME 启动 core server → `/api/core/diagnostics/*` 三端点 200 毫秒响应（修复前全超时） |
+
 ### 5.2 应用工厂 P1 修复契约（MUST，2026-08-25）
 
 同源审计（§7.5.4）的 14 项 P1 修复固化 + 生成物契约（SBA 借鉴）：
