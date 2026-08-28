@@ -49,7 +49,9 @@ class TripleStore:
     """统一跨图三元组存储。"""
 
     def __init__(self, db_path: str = ""):
-        path = db_path or os.path.expanduser("~/.aiplat/ontology_triples.sqlite3")
+        # AIPLAT_HOME 优先（配置驱动，§5；复用 core.utils.paths 权威路径解析，防路径漂移）
+        from core.utils.paths import get_aiplat_home
+        path = db_path or os.path.join(get_aiplat_home(), "ontology_triples.sqlite3")
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(path, check_same_thread=False)
         self._conn.execute("""
