@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, Send, Loader2, Clock, CheckCircle, XCircle, ExternalLink, BarChart3, Trash2, Play, RefreshCw, FileText, Wrench } from 'lucide-react';
@@ -61,13 +61,26 @@ const InlineChat: React.FC<{
     }
   }, [loaded, initialMessage, autoSent, messages.length, send]);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  // Scroll chat to bottom on new messages — deferred to rAF + direct scrollTop
+  // (smooth scrollIntoView right after commit forces a synchronous reflow).
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevMsgLenRef = useRef(messages.length);
+  useEffect(() => {
+    const prevLen = prevMsgLenRef.current;
+    prevMsgLenRef.current = messages.length;
+    if (messages.length <= prevLen) return;
+    const raf = requestAnimationFrame(() => {
+      const el = scrollContainerRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [messages.length]);
 
   const handleSend = () => { const m = input.trim(); if (m) { setInput(''); send(m); } };
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-[200px] max-h-[400px]">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-3 space-y-2 min-h-[200px] max-h-[400px]">
         {messages.map((m, i) => (
           <div key={i} className={`p-2 rounded text-sm ${m.role === 'assistant' ? 'bg-primary/10 border border-primary/20 text-gray-200' : 'bg-dark-card border border-dark-border text-gray-300'}`}>
              <div className="text-[10px] text-gray-500 mb-1">{m.role === 'assistant' ? (agentMode ? agentName : 'AI PM') : '你'}</div>

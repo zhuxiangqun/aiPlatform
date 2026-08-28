@@ -31,9 +31,23 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
   const [sending, setSending] = useState(false);
   const [autoSent, setAutoSent] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevLenRef = useRef(messages.length);
 
-  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  useEffect(() => scrollToBottom(), [messages]);
+  // Scroll to bottom on new messages only (not on every render).
+  // requestAnimationFrame defers the layout read/write out of the React commit
+  // phase — avoids the "[Violation] Forced reflow" triggered by synchronous
+  // smooth scrollIntoView right after DOM mutation (68ms reflows on chat apps).
+  useEffect(() => {
+    const prevLen = prevLenRef.current;
+    prevLenRef.current = messages.length;
+    if (messages.length <= prevLen) return;
+    const raf = requestAnimationFrame(() => {
+      const el = scrollContainerRef.current;
+      if (el) el.scrollTop = el.scrollHeight; // direct assignment: no smooth animation, no reflow cascade
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [messages.length]);
 
   // Auto-send initial message
   useEffect(() => {
@@ -78,7 +92,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
 
   return (
     <div className={`flex flex-col ${className}`}>
-      <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ maxHeight }}>
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3" style={{ maxHeight }}>
         {messages.map((m, i) => (
           <div key={i} className={`p-3 rounded-lg border ${
             m.role === 'assistant' ? 'border-primary/30 bg-primary/5' : 'border-dark-border bg-dark-card'
