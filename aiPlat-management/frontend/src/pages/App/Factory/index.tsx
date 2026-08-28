@@ -385,6 +385,8 @@ const ProjectPanel: React.FC<{
     !!(project as any).confirmed_prd || (project as any).runs?.length > 0);
   const [starting, setStarting] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectFeedback, setRejectFeedback] = useState('');
   const [recommending, setRecommending] = useState(false);
   const [teamStages, setTeamStages] = useState<Array<{ agent_name?: string; agent_id?: string; phase?: string; id?: string }>>(project.team_stages || []);
   const [recommendedMode, setRecommendedMode] = useState<string>('');
@@ -1316,9 +1318,17 @@ const ProjectPanel: React.FC<{
   };
 
   const handleReject = async () => {
+    // Non-blocking: open custom modal instead of window.prompt (which freezes the
+    // UI and inflates the click-handler duration reported by DevTools).
     if (!project.project_id) return;
-    const feedback = window.prompt('驳回理由（可选）：');
-    if (feedback === null) return;
+    setRejectFeedback('');
+    setShowRejectModal(true);
+  };
+
+  const doReject = async () => {
+    if (!project.project_id) return;
+    const feedback = rejectFeedback.trim();
+    setShowRejectModal(false);
     // Clear only rejected stage + downstream
     const _rejectedArtifact = hitlOutputArtifact;
     const _keys = teamStages.map((ts: any) => ts.output_artifact).filter(Boolean);
@@ -2319,6 +2329,31 @@ const ProjectPanel: React.FC<{
         </div>
       )}
       {/* L3: 合并审批界面（plan-app-factory-l3 §3.5/§4） */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4"
+          onClick={() => setShowRejectModal(false)}>
+          <div className="bg-dark-card border border-dark-border rounded-lg max-w-lg w-full p-5 text-xs space-y-3"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-red-300">❌ 驳回重做</h3>
+              <button onClick={() => setShowRejectModal(false)}
+                className="p-1 rounded hover:bg-dark-hover text-gray-400 hover:text-gray-200 text-lg">✕</button>
+            </div>
+            <p className="text-gray-400">将清除当前阶段及其下游产物并重新生成。可填写改进要求（会作为反馈注入重新生成指令）：</p>
+            <textarea
+              value={rejectFeedback}
+              onChange={e => setRejectFeedback(e.target.value)}
+              placeholder="例如：请补充完整的验收标准；每个功能点需包含具体描述..."
+              rows={4}
+              className="w-full bg-dark-bg border border-dark-border rounded p-2 text-gray-200 text-xs resize-y focus:outline-none focus:border-primary/50"
+            />
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="ghost" size="sm" onClick={() => setShowRejectModal(false)}>取消</Button>
+              <Button variant="primary" size="sm" onClick={doReject} loading={rejecting}>确认驳回并重新生成</Button>
+            </div>
+          </div>
+        </div>
+      )}
       {showMergeReview && (
         <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4"
           onClick={() => setShowMergeReview(false)}>
