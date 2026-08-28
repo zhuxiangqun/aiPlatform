@@ -13,9 +13,9 @@ MCP Search — Agent 搜索基础设施（AnySearch 借鉴 P1-1，2026-08-28）�
   - 无网络外带（结果仅经 stdio 返回调用方）
   - 可经 MCP_SEARCH_WEB_ENABLED=false 关闭 web 通道（隐私场景）
 """
-import sys
 import json
 import os
+import sys
 
 # ═══ 配置 ═══
 WEB_ENABLED = os.environ.get("MCP_SEARCH_WEB_ENABLED", "true").lower() != "false"
@@ -25,7 +25,7 @@ MAX_RESULTS = int(os.environ.get("MCP_SEARCH_MAX_RESULTS", "8"))
 TOOLS = [
     {
         "name": "search_web",
-        "description": "Web 结构化搜索：返回信源标注事实条目（claim/source_title/source_url/evidence_snippet/confidence），"
+        "description": "Web 结构化搜索：返回信源标注事实条目（claim/source_title/source_url/evidence_snippet/confidence），"  # noqa: E501
                        "剔除广告/HTML 噪声，面向 Agent 机器推理。默认 DuckDuckGo 多后端融合去重。",
         "schema": {
             "type": "object",
@@ -38,7 +38,7 @@ TOOLS = [
     },
     {
         "name": "search_routed",
-        "description": "意图路由统一检索：先判定查询意图（代码/内部知识/通用事实），自动路由到匹配通道，"
+        "description": "意图路由统一检索：先判定查询意图（代码/内部知识/通用事实），自动路由到匹配通道，"  # noqa: E501
                        "返回结构化事实条目 + 信源标注。避免全域盲搜。",
         "schema": {
             "type": "object",
@@ -51,7 +51,7 @@ TOOLS = [
     },
     {
         "name": "search_intent",
-        "description": "意图判定：返回查询被路由到的通道（code/knowledge/web）及原因，供 Agent 决策是否继续检索。",
+        "description": "意图判定：返回查询被路由到的通道（code/knowledge/web）及原因，供 Agent 决策是否继续检索。",  # noqa: E501
         "schema": {
             "type": "object",
             "properties": {
@@ -85,7 +85,7 @@ async def _handle_search_routed(query: str, top_k: int):
         return {"content": json.dumps(r, ensure_ascii=False)}
     except Exception as e:
         return {"content": json.dumps({"error": str(e)[:300], "route": None,
-                                       "results": [], "sources": []}, ensure_ascii=False), "is_error": True}
+                                       "results": [], "sources": []}, ensure_ascii=False), "is_error": True}  # noqa: E501
 
 
 async def _handle_search_intent(query: str):
@@ -94,7 +94,7 @@ async def _handle_search_intent(query: str):
         route = _route_intent(query)
         return {"content": json.dumps({"route": route}, ensure_ascii=False)}
     except Exception as e:
-        return {"content": json.dumps({"error": str(e)[:300]}, ensure_ascii=False), "is_error": True}
+        return {"content": json.dumps({"error": str(e)[:300]}, ensure_ascii=False), "is_error": True}  # noqa: E501
 
 
 def handle_list_tools():
@@ -105,7 +105,7 @@ async def handle_call_tool(name: str, arguments: dict):
     try:
         if name == "search_web":
             if not WEB_ENABLED:
-                return {"content": "web 通道已关闭（MCP_SEARCH_WEB_ENABLED=false）", "is_error": True}
+                return {"content": "web 通道已关闭（MCP_SEARCH_WEB_ENABLED=false）", "is_error": True}  # noqa: E501
             q = str(arguments.get("query", "")).strip()
             if not q:
                 return {"content": "query 不能为空", "is_error": True}
@@ -137,19 +137,19 @@ def main():
         if method == "initialize":
             resp = {"jsonrpc": "2.0", "id": req_id,
                     "result": {"protocolVersion": "2024-11-05",
-                               "capabilities": {"tools": {}}, "serverInfo": {"name": "aiplat-search", "version": "1.0.0"}}}
+                               "capabilities": {"tools": {}}, "serverInfo": {"name": "aiplat-search", "version": "1.0.0"}}}  # noqa: E501
         elif method == "tools/list":
             resp = {"jsonrpc": "2.0", "id": req_id, "result": handle_list_tools()}
         elif method == "tools/call":
             params = req.get("params") or {}
-            result = asyncio.run(handle_call_tool(str(params.get("name", "")), params.get("arguments") or {}))
+            result = asyncio.run(handle_call_tool(str(params.get("name", "")), params.get("arguments") or {}))  # noqa: E501
             resp = {"jsonrpc": "2.0", "id": req_id, "result": result}
         elif method == "ping":
             resp = {"jsonrpc": "2.0", "id": req_id, "result": {}}
         elif method == "notifications/initialized":
             continue
         else:
-            resp = {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": f"method not found: {method}"}}
+            resp = {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": f"method not found: {method}"}}  # noqa: E501
         sys.stdout.write(json.dumps(resp, ensure_ascii=False) + "\n")
         sys.stdout.flush()
 
