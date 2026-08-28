@@ -144,6 +144,17 @@ core 层运行时数据库/状态文件路径**必须**经 `core.utils.paths.get
 | 模型发现缓存 | `config_drift_detector.scan_all_agents` 对多 agent 循环内的 `ModelManager` 查询**必须**复用候选列表（模块级缓存）——`ModelManager()` 首次实例化触发 `import sentence_transformers`（实测 5.1s）+ Ollama 扫描（4.7s），逐 agent 实例化导致单次 scan 6.5s 并随 agent 数放大 |
 | 验证 | 真实库（12 天前 6 模型历史失败）修复前 fail → 修复后 pass；当前健康模型（deepseek 系）不受影响；图谱超时单测（`test_diag_graph_timeout.py`）缓存命中毫秒返回 + 慢构建超时降级空图；并发验证：system-health + openapi + summary 同发均 <1s 返回（修复前 system-health 阻塞时其余超时） |
 
+### 5.1.4 流水线上下文纯净契约（MUST，2026-08-28）
+
+产品流水线（PRD/架构/代码/测试生成）的上下文**必须纯净**，不得注入 FDE 诊断会话语义：
+
+| 契约 | 说明 |
+|------|------|
+| 注入边界 | `assemble_pipeline_context`（`aiPlat-core/core/harness/knowledge/context_bus.py`）**必须**返回空（不注入任何上下文）；领域上下文由 DomainRouter 域 prompt 承担 |
+| 禁止内容 | 流水线上下文禁止包含 `_inject_self_optimization`（诊断自优化 §1/§6/§7）、`_inject_term_dictionary`（业务语义字典 FDE/RAG/本体）、`_inject_delivery_history`（FDE 交付跟踪 §4.6 ROI/历史诊断总数）——这些是 FDE 诊断会话（`assemble_field_assessment`）专用层 |
+| 违反后果 | 注入 FDE 诊断语义会误导 LLM 跳过 skill SOP，产出污染 + 空壳产物（实测 2026-08-28：视频解析平台 PRD 混入「诊断自优化 (250条历史)」且 description/acceptance_criteria 全空） |
+| 验证 | `test_pipeline_context_clean.py`：流水线上下文为空 + FDE 层不在其中 |
+
 ### 5.2 应用工厂 P1 修复契约（MUST，2026-08-25）
 
 同源审计（§7.5.4）的 14 项 P1 修复固化 + 生成物契约（SBA 借鉴）：
