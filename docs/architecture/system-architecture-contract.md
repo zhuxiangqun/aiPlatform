@@ -117,6 +117,7 @@ platform 在调用下游服务时 **MUST** 注入/透传：
 | harness 单向依赖 | web 通道 **禁止** import apps 层（§5.14），以 urllib 直调 DuckDuckGo JSON 实现 |
 | 降级语义 | 通道不可用降级（code→knowledge→web），web 可关（`include_web=False` 隐私场景）；失败返回空结果不伪装命中 |
 | 结构化交付 | 返回 `{route, results, sources}`：`results` 统一 `{text, score, source}` 事实条目，`sources` 信源标注（source/url/text） |
+| 可信度评估（2026-08-28） | web 通道结果经 `web_result_quality.assess_web_results`（`aiPlat-core/core/harness/knowledge/web_result_quality.py`）注入 `quality`：域名权威（官方/知名 vs 低质）+ 查询相关性 + 多源一致 + 置信度 → `avg_score`；`pass` → use_results / `flag_for_human`（结果污染风险人工复核，best-effort 不阻断检索） |
 | 接线 | `RoutedRetrieveTool`（`aiPlat-core/core/apps/tools/routed_retrieve.py`）经 server.py 工具注册表供 Agent `sys_tool_call` 调用 |
 
 ### 5.2 应用工厂 P1 修复契约（MUST，2026-08-25）
