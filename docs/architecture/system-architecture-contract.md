@@ -127,7 +127,7 @@ core 层运行时数据库/状态文件路径**必须**经 `core.utils.paths.get
 | 契约 | 说明 |
 |------|------|
 | 禁止硬编码 `~/.aiplat` | `expanduser("~/.aiplat/xxx")` 绕过 AIPLAT_HOME（`paths.py` 已标注反模式）——受限环境（~/.aiplat 只读）下启动写库抛 `readonly database` → 服务僵死 |
-| 已修复 | `TripleStore`（`core/harness/ontology_engine/triple_store.py`）：`ontology_triples.sqlite3` 路径改经 `get_aiplat_home()`；其余存量硬编码（memory/file_store、knowledge_pipeline、management/* 等）为已知存量，逐步迁移 |
+| 已修复 | `TripleStore`（`core/harness/ontology_engine/triple_store.py`）：`ontology_triples.sqlite3` 路径改经 `get_aiplat_home()`；`code_graph_persist`/`cap_graph_persist`（图谱缓存库 `code_graph.db`/`cap_graph.db`）与 `capability_graph` 工作区扫描同改（2026-08-28）；其余存量硬编码（memory/file_store、knowledge_pipeline、management/* 等）为已知存量，逐步迁移 |
 | 验证 | 受限 HOME 启动 core server → `/api/core/diagnostics/*` 三端点 200 毫秒响应（修复前全超时） |
 
 ### 5.1.3 诊断时效性契约（MUST，2026-08-28）
@@ -139,7 +139,8 @@ core 层运行时数据库/状态文件路径**必须**经 `core.utils.paths.get
 | 时效窗口 | `check_model_health`（`aiPlat-core/core/diagnostics/checks/model_health.py`）：失败记录按 `last_failure_at` 距今 ≤7 天（`stale_days`）才计入 fail/warn；超期（历史残留，如旧模型集中失败后无新调用）忽略 |
 | 保守原则 | 有失败但 `last_failure_at` 缺失 → 无法确认时效，保守计入 fail（不放过疑似当前故障） |
 | 降级 | DB 表缺失/锁冲突 → warn 不崩溃；DB 路径经 `get_aiplat_home()` 解析 |
-| 验证 | 真实库（12 天前 6 模型历史失败）修复前 fail → 修复后 pass；当前健康模型（deepseek 系）不受影响 |
+| 图谱构建超时 | 诊断端点 `_get_or_build_graph`（`aiPlat-core/core/api/routers/diagnostics.py`）代码图谱全量构建为后台线程 + 超时降级：`AIPLAT_DIAG_GRAPH_BUILD_TIMEOUT` 默认 15s，超时返回空图（`{}, [], []`）不阻塞端点，后台线程继续构建供下次缓存命中；冷启动由 `server.py` 预热默认开启（`AIPLAT_WARM_GRAPHS` 默认 true）消除首个诊断请求的同步全量构建（5 仓库实测 68s） |
+| 验证 | 真实库（12 天前 6 模型历史失败）修复前 fail → 修复后 pass；当前健康模型（deepseek 系）不受影响；图谱超时单测（`test_diag_graph_timeout.py`）缓存命中毫秒返回 + 慢构建超时降级空图 |
 
 ### 5.2 应用工厂 P1 修复契约（MUST，2026-08-25）
 

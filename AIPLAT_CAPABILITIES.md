@@ -886,9 +886,9 @@ scan_hash: 8f9548ec24f4
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 | WikiPageRetriever | `harness/knowledge/retrieval.py` | ✅ | 自动同步 | 已合入 |
 | wiki_engine | harness/knowledge/wiki_engine.py | ✅ | 自动同步 | 已合入 |
-| capability_graph | harness/knowledge/capability_graph.py | ✅ | 自动同步 | 已合入 |
+| capability_graph | harness/knowledge/capability_graph.py | ✅ | 能力图谱（agent/skill/tool/mcp/workflow 节点 + requires/uses/provides 边）；工作区扫描经 get_aiplat_home() 解析（2026-08-28 修复） | 已合入 |
 | sqlite_retriever | harness/knowledge/sqlite_retriever.py | ✅ | 自动同步 | 已合入 |
-| code_graph | harness/knowledge/code_graph.py | ✅ | 自动同步 | 已合入 |
+| code_graph | harness/knowledge/code_graph.py | ✅ | 代码图谱（AST imports/calls/symbols/routes，5 仓库全量 + mtime 增量 + 新文件发现）；经 get_aiplat_home() 解析（2026-08-28 修复） | 已合入 |
 | doc_compressor | harness/knowledge/doc_compressor.py | ✅ | 自动同步 | 已合入 |
 | ontology_query_mapper | harness/knowledge/ontology_query_mapper.py | ✅ | 自动同步 | 已合入 |
 | wiki_retriever | harness/knowledge/wiki_retriever.py | ✅ | 自动同步 | 已合入 |
@@ -2032,6 +2032,7 @@ scan_hash: 8f9548ec24f4
 | sys_ontology_context Syscall | harness/syscalls/ontology.py | ✅ | Agent ReActLoop中可调用的知识网络上下文查询 | 已合入 |
 | Ontology Health Check | diagnostics/checks/ontology_health.py | ✅ | 本体驱动健康检查 — 孤儿Skill/Tool/Agent检测、废弃模型检测、孤立Wiki检测 | 已合入 |
 | Model Health 诊断（model_health） | diagnostics/checks/model_health.py（check_model_health） | ✅ | 模型持久健康趋势（2026-08-28 时效窗口修复）：任一模型最近 7 天失败 ≥5 次且成功率 <50% → fail；成功率 <80% → warn；**仅历史失败（last_failure_at 超 7 天）→ 视为残留不计入**（修复历史失败永久拖累诊断——12 天前 ollama 集中失败曾致 1 项失败误报）；DB 路径经 get_aiplat_home 解析（AIPLAT_HOME 优先）；表缺失/锁冲突降级 warn 不崩溃 | 已合入 |
+| 诊断图谱超时保护 + 启动预热（graph build guard） | api/routers/diagnostics.py（_get_or_build_graph）+ server.py（lifespan warmup） | ✅ | 2026-08-28 修复冷启动 502：代码图谱全量构建（5 仓库 AST 解析实测 68s）改为后台线程 + 超时降级（AIPLAT_DIAG_GRAPH_BUILD_TIMEOUT 默认 15s，超时返回空图不阻塞端点，后台线程继续构建供下次缓存命中）；启动预热默认开启（AIPLAT_WARM_GRAPHS 默认 true，原默认关闭）——避免首个诊断请求触发同步全量构建；缓存命中时毫秒级返回不受影响 | 已合入 |
 
 ---
 
