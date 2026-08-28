@@ -1216,7 +1216,7 @@ scan_hash: 8f9548ec24f4
 | Model Pricing (llm_profile) | config/infra/llm_profile.yaml | ✅ | deepseek-v4-pro真实定价(prompt$0.27+completion$1.10/1M)+context_window 131072 | 已合入 |
 | 质量门本地优先选择 (v4) | infra/management/model/manager.py:_score_model() + _within_quality_band() | ✅ | 删除硬编码来源偏见(API+80/本地+40)，替换为质量门控：成功率±20pp + P95≤3x + 推理质量≤1级 → +20本地偏好；数据不足(<5次) → 保守选API；prefer_local覆盖(+120) | 已合入 |
 | 模型Playground市场目录 | api/routers/compat.py:_list_models() + frontend ModelPlayground.tsx | ✅ | 21模型选择面板(9已安装+12市场目录)，市场模型点击弹出API Key配置框→临时接入→参与并发对比 | 已合入 |
-| Syscall Token/Cost 归属 | harness/syscalls/llm.py + harness/context/engine.py | ✅ | syscall_events 表新增 model_name/input_tokens/output_tokens/cost 列；LLM调用时写入per-model token消耗与成本；观测仪表盘24h窗口聚合 | 已合入 |
+| Syscall Token/Cost 归属 | harness/syscalls/llm.py + harness/context/engine.py | ✅ | syscall_events 表新增 model_name/input_tokens/output_tokens/cost 列；LLM调用时写入per-model token消耗与成本；观测仪表盘24h窗口聚合；2026-08-28 修复：syscall 事件 store 改用 runtime.execution_store（弃 get_tenant_store——平台 TenantStore 无 add_syscall_event，注入后每次 LLM 调用抛 AttributeError 致 chat 超时「发送失败」） | 已合入 |
 | 观测仪表盘持久化数据源 | api/routers/diagnostics.py:get_observability_stats() | ✅ | 从 get_route_metrics()（内存计数器）切换为 syscall_events 表直接查询，服务器重启后数据不丢失 | 已合入 |
 | 前端强制重排修复 | WorkflowCanvas/AnimatedAvatar/FloatingDigitalHuman/LLMReview | ✅ | getBoundingClientRect缓存/rAF可见性暂停/音频振幅20fps降频/进度条React state驱动 | 已合入 |
 | 诊断 per-project 筛选 | api/routers/diagnostics.py + api/routers/traces_graphs.py + frontend ProjectSelector | ✅ | observability/stats(6条SQL过滤)、traces/runs(Python post-filter)、前端共享ProjectSelector组件+useProjectId hook+localStorage持久化 | 已合入 |
