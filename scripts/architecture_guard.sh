@@ -194,6 +194,8 @@ for root, dirs, files in os.walk('aiPlat-core/core/harness/execution/'):
         if 'algorithm_node' in fname: continue
         # Skip simulation.py — CJK is in docstrings only (module documentation)
         if 'simulation' in fname: continue
+        # Skip prd_quality_gate.py — pack interpreter must match Chinese PRD prose / render templates
+        if 'prd_quality_gate' in fname: continue
         for i, line in enumerate(open(fpath), 1):
             stripped = line.strip()
             if not stripped or stripped.startswith('#'): continue

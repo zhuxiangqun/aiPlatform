@@ -186,7 +186,19 @@ async def project_file_upload(
 
 @router.post("/projects/{project_id}/confirm", response_model=StatusResponse)
 async def project_confirm(project_id: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
-    return await _get_svc().confirm_prd(project_id, prd_data=body.get("prd"))
+    result = await _get_svc().confirm_prd(
+        project_id,
+        prd_data=body.get("prd"),
+        force_confirm=bool(body.get("force_confirm") or body.get("force")),
+    )
+    # Soft error dict must become HTTP 4xx so Factory/apiClient toast the gate message
+    # instead of treating 200 + status=error as success and continuing to recommend-team.
+    if isinstance(result, dict) and result.get("status") == "error":
+        raise HTTPException(
+            status_code=400,
+            detail=str(result.get("detail") or "PRD 确认失败"),
+        )
+    return result
 
 @router.post("/projects/{project_id}/recommend-team", response_model=StatusResponse)
 async def recommend_team(project_id: str, _auth: str = Depends(require_builder_access)):
@@ -221,7 +233,16 @@ async def project_rollback_prd(project_id: str, _auth: str = Depends(require_bui
 async def project_update_prd(project_id: str, body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
     """Update PRD directly without going through PM chat again."""
     prd = body.get("prd", body)
-    return await _get_svc().update_prd(project_id, prd)
+    result = await _get_svc().update_prd(
+        project_id, prd,
+        force_confirm=bool(body.get("force_confirm") or body.get("force")),
+    )
+    if isinstance(result, dict) and result.get("status") == "error":
+        raise HTTPException(
+            status_code=400,
+            detail=str(result.get("detail") or "PRD 更新失败"),
+        )
+    return result
 
 
 @router.post("/projects/{project_id}/import-repo", response_model=StatusResponse)

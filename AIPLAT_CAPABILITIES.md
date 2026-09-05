@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1124
+total_capabilities: 1144
 
 total_capabilities: 1095
 last_updated: 2026-08-25
@@ -590,6 +590,15 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| followup_questions_from_report | `` | ✅ | 自动同步 | 已合入 |
+| apply_gate_to_prd | `` | ✅ | 自动同步 | 已合入 |
+| looks_like_prd | `` | ✅ | 自动同步 | 已合入 |
+| enrich_prd | `` | ✅ | 自动同步 | 已合入 |
+| assess_prd | `` | ✅ | 自动同步 | 已合入 |
+| is_media_prd | `` | ✅ | 自动同步 | 已合入 |
+| matched_domain_packs | `` | ✅ | 自动同步 | 已合入 |
+| normalize_constraints | `` | ✅ | 自动同步 | 已合入 |
+| clear_prd_gate_pack_cache | `` | ✅ | 自动同步 | 已合入 |
 | imported_repo context injection | `core/harness/execution/pipeline_engine.py` | ✅ | 自动同步 | 已合入 |
 | get_result_verifier | `core/harness/integration.py` | ✅ | 自动同步 | 已合入 |
 | get_dataset_manager | `core/harness/integration.py` | ✅ | 自动同步 | 已合入 |
@@ -1017,6 +1026,7 @@ scan_hash: 8f9548ec24f4
 | PipelineTracer | harness/utils/pipeline_tracer.py | ✅ | 时序轨道上下文管理器 | 已合入 |
 | 会话摘要器 | harness/utils/turn_summarizer.py | ✅ | question+answer → 中文摘要 | 已合入 |
 | 答案提取器 | harness/utils/answer_extractor.py | ✅ | 循环输出 → 纯文本答案 | 已合入 |
+| 重复循环守卫 | harness/utils/repetition_guard.py | ✅ | 检测并截断 LLM 退化重复循环（n-gram 重复检测，qwen2.5:3b 实测 7943 字符/230 次重复 → 截断为 120 字符前缀），core_chat 接入 | 已合入 |
 | 琐问处理器 | harness/utils/trivial_handlers.py | ✅ | 时间/数学表达式即时响应 | 已合入 |
 
 ---
@@ -1085,6 +1095,7 @@ scan_hash: 8f9548ec24f4
 ## 七、安全与治理
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| truncate_repetition | `core/harness/utils/repetition_guard.py` | ✅ | 自动同步 | 已合入 |
 | arch_guard_b84 | `scripts/architecture_guard.sh` | ✅ | 自动同步 | 已合入 |
 | PromptAuditRules | `core/harness/audit/prompt_audit_rules.py` | ✅ | 提示词审计规则 | 已合入 |
 | coupling_metrics | `scripts/coupling_metrics.py` + `scripts/baselines/coupling_baseline.json` | ✅ | 耦合度量基线：AST import-degree → avg_degree/max_degree(non-agg)/top-20 + baseline ratchet（roadmap §0.2） | 待合入 |
@@ -1398,7 +1409,13 @@ scan_hash: 8f9548ec24f4
 ## 十二、Gate 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| materialize_prd_gate_seeds | `core/harness/execution/prd_gate_loader.py` | ✅ | 自动同步 | 已合入 |
+| load_prd_gate_packs | `core/harness/execution/prd_gate_loader.py` | ✅ | 自动同步 | 已合入 |
+| render_prd_markdown | `core/harness/execution/prd_quality_gate.py` | ✅ | 自动同步 | 已合入 |
+| matched_packs_for_text | `core/harness/execution/prd_quality_gate.py` | ✅ | 自动同步 | 已合入 |
+| format_pm_gate_guidance | `core/harness/execution/prd_quality_gate.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
+| PRD 质量门禁（域 pack + 聊天回写） | harness/execution/prd_quality_gate.py + prd_gate_packs/_common.yaml + workspace_seeds/prd_gates/media.yaml + platform/builder/builder_project_service.py | ✅ | 解释器在 harness；内核 `_common` 仅跨域；媒体垂直规则在 workspace_seeds；`pm_hints` 生成前注入 PM 对话/`_extract_prd_from_chat`；`factory_finalize_prd` 改写 + Markdown 回写；生成物适用：**已接线**（Builder PM 对话确认路径） | 已合入 |
 | ContextGate | harness/infrastructure/gates/context_gate.py | ✅ | Token预算强制执行 + 上下文去重/陈旧校验 | 已合入 |
 | SchemaGate | harness/infrastructure/gates/schema_gate.py | ✅ | JSON Schema 强制校验，Agent输出在下游阶段前验证 | 已合入 |
 | ResilienceGate | harness/infrastructure/gates/resilience_gate.py | ✅ | 可配置重试策略 + 回退链 + 熔断器包装 | 已合入 |
@@ -1805,7 +1822,7 @@ scan_hash: 8f9548ec24f4
 | Swarm | harness/execution/swarm.py | ✅ | N-Agent竞选择优: 同任务独立执行→Arena评分→胜出合并, routing_mode="swarm" | 已合入 |
 | Roundtable | harness/execution/roundtable.py | ✅ | 多Agent平等讨论: 每轮全员发言→共识收敛→综合合成, routing_mode="roundtable" | 已合入 |
 | Matter (验收+交付) | [概念] — 前端验收交互 | ✅ | 交付物定义 + 验收标准字段, 存储于 SpecVersion.content | 已合入 |
-| CoT AutoInject | harness/syscalls/llm.py:253` + `harness/utils/prompt_loader.py:cot-auto-inject | ✅ | 每次LLM调用自动注入4步推理指令, AIPLAT_COT_AUTO_INJECT控制 | 已合入 |
+| CoT AutoInject | harness/syscalls/llm.py + prompt_loader `cot-auto-inject` | ✅ | 默认注入内部推理要求（禁止面向用户的步骤1-4脚手架）；`trace_context.skip_cot` / `AIPLAT_COT_AUTO_INJECT` 可关闭；对话澄清 fast path 默认 skip | 已合入 |
 | SubAgent 协调器 | apps/agents/subagent/coordinator.py | ✅ | execute_single/parallel/sequential/fanout | 已合入 |
 | 并行执行器 | apps/agents/parallel_executor.py | ✅ | Map-Reduce 模式 + max_concurrency + 异常隔离 | 已合入 |
 | 8 种协调模式 | harness/coordination/patterns/ | ✅ | Pipeline/FanOut/Supervisor/ExpertPool/ProducerReviewer/Hierarchical | 已合入 |
@@ -2041,19 +2058,19 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 69 | 1 | 70 |
+| Harness 执行引擎 | 78 | 1 | 79 |
 | 记忆子系统 | 41 | 0 | 41 |
 | 知识引擎（本体） | 153 | 8 | 161 |
 | RAG 检索 | 47 | 0 | 47 |
-| 知识基础设施 | 29 | 0 | 29 |
-| Agent 系统 | 42 | 0 | 42 |
+| 知识基础设施 | 30 | 0 | 30 |
+| Agent 系统 | 43 | 0 | 43 |
 | Skill 系统 | 54 | 0 | 54 |
-| 安全与治理 | 55 | 0 | 55 |
+| 安全与治理 | 56 | 0 | 56 |
 | 可观测性 | 27 | 0 | 27 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 130 | 0 | 130 |
-| Gate 系统 | 19 | 0 | 19 |
+| Gate 系统 | 25 | 0 | 25 |
 | 评估系统 | 18 | 0 | 18 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
@@ -2085,8 +2102,8 @@ scan_hash: 8f9548ec24f4
 | 对话→Wiki 自动管线 | 6 | 0 | 6 |
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
-| E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1115** | **9** | **1124** |
+| E2E 端到端验证 | 18 | 0 | 18 |
+| **总计** | **1135** | **9** | **1144** |
 
 | **总计** | **1095** | **0** | **1095** |
 

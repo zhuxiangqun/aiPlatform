@@ -3577,3 +3577,20 @@ def cross_validation_verify(output: dict, *, domain_id: str = "default") -> dict
         "layers_checked": getattr(result, "layers_checked", []),
         "reason": getattr(result, "reason", ""),
     }
+
+# PRD quality gate + pack loader (Builder PM path — platform MUST import via CoreFacade)
+from core.harness.execution.prd_gate_loader import clear_prd_gate_pack_cache  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_gate_loader import load_prd_gate_packs  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_gate_loader import materialize_prd_gate_seeds  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_quality_gate import apply_gate_to_prd  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_quality_gate import assess_prd  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_quality_gate import enrich_prd  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_quality_gate import factory_finalize_prd  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_quality_gate import followup_questions_from_report  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_quality_gate import format_pm_gate_guidance  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_quality_gate import is_media_prd  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_quality_gate import looks_like_prd  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_quality_gate import matched_domain_packs  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_quality_gate import matched_packs_for_text  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_quality_gate import normalize_constraints  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_quality_gate import render_prd_markdown  # noqa: boundary — CoreFacade canonical re-export

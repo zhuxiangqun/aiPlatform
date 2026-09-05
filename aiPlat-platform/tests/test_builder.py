@@ -136,9 +136,80 @@ class TestBuilderPipelineE2E:
         result = BuilderProjectService._parse_markdown_prd(test_prd)
         assert result, "Markdown PRD parsing must return non-empty dict"
         assert result.get("title") == "测试项目"
+        assert result.get("description") == "背景内容"
         assert len(result.get("functional_requirements", [])) >= 1
+        fr = result["functional_requirements"][0]
+        assert fr.get("description") == "作为用户，我想测试"
+        assert fr.get("priority") == "P0"
         assert result.get("user_stories"), "Must have user_stories for backward compat"
+        assert result["user_stories"][0]["id"].startswith("US-")
         assert result.get("scope"), "Must extract scope"
+
+    def test_prd_markdown_parses_gate_rewritten_format(self):
+        """Factory-rewritten Markdown (描述 + 独立用户故事 + 决策) must round-trip."""
+        from builder.builder_project_service import BuilderProjectService
+
+        md = """## 项目名称：智能视频内容理解工具
+
+## 项目背景
+支持直链视频 URL 或本地上传。
+
+## 功能需求
+### FR-001: 视频输入与下载
+- **描述**: 支持本地上传或直链视频 URL
+- **优先级**: high
+- **验收标准**:
+  - AC1: 单文件 ≤2GB
+  - AC2: SSRF 防护
+
+### FR-004: 语音内容分析
+- **描述**: 声学粗标签（非转写语义），不进行语音转写
+- **优先级**: standard
+- **验收标准**:
+  - AC1: 输出声学粗标签
+
+## 用户故事
+### US-001: 作为审核员，我想要粘贴直链视频 URL
+- **关联需求**: FR-001
+- **优先级**: high
+
+### US-004: 作为审核员，我想要分析声学粗标签
+- **关联需求**: FR-004
+- **优先级**: standard
+
+## 决策
+- speech_pipeline: audio_features_only
+- url_source_scope: direct_media_url
+
+## 待确认问题
+（无）
+
+## 范围
+- 平台: Web
+- 性能: P95 ≤ 1.5× video duration
+- 安全: SSRF
+
+---
+（已由 PRD 质量门禁自动改写 3 项）
+
+<!-- PRD_READY -->
+"""
+        result = BuilderProjectService._parse_markdown_prd(md)
+        assert result["title"] == "智能视频内容理解工具"
+        assert "直链" in result["description"]
+        frs = {fr["id"]: fr for fr in result["functional_requirements"]}
+        assert frs["FR-001"]["description"].startswith("支持本地上传")
+        assert frs["FR-001"]["priority"] == "high"
+        assert "≤2GB" in frs["FR-001"]["acceptance_criteria"][0]
+        stories = {us["id"]: us for us in result["user_stories"]}
+        assert "US-001" in stories and "US-004" in stories
+        assert stories["US-001"]["related_fr"] == ["FR-001"]
+        assert result["decisions"]["speech_pipeline"] == "audio_features_only"
+        assert result.get("open_questions") == []
+        # Must NOT alias FRs as user_stories
+        assert all(us["id"].startswith("US-") for us in result["user_stories"])
+        assert len(result["user_stories"]) == 2
+        assert len(result["functional_requirements"]) == 2
 
     def test_confirm_prd_saves_prd_from_messages(self, service):
         """confirm_prd() must find PRD in session messages and save to project."""
@@ -159,6 +230,48 @@ class TestBuilderPipelineE2E:
         assert proj.get("confirmed_prd"), f"PRD must be saved. Result: {result}"
         assert proj["confirmed_prd"].get("title") == "消息PRD"
         assert result.get("phase") == "executing"
+
+    def test_confirm_prd_blocks_contradictory_media_prd(self, service):
+        """Media PRD without decisions is factory-enriched then confirmable."""
+        import asyncio
+
+        bad = {
+            "title": "智能视频工具",
+            "description": "视频画面与语音分析",
+            "functional_requirements": [
+                {
+                    "id": "FR-004",
+                    "name": "语音分析",
+                    "acceptance_criteria": [
+                        "基于音轨特征分析，不生成逐字转写文本",
+                        "输出主题标签与情绪倾向",
+                    ],
+                },
+                {
+                    "id": "FR-006",
+                    "name": "加密",
+                    "acceptance_criteria": ["上传视频 AES-256 加密存储"],
+                },
+            ],
+            "constraints": {},
+            "open_questions": [],
+        }
+        service._sessions["vid_prj"] = {"phase": "dialogue", "messages": [], "prd": bad}
+        service._projects["vid_prj"] = {"project_id": "vid_prj", "description": "video"}
+
+        result = asyncio.run(service.confirm_prd("vid_prj"))
+        assert result.get("status") == "ok", result
+        assert result.get("phase") == "executing"
+        confirmed = service._projects["vid_prj"]["confirmed_prd"]
+        assert confirmed.get("decisions", {}).get("speech_pipeline") == "audio_features_only"
+        assert confirmed.get("decisions", {}).get("encryption_key_mgmt")
+        assert confirmed.get("_prd_gate", {}).get("ok") is True
+
+        # Without enrich, raw contradiction still fails the gate
+        from core.api.core_facade import apply_gate_to_prd
+        import pytest
+        with pytest.raises(ValueError, match="质量门禁"):
+            apply_gate_to_prd(bad, force=False, enrich=False)
 
     def test_session_type_safety_on_chat(self, service):
         """chat() must handle non-dict session without crashing — resets to dict."""

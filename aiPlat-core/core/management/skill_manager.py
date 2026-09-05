@@ -2457,7 +2457,7 @@ class SkillManager:
 
 
 
-    def _split_front_matter(self, content: str) -> tuple[dict | None, str]:
+    def _split_front_matter(self, content: str) -> tuple[Optional[dict], str]:
 
         """
 

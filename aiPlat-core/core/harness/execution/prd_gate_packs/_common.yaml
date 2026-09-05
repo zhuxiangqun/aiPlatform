@@ -1,0 +1,86 @@
+# Cross-domain PRD gate rules (always applied) — kernel-only.
+# Vertical / media-specific rules belong in workspace_seeds/prd_gates/*.yaml
+domain_id: _common
+always: true
+triggers: []
+
+# Cross-domain generation hints for PM Agent (injected when chatting / generating PRD).
+pm_hints:
+  - "有 URL/外链导入时：须含 SSRF 防护（拒绝内网 IP 与 file://）"
+  - "声称加密存储时：须写密钥/租户隔离策略（decisions.encryption_key_mgmt），或改为明文+鉴权并写明"
+  - "定稿 PRD 的 constraints 须为结构化对象，至少含 performance 与 security（非空）"
+  - "互相矛盾或不可实现的 AC 必须先改写再输出 PRD_READY；不得指望事后门禁「洗绿」放行"
+  - "若注入的域约束含 BAD/GOOD 反例：首稿必须对齐 GOOD；BAD 口径会阻断 PRD_READY（洗绿不可替代首稿）"
+
+checks:
+  - id: ssrf_guard_missing
+    severity: error
+    when:
+      all:
+        - blob_match: "直链|URL\\s*(?:导入|下载|粘贴)|下载视频|http/?/?https|粘贴\\s*URL"
+        - not_blob_match: "内网\\s*IP|拒绝内网|SSRF|file://|192\\.168|10\\.\\d|172\\.(1[6-9]|2\\d|3[01])"
+    message: "存在 URL 下载/导入但未要求拒绝内网 IP 与 file://（SSRF 防护）"
+
+  - id: encryption_without_key_mgmt
+    severity: error
+    when:
+      all:
+        - blob_match: "AES-?256|加密存储|加密后存储"
+        - not_blob_match: "密钥|key\\s*management|KMS|信封加密|按用户隔离|租户隔离.*密|encryption_key_mgmt\\s*[:=]\\s*N/?A|不涉及加密|明文存储"
+        - not_decision: encryption_key_mgmt
+    message: "声明了加密存储但未说明密钥托管/租户隔离（decisions.encryption_key_mgmt）或明文策略"
+
+  - id: confidence_empty_unspecified
+    severity: warning
+    when:
+      all:
+        - blob_match: "置信度[^。\\n]{0,20}(?:≥|>=)\\s*0\\.\\d"
+        - not_blob_match: "未识别到主体|主体.*可为空|空列表|全部低于|过滤后无主体|confidence_empty"
+        - not_decision: confidence_empty_policy
+    message: "设置了置信度阈值但未说明全部过滤后的输出策略（空列表 / 降级 / 失败）"
+
+repairs:
+  - id: ensure_ssrf_ac
+    when:
+      all:
+        - blob_match: "直链|URL\\s*(?:导入|下载|粘贴)|下载视频|http/?/?https|粘贴\\s*URL"
+        - not_blob_match: "内网\\s*IP|拒绝内网|SSRF|file://"
+    actions:
+      - append_ac:
+          prefer_fr_match: "接入|导入|下载|URL|上传"
+          text: "URL 导入须校验协议为 http/https，拒绝内网 IP（10.x/172.16-31.x/192.168.x）与本地协议（file://），防止 SSRF"
+      - append_constraint:
+          key: security
+          value: "SSRF: reject private IPs and file:// on URL import"
+
+  - id: ensure_encryption_key_mgmt
+    when:
+      all:
+        - blob_match: "AES-?256|加密存储|加密后存储"
+        - not_decision: encryption_key_mgmt
+        - not_blob_match: "encryption_key_mgmt\\s*[:=]\\s*N/?A|不涉及加密|明文存储"
+    actions:
+      - set_decision:
+          key: encryption_key_mgmt
+          value: "server-managed AES-256 with per-tenant key isolation"
+
+  - id: ensure_confidence_empty_policy
+    when:
+      all:
+        - blob_match: "置信度[^。\\n]{0,20}(?:≥|>=)\\s*0\\.\\d"
+        - not_decision: confidence_empty_policy
+    actions:
+      - set_decision:
+          key: confidence_empty_policy
+          value: empty_list
+      - annotate_ac:
+          match: "置信度[^。\\n]{0,20}(?:≥|>=)\\s*0\\.\\d"
+          note: "；未识别到主体时输出空列表"
+
+  - id: ensure_base_constraints
+    when:
+      all:
+        - always: true
+    actions:
+      - ensure_constraint_platform: "Web"
+      - ensure_constraint_security_generic: "HTTPS + authentication"

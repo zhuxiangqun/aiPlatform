@@ -318,27 +318,33 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
         logging.debug(str(e), exc_info=True)
 
     # ── 3. SkillRegistry: bind matching Skills ──
+    # NOTE (2026-08-29): conversational agents use the direct-LLM fast path
+    # (BaseAgent.execute skips the ReAct loop when no tools/skills are bound).
+    # Binding pipeline `required_skills` here forces the ReAct loop, which for
+    # plain dialogue never emits DONE and loops until max_steps → chat timeout.
+    # Pipeline skills belong to core_execute; the dialogue needs none.
     skills_used: List[str] = []
-    try:
-        skill_reg = get_skill_registry()
-        required = frontmatter.get("required_skills") if frontmatter else None
-        if required:
-            skills_used = [s for s in required if isinstance(s, str)]
-        else:
-            # Auto-discover matching skills based on agent profile
-            _agent_tags = (frontmatter.get("tags") or []) if frontmatter else []
-            _agent_desc = str(frontmatter.get("description") or "") if frontmatter else ""
-            _agent_cat  = str(frontmatter.get("category") or "") if frontmatter else ""
-            # Search skill registry for likely matches
-            if _agent_desc or _agent_cat:
-                _search_query = f"{_agent_desc} {_agent_cat} {' '.join(_agent_tags)}"
-                _matches = skill_reg.search_corpus(_search_query, limit=5)
-                skills_used = [m.get("name", "") for m in _matches if m.get("name")]
-                if skills_used:
-                    logging.getLogger("core.intents").info(
-                        "auto-bind skills for '%s': %s", ctx.agent_name, skills_used)
-    except Exception as e:
-        logging.debug(str(e), exc_info=True)
+    if agent_type != "conversational":
+        try:
+            skill_reg = get_skill_registry()
+            required = frontmatter.get("required_skills") if frontmatter else None
+            if required:
+                skills_used = [s for s in required if isinstance(s, str)]
+            else:
+                # Auto-discover matching skills based on agent profile
+                _agent_tags = (frontmatter.get("tags") or []) if frontmatter else []
+                _agent_desc = str(frontmatter.get("description") or "") if frontmatter else ""
+                _agent_cat  = str(frontmatter.get("category") or "") if frontmatter else ""
+                # Search skill registry for likely matches
+                if _agent_desc or _agent_cat:
+                    _search_query = f"{_agent_desc} {_agent_cat} {' '.join(_agent_tags)}"
+                    _matches = skill_reg.search_corpus(_search_query, limit=5)
+                    skills_used = [m.get("name", "") for m in _matches if m.get("name")]
+                    if skills_used:
+                        logging.getLogger("core.intents").info(
+                            "auto-bind skills for '%s': %s", ctx.agent_name, skills_used)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # Auto-select skill subset via intent classification (v2.4)
     if skills_used and frontmatter.get("auto_select_skills", True):
@@ -372,7 +378,7 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
 
     agent = create_agent(
         agent_type=agent_type,
-        config=AgentConfig(name=ctx.agent_name, temperature=0.3, timeout=600),
+        config=AgentConfig(name=ctx.agent_name, temperature=0.3, timeout=600, max_tokens=8192),
         model=model,
         system_prompt=system_prompt,
     )
@@ -401,6 +407,21 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
 
     # ── Unwrap JSON formats from ReAct/agent outputs ──
     reply = _unwrap_agent_reply(reply)
+
+    # ── Repetition guard: truncate degenerate LLM loops (2026-08-29) ──
+    # Small local models (qwen2.5:3b) may repeat one phrase hundreds of times
+    # instead of answering; keep the non-repeating prefix and mark the truncation.
+    try:
+        from core.harness.utils.repetition_guard import truncate_repetition
+        reply, _repetition_truncated = truncate_repetition(reply)
+        if _repetition_truncated:
+            logging.getLogger("core.intents").warning(
+                "repetition loop truncated for agent '%s' (session=%s)",
+                ctx.agent_name, ctx.session_id,
+            )
+    except Exception:
+        logging.getLogger(__name__).debug(
+            "repetition guard skipped (non-critical)", exc_info=True)
 
     # ── 5. MemoryManager: save interaction ──
     try:
@@ -457,6 +478,7 @@ async def core_execute(ctx: ExecuteContext) -> ExecuteResult:
         project_id=ctx.metadata.get("project_id", trace_id),
         requirement=ctx.input_data.get("requirement", ""),
         prd_data=ctx.input_data.get("prd"),
+        pm_chat_history=ctx.input_data.get("pm_chat_history"),
     )
 
     return ExecuteResult(

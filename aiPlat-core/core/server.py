@@ -820,6 +820,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
+    # PRD quality-gate packs: seed vertical domains → ~/.aiplat/prd_gates (kernel keeps _common only).
+    try:
+        from core.harness.execution.prd_gate_loader import materialize_prd_gate_seeds
+
+        materialize_prd_gate_seeds(overwrite=False)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
+
     # Workspace managers (user-facing). Strictly separated: no override of engine ids.
     try:
         global _workspace_agent_manager, _workspace_skill_manager, _workspace_mcp_manager

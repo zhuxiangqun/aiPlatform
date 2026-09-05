@@ -877,43 +877,59 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
 
         session["messages"].append({"role": "user", "content": message})
 
-        # ── Inject knowledge retrieval context into PM dialogue ──
+        # ── Determine agent and optionally inject knowledge retrieval context ──
         _enriched_message = message
-        try:
-            from core.api.core_facade import sys_knowledge_retrieve
-            from core.api.core_facade import DomainRouter
-            _did = "default"
+        _agent_name = _AIPLAT_PM_AGENT
+        _run_state = self._runs.get(project_id)
+        if not _run_state:
             try:
-                _did = DomainRouter().classify(message)
+                _run_state = self._load_pipeline_state(project_id) or {}
+            except Exception:
+                _run_state = {}
+        _generated = _run_state.get("_generated_agent", "") if isinstance(_run_state, dict) else ""
+
+        if _generated:
+            # Generated Agent app — inject knowledge retrieval context
+            _agent_name = _generated
+            try:
+                from core.api.core_facade import sys_knowledge_retrieve
+                from core.api.core_facade import DomainRouter
+                _did = "default"
+                try:
+                    _did = DomainRouter().classify(message)
+                except Exception:
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+                _kb_docs = sys_knowledge_retrieve(message, top_k=3, domain_id=_did)
+                if _kb_docs:
+                    _kb_lines = ["## 知识库中已有的相关内容"]
+                    for _doc in _kb_docs[:3]:
+                        _title = str(getattr(_doc, 'title', '') or '')
+                        _snippet = str(getattr(_doc, 'content', '') or getattr(_doc, 'snippet', '') or '')[:300]
+                        if _title or _snippet:
+                            _kb_lines.append(f"- {_title}: {_snippet}")
+                    if len(_kb_lines) > 1:
+                        _kb_context = "\n".join(_kb_lines)
+                        _enriched_message = f"{_kb_context}\n\n---\n用户需求: {message}"
             except Exception:
                 logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
-            _kb_docs = sys_knowledge_retrieve(message, top_k=3, domain_id=_did)
-            if _kb_docs:
-                _kb_lines = ["## 知识库中已有的相关内容"]
-                for _doc in _kb_docs[:3]:
-                    _title = str(getattr(_doc, 'title', '') or '')
-                    _snippet = str(getattr(_doc, 'content', '') or getattr(_doc, 'snippet', '') or '')[:300]
-                    if _title or _snippet:
-                        _kb_lines.append(f"- {_title}: {_snippet}")
-                if len(_kb_lines) > 1:
-                    _kb_context = "\n".join(_kb_lines)
-                    _enriched_message = f"{_kb_context}\n\n---\n用户需求: {message}"
-        except Exception:
-            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # best-effort
+        # else: PM dialogue — skip RAG (reranker loading caused SIGABRT, uncatchable by try/except)
+        else:
+            # Inject matched PRD gate pack hints *before* generation (not only post-hoc wash)
+            try:
+                from core.api.core_facade import format_pm_gate_guidance
+                _hist = "\n".join(
+                    str(m.get("content") or "")
+                    for m in (session.get("messages") or [])[-12:]
+                )
+                _guidance = format_pm_gate_guidance(_hist or message)
+                if _guidance:
+                    _enriched_message = f"{_guidance}\n\n---\n用户消息: {message}"
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "prd gate guidance inject skipped", exc_info=True
+                )
 
         try:
-            # Check if this project has a generated Agent app → route chat to it
-            _agent_name = _AIPLAT_PM_AGENT
-            _run_state = self._runs.get(project_id)
-            if not _run_state:
-                try:
-                    _run_state = self._load_pipeline_state(project_id) or {}
-                except Exception:
-                    _run_state = {}
-            _generated = _run_state.get("_generated_agent", "") if isinstance(_run_state, dict) else ""
-            if _generated:
-                _agent_name = _generated
-                _enriched_message = message  # Agent apps use raw message, not KB-enriched
 
             result = await core_chat(ChatContext(
                 agent_name=_agent_name,
@@ -941,12 +957,31 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                 if not draft and "## 项目名称" in str(reply):
                     draft = self._parse_markdown_prd(reply)
                 if draft:
-                    session["prd"] = draft
-                    # Also save to project directly so PRD survives session loss/overwrite
-                    proj = self._projects.get(project_id, {})
-                    if proj:
-                        proj["confirmed_prd"] = draft
-                        self._save_projects()
+                    from core.api.core_facade import (
+                        factory_finalize_prd,
+                        followup_questions_from_report,
+                        render_prd_markdown,
+                    )
+                    draft, gate_report = factory_finalize_prd(draft)
+                    if gate_report.get("ok"):
+                        session["prd"] = draft
+                        proj = self._projects.get(project_id, {})
+                        if proj:
+                            proj["confirmed_prd"] = draft
+                            self._save_projects()
+                        # Show repaired PRD in chat (not the contradictory LLM draft)
+                        reply = render_prd_markdown(draft, include_ready_marker=True)
+                        if session.get("messages"):
+                            session["messages"][-1]["content"] = reply
+                    else:
+                        # Factory could not auto-close — block PRD_READY and ask remaining decisions
+                        prd_ready = False
+                        session["prd"] = draft
+                        reply = str(reply).replace("<!-- PRD_READY -->", "").rstrip()
+                        reply = reply + followup_questions_from_report(gate_report)
+                        # rewrite last assistant message so history matches
+                        if session.get("messages"):
+                            session["messages"][-1]["content"] = reply
             self._save_chat_session(project_id)
             return {"reply": reply, "prd_ready": prd_ready, "trace_id": result.trace_id, "session_state": {}}
         except Exception as e:
@@ -974,6 +1009,13 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
 
         from core.api.core_facade import _sync_resolve
         prompt = _sync_resolve("prd-extract-from-chat", conversation=conversation_text, name=_name)
+        try:
+            from core.api.core_facade import format_pm_gate_guidance
+            _g = format_pm_gate_guidance(conversation_text)
+            if _g:
+                prompt = f"{_g}\n\n---\n{prompt}"
+        except Exception:
+            _log.debug("prd gate guidance for extract skipped", exc_info=True)
 
         try:
             from core.api.intents import core_chat, ChatContext
@@ -1003,6 +1045,8 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                     except Exception:
                         continue
                 if prd and isinstance(prd, dict):
+                    from core.api.core_facade import factory_finalize_prd
+                    prd, _gate = factory_finalize_prd(prd)
                     _log.info("_extract_prd_from_chat: extracted PRD with keys %s", list(prd.keys())[:5])
                     return prd
             _log.info("_extract_prd_from_chat: no valid JSON found in reply")
@@ -1010,7 +1054,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             _log.warning("_extract_prd_from_chat failed: %s", str(e)[:200])
         return None
 
-    async def confirm_prd(self, project_id: str, prd_data: Any = None) -> Dict[str, Any]:
+    async def confirm_prd(self, project_id: str, prd_data: Any = None, *, force_confirm: bool = False) -> Dict[str, Any]:
         session = self._sessions.get(project_id)
         if not session:
             session = self._load_chat_session(project_id)
@@ -1061,13 +1105,38 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         if not prd_data:
             raise ValueError(_AIPLAT_NO_PRD)
 
+        # PRD quality gate: block contradictory / decision-open PRDs (esp. media)
+        from core.api.core_facade import apply_gate_to_prd
+        try:
+            prd_data, gate_report = apply_gate_to_prd(
+                prd_data if isinstance(prd_data, dict) else {},
+                force=bool(force_confirm),
+            )
+        except ValueError as gate_err:
+            return {
+                "status": "error",
+                "phase": "dialogue",
+                "detail": str(gate_err),
+                "prd_gate": {
+                    "ok": False,
+                    "blocked": True,
+                },
+                "prd": prd_data if isinstance(prd_data, dict) else {},
+            }
+
         proj["confirmed_prd"] = prd_data
         self._save_projects()
 
         # Transition session phase from dialogue to executing
         if session:
             session["phase"] = BuilderSessionPhase.executing.value
-        return {"phase": BuilderSessionPhase.executing.value, "prd": prd_data}
+            session["prd"] = prd_data
+        return {
+            "phase": BuilderSessionPhase.executing.value,
+            "prd": prd_data,
+            "prd_gate": gate_report,
+            "status": "ok",
+        }
 
     def _ensure_manifest_resolved(self, project_id: str, state: Dict[str, Any]) -> None:
         """Post-process pipeline state: extract agent_manifest.json from deployed files.
@@ -1234,10 +1303,12 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             proj["plan_stages"] = plan_stages
             proj["plan_stage_ids"] = [s.get("id", f"plan_stage_{i}") for i, s in enumerate(plan_stages)]
 
-            # v3.2: 模式判断 → 映射固定团队模板（agent→default.yaml, code→code.yaml）
+            # v4.2: 模式判断 → 映射固定团队模板
+            #   agent→default.yaml, code→code.yaml, hybrid→hybrid.yaml
             recommendation["mode"] = rec.mode
-            if rec.mode in ("agent", "code") and not proj.get("team_id"):
-                proj["team_id"] = "default" if rec.mode == "agent" else "code"
+            _mode_team_map = {"agent": "default", "code": "code", "hybrid": "hybrid"}
+            if rec.mode in _mode_team_map and not proj.get("team_id"):
+                proj["team_id"] = _mode_team_map[rec.mode]
                 recommendation["_mode_mapped"] = True
                 recommendation["_team_id"] = proj["team_id"]
                 self._save_projects()
@@ -1266,9 +1337,12 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                         ))
                     if team_stages:
                         # ── v3.1: HITL gates from team template YAML ──
+                        # v4.2: 模板按能力分析判定的模式选取（hybrid/code/default），
+                        # 不再硬编码 default
                         try:
                             from core.api.core_facade import load_team_template
-                            tmpl = load_team_template("default")
+                            _tmpl_name = {"hybrid": "hybrid", "code": "code"}.get(rec.mode, "default")
+                            tmpl = load_team_template(_tmpl_name) or load_team_template("default")
                             if tmpl and tmpl.stages:
                                 # TeamTemplate.stages 是 YAML dict 列表（team_planner.py:61
                                 # List[Dict[str, Any]]）——必须 dict 访问；属性访问 AttributeError
@@ -1345,6 +1419,8 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         prd: Dict[str, Any] = {}
         # Strip PRD_READY marker if present (appears before the # heading)
         clean = reply.replace("<!-- PRD_READY -->", "").strip()
+        # Drop auto-repair footnotes so they are not treated as section body
+        clean = re.split(r"\n---\s*\n", clean, maxsplit=1)[0].strip()
         title_match = re.search(r"^#+ (.+)", clean, re.MULTILINE)
         if title_match:
             prd["title"] = title_match.group(1).strip()
@@ -1363,7 +1439,14 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                 sections[current_key] = ""
             elif current_key:
                 sections[current_key] += line + "\n"
-        # Functional requirements count as user_stories
+        bg = (
+            sections.get("项目背景", "")
+            or sections.get("背景", "")
+            or sections.get("Background", "")
+        ).strip()
+        if bg:
+            prd["description"] = bg
+        # Functional requirements
         func_section = (
             sections.get(_AIPLAT_PRD_SECTION_REQUIREMENTS, "")
             or sections.get("核心" + _AIPLAT_PRD_SECTION_REQUIREMENTS, "")
@@ -1375,31 +1458,144 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         for fr_match in re.finditer(r"###\s*(.+?)\n(.*?)(?=\n###|\n##|\Z)", func_section or "", re.DOTALL):
             fr_name = fr_match.group(1).strip()
             fr_body = fr_match.group(2)
-            user_story_match = re.search(r"用户故事[：:]\s*(.+)", fr_body)
+            desc_match = re.search(
+                r"(?:\*\*)?(?:描述|功能描述)(?:\*\*)?[：:]\s*(.+)", fr_body
+            )
+            user_story_match = re.search(
+                r"(?:\*\*)?用户故事(?:\*\*)?[：:]\s*(.+)", fr_body
+            )
+            pri_match = re.search(r"(?:\*\*)?优先级(?:\*\*)?[：:]\s*(\S+)", fr_body)
             acs = re.findall(r"AC\d+:\s*(.+)", fr_body)
-            fr_items.append({
+            if not acs:
+                # Bullet ACs under 验收标准 without AC1: prefix
+                ac_block = re.search(
+                    r"验收标准[：:]?\s*\n((?:\s*[-*]\s+.+\n?)+)", fr_body
+                )
+                if ac_block:
+                    acs = re.findall(r"[-*]\s+(.+)", ac_block.group(1))
+            item: Dict[str, Any] = {
                 "id": fr_name.split(":", 1)[0].strip() if ":" in fr_name else fr_name,
                 "name": fr_name.split(":", 1)[1].strip() if ":" in fr_name else fr_name,
-                "description": user_story_match.group(1).strip() if user_story_match else "",
+                "description": (
+                    (desc_match.group(1).strip() if desc_match else "")
+                    or (user_story_match.group(1).strip() if user_story_match else "")
+                ),
                 "acceptance_criteria": acs,
-            })
-        # Fallback: parse numbered/bulleted lists as user stories
+            }
+            if pri_match:
+                item["priority"] = pri_match.group(1).strip()
+            fr_items.append(item)
+        # Fallback: parse numbered/bulleted lists as FRs
         if not fr_items and func_section.strip():
-            for line_match in re.finditer(r'^\s*(?:\d+\.|[-*])\s*\**(.+?)\**(?:\s*[：:]\s*(.+))?\s*$', func_section or "", re.MULTILINE):
+            for line_match in re.finditer(
+                r'^\s*(?:\d+\.|[-*])\s*\**(.+?)\**(?:\s*[：:]\s*(.+))?\s*$',
+                func_section or "",
+                re.MULTILINE,
+            ):
                 _name = line_match.group(1).strip()
                 _desc = (line_match.group(2) or "").strip()
                 fr_items.append({
-                    "id": f"US-{len(fr_items)+1:03d}",
+                    "id": f"FR-{len(fr_items)+1:03d}",
                     "name": _name,
                     "description": _desc or _name,
                     "acceptance_criteria": [],
                 })
         if fr_items:
             prd["functional_requirements"] = fr_items
-            prd["user_stories"] = fr_items
+        # User stories — prefer dedicated section; do not alias FRs when present
+        stories_section = (
+            sections.get("用户故事", "")
+            or sections.get("User Stories", "")
+            or next((v for k, v in sections.items() if "用户故事" in k or "User Stor" in k), "")
+        )
+        us_items: List[Dict[str, Any]] = []
+        if stories_section.strip():
+            for us_match in re.finditer(
+                r"###\s*(.+?)\n(.*?)(?=\n###|\n##|\Z)", stories_section, re.DOTALL
+            ):
+                us_head = us_match.group(1).strip()
+                us_body = us_match.group(2)
+                us_id, us_text = us_head, us_head
+                if ":" in us_head:
+                    us_id, us_text = us_head.split(":", 1)
+                    us_id, us_text = us_id.strip(), us_text.strip()
+                rel = re.search(r"(?:\*\*)?关联需求(?:\*\*)?[：:]\s*(.+)", us_body)
+                pri = re.search(r"(?:\*\*)?优先级(?:\*\*)?[：:]\s*(\S+)", us_body)
+                story: Dict[str, Any] = {
+                    "id": us_id,
+                    "story": us_text,
+                    "description": us_text,
+                }
+                if rel:
+                    parts = [p.strip() for p in re.split(r"[,，、\s]+", rel.group(1)) if p.strip()]
+                    story["related_fr"] = parts
+                if pri:
+                    story["priority"] = pri.group(1).strip()
+                us_items.append(story)
+            if not us_items:
+                for line_match in re.finditer(
+                    r'^\s*(?:\d+\.|[-*])\s*(.+)$', stories_section, re.MULTILINE
+                ):
+                    text = line_match.group(1).strip()
+                    us_items.append({
+                        "id": f"US-{len(us_items)+1:03d}",
+                        "story": text,
+                        "description": text,
+                    })
+        if us_items:
+            prd["user_stories"] = us_items
+        elif fr_items:
+            # Backward compat: older markdown embedded 用户故事 under each FR
+            prd["user_stories"] = [
+                {
+                    "id": f"US-{i:03d}",
+                    "story": fr.get("description") or fr.get("name") or "",
+                    "description": fr.get("description") or fr.get("name") or "",
+                    "related_fr": [fr["id"]] if fr.get("id") else [],
+                }
+                for i, fr in enumerate(fr_items, 1)
+                if fr.get("description") or fr.get("name")
+            ]
         scope = sections.get(_AIPLAT_PRD_SECTION_SCOPE, "").strip()
         if scope:
             prd["scope"] = scope
+        # Lift structured constraints + decisions from Markdown (NFR must not stay as prose only)
+        try:
+            from core.api.core_facade import normalize_constraints
+            # Parse ## 决策 / ## 待确认问题 sections if present
+            decisions_body = (
+                sections.get("决策", "")
+                or sections.get("产品决策", "")
+                or sections.get("Decisions", "")
+            ).strip()
+            if decisions_body:
+                dec: Dict[str, Any] = {}
+                for line in decisions_body.splitlines():
+                    m = re.match(r"^\s*[-*]?\s*([a-zA-Z_][\w]*)\s*[：:=]\s*(.+)\s*$", line)
+                    if m:
+                        dec[m.group(1).strip()] = m.group(2).strip()
+                if dec:
+                    prd["decisions"] = dec
+            oq_body = (
+                sections.get("待确认问题", "")
+                or sections.get("开放问题", "")
+                or sections.get("Open Questions", "")
+            ).strip()
+            if oq_body:
+                oqs = []
+                for line in oq_body.splitlines():
+                    m = re.match(r"^\s*(?:\d+\.|[-*])\s*(.+)$", line)
+                    if m:
+                        text = m.group(1).strip()
+                        if text in ("（无）", "(无)", "无", "N/A", "None"):
+                            continue
+                        oqs.append(text)
+                prd["open_questions"] = oqs
+            else:
+                prd.setdefault("open_questions", [])
+            prd = normalize_constraints(prd)
+        except Exception:
+            logging.getLogger(__name__).debug("prd constraint lift failed", exc_info=True)
         # ISA upgrade: extract success metrics and target state
         metrics_section = sections.get(_AIPLAT_PRD_SECTION_METRICS, "") or sections.get(_AIPLAT_PRD_SECTION_ACCEPTANCE, "")
         if metrics_section.strip():
@@ -1648,7 +1844,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
 
 
 
-    async def update_prd(self, project_id: str, prd: dict) -> Dict[str, Any]:
+    async def update_prd(self, project_id: str, prd: dict, *, force_confirm: bool = False) -> Dict[str, Any]:
         """Directly update the confirmed PRD without re-running PM chat."""
         import logging as _log2
         proj = self._projects.get(project_id, {})
@@ -1665,13 +1861,19 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                 if not str(item.get("intent") or "").strip():
                     return {"status": "error",
                             "detail": f"文件 {item.get('path')} 必须填写修改意图（intent）"}
-        if not proj:
-            return {"status": "error", "detail": "项目不存在"}
+        from core.api.core_facade import apply_gate_to_prd
+        try:
+            prd, gate_report = apply_gate_to_prd(
+                prd if isinstance(prd, dict) else {},
+                force=bool(force_confirm),
+            )
+        except ValueError as gate_err:
+            return {"status": "error", "detail": str(gate_err), "prd_gate": {"ok": False, "blocked": True}}
         proj["confirmed_prd"] = prd
         proj["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
         self._save_projects()
         _log2.getLogger("aiplat.builder").info("PRD updated for %s", project_id)
-        return {"status": "ok", "detail": "PRD 已更新"}
+        return {"status": "ok", "detail": "PRD 已更新", "prd_gate": gate_report, "prd": prd}
 
     async def start_pipeline(self, project_id: str) -> Dict[str, Any]:
         """启动/触发项目流水线执行（P0-1 修复, 2026-08-25）。
@@ -1687,7 +1889,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         if not proj.get("confirmed_prd"):
             return {"status": "error", "detail": "没有已确认的 PRD，请先完成 PM 对话"}
         result = await self.rebuild_project(project_id)
-        return {"status": "ok", "run_id": project_id, **result}
+        return {"status": "ok", "run_id": project_id, "project_id": project_id, "phase": "executing", **result}
 
     async def start_pipeline_background(self, project_id: str) -> Dict[str, Any]:
         """异步启动流水线（P0-1 修复, 2026-08-25）：不阻塞调用方，后台触发执行。"""
@@ -1708,6 +1910,23 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             return {"status": "error", "detail": "项目不存在"}
         if not proj.get("confirmed_prd"):
             return {"status": "error", "detail": "没有已确认的 PRD，请先完成 PM 对话"}
+        # Factory: refresh confirmed PRD through quality finalize before rebuild
+        try:
+            from core.api.core_facade import factory_finalize_prd, looks_like_prd
+            _raw_prd = proj.get("confirmed_prd") or {}
+            if looks_like_prd(_raw_prd):
+                _final_prd, _gate = factory_finalize_prd(_raw_prd)
+                if _gate.get("ok"):
+                    proj["confirmed_prd"] = _final_prd
+                    self._save_projects()
+                else:
+                    logging.getLogger("aiplat.builder").warning(
+                        "rebuild PRD finalize still failing for %s: %s",
+                        project_id,
+                        [i.get("code") for i in (_gate.get("issues") or []) if i.get("severity") == "error"][:5],
+                    )
+        except Exception:
+            logging.getLogger("aiplat.builder").debug("rebuild PRD finalize skipped", exc_info=True)
         # L3-P0-02: snapshot affected imported files before generation (concurrency guard)
         _prd = proj.get("confirmed_prd") or {}
         if str(_prd.get("merge_strategy") or "") == "incremental_merge":
@@ -1727,6 +1946,16 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         if os.path.isdir(out_dir):
             try: shutil.rmtree(out_dir)
             except OSError: pass  # noqa: cleanup-best-effort
+        # ── Load PM chat history BEFORE deleting chat session file ──
+        _pm_messages = []
+        _chat_session = self._load_chat_session(project_id)
+        if isinstance(_chat_session, dict):
+            for m in (_chat_session.get("messages") or []):
+                role = m.get("role", "")
+                content = str(m.get("content", "") or "")[:2000]
+                if role in ("user", "assistant") and content:
+                    _pm_messages.append({"role": role, "content": content})
+        # Clean pipeline state + chat session files (chat already loaded above)
         for fname in (f"{project_id}.json", f"{project_id}_chat.json"):
             fpath = os.path.join(_BUILDER_STATES_DIR, fname)
             try:
@@ -1738,7 +1967,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         self._sync_team_stages(project_id)
         # Re-run pipeline with existing PRD
         import logging as _log3
-        _log3.getLogger("aiplat.builder").info("Rebuilding project %s", project_id)
+        _log3.getLogger("aiplat.builder").info("Rebuilding project %s (pm_history=%d messages)", project_id, len(_pm_messages))
         self._runs[project_id] = {"phase": "executing"}  # seed initial state for frontend polling
         # Add run entry immediately so project card shows "构建中"
         now = time.strftime("%Y-%m-%dT%H:%M:%S")
@@ -1752,7 +1981,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
 
         # Delegate pipeline execution to Core server (8002) via HTTP API.
         # Core owns all LLM infrastructure — no direct PipelineEngine import.
-        return await self._rebuild_via_core(project_id, proj, module_id=module_id)
+        return await self._rebuild_via_core(project_id, proj, module_id=module_id, pm_messages=_pm_messages)
 
     async def _get_state_via_core(self, project_id: str) -> Dict[str, Any]:
         """Read pipeline state — 收敛到 SQLite 直读（P1-12 §10 唯一实现）。
@@ -1796,7 +2025,8 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             ],
         }
 
-    async def _rebuild_via_core(self, project_id: str, proj: dict, module_id: str = "default") -> Dict[str, Any]:
+    async def _rebuild_via_core(self, project_id: str, proj: dict, module_id: str = "default",
+                               pm_messages: list = None) -> Dict[str, Any]:
         """Trigger pipeline execution via Core server HTTP API."""
         from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
 
@@ -1814,6 +2044,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                     _app_name = _translated
                     proj["app_name"] = _translated
                     self._save_projects()
+
         config = {
             "total_stages": len(stages),
             "tokens_budget": int(os.getenv("AIPLAT_BUILDER_MAX_TOKENS", "100000")),
@@ -1823,6 +2054,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             "description": proj.get("description", ""),
             "app_name": _app_name,
             "prd_data": prd_data,
+            "pm_chat_history": pm_messages or [],
             "stages": [
                 s if isinstance(s, dict) else s.model_dump() if hasattr(s, "model_dump") else dict(s)
                 for s in stages

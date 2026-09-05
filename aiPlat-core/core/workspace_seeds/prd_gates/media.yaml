@@ -1,0 +1,415 @@
+# Media / A/V domain PRD gate pack (workspace seed — NOT a core builtin).
+# Ownership: workspace_seeds / ~/.aiplat/prd_gates — edit there; harness only interprets.
+# Loaded when triggers hit PRD text. Do not put this file under prd_gate_packs/.
+domain_id: media
+always: false
+triggers:
+  - 视频
+  - "\\bvideo\\b"
+  - 字幕
+  - 音轨
+  - 画面分析
+  - MP4
+  - MKV
+  - AVI
+  - MOV
+  - 转写
+  - ASR
+  - VLM
+  - 说话人
+  - 场景识别
+  - 时间线报告
+  - 字幕轨道
+
+# Generation-time hints for PM Agent (injected before PRD_READY — not post-hoc wash).
+pm_hints:
+  - "URL 入口二选一写清：仅直链媒体文件（.mp4/.mov/.avi/.mkv），或显式声明平台页解析；禁止混写「网页链接」与「仅直链」"
+  - "上传须写可测上限（如单文件 ≤2GB）与超限拒绝文案；禁止「无上限/不限大小」"
+  - "字幕：本期仅软字幕轨（SRT/ASS/内嵌）；硬字幕（烧录画面）须声明不在范围、不承诺 OCR"
+  - "【语音/不转写 · BAD】禁止写：主题标签 / 关键要点 / 语义分析 / 语音内容摘要 / 「主题与情感」/ 关键词——无 ASR 文本无法验收"
+  - "【语音/不转写 · GOOD】仅允许：语种估计、说话人数量估计、情绪倾向（声学）、有无音轨检测；须标注「声学粗标签/非转写语义」；decisions.speech_pipeline=audio_features_only"
+  - "【语音/不转写】首稿若写 BAD 口径：优先按 GOOD 重写；工厂会用 structural_repairs 整段改写 FR/US 后再放行（洗绿 scrub 单独不可放行）"
+  - "语速若写「字/分钟」：须区分有字幕→字/分钟、无字幕→音节密度；不可在无转写时单独承诺字速"
+  - "下载失败：仅终止本视频任务并返回 DOWNLOAD_FAILED，不进入本视频后续分析；不阻塞队列中其他任务"
+  - "须写 decisions：url_source_scope、speech_pipeline、subtitle_scope、analysis_sla；constraints 含 performance + security（含 SSRF）"
+
+checks:
+  # Disclaimer tokens alone must NOT clear the check — leftover 主题/摘要 still fails.
+  # Absence of semantic wording is the only clear; block_finalize_wash keeps scrub from green-pass.
+  - id: asr_topic_contradiction
+    severity: error
+    block_finalize_wash: true
+    when:
+      all:
+        - blob_match: "不(?:做|进行|支持|生成|执行|包含|含)?\\s*(?:语音到文字的?|语音|逐字)?转写|不转写|无转写|非转写|不做\\s*ASR|不生成逐字|不进行语音到文字"
+        # 勿匹配「不输出主题 / 禁止主题标签」等否定句（单字 lookbehind 挡不住「禁止」）
+        - blob_match: "(?<!禁止)(?<!不)主题标签|(?<!禁止)(?<!不)输出主题|语义分析|语义要点|要点摘要|关键话题|话题摘要|关键要点|(?<!禁止)(?<!不)关键词|(?<!禁止)主题倾向|(?<!禁止)主题和情感|(?<!禁止)(?<!不)提取主题|(?<![不禁拒])(?:做|进行|输出|提取)语义(?:分析|摘要|要点)"
+    message: "同时要求「不转写」与「主题/话题/语义分析」；须改写为声学特征粗标签，或允许 ASR/字幕依赖"
+
+  - id: speech_summary_without_transcript
+    severity: error
+    block_finalize_wash: true
+    when:
+      all:
+        - blob_match: "不(?:做|进行|支持|生成|执行|包含|含)?\\s*(?:语音到文字的?|语音|逐字)?转写|不转写|无转写|非转写|不做\\s*ASR|不生成逐字|不进行语音到文字"
+        - blob_match: "语音摘要|音轨摘要|转写摘要|ASR\\s*摘要|关键话题摘要|话题摘要|语义分析|语义要点|要点摘要|关键要点"
+    message: "要求「语音/话题语义摘要」但不转写且无字幕保证时无法生成；改为语音特征标签或允许 ASR/字幕依赖"
+
+  - id: speech_rate_chars_without_transcript
+    severity: error
+    when:
+      all:
+        - blob_match: "字\\s*/\\s*分钟|字每分钟|WPM|words?\\s*/\\s*min"
+        - any:
+            - blob_match: "不(?:做|进行|支持|生成|执行|包含|含)?\\s*(?:语音到文字的?|语音|逐字)?转写|不转写|无转写|非转写|不做\\s*ASR|不生成逐字|不进行语音到文字"
+            - decision_in:
+                key: speech_pipeline
+                values: [audio_features_only, acoustic_only, acoustic_only_coarse_labels, features_only]
+        - not_blob_match: "若存在字幕|有字幕.{0,12}字|无字幕.{0,24}(?:音节|发声|无法统计)|音节密度|发声音节"
+    message: "不转写场景要求「字/分钟」但未区分有字幕/无字幕双路径；无字幕时能量无法得到「字」"
+
+  - id: media_url_scope_open
+    severity: error
+    when:
+      all:
+        - not_decision: url_source_scope
+        - not_blob_match: "直链|http/?/?https|媒体文件\\s*URL|直接下载|粘贴\\s*URL|URL\\s*(?:导入|粘贴)|YouTube|Bilibili|B站|Vimeo|平台(?:页|链接)"
+    message: "媒体 PRD 未决策 URL 范围：仅直链媒体文件，还是需解析平台页？写入 decisions.url_source_scope"
+
+  - id: media_speech_pipeline_open
+    severity: error
+    when:
+      all:
+        - not_decision: speech_pipeline
+        - any:
+            - blob_match: "不(?:做|进行|支持|生成|执行|包含|含)?\\s*(?:语音到文字的?|语音|逐字)?转写|不转写|无转写|非转写|不进行语音到文字|语种|说话人|情绪|语速|静音"
+    message: "媒体 PRD 涉及语音分析但未写入 decisions.speech_pipeline（asr | audio_features_only | hybrid）"
+
+  - id: media_sla_open
+    severity: error
+    when:
+      all:
+        - not_decision: analysis_sla
+        - not_blob_match: "(?:分析|处理).{0,12}(?:时长|耗时|完成时间|SLA)|P95|≤\\s*视频时长|视频时长的"
+        - not_constraint: performance
+    message: "媒体分析缺少耗时/SLA（decisions.analysis_sla 或 constraints.performance）"
+
+  - id: vision_tag_granularity_open
+    severity: error
+    when:
+      all:
+        - blob_match: "画面标签|场景标签|≥\\s*3\\s*个.{0,6}标签|输出\\s*≥\\s*3"
+        - not_blob_match: "分段|时间区间|≤\\s*60\\s*秒|每场景|按场景|镜头|全局(?:粗粒度)?标签|整片标签"
+        - not_decision: vision_tag_granularity
+    message: "画面标签未规定时间粒度（全局粗标签 vs 按场景/≤60s 分段）"
+
+  - id: confidence_empty_unspecified_media
+    severity: error
+    when:
+      all:
+        - blob_match: "置信度[^。\\n]{0,20}(?:≥|>=)\\s*0\\.\\d"
+        - not_blob_match: "未识别到主体|主体.*可为空|空列表|全部低于|过滤后无主体|confidence_empty"
+        - not_decision: confidence_empty_policy
+    message: "设置了置信度阈值但未说明全部过滤后的输出策略（空列表 / 降级 / 失败）"
+
+  - id: upload_size_unlimited
+    severity: error
+    when:
+      all:
+        - blob_match: "无(?:大小)?上限|单文件无大小上限|不限大小|不限制.{0,8}大小|size\\s*unlimited|unlimited\\s*size"
+        - blob_match: "上传|文件|视频|单文件"
+    message: "上传「无上限」不可运营；须写入可测上限（如单文件 ≤2GB）与超限拒绝文案"
+
+  - id: hard_soft_subtitle_mismatch
+    severity: error
+    when:
+      all:
+        - blob_match: "硬字幕"
+        - any:
+            - blob_match: "软字幕|字幕轨道"
+            - blob_match: "字幕提取"
+        - not_blob_match: "OCR|烧录字幕.{0,16}(?:不支持|本期不做|不在范围)|硬字幕.{0,20}(?:不支持|本期不做|不在范围)|仅(?:支持)?软字幕"
+    message: "同时提及硬字幕与软字幕/轨提取，但未声明硬字幕需 OCR 或本期仅软字幕；须二选一写清范围"
+
+  - id: relative_report_latency_untestable
+    severity: error
+    when:
+      all:
+        - blob_match: "报告.{0,24}(?:不超过|≤|<=).{0,12}(?:分析总耗时|总耗时).{0,8}\\d+\\s*%|报告生成耗时不超过分析总耗时"
+    message: "「报告耗时 ≤ 另一动态总耗时的 x%」无稳定测试基准；改为绝对值或删除"
+
+  - id: modality_no_conflict_unverifiable
+    severity: error
+    when:
+      all:
+        - blob_match: "(?:画面|标签|结果).{0,24}(?:语音|音轨|另一|多源).{0,24}不冲突|(?:语音|音轨).{0,24}(?:画面|标签).{0,24}不冲突|与语音分析结果不冲突|必须不冲突"
+    message: "要求多来源结果「必须不冲突」不可控、无法验收；应各自独立输出、差异如实展示"
+
+  - id: webpage_vs_direct_url_mismatch
+    severity: error
+    when:
+      all:
+        # Affirmative input only — reject/prompt-when-webpage must NOT trip this
+        - blob_match: "(?:提供|输入|粘贴|支持|通过)\\s*(?:视频)?网页链接|视频网页链接"
+        - blob_match: "直链"
+        - not_blob_match: "YouTube|Bilibili|B站|Vimeo|平台页"
+        - not_blob_match: "(?:拒绝|禁止|不支持).{0,24}网页链接|网页链接时(?:提示|拒绝)|或其他?网页链接|格式或网页链接"
+        - not_decision_in:
+            key: url_source_scope
+            values: [both, platform_page]
+    message: "同时写「网页链接」与「仅直链」且未声明平台页解析；须统一为直链媒体 URL，或将 url_source_scope 设为 platform_page/both"
+
+  - id: download_fail_must_not_continue_analysis
+    severity: error
+    when:
+      all:
+        - blob_match: "DOWNLOAD_FAILED|下载失败"
+        - blob_match: "不阻塞.{0,12}后续分析|后续分析流程"
+    message: "下载失败不得进入本视频的后续分析；应仅终止本任务、不阻塞队列中其他任务"
+
+repairs:
+  - id: infer_url_source_scope
+    when:
+      all:
+        - not_decision: url_source_scope
+    actions:
+      - infer_url_scope: true
+
+  - id: rewrite_relative_report_latency
+    when:
+      all:
+        - blob_match: "报告.{0,24}(?:不超过|≤|<=).{0,12}(?:分析总耗时|总耗时).{0,8}\\d+\\s*%|报告生成耗时不超过分析总耗时"
+    actions:
+      - replace_ac:
+          match: "报告.{0,24}(?:不超过|≤|<=).{0,12}(?:分析总耗时|总耗时).{0,8}\\d+\\s*%|报告生成耗时不超过分析总耗时"
+          text: "报告拼装（不含 AI 推理）耗时 ≤ 3 秒"
+
+  - id: rewrite_modality_independent
+    when:
+      all:
+        - blob_match: "(?:画面|标签).{0,20}(?:语音|音轨).{0,20}不冲突|(?:语音|音轨).{0,20}(?:画面|标签).{0,20}不冲突|与语音分析结果不冲突"
+    actions:
+      - replace_ac:
+          match: "(?:画面|标签).{0,20}(?:语音|音轨).{0,20}不冲突|(?:语音|音轨).{0,20}(?:画面|标签).{0,20}不冲突|粒度与语音分析结果不冲突|与语音分析结果不冲突"
+          text: "多源分析结果各自独立输出，若存在差异则如实展示，不要求强制一致"
+
+  - id: infer_speech_pipeline
+    when:
+      all:
+        - not_decision: speech_pipeline
+    actions:
+      - infer_speech_pipeline: true
+
+  - id: rewrite_speech_rate_dual
+    when:
+      all:
+        - blob_match: "字\\s*/\\s*分钟|字每分钟|WPM|words?\\s*/\\s*min"
+        - any:
+            - blob_match: "不(?:做|进行|支持|生成|执行|包含|含)?\\s*(?:语音到文字的?|语音|逐字)?转写|不转写|无转写|非转写|不进行语音到文字"
+            - decision_in:
+                key: speech_pipeline
+                values: [audio_features_only, acoustic_only, acoustic_only_coarse_labels, features_only]
+        - not_blob_match: "若存在字幕|音节密度|发声音节"
+    actions:
+      - replace_ac:
+          match: "字\\s*/\\s*分钟|字每分钟|WPM|words?\\s*/\\s*min"
+          text: "输出平均语速：若存在字幕轨道则计算字/分钟；若无字幕则输出发声音节密度（次/秒，基于语音能量估算）并标注估算依据"
+      - set_decision:
+          key: speech_rate_metric
+          value: chars_per_min_if_subtitles_else_syllable_density
+
+  # Replace leftover semantic claims even if a disclaimer token is already present.
+  - id: rewrite_topic_to_acoustic
+    when:
+      all:
+        - blob_match: "不(?:做|进行|支持|生成|执行|包含|含)?\\s*(?:语音到文字的?|语音|逐字)?转写|不转写|无转写|非转写|不进行语音到文字"
+        - blob_match: "(?<!禁止)(?<!不)主题标签|(?<!禁止)(?<!不)输出主题|语义分析|语义要点|要点摘要|关键话题|话题摘要|关键要点|语音语义|(?<!禁止)(?<!不)关键词|(?<!禁止)主题倾向|(?<!禁止)主题和情感|(?<!禁止)(?<!不)提取主题"
+    actions:
+      - replace_ac:
+          match: "(?<!禁止)(?<!不)主题标签|(?<!禁止)(?<!不)输出主题|语义分析|语义要点|要点摘要|关键话题|话题摘要|关键要点|语音语义|(?<!禁止)(?<!不)关键词|(?<!禁止)主题倾向|(?<!禁止)主题和情感|(?<!禁止)(?<!不)提取主题"
+          text: "基于音轨声学特征输出粗标签（语种估计/说话人数量估计/情绪倾向等），明确标注为声学粗标签（非转写语义）；禁止话题类语义摘要"
+      - scrub_prose:
+          match: "关键词或主题标签|(?<!禁止)(?<!不)主题标签|(?<!禁止)(?<!不)关键词|关键要点"
+          text: "声学粗标签（非转写语义）"
+      - scrub_prose:
+          match: "语义分析|语义要点|关键话题|话题摘要|语音语义|提取主题、要点、情感|(?<!禁止)(?<!不)提取主题"
+          text: "声学特征分析"
+      - scrub_prose:
+          match: "传达的主题和情感|(?<!禁止)主题和情感|(?<!禁止)主题与情感|(?<!禁止)主题倾向"
+          text: "情绪倾向（声学估计）"
+      - set_decision:
+          key: speech_pipeline
+          value: audio_features_only
+
+  - id: rewrite_speech_summary_to_features
+    when:
+      all:
+        - blob_match: "不(?:做|进行|支持|生成|执行|包含|含)?\\s*(?:语音到文字的?|语音|逐字)?转写|不转写|无转写|非转写|不进行语音到文字"
+        - blob_match: "语音摘要|音轨摘要|关键话题摘要|话题摘要|语义分析|语义要点|要点摘要|关键要点"
+    actions:
+      - replace_ac:
+          match: "语音摘要|音轨摘要|关键话题摘要|话题摘要|语义分析|语义要点|要点摘要|关键要点"
+          text: "语音特征标签（语种/说话人数量/情绪倾向等声学粗标签，非语义摘要）"
+      - scrub_prose:
+          match: "语义分析|语义要点|要点摘要|关键话题摘要|话题摘要|关键要点"
+          text: "声学特征分析"
+
+  - id: rewrite_upload_size_cap
+    when:
+      all:
+        - blob_match: "无(?:大小)?上限|单文件无大小上限|不限大小|不限制.{0,8}大小|size\\s*unlimited|unlimited\\s*size"
+        - blob_match: "上传|文件|视频|单文件"
+    actions:
+      - replace_ac:
+          match: "无(?:大小)?上限|单文件无大小上限|不限大小|不限制.{0,8}大小|size\\s*unlimited|unlimited\\s*size"
+          text: "支持上传 MP4/MOV/AVI/MKV，单文件 ≤2GB；超过时拒绝并提示「文件过大，请上传 ≤2GB 的视频」"
+      - set_decision:
+          key: upload_max_bytes
+          value: "2GiB"
+
+  - id: clarify_soft_subtitle_only
+    when:
+      all:
+        - blob_match: "硬字幕|字幕提取|内嵌字幕|字幕流"
+        - not_blob_match: "OCR|硬字幕.{0,20}(?:不支持|本期不做|不在范围)|仅(?:支持)?软字幕|烧录画面"
+    actions:
+      - replace_ac:
+          match: "硬字幕"
+          text: "本期仅支持软字幕轨道（SRT/ASS/内嵌轨）提取；硬字幕（烧录画面）不在范围，不承诺 OCR"
+      - append_ac:
+          prefer_fr_match: "字幕"
+          text: "本期仅支持软字幕轨道（SRT/ASS/内嵌轨）提取；硬字幕（烧录画面）不在范围，不承诺 OCR"
+      - set_decision:
+          key: subtitle_scope
+          value: soft_track_only
+
+  - id: ensure_vision_granularity
+    when:
+      all:
+        - blob_match: "画面标签|场景标签|≥\\s*3\\s*个.{0,6}标签"
+        - not_blob_match: "分段|时间区间|≤\\s*60\\s*秒|全局(?:粗粒度)?标签|整片标签"
+        - not_decision: vision_tag_granularity
+    actions:
+      - set_decision:
+          key: vision_tag_granularity
+          value: global_coarse
+      - append_ac:
+          prefer_fr_match: "画面|标签|场景"
+          text: "当前版本画面标签为整片全局粗粒度（每个视频 ≥3 个标签）；报告须注明此局限。时长 >5 分钟时不保证镜头级定位"
+
+  - id: ensure_analysis_sla
+    when:
+      all:
+        - not_decision: analysis_sla
+    actions:
+      - set_decision:
+          key: analysis_sla
+          value: "P95 ≤ 1.5× video duration"
+
+  - id: ensure_media_constraints
+    when:
+      all:
+        - always: true
+    actions:
+      - ensure_constraint_performance_from_decision:
+          key: analysis_sla
+          fallback: "P95 ≤ 1.5× video duration"
+      - ensure_constraint_security_ssrf: true
+      - ensure_constraint_security_generic: "HTTPS + authentication"
+
+  - id: rewrite_download_fail_scope
+    when:
+      all:
+        - blob_match: "DOWNLOAD_FAILED|下载失败"
+        - blob_match: "不阻塞.{0,12}后续分析|后续分析流程"
+    actions:
+      - replace_ac:
+          match: "不阻塞其他任务或后续分析流程|不阻塞.{0,12}后续分析|后续分析流程"
+          text: "下载失败仅终止本视频任务并返回错误码 DOWNLOAD_FAILED，不进入本视频的画面/字幕/语音分析；不阻塞队列中其他任务"
+
+  - id: rewrite_frame_sample_or
+    when:
+      all:
+        - blob_match: "每\\s*5\\s*秒.{0,8}(?:一帧|抽帧).{0,12}或.{0,12}场景"
+    actions:
+      - replace_ac:
+          match: "每\\s*5\\s*秒.{0,24}或.{0,24}场景变化"
+          text: "默认每 5 秒抽取一帧并记录时间戳；若场景切换检测可用则改为按场景变化抽帧，检测失败时回退为每 5 秒一帧"
+
+  - id: scrub_webpage_link_when_direct_only
+    when:
+      all:
+        - blob_match: "(?:提供|输入|粘贴|支持|通过)\\s*(?:视频)?网页链接|视频网页链接"
+        - blob_match: "直链"
+        - not_blob_match: "(?:拒绝|禁止|不支持).{0,24}网页链接|网页链接时(?:提示|拒绝)|或其他?网页链接|格式或网页链接"
+        - not_decision_in:
+            key: url_source_scope
+            values: [both, platform_page]
+    actions:
+      - scrub_prose:
+          match: "视频网页链接|网页链接"
+          text: "直链视频 URL"
+      - scrub_prose:
+          match: "粘贴视频链接|视频链接"
+          text: "粘贴直链视频 URL"
+      - replace_ac:
+          match: "(?:提供|输入|粘贴|支持|通过)\\s*(?:视频)?网页链接|视频网页链接"
+          text: "输入直链视频 URL 时，仅解析以 .mp4/.mov/.avi/.mkv 结尾的媒体文件；禁止访问内网地址与 file:// 协议（SSRF 防护）"
+
+  - id: scrub_semantic_leftovers_no_asr
+    when:
+      all:
+        - blob_match: "不(?:做|进行|支持|生成|执行|包含|含)?\\s*(?:语音到文字的?|语音|逐字)?转写|不转写|无转写|非转写|不进行语音到文字"
+        - blob_match: "(?<!禁止)(?<!不)关键词|(?<!禁止)主题倾向|(?<!禁止)(?<!不)主题标签|(?<!禁止)主题和情感|(?<!禁止)主题与情感|关键要点"
+        - any:
+            - decision_in:
+                key: speech_pipeline
+                values: [audio_features_only, acoustic_only, acoustic_only_coarse_labels, features_only]
+            - blob_match: "声学粗标签|语音特征标签|非转写语义"
+    actions:
+      - scrub_prose:
+          match: "关键词或主题标签|(?<!禁止)(?<!不)主题标签|(?<!禁止)(?<!不)关键词|关键要点"
+          text: "声学粗标签（非转写语义）"
+      - scrub_prose:
+          match: "传达的主题和情感|(?<!禁止)主题和情感|(?<!禁止)主题与情感|(?<!禁止)主题倾向"
+          text: "情绪倾向（声学估计）"
+
+# Full FR/US rewrite when wash-blocked — enables factory READY after re-assess.
+# Distinct from repairs scrub: clears block_finalize_wash only if codes no longer fire.
+structural_repairs:
+  - id: no_asr_speech_to_acoustic_template
+    clears_codes:
+      - asr_topic_contradiction
+      - speech_summary_without_transcript
+    when:
+      all:
+        - blob_match: "不(?:做|进行|支持|生成|执行|包含|含)?\\s*(?:语音到文字的?|语音|逐字)?转写|不转写|无转写|非转写|不做\\s*ASR|不生成逐字|不进行语音到文字"
+    actions:
+      - upsert_fr:
+          match: "语音|音轨|转写|说话|ASR"
+          preserve_ac_match: "字\\s*/\\s*分钟|音节密度|发声音节|语速"
+          fr:
+            id: FR-004
+            name: 语音声学特征分析
+            description: 基于音轨声学特征输出粗标签；不进行语音转写；禁止主题标签与话题类语义摘要
+            priority: standard
+            acceptance_criteria:
+              - 检测有无音轨；无音轨时返回空结果并提示「该视频无可用音轨」
+              - 输出声学粗标签（语种估计/说话人数量估计/情绪倾向，非转写语义）；禁止主题标签、要点或语音内容摘要
+              - 结果以结构化 JSON 返回；分析失败返回 ANALYSIS_FAILED，不阻塞其他任务
+      - upsert_us:
+          match: "语音|主题|说话人|情感|转写|音轨"
+          id: US-004
+          related_fr: [FR-004]
+          priority: standard
+          story: 作为内容审核员，我想查看语种估计与情绪倾向（声学粗标签），以便粗判语音氛围
+      - set_decision:
+          key: speech_pipeline
+          value: audio_features_only
+      - scrub_prose:
+          match: "提取语义要点与主题|语义要点与主题|语义分析|主题标签|关键要点|语音内容摘要"
+          text: 语音声学特征分析
+      - ensure_constraint_performance_from_decision:
+          key: analysis_sla
+          fallback: "P95 ≤ 1.5× video duration"
+      - ensure_constraint_security_ssrf: true

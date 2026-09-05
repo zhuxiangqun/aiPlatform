@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-08-16"
 total_capability_domains: 34
-total_capabilities: 1041
+total_capabilities: 1056
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -32,6 +32,21 @@ domains:
       - symbol: get_trace
       - symbol: clear_trace
       - symbol: build_run_report
+      - symbol: materialize_prd_gate_seeds
+      - symbol: load_prd_gate_packs
+      - symbol: clear_prd_gate_pack_cache
+      - symbol: normalize_constraints
+      - symbol: matched_domain_packs
+      - symbol: matched_packs_for_text
+      - symbol: format_pm_gate_guidance
+      - symbol: is_media_prd
+      - symbol: assess_prd
+      - symbol: enrich_prd
+      - symbol: factory_finalize_prd
+      - symbol: looks_like_prd
+      - symbol: apply_gate_to_prd
+      - symbol: followup_questions_from_report
+      - symbol: render_prd_markdown
       - symbol: generate_hypotheses
         type: function
         signature: 'Generate ranked root-cause hypotheses for a failed pipeline run.'
@@ -572,7 +587,7 @@ domains:
   security-and-governance:
     section: "七"
     section_name: "安全与治理"
-    caps_count: 38
+    caps_count: 39
     provides:
       - symbol: "coupling_metrics"
         type: "script"
@@ -602,6 +617,10 @@ domains:
         type: "class"
         signature: "mask/unmask, Presidio + built-in regex"
         module: "core/harness/infrastructure/pii_detector.py"
+      - symbol: "truncate_repetition"
+        type: "function"
+        signature: "检测并截断 LLM 退化重复循环（n-gram 重复检测，2026-08-29）"
+        module: "core/harness/utils/repetition_guard.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/syscalls/tool.py"
@@ -831,6 +850,30 @@ domains:
         type: "function"
         signature: "背压诊断：inflight / max / enabled / retry_after_semantics"
         module: "aiPlat-core/core/server.py"
+      - symbol: "factory_finalize_prd"
+        type: "function"
+        signature: "enrich → assess PRD; rewrite via domain packs (replace_ac/scrub_prose/set_decision; seeds/~/.aiplat)"
+        module: "aiPlat-core/core/harness/execution/prd_quality_gate.py"
+      - symbol: "format_pm_gate_guidance"
+        type: "function"
+        signature: "Match packs to chat/requirement text → render pm_hints for PM generation-time inject"
+        module: "aiPlat-core/core/harness/execution/prd_quality_gate.py"
+      - symbol: "matched_packs_for_text"
+        type: "function"
+        signature: "Match PRD gate packs against free text (chat history / user requirement)"
+        module: "aiPlat-core/core/harness/execution/prd_quality_gate.py"
+      - symbol: "render_prd_markdown"
+        type: "function"
+        signature: "Render finalized PRD dict as Markdown for chat reply rewrite"
+        module: "aiPlat-core/core/harness/execution/prd_quality_gate.py"
+      - symbol: "load_prd_gate_packs"
+        type: "function"
+        signature: "Load PRD gate packs: kernel _common + workspace_seeds domains + user overrides"
+        module: "aiPlat-core/core/harness/execution/prd_gate_loader.py"
+      - symbol: "materialize_prd_gate_seeds"
+        type: "function"
+        signature: "Copy kernel _common + workspace_seeds/prd_gates → ~/.aiplat/prd_gates when missing"
+        module: "aiPlat-core/core/harness/execution/prd_gate_loader.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
