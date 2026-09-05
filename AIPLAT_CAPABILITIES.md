@@ -1137,6 +1137,8 @@ scan_hash: 8f9548ec24f4
 | PII 检测脱敏 | services/pii_detector.py | ✅ | 手机/身份证/邮箱/银行卡/地址/IP，Presidio+正则双引擎 | 已合入 |
 | 合规报告 SOC2/ISO27001 | management/compliance_checks.py | ✅ | 12检查 + SOC2 CC/ISO27001 A映射 + 自动报告生成 | 已合入 |
 | 架构契约上下文注入 | harness/utils/prompt_loader.py` → `harness/assembly/prompt_assembler.py | ✅ | coding-contract 模板在代码生成前注入 Agent system prompt（6条核心约束） | 已合入 |
+| ContextAssembler 上下文组装 | harness/assembly/context_assembler.py | ✅ | PromptContext + TokenBudgetManager：token 预算、压缩阈值、来源归因 | 已合入 |
+| Compaction Prompt 压缩模板 | harness/assembly/compaction_prompt.py | ✅ | ReActLoop 可配置压缩 prompt（`get_compaction_prompt` / `AIPLAT_COMPACTION_PROMPT`） | 已合入 |
 | 审计日志防篡改 | ../../aiPlat-platform/governance/audit/logger.py | ✅ | SHA-256 链式哈希 + verify_integrity()；生成物不适用（理由：平台横切审计，生成应用由平台侧强制执行） | 已合入 |
 | 对象级权限 | policy/object_permission.py | ✅ | 每实体/每动作/每角色细粒度控制，支持本体继承 | 已合入 |
 | 字段级安全 | policy/field_level_security.py | ✅ | 单元/字段级数据可见性，Palantir CBAC对齐 | 已合入 |
