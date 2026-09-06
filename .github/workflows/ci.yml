@@ -162,7 +162,10 @@ jobs:
       - name: Build and push core image
         uses: docker/build-push-action@v5
         with:
-          context: ./aiPlat-core
+          # Dockerfile COPY aiPlat-infra + aiPlat-core; context must be repo root
+          # (same as docker-compose.yml / contracts-guard e2e-docker).
+          context: .
+          file: aiPlat-core/Dockerfile
           push: true
           tags: |
             ${{ steps.image.outputs.name }}:latest
