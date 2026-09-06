@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -216,7 +216,7 @@ jobs:
     if: true  # Enabled: runs E2E tests in docker-compose.test.yml (warn-only, see continue-on-error)
     continue-on-error: true  # Docker runtime diagnostics — container startup needs manual env prep; do not block merges
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build images
         run: |

@@ -17,7 +17,7 @@ jobs:
     name: Level Pyramid (L0→L5)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install dependencies
         run: pip install pyyaml
       - name: Run pyramid verification
@@ -27,7 +27,7 @@ jobs:
     name: Depth Tests (30 tests)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
@@ -43,7 +43,7 @@ jobs:
     name: Data Claims (31 checks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install dependencies
         run: pip install pyyaml
       - name: Run claims verification
@@ -53,7 +53,7 @@ jobs:
     name: Code References (28 refs)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install dependencies
         run: pip install pyyaml
       - name: Run reference verification
@@ -63,7 +63,7 @@ jobs:
     name: Vulnerability SLA Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
