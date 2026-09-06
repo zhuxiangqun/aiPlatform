@@ -163,7 +163,7 @@ jobs:
         id: image
         run: echo "name=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/aiplat-core" >> "$GITHUB_OUTPUT"
       - name: Build and push core image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           # Dockerfile COPY aiPlat-infra + aiPlat-core; context must be repo root
           # (same as docker-compose.yml / contracts-guard e2e-docker).
