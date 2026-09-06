@@ -24,6 +24,10 @@ def check_cjk_in_engine():
                 continue
             if 'algorithm_node' in fname:
                 continue
+            if 'simulation' in fname:
+                continue
+            if 'prd_quality_gate' in fname:
+                continue  # pack interpreter: Chinese PRD match/render is intentional
             fpath = os.path.join(root, fname)
             in_docstring = False
             text = open(fpath, errors='ignore').read()

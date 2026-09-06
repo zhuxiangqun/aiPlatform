@@ -229,46 +229,83 @@ def write_registry_lines(lines: list[str]) -> None:
 
 
 def is_already_registered(lines: list[str], symbol: str, module: str) -> bool:
-    """Check if symbol+module combo appears anywhere."""
+    """Check if symbol is already listed (bare or with module metadata)."""
     text = "".join(lines)
-    # Look for "symbol: {name}" followed by "module: {module}" nearby
-    sym_re = re.compile(r'-\s+symbol:\s+' + re.escape(symbol) + r'\s*$', re.MULTILINE)
-    mod_re = re.compile(r'module:\s+' + re.escape(module) + r'\s*$')
+    # Bare symbol line is enough — avoid duplicate full entries under multi-line provides.
+    sym_re = re.compile(r'-\s+symbol:\s+[\'"]?' + re.escape(symbol) + r'[\'"]?\s*$', re.MULTILINE)
+    if not sym_re.search(text):
+        return False
+    # If any occurrence already pins this module nearby, definitely registered.
+    mod_re = re.compile(r'module:\s+[\'"]?' + re.escape(module) + r'[\'"]?\s*$')
     for m in sym_re.finditer(text):
-        # Check if module appears within next 5 lines
         nearby = text[m.end():m.end() + 300]
         if mod_re.search(nearby):
             return True
-    return False
+    # Symbol name present (even without module) → treat as registered.
+    return True
 
 
 def find_domain_insertion_point(lines: list[str], domain_key: str) -> int | None:
     """Find line index to insert new provides entries in a domain.
-    Returns index right after the last provides entry.
+
+    Returns index *after* the last complete provides entry (skips type/signature/module
+    continuation lines so we never splice into the middle of a multi-line entry).
     """
     in_domain = False
     in_provides = False
-    last_provide_line = -1
+    insert_after = -1
+    provides_line = -1
 
     for i, line in enumerate(lines):
         stripped = line.strip()
         if stripped == f"{domain_key}:":
             in_domain = True
-        elif in_domain and stripped == "provides:":
+            in_provides = False
+            continue
+        if in_domain and not in_provides and stripped == "provides:":
             in_provides = True
-        elif in_provides:
-            if stripped.startswith("- symbol:"):
-                last_provide_line = i
-            elif not stripped.startswith("-") and ":" in stripped and not stripped.startswith("#"):
-                # Exit provides section
-                if last_provide_line >= 0:
-                    return last_provide_line + 1
-                # No provides entries yet — insert after "provides:" line
-                return i - 1  # insert before next section
-            elif stripped == "breaks:" or stripped == "consumers_expected:":
-                return last_provide_line + 1 if last_provide_line >= 0 else i
+            provides_line = i
+            continue
+        if not in_provides:
+            continue
+        if stripped.startswith("- symbol:"):
+            # End of this entry = after following indented continuation lines
+            j = i + 1
+            while j < len(lines):
+                nxt = lines[j]
+                ns = nxt.strip()
+                if not ns or ns.startswith("#"):
+                    j += 1
+                    continue
+                # Continuation fields are more-indented than "- symbol"
+                if nxt.startswith("        ") or (nxt.startswith("      ") and not ns.startswith("- ")):
+                    j += 1
+                    continue
+                break
+            insert_after = j
+        elif stripped in ("breaks:", "consumers_expected:") or (
+            stripped.endswith(":")
+            and not stripped.startswith("-")
+            and not stripped.startswith("type:")
+            and not stripped.startswith("signature:")
+            and not stripped.startswith("module:")
+            and not line.startswith(" ")
+        ):
+            # Left provides / domain
+            break
+        elif in_domain and not line.startswith(" ") and stripped.endswith(":") and stripped != f"{domain_key}:":
+            break
 
+    if insert_after >= 0:
+        return insert_after
+    if provides_line >= 0:
+        return provides_line + 1
     return None
+
+
+def _yaml_single_quoted(s: str) -> str:
+    """YAML single-quoted scalar: escape ' as ''."""
+    return "'" + s.replace("'", "''") + "'"
 
 
 def add_symbol_text(lines: list[str], sym: Symbol, domain_key: str) -> bool:
@@ -277,17 +314,16 @@ def add_symbol_text(lines: list[str], sym: Symbol, domain_key: str) -> bool:
     if idx is None:
         return False
 
-    # Build entry
     module = sym.module
     indent = "      "
+    sig = (sym.signature or sym.name)[:80].replace("`", "")
     entry_lines = [
         f"{indent}- symbol: {sym.name}\n",
         f"{indent}  type: {sym.type}\n",
-        f"{indent}  signature: '{sym.signature[:80]}'\n",
+        f"{indent}  signature: {_yaml_single_quoted(sig)}\n",
         f"{indent}  module: {module}\n",
     ]
 
-    # Insert after the last provides entry
     for i, line in enumerate(entry_lines):
         lines.insert(idx + i, line)
     return True

@@ -273,12 +273,12 @@ if [ -z "${SKIP_ENTITY_GUARD:-}" ]; then
         ENTITY_ISSUES=1
     fi
 
-    # P2: AGENT.md 目录白名单 — 只允许 engine/agents/ 和 ~/.aiplat/agents/
+    # P2: AGENT.md 目录白名单 — engine / workspace_seeds / ~/.aiplat
     NEW_AGENTS=$(git diff --cached --name-only --diff-filter=A | grep 'AGENT\.md$' || true)
     for f in $NEW_AGENTS; do
-        if ! echo "$f" | grep -qE '(engine/agents/|\.aiplat/agents/)'; then
+        if ! echo "$f" | grep -qE '(engine/agents/|workspace_seeds/agents/|\.aiplat/agents/)'; then
             echo "  ❌ New AGENT.md outside allowed directories: $f"
-            echo "     → Allowed: core/engine/agents/ or ~/.aiplat/agents/"
+            echo "     → Allowed: core/engine/agents/, workspace_seeds/agents/, or ~/.aiplat/agents/"
             ENTITY_ISSUES=1
         fi
     done

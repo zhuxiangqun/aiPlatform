@@ -36,6 +36,7 @@ aiPlat 逻辑上分为：
 - `core/harness/*` **MUST** 提供统一执行运行时，包括 `run / event / wait / context / queue / registry / syscall` 等共性能力。  
 - Harness **MUST NOT** 承载资料问答、视频问答、多资料比较、适用性分析等业务语义决策。  
 - Harness **MUST** 解决“任务如何被执行”的问题，**MUST NOT** 解决“业务上本轮该如何回答”的问题。
+- Harness **MAY** 提供**声明式 PRD 质量门禁解释器**（`prd_quality_gate` / `prd_gate_loader`）：垂直域规则 MUST 落在 YAML pack（`prd_gate_packs/_common` + `workspace_seeds/prd_gates` / `~/.aiplat/prd_gates`），**MUST NOT** 在 harness Python 中硬编码业务域名、角色名或产品验收文案。生成前 hints 注入与 `factory_finalize` 改写由 pack 驱动；语义矛盾的 `block_finalize_wash` 不可仅靠 scrub 放行。
 
 #### Policy Contract
 
