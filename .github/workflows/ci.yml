@@ -155,22 +155,26 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # GHCR requires lowercase repository path; github.repository may contain capitals (aiPlatform).
+      - name: Normalize image repository (lowercase)
+        id: image
+        run: echo "name=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/aiplat-core" >> "$GITHUB_OUTPUT"
       - name: Build and push core image
         uses: docker/build-push-action@v5
         with:
           context: ./aiPlat-core
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/aiplat-core:latest
-            ghcr.io/${{ github.repository }}/aiplat-core:${{ github.sha }}
-            cache-from: type=gha
-            cache-to: type=gha,mode=max
+            ${{ steps.image.outputs.name }}:latest
+            ${{ steps.image.outputs.name }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: Deploy to staging
         if: false  # Enable when K8s cluster is available
         run: |
           echo "Deploying to staging..."
           kubectl set image deployment/aiplat-core \
-            aiplat-core=ghcr.io/${{ github.repository }}/aiplat-core:${{ github.sha }} \
+            aiplat-core=${{ steps.image.outputs.name }}:${{ github.sha }} \
             -n aiplat --record
       - name: Notify release
         run: |
