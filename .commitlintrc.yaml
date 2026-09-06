@@ -1,7 +1,10 @@
 extends: ["@commitlint/config-conventional"]
 
 rules:
+  # Squash merges often paste multi-commit bodies after Co-authored-by trailers;
+  # keep as warnings so main push CI is not blocked by GitHub squash formatting.
   body-max-line-length: [1, always, 100]
+  footer-max-line-length: [1, always, 100]
   subject-case: [0, never, ["start-case", "pascal-case", "upper-case"]]
   type-enum:
     - 2
