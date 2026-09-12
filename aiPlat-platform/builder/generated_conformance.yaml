@@ -24,7 +24,8 @@ skill:
     - "status: enabled"
     - "description:"
     - "triggers:"
-    - "effects:"          # §5.19 副作用声明（registry 注册强制要求，缺失会被拒）          # B2 路由-知识分离：触发短语声明（description 命中率依赖）
+    - "effects:"          # §5.19 副作用声明（registry 注册强制要求，缺失会被拒）
+    - "completion_criterion:"  # F4 / agent_engineering：可检查完成标准必填
   per_field_must_contain:
     input_schema: ["type", "required", "description"]
     output_schema: ["type", "required", "description"]

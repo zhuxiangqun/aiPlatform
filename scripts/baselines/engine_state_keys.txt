@@ -143,3 +143,17 @@ skip_pytest_gate|OK|generic pipeline (L2: user-opted pytest gate escape, config-
 _skip_pytest_gate|OK|engine-internal (L2: gate-skip marker)
 _test_gate_skipped_reason|OK|engine-internal (L2: gate-skip reason surfaced to deploy)
 prd_data|OK|generic pipeline (engine's own initialize()/core_facade.start() prd_data param — P0-4 domain-injection reads it back from state)
+
+# -- Factory / TeamAI improvement wave (2026-09) --
+_auto_skill_filter|OK|engine-internal (classifier auto skill subset)
+_bloat_baseline|OK|engine-internal (F5a LOC/deps/files baseline)
+_bloat_metrics|OK|engine-internal (F5a bloat metrics payload)
+_coding_intensity|OK|engine-internal (coding intensity overlay)
+_coding_policy_profile|OK|engine-internal (karpathy/coding policy profile)
+_handoff|OK|engine-internal (C0 stage handoff envelope map)
+_friction_share_cta|OK|engine-internal (T4 friction CTA surface)
+architecture_mode|OK|generic pipeline (PipelineStageConfig field mirror)
+coding_intensity|OK|generic pipeline (config field mirror)
+agent_app|DEBT|legacy artifact key read in pipeline_stage (prefer stage.output_artifact)
+pm_chat_history|DEBT|factory chat history key still read in engine path
+prd|DEBT|legacy artifact key read in pipeline_stage/engine (prefer stage.output_artifact)

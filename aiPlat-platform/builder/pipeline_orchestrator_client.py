@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import httpx
 
@@ -123,14 +123,23 @@ class PipelineOrchestratorClient:
         feedback: str = "",
         config: Optional[Dict[str, Any]] = None,
         *,
+        preserve_artifacts: Optional[List[str]] = None,
         timeout: float = _REQUEST_TIMEOUT,
     ) -> Dict[str, Any]:
         """Non-blocking stage-level restart on Core (regenerate/rollback/resume)."""
         try:
+            payload: Dict[str, Any] = {
+                "op": op,
+                "stage_id": stage_id,
+                "feedback": feedback,
+                "config": config or {},
+            }
+            if preserve_artifacts:
+                payload["preserve_artifacts"] = list(preserve_artifacts)
             async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await client.post(
                     f"{self._api_prefix}/{project_id}/stage-operation",
-                    json={"op": op, "stage_id": stage_id, "feedback": feedback, "config": config or {}},
+                    json=payload,
                 )
                 resp.raise_for_status()
                 return resp.json()

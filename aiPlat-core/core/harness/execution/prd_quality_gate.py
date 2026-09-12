@@ -10,8 +10,10 @@ Harness only interprets packs; do not hardcode vertical product rules here.
 
 from __future__ import annotations
 
+import json
+import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from core.harness.execution.prd_gate_loader import load_prd_gate_packs
 
@@ -121,6 +123,14 @@ _SCOPE_LINE_RE = re.compile(
     r"^\s*[-*]?\s*(平台|性能|安全|其他|platform|performance|security|other)\s*[：:]\s*(.+)$",
     re.IGNORECASE | re.MULTILINE,
 )
+# Bold / heading blocks: **性能** / **安全** / **平台范围** then bullet lines
+# Require whitespace after list marker so ``**性能**`` is not treated as a ``*`` bullet.
+_SCOPE_BLOCK_RE = re.compile(
+    r"(?:\*\*|#{2,3}\s*)(平台(?:范围)?|性能|安全|其他|platform|performance|security|other)"
+    r"(?:\*\*)?[ \t]*\n"
+    r"((?:[ \t]*[-*][ \t]+.+\n?)*)",
+    re.IGNORECASE,
+)
 
 
 def normalize_constraints(prd: Dict[str, Any]) -> Dict[str, Any]:
@@ -135,22 +145,44 @@ def normalize_constraints(prd: Dict[str, Any]) -> Dict[str, Any]:
     scope = str(out.get("scope") or "")
     if scope:
         key_map = {
-            "平台": "platform", "platform": "platform",
+            "平台": "platform", "平台范围": "platform", "platform": "platform",
             "性能": "performance", "performance": "performance",
             "安全": "security", "security": "security",
             "其他": "other", "other": "other",
         }
-        for m in _SCOPE_LINE_RE.finditer(scope):
-            raw_key, val = m.group(1), m.group(2).strip()
-            canon = key_map.get(raw_key.lower() if raw_key.isascii() else raw_key, raw_key)
-            if canon == "platform" and not cons.get("platform"):
-                cons["platform"] = val
-            elif canon in ("performance", "security", "other"):
+
+        def _canon(raw_key: str) -> str:
+            rk = (raw_key or "").strip()
+            if rk.lower() in key_map:
+                return key_map[rk.lower()]
+            return key_map.get(rk, rk)
+
+        def _append(canon: str, val: str) -> None:
+            val = (val or "").strip()
+            if not val:
+                return
+            if canon == "platform":
+                if not cons.get("platform"):
+                    cons["platform"] = val
+                return
+            if canon in ("performance", "security", "other"):
                 existing = cons.get(canon)
                 items = list(existing) if isinstance(existing, list) else ([existing] if existing else [])
-                if val and val not in items:
+                if val not in items:
                     items.append(val)
                 cons[canon] = items
+
+        for m in _SCOPE_LINE_RE.finditer(scope):
+            _append(_canon(m.group(1)), m.group(2))
+        for m in _SCOPE_BLOCK_RE.finditer(scope):
+            canon = _canon(m.group(1))
+            bullets = re.findall(r"^[ \t]*[-*][ \t]+(.+)$", m.group(2) or "", re.MULTILINE)
+            if bullets:
+                for b in bullets:
+                    _append(canon, b)
+            elif canon == "platform" and not cons.get("platform"):
+                # bare **平台** heading with no bullets — leave for Web heuristic
+                pass
 
     if "platform" not in cons and re.search(r"\bWeb\b|网页|前端", _prd_blob(out), re.I):
         cons.setdefault("platform", "Web")
@@ -214,8 +246,10 @@ def format_pm_gate_guidance(text: str, *, max_hints: int = 20) -> str:
     lines: List[str] = [
         "## PRD 域质量约束（生成前必须遵守）",
         "以下规则来自平台 PRD 质量门禁 pack；输出 Markdown PRD / `<!-- PRD_READY -->` 前必须满足。",
-        "禁止输出会违反下列禁令的验收标准；相关产品边界写入「决策」节（英文 snake_case）。",
-        "标记为 `block_finalize_wash` 的语义矛盾：事后洗绿**不会**放行，必须首稿写对。",
+        "产品边界优先写入「决策」节（英文 snake_case 枚举）。",
+        "**通用性**：不要求人工手写金稿。缺 decisions/constraints 时，"
+        "`factory_finalize_prd` 按匹配域 pack 自动补全可推断项；"
+        "仅 `block_finalize_wash` 语义矛盾必须首稿按 GOOD 改写（洗绿不可替代）。",
     ]
     seen: set = set()
     count = 0
@@ -233,15 +267,80 @@ def format_pm_gate_guidance(text: str, *, max_hints: int = 20) -> str:
             lines.append(f"- {tip}")
             count += 1
             if count >= max_hints:
-                lines.append(
-                    "**重要**：违反上述禁令时，`factory_finalize` 洗绿不可替代首稿；须按 GOOD 口径重写后再 `PRD_READY`。"
-                )
-                return "\n".join(lines)
-    if count == 0:
+                break
+        if count >= max_hints:
+            break
+    enum_block = format_decision_enum_catalog(text)
+    if enum_block:
+        lines.append(enum_block)
+    if count == 0 and not enum_block:
         return ""
     lines.append(
-        "**重要**：违反上述禁令时，`factory_finalize` 洗绿不可替代首稿；须按 GOOD 口径重写后再 `PRD_READY`。"
+        "**重要**：语义矛盾（BAD 口径）须首稿写对；缺枚举决策可由工厂 finalize 归一/补全后再 READY。"
     )
+    return "\n".join(lines)
+
+
+def collect_decision_enum_catalog(text: str = "") -> Dict[str, List[str]]:
+    """Collect allowed decision enums from matched packs (checks + normalize repairs).
+
+    Domain-agnostic: new vertical packs declare enums in YAML; no core hardcoding
+    of business keys beyond reading pack structure.
+    """
+    packs = matched_packs_for_text(text) if text else load_prd_gate_packs()
+    catalog: Dict[str, List[str]] = {}
+
+    def _add(key: str, values: List[Any]) -> None:
+        k = str(key or "").strip()
+        if not k:
+            return
+        bucket = catalog.setdefault(k, [])
+        for v in values or []:
+            s = str(v).strip()
+            if s and s not in bucket:
+                bucket.append(s)
+
+    for pack in packs:
+        for check in pack.get("checks") or []:
+            if not isinstance(check, dict):
+                continue
+            # Walk when-tree for not_decision_in / decision_in
+            stack = [check.get("when")]
+            while stack:
+                cond = stack.pop()
+                if not isinstance(cond, dict):
+                    continue
+                if "all" in cond:
+                    stack.extend(cond.get("all") or [])
+                if "any" in cond:
+                    stack.extend(cond.get("any") or [])
+                for node_key in ("not_decision_in", "decision_in"):
+                    spec = cond.get(node_key)
+                    if isinstance(spec, dict) and spec.get("key"):
+                        _add(str(spec["key"]), list(spec.get("values") or []))
+        for repair in pack.get("repairs") or []:
+            if not isinstance(repair, dict):
+                continue
+            for action in repair.get("actions") or []:
+                if not isinstance(action, dict):
+                    continue
+                norm = action.get("normalize_decision")
+                if isinstance(norm, dict) and norm.get("key"):
+                    _add(str(norm["key"]), list(norm.get("allowed") or []))
+    return catalog
+
+
+def format_decision_enum_catalog(text: str = "") -> str:
+    """Human-readable enum catalog for PM / auto-repair prompts."""
+    catalog = collect_decision_enum_catalog(text)
+    if not catalog:
+        return ""
+    lines = [
+        "### 决策枚举（value 只能是下列之一；说明写在 FR/范围，勿写入 value）",
+    ]
+    for key in sorted(catalog.keys()):
+        vals = "|".join(catalog[key])
+        lines.append(f"- `{key}`: {vals}")
     return "\n".join(lines)
 
 
@@ -267,6 +366,8 @@ def _eval_cond(cond: Any, *, prd: Dict[str, Any], blob: str) -> bool:
         return not bool(_re(str(cond["not_blob_match"])).search(blob))
     if "not_decision" in cond:
         return not bool(_decision_value(prd, str(cond["not_decision"])))
+    if "has_decision" in cond:
+        return bool(_decision_value(prd, str(cond["has_decision"])))
     if "decision_in" in cond:
         spec = cond["decision_in"] or {}
         val = _decision_value(prd, str(spec.get("key") or "")).lower()
@@ -421,6 +522,64 @@ def _apply_action(
         if key and not decisions.get(key):
             decisions[key] = payload.get("value")
             notes.append(f"auto:{pack_id}:set_decision:{key}")
+
+    elif kind == "rename_decision" and isinstance(payload, dict):
+        src = str(payload.get("from") or payload.get("src") or "")
+        dst = str(payload.get("to") or payload.get("dst") or "")
+        if src and dst and decisions.get(src) not in (None, "") and decisions.get(dst) in (None, ""):
+            decisions[dst] = decisions.pop(src)
+            notes.append(f"auto:{pack_id}:rename_decision:{src}->{dst}")
+
+    elif kind == "normalize_decision" and isinstance(payload, dict):
+        key = str(payload.get("key") or "")
+        allowed_raw = payload.get("allowed") or []
+        if not isinstance(allowed_raw, list):
+            allowed_raw = []
+        allowed = [str(x).strip() for x in allowed_raw if str(x).strip()]
+        allowed_l = [a.lower() for a in allowed]
+        raw = str(decisions.get(key) or "").strip()
+        if key and raw and allowed:
+            # Strip ``enum`` fences / trailing CJK notes before matching
+            raw_token = raw
+            _m = _re(r"`([a-zA-Z][\w]*)`").search(raw)
+            if _m:
+                raw_token = _m.group(1)
+            else:
+                _m = _re(r"^([a-zA-Z][\w]*)").match(raw.strip("`").strip())
+                if _m:
+                    raw_token = _m.group(1)
+            raw_l = raw_token.lower()
+            chosen = None
+            if raw_l in allowed_l:
+                chosen = allowed[allowed_l.index(raw_l)]
+            else:
+                # Prefer longest enum token that prefixes/embeds as a discrete token
+                full_l = raw.lower()
+                for a, a_l in sorted(zip(allowed, allowed_l), key=lambda t: len(t[1]), reverse=True):
+                    if (
+                        full_l.startswith(a_l + "（")
+                        or full_l.startswith(a_l + "(")
+                        or full_l.startswith(a_l + " ")
+                        or full_l.startswith(a_l + "：")
+                        or full_l.startswith(a_l + ":")
+                        or full_l.startswith(a_l + "`")
+                        or full_l == a_l
+                        or raw_l == a_l
+                    ):
+                        chosen = a
+                        break
+                if chosen is None:
+                    for fb in payload.get("fallback_if_match") or []:
+                        if not isinstance(fb, dict):
+                            continue
+                        pat = str(fb.get("pattern") or "")
+                        val = str(fb.get("value") or "").strip()
+                        if pat and val and _re(pat).search(raw):
+                            chosen = val
+                            break
+            if chosen and str(decisions.get(key)) != chosen:
+                decisions[key] = chosen
+                notes.append(f"auto:{pack_id}:normalize_decision:{key}={chosen}")
 
     elif kind == "replace_ac" and isinstance(payload, dict):
         c = _replace_fr_acs(out, _re(str(payload.get("match") or "")), str(payload.get("text") or ""))
@@ -699,6 +858,22 @@ def assess_prd(prd: Dict[str, Any]) -> Dict[str, Any]:
     open_decisions: List[str] = []
 
     # Universal structural checks (not domain-specific)
+    frs = normalized.get("functional_requirements")
+    if not isinstance(frs, list) or len(frs) == 0:
+        issues.append(_issue(
+            "prd_incomplete_no_fr",
+            "PRD 缺少 functional_requirements；禁止空壳定稿（仅标题/范围不可 READY）",
+            severity="error",
+        ))
+
+    title = str(normalized.get("title") or "").strip()
+    if re.search(r"^步骤\s*\d|^分析关键约束|方案比较|列出.*可行方案", title):
+        issues.append(_issue(
+            "prd_meta_title",
+            "标题像推理步骤而非产品名（如「步骤1：分析约束」）；须使用真实项目名称",
+            severity="error",
+        ))
+
     cons = normalized.get("constraints") if isinstance(normalized.get("constraints"), dict) else {}
     has_perf = bool(cons.get("performance"))
     has_sec = bool(cons.get("security"))
@@ -989,6 +1164,120 @@ def looks_like_prd(obj: Any) -> bool:
     return isinstance(frs, list) and len(frs) > 0
 
 
+# Optional Markdown→dict parser registered by platform (Builder). Core must not
+# import platform; pipeline materialize uses this hook when LLM returns Markdown.
+_prd_markdown_parser: Optional[Callable[[str], Dict[str, Any]]] = None
+
+
+def set_prd_markdown_parser(fn: Optional[Callable[[str], Dict[str, Any]]]) -> None:
+    """Register/clear platform Markdown PRD parser for pipeline materialize."""
+    global _prd_markdown_parser
+    _prd_markdown_parser = fn
+
+
+def _strip_llm_fences(raw: str) -> str:
+    text = str(raw or "").strip()
+    if text.startswith("```"):
+        text = text.replace("```json", "").replace("```markdown", "").replace("```", "").strip()
+    return text
+
+
+def _try_parse_prd_json(text: str) -> Optional[Dict[str, Any]]:
+    s = text.strip()
+    if not s.startswith("{"):
+        # embedded JSON object
+        start, end = s.find("{"), s.rfind("}")
+        if 0 <= start < end:
+            s = s[start : end + 1]
+        else:
+            return None
+    try:
+        obj = json.loads(s)
+    except Exception:
+        return None
+    return obj if isinstance(obj, dict) else None
+
+
+def materialize_prd_artifact(
+    raw: str,
+    *,
+    elapsed_sec: float = 0.0,
+) -> Optional[Dict[str, Any]]:
+    """Parse LLM PRD text (JSON or Markdown) → finalize → structured stage artifact.
+
+    Returns None when text is not a PRD (leave caller raw_output untouched).
+    Structured fields sit at the top level; ``raw_output`` is JSON so Factory UI
+    can count FRs; ``markdown`` mirrors chat display.
+    """
+    text = _strip_llm_fences(raw)
+    if not text or len(text) < 40:
+        return None
+
+    draft = _try_parse_prd_json(text)
+    if draft is None:
+        if ("## 项目名称" in text) or ("### FR-" in text) or ("functional_requirements" in text):
+            try:
+                if _prd_markdown_parser is not None:
+                    parsed = _prd_markdown_parser(text)
+                else:
+                    from core.harness.execution.prd_markdown import parse_prd_markdown
+
+                    parsed = parse_prd_markdown(text)
+                if isinstance(parsed, dict) and (looks_like_prd(parsed) or parsed.get("title")):
+                    draft = parsed
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "prd markdown parser failed", exc_info=True
+                )
+    if not isinstance(draft, dict):
+        return None
+    if not (looks_like_prd(draft) or draft.get("title")):
+        return None
+
+    try:
+        normalized, report = factory_finalize_prd(draft)
+    except Exception:
+        report = assess_prd(draft)
+        normalized = dict(report.get("normalized_prd") or draft)
+
+    body = {
+        k: v
+        for k, v in normalized.items()
+        if not str(k).startswith("_")
+    }
+    md = render_prd_markdown(body)
+    art: Dict[str, Any] = dict(body)
+    art["raw_output"] = json.dumps(body, ensure_ascii=False, indent=2)
+    art["markdown"] = md
+    art["elapsed_sec"] = elapsed_sec
+    art["_prd_gate"] = {
+        "ok": bool(report.get("ok")),
+        "issues": report.get("issues") or [],
+        "domain_flags": report.get("domain_flags") or [],
+        "factory_finalized": True,
+    }
+    return art
+
+
+def seed_confirmed_prd_into_state(state: Dict[str, Any], prd_data: Any) -> bool:
+    """Attach confirmed PRD as ``prd_data`` baseline for rebuild regeneration.
+
+    Does **not** pre-fill ``state["prd"]`` — rebuild must re-run PM and overwrite.
+    The skill context builder injects ``prd_data`` + ``pm_chat_history`` so the
+    regenerated PRD stays scoped to the dialogue (no invented capabilities).
+    """
+    if not isinstance(state, dict) or not isinstance(prd_data, dict):
+        return False
+    if not (prd_data.get("title") or looks_like_prd(prd_data)):
+        return False
+    state["prd_data"] = prd_data
+    desc = state.get("description")
+    title = prd_data.get("title")
+    if isinstance(desc, str) and title and "confirmed_prd" not in desc:
+        state["description"] = f"{desc}\n\n[confirmed_prd_baseline:{title}]".strip()
+    return True
+
+
 def apply_gate_to_prd(
     prd: Dict[str, Any],
     *,
@@ -1023,18 +1312,37 @@ def apply_gate_to_prd(
     return normalized, report
 
 
-def followup_questions_from_report(report: Dict[str, Any]) -> str:
-    """Render remaining gate errors as PM follow-up questions."""
+def followup_questions_from_report(report: Dict[str, Any], *, context_text: str = "") -> str:
+    """Render remaining gate errors as PM follow-up questions.
+
+    For missing/open decisions, append pack-driven enum catalog so the next turn
+    (or factory finalize) can close without a hand-written gold PRD.
+    """
     errs = [i for i in (report.get("issues") or []) if i.get("severity") == "error"]
     if not errs:
         return ""
     lines = [
         "",
         "---",
-        "PRD 尚未闭合，请先确认以下决策（确认后我将重新生成完整 PRD）：",
+        "PRD 尚未闭合。可回复「生成完整 PRD」：工厂会按域 pack 补全可推断的 decisions/constraints；",
+        "仅下列仍失败的项需要改写（语义矛盾不可洗绿）：",
     ]
     for i, issue in enumerate(errs[:6], 1):
         lines.append(f"{i}. {issue.get('message', '')}")
+    blob = context_text or " ".join(str(i.get("message") or "") for i in errs)
+    # Prefer media triggers if any speech/url wording in errors
+    enum_block = format_decision_enum_catalog(blob or "视频 字幕 语音")
+    if enum_block and any(
+        "decision" in str(i.get("code") or "")
+        or "speech_pipeline" in str(i.get("code") or "")
+        or "url_source" in str(i.get("code") or "")
+        or "subtitle" in str(i.get("code") or "")
+        or "canonical" in str(i.get("code") or "")
+        or "open" in str(i.get("code") or "")
+        for i in errs
+    ):
+        lines.append("")
+        lines.append(enum_block)
     return "\n".join(lines)
 
 

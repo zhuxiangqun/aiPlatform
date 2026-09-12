@@ -170,42 +170,25 @@ def _derive_failed_stages(project_id: str, test_report_raw: str):
 
 
 def fix_direct(project_id: str):
-    print(f"=== 确定性修复（generate-hypotheses → regenerate）{project_id} ===")
+    print(f"=== 确定性修复（fix-from-report）{project_id} ===")
     st = _http("GET", f"{PLATFORM}/platform/builder/projects/{project_id}/state")
     state = st.get("state", {}) if isinstance(st, dict) else {}
     test_report_raw = (state.get("test_report") or {}).get("raw_output", "") if isinstance(state.get("test_report"), dict) else ""
     if not test_report_raw:
-        # 兜底：直接从 output 目录读
         out_fp = os.path.expanduser(f"~/.aiplat/output/{project_id}/test_report.json")
         if os.path.isfile(out_fp):
             test_report_raw = open(out_fp).read()
-    if not test_report_raw:
-        print("  ❌ 未取到 test_report")
-        return 1
-
-    failed = _derive_failed_stages(project_id, test_report_raw)
-    print(f"  失败阶段（确定性映射）: {failed}")
-    if not failed:
-        print("  ⚠️ 未映射到失败阶段，跳过（可先跑 --poll 确认流水线完成）")
-        return 1
-
-    r = _http("POST", f"{PLATFORM}/platform/builder/projects/{project_id}/generate-hypotheses",
-              {"failed_stage_ids": failed, "test_report": test_report_raw[:8000]})
-    if "_error" in r:
-        print(f"  ❌ generate-hypotheses 失败: {r}")
-        return 1
-    fix_plan = r.get("fix_plan", [])
-    print(f"  fix_plan: {fix_plan}")
-    print(f"  max_error_stage: {r.get('max_error_stage')}")
-    print(f"  hypotheses: {len(r.get('hypotheses', []))} 条")
-
-    for stage in fix_plan:
-        rr = _http("POST", f"{PLATFORM}/platform/builder/projects/{project_id}/regenerate",
-                   {"stage_id": stage, "feedback": test_report_raw[:8000]})
-        status = rr.get("status") if isinstance(rr, dict) else str(rr)
-        print(f"  regenerate {stage}: {status}")
-    print("  ✅ 修复已触发，等待流水线后台重跑，用 --poll 观察结果")
-    return 0
+    r = _http(
+        "POST",
+        f"{PLATFORM}/platform/builder/projects/{project_id}/fix-from-report",
+        {"test_report": test_report_raw},
+        timeout=60,
+    )
+    print(f"  响应: {json.dumps(r, ensure_ascii=False)[:500]}")
+    if isinstance(r, dict) and r.get("status") == "regenerating":
+        print("  ✅ 修复已触发，等待流水线后台重跑，用 --poll 观察结果")
+        return 0
+    return 1
 
 
 def fix_agent(project_id: str):

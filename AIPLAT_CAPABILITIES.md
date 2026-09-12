@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1144
+total_capabilities: 1354
 
 total_capabilities: 1095
 last_updated: 2026-08-25
@@ -590,6 +590,81 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| default_export_dir | `core/harness/teamai_seed_export.py` | ✅ | 自动同步 | 已合入 |
+| namespaced_skill_candidates | `core/harness/team_sources.py` | ✅ | 自动同步 | 已合入 |
+| configure_sources | `core/harness/team_sources.py` | ✅ | 自动同步 | 已合入 |
+| list_source_namespaces | `core/harness/team_sources.py` | ✅ | 自动同步 | 已合入 |
+| sources_root | `core/harness/team_sources.py` | ✅ | 自动同步 | 已合入 |
+| load_sources_config | `core/harness/team_sources.py` | ✅ | 自动同步 | 已合入 |
+| autosync_interval_sec | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| autosync_timeout_sec | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| restore_team_backup | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| backup_team_tree | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| team_harness_lock | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| team_is_dirty | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| is_git_repo | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| write_meta | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| read_meta | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| write_config | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| read_config | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| is_resource_locked | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| resource_relpath | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| ensure_team_local_dirs | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| config_path | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| meta_path | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| backups_dir | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| lock_path | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| local_dir | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| team_dir | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| clear_friction_cta | `core/harness/team_friction.py` | ✅ | 自动同步 | 已合入 |
+| attach_friction_cta | `core/harness/team_friction.py` | ✅ | 自动同步 | 已合入 |
+| local_learnings_dir | `core/harness/team_friction.py` | ✅ | 自动同步 | 已合入 |
+| resolve_factory_sanitize_dirs | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
+| manifest_hash | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
+| seed_backups_dir | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
+| runtime_sanitize_dir | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
+| runtime_teams_dir | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
+| team_resource_dir | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
+| digest_store_path | `core/harness/team_digest.py` | ✅ | 自动同步 | 已合入 |
+| handle_report_json_export | `core/harness/media_skill_handlers.py` | ✅ | 自动同步 | 已合入 |
+| handle_speech_analyzer | `core/harness/media_skill_handlers.py` | ✅ | 自动同步 | 已合入 |
+| handle_subtitle_extractor | `core/harness/media_skill_handlers.py` | ✅ | 自动同步 | 已合入 |
+| handle_frame_analyzer | `core/harness/media_skill_handlers.py` | ✅ | 自动同步 | 已合入 |
+| handle_video_downloader | `core/harness/media_skill_handlers.py` | ✅ | 自动同步 | 已合入 |
+| remap_fixture_path | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| ensure_true_test_fixtures | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| accept_local_upload | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| download_http_video | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| analyze_speech_energy | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| scene_change_times | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| extract_keyframes_timed | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| extract_soft_subtitles | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| probe_media | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| fixtures_root | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| storage_root | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| new_task_id | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| record_from_gate_failure | `core/harness/execution/stage_outcome_samples.py` | ✅ | 自动同步 | 已合入 |
+| record_from_handoff | `core/harness/execution/stage_outcome_samples.py` | ✅ | 自动同步 | 已合入 |
+| stage_outcome_samples_path | `core/harness/execution/stage_outcome_samples.py` | ✅ | 自动同步 | 已合入 |
+| build_stage_handoff | `core/harness/execution/stage_handoff.py` | ✅ | 自动同步 | 已合入 |
+| resolve_next_stage_hint | `core/harness/execution/stage_handoff.py` | ✅ | 自动同步 | 已合入 |
+| extract_structured_fields | `core/harness/execution/stage_handoff.py` | ✅ | 自动同步 | 已合入 |
+| is_schema_gate_pause | `core/harness/execution/stage_handoff.py` | ✅ | 自动同步 | 已合入 |
+| append_hitl_audit | `core/harness/execution/stage_handoff.py` | ✅ | 自动同步 | 已合入 |
+| schema_is_active | `core/harness/execution/stage_handoff.py` | ✅ | 自动同步 | 已合入 |
+| attach_handoff | `core/harness/execution/stage_handoff.py` | ✅ | 自动同步 | 已合入 |
+| empty_handoff | `core/harness/execution/stage_handoff.py` | ✅ | 自动同步 | 已合入 |
+| resolve_project_factory_profile | `core/harness/execution/factory_profile.py` | ✅ | 自动同步 | 已合入 |
+| normalize_true_test_media_params | `core/harness/execution/factory_fix_plan.py` | ✅ | 自动同步 | 已合入 |
+| remap_skill_names_in_test_cases | `core/harness/execution/factory_fix_plan.py` | ✅ | 自动同步 | 已合入 |
+| build_feedback_from_report | `core/harness/execution/factory_fix_plan.py` | ✅ | 自动同步 | 已合入 |
+| compute_bloat_from_state | `core/harness/execution/factory_bloat_metrics.py` | ✅ | 自动同步 | 已合入 |
+| collect_files_from_artifact | `core/harness/execution/factory_bloat_metrics.py` | ✅ | 自动同步 | 已合入 |
+| compute_bloat_from_files | `core/harness/execution/factory_bloat_metrics.py` | ✅ | 自动同步 | 已合入 |
+| deps_declared_in_file | `core/harness/execution/factory_bloat_metrics.py` | ✅ | 自动同步 | 已合入 |
+| extract_file_blocks | `core/harness/execution/factory_bloat_metrics.py` | ✅ | 自动同步 | 已合入 |
+| seed_confirmed_prd_into_state | `` | ✅ | 自动同步 | 已合入 |
+| factory_finalize_prd | `` | ✅ | 自动同步 | 已合入 |
 | followup_questions_from_report | `` | ✅ | 自动同步 | 已合入 |
 | apply_gate_to_prd | `` | ✅ | 自动同步 | 已合入 |
 | looks_like_prd | `` | ✅ | 自动同步 | 已合入 |
@@ -1207,8 +1282,8 @@ scan_hash: 8f9548ec24f4
 | InfraAudioAdapter | harness/document/transcriber.py | ✅ | faster-whisper + openai-whisper | 已合入 |
 | InfraOCRAdapter | harness/infrastructure/infra_ocr_adapter.py | ✅ | 统一OCR入口 (Tesseract/PaddleOCR, text/structured/pdf) | 已合入 |
 | BaseCircuitBreaker | harness/infrastructure/circuit_breaker.py | ✅ | 统一熔断器基类 (closed/open/half_open) — LLM/Wiki/MCP 共用 | 已合入 |
-| 模型解析集中化 | harness/utils/model_injection.py | ✅ | get_default_model(purpose) 统一入口 | 已合入 |
-| 模型发现 | infra/management/model/manager.py | ✅ | 远程API + 本地(Ollama/LM Studio/vLLM) | 已合入 |
+| 模型解析集中化 | harness/utils/model_injection.py | ✅ | best_model_for_purpose → infra unified_pipeline；llm_profile 工作区深度合并（不浅替换 purpose_profiles） | 已合入 |
+| 模型发现 | infra/management/model/manager.py + config_loader.py + paths.py | ✅ | 远程API(adapters 表，默认 `~/.aiplat/aiplat_executions.sqlite3`) + 本地(Ollama/LM Studio/vLLM)；与 CredentialPool 共用 `execution_db_path()` | 已合入 |
 | 路径工具 | core/utils/paths.py | ✅ | 统一 AIPLAT_HOME 路径解析 + 子目录捷径 | 已合入 |
 | 常量定义 | core/utils/constants.py | ✅ | 截断/token/超时/domain 公共常量 | 已合入 |
 | HTTP错误工具 | core/api/http_errors.py | ✅ | HTTPException 标准化构造器 | 已合入 |
@@ -1411,13 +1486,138 @@ scan_hash: 8f9548ec24f4
 ## 十二、Gate 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| parse_app_page_payload | `core/harness/execution/app_page_skill_inject.py` | ✅ | 自动同步 | 已合入 |
+| skill_routing_context_block | `core/harness/execution/app_page_skill_inject.py` | ✅ | 自动同步 | 已合入 |
+| extract_ui_bindings | `core/harness/execution/app_page_skill_inject.py` | ✅ | 自动同步 | 已合入 |
+| extract_skill_routing | `core/harness/execution/app_page_skill_inject.py` | ✅ | 自动同步 | 已合入 |
+| infer_emotion_from_energy | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| transcribe_speech_asr | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| detect_speech_language | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| enrich_keyframes_with_captions | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| describe_frame_image | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| merge_vad_segments | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| pad_keyframes_for_density | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| infer_duration_hint | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| coerce_media_invoke_params | `core/harness/media_ops.py` | ✅ | 自动同步 | 已合入 |
+| suggest_platform_media_skill | `core/harness/media_skill_handlers.py` | ✅ | 自动同步 | 已合入 |
+| resolve_media_handler_name | `core/harness/media_skill_handlers.py` | ✅ | 自动同步 | 已合入 |
+| is_prompt_only_skill_name | `core/harness/media_skill_handlers.py` | ✅ | 自动同步 | 已合入 |
+| resolve_platform_media_skill | `core/harness/media_skill_handlers.py` | ✅ | 自动同步 | 已合入 |
+| list_platform_media_skill_names | `core/harness/media_skill_handlers.py` | ✅ | 自动同步 | 已合入 |
+| HANDLERS | `core/harness/media_skill_handlers.py` | ✅ | 自动同步 | 已合入 |
+| execute_media_skill | `core/harness/media_skill_handlers.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_result_asserts | `core/harness/execution/true_test_runtime.py` | ✅ | 自动同步 | 已合入 |
+| enrich_media_invoke_from_asserts | `core/harness/execution/true_test_runtime.py` | ✅ | 自动同步 | 已合入 |
+| classify_execution | `core/harness/execution/true_test_runtime.py` | ✅ | 自动同步 | 已合入 |
+| check_file_rules | `core/harness/execution/true_test_runtime.py` | ✅ | 自动同步 | 已合入 |
+| is_blocked_url | `core/harness/execution/true_test_runtime.py` | ✅ | 自动同步 | 已合入 |
+| run_platform_check | `core/harness/execution/true_test_runtime.py` | ✅ | 自动同步 | 已合入 |
+| run_true_test_case | `core/harness/execution/true_test_runtime.py` | ✅ | 自动同步 | 已合入 |
+| find_structured_requirements | `core/harness/execution/factory_artifact_sanitize.py` | ✅ | 自动同步 | 已合入 |
+| collect_upstream_blobs | `core/harness/execution/factory_artifact_sanitize.py` | ✅ | 自动同步 | 已合入 |
+| extract_real_http_routes | `core/harness/execution/factory_artifact_sanitize.py` | ✅ | 自动同步 | 已合入 |
+| resolve_architecture_mode | `core/harness/execution/factory_artifact_sanitize.py` | ✅ | 自动同步 | 已合入 |
+| pick_routing_blob | `core/harness/execution/factory_artifact_sanitize.py` | ✅ | 自动同步 | 已合入 |
+| compare_bloat | `core/harness/execution/factory_bloat_metrics.py` | ✅ | 自动同步 | 已合入 |
+| write_bloat_metrics | `core/harness/execution/factory_bloat_metrics.py` | ✅ | 自动同步 | 已合入 |
+| resolve_coding_intensity | `core/harness/utils/coding_intensity.py` | ✅ | 自动同步 | 已合入 |
+| build_coding_policy_block | `core/harness/utils/coding_intensity.py` | ✅ | 自动同步 | 已合入 |
+| normalize_coding_intensity | `core/harness/utils/coding_intensity.py` | ✅ | 自动同步 | 已合入 |
+| infer_followups | `core/harness/utils/output_style.py` | ✅ | 自动同步 | 已合入 |
+| estimate_reply_tokens | `core/harness/utils/output_style.py` | ✅ | 自动同步 | 已合入 |
+| record_digest_view | `core/harness/team_digest.py` | ✅ | 自动同步 | 已合入 |
+| build_team_digest | `core/harness/team_digest.py` | ✅ | 自动同步 | 已合入 |
+| apply_stage_skill_subscription | `core/harness/utils/team_skill_subscription.py` | ✅ | 自动同步 | 已合入 |
+| filter_skills_by_subscription | `core/harness/utils/team_skill_subscription.py` | ✅ | 自动同步 | 已合入 |
+| list_local_learnings | `core/harness/team_friction.py` | ✅ | 自动同步 | 已合入 |
+| confirm_friction_share | `core/harness/team_friction.py` | ✅ | 自动同步 | 已合入 |
+| note_regenerate | `core/harness/team_friction.py` | ✅ | 自动同步 | 已合入 |
+| record_friction_event | `core/harness/team_friction.py` | ✅ | 自动同步 | 已合入 |
+| resolve_culture_enabled | `core/harness/utils/team_culture.py` | ✅ | 自动同步 | 已合入 |
+| inject_team_culture | `core/harness/utils/team_culture.py` | ✅ | 自动同步 | 已合入 |
+| compose_prose_overlays | `core/harness/utils/team_culture.py` | ✅ | 自动同步 | 已合入 |
+| build_culture_overlay | `core/harness/utils/team_culture.py` | ✅ | 自动同步 | 已合入 |
+| resolve_factory_sanitize_file | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
+| resolve_team_yaml_candidates | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
+| rollback_team_factory_seeds | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
+| apply_team_factory_seeds | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
+| is_autosync_enabled | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| apply_configured_sources | `core/harness/team_sources.py` | ✅ | 自动同步 | 已合入 |
+| merge_source_tree | `core/harness/team_sources.py` | ✅ | 自动同步 | 已合入 |
+| configure_team_harness | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| pull_team_harness | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| materialize_team_harness_schema | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| load_team_harness_schema | `core/harness/team_harness.py` | ✅ | 自动同步 | 已合入 |
+| summarize_stage_outcome_samples | `core/harness/execution/stage_outcome_samples.py` | ✅ | 自动同步 | 已合入 |
+| query_stage_outcome_samples | `core/harness/execution/stage_outcome_samples.py` | ✅ | 自动同步 | 已合入 |
+| record_stage_outcome_sample | `core/harness/execution/stage_outcome_samples.py` | ✅ | 自动同步 | 已合入 |
+| resolve_output_style | `core/harness/utils/output_style.py` | ✅ | 自动同步 | 已合入 |
+| inject_output_style | `core/harness/utils/output_style.py` | ✅ | 自动同步 | 已合入 |
+| format_handoff_regenerate_feedback | `core/harness/execution/stage_handoff.py` | ✅ | 自动同步 | 已合入 |
+| normalize_handoff | `core/harness/execution/stage_handoff.py` | ✅ | 自动同步 | 已合入 |
+| mode_to_team_template | `core/harness/execution/team_planner.py` | ✅ | 自动同步 | 已合入 |
+| normalize_factory_profile | `core/harness/execution/factory_profile.py` | ✅ | 自动同步 | 已合入 |
+| apply_factory_profile_to_stages | `core/harness/execution/factory_profile.py` | ✅ | 自动同步 | 已合入 |
+| apply_stage_output_sanitizers | `core/harness/execution/factory_artifact_sanitize.py` | ✅ | 自动同步 | 已合入 |
+| ensure_manifest_ui_binding_pair | `core/harness/execution/factory_artifact_sanitize.py` | ✅ | 自动同步 | 已合入 |
+| ensure_manifest_dual_ui_bindings | `core/harness/execution/factory_artifact_sanitize.py` | ✅ | 自动同步 | 已合入 |
+| enrich_media_true_test_questions | `core/harness/execution/factory_artifact_sanitize.py` | ✅ | 自动同步 | 已合入 |
+| sanitize_test_cases_artifact | `core/harness/execution/factory_artifact_sanitize.py` | ✅ | 自动同步 | 已合入 |
+| sanitize_architecture_artifact | `core/harness/execution/factory_artifact_sanitize.py` | ✅ | 自动同步 | 已合入 |
+| ensure_dual_component_stages | `core/harness/execution/factory_artifact_sanitize.py` | ✅ | 自动同步 | 已合入 |
+| ensure_dual_ingest_stages | `core/harness/execution/factory_artifact_sanitize.py` | ✅ | 自动同步 | 已合入 |
+| strip_reasoning_preamble | `core/harness/execution/factory_artifact_sanitize.py` | ✅ | 自动同步 | 已合入 |
+| set_prd_markdown_parser | `core/harness/execution/prd_quality_gate.py` | ✅ | 自动同步 | 已合入 |
+| parse_prd_markdown | `core/harness/execution/prd_markdown.py` | ✅ | 自动同步 | 已合入 |
+| seed_confirmed_prd_into_state | `core/harness/execution/prd_quality_gate.py` | ✅ | 自动同步 | 已合入 |
+| factory_finalize_prd | `core/harness/execution/prd_quality_gate.py` | ✅ | 自动同步 | 已合入 |
 | materialize_prd_gate_seeds | `core/harness/execution/prd_gate_loader.py` | ✅ | 自动同步 | 已合入 |
 | load_prd_gate_packs | `core/harness/execution/prd_gate_loader.py` | ✅ | 自动同步 | 已合入 |
 | render_prd_markdown | `core/harness/execution/prd_quality_gate.py` | ✅ | 自动同步 | 已合入 |
 | matched_packs_for_text | `core/harness/execution/prd_quality_gate.py` | ✅ | 自动同步 | 已合入 |
 | format_pm_gate_guidance | `core/harness/execution/prd_quality_gate.py` | ✅ | 自动同步 | 已合入 |
+| collect_decision_enum_catalog | `core/harness/execution/prd_quality_gate.py` | ✅ | 从匹配域 pack 收集决策枚举 | 已合入 |
+| format_decision_enum_catalog | `core/harness/execution/prd_quality_gate.py` | ✅ | 枚举目录注入 PM/自动修复 | 已合入 |
+| repair_frontend_pages_raw / inject_app_page_skills | `core/harness/execution/app_page_skill_inject.py` | ✅ | 内核通用：agent_manifest.ui_bindings（必出）+ skill_routing；无 YAML | 已合入 |
 |------|------|:---:|------|------|
-| PRD 质量门禁（域 pack + 聊天回写） | harness/execution/prd_quality_gate.py + prd_gate_packs/_common.yaml + workspace_seeds/prd_gates/media.yaml + platform/builder/builder_project_service.py | ✅ | 解释器在 harness；内核 `_common` 仅跨域；媒体垂直规则在 workspace_seeds；`pm_hints` 生成前注入 PM 对话/`_extract_prd_from_chat`；`factory_finalize_prd` 改写 + Markdown 回写；生成物适用：**已接线**（Builder PM 对话确认路径） | 已合入 |
+| PRD 质量门禁（域 pack + 聊天回写） | harness/execution/prd_quality_gate.py + prd_markdown.py + factory_artifact_sanitize.py + prd_gate_packs/_common.yaml + workspace_seeds/prd_gates/media.yaml + platform/builder/builder_project_service.py + engine/skills/* | ✅ | 对话生成 PRD；重建保留 chat；`materialize_prd_artifact`；后处理仅由 `quality_gate`/`architecture_mode`/`test_execution_mode` 驱动（无 skill_name/业务词硬编码）；双入口靠 `ui_bindings`；生成物适用：**已接线** | 已合入 |
+| 工厂测真运行时 | harness/execution/true_test_runtime.py + engine/skills/test_executor/handler.py + test_case_generation + teams/default.yaml(`agent_true_test`) | ✅ | `platform_check`/`skill_invoke`/`page_smoke`/`conversation`；URL/文件参数形态确定性预检；命中 `media_skill_handlers` 走真实 ffmpeg；发明名 prompt SKIP→`no_platform_handler`；**prompt-only soft-PASS**；状态软别名（DOWNLOADED/COMPLETED/SUCCESS）；contains 同义词（storage_path/labels/acoustic_label…）；handler 契约字段（segments/storage_path/simulate_timeout/has_audio_track）；生成物适用：**已接线** | 已合入 |
+| 工厂测真套件质量收口 | factory_artifact_sanitize.ensure_true_test_suite_quality + test_case_generation SKILL v2.5 + teams QA `inject_skill_routing_context` | ✅ | 分类配额指引；SSRF≤2；`speech_pipeline=asr/hybrid` 自动补 transcript 正路径；生成物适用：**已接线** | 已合入 |
+| 工厂媒体 Skill Handler | harness/media_skill_handlers.py + media_ops.py | ✅ | video_downloader/frame_analyzer/subtitle_extractor/speech_analyzer/report_json_export；关键帧 10s + 启发式画面描述；**ASR 转写默认开**（faster-whisper → `transcript`/`transcript_segments`，`AIPLAT_MEDIA_ASR=0` 可关）；VAD 合并；语种/情绪；生成物适用：**已接线** | 已合入 |
+| 一键修复断言针别名对齐 | factory_fix_plan.align_result_assert_needles + true_test contains 同义 | ✅ | `missing:export_format` → 断言对齐 `export_json` / 同义匹配，避免 remap 空转；生成物适用：**已接线** | 已合入 |
+| 确定性 handler 平台副作用桥 | builder_project_service._platform_effects_after_deterministic_skill + `AIPLAT_FACTORY_FORCE_AGENT_SKILL` | ✅ | Path0 媒体 handler 成功后补 memory + local_feedback（不完全替代 ReAct）；可选 env 强制走 Agent+ReAct；生成物适用：**已接线** | 已合入 |
+| 前端代理 HTML/JSON no-cache | aiPlat-management/frontend/proxy_server.py | ✅ | `index.html`/`*.json`/`非 hash 静态` no-store；hash 资源 immutable——预览少依赖强刷；生成物不适用（平台 FE 横切） | 已合入 |
+| Code 模式平台能力接线规约 | engine/skills/code_generation/SKILL.md | ✅ | 托管≠自动继承；强制经平台 API/hybrid；生成物适用：**已接线**（生成 SOP） | 已合入 |
+| 工厂媒体 Skill 名规范化 | factory_artifact_sanitize.normalize_media_skill_names + ensure_agent_app_skill_consistency + ensure_platform_media_skill_contracts + factory_fix_plan.apply_no_platform_handler_fixes + teams gates + agent_engineering 命名/契约约束 | ✅ | 别名提升 + 三一致 + **目录契约重写**（禁止 downloader 仅建任务、禁止 report 仅进度查询；强制 media_ref/segments/report/timeline；**task_id/duration/tenant 入口不可必填**；**丢弃虚构 task_lifecycle**；progress→report）；handler 补齐 segments/task_status；生成物适用：**已接线** | 已合入 |
+| 工厂 result_dashboard 报告 Skill 兜底 | factory_artifact_sanitize.ensure_result_dashboard_skill + agent_engineering + teams `ensure_result_dashboard_skill` | ✅ | 缺报告 Skill 时注入 `report_json_export` 并绑定 `ui_bindings.result_dashboard`；生成物适用：**已接线** | 已合入 |
+| 工厂 wizard 阶段 I/O 消毒 | factory_artifact_sanitize.ensure_wizard_stage_io + repair_frontend_pages_with_prd + teams default/hybrid/code `repair_app_page` + deploy-to-app + app_page_generation SKILL | ✅ | **域无关**：任意上传→进度→结果向导；`show_when`、path 输入、progress≠入库 Skill；生成物适用：**已接线** | 已合入 |
+| 工厂 wizard I/O 测真门禁 | true_test_runtime.check_wizard_stage_io + run_page_smoke + ensure_wizard_io_true_test_case（非仅媒体） | ✅ | **域无关**：按 stage 图/ui_bindings 注入 `TQ-PAGE-WIZARD-IO`；坏向导必 FAIL；生成物适用：**已接线** | 已合入 |
+| 工厂 result_dashboard section 类型闭集 | true_test_runtime.check_result_dashboard_sections + RESULT_DASHBOARD_SECTION_TYPES + factory_artifact_sanitize.ensure_result_dashboard_sections(+speech_pipeline) + speech_pipeline_context_block + app_page_generation SKILL + page_smoke `stage.result_sections_ok` | ✅ | 禁止自造 section type；**asr/hybrid 强制 transcript、audio_features_only 禁止 transcript**；FE 上下文注入 speech_pipeline；生成物适用：**已接线** | 已合入 |
+| 工厂 app_page 媒体 Skill 名规范化 | canonicalize_app_page_media_skills + check_wizard skill_alias_not_canonical + repair_app_page | ✅ | `report_assembly`→`report_json_export` 等写入 app_page；测真拦截别名残留；生成物适用：**已接线** | 已合入 |
+| 工厂 app_page skill 自动注入 | harness/execution/app_page_skill_inject.py + pipeline_engine + builder deploy + agent/app_page skills | ✅ | Agent 必出 ui_bindings→FE 抄表→inject 兜底；无 YAML；生成物适用：**已接线** | 已合入 |
+| 工厂 W1：output_style / factory_profile / handoff 字段 / 确认并构建 | `output_style.py` + `output_style_adhd/SKILL.md` + `factory_profile.py` + `stage_handoff.py` + `confirm_and_build` + AIFactory `factory_ia_v2` + Factory 清单/CTA | ✅ | A0 锁定 ADHD 样式；F2a 项目级 demo HITL；C0 handoff 字段冻结；F1 Tab 灰度+一键启动构建；生成物适用：**已接线** | 已合入 |
+| 工厂 F2b：hybrid 模式端到端 | `team_planner.normalize_factory_mode` + `preferred_mode`→`hybrid.yaml` + `ProjectCreateRequest.factory_mode` + Factory 模式选择器 | ✅ | LLM/创建均可选 hybrid；agent+code 双轨模板；生成物适用：**已接线** | 已合入 |
+| 工厂 F3：阶段交接包 | `stage_handoff.write_stage_handoff` + `_dispatch_execute` + regenerate 注入 + Factory 阶段卡 5 字段 | ✅ | summary/artifact_ref/verify/known_issues/next；失败可见「下一步」；生成物适用：**已接线** | 已合入 |
+| 工厂 C1：stage schema gate | `stage_handoff.gate_check` + `apply_gate_failure` + `_dispatch_execute`/`run()` | ✅ | 空 schema 放行；缺必填按 gate_on_fail=block/hitl/fail_pipeline；生成物适用：**已接线**（team YAML 逐步开必填） | 已合入 |
+| 工厂 C2–C3：HITL resume + PRD 结构化 | `try_resume_schema_gate` + `_hitl_audit` + `format_structured_artifact_block` + `teams/structured_ref.yaml` | ✅ | schema 门暂停可补齐后重验；Architect 优先消费 structured 字段；参考团队嵌套 input_schema；生成物适用：**已接线** | 已合入 |
+| 平台 B：coding intensity | `coding_intensity.py` lite/full/ultra + hard 安全底线；registry/executor/loop/pipeline_prompt；工厂 code→full | ✅ | 三档可切；`karpathy_v1`≡full；安全不降；生成物适用：**已接线** | 已合入 |
+| 工厂 F5a：膨胀指标 | `factory_bloat_metrics` LOC/new_deps/new_files + vs_baseline；Factory 完成面板 | ✅ | 两次构建可对照；无 abstraction_count；生成物适用：**已接线** | 已合入 |
+| 工厂 F5b：canonical SKILL 外置种子 | `workspace_seeds/factory_sanitize/*.SKILL.md` + `load_canonical_media_skill_md` + `factory_artifact_sanitize` 薄加载 | ✅ | 4 个媒体契约模板 + report 通用模板出 sanitize.py；`{{app_name}}` 替换；生成物适用：**已接线** | 已合入 |
+| 平台 A3a：output_style 埋点 | `record_output_style_event` / `query_output_style_events` + factory chat 接线 | ✅ | style_version/tokens/followups/first_pass_ok 可查；**无分流**（A3b 另立）；生成物适用：**不适用**（平台横切对话观测） | 已合入 |
+| 平台 A3b：output_style A/B 分流 | `assign_output_style_experiment` + `compare_output_style_arms` + `AIPLAT_OUTPUT_STYLE_EXPERIMENT_PCT` | ✅ | sticky bucket；用户显式 adhd 锁定；默认 pct=0 零差；对照表；生成物适用：**不适用**（平台横切） | 已合入 |
+| 工厂 C4：stage 成败样本库 | `stage_outcome_samples` + `write_stage_handoff`/`apply_gate_failure` 接线 | ✅ | 成功/失败/schema_gate 可查；**不自动改拓扑**（非 AFlow）；生成物适用：**已接线** | 已合入 |
+| 平台 T0–T1a：团队 Harness 契约 + FF pull | `team_harness.py` + `workspace_seeds/team_harness/team_harness.yaml` | ✅ | schema_version；`team/` 仅 pull、`local/` 不碰；dirty 阻塞；FF+备份回滚；文件锁；无仓零差；生成物适用：**不适用**（平台横切发布源） | 已合入 |
+| 平台 T1b：SESSION_START 异步 autosync | `maybe_autosync_team_harness` + Hook SESSION_START + Factory chat/pipeline kick | ✅ | 默认 `AUTOSYNC=0`；后台线程；超时/离线降级；不阻断首 token；生成物适用：**已接线**（工厂入口 kick） | 已合入 |
+| 工厂 F-T1：seeds 从 team/ 更新 | `team_factory_seeds.py` + sanitize/team_planner 解析序 | ✅ | teams/factory_sanitize：team/→runtime→seeds；apply+hash 备份可回滚；pull 成功后自动 apply；生成物适用：**已接线** | 已合入 |
+| 平台 T2 / 工厂 F-T2：Culture 注入 | `team_culture.py` + seed `culture.md` + Factory 对话挂载 | ✅ | ≤200 tokens；序 hard→Culture→style；独立开关；不改 JSON；生成物适用：**已接线**（工厂对话） | 已合入 |
+| 平台 T4a / 工厂 F-T4：Friction 回流 | `team_friction.py` + reject/regenerate/prd 接线 + Factory CTA | ✅ | 闭集 hitl_reject/prd_gate_fail/regenerate≥2（确认或冷却）；learnings 默认仅 local/；生成物适用：**已接线** | 已合入 |
+| 平台 T3a / 工厂 F-T3：skill 订阅过滤 | `team_skill_subscription.py` + StageRunner + stage `skill_allow_tags/roles` | ✅ | required_skills 强制保留；空 allow_* 透传；无 agent_id 硬编码；生成物适用：**已接线** | 已合入 |
+| 平台 T4b：Friction + schema_gate/repair | `record_schema_gate_friction` + stage_handoff + runtime_auto_repair | ✅ | 闭集扩展 schema_gate_* + repair_exhausted；审计可追踪；生成物适用：**已接线** | 已合入 |
+| 平台 T5 / 工厂 F-T5：指标 digest | `team_digest.py` + `/digest` + Factory 完成面板 | ✅ | 仅指标（friction/gate/bloat/style/pull）；无原文；生成物适用：**已接线** | 已合入 |
+| 平台 T1c：push → 分支 + MR 模板 | `push_team_harness` + `render_mr_template` + `/team-harness/push` | ✅ | 禁推 main；无写权限仅 hint+模板；Git 审合；生成物适用：**不适用**（发布源横切） | 已合入 |
+| 平台 T3b：多源 source 订阅 | `team_sources.py` + seed `sources.yaml` + `/team-harness/sources/apply` | ✅ | `team/sources/{ns}/` 命名空间合并；不覆盖锁定正文；生成物适用：**已接线** | 已合入 |
+| 平台 T6'：TeamAI 兼容 seed 仓 | `export_teamai_seed` + `/team-harness/export-seed` | ✅ | 导出至 `exports/teamai-seed`；**永不写** `.cursor`/`.claude`；生成物适用：**不适用**（发布种子） | 已合入 |
+| 工厂 F4：部署诚实反馈 | `builder_deploy_mixin` post-deploy smoke + `rejected_artifacts` + `app_runtime.MAX_REPAIR_ATTEMPTS=2` + `generated_conformance` `completion_criterion` + Factory 拒绝面板/可打开门控 | ✅ | 契约拒绝可见；不健康不展示打开；修复超限→HITL；生成物适用：**已接线** | 已合入 |
 | ContextGate | harness/infrastructure/gates/context_gate.py | ✅ | Token预算强制执行 + 上下文去重/陈旧校验 | 已合入 |
 | SchemaGate | harness/infrastructure/gates/schema_gate.py | ✅ | JSON Schema 强制校验，Agent输出在下游阶段前验证 | 已合入 |
 | ResilienceGate | harness/infrastructure/gates/resilience_gate.py | ✅ | 可配置重试策略 + 回退链 + 熔断器包装 | 已合入 |
@@ -1701,7 +1901,7 @@ scan_hash: 8f9548ec24f4
 | KB Intelligence | platform/kb/intelligence/service.py | ✅ | URL抓取/HTML→text/格式检测/视频URL转录 | 已合入 |
 | MinerU PDF 提取 | platform/kb/poc/mineru_extract.py | ✅ | 结构化PDF内容提取 + 表格 | 已合入 |
 | Video Retrieval | platform/kb/intelligence/video_retrieval.py | ✅ | 时间索引视频内容检索 + 转录对齐 | 已合入 |
-| Builder Project Service | platform/builder/builder_project_service.py | ✅ | 全功能应用项目CRUD + 双模式自动路由（agent→配置/code→代码，team_planner mode 判断）+ pass_rate 来源标注（real_pytest/estimated） | 已合入 |
+| Builder Project Service | platform/builder/builder_project_service.py | ✅ | 全功能应用项目CRUD + 双模式自动路由（agent→配置/code→代码，team_planner mode 判断）+ pass_rate 来源标注（real_pytest/estimated）；PM/PRD 默认模型按 purpose=`agent` 选型（不用 latency-first `chat`，避免落小模型） | 已合入 |
 | 生成物契约校验（conformance） | platform/builder/generated_conformance.py + generated_conformance.yaml + builder_project_service.py | ✅ | 注册前契约校验生成 AGENT.md/SKILL.md（SBA conformance 模式借鉴）：首行必须 `---`（防残留）、治理字段存在性（execution_type/input_schema/output_schema/version/status/effects）、input_schema/output_schema 对象格式（type/required/description）、must_contain_in_order 顺序断言；不通过跳过注册并告警 | 已合入 |
 | workspace Agent 符合度校验（conformance） | platform/builder/agent_conformance.py | ✅ | 校验 workspace AGENT.md 合规（validate_agent_md 单文件 / validate_agents_dir 目录遍历：max_lines≤100、无 model 硬编码、交接 5 字段、输出格式无代码块模板）+ ratchet 门禁（load_baseline / save_baseline / ratchet_diff 基线对比，仅新增违规阻断，§96 架构守卫集成） | 已合入 |
 | Builder 流水线启动与安全加固（P0） | platform/builder/builder_project_service.py + platform/api/routers/builder.py + core/harness/execution/pipeline_engine.py | ✅ | start_pipeline/start_pipeline_background 定义并委托 rebuild_project（接线断裂修复，PRD 前置检查）+ PRD 解析 eval→ast.literal_eval（RCE 修复）+ _deploy_result_files 路径穿越 _safe_join 防护 + 域注入 _prd 解析修复 + 部署签名 fail-closed（403 拒绝） | 已合入 |
@@ -1772,6 +1972,14 @@ scan_hash: 8f9548ec24f4
 ## 二十五、管理 & 质量
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| fix_from_test_report | `aiPlat-platform/builder/builder_project_service.py` | ✅ | 自动同步 | 已合入 |
+| bugs_are_media_handler_fixable | `core/harness/execution/factory_fix_plan.py` | ✅ | 自动同步 | 已合入 |
+| bugs_are_no_platform_handler_only | `core/harness/execution/factory_fix_plan.py` | ✅ | 自动同步 | 已合入 |
+| extract_media_skill_remaps_from_report | `core/harness/execution/factory_fix_plan.py` | ✅ | 自动同步 | 已合入 |
+| derive_failed_stages_from_report | `core/harness/execution/factory_fix_plan.py` | ✅ | 自动同步 | 已合入 |
+| FROZEN_TEST_CASE_ARTIFACTS | `core/harness/execution/factory_fix_plan.py` | ✅ | 自动同步 | 已合入 |
+| filter_fix_plan_freeze_test_cases | `core/harness/execution/factory_fix_plan.py` | ✅ | 自动同步 | 已合入 |
+| plan_fix_from_report | `core/harness/execution/factory_fix_plan.py` | ✅ | 自动同步 | 已合入 |
 | Sidebar v2.3 menuItems | `aiPlat-management/frontend/src/pageManifest.ts` | ✅ | 自动同步 | 已合入 |
 | handleFixBugs | `aiPlat-management/frontend/src/pages/App/Factory/index.tsx` | ✅ | 自动同步 | 已合入 |
 | filterItemsByRole | `aiPlat-management/frontend/src/components/layout/AppLayout.tsx` | ✅ | 自动同步 | 已合入 |
@@ -1799,8 +2007,8 @@ scan_hash: 8f9548ec24f4
 | Wiki 健康检查 | api/routers/diagnostics.py:_check_wiki_health | ✅ | 死链/孤立/矛盾/过期页面检测→health_score 评分 | 已合入 |
 | 链路追踪诊断 | api/routers/diagnostics.py:_check_traces | ✅ | 链路追踪完整性: span_id/trace_id/事件持久化检查 | 已合入 |
 | Sidebar v2.3 菜单系统 | aiPlat-management/frontend/src/pageManifest.ts | ✅ | 任务流驱动侧边栏：6组92入口；AI应用工厂精简58%(33→14项，纯项目生命周期+工作区能力）；引擎能力配置(6项)独立成组移入平台设置；价值看板→仪表盘；修复中心+LLM审查→诊断与治理 | 已合入 |
-| App Factory 页面 | aiPlat-management/frontend/src/pages/App/Factory/index.tsx | ✅ | 项目工厂全生命周期：InlineChat对话、Pipeline阶段状态监控、产出物全屏JSON/Markdown渲染、Bug统计卡片、一键修复按钮(触发test_report_orchestrator) | 已合入 |
-| 一键修复(Bug Fix Orchestrator) | aiPlat-management/frontend/src/pages/App/Factory/index.tsx | ✅ | 测试报告中点击"一键修复(N Bug)"→调用test_report_orchestrator Agent→逐阶段重新生成→下游级联重建 | 已合入 |
+| App Factory 页面 | aiPlat-management/frontend/src/pages/App/Factory/index.tsx | ✅ | 项目工厂全生命周期：InlineChat对话、Pipeline阶段状态监控、产出物全屏JSON/Markdown渲染、Bug统计卡片、一键修复按钮(调用 `/fix-from-report` 确定性编排) | 已合入 |
+| 一键修复(Bug Fix Orchestrator) | aiPlat-platform/api/routers/builder.py + factory_fix_plan.py | ✅ | `POST /fix-from-report` 确定性映射失败阶段→regenerate；默认冻结 `test_cases`（`preserve_artifacts` + 剔除 qa）；`regenerate_test_cases=true` 才允许重写考卷；`POST /regenerate` 对 `test_executor`/`test_report` 默认 `preserve_artifacts=[test_cases]`；生成物：适用（Factory） | 已合入 |
 
 ---
 
@@ -2060,19 +2268,19 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 78 | 1 | 79 |
+| Harness 执行引擎 | 153 | 1 | 154 |
 | 记忆子系统 | 41 | 0 | 41 |
 | 知识引擎（本体） | 153 | 8 | 161 |
 | RAG 检索 | 47 | 0 | 47 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 43 | 0 | 43 |
 | Skill 系统 | 54 | 0 | 54 |
-| 安全与治理 | 56 | 0 | 56 |
+| 安全与治理 | 58 | 0 | 58 |
 | 可观测性 | 27 | 0 | 27 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 130 | 0 | 130 |
-| Gate 系统 | 25 | 0 | 25 |
+| Gate 系统 | 150 | 0 | 150 |
 | 评估系统 | 18 | 0 | 18 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
@@ -2086,7 +2294,7 @@ scan_hash: 8f9548ec24f4
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 28 | 0 | 28 |
+| 管理 & 质量 | 36 | 0 | 36 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -2105,7 +2313,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1135** | **9** | **1144** |
+| **总计** | **1345** | **9** | **1354** |
 
 | **总计** | **1095** | **0** | **1095** |
 

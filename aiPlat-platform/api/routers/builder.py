@@ -200,6 +200,24 @@ async def project_confirm(project_id: str, body: Dict[str, Any] = {}, _auth: str
         )
     return result
 
+
+@router.post("/projects/{project_id}/confirm-and-build", response_model=StatusResponse)
+async def project_confirm_and_build(
+    project_id: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)
+):
+    """One-click: confirm PRD → recommend team → start pipeline (F1)."""
+    result = await _get_svc().confirm_and_build(
+        project_id,
+        prd_data=body.get("prd"),
+        force_confirm=bool(body.get("force_confirm") or body.get("force")),
+    )
+    if isinstance(result, dict) and result.get("status") == "error":
+        raise HTTPException(
+            status_code=400,
+            detail=str(result.get("detail") or "确认并构建失败"),
+        )
+    return result
+
 @router.post("/projects/{project_id}/recommend-team", response_model=StatusResponse)
 async def recommend_team(project_id: str, _auth: str = Depends(require_builder_access)):
     """AI analyzes PRD and recommends a team configuration."""
@@ -218,6 +236,108 @@ async def project_approve(project_id: str, body: Dict[str, Any] = {}, _auth: str
 async def project_reject(project_id: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
     feedback = str(body.get("feedback", "") or "")
     return await _get_svc().reject_stage(project_id, feedback)
+
+
+@router.post("/projects/{project_id}/friction-share", response_model=StatusResponse)
+async def project_friction_share(
+    project_id: str,
+    body: Dict[str, Any] = {},
+    _auth: str = Depends(require_builder_access),
+):
+    """F-T4: confirm T4a friction share → local learning draft (not team Git)."""
+    stage_id = str((body or {}).get("stage_id") or "")
+    signal = str((body or {}).get("signal") or "regenerate_count")
+    detail = str((body or {}).get("detail") or "")
+    return _get_svc().confirm_friction_share(
+        project_id,
+        stage_id=stage_id,
+        signal=signal,
+        detail=detail,
+    )
+
+
+@router.get("/projects/{project_id}/digest", response_model=StatusResponse)
+async def project_team_digest(project_id: str, _auth: str = Depends(require_builder_access)):
+    """F-T5: metrics-only digest slice for completion panel."""
+    from core.api.core_facade import build_team_digest, record_digest_view
+
+    st = await _get_svc().get_project_state(project_id)
+    proj = {}
+    try:
+        card = _get_svc()._projects.get(project_id) or {}
+        if isinstance(card, dict):
+            proj = card
+    except Exception:
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+    dig = None
+    if isinstance(st, dict) and isinstance(st.get("team_digest"), dict):
+        dig = st["team_digest"]
+    if not dig:
+        dig = build_team_digest(project_id=project_id, project=proj)
+    try:
+        record_digest_view(project_id)
+        dig = dict(dig)
+        dig["view_recorded"] = True
+    except Exception:
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+    return dig
+
+
+# ── Team harness (T1c / T3b / T6') ──────────────────────────────────────────
+
+@router.post("/team-harness/push", response_model=StatusResponse)
+async def team_harness_push(
+    body: Dict[str, Any] = {},
+    _auth: str = Depends(require_admin_access),
+):
+    """T1c: push contribute branch + MR template (never pushes main)."""
+    from core.api.core_facade import push_team_harness
+
+    return push_team_harness(
+        paths=list(body.get("paths") or []) or None,
+        branch=str(body.get("branch") or ""),
+        message=str(body.get("message") or ""),
+        base=str(body.get("base") or ""),
+        dry_run=bool(body.get("dry_run")),
+        include_local_learnings=bool(body.get("include_local_learnings")),
+    )
+
+
+@router.post("/team-harness/sources/apply", response_model=StatusResponse)
+async def team_harness_sources_apply(
+    body: Dict[str, Any] = {},
+    _auth: str = Depends(require_admin_access),
+):
+    """T3b: merge configured secondary sources under team/sources/{ns}/."""
+    from core.api.core_facade import apply_configured_sources, configure_sources, merge_source_tree
+
+    if isinstance(body.get("sources"), list) and body["sources"]:
+        configure_sources(body["sources"])
+    if body.get("path") and body.get("namespace"):
+        from pathlib import Path
+
+        return merge_source_tree(
+            Path(str(body["path"])).expanduser(),
+            namespace=str(body["namespace"]),
+        )
+    return apply_configured_sources(dry_run=bool(body.get("dry_run")))
+
+
+@router.post("/team-harness/export-seed", response_model=StatusResponse)
+async def team_harness_export_seed(
+    body: Dict[str, Any] = {},
+    _auth: str = Depends(require_admin_access),
+):
+    """T6': export TeamAI-compatible seed (never writes .cursor/.claude)."""
+    from core.api.core_facade import export_teamai_seed
+
+    return export_teamai_seed(
+        str(body.get("dest") or ""),
+        include_learnings=bool(body.get("include_learnings")),
+        include_sources=body.get("include_sources", True) is not False,
+        overwrite=body.get("overwrite", True) is not False,
+    )
+
 
 @router.post("/projects/{project_id}/rollback/{stage_id:path}", response_model=StatusResponse)
 async def project_rollback(project_id: str, stage_id: str, _auth: str = Depends(require_builder_access)):
@@ -499,7 +619,36 @@ async def regenerate_project_stage(project_id: str, req: Dict[str, Any], _auth: 
     feedback = str(req.get("feedback") or "")
     if not stage_id or not feedback:
         raise HTTPException(400, detail="stage_id and feedback are required")
-    return await _get_svc().regenerate_stage(project_id, stage_id, feedback)
+    preserve = req.get("preserve_artifacts")
+    if not isinstance(preserve, list):
+        preserve = None
+    # Re-running test_executor must not rewrite the frozen exam suite
+    sid = stage_id.strip().lower()
+    if preserve is None and sid in (
+        "test_executor",
+        "test_report",
+        "agent_true_test",
+        "canvas_node_6",
+    ):
+        preserve = ["test_cases", "test_questions"]
+    return await _get_svc().regenerate_stage(
+        project_id, stage_id, feedback, preserve_artifacts=preserve
+    )
+
+
+@router.post("/projects/{project_id}/fix-from-report", response_model=StatusResponse)
+async def project_fix_from_report(project_id: str, req: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
+    """Deterministic one-click fix from test_report (no ReAct orchestrator agent).
+
+    Body optional:
+    - ``test_report``: if omitted, loads from pipeline state
+    - ``regenerate_test_cases``: default false — freeze exam suite across fix runs
+    """
+    test_report = str((req or {}).get("test_report") or "")
+    regen_tc = bool((req or {}).get("regenerate_test_cases") or False)
+    return await _get_svc().fix_from_test_report(
+        project_id, test_report, regenerate_test_cases=regen_tc
+    )
 
 
 @router.post("/projects/{project_id}/locate-max-error", response_model=StatusResponse)
@@ -533,9 +682,19 @@ async def update_stage_artifact(project_id: str, stage_id: str, req: Dict[str, A
                                  _auth: str = Depends(require_builder_access)):
     """Manually edit a stage's output artifact — user edits content, then can rebuild from this stage."""
     content = str(req.get("content") or req.get("raw_output") or "")
-    if not content:
+    if not content.strip():
         raise HTTPException(400, detail="content is required")
-    return await _get_svc().update_stage_artifact(project_id, stage_id, content)
+    try:
+        result = await _get_svc().update_stage_artifact(project_id, stage_id, content)
+    except ValueError as e:
+        msg = str(e)
+        code = 404 if "not found" in msg.lower() else 400
+        raise HTTPException(code, detail=msg) from e
+    return {
+        "status": result.get("status") or "updated",
+        "message": f"artifact {result.get('artifact_key') or stage_id} updated",
+        "detail": result.get("artifact_key") or stage_id,
+    }
 
 
 @router.post("/projects/{project_id}/deploy-to-app", response_model=StatusResponse)
@@ -606,8 +765,10 @@ async def real_tests_generated_app(project_id: str, body: Dict[str, Any] = {},
 async def auto_repair_generated_app(project_id: str, body: Dict[str, Any] = {},
                                     _auth: str = Depends(require_builder_access)):
     """自动修复闭环：真实测试失败 → LLM 修复生成代码 → 写回部署目录 → 重跑验证。
-    max_rounds 默认 2（LLM 修复轮次上限）。"""
-    max_rounds = int((body or {}).get("max_rounds", 2))
+    F4: max_rounds 硬上限 2；超限返回 repair_exhausted + next=hitl。"""
+    from builder.app_runtime import MAX_REPAIR_ATTEMPTS
+    raw = int((body or {}).get("max_rounds", MAX_REPAIR_ATTEMPTS))
+    max_rounds = max(1, min(raw, MAX_REPAIR_ATTEMPTS))
     return await _get_svc().runtime_auto_repair(project_id, max_rounds=max_rounds)
 
 

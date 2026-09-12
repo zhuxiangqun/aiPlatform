@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
+import re
 from typing import Any, Dict, List
 
 _LANG_TAG_RE = None
@@ -608,6 +609,225 @@ def _build_conversation_report(results: List[Dict[str, Any]], project: str, toda
     }
 
 
+def _build_true_test_report(
+    results: List[Dict[str, Any]], project: str, today: str
+) -> Dict[str, Any]:
+    passed = sum(1 for r in results if r.get("result") == "PASS")
+    failed = [r for r in results if r.get("result") in ("FAIL", "TIMEOUT", "ERROR")]
+    skipped = [r for r in results if r.get("result") == "SKIP"]
+    bugs = [
+        {
+            "id": f"BUG-{i+1:03d}",
+            "test_id": r.get("id"),
+            "severity": "high",
+            "title": f"测真未通过: {r.get('id')}",
+            "reproduction": r.get("question") or r.get("execution") or "",
+            "actual": r.get("evidence") or r.get("reason") or "",
+            "suggested_fix": (
+                f"按 asserts/execution={r.get('execution')} 修复对应 Skill/页面接线或平台校验；"
+                f"failures={r.get('failures')}"
+            ),
+        }
+        for i, r in enumerate(failed)
+    ]
+    # Actionable diagnostics from prompt-SKIP when skill missing from platform handlers
+    diagnostics: List[Dict[str, Any]] = []
+    for r in skipped:
+        ev = str(r.get("evidence") or "")
+        diags = list(r.get("diagnostics") or [])
+        if "no_platform_handler:" in ev and not diags:
+            diags = [p for p in ev.split(";") if "no_platform_handler:" in p or "suggested_platform_skill:" in p]
+        if not diags and "no_platform_handler:" not in ev:
+            continue
+        skill = ""
+        suggested = ""
+        for d in diags:
+            d = str(d).strip()
+            if d.startswith("no_platform_handler:"):
+                skill = d.split(":", 1)[-1].strip()
+            if d.startswith("suggested_platform_skill:"):
+                suggested = d.split(":", 1)[-1].strip()
+        if not skill and "no_platform_handler:" in ev:
+            m = re.search(r"no_platform_handler:([^\s;]+)", ev)
+            skill = m.group(1) if m else ""
+        if not suggested and "suggested_platform_skill:" in ev:
+            m = re.search(r"suggested_platform_skill:([^\s;]+)", ev)
+            suggested = m.group(1) if m else ""
+        # Prompt-only conversational skills (video_qa / *_chat) are intentional —
+        # never treat as missing media handler bugs.
+        try:
+            from core.harness.media_skill_handlers import is_prompt_only_skill_name
+
+            if skill and is_prompt_only_skill_name(skill) and not suggested:
+                continue
+        except Exception:
+            pass
+        # Soft-pass evidence from runtime — not a defect
+        if "prompt_only_skill_soft_pass:" in ev:
+            continue
+        fix = (
+            f"将 Skill `{skill}` 重命名/映射为平台媒体目录名"
+            + (f" `{suggested}`" if suggested else "（见 media_skill_handlers 目录）")
+            + "；或开启 quality_gate.normalize_media_skill_names 后重跑 agent_engineer。"
+        )
+        diagnostics.append(
+            {
+                "code": "no_platform_handler",
+                "skill": skill,
+                "suggested_platform_skill": suggested or None,
+                "test_id": r.get("id"),
+                "suggested_fix": fix,
+            }
+        )
+        bugs.append(
+            {
+                "id": f"BUG-{len(bugs)+1:03d}",
+                "test_id": r.get("id"),
+                "severity": "medium",
+                "title": f"平台无 handler: {skill or r.get('id')}",
+                "reproduction": r.get("question") or "skill_invoke",
+                "actual": ev[:300],
+                "suggested_fix": fix,
+                "diagnostic": "no_platform_handler",
+            }
+        )
+
+    total = len(results)
+    return {
+        "header": {
+            "report_id": "TR-TRUE-0001",
+            "project": project,
+            "test_mode": "agent_true_test",
+            "date": today,
+            "executor": "test_executor",
+        },
+        "meta": {
+            "total_test_cases": total,
+            "passed": passed,
+            "failed": len(failed),
+            "warnings": len(skipped),
+            "pass_rate": round(passed / total * 100) if total else 0,
+            "diagnostics": diagnostics,
+        },
+        "test_results": results,
+        "bug_summary": {"total_bugs": len(bugs), "bugs": bugs},
+        "recommendation": "APPROVED" if not failed and not diagnostics else ("REJECTED" if failed else "NEEDS_FIX"),
+        "improvements": [
+            {"priority": "MUST_FIX" if b.get("severity") == "high" else "SHOULD_FIX",
+             "item": b["suggested_fix"], "ref": b["id"]}
+            for b in bugs
+        ],
+    }
+
+
+async def _run_agent_true_test(params: Dict[str, Any]) -> Dict[str, Any]:
+    """测真：platform_check / skill_invoke / page_smoke / conversation 混合执行。"""
+    from core.harness.execution.true_test_runtime import (
+        classify_execution,
+        run_true_test_case,
+    )
+
+    cases = _extract_questions(params.get("test_cases"))
+    if not cases:
+        return await _run_document_check(params)
+
+    agent_app = str(params.get("agent_app") or "")
+    frontend_pages = params.get("frontend_pages")
+    project = str(params.get("project") or "未命名项目")
+    today = _dt.date.today().isoformat()
+
+    # Optional whole-suite page smoke when no case requests it but frontend exists
+    has_page_case = any(classify_execution(c) == "page_smoke" for c in cases)
+    results: List[Dict[str, Any]] = []
+
+    for tc in cases:
+        kind = classify_execution(tc)
+        qid = str(tc.get("id") or f"TQ-{len(results)+1:03d}")
+        base = {
+            "id": qid,
+            "ac_ref": tc.get("ac_ref"),
+            "category": tc.get("category"),
+            "question": tc.get("question"),
+            "min_expectation": tc.get("min_expectation"),
+            "execution": kind,
+            "target_skill": tc.get("target_skill")
+            or ((tc.get("invoke") or {}).get("skill") if isinstance(tc.get("invoke"), dict) else None),
+        }
+        if kind == "conversation":
+            # Reuse single conversation path for soft NL cases
+            raw = str(params.get("agent_app") or "")
+            manifest = _parse_agent_manifest(raw)
+            routing = (manifest or {}).get("skill_routing", {}) or {}
+            agents_meta = {
+                a["name"]: a
+                for a in (manifest or {}).get("agents", [])
+                if isinstance(a, dict) and a.get("name")
+            }
+            sops = _parse_agent_sops(raw)
+            skill = str(tc.get("target_skill") or "")
+            agent_name = routing.get(skill) or next(iter(agents_meta), "") or "orchestrator"
+            meta = agents_meta.get(agent_name) or {}
+            from core.harness.utils.model_injection import best_model_for_purpose
+
+            cfg = {
+                "system_prompt": sops.get(agent_name, ""),
+                "model": best_model_for_purpose("chat"),
+                "skills": list(meta.get("skills") or meta.get("required_skills") or []),
+                "tools": list(meta.get("tools") or meta.get("required_tools") or []),
+            }
+            one = await _run_single_conversation(agent_name, cfg, tc)
+            results.append({**base, **one, "execution": "conversation"})
+            continue
+
+        out = await run_true_test_case(
+            tc, agent_app=agent_app, frontend_pages=frontend_pages
+        )
+        results.append(
+            {
+                **base,
+                "result": out.get("result") or ("PASS" if out.get("ok") else "FAIL"),
+                "evidence": out.get("evidence") or "",
+                "failures": out.get("failures") or [],
+                "reason": (
+                    out.get("evidence")
+                    if out.get("ok")
+                    else "; ".join(out.get("failures") or [str(out.get("error") or "fail")])
+                ),
+                "is_bug": not bool(out.get("ok")),
+            }
+        )
+
+    if frontend_pages and not has_page_case and agent_app:
+        smoke_case = {
+            "id": "TQ-PAGE-SMOKE",
+            "execution": "page_smoke",
+            "invoke_skills": False,
+            "asserts": [
+                {"type": "stage.component_known"},
+                {"type": "stage.skill_in_routing"},
+            ],
+        }
+        out = await run_true_test_case(
+            smoke_case, agent_app=agent_app, frontend_pages=frontend_pages
+        )
+        results.append(
+            {
+                "id": "TQ-PAGE-SMOKE",
+                "ac_ref": "PAGE",
+                "category": "smoke",
+                "question": "app_page 协议冒烟：组件已知且 skill ∈ routing",
+                "execution": "page_smoke",
+                "result": out.get("result"),
+                "evidence": out.get("evidence"),
+                "failures": out.get("failures"),
+                "reason": out.get("evidence") if out.get("ok") else "; ".join(out.get("failures") or []),
+                "is_bug": not bool(out.get("ok")),
+            }
+        )
+
+    return _build_true_test_report(results, project, today)
+
+
 # ══════════════════════════════════════════════════════════════════
 # 入口：分流
 # ══════════════════════════════════════════════════════════════════
@@ -615,7 +835,34 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
     code = params.get("code")
     if code and str(code).strip():
         return await _run_pytest(params)
+
+    mode = str(params.get("mode") or params.get("test_execution_mode") or "").strip().lower()
     agent_app = params.get("agent_app")
+    cases = _extract_questions(params.get("test_cases"))
+
+    # Explicit conversation-only (legacy soft mode)
+    if mode == "agent_conversation":
+        if agent_app and "agent_manifest.json" in str(agent_app):
+            return await _run_agent_conversation(params)
+        return await _run_document_check(params)
+
+    # Default / agent_true_test: 测真 (platform_check / skill_invoke / page_smoke / conversation)
+    if agent_app or cases:
+        wants_true = mode in ("agent_true_test", "true_test", "skill_invoke", "") or any(
+            isinstance(c, dict)
+            and (
+                c.get("execution")
+                or c.get("invoke")
+                or c.get("platform_check")
+                or c.get("asserts")
+                or c.get("assertions")
+            )
+            for c in cases
+        )
+        # Empty mode + agent_app → true test (conversation cases still classified per-case)
+        if wants_true or mode in ("agent_true_test", "true_test", ""):
+            return await _run_agent_true_test(params)
+
     if agent_app and "agent_manifest.json" in str(agent_app):
         return await _run_agent_conversation(params)
     return await _run_document_check(params)

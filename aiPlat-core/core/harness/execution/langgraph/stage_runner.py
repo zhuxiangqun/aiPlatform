@@ -35,11 +35,31 @@ class StageRunner:
     def _resolve_skills(self, stage=None) -> List[Any]:
         s = stage if stage is not None else self._stage
         if not s:
-            return self._load_global_skills(self._skills or [])
-        required = getattr(s, 'required_skills', None) or []
-        if not required:
-            return self._skills or []
-        return self._load_global_skills(self._skills or [], filter_names=required)
+            skills = self._load_global_skills(self._skills or [])
+        else:
+            required = getattr(s, 'required_skills', None) or []
+            if not required:
+                skills = self._skills or self._load_global_skills([])
+            else:
+                skills = self._load_global_skills(self._skills or [], filter_names=required)
+                # Also keep any already-bound optional skills for subscription filtering
+                if self._skills:
+                    by_name = {}
+                    for sk in list(skills) + list(self._skills):
+                        name = getattr(sk, "name", None) or getattr(sk, "id", None) or ""
+                        if name and name not in by_name:
+                            by_name[str(name)] = sk
+                    skills = list(by_name.values())
+        try:
+            from core.harness.utils.team_skill_subscription import apply_stage_skill_subscription
+
+            state = None
+            if self._config and isinstance(getattr(self._config, "state", None), dict):
+                state = self._config.state
+            return apply_stage_skill_subscription(skills, stage=s, state=state)
+        except Exception:
+            logging.getLogger(__name__).debug("skill subscription filter skipped", exc_info=True)
+            return skills if isinstance(skills, list) else list(skills or [])
 
     def _resolve_tools(self, override: Optional[List[str]] = None) -> List[Any]:
         if override is not None:
@@ -131,7 +151,11 @@ class StageRunner:
             model_name = best_model_for_purpose("agent")
         max_steps = getattr(self._config, 'max_steps_per_stage', 10) if self._config else 1
         # max_tokens: per-stage token budget, derived from pipeline config
-        total_budget = getattr(self._config, 'max_tokens_per_run', 100000) if self._config else 100000
+        raw_budget = getattr(self._config, 'max_tokens_per_run', 100000) if self._config else 100000
+        try:
+            total_budget = int(raw_budget) if not isinstance(raw_budget, dict) else 100000
+        except (TypeError, ValueError):
+            total_budget = 100000
         stage_count = max(len(getattr(self._config, 'stages', [])) if self._config else 1, 1)
         import os as _os
         stage_token_min = int(_os.getenv("AIPLAT_STAGE_TOKEN_MIN", "4096"))
@@ -166,6 +190,35 @@ class StageRunner:
         ctx = state.get("context") if isinstance(state.get("context"), dict) else {}
         sys_prompt = state.get("_sys_prompt") or ctx.get("system_prompt", "")
 
+        # B: propagate coding intensity from pipeline state (default full for coding skills)
+        _ci = (
+            state.get("_coding_intensity")
+            or state.get("coding_intensity")
+            or ctx.get("_coding_intensity")
+            or ctx.get("coding_intensity")
+            or ""
+        )
+        _cprof = (
+            state.get("_coding_policy_profile")
+            or ctx.get("_coding_policy_profile")
+            or "off"
+        )
+        try:
+            from core.harness.utils.coding_intensity import (
+                intensity_to_policy_profile,
+                normalize_coding_intensity,
+            )
+            if _ci:
+                _ci_n = normalize_coding_intensity(_ci)
+                _cprof = intensity_to_policy_profile(_ci_n)
+            elif _cprof and _cprof != "off":
+                _ci_n = normalize_coding_intensity(_cprof)
+                _cprof = intensity_to_policy_profile(_ci_n)
+            else:
+                _ci_n = ""
+        except Exception:
+            _ci_n = str(_ci or "")
+
         loop_state = LoopState(
             current=LoopStateEnum.INIT,
             context={
@@ -176,7 +229,8 @@ class StageRunner:
                 "_session_id": str(state.get("session_id", "")),
                 "_run_id": str(state.get("_run_id", "")),
                 "_user_id": "system",
-                "_coding_policy_profile": "off",
+                "_coding_policy_profile": _cprof,
+                "_coding_intensity": _ci_n or _ci,
                 "_agent_id": state.get("_agent_id") or (str(s.agent_id or s.id) if s else ""),
                 "_agent_namespace": str(s.agent_id or s.id) if s else "",
                 "_shared_state_board": state.get("_shared_state_board", []),

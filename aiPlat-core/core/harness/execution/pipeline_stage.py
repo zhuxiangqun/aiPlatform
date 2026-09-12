@@ -49,6 +49,31 @@ class PipelineStageMixin:
         state["_progress"] = {"stage": _stage_tag, "status": "running",
                               "started_at": _t0, "backend": "agent"}
 
+        # C1: input_schema gate (empty schema = no-op)
+        try:
+            from core.harness.execution.stage_handoff import apply_gate_failure, gate_check
+            _in = gate_check(stage, state, phase="input")
+            if not _in.get("ok") and not _in.get("skipped"):
+                _stages = getattr(getattr(self, "_config", None), "stages", None)
+                _paused = apply_gate_failure(state, stage, _in, stages=_stages)
+                state["_progress"] = {
+                    "stage": _stage_tag,
+                    "status": "blocked" if _paused or state.get("phase") == "failed" else "warned",
+                    "elapsed_sec": 0,
+                    "backend": "schema_gate",
+                }
+                if _paused or str(state.get("phase") or "") == "failed" or _in.get("action"):
+                    if self._persist_callback:
+                        try:
+                            self._persist_callback(dict(state))
+                        except Exception:
+                            logging.getLogger(__name__).debug(
+                                "persist after input gate skipped", exc_info=True
+                            )
+                    return state
+        except Exception:
+            logging.getLogger(__name__).debug("input gate_check skipped", exc_info=True)
+
         # ── Unified skill dispatch ──
         # Stages with skill_name must NOT fall through to ReAct.
         # _run_stage_skill handles all errors internally — even empty output
@@ -181,6 +206,50 @@ class PipelineStageMixin:
 
         # ── Evaluate stage health BEFORE persist (ensures report is written even if persist fails) ──
         await self._evaluate_stage_health(stage, result)
+
+        # F3: thin MetaGPT-style handoff envelope on every stage artifact
+        try:
+            from core.harness.execution.stage_handoff import write_stage_handoff
+            _akey = str(getattr(stage, "output_artifact", "") or "").strip()
+            _art = result.get(_akey) if _akey else None
+            _smeta = None
+            if isinstance(_art, dict):
+                _smeta = _art.get("_sanitize_meta") or _art.get("sanitize")
+                if not isinstance(_smeta, dict):
+                    _smeta = None
+            _err = str(result.get("error") or result.get("error_message") or "")
+            _st = "failed" if (
+                _err
+                or str(result.get("phase") or "").lower() in ("failed", "error")
+            ) else "ok"
+            _stages = None
+            _cfg = getattr(self, "_config", None)
+            if _cfg is not None:
+                _stages = getattr(_cfg, "stages", None)
+            write_stage_handoff(
+                result,
+                stage=stage,
+                artifact_key=_akey,
+                artifact=_art,
+                sanitize_meta=_smeta,
+                status=_st,
+                error=_err,
+                stages=_stages,
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "write_stage_handoff skipped", exc_info=True
+            )
+
+        # C1: output_schema / handoff_required gate
+        try:
+            from core.harness.execution.stage_handoff import apply_gate_failure, gate_check
+            _out = gate_check(stage, result, phase="output")
+            if not _out.get("ok") and not _out.get("skipped"):
+                _stages = getattr(getattr(self, "_config", None), "stages", None)
+                apply_gate_failure(result, stage, _out, stages=_stages)
+        except Exception:
+            logging.getLogger(__name__).debug("output gate_check skipped", exc_info=True)
 
         # Persist state after every stage (skill or react) for frontend polling
         try:
@@ -372,6 +441,53 @@ class PipelineStageMixin:
         return profile
 
 
+    @staticmethod
+    def _resolve_project_label(state: PipelineState) -> str:
+        """Human-readable project label for reports (never hardcode product names).
+
+        Preference: app_name → description → PRD title → agent_app.app_name → project_id.
+        """
+        import json as _hj
+        import re as _re
+
+        for key in ("app_name", "description", "project_name", "name"):
+            val = str(state.get(key) or "").strip()
+            if val:
+                return val[:120]
+
+        # PRD artifact often carries the display title even when app_name was dropped
+        # from reconstructed run-store state.
+        prd = state.get("prd")
+        raw = ""
+        if isinstance(prd, dict):
+            raw = str(prd.get("raw_output") or prd.get("title") or "")
+        elif isinstance(prd, str):
+            raw = prd
+        if raw.strip():
+            try:
+                obj = _hj.loads(raw) if raw.strip().startswith("{") else None
+                if isinstance(obj, dict):
+                    title = str(obj.get("title") or "").strip()
+                    if title:
+                        return title[:120]
+            except Exception:
+                m = _re.search(r'"title"\s*:\s*"([^"]+)"', raw)
+                if m:
+                    return m.group(1).strip()[:120]
+
+        agent_app = state.get("agent_app")
+        aa_raw = ""
+        if isinstance(agent_app, dict):
+            aa_raw = str(agent_app.get("raw_output") or "")
+        elif isinstance(agent_app, str):
+            aa_raw = agent_app
+        if aa_raw:
+            m = _re.search(r'"app_name"\s*:\s*"([^"]+)"', aa_raw)
+            if m and m.group(1).strip():
+                return m.group(1).strip()[:80]
+
+        return str(state.get("project_id") or "").strip()
+
     def _build_handler_params(self, stage: PipelineStageConfig, state: PipelineState) -> Dict[str, Any]:
         """Construct handler params from input_artifacts (config-driven, no hardcoded keys).
 
@@ -391,7 +507,17 @@ class PipelineStageMixin:
                         params[_key] = _raw
                 else:
                     params[_key] = _raw
-        params.setdefault("project", state.get("app_name") or state.get("description") or "")
+            elif _v is not None and not isinstance(_v, dict):
+                params[_key] = _v
+        params.setdefault("project", self._resolve_project_label(state))
+        # Pass stage execution hints for handler skills (e.g. test_executor modes)
+        _tem = str(getattr(stage, "test_execution_mode", "") or "").strip()
+        if _tem:
+            params.setdefault("test_execution_mode", _tem)
+            params.setdefault("mode", _tem)
+        _arch = str(getattr(stage, "architecture_mode", "") or state.get("architecture_mode") or "").strip()
+        if _arch:
+            params.setdefault("architecture_mode", _arch)
         return params
 
 
@@ -770,9 +896,14 @@ class PipelineStageMixin:
 
                 if not has_errors and is_short and is_first_run:
 
+                    from core.harness.utils.model_injection import (
+                        best_model_for_purpose,
+                        create_selected_adapter,
+                    )
+
                     simple_model = best_model_for_purpose("chat")
 
-                    stage_model = PipelineEngine._load_default_model(simple_model)
+                    stage_model = create_selected_adapter(model_name=simple_model)
 
                     self._stage_runner._model = stage_model
 

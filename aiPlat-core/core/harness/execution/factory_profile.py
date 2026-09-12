@@ -1,0 +1,100 @@
+"""Factory profile helpers (F2a): project-level HITL intensity.
+
+factory_profile=standard → keep team YAML hitl flags.
+factory_profile=demo → keep HITL only on the final QA-like stage.
+"""
+from __future__ import annotations
+
+from typing import Any, Iterable, List, Mapping, MutableMapping, Optional, Sequence
+
+FACTORY_PROFILE_STANDARD = "standard"
+FACTORY_PROFILE_DEMO = "demo"
+FACTORY_PROFILES = frozenset({FACTORY_PROFILE_STANDARD, FACTORY_PROFILE_DEMO})
+
+# Prefer keeping HITL on these agent_ids when demoting intermediate gates
+_DEMO_KEEP_HITL_AGENT_IDS = frozenset({
+    "qa_agent",
+    "test_executor",
+    "acceptance_checker",
+})
+
+
+def normalize_factory_profile(raw: Any, default: str = FACTORY_PROFILE_STANDARD) -> str:
+    val = str(raw or default).strip().lower()
+    if val in ("minimal", "lite"):
+        return FACTORY_PROFILE_DEMO
+    if val in FACTORY_PROFILES:
+        return val
+    return default
+
+
+def _stage_agent_id(stage: Any) -> str:
+    if isinstance(stage, Mapping):
+        return str(stage.get("agent_id") or "")
+    return str(getattr(stage, "agent_id", "") or "")
+
+
+def _stage_get_hitl(stage: Any) -> bool:
+    if isinstance(stage, Mapping):
+        return bool(stage.get("hitl", False))
+    return bool(getattr(stage, "hitl", False))
+
+
+def _stage_set_hitl(stage: Any, hitl: bool, hitl_phase: str = "") -> None:
+    if isinstance(stage, MutableMapping):
+        stage["hitl"] = hitl
+        if not hitl:
+            stage["hitl_phase"] = ""
+        elif hitl_phase:
+            stage["hitl_phase"] = hitl_phase
+        return
+    setattr(stage, "hitl", hitl)
+    if not hitl:
+        setattr(stage, "hitl_phase", "")
+    elif hitl_phase:
+        setattr(stage, "hitl_phase", hitl_phase)
+
+
+def apply_factory_profile_to_stages(
+    stages: Sequence[Any],
+    profile: str,
+) -> List[Any]:
+    """Mutate/copy stage hitl flags according to factory_profile.
+
+    demo: disable hitl on all stages except the last stage that is QA-like
+    or, if none match, the last stage that originally had hitl=True.
+    """
+    profile = normalize_factory_profile(profile)
+    out = list(stages)
+    if profile != FACTORY_PROFILE_DEMO or not out:
+        return out
+
+    keep_idx: Optional[int] = None
+    for i, st in enumerate(out):
+        if _stage_agent_id(st) in _DEMO_KEEP_HITL_AGENT_IDS:
+            keep_idx = i
+    if keep_idx is None:
+        for i in range(len(out) - 1, -1, -1):
+            if _stage_get_hitl(out[i]):
+                keep_idx = i
+                break
+    if keep_idx is None:
+        keep_idx = len(out) - 1
+
+    for i, st in enumerate(out):
+        if i == keep_idx:
+            _stage_set_hitl(st, True, hitl_phase="review")
+        else:
+            _stage_set_hitl(st, False)
+    return out
+
+
+def resolve_project_factory_profile(project: Optional[Mapping[str, Any]]) -> str:
+    if not project:
+        return FACTORY_PROFILE_STANDARD
+    raw = project.get("factory_profile")
+    if raw in (None, ""):
+        meta = project.get("metadata")
+        if isinstance(meta, Mapping):
+            raw = meta.get("factory_profile")
+    return normalize_factory_profile(raw)

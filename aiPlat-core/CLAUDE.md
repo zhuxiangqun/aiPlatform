@@ -778,7 +778,7 @@ grep -rn "any(kw in.*for kw in\|_name.*for kw in\|审查.*排查\|售前.*客服
 ### 当前已知违规（截至 2026-05）
 
 - `builder_session.py:238-240`: ~~`session.get("architecture"/"code"/"test_report")` 硬编码 artifact key（KNOWN_DEBT）~~ → ✅ 已修复：`BuilderSessionStateResponse` 已有通用 `artifacts: Dict` 字段，`builder_session.py` 已改为从 `session.get("artifacts", {})` 动态填充。typed 字段（architecture/code/test_report）保留向后兼容。
-<!-- verify: cmd: grep -c artifacts aiPlat-core/core/schemas_builder.py expect: 6 operator: eq desc: BuilderSessionStateResponse.artifacts 字段存在 -->
+<!-- verify: cmd: grep -c artifacts aiPlat-core/core/schemas_builder.py expect: 7 operator: eq desc: BuilderSessionStateResponse.artifacts 字段存在 -->
 - `schemas_builder.py:29-31`: `BuilderSessionPhase` 业务枚举保留用于向后兼容（`awaiting_*` 名称，引擎已不再使用它们做行为分叉）
 - `agent_insight_service.py:70`: 度量层使用业务枚举值（已标注为允许的例外——度量层本质上是业务聚合）
 

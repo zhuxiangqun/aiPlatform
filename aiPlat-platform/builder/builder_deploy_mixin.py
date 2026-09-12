@@ -20,6 +20,9 @@ class BuilderDeployMixin:
         # Sync pass_rate from final state if available
         _out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
         _final_path = os.path.join(_out_dir, "_final_state.json")
+        _pr = None
+        _pr_source = "none"
+        _pr_reason = ""
         if os.path.isfile(_final_path):
             import json as _json
             with open(_final_path, "r") as _fs:
@@ -27,16 +30,30 @@ class BuilderDeployMixin:
             _code = _final_state.get("code", {})
             _arch = _final_state.get("architecture", {})
             _test_pr = _final_state.get("_test_pass_rate", None)
-            _pr_source = "none"
-            _pr_reason = ""
-            if _test_pr is not None:
-                _pr = _test_pr  # use real pytest results
+            # Prefer explicit source. Legacy files often stamp _test_pass_rate=0 without
+            # real pytest — do not label those as real_pytest (would false-block agent apps).
+            _explicit = str(_final_state.get("_pass_rate_source") or "").strip()
+            if _explicit:
+                _pr_source = _explicit
+                if _test_pr is not None:
+                    _pr = _test_pr
+                # Measured sources must not keep a stale estimate_reason from prior deploys
+                if _pr_source in ("true_test", "real_pytest", "agent_true_test"):
+                    _pr_reason = ""
+            elif _test_pr is not None and (
+                _final_state.get("_has_tests") or float(_test_pr or 0) > 0
+            ):
+                _pr = _test_pr
                 _pr_source = "real_pytest"
+                _pr_reason = ""
             else:
                 # 估算：无真实测试结果时按产物完整度粗估（P2-4b 揭露：字数≠质量）
                 _arch_ok = isinstance(_arch, dict) and len(_arch.get("raw_output", "") if isinstance(_arch, dict) else "") > 500
                 _code_ok = isinstance(_code, dict) and len(_code.get("raw_output", "") if isinstance(_code, dict) else "") > 500
-                _tests_ok = _final_state.get("_has_tests", False)
+                if not _code_ok:
+                    _aa = _final_state.get("agent_app") or {}
+                    _code_ok = isinstance(_aa, dict) and len(str(_aa.get("raw_output") or "")) > 500
+                _tests_ok = bool(_final_state.get("_has_tests", False))
                 if _arch_ok and _code_ok and _tests_ok:
                     _pr = 1.0
                 elif _tests_ok and _code_ok:
@@ -48,16 +65,34 @@ class BuilderDeployMixin:
                 else:
                     _pr = 0
                 _pr_source = "estimated"
-                _pr_reason = "no real pytest result — estimated from artifact length (arch>500/code>500/has_tests); treat as indicative only"
+                _pr_reason = (
+                    "no real pytest result — estimated from artifact length "
+                    "(arch>500/code|agent_app>500/has_tests); treat as indicative only"
+                )
+                if _test_pr is not None and float(_test_pr or 0) <= 0 and not _final_state.get("_has_tests"):
+                    _pr_reason = (
+                        "legacy _test_pass_rate=0 without _has_tests — "
+                        "not treated as real_pytest (agent_true_test safe)"
+                    )
                 # L2 (§3.8): user explicitly skipped the pytest gate → make the reason explicit
                 if _final_state.get("_skip_pytest_gate"):
                     _pr_reason = ("user skipped pytest gate (L2 import mode) — "
                                   "pass_rate is estimated (LLM/artifact heuristics), NOT measured")
             if proj.get("runs"):
-                proj["runs"][-1]["pass_rate"] = _pr
+                # Normalize: store percent 0-100 for UI cards when value looks fractional
+                _card_pr = _pr
+                try:
+                    _f = float(_pr) if _pr is not None else None
+                    if _f is not None and 0.0 < _f <= 1.0:
+                        _card_pr = round(_f * 100, 2)
+                except (TypeError, ValueError):
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+                proj["runs"][-1]["pass_rate"] = _card_pr
                 proj["runs"][-1]["pass_rate_source"] = _pr_source
                 if _pr_reason:
                     proj["runs"][-1]["pass_rate_estimate_reason"] = _pr_reason
+                elif _pr_source in ("true_test", "real_pytest", "agent_true_test"):
+                    proj["runs"][-1].pop("pass_rate_estimate_reason", None)
                 # L2 (§3.9 条件 2): Build-Log-style regenerated warning — no diff view in L2,
                 # so every rewritten file must be surfaced for manual review.
                 _modify = (proj.get("confirmed_prd") or {}).get("modify_files")
@@ -80,7 +115,50 @@ class BuilderDeployMixin:
                     "detail": "测试证据显示 pass_rate=0（真实 pytest 全失败）——拒绝部署（证据门控）。"
                               "请先修复测试并重建，或确认后重试。"}
         deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
-        return _deploy_to_app_for_project(project_id, deploy_dir or "", proj)
+        result = _deploy_to_app_for_project(project_id, deploy_dir or "", proj)
+        # F4: persist rejects + post-deploy smoke; openable only when healthy or static fallback
+        try:
+            rejected = list(result.get("rejected_artifacts") or [])
+            proj["last_deploy_rejects"] = rejected
+            smoke_info: Dict[str, Any] = {}
+            openable = False
+            open_reason = ""
+            try:
+                from builder.app_runtime import detect_runtime, smoke_test
+                det = detect_runtime(project_id)
+                if not det.get("found"):
+                    # Managed/static AppPage path — no local server to probe
+                    openable = True
+                    open_reason = "static_or_managed"
+                    smoke_info = {"smoke_passed": None, "skipped": True, "reason": open_reason}
+                else:
+                    smoke_info = smoke_test(project_id, keep_alive=True)
+                    openable = bool(smoke_info.get("smoke_passed"))
+                    open_reason = "healthy" if openable else "unhealthy"
+            except Exception as _sm_exc:
+                smoke_info = {"smoke_passed": False, "error": str(_sm_exc)[:200]}
+                openable = False
+                open_reason = "smoke_error"
+            result["smoke"] = smoke_info
+            result["openable"] = openable
+            result["open_reason"] = open_reason
+            if not openable:
+                result["app_url_blocked"] = result.get("app_url")
+                # Do not advertise open URL when unhealthy
+                result["app_url"] = ""
+            proj["last_runtime"] = {
+                "smoke": smoke_info,
+                "openable": openable,
+                "open_reason": open_reason,
+                "rejected_count": len(rejected),
+            }
+            self._save_projects()
+        except Exception:
+            import logging as _log_f4
+            _log_f4.getLogger("aiplat.builder").debug(
+                "F4 post-deploy smoke skipped", exc_info=True
+            )
+        return result
     async def get_agent_insight(self, agent_id: str) -> Dict[str, Any]:
         from builder.builder_project_service import _get_agent_insight_for
         """Get insight metrics for a single agent."""

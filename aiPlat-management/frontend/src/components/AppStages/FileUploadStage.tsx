@@ -15,14 +15,26 @@ interface Props {
   onExecute: (skill: string, params: Record<string, any>) => Promise<any>;
   skill: string;
   projectId?: string;
+  stageInput?: Record<string, any>;
+  onNext?: (result: any) => void;
+  onComplete?: (result: any) => void;
 }
 
-export const FileUploadStage: React.FC<Props> = ({ config, onExecute, skill, projectId = '' }) => {
+export const FileUploadStage: React.FC<Props> = ({
+  config,
+  onExecute,
+  skill,
+  projectId = '',
+  stageInput = {},
+  onNext,
+  onComplete,
+}) => {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const advance = onNext || onComplete;
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -40,24 +52,39 @@ export const FileUploadStage: React.FC<Props> = ({ config, onExecute, skill, pro
     setUploading(true);
     setError('');
     try {
-      // Step 1: Upload file bytes via FormData
       const formData = new FormData();
       formData.append('file', file, file.name);
       const uploadRes = await projectApi.uploadFile(projectId, formData);
 
-      if (!uploadRes.ok) {
-        throw new Error(uploadRes.error || '上传失败');
+      if (!uploadRes?.ok && uploadRes?.status !== 'ok') {
+        throw new Error(uploadRes?.error || uploadRes?.message || '上传失败');
       }
 
-      // Step 2: Execute skill with file reference
+      const filePath = uploadRes.file_path || uploadRes.path || '';
       const skillRes = await onExecute(skill, {
-        file_name: uploadRes.file_name,
-        file_size: uploadRes.file_size,
+        ...stageInput,
+        source_type: stageInput.source_type || 'upload',
+        file_name: uploadRes.file_name || file.name,
+        file_size: uploadRes.file_size ?? file.size,
         file_url: uploadRes.file_url,
-        file_path: uploadRes.file_path,
-        content_type: uploadRes.content_type,
+        file_path: filePath,
+        upload_file_path: filePath,
+        content_type: uploadRes.content_type || file.type,
       });
-      setResult(skillRes);
+
+      const nested =
+        skillRes?.result && typeof skillRes.result === 'object' ? skillRes.result : {};
+      const merged = {
+        ...skillRes,
+        ...nested,
+        task_id: skillRes?.task_id || nested?.task_id,
+        video_path: nested?.video_path || nested?.file_path || nested?.local_path || filePath,
+        file_path: nested?.file_path || filePath,
+        source_type: 'upload',
+        status: nested?.status || skillRes?.status,
+      };
+      setResult(merged);
+      advance?.(merged);
     } catch (e: any) {
       setError(e?.message || '上传失败');
     } finally {
@@ -86,13 +113,24 @@ export const FileUploadStage: React.FC<Props> = ({ config, onExecute, skill, pro
           </div>
         )}
       </div>
-      {error && <div className="flex items-center gap-2 text-red-400 text-sm mb-3"><AlertCircle className="w-4 h-4" />{error}</div>}
+      {error && (
+        <div className="flex items-center gap-2 text-red-400 text-sm mb-3">
+          <AlertCircle className="w-4 h-4" />
+          {error}
+        </div>
+      )}
       {result && !result.error && (
         <div className="bg-green-500/10 border border-green-500/30 rounded p-3 text-sm text-green-400 mb-3">
           上传成功 {result.task_id ? `(任务ID: ${result.task_id})` : ''}
         </div>
       )}
-      <Button variant="primary" onClick={handleUpload} loading={uploading} disabled={!file || uploading} className="w-full">
+      <Button
+        variant="primary"
+        onClick={handleUpload}
+        loading={uploading}
+        disabled={!file || uploading}
+        className="w-full"
+      >
         {uploading ? '上传中...' : '开始上传'}
       </Button>
     </Card>

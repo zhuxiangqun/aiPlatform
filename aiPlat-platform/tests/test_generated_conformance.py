@@ -26,6 +26,7 @@ status: enabled
 triggers:
   - 查询
   - 检索
+completion_criterion: FR-1 AC-1 查询返回非空结果
 effects:
   - type: read
     resources: [filesystem:~/.aiplat]
@@ -77,6 +78,12 @@ class TestGeneratedConformance:
 
     def test_good_skill_passes(self):
         assert validate_text(GOOD_SKILL, "skill") == []
+
+    def test_missing_completion_criterion_rejected(self):
+        """F4: completion_criterion 必填（与 agent_engineering SOP 对齐）。"""
+        bad = GOOD_SKILL.replace("completion_criterion: FR-1 AC-1 查询返回非空结果\n", "")
+        violations = validate_text(bad, "skill")
+        assert any("completion_criterion" in v for v in violations), violations
 
     def test_good_agent_passes(self):
         assert validate_text(GOOD_AGENT, "agent") == []

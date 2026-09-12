@@ -44,6 +44,16 @@ class TestBuilderRouterStatic:
         for ep in required:
             assert ep in content, f"Missing endpoint: {ep}"
 
+    def test_regenerate_test_executor_preserves_test_cases(self):
+        """Re-running test_executor must default-freeze the exam suite."""
+        content = BUILDER_PATH.read_text()
+        assert 'preserve_artifacts' in content
+        assert '"test_cases"' in content or "'test_cases'" in content
+        assert "test_executor" in content
+        svc = (ROOT / "aiPlat-platform" / "builder" / "builder_project_service.py").read_text()
+        assert "preserve_artifacts" in svc
+        assert 'preserve = ["test_cases", "test_questions"]' in svc
+
     def test_has_team_endpoints(self):
         content = BUILDER_PATH.read_text()
         assert "/teams" in content, "Missing team CRUD endpoints"

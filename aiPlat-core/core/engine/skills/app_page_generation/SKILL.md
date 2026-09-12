@@ -73,6 +73,13 @@ skip_when: code_generation已处理代码模式
 
 **不生成原生代码**。app_page.json 是协议，平台组件是渲染器。
 
+## 输出禁令
+1. **直接输出**：第一个可见字符必须是 `{` 或 `#`（`## FILE:`）。禁止「步骤1–4」「方案比较」。
+2. `result_dashboard` 的语音相关文案必须跟 PRD `decisions.speech_pipeline`（或等价表述）对齐：
+   - **`audio_features_only`（不转写）**：sections **禁止**写「语音识别/转写/ASR」；用「语音声学特征 / VAD」；**不要**加 `transcript` section。
+   - **`asr` / `hybrid`（含转写）**：**必须**有 `{"key":"transcript","label":"语音转写","type":"subtitle_timeline"}`；speech section 仍可用「语音声学特征」承载语种/说话人等粗标签，**禁止**把转写塞进 subtitle 冒充。
+   - 未写明时：若 PRD 功能含「转写/ASR/语音识别」，按 `asr` 处理；仅「声学粗标签/不转写」按 `audio_features_only`。
+
 ## 组件匹配规则
 
 | PRD 交互关键词 | 组件 | 配置要点 |
@@ -80,6 +87,28 @@ skip_when: code_generation已处理代码模式
 | 上传/导入/拖拽文件 | `file_upload` | accept/max_size/label/hint |
 | 处理中/等待/异步/轮询 | `progress_poller` | status_field/poll_ms/stages/labels |
 | 查看/展示/报告/预览/结果 | `result_dashboard` | sections[{key,label,type}] |
+
+### result_dashboard.sections.type（强制闭集 — 与平台 ResultDashboard 一致）
+
+**禁止**自造 type（`gallery`/`json`/`card` 等）。测真 `stage.result_sections_ok` 会 FAIL；sanitize `ensure_result_dashboard_sections` 会 remap。仅允许：
+
+| type | 适用数据 |
+|------|---------|
+| `key_value` | 扁平对象（metadata、acoustic_labels）；degraded/failed 友好提示 |
+| `image_timeline` | 关键帧数组（`local_path`/`url`/`time_sec`）；平台 `/app/media/{app}/{task}/...` |
+| `timeline` | 时间点/区间（场景切换、VAD） |
+| `subtitle_timeline` | 字幕 cues、**ASR 转写片段**、或无轨降级对象 |
+| `markdown` / `text_block` | 摘要字符串 |
+| `table` | 对象数组 |
+| `tag_cloud` | 字符串数组 |
+
+媒体结果推荐（**按 speech_pipeline 二选一**）：
+
+- 不转写：`metadata` / `keyframes` / `scene_changes` / `subtitle` / `speech` / `vad` / `summary`
+- 含转写（asr/hybrid）：在 `subtitle` 与 `speech` 之间插入 **`transcript:subtitle_timeline`（label=语音转写）**，其余同上。
+
+| PRD 交互关键词 | 组件 | 配置要点 |
+|-------------|------|------|
 | 填写/输入/提交/申请 | `data_form` | fields[{name,label,type,required}] |
 | 列表/搜索/筛选/排序 | `data_table` | columns[{key,label,sortable}] |
 | 对话/问答/咨询/聊天 | `chat_panel` | hint/custom_prompt |
@@ -91,18 +120,19 @@ skip_when: code_generation已处理代码模式
 | 组件 | 应指向的 Skill（按 output 判断） | 反例（禁止） |
 |------|------|------|
 | `result_dashboard` | 输出「分析/解析结果」的 Skill（output 含 `metadata`/`report`/`result`/`summary` 等展示数据） | 指向下载类 Skill（output 是 `file_name`/`file_content`/`download_url`） |
-| `progress_poller` | 输出「状态/进度」的 Skill（output 含 `status`/`progress`） | 指向纯表单类 Skill |
+| `progress_poller` | 输出「状态/进度」或**同步分析管线终态**的 Skill（output 含 `status`；媒体类可指向与 `result_dashboard` 相同的报告 Skill，一次调用返回 `status=completed`） | 指向纯表单类 Skill；**禁止**与上一阶段相同的纯下载/入库 Skill（会空转轮询） |
 | `data_form` | 输出「表单字段」或「下载链接」的 Skill（下载用 `download_link` 类型字段） | — |
 
-**示例**：视频解析场景中，`video_parse` 输出 `metadata`（展示数据），`result_download` 输出 `file_name/file_content`（下载数据）。则：
-- 「查看结果」阶段 → `result_dashboard` → `skill: video_parse`（展示 metadata）
-- 「下载结果」阶段 → `data_form`（download_link 字段）→ `skill: result_download`
+**示例**：视频解析场景中，`report_json_export` 输出 `metadata`（展示数据），`video_downloader` 输出 `file_path`/`task_id`（入库）。则：
+- 「选择来源 / 上传」→ `data_form` / `file_upload` → `skill: video_downloader`
+- 「分析中」→ `progress_poller` → `skill: report_json_export`（或 ui_bindings.result_dashboard），`input` 含 `task_id` + `video_path`
+- 「查看结果」→ `result_dashboard` → 同一报告 Skill
 
 若 PRD 没有独立的「下载」交互，则不要硬造下载 stage。
 
 ## 输出格式（完整模板——AGENT.md 引用此节，2026-08-26 归属迁移）
 
-用 `## FILE:` 格式，输出一个 app_page.json：
+用 `## FILE:` 格式，输出一个 app_page.json（下列完整模板按 **speech_pipeline=asr**；若为 audio_features_only 则去掉 transcript section）：
 
 ```json
 {
@@ -112,44 +142,95 @@ skip_when: code_generation已处理代码模式
   "mode": "wizard",
   "stages": [
     {
+      "id": "source",
+      "title": "选择视频来源",
+      "skill": "video_downloader",
+      "component": "data_form",
+      "config": {
+        "fields": [
+          {
+            "name": "source_type",
+            "label": "视频来源",
+            "type": "select",
+            "required": true,
+            "options": [
+              {"value": "url", "label": "视频链接"},
+              {"value": "upload", "label": "本地上传"}
+            ]
+          },
+          {
+            "name": "video_url",
+            "label": "视频链接 URL",
+            "type": "url",
+            "required": true,
+            "show_when": {"source_type": "url"},
+            "hint": "仅支持 HTTP/HTTPS 直链"
+          }
+        ],
+        "submit_label": "开始分析"
+      },
+      "next": "upload"
+    },
+    {
       "id": "upload",
       "title": "上传视频",
-      "skill": "video_upload",
+      "skill": "video_downloader",
       "component": "file_upload",
       "config": {
         "accept": "video/*",
         "max_size_mb": 500,
         "label": "选择视频文件",
-        "hint": "支持 MP4/MOV/AVI/MKV，最大 500MB"
+        "hint": "支持 MP4/MOV/AVI/MKV，最大 500MB",
+        "input": {
+          "source_type": "{{source.source_type}}",
+          "video_url": "{{source.video_url}}"
+        }
       },
       "next": "progress"
     },
     {
       "id": "progress",
       "title": "分析中",
-      "skill": "check_progress",
+      "skill": "report_json_export",
       "component": "progress_poller",
       "config": {
         "status_field": "status",
         "poll_ms": 3000,
-        "stages": ["uploading", "analyzing", "generating", "completed"],
-        "labels": {"uploading":"上传中","analyzing":"AI分析中","generating":"生成结果"},
-        "input": {"task_id": "{{upload.task_id}}"}
+        "stages": ["pending", "analyzing", "processed", "completed"],
+        "labels": {
+          "pending": "排队中",
+          "analyzing": "AI分析中",
+          "processed": "聚合报告中",
+          "completed": "已完成",
+          "failed": "失败"
+        },
+        "input": {
+          "task_id": "{{upload.task_id}}",
+          "video_path": "{{upload.video_path}}"
+        }
       },
       "next": "results"
     },
     {
       "id": "results",
       "title": "分析结果",
-      "skill": "result_presentation",
+      "skill": "report_json_export",
       "component": "result_dashboard",
       "config": {
         "sections": [
-          {"key": "tags", "label": "标签识别", "type": "tag_cloud"},
-          {"key": "speech", "label": "语音识别", "type": "text_block"},
+          {"key": "metadata", "label": "视频元数据", "type": "key_value"},
+          {"key": "keyframes", "label": "关键帧", "type": "image_timeline"},
+          {"key": "scene_changes", "label": "场景切换", "type": "timeline"},
+          {"key": "subtitle", "label": "软字幕轨", "type": "subtitle_timeline"},
+          {"key": "transcript", "label": "语音转写", "type": "subtitle_timeline"},
+          {"key": "speech", "label": "语音声学特征", "type": "key_value"},
+          {"key": "vad", "label": "语音活动区间", "type": "timeline"},
           {"key": "summary", "label": "AI 摘要", "type": "markdown"}
         ],
-        "input": {"task_id": "{{progress.task_id}}"}
+        "input": {
+          "task_id": "{{progress.task_id}}",
+          "video_path": "{{progress.video_path}}"
+        }
       }
     }
   ],
@@ -174,14 +255,24 @@ skip_when: code_generation已处理代码模式
 ---
 
 1. 读 PRD 的用户故事和交互流程
-2. 从 agent_app 的 agent_manifest.json 中提取 skill_routing 的 keys——这些是后端实际可调用的 Skill 名，必须精确匹配（含下划线和大小写）。**若 agent_app 缺失或无法读取，`skill` 字段留空并保留该 stage（不要删除阶段），绝不自行编造 skill 名。**
+2. 从 agent_app 的 agent_manifest.json 接线 Skill（禁止编造）：
+   - **优先**用上下文 `## ui_bindings`：每个 stage 的 `component` 查表得到 `skill`（精确复制）。
+   - 其次用 `## skill_routing` 的 keys；无 ui_bindings 时按步骤语义选一个 routing key。
+   - **禁止**因「summary 里看不到」而把 `skill` 留空；有 routing/bindings 时每个 stage 必须填精确 key。
+   - 仅当 agent_app **与** skill_routing 都缺失时，才允许 `skill: ""`（绝不编造）。
+   - 引擎落库后会按 ui_bindings 确定性补全空 skill；你仍应首稿写对。
 3. 确定页面模式(mode):
    - `wizard` — 多步骤(上传→处理→结果)
    - `dashboard` — 组件平铺(监控/总览)
    - `chat` — 纯对话
-4. 为每个交互步骤选择正确的平台组件
-5. 每个 stage 指定对应的 Skill 名
-6. 输出 `app_page.json`
+4. 为每个交互步骤选择正确的平台组件（组件 id 应与 ui_bindings 的 key 对齐）
+5. 每个 stage 的 skill 优先来自 ui_bindings[component]
+6. **URL + 本地上传（强制）**：若 PRD 同时要求视频链接与本地上传，wizard **必须**含两个接入 stage：
+   - `file_upload` → ui_bindings.file_upload（或同一 ingest skill）
+   - `data_form`（字段 `video_url`，且当存在 `source_type` 选择器时 URL 字段必须带 `show_when: {source_type: url}`）→ ui_bindings.data_form（可与 file_upload 同 skill）
+   禁止只生成一个 file_upload 而丢掉直链入口。
+7. **进度/结果 I/O（强制）**：`progress_poller.config.input` 必须引用上游 `task_id` 与 `video_path`（或等价路径字段）；`result_dashboard.config.input` 必须引用 progress 的同名字段。进度 Skill **不得**与纯入库 Skill 相同。
+8. 输出 `app_page.json`
 
 ## 输出格式
 
@@ -212,8 +303,15 @@ skip_when: code_generation已处理代码模式
 |--------|--------|
 | 生成 React/TSX 代码 | 生成 app_page.json |
 | stage 不设 skill 字段 | 每个 stage 明确引用 Agent Skill |
-| 引用不存在的 Skill 名或名称不匹配 | **必须**从 agent_manifest.json 的 skill_routing 字典中精确复制 key 名 |
+| 引用不存在的 Skill 名或名称不匹配 | **必须**从 ui_bindings[component] 或 skill_routing 精确复制 |
+| 忽略 ui_bindings 自行猜 skill | 有 ui_bindings 时 **必须**按 component 查表 |
 | 自行编造 Skill 名 | 只能用 agent_manifest.json 里声明的 skill 名 |
 | 读不到 agent_app 时编造 skill 名 | `skill` 字段留空 `""` 并保留 stage，宁可缺失也绝不编造 |
 | `result_dashboard` 指向下载类 Skill | 展示结果 → 指向输出 metadata/结果的 Skill；下载 → `data_form` + download_link 指向下载 Skill |
 | 组件的 input 用 JSON body | 用 `"{{prev_stage.field}}"` 引用上游结果 |
+| PRD 有 URL+上传却只有 file_upload stage | **必须**增加 data_form（video_url）stage |
+| `progress_poller` 与入库 Skill 同名且只传 task_id | 进度指向报告/分析 Skill，`input` 含 `task_id`+`video_path` |
+| 有 `source_type` 却始终展示 URL 字段 | URL 字段加 `show_when: {source_type: url}` |
+| result_dashboard 在 `audio_features_only` 时写「语音识别/转写」 | 不转写口径用「语音声学特征」；**不要**加 transcript |
+| result_dashboard 在 `asr`/`hybrid` 时缺少 transcript | **必须**有 `transcript` + label「语音转写」 |
+| 先写步骤推理再写 JSON | **直接**输出 app_page.json |

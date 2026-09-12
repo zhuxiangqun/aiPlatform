@@ -2,21 +2,23 @@
 name: test_executor
 display_name: 测试用例执行器
 description: >
-  Agent模式: 逐条发对话测试问题给Agent，评估回复。
-  代码模式: 读取pytest文件，subprocess执行，解析输出。
+  Agent测真: platform_check / skill_invoke / page_smoke / conversation 混合执行。
+  代码模式: pytest。旧 mode=agent_conversation 仍可用。
 category: execution
-version: 2.2.0
+version: 3.0.0
 skill_model_purpose: code_gen
 status: enabled
 execution_type: handler
 tags:
   - 测试
   - 执行
+  - 测真
   - Agent验证
 triggers:
   - 执行测试
   - 跑用例
   - pytest
+  - 测真
 permissions:
   - fs:read
   - fs:write
@@ -33,15 +35,15 @@ input_schema:
   test_cases:
     type: array
     required: true
-    description: 测试用例数组(来自test_case_generation,每条含 id/ac_ref/category/question/min_expectation/assertions)
+    description: 用例(execution/invoke/asserts 或旧版 question)；见 true_test_runtime
   agent_app:
     type: string
     required: false
-    description: 被测 Agent 应用定义(来自 agent_engineering,含 agent 列表/skill_routing/错误处理逻辑)
+    description: 被测 Agent 应用定义
   frontend_pages:
     type: string
     required: false
-    description: 前端页面定义(来自 app_page_generation,含页面/组件/交互)
+    description: 前端页面定义
   project:
     type: string
     required: false
@@ -49,11 +51,15 @@ input_schema:
   mode:
     type: string
     required: false
-    description: "agent_conversation|code_pytest"
+    description: "agent_true_test|agent_conversation|code_pytest"
+  test_execution_mode:
+    type: string
+    required: false
+    description: 与 mode 同义（PipelineStageConfig）
   agent_name:
     type: string
     required: false
-    description: Agent模式下的被测Agent名
+    description: 对话模式下的被测Agent名
 output_schema:
   header:
     type: object
@@ -88,25 +94,27 @@ trigger_conditions:
   - pipeline QA阶段自动触发
 ---
 
-# 测试用例执行器 v2.2（确定性文档校验）
+# 测试用例执行器 v3（测真）
 
-## 执行方式：handler（确定性，非 LLM 主观评估）
+## 执行方式：handler
 
-本 skill `execution_type: handler`，由 `handler.py` 的 `execute(params)` 做**确定性字符串匹配**校验：
+`handler.py` 按 `test_execution_mode` / 用例字段分流（实现见 `true_test_runtime.py`）：
 
-1. 读取每条 test_case 的 `assertions` 数组（`{target: agent_app|frontend_pages, must_contain: [...], must_not_contain: [...]}`）
-2. 在对应产物文本中做纯字符串包含/排除匹配
-3. 全部断言命中 → PASS；任一断言缺失/违规 → FAIL 并生成 bug（suggested_fix 明确列出缺失关键词）
-4. 输出标准 test_report JSON（header/meta/test_results/bug_summary/...）
+| mode | 行为 |
+|------|------|
+| `agent_true_test`（默认团队） | `platform_check` / `skill_invoke`（含 url·file 参数预检）/ `page_smoke` / `conversation` |
+| `agent_conversation` | 旧版纯对话评估 |
+| 有 `code` | pytest |
 
-判定完全确定，不依赖 LLM 主观解读。修复侧只要精确写入断言要求的关键词/字段（如 `413`、`error_code`、`failed` 状态值），校验侧就确定 PASS。
+用例生成见 `test_case_generation` Step A（`mode: agent_true_test`）。无 skill 名硬编码。
 
-## Step 0: 模式检测（legacy，供人阅读参考）
+## Step 0: 模式检测
 
 ```
-检查 mode 或上下文
-  → "agent_conversation" → Agent对话执行SOP
-  → "code_pytest" 或默认 → 代码pytest执行SOP(保留)
+检查 mode / test_execution_mode
+  → agent_true_test / true_test / 空+agent_app → 测真
+  → agent_conversation → 对话评估
+  → 有 code → pytest
 ```
 
 ---

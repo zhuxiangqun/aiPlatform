@@ -161,3 +161,34 @@ class TestP0_4PrdParsingInDomainInjection:
         assert resolve_prd({"prd_data": "not-a-dict"}, "{\"title\": \"T3\"}") == {"title": "T3"}
         # 5) 解析异常（截断 JSON）→ 回退 {}，不抛
         assert resolve_prd({}, "尾部 {" ) == {}
+
+
+class TestSummarizeArtifactStatic:
+    """_summarize_artifact must be staticmethod — missing @staticmethod made
+    ``self._summarize_artifact(prd_dict)`` bind engine as val and prd as max_chars,
+    crashing architect stage with ``dict // int`` after PM HITL approve.
+    """
+
+    def test_bound_call_with_dict_artifact_does_not_crash(self):
+        from core.harness.execution.pipeline_state import PipelineStateMixin
+
+        class _E(PipelineStateMixin):
+            pass
+
+        engine = _E()
+        prd = {"raw_output": '{"title":"x"}', "title": "智能视频内容理解工具"}
+        # This is the call shape used in _run_stage_skill after PM completes
+        out = engine._summarize_artifact(prd)
+        assert isinstance(out, dict)
+        assert out.get("title") == "智能视频内容理解工具" or "raw_output" in out
+
+    def test_keyword_max_chars_still_works(self):
+        from core.harness.execution.pipeline_state import PipelineStateMixin
+
+        class _E(PipelineStateMixin):
+            pass
+
+        out = _E()._summarize_artifact("hello world " * 200, max_chars=40)
+        assert isinstance(out, dict)
+        assert "summary" in out
+        assert len(out["summary"]) <= 40

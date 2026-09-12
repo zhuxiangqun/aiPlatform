@@ -1,0 +1,88 @@
+# AI 应用工厂 — 默认团队配置 (Agent 模式)
+# architecture_mode / quality_gate 写在各 stage；引擎只读配置字段，不做 skill_name/业务词硬编码
+team_name: "Agent 研发团队（默认）"
+description: "生成 Agent 应用(后端Agent + 前端页面),自动继承全部平台能力"
+stages:
+  - agent_id: pm_agent
+    order: 0
+    output_artifact: prd
+    skill_name: requirement_analysis
+    execution_backend: llm
+    architecture_mode: agent
+    quality_gate:
+      min_output_length: 100
+      finalize_structured_doc: true
+      finalize_prd: true
+    hitl: true
+    hitl_phase: review
+  - agent_id: architect_agent
+    order: 1
+    output_artifact: architecture
+    skill_name: architecture_design
+    execution_backend: llm
+    architecture_mode: agent
+    input_artifacts: [prd]
+    quality_gate:
+      min_output_length: 100
+      sanitize_architecture: true
+      requirements_artifact: prd
+    hitl: true
+    hitl_phase: review
+  - agent_id: agent_engineer
+    order: 2
+    output_artifact: agent_app
+    skill_name: agent_engineering
+    execution_backend: llm
+    architecture_mode: agent
+    input_artifacts: [prd, architecture]
+    quality_gate:
+      min_output_length: 100
+      ensure_ui_binding_pair: [file_upload, data_form]
+      ensure_result_dashboard_skill: true
+      normalize_media_skill_names: true
+      ensure_agent_app_skill_consistency: true
+      ensure_platform_media_skill_contracts: true
+  - agent_id: frontend_developer
+    order: 3
+    output_artifact: frontend_pages
+    skill_name: app_page_generation
+    execution_backend: llm
+    architecture_mode: agent
+    input_artifacts: [agent_app, prd]
+    quality_gate:
+      min_output_length: 100
+      inject_skill_routing_context: true
+      repair_app_page: true
+      routing_artifact: agent_app
+  - agent_id: qa_agent
+    order: 4
+    skill_name: test_case_generation
+    execution_backend: llm
+    architecture_mode: agent
+    test_execution_mode: agent_true_test
+    input_artifacts: [prd, architecture, agent_app, frontend_pages]
+    quality_gate:
+      min_output_length: 100
+      sanitize_test_cases: true
+      inject_skill_routing_context: true
+      requirements_artifact: prd
+      routing_artifact: agent_app
+    completeness_check:
+      input_artifact: prd
+      input_field: functional_requirements
+      output_key: test_questions
+      max_per_call: 4
+    hitl: true
+    hitl_phase: review
+  - agent_id: test_executor
+    order: 5
+    output_artifact: test_report
+    skill_name: test_executor
+    execution_backend: llm
+    architecture_mode: agent
+    input_artifacts: [test_cases, agent_app, frontend_pages]
+    completeness_check:
+      input_artifact: test_cases
+      output_key: test_results
+      max_per_call: 12
+    stage_timeout_seconds: 600

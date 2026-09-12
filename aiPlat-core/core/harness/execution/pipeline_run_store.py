@@ -173,6 +173,15 @@ class PipelineRunStore:
                 conn.execute("ALTER TABLE pipeline_runs ADD COLUMN output_dir TEXT DEFAULT ''")
             except Exception:
                 pass  # noqa: schema-idempotent
+            # ── v3.7: project display fields for test reports / UI ──
+            for col, col_type in [
+                ("app_name", "TEXT DEFAULT ''"),
+                ("description", "TEXT DEFAULT ''"),
+            ]:
+                try:
+                    conn.execute(f"ALTER TABLE pipeline_runs ADD COLUMN {col} {col_type}")
+                except Exception:
+                    pass  # noqa: schema-idempotent
             conn.commit()
         finally:
             conn.close()
@@ -427,6 +436,8 @@ class PipelineRunStore:
         error: str = "",
         _progress_json: str = "",
         output_dir: str = "",
+        app_name: str = "",
+        description: str = "",
     ) -> None:
         """Update phase + HITL fields + progress + pipeline run in a single atomic SQL statement.
         
@@ -443,11 +454,16 @@ class PipelineRunStore:
                    _hitl_stage_id = ?, _hitl_phase_name = ?,
                    _hitl_output_artifact = ?, _progress_json = ?,
                    output_dir = CASE WHEN ? != '' THEN ? ELSE output_dir END,
+                   app_name = CASE WHEN ? != '' THEN ? ELSE app_name END,
+                   description = CASE WHEN ? != '' THEN ? ELSE description END,
                    updated_at = ?
                WHERE run_id = ?""",
             (phase, error, finished, current_stage_idx, pass_rate,
              hitl_stage_id, hitl_phase_name, hitl_output_artifact, _progress_json,
-             output_dir, output_dir, now, run_id),
+             output_dir, output_dir,
+             app_name, app_name,
+             description, description,
+             now, run_id),
         )
 
     # ── v3.1: HITL field writers ───────────────────────────────────
@@ -662,6 +678,9 @@ class PipelineRunStore:
             "session_id": run["run_id"],
             # ── v3.6: output_dir (persisted so artifact file paths survive restart) ──
             "output_dir": run.get("output_dir", "") or "",
+            # ── v3.7: project label fields for test reports ──
+            "app_name": run.get("app_name", "") or "",
+            "description": run.get("description", "") or "",
             # ── v3.1: HITL precise pause location ──
             "_hitl_stage_id": run.get("_hitl_stage_id", "") or "",
             "_hitl_phase_name": run.get("_hitl_phase_name", "") or "",
@@ -752,6 +771,9 @@ class PipelineRunStore:
             "session_id": run["run_id"],
             # ── v3.6: output_dir persisted to run record (engine._output_root wrote it) ──
             "output_dir": _output_dir,
+            # ── v3.7: project label fields ──
+            "app_name": run.get("app_name", "") or "",
+            "description": run.get("description", "") or "",
             # ── v3.1: HITL precise pause location (must survive restart) ──
             "_hitl_stage_id": run.get("_hitl_stage_id", "") or "",
             "_hitl_phase_name": run.get("_hitl_phase_name", "") or "",

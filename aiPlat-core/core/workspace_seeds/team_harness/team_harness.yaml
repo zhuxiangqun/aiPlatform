@@ -1,0 +1,61 @@
+# Team harness contract (T0). schema_version allows additive resource types.
+# Runtime truth: ~/.aiplat/team/ (pull-only) + ~/.aiplat/local/ (user; pull never overwrites).
+# Git team repo is the reviewable publish source — not a second runtime.
+schema_version: "1"
+
+paths:
+  team_subdir: team
+  local_subdir: local
+  lock_file: team_harness.lock
+  backups_subdir: team_backups
+  meta_file: team_harness_meta.json
+  config_file: team_harness_config.json
+
+# Relative paths inside team/ (and mirrored under local/ for optional overlays).
+# locked: body must not be rewritten by local/ overlays.
+resources:
+  skills:
+    path: skills
+    locked: true
+  rules:
+    path: rules
+    locked: true
+  hooks:
+    path: hooks
+    locked: true
+  mcp:
+    path: mcp
+    locked: true
+  culture:
+    path: culture.md
+    locked: true
+  env:
+    path: env
+    locked: false
+    note: "Non-secret switches only; never commit credentials"
+  learnings:
+    path: learnings
+    locked: false
+    note: "Default local-only contribute; team copy is opt-in"
+  teams:
+    path: teams
+    locked: true
+  factory_sanitize:
+    path: factory_sanitize
+    locked: true
+  sources:
+    path: sources
+    locked: false
+    note: "T3b secondary sources under sources/{namespace}/; never overwrite locked primary"
+
+defaults:
+  autosync_env: AIPLAT_TEAM_HARNESS_AUTOSYNC
+  autosync_default: "0"
+  autosync_timeout_sec: 20
+  autosync_interval_sec: 300
+  autosync_timeout_env: AIPLAT_TEAM_HARNESS_AUTOSYNC_TIMEOUT
+  autosync_interval_env: AIPLAT_TEAM_HARNESS_AUTOSYNC_INTERVAL
+  ff_only: true
+  dirty_blocks_pull: true
+  push_branch_prefix: teamai/
+  mr_template_version: "1"

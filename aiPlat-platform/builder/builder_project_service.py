@@ -397,7 +397,352 @@ def _unwrap_json_reply(reply: str) -> str:
     return reply
 
 
+_PRD_GEN_INTENT_RE = re.compile(
+    r"生成\s*(完整)?\s*PRD|输出\s*(完整)?\s*PRD|确认\s*PRD|PRD_READY|定稿|写一份PRD|直接输出.*PRD",
+    re.I,
+)
+_ANALYSIS_LEAK_RE = re.compile(
+    r"步骤\s*[1234]|分析关键约束|列出\s*2-3\s*个|方案比较|可行方案|取舍[：:]",
+)
+# Meta / karpathy-style headings that must never become PRD title
+_META_HEADING_RE = re.compile(
+    r"步骤\s*\d|方案\s*[ABC甲乙丙]|分析(?:关键)?(?:约束|问题)|列出.*可行方案|方案比较|取舍",
+    re.I,
+)
+# FR id anywhere: FR-1 / FR-001 / FR 1
+_FR_ID_TOKEN_RE = re.compile(r"\bFR[-\s]?\d+\b", re.I)
+_PRD_BODY_HINT_RE = re.compile(
+    r"#{2,3}\s*(功能需求|核心功能需求)|\"functional_requirements\"|\bFR[-\s]?\d+\b",
+    re.I,
+)
+# Known PRD section titles (h2 or h3); FR/US/step headings stay inside a section
+_PRD_SECTION_NAME_RE = re.compile(
+    r"^(?:"
+    r"项目背景|背景|Background|"
+    r"(?:核心|主要|关键)?功能需求|"
+    r"用户故事|User Stories?|"
+    r"产品决策|决策|Decisions?|"
+    r"待确认问题|开放问题|Open Questions?|"
+    r"范围|Scope|"
+    r"成功指标|验收标准|目标状态|ISA\s*对齐"
+    r")\s*$",
+    re.I,
+)
+# Start of a functional-requirement block (### / **bold** / bullet)
+_FR_BLOCK_START_RE = re.compile(
+    r"^(?:###\s+|\*\*|\s*[-*]\s+\*{0,2})"
+    r"(FR[-\s]?\d+)\s*[：:]\s*(.+?)\*{0,2}\s*$"
+    r"|"
+    r"^###\s+(?!步骤\s*\d)(.+?)\s*$",
+    re.MULTILINE,
+)
+
+
+def _user_asks_prd_output(message: str) -> bool:
+    return bool(_PRD_GEN_INTENT_RE.search(message or ""))
+
+
+def _reply_leaks_analysis_steps(reply: str) -> bool:
+    head = (reply or "")[:800]
+    return bool(_ANALYSIS_LEAK_RE.search(head))
+
+
+def _is_meta_prd_heading(heading: str) -> bool:
+    """True for analysis/step/scheme headings that are not product titles."""
+    h = (heading or "").strip()
+    if not h:
+        return True
+    # Bare labels are handled elsewhere; treat step/scheme as meta
+    return bool(_META_HEADING_RE.search(h))
+
+
+def _extract_prd_markdown_body(reply: str) -> str:
+    """Prefer the PRD subsection; drop leading analysis leak (步骤1–4 / 方案表).
+
+    Models often prepend karpathy-style reasoning before ``## 项目名称``. Parsing
+    must start at the last project-name heading so title/FR extraction succeed.
+    """
+    text = str(reply or "").replace("<!-- PRD_READY -->", "")
+    named = list(re.finditer(r"(?m)^##\s*项目名称", text))
+    if named:
+        return text[named[-1].start():].strip()
+    if _ANALYSIS_LEAK_RE.search(text[:1200]):
+        for m in re.finditer(r"(?m)^##\s+(.+)$", text):
+            head = m.group(1).strip()
+            # Strip optional label prefix for meta check
+            bare = head
+            for _pfx in (_AIPLAT_PRD_TITLE_PREFIX, "项目名称:", "Project Name:"):
+                if bare.startswith(_pfx):
+                    bare = bare[len(_pfx):].strip()
+                    break
+            if _is_meta_prd_heading(bare) or _is_meta_prd_heading(head):
+                continue
+            return text[m.start():].strip()
+    return text.strip()
+
+
+def _reply_looks_like_prd_body(reply: str) -> bool:
+    """True when reply already contains structured PRD body (marker optional)."""
+    s = reply or ""
+    if not _PRD_BODY_HINT_RE.search(s):
+        return False
+    # Avoid treating pure clarification as PRD
+    if "验收" in s or "acceptance_criteria" in s or "Acceptance" in s:
+        return True
+    if '"functional_requirements"' in s:
+        return True
+    if _FR_ID_TOKEN_RE.search(s) and (
+        "## 项目名称" in s
+        or re.search(r"#{2,3}\s*功能需求", s)
+    ):
+        return True
+    return bool(re.search(r"#{2,3}\s*(?:核心)?功能需求", s))
+
+
+def _is_prd_section_heading(heading: str) -> bool:
+    """True for known PRD section titles (not FR-n / US-n / 步骤N)."""
+    h = (heading or "").strip()
+    if not h or _is_meta_prd_heading(h):
+        return False
+    if re.match(r"^(?:FR|US)[-\s]?\d+\b", h, re.I):
+        return False
+    # Strip trailing colon labels: "项目背景：" → "项目背景"
+    bare = re.sub(r"[：:].*$", "", h).strip()
+    return bool(_PRD_SECTION_NAME_RE.match(bare) or _PRD_SECTION_NAME_RE.match(h))
+
+
+def _split_prd_markdown_sections(clean: str) -> Dict[str, str]:
+    """Split Markdown into PRD sections; accept ## and ### for known titles.
+
+    Models often emit ``### 功能需求`` under ``## 项目名称``. Treating every
+    ``###`` as a section would break FR blocks (``### FR-001``); only known
+    section names start a new bucket at h3.
+    """
+    sections: Dict[str, str] = {}
+    current_key = ""
+    for line in (clean or "").split("\n"):
+        m = re.match(r"^(#{2,3})\s+(.+)$", line)
+        if m:
+            level, raw = m.group(1), m.group(2).strip()
+            # Never treat "## 项目名称：X" as a content section
+            if re.match(r"^项目名称\b", raw):
+                current_key = ""
+                continue
+            if level == "##" or _is_prd_section_heading(raw):
+                current_key = raw
+                sections[current_key] = ""
+                continue
+        if current_key:
+            sections[current_key] += line + "\n"
+    return sections
+
+
+def _clean_decision_value(raw: str) -> str:
+    """Extract English snake_case enum from ``key: `enum`（说明）`` style values.
+
+    Free-form SLA strings (e.g. ``P95 ≤ 1.5× video duration``) are kept intact —
+    only strip trailing CJK parenthetical notes when a leading snake_case enum exists.
+    """
+    s = str(raw or "").strip()
+    if not s:
+        return s
+    # Prefer first fenced token: `direct_media_url`
+    m = re.search(r"`([a-zA-Z][\w]*)`", s)
+    if m:
+        return m.group(1)
+    s = s.strip("`").strip()
+    # Free-form: contains digits/operators/CJK beyond a plain enum token
+    if re.search(r"[≤≥<>×x\d\u4e00-\u9fff/]", s) and not re.match(
+        r"^[a-z][a-z0-9_]*$", s
+    ):
+        # Strip trailing （说明） / (note) only
+        s2 = re.split(r"[（(]", s, maxsplit=1)[0].strip()
+        return s2 or s
+    # Leading enum before CJK / fullwidth paren / ASCII paren / em-dash note
+    m = re.match(r"^([a-zA-Z][\w]*)", s)
+    if m:
+        rest = s[m.end() :].lstrip()
+        if not rest or rest[0] in "（(—–-：:":
+            return m.group(1)
+        # e.g. "P95 ≤ ..." — keep full free-form
+        if re.search(r"[≤≥<>×\d\u4e00-\u9fff]", rest):
+            return s
+        return m.group(1)
+    return s
+
+
+def _parse_decisions_from_markdown(body: str) -> Dict[str, Any]:
+    """Parse bullet ``key: value`` and markdown tables with optional backticks."""
+    dec: Dict[str, Any] = {}
+    if not (body or "").strip():
+        return dec
+    for line in body.splitlines():
+        s = line.strip()
+        if not s or s.startswith("|---") or re.match(r"^\|\s*键\s*\|", s):
+            continue
+        # Table row: | `key` | `value` | note |
+        tm = re.match(
+            r"^\|\s*`?([a-zA-Z_][\w]*)`?\s*\|\s*`?([^|]+?)`?\s*\|",
+            s,
+        )
+        if tm:
+            key, val = tm.group(1).strip(), _clean_decision_value(tm.group(2))
+            if key.lower() not in ("key", "键", "name") and val.lower() not in (
+                "value", "值", "---",
+            ):
+                dec[key] = val
+            continue
+        # Bullet: - key: `value`（说明）  /  key: value
+        m = re.match(
+            r"^\s*[-*]?\s*`?([a-zA-Z_][\w]*)`?\s*[：:=]\s*(.+?)\s*$",
+            s,
+        )
+        if m:
+            dec[m.group(1).strip()] = _clean_decision_value(m.group(2))
+    return dec
+
+
+def _parse_fr_body_fields(fr_body: str) -> Dict[str, Any]:
+    """Extract description / priority / acceptance_criteria from an FR block."""
+    desc_match = re.search(
+        r"(?:\*\*)?(?:描述|功能描述)(?:\*\*)?[：:]\s*(.+)", fr_body
+    )
+    user_story_match = re.search(
+        r"(?:\*\*)?用户故事(?:\*\*)?[：:]\s*(.+)", fr_body
+    )
+    pri_match = re.search(r"(?:\*\*)?优先级(?:\*\*)?[：:]\s*(\S+)", fr_body)
+    acs = re.findall(r"AC\d+:\s*(.+)", fr_body)
+    if not acs:
+        ac_block = re.search(
+            r"验收标准[：:]?\s*\n((?:\s*[-*]\s+.+\n?)+)", fr_body
+        )
+        if ac_block:
+            acs = re.findall(r"[-*]\s+(.+)", ac_block.group(1))
+    out: Dict[str, Any] = {
+        "description": (
+            (desc_match.group(1).strip() if desc_match else "")
+            or (user_story_match.group(1).strip() if user_story_match else "")
+        ),
+        "acceptance_criteria": acs,
+    }
+    if pri_match:
+        out["priority"] = pri_match.group(1).strip()
+    return out
+
+
+def _parse_functional_requirements_section(func_section: str) -> List[Dict[str, Any]]:
+    """Parse FR items from ### / **FR-n：** / - FR-n： blocks."""
+    fr_items: List[Dict[str, Any]] = []
+    if not (func_section or "").strip():
+        return fr_items
+
+    starts = list(_FR_BLOCK_START_RE.finditer(func_section))
+    if starts:
+        for i, m in enumerate(starts):
+            if m.lastindex and m.group(1) and m.group(1).upper().startswith("FR"):
+                fr_id = re.sub(r"\s+", "", m.group(1).upper().replace(" ", "-"))
+                if not fr_id.startswith("FR-"):
+                    fr_id = fr_id.replace("FR", "FR-", 1)
+                fr_name = (m.group(2) or "").strip()
+            elif m.lastindex and m.group(3):
+                # ### generic heading (non-step)
+                fr_name = m.group(3).strip()
+                if _is_meta_prd_heading(fr_name):
+                    continue
+                if ":" in fr_name or "：" in fr_name:
+                    sep = ":" if ":" in fr_name else "："
+                    left, right = fr_name.split(sep, 1)
+                    fr_id = left.strip()
+                    fr_name = right.strip()
+                else:
+                    fr_id = fr_name
+            else:
+                continue
+            end = starts[i + 1].start() if i + 1 < len(starts) else len(func_section)
+            fr_body = func_section[m.end():end]
+            fields = _parse_fr_body_fields(fr_body)
+            item: Dict[str, Any] = {
+                "id": fr_id,
+                "name": fr_name or fr_id,
+                "description": fields["description"],
+                "acceptance_criteria": fields["acceptance_criteria"],
+            }
+            if fields.get("priority"):
+                item["priority"] = fields["priority"]
+            fr_items.append(item)
+
+    # Fallback: numbered/bulleted lists as FRs (no FR- id)
+    if not fr_items:
+        for line_match in re.finditer(
+            r"^\s*(?:\d+\.|[-*])\s*\**(.+?)\**(?:\s*[：:]\s*(.+))?\s*$",
+            func_section or "",
+            re.MULTILINE,
+        ):
+            _name = line_match.group(1).strip()
+            if _is_meta_prd_heading(_name):
+                continue
+            _desc = (line_match.group(2) or "").strip()
+            fr_items.append({
+                "id": f"FR-{len(fr_items)+1:03d}",
+                "name": _name,
+                "description": _desc or _name,
+                "acceptance_criteria": [],
+            })
+    return fr_items
+
+
+def _parse_prd_draft_from_reply(reply: str, *, parse_markdown) -> Optional[Dict[str, Any]]:
+    """Best-effort structured PRD from assistant reply (JSON then Markdown)."""
+    draft = None
+    try:
+        json_str = extract_json(reply)
+        if json_str:
+            draft = json.loads(json_str)
+            if not isinstance(draft, dict):
+                draft = None
+            elif not (draft.get("user_stories") or draft.get("functional_requirements")):
+                draft = None
+    except Exception as e:
+        logging.warning(str(e), exc_info=True)
+    body = _extract_prd_markdown_body(reply)
+    if not draft and (
+        "## 项目名称" in body
+        or re.search(r"#{2,3}\s*(?:核心|主要|关键)?功能需求", body)
+        or _FR_ID_TOKEN_RE.search(body)
+    ):
+        draft = parse_markdown(body)
+    # If JSON lacked FRs but markdown body has them, prefer markdown parse
+    if (
+        isinstance(draft, dict)
+        and not (draft.get("functional_requirements") or draft.get("user_stories"))
+        and (re.search(r"#{2,3}\s*(?:核心|主要|关键)?功能需求", body) or _FR_ID_TOKEN_RE.search(body))
+    ):
+        md = parse_markdown(body)
+        if isinstance(md, dict) and md.get("functional_requirements"):
+            draft = md
+    return draft if isinstance(draft, dict) else None
+
+
 # ── HITL suspend/resume context (Phase 1: in-memory, Phase 2: Redis) ──
+def _pass_rate_fraction_from_report(report: Any) -> Optional[float]:
+    """Extract 0..1 pass rate from true-test report (meta.pass_rate may be 0-100 or 0-1)."""
+    if not isinstance(report, dict):
+        return None
+    meta = report.get("meta") if isinstance(report.get("meta"), dict) else {}
+    raw = meta.get("pass_rate")
+    if raw is None and report.get("pass_rate") is not None:
+        raw = report.get("pass_rate")
+    if raw is None:
+        return None
+    try:
+        rate = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if rate > 1.0:
+        rate = rate / 100.0
+    return max(0.0, min(1.0, rate))
+
+
 def _derive_app_name(name: str, provided: str = "", project_id: str = "") -> str:
     """Derive a canonical English slug for the project.
 
@@ -475,10 +820,17 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
 
     @property
     def model(self) -> Any:
-        """Lazy init: only create LLM adapter when actually needed."""
+        """Lazy init: only create LLM adapter when actually needed.
+
+        Factory PM/PRD/architecture work needs reasoning-capable models.
+        Use purpose ``agent`` (not ``chat``): chat profile is latency-first and
+        often selects tiny local models (e.g. qwen2.5:3b) that cannot draft PRDs.
+        """
         if self._model is None:
-            from core.api.facades.service_facade import get_default_model
-            self._model = get_default_model()
+            from core.api.core_facade import best_model_for_purpose, create_selected_adapter
+            self._model = create_selected_adapter(
+                model_name=best_model_for_purpose("agent"),
+            )
         return self._model
 
     @staticmethod
@@ -631,7 +983,58 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             "runs": [],
             "created_at": now,
             "updated_at": now,
+            "factory_profile": getattr(req, "factory_profile", "standard") or "standard",
+            "output_style": getattr(req, "output_style", "default") or "default",
+            "factory_mode": getattr(req, "factory_mode", "") or "",
+            "coding_intensity": getattr(req, "coding_intensity", "") or "",
         }
+        try:
+            from core.api.core_facade import (
+                apply_project_style_meta,
+                assign_output_style_experiment,
+                default_intensity_for_factory_mode,
+                mode_to_team_template,
+                normalize_coding_intensity,
+                normalize_factory_mode,
+                normalize_factory_profile,
+            )
+            self._projects[project_id]["factory_profile"] = normalize_factory_profile(
+                self._projects[project_id].get("factory_profile")
+            )
+            _fm = normalize_factory_mode(self._projects[project_id].get("factory_mode"))
+            self._projects[project_id]["factory_mode"] = _fm
+            if _fm:
+                self._projects[project_id]["team_template"] = mode_to_team_template(_fm)
+            _ci = str(self._projects[project_id].get("coding_intensity") or "").strip()
+            if not _ci:
+                _ci = default_intensity_for_factory_mode(_fm)
+            self._projects[project_id]["coding_intensity"] = normalize_coding_intensity(_ci)
+            apply_project_style_meta(
+                self._projects[project_id],
+                output_style=self._projects[project_id].get("output_style"),
+            )
+            # A3b: sticky style arm when experiment pct > 0; explicit adhd locks out
+            _os = str(self._projects[project_id].get("output_style") or "").lower()
+            if _os == "adhd":
+                self._projects[project_id]["output_style_user_set"] = True
+            else:
+                assign_output_style_experiment(
+                    self._projects[project_id],
+                    sticky_id=project_id,
+                )
+        except Exception:
+            logging.getLogger(__name__).debug("style/profile meta init skipped", exc_info=True)
+        if stages:
+            try:
+                from core.api.core_facade import apply_factory_profile_to_stages
+                apply_factory_profile_to_stages(
+                    stages, self._projects[project_id].get("factory_profile", "standard")
+                )
+                self._projects[project_id]["team_stages"] = [
+                    s.model_dump() if hasattr(s, "model_dump") else s for s in stages
+                ]
+            except Exception:
+                logging.getLogger(__name__).debug("factory_profile apply skipped", exc_info=True)
 
         # ── Improve auto-derived app_name for non-ASCII names (LLM translation) ──
         _provided = (getattr(req, "app_name", "") or "").strip()
@@ -848,6 +1251,14 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         """PM dialogue — directly managed through self._sessions (chat dicts only)."""
         from core.api.intents import core_chat, ChatContext
 
+        # T1b: never block chat; background pull when AUTOSYNC=1
+        try:
+            from core.api.core_facade import maybe_autosync_team_harness
+
+            maybe_autosync_team_harness(background=True)
+        except Exception:
+            logging.getLogger(__name__).debug("factory autosync kick skipped", exc_info=True)
+
         session = self._sessions.get(project_id)
         if not session:
             session = self._load_chat_session(project_id)
@@ -929,6 +1340,44 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                     "prd gate guidance inject skipped", exc_info=True
                 )
 
+        # T2/F-T2 + A0/A3b: Culture then output_style (hard→Culture→style); prose only
+        try:
+            from core.api.core_facade import (
+                apply_project_culture_meta,
+                assign_output_style_experiment,
+                build_culture_overlay,
+                build_style_overlay,
+                compose_prose_overlays,
+                resolve_culture_enabled,
+                resolve_output_style,
+                whitelist_overrides,
+            )
+            apply_project_culture_meta(proj)
+            _exp = assign_output_style_experiment(proj, sticky_id=project_id)
+            if _exp.get("assigned"):
+                try:
+                    self._save_projects()
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "persist style experiment arm skipped", exc_info=True
+                    )
+            _culture = build_culture_overlay(
+                enabled=resolve_culture_enabled(proj),
+            )
+            _style = resolve_output_style(proj)
+            _ov = whitelist_overrides(proj)
+            _style_overlay = build_style_overlay(_style, _ov)
+            _combined = compose_prose_overlays(
+                culture_overlay=_culture,
+                style_overlay=_style_overlay,
+            )
+            if _combined:
+                _enriched_message = f"{_combined}\n\n---\n{_enriched_message}"
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "culture/output_style inject skipped", exc_info=True
+            )
+
         try:
 
             result = await core_chat(ChatContext(
@@ -941,52 +1390,237 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             # Unwrap agent JSON formats (e.g. {"type":"done","answer":"..."} → plain text)
             reply = _unwrap_json_reply(reply)
             session["messages"].append({"role": "assistant", "content": reply})
-            prd_ready = "<!-- PRD_READY -->" in str(reply)
-            if prd_ready:
-                # Try JSON first (backward compat), then Markdown
-                draft = None
+            # Close without marker when user asked for PRD *or* reply already looks like
+            # a structured draft — pack finalize fills missing decisions (no hand-written gold).
+            _implicit = _user_asks_prd_output(message) or _reply_looks_like_prd_body(reply)
+            reply, prd_ready = self._apply_prd_gate_to_assistant_reply(
+                project_id, session, reply, allow_implicit_ready=_implicit
+            )
+
+            # One auto-repair when model leaked analysis steps or gate blocked READY
+            if (not prd_ready) and (
+                _user_asks_prd_output(message)
+                or _reply_looks_like_prd_body(reply)
+                or _reply_leaks_analysis_steps(reply)
+                or "PRD 尚未闭合" in reply
+                or "请输出完整 Markdown PRD" in reply
+                or "未解析到完整 PRD" in reply
+            ):
+                # Cheap local retry: strip 步骤1–4 / nags, re-parse without another LLM call
                 try:
-                    json_str = extract_json(reply)
-                    if json_str:
-                        draft = json.loads(json_str)
-                        if not (draft.get("user_stories") or draft.get("functional_requirements")):
-                            draft = None
-                except Exception as e:
-                    logging.warning(str(e), exc_info=True)
-                # Fallback: parse Markdown PRD
-                if not draft and "## 项目名称" in str(reply):
-                    draft = self._parse_markdown_prd(reply)
-                if draft:
-                    from core.api.core_facade import (
-                        factory_finalize_prd,
-                        followup_questions_from_report,
-                        render_prd_markdown,
+                    stripped = _extract_prd_markdown_body(reply)
+                    # Drop gate follow-up nags appended after a failed first pass
+                    for _cut in (
+                        "\n请输出完整 Markdown PRD",
+                        "\n未解析到完整 PRD",
+                        "\n---\nPRD 尚未闭合",
+                        "\nPRD 尚未闭合",
+                    ):
+                        if _cut in stripped:
+                            stripped = stripped.split(_cut, 1)[0].rstrip()
+                    if stripped and (
+                        stripped != reply
+                        or _reply_looks_like_prd_body(stripped)
+                    ):
+                        reply2, ready2 = self._apply_prd_gate_to_assistant_reply(
+                            project_id,
+                            session,
+                            stripped,
+                            allow_implicit_ready=True,
+                        )
+                        if ready2:
+                            self._record_output_style_telemetry(
+                                project_id,
+                                session,
+                                reply=reply2,
+                                first_pass_ok=True,
+                            )
+                            self._save_chat_session(project_id)
+                            return {
+                                "reply": reply2,
+                                "prd_ready": True,
+                                "trace_id": result.trace_id,
+                                "session_state": {},
+                            }
+                        reply = reply2
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "prd local re-parse skipped", exc_info=True
                     )
-                    draft, gate_report = factory_finalize_prd(draft)
-                    if gate_report.get("ok"):
-                        session["prd"] = draft
-                        proj = self._projects.get(project_id, {})
-                        if proj:
-                            proj["confirmed_prd"] = draft
-                            self._save_projects()
-                        # Show repaired PRD in chat (not the contradictory LLM draft)
-                        reply = render_prd_markdown(draft, include_ready_marker=True)
-                        if session.get("messages"):
-                            session["messages"][-1]["content"] = reply
+
+                try:
+                    from core.api.core_facade import (
+                        format_decision_enum_catalog,
+                        format_pm_gate_guidance,
+                    )
+                    from core.api.intents import core_chat, ChatContext
+
+                    _ctx = "\n".join(
+                        str(m.get("content") or "")
+                        for m in (session.get("messages") or [])[-8:]
+                    ) or message
+                    repair_bits = [
+                        "## 定稿修复指令（强制）",
+                        "上轮未产出可过门禁的完整 PRD。本轮禁止输出步骤1/方案表/分析过程。",
+                        "直接输出完整 Markdown：## 项目名称：真实产品名 / ## 项目背景 / ## 功能需求(≥3 FR 含验收标准) / "
+                        "## 用户故事 / ## 决策 / ## 待确认问题（空）/ ## 范围(performance+security)。",
+                        "末尾必须加 <!-- PRD_READY -->。",
+                        "决策 value 只用英文枚举（见下方目录）。缺键可由工厂 finalize 按域 pack 补全；"
+                        "禁止依赖 finalize 洗绿语义矛盾（如不转写却要主题摘要）。",
+                        "不要求手写金稿——把 FR+验收写清 + 枚举决策即可闭合。",
+                    ]
+                    _g = format_pm_gate_guidance(_ctx)
+                    if _g:
+                        repair_bits.insert(0, _g)
                     else:
-                        # Factory could not auto-close — block PRD_READY and ask remaining decisions
-                        prd_ready = False
-                        session["prd"] = draft
-                        reply = str(reply).replace("<!-- PRD_READY -->", "").rstrip()
-                        reply = reply + followup_questions_from_report(gate_report)
-                        # rewrite last assistant message so history matches
-                        if session.get("messages"):
-                            session["messages"][-1]["content"] = reply
+                        _enums = format_decision_enum_catalog(_ctx)
+                        if _enums:
+                            repair_bits.append(_enums)
+                    if "PRD 尚未闭合" in reply:
+                        repair_bits.append(reply[reply.find("PRD 尚未闭合"):][:1200])
+                    repair = await core_chat(ChatContext(
+                        agent_name=_agent_name,
+                        session_id=f"{project_id}_prd_repair",
+                        user_input="\n".join(repair_bits),
+                        model=self.model,
+                    ))
+                    repair_reply = _unwrap_json_reply(repair.reply)
+                    session["messages"].append({"role": "assistant", "content": repair_reply})
+                    reply, prd_ready = self._apply_prd_gate_to_assistant_reply(
+                        project_id,
+                        session,
+                        repair_reply,
+                        allow_implicit_ready=True,
+                    )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "prd auto-repair skipped", exc_info=True
+                    )
+
+            self._record_output_style_telemetry(
+                project_id,
+                session,
+                reply=reply,
+                first_pass_ok=bool(prd_ready),
+            )
+            if (not prd_ready) and (
+                _user_asks_prd_output(message) or _reply_looks_like_prd_body(reply)
+            ):
+                self._record_t4a_friction(
+                    "prd_gate_fail",
+                    project_id=project_id,
+                    detail="prd_gate_not_ready",
+                )
             self._save_chat_session(project_id)
             return {"reply": reply, "prd_ready": prd_ready, "trace_id": result.trace_id, "session_state": {}}
         except Exception as e:
             self._save_chat_session(project_id)  # save even on error — preserve messages
             return {"reply": f"{_AIPLAT_CHAT_ERROR_PREFIX}{str(e)[:200]}", "prd_ready": False, "trace_id": "", "session_state": {}}
+
+    def _record_output_style_telemetry(
+        self,
+        project_id: str,
+        session: dict,
+        *,
+        reply: str,
+        first_pass_ok: Optional[bool] = None,
+    ) -> None:
+        """A3a/A3b: persist style telemetry (+ experiment arm when assigned)."""
+        try:
+            from core.api.core_facade import (
+                estimate_reply_tokens,
+                infer_followups,
+                record_output_style_event,
+                resolve_output_style,
+            )
+
+            proj = self._projects.get(project_id) or {}
+            style = resolve_output_style(proj)
+            record_output_style_event(
+                style=style,
+                project_id=project_id,
+                session_id=project_id,
+                source="factory_chat",
+                tokens=estimate_reply_tokens(reply),
+                followups=infer_followups(session.get("messages") or []),
+                first_pass_ok=first_pass_ok,
+                experiment_id=str(proj.get("output_style_experiment_id") or ""),
+                arm=str(proj.get("output_style_arm") or ""),
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "output_style telemetry skipped", exc_info=True
+            )
+
+    def _apply_prd_gate_to_assistant_reply(
+        self,
+        project_id: str,
+        session: dict,
+        reply: str,
+        *,
+        allow_implicit_ready: bool = False,
+    ) -> tuple:
+        """Parse PRD draft, finalize via gate, rewrite chat message if needed.
+
+        READY bar = factory_finalize ok + looks_like_prd (not hand-written gold).
+        With allow_implicit_ready, a parseable draft can close without <!-- PRD_READY -->
+        (gen-intent / auto-repair). Explicit marker still required otherwise.
+
+        Returns (reply, prd_ready).
+        """
+        has_marker = "<!-- PRD_READY -->" in str(reply)
+        if not has_marker and not allow_implicit_ready:
+            return reply, False
+
+        from core.api.core_facade import (
+            factory_finalize_prd,
+            followup_questions_from_report,
+            looks_like_prd,
+            render_prd_markdown,
+        )
+
+        draft = _parse_prd_draft_from_reply(
+            reply, parse_markdown=self._parse_markdown_prd
+        )
+        if draft:
+            draft, gate_report = factory_finalize_prd(draft)
+            if gate_report.get("ok") and looks_like_prd(draft):
+                session["prd"] = draft
+                proj = self._projects.get(project_id, {})
+                if proj:
+                    proj["confirmed_prd"] = draft
+                    self._save_projects()
+                reply = render_prd_markdown(draft, include_ready_marker=True)
+                if session.get("messages"):
+                    session["messages"][-1]["content"] = reply
+                return reply, True
+
+            session["prd"] = draft
+            reply = str(reply).replace("<!-- PRD_READY -->", "").rstrip()
+            if not looks_like_prd(draft):
+                reply = (
+                    reply
+                    + "\n\n请输出完整 Markdown PRD（含 ≥1 条功能需求 FR + 验收标准），"
+                    "不要只写分析步骤或空标题。末尾加 <!-- PRD_READY -->。"
+                )
+            reply = reply + followup_questions_from_report(
+                gate_report, context_text=reply
+            )
+            if session.get("messages"):
+                session["messages"][-1]["content"] = reply
+            return reply, False
+
+        # Only nag about missing parse when model claimed READY or we forced finalize
+        if has_marker or allow_implicit_ready:
+            reply = str(reply).replace("<!-- PRD_READY -->", "").rstrip()
+            reply = (
+                reply
+                + "\n\n未解析到完整 PRD。请按 ## 项目名称 / ## 功能需求 / ## 决策 / ## 范围 "
+                "输出完整 Markdown，末尾加 <!-- PRD_READY -->。"
+            )
+            if session.get("messages"):
+                session["messages"][-1]["content"] = reply
+        return reply, False
 
     async def _extract_prd_from_chat(self, project_id: str, session: dict) -> Optional[Dict[str, Any]]:
         """Use LLM to extract structured PRD from PM chat history."""
@@ -1045,8 +1679,14 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                     except Exception:
                         continue
                 if prd and isinstance(prd, dict):
-                    from core.api.core_facade import factory_finalize_prd
-                    prd, _gate = factory_finalize_prd(prd)
+                    from core.api.core_facade import factory_finalize_prd, looks_like_prd
+                    prd, gate = factory_finalize_prd(prd)
+                    if not gate.get("ok") or not looks_like_prd(prd):
+                        _log.info(
+                            "_extract_prd_from_chat: gate rejected extract ok=%s like=%s",
+                            gate.get("ok"), looks_like_prd(prd),
+                        )
+                        return None
                     _log.info("_extract_prd_from_chat: extracted PRD with keys %s", list(prd.keys())[:5])
                     return prd
             _log.info("_extract_prd_from_chat: no valid JSON found in reply")
@@ -1138,6 +1778,31 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             "status": "ok",
         }
 
+    async def confirm_and_build(
+        self, project_id: str, prd_data: Any = None, *, force_confirm: bool = False
+    ) -> Dict[str, Any]:
+        """F1 one-click: confirm_prd → recommend_team → start_pipeline_background.
+
+        Returns combined status. If PRD gate blocks, does not start the pipeline.
+        """
+        confirm = await self.confirm_prd(
+            project_id, prd_data=prd_data, force_confirm=force_confirm
+        )
+        if isinstance(confirm, dict) and confirm.get("status") == "error":
+            return confirm
+        team = await self.recommend_team(project_id)
+        start = await self.start_pipeline_background(project_id)
+        return {
+            "status": "ok",
+            "phase": (start or {}).get("phase") or "executing",
+            "confirm": confirm,
+            "team": {
+                "recommendation": (team or {}).get("recommendation"),
+                "plan_stages": (team or {}).get("plan_stages") or [],
+            },
+            "start": start,
+        }
+
     def _ensure_manifest_resolved(self, project_id: str, state: Dict[str, Any]) -> None:
         """Post-process pipeline state: extract agent_manifest.json from deployed files.
 
@@ -1187,9 +1852,42 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         activating all 18 platform capabilities (SECI, Memory, Feedback, etc.).
 
         Multi-agent: reads agent_manifest.json for skill→agent routing.
+        Prefer platform media handlers when skill name is registered (real ffmpeg I/O).
         """
         from core.api.intents import core_chat, ChatContext
         import json as _json, re as _re
+        import asyncio as _asyncio
+
+        params = dict(params or {})
+        proj = self._projects.get(project_id) or {}
+        params.setdefault("app_name", str(proj.get("app_name") or "").strip() or "app")
+        params.setdefault("project", params["app_name"])
+
+        # ── Path 0: platform media handlers (deterministic, true I/O) ──
+        # Opt-out: AIPLAT_FACTORY_FORCE_AGENT_SKILL=1 forces full Agent+ReAct path.
+        try:
+            from core.api.core_facade import execute_media_skill, resolve_media_handler_name
+            import os as _os
+
+            force_agent = str(_os.environ.get("AIPLAT_FACTORY_FORCE_AGENT_SKILL") or "").strip().lower() in (
+                "1", "true", "yes", "on",
+            )
+            if (not force_agent) and resolve_media_handler_name(str(skill_name)):
+                result = await _asyncio.to_thread(execute_media_skill, skill_name, params)
+                effects = await self._platform_effects_after_deterministic_skill(
+                    project_id, skill_name, params, result
+                )
+                return {
+                    "ok": True,
+                    "skill": skill_name,
+                    "agent": "media_handler",
+                    "reply": _json.dumps(result, ensure_ascii=False),
+                    "result": result,
+                    "mode": "media_handler",
+                    "platform_effects": effects,
+                }
+        except Exception as e:
+            _log.warning("media handler %s failed, falling back to agent: %s", skill_name, str(e)[:160])
 
         state = self._runs.get(project_id)
         if not state:
@@ -1222,7 +1920,6 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         if not agent_name:
             return {"error": "Agent not ready", "ok": False}
 
-        params = params or {}
         message = f"执行技能: {skill_name}\n参数: {_json.dumps(params, ensure_ascii=False)[:2000]}"
         try:
             result = await core_chat(ChatContext(
@@ -1237,6 +1934,75 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                     "reply": reply, "trace_id": getattr(result, 'trace_id', '')}
         except Exception as e:
             return {"error": str(e)[:200], "ok": False}
+
+    async def _platform_effects_after_deterministic_skill(
+        self,
+        project_id: str,
+        skill_name: str,
+        params: Dict[str, Any],
+        result: Dict[str, Any],
+    ) -> List[str]:
+        """Attach Harness/platform side-effects after a deterministic handler.
+
+        Media handlers skip full ReAct for real I/O correctness; this bridge still
+        records memory + local feedback so factory apps are not Harness-orphaned.
+        Set AIPLAT_FACTORY_FORCE_AGENT_SKILL=1 to skip Path 0 and use Agent+ReAct.
+        """
+        effects: List[str] = ["deterministic_handler"]
+        session_id = f"{project_id}_fe"
+        status = str((result or {}).get("status") or "")
+        summary = (
+            f"[factory-handler] skill={skill_name} status={status} "
+            f"task_id={(result or {}).get('task_id') or ''} "
+            f"keys={list((result or {}).keys())[:12]}"
+        )[:1200]
+
+        try:
+            from core.api.core_facade import get_memory_manager
+
+            mm = get_memory_manager()
+            if mm is not None and hasattr(mm, "save_interaction"):
+                await mm.save_interaction(
+                    user_message=f"执行技能: {skill_name}\n参数摘要: {str(params)[:400]}",
+                    assistant_message=summary,
+                    session_id=session_id,
+                    metadata={
+                        "source": "factory_deterministic_handler",
+                        "project_id": project_id,
+                        "skill": skill_name,
+                        "status": status,
+                    },
+                )
+                effects.append("memory_saved")
+        except Exception:
+            _log.debug("deterministic skill memory effect skipped", exc_info=True)
+
+        try:
+            from core.api.core_facade import (
+                FeedbackLevel,
+                FeedbackType,
+                get_local_feedback,
+            )
+
+            fb = get_local_feedback()
+            if fb is not None:
+                level = (
+                    FeedbackLevel.WARNING
+                    if status in ("failed", "error")
+                    else FeedbackLevel.INFO
+                )
+                fb.emit(
+                    level,
+                    FeedbackType.TOOL_OUTPUT,
+                    source=f"factory_handler:{skill_name}",
+                    content=summary,
+                    metadata={"project_id": project_id, "skill": skill_name, "status": status},
+                )
+                effects.append("local_feedback")
+        except Exception:
+            _log.debug("deterministic skill feedback effect skipped", exc_info=True)
+
+        return effects
 
     async def recommend_team(self, project_id: str) -> Dict[str, Any]:
         """Use Planning Agent to analyze PRD and recommend a team configuration.
@@ -1290,7 +2056,29 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         except Exception as e:
             logging.warning(str(e), exc_info=True)
         
-        rec = await recommend_team_stages(requirement=prd, model=self.model, extra_context=extra_context or None)
+        # F2b: honor create-time factory_mode / team_template (agent|code|hybrid)
+        _preferred_mode = ""
+        _team_template = ""
+        try:
+            from core.api.core_facade import normalize_factory_mode, mode_to_team_template
+            _preferred_mode = normalize_factory_mode(proj.get("factory_mode"))
+            _explicit_tmpl = str(proj.get("team_template") or "").strip().removesuffix(".yaml")
+            if _explicit_tmpl in ("default", "code", "hybrid"):
+                _team_template = _explicit_tmpl
+            elif _preferred_mode:
+                _team_template = mode_to_team_template(_preferred_mode)
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "factory_mode resolve skipped", exc_info=True
+            )
+
+        rec = await recommend_team_stages(
+            requirement=prd,
+            model=self.model,
+            extra_context=extra_context or None,
+            team_template=_team_template,
+            preferred_mode=_preferred_mode,
+        )
 
         recommendation = {
             "team_name": rec.team_name,
@@ -1303,14 +2091,23 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             proj["plan_stages"] = plan_stages
             proj["plan_stage_ids"] = [s.get("id", f"plan_stage_{i}") for i, s in enumerate(plan_stages)]
 
-            # v4.2: 模式判断 → 映射固定团队模板
+            # v4.2 / F2b: mode → fixed team template
             #   agent→default.yaml, code→code.yaml, hybrid→hybrid.yaml
             recommendation["mode"] = rec.mode
             _mode_team_map = {"agent": "default", "code": "code", "hybrid": "hybrid"}
             if rec.mode in _mode_team_map and not proj.get("team_id"):
                 proj["team_id"] = _mode_team_map[rec.mode]
+                proj["team_template"] = _mode_team_map[rec.mode]
+                proj["factory_mode"] = rec.mode
                 recommendation["_mode_mapped"] = True
                 recommendation["_team_id"] = proj["team_id"]
+                # Materialize stages from YAML so start_pipeline has team_stages
+                try:
+                    self._sync_team_stages(project_id)
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "team sync after mode map skipped", exc_info=True
+                    )
                 self._save_projects()
 
             # Auto-create team from plan_stages so pipeline can start immediately
@@ -1336,27 +2133,46 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                             skill_model_purpose=ps.get("skill_model_purpose", ""),
                         ))
                     if team_stages:
-                        # ── v3.1: HITL gates from team template YAML ──
-                        # v4.2: 模板按能力分析判定的模式选取（hybrid/code/default），
-                        # 不再硬编码 default
+                        # ── v3.1: copy gates + architecture_mode from team template YAML ──
                         try:
                             from core.api.core_facade import load_team_template
                             _tmpl_name = {"hybrid": "hybrid", "code": "code"}.get(rec.mode, "default")
                             tmpl = load_team_template(_tmpl_name) or load_team_template("default")
                             if tmpl and tmpl.stages:
-                                # TeamTemplate.stages 是 YAML dict 列表（team_planner.py:61
-                                # List[Dict[str, Any]]）——必须 dict 访问；属性访问 AttributeError
-                                # 被吞 → v3.1 HITL gates 静默失效（审计 P1-1 修复 2026-08-25）
-                                _hitl_map = {
+                                _by_agent = {
                                     s.get("agent_id"): s for s in tmpl.stages
-                                    if s.get("hitl") and s.get("agent_id")
+                                    if isinstance(s, dict) and s.get("agent_id")
                                 }
+                                _COPY_KEYS = (
+                                    "hitl", "hitl_phase", "architecture_mode",
+                                    "input_artifacts", "completeness_check",
+                                    "quality_gate", "skill_name", "output_artifact",
+                                    "execution_backend",
+                                )
                                 for ts in team_stages:
-                                    if ts.agent_id in _hitl_map:
-                                        ts.hitl = True
-                                        ts.hitl_phase = _hitl_map[ts.agent_id].get("hitl_phase") or "review"
+                                    src = _by_agent.get(ts.agent_id) or {}
+                                    for k in _COPY_KEYS:
+                                        val = src.get(k)
+                                        if val in (None, "", [], {}):
+                                            continue
+                                        setattr(ts, k, val)
+                                proj["team_template"] = _tmpl_name
+                                proj["factory_mode"] = rec.mode or "agent"
                         except Exception:
                             pass  # noqa: cleanup-best-effort
+                        # F2a: project-level HITL profile (demo strips intermediate gates)
+                        try:
+                            from core.api.core_facade import (
+                                apply_factory_profile_to_stages,
+                                resolve_project_factory_profile,
+                            )
+                            _fp = resolve_project_factory_profile(proj)
+                            apply_factory_profile_to_stages(team_stages, _fp)
+                            proj["factory_profile"] = _fp
+                        except Exception:
+                            logging.getLogger(__name__).debug(
+                                "factory_profile apply on recommend_team skipped", exc_info=True
+                            )
                         team_req = TeamAssembleRequest(
                             name=recommendation.get("team_name", f"团队-{project_id}"),
                             description=recommendation.get("reasoning", ""),
@@ -1417,28 +2233,63 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
     def _parse_markdown_prd(reply: str) -> Dict[str, Any]:
         """Parse structured Markdown PRD into a dict for session storage."""
         prd: Dict[str, Any] = {}
-        # Strip PRD_READY marker if present (appears before the # heading)
-        clean = reply.replace("<!-- PRD_READY -->", "").strip()
-        # Drop auto-repair footnotes so they are not treated as section body
-        clean = re.split(r"\n---\s*\n", clean, maxsplit=1)[0].strip()
-        title_match = re.search(r"^#+ (.+)", clean, re.MULTILINE)
-        if title_match:
-            prd["title"] = title_match.group(1).strip()
-            # Strip prefix like "项目名称：" or "项目名称:"
-            for _pfx in (_AIPLAT_PRD_TITLE_PREFIX, "项目名称:", "Project Name:"):
-                if prd["title"].startswith(_pfx):
-                    prd["title"] = prd["title"][len(_pfx):].strip()
+        # Drop marker, then prefer ``## 项目名称`` body *before* any ``---`` split.
+        # Models often put ``---`` between 步骤1–4 and the real PRD; splitting first
+        # discarded the product section and left an empty shell (loop root cause).
+        clean = str(reply or "").replace("<!-- PRD_READY -->", "").strip()
+        clean = _extract_prd_markdown_body(clean)
+        for _cut in (
+            "\n---\nPRD 尚未闭合",
+            "\n---\r\nPRD 尚未闭合",
+            "\nPRD 尚未闭合",
+            "\n请输出完整 Markdown PRD",
+            "\n未解析到完整 PRD",
+        ):
+            if _cut in clean:
+                clean = clean.split(_cut, 1)[0].rstrip()
+        # Trailing HR + gate footnote (keep PRD; drop only nag after last HR)
+        clean = re.split(
+            r"\n---\s*\n(?=(?:PRD 尚未闭合|请输出完整 Markdown|未解析到完整 PRD))",
+            clean,
+            maxsplit=1,
+        )[0].strip()
+
+        # Prefer ## 项目名称：RealProduct (last wins if duplicates)
+        named_titles = list(
+            re.finditer(r"(?m)^##\s*项目名称[：:]\s*(.+)$", clean)
+        )
+        if named_titles:
+            prd["title"] = named_titles[-1].group(1).strip()
+        else:
+            bare_label = list(re.finditer(r"(?m)^##\s*项目名称\s*$", clean))
+            if bare_label:
+                after = clean[bare_label[-1].end():]
+                nxt = re.search(r"^\s*\n+([^\n#][^\n]{1,120})", after)
+                if nxt:
+                    prd["title"] = nxt.group(1).strip()
+            if not prd.get("title"):
+                # First non-meta heading (never 步骤N / 方案A)
+                for title_match in re.finditer(r"(?m)^#+\s+(.+)$", clean):
+                    raw = title_match.group(1).strip()
+                    title = raw
+                    for _pfx in (_AIPLAT_PRD_TITLE_PREFIX, "项目名称:", "Project Name:"):
+                        if title.startswith(_pfx):
+                            title = title[len(_pfx):].strip()
+                            break
+                    if title in ("项目名称", "Project Name", "Title") or not title:
+                        after = clean[title_match.end():]
+                        nxt = re.search(r"^\s*\n+([^\n#][^\n]{1,120})", after)
+                        if nxt and not _is_meta_prd_heading(nxt.group(1).strip()):
+                            prd["title"] = nxt.group(1).strip()
+                            break
+                        continue
+                    if _is_meta_prd_heading(title) or _is_meta_prd_heading(raw):
+                        continue
+                    prd["title"] = title
                     break
-        # Extract sections by ## headings
-        sections: Dict[str, str] = {}
-        current_key = ""
-        for line in clean.split("\n"):
-            m = re.match(r"^## (.+)", line)
-            if m:
-                current_key = m.group(1).strip()
-                sections[current_key] = ""
-            elif current_key:
-                sections[current_key] += line + "\n"
+
+        # Extract sections by ## / known ### headings (models often use ### 功能需求)
+        sections = _split_prd_markdown_sections(clean)
         bg = (
             sections.get("项目背景", "")
             or sections.get("背景", "")
@@ -1446,7 +2297,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         ).strip()
         if bg:
             prd["description"] = bg
-        # Functional requirements
+        # Functional requirements — ### FR-001 / **FR-1：** / - FR-1：
         func_section = (
             sections.get(_AIPLAT_PRD_SECTION_REQUIREMENTS, "")
             or sections.get("核心" + _AIPLAT_PRD_SECTION_REQUIREMENTS, "")
@@ -1454,52 +2305,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             or sections.get("关键" + _AIPLAT_PRD_SECTION_REQUIREMENTS, "")
             or next((v for k, v in sections.items() if _AIPLAT_PRD_SECTION_REQUIREMENTS in k), "")
         )
-        fr_items = []
-        for fr_match in re.finditer(r"###\s*(.+?)\n(.*?)(?=\n###|\n##|\Z)", func_section or "", re.DOTALL):
-            fr_name = fr_match.group(1).strip()
-            fr_body = fr_match.group(2)
-            desc_match = re.search(
-                r"(?:\*\*)?(?:描述|功能描述)(?:\*\*)?[：:]\s*(.+)", fr_body
-            )
-            user_story_match = re.search(
-                r"(?:\*\*)?用户故事(?:\*\*)?[：:]\s*(.+)", fr_body
-            )
-            pri_match = re.search(r"(?:\*\*)?优先级(?:\*\*)?[：:]\s*(\S+)", fr_body)
-            acs = re.findall(r"AC\d+:\s*(.+)", fr_body)
-            if not acs:
-                # Bullet ACs under 验收标准 without AC1: prefix
-                ac_block = re.search(
-                    r"验收标准[：:]?\s*\n((?:\s*[-*]\s+.+\n?)+)", fr_body
-                )
-                if ac_block:
-                    acs = re.findall(r"[-*]\s+(.+)", ac_block.group(1))
-            item: Dict[str, Any] = {
-                "id": fr_name.split(":", 1)[0].strip() if ":" in fr_name else fr_name,
-                "name": fr_name.split(":", 1)[1].strip() if ":" in fr_name else fr_name,
-                "description": (
-                    (desc_match.group(1).strip() if desc_match else "")
-                    or (user_story_match.group(1).strip() if user_story_match else "")
-                ),
-                "acceptance_criteria": acs,
-            }
-            if pri_match:
-                item["priority"] = pri_match.group(1).strip()
-            fr_items.append(item)
-        # Fallback: parse numbered/bulleted lists as FRs
-        if not fr_items and func_section.strip():
-            for line_match in re.finditer(
-                r'^\s*(?:\d+\.|[-*])\s*\**(.+?)\**(?:\s*[：:]\s*(.+))?\s*$',
-                func_section or "",
-                re.MULTILINE,
-            ):
-                _name = line_match.group(1).strip()
-                _desc = (line_match.group(2) or "").strip()
-                fr_items.append({
-                    "id": f"FR-{len(fr_items)+1:03d}",
-                    "name": _name,
-                    "description": _desc or _name,
-                    "acceptance_criteria": [],
-                })
+        fr_items = _parse_functional_requirements_section(func_section)
         if fr_items:
             prd["functional_requirements"] = fr_items
         # User stories — prefer dedicated section; do not alias FRs when present
@@ -1519,15 +2325,30 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                 if ":" in us_head:
                     us_id, us_text = us_head.split(":", 1)
                     us_id, us_text = us_id.strip(), us_text.strip()
+                elif "：" in us_head:
+                    us_id, us_text = us_head.split("：", 1)
+                    us_id, us_text = us_id.strip(), us_text.strip()
                 rel = re.search(r"(?:\*\*)?关联需求(?:\*\*)?[：:]\s*(.+)", us_body)
+                if not rel:
+                    rel = re.search(
+                        r"(?:\*\*)?related_fr(?:\*\*)?[：:]\s*\[?([^\]\n]+)\]?",
+                        us_body,
+                        re.IGNORECASE,
+                    )
                 pri = re.search(r"(?:\*\*)?优先级(?:\*\*)?[：:]\s*(\S+)", us_body)
+                if not pri:
+                    pri = re.search(r"(?:\*\*)?priority(?:\*\*)?[：:]\s*(\S+)", us_body, re.I)
                 story: Dict[str, Any] = {
                     "id": us_id,
                     "story": us_text,
                     "description": us_text,
                 }
                 if rel:
-                    parts = [p.strip() for p in re.split(r"[,，、\s]+", rel.group(1)) if p.strip()]
+                    parts = [
+                        p.strip().strip('"').strip("'")
+                        for p in re.split(r"[,，、\s]+", rel.group(1))
+                        if p.strip().strip('"').strip("'")
+                    ]
                     story["related_fr"] = parts
                 if pri:
                     story["priority"] = pri.group(1).strip()
@@ -1569,11 +2390,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                 or sections.get("Decisions", "")
             ).strip()
             if decisions_body:
-                dec: Dict[str, Any] = {}
-                for line in decisions_body.splitlines():
-                    m = re.match(r"^\s*[-*]?\s*([a-zA-Z_][\w]*)\s*[：:=]\s*(.+)\s*$", line)
-                    if m:
-                        dec[m.group(1).strip()] = m.group(2).strip()
+                dec = _parse_decisions_from_markdown(decisions_body)
                 if dec:
                     prd["decisions"] = dec
             oq_body = (
@@ -1615,6 +2432,9 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         target_state = sections.get("目标状态", "") or sections.get(_AIPLAT_PRD_SECTION_ISA, "")
         if target_state.strip():
             prd["target_state"] = target_state.strip()[:500]
+        # Allow FR-only drafts when title was recovered later / product title elsewhere
+        if not prd.get("title") and fr_items:
+            return prd
         return prd if prd.get("title") else {}
 
     async def _save_state(self, project_id: str, state: dict):
@@ -1669,10 +2489,89 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             resp = await client.resolve_hitl(project_id, action="approve", feedback=feedback)
             if resp.get("status") == "resolved":
                 return {"project_id": project_id, "phase": "executing", "status": "ok"}
+            # Fallback: no live HITL engine (cancelled / awaiting_approval after offline true_test)
+            finalized = await self._finalize_hitl_if_terminal(project_id)
+            if finalized:
+                return finalized
             return {"status": "error", "detail": resp.get("detail", "Core unavailable")}
         except Exception as e:
             _log.warning("approve_stage failed for %s: %s", project_id, str(e)[:200])
+            finalized = await self._finalize_hitl_if_terminal(project_id)
+            if finalized:
+                return finalized
             raise
+
+    async def _finalize_hitl_if_terminal(self, project_id: str) -> Optional[Dict[str, Any]]:
+        """When pipeline is paused at the last stage with APPROVED tests, mark done.
+
+        Covers offline true_test / cancelled engine cases where hitl-resolve 404s.
+        """
+        try:
+            wrap = await self._get_state_via_core(project_id)
+            state = wrap.get("state") if isinstance(wrap, dict) else None
+            if not isinstance(state, dict):
+                return None
+            phase = str(state.get("phase") or "")
+            if phase not in ("paused", "awaiting_approval", "cancelled"):
+                return None
+            tr = state.get("test_report") or {}
+            raw = tr.get("raw_output") if isinstance(tr, dict) else tr
+            rec = ""
+            report_obj: Optional[Dict[str, Any]] = None
+            if isinstance(raw, str) and raw.strip().startswith("{"):
+                try:
+                    report_obj = json.loads(raw)
+                    rec = str((report_obj or {}).get("recommendation") or "")
+                except json.JSONDecodeError:
+                    rec = ""
+            elif isinstance(raw, dict):
+                report_obj = raw
+                rec = str(raw.get("recommendation") or "")
+            if rec and rec.upper() not in ("APPROVED", "PASS", "CONDITIONAL_APPROVAL"):
+                # Still allow finalize when last stage is test_report and tests exist
+                if not isinstance(raw, (str, dict)) or not raw:
+                    return None
+            from core.api.core_facade import get_pipeline_run_store
+            store = get_pipeline_run_store()
+            run = store.get_run_by_project(project_id)
+            if not run:
+                return None
+            # Prefer true-test meta.pass_rate (0-100 or 0-1); do not treat 0.0 as missing via `or`
+            rate = _pass_rate_fraction_from_report(report_obj)
+            if rate is None:
+                for cand in (state.get("pass_rate"), run.get("pass_rate"), 1.0):
+                    try:
+                        if cand is None:
+                            continue
+                        rate = float(cand)
+                        break
+                    except (TypeError, ValueError):
+                        continue
+            if rate is None:
+                rate = 1.0
+            if rate > 1.0:
+                rate = rate / 100.0
+            rate = max(0.0, min(1.0, float(rate)))
+            store.atomic_update_phase_and_hitl(
+                run["run_id"],
+                phase="done",
+                current_stage_idx=int(run.get("current_stage_idx") or state.get("_current_stage_idx") or 0),
+                pass_rate=rate,
+                hitl_stage_id="",
+                hitl_phase_name="",
+                hitl_output_artifact="",
+                error="",
+                _progress_json="",
+            )
+            state["phase"] = "done"
+            state["pass_rate"] = rate
+            state["_test_pass_rate"] = rate * 100.0
+            state["_pass_rate_source"] = "true_test"
+            await self._save_state(project_id, state)
+            return {"project_id": project_id, "phase": "done", "status": "ok", "via": "finalize_terminal"}
+        except Exception as e:
+            _log.warning("_finalize_hitl_if_terminal failed for %s: %s", project_id, str(e)[:200])
+            return None
 
     async def start_fix(self, project_id: str) -> Dict[str, Any]:
         """Approve the current HITL pause on Core (non-blocking)."""
@@ -1689,26 +2588,210 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
             client = PipelineOrchestratorClient()
             resp = await client.resolve_hitl(project_id, action="reject", feedback=feedback)
+            friction = self._record_t4a_friction(
+                "hitl_reject",
+                project_id=project_id,
+                detail=feedback,
+            )
             if resp.get("status") == "resolved":
-                return {"project_id": project_id, "phase": "executing", "status": "ok"}
+                out = {"project_id": project_id, "phase": "executing", "status": "ok"}
+                if friction.get("cta"):
+                    out["friction_share"] = friction["cta"]
+                return out
             return {"status": "error", "detail": resp.get("detail", "Core unavailable")}
         except Exception as e:
             _log.warning("reject_stage failed for %s: %s", project_id, str(e)[:200])
             raise
 
-    async def regenerate_stage(self, project_id: str, stage_id: str, feedback: str) -> Dict[str, Any]:
+    def _record_t4a_friction(
+        self,
+        signal: str,
+        *,
+        project_id: str,
+        stage_id: str = "",
+        detail: str = "",
+        confirmed: bool = False,
+    ) -> Dict[str, Any]:
+        """T4a: best-effort local learning + CTA on pipeline/project state."""
+        try:
+            from core.api.core_facade import (
+                attach_friction_cta,
+                note_regenerate,
+                record_friction_event,
+            )
+
+            if signal == "regenerate_count":
+                result = note_regenerate(project_id, stage_id, detail=detail)
+            else:
+                result = record_friction_event(
+                    signal,
+                    project_id=project_id,
+                    stage_id=stage_id,
+                    detail=detail,
+                    confirmed=confirmed,
+                )
+            cta = result.get("cta") if isinstance(result, dict) else None
+            if cta:
+                try:
+                    st = self._load_pipeline_state(project_id) or {}
+                    if isinstance(st, dict):
+                        attach_friction_cta(st, cta)
+                        self._save_state(project_id, st)
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "friction cta state persist skipped", exc_info=True
+                    )
+                proj = self._projects.get(project_id)
+                if isinstance(proj, dict):
+                    proj["_friction_share_cta"] = dict(cta)
+                    try:
+                        self._save_projects()
+                    except Exception:
+                        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+            return result if isinstance(result, dict) else {}
+        except Exception:
+            logging.getLogger(__name__).debug("t4a friction skipped", exc_info=True)
+            return {}
+
+    def confirm_friction_share(
+        self,
+        project_id: str,
+        *,
+        stage_id: str = "",
+        signal: str = "regenerate_count",
+        detail: str = "",
+    ) -> Dict[str, Any]:
+        """F-T4: user confirms regenerate friction → local learning draft."""
+        try:
+            from core.api.core_facade import (
+                attach_friction_cta,
+                clear_friction_cta,
+                confirm_friction_share as _confirm,
+            )
+
+            result = _confirm(
+                project_id=project_id,
+                stage_id=stage_id,
+                signal=signal,
+                detail=detail,
+            )
+            try:
+                st = self._load_pipeline_state(project_id) or {}
+                if isinstance(st, dict):
+                    if result.get("cta"):
+                        attach_friction_cta(st, result["cta"])
+                    else:
+                        clear_friction_cta(st)
+                    self._save_state(project_id, st)
+            except Exception:
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+            proj = self._projects.get(project_id)
+            if isinstance(proj, dict):
+                if result.get("cta"):
+                    proj["_friction_share_cta"] = result["cta"]
+                else:
+                    proj.pop("_friction_share_cta", None)
+                try:
+                    self._save_projects()
+                except Exception:
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+            return {"status": "ok", **(result if isinstance(result, dict) else {})}
+        except Exception as e:
+            return {"status": "error", "detail": str(e)[:200]}
+
+    async def regenerate_stage(
+        self,
+        project_id: str,
+        stage_id: str,
+        feedback: str,
+        *,
+        preserve_artifacts: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
         """Delegate stage regeneration to Core (single authority, non-blocking).
 
         Returns immediately — the pipeline re-runs from the target stage on Core.
+        ``preserve_artifacts`` keeps frozen exam suites (test_cases) across fix runs.
         """
         self._sync_team_stages(project_id)
         proj = self._projects.get(project_id, {})
         config = self._build_stage_config(project_id, proj)
         from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
         client = PipelineOrchestratorClient()
-        result = await client.stage_operation(project_id, "regenerate", stage_id, feedback, config)
+        preserve = list(preserve_artifacts or [])
+        # Default: re-running the executor stage keeps the exam suite frozen
+        sid = str(stage_id or "").strip().lower()
+        if not preserve and sid in (
+            "test_executor",
+            "test_report",
+            "agent_true_test",
+        ):
+            preserve = ["test_cases", "test_questions"]
+        # Also match by output_artifact / agent_id from team_stages
+        if not preserve:
+            for s in proj.get("team_stages") or []:
+                if not isinstance(s, dict):
+                    continue
+                if stage_id in (
+                    str(s.get("id") or ""),
+                    str(s.get("agent_id") or ""),
+                    str(s.get("output_artifact") or ""),
+                ):
+                    agent = str(s.get("agent_id") or "").lower()
+                    art = str(s.get("output_artifact") or "").lower()
+                    if agent in ("test_executor",) or art in ("test_report",):
+                        preserve = ["test_cases", "test_questions"]
+                    break
+        # F3: prepend frozen handoff envelope so regenerate has next/known_issues
+        _feedback = str(feedback or "")
+        try:
+            from core.api.core_facade import format_handoff_regenerate_feedback
+            st = self._load_pipeline_state(project_id) or {}
+            handoff = None
+            bucket = st.get("_handoff") if isinstance(st.get("_handoff"), dict) else {}
+            art_key = ""
+            for s in proj.get("team_stages") or []:
+                if not isinstance(s, dict):
+                    continue
+                if stage_id in (
+                    str(s.get("id") or ""),
+                    str(s.get("agent_id") or ""),
+                    str(s.get("output_artifact") or ""),
+                ):
+                    art_key = str(s.get("output_artifact") or "")
+                    break
+            if art_key:
+                art = st.get(art_key)
+                if isinstance(art, dict) and isinstance(art.get("handoff"), dict):
+                    handoff = art["handoff"]
+                elif art_key in bucket:
+                    handoff = bucket[art_key]
+            if handoff:
+                env = format_handoff_regenerate_feedback(handoff)
+                if env and env not in _feedback:
+                    _feedback = f"{env}\n\n{_feedback}".strip()
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "handoff regenerate feedback skipped", exc_info=True
+            )
+        result = await client.stage_operation(
+            project_id,
+            "regenerate",
+            stage_id,
+            _feedback,
+            config,
+            preserve_artifacts=preserve or None,
+        )
+        friction = self._record_t4a_friction(
+            "regenerate_count",
+            project_id=project_id,
+            stage_id=stage_id,
+            detail=_feedback[:200],
+        )
         if result.get("status") in ("accepted", "conflict"):
-            return {"project_id": project_id, "phase": "executing", "status": "regenerating"}
+            out = {"project_id": project_id, "phase": "executing", "status": "regenerating"}
+            if friction.get("cta"):
+                out["friction_share"] = friction["cta"]
+            return out
         return {"status": "error", "detail": result.get("detail", "Core unavailable")}
 
     async def locate_max_error_node(self, project_id: str, failed_stage_ids: List[str]) -> Dict[str, Any]:
@@ -1747,6 +2830,209 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             return {"status": "error", "hypotheses": [],
                     "max_error_stage": None, "fix_plan": list(failed_stage_ids or []),
                     "detail": str(e)[:200]}
+
+    async def fix_from_test_report(
+        self,
+        project_id: str,
+        test_report: str = "",
+        *,
+        regenerate_test_cases: bool = False,
+    ) -> Dict[str, Any]:
+        """Deterministic one-click fix: map bugs → stages → regenerate (no ReAct agent).
+
+        Prefer this over ``test_report_orchestrator`` — that path is slow and often
+        returns without calling regenerate when the LLM drifts.
+
+        For ``no_platform_handler``-only reports: remap agent_app + test_cases skill
+        names onto the platform media catalog (no LLM), then re-run test_executor.
+
+        By default **freezes** ``test_cases`` (no qa LLM rewrite). Pass
+        ``regenerate_test_cases=True`` to allow rewriting the exam suite.
+        """
+        from core.api.core_facade import plan_fix_from_report as _plan
+        from core.api.core_facade import apply_no_platform_handler_fixes as _apply_media
+
+        if not test_report:
+            try:
+                st = await self._get_state_via_core(project_id)
+                tr = (st.get("state") or {}).get("test_report") if isinstance(st, dict) else None
+                if isinstance(tr, dict):
+                    test_report = str(tr.get("raw_output") or "")
+                elif isinstance(tr, str):
+                    test_report = tr
+            except Exception as e:  # noqa: best-effort
+                _log.warning("fix_from_test_report: state load failed %s: %s", project_id, str(e)[:160])
+
+        if not str(test_report or "").strip():
+            # Fallback: last written test_report artifact on disk
+            try:
+                out_fp = os.path.join(os.path.expanduser("~/.aiplat/output"), project_id, "test_report.json")
+                if os.path.isfile(out_fp):
+                    with open(out_fp, "r", encoding="utf-8") as fh:
+                        test_report = fh.read()
+            except Exception as e:  # noqa: best-effort
+                _log.warning("fix_from_test_report: disk fallback failed %s: %s", project_id, str(e)[:120])
+
+        if not str(test_report or "").strip():
+            return {"status": "no_test_report", "fix_plan": [], "total_bugs": 0}
+
+        proj = self._projects.get(project_id, {}) or {}
+        team_stages = list(proj.get("team_stages") or [])
+        plan = _plan(
+            project_id,
+            test_report,
+            team_stages,
+            regenerate_test_cases=regenerate_test_cases,
+        )
+        if plan.get("status") == "no_bugs" or not plan.get("fix_plan"):
+            return {
+                "status": "no_bugs",
+                "failed_stage_ids": plan.get("failed_stage_ids") or [],
+                "fix_plan": [],
+                "total_bugs": int(plan.get("total_bugs") or 0),
+                "preserve_artifacts": plan.get("preserve_artifacts") or [],
+                "regenerate_test_cases": bool(regenerate_test_cases),
+            }
+
+        preserve = list(plan.get("preserve_artifacts") or [])
+        if not regenerate_test_cases and not preserve:
+            preserve = ["test_cases", "test_questions"]
+
+        # ── Deterministic media skill remap (no LLM agent_engineer) ──
+        if plan.get("mode") == "deterministic_media_remap":
+            aa_raw = ""
+            tc_raw: Any = None
+            try:
+                st_wrap = await self._get_state_via_core(project_id)
+                st = (st_wrap.get("state") if isinstance(st_wrap, dict) else None) or {}
+                aa = st.get("agent_app") if isinstance(st, dict) else None
+                if isinstance(aa, dict):
+                    aa_raw = str(aa.get("raw_output") or "")
+                elif isinstance(aa, str):
+                    aa_raw = aa
+                tc = st.get("test_cases") if isinstance(st, dict) else None
+                if isinstance(tc, dict):
+                    tc_raw = tc.get("raw_output") if tc.get("raw_output") is not None else tc
+                else:
+                    tc_raw = tc
+            except Exception as e:  # noqa: best-effort
+                _log.warning("fix_from_test_report: load artifacts failed %s: %s", project_id, str(e)[:160])
+
+            # Disk fallback
+            if not aa_raw:
+                try:
+                    p = os.path.join(os.path.expanduser("~/.aiplat/output"), project_id, "agent_app.json")
+                    if os.path.isfile(p):
+                        with open(p, "r", encoding="utf-8") as fh:
+                            aa_raw = fh.read()
+                except Exception:
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+            if tc_raw is None:
+                try:
+                    p = os.path.join(os.path.expanduser("~/.aiplat/output"), project_id, "test_cases.json")
+                    if os.path.isfile(p):
+                        with open(p, "r", encoding="utf-8") as fh:
+                            tc_raw = fh.read()
+                except Exception:
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+
+            applied = _apply_media(
+                agent_app_raw=aa_raw or "",
+                test_cases=tc_raw,
+                test_report=test_report,
+                remaps=plan.get("remaps") or {},
+            )
+            errors: List[str] = []
+            fixed = 0
+            meta_applied = applied.get("meta") if isinstance(applied.get("meta"), dict) else {}
+            try:
+                # Only rewrite agent_app when skill names actually remapped
+                if applied.get("agent_app_raw") and meta_applied.get("agent_app_changed"):
+                    await self.update_stage_artifact(
+                        project_id, "agent_app", str(applied.get("agent_app_raw") or "")
+                    )
+                    fixed += 1
+            except Exception as e:
+                errors.append(f"agent_app:{str(e)[:120]}")
+            try:
+                # Only rewrite test_cases when skill/param aliases changed — never LLM-rewrite questions
+                tc_out = applied.get("test_cases")
+                if tc_out is not None and (
+                    meta_applied.get("test_cases_changed") or meta_applied.get("params_normalized")
+                ):
+                    content = (
+                        tc_out
+                        if isinstance(tc_out, str)
+                        else json.dumps(tc_out, ensure_ascii=False, indent=2)
+                    )
+                    await self.update_stage_artifact(project_id, "test_cases", content)
+                    fixed += 1
+            except Exception as e:
+                errors.append(f"test_cases:{str(e)[:120]}")
+
+            # Re-run true tests only (executor stage) — do not regenerate qa_agent
+            for stage in plan.get("fix_plan") or []:
+                try:
+                    r = await self.regenerate_stage(
+                        project_id,
+                        str(stage),
+                        "",
+                        preserve_artifacts=preserve,
+                    )
+                    if r.get("status") in ("regenerating", "ok", "accepted"):
+                        fixed += 1
+                    else:
+                        errors.append(f"{stage}:{r.get('detail') or r.get('status')}")
+                except Exception as e:
+                    errors.append(f"{stage}:{str(e)[:120]}")
+
+            return {
+                "status": "regenerating" if fixed else "error",
+                "mode": "deterministic_media_remap",
+                "fixed_stages": fixed,
+                "total_bugs": int(plan.get("total_bugs") or 0),
+                "failed_stage_ids": plan.get("failed_stage_ids") or [],
+                "fix_plan": plan.get("fix_plan") or [],
+                "remaps": (applied.get("meta") or {}).get("remaps") or plan.get("remaps") or {},
+                "errors": errors,
+                "project_id": project_id,
+                "phase": "executing" if fixed else "done",
+                "preserve_artifacts": preserve,
+                "regenerate_test_cases": False,
+            }
+
+        feedback = str(plan.get("feedback") or test_report)[:12000]
+        if not feedback.strip():
+            feedback = "Fix failures from test_report bug_summary (deterministic one-click fix)."
+        fixed = 0
+        errors = []
+        for stage in plan.get("fix_plan") or []:
+            try:
+                r = await self.regenerate_stage(
+                    project_id,
+                    str(stage),
+                    feedback,
+                    preserve_artifacts=preserve,
+                )
+                if r.get("status") in ("regenerating", "ok", "accepted"):
+                    fixed += 1
+                else:
+                    errors.append(f"{stage}:{r.get('detail') or r.get('status')}")
+            except Exception as e:  # noqa: continue other stages
+                errors.append(f"{stage}:{str(e)[:120]}")
+
+        return {
+            "status": "regenerating" if fixed else "error",
+            "fixed_stages": fixed,
+            "total_bugs": int(plan.get("total_bugs") or 0),
+            "failed_stage_ids": plan.get("failed_stage_ids") or [],
+            "fix_plan": plan.get("fix_plan") or [],
+            "errors": errors,
+            "project_id": project_id,
+            "phase": "executing" if fixed else "done",
+            "preserve_artifacts": preserve,
+            "regenerate_test_cases": bool(regenerate_test_cases),
+        }
 
     async def build_run_report(self, project_id: str, failed_stage_ids: List[str],
                                test_report: str = "", cost_used_usd: float = 0.0,
@@ -1888,6 +3174,12 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             return {"status": "error", "detail": "项目不存在"}
         if not proj.get("confirmed_prd"):
             return {"status": "error", "detail": "没有已确认的 PRD，请先完成 PM 对话"}
+        try:
+            from core.api.core_facade import maybe_autosync_team_harness
+
+            maybe_autosync_team_harness(background=True)
+        except Exception:
+            logging.getLogger(__name__).debug("pipeline autosync kick skipped", exc_info=True)
         result = await self.rebuild_project(project_id)
         return {"status": "ok", "run_id": project_id, "project_id": project_id, "phase": "executing", **result}
 
@@ -1940,23 +3232,63 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                 proj.pop("merge_previews", None)  # stale previews invalidated
                 self._save_projects()
         # Clear previous pipeline state AND output cache (prevents stale artifact skipping)
+        # F5a: promote last bloat metrics → baseline before wipe
+        try:
+            from core.api.core_facade import STATE_BLOAT_KEY
+            _prev = None
+            _st = self._runs.get(project_id) or self._load_pipeline_state(project_id) or {}
+            if isinstance(_st, dict) and isinstance(_st.get(STATE_BLOAT_KEY), dict):
+                _prev = dict(_st[STATE_BLOAT_KEY])
+            elif isinstance(proj.get("bloat_metrics"), dict):
+                _prev = dict(proj["bloat_metrics"])
+            if _prev:
+                proj["bloat_baseline"] = {
+                    k: _prev.get(k)
+                    for k in ("loc", "loc_non_import", "new_files", "new_deps", "schema_version")
+                    if k in _prev or k == "schema_version"
+                }
+                self._save_projects()
+        except Exception:
+            logging.getLogger(__name__).debug("bloat baseline promote skipped", exc_info=True)
         self._runs.pop(project_id, None)
         import shutil
         out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
         if os.path.isdir(out_dir):
             try: shutil.rmtree(out_dir)
             except OSError: pass  # noqa: cleanup-best-effort
-        # ── Load PM chat history BEFORE deleting chat session file ──
+        # ── Load PM chat history (keep chat file — dialogue is rebuild SoT) ──
         _pm_messages = []
         _chat_session = self._load_chat_session(project_id)
         if isinstance(_chat_session, dict):
             for m in (_chat_session.get("messages") or []):
                 role = m.get("role", "")
-                content = str(m.get("content", "") or "")[:2000]
+                # Keep enough of the requirement table / decisions; 2k truncated the feature matrix
+                content = str(m.get("content", "") or "")[:8000]
                 if role in ("user", "assistant") and content:
                     _pm_messages.append({"role": role, "content": content})
-        # Clean pipeline state + chat session files (chat already loaded above)
-        for fname in (f"{project_id}.json", f"{project_id}_chat.json"):
+        # If chat was lost (prior rebuild deleted it), reconstruct from confirmed PRD
+        if not _pm_messages:
+            _cp = proj.get("confirmed_prd")
+            if isinstance(_cp, dict) and (_cp.get("title") or _cp.get("functional_requirements")):
+                try:
+                    from core.api.core_facade import render_prd_markdown
+                    _md = render_prd_markdown(_cp)
+                except Exception:
+                    _md = ""
+                _desc = str(proj.get("description") or "").strip()
+                if _desc:
+                    _pm_messages.append({"role": "user", "content": _desc[:8000]})
+                if _md:
+                    _pm_messages.append({
+                        "role": "assistant",
+                        "content": (
+                            "以下为已确认 PRD（重建时须覆盖生成，但不得扩大范围；"
+                            "禁止发明对话/基线未出现的 OCR/ASR/额外 FR）：\n\n"
+                            + _md[:8000]
+                        ),
+                    })
+        # Clean pipeline state only — do NOT delete *_chat.json (requirement SoT)
+        for fname in (f"{project_id}.json",):
             fpath = os.path.join(_BUILDER_STATES_DIR, fname)
             try:
                 if os.path.exists(fpath):
@@ -1997,6 +3329,28 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         def _read() -> Dict[str, Any]:
             store = get_pipeline_run_store()
             state = store.get_full_state(project_id) or {}
+            # Keep card pass_rate aligned with true-test report (avoid sticky 0 after regenerate)
+            try:
+                tr = state.get("test_report") or {}
+                raw = tr.get("raw_output") if isinstance(tr, dict) else tr
+                report = None
+                if isinstance(raw, str) and raw.strip().startswith("{"):
+                    report = json.loads(raw)
+                elif isinstance(raw, dict):
+                    report = raw
+                frac = _pass_rate_fraction_from_report(report)
+                if frac is not None:
+                    cur = state.get("pass_rate")
+                    try:
+                        cur_f = float(cur) if cur is not None else None
+                    except (TypeError, ValueError):
+                        cur_f = None
+                    if cur_f is None or abs(cur_f - frac) > 1e-6:
+                        state["pass_rate"] = frac
+                        state["_test_pass_rate"] = frac * 100.0
+                        state["_pass_rate_source"] = "true_test"
+            except Exception:
+                pass  # noqa: best-effort display sync
             return {
                 "project_id": project_id,
                 "phase": state.get("phase", "idle"),
@@ -2060,6 +3414,21 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                 for s in stages
             ],
         }
+        # B: inject coding intensity (code/hybrid → full default)
+        try:
+            from core.api.core_facade import (
+                default_intensity_for_factory_mode,
+                normalize_coding_intensity,
+            )
+            _ci = str(proj.get("coding_intensity") or "").strip()
+            if not _ci:
+                _ci = default_intensity_for_factory_mode(str(proj.get("factory_mode") or ""))
+            config["coding_intensity"] = normalize_coding_intensity(_ci)
+            proj["coding_intensity"] = config["coding_intensity"]
+        except Exception:
+            logging.getLogger(__name__).debug("coding_intensity inject skipped", exc_info=True)
+        if isinstance(proj.get("bloat_baseline"), dict):
+            config["bloat_baseline"] = proj.get("bloat_baseline")
 
         # ── L2/L3: pass imported-repo context + pytest-gate escape to Core (§3.3/§3.5/§3.8) ──
         # Platform assembles the business text (behavior contract, intent anchors);
@@ -2099,24 +3468,64 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         return proj.get("deploy_dir") or None
 
     async def update_stage_artifact(self, project_id: str, stage_id: str, content: str) -> Dict[str, Any]:
-        """Update a stage's raw_output artifact — allows user to manually edit before rebuild."""
-        state = self._load_pipeline_state(project_id)
-        if not state:
+        """Update a stage's raw_output artifact — allows user to manually edit before rebuild.
+
+        State SoT is Core pipeline_run_store (SQLite + output_dir files). Local
+        ``builder_states/*.json`` is optional cache and often missing after
+        Core-owned runs — must fall back to Core read/write.
+        """
+        # 1) Resolve current state: memory → local file → Core store
+        state = self._runs.get(project_id) or self._load_pipeline_state(project_id)
+        if not state or not isinstance(state, dict) or state.get("phase") == "idle":
+            try:
+                core_wrap = await self._get_state_via_core(project_id)
+                core_state = core_wrap.get("state") if isinstance(core_wrap, dict) else None
+                if isinstance(core_state, dict) and core_state.get("phase") not in (None, "", "idle"):
+                    state = dict(core_state)
+            except Exception as e:
+                _log.warning("update_stage_artifact: core state load failed for %s: %s",
+                             project_id, str(e)[:200])
+        if not state or not isinstance(state, dict):
             raise ValueError("no pipeline state")
-        session = self._rebuild_session(project_id)
-        if not session:
-            raise ValueError("no session")
-        # Match stage by id, agent_id, or output_artifact
-        matched_stage = None
+
+        # 2) Match stage from project team_stages (preferred) or rebuilt session
+        matched_stage_id = stage_id
         matched_key = stage_id
-        for s in session.get_stages():
-            if s.id == stage_id or s.agent_id == stage_id or s.output_artifact == stage_id:
-                matched_stage = s
-                matched_key = s.output_artifact or s.agent_id or s.id
+        matched_agent = ""
+        matched = False
+        proj = self._projects.get(project_id, {}) or {}
+        for s in (proj.get("team_stages") or []):
+            if not isinstance(s, dict):
+                continue
+            sid = str(s.get("id") or "")
+            aid = str(s.get("agent_id") or "")
+            oart = str(s.get("output_artifact") or "")
+            if stage_id in (sid, aid, oart) and stage_id:
+                matched = True
+                matched_stage_id = sid or aid or stage_id
+                matched_key = oart or aid or sid or stage_id
+                matched_agent = aid
                 break
-        if not matched_stage:
-            raise ValueError(f"stage not found: {stage_id}")
-        # Update artifact in pipeline state
+        if not matched:
+            session = self._rebuild_session(project_id)
+            if session:
+                for s in session.get_stages():
+                    if s.id == stage_id or s.agent_id == stage_id or s.output_artifact == stage_id:
+                        matched = True
+                        matched_stage_id = s.id
+                        matched_key = s.output_artifact or s.agent_id or s.id
+                        matched_agent = s.agent_id or ""
+                        break
+        if not matched:
+            # Last resort: artifact already present in state under this key
+            if stage_id in state and isinstance(state.get(stage_id), (dict, str)):
+                matched = True
+                matched_key = stage_id
+                matched_stage_id = stage_id
+            else:
+                raise ValueError(f"stage not found: {stage_id}")
+
+        # 3) Update in-memory / local cache
         state[matched_key] = {
             "raw_output": content,
             "source": "user_edited",
@@ -2124,12 +3533,89 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             "_edited_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         }
         await self._save_state(project_id, state)
+
+        # 4) Persist to Core SoT so regenerate / UI poll see the edit
+        self._persist_edited_artifact_to_core(
+            project_id,
+            stage_id=matched_stage_id,
+            artifact_key=matched_key,
+            content=content,
+            agent_id=matched_agent,
+            state=state,
+        )
+
         return {
             "project_id": project_id,
-            "stage_id": matched_stage.id,
+            "stage_id": matched_stage_id,
             "artifact_key": matched_key,
             "status": "updated",
         }
+
+    def _persist_edited_artifact_to_core(
+        self,
+        project_id: str,
+        *,
+        stage_id: str,
+        artifact_key: str,
+        content: str,
+        agent_id: str = "",
+        state: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Write edited artifact to Core run store + output_dir file (best-effort)."""
+        try:
+            from core.api.core_facade import get_pipeline_run_store
+            store = get_pipeline_run_store()
+            run = store.get_run_by_project(project_id)
+            if not run:
+                _log.warning("persist edited artifact: no core run for %s", project_id)
+                return
+            run_id = run["run_id"]
+            out_dir = ""
+            if isinstance(state, dict):
+                out_dir = str(state.get("output_dir") or "")
+            out_dir = out_dir or str(run.get("output_dir") or "")
+            if not out_dir:
+                out_dir = os.path.join(
+                    os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+                    "output",
+                    project_id,
+                )
+            os.makedirs(out_dir, exist_ok=True)
+            path = os.path.join(out_dir, f"{artifact_key}.json")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+            stages = store.get_stages(run_id) or []
+            existing = None
+            for s in stages:
+                if s.get("stage_id") == stage_id or s.get("artifact_key") == artifact_key \
+                        or s.get("output_artifact") == artifact_key:
+                    existing = s
+                    break
+            store.upsert_stage(
+                run_id,
+                (existing or {}).get("stage_id") or stage_id,
+                stage_idx=int((existing or {}).get("stage_idx") or 0),
+                agent_id=str((existing or {}).get("agent_id") or agent_id or ""),
+                skill_name=str((existing or {}).get("skill_name") or ""),
+                status="completed",
+                progress=(None),
+                artifact_key=artifact_key,
+                artifact_output=path,
+                elapsed_sec=float((existing or {}).get("elapsed_sec") or 0),
+                error_message="",
+                output_artifact=artifact_key,
+                hitl=bool((existing or {}).get("hitl")),
+                hitl_phase=str((existing or {}).get("hitl_phase") or ""),
+                agent_name=str((existing or {}).get("agent_name") or ""),
+                input_artifacts=str((existing or {}).get("input_artifacts") or ""),
+            )
+        except Exception as e:
+            _log.warning(
+                "persist edited artifact to core failed for %s/%s: %s",
+                project_id, artifact_key, str(e)[:300],
+                exc_info=True,
+            )
 
     async def get_project_state(self, project_id: str) -> Dict[str, Any]:
         """Read pipeline state from SQLite — never blocked by Core's event loop.
@@ -2149,7 +3635,65 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                 runs[-1]["phase"] = result["phase"]
                 runs[-1]["finished_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
                 proj["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-                self._save_projects()
+            # F5a: sync bloat metrics onto project for card / next-build baseline
+            try:
+                from core.api.core_facade import STATE_BLOAT_KEY, compare_bloat, write_bloat_metrics
+                st = result.get("state") if isinstance(result.get("state"), dict) else {}
+                metrics = st.get(STATE_BLOAT_KEY) if isinstance(st, dict) else None
+                if not isinstance(metrics, dict) and isinstance(st, dict) and result.get("phase") == "done":
+                    metrics = write_bloat_metrics(
+                        st,
+                        baseline=proj.get("bloat_baseline")
+                        if isinstance(proj.get("bloat_baseline"), dict)
+                        else None,
+                    )
+                    result["state"] = st
+                if isinstance(metrics, dict):
+                    if "vs_baseline" not in metrics and isinstance(proj.get("bloat_baseline"), dict):
+                        metrics = dict(metrics)
+                        metrics["vs_baseline"] = compare_bloat(metrics, proj["bloat_baseline"])
+                        if isinstance(st, dict):
+                            st[STATE_BLOAT_KEY] = metrics
+                    proj["bloat_metrics"] = {
+                        k: metrics.get(k)
+                        for k in ("loc", "loc_non_import", "new_files", "new_deps", "vs_baseline", "schema_version")
+                        if k in metrics
+                    }
+                    if isinstance(result.get("state"), dict):
+                        result["state"][STATE_BLOAT_KEY] = metrics
+            except Exception:
+                logging.getLogger(__name__).debug("bloat metrics sync skipped", exc_info=True)
+            self._save_projects()
+
+        # F-T4: surface friction CTA for Factory polling
+        try:
+            st = result.get("state") if isinstance(result.get("state"), dict) else {}
+            cta = None
+            if isinstance(st, dict):
+                cta = st.get("_friction_share_cta")
+            proj = self._projects.get(project_id) or {}
+            if not cta and isinstance(proj, dict):
+                cta = proj.get("_friction_share_cta")
+            if isinstance(cta, dict) and cta:
+                result["friction_share"] = cta
+        except Exception:
+            logging.getLogger(__name__).debug("friction_share state sync skipped", exc_info=True)
+
+        # F-T5: metrics digest slice on completion / failure
+        try:
+            phase = str(result.get("phase") or "")
+            if phase in ("done", "failed", "completed"):
+                from core.api.core_facade import build_team_digest
+
+                proj = self._projects.get(project_id) or {}
+                dig = build_team_digest(project_id=project_id, project=proj)
+                result["team_digest"] = dig
+                if isinstance(proj, dict):
+                    proj["_team_digest"] = dig
+                if isinstance(result.get("state"), dict):
+                    result["state"]["_team_digest"] = dig
+        except Exception:
+            logging.getLogger(__name__).debug("team_digest sync skipped", exc_info=True)
         return result
 
     # ── Pipeline state persistence (per-project files, survives restart) ──
@@ -2218,6 +3762,34 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             _log.warning("Failed to load pipeline state for %s: %s", project_id, str(e)[:200])
         return None
 
+    def _resolve_team_template_name(self, proj: dict) -> str:
+        """Map project team_id → YAML template name (default/code/hybrid).
+
+        Created teams use opaque ids like ``team_abc123``; those are not YAML
+        filenames. Prefer ``team_template`` / factory_mode, then fall back to
+        ``default`` (Agent 工厂).
+        """
+        from core.api.core_facade import load_team_template
+
+        tid = str(proj.get("team_id") or "").strip()
+        if tid and load_team_template(tid):
+            return tid
+        explicit = str(
+            proj.get("team_template")
+            or proj.get("factory_team_template")
+            or ""
+        ).strip()
+        if explicit and load_team_template(explicit):
+            return explicit
+        mode = str(
+            proj.get("factory_mode")
+            or proj.get("architecture_mode")
+            or "agent"
+        ).strip().lower()
+        return {"agent": "default", "code": "code", "hybrid": "hybrid"}.get(
+            mode, "default"
+        )
+
     def _sync_team_stages(self, project_id: str) -> bool:
         """Re-sync team stages from YAML template to pick up latest config changes.
 
@@ -2231,8 +3803,8 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         try:
             from core.api.core_facade import _enrich_stage_from_agent
             from core.api.core_facade import load_team_template
-            _tid = proj.get("team_id") or "default"
-            tmpl = load_team_template(_tid)
+            _tmpl_name = self._resolve_team_template_name(proj)
+            tmpl = load_team_template(_tmpl_name)
             if tmpl and tmpl.stages:
                 stages = []
                 for i, s in enumerate(tmpl.stages):
@@ -2241,8 +3813,23 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                     stage.setdefault("order", i)
                     stage = _enrich_stage_from_agent(stage)
                     stages.append(stage)
+                try:
+                    from core.api.core_facade import (
+                        apply_factory_profile_to_stages,
+                        resolve_project_factory_profile,
+                    )
+                    apply_factory_profile_to_stages(
+                        stages, resolve_project_factory_profile(proj)
+                    )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "factory_profile apply on team re-sync skipped", exc_info=True
+                    )
                 proj["team_stages"] = stages
-                proj["team_id"] = _tid
+                proj["team_template"] = _tmpl_name
+                # Keep opaque team_id for UI; template name drives sync
+                if not proj.get("team_id"):
+                    proj["team_id"] = _tmpl_name
                 self._save_projects()
                 return True
         except Exception as e:
@@ -2369,16 +3956,70 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         return proj.get("last_test_report") or None
 
     async def runtime_auto_repair(self, project_id: str, max_rounds: int = 2) -> Dict[str, Any]:
-        """自动修复闭环：真实测试失败 → LLM 修复生成代码 → 写回部署目录 → 重跑验证。"""
-        from builder.app_runtime import auto_repair
+        """自动修复闭环：真实测试失败 → LLM 修复生成代码 → 写回部署目录 → 重跑验证。
+        F4: hard-cap max_rounds; persist repair_exhausted for UI/HITL."""
+        from builder.app_runtime import MAX_REPAIR_ATTEMPTS, auto_repair
+        try:
+            max_rounds = int(max_rounds)
+        except (TypeError, ValueError):
+            max_rounds = MAX_REPAIR_ATTEMPTS
+        max_rounds = max(1, min(max_rounds, MAX_REPAIR_ATTEMPTS))
         proj = self._projects.get(project_id, {})
         deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
-        return await auto_repair(project_id, deploy_dir=deploy_dir or None, max_rounds=max_rounds)
+        result = await auto_repair(project_id, deploy_dir=deploy_dir or None, max_rounds=max_rounds)
+        try:
+            proj["last_repair"] = {
+                "repaired": bool(result.get("repaired")),
+                "rounds": result.get("rounds"),
+                "repair_exhausted": bool(result.get("repair_exhausted")),
+                "next": result.get("next") or "",
+                "reason": result.get("reason") or "",
+            }
+            self._save_projects()
+        except Exception:
+            logging.getLogger(__name__).debug("persist last_repair skipped", exc_info=True)
+        if result.get("repair_exhausted"):
+            try:
+                friction = self._record_t4a_friction(
+                    "repair_exhausted",
+                    project_id=project_id,
+                    stage_id="",
+                    detail=str(result.get("reason") or "repair_exhausted"),
+                )
+                if friction.get("cta"):
+                    result["friction_share"] = friction["cta"]
+            except Exception:
+                logging.getLogger(__name__).debug("repair_exhausted friction skipped", exc_info=True)
+        return result
 
     async def runtime_smoke(self, project_id: str, keep_alive: bool = False) -> Dict[str, Any]:
-        """生成 app 冒烟测试（启动 + 健康探测 + 报告）。"""
-        from builder.app_runtime import smoke_test
-        return smoke_test(project_id, keep_alive=keep_alive)
+        """生成 app 冒烟测试（启动 + 健康探测 + 报告）。F4: persist openable on project."""
+        from builder.app_runtime import detect_runtime, smoke_test
+        proj = self._projects.get(project_id, {})
+        det = detect_runtime(project_id)
+        if not det.get("found"):
+            result = {
+                "smoke_passed": None,
+                "skipped": True,
+                "reason": "static_or_managed",
+                "openable": True,
+                "open_reason": "static_or_managed",
+                "e2e_smoke": {"passed": None, "reason": "static_or_managed"},
+            }
+        else:
+            result = smoke_test(project_id, keep_alive=keep_alive)
+            result["openable"] = bool(result.get("smoke_passed"))
+            result["open_reason"] = "healthy" if result["openable"] else "unhealthy"
+        try:
+            proj["last_runtime"] = {
+                "smoke": result,
+                "openable": bool(result.get("openable")),
+                "open_reason": result.get("open_reason") or "",
+            }
+            self._save_projects()
+        except Exception:
+            logging.getLogger(__name__).debug("persist last_runtime skipped", exc_info=True)
+        return result
 
 
 
@@ -2461,35 +4102,57 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
         import json
         out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
         final_state = os.path.join(out_dir, "_final_state.json")
+        code_text = ""
         if os.path.isfile(final_state):
             with open(final_state, "r") as _fs:
                 _state = json.load(_fs)
             code = _state.get("agent_app", {}) or _state.get("code", {})
             code_text = code.get("raw_output", "") if isinstance(code, dict) else str(code)
-            if code_text and "## FILE:" in code_text:
-                # Parse ## FILE: path\n...content... format
-                blocks = _re.split(r'^##\s*FILE:\s*', code_text, flags=_re.MULTILINE)
-                for block in blocks[1:]:  # skip everything before first FILE:
-                    lines = block.strip().split("\n", 1)
-                    if len(lines) >= 2:
-                        fpath = lines[0].strip()
-                        # Normalize path: expand ~ and strip prefix to relative path
-                        fpath = os.path.expanduser(fpath)
-                        if fpath.startswith(_app_prefix):
-                            fpath = fpath[len(_app_prefix):]
-                        fcontent = lines[1].strip()
-                        # Strip leading 'yaml' line if present (LLM sometimes adds it before ---)
-                        if fcontent.startswith("yaml\n"):
-                            fcontent = fcontent[4:]
-                        # Remove trailing ``` if present
-                        fcontent = _re.sub(r'^```\w*\n?', '', fcontent)
-                        fcontent = _re.sub(r'\n?```\s*$', '', fcontent)
-                        # Write file
-                        full_path = os.path.join(_app_home, fpath)
-                        os.makedirs(os.path.dirname(full_path), exist_ok=True)
-                        with open(full_path, "w", encoding="utf-8") as _fw:
-                            _fw.write(fcontent)
-                        _file_count += 1
+        # Fallback: stage artifact files (agent-mode pipelines often lack _final_state.json)
+        if not code_text:
+            for fname in ("agent_app.json", "code.json"):
+                p = os.path.join(out_dir, fname)
+                if not os.path.isfile(p):
+                    continue
+                try:
+                    with open(p, "r", encoding="utf-8") as _af:
+                        raw = _af.read()
+                    if "## FILE:" in raw:
+                        code_text = raw
+                        break
+                    blob = json.loads(raw[raw.find("{") : raw.rfind("}") + 1] if "{" in raw else raw)
+                    if isinstance(blob, dict):
+                        code_text = str(blob.get("raw_output") or "")
+                        if not code_text and ("## FILE:" in raw or "skill_routing" in raw):
+                            code_text = raw
+                    if code_text:
+                        break
+                except Exception:
+                    continue
+        if code_text and "## FILE:" in code_text:
+            # Parse ## FILE: path\n...content... format
+            blocks = _re.split(r'^##\s*FILE:\s*', code_text, flags=_re.MULTILINE)
+            for block in blocks[1:]:  # skip everything before first FILE:
+                lines = block.strip().split("\n", 1)
+                if len(lines) >= 2:
+                    fpath = lines[0].strip()
+                    # Normalize path: expand ~ and strip prefix to relative path
+                    fpath = os.path.expanduser(fpath)
+                    if fpath.startswith(_app_prefix):
+                        fpath = fpath[len(_app_prefix):]
+                    fcontent = lines[1].strip()
+                    # Strip leading 'yaml' line if present (LLM sometimes adds it before ---)
+                    if fcontent.startswith("yaml\n"):
+                        fcontent = fcontent[4:]
+                    # Remove trailing ``` if present
+                    fcontent = _re.sub(r'^```\w*\n?', '', fcontent)
+                    fcontent = _re.sub(r'\n?```\s*$', '', fcontent)
+                    # Write file
+                    full_path = os.path.join(_app_home, fpath)
+                    os.makedirs(os.path.dirname(full_path) or _app_home, exist_ok=True)
+                    with open(full_path, "w", encoding="utf-8") as _fw:
+                        _fw.write(fcontent)
+                    _file_count += 1
         # Also check stage snapshot files
         for fname in sorted(os.listdir(out_dir) if os.path.isdir(out_dir) else []):
             if fname.startswith("_stage_stage_1") and fname.endswith(".json"):
@@ -2512,7 +4175,7 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                             fcontent = _re.sub(r'^```\w*\n?', '', fcontent)
                             fcontent = _re.sub(r'\n?```\s*$', '', fcontent)
                             full_path = os.path.join(_app_home, fpath)
-                            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                            os.makedirs(os.path.dirname(full_path) or _app_home, exist_ok=True)
                             with open(full_path, "w", encoding="utf-8") as _fw:
                                 _fw.write(fcontent)
                             _file_count += 1
@@ -2543,27 +4206,164 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
         import json as _j2
         out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
         final_state = os.path.join(out_dir, "_final_state.json")
+        _state: dict = {}
+        fp_raw = ""
         if os.path.isfile(final_state):
             with open(final_state, "r") as _fs:
                 _state = _j2.load(_fs)
             fp = _state.get("frontend_pages", {})
             fp_raw = fp.get("raw_output", "") if isinstance(fp, dict) else str(fp)
-            if fp_raw:
-                # Try to parse app_page.json
+        if not fp_raw:
+            fp_path = os.path.join(out_dir, "frontend_pages.json")
+            if os.path.isfile(fp_path):
+                with open(fp_path, "r", encoding="utf-8") as _ff:
+                    fp_raw = _ff.read()
+        if fp_raw:
+            # Try to parse app_page.json
+            try:
+                fp_data = _j2.loads(fp_raw)
+                _app_page_json = _j2.dumps(fp_data, ensure_ascii=False, indent=2)
+            except Exception:
+                fp_data = {}
+                # Extract JSON block from mixed content
+                _jstart = fp_raw.find('{')
+                _jend = fp_raw.rfind('}')
+                if _jstart >= 0 and _jend > _jstart:
+                    try: fp_data = _j2.loads(fp_raw[_jstart:_jend+1]); _app_page_json = _j2.dumps(fp_data, ensure_ascii=False, indent=2)
+                    except Exception: pass  # noqa: cleanup-best-effort — temp file cleanup
+            if _app_page_json:
+                # Deterministic: skill inject + dual ingest + wizard I/O wiring
                 try:
-                    fp_data = _j2.loads(fp_raw)
-                    _app_page_json = _j2.dumps(fp_data, ensure_ascii=False, indent=2)
+                    from core.api.core_facade import (
+                        parse_app_page_payload,
+                        repair_frontend_pages_with_prd,
+                    )
+                    _aa = _state.get("agent_app") or _state.get("agent_manifest") or {}
+                    if not _aa:
+                        aa_path = os.path.join(out_dir, "agent_app.json")
+                        if os.path.isfile(aa_path):
+                            with open(aa_path, "r", encoding="utf-8") as _aaf:
+                                _aa = _aaf.read()
+                    _fixed, _meta = repair_frontend_pages_with_prd(
+                        _app_page_json if _app_page_json.strip().startswith("{") else fp_raw,
+                        _aa,
+                    )
+                    # Always prefer repaired page when parse succeeds (wizard_io /
+                    # result_sections / media_skill_canonical may be the only changes).
+                    _page, _ = parse_app_page_payload(_fixed)
+                    if _page:
+                        _app_page_json = _j2.dumps(_page, ensure_ascii=False, indent=2)
+                    # Promote media skill aliases in agent_app so routing/ui_bindings
+                    # match canonical stage.skill (report_assembly → report_json_export).
+                    try:
+                        from core.api.core_facade import (
+                            ensure_agent_app_skill_consistency,
+                            ensure_platform_media_skill_contracts,
+                            normalize_media_skill_names,
+                        )
+
+                        # Prefer repaired output/agent_app.json over stale pipeline state
+                        _aa_text = ""
+                        aa_path2 = os.path.join(out_dir, "agent_app.json")
+                        if os.path.isfile(aa_path2):
+                            with open(aa_path2, "r", encoding="utf-8") as _aaf2:
+                                _aa_text = _aaf2.read()
+                        if not _aa_text.strip():
+                            if isinstance(_aa, dict):
+                                _aa_text = str(
+                                    _aa.get("raw_output")
+                                    or _aa.get("markdown")
+                                    or ""
+                                ).strip()
+                                if not _aa_text and (
+                                    _aa.get("skill_routing") or _aa.get("ui_bindings")
+                                ):
+                                    _aa_text = _j2.dumps(
+                                        _aa, ensure_ascii=False, indent=2
+                                    )
+                            else:
+                                _aa_text = str(_aa or "")
+                        _aa_fixed, _aa_nmeta = normalize_media_skill_names(_aa_text)
+                        _aa_fixed2, _aa_cmeta = ensure_agent_app_skill_consistency(
+                            _aa_fixed
+                        )
+                        _aa_fixed3, _aa_pmeta = ensure_platform_media_skill_contracts(
+                            _aa_fixed2
+                        )
+                        _aa_changed = bool(
+                            (_aa_nmeta or {}).get("remapped")
+                            or (_aa_cmeta or {}).get("renamed")
+                            or (_aa_cmeta or {}).get("deduped_stems")
+                            or (_aa_cmeta or {}).get("routing_aligned")
+                            or (_aa_cmeta or {}).get("merged_speech")
+                            or (_aa_pmeta or {}).get("rewritten")
+                            or _aa_fixed3 != _aa_text
+                        )
+                        if _aa_changed:
+                            _aa_fixed = _aa_fixed3
+                            aa_out = os.path.join(out_dir, "agent_app.json")
+                            with open(aa_out, "w", encoding="utf-8") as _aaw:
+                                _aaw.write(_aa_fixed)
+                        else:
+                            _aa_fixed = _aa_fixed3
+                        # Always materialize top-level agent_manifest.json so
+                        # routing/ui_bindings stay aligned with app_page skills.
+                        _man_src = (
+                            _aa_fixed
+                            if (_aa_nmeta or {}).get("ok") is not False
+                            else _aa_text
+                        )
+                        _man_m = _re.search(
+                            r"(?ms)^#{2,4}\s*FILE:\s*[^\n]*agent_manifest\.json\s*\n(.*?)(?=^#{2,4}\s*FILE:|\Z)",
+                            _man_src,
+                        )
+                        _man_body = ""
+                        if _man_m:
+                            _man_body = _man_m.group(1).strip()
+                            if _man_body.startswith("```"):
+                                _man_body = _re.sub(
+                                    r"^```(?:json)?\s*", "", _man_body
+                                )
+                                _man_body = _re.sub(r"\s*```\s*$", "", _man_body)
+                        elif str(_man_src).strip().startswith("{"):
+                            _man_body = str(_man_src).strip()
+                        # Prefer innermost JSON object (manifest), not wrappers
+                        if _man_body:
+                            try:
+                                _man_obj = _j2.loads(_man_body)
+                            except Exception:
+                                _js = _man_body.find("{")
+                                _je = _man_body.rfind("}")
+                                _man_obj = (
+                                    _j2.loads(_man_body[_js : _je + 1])
+                                    if 0 <= _js < _je
+                                    else None
+                                )
+                            if isinstance(_man_obj, dict) and (
+                                _man_obj.get("skill_routing")
+                                or _man_obj.get("ui_bindings")
+                                or _man_obj.get("agents")
+                            ):
+                                _man_path = os.path.join(
+                                    _app_home, "agent_manifest.json"
+                                )
+                                with open(_man_path, "w", encoding="utf-8") as _mw:
+                                    _mw.write(
+                                        _j2.dumps(
+                                            _man_obj, ensure_ascii=False, indent=2
+                                        )
+                                    )
+                    except Exception:
+                        logging.getLogger(__name__).debug(
+                            "deploy agent_app media normalize skipped",
+                            exc_info=True,
+                        )
                 except Exception:
-                    fp_data = {}
-                    # Extract JSON block from mixed content
-                    _jstart = fp_raw.find('{')
-                    _jend = fp_raw.rfind('}')
-                    if _jstart >= 0 and _jend > _jstart:
-                        try: fp_data = _j2.loads(fp_raw[:_jend+1][_jstart:]); _app_page_json = _j2.dumps(fp_data, ensure_ascii=False, indent=2)
-                        except Exception: pass  # noqa: cleanup-best-effort — temp file cleanup
-                if _app_page_json:
-                    with open(os.path.join(_app_home, "app_page.json"), "w", encoding="utf-8") as _apf:
-                        _apf.write(_app_page_json)
+                    logging.getLogger(__name__).debug(
+                        "deploy app_page repair skipped", exc_info=True
+                    )
+                with open(os.path.join(_app_home, "app_page.json"), "w", encoding="utf-8") as _apf:
+                    _apf.write(_app_page_json)
     except Exception:
         logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
@@ -2571,8 +4371,10 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
     # P1-17 生成物契约校验（2026-08-26）：借鉴 SBA conformance 模式——注册前用
     # generated_conformance.py 校验（治理字段/schema 字段名/首行残留），不合规则跳过注册，
     # 防止"LLM 碰运气"产物污染工作区。
+    # F4：拒绝明细写入返回值 rejected_artifacts，供前端面板展示（不再仅打日志）。
     _reg_count = 0
     _rejected = 0
+    _rejected_artifacts: list = []
     try:
         import shutil
         import logging as _log_dep
@@ -2592,6 +4394,13 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                         _blog.warning("Deploy: 跳过注册不合规 AGENT.md %s: %s",
                                       _src, "; ".join(_violations[:3]))
                         record_rejection(project_id, "agent", _src, _violations)  # 原则 13 失败写回
+                        _rejected_artifacts.append({
+                            "kind": "agent",
+                            "name": _agent_name,
+                            "path": _src,
+                            "violations": list(_violations),
+                            "fix_hint": "对照 generated_conformance.yaml agent 契约补齐 frontmatter / SOP",
+                        })
                         continue
                     _dst = os.path.join(_agents_dir, _agent_name, "AGENT.md")
                     os.makedirs(os.path.dirname(_dst), exist_ok=True)
@@ -2609,6 +4418,16 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                         _blog.warning("Deploy: 跳过注册不合规 SKILL.md %s: %s",
                                       _src, "; ".join(_violations[:3]))
                         record_rejection(project_id, "skill", _src, _violations)  # 原则 13 失败写回
+                        _fix = "补齐缺失字段"
+                        if any("completion_criterion" in str(v) for v in _violations):
+                            _fix = "在 SKILL.md frontmatter 增加非空 completion_criterion（引用 PRD FR/AC）"
+                        _rejected_artifacts.append({
+                            "kind": "skill",
+                            "name": _skill_name,
+                            "path": _src,
+                            "violations": list(_violations),
+                            "fix_hint": _fix,
+                        })
                         continue
                     _dst = os.path.join(_skills_dir, _skill_name, "SKILL.md")
                     os.makedirs(os.path.dirname(_dst), exist_ok=True)
@@ -2654,8 +4473,8 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
 <body>
 <div class="header"><h1>🚀 {_name}</h1><p>{_desc}</p>
 <div class="actions">
-<a href="http://localhost:5173/app/apps/{project_id}" class="btn btn-primary">📱 使用应用</a>
-<a href="http://localhost:5173/app/factory" class="btn btn-secondary">🔧 返回应用工厂</a>
+<a href="/app/apps/{project_id}" class="btn btn-primary">📱 使用应用</a>
+<a href="/app/factory" class="btn btn-secondary">🔧 返回应用工厂</a>
 <a href="/app/sessions/{project_id}/health" class="btn btn-secondary">🩺 健康报告</a>
 </div></div>
 <div class="stages">
@@ -2695,7 +4514,68 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
         with open(os.path.join(_app_home, "index.html"), "w", encoding="utf-8") as f:
             f.write(_html)
     
-    app_url = f"http://localhost:8004/app/sessions/{project_id}"
+    # Interactive wizard lives on management frontend (/app/apps/:id → AppPage).
+    # Static session host (8004) remains available for raw deploy artifacts.
+    app_url = f"/app/apps/{project_id}"
+    preview_url = f"/app/apps/{project_id}?embed=1"
+    static_url = f"{os.getenv('AIPLAT_APP_BASE_URL', 'http://localhost:8004').rstrip('/')}/app/sessions/{project_id}"
+
+    # Persist a minimal _final_state.json so later deploys/tools don't miss artifacts
+    try:
+        import json as _jfinal
+        out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
+        os.makedirs(out_dir, exist_ok=True)
+        final_path = os.path.join(out_dir, "_final_state.json")
+        if not os.path.isfile(final_path):
+            blob: dict = {"project_id": project_id, "phase": "done"}
+            for key in ("agent_app", "frontend_pages", "architecture", "prd", "test_cases", "test_report"):
+                p = os.path.join(out_dir, f"{key}.json")
+                if not os.path.isfile(p):
+                    continue
+                try:
+                    with open(p, "r", encoding="utf-8") as fh:
+                        raw = fh.read()
+                    if raw.strip().startswith("{"):
+                        blob[key] = {"raw_output": raw}
+                    else:
+                        blob[key] = {"raw_output": raw}
+                except Exception:
+                    continue
+            # Prefer pass rate from true-test report / runs; never stamp real_pytest=0 blindly
+            try:
+                rate = None
+                source = None
+                tr_path = os.path.join(out_dir, "test_report.json")
+                if os.path.isfile(tr_path):
+                    with open(tr_path, "r", encoding="utf-8") as trf:
+                        tr_raw = trf.read()
+                    tobj = _jfinal.loads(
+                        tr_raw[tr_raw.find("{") : tr_raw.rfind("}") + 1]
+                        if "{" in tr_raw
+                        else tr_raw
+                    )
+                    meta = tobj.get("meta") or {}
+                    if meta.get("pass_rate") is not None:
+                        rate = float(meta.get("pass_rate"))
+                        if rate > 1.0:
+                            rate = rate / 100.0
+                        source = "agent_true_test"
+                if rate is None:
+                    runs = proj.get("runs") or []
+                    if runs and runs[-1].get("pass_rate") is not None:
+                        rate = float(runs[-1].get("pass_rate"))
+                        if rate > 1.0:
+                            rate = rate / 100.0
+                        source = str(runs[-1].get("pass_rate_source") or "estimated")
+                if rate is not None:
+                    blob["_test_pass_rate"] = rate
+                    blob["_pass_rate_source"] = source or "estimated"
+            except Exception:
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+            with open(final_path, "w", encoding="utf-8") as fw:
+                _jfinal.dump(blob, fw, ensure_ascii=False, indent=2)
+    except Exception:
+        logging.getLogger(__name__).debug("persist _final_state skipped", exc_info=True)
     
     # Register in apps table so it appears in deployed apps list
     try:
@@ -2718,7 +4598,18 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
         _log_app2.getLogger("aiplat.builder").warning(
             "Failed to register app in DB for %s", project_id, exc_info=True)
     
-    return {"ok": True, "deploy_dir": deploy_dir, "app_url": app_url, "files_generated": _file_count}
+    return {
+        "ok": True,
+        "deploy_dir": deploy_dir,
+        "app_url": app_url,
+        "preview_url": preview_url,
+        "static_url": static_url,
+        "files_generated": _file_count,
+        # F4: surface conformance rejects to UI (not log-only)
+        "registered_count": _reg_count,
+        "rejected_count": _rejected,
+        "rejected_artifacts": _rejected_artifacts,
+    }
 
 
 def _get_agent_insight_for(agent_id: str, projects: dict) -> dict:
@@ -2767,5 +4658,11 @@ def _get_project_service():
     if _project_service_singleton is None:
         from builder.builder_team_service import BuilderTeamService
         _project_service_singleton = BuilderProjectService(team_service=BuilderTeamService())
+        # Same-process Core: richer Builder parser; remote Core uses core.prd_markdown.
+        try:
+            from core.api.core_facade import set_prd_markdown_parser
+            set_prd_markdown_parser(BuilderProjectService._parse_markdown_prd)
+        except Exception:
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
     return _project_service_singleton
 

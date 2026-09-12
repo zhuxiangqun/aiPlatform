@@ -246,23 +246,26 @@ class PipelineStateMixin:
 
                         "Failed to persist artifact file %s: %s", full, str(e)[:200])
 
+    @staticmethod
     def _summarize_artifact(val: Any, max_chars: int = 0) -> Dict[str, Any]:
-
-        limit = max_chars or int(os.getenv("AIPLAT_ARTIFACT_SUMMARY_CHARS", "8000"))
-
         """Structured 7-section summary template (OpenCode pattern).
 
-
-
         Sections: goal, artifacts, quality, key_decisions, next_steps,
-
         critical_context, relevant_files.
-
         """
+        try:
+            limit = int(max_chars) if max_chars else 0
+        except (TypeError, ValueError):
+            limit = 0
+        if limit <= 0:
+            try:
+                limit = int(os.getenv("AIPLAT_ARTIFACT_SUMMARY_CHARS", "8000"))
+            except (TypeError, ValueError):
+                limit = 8000
 
         if not isinstance(val, dict):
 
-            s = str(val)[:limit // 2] if val else "{}"
+            s = str(val)[: max(1, limit // 2)] if val else "{}"
 
             return {"summary": s, "artifact_keys": []}
 

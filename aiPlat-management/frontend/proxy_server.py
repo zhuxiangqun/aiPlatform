@@ -13,6 +13,7 @@ fallback to the next target.
 import http.server
 import json
 import os
+import re
 import sys
 import urllib.request
 import urllib.error
@@ -59,6 +60,9 @@ def _discover_routes() -> dict[str, str]:
         "/api/diagnostics": MGMT_URL,
         "/api/monitoring": MGMT_URL,
         "/api/app": APP_URL if APP_URL else MGMT_URL,
+        # Deployed app static artifacts (index.html / app_page.json) — not SPA /app/apps/*
+        "/app/sessions": APP_URL,
+        "/app/media": APP_URL,
         "/api": MGMT_URL,  # catch-all for management
     }
 
@@ -161,15 +165,25 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
 
     def _send_response(self, status, headers, body):
         self.send_response(status)
+        path = (self.path or "").split("?", 1)[0]
         ct = headers.get("Content-Type", "application/octet-stream")
+        # App static artifacts often arrive as octet-stream from 8004
+        if path.endswith(".json") and ("json" not in (ct or "").lower()):
+            ct = "application/json; charset=utf-8"
         self.send_header("Content-Type", ct)
         self.send_header("Access-Control-Allow-Origin", "*")
+        # Deployed wizard configs must not stick in browser cache after redeploy
+        if path.endswith((".json", ".html")) or path.endswith("/app_page.json"):
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.send_header("Pragma", "no-cache")
         cd = headers.get("Content-Disposition", "")
         if cd:
             self.send_header("Content-Disposition", cd)
         cl = headers.get("Content-Length", "")
         if cl:
             self.send_header("Content-Length", cl)
+        elif body is not None:
+            self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
@@ -236,10 +250,13 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             }.get(ext, "application/octet-stream")
             self.send_header("Content-Type", f"{ctype}; charset=utf-8" if ctype.startswith("text/") or ctype.startswith("application/javascript") else ctype)
             self.send_header("Content-Length", str(len(content)))
-            if ext in (".js", ".css", ".woff", ".woff2"):
+            if ext in (".js", ".css", ".woff", ".woff2") and re.search(r"-[A-Za-z0-9_]{6,}\.(js|css)$", path):
+                # Content-hashed build assets only
                 self.send_header("Cache-Control", "public, max-age=31536000, immutable")
-            elif ext == ".html":
-                self.send_header("Cache-Control", "no-cache")
+            elif ext in (".html", ".json"):
+                # SPA shell + app_page.json must refresh after factory deploy / frontend rebuild
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+                self.send_header("Pragma", "no-cache")
             else:
                 self.send_header("Cache-Control", "public, max-age=3600")
             self.end_headers()
