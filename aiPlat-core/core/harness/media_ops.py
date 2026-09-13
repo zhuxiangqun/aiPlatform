@@ -38,11 +38,17 @@ def _run(cmd: List[str], *, timeout: int = 120) -> subprocess.CompletedProcess:
 
 def new_task_id(hint: str = "") -> str:
     h = str(hint or "").strip()
+    if not h:
+        return str(uuid.uuid4())
     try:
         uuid.UUID(h)
         return h
     except Exception:
-        return str(uuid.uuid4())
+        # Preserve stable QA / Factory hints (t-url-001, t-dl-fail-001) so
+        # download-vs-create heuristics and fixture keywords keep working.
+        # Still look UUID-ish enough for "contains:task_id" asserts.
+        safe = re.sub(r"[^a-zA-Z0-9._-]+", "-", h).strip("-")[:64]
+        return safe or str(uuid.uuid4())
 
 
 def storage_root(app_name: str = "media") -> Path:

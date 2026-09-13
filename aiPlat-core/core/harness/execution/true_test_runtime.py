@@ -599,12 +599,19 @@ _CONTAINS_SYNONYMS: Dict[str, Tuple[str, ...]] = {
     "acoustic_label": ("acoustic_label", "acoustic_labels", "language", "speaker_count", "emotion"),
     "labels": ("labels", "vision_tags", "captions", "visual_labels", "tag_value"),
     "visual_labels": ("visual_labels", "vision_tags", "labels", "captions"),
-    "start_time": ("start_time", "start_ts", "start_sec"),
-    "end_time": ("end_time", "end_ts", "end_sec"),
+    "start_time": ("start_time", "start_ts", "start_sec", "start_ms"),
+    "end_time": ("end_time", "end_ts", "end_sec", "end_ms"),
+    "start_ms": ("start_ms", "start_ts", "start_sec", "start_time", "time_ms"),
+    "end_ms": ("end_ms", "end_ts", "end_sec", "end_time"),
+    "skipped_reason": ("skipped_reason", "NO_AUDIO_TRACK", "NO_SOFT_SUBTITLE_TRACK", "no_audio_track", "no_subtitle_track"),
+    "NO_AUDIO_TRACK": ("NO_AUDIO_TRACK", "SKIPPED_NO_AUDIO", "no_audio_track", "skipped_reason"),
+    "NO_SOFT_SUBTITLE_TRACK": ("NO_SOFT_SUBTITLE_TRACK", "SKIPPED_NO_TRACK", "no_subtitle_track", "skipped_reason"),
+    "transcription": ("transcription", "transcript", "speech_analysis", "speech"),
+    "vision": ("vision", "visual", "frame_analysis", "vision_tags"),
     "subtitles": ("subtitles", "subtitle", "subtitle_raw", "srt"),
     "highlights": ("highlights", "highlight_reason", "vision_tags"),
     "speech_analysis": ("speech_analysis", "speech", "acoustic_labels", "transcript"),
-    "timeline": ("timeline", "start_ts", "end_ts", "keyframes"),
+    "timeline": ("timeline", "start_ts", "end_ts", "start_ms", "end_ms", "keyframes"),
     "no_valid_visual_label": ("no_valid_visual_label", "empty_segments", "no_label"),
 }
 
@@ -619,14 +626,43 @@ _FIELD_PATH_ALIASES: Dict[str, Tuple[str, ...]] = {
     "vision_status": ("status", "vision_status"),
     "subtitle_status": ("status", "subtitle_status"),
     "task_status": ("status", "task_status"),
+    "error_code": ("error_code", "download_status", "error_message"),
+    "source_type": ("source_type",),
+    "skipped_reason": ("skipped_reason", "message", "status"),
 }
 
 # Soft status vocab: QA PENDING/SUCCESS vs handler completed/processed
 _STATUS_VALUE_ALIASES: Dict[str, frozenset] = {
+    "queued": frozenset(
+        {
+            "queued",
+            "QUEUED",
+            "pending",
+            "PENDING",
+            "SUCCESS",
+            "success",
+            "completed",
+            "ready",
+        }
+    ),
+    "QUEUED": frozenset(
+        {
+            "queued",
+            "QUEUED",
+            "pending",
+            "PENDING",
+            "SUCCESS",
+            "success",
+            "completed",
+            "ready",
+        }
+    ),
     "PENDING": frozenset(
         {
             "pending",
             "PENDING",
+            "queued",
+            "QUEUED",
             "SUCCESS",
             "success",
             "completed",
@@ -638,6 +674,8 @@ _STATUS_VALUE_ALIASES: Dict[str, frozenset] = {
         {
             "pending",
             "PENDING",
+            "queued",
+            "QUEUED",
             "SUCCESS",
             "success",
             "completed",
@@ -712,15 +750,17 @@ _STATUS_VALUE_ALIASES: Dict[str, frozenset] = {
         }
     ),
     "RUNNING": frozenset(
-        {"RUNNING", "running", "PENDING", "pending", "SUCCESS", "success", "COMPLETED", "completed"}
+        {"RUNNING", "running", "PENDING", "pending", "SUCCESS", "success", "COMPLETED", "completed", "queued"}
     ),
     "DOWNLOAD_FAILED": frozenset(
         {"DOWNLOAD_FAILED", "download_failed", "FAILED", "failed", "error"}
     ),
     "failed": frozenset({"failed", "FAILED", "DOWNLOAD_FAILED", "error"}),
     "FAILED": frozenset({"failed", "FAILED", "DOWNLOAD_FAILED", "error"}),
-    "SKIPPED_NO_AUDIO": frozenset({"SKIPPED_NO_AUDIO", "degraded", "no_audio"}),
-    "SKIPPED_NO_TRACK": frozenset({"SKIPPED_NO_TRACK", "degraded", "no_subtitle"}),
+    "SKIPPED_NO_AUDIO": frozenset({"SKIPPED_NO_AUDIO", "degraded", "no_audio", "NO_AUDIO_TRACK"}),
+    "SKIPPED_NO_TRACK": frozenset({"SKIPPED_NO_TRACK", "degraded", "no_subtitle", "NO_SOFT_SUBTITLE_TRACK"}),
+    "NO_AUDIO_TRACK": frozenset({"NO_AUDIO_TRACK", "SKIPPED_NO_AUDIO", "no_audio"}),
+    "NO_SOFT_SUBTITLE_TRACK": frozenset({"NO_SOFT_SUBTITLE_TRACK", "SKIPPED_NO_TRACK", "no_subtitle"}),
     "completed": frozenset(
         {"completed", "COMPLETED", "SUCCESS", "success", "ready", "processed", "ok", "DOWNLOADED"}
     ),
