@@ -15,15 +15,17 @@ AGENT.md / SKILL.md 在注册到工作区前，必须通过本校验器 —— �
   per_field_must_contain— 对 frontmatter 某字段的值必须包含子串（如 input_schema 值含 "type:"）
 
 用法：
-    from builder.generated_conformance import validate_text, validate_file
+    from builder.generated_conformance import validate_text, validate_file, validate_manifest
     violations = validate_text(skill_md_text, kind="skill")   # → list[str]，空=通过
     violations = validate_file("/path/SKILL.md", kind="skill")
+    violations = validate_manifest(manifest_dict)             # mode/routing/multi 门禁
 """
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import yaml
 
@@ -31,6 +33,8 @@ _DEFAULT_CONTRACT_PATH = Path(__file__).resolve().parent / "generated_conformanc
 _KINDS = ("skill", "agent")
 
 _contract_cache: Optional[Dict[str, Any]] = None
+
+_ALLOWED_MODES = frozenset({"single", "multi_agent"})
 
 
 def load_contract(path: Optional[str] = None) -> Dict[str, Any]:
@@ -142,6 +146,132 @@ def validate_file(path: str, kind: str, contract: Optional[Dict[str, Any]] = Non
     except OSError as e:
         return [f"file unreadable: {e}"]
     return validate_text(text, kind, contract)
+
+
+def validate_manifest(data: Union[Dict[str, Any], str, bytes]) -> List[str]:
+    """校验 agent_manifest.json（mode / routing / multi 五条 AND 字段）。
+
+    single：允许精简；仍要求 skill_routing 与 agents 一致（若声明）。
+    multi_agent：强制 rationale + success_metrics + upgrade_criteria（委托 promotion_gate）。
+    """
+    violations: List[str] = []
+    if isinstance(data, (str, bytes)):
+        try:
+            data = json.loads(data)
+        except Exception as e:
+            return [f"manifest_json: 无法解析 JSON: {e}"]
+    if not isinstance(data, dict):
+        return ["manifest: 根必须为 object"]
+
+    mode = data.get("mode") or "single"
+    if mode not in _ALLOWED_MODES:
+        violations.append(
+            f"manifest.mode: 必须是 'single' 或 'multi_agent'，实际 {mode!r}"
+        )
+
+    agents = data.get("agents")
+    if not isinstance(agents, list) or not agents:
+        violations.append("manifest.agents: 必须为非空列表")
+        agent_names: set = set()
+        agent_skills: Dict[str, set] = {}
+    else:
+        agent_names = set()
+        agent_skills = {}
+        for i, a in enumerate(agents):
+            if not isinstance(a, dict):
+                violations.append(f"manifest.agents[{i}]: 必须为 object")
+                continue
+            name = a.get("name")
+            if not isinstance(name, str) or not name.strip():
+                violations.append(f"manifest.agents[{i}].name: 必填非空字符串")
+            else:
+                agent_names.add(name)
+            skills = a.get("skills") or []
+            if not isinstance(skills, list):
+                violations.append(f"manifest.agents[{i}].skills: 必须为列表")
+                agent_skills[str(name or i)] = set()
+            else:
+                agent_skills[str(name or i)] = {s for s in skills if isinstance(s, str)}
+
+    routing = data.get("skill_routing")
+    if not isinstance(routing, dict) or not routing:
+        violations.append("manifest.skill_routing: 必填非空 object（Skill→Agent）")
+        routing = {}
+    else:
+        for sk, ag in routing.items():
+            if not isinstance(sk, str) or not sk.strip():
+                violations.append("manifest.skill_routing: key 必须为非空 Skill 名")
+            if ag not in agent_names:
+                violations.append(
+                    f"manifest.skill_routing[{sk!r}]: Agent {ag!r} 不在 agents[].name 中"
+                )
+            elif sk not in agent_skills.get(str(ag), set()):
+                # soft consistency: skill should appear on that agent's skills list
+                violations.append(
+                    f"manifest.skill_routing[{sk!r}]: Skill 未出现在 Agent {ag!r} 的 skills 列表"
+                )
+
+    ui = data.get("ui_bindings")
+    if not isinstance(ui, dict) or not ui:
+        violations.append("manifest.ui_bindings: 必填非空 object（组件→Skill）")
+    else:
+        for comp, sk in ui.items():
+            if sk not in routing:
+                violations.append(
+                    f"manifest.ui_bindings[{comp!r}]: 值 {sk!r} 必须是 skill_routing 的 key"
+                )
+
+    if mode == "multi_agent":
+        rationale = data.get("multi_agent_rationale")
+        if not isinstance(rationale, str) or len(rationale.strip()) < 16:
+            violations.append(
+                "manifest.multi_agent_rationale: multi_agent 必填（≥16 字，说明五条 AND）"
+            )
+        metrics = data.get("success_metrics")
+        if not isinstance(metrics, dict):
+            violations.append("manifest.success_metrics: multi_agent 必填 object")
+        else:
+            min_runs = metrics.get("min_runs")
+            try:
+                min_runs_n = int(min_runs)
+            except (TypeError, ValueError):
+                min_runs_n = 0
+            if min_runs_n < 20:
+                violations.append(
+                    f"manifest.success_metrics.min_runs: 必须 ≥20，实际 {min_runs!r}"
+                )
+            rate = metrics.get("target_success_rate")
+            try:
+                rate_f = float(rate)
+            except (TypeError, ValueError):
+                rate_f = -1.0
+            if not (0.0 < rate_f <= 1.0):
+                violations.append(
+                    "manifest.success_metrics.target_success_rate: 必须在 (0,1]"
+                )
+        # 五条 AND — 委托 promotion_gate（避免重复实现）
+        try:
+            from builder.promotion_gate import evaluate_multi_agent_upgrade
+            _up = evaluate_multi_agent_upgrade(data.get("upgrade_criteria"))
+            for b in _up.get("blockers") or []:
+                violations.append(f"manifest.upgrade_criteria: {b}")
+        except Exception as e:
+            violations.append(f"manifest.upgrade_criteria: 无法评估五条 AND ({e})")
+
+        if len(agent_names) < 2:
+            violations.append("manifest.agents: multi_agent 至少需要 2 个 Agent")
+
+    return violations
+
+
+def validate_manifest_file(path: str) -> List[str]:
+    """校验磁盘上的 agent_manifest.json。"""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            raw = f.read()
+    except OSError as e:
+        return [f"file unreadable: {e}"]
+    return validate_manifest(raw)
 
 
 def _body_line_count(text: str) -> int:

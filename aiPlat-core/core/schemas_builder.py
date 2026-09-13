@@ -370,6 +370,9 @@ class PipelineStageConfig(BaseModel):
     """Empty | block | hitl | fail_pipeline — empty keeps backward-compatible no hard gate."""
     handoff_required: bool = False
     """When true, stage output meta must include frozen handoff.* keys (see stage_handoff)."""
+    # Phase B W3: factory contracted pipeline — disable DynamicOrchestrator free spawn
+    allow_dynamic_spawn: bool = True
+    """False = StageRunner skips sense_gap/spawn; factory stages force False via factory_profile."""
 
 
 class PipelineConfig(BaseModel):

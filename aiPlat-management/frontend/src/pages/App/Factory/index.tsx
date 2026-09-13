@@ -3000,9 +3000,10 @@ const FactoryPage: React.FC<{ entryMode?: FactoryEntryMode }> = ({ entryMode = '
 	const [loadingApps, setLoadingApps] = useState(true);
 	const [projectStates, setProjectStates] = useState<Record<string, string>>({});
 	const [projectPassRates, setProjectPassRates] = useState<Record<string, number>>({});
+	const [projectHopRates, setProjectHopRates] = useState<Record<string, { n: number; rate: number }>>({});
 	const [desc, setDesc] = useState('');
 	const [appName, setAppName] = useState('');
-  const [factoryProfile, setFactoryProfile] = useState<'standard' | 'demo'>('demo');
+  const [factoryProfile, setFactoryProfile] = useState<'standard' | 'demo'>('standard');
   const [outputStyle, setOutputStyle] = useState<'default' | 'adhd'>('default');
   const [factoryMode, setFactoryMode] = useState<'auto' | 'agent' | 'code' | 'hybrid'>('auto');
   const [creating, setCreating] = useState(false);
@@ -3018,6 +3019,7 @@ const FactoryPage: React.FC<{ entryMode?: FactoryEntryMode }> = ({ entryMode = '
 	        // ── v3.1: fetch real-time pipeline phase from Core ──
 	        const states: Record<string, string> = {};
 	        const rates: Record<string, number> = {};
+	        const hops: Record<string, { n: number; rate: number }> = {};
 	        await Promise.all(p.projects.map(async (prj: ProjectItem) => {
 	          try {
 	            const st = await projectApi.getState(prj.project_id);
@@ -3038,10 +3040,17 @@ const FactoryPage: React.FC<{ entryMode?: FactoryEntryMode }> = ({ entryMode = '
                   if (meta?.pass_rate != null) rates[prj.project_id] = meta.pass_rate;
                 } catch { /* no report yet */ }
               }
+              try {
+                const promo = await projectApi.getPromotion(prj.project_id);
+                const hn = Number((promo as any)?.hops?.effective_n ?? (promo as any)?.hops?.n_runs ?? 0);
+                const hr = Number((promo as any)?.hops?.effective_success_rate ?? 0);
+                if (hn > 0) hops[prj.project_id] = { n: hn, rate: hr };
+              } catch { /* no hops yet */ }
 	          } catch { /* skip */ }
 	        }));
 	        setProjectStates(states);
 	        if (Object.keys(rates).length > 0) setProjectPassRates(rates);
+	        setProjectHopRates(hops);
 	      }
     } catch { /* keep existing state, retry on next loadAll */ }
     try {
@@ -3166,11 +3175,15 @@ const FactoryPage: React.FC<{ entryMode?: FactoryEntryMode }> = ({ entryMode = '
               value={factoryProfile}
               onChange={e => setFactoryProfile(e.target.value as 'standard' | 'demo')}
               className="bg-dark-bg border border-dark-border rounded px-2 py-1 text-gray-200"
+              title="生产默认 standard（三闸）；demo 仅演示轻审批"
             >
-              <option value="demo">demo（轻审批）</option>
-              <option value="standard">standard（生产三闸）</option>
+              <option value="standard">standard（生产三闸，默认）</option>
+              <option value="demo">demo（轻审批，仅演示）</option>
             </select>
           </label>
+          {factoryProfile === 'demo' && (
+            <span className="text-amber-400/90 text-xs">demo 会减弱中间 HITL，勿当生产门禁</span>
+          )}
           <label className="flex items-center gap-2">
             输出样式
             <select
@@ -3277,13 +3290,19 @@ const FactoryPage: React.FC<{ entryMode?: FactoryEntryMode }> = ({ entryMode = '
                   </div>
                 )}
                 {status.phase === 'done' && (
-                  <div className="flex items-center gap-2 pt-2 border-t border-dark-border">
+                  <div className="flex items-center gap-2 pt-2 border-t border-dark-border flex-wrap">
                     <span className="text-[10px] text-green-400 flex items-center gap-1">
                        <CheckCircle className="w-3 h-3" />
                        {passRate != null && (hasLiveRate || passRate > 0)
                          ? `通过率 ${Number(passRate).toFixed(0)}%`
                          : '暂无测真通过率'}
                     </span>
+                    {projectHopRates[p.project_id] != null && (
+                      <span className="text-[10px] text-sky-400" title="Skill hop 有效成功率（跑通晋升）">
+                        hop {(projectHopRates[p.project_id].rate * 100).toFixed(0)}%
+                        ·n={projectHopRates[p.project_id].n}
+                      </span>
+                    )}
                     <button onClick={async (e) => {
                       e.stopPropagation();
                       try {

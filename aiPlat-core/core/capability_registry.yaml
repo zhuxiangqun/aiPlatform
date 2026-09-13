@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-08-16"
 total_capability_domains: 34
-total_capabilities: 1130
+total_capabilities: 1134
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -481,6 +481,22 @@ domains:
         type: function
         signature: 'default_export_dir()'
         module: aiPlat-core/core/harness/teamai_seed_export.py
+      - symbol: is_dynamic_spawn_disabled
+        type: function
+        signature: 'is_dynamic_spawn_disabled()'
+        module: aiPlat-core/core/harness/coordination/spawn_policy.py
+      - symbol: set_dynamic_spawn_disabled
+        type: function
+        signature: 'set_dynamic_spawn_disabled(disabled)'
+        module: aiPlat-core/core/harness/coordination/spawn_policy.py
+      - symbol: reset_dynamic_spawn
+        type: function
+        signature: 'reset_dynamic_spawn(token)'
+        module: aiPlat-core/core/harness/coordination/spawn_policy.py
+      - symbol: stage_allows_dynamic_spawn
+        type: function
+        signature: 'PipelineStageConfig.allow_dynamic_spawn (default True).'
+        module: aiPlat-core/core/harness/coordination/spawn_policy.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"
@@ -2174,6 +2190,58 @@ domains:
       - symbol: "_platform_effects_after_deterministic_skill"
         type: "function"
         signature: "After media Path0 handler: memory + local_feedback; AIPLAT_FACTORY_FORCE_AGENT_SKILL skips Path0"
+        module: "aiPlat-platform/builder/builder_project_service.py"
+      - symbol: "validate_manifest"
+        type: "function"
+        signature: "Phase A: validate agent_manifest mode/routing; multi_agent requires rationale+metrics+5 AND criteria"
+        module: "aiPlat-platform/builder/generated_conformance.py"
+      - symbol: "validate_manifest_file"
+        type: "function"
+        signature: "Phase A: load agent_manifest.json from disk then validate_manifest"
+        module: "aiPlat-platform/builder/generated_conformance.py"
+      - symbol: "evaluate_run_through"
+        type: "function"
+        signature: "Phase A: 4-dimension run-through gate (N≥20, failed_stage, conformance/real_tests, PolicyGate)"
+        module: "aiPlat-platform/builder/promotion_gate.py"
+      - symbol: "evaluate_multi_agent_upgrade"
+        type: "function"
+        signature: "Phase A: five AND criteria for multi_agent upgrade"
+        module: "aiPlat-platform/builder/promotion_gate.py"
+      - symbol: "load_promotion_gate"
+        type: "function"
+        signature: "Load promotion_gate.yaml thresholds and checklist"
+        module: "aiPlat-platform/builder/promotion_gate.py"
+      - symbol: "should_skip_dynamic_spawn"
+        type: "function"
+        signature: "Phase B W3: skip DynamicOrchestrator spawn when ContextVar/stage/state disables"
+        module: "aiPlat-core/core/harness/coordination/spawn_policy.py"
+      - symbol: "disable_dynamic_spawn"
+        type: "function"
+        signature: "Phase B W3: context manager disable free multi-agent spawn / sys_agent_call"
+        module: "aiPlat-core/core/harness/coordination/spawn_policy.py"
+      - symbol: "gate_skill_hop"
+        type: "function"
+        signature: "Phase B W4: validate execute_skill params vs SKILL input_schema before LLM"
+        module: "aiPlat-platform/builder/skill_hop_gate.py"
+      - symbol: "validate_skill_hop_params"
+        type: "function"
+        signature: "Phase B W4: field-map or JSON-schema-like required/type checks"
+        module: "aiPlat-platform/builder/skill_hop_gate.py"
+      - symbol: "record_hop"
+        type: "function"
+        signature: "Phase C W5: append execute_skill hop outcome to JSONL"
+        module: "aiPlat-platform/builder/hop_metrics.py"
+      - symbol: "aggregate_hops"
+        type: "function"
+        signature: "Phase C W5: n_runs/success_rate/failed_stage aggregation"
+        module: "aiPlat-platform/builder/hop_metrics.py"
+      - symbol: "evaluate_project_run_through"
+        type: "function"
+        signature: "Phase C W5: hop aggregate + promotion_gate four-dimension check"
+        module: "aiPlat-platform/builder/hop_metrics.py"
+      - symbol: "get_promotion_status"
+        type: "function"
+        signature: "Phase C W5: BuilderProjectService promotion snapshot for GET /promotion"
         module: "aiPlat-platform/builder/builder_project_service.py"
       - symbol: "Sidebar v2.3 menuItems"
         type: "data"

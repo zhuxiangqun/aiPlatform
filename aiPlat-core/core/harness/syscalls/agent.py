@@ -102,6 +102,23 @@ async def sys_agent_call(
 
 
 
+        # Phase B W3: factory contracted path — deny free sub-agent spawn
+        try:
+            from core.harness.coordination.spawn_policy import is_dynamic_spawn_disabled
+            _tc = trace_context if isinstance(trace_context, dict) else {}
+            if is_dynamic_spawn_disabled() or _tc.get("disable_dynamic_spawn"):
+                return {
+                    "success": False,
+                    "output": "",
+                    "error": "spawn_denied: dynamic multi-agent spawn disabled (contracted factory/runtime policy)",
+                    "duration_ms": 0,
+                    "subagent_name": subagent_name,
+                    "failed_stage": "tool_selection",
+                }
+        except Exception:
+            import logging as _logging
+            _logging.getLogger("aiplat.syscall.agent").debug("spawn policy check skipped", exc_info=True)
+
         # ── PolicyGate enforcement (single entry point, §3.2) ──
 
         try:

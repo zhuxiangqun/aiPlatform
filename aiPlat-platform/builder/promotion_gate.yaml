@@ -1,0 +1,37 @@
+# 应用工厂「跑通」晋升契约（2026-09）
+# 跑通 = 四维全部满足；升级 multi_agent = 另加五条 AND。
+# 校验器：builder/promotion_gate.py；manifest 硬门：generated_conformance.validate_manifest
+
+version: 1
+
+# ── 四维「跑通」 ──
+run_through:
+  min_runs: 20
+  success_rate_start: 0.80          # MVP 起步阈值
+  success_rate_mature: 0.95         # 成熟收紧目标
+  failed_stage_required: true       # 无 failed_stage 的失败不计入成功率分母外的「有效样本」——该次剔除
+  failed_stage_enum_runtime:
+    - planning
+    - tool_selection
+    - tool_execution
+    - response_synthesis
+    - verification
+  conformance_required: true
+  real_tests_required: true
+  physical_evidence_required: true  # real_tests 至少一条非 mock 物理 artifact
+  policy_gate_required: true        # 工具副作用前必须经 PolicyGate
+
+# ── 运行时升级 multi_agent（全部 AND） ──
+multi_agent_upgrade_and:
+  - id: orthogonal_subtasks
+    description: "≥3 正交子任务且无频繁中间状态依赖"
+  - id: single_agent_gap
+    description: "单 Agent N≥20 成功率<阈值，失败在 planning/tool_selection"
+  - id: routing_benefit
+    description: "明确 skill 路由收益（不同 skill 集 / 上下文溢出）"
+  - id: policy_gate_stable
+    description: "PolicyGate 已稳定 ≥1 迭代，可分 Agent 授权"
+  - id: contracted_handoff
+    description: "跨 Agent 必经阶段契约+schema 门，禁止自由文本"
+
+external_message: "不做无门控互调，做阶段契约 + schema 门 + HITL。"

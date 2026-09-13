@@ -186,6 +186,23 @@ class StageRunner:
             skills=skills,
         )
 
+        # Phase B W3: contracted stages — ContextVar blocks mid-loop sys_agent_call spawn
+        _spawn_cm = None
+        try:
+            from core.harness.coordination.spawn_policy import (
+                disable_dynamic_spawn,
+                should_skip_dynamic_spawn,
+            )
+            if should_skip_dynamic_spawn(
+                stage=s, state=state if isinstance(state, dict) else None
+            ):
+                if isinstance(state, dict):
+                    state["_disable_dynamic_spawn"] = True
+                _spawn_cm = disable_dynamic_spawn(True)
+                _spawn_cm.__enter__()
+        except Exception:
+            logging.debug("spawn policy enter skipped", exc_info=True)
+
         # Read system_prompt from incoming state (set by run_workspace_agent)
         ctx = state.get("context") if isinstance(state.get("context"), dict) else {}
         sys_prompt = state.get("_sys_prompt") or ctx.get("system_prompt", "")
@@ -237,10 +254,20 @@ class StageRunner:
                 "_enable_query_rewrite": getattr(s, 'enable_query_rewrite', False) if s else False,
                 "_max_consecutive_llm_failures": getattr(s, 'max_consecutive_llm_failures', 3),
                 "_knowledge_bases": getattr(s, 'knowledge_bases', []) if s else [],
+                "disable_dynamic_spawn": bool(
+                    isinstance(state, dict) and state.get("_disable_dynamic_spawn")
+                ),
             },
         )
 
-        result = await loop.run(loop_state, LoopConfig(max_steps=max_steps))
+        try:
+            result = await loop.run(loop_state, LoopConfig(max_steps=max_steps))
+        finally:
+            if _spawn_cm is not None:
+                try:
+                    _spawn_cm.__exit__(None, None, None)
+                except Exception:
+                    logging.debug("spawn policy exit skipped", exc_info=True)
 
         # Background review triggers (best-effort, never block the main flow)
         skill_nudge = int(_os.getenv("AIPLAT_SKILL_NUDGE_INTERVAL", "10"))
@@ -258,22 +285,26 @@ class StageRunner:
             except Exception as e:
                 logging.warning(str(e), exc_info=True)
 
-        # Phase 32: Dynamic orchestration — detect capability gaps and spawn sub-agents
+        # Phase 32 / Phase B W3: Dynamic orchestration — skip when factory contracted
         try:
-            reasoning_raw = result.final_state.context.get("reasoning", "") or ""
-            if reasoning_raw and len(reasoning_raw) > 50:
-                from core.harness.coordination.dynamic_orchestrator import get_dynamic_orchestrator
-                orch = get_dynamic_orchestrator()
-                gap = await orch.sense_gap(reasoning_raw, str(s.agent_id or s.id) if s else "react")
-                if gap:
-                    asyncio.create_task(
-                        orch.spawn(
-                            gap["capability"],
-                            f"Task context: {reasoning_raw[:500]}",
-                            state.get("session_id", ""),
-                            source_agent_id=str(s.agent_id or s.id) if s else "react",
+            from core.harness.coordination.spawn_policy import should_skip_dynamic_spawn
+            if should_skip_dynamic_spawn(stage=s, state=state if isinstance(state, dict) else None):
+                logging.debug("dynamic_orchestrator spawn skipped (factory/contracted policy)")
+            else:
+                reasoning_raw = result.final_state.context.get("reasoning", "") or ""
+                if reasoning_raw and len(reasoning_raw) > 50:
+                    from core.harness.coordination.dynamic_orchestrator import get_dynamic_orchestrator
+                    orch = get_dynamic_orchestrator()
+                    gap = await orch.sense_gap(reasoning_raw, str(s.agent_id or s.id) if s else "react")
+                    if gap:
+                        asyncio.create_task(
+                            orch.spawn(
+                                gap["capability"],
+                                f"Task context: {reasoning_raw[:500]}",
+                                state.get("session_id", ""),
+                                source_agent_id=str(s.agent_id or s.id) if s else "react",
+                            )
                         )
-                    )
         except Exception as e:
             logging.debug("dynamic_orchestrator skipped: %s", e)
 

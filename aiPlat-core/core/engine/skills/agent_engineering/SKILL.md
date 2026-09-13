@@ -108,21 +108,38 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 
 ---
 
-### Step 0: 多 Agent 评估
-根据 PRD 的复杂度，决定单 Agent 还是多 Agent 架构：
+### Step 0: 架构选择（默认单 Agent — 2026-09 晋升契约）
 
-| PRD 信号 | Agent 数量 | 架构 |
-|---------|:---:|------|
-| ≤3 个功能需求，无异步流程 | 1 | 单 Agent 处理全部 |
-| 4-6 功能需求，有异步任务 | 2-3 | 拆分为: orchestrator + 1-2 个 sub-agent |
-| ≥7 功能需求，有实时+批量混合 | 4+ | orchestrator + 多个 sub-agent |
-| 有实时通知/定时任务 | +1 | 加 notification_agent |
-| 有审批/多角色 | +1 | 加 orchestrator_agent 协调流程 |
+**默认：`mode: single`（单 Agent + 多 Skill/工具）。** 能用单 Agent 搞定的，禁止拆多 Agent。
+构建链（工厂 Pipeline 多角色）负责倒逼边界；**生成应用运行时**默认不升级为自由多 Agent。
 
-**多 Agent 模式必须生成 `agent_manifest.json`**，记录：
-- 每个 Agent 的 name、display_name
-- 每个 Agent 负责哪些 Skills
-- Skill → Agent 的路由映射表
+#### 0.1 默认产出
+1. 生成 **一个** AGENT.md + 所需 SKILL.md（Skills 由同一 Agent 编排调用）。
+2. **必须**输出 `agent_manifest.json`，且 `"mode": "single"`。
+3. `skill_routing` 可将全部 Skill 映射到该唯一 Agent；`ui_bindings` 值必须是 routing keys。
+
+#### 0.2 升级为 `multi_agent`（五条判据全部 AND，缺一不可）
+仅当下列 **全部** 成立时，才允许 `"mode": "multi_agent"`：
+
+| # | 判据 | 必须写入 manifest |
+|:-:|------|-------------------|
+| 1 | 任务可自然分解为 ≥3 个正交子任务，且子任务间无频繁中间状态依赖 | `upgrade_criteria.orthogonal_subtasks`（列表，≥3） |
+| 2 | 单 Agent 已在 N≥20 次执行中成功率低于阈值，且失败可归因到 `planning` 或 `tool_selection`（规划不足而非执行不足） | `upgrade_criteria.single_agent_gap`（含 n_runs / success_rate / failed_stages） |
+| 3 | 存在明确 skill 路由收益：不同任务类型需加载完全不同的 skill 集，单上下文会溢出或注意力分散 | `upgrade_criteria.routing_benefit`（文字说明） |
+| 4 | PolicyGate 已对工具面稳定运行 ≥1 迭代，可对每个 Agent 独立授权 | `upgrade_criteria.policy_gate_stable: true` |
+| 5 | 跨 Agent 传递有 HITL/阶段契约：必须经 schema 门，禁止自由文本互调 | `upgrade_criteria.contracted_handoff: true` |
+
+**禁止**：仅凭「功能需求数量多 / 看起来复杂 / 有异步 / 有审批」就拆 multi_agent。
+**禁止**：Agent 之间直接自由调用；跨 Agent 必须经阶段契约 + schema 门 +（必要时）HITL。
+
+#### 0.3 `multi_agent` 时 manifest 额外必填
+- `multi_agent_rationale`：为何五条 AND 均满足（可复述 0.2）
+- `success_metrics`：至少含 `min_runs`（≥20）、`target_success_rate`（建议起 0.80）
+- `agents[]` / `skill_routing` / `ui_bindings`（与下文字段说明一致）
+- 不做无门控互调：orchestrator SOP 必须写明分发键 ⊆ 下游 `input_schema`
+
+#### 0.4 「跑通」提醒（生成物晋升，非本 Step 放行条件）
+运行时晋升多 Agent 前，平台将按四维审计：E2E 成功率（N≥20）+ `failed_stage` 可归因 + conformance/real_tests 绿且有物理证据 + 工具调用在 PolicyGate 闭环。未跑通不得升级。
 
 ### Step 1: 分析需求，确定 Agent 身份
 1. 读取 PRD 的标题、目标用户、核心功能
@@ -227,15 +244,48 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 4. 检查每个 SKILL.md 的执流包含「输入校验」部分
 5. **逐文件检查**：每个 `## FILE: .../SKILL.md` 的 YAML frontmatter 含非空 `completion_criterion:`；若缺失 → 补写后再输出，禁止带着缺字段交付
 6. **状态机检查**：ingress 成功路径无任务级 `completed`；仅 aggregator（或单 Agent 的终态步骤）可写任务级 `completed`；orchestrator 分发键 ⊆ 下游 input_schema
-7. **ui_bindings**（多 Agent）：值 ∈ `skill_routing` keys；若 PRD 同时描述「链接/URL 导入」与「本地文件上传」两类入口，则必须同时声明 `file_upload` 与 `data_form`（绑定到本轮已有 skill，不引入未声明名）
+7. **agent_manifest.json**：必有且 `mode` 为 `single` 或（五条 AND 时）`multi_agent`；`ui_bindings` 值 ∈ `skill_routing` keys；若 PRD 同时描述「链接/URL 导入」与「本地文件上传」两类入口，则必须同时声明 `file_upload` 与 `data_form`（绑定到本轮已有 skill，不引入未声明名）
+8. **multi_agent 门禁**：若 `mode=multi_agent`，必须含 `multi_agent_rationale`、`success_metrics.min_runs≥20`、`upgrade_criteria` 五条；否则改回 `single` 再输出
 
 ## 输出格式
 
-用 `## FILE:` 格式输出。**多 Agent 模式必须首先输出 agent_manifest.json**。
+用 `## FILE:` 格式输出。**无论 single / multi_agent，都必须首先输出 `agent_manifest.json`。**
 
 > **app_name 规则（强制）**：`app_name` 必须使用上下文注入的 `## app_name` 值，**不得自行生成、翻译或改名**。所有 `## FILE:` 路径和 `agent_manifest.json` 的 `app_name` 字段必须与注入值完全一致。
 
-### agent_manifest.json（多 Agent 模式第一条输出）
+### agent_manifest.json（默认 single — 第一条输出）
+
+```
+## FILE: ~/.aiplat/apps/{app_name}/agent_manifest.json
+```json
+{
+  "app_name": "{app_name}",
+  "mode": "single",
+  "agents": [
+    {
+      "name": "app_agent",
+      "display_name": "应用 Agent",
+      "agent_type": "react",
+      "role": "worker",
+      "skills": ["ingress_skill", "process_skill", "report_json_export"],
+      "description": "单 Agent 编排全部 Skills"
+    }
+  ],
+  "skill_routing": {
+    "ingress_skill": "app_agent",
+    "process_skill": "app_agent",
+    "report_json_export": "app_agent"
+  },
+  "ui_bindings": {
+    "file_upload": "ingress_skill",
+    "data_form": "ingress_skill",
+    "progress_poller": "report_json_export",
+    "result_dashboard": "report_json_export"
+  }
+}
+```
+
+### agent_manifest.json（仅当 Step 0.2 五条 AND 全满足 — multi_agent 示例）
 
 ```
 ## FILE: ~/.aiplat/apps/{app_name}/agent_manifest.json
@@ -243,17 +293,33 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 {
   "app_name": "{app_name}",
   "mode": "multi_agent",
+  "multi_agent_rationale": "五条 AND 均满足：≥3 正交子任务；单 Agent N≥20 成功率不足且失败在 planning；skill 集互斥导致上下文溢出；PolicyGate 已稳定；跨 Agent 仅经 schema 门+HITL。",
+  "success_metrics": {
+    "min_runs": 20,
+    "target_success_rate": 0.80
+  },
+  "upgrade_criteria": {
+    "orthogonal_subtasks": ["ingress", "process_a", "aggregate"],
+    "single_agent_gap": {
+      "n_runs": 20,
+      "success_rate": 0.55,
+      "failed_stages": ["planning", "tool_selection"]
+    },
+    "routing_benefit": "媒体处理与报告聚合 skill 集互斥，单上下文溢出",
+    "policy_gate_stable": true,
+    "contracted_handoff": true
+  },
   "agents": [
     {
       "name": "orchestrator_agent",
       "display_name": "协调 Agent",
       "agent_type": "react",
       "role": "orchestrator",
-      "skills": ["upload", "analysis"],
-      "description": "接收用户请求,分发到子Agent"
+      "skills": ["upload", "check_progress"],
+      "description": "接收用户请求,经契约分发到子Agent"
     },
     {
-      "name": "analysis_agent", 
+      "name": "analysis_agent",
       "display_name": "分析 Agent",
       "agent_type": "react",
       "role": "worker",
@@ -277,6 +343,8 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 ```
 
 manifest 字段说明:
+- `mode`: **`single`（默认）** / `multi_agent`（仅 Step 0.2 五条 AND）
+- `multi_agent_rationale` / `success_metrics` / `upgrade_criteria`: **仅 multi_agent 必填**（conformance 机器校验）
 - `agents[].role`: `orchestrator`(协调) / `worker`(执行) / `notification`(通知)
 - `skill_routing`: 每个 Skill → 负责 Agent 的映射表(前端页面用) — **必填**
 - `ui_bindings`: 平台组件 id → skill 名 — **必填**（前端 stage 接线 SoT；值必须是 `skill_routing` 的 key）
@@ -287,7 +355,7 @@ manifest 字段说明:
   - **`result_dashboard` 强制**：必须存在一个 **报告/导出类 Skill**（建议名 `report_json_export` 或含 `report`/`export`/`summar` 词根），并写入 `skill_routing` + 对应 AGENT 的 `required_skills`/`skills`；`ui_bindings.result_dashboard` **只能**绑该 Skill。禁止绑 Agent id，禁止绑纯分析/下载类 Skill 冒充报告。
   - 报告 Skill 的职责：从共享状态聚合各 processor 产出 → 统一时间轴/结构化报告 → 可导出 JSON；其角色为 Step 1.6 的 `aggregator`（任务级 `completed` 仅在此之后）。
   - `progress_poller` 绑定能反映任务进度/状态的 Skill（可为 ingress 或专用 `check_progress` Skill；禁止绑最终报告 Skill）
-- `mode`: `single`(单Agent) / `multi_agent`(多Agent)
+- 对外纪律：**不做无门控互调，做阶段契约 + schema 门 + HITL。**
 
 **异步任务状态机（强制 — 按 Step 1.6 角色，禁止业务域名/skill 名硬编码分支）**：
 - `ingress` 成功 → 任务 `pending`/`ready`（**不要** `completed`）

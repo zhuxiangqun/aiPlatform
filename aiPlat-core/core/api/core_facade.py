@@ -3195,6 +3195,11 @@ from core.harness.execution.factory_profile import (  # noqa: boundary — CoreF
     FACTORY_PROFILE_DEMO,
     FACTORY_PROFILE_STANDARD,
 )
+from core.harness.coordination.spawn_policy import (  # noqa: boundary — CoreFacade re-export
+    disable_dynamic_spawn,
+    is_dynamic_spawn_disabled,
+    should_skip_dynamic_spawn,
+)
 from core.harness.execution.stage_handoff import (  # noqa: boundary — CoreFacade re-export
     HANDOFF_FIELDS,
     apply_gate_failure,

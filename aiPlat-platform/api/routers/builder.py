@@ -148,6 +148,11 @@ async def project_execute_skill(project_id: str, skill_name: str, body: Dict[str
     params = body if isinstance(body, dict) else {}
     return await _get_svc().execute_skill(project_id, skill_name, params)
 
+@router.get("/projects/{project_id}/promotion", response_model=StatusResponse)
+async def project_promotion_status(project_id: str, _auth: str = Depends(require_builder_access)):
+    """Phase C W5: hop metrics + run-through promotion gate snapshot."""
+    return _get_svc().get_promotion_status(project_id)
+
 @router.post("/projects/{project_id}/files/upload", response_model=StatusResponse)
 async def project_file_upload(
     project_id: str,

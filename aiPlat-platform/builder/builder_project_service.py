@@ -72,18 +72,20 @@ def _write_runtime_governance_sidecar(agent_md_path: str) -> None:
                 "## 长任务断线续跑\n"
                 "- `python3 aiPlat-platform/governance/daemon_jobs.py --start --name <n> --command \"<cmd>\"`；"
                 "状态 `--status` / 输出 `--attach <id>`\n\n"
-                "## 多 agent 协作（消息总线）\n"
-                "- 注册 `--register --agent <id> --pid <n>`；互发 `--send --from <a> --to <b> --message \"<text>\"`；"
-                "收件箱 `--inbox --agent <id>`\n")
+                "## 身份注册（消息总线，非契约协同）\n"
+                "- 部署后 agent 可 `--register --agent <id>` 获得总线身份（异步通知/运维）。\n"
+                "- **运行时协同主路径不是总线互调**：默认单 Agent + 工具；多角色用工厂 Pipeline +"
+                " stage_handoff / skill_routing + schema 门 + HITL。\n"
+                "- 纪律：**不做无门控互调，做阶段契约 + schema 门 + HITL。**\n")
     except Exception:
         pass  # noqa: cleanup-best-effort — sidecar 生成失败不影响注册主流程
 
 
 def _register_generated_agent_to_bus(agent_name: str) -> None:
-    """生成物侧接线（CLAUDE.md §23）：注册成功时把生成 agent 上线消息总线。
+    """生成物侧接线：注册成功时把生成 agent 上线消息总线（身份/通知层）。
 
-    生成 agent 部署即获得总线身份（kind=generated-agent），运行时多 agent 协作
-    可经 agent_messages 点对点互发（生成物适用：待接线 → 已接线，2026-08-27）。
+    注意：注册 ≠ 运行时契约协同。工厂协同主路径是 Pipeline + handoff / skill_routing；
+    agent_messages 仅提供点对点邮箱，不替代 schema 门与 HITL。
     best-effort 不抛异常：总线注册失败不影响注册主流程。
     """
     import importlib.util as _iu
@@ -1863,6 +1865,8 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         params.setdefault("app_name", str(proj.get("app_name") or "").strip() or "app")
         params.setdefault("project", params["app_name"])
 
+        import os as _os_hop
+
         # ── Path 0: platform media handlers (deterministic, true I/O) ──
         # Opt-out: AIPLAT_FACTORY_FORCE_AGENT_SKILL=1 forces full Agent+ReAct path.
         try:
@@ -1877,6 +1881,14 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                 effects = await self._platform_effects_after_deterministic_skill(
                     project_id, skill_name, params, result
                 )
+                try:
+                    from builder.hop_metrics import record_hop
+                    record_hop(
+                        project_id, skill=skill_name, agent="media_handler",
+                        ok=True, mode="media_handler",
+                    )
+                except Exception:
+                    pass  # noqa: cleanup-best-effort
                 return {
                     "ok": True,
                     "skill": skill_name,
@@ -1885,9 +1897,19 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                     "result": result,
                     "mode": "media_handler",
                     "platform_effects": effects,
+                    "failed_stage": "",
                 }
         except Exception as e:
             _log.warning("media handler %s failed, falling back to agent: %s", skill_name, str(e)[:160])
+            try:
+                from builder.hop_metrics import record_hop
+                record_hop(
+                    project_id, skill=skill_name, agent="media_handler",
+                    ok=False, failed_stage="tool_execution", error=str(e)[:200],
+                    mode="media_handler",
+                )
+            except Exception:
+                pass  # noqa: cleanup-best-effort
 
         state = self._runs.get(project_id)
         if not state:
@@ -1918,22 +1940,133 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                         break
 
         if not agent_name:
-            return {"error": "Agent not ready", "ok": False}
+            try:
+                from builder.hop_metrics import record_hop
+                record_hop(
+                    project_id, skill=skill_name, ok=False,
+                    failed_stage="planning", error="Agent not ready",
+                )
+            except Exception:
+                pass  # noqa: cleanup-best-effort
+            return {"error": "Agent not ready", "ok": False, "failed_stage": "planning"}
+
+        # Phase B W4: hop schema gate — missing required params never enter LLM
+        _app_home = _os_hop.path.join(
+            _os_hop.getenv("AIPLAT_HOME", _os_hop.path.expanduser("~/.aiplat")),
+            "apps", project_id, "current",
+        )
+        try:
+            from builder.skill_hop_gate import gate_skill_hop, build_hop_handoff
+            _gate = gate_skill_hop(skill_name, params, app_home=_app_home)
+            if not _gate.get("ok"):
+                _handoff = build_hop_handoff(
+                    skill=skill_name,
+                    agent=agent_name,
+                    ok=False,
+                    verify="schema_failed",
+                    known_issues=list(_gate.get("violations") or []),
+                    next_hint="补齐 input_schema 必填参数后重试",
+                )
+                try:
+                    from builder.hop_metrics import record_hop
+                    record_hop(
+                        project_id, skill=skill_name, agent=agent_name, ok=False,
+                        failed_stage=_gate.get("failed_stage") or "tool_selection",
+                        error=_gate.get("error") or "hop_schema_gate",
+                        mode="schema_gate",
+                    )
+                except Exception:
+                    pass  # noqa: cleanup-best-effort
+                return {
+                    "ok": False,
+                    "error": _gate.get("error") or "hop_schema_gate",
+                    "skill": skill_name,
+                    "agent": agent_name,
+                    "failed_stage": _gate.get("failed_stage") or "tool_selection",
+                    "violations": list(_gate.get("violations") or []),
+                    "handoff": _handoff,
+                    "status_code": 422,
+                }
+        except Exception:
+            logging.getLogger(__name__).debug("skill hop gate skipped", exc_info=True)
 
         message = f"执行技能: {skill_name}\n参数: {_json.dumps(params, ensure_ascii=False)[:2000]}"
         try:
-            result = await core_chat(ChatContext(
-                agent_name=agent_name,
-                session_id=f"{project_id}_fe",
-                user_input=message,
-                model=self.model,
-            ))
+            from core.api.core_facade import disable_dynamic_spawn
+            with disable_dynamic_spawn(True):
+                result = await core_chat(ChatContext(
+                    agent_name=agent_name,
+                    session_id=f"{project_id}_fe",
+                    user_input=message,
+                    model=self.model,
+                ))
             reply = result.reply or ""
             reply = _unwrap_json_reply(reply)
-            return {"ok": True, "skill": skill_name, "agent": agent_name,
-                    "reply": reply, "trace_id": getattr(result, 'trace_id', '')}
+            try:
+                from builder.skill_hop_gate import build_hop_handoff
+                _hop = build_hop_handoff(
+                    skill=skill_name, agent=agent_name, ok=True,
+                    verify="executed", next_hint="",
+                )
+            except Exception:
+                _hop = {}
+            try:
+                from builder.hop_metrics import record_hop
+                record_hop(
+                    project_id, skill=skill_name, agent=agent_name,
+                    ok=True, mode="agent",
+                )
+            except Exception:
+                pass  # noqa: cleanup-best-effort
+            return {
+                "ok": True,
+                "skill": skill_name,
+                "agent": agent_name,
+                "reply": reply,
+                "trace_id": getattr(result, 'trace_id', ''),
+                "failed_stage": "",
+                "handoff": _hop,
+            }
         except Exception as e:
-            return {"error": str(e)[:200], "ok": False}
+            try:
+                from builder.hop_metrics import record_hop
+                record_hop(
+                    project_id, skill=skill_name, agent=agent_name, ok=False,
+                    failed_stage="tool_execution", error=str(e)[:200], mode="agent",
+                )
+            except Exception:
+                pass  # noqa: cleanup-best-effort
+            return {
+                "error": str(e)[:200],
+                "ok": False,
+                "failed_stage": "tool_execution",
+                "skill": skill_name,
+                "agent": agent_name,
+            }
+
+    def get_promotion_status(self, project_id: str) -> Dict[str, Any]:
+        """Phase C W5：hop 聚合 + 四维跑通晋升快照（供 Factory / API）。"""
+        from builder.hop_metrics import evaluate_project_run_through, aggregate_hops
+        state = self._runs.get(project_id) or self._load_pipeline_state(project_id) or {}
+        _rejected = 0
+        try:
+            # best-effort: treat missing last deploy rejects as unknown
+            _rejected = int((state.get("_last_deploy") or {}).get("rejected_count") or 0)
+        except Exception:
+            _rejected = 0
+        real_tests_green = bool(state.get("_real_tests_ok") or state.get("real_tests_ok"))
+        physical = bool(state.get("_physical_evidence") or real_tests_green)
+        out = evaluate_project_run_through(
+            project_id,
+            conformance_green=(_rejected == 0),
+            real_tests_green=real_tests_green,
+            physical_evidence=physical,
+            policy_gate_closed=True,
+        )
+        _man = state.get("agent_manifest") if isinstance(state.get("agent_manifest"), dict) else {}
+        out["manifest_mode"] = (_man.get("mode") or "single")
+        out["hops_raw_n"] = aggregate_hops(project_id).get("n_runs", 0)
+        return out
 
     async def _platform_effects_after_deterministic_skill(
         self,
@@ -4378,7 +4511,7 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
     try:
         import shutil
         import logging as _log_dep
-        from builder.generated_conformance import validate_file, record_rejection
+        from builder.generated_conformance import validate_file, record_rejection, validate_manifest_file
         _agents_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "agents")
         _skills_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "skills")
         _blog = _log_dep.getLogger("aiplat.builder")
@@ -4386,6 +4519,21 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
         for _root, _dirs, _files in os.walk(_app_home):
             for _f in _files:
                 _src = os.path.join(_root, _f)
+                if _f == "agent_manifest.json":
+                    _violations = validate_manifest_file(_src)
+                    if _violations:
+                        _rejected += 1
+                        _blog.warning("Deploy: agent_manifest.json 不合规 %s: %s",
+                                      _src, "; ".join(_violations[:3]))
+                        record_rejection(project_id, "manifest", _src, _violations)
+                        _rejected_artifacts.append({
+                            "kind": "manifest",
+                            "name": "agent_manifest",
+                            "path": _src,
+                            "violations": list(_violations),
+                            "fix_hint": "默认 mode=single；multi_agent 需 rationale+success_metrics+upgrade_criteria 五条 AND",
+                        })
+                    continue
                 if _f == "AGENT.md":
                     _agent_name = os.path.basename(_root)
                     _violations = validate_file(_src, "agent")
@@ -4407,7 +4555,7 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                     shutil.copy2(_src, _dst)
                     # 生成物侧接线（CLAUDE.md §23）：注册成功时预置运行时治理入口 sidecar
                     _write_runtime_governance_sidecar(_dst)
-                    # 生成物侧接线：生成 agent 部署即上线消息总线（多 agent 协作可互发）
+                    # 生成物侧接线：上线消息总线身份（通知层；非契约协同主路径）
                     _register_generated_agent_to_bus(_agent_name)
                     _reg_count += 1
                 elif _f == "SKILL.md":
@@ -4598,6 +4746,27 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
         _log_app2.getLogger("aiplat.builder").warning(
             "Failed to register app in DB for %s", project_id, exc_info=True)
     
+    # Phase A/C：部署结果附带「跑通」晋升契约快照（含 hop 聚合）
+    _promotion = {}
+    try:
+        from builder.hop_metrics import evaluate_project_run_through
+        import json as _json_promo
+        _man = {}
+        _mp = os.path.join(_app_home, "agent_manifest.json")
+        if os.path.isfile(_mp):
+            with open(_mp, "r", encoding="utf-8") as _mf:
+                _man = _json_promo.load(_mf) or {}
+        _promotion = evaluate_project_run_through(
+            project_id,
+            conformance_green=(_rejected == 0),
+            real_tests_green=False,
+            physical_evidence=False,
+            policy_gate_closed=True,
+        )
+        _promotion["manifest_mode"] = (_man.get("mode") or "single")
+    except Exception:
+        logging.getLogger(__name__).debug("promotion_gate snapshot failed", exc_info=True)
+
     return {
         "ok": True,
         "deploy_dir": deploy_dir,
@@ -4609,6 +4778,7 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
         "registered_count": _reg_count,
         "rejected_count": _rejected,
         "rejected_artifacts": _rejected_artifacts,
+        "promotion_gate": _promotion,
     }
 
 

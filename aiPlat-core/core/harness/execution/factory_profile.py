@@ -59,13 +59,21 @@ def apply_factory_profile_to_stages(
     stages: Sequence[Any],
     profile: str,
 ) -> List[Any]:
-    """Mutate/copy stage hitl flags according to factory_profile.
+    """Mutate stage hitl flags according to factory_profile + always disable free spawn.
 
     demo: disable hitl on all stages except the last stage that is QA-like
     or, if none match, the last stage that originally had hitl=True.
+
+    Phase B W3: every factory stage gets allow_dynamic_spawn=False (contracted
+    team pipeline — no DynamicOrchestrator free multi-agent spawn).
     """
     profile = normalize_factory_profile(profile)
     out = list(stages)
+
+    # Always: factory build chain is contracted — no free spawn
+    for st in out:
+        _stage_set_allow_dynamic_spawn(st, False)
+
     if profile != FACTORY_PROFILE_DEMO or not out:
         return out
 
@@ -87,6 +95,16 @@ def apply_factory_profile_to_stages(
         else:
             _stage_set_hitl(st, False)
     return out
+
+
+def _stage_set_allow_dynamic_spawn(stage: Any, allowed: bool) -> None:
+    if isinstance(stage, MutableMapping):
+        stage["allow_dynamic_spawn"] = allowed
+        return
+    try:
+        setattr(stage, "allow_dynamic_spawn", allowed)
+    except Exception:
+        pass  # noqa: cleanup-best-effort
 
 
 def resolve_project_factory_profile(project: Optional[Mapping[str, Any]]) -> str:

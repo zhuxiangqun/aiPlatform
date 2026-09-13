@@ -24,6 +24,7 @@ _cross_validations|OK|engine-internal
 _current_stage_idx|OK|engine-internal
 _debate_state|OK|engine-internal
 _deploy_compile_errors|OK|engine-internal
+_disable_dynamic_spawn|OK|engine-internal (spawn_policy: factory contracted pipelines)
 _dynamic_trace|OK|engine-internal
 _eval_count|OK|engine-internal
 _failure_classification|OK|engine-internal

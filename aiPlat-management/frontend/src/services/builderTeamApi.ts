@@ -340,6 +340,21 @@ export const projectApi = {
   lastTestReport: async (projectId: string) => {
     return apiClient.get<Record<string, unknown>>(`/platform/builder/projects/${projectId}/last-test-report`);
   },
+  /** Alias used by Factory list loader. */
+  getLastTestReport: async (projectId: string) => {
+    return apiClient.get<Record<string, unknown>>(`/platform/builder/projects/${projectId}/last-test-report`);
+  },
+
+  /** Phase C：hop 度量 + 跑通晋升门快照。 */
+  getPromotion: async (projectId: string) => {
+    return apiClient.get<{
+      ok?: boolean;
+      hops?: { n_runs?: number; effective_n?: number; effective_success_rate?: number };
+      blockers?: string[];
+      policy?: string;
+      manifest_mode?: string;
+    }>(`/platform/builder/projects/${projectId}/promotion`);
+  },
 
   /** 生成 app 运行时：daemon_jobs 托管启动。 */
   runtimeLaunch: async (projectId: string) => {

@@ -36,3 +36,12 @@ def test_standard_preserves_hitl():
     out = apply_factory_profile_to_stages(stages, FACTORY_PROFILE_STANDARD)
     assert out[0]["hitl"] is True
     assert out[1]["hitl"] is True
+    # Phase B W3: factory stages always disable free spawn
+    assert out[0]["allow_dynamic_spawn"] is False
+    assert out[1]["allow_dynamic_spawn"] is False
+
+
+def test_demo_also_disables_spawn():
+    stages = [{"agent_id": "pm_agent", "hitl": True, "allow_dynamic_spawn": True}]
+    out = apply_factory_profile_to_stages(stages, FACTORY_PROFILE_DEMO)
+    assert out[0]["allow_dynamic_spawn"] is False
