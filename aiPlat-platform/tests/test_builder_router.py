@@ -70,3 +70,11 @@ class TestBuilderRouterStatic:
         content = BUILDER_PATH.read_text()
         count = content.count("@router.")
         assert count >= 25, f"Expected at least 25 route decorators, found {count}"
+
+    def test_last_test_report_empty_is_200_not_404(self):
+        """未测过不得 404（Factory 列表 N+1 会刷浏览器 Failed to load resource）。"""
+        content = BUILDER_PATH.read_text()
+        assert 'last-test-report' in content
+        assert 'status": "empty"' in content or "status': 'empty'" in content
+        # empty path must not raise HTTPException 404
+        assert 'raise HTTPException(status_code=404, detail="no_test_report")' not in content

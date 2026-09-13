@@ -3032,13 +3032,27 @@ const FactoryPage: React.FC<{ entryMode?: FactoryEntryMode }> = ({ entryMode = '
 	                if (trj.meta?.pass_rate != null) rates[prj.project_id] = trj.meta.pass_rate;
 	              } catch {}
 	            }
+              // Prefer list-card pass_rate (avoids N+1 when run already finished)
+              if (rates[prj.project_id] == null) {
+                const latest = Array.isArray(prj.runs) && prj.runs.length
+                  ? prj.runs[prj.runs.length - 1]
+                  : null;
+                if (latest?.finished_at && latest.pass_rate != null) {
+                  const pr = Number(latest.pass_rate);
+                  if (Number.isFinite(pr)) {
+                    rates[prj.project_id] = pr <= 1 ? pr * 100 : pr;
+                  }
+                }
+              }
               // Fallback: last persisted true-test report (state may drop test_report after re-run)
               if (rates[prj.project_id] == null) {
                 try {
                   const last = await projectApi.getLastTestReport(prj.project_id);
-                  const meta = (last as any)?.meta || (last as any)?.report?.meta;
-                  if (meta?.pass_rate != null) rates[prj.project_id] = meta.pass_rate;
-                } catch { /* no report yet */ }
+                  if (last) {
+                    const meta = (last as any)?.meta || (last as any)?.report?.meta;
+                    if (meta?.pass_rate != null) rates[prj.project_id] = meta.pass_rate;
+                  }
+                } catch { /* network/auth — ignore */ }
               }
               try {
                 const promo = await projectApi.getPromotion(prj.project_id);

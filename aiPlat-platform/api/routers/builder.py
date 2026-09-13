@@ -610,10 +610,18 @@ async def run_project_tests(project_id: str, _auth: str = Depends(require_builde
 
 @router.get("/projects/{project_id}/last-test-report", response_model=StatusResponse)
 async def get_last_test_report(project_id: str, _auth: str = Depends(require_builder_access)):
-    """最近一次真实测试报告（含 bug_summary/suggested_fix），未测试过返回 404。"""
+    """最近一次真实测试报告（含 bug_summary/suggested_fix）。
+
+    未跑过真实测试时返回 200 + ``status=empty``（勿用 404：列表页会 N+1 拉取，
+    浏览器会把 404 打成 Failed to load resource 刷屏）。
+    """
     report = await _get_svc().get_last_test_report(project_id)
     if report is None:
-        raise HTTPException(status_code=404, detail="no_test_report")
+        return {"status": "empty", "detail": "no_test_report"}
+    if isinstance(report, dict) and not report.get("status"):
+        out = dict(report)
+        out["status"] = "ok"
+        return out
     return report
 
 

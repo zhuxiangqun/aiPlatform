@@ -336,13 +336,17 @@ export const projectApi = {
     );
   },
 
-  /** 最近一次真实测试报告（含 bug_summary/suggested_fix）。 */
+  /** 最近一次真实测试报告；从未测试过返回 null（后端 200 status=empty，避免 404 刷屏）。 */
   lastTestReport: async (projectId: string) => {
-    return apiClient.get<Record<string, unknown>>(`/platform/builder/projects/${projectId}/last-test-report`);
+    const res = await apiClient.get<Record<string, unknown>>(
+      `/platform/builder/projects/${projectId}/last-test-report`,
+    );
+    if (!res || (res as { status?: string }).status === 'empty') return null;
+    return res;
   },
   /** Alias used by Factory list loader. */
   getLastTestReport: async (projectId: string) => {
-    return apiClient.get<Record<string, unknown>>(`/platform/builder/projects/${projectId}/last-test-report`);
+    return projectApi.lastTestReport(projectId);
   },
 
   /** Phase C：hop 度量 + 跑通晋升门快照。 */
