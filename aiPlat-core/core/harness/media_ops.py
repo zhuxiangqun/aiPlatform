@@ -1001,6 +1001,22 @@ def remap_fixture_path(path: str, app_name: str = "media") -> str:
     )
     # Demo / placeholder page URLs (not real CDN) → offline fixture
     if low.startswith(("http://", "https://")):
+        # Explicit download-failure markers must NOT remap onto a happy fixture
+        if any(
+            x in low
+            for x in (
+                "unreachable",
+                "timeout",
+                "download_fail",
+                "not-downloadable",
+                "not_downloadable",
+                "not-found",
+                "not_found",
+                "/fail",
+                "404",
+            )
+        ):
+            return p
         if any(
             x in low
             for x in (
@@ -1011,11 +1027,9 @@ def remap_fixture_path(path: str, app_name: str = "media") -> str:
                 "bv1demo",
                 "unreachable_demo",
                 "example.org",
+                "example.com",
             )
         ) and not low.rstrip("/").endswith((".mp4", ".mkv", ".mov", ".avi", ".webm")):
-            # Keep explicit failure markers for exception cases that assert DOWNLOAD_FAILED
-            if "unreachable" in low or "timeout" in low or "fail" in low:
-                return p
             return sample or p
     if "corrupt" in low or "broken" in low or "damaged" in low:
         return mapping.get("/media/corrupt.mp4") or p
@@ -1027,6 +1041,23 @@ def remap_fixture_path(path: str, app_name: str = "media") -> str:
         return mapping.get("/tmp/media/sample.mp4") or mapping.get("/tmp/video.mp4") or p
     if ("sub" in low or "srt" in low) and "nosub" not in low and "no_sub" not in low:
         return mapping.get("/tmp/sub.mp4") or mapping.get("/tmp/media/with_subtitle.mp4") or mapping.get("/tmp/videosense/with_subtitle.mp4") or p
+    # Invented task/audio refs from Factory exams (task/t-*/audio.wav, video_ref, …)
+    if low.endswith((".wav", ".mp3", ".m4a", ".aac", ".flac")) or "/audio" in low:
+        return (
+            mapping.get("/tmp/audio.mp4")
+            or mapping.get("/media/with_audio.mp4")
+            or sample
+            or p
+        )
+    if low.startswith("task/") or "/task/" in low or low.startswith("work/"):
+        if low.endswith(".mkv") or "soft_sub" in low or "with_sub" in low:
+            return (
+                mapping.get("/tmp/sub.mp4")
+                or mapping.get("/tmp/media/with_subtitle.mp4")
+                or sample
+                or p
+            )
+        return sample or p
     # Only remap upload placeholders that look like video files — never rewrite
     # .txt/.exe rejection cases onto the sample MP4 fixture.
     _video_ext = (".mp4", ".mkv", ".mov", ".avi")
@@ -1106,7 +1137,7 @@ def coerce_media_invoke_params(params: Dict[str, Any]) -> Dict[str, Any]:
                 out["url"] = v
                 break
 
-    # File/upload aliases
+    # File/upload aliases (incl. Factory invented audio_ref / video_ref)
     if not str(out.get("file_path") or "").strip():
         for key in (
             "upload_file_path",
@@ -1114,6 +1145,9 @@ def coerce_media_invoke_params(params: Dict[str, Any]) -> Dict[str, Any]:
             "local_path",
             "source_path",
             "video_file",
+            "video_ref",
+            "audio_ref",
+            "audio_path",
             "file",
             "media_ref",
             "source_ref",
@@ -1155,6 +1189,9 @@ def coerce_media_invoke_params(params: Dict[str, Any]) -> Dict[str, Any]:
             "local_path",
             "source_path",
             "upload_file_path",
+            "video_ref",
+            "audio_ref",
+            "audio_path",
             "media_ref",
             "source_ref",
             "media_path",

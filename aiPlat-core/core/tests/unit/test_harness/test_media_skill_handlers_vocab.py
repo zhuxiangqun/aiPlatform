@@ -148,7 +148,7 @@ def test_frame_analyzer_exposes_object_and_start_ms():
 
 
 def test_report_skipped_stages_status_completed_with_skips():
-    """TQ-016: skipped_stages → status completed_with_skips + skip_reason + empty lists."""
+    """Explicit skipped_stages → status completed_with_skips + skip_reason + empty lists."""
     from core.harness.execution.true_test_runtime import evaluate_result_asserts
 
     r = handle_report_json_export(
@@ -169,3 +169,60 @@ def test_report_skipped_stages_status_completed_with_skips():
         ],
     )
     assert ok, fails
+
+
+def test_not_downloadable_url_fails():
+    r = handle_video_downloader(
+        {
+            "app_name": "videosense",
+            "url": "https://example.com/not-downloadable-page",
+            "task_id": "t-003",
+        }
+    )
+    assert str(r.get("status") or "").lower() in ("failed", "error", "download_failed")
+
+
+def test_speech_acoustic_aliases_and_analysis_failed():
+    ok = handle_speech_analyzer(
+        {
+            "app_name": "videosense",
+            "task_id": "t-012",
+            "audio_ref": "task/t-012/audio.wav",
+            "mode": "acoustic_features",
+        }
+    )
+    blob = _blob(ok)
+    assert "language_estimate" in blob
+    assert "emotion_tendency" in blob
+    fail = handle_speech_analyzer(
+        {
+            "app_name": "videosense",
+            "task_id": "t-014",
+            "audio_ref": "task/t-014/audio.wav",
+            "simulate_failure": True,
+        }
+    )
+    assert "ANALYSIS_FAILED" in _blob(fail)
+
+
+def test_subtitle_no_soft_lowercase_token():
+    r = handle_subtitle_extractor(
+        {
+            "app_name": "videosense",
+            "task_id": "t-011",
+            "video_ref": "task/t-011/video.mp4",
+            "has_soft_subtitle_track": False,
+        }
+    )
+    assert "no_soft_subtitle_track" in _blob(r)
+
+
+def test_report_happy_path_stays_completed_not_with_skips():
+    r = handle_report_json_export(
+        {
+            "app_name": "videosense",
+            "task_id": "task-asr-report-unit",
+            "video_path": "/Users/apple/.aiplat/apps/media/fixtures/with_audio.mp4",
+        }
+    )
+    assert r.get("status") == "completed"
