@@ -295,16 +295,9 @@ def handle_video_downloader(params: Dict[str, Any]) -> Dict[str, Any]:
         source_type = "local"
         params["source_type"] = "local"
 
-    # Idempotent poll: task_id already has downloaded media → return ready
-    if not url and not file_path and task_id:
-        existing = storage_root(app) / task_id / "source" / "video.mp4"
-        if existing.is_file():
-            return _enrich_download_result(
-                str(existing), task_id, status="ready", source_type=pub_source
-            )
-
     # Validation-only (file_validate skill): name/size rules without a real blob
     # BUT: duration_seconds / duration_ms / long_* names → synthesize segmented success (TQ long-video)
+    # Must run BEFORE idempotent poll — a leftover short fixture must not win over claimed long duration.
     claimed_dur_f = _duration_seconds_from_params(params)
     if file_name and not url and not file_path and claimed_dur_f > 0:
         from core.harness.execution.true_test_runtime import check_file_rules
@@ -365,6 +358,14 @@ def handle_video_downloader(params: Dict[str, Any]) -> Dict[str, Any]:
         if segs:
             out.update({k: segs[0][k] for k in ("start_ms", "end_ms", "start_ts", "end_ts") if k in segs[0]})
         return out
+
+    # Idempotent poll: task_id already has downloaded media → return ready
+    if not url and not file_path and task_id:
+        existing = storage_root(app) / task_id / "source" / "video.mp4"
+        if existing.is_file():
+            return _enrich_download_result(
+                str(existing), task_id, status="ready", source_type=pub_source
+            )
 
     if file_name and not url and not file_path:
         from core.harness.execution.true_test_runtime import check_file_rules
@@ -1339,11 +1340,19 @@ def handle_report_json_export(params: Dict[str, Any]) -> Dict[str, Any]:
         "yes",
         "on",
     )
+    # Explicit skip-stage exams must not reuse a prior "completed" cache
+    if params.get("skipped_stages") or params.get("skip_stages"):
+        force = True
+    if "partial" in str(task_id).lower() or "skip" in str(task_id).lower():
+        force = True
     cached_path = storage_root(app) / task_id / "report.json"
     if (not force) and cached_path.is_file() and cached_path.stat().st_size > 50:
         try:
             cached = json.loads(cached_path.read_text(encoding="utf-8"))
-            if isinstance(cached, dict) and cached.get("status") == "completed":
+            if isinstance(cached, dict) and str(cached.get("status") or "") in (
+                "completed",
+                "completed_with_skips",
+            ):
                 cached = dict(cached)
                 cached.setdefault("report_path", str(cached_path))
                 cached.setdefault("task_id", task_id)
@@ -1441,6 +1450,74 @@ def handle_report_json_export(params: Dict[str, Any]) -> Dict[str, Any]:
     # Normalize skipped modalities to PRD skipped_reason vocab
     speech_skip = False
     subtitle_skip = False
+    vision_skip = False
+    skipped_stages_raw = params.get("skipped_stages") or params.get("skip_stages") or []
+    if isinstance(skipped_stages_raw, str):
+        skipped_stages = [x.strip() for x in skipped_stages_raw.split(",") if x.strip()]
+    elif isinstance(skipped_stages_raw, list):
+        skipped_stages = [str(x).strip() for x in skipped_stages_raw if str(x).strip()]
+    else:
+        skipped_stages = []
+    skipped_l = {s.lower().replace("-", "_") for s in skipped_stages}
+
+    def _stage_skipped(*names: str) -> bool:
+        return any(n.lower().replace("-", "_") in skipped_l for n in names)
+
+    if _stage_skipped(
+        "subtitle_extractor",
+        "subtitle",
+        "subtitle_extract",
+        "subtitle_track_extraction",
+    ):
+        subtitle_skip = True
+        subtitle_result = {
+            "status": "SKIPPED_NO_TRACK",
+            "subtitle_status": "SKIPPED_NO_TRACK",
+            "skipped_reason": _SKIP_NO_SOFT_SUB,
+            "skip_reason": _SKIP_NO_SOFT_SUB,
+            "NO_SOFT_SUBTITLE_TRACK": True,
+            "has_subtitle_track": False,
+            "has_subtitle": False,
+            "subtitles": [],
+            "srt": "",
+            "srt_content": "",
+            "timeline": [],
+        }
+    if _stage_skipped(
+        "speech_analyzer",
+        "speech",
+        "transcription",
+        "speech_transcription",
+        "audio_feature_analysis",
+    ):
+        speech_skip = True
+        speech_result = {
+            "status": "SKIPPED_NO_AUDIO",
+            "transcription_status": "SKIPPED_NO_AUDIO",
+            "speech_analysis_status": "SKIPPED_NO_AUDIO",
+            "skipped_reason": _SKIP_NO_AUDIO,
+            "skip_reason": _SKIP_NO_AUDIO,
+            "NO_AUDIO_TRACK": True,
+            "has_audio_track": False,
+            "has_audio": False,
+            "transcript": "",
+            "transcript_segments": [],
+            "acoustic_labels": {},
+        }
+    if _stage_skipped("frame_analyzer", "vision", "visual", "keyframe_extract"):
+        vision_skip = True
+        frame_result = {
+            "status": "SKIPPED",
+            "vision_status": "SKIPPED",
+            "skipped_reason": "VISION_SKIPPED",
+            "skip_reason": "VISION_SKIPPED",
+            "keyframes": [],
+            "labels": [],
+            "visual_labels": [],
+            "highlights": [],
+            "vision_tags": [],
+        }
+
     if isinstance(speech_result, dict) and (
         speech_result.get("no_audio_track")
         or speech_result.get("has_audio") is False
@@ -1451,7 +1528,10 @@ def handle_report_json_export(params: Dict[str, Any]) -> Dict[str, Any]:
         speech_skip = True
         speech_result = dict(speech_result)
         speech_result.setdefault("skipped_reason", _SKIP_NO_AUDIO)
+        speech_result.setdefault("skip_reason", speech_result.get("skipped_reason") or _SKIP_NO_AUDIO)
         speech_result.setdefault("NO_AUDIO_TRACK", True)
+        speech_result.setdefault("transcript_segments", [])
+        speech_result.setdefault("transcript", "")
     if isinstance(subtitle_result, dict) and (
         subtitle_result.get("no_subtitle_track")
         or subtitle_result.get("has_subtitle") is False
@@ -1463,12 +1543,33 @@ def handle_report_json_export(params: Dict[str, Any]) -> Dict[str, Any]:
         subtitle_skip = True
         subtitle_result = dict(subtitle_result)
         subtitle_result.setdefault("skipped_reason", _SKIP_NO_SOFT_SUB)
+        subtitle_result.setdefault("skip_reason", subtitle_result.get("skipped_reason") or _SKIP_NO_SOFT_SUB)
         subtitle_result.setdefault("NO_SOFT_SUBTITLE_TRACK", True)
+        subtitle_result.setdefault("subtitles", [])
+        subtitle_result.setdefault("srt", "")
+        subtitle_result.setdefault("timeline", [])
+
+    # Refresh derived fields after skip overwrites
+    if vision_skip:
+        keyframes = []
+        scene_changes = []
+        timeline = [
+            _stamp_ms_fields({"timestamp": 0, "start_ts": 0, "end_ts": 10, "label": "skipped"})
+        ]
+    if speech_skip:
+        transcript_segments = []
+        transcript_text = ""
+        vad = []
+    if subtitle_skip and isinstance(subtitle_result, dict):
+        subtitle_result["subtitles"] = []
 
     transcription_block = {
         "transcript": transcript_text,
         "transcript_segments": transcript_segments,
         "skipped_reason": speech_result.get("skipped_reason") if speech_skip else None,
+        "skip_reason": (speech_result.get("skip_reason") or speech_result.get("skipped_reason"))
+        if speech_skip
+        else None,
     }
     if speech_skip:
         transcription_block["skipped_reason"] = _SKIP_NO_AUDIO
@@ -1528,11 +1629,32 @@ def handle_report_json_export(params: Dict[str, Any]) -> Dict[str, Any]:
         "status": "completed",
         "task_status": "completed",
     }
-    if speech_skip or subtitle_skip or "partial" in str(task_id).lower():
-        report["skipped_reason"] = (
-            (speech_result or {}).get("skipped_reason")
+    has_skips = bool(
+        speech_skip
+        or subtitle_skip
+        or vision_skip
+        or skipped_stages
+        or "partial" in str(task_id).lower()
+    )
+    if has_skips:
+        skip_reason = (
+            (subtitle_result or {}).get("skip_reason")
             or (subtitle_result or {}).get("skipped_reason")
-            or _SKIP_NO_AUDIO
+            or (speech_result or {}).get("skip_reason")
+            or (speech_result or {}).get("skipped_reason")
+            or (frame_result or {}).get("skip_reason")
+            or (frame_result or {}).get("skipped_reason")
+            or _SKIP_NO_SOFT_SUB
+        )
+        report["status"] = "completed_with_skips"
+        report["task_status"] = "completed_with_skips"
+        report["completed_with_skips"] = True
+        report["skipped_reason"] = skip_reason
+        report["skip_reason"] = skip_reason
+        report["skipped_stages"] = skipped_stages or (
+            (["subtitle_extractor"] if subtitle_skip else [])
+            + (["speech_analyzer"] if speech_skip else [])
+            + (["frame_analyzer"] if vision_skip else [])
         )
     # mark degraded dimensions
     for key, blob in (
@@ -1553,6 +1675,22 @@ def handle_report_json_export(params: Dict[str, Any]) -> Dict[str, Any]:
         speech_result.get("no_audio_track") or speech_result.get("has_audio") is False
     ):
         report["no_audio_track"] = True
+    # Ensure skipped modality fields are empty lists (exam: 空列表 + skip_reason)
+    if subtitle_skip:
+        report["subtitles"] = []
+        if isinstance(report.get("subtitle"), dict):
+            report["subtitle"]["subtitles"] = []
+            report["subtitle"].setdefault("skip_reason", report.get("skip_reason"))
+    if speech_skip:
+        report["transcript_segments"] = []
+        if isinstance(report.get("transcription"), dict):
+            report["transcription"]["transcript_segments"] = []
+            report["transcription"].setdefault(
+                "skip_reason", report.get("skip_reason") or _SKIP_NO_AUDIO
+            )
+            report["transcription"].setdefault(
+                "skipped_reason", report.get("skipped_reason") or _SKIP_NO_AUDIO
+            )
     out_dir = storage_root(app) / task_id
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "report.json"

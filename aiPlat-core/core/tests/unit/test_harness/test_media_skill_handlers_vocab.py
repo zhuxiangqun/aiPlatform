@@ -145,3 +145,27 @@ def test_frame_analyzer_exposes_object_and_start_ms():
     assert "object" in blob
     assert "highlights" in blob
     assert "start_ms" in blob
+
+
+def test_report_skipped_stages_status_completed_with_skips():
+    """TQ-016: skipped_stages → status completed_with_skips + skip_reason + empty lists."""
+    from core.harness.execution.true_test_runtime import evaluate_result_asserts
+
+    r = handle_report_json_export(
+        {
+            "app_name": "videosense",
+            "task_id": "t-012",
+            "skipped_stages": ["subtitle_extractor"],
+        }
+    )
+    assert r.get("status") == "completed_with_skips"
+    assert r.get("skip_reason") or r.get("skipped_reason")
+    assert (r.get("subtitle") or {}).get("subtitles") == []
+    ok, fails, _ = evaluate_result_asserts(
+        r,
+        [
+            {"type": "result.contains", "text": "completed_with_skips"},
+            {"type": "result.contains", "text": "skip_reason"},
+        ],
+    )
+    assert ok, fails

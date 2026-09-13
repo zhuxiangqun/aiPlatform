@@ -603,9 +603,10 @@ _CONTAINS_SYNONYMS: Dict[str, Tuple[str, ...]] = {
     "end_time": ("end_time", "end_ts", "end_sec", "end_ms"),
     "start_ms": ("start_ms", "start_ts", "start_sec", "start_time", "time_ms"),
     "end_ms": ("end_ms", "end_ts", "end_sec", "end_time"),
-    "skipped_reason": ("skipped_reason", "NO_AUDIO_TRACK", "NO_SOFT_SUBTITLE_TRACK", "no_audio_track", "no_subtitle_track"),
-    "NO_AUDIO_TRACK": ("NO_AUDIO_TRACK", "SKIPPED_NO_AUDIO", "no_audio_track", "skipped_reason"),
-    "NO_SOFT_SUBTITLE_TRACK": ("NO_SOFT_SUBTITLE_TRACK", "SKIPPED_NO_TRACK", "no_subtitle_track", "skipped_reason"),
+    "skipped_reason": ("skipped_reason", "skip_reason", "NO_AUDIO_TRACK", "NO_SOFT_SUBTITLE_TRACK", "no_audio_track", "no_subtitle_track"),
+    "skip_reason": ("skip_reason", "skipped_reason", "NO_AUDIO_TRACK", "NO_SOFT_SUBTITLE_TRACK"),
+    "NO_AUDIO_TRACK": ("NO_AUDIO_TRACK", "SKIPPED_NO_AUDIO", "no_audio_track", "skipped_reason", "skip_reason"),
+    "NO_SOFT_SUBTITLE_TRACK": ("NO_SOFT_SUBTITLE_TRACK", "SKIPPED_NO_TRACK", "no_subtitle_track", "skipped_reason", "skip_reason"),
     "transcription": ("transcription", "transcript", "speech_analysis", "speech"),
     "vision": ("vision", "visual", "frame_analysis", "vision_tags"),
     "subtitles": ("subtitles", "subtitle", "subtitle_raw", "srt"),
@@ -757,6 +758,14 @@ _STATUS_VALUE_ALIASES: Dict[str, frozenset] = {
     ),
     "failed": frozenset({"failed", "FAILED", "DOWNLOAD_FAILED", "error"}),
     "FAILED": frozenset({"failed", "FAILED", "DOWNLOAD_FAILED", "error"}),
+    "completed_with_skips": frozenset(
+        {
+            "completed_with_skips",
+            "COMPLETED_WITH_SKIPS",
+            "PARTIAL",
+            "partial",
+        }
+    ),
     "SKIPPED_NO_AUDIO": frozenset({"SKIPPED_NO_AUDIO", "degraded", "no_audio", "NO_AUDIO_TRACK"}),
     "SKIPPED_NO_TRACK": frozenset({"SKIPPED_NO_TRACK", "degraded", "no_subtitle", "NO_SOFT_SUBTITLE_TRACK"}),
     "NO_AUDIO_TRACK": frozenset({"NO_AUDIO_TRACK", "SKIPPED_NO_AUDIO", "no_audio"}),
