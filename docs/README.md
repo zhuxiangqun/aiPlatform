@@ -20,7 +20,8 @@
 |------|------|
 | **架构师** | [architecture/README.md](architecture/README.md) → [architecture/overview.md](architecture/overview.md) |
 | **开发者** | [manuals/development.md](manuals/development.md) → 对应层的 `CLAUDE.md` |
-| **运维** | [manuals/deployment.md](manuals/deployment.md) → [manuals/management.md](manuals/management.md) |
+| **运维** | [manuals/deployment.md](manuals/deployment.md) → [architecture/enterprise_deployment.md](architecture/enterprise_deployment.md)（选型三问）→ [manuals/management.md](manuals/management.md) |
+| **安全/合规架构** | [architecture/enterprise_deployment.md](architecture/enterprise_deployment.md) → [architecture/private-control-plane.md](architecture/private-control-plane.md) → [architecture/eu-ai-act-compliance.md](architecture/eu-ai-act-compliance.md) |
 | **知识管理员** | [knowledge-system.md](knowledge-system.md) |
 | **FDE 交付工程师** | [manuals/README.md](manuals/README.md)（手册总目录）→ 按需选择 |
 | **新用户** | [manuals/getting-started.md](manuals/getting-started.md) → [AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md) |

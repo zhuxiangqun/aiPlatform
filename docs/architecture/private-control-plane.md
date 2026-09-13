@@ -1,6 +1,6 @@
 # Private Control Plane — 内部治理平面
 
-> **本文档为 PolicyGate/ApprovalGate 的权威参考入口。** 相关内容参见：`governance.md`、`eu-ai-act-compliance.md`、`private-control-plane.md`
+> **本文档为 PolicyGate/ApprovalGate 的权威参考入口。** 相关内容参见：`governance.md`、`eu-ai-act-compliance.md`、[enterprise_deployment.md](enterprise_deployment.md)（选型三问 / 失效模式）。
 
 > 本文档为架构治理中 PolicyGate / ApprovalGate / 审计日志等组件的权威参考入口。
 
@@ -12,4 +12,5 @@
 | ApprovalGate | `core/harness/infrastructure/gates/approval_gate.py` | 高风险操作审批门 |
 | 审计日志 | `core/harness/observability/audit.py` | 全链路可追溯 |
 
-> 详细实现参见 `governance.md` 和 `eu-ai-act-compliance.md`。
+> 详细实现参见 `governance.md` 和 `eu-ai-act-compliance.md`。  
+> 企业部署「管什么 / 哪一跳出域 / 控制面归谁」见 [enterprise_deployment.md](enterprise_deployment.md)。

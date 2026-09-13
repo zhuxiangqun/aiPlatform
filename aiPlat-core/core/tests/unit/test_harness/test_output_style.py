@@ -39,6 +39,22 @@ def test_overlay_empty_for_default():
     assert "list_cap=3" in build_style_overlay(STYLE_ADHD, {"list_cap": 3})
 
 
+def test_overlay_includes_hard_constraints_v2():
+    text = build_style_overlay(STYLE_ADHD)
+    assert STYLE_VERSION == "adhd_v2"
+    assert "version=adhd_v2" in text
+    assert "no invented time estimates" in text
+    assert "high-risk side issues" in text
+    assert "presentation-only" in text
+    # seed skill carries Hard Constraints chapter
+    from core.harness.utils.output_style import load_adhd_skill_text
+
+    body = load_adhd_skill_text()
+    assert "## Hard Constraints" in body
+    assert "No invented time estimates" in body
+    assert "Debug spiral" in body
+
+
 def test_inject_appends_system_tail_skips_tool():
     msgs = [
         {"role": "system", "content": "base"},

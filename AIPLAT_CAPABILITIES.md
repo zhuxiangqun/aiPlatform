@@ -1490,6 +1490,7 @@ scan_hash: 8f9548ec24f4
 ## 十二、Gate 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| build_style_overlay | `core/harness/utils/output_style.py` | ✅ | 自动同步 | 已合入 |
 | parse_app_page_payload | `core/harness/execution/app_page_skill_inject.py` | ✅ | 自动同步 | 已合入 |
 | skill_routing_context_block | `core/harness/execution/app_page_skill_inject.py` | ✅ | 自动同步 | 已合入 |
 | extract_ui_bindings | `core/harness/execution/app_page_skill_inject.py` | ✅ | 自动同步 | 已合入 |
@@ -1599,7 +1600,7 @@ scan_hash: 8f9548ec24f4
 | 工厂 result_dashboard section 类型闭集 | true_test_runtime.check_result_dashboard_sections + RESULT_DASHBOARD_SECTION_TYPES + factory_artifact_sanitize.ensure_result_dashboard_sections(+speech_pipeline) + speech_pipeline_context_block + app_page_generation SKILL + page_smoke `stage.result_sections_ok` | ✅ | 禁止自造 section type；**asr/hybrid 强制 transcript、audio_features_only 禁止 transcript**；FE 上下文注入 speech_pipeline；生成物适用：**已接线** | 已合入 |
 | 工厂 app_page 媒体 Skill 名规范化 | canonicalize_app_page_media_skills + check_wizard skill_alias_not_canonical + repair_app_page | ✅ | `report_assembly`→`report_json_export` 等写入 app_page；测真拦截别名残留；生成物适用：**已接线** | 已合入 |
 | 工厂 app_page skill 自动注入 | harness/execution/app_page_skill_inject.py + pipeline_engine + builder deploy + agent/app_page skills | ✅ | Agent 必出 ui_bindings→FE 抄表→inject 兜底；无 YAML；生成物适用：**已接线** | 已合入 |
-| 工厂 W1：output_style / factory_profile / handoff 字段 / 确认并构建 | `output_style.py` + `output_style_adhd/SKILL.md` + `factory_profile.py` + `stage_handoff.py` + `confirm_and_build` + AIFactory `factory_ia_v2` + Factory 清单/CTA | ✅ | A0 锁定 ADHD 样式；F2a 项目级 demo HITL；C0 handoff 字段冻结；F1 Tab 灰度+一键启动构建；生成物适用：**已接线** | 已合入 |
+| 工厂 W1：output_style / factory_profile / handoff 字段 / 确认并构建 | `output_style.py` + `output_style_adhd/SKILL.md` + `factory_profile.py` + `stage_handoff.py` + `confirm_and_build` + AIFactory `factory_ia_v2` + Factory 清单/CTA | ✅ | A0 锁定 ADHD 样式（**adhd_v2**：Hard Constraints——禁编造耗时 / 高风险旁支升级 / list_cap 仅呈现层 + 调试螺旋豁免）；F2a 项目级 demo HITL；C0 handoff 字段冻结；F1 Tab 灰度+一键启动构建；生成物适用：**已接线** | 已合入 |
 | 工厂 F2b：hybrid 模式端到端 | `team_planner.normalize_factory_mode` + `preferred_mode`→`hybrid.yaml` + `ProjectCreateRequest.factory_mode` + Factory 模式选择器 | ✅ | LLM/创建均可选 hybrid；agent+code 双轨模板；生成物适用：**已接线** | 已合入 |
 | 工厂 F3：阶段交接包 | `stage_handoff.write_stage_handoff` + `_dispatch_execute` + regenerate 注入 + Factory 阶段卡 5 字段 | ✅ | summary/artifact_ref/verify/known_issues/next；失败可见「下一步」；生成物适用：**已接线** | 已合入 |
 | 工厂 C1：stage schema gate | `stage_handoff.gate_check` + `apply_gate_failure` + `_dispatch_execute`/`run()` | ✅ | 空 schema 放行；缺必填按 gate_on_fail=block/hitl/fail_pipeline；生成物适用：**已接线**（team YAML 逐步开必填） | 已合入 |
