@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 STYLE_DEFAULT = "default"
 STYLE_ADHD = "adhd"
-STYLE_VERSION = "adhd_v1"
+STYLE_VERSION = "adhd_v2"
 WHITELIST_OVERRIDE_KEYS = frozenset({"list_cap", "time_estimate_unit", "locale"})
 
 _SEED_SKILL = (
@@ -108,7 +108,12 @@ def build_style_overlay(
         f"[output_style={STYLE_ADHD} version={STYLE_VERSION} hash={skill_body_hash()}]\n"
         f"Apply locked ADHD user-facing style. list_cap={list_cap}; "
         f"time_estimate_unit={unit}; locale={locale}.\n"
-        "Lead with the next action; number steps; restate state; "
+        "Hard constraints: (1) no invented time estimates — omit or say "
+        "'耗时未知' unless grounded in tool/history; (2) high-risk side issues "
+        "(security/data-loss/leak) get a separate ⚠ paragraph, never one buried "
+        "line; (3) list_cap is presentation-only — never truncate analysis/tool "
+        "results/candidates.\n"
+        "Lead with the next action; number steps; restate state; grade tangents; "
         "no preamble/closers. Keep tool results and stack traces verbatim "
         "in fenced code blocks. Do not alter JSON contracts.\n"
     )
