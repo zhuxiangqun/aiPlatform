@@ -28,14 +28,19 @@ MERGE_ENGINE = ROOT / "aiPlat-platform" / "builder" / "merge_engine.py"
 
 class TestP1_1HitlTemplateDictAccess:
     def test_hitl_map_uses_dict_access(self):
-        """静态证据：_hitl_map 必须用 dict 访问（.get），禁止属性访问。"""
+        """静态证据：模板 stages 必须用 dict 访问（.get），禁止对 YAML dict 做属性访问。"""
         src = PROJECT_SVC.read_text(encoding="utf-8")
-        seg_start = src.index("_hitl_map =")
-        seg = src[seg_start:seg_start + 700]
-        assert 's.get("agent_id")' in seg, "P1-1 未修复：_hitl_map 未用 dict 访问"
-        assert 's.get("hitl")' in seg, "P1-1 未修复：hitl 过滤未用 dict 访问"
-        assert '.get("hitl_phase")' in seg, "P1-1 未修复：hitl_phase 未用 dict 访问"
-        # 该段不得再出现对模板项（独立变量 s）的属性访问；ts 是 PipelineStageConfig 对象合法
+        # 当前路径：load_team_template → _by_agent 字典推导 + PipelineStageConfig(hitl=ps.get(...))
+        assert 's.get("agent_id")' in src, "P1-1 未修复：模板 agent_id 未用 dict 访问"
+        assert 'ps.get("hitl"' in src or 's.get("hitl"' in src, "P1-1 未修复：hitl 未用 dict 访问"
+        assert 'ps.get("hitl_phase"' in src or 's.get("hitl_phase"' in src, \
+            "P1-1 未修复：hitl_phase 未用 dict 访问"
+        # 禁止对模板项变量 s（YAML dict）做属性访问；PipelineStageConfig 对象除外
+        # 聚焦模板拷贝段（_by_agent / _COPY_KEYS）
+        marker = '_by_agent = {'
+        assert marker in src, "P1-1 回归：模板 stages 索引段缺失"
+        seg_start = src.index(marker)
+        seg = src[seg_start:seg_start + 900]
         assert not re.search(r"(?<![A-Za-z0-9_])s\.(agent_id|hitl|hitl_phase)\b", seg), \
             "P1-1 未修复：仍对模板 dict 做属性访问"
 
