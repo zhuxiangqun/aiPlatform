@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1369
+total_capabilities: 1374
 
 total_capabilities: 1095
 last_updated: 2026-08-25
@@ -1911,6 +1911,7 @@ scan_hash: 8f9548ec24f4
 | 工厂动态 spawn 门禁（spawn_policy） | core/harness/coordination/spawn_policy.py + factory_profile + StageRunner + sys_agent_call | ✅ | Phase B W3：工厂阶段 `allow_dynamic_spawn=False`；ContextVar/state 阻断 DynamicOrchestrator.spawn 与 sys_agent_call 自由委派；非工厂默认允许；生成物适用：**已接线**（构建链契约化） | 已合入 |
 | 工厂 Skill hop schema 门（skill_hop_gate） | platform/builder/skill_hop_gate.py + builder_project_service.execute_skill | ✅ | Phase B W4：execute_skill 调用 LLM 前按 SKILL input_schema 校验；缺必填 → 422/结构化错误 + failed_stage=tool_selection + handoff 五字段；生成物适用：**已接线** | 已合入 |
 | 工厂 hop 度量（hop_metrics） | platform/builder/hop_metrics.py | ✅ | Phase C W5：execute_skill 每次写入 JSONL；aggregate + evaluate_project_run_through；无 failed_stage 的失败剔除出有效成功率；生成物适用：**已接线** | 已合入 |
+| 工厂多 Agent 只读基线（baseline） | scripts/factory_multi_agent_baseline.py | ✅ | Phase 0→post-ABC：只读采集 multi 占比 / conformance+manifest / spawn 门禁接线 / hop 摘要 / promotion_gate SoT；`--write` 落盘 `~/.aiplat/builder/baselines/`；生成物适用：**不适用**（运维观测脚本，不进入生成应用） | 已合入 |
 | workspace Agent 符合度校验（conformance） | platform/builder/agent_conformance.py | ✅ | 校验 workspace AGENT.md 合规（validate_agent_md 单文件 / validate_agents_dir 目录遍历：max_lines≤100、无 model 硬编码、交接 5 字段、输出格式无代码块模板）+ ratchet 门禁（load_baseline / save_baseline / ratchet_diff 基线对比，仅新增违规阻断，§96 架构守卫集成） | 已合入 |
 | Builder 流水线启动与安全加固（P0） | platform/builder/builder_project_service.py + platform/api/routers/builder.py + core/harness/execution/pipeline_engine.py | ✅ | start_pipeline/start_pipeline_background 定义并委托 rebuild_project（接线断裂修复，PRD 前置检查）+ PRD 解析 eval→ast.literal_eval（RCE 修复）+ _deploy_result_files 路径穿越 _safe_join 防护 + 域注入 _prd 解析修复 + 部署签名 fail-closed（403 拒绝） | 已合入 |
 | L2 导入既有代码 | platform/builder/builder_project_service.py + core/harness/execution/pipeline_engine.py | ✅ | import-repo API（zip/路径→manifest→_final_state.imported_repo，zip-slip 防护/密钥过滤/50MB·500文件·2MB 限额/has_tests/missing_deps）+ prompt 注入（行为契约"重写而非合并"+ {path,intent} 意图锚点 + 被引用文件全文）+ skip_pytest_gate 逃生（estimated + 原因）+ Build Log regenerated 警告 + 埋点（>40% 触发 L3 告警） | 已合入 |
@@ -1980,6 +1981,7 @@ scan_hash: 8f9548ec24f4
 ## 二十五、管理 & 质量
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| build_baseline | `scripts/factory_multi_agent_baseline.py` | ✅ | 自动同步 | 已合入 |
 | get_promotion_status | `aiPlat-platform/builder/builder_project_service.py` | ✅ | 自动同步 | 已合入 |
 | aggregate_hops | `aiPlat-platform/builder/hop_metrics.py` | ✅ | 自动同步 | 已合入 |
 | record_hop | `aiPlat-platform/builder/hop_metrics.py` | ✅ | 自动同步 | 已合入 |
@@ -2287,7 +2289,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 153 | 1 | 154 |
+| Harness 执行引擎 | 157 | 1 | 158 |
 | 记忆子系统 | 41 | 0 | 41 |
 | 知识引擎（本体） | 153 | 8 | 161 |
 | RAG 检索 | 47 | 0 | 47 |
@@ -2309,7 +2311,7 @@ scan_hash: 8f9548ec24f4
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 6 | 0 | 6 |
 | Arena & 调度 | 7 | 0 | 7 |
-| 平台治理 | 92 | 0 | 92 |
+| 平台治理 | 93 | 0 | 93 |
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
@@ -2332,7 +2334,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1360** | **9** | **1369** |
+| **总计** | **1365** | **9** | **1374** |
 
 | **总计** | **1095** | **0** | **1095** |
 
