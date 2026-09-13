@@ -1,6 +1,7 @@
 """Phase C W5: hop metrics + promotion aggregation."""
 from __future__ import annotations
 
+import importlib.util
 import sys
 from pathlib import Path
 
@@ -8,9 +9,21 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "aiPlat-platform"))
 
 
+def _load_hop_metrics():
+    path = ROOT / "aiPlat-platform" / "builder" / "hop_metrics.py"
+    spec = importlib.util.spec_from_file_location("hop_metrics_test", path)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def test_record_and_aggregate(tmp_path, monkeypatch):
     monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
-    from builder.hop_metrics import record_hop, aggregate_hops, evaluate_project_run_through
+    hm = _load_hop_metrics()
+    record_hop = hm.record_hop
+    aggregate_hops = hm.aggregate_hops
+    evaluate_project_run_through = hm.evaluate_project_run_through
 
     pid = "prj_hop_demo"
     for i in range(20):
@@ -56,7 +69,9 @@ def test_record_and_aggregate(tmp_path, monkeypatch):
 
 def test_below_threshold_not_ok(tmp_path, monkeypatch):
     monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
-    from builder.hop_metrics import record_hop, evaluate_project_run_through
+    hm = _load_hop_metrics()
+    record_hop = hm.record_hop
+    evaluate_project_run_through = hm.evaluate_project_run_through
 
     pid = "prj_low"
     for _ in range(10):

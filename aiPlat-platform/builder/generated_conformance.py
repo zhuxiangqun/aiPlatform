@@ -249,10 +249,16 @@ def validate_manifest(data: Union[Dict[str, Any], str, bytes]) -> List[str]:
                 violations.append(
                     "manifest.success_metrics.target_success_rate: 必须在 (0,1]"
                 )
-        # 五条 AND — 委托 promotion_gate（避免重复实现）
+        # 五条 AND — 委托 promotion_gate（避免重复实现；importlib 避开 builder/__init__）
         try:
-            from builder.promotion_gate import evaluate_multi_agent_upgrade
-            _up = evaluate_multi_agent_upgrade(data.get("upgrade_criteria"))
+            import importlib.util as _iu
+            _pg_path = Path(__file__).resolve().parent / "promotion_gate.py"
+            _spec = _iu.spec_from_file_location("promotion_gate_standalone", _pg_path)
+            if _spec is None or _spec.loader is None:
+                raise ImportError(f"cannot load {_pg_path}")
+            _pg = _iu.module_from_spec(_spec)
+            _spec.loader.exec_module(_pg)
+            _up = _pg.evaluate_multi_agent_upgrade(data.get("upgrade_criteria"))
             for b in _up.get("blockers") or []:
                 violations.append(f"manifest.upgrade_criteria: {b}")
         except Exception as e:

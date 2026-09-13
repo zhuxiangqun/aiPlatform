@@ -145,7 +145,16 @@ def evaluate_project_run_through(
     mature: bool = False,
 ) -> Dict[str, Any]:
     """Combine hop aggregate + promotion_gate.evaluate_run_through."""
-    from builder.promotion_gate import evaluate_run_through, load_promotion_gate
+    import importlib.util as _iu
+
+    _pg_path = Path(__file__).resolve().parent / "promotion_gate.py"
+    _spec = _iu.spec_from_file_location("promotion_gate_hop", _pg_path)
+    if _spec is None or _spec.loader is None:
+        raise ImportError(f"cannot load {_pg_path}")
+    _pg = _iu.module_from_spec(_spec)
+    _spec.loader.exec_module(_pg)
+    evaluate_run_through = _pg.evaluate_run_through
+    load_promotion_gate = _pg.load_promotion_gate
 
     agg = aggregate_hops(project_id)
     # 用 effective_*：无 failed_stage 的失败不计入成功率（与契约一致）
