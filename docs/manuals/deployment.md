@@ -1,6 +1,7 @@
 # AI Platform 部署指南
 
-> 系统级部署指南 - 各层必须遵循
+> 系统级部署指南 - 各层必须遵循  
+> 选型 / 安全边界 / 失效模式：[architecture/enterprise_deployment.md](../architecture/enterprise_deployment.md)
 
 ---
 
