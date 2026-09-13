@@ -2046,26 +2046,43 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
 
     def get_promotion_status(self, project_id: str) -> Dict[str, Any]:
         """Phase C W5：hop 聚合 + 四维跑通晋升快照（供 Factory / API）。"""
-        from builder.hop_metrics import evaluate_project_run_through, aggregate_hops
+        from builder.hop_metrics import (
+            aggregate_hops,
+            derive_test_evidence,
+            evaluate_project_run_through,
+        )
         state = self._runs.get(project_id) or self._load_pipeline_state(project_id) or {}
+        proj = self._projects.get(project_id) or {}
         _rejected = 0
         try:
             # best-effort: treat missing last deploy rejects as unknown
             _rejected = int((state.get("_last_deploy") or {}).get("rejected_count") or 0)
+            if _rejected == 0 and isinstance(proj.get("last_deploy"), dict):
+                _rejected = int((proj.get("last_deploy") or {}).get("rejected_count") or 0)
         except Exception:
             _rejected = 0
-        real_tests_green = bool(state.get("_real_tests_ok") or state.get("real_tests_ok"))
-        physical = bool(state.get("_physical_evidence") or real_tests_green)
+        evidence = derive_test_evidence(
+            last_test_report=proj.get("last_test_report") if isinstance(proj.get("last_test_report"), dict) else None,
+            state=state if isinstance(state, dict) else None,
+        )
+        # also honor project-level flags persisted by run_tests
+        if proj.get("_real_tests_ok"):
+            evidence["real_tests_green"] = True
+        if proj.get("_physical_evidence"):
+            evidence["physical_evidence"] = True
         out = evaluate_project_run_through(
             project_id,
             conformance_green=(_rejected == 0),
-            real_tests_green=real_tests_green,
-            physical_evidence=physical,
+            real_tests_green=bool(evidence["real_tests_green"]),
+            physical_evidence=bool(evidence["physical_evidence"]),
             policy_gate_closed=True,
         )
         _man = state.get("agent_manifest") if isinstance(state.get("agent_manifest"), dict) else {}
+        if not _man and isinstance(proj.get("agent_manifest"), dict):
+            _man = proj.get("agent_manifest") or {}
         out["manifest_mode"] = (_man.get("mode") or "single")
         out["hops_raw_n"] = aggregate_hops(project_id).get("n_runs", 0)
+        out["evidence"] = evidence
         return out
 
     async def _platform_effects_after_deterministic_skill(
@@ -4044,17 +4061,31 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         proj = self._projects.get(project_id, {})
         deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
         result = _run_tests_for_project(project_id, deploy_dir or "")
-        # 持久化 test_report（含 bug_summary）→ 前端/后续消费
+        # 持久化 test_report（含 bug_summary）→ 前端/后续消费；同步晋升门证据旗标
         try:
             rt = result.get("real_tests") or {}
-            if rt.get("test_report"):
-                proj["last_test_report"] = {
+            if rt.get("test_report") is not None or rt.get("test_passed") is not None:
+                report = {
                     "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
                     "test_passed": bool(rt.get("test_passed")),
-                    "test_report": rt["test_report"],
-                    "e2e_smoke": result.get("e2e_smoke"),
+                    "test_report": rt.get("test_report"),
+                    "e2e_smoke": result.get("e2e_smoke") or rt.get("e2e_smoke"),
                 }
+                proj["last_test_report"] = report
+                from builder.hop_metrics import derive_test_evidence
+                ev = derive_test_evidence(last_test_report=report, state=None)
+                proj["_real_tests_ok"] = bool(ev["real_tests_green"])
+                proj["_physical_evidence"] = bool(ev["physical_evidence"])
                 self._save_projects()
+                # mirror into in-memory / pipeline state when present
+                try:
+                    st = self._runs.get(project_id)
+                    if isinstance(st, dict):
+                        st["_real_tests_ok"] = proj["_real_tests_ok"]
+                        st["_physical_evidence"] = proj["_physical_evidence"]
+                except Exception:
+                    logging.getLogger("aiplat.builder").debug(
+                        "mirror test evidence into run state skipped", exc_info=True)
         except Exception:
             logging.getLogger("aiplat.builder").debug(
                 "test_report 持久化失败 project_id=%s", project_id, exc_info=True)  # best-effort
@@ -4749,21 +4780,53 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
     # Phase A/C：部署结果附带「跑通」晋升契约快照（含 hop 聚合）
     _promotion = {}
     try:
-        from builder.hop_metrics import evaluate_project_run_through
+        from builder.hop_metrics import derive_test_evidence, evaluate_project_run_through
         import json as _json_promo
         _man = {}
         _mp = os.path.join(_app_home, "agent_manifest.json")
         if os.path.isfile(_mp):
             with open(_mp, "r", encoding="utf-8") as _mf:
                 _man = _json_promo.load(_mf) or {}
+        _report = None
+        _proj_flags: Dict[str, Any] = {}
+        try:
+            _projects_path = os.path.join(
+                os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+                "projects.json",
+            )
+            if os.path.isfile(_projects_path):
+                with open(_projects_path, "r", encoding="utf-8") as _pf:
+                    _pdata = _json_promo.load(_pf) or {}
+                _rows = _pdata.get("projects") or []
+                _prow = {}
+                if isinstance(_rows, list):
+                    for _item in _rows:
+                        if isinstance(_item, dict) and _item.get("project_id") == project_id:
+                            _prow = _item
+                            break
+                elif isinstance(_rows, dict):
+                    _prow = _rows.get(project_id) or {}
+                if isinstance(_prow, dict) and _prow:
+                    _report = _prow.get("last_test_report")
+                    _proj_flags = {
+                        "_real_tests_ok": _prow.get("_real_tests_ok"),
+                        "_physical_evidence": _prow.get("_physical_evidence"),
+                    }
+        except Exception:
+            _report = None
+        _ev = derive_test_evidence(
+            last_test_report=_report if isinstance(_report, dict) else None,
+            state=_proj_flags or None,
+        )
         _promotion = evaluate_project_run_through(
             project_id,
             conformance_green=(_rejected == 0),
-            real_tests_green=False,
-            physical_evidence=False,
+            real_tests_green=bool(_ev["real_tests_green"]),
+            physical_evidence=bool(_ev["physical_evidence"]),
             policy_gate_closed=True,
         )
         _promotion["manifest_mode"] = (_man.get("mode") or "single")
+        _promotion["evidence"] = _ev
     except Exception:
         logging.getLogger(__name__).debug("promotion_gate snapshot failed", exc_info=True)
 

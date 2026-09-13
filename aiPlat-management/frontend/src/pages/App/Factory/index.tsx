@@ -3000,7 +3000,7 @@ const FactoryPage: React.FC<{ entryMode?: FactoryEntryMode }> = ({ entryMode = '
 	const [loadingApps, setLoadingApps] = useState(true);
 	const [projectStates, setProjectStates] = useState<Record<string, string>>({});
 	const [projectPassRates, setProjectPassRates] = useState<Record<string, number>>({});
-	const [projectHopRates, setProjectHopRates] = useState<Record<string, { n: number; rate: number }>>({});
+	const [projectHopRates, setProjectHopRates] = useState<Record<string, { n: number; rate: number; ok?: boolean; blockers?: string[] }>>({});
 	const [desc, setDesc] = useState('');
 	const [appName, setAppName] = useState('');
   const [factoryProfile, setFactoryProfile] = useState<'standard' | 'demo'>('standard');
@@ -3019,7 +3019,7 @@ const FactoryPage: React.FC<{ entryMode?: FactoryEntryMode }> = ({ entryMode = '
 	        // ── v3.1: fetch real-time pipeline phase from Core ──
 	        const states: Record<string, string> = {};
 	        const rates: Record<string, number> = {};
-	        const hops: Record<string, { n: number; rate: number }> = {};
+	        const hops: Record<string, { n: number; rate: number; ok?: boolean; blockers?: string[] }> = {};
 	        await Promise.all(p.projects.map(async (prj: ProjectItem) => {
 	          try {
 	            const st = await projectApi.getState(prj.project_id);
@@ -3044,7 +3044,17 @@ const FactoryPage: React.FC<{ entryMode?: FactoryEntryMode }> = ({ entryMode = '
                 const promo = await projectApi.getPromotion(prj.project_id);
                 const hn = Number((promo as any)?.hops?.effective_n ?? (promo as any)?.hops?.n_runs ?? 0);
                 const hr = Number((promo as any)?.hops?.effective_success_rate ?? 0);
-                if (hn > 0) hops[prj.project_id] = { n: hn, rate: hr };
+                const blockers = Array.isArray((promo as any)?.blockers)
+                  ? ((promo as any).blockers as string[]).slice(0, 3)
+                  : [];
+                if (hn > 0 || blockers.length > 0 || (promo as any)?.ok === true) {
+                  hops[prj.project_id] = {
+                    n: hn,
+                    rate: hr,
+                    ok: Boolean((promo as any)?.ok),
+                    blockers,
+                  };
+                }
               } catch { /* no hops yet */ }
 	          } catch { /* skip */ }
 	        }));
@@ -3298,9 +3308,17 @@ const FactoryPage: React.FC<{ entryMode?: FactoryEntryMode }> = ({ entryMode = '
                          : '暂无测真通过率'}
                     </span>
                     {projectHopRates[p.project_id] != null && (
-                      <span className="text-[10px] text-sky-400" title="Skill hop 有效成功率（跑通晋升）">
+                      <span
+                        className={`text-[10px] ${projectHopRates[p.project_id].ok ? 'text-emerald-400' : 'text-sky-400'}`}
+                        title={
+                          projectHopRates[p.project_id].ok
+                            ? '跑通晋升门：已通过'
+                            : `跑通晋升门阻塞：${(projectHopRates[p.project_id].blockers || []).join('；') || '未满足四维'}`
+                        }
+                      >
                         hop {(projectHopRates[p.project_id].rate * 100).toFixed(0)}%
                         ·n={projectHopRates[p.project_id].n}
+                        {projectHopRates[p.project_id].ok ? ' ·晋升✓' : ' ·晋升✗'}
                       </span>
                     )}
                     <button onClick={async (e) => {

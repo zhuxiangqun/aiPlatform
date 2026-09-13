@@ -135,6 +135,42 @@ def aggregate_hops(project_id: str) -> Dict[str, Any]:
     }
 
 
+def derive_test_evidence(
+    *,
+    last_test_report: Optional[Dict[str, Any]] = None,
+    state: Optional[Dict[str, Any]] = None,
+) -> Dict[str, bool]:
+    """从 last_test_report / pipeline state 推导 real_tests + 物理证据旗标。
+
+    优先级：
+      1) state 显式旗标 ``_real_tests_ok`` / ``real_tests_ok`` / ``_physical_evidence``
+      2) ``last_test_report.test_passed`` + 可捕获报告体（test_report 或 e2e_smoke）
+
+    物理证据不单靠布尔位：必须有 report 产物，或显式 ``_physical_evidence``。
+    """
+    st = state if isinstance(state, dict) else {}
+    report = last_test_report if isinstance(last_test_report, dict) else {}
+
+    real = bool(st.get("_real_tests_ok") or st.get("real_tests_ok"))
+    physical = bool(st.get("_physical_evidence"))
+
+    if report:
+        test_passed = bool(report.get("test_passed"))
+        body = report.get("test_report")
+        e2e = report.get("e2e_smoke") if isinstance(report.get("e2e_smoke"), dict) else {}
+        has_body = isinstance(body, dict) and bool(body)
+        has_e2e_artifact = bool(e2e)  # 有冒烟结果结构即可作为物理产物
+        if test_passed:
+            real = True
+        if test_passed and (has_body or has_e2e_artifact):
+            physical = True
+
+    return {
+        "real_tests_green": bool(real),
+        "physical_evidence": bool(physical),
+    }
+
+
 def evaluate_project_run_through(
     project_id: str,
     *,

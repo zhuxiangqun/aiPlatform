@@ -50,10 +50,6 @@ agent:
   must_not_contain:
     - "```markdown"
     - "```yaml"
-
-# manifest（agent_manifest.json）由 validate_manifest() 代码校验：
-# mode ∈ {single, multi_agent}；skill_routing / ui_bindings 一致性；
-# multi_agent 必填 multi_agent_rationale + success_metrics + upgrade_criteria（五条 AND）。
     - "```json"
 
 # manifest（agent_manifest.json）由 validate_manifest() 代码校验：
