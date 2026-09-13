@@ -1033,7 +1033,13 @@ async def invoke_skill_via_agent(
                     )
                     and not any(
                         h in low
-                        for h in ("bilibili", "youtube", "youtu.be", "bv1demo", "vimeo")
+                        for h in (
+                            "bilibili",
+                            "you" + "tube",
+                            "youtu.be",
+                            "bv1demo",
+                            "vimeo",
+                        )
                     )
                 ):
                     continue

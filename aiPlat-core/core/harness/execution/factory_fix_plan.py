@@ -54,19 +54,19 @@ def _agent_for_artifacts(
 def _resolve_team_agents(
     team_stages: Sequence[Dict[str, Any]],
 ) -> Dict[str, str]:
-    """Map logical roles → agent_id from team config (fallback names only)."""
+    """Map logical roles → agent_id from team config (empty fallback = unresolved)."""
     return {
         "code": _agent_for_artifacts(
-            team_stages, ("code",), "programmer_agent"
+            team_stages, ("code",), ""
         ),
         "frontend": _agent_for_artifacts(
-            team_stages, ("frontend_pages", "app_page"), "frontend_developer"
+            team_stages, ("frontend_pages", "app_page"), ""
         ),
         "agent_app": _agent_for_artifacts(
-            team_stages, ("agent_app", "agents"), "agent_engineer"
+            team_stages, ("agent_app", "agents"), ""
         ),
         "qa": _agent_for_artifacts(
-            team_stages, ("test_cases", "test_questions"), "qa_agent"
+            team_stages, ("test_cases", "test_questions"), ""
         ),
         "executor": next(
             (
@@ -80,7 +80,7 @@ def _resolve_team_agents(
                 )
                 and str(s.get("agent_id") or "").strip()
             ),
-            "test_executor",
+            "",
         ),
     }
 
@@ -99,8 +99,8 @@ def filter_fix_plan_freeze_test_cases(
     if regenerate_test_cases:
         return plan
     agents = _resolve_team_agents(list(team_stages or []))
-    qa_id = str(agents.get("qa") or "qa_agent").strip()
-    blocked = {qa_id, "qa_agent"}
+    qa_id = str(agents.get("qa") or "").strip()
+    blocked = {qa_id} if qa_id else set()
     # Also block by output_artifact name if plan uses artifact ids
     for s in team_stages or []:
         if not isinstance(s, dict):
@@ -160,7 +160,7 @@ def derive_failed_stages_from_report(
     ):
         if int(bs.get("total_bugs") or 0) > 0 or bs.get("failed_tests"):
             stages.add(agents["code"])
-        return sorted(stages)
+        return sorted(s for s in stages if s)
 
     bugs = list(bs.get("bugs") or []) if isinstance(bs, dict) else []
     if not bugs and isinstance(report.get("results"), list):
@@ -230,7 +230,7 @@ def derive_failed_stages_from_report(
             stages.add(agents["code"])
             stages.add(agents["agent_app"])
 
-    return sorted(stages)
+    return sorted(s for s in stages if s)
 
 
 def build_feedback_from_report(test_report: Any, *, max_chars: int = 12000) -> str:

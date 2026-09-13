@@ -455,14 +455,16 @@ class PipelineStageMixin:
             if val:
                 return val[:120]
 
-        # PRD artifact often carries the display title even when app_name was dropped
-        # from reconstructed run-store state.
-        prd = state.get("prd")
+        # Prefer a structured requirements blob with title/raw_output (config-agnostic scan).
         raw = ""
-        if isinstance(prd, dict):
-            raw = str(prd.get("raw_output") or prd.get("title") or "")
-        elif isinstance(prd, str):
-            raw = prd
+        for _v in state.values():
+            if isinstance(_v, dict) and (_v.get("raw_output") or _v.get("title")):
+                raw = str(_v.get("raw_output") or _v.get("title") or "")
+                if raw.strip():
+                    break
+            elif isinstance(_v, str) and '"title"' in _v and len(_v) > 20:
+                raw = _v
+                break
         if raw.strip():
             try:
                 obj = _hj.loads(raw) if raw.strip().startswith("{") else None

@@ -12,6 +12,7 @@ from core.harness.execution.factory_fix_plan import (
 TEAM = [
     {"agent_id": "pm_agent", "output_artifact": "prd"},
     {"agent_id": "architect_agent", "output_artifact": "architecture"},
+    {"agent_id": "programmer_agent", "output_artifact": "code"},
     {"agent_id": "agent_engineer", "output_artifact": "agent_app"},
     {"agent_id": "frontend_developer", "output_artifact": "frontend_pages"},
     {"agent_id": "qa_agent", "output_artifact": "test_cases"},

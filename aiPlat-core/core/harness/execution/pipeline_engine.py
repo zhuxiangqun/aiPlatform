@@ -4355,7 +4355,17 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 _blk = skill_routing_context_block(_aa or {})
                 if _blk:
                     _context = _blk + "\n\n" + _context
-                _sp_blk = speech_pipeline_context_block(state.get("prd"))
+                # speech pipeline hint: config key speech_source_artifact (no hardcoded artifact name)
+                _spk = _gate_ctx.get("speech_source_artifact")
+                _sp_src = state.get(_spk) if _spk else None
+                if _sp_src is None:
+                    for _v in state.values():
+                        if isinstance(_v, dict) and (
+                            _v.get("decisions") or _v.get("raw_output") or _v.get("title")
+                        ):
+                            _sp_src = _v
+                            break
+                _sp_blk = speech_pipeline_context_block(_sp_src)
                 if _sp_blk:
                     _context = _sp_blk + "\n\n" + _context
             except Exception:

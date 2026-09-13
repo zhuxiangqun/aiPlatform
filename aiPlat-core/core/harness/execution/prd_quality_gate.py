@@ -1262,7 +1262,7 @@ def materialize_prd_artifact(
 def seed_confirmed_prd_into_state(state: Dict[str, Any], prd_data: Any) -> bool:
     """Attach confirmed PRD as ``prd_data`` baseline for rebuild regeneration.
 
-    Does **not** pre-fill ``state["prd"]`` — rebuild must re-run PM and overwrite.
+    Does **not** pre-fill the PM stage output artifact — rebuild must re-run PM and overwrite.
     The skill context builder injects ``prd_data`` + ``pm_chat_history`` so the
     regenerated PRD stays scoped to the dialogue (no invented capabilities).
     """

@@ -11,11 +11,11 @@ FACTORY_PROFILE_STANDARD = "standard"
 FACTORY_PROFILE_DEMO = "demo"
 FACTORY_PROFILES = frozenset({FACTORY_PROFILE_STANDARD, FACTORY_PROFILE_DEMO})
 
-# Prefer keeping HITL on these agent_ids when demoting intermediate gates
-_DEMO_KEEP_HITL_AGENT_IDS = frozenset({
-    "qa_agent",
-    "test_executor",
-    "acceptance_checker",
+# Prefer keeping HITL on stages whose output_artifact looks like final QA/acceptance
+_DEMO_KEEP_HITL_ARTIFACTS = frozenset({
+    "test_report",
+    "acceptance",
+    "acceptance_report",
 })
 
 
@@ -32,6 +32,12 @@ def _stage_agent_id(stage: Any) -> str:
     if isinstance(stage, Mapping):
         return str(stage.get("agent_id") or "")
     return str(getattr(stage, "agent_id", "") or "")
+
+
+def _stage_output_artifact(stage: Any) -> str:
+    if isinstance(stage, Mapping):
+        return str(stage.get("output_artifact") or "")
+    return str(getattr(stage, "output_artifact", "") or "")
 
 
 def _stage_get_hitl(stage: Any) -> bool:
@@ -79,7 +85,7 @@ def apply_factory_profile_to_stages(
 
     keep_idx: Optional[int] = None
     for i, st in enumerate(out):
-        if _stage_agent_id(st) in _DEMO_KEEP_HITL_AGENT_IDS:
+        if _stage_output_artifact(st) in _DEMO_KEEP_HITL_ARTIFACTS:
             keep_idx = i
     if keep_idx is None:
         for i in range(len(out) - 1, -1, -1):
@@ -91,7 +97,13 @@ def apply_factory_profile_to_stages(
 
     for i, st in enumerate(out):
         if i == keep_idx:
-            _stage_set_hitl(st, True, hitl_phase="review")
+            # Preserve existing hitl_phase from team YAML; do not hardcode business phase names
+            _existing = ""
+            if isinstance(st, Mapping):
+                _existing = str(st.get("hitl_phase") or "")
+            else:
+                _existing = str(getattr(st, "hitl_phase", "") or "")
+            _stage_set_hitl(st, True, hitl_phase=_existing)
         else:
             _stage_set_hitl(st, False)
     return out

@@ -377,7 +377,7 @@ def detect_speech_language(audio_or_video: str, work_dir: str = "") -> Dict[str,
     try:
         if _WHISPER_MODEL is None and not _WHISPER_LOCK_ERR:
             # tiny is enough for language-id; CPU-friendly
-            model_name = os.getenv("AIPLAT_MEDIA_WHISPER_MODEL", "tiny")
+            model_name = os.getenv("AIPLAT_MEDIA_WHISPER_MODEL", "tiny")  # noqa: env-legacy — ASR size, not LLM
             _WHISPER_MODEL = WhisperModel(model_name, device="cpu", compute_type="int8")
         if _WHISPER_MODEL is None:
             return {"language": "unknown", "language_method": "model_failed"}
@@ -431,7 +431,7 @@ def _ensure_whisper_model():
     try:
         from faster_whisper import WhisperModel
 
-        model_name = os.getenv("AIPLAT_MEDIA_WHISPER_MODEL", "tiny")
+        model_name = os.getenv("AIPLAT_MEDIA_WHISPER_MODEL", "tiny")  # noqa: env-legacy — ASR size, not LLM
         _WHISPER_MODEL = WhisperModel(model_name, device="cpu", compute_type="int8")
         return _WHISPER_MODEL
     except Exception as e:
