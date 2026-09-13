@@ -40,6 +40,29 @@ async def serve_app_index(project_id: str):
     return {"error": "app not found", "project_id": project_id}, 404
 
 
+@app.get("/app/media/{app_name}/{task_id}/{path:path}")
+async def serve_app_media(app_name: str, task_id: str, path: str):
+    """Serve Factory media artifacts (keyframes, etc.) under ~/.aiplat/apps/{app}/media/{task}/."""
+    import re as _re
+    from fastapi import HTTPException
+
+    if not _re.fullmatch(r"[A-Za-z0-9_-]+", app_name or ""):
+        raise HTTPException(status_code=400, detail="invalid_app_name")
+    if not _re.fullmatch(r"[A-Za-z0-9_-]+", task_id or ""):
+        raise HTTPException(status_code=400, detail="invalid_task_id")
+    root = (APPS_HOME / app_name / "media" / task_id).resolve()
+    if not root.is_dir():
+        raise HTTPException(status_code=404, detail="media_not_found")
+    file_path = (root / path).resolve()
+    try:
+        file_path.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="path_escape")
+    if file_path.is_file():
+        return FileResponse(str(file_path))
+    raise HTTPException(status_code=404, detail="file_not_found")
+
+
 @app.get("/app/sessions/{project_id}/{path:path}")
 async def serve_app_files(project_id: str, path: str):
     """Serve static files for the deployed app (JS, CSS, images, etc.)."""

@@ -1502,8 +1502,22 @@ def _model_is_usable(model_name: str, mgr, _local_names: set = None) -> bool:
 
 
 
+def _deep_merge_dict(base: dict, overlay: dict) -> dict:
+    """Recursively merge overlay into base (mutates base). Nested dicts merge; other values replace."""
+    for key, val in overlay.items():
+        if isinstance(val, dict) and isinstance(base.get(key), dict):
+            _deep_merge_dict(base[key], val)
+        else:
+            base[key] = val
+    return base
+
+
 def _load_llm_profile() -> dict:
-    """加载 llm_profile.yaml 配置。系统配置为基础，工作区配置层叠覆盖。"""
+    """加载 llm_profile.yaml 配置。系统配置为基础，工作区配置层叠覆盖。
+
+    purpose_profiles 等嵌套表必须深度合并：工作区不得用浅 update 整段替换掉
+    infra 的 chat/agent require/weights（否则工厂 PM 等场景会丢质量门槛）。
+    """
     try:
         import yaml
         from pathlib import Path
@@ -1525,11 +1539,10 @@ def _load_llm_profile() -> dict:
     if os.path.isfile(ws_config_path):
         with open(ws_config_path) as f:
             ws = yaml.safe_load(f) or {}
-        for key, val in ws.items():
-            if isinstance(val, dict) and isinstance(base.get(key), dict):
-                base[key].update(val)
-            else:
-                base[key] = val
+        if isinstance(ws, dict) and isinstance(base, dict):
+            _deep_merge_dict(base, ws)
+        elif isinstance(ws, dict):
+            base = ws
 
     return base
 

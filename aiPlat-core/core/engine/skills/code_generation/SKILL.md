@@ -123,6 +123,18 @@ skip_when: 跳过条件：用户仅询问概念、对比工具而非实际写代
 - **后端一律用 Python + FastAPI + SQLAlchemy 2.0 + Pydantic v2**。**绝对禁止** JavaScript/Node.js/TypeScript/Go 等——测试执行器用 pytest 跑，只有 Python 代码能被测试
 - 目录结构统一 `backend/app/`（main.py、api/、models/、schemas/、services/、core/、utils/），测试从 `from app.xxx import` 导入
 
+## 平台能力接线（强制 — Code 模式托管 ≠ 自动继承全部能力）
+平台只托管进程与路由；**生成后端不会自动获得** Memory / KB / PolicyGate / SECI / ReActLoop。需要能力时必须显式接线：
+
+| 需要的能力 | 正确做法 | 禁止 |
+|-----------|---------|------|
+| LLM 推理 / Agent 决策 | 优先选 **hybrid/agent** 团队；或通过平台 API（`/api/platform/builder/.../execute-skill`、CoreFacade/`core_chat`）调用，由平台跑 ReAct | 在生成代码里直连第三方 LLM SDK 绕过平台 |
+| 知识检索 | 经平台代理的 KB/检索 API，或文档写明依赖 `sys_kb_retrieve`（仅 Agent 路径） | 自建向量库/硬编码语料当「平台知识」 |
+| 审计 / 记忆 / 反馈 | 调用平台已暴露的 API；确定性 handler 由平台 `platform_effects` 补接线 | 假设「部署到 8004 就有记忆」 |
+| 需要完整 ReAct 观测 | Agent/hybrid 模式；或设 `AIPLAT_FACTORY_FORCE_AGENT_SKILL=1`（媒体 Path0 也会走 Agent） | 指望纯 Code 产物自带 18 项 Harness 能力 |
+
+**选型提示**：只要 PRD 含「智能理解 / 多步推理 / 工具编排」，默认 **hybrid**，不要纯 code。
+
 ## 聚焦原则（强制 — 避免单次输出超时）
 - **优先核心业务文件**：main.py、routers/*.py、models/*.py、schemas、核心 service
 - **合并样板**：config/settings/database 合并为 1-2 个文件；不要输出空 `__init__.py`、纯 re-export 文件、冗余 requirements.txt

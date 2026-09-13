@@ -1,0 +1,9 @@
+# T3b: multi-source subscription registry (empty = primary team/ only).
+# Each source merges into team/sources/{id}/ — never overwrites locked primary bodies.
+schema_version: "1"
+sources: []
+# Example:
+# sources:
+#   - id: partner
+#     path: extras/partner-harness   # relative to AIPLAT_HOME or absolute
+#     note: "Optional partner skills/rules under sources/partner/"

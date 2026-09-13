@@ -21,8 +21,9 @@ cd "$REPO_ROOT"
 
 # ── 1. Service status ──
 echo -e "${CYAN}▶ 服务状态${NC}"
-ports=(8002:Core 8000:Management 8003:Platform 8004:App 5173:Frontend)
+ports=(8001:Infra 8002:Core 8000:Management 8003:Platform 8004:App 5173:Frontend)
 down=0
+missing_preview=0
 for entry in "${ports[@]}"; do
     port="${entry%%:*}"
     name="${entry##*:}"
@@ -31,8 +32,14 @@ for entry in "${ports[@]}"; do
     else
         echo -e "  ${RED}✗${NC} $name :$port"
         down=$((down+1))
+        if [ "$port" = "8003" ] || [ "$port" = "5173" ]; then
+            missing_preview=$((missing_preview+1))
+        fi
     fi
 done
+if [ "$missing_preview" -gt 0 ]; then
+    echo -e "  ${YELLOW}预览依赖${NC}: Platform(8003)+Frontend(5173) 必须在线；启动: ${GREEN}bash start.sh${NC} 或 ${GREEN}bash scripts/dev.sh${NC}"
+fi
 echo ""
 
 # ── 2. Wiki health ──

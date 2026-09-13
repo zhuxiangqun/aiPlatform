@@ -26,6 +26,7 @@ status: enabled
 triggers:
   - 查询
   - 检索
+completion_criterion: FR-1 AC-1 查询返回非空结果
 effects:
   - type: read
     resources: [filesystem:~/.aiplat]
@@ -77,6 +78,12 @@ class TestGeneratedConformance:
 
     def test_good_skill_passes(self):
         assert validate_text(GOOD_SKILL, "skill") == []
+
+    def test_missing_completion_criterion_rejected(self):
+        """F4: completion_criterion 必填（与 agent_engineering SOP 对齐）。"""
+        bad = GOOD_SKILL.replace("completion_criterion: FR-1 AC-1 查询返回非空结果\n", "")
+        violations = validate_text(bad, "skill")
+        assert any("completion_criterion" in v for v in violations), violations
 
     def test_good_agent_passes(self):
         assert validate_text(GOOD_AGENT, "agent") == []
@@ -145,6 +152,15 @@ class TestTemplateContractAlignment:
         # 明确禁止 input/output 列表格式
         assert "禁止 input 列表" in spec
 
+    def test_template_contains_default_single_mode(self):
+        """Phase A：生成规范默认 single，禁止仅凭 FR 数量拆 multi。"""
+        spec = (ROOT / "aiPlat-core" / "core" / "engine" / "skills"
+                / "agent_engineering" / "SKILL.md").read_text(encoding="utf-8")
+        assert '"mode": "single"' in spec
+        assert "五条判据全部 AND" in spec or "五条 AND" in spec
+        assert "不做无门控互调" in spec
+        assert "≤3 个功能需求" not in spec  # 旧 FR 数量启发式已移除
+
     def test_template_conformant_skill_passes(self):
         """端到端：按模板骨架填写的 SKILL.md（含 3 执步）通过 conformance 校验。"""
         template_filled = """---
@@ -155,6 +171,7 @@ version: 1.0.0
 status: enabled
 triggers:
   - 分析视频
+completion_criterion: FR-1 AC-1 返回非空分析结果
 effects:
   - type: read
     resources: [filesystem:~/.aiplat]
@@ -190,6 +207,115 @@ output_schema:
             validate_text(template_filled, "skill")
 
 
+class TestManifestConformance:
+    """Phase A：agent_manifest mode / multi 五条 AND 机器门。"""
+
+    def test_single_manifest_passes(self):
+        from builder.generated_conformance import validate_manifest
+        m = {
+            "app_name": "demo",
+            "mode": "single",
+            "agents": [{
+                "name": "app_agent",
+                "display_name": "App",
+                "agent_type": "react",
+                "skills": ["s1", "report_json_export"],
+            }],
+            "skill_routing": {"s1": "app_agent", "report_json_export": "app_agent"},
+            "ui_bindings": {"result_dashboard": "report_json_export"},
+        }
+        assert validate_manifest(m) == [], validate_manifest(m)
+
+    def test_multi_without_rationale_rejected(self):
+        from builder.generated_conformance import validate_manifest
+        m = {
+            "mode": "multi_agent",
+            "agents": [
+                {"name": "a1", "skills": ["s1"]},
+                {"name": "a2", "skills": ["s2"]},
+            ],
+            "skill_routing": {"s1": "a1", "s2": "a2"},
+            "ui_bindings": {"data_form": "s1"},
+        }
+        violations = validate_manifest(m)
+        assert any("multi_agent_rationale" in v for v in violations), violations
+        assert any("upgrade_criteria" in v or "success_metrics" in v for v in violations), violations
+
+    def test_multi_with_full_criteria_passes(self):
+        from builder.generated_conformance import validate_manifest
+        m = {
+            "mode": "multi_agent",
+            "multi_agent_rationale": "五条 AND 均满足：正交子任务、单Agent缺口、路由收益、PolicyGate、契约交接。",
+            "success_metrics": {"min_runs": 20, "target_success_rate": 0.80},
+            "upgrade_criteria": {
+                "orthogonal_subtasks": ["a", "b", "c"],
+                "single_agent_gap": {
+                    "n_runs": 20,
+                    "success_rate": 0.5,
+                    "failed_stages": ["planning"],
+                },
+                "routing_benefit": "不同 skill 集导致上下文溢出",
+                "policy_gate_stable": True,
+                "contracted_handoff": True,
+            },
+            "agents": [
+                {"name": "a1", "skills": ["s1"]},
+                {"name": "a2", "skills": ["s2"]},
+            ],
+            "skill_routing": {"s1": "a1", "s2": "a2"},
+            "ui_bindings": {"data_form": "s1"},
+        }
+        assert validate_manifest(m) == [], validate_manifest(m)
+
+    def test_ui_binding_must_be_routing_key(self):
+        from builder.generated_conformance import validate_manifest
+        m = {
+            "mode": "single",
+            "agents": [{"name": "app_agent", "skills": ["s1"]}],
+            "skill_routing": {"s1": "app_agent"},
+            "ui_bindings": {"result_dashboard": "app_agent"},  # wrongly agent name
+        }
+        violations = validate_manifest(m)
+        assert any("ui_bindings" in v for v in violations), violations
+
+
+class TestPromotionGate:
+    def test_run_through_requires_n20(self):
+        from builder.promotion_gate import evaluate_run_through
+        r = evaluate_run_through(
+            n_runs=5, success_rate=1.0,
+            conformance_green=True, real_tests_green=True,
+            physical_evidence=True, policy_gate_closed=True,
+        )
+        assert not r["ok"]
+        assert any("e2e_success_rate" in b for b in r["blockers"])
+
+    def test_run_through_green(self):
+        from builder.promotion_gate import evaluate_run_through
+        r = evaluate_run_through(
+            n_runs=20, success_rate=0.85,
+            conformance_green=True, real_tests_green=True,
+            physical_evidence=True, policy_gate_closed=True,
+        )
+        assert r["ok"], r
+
+    def test_multi_upgrade_and(self):
+        from builder.promotion_gate import evaluate_multi_agent_upgrade
+        bad = evaluate_multi_agent_upgrade({})
+        assert not bad["ok"]
+        good = evaluate_multi_agent_upgrade({
+            "orthogonal_subtasks": ["a", "b", "c"],
+            "single_agent_gap": {
+                "n_runs": 20, "success_rate": 0.4,
+                "failed_stages": ["tool_selection"],
+            },
+            "routing_benefit": "skill sets are mutually exclusive",
+            "policy_gate_stable": True,
+            "contracted_handoff": True,
+        })
+        assert good["ok"], good
+
+
 class TestB2RoutingContextBudget:
     """B2 路由-知识分离：trigger 声明 + 上下文预算。"""
 
@@ -216,6 +342,7 @@ status: enabled
 triggers:
   - 分析视频
   - 解析视频
+completion_criterion: FR-1 AC-1 返回非空分析结果
 effects:
   - type: read
     resources: [filesystem:~/.aiplat]
@@ -291,6 +418,7 @@ status: enabled
 triggers:
   - 上传视频
   - 解析视频
+completion_criterion: FR-1 AC-1 返回分析结果
 effects:
   - type: read
     resources: [filesystem:~/.aiplat]
@@ -343,6 +471,7 @@ status: enabled
 triggers:
   - 上传视频
   - 解析视频
+completion_criterion: FR-1 AC-1 返回场景物体字幕分析结果
 effects:
   - type: read
     resources: [filesystem:~/.aiplat]

@@ -871,7 +871,8 @@ class ModelManager:
         import time as _time
         import os as _os
 
-        db_path = _os.getenv("AIPLAT_EXECUTION_DB_PATH", "")
+        from .paths import execution_db_path as _execution_db_path
+        db_path = _execution_db_path()
         if not db_path or not _os.path.isfile(db_path):
             return
 

@@ -1,0 +1,113 @@
+# C3 reference team — same Agent factory path as default, with stage schema ratchet.
+# Architect input_schema requires structured PRD (functional_requirements); gate_on_fail=hitl
+# so human can patch then resume (C2). Empty-schema stages elsewhere stay compatible.
+team_name: "Agent 研发团队（结构化交接参考）"
+description: "C3 参考：Architect 消费 PRD 结构化字段；缺字段 → HITL 可 resume"
+stages:
+  - agent_id: pm_agent
+    order: 0
+    output_artifact: prd
+    skill_name: requirement_analysis
+    execution_backend: llm
+    architecture_mode: agent
+    quality_gate:
+      min_output_length: 100
+      finalize_structured_doc: true
+      finalize_prd: true
+    output_schema:
+      type: object
+      required: [functional_requirements, title]
+      properties:
+        title:
+          type: string
+        functional_requirements:
+          type: array
+        user_stories:
+          type: array
+    gate_on_fail: hitl
+    hitl: true
+    hitl_phase: review
+  - agent_id: architect_agent
+    order: 1
+    output_artifact: architecture
+    skill_name: architecture_design
+    execution_backend: llm
+    architecture_mode: agent
+    input_artifacts: [prd]
+    input_schema:
+      type: object
+      required: [prd]
+      properties:
+        prd:
+          type: object
+          required: [functional_requirements]
+          properties:
+            functional_requirements:
+              type: array
+            title:
+              type: string
+    gate_on_fail: hitl
+    quality_gate:
+      min_output_length: 100
+      sanitize_architecture: true
+      requirements_artifact: prd
+    hitl: true
+    hitl_phase: review
+  - agent_id: agent_engineer
+    order: 2
+    output_artifact: agent_app
+    skill_name: agent_engineering
+    execution_backend: llm
+    architecture_mode: agent
+    input_artifacts: [prd, architecture]
+    quality_gate:
+      min_output_length: 100
+      ensure_ui_binding_pair: [file_upload, data_form]
+      ensure_result_dashboard_skill: true
+      normalize_media_skill_names: true
+      ensure_agent_app_skill_consistency: true
+      ensure_platform_media_skill_contracts: true
+  - agent_id: frontend_developer
+    order: 3
+    output_artifact: frontend_pages
+    skill_name: app_page_generation
+    execution_backend: llm
+    architecture_mode: agent
+    input_artifacts: [agent_app, prd]
+    quality_gate:
+      min_output_length: 100
+      inject_skill_routing_context: true
+      repair_app_page: true
+      routing_artifact: agent_app
+  - agent_id: qa_agent
+    order: 4
+    skill_name: test_case_generation
+    execution_backend: llm
+    architecture_mode: agent
+    test_execution_mode: agent_true_test
+    input_artifacts: [prd, architecture, agent_app, frontend_pages]
+    quality_gate:
+      min_output_length: 100
+      sanitize_test_cases: true
+      inject_skill_routing_context: true
+      requirements_artifact: prd
+      routing_artifact: agent_app
+    completeness_check:
+      input_artifact: prd
+      input_field: functional_requirements
+      output_key: test_questions
+      max_per_call: 4
+    hitl: true
+    hitl_phase: review
+  - agent_id: test_executor
+    order: 5
+    output_artifact: test_report
+    skill_name: test_executor
+    execution_backend: llm
+    architecture_mode: agent
+    input_artifacts: [test_cases, agent_app, frontend_pages]
+    completeness_check:
+      input_artifact: test_cases
+      output_key: test_results
+      max_per_call: 12
+    stage_timeout_seconds: 600

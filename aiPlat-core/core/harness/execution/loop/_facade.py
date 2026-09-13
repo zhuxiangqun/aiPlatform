@@ -2687,13 +2687,22 @@ class ReActLoop(BaseLoop):
 
                 return "off"
 
+            from core.harness.utils.coding_intensity import (
+                intensity_to_policy_profile,
+                resolve_coding_intensity,
+            )
+
             scope = str(state.context.get("skill_scope") or "engine").lower()
 
-            if scope == "workspace":
-
-                return os.getenv("AIPLAT_CODING_POLICY_PROFILE_WORKSPACE", "karpathy_v1").strip().lower()
-
-            return os.getenv("AIPLAT_CODING_POLICY_PROFILE_ENGINE", "karpathy_v1").strip().lower()
+            inten = resolve_coding_intensity(
+                explicit=state.context.get("_coding_intensity")
+                or state.context.get("coding_intensity"),
+                state=state.context if isinstance(state.context, dict) else None,
+                scope=scope,
+                default="full",
+            )
+            state.context["_coding_intensity"] = inten
+            return intensity_to_policy_profile(inten)
 
         except Exception:
 

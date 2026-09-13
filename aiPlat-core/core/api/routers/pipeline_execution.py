@@ -184,6 +184,8 @@ def _make_store_callback(run_id: str, store):
                 error=state.get("error_message", state.get("error", "")),
                 _progress_json=_json.dumps(state.get("_progress", {})),
                 output_dir=state.get("output_dir", ""),
+                app_name=str(state.get("app_name") or ""),
+                description=str(state.get("description") or ""),
             )
 
             # Write per-artifact progress (state keys with raw_output are artifacts)
@@ -388,6 +390,30 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
                 "imported_repo": config.get("imported_repo") or None,
                 "skip_pytest_gate": bool(config.get("skip_pytest_gate", False)),
             }
+            if config.get("pm_chat_history"):
+                state["pm_chat_history"] = config.get("pm_chat_history")
+
+            # B: coding intensity → state for ReAct / skill policy resolution
+            try:
+                from core.harness.utils.coding_intensity import (
+                    intensity_to_policy_profile,
+                    normalize_coding_intensity,
+                )
+                _ci = normalize_coding_intensity(config.get("coding_intensity") or "full")
+                state["coding_intensity"] = _ci
+                state["_coding_intensity"] = _ci
+                state["_coding_policy_profile"] = intensity_to_policy_profile(_ci)
+            except Exception:
+                _log.debug("coding_intensity seed skipped", exc_info=True)
+
+            # F5a: previous build bloat baseline for delta
+            if isinstance(config.get("bloat_baseline"), dict):
+                state["_bloat_baseline"] = config.get("bloat_baseline")
+
+            # Rebuild / start with confirmed PRD: attach as prd_data baseline.
+            # PM still regenerates (overwrite); context inject locks scope to dialogue.
+            from core.harness.execution.prd_quality_gate import seed_confirmed_prd_into_state
+            seed_confirmed_prd_into_state(state, config.get("prd_data"))
 
             # ── v3.1: Event-driven engine — run() handles full lifecycle incl HITL ──
             await engine.run(project_id, state)
@@ -498,6 +524,10 @@ async def pipeline_stage_operation(project_id: str, request: Request) -> Dict[st
     stage_id = str(body.get("stage_id", "") or "")
     feedback = str(body.get("feedback", "") or "")
     config = body.get("config", {}) if isinstance(body.get("config"), dict) else {}
+    preserve_artifacts = body.get("preserve_artifacts") or []
+    if not isinstance(preserve_artifacts, list):
+        preserve_artifacts = []
+    preserve_set = {str(x).strip() for x in preserve_artifacts if str(x).strip()}
 
     if op not in ("regenerate", "rollback", "resume"):
         raise HTTPException(status_code=400, detail=f"Unknown op: {op}")
@@ -544,10 +574,22 @@ async def pipeline_stage_operation(project_id: str, request: Request) -> Dict[st
             target_idx = i
             break
 
-    # Clear target + downstream artifacts for regenerate/rollback
+    # Clear target + downstream artifacts for regenerate/rollback.
+    # preserve_artifacts (e.g. test_cases) stay frozen so qa_agent skips re-LLM.
     if op in ("regenerate", "rollback"):
         for i in range(target_idx, len(stages)):
-            key = getattr(stages[i], "output_artifact", "")
+            key = getattr(stages[i], "output_artifact", "") or ""
+            if key and key in preserve_set:
+                art = state.get(key)
+                if isinstance(art, str) and art.strip():
+                    state[key] = {
+                        "raw_output": art,
+                        "source": "frozen_one_click_fix",
+                    }
+                elif isinstance(art, dict) and art:
+                    state[key] = {**art, "source": "frozen_one_click_fix"}
+                state[f"_stage_{stages[i].id}_done"] = True
+                continue
             if key:
                 state.pop(key, None)
             state.pop(f"_stage_{stages[i].id}_done", None)

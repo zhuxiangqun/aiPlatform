@@ -828,6 +828,23 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
+    # T1b: optional team harness autosync (default off). Delayed; never blocks startup.
+    try:
+        import asyncio as _asyncio
+
+        async def _team_harness_autosync_later():
+            await _asyncio.sleep(5)
+            try:
+                from core.harness.team_harness import maybe_autosync_team_harness
+
+                maybe_autosync_team_harness(background=True)
+            except Exception as _e:
+                logging.debug("team harness autosync startup kick skipped: %s", _e)
+
+        _asyncio.create_task(_team_harness_autosync_later())
+    except Exception as e:
+        logging.debug("team harness autosync schedule failed: %s", e)
+
     # Workspace managers (user-facing). Strictly separated: no override of engine ids.
     try:
         global _workspace_agent_manager, _workspace_skill_manager, _workspace_mcp_manager

@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-08-16"
 total_capability_domains: 34
-total_capabilities: 1056
+total_capabilities: 1134
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -39,10 +39,13 @@ domains:
       - symbol: matched_domain_packs
       - symbol: matched_packs_for_text
       - symbol: format_pm_gate_guidance
+      - symbol: collect_decision_enum_catalog
+      - symbol: format_decision_enum_catalog
       - symbol: is_media_prd
       - symbol: assess_prd
       - symbol: enrich_prd
       - symbol: factory_finalize_prd
+      - symbol: seed_confirmed_prd_into_state
       - symbol: looks_like_prd
       - symbol: apply_gate_to_prd
       - symbol: followup_questions_from_report
@@ -55,10 +58,13 @@ domains:
       - symbol: matched_domain_packs
       - symbol: matched_packs_for_text
       - symbol: format_pm_gate_guidance
+      - symbol: collect_decision_enum_catalog
+      - symbol: format_decision_enum_catalog
       - symbol: is_media_prd
       - symbol: assess_prd
       - symbol: enrich_prd
       - symbol: factory_finalize_prd
+      - symbol: seed_confirmed_prd_into_state
       - symbol: looks_like_prd
       - symbol: apply_gate_to_prd
       - symbol: followup_questions_from_report
@@ -179,6 +185,318 @@ domains:
         type: "module"
         signature: "L5: versioned artifacts (releases/v{ts}/current + pointer) + release state machine (building→ready→canary→full→rolled_back) + canary/promote/rollback with append-only history + v2 canary_weight routing + infra deploy via CoreFacade.deploy_app_service bridge"
         module: "aiPlat-platform/builder/release_engine.py"
+      - symbol: extract_file_blocks
+        type: function
+        signature: 'Parse ## FILE: path blocks → [{path, content}, ...].'
+        module: aiPlat-core/core/harness/execution/factory_bloat_metrics.py
+      - symbol: deps_declared_in_file
+        type: function
+        signature: 'deps_declared_in_file(path, content)'
+        module: aiPlat-core/core/harness/execution/factory_bloat_metrics.py
+      - symbol: compute_bloat_from_files
+        type: function
+        signature: 'Aggregate LOC / new_files / new_deps from file dicts.'
+        module: aiPlat-core/core/harness/execution/factory_bloat_metrics.py
+      - symbol: collect_files_from_artifact
+        type: function
+        signature: 'collect_files_from_artifact(artifact)'
+        module: aiPlat-core/core/harness/execution/factory_bloat_metrics.py
+      - symbol: compute_bloat_from_state
+        type: function
+        signature: 'Scan pipeline state artifacts for ## FILE blocks and aggregate metrics.'
+        module: aiPlat-core/core/harness/execution/factory_bloat_metrics.py
+      - symbol: build_feedback_from_report
+        type: function
+        signature: 'Compact feedback string for regenerate (prefer bug_summary JSON).'
+        module: aiPlat-core/core/harness/execution/factory_fix_plan.py
+      - symbol: remap_skill_names_in_test_cases
+        type: function
+        signature: 'Rewrite invoke.skill / target_skill in agent_true_test cases. Returns (obj, coun'
+        module: aiPlat-core/core/harness/execution/factory_fix_plan.py
+      - symbol: normalize_true_test_media_params
+        type: function
+        signature: 'Normalize invoke params: source→url/file_path, remap fixture paths.'
+        module: aiPlat-core/core/harness/execution/factory_fix_plan.py
+      - symbol: resolve_project_factory_profile
+        type: function
+        signature: 'resolve_project_factory_profile(project)'
+        module: aiPlat-core/core/harness/execution/factory_profile.py
+      - symbol: empty_handoff
+        type: function
+        signature: 'empty_handoff()'
+        module: aiPlat-core/core/harness/execution/stage_handoff.py
+      - symbol: attach_handoff
+        type: function
+        signature: 'Write normalized handoff under target[meta_key]; return the normalized dict.'
+        module: aiPlat-core/core/harness/execution/stage_handoff.py
+      - symbol: schema_is_active
+        type: function
+        signature: 'False when schema is empty → gate must no-op (compat).'
+        module: aiPlat-core/core/harness/execution/stage_handoff.py
+      - symbol: append_hitl_audit
+        type: function
+        signature: 'C2: append a HITL / schema-gate audit row (best-effort).'
+        module: aiPlat-core/core/harness/execution/stage_handoff.py
+      - symbol: is_schema_gate_pause
+        type: function
+        signature: 'True when current pause is from C1/C2 schema gate (not stage.hitl review).'
+        module: aiPlat-core/core/harness/execution/stage_handoff.py
+      - symbol: extract_structured_fields
+        type: function
+        signature: 'C3: return structured keys present on an artifact (no raw_output).'
+        module: aiPlat-core/core/harness/execution/stage_handoff.py
+      - symbol: resolve_next_stage_hint
+        type: function
+        signature: 'Next pipeline stage id/artifact for handoff.next (config-driven).'
+        module: aiPlat-core/core/harness/execution/stage_handoff.py
+      - symbol: build_stage_handoff
+        type: function
+        signature: 'Build a thin MetaGPT-style envelope from stage config + artifact shape.'
+        module: aiPlat-core/core/harness/execution/stage_handoff.py
+      - symbol: stage_outcome_samples_path
+        type: function
+        signature: 'stage_outcome_samples_path()'
+        module: aiPlat-core/core/harness/execution/stage_outcome_samples.py
+      - symbol: record_from_handoff
+        type: function
+        signature: 'C4 hook from write_stage_handoff (success/fail envelope).'
+        module: aiPlat-core/core/harness/execution/stage_outcome_samples.py
+      - symbol: record_from_gate_failure
+        type: function
+        signature: 'C4 hook from apply_gate_failure (schema gate pause/fail).'
+        module: aiPlat-core/core/harness/execution/stage_outcome_samples.py
+      - symbol: new_task_id
+        type: function
+        signature: 'new_task_id(hint)'
+        module: aiPlat-core/core/harness/media_ops.py
+      - symbol: storage_root
+        type: function
+        signature: 'storage_root(app_name)'
+        module: aiPlat-core/core/harness/media_ops.py
+      - symbol: fixtures_root
+        type: function
+        signature: 'fixtures_root(app_name)'
+        module: aiPlat-core/core/harness/media_ops.py
+      - symbol: probe_media
+        type: function
+        signature: 'Return format + stream summary via ffprobe JSON.'
+        module: aiPlat-core/core/harness/media_ops.py
+      - symbol: extract_soft_subtitles
+        type: function
+        signature: 'Extract first soft subtitle track to SRT. Returns (ok, message_or_path).'
+        module: aiPlat-core/core/harness/media_ops.py
+      - symbol: extract_keyframes_timed
+        type: function
+        signature: 'Extract keyframes via ffmpeg only (no document package — py3.9 safe).'
+        module: aiPlat-core/core/harness/media_ops.py
+      - symbol: scene_change_times
+        type: function
+        signature: 'Detect scene changes via ffmpeg select filter (best-effort).'
+        module: aiPlat-core/core/harness/media_ops.py
+      - symbol: analyze_speech_energy
+        type: function
+        signature: 'Non-ASR speech probe: audio presence + energy VAD + syllable-density heuristic.'
+        module: aiPlat-core/core/harness/media_ops.py
+      - symbol: download_http_video
+        type: function
+        signature: 'Download direct media URL (SSRF must be checked by caller).'
+        module: aiPlat-core/core/harness/media_ops.py
+      - symbol: accept_local_upload
+        type: function
+        signature: 'accept_local_upload(src_path, dest_path)'
+        module: aiPlat-core/core/harness/media_ops.py
+      - symbol: ensure_true_test_fixtures
+        type: function
+        signature: 'Create tiny mp4 fixtures for true-test placeholder paths. Returns path map.'
+        module: aiPlat-core/core/harness/media_ops.py
+      - symbol: remap_fixture_path
+        type: function
+        signature: 'remap_fixture_path(path, app_name)'
+        module: aiPlat-core/core/harness/media_ops.py
+      - symbol: handle_video_downloader
+        type: function
+        signature: 'handle_video_downloader(params)'
+        module: aiPlat-core/core/harness/media_skill_handlers.py
+      - symbol: handle_frame_analyzer
+        type: function
+        signature: 'handle_frame_analyzer(params)'
+        module: aiPlat-core/core/harness/media_skill_handlers.py
+      - symbol: handle_subtitle_extractor
+        type: function
+        signature: 'handle_subtitle_extractor(params)'
+        module: aiPlat-core/core/harness/media_skill_handlers.py
+      - symbol: handle_speech_analyzer
+        type: function
+        signature: 'handle_speech_analyzer(params)'
+        module: aiPlat-core/core/harness/media_skill_handlers.py
+      - symbol: handle_report_json_export
+        type: function
+        signature: 'handle_report_json_export(params)'
+        module: aiPlat-core/core/harness/media_skill_handlers.py
+      - symbol: aiplat_home
+        type: function
+        signature: 'aiplat_home()'
+        module: aiPlat-core/core/harness/team_digest.py
+      - symbol: digest_store_path
+        type: function
+        signature: 'digest_store_path()'
+        module: aiPlat-core/core/harness/team_digest.py
+      - symbol: team_resource_dir
+        type: function
+        signature: 'team_resource_dir(name)'
+        module: aiPlat-core/core/harness/team_factory_seeds.py
+      - symbol: runtime_teams_dir
+        type: function
+        signature: 'runtime_teams_dir()'
+        module: aiPlat-core/core/harness/team_factory_seeds.py
+      - symbol: runtime_sanitize_dir
+        type: function
+        signature: 'runtime_sanitize_dir()'
+        module: aiPlat-core/core/harness/team_factory_seeds.py
+      - symbol: seed_backups_dir
+        type: function
+        signature: 'seed_backups_dir()'
+        module: aiPlat-core/core/harness/team_factory_seeds.py
+      - symbol: manifest_hash
+        type: function
+        signature: 'manifest_hash(manifest)'
+        module: aiPlat-core/core/harness/team_factory_seeds.py
+      - symbol: resolve_factory_sanitize_dirs
+        type: function
+        signature: 'Prefer team/ then runtime materialize then kernel seeds.'
+        module: aiPlat-core/core/harness/team_factory_seeds.py
+      - symbol: local_learnings_dir
+        type: function
+        signature: 'local_learnings_dir()'
+        module: aiPlat-core/core/harness/team_friction.py
+      - symbol: attach_friction_cta
+        type: function
+        signature: 'Persist CTA on pipeline/project state for Factory polling.'
+        module: aiPlat-core/core/harness/team_friction.py
+      - symbol: clear_friction_cta
+        type: function
+        signature: 'clear_friction_cta(state)'
+        module: aiPlat-core/core/harness/team_friction.py
+      - symbol: team_dir
+        type: function
+        signature: 'team_dir(schema)'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: local_dir
+        type: function
+        signature: 'local_dir(schema)'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: lock_path
+        type: function
+        signature: 'lock_path(schema)'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: backups_dir
+        type: function
+        signature: 'backups_dir(schema)'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: meta_path
+        type: function
+        signature: 'meta_path(schema)'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: config_path
+        type: function
+        signature: 'config_path(schema)'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: ensure_team_local_dirs
+        type: function
+        signature: 'ensure_team_local_dirs(schema)'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: resource_relpath
+        type: function
+        signature: 'resource_relpath(name, schema)'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: is_resource_locked
+        type: function
+        signature: 'is_resource_locked(name, schema)'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: read_config
+        type: function
+        signature: 'read_config()'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: write_config
+        type: function
+        signature: 'write_config(cfg)'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: read_meta
+        type: function
+        signature: 'read_meta()'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: write_meta
+        type: function
+        signature: 'write_meta(meta)'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: is_git_repo
+        type: function
+        signature: 'is_git_repo(path)'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: team_is_dirty
+        type: function
+        signature: 'True when team/ has local modifications (blocks pull).'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: team_harness_lock
+        type: function
+        signature: 'Exclusive lock for manual pull vs future autosync.'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: backup_team_tree
+        type: function
+        signature: 'Copy current team/ (without .git) to backups/ for rollback.'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: restore_team_backup
+        type: function
+        signature: 'Restore team/ content from a backup (preserves .git if present).'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: autosync_timeout_sec
+        type: function
+        signature: 'autosync_timeout_sec()'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: autosync_interval_sec
+        type: function
+        signature: 'autosync_interval_sec()'
+        module: aiPlat-core/core/harness/team_harness.py
+      - symbol: load_sources_config
+        type: function
+        signature: 'team/sources.yaml → home override → seed.'
+        module: aiPlat-core/core/harness/team_sources.py
+      - symbol: sources_root
+        type: function
+        signature: 'sources_root()'
+        module: aiPlat-core/core/harness/team_sources.py
+      - symbol: list_source_namespaces
+        type: function
+        signature: 'list_source_namespaces()'
+        module: aiPlat-core/core/harness/team_sources.py
+      - symbol: configure_sources
+        type: function
+        signature: 'Persist sources list to ~/.aiplat/sources.yaml (and team/ copy when present).'
+        module: aiPlat-core/core/harness/team_sources.py
+      - symbol: namespaced_skill_candidates
+        type: function
+        signature: 'Resolve skill name across primary + sources/{ns}/skills/{name}.'
+        module: aiPlat-core/core/harness/team_sources.py
+      - symbol: default_export_dir
+        type: function
+        signature: 'default_export_dir()'
+        module: aiPlat-core/core/harness/teamai_seed_export.py
+      - symbol: is_dynamic_spawn_disabled
+        type: function
+        signature: 'is_dynamic_spawn_disabled()'
+        module: aiPlat-core/core/harness/coordination/spawn_policy.py
+      - symbol: set_dynamic_spawn_disabled
+        type: function
+        signature: 'set_dynamic_spawn_disabled(disabled)'
+        module: aiPlat-core/core/harness/coordination/spawn_policy.py
+      - symbol: reset_dynamic_spawn
+        type: function
+        signature: 'reset_dynamic_spawn(token)'
+        module: aiPlat-core/core/harness/coordination/spawn_policy.py
+      - symbol: stage_allows_dynamic_spawn
+        type: function
+        signature: 'PipelineStageConfig.allow_dynamic_spawn (default True).'
+        module: aiPlat-core/core/harness/coordination/spawn_policy.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"
@@ -869,10 +1187,494 @@ domains:
         type: "function"
         signature: "enrich → assess PRD; rewrite via domain packs (replace_ac/scrub_prose/set_decision; seeds/~/.aiplat)"
         module: "aiPlat-core/core/harness/execution/prd_quality_gate.py"
+      - symbol: "seed_confirmed_prd_into_state"
+        type: "function"
+        signature: "Attach confirmed PRD as prd_data baseline for rebuild (PM still regenerates; scope-locked)"
+        module: "aiPlat-core/core/harness/execution/prd_quality_gate.py"
+      - symbol: "materialize_prd_artifact"
+        type: "function"
+        signature: "Parse LLM PRD text (JSON/Markdown) → factory_finalize → structured pipeline artifact"
+        module: "aiPlat-core/core/harness/execution/prd_quality_gate.py"
+      - symbol: "parse_prd_markdown"
+        type: "function"
+        signature: "Parse standard Markdown PRD layout into dict (pipeline materialize)"
+        module: "aiPlat-core/core/harness/execution/prd_markdown.py"
+      - symbol: "set_prd_markdown_parser"
+        type: "function"
+        signature: "Optional richer Markdown parser hook (platform Builder)"
+        module: "aiPlat-core/core/harness/execution/prd_quality_gate.py"
+      - symbol: "strip_reasoning_preamble"
+        type: "function"
+        signature: "Strip 步骤1–4 / 方案比较 preamble from factory LLM outputs"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "ensure_dual_ingest_stages"
+        type: "function"
+        signature: "Add data_form stage when ui_bindings already declares file_upload+data_form"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "ensure_wizard_stage_io"
+        type: "function"
+        signature: "Wizard I/O repair for any domain: show_when, progress/results path inputs, remap ingest off progress"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "ensure_wizard_io_true_test_case"
+        type: "function"
+        signature: "Inject page_smoke+stage.wizard_io_ok from stage graph/ui_bindings (domain-agnostic)"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "ensure_result_dashboard_sections"
+        type: "function"
+        signature: "Remap result_dashboard section types to platform-supported closed set"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "canonicalize_app_page_media_skills"
+        type: "function"
+        signature: "Rewrite app_page stage.skill media aliases to catalog canonical names"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "ensure_dual_component_stages"
+        type: "function"
+        signature: "Generic dual-component stage repair from ui_bindings pair"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "repair_frontend_pages_with_prd"
+        type: "function"
+        signature: "Skill inject + dual-component + wizard I/O + section-type repair from agent_app"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "sanitize_architecture_artifact"
+        type: "function"
+        signature: "Under architecture_mode=agent strip FastAPI code-mode fields"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "sanitize_test_cases_artifact"
+        type: "function"
+        signature: "Coerce invented pytest to agent test_questions when mode=agent / no real routes"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "enrich_media_true_test_questions"
+        type: "function"
+        signature: "Fill missing invoke/asserts on FR-AC stubs using skill_routing + media catalog"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "ensure_true_test_suite_quality"
+        type: "function"
+        signature: "Normalize categories, cap SSRF≤2, inject ASR/report transcript happy-paths from speech_pipeline"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "ensure_manifest_dual_ui_bindings"
+        type: "function"
+        signature: "Legacy alias: complete file_upload/data_form ui_bindings pair (no PRD sniff)"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "ensure_manifest_ui_binding_pair"
+        type: "function"
+        signature: "Complete quality_gate ensure_ui_binding_pair when one side exists"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "ensure_result_dashboard_skill"
+        type: "function"
+        signature: "Ensure report/export skill exists and ui_bindings.result_dashboard points to it"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "ensure_agent_app_skill_consistency"
+        type: "function"
+        signature: "skill_routing key ≡ skills/<stem>/ ≡ frontmatter name; dedupe; video_qa unmask; speech merge; raw_decode manifest"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "ensure_platform_media_skill_contracts"
+        type: "function"
+        signature: "rewrite catalog SKILL.md when video_downloader import-only or report_json_export progress-only"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "normalize_media_skill_names"
+        type: "function"
+        signature: "Remap invented media skill names in agent_app onto platform catalog"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "apply_stage_output_sanitizers"
+        type: "function"
+        signature: "Config-driven post-process via quality_gate/architecture_mode/test_execution_mode"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "apply_factory_profile_to_stages"
+        type: "function"
+        signature: "F2a: demo profile keeps HITL on final QA-like stage only"
+        module: "aiPlat-core/core/harness/execution/factory_profile.py"
+      - symbol: "normalize_factory_profile"
+        type: "function"
+        signature: "Normalize factory_profile to standard|demo"
+        module: "aiPlat-core/core/harness/execution/factory_profile.py"
+      - symbol: "normalize_factory_mode"
+        type: "function"
+        signature: "F2b: Normalize factory_mode to agent|code|hybrid|empty"
+        module: "aiPlat-core/core/harness/execution/team_planner.py"
+      - symbol: "mode_to_team_template"
+        type: "function"
+        signature: "F2b: Map factory_mode to default|code|hybrid team YAML"
+        module: "aiPlat-core/core/harness/execution/team_planner.py"
+      - symbol: "normalize_handoff"
+        type: "function"
+        signature: "C0: normalize frozen handoff.* envelope keys"
+        module: "aiPlat-core/core/harness/execution/stage_handoff.py"
+      - symbol: "write_stage_handoff"
+        type: "function"
+        signature: "F3: write handoff envelope onto artifact + state[_handoff]"
+        module: "aiPlat-core/core/harness/execution/stage_handoff.py"
+      - symbol: "format_handoff_regenerate_feedback"
+        type: "function"
+        signature: "F3: compact handoff text for regenerate_stage feedback"
+        module: "aiPlat-core/core/harness/execution/stage_handoff.py"
+      - symbol: "gate_check"
+        type: "function"
+        signature: "C1: stage input/output schema gate; empty schema skips"
+        module: "aiPlat-core/core/harness/execution/stage_handoff.py"
+      - symbol: "apply_gate_failure"
+        type: "function"
+        signature: "C1: apply gate_on_fail block|hitl|fail_pipeline|warn"
+        module: "aiPlat-core/core/harness/execution/stage_handoff.py"
+      - symbol: "try_resume_schema_gate"
+        type: "function"
+        signature: "C2: re-check schema gate after HITL patch; clear pause when ok"
+        module: "aiPlat-core/core/harness/execution/stage_handoff.py"
+      - symbol: "format_structured_artifact_block"
+        type: "function"
+        signature: "C3: Prefer structured PRD/arch fields over raw prose for upstream context"
+        module: "aiPlat-core/core/harness/execution/stage_handoff.py"
+      - symbol: "inject_output_style"
+        type: "function"
+        signature: "A0: append locked ADHD overlay to system tail (user-facing only)"
+        module: "aiPlat-core/core/harness/utils/output_style.py"
+      - symbol: "resolve_output_style"
+        type: "function"
+        signature: "Resolve output_style default|adhd from project/session"
+        module: "aiPlat-core/core/harness/utils/output_style.py"
+      - symbol: "record_output_style_event"
+        type: "function"
+        signature: "A3a: Append style_version/tokens/followups/first_pass_ok telemetry (no A/B)"
+        module: "aiPlat-core/core/harness/utils/output_style.py"
+      - symbol: "assign_output_style_experiment"
+        type: "function"
+        signature: "A3b: Sticky default|adhd arm by bucket; user lock + pct=0 no-op"
+        module: "aiPlat-core/core/harness/utils/output_style.py"
+      - symbol: "compare_output_style_arms"
+        type: "function"
+        signature: "A3b: Contrast table tokens/followups/first_pass_ok by arm"
+        module: "aiPlat-core/core/harness/utils/output_style.py"
+      - symbol: "query_output_style_events"
+        type: "function"
+        signature: "A3a: Query recent output_style telemetry rows"
+        module: "aiPlat-core/core/harness/utils/output_style.py"
+      - symbol: "record_stage_outcome_sample"
+        type: "function"
+        signature: "C4: Append stage success/fail/gate sample (no topology mutate)"
+        module: "aiPlat-core/core/harness/execution/stage_outcome_samples.py"
+      - symbol: "query_stage_outcome_samples"
+        type: "function"
+        signature: "C4: Query stage outcome samples by outcome/stage/project"
+        module: "aiPlat-core/core/harness/execution/stage_outcome_samples.py"
+      - symbol: "summarize_stage_outcome_samples"
+        type: "function"
+        signature: "C4: Aggregate sample counts by outcome for diagnostics"
+        module: "aiPlat-core/core/harness/execution/stage_outcome_samples.py"
+      - symbol: "load_team_harness_schema"
+        type: "function"
+        signature: "T0: Load team_harness.yaml contract (schema_version + resource paths)"
+        module: "aiPlat-core/core/harness/team_harness.py"
+      - symbol: "materialize_team_harness_schema"
+        type: "function"
+        signature: "T0: Copy seed team_harness.yaml into AIPLAT_HOME when missing"
+        module: "aiPlat-core/core/harness/team_harness.py"
+      - symbol: "pull_team_harness"
+        type: "function"
+        signature: "T1a: FF-only pull into ~/.aiplat/team/; dirty blocks; never writes local/"
+        module: "aiPlat-core/core/harness/team_harness.py"
+      - symbol: "configure_team_harness"
+        type: "function"
+        signature: "T1a: Persist team repo URL/branch without pulling"
+        module: "aiPlat-core/core/harness/team_harness.py"
+      - symbol: "maybe_autosync_team_harness"
+        type: "function"
+        signature: "T1b: Background autosync (default off); timeout degrade; never blocks"
+        module: "aiPlat-core/core/harness/team_harness.py"
+      - symbol: "push_team_harness"
+        type: "function"
+        signature: "T1c: Feature-branch push + MR template; refuse main; permission hint"
+        module: "aiPlat-core/core/harness/team_harness.py"
+      - symbol: "render_mr_template"
+        type: "function"
+        signature: "T1c: Markdown MR body for Git review"
+        module: "aiPlat-core/core/harness/team_harness.py"
+      - symbol: "merge_source_tree"
+        type: "function"
+        signature: "T3b: Merge secondary source into team/sources/{ns}/ without locked overwrite"
+        module: "aiPlat-core/core/harness/team_sources.py"
+      - symbol: "apply_configured_sources"
+        type: "function"
+        signature: "T3b: Apply all configured sources.yaml entries"
+        module: "aiPlat-core/core/harness/team_sources.py"
+      - symbol: "export_teamai_seed"
+        type: "function"
+        signature: "T6': Export TeamAI-compatible seed; never write IDE dirs"
+        module: "aiPlat-core/core/harness/teamai_seed_export.py"
+      - symbol: "is_autosync_enabled"
+        type: "function"
+        signature: "T1b: Resolve AIPLAT_TEAM_HARNESS_AUTOSYNC / schema default"
+        module: "aiPlat-core/core/harness/team_harness.py"
+      - symbol: "apply_team_factory_seeds"
+        type: "function"
+        signature: "F-T1: Copy team/{teams,factory_sanitize} → ~/.aiplat with hash backup"
+        module: "aiPlat-core/core/harness/team_factory_seeds.py"
+      - symbol: "rollback_team_factory_seeds"
+        type: "function"
+        signature: "F-T1: Restore teams/sanitize runtime dirs from hash backup"
+        module: "aiPlat-core/core/harness/team_factory_seeds.py"
+      - symbol: "resolve_team_yaml_candidates"
+        type: "function"
+        signature: "F-T1: team/ → ~/.aiplat/teams → workspace_seeds search order"
+        module: "aiPlat-core/core/harness/team_factory_seeds.py"
+      - symbol: "resolve_factory_sanitize_file"
+        type: "function"
+        signature: "F-T1: Prefer team/factory_sanitize then runtime then kernel seeds"
+        module: "aiPlat-core/core/harness/team_factory_seeds.py"
+      - symbol: "build_culture_overlay"
+        type: "function"
+        signature: "T2: Build ≤200-token Culture system-tail overlay"
+        module: "aiPlat-core/core/harness/utils/team_culture.py"
+      - symbol: "compose_prose_overlays"
+        type: "function"
+        signature: "T2: Concatenate hard→Culture→output_style overlays"
+        module: "aiPlat-core/core/harness/utils/team_culture.py"
+      - symbol: "inject_team_culture"
+        type: "function"
+        signature: "T2: Append Culture overlay to system messages (skip tools)"
+        module: "aiPlat-core/core/harness/utils/team_culture.py"
+      - symbol: "resolve_culture_enabled"
+        type: "function"
+        signature: "T2: Resolve Culture on/off from env/project"
+        module: "aiPlat-core/core/harness/utils/team_culture.py"
+      - symbol: "record_friction_event"
+        type: "function"
+        signature: "T4a: Record hitl_reject/prd_gate_fail → local learning draft"
+        module: "aiPlat-core/core/harness/team_friction.py"
+      - symbol: "note_regenerate"
+        type: "function"
+        signature: "T4a: Count regenerates; CTA when ≥2 (confirm or 24h cooldown)"
+        module: "aiPlat-core/core/harness/team_friction.py"
+      - symbol: "confirm_friction_share"
+        type: "function"
+        signature: "T4a/F-T4: Confirm regenerate friction → local learning"
+        module: "aiPlat-core/core/harness/team_friction.py"
+      - symbol: "list_local_learnings"
+        type: "function"
+        signature: "T4a: List local-only learning drafts under ~/.aiplat/local/learnings"
+        module: "aiPlat-core/core/harness/team_friction.py"
+      - symbol: "record_schema_gate_friction"
+        type: "function"
+        signature: "T4b: Map schema_gate_* audit → local friction learning + CTA"
+        module: "aiPlat-core/core/harness/team_friction.py"
+      - symbol: "filter_skills_by_subscription"
+        type: "function"
+        signature: "T3a: Filter optional skills by tags/roles; required_skills always kept"
+        module: "aiPlat-core/core/harness/utils/team_skill_subscription.py"
+      - symbol: "apply_stage_skill_subscription"
+        type: "function"
+        signature: "T3a/F-T3: Resolve policy from stage/state/project then filter skills"
+        module: "aiPlat-core/core/harness/utils/team_skill_subscription.py"
+      - symbol: "build_team_digest"
+        type: "function"
+        signature: "T5/F-T5: Metrics-only digest (friction/gate/bloat/style/pull)"
+        module: "aiPlat-core/core/harness/team_digest.py"
+      - symbol: "record_digest_view"
+        type: "function"
+        signature: "T5: Increment digest view adoption counter"
+        module: "aiPlat-core/core/harness/team_digest.py"
+      - symbol: "estimate_reply_tokens"
+        type: "function"
+        signature: "A3a: Rough reply token estimate for style telemetry"
+        module: "aiPlat-core/core/harness/utils/output_style.py"
+      - symbol: "infer_followups"
+        type: "function"
+        signature: "A3a: Count user turns after first as followup pressure"
+        module: "aiPlat-core/core/harness/utils/output_style.py"
+      - symbol: "normalize_coding_intensity"
+        type: "function"
+        signature: "B: Normalize coding intensity to off|lite|full|ultra"
+        module: "aiPlat-core/core/harness/utils/coding_intensity.py"
+      - symbol: "build_coding_policy_block"
+        type: "function"
+        signature: "B: Build hard+soft coding policy prompt for intensity tier"
+        module: "aiPlat-core/core/harness/utils/coding_intensity.py"
+      - symbol: "resolve_coding_intensity"
+        type: "function"
+        signature: "B: Resolve intensity from explicit/state/project/env"
+        module: "aiPlat-core/core/harness/utils/coding_intensity.py"
+      - symbol: "write_bloat_metrics"
+        type: "function"
+        signature: "F5a: Compute LOC/new_deps/new_files onto state[_bloat_metrics]"
+        module: "aiPlat-core/core/harness/execution/factory_bloat_metrics.py"
+      - symbol: "compare_bloat"
+        type: "function"
+        signature: "F5a: Delta LOC/new_deps/new_files vs previous build baseline"
+        module: "aiPlat-core/core/harness/execution/factory_bloat_metrics.py"
+      - symbol: "load_canonical_media_skill_md"
+        type: "function"
+        signature: "F5b: Load factory_sanitize canonical media SKILL seed with {{app_name}} subst"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "MAX_REPAIR_ATTEMPTS"
+        type: "data"
+        signature: "F4 hard cap for generated-app auto_repair (2); exhausted → HITL"
+        module: "aiPlat-platform/builder/app_runtime.py"
+      - symbol: "pick_routing_blob"
+        type: "function"
+        signature: "Pick routing/ui_bindings blob from stage.input_artifacts or quality_gate.routing_artifact"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "resolve_architecture_mode"
+        type: "function"
+        signature: "Resolve architecture_mode from stage/state/siblings (empty if unset)"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "extract_real_http_routes"
+        type: "function"
+        signature: "Extract real HTTP routes from upstream code/architecture blobs"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "collect_upstream_blobs"
+        type: "function"
+        signature: "Collect state blobs listed in stage.input_artifacts for sanitizers"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "find_structured_requirements"
+        type: "function"
+        signature: "Find structured PRD/requirements blob via quality_gate.requirements_artifact"
+        module: "aiPlat-core/core/harness/execution/factory_artifact_sanitize.py"
+      - symbol: "run_true_test_case"
+        type: "function"
+        signature: "Dispatch one factory true-test case (platform_check/skill_invoke/page_smoke)"
+        module: "aiPlat-core/core/harness/execution/true_test_runtime.py"
+      - symbol: "run_platform_check"
+        type: "function"
+        signature: "Deterministic platform.* asserts (SSRF URL / file rules from case params)"
+        module: "aiPlat-core/core/harness/execution/true_test_runtime.py"
+      - symbol: "is_blocked_url"
+        type: "function"
+        signature: "SSRF-style URL block check (file:// and private/link-local/loopback)"
+        module: "aiPlat-core/core/harness/execution/true_test_runtime.py"
+      - symbol: "check_file_rules"
+        type: "function"
+        signature: "File name/size rules from case-provided extensions and max_bytes"
+        module: "aiPlat-core/core/harness/execution/true_test_runtime.py"
+      - symbol: "classify_execution"
+        type: "function"
+        signature: "Resolve test case execution kind without skill-name hardcoding"
+        module: "aiPlat-core/core/harness/execution/true_test_runtime.py"
+      - symbol: "check_wizard_stage_io"
+        type: "function"
+        signature: "Structural wizard app_page I/O gate (progress≠ingest, task_id+path, show_when, sections)"
+        module: "aiPlat-core/core/harness/execution/true_test_runtime.py"
+      - symbol: "check_result_dashboard_sections"
+        type: "function"
+        signature: "Fail page_smoke when result_dashboard section types not in platform closed set"
+        module: "aiPlat-core/core/harness/execution/true_test_runtime.py"
+      - symbol: "RESULT_DASHBOARD_SECTION_TYPES"
+        type: "data"
+        signature: "Closed set of ResultDashboard section types factory may emit"
+        module: "aiPlat-core/core/harness/execution/true_test_runtime.py"
+      - symbol: "run_page_smoke"
+        type: "function"
+        signature: "Validate app_page bindings + wizard I/O + result sections; optional skill invoke"
+        module: "aiPlat-core/core/harness/execution/true_test_runtime.py"
+      - symbol: "enrich_media_invoke_from_asserts"
+        type: "function"
+        signature: "Derive claimed_duration / subtitle fixture from true-test asserts before skill invoke"
+        module: "aiPlat-core/core/harness/execution/true_test_runtime.py"
+      - symbol: "evaluate_result_asserts"
+        type: "function"
+        signature: "Evaluate result.* asserts with soft gte/lte for count and load_time_ms"
+        module: "aiPlat-core/core/harness/execution/true_test_runtime.py"
+      - symbol: "execute_media_skill"
+        type: "function"
+        signature: "Run Factory media skill handler by name (ffmpeg I/O)"
+        module: "aiPlat-core/core/harness/media_skill_handlers.py"
+      - symbol: "HANDLERS"
+        type: "data"
+        signature: "Registry of platform media skill handlers for true_test and execute_skill"
+        module: "aiPlat-core/core/harness/media_skill_handlers.py"
+      - symbol: "list_platform_media_skill_names"
+        type: "function"
+        signature: "Catalog of platform media skill canonical names + aliases for generation/sanitizers"
+        module: "aiPlat-core/core/harness/media_skill_handlers.py"
+      - symbol: "resolve_platform_media_skill"
+        type: "function"
+        signature: "Resolve skill name to canonical media handler if registered"
+        module: "aiPlat-core/core/harness/media_skill_handlers.py"
+      - symbol: "is_prompt_only_skill_name"
+        type: "function"
+        signature: "True when skill name is QA/chat prompt-only (never bind media HANDLERS)"
+        module: "aiPlat-core/core/harness/media_skill_handlers.py"
+      - symbol: "resolve_media_handler_name"
+        type: "function"
+        signature: "Resolve invented/alias media skill name to runnable HANDLERS key"
+        module: "aiPlat-core/core/harness/media_skill_handlers.py"
+      - symbol: "suggest_platform_media_skill"
+        type: "function"
+        signature: "Suggest nearest catalog media skill for invented names (token overlap)"
+        module: "aiPlat-core/core/harness/media_skill_handlers.py"
+      - symbol: "coerce_media_invoke_params"
+        type: "function"
+        signature: "Normalize Factory invoke aliases (source_url/upload_file_path) and capture claimed_duration"
+        module: "aiPlat-core/core/harness/media_ops.py"
+      - symbol: "infer_duration_hint"
+        type: "function"
+        signature: "Infer claimed video duration from params or path tokens (e.g. _100s)"
+        module: "aiPlat-core/core/harness/media_ops.py"
+      - symbol: "pad_keyframes_for_density"
+        type: "function"
+        signature: "Pad keyframe list to meet claimed duration density (≥1 frame / 10s)"
+        module: "aiPlat-core/core/harness/media_ops.py"
+      - symbol: "merge_vad_segments"
+        type: "function"
+        signature: "Merge adjacent VAD fragments for readable speech timeline"
+        module: "aiPlat-core/core/harness/media_ops.py"
+      - symbol: "describe_frame_image"
+        type: "function"
+        signature: "Heuristic keyframe caption (scene/subject/action) from pixels without VLM"
+        module: "aiPlat-core/core/harness/media_ops.py"
+      - symbol: "enrich_keyframes_with_captions"
+        type: "function"
+        signature: "Apply describe_frame_image across keyframe list"
+        module: "aiPlat-core/core/harness/media_ops.py"
+      - symbol: "detect_speech_language"
+        type: "function"
+        signature: "Language-id via faster-whisper; discard transcript (FR no-ASR)"
+        module: "aiPlat-core/core/harness/media_ops.py"
+      - symbol: "transcribe_speech_asr"
+        type: "function"
+        signature: "ASR via faster-whisper → transcript + timed transcript_segments"
+        module: "aiPlat-core/core/harness/media_ops.py"
+      - symbol: "infer_emotion_from_energy"
+        type: "function"
+        signature: "Map syllable density + VAD coverage to 积极/中性/消极"
+        module: "aiPlat-core/core/harness/media_ops.py"
       - symbol: "format_pm_gate_guidance"
         type: "function"
         signature: "Match packs to chat/requirement text → render pm_hints for PM generation-time inject"
         module: "aiPlat-core/core/harness/execution/prd_quality_gate.py"
+      - symbol: "collect_decision_enum_catalog"
+        type: "function"
+        signature: "Collect allowed decision enums from matched PRD gate packs (checks + normalize repairs)"
+        module: "aiPlat-core/core/harness/execution/prd_quality_gate.py"
+      - symbol: "format_decision_enum_catalog"
+        type: "function"
+        signature: "Render pack-driven decision enum catalog for PM / auto-repair prompts"
+        module: "aiPlat-core/core/harness/execution/prd_quality_gate.py"
+      - symbol: "extract_skill_routing"
+        type: "function"
+        signature: "Extract skill_routing map from agent_app raw / manifest for factory FE wiring"
+        module: "aiPlat-core/core/harness/execution/app_page_skill_inject.py"
+      - symbol: "inject_app_page_skills"
+        type: "function"
+        signature: "Fill empty app_page stage.skill from agent_manifest ui_bindings then skill_routing (no YAML)"
+        module: "aiPlat-core/core/harness/execution/app_page_skill_inject.py"
+      - symbol: "extract_ui_bindings"
+        type: "function"
+        signature: "Extract required component→skill map from agent_app / agent_manifest"
+        module: "aiPlat-core/core/harness/execution/app_page_skill_inject.py"
+      - symbol: "repair_frontend_pages_raw"
+        type: "function"
+        signature: "Parse frontend_pages raw_output, inject skills from agent_app, re-serialize"
+        module: "aiPlat-core/core/harness/execution/app_page_skill_inject.py"
+      - symbol: "skill_routing_context_block"
+        type: "function"
+        signature: "Compact skill_routing prompt block for app_page_generation context inject"
+        module: "aiPlat-core/core/harness/execution/app_page_skill_inject.py"
+      - symbol: "speech_pipeline_context_block"
+        type: "function"
+        signature: "Inject PRD decisions.speech_pipeline into FE context (asr→require transcript; features-only→ban)"
+        module: "aiPlat-core/core/harness/execution/app_page_skill_inject.py"
+      - symbol: "parse_app_page_payload"
+        type: "function"
+        signature: "Parse app_page.json from frontend stage raw output (JSON or FILE block)"
+        module: "aiPlat-core/core/harness/execution/app_page_skill_inject.py"
       - symbol: "matched_packs_for_text"
         type: "function"
         signature: "Match PRD gate packs against free text (chat history / user requirement)"
@@ -1224,12 +2026,16 @@ domains:
   infra-infrastructure:
     section: "二十二"
     section_name: "Infra 基础设施"
-    caps_count: 11
+    caps_count: 12
     provides:
       - symbol: "ModelManager"
         type: "class"
         signature: "list_models, select, health_check"
         module: "aiPlat-infra/infra/management/model/manager.py"
+      - symbol: "execution_db_path"
+        type: "function"
+        signature: "()→str default ~/.aiplat/aiplat_executions.sqlite3"
+        module: "aiPlat-infra/infra/management/model/paths.py"
       - symbol: "create_llm_client"
         type: "function"
         signature: "(config)→LLMClient"
@@ -1246,6 +2052,8 @@ domains:
         reason: "ModelManager 缓存"
       - module: "aiPlat-management/frontend/src/pages/Infra"
         reason: "Infra 管理前端"
+      - module: "aiPlat-infra/infra/management/model/config_loader.py"
+        reason: "adapters 发现与 CredentialPool 共用 DB 路径"
 
   # ══════════════════════════════════════════════════════════════
   # 二十三、核心API统一入口 (5 caps)
@@ -1337,8 +2145,112 @@ domains:
         module: "aiPlat-management/frontend/src/components/layout/AppLayout.tsx"
       - symbol: "handleFixBugs"
         type: "function"
-        signature: "Factory page: trigger test_report_orchestrator agent for one-click bug fix"
+        signature: "Factory page: POST /fix-from-report deterministic one-click bug fix"
         module: "aiPlat-management/frontend/src/pages/App/Factory/index.tsx"
+      - symbol: "plan_fix_from_report"
+        type: "function"
+        signature: "Map test_report bugs to team stages; default freeze test_cases via preserve_artifacts"
+        module: "aiPlat-core/core/harness/execution/factory_fix_plan.py"
+      - symbol: "filter_fix_plan_freeze_test_cases"
+        type: "function"
+        signature: "Drop qa/test_cases from one-click fix_plan unless regenerate_test_cases=True"
+        module: "aiPlat-core/core/harness/execution/factory_fix_plan.py"
+      - symbol: "FROZEN_TEST_CASE_ARTIFACTS"
+        type: "constant"
+        signature: "('test_cases','test_questions') — exam suite frozen across one-click fix"
+        module: "aiPlat-core/core/harness/execution/factory_fix_plan.py"
+      - symbol: "derive_failed_stages_from_report"
+        type: "function"
+        signature: "Derive failed agent_ids from true_test/pytest bug_summary using output_artifact"
+        module: "aiPlat-core/core/harness/execution/factory_fix_plan.py"
+      - symbol: "apply_no_platform_handler_fixes"
+        type: "function"
+        signature: "Deterministic remap of invented media skill names in agent_app + test_cases"
+        module: "aiPlat-core/core/harness/execution/factory_fix_plan.py"
+      - symbol: "extract_media_skill_remaps_from_report"
+        type: "function"
+        signature: "Collect invented→catalog skill remaps from true_test diagnostics"
+        module: "aiPlat-core/core/harness/execution/factory_fix_plan.py"
+      - symbol: "bugs_are_no_platform_handler_only"
+        type: "function"
+        signature: "True when all bugs are no_platform_handler (safe for deterministic fix)"
+        module: "aiPlat-core/core/harness/execution/factory_fix_plan.py"
+      - symbol: "bugs_are_media_handler_fixable"
+        type: "function"
+        signature: "True when bugs are media skill_invoke field gaps fixable without LLM"
+        module: "aiPlat-core/core/harness/execution/factory_fix_plan.py"
+      - symbol: "align_result_assert_needles"
+        type: "function"
+        signature: "Rewrite result.contains needles (export_format→export_json) for one-click"
+        module: "aiPlat-core/core/harness/execution/factory_fix_plan.py"
+      - symbol: "fix_from_test_report"
+        type: "function"
+        signature: "Platform builder: deterministic regenerate from test_report (no ReAct)"
+        module: "aiPlat-platform/builder/builder_project_service.py"
+      - symbol: "_platform_effects_after_deterministic_skill"
+        type: "function"
+        signature: "After media Path0 handler: memory + local_feedback; AIPLAT_FACTORY_FORCE_AGENT_SKILL skips Path0"
+        module: "aiPlat-platform/builder/builder_project_service.py"
+      - symbol: "validate_manifest"
+        type: "function"
+        signature: "Phase A: validate agent_manifest mode/routing; multi_agent requires rationale+metrics+5 AND criteria"
+        module: "aiPlat-platform/builder/generated_conformance.py"
+      - symbol: "validate_manifest_file"
+        type: "function"
+        signature: "Phase A: load agent_manifest.json from disk then validate_manifest"
+        module: "aiPlat-platform/builder/generated_conformance.py"
+      - symbol: "evaluate_run_through"
+        type: "function"
+        signature: "Phase A: 4-dimension run-through gate (N≥20, failed_stage, conformance/real_tests, PolicyGate)"
+        module: "aiPlat-platform/builder/promotion_gate.py"
+      - symbol: "evaluate_multi_agent_upgrade"
+        type: "function"
+        signature: "Phase A: five AND criteria for multi_agent upgrade"
+        module: "aiPlat-platform/builder/promotion_gate.py"
+      - symbol: "load_promotion_gate"
+        type: "function"
+        signature: "Load promotion_gate.yaml thresholds and checklist"
+        module: "aiPlat-platform/builder/promotion_gate.py"
+      - symbol: "should_skip_dynamic_spawn"
+        type: "function"
+        signature: "Phase B W3: skip DynamicOrchestrator spawn when ContextVar/stage/state disables"
+        module: "aiPlat-core/core/harness/coordination/spawn_policy.py"
+      - symbol: "disable_dynamic_spawn"
+        type: "function"
+        signature: "Phase B W3: context manager disable free multi-agent spawn / sys_agent_call"
+        module: "aiPlat-core/core/harness/coordination/spawn_policy.py"
+      - symbol: "gate_skill_hop"
+        type: "function"
+        signature: "Phase B W4: validate execute_skill params vs SKILL input_schema before LLM"
+        module: "aiPlat-platform/builder/skill_hop_gate.py"
+      - symbol: "validate_skill_hop_params"
+        type: "function"
+        signature: "Phase B W4: field-map or JSON-schema-like required/type checks"
+        module: "aiPlat-platform/builder/skill_hop_gate.py"
+      - symbol: "record_hop"
+        type: "function"
+        signature: "Phase C W5: append execute_skill hop outcome to JSONL"
+        module: "aiPlat-platform/builder/hop_metrics.py"
+      - symbol: "aggregate_hops"
+        type: "function"
+        signature: "Phase C W5: n_runs/success_rate/failed_stage aggregation"
+        module: "aiPlat-platform/builder/hop_metrics.py"
+      - symbol: "evaluate_project_run_through"
+        type: "function"
+        signature: "Phase C W5: hop aggregate + promotion_gate four-dimension check"
+        module: "aiPlat-platform/builder/hop_metrics.py"
+      - symbol: "build_baseline"
+        type: "function"
+        signature: "Phase 0/post-ABC: read-only multi-agent health snapshot (manifest/conformance/spawn/hops)"
+        module: "scripts/factory_multi_agent_baseline.py"
+      - symbol: "migrate_one"
+        type: "function"
+        signature: "Downgrade non-compliant multi_agent manifests to single + ui_bindings"
+        module: "scripts/migrate_factory_manifests.py"
+      - symbol: "get_promotion_status"
+        type: "function"
+        signature: "Phase C W5: BuilderProjectService promotion snapshot for GET /promotion"
+        module: "aiPlat-platform/builder/builder_project_service.py"
       - symbol: "Sidebar v2.3 menuItems"
         type: "data"
         signature: "Task-flow driven sidebar: 6 groups, 92 entries; AI工厂33→14精简58%; 引擎能力配置独立成组; 价值看板→仪表盘"

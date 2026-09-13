@@ -244,6 +244,9 @@ class PipelineStageConfig(BaseModel):
     depends_on: List[str] = Field(default_factory=list)
     output_artifact: str = ""
     required_skills: List[str] = Field(default_factory=list)
+    # T3a: optional skill subscription (empty = no filter). required_skills always forced.
+    skill_allow_tags: List[str] = Field(default_factory=list)
+    skill_allow_roles: List[str] = Field(default_factory=list)
     tools: List[str] = Field(default_factory=list)  # per-stage tool whitelist for agent backend
     completeness_check: Optional[dict] = Field(default=None)  # {input_artifact, output_key, max_per_call}
     failure_strategy: str = "fail_pipeline"
@@ -358,6 +361,18 @@ class PipelineStageConfig(BaseModel):
     """When evaluation REJECTED, rollback to upstream stage instead of same-stage retry."""
     rollback_target_id: str = ""
     """Target stage ID to rollback to when rejected (empty = use depends_on for upstream)."""
+    # ── C0 frozen: stage schema gate + handoff envelope (empty schema = no-op) ──
+    input_schema: Dict[str, Any] = Field(default_factory=dict)
+    """JSON-schema-like or field checklist for upstream artifacts before stage start."""
+    output_schema: Dict[str, Any] = Field(default_factory=dict)
+    """JSON-schema-like or field checklist for this stage's output_artifact."""
+    gate_on_fail: str = ""
+    """Empty | block | hitl | fail_pipeline — empty keeps backward-compatible no hard gate."""
+    handoff_required: bool = False
+    """When true, stage output meta must include frozen handoff.* keys (see stage_handoff)."""
+    # Phase B W3: factory contracted pipeline — disable DynamicOrchestrator free spawn
+    allow_dynamic_spawn: bool = True
+    """False = StageRunner skips sense_gap/spawn; factory stages force False via factory_profile."""
 
 
 class PipelineConfig(BaseModel):
@@ -449,6 +464,10 @@ class ProjectCreateRequest(BaseModel):
     app_name: str = ""  # optional: user-provided English slug; auto-derived if empty
     team_id: str = ""
     stages: List[Dict[str, Any]] = Field(default_factory=list)  # pre-built workflow stages
+    factory_profile: str = "standard"  # F2a: standard | demo (project-level HITL profile)
+    output_style: str = "default"  # A0: default | adhd (user-facing prose only)
+    factory_mode: str = ""  # F2b: agent | code | hybrid | "" (auto / LLM)
+    coding_intensity: str = ""  # B: lite | full | ultra | "" (resolve from mode/env)
 
 
 class ProjectListResponse(BaseModel):

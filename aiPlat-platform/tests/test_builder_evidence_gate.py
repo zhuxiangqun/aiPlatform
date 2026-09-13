@@ -102,6 +102,41 @@ class TestP1_18EvidenceGate:
         assert "skipped pytest gate" in svc._projects["prj_g"]["runs"][-1].get(
             "pass_rate_estimate_reason", "")
 
+    def test_missing_final_state_does_not_500(self, tmp_path, monkeypatch):
+        """无 _final_state.json 时不得 UnboundLocalError（预览/部署 500 根因）。"""
+        from builder.builder_project_service import BuilderProjectService
+        svc = BuilderProjectService(team_service=None)
+        svc._projects["prj_g"] = {
+            "project_id": "prj_g",
+            "runs": [{"phase": "done"}],
+            "confirmed_prd": {"title": "t"},
+        }
+        (tmp_path / "output" / "prj_g").mkdir(parents=True, exist_ok=True)
+        monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+        deployed = []
+        with patch("builder.builder_project_service._deploy_to_app_for_project",
+                   side_effect=lambda pid, dd, p: deployed.append(pid) or {"status": "ok"}):
+            async def _gdd(_pid):
+                return str(tmp_path / "output" / "prj_g" / "deploy")
+            svc.get_deploy_dir = _gdd  # type: ignore
+            import asyncio
+            result = asyncio.run(svc.deploy_to_app("prj_g"))
+        assert result["status"] == "ok", result
+        assert deployed == ["prj_g"]
+
+    def test_legacy_zero_rate_without_has_tests_not_blocked(self, tmp_path, monkeypatch):
+        """agent 模式遗留 _test_pass_rate=0 且无 _has_tests → 不得当 real_pytest 阻断。"""
+        state = _make_final_state(pass_rate=0.0, has_tests=False)
+        svc = self._make_svc_with_final(tmp_path, state)
+        monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+        deployed = []
+        with patch("builder.builder_project_service._deploy_to_app_for_project",
+                   side_effect=lambda pid, dd, p: deployed.append(pid) or {"status": "ok"}):
+            import asyncio
+            result = asyncio.run(svc.deploy_to_app("prj_g"))
+        assert result["status"] == "ok", result
+        assert deployed == ["prj_g"]
+
 
 class TestP1_18AcceptanceDerivation:
     """原则 17：生成规范必须要求 completion_criterion 引用 PRD 验收。"""

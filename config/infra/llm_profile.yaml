@@ -1,32 +1,19 @@
-# aiPlat LLM Profile — purpose profiles (workspace override)
-# v2.2.1: scoring_weights define scene-specific preferences.
-# prefer_local purposes use scoring_weights to ensure local models are preferred.
+# aiPlat LLM Profile — purpose profiles (workspace overlay, deep-merged onto infra)
+# Prefer local where safe; do NOT replace infra require/weights wholesale.
+# Factory PM/PRD uses purpose ``agent`` (see BuilderProjectService.model).
 
 purpose_profiles:
   chat:
-    prefer: ["chat"]
     prefer_local: true
-    scoring_weights:
-      reasoning: 0.3          # 聊天不重推理
-      latency: -2.5           # 必须快
-      source_bias: 1.5        # 强化本地偏好
+  agent:
+    # Keep infra agent quality bars; only bias toward local when comparable
+    prefer_local: true
   agent_creation:
-    prefer: ["chat"]
     prefer_local: true
-    scoring_weights:
-      source_bias: 1.5        # 强化本地偏好
   code_gen:
-    prefer: ["chat", "code"]
     prefer_local: true
-    scoring_weights:
-      reasoning: 2.5          # 代码需要强推理
-      latency: -0.5           # 延迟不敏感
-      source_bias: 1.5
   ontology_gen:
-    prefer: ["chat"]
     prefer_local: true
-    scoring_weights:
-      source_bias: 1.5
 
 fallback:
   safe_model: qwen2.5:3b

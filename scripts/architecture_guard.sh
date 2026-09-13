@@ -196,6 +196,11 @@ for root, dirs, files in os.walk('aiPlat-core/core/harness/execution/'):
         if 'simulation' in fname: continue
         # Skip prd_quality_gate.py — pack interpreter must match Chinese PRD prose / render templates
         if 'prd_quality_gate' in fname: continue
+        # Skip factory prompt/sanitize injectors — emit Chinese UI/skill contract text by design
+        if 'factory_artifact_sanitize' in fname: continue
+        if 'app_page_skill_inject' in fname: continue
+        if 'factory_fix_plan' in fname: continue
+        if 'prd_markdown' in fname: continue
         for i, line in enumerate(open(fpath), 1):
             stripped = line.strip()
             if not stripped or stripped.startswith('#'): continue

@@ -1,0 +1,66 @@
+team_name: "软件研发团队（代码模式）"
+description: "确定性功能软件：后端 FastAPI 代码(pytest 可测) + 声明式前端(app_page)"
+stages:
+  - agent_id: pm_agent
+    order: 0
+    output_artifact: prd
+    skill_name: requirement_analysis
+    execution_backend: llm
+    hitl: true
+    hitl_phase: review
+
+  - agent_id: architect_agent
+    order: 1
+    output_artifact: architecture
+    skill_name: architecture_design
+    execution_backend: llm
+    architecture_mode: code
+    input_artifacts: [prd]
+    hitl: true
+    hitl_phase: review
+
+  - agent_id: programmer_agent
+    order: 2
+    output_artifact: code
+    skill_name: code_generation
+    execution_backend: llm
+    input_artifacts: [prd, architecture]
+    uses_file_output: true
+    inject_imported_context: true
+    deploy_files_to_disk: true
+    stage_timeout_seconds: 900
+
+  - agent_id: frontend_developer
+    order: 3
+    output_artifact: frontend_pages
+    skill_name: app_page_generation
+    execution_backend: llm
+    input_artifacts: [architecture, prd]
+    quality_gate:
+      min_output_length: 100
+      # No agent_app in code mode — still repair wizard I/O from stage graph alone
+      repair_app_page: true
+
+  - agent_id: qa_agent
+    order: 4
+    output_artifact: test_cases
+    skill_name: test_case_generation
+    execution_backend: llm
+    architecture_mode: code
+    input_artifacts: [prd, architecture, code, frontend_pages]
+    quality_gate:
+      min_output_length: 100
+      sanitize_test_cases: true
+      requirements_artifact: prd
+    hitl: true
+    hitl_phase: review
+    stage_timeout_seconds: 600
+
+  - agent_id: test_executor
+    order: 5
+    output_artifact: test_report
+    skill_name: test_executor
+    execution_backend: llm
+    test_execution_mode: pytest
+    input_artifacts: [code, test_cases]
+    stage_timeout_seconds: 900

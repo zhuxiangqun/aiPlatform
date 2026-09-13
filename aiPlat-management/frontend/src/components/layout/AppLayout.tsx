@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { menuItems, type MenuEntry, type MenuItem, type MenuGroup } from '../../pageManifest';
 
 // ── Flatten all menu items once (menuItems is static) — avoids O(n²) rebuild in isActive ──
@@ -100,6 +100,11 @@ const userMenuItems: (MenuItem | { divider: boolean; key: string })[] = [
 const AppLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const embedMode =
+    searchParams.get('embed') === '1' ||
+    searchParams.get('embed') === 'true' ||
+    location.pathname.endsWith('/embed');
   const [collapsed, setCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
@@ -184,6 +189,17 @@ const AppLayout: React.FC = () => {
     if ('group' in entry) return visibleGroups.includes(entry.group);
     return false;  // no top-level individual items in v2.1
   });
+
+  // Factory preview iframe / standalone app shell — no sidebar/header chrome
+  if (embedMode) {
+    return (
+      <ToastProvider>
+        <div className="min-h-screen bg-dark-bg text-gray-100">
+          <Outlet />
+        </div>
+      </ToastProvider>
+    );
+  }
 
   return (
     <ToastProvider>

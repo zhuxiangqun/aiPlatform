@@ -137,9 +137,40 @@ export interface ProjectRun {
   finished_at: string;
 }
 
+/** F-T4: T4a friction share CTA (local learning; not team Git by default) */
+export interface FrictionShareCta {
+  signal?: string;
+  project_id?: string;
+  stage_id?: string;
+  detail?: string;
+  needs_confirm?: boolean;
+  learning_id?: string;
+  message?: string;
+  ts?: number;
+  contribute_default?: boolean;
+}
+
+/** F-T5: metrics-only digest slice (no raw prompts) */
+export interface TeamDigestSlice {
+  ok?: boolean;
+  summary?: string;
+  success?: boolean;
+  failed?: boolean;
+  phase?: string;
+  friction?: { events?: number; learnings?: number; by_signal?: Record<string, number> };
+  outcomes?: { total?: number; gate_events?: number };
+  bloat?: { loc?: number; new_files?: number; new_deps?: number; delta_loc?: number };
+  repair?: { repair_exhausted?: boolean; rounds?: number };
+  style?: { output_style?: string; factory_profile?: string };
+  culture?: { present?: boolean; tokens?: number };
+  pull?: { commit?: string; pulled_at?: number };
+  privacy?: string;
+}
+
 export interface ProjectItem {
   project_id: string;
   name: string;
+  app_name?: string;
   description: string;
   team_id: string;
   team_name: string;
@@ -153,7 +184,15 @@ export const projectApi = {
   list: async () => {
     return apiClient.get<{ projects: ProjectItem[]; total: number }>('/platform/builder/projects');
   },
-  create: async (data: { name: string; description: string; team_id?: string; app_name?: string }) => {
+  create: async (data: {
+    name: string;
+    description: string;
+    team_id?: string;
+    app_name?: string;
+    factory_profile?: 'standard' | 'demo';
+    output_style?: 'default' | 'adhd';
+    factory_mode?: 'agent' | 'code' | 'hybrid' | '';
+  }) => {
     return apiClient.post<ProjectItem>('/platform/builder/projects', data);
   },
   get: async (projectId: string) => {
@@ -178,6 +217,17 @@ export const projectApi = {
   confirm: async (projectId: string, prd?: Record<string, unknown>) => {
     return apiClient.post<{ phase: string }>(`/platform/builder/projects/${projectId}/confirm`, prd ? { prd } : {});
   },
+  /** F1 one-click: confirm PRD → recommend team → start pipeline */
+  confirmAndBuild: async (projectId: string, prd?: Record<string, unknown>) => {
+    return apiClient.post<{
+      status: string;
+      phase?: string;
+      confirm?: Record<string, unknown>;
+      team?: { recommendation?: Record<string, unknown>; plan_stages?: Array<Record<string, unknown>> };
+      start?: Record<string, unknown>;
+      detail?: string;
+    }>(`/platform/builder/projects/${projectId}/confirm-and-build`, prd ? { prd } : {});
+  },
   start: async (projectId: string) => {
     return apiClient.post<{ project_id: string; phase: string; run_id: string; state: Record<string, unknown> }>(
       `/platform/builder/projects/${projectId}/start`
@@ -194,12 +244,37 @@ export const projectApi = {
     return apiClient.post<{ project_id: string; phase: string }>(`/platform/builder/projects/${projectId}/approve`);
   },
   reject: async (projectId: string, feedback: string) => {
-    return apiClient.post<{ project_id: string; phase: string }>(`/platform/builder/projects/${projectId}/reject`, { feedback });
+    return apiClient.post<{ project_id: string; phase: string; friction_share?: FrictionShareCta }>(
+      `/platform/builder/projects/${projectId}/reject`,
+      { feedback },
+    );
+  },
+  /** F-T4: confirm regenerate friction → local learning draft */
+  confirmFrictionShare: async (
+    projectId: string,
+    body?: { stage_id?: string; signal?: string; detail?: string },
+  ) => {
+    return apiClient.post<{ status: string; learning_id?: string; cta?: FrictionShareCta }>(
+      `/platform/builder/projects/${projectId}/friction-share`,
+      body || {},
+    );
   },
   getState: async (projectId: string) => {
-    return apiClient.get<{ project_id: string; phase: string; state: Record<string, unknown>; runs: ProjectRun[] }>(
+    return apiClient.get<{
+      project_id: string;
+      phase: string;
+      state: Record<string, unknown>;
+      runs: ProjectRun[];
+      friction_share?: FrictionShareCta;
+      team_digest?: TeamDigestSlice;
+    }>(
       `/platform/builder/projects/${projectId}/state`
     );
+  },
+
+  /** F-T5: metrics-only digest (also increments view counter) */
+  getDigest: async (projectId: string) => {
+    return apiClient.get<TeamDigestSlice>(`/platform/builder/projects/${projectId}/digest`);
   },
 
   /** Rollback to a specific pipeline stage or PRD */
@@ -223,6 +298,29 @@ export const projectApi = {
     );
   },
 
+  /** Deterministic one-click fix from test_report (no ReAct agent).
+   *  Default freezes test_cases; pass regenerateTestCases=true to rewrite the suite. */
+  fixFromReport: async (
+    projectId: string,
+    testReport?: string,
+    opts?: { regenerateTestCases?: boolean },
+  ) => {
+    return apiClient.post<{
+      status: string;
+      fixed_stages?: number;
+      total_bugs?: number;
+      fix_plan?: string[];
+      failed_stage_ids?: string[];
+      phase?: string;
+      errors?: string[];
+      preserve_artifacts?: string[];
+      regenerate_test_cases?: boolean;
+    }>(`/platform/builder/projects/${projectId}/fix-from-report`, {
+      test_report: testReport || '',
+      regenerate_test_cases: Boolean(opts?.regenerateTestCases),
+    });
+  },
+
   /** Generate root-cause hypotheses + fix plan from the decision trace graph. */
   generateHypotheses: async (projectId: string, failedStageIds: string[]) => {
     return apiClient.post<{ status: string; fix_plan: string[]; hypotheses: Array<Record<string, unknown>> }>(
@@ -242,6 +340,21 @@ export const projectApi = {
   lastTestReport: async (projectId: string) => {
     return apiClient.get<Record<string, unknown>>(`/platform/builder/projects/${projectId}/last-test-report`);
   },
+  /** Alias used by Factory list loader. */
+  getLastTestReport: async (projectId: string) => {
+    return apiClient.get<Record<string, unknown>>(`/platform/builder/projects/${projectId}/last-test-report`);
+  },
+
+  /** Phase C：hop 度量 + 跑通晋升门快照。 */
+  getPromotion: async (projectId: string) => {
+    return apiClient.get<{
+      ok?: boolean;
+      hops?: { n_runs?: number; effective_n?: number; effective_success_rate?: number };
+      blockers?: string[];
+      policy?: string;
+      manifest_mode?: string;
+    }>(`/platform/builder/projects/${projectId}/promotion`);
+  },
 
   /** 生成 app 运行时：daemon_jobs 托管启动。 */
   runtimeLaunch: async (projectId: string) => {
@@ -260,11 +373,39 @@ export const projectApi = {
     );
   },
 
-  /** Deploy the project to aiPlat-app. */
+  /** Deploy the project to aiPlat-app. F4: may return rejected_artifacts + openable. */
   deployToApp: async (projectId: string) => {
-    return apiClient.post<{ ok: boolean; project_id: string; deploy_dir: string; app_url: string }>(
-      `/platform/builder/projects/${projectId}/deploy-to-app`
-    );
+    return apiClient.post<{
+      ok: boolean;
+      project_id?: string;
+      deploy_dir?: string;
+      app_url?: string;
+      openable?: boolean;
+      open_reason?: string;
+      rejected_count?: number;
+      rejected_artifacts?: Array<{
+        kind: string;
+        name: string;
+        path: string;
+        violations: string[];
+        fix_hint?: string;
+      }>;
+      smoke?: Record<string, unknown>;
+      status?: string;
+      detail?: string;
+    }>(`/platform/builder/projects/${projectId}/deploy-to-app`);
+  },
+
+  /** F4: smoke with keep_alive; returns openable. */
+  runtimeSmoke: async (projectId: string, keepAlive = true) => {
+    return apiClient.post<{
+      smoke_passed?: boolean | null;
+      openable?: boolean;
+      open_reason?: string;
+      skipped?: boolean;
+      port?: number;
+      e2e_smoke?: Record<string, unknown>;
+    }>(`/platform/builder/projects/${projectId}/runtime/smoke`, { keep_alive: keepAlive });
   },
 
   /** Directly update PRD without PM chat re-engagement. */

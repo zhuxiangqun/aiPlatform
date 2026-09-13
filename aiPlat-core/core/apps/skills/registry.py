@@ -1629,23 +1629,22 @@ class _GenericSkill(BaseSkill):
         if not prompt:
             prompt = str(self._config.description) + "\nInput: " + str(params) if params else ""
 
-        # Organization-level coding policy profile (Phase-1).
+        # Organization-level coding policy / intensity (B0–B2).
         coding_profile = str((params or {}).get("_coding_policy_profile") or "karpathy_v1").strip().lower()
-        policy_block = ""
-        if coding_profile == "karpathy_v1":
-            policy_block = (
-                "编码行为规范（karpathy_v1，必须遵循）：\n"
-                "1) 编码前思考：不要做未证实假设；遇到歧义/缺参，先在输出中列出需要确认的问题与可选方案。\n"
-                "2) 简洁优先：坚持最小可行实现；不要引入未经请求的抽象/架构/额外功能。\n"
-                "3) 精准修改：像外科手术一样，只改必须改的地方；避免无关格式化/无关文件改动。\n"
-                "4) 目标驱动：把任务转成可验证目标；在输出中给出验收标准（测试/复现步骤/检查清单）。\n"
-                "5) 错误可见：禁止 except Exception: pass 静默吞错。所有 except 块必须包含以下至少一项：\n"
-                "   a) logging.warning/error(exc_info=True) — 记录到日志\n"
-                "   b) raise — 重新抛出\n"
-                "   c) return/set 默认值 + logging.debug(exc_info=True) — 显式降级\n"
-                "   仅 ImportError/asyncio.CancelledError/sqlite3.OperationalError 可裸 pass 并标注 # noqa 原因。\n"
-            )
-        
+        try:
+            from core.harness.utils.coding_intensity import build_coding_policy_block
+            policy_block = build_coding_policy_block(coding_profile)
+        except Exception:
+            policy_block = ""
+            if coding_profile == "karpathy_v1":
+                policy_block = (
+                    "编码行为规范（karpathy_v1，必须遵循）：\n"
+                    "1) 编码前思考：不要做未证实假设；遇到歧义/缺参，先在输出中列出需要确认的问题与可选方案。\n"
+                    "2) 简洁优先：坚持最小可行实现；不要引入未经请求的抽象/架构/额外功能。\n"
+                    "3) 精准修改：像外科手术一样，只改必须改的地方；避免无关格式化/无关文件改动。\n"
+                    "4) 目标驱动：把任务转成可验证目标；在输出中给出验收标准（测试/复现步骤/检查清单）。\n"
+                    "5) 错误可见：禁止 except Exception: pass 静默吞错。\n"
+                )
         try:
             sop = ""
             try:

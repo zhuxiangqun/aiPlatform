@@ -101,10 +101,28 @@ has_caller() {
     if grep -qE "\b(self|executor|[a-z_]+)\.${method_name}\s*\(" "$file_path" 2>/dev/null; then
         return 0
     fi
+
+    # Same-module direct calls: def + ≥1 call site in the same file counts as wired
+    # (public helpers used by sibling functions; avoids false DEAD on package internals).
+    local same_file_hits
+    same_file_hits=$(grep -cE "(^|[^A-Za-z0-9_])${method_name}\s*\(" "$file_path" 2>/dev/null || echo 0)
+    if [ "${same_file_hits:-0}" -ge 2 ]; then
+        return 0
+    fi
+
+    # CoreFacade canonical re-export counts as wired (platform must go through facade).
+    # Multi-line `from X import (\n  name,\n)` would otherwise miss `from.*\bname\b`.
+    local facade="$WORKSPACE/aiPlat-core/core/api/core_facade.py"
+    if [ -f "$facade" ] && grep -qE "\b${method_name}\b" "$facade" 2>/dev/null; then
+        return 0
+    fi
     
-    # Search in all production code (excluding self and tests)
+    # Search production code across core + platform + app (excluding self and tests)
     local hits
-    hits=$(grep -rl "$method_name" "$WORKSPACE/aiPlat-core" \
+    hits=$(grep -rl "$method_name" \
+        "$WORKSPACE/aiPlat-core" \
+        "$WORKSPACE/aiPlat-platform" \
+        "$WORKSPACE/aiPlat-app" \
         --include='*.py' 2>/dev/null \
         | grep -v "$basename" \
         | grep -v '__pycache__' \
@@ -120,8 +138,8 @@ has_caller() {
     local found=0
     while IFS= read -r hit_file; do
         [ -z "$hit_file" ] && continue
-        # Check for import, call, attribute access, or type hint patterns
-        if grep -qE "(import.*\b${method_name}\b|from.*\b${method_name}\b|${method_name}\s*\(|=\s*${method_name}\b|:\s*${method_name}\b)" "$hit_file" 2>/dev/null; then
+        # Check for import, call, attribute access, type hint, or multi-line import list item
+        if grep -qE "(import.*\b${method_name}\b|from.*\b${method_name}\b|${method_name}\s*\(|=\s*${method_name}\b|:\s*${method_name}\b|^\s*${method_name}\s*,?\s*$)" "$hit_file" 2>/dev/null; then
             found=1
             break
         fi

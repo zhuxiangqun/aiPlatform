@@ -1,0 +1,88 @@
+# AI 应用工厂 — 混合团队配置 (Hybrid 模式)
+# 适用：对话/编排层 (Agent + prompt 技能) 与 重计算/服务层 (FastAPI 代码) 并存
+#       的应用，如"聊天界面 + 视频分析后端"、"RAG 问答 + 数据处理流水线"。
+# 阶段构成：code 团队的代码后端 + agent 团队的 Agent 编排层，
+#           agent_engineering 在 code_generation 之后（Agent 调用代码服务）。
+team_name: "混合研发团队（Agent + 代码服务）"
+description: "对话/编排用 Agent 技能，媒体计算/性能 SLA/后台任务用 FastAPI 代码服务"
+stages:
+  - agent_id: pm_agent
+    order: 0
+    output_artifact: prd
+    skill_name: requirement_analysis
+    execution_backend: llm
+    hitl: true
+    hitl_phase: review
+
+  - agent_id: architect_agent
+    order: 1
+    output_artifact: architecture
+    skill_name: architecture_design
+    execution_backend: llm
+    architecture_mode: hybrid
+    input_artifacts: [prd]
+    hitl: true
+    hitl_phase: review
+
+  - agent_id: programmer_agent
+    order: 2
+    output_artifact: code
+    skill_name: code_generation
+    execution_backend: llm
+    input_artifacts: [prd, architecture]
+    uses_file_output: true
+    inject_imported_context: true
+    deploy_files_to_disk: true
+    stage_timeout_seconds: 900
+
+  - agent_id: agent_engineer
+    order: 3
+    output_artifact: agent_app
+    skill_name: agent_engineering
+    execution_backend: llm
+    input_artifacts: [prd, architecture, code]
+    quality_gate:
+      min_output_length: 100
+      ensure_ui_binding_pair: [file_upload, data_form]
+      ensure_result_dashboard_skill: true
+      normalize_media_skill_names: true
+      ensure_agent_app_skill_consistency: true
+      ensure_platform_media_skill_contracts: true
+
+  - agent_id: frontend_developer
+    order: 4
+    output_artifact: frontend_pages
+    skill_name: app_page_generation
+    execution_backend: llm
+    input_artifacts: [architecture, prd, agent_app]
+    quality_gate:
+      min_output_length: 100
+      inject_skill_routing_context: true
+      repair_app_page: true
+      routing_artifact: agent_app
+
+  - agent_id: qa_agent
+    order: 5
+    output_artifact: test_cases
+    skill_name: test_case_generation
+    execution_backend: llm
+    architecture_mode: code
+    input_artifacts: [prd, architecture, code, agent_app, frontend_pages]
+    quality_gate:
+      min_output_length: 100
+      sanitize_test_cases: true
+      inject_skill_routing_context: true
+      requirements_artifact: prd
+      routing_artifact: agent_app
+    hitl: true
+    hitl_phase: review
+    stage_timeout_seconds: 600
+
+  - agent_id: test_executor
+    order: 6
+    output_artifact: test_report
+    skill_name: test_executor
+    execution_backend: llm
+    test_execution_mode: pytest
+    input_artifacts: [code, test_cases, prd, agent_app, frontend_pages]
+    stage_timeout_seconds: 900

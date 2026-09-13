@@ -580,27 +580,39 @@ def subprocess_timeout():
 
 
 # ── 自动修复闭环（测试失败 → LLM 修复生成代码 → 重跑验证）──
+# F4: hard cap — never exceed 2 rounds; exhausted → HITL (no infinite loop)
+MAX_REPAIR_ATTEMPTS = 2
+
+
 async def auto_repair(project_id: str, deploy_dir: Optional[str] = None,
-                      max_rounds: int = 2, timeout_sec: float = 120.0) -> Dict[str, Any]:
+                      max_rounds: int = MAX_REPAIR_ATTEMPTS, timeout_sec: float = 120.0) -> Dict[str, Any]:
     """测试经理真实测试失败后自动修复：real_tests → 失败则 LLM 修复 → 写回部署目录 → 重跑。
 
     修复只作用于生成物部署目录（deploy_dir/backend 下被 pytest 判失败的 .py 文件），
     与 test_executor 的 auto-repair 同模式（LLM 按测试输出修复 → 重跑 → 改进才采纳）。
 
-    返回 {repaired, rounds, initial, final, test_report, writeback_files}：
+    返回 {repaired, rounds, initial, final, test_report, writeback_files,
+          repair_exhausted?, next?}：
       repaired = 最终测试通过（或相比初始改进）；writeback_files = 写回部署目录的文件。
+      repair_exhausted=True 且 next=hitl 表示已达上限，应交人工。
     """
     import subprocess as _sp
     import tempfile as _tf
     import shutil as _sh
     import sys as _sys
 
+    try:
+        max_rounds = int(max_rounds)
+    except (TypeError, ValueError):
+        max_rounds = MAX_REPAIR_ATTEMPTS
+    max_rounds = max(1, min(max_rounds, MAX_REPAIR_ATTEMPTS))
+
     home = deploy_dir or _app_home(project_id)
     initial = real_tests(project_id, deploy_dir=home, install_deps=False, timeout_sec=timeout_sec)
     if initial.get("test_passed"):
         return {"repaired": True, "rounds": 0, "initial": initial, "final": initial,
                 "test_report": initial.get("test_report"), "writeback_files": [],
-                "reason": "already passing"}
+                "repair_exhausted": False, "reason": "already passing"}
 
     try:
         from core.api.core_facade import best_model_for_purpose
@@ -608,6 +620,7 @@ async def auto_repair(project_id: str, deploy_dir: Optional[str] = None,
     except Exception:
         return {"repaired": False, "rounds": 0, "initial": initial, "final": initial,
                 "test_report": initial.get("test_report"), "writeback_files": [],
+                "repair_exhausted": True, "next": "hitl",
                 "reason": "llm_generate unavailable"}
 
     # 复制部署目录到可写临时工作区（修复文件 → 验证 → 写回）
@@ -712,12 +725,14 @@ async def auto_repair(project_id: str, deploy_dir: Optional[str] = None,
                 if final.get("test_passed"):
                     return {"repaired": True, "rounds": rnd, "initial": initial, "final": final,
                             "test_report": final.get("test_report"), "writeback_files": writeback,
+                            "repair_exhausted": False,
                             "reason": f"auto-repair round {rnd} passed"}
             else:
                 break
         return {"repaired": False, "rounds": max_rounds, "initial": initial, "final": final,
                 "test_report": final.get("test_report"), "writeback_files": writeback,
-                "reason": "no improvement after repair rounds"}
+                "repair_exhausted": True, "next": "hitl",
+                "reason": "no improvement after repair rounds — escalate to HITL"}
     finally:
         _sh.rmtree(tmp, ignore_errors=True)
 

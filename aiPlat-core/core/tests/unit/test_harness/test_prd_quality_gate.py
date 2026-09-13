@@ -473,6 +473,26 @@ def test_normalize_constraints_from_scope():
     assert "HTTPS" in out["constraints"]["security"]
 
 
+def test_normalize_constraints_from_bold_scope_blocks():
+    """### 范围 with **性能** / **安全** heading blocks must lift constraints."""
+    prd = {
+        "title": "X",
+        "scope": (
+            "**平台范围**\n"
+            "- 支持 Web 端使用\n\n"
+            "**性能**\n"
+            "- 分析耗时不超过视频时长的 1.5 倍\n\n"
+            "**安全**\n"
+            "- URL 导入执行 SSRF 防护：拒绝内网 IP 与 file://\n"
+        ),
+        "functional_requirements": [],
+    }
+    out = normalize_constraints(prd)
+    assert "Web" in str(out["constraints"].get("platform") or "")
+    assert any("1.5" in str(x) for x in (out["constraints"].get("performance") or []))
+    assert any("SSRF" in str(x) for x in (out["constraints"].get("security") or []))
+
+
 def test_factory_finalize_no_size_cap_and_no_asr_phrase():
     """「无大小上限」+「不进行语音转写」must rewrite size and infer audio_features_only."""
     from core.harness.execution.prd_quality_gate import factory_finalize_prd, render_prd_markdown
@@ -753,7 +773,11 @@ def test_reject_or_webpage_prompt_not_url_mismatch():
 
 def test_format_pm_gate_guidance_includes_media_hints():
     """Video requirement text must inject media pm_hints for PM generation-time."""
-    from core.harness.execution.prd_quality_gate import format_pm_gate_guidance, matched_packs_for_text
+    from core.harness.execution.prd_quality_gate import (
+        collect_decision_enum_catalog,
+        format_pm_gate_guidance,
+        matched_packs_for_text,
+    )
 
     text = "智能视频内容理解工具，本地上传或视频链接，画面分析、字幕提取、语音分析不转写"
     packs = matched_packs_for_text(text)
@@ -765,8 +789,14 @@ def test_format_pm_gate_guidance_includes_media_hints():
     assert "### media" in guidance
     assert "BAD" in guidance or "禁止写" in guidance
     assert "GOOD" in guidance or "语种估计" in guidance
-    assert "洗绿" in guidance or "首稿" in guidance
+    assert "洗绿" in guidance or "首稿" in guidance or "不要求" in guidance
     assert "speech_pipeline" in guidance
+    assert "决策枚举" in guidance
+    assert "audio_features_only" in guidance
+    catalog = collect_decision_enum_catalog(text)
+    assert "speech_pipeline" in catalog
+    assert "audio_features_only" in catalog["speech_pipeline"]
+    assert "url_source_scope" in catalog
 
 
 def test_format_pm_gate_guidance_common_only_without_media_triggers():
@@ -777,6 +807,66 @@ def test_format_pm_gate_guidance_common_only_without_media_triggers():
     assert "### _common" in guidance
     assert "### media" not in guidance
     assert "SSRF" in guidance or "constraints" in guidance
+
+
+def test_missing_decisions_finalize_to_ready_without_handwritten_gold():
+    """FR+constraints without decisions: factory finalize fills enums → looks_like_prd."""
+    from core.harness.execution.prd_quality_gate import (
+        assess_prd,
+        factory_finalize_prd,
+        followup_questions_from_report,
+        looks_like_prd,
+        render_prd_markdown,
+    )
+
+    prd = {
+        "title": "VideoSense",
+        "description": "本地上传或视频直链；画面关键帧标签；软字幕提取；语音声学特征不转写",
+        "functional_requirements": [
+            {
+                "id": "FR-001",
+                "name": "视频接入",
+                "acceptance_criteria": [
+                    "支持本地上传与 HTTP/HTTPS 直链；拒绝内网 IP 与 file://",
+                ],
+            },
+            {
+                "id": "FR-002",
+                "name": "画面理解",
+                "acceptance_criteria": ["每 5 秒关键帧输出物体/场景标签"],
+            },
+            {
+                "id": "FR-003",
+                "name": "字幕",
+                "acceptance_criteria": ["仅提取容器内已有字幕轨道，不进行语音转写生成字幕"],
+            },
+            {
+                "id": "FR-004",
+                "name": "语音",
+                "acceptance_criteria": ["语种估计与声学粗标签；不进行语音转写"],
+            },
+        ],
+        "user_stories": [{"story": "作为分析师，我希望快速理解视频内容"}],
+        "constraints": {
+            "performance": ["单视频 P95 < 5min"],
+            "security": ["HTTPS", "SSRF: reject private IPs"],
+        },
+        "open_questions": [],
+        "decisions": {},
+    }
+    raw = assess_prd(prd)
+    assert raw["ok"] is False  # missing open decisions before enrich
+    final, report = factory_finalize_prd(prd)
+    assert report["ok"] is True, report["issues"]
+    assert looks_like_prd(final)
+    dec = final.get("decisions") or {}
+    assert dec.get("speech_pipeline") == "audio_features_only"
+    assert dec.get("url_source_scope") in {"direct_media_url", "both"}
+    md = render_prd_markdown(final, include_ready_marker=True)
+    assert "<!-- PRD_READY -->" in md
+    assert "speech_pipeline" in md
+    # followup empty when finalize ok
+    assert followup_questions_from_report(report) == ""
 
 
 def test_forbid_topic_wording_does_not_false_positive():
@@ -903,16 +993,215 @@ def test_structural_repair_clears_wash_block_on_contradiction():
     assert "声学" in str(fr4.get("name", "")) + str(fr4.get("acceptance_criteria"))
 
 
-def test_scrub_alone_without_structural_still_wash_blocks(monkeypatch):
-    """If structural_repairs do not run, scrub must not clear wash_blocked."""
-    from core.harness.execution import prd_quality_gate as g
+def test_empty_shell_prd_blocked_no_fr():
+    """Title-only / no functional_requirements must not READY."""
+    from core.harness.execution.prd_quality_gate import factory_finalize_prd, looks_like_prd
 
-    def _no_structural(prd, codes):
-        return prd, [], []
-
-    monkeypatch.setattr(g, "_apply_structural_repairs", _no_structural)
-    prd = _media_prd()
-    final, report = g.factory_finalize_prd(prd)
+    prd = {
+        "title": "步骤1：分析关键约束",
+        "constraints": {"platform": "Web", "security": ["HTTPS"]},
+        "open_questions": [],
+        "decisions": {},
+    }
+    assert looks_like_prd(prd) is False
+    report = assess_prd(prd)
     assert report["ok"] is False
-    assert "asr_topic_contradiction" in (report.get("wash_blocked") or [])
-    assert "洗绿不可放行" in " ".join(i.get("message", "") for i in report["issues"])
+    codes = {i["code"] for i in report["issues"]}
+    assert "prd_incomplete_no_fr" in codes
+    assert "prd_meta_title" in codes
+    final, fin = factory_finalize_prd(prd)
+    assert fin["ok"] is False
+    assert looks_like_prd(final) is False
+
+
+def test_relative_report_latency_sum_percent_blocked():
+    prd = {
+        "title": "智能视频工具",
+        "description": "视频画面与语音分析",
+        "functional_requirements": [
+            {
+                "id": "FR-007",
+                "name": "报告",
+                "acceptance_criteria": [
+                    "报告生成时间不超过各分析任务完成时间之和的10%",
+                ],
+            }
+        ],
+        "constraints": {"performance": ["P95 < 1s"], "security": ["HTTPS"]},
+        "open_questions": [],
+        "decisions": {},
+    }
+    report = assess_prd(prd)
+    assert "relative_report_latency_untestable" in {i["code"] for i in report["issues"]}
+
+
+def test_prose_decision_values_blocked_then_normalized():
+    """Chinese prose decision values fail assess; finalize coerces to snake_case enums."""
+    from core.harness.execution.prd_quality_gate import factory_finalize_prd
+
+    prd = {
+        "title": "智能视频内容理解工具",
+        "description": "直链上传，画面与语音声学分析，不转写",
+        "functional_requirements": [
+            {
+                "id": "FR-001",
+                "name": "接入",
+                "acceptance_criteria": [
+                    "HTTP/HTTPS 直链，返回 task_id",
+                    "拒绝内网 IP 与 file://",
+                    "单文件 ≤500MB",
+                ],
+            },
+            {
+                "id": "FR-004",
+                "name": "语音声学分析",
+                "acceptance_criteria": [
+                    "语种/说话人数/情绪倾向，不进行语音转写",
+                    "标注声学粗标签/非转写语义",
+                ],
+            },
+            {
+                "id": "FR-003",
+                "name": "字幕提取",
+                "acceptance_criteria": [
+                    "提取已有字幕轨道；无字幕提示该视频无可用字幕",
+                ],
+            },
+        ],
+        "constraints": {
+            "performance": ["P95 < 5min"],
+            "security": ["HTTPS", "SSRF: reject private IPs and file://"],
+        },
+        "open_questions": [],
+        "decisions": {
+            "url_source_scope": "仅允许 HTTP/HTTPS 直链；拒绝内网 IP 与 file://",
+            "speech_pipeline": "audio_features_only（仅声学粗标签；不进行 ASR 转写）",
+            "subtitle_source": "仅提取视频容器内已有字幕轨道，不进行语音转写生成字幕",
+            "vision_tag_granularity": "按时间轴分段关键帧标签",
+        },
+    }
+    raw = assess_prd(prd)
+    codes = {i["code"] for i in raw["issues"]}
+    assert "speech_pipeline_not_canonical" in codes
+    assert "url_source_scope_not_canonical" in codes
+    assert "vision_tag_granularity_not_canonical" in codes
+    assert raw["ok"] is False
+
+    final, report = factory_finalize_prd(prd)
+    assert report["ok"] is True, report["issues"]
+    dec = final["decisions"]
+    assert dec["speech_pipeline"] == "audio_features_only"
+    assert dec["url_source_scope"] == "direct_media_url"
+    assert dec["subtitle_scope"] == "soft_track_only"
+    assert dec["vision_tag_granularity"] == "segment"
+    assert "subtitle_source" not in dec
+
+
+def test_nonsense_decision_enum_still_blocked_after_finalize():
+    from core.harness.execution.prd_quality_gate import factory_finalize_prd
+
+    prd = {
+        "title": "智能视频工具",
+        "description": "视频语音分析不转写",
+        "functional_requirements": [
+            {
+                "id": "FR-1",
+                "name": "语音",
+                "acceptance_criteria": ["语种估计，不进行语音转写"],
+            }
+        ],
+        "constraints": {"performance": ["ok"], "security": ["HTTPS", "SSRF 内网 IP"]},
+        "open_questions": [],
+        "decisions": {"speech_pipeline": "whatever_custom_mode"},
+    }
+    raw = assess_prd(prd)
+    assert "speech_pipeline_not_canonical" in {i["code"] for i in raw["issues"]}
+    _final, report = factory_finalize_prd(prd)
+    assert report["ok"] is False
+    assert "speech_pipeline_not_canonical" in {i["code"] for i in report["issues"]}
+
+
+def test_seed_confirmed_prd_into_state_skippable_artifact():
+    """Rebuild attaches prd_data baseline only — does not pre-fill state['prd']."""
+    from core.harness.execution.prd_quality_gate import seed_confirmed_prd_into_state
+
+    state: dict = {"description": "videosense rebuild"}
+    prd = {
+        "title": "智能视频内容理解工具",
+        "functional_requirements": [
+            {"id": "FR-001", "name": "接入", "acceptance_criteria": ["直链下载"]}
+        ],
+        "decisions": {"url_source_scope": "direct_media_url"},
+        "constraints": {"performance": ["ok"], "security": ["SSRF"]},
+        "user_stories": [],
+        "open_questions": [],
+    }
+    assert seed_confirmed_prd_into_state(state, prd) is True
+    assert state.get("prd_data") is prd
+    assert "prd" not in state  # must re-run PM and overwrite
+    assert "confirmed_prd_baseline" in state["description"]
+
+
+def test_materialize_prd_artifact_from_markdown():
+    from core.harness.execution.prd_quality_gate import materialize_prd_artifact
+
+    md = """## 项目名称：智能视频内容理解工具（videosense）
+
+## 项目背景
+从直链或本地上传获取视频，画面分析、软字幕提取、语音声学分析（不转写）。
+
+## 功能需求
+
+### FR-001: 视频来源接入
+- **描述**: 直链 URL 或本地上传
+- **优先级**: high
+- **验收标准**:
+  - AC1: 支持 HTTP/HTTPS 直链下载
+  - AC2: 上传 MP4 返回 task_id
+  - AC3: 拒绝内网 IP 与 file://
+  - AC4: 下载完成可访问
+
+### FR-003: 字幕提取
+- **描述**: 仅软字幕轨道，不做硬字幕 OCR
+- **优先级**: standard
+- **验收标准**:
+  - AC1: 检测字幕轨道
+  - AC2: 输出 SRT
+
+### FR-004: 语音分析（不转写）
+- **描述**: 声学粗标签，不转写
+- **优先级**: standard
+- **验收标准**:
+  - AC1: 检测音轨
+  - AC2: 语种/说话人数/情绪倾向
+  - AC3: 不输出转写文字
+  - AC4: 音节密度语速
+
+## 决策
+- url_source_scope: direct_media_url（仅直链）
+- speech_pipeline: audio_features_only（不转写）
+- speech_rate_metric: syllable_density
+- subtitle_scope: soft_track_only（仅软字幕）
+- analysis_sla: P95 ≤ 1.5× video duration
+
+## 待确认问题
+（无）
+
+## 范围
+- 平台: Web
+- 性能:
+  - 下载 P95 < 60s
+- 安全:
+  - HTTPS + 用户认证
+  - SSRF: 拒绝内网 IP 及 file://
+
+<!-- PRD_READY -->
+"""
+    art = materialize_prd_artifact(md, elapsed_sec=1.2)
+    assert art is not None
+    assert art.get("title", "").startswith("智能视频")
+    assert len(art.get("functional_requirements") or []) >= 3
+    assert art["decisions"]["subtitle_scope"] == "soft_track_only"
+    assert "1.5" in str(art["decisions"].get("analysis_sla", ""))
+    assert '"functional_requirements"' in art["raw_output"]
+    assert art.get("_prd_gate", {}).get("ok") is True

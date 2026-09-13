@@ -417,6 +417,23 @@ def get_default_hooks() -> Dict[str, Hook]:
         priority=100,
     )
 
+    # T1b: optional team harness autosync (default off). Fire-and-forget; never blocks.
+    async def _team_harness_autosync_hook(context: HookContext):
+        try:
+            from core.harness.team_harness import maybe_autosync_team_harness
+
+            maybe_autosync_team_harness(background=True)
+        except Exception:
+            logger.debug("team_harness autosync hook skipped", exc_info=True)
+        return {"allow": True}
+
+    hooks["team_harness_autosync"] = create_hook(
+        name="team_harness_autosync",
+        callback=_team_harness_autosync_hook,
+        phase=HookPhase.SESSION_START,
+        priority=20,
+    )
+
     async def session_end_hook(context: HookContext):
         return {"ended": True, "reason": context.state.get("reason")}
 

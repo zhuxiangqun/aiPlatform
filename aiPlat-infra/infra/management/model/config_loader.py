@@ -103,9 +103,11 @@ def _load_adapter_models() -> List[ModelInfo]:
     """Discover models from adapters table (API keys configured via management UI)."""
     import json as _json
     import sqlite3
+    from .paths import execution_db_path
     models: List[ModelInfo] = []
-    db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH",
-        "")
+    # Same default as CredentialPool — empty default previously skipped adapters
+    # entirely, so DeepSeek/API models never entered ModelManager selection.
+    db_path = execution_db_path()
     if not db_path or not os.path.isfile(db_path):
         return models
     try:

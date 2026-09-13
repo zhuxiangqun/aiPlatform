@@ -3180,8 +3180,146 @@ from core.harness.memory.manager import get_memory_manager
 from core.harness.knowledge.utils import element_source, extract_keywords, score_text
 from core.harness.knowledge.db import set_knowledge_db
 from core.harness.smoke.autoscheduler import enqueue_autosmoke
-from core.harness.execution.team_planner import recommend_team_stages
+from core.harness.execution.team_planner import (  # noqa: boundary — CoreFacade re-export
+    FACTORY_MODES,
+    mode_to_team_template,
+    normalize_factory_mode,
+    recommend_team_stages,
+    team_template_to_mode,
+)
 from core.harness.execution.pipeline_engine import get_event_bus
+from core.harness.execution.factory_profile import (  # noqa: boundary — CoreFacade re-export
+    apply_factory_profile_to_stages,
+    normalize_factory_profile,
+    resolve_project_factory_profile,
+    FACTORY_PROFILE_DEMO,
+    FACTORY_PROFILE_STANDARD,
+)
+from core.harness.coordination.spawn_policy import (  # noqa: boundary — CoreFacade re-export
+    disable_dynamic_spawn,
+    is_dynamic_spawn_disabled,
+    should_skip_dynamic_spawn,
+)
+from core.harness.execution.stage_handoff import (  # noqa: boundary — CoreFacade re-export
+    HANDOFF_FIELDS,
+    apply_gate_failure,
+    attach_handoff,
+    build_stage_handoff,
+    empty_handoff,
+    extract_structured_fields,
+    format_handoff_regenerate_feedback,
+    format_structured_artifact_block,
+    gate_check,
+    is_schema_gate_pause,
+    normalize_handoff,
+    schema_is_active,
+    try_resume_schema_gate,
+    write_stage_handoff,
+)
+from core.harness.utils.output_style import (  # noqa: boundary — CoreFacade re-export
+    STYLE_ADHD,
+    STYLE_DEFAULT,
+    STYLE_VERSION,
+    apply_project_style_meta,
+    assign_output_style_experiment,
+    build_style_overlay,
+    compare_output_style_arms,
+    estimate_reply_tokens,
+    infer_followups,
+    inject_output_style,
+    load_adhd_skill_text,
+    query_output_style_events,
+    record_output_style_event,
+    resolve_output_style,
+    skill_body_hash,
+    whitelist_overrides,
+)
+from core.harness.utils.team_culture import (  # noqa: boundary — CoreFacade re-export
+    CULTURE_MAX_TOKENS,
+    CULTURE_VERSION,
+    apply_project_culture_meta,
+    build_culture_overlay,
+    compose_prose_overlays,
+    culture_body_hash,
+    inject_team_culture,
+    load_culture_text,
+    resolve_culture_enabled,
+    truncate_culture_body,
+)
+from core.harness.utils.coding_intensity import (  # noqa: boundary — CoreFacade re-export
+    CODING_INTENSITIES,
+    build_coding_policy_block,
+    default_intensity_for_factory_mode,
+    intensity_to_policy_profile,
+    is_strict_coding_profile,
+    normalize_coding_intensity,
+    ponytail_overlay_for_intensity,
+    resolve_coding_intensity,
+    resolve_ponytail_mode,
+)
+from core.harness.execution.factory_bloat_metrics import (  # noqa: boundary — CoreFacade re-export
+    BASELINE_PROJECT_KEY,
+    STATE_BLOAT_KEY,
+    compare_bloat,
+    compute_bloat_from_state,
+    write_bloat_metrics,
+)
+from core.harness.execution.stage_outcome_samples import (  # noqa: boundary — CoreFacade re-export
+    query_stage_outcome_samples,
+    record_stage_outcome_sample,
+    summarize_stage_outcome_samples,
+)
+from core.harness.team_harness import (  # noqa: boundary — CoreFacade re-export
+    configure_team_harness,
+    is_autosync_enabled,
+    load_team_harness_schema,
+    materialize_team_harness_schema,
+    maybe_autosync_team_harness,
+    pull_team_harness,
+    push_team_harness,
+    render_mr_template,
+    restore_team_backup,
+    team_is_dirty,
+)
+from core.harness.team_sources import (  # noqa: boundary — CoreFacade re-export
+    apply_configured_sources,
+    configure_sources,
+    list_source_namespaces,
+    merge_source_tree,
+    namespaced_skill_candidates,
+)
+from core.harness.teamai_seed_export import (  # noqa: boundary — CoreFacade re-export
+    export_teamai_seed,
+)
+from core.harness.feedback_loops.local import (  # noqa: boundary — CoreFacade re-export
+    FeedbackLevel,
+    FeedbackType,
+    get_local_feedback,
+)
+from core.harness.team_factory_seeds import (  # noqa: boundary — CoreFacade re-export
+    apply_team_factory_seeds,
+    resolve_factory_sanitize_file,
+    resolve_team_yaml_candidates,
+    rollback_team_factory_seeds,
+)
+from core.harness.team_friction import (  # noqa: boundary — CoreFacade re-export
+    attach_friction_cta,
+    clear_friction_cta,
+    confirm_friction_share,
+    list_local_learnings,
+    note_regenerate,
+    record_friction_event,
+    record_schema_gate_friction,
+)
+from core.harness.utils.team_skill_subscription import (  # noqa: boundary — CoreFacade re-export
+    apply_stage_skill_subscription,
+    filter_skills_by_subscription,
+    resolve_subscription_policy,
+)
+from core.harness.team_digest import (  # noqa: boundary — CoreFacade re-export
+    build_team_digest,
+    record_digest_view,
+)
 from core.services.config_registry_store import ConfigRegistryKey, get_config_registry_store
 
 
@@ -3452,6 +3590,18 @@ from core.harness.training.rl_trainer import get_rl_trainer  # noqa: boundary
 from core.harness.knowledge.seci_engine import get_seci_engine, hook_registered  # noqa: boundary
 from core.harness.execution.trace_visualizer import get_trace_visualizer  # noqa: boundary
 from core.harness.execution.decision_trace import record_decision, locate_max_error_node, trace_root_cause_chain, build_fix_plan, get_trace, clear_trace  # noqa: boundary
+from core.harness.execution.factory_fix_plan import (  # noqa: boundary
+    derive_failed_stages_from_report,
+    plan_fix_from_report,
+    build_feedback_from_report,
+    apply_no_platform_handler_fixes,
+    align_result_assert_needles,
+    extract_media_skill_remaps_from_report,
+    bugs_are_no_platform_handler_only,
+    bugs_are_media_handler_fixable,
+    filter_fix_plan_freeze_test_cases,
+    FROZEN_TEST_CASE_ARTIFACTS,
+)
 from core.harness.execution.cost_budget import CostBudgetController, get_pricing, cost_for  # noqa: boundary
 from core.harness.execution.hypothesis_generator import generate_hypotheses  # noqa: boundary
 from core.harness.execution.governance_report import build_run_report  # noqa: boundary
@@ -3586,10 +3736,56 @@ from core.harness.execution.prd_quality_gate import apply_gate_to_prd  # noqa: b
 from core.harness.execution.prd_quality_gate import assess_prd  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.execution.prd_quality_gate import enrich_prd  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.execution.prd_quality_gate import factory_finalize_prd  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_quality_gate import materialize_prd_artifact  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_quality_gate import set_prd_markdown_parser  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_quality_gate import seed_confirmed_prd_into_state  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_quality_gate import collect_decision_enum_catalog  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.execution.prd_quality_gate import followup_questions_from_report  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_quality_gate import format_decision_enum_catalog  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.execution.prd_quality_gate import format_pm_gate_guidance  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.execution.prd_quality_gate import is_media_prd  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.execution.prd_quality_gate import looks_like_prd  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.app_page_skill_inject import extract_skill_routing  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.app_page_skill_inject import extract_ui_bindings  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.app_page_skill_inject import inject_app_page_skills  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.app_page_skill_inject import parse_app_page_payload  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.app_page_skill_inject import repair_frontend_pages_raw  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.app_page_skill_inject import skill_routing_context_block  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import apply_stage_output_sanitizers  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import ensure_dual_component_stages  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import ensure_dual_ingest_stages  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import ensure_wizard_stage_io  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import ensure_wizard_io_true_test_case  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import ensure_result_dashboard_sections  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import canonicalize_app_page_media_skills  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import ensure_manifest_dual_ui_bindings  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import ensure_manifest_ui_binding_pair  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import ensure_result_dashboard_skill  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import ensure_agent_app_skill_consistency  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import ensure_platform_media_skill_contracts  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import normalize_media_skill_names  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import extract_real_http_routes  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import pick_routing_blob  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import repair_frontend_pages_with_prd  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import resolve_architecture_mode  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import sanitize_architecture_artifact  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import sanitize_test_cases_artifact  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.factory_artifact_sanitize import strip_reasoning_preamble  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.true_test_runtime import check_file_rules  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.true_test_runtime import check_wizard_stage_io  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.true_test_runtime import check_result_dashboard_sections  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.true_test_runtime import RESULT_DASHBOARD_SECTION_TYPES  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.true_test_runtime import classify_execution  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.true_test_runtime import is_blocked_url  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.true_test_runtime import run_page_smoke  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.true_test_runtime import run_platform_check  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.true_test_runtime import run_true_test_case  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.media_skill_handlers import execute_media_skill  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.media_skill_handlers import list_platform_media_skill_names  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.media_skill_handlers import resolve_media_handler_name  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.media_skill_handlers import resolve_platform_media_skill  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.media_skill_handlers import suggest_platform_media_skill  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.execution.prd_markdown import parse_prd_markdown  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.execution.prd_quality_gate import matched_domain_packs  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.execution.prd_quality_gate import matched_packs_for_text  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.execution.prd_quality_gate import normalize_constraints  # noqa: boundary — CoreFacade canonical re-export

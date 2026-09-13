@@ -4,11 +4,17 @@ import { motion } from 'framer-motion';
 import { Plus, Send, Loader2, Clock, CheckCircle, XCircle, ExternalLink, BarChart3, Trash2, Play, RefreshCw, FileText, Wrench } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { projectApi, builderTeamApi, workspaceAgentApi, type ProjectItem, type ProjectRun } from '../../../services';
+import { projectApi, builderTeamApi, type ProjectItem, type ProjectRun } from '../../../services';
 import { reportPageData, clearPageData } from '../../../lib/pageDataBridge';
 import { Card, CardContent, Button, Textarea, toast } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
 import type { BuilderSession } from '../../../services';
+
+/** HITL wait phases — Core may emit ``paused`` or ``awaiting_approval``. */
+function isHitlWaitPhase(phase?: string | null): boolean {
+  if (!phase) return false;
+  return phase === 'paused' || phase === 'awaiting_approval' || phase.includes('approval');
+}
 
 // ── Simple inline chat (replaces crashing ChatWidget) ──
 const InlineChat: React.FC<{
@@ -107,6 +113,10 @@ type StatDef = { key: string; label: string; color?: string; format?: string };
 type DocSchema = {
   title_field?: string; overview_field?: string; scope_badge?: string; title?: string;
   tables?: TableDef[]; sections?: SectionDef[]; lists?: ListDef[]; stat_blocks?: StatDef[];
+  /** Sections rendered after overview / before tables (chapter docs) */
+  preface_sections?: SectionDef[];
+  /** Lists rendered after overview / before tables */
+  preface_lists?: ListDef[];
 };
 
 const SCHEMAS: Record<string, DocSchema> = {
@@ -144,6 +154,40 @@ const SCHEMAS: Record<string, DocSchema> = {
     sections: [
       { key: "database_schema", title: "数据库设计", type: "code" }, { key: "deployment", title: "部署方案" },
       { key: "security", title: "安全设计" }, { key: "performance", title: "性能优化" },
+    ],
+  },
+  /** Agent-mode architecture design document (chapter-style, not raw config dump) */
+  architecture_agent: {
+    title_field: "title", overview_field: "overview",
+    preface_sections: [
+      { key: "context", title: "0. 上下文与问题" },
+    ],
+    preface_lists: [
+      { key: "goals", title: "架构目标" },
+      { key: "non_goals", title: "非目标（本期不做）" },
+    ],
+    tables: [
+      { key: "design_decisions", title: "1. 架构决策", columns: [
+        { key: "id", label: "ID", width: "80px" },
+        { key: "decision", label: "决策", width: "160px" },
+        { key: "rationale", label: "理由" },
+        { key: "alternatives", label: "备选", width: "140px" },
+        { key: "consequences", label: "后果", width: "140px" },
+      ]},
+      { key: "agents", title: "2. Agent 职责划分", columns: [
+        { key: "name", label: "Agent ID", width: "140px" },
+        { key: "display_name", label: "名称", width: "120px" },
+        { key: "role", label: "角色", type: "badge", width: "100px" },
+        { key: "responsibility", label: "职责" },
+        { key: "skills", label: "Skills", width: "180px" },
+      ]},
+    ],
+    sections: [
+      { key: "data_flow", title: "3. 端到端数据流" },
+      { key: "error_handling", title: "4. 错误处理与降级" },
+      { key: "security", title: "5. 安全与边界" },
+      { key: "quality_attributes", title: "6. 质量属性" },
+      { key: "skill_routing", title: "附录 · 技能路由表", type: "code" },
     ],
   },
   test: {
@@ -251,8 +295,29 @@ const formatBadge = (v: string, type: string) => {
     return <span className={`px-1 rounded text-[10px] font-mono ${colors[v]||'bg-dark-hover text-gray-400'}`}>{v}</span>;
   }
   if (type === 'ac_list' && Array.isArray(v)) return <>{v.map((a:string,i:number)=><div key={i} className="text-[11px] text-gray-400">· {a}</div>)}</>;
-  if (type === 'code') return <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap">{v}</pre>;
+  if (type === 'code') {
+    const text = typeof v === 'string' ? v : JSON.stringify(v, null, 2);
+    return <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap">{text}</pre>;
+  }
+  if (Array.isArray(v)) return <>{v.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(', ')}</>;
+  if (v && typeof v === 'object') return <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap">{JSON.stringify(v, null, 2)}</pre>;
   return <>{v}</>;
+};
+
+const renderSectionBlock = (s: SectionDef, data: Record<string, unknown>, get: (obj: any, path: string) => any) => {
+  const v = get(data, s.key);
+  if (v == null || v === '') return null;
+  const body = s.type === 'code'
+    ? <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap">{typeof v === 'string' ? v : JSON.stringify(v, null, 2)}</pre>
+    : <div className="text-gray-400 text-xs leading-relaxed whitespace-pre-wrap">{typeof v === 'string' ? v : JSON.stringify(v, null, 2)}</div>;
+  return <div key={s.key}><h2 className="text-base font-semibold text-gray-100 mb-2 border-b border-dark-border pb-1">{s.title}</h2>{body}</div>;
+};
+
+const renderListBlock = (l: ListDef, data: Record<string, unknown>, get: (obj: any, path: string) => any) => {
+  const items = (get(data, l.key) || []) as any[];
+  if (!items.length) return null;
+  const priorities: Record<string,string> = { MUST_FIX:'text-red-400', SHOULD_FIX:'text-amber-400', NICE_TO_HAVE:'text-blue-400' };
+  return <div key={l.key}><h2 className="text-base font-semibold text-gray-100 mb-2 border-b border-dark-border pb-1">{l.title}</h2><ul className="list-disc pl-5 space-y-0.5 text-gray-400 text-xs">{items.map((c:any,i:number)=><li key={i}>{typeof c==='string' ? c : c.item ? <><span className={priorities[c.priority]||''}>[{c.priority}]</span> {c.item} {c.ref ? <span className="text-gray-600">({c.ref})</span> : ''}</> : String(c)}</li>)}</ul></div>;
 };
 
 // ── Generic DataDocument — schema-driven renderer ──
@@ -275,25 +340,18 @@ const DataDocument: React.FC<{ data: Record<string, unknown>; schema: DocSchema 
   return (
     <div className="space-y-5 text-sm text-gray-200">
       {title && <div><h1 className="text-xl font-bold text-gray-100 mb-1">{title}</h1>{scope != null && scope !== '' && <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">{scopeLabel}</span>}</div>}
-      {overview && <p className="text-gray-400 leading-relaxed">{overview}</p>}
+      {overview && <p className="text-gray-400 leading-relaxed whitespace-pre-wrap">{overview}</p>}
+      {(schema.preface_sections || []).map((s) => renderSectionBlock(s, data, _get))}
+      {(schema.preface_lists || []).map((l) => renderListBlock(l, data, _get))}
       {(schema.tables || []).map((t: TableDef) => {
         const rows = (_get(data, t.key) || []) as any[];
         if (!rows.length) return null;
         return <div key={t.key}><h2 className="text-base font-semibold text-gray-100 mb-2 border-b border-dark-border pb-1">{t.title} ({rows.length})</h2>
           <table className="w-full text-xs border-collapse"><thead><tr className="bg-dark-hover">{t.columns.map((c: ColDef) => (<th key={c.key} className="p-2 text-left border border-dark-border" style={{width:c.width}}>{c.label}</th>))}</tr></thead>
-          <tbody>{rows.map((r: any, i: number) => (<tr key={i} className="border border-dark-border">{t.columns.map((c: ColDef) => (<td key={c.key} className="p-2 border border-dark-border">{c.type ? formatBadge(r[c.key], c.type) : <>{r[c.key]?.toString()||''}</>}</td>))}</tr>))}</tbody></table></div>;
+          <tbody>{rows.map((r: any, i: number) => (<tr key={i} className="border border-dark-border">{t.columns.map((c: ColDef) => (<td key={c.key} className="p-2 border border-dark-border">{c.type ? formatBadge(r[c.key], c.type) : <>{Array.isArray(r[c.key]) ? r[c.key].join(', ') : (r[c.key]?.toString()||'')}</>}</td>))}</tr>))}</tbody></table></div>;
       })}
-      {(schema.lists || []).map((l: ListDef) => {
-        const items = (_get(data, l.key) || []) as any[];
-        if (!items.length) return null;
-        const priorities: Record<string,string> = { MUST_FIX:'text-red-400', SHOULD_FIX:'text-amber-400', NICE_TO_HAVE:'text-blue-400' };
-        return <div key={l.key}><h2 className="text-base font-semibold text-gray-100 mb-2 border-b border-dark-border pb-1">{l.title}</h2><ul className="list-disc pl-5 space-y-0.5 text-gray-400 text-xs">{items.map((c:any,i:number)=><li key={i}>{typeof c==='string' ? c : c.item ? <><span className={priorities[c.priority]||''}>[{c.priority}]</span> {c.item} {c.ref ? <span className="text-gray-600">({c.ref})</span> : ''}</> : String(c)}</li>)}</ul></div>;
-      })}
-      {(schema.sections || []).map((s: SectionDef) => {
-        const v = _get(data, s.key);
-        if (!v) return null;
-        return <div key={s.key}><h2 className="text-base font-semibold text-gray-100 mb-2 border-b border-dark-border pb-1">{s.title}</h2>{s.type === 'code' ? <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap">{v as string}</pre> : <div className="text-gray-400 text-xs">{v as string}</div>}</div>;
-      })}
+      {(schema.lists || []).map((l: ListDef) => renderListBlock(l, data, _get))}
+      {(schema.sections || []).map((s: SectionDef) => renderSectionBlock(s, data, _get))}
       {(schema.stat_blocks || []).length > 0 && (
         <div className="flex gap-3 flex-wrap">
           {schema.stat_blocks.map((sb: any) => {
@@ -345,6 +403,7 @@ const FullscreenView: React.FC<{
       }));
     }
     if (parsed.user_stories) schema = SCHEMAS.prd;
+    else if (parsed.agents || parsed.architecture_mode === 'agent' || parsed.document_type === 'architecture_design') schema = SCHEMAS.architecture_agent;
     else if (parsed.components) schema = SCHEMAS.architecture;
     else if (parsed.test_questions) schema = SCHEMAS.qa;
     else if (parsed.test_results || (parsed.header?.report_id)) schema = SCHEMAS.test_report;
@@ -373,6 +432,59 @@ const FullscreenView: React.FC<{
   );
 };
 
+// ── Stage output helpers (module-scope; used by poll / mount / HITL refresh) ──
+function applyProgressiveOutputs(
+  outputs: Record<string, any>,
+  currentStageIdx: number,
+  allStageKeys: string[],
+): Record<string, any> {
+  let keepIdx = Math.min(Math.max(0, currentStageIdx) + 1, allStageKeys.length);
+  for (let i = 0; i < allStageKeys.length; i++) {
+    const v = outputs[allStageKeys[i]];
+    if (v != null && (typeof v !== 'object' || v.raw_output || v.test_results || Object.keys(v).length > 0)) {
+      keepIdx = Math.max(keepIdx, i + 1);
+    }
+  }
+  const filtered: Record<string, any> = {};
+  for (const k of allStageKeys.slice(0, keepIdx)) {
+    if (outputs[k] !== undefined) filtered[k] = outputs[k];
+  }
+  for (const k of ['test_report', 'testReport']) {
+    if (outputs[k] != null && filtered[k] == null) filtered[k] = outputs[k];
+  }
+  return filtered;
+}
+
+function collectStageOutputs(s: Record<string, any>, keys: string[]): Record<string, any> {
+  const outputs: Record<string, any> = {};
+  for (const k of keys) {
+    const v = s[k];
+    if (!v || typeof v !== 'object') continue;
+    if (v.raw_output || v.handoff || v.test_results || v.bug_summary || v.header || Object.keys(v).length > 0) {
+      outputs[k] = v;
+    }
+  }
+  for (const k of ['test_report', 'testReport']) {
+    if (!outputs[k] && s[k] && typeof s[k] === 'object') outputs[k] = s[k];
+  }
+  return outputs;
+}
+
+function parseTestReportBlob(val: any): any | null {
+  if (!val || typeof val !== 'object') return null;
+  if (val.test_results || val.bug_summary || val.header) return val;
+  const rw = String(val.raw_output || '');
+  if (!rw) return null;
+  if (!(rw.includes('"test_results"') || rw.includes('"bug_summary"'))) return null;
+  try { return JSON.parse(rw); } catch { /* fallthrough */ }
+  const jStart = rw.indexOf('{');
+  const jEnd = rw.lastIndexOf('}');
+  if (jStart >= 0 && jEnd > jStart) {
+    try { return JSON.parse(rw.slice(jStart, jEnd + 1)); } catch { /* ignore */ }
+  }
+  return null;
+}
+
 // ── Project detail panel ──
 const ProjectPanel: React.FC<{
   project: ProjectItem;
@@ -395,9 +507,25 @@ const ProjectPanel: React.FC<{
   const [deployUrl, setDeployUrl] = useState('');
   const [deploying, setDeploying] = useState(false);
   const [deployChecked, setDeployChecked] = useState(false);
+  const [openable, setOpenable] = useState(false);
+  const [openReason, setOpenReason] = useState('');
+  const [rejectedArtifacts, setRejectedArtifacts] = useState<Array<{
+    kind: string; name: string; path: string; violations: string[]; fix_hint?: string;
+  }>>([]);
+  const [repairBusy, setRepairBusy] = useState(false);
+  const [repairExhausted, setRepairExhausted] = useState(false);
   const [fixingBugs, setFixingBugs] = useState(false);
   const [hitlStageId, setHitlStageId] = useState<string | null>(null);
   const [hitlOutputArtifact, setHitlOutputArtifact] = useState<string | null>(null);
+  const [frictionShare, setFrictionShare] = useState<{
+    signal?: string;
+    stage_id?: string;
+    message?: string;
+    needs_confirm?: boolean;
+    learning_id?: string;
+    detail?: string;
+  } | null>(null);
+  const [frictionBusy, setFrictionBusy] = useState(false);
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
   const [progressState, setProgressState] = useState<Record<string, any> | null>(null);
   const [executingSince, setExecutingSince] = useState<number | null>(null);
@@ -406,6 +534,8 @@ const ProjectPanel: React.FC<{
   const [agentName, setAgentName] = useState('');
   const [loadingHealth, setLoadingHealth] = useState(false);
   const [stageOutputs, setStageOutputs] = useState<Record<string, any> | null>(null);
+  const [bloatMetrics, setBloatMetrics] = useState<Record<string, any> | null>(null);
+  const [teamDigest, setTeamDigest] = useState<Record<string, any> | null>(null);
   const [confirmedPrd, setConfirmedPrd] = useState<Record<string, unknown> | null>(
     (project as any).confirmed_prd || null);
   const [showPrdDetail, setShowPrdDetail] = useState(false);
@@ -541,7 +671,7 @@ const ProjectPanel: React.FC<{
 
   // ── Poll pipeline state during execution ──
   useEffect(() => {
-    if (phase !== 'executing' && phase !== 'paused' && !phase?.includes('approval')) {
+    if (phase !== 'executing' && !isHitlWaitPhase(phase)) {
       return;
     }
     if (!project.project_id) return;
@@ -552,8 +682,16 @@ const ProjectPanel: React.FC<{
         const p = s.phase as string || phase;
         setPhase(p);
         setProgressState(s._progress || null);
+        if ((st as any)?.friction_share) {
+          setFrictionShare((st as any).friction_share);
+        } else if (s._friction_share_cta) {
+          setFrictionShare(s._friction_share_cta);
+        }
+        if ((st as any)?.team_digest) {
+          setTeamDigest((st as any).team_digest);
+        }
         // v3.1: Track HITL stage from Core's _hitl_stage_id and _hitl_output_artifact
-        if (p === 'paused') {
+        if (isHitlWaitPhase(p)) {
           const hitlId = s._hitl_stage_id as string;
           const hitlArtifact = s._hitl_output_artifact as string;
           if (hitlId) setHitlStageId(hitlId);
@@ -567,7 +705,12 @@ const ProjectPanel: React.FC<{
               setHitlOutputArtifact((stage as any).output_artifact || null);
             }
           }
-        } else if (p !== 'paused' && p !== 'executing') {
+          // Last-resort: final team stage artifact (e.g. test_report)
+          if (!hitlArtifact) {
+            const lastArt = [...teamStages].reverse().find((ts: any) => ts.output_artifact)?.output_artifact;
+            if (lastArt) setHitlOutputArtifact(String(lastArt));
+          }
+        } else if (p !== 'executing') {
           setHitlStageId(null);
           setHitlOutputArtifact(null);
         }
@@ -581,45 +724,82 @@ const ProjectPanel: React.FC<{
         // teamStages already set from project.team_stages (line 298);
         // don't overwrite with stripped _plan_stage_ids which lack output_artifact
         // Load outputs in team stage order (dynamic, not hardcoded)
-        const outputs: Record<string, any> = {};
         const orderedKeys = teamStages.map(s => (s as any).output_artifact).filter(Boolean);
         const keys = orderedKeys.length > 0 ? orderedKeys : ['architecture', 'code', 'test_report'];
-        for (const k of keys) {
-          if (s[k] && typeof s[k] === 'object') outputs[k] = s[k];
+        const outputs = collectStageOutputs(s, keys);
+        if ((s as any)._bloat_metrics && typeof (s as any)._bloat_metrics === 'object') {
+          setBloatMetrics((s as any)._bloat_metrics);
+        } else if (p === 'done' && (project as any)?.bloat_metrics) {
+          setBloatMetrics((project as any).bloat_metrics);
         }
         if (Object.keys(outputs).length > 0) {
-          if (p === 'paused' || p === 'executing') {
+          if (p === 'done' || p === 'failed') {
+            // Full reveal on terminal phase (no progressive hide)
+            setStageOutputs(prev => ({ ...prev, ...outputs }));
+          } else if (isHitlWaitPhase(p) || p === 'executing') {
             // Race guard: when paused, ensure the HITL artifact is available before replacing.
             // Backend may write phase='paused' before persisting the artifact.
             const _hitlArtifact = s._hitl_output_artifact as string;
-            if (p === 'paused' && _hitlArtifact && !outputs[_hitlArtifact] && outputs[Object.keys(outputs)[0]]) {
+            if (isHitlWaitPhase(p) && _hitlArtifact && !outputs[_hitlArtifact] && outputs[Object.keys(outputs)[0]]) {
               // State incomplete — retry after brief delay to let backend finish persisting
               setTimeout(async () => {
                 try {
                   const st2 = await projectApi.getState(project.project_id);
                   const s2 = (st2 as any)?.state || {};
-                   const o2: Record<string, any> = {};
-                   for (const k of keys) {
-                     if (s2[k] && typeof s2[k] === 'object') o2[k] = s2[k];
-                   }
-                   if (o2[_hitlArtifact]) {
-                     const filtered = _applyProgressiveOutputs(o2, s2._current_stage_idx || 0, keys);
-                     if (Object.keys(filtered).length > 0) setStageOutputs(filtered);
-                   }
+                  const o2 = collectStageOutputs(s2, keys);
+                  if (o2[_hitlArtifact]) {
+                    const filtered = applyProgressiveOutputs(o2, s2._current_stage_idx || 0, keys);
+                    if (Object.keys(filtered).length > 0) setStageOutputs(filtered);
+                  }
                 } catch { /* retry failed — next poll will fix */ }
               }, 400);
             } else {
-              const filtered = _applyProgressiveOutputs(outputs, s._current_stage_idx || 0, orderedKeys);
+              const filtered = applyProgressiveOutputs(outputs, s._current_stage_idx || 0, orderedKeys);
               if (Object.keys(filtered).length > 0) setStageOutputs(filtered);
             }
           } else {
             setStageOutputs(prev => ({ ...prev, ...outputs }));
           }
         }
-        if (p === 'done' || p === 'failed' || (p === 'paused' && phase !== 'paused')) onRefresh();
+        if (p === 'done' || p === 'failed') {
+          // Late-arriving test_report race: one more fetch after poll stops
+          setTimeout(async () => {
+            try {
+              const st2 = await projectApi.getState(project.project_id);
+              const s2 = (st2 as any)?.state || {};
+              const o2 = collectStageOutputs(s2, keys);
+              if (Object.keys(o2).length > 0) setStageOutputs(prev => ({ ...prev, ...o2 }));
+            } catch { /* ignore */ }
+          }, 800);
+          if (phase !== 'done' && phase !== 'failed') onRefresh();
+        } else if (isHitlWaitPhase(p) && !isHitlWaitPhase(phase)) {
+          onRefresh();
+        }
       } catch { /* ignore */ }
     }, 3000);
     return () => { clearInterval(id); };
+  }, [phase, project.project_id]);
+
+  // F4: when pipeline reaches done, auto smoke once — open CTA only if healthy
+  const smokeOnDoneRef = useRef(false);
+  useEffect(() => {
+    if (phase !== 'done' || !project.project_id || smokeOnDoneRef.current) return;
+    smokeOnDoneRef.current = true;
+    (async () => {
+      try {
+        const r = await projectApi.runtimeSmoke(project.project_id, true);
+        const can = !!(r as any)?.openable;
+        setOpenable(can);
+        setOpenReason(String((r as any)?.open_reason || ''));
+        if (can) {
+          setDeployUrl(`/app/apps/${project.project_id}`);
+        } else {
+          setDeployUrl('');
+        }
+        const lr = (project as any).last_deploy_rejects;
+        if (Array.isArray(lr) && lr.length) setRejectedArtifacts(lr);
+      } catch { /* smoke optional */ }
+    })();
   }, [phase, project.project_id]);
 
   // ── Independent execution timer — keeps ticking even when state endpoint times out ──
@@ -654,16 +834,21 @@ const ProjectPanel: React.FC<{
         // Also load HITL fields on initial open (so button appears immediately)
         if (state._hitl_stage_id) setHitlStageId(state._hitl_stage_id as string);
         if (state._hitl_output_artifact) setHitlOutputArtifact(state._hitl_output_artifact as string);
+        else if (isHitlWaitPhase(realPhase)) {
+          const lastArt = [...(project.team_stages || [])].reverse().find((ts: any) => ts.output_artifact)?.output_artifact;
+          if (lastArt) setHitlOutputArtifact(String(lastArt));
+        }
         setProgressState(state._progress || null);
-        const outputs: Record<string, any> = {};
         const orderedKeys = project.team_stages?.map(s => (s as any).output_artifact).filter(Boolean) || [];
         const keys = orderedKeys.length > 0 ? orderedKeys : ['architecture', 'code', 'test_report'];
-        for (const k of keys) {
-          if (state[k] && typeof state[k] === 'object' && state[k].raw_output) {
-            outputs[k] = state[k];
+        const outputs = collectStageOutputs(state, keys);
+        if (Object.keys(outputs).length > 0) {
+          if (realPhase === 'executing' || isHitlWaitPhase(realPhase)) {
+            setStageOutputs(applyProgressiveOutputs(outputs, state._current_stage_idx || 0, keys));
+          } else {
+            setStageOutputs(prev => ({ ...prev, ...outputs }));
           }
         }
-        if (Object.keys(outputs).length > 0) setStageOutputs(prev => ({ ...prev, ...outputs }));
       } catch { /* ignore */ }
     })();
   }, [project.project_id]);
@@ -690,6 +875,24 @@ const ProjectPanel: React.FC<{
     finally { setStarting(false); }
   };
 
+  /** F1: one-click confirm → recommend → start (Done = pipeline started) */
+  const handleConfirmAndBuild = async () => {
+    if (!project.project_id) return;
+    setStarting(true);
+    try {
+      const result = await projectApi.confirmAndBuild(project.project_id);
+      const stages = (result as any)?.team?.plan_stages || [];
+      const rec = (result as any)?.team?.recommendation || {};
+      if (stages.length) setTeamStages(stages);
+      setRecommendedMode((rec.mode as string) || '');
+      setRecommendedReason((rec.reasoning as string) || '');
+      setPhase((result as any)?.phase || 'executing');
+      toast.success('已确认并启动构建');
+      onRefresh();
+    } catch (e: any) { toastGateError(e, '确认并构建失败'); }
+    finally { setStarting(false); }
+  };
+
   const handleStart = async () => {
     if (!project.project_id) return;
     setStarting(true);
@@ -713,103 +916,32 @@ const ProjectPanel: React.FC<{
     if (!project.project_id) return;
     setFixingBugs(true);
     try {
-      // Pre-fetch test_report to pass directly — avoids agent having to HTTP GET 68K state
+      // Pre-fetch test_report — deterministic path (no ReAct orchestrator; that path is slow/flaky)
       const st = await projectApi.getState(project.project_id);
       const testReportRaw = (st as any)?.state?.test_report?.raw_output || '';
-
-      // ── Deterministic path: pytest report → fix programmer_agent directly (no LLM agent) ──
-      let reportObj: any = null;
-      try { reportObj = JSON.parse(testReportRaw); } catch {}
-      const isPytest = reportObj && ((reportObj.test_mode === 'pytest' || reportObj.header?.test_mode === 'pytest') || (reportObj.bug_summary && Array.isArray(reportObj.bug_summary.failed_tests)));
-      if (isPytest) {
-        const totalBugs = reportObj?.bug_summary?.total_bugs ?? 0;
-        const suggestedFix = reportObj?.bug_summary?.suggested_fix || '';
-        if (!totalBugs || !suggestedFix) {
-          toast.info('当前无 Bug 需要修复');
-          setFixingBugs(false);
-          return;
-        }
-        // pytest failures are code defects → regenerate the code-generating stage (dynamic, not hardcoded)
-        const codeStage = teamStages.find((s: any) => s.output_artifact === 'code');
-        const codeAgent = codeStage?.agent_id || 'programmer_agent';
-        const gen = await projectApi.generateHypotheses(project.project_id, [codeAgent]);
-        const fixPlan: string[] = (gen as any)?.fix_plan?.length ? (gen as any).fix_plan : [codeAgent];
-        for (const stage of fixPlan) {
-          await projectApi.regenerateStage(project.project_id, stage, suggestedFix);
-        }
-        toast.success(`修复已触发: ${fixPlan.length} 个阶段将重新生成，覆盖 ${totalBugs} 个 Bug`);
+      const result = await projectApi.fixFromReport(project.project_id, testReportRaw);
+      const status = (result as any)?.status || '';
+      if (status === 'no_bugs' || status === 'no_test_report') {
+        toast.info(status === 'no_test_report' ? '未找到测试报告' : '当前无 Bug 需要修复');
+      } else if (status === 'regenerating') {
+        const fixed = (result as any)?.fixed_stages ?? 0;
+        const total = (result as any)?.total_bugs ?? 0;
+        const plan = ((result as any)?.fix_plan || []).join(', ') || '?';
+        const mode = (result as any)?.mode || '';
+        const remaps = (result as any)?.remaps || {};
+        const remapN = Object.keys(remaps).length;
+        toast.success(
+          mode === 'deterministic_media_remap'
+            ? `已确定性映射 ${remapN} 个 Skill 名并重跑 ${plan}（覆盖 ${total} 个 Bug）`
+            : `修复已触发: 重跑 ${plan}（覆盖 ${total} 个 Bug，${fixed} 个阶段）`
+        );
         setPhase('executing');
         onRefresh();
-        setFixingBugs(false);
-        return;
-      }
-
-      const result = await workspaceAgentApi.execute('test_report_orchestrator', {
-        input: { project_id: project.project_id, test_report: testReportRaw },
-      });
-      const output = (result as any)?.output;
-      if (output) {
-        // ReAct agents wrap their trace in {text: "..."}. Extract the raw text first.
-        const text = typeof output === 'string' ? output : (output?.text || output?.content || '');
-        let summary: any = null;
-
-        // 1. ReAct final answer: {"type":"done","answer":"{...json...}"} (line-separated)
-        if (text) {
-          const lines = text.split('\n');
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith('{')) continue;
-            try {
-              const obj = JSON.parse(trimmed);
-              if (obj && obj.type === 'done' && typeof obj.answer === 'string') {
-                try { summary = JSON.parse(obj.answer); } catch { summary = obj.answer; }
-                break;
-              }
-            } catch {}
-          }
-        }
-
-        // 2. Fallback: search keywords in the raw text and extract enclosing JSON
-        if (!summary) {
-          const raw = text || JSON.stringify(output);
-          for (const kw of ['"total_bugs"', '"fixed_stages"', '"status"']) {
-            const idx = raw.lastIndexOf(kw);
-            if (idx < 0) continue;
-            const start = raw.lastIndexOf('{', idx);
-            if (start < 0) continue;
-            let depth = 0;
-            let end = start;
-            for (let j = start; j < raw.length; j++) {
-              if (raw[j] === '{') depth++;
-              if (raw[j] === '}') { depth--; if (depth === 0) { end = j + 1; break; } }
-            }
-            try { summary = JSON.parse(raw.slice(start, end)); break; } catch {}
-          }
-        }
-
-        const status = typeof summary === 'string' ? '' : (summary?.status || '');
-        if (status === 'no_bugs') {
-          toast.info('当前无 Bug 需要修复');
-        } else if (status === 'all_fixed') {
-          toast.success(`修复完成: ${summary.before ?? '?'} 个 Bug 已全部清零`);
-        } else if (status === 'regenerating') {
-          const fixed = summary?.fixed_stages ?? 0;
-          const total = summary?.total_bugs ?? 0;
-          toast.success(`修复已触发: ${fixed} 个阶段将重新生成，覆盖 ${total} 个 Bug`);
-        } else if (status === 'max_retries' || status === 'stuck' || status === 'timeout') {
-          toast.warning(`修复未完全成功 (${status})，可再次点击「一键修复」`);
-        } else if (summary && (summary?.fixed_stages != null || summary?.total_bugs != null || summary?.summary)) {
-          const fixed = summary?.summary?.fixed_stages ?? summary?.fixed_stages ?? 0;
-          const total = summary?.summary?.total_bugs ?? summary?.total_bugs ?? 0;
-          toast.success(`修复编排完成: ${fixed} 个阶段已触发修复，覆盖 ${total} 个 Bug`);
-        } else {
-          toast.error('修复编排未返回结果，请重试');
-        }
+      } else if (status === 'error') {
+        toast.error(`修复失败: ${((result as any)?.errors || []).join('; ') || 'unknown'}`);
       } else {
-        toast.error('修复编排未返回结果');
+        toast.warning(`修复返回: ${status || 'unknown'}`);
       }
-      setPhase('executing');
-      onRefresh();
     } catch (e: any) { toastGateError(e, '修复失败'); }
     finally { setFixingBugs(false); }
   };
@@ -835,10 +967,62 @@ const ProjectPanel: React.FC<{
     setDeploying(true);
     try {
       const result = await projectApi.deployToApp(project.project_id);
-      setDeployUrl((result as any)?.app_url || '');
-      toast.success('部署成功');
+      const rejects = (result as any)?.rejected_artifacts || [];
+      setRejectedArtifacts(rejects);
+      const canOpen = !!(result as any)?.openable;
+      setOpenable(canOpen);
+      setOpenReason(String((result as any)?.open_reason || ''));
+      if (canOpen && (result as any)?.app_url) {
+        setDeployUrl((result as any).app_url);
+        toast.success(rejects.length ? `部署完成（${rejects.length} 个契约拒绝未注册）` : '部署成功，已通过健康探测');
+      } else if ((result as any)?.status === 'error') {
+        toast.error(String((result as any)?.detail || '部署被拒绝'));
+      } else {
+        setDeployUrl('');
+        toast.warning(
+          rejects.length
+            ? `部署写入完成但不可打开：${rejects.length} 个产物未通过契约`
+            : `部署完成但健康探测未通过（${(result as any)?.open_reason || 'unhealthy'}）`
+        );
+      }
     } catch (e: any) { toastGateError(e, '部署失败'); }
     finally { setDeploying(false); }
+  };
+
+  const handleRuntimeSmoke = async () => {
+    if (!project.project_id) return;
+    try {
+      const r = await projectApi.runtimeSmoke(project.project_id, true);
+      const can = !!(r as any)?.openable;
+      setOpenable(can);
+      setOpenReason(String((r as any)?.open_reason || ''));
+      if (can) {
+        setDeployUrl(`/app/apps/${project.project_id}`);
+        toast.success('冒烟通过，可打开应用');
+      } else {
+        setDeployUrl('');
+        toast.warning(`冒烟未通过：${(r as any)?.open_reason || 'unhealthy'}`);
+      }
+    } catch (e: any) { toastGateError(e, '冒烟失败'); }
+  };
+
+  const handleAutoRepair = async () => {
+    if (!project.project_id) return;
+    setRepairBusy(true);
+    try {
+      const r = await projectApi.autoRepair(project.project_id, 2);
+      if ((r as any)?.repaired) {
+        setRepairExhausted(false);
+        toast.success('自动修复成功');
+        await handleRuntimeSmoke();
+      } else if ((r as any)?.repair_exhausted || (r as any)?.next === 'hitl') {
+        setRepairExhausted(true);
+        toast.warning('自动修复已达上限（2 轮），请人工处理或审批');
+      } else {
+        toast.warning(String((r as any)?.reason || '修复未改进'));
+      }
+    } catch (e: any) { toastGateError(e, '自动修复失败'); }
+    finally { setRepairBusy(false); }
   };
 
   const handleRollbackPrd = async () => {
@@ -1199,20 +1383,6 @@ const ProjectPanel: React.FC<{
     finally { setSavingPrd(false); }
   };
 
-  // ── P1: Progressive output clearing — keeps upstream stages, clears only downstream ──
-  const _applyProgressiveOutputs = (
-    outputs: Record<string, any>,
-    currentStageIdx: number,
-    allStageKeys: string[],
-  ): Record<string, any> => {
-    const keepIdx = Math.min(currentStageIdx + 1, allStageKeys.length);
-    const filtered: Record<string, any> = {};
-    for (const k of allStageKeys.slice(0, keepIdx)) {
-      if (outputs[k] !== undefined) filtered[k] = outputs[k];
-    }
-    return filtered;
-  };
-
   // ── Shared: refresh UI from a pipeline state snapshot (used by poll, approve, reject) ──
   const _refreshFromState = async (stateObj: any) => {
     const s = stateObj || {};
@@ -1220,40 +1390,52 @@ const ProjectPanel: React.FC<{
     setPhase(p);
     setProgressState(s._progress || null);
 
-    if (p === 'paused') {
+    if (isHitlWaitPhase(p)) {
       const hitlId = s._hitl_stage_id as string;
       const hitlArtifact = s._hitl_output_artifact as string;
       if (hitlId) setHitlStageId(hitlId);
       if (hitlArtifact) setHitlOutputArtifact(hitlArtifact);
+      if (!hitlArtifact) {
+        const lastArt = [...teamStages].reverse().find((ts: any) => ts.output_artifact)?.output_artifact;
+        if (lastArt) setHitlOutputArtifact(String(lastArt));
+      }
     }
     // Don't clear HITL during executing — let it naturally transition via poll
 
     const orderedKeys = teamStages.map((ts: any) => ts.output_artifact).filter(Boolean);
     const keys = orderedKeys.length > 0 ? orderedKeys : ['architecture', 'code', 'test_report'];
-    const outputs: Record<string, any> = {};
-    for (const k of keys) {
-      if (s[k] && typeof s[k] === 'object') outputs[k] = s[k];
+    const outputs = collectStageOutputs(s, keys);
+    if ((s as any)._bloat_metrics && typeof (s as any)._bloat_metrics === 'object') {
+      setBloatMetrics((s as any)._bloat_metrics);
+    } else if ((p === 'done' || p === 'failed') && (project as any)?.bloat_metrics) {
+      setBloatMetrics((project as any).bloat_metrics);
+    }
+    const cta = (s as any)._friction_share_cta;
+    if (cta && typeof cta === 'object') {
+      setFrictionShare(cta);
+    }
+    if ((s as any)._team_digest && typeof (s as any)._team_digest === 'object') {
+      setTeamDigest((s as any)._team_digest);
     }
     if (Object.keys(outputs).length > 0) {
-      if (p === 'paused' || p === 'executing') {
+      if (p === 'done' || p === 'failed') {
+        setStageOutputs(prev => ({ ...prev, ...outputs }));
+      } else if (isHitlWaitPhase(p) || p === 'executing') {
         const _hitlArtifact = s._hitl_output_artifact as string;
-        if (p === 'paused' && _hitlArtifact && !outputs[_hitlArtifact] && outputs[Object.keys(outputs)[0]]) {
+        if (isHitlWaitPhase(p) && _hitlArtifact && !outputs[_hitlArtifact] && outputs[Object.keys(outputs)[0]]) {
           setTimeout(async () => {
             try {
               const st2 = await projectApi.getState(project.project_id);
               const s2 = (st2 as any)?.state || {};
-              const o2: Record<string, any> = {};
-              for (const k of keys) {
-                if (s2[k] && typeof s2[k] === 'object') o2[k] = s2[k];
-              }
+              const o2 = collectStageOutputs(s2, keys);
               if (o2[_hitlArtifact]) {
-                const filtered = _applyProgressiveOutputs(o2, s2._current_stage_idx || 0, keys);
+                const filtered = applyProgressiveOutputs(o2, s2._current_stage_idx || 0, keys);
                 if (Object.keys(filtered).length > 0) setStageOutputs(filtered);
               }
             } catch {}
           }, 400);
         } else {
-          const filtered = _applyProgressiveOutputs(outputs, s._current_stage_idx || 0, keys);
+          const filtered = applyProgressiveOutputs(outputs, s._current_stage_idx || 0, keys);
           if (Object.keys(filtered).length > 0) setStageOutputs(filtered);
         }
       } else {
@@ -1275,18 +1457,15 @@ const ProjectPanel: React.FC<{
 
       const orderedKeys = teamStages.map((ts: any) => ts.output_artifact).filter(Boolean);
       const keys = orderedKeys.length > 0 ? orderedKeys : ['architecture', 'code', 'test_report'];
-      const outputs: Record<string, any> = {};
-      for (const k of keys) {
-        if (s[k] && typeof s[k] === 'object') outputs[k] = s[k];
-      }
+      const outputs = collectStageOutputs(s, keys);
       if (Object.keys(outputs).length > 0) {
-        const filtered = _applyProgressiveOutputs(outputs, s._current_stage_idx || 0, keys);
+        const filtered = applyProgressiveOutputs(outputs, s._current_stage_idx || 0, keys);
         if (Object.keys(filtered).length > 0) setStageOutputs(filtered);
       }
 
       const backendPhase = s.phase as string;
-      if (backendPhase === 'paused') {
-        setPhase('paused');
+      if (isHitlWaitPhase(backendPhase)) {
+        setPhase(backendPhase);
         if (s._hitl_stage_id) setHitlStageId(s._hitl_stage_id as string);
         if (s._hitl_output_artifact) setHitlOutputArtifact(s._hitl_output_artifact as string);
       } else if (backendPhase === 'done' || backendPhase === 'failed') {
@@ -1304,11 +1483,18 @@ const ProjectPanel: React.FC<{
     setHitlOutputArtifact(null);
     setStarting(true);
     try {
-      await projectApi.approve(project.project_id);
-      toast.success('已审批，正在继续执行');
-      // Fetch state AFTER API — backend has processed the approval
+      const resp = await projectApi.approve(project.project_id) as any;
       const st = await projectApi.getState(project.project_id);
-      await _refreshFromState((st as any)?.state);
+      const s = (st as any)?.state || {};
+      if (resp?.phase === 'done' || s.phase === 'done') {
+        toast.success('已审批完成，可以部署');
+        setPhase('done');
+        await _refreshFromState(s);
+        onRefresh();
+      } else {
+        toast.success('已审批，正在继续执行');
+        await _refreshFromState(s);
+      }
     } catch (e: any) {
       toastGateError(e, '审批失败');
       const st = await projectApi.getState(project.project_id);
@@ -1351,9 +1537,12 @@ const ProjectPanel: React.FC<{
     setHitlOutputArtifact(null);
     setRejecting(true);
     try {
-      await projectApi.reject(project.project_id, feedback);
+      const rej = await projectApi.reject(project.project_id, feedback);
+      const fs = (rej as any)?.friction_share;
+      if (fs) setFrictionShare(fs);
       toast.success('已驳回，将重新生成');
       const st = await projectApi.getState(project.project_id);
+      if ((st as any)?.friction_share) setFrictionShare((st as any).friction_share);
       await _refreshFromState((st as any)?.state);
     } catch (e: any) {
       toastGateError(e, '驳回失败');
@@ -1376,6 +1565,55 @@ const ProjectPanel: React.FC<{
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* F-T4: friction share CTA (local learning; regenerate needs confirm) */}
+        {frictionShare && (
+          <div className="p-3 rounded border border-teal-500/40 bg-teal-500/10 text-xs space-y-2">
+            <div className="text-teal-200 font-medium">
+              {frictionShare.message || '检测到可沉淀的摩擦信号'}
+            </div>
+            {frictionShare.detail && (
+              <div className="text-teal-200/70 font-mono text-[10px] truncate">{frictionShare.detail}</div>
+            )}
+            <div className="flex gap-2 items-center">
+              {frictionShare.needs_confirm ? (
+                <button
+                  disabled={frictionBusy}
+                  onClick={async () => {
+                    if (!project.project_id) return;
+                    setFrictionBusy(true);
+                    try {
+                      const r = await projectApi.confirmFrictionShare(project.project_id, {
+                        stage_id: frictionShare.stage_id,
+                        signal: frictionShare.signal || 'regenerate_count',
+                        detail: frictionShare.detail,
+                      });
+                      if ((r as any)?.cta) setFrictionShare((r as any).cta);
+                      else setFrictionShare(null);
+                      toast.success('已写入本地经验草稿（默认不进团队仓）');
+                    } catch (e: any) {
+                      toastGateError(e, '确认失败');
+                    } finally {
+                      setFrictionBusy(false);
+                    }
+                  }}
+                  className="text-[10px] px-2 py-1 rounded bg-teal-500/30 text-teal-100 hover:bg-teal-500/40"
+                >
+                  确认沉淀
+                </button>
+              ) : (
+                <span className="text-teal-300/80">
+                  已记本地草稿{frictionShare.learning_id ? ` · ${frictionShare.learning_id}` : ''}
+                </span>
+              )}
+              <button
+                onClick={() => setFrictionShare(null)}
+                className="text-[10px] px-2 py-1 rounded text-gray-400 hover:text-gray-200"
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+        )}
         {/* Progress */}
         {phase === 'done' ? (
           <div className="space-y-2">
@@ -1396,25 +1634,102 @@ const ProjectPanel: React.FC<{
                   🔀 生成合并预览（L3 增量审批）
                 </Button>
               )}
-              {agentMode && (
-                <a href={`/app/apps/${project.project_id}`} target="_blank" rel="noreferrer" className="ml-3 text-primary underline text-xs flex items-center gap-1 inline-flex">
-                  <ExternalLink className="w-3 h-3" /> 使用应用
-                </a>
-              )}
-              {!agentMode && !deployUrl && (
-                <Button variant="primary" size="sm" className="ml-3" onClick={handleDeploy} loading={deploying}>部署到 App</Button>
-              )}
-              {deployUrl && (
+              {(agentMode || openable) && deployUrl && (
                 <a href={deployUrl} target="_blank" rel="noreferrer" className="ml-3 text-primary underline text-xs flex items-center gap-1 inline-flex">
                   <ExternalLink className="w-3 h-3" /> 打开应用
                 </a>
               )}
+              {agentMode && openable && !deployUrl && (
+                <a href={`/app/apps/${project.project_id}`} target="_blank" rel="noreferrer" className="ml-3 text-primary underline text-xs flex items-center gap-1 inline-flex">
+                  <ExternalLink className="w-3 h-3" /> 使用应用
+                </a>
+              )}
+              {!openable && phase === 'done' && (
+                <span className="ml-3 text-amber-300 text-xs">不可打开（{openReason || '未探测'}）</span>
+              )}
+              {!agentMode && !deployUrl && (
+                <Button variant="primary" size="sm" className="ml-3" onClick={handleDeploy} loading={deploying}>部署到 App</Button>
+              )}
+              <Button variant="secondary" size="sm" className="ml-2" onClick={handleRuntimeSmoke}>健康探测</Button>
+              <Button variant="ghost" size="sm" className="ml-1" onClick={handleAutoRepair} loading={repairBusy}>
+                自动修复
+              </Button>
               {!agentMode && (
                 <Button variant="ghost" size="sm" className="ml-2" onClick={handleRollbackPrd}>
                   重新编辑需求
                 </Button>
               )}
             </div>
+            {teamDigest && (
+              <div className="p-3 rounded bg-slate-500/10 border border-slate-500/30 text-xs text-slate-200 space-y-1">
+                <div className="font-semibold text-slate-100">本轮指标摘要</div>
+                <div className="text-slate-300 font-mono text-[11px]">{teamDigest.summary || '—'}</div>
+                <div className="flex flex-wrap gap-3 text-[10px] text-slate-400">
+                  <span>friction {(teamDigest.friction?.events ?? 0)}/{(teamDigest.friction?.learnings ?? 0)}</span>
+                  <span>gates {teamDigest.outcomes?.gate_events ?? 0}</span>
+                  {teamDigest.bloat?.loc != null && <span>loc {teamDigest.bloat.loc}</span>}
+                  {teamDigest.repair?.repair_exhausted && <span className="text-amber-300">repair_exhausted</span>}
+                  {teamDigest.style?.output_style && <span>style {teamDigest.style.output_style}</span>}
+                </div>
+              </div>
+            )}
+            {rejectedArtifacts.length > 0 && (
+              <div className="p-3 rounded bg-red-500/10 border border-red-500/40 text-xs space-y-1">
+                <div className="text-red-300 font-semibold">契约拒绝（未注册）· {rejectedArtifacts.length}</div>
+                {rejectedArtifacts.slice(0, 8).map((r, i) => (
+                  <div key={i} className="text-red-200/90">
+                    <span className="font-mono">{r.kind}/{r.name}</span>
+                    <span className="text-gray-400"> — {(r.violations || []).slice(0, 2).join('; ')}</span>
+                    {r.fix_hint && <div className="text-amber-200/80 pl-2">修复：{r.fix_hint}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+            {repairExhausted && (
+              <div className="p-2 rounded bg-amber-500/10 border border-amber-500/40 text-xs text-amber-200">
+                自动修复已达上限（2 轮），请人工处理或进入审批。
+              </div>
+            )}
+            {bloatMetrics && (bloatMetrics.loc != null || bloatMetrics.new_files != null) && (
+              <div className="p-3 rounded bg-slate-500/10 border border-slate-500/30 text-xs space-y-2">
+                <div className="text-slate-300 font-semibold">生成膨胀（相对上次构建）</div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded bg-dark-hover/50 p-2">
+                    <div className="text-gray-500 text-[10px]">LOC</div>
+                    <div className="text-gray-100 font-mono text-sm">{bloatMetrics.loc ?? 0}</div>
+                    {bloatMetrics.vs_baseline?.has_baseline && (
+                      <div className={`text-[10px] ${(bloatMetrics.vs_baseline.delta_loc || 0) > 0 ? 'text-amber-400' : 'text-green-400'}`}>
+                        {(bloatMetrics.vs_baseline.delta_loc || 0) > 0 ? '+' : ''}{bloatMetrics.vs_baseline.delta_loc ?? 0}
+                      </div>
+                    )}
+                  </div>
+                  <div className="rounded bg-dark-hover/50 p-2">
+                    <div className="text-gray-500 text-[10px]">新文件</div>
+                    <div className="text-gray-100 font-mono text-sm">{bloatMetrics.new_files ?? 0}</div>
+                    {bloatMetrics.vs_baseline?.has_baseline && (
+                      <div className={`text-[10px] ${(bloatMetrics.vs_baseline.delta_new_files || 0) > 0 ? 'text-amber-400' : 'text-green-400'}`}>
+                        {(bloatMetrics.vs_baseline.delta_new_files || 0) > 0 ? '+' : ''}{bloatMetrics.vs_baseline.delta_new_files ?? 0}
+                      </div>
+                    )}
+                  </div>
+                  <div className="rounded bg-dark-hover/50 p-2">
+                    <div className="text-gray-500 text-[10px]">新依赖</div>
+                    <div className="text-gray-100 font-mono text-sm">{bloatMetrics.new_deps ?? 0}</div>
+                    {bloatMetrics.vs_baseline?.has_baseline && (
+                      <div className={`text-[10px] ${(bloatMetrics.vs_baseline.delta_new_deps || 0) > 0 ? 'text-amber-400' : 'text-green-400'}`}>
+                        {(bloatMetrics.vs_baseline.delta_new_deps || 0) > 0 ? '+' : ''}{bloatMetrics.vs_baseline.delta_new_deps ?? 0}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {bloatMetrics.loc_non_import != null && (
+                  <div className="text-gray-500 text-[10px]">
+                    非 import LOC：{bloatMetrics.loc_non_import}
+                    {!bloatMetrics.vs_baseline?.has_baseline && ' · 下次重建可对照本次基线'}
+                  </div>
+                )}
+              </div>
+            )}
             {/* Health Report Card — auto-loads when pipeline done */}
             {healthReport ? (
               <div className="p-3 rounded bg-blue-500/5 border border-blue-500/30 text-xs space-y-1">
@@ -1545,9 +1860,28 @@ const ProjectPanel: React.FC<{
               </div>
             )}
           </div>
-        ) : phase === 'paused' || phase?.includes('approval') ? (
-          <div className="text-[11px] text-amber-400 flex items-center gap-1.5 p-2 rounded bg-amber-500/5">
-            <Clock className="w-3 h-3" /> 等待审批 — 请在下方「阶段产出」中审核并操作
+        ) : isHitlWaitPhase(phase) ? (
+          <div className="space-y-2">
+            <div className="text-[11px] text-amber-400 flex items-center gap-1.5 p-2 rounded bg-amber-500/5">
+              <Clock className="w-3 h-3" /> 等待审批 — 测真已完成时可直接审批通过并部署
+            </div>
+            <div className="flex flex-wrap gap-2 p-2 rounded border border-amber-500/30 bg-amber-500/5">
+              <Button variant="primary" size="sm" onClick={handleApprove} loading={starting}>
+                ✅ 审批通过
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleReject} loading={rejecting}>
+                ❌ 驳回重做
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleDeploy}
+                loading={deploying}
+                title="测真已通过时可直接部署"
+              >
+                🚀 部署到 App
+              </Button>
+            </div>
           </div>
         ) : null}
 
@@ -1603,8 +1937,18 @@ const ProjectPanel: React.FC<{
             <h3 className="text-xs font-semibold text-gray-400 uppercase">团队配置</h3>
             {recommendedMode && (
               <div className="flex items-center gap-1.5 text-[10px]">
-                <span className={`px-1.5 py-0.5 rounded ${recommendedMode === 'agent' ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/20 text-blue-300'}`}>
-                  {recommendedMode === 'agent' ? '🤖 Agent 应用模式' : '💻 代码应用模式'}
+                <span className={`px-1.5 py-0.5 rounded ${
+                  recommendedMode === 'agent'
+                    ? 'bg-purple-500/20 text-purple-300'
+                    : recommendedMode === 'hybrid'
+                      ? 'bg-teal-500/20 text-teal-300'
+                      : 'bg-blue-500/20 text-blue-300'
+                }`}>
+                  {recommendedMode === 'agent'
+                    ? 'Agent 应用模式'
+                    : recommendedMode === 'hybrid'
+                      ? 'Hybrid（Agent + 代码）'
+                      : '代码应用模式'}
                 </span>
                 {recommendedReason && <span className="text-gray-500 truncate max-w-[300px]">{recommendedReason.slice(0, 80)}</span>}
               </div>
@@ -1965,18 +2309,109 @@ const ProjectPanel: React.FC<{
           )}
         </div>
 
+        {/* F1 sticky checklist */}
+        <div className="rounded border border-dark-border bg-dark-hover/40 px-3 py-2 text-[11px] text-gray-300">
+          <div className="font-semibold text-gray-200 mb-1">进度</div>
+          <ol className="list-decimal list-inside space-y-0.5">
+            <li className={project.description ? 'text-green-400' : ''}>描述需求 {project.description ? '✓' : ''}</li>
+            <li className={prdReady ? 'text-green-400' : phase === 'dialogue' ? 'text-amber-300' : ''}>
+              PRD 闭合 {prdReady ? '✓' : '← 在对话中完善'}
+            </li>
+            <li className={phase === 'executing' || phase === 'done' || isHitlWaitPhase(phase) || phase === 'team_ready' ? 'text-green-400' : ''}>
+              确认并构建 {['executing', 'done', 'team_ready'].includes(phase) || isHitlWaitPhase(phase) ? '✓' : ''}
+            </li>
+            <li className={isHitlWaitPhase(phase) ? 'text-amber-300' : phase === 'done' ? 'text-green-400' : ''}>
+              审批 {isHitlWaitPhase(phase) ? '← 当前' : phase === 'done' ? '✓' : ''}
+            </li>
+            <li className={deployUrl ? 'text-green-400' : ''}>部署/打开 {deployUrl ? '✓' : ''}</li>
+          </ol>
+          <div className="mt-1 text-gray-500">
+            下一步：{!prdReady ? '继续对话直到 PRD 闭合' : phase === 'dialogue' ? '点击「确认并构建」' : isHitlWaitPhase(phase) ? '审批当前阶段' : deployUrl ? '打开应用' : '等待构建完成'}
+          </div>
+        </div>
+
         {/* Actions — show for team_ready / done / failed so user can always rebuild */}
         <div className="flex flex-wrap gap-2">
           {!prdReady && phase === 'dialogue' && teamStages.length === 0 && (
             <Button variant="secondary" size="sm" onClick={handleRecommend} loading={recommending}>AI 推荐团队</Button>
           )}
           {prdReady && phase === 'dialogue' && (
-            <Button variant="primary" size="sm" onClick={handleConfirm} loading={starting}>确认需求</Button>
+            <>
+              <Button variant="primary" size="sm" onClick={handleConfirmAndBuild} loading={starting}>确认并构建</Button>
+              <Button variant="secondary" size="sm" onClick={handleConfirm} loading={starting}>仅确认需求</Button>
+            </>
           )}
-          {(phase === 'team_ready' || phase === 'done' || phase === 'failed' || phase === 'paused') && (
+          {(phase === 'team_ready' || phase === 'done' || phase === 'failed' || isHitlWaitPhase(phase)) && (
             <Button variant="primary" size="sm" onClick={handleStart} loading={starting}>{runHistory.length > 0 ? '重新构建' : '启动构建'}</Button>
           )}
         </div>
+
+        {/* ── Test report summary + 一键修复 (always visible when available) ── */}
+        {(() => {
+          if (!stageOutputs) return null;
+          let tr: any = null;
+          for (const k of ['test_report', 'testReport', ...Object.keys(stageOutputs)]) {
+            tr = parseTestReportBlob(stageOutputs[k]);
+            if (tr) break;
+          }
+          if (!tr) return null;
+          const passed = tr.meta?.passed ?? 0;
+          const failed = tr.meta?.failed ?? 0;
+          const warnings = tr.meta?.warnings ?? 0;
+          const bugs = tr.bug_summary?.total_bugs ?? tr.bug_summary?.bugs?.length ?? 0;
+          const rate = tr.meta?.pass_rate ?? 0;
+          const rec = String(tr.recommendation || '');
+          const recLabel: Record<string, string> = {
+            CONDITIONAL_APPROVAL: '有条件通过',
+            APPROVED: '已通过',
+            REJECTED: '已拒绝',
+            NEEDS_FIX: '需要修复',
+          };
+          const tone =
+            rec === 'APPROVED' || rate >= 80
+              ? 'border-green-500/30 bg-green-500/10 text-green-300'
+              : bugs > 0 || failed > 0
+                ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                : 'border-blue-500/30 bg-blue-500/10 text-blue-200';
+          return (
+            <div className={`rounded border p-3 text-xs space-y-2 ${tone}`}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-sm">🧪 测试报告</span>
+                <span className="text-green-400">✅ {passed}</span>
+                {failed > 0 && <span className="text-red-400">❌ {failed}</span>}
+                {warnings > 0 && <span className="text-gray-400">⚠ {warnings}</span>}
+                {bugs > 0 && <span className="text-amber-400">🐛 {bugs} Bug</span>}
+                <span className="text-blue-300">通过率 {rate}%</span>
+                <span className="text-gray-400">| {recLabel[rec] || rec || '—'}</span>
+                <div className="ml-auto flex items-center gap-1">
+                  {bugs > 0 && (
+                    <button
+                      onClick={() => handleFixBugs()}
+                      disabled={fixingBugs}
+                      className="text-[11px] px-2 py-1 rounded bg-blue-500/25 text-blue-200 hover:bg-blue-500/40 transition-colors disabled:opacity-50"
+                    >
+                      {fixingBugs ? <Loader2 className="w-3 h-3 animate-spin inline mr-1" /> : <Wrench className="w-3 h-3 inline mr-1" />}
+                      一键修复 ({bugs})
+                    </button>
+                  )}
+                </div>
+              </div>
+              {bugs > 0 && Array.isArray(tr.bug_summary?.bugs) && (
+                <div className="text-[10px] text-gray-300 space-y-0.5 max-h-24 overflow-y-auto">
+                  {(tr.bug_summary.bugs as any[]).slice(0, 5).map((b: any, i: number) => (
+                    <div key={b.id || i} className="truncate">
+                      <span className="text-amber-400">{b.id || `BUG-${i + 1}`}</span>
+                      {' '}{b.title || b.suggested_fix || ''}
+                    </div>
+                  ))}
+                  {tr.bug_summary.bugs.length > 5 && (
+                    <div className="text-gray-500">…共 {tr.bug_summary.bugs.length} 条，展开下方「测试报告」查看详情</div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Stage Outputs — show architecture/code/test_report when available */}
         {stageOutputs && Object.keys(stageOutputs).length > 0 && (
@@ -2042,8 +2477,16 @@ const ProjectPanel: React.FC<{
                   if (cases.length > 0) summary = `${cases.length} 个测试用例`;
                 } catch { /* raw text, skip */ }
               }
-              // Architecture: has components + (api_contracts or api_design)
-              if (rw && rw.includes('"components"') && (rw.includes('"api_contracts"') || rw.includes('"api_design"'))) {
+              // Architecture: agent-mode (agents) or code-mode (components + api)
+              if (rw && (rw.includes('"agents"') || rw.includes('"architecture_mode": "agent"'))) {
+                const j = tryParseJSON(rw, '"agents"') || tryParseJSON(rw, '"architecture_mode"');
+                if (j?.agents || j?.architecture_mode === 'agent') {
+                  const n = j.agents?.length || 0;
+                  const decisions = j.design_decisions?.length || 0;
+                  summary = `Agent 架构书 · ${n} Agent` + (decisions ? ` · ${decisions} 决策` : '');
+                }
+              }
+              if (!summary && rw && rw.includes('"components"') && (rw.includes('"api_contracts"') || rw.includes('"api_design"'))) {
                 const j = tryParseJSON(rw, '"components"');
                 if (j) {
                   const comps = j.components?.length || 0;
@@ -2103,12 +2546,25 @@ const ProjectPanel: React.FC<{
                 return null;
               })();
               const bugCount = testReportParsed?.bug_summary?.total_bugs || testReportParsed?.bug_summary?.bugs?.length || 0;
+              const handoff = (val as any)?.handoff && typeof (val as any).handoff === 'object'
+                ? (val as any).handoff as {
+                    summary?: string;
+                    artifact_ref?: string;
+                    verify?: string;
+                    known_issues?: string[];
+                    next?: string;
+                  }
+                : null;
+              const hasHandoff = !!(handoff && (
+                handoff.summary || handoff.next || handoff.verify
+                || (Array.isArray(handoff.known_issues) && handoff.known_issues.length > 0)
+              ));
 
               return (
                 <React.Fragment key={key}>
                   <details className="text-xs rounded border border-dark-border bg-dark-hover/30">
                   <summary className="p-2 cursor-pointer text-gray-300 font-medium flex items-center justify-between">
-                    <span>{label} ({typeof rw === 'string' ? rw.length : 0} 字符{elapsed ? ` · ⏱ ${elapsed}s` : ''}{summary ? ' · ' + summary : ''})</span>
+                    <span>{label} ({typeof rw === 'string' ? rw.length : 0} 字符{elapsed ? ` · ⏱ ${elapsed}s` : ''}{summary ? ' · ' + summary : ''}{hasHandoff ? ' · 交接' : ''})</span>
                     <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                       {bugCount > 0 && (
                         <button onClick={e => { e.preventDefault(); handleFixBugs(); }}
@@ -2118,19 +2574,48 @@ const ProjectPanel: React.FC<{
                           一键修复 ({bugCount} Bug)
                         </button>
                       )}
+                      {hasHandoff && (handoff?.next || (handoff?.known_issues?.length ?? 0) > 0) && (
+                        <button
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            if (!project.project_id || !matchedStage) return;
+                            const sid = (matchedStage as any).id
+                              || (matchedStage as any).agent_id
+                              || key;
+                            try {
+                              const rr = await projectApi.regenerateStage(
+                                project.project_id,
+                                sid,
+                                '按交接包 known_issues / next 修复后重新生成',
+                              );
+                              if ((rr as any)?.friction_share) {
+                                setFrictionShare((rr as any).friction_share);
+                              }
+                              toast.success('已按交接包上下文重新生成');
+                              setPhase('executing');
+                              onRefresh();
+                            } catch (err: any) {
+                              toastGateError(err, '重新生成失败');
+                            }
+                          }}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 hover:bg-teal-500/30 transition-colors"
+                        >
+                          按交接重做
+                        </button>
+                      )}
                       {rw && (
                         <button onClick={e => { e.preventDefault(); setFullscreenTitle(label); setFullscreenContent(typeof rw === 'string' ? rw : JSON.stringify(rw, null, 2)); }}
                           className="text-[10px] px-1.5 py-0.5 rounded bg-dark-hover text-gray-500 hover:text-gray-300 hover:bg-primary/20 transition-colors">
                           🔍 全屏
                         </button>
                       )}
-                      {(phase === 'done' || phase === 'paused') && rw && (
+                      {(phase === 'done' || isHitlWaitPhase(phase)) && rw && (
                         <button onClick={e => { e.preventDefault(); handleEditStage(key, rw); }}
                           className="text-[10px] px-1.5 py-0.5 rounded bg-dark-hover text-gray-500 hover:text-yellow-400 transition-colors">
                           ✏️ 编辑
                         </button>
                       )}
-                      {isHITL && (phase === 'paused' || phase?.includes('approval')) && (
+                      {isHITL && isHitlWaitPhase(phase) && (
                         <>
                           <button onClick={e => { e.preventDefault(); handleApprove(); }}
                             className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-300 hover:bg-green-500/30 hover:text-green-200 transition-colors">
@@ -2144,6 +2629,33 @@ const ProjectPanel: React.FC<{
                       )}
                     </div>
                   </summary>
+                  {hasHandoff && handoff && (
+                    <div className="px-2 py-1.5 border-t border-dark-border bg-teal-500/5 space-y-1 text-[10px] text-gray-300">
+                      <div className="text-teal-300/90 font-semibold">阶段交接</div>
+                      {handoff.summary && (
+                        <div><span className="text-gray-500">做了什么：</span>{handoff.summary}</div>
+                      )}
+                      {handoff.artifact_ref && (
+                        <div><span className="text-gray-500">产物：</span><code className="text-gray-400">{handoff.artifact_ref}</code></div>
+                      )}
+                      {handoff.verify && (
+                        <div><span className="text-gray-500">如何验证：</span>{handoff.verify}</div>
+                      )}
+                      {Array.isArray(handoff.known_issues) && handoff.known_issues.length > 0 && (
+                        <div>
+                          <span className="text-amber-400/90">已知问题：</span>
+                          <ul className="list-disc pl-4 text-amber-200/80">
+                            {handoff.known_issues.slice(0, 5).map((issue, ii) => (
+                              <li key={ii}>{issue}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {handoff.next && (
+                        <div><span className="text-teal-300/80">下一步：</span>{handoff.next}</div>
+                      )}
+                    </div>
+                  )}
                   <div className="p-2 max-h-72 overflow-y-auto border-t border-dark-border text-gray-300 text-xs max-w-none">
                     {qaParsed ? (
                       <table className="w-full text-[10px] border-collapse">
@@ -2478,16 +2990,22 @@ const ProjectPanel: React.FC<{
   );
 };
 
+export type FactoryEntryMode = 'quick' | 'chat' | 'advanced';
+
 // ── Main Factory Page ──
-const FactoryPage: React.FC = () => {
+const FactoryPage: React.FC<{ entryMode?: FactoryEntryMode }> = ({ entryMode = 'advanced' }) => {
   const nav = useNavigate();
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [deployedApps, setDeployedApps] = useState<any[]>([]);
 	const [loadingApps, setLoadingApps] = useState(true);
 	const [projectStates, setProjectStates] = useState<Record<string, string>>({});
 	const [projectPassRates, setProjectPassRates] = useState<Record<string, number>>({});
+	const [projectHopRates, setProjectHopRates] = useState<Record<string, { n: number; rate: number }>>({});
 	const [desc, setDesc] = useState('');
 	const [appName, setAppName] = useState('');
+  const [factoryProfile, setFactoryProfile] = useState<'standard' | 'demo'>('standard');
+  const [outputStyle, setOutputStyle] = useState<'default' | 'adhd'>('default');
+  const [factoryMode, setFactoryMode] = useState<'auto' | 'agent' | 'code' | 'hybrid'>('auto');
   const [creating, setCreating] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
   const [selectedApp, setSelectedApp] = useState<string>('');
@@ -2501,6 +3019,7 @@ const FactoryPage: React.FC = () => {
 	        // ── v3.1: fetch real-time pipeline phase from Core ──
 	        const states: Record<string, string> = {};
 	        const rates: Record<string, number> = {};
+	        const hops: Record<string, { n: number; rate: number }> = {};
 	        await Promise.all(p.projects.map(async (prj: ProjectItem) => {
 	          try {
 	            const st = await projectApi.getState(prj.project_id);
@@ -2513,10 +3032,25 @@ const FactoryPage: React.FC = () => {
 	                if (trj.meta?.pass_rate != null) rates[prj.project_id] = trj.meta.pass_rate;
 	              } catch {}
 	            }
+              // Fallback: last persisted true-test report (state may drop test_report after re-run)
+              if (rates[prj.project_id] == null) {
+                try {
+                  const last = await projectApi.getLastTestReport(prj.project_id);
+                  const meta = (last as any)?.meta || (last as any)?.report?.meta;
+                  if (meta?.pass_rate != null) rates[prj.project_id] = meta.pass_rate;
+                } catch { /* no report yet */ }
+              }
+              try {
+                const promo = await projectApi.getPromotion(prj.project_id);
+                const hn = Number((promo as any)?.hops?.effective_n ?? (promo as any)?.hops?.n_runs ?? 0);
+                const hr = Number((promo as any)?.hops?.effective_success_rate ?? 0);
+                if (hn > 0) hops[prj.project_id] = { n: hn, rate: hr };
+              } catch { /* no hops yet */ }
 	          } catch { /* skip */ }
 	        }));
 	        setProjectStates(states);
 	        if (Object.keys(rates).length > 0) setProjectPassRates(rates);
+	        setProjectHopRates(hops);
 	      }
     } catch { /* keep existing state, retry on next loadAll */ }
     try {
@@ -2558,10 +3092,17 @@ const FactoryPage: React.FC = () => {
     if (!desc.trim()) { toast.warning('请输入应用描述'); return; }
     setCreating(true);
     try {
-      const project = await projectApi.create({ name: desc.trim().slice(0, 30) || '新项目', description: desc.trim(), app_name: appName.trim() || undefined });
+      const project = await projectApi.create({
+        name: desc.trim().slice(0, 30) || '新项目',
+        description: desc.trim(),
+        app_name: appName.trim() || undefined,
+        factory_profile: factoryProfile,
+        output_style: outputStyle,
+        factory_mode: factoryMode === 'auto' ? '' : factoryMode,
+      });
       setDesc('');
       setAppName('');
-      toast.success('项目已创建');
+      toast.success(entryMode === 'quick' ? '项目已创建，请在对话中闭合 PRD 后点「确认并构建」' : '项目已创建');
       setSelectedProject(project);
       loadAll();
     } catch (e) { toastGateError(e, '创建失败'); }
@@ -2586,7 +3127,7 @@ const FactoryPage: React.FC = () => {
     if (phase === 'done') return { label: '已完成', color: 'text-green-400', bg: 'bg-green-500/10', phase: 'done' };
     if (phase === 'expired') return { label: '已过期', color: 'text-gray-400', bg: 'bg-gray-500/10', phase: 'expired' };
     if (phase === 'failed') return { label: '失败', color: 'text-red-400', bg: 'bg-red-500/10', phase: 'failed' };
-    if (phase === 'paused') return { label: '等待审批', color: 'text-amber-400', bg: 'bg-amber-500/10', phase: 'paused' };
+    if (isHitlWaitPhase(phase)) return { label: '等待审批', color: 'text-amber-400', bg: 'bg-amber-500/10', phase: 'paused' };
     if (phase === 'pending') return { label: '已中断', color: 'text-amber-400', bg: 'bg-amber-500/10', phase: 'failed' };
     return { label: '构建中', color: 'text-blue-400', bg: 'bg-blue-500/10', phase: 'executing' };
   };
@@ -2614,8 +3155,52 @@ const FactoryPage: React.FC = () => {
           placeholder="应用英文名（可选，如 video_parser）"
           className="mb-3 w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-blue-500/50"
         />
+        <div className="flex flex-wrap gap-4 mb-3 text-xs text-gray-400">
+          <label className="flex items-center gap-2">
+            应用模式
+            <select
+              value={factoryMode}
+              onChange={e => setFactoryMode(e.target.value as 'auto' | 'agent' | 'code' | 'hybrid')}
+              className="bg-dark-bg border border-dark-border rounded px-2 py-1 text-gray-200"
+            >
+              <option value="auto">auto（LLM 判断）</option>
+              <option value="agent">agent（对话/编排）</option>
+              <option value="code">code（API/服务）</option>
+              <option value="hybrid">hybrid（Agent + 代码）</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-2">
+            HITL 档
+            <select
+              value={factoryProfile}
+              onChange={e => setFactoryProfile(e.target.value as 'standard' | 'demo')}
+              className="bg-dark-bg border border-dark-border rounded px-2 py-1 text-gray-200"
+              title="生产默认 standard（三闸）；demo 仅演示轻审批"
+            >
+              <option value="standard">standard（生产三闸，默认）</option>
+              <option value="demo">demo（轻审批，仅演示）</option>
+            </select>
+          </label>
+          {factoryProfile === 'demo' && (
+            <span className="text-amber-400/90 text-xs">demo 会减弱中间 HITL，勿当生产门禁</span>
+          )}
+          <label className="flex items-center gap-2">
+            输出样式
+            <select
+              value={outputStyle}
+              onChange={e => setOutputStyle(e.target.value as 'default' | 'adhd')}
+              className="bg-dark-bg border border-dark-border rounded px-2 py-1 text-gray-200"
+            >
+              <option value="default">default</option>
+              <option value="adhd">adhd（行动优先）</option>
+            </select>
+          </label>
+          {entryMode !== 'advanced' && (
+            <span className="text-gray-500">入口：{entryMode}</span>
+          )}
+        </div>
         <Button variant="primary" onClick={create} loading={creating} icon={<Plus className="w-4 h-4" />}>
-          开始构建
+          {entryMode === 'quick' ? '创建并开始对话' : '创建项目'}
         </Button>
       </motion.div>
 
@@ -2646,7 +3231,8 @@ const FactoryPage: React.FC = () => {
           {projects.map(p => {
             const status = getStatus(p);
             const lastRun = p.runs?.[p.runs.length - 1];
-            const passRate = projectPassRates[p.project_id] ?? lastRun?.pass_rate ?? 0;
+            const hasLiveRate = projectPassRates[p.project_id] != null;
+            const passRate = projectPassRates[p.project_id] ?? lastRun?.pass_rate ?? null;
             const hasPrd = !!(p as any).confirmed_prd;
             return (
               <motion.div
@@ -2656,7 +3242,14 @@ const FactoryPage: React.FC = () => {
                 onClick={() => setSelectedProject(p)}
               >
                 <div className="flex items-start justify-between mb-2">
-                  <h4 className="text-sm font-medium text-gray-100 truncate max-w-[200px]">{p.name}</h4>
+                  <div className="min-w-0 max-w-[200px]">
+                    <h4 className="text-sm font-medium text-gray-100 truncate">{p.name}</h4>
+                    {p.app_name ? (
+                      <div className="text-[10px] text-gray-500 font-mono truncate mt-0.5" title="应用英文名">
+                        {p.app_name}
+                      </div>
+                    ) : null}
+                  </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button
                       onClick={e => handleDelete(e, p)}
@@ -2697,12 +3290,36 @@ const FactoryPage: React.FC = () => {
                   </div>
                 )}
                 {status.phase === 'done' && (
-                  <div className="flex items-center gap-2 pt-2 border-t border-dark-border">
+                  <div className="flex items-center gap-2 pt-2 border-t border-dark-border flex-wrap">
                     <span className="text-[10px] text-green-400 flex items-center gap-1">
-                       <CheckCircle className="w-3 h-3" />通过率 {passRate.toFixed(0)}%
+                       <CheckCircle className="w-3 h-3" />
+                       {passRate != null && (hasLiveRate || passRate > 0)
+                         ? `通过率 ${Number(passRate).toFixed(0)}%`
+                         : '暂无测真通过率'}
                     </span>
-                    <button onClick={async (e) => { e.stopPropagation();
-                      try { const r = await projectApi.deployToApp(p.project_id); setSelectedApp((r as any)?.app_url || ''); } catch {} }}
+                    {projectHopRates[p.project_id] != null && (
+                      <span className="text-[10px] text-sky-400" title="Skill hop 有效成功率（跑通晋升）">
+                        hop {(projectHopRates[p.project_id].rate * 100).toFixed(0)}%
+                        ·n={projectHopRates[p.project_id].n}
+                      </span>
+                    )}
+                    <button onClick={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        const r = await projectApi.deployToApp(p.project_id);
+                        const preview =
+                          (r as any)?.preview_url ||
+                          `/app/apps/${p.project_id}?embed=1`;
+                        setSelectedApp(
+                          typeof preview === 'string' && preview.includes('/app/sessions/')
+                            ? `/app/apps/${p.project_id}?embed=1`
+                            : preview
+                        );
+                        toast.success('部署成功，已打开预览');
+                      } catch (err) {
+                        toastGateError(err, '预览失败');
+                      }
+                    }}
                       className="ml-auto text-[10px] px-2 py-1 rounded bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors flex items-center gap-1">
                       <ExternalLink className="w-3 h-3" />预览
                     </button>
@@ -2744,7 +3361,16 @@ const FactoryPage: React.FC = () => {
               className="rounded-lg border border-green-500/30 bg-green-500/5 p-4 cursor-pointer hover:border-green-400/50 transition-colors"
               onClick={() => {
                 const pid = (a.id || a.app_id || '').replace('factory_', '');
-                setSelectedApp(a.app_url || `/app/sessions/${pid}`);
+                const raw = a.app_url || `/app/apps/${pid}`;
+                const base =
+                  typeof raw === 'string' && raw.includes('/app/sessions/')
+                    ? `/app/apps/${pid}`
+                    : raw;
+                setSelectedApp(
+                  base.includes('embed=')
+                    ? base
+                    : `${base}${base.includes('?') ? '&' : '?'}embed=1`
+                );
               }}
             >
               <div className="flex items-start justify-between mb-2">
@@ -2789,7 +3415,14 @@ const FactoryPage: React.FC = () => {
             <div className="flex items-center justify-between p-3 border-b border-dark-border">
               <span className="text-sm text-gray-300">应用预览</span>
               <div className="flex gap-2">
-                <a href={selectedApp} target="_blank" rel="noreferrer" className="text-xs text-primary flex items-center gap-1"><ExternalLink className="w-3 h-3" />新窗口打开</a>
+                <a
+                  href={selectedApp.replace(/([?&])embed=1(&)?/, '$1').replace(/[?&]$/, '') || selectedApp}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-primary flex items-center gap-1"
+                >
+                  <ExternalLink className="w-3 h-3" />新窗口打开
+                </a>
                 <Button variant="ghost" size="sm" onClick={() => setSelectedApp('')}>✕</Button>
               </div>
             </div>

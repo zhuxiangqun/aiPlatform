@@ -24,7 +24,8 @@ skill:
     - "status: enabled"
     - "description:"
     - "triggers:"
-    - "effects:"          # §5.19 副作用声明（registry 注册强制要求，缺失会被拒）          # B2 路由-知识分离：触发短语声明（description 命中率依赖）
+    - "effects:"          # §5.19 副作用声明（registry 注册强制要求，缺失会被拒）
+    - "completion_criterion:"  # F4 / agent_engineering：可检查完成标准必填
   per_field_must_contain:
     input_schema: ["type", "required", "description"]
     output_schema: ["type", "required", "description"]
@@ -49,3 +50,12 @@ agent:
   must_not_contain:
     - "```markdown"
     - "```yaml"
+
+# manifest（agent_manifest.json）由 validate_manifest() 代码校验：
+# mode ∈ {single, multi_agent}；skill_routing / ui_bindings 一致性；
+# multi_agent 必填 multi_agent_rationale + success_metrics + upgrade_criteria（五条 AND）。
+    - "```json"
+
+# manifest（agent_manifest.json）由 validate_manifest() 代码校验：
+# mode ∈ {single, multi_agent}；skill_routing / ui_bindings 一致性；
+# multi_agent 必填 multi_agent_rationale + success_metrics + upgrade_criteria（五条 AND）。

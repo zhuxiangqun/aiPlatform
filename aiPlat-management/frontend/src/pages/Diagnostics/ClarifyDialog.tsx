@@ -72,8 +72,10 @@ const ClarifyDialog: React.FC<ClarifyDialogProps> = ({
         setStructured({ type: s.type || '', root_cause: s.root_cause || '', severity: s.severity || 'medium' });
         setState('done');
       } else {
-        const aiMsg = (data.questions || ['请再详细描述一下']).join('\n');
-        setConversation([...newConv, { role: 'assistant', content: aiMsg }]);
+        const rawQs: string[] = (data.questions || ['请再详细描述一下']).slice(0, 5);
+        const aiMsg = rawQs.map((q: string, i: number) => `${i + 1}. ${q}`).join('\n');
+        const statusLine = `澄清中 · 本轮 ${rawQs.length} 问 · 下一步：回答编号问题`;
+        setConversation([...newConv, { role: 'assistant', content: `${statusLine}\n${aiMsg}` }]);
         setState('idle');
       }
     } catch {

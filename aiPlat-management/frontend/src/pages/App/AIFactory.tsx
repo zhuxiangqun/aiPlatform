@@ -1,4 +1,4 @@
-import React, { useState, Suspense, lazy, useEffect } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Sparkles, MessageCircle, Settings } from 'lucide-react';
 
@@ -7,13 +7,32 @@ const StudioPage = lazy(() => import('../Studio/StudioPage'));
 const UserWorkbench = lazy(() => import('../ValueCenter/UserWorkbench'));
 
 const TABS = [
-  { key: 'quick', label: '快速开始', icon: Sparkles, desc: '选能力、填描述，一键启动' },
-  { key: 'chat', label: '对话式', icon: MessageCircle, desc: '和 AI 聊天澄清需求，自动组队执行' },
-  { key: 'advanced', label: '高级配置', icon: Settings, desc: '手动配置 Agent、阶段、审批流程' },
+  { key: 'quick', label: '快速开始', icon: Sparkles, desc: '描述需求并创建工厂项目' },
+  { key: 'chat', label: '对话式', icon: MessageCircle, desc: '在工厂内澄清需求并组队' },
+  { key: 'advanced', label: '高级配置', icon: Settings, desc: '全量工厂：阶段、审批、部署' },
 ] as const;
+
+/** F1 feature flag factory_ia_v2 — default ~10% bucket; force via localStorage or ?factory_ia_v2=1 */
+export function isFactoryIaV2Enabled(): boolean {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  const q = params.get('factory_ia_v2');
+  if (q === '1' || q === 'true') return true;
+  if (q === '0' || q === 'false') return false;
+  const forced = localStorage.getItem('factory_ia_v2');
+  if (forced === '1' || forced === 'true') return true;
+  if (forced === '0' || forced === 'false') return false;
+  let bucket = localStorage.getItem('factory_ia_v2_bucket');
+  if (bucket == null || bucket === '') {
+    bucket = String(Math.floor(Math.random() * 100));
+    localStorage.setItem('factory_ia_v2_bucket', bucket);
+  }
+  return parseInt(bucket, 10) < 10;
+}
 
 const AIFactory: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const iaV2 = isFactoryIaV2Enabled();
   const savedTab = localStorage.getItem('ai_factory_tab');
   const defaultTab = searchParams.get('tab') || savedTab || 'quick';
   const [tab, setTab] = useState<string>(TABS.find(t => t.key === defaultTab) ? defaultTab : 'quick');
@@ -32,9 +51,8 @@ const AIFactory: React.FC = () => {
 
   return (
     <div style={{ padding: '0' }}>
-      {/* Tab bar */}
       <div style={{
-        display: 'flex', gap: 0, marginBottom: 0,
+        display: 'flex', gap: 0, marginBottom: 0, alignItems: 'center',
         borderBottom: '1px solid #374151', background: '#0f172a',
         position: 'sticky', top: 0, zIndex: 10,
       }}>
@@ -45,6 +63,7 @@ const AIFactory: React.FC = () => {
             <button
               key={t.key}
               onClick={() => handleTabChange(t.key)}
+              title={t.desc}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '12px 20px', border: 'none', background: active ? '#1e293b' : 'transparent',
@@ -59,13 +78,49 @@ const AIFactory: React.FC = () => {
             </button>
           );
         })}
+        <div style={{ marginLeft: 'auto', paddingRight: 16, display: '#64748b', fontSize: 11 }}>
+          {iaV2 ? 'factory_ia_v2: on' : 'factory_ia_v2: off'}
+          {!iaV2 && (
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.setItem('factory_ia_v2', '1');
+                window.location.reload();
+              }}
+              style={{ marginLeft: 8, color: '#93c5fd', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              启用新入口
+            </button>
+          )}
+          {iaV2 && (
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.setItem('factory_ia_v2', '0');
+                window.location.reload();
+              }}
+              style={{ marginLeft: 8, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              回滚旧入口
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Tab content */}
       <Suspense fallback={<div style={{ padding: 40, color: '#94a3b8' }}>加载中...</div>}>
-        {tab === 'quick' && <UserWorkbench />}
-        {tab === 'chat' && <StudioPage />}
-        {tab === 'advanced' && <FactoryPage />}
+        {iaV2 ? (
+          <>
+            {tab === 'quick' && <FactoryPage entryMode="quick" />}
+            {tab === 'chat' && <FactoryPage entryMode="chat" />}
+            {tab === 'advanced' && <FactoryPage entryMode="advanced" />}
+          </>
+        ) : (
+          <>
+            {tab === 'quick' && <UserWorkbench />}
+            {tab === 'chat' && <StudioPage />}
+            {tab === 'advanced' && <FactoryPage entryMode="advanced" />}
+          </>
+        )}
       </Suspense>
     </div>
   );

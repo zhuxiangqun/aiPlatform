@@ -1,0 +1,6 @@
+# T3a: optional skill subscription (empty allow_* = no filter).
+# required_skills on stages are always forced and never filtered out.
+schema_version: "1"
+enabled: true
+allow_tags: []
+allow_roles: []

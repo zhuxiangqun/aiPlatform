@@ -120,6 +120,14 @@ def create_infra_database_client(db_path: str) -> Any:
     import sqlite3
 
     path = db_path
+    if not path:
+        # Align empty path with infra ModelManager / CredentialPool store
+        try:
+            from infra.management.model.paths import execution_db_path
+
+            path = execution_db_path()
+        except Exception:
+            path = os.path.expanduser("~/.aiplat/aiplat_executions.sqlite3")
     if not os.path.isabs(path):
         path = os.path.join(os.getcwd(), path)
 

@@ -28,10 +28,14 @@ pm_hints:
   - "字幕：本期仅软字幕轨（SRT/ASS/内嵌）；硬字幕（烧录画面）须声明不在范围、不承诺 OCR"
   - "【语音/不转写 · BAD】禁止写：主题标签 / 关键要点 / 语义分析 / 语音内容摘要 / 「主题与情感」/ 关键词——无 ASR 文本无法验收"
   - "【语音/不转写 · GOOD】仅允许：语种估计、说话人数量估计、情绪倾向（声学）、有无音轨检测；须标注「声学粗标签/非转写语义」；decisions.speech_pipeline=audio_features_only"
+  - "【语音/内容理解 · GOOD】若产品要「理解视频说了什么」：必须 ASR；decisions.speech_pipeline=asr|hybrid；FR 验收含 transcript + transcript_segments（时间轴）；禁止再写「不转写」"
   - "【语音/不转写】首稿若写 BAD 口径：优先按 GOOD 重写；工厂会用 structural_repairs 整段改写 FR/US 后再放行（洗绿 scrub 单独不可放行）"
   - "语速若写「字/分钟」：须区分有字幕→字/分钟、无字幕→音节密度；不可在无转写时单独承诺字速"
   - "下载失败：仅终止本视频任务并返回 DOWNLOAD_FAILED，不进入本视频后续分析；不阻塞队列中其他任务"
-  - "须写 decisions：url_source_scope、speech_pipeline、subtitle_scope、analysis_sla；constraints 含 performance + security（含 SSRF）"
+  - "优先写 decisions：url_source_scope、speech_pipeline、subtitle_scope、analysis_sla、vision_tag_granularity；constraints 含 performance + security（含 SSRF）"
+  - "若 FR/AC 已写清边界但未列 decisions：工厂 finalize 会按本域 pack 自动补全英文枚举——不要求人工手写金稿；禁止指望 finalize 洗绿语义矛盾（如不转写却要主题摘要）"
+  - "decisions 的 value 必须是英文 snake_case 枚举：url_source_scope=direct_media_url|platform_page|both；speech_pipeline=audio_features_only|asr|hybrid；subtitle_scope=soft_track_only|hard_subtitle_ocr|both；vision_tag_granularity=segment|global_coarse|scene|shot；禁止把中文说明写进 value（说明可写在 FR/范围）"
+  - "画面标签若写「每 N 秒抽帧/时间轴分段」→ vision_tag_granularity=segment；仅整片粗标签且未写分段时才用 global_coarse"
 
 checks:
   # Disclaimer tokens alone must NOT clear the check — leftover 主题/摘要 still fails.
@@ -85,6 +89,62 @@ checks:
             - blob_match: "不(?:做|进行|支持|生成|执行|包含|含)?\\s*(?:语音到文字的?|语音|逐字)?转写|不转写|无转写|非转写|不进行语音到文字|语种|说话人|情绪|语速|静音"
     message: "媒体 PRD 涉及语音分析但未写入 decisions.speech_pipeline（asr | audio_features_only | hybrid）"
 
+  - id: speech_pipeline_not_canonical
+    severity: error
+    when:
+      all:
+        - has_decision: speech_pipeline
+        - not_decision_in:
+            key: speech_pipeline
+            values:
+              - asr
+              - audio_features_only
+              - hybrid
+              - acoustic_only
+              - acoustic_only_coarse_labels
+              - features_only
+    message: "decisions.speech_pipeline 必须是枚举 asr|audio_features_only|hybrid（禁止中文长句作 value）"
+
+  - id: url_source_scope_not_canonical
+    severity: error
+    when:
+      all:
+        - has_decision: url_source_scope
+        - not_decision_in:
+            key: url_source_scope
+            values:
+              - direct_media_url
+              - platform_page
+              - both
+    message: "decisions.url_source_scope 必须是枚举 direct_media_url|platform_page|both（禁止中文长句作 value）"
+
+  - id: subtitle_scope_not_canonical
+    severity: error
+    when:
+      all:
+        - has_decision: subtitle_scope
+        - not_decision_in:
+            key: subtitle_scope
+            values:
+              - soft_track_only
+              - hard_subtitle_ocr
+              - both
+    message: "decisions.subtitle_scope 必须是枚举 soft_track_only|hard_subtitle_ocr|both（禁止中文长句作 value）"
+
+  - id: vision_tag_granularity_not_canonical
+    severity: error
+    when:
+      all:
+        - has_decision: vision_tag_granularity
+        - not_decision_in:
+            key: vision_tag_granularity
+            values:
+              - segment
+              - global_coarse
+              - scene
+              - shot
+    message: "decisions.vision_tag_granularity 必须是枚举 segment|global_coarse|scene|shot（禁止中文长句作 value）"
+
   - id: media_sla_open
     severity: error
     when:
@@ -128,14 +188,17 @@ checks:
         - any:
             - blob_match: "软字幕|字幕轨道"
             - blob_match: "字幕提取"
-        - not_blob_match: "OCR|烧录字幕.{0,16}(?:不支持|本期不做|不在范围)|硬字幕.{0,20}(?:不支持|本期不做|不在范围)|仅(?:支持)?软字幕"
+        - not_blob_match: "OCR|烧录字幕.{0,24}(?:不支持|本期不做|不在(?:本期)?范围)|硬字幕.{0,24}(?:不支持|本期不做|不在(?:本期)?范围)|仅(?:支持)?软字幕|仅提取已有字幕|不做\\s*OCR|不进行\\s*OCR"
+        - not_decision_in:
+            key: subtitle_scope
+            values: [soft_track_only]
     message: "同时提及硬字幕与软字幕/轨提取，但未声明硬字幕需 OCR 或本期仅软字幕；须二选一写清范围"
 
   - id: relative_report_latency_untestable
     severity: error
     when:
       all:
-        - blob_match: "报告.{0,24}(?:不超过|≤|<=).{0,12}(?:分析总耗时|总耗时).{0,8}\\d+\\s*%|报告生成耗时不超过分析总耗时"
+        - blob_match: "报告.{0,40}(?:不超过|≤|<=).{0,40}(?:分析.{0,12}完成时间|分析总耗时|总耗时|之和).{0,12}\\d+\\s*%|报告生成耗时不超过分析总耗时|不超过各分析任务完成时间之和"
     message: "「报告耗时 ≤ 另一动态总耗时的 x%」无稳定测试基准；改为绝对值或删除"
 
   - id: modality_no_conflict_unverifiable
@@ -168,6 +231,106 @@ checks:
     message: "下载失败不得进入本视频的后续分析；应仅终止本任务、不阻塞队列中其他任务"
 
 repairs:
+  # Coerce prose decision values → snake_case enums before other repairs/assess
+  - id: rename_subtitle_source_to_scope
+    when:
+      all:
+        - has_decision: subtitle_source
+        - not_decision: subtitle_scope
+    actions:
+      - rename_decision:
+          from: subtitle_source
+          to: subtitle_scope
+
+  - id: normalize_speech_pipeline_enum
+    when:
+      all:
+        - has_decision: speech_pipeline
+        - not_decision_in:
+            key: speech_pipeline
+            values:
+              - asr
+              - audio_features_only
+              - hybrid
+              - acoustic_only
+              - acoustic_only_coarse_labels
+              - features_only
+    actions:
+      - normalize_decision:
+          key: speech_pipeline
+          allowed:
+            - audio_features_only
+            - asr
+            - hybrid
+            - acoustic_only
+            - acoustic_only_coarse_labels
+            - features_only
+          fallback_if_match:
+            - pattern: "不转写|声学|audio_features|features_only|无\\s*ASR"
+              value: audio_features_only
+            - pattern: "\\basr\\b|语音到文字"
+              value: asr
+            - pattern: "hybrid|混合"
+              value: hybrid
+
+  - id: normalize_url_source_scope_enum
+    when:
+      all:
+        - has_decision: url_source_scope
+        - not_decision_in:
+            key: url_source_scope
+            values: [direct_media_url, platform_page, both]
+    actions:
+      - normalize_decision:
+          key: url_source_scope
+          allowed: [direct_media_url, platform_page, both]
+          fallback_if_match:
+            # Affirmative both only — 「直链…不支持平台」 must NOT become both
+            - pattern: "\\bboth\\b|(?:直链|direct).{0,12}(?:与|和|及|兼|\\+|plus).{0,12}(?:平台|platform)|(?:平台|platform).{0,12}(?:与|和|及|兼|\\+|plus).{0,12}(?:直链|direct)"
+              value: both
+            - pattern: "platform_page|平台页|YouTube|Bilibili|B站|Vimeo"
+              value: platform_page
+            - pattern: "直链|direct_media|仅允许\\s*HTTP|媒体文件|不支持平台"
+              value: direct_media_url
+
+  - id: normalize_subtitle_scope_enum
+    when:
+      all:
+        - has_decision: subtitle_scope
+        - not_decision_in:
+            key: subtitle_scope
+            values: [soft_track_only, hard_subtitle_ocr, both]
+    actions:
+      - normalize_decision:
+          key: subtitle_scope
+          allowed: [soft_track_only, hard_subtitle_ocr, both]
+          fallback_if_match:
+            - pattern: "hard_subtitle|硬字幕.*OCR|OCR.*硬字幕"
+              value: hard_subtitle_ocr
+            - pattern: "soft_track|软字幕|已有字幕|字幕轨道|内嵌字幕|不进行语音转写生成字幕"
+              value: soft_track_only
+
+  - id: normalize_vision_tag_granularity_enum
+    when:
+      all:
+        - has_decision: vision_tag_granularity
+        - not_decision_in:
+            key: vision_tag_granularity
+            values: [segment, global_coarse, scene, shot]
+    actions:
+      - normalize_decision:
+          key: vision_tag_granularity
+          allowed: [segment, global_coarse, scene, shot]
+          fallback_if_match:
+            - pattern: "segment|分段|时间轴|关键帧|每\\s*\\d+\\s*秒"
+              value: segment
+            - pattern: "scene|按场景|每场景"
+              value: scene
+            - pattern: "shot|镜头"
+              value: shot
+            - pattern: "global|全局|整片"
+              value: global_coarse
+
   - id: infer_url_source_scope
     when:
       all:
@@ -270,24 +433,39 @@ repairs:
   - id: clarify_soft_subtitle_only
     when:
       all:
-        - blob_match: "硬字幕|字幕提取|内嵌字幕|字幕流"
-        - not_blob_match: "OCR|硬字幕.{0,20}(?:不支持|本期不做|不在范围)|仅(?:支持)?软字幕|烧录画面"
+        - blob_match: "硬字幕|字幕提取|内嵌字幕|字幕流|软字幕"
+        - not_blob_match: "OCR|硬字幕.{0,24}(?:不支持|本期不做|不在(?:本期)?范围)|仅(?:支持)?软字幕"
+        - not_decision: subtitle_scope
     actions:
       - replace_ac:
           match: "硬字幕"
-          text: "本期仅支持软字幕轨道（SRT/ASS/内嵌轨）提取；硬字幕（烧录画面）不在范围，不承诺 OCR"
+          text: "本期仅支持软字幕轨道（SRT/ASS/内嵌轨）提取；硬字幕（烧录画面）不在本期范围，不承诺 OCR"
       - append_ac:
           prefer_fr_match: "字幕"
-          text: "本期仅支持软字幕轨道（SRT/ASS/内嵌轨）提取；硬字幕（烧录画面）不在范围，不承诺 OCR"
+          text: "本期仅支持软字幕轨道（SRT/ASS/内嵌轨）提取；硬字幕（烧录画面）不在本期范围，不承诺 OCR"
       - set_decision:
           key: subtitle_scope
           value: soft_track_only
+
+  # Prefer segment when interval / timeline sampling is stated (before global_coarse default).
+  - id: infer_vision_segment_from_interval
+    when:
+      all:
+        - not_decision: vision_tag_granularity
+        - blob_match: "每\\s*\\d+\\s*秒.{0,16}(?:一帧|抽帧|采样|关键帧)|时间轴(?:分段|标签)|分段(?:关键帧|标签)|镜头级"
+    actions:
+      - set_decision:
+          key: vision_tag_granularity
+          value: segment
+      - append_ac:
+          prefer_fr_match: "画面|标签|场景"
+          text: "画面标签按时间轴分段输出（含起止时间或帧时间戳）；默认按抽帧间隔聚合，报告须标明分段粒度"
 
   - id: ensure_vision_granularity
     when:
       all:
         - blob_match: "画面标签|场景标签|≥\\s*3\\s*个.{0,6}标签"
-        - not_blob_match: "分段|时间区间|≤\\s*60\\s*秒|全局(?:粗粒度)?标签|整片标签"
+        - not_blob_match: "分段|时间区间|≤\\s*60\\s*秒|全局(?:粗粒度)?标签|整片标签|每\\s*\\d+\\s*秒.{0,16}(?:一帧|抽帧|采样|关键帧)|时间轴|镜头级"
         - not_decision: vision_tag_granularity
     actions:
       - set_decision:
@@ -305,6 +483,16 @@ repairs:
       - set_decision:
           key: analysis_sla
           value: "P95 ≤ 1.5× video duration"
+
+  - id: ensure_subtitle_scope
+    when:
+      all:
+        - blob_match: "软字幕|字幕提取|字幕轨|硬字幕"
+        - not_decision: subtitle_scope
+    actions:
+      - set_decision:
+          key: subtitle_scope
+          value: soft_track_only
 
   - id: ensure_media_constraints
     when:

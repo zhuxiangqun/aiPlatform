@@ -11,6 +11,7 @@ pm_hints:
   - "定稿 PRD 的 constraints 须为结构化对象，至少含 performance 与 security（非空）"
   - "互相矛盾或不可实现的 AC 必须先改写再输出 PRD_READY；不得指望事后门禁「洗绿」放行"
   - "若注入的域约束含 BAD/GOOD 反例：首稿必须对齐 GOOD；BAD 口径会阻断 PRD_READY（洗绿不可替代首稿）"
+  - "定稿路径：有 ≥1 条可解析 FR+AC 即可；缺 decisions/constraints 时由域 pack finalize 自动补全——不要求人工手写金稿；语义矛盾仍须首稿写对"
 
 checks:
   - id: ssrf_guard_missing

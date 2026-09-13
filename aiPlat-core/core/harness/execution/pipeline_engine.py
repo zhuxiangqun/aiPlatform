@@ -711,7 +711,30 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
         return False
 
+    @staticmethod
+    def _is_reusable_stage_artifact(existing: Any) -> bool:
+        """True when an existing stage artifact should skip re-execution.
 
+        - ``source=confirmed_prd`` (or other ``confirmed_*``): always reusable
+        - Multi-field dict with non-empty ``raw_output`` / structured body: reusable
+        - Bare ``{raw_output}`` only: not reusable (often a stub / reject feedback)
+        """
+        if existing in (None, "", {}, []):
+            return False
+        if not isinstance(existing, dict):
+            return bool(existing)
+        if existing.get("loop_state") == "error":
+            return False
+        src = str(existing.get("source") or "")
+        if src.startswith("confirmed_") or src.startswith("frozen_"):
+            return True
+        keys = set(existing.keys())
+        if keys <= {"raw_output", "elapsed_sec"}:
+            # LLM stage output without confirmed seed — allow overwrite / re-run
+            return False
+        if existing.get("raw_output") or existing.get("functional_requirements") or existing.get("title"):
+            return True
+        return len(keys) > 0
 
     @staticmethod
 
@@ -2335,35 +2358,148 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 self._state["_current_stage_idx"] = idx
                 stage = self._config.stages[idx]
 
+                # C1/C2: input gate for event-driven run() path (bypasses _dispatch_execute)
+                try:
+                    from core.harness.execution.stage_handoff import (
+                        apply_gate_failure,
+                        gate_check,
+                        is_schema_gate_pause,
+                        try_resume_schema_gate,
+                    )
+                    _in = gate_check(stage, self._state, phase="input")
+                    if not _in.get("ok") and not _in.get("skipped"):
+                        _paused = apply_gate_failure(
+                            self._state, stage, _in, stages=self._config.stages
+                        )
+                        if self._persist_callback:
+                            self._persist_callback(dict(self._state))
+                        if _paused or self._state.get("phase") == "paused":
+                            # C2: approve after human patch → re-check; never skip stage
+                            _input_gate_cleared = False
+                            while not self._shutdown_requested:
+                                await self._wait_for_hitl()
+                                if self._reject_feedback:
+                                    self._invalidate_downstream(idx)
+                                    break
+                                if is_schema_gate_pause(self._state):
+                                    _res = try_resume_schema_gate(
+                                        self._state,
+                                        stage,
+                                        stages=self._config.stages,
+                                    )
+                                    if self._persist_callback:
+                                        self._persist_callback(dict(self._state))
+                                    if _res.get("ok"):
+                                        _input_gate_cleared = True
+                                        break
+                                    continue
+                                # Unexpected approve without schema marker — do not skip
+                                _input_gate_cleared = True
+                                break
+                            if self._reject_feedback:
+                                continue
+                            if str(self._state.get("phase") or "") == "failed":
+                                break
+                            if not _input_gate_cleared:
+                                continue
+                            # cleared → fall through and execute this stage
+                        elif str(self._state.get("phase") or "") == "failed":
+                            break
+                        elif _in.get("action"):
+                            break
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "run() input gate skipped", exc_info=True
+                    )
+
                 # Execute via the same dispatcher _run_stages_from uses
                 if getattr(stage, 'skill_name', ''):
                     self._state = await self._run_stage_skill(stage, self._state)
                 else:
                     self._state = await self._exec_stage(stage, self._state)
 
-                # Check for HITL pause
+                # C1: output gate after direct skill/exec (event-driven path)
+                try:
+                    from core.harness.execution.stage_handoff import (
+                        apply_gate_failure,
+                        gate_check,
+                        write_stage_handoff,
+                    )
+                    # Ensure handoff exists before handoff_required check
+                    write_stage_handoff(
+                        self._state,
+                        stage=stage,
+                        artifact_key=str(getattr(stage, "output_artifact", "") or ""),
+                        stages=self._config.stages,
+                    )
+                    _out = gate_check(stage, self._state, phase="output")
+                    if not _out.get("ok") and not _out.get("skipped"):
+                        apply_gate_failure(
+                            self._state, stage, _out, stages=self._config.stages
+                        )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "run() output gate skipped", exc_info=True
+                    )
+
+                # Check for HITL pause (stage.hitl review OR C2 schema_gate)
                 if self._state.get("phase") == "paused":
                     if self._persist_callback:
                         self._persist_callback(dict(self._state))
 
-                    # v3.3: Wait for HITL — event (local) OR DB poll (cross-worker)
                     _log_engine = __import__("logging").getLogger("pipeline_engine")
                     _log_engine.warning("v3.3 HITL paused: stage=%s idx=%d",
                         self._state.get("_hitl_stage_id", "?"), idx)
-                    await self._wait_for_hitl()
 
-                    # 🚀  Wake up: check if reject or approve
-                    if self._reject_feedback:
-                        _log_engine.warning("v3.3 HITL rejected: invalidating from idx=%d", idx)
-                        self._invalidate_downstream(idx)
-                        # idx stays the same — re-run current stage
-                    else:
-                        idx += 1  # Approved — move to next stage
+                    from core.harness.execution.stage_handoff import (
+                        is_schema_gate_pause,
+                        try_resume_schema_gate,
+                    )
+                    _schema_out_pause = is_schema_gate_pause(self._state)
+                    while not self._shutdown_requested:
+                        await self._wait_for_hitl()
+                        if self._reject_feedback:
+                            _log_engine.warning(
+                                "v3.3 HITL rejected: invalidating from idx=%d", idx
+                            )
+                            self._invalidate_downstream(idx)
+                            # idx stays — re-run current stage
+                            break
+                        if _schema_out_pause or is_schema_gate_pause(self._state):
+                            # C2: approve after patching output → re-validate before advance
+                            _res = try_resume_schema_gate(
+                                self._state,
+                                stage,
+                                stages=self._config.stages,
+                            )
+                            if self._persist_callback:
+                                self._persist_callback(dict(self._state))
+                            if _res.get("ok"):
+                                idx += 1
+                                break
+                            _schema_out_pause = True
+                            continue
+                        # Normal stage.hitl approve → next stage
+                        idx += 1
+                        break
+                elif str(self._state.get("phase") or "") == "failed":
+                    break
                 else:
                     idx += 1
 
             if not self._shutdown_requested:
                 self._state["phase"] = "done"
+                # F5a: generation bloat metrics (LOC / new_deps / new_files)
+                try:
+                    from core.harness.execution.factory_bloat_metrics import write_bloat_metrics
+                    _base = self._state.get("_bloat_baseline")
+                    if not isinstance(_base, dict):
+                        _base = None
+                    write_bloat_metrics(self._state, baseline=_base)
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "write_bloat_metrics skipped", exc_info=True
+                    )
 
         except asyncio.CancelledError:
             self._state["phase"] = "failed"
@@ -2375,6 +2511,18 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         finally:
             if self._state.get("phase") not in ("done", "failed"):
                 self._state["phase"] = "done"
+                try:
+                    from core.harness.execution.factory_bloat_metrics import write_bloat_metrics
+                    write_bloat_metrics(
+                        self._state,
+                        baseline=self._state.get("_bloat_baseline")
+                        if isinstance(self._state.get("_bloat_baseline"), dict)
+                        else None,
+                    )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "write_bloat_metrics in finally skipped", exc_info=True
+                    )
             self._state["finished_at"] = __import__("datetime").datetime.now().isoformat()
             if self._persist_callback:
                 self._persist_callback(dict(self._state))
@@ -3015,14 +3163,26 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 if remaining > 0:
 
                     total_budget = getattr(self._config, 'max_tokens_per_run', 100000)
+                    try:
+                        total_budget = int(total_budget) if not isinstance(total_budget, dict) else 100000
+                    except (TypeError, ValueError):
+                        total_budget = 100000
 
-                    used = int(state.get("tokens_used", 0) or 0)
+                    raw_used = state.get("tokens_used", 0)
+                    try:
+                        used = int(raw_used) if not isinstance(raw_used, dict) else int(
+                            (raw_used or {}).get("total_tokens")
+                            or (raw_used or {}).get("total")
+                            or 0
+                        )
+                    except (TypeError, ValueError):
+                        used = 0
 
                     expected_used = total_budget * (completed / stage_count)
 
                     if used < expected_used:
 
-                        bonus = (expected_used - used) // remaining
+                        bonus = int((expected_used - used) // remaining)
 
                         current_bonus = int(state.get("_tokens_bonus", 0) or 0)
 
@@ -4071,6 +4231,50 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         _desc = state.get("description", "")
         if _desc:
             _context += f"## description\n{_desc}\n\n"
+        # Rebuild/start: inject dialogue + confirmed PRD baseline so PM regenerates
+        # in-scope (overwrite OK) instead of inventing capabilities from a short blurb.
+        _hist = state.get("pm_chat_history") or []
+        if isinstance(_hist, list) and _hist:
+            _hist_lines: List[str] = []
+            for _m in _hist[-40:]:
+                if not isinstance(_m, dict):
+                    continue
+                _c = str(_m.get("content") or "").strip()
+                if not _c:
+                    continue
+                _hist_lines.append(f"{_m.get('role', 'user')}: {_c[:3000]}")
+            if _hist_lines:
+                _context += (
+                    "## pm_chat_history (authoritative user requirement dialogue)\n"
+                    + "\n".join(_hist_lines)
+                    + "\n\n"
+                )
+        _pd = state.get("prd_data")
+        if isinstance(_pd, dict) and (
+            _pd.get("title") or _pd.get("functional_requirements")
+        ):
+            _base = {
+                k: _pd.get(k)
+                for k in (
+                    "title",
+                    "description",
+                    "functional_requirements",
+                    "user_stories",
+                    "decisions",
+                    "constraints",
+                    "scope",
+                    "open_questions",
+                )
+                if _pd.get(k) is not None
+            }
+            _context += (
+                "## confirmed_prd_baseline\n"
+                "Rebuild/regenerate must cover this scope. "
+                "Do NOT add features, FRs, ACs, or modalities absent from "
+                "pm_chat_history and this baseline "
+                "(e.g. do not invent OCR/ASR/transcription/extra modules).\n"
+                f"{_json.dumps(_base, ensure_ascii=False, indent=2)[:12000]}\n\n"
+            )
         # Canonical app_name — established at project creation, reused by all stages.
         # Downstream stages MUST use this value instead of generating their own name.
         _app_name = state.get("app_name", "")
@@ -4096,19 +4300,78 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
             if not _key or _key == getattr(stage, 'output_artifact', ''):
                 continue  # skip own output
             _v = state.get(_key, {})
-            if isinstance(_v, dict) and _v.get("raw_output"):
-                import json as _ctx_json
-                if _key in _input_artifacts:
-                    # Critical input — include full content, don't summarize
+            if not (isinstance(_v, dict) and (
+                _v.get("raw_output")
+                or _v.get("functional_requirements")
+                or _v.get("title")
+                or _v.get("components")
+            )):
+                continue
+            import json as _ctx_json
+            if _key in _input_artifacts:
+                # C3: prefer structured fields over prose dump
+                try:
+                    from core.harness.execution.stage_handoff import (
+                        format_structured_artifact_block,
+                    )
+                    _blk = format_structured_artifact_block(_key, _v)
+                    if _blk:
+                        _context += _blk
+                        continue
+                except Exception:
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+                if _v.get("raw_output"):
                     _context += f"## {_key}\n{str(_v['raw_output'])}\n\n"
-                else:
-                    _summary = self._summarize_artifact(_v)
-                    _context += f"## {_key} (summary)\n{_ctx_json.dumps(_summary, ensure_ascii=False)[:2000]}\n\n"
+            else:
+                _summary = self._summarize_artifact(_v)
+                _context += f"## {_key} (summary)\n{_ctx_json.dumps(_summary, ensure_ascii=False)[:2000]}\n\n"
 
-        # Inject architecture_mode into context (config-driven, drives architecture_design output shape)
-        _arch_mode = getattr(stage, 'architecture_mode', '') or ''
-        if _arch_mode:
-            _context = f"## architecture_mode\n{_arch_mode}\n\n" + _context
+        # Inject architecture_mode into context (config-driven; fallback from sibling stages)
+        try:
+            from core.harness.execution.factory_artifact_sanitize import (
+                resolve_architecture_mode,
+            )
+            _arch_mode = resolve_architecture_mode(
+                stage, state, self._config.stages if self._config else None
+            )
+        except Exception:
+            _arch_mode = getattr(stage, 'architecture_mode', '') or state.get("architecture_mode") or "agent"
+        state["architecture_mode"] = _arch_mode
+        _context = f"## architecture_mode\n{_arch_mode}\n\n" + _context
+
+        # Config-driven: quality_gate.inject_skill_routing_context (+ optional routing_artifact)
+        _gate_ctx = getattr(stage, "quality_gate", None) or {}
+        if _gate_ctx.get("inject_skill_routing_context"):
+            try:
+                from core.harness.execution.app_page_skill_inject import (
+                    skill_routing_context_block,
+                    speech_pipeline_context_block,
+                )
+                from core.harness.execution.factory_artifact_sanitize import pick_routing_blob
+                _aa = pick_routing_blob(state, stage)
+                if _aa is None:
+                    _rk = _gate_ctx.get("routing_artifact")
+                    _aa = state.get(_rk) if _rk else None
+                _blk = skill_routing_context_block(_aa or {})
+                if _blk:
+                    _context = _blk + "\n\n" + _context
+                # speech pipeline hint: config key speech_source_artifact (no hardcoded artifact name)
+                _spk = _gate_ctx.get("speech_source_artifact")
+                _sp_src = state.get(_spk) if _spk else None
+                if _sp_src is None:
+                    for _v in state.values():
+                        if isinstance(_v, dict) and (
+                            _v.get("decisions") or _v.get("raw_output") or _v.get("title")
+                        ):
+                            _sp_src = _v
+                            break
+                _sp_blk = speech_pipeline_context_block(_sp_src)
+                if _sp_blk:
+                    _context = _sp_blk + "\n\n" + _context
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "skill_routing context inject skipped", exc_info=True
+                )
 
         # ── L2: imported existing-code context injection (generic, config-driven) ──
         # Enabled per-stage via PipelineStageConfig.inject_imported_context. Engine only
@@ -4386,10 +4649,44 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 self._persist_callback(dict(state))  # immediate: frontend sees "completed"
         _result = _result.replace("```json", "").replace("```", "").strip()
 
+        # Drop LLM reasoning preambles (步骤1–4 / 方案比较) before storage
+        try:
+            from core.harness.execution.factory_artifact_sanitize import (
+                strip_reasoning_preamble,
+            )
+
+            _result = strip_reasoning_preamble(_result)
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "strip_reasoning_preamble skipped", exc_info=True
+            )
+
         # ── Quality gate: configurable per-stage output validation ──
         _gate = getattr(stage, 'quality_gate', {}) or {}
         _min_len = int(_gate.get("min_output_length", 100))
         if not _result or len(_result) < _min_len:
+            _artifact_key = getattr(stage, 'output_artifact', '') or _skill_name
+            if _artifact_key:
+                state[_artifact_key] = {
+                    "raw_output": _result or "",
+                    "elapsed_sec": round(_time.time() - _t0, 2),
+                    "status": "failed",
+                }
+                try:
+                    from core.harness.execution.stage_handoff import write_stage_handoff
+                    write_stage_handoff(
+                        state,
+                        stage=stage,
+                        artifact_key=_artifact_key,
+                        artifact=state.get(_artifact_key),
+                        status="failed",
+                        error=f"output shorter than quality_gate.min_output_length={_min_len}",
+                        stages=self._config.stages if self._config else None,
+                    )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "write_stage_handoff on short output skipped", exc_info=True
+                    )
             return state
 
         # ── 4. Store result ──
@@ -4398,10 +4695,57 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
         state[_artifact_key] = {"raw_output": _result, "elapsed_sec": _elapsed}
 
+        # Config-driven artifact sanitizers (quality_gate / architecture_mode / test_execution_mode)
+        try:
+            from core.harness.execution.factory_artifact_sanitize import (
+                apply_stage_output_sanitizers,
+            )
+            _result, _art, _smeta = apply_stage_output_sanitizers(
+                stage=stage,
+                state=state,
+                result=_result,
+                elapsed_sec=_elapsed,
+            )
+            state[_artifact_key] = _art
+            if _smeta:
+                logging.getLogger("pipeline_engine").warning(
+                    "stage sanitize keys=%s", list(_smeta.keys())
+                )
+                if isinstance(state.get(_artifact_key), dict):
+                    state[_artifact_key]["_sanitize_meta"] = _smeta
+            # F3: envelope as soon as artifact is material (UI can poll mid-stage)
+            try:
+                from core.harness.execution.stage_handoff import write_stage_handoff
+                write_stage_handoff(
+                    state,
+                    stage=stage,
+                    artifact_key=_artifact_key,
+                    artifact=state.get(_artifact_key),
+                    sanitize_meta=_smeta if isinstance(_smeta, dict) else None,
+                    status="ok",
+                    stages=self._config.stages if self._config else None,
+                )
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "write_stage_handoff after sanitize skipped", exc_info=True
+                )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "apply_stage_output_sanitizers skipped", exc_info=True
+            )
+
+
         # Write artifact to filesystem (authoritative storage; SQLite is cache)
         _out_dir = state.get("output_dir", "")
-        if _out_dir and _artifact_key and _result and not _artifact_key.startswith("_"):
-            self._write_artifact_file(_out_dir, _artifact_key, _result)
+        if _out_dir and _artifact_key and not str(_artifact_key).startswith("_"):
+            _to_write: Any = _result
+            _stored = state.get(_artifact_key)
+            if isinstance(_stored, dict) and _stored.get("raw_output"):
+                _to_write = _stored.get("raw_output")
+            elif isinstance(_stored, (dict, list)) and not _to_write:
+                _to_write = _stored
+            if _to_write:
+                self._write_artifact_file(_out_dir, _artifact_key, _to_write)
 
         # ── Stage trace: structured metadata for reasoning visibility ──
         # agent backend doesn't set _response — default to None for safe trace access
@@ -4639,17 +4983,22 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         return state
 
     @staticmethod
-    @staticmethod
-    def _write_artifact_file(output_dir: str, artifact_key: str, content: str) -> str:
+    def _write_artifact_file(output_dir: str, artifact_key: str, content: Any) -> str:
         """Write pipeline artifact to filesystem. Returns file path."""
         import os as _os2
-        if not output_dir or not artifact_key or not content:
+        if not output_dir or not artifact_key or content is None or content == "":
             return ""
         try:
             _os2.makedirs(output_dir, exist_ok=True)
             path = _os2.path.join(output_dir, f"{artifact_key}.json")
+            if isinstance(content, (dict, list)):
+                body = json.dumps(content, ensure_ascii=False, indent=2)
+            else:
+                body = str(content)
+            if not body.strip():
+                return ""
             with open(path, "w", encoding="utf-8") as f:
-                f.write(content)
+                f.write(body)
             return path
         except Exception:
             return ""  # best-effort; SQLite still has the truncated version
@@ -5125,11 +5474,12 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         # Don't skip if the existing artifact is an error state
         is_error_state = isinstance(existing, dict) and existing.get("loop_state") == "error"
 
-        if existing and not is_error_state and (not isinstance(existing, dict) or len(existing) > 0):
-
-            has_raw_only = isinstance(existing, dict) and set(existing.keys()) == {"raw_output"}
-
-            if not has_raw_only and not (stage.retry_target_id and not self._check_done(stage, local_state)):
+        if (
+            existing
+            and not is_error_state
+            and PipelineEngine._is_reusable_stage_artifact(existing)
+            and not (stage.retry_target_id and not self._check_done(stage, local_state))
+        ):
 
                 graph_trace.append({"node": stage.id, "status": "skipped", "reason": f"{stage.output_artifact}_exists", "ts": time.time()})
 

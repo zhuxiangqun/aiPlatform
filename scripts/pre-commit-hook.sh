@@ -283,12 +283,12 @@ if [ -z "${SKIP_ENTITY_GUARD:-}" ]; then
         fi
     done
 
-    # P3: SKILL.md 目录白名单
+    # P3: SKILL.md 目录白名单 — engine / workspace_seeds (skills + factory sanitize templates) / ~/.aiplat
     NEW_SKILLS=$(git diff --cached --name-only --diff-filter=A | grep 'SKILL\.md$' || true)
     for f in $NEW_SKILLS; do
-        if ! echo "$f" | grep -qE '(engine/skills/|\.aiplat/skills/)'; then
+        if ! echo "$f" | grep -qE '(engine/skills/|workspace_seeds/skills/|workspace_seeds/factory_sanitize/|\.aiplat/skills/)'; then
             echo "  ❌ New SKILL.md outside allowed directories: $f"
-            echo "     → Allowed: core/engine/skills/ or ~/.aiplat/skills/"
+            echo "     → Allowed: core/engine/skills/, workspace_seeds/skills/, workspace_seeds/factory_sanitize/, or ~/.aiplat/skills/"
             ENTITY_ISSUES=1
         fi
     done

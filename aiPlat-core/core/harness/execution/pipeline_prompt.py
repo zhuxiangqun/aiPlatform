@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import logging
 import os
 import re
 from pathlib import Path
@@ -76,6 +77,21 @@ class PipelinePromptMixin:
                 secondary_chars = int(os.getenv("AIPLAT_ARTIFACT_SUMMARY_SECONDARY_CHARS", "2000"))
 
                 max_chars = primary_chars if is_first else secondary_chars
+
+                # C3: when structured fields exist, prefer them in the summary payload
+                if isinstance(val, dict):
+                    try:
+                        from core.harness.execution.stage_handoff import extract_structured_fields
+                        _structured = extract_structured_fields(val)
+                        if _structured:
+                            ctx[artifact_name] = dict(_structured)
+                            if isinstance(val.get("constraints"), list) and val.get("constraints"):
+                                parts = "\n".join(f"- {c}" for c in val["constraints"])
+                                if parts:
+                                    constraint_text = f"\n## Constraints (from {artifact_name})\n{parts}"
+                            continue
+                    except Exception:
+                        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
                 ctx[artifact_name] = self._summarize_artifact(val, max_chars=max_chars)
 
@@ -295,32 +311,29 @@ class PipelinePromptMixin:
 
 
 
-        # Ponytail: Lazy Senior Developer constraint (via PONytail_MODE env)
-
+        # Ponytail / coding intensity overlay (B1–B2; no full SKILL.md dump)
         ponytail_context = ""
-
-        ponytail_mode = os.getenv("PONytail_MODE", "full").lower()
-
-        if ponytail_mode != "off":
-
-            try:
-
-                import os as _os
-
-                skill_path = _os.path.expanduser("~/.aiplat/skills/ponytail-lazy/SKILL.md")
-
-                if _os.path.exists(skill_path):
-
-                    with open(skill_path, "r") as f:
-
-                        body = f.read()
-
-                    ponytail_context = f"\n## Ponytail: Lazy Senior Developer ({ponytail_mode} mode)\n{body}\n"
-
-            except Exception as e:
-
-                logging.warning(str(e), exc_info=True)
-
+        try:
+            from core.harness.utils.coding_intensity import (
+                ponytail_overlay_for_intensity,
+                resolve_ponytail_mode,
+            )
+            ponytail_mode = resolve_ponytail_mode()
+            if ponytail_mode != "off":
+                # Prefer pipeline/project intensity when present on stage/state later
+                ponytail_context = "\n" + ponytail_overlay_for_intensity(ponytail_mode)
+        except Exception as e:
+            logging.warning(str(e), exc_info=True)
+            ponytail_mode = os.getenv("PONYTAIL_MODE") or os.getenv("PONytail_MODE", "full")
+            if str(ponytail_mode).lower() != "off":
+                try:
+                    skill_path = os.path.expanduser("~/.aiplat/skills/ponytail-lazy/SKILL.md")
+                    if os.path.exists(skill_path):
+                        with open(skill_path, "r") as f:
+                            body = f.read()
+                        ponytail_context = f"\n## Ponytail: Lazy Senior Developer ({ponytail_mode} mode)\n{body}\n"
+                except Exception as e2:
+                    logging.warning(str(e2), exc_info=True)
 
 
         # Output format instruction for code-generating stages
@@ -745,7 +758,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
 
         # 3) JSON {"files": [...]} format (fallback)
 
-        json_str = PipelineEngine._extract_json(text)
+        json_str = PipelinePromptMixin._extract_json(text)
 
         if json_str:
 
@@ -787,9 +800,9 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
 
         return files
 
-    def _parse_output(raw: str) -> AgentOutput:
+    def _parse_output(self, raw: str) -> AgentOutput:
 
-        json_str = PipelineEngine._extract_json(raw)
+        json_str = PipelinePromptMixin._extract_json(raw)
 
         if json_str:
 

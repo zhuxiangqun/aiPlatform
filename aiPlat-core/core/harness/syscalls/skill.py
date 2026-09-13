@@ -124,13 +124,19 @@ async def sys_skill_call(
 
     )
 
-    # Config-driven: which coding profiles require contract gate enforcement.
-
-    strict_profiles = set(
-
-        os.getenv("AIPLAT_STRICT_CODING_PROFILES", "karpathy_v1").split(",")
-
-    )
+    # B0–B2: lite/full/ultra (+ karpathy_v1 alias) keep contract gates; env can override list
+    try:
+        from core.harness.utils.coding_intensity import is_strict_coding_profile
+        _profile_is_strict = is_strict_coding_profile(coding_profile)
+    except Exception:
+        strict_profiles = {
+            x.strip().lower()
+            for x in os.getenv(
+                "AIPLAT_STRICT_CODING_PROFILES", "karpathy_v1,full,lite,ultra"
+            ).split(",")
+            if x.strip()
+        }
+        _profile_is_strict = coding_profile in strict_profiles
 
     # Approval layering policy: tenant policy override -> env fallback
 
@@ -795,7 +801,7 @@ async def sys_skill_call(
 
                 require_contract = os.getenv("AIPLAT_CODING_POLICY_REQUIRE_CONTRACT", "true").lower() in ("1", "true", "yes", "y")
 
-                if require_contract and coding_profile in strict_profiles:
+                if require_contract and _profile_is_strict:
 
                     cfg = getattr(skill, "_config", None)
 
@@ -1503,7 +1509,7 @@ async def sys_skill_call(
 
         try:
 
-            if coding_profile in strict_profiles and bool(getattr(result, "success", True)):
+            if _profile_is_strict and bool(getattr(result, "success", True)):
 
                 cfg = getattr(skill, "_config", None)
 

@@ -669,7 +669,7 @@ git diff --stat HEAD | grep "+" | grep -E "new file|create mode" | wc -l
 
 **守卫**：`architecture_guard.sh §97`（`scripts/check_generated_artifact_wiring.py`）——**每个平台能力族**（governance 模块 + apps/* + builder + kb，当前 17 个）必须有 CAPABILITIES 条目且含"生成物"标注，违反即阻断（CI 强制）。
 
-**现状**（2026-08-27 标注）：生成物适用——builder（制造者/已接线）、apps/eval（runs_eval 已接线）、governance experience_feedback（**已接线**：conformance 拒绝自动登记 + runtime_governance.md sidecar）、agent_messages（**已接线**：生成 agent 部署注册成功自动上线消息总线）、daemon_jobs（**已接线**：生成 app 运行时经 daemon_jobs 托管启动——builder/app_runtime.py detect→launch→health，生成 app 长任务托管 + 自动测试前置闭环）；生成物不适用——kb（生成 agent 运行时知识检索由 core 全局 syscall sys_kb_retrieve 平台横切强制执行，生成物无需自建检索路径）、质量总线 Quality Bus（平台横切质量聚合，生成应用质量评测闭环由 apps/eval runs_eval 已接线强制执行）、governance eval_observability/audit/quota/rate_limit、apps/fde/learning/misc/ontology_editor/prompt/value/workbench（平台内部能力）。
+**现状**（2026-08-27 标注，2026-09 Phase C 修正）：生成物适用——builder（制造者/已接线）、apps/eval（runs_eval 已接线）、governance experience_feedback（**已接线**：conformance 拒绝自动登记 + runtime_governance.md sidecar）、agent_messages（**已接线·身份层**：生成 agent 部署注册上线消息总线；**不是**运行时契约协同主路径——协同走 Pipeline + handoff / skill_routing + schema 门 + HITL）、daemon_jobs（**已接线**：生成 app 运行时经 daemon_jobs 托管启动——builder/app_runtime.py detect→launch→health，生成 app 长任务托管 + 自动测试前置闭环）；生成物不适用——kb（生成 agent 运行时知识检索由 core 全局 syscall sys_kb_retrieve 平台横切强制执行，生成物无需自建检索路径）、质量总线 Quality Bus（平台横切质量聚合，生成应用质量评测闭环由 apps/eval runs_eval 已接线强制执行）、governance eval_observability/audit/quota/rate_limit、apps/fde/learning/misc/ontology_editor/prompt/value/workbench（平台内部能力）。
 
 **验证命令**：
 ```bash
