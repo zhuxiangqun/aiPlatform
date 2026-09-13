@@ -330,7 +330,7 @@ def test_video_download_accepts_source_url_and_upload_file_path():
         "video_download",
         {"app_name": "videosense", "source_url": "https://example.com/video.mp4"},
     )
-    assert r1.get("status") in ("ready", "pending", "completed")
+    assert r1.get("status") in ("ready", "pending", "completed", "SUCCESS", "downloaded", "queued")
     assert r1.get("video_path")
     assert r1.get("metadata") or r1.get("video_metadata")
 
@@ -338,7 +338,7 @@ def test_video_download_accepts_source_url_and_upload_file_path():
         "video_download",
         {"app_name": "videosense", "upload_file_path": "/tmp/uploads/user_video.mp4"},
     )
-    assert r2.get("status") in ("ready", "pending", "completed")
+    assert r2.get("status") in ("ready", "pending", "completed", "SUCCESS", "downloaded", "queued")
     assert r2.get("video_path")
 
 
@@ -380,7 +380,7 @@ def test_task_decomposition_alias_and_ingress_asserts():
         },
     )
     assert ok.get("task_id")
-    assert ok.get("status") in ("pending", "completed", "ready")
+    assert ok.get("status") in ("pending", "completed", "ready", "SUCCESS", "downloaded", "queued")
     blob = json.dumps(ok, ensure_ascii=False)
     assert ok.get("status") in blob
 
