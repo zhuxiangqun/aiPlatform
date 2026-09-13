@@ -68,6 +68,10 @@ FRAMEWORK_KEYS = {
     "imported_repo",
     # P2-A1 event-sourced framework keys (pipeline_run_store event fold view)
     "event_derived", "state_event_consistent",
+    # Generic pipeline / schema-gate / factory mirrors (also in engine_state_keys.txt OK)
+    "error_message",
+    "architecture_mode",
+    "prd_data",
 }
 
 

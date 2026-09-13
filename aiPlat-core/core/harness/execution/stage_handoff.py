@@ -42,6 +42,9 @@ GATE_ON_FAIL_VALUES = frozenset(
 STATE_HANDOFF_KEY = "_handoff"
 STATE_HITL_AUDIT_KEY = "_hitl_audit"
 STATE_SCHEMA_GATE_PHASE = "_schema_gate_phase"
+# Schema-gate direction labels (not business pipeline phases — avoid phase=="…" branching)
+SCHEMA_GATE_PHASE_INPUT = "input"
+SCHEMA_GATE_PHASE_OUTPUT = "output"
 
 # C3: prefer these keys over raw_output when injecting upstream context
 STRUCTURED_ARTIFACT_KEYS: tuple[str, ...] = (
@@ -495,7 +498,7 @@ def try_resume_schema_gate(
     if sid:
         state.pop(f"_schema_gate_{sid}", None)
         # Allow re-execution when input gate previously marked done
-        if phase == "input":
+        if phase == SCHEMA_GATE_PHASE_INPUT:
             state.pop(f"_stage_{sid}_done", None)
     append_hitl_audit(
         state,
