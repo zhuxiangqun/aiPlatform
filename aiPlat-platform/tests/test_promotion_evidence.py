@@ -34,7 +34,7 @@ def test_get_promotion_status_uses_last_test_report(tmp_path, monkeypatch):
                 "projects": [
                     {
                         "project_id": pid,
-                        "name": "promo-ev",
+                        "name": "promo_ev_case",
                         "last_test_report": {
                             "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
                             "test_passed": True,
@@ -54,9 +54,13 @@ def test_get_promotion_status_uses_last_test_report(tmp_path, monkeypatch):
         encoding="utf-8",
     )
 
-    from builder.builder_project_service import BuilderProjectService
+    # Module-level paths are resolved at import time — patch them for CI.
+    import builder.builder_project_service as bps
 
-    svc = BuilderProjectService(team_service=None)
+    monkeypatch.setattr(bps, "_PROJECTS_FILE", str(projects_file))
+    monkeypatch.setattr(bps, "_PROJECTS_DIR", str(tmp_path / "projects"))
+
+    svc = bps.BuilderProjectService(team_service=None)
     blocked = svc.get_promotion_status("missing_project_no_hops")
     assert blocked.get("ok") is False
 
