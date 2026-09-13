@@ -353,6 +353,7 @@ export const projectApi = {
       blockers?: string[];
       policy?: string;
       manifest_mode?: string;
+      evidence?: { real_tests_green?: boolean; physical_evidence?: boolean };
     }>(`/platform/builder/projects/${projectId}/promotion`);
   },
 

@@ -87,3 +87,36 @@ def test_below_threshold_not_ok(tmp_path, monkeypatch):
     )
     assert promo["ok"] is False
     assert any("e2e_success_rate" in b for b in promo["blockers"])
+
+
+def test_derive_test_evidence_from_report():
+    hm = _load_hop_metrics()
+    derive = hm.derive_test_evidence
+
+    empty = derive(last_test_report=None, state=None)
+    assert empty["real_tests_green"] is False
+    assert empty["physical_evidence"] is False
+
+    flag_only = derive(state={"_real_tests_ok": True})
+    assert flag_only["real_tests_green"] is True
+    assert flag_only["physical_evidence"] is False  # 无产物不算物理证据
+
+    green = derive(
+        last_test_report={
+            "test_passed": True,
+            "test_report": {"meta": {"pass_rate": 1.0}, "cases": [{"name": "t1"}]},
+            "e2e_smoke": {"passed": True},
+        }
+    )
+    assert green["real_tests_green"] is True
+    assert green["physical_evidence"] is True
+
+    failed = derive(
+        last_test_report={
+            "test_passed": False,
+            "test_report": {"meta": {"pass_rate": 0.0}},
+            "e2e_smoke": {"passed": False, "reason": "boom"},
+        }
+    )
+    assert failed["real_tests_green"] is False
+    assert failed["physical_evidence"] is False
