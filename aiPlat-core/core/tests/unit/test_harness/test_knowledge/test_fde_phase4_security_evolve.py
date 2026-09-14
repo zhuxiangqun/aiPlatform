@@ -16,6 +16,7 @@ from core.apps.fde.service.evolve_proposal_gate import (
 )
 from core.apps.fde.service.security_preflight import (
     get_latest_preflight,
+    preflight_signoff_gate,
     save_preflight_run,
     summarize_security_dry_run,
 )
@@ -53,6 +54,46 @@ def test_save_preflight_latest(monkeypatch, tmp_path):
     assert latest is not None
     assert latest["run_id"] == rec["run_id"]
     assert latest["summary"]["phase"] == "B"
+
+
+def test_preflight_signoff_gate_blocks_missing_and_high(monkeypatch, tmp_path):
+    """Acceptance signoff requires ⑥b; high/critical findings block."""
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("AIPLAT_HOME", str(home))
+
+    missing = preflight_signoff_gate()
+    assert missing["ok"] is False
+    assert missing["reason"] == "security_preflight_required"
+
+    save_preflight_run(
+        dry_run={
+            "status": "ok",
+            "phase": "B",
+            "security_report": {
+                "findings": [{"id": "f1", "title": "x", "severity": "high"}],
+            },
+        },
+        actor="t",
+    )
+    blocked = preflight_signoff_gate()
+    assert blocked["ok"] is False
+    assert blocked["reason"] == "high_or_critical_findings"
+    assert blocked["blocking_count"] == 1
+
+    save_preflight_run(
+        dry_run={
+            "status": "ok",
+            "phase": "B",
+            "security_report": {
+                "findings": [{"id": "f2", "title": "y", "severity": "low"}],
+            },
+        },
+        actor="t",
+    )
+    passed = preflight_signoff_gate()
+    assert passed["ok"] is True
+    assert passed["status"] == "pass"
 
 
 def test_evolve_whitelist_allow(monkeypatch, tmp_path):

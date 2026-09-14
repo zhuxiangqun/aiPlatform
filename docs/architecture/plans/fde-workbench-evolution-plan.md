@@ -338,7 +338,8 @@
 | 补丁平均存活时间 | 真实稳定性 |
 | 人审通过率 | **仅参考，不得单独作 KPI** |
 
-证据（2026-09-15）：`test_evolve_apply_rollback_metrics`；API `…/approve|reject|apply|rollback` + `/metrics`；EvolutionTab 操作按钮。
+证据（2026-09-15）：`test_evolve_apply_rollback_metrics`；API `…/approve|reject|apply|rollback` + `/metrics`；EvolutionTab 操作按钮。  
+证据（2026-09-15+）：`test_preflight_signoff_gate_blocks_missing_and_high`；`test_service_domain_assign_registers_and_executes`；AcceptTab 409 反馈。
 
 ---
 

@@ -201,6 +201,8 @@ Phase 4：
 - [x] **AI FDE 半步**：approve / reject / **受控 apply** / rollback（白名单配置 → `fde_evolve_applied_config.json`）；D6 指标 API+UI
 - [x] EvolutionTab 展示 Evolve 队列与反向 KPI；文案声明人审通过率不得单独作 KPI（D6）
 - [x] platform `fde_phase4.py` 仅经 CoreFacade（无直导 security_* handler）
+- [x] **预检签收硬门**：`preflight_signoff_gate` → checklist + `POST /acceptance/signoff` 409；AcceptTab 展示阻断原因
+- [x] **第二域竖切**：`customer_action:service-domain:assign_technician` seed + `assign_work_order` handler（无 harness 分叉）
 
 Phase 5：
 - [x] `fde_domain_literals` → **error**；行为分叉=0；D2 关闭
@@ -220,3 +222,4 @@ Phase 5：
 | v1.3 | 2026-09-14 | Phase 4 安全预检 + Evolve 门（D5/D6） | Oliver Zhu |
 | v1.4 | 2026-09-14 | Phase 5 多客户；D2 升 error | Oliver Zhu |
 | v1.5 | 2026-09-15 | AI FDE 半步：Evolve apply/rollback + D6 指标 | Oliver Zhu |
+| v1.6 | 2026-09-15 | 预检签收硬门 + service-domain 第二竖切 | Oliver Zhu |

@@ -2026,6 +2026,10 @@ domains:
         type: function
         signature: "D6 reverse KPIs: reject/rollback/survival; pass_rate reference only"
         module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
+      - symbol: preflight_signoff_gate
+        type: function
+        signature: "block acceptance signoff when ⑥b missing or high/critical findings"
+        module: aiPlat-core/core/apps/fde/service/security_preflight.py
       - symbol: assign_work_order
         type: function
         signature: "domain-agnostic work-order assign handler for service-domain vertical seed"

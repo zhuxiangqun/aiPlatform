@@ -2202,6 +2202,7 @@ const CustomersTab: React.FC<{ readonly onSelect: (c: CustomerInfo) => void; rea
     <div className="space-y-4">
       <div className="rounded border border-cyan-800/40 bg-cyan-950/20 px-3 py-2 text-xs text-cyan-100/90">
         Phase 5：新客户 = Ontology Editor 建域 + DomainRouter 注册 + Action YAML（customer_action），不改 harness。
+        第二域竖切样例：`customer_action:service-domain:assign_technician`（workspace seed，无别名）。
         Agent Fleet / 拓扑编排本阶段不上线。详见 docs/contracts/FDE_PHASE5_CUSTOMER_ONBOARDING.md。
       </div>
       <a
@@ -2584,6 +2585,7 @@ const AcceptTab: React.FC<{ readonly canaryResult: Readonly<CanaryResult> | null
   const [checklist, setChecklist] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [signoffResult, setSignoffResult] = useState<any>(null);
+  const [signoffError, setSignoffError] = useState<string>('');
   const [manualDraft, setManualDraft] = useState<any>(null);
   const [manualDraftDate, setManualDraftDate] = useState('');
   const [fdeName, setFdeName] = useState(localStorage.getItem('aiplat_role') || 'fde');
@@ -2607,8 +2609,34 @@ const AcceptTab: React.FC<{ readonly canaryResult: Readonly<CanaryResult> | null
     }
   }, [diagnosisReport]);
 
-  const loadChecklist = async () => { setLoading(true); try { const q = specId ? `?spec_id=${encodeURIComponent(specId)}` : ''; const r = await fetch(API(`/acceptance/checklist${q}`)); setChecklist(await r.json()); } catch {} finally { setLoading(false); } };
-  const doSignoff = async () => { setLoading(true); try { const r = await fetch(API('/acceptance/signoff'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ spec_id: specId, signed_by: fdeName }) }); setSignoffResult(await r.json()); } catch {} finally { setLoading(false); } };
+  const loadChecklist = async () => { setLoading(true); setSignoffError(''); try { const q = specId ? `?spec_id=${encodeURIComponent(specId)}` : ''; const r = await fetch(API(`/acceptance/checklist${q}`)); setChecklist(await r.json()); } catch {} finally { setLoading(false); } };
+  const doSignoff = async () => {
+    setLoading(true);
+    setSignoffError('');
+    try {
+      const r = await fetch(API('/acceptance/signoff'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spec_id: specId, signed_by: fdeName }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const detail = d?.detail;
+        const msg = typeof detail === 'string'
+          ? detail
+          : (detail?.detail || detail?.reason || d?.error || `签收被拒 (${r.status})`);
+        setSignoffError(String(msg));
+        setSignoffResult(null);
+        await loadChecklist();
+        return;
+      }
+      setSignoffResult(d);
+    } catch (e: any) {
+      setSignoffError(e?.message || '签收请求失败');
+    } finally {
+      setLoading(false);
+    }
+  };
   const doTransfer = async () => { if (!clientAdmin) return; setLoading(true); try { const r = await fetch(API('/handover/transfer'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ spec_id: specId, client_admin: clientAdmin }) }); setHandoverResult(await r.json()); } catch {} finally { setLoading(false); } };
   const doClose = async () => { setLoading(true); try { const r = await fetch(API('/handover/close'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ spec_id: specId, summary, fde_name: fdeName }) }); setCloseResult(await r.json()); } catch {} finally { setLoading(false); } };
   const sb = (s: string) => { const m: Record<string, string> = { pass: 'bg-green-500/20 text-green-400', fail: 'bg-red-500/20 text-red-400', pending: 'bg-yellow-500/20 text-yellow-400' }; return <span className={`text-[10px] px-1.5 py-0.5 rounded ${m[s] || 'bg-gray-500/20 text-gray-400'}`}>{s === 'pass' ? '✓' : s === 'fail' ? '✗' : '…'}</span>; };
@@ -2696,8 +2724,27 @@ const AcceptTab: React.FC<{ readonly canaryResult: Readonly<CanaryResult> | null
       {checklist && (
         <Card><CardHeader><div className="flex items-center justify-between"><span className="text-sm font-medium">验收 Checklist</span><span className="text-xs text-gray-500">{checklist.passed}/{checklist.total} 通过</span></div></CardHeader>
           <CardContent className="space-y-1">
-            {checklist.checklist?.map((c: any) => (<div key={c.id} className="flex items-center justify-between text-xs py-1.5 px-2 bg-gray-800/50 rounded"><div><span className="text-gray-300">{c.label}</span><span className="text-gray-600 ml-2">{c.detail}</span></div>{sb(c.status)}</div>))}
-            {checklist.ready_for_signoff ? (<div className="flex items-center gap-2 pt-3"><input className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200" placeholder="FDE 姓名" value={fdeName} onChange={e => setFdeName(e.target.value)} /><Button variant="default" size="sm" onClick={doSignoff} loading={loading}><CheckCircle className="w-3.5 h-3.5 mr-1" />签收验收</Button></div>) : (<p className="text-xs text-gray-600 pt-2">请解决 fail 项后签收</p>)}
+            <p className="text-[11px] text-amber-200/80 bg-amber-950/30 border border-amber-800/40 rounded px-2 py-1.5 mb-2">
+              硬门：⑥b 安全预检必须通过；缺失或 high/critical finding → 签收 409（preflight_gate_blocked）。
+            </p>
+            {checklist.checklist?.map((c: any) => (
+              <div
+                key={c.id}
+                className={`flex items-center justify-between text-xs py-1.5 px-2 rounded ${
+                  c.id === 'security_preflight' && c.status === 'fail'
+                    ? 'bg-red-950/40 border border-red-800/50'
+                    : 'bg-gray-800/50'
+                }`}
+              >
+                <div>
+                  <span className="text-gray-300">{c.label}</span>
+                  <span className="text-gray-600 ml-2">{c.detail}</span>
+                </div>
+                {sb(c.status)}
+              </div>
+            ))}
+            {checklist.ready_for_signoff ? (<div className="flex items-center gap-2 pt-3"><input className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200" placeholder="FDE 姓名" value={fdeName} onChange={e => setFdeName(e.target.value)} /><Button variant="default" size="sm" onClick={doSignoff} loading={loading}><CheckCircle className="w-3.5 h-3.5 mr-1" />签收验收</Button></div>) : (<p className="text-xs text-gray-600 pt-2">请解决 fail 项后签收（含⑥b 预检）</p>)}
+            {signoffError && <div className="text-xs text-red-400 mt-1">✗ {signoffError}</div>}
             {signoffResult && <div className="text-xs text-green-400 mt-1">✓ 已签收 — {signoffResult.record_id}</div>}
           </CardContent>
         </Card>
@@ -2715,6 +2762,7 @@ const AcceptTab: React.FC<{ readonly canaryResult: Readonly<CanaryResult> | null
           <span className="text-sm font-medium">客户运营 Action（lock-service）</span>
           <p className="text-[11px] text-gray-500 mt-1 font-normal">
             与上方平台诊断 Action 区分；执行经 ActionRegistry（非直写库）。需先 seed 工单。
+            第二域样例：service-domain `assign_technician`（Accept 面板仅展示当前域；复制 YAML 即可扩展）。
           </p>
         </CardHeader>
         <CardContent className="space-y-2">
