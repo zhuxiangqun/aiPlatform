@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1410
+total_capabilities: 1411
 
 total_capabilities: 1095
 last_updated: 2026-08-25
@@ -810,6 +810,12 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| load_rules | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
+| SecurityView | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
+| RepoSummary | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
+| LayerStats | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
+| HotPath | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
+| Sink | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
 | code_intel_hot_paths | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | merge_evidence_into_report | `core/engine/skills/security_evidence/handler.py` | ✅ | 自动同步 | 已合入 |
 | security_evidence.execute | `core/engine/skills/security_evidence/handler.py` | ✅ | 自动同步 | 已合入 |
@@ -1081,6 +1087,12 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| list_preflight_runs | `core/apps/fde/service/security_preflight.py` | ✅ | 自动同步 | 已合入 |
+| get_latest_preflight | `core/apps/fde/service/security_preflight.py` | ✅ | 自动同步 | 已合入 |
+| list_evolve_proposals | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
+| list_delivery_sessions | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
+| get_delivery_session | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
+| load_delivery_template | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
 | collect_turn | `core/harness/digital_human/trajectory_collector.py` | ✅ | 自动同步 | 已合入 |
 | voice_chat_handler | `core/harness/digital_human/voice_pipeline.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_four_questions | `core/apps/fde/service/four_questions.py` | ✅ | 自动同步 | 已合入 |
@@ -2329,7 +2341,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 164 | 1 | 165 |
 | 记忆子系统 | 41 | 0 | 41 |
-| 知识引擎（本体） | 161 | 8 | 169 |
+| 知识引擎（本体） | 162 | 8 | 170 |
 | RAG 检索 | 49 | 0 | 49 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 43 | 0 | 43 |
@@ -2372,7 +2384,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1401** | **9** | **1410** |
+| **总计** | **1402** | **9** | **1411** |
 
 | **总计** | **1095** | **0** | **1095** |
 

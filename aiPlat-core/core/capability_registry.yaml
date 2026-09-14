@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-08-16"
 total_capability_domains: 34
-total_capabilities: 1134
+total_capabilities: 1149
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -709,6 +709,38 @@ domains:
         type: "class"
         signature: "S→E→C→I→S knowledge creation spiral"
         module: "core/harness/knowledge/seci_engine.py"
+      - symbol: Entry
+        type: dataclass
+        signature: 'Entry'
+        module: aiPlat-core/core/harness/knowledge/security_view.py
+      - symbol: Sink
+        type: dataclass
+        signature: 'Sink'
+        module: aiPlat-core/core/harness/knowledge/security_view.py
+      - symbol: Gate
+        type: dataclass
+        signature: 'Gate'
+        module: aiPlat-core/core/harness/knowledge/security_view.py
+      - symbol: HotPath
+        type: dataclass
+        signature: 'HotPath'
+        module: aiPlat-core/core/harness/knowledge/security_view.py
+      - symbol: LayerStats
+        type: dataclass
+        signature: 'LayerStats'
+        module: aiPlat-core/core/harness/knowledge/security_view.py
+      - symbol: RepoSummary
+        type: dataclass
+        signature: 'RepoSummary'
+        module: aiPlat-core/core/harness/knowledge/security_view.py
+      - symbol: SecurityView
+        type: dataclass
+        signature: 'to_dict'
+        module: aiPlat-core/core/harness/knowledge/security_view.py
+      - symbol: load_rules
+        type: function
+        signature: 'load_rules(path)'
+        module: aiPlat-core/core/harness/knowledge/security_view.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/wiki.py"
@@ -906,6 +938,30 @@ domains:
         type: "agent"
         signature: "workspace agent — tests→bug→regenerate per-stage auto-fix"
         module: "~/.aiplat/agents/test_report_orchestrator/AGENT.md"
+      - symbol: load_delivery_template
+        type: function
+        signature: 'Load workflow template as dict with stages list.'
+        module: aiPlat-core/core/apps/fde/service/delivery_pipeline_session.py
+      - symbol: get_delivery_session
+        type: function
+        signature: 'get_delivery_session(session_id)'
+        module: aiPlat-core/core/apps/fde/service/delivery_pipeline_session.py
+      - symbol: list_delivery_sessions
+        type: function
+        signature: 'list_delivery_sessions(limit)'
+        module: aiPlat-core/core/apps/fde/service/delivery_pipeline_session.py
+      - symbol: list_evolve_proposals
+        type: function
+        signature: 'list_evolve_proposals(limit)'
+        module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
+      - symbol: get_latest_preflight
+        type: function
+        signature: 'get_latest_preflight()'
+        module: aiPlat-core/core/apps/fde/service/security_preflight.py
+      - symbol: list_preflight_runs
+        type: function
+        signature: 'list_preflight_runs(limit)'
+        module: aiPlat-core/core/apps/fde/service/security_preflight.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
@@ -939,6 +995,10 @@ domains:
         type: "class"
         signature: "execute(name, params)→result"
         module: "core/apps/skills/executor.py"
+      - symbol: execute
+        type: function
+        signature: 'execute(params)'
+        module: aiPlat-core/core/engine/skills/security_critique/handler.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
