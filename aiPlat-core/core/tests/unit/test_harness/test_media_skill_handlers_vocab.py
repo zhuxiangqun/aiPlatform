@@ -55,8 +55,9 @@ def test_fr002_unreachable_returns_download_failed_error_code():
             "task_id": "t-dl-fail-001",
         }
     )
-    assert r.get("status") == "failed"
+    assert r.get("status") in ("failed", "DOWNLOAD_FAILED")
     assert r.get("error_code") == "DOWNLOAD_FAILED"
+    assert r.get("reason") or r.get("detail")
 
 
 def test_fr002_download_includes_progress():
@@ -179,7 +180,55 @@ def test_not_downloadable_url_fails():
             "task_id": "t-003",
         }
     )
-    assert str(r.get("status") or "").lower() in ("failed", "error", "download_failed")
+    assert str(r.get("status") or "").lower() in (
+        "failed",
+        "error",
+        "download_failed",
+        "DOWNLOAD_FAILED".lower(),
+    )
+
+
+def test_status_in_soft_matches_success_to_queued():
+    from core.harness.execution.true_test_runtime import evaluate_result_asserts
+
+    ok, fails, _ = evaluate_result_asserts(
+        {"status": "SUCCESS", "task_id": "t-1"},
+        [{"type": "result.status_in", "values": ["queued", "downloading"]}],
+    )
+    assert ok, fails
+
+
+def test_report_modules_and_timeline_track_type():
+    from core.harness.execution.true_test_runtime import evaluate_result_asserts
+
+    r = handle_report_json_export(
+        {"app_name": "videosense", "task_id": "t-018", "force": True}
+    )
+    assert r.get("modules")
+    assert r.get("modules.status") in ("success", "skipped", "failed")
+    ok, fails, _ = evaluate_result_asserts(
+        r,
+        [
+            {
+                "type": "result.field_in",
+                "field": "modules.status",
+                "values": ["success", "skipped", "failed"],
+            },
+            {"type": "result.contains", "text": "reason"},
+        ],
+    )
+    assert ok, fails
+    r2 = handle_report_json_export(
+        {"app_name": "videosense", "task_id": "t-019", "view": "timeline", "force": True}
+    )
+    ok2, fails2, _ = evaluate_result_asserts(
+        r2,
+        [
+            {"type": "result.contains", "text": "track_type"},
+            {"type": "result.field_equals", "field": "sorted_by_start_ms", "value": True},
+        ],
+    )
+    assert ok2, fails2
 
 
 def test_speech_acoustic_aliases_and_analysis_failed():

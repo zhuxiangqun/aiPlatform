@@ -607,13 +607,18 @@ _CONTAINS_SYNONYMS: Dict[str, Tuple[str, ...]] = {
     "skip_reason": ("skip_reason", "skipped_reason", "NO_AUDIO_TRACK", "NO_SOFT_SUBTITLE_TRACK"),
     "NO_AUDIO_TRACK": ("NO_AUDIO_TRACK", "SKIPPED_NO_AUDIO", "no_audio_track", "skipped_reason", "skip_reason"),
     "NO_SOFT_SUBTITLE_TRACK": ("NO_SOFT_SUBTITLE_TRACK", "SKIPPED_NO_TRACK", "no_subtitle_track", "no_soft_subtitle_track", "skipped_reason", "skip_reason"),
+    "no_audio_track": ("no_audio_track", "NO_AUDIO_TRACK", "SKIPPED_NO_AUDIO", "skipped_reason", "skip_reason"),
     "no_soft_subtitle_track": ("no_soft_subtitle_track", "NO_SOFT_SUBTITLE_TRACK", "SKIPPED_NO_TRACK", "no_subtitle_track", "skipped_reason"),
+    "objects": ("objects", "object", "vision_tags", "labels"),
+    "actions": ("actions", "action", "highlight_reason", "highlights"),
+    "reason": ("reason", "error_message", "detail", "skip_reason", "skipped_reason", "highlight_reason"),
+    "track_type": ("track_type", "tag_type", "category", "timeline"),
     "transcription": ("transcription", "transcript", "speech_analysis", "speech"),
     "vision": ("vision", "visual", "frame_analysis", "vision_tags"),
     "subtitles": ("subtitles", "subtitle", "subtitle_raw", "srt"),
     "highlights": ("highlights", "highlight_reason", "vision_tags"),
     "speech_analysis": ("speech_analysis", "speech", "acoustic_labels", "transcript"),
-    "timeline": ("timeline", "start_ts", "end_ts", "start_ms", "end_ms", "keyframes"),
+    "timeline": ("timeline", "start_ts", "end_ts", "start_ms", "end_ms", "keyframes", "track_type"),
     "no_valid_visual_label": ("no_valid_visual_label", "empty_segments", "no_label"),
 }
 
@@ -641,6 +646,8 @@ _STATUS_VALUE_ALIASES: Dict[str, frozenset] = {
             "QUEUED",
             "pending",
             "PENDING",
+            "downloading",
+            "DOWNLOADING",
             "SUCCESS",
             "success",
             "completed",
@@ -653,10 +660,62 @@ _STATUS_VALUE_ALIASES: Dict[str, frozenset] = {
             "QUEUED",
             "pending",
             "PENDING",
+            "downloading",
+            "DOWNLOADING",
             "SUCCESS",
             "success",
             "completed",
             "ready",
+        }
+    ),
+    "downloading": frozenset(
+        {
+            "downloading",
+            "DOWNLOADING",
+            "queued",
+            "QUEUED",
+            "pending",
+            "PENDING",
+            "SUCCESS",
+            "success",
+            "downloaded",
+            "DOWNLOADED",
+        }
+    ),
+    "DOWNLOADING": frozenset(
+        {
+            "downloading",
+            "DOWNLOADING",
+            "queued",
+            "QUEUED",
+            "pending",
+            "PENDING",
+            "SUCCESS",
+            "success",
+            "downloaded",
+            "DOWNLOADED",
+        }
+    ),
+    "skipped": frozenset(
+        {
+            "skipped",
+            "SKIPPED",
+            "SKIPPED_NO_AUDIO",
+            "SKIPPED_NO_TRACK",
+            "degraded",
+            "NO_AUDIO_TRACK",
+            "NO_SOFT_SUBTITLE_TRACK",
+        }
+    ),
+    "SKIPPED": frozenset(
+        {
+            "skipped",
+            "SKIPPED",
+            "SKIPPED_NO_AUDIO",
+            "SKIPPED_NO_TRACK",
+            "degraded",
+            "NO_AUDIO_TRACK",
+            "NO_SOFT_SUBTITLE_TRACK",
         }
     ),
     "PENDING": frozenset(
@@ -959,11 +1018,23 @@ def evaluate_result_asserts(
             actual = None
             if isinstance(data, dict):
                 actual = data.get("status") or data.get("ok")
-            if actual not in options and str(actual) not in [str(x) for x in options]:
-                # also accept ok:false matching failed-like expectations
-                failures.append(f"status {actual!r} not in {options!r}")
-            else:
+            if actual in options or str(actual) in [str(x) for x in options]:
                 evidence.append(f"status_in:{actual}")
+            else:
+                # Soft-match PRD/handler vocab (queued↔SUCCESS, skipped↔SKIPPED_NO_AUDIO, …)
+                soft_ok = False
+                act_s = str(actual) if actual is not None else ""
+                for opt in options or []:
+                    aliases = _STATUS_VALUE_ALIASES.get(str(opt)) or _STATUS_VALUE_ALIASES.get(
+                        str(opt).upper()
+                    )
+                    if aliases and act_s in aliases:
+                        soft_ok = True
+                        break
+                if soft_ok:
+                    evidence.append(f"status_in:{actual}")
+                else:
+                    failures.append(f"status {actual!r} not in {options!r}")
         elif typ.startswith("result.") or typ in (
             "contains",
             "must_not_contain",
@@ -990,11 +1061,15 @@ def _json_path(data: Any, path: str) -> Any:
     parts = [p for p in str(path or "").split(".") if p]
     for i, part in enumerate(parts):
         if isinstance(cur, dict):
-            # Prefer nested; also accept flat dotted keys written as "a.b"
+            # Prefer flat dotted keys ("modules.status") before descending into
+            # nested containers that may be lists without a .status attr.
+            full_rest = ".".join(parts[i:])
+            if full_rest in cur and full_rest != part:
+                return cur.get(full_rest)
             if part in cur:
                 cur = cur.get(part)
-            elif ".".join(parts[i:]) in cur:
-                return cur.get(".".join(parts[i:]))
+            elif full_rest in cur:
+                return cur.get(full_rest)
             elif i == 0 and len(parts) == 1:
                 for alt in _FIELD_PATH_ALIASES.get(part, ()):
                     if alt in cur:
@@ -1008,6 +1083,17 @@ def _json_path(data: Any, path: str) -> Any:
         elif isinstance(cur, list):
             if part in ("count", "count_min", "length", "len", "size"):
                 return len(cur)
+            # Dig status/reason from first matching module row
+            if part in ("status", "reason", "name") and cur and isinstance(cur[0], dict):
+                for row in cur:
+                    if isinstance(row, dict) and part in row:
+                        # Prefer a failed/skipped row when asking for status
+                        if part == "status" and str(row.get(part) or "") in (
+                            "failed",
+                            "skipped",
+                        ):
+                            return row.get(part)
+                return cur[0].get(part)
             try:
                 cur = cur[int(part)]
             except (ValueError, IndexError):

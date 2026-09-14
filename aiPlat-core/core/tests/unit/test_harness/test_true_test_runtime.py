@@ -261,9 +261,9 @@ def test_suggest_platform_media_skill_catalog():
     assert resolve_media_handler_name("subtitle_track_extraction") == "subtitle_extractor"
     assert suggest_platform_media_skill("video_fetch") == "video_downloader"
     assert suggest_platform_media_skill("auth_login") is None
-    assert resolve_media_handler_name("video_qa") is None
-    assert suggest_platform_media_skill("video_qa") is None
-    assert resolve_media_handler_name("content_qa") is None
+    assert resolve_media_handler_name("video_qa") == "video_qa"
+    assert suggest_platform_media_skill("video_qa") == "video_qa"
+    assert resolve_media_handler_name("content_qa") == "video_qa"
     assert resolve_media_handler_name("analyze_frames") == "frame_analyzer"
     assert resolve_media_handler_name("extract_highlights") == "frame_analyzer"
     assert resolve_media_handler_name("build_timeline") == "report_json_export"
@@ -302,13 +302,6 @@ def test_build_true_test_report_ignores_prompt_only_video_qa():
 
     report = _build_true_test_report(
         [
-            {
-                "id": "TQ-017",
-                "result": "SKIP",
-                "evidence": "no_platform_handler:video_qa; prompt_skill_skip_structured_asserts:video_qa; missing:answer",
-                "diagnostics": ["no_platform_handler:video_qa"],
-                "question": "ask about video",
-            },
             {
                 "id": "TQ-018",
                 "result": "PASS",
