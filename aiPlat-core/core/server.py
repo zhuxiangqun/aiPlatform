@@ -777,6 +777,27 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
+    # Workspace team seeds → ~/.aiplat/teams (do NOT overwrite). Enables security_review etc.
+    try:
+        from pathlib import Path
+
+        seeds_dir = Path(__file__).resolve().parent / "workspace_seeds" / "teams"
+        workspace_dir = Path.home() / ".aiplat" / "teams"
+        if seeds_dir.exists():
+            workspace_dir.mkdir(parents=True, exist_ok=True)
+            for item in seeds_dir.iterdir():
+                if not item.is_file() or item.suffix not in (".yaml", ".yml"):
+                    continue
+                dst = workspace_dir / item.name
+                if dst.exists():
+                    continue
+                try:
+                    shutil.copy2(item, dst)
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
+
     # Workspace MCP seeds (user-facing). Best-effort materialization into ~/.aiplat/mcps (do NOT overwrite).
     try:
         from pathlib import Path

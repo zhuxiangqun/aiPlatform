@@ -507,8 +507,6 @@ domains:
         reason: "ReActLoop 运行时"
       - module: "aiPlat-platform/apps/fde/api/fde_pipeline.py"
         reason: "FDE Pipeline 状态查询"
-      - module: "aiPlat-platform/apps/fde/orchestration/builder.py"
-        reason: "FDEBuilderOrch 构建流水线"
 
   # ══════════════════════════════════════════════════════════════
   # 二、记忆子系统 (31 caps)
@@ -667,6 +665,46 @@ domains:
         type: "class"
         signature: "生产检索（quality gate 真正降级：gate 失败 + deep research → web fallback 并入，2026-08-25）"
         module: "core/harness/knowledge/retriever.py"
+      - symbol: "build_security_view"
+        type: "function"
+        signature: "compile secview.v1 (entries/sinks/gates/scored hot_paths) from code_graph; deterministic, no LLM"
+        module: "core/harness/knowledge/security_view.py"
+      - symbol: "get_security_view"
+        type: "function"
+        signature: "cached-or-fresh security view dict (secview.v1)"
+        module: "core/harness/knowledge/security_view.py"
+      - symbol: "compact_security_digest"
+        type: "function"
+        signature: "token-budgeted digest for Agent plan stage"
+        module: "core/harness/knowledge/security_view.py"
+      - symbol: "sys_code_intel_security_view"
+        type: "function"
+        signature: "syscall: security view for agents/diagnostics"
+        module: "core/harness/syscalls/code_intel_syscall.py"
+      - symbol: "code_intel_hot_paths"
+        type: "function"
+        signature: "CoreFacade: scored security hot_paths via sys_code_intel_hot_paths"
+        module: "core/api/core_facade.py"
+      - symbol: "security_plan.execute"
+        type: "function"
+        signature: "Phase B plan handler: filter secview digest (max_paths=12, sink whitelist, no LLM)"
+        module: "core/engine/skills/security_plan/handler.py"
+      - symbol: "run_security_plan"
+        type: "function"
+        signature: "CoreFacade: run Phase B security_plan handler (deterministic)"
+        module: "core/api/core_facade.py"
+      - symbol: "run_security_review_dry"
+        type: "function"
+        signature: "CoreFacade: Phase B plan→trace→critique→report dry-run; optional Phase C evidence"
+        module: "core/api/core_facade.py"
+      - symbol: "security_evidence.execute"
+        type: "function"
+        signature: "Phase C: mocked behavioral asserts → regression_evidence.v1 (default OFF)"
+        module: "core/engine/skills/security_evidence/handler.py"
+      - symbol: "merge_evidence_into_report"
+        type: "function"
+        signature: "Apply Phase C dispositions onto Phase B report"
+        module: "core/engine/skills/security_evidence/handler.py"
       - symbol: "SECIEngine"
         type: "class"
         signature: "S→E→C→I→S knowledge creation spiral"
@@ -1848,6 +1886,74 @@ domains:
         type: function
         signature: "P2-L5 误报率门：历史误报 < 0.5% 才允许 Lv4 自动闭环"
         module: aiPlat-core/core/harness/ontology_engine/action_registry.py
+      - symbol: resolve_action_id
+        type: method
+        signature: "AsyncActionRegistry.resolve_action_id(legacy_or_canonical) → canonical action_id"
+        module: aiPlat-core/core/harness/ontology_engine/action_registry.py
+      - symbol: update_entity_property
+        type: method
+        signature: "GraphIndex.update_entity_property(entity_id, key, value) persist metadata/state"
+        module: aiPlat-core/core/harness/ontology_engine/graph_index.py
+      - symbol: WorkbenchRuntimeGuard
+        type: class
+        signature: "check_action_registered / check_policy_gate_called / check_kpi_not_stub"
+        module: aiPlat-core/core/harness/infrastructure/workbench_runtime_guard.py
+      - symbol: check_change_surface
+        type: function
+        signature: "keys → {ok, violations, require_hitl} from audit_schema whitelist"
+        module: aiPlat-core/core/harness/infrastructure/action_audit_validate.py
+      - symbol: classify_audit_fields
+        type: function
+        signature: "audit_schema field → present|embedded|missing"
+        module: aiPlat-core/core/harness/infrastructure/action_audit_validate.py
+      - symbol: load_change_surface_whitelist
+        type: function
+        signature: "load change_surface_whitelist from audit_schema.v1"
+        module: aiPlat-core/core/harness/infrastructure/action_audit_validate.py
+      - symbol: require_known_domain
+        type: method
+        signature: "DomainRouter.require_known_domain(domain_id) → str | ValueError"
+        module: aiPlat-core/core/harness/knowledge/domain_router.py
+      - symbol: start_delivery_session
+        type: function
+        signature: "start fde_delivery_v1 template session (server stage cursor)"
+        module: aiPlat-core/core/apps/fde/service/delivery_pipeline_session.py
+      - symbol: link_builder_project
+        type: function
+        signature: "link existing Builder project_id onto delivery session (Phase 3)"
+        module: aiPlat-core/core/apps/fde/service/delivery_pipeline_session.py
+      - symbol: attach_builder_observation
+        type: function
+        signature: "persist Builder observe snapshot + artifact_links"
+        module: aiPlat-core/core/apps/fde/service/delivery_pipeline_session.py
+      - symbol: evaluate_delivery_session
+        type: function
+        signature: "fde_delivery_pipeline eval gate; blocks accept when Builder linked but bad/missing observe"
+        module: aiPlat-core/core/apps/fde/service/delivery_pipeline_session.py
+      - symbol: save_preflight_run
+        type: function
+        signature: "persist FDE 4A security dry-run summary under AIPLAT_HOME/fde_security_preflight"
+        module: aiPlat-core/core/apps/fde/service/security_preflight.py
+      - symbol: summarize_security_dry_run
+        type: function
+        signature: "read-only findings summary; severity unchanged"
+        module: aiPlat-core/core/apps/fde/service/security_preflight.py
+      - symbol: evaluate_evolve_proposal
+        type: function
+        signature: "evolve_proposal gate + change_surface_whitelist; no silent ABox write"
+        module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
+      - symbol: enqueue_evolve_proposal
+        type: function
+        signature: "evaluate then queue for HITL under AIPLAT_HOME/fde_evolve_proposals"
+        module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
+      - symbol: FdeDomainLiteralsAstCheck
+        type: class
+        signature: "arch_guard fde_domain_literals level=error; harness domain literal fork ban"
+        module: aiPlat-core/core/management/arch_guard_rules/fde_workbench.py
+      - symbol: approve_delivery_session
+        type: function
+        signature: "approve HITL pause and advance (auto-skip non-HITL)"
+        module: aiPlat-core/core/apps/fde/service/delivery_pipeline_session.py
     breaks: []
     consumers_expected:
       - module: "core/harness/syscalls/tool.py"
@@ -2114,8 +2220,6 @@ domains:
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
         reason: "Pipeline 编排"
-      - module: "aiPlat-platform/apps/fde/orchestration/builder.py"
-        reason: "FDEBuilderOrch 编排"
       - module: "core/api/routers/pipeline_execution.py"
         reason: "fork/forks 端点经 CoreFacade 取 store"
 

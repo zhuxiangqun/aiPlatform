@@ -122,6 +122,14 @@ class ActionContractModel(BaseModel):
     """自主度阶梯：Lv1 只读建议 → Lv2 人工确认 → Lv3 规则受限 → Lv4 自动闭环。
     Lv4 必须通过误报率门（CLOSURE_FP_RATE_MAX = 0.5%）才允许闭环。"""
 
+    # ── FDE Workbench：两类 Action 命名空间（空=存量过渡，不强制校验）──
+    action_namespace: str = ""
+    """customer_action | platform_action；空字符串表示 legacy，register 时跳过 audit_schema 校验。"""
+    eval_gate: str = ""
+    """引用 audit_schema.v1 eval_gate 门 ID，如 customer_action_safety。"""
+    aliases: List[str] = Field(default_factory=list)
+    """Phase 2 D3：旧 action_id 别名（如 accept_order → customer_action:lock-service:accept_order）。"""
+
     # ═══ 决策节流（v3.1 — MSS 启示二：防橡皮图章效应）═══
     throttle_limit: int = Field(100, ge=0, description="每小时最大执行次数，0=不限")
     throttle_window_seconds: int = Field(3600, ge=1, description="统计时间窗口（秒）")
@@ -205,10 +213,13 @@ class ActionContractModel(BaseModel):
         """Load from YAML file (path-whitelist sandbox)."""
         real_path = os.path.realpath(os.path.expanduser(path))
 
-        ALLOWED_DIRS = [
-            os.path.realpath("./config/actions/"),
-            os.path.realpath(os.path.expanduser("~/.aiplat/actions/")),
-        ]
+        ALLOWED_DIRS = _yaml_allowed_dirs()
+        # Also allow $AIPLAT_HOME/actions when set
+        home_actions = os.path.realpath(
+            os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "actions")
+        )
+        if home_actions not in ALLOWED_DIRS:
+            ALLOWED_DIRS = list(ALLOWED_DIRS) + [home_actions]
         if not any(real_path.startswith(d) for d in ALLOWED_DIRS):
             raise ValueError(
                 f"YAML path '{path}' resolves outside allowed directories: {ALLOWED_DIRS}"
@@ -241,10 +252,13 @@ class ActionContractModel(BaseModel):
         """Load multiple actions from a YAML file (batch mode)."""
         real_path = os.path.realpath(os.path.expanduser(path))
 
-        ALLOWED_DIRS = [
-            os.path.realpath("./config/actions/"),
-            os.path.realpath(os.path.expanduser("~/.aiplat/actions/")),
-        ]
+        ALLOWED_DIRS = _yaml_allowed_dirs()
+        # Also allow $AIPLAT_HOME/actions when set
+        home_actions = os.path.realpath(
+            os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "actions")
+        )
+        if home_actions not in ALLOWED_DIRS:
+            ALLOWED_DIRS = list(ALLOWED_DIRS) + [home_actions]
         if not any(real_path.startswith(d) for d in ALLOWED_DIRS):
             raise ValueError(f"Path '{path}' outside allowed directories")
 
@@ -259,3 +273,22 @@ class ActionContractModel(BaseModel):
             actions = [actions]
 
         return [cls.model_validate(a) for a in actions]
+
+
+def _yaml_allowed_dirs() -> List[str]:
+    """Path sandbox for Action YAML — home actions + config + workspace seeds."""
+    dirs = [
+        os.path.realpath("./config/actions/"),
+        os.path.realpath(os.path.expanduser("~/.aiplat/actions/")),
+        os.path.realpath(
+            os.path.join(
+                os.path.dirname(__file__), "..", "..", "workspace_seeds", "actions"
+            )
+        ),
+    ]
+    extra = os.environ.get("AIPLAT_ACTIONS_EXTRA_DIRS", "")
+    for part in extra.split(os.pathsep):
+        part = part.strip()
+        if part:
+            dirs.append(os.path.realpath(os.path.expanduser(part)))
+    return dirs

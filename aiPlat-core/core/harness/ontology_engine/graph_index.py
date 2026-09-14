@@ -244,6 +244,20 @@ class GraphIndex:
         if not node.metadata:
             node.metadata = {}
         node.metadata[key] = value
+        # Persist metadata so GraphIndex.load() sees state after seed/save
+        try:
+            conn = self._get_conn()
+            conn.execute(
+                "UPDATE graph_nodes SET metadata=? WHERE domain_id=? AND entity_id=?",
+                (_json.dumps(node.metadata, ensure_ascii=False), self.domain_id, entity_id),
+            )
+            conn.commit()
+        except Exception:
+            logging.debug("persist metadata failed for %s/%s", self.domain_id, entity_id, exc_info=True)
+
+    def update_entity_property(self, entity_id: str, key: str, value: Any) -> None:
+        """Alias for add_entity_property (handlers historically call update_*)."""
+        self.add_entity_property(entity_id, key, value)
 
     def get_entity_classes(self) -> List[str]:
         """Return all unique class names across graph entities."""
@@ -1041,16 +1055,25 @@ class GraphIndex:
         # Try SQLite first
         conn = graph._get_conn()
         rows = conn.execute(
-            "SELECT entity_id, entity_name, class_name FROM graph_nodes WHERE domain_id=?",
+            "SELECT entity_id, entity_name, class_name, metadata FROM graph_nodes WHERE domain_id=?",
             (domain_id,),
         ).fetchall()
 
         if rows:
             # Load nodes from SQL
-            for entity_id, entity_name, class_name in rows:
+            for row in rows:
+                entity_id, entity_name, class_name = row[0], row[1], row[2]
+                meta_raw = row[3] if len(row) > 3 else "{}"
+                try:
+                    metadata = _json.loads(meta_raw) if meta_raw else {}
+                except Exception:
+                    metadata = {}
+                if not isinstance(metadata, dict):
+                    metadata = {}
                 graph._nodes[entity_id] = GraphNode(
                     entity_id=entity_id, entity_name=entity_name, class_name=class_name,
                     aliases=_class_synonyms(graph.domain_id, class_name),
+                    metadata=metadata,
                 )
             # Load edges from SQL
             edge_rows = conn.execute(

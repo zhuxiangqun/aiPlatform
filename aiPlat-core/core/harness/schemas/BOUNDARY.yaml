@@ -1,0 +1,5 @@
+layer: core
+rationale: |
+  Harness 子模块目录（schemas）。存放跨子系统契约 YAML（如 audit_schema.v1），
+  供 ActionRegistry / Eval / 工作台共享，不属于业务应用层。
+known_debt: []

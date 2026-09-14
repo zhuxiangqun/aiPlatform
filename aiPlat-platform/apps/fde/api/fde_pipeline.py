@@ -36,9 +36,9 @@ async def fde_pipeline_status():
     total = sum(1 for k in diag if not k.startswith("_"))
 
     # Data availability summary
-    data_status = {}
+    data_status: Dict[str, Any] = {}
     try:
-        from core.api.core_facade import wiki_search_pages, get_graph_health
+        from core.api.core_facade import wiki_search_pages, get_graph_health, DomainRouter
 
         # Wiki/historical cases
         try:
@@ -47,8 +47,16 @@ async def fde_pipeline_status():
         except Exception:
             data_status["historical_cases"] = "error"
 
-        # Graph indices
-        for domain in ["ai-knowledge", "fde-delivery", "enterprise-terms", "knowledge-atom"]:
+        # Graph indices — DomainRouter as sole domain listing entry (Phase 1b)
+        try:
+            domain_router = DomainRouter()
+            domains = list(domain_router.list_domains())
+            tracking = domain_router.tracking_domain()
+            if tracking not in domains:
+                domains = [tracking] + domains
+        except Exception:
+            domains = []
+        for domain in domains[:12]:
             data_status[f"graph:{domain}"] = get_graph_health(domain).get("node_count", "error")
 
         # YAMLs

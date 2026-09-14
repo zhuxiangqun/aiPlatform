@@ -35,9 +35,10 @@ async def fde_delivery_feedback(req: FdeDeliveryFeedbackRequest):
     action_name = req.action_name.strip()
 
     try:
-        from core.api.core_facade import GraphIndex
+        from core.api.core_facade import GraphIndex, DomainRouter
 
-        fd = GraphIndex.load("fde-delivery")
+        tracking = DomainRouter().tracking_domain()
+        fd = GraphIndex.load(tracking)
         session_node = fd.get_node(sid) or fd.find_by_name(sid)
         if not session_node:
             for nid, node in list(fd._nodes.items()):

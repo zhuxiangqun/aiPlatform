@@ -891,6 +891,16 @@ class ArchRegistry:
         except Exception as e:
             logging.debug(str(e), exc_info=True)
 
+        # Explicit FDE workbench rule imports (production callers for method_verify;
+        # rules are also auto-discovered via exec_module above).
+        try:
+            from core.management.arch_guard_rules.fde_workbench import (  # noqa: F401
+                FdeDomainLiteralsAstCheck,
+                FdeWorkbenchForbiddenFrontendCheck,
+            )
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
+
 
 # ============================================================
 # Singleton

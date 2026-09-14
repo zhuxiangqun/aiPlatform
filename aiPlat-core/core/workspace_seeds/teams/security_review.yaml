@@ -1,0 +1,164 @@
+# Phase B — contracted security review pipeline (Mantis-inspired)
+# Consumes Phase A secview digest; no free multi-agent spawn.
+# Baseline (2026-09-14 full-repo): digest ~800 tok; cold compile ~40s;
+# prefer async prewarm; filesystem_write excluded from default sink set.
+#
+# Load: load_team_template("security_review")
+# Apply factory profile or set allow_dynamic_spawn: false on every stage.
+team_name: "安全视图审计（契约 Pipeline）"
+description: >
+  Phase B：plan→trace→critique→report（candidate）。
+  Phase C：security_evidence（默认关闭；enabled 或 AIPLAT_SECURITY_PHASE_C=1）。
+pipeline_mode: chain
+params:
+  max_paths: 20
+  max_depth: 6
+  sink_whitelist: [subprocess, eval_exec, network_egress, deserialize, sql]
+  entry_layers: [platform, app, core]
+  per_kind_cap: 8
+  digest_max_chars: 4000
+  max_severity: candidate
+  autoreview_scope: clipped_anchors_only
+  phase_c_enabled: false
+stages:
+  - id: security_plan
+    agent_id: security_planner
+    order: 0
+    skill_name: security_plan
+    execution_backend: llm
+    skill_model_purpose: chat
+    output_artifact: security_plan
+    allow_dynamic_spawn: false
+    failure_strategy: fail_pipeline
+    stage_timeout_seconds: 120
+    tools: []
+    handoff_required: true
+    node_config:
+      max_paths: 20
+      max_depth: 6
+      digest_max_chars: 4000
+      sink_whitelist: [subprocess, eval_exec, network_egress, deserialize, sql]
+      entry_layers: [platform, app, core]
+      per_kind_cap: 8
+      force: false
+    quality_gate:
+      min_output_length: 40
+    output_schema:
+      type: object
+      required: [schema_version, top_hot_paths, params]
+      properties:
+        schema_version: {type: string}
+        top_hot_paths: {type: array}
+        params: {type: object}
+        _token_estimate: {type: number}
+    gate_on_fail: block
+
+  - id: security_trace
+    agent_id: security_tracer
+    order: 1
+    skill_name: security_trace
+    execution_backend: llm
+    skill_model_purpose: chat
+    input_artifacts: [security_plan]
+    output_artifact: security_trace
+    depends_on: [security_plan]
+    allow_dynamic_spawn: false
+    failure_strategy: skip_stage
+    stage_timeout_seconds: 120
+    tools: []
+    handoff_required: true
+    quality_gate:
+      min_output_length: 40
+    input_schema:
+      type: object
+      required: [security_plan]
+      properties:
+        security_plan:
+          type: object
+          required: [top_hot_paths]
+    output_schema:
+      type: object
+      required: [traces]
+      properties:
+        traces: {type: array}
+        notes: {type: array}
+    gate_on_fail: block
+
+  - id: security_critique
+    agent_id: security_critic
+    order: 2
+    skill_name: security_critique
+    execution_backend: llm
+    skill_model_purpose: chat
+    input_artifacts: [security_plan, security_trace]
+    output_artifact: security_critique
+    depends_on: [security_trace]
+    allow_dynamic_spawn: false
+    failure_strategy: skip_stage
+    stage_timeout_seconds: 120
+    tools: []
+    handoff_required: true
+    quality_gate:
+      min_output_length: 40
+    output_schema:
+      type: object
+      required: [findings]
+      properties:
+        findings: {type: array}
+        refuted: {type: array}
+    gate_on_fail: block
+
+  - id: security_report
+    agent_id: security_reporter
+    order: 3
+    skill_name: security_report
+    execution_backend: llm
+    skill_model_purpose: chat
+    input_artifacts: [security_plan, security_trace, security_critique]
+    output_artifact: security_report
+    depends_on: [security_critique]
+    allow_dynamic_spawn: false
+    failure_strategy: skip_stage
+    stage_timeout_seconds: 60
+    tools: []
+    handoff_required: true
+    hitl: true
+    hitl_phase: security_report_review
+    quality_gate:
+      min_output_length: 40
+    output_schema:
+      type: object
+      required: [header, findings]
+      properties:
+        header: {type: object}
+        findings: {type: array}
+        token_baseline: {type: object}
+    gate_on_fail: hitl
+
+  - id: security_evidence
+    agent_id: security_evidencer
+    order: 4
+    skill_name: security_evidence
+    execution_backend: llm
+    skill_model_purpose: chat
+    input_artifacts: [security_report, security_critique]
+    output_artifact: security_evidence
+    depends_on: [security_report]
+    allow_dynamic_spawn: false
+    failure_strategy: skip_stage
+    stage_timeout_seconds: 120
+    tools: []
+    handoff_required: true
+    node_config:
+      enabled: false
+      max_findings: 5
+    quality_gate:
+      min_output_length: 10
+    output_schema:
+      type: object
+      required: [phase, results]
+      properties:
+        phase: {type: string}
+        results: {type: array}
+        enabled: {type: boolean}
+    gate_on_fail: ""

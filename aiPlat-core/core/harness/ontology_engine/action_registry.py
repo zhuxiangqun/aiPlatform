@@ -44,6 +44,7 @@ class AsyncActionRegistry:
         cross_domain_config_path: str = "~/.aiplat/ontologies/registry.json",
     ):
         self._contracts: Dict[str, ActionContractModel] = {}
+        self._aliases: Dict[str, str] = {}  # Phase 2 D3: legacy_id → canonical action_id
         self._handlers: Dict[str, Callable] = {}
         self._store = store or ActionStore()
         self._lock_provider = lock_provider or AsyncioEntityLock()
@@ -59,9 +60,37 @@ class AsyncActionRegistry:
     # ═══════════════════════════════════════════════════════
 
     def register(self, contract: ActionContractModel) -> None:
+        # FDE contract: when action_namespace is set, validate against audit_schema.v1
+        ns = getattr(contract, "action_namespace", "") or ""
+        if ns:
+            from core.harness.infrastructure.action_audit_validate import (
+                validate_action_contract,
+            )
+            risk = getattr(contract.risk_level, "value", None) or str(contract.risk_level)
+            validate_action_contract(
+                action_id=contract.action_id,
+                action_namespace=ns,
+                domain_id=contract.domain_id or "",
+                eval_gate=getattr(contract, "eval_gate", "") or "",
+                risk_level=risk,
+                require_approval=bool(contract.require_approval),
+            )
         if contract.action_id in self._contracts:
             logger.warning("Action '%s' already registered, overwriting", contract.action_id)
         self._contracts[contract.action_id] = contract
+        for alias in getattr(contract, "aliases", None) or []:
+            alias = (alias or "").strip()
+            if not alias or alias == contract.action_id:
+                continue
+            if alias in self._contracts:
+                # D3: replace legacy standalone id with alias → namespaced canonical
+                logger.info(
+                    "Replacing legacy action '%s' with alias → %s",
+                    alias,
+                    contract.action_id,
+                )
+                del self._contracts[alias]
+            self._aliases[alias] = contract.action_id
         if contract.handler:
             self._resolve_handler(contract)
         logger.info("Registered: %s (%s)", contract.action_id, contract.label)
@@ -75,8 +104,14 @@ class AsyncActionRegistry:
     # Query
     # ═══════════════════════════════════════════════════════
 
+    def resolve_action_id(self, action_id: str) -> str:
+        """Resolve legacy alias → canonical action_id (Phase 2 D3)."""
+        if action_id in self._contracts:
+            return action_id
+        return self._aliases.get(action_id, action_id)
+
     def get(self, action_id: str) -> Optional[ActionContractModel]:
-        return self._contracts.get(action_id)
+        return self._contracts.get(self.resolve_action_id(action_id))
 
     def list_for_class(
         self, domain_id: str, class_name: str, state: str = "", role: str = "",
@@ -123,7 +158,7 @@ class AsyncActionRegistry:
           "permission" → red, "state" → orange, "class" → orange,
           "scope" → gray, "unknown" → gray
         """
-        c = self._contracts.get(action_id)
+        c = self.get(action_id)
         if not c:
             return {"valid": False, "reason": f"Unknown action: {action_id}", "constraint_type": "unknown"}
 
@@ -163,6 +198,12 @@ class AsyncActionRegistry:
         role: str = "",
         _bypass_approval: bool = False,
     ) -> Dict[str, Any]:
+        from core.harness.infrastructure.workbench_runtime_guard import WorkbenchRuntimeGuard
+
+        guard = WorkbenchRuntimeGuard.check_action_registered(self, action_id)
+        if not guard.get("ok"):
+            return {"status": "invalid", "error": f"Unknown action: {action_id}", "guard": guard}
+        action_id = self.resolve_action_id(action_id)
         c = self._contracts.get(action_id)
         if not c:
             return {"status": "invalid", "error": f"Unknown action: {action_id}"}
@@ -424,10 +465,12 @@ class AsyncActionRegistry:
                 return None
             return {
                 "id": node.entity_id,
+                "entity_id": node.entity_id,
                 "name": node.entity_name,
                 "class": node.class_name,
                 "state": (node.metadata or {}).get("state", ""),
                 "domain": domain_id,
+                "domain_id": domain_id,
                 "metadata": node.metadata or {},
             }
         except Exception as e:
@@ -435,9 +478,10 @@ class AsyncActionRegistry:
             return None
 
     def _get_handler(self, action_id: str) -> Optional[Callable]:
-        if action_id in self._handlers:
-            return self._handlers[action_id]
-        c = self._contracts.get(action_id)
+        canonical = self.resolve_action_id(action_id)
+        if canonical in self._handlers:
+            return self._handlers[canonical]
+        c = self._contracts.get(canonical)
         if c and c.handler:
             return self._resolve_handler(c)
         return None
@@ -446,7 +490,11 @@ class AsyncActionRegistry:
         if not c.handler:
             return None
         try:
-            mod_path, func_name = c.handler.rsplit(".", 1)
+            # Contract format: "module.path:function_name" (preferred) or "module.path.function"
+            if ":" in c.handler:
+                mod_path, func_name = c.handler.rsplit(":", 1)
+            else:
+                mod_path, func_name = c.handler.rsplit(".", 1)
             module = importlib.import_module(mod_path)
             handler = getattr(module, func_name, None)
             if handler:
@@ -489,6 +537,86 @@ class AsyncActionRegistry:
                            constraint: Dict, params: Dict, snapshot: Dict,
                            actor: str, role: str) -> None:
         try:
+            ns = getattr(c, "action_namespace", "") or ""
+            if ns:
+                # Phase 1: embed audit_schema.v1 into ActionStore columns
+                import uuid
+                from datetime import datetime, timezone
+                from core.harness.infrastructure.action_audit_validate import (
+                    build_audit_record,
+                    map_audit_to_action_store,
+                )
+                from core.harness.infrastructure.workbench_runtime_guard import (
+                    WorkbenchRuntimeGuard,
+                )
+
+                before = snapshot if isinstance(snapshot, dict) else {}
+                if "before" in before or "after" in before:
+                    before_snap = before.get("before") or {"status": from_state}
+                    after_snap = before.get("after") or {"status": to_state}
+                else:
+                    before_snap = {"status": from_state, **{k: v for k, v in before.items() if k != "status"}}
+                    after_snap = {"status": to_state}
+
+                actor_type = role if role in {"human", "agent", "system"} else (
+                    "human" if role else "system"
+                )
+                # Soft PolicyGate shape until Phase 2 product gate
+                pg = {
+                    "gate_id": f"policy_gate:{ns}:{c.action_id.split(':')[-1]}",
+                    "decision": "hitl_required" if c.require_approval else "allow",
+                    "reason": constraint.get("constraint_type") or (
+                        "require_approval" if c.require_approval else "auto"
+                    ),
+                }
+                gate_check = WorkbenchRuntimeGuard.check_policy_gate_called(
+                    action_namespace=ns,
+                    policy_gate_decision=pg,
+                )
+                if not gate_check.get("ok"):
+                    logger.warning("audit policy_gate shape: %s", gate_check)
+
+                # Map exec statuses → schema enum
+                status_map = {
+                    "executed": "success",
+                    "done": "success",
+                    "completed": "success",
+                    "success": "success",
+                    "ok": "success",
+                    "failed": "failure",
+                    "blocked": "failure",
+                    "log_only": "partial",
+                    "closure_gated": "partial",
+                }
+                schema_status = status_map.get(result_status, result_status)
+                if schema_status not in {"success", "failure", "partial", "rollback"}:
+                    schema_status = "partial"
+
+                record = build_audit_record(
+                    audit_id=f"aud_{uuid.uuid4().hex[:16]}",
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    actor_type=actor_type,
+                    actor_id=actor or "system",
+                    action_namespace=ns,
+                    action_name=c.action_id,
+                    domain_id=domain_id or c.domain_id or "",
+                    target_entity_type=c.target_class or "Entity",
+                    target_entity_id=entity_id,
+                    params=params or {},
+                    before_state_snapshot=before_snap,
+                    after_state_snapshot=after_snap,
+                    result_status=schema_status,
+                    policy_gate_decision=pg,
+                    result_message=c.effect_semantics or "",
+                    pipeline_run_id=(params or {}).get("pipeline_run_id", ""),
+                    evidence_ref=(params or {}).get("evidence_ref", ""),
+                )
+                mapped = map_audit_to_action_store(record)
+                mapped["constraint_type"] = constraint.get("constraint_type", "")
+                mapped["compensation"] = c.compensation or mapped.get("compensation") or ""
+                await self._store.insert_audit(mapped)
+                return
+
             await self._store.insert_audit({
                 "action_id": c.action_id,
                 "entity_id": entity_id,

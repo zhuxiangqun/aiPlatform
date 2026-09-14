@@ -43,6 +43,7 @@ async def list_templates():
     d = _templates_dir()
     d.mkdir(parents=True, exist_ok=True)
     templates = []
+    seen = set()
     for f in sorted(d.glob("*.json")):
         try:
             data = json.loads(f.read_text(encoding="utf-8"))
@@ -54,8 +55,29 @@ async def list_templates():
                 "updated_at": data.get("updated_at", ""),
                 "version": data.get("version", "1"),
             })
+            seen.add(f.stem)
         except Exception as e:
             logging.warning(str(e), exc_info=True)
+    # Directory form: {name}/workflow.yaml (WorkflowInstaller layout)
+    for sub in sorted(d.iterdir()):
+        if not sub.is_dir() or sub.name in seen:
+            continue
+        yml = sub / "workflow.yaml"
+        if not yml.is_file():
+            continue
+        try:
+            from core.apps.fde.service.delivery_pipeline_session import _parse_workflow_yaml
+            data = _parse_workflow_yaml(yml.read_text(encoding="utf-8"))
+            templates.append({
+                "name": sub.name,
+                "label": data.get("name", sub.name),
+                "description": data.get("description", ""),
+                "stage_count": len(data.get("stages", [])),
+                "updated_at": "",
+                "version": data.get("version", "1"),
+            })
+        except Exception as e:
+            logging.warning("list template dir %s: %s", sub.name, e, exc_info=True)
     return {"templates": templates, "total": len(templates)}
 
 
@@ -88,13 +110,17 @@ async def save_template(body: TemplateSave):
 
 @router.get("/workflow/templates/{name}", response_model=Dict[str, Any])
 async def load_template(name: str):
-    """Load a workflow template by name."""
+    """Load a workflow template by name (.json or directory workflow.yaml)."""
     name = _sanitize(name)
     d = _templates_dir()
     fp = d / f"{name}.json"
-    if not fp.exists():
-        raise HTTPException(status_code=404, detail="Template not found")
-    return json.loads(fp.read_text(encoding="utf-8"))
+    if fp.exists():
+        return json.loads(fp.read_text(encoding="utf-8"))
+    yml = d / name / "workflow.yaml"
+    if yml.is_file():
+        from core.apps.fde.service.delivery_pipeline_session import _parse_workflow_yaml
+        return _parse_workflow_yaml(yml.read_text(encoding="utf-8"))
+    raise HTTPException(status_code=404, detail="Template not found")
 
 
 @router.delete("/workflow/templates/{name}", response_model=Dict[str, Any])

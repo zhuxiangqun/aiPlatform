@@ -28,6 +28,22 @@ import numpy as np
 class DomainRouter:
     """3-tier config-driven domain classifier."""
 
+    # D2: sole platform tracking domain constant (assignment allowed; behavior forks forbidden)
+    PLATFORM_TRACKING_DOMAIN = "fde-delivery"
+
+    @staticmethod
+    def _home() -> str:
+        """AIPLAT_HOME or ~/.aiplat — Phase 5: new customers register without harness edits."""
+        return os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+
+    @staticmethod
+    def _registry_path() -> str:
+        return os.path.join(DomainRouter._home(), "ontologies", "registry.json")
+
+    @staticmethod
+    def _ontology_yaml_path(domain_id: str) -> str:
+        return os.path.join(DomainRouter._home(), "ontologies", f"{domain_id}.yaml")
+
     def __init__(self):
         self._label_index: Dict[str, str] = {}           # label_lower → domain_id
         self._domain_vectors: Dict[str, np.ndarray] = {}  # domain_id → embedding
@@ -192,13 +208,37 @@ class DomainRouter:
         u"""All registered domain IDs."""
         return list(self._load_registry().get("domains", {}).keys())
 
+    def tracking_domain(self) -> str:
+        """Return the sole platform tracking domain id (D2 constant).
+
+        Prefer this over hardcoding ``\"fde-delivery\"`` in callers.
+        """
+        return self.PLATFORM_TRACKING_DOMAIN
+
+    def require_known_domain(self, domain_id: str) -> str:
+        """Phase 1 hard acceptance: domain must be registered (or be tracking domain).
+
+        Raises ValueError if unknown — forces callers through DomainRouter instead of
+        silent GraphIndex.load on arbitrary literals.
+        """
+        did = (domain_id or "").strip()
+        if not did:
+            raise ValueError("domain_id is required")
+        known = set(self.list_domains())
+        if did == self.PLATFORM_TRACKING_DOMAIN or did in known:
+            return did
+        raise ValueError(
+            f"unknown domain_id {did!r} — register via DomainRouter or use "
+            f"tracking_domain()={self.PLATFORM_TRACKING_DOMAIN!r}"
+        )
+
     def fallback_domains(self) -> List[str]:
         u"""Supplementary domains for cross-domain fallback."""
         return self._load_registry().get("fallback_domains", ["default"])
 
     def register_domain(self, domain_id: str, config: dict, auto_rebuild: bool = True, tenant_id: str = "default"):
         u"""Hot-register a new domain at runtime (no restart)."""
-        registry_path = os.path.expanduser("~/.aiplat/ontologies/registry.json")
+        registry_path = self._registry_path()
         registry = self._load_registry()
         config["tenant_id"] = tenant_id
         registry["domains"][domain_id] = config
@@ -288,7 +328,7 @@ class DomainRouter:
                 registry["domains"][did]["last_assessed_at"] = \
                     __import__('time').strftime("%Y-%m-%dT%H:%M:%SZ", __import__('time').gmtime())
 
-        reg_path = os.path.expanduser("~/.aiplat/ontologies/registry.json")
+        reg_path = self._registry_path()
         with open(reg_path, "w", encoding="utf-8") as f:
             _json.dump(registry, f, ensure_ascii=False, indent=2)
         self._registry_cache = registry
@@ -310,7 +350,7 @@ class DomainRouter:
         self._domain_vectors.clear()
 
         for did in self.list_domains():
-            path = os.path.expanduser(f"~/.aiplat/ontologies/{did}.yaml")
+            path = self._ontology_yaml_path(did)
             if not os.path.exists(path):
                 continue
             domain = load_ontology_from_yaml(path)
@@ -395,7 +435,7 @@ class DomainRouter:
         if self._registry_cache is not None:
             return self._registry_cache
 
-        path = os.path.expanduser("~/.aiplat/ontologies/registry.json")
+        path = self._registry_path()
         try:
             with open(path, "r", encoding="utf-8") as f:
                 self._registry_cache = json.load(f)

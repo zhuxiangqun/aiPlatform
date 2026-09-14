@@ -1,0 +1,262 @@
+# audit_schema.v1.yaml
+# 客户运营 Action 审计字段与 Eval 门语义
+# 适用范围：ActionRegistry、PipelineEngine、PolicyGate、Evidence Store、FDE 工作台
+# 契约入口：docs/contracts/FDE_WORKBENCH_CONTRACT.md
+# 落地存储：ActionStore.action_audit（增量对齐；见文末 action_store_mapping）
+
+schema_version: audit.v1
+
+# ------------------------------------------------------------
+# 1. 审计记录（audit_record）
+# ------------------------------------------------------------
+audit_record:
+  description: 每次客户运营 Action 执行前后必须写入的审计记录
+  required: true
+  fields:
+    audit_id:
+      type: string
+      description: 全局唯一审计 ID，建议 ULID
+      required: true
+    timestamp:
+      type: string
+      format: ISO-8601
+      required: true
+    actor_type:
+      type: enum
+      values: [human, agent, system]
+      required: true
+    actor_id:
+      type: string
+      description: 人 ID 或 Agent ID
+      required: true
+    approver_id:
+      type: string
+      description: 审批者 ID；若 actor_type=human 且自审批，同 actor_id
+      required: false
+    action_namespace:
+      type: string
+      description: customer_action 或 platform_action
+      required: true
+    action_name:
+      type: string
+      description: 完整 Action 名，如 customer_action:lock-service:accept_order
+      required: true
+    domain_id:
+      type: string
+      description: 客户域 ID，如 lock-service
+      required: true
+    target_entity_type:
+      type: string
+      description: 目标实体类型，如 InstallOrder
+      required: true
+    target_entity_id:
+      type: string
+      required: true
+    input_params_hash:
+      type: string
+      description: 输入参数规范化后的 SHA-256
+      required: true
+    input_params_snapshot:
+      type: object
+      description: 输入参数快照（脱敏后）
+      required: true
+    before_state_snapshot:
+      type: object
+      description: 执行前实体状态快照
+      required: true
+    after_state_snapshot:
+      type: object
+      description: 执行后实体状态快照
+      required: true
+    result_status:
+      type: enum
+      values: [success, failure, partial, rollback]
+      required: true
+    result_message:
+      type: string
+      required: false
+    pipeline_run_id:
+      type: string
+      description: 关联的 Pipeline run_id
+      required: false
+    evidence_ref:
+      type: string
+      description: Evidence Store 引用
+      required: false
+    policy_gate_decision:
+      type: object
+      description: PolicyGate 决策记录
+      fields:
+        gate_id: string
+        decision: enum [allow, deny, hitl_required]
+        reason: string
+      required: true
+    rollback_ref:
+      type: string
+      description: 回滚记录引用，若无可空
+      required: false
+    retention:
+      type: enum
+      values: [permanent, standard, temporary]
+      required: true
+
+  example:
+    audit_id: "01J8Z9K2M3N4P5Q6R7S8T9V0W1"
+    timestamp: "2026-09-14T10:23:45+08:00"
+    actor_type: "agent"
+    actor_id: "fda-lock-service-01"
+    approver_id: "fde-zhang"
+    action_namespace: "customer_action"
+    action_name: "customer_action:lock-service:accept_order"
+    domain_id: "lock-service"
+    target_entity_type: "InstallOrder"
+    target_entity_id: "IO-2026-0914-001"
+    input_params_hash: "sha256:abc123..."
+    input_params_snapshot:
+      order_id: "IO-2026-0914-001"
+      assigned_technician: "tech-007"
+      scheduled_at: "2026-09-15T09:00:00+08:00"
+    before_state_snapshot:
+      status: "pending"
+      assigned_technician: null
+    after_state_snapshot:
+      status: "accepted"
+      assigned_technician: "tech-007"
+    result_status: "success"
+    result_message: "Order accepted, technician assigned"
+    pipeline_run_id: "run-20260914-1023"
+    evidence_ref: "evidence:lock-service:IO-2026-0914-001:accept"
+    policy_gate_decision:
+      gate_id: "policy_gate:customer_action:accept_order"
+      decision: "hitl_required"
+      reason: "high_risk_action"
+    rollback_ref: null
+    retention: "permanent"
+
+# ------------------------------------------------------------
+# 2. Eval 门语义（eval_gate）
+# ------------------------------------------------------------
+eval_gate:
+  description: 定义不同阶段的 Eval 通过标准，禁止“全过”含糊表述
+  gates:
+
+    customer_action_safety:
+      stage: customer_action_pre_deploy
+      applies_to: customer_action
+      criteria:
+        all_pass: true                # 所有测试用例必须通过
+        no_regression: true           # 不得有回归
+        min_pass_rate: 1.0            # 通过率必须 100%
+        manual_approval_required: true
+        security_review_required: true  # 复用 security_audit 结果
+      thresholds:
+        max_false_positive_rate: 0.05
+        max_false_negative_rate: 0.0
+      on_fail_action: hitl
+      description: 客户运营 Action 上线前必须通过，任何失败进入人工审批。
+
+    platform_action_health:
+      stage: platform_action_pre_deploy
+      applies_to: platform_action
+      criteria:
+        all_pass: false
+        min_pass_rate: 0.95
+        no_regression: true
+        manual_approval_required: false
+      thresholds:
+        max_false_positive_rate: 0.10
+        max_false_negative_rate: 0.02
+      on_fail_action: retry_or_skip
+      description: 平台诊断 Action 上线前评估，允许少量非关键失败。
+
+    fde_delivery_pipeline:
+      stage: fde_delivery_phase
+      applies_to: pipeline_stage
+      criteria:
+        all_pass: false
+        min_pass_rate: 0.90
+        no_regression: true
+        manual_approval_required: false
+      thresholds:
+        max_false_positive_rate: 0.15
+        max_false_negative_rate: 0.05
+      on_fail_action: failure_strategy
+      description: fde_delivery_v1 各阶段 Eval，失败按 failure_strategy 处理。
+
+    evolve_proposal:
+      stage: evolve_candidate
+      applies_to: agent_proposal
+      criteria:
+        all_pass: true
+        no_regression: true
+        min_pass_rate: 1.0
+        manual_approval_required: true
+        change_surface_whitelist: true
+      thresholds:
+        max_false_positive_rate: 0.0
+        max_false_negative_rate: 0.0
+      on_fail_action: reject_proposal
+      description: Phase 4 迷你 AIP Evolve 提案门，必须全过 + 人审 + 变更面白名单。
+
+    security_audit_confirmed:
+      stage: security_audit_evidence
+      applies_to: finding
+      criteria:
+        physical_evidence_required: true   # sandbox_repro 或 pytest
+        llm_assertion_allowed: false
+      thresholds:
+        max_false_positive_rate: 0.0
+      on_fail_action: keep_candidate
+      description: 安全审计 finding 进入 confirmed 必须带物理证据，禁止纯 LLM 断言。
+
+# ------------------------------------------------------------
+# 3. 变更面白名单（change_surface_whitelist）
+# ------------------------------------------------------------
+change_surface_whitelist:
+  description: Phase 4 Evolve 允许 Agent 修改的配置键白名单
+  allowed_keys:
+    - "prompt_extra.*"
+    - "model_config.temperature"
+    - "model_config.max_tokens"
+    - "retry_policy.max_retries"
+    - "cache_ttl_seconds"
+  forbidden_keys:
+    - "policy_gate.*"
+    - "auth.*"
+    - "database.*"
+    - "sandbox.*"
+    - "audit.*"
+  enforcement:
+    static_check: true
+    runtime_check: true
+    on_violation: hitl_and_reject
+
+# ------------------------------------------------------------
+# 4. 审计保留策略
+# ------------------------------------------------------------
+retention_policy:
+  customer_action: permanent
+  platform_action: standard
+  evolve_proposal: permanent
+  security_finding: permanent
+  pipeline_run: standard
+
+# ------------------------------------------------------------
+# 5. 与现有 ActionStore 列映射（实现提示，非业务契约）
+# ------------------------------------------------------------
+# Phase 1：可在 params / entity_snapshot JSON 内嵌入本 schema 必填字段。
+# Phase 2：优先加列 action_namespace / approver_id / input_params_hash / pipeline_run_id。
+action_store_mapping:
+  audit_id: audit_id
+  action_id: action_name
+  entity_id: target_entity_id
+  domain_id: domain_id
+  from_state: before_state_snapshot.status
+  to_state: after_state_snapshot.status
+  actor: actor_id
+  role: actor_type
+  params: input_params_snapshot
+  result_status: result_status
+  effect_summary: result_message
+  entity_snapshot: "{before: before_state_snapshot, after: after_state_snapshot}"
+  created_at: timestamp

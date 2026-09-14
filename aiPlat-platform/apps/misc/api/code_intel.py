@@ -695,6 +695,83 @@ async def export_code_graph(rt=Depends(get_kernel_runtime)):
     }
 
 
+@router.get("/diagnostics/code-intel/security-view", response_model=ItemResponse)
+async def security_view(
+    layer: Optional[str] = None,
+    max_paths: int = 20,
+    force: bool = False,
+    rt=Depends(get_kernel_runtime),
+):
+    """Deterministic security view (secview.v1) compiled from code_graph.
+
+    Heuristic only: import/call reachability ≠ taint. See metrics.heuristic.
+    """
+    from core.api.core_facade import get_security_view
+
+    _ = rt  # auth/runtime gate via Depends
+    data = get_security_view(max_paths=int(max_paths or 20), force=bool(force))
+    if layer:
+        data["hot_paths"] = [
+            p for p in (data.get("hot_paths") or []) if p.get("layer") == layer
+        ]
+        data["entries"] = [
+            e for e in (data.get("entries") or []) if e.get("layer") == layer
+        ]
+    data["status"] = "ok"
+    return data
+
+
+@router.get("/diagnostics/code-intel/hot-paths", response_model=ItemResponse)
+async def security_hot_paths(
+    entry_id: Optional[str] = None,
+    max_paths: int = 20,
+    rt=Depends(get_kernel_runtime),
+):
+    """Scored hot_paths from security view (always heuristic=True)."""
+    from core.api.core_facade import code_intel_hot_paths
+
+    _ = rt
+    out = code_intel_hot_paths(entry_id, max_paths=int(max_paths or 20))
+    out["status"] = "ok"
+    return out
+
+
+@router.post("/diagnostics/code-intel/security-plan", response_model=ItemResponse)
+async def security_plan_run(
+    force: bool = False,
+    max_paths: int = 12,
+    rt=Depends(get_kernel_runtime),
+):
+    """Phase B plan stage only (deterministic handler, no LLM)."""
+    from core.api.core_facade import run_security_plan
+
+    _ = rt
+    data = run_security_plan(force=bool(force), max_paths=int(max_paths or 12))
+    if isinstance(data, dict):
+        data = dict(data)
+        data["status"] = "ok"
+        return data
+    return {"status": "ok", "result": data}
+
+
+@router.post("/diagnostics/code-intel/security-review-dry", response_model=ItemResponse)
+async def security_review_dry_run(
+    force: bool = False,
+    max_paths: int = 20,
+    phase_c_enabled: bool = False,
+    rt=Depends(get_kernel_runtime),
+):
+    """Phase B(+optional C) dry-run. Phase C requires phase_c_enabled=true."""
+    from core.api.core_facade import run_security_review_dry
+
+    _ = rt
+    return run_security_review_dry(
+        force=bool(force),
+        max_paths=int(max_paths or 20),
+        phase_c_enabled=bool(phase_c_enabled),
+    )
+
+
 @router.get("/diagnostics/code-intel/tour", response_model=ItemResponse)
 async def guided_tour(limit: int = 30, rt=Depends(get_kernel_runtime)):
     """Return dependency-sorted file list for guided architecture tour."""

@@ -3,8 +3,8 @@
   *
   * FDE 流程步骤 (按 FDE 七项能力流程排列):
   *   ① 业务认知 → ② 评估域 → ③ 问题重构 → ④ 验证价值 →
-  *   ⑤ 快速构建 → ⑥ 评测护栏 → ⑦ 验收移交 → ⑧ 运营监控
-  */
+ *   ⑤ 平台离线包 → ⑥ 评测护栏 → ⑦ 验收移交 → ⑧ 运营监控
+ */
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
 import ReasoningTracePanel from './ReasoningTracePanel';
@@ -18,7 +18,6 @@ import SimulationPanel from './SimulationPanel';
 import LineageViewer from './LineageViewer';
 import PurposeContext from '../../components/security/PurposeContext';
 import BranchPanel from './BranchPanel';
-import AgentNetworkPanel from './AgentNetworkPanel';
 import TemplatePanel from './TemplatePanel';
 import RecordingPanel from './RecordingPanel';
 import VoiceBrainstormPanel from './VoiceBrainstormPanel';
@@ -26,7 +25,7 @@ import CognitiveSafetyPanel from './CognitiveSafetyPanel';
 import CompilationDashboard from './CompilationDashboard';
 import EvoXPanel from './EvoXPanel';
 
-const API = (path: string) => `/api/platform/apps${path}`;
+const API = (path: string) => `/api/platform/apps/fde${path}`;
 
 // ═══════════════════════════════════════════════════════════
 // ActionCardsSection — reusable action cards component (v3)
@@ -85,12 +84,21 @@ const ActionCardsSection: React.FC<{
             <div key={action.action_id} className="p-3 rounded bg-gray-800/50 border border-gray-700/50">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-gray-200">{action.label}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                <div className="flex items-center gap-1">
+                  {action.action_kind && action.action_kind !== 'legacy' && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                      action.action_kind === 'customer'
+                        ? 'bg-cyan-500/20 text-cyan-300'
+                        : 'bg-violet-500/20 text-violet-300'
+                    }`}>{action.action_kind === 'customer' ? '客户运营' : '平台诊断'}</span>
+                  )}
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${
                   action.risk_level === 'critical' ? 'bg-red-500/20 text-red-400' :
                   action.risk_level === 'high' ? 'bg-orange-500/20 text-orange-400' :
                   action.risk_level === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
                   'bg-green-500/20 text-green-400'
                 }`}>{action.risk_level}</span>
+                </div>
               </div>
               <div className="text-xs text-gray-400 mb-2">{action.effect_semantics}</div>
               {action.compensation && (
@@ -237,10 +245,11 @@ const FDE_STEPS = [
   { key: 'capability', label: '② 评估域',   icon: Target,      hint: '查看各域数据成熟度、可用Skill、已知缺口' },
   { key: 'assess',     label: '③ 问题重构', icon: FileText,    hint: 'field_assessment 诊断 → 表层需求翻译为真实问题' },
   { key: 'poc',        label: '④ 验证价值', icon: Wrench,      hint: '行业模板 + 数据注入 → 快速POC验证 ROI' },
-  { key: 'deploy',     label: '⑤ 快速构建', icon: Package,     hint: '打包部署到客户环境，先跑通核心链路' },
+  { key: 'deploy',     label: '⑤ 平台离线包', icon: Package,     hint: '平台离线包打包（≠客户应用）；交付 Pipeline 可链接 Builder 产物' },
   { key: 'canary',     label: '⑥ 评测护栏', icon: TrendingUp,  hint: '灰度发布 + 质量门禁 + 回滚预案' },
+  { key: 'preflight',  label: '⑥b 上线前检查', icon: Shield,      hint: 'FDE 4A = security Phase B/C dry-run（默认 B；C 需显式开关）' },
   { key: 'accept',     label: '⑦ 验收移交', icon: CheckCircle, hint: '签收 + 移交 + 首月护航' },
-  { key: 'evolution',  label: '⑧ 运营监控', icon: Activity,    hint: '运营指标 + 反馈闭环 + 资产沉淀' },
+  { key: 'evolution',  label: '⑧ 运营监控', icon: Activity,    hint: '运营指标 + Evolve 提案队列（4B）+ 反馈闭环' },
   { key: 'rapid_insight', label: '⑨ 快速认知', icon: Zap,       hint: '48h 搞懂陌生行业 — 投喂材料 → 三问认知 → 盲区修复' },
 ] as const;
 
@@ -267,7 +276,6 @@ const FdeDashboard: React.FC = () => {
   const [showSimulation, setShowSimulation] = useState(false);
   const [showLineage, setShowLineage] = useState(false);
   const [showBranching, setShowBranching] = useState(false);
-  const [showAgentNetwork, setShowAgentNetwork] = useState(false);
   const [showEvoX, setShowEvoX] = useState(false);
   const [showTemplate, setShowTemplate] = useState(false);
   const [showRecording, setShowRecording] = useState(false);
@@ -421,7 +429,7 @@ const FdeDashboard: React.FC = () => {
       { key: 'capability', label: '评估域',   tabs: '②', tabKey: 'capability', done: !!domain, active: tab === 'capability' },
       { key: 'assess',     label: '问题重构', tabs: '③', tabKey: 'assess',     done: !!diagnosis, active: tab === 'assess' },
       { key: 'poc',        label: '验证价值', tabs: '④', tabKey: 'poc',        done: !!pocProfile, active: tab === 'poc' },
-      { key: 'deploy',     label: '快速构建', tabs: '⑤', tabKey: 'deploy',     done: !!deployVersion, active: tab === 'deploy' },
+      { key: 'deploy',     label: '平台离线包', tabs: '⑤', tabKey: 'deploy',     done: !!deployVersion, active: tab === 'deploy' },
       { key: 'canary',     label: '评测护栏', tabs: '⑥', tabKey: 'canary',     done: !!canaryResult?.passed, active: tab === 'canary' },
       { key: 'accept',     label: '验收移交', tabs: '⑦', tabKey: 'accept',     done: adopted, active: tab === 'accept' },
       { key: 'evolution',  label: '运营监控', tabs: '⑧', tabKey: 'evolution',  done: adopted, active: tab === 'evolution' },
@@ -457,7 +465,7 @@ const FdeDashboard: React.FC = () => {
       tab: 'poc' as TabKey
     };
     if (!deployVersion) return {
-      text: isWorkflow ? '✅ POC 已通过，DE 正在构建部署包。请前往 ⑤ 快速构建 查看进度' : '✅ POC 验证通过，请前往 ⑤ 快速构建 打包部署',
+      text: isWorkflow ? '✅ POC 已通过。请前往 ⑤ 平台离线包 查看打包进度（≠客户应用已构建）' : '✅ POC 验证通过，请前往 ⑤ 平台离线包 打包（平台离线包 ≠ 客户应用）',
       tab: 'deploy' as TabKey
     };
     if (!canaryResult?.passed) return {
@@ -486,7 +494,7 @@ const FdeDashboard: React.FC = () => {
             <select onChange={e => loadWorkflow(e.target.value)} value={workflowName ? 'fde_delivery_v1' : ''}
               className="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-400">
               <option value="">自由模式（默认）</option>
-              <option value="fde_delivery_v1">FDE 标准交付 v1</option>
+              <option value="fde_delivery_v1">FDE 标准交付 v1（可启动服务端 session）</option>
             </select>
             <ManageActionsButton />
             <Button variant="ghost" size="sm" onClick={() => setShowSimulation(!showSimulation)}
@@ -513,10 +521,6 @@ const FdeDashboard: React.FC = () => {
                     <button onClick={() => { setShowBranching(!showBranching); setShowMore(false); }}
                       className="w-full text-left px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-800 hover:text-yellow-400 rounded flex items-center gap-2">
                       <GitFork className="w-3 h-3" />本体分支
-                    </button>
-                    <button onClick={() => { setShowAgentNetwork(!showAgentNetwork); setShowMore(false); }}
-                      className="w-full text-left px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-800 hover:text-cyan-400 rounded flex items-center gap-2">
-                      <Activity className="w-3 h-3" />Agent网络
                     </button>
                     <button onClick={() => { setShowTemplate(!showTemplate); setShowMore(false); }}
                       className="w-full text-left px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-800 hover:text-blue-400 rounded flex items-center gap-2">
@@ -679,8 +683,9 @@ const FdeDashboard: React.FC = () => {
       {tab === 'capability' && <CapabilityBoundary industry={customer?.industry} onSelect={setDomain} />}
       {tab === 'assess'     && <AssessTab domain={domain?.id ?? null} customerDesc={customer?.description || ''} customerName={customer?.name || ''} customerIndustry={customer?.industry || ''} onReport={setDiagnosis} />}
       {tab === 'poc'        && <PocTab domain={domain} onProfileSet={setPocProfile} />}
-      {tab === 'deploy'     && <DeployTab profile={pocProfile} onDeployed={setDeployVersion} />}
+      {tab === 'deploy'     && <DeployTab profile={pocProfile} onDeployed={setDeployVersion} customerName={customer?.name || ''} domainId={domain?.id || ''} />}
       {tab === 'canary'     && <CanaryTab deployVersion={deployVersion} onResult={setCanaryResult} />}
+      {tab === 'preflight'  && <PreflightTab />}
       {tab === 'accept'     && <AcceptTab canaryResult={canaryResult} diagnosisReport={diagnosis?.reportText || ''} onAdopted={() => setAdopted(true)} />}
       {tab === 'evolution'  && <EvolutionTab namespace={customer?.namespace ?? null} domainId={domain?.id} />}
       {tab === 'rapid_insight' && <RapidInsightTab />}
@@ -706,12 +711,7 @@ const FdeDashboard: React.FC = () => {
          </div>
        )}
 
-       {/* ── Agent 网络面板 ── */}
-       {showAgentNetwork && (
-         <div className="mt-4">
-           <AgentNetworkPanel />
-         </div>
-       )}
+       {/* Agent 网络面板已下线（契约否定清单 #5） */}
 
        {/* ── EvoX 蜂群推演面板 ── */}
        {showEvoX && (
@@ -772,11 +772,147 @@ const FdeDashboard: React.FC = () => {
 };
 
 // ═══════════════════════════════════════════════════════════
-// ⑧ 运营监控 — 系统进化 (原 workbench FDE Dashboard)
+// ⑥b 上线前检查 — FDE 4A = security Phase B/C (D5 独立入口)
+// ═══════════════════════════════════════════════════════════
+const PreflightTab: React.FC = () => {
+  const [phaseC, setPhaseC] = useState(false);
+  const [maxPaths, setMaxPaths] = useState(20);
+  const [force, setForce] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const [latest, setLatest] = useState<any>(null);
+
+  const loadLatest = useCallback(async () => {
+    try {
+      const r = await fetch(API('/security-preflight/latest'));
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) setLatest(d.run || null);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => { loadLatest(); }, [loadLatest]);
+
+  const runPreflight = async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(API('/security-preflight/run'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          force,
+          max_paths: maxPaths,
+          phase_c_enabled: phaseC,
+          actor: 'fde_engineer',
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.detail || `HTTP ${r.status}`);
+      setResult(d);
+      setLatest(d.run || null);
+      toast?.success?.(`上线前检查完成 · Phase ${d.dry_run_phase || d.run?.summary?.phase || 'B'}`);
+    } catch (e: any) {
+      toast?.error?.(e?.message || '安全预检失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const summary = result?.run?.summary || latest?.summary;
+  const findings = summary?.findings || [];
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <span className="text-sm font-medium">上线前检查（FDE 4A = security B/C）</span>
+          <p className="text-[11px] text-gray-500 mt-1 font-normal">
+            经 CoreFacade.run_security_review_dry；默认 Phase B。Phase C（regression_evidence）需显式开关。Evidence 只读，不改 severity。
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <label className="flex items-center gap-2 text-xs text-gray-300">
+            <input type="checkbox" checked={phaseC} onChange={e => setPhaseC(e.target.checked)} />
+            启用 Phase C（默认关闭）
+          </label>
+          <label className="flex items-center gap-2 text-xs text-gray-300">
+            <input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)} />
+            force 重新扫描
+          </label>
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <span>max_paths</span>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              className="w-20 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200"
+              value={maxPaths}
+              onChange={e => setMaxPaths(Math.max(1, Math.min(100, Number(e.target.value) || 20)))}
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="default" size="sm" onClick={runPreflight} loading={loading}>
+              <Shield className="w-3.5 h-3.5 mr-1" />运行安全预检
+            </Button>
+            <Button variant="ghost" size="sm" onClick={loadLatest}>
+              <RefreshCw className="w-3.5 h-3.5 mr-1" />刷新最近结果
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {(result || latest) && (
+        <Card>
+          <CardHeader>
+            <span className="text-sm font-medium">预检结果（只读 Evidence）</span>
+          </CardHeader>
+          <CardContent className="space-y-2 text-xs text-gray-300">
+            <p>
+              run={result?.run?.run_id || latest?.run_id || '—'}
+              {' · '}phase={summary?.phase || result?.dry_run_phase || '—'}
+              {' · '}status={summary?.status || result?.dry_run_status || '—'}
+              {' · '}findings={summary?.finding_count ?? findings.length}
+              {summary?.evidence_enabled ? ' · evidence=on' : ' · evidence=off'}
+            </p>
+            {summary?.evidence_ref ? (
+              <p className="text-cyan-300/80 truncate">evidence_ref: {summary.evidence_ref}</p>
+            ) : null}
+            <div className="space-y-1 max-h-64 overflow-y-auto">
+              {findings.length === 0 && <p className="text-gray-500">无 findings（或上游未返回）</p>}
+              {findings.map((f: any, i: number) => (
+                <div key={f.id || i} className="border-b border-gray-800/60 py-1">
+                  <span className="text-amber-200/90">{String(f.severity || '—')}</span>
+                  {' · '}
+                  <span>{f.title || f.id || 'finding'}</span>
+                  {f.status ? <span className="text-gray-500"> · {f.status}</span> : null}
+                  {f.evidence_ref ? <div className="text-gray-500 truncate">{f.evidence_ref}</div> : null}
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-gray-500">
+              存储：`$AIPLAT_HOME/fde_security_preflight/`（摘要指针；Phase C 产物落 cache/tmp，不在工作台改写）
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+// ⑧ 运营监控 — 系统进化 (原 workbench FDE Dashboard) + 4B Evolve
 // ═══════════════════════════════════════════════════════════
 const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domainId?: string }> = ({ namespace, domainId }) => {
   const [data, setData] = useState<any>(null);
   const [scores, setScores] = useState<any>(null);
+  const [evolveKeys, setEvolveKeys] = useState('model_config.temperature');
+  const [evolveSummary, setEvolveSummary] = useState('');
+  const [touchesAbox, setTouchesAbox] = useState(false);
+  const [evolveBusy, setEvolveBusy] = useState(false);
+  const [evolveEval, setEvolveEval] = useState<any>(null);
+  const [evolveList, setEvolveList] = useState<any[]>([]);
+
   useEffect(() => { fetch(API('/dashboard') + (namespace ? `?namespace=${namespace}` : '')).then(r => r.json()).then(setData); }, []);
   // v2.7: Fetch scoring engine alerts for this domain
   useEffect(() => {
@@ -792,35 +928,103 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
     fetch(API('/extractions/pending')).then(r => r.json())
       .then(d => setAuditStats(d)).catch(() => {});
   }, []);
+
+  const loadEvolve = useCallback(async () => {
+    try {
+      const r = await fetch(API('/evolve-proposals?limit=20'));
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) setEvolveList(d.items || []);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  useEffect(() => { loadEvolve(); }, [loadEvolve]);
+
+  const parseKeys = () => evolveKeys.split(/[,\s]+/).map(k => k.trim()).filter(Boolean);
+
+  const evaluateEvolve = async () => {
+    setEvolveBusy(true);
+    try {
+      const keys = parseKeys();
+      const r = await fetch(API('/evolve-proposals/evaluate'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keys,
+          proposed_changes: Object.fromEntries(keys.map(k => [k, true])),
+          actor: 'fde_engineer',
+          domain_id: domainId || '',
+          touches_abox: touchesAbox,
+          touches_ontology: touchesAbox,
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.detail || `HTTP ${r.status}`);
+      setEvolveEval(d);
+    } catch (e: any) {
+      toast?.error?.(e?.message || 'Evolve 评估失败');
+    } finally {
+      setEvolveBusy(false);
+    }
+  };
+
+  const enqueueEvolve = async () => {
+    setEvolveBusy(true);
+    try {
+      const keys = parseKeys();
+      const r = await fetch(API('/evolve-proposals'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keys,
+          proposed_changes: Object.fromEntries(keys.map(k => [k, true])),
+          actor: 'fde_engineer',
+          domain_id: domainId || '',
+          touches_abox: touchesAbox,
+          touches_ontology: touchesAbox,
+          summary: evolveSummary || 'workbench evolve proposal',
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.detail || `HTTP ${r.status}`);
+      setEvolveEval(d.data || d);
+      await loadEvolve();
+      if (d.status === 'rejected') toast?.error?.(`提案拒绝: ${d.message || ''}`);
+      else toast?.success?.(`已入队: ${d.data?.proposal_id || d.message}`);
+    } catch (e: any) {
+      toast?.error?.(e?.message || '入队失败');
+    } finally {
+      setEvolveBusy(false);
+    }
+  };
+
   if (!data) return <div className="text-gray-500 text-sm p-4">加载中…</div>;
-  const cards = [
-    { label: '待处理决策', value: data.pending_decisions?.length ?? 0, color: 'text-yellow-400' },
-    { label: '信号告警',   value: data.signal_alerts?.length ?? 0,     color: 'text-red-400' },
-    { label: '追踪异常',   value: data.trace_anomalies?.length ?? 0,   color: 'text-orange-400' },
-    { label: '训练状态',   value: data.training?.ready_to_trigger ? '就绪' : '待命中', color: 'text-blue-400' },
-  ];
-  // v2.7: Add scoring quality + process monitoring cards
+  // Phase 0: hide empty stub KPIs (pending_decisions / trace_anomalies / training always stub).
+  // Only surface collectors that can return real data, plus honesty banner.
+  const cards: Array<{ label: string; value: string | number; color: string }> = [];
+  const signals = data.signal_alerts?.length ?? 0;
+  if (signals > 0) {
+    cards.push({ label: '信号告警', value: signals, color: 'text-red-400' });
+  }
   if (scores?.violations?.length > 0) {
-    cards.push(
-      { label: 'SLA违约', value: scores.violations.length, color: 'text-red-400' },
-    );
+    cards.push({ label: 'SLA违约', value: scores.violations.length, color: 'text-red-400' });
   }
   cards.push(
     { label: '质量评分', value: scores?.total !== undefined ? scores.total : '—', color: 'text-green-400' },
   );
-  // v3.1: Action governance cards
   const pendingCount = auditStats?.pending?.length || auditStats?.count || 0;
   cards.push(
     { label: '待确认抽取', value: pendingCount, color: pendingCount > 0 ? 'text-yellow-400' : 'text-gray-500' },
   );
-  // Phase 39-41: L6 autonomous capability cards
+  const pendingHitl = evolveList.filter(p => p.review_status === 'pending_hitl').length;
   cards.push(
-    { label: '目标分解', value: data.metrics?.goal_decomposition?.enabled ? '已启用' : '关闭', color: data.metrics?.goal_decomposition?.enabled ? 'text-purple-400' : 'text-gray-400' },
-    { label: '自主部署', value: data.metrics?.deploy_engine?.enabled ? '已启用' : '关闭', color: data.metrics?.deploy_engine?.enabled ? 'text-purple-400' : 'text-gray-400' },
-    { label: '外部发现', value: data.metrics?.discovery?.enabled ? '已启用' : '关闭', color: data.metrics?.discovery?.enabled ? 'text-purple-400' : 'text-gray-400' },
+    { label: 'Evolve 待审', value: pendingHitl, color: pendingHitl > 0 ? 'text-yellow-400' : 'text-gray-500' },
   );
   return (
     <div className="space-y-4">
+      <div className="rounded border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-xs text-amber-200/90">
+        运营 KPI 部分采集未接线（待处理决策 / 追踪异常 / 训练状态为 stub，已隐藏）。人审通过率仅参考，不得单独作 KPI（D6）。
+      </div>
       <div className="grid grid-cols-4 gap-3">
         {cards.map(c => (
           <Card key={c.label}><CardContent className="p-3 text-center">
@@ -829,6 +1033,58 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
           </CardContent></Card>
         ))}
       </div>
+
+      <Card>
+        <CardHeader>
+          <span className="text-sm font-medium">Evolve 提案门（Phase 4B）</span>
+          <p className="text-[11px] text-gray-500 mt-1 font-normal">
+            仅白名单配置键；清单外 / ABox·Ontology 写 → HITL。本面板不执行静默写库。
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <input
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300"
+            placeholder="配置键（逗号分隔），如 model_config.temperature"
+            value={evolveKeys}
+            onChange={e => setEvolveKeys(e.target.value)}
+          />
+          <input
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300"
+            placeholder="提案摘要（可选）"
+            value={evolveSummary}
+            onChange={e => setEvolveSummary(e.target.value)}
+          />
+          <label className="flex items-center gap-2 text-xs text-gray-400">
+            <input type="checkbox" checked={touchesAbox} onChange={e => setTouchesAbox(e.target.checked)} />
+            触及 ABox / Ontology（强制 HITL，禁止静默写）
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="ghost" size="sm" onClick={evaluateEvolve} loading={evolveBusy}>评估门</Button>
+            <Button variant="default" size="sm" onClick={enqueueEvolve} loading={evolveBusy}>入人审队列</Button>
+            <Button variant="ghost" size="sm" onClick={loadEvolve}><RefreshCw className="w-3.5 h-3.5 mr-1" />刷新队列</Button>
+          </div>
+          {evolveEval && (
+            <p className={`text-[11px] ${evolveEval.passed || evolveEval.status === 'admitted_to_hitl' || evolveEval.queued ? 'text-green-400' : 'text-amber-300'}`}>
+              gate={evolveEval.gate_id || evolveEval.gate?.gate_id || 'evolve_proposal'}
+              {' · '}status={evolveEval.status || evolveEval.gate?.status || '—'}
+              {' · '}hitl={String(evolveEval.require_hitl ?? evolveEval.gate?.require_hitl ?? false)}
+              {(evolveEval.reasons || evolveEval.gate?.reasons || []).length
+                ? ` · ${(evolveEval.reasons || evolveEval.gate?.reasons || []).join(', ')}`
+                : ''}
+            </p>
+          )}
+          <div className="space-y-1 max-h-40 overflow-y-auto">
+            {evolveList.length === 0 && <p className="text-[11px] text-gray-500">队列为空</p>}
+            {evolveList.slice(0, 12).map((p: any) => (
+              <div key={p.proposal_id} className="text-[11px] text-gray-400 border-b border-gray-800/50 py-1">
+                {p.proposal_id} · {p.review_status} · {p.gate?.status || '—'}
+                {p.summary ? ` · ${p.summary}` : ''}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {data.timeline?.length > 0 && (
         <Card><CardHeader><span className="text-sm font-medium">最近时间线</span></CardHeader>
           <CardContent className="text-xs space-y-1 max-h-48 overflow-y-auto">
@@ -846,18 +1102,35 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
 };
 
 // ═══════════════════════════════════════════════════════════
-// ⑤ 快速构建 — 部署管理
+// ⑤ 平台离线包 — 部署管理（≠ 客户应用已构建）+ 交付 Pipeline session
 // ═══════════════════════════════════════════════════════════
-const DeployTab: React.FC<{ readonly profile: string | null; readonly onDeployed: (taskId: string) => void }> = ({ profile, onDeployed }) => {
+const DeployTab: React.FC<{
+  readonly profile: string | null;
+  readonly onDeployed: (taskId: string) => void;
+  readonly customerName?: string;
+  readonly domainId?: string;
+}> = ({ profile, onDeployed, customerName = '', domainId = '' }) => {
   const [taskId, setTaskId] = useState<string | null>(null);
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [delivery, setDelivery] = useState<any>(null);
+  const [deliveryLoading, setDeliveryLoading] = useState(false);
+  const [approveLoading, setApproveLoading] = useState(false);
+  const [builderProjectId, setBuilderProjectId] = useState('');
+  const [builderBusy, setBuilderBusy] = useState(false);
 
   const poll = useCallback(async (id: string) => {
     const r = await fetch(API(`/package/${id}`));
     const s = await r.json();
     setStatus(s);
     if (s.status === 'running') setTimeout(() => poll(id), 2000);
+  }, []);
+
+  const pollDelivery = useCallback(async (id: string) => {
+    const r = await fetch(API(`/delivery-pipeline/${id}`));
+    if (!r.ok) return;
+    const s = await r.json();
+    setDelivery(s);
   }, []);
 
   const startPackage = async () => {
@@ -877,14 +1150,126 @@ const DeployTab: React.FC<{ readonly profile: string | null; readonly onDeployed
     }
   };
 
+  const startDelivery = async () => {
+    setDeliveryLoading(true);
+    try {
+      const r = await fetch(API('/delivery-pipeline/start'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          template_id: 'fde_delivery_v1',
+          customer_name: customerName || 'demo-customer',
+          domain_id: domainId || '',
+          actor: 'fde_engineer',
+          builder_project_id: builderProjectId.trim() || '',
+        }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.detail || `HTTP ${r.status}`);
+      setDelivery(data);
+      toast?.success?.(`交付 session 已启动: ${data.session_id}`);
+    } catch (e: any) {
+      toast?.error?.(e?.message || '启动交付 Pipeline 失败');
+    } finally {
+      setDeliveryLoading(false);
+    }
+  };
+
+  const approveDelivery = async () => {
+    if (!delivery?.session_id) return;
+    setApproveLoading(true);
+    try {
+      const r = await fetch(API(`/delivery-pipeline/${delivery.session_id}/approve`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedback: 'workbench approve' }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.detail || `HTTP ${r.status}`);
+      setDelivery(data);
+      if (data.phase === 'eval_blocked') {
+        toast?.error?.(`Eval 门未过: ${(data.eval_gate?.reasons || []).join(', ') || 'builder observation required'}`);
+      }
+    } catch (e: any) {
+      toast?.error?.(e?.message || '审批失败');
+    } finally {
+      setApproveLoading(false);
+    }
+  };
+
+  const linkBuilder = async () => {
+    if (!delivery?.session_id || !builderProjectId.trim()) {
+      toast?.error?.('需要 session 与 Builder project_id');
+      return;
+    }
+    setBuilderBusy(true);
+    try {
+      const r = await fetch(API(`/delivery-pipeline/${delivery.session_id}/link-builder`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ builder_project_id: builderProjectId.trim() }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.detail || `HTTP ${r.status}`);
+      setDelivery(data);
+      toast?.success?.(`已链接 Builder: ${builderProjectId.trim()}`);
+    } catch (e: any) {
+      toast?.error?.(e?.message || '链接 Builder 失败');
+    } finally {
+      setBuilderBusy(false);
+    }
+  };
+
+  const observeBuilder = async () => {
+    if (!delivery?.session_id) return;
+    setBuilderBusy(true);
+    try {
+      const r = await fetch(API(`/delivery-pipeline/${delivery.session_id}/observe-builder`), { method: 'POST' });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.detail || `HTTP ${r.status}`);
+      setDelivery(data);
+    } catch (e: any) {
+      toast?.error?.(e?.message || '观测 Builder 失败');
+    } finally {
+      setBuilderBusy(false);
+    }
+  };
+
+  const startBuilder = async () => {
+    if (!delivery?.session_id) return;
+    setBuilderBusy(true);
+    try {
+      const r = await fetch(API(`/delivery-pipeline/${delivery.session_id}/start-builder`), { method: 'POST' });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.detail || `HTTP ${r.status}`);
+      await pollDelivery(delivery.session_id);
+      toast?.success?.(data.message || '已请求 Builder start_pipeline');
+    } catch (e: any) {
+      toast?.error?.(e?.message || '启动 Builder 失败（需已确认 PRD 的工厂项目）');
+    } finally {
+      setBuilderBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!delivery?.session_id || delivery.phase === 'done') return;
+    const t = setInterval(() => pollDelivery(delivery.session_id), 3000);
+    return () => clearInterval(t);
+  }, [delivery?.session_id, delivery?.phase, pollDelivery]);
+
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader><span className="text-sm font-medium">离线部署包</span></CardHeader>
+        <CardHeader>
+          <span className="text-sm font-medium">平台离线包</span>
+          <p className="text-[11px] text-gray-500 mt-1 font-normal">打包平台运行时离线包，不等于客户应用已构建完成。</p>
+        </CardHeader>
         <CardContent className="space-y-3">
-          <Button variant="default" size="sm" onClick={startPackage} loading={loading}>
-            <Package className="w-3.5 h-3.5 mr-1" />打包离线部署包
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="default" size="sm" onClick={startPackage} loading={loading}>
+              <Package className="w-3.5 h-3.5 mr-1" />打包平台离线包
+            </Button>
+          </div>
           {status && (
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
@@ -907,6 +1292,102 @@ const DeployTab: React.FC<{ readonly profile: string | null; readonly onDeployed
                 <a href={API(`/package/${taskId}/download`)} className="inline-flex items-center gap-1 text-blue-400 text-xs hover:underline">
                   <Download className="w-3 h-3" />下载 ({status.size_display || `${status.size_mb || 0} MB`})
                 </a>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <span className="text-sm font-medium">启动交付 Pipeline</span>
+          <p className="text-[11px] text-amber-200/80 mt-1 font-normal">
+            服务端 stage cursor（fde_delivery_v1）。Phase 3：可选链接 Builder project_id，工作台只启动/观测/验收工厂产物，不平行构建。
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <input
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300"
+            placeholder="Builder project_id（可选，Phase 3）"
+            value={builderProjectId}
+            onChange={e => setBuilderProjectId(e.target.value)}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="default" size="sm" onClick={startDelivery} loading={deliveryLoading}>
+              <Play className="w-3.5 h-3.5 mr-1" />启动交付 Pipeline
+            </Button>
+            {delivery?.session_id && (
+              <Button variant="ghost" size="sm" onClick={linkBuilder} loading={builderBusy} disabled={!builderProjectId.trim()}>
+                链接 Builder
+              </Button>
+            )}
+            {delivery?.builder_project_id && (
+              <>
+                <Button variant="ghost" size="sm" onClick={observeBuilder} loading={builderBusy}>
+                  <RefreshCw className="w-3.5 h-3.5 mr-1" />观测 Builder
+                </Button>
+                <Button variant="ghost" size="sm" onClick={startBuilder} loading={builderBusy}>
+                  启动工厂 Pipeline
+                </Button>
+              </>
+            )}
+            {(delivery?.phase === 'paused' || delivery?.phase === 'eval_blocked') && (
+              <Button variant="ghost" size="sm" onClick={approveDelivery} loading={approveLoading}>
+                {delivery.phase === 'eval_blocked' ? '重试 Eval / 验收' : `批准 HITL（${delivery.hitl_phase || delivery.current_stage_id}）`}
+              </Button>
+            )}
+            {delivery?.session_id && (
+              <Button variant="ghost" size="sm" onClick={() => pollDelivery(delivery.session_id)}>
+                <RefreshCw className="w-3.5 h-3.5 mr-1" />刷新
+              </Button>
+            )}
+          </div>
+          {delivery && (
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="bg-gray-700 rounded-full h-2 flex-1">
+                  <div className={`h-2 rounded-full ${delivery.phase === 'eval_blocked' ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${delivery.progress_pct || 0}%` }} />
+                </div>
+                <span className="text-gray-400 text-xs">{delivery.progress_pct || 0}%</span>
+              </div>
+              <p className="text-xs text-gray-400">
+                session={delivery.session_id} · phase={delivery.phase} · stage={delivery.current_stage_id}
+                {delivery.builder_project_id ? ` · builder=${delivery.builder_project_id}` : ''}
+                {delivery.honesty?.note ? ` · ${delivery.honesty.note}` : ''}
+              </p>
+              {delivery.builder_observation && (
+                <p className="text-[11px] text-cyan-300/90">
+                  Builder 观测: phase={delivery.builder_observation.phase || '—'}
+                  {delivery.builder_observation.detail ? ` · ${delivery.builder_observation.detail}` : ''}
+                </p>
+              )}
+              {(delivery.artifact_links || []).length > 0 && (
+                <div className="space-y-0.5">
+                  <p className="text-[11px] text-gray-500">产物链接（工厂）</p>
+                  {(delivery.artifact_links || []).slice(0, 8).map((a: any, i: number) => (
+                    <div key={i} className="text-[11px] text-blue-300/90 truncate">
+                      [{a.kind || 'artifact'}] {a.id || a.url}
+                      {a.url ? ` → ${a.url}` : ''}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {delivery.eval_gate && (
+                <p className={`text-[11px] ${delivery.eval_gate.passed ? 'text-green-400' : 'text-amber-300'}`}>
+                  Eval {delivery.eval_gate.gate_id}: {delivery.eval_gate.passed ? 'pass' : 'blocked'}
+                  {(delivery.eval_gate.reasons || []).length ? ` (${delivery.eval_gate.reasons.join(', ')})` : ''}
+                </p>
+              )}
+              <div className="space-y-0.5">
+                {(delivery.stages || []).map((s: any) => (
+                  <div key={s.id} className="text-[11px] text-gray-400">
+                    <span className="w-16 inline-block text-gray-500">{s.status}</span>
+                    {s.agent_name || s.id}{s.hitl ? ' (HITL)' : ''}
+                  </div>
+                ))}
+              </div>
+              {(delivery.hitl_events || []).length > 0 && (
+                <p className="text-[11px] text-gray-500">HITL 事件: {delivery.hitl_events.length}</p>
               )}
             </div>
           )}
@@ -1634,6 +2115,10 @@ const CustomersTab: React.FC<{ readonly onSelect: (c: CustomerInfo) => void; rea
 
   return (
     <div className="space-y-4">
+      <div className="rounded border border-cyan-800/40 bg-cyan-950/20 px-3 py-2 text-xs text-cyan-100/90">
+        Phase 5：新客户 = Ontology Editor 建域 + DomainRouter 注册 + Action YAML（customer_action），不改 harness。
+        Agent Fleet / 拓扑编排本阶段不上线。详见 docs/contracts/FDE_PHASE5_CUSTOMER_ONBOARDING.md。
+      </div>
       <a
         href="/knowledge-factory"
         className="flex items-center gap-2 p-3 rounded border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-colors text-xs group"
@@ -2021,6 +2506,7 @@ const AcceptTab: React.FC<{ readonly canaryResult: Readonly<CanaryResult> | null
   const [handoverResult, setHandoverResult] = useState<any>(null);
   const [summary, setSummary] = useState('');
   const [closeResult, setCloseResult] = useState<any>(null);
+  const [orderEntityId, setOrderEntityId] = useState('IO-DEMO-001');
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -2134,10 +2620,33 @@ const AcceptTab: React.FC<{ readonly canaryResult: Readonly<CanaryResult> | null
       {handoverResult && (<Card><CardHeader><span className="text-sm font-medium">移交管理员</span></CardHeader><CardContent className="space-y-2"><div className="flex items-center gap-2"><UserCheck className="w-4 h-4 text-blue-400" /><span className="text-xs text-gray-400">将项目所有权转移给客户方管理员</span></div><div className="flex gap-2"><input className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200" placeholder="客户管理员用户名" value={clientAdmin} onChange={e => setClientAdmin(e.target.value)} /><Button variant="default" size="sm" onClick={doTransfer} loading={loading} disabled={!clientAdmin}>执行移交</Button></div><pre className="text-xs text-gray-300 bg-gray-800 p-2 rounded max-h-32 overflow-y-auto">{JSON.stringify(handoverResult, null, 2)}</pre></CardContent></Card>)}
       {handoverResult && (<Card><CardHeader><span className="text-sm font-medium">项目归档</span></CardHeader><CardContent className="space-y-2"><textarea className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200 h-16" placeholder="项目交付总结..." value={summary} onChange={e => setSummary(e.target.value)} /><Button variant="default" size="sm" onClick={doClose} loading={loading}>关闭项目并归档</Button>{closeResult && <div className="text-xs text-green-400 mt-1">✓ 项目已归档 — {closeResult.archive_id}</div>}</CardContent></Card>)}
       {closeResult && (<Card><CardHeader><span className="text-sm font-medium">首月护航</span></CardHeader><CardContent className="space-y-3"><div className="space-y-2"><div className="flex items-center gap-2"><Activity className="w-4 h-4 text-green-400" /><span className="text-xs text-gray-400">安排 30 天后自动健康检查</span></div><div className="flex gap-2"><input className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200" placeholder="通知邮箱 (可选)" onChange={e => (window as any).__health_email = e.target.value} /><Button variant="ghost" size="sm" onClick={async () => { const r = await fetch(API('/handover/schedule-health'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ spec_id: specId, notify_email: (window as any).__health_email || '' }) }); const d = await r.json(); setCloseResult((prev: any) => ({ ...prev, health: d })); }}>安排健康检查</Button></div>{closeResult?.health && <div className="text-xs text-green-400">✓ 已安排 — 将于 {closeResult.health.due_at?.slice(0,10)} 执行</div>}</div><div className="space-y-2 pt-2 border-t border-gray-700/50"><div className="flex items-center gap-2"><Users className="w-4 h-4 text-blue-400" /><span className="text-xs text-gray-400">创建培训沙盒环境</span></div><div className="flex gap-2"><select className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200" onChange={e => (window as any).__sandbox_count = parseInt(e.target.value)} defaultValue="5">{[1,3,5,10,20,50].map(n => <option key={n} value={n}>{n} 人</option>)}</select><Button variant="ghost" size="sm" onClick={async () => { const count = (window as any).__sandbox_count || 5; const r = await fetch(API('/training/sandbox'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ spec_id: specId, trainee_count: count }) }); const d = await r.json(); setCloseResult((prev: any) => ({ ...prev, sandbox: d })); }}>创建培训沙盒</Button></div>{closeResult?.sandbox && <div className="text-xs text-green-400">✓ 沙盒已创建 | {closeResult.sandbox.trainee_count} 人 | 有效期: {closeResult.sandbox.access?.expires_in}</div>}</div></CardContent></Card>      )}
-      {/* v3: 可执行动作卡片 */}
+      {/* v3: 平台诊断 Action（fde-delivery） */}
       {canaryResult?.passed && specId && (
         <ActionCardsSection specId={specId} domainId="fde-delivery" className="诊断会话" state="delivered" />
       )}
+      {/* Phase 2: 客户运营 Action — lock-service InstallOrder */}
+      <Card>
+        <CardHeader>
+          <span className="text-sm font-medium">客户运营 Action（lock-service）</span>
+          <p className="text-[11px] text-gray-500 mt-1 font-normal">
+            与上方平台诊断 Action 区分；执行经 ActionRegistry（非直写库）。需先 seed 工单。
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <input
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300"
+            placeholder="InstallOrder entity_id"
+            value={orderEntityId}
+            onChange={e => setOrderEntityId(e.target.value)}
+          />
+          <ActionCardsSection
+            specId={orderEntityId || 'IO-DEMO-001'}
+            domainId="lock-service"
+            className="安装工单"
+            state="pending"
+          />
+        </CardContent>
+      </Card>
       {/* ═══════════ 本周 FDE 周报（AI 生成 → FDE 审核 → 交付客户） ═══════ */}
       <WeeklyReport />
 

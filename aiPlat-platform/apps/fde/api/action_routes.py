@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 def _safe_contract(contract) -> Dict[str, Any]:
     """Extract frontend-safe fields from ActionContractModel (no handler paths)."""
+    ns = getattr(contract, "action_namespace", "") or ""
     return {
         "action_id": contract.action_id,
         "label": contract.label,
@@ -32,12 +33,19 @@ def _safe_contract(contract) -> Dict[str, Any]:
         "risk_level": contract.risk_level.value,
         "require_approval": contract.require_approval,
         "input_schema": contract.input_schema,
+        "action_namespace": ns,
+        "action_kind": (
+            "customer" if ns == "customer_action"
+            else "platform" if ns == "platform_action"
+            else "legacy"
+        ),
+        "aliases": list(getattr(contract, "aliases", None) or []),
     }
 
 
 @router.get("/actions")
 async def list_actions(
-    class_name: str = Query("", description="Entity class to filter actions for"),
+    class_name: str = Query("", description="Entity class to filter actions for", alias="class"),
     state: str = Query("", description="Entity state to filter actions for"),
     domain: str = Query("", description="Domain ID"),
     role: str = Query("", description="Caller's role (optional)"),

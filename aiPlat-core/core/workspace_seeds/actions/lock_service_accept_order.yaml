@@ -1,0 +1,35 @@
+# Phase 2 D3 — namespaced accept_order + legacy alias `accept_order`
+# Loaded from workspace_seeds/actions by builtin_actions.register_all()
+actions:
+  - action_id: "customer_action:lock-service:accept_order"
+    aliases: ["accept_order"]
+    label: "接受安装工单"
+    description: "客户运营：安装工单 pending → accepted（audit_schema.v1 嵌入）"
+    category: mutation
+    scope: domain
+    domain_id: lock-service
+    target_class: 安装工单
+    required_state: pending
+    effect_semantics: "Order accepted, technician assigned"
+    compensation: "revert InstallOrder.status to pending; clear assigned_technician"
+    risk_level: high
+    require_approval: true
+    throttle_limit: 0
+    action_namespace: customer_action
+    eval_gate: customer_action_safety
+    handler: "core.harness.ontology_engine.builtin_handlers:accept_order"
+    input_schema:
+      type: object
+      properties:
+        assigned_technician:
+          type: string
+          description: "指派技师 ID"
+        scheduled_at:
+          type: string
+          description: "计划上门时间 ISO-8601"
+        pipeline_run_id:
+          type: string
+          description: "可选关联 Pipeline run"
+        domain_id:
+          type: string
+          description: "可选；默认取合同 domain_id"

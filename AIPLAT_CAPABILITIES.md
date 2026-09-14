@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1380
+total_capabilities: 1410
 
 total_capabilities: 1095
 last_updated: 2026-08-25
@@ -743,7 +743,14 @@ scan_hash: 8f9548ec24f4
 | Prompt Caching | harness/utils/prompt_caching.py | ✅ | system_and_N 缓存策略，system + 末尾N消息标记cache_control | 已合入 |
 | Log Redaction | harness/utils/redaction.py | ✅ | RedactingFormatter 全局日志脱敏 | 已合入 |
 | Decorrelated Jitter | harness/infrastructure/gates/resilience_gate.py | ✅ | golden-ratio hash退避抖动，避免惊群效应 | 已合入 |
-| **Action Registry v3** | `harness/infrastructure/action_contract.py` + `action_registry.py` + `action_store.py` + `entity_lock.py` | ✅ | 企业级可治理 AI 执行层：`ActionContractModel`（Pydantic v2 + 实体约束 + handler白名单安全沙箱）、`AsyncActionRegistry`（7步执行流水线 + 审批回调 + 审计持久化）、`EntityLock`（mutex/stake双语义锁）、`ActionStore`（aiosqlite + entity_snapshot不可变审计）、`builtin_actions`（2业务+4legacy+YAML自助注册）、`builtin_handlers`（4个可调用handler）、`action_routes.py`（REST API + FDE AcceptTab前端动作卡片）、StateMachine零停机桥接 | 已合入 |
+| **Action Registry v3** | `harness/infrastructure/action_contract.py` + `action_registry.py` + `action_store.py` + `entity_lock.py` + `action_audit_validate.py` + `workbench_runtime_guard.py` | ✅ | 企业级可治理 AI 执行层：`ActionContractModel`（Pydantic v2 + 实体约束 + handler白名单安全沙箱）、`AsyncActionRegistry`（7步执行流水线 + 审批回调 + 审计持久化）、`EntityLock`（mutex/stake双语义锁）、`ActionStore`（aiosqlite + entity_snapshot不可变审计）、`builtin_actions`（legacy+YAML+workspace_seeds）、`builtin_handlers`、`action_routes.py`；**Phase 1**：`audit_schema.v1` JSON 嵌入、`change_surface_whitelist` 可加载、`WorkbenchRuntimeGuard`、`scripts/fde_audit_mapping.py` dry-run；**Phase 2**：`customer_action:lock-service:accept_order` + `aliases`/`resolve_action_id`、GraphIndex metadata 持久化、D4 200 压测脚本 | 已合入 |
+| FDE accept_order D3/D4 | `workspace_seeds/actions/lock_service_accept_order.yaml` + `scripts/seed_lock_service_orders.py` + `scripts/bench_accept_order_p95.py` | ✅ | Phase 2 竖切：namespaced id + legacy 别名；200 工单 seed；execute→audit P95&lt;500ms + entity 查询 P95&lt;100ms；生成物：平台横切 ActionRegistry，FDE 工作台只消费（已接线 AcceptTab） | 已合入 |
+| FDE audit 映射 dry-run | `scripts/fde_audit_mapping.py` + `docs/contracts/audit_mapping_report.md` | ✅ | audit_schema↔ActionStore 字段分类 present/embedded/missing + ADD/ROLLBACK SQL（默认不改库） | 已合入 |
+| WorkbenchRuntimeGuard | `harness/infrastructure/workbench_runtime_guard.py` | ✅ | 工作台运行时否定项：未注册 Action / policy_gate 审计形状 / stub KPI；经 CoreFacade 导出；dashboard 挂 kpi_guard | 已合入 |
+| FDE 交付 Pipeline session | `apps/fde/service/delivery_pipeline_session.py` + `apps/fde/api/fde_delivery_pipeline.py` | ✅ | Phase 1：启动/查询/批准 `fde_delivery_v1` 服务端 stage cursor；workspace seed 模板；Tab⑤ 接线；≥2 HITL approve 单测；**Phase 3**：链接 Builder `project_id`、observe/start 工厂 Pipeline、`fde_delivery_pipeline` Eval 门、产物链接展示；生成物：工作台不平行构建，交付物走 builder 已接线路径 | 已合入 |
+| FDE Phase 4 安全预检+Evolve | `apps/fde/service/security_preflight.py` + `evolve_proposal_gate.py` + `apps/fde/api/fde_phase4.py` + PreflightTab/EvolutionTab | ✅ | 4A：`run_security_review_dry` + 只读 Evidence 摘要；默认 B / C 开关；4B：`evolve_proposal` 白名单+HITL 队列（无静默 ABox 写）；生成物：不适用（平台横切治理/安全，生成应用由 builder+security 路径执行） | 已合入 |
+| FDE Phase 5 多客户接入 | `docs/contracts/FDE_PHASE5_CUSTOMER_ONBOARDING.md` + `fde_domain_literals` error | ✅ | 新客户=DomainRouter+本体/Action 配置（不改 harness）；守卫 error+AST=0；Agent Fleet 不产品化；生成物：不适用（平台控制台接入路径，生成物仍走 builder） | 已合入 |
+| DomainRouter.require_known_domain | `harness/knowledge/domain_router.py` | ✅ | Phase 1 硬闸：未知域拒绝；tracking 域放行 | 已合入 |
 | **Knowledge Pipeline v3** | `harness/knowledge_pipeline/extractor.py` + `resolver.py` + `retriever.py` | ✅ | 知识生命周期三层管线：`DocumentIngestor`（文档分块）→ `EntityExtractor`（LLM驱动9实体+10关系自动抽取，置信度三级路由≥0.85自动/0.60-0.85待审/<0.60丢弃）→ `DraftYamlWriter`（YAML草稿输出）→ `CrossDomainResolver`（三级匹配：精确键0.6+Jaro-Winkler名称0.25+向量余弦0.15）→ `GraphRAGRetriever`（实体路由→BFS 2跳子图→定向向量检索→推理路径注入） | 已合入 |
 | **Knowledge Pipeline 生成物适用性** | 生成 agent 运行时知识检索接入 | ⚠️ | 生成物不适用（理由：生成 agent 运行时知识检索由 core 全局 syscall `sys_kb_retrieve`（harness/syscalls/retrieval.py，ReActLoop 天然可用）平台横切强制执行，生成物无需自建检索路径；与 platform kb 能力族评估结论一致，2026-08-27 收尾） | 已评估 |
 | **CC/Codex hooks 协议桥（G6）** | `harness/infrastructure/hooks/cc_bridge.py` + `cc_bridge_rules.py` | ✅ | 直接消费 Claude Code / Codex `hooks.json`：事件映射表（CC 7/30 + Codex 4/10 → HookPhase 子集）+ command handler 执行（shell=False/超时/fail-open）+ 默认关（`~/.aiplat/hooks.json` 或 `AIPLAT_CC_HOOKS_PATH` 存在时装载）；http/mcp_tool/prompt/agent handler 跳过记 WARNING，unmapped 事件不静默执行（对齐 DSH hooks 桥诚实披露） | 已合入 |
@@ -803,6 +810,15 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| code_intel_hot_paths | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| merge_evidence_into_report | `core/engine/skills/security_evidence/handler.py` | ✅ | 自动同步 | 已合入 |
+| security_evidence.execute | `core/engine/skills/security_evidence/handler.py` | ✅ | 自动同步 | 已合入 |
+| run_security_plan | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| security_plan.execute | `core/engine/skills/security_plan/handler.py` | ✅ | 自动同步 | 已合入 |
+| sys_code_intel_security_view | `core/harness/syscalls/code_intel_syscall.py` | ✅ | 自动同步 | 已合入 |
+| compact_security_digest | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
+| get_security_view | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
+| build_security_view | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
 | KnowledgeRetriever | `core/harness/knowledge/retriever.py` | ✅ | 自动同步 | 已合入 |
 | audit_trace_rules | `core/harness/ontology_engine/sirg_auditor.py` | ✅ | 自动同步 | 已合入 |
 | SirgAuditor | `core/harness/ontology_engine/sirg_auditor.py` | ✅ | 自动同步 | 已合入 |
@@ -977,6 +993,8 @@ scan_hash: 8f9548ec24f4
 | capability_graph | harness/knowledge/capability_graph.py | ✅ | 能力图谱（agent/skill/tool/mcp/workflow 节点 + requires/uses/provides 边）；工作区扫描经 get_aiplat_home() 解析（2026-08-28 修复） | 已合入 |
 | sqlite_retriever | harness/knowledge/sqlite_retriever.py | ✅ | 自动同步 | 已合入 |
 | code_graph | harness/knowledge/code_graph.py | ✅ | 代码图谱（AST imports/calls/symbols/routes，5 仓库全量 + mtime 增量 + 新文件发现）；经 get_aiplat_home() 解析（2026-08-28 修复） | 已合入 |
+| **security_view** | harness/knowledge/security_view.py | ✅ | 基于 code_graph 的确定性安全视图编译器（secview.v1：entries/sinks/gates/scored hot_paths）；无 LLM；reachability≠taint（heuristic）；CoreFacade + sys_code_intel_security_* + diagnostics/code-intel/security-view | 已合入 |
+| **security_review team (Phase B/C)** | workspace_seeds/teams/security_review.yaml + engine/skills/security_{plan,trace,critique,report,evidence} | ✅ | B：全 handler 干跑至 candidate；C：`security_evidence` 默认关闭（enabled / AIPLAT_SECURITY_PHASE_C）；regression_evidence.v1；SSH/SSRF mock 断言；`run_security_review_dry(phase_c_enabled=…)` | 已合入 |
 | doc_compressor | harness/knowledge/doc_compressor.py | ✅ | 自动同步 | 已合入 |
 | ontology_query_mapper | harness/knowledge/ontology_query_mapper.py | ✅ | 自动同步 | 已合入 |
 | wiki_retriever | harness/knowledge/wiki_retriever.py | ✅ | 自动同步 | 已合入 |
@@ -1482,7 +1500,8 @@ scan_hash: 8f9548ec24f4
 | Value Center API | ⚠️ deprecated core/api/routers/value.py` + `core/schemas_value.py | ✅ | CRUD endpoints: `/all/goals`, `/all/goals/{id}`, `/all/goals/{id}/trend`, `/all/strategy`; Schemas: `GoalCreateRequest`, `GoalUpdateRequest`, `GoalSourceConfigRequest` | 已合入 |
  `core/api/routers/value.py` | ✅ | `get_all_goals`, `create_goal_all`, `update_goal_all`, `delete_goal_all`, `create_business_goal`, `get_goal_trend_all`, `get_strategy_all` + 4 REST endpoints (`/all/goals`, `/all/strategy`, `/all/goals/{id}`, `/all/goals/{id}/trend`) | 已合入 |
 | Proposal 工作流 | harness/learning/proposal_store.py | ✅ | draft→pending_approval→approved→merged/rejected + branch/merge语义 (Palantir AIP对齐) | 已合入 |
-| FDEBuilderOrchestrator | apps/fde/service/builder.py | ✅ | FDE 对话式 Agent 构建：_clarify()→DomainRouter→SkillRegistry→auto_fill→Builder.deploy_app() | 已合入 |
+| FDEBuilderOrchestrator | apps/fde/service/_archive/builder.py | ❌ | Phase 0 D1 归档：零生产 caller；交付一律工厂 Pipeline。勿再导出/接线 | 已归档 |
+
 | Agent 可发现性 | wiki.py:/ontology/{domain}/discover | ✅ | Agent动态查询 ObjectTypes/Links/Actions/Interfaces，自主发现操作能力 | 已合入 |
 
 ---
@@ -1739,6 +1758,20 @@ scan_hash: 8f9548ec24f4
 ## 十六、工具生态
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| approve_delivery_session | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
+| FdeDomainLiteralsAstCheck | `core/management/arch_guard_rules/fde_workbench.py` | ✅ | 自动同步 | 已合入 |
+| enqueue_evolve_proposal | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_evolve_proposal | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
+| summarize_security_dry_run | `core/apps/fde/service/security_preflight.py` | ✅ | 自动同步 | 已合入 |
+| save_preflight_run | `core/apps/fde/service/security_preflight.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_delivery_session | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
+| attach_builder_observation | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
+| link_builder_project | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
+| start_delivery_session | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
+| load_change_surface_whitelist | `core/harness/infrastructure/action_audit_validate.py` | ✅ | 自动同步 | 已合入 |
+| classify_audit_fields | `core/harness/infrastructure/action_audit_validate.py` | ✅ | 自动同步 | 已合入 |
+| check_change_surface | `core/harness/infrastructure/action_audit_validate.py` | ✅ | 自动同步 | 已合入 |
+| update_entity_property | `core/harness/ontology_engine/graph_index.py` | ✅ | 自动同步 | 已合入 |
 | CLOSURE_FP_RATE_MAX | `core/harness/infrastructure/action_contract.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Browser 自动化 | apps/tools/browser.py` + `apps/tools/browser_test_engine.py | ✅ | Playwright 全浏览器自动化，BFS遍历/RPA/截图 | 已合入 |
@@ -2294,10 +2327,10 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 157 | 1 | 158 |
+| Harness 执行引擎 | 164 | 1 | 165 |
 | 记忆子系统 | 41 | 0 | 41 |
-| 知识引擎（本体） | 153 | 8 | 161 |
-| RAG 检索 | 47 | 0 | 47 |
+| 知识引擎（本体） | 161 | 8 | 169 |
+| RAG 检索 | 49 | 0 | 49 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 43 | 0 | 43 |
 | Skill 系统 | 54 | 0 | 54 |
@@ -2305,13 +2338,13 @@ scan_hash: 8f9548ec24f4
 | 可观测性 | 27 | 0 | 27 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
-| 扩展与学习 | 130 | 0 | 130 |
+| 扩展与学习 | 129 | 0 | 129 |
 | Gate 系统 | 150 | 0 | 150 |
 | 评估系统 | 18 | 0 | 18 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
-| 工具生态 | 22 | 0 | 22 |
+| 工具生态 | 36 | 0 | 36 |
 | 微调系统 | 14 | 0 | 14 |
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 6 | 0 | 6 |
@@ -2339,7 +2372,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1371** | **9** | **1380** |
+| **总计** | **1401** | **9** | **1410** |
 
 | **总计** | **1095** | **0** | **1095** |
 

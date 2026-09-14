@@ -57,6 +57,10 @@ __all__ = [
 
     "sys_code_intel_subclasses",
 
+    "sys_code_intel_security_view", "sys_code_intel_hot_paths",
+
+    "sys_code_intel_security_digest",
+
     "sys_file_read", "sys_file_write", "sys_file_edit",
 
     "sys_glob", "sys_code_search",
@@ -103,7 +107,9 @@ _LAZY_MODULES = {
 
         "sys_code_intel_subclasses",
 
-        "sys_code_intel_affected", "sys_code_intel_search",
+        "sys_code_intel_security_view", "sys_code_intel_hot_paths",
+
+        "sys_code_intel_security_digest",
 
     ],
 

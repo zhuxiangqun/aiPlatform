@@ -222,17 +222,27 @@ async def get_fde_dashboard() -> Dict[str, Any]:
         "timeline": await _collect_timeline(),
         "last_updated": datetime.now(timezone.utc).isoformat(),
     }
+    # Phase 1: RuntimeGuard KPI honesty (stub keys flagged; UI already hides them)
+    try:
+        from core.api.core_facade import WorkbenchRuntimeGuard
+        kpi = WorkbenchRuntimeGuard.check_kpi_not_stub(result)
+        result["kpi_guard"] = kpi
+        if not kpi.get("ok"):
+            result["honesty"] = {
+                "stub_keys": kpi.get("stub_keys") or [],
+                "note": "stub KPIs must not be shown as live ops health",
+            }
+    except Exception:
+        pass  # noqa: best-effort honesty meta
     _dash_cache = result
     _dash_cache_ts = now
     return result
 
 
 def _collect_pending_decisions() -> List[Dict[str, Any]]:
-    """REVIEW 状态的 Spec, 等待 FDE 审查执行结果并决定下一步。
+    """REVIEW 状态的 Spec — Phase 0: 明确 stub，前端已隐藏该 KPI 卡片。
 
-    Original logic in workbench.py used async spec_lifecycle queries.
-    During migration the data source is being refactored — stub returns
-    empty for now; full SpecLifecycle integration is a follow-up.
+    Full SpecLifecycle integration is a follow-up (not Phase 0).
     """
     return []
 
@@ -249,24 +259,18 @@ async def _collect_signal_alerts() -> List[Dict[str, Any]]:
 
 
 def _collect_trace_anomalies() -> List[Dict[str, Any]]:
-    try:
-        return []
-    except Exception:
-        return []
+    """Phase 0 stub — UI hides this KPI until wired."""
+    return []
 
 
 def _collect_training_status_dash() -> Dict[str, Any]:
-    try:
-        return {}
-    except Exception:
-        return {}
+    """Phase 0 stub — UI hides this KPI until wired."""
+    return {}
 
 
 async def _collect_timeline() -> List[Dict[str, Any]]:
-    try:
-        return []
-    except Exception:
-        return []
+    """Phase 0 stub — timeline card only renders when non-empty."""
+    return []
 
 
 # ════════════════════════════════════════════════════════════
@@ -500,7 +504,7 @@ bash install.sh
                 "detail": f"打包完成 ({display_size}) — 本地={local_count}, 远程={remote_count}" + (f", 镜像={images_exported}/6" if docker_ok else ", 镜像跳过(无Docker)"),
                 "size_mb": round(size_bytes / 1024 / 1024, 2),
                 "size_display": display_size,
-                "download_url": f"/api/core/fde/package/{task_id}/download",
+                "download_url": f"/api/platform/apps/fde/package/{task_id}/download",
                 "log": log_entries}
         else:
             _add_log("error", "打包文件创建失败")

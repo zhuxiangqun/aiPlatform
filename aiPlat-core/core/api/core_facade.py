@@ -265,6 +265,105 @@ def get_code_graph() -> Any:
     return build_graph(repo, roots)
 
 
+def build_security_view(**kwargs: Any) -> Any:
+    """Compile deterministic security view (secview.v1) from code_graph.
+
+    Phase A: no LLM. Returns a dict with entries/sinks/gates/hot_paths.
+    """
+    from core.harness.knowledge.security_view import build_security_view as _build
+
+    return _build(**kwargs).to_dict()
+
+
+def get_security_view(**kwargs: Any) -> Any:
+    """Return cached-or-fresh security view dict (secview.v1)."""
+    return build_security_view(**kwargs)
+
+
+def security_view_digest(**kwargs: Any) -> Any:
+    """Token-budgeted digest for Agent plan stage."""
+    from core.harness.knowledge.security_view import (
+        build_security_view as _build,
+        compact_security_digest,
+    )
+
+    sv = _build(**kwargs)
+    return compact_security_digest(sv)
+
+
+def _run_async_handler(coro: Any) -> Any:
+    import asyncio
+    import concurrent.futures
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, coro).result()
+
+
+def run_security_plan(**kwargs: Any) -> Any:
+    """Phase B plan stage (deterministic handler). Returns filtered digest dict."""
+    from core.engine.skills.security_plan.handler import execute as _plan_execute
+
+    return _run_async_handler(_plan_execute(dict(kwargs)))
+
+
+def run_security_review_dry(**kwargs: Any) -> Any:
+    """Phase B(+optional C) dry-run: plan→trace→critique→report→evidence.
+
+    Pass ``phase_c_enabled=True`` or set env ``AIPLAT_SECURITY_PHASE_C=1`` for Phase C.
+    """
+    from core.engine.skills.security_critique.handler import execute as _critique
+    from core.engine.skills.security_evidence.handler import (
+        execute as _evidence,
+        merge_evidence_into_report,
+    )
+    from core.engine.skills.security_plan.handler import execute as _plan
+    from core.engine.skills.security_report.handler import execute as _report
+    from core.engine.skills.security_trace.handler import execute as _trace
+
+    phase_c = bool(kwargs.pop("phase_c_enabled", False) or kwargs.pop("enabled", False))
+    plan_kwargs = dict(kwargs)
+
+    plan = _run_async_handler(_plan(plan_kwargs))
+    trace = _run_async_handler(_trace({"security_plan": plan}))
+    critique = _run_async_handler(
+        _critique({"security_plan": plan, "security_trace": trace})
+    )
+    report = _run_async_handler(
+        _report(
+            {
+                "security_plan": plan,
+                "security_trace": trace,
+                "security_critique": critique,
+            }
+        )
+    )
+    evidence = _run_async_handler(
+        _evidence(
+            {
+                "security_report": report,
+                "security_critique": critique,
+                "enabled": phase_c,
+                "max_findings": int(kwargs.get("max_findings") or 5),
+            }
+        )
+    )
+    if evidence.get("enabled"):
+        report = merge_evidence_into_report(report, evidence)
+    return {
+        "status": "ok",
+        "phase": "C" if evidence.get("enabled") else "B",
+        "security_plan": plan,
+        "security_trace": trace,
+        "security_critique": critique,
+        "security_report": report,
+        "security_evidence": evidence,
+    }
+
+
 def get_domain_router() -> Any:
     """Get DomainRouter for multi-domain classification."""
     from core.harness.knowledge.domain_router import DomainRouter
@@ -1689,6 +1788,12 @@ def code_intel_blast(file_path: str) -> Any:
     u"""Return forward blast radius of a file."""
     from core.harness.syscalls.code_intel_syscall import sys_code_intel_blast
     return sys_code_intel_blast(file_path)
+
+
+def code_intel_hot_paths(entry_id: Any = None, max_paths: int = 20) -> Any:
+    """Scored security hot_paths through the syscall boundary."""
+    from core.harness.syscalls.code_intel_syscall import sys_code_intel_hot_paths
+    return sys_code_intel_hot_paths(entry_id, max_paths=int(max_paths or 20))
 
 
 def kb_ocr_keyframes(image_paths: list, engine: str = "paddleocr", lang: str = "zh") -> Any:
@@ -3488,6 +3593,27 @@ from core.services.execution_store import ExecutionStore, ExecutionStoreConfig  
 
 from core.apps.fde.service.agent import run_fde_agent_one_shot  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 from core.apps.fde.service.voice import run_voice_brainstorm  # noqa: boundary — CoreFacade canonical re-export
+from core.apps.fde.service.delivery_pipeline_session import (  # noqa: boundary — CoreFacade canonical re-export
+    approve_delivery_session as approve_fde_delivery_session,
+    attach_builder_observation as attach_fde_delivery_builder_observation,
+    evaluate_delivery_session as evaluate_fde_delivery_session,
+    get_delivery_session as get_fde_delivery_session,
+    link_builder_project as link_fde_delivery_builder_project,
+    list_delivery_sessions as list_fde_delivery_sessions,
+    load_delivery_template as load_fde_delivery_template,
+    start_delivery_session as start_fde_delivery_session,
+)
+from core.apps.fde.service.security_preflight import (  # noqa: boundary
+    get_latest_preflight as get_fde_security_preflight_latest,
+    list_preflight_runs as list_fde_security_preflight_runs,
+    save_preflight_run as save_fde_security_preflight_run,
+    summarize_security_dry_run as summarize_fde_security_dry_run,
+)
+from core.apps.fde.service.evolve_proposal_gate import (  # noqa: boundary
+    enqueue_evolve_proposal as enqueue_fde_evolve_proposal,
+    evaluate_evolve_proposal as evaluate_fde_evolve_proposal,
+    list_evolve_proposals as list_fde_evolve_proposals,
+)
 
 from core.security.skill_signature_gate import is_approval_resolved_approved, get_trusted_skill_pubkeys_map  # v2.5
 from core.harness.ontology_engine.graph_index import GraphIndex  # v6.5 — canonical re-export for platform layer
@@ -3522,6 +3648,13 @@ from core.harness.integration import KernelRuntime  # noqa: boundary
 # v2.7 — complete platform→CoreFacade canonical re-exports (all remaining harness symbols)
 from core.harness.infrastructure.action_contract import ActionContractModel  # noqa: boundary
 from core.harness.infrastructure.action_store import ActionStore  # noqa: boundary
+from core.harness.infrastructure.workbench_runtime_guard import WorkbenchRuntimeGuard  # noqa: boundary
+from core.harness.infrastructure.action_audit_validate import (  # noqa: boundary
+    check_change_surface,
+    load_change_surface_whitelist,
+    classify_audit_fields,
+    render_mapping_report,
+)
 from core.harness.evaluation.adversarial_test_suite import AdversarialTestSuite  # noqa: boundary
 from core.harness.infrastructure.approval.types import ApprovalContext, RequestStatus, RuleType  # noqa: boundary
 from core.harness.infrastructure.approval.manager import ApprovalManager  # noqa: boundary

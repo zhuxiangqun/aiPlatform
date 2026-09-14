@@ -3,7 +3,7 @@
 > **分析对象**：OpenAI 2026-08-19 开源的 `openai/codex`（Apache-2.0）——`codex-rs`（Rust 单体仓库，137 crate）、App Server（JSON-RPC over stdio 持久会话内核）、Codex SDK（TS/Python）、Thread/Turn/Item 三级抽象、平台原生沙箱、SQLite 状态持久化。
 > **分析问题**：aiPlat（Python，43 万行 + 应用工厂 L2-L5）可以借鉴什么？哪些已有对应物、哪些是真缺口、借鉴优先级如何？
 > **分析方法**：对 Codex Harness 的每个核心机制，先在 aiPlat 代码中搜索对应实现（附证据），再判定"已有/部分具备/真缺口"，最后给借鉴建议（成本阶梯）。
-> **最后验证：  2026-09-14（2026-09-13 复核：工厂契约化多 Agent 门禁（single 默认/spawn 关/hop 度量）落地，不影响本报告结论；2026-09-12 复核：应用工厂硬化 + TeamAI harness 同步层落地，不影响本报告结论）**（2026-08-28 复核：生成 app 运行时/测试/自动修复能力落地，不影响本报告Codex-Harness 借鉴分析结论）（verify 命令：grep 各维度代码证据；证据见各节）
+> **最后验证：  2026-09-15（2026-09-15 复核：FDE 工作台演进 Phase0-5 / arch_guard_base 小改，不影响本报告结论；2026-09-13 复核：工厂契约化多 Agent 门禁（single 默认/spawn 关/hop 度量）落地，不影响本报告结论；2026-09-12 复核：应用工厂硬化 + TeamAI harness 同步层落地，不影响本报告结论）**（2026-08-28 复核：生成 app 运行时/测试/自动修复能力落地，不影响本报告Codex-Harness 借鉴分析结论）（verify 命令：grep 各维度代码证据；证据见各节）
 
 ---
 

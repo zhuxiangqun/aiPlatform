@@ -520,6 +520,13 @@ class PipelineStageMixin:
         _arch = str(getattr(stage, "architecture_mode", "") or state.get("architecture_mode") or "").strip()
         if _arch:
             params.setdefault("architecture_mode", _arch)
+        # Declarative handler knobs from stage.node_config (e.g. security_plan max_paths)
+        _nc = getattr(stage, "node_config", None) or {}
+        if isinstance(_nc, dict):
+            for _nk, _nv in _nc.items():
+                if _nk.startswith("_"):
+                    continue
+                params.setdefault(_nk, _nv)
         return params
 
 

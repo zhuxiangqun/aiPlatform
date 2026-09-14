@@ -32,6 +32,14 @@
 - [07-skill-types-contract.md](./07-skill-types-contract.md)  
   Skill 类型与发现/加载：规则型 vs 可执行型自动判别、find/load 体系、预算与生产分发建议（对齐 OpenCode find-skills）。
 
+## 跨仓应用契约（工作区）
+
+- [`docs/contracts/FDE_WORKBENCH_CONTRACT.md`](../../../docs/contracts/FDE_WORKBENCH_CONTRACT.md)  
+  FDE 控制台 vs 执行核、`platform_action`/`customer_action`、否定清单、DomainRouter、与 security Phase B/C 映射。
+
+- [`core/harness/schemas/audit_schema.v1.yaml`](../../core/harness/schemas/audit_schema.v1.yaml)  
+  客户运营 Action 审计字段、Eval 门语义、变更面白名单、保留策略。
+
 ## 与现有设计文档的关系
 
 Contracts 是“对外承诺/对内约束”，更偏 **可执行的规则**；现有设计文档更多解释“为什么”：

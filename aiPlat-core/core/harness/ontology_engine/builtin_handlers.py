@@ -47,23 +47,40 @@ async def accept_order(entity: Dict[str, Any], params: Dict[str, Any], actor: st
     """Accept an installation order: transition from pending → accepted.
 
     Domain is read from entity (via action executor) or params. No hardcoded domain ID.
+    Accepts both seed schema (assigned_technician/scheduled_at) and legacy
+    (technician_id/appointment_slot) param names.
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
     entity_id = entity.get("id") or entity.get("entity_id", "")
-    domain_id = entity.get("domain_id") or params.get("domain_id", "")
+    domain_id = entity.get("domain_id") or entity.get("domain") or params.get("domain_id", "")
     if not domain_id:
         raise ValueError("domain_id is required — pass via entity['domain_id'] or params['domain_id']")
     g = GraphIndex.load(domain_id)
 
+    technician = (
+        params.get("assigned_technician")
+        or params.get("technician_id")
+        or ""
+    )
+    scheduled = (
+        params.get("scheduled_at")
+        or params.get("appointment_slot")
+        or ""
+    )
+
     g.update_entity_property(entity_id, "state", "accepted")
-    g.update_entity_property(entity_id, "technician_id", params.get("technician_id", ""))
-    g.update_entity_property(entity_id, "appointment_slot", params.get("appointment_slot", ""))
+    g.update_entity_property(entity_id, "technician_id", technician)
+    g.update_entity_property(entity_id, "assigned_technician", technician)
+    g.update_entity_property(entity_id, "appointment_slot", scheduled)
+    g.update_entity_property(entity_id, "scheduled_at", scheduled)
 
     return {
         "new_state": "accepted",
-        "technician_id": params.get("technician_id"),
-        "appointment_slot": params.get("appointment_slot"),
+        "technician_id": technician,
+        "assigned_technician": technician,
+        "appointment_slot": scheduled,
+        "scheduled_at": scheduled,
         "accepted_by": actor,
     }
 

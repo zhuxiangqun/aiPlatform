@@ -1,11 +1,8 @@
 /**
- * AgentNetworkPanel — Agent 关系网络可视化 (EvoMap 自组织对齐)
+ * AgentNetworkPanel — quarantined (FDE Phase 0 / workbench_no_agent_topology).
+ * Not wired from FdeDashboard. Kept for potential non-workbench reuse; do not re-import into console.
  *
- * 展示:
- *   - Agent 专长分布 (雷达图/条形图)
- *   - 网络结构 (聚类系数 + 枢纽节点)
- *   - 演化时间线 (网络结构随时间变化)
- *   - 伙伴选择 (社交/能力/互补三种模式对比)
+ * Agent 关系网络可视化 (EvoMap 自组织对齐) — historical implementation below.
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, Button, Input, toast } from '../../components/ui';

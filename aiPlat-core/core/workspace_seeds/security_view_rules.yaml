@@ -1,0 +1,75 @@
+# Security View Compiler rules (Phase A)
+# Core interprets this file; add language sections without changing Python.
+
+entry:
+  python:
+    - kind: http_route
+      trust: external
+      match:
+        path_contains: ["/api/", "/routers/", "routes.py"]
+        text_regex:
+          - "@router\\.(get|post|put|patch|delete)\\b"
+          - "@app\\.(get|post)\\b"
+    - kind: skill_handler
+      trust: internal
+      match:
+        path_contains: ["media_skill_handlers.py", "/skills/"]
+        symbol_contains: ["handle_", "HANDLERS"]
+
+sink:
+  python:
+    - kind: subprocess
+      match:
+        text_regex:
+          - "\\bsubprocess\\.(run|Popen|call)\\b"
+          - "\\bos\\.system\\b"
+    - kind: eval_exec
+      match:
+        text_regex:
+          - "(?<![\\w.])eval\\s*\\(\\s*['\\\"\\w(]"
+          - "(?<![\\w.])exec\\s*\\(\\s*['\\\"\\w(]"
+    - kind: deserialize
+      match:
+        text_regex:
+          - "\\bpickle\\.loads\\b"
+          - "\\byaml\\.load\\s*\\("
+    - kind: network_egress
+      match:
+        text_regex:
+          - "\\brequests\\.(get|post)\\b"
+          - "\\bhttpx\\.(get|post)\\b"
+          - "\\burlopen\\s*\\("
+    - kind: filesystem_write
+      match:
+        text_regex:
+          - "open\\s*\\([^)]*['\\\"]w"
+          - "\\.write_text\\s*\\("
+    - kind: sql
+      match:
+        text_regex:
+          - "execute\\s*\\(\\s*f[\"']"
+
+gate:
+  python:
+    - kind: policy
+      match:
+        text_regex:
+          - "\\bPolicyGate\\b"
+          - "\\brequire_builder_access\\b"
+    - kind: ssrf
+      match:
+        text_regex:
+          - "\\bcheck_ssrf\\b"
+          - "\\bvalidate_url\\b"
+          - "SSRF"
+    - kind: sandbox
+      match:
+        text_regex:
+          - "\\bStageSandbox\\b"
+          - "\\bDockerSandbox\\b"
+          - "\\bbuild_os_sandbox_cmd\\b"
+    - kind: authz
+      match:
+        text_regex:
+          - "\\bDepends\\s*\\("
+          - "\\bmfa_required\\b"

@@ -47,16 +47,74 @@ def _resolve_file(query: str, nodes: Dict) -> Optional[str]:
     return None
 
 
-def sys_code_intel_context(task: str, *, roots: List[str] = None) -> Dict[str, Any]:
+def sys_code_intel_context(
+    task: str,
+    *,
+    roots: List[str] = None,
+    include_security: bool = False,
+) -> Dict[str, Any]:
     u"""Return context-relevant code graph data for a given development task.
 
     Uses the pre-built code dependency graph (core/harness/knowledge/code_graph.py)
     to answer "where should I start" without spawning Explore sub-agents.
 
     Returns: {task, stats, health, related: [{file, imports}]}
+    When include_security=True, also attaches security_digest (secview compact).
     """
     from core.harness.knowledge.code_graph import build_context
-    return build_context(task, roots)
+
+    result = build_context(task, roots)
+    if include_security:
+        result["security_digest"] = sys_code_intel_security_digest()
+    return result
+
+
+def sys_code_intel_security_view(
+    *,
+    layer: Optional[str] = None,
+    max_paths: int = 20,
+    force: bool = False,
+) -> Dict[str, Any]:
+    """Return secview.v1 dict (entries/sinks/gates/hot_paths). Heuristic reachability."""
+    from core.harness.knowledge.security_view import build_security_view
+
+    data = build_security_view(max_paths=max_paths, force=force).to_dict()
+    if layer:
+        data["hot_paths"] = [
+            p for p in (data.get("hot_paths") or []) if p.get("layer") == layer
+        ]
+        data["entries"] = [
+            e for e in (data.get("entries") or []) if e.get("layer") == layer
+        ]
+    return data
+
+
+def sys_code_intel_hot_paths(
+    entry_id: Optional[str] = None,
+    *,
+    max_paths: int = 20,
+) -> Dict[str, Any]:
+    """Return scored hot_paths from security view (always heuristic=True)."""
+    data = sys_code_intel_security_view(max_paths=max_paths)
+    paths = list(data.get("hot_paths") or [])
+    if entry_id:
+        paths = [p for p in paths if p.get("entry_id") == entry_id]
+    return {
+        "count": len(paths),
+        "hot_paths": paths,
+        "heuristic": True,
+        "metrics": data.get("metrics") or {},
+    }
+
+
+def sys_code_intel_security_digest(*, max_chars: int = 4000) -> Dict[str, Any]:
+    """Compact security digest for plan-stage Agent context (token-budgeted)."""
+    from core.harness.knowledge.security_view import (
+        build_security_view,
+        compact_security_digest,
+    )
+
+    return compact_security_digest(build_security_view(), max_chars=max_chars)
 
 
 def sys_code_intel_blast(file_path: str) -> List[str]:

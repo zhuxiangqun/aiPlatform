@@ -2680,3 +2680,66 @@ rules:
       shell: "python3 scripts/check_signature_ripple.py --check --json 2>/dev/null"
       ok_pattern: '"violations": 0'
     message: "CoreFacade function signature changed but platform callers not updated. Run python3 scripts/check_signature_ripple.py --check for details, then --update after fixing."
+
+  # ═══ Section 98: FDE Workbench Contract (docs/contracts/FDE_WORKBENCH_CONTRACT.md) ═══
+  # AST domain_literals + workbench forbidden components → arch_guard_rules/fde_workbench.py
+
+  - id: fde_no_hardcoded_action_branch
+    section: "§98"
+    section_name: "FDE Workbench Contract"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: '==\s*"(accept_order|complete_order)"|==\s*''(accept_order|complete_order)'''
+      paths: ["aiPlat-core/core/harness", "aiPlat-core/core/engine"]
+      exclude: ["__pycache__", "tests/", "builtin_actions", "action_audit_validate"]
+      grep_exclude: ["# noqa:", "arch_guard_rules"]
+    message: "hardcoded business Action branch — dispatch via ActionRegistry (FDE_WORKBENCH_CONTRACT.md §1)"
+
+  - id: fde_no_parallel_fde_api
+    section: "§98"
+    section_name: "FDE Workbench Contract"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: '@router\.(get|post|put|delete|patch)\("/api/core/fde|@router\.(get|post|put|delete|patch)\("/fde/'
+      paths: ["aiPlat-platform"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["# noqa: legacy-fde-api", "/api/platform/apps/fde"]
+    message: "parallel FDE API path — canonical is /api/platform/apps/fde (FDE_WORKBENCH_CONTRACT.md §4)"
+
+  - id: fde_no_workbench_direct_harness
+    section: "§98"
+    section_name: "FDE Workbench Contract"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'from core\.harness\.(knowledge|execution|ontology_engine|syscalls)|from core\.engine\.skills'
+      paths: ["aiPlat-platform/apps/fde"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["# noqa: boundary", "core_facade"]
+    message: "FDE platform app must not import harness internals — use core.api.core_facade"
+
+  - id: workbench_no_fake_progress
+    section: "§98"
+    section_name: "FDE Workbench Contract"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: 'fakeProgress|假进度|模拟进度|Math\.random\(\)[^\n]{0,40}progress|setInterval\([^\n]{0,80}(setProgress|progress\s*[+=])'
+      paths: ["aiPlat-management/frontend/src/pages/Diagnostics"]
+      exclude: ["__pycache__", ".test.", "node_modules"]
+      grep_exclude: ["# noqa: fake-progress", "workbench_no_fake_progress"]
+    message: "local fake Pipeline progress forbidden — poll server status only (FDE_WORKBENCH_CONTRACT.md §4)"
+
+  - id: workbench_no_agent_topology
+    section: "§98"
+    section_name: "FDE Workbench Contract"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: 'AgentNetworkPanel|AgentTopology|agent.?topology|dynamic.?spawn|react-force-graph|force-graph'
+      paths: ["aiPlat-management/frontend/src/pages/Diagnostics"]
+      exclude: ["__pycache__", ".test.", "node_modules", "AgentNetworkPanel.tsx"]
+      grep_exclude: ["# noqa: workbench-topology", "workbench_no_agent_topology", "已按契约否定清单下线"]
+    message: "agent topology / dynamic spawn UI forbidden on FDE workbench console (FDE_WORKBENCH_CONTRACT.md §4)"

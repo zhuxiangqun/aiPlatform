@@ -2,7 +2,7 @@
 Built-in action contracts + YAML auto-loader (v3, 2026-07-29).
 
 6 contracts: 2 business-domain + 4 legacy bridge actions.
-register_all() also scans ~/.aiplat/actions/*.yaml for custom actions.
+register_all() also scans ~/.aiplat/actions/*.yaml and workspace_seeds/actions/.
 """
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════
 
 BUILTIN_CONTRACTS: List[ActionContractModel] = [
-    # ── Legacy bridge actions (for StateMachine backward compat) ──    # ── Legacy bridge actions (for StateMachine backward compat) ──
+    # ── Legacy bridge actions (for StateMachine backward compat) ──
     ActionContractModel(
         action_id="builtin_webhook_executor",
         label="Webhook 回调（兼容）",
@@ -73,7 +73,7 @@ BUILTIN_CONTRACTS: List[ActionContractModel] = [
 # ═══════════════════════════════════════════════════════════
 
 def register_all(registry) -> int:
-    """Register all built-in contracts + scan ~/.aiplat/actions/*.yaml.
+    """Register all built-in contracts + scan action YAML dirs.
 
     Registry parameter is injected to avoid circular imports.
     """
@@ -84,9 +84,19 @@ def register_all(registry) -> int:
         registry.register(contract)
         count += 1
 
-    # 2. Scan YAML directory for custom actions
-    yaml_dir = os.path.expanduser("~/.aiplat/actions/")
-    if os.path.isdir(yaml_dir):
+    # 2. Scan YAML directories: $AIPLAT_HOME/actions + workspace seeds
+    home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    scan_dirs = [
+        os.path.join(home, "actions"),
+        os.path.abspath(
+            os.path.join(
+                os.path.dirname(__file__), "..", "..", "workspace_seeds", "actions"
+            )
+        ),
+    ]
+    for yaml_dir in scan_dirs:
+        if not os.path.isdir(yaml_dir):
+            continue
         for yaml_path in glob.glob(os.path.join(yaml_dir, "*.yaml")):
             try:
                 contracts = ActionContractModel.from_yaml_batch(yaml_path)

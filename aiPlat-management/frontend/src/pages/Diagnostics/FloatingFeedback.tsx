@@ -9,7 +9,7 @@ interface FloatingFeedbackProps {
 
 const STEP_MAP: Record<string, string> = {
   customers: '① 业务认知', capability: '② 评估域', assess: '③ 问题重构',
-  poc: '④ 验证价值', deploy: '⑤ 快速构建', canary: '⑥ 评测护栏',
+  poc: '④ 验证价值', deploy: '⑤ 平台离线包', canary: '⑥ 评测护栏',
   accept: '⑦ 验收移交', evolution: '⑧ 运营监控',
 };
 
