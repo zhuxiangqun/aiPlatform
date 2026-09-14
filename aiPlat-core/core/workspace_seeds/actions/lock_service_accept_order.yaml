@@ -1,8 +1,9 @@
-# Phase 2 D3 — namespaced accept_order + legacy alias `accept_order`
-# Loaded from workspace_seeds/actions by builtin_actions.register_all()
+# D3 wrap-up — legacy alias `accept_order` REMOVED. Use canonical id only.
+# Call sites must use customer_action:lock-service:accept_order.
+# See docs/contracts/FDE_ACCEPT_ORDER_ALIAS_DEPRECATION.md
 actions:
   - action_id: "customer_action:lock-service:accept_order"
-    aliases: ["accept_order"]
+    aliases: []
     label: "接受安装工单"
     description: "客户运营：安装工单 pending → accepted（audit_schema.v1 嵌入）"
     category: mutation

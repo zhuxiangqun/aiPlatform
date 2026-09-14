@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1411
+total_capabilities: 1428
 
 total_capabilities: 1095
 last_updated: 2026-08-25
@@ -748,7 +748,7 @@ scan_hash: 8f9548ec24f4
 | FDE audit 映射 dry-run | `scripts/fde_audit_mapping.py` + `docs/contracts/audit_mapping_report.md` | ✅ | audit_schema↔ActionStore 字段分类 present/embedded/missing + ADD/ROLLBACK SQL（默认不改库） | 已合入 |
 | WorkbenchRuntimeGuard | `harness/infrastructure/workbench_runtime_guard.py` | ✅ | 工作台运行时否定项：未注册 Action / policy_gate 审计形状 / stub KPI；经 CoreFacade 导出；dashboard 挂 kpi_guard | 已合入 |
 | FDE 交付 Pipeline session | `apps/fde/service/delivery_pipeline_session.py` + `apps/fde/api/fde_delivery_pipeline.py` | ✅ | Phase 1：启动/查询/批准 `fde_delivery_v1` 服务端 stage cursor；workspace seed 模板；Tab⑤ 接线；≥2 HITL approve 单测；**Phase 3**：链接 Builder `project_id`、observe/start 工厂 Pipeline、`fde_delivery_pipeline` Eval 门、产物链接展示；生成物：工作台不平行构建，交付物走 builder 已接线路径 | 已合入 |
-| FDE Phase 4 安全预检+Evolve | `apps/fde/service/security_preflight.py` + `evolve_proposal_gate.py` + `apps/fde/api/fde_phase4.py` + PreflightTab/EvolutionTab | ✅ | 4A：`run_security_review_dry` + 只读 Evidence 摘要；默认 B / C 开关；4B：`evolve_proposal` 白名单+HITL 队列（无静默 ABox 写）；生成物：不适用（平台横切治理/安全，生成应用由 builder+security 路径执行） | 已合入 |
+| FDE Phase 4 安全预检+Evolve | `apps/fde/service/security_preflight.py` + `evolve_proposal_gate.py` + `apps/fde/api/fde_phase4.py` + PreflightTab/EvolutionTab | ✅ | 4A：`run_security_review_dry` + 只读 Evidence 摘要；默认 B / C 开关；4B：`evolve_proposal` 白名单+HITL；**AI FDE 半步** approve→apply→rollback（`fde_evolve_applied_config.json`）+ D6 指标 API/UI；无静默 ABox 写；生成物：不适用（平台横切治理/安全） | 已合入 |
 | FDE Phase 5 多客户接入 | `docs/contracts/FDE_PHASE5_CUSTOMER_ONBOARDING.md` + `fde_domain_literals` error | ✅ | 新客户=DomainRouter+本体/Action 配置（不改 harness）；守卫 error+AST=0；Agent Fleet 不产品化；生成物：不适用（平台控制台接入路径，生成物仍走 builder） | 已合入 |
 | DomainRouter.require_known_domain | `harness/knowledge/domain_router.py` | ✅ | Phase 1 硬闸：未知域拒绝；tracking 域放行 | 已合入 |
 | **Knowledge Pipeline v3** | `harness/knowledge_pipeline/extractor.py` + `resolver.py` + `retriever.py` | ✅ | 知识生命周期三层管线：`DocumentIngestor`（文档分块）→ `EntityExtractor`（LLM驱动9实体+10关系自动抽取，置信度三级路由≥0.85自动/0.60-0.85待审/<0.60丢弃）→ `DraftYamlWriter`（YAML草稿输出）→ `CrossDomainResolver`（三级匹配：精确键0.6+Jaro-Winkler名称0.25+向量余弦0.15）→ `GraphRAGRetriever`（实体路由→BFS 2跳子图→定向向量检索→推理路径注入） | 已合入 |
@@ -1770,6 +1770,12 @@ scan_hash: 8f9548ec24f4
 ## 十六、工具生态
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| assign_work_order | `core/harness/ontology_engine/builtin_handlers.py` | ✅ | 自动同步 | 已合入 |
+| get_evolve_metrics | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
+| rollback_evolve_proposal | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
+| apply_evolve_proposal | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
+| reject_evolve_proposal | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
+| approve_evolve_proposal | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
 | approve_delivery_session | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
 | FdeDomainLiteralsAstCheck | `core/management/arch_guard_rules/fde_workbench.py` | ✅ | 自动同步 | 已合入 |
 | enqueue_evolve_proposal | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
@@ -2341,10 +2347,10 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 164 | 1 | 165 |
 | 记忆子系统 | 41 | 0 | 41 |
-| 知识引擎（本体） | 162 | 8 | 170 |
+| 知识引擎（本体） | 168 | 8 | 176 |
 | RAG 检索 | 49 | 0 | 49 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 43 | 0 | 43 |
+| Agent 系统 | 49 | 0 | 49 |
 | Skill 系统 | 54 | 0 | 54 |
 | 安全与治理 | 58 | 0 | 58 |
 | 可观测性 | 27 | 0 | 27 |
@@ -2356,7 +2362,7 @@ scan_hash: 8f9548ec24f4
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
-| 工具生态 | 36 | 0 | 36 |
+| 工具生态 | 41 | 0 | 41 |
 | 微调系统 | 14 | 0 | 14 |
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 6 | 0 | 6 |
@@ -2384,7 +2390,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1402** | **9** | **1411** |
+| **总计** | **1419** | **9** | **1428** |
 
 | **总计** | **1095** | **0** | **1095** |
 

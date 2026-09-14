@@ -2891,6 +2891,25 @@ def create_ontology_domain(
     Path(file_path).write_text(yaml_str, encoding="utf-8")
 
     _register_domain_in_registry(domain_id, name, description)
+    # Unify dual path: registry.json + DomainRouter hot-register (no harness fork).
+    try:
+        from core.harness.knowledge.domain_router import DomainRouter
+
+        DomainRouter().register_domain(
+            domain_id,
+            {
+                "name": name,
+                "description": description or "",
+                "ontology_file": f"{domain_id}.yaml",
+                "collection_id": domain_id,
+            },
+            auto_rebuild=False,
+        )
+    except Exception:
+        logging.getLogger(__name__).debug(
+            "DomainRouter.register_domain after create_ontology_domain failed",
+            exc_info=True,
+        )
     return {"id": domain_id, "name": name, "status": "created", "path": file_path}
 
 
@@ -3606,13 +3625,20 @@ from core.apps.fde.service.delivery_pipeline_session import (  # noqa: boundary 
 from core.apps.fde.service.security_preflight import (  # noqa: boundary
     get_latest_preflight as get_fde_security_preflight_latest,
     list_preflight_runs as list_fde_security_preflight_runs,
+    preflight_signoff_gate as fde_preflight_signoff_gate,
     save_preflight_run as save_fde_security_preflight_run,
     summarize_security_dry_run as summarize_fde_security_dry_run,
 )
 from core.apps.fde.service.evolve_proposal_gate import (  # noqa: boundary
+    approve_evolve_proposal as approve_fde_evolve_proposal,
+    apply_evolve_proposal as apply_fde_evolve_proposal,
     enqueue_evolve_proposal as enqueue_fde_evolve_proposal,
     evaluate_evolve_proposal as evaluate_fde_evolve_proposal,
+    get_evolve_applied_config as get_fde_evolve_applied_config,
+    get_evolve_metrics as get_fde_evolve_metrics,
     list_evolve_proposals as list_fde_evolve_proposals,
+    reject_evolve_proposal as reject_fde_evolve_proposal,
+    rollback_evolve_proposal as rollback_fde_evolve_proposal,
 )
 
 from core.security.skill_signature_gate import is_approval_resolved_approved, get_trusted_skill_pubkeys_map  # v2.5

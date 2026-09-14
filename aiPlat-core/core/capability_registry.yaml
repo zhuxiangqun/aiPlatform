@@ -2006,6 +2006,30 @@ domains:
         type: function
         signature: "evaluate then queue for HITL under AIPLAT_HOME/fde_evolve_proposals"
         module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
+      - symbol: approve_evolve_proposal
+        type: function
+        signature: "HITL approve pending_hitl or auto_recorded evolve proposal"
+        module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
+      - symbol: reject_evolve_proposal
+        type: function
+        signature: "HITL reject with reason; increments D6 reject metrics"
+        module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
+      - symbol: apply_evolve_proposal
+        type: function
+        signature: "controlled apply whitelist config to fde_evolve_applied_config.json"
+        module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
+      - symbol: rollback_evolve_proposal
+        type: function
+        signature: "rollback applied evolve patch; records survival for D6"
+        module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
+      - symbol: get_evolve_metrics
+        type: function
+        signature: "D6 reverse KPIs: reject/rollback/survival; pass_rate reference only"
+        module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
+      - symbol: assign_work_order
+        type: function
+        signature: "domain-agnostic work-order assign handler for service-domain vertical seed"
+        module: aiPlat-core/core/harness/ontology_engine/builtin_handlers.py
       - symbol: FdeDomainLiteralsAstCheck
         type: class
         signature: "arch_guard fde_domain_literals level=error; harness domain literal fork ban"

@@ -1,6 +1,7 @@
 """FDE Phase 4 — security preflight (4A) + evolve proposal gate (4B) APIs.
 
 Proxies security dry-run via CoreFacade only — no direct security_* handler imports.
+AI FDE half-step: approve / reject / apply / rollback + D6 metrics.
 """
 from __future__ import annotations
 
@@ -29,6 +30,11 @@ class EvolveProposalRequest(BaseModel):
     touches_abox: bool = False
     touches_ontology: bool = False
     summary: str = ""
+
+
+class EvolveReviewRequest(BaseModel):
+    actor: str = "approver"
+    reason: str = ""
 
 
 @router.post("/security-preflight/run", response_model=FdeItemResponse)
@@ -122,3 +128,70 @@ async def list_evolve(limit: int = 20) -> Dict[str, Any]:
 
     items = list_fde_evolve_proposals(limit=min(limit, 50))
     return {"items": items, "total": len(items)}
+
+
+@router.get("/evolve-proposals/metrics", response_model=FdeItemResponse)
+async def evolve_metrics() -> Dict[str, Any]:
+    from core.api.core_facade import get_fde_evolve_metrics
+
+    return get_fde_evolve_metrics()
+
+
+@router.get("/evolve-proposals/applied-config", response_model=FdeItemResponse)
+async def evolve_applied_config() -> Dict[str, Any]:
+    from core.api.core_facade import get_fde_evolve_applied_config
+
+    return {"config": get_fde_evolve_applied_config()}
+
+
+@router.post("/evolve-proposals/{proposal_id}/approve", response_model=FdeStatusResponse)
+async def approve_evolve(proposal_id: str, req: EvolveReviewRequest) -> Dict[str, Any]:
+    from core.api.core_facade import approve_fde_evolve_proposal
+
+    try:
+        rec = approve_fde_evolve_proposal(proposal_id, actor=req.actor)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return {"status": "ok", "message": "approved", "data": rec}
+
+
+@router.post("/evolve-proposals/{proposal_id}/reject", response_model=FdeStatusResponse)
+async def reject_evolve(proposal_id: str, req: EvolveReviewRequest) -> Dict[str, Any]:
+    from core.api.core_facade import reject_fde_evolve_proposal
+
+    try:
+        rec = reject_fde_evolve_proposal(proposal_id, actor=req.actor, reason=req.reason)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return {"status": "ok", "message": "rejected", "data": rec}
+
+
+@router.post("/evolve-proposals/{proposal_id}/apply", response_model=FdeStatusResponse)
+async def apply_evolve(proposal_id: str, req: EvolveReviewRequest) -> Dict[str, Any]:
+    """Controlled apply: whitelist config keys only (no ABox/Ontology)."""
+    from core.api.core_facade import apply_fde_evolve_proposal
+
+    try:
+        rec = apply_fde_evolve_proposal(proposal_id, actor=req.actor)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return {"status": "ok", "message": "applied", "data": rec}
+
+
+@router.post("/evolve-proposals/{proposal_id}/rollback", response_model=FdeStatusResponse)
+async def rollback_evolve(proposal_id: str, req: EvolveReviewRequest) -> Dict[str, Any]:
+    from core.api.core_facade import rollback_fde_evolve_proposal
+
+    try:
+        rec = rollback_fde_evolve_proposal(proposal_id, actor=req.actor)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return {"status": "ok", "message": "rolled_back", "data": rec}

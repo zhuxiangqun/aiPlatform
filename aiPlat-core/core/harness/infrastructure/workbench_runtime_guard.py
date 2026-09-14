@@ -9,9 +9,9 @@ from __future__ import annotations
 from typing import Any, Dict, Mapping, Optional, Set
 
 
-# KPI keys that Phase 0 marked as stubs — must not be presented as live ops health.
+# KPI keys still stubbed — must not be presented as live ops health.
+# pending_decisions + timeline are now wired (evolve HITL / acceptance events).
 _STUB_KPI_KEYS: Set[str] = {
-    "pending_decisions",
     "trace_anomalies",
     "training",
 }

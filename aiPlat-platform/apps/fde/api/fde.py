@@ -25,6 +25,7 @@ Phase E-H (正式交付) — 2026-07:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import time
@@ -240,11 +241,27 @@ async def get_fde_dashboard() -> Dict[str, Any]:
 
 
 def _collect_pending_decisions() -> List[Dict[str, Any]]:
-    """REVIEW 状态的 Spec — Phase 0: 明确 stub，前端已隐藏该 KPI 卡片。
+    """Real collector: Evolve HITL queue (AI FDE half-step)."""
+    try:
+        from core.api.core_facade import list_fde_evolve_proposals
 
-    Full SpecLifecycle integration is a follow-up (not Phase 0).
-    """
-    return []
+        out: List[Dict[str, Any]] = []
+        for p in list_fde_evolve_proposals(limit=50):
+            if p.get("review_status") != "pending_hitl":
+                continue
+            out.append(
+                {
+                    "id": p.get("proposal_id"),
+                    "kind": "evolve_proposal",
+                    "summary": p.get("summary") or "",
+                    "domain_id": p.get("domain_id") or "",
+                    "created_at": p.get("created_at") or "",
+                    "keys": p.get("keys") or [],
+                }
+            )
+        return out
+    except Exception:
+        return []
 
 
 async def _collect_signal_alerts() -> List[Dict[str, Any]]:
@@ -259,19 +276,63 @@ async def _collect_signal_alerts() -> List[Dict[str, Any]]:
 
 
 def _collect_trace_anomalies() -> List[Dict[str, Any]]:
-    """Phase 0 stub — UI hides this KPI until wired."""
+    """Still stub — honest hide until TraceStore anomaly feed is wired."""
     return []
 
 
 def _collect_training_status_dash() -> Dict[str, Any]:
-    """Phase 0 stub — UI hides this KPI until wired."""
-    return {}
+    """Still stub — honest hide until training progress API is wired."""
+    return {"stub": True}
 
 
 async def _collect_timeline() -> List[Dict[str, Any]]:
-    """Phase 0 stub — timeline card only renders when non-empty."""
-    return []
+    """Real collector: acceptance signoffs + evolve apply/reject/rollback events."""
+    events: List[Dict[str, Any]] = []
+    try:
+        ad = os.path.expanduser(os.environ.get("AIPLAT_ACCEPTANCE_DIR", "~/.aiplat/acceptance"))
+        if os.path.isdir(ad):
+            for fn in sorted(os.listdir(ad), reverse=True)[:30]:
+                if not fn.endswith(".json"):
+                    continue
+                try:
+                    with open(os.path.join(ad, fn), encoding="utf-8") as fh:
+                        rec = json.load(fh)
+                    events.append(
+                        {
+                            "spec_id": rec.get("spec_id") or fn,
+                            "event": "acceptance_signoff",
+                            "version": rec.get("signed_by") or "",
+                            "at": rec.get("signed_at") or "",
+                        }
+                    )
+                except Exception:
+                    continue
+    except Exception:
+        pass  # noqa: best-effort timeline
+    try:
+        from core.api.core_facade import list_fde_evolve_proposals
 
+        for p in list_fde_evolve_proposals(limit=30):
+            status = p.get("review_status") or ""
+            if status not in {"approved", "rejected", "applied", "rolled_back"}:
+                continue
+            events.append(
+                {
+                    "spec_id": p.get("proposal_id") or "",
+                    "event": f"evolve_{status}",
+                    "version": ",".join((p.get("keys") or [])[:3]),
+                    "at": p.get("rolled_back_at")
+                    or p.get("applied_at")
+                    or p.get("rejected_at")
+                    or p.get("approved_at")
+                    or p.get("created_at")
+                    or "",
+                }
+            )
+    except Exception:
+        pass  # noqa: best-effort timeline
+    events.sort(key=lambda e: str(e.get("at") or ""), reverse=True)
+    return events[:40]
 
 # ════════════════════════════════════════════════════════════
 # Tab 2: 部署管理 (offline package)

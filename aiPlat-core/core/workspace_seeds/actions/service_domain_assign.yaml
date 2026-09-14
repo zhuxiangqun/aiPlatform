@@ -1,0 +1,29 @@
+# Phase 5+ second vertical — service-domain WorkOrder assign (no harness fork)
+# Loaded from workspace_seeds/actions by builtin_actions.register_all()
+actions:
+  - action_id: "customer_action:service-domain:assign_technician"
+    aliases: []
+    label: "指派工单技师"
+    description: "客户运营：工单 待指派 → 已指派（第二域竖切，验证配置可复制）"
+    category: mutation
+    scope: domain
+    domain_id: service-domain
+    target_class: 工单
+    required_state: 待指派
+    effect_semantics: "Work order assigned to technician"
+    compensation: "revert WorkOrder.state to 待指派; clear assignee"
+    risk_level: medium
+    require_approval: false
+    throttle_limit: 0
+    action_namespace: customer_action
+    eval_gate: customer_action_safety
+    handler: "core.harness.ontology_engine.builtin_handlers:assign_work_order"
+    input_schema:
+      type: object
+      properties:
+        assigned_technician:
+          type: string
+          description: "技师 ID"
+        technician_id:
+          type: string
+          description: "技师 ID（别名参数）"

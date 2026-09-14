@@ -106,3 +106,45 @@ def list_preflight_runs(limit: int = 10) -> List[Dict[str, Any]]:
         if len(rows) >= limit:
             break
     return rows
+
+
+def preflight_signoff_gate(latest: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Acceptance signoff gate: require ⑥b preflight; block on high/critical findings.
+
+    Does not remap severity — uses upstream values as-is.
+    """
+    rec = latest if latest is not None else get_latest_preflight()
+    if not rec:
+        return {
+            "ok": False,
+            "status": "fail",
+            "reason": "security_preflight_required",
+            "detail": "未跑 ⑥b 安全预检，禁止签收",
+        }
+    summary = rec.get("summary") if isinstance(rec.get("summary"), dict) else {}
+    findings = summary.get("findings") or []
+    if not isinstance(findings, list):
+        findings = []
+    blocking = [
+        f
+        for f in findings
+        if isinstance(f, dict)
+        and str(f.get("severity") or "").lower() in {"high", "critical"}
+    ]
+    if blocking:
+        return {
+            "ok": False,
+            "status": "fail",
+            "reason": "high_or_critical_findings",
+            "detail": f"预检存在 {len(blocking)} 条 high/critical finding，禁止签收",
+            "blocking_count": len(blocking),
+            "run_id": rec.get("run_id"),
+        }
+    return {
+        "ok": True,
+        "status": "pass",
+        "reason": "",
+        "detail": f"预检通过（run={rec.get('run_id')}，findings={len(findings)}）",
+        "run_id": rec.get("run_id"),
+        "finding_count": len(findings),
+    }

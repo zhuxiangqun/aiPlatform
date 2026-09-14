@@ -327,6 +327,7 @@
 - [x] Agent 仅可改白名单配置键；清单外 HITL  
 - [x] 提案必须过 `evolve_proposal` 门后才进人审队列  
 - [x] **不可**无审批写客户 ABox / Ontology 静默写  
+- [x] **受控应用**：批准后 `apply_evolve_proposal` 写入 `fde_evolve_applied_config.json`；可 `rollback`；D6 指标（reject/rollback/survival；pass_rate 仅参考）  
 
 #### 4 的成功度量（含反向指标，防橡皮图章）
 
@@ -337,7 +338,7 @@
 | 补丁平均存活时间 | 真实稳定性 |
 | 人审通过率 | **仅参考，不得单独作 KPI** |
 
-证据（2026-09-14）：`test_fde_phase4_security_evolve.py`；`fde_phase4.py` Facade-only；PreflightTab + EvolutionTab Evolve 面板。
+证据（2026-09-15）：`test_evolve_apply_rollback_metrics`；API `…/approve|reject|apply|rollback` + `/metrics`；EvolutionTab 操作按钮。
 
 ---
 

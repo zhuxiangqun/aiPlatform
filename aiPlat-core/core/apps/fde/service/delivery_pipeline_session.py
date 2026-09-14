@@ -210,7 +210,8 @@ def attach_builder_observation(
 
 
 def _extract_artifact_links(observation: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Best-effort product links from Builder state (no IDE / no rebuild)."""
+    """Standardize product links: {id,url,kind,source,project_id}."""
+    project_id = str(observation.get("project_id") or "")[:120]
     links: List[Dict[str, Any]] = []
     for key in ("artifact_links", "artifacts", "outputs", "products"):
         raw = observation.get(key)
@@ -222,17 +223,30 @@ def _extract_artifact_links(observation: Dict[str, Any]) -> List[Dict[str, Any]]
                             "id": str(item.get("id") or item.get("name") or item.get("path") or "")[:120],
                             "url": str(item.get("url") or item.get("path") or item.get("href") or "")[:500],
                             "kind": str(item.get("kind") or item.get("type") or "artifact")[:40],
+                            "source": "builder",
+                            "project_id": project_id,
                         }
                     )
                 elif isinstance(item, str) and item.strip():
-                    links.append({"id": item[:120], "url": item[:500], "kind": "artifact"})
+                    links.append({
+                        "id": item[:120], "url": item[:500], "kind": "artifact",
+                        "source": "builder", "project_id": project_id,
+                    })
     state = observation.get("state")
     if isinstance(state, dict):
-        for art_key in ("output_artifact", "last_artifact", "deploy_url", "app_url"):
+        for art_key, kind in (
+            ("output_artifact", "artifact"),
+            ("last_artifact", "artifact"),
+            ("deploy_url", "deploy"),
+            ("app_url", "deploy"),
+            ("test_report", "test_report"),
+        ):
             val = state.get(art_key)
             if isinstance(val, str) and val.strip():
-                links.append({"id": art_key, "url": val[:500], "kind": "state"})
-    # de-dupe by url
+                links.append({
+                    "id": art_key, "url": val[:500], "kind": kind,
+                    "source": "builder", "project_id": project_id,
+                })
     seen = set()
     out = []
     for link in links:
@@ -244,10 +258,10 @@ def _extract_artifact_links(observation: Dict[str, Any]) -> List[Dict[str, Any]]
 
 
 def evaluate_delivery_session(session_id: str) -> Dict[str, Any]:
-    """Apply audit_schema ``fde_delivery_pipeline`` gate (Phase 3).
+    """Apply audit_schema ``fde_delivery_pipeline`` gate (Phase 3+).
 
-    When Builder is linked, require a non-failed observation before accept/done.
-    Template-only sessions pass with honesty note (Phase 1 cursor still valid).
+    When Builder is linked, require observation + standardized artifact_links.
+    Template-only sessions pass with honesty note.
     """
     session = get_delivery_session(session_id)
     if not session:
@@ -270,9 +284,26 @@ def evaluate_delivery_session(session_id: str) -> Dict[str, Any]:
         elif phase in {"done", "completed", "success", "ok", "accepted", "running", "paused", "executing"}:
             reasons.append(f"builder_phase_ok:{phase}")
         else:
-            # Unknown phase: soft-fail closed for accept
             passed = False
             reasons.append(f"builder_phase_unrecognized:{phase or 'empty'}")
+
+        links = session.get("artifact_links") or []
+        if not isinstance(links, list) or not links:
+            passed = False
+            reasons.append("missing_factory_artifact_links")
+        else:
+            normalized = 0
+            for link in links:
+                if isinstance(link, dict) and (link.get("url") or link.get("id")):
+                    normalized += 1
+            if normalized == 0:
+                passed = False
+                reasons.append("artifact_links_invalid")
+            else:
+                reasons.append(f"factory_artifact_links:{normalized}")
+                kinds = {str(l.get("kind") or "") for l in links if isinstance(l, dict)}
+                if kinds & {"deploy", "test_report", "state", "artifact"}:
+                    reasons.append("factory_evidence_kinds_ok")
     else:
         reasons.append("template_session_no_builder_link")
 
@@ -281,6 +312,7 @@ def evaluate_delivery_session(session_id: str) -> Dict[str, Any]:
         "passed": passed,
         "reasons": reasons,
         "builder_linked": linked,
+        "artifact_link_count": len(session.get("artifact_links") or []),
         "evaluated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
     session["eval_gate"] = result

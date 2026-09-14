@@ -1,10 +1,18 @@
-"""Phase 4: security preflight summarize + evolve_proposal gate."""
+"""Phase 4 / AI FDE half-step: preflight + evolve gate + apply/rollback + D6 metrics."""
 
 from __future__ import annotations
 
+import pytest
+
 from core.apps.fde.service.evolve_proposal_gate import (
+    apply_evolve_proposal,
+    approve_evolve_proposal,
     enqueue_evolve_proposal,
     evaluate_evolve_proposal,
+    get_evolve_applied_config,
+    get_evolve_metrics,
+    reject_evolve_proposal,
+    rollback_evolve_proposal,
 )
 from core.apps.fde.service.security_preflight import (
     get_latest_preflight,
@@ -80,3 +88,75 @@ def test_evolve_abox_requires_hitl(monkeypatch, tmp_path):
     )
     assert q["queued"] is True
     assert q["review_status"] == "pending_hitl"
+
+
+def test_evolve_apply_rollback_metrics(monkeypatch, tmp_path):
+    """AI FDE half-step: approve → apply whitelist config → rollback; D6 metrics."""
+    home = tmp_path / "h"
+    home.mkdir()
+    monkeypatch.setenv("AIPLAT_HOME", str(home))
+
+    q = enqueue_evolve_proposal(
+        keys=["model_config.temperature"],
+        proposed_changes={"model_config.temperature": 0.42},
+        summary="set temp",
+        actor="agent",
+    )
+    assert q["queued"] is True
+    pid = q["proposal_id"]
+    assert pid
+
+    if q["review_status"] == "pending_hitl":
+        approve_evolve_proposal(pid, actor="fda")
+    elif q["review_status"] != "auto_recorded":
+        pytest.fail(f"unexpected status {q['review_status']}")
+
+    applied = apply_evolve_proposal(pid, actor="fda")
+    assert applied["review_status"] == "applied"
+    assert get_evolve_applied_config().get("model_config.temperature") == 0.42
+
+    rolled = rollback_evolve_proposal(pid, actor="fda")
+    assert rolled["review_status"] == "rolled_back"
+    assert "model_config.temperature" not in get_evolve_applied_config()
+
+    m = get_evolve_metrics()
+    assert m["applied"] >= 1
+    assert m["rolled_back"] >= 1
+    assert m["rollback_rate"] > 0
+    assert "pass_rate_reference_only" in m
+    assert "reference only" in m["note"].lower() or "D6" in m["note"]
+
+
+def test_evolve_reject_increments_hitl_reject(monkeypatch, tmp_path):
+    home = tmp_path / "h"
+    home.mkdir()
+    monkeypatch.setenv("AIPLAT_HOME", str(home))
+    q = enqueue_evolve_proposal(
+        keys=["cache_ttl_seconds"],
+        proposed_changes={"cache_ttl_seconds": 60},
+        summary="ttl",
+    )
+    pid = q["proposal_id"]
+    # Force pending path: reject from pending or auto_recorded
+    if q["review_status"] == "auto_recorded":
+        # Still rejectable before apply
+        pass
+    reject_evolve_proposal(pid, actor="fda", reason="not now")
+    m = get_evolve_metrics()
+    assert m["rejected_hitl"] >= 1
+
+
+def test_evolve_abox_cannot_apply(monkeypatch, tmp_path):
+    home = tmp_path / "h"
+    home.mkdir()
+    monkeypatch.setenv("AIPLAT_HOME", str(home))
+    q = enqueue_evolve_proposal(
+        keys=["model_config.temperature"],
+        proposed_changes={"model_config.temperature": 0.1},
+        touches_abox=True,
+        summary="abox",
+    )
+    pid = q["proposal_id"]
+    approve_evolve_proposal(pid, actor="fda")
+    with pytest.raises(ValueError, match="abox"):
+        apply_evolve_proposal(pid, actor="fda")

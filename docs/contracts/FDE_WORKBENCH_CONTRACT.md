@@ -198,7 +198,8 @@ Phase 4：
 - [x] 独立「⑥b 上线前检查」入口（D5）；默认 Phase B；Phase C 显式开关
 - [x] `POST /fde/security-preflight/run` 经 `CoreFacade.run_security_review_dry`；Evidence 只读摘要存 `$AIPLAT_HOME/fde_security_preflight/`
 - [x] Evolve 提案门 `evolve_proposal` + 变更面白名单；ABox/Ontology 写强制 HITL；无静默写库
-- [x] EvolutionTab 展示 Evolve 队列；文案声明人审通过率不得单独作 KPI（D6）
+- [x] **AI FDE 半步**：approve / reject / **受控 apply** / rollback（白名单配置 → `fde_evolve_applied_config.json`）；D6 指标 API+UI
+- [x] EvolutionTab 展示 Evolve 队列与反向 KPI；文案声明人审通过率不得单独作 KPI（D6）
 - [x] platform `fde_phase4.py` 仅经 CoreFacade（无直导 security_* handler）
 
 Phase 5：
@@ -218,3 +219,4 @@ Phase 5：
 | v1.2 | 2026-09-14 | Phase 3 Builder 链接 + Eval | Oliver Zhu |
 | v1.3 | 2026-09-14 | Phase 4 安全预检 + Evolve 门（D5/D6） | Oliver Zhu |
 | v1.4 | 2026-09-14 | Phase 5 多客户；D2 升 error | Oliver Zhu |
+| v1.5 | 2026-09-15 | AI FDE 半步：Evolve apply/rollback + D6 指标 | Oliver Zhu |

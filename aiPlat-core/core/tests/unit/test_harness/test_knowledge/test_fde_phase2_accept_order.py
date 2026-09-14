@@ -1,4 +1,4 @@
-"""Phase 2: D3 alias + accept_order execute path + audit embed."""
+"""Phase 2: D3 canonical accept_order execute path + audit embed (alias deprecated)."""
 
 from __future__ import annotations
 
@@ -9,6 +9,8 @@ import pytest
 from core.harness.ontology_engine.action_registry import AsyncActionRegistry
 from core.harness.ontology_engine.builtin_actions import register_all
 from core.harness.ontology_engine.graph_index import GraphIndex
+
+CANONICAL = "customer_action:lock-service:accept_order"
 
 
 @pytest.fixture()
@@ -34,18 +36,19 @@ def _seed_orders(domain: str, prefix: str, count: int) -> list:
 
 
 @pytest.mark.asyncio
-async def test_d3_alias_resolves_to_namespaced(aiplat_home):
+async def test_d3_legacy_alias_removed(aiplat_home):
+    """D3 close-out: accept_order alias no longer registered."""
     reg = AsyncActionRegistry(store=AsyncMock())
     register_all(reg)
-    c = reg.get("accept_order")
+    assert reg.get("accept_order") is None
+    c = reg.get(CANONICAL)
     assert c is not None
-    assert c.action_id == "customer_action:lock-service:accept_order"
-    assert "accept_order" in (c.aliases or [])
-    assert reg.resolve_action_id("accept_order") == c.action_id
+    assert c.action_id == CANONICAL
+    assert not (c.aliases or [])
 
 
 @pytest.mark.asyncio
-async def test_accept_order_execute_alias_and_canonical(aiplat_home):
+async def test_accept_order_execute_canonical(aiplat_home):
     domain = "lock-service"
     ids = _seed_orders(domain, "IO-UT", 2)
 
@@ -55,7 +58,7 @@ async def test_accept_order_execute_alias_and_canonical(aiplat_home):
     register_all(reg)
 
     r1 = await reg.execute(
-        "accept_order",
+        CANONICAL,
         (domain, ids[0]),
         {"assigned_technician": "tech-9", "scheduled_at": "2026-09-15T09:00:00+08:00"},
         actor="fda-1",
@@ -67,10 +70,10 @@ async def test_accept_order_execute_alias_and_canonical(aiplat_home):
     mapped = store.insert_audit.await_args.args[0]
     assert mapped["params"]["schema"] == "audit.v1"
     assert mapped["params"]["action_namespace"] == "customer_action"
-    assert mapped["action_id"] == "customer_action:lock-service:accept_order"
+    assert mapped["action_id"] == CANONICAL
 
     r2 = await reg.execute(
-        "customer_action:lock-service:accept_order",
+        CANONICAL,
         (domain, ids[1]),
         {"technician_id": "tech-2"},
         actor="fda-1",

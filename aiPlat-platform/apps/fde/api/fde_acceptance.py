@@ -5,7 +5,7 @@ from typing import Any, Dict
 from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 
 import json, time, os
 from datetime import datetime, timezone
@@ -16,11 +16,36 @@ router = APIRouter(tags=["fde-acceptance"])
 _acceptance_records: Dict[str, dict] = {}
 
 
+def _security_preflight_checklist_item() -> dict:
+    """⑥b gate item — severity values preserved as-is (no remapping)."""
+    try:
+        from core.api.core_facade import fde_preflight_signoff_gate
+
+        gate = fde_preflight_signoff_gate()
+        return {
+            "id": "security_preflight",
+            "label": "安全预检（⑥b）",
+            "status": "pass" if gate.get("ok") else "fail",
+            "detail": gate.get("detail") or gate.get("reason") or "",
+            "gate": gate,
+        }
+    except Exception as e:
+        return {
+            "id": "security_preflight",
+            "label": "安全预检（⑥b）",
+            "status": "fail",
+            "detail": f"预检门不可用: {e}",
+        }
+
+
 @router.get("/acceptance/checklist", response_model=FdeListResponse)
 async def acceptance_checklist(spec_id: str = Query("")):
-    """生成交付验收 Checklist。聚合 KPI + 反馈 + SLA，
+    """生成交付验收 Checklist。聚合 KPI + 反馈 + SLA + 安全预检，
     可选 Agent 驱动验收分析 (v2.4: fde_delivery_manager)."""
     checklist = []
+
+    # 0) Security preflight — hard gate for signoff
+    checklist.append(_security_preflight_checklist_item())
 
     # 1) KPI check — from ValueDashboard KPI data
     try:
@@ -87,8 +112,19 @@ async def acceptance_checklist(spec_id: str = Query("")):
         "detail": "需人工确认：客户团队已完成操作演练",
     })
 
+    # 5) Canary / manual lifecycle honesty — soft pending unless marked elsewhere
+    checklist.append({
+        "id": "canary_manual",
+        "label": "Canary / 手册生命周期",
+        "status": "pending",
+        "detail": "需人工确认：canary 已通过且交付手册已定稿（非演示草稿）",
+    })
+
     passed = sum(1 for c in checklist if c["status"] == "pass")
-    ready = passed == len(checklist)
+    failed = sum(1 for c in checklist if c["status"] == "fail")
+    # ready only when no fail and security preflight passed
+    sec = next((c for c in checklist if c["id"] == "security_preflight"), None)
+    ready = failed == 0 and bool(sec and sec["status"] == "pass")
 
     # Agent-driven acceptance analysis (v2.4): fde_delivery_manager
     agent_analysis = None
@@ -126,7 +162,22 @@ async def acceptance_signoff(body: Dict[str, Any]):
     """记录交付验收签收。
 
     Body: {"spec_id": "...", "signed_by": "fde_name", "notes": "..."}
+    Blocks with 409 if ⑥b preflight missing or has high/critical findings.
     """
+    from core.api.core_facade import fde_preflight_signoff_gate
+
+    gate = fde_preflight_signoff_gate()
+    if not gate.get("ok"):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "preflight_gate_blocked",
+                "reason": gate.get("reason"),
+                "detail": gate.get("detail"),
+                "gate": gate,
+            },
+        )
+
     spec_id = str(body.get("spec_id") or "unknown").strip()
     signed_by = str(body.get("signed_by") or "fde").strip()
     notes = str(body.get("notes") or "").strip()
@@ -137,6 +188,7 @@ async def acceptance_signoff(body: Dict[str, Any]):
         "notes": notes,
         "signed_at": datetime.now(timezone.utc).isoformat(),
         "checklist": (await acceptance_checklist(spec_id)) if spec_id != "unknown" else {},
+        "preflight_gate": gate,
     }
 
     # Persist to file
@@ -149,4 +201,3 @@ async def acceptance_signoff(body: Dict[str, Any]):
 
     _acceptance_records[spec_id] = record
     return {"status": "signed_off", "record_id": fid, **record}
-

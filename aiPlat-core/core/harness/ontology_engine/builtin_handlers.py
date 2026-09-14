@@ -85,6 +85,30 @@ async def accept_order(entity: Dict[str, Any], params: Dict[str, Any], actor: st
     }
 
 
+async def assign_work_order(entity: Dict[str, Any], params: Dict[str, Any], actor: str = "") -> Dict[str, Any]:
+    """Generic work-order assign: required_state → target_state (default 已指派).
+
+    Domain-agnostic; used by service-domain vertical (Phase 5+ copyability).
+    """
+    from core.harness.ontology_engine.graph_index import GraphIndex
+
+    entity_id = entity.get("id") or entity.get("entity_id", "")
+    domain_id = entity.get("domain_id") or entity.get("domain") or params.get("domain_id", "")
+    if not domain_id:
+        raise ValueError("domain_id is required")
+    g = GraphIndex.load(domain_id)
+    technician = params.get("assigned_technician") or params.get("technician_id") or ""
+    new_state = params.get("target_state") or "已指派"
+    g.update_entity_property(entity_id, "state", new_state)
+    g.update_entity_property(entity_id, "assigned_technician", technician)
+    g.update_entity_property(entity_id, "technician_id", technician)
+    return {
+        "new_state": new_state,
+        "assigned_technician": technician,
+        "assigned_by": actor,
+    }
+
+
 # ═══════════════════════════════════════════════════════════
 # Legacy bridge handlers
 # ═══════════════════════════════════════════════════════════

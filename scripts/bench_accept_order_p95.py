@@ -43,7 +43,7 @@ async def _run(count: int, prefix: str, domain_id: str, home: str) -> int:
     register_all(reg)
     action_id = "customer_action:lock-service:accept_order"
     assert reg.get(action_id) is not None
-    assert reg.get("accept_order") is not None  # alias
+    assert reg.get("accept_order") is None  # D3: legacy alias removed
 
     latencies_ms: list[float] = []
     failures = 0

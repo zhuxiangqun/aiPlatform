@@ -907,11 +907,13 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
   const [data, setData] = useState<any>(null);
   const [scores, setScores] = useState<any>(null);
   const [evolveKeys, setEvolveKeys] = useState('model_config.temperature');
+  const [evolveValue, setEvolveValue] = useState('0.3');
   const [evolveSummary, setEvolveSummary] = useState('');
   const [touchesAbox, setTouchesAbox] = useState(false);
   const [evolveBusy, setEvolveBusy] = useState(false);
   const [evolveEval, setEvolveEval] = useState<any>(null);
   const [evolveList, setEvolveList] = useState<any[]>([]);
+  const [evolveMetrics, setEvolveMetrics] = useState<any>(null);
 
   useEffect(() => { fetch(API('/dashboard') + (namespace ? `?namespace=${namespace}` : '')).then(r => r.json()).then(setData); }, []);
   // v2.7: Fetch scoring engine alerts for this domain
@@ -931,9 +933,14 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
 
   const loadEvolve = useCallback(async () => {
     try {
-      const r = await fetch(API('/evolve-proposals?limit=20'));
-      const d = await r.json().catch(() => ({}));
-      if (r.ok) setEvolveList(d.items || []);
+      const [rList, rMet] = await Promise.all([
+        fetch(API('/evolve-proposals?limit=20')),
+        fetch(API('/evolve-proposals/metrics')),
+      ]);
+      const dList = await rList.json().catch(() => ({}));
+      const dMet = await rMet.json().catch(() => ({}));
+      if (rList.ok) setEvolveList(dList.items || []);
+      if (rMet.ok) setEvolveMetrics(dMet);
     } catch {
       /* ignore */
     }
@@ -941,6 +948,21 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
   useEffect(() => { loadEvolve(); }, [loadEvolve]);
 
   const parseKeys = () => evolveKeys.split(/[,\s]+/).map(k => k.trim()).filter(Boolean);
+
+  const parseValue = (raw: string) => {
+    const t = raw.trim();
+    if (t === 'true') return true;
+    if (t === 'false') return false;
+    const n = Number(t);
+    if (t !== '' && !Number.isNaN(n)) return n;
+    try { return JSON.parse(t); } catch { return t; }
+  };
+
+  const buildChanges = () => {
+    const keys = parseKeys();
+    const v = parseValue(evolveValue);
+    return Object.fromEntries(keys.map(k => [k, v]));
+  };
 
   const evaluateEvolve = async () => {
     setEvolveBusy(true);
@@ -951,7 +973,7 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           keys,
-          proposed_changes: Object.fromEntries(keys.map(k => [k, true])),
+          proposed_changes: buildChanges(),
           actor: 'fde_engineer',
           domain_id: domainId || '',
           touches_abox: touchesAbox,
@@ -977,7 +999,7 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           keys,
-          proposed_changes: Object.fromEntries(keys.map(k => [k, true])),
+          proposed_changes: buildChanges(),
           actor: 'fde_engineer',
           domain_id: domainId || '',
           touches_abox: touchesAbox,
@@ -993,6 +1015,25 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
       else toast?.success?.(`已入队: ${d.data?.proposal_id || d.message}`);
     } catch (e: any) {
       toast?.error?.(e?.message || '入队失败');
+    } finally {
+      setEvolveBusy(false);
+    }
+  };
+
+  const evolveAction = async (proposalId: string, action: 'approve' | 'reject' | 'apply' | 'rollback') => {
+    setEvolveBusy(true);
+    try {
+      const r = await fetch(API(`/evolve-proposals/${proposalId}/${action}`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actor: 'fde_engineer', reason: action === 'reject' ? 'workbench reject' : '' }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.detail || `HTTP ${r.status}`);
+      toast?.success?.(`${action}: ${proposalId}`);
+      await loadEvolve();
+    } catch (e: any) {
+      toast?.error?.(e?.message || `${action} 失败`);
     } finally {
       setEvolveBusy(false);
     }
@@ -1036,9 +1077,9 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
 
       <Card>
         <CardHeader>
-          <span className="text-sm font-medium">Evolve 提案门（Phase 4B）</span>
+          <span className="text-sm font-medium">Evolve 提案门（AI FDE 半步 · Phase 4B）</span>
           <p className="text-[11px] text-gray-500 mt-1 font-normal">
-            仅白名单配置键；清单外 / ABox·Ontology 写 → HITL。本面板不执行静默写库。
+            白名单配置键 → 人审 → 受控 apply / rollback（写入 `$AIPLAT_HOME/fde_evolve_applied_config.json`）。禁止静默 ABox/Ontology。
           </p>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -1050,18 +1091,24 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
           />
           <input
             className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300"
+            placeholder="提议值（数字/布尔/JSON/字符串）"
+            value={evolveValue}
+            onChange={e => setEvolveValue(e.target.value)}
+          />
+          <input
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300"
             placeholder="提案摘要（可选）"
             value={evolveSummary}
             onChange={e => setEvolveSummary(e.target.value)}
           />
           <label className="flex items-center gap-2 text-xs text-gray-400">
             <input type="checkbox" checked={touchesAbox} onChange={e => setTouchesAbox(e.target.checked)} />
-            触及 ABox / Ontology（强制 HITL，禁止静默写）
+            触及 ABox / Ontology（强制 HITL，且不可 apply）
           </label>
           <div className="flex flex-wrap gap-2">
             <Button variant="ghost" size="sm" onClick={evaluateEvolve} loading={evolveBusy}>评估门</Button>
             <Button variant="default" size="sm" onClick={enqueueEvolve} loading={evolveBusy}>入人审队列</Button>
-            <Button variant="ghost" size="sm" onClick={loadEvolve}><RefreshCw className="w-3.5 h-3.5 mr-1" />刷新队列</Button>
+            <Button variant="ghost" size="sm" onClick={loadEvolve}><RefreshCw className="w-3.5 h-3.5 mr-1" />刷新</Button>
           </div>
           {evolveEval && (
             <p className={`text-[11px] ${evolveEval.passed || evolveEval.status === 'admitted_to_hitl' || evolveEval.queued ? 'text-green-400' : 'text-amber-300'}`}>
@@ -1073,12 +1120,50 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
                 : ''}
             </p>
           )}
-          <div className="space-y-1 max-h-40 overflow-y-auto">
+          {evolveMetrics && (
+            <div className="rounded border border-gray-700/60 bg-gray-900/40 px-2 py-1.5 text-[11px] text-gray-400 space-y-0.5">
+              <p className="text-gray-300">D6 反向指标（通过率仅参考）</p>
+              <p>
+                reject_rate={evolveMetrics.reject_rate ?? '—'}
+                {' · '}rollback_rate={evolveMetrics.rollback_rate ?? '—'}
+                {' · '}mean_survival_h={evolveMetrics.mean_survival_hours ?? '—'}
+                {' · '}pass_rate_ref={evolveMetrics.pass_rate_reference_only ?? '—'}
+              </p>
+              <p>
+                queued={evolveMetrics.queued ?? 0} approved={evolveMetrics.approved ?? 0}
+                {' '}rejected={evolveMetrics.rejected_hitl ?? 0} applied={evolveMetrics.applied ?? 0}
+                {' '}rolled_back={evolveMetrics.rolled_back ?? 0} pending={evolveMetrics.pending_hitl ?? 0}
+              </p>
+            </div>
+          )}
+          <div className="space-y-1 max-h-56 overflow-y-auto">
             {evolveList.length === 0 && <p className="text-[11px] text-gray-500">队列为空</p>}
             {evolveList.slice(0, 12).map((p: any) => (
-              <div key={p.proposal_id} className="text-[11px] text-gray-400 border-b border-gray-800/50 py-1">
-                {p.proposal_id} · {p.review_status} · {p.gate?.status || '—'}
-                {p.summary ? ` · ${p.summary}` : ''}
+              <div key={p.proposal_id} className="text-[11px] text-gray-400 border-b border-gray-800/50 py-1.5 space-y-1">
+                <div>
+                  {p.proposal_id} · <span className="text-cyan-300/90">{p.review_status}</span>
+                  {p.gate?.status ? ` · ${p.gate.status}` : ''}
+                  {p.summary ? ` · ${p.summary}` : ''}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {p.review_status === 'pending_hitl' && (
+                    <>
+                      <Button variant="ghost" size="sm" loading={evolveBusy} onClick={() => evolveAction(p.proposal_id, 'approve')}>批准</Button>
+                      <Button variant="ghost" size="sm" loading={evolveBusy} onClick={() => evolveAction(p.proposal_id, 'reject')}>拒绝</Button>
+                    </>
+                  )}
+                  {(p.review_status === 'approved' || p.review_status === 'auto_recorded') && (
+                    <>
+                      <Button variant="ghost" size="sm" loading={evolveBusy} onClick={() => evolveAction(p.proposal_id, 'apply')}>受控应用</Button>
+                      {p.review_status === 'auto_recorded' && (
+                        <Button variant="ghost" size="sm" loading={evolveBusy} onClick={() => evolveAction(p.proposal_id, 'reject')}>拒绝</Button>
+                      )}
+                    </>
+                  )}
+                  {p.review_status === 'applied' && (
+                    <Button variant="ghost" size="sm" loading={evolveBusy} onClick={() => evolveAction(p.proposal_id, 'rollback')}>回滚</Button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
