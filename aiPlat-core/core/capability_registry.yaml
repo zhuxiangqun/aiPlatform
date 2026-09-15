@@ -2054,6 +2054,22 @@ domains:
         type: function
         signature: "ActionStore per-day usage trend by domain_id"
         module: aiPlat-core/core/harness/infrastructure/action_store.py
+      - symbol: get_metric_handover
+        type: function
+        signature: "load business metric handover (not ROI)"
+        module: aiPlat-core/core/apps/fde/service/customer_success.py
+      - symbol: save_metric_handover
+        type: function
+        signature: "persist metric handover draft/confirmed/signed"
+        module: aiPlat-core/core/apps/fde/service/customer_success.py
+      - symbol: evaluate_escort_exit_from_signals
+        type: function
+        signature: "auto-tick escort exit checklist from usage/quality/canary"
+        module: aiPlat-core/core/apps/fde/service/customer_success.py
+      - symbol: capture_usage_baseline
+        type: function
+        signature: "capture usage_signal_baseline from 30d trend"
+        module: aiPlat-core/core/apps/fde/service/usage_signal.py
       - symbol: list_evolve_applied
         type: function
         signature: "list observing/stable/applied/rolled_back evolve proposals"

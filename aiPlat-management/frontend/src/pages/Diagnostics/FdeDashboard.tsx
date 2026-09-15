@@ -248,7 +248,7 @@ const FDE_STEPS = [
   { key: 'deploy',     label: '⑤ 平台离线包', icon: Package,     hint: '平台离线包打包（≠客户应用）；交付 Pipeline 可链接 Builder 产物' },
   { key: 'canary',     label: '⑥ 评测护栏', icon: TrendingUp,  hint: '灰度发布 + 质量门禁 + 回滚预案' },
   { key: 'preflight',  label: '⑥b 上线前检查', icon: Shield,      hint: 'FDE 4A = security Phase B/C dry-run（默认 B；C 需显式开关）' },
-  { key: 'accept',     label: '⑦ 验收移交', icon: CheckCircle, hint: '签收 + 移交 + 首月护航' },
+  { key: 'accept',     label: '⑦ 验收移交', icon: CheckCircle, hint: '签收（交付质量门）+ 指标交接单 + 移交 + 条件护航退出' },
   { key: 'evolution',  label: '⑧ 运营监控', icon: Activity,    hint: '运营指标 + Evolve 提案队列（4B）+ 反馈闭环' },
   { key: 'rapid_insight', label: '⑨ 快速认知', icon: Zap,       hint: '48h 搞懂陌生行业 — 投喂材料 → 三问认知 → 盲区修复' },
 ] as const;
@@ -686,7 +686,7 @@ const FdeDashboard: React.FC = () => {
       {tab === 'deploy'     && <DeployTab profile={pocProfile} onDeployed={setDeployVersion} customerName={customer?.name || ''} domainId={domain?.id || ''} />}
       {tab === 'canary'     && <CanaryTab deployVersion={deployVersion} onResult={setCanaryResult} />}
       {tab === 'preflight'  && <PreflightTab />}
-      {tab === 'accept'     && <AcceptTab canaryResult={canaryResult} diagnosisReport={diagnosis?.reportText || ''} onAdopted={() => setAdopted(true)} />}
+      {tab === 'accept'     && <AcceptTab canaryResult={canaryResult} diagnosisReport={diagnosis?.reportText || ''} onAdopted={() => setAdopted(true)} domainId={domain?.id} customerName={customer?.name || ''} />}
       {tab === 'evolution'  && <EvolutionTab namespace={customer?.namespace ?? null} domainId={domain?.id} />}
       {tab === 'rapid_insight' && <RapidInsightTab />}
 
@@ -903,6 +903,46 @@ const PreflightTab: React.FC = () => {
 // ═══════════════════════════════════════════════════════════
 // ⑧ 运营监控 — 系统进化 (原 workbench FDE Dashboard) + 4B Evolve
 // ═══════════════════════════════════════════════════════════
+const UsageTrendSparkline: React.FC<{
+  readonly points: Array<{ day?: string; calls?: number; success_rate?: number | null }>;
+  readonly baselineCalls?: number | null;
+}> = ({ points, baselineCalls }) => {
+  const W = 560;
+  const H = 88;
+  const PAD = 8;
+  const maxCalls = Math.max(...points.map(p => Number(p.calls) || 0), 1);
+  const step = (W - PAD * 2) / Math.max(points.length - 1, 1);
+  const callsPath = points.map((p, i) => {
+    const x = PAD + i * step;
+    const y = H - PAD - ((Number(p.calls) || 0) / maxCalls) * (H - PAD * 2);
+    return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+  }).join(' ');
+  const ratePath = points.map((p, i) => {
+    const x = PAD + i * step;
+    const y = H - PAD - (Number(p.success_rate) || 0) * (H - PAD * 2);
+    return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+  }).join(' ');
+  const baseY = baselineCalls != null && baselineCalls > 0
+    ? H - PAD - (Number(baselineCalls) / maxCalls) * (H - PAD * 2)
+    : null;
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} className="text-gray-600">
+        <path d={callsPath} fill="none" stroke="#38bdf8" strokeWidth={2} />
+        <path d={ratePath} fill="none" stroke="#4ade80" strokeWidth={1.5} strokeDasharray="4 3" />
+        {baseY != null && (
+          <line x1={PAD} x2={W - PAD} y1={baseY} y2={baseY} stroke="#9ca3af" strokeDasharray="2 4" />
+        )}
+      </svg>
+      <div className="flex gap-3 text-[10px] text-gray-500 mt-1">
+        <span className="text-sky-400">— 调用量</span>
+        <span className="text-green-400">┄ 成功率</span>
+        {baseY != null && <span>┄ 基线</span>}
+      </div>
+    </div>
+  );
+};
+
 const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domainId?: string }> = ({ namespace, domainId }) => {
   const [data, setData] = useState<any>(null);
   const [scores, setScores] = useState<any>(null);
@@ -918,6 +958,9 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
   const [qualityBus, setQualityBus] = useState<any>(null);
   const [canarySnap, setCanarySnap] = useState<any>(null);
   const [usageSignal, setUsageSignal] = useState<any>(null);
+  const [usageTrend, setUsageTrend] = useState<any[]>([]);
+  const [usageBaseline, setUsageBaseline] = useState<any>(null);
+  const [escortExit, setEscortExit] = useState<any>(null);
 
   useEffect(() => { fetch(API('/dashboard') + (namespace ? `?namespace=${namespace}` : '')).then(r => r.json()).then(setData); }, []);
   // v2.7: Fetch scoring engine alerts for this domain
@@ -942,12 +985,27 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
   useEffect(() => {
     if (!domainId) {
       setUsageSignal(null);
+      setUsageTrend([]);
+      setUsageBaseline(null);
+      setEscortExit(null);
       return;
     }
     fetch(API(`/usage-signal?domain_id=${encodeURIComponent(domainId)}`))
       .then(r => r.json())
       .then(d => setUsageSignal(d?.data ?? d))
       .catch(() => setUsageSignal({ status: 'unavailable', domain_id: domainId }));
+    fetch(API(`/usage-trend?domain_id=${encodeURIComponent(domainId)}&days=30`))
+      .then(r => r.json())
+      .then(d => setUsageTrend((d?.data?.points ?? d?.points) || []))
+      .catch(() => setUsageTrend([]));
+    fetch(API(`/usage-baseline?domain_id=${encodeURIComponent(domainId)}`))
+      .then(r => r.json())
+      .then(d => setUsageBaseline(d?.data ?? d))
+      .catch(() => setUsageBaseline(null));
+    fetch(API(`/escort-exit?domain_id=${encodeURIComponent(domainId)}`))
+      .then(r => r.json())
+      .then(d => setEscortExit(d?.data ?? d))
+      .catch(() => setEscortExit(null));
   }, [domainId]);
 
   const loadEvolve = useCallback(async () => {
@@ -1013,6 +1071,78 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
     } finally {
       setEvolveBusy(false);
     }
+  };
+
+  const captureBaseline = async () => {
+    if (!domainId) return;
+    setEvolveBusy(true);
+    try {
+      const r = await fetch(API('/usage-baseline/capture'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain_id: domainId, days: 30, captured_by: 'fde_engineer' }),
+      });
+      const d = await r.json().catch(() => ({}));
+      const payload = d?.data ?? d;
+      if (!r.ok || payload?.status === 'unavailable') {
+        throw new Error(payload?.error || d.detail || `HTTP ${r.status}`);
+      }
+      setUsageBaseline(payload);
+      toast?.success?.('使用信号基线已采集');
+    } catch (e: any) {
+      toast?.error?.(e?.message || '基线采集失败（需有 audit 数据）');
+    } finally {
+      setEvolveBusy(false);
+    }
+  };
+
+  const evaluateEscort = async () => {
+    if (!domainId) return;
+    setEvolveBusy(true);
+    try {
+      const q = qualityBus?.overall_quality;
+      const canaryBad = Array.isArray(canarySnap?.rollout)
+        ? canarySnap.rollout.some((s: any) => s?.needs_rollback || s?.rollback_recommended || ['failed', 'error', 'unhealthy'].includes(s?.status))
+        : false;
+      const r = await fetch(API('/escort-exit'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain_id: domainId,
+          actor: 'fde_engineer',
+          evaluate: true,
+          quality_score: typeof q === 'number' ? q : undefined,
+          quality_ok: typeof q === 'number' ? q >= 60 : undefined,
+          canary_ok: !canaryBad,
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.detail || `HTTP ${r.status}`);
+      setEscortExit(d?.data ?? d);
+      toast?.success?.('护航退出清单已按信号复评');
+    } catch (e: any) {
+      toast?.error?.(e?.message || '护航复评失败');
+    } finally {
+      setEvolveBusy(false);
+    }
+  };
+
+  const toggleEscortItem = async (group: string, id: string) => {
+    if (!domainId || !escortExit?.checklist) return;
+    const items = (escortExit.checklist[group] || []).map((it: any) =>
+      it.id === id ? { ...it, done: !it.done } : it
+    );
+    const r = await fetch(API('/escort-exit'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        domain_id: domainId,
+        actor: 'fde_engineer',
+        patch: { checklist: { ...escortExit.checklist, [group]: items } },
+      }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) setEscortExit(d?.data ?? d);
   };
   const parseKeys = () => evolveKeys.split(/[,\s]+/).map(k => k.trim()).filter(Boolean);
 
@@ -1189,6 +1319,64 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
           </CardContent></Card>
         ))}
       </div>
+
+      {domainId && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-sm font-medium">使用信号趋势 / 基线 · {domainId}</span>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={captureBaseline} loading={evolveBusy}>采集基线</Button>
+                <Button variant="ghost" size="sm" onClick={evaluateEscort} loading={evolveBusy}>复评护航退出</Button>
+              </div>
+            </div>
+            <p className="text-[11px] text-gray-500 mt-1 font-normal">
+              基线：{usageBaseline?.captured_at
+                ? `calls中位 ${Math.round(usageBaseline.baseline_calls_median ?? 0)} · 成功率 ${(Number(usageBaseline.baseline_success_rate || 0) * 100).toFixed(0)}% · ${usageBaseline.captured_at.slice(0, 10)}`
+                : '未采集（交付约 30 天后）'}
+            </p>
+          </CardHeader>
+          <CardContent>
+            {usageTrend.length === 0 ? (
+              <div className="text-xs text-gray-500">无趋势数据（action_audit 为空）</div>
+            ) : (
+              <UsageTrendSparkline points={usageTrend} baselineCalls={usageBaseline?.baseline_calls_median} />
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {domainId && escortExit && (
+        <Card>
+          <CardHeader>
+            <span className="text-sm font-medium">护航退出清单（条件退出，非纯日历）</span>
+            <p className="text-[11px] text-gray-500 mt-1 font-normal">
+              状态：{escortExit.status || '—'} · {escortExit.conclusion || escortExit.principle || ''}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {(['A', 'B', 'C', 'D'] as const).map(g => (
+              <div key={g}>
+                <div className="text-xs text-gray-400 mb-1">组 {g}</div>
+                <div className="space-y-1">
+                  {(escortExit.checklist?.[g] || []).map((it: any) => (
+                    <label key={it.id} className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={!!it.done || !!it.na}
+                        onChange={() => toggleEscortItem(g, it.id)}
+                      />
+                      <span className={it.na && !it.done ? 'text-gray-500' : ''}>
+                        {it.label}{it.na ? ' (N/A)' : ''}{it.value != null ? ` · ${it.value}` : ''}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -2711,7 +2899,13 @@ const CanaryTab: React.FC<{ readonly deployVersion: string | null; readonly onRe
 // ═══════════════════════════════════════════════════════════
 // ⑦ 验收移交 — 验证验收 + 移交 + 归档
 // ═══════════════════════════════════════════════════════════
-const AcceptTab: React.FC<{ readonly canaryResult: Readonly<CanaryResult> | null; readonly diagnosisReport: string; readonly onAdopted: () => void }> = ({ canaryResult, diagnosisReport, onAdopted }) => {
+const AcceptTab: React.FC<{
+  readonly canaryResult: Readonly<CanaryResult> | null;
+  readonly diagnosisReport: string;
+  readonly onAdopted: () => void;
+  readonly domainId?: string;
+  readonly customerName?: string;
+}> = ({ canaryResult, diagnosisReport, onAdopted, domainId, customerName = '' }) => {
   const [specId, setSpecId] = useState('');
   const [requirements, setRequirements] = useState('');
   const [showGrill, setShowGrill] = useState(false);
@@ -2729,6 +2923,44 @@ const AcceptTab: React.FC<{ readonly canaryResult: Readonly<CanaryResult> | null
   const [summary, setSummary] = useState('');
   const [closeResult, setCloseResult] = useState<any>(null);
   const [orderEntityId, setOrderEntityId] = useState('IO-DEMO-001');
+  const [metricHandover, setMetricHandover] = useState<any>(null);
+  const [handoverBusy, setHandoverBusy] = useState(false);
+
+  useEffect(() => {
+    if (!domainId) {
+      setMetricHandover(null);
+      return;
+    }
+    fetch(API(`/metric-handover?domain_id=${encodeURIComponent(domainId)}`))
+      .then(r => r.json())
+      .then(d => setMetricHandover(d?.data ?? d))
+      .catch(() => setMetricHandover(null));
+  }, [domainId]);
+
+  const saveMetricHandover = async (patch: Record<string, unknown>, refreshUsage = false) => {
+    if (!domainId) return;
+    setHandoverBusy(true);
+    try {
+      const r = await fetch(API('/metric-handover'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain_id: domainId,
+          actor: fdeName || 'fde_engineer',
+          patch: { customer_name: customerName, ...patch },
+          refresh_usage: refreshUsage,
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.detail || `HTTP ${r.status}`);
+      setMetricHandover(d?.data ?? d);
+      toast?.success?.('交接单已保存');
+    } catch (e: any) {
+      toast?.error?.(e?.message || '交接单保存失败');
+    } finally {
+      setHandoverBusy(false);
+    }
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -2883,6 +3115,68 @@ const AcceptTab: React.FC<{ readonly canaryResult: Readonly<CanaryResult> | null
             {signoffResult && <div className="text-xs text-green-400 mt-1">✓ 已签收 — {signoffResult.record_id}</div>}
           </CardContent>
         </Card>
+      )}
+      {domainId && (
+        <Card>
+          <CardHeader>
+            <span className="text-sm font-medium">业务指标交接单（≠ ROI）</span>
+            <p className="text-[11px] text-gray-500 mt-1 font-normal">
+              交付质量门之后的客户成功交接物：记录平台可观测基线与责任划分。域：{domainId}
+              {metricHandover?.status ? ` · 状态 ${metricHandover.status}` : ''}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-200"
+                placeholder="FDE 负责人"
+                value={metricHandover?.fde_owner || ''}
+                onChange={e => setMetricHandover((p: any) => ({ ...(p || {}), fde_owner: e.target.value }))}
+              />
+              <input
+                className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-200"
+                placeholder="客户联系人"
+                value={metricHandover?.customer_contact || ''}
+                onChange={e => setMetricHandover((p: any) => ({ ...(p || {}), customer_contact: e.target.value }))}
+              />
+            </div>
+            <div className="text-[11px] text-gray-400 space-y-0.5">
+              <div>P1 日调用：{metricHandover?.platform_baselines?.action_calls_per_day ?? '—'}</div>
+              <div>P1 成功率：{metricHandover?.platform_baselines?.action_success_rate != null
+                ? `${(Number(metricHandover.platform_baselines.action_success_rate) * 100).toFixed(0)}%`
+                : '—'}</div>
+              <div>P1 质量分：{metricHandover?.platform_baselines?.quality_score ?? '—'}</div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="ghost" size="sm" loading={handoverBusy} onClick={() => saveMetricHandover({
+                fde_owner: metricHandover?.fde_owner || fdeName,
+                customer_contact: metricHandover?.customer_contact || '',
+                status: 'draft',
+              }, true)}>拉取使用信号并保存草稿</Button>
+              <Button variant="ghost" size="sm" loading={handoverBusy} onClick={() => saveMetricHandover({
+                fde_owner: metricHandover?.fde_owner || fdeName,
+                customer_contact: metricHandover?.customer_contact || '',
+                confirmations: {
+                  ...(metricHandover?.confirmations || {}),
+                  baseline_checked: true,
+                  owners_clear: true,
+                },
+                status: 'confirmed',
+              })}>确认基线</Button>
+              <Button variant="default" size="sm" loading={handoverBusy} onClick={() => saveMetricHandover({
+                fde_owner: metricHandover?.fde_owner || fdeName,
+                customer_contact: metricHandover?.customer_contact || '',
+                handover_date: new Date().toISOString().slice(0, 10),
+                status: 'signed',
+              })}>签署交接单</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {!domainId && (
+        <div className="text-xs text-amber-200/80 rounded border border-amber-800/40 bg-amber-950/20 px-3 py-2">
+          请先在壳层选择评估域，再填写业务指标交接单。
+        </div>
       )}
       {handoverResult && (<Card><CardHeader><span className="text-sm font-medium">移交管理员</span></CardHeader><CardContent className="space-y-2"><div className="flex items-center gap-2"><UserCheck className="w-4 h-4 text-blue-400" /><span className="text-xs text-gray-400">将项目所有权转移给客户方管理员</span></div><div className="flex gap-2"><input className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200" placeholder="客户管理员用户名" value={clientAdmin} onChange={e => setClientAdmin(e.target.value)} /><Button variant="default" size="sm" onClick={doTransfer} loading={loading} disabled={!clientAdmin}>执行移交</Button></div><pre className="text-xs text-gray-300 bg-gray-800 p-2 rounded max-h-32 overflow-y-auto">{JSON.stringify(handoverResult, null, 2)}</pre></CardContent></Card>)}
       {handoverResult && (<Card><CardHeader><span className="text-sm font-medium">项目归档</span></CardHeader><CardContent className="space-y-2"><textarea className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200 h-16" placeholder="项目交付总结..." value={summary} onChange={e => setSummary(e.target.value)} /><Button variant="default" size="sm" onClick={doClose} loading={loading}>关闭项目并归档</Button>{closeResult && <div className="text-xs text-green-400 mt-1">✓ 项目已归档 — {closeResult.archive_id}</div>}</CardContent></Card>)}

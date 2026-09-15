@@ -3645,8 +3645,18 @@ from core.apps.fde.service.evolve_proposal_gate import (  # noqa: boundary
     sync_evolve_ops_signals as sync_fde_evolve_ops_signals,
 )
 from core.apps.fde.service.usage_signal import (  # noqa: boundary
+    capture_usage_baseline as capture_fde_usage_baseline,
+    get_usage_baseline as get_fde_usage_baseline,
     get_usage_signal as get_fde_usage_signal,
     get_usage_trend as get_fde_usage_trend,
+)
+from core.apps.fde.service.customer_success import (  # noqa: boundary
+    evaluate_escort_exit_from_signals as evaluate_fde_escort_exit,
+    get_escort_exit as get_fde_escort_exit,
+    get_metric_handover as get_fde_metric_handover,
+    refresh_handover_from_usage as refresh_fde_metric_handover,
+    save_escort_exit as save_fde_escort_exit,
+    save_metric_handover as save_fde_metric_handover,
 )
 
 from core.security.skill_signature_gate import is_approval_resolved_approved, get_trusted_skill_pubkeys_map  # v2.5

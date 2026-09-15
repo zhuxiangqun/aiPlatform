@@ -1,7 +1,7 @@
 # FDE 工作台契约（FDE Workbench Contract）
 
-版本：v1.10  
-状态：Phase 0–5 交付质量门已勾选；使用信号 S1–S4 已接线；交接单/护航退出契约 v0.1（UI 待接线）  
+版本：v1.11  
+状态：Phase 0–5 交付质量门已勾选；使用信号 + 交接单 + 条件护航退出已接线  
 
 适用范围：FDE 工作台前端、CoreFacade、ActionRegistry、PipelineEngine、DomainRouter、PolicyGate、Eval 服务  
 
@@ -245,3 +245,4 @@ Phase 5：
 | v1.8 | 2026-09-15 | Evolve 观测窗 + quality 自动回滚 | Oliver Zhu |
 | v1.9 | 2026-09-15 | §6.1 三层指标正名；挂交接单 / 护航退出 / 使用信号最小集 | Oliver Zhu |
 | v1.10 | 2026-09-15 | 使用信号 S1–S4 API + Tab⑧ 落地 | Oliver Zhu |
+| v1.11 | 2026-09-15 | 业务指标交接单 + 护航退出清单接线（⑦/⑧） | Oliver Zhu |

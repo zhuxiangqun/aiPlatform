@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -123,3 +123,49 @@ async def get_usage_trend(
             "status": "unavailable",
             "error": str(e)[:160],
         }
+
+
+def _store_default() -> Any:
+    from core.harness.ontology_engine.action_registry import get_action_registry
+
+    return get_action_registry()._store
+
+
+async def get_usage_baseline(
+    domain_id: str, *, store: Any = None
+) -> Optional[Dict[str, Any]]:
+    domain = (domain_id or "").strip()
+    if not domain:
+        return None
+    try:
+        st = store or _store_default()
+        await st.initialize()
+        row = await st.get_usage_baseline(domain)
+        return dict(row) if row else None
+    except Exception as e:
+        logger.warning("get_usage_baseline failed: %s", e)
+        return None
+
+
+async def capture_usage_baseline(
+    domain_id: str,
+    *,
+    days: int = 30,
+    captured_by: str = "fde",
+    store: Any = None,
+) -> Dict[str, Any]:
+    domain = (domain_id or "").strip()
+    if not domain:
+        return {"status": "unavailable", "error": "domain_id required"}
+    try:
+        st = store or _store_default()
+        await st.initialize()
+        row = await st.capture_usage_baseline_from_trend(
+            domain, days=days, captured_by=captured_by
+        )
+        out = dict(row)
+        out["status"] = "ok"
+        return out
+    except Exception as e:
+        logger.warning("capture_usage_baseline failed: %s", e)
+        return {"domain_id": domain, "status": "unavailable", "error": str(e)[:160]}

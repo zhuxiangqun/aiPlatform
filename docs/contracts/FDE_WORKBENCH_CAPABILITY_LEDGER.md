@@ -3,7 +3,7 @@
 | 字段 | 值 |
 |------|-----|
 | 文档 ID | `FDE-LEDGER-2026-09` |
-| 版本 | v1.5 |
+| 版本 | v1.6 |
 | 模板 | [`FDE_CAPABILITY_LEDGER_TEMPLATE.md`](./FDE_CAPABILITY_LEDGER_TEMPLATE.md) |
 | 关联 | [`FDE_WORKBENCH_CONTRACT.md`](./FDE_WORKBENCH_CONTRACT.md) v1.10 · [`FDE_DECISION_RECORD.md`](./FDE_DECISION_RECORD.md) · [`FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md`](./FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md) · [`FDE_BUSINESS_METRIC_HANDOVER.md`](./FDE_BUSINESS_METRIC_HANDOVER.md) · [`FDE_ESCORT_EXIT_CHECKLIST.md`](./FDE_ESCORT_EXIT_CHECKLIST.md) · [`FDE_USAGE_SIGNAL_MINIMAL_SET.md`](./FDE_USAGE_SIGNAL_MINIMAL_SET.md) |
 | 维护人 | Oliver Zhu |
@@ -44,14 +44,14 @@
 | T09 | ⑤ 交付 | Builder 链接 + Eval | `production` | `test:` `test_fde_phase3*` · eval_blocked | Tab⑤ | 工厂失败需回工厂日志 | Oliver Zhu | 3 |
 | T10 | ⑥ 护栏 | canary 状态 / 回滚 | `production` | `manual:` `/canary/status` · rollback · ⑧ KPI | Tab⑥+⑧ | sync-ops 可 canary 回滚 | Oliver Zhu | 0 |
 | T11 | ⑥b 预检 | 安全 dry-run | `production` | `test:` phase4 preflight · Facade dry-run | Tab⑥b | 不改写 severity | Oliver Zhu | 4A |
-| T12 | ⑦ 验收 | 签收硬门（**交付质量门**） | `production` | `test:` `test_preflight_signoff_*` · HTTP 409 | Tab⑦ | ≠客户成功；交接单待接 UI | Oliver Zhu | 4A |
+| T12 | ⑦ 验收 | 签收硬门（**交付质量门**） | `production` | `test:` `test_preflight_signoff_*` · HTTP 409 | Tab⑦ | ≠客户成功 | Oliver Zhu | 4A |
 | T13 | ⑦ 验收 | 客户 Action 执行 | `production` | `test:` `test_fde_phase2*` · `benchmark:` bench_p95 | Tab⑦ | alias `accept_order` 已 deprecated | Oliver Zhu | 2 |
-| T18 | ⑦ 验收 | 业务指标交接单 | `not-implemented` | `contract:` HANDOVER v0.1 | Tab⑦ | 模板已入库；UI/实例未接线 | Oliver Zhu | 5+ |
+| T18 | ⑦ 验收 | 业务指标交接单 | `production` | `test:` `test_customer_success.py` · `/metric-handover` · AcceptTab | Tab⑦ | P2 客户侧字段仍手工；跨客户基线未做 | Oliver Zhu | 5 |
 | T14 | ⑧ 运营 | Evolve 队列 | `production` | `test:` enqueue/list · EvolutionTab | Tab⑧ | — | Oliver Zhu | 4B |
 | T15 | ⑧ 运营 | 受控 apply / rollback | `production` | `test:` observing + tick + quality/canary sync-ops | Tab⑧ | Registry platform_action 审计名可选 | Oliver Zhu | 4B |
 | T16 | ⑧ 运营 | D6 反向指标 + 观测窗 | `production` | `test:` metrics + survival · sync-ops · Applied UI | Tab⑧ | — | Oliver Zhu | 4B |
-| T19 | ⑧ 运营 | 使用信号 S1–S4 | `production` | `test:` `test_usage_signal.py` · `/usage-signal` · EvolutionTab | Tab⑧ | 基线表/折线图可选；跨客户基线未做 | Oliver Zhu | 4B/5 |
-| T20 | ⑧ 运营 | 护航退出清单 | `not-implemented` | `contract:` ESCORT_EXIT v0.1 | Tab⑦/⑧ | 条件退出；UI 未接线 | Oliver Zhu | 5 |
+| T19 | ⑧ 运营 | 使用信号 S1–S4 + 基线/趋势 | `production` | `test:` usage + baseline · `/usage-*` · sparkline | Tab⑧ | 跨客户横向基线未做 | Oliver Zhu | 4B/5 |
+| T20 | ⑧ 运营 | 护航退出清单 | `production` | `test:` escort evaluate · `/escort-exit` · EvolutionTab | Tab⑧ | A 组仍人工勾选；条件退出已接线 | Oliver Zhu | 5 |
 | T17 | ⑨ 快速认知 | 48h 行业认知 | `pilot` | `manual:` rapid_insight 面板 | Tab⑨ | 与主交付链弱耦合 | Oliver Zhu | 0 |
 
 ---
@@ -149,7 +149,7 @@
 | 台账行 | 现状 | 下一步 |
 |--------|------|--------|
 | T15 / T16 / V06 | **`production`**：observing→stable；sync-ops 自动回滚 | 可选 Registry 审计名 |
-| T18 / T19 / T20 | T19 **`production`**（API+⑧）；T18/T20 契约入库 · UI 未接线 | 交接单/退出清单实例化；可选趋势图 |
+| T18 / T19 / T20 | **均 `production`**：交接单⑦ + 使用信号/基线/趋势⑧ + 护航退出复评⑧ | 跨客户横向基线；A 组自动化 |
 
 ---
 
@@ -163,3 +163,4 @@
 | 2026-09-15 | Oliver Zhu | v1.3 Quality Bus + canary sync-ops；§6 quality-summary 已消费 |
 | 2026-09-15 | Oliver Zhu | v1.4 三层指标正名；T18–T20；挂交接单/退出清单/使用信号 |
 | 2026-09-15 | Oliver Zhu | v1.5 T19 usage-signal API + ⑧ S1–S4 卡 |
+| 2026-09-15 | Oliver Zhu | v1.6 T18/T20 production：交接单 + 护航退出 + 基线/趋势 |

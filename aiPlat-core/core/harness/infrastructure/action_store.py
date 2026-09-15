@@ -95,6 +95,16 @@ class ActionStore:
                     created_at TEXT DEFAULT (datetime('now'))
                 )
             """)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS usage_signal_baseline (
+                    domain_id TEXT PRIMARY KEY,
+                    baseline_calls_median REAL,
+                    baseline_success_rate REAL,
+                    baseline_active_days INTEGER,
+                    captured_at TEXT NOT NULL,
+                    captured_by TEXT
+                )
+            """)
             await db.commit()
 
     # ═══════════════════════════════════════════════════════
@@ -280,6 +290,88 @@ class ActionStore:
             }
             for r in rows
         ]
+
+    async def upsert_usage_baseline(
+        self,
+        domain_id: str,
+        *,
+        baseline_calls_median: float,
+        baseline_success_rate: float,
+        baseline_active_days: int,
+        captured_by: str = "fde",
+    ) -> Dict[str, Any]:
+        import aiosqlite
+
+        domain = (domain_id or "").strip()
+        if not domain:
+            raise ValueError("domain_id required")
+        captured_at = datetime.now(timezone.utc).isoformat()
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                INSERT INTO usage_signal_baseline (
+                    domain_id, baseline_calls_median, baseline_success_rate,
+                    baseline_active_days, captured_at, captured_by
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(domain_id) DO UPDATE SET
+                    baseline_calls_median = excluded.baseline_calls_median,
+                    baseline_success_rate = excluded.baseline_success_rate,
+                    baseline_active_days = excluded.baseline_active_days,
+                    captured_at = excluded.captured_at,
+                    captured_by = excluded.captured_by
+                """,
+                (
+                    domain,
+                    float(baseline_calls_median),
+                    float(baseline_success_rate),
+                    int(baseline_active_days),
+                    captured_at,
+                    captured_by,
+                ),
+            )
+            await db.commit()
+        return {
+            "domain_id": domain,
+            "baseline_calls_median": float(baseline_calls_median),
+            "baseline_success_rate": float(baseline_success_rate),
+            "baseline_active_days": int(baseline_active_days),
+            "captured_at": captured_at,
+            "captured_by": captured_by,
+        }
+
+    async def get_usage_baseline(self, domain_id: str) -> Optional[Dict[str, Any]]:
+        import aiosqlite
+
+        domain = (domain_id or "").strip()
+        if not domain:
+            return None
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT * FROM usage_signal_baseline WHERE domain_id = ?",
+                (domain,),
+            ) as cur:
+                row = await cur.fetchone()
+        return dict(row) if row else None
+
+    async def capture_usage_baseline_from_trend(
+        self, domain_id: str, *, days: int = 30, captured_by: str = "fde"
+    ) -> Dict[str, Any]:
+        """Median calls / mean success / active days from trend window."""
+        import statistics
+
+        trend = await self.query_usage_trend(domain_id, days=days)
+        if not trend:
+            raise RuntimeError(f"no usage data for {domain_id}; baseline not captured")
+        calls = [int(r["calls"]) for r in trend]
+        rates = [float(r["success_rate"]) for r in trend if r.get("success_rate") is not None]
+        return await self.upsert_usage_baseline(
+            domain_id,
+            baseline_calls_median=float(statistics.median(calls)),
+            baseline_success_rate=float(statistics.mean(rates)) if rates else 0.0,
+            baseline_active_days=len(trend),
+            captured_by=captured_by,
+        )
 
     # ═══════════════════════════════════════════════════════
     # Pending Approvals

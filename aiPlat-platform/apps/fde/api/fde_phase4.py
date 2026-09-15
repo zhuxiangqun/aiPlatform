@@ -317,3 +317,90 @@ async def usage_trend(domain_id: str = "", days: int = 30) -> Dict[str, Any]:
 
     payload = await get_fde_usage_trend(domain_id or "", days=days)
     return {"data": payload}
+
+@router.get("/usage-baseline", response_model=FdeItemResponse)
+async def usage_baseline(domain_id: str = "") -> Dict[str, Any]:
+    from core.api.core_facade import get_fde_usage_baseline
+
+    row = await get_fde_usage_baseline(domain_id or "")
+    return {"data": row or {"domain_id": domain_id, "status": "unavailable"}}
+
+
+class UsageBaselineCaptureRequest(BaseModel):
+    domain_id: str = ""
+    days: int = 30
+    captured_by: str = "fde_engineer"
+
+
+@router.post("/usage-baseline/capture", response_model=FdeItemResponse)
+async def usage_baseline_capture(req: UsageBaselineCaptureRequest) -> Dict[str, Any]:
+    from core.api.core_facade import capture_fde_usage_baseline
+
+    payload = await capture_fde_usage_baseline(
+        req.domain_id or "", days=req.days, captured_by=req.captured_by
+    )
+    return {"data": payload}
+
+
+@router.get("/metric-handover", response_model=FdeItemResponse)
+async def metric_handover_get(domain_id: str = "") -> Dict[str, Any]:
+    from core.api.core_facade import get_fde_metric_handover
+
+    return {"data": get_fde_metric_handover(domain_id or "")}
+
+
+class MetricHandoverSaveRequest(BaseModel):
+    domain_id: str = ""
+    patch: Dict[str, Any] = {}
+    actor: str = "fde_engineer"
+    refresh_usage: bool = False
+    quality_score: Optional[float] = None
+
+
+@router.post("/metric-handover", response_model=FdeItemResponse)
+async def metric_handover_save(req: MetricHandoverSaveRequest) -> Dict[str, Any]:
+    from core.api.core_facade import refresh_fde_metric_handover, save_fde_metric_handover
+
+    if req.refresh_usage:
+        data = await refresh_fde_metric_handover(
+            req.domain_id or "", actor=req.actor, quality_score=req.quality_score
+        )
+        if req.patch:
+            data = save_fde_metric_handover(req.domain_id or "", req.patch, actor=req.actor)
+        return {"data": data}
+    return {"data": save_fde_metric_handover(req.domain_id or "", req.patch, actor=req.actor)}
+
+
+@router.get("/escort-exit", response_model=FdeItemResponse)
+async def escort_exit_get(domain_id: str = "") -> Dict[str, Any]:
+    from core.api.core_facade import get_fde_escort_exit
+
+    return {"data": get_fde_escort_exit(domain_id or "")}
+
+
+class EscortExitSaveRequest(BaseModel):
+    domain_id: str = ""
+    patch: Dict[str, Any] = {}
+    actor: str = "fde_engineer"
+    evaluate: bool = False
+    quality_score: Optional[float] = None
+    quality_ok: Optional[bool] = None
+    canary_ok: Optional[bool] = None
+
+
+@router.post("/escort-exit", response_model=FdeItemResponse)
+async def escort_exit_save(req: EscortExitSaveRequest) -> Dict[str, Any]:
+    from core.api.core_facade import evaluate_fde_escort_exit, save_fde_escort_exit
+
+    if req.evaluate:
+        data = await evaluate_fde_escort_exit(
+            req.domain_id or "",
+            actor=req.actor,
+            quality_score=req.quality_score,
+            quality_ok=req.quality_ok,
+            canary_ok=req.canary_ok,
+        )
+        if req.patch:
+            data = save_fde_escort_exit(req.domain_id or "", req.patch, actor=req.actor)
+        return {"data": data}
+    return {"data": save_fde_escort_exit(req.domain_id or "", req.patch, actor=req.actor)}

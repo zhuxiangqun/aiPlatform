@@ -749,7 +749,8 @@ scan_hash: 8f9548ec24f4
 | WorkbenchRuntimeGuard | `harness/infrastructure/workbench_runtime_guard.py` | ✅ | 工作台运行时否定项：未注册 Action / policy_gate 审计形状 / stub KPI；经 CoreFacade 导出；dashboard 挂 kpi_guard | 已合入 |
 | FDE 交付 Pipeline session | `apps/fde/service/delivery_pipeline_session.py` + `apps/fde/api/fde_delivery_pipeline.py` | ✅ | Phase 1：启动/查询/批准 `fde_delivery_v1` 服务端 stage cursor；workspace seed 模板；Tab⑤ 接线；≥2 HITL approve 单测；**Phase 3**：链接 Builder `project_id`、observe/start 工厂 Pipeline、`fde_delivery_pipeline` Eval 门、产物链接展示；生成物：工作台不平行构建，交付物走 builder 已接线路径 | 已合入 |
 | FDE Phase 4 安全预检+Evolve | `apps/fde/service/security_preflight.py` + `evolve_proposal_gate.py` + `apps/fde/api/fde_phase4.py` + PreflightTab/EvolutionTab | ✅ | 4A 预检+签收硬门；4B：白名单 HITL；apply→**observing→stable**；quality/canary **sync-ops** 自动回滚；D6；Applied UI；生成物：不适用 | 已合入 |
-| FDE 使用信号 S1–S4 | `apps/fde/service/usage_signal.py` + `ActionStore.query_usage_signal` + `/usage-signal` + Tab⑧ | ✅ | 日活/调用/成功率/活跃天；非 ROI；生成物：不适用（平台横切观测） | 已合入 |
+| FDE 使用信号 S1–S4 | `apps/fde/service/usage_signal.py` + `ActionStore.query_usage_signal` + `/usage-signal` + Tab⑧ | ✅ | 日活/调用/成功率/活跃天 + 基线/趋势；非 ROI；生成物：不适用（平台横切观测） | 已合入 |
+| FDE 客户成功交接 | `apps/fde/service/customer_success.py` + `/metric-handover` + `/escort-exit` + AcceptTab/EvolutionTab | ✅ | 业务指标交接单（≠ROI）+ 条件护航退出（信号复评）；生成物：不适用 | 已合入 |
 | FDE Phase 5 多客户接入 | `docs/contracts/FDE_PHASE5_CUSTOMER_ONBOARDING.md` + `fde_domain_literals` error | ✅ | 新客户=DomainRouter+本体/Action 配置（不改 harness）；守卫 error+AST=0；Agent Fleet 不产品化；生成物：不适用（平台控制台接入路径，生成物仍走 builder） | 已合入 |
 | FDE 工作台能力台账 | `docs/contracts/FDE_WORKBENCH_CAPABILITY_LEDGER.md` + `FDE_CAPABILITY_LEDGER_TEMPLATE.md` | ✅ | Tab/竖切/执行核可审计台账（T/V/E ID）；生成物：不适用（平台契约） | 已合入 |
 | AI FDE 受控应用闭环设计 | `docs/contracts/FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md` | ✅ | 4B：观测窗+自动回滚+反向 KPI；对照半步已合代码；生成物：不适用（设计文档） | 已合入 |
@@ -1782,6 +1783,10 @@ scan_hash: 8f9548ec24f4
 | get_usage_trend | `core/apps/fde/service/usage_signal.py` | ✅ | 按日趋势；`GET …/usage-trend` | 已合入 |
 | query_usage_signal | `core/harness/infrastructure/action_store.py` | ✅ | action_audit 聚合 | 已合入 |
 | query_usage_trend | `core/harness/infrastructure/action_store.py` | ✅ | action_audit 按日趋势 | 已合入 |
+| get_metric_handover | `core/apps/fde/service/customer_success.py` | ✅ | 业务指标交接单；`GET …/metric-handover` | 已合入 |
+| save_metric_handover | `core/apps/fde/service/customer_success.py` | ✅ | 草稿/确认/签署 | 已合入 |
+| evaluate_escort_exit_from_signals | `core/apps/fde/service/customer_success.py` | ✅ | 护航退出信号复评；`POST …/escort-exit` | 已合入 |
+| capture_usage_baseline | `core/apps/fde/service/usage_signal.py` | ✅ | 交付后基线；`POST …/usage-baseline/capture` | 已合入 |
 | assign_work_order | `core/harness/ontology_engine/builtin_handlers.py` | ✅ | 自动同步 | 已合入 |
 | get_evolve_metrics | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
 | rollback_evolve_proposal | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
