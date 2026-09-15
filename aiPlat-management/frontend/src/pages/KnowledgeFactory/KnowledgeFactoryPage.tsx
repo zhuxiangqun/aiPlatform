@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 
 const API = (path: string) => `/api/platform/apps/fde${path}`;
+/** Pilot business domain for ontology factory loop (ONTOLOGY_RUNTIME_AUTHORITY). */
+const FACTORY_DOMAIN = 'lock-service';
 
 // ═══════════════════════════════════════════════════════════
 // ① KnowledgeExtractionPanel — 文件上传 + 文本粘贴双模式
@@ -46,7 +48,7 @@ const KnowledgeExtractionPanel: React.FC = () => {
       if (text.trim()) {
         formData.append('text', text);
       }
-      formData.append('domain_id', 'fde-delivery');
+      formData.append('domain_id', FACTORY_DOMAIN);
       formData.append('doc_name', file ? file.name : ('客户文档-' + new Date().toISOString().slice(0, 10)));
 
       const r = await fetch(API('/extract'), {
@@ -335,7 +337,7 @@ const OntologyEvolutionPanel: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch(API('/ontology/proposals?domain_id=fde-delivery'))
+    fetch(API(`/ontology/proposals?domain_id=${FACTORY_DOMAIN}`))
       .then(r => r.json()).then(d => setProposals(d.proposals || []))
       .catch(() => {});
   }, []);
@@ -377,8 +379,8 @@ const OntologyEvolutionPanel: React.FC = () => {
             <GitBranch className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-sm font-semibold text-gray-100">③ 本体演进</span>
-            <span className="text-[11px] text-gray-500 ml-2">版本化 YAML 提案 → 审核 → 应用</span>
+            <span className="text-sm font-semibold text-gray-100">③ 本体提案</span>
+            <span className="text-[11px] text-gray-500 ml-2">域 YAML 版本化提案 → tier 审批 → apply（≠ 配置 Evolve）</span>
           </div>
           {proposals.filter(p => p.status === 'approved').length > 0 && (
             <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded ml-auto">
@@ -386,7 +388,7 @@ const OntologyEvolutionPanel: React.FC = () => {
             </span>
           )}
           <Button variant="ghost" size="sm" onClick={() => {
-            fetch(API('/ontology/proposals?domain_id=fde-delivery'))
+            fetch(API(`/ontology/proposals?domain_id=${FACTORY_DOMAIN}`))
               .then(r => r.json()).then(d => setProposals(d.proposals || []));
           }}>
             <RefreshCw className="w-3 h-3" />
@@ -444,7 +446,8 @@ const KnowledgeFactoryPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-semibold text-gray-100">知识工厂</h1>
           <p className="text-sm text-gray-500 mt-1">
-            知识生产流水线：文档上传 → 实体/关系萃取 → 跨域对齐 → 本体演进 → 入库
+            业务域本体流水线（权威=域 YAML + GraphIndex）：抽取 → 跨域对齐 → 本体提案 → 应用。
+            Wiki 知识库轨道不在此页冒充业务权威。配置 Evolve 与本体提案分门。
           </p>
         </div>
       </div>
@@ -455,8 +458,8 @@ const KnowledgeFactoryPage: React.FC = () => {
         <ArrowRight className="w-4 h-4 mx-1" />
         <span className="text-purple-400 font-medium">② 跨域解析</span>
         <ArrowRight className="w-4 h-4 mx-1" />
-        <span className="text-green-400 font-medium">③ 本体演进</span>
-        <span className="ml-3 text-gray-600">→ 入库到各域本体模型</span>
+        <span className="text-green-400 font-medium">③ 本体提案</span>
+        <span className="ml-3 text-gray-600">→ 写入域本体（非配置 Evolve）</span>
       </div>
 
       {/* Stage 1: Knowledge Extraction */}

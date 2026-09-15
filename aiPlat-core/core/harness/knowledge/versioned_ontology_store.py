@@ -270,28 +270,46 @@ class VersionedOntologyStore:
         else:
             current_data["classes"] = classes_list
 
-        # Write new version
+        # Apply axiom additions (runtime semantic constraints — P2 mid/deep)
+        for action, payload in changes.items():
+            if action != "add" or not isinstance(payload, dict):
+                continue
+            axioms_list = current_data.setdefault("axioms", [])
+            if not isinstance(axioms_list, list):
+                axioms_list = []
+                current_data["axioms"] = axioms_list
+            if isinstance(payload.get("axiom"), dict):
+                axioms_list.append(dict(payload["axiom"]))
+            for ax in (payload.get("axioms") or []):
+                if isinstance(ax, dict):
+                    axioms_list.append(dict(ax))
+
+        # Archive previous current (versioned or legacy) then write new version + live pointer
+        history_dir = os.path.join(_ontology_base(), "history")
+        os.makedirs(history_dir, exist_ok=True)
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
+        if current_v > 0:
+            old_path = self._version_path(current_v)
+            if os.path.exists(old_path):
+                shutil.move(
+                    old_path,
+                    os.path.join(history_dir, f"{self.domain_id}_v{current_v}_{stamp}.yaml"),
+                )
+        legacy = self._legacy_path()
+        if os.path.exists(legacy):
+            # Keep a dated archive; live pointer will be rewritten below
+            shutil.copy2(
+                legacy,
+                os.path.join(history_dir, f"{self.domain_id}_legacy_{stamp}.yaml"),
+            )
+
         new_path = self._version_path(new_v)
         os.makedirs(_ontology_base(), exist_ok=True)
         with open(new_path, "w", encoding="utf-8") as f:
             yaml.dump(current_data, f, allow_unicode=True, sort_keys=False, default_flow_style=False)
-
-        # Archive old version
-        if current_v > 0:
-            old_path = self._version_path(current_v)
-            history_dir = os.path.join(_ontology_base(), "history")
-            os.makedirs(history_dir, exist_ok=True)
-            archive_name = os.path.join(
-                history_dir,
-                f"{self.domain_id}_v{current_v}_{datetime.now(timezone.utc).strftime('%Y%m%d')}.yaml",
-            )
-            if os.path.exists(old_path):
-                shutil.move(old_path, archive_name)
-        elif os.path.exists(self._legacy_path()):
-            history_dir = os.path.join(_ontology_base(), "history")
-            os.makedirs(history_dir, exist_ok=True)
-            archive_name = os.path.join(history_dir, f"{self.domain_id}_legacy_{datetime.now(timezone.utc).strftime('%Y%m%d')}.yaml")
-            shutil.move(self._legacy_path(), archive_name)
+        # Runtime loaders (DomainRouter / compiler) read {domain}.yaml — keep as current pointer
+        with open(legacy, "w", encoding="utf-8") as f:
+            yaml.dump(current_data, f, allow_unicode=True, sort_keys=False, default_flow_style=False)
 
         # Mark proposal as applied
         await self.store.update_ontology_proposal_status(proposal_id, "applied")
@@ -404,6 +422,12 @@ class VersionedOntologyStore:
                     impact["affected_classes"] += 1
                 if "property" in payload:
                     impact["affected_properties"] += 1
+                ax_n = 0
+                if isinstance(payload.get("axiom"), dict):
+                    ax_n += 1
+                ax_n += len([a for a in (payload.get("axioms") or []) if isinstance(a, dict)])
+                if ax_n:
+                    impact["axioms_added"] = int(impact.get("axioms_added") or 0) + ax_n
 
         # Resolve tiers + promotions (dedup names)
         seen: set = set()
@@ -421,4 +445,7 @@ class VersionedOntologyStore:
         non_empty = [t for t, names in impact["tiers"].items() if names]
         if non_empty:
             impact["max_tier"] = max(non_empty, key=lambda t: TIER_ORDER.get(t, 1))
+        elif int(impact.get("axioms_added") or 0) > 0:
+            # Axiom-only proposals are edge-tier (self-service) by default
+            impact["max_tier"] = TIER_EDGE
         return impact

@@ -415,7 +415,10 @@ const OntologyManager: React.FC = () => {
         <div>
           <h1 className="text-2xl font-semibold text-gray-100">本体模型管理</h1>
         <OntologyLearningPanel collection="default" />
-          <p className="text-sm text-gray-500 mt-1">创建和管理领域本体模型</p>
+          <p className="text-sm text-gray-500 mt-1">
+            领域业务本体（域 YAML + GraphIndex）。从 Wiki/Vault 生成仅作草稿辅助；
+            业务 Action / 审计不以 Wiki TBox 为权威。
+          </p>
         </div>
         <div className="flex gap-2">
           <Button icon={<Plus className="w-4 h-4" />} onClick={() => { setNewId(''); setNewName(''); setNewDesc(''); setCreateOpen(true); }}>新建域</Button>

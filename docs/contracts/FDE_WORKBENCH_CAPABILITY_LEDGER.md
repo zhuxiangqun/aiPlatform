@@ -3,9 +3,9 @@
 | 字段 | 值 |
 |------|-----|
 | 文档 ID | `FDE-LEDGER-2026-09` |
-| 版本 | v1.9 |
+| 版本 | v1.10 |
 | 模板 | [`FDE_CAPABILITY_LEDGER_TEMPLATE.md`](./FDE_CAPABILITY_LEDGER_TEMPLATE.md) |
-| 关联 | [`FDE_WORKBENCH_CONTRACT.md`](./FDE_WORKBENCH_CONTRACT.md) v1.12 · [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`FDE_DECISION_RECORD.md`](./FDE_DECISION_RECORD.md) · [`FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md`](./FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md) · [`FDE_BUSINESS_METRIC_HANDOVER.md`](./FDE_BUSINESS_METRIC_HANDOVER.md) · [`FDE_ESCORT_EXIT_CHECKLIST.md`](./FDE_ESCORT_EXIT_CHECKLIST.md) · [`FDE_USAGE_SIGNAL_MINIMAL_SET.md`](./FDE_USAGE_SIGNAL_MINIMAL_SET.md) |
+| 关联 | [`FDE_WORKBENCH_CONTRACT.md`](./FDE_WORKBENCH_CONTRACT.md) v1.12 · [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_RUNTIME_CLOSEOUT.md`](./ONTOLOGY_RUNTIME_CLOSEOUT.md) · [`FDE_DECISION_RECORD.md`](./FDE_DECISION_RECORD.md) · [`FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md`](./FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md) · [`FDE_BUSINESS_METRIC_HANDOVER.md`](./FDE_BUSINESS_METRIC_HANDOVER.md) · [`FDE_ESCORT_EXIT_CHECKLIST.md`](./FDE_ESCORT_EXIT_CHECKLIST.md) · [`FDE_USAGE_SIGNAL_MINIMAL_SET.md`](./FDE_USAGE_SIGNAL_MINIMAL_SET.md) |
 | 维护人 | Oliver Zhu |
 | 更新节奏 | 每 Phase 结束；重大变更即时 |
 | 状态 | ☑ 草稿 · ☐ 评审中 · ☐ 生效 |
@@ -53,7 +53,7 @@
 | T19 | ⑧ 运营 | 使用信号 S1–S4 + 基线/趋势 | `production` | `test:` usage + baseline · `/usage-*` · sparkline | Tab⑧ | 跨客户横向基线未做 | Oliver Zhu | 4B/5 |
 | T20 | ⑧ 运营 | 护航退出清单 | `production` | `test:` escort evaluate · A 组 audit 代理 · `/escort-exit` | Tab⑧ | a3 签收源 N/A；a2 为失败次数代理 | Oliver Zhu | 5 |
 | T21 | ⑧ 运营 | 域级横向基线 | `production` | `test:` `test_domain_peers_*` · `/domain-peers` | Tab⑧ | 单位=domain；非同域多客户 | Oliver Zhu | 5 |
-| T22 | 横切 | 本体运行时权威 / 假绿禁令 | `pilot` | `test:` `test_graph_validate_no_false_pass` · `test_domain_axioms_load` · `test_accept_order_l1_rejects_non_pending` · contract: ONTOLOGY_RUNTIME_AUTHORITY | 知识工厂/Action | 中/深档例外改模式证据待补 | Oliver Zhu | Ont-P0/P1 |
+| T22 | 横切 | 本体运行时权威 / 假绿禁令 / lock-service 闭环 | `production` | `test:` graph_validate + axioms_load + L1 reject + `test_lock_service_ontology_loop` mid/deep · contract: AUTHORITY + CLOSEOUT | 知识工厂/Action | D1 confirm→提案自动接线可选 | Oliver Zhu | Ont-P0–P4 |
 | T17 | ⑨ 快速认知 | 48h 行业认知 | `pilot` | `manual:` rapid_insight 面板 | Tab⑨ | 与主交付链弱耦合 | Oliver Zhu | 0 |
 
 ---
@@ -171,3 +171,4 @@
 | 2026-09-15 | Oliver Zhu | v1.7 T21 域级横向基线 `/domain-peers` |
 | 2026-09-15 | Oliver Zhu | v1.8 护航 A 组自动勾（非平台 actor / 失败代理 / 联系人） |
 | 2026-09-15 | Oliver Zhu | v1.9 挂本体运行时权威；`sys_graph_validate` 假绿禁令 + 测试 |
+| 2026-09-15 | Oliver Zhu | v1.10 T22→production：lock-service 中/深档闭环 + CLOSEOUT |

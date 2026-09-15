@@ -240,7 +240,8 @@ export default function OntologyEditor() {
       {/* Left sidebar — domain list */}
       <div style={{ width: 280, borderRight: '1px solid #444', background: '#1a1a2e', padding: 12, overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <h3 style={{ margin: 0, color: '#e0e0e0', fontSize: 15 }}>Ontology Domains</h3>
+          <h3 style={{ margin: 0, color: '#e0e0e0', fontSize: 15 }}>业务域本体</h3>
+          <span style={{ fontSize: 10, color: '#888' }}>权威=域 YAML · 非 Wiki</span>
           <button onClick={() => setShowCreate(true)} style={iconBtnStyle} title="Create domain"><Plus size={16} /></button>
         </div>
         <button onClick={fetchDomains} style={{ ...iconBtnStyle, marginBottom: 8 }} title="Refresh"><RefreshCw size={14} /></button>
