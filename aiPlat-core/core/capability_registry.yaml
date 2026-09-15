@@ -2078,10 +2078,22 @@ domains:
         type: function
         signature: "auto-tick escort exit checklist from usage/quality/canary"
         module: aiPlat-core/core/apps/fde/service/customer_success.py
+      - symbol: list_domain_peers
+        type: function
+        signature: "domain-level peer table for Tab⑧ (unit=domain_id)"
+        module: aiPlat-core/core/apps/fde/service/customer_success.py
       - symbol: capture_usage_baseline
         type: function
         signature: "capture usage_signal_baseline from 30d trend"
         module: aiPlat-core/core/apps/fde/service/usage_signal.py
+      - symbol: list_audit_domains
+        type: function
+        signature: "distinct domain_id from action_audit"
+        module: aiPlat-core/core/harness/infrastructure/action_store.py
+      - symbol: query_independence_stats
+        type: function
+        signature: "non-platform actor/action/failure stats for escort A-group"
+        module: aiPlat-core/core/harness/infrastructure/action_store.py
       - symbol: list_evolve_applied
         type: function
         signature: "list observing/stable/applied/rolled_back evolve proposals"

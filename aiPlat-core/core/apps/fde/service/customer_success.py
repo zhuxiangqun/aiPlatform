@@ -298,7 +298,7 @@ async def evaluate_escort_exit_from_signals(
     baseline_calls: Optional[float] = None,
     store: Any = None,
 ) -> Dict[str, Any]:
-    """Auto-tick C (and parts of B) from usage signals; customer-side → not-available."""
+    """Auto-tick A/B/C/D from usage + independence stats; customer-only → na."""
     from core.apps.fde.service.usage_signal import get_usage_baseline, get_usage_signal
 
     domain = (domain_id or "").strip()
@@ -309,8 +309,22 @@ async def evaluate_escort_exit_from_signals(
     except Exception:
         base = None
 
+    st = store
+    if st is None:
+        from core.harness.ontology_engine.action_registry import get_action_registry
+
+        st = get_action_registry()._store
+        await st.initialize()
+    indep: Dict[str, Any] = {}
+    try:
+        indep = await st.query_independence_stats(domain, days=90)
+    except Exception as e:
+        logger.warning("independence stats failed: %s", e)
+        indep = {}
+
     cur = get_escort_exit(domain)
     cl = dict(cur.get("checklist") or {})
+    a_items: List[Dict[str, Any]] = [dict(i) for i in (cl.get("A") or [])]
     c_items: List[Dict[str, Any]] = [dict(i) for i in (cl.get("C") or [])]
     b_items: List[Dict[str, Any]] = [dict(i) for i in (cl.get("B") or [])]
     d_items: List[Dict[str, Any]] = [dict(i) for i in (cl.get("D") or [])]
@@ -321,6 +335,69 @@ async def evaluate_escort_exit_from_signals(
                 i["done"] = done
                 i.update(extra)
                 return
+
+    def _thresh(items: List[Dict[str, Any]], iid: str, default: int) -> int:
+        for i in items:
+            if i.get("id") == iid and i.get("n") is not None:
+                try:
+                    return int(i["n"])
+                except (TypeError, ValueError):
+                    return default
+        return default
+
+    # --- A: customer independence proxies from audit ---
+    n_act = int(indep.get("non_platform_actions") or 0)
+    n_fail = int(indep.get("non_platform_failures") or 0)
+    n_actors = int(indep.get("non_platform_actors") or 0)
+    a1_n = _thresh(a_items, "a1", 10)
+    a2_m = _thresh(a_items, "a2", 3)
+    a4_k = _thresh(a_items, "a4", 2)
+    _set(
+        a_items,
+        "a1",
+        n_act >= a1_n,
+        value=n_act,
+        note="非平台 actor 的 Action 次数（90d）",
+    )
+    _set(
+        a_items,
+        "a2",
+        n_fail >= a2_m,
+        value=n_fail,
+        note="非平台 actor 的失败次数代理「遇过异常」；非闭环证明",
+    )
+    _set(
+        a_items,
+        "a3",
+        False,
+        na=True,
+        note="not-available：签收/归档次数需独立记录源",
+    )
+    ho = get_metric_handover(domain)
+    contacts: List[str] = []
+    for raw in (ho.get("customer_contact"), ho.get("fde_owner")):
+        if not raw:
+            continue
+        for part in re.split(r"[,;/|]+", str(raw)):
+            p = part.strip()
+            if p and p not in contacts:
+                contacts.append(p)
+    # a4: prefer customer-side contacts only (exclude fde_owner if same list polluted)
+    cust_only: List[str] = []
+    for part in re.split(r"[,;/|]+", str(ho.get("customer_contact") or "")):
+        p = part.strip()
+        if p and p not in cust_only:
+            cust_only.append(p)
+    # Fallback: distinct non-platform actors as contact proxy when contacts blank
+    contact_n = len(cust_only) if cust_only else n_actors
+    _set(
+        a_items,
+        "a4",
+        contact_n >= a4_k,
+        value=contact_n,
+        contacts=cust_only or [a.get("actor") for a in (indep.get("actors") or [])[:5]],
+        note="客户联系人字段拆分，或非平台 actor 数回退",
+    )
 
     dau = int(sig.get("dau_today") or 0) if sig.get("status") == "ok" else 0
     calls = int(sig.get("calls_today") or 0) if sig.get("status") == "ok" else 0
@@ -348,10 +425,15 @@ async def evaluate_escort_exit_from_signals(
         _set(b_items, "b1", float(quality_score) >= 60, value=quality_score)
     if canary_ok is not None:
         _set(b_items, "b3", bool(canary_ok))
+    # b4: Evolve rollback — leave manual / mark na if no evolve metrics wired per-domain
+    for i in b_items:
+        if i.get("id") == "b4" and not i.get("done"):
+            i["na"] = True
+            i["note"] = i.get("note") or "Evolve 回滚率按域未接线；N/A 不阻塞"
 
-    ho = get_metric_handover(domain)
     _set(d_items, "d1", ho.get("status") == "signed", handover_status=ho.get("status"))
 
+    cl["A"] = a_items
     cl["C"] = c_items
     cl["B"] = b_items
     cl["D"] = d_items
@@ -362,6 +444,7 @@ async def evaluate_escort_exit_from_signals(
             "auto_signals": {
                 "usage": sig,
                 "baseline": base,
+                "independence": indep,
                 "quality_score": quality_score,
                 "canary_ok": canary_ok,
                 "evaluated_at": _now(),
@@ -370,3 +453,101 @@ async def evaluate_escort_exit_from_signals(
         },
         actor=actor,
     )
+
+
+def _discover_peer_domain_ids() -> List[str]:
+    """Domains with handover/escort artifacts under fde_customer_success/."""
+    found: List[str] = []
+    d = _dir()
+    for p in d.glob("handover_*.json"):
+        found.append(p.stem[len("handover_") :])
+    for p in d.glob("escort_exit_*.json"):
+        found.append(p.stem[len("escort_exit_") :])
+    return found
+
+
+async def list_domain_peers(
+    *,
+    store: Any = None,
+    limit: int = 30,
+) -> Dict[str, Any]:
+    """Domain-level peer table for Tab⑧ (横向对照).
+
+    Honesty: ``action_audit`` has ``domain_id`` but no customer_id, so peers are
+    **domains** (e.g. lock-service vs service-domain), not multi-tenant rows
+    inside one domain. True same-domain multi-customer needs a tenant key later.
+    """
+    from core.apps.fde.service.usage_signal import get_usage_baseline, get_usage_signal
+
+    st = store
+    if st is None:
+        from core.harness.ontology_engine.action_registry import get_action_registry
+
+        st = get_action_registry()._store
+        await st.initialize()
+
+    ids: List[str] = []
+    seen = set()
+    for src in (
+        await st.list_audit_domains(limit=limit),
+        _discover_peer_domain_ids(),
+    ):
+        for did in src:
+            d = (did or "").strip()
+            if not d or d in seen:
+                continue
+            seen.add(d)
+            ids.append(d)
+            if len(ids) >= limit:
+                break
+        if len(ids) >= limit:
+            break
+
+    rows: List[Dict[str, Any]] = []
+    rates: List[float] = []
+    calls_list: List[float] = []
+    for did in ids:
+        sig = await get_usage_signal(did, require_domain=False, store=st)
+        base = await get_usage_baseline(did, store=st)
+        ho = get_metric_handover(did)
+        ex = get_escort_exit(did)
+        rate = sig.get("success_rate_today") if sig.get("status") == "ok" else None
+        calls = sig.get("calls_today") if sig.get("status") == "ok" else None
+        if isinstance(rate, (int, float)):
+            rates.append(float(rate))
+        if isinstance(calls, (int, float)):
+            calls_list.append(float(calls))
+        rows.append(
+            {
+                "domain_id": did,
+                "dau_today": sig.get("dau_today") if sig.get("status") == "ok" else None,
+                "calls_today": calls,
+                "success_rate_today": rate,
+                "active_days_30d": sig.get("active_days_30d") if sig.get("status") == "ok" else None,
+                "baseline_calls_median": (base or {}).get("baseline_calls_median") if base else None,
+                "handover_status": ho.get("status") if "error" not in ho else None,
+                "escort_status": ex.get("status") if "error" not in ex else None,
+                "usage_status": sig.get("status"),
+            }
+        )
+
+    peer_baseline: Dict[str, Any] = {
+        "domain_count": len(rows),
+        "median_success_rate": None,
+        "median_calls_today": None,
+        "note": "域级横向中位数；非客户 ROI；同域多客户需 tenant 键",
+    }
+    if rates:
+        rs = sorted(rates)
+        peer_baseline["median_success_rate"] = rs[len(rs) // 2]
+    if calls_list:
+        cs = sorted(calls_list)
+        peer_baseline["median_calls_today"] = cs[len(cs) // 2]
+
+    return {
+        "status": "ok" if rows else "empty",
+        "peers": rows,
+        "peer_baseline": peer_baseline,
+        "computed_at": _now(),
+        "unit": "domain_id",
+    }

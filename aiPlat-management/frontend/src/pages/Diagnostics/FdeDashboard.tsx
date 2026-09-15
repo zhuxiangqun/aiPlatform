@@ -961,6 +961,7 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
   const [usageTrend, setUsageTrend] = useState<any[]>([]);
   const [usageBaseline, setUsageBaseline] = useState<any>(null);
   const [escortExit, setEscortExit] = useState<any>(null);
+  const [domainPeers, setDomainPeers] = useState<any>(null);
 
   useEffect(() => { fetch(API('/dashboard') + (namespace ? `?namespace=${namespace}` : '')).then(r => r.json()).then(setData); }, []);
   // v2.7: Fetch scoring engine alerts for this domain
@@ -981,6 +982,10 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
   useEffect(() => {
     fetch(API('/quality-summary')).then(r => r.json()).then(setQualityBus).catch(() => {});
     fetch(API('/canary/status')).then(r => r.json()).then(setCanarySnap).catch(() => {});
+    fetch(API('/domain-peers?limit=20'))
+      .then(r => r.json())
+      .then(d => setDomainPeers(d?.data ?? d))
+      .catch(() => setDomainPeers({ status: 'unavailable', peers: [] }));
   }, []);
   useEffect(() => {
     if (!domainId) {
@@ -1377,6 +1382,61 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <span className="text-sm font-medium">域级横向基线（peer）</span>
+          <p className="text-[11px] text-gray-500 mt-1 font-normal">
+            单位是 domain_id（非同域多客户）；audit 无 tenant 键前只能做域对照。
+            {domainPeers?.peer_baseline?.median_success_rate != null
+              ? ` 中位成功率 ${(Number(domainPeers.peer_baseline.median_success_rate) * 100).toFixed(0)}%`
+              : ''}
+            {domainPeers?.peer_baseline?.median_calls_today != null
+              ? ` · 中位日调用 ${Math.round(domainPeers.peer_baseline.median_calls_today)}`
+              : ''}
+          </p>
+        </CardHeader>
+        <CardContent>
+          {!domainPeers?.peers?.length ? (
+            <div className="text-xs text-gray-500">暂无域 peer（需 action_audit 或交接单）</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="text-gray-500 border-b border-gray-700">
+                  <tr>
+                    <th className="py-1 pr-2">域</th>
+                    <th className="py-1 pr-2">日活</th>
+                    <th className="py-1 pr-2">日调用</th>
+                    <th className="py-1 pr-2">成功率</th>
+                    <th className="py-1 pr-2">交接</th>
+                    <th className="py-1">护航</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {domainPeers.peers.map((p: any) => {
+                    const hi = domainId && p.domain_id === domainId;
+                    const med = domainPeers.peer_baseline?.median_success_rate;
+                    const rate = p.success_rate_today;
+                    const below = med != null && rate != null && rate < med;
+                    return (
+                      <tr key={p.domain_id} className={hi ? 'bg-cyan-950/30 text-cyan-200' : 'text-gray-300'}>
+                        <td className="py-1 pr-2 font-mono">{p.domain_id}</td>
+                        <td className="py-1 pr-2">{p.dau_today ?? '—'}</td>
+                        <td className="py-1 pr-2">{p.calls_today ?? '—'}</td>
+                        <td className={`py-1 pr-2 ${below ? 'text-amber-400' : ''}`}>
+                          {rate == null ? '—' : `${(Number(rate) * 100).toFixed(0)}%`}
+                        </td>
+                        <td className="py-1 pr-2">{p.handover_status ?? '—'}</td>
+                        <td className="py-1">{p.escort_status ?? '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

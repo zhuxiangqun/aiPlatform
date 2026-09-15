@@ -3654,6 +3654,7 @@ from core.apps.fde.service.customer_success import (  # noqa: boundary
     evaluate_escort_exit_from_signals as evaluate_fde_escort_exit,
     get_escort_exit as get_fde_escort_exit,
     get_metric_handover as get_fde_metric_handover,
+    list_domain_peers as list_fde_domain_peers,
     refresh_handover_from_usage as refresh_fde_metric_handover,
     save_escort_exit as save_fde_escort_exit,
     save_metric_handover as save_fde_metric_handover,

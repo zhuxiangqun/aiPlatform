@@ -404,3 +404,11 @@ async def escort_exit_save(req: EscortExitSaveRequest) -> Dict[str, Any]:
             data = save_fde_escort_exit(req.domain_id or "", req.patch, actor=req.actor)
         return {"data": data}
     return {"data": save_fde_escort_exit(req.domain_id or "", req.patch, actor=req.actor)}
+
+
+@router.get("/domain-peers", response_model=FdeItemResponse)
+async def domain_peers(limit: int = 30) -> Dict[str, Any]:
+    """Domain-level peer baselines for Tab⑧ (not ROI; unit=domain_id)."""
+    from core.api.core_facade import list_fde_domain_peers
+
+    return {"data": await list_fde_domain_peers(limit=min(max(limit, 1), 50))}

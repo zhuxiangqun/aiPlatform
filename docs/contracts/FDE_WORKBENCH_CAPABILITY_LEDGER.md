@@ -3,7 +3,7 @@
 | 字段 | 值 |
 |------|-----|
 | 文档 ID | `FDE-LEDGER-2026-09` |
-| 版本 | v1.6 |
+| 版本 | v1.8 |
 | 模板 | [`FDE_CAPABILITY_LEDGER_TEMPLATE.md`](./FDE_CAPABILITY_LEDGER_TEMPLATE.md) |
 | 关联 | [`FDE_WORKBENCH_CONTRACT.md`](./FDE_WORKBENCH_CONTRACT.md) v1.10 · [`FDE_DECISION_RECORD.md`](./FDE_DECISION_RECORD.md) · [`FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md`](./FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md) · [`FDE_BUSINESS_METRIC_HANDOVER.md`](./FDE_BUSINESS_METRIC_HANDOVER.md) · [`FDE_ESCORT_EXIT_CHECKLIST.md`](./FDE_ESCORT_EXIT_CHECKLIST.md) · [`FDE_USAGE_SIGNAL_MINIMAL_SET.md`](./FDE_USAGE_SIGNAL_MINIMAL_SET.md) |
 | 维护人 | Oliver Zhu |
@@ -51,7 +51,8 @@
 | T15 | ⑧ 运营 | 受控 apply / rollback | `production` | `test:` observing + tick + quality/canary sync-ops | Tab⑧ | Registry platform_action 审计名可选 | Oliver Zhu | 4B |
 | T16 | ⑧ 运营 | D6 反向指标 + 观测窗 | `production` | `test:` metrics + survival · sync-ops · Applied UI | Tab⑧ | — | Oliver Zhu | 4B |
 | T19 | ⑧ 运营 | 使用信号 S1–S4 + 基线/趋势 | `production` | `test:` usage + baseline · `/usage-*` · sparkline | Tab⑧ | 跨客户横向基线未做 | Oliver Zhu | 4B/5 |
-| T20 | ⑧ 运营 | 护航退出清单 | `production` | `test:` escort evaluate · `/escort-exit` · EvolutionTab | Tab⑧ | A 组仍人工勾选；条件退出已接线 | Oliver Zhu | 5 |
+| T20 | ⑧ 运营 | 护航退出清单 | `production` | `test:` escort evaluate · A 组 audit 代理 · `/escort-exit` | Tab⑧ | a3 签收源 N/A；a2 为失败次数代理 | Oliver Zhu | 5 |
+| T21 | ⑧ 运营 | 域级横向基线 | `production` | `test:` `test_domain_peers_*` · `/domain-peers` | Tab⑧ | 单位=domain；非同域多客户 | Oliver Zhu | 5 |
 | T17 | ⑨ 快速认知 | 48h 行业认知 | `pilot` | `manual:` rapid_insight 面板 | Tab⑨ | 与主交付链弱耦合 | Oliver Zhu | 0 |
 
 ---
@@ -98,7 +99,7 @@
 | Evolve rollback_rate（运营） | 同上 | `real` | — | Oliver Zhu |
 | Evolve mean_survival（运营） | survival_seconds on rollback | `real`（仅回滚样本） | 观测窗结束也记存活 | Oliver Zhu |
 | 待审抽取 | `/extractions/pending` | `real` | — | Oliver Zhu |
-| 跨客户域基线 | 多 domain 聚合 | `not-implemented` | ≥2 客户同域后再建 | Oliver Zhu |
+| 跨客户域基线 | `list_domain_peers` / `/domain-peers` | `real`@⑧ | **域级** peer（无 tenant 键）；同域多客户待加 | Oliver Zhu |
 | trace_anomalies / training | stub | `stub-hidden` | 删除或真接线 | Oliver Zhu |
 
 ---
@@ -112,6 +113,7 @@
 | `/trends*` | — | 无工作台消费 | 运维或并入⑧ | Oliver Zhu |
 | `/quality-summary` | Tab⑧ | **已消费**（展示 + sync-ops） | 保留 | Oliver Zhu |
 | `/usage-signal` · `/usage-trend` | Tab⑧ | **已消费**（S1–S4；trend API 已挂、折线图可选） | 保留 | Oliver Zhu |
+| `/domain-peers` | Tab⑧ | **已消费**（域级横向表） | 保留；同域多客户需 tenant | Oliver Zhu |
 | `/sessions/compare` | — | 无工作台消费 | 挂③或归档 | Oliver Zhu |
 | `POST …/network/evolve` | AgentNetworkPanel | 隔离面板 | **勿与 4B Evolve 混名** | Oliver Zhu |
 
@@ -149,7 +151,8 @@
 | 台账行 | 现状 | 下一步 |
 |--------|------|--------|
 | T15 / T16 / V06 | **`production`**：observing→stable；sync-ops 自动回滚 | 可选 Registry 审计名 |
-| T18 / T19 / T20 | **均 `production`**：交接单⑦ + 使用信号/基线/趋势⑧ + 护航退出复评⑧ | 跨客户横向基线；A 组自动化 |
+| T18 / T19 / T20 | **均 `production`**；A 组 a1/a2/a4 可自动勾 | a3 签收记录源；同域多客户 tenant |
+| T21 | **`production`**：域级 `/domain-peers` | 同域多客户对照 |
 
 ---
 
@@ -164,3 +167,5 @@
 | 2026-09-15 | Oliver Zhu | v1.4 三层指标正名；T18–T20；挂交接单/退出清单/使用信号 |
 | 2026-09-15 | Oliver Zhu | v1.5 T19 usage-signal API + ⑧ S1–S4 卡 |
 | 2026-09-15 | Oliver Zhu | v1.6 T18/T20 production：交接单 + 护航退出 + 基线/趋势 |
+| 2026-09-15 | Oliver Zhu | v1.7 T21 域级横向基线 `/domain-peers` |
+| 2026-09-15 | Oliver Zhu | v1.8 护航 A 组自动勾（非平台 actor / 失败代理 / 联系人） |

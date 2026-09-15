@@ -373,6 +373,91 @@ class ActionStore:
             captured_by=captured_by,
         )
 
+    async def list_audit_domains(self, limit: int = 50) -> List[str]:
+        """Distinct domain_id values present in action_audit (peer discovery)."""
+        import aiosqlite
+
+        lim = max(1, min(int(limit), 200))
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute(
+                """
+                SELECT DISTINCT domain_id FROM action_audit
+                WHERE domain_id IS NOT NULL AND TRIM(domain_id) != ''
+                ORDER BY domain_id
+                LIMIT ?
+                """,
+                (lim,),
+            ) as cur:
+                rows = await cur.fetchall()
+        return [str(r[0]) for r in rows if r and r[0]]
+
+    async def query_independence_stats(
+        self, domain_id: str, *, days: int = 90
+    ) -> Dict[str, Any]:
+        """Stats for escort A-group: non-platform actors / actions / failures.
+
+        Platform-like actors (system, fde*, ops*) are excluded. This is an
+        honest proxy for "customer independence", not proof of admin identity.
+        """
+        import aiosqlite
+
+        domain = (domain_id or "").strip()
+        if not domain:
+            return {
+                "domain_id": "",
+                "non_platform_actors": 0,
+                "non_platform_actions": 0,
+                "non_platform_failures": 0,
+                "actors": [],
+            }
+        days = max(1, min(int(days), 365))
+        # SQLite: exclude platform-ish actors in SQL + python filter
+        sql = """
+        SELECT actor, result_status, COUNT(*) AS n
+        FROM action_audit
+        WHERE domain_id = ?
+          AND created_at >= date('now', ?)
+          AND actor IS NOT NULL AND TRIM(actor) != ''
+        GROUP BY actor, result_status
+        """
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(sql, (domain, f"-{days} days")) as cur:
+                rows = await cur.fetchall()
+
+        def _platform(actor: str) -> bool:
+            a = (actor or "").strip().lower()
+            if not a or a in {"system", "ops", "ops_sync", "fde", "platform"}:
+                return True
+            if a.startswith("fde_") or a.startswith("ops_") or a.startswith("aiplat"):
+                return True
+            return False
+
+        by_actor: Dict[str, Dict[str, int]] = {}
+        for r in rows:
+            actor = str(r["actor"] or "")
+            if _platform(actor):
+                continue
+            slot = by_actor.setdefault(actor, {"actions": 0, "failures": 0})
+            n = int(r["n"] or 0)
+            slot["actions"] += n
+            st = str(r["result_status"] or "").lower()
+            if st in {"failed", "failure", "error", "blocked"}:
+                slot["failures"] += n
+
+        actors = [
+            {"actor": a, "actions": v["actions"], "failures": v["failures"]}
+            for a, v in sorted(by_actor.items(), key=lambda x: -x[1]["actions"])
+        ]
+        return {
+            "domain_id": domain,
+            "days": days,
+            "non_platform_actors": len(actors),
+            "non_platform_actions": sum(a["actions"] for a in actors),
+            "non_platform_failures": sum(a["failures"] for a in actors),
+            "actors": actors[:20],
+        }
+
     # ═══════════════════════════════════════════════════════
     # Pending Approvals
     # ═══════════════════════════════════════════════════════
