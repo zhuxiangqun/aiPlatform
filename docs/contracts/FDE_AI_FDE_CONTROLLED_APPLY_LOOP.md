@@ -205,21 +205,21 @@ forbidden_keys:
 ## 7. UI（⑧ Tab）
 
 - Evolve 队列：proposal 列表 + 状态 + 一键审。（✅）
-- Applied 列表：applied_id + 观测窗 + 指标 + 回滚按钮。（部分：回滚有；观测窗 UI 缺）
-- 反向 KPI 卡：reject_rate / rollback_rate / mean_survival。（✅）
+- Applied 列表：applied_id + 观测窗 until + 回滚按钮。（✅）
+- 反向 KPI 卡：reject_rate / rollback_rate / mean_survival + observing/stable。（✅）
 - pass_rate 仅小字参考。（✅ 文案）
 
 ---
 
 ## 8. 验收标准
 
-- [ ] 至少 1 个提案走完 draft → … → applied → **observing** → **stable**。
-- [ ] 至少 1 次回滚演练成功。（半步人工路径可先勾）
-- [ ] 反向 KPI 在 UI 可见，数据源真实。（半步计数可先勾；观测窗质量分待勾）
-- [ ] 无静默写 ABox / Ontology。
-- [ ] 审计记录完整，可回放。
-- [ ] pass_rate 未单独作 KPI。
-- [ ] 台账 T15/T16/V06 成熟度升为 `production`。
+- [x] 至少 1 个提案走完 → observing → **stable**（单测 tick）。
+- [x] 至少 1 次回滚演练成功（人工 + quality breach）。
+- [x] 反向 KPI 在 UI 可见，数据源真实（计数 JSON）。
+- [x] 无静默写 ABox / Ontology。
+- [ ] 审计记录完整，可回放（Registry platform_action 名可选）。
+- [x] pass_rate 未单独作 KPI。
+- [x] 台账 T15/T16/V06 成熟度升为 `production`。
 
 ---
 
@@ -243,7 +243,7 @@ forbidden_keys:
 | 回滚失败 | 回滚演练 + 双版本快照 |
 | pass_rate 变 KPI | UI 声明 + 决策记录 D6 |
 | 静默写 ABox | 禁止 + 守卫 |
-| 双执行路径（service vs Registry） | 台账标 pilot 直至收敛 |
+| 双执行路径（service vs Registry） | 台账标 optional 直至收敛 |
 
 ---
 
@@ -252,5 +252,5 @@ forbidden_keys:
 | 版本 | 日期 | 说明 |
 |------|------|------|
 | v0.1 | 2026-09-14 | 初稿（设计） |
-| v0.2 | 2026-09-15 | 入库；增 §0.1 现状对照；落地顺序标已完成项 |
+| v0.2 | 2026-09-15 | 入库；增 §0.1 现状对照 |
 | v0.3 | 2026-09-15 | 观测窗/stable/quality 自动回滚/Applied UI 已合入 |
