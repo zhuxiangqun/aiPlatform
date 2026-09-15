@@ -163,6 +163,36 @@ def load_ontology_from_yaml(file_path: str) -> OntologyDomain:
     # ── Load cross-entity processes (v2.6) ──
     domain.processes = list(raw.get("processes") or [])
 
+    # ── Load domain axioms (runtime semantic constraints) ──
+    axioms_raw = raw.get("axioms") or []
+    if isinstance(axioms_raw, list):
+        for ax in axioms_raw:
+            if not isinstance(ax, dict):
+                continue
+            ax_id = str(ax.get("id") or "").strip()
+            desc = str(ax.get("description") or "").strip()
+            if not ax_id or not desc:
+                continue
+            domain.axioms.append(OntologyAxiom(
+                id=ax_id,
+                description=desc,
+                sparql_violation_query=str(ax.get("sparql_violation_query") or ax.get("check") or ""),
+                severity=str(ax.get("severity") or "error"),
+            ))
+    elif isinstance(axioms_raw, dict):
+        for ax_id, ax in axioms_raw.items():
+            if not isinstance(ax, dict):
+                continue
+            desc = str(ax.get("description") or "").strip()
+            if not desc:
+                continue
+            domain.axioms.append(OntologyAxiom(
+                id=str(ax_id),
+                description=desc,
+                sparql_violation_query=str(ax.get("sparql_violation_query") or ax.get("check") or ""),
+                severity=str(ax.get("severity") or "error"),
+            ))
+
     return domain
 
 

@@ -48,6 +48,46 @@ async def test_d3_legacy_alias_removed(aiplat_home):
 
 
 @pytest.mark.asyncio
+async def test_accept_order_l1_rejects_non_pending(aiplat_home):
+    """Ontology runtime L1: wrong state must be blocked before handler (LS-A1)."""
+    domain = "lock-service"
+    g = GraphIndex(domain)
+    eid = "IO-BAD-0001"
+    g.add_entity(eid, "Order bad", "安装工单", source_doc_id="t")
+    g.add_entity_property(eid, "state", "completed")
+    g.save()
+    GraphIndex._loaded_instances.clear()
+
+    store = AsyncMock()
+    store.insert_audit = AsyncMock(return_value="aud_x")
+    reg = AsyncActionRegistry(store=store)
+    register_all(reg)
+
+    # Direct L1 check
+    c = reg.check_entity_constraints(
+        CANONICAL, domain, "安装工单", "completed", role="agent"
+    )
+    assert c.get("valid") is False
+    assert c.get("constraint_type") == "state"
+
+    r = await reg.execute(
+        CANONICAL,
+        (domain, eid),
+        {"assigned_technician": "tech-9"},
+        actor="fda-1",
+        role="agent",
+        _bypass_approval=True,
+    )
+    assert r.get("status") == "blocked", r
+    assert r.get("constraint_type") == "state"
+    # L3: blocked attempts still leave an audit failure record (not silent)
+    store.insert_audit.assert_awaited()
+    aud = store.insert_audit.await_args.args[0]
+    assert aud.get("result_status") == "failure"
+    assert aud.get("constraint_type") == "state"
+
+
+@pytest.mark.asyncio
 async def test_accept_order_execute_canonical(aiplat_home):
     domain = "lock-service"
     ids = _seed_orders(domain, "IO-UT", 2)

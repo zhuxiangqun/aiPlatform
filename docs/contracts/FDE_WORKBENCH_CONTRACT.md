@@ -1,7 +1,7 @@
 # FDE 工作台契约（FDE Workbench Contract）
 
-版本：v1.11  
-状态：Phase 0–5 交付质量门已勾选；使用信号 + 交接单 + 条件护航退出已接线  
+版本：v1.12  
+状态：Phase 0–5 交付质量门已勾选；使用信号 + 交接单 + 条件护航退出已接线；本体运行时权威已挂载  
 
 适用范围：FDE 工作台前端、CoreFacade、ActionRegistry、PipelineEngine、DomainRouter、PolicyGate、Eval 服务  
 
@@ -11,6 +11,7 @@
 - **能力台账（成熟度/消费方/证据/缺口）：** [`FDE_WORKBENCH_CAPABILITY_LEDGER.md`](./FDE_WORKBENCH_CAPABILITY_LEDGER.md)（实例）· [`FDE_CAPABILITY_LEDGER_TEMPLATE.md`](./FDE_CAPABILITY_LEDGER_TEMPLATE.md)（空白模板）
 - **AI FDE 受控应用闭环（设计）：** [`FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md`](./FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md)
 - **客户成功交接（交付质量 ≠ 客户成功）：** [`FDE_BUSINESS_METRIC_HANDOVER.md`](./FDE_BUSINESS_METRIC_HANDOVER.md) · [`FDE_ESCORT_EXIT_CHECKLIST.md`](./FDE_ESCORT_EXIT_CHECKLIST.md) · [`FDE_USAGE_SIGNAL_MINIMAL_SET.md`](./FDE_USAGE_SIGNAL_MINIMAL_SET.md)
+- **本体运行时权威 / 叙事：** [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md)
 
 ---
 
@@ -32,7 +33,7 @@ FDE 工作台是**现场工程师的控制台**：选客户、看状态、批动
 | 工厂 / Pipeline | 执行核：契约化多 Agent 交付 | 动态 spawn、自由编排、绕过 PolicyGate |
 | ActionRegistry | 客户运营 Action 与平台诊断 Action 的统一注册与执行入口 | 硬编码业务分支（如 `if action == "accept_order"`） |
 | DomainRouter | 客户域解析唯一入口 | core/harness 中出现字面量客户域名 |
-| Ontology | 客户业务世界模型 + 平台交付跟踪元层 | 两类本体混用命名空间 |
+| Ontology | 客户业务世界模型 + 平台交付跟踪元层 | 两类本体混用命名空间；Wiki TBox 冒充业务权威；Evolve 静默改域 YAML |
 | Eval / Evidence | 质量门与物理证据 | LLM 断言替代物理证据进入 confirmed |
 
 原则：工作台不平行实现检索、编排、权限；一律经 CoreFacade。
@@ -72,6 +73,8 @@ FDE 工作台是**现场工程师的控制台**：选客户、看状态、批动
   - 审批者 ID
   - 执行结果（成功/失败/部分成功）
   - 关联的 Pipeline run_id 与 evidence_ref
+- **快照权威**：`before_state_snapshot` / `after_state_snapshot` 唯一来源为**域 GraphIndex**（见 [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) §4）；Wiki triples 不得写入 Action 审计链。
+- **约束优先级**：L1 `ActionRegistry` 硬门 > L2 域公理 prompt 软约束 > L3 审计；配置 Evolve 与本体提案分门（权威契约 §2 / §5）。
 
 ### 2.4 Eval 门
 
@@ -246,3 +249,4 @@ Phase 5：
 | v1.9 | 2026-09-15 | §6.1 三层指标正名；挂交接单 / 护航退出 / 使用信号最小集 | Oliver Zhu |
 | v1.10 | 2026-09-15 | 使用信号 S1–S4 API + Tab⑧ 落地 | Oliver Zhu |
 | v1.11 | 2026-09-15 | 业务指标交接单 + 护航退出清单接线（⑦/⑧） | Oliver Zhu |
+| v1.12 | 2026-09-15 | 挂载本体运行时权威 + 叙事；审计快照/Evolve 分门对齐 | Oliver Zhu |

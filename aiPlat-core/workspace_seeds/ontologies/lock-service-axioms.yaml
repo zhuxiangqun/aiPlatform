@@ -1,0 +1,25 @@
+# Seed fragment — lock-service runtime axioms (P1)
+# Apply into ~/.aiplat/ontologies/lock-service.yaml (or merge on domain bootstrap).
+# Authority: docs/contracts/ONTOLOGY_RUNTIME_AUTHORITY.md
+name: "智能锁安装维保"
+namespace: "http://aiplat.local/ontology/lock-service/"
+version: "1.1.0"
+description: "lock-service axioms seed — merge with full domain YAML"
+
+axioms:
+  - id: LS-A1
+    severity: error
+    description: "安装工单仅允许从 pending 状态接单（accept_order）；非 pending 不得执行 customer_action:lock-service:accept_order"
+    check: "InstallOrder.status == pending before accept"
+  - id: LS-A2
+    severity: error
+    description: "安装工单进入 completed 前必须存在 installed_by 关系（安装完成证据）"
+    check: "relation_exists installed_by before completed"
+  - id: LS-A3
+    severity: warning
+    description: "维修记录 resolved 前应关联 fault_type；缺少故障类型不得视为已解决"
+    check: "RepairRecord.fault_type required when status=resolved"
+  - id: LS-A4
+    severity: error
+    description: "派单(assigned)须指定师傅；InstallOrder 不得在无 assigned_to 时离开 pending"
+    check: "relation_exists assigned_to for assigned state"
