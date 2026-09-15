@@ -757,6 +757,8 @@ domains:
         reason: "FDE 能力自描述"
       - module: "core/harness/knowledge/domain_maturity.py"
         reason: "域成熟度评分"
+      - module: "core/harness/knowledge/ontology_completeness.py"
+        reason: "OCS 本体完整性六维评分"
 
   # ══════════════════════════════════════════════════════════════
   # 四、RAG 检索 (40 caps)
@@ -786,6 +788,10 @@ domains:
         type: "pattern"
         signature: "Hypothetical Document Embedding, LLM generates hypothetical answer→re-search"
         module: "core/apps/agents/materials_chat.py"
+      - symbol: "compute_domain_ocs"
+        type: "function"
+        signature: "compute_domain_ocs(domain_id)→{ocs,level,dimensions}"
+        module: "core/harness/knowledge/ontology_completeness.py"
     breaks: []
     consumers_expected:
       - module: "core/apps/agents/materials_chat.py"

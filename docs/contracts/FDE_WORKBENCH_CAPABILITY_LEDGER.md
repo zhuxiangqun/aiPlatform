@@ -3,9 +3,9 @@
 | 字段 | 值 |
 |------|-----|
 | 文档 ID | `FDE-LEDGER-2026-09` |
-| 版本 | v1.10 |
+| 版本 | v1.11 |
 | 模板 | [`FDE_CAPABILITY_LEDGER_TEMPLATE.md`](./FDE_CAPABILITY_LEDGER_TEMPLATE.md) |
-| 关联 | [`FDE_WORKBENCH_CONTRACT.md`](./FDE_WORKBENCH_CONTRACT.md) v1.12 · [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_RUNTIME_CLOSEOUT.md`](./ONTOLOGY_RUNTIME_CLOSEOUT.md) · [`FDE_DECISION_RECORD.md`](./FDE_DECISION_RECORD.md) · [`FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md`](./FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md) · [`FDE_BUSINESS_METRIC_HANDOVER.md`](./FDE_BUSINESS_METRIC_HANDOVER.md) · [`FDE_ESCORT_EXIT_CHECKLIST.md`](./FDE_ESCORT_EXIT_CHECKLIST.md) · [`FDE_USAGE_SIGNAL_MINIMAL_SET.md`](./FDE_USAGE_SIGNAL_MINIMAL_SET.md) |
+| 关联 | [`FDE_WORKBENCH_CONTRACT.md`](./FDE_WORKBENCH_CONTRACT.md) v1.12 · [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_RUNTIME_CLOSEOUT.md`](./ONTOLOGY_RUNTIME_CLOSEOUT.md) · [`ONTOLOGY_COMPLETENESS.md`](./ONTOLOGY_COMPLETENESS.md) · [`FDE_DECISION_RECORD.md`](./FDE_DECISION_RECORD.md) · [`FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md`](./FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md) · [`FDE_BUSINESS_METRIC_HANDOVER.md`](./FDE_BUSINESS_METRIC_HANDOVER.md) · [`FDE_ESCORT_EXIT_CHECKLIST.md`](./FDE_ESCORT_EXIT_CHECKLIST.md) · [`FDE_USAGE_SIGNAL_MINIMAL_SET.md`](./FDE_USAGE_SIGNAL_MINIMAL_SET.md) |
 | 维护人 | Oliver Zhu |
 | 更新节奏 | 每 Phase 结束；重大变更即时 |
 | 状态 | ☑ 草稿 · ☐ 评审中 · ☐ 生效 |
@@ -53,7 +53,7 @@
 | T19 | ⑧ 运营 | 使用信号 S1–S4 + 基线/趋势 | `production` | `test:` usage + baseline · `/usage-*` · sparkline | Tab⑧ | 跨客户横向基线未做 | Oliver Zhu | 4B/5 |
 | T20 | ⑧ 运营 | 护航退出清单 | `production` | `test:` escort evaluate · A 组 audit 代理 · `/escort-exit` | Tab⑧ | a3 签收源 N/A；a2 为失败次数代理 | Oliver Zhu | 5 |
 | T21 | ⑧ 运营 | 域级横向基线 | `production` | `test:` `test_domain_peers_*` · `/domain-peers` | Tab⑧ | 单位=domain；非同域多客户 | Oliver Zhu | 5 |
-| T22 | 横切 | 本体运行时权威 / 假绿禁令 / lock-service 闭环 | `production` | `test:` graph_validate + axioms_load + L1 reject + `test_lock_service_ontology_loop` mid/deep · contract: AUTHORITY + CLOSEOUT | 知识工厂/Action | D1 confirm→提案自动接线可选 | Oliver Zhu | Ont-P0–P4 |
+| T22 | 横切 | 本体运行时权威 / OCS 完整性 | `production` | `test:` OCS+lifecycle+confirm→提案 · `report_ontology_completeness.py --min-ocs 70` · contract: COMPLETENESS | 知识工厂/Action | 现场演示仍可加深 | Oliver Zhu | Ont-A–D |
 | T17 | ⑨ 快速认知 | 48h 行业认知 | `pilot` | `manual:` rapid_insight 面板 | Tab⑨ | 与主交付链弱耦合 | Oliver Zhu | 0 |
 
 ---
@@ -68,7 +68,10 @@
 | V04 | Phase 3 | Builder 产物链接 | `production` | `test:` phase3* | Tab⑤ | — | Oliver Zhu | 3 |
 | V05 | Phase 4A | 安全预检 + 签收硬门 | `production` | `test:` preflight_signoff · acceptance 409 | Tab⑥b/⑦ | — | Oliver Zhu | 4A |
 | V06 | Phase 4B | Evolve 受控应用 | `production` | `test:` apply→observing→stable/rollback · quality/canary sync-ops · Applied UI | Tab⑧ | Registry 审计名可选 | Oliver Zhu | 4B |
-| V07 | Phase 5 | 第二客户域可复制 | `pilot` | `test:` `test_fde_service_domain_assign` · seed yaml · `scan:` domain_literals v1.1 | Tab①/⑦ | Action e2e 过；**非**第二客户全旅程现场报告 | Oliver Zhu | 5 |
+| V07 | Phase 5 | 第二客户域可复制 | `production` | `test:` assign · OCS≥82 · `scan:` domain_literals | Tab①/⑦ | 现场加深可选 | Oliver Zhu | 5 |
+| V08 | Ont-A | lock-service 纵深完整 (OCS≥80) | `production` | `test:` OCS+lifecycle · report: OCS≥86 · actions: accept/assign/start/complete | Tab⑦ | 现场半真实数据可再加深 | Oliver Zhu | Ont-A |
+| V09 | Ont-B | OCS 方法产品化 + confirm→提案 | `production` | `script:` report_ontology_completeness · new_domain_scaffold · D1 enqueue | CI/知识工厂 | CI 全量域门禁可选 | Oliver Zhu | Ont-B |
+| V10 | Ont-C/D | service-domain 复用 + 接口模块 + unified_customer | `production` | seed · OCS≥82 · interfaces · cross_domain_views · 零 harness 分叉 | Tab① | 跨域 view 运行时消费者可再加深 | Oliver Zhu | Ont-C/D |
 
 ---
 
@@ -172,3 +175,4 @@
 | 2026-09-15 | Oliver Zhu | v1.8 护航 A 组自动勾（非平台 actor / 失败代理 / 联系人） |
 | 2026-09-15 | Oliver Zhu | v1.9 挂本体运行时权威；`sys_graph_validate` 假绿禁令 + 测试 |
 | 2026-09-15 | Oliver Zhu | v1.10 T22→production：lock-service 中/深档闭环 + CLOSEOUT |
+| 2026-09-15 | Oliver Zhu | v1.11 OCS 完整路线：COMPLETENESS 合同；lock OCS≥86；service-domain OCS≥82；scaffold/D1 |

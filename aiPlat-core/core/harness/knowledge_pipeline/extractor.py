@@ -473,19 +473,28 @@ class PendingExtractionStore:
                     relation_count INTEGER,
                     status TEXT DEFAULT 'pending',
                     draft_yaml_path TEXT,
+                    entities_json TEXT DEFAULT '[]',
                     created_at TEXT DEFAULT (datetime('now'))
                 )
             """)
+            # Migration for existing DBs
+            try:
+                await db.execute(
+                    "ALTER TABLE pending_extractions ADD COLUMN entities_json TEXT DEFAULT '[]'"
+                )
+            except Exception as e:  # noqa: BLE001 — column may already exist
+                logger.debug("pending_extractions entities_json migration skipped: %s", e)
             await db.commit()
 
     async def save(self, result: ExtractionResult) -> None:
         import aiosqlite
+        import json as _json
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("""
                 INSERT OR REPLACE INTO pending_extractions
                 (extraction_id, domain_id, source_doc, overall_confidence,
-                 entity_count, relation_count, status, draft_yaml_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                 entity_count, relation_count, status, draft_yaml_path, entities_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 result.extraction_id,
                 result.domain_id,
@@ -495,6 +504,7 @@ class PendingExtractionStore:
                 len(result.relations),
                 result.status,
                 result.draft_yaml_path,
+                _json.dumps(result.entities or [], ensure_ascii=False),
             ))
             await db.commit()
 
@@ -514,15 +524,85 @@ class PendingExtractionStore:
                 ) as cur:
                     return [dict(r) for r in await cur.fetchall()]
 
-    async def confirm(self, extraction_id: str) -> bool:
+    async def confirm(self, extraction_id: str, *, enqueue_proposal: bool = True) -> bool:
+        """Mark extraction confirmed; optionally enqueue an edge-tier ontology proposal (D1/P3)."""
         import aiosqlite
+        import json as _json
+
+        row = None
         async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT * FROM pending_extractions WHERE extraction_id=?",
+                (extraction_id,),
+            ) as cur:
+                row = await cur.fetchone()
+            if not row:
+                return False
             cur = await db.execute(
                 "UPDATE pending_extractions SET status='confirmed' WHERE extraction_id=?",
                 (extraction_id,),
             )
             await db.commit()
-            return cur.rowcount > 0
+            if cur.rowcount <= 0:
+                return False
+
+        if enqueue_proposal and row:
+            try:
+                await self._enqueue_ontology_proposal(dict(row))
+            except Exception:
+                logger.warning(
+                    "confirm: ontology proposal enqueue failed for %s",
+                    extraction_id,
+                    exc_info=True,
+                )
+        return True
+
+    async def _enqueue_ontology_proposal(self, row: Dict[str, Any]) -> str:
+        """Create a draft VersionedOntologyStore proposal from confirmed extraction entities."""
+        domain_id = str(row.get("domain_id") or "default")
+        entities_raw = row.get("entities_json") or row.get("entities") or "[]"
+        if isinstance(entities_raw, str):
+            import json as _json
+            try:
+                entities = _json.loads(entities_raw)
+            except Exception:
+                entities = []
+        else:
+            entities = entities_raw
+        if not isinstance(entities, list) or not entities:
+            # Fallback stub so confirm still creates a reviewable proposal
+            entities = [{"name": str(row.get("source_doc") or "ExtractedEntity"), "type": "ExtractedEntity"}]
+
+        # Propose first new-looking entity as edge-tier class stub
+        ent = entities[0] if isinstance(entities[0], dict) else {"name": str(entities[0])}
+        class_name = str(ent.get("type") or ent.get("class") or "ExtractedEntity")
+        label = str(ent.get("name") or class_name)
+        safe_name = "".join(ch if ch.isalnum() or ch == "_" else "_" for ch in class_name)[:64] or "ExtractedEntity"
+
+        from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore
+
+        store = VersionedOntologyStore(domain_id)
+        proposal_id = await store.create_proposal(
+            {
+                "add": {
+                    "class": {
+                        "name": safe_name,
+                        "label": label,
+                        "tier": "edge",
+                        "required_fields": ["name"],
+                        "description": f"Auto-proposed from extraction {row.get('extraction_id')}",
+                    }
+                }
+            },
+            author=f"extract:{row.get('extraction_id')}",
+        )
+        logger.info(
+            "confirm: enqueued ontology proposal %s for domain %s",
+            proposal_id,
+            domain_id,
+        )
+        return proposal_id
 
     async def reject(self, extraction_id: str) -> bool:
         import aiosqlite

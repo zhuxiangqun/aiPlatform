@@ -4,7 +4,7 @@
 |------|-----|
 | 文档 ID | `ONTOLOGY-NARRATIVE-2026-09` |
 | 版本 | v1.0 |
-| 关联 | [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) |
+| 关联 | [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_COMPLETENESS.md`](./ONTOLOGY_COMPLETENESS.md) |
 | 维护人 | Oliver Zhu |
 
 ---
@@ -31,6 +31,8 @@
 6. **非目标**：全域 OWL 推理机、SQL Bridge 生产接通、28 域全量 axioms、Fleet 产品化。
 
 **禁止表述**：「完整企业本体已建成」「OWL/SPARQL 级推理已上线」「全域统一语义」。
+
+完整性官方定义与 OCS 见 [`ONTOLOGY_COMPLETENESS.md`](./ONTOLOGY_COMPLETENESS.md)（平台能力完整 + 客户纵深完整，非跨企业统一 TBox）。
 
 ---
 

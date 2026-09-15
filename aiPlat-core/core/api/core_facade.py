@@ -3745,6 +3745,7 @@ from core.harness.knowledge.code_graph import build_graph, clear_cache, default_
 from core.harness.knowledge.capability_health import capability_health_report  # noqa: boundary
 from core.harness.knowledge.consistency_gate import check_cross_stage_consistency  # noqa: boundary
 from core.harness.knowledge.domain_maturity import compare_domains, compute_domain_maturity, export_comparison_report  # noqa: boundary
+from core.harness.knowledge.ontology_completeness import compute_all_ocs, compute_domain_ocs  # noqa: boundary
 from core.harness.evaluation.evidence_diff import compute_evidence_diff  # noqa: boundary
 from core.harness.utils.model_injection import create_selected_adapter  # noqa: boundary
 from core.harness.restatement.run_state import default_run_state, merge_from_evaluation, normalize_run_state  # noqa: boundary

@@ -1,0 +1,30 @@
+# Phase C — service-domain complete_work_order (config-only vertical)
+actions:
+  - action_id: "customer_action:service-domain:complete_work_order"
+    aliases: []
+    label: "完成工单"
+    description: "客户运营：工单 待验收 → 已完成"
+    category: mutation
+    scope: domain
+    domain_id: service-domain
+    target_class: 工单
+    required_state: 待验收
+    effect_semantics: "Work order completed"
+    compensation: "revert WorkOrder.state to 待验收"
+    risk_level: high
+    require_approval: true
+    throttle_limit: 0
+    action_namespace: customer_action
+    eval_gate: customer_action_safety
+    handler: "core.harness.ontology_engine.builtin_handlers:set_entity_state"
+    input_schema:
+      type: object
+      required: [new_state]
+      properties:
+        new_state:
+          type: string
+          const: 已完成
+        evidence_ref:
+          type: string
+        completion_notes:
+          type: string

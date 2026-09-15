@@ -22,6 +22,7 @@ from core.harness.infrastructure.action_contract import (
 from core.harness.ontology_engine.builtin_handlers import (  # noqa: F401
     accept_order,
     assign_work_order,
+    set_entity_state,
 )
 
 logger = logging.getLogger(__name__)

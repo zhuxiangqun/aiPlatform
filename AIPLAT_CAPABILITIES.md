@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1452
+total_capabilities: 1453
 
 total_capabilities: 1095
 last_updated: 2026-08-25
@@ -998,6 +998,7 @@ scan_hash: 8f9548ec24f4
 ## 四、RAG 检索
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| compute_domain_ocs | `core/harness/knowledge/ontology_completeness.py` | ✅ | 自动同步 | 已合入 |
 | WikiPageRetriever | `harness/knowledge/retrieval.py` | ✅ | 自动同步 | 已合入 |
 | wiki_engine | harness/knowledge/wiki_engine.py | ✅ | 自动同步 | 已合入 |
 | capability_graph | harness/knowledge/capability_graph.py | ✅ | 能力图谱（agent/skill/tool/mcp/workflow 节点 + requires/uses/provides 边）；工作区扫描经 get_aiplat_home() 解析（2026-08-28 修复） | 已合入 |
@@ -2371,7 +2372,7 @@ scan_hash: 8f9548ec24f4
 | Harness 执行引擎 | 168 | 1 | 169 |
 | 记忆子系统 | 41 | 0 | 41 |
 | 知识引擎（本体） | 168 | 8 | 176 |
-| RAG 检索 | 49 | 0 | 49 |
+| RAG 检索 | 50 | 0 | 50 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 52 | 0 | 52 |
 | Skill 系统 | 54 | 0 | 54 |
@@ -2413,7 +2414,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1443** | **9** | **1452** |
+| **总计** | **1444** | **9** | **1453** |
 
 | **总计** | **1095** | **0** | **1095** |
 

@@ -109,6 +109,44 @@ async def assign_work_order(entity: Dict[str, Any], params: Dict[str, Any], acto
     }
 
 
+async def set_entity_state(entity: Dict[str, Any], params: Dict[str, Any], actor: str = "") -> Dict[str, Any]:
+    """Domain-agnostic state transition. Caller/contract supplies target via new_state/target_state.
+
+    Used by customer_action lifecycle seeds (assign / start / complete).
+    """
+    from core.harness.ontology_engine.graph_index import GraphIndex
+
+    entity_id = entity.get("id") or entity.get("entity_id", "")
+    domain_id = entity.get("domain_id") or entity.get("domain") or params.get("domain_id", "")
+    if not domain_id:
+        raise ValueError("domain_id is required")
+    new_state = params.get("new_state") or params.get("target_state") or ""
+    if not new_state:
+        raise ValueError("new_state or target_state is required")
+    g = GraphIndex.load(domain_id)
+    g.update_entity_property(entity_id, "state", new_state)
+    for key in ("assigned_technician", "technician_id", "completion_notes", "evidence_ref"):
+        if params.get(key) is not None:
+            g.update_entity_property(entity_id, key, params[key])
+    if params.get("installed_by"):
+        # Evidence relation for complete_install (LS-A2)
+        try:
+            g.add_relation(
+                entity_id,
+                str(params["installed_by"]),
+                "installed_by",
+                relation_label="安装完成",
+                confidence=0.95,
+            )
+        except Exception as e:
+            logger.debug("installed_by relation skipped: %s", e)
+    return {
+        "new_state": new_state,
+        "updated_by": actor,
+    }
+
+
+
 # ═══════════════════════════════════════════════════════════
 # Legacy bridge handlers
 # ═══════════════════════════════════════════════════════════

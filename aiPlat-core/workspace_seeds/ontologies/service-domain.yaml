@@ -1,0 +1,179 @@
+name: 售后服务
+namespace: http://aiplat.local/ontology/service-domain/
+version: 1.1.0
+description: 售后服务工单管理域 — 覆盖从客户提报到工单完成的完整生命周期
+classes:
+  WorkOrder:
+    label: 工单
+    required_fields:
+    - ticket_id
+    - customer_name
+    - status
+    optional_fields:
+    - fault_description
+    - priority
+    - created_at
+    - sla_deadline
+    - technician_id
+    - assigned_at
+    - repair_report_uploaded
+    - completed_at
+    categories:
+    - service-domain
+    confidence_threshold: 0.7
+    states:
+      default: 待指派
+      enum:
+      - name: 待指派
+        label: 待指派
+      - name: 已指派
+        label: 已指派
+      - name: 维修中
+        label: 维修中
+      - name: 待验收
+        label: 待验收
+      - name: 已完成
+        label: 已完成
+      - name: 已取消
+        label: 已取消
+      transitions:
+      - from: 待指派
+        to: 已指派
+      - from: 已指派
+        to: 维修中
+      - from: 维修中
+        to: 待验收
+      - from: 待验收
+        to: 已完成
+    implements:
+    - Assignable
+    - EvidencedCloseable
+  Technician:
+    label: 技师
+    required_fields:
+    - technician_id
+    - name
+    optional_fields:
+    - skill_tags
+    - location
+    - available
+    - hourly_rate
+    categories:
+    - service-domain
+  FaultType:
+    label: 故障类型
+    required_fields:
+    - fault_code
+    optional_fields:
+    - description
+    - typical_duration_hours
+    - severity
+    categories:
+    - service-domain
+  SparePart:
+    label: 备件
+    required_fields:
+    - part_id
+    - name
+    optional_fields:
+    - stock_qty
+    - compatible_models
+    - unit_price
+    categories:
+    - service-domain
+  RepairReport:
+    label: 维修报告
+    required_fields:
+    - report_id
+    optional_fields:
+    - resolution
+    - parts_used
+    - duration_minutes
+    - notes
+    - submitted_at
+    - submitted_by
+    categories:
+    - service-domain
+    states:
+      default: draft
+      enum:
+      - name: draft
+        label: 草稿
+      - name: submitted
+        label: 已提交
+      - name: accepted
+        label: 已验收
+      transitions:
+      - from: draft
+        to: submitted
+      - from: submitted
+        to: accepted
+  Customer:
+    label: 客户
+    required_fields:
+    - customer_id
+    - company_name
+    optional_fields:
+    - contact_phone
+    - service_level
+    categories:
+    - service-domain
+object_properties:
+- name: submits
+  label: 提交
+  from: Customer
+  to: WorkOrder
+- name: assigned_to
+  label: 指派
+  from: WorkOrder
+  to: Technician
+- name: belongs_to
+  label: 属于
+  from: WorkOrder
+  to: FaultType
+- name: linked_to
+  label: 关联
+  from: RepairReport
+  to: WorkOrder
+- name: consumes
+  label: 消耗
+  from: RepairReport
+  to: SparePart
+- name: skilled_in
+  label: 擅长
+  from: Technician
+  to: FaultType
+inference_rules:
+  exclusive_states:
+  - - 待指派
+    - 已完成
+    - 已取消
+  - - 维修中
+    - 已完成
+  - - 待验收
+    - 已取消
+  state_dependencies:
+    已指派:
+      requires:
+      - technician_id
+    待验收:
+      requires:
+      - repair_report_uploaded
+    已完成:
+      requires:
+      - completed_at
+axioms:
+- id: SD-A1
+  severity: error
+  description: 工单仅允许从 待指派 状态指派技师
+- id: SD-A2
+  severity: error
+  description: 工单进入 已完成 前应有维修报告或完成证据
+- id: SD-A3
+  severity: warning
+  description: 已指派工单应关联技师
+interfaces:
+  Assignable:
+    label: 可派单
+  EvidencedCloseable:
+    label: 需证据关单

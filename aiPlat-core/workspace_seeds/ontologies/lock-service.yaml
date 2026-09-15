@@ -1,0 +1,250 @@
+# 智能锁安装维保域本体 — 江苏锁安定制
+name: "智能锁安装维保"
+namespace: "http://aiplat.local/ontology/lock-service/"
+version: "1.2.0"
+description: "智能锁安装工单、设备型号、故障诊断、师傅调度、客户现场 — 江苏锁安 FDE 诊断驱动建域"
+
+classes:
+  DeviceModel:
+    label: 设备型号
+    required_fields: [name, brand, lock_type]
+    optional_fields: [spec_version, compatible_doors, install_method, manual_url, power_type, warranty_months]
+    categories: [lock-service]
+    confidence_threshold: 0.7
+
+  InstallOrder:
+    label: 安装工单
+    implements: [Assignable, EvidencedCloseable]
+    required_fields: [order_id, customer_name, device_model, status]
+    optional_fields: [address, scheduled_date, completed_date, technician, notes, urgency]
+    categories: [lock-service]
+    states:
+      default: pending
+      enum:
+        - name: pending
+          label: 待派单
+        - name: accepted
+          label: 已接单
+        - name: assigned
+          label: 已派单
+        - name: in_progress
+          label: 安装中
+        - name: completed
+          label: 已完成
+        - name: cancelled
+          label: 已取消
+      transitions:
+        - from: pending
+          to: accepted
+          trigger:
+            type: action
+            action_id: customer_action:lock-service:accept_order
+        - from: accepted
+          to: assigned
+          trigger:
+            type: relation_exists
+            relation: assigned_to
+        - from: assigned
+          to: in_progress
+          trigger:
+            type: relation_count
+            relation: visited_at
+            threshold: 1
+            operator: ">="
+        - from: in_progress
+          to: completed
+          trigger:
+            type: relation_exists
+            relation: installed_by
+
+  FaultType:
+    label: 故障类型
+    required_fields: [name, category, severity]
+    optional_fields: [symptoms, root_causes, fix_steps, estimated_minutes, required_parts]
+    categories: [lock-service]
+    confidence_threshold: 0.6
+
+  RepairRecord:
+    label: 维修记录
+    required_fields: [record_id, device_model, fault_type, technician]
+    optional_fields: [order_id, diagnosis, fix_action, duration_minutes, parts_used, resolved]
+    categories: [lock-service]
+    states:
+      default: reported
+      enum:
+        - name: reported
+          label: 已报修
+        - name: diagnosing
+          label: 诊断中
+        - name: repairing
+          label: 维修中
+        - name: resolved
+          label: 已解决
+        - name: escalated
+          label: 已升级
+      transitions:
+        - from: reported
+          to: diagnosing
+        - from: diagnosing
+          to: repairing
+        - from: repairing
+          to: resolved
+        - from: repairing
+          to: escalated
+
+  Technician:
+    label: 安装师傅
+    required_fields: [name, phone]
+    optional_fields: [expertise, years_of_experience, service_area, certifications, current_load, rating]
+    categories: [lock-service]
+    confidence_threshold: 0.7
+
+  CustomerSite:
+    label: 客户现场
+    required_fields: [site_id, customer_name, address]
+    optional_fields: [door_type, installed_devices, maintenance_history, key_contact, access_notes]
+    categories: [lock-service]
+
+object_properties:
+  - name: assigned_to
+    label: 派单给
+    domain: [InstallOrder]
+    range: [Technician]
+    inverse: has_order
+  - name: installed_by
+    label: 安装完成
+    domain: [InstallOrder]
+    range: [Technician]
+  - name: uses_model
+    label: 使用设备
+    domain: [InstallOrder]
+    range: [DeviceModel]
+  - name: caused_by
+    label: 故障原因
+    domain: [RepairRecord]
+    range: [FaultType]
+  - name: located_at
+    label: 安装在
+    domain: [InstallOrder, DeviceModel, RepairRecord]
+    range: [CustomerSite]
+  - name: specializes_in
+    label: 擅长
+    domain: [Technician]
+    range: [DeviceModel, FaultType]
+  - name: has_order
+    label: 持有工单
+    domain: [Technician]
+    range: [InstallOrder]
+    inverse: assigned_to
+
+inference_rules:
+  - name: overload_detection
+    description: 师傅当前负载过高 → 标记为需关注
+    premises:
+      - relation: assigned_to
+        direction: outgoing
+      - relation: assigned_to
+        direction: outgoing
+    conclusion:
+      relation: needs_review
+      label: 需关注负载
+      confidence: 0.85
+
+processes:
+  installation_service:
+    label: 安装服务
+    description: 智能锁从派单到安装完成的端到端流程
+    domains: [lock-service]
+    starter_class: InstallOrder
+    starter_trigger: "state=pending"
+    retention_policy:
+      max_age_days: 90
+      on_expiry: archive
+    steps:
+      - label: "派单"
+        domain: lock-service
+        entity_class: InstallOrder
+        target_state: assigned
+        trigger:
+          type: property_condition
+          field: status
+          condition: "eq:assigned"
+        sla_seconds: 3600
+      - label: "上门安装"
+        domain: lock-service
+        entity_class: InstallOrder
+        target_state: in_progress
+        sla_seconds: 7200
+      - label: "安装完成"
+        domain: lock-service
+        entity_class: InstallOrder
+        target_state: completed
+        sla_seconds: 7200
+    escalation:
+      - step: "上门安装"
+        timeout_seconds: 14400
+        action:
+          type: call_webhook
+          url: "https://hooks.example.com/lock-escalation"
+
+interview_dimensions:
+  workbench:
+    - id: lock_type
+      label: 锁具类型
+      question: 涉及的锁具类型？
+      options: [智能门锁, 机械锁, 指纹锁, 人脸识别锁, 门禁系统, 不确定]
+      required: true
+    - id: building_type
+      label: 建筑类型
+      question: 部署的建筑类型？
+      options: [住宅小区, 写字楼, 酒店, 学校, 工厂, 不确定]
+      required: true
+    - id: access_control
+      label: 门禁方式
+      question: 门禁管理方式？
+      options: [刷卡, 密码, 生物识别, 手机APP, 远程开门, 不确定]
+      required: false
+    - id: installation_scope
+      label: 安装规模
+      question: 安装规模？
+      options: [单户(<10把), 楼栋(<100把), 园区(<1000把), 大型(1000+把), 不确定]
+      required: false
+    - id: service_type
+      label: 服务类型
+      question: 需要的服务？
+      options: [新装, 维修, 升级, 维保巡检, 不确定]
+      required: true
+
+
+axioms:
+  - id: LS-A1
+    severity: error
+    description: "安装工单仅允许从 pending 状态接单（accept_order）；非 pending 不得执行 customer_action:lock-service:accept_order"
+    check: "InstallOrder.status == pending before accept"
+  - id: LS-A2
+    severity: error
+    description: "安装工单进入 completed 前必须存在 installed_by 关系（安装完成证据）"
+    check: "relation_exists installed_by before completed"
+  - id: LS-A3
+    severity: warning
+    description: "维修记录 resolved 前应关联 fault_type；缺少故障类型不得视为已解决"
+    check: "RepairRecord.fault_type required when status=resolved"
+  - id: LS-A4
+    severity: error
+    description: "派单(assigned)须指定师傅；InstallOrder 不得在无 assigned_to 时离开 pending"
+    check: "relation_exists assigned_to for assigned state"
+
+interfaces:
+  Assignable:
+    label: 可派单
+    description: 语义模块 — 可指派责任人的工单类对象
+    properties:
+      - name: assignee
+        type: string
+  EvidencedCloseable:
+    label: 需证据关单
+    description: 语义模块 — 关闭前必须具备完成证据
+    properties:
+      - name: evidence_ref
+        type: string
+

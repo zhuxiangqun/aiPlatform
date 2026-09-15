@@ -1,0 +1,14 @@
+# Phase D — reusable semantic modules + valuable cross-domain view (seed)
+# Merge into ~/.aiplat/ontologies/registry.json under key cross_domain_views.
+cross_domain_views:
+  - view_name: unified_customer
+    description: "锁安客户现场与售后客户对齐（有业务价值的跨域消歧）"
+    domains: [lock-service, service-domain]
+    match_keys: [customer_name, company_name, site_id, customer_id]
+    primary_domain: lock-service
+
+semantic_modules:
+  - id: Assignable
+    description: "可派单 — InstallOrder / WorkOrder implements"
+  - id: EvidencedCloseable
+    description: "需证据关单 — 关闭前须证据"

@@ -1,0 +1,88 @@
+# Phase A — lock-service lifecycle actions (OCS C4)
+# Loaded by builtin_actions.register_all() from workspace_seeds/actions/
+actions:
+  - action_id: "customer_action:lock-service:assign_technician"
+    aliases: []
+    label: "派单给师傅"
+    description: "客户运营：安装工单 accepted → assigned"
+    category: mutation
+    scope: domain
+    domain_id: lock-service
+    target_class: 安装工单
+    required_state: accepted
+    effect_semantics: "Order assigned to technician"
+    compensation: "revert InstallOrder.state to accepted; clear assigned_technician"
+    risk_level: medium
+    require_approval: false
+    throttle_limit: 0
+    action_namespace: customer_action
+    eval_gate: customer_action_safety
+    handler: "core.harness.ontology_engine.builtin_handlers:set_entity_state"
+    input_schema:
+      type: object
+      required: [new_state]
+      properties:
+        new_state:
+          type: string
+          const: assigned
+        assigned_technician:
+          type: string
+        technician_id:
+          type: string
+
+  - action_id: "customer_action:lock-service:start_install"
+    aliases: []
+    label: "开始安装"
+    description: "客户运营：安装工单 assigned → in_progress"
+    category: mutation
+    scope: domain
+    domain_id: lock-service
+    target_class: 安装工单
+    required_state: assigned
+    effect_semantics: "Installation started"
+    compensation: "revert InstallOrder.state to assigned"
+    risk_level: medium
+    require_approval: false
+    throttle_limit: 0
+    action_namespace: customer_action
+    eval_gate: customer_action_safety
+    handler: "core.harness.ontology_engine.builtin_handlers:set_entity_state"
+    input_schema:
+      type: object
+      required: [new_state]
+      properties:
+        new_state:
+          type: string
+          const: in_progress
+
+  - action_id: "customer_action:lock-service:complete_install"
+    aliases: []
+    label: "完工关单"
+    description: "客户运营：安装工单 in_progress → completed（须 installed_by 证据）"
+    category: mutation
+    scope: domain
+    domain_id: lock-service
+    target_class: 安装工单
+    required_state: in_progress
+    effect_semantics: "Installation completed"
+    compensation: "revert InstallOrder.state to in_progress"
+    risk_level: high
+    require_approval: true
+    throttle_limit: 0
+    action_namespace: customer_action
+    eval_gate: customer_action_safety
+    handler: "core.harness.ontology_engine.builtin_handlers:set_entity_state"
+    input_schema:
+      type: object
+      required: [new_state, installed_by]
+      properties:
+        new_state:
+          type: string
+          const: completed
+        installed_by:
+          type: string
+          description: "完成安装的师傅实体 ID"
+        completion_notes:
+          type: string
+        evidence_ref:
+          type: string

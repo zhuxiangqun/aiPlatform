@@ -4,7 +4,7 @@
 |------|-----|
 | 文档 ID | `ONTOLOGY-RUNTIME-CLOSEOUT-2026-09` |
 | 版本 | v1.0 |
-| 关联 | [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`FDE_WORKBENCH_CAPABILITY_LEDGER.md`](./FDE_WORKBENCH_CAPABILITY_LEDGER.md) |
+| 关联 | [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_COMPLETENESS.md`](./ONTOLOGY_COMPLETENESS.md) · [`FDE_WORKBENCH_CAPABILITY_LEDGER.md`](./FDE_WORKBENCH_CAPABILITY_LEDGER.md) |
 | 维护人 | Oliver Zhu |
 | 状态 | 本阶段结项 |
 
@@ -49,18 +49,21 @@ PYTHONPATH=aiPlat-core python3 -m pytest \
 
 - 全域 OWL/SPARQL 推理机
 - SQL Ontology Bridge 接通生产
-- 其余 27 域补全 axioms
-- 跨域 view 种子填充
+- 其余 27 域补全 axioms（虚荣指标；OCS 按场景域验收）
 - Agent Fleet 产品化
+
+跨域 view：`unified_customer` 种子已写入（见 workspace_seeds + registry）；空 view 仍禁止装样子。
 
 ## 5. 遗留债
 
 | ID | 说明 | 建议 |
 |----|------|------|
-| D1 | `confirm_extraction` 仍只改状态，不自动建提案 | 可选：confirm 后 enqueue draft proposal |
+| D1 | `confirm_extraction` → 自动/一键 enqueue draft proposal | **已关闭**（`PendingExtractionStore.confirm` + `_enqueue_ontology_proposal`） |
 | D2 | 知识工厂默认域已改 lock-service；其它页可能仍写 fde-delivery | 扫前端 domain 默认值 |
 | D3 | Wiki 全局 AXIOMS 与域公理并存 | 业务路径继续禁止只读全局 |
 
 ## 6. 结论文案（对外）
 
 采用 [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) 一句话版本：可配置业务世界 + 可执行边界；不卖「完整企业本体已建成」。
+
+完整性度量见 [`ONTOLOGY_COMPLETENESS.md`](./ONTOLOGY_COMPLETENESS.md)（OCS；Phase A lock-service ≥80 为纵深标杆）。
