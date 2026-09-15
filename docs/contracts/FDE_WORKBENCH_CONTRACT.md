@@ -7,6 +7,8 @@
 规范文件：
 - 本文：`docs/contracts/FDE_WORKBENCH_CONTRACT.md`
 - 审计 / Eval：`aiPlat-core/core/harness/schemas/audit_schema.v1.yaml`
+- **能力台账（成熟度/消费方/证据/缺口）：** [`FDE_WORKBENCH_CAPABILITY_LEDGER.md`](./FDE_WORKBENCH_CAPABILITY_LEDGER.md)（实例）· [`FDE_CAPABILITY_LEDGER_TEMPLATE.md`](./FDE_CAPABILITY_LEDGER_TEMPLATE.md)（空白模板）
+- **AI FDE 受控应用闭环（设计）：** [`FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md`](./FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md)
 
 ---
 
@@ -223,3 +225,4 @@ Phase 5：
 | v1.4 | 2026-09-14 | Phase 5 多客户；D2 升 error | Oliver Zhu |
 | v1.5 | 2026-09-15 | AI FDE 半步：Evolve apply/rollback + D6 指标 | Oliver Zhu |
 | v1.6 | 2026-09-15 | 预检签收硬门 + service-domain 第二竖切 | Oliver Zhu |
+| v1.7 | 2026-09-15 | 挂载能力台账（成熟度/消费方/失败路径） | Oliver Zhu |
