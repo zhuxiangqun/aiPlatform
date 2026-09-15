@@ -62,7 +62,7 @@
 | V03 | Phase 2 | lock-service accept_order | `production` | `test:` phase2* · `benchmark:` 200p95 · `contract:` ALIAS_DEPRECATION | Tab⑦ | 旧 alias 调用方 → not registered | Oliver Zhu | 2 |
 | V04 | Phase 3 | Builder 产物链接 | `production` | `test:` phase3* | Tab⑤ | — | Oliver Zhu | 3 |
 | V05 | Phase 4A | 安全预检 + 签收硬门 | `production` | `test:` preflight_signoff · acceptance 409 | Tab⑥b/⑦ | — | Oliver Zhu | 4A |
-| V06 | Phase 4B | Evolve 受控应用 | `pilot` | `test:` apply→observing→stable/rollback · quality breach | Tab⑧ | 观测窗+质量跌破自动回滚已落地；canary 联动仍缺 | Oliver Zhu | 4B |
+| V06 | Phase 4B | Evolve 受控应用 | `production` | `test:` apply→observing→stable/rollback · quality breach · Applied UI | Tab⑧ | canary 联动仍可选 | Oliver Zhu | 4B |
 | V07 | Phase 5 | 第二客户域可复制 | `pilot` | `test:` `test_fde_service_domain_assign` · seed yaml · `scan:` domain_literals v1.1 | Tab①/⑦ | Action e2e 过；**非**第二客户全旅程现场报告 | Oliver Zhu | 5 |
 
 ---
