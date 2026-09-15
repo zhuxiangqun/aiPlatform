@@ -3683,7 +3683,11 @@ from core.harness.knowledge.knowledge_roi import KnowledgeROI  # noqa: boundary
 from core.harness.learning.kpi_tracker import get_kpi_tracker  # noqa: boundary
 from core.harness.training.full_training import get_full_training_engine  # noqa: boundary
 from core.harness.training.distillation import get_distillation_engine  # noqa: boundary
-from core.harness.knowledge_pipeline.resolver import CrossDomainResolver  # noqa: boundary
+from core.harness.knowledge_pipeline.resolver import (  # noqa: boundary
+    CrossDomainResolver,
+    ensure_unified_customer_view,
+    seed_cross_domain_config,
+)
 from core.harness.knowledge.convergence_engine import ConvergenceEngine  # noqa: boundary
 from core.harness.execution.atomic_splitter import AtomicTaskSplitter  # noqa: boundary
 from core.harness.learning.agent_network import AgentNetwork  # noqa: boundary

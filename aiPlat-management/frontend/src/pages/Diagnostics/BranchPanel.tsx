@@ -51,7 +51,7 @@ interface MergeData {
 // ── Component ─────────────────────────────────────────────────────────────
 
 const BranchPanel: React.FC = () => {
-  const [domainId, setDomainId] = useState('fde-delivery');
+  const [domainId, setDomainId] = useState('fde-delivery'); // platform delivery-tracking ontology (not customer business domain)
   const [branches, setBranches] = useState<BranchInfo[]>([]);
   const [newBranchName, setNewBranchName] = useState('');
   const [newBranchDesc, setNewBranchDesc] = useState('');

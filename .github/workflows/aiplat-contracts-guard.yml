@@ -154,6 +154,30 @@ jobs:
           AIPLAT_EVAL_DRY_RUN=true \
           pytest -q core/tests/eval/test_skill_quality.py -m eval --tb=short
 
+      - name: Ontology completeness ratchet (lock-service OCS≥80)
+        working-directory: ./aiPlat-core
+        run: |
+          set -euo pipefail
+          export AIPLAT_HOME="$(mktemp -d)"
+          mkdir -p "$AIPLAT_HOME/ontologies"
+          cp workspace_seeds/ontologies/lock-service.yaml "$AIPLAT_HOME/ontologies/"
+          PYTHONPATH=. python3 - <<'PY'
+          import os
+          from core.harness.ontology_engine.graph_index import GraphIndex
+          GraphIndex._loaded_instances.clear()
+          g = GraphIndex("lock-service")
+          for i in range(6):
+              g.add_entity(f"IO-{i}", f"o{i}", "安装工单", source_doc_id="ci")
+          g.add_relation("IO-0", "assigned_to", "IO-1")
+          g.save()
+          print("seeded GraphIndex under", os.environ["AIPLAT_HOME"])
+          PY
+          PYTHONPATH=. python3 ../scripts/report_ontology_completeness.py \
+            --domain lock-service --min-ocs 80
+          pytest -q \
+            core/tests/unit/test_harness/test_knowledge/test_ontology_completeness_ocs.py \
+            --tb=short
+
       - name: Contracts acceptance tests
         working-directory: ./aiPlat-core
         run: |

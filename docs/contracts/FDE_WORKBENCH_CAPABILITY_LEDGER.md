@@ -53,7 +53,7 @@
 | T19 | ⑧ 运营 | 使用信号 S1–S4 + 基线/趋势 | `production` | `test:` usage + baseline · `/usage-*` · sparkline | Tab⑧ | 跨客户横向基线未做 | Oliver Zhu | 4B/5 |
 | T20 | ⑧ 运营 | 护航退出清单 | `production` | `test:` escort evaluate · A 组 audit 代理 · `/escort-exit` | Tab⑧ | a3 签收源 N/A；a2 为失败次数代理 | Oliver Zhu | 5 |
 | T21 | ⑧ 运营 | 域级横向基线 | `production` | `test:` `test_domain_peers_*` · `/domain-peers` | Tab⑧ | 单位=domain；非同域多客户 | Oliver Zhu | 5 |
-| T22 | 横切 | 本体运行时权威 / OCS 完整性 | `production` | `test:` OCS+lifecycle+confirm→提案 · `report_ontology_completeness.py --min-ocs 70` · contract: COMPLETENESS | 知识工厂/Action | 现场演示仍可加深 | Oliver Zhu | Ont-A–D |
+| T22 | 横切 | 本体运行时权威 / OCS 完整性 | `production` | `test:` OCS+lifecycle+confirm→提案 · `report_ontology_completeness.py --min-ocs 80` · contract: COMPLETENESS | 知识工厂/Action | 现场演示仍可加深 | Oliver Zhu | Ont-A–D |
 | T17 | ⑨ 快速认知 | 48h 行业认知 | `pilot` | `manual:` rapid_insight 面板 | Tab⑨ | 与主交付链弱耦合 | Oliver Zhu | 0 |
 
 ---
@@ -70,8 +70,8 @@
 | V06 | Phase 4B | Evolve 受控应用 | `production` | `test:` apply→observing→stable/rollback · quality/canary sync-ops · Applied UI | Tab⑧ | Registry 审计名可选 | Oliver Zhu | 4B |
 | V07 | Phase 5 | 第二客户域可复制 | `production` | `test:` assign · OCS≥82 · `scan:` domain_literals | Tab①/⑦ | 现场加深可选 | Oliver Zhu | 5 |
 | V08 | Ont-A | lock-service 纵深完整 (OCS≥80) | `production` | `test:` OCS+lifecycle · report: OCS≥86 · actions: accept/assign/start/complete | Tab⑦ | 现场半真实数据可再加深 | Oliver Zhu | Ont-A |
-| V09 | Ont-B | OCS 方法产品化 + confirm→提案 | `production` | `script:` report_ontology_completeness · new_domain_scaffold · D1 enqueue | CI/知识工厂 | CI 全量域门禁可选 | Oliver Zhu | Ont-B |
-| V10 | Ont-C/D | service-domain 复用 + 接口模块 + unified_customer | `production` | seed · OCS≥82 · interfaces · cross_domain_views · 零 harness 分叉 | Tab① | 跨域 view 运行时消费者可再加深 | Oliver Zhu | Ont-C/D |
+| V09 | Ont-B | OCS 方法产品化 + confirm→提案 | `production` | `script:` report_ontology_completeness · new_domain_scaffold · D1 enqueue · CI ratchet OCS≥80 | CI/知识工厂 | — | Oliver Zhu | Ont-B |
+| V10 | Ont-C/D | service-domain 复用 + 接口模块 + unified_customer | `production` | seed · OCS≥82 · interfaces · cross_domain_views · server+extraction_routes 消费 seed · 零 harness 分叉 | Tab① | — | Oliver Zhu | Ont-C/D |
 
 ---
 
@@ -176,3 +176,4 @@
 | 2026-09-15 | Oliver Zhu | v1.9 挂本体运行时权威；`sys_graph_validate` 假绿禁令 + 测试 |
 | 2026-09-15 | Oliver Zhu | v1.10 T22→production：lock-service 中/深档闭环 + CLOSEOUT |
 | 2026-09-15 | Oliver Zhu | v1.11 OCS 完整路线：COMPLETENESS 合同；lock OCS≥86；service-domain OCS≥82；scaffold/D1 |
+| 2026-09-15 | Oliver Zhu | v1.12 Phase D 收尾：unified_customer 运行时 seed；D2 文档化；CI OCS≥80 ratchet |

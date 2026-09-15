@@ -1608,6 +1608,13 @@ async def lifespan(app: FastAPI):
         from core.harness.knowledge.domain_router import DomainRouter
         DomainRouter().refresh_domain_maturity()
         log.info("Domain maturity populated in registry")
+        # Phase D: ensure unified_customer cross-domain view exists (lock↔service)
+        try:
+            from core.harness.knowledge_pipeline.resolver import seed_cross_domain_config
+            if seed_cross_domain_config():
+                log.info("cross_domain_views seeded (unified_customer)")
+        except Exception as _cd_e:
+            logging.debug("cross_domain seed skipped: %s", _cd_e)
     except Exception as e:
         logging.debug("SLA monitor startup skipped: %s", e)
 

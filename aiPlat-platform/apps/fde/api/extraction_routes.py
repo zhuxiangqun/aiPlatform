@@ -116,7 +116,8 @@ async def list_resolution_candidates(
 ):
     """List cross-domain merge candidates from registry.json views."""
     try:
-        from core.api.core_facade import CrossDomainResolver
+        from core.api.core_facade import CrossDomainResolver, seed_cross_domain_config
+        seed_cross_domain_config()
         resolver = CrossDomainResolver()
         candidates = resolver.find_candidates(view_name)
         return {
@@ -151,7 +152,8 @@ async def resolve_cross_domain(body: Dict[str, Any]):
         raise HTTPException(status_code=400, detail="left_id, right_id, left_domain, right_domain required")
 
     try:
-        from core.api.core_facade import CrossDomainResolver
+        from core.api.core_facade import CrossDomainResolver, seed_cross_domain_config
+        seed_cross_domain_config()
         ok = CrossDomainResolver.resolve(view_name, left_id, right_id, left_domain, right_domain, confidence)
         return {"status": "resolved" if ok else "failed"}
     except Exception as e:
@@ -220,7 +222,7 @@ async def check_throttle_status(body: Dict[str, Any]):
 @router.post("/ontology/proposals")
 async def create_ontology_proposal(body: Dict[str, Any]):
     """Submit an ontology evolution proposal (add/split/merge/deprecate)."""
-    domain_id = str(body.get("domain_id", "fde-delivery"))
+    domain_id = str(body.get("domain_id", "lock-service"))
     changes = body.get("changes", {})
     author = str(body.get("author", "system"))
 
@@ -243,7 +245,7 @@ async def list_ontology_proposals(
     """List ontology evolution proposals."""
     try:
         from core.api.core_facade import VersionedOntologyStore
-        store = VersionedOntologyStore(domain_id or "fde-delivery")
+        store = VersionedOntologyStore(domain_id or "lock-service")
         proposals = await store.list_proposals(domain_id=domain_id)
         return {"proposals": proposals, "count": len(proposals)}
     except Exception as e:
@@ -261,7 +263,7 @@ async def approve_ontology_proposal(proposal_id: str, body: Dict[str, Any]):
         if not proposal:
             raise HTTPException(status_code=404, detail="Proposal not found")
 
-        domain_id = proposal.get("domain_id", "fde-delivery")
+        domain_id = proposal.get("domain_id", "lock-service")
         vstore = VersionedOntologyStore(domain_id)
         result = await vstore.approve_proposal(proposal_id, approver_role=str(body.get("approver_role", "")))
         if not result.get("success"):
@@ -284,7 +286,7 @@ async def apply_ontology_proposal(proposal_id: str):
         if not proposal:
             raise HTTPException(status_code=404, detail="Proposal not found")
 
-        domain_id = proposal.get("domain_id", "fde-delivery")
+        domain_id = proposal.get("domain_id", "lock-service")
         from core.api.core_facade import VersionedOntologyStore
         vstore = VersionedOntologyStore(domain_id)
         ok = await vstore.apply_proposal(proposal_id)

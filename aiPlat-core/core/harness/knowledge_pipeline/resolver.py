@@ -24,6 +24,57 @@ logger = logging.getLogger(__name__)
 REGISTRY_PATH = os.path.expanduser("~/.aiplat/ontologies/registry.json")
 
 
+def _normalize_cross_domain_views(raw: Any) -> Dict[str, Any]:
+    """Normalize registry cross_domain_views to {view_name: view_def}."""
+    if isinstance(raw, dict) and raw and not _looks_like_single_view(raw):
+        # Already keyed by view name — still normalize each value
+        return {str(k): _normalize_one_view(str(k), v) for k, v in raw.items() if isinstance(v, dict)}
+    if isinstance(raw, dict) and _looks_like_single_view(raw):
+        name = str(raw.get("view_name") or "default")
+        return {name: _normalize_one_view(name, raw)}
+    if isinstance(raw, list):
+        out: Dict[str, Any] = {}
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("view_name") or "").strip()
+            if not name:
+                continue
+            out[name] = _normalize_one_view(name, item)
+        return out
+    return {}
+
+
+def _looks_like_single_view(d: Dict[str, Any]) -> bool:
+    return "sources" in d or "domains" in d or "match_keys" in d or "view_name" in d
+
+
+def _normalize_one_view(name: str, view: Dict[str, Any]) -> Dict[str, Any]:
+    """Map simplified seed (domains/match_keys) → resolver sources/match_strategy."""
+    out = dict(view)
+    out.setdefault("view_name", name)
+    if not out.get("sources") and out.get("domains"):
+        domains = out.get("domains") or []
+        # Best-effort class defaults for known pilot pair
+        class_map = {
+            "lock-service": "CustomerSite",
+            "service-domain": "Customer",
+        }
+        out["sources"] = [
+            {"domain": str(d), "class": class_map.get(str(d), "")}
+            for d in domains
+        ]
+    if not out.get("match_strategy"):
+        keys = out.get("match_keys") or []
+        primary = "||".join(str(k) for k in keys) if keys else "name"
+        out["match_strategy"] = {
+            "primary": primary,
+            "secondary": "name",
+            "min_confidence": 0.70,
+        }
+    return out
+
+
 @dataclass
 class CrossDomainCandidate:
     left: Dict[str, Any]   # {domain, class, id, name}
@@ -43,7 +94,12 @@ class CrossDomainResolver:
         self._cache_ttl = 120  # 2 min
 
     def _load_views(self) -> Dict[str, Any]:
-        """Load cross_domain_views from registry.json with TTL cache."""
+        """Load cross_domain_views from registry.json with TTL cache.
+
+        Accepts dict keyed by view_name (canonical) or a list of view objects
+        (seed convenience). Normalizes list → dict; maps simplified seeds
+        (domains + match_keys) into sources + match_strategy.
+        """
         now = time.time()
         if self._cache and (now - self._cache_ts < self._cache_ttl):
             return self._cache
@@ -52,7 +108,8 @@ class CrossDomainResolver:
                 return {}
             with open(self.registry_path, encoding="utf-8") as f:
                 data = json.load(f)
-            self._cache = data.get("cross_domain_views", {})
+            raw = data.get("cross_domain_views", {}) or {}
+            self._cache = _normalize_cross_domain_views(raw)
             self._cache_ts = now
         except Exception:
             logger.warning("Failed to load registry cross_domain_views", exc_info=True)
@@ -227,7 +284,7 @@ class CrossDomainResolver:
 # ═══════════════════════════════════════════════════════════
 
 def seed_cross_domain_config() -> bool:
-    """Initialize cross_domain_views in registry.json if missing (empty by default)."""
+    """Ensure registry has cross_domain_views; upsert unified_customer from seed."""
     if not os.path.exists(REGISTRY_PATH):
         return False
 
@@ -235,17 +292,50 @@ def seed_cross_domain_config() -> bool:
         with open(REGISTRY_PATH, encoding="utf-8") as f:
             reg = json.load(f)
 
-        if "cross_domain_views" in reg:
-            return False  # already exists
+        changed = False
+        raw = reg.get("cross_domain_views")
+        if raw is None:
+            reg["cross_domain_views"] = {}
+            changed = True
+        views = _normalize_cross_domain_views(reg.get("cross_domain_views") or {})
 
-        reg["cross_domain_views"] = {}
-        reg.setdefault("cross_domain_actions", {})
+        # Upsert canonical pilot view if missing or empty sources
+        uc = views.get("unified_customer") or {}
+        if not (uc.get("sources") and len(uc.get("sources") or []) >= 2):
+            views["unified_customer"] = _normalize_one_view(
+                "unified_customer",
+                {
+                    "description": "锁安客户现场与售后客户对齐（有业务价值的跨域消歧）",
+                    "sources": [
+                        {"domain": "lock-service", "class": "CustomerSite"},
+                        {"domain": "service-domain", "class": "Customer"},
+                    ],
+                    "match_strategy": {
+                        "primary": "customer_name||company_name||site_id||customer_id",
+                        "secondary": "name",
+                        "min_confidence": 0.70,
+                    },
+                    "primary_domain": "lock-service",
+                },
+            )
+            changed = True
 
-        with open(REGISTRY_PATH, "w", encoding="utf-8") as f:
-            json.dump(reg, f, ensure_ascii=False, indent=2)
-
-        logger.info("Seeded cross_domain_views in registry.json")
-        return True
+        # Persist as dict (canonical)
+        if changed or isinstance(reg.get("cross_domain_views"), list):
+            reg["cross_domain_views"] = views
+            reg.setdefault("cross_domain_actions", {})
+            with open(REGISTRY_PATH, "w", encoding="utf-8") as f:
+                json.dump(reg, f, ensure_ascii=False, indent=2)
+            logger.info("Ensured cross_domain_views (unified_customer) in registry.json")
+            return True
+        return False
     except Exception:
         logger.warning("Failed to seed cross_domain config", exc_info=True)
         return False
+
+
+def ensure_unified_customer_view() -> Dict[str, Any]:
+    """Public helper: ensure view exists and return normalized def."""
+    seed_cross_domain_config()
+    return CrossDomainResolver()._load_views().get("unified_customer") or {}
+

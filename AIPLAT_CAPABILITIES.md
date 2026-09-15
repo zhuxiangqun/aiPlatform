@@ -814,6 +814,7 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| compute_all_ocs | `core/harness/knowledge/ontology_completeness.py` | ✅ | 自动同步 | 已合入 |
 | load_rules | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
 | SecurityView | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
 | RepoSummary | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |

@@ -187,12 +187,22 @@ def compute_domain_ocs(
 
     path = _home() / "ontologies" / f"{domain_id}.yaml"
     if not path.is_file():
+        # Fall back to repo workspace_seeds (CI / fresh home)
+        seed = (
+            Path(__file__).resolve().parents[3]
+            / "workspace_seeds"
+            / "ontologies"
+            / f"{domain_id}.yaml"
+        )
+        if seed.is_file():
+            path = seed
+    if not path.is_file():
         return {
             "domain_id": domain_id,
             "ocs": 0.0,
             "level": "missing",
             "dimensions": {},
-            "error": f"ontology not found: {path}",
+            "error": f"ontology not found: {_home() / 'ontologies' / f'{domain_id}.yaml'}",
         }
 
     domain = load_ontology_from_yaml(str(path))

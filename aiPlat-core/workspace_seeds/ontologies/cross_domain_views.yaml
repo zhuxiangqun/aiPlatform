@@ -1,10 +1,20 @@
-# Phase D — reusable semantic modules + valuable cross-domain view (seed)
-# Merge into ~/.aiplat/ontologies/registry.json under key cross_domain_views.
+# Phase D — valuable cross-domain view (resolver-native format)
+# Merged into ~/.aiplat/ontologies/registry.json as cross_domain_views dict.
+#
+# CrossDomainResolver expects:
+#   cross_domain_views: { view_name: { sources: [...], match_strategy: {...} } }
 cross_domain_views:
-  - view_name: unified_customer
+  unified_customer:
     description: "锁安客户现场与售后客户对齐（有业务价值的跨域消歧）"
-    domains: [lock-service, service-domain]
-    match_keys: [customer_name, company_name, site_id, customer_id]
+    sources:
+      - domain: lock-service
+        class: CustomerSite
+      - domain: service-domain
+        class: Customer
+    match_strategy:
+      primary: "customer_name||company_name||site_id||customer_id"
+      secondary: "name"
+      min_confidence: 0.70
     primary_domain: lock-service
 
 semantic_modules:

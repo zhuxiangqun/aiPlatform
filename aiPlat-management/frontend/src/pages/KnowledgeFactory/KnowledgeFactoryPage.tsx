@@ -224,7 +224,7 @@ const CrossDomainResolutionPanel: React.FC = () => {
   const [viewName, setViewName] = useState('unified_customer');
 
   const VIEWS = [
-    { key: 'unified_customer', label: '锁安↔FDE' },
+    { key: 'unified_customer', label: '锁安↔售后' },
     { key: 'bell_unified_client', label: 'Bell24统一客户' },
     { key: 'bell_unified_technology', label: 'Bell24技术资产' },
     { key: 'bell_group_structure', label: 'Bell24集团架构' },

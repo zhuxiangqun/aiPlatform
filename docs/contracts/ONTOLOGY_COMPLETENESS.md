@@ -3,7 +3,7 @@
 | 字段 | 值 |
 |------|-----|
 | 文档 ID | `ONTOLOGY-COMPLETENESS-2026-09` |
-| 版本 | v1.0 |
+| 版本 | v1.1 |
 | 状态 | 生效 |
 | 关联 | [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_RUNTIME_CLOSEOUT.md`](./ONTOLOGY_RUNTIME_CLOSEOUT.md) · [`FDE_WORKBENCH_CAPABILITY_LEDGER.md`](./FDE_WORKBENCH_CAPABILITY_LEDGER.md) |
 | 维护人 | Oliver Zhu |
@@ -63,7 +63,15 @@ PYTHONPATH=aiPlat-core python3 scripts/report_ontology_completeness.py --domain 
 PYTHONPATH=aiPlat-core python3 scripts/new_domain_scaffold.py --domain-id my-domain --name "我的域"
 ```
 
-CI：`lock-service` OCS 不得低于 70（ratchet）；缺 `required_state` 的新 customer_action 由测试守卫。
+CI：
+
+```bash
+# Ratchet — Phase A 纵深标杆（contracts-guard workflow 同步执行）
+PYTHONPATH=aiPlat-core python3 scripts/report_ontology_completeness.py --domain lock-service --min-ocs 80
+pytest aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_ontology_completeness_ocs.py -q
+```
+
+`lock-service` OCS 不得低于 **80**；缺 `required_state` 的新 customer_action 由测试守卫。无 `~/.aiplat` 时从 `workspace_seeds/ontologies` 回退加载。
 
 ---
 
@@ -78,8 +86,21 @@ CI：`lock-service` OCS 不得低于 70（ratchet）；缺 `required_state` 的�
 
 ---
 
-## 4. 变更记录
+## 4. 前端域默认值（D2）
+
+| 页面 | 默认 `domain_id` | 说明 |
+|------|------------------|------|
+| KnowledgeFactory | `lock-service` | 客户纵深场景（抽取/提案/跨域） |
+| BranchPanel / Ontology 分支 | `fde-delivery` | **有意**：平台交付跟踪本体，非客户业务域 |
+| FdeDashboard Action YAML 示例 | `fde-delivery` | 平台动作模板示例 |
+
+禁止把「页面默认 fde-delivery」误读为客户域未切换。
+
+---
+
+## 5. 变更记录
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | v1.0 | 2026-09-15 | 确认 A+B 定义；OCS 六维；挂 Phase A–D |
+| v1.1 | 2026-09-15 | CI ratchet≥80；seed 回退；D2 前端域表；unified_customer 运行时接线 |
