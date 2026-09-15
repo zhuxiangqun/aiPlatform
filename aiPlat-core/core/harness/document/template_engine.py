@@ -61,7 +61,8 @@ class TemplateRegistry:
         self._scan()
 
     @classmethod
-    def get(cls) -> "TemplateRegistry":
+    def instance(cls) -> "TemplateRegistry":
+        """Process-wide singleton (was get() — shadowed by instance get())."""
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
@@ -149,7 +150,7 @@ class TemplateRenderer:
         Returns:
             {"path": "/output/rendered.docx", "format": "docx", "size_bytes": 1234}
         """
-        registry = TemplateRegistry.get()
+        registry = TemplateRegistry.instance()
         template = registry.get(template_id)
         if not template:
             raise ValueError(f"Template '{template_id}' not found")

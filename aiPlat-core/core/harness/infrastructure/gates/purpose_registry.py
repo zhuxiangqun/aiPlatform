@@ -156,7 +156,7 @@ class PurposeRegistry:
     """目的注册中心.
 
     使用方式:
-        registry = PurposeRegistry.get()
+        registry = PurposeRegistry.instance()   # 单例（勿与 get(purpose_id) 混名）
         purpose = registry.get("diagnosis")
         allowed = registry.check_tool("diagnosis", "file_write")  # → False
     """
@@ -167,7 +167,8 @@ class PurposeRegistry:
         self._purposes: Dict[str, Purpose] = dict(_BUILTIN_PURPOSES)
 
     @classmethod
-    def get(cls) -> "PurposeRegistry":
+    def instance(cls) -> "PurposeRegistry":
+        """Return process-wide singleton (was get() — shadowed by instance get())."""
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
@@ -260,4 +261,4 @@ class PurposeRegistry:
 
 def get_purpose_registry() -> PurposeRegistry:
     """全局单例获取."""
-    return PurposeRegistry.get()
+    return PurposeRegistry.instance()

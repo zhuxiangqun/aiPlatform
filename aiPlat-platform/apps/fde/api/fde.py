@@ -3123,7 +3123,7 @@ async def get_traversal_path(run_id: str):
 async def list_purposes():
     """列出所有已注册的 Purpose."""
     from core.api.core_facade import PurposeRegistry
-    return {"purposes": PurposeRegistry.get().list_all()}
+    return {"purposes": PurposeRegistry.instance().list_all()}
 
 
 @router.post("/security/check")
@@ -3312,7 +3312,7 @@ async def select_partners(payload: dict = Body(...)):
 async def register_template(payload: dict = Body(...)):
     """注册文档模板."""
     from core.api.core_facade import TemplateRegistry
-    registry = TemplateRegistry.get()
+    registry = TemplateRegistry.instance()
     template = registry.register(
         payload.get("template_id", ""),
         payload.get("path", ""),
@@ -3325,7 +3325,7 @@ async def register_template(payload: dict = Body(...)):
 async def list_templates():
     """列出所有模板."""
     from core.api.core_facade import TemplateRegistry
-    return {"templates": TemplateRegistry.get().list_all()}
+    return {"templates": TemplateRegistry.instance().list_all()}
 
 
 @router.post("/templates/render")
@@ -3558,7 +3558,7 @@ async def health_all():
     # Security 3D
     try:
         from core.api.core_facade import PurposeRegistry
-        purposes = PurposeRegistry.get().list_all()
+        purposes = PurposeRegistry.instance().list_all()
         subsystems["Security3D"] = {"ok": True, "msg": f"{len(purposes)} purposes registered"}
     except Exception as e:
         subsystems["Security3D"] = {"ok": False, "msg": str(e)[:100]}

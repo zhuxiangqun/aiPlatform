@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { BarChart3, ChevronDown, ChevronRight, AlertTriangle, CheckCircle, X, Circle, Zap, BookOpen, Database } from 'lucide-react';
 import { INDUSTRY_DOMAIN_MAP } from './FdeDashboard';
 
-type Maturity = 'seeding' | 'building' | 'stable' | 'production-ready';
+type Maturity = 'seeding' | 'growing' | 'building' | 'stable' | 'production-ready';
 
 interface DomainMetrics {
   wiki_entities: number;
@@ -36,7 +36,7 @@ interface KnownGap {
 
 interface DomainData {
   name: string;
-  maturity: Maturity;
+  maturity: Maturity | string;
   metrics: DomainMetrics;
   skills: DomainSkill[];
   known_gaps: KnownGap[];
@@ -50,6 +50,7 @@ interface CapabilityBoundaryData {
   summary: {
     total_domains: number;
     seeding_domains: number;
+    growing_domains?: number;
     building_domains: number;
     stable_domains: number;
     production_ready_domains: number;
@@ -60,12 +61,29 @@ interface CapabilityBoundaryData {
   domains: Record<string, DomainData>;
 }
 
-const MATURITY_CONFIG: Record<Maturity, { label: string; color: string; bg: string; order: number }> = {
+type MaturityStyle = { label: string; color: string; bg: string; order: number };
+
+const MATURITY_CONFIG: Record<Maturity, MaturityStyle> = {
   'production-ready': { label: '生产就绪', color: 'text-green-400', bg: 'bg-green-500/20', order: 0 },
   stable: { label: '稳定', color: 'text-blue-400', bg: 'bg-blue-500/20', order: 1 },
   building: { label: '构建中', color: 'text-yellow-400', bg: 'bg-yellow-500/20', order: 2 },
-  seeding: { label: '播种中', color: 'text-gray-400', bg: 'bg-gray-500/20', order: 3 },
+  growing: { label: '成长中', color: 'text-cyan-400', bg: 'bg-cyan-500/20', order: 3 },
+  seeding: { label: '播种中', color: 'text-gray-400', bg: 'bg-gray-500/20', order: 4 },
 };
+
+const FALLBACK_MATURITY: MaturityStyle = {
+  label: '未知',
+  color: 'text-gray-400',
+  bg: 'bg-gray-500/20',
+  order: 99,
+};
+
+function maturityStyle(level: string | undefined | null): MaturityStyle {
+  if (level && level in MATURITY_CONFIG) {
+    return MATURITY_CONFIG[level as Maturity];
+  }
+  return FALLBACK_MATURITY;
+}
 
 const SEVERITY_CONFIG: Record<string, { icon: any; color: string }> = {
   critical: { icon: X, color: 'text-red-400 bg-red-500/10' },
@@ -127,7 +145,7 @@ const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({ industry, onSel
   }
 
   const sortedDomains = Object.entries(data.domains || {}).sort(
-    ([, a], [, b]) => (MATURITY_CONFIG[a.maturity]?.order ?? 99) - (MATURITY_CONFIG[b.maturity]?.order ?? 99)
+    ([, a], [, b]) => maturityStyle(a.maturity).order - maturityStyle(b.maturity).order
   );
 
   const allSeeding = sortedDomains.length > 0 && sortedDomains.every(
@@ -159,15 +177,19 @@ const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({ industry, onSel
   return (
     <div className="space-y-6">
       {/* Summary bar */}
-      <div className="grid grid-cols-4 gap-3">
-        {(['production-ready', 'stable', 'building', 'seeding'] as Maturity[]).map(m => (
-          <div key={m} className={`rounded-lg p-3 ${MATURITY_CONFIG[m].bg} border border-white/10`}>
-            <div className={`text-lg font-bold ${MATURITY_CONFIG[m].color}`}>
-              {data.summary[`${m.replace('-', '_')}_domains` as keyof typeof data.summary] || 0}
+      <div className="grid grid-cols-5 gap-3">
+        {(['production-ready', 'stable', 'building', 'growing', 'seeding'] as Maturity[]).map(m => {
+          const style = maturityStyle(m);
+          const summaryKey = `${m.replace(/-/g, '_')}_domains` as keyof typeof data.summary;
+          return (
+            <div key={m} className={`rounded-lg p-3 ${style.bg} border border-white/10`}>
+              <div className={`text-lg font-bold ${style.color}`}>
+                {data.summary[summaryKey] ?? 0}
+              </div>
+              <div className="text-xs text-gray-400 mt-1">{style.label}</div>
             </div>
-            <div className="text-xs text-gray-400 mt-1">{MATURITY_CONFIG[m].label}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Phase 39-41: L6 自主能力状态 */}
@@ -197,7 +219,7 @@ const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({ industry, onSel
       {/* Domain cards */}
       <div className="space-y-3">
          {sortedDomains.map(([id, domain]) => {
-           const mc = MATURITY_CONFIG[domain.maturity];
+           const mc = maturityStyle(domain.maturity);
            const isExpanded = expanded[id] ?? false;
            const isRecommended = !!industry && INDUSTRY_DOMAIN_MAP[industry.toLowerCase()]?.includes(id);
 

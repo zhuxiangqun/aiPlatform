@@ -1463,7 +1463,7 @@ class PolicyGate:
         try:
             from core.harness.infrastructure.gates.purpose_registry import PurposeRegistry
 
-            purpose_reg = PurposeRegistry.get()
+            purpose_reg = PurposeRegistry.instance()
             purpose_check = purpose_reg.check_tool(
                 purpose_id, tool_name, role=role, marking_level=marking_level
             )

@@ -219,6 +219,7 @@ async def build_capability_boundary(domain_filter: Optional[str] = None) -> dict
         "summary": {
             "total_domains": len(domain_results),
             "seeding_domains": maturity_counts["seeding"],
+            "growing_domains": maturity_counts["growing"],
             "building_domains": maturity_counts["building"],
             "stable_domains": maturity_counts["stable"],
             "production_ready_domains": maturity_counts["production-ready"],
