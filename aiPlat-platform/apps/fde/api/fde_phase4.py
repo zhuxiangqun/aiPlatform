@@ -299,3 +299,21 @@ async def rollback_evolve(proposal_id: str, req: EvolveReviewRequest) -> Dict[st
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
     return {"status": "ok", "message": "rolled_back", "data": rec}
+
+
+@router.get("/usage-signal", response_model=FdeItemResponse)
+async def usage_signal(domain_id: str = "") -> Dict[str, Any]:
+    """S1–S4 usage signals from action_audit (not customer ROI)."""
+    from core.api.core_facade import get_fde_usage_signal
+
+    payload = await get_fde_usage_signal(domain_id or "")
+    return {"data": payload}
+
+
+@router.get("/usage-trend", response_model=FdeItemResponse)
+async def usage_trend(domain_id: str = "", days: int = 30) -> Dict[str, Any]:
+    """Per-day usage trend for Tab⑧."""
+    from core.api.core_facade import get_fde_usage_trend
+
+    payload = await get_fde_usage_trend(domain_id or "", days=days)
+    return {"data": payload}

@@ -16,6 +16,9 @@ from typing import Any, Dict, List, Optional, Literal
 
 logger = logging.getLogger(__name__)
 
+# FDE usage-signal success set (Registry maps executed→success; historical rows may keep executed)
+USAGE_SUCCESS_STATUSES = frozenset({"success", "executed", "done", "completed", "ok"})
+
 
 class ActionStore:
     """Async persistence for action audit trail and pending approvals."""
@@ -66,6 +69,14 @@ class ActionStore:
             )
             await db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_audit_action ON action_audit(action_id)"
+            )
+            await db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_action_audit_domain_time "
+                "ON action_audit(domain_id, created_at)"
+            )
+            await db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_action_audit_domain_actor "
+                "ON action_audit(domain_id, actor, created_at)"
             )
             await db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_pending_status ON pending_approvals(status)"
@@ -155,6 +166,120 @@ class ActionStore:
                 ) as cur:
                     results = [dict(r) for r in await cur.fetchall()]
         return results
+
+    # ═══════════════════════════════════════════════════════
+    # Usage signals (FDE Tab⑧ — S1–S4; see FDE_USAGE_SIGNAL_MINIMAL_SET.md)
+    # ═══════════════════════════════════════════════════════
+
+    async def query_usage_signal(self, domain_id: str) -> Dict[str, Any]:
+        """Aggregate S1–S4 for one domain from action_audit.
+
+        Columns: actor / created_at / result_status / domain_id (not actor_id/timestamp).
+        """
+        import aiosqlite
+
+        domain = (domain_id or "").strip()
+        if not domain:
+            return {
+                "domain_id": "",
+                "dau_today": 0,
+                "calls_today": 0,
+                "success_rate_today": None,
+                "active_days_30d": 0,
+                "status": "unavailable",
+            }
+
+        success_list = sorted(USAGE_SUCCESS_STATUSES)
+        placeholders = ",".join("?" * len(success_list))
+        sql = f"""
+        WITH today AS (
+            SELECT actor, result_status
+            FROM action_audit
+            WHERE domain_id = ?
+              AND created_at >= date('now', 'start of day')
+        ),
+        last30 AS (
+            SELECT created_at
+            FROM action_audit
+            WHERE domain_id = ?
+              AND created_at >= date('now', '-30 days')
+        )
+        SELECT
+          (SELECT COUNT(DISTINCT actor) FROM today) AS dau_today,
+          (SELECT COUNT(*) FROM today) AS calls_today,
+          (SELECT
+             CASE WHEN COUNT(*) = 0 THEN NULL
+             ELSE SUM(CASE WHEN result_status IN ({placeholders})
+                           THEN 1 ELSE 0 END) * 1.0 / COUNT(*)
+             END FROM today) AS success_rate_today,
+          (SELECT COUNT(DISTINCT date(created_at)) FROM last30) AS active_days_30d
+        """
+        params = (domain, domain, *success_list)
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(sql, params) as cur:
+                row = await cur.fetchone()
+        if not row:
+            return {
+                "domain_id": domain,
+                "dau_today": 0,
+                "calls_today": 0,
+                "success_rate_today": None,
+                "active_days_30d": 0,
+                "status": "ok",
+            }
+        rate = row["success_rate_today"]
+        return {
+            "domain_id": domain,
+            "dau_today": int(row["dau_today"] or 0),
+            "calls_today": int(row["calls_today"] or 0),
+            "success_rate_today": float(rate) if rate is not None else None,
+            "active_days_30d": int(row["active_days_30d"] or 0),
+            "status": "ok",
+        }
+
+    async def query_usage_trend(
+        self, domain_id: str, days: int = 30
+    ) -> List[Dict[str, Any]]:
+        """Per-day DAU / calls / success_rate for the last ``days`` days."""
+        import aiosqlite
+
+        domain = (domain_id or "").strip()
+        if not domain:
+            return []
+        if days <= 0 or days > 365:
+            raise ValueError(f"days out of range: {days}")
+
+        success_list = sorted(USAGE_SUCCESS_STATUSES)
+        placeholders = ",".join("?" * len(success_list))
+        sql = f"""
+        SELECT
+          date(created_at) AS day,
+          COUNT(DISTINCT actor) AS dau,
+          COUNT(*) AS calls,
+          SUM(CASE WHEN result_status IN ({placeholders})
+                   THEN 1 ELSE 0 END) * 1.0 / NULLIF(COUNT(*), 0) AS success_rate
+        FROM action_audit
+        WHERE domain_id = ?
+          AND created_at >= date('now', ?)
+        GROUP BY date(created_at)
+        ORDER BY day
+        """
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                sql, (*success_list, domain, f"-{int(days)} days")
+            ) as cur:
+                rows = await cur.fetchall()
+        return [
+            {
+                "day": r["day"],
+                "dau": int(r["dau"] or 0),
+                "calls": int(r["calls"] or 0),
+                "success_rate": float(r["success_rate"]) if r["success_rate"] is not None else None,
+            }
+            for r in rows
+        ]
 
     # ═══════════════════════════════════════════════════════
     # Pending Approvals

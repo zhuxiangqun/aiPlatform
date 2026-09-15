@@ -3644,6 +3644,10 @@ from core.apps.fde.service.evolve_proposal_gate import (  # noqa: boundary
     tick_evolve_observations as tick_fde_evolve_observations,
     sync_evolve_ops_signals as sync_fde_evolve_ops_signals,
 )
+from core.apps.fde.service.usage_signal import (  # noqa: boundary
+    get_usage_signal as get_fde_usage_signal,
+    get_usage_trend as get_fde_usage_trend,
+)
 
 from core.security.skill_signature_gate import is_approval_resolved_approved, get_trusted_skill_pubkeys_map  # v2.5
 from core.harness.ontology_engine.graph_index import GraphIndex  # v6.5 — canonical re-export for platform layer

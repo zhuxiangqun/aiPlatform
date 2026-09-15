@@ -2038,6 +2038,22 @@ domains:
         type: function
         signature: "push quality_score/canary_ok into observing patches; canary_ok=False rolls back"
         module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
+      - symbol: get_usage_signal
+        type: function
+        signature: "S1–S4 usage snapshot from action_audit (dau/calls/success_rate/active_days)"
+        module: aiPlat-core/core/apps/fde/service/usage_signal.py
+      - symbol: get_usage_trend
+        type: function
+        signature: "per-day usage trend for Tab⑧"
+        module: aiPlat-core/core/apps/fde/service/usage_signal.py
+      - symbol: query_usage_signal
+        type: function
+        signature: "ActionStore aggregate S1–S4 by domain_id"
+        module: aiPlat-core/core/harness/infrastructure/action_store.py
+      - symbol: query_usage_trend
+        type: function
+        signature: "ActionStore per-day usage trend by domain_id"
+        module: aiPlat-core/core/harness/infrastructure/action_store.py
       - symbol: list_evolve_applied
         type: function
         signature: "list observing/stable/applied/rolled_back evolve proposals"

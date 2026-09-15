@@ -917,6 +917,7 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
   const [evolveApplied, setEvolveApplied] = useState<any[]>([]);
   const [qualityBus, setQualityBus] = useState<any>(null);
   const [canarySnap, setCanarySnap] = useState<any>(null);
+  const [usageSignal, setUsageSignal] = useState<any>(null);
 
   useEffect(() => { fetch(API('/dashboard') + (namespace ? `?namespace=${namespace}` : '')).then(r => r.json()).then(setData); }, []);
   // v2.7: Fetch scoring engine alerts for this domain
@@ -933,11 +934,21 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
     fetch(API('/extractions/pending')).then(r => r.json())
       .then(d => setAuditStats(d)).catch(() => {});
   }, []);
-  // P1 KPI: Quality Bus + canary (real sources for ⑧)
+  // P1 KPI: Quality Bus + canary + usage signals (S1–S4)
   useEffect(() => {
     fetch(API('/quality-summary')).then(r => r.json()).then(setQualityBus).catch(() => {});
     fetch(API('/canary/status')).then(r => r.json()).then(setCanarySnap).catch(() => {});
   }, []);
+  useEffect(() => {
+    if (!domainId) {
+      setUsageSignal(null);
+      return;
+    }
+    fetch(API(`/usage-signal?domain_id=${encodeURIComponent(domainId)}`))
+      .then(r => r.json())
+      .then(d => setUsageSignal(d?.data ?? d))
+      .catch(() => setUsageSignal({ status: 'unavailable', domain_id: domainId }));
+  }, [domainId]);
 
   const loadEvolve = useCallback(async () => {
     try {
@@ -990,6 +1001,12 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
       // refresh KPI sources
       fetch(API('/quality-summary')).then(r => r.json()).then(setQualityBus).catch(() => {});
       fetch(API('/canary/status')).then(r => r.json()).then(setCanarySnap).catch(() => {});
+      if (domainId) {
+        fetch(API(`/usage-signal?domain_id=${encodeURIComponent(domainId)}`))
+          .then(r => r.json())
+          .then(d => setUsageSignal(d?.data ?? d))
+          .catch(() => {});
+      }
       await loadEvolve();
     } catch (e: any) {
       toast?.error?.(e?.message || 'sync-ops 失败');
@@ -1090,8 +1107,7 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
   };
 
   if (!data) return <div className="text-gray-500 text-sm p-4">加载中…</div>;
-  // Phase 0: hide empty stub KPIs (pending_decisions / trace_anomalies / training always stub).
-  // Quality Bus + canary are live on ⑧; Action success still roadmap.
+  // Phase 0: hide empty stub KPIs. Quality Bus + canary + usage S1–S4 are live on ⑧.
   const cards: Array<{ label: string; value: string | number; color: string }> = [];
   const signals = data.signal_alerts?.length ?? 0;
   if (signals > 0) {
@@ -1118,6 +1134,39 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
     value: canaryTotal === null ? '—' : (canaryBad ? `异常/${canaryTotal}` : `ok/${canaryTotal}`),
     color: canaryBad ? 'text-red-400' : 'text-green-400',
   });
+  // Usage signals S1–S4 (customer adoption — not ROI)
+  const us = usageSignal?.status === 'unavailable' ? null : usageSignal;
+  if (!domainId) {
+    cards.push({ label: '使用信号', value: '选域', color: 'text-gray-500' });
+  } else if (!us) {
+    cards.push({ label: '使用信号', value: '不可用', color: 'text-gray-500' });
+  } else {
+    const rate = us.success_rate_today;
+    const ratePct = rate == null ? '—' : `${(Number(rate) * 100).toFixed(0)}%`;
+    const rateColor = rate == null ? 'text-gray-500' : rate >= 0.95 ? 'text-green-400' : rate >= 0.85 ? 'text-yellow-400' : 'text-red-400';
+    const dau = Number(us.dau_today || 0);
+    cards.push({
+      label: '日活操作(S1)',
+      value: dau,
+      color: dau >= 2 ? 'text-green-400' : dau === 1 ? 'text-yellow-400' : 'text-red-400',
+    });
+    cards.push({
+      label: 'Action日调用(S2)',
+      value: Number(us.calls_today || 0),
+      color: 'text-cyan-300',
+    });
+    cards.push({
+      label: 'Action成功率(S3)',
+      value: ratePct,
+      color: rateColor,
+    });
+    const active = Number(us.active_days_30d || 0);
+    cards.push({
+      label: '活跃天(S4)',
+      value: `${active}/30`,
+      color: active >= 20 ? 'text-green-400' : active >= 10 ? 'text-yellow-400' : 'text-red-400',
+    });
+  }
   const pendingCount = auditStats?.pending?.length || auditStats?.count || 0;
   cards.push(
     { label: '待确认抽取', value: pendingCount, color: pendingCount > 0 ? 'text-yellow-400' : 'text-gray-500' },
@@ -1129,8 +1178,8 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
   return (
     <div className="space-y-4">
       <div className="rounded border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-xs text-amber-200/90">
-        Quality Bus + Canary 已接⑧；「同步运维信号」可对 observing 提案写入质量分 / canary 异常自动回滚。
-        Action 成功率仍 roadmap。人审通过率仅参考，不得单独作 KPI（D6）。stub（待处理决策 / 追踪异常 / 训练）已隐藏。
+        交付质量门 ≠ 客户成功。⑧：Quality Bus / Canary（运营）+ 使用信号 S1–S4（采纳，来自 action_audit）。
+        「同步运维信号」可对 observing 写入质量/canary 自动回滚。人审通过率仅参考（D6）。stub 已隐藏。
       </div>
       <div className="grid grid-cols-4 gap-3">
         {cards.map(c => (

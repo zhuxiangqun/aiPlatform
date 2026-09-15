@@ -1,7 +1,8 @@
 # FDE 工作台契约（FDE Workbench Contract）
 
-版本：v1.0  
-状态：Phase 0 生效，Phase 1 强制  
+版本：v1.10  
+状态：Phase 0–5 交付质量门已勾选；使用信号 S1–S4 已接线；交接单/护航退出契约 v0.1（UI 待接线）  
+
 适用范围：FDE 工作台前端、CoreFacade、ActionRegistry、PipelineEngine、DomainRouter、PolicyGate、Eval 服务  
 
 规范文件：
@@ -9,6 +10,7 @@
 - 审计 / Eval：`aiPlat-core/core/harness/schemas/audit_schema.v1.yaml`
 - **能力台账（成熟度/消费方/证据/缺口）：** [`FDE_WORKBENCH_CAPABILITY_LEDGER.md`](./FDE_WORKBENCH_CAPABILITY_LEDGER.md)（实例）· [`FDE_CAPABILITY_LEDGER_TEMPLATE.md`](./FDE_CAPABILITY_LEDGER_TEMPLATE.md)（空白模板）
 - **AI FDE 受控应用闭环（设计）：** [`FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md`](./FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md)
+- **客户成功交接（交付质量 ≠ 客户成功）：** [`FDE_BUSINESS_METRIC_HANDOVER.md`](./FDE_BUSINESS_METRIC_HANDOVER.md) · [`FDE_ESCORT_EXIT_CHECKLIST.md`](./FDE_ESCORT_EXIT_CHECKLIST.md) · [`FDE_USAGE_SIGNAL_MINIMAL_SET.md`](./FDE_USAGE_SIGNAL_MINIMAL_SET.md)
 
 ---
 
@@ -146,6 +148,19 @@ Eval 门语义见 `audit_schema.v1.yaml` 的 `eval_gate` 节。
 
 ## 6. 成功度量（含反向指标）
 
+### 6.1 三层指标正名（强制——不得混用）
+
+| 层 | 落点 | 含义 | 不是 |
+| :--- | :--- | :--- | :--- |
+| **交付质量门** | ⑦ 验收移交 | 验收通过 · Action 有证据 · Eval 不挡 · 签收不被 409 | 客户业务结果 / ROI |
+| **平台运营 KPI** | ⑧ 运营监控 | 质量分 · canary · Evolve D6（拒绝/回滚/存活） | 客户采纳证明 |
+| **客户成功指标** | 交接单 + 使用信号 + 退出清单 | 基线责任划分 · 平台可观测使用信号 · 条件护航退出 | 工作台代算营收 |
+
+- 工作台**不承诺、不计算**客户 ROI；但必须提供「交付 ↔ 客户成功」的**交接物**（基线单）与平台可观测使用信号（S1–S4）。
+- 人审通过率、使用信号均**仅作参考**，不得单独作个人 KPI（D6）。
+
+### 6.2 平台运营 / 交付过程指标
+
 | 指标 | 用途 |
 | :--- | :--- |
 | Pipeline 刷新一致率 | Phase 1 |
@@ -153,6 +168,7 @@ Eval 门语义见 `audit_schema.v1.yaml` 的 `eval_gate` 节。
 | 人审**拒绝率** + 拒绝理由分布 | Phase 4（防橡皮图章） |
 | 人审通过后的**回滚率** | Phase 4 |
 | 补丁经人审后的**平均存活时间** | Phase 4 |
+| Action 成功率 / 日活 actor / 日调用量 | **`real`@⑧** → [`FDE_USAGE_SIGNAL_MINIMAL_SET.md`](./FDE_USAGE_SIGNAL_MINIMAL_SET.md) |
 | 人审通过率 | **仅作参考**，不得单独作为 KPI |
 
 ---
@@ -227,3 +243,5 @@ Phase 5：
 | v1.6 | 2026-09-15 | 预检签收硬门 + service-domain 第二竖切 | Oliver Zhu |
 | v1.7 | 2026-09-15 | 挂载能力台账（成熟度/消费方/失败路径） | Oliver Zhu |
 | v1.8 | 2026-09-15 | Evolve 观测窗 + quality 自动回滚 | Oliver Zhu |
+| v1.9 | 2026-09-15 | §6.1 三层指标正名；挂交接单 / 护航退出 / 使用信号最小集 | Oliver Zhu |
+| v1.10 | 2026-09-15 | 使用信号 S1–S4 API + Tab⑧ 落地 | Oliver Zhu |
