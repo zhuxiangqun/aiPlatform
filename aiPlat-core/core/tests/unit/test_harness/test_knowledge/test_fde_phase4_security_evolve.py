@@ -153,7 +153,8 @@ def test_evolve_apply_rollback_metrics(monkeypatch, tmp_path):
         pytest.fail(f"unexpected status {q['review_status']}")
 
     applied = apply_evolve_proposal(pid, actor="fda")
-    assert applied["review_status"] == "applied"
+    assert applied["review_status"] == "observing"
+    assert applied.get("observation_until")
     assert get_evolve_applied_config().get("model_config.temperature") == 0.42
 
     rolled = rollback_evolve_proposal(pid, actor="fda")
@@ -167,6 +168,62 @@ def test_evolve_apply_rollback_metrics(monkeypatch, tmp_path):
     assert "pass_rate_reference_only" in m
     assert "reference only" in m["note"].lower() or "D6" in m["note"]
 
+
+def test_evolve_observation_window_and_quality_breach(monkeypatch, tmp_path):
+    """Apply → observing → tick to stable; quality drop auto-rollbacks."""
+    from core.apps.fde.service.evolve_proposal_gate import (
+        list_evolve_applied,
+        record_evolve_observation,
+        tick_evolve_observations,
+    )
+
+    home = tmp_path / "h"
+    home.mkdir()
+    monkeypatch.setenv("AIPLAT_HOME", str(home))
+    monkeypatch.setenv("AIPLAT_EVOLVE_OBSERVATION_HOURS", "0.0001")  # ~0.36s
+    monkeypatch.setenv("AIPLAT_EVOLVE_QUALITY_DROP_THRESHOLD", "5")
+
+    q = enqueue_evolve_proposal(
+        keys=["model_config.temperature"],
+        proposed_changes={"model_config.temperature": 0.5},
+        summary="obs",
+    )
+    pid = q["proposal_id"]
+    if q["review_status"] == "pending_hitl":
+        approve_evolve_proposal(pid)
+    applied = apply_evolve_proposal(pid)
+    assert applied["review_status"] == "observing"
+    assert list_evolve_applied()
+
+    # quality breach → auto rollback
+    q2 = enqueue_evolve_proposal(
+        keys=["cache_ttl_seconds"],
+        proposed_changes={"cache_ttl_seconds": 30},
+        summary="breach",
+    )
+    pid2 = q2["proposal_id"]
+    if q2["review_status"] == "pending_hitl":
+        approve_evolve_proposal(pid2)
+    apply_evolve_proposal(pid2)
+    out = record_evolve_observation(
+        pid2,
+        metric_name="quality_score",
+        metric_value=70.0,
+        baseline_value=90.0,
+        actor="sys",
+    )
+    assert out.get("review_status") == "rolled_back"
+    assert out.get("rollback_reason") == "quality_score_breach"
+
+    # first proposal: wait then tick → stable
+    import time as _t
+
+    _t.sleep(0.5)
+    tick = tick_evolve_observations()
+    assert pid in (tick.get("promoted_stable") or [])
+    from core.apps.fde.service.evolve_proposal_gate import get_evolve_proposal
+
+    assert get_evolve_proposal(pid)["review_status"] == "stable"
 
 def test_evolve_reject_increments_hitl_reject(monkeypatch, tmp_path):
     home = tmp_path / "h"

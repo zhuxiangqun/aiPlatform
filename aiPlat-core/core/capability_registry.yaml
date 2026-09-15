@@ -2026,6 +2026,18 @@ domains:
         type: function
         signature: "D6 reverse KPIs: reject/rollback/survival; pass_rate reference only"
         module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
+      - symbol: tick_evolve_observations
+        type: function
+        signature: "promote observing→stable after observation_until; record survival"
+        module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
+      - symbol: record_evolve_observation
+        type: function
+        signature: "append observation; auto-rollback on quality_score breach"
+        module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
+      - symbol: list_evolve_applied
+        type: function
+        signature: "list observing/stable/applied/rolled_back evolve proposals"
+        module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
       - symbol: preflight_signoff_gate
         type: function
         signature: "block acceptance signoff when ⑥b missing or high/critical findings"

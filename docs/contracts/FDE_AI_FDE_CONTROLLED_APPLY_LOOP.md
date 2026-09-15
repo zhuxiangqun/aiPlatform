@@ -3,8 +3,8 @@
 | 字段 | 值 |
 |------|-----|
 | 文档 ID | `FDE-AIFDE-LOOP-2026-09` |
-| 版本 | v0.2 |
-| 状态 | 设计稿；**对照半步已合代码后修订** |
+| 版本 | v0.3 |
+| 状态 | **观测窗+质量自动回滚已落地**；canary 联动仍可选 |
 | 关联 | [`fde-workbench-evolution-plan.md`](../architecture/plans/fde-workbench-evolution-plan.md) Phase 4B · [`FDE_DECISION_RECORD.md`](./FDE_DECISION_RECORD.md) D6 · [`FDE_WORKBENCH_CAPABILITY_LEDGER.md`](./FDE_WORKBENCH_CAPABILITY_LEDGER.md) T15/T16/V06 · `audit_schema.v1.yaml` |
 | 定位 | 把 Evolve 从「能排队」推进到「过审后可受控应用 + 反向 KPI + 观测窗」 |
 | 设计作者 | Oliver Zhu |
@@ -33,15 +33,16 @@
 |--------|----------|-------------------|
 | 白名单 + evaluate/enqueue | ✅ `evolve_proposal_gate.py` | 与设计 YAML 键表对齐文档化 |
 | HITL approve/reject | ✅ | — |
-| apply → `fde_evolve_applied_config.json` + before snapshot | ✅ | 观测窗 `observation_until` 字段 |
-| 人工 rollback + survival 秒 | ✅ | 自动/阈值触发；canary/Quality 联动 |
-| D6 reject/rollback/mean_survival API+UI | ✅ 计数 | 观测窗结束也记存活；quality_score 序列 |
-| 状态机 `observing` / `stable` | ❌ 现为 applied/rolled_back | 扩展状态 |
-| `platform_action:…:evolve_apply` 经 Registry | ❌ 现为 FDE service 直写文件 | 可选收敛（避免第二执行路径） |
-| `evolve_observation` 表/文件 | ❌ 仅 metrics 计数 JSON | 按设计落观测记录 |
-| 自动回滚 | ❌ | §5 |
+| apply → config patch + snapshot | ✅ | — |
+| `observation_until` + status=`observing` | ✅ | — |
+| tick → `stable` + survival | ✅ | — |
+| 人工 rollback | ✅ | — |
+| quality_score 跌破自动回滚 | ✅ `record_evolve_observation` | canary 自动触发仍缺 |
+| D6 metrics API+UI | ✅ | Quality Bus 直挂采样可选 |
+| Applied / 观测窗 UI | ✅ EvolutionTab | — |
+| `platform_action:…:evolve_*` 经 Registry | ❌ service 路径 | 可选收敛 |
 
-**结论：** 半步已越过「只排队」；本设计把 V06/T15/T16 从 `pilot` → `production`。
+**结论：** T15/T16/V06 已升 `production`（观测窗闭环）；剩余可选：canary 联动、Registry 审计名。
 
 ---
 
@@ -224,12 +225,12 @@ forbidden_keys:
 
 ## 9. 落地顺序
 
-1. ~~白名单校验 + proposal 队列~~（半步已有）
+1. ~~白名单校验 + proposal 队列~~
 2. ~~HITL 队列接通~~
 3. ~~apply 生成 config patch~~
-4. **观测窗 + observation 记录 + observation_until**（下一步）
-5. **回滚触发（canary / quality 阈值）**
-6. UI Applied 列表 + 观测态；台账升级
+4. ~~观测窗 + observation 记录 + observation_until~~
+5. ~~回滚触发（quality 阈值）；canary 仍可选~~
+6. ~~UI Applied 列表 + 观测态~~；台账 T15/T16/V06 → production
 
 ---
 
@@ -252,3 +253,4 @@ forbidden_keys:
 |------|------|------|
 | v0.1 | 2026-09-14 | 初稿（设计） |
 | v0.2 | 2026-09-15 | 入库；增 §0.1 现状对照；落地顺序标已完成项 |
+| v0.3 | 2026-09-15 | 观测窗/stable/quality 自动回滚/Applied UI 已合入 |

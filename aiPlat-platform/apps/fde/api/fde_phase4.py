@@ -137,11 +137,34 @@ async def evolve_metrics() -> Dict[str, Any]:
     return get_fde_evolve_metrics()
 
 
+@router.get("/evolve-proposals/applied", response_model=FdeListResponse)
+async def list_evolve_applied(limit: int = 20) -> Dict[str, Any]:
+    from core.api.core_facade import list_fde_evolve_applied
+
+    items = list_fde_evolve_applied(limit=min(limit, 50))
+    return {"items": items, "total": len(items)}
+
+
 @router.get("/evolve-proposals/applied-config", response_model=FdeItemResponse)
 async def evolve_applied_config() -> Dict[str, Any]:
     from core.api.core_facade import get_fde_evolve_applied_config
 
     return {"config": get_fde_evolve_applied_config()}
+
+
+@router.post("/evolve-proposals/tick-observations", response_model=FdeItemResponse)
+async def tick_evolve_observations() -> Dict[str, Any]:
+    """Promote observing → stable when observation window elapsed."""
+    from core.api.core_facade import tick_fde_evolve_observations
+
+    return tick_fde_evolve_observations()
+
+
+class EvolveObserveRequest(BaseModel):
+    actor: str = "system"
+    metric_name: str = "quality_score"
+    metric_value: float = 0.0
+    baseline_value: Optional[float] = None
 
 
 @router.post("/evolve-proposals/{proposal_id}/approve", response_model=FdeStatusResponse)
@@ -172,7 +195,7 @@ async def reject_evolve(proposal_id: str, req: EvolveReviewRequest) -> Dict[str,
 
 @router.post("/evolve-proposals/{proposal_id}/apply", response_model=FdeStatusResponse)
 async def apply_evolve(proposal_id: str, req: EvolveReviewRequest) -> Dict[str, Any]:
-    """Controlled apply: whitelist config keys only (no ABox/Ontology)."""
+    """Controlled apply → observing window (whitelist config only)."""
     from core.api.core_facade import apply_fde_evolve_proposal
 
     try:
@@ -181,7 +204,28 @@ async def apply_evolve(proposal_id: str, req: EvolveReviewRequest) -> Dict[str, 
         raise HTTPException(status_code=404, detail=str(e)) from e
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
-    return {"status": "ok", "message": "applied", "data": rec}
+    return {"status": "ok", "message": "observing", "data": rec}
+
+
+@router.post("/evolve-proposals/{proposal_id}/observe", response_model=FdeStatusResponse)
+async def observe_evolve(proposal_id: str, req: EvolveObserveRequest) -> Dict[str, Any]:
+    """Record observation sample; quality_score breach may auto-rollback."""
+    from core.api.core_facade import record_fde_evolve_observation
+
+    try:
+        out = record_fde_evolve_observation(
+            proposal_id,
+            metric_name=req.metric_name,
+            metric_value=req.metric_value,
+            baseline_value=req.baseline_value,
+            actor=req.actor,
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    msg = "rolled_back" if isinstance(out, dict) and out.get("review_status") == "rolled_back" else "observed"
+    return {"status": "ok", "message": msg, "data": out}
 
 
 @router.post("/evolve-proposals/{proposal_id}/rollback", response_model=FdeStatusResponse)

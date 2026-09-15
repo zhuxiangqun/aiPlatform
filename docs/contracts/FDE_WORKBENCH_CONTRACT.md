@@ -200,8 +200,8 @@ Phase 4：
 - [x] 独立「⑥b 上线前检查」入口（D5）；默认 Phase B；Phase C 显式开关
 - [x] `POST /fde/security-preflight/run` 经 `CoreFacade.run_security_review_dry`；Evidence 只读摘要存 `$AIPLAT_HOME/fde_security_preflight/`
 - [x] Evolve 提案门 `evolve_proposal` + 变更面白名单；ABox/Ontology 写强制 HITL；无静默写库
-- [x] **AI FDE 半步**：approve / reject / **受控 apply** / rollback（白名单配置 → `fde_evolve_applied_config.json`）；D6 指标 API+UI
-- [x] EvolutionTab 展示 Evolve 队列与反向 KPI；文案声明人审通过率不得单独作 KPI（D6）
+- [x] **AI FDE 半步**：approve / reject / **受控 apply** / rollback；**观测窗 observing→stable**；quality 跌破阈值自动回滚；D6 指标 API+UI
+- [x] EvolutionTab：Evolve 队列 + **Applied/观测窗列表** + 推进观测窗；pass_rate 仅参考（D6）
 - [x] platform `fde_phase4.py` 仅经 CoreFacade（无直导 security_* handler）
 - [x] **预检签收硬门**：`preflight_signoff_gate` → checklist + `POST /acceptance/signoff` 409；AcceptTab 展示阻断原因
 - [x] **第二域竖切**：`customer_action:service-domain:assign_technician` seed + `assign_work_order` handler（无 harness 分叉）
@@ -226,3 +226,4 @@ Phase 5：
 | v1.5 | 2026-09-15 | AI FDE 半步：Evolve apply/rollback + D6 指标 | Oliver Zhu |
 | v1.6 | 2026-09-15 | 预检签收硬门 + service-domain 第二竖切 | Oliver Zhu |
 | v1.7 | 2026-09-15 | 挂载能力台账（成熟度/消费方/失败路径） | Oliver Zhu |
+| v1.8 | 2026-09-15 | Evolve 观测窗 + quality 自动回滚 | Oliver Zhu |

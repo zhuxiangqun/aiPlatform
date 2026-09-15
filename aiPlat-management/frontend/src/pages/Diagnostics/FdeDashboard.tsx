@@ -914,6 +914,7 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
   const [evolveEval, setEvolveEval] = useState<any>(null);
   const [evolveList, setEvolveList] = useState<any[]>([]);
   const [evolveMetrics, setEvolveMetrics] = useState<any>(null);
+  const [evolveApplied, setEvolveApplied] = useState<any[]>([]);
 
   useEffect(() => { fetch(API('/dashboard') + (namespace ? `?namespace=${namespace}` : '')).then(r => r.json()).then(setData); }, []);
   // v2.7: Fetch scoring engine alerts for this domain
@@ -933,20 +934,38 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
 
   const loadEvolve = useCallback(async () => {
     try {
-      const [rList, rMet] = await Promise.all([
+      const [rList, rMet, rApp] = await Promise.all([
         fetch(API('/evolve-proposals?limit=20')),
         fetch(API('/evolve-proposals/metrics')),
+        fetch(API('/evolve-proposals/applied?limit=20')),
       ]);
       const dList = await rList.json().catch(() => ({}));
       const dMet = await rMet.json().catch(() => ({}));
+      const dApp = await rApp.json().catch(() => ({}));
       if (rList.ok) setEvolveList(dList.items || []);
       if (rMet.ok) setEvolveMetrics(dMet);
+      if (rApp.ok) setEvolveApplied(dApp.items || []);
     } catch {
       /* ignore */
     }
   }, []);
   useEffect(() => { loadEvolve(); }, [loadEvolve]);
 
+  const tickObservations = async () => {
+    setEvolveBusy(true);
+    try {
+      const r = await fetch(API('/evolve-proposals/tick-observations'), { method: 'POST' });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.detail || `HTTP ${r.status}`);
+      const n = (d.promoted_stable || []).length;
+      toast?.success?.(n ? `观测窗到期 → stable: ${n}` : '无提案需晋升 stable');
+      await loadEvolve();
+    } catch (e: any) {
+      toast?.error?.(e?.message || 'tick 失败');
+    } finally {
+      setEvolveBusy(false);
+    }
+  };
   const parseKeys = () => evolveKeys.split(/[,\s]+/).map(k => k.trim()).filter(Boolean);
 
   const parseValue = (raw: string) => {
@@ -1078,9 +1097,10 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
       <Card>
         <CardHeader>
           <span className="text-sm font-medium">Evolve 提案门（AI FDE 半步 · Phase 4B）</span>
-          <p className="text-[11px] text-gray-500 mt-1 font-normal">
-            白名单配置键 → 人审 → 受控 apply / rollback（写入 `$AIPLAT_HOME/fde_evolve_applied_config.json`）。禁止静默 ABox/Ontology。
-          </p>
+            <p className="text-[11px] text-gray-500 mt-1 font-normal">
+              白名单配置键 → 人审 → 受控 apply → <span className="text-cyan-300/80">observing</span> → stable；
+              quality 跌破阈值可自动回滚。禁止静默 ABox/Ontology。
+            </p>
         </CardHeader>
         <CardContent className="space-y-2">
           <input
@@ -1108,6 +1128,7 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
           <div className="flex flex-wrap gap-2">
             <Button variant="ghost" size="sm" onClick={evaluateEvolve} loading={evolveBusy}>评估门</Button>
             <Button variant="default" size="sm" onClick={enqueueEvolve} loading={evolveBusy}>入人审队列</Button>
+            <Button variant="ghost" size="sm" onClick={tickObservations} loading={evolveBusy}>推进观测窗</Button>
             <Button variant="ghost" size="sm" onClick={loadEvolve}><RefreshCw className="w-3.5 h-3.5 mr-1" />刷新</Button>
           </div>
           {evolveEval && (
@@ -1132,6 +1153,7 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
               <p>
                 queued={evolveMetrics.queued ?? 0} approved={evolveMetrics.approved ?? 0}
                 {' '}rejected={evolveMetrics.rejected_hitl ?? 0} applied={evolveMetrics.applied ?? 0}
+                {' '}observing={evolveMetrics.observing ?? 0} stable={evolveMetrics.stable ?? 0}
                 {' '}rolled_back={evolveMetrics.rolled_back ?? 0} pending={evolveMetrics.pending_hitl ?? 0}
               </p>
             </div>
@@ -1160,10 +1182,26 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
                       )}
                     </>
                   )}
-                  {p.review_status === 'applied' && (
+                  {(p.review_status === 'observing' || p.review_status === 'applied' || p.review_status === 'stable') && (
                     <Button variant="ghost" size="sm" loading={evolveBusy} onClick={() => evolveAction(p.proposal_id, 'rollback')}>回滚</Button>
                   )}
                 </div>
+              </div>
+            ))}
+          </div>
+          <div className="pt-2 border-t border-gray-800/60 space-y-1">
+            <p className="text-[11px] text-gray-300">Applied / 观测窗</p>
+            {evolveApplied.length === 0 && <p className="text-[11px] text-gray-500">无已应用提案</p>}
+            {evolveApplied.slice(0, 8).map((p: any) => (
+              <div key={`app-${p.proposal_id}`} className="text-[11px] text-gray-400 flex justify-between gap-2 border-b border-gray-800/40 py-1">
+                <span>
+                  {p.proposal_id} · <span className="text-amber-200/90">{p.review_status}</span>
+                  {p.observation_until ? ` · until ${String(p.observation_until).slice(0, 16)}` : ''}
+                  {p.rollback_reason ? ` · ${p.rollback_reason}` : ''}
+                </span>
+                {(p.review_status === 'observing' || p.review_status === 'stable' || p.review_status === 'applied') && (
+                  <Button variant="ghost" size="sm" loading={evolveBusy} onClick={() => evolveAction(p.proposal_id, 'rollback')}>回滚</Button>
+                )}
               </div>
             ))}
           </div>

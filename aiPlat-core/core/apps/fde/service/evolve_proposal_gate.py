@@ -1,11 +1,13 @@
-"""FDE Phase 4B — evolve_proposal gate + controlled apply/rollback (AI FDE half-step).
+"""FDE Phase 4B — evolve_proposal gate + controlled apply/rollback + observation window.
 
 Whitelist config keys only. Never silently writes ABox/Ontology.
 D6 metrics: reject_rate, rollback_rate, mean_survival_hours (pass_rate is reference only).
+Design: docs/contracts/FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md
 """
 
 from __future__ import annotations
 
+import calendar
 import json
 import logging
 import os
@@ -22,6 +24,9 @@ from core.harness.infrastructure.action_audit_validate import (
 
 GATE_ID = "evolve_proposal"
 logger = logging.getLogger(__name__)
+
+# Statuses that hold an active config patch (can rollback)
+_ACTIVE_PATCH = frozenset({"observing", "applied", "stable"})
 
 
 def _home() -> Path:
@@ -42,8 +47,33 @@ def _metrics_path() -> Path:
     return _home() / "fde_evolve_metrics.json"
 
 
+def _observations_path() -> Path:
+    return _home() / "fde_evolve_observations.json"
+
+
 def _now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _observation_hours() -> float:
+    try:
+        return max(1e-6, float(os.getenv("AIPLAT_EVOLVE_OBSERVATION_HOURS", "24")))
+    except Exception:
+        return 24.0
+
+
+def _quality_drop_threshold() -> float:
+    """Auto-rollback when quality_score drops more than this vs baseline (points)."""
+    try:
+        return float(os.getenv("AIPLAT_EVOLVE_QUALITY_DROP_THRESHOLD", "10"))
+    except Exception:
+        return 10.0
+
+
+def _observation_until_iso(from_ts: Optional[float] = None) -> str:
+    base = from_ts if from_ts is not None else time.time()
+    until = base + _observation_hours() * 3600.0
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(until))
 
 
 def evaluate_evolve_proposal(
@@ -207,7 +237,7 @@ def reject_evolve_proposal(proposal_id: str, actor: str = "approver", reason: st
     rec = get_evolve_proposal(proposal_id)
     if not rec:
         raise FileNotFoundError(proposal_id)
-    if rec.get("review_status") in {"applied", "rolled_back"}:
+    if rec.get("review_status") in _ACTIVE_PATCH or rec.get("review_status") == "rolled_back":
         raise ValueError(f"cannot reject status={rec.get('review_status')}")
     rec["review_status"] = "rejected"
     rec["rejected_by"] = actor
@@ -219,7 +249,7 @@ def reject_evolve_proposal(proposal_id: str, actor: str = "approver", reason: st
 
 
 def apply_evolve_proposal(proposal_id: str, actor: str = "approver") -> Dict[str, Any]:
-    """Apply whitelist config keys to AIPLAT_HOME evolve config store. No Ontology writes."""
+    """Apply whitelist config keys, then enter observation window (status=observing)."""
     rec = get_evolve_proposal(proposal_id)
     if not rec:
         raise FileNotFoundError(proposal_id)
@@ -240,22 +270,34 @@ def apply_evolve_proposal(proposal_id: str, actor: str = "approver") -> Dict[str
         if k in keys:
             cfg[k] = v
     _write_config(cfg)
+    after = {k: cfg.get(k) for k in keys}
 
+    applied_at = _now()
     rec["applied_snapshot"] = snapshot
-    rec["review_status"] = "applied"
+    rec["after_snapshot"] = after
+    rec["review_status"] = "observing"
     rec["applied_by"] = actor
-    rec["applied_at"] = _now()
+    rec["applied_at"] = applied_at
+    rec["observation_until"] = _observation_until_iso()
+    rec["observations"] = list(rec.get("observations") or [])
     _save(rec)
     _metrics_inc("applied")
+    _metrics_inc("observing")
     return rec
 
 
-def rollback_evolve_proposal(proposal_id: str, actor: str = "approver") -> Dict[str, Any]:
+def rollback_evolve_proposal(
+    proposal_id: str,
+    actor: str = "approver",
+    *,
+    reason: str = "manual",
+) -> Dict[str, Any]:
+    """Rollback active patch (observing / applied / stable). Records survival for D6."""
     rec = get_evolve_proposal(proposal_id)
     if not rec:
         raise FileNotFoundError(proposal_id)
-    if rec.get("review_status") != "applied":
-        raise ValueError("only applied proposals can be rolled back")
+    if rec.get("review_status") not in _ACTIVE_PATCH:
+        raise ValueError("only observing/applied/stable proposals can be rolled back")
     snapshot = rec.get("applied_snapshot") or {}
     cfg = _load_config()
     for k, prev in snapshot.items():
@@ -267,17 +309,106 @@ def rollback_evolve_proposal(proposal_id: str, actor: str = "approver") -> Dict[
     rec["review_status"] = "rolled_back"
     rec["rolled_back_by"] = actor
     rec["rolled_back_at"] = _now()
+    rec["rollback_reason"] = (reason or "manual")[:200]
     _save(rec)
     _metrics_inc("rolled_back")
-    # survival hours for D6
     try:
         applied = rec.get("applied_at") or ""
         if applied:
-            # coarse: store seconds between apply and rollback in metrics events
             _metrics_event("survival_seconds", max(0, int(time.time() - _parse_ts(applied))))
     except Exception:
         logger.debug("survival metric skipped", exc_info=True)
     return rec
+
+
+def list_evolve_applied(limit: int = 20) -> List[Dict[str, Any]]:
+    """Proposals that entered apply (observing / stable / applied / rolled_back)."""
+    want = _ACTIVE_PATCH | {"rolled_back"}
+    rows = [p for p in list_evolve_proposals(max(limit * 3, 50)) if p.get("review_status") in want]
+    return rows[:limit]
+
+
+def record_evolve_observation(
+    proposal_id: str,
+    *,
+    metric_name: str,
+    metric_value: float,
+    baseline_value: Optional[float] = None,
+    actor: str = "system",
+) -> Dict[str, Any]:
+    """Append observation sample; auto-rollback on quality_score breach."""
+    rec = get_evolve_proposal(proposal_id)
+    if not rec:
+        raise FileNotFoundError(proposal_id)
+    if rec.get("review_status") not in _ACTIVE_PATCH:
+        raise ValueError("can only observe active patches")
+
+    name = (metric_name or "")[:80]
+    verdict = "ok"
+    baseline = baseline_value
+    if name == "quality_score" and baseline is not None:
+        drop = float(baseline) - float(metric_value)
+        if drop > _quality_drop_threshold():
+            verdict = "breach"
+
+    obs = {
+        "observation_id": f"obs_{uuid.uuid4().hex[:10]}",
+        "proposal_id": proposal_id,
+        "metric_name": name,
+        "metric_value": float(metric_value),
+        "baseline_value": float(baseline) if baseline is not None else None,
+        "window_start": rec.get("applied_at"),
+        "window_end": rec.get("observation_until"),
+        "verdict": verdict,
+        "recorded_at": _now(),
+        "actor": actor,
+    }
+    arr = list(rec.get("observations") or [])
+    arr.append(obs)
+    rec["observations"] = arr[-50:]
+    _save(rec)
+    _append_observation_index(obs)
+
+    if verdict == "breach":
+        return rollback_evolve_proposal(proposal_id, actor=actor, reason="quality_score_breach")
+    return {"proposal": rec, "observation": obs}
+
+
+def tick_evolve_observations(actor: str = "system") -> Dict[str, Any]:
+    """Promote observing → stable when observation_until elapsed; record survival."""
+    now = time.time()
+    promoted: List[str] = []
+    still: List[str] = []
+    for rec in list_evolve_proposals(100):
+        if rec.get("review_status") != "observing":
+            continue
+        until = rec.get("observation_until") or ""
+        try:
+            until_ts = _parse_ts(until) if until else 0.0
+        except Exception:
+            until_ts = 0.0
+        if until_ts and now >= until_ts:
+            rec["review_status"] = "stable"
+            rec["stable_at"] = _now()
+            _save(rec)
+            _metrics_inc("stable")
+            try:
+                applied = rec.get("applied_at") or ""
+                if applied:
+                    _metrics_event(
+                        "survival_seconds",
+                        max(0, int(until_ts - _parse_ts(applied))),
+                    )
+            except Exception:
+                logger.debug("stable survival metric skipped", exc_info=True)
+            promoted.append(rec["proposal_id"])
+        else:
+            still.append(rec.get("proposal_id") or "")
+    return {
+        "promoted_stable": promoted,
+        "still_observing": still,
+        "observation_hours": _observation_hours(),
+    }
 
 
 def get_evolve_metrics() -> Dict[str, Any]:
@@ -289,6 +420,7 @@ def get_evolve_metrics() -> Dict[str, Any]:
     rejected_gate = int(raw.get("rejected_at_gate") or 0)
     applied = int(raw.get("applied") or 0)
     rolled = int(raw.get("rolled_back") or 0)
+    stable = int(raw.get("stable") or 0)
     decided = approved + rejected_hitl
     reject_rate = (rejected_hitl / decided) if decided else 0.0
     rollback_rate = (rolled / applied) if applied else 0.0
@@ -297,6 +429,7 @@ def get_evolve_metrics() -> Dict[str, Any]:
         survivals = []
     mean_survival_h = (sum(survivals) / len(survivals) / 3600.0) if survivals else None
     pass_rate_ref = (approved / decided) if decided else None
+    props = list_evolve_proposals(100)
     return {
         "queued": queued,
         "approved": approved,
@@ -304,13 +437,16 @@ def get_evolve_metrics() -> Dict[str, Any]:
         "rejected_at_gate": rejected_gate,
         "applied": applied,
         "rolled_back": rolled,
+        "stable": stable,
+        "observing": len([p for p in props if p.get("review_status") == "observing"]),
         "reject_rate": round(reject_rate, 4),
         "rollback_rate": round(rollback_rate, 4),
         "mean_survival_hours": round(mean_survival_h, 4) if mean_survival_h is not None else None,
         "pass_rate_reference_only": round(pass_rate_ref, 4) if pass_rate_ref is not None else None,
         "note": "D6: pass_rate is reference only; use reject_rate + rollback_rate + survival",
-        "pending_hitl": len([p for p in list_evolve_proposals(100) if p.get("review_status") == "pending_hitl"]),
+        "pending_hitl": len([p for p in props if p.get("review_status") == "pending_hitl"]),
     }
+
 
 
 def get_evolve_applied_config() -> Dict[str, Any]:
@@ -361,9 +497,23 @@ def _metrics_event(key: str, value: Any) -> None:
     _metrics_path().write_text(json.dumps(m, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def _append_observation_index(obs: Dict[str, Any]) -> None:
+    fp = _observations_path()
+    rows: List[Dict[str, Any]] = []
+    if fp.is_file():
+        try:
+            raw = json.loads(fp.read_text(encoding="utf-8"))
+            if isinstance(raw, list):
+                rows = raw
+        except Exception:
+            rows = []
+    rows.append(obs)
+    fp.write_text(json.dumps(rows[-500:], ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def _parse_ts(iso: str) -> float:
-    # %Y-%m-%dT%H:%M:%SZ
+    # %Y-%m-%dT%H:%M:%SZ as UTC
     try:
-        return time.mktime(time.strptime(iso, "%Y-%m-%dT%H:%M:%SZ"))
+        return calendar.timegm(time.strptime(iso, "%Y-%m-%dT%H:%M:%SZ"))
     except Exception:
         return time.time()

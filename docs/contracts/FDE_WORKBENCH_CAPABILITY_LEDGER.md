@@ -3,7 +3,7 @@
 | 字段 | 值 |
 |------|-----|
 | 文档 ID | `FDE-LEDGER-2026-09` |
-| 版本 | v1.1 |
+| 版本 | v1.2 |
 | 模板 | [`FDE_CAPABILITY_LEDGER_TEMPLATE.md`](./FDE_CAPABILITY_LEDGER_TEMPLATE.md) |
 | 关联 | [`FDE_WORKBENCH_CONTRACT.md`](./FDE_WORKBENCH_CONTRACT.md) v1.7 · [`FDE_DECISION_RECORD.md`](./FDE_DECISION_RECORD.md) · [`FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md`](./FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md) |
 | 维护人 | Oliver Zhu |
@@ -47,8 +47,8 @@
 | T12 | ⑦ 验收 | 签收硬门 | `production` | `test:` `test_preflight_signoff_*` · HTTP 409 | Tab⑦ | checklist 其他项可 pending | Oliver Zhu | 4A |
 | T13 | ⑦ 验收 | 客户 Action 执行 | `production` | `test:` `test_fde_phase2*` · `benchmark:` bench_p95 | Tab⑦ | alias `accept_order` 已 deprecated | Oliver Zhu | 2 |
 | T14 | ⑧ 运营 | Evolve 队列 | `production` | `test:` enqueue/list · EvolutionTab | Tab⑧ | — | Oliver Zhu | 4B |
-| T15 | ⑧ 运营 | 受控 apply / rollback | `pilot` | `test:` `test_evolve_apply_rollback_metrics` | Tab⑧ | 仅人工回滚；缺观测窗/自动触发 → 见闭环设计 | Oliver Zhu | 4B |
-| T16 | ⑧ 运营 | D6 反向指标 | `pilot` | `test:` `get_evolve_metrics` · UI 卡 | Tab⑧ | 计数实；缺 quality/canary 联动与观测窗 | Oliver Zhu | 4B |
+| T15 | ⑧ 运营 | 受控 apply / rollback | `production` | `test:` observing + tick stable + quality breach | Tab⑧ | canary 自动触发未接；Registry platform_action 审计名可选 | Oliver Zhu | 4B |
+| T16 | ⑧ 运营 | D6 反向指标 + 观测窗 | `production` | `test:` metrics + survival on stable/rollback · Applied UI | Tab⑧ | Quality Bus 未直挂观测采样 | Oliver Zhu | 4B |
 | T17 | ⑨ 快速认知 | 48h 行业认知 | `pilot` | `manual:` rapid_insight 面板 | Tab⑨ | 与主交付链弱耦合 | Oliver Zhu | 0 |
 
 ---
@@ -62,7 +62,7 @@
 | V03 | Phase 2 | lock-service accept_order | `production` | `test:` phase2* · `benchmark:` 200p95 · `contract:` ALIAS_DEPRECATION | Tab⑦ | 旧 alias 调用方 → not registered | Oliver Zhu | 2 |
 | V04 | Phase 3 | Builder 产物链接 | `production` | `test:` phase3* | Tab⑤ | — | Oliver Zhu | 3 |
 | V05 | Phase 4A | 安全预检 + 签收硬门 | `production` | `test:` preflight_signoff · acceptance 409 | Tab⑥b/⑦ | — | Oliver Zhu | 4A |
-| V06 | Phase 4B | Evolve 受控应用 | `pilot` | `test:` apply/rollback/metrics · 半步已合 | Tab⑧ | 对齐 [`FDE_AI_FDE_CONTROLLED_APPLY_LOOP`](./FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md)：观测窗/自动回滚/platform_action 审计名 | Oliver Zhu | 4B |
+| V06 | Phase 4B | Evolve 受控应用 | `pilot` | `test:` apply→observing→stable/rollback · quality breach | Tab⑧ | 观测窗+质量跌破自动回滚已落地；canary 联动仍缺 | Oliver Zhu | 4B |
 | V07 | Phase 5 | 第二客户域可复制 | `pilot` | `test:` `test_fde_service_domain_assign` · seed yaml · `scan:` domain_literals v1.1 | Tab①/⑦ | Action e2e 过；**非**第二客户全旅程现场报告 | Oliver Zhu | 5 |
 
 ---
@@ -133,7 +133,7 @@
 
 | 台账行 | 现状 | 闭环设计推进后目标 |
 |--------|------|-------------------|
-| T15 / T16 / V06 | `pilot`（半步：门+HITL+白名单 apply+人工 rollback+D6 计数） | `production`（观测窗 + 自动/阈值回滚 + platform_action 审计名 + Quality/canary 联动） |
+| T15 / T16 / V06 | **`production`（2026-09-15）**：observing→stable tick；quality_score 跌破阈值自动回滚；Applied 列表 UI | 可选：canary 自动触发、Registry `platform_action:…:evolve_*` 审计名 |
 
 **落地顺序（采纳设计建议）：** 先维持本台账更新 → 再实施 [`FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md`](./FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md)。
 
@@ -145,3 +145,4 @@
 |------|--------|------|
 | 2026-09-15 | Oliver Zhu | v1.0 初填（叙述型） |
 | 2026-09-15 | Oliver Zhu | v1.1 对齐模板 ID（T/V/E）+ 填 §2/§4；挂闭环设计 |
+| 2026-09-15 | Oliver Zhu | v1.2 T15/T16/V06 → production（观测窗+质量自动回滚） |

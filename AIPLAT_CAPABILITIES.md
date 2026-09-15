@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1429
+total_capabilities: 1431
 
 total_capabilities: 1095
 last_updated: 2026-08-25
@@ -748,7 +748,7 @@ scan_hash: 8f9548ec24f4
 | FDE audit 映射 dry-run | `scripts/fde_audit_mapping.py` + `docs/contracts/audit_mapping_report.md` | ✅ | audit_schema↔ActionStore 字段分类 present/embedded/missing + ADD/ROLLBACK SQL（默认不改库） | 已合入 |
 | WorkbenchRuntimeGuard | `harness/infrastructure/workbench_runtime_guard.py` | ✅ | 工作台运行时否定项：未注册 Action / policy_gate 审计形状 / stub KPI；经 CoreFacade 导出；dashboard 挂 kpi_guard | 已合入 |
 | FDE 交付 Pipeline session | `apps/fde/service/delivery_pipeline_session.py` + `apps/fde/api/fde_delivery_pipeline.py` | ✅ | Phase 1：启动/查询/批准 `fde_delivery_v1` 服务端 stage cursor；workspace seed 模板；Tab⑤ 接线；≥2 HITL approve 单测；**Phase 3**：链接 Builder `project_id`、observe/start 工厂 Pipeline、`fde_delivery_pipeline` Eval 门、产物链接展示；生成物：工作台不平行构建，交付物走 builder 已接线路径 | 已合入 |
-| FDE Phase 4 安全预检+Evolve | `apps/fde/service/security_preflight.py` + `evolve_proposal_gate.py` + `apps/fde/api/fde_phase4.py` + PreflightTab/EvolutionTab | ✅ | 4A：`run_security_review_dry` + 只读 Evidence 摘要；默认 B / C 开关；`preflight_signoff_gate` 硬门签收；4B：`evolve_proposal` 白名单+HITL；**AI FDE 半步** approve→apply→rollback + D6；第二域 seed `service-domain:assign_technician`；生成物：不适用（平台横切治理/安全） | 已合入 |
+| FDE Phase 4 安全预检+Evolve | `apps/fde/service/security_preflight.py` + `evolve_proposal_gate.py` + `apps/fde/api/fde_phase4.py` + PreflightTab/EvolutionTab | ✅ | 4A 预检+签收硬门；4B：白名单 HITL；apply→**observing→stable**；quality 跌破自动回滚；D6；Applied UI；生成物：不适用 | 已合入 |
 | FDE Phase 5 多客户接入 | `docs/contracts/FDE_PHASE5_CUSTOMER_ONBOARDING.md` + `fde_domain_literals` error | ✅ | 新客户=DomainRouter+本体/Action 配置（不改 harness）；守卫 error+AST=0；Agent Fleet 不产品化；生成物：不适用（平台控制台接入路径，生成物仍走 builder） | 已合入 |
 | FDE 工作台能力台账 | `docs/contracts/FDE_WORKBENCH_CAPABILITY_LEDGER.md` + `FDE_CAPABILITY_LEDGER_TEMPLATE.md` | ✅ | Tab/竖切/执行核可审计台账（T/V/E ID）；生成物：不适用（平台契约） | 已合入 |
 | AI FDE 受控应用闭环设计 | `docs/contracts/FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md` | ✅ | 4B：观测窗+自动回滚+反向 KPI；对照半步已合代码；生成物：不适用（设计文档） | 已合入 |
@@ -1772,6 +1772,10 @@ scan_hash: 8f9548ec24f4
 ## 十六、工具生态
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| preflight_signoff_gate | `core/apps/fde/service/security_preflight.py` | ✅ | 自动同步 | 已合入 |
+| list_evolve_applied | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
+| record_evolve_observation | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
+| tick_evolve_observations | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
 | assign_work_order | `core/harness/ontology_engine/builtin_handlers.py` | ✅ | 自动同步 | 已合入 |
 | get_evolve_metrics | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
 | rollback_evolve_proposal | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
@@ -2347,7 +2351,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 164 | 1 | 165 |
+| Harness 执行引擎 | 166 | 1 | 167 |
 | 记忆子系统 | 41 | 0 | 41 |
 | 知识引擎（本体） | 168 | 8 | 176 |
 | RAG 检索 | 49 | 0 | 49 |
@@ -2392,7 +2396,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1420** | **9** | **1429** |
+| **总计** | **1422** | **9** | **1431** |
 
 | **总计** | **1095** | **0** | **1095** |
 
