@@ -225,6 +225,69 @@ def test_evolve_observation_window_and_quality_breach(monkeypatch, tmp_path):
 
     assert get_evolve_proposal(pid)["review_status"] == "stable"
 
+
+def test_sync_evolve_ops_canary_and_quality(monkeypatch, tmp_path):
+    """sync_evolve_ops_signals: quality observe + canary_ok=False rollback."""
+    from core.apps.fde.service.evolve_proposal_gate import (
+        get_evolve_proposal,
+        sync_evolve_ops_signals,
+    )
+
+    home = tmp_path / "h"
+    home.mkdir()
+    monkeypatch.setenv("AIPLAT_HOME", str(home))
+    monkeypatch.setenv("AIPLAT_EVOLVE_QUALITY_DROP_THRESHOLD", "5")
+
+    q = enqueue_evolve_proposal(
+        keys=["model_config.temperature"],
+        proposed_changes={"model_config.temperature": 0.33},
+        summary="ops-sync",
+    )
+    pid = q["proposal_id"]
+    if q["review_status"] == "pending_hitl":
+        approve_evolve_proposal(pid)
+    apply_evolve_proposal(pid)
+    assert get_evolve_proposal(pid)["review_status"] == "observing"
+
+    # first quality sample establishes baseline; no rollback
+    r1 = sync_evolve_ops_signals(quality_score=90.0, canary_ok=True, actor="ops")
+    assert pid in (r1.get("observed") or [])
+    assert pid not in (r1.get("rolled_back") or [])
+
+    # quality drop → auto rollback via sync
+    q2 = enqueue_evolve_proposal(
+        keys=["cache_ttl_seconds"],
+        proposed_changes={"cache_ttl_seconds": 45},
+        summary="ops-breach",
+    )
+    pid2 = q2["proposal_id"]
+    if q2["review_status"] == "pending_hitl":
+        approve_evolve_proposal(pid2)
+    apply_evolve_proposal(pid2)
+    r2 = sync_evolve_ops_signals(
+        quality_score=70.0,
+        quality_baseline=90.0,
+        canary_ok=True,
+        actor="ops",
+    )
+    assert pid2 in (r2.get("rolled_back") or [])
+    assert get_evolve_proposal(pid2)["review_status"] == "rolled_back"
+
+    # canary anomaly rolls back remaining observing
+    q3 = enqueue_evolve_proposal(
+        keys=["model_config.temperature"],
+        proposed_changes={"model_config.temperature": 0.2},
+        summary="canary",
+    )
+    pid3 = q3["proposal_id"]
+    if q3["review_status"] == "pending_hitl":
+        approve_evolve_proposal(pid3)
+    apply_evolve_proposal(pid3)
+    r3 = sync_evolve_ops_signals(canary_ok=False, actor="ops")
+    assert pid3 in (r3.get("rolled_back") or [])
+    assert get_evolve_proposal(pid3)["rollback_reason"] == "canary_anomaly"
+
+
 def test_evolve_reject_increments_hitl_reject(monkeypatch, tmp_path):
     home = tmp_path / "h"
     home.mkdir()

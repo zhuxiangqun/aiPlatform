@@ -3642,6 +3642,7 @@ from core.apps.fde.service.evolve_proposal_gate import (  # noqa: boundary
     reject_evolve_proposal as reject_fde_evolve_proposal,
     rollback_evolve_proposal as rollback_fde_evolve_proposal,
     tick_evolve_observations as tick_fde_evolve_observations,
+    sync_evolve_ops_signals as sync_fde_evolve_ops_signals,
 )
 
 from core.security.skill_signature_gate import is_approval_resolved_approved, get_trusted_skill_pubkeys_map  # v2.5

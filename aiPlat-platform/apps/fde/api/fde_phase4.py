@@ -160,11 +160,64 @@ async def tick_evolve_observations() -> Dict[str, Any]:
     return tick_fde_evolve_observations()
 
 
-class EvolveObserveRequest(BaseModel):
-    actor: str = "system"
-    metric_name: str = "quality_score"
-    metric_value: float = 0.0
-    baseline_value: Optional[float] = None
+class EvolveOpsSyncRequest(BaseModel):
+    """Gathered by platform from Quality Bus / canary — core only receives numbers."""
+    actor: str = "ops_sync"
+    quality_score: Optional[float] = None
+    quality_baseline: Optional[float] = None
+    canary_ok: Optional[bool] = None
+    # When true, platform fills quality/canary from live endpoints
+    use_live_sources: bool = True
+
+
+@router.post("/evolve-proposals/sync-ops", response_model=FdeItemResponse)
+async def sync_evolve_ops(req: EvolveOpsSyncRequest) -> Dict[str, Any]:
+    """Push Quality Bus + canary into observing patches (auto-rollback on breach)."""
+    from core.api.core_facade import sync_fde_evolve_ops_signals
+
+    quality_score = req.quality_score
+    canary_ok = req.canary_ok
+    sources: Dict[str, Any] = {}
+
+    if req.use_live_sources:
+        if quality_score is None:
+            try:
+                from apps.fde.api.fde_quality_summary import fde_quality_summary
+
+                qs = await fde_quality_summary()
+                if isinstance(qs, dict) and qs.get("overall_quality") is not None:
+                    quality_score = float(qs["overall_quality"])
+                    sources["quality"] = {"overall_quality": quality_score, "rating": qs.get("rating")}
+            except Exception as e:
+                sources["quality_error"] = str(e)[:160]
+        if canary_ok is None:
+            try:
+                from core.api.core_facade import get_skill_router
+
+                router_ = get_skill_router()
+                rollout = router_.get_rollout_status() if router_ else []
+                # anomaly: any skill flagged needing rollback / error
+                bad = False
+                if isinstance(rollout, list):
+                    for s in rollout:
+                        if not isinstance(s, dict):
+                            continue
+                        if s.get("needs_rollback") or s.get("rollback_recommended") or s.get("status") in {"failed", "error", "unhealthy"}:
+                            bad = True
+                            break
+                canary_ok = not bad
+                sources["canary"] = {"total": len(rollout) if isinstance(rollout, list) else 0, "ok": canary_ok}
+            except Exception as e:
+                sources["canary_error"] = str(e)[:160]
+                canary_ok = True  # fail-open for canary fetch errors
+
+    result = sync_fde_evolve_ops_signals(
+        quality_score=quality_score,
+        quality_baseline=req.quality_baseline,
+        canary_ok=canary_ok,
+        actor=req.actor,
+    )
+    return {**result, "sources": sources}
 
 
 @router.post("/evolve-proposals/{proposal_id}/approve", response_model=FdeStatusResponse)
@@ -205,6 +258,13 @@ async def apply_evolve(proposal_id: str, req: EvolveReviewRequest) -> Dict[str, 
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
     return {"status": "ok", "message": "observing", "data": rec}
+
+
+class EvolveObserveRequest(BaseModel):
+    actor: str = "system"
+    metric_name: str = "quality_score"
+    metric_value: float = 0.0
+    baseline_value: Optional[float] = None
 
 
 @router.post("/evolve-proposals/{proposal_id}/observe", response_model=FdeStatusResponse)

@@ -3,8 +3,8 @@
 | 字段 | 值 |
 |------|-----|
 | 文档 ID | `FDE-AIFDE-LOOP-2026-09` |
-| 版本 | v0.3 |
-| 状态 | **观测窗+质量自动回滚已落地**；canary 联动仍可选 |
+| 版本 | v0.4 |
+| 状态 | **观测窗 + Quality Bus/canary sync-ops 自动回滚已落地** |
 | 关联 | [`fde-workbench-evolution-plan.md`](../architecture/plans/fde-workbench-evolution-plan.md) Phase 4B · [`FDE_DECISION_RECORD.md`](./FDE_DECISION_RECORD.md) D6 · [`FDE_WORKBENCH_CAPABILITY_LEDGER.md`](./FDE_WORKBENCH_CAPABILITY_LEDGER.md) T15/T16/V06 · `audit_schema.v1.yaml` |
 | 定位 | 把 Evolve 从「能排队」推进到「过审后可受控应用 + 反向 KPI + 观测窗」 |
 | 设计作者 | Oliver Zhu |
@@ -37,12 +37,13 @@
 | `observation_until` + status=`observing` | ✅ | — |
 | tick → `stable` + survival | ✅ | — |
 | 人工 rollback | ✅ | — |
-| quality_score 跌破自动回滚 | ✅ `record_evolve_observation` | canary 自动触发仍缺 |
-| D6 metrics API+UI | ✅ | Quality Bus 直挂采样可选 |
+| quality_score 跌破自动回滚 | ✅ `record_evolve_observation` | — |
+| canary → 自动回滚 | ✅ `sync_evolve_ops_signals` + `POST …/sync-ops` | SkillRouter canary；拉失败 fail-open |
+| D6 metrics API+UI | ✅ | Quality Bus @⑧ + sync-ops |
 | Applied / 观测窗 UI | ✅ EvolutionTab | — |
 | `platform_action:…:evolve_*` 经 Registry | ❌ service 路径 | 可选收敛 |
 
-**结论：** T15/T16/V06 已升 `production`（观测窗闭环）；剩余可选：canary 联动、Registry 审计名。
+**结论：** T15/T16/V06 `production`；Quality Bus + canary sync-ops 已合入。剩余可选：Registry 审计名、更丰富 canary 信号、mean_survival 含 stable 样本。
 
 ---
 
@@ -197,8 +198,8 @@ forbidden_keys:
 | HITL / pending_approvals | approved 前置（客户 Action 已有；Evolve 现用文件队列） |
 | ActionStore.action_audit | 审计 |
 | Eval 门 | evaluated 前置（`evolve_proposal` + change_surface） |
-| canary API | 观测窗数据源 |
-| Quality Bus | quality_score 数据源（⑧ 现未挂） |
+| canary API | ✅ sync-ops → `canary_anomaly` 回滚 |
+| Quality Bus | ✅ ⑧ 展示 + sync-ops → quality_score |
 
 ---
 
@@ -229,7 +230,7 @@ forbidden_keys:
 2. ~~HITL 队列接通~~
 3. ~~apply 生成 config patch~~
 4. ~~观测窗 + observation 记录 + observation_until~~
-5. ~~回滚触发（quality 阈值）；canary 仍可选~~
+5. ~~回滚触发（quality 阈值 + canary sync-ops）~~
 6. ~~UI Applied 列表 + 观测态~~；台账 T15/T16/V06 → production
 
 ---
@@ -254,3 +255,4 @@ forbidden_keys:
 | v0.1 | 2026-09-14 | 初稿（设计） |
 | v0.2 | 2026-09-15 | 入库；增 §0.1 现状对照 |
 | v0.3 | 2026-09-15 | 观测窗/stable/quality 自动回滚/Applied UI 已合入 |
+| v0.4 | 2026-09-15 | Quality Bus + canary → sync-ops 自动回滚；⑧ 消费 quality-summary |

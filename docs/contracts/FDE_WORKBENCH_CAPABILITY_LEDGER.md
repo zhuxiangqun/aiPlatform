@@ -3,7 +3,7 @@
 | 字段 | 值 |
 |------|-----|
 | 文档 ID | `FDE-LEDGER-2026-09` |
-| 版本 | v1.2 |
+| 版本 | v1.3 |
 | 模板 | [`FDE_CAPABILITY_LEDGER_TEMPLATE.md`](./FDE_CAPABILITY_LEDGER_TEMPLATE.md) |
 | 关联 | [`FDE_WORKBENCH_CONTRACT.md`](./FDE_WORKBENCH_CONTRACT.md) v1.7 · [`FDE_DECISION_RECORD.md`](./FDE_DECISION_RECORD.md) · [`FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md`](./FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md) |
 | 维护人 | Oliver Zhu |
@@ -42,13 +42,13 @@
 | T07 | ⑤ 交付 | 平台离线包 | `production` | `manual:` `/package*` + honesty 文案 | Tab⑤ | ≠客户应用包 | Oliver Zhu | 0 |
 | T08 | ⑤ 交付 | 交付 session + HITL | `production` | `test:` `test_fde_phase1b_delivery*` · `done_skipped_llm` | Tab⑤ | 非 HITL 不跑 LLM（诚实） | Oliver Zhu | 1 |
 | T09 | ⑤ 交付 | Builder 链接 + Eval | `production` | `test:` `test_fde_phase3*` · eval_blocked | Tab⑤ | 工厂失败需回工厂日志 | Oliver Zhu | 3 |
-| T10 | ⑥ 护栏 | canary 状态 / 回滚 | `production` | `manual:` `/canary/status` · rollback | Tab⑥ | 未汇入 ⑧ KPI 卡 | Oliver Zhu | 0 |
+| T10 | ⑥ 护栏 | canary 状态 / 回滚 | `production` | `manual:` `/canary/status` · rollback · ⑧ KPI | Tab⑥+⑧ | sync-ops 可 canary 回滚 | Oliver Zhu | 0 |
 | T11 | ⑥b 预检 | 安全 dry-run | `production` | `test:` phase4 preflight · Facade dry-run | Tab⑥b | 不改写 severity | Oliver Zhu | 4A |
 | T12 | ⑦ 验收 | 签收硬门 | `production` | `test:` `test_preflight_signoff_*` · HTTP 409 | Tab⑦ | checklist 其他项可 pending | Oliver Zhu | 4A |
 | T13 | ⑦ 验收 | 客户 Action 执行 | `production` | `test:` `test_fde_phase2*` · `benchmark:` bench_p95 | Tab⑦ | alias `accept_order` 已 deprecated | Oliver Zhu | 2 |
 | T14 | ⑧ 运营 | Evolve 队列 | `production` | `test:` enqueue/list · EvolutionTab | Tab⑧ | — | Oliver Zhu | 4B |
-| T15 | ⑧ 运营 | 受控 apply / rollback | `production` | `test:` observing + tick stable + quality breach | Tab⑧ | canary 自动触发未接；Registry platform_action 审计名可选 | Oliver Zhu | 4B |
-| T16 | ⑧ 运营 | D6 反向指标 + 观测窗 | `production` | `test:` metrics + survival on stable/rollback · Applied UI | Tab⑧ | Quality Bus 未直挂观测采样 | Oliver Zhu | 4B |
+| T15 | ⑧ 运营 | 受控 apply / rollback | `production` | `test:` observing + tick + quality/canary sync-ops | Tab⑧ | Registry platform_action 审计名可选 | Oliver Zhu | 4B |
+| T16 | ⑧ 运营 | D6 反向指标 + 观测窗 | `production` | `test:` metrics + survival · sync-ops · Applied UI | Tab⑧ | Action 成功率仍 roadmap | Oliver Zhu | 4B |
 | T17 | ⑨ 快速认知 | 48h 行业认知 | `pilot` | `manual:` rapid_insight 面板 | Tab⑨ | 与主交付链弱耦合 | Oliver Zhu | 0 |
 
 ---
@@ -62,7 +62,7 @@
 | V03 | Phase 2 | lock-service accept_order | `production` | `test:` phase2* · `benchmark:` 200p95 · `contract:` ALIAS_DEPRECATION | Tab⑦ | 旧 alias 调用方 → not registered | Oliver Zhu | 2 |
 | V04 | Phase 3 | Builder 产物链接 | `production` | `test:` phase3* | Tab⑤ | — | Oliver Zhu | 3 |
 | V05 | Phase 4A | 安全预检 + 签收硬门 | `production` | `test:` preflight_signoff · acceptance 409 | Tab⑥b/⑦ | — | Oliver Zhu | 4A |
-| V06 | Phase 4B | Evolve 受控应用 | `production` | `test:` apply→observing→stable/rollback · quality breach · Applied UI | Tab⑧ | canary 联动仍可选 | Oliver Zhu | 4B |
+| V06 | Phase 4B | Evolve 受控应用 | `production` | `test:` apply→observing→stable/rollback · quality/canary sync-ops · Applied UI | Tab⑧ | Registry 审计名可选 | Oliver Zhu | 4B |
 | V07 | Phase 5 | 第二客户域可复制 | `pilot` | `test:` `test_fde_service_domain_assign` · seed yaml · `scan:` domain_literals v1.1 | Tab①/⑦ | Action e2e 过；**非**第二客户全旅程现场报告 | Oliver Zhu | 5 |
 
 ---
@@ -87,9 +87,9 @@
 
 | KPI | 数据源 | 状态 | 替代方案 | Owner |
 |-----|--------|------|----------|-------|
-| 质量分 | Quality Bus `/quality-summary` | `roadmap`（无 Tab 消费） | 现用 SLA `scores.total` 或 `—` | Oliver Zhu |
-| Action 成功率 | ActionStore.action_audit | `roadmap` | 无 | Oliver Zhu |
-| canary 状态 | `/canary/status` | `real`@⑥ · 未汇入⑧ | ⑧ 卡挂载 | Oliver Zhu |
+| 质量分 | Quality Bus `/quality-summary` | `real`@⑧ | SLA `scores.total` 回退 | Oliver Zhu |
+| Action 成功率 | ActionStore.action_audit | `roadmap` | 无现成 FDE 聚合端点 | Oliver Zhu |
+| canary 状态 | `/canary/status` | `real`@⑥+⑧ | sync-ops → canary_anomaly 回滚 | Oliver Zhu |
 | Evolve reject_rate | `get_evolve_metrics` | `real` | — | Oliver Zhu |
 | Evolve rollback_rate | 同上 | `real` | — | Oliver Zhu |
 | Evolve mean_survival | survival_seconds on rollback | `real`（仅回滚样本） | 观测窗结束也记存活 → 闭环设计 | Oliver Zhu |
@@ -105,7 +105,7 @@
 | `POST …/heal` | — | 无工作台消费 | 运维入口登记或 deprecate | Oliver Zhu |
 | `/bootstrap*` | 演示 | 无工作台消费 | 运维/演示 CLI | Oliver Zhu |
 | `/trends*` | — | 无工作台消费 | 运维或并入⑧ | Oliver Zhu |
-| `/quality-summary` | — | 无工作台消费 | **P1 接⑧** | Oliver Zhu |
+| `/quality-summary` | Tab⑧ | **已消费**（展示 + sync-ops） | 保留 | Oliver Zhu |
 | `/sessions/compare` | — | 无工作台消费 | 挂③或归档 | Oliver Zhu |
 | `POST …/network/evolve` | AgentNetworkPanel | 隔离面板 | **勿与 4B Evolve 混名** | Oliver Zhu |
 
@@ -133,7 +133,7 @@
 
 | 台账行 | 现状 | 闭环设计推进后目标 |
 |--------|------|-------------------|
-| T15 / T16 / V06 | **`production`（2026-09-15）**：observing→stable tick；quality_score 跌破阈值自动回滚；Applied 列表 UI | 可选：canary 自动触发、Registry `platform_action:…:evolve_*` 审计名 |
+| T15 / T16 / V06 | **`production`**：observing→stable；Quality Bus + canary **sync-ops** 自动回滚；Applied UI | 可选：Registry `platform_action:…:evolve_*` 审计名；mean_survival 含 stable |
 
 **落地顺序（采纳设计建议）：** 先维持本台账更新 → 再实施 [`FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md`](./FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md)。
 
@@ -146,3 +146,4 @@
 | 2026-09-15 | Oliver Zhu | v1.0 初填（叙述型） |
 | 2026-09-15 | Oliver Zhu | v1.1 对齐模板 ID（T/V/E）+ 填 §2/§4；挂闭环设计 |
 | 2026-09-15 | Oliver Zhu | v1.2 T15/T16/V06 → production（观测窗+质量自动回滚） |
+| 2026-09-15 | Oliver Zhu | v1.3 Quality Bus + canary sync-ops；§6 quality-summary 已消费 |

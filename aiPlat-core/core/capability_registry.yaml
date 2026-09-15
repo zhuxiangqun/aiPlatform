@@ -2034,6 +2034,10 @@ domains:
         type: function
         signature: "append observation; auto-rollback on quality_score breach"
         module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
+      - symbol: sync_evolve_ops_signals
+        type: function
+        signature: "push quality_score/canary_ok into observing patches; canary_ok=False rolls back"
+        module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
       - symbol: list_evolve_applied
         type: function
         signature: "list observing/stable/applied/rolled_back evolve proposals"

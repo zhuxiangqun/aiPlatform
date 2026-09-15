@@ -411,6 +411,89 @@ def tick_evolve_observations(actor: str = "system") -> Dict[str, Any]:
     }
 
 
+def sync_evolve_ops_signals(
+    *,
+    quality_score: Optional[float] = None,
+    quality_baseline: Optional[float] = None,
+    canary_ok: Optional[bool] = None,
+    actor: str = "ops_sync",
+) -> Dict[str, Any]:
+    """Push Quality Bus / canary signals into observing patches (design §5/§6).
+
+    - quality_score: recorded per observing proposal; breach may auto-rollback
+    - canary_ok=False: rollback all observing with reason=canary_anomaly
+    Core stays free of platform imports — caller gathers scores.
+    """
+    observing = [p for p in list_evolve_proposals(100) if p.get("review_status") == "observing"]
+    observed: List[str] = []
+    rolled: List[str] = []
+    details: List[Dict[str, Any]] = []
+
+    if canary_ok is False:
+        for rec in observing:
+            pid = rec.get("proposal_id") or ""
+            try:
+                out = rollback_evolve_proposal(pid, actor=actor, reason="canary_anomaly")
+                rolled.append(pid)
+                details.append({"proposal_id": pid, "action": "canary_rollback", "status": out.get("review_status")})
+            except Exception as e:
+                details.append({"proposal_id": pid, "action": "canary_rollback_failed", "error": str(e)[:120]})
+        return {
+            "observing_before": len(observing),
+            "observed": observed,
+            "rolled_back": rolled,
+            "details": details,
+            "canary_ok": False,
+            "quality_score": quality_score,
+        }
+
+    if quality_score is not None:
+        # Refresh list after possible canary path (none here)
+        observing = [p for p in list_evolve_proposals(100) if p.get("review_status") == "observing"]
+        for rec in observing:
+            pid = rec.get("proposal_id") or ""
+            baseline = quality_baseline
+            if baseline is None:
+                # Prefer first quality_score sample as baseline if present
+                for o in rec.get("observations") or []:
+                    if isinstance(o, dict) and o.get("metric_name") == "quality_score" and o.get("baseline_value") is not None:
+                        baseline = float(o["baseline_value"])
+                        break
+                    if isinstance(o, dict) and o.get("metric_name") == "quality_score":
+                        baseline = float(o.get("metric_value"))
+                        break
+                if baseline is None:
+                    baseline = float(quality_score)  # first sample: no drop
+                    # store as baseline-only observe without breach
+            try:
+                out = record_evolve_observation(
+                    pid,
+                    metric_name="quality_score",
+                    metric_value=float(quality_score),
+                    baseline_value=float(baseline),
+                    actor=actor,
+                )
+                observed.append(pid)
+                if isinstance(out, dict) and out.get("review_status") == "rolled_back":
+                    rolled.append(pid)
+                details.append({
+                    "proposal_id": pid,
+                    "action": "quality_observe",
+                    "status": out.get("review_status") if isinstance(out, dict) and "review_status" in out else "ok",
+                })
+            except Exception as e:
+                details.append({"proposal_id": pid, "action": "quality_observe_failed", "error": str(e)[:120]})
+
+    return {
+        "observing_before": len(observing),
+        "observed": observed,
+        "rolled_back": rolled,
+        "details": details,
+        "canary_ok": canary_ok,
+        "quality_score": quality_score,
+    }
+
+
 def get_evolve_metrics() -> Dict[str, Any]:
     """D6 reverse metrics — pass_rate is reference only, never sole KPI."""
     raw = _load_metrics()

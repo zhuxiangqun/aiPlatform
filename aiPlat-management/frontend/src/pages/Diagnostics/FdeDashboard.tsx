@@ -915,6 +915,8 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
   const [evolveList, setEvolveList] = useState<any[]>([]);
   const [evolveMetrics, setEvolveMetrics] = useState<any>(null);
   const [evolveApplied, setEvolveApplied] = useState<any[]>([]);
+  const [qualityBus, setQualityBus] = useState<any>(null);
+  const [canarySnap, setCanarySnap] = useState<any>(null);
 
   useEffect(() => { fetch(API('/dashboard') + (namespace ? `?namespace=${namespace}` : '')).then(r => r.json()).then(setData); }, []);
   // v2.7: Fetch scoring engine alerts for this domain
@@ -930,6 +932,11 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
   useEffect(() => {
     fetch(API('/extractions/pending')).then(r => r.json())
       .then(d => setAuditStats(d)).catch(() => {});
+  }, []);
+  // P1 KPI: Quality Bus + canary (real sources for ⑧)
+  useEffect(() => {
+    fetch(API('/quality-summary')).then(r => r.json()).then(setQualityBus).catch(() => {});
+    fetch(API('/canary/status')).then(r => r.json()).then(setCanarySnap).catch(() => {});
   }, []);
 
   const loadEvolve = useCallback(async () => {
@@ -962,6 +969,30 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
       await loadEvolve();
     } catch (e: any) {
       toast?.error?.(e?.message || 'tick 失败');
+    } finally {
+      setEvolveBusy(false);
+    }
+  };
+
+  const syncOpsSignals = async () => {
+    setEvolveBusy(true);
+    try {
+      const r = await fetch(API('/evolve-proposals/sync-ops'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actor: 'fde_engineer', use_live_sources: true }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.detail || `HTTP ${r.status}`);
+      const rolled = (d.rolled_back || []).length;
+      const obs = (d.observed || []).length;
+      toast?.success?.(rolled ? `运维同步：观测 ${obs}，回滚 ${rolled}` : `运维同步：观测 ${obs}`);
+      // refresh KPI sources
+      fetch(API('/quality-summary')).then(r => r.json()).then(setQualityBus).catch(() => {});
+      fetch(API('/canary/status')).then(r => r.json()).then(setCanarySnap).catch(() => {});
+      await loadEvolve();
+    } catch (e: any) {
+      toast?.error?.(e?.message || 'sync-ops 失败');
     } finally {
       setEvolveBusy(false);
     }
@@ -1060,7 +1091,7 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
 
   if (!data) return <div className="text-gray-500 text-sm p-4">加载中…</div>;
   // Phase 0: hide empty stub KPIs (pending_decisions / trace_anomalies / training always stub).
-  // Only surface collectors that can return real data, plus honesty banner.
+  // Quality Bus + canary are live on ⑧; Action success still roadmap.
   const cards: Array<{ label: string; value: string | number; color: string }> = [];
   const signals = data.signal_alerts?.length ?? 0;
   if (signals > 0) {
@@ -1069,9 +1100,24 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
   if (scores?.violations?.length > 0) {
     cards.push({ label: 'SLA违约', value: scores.violations.length, color: 'text-red-400' });
   }
-  cards.push(
-    { label: '质量评分', value: scores?.total !== undefined ? scores.total : '—', color: 'text-green-400' },
-  );
+  const qOverall = qualityBus?.overall_quality;
+  cards.push({
+    label: '质量分(Bus)',
+    value: qOverall !== undefined && qOverall !== null ? qOverall : (scores?.total !== undefined ? scores.total : '—'),
+    color: typeof qOverall === 'number' && qOverall < 40 ? 'text-red-400' : 'text-green-400',
+  });
+  if (qualityBus?.rating) {
+    cards.push({ label: '质量评级', value: String(qualityBus.rating), color: 'text-cyan-300' });
+  }
+  const canaryTotal = canarySnap?.total_skills ?? (Array.isArray(canarySnap?.rollout) ? canarySnap.rollout.length : null);
+  const canaryBad = Array.isArray(canarySnap?.rollout)
+    ? canarySnap.rollout.some((s: any) => s?.needs_rollback || s?.rollback_recommended || ['failed', 'error', 'unhealthy'].includes(s?.status))
+    : false;
+  cards.push({
+    label: 'Canary',
+    value: canaryTotal === null ? '—' : (canaryBad ? `异常/${canaryTotal}` : `ok/${canaryTotal}`),
+    color: canaryBad ? 'text-red-400' : 'text-green-400',
+  });
   const pendingCount = auditStats?.pending?.length || auditStats?.count || 0;
   cards.push(
     { label: '待确认抽取', value: pendingCount, color: pendingCount > 0 ? 'text-yellow-400' : 'text-gray-500' },
@@ -1083,7 +1129,8 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
   return (
     <div className="space-y-4">
       <div className="rounded border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-xs text-amber-200/90">
-        运营 KPI 部分采集未接线（待处理决策 / 追踪异常 / 训练状态为 stub，已隐藏）。人审通过率仅参考，不得单独作 KPI（D6）。
+        Quality Bus + Canary 已接⑧；「同步运维信号」可对 observing 提案写入质量分 / canary 异常自动回滚。
+        Action 成功率仍 roadmap。人审通过率仅参考，不得单独作 KPI（D6）。stub（待处理决策 / 追踪异常 / 训练）已隐藏。
       </div>
       <div className="grid grid-cols-4 gap-3">
         {cards.map(c => (
@@ -1129,6 +1176,7 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
             <Button variant="ghost" size="sm" onClick={evaluateEvolve} loading={evolveBusy}>评估门</Button>
             <Button variant="default" size="sm" onClick={enqueueEvolve} loading={evolveBusy}>入人审队列</Button>
             <Button variant="ghost" size="sm" onClick={tickObservations} loading={evolveBusy}>推进观测窗</Button>
+            <Button variant="ghost" size="sm" onClick={syncOpsSignals} loading={evolveBusy}>同步运维信号</Button>
             <Button variant="ghost" size="sm" onClick={loadEvolve}><RefreshCw className="w-3.5 h-3.5 mr-1" />刷新</Button>
           </div>
           {evolveEval && (
