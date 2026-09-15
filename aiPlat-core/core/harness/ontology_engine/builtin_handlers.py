@@ -113,8 +113,11 @@ async def set_entity_state(entity: Dict[str, Any], params: Dict[str, Any], actor
     """Domain-agnostic state transition. Caller/contract supplies target via new_state/target_state.
 
     Used by customer_action lifecycle seeds (assign / start / complete).
+    Writes evidence relations expected by lock-service YAML transitions:
+      assigned → assigned_to; in_progress → visited_at; completed → installed_by.
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
+    from datetime import datetime, timezone
 
     entity_id = entity.get("id") or entity.get("entity_id", "")
     domain_id = entity.get("domain_id") or entity.get("domain") or params.get("domain_id", "")
@@ -125,21 +128,49 @@ async def set_entity_state(entity: Dict[str, Any], params: Dict[str, Any], actor
         raise ValueError("new_state or target_state is required")
     g = GraphIndex.load(domain_id)
     g.update_entity_property(entity_id, "state", new_state)
+    # Dual-write status for TBox required_fields that still say "status"
+    g.update_entity_property(entity_id, "status", new_state)
     for key in ("assigned_technician", "technician_id", "completion_notes", "evidence_ref"):
         if params.get(key) is not None:
             g.update_entity_property(entity_id, key, params[key])
-    if params.get("installed_by"):
-        # Evidence relation for complete_install (LS-A2)
+
+    tech = (
+        params.get("assigned_technician")
+        or params.get("technician_id")
+        or params.get("installed_by")
+        or ""
+    )
+    if tech and tech not in g._nodes:
+        g.add_entity(str(tech), f"Technician {tech}", "安装师傅", source_doc_id="action-auto")
+
+    def _rel(name: str, target: str, label: str) -> None:
+        if not target:
+            return
         try:
-            g.add_relation(
-                entity_id,
-                str(params["installed_by"]),
-                "installed_by",
-                relation_label="安装完成",
-                confidence=0.95,
-            )
+            g.add_relation(entity_id, str(target), name, relation_label=label, confidence=0.95)
         except Exception as e:
-            logger.debug("installed_by relation skipped: %s", e)
+            logger.warning("%s relation failed %s→%s: %s", name, entity_id, target, e, exc_info=True)
+
+    if new_state == "assigned" and tech:
+        _rel("assigned_to", tech, "派单给")
+    if new_state == "in_progress":
+        visit_target = tech or entity_id
+        if visit_target not in g._nodes and visit_target == entity_id:
+            pass  # self-edge allowed if node exists
+        elif visit_target not in g._nodes:
+            g.add_entity(str(visit_target), f"Visit {visit_target}", "安装师傅", source_doc_id="action-auto")
+        _rel("visited_at", visit_target if visit_target in g._nodes else entity_id, "到场")
+        g.update_entity_property(
+            entity_id, "visited_at", datetime.now(timezone.utc).isoformat()
+        )
+    if params.get("installed_by") or (new_state == "completed" and tech):
+        _rel("installed_by", params.get("installed_by") or tech, "安装完成")
+
+    try:
+        g.save()
+    except Exception as e:
+        logger.debug("GraphIndex.save after set_entity_state: %s", e)
+
     return {
         "new_state": new_state,
         "updated_by": actor,

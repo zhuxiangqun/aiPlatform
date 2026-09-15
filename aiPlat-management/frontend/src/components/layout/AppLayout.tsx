@@ -161,8 +161,10 @@ const AppLayout: React.FC = () => {
 
    const isActive = (path: string) => {
      if (!path) return false;
-     // Exact match
+     // Exact match (path + search)
      if (location.pathname + location.search === path) return true;
+     // Pathname match ignoring query (shell pages use ?tab=)
+     if (!path.includes('?') && location.pathname === path) return true;
      // Handle /platform/kb?tab=xxx matching
      if (path.includes('?tab=')) {
        const keyPath = path.split('?')[0];

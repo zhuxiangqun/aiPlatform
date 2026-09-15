@@ -3,7 +3,7 @@
 | 字段 | 值 |
 |------|-----|
 | 文档 ID | `ONTOLOGY-COMPLETENESS-2026-09` |
-| 版本 | v1.1 |
+| 版本 | v1.2 |
 | 状态 | 生效 |
 | 关联 | [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_RUNTIME_CLOSEOUT.md`](./ONTOLOGY_RUNTIME_CLOSEOUT.md) · [`FDE_WORKBENCH_CAPABILITY_LEDGER.md`](./FDE_WORKBENCH_CAPABILITY_LEDGER.md) |
 | 维护人 | Oliver Zhu |
@@ -98,9 +98,23 @@ pytest aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_ontology_com
 
 ---
 
-## 5. 变更记录
+## 5. 管理端 UI 入口映射（双轨）
+
+侧边栏「知识」组仅两个一级入口（导航精简，不砍底层能力）：
+
+| 入口 | 路由 | Tab | 权威 |
+|------|------|-----|------|
+| **业务本体** | `/knowledge/business` | 工厂流水线 · 域管理 · 编辑器 | 业务轨（域 YAML + GraphIndex） |
+| **知识库** | `/knowledge/library` | 向量 · Wiki · Vault（+ 评估/健康） | 检索轨（非业务权威） |
+
+旧路径（`/knowledge-factory`、`/infra/ontology`、`/ontology-editor`、`/platform/kb/*`）重定向到上表。详见 [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) §UI。
+
+---
+
+## 6. 变更记录
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | v1.0 | 2026-09-15 | 确认 A+B 定义；OCS 六维；挂 Phase A–D |
 | v1.1 | 2026-09-15 | CI ratchet≥80；seed 回退；D2 前端域表；unified_customer 运行时接线 |
+| v1.2 | 2026-09-15 | 管理端双轨入口：业务本体 / 知识库 |

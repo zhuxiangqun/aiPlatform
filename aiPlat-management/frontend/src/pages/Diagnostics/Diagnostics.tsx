@@ -566,7 +566,7 @@ const Diagnostics: React.FC = () => {
                   {auditSummary.total_entities} 实体
                 </Badge>
               </div>
-              <Link to="/infra/ontology" className="text-xs text-blue-400 hover:underline">本体管理</Link>
+              <Link to="/knowledge/business?tab=domains" className="text-xs text-blue-400 hover:underline">本体管理</Link>
             </div>
             <p className="text-xs text-gray-500 mt-1">
               {auditSummary.domains_scanned} 个域审计 — {auditSummary.total_orphans} 个孤儿类（YAML中有定义但无实体）
@@ -1029,7 +1029,7 @@ const Diagnostics: React.FC = () => {
             ))}
           </div>
           <div className="mt-2 text-right">
-            <Link to="/platform/kb?tab=eval" className="text-blue-400 hover:text-blue-300 text-xs">
+            <Link to="/knowledge/library?tab=eval" className="text-blue-400 hover:text-blue-300 text-xs">
               查看趋势 →
             </Link>
           </div>

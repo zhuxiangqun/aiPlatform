@@ -1413,7 +1413,7 @@ const OntologyManager: React.FC = () => {
               instanceData.instances.map((inst: any, i: number) => (
                 <div key={i} className="p-2 rounded border border-dark-border/30 bg-dark-bg text-xs">
                   <div className="flex items-center gap-2 min-w-0">
-                    <a href={`/platform/kb?activeTab=wiki&category=${encodeURIComponent(inst.category || '')}`} target="_blank"
+                    <a href={`/knowledge/library?tab=wiki&category=${encodeURIComponent(inst.category || '')}`} target="_blank"
                       className="text-gray-200 font-medium hover:text-primary truncate max-w-[300px]">
                       {inst.entity_name || inst.wiki_title}
                     </a>

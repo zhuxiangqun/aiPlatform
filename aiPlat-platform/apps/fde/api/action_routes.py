@@ -68,6 +68,78 @@ async def list_actions(
         raise HTTPException(status_code=500, detail=str(e)[:300])
 
 
+@router.get("/graph/entities")
+async def list_graph_entities(
+    domain: str = Query(..., description="Domain ID"),
+    class_name: str = Query("", alias="class", description="Entity class label"),
+    limit: int = Query(50, ge=1, le=200),
+):
+    """List GraphIndex entities (for AcceptTab picker / live state)."""
+    try:
+        from core.api.core_facade import GraphIndex
+        g = GraphIndex.load(domain)
+        nodes = g.get_entities_by_class(class_name) if class_name else list(g._nodes.values())
+        out = []
+        for n in nodes[:limit]:
+            meta = n.metadata or {}
+            out.append({
+                "entity_id": n.entity_id,
+                "name": n.entity_name,
+                "class": n.class_name,
+                "state": meta.get("state") or meta.get("status") or "",
+            })
+        return {"domain": domain, "entities": out, "count": len(out)}
+    except Exception as e:
+        logger.error("list_graph_entities failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.post("/graph/entities")
+async def create_graph_entity(body: Dict[str, Any]):
+    """Create a demo InstallOrder (and optional Technician) in GraphIndex.
+
+    Body:
+      domain_id — default lock-service
+      class_name — default 安装工单
+      entity_id — optional; auto IO-DEMO-xxx
+      name — display name
+      state — default pending
+      with_technician — bool, also seed TECH-DEMO-001
+    """
+    domain_id = str(body.get("domain_id") or "lock-service")
+    class_name = str(body.get("class_name") or "安装工单")
+    state = str(body.get("state") or "pending")
+    name = str(body.get("name") or "演示安装工单")
+    with_tech = bool(body.get("with_technician", True))
+    entity_id = str(body.get("entity_id") or "").strip()
+    if not entity_id:
+        import time
+        entity_id = f"IO-DEMO-{int(time.time()) % 100000:05d}"
+
+    try:
+        from core.api.core_facade import GraphIndex
+        GraphIndex._loaded_instances.clear()
+        g = GraphIndex.load(domain_id)
+        tech_id = str(body.get("technician_id") or "TECH-DEMO-001")
+        if with_tech:
+            g.add_entity(tech_id, "演示安装师傅", "安装师傅", source_doc_id="ui-demo")
+        g.add_entity(entity_id, name, class_name, source_doc_id="ui-demo")
+        g.add_entity_property(entity_id, "state", state)
+        g.add_entity_property(entity_id, "status", state)
+        g.save()
+        return {
+            "status": "created",
+            "domain_id": domain_id,
+            "entity_id": entity_id,
+            "class": class_name,
+            "state": state,
+            "technician_id": tech_id if with_tech else None,
+        }
+    except Exception as e:
+        logger.error("create_graph_entity failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
 @router.post("/actions/execute")
 async def execute_action(body: Dict[str, Any]):
     """Execute a registered action.

@@ -79,6 +79,25 @@ def test_ocs_lock_service_pilot_or_better(aiplat_home):
     assert r["dimensions"]["C4"] > 0
 
 
+def test_ui_demo_create_install_order_abox(aiplat_home):
+    """Mirrors POST /fde/graph/entities — UI can mint pending InstallOrder + Technician."""
+    GraphIndex._loaded_instances.clear()
+    g = GraphIndex.load(DOMAIN)
+    tech_id = "TECH-DEMO-001"
+    entity_id = "IO-DEMO-UI-1"
+    g.add_entity(tech_id, "演示安装师傅", "安装师傅", source_doc_id="ui-demo")
+    g.add_entity(entity_id, "演示安装工单", "安装工单", source_doc_id="ui-demo")
+    g.add_entity_property(entity_id, "state", "pending")
+    g.add_entity_property(entity_id, "status", "pending")
+    g.save()
+    GraphIndex._loaded_instances.clear()
+    g2 = GraphIndex.load(DOMAIN)
+    ents = g2.get_entities_by_class("安装工单")
+    assert any(n.entity_id == entity_id for n in ents)
+    assert (g2.get_node(entity_id).metadata or {}).get("state") == "pending"
+    assert g2.get_node(tech_id) is not None
+
+
 def test_ocs_lock_service_seed_ratchet_complete(tmp_path, monkeypatch):
     """CI ratchet: workspace seed lock-service + minimal ABox ⇒ OCS ≥ 80."""
     import shutil
@@ -168,6 +187,68 @@ async def test_lifecycle_assign_requires_accepted(aiplat_home):
         _bypass_approval=True,
     )
     assert ok.get("status") == "executed", ok
+    GraphIndex._loaded_instances.clear()
+    g2 = GraphIndex.load(DOMAIN)
+    node = g2.get_node("IO-1")
+    assert (node.metadata or {}).get("state") == "assigned"
+    outs = getattr(node, "out_edges", None) or getattr(node, "edges", None) or []
+    # GraphNode stores outgoing in out_edges list of GraphEdge
+    rel_names = []
+    if outs:
+        for e in outs:
+            rel_names.append(getattr(e, "relation_name", "") or getattr(e, "name", ""))
+    else:
+        # fallback: scan internal structure
+        for e in getattr(g2, "_edges", []) or []:
+            src = getattr(e, "source_id", None) or (e[0] if isinstance(e, tuple) else None)
+            if src == "IO-1":
+                rel_names.append(getattr(e, "relation_name", "") or "")
+    assert "assigned_to" in rel_names, f"expected assigned_to edge, got {rel_names}"
+
+
+@pytest.mark.asyncio
+async def test_lifecycle_full_chain_writes_relations(aiplat_home):
+    """pending→accepted→assigned→in_progress→completed with evidence relations."""
+    store = AsyncMock()
+    store.insert_audit = AsyncMock(return_value="a")
+    reg = AsyncActionRegistry(store=store)
+    register_all(reg)
+    GraphIndex._loaded_instances.clear()
+    g = GraphIndex.load(DOMAIN)
+    g.update_entity_property("IO-1", "state", "pending")
+    g.save()
+    GraphIndex._loaded_instances.clear()
+
+    async def run(aid, params):
+        return await reg.execute(
+            aid, (DOMAIN, "IO-1"), params, actor="t", role="agent", _bypass_approval=True
+        )
+
+    r1 = await run("customer_action:lock-service:accept_order", {})
+    assert r1.get("status") == "executed", r1
+    r2 = await run(
+        "customer_action:lock-service:assign_technician",
+        {"new_state": "assigned", "assigned_technician": "T-1"},
+    )
+    assert r2.get("status") == "executed", r2
+    r3 = await run(
+        "customer_action:lock-service:start_install",
+        {"new_state": "in_progress", "assigned_technician": "T-1"},
+    )
+    assert r3.get("status") == "executed", r3
+    r4 = await run(
+        "customer_action:lock-service:complete_install",
+        {"new_state": "completed", "installed_by": "T-1"},
+    )
+    assert r4.get("status") == "executed", r4
+    GraphIndex._loaded_instances.clear()
+    g = GraphIndex.load(DOMAIN)
+    assert (g.get_node("IO-1").metadata or {}).get("state") == "completed"
+    n = g.get_node("IO-1")
+    names = [getattr(e, "relation_name", "") for e in (getattr(n, "out_edges", None) or [])]
+    assert "assigned_to" in names
+    assert "visited_at" in names
+    assert "installed_by" in names
 
 
 @pytest.mark.asyncio

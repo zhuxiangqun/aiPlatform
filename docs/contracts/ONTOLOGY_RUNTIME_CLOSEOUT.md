@@ -59,7 +59,7 @@ PYTHONPATH=aiPlat-core python3 -m pytest \
 | ID | 说明 | 建议 |
 |----|------|------|
 | D1 | `confirm_extraction` → 自动/一键 enqueue draft proposal | **已关闭**（`PendingExtractionStore.confirm` + `_enqueue_ontology_proposal`） |
-| D2 | 前端域默认值 | **已关闭**：KnowledgeFactory=`lock-service`；BranchPanel/FDE 示例=`fde-delivery`（平台交付跟踪，有意保留）；见 COMPLETENESS §4 |
+| D2 | 前端域默认值 | **已关闭**：KnowledgeFactory=`lock-service`；BranchPanel/FDE 示例=`fde-delivery`（平台交付跟踪，有意保留）；管理端双轨入口见 COMPLETENESS §5 |
 | D3 | Wiki 全局 AXIOMS 与域公理并存 | 业务路径继续禁止只读全局 |
 | D4 | `unified_customer` 运行时消费者 | **已关闭**：`server.py` startup + `extraction_routes` candidates/resolve 调 `seed_cross_domain_config`；CoreFacade 导出 |
 

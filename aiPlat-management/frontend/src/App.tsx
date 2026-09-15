@@ -22,7 +22,6 @@ const Alerts = lazy(() => import('./pages/Alerts/Alerts'));
 const InfraNodes = lazy(() => import('./pages/Infra/Nodes/Nodes'));
 const InfraModels = lazy(() => import('./pages/Infra/Models/Models'));
 const InfraFineTune = lazy(() => import('./pages/Infra/FineTune/FineTune'));
-const InfraOntology = lazy(() => import('./pages/Infra/Ontology/OntologyManager'));
 const InfraServices = lazy(() => import('./pages/Infra/Services/Services'));
 const InfraScheduler = lazy(() => import('./pages/Infra/Scheduler/Scheduler'));
 const InfraStorage = lazy(() => import('./pages/Infra/Storage/Storage'));
@@ -64,7 +63,6 @@ const PlatformAuth = lazy(() => import('./pages/Platform/Auth/Auth'));
 const PlatformTenant = lazy(() => import('./pages/Platform/Tenant/Tenant'));
 const AppChannels = lazy(() => import('./pages/App/Channels/Channels'));
 const AppSessions = lazy(() => import('./pages/App/Sessions/Sessions'));
-const AppKnowledgeBase = lazy(() => import('./pages/Platform/KnowledgeBase'));
 const AppMaterialsChat = lazy(() => import('./pages/Platform/KnowledgeBase/MaterialsChat'));
 const AppTeamAssembly = lazy(() => import('./pages/App/Builder/TeamAssemblyPage'));
 const AgentInsightPage = lazy(() => import('./pages/App/Builder/AgentInsightPage'));
@@ -113,9 +111,9 @@ const RepairCenter = lazy(() => import('./pages/Diagnostics/RepairCenter'));
 const FdeDashboard = lazy(() => import('./pages/Diagnostics/FdeDashboard'));
 const ObservabilityDashboard = lazy(() => import('./pages/Diagnostics/ObservabilityDashboard'));
 const KnowledgeOverview = lazy(() => import('./pages/Knowledge/KnowledgeOverview'));
-const KnowledgeFactoryPage = lazy(() => import('./pages/KnowledgeFactory/KnowledgeFactoryPage'));
+const BusinessOntologyShell = lazy(() => import('./pages/Knowledge/BusinessOntologyShell'));
+const KnowledgeLibraryShell = lazy(() => import('./pages/Knowledge/KnowledgeLibraryShell'));
 const DocsViewer = lazy(() => import('./pages/Docs/DocsViewer'));
-const OntologyEditor = lazy(() => import('./pages/OntologyEditor'));
 const GovernanceDashboard = lazy(() => import('./pages/Governance'));
 const CapabilitiesAdmin = lazy(() => import('./pages/Admin/Capabilities'));
 const RunComparison = lazy(() => import('./pages/Diagnostics/RunComparison'));
@@ -158,15 +156,17 @@ const router = createBrowserRouter([
       { path: 'value-center/spec/:specId', element: withSuspense(SpecDetailPage) },
       { path: 'workbench', element: <Navigate to="/app/factory" replace /> },
       { path: 'knowledge/overview', element: withSuspense(KnowledgeOverview) },
-      { path: 'knowledge-factory', element: withSuspense(KnowledgeFactoryPage) },
+      { path: 'knowledge/business', element: withSuspense(BusinessOntologyShell) },
+      { path: 'knowledge/library', element: withSuspense(KnowledgeLibraryShell) },
+      { path: 'knowledge-factory', element: <Navigate to="/knowledge/business?tab=factory" replace /> },
       { path: 'docs', element: withSuspense(DocsViewer) },
-      { path: 'ontology-editor', element: withSuspense(OntologyEditor) },
+      { path: 'ontology-editor', element: <Navigate to="/knowledge/business?tab=editor" replace /> },
       { path: 'governance', element: withSuspense(GovernanceDashboard) },
       { path: 'governance/capabilities', element: withSuspense(CapabilitiesAdmin) },
       { path: 'infra/nodes', element: withSuspense(InfraNodes) },
       { path: 'infra/models', element: withSuspense(InfraModels) },
       { path: 'infra/finetune', element: withSuspense(InfraFineTune) },
-      { path: 'infra/ontology', element: withSuspense(InfraOntology) },
+      { path: 'infra/ontology', element: <Navigate to="/knowledge/business?tab=domains" replace /> },
       { path: 'infra/services', element: withSuspense(InfraServices) },
       { path: 'infra/scheduler', element: withSuspense(InfraScheduler) },
       { path: 'infra/storage', element: withSuspense(InfraStorage) },
@@ -211,11 +211,11 @@ const router = createBrowserRouter([
       { path: 'platform/tenant', element: withSuspense(PlatformTenant) },
       { path: 'app/channels', element: withSuspense(AppChannels) },
       { path: 'app/sessions', element: withSuspense(AppSessions) },
-      { path: 'platform/kb', element: withSuspense(AppKnowledgeBase) },
-      { path: 'platform/kb/wiki', element: withSuspense(AppKnowledgeBase) },
-      { path: 'platform/kb/eval', element: withSuspense(AppKnowledgeBase) },
-      { path: 'platform/kb/vault', element: withSuspense(AppKnowledgeBase) },
-      { path: 'platform/kb/health', element: withSuspense(AppKnowledgeBase) },
+      { path: 'platform/kb', element: <Navigate to="/knowledge/library?tab=documents" replace /> },
+      { path: 'platform/kb/wiki', element: <Navigate to="/knowledge/library?tab=wiki" replace /> },
+      { path: 'platform/kb/eval', element: <Navigate to="/knowledge/library?tab=eval" replace /> },
+      { path: 'platform/kb/vault', element: <Navigate to="/knowledge/library?tab=vault" replace /> },
+      { path: 'platform/kb/health', element: <Navigate to="/knowledge/library?tab=health" replace /> },
       { path: 'platform/kb/chat/:sessionId', element: withSuspense(AppMaterialsChat) },
       { path: 'app/builder/team', element: withSuspense(AppTeamAssembly) },
       { path: "app/factory", element: withSuspense(AppFactory) },

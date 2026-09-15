@@ -67,7 +67,7 @@ const KnowledgeExtractionPanel: React.FC = () => {
   const handleConfirm = async (id: string) => {
     await fetch(API(`/extractions/${id}/confirm`), { method: 'POST' });
     setPending(prev => prev.filter(p => p.extraction_id !== id));
-    toast?.success?.('已确认入库');
+    toast?.success?.('已确认 → 本体提案已入队（非 GraphIndex 实例入库）');
   };
 
   const handleReject = async (id: string) => {
@@ -479,21 +479,21 @@ const KnowledgeFactoryPage: React.FC = () => {
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <a
-              href="/platform/kb/vault"
+              href="/knowledge/library?tab=vault"
               className="p-3 rounded bg-gray-800/50 border border-gray-700/30 hover:border-gray-500 transition-colors text-xs"
             >
               <div className="text-gray-200 font-medium">Vault 文档库</div>
               <div className="text-gray-500 mt-0.5">管理原始文档和资料</div>
             </a>
             <a
-              href="/infra/ontology"
+              href="/knowledge/business?tab=domains"
               className="p-3 rounded bg-gray-800/50 border border-gray-700/30 hover:border-gray-500 transition-colors text-xs"
             >
               <div className="text-gray-200 font-medium">域本体管理</div>
               <div className="text-gray-500 mt-0.5">创建/编辑本体类与属性</div>
             </a>
             <a
-              href="/platform/kb"
+              href="/knowledge/library?tab=documents"
               className="p-3 rounded bg-gray-800/50 border border-gray-700/30 hover:border-gray-500 transition-colors text-xs"
             >
               <div className="text-gray-200 font-medium">向量知识库</div>

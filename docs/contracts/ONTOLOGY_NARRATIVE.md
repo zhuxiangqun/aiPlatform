@@ -3,7 +3,7 @@
 | 字段 | 值 |
 |------|-----|
 | 文档 ID | `ONTOLOGY-NARRATIVE-2026-09` |
-| 版本 | v1.0 |
+| 版本 | v1.1 |
 | 关联 | [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_COMPLETENESS.md`](./ONTOLOGY_COMPLETENESS.md) |
 | 维护人 | Oliver Zhu |
 
@@ -33,6 +33,15 @@
 **禁止表述**：「完整企业本体已建成」「OWL/SPARQL 级推理已上线」「全域统一语义」。
 
 完整性官方定义与 OCS 见 [`ONTOLOGY_COMPLETENESS.md`](./ONTOLOGY_COMPLETENESS.md)（平台能力完整 + 客户纵深完整，非跨企业统一 TBox）。
+
+---
+
+## UI 入口映射（管理端）
+
+| 侧边栏 | 含义 |
+|--------|------|
+| **业务本体** `/knowledge/business` | 权威轨：工厂流水线 / 域管理 / 编辑器 |
+| **知识库** `/knowledge/library` | 检索轨：向量 / Wiki / Vault；不替代业务权威 |
 
 ---
 

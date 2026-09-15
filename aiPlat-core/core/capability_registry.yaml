@@ -2116,6 +2116,18 @@ domains:
         type: function
         signature: "domain-agnostic work-order assign handler for service-domain vertical seed"
         module: aiPlat-core/core/harness/ontology_engine/builtin_handlers.py
+      - symbol: set_entity_state
+        type: function
+        signature: "lifecycle state transition + assigned_to/visited_at/installed_by evidence relations"
+        module: aiPlat-core/core/harness/ontology_engine/builtin_handlers.py
+      - symbol: list_graph_entities
+        type: function
+        signature: "GET /fde/graph/entities — list GraphIndex by class for AcceptTab picker"
+        module: aiPlat-platform/apps/fde/api/action_routes.py
+      - symbol: create_graph_entity
+        type: function
+        signature: "POST /fde/graph/entities — mint demo InstallOrder ABox for L1 UI loop"
+        module: aiPlat-platform/apps/fde/api/action_routes.py
       - symbol: FdeDomainLiteralsAstCheck
         type: class
         signature: "arch_guard fde_domain_literals level=error; harness domain literal fork ban"

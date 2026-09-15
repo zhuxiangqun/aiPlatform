@@ -35,6 +35,7 @@ const KnowledgeBasePage: React.FC = () => {
 
   const location = useLocation();
   const navigate = useNavigate();
+  const isLibraryShell = location.pathname.startsWith('/knowledge/library');
   const _initTab = location.pathname.endsWith('/wiki') ? 'wiki' : location.pathname.endsWith('/eval') ? 'eval' : location.pathname.endsWith('/vault') ? 'vault' : location.pathname.endsWith('/health') ? 'health' : 'documents';
   const [activeTab, setActiveTab] = useState<string>(_initTab);
 
@@ -45,6 +46,13 @@ const KnowledgeBasePage: React.FC = () => {
   const [wikiCategory, setWikiCategory] = useState('');
   const [wikiCategories, setWikiCategories] = useState<string[]>([]);
   const [wikiLoading] = useState(false);
+
+  const selectTab = (k: string) => {
+    setActiveTab(k);
+    if (isLibraryShell) {
+      navigate(`/knowledge/library?tab=${k}`, { replace: true });
+    }
+  };
 
   // Read URL params for tab/category from sidebar navigation
   useEffect(() => {
@@ -57,9 +65,10 @@ const KnowledgeBasePage: React.FC = () => {
     else if (location.pathname.endsWith('/eval')) { setActiveTab('eval'); }
     else if (location.pathname.endsWith('/vault')) { setActiveTab('vault'); }
     else if (location.pathname.endsWith('/health')) { setActiveTab('health'); }
+    else if (isLibraryShell) { setActiveTab('documents'); }
     else { setActiveTab('documents'); }
     if (cat) setWikiCategory(cat);
-  }, [location.search, location.pathname]);
+  }, [location.search, location.pathname, isLibraryShell]);
   const [selectedPage, setSelectedPage] = useState<any>(null);
   const [wikiNewTitle, setWikiNewTitle] = useState('');
   const [wikiNewBody, setWikiNewBody] = useState('');
@@ -649,8 +658,11 @@ const KnowledgeBasePage: React.FC = () => {
   const selCount = selectedDocIds.size;
 
   // Split route: /wiki /eval /vault /health render as standalone pages (no tab bar)
-  const isSplitRoute = location.pathname.endsWith('/wiki') || location.pathname.endsWith('/eval') || location.pathname.endsWith('/vault') || location.pathname.endsWith('/health');
-  const pageTitle = location.pathname.endsWith('/wiki') ? 'LLM Wiki' : location.pathname.endsWith('/eval') ? '检索评估' : location.pathname.endsWith('/vault') ? 'Vault 文档库' : location.pathname.endsWith('/health') ? '质量反馈' : '知识库';
+  // Library shell always shows full tab bar (向量 | Wiki | Vault | …)
+  const isSplitRoute = !isLibraryShell && (location.pathname.endsWith('/wiki') || location.pathname.endsWith('/eval') || location.pathname.endsWith('/vault') || location.pathname.endsWith('/health'));
+  const pageTitle = isLibraryShell
+    ? '知识库'
+    : location.pathname.endsWith('/wiki') ? 'LLM Wiki' : location.pathname.endsWith('/eval') ? '检索评估' : location.pathname.endsWith('/vault') ? 'Vault 文档库' : location.pathname.endsWith('/health') ? '质量反馈' : '知识库';
 
   const SPLIT_VISIBLE_TABS = ['documents', 'wiki', 'eval']; // only these appear in split-route navigation
 
@@ -664,7 +676,7 @@ const KnowledgeBasePage: React.FC = () => {
             {(['documents', '编缉知识', '本体观测', '观测', 'Vault', '健康', '评估'] as const).map((label) => {
               const k = label === '评估' ? 'eval' : label === '编缉知识' ? 'wiki' : label === '健康' ? 'health' : label === '本体观测' ? 'ontology' : label === '观测' ? 'observe' : label === 'Vault' ? 'vault' : 'documents';
               return (
-                <button key={k} onClick={() => setActiveTab(k)}
+                <button key={k} onClick={() => selectTab(k)}
                   className={`px-3 py-1 rounded text-sm transition-colors ${
                     activeTab === k ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-gray-200'
                   }`}>
@@ -693,7 +705,7 @@ const KnowledgeBasePage: React.FC = () => {
           <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0" />
           <span className="text-yellow-300">{unprocessedCount} 个已有文档尚未关联 Wiki 页面</span>
           <div className="flex-1" />
-          <Button variant="ghost" size="sm" onClick={() => navigate('/platform/kb/wiki')}
+          <Button variant="ghost" size="sm" onClick={() => selectTab('wiki')}
             className="text-xs text-yellow-400 hover:text-yellow-300">
             前往 LLM Wiki 处理 →
           </Button>
@@ -1511,7 +1523,7 @@ const KnowledgeBasePage: React.FC = () => {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <h2 className="text-base font-medium text-gray-200">本体观测<span style={{fontSize:11,color:freshnessColor('onto'),marginLeft:8}}>● {freshnessAgo('onto')}</span></h2>
-            <a href="/infra/ontology" className="text-xs text-primary hover:underline">→ 本体管理</a>
+            <a href="/knowledge/business?tab=domains" className="text-xs text-primary hover:underline">→ 本体管理</a>
             <Button variant="ghost" size="sm" onClick={handleForceRefresh} loading={refreshMetricsLoading} className="text-xs">刷新指标</Button>
             <Button variant="ghost" size="sm" onClick={generateOntoSuggestions} loading={ontoGenerating} className="text-xs">生成建议</Button>
             <Button variant="ghost" size="sm" onClick={handleBatchAtomize} loading={batchAtomizing} className="text-xs">批量原子化</Button>

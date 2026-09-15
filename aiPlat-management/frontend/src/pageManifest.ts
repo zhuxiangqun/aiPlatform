@@ -48,23 +48,11 @@ export const menuItems: MenuEntry[] = [
   ]},
   { divider: true },
   // ════════════════════════════════════════════════════════════════
-  // 知识工厂
+  // 知识（双轨：业务本体 | 知识库）
   // ════════════════════════════════════════════════════════════════
-  { group: 'knowledge', label: '🧠 知识工厂', items: [
-    { key: '_sub_kb_factory', subLabel: '🏭 知识生产' },
-    { key: '/knowledge-factory', icon: Brain, label: '知识工厂' },
-    { key: '_sub_kb_source', subLabel: '📥 数据源' },
-    { key: '/platform/kb/vault', icon: FileText, label: 'Vault 文档库' },
-    { key: '_sub_kb_ontology', subLabel: '🧬 本体模型' },
-    { key: '/ontology-editor', icon: PenTool, label: '本体编辑器' },
-    { key: '/infra/ontology', icon: Box, label: '域本体管理' },
-    { key: '_sub_kb_library', subLabel: '📚 知识库' },
-    { key: '/platform/kb', icon: Database, label: '向量知识库' },
-    { key: '/platform/kb/wiki', icon: BookOpen, label: 'LLM Wiki' },
-    { key: '_sub_kb_quality', subLabel: '✅ 质量验证' },
-    { key: '/platform/kb/eval', icon: Search, label: '检索评估' },
-    { key: '/diagnostics/rag-quality', icon: Database, label: 'RAG 质量' },
-    { key: '/platform/kb/health', icon: TrendingUp, label: '质量反馈' },
+  { group: 'knowledge', label: '🧠 知识', items: [
+    { key: '/knowledge/business', icon: Box, label: '业务本体' },
+    { key: '/knowledge/library', icon: Database, label: '知识库' },
   ]},
   { divider: true },
   // ════════════════════════════════════════════════════════════════

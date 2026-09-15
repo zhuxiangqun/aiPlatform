@@ -369,7 +369,9 @@ class GraphIndex:
              getattr(edge, 'context_description', ''),
              _json.dumps(getattr(edge, 'embedding', None) or []),
              getattr(edge, 'created_by', ''),
-             getattr(edge, 'created_in_run', '')),
+             getattr(edge, 'created_in_run', ''),
+             valid_from or '',
+             valid_to or ''),
         )
         conn.commit()
         self._invalidate_cache()

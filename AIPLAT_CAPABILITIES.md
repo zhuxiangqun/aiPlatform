@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1453
+total_capabilities: 1454
 
 total_capabilities: 1095
 last_updated: 2026-08-25
@@ -743,7 +743,7 @@ scan_hash: 8f9548ec24f4
 | Prompt Caching | harness/utils/prompt_caching.py | ✅ | system_and_N 缓存策略，system + 末尾N消息标记cache_control | 已合入 |
 | Log Redaction | harness/utils/redaction.py | ✅ | RedactingFormatter 全局日志脱敏 | 已合入 |
 | Decorrelated Jitter | harness/infrastructure/gates/resilience_gate.py | ✅ | golden-ratio hash退避抖动，避免惊群效应 | 已合入 |
-| **Action Registry v3** | `harness/infrastructure/action_contract.py` + `action_registry.py` + `action_store.py` + `entity_lock.py` + `action_audit_validate.py` + `workbench_runtime_guard.py` | ✅ | 企业级可治理 AI 执行层：`ActionContractModel`（Pydantic v2 + 实体约束 + handler白名单安全沙箱）、`AsyncActionRegistry`（7步执行流水线 + 审批回调 + 审计持久化）、`EntityLock`（mutex/stake双语义锁）、`ActionStore`（aiosqlite + entity_snapshot不可变审计）、`builtin_actions`（legacy+YAML+workspace_seeds）、`builtin_handlers`、`action_routes.py`；**Phase 1**：`audit_schema.v1` JSON 嵌入、`change_surface_whitelist` 可加载、`WorkbenchRuntimeGuard`、`scripts/fde_audit_mapping.py` dry-run；**Phase 2**：`customer_action:lock-service:accept_order` + `aliases`/`resolve_action_id`、GraphIndex metadata 持久化、D4 200 压测脚本 | 已合入 |
+| **Action Registry v3** | `harness/infrastructure/action_contract.py` + `action_registry.py` + `action_store.py` + `entity_lock.py` + `action_audit_validate.py` + `workbench_runtime_guard.py` | ✅ | 企业级可治理 AI 执行层：`ActionContractModel`（Pydantic v2 + 实体约束 + handler白名单安全沙箱）、`AsyncActionRegistry`（7步执行流水线 + 审批回调 + 审计持久化）、`EntityLock`（mutex/stake双语义锁）、`ActionStore`（aiosqlite + entity_snapshot不可变审计）、`builtin_actions`（legacy+YAML+workspace_seeds）、`builtin_handlers`、`action_routes.py`；**Phase 1**：`audit_schema.v1` JSON 嵌入、`change_surface_whitelist` 可加载、`WorkbenchRuntimeGuard`、`scripts/fde_audit_mapping.py` dry-run；**Phase 2**：`customer_action:lock-service:accept_order` + `aliases`/`resolve_action_id`、GraphIndex metadata 持久化、D4 200 压测脚本；**L1 UI 闭环**：`GET/POST .../fde/graph/entities` + AcceptTab 活 state 链式接单/派单/开工/完工 + `set_entity_state` 写 assigned_to/visited_at/installed_by | 已合入 |
 | FDE accept_order D3/D4 | `workspace_seeds/actions/lock_service_accept_order.yaml` + `scripts/seed_lock_service_orders.py` + `scripts/bench_accept_order_p95.py` | ✅ | Phase 2 竖切：namespaced id + legacy 别名；200 工单 seed；execute→audit P95&lt;500ms + entity 查询 P95&lt;100ms；生成物：平台横切 ActionRegistry，FDE 工作台只消费（已接线 AcceptTab） | 已合入 |
 | FDE audit 映射 dry-run | `scripts/fde_audit_mapping.py` + `docs/contracts/audit_mapping_report.md` | ✅ | audit_schema↔ActionStore 字段分类 present/embedded/missing + ADD/ROLLBACK SQL（默认不改库） | 已合入 |
 | WorkbenchRuntimeGuard | `harness/infrastructure/workbench_runtime_guard.py` | ✅ | 工作台运行时否定项：未注册 Action / policy_gate 审计形状 / stub KPI；经 CoreFacade 导出；dashboard 挂 kpi_guard | 已合入 |
@@ -1779,6 +1779,8 @@ scan_hash: 8f9548ec24f4
 ## 十六、工具生态
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| create_graph_entity | `aiPlat-platform/apps/fde/api/action_routes.py` | ✅ | 自动同步 | 已合入 |
+| list_graph_entities | `aiPlat-platform/apps/fde/api/action_routes.py` | ✅ | 自动同步 | 已合入 |
 | list_audit_domains | `core/harness/infrastructure/action_store.py` | ✅ | 自动同步 | 已合入 |
 | preflight_signoff_gate | `core/apps/fde/service/security_preflight.py` | ✅ | 自动同步 | 已合入 |
 | list_evolve_applied | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
@@ -2372,7 +2374,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 168 | 1 | 169 |
 | 记忆子系统 | 41 | 0 | 41 |
-| 知识引擎（本体） | 168 | 8 | 176 |
+| 知识引擎（本体） | 169 | 8 | 177 |
 | RAG 检索 | 50 | 0 | 50 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 52 | 0 | 52 |
@@ -2415,7 +2417,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1444** | **9** | **1453** |
+| **总计** | **1445** | **9** | **1454** |
 
 | **总计** | **1095** | **0** | **1095** |
 

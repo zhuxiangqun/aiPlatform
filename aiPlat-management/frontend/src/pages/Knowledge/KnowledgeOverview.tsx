@@ -23,7 +23,7 @@ const PIPELINE: PipelineStage[] = [
     label: '原始资料',
     sublabel: 'DocumentParser → StructuredChunk[]',
     metrics: [],
-    link: '/platform/kb?tab=vault',
+    link: '/knowledge/library?tab=vault',
     linkLabel: '上传文档',
   },
   {
@@ -32,7 +32,7 @@ const PIPELINE: PipelineStage[] = [
     label: '本体模型',
     sublabel: 'OntologyEngine → 分类/提取/消歧/状态机',
     metrics: [],
-    link: '/infra/ontology',
+    link: '/knowledge/business?tab=domains',
     linkLabel: '管理本体',
   },
   {
@@ -41,7 +41,7 @@ const PIPELINE: PipelineStage[] = [
     label: '向量知识库',
     sublabel: 'Embedding + FTS5 → 语义索引',
     metrics: [],
-    link: '/platform/kb?tab=documents',
+    link: '/knowledge/library?tab=documents',
     linkLabel: '查看索引',
   },
   {
@@ -50,7 +50,7 @@ const PIPELINE: PipelineStage[] = [
     label: 'LLM Wiki',
     sublabel: 'KnowledgeSynthesizer → 推理链/事实卡',
     metrics: [],
-    link: '/platform/kb?tab=wiki',
+    link: '/knowledge/library?tab=wiki',
     linkLabel: '编辑 Wiki',
   },
   {
@@ -59,7 +59,7 @@ const PIPELINE: PipelineStage[] = [
     label: 'RAG 检索',
     sublabel: 'DomainRouter + CRAG + HallucinationTracker',
     metrics: [],
-    link: '/platform/kb?tab=eval',
+    link: '/knowledge/library?tab=eval',
     linkLabel: '查看质量',
   },
   {
@@ -68,7 +68,7 @@ const PIPELINE: PipelineStage[] = [
     label: '质量反馈',
     sublabel: 'FeedbackRadar → CandidatePool → ActiveSynthesis',
     metrics: [],
-    link: '/platform/kb?tab=quality',
+    link: '/knowledge/library?tab=health',
     linkLabel: '查看反馈',
   },
 ];

@@ -36,28 +36,43 @@ const ActionCardsSection: React.FC<{
   readonly domainId: string;
   readonly className: string;
   readonly state: string;
-}> = ({ specId, domainId, className, state }) => {
+  readonly onExecuted?: () => void;
+}> = ({ specId, domainId, className, state, onExecuted }) => {
   const [actions, setActions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!specId) return;
+    if (!specId || !state) return;
     fetch(API(`/actions?class=${encodeURIComponent(className)}&state=${encodeURIComponent(state)}&domain=${encodeURIComponent(domainId)}`))
       .then(r => r.json()).then(d => setActions(d.actions || []))
-      .catch(() => {});
+      .catch(() => setActions([]));
   }, [specId, className, state, domainId]);
 
-  const handleExecute = async (actionId: string, params: Record<string, string>) => {
+  const handleExecute = async (actionId: string, params: Record<string, string>, schema?: any) => {
     setLoading(true);
     try {
+      const merged: Record<string, string> = { ...(params || {}) };
+      const props = schema?.properties || {};
+      for (const [k, sch] of Object.entries(props) as [string, any][]) {
+        if (sch?.const != null && (merged[k] == null || merged[k] === '')) {
+          merged[k] = String(sch.const);
+        }
+      }
       const r = await fetch(API('/actions/execute'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action_id: actionId, entity_id: specId, params, actor: 'fde_engineer', role: 'fde_engineer' }),
+        body: JSON.stringify({
+          action_id: actionId,
+          entity_id: [domainId, specId],
+          params: merged,
+          actor: 'fde_engineer',
+          role: 'fde_engineer',
+        }),
       });
       const d = await r.json();
       if (d.status === 'executed') {
-        toast?.success?.(`已执行: ${d.effect || '操作成功'}`);
+        toast?.success?.(`已执行: ${d.effect || d.new_state || '操作成功'}`);
         if (d.compensation) toast?.info?.(`补偿: ${d.compensation}`);
+        onExecuted?.();
       } else if (d.status === 'blocked') {
         const color: Record<string, string> = { permission: '红色', state: '橙色', class: '橙色', scope: '灰色' };
         toast?.warning?.(`${color[d.constraint_type] || d.constraint_type}拦截: ${d.reason || ''}`);
@@ -65,19 +80,27 @@ const ActionCardsSection: React.FC<{
         toast?.info?.('已提交审批');
       } else if (d.status === 'throttled' && d.require_justification) {
         const reason = window.prompt(`${d.reason}\n\n请输入复核理由以继续执行：`);
-        if (reason) handleExecute(actionId, { ...params, __justification: reason });
+        if (reason) handleExecute(actionId, { ...merged, __justification: reason }, schema);
+      } else if (d.status === 'not_found') {
+        toast?.error?.(d.error || '实体不存在，请先创建演示工单');
       } else {
-        toast?.error?.(d.error || '执行失败');
+        toast?.error?.(d.error || d.reason || '执行失败');
       }
     } catch (e: any) { toast?.error?.(e?.message || '请求失败'); }
     finally { setLoading(false); }
   };
 
-  if (!actions.length) return null;
+  if (!actions.length) {
+    return (
+      <div className="text-xs text-gray-500 px-1 py-2">
+        当前状态「{state || '—'}」下无可用动作（或实体未选）。
+      </div>
+    );
+  }
 
   return (
     <Card>
-      <CardHeader><span className="text-sm font-medium">可执行动作</span></CardHeader>
+      <CardHeader><span className="text-sm font-medium">可执行动作 · {state}</span></CardHeader>
       <CardContent>
         <div className="space-y-3">
           {actions.map(action => (
@@ -107,15 +130,31 @@ const ActionCardsSection: React.FC<{
               {action.input_schema?.properties && (
                 <div className="mb-2 space-y-1">
                   {Object.entries(action.input_schema.properties as Record<string, any>).map(([key, schema]: [string, any]) => (
+                    schema?.const != null ? (
+                      <div key={key} className="text-[10px] text-gray-500">{key}= {String(schema.const)}</div>
+                    ) : (
                     <input key={key}
                       className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300"
                       placeholder={schema.description || key}
+                      defaultValue={key === 'assigned_technician' || key === 'technician_id' || key === 'installed_by' ? 'TECH-DEMO-001' : ''}
                       onChange={e => { action._params = action._params || {}; action._params[key] = e.target.value; }} />
+                    )
                   ))}
                 </div>
               )}
               <Button variant="default" size="sm" loading={loading}
-                onClick={() => handleExecute(action.action_id, action._params || {})}>执行</Button>
+                onClick={() => {
+                  const base = { ...(action._params || {}) };
+                  if (!base.assigned_technician && !base.technician_id && !base.installed_by) {
+                    const needsTech = action.input_schema?.properties?.assigned_technician
+                      || action.input_schema?.properties?.installed_by;
+                    if (needsTech) {
+                      if (action.input_schema?.properties?.installed_by) base.installed_by = 'TECH-DEMO-001';
+                      else base.assigned_technician = 'TECH-DEMO-001';
+                    }
+                  }
+                  handleExecute(action.action_id, base, action.input_schema);
+                }}>执行</Button>
             </div>
           ))}
         </div>
@@ -657,7 +696,7 @@ const FdeDashboard: React.FC = () => {
             </div>
           )}
           {/* v2.7: YAML Editor link */}
-          <a href="/ontology-editor" target="_blank" className="flex items-center gap-1 px-3 py-1.5 rounded bg-gray-800/50 border border-gray-700/50 text-xs text-blue-400 hover:text-blue-300">
+          <a href="/knowledge/business?tab=editor" target="_blank" className="flex items-center gap-1 px-3 py-1.5 rounded bg-gray-800/50 border border-gray-700/50 text-xs text-blue-400 hover:text-blue-300">
             📝 本体编辑器
           </a>
         </div>
@@ -2589,7 +2628,7 @@ const CustomersTab: React.FC<{ readonly onSelect: (c: CustomerInfo) => void; rea
         Agent Fleet / 拓扑编排本阶段不上线。详见 docs/contracts/FDE_PHASE5_CUSTOMER_ONBOARDING.md。
       </div>
       <a
-        href="/knowledge-factory"
+        href="/knowledge/business?tab=factory"
         className="flex items-center gap-2 p-3 rounded border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-colors text-xs group"
       >
         <span className="text-blue-400 text-sm">🧠</span>
@@ -2982,9 +3021,58 @@ const AcceptTab: React.FC<{
   const [handoverResult, setHandoverResult] = useState<any>(null);
   const [summary, setSummary] = useState('');
   const [closeResult, setCloseResult] = useState<any>(null);
-  const [orderEntityId, setOrderEntityId] = useState('IO-DEMO-001');
+  const [orderEntityId, setOrderEntityId] = useState('');
+  const [orderState, setOrderState] = useState('pending');
+  const [orderList, setOrderList] = useState<{ entity_id: string; name: string; state: string }[]>([]);
+  const [orderBusy, setOrderBusy] = useState(false);
   const [metricHandover, setMetricHandover] = useState<any>(null);
   const [handoverBusy, setHandoverBusy] = useState(false);
+
+  const refreshOrders = useCallback(async (selectId?: string) => {
+    try {
+      const r = await fetch(API('/graph/entities?domain=lock-service&class=' + encodeURIComponent('安装工单')));
+      const d = await r.json();
+      const ents = d.entities || [];
+      setOrderList(ents);
+      const pick = selectId || orderEntityId;
+      const cur = ents.find((e: any) => e.entity_id === pick) || ents[0];
+      if (cur) {
+        setOrderEntityId(cur.entity_id);
+        setOrderState(cur.state || 'pending');
+      } else if (!ents.length) {
+        setOrderEntityId('');
+        setOrderState('pending');
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [orderEntityId]);
+
+  useEffect(() => { refreshOrders(); }, []);
+
+  const createDemoOrder = async () => {
+    setOrderBusy(true);
+    try {
+      const r = await fetch(API('/graph/entities'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain_id: 'lock-service',
+          class_name: '安装工单',
+          state: 'pending',
+          with_technician: true,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '创建失败');
+      toast?.success?.(`已创建工单 ${d.entity_id}`);
+      await refreshOrders(d.entity_id);
+    } catch (e: any) {
+      toast?.error?.(e?.message || '创建演示工单失败');
+    } finally {
+      setOrderBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!domainId) {
@@ -3245,28 +3333,48 @@ const AcceptTab: React.FC<{
       {canaryResult?.passed && specId && (
         <ActionCardsSection specId={specId} domainId="fde-delivery" className="诊断会话" state="delivered" />
       )}
-      {/* Phase 2: 客户运营 Action — lock-service InstallOrder */}
+      {/* Phase 2: 客户运营 Action — lock-service InstallOrder L1 闭环 */}
       <Card>
         <CardHeader>
           <span className="text-sm font-medium">客户运营 Action（lock-service）</span>
           <p className="text-[11px] text-gray-500 mt-1 font-normal">
-            与上方平台诊断 Action 区分；执行经 ActionRegistry（非直写库）。需先 seed 工单。
-            第二域样例：service-domain `assign_technician`（Accept 面板仅展示当前域；复制 YAML 即可扩展）。
+            创建演示工单后按 live state 链式执行：接单 → 派单 → 开工 → 完工（ActionRegistry 硬门，非直写库）。
           </p>
         </CardHeader>
         <CardContent className="space-y-2">
-          <input
+          <div className="flex flex-wrap gap-2 items-center">
+            <Button variant="default" size="sm" loading={orderBusy} onClick={createDemoOrder}>
+              创建演示工单
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => refreshOrders()}>刷新</Button>
+            <span className="text-[11px] text-gray-500">当前状态: {orderState || '—'}</span>
+          </div>
+          <select
             className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300"
-            placeholder="InstallOrder entity_id"
             value={orderEntityId}
-            onChange={e => setOrderEntityId(e.target.value)}
-          />
-          <ActionCardsSection
-            specId={orderEntityId || 'IO-DEMO-001'}
-            domainId="lock-service"
-            className="安装工单"
-            state="pending"
-          />
+            onChange={e => {
+              const id = e.target.value;
+              setOrderEntityId(id);
+              const hit = orderList.find(x => x.entity_id === id);
+              setOrderState(hit?.state || 'pending');
+            }}
+          >
+            {!orderList.length && <option value="">（无工单 — 请先创建）</option>}
+            {orderList.map(o => (
+              <option key={o.entity_id} value={o.entity_id}>
+                {o.entity_id} · {o.state || '?'} · {o.name}
+              </option>
+            ))}
+          </select>
+          {orderEntityId && (
+            <ActionCardsSection
+              specId={orderEntityId}
+              domainId="lock-service"
+              className="安装工单"
+              state={orderState || 'pending'}
+              onExecuted={() => refreshOrders(orderEntityId)}
+            />
+          )}
         </CardContent>
       </Card>
       {/* ═══════════ 本周 FDE 周报（AI 生成 → FDE 审核 → 交付客户） ═══════ */}
