@@ -2610,6 +2610,140 @@ def apply_field_security(
     )
 
 
+def check_graph_entity_acl(
+    domain_id: str,
+    entity_id: str,
+    role: str,
+    action: str = "read",
+) -> bool:
+    """GraphIndex ABox instance ACL (T9). Empty role → allow."""
+    from core.policy.graph_abox_acl import check_entity_acl
+    return check_entity_acl(domain_id, entity_id, role, action)
+
+
+def redact_graph_entity_fields(
+    domain_id: str,
+    entity_id: str,
+    payload: Dict[str, Any],
+    role: str,
+) -> Dict[str, Any]:
+    """GraphIndex ABox field redaction for a role."""
+    from core.policy.graph_abox_acl import redact_entity_fields
+    return redact_entity_fields(domain_id, entity_id, payload, role)
+
+
+def resolve_abox_actor_role(
+    *,
+    explicit_role: str = "",
+    header_role: str = "",
+    scopes: Optional[List[str]] = None,
+) -> str:
+    """Map identity / PolicyGate role+scopes onto ABox ACL role."""
+    from core.policy.graph_abox_acl import resolve_abox_actor_role as _resolve
+    return _resolve(
+        explicit_role=explicit_role,
+        header_role=header_role,
+        scopes=scopes,
+    )
+
+
+def ingest_abox_webhook(
+    source_id: str,
+    payload: Dict[str, Any],
+    *,
+    secret: Optional[str] = None,
+    domain_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Path B production ingest (connector.json → GraphIndex)."""
+    from core.apps.fde.service.abox_connector import ingest_webhook_payload
+    return ingest_webhook_payload(
+        source_id, payload, secret=secret, domain_id=domain_id
+    )
+
+
+def import_abox_table_map(
+    domain_id: str,
+    *,
+    rows: Any = None,
+    csv_text: Optional[str] = None,
+    relation_rows: Any = None,
+    use_sample: bool = False,
+) -> Dict[str, Any]:
+    """Path B table/CSV → GraphIndex (connector.table_map)."""
+    from core.apps.fde.service.abox_connector import import_table_map_payload
+    from core.harness.ontology_engine.graph_index import GraphIndex
+
+    GraphIndex._loaded_instances.clear()
+    g = GraphIndex.load(domain_id)
+    meta = import_table_map_payload(
+        g,
+        domain_id=domain_id,
+        rows=rows,
+        csv_text=csv_text,
+        relation_rows=relation_rows,
+        use_sample=use_sample,
+    )
+    if hasattr(g, "save"):
+        g.save()
+    return {"status": "imported", "domain_id": domain_id, "path": "B", **meta}
+
+
+def get_ontology_pillars_view(domain_id: str) -> Dict[str, Any]:
+    from core.apps.fde.service.ontology_pillars import get_ontology_pillars
+    return get_ontology_pillars(domain_id)
+
+
+def review_ontology_owl_offline(domain_id: str) -> Dict[str, Any]:
+    from core.apps.fde.service.offline_owl_review import review_domain_owl_offline
+    return review_domain_owl_offline(domain_id)
+
+
+def get_abox_acl_doc(domain_id: str) -> Dict[str, Any]:
+    from core.policy.graph_abox_acl import load_abox_acl
+    return load_abox_acl(domain_id)
+
+
+def get_abox_crud_matrix() -> Dict[str, Any]:
+    from core.policy.graph_abox_acl import crud_matrix_doc
+    return crud_matrix_doc()
+
+
+def set_graph_entity_acl(
+    domain_id: str,
+    entity_id: str,
+    *,
+    deny_roles: Any = None,
+    allow_roles: Any = None,
+) -> Dict[str, Any]:
+    from core.policy.graph_abox_acl import set_entity_acl
+    return set_entity_acl(
+        domain_id,
+        entity_id,
+        deny_roles=deny_roles,
+        allow_roles=allow_roles,
+    )
+
+
+def set_graph_field_acl(
+    domain_id: str,
+    entity_id: str,
+    field_name: str,
+    *,
+    visibility: str = "all",
+    redaction: str = "mask",
+    replace_with: str = "[REDACTED]",
+) -> Dict[str, Any]:
+    from core.policy.graph_abox_acl import set_field_acl
+    return set_field_acl(
+        domain_id,
+        entity_id,
+        field_name,
+        visibility=visibility,
+        redaction=redaction,
+        replace_with=replace_with,
+    )
+
+
 # ── Growth & Obsidian Facade (Phase E + Phase F) ──
 
 def get_growth_stats(days: int = 30, *, collection_id: str = "default") -> Dict[str, Any]:
@@ -3803,7 +3937,7 @@ from core.harness.syscalls.retrieval import sys_knowledge_retrieve  # noqa: boun
 from core.harness.learning.playbook import PlaybookManifest, pack_playbook, unpack_playbook  # noqa: boundary
 from core.harness.finance.value_calculator import BusinessGoal, get_value_calculator  # noqa: boundary
 from core.harness.execution.simulation import ScenarioDefinition, ScenarioType  # noqa: boundary
-from core.harness.knowledge_pipeline.extractor import ExtractionPipeline, ExtractionResult, PendingExtractionStore  # noqa: boundary
+from core.harness.knowledge_pipeline.extractor import ExtractionPipeline, ExtractionResult, PendingExtractionStore, write_extraction_to_graph_index  # noqa: boundary
 from core.harness.infrastructure.gates.marking_propagation import get_entity_max_marking_level, MARKING_LABELS  # noqa: boundary
 
 # v2.7.2 — de-privatized internal symbols

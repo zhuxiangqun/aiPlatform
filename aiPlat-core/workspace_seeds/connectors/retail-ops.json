@@ -1,0 +1,14 @@
+{
+  "source_id": "pos-monitor-alerts",
+  "source_aliases": ["retail-ops-monitor"],
+  "domain_id": "retail-ops",
+  "label": "Retail POS monitor webhook (Path B)",
+  "allowed_classes": ["服务", "中间件", "主机", "告警"],
+  "allowed_relations": ["calls", "deployed_on", "suspects", "rooted_at"],
+  "primary_class": "告警",
+  "auth": {
+    "type": "shared_secret_env",
+    "env": "AIPLAT_ABOX_WEBHOOK_SECRET",
+    "header": "X-AIPLAT-WEBHOOK-SECRET"
+  }
+}

@@ -37,7 +37,11 @@ const ActionCardsSection: React.FC<{
   readonly className: string;
   readonly state: string;
   readonly onExecuted?: () => void;
-}> = ({ specId, domainId, className, state, onExecuted }) => {
+  /** Demo defaults merged into execute params (e.g. catalog_id for data-gov). */
+  readonly defaultParams?: Record<string, string>;
+  /** Role sent to /actions/execute (ABox ACL). Default analyst. */
+  readonly actorRole?: string;
+}> = ({ specId, domainId, className, state, onExecuted, defaultParams, actorRole }) => {
   const [actions, setActions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -51,7 +55,7 @@ const ActionCardsSection: React.FC<{
   const handleExecute = async (actionId: string, params: Record<string, string>, schema?: any) => {
     setLoading(true);
     try {
-      const merged: Record<string, string> = { ...(params || {}) };
+      const merged: Record<string, string> = { ...(defaultParams || {}), ...(params || {}) };
       const props = schema?.properties || {};
       for (const [k, sch] of Object.entries(props) as [string, any][]) {
         if (sch?.const != null && (merged[k] == null || merged[k] === '')) {
@@ -65,7 +69,7 @@ const ActionCardsSection: React.FC<{
           entity_id: [domainId, specId],
           params: merged,
           actor: 'fde_engineer',
-          role: 'fde_engineer',
+          role: actorRole || 'analyst',
         }),
       });
       const d = await r.json();
@@ -74,7 +78,9 @@ const ActionCardsSection: React.FC<{
         if (d.compensation) toast?.info?.(`补偿: ${d.compensation}`);
         onExecuted?.();
       } else if (d.status === 'blocked') {
-        const color: Record<string, string> = { permission: '红色', state: '橙色', class: '橙色', scope: '灰色' };
+        const color: Record<string, string> = {
+          permission: '红色', state: '橙色', class: '橙色', scope: '灰色', abox_acl: '紫色',
+        };
         toast?.warning?.(`${color[d.constraint_type] || d.constraint_type}拦截: ${d.reason || ''}`);
       } else if (d.status === 'pending_approval') {
         toast?.info?.('已提交审批');
@@ -83,6 +89,9 @@ const ActionCardsSection: React.FC<{
         if (reason) handleExecute(actionId, { ...merged, __justification: reason }, schema);
       } else if (d.status === 'not_found') {
         toast?.error?.(d.error || '实体不存在，请先创建演示工单');
+      } else if (d.status === 'invalid_params' || d.status === 'invalid') {
+        const errDetail = Array.isArray(d.errors) ? d.errors.join('; ') : (d.error || d.reason || '');
+        toast?.error?.(errDetail || '参数无效');
       } else {
         toast?.error?.(d.error || d.reason || '执行失败');
       }
@@ -97,6 +106,15 @@ const ActionCardsSection: React.FC<{
       </div>
     );
   }
+
+  const fieldDefault = (key: string) => {
+    if (defaultParams?.[key]) return defaultParams[key];
+    if (key === 'assigned_technician' || key === 'technician_id' || key === 'installed_by') return 'TECH-DEMO-001';
+    if (key === 'suspected_root' || key === 'root_entity_id') return 'MW-Redis主';
+    if (key === 'path_note') return 'SVC-查询→SVC-动作→MW-Redis主';
+    if (key === 'catalog_id') return 'CAT-积分流水';
+    return '';
+  };
 
   return (
     <Card>
@@ -136,7 +154,7 @@ const ActionCardsSection: React.FC<{
                     <input key={key}
                       className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300"
                       placeholder={schema.description || key}
-                      defaultValue={key === 'assigned_technician' || key === 'technician_id' || key === 'installed_by' ? 'TECH-DEMO-001' : ''}
+                      defaultValue={fieldDefault(key)}
                       onChange={e => { action._params = action._params || {}; action._params[key] = e.target.value; }} />
                     )
                   ))}
@@ -144,13 +162,13 @@ const ActionCardsSection: React.FC<{
               )}
               <Button variant="default" size="sm" loading={loading}
                 onClick={() => {
-                  const base = { ...(action._params || {}) };
-                  if (!base.assigned_technician && !base.technician_id && !base.installed_by) {
-                    const needsTech = action.input_schema?.properties?.assigned_technician
-                      || action.input_schema?.properties?.installed_by;
-                    if (needsTech) {
-                      if (action.input_schema?.properties?.installed_by) base.installed_by = 'TECH-DEMO-001';
-                      else base.assigned_technician = 'TECH-DEMO-001';
+                  const base = { ...(defaultParams || {}), ...(action._params || {}) };
+                  const props = action.input_schema?.properties || {};
+                  for (const key of Object.keys(props)) {
+                    if (props[key]?.const != null) continue;
+                    if (!base[key]) {
+                      const d = fieldDefault(key);
+                      if (d) base[key] = d;
                     }
                   }
                   handleExecute(action.action_id, base, action.input_schema);
@@ -3025,8 +3043,23 @@ const AcceptTab: React.FC<{
   const [orderState, setOrderState] = useState('pending');
   const [orderList, setOrderList] = useState<{ entity_id: string; name: string; state: string }[]>([]);
   const [orderBusy, setOrderBusy] = useState(false);
+  const [alertEntityId, setAlertEntityId] = useState('');
+  const [alertState, setAlertState] = useState('open');
+  const [alertList, setAlertList] = useState<{ entity_id: string; name: string; state: string }[]>([]);
+  const [alertBusy, setAlertBusy] = useState(false);
+  const [govAssetId, setGovAssetId] = useState('DA-积分流水');
+  const [govAssetState, setGovAssetState] = useState('meta_ready');
+  const [govTableId, setGovTableId] = useState('TBL-tmp_export');
+  const [govTableState, setGovTableState] = useState('raw');
+  const [govCatalogId, setGovCatalogId] = useState('CAT-积分流水');
+  const [govBusy, setGovBusy] = useState(false);
+  const [govAclNote, setGovAclNote] = useState('');
+  const [govFieldNote, setGovFieldNote] = useState('');
   const [metricHandover, setMetricHandover] = useState<any>(null);
   const [handoverBusy, setHandoverBusy] = useState(false);
+
+  const [pillars, setPillars] = useState<any>(null);
+  const [pillarsBusy, setPillarsBusy] = useState(false);
 
   const refreshOrders = useCallback(async (selectId?: string) => {
     try {
@@ -3048,7 +3081,67 @@ const AcceptTab: React.FC<{
     }
   }, [orderEntityId]);
 
-  useEffect(() => { refreshOrders(); }, []);
+  const refreshAlerts = useCallback(async (selectId?: string) => {
+    try {
+      const r = await fetch(API('/graph/entities?domain=it-ops&class=' + encodeURIComponent('告警')));
+      const d = await r.json();
+      const ents = d.entities || [];
+      setAlertList(ents);
+      const pick = selectId || alertEntityId;
+      const cur = ents.find((e: any) => e.entity_id === pick) || ents[0];
+      if (cur) {
+        setAlertEntityId(cur.entity_id);
+        setAlertState(cur.state || 'open');
+      } else if (!ents.length) {
+        setAlertEntityId('');
+        setAlertState('open');
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [alertEntityId]);
+
+  const refreshGovAssets = useCallback(async () => {
+    try {
+      const [ra, rt, rAcl, rViewerAsset, rAdminAsset] = await Promise.all([
+        fetch(API('/graph/entities?domain=data-gov&class=' + encodeURIComponent('数据资产'))),
+        fetch(API('/graph/entities?domain=data-gov&class=' + encodeURIComponent('物理表'))),
+        fetch(API('/graph/entities?domain=data-gov&class=' + encodeURIComponent('物理表') + '&actor_role=viewer')),
+        fetch(API('/graph/entities?domain=data-gov&class=' + encodeURIComponent('数据资产') + '&actor_role=viewer')),
+        fetch(API('/graph/entities?domain=data-gov&class=' + encodeURIComponent('数据资产') + '&actor_role=admin')),
+      ]);
+      const da = await ra.json();
+      const dt = await rt.json();
+      const dAcl = await rAcl.json();
+      const dViewerA = await rViewerAsset.json();
+      const dAdminA = await rAdminAsset.json();
+      const assets = da.entities || [];
+      const tables = dt.entities || [];
+      const main = assets.find((e: any) => e.entity_id === 'DA-积分流水') || assets[0];
+      if (main) {
+        setGovAssetId(main.entity_id);
+        setGovAssetState(main.state || 'meta_ready');
+      }
+      const ghost = tables.find((e: any) => e.entity_id === 'TBL-tmp_export') || tables[0];
+      if (ghost) {
+        setGovTableId(ghost.entity_id);
+        setGovTableState(ghost.state || 'raw');
+      }
+      const viewerCount = (dAcl.entities || []).length;
+      setGovAclNote(
+        `viewer 可见物理表 ${viewerCount}/${tables.length}（幽灵表对 viewer 应隐藏）`,
+      );
+      const vMain = (dViewerA.entities || []).find((e: any) => e.entity_id === 'DA-积分流水');
+      const aMain = (dAdminA.entities || []).find((e: any) => e.entity_id === 'DA-积分流水');
+      const vContact = vMain?.metadata?.owner_contact ?? vMain?.owner_contact ?? '—';
+      const aContact = aMain?.metadata?.owner_contact ?? aMain?.owner_contact ?? '—';
+      setGovFieldNote(`owner_contact：viewer=${vContact} / admin=${aContact}`);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => { refreshOrders(); refreshAlerts(); refreshGovAssets(); }, []);
 
   const createDemoOrder = async () => {
     setOrderBusy(true);
@@ -3071,6 +3164,160 @@ const AcceptTab: React.FC<{
       toast?.error?.(e?.message || '创建演示工单失败');
     } finally {
       setOrderBusy(false);
+    }
+  };
+
+  const createDemoAlert = async () => {
+    setAlertBusy(true);
+    try {
+      const r = await fetch(API('/graph/entities'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenario: 'it-ops-alert' }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '创建失败');
+      toast?.success?.(`已创建告警 ${d.entity_id}（拓扑含 ${d.default_root || 'MW-REDIS-1'}）`);
+      await refreshAlerts(d.entity_id);
+    } catch (e: any) {
+      toast?.error?.(e?.message || '创建演示告警失败');
+    } finally {
+      setAlertBusy(false);
+    }
+  };
+
+  const createComplexDemoAlert = async () => {
+    setAlertBusy(true);
+    try {
+      const r = await fetch(API('/graph/entities'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenario: 'it-ops-alert-complex' }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '创建失败');
+      toast?.success?.(
+        `已创建教学复杂拓扑 ${d.entity_id}（${(d.alerts || []).length} 告警，根因候选 ${d.default_root || 'MW-Redis主'}）`,
+      );
+      await refreshAlerts(d.entity_id);
+    } catch (e: any) {
+      toast?.error?.(e?.message || '创建教学复杂拓扑失败');
+    } finally {
+      setAlertBusy(false);
+    }
+  };
+
+  const importSampleAlerts = async () => {
+    setAlertBusy(true);
+    try {
+      const r = await fetch(API('/graph/import'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain_id: 'it-ops', use_sample: true }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '导入失败');
+      const primary = d.primary_alert_id || '';
+      toast?.success?.(
+        `已导入样例告警（路径B）：实体 ${(d.created_entities || []).length}，跳过 ${(d.skipped || []).length}；主告警 ${primary || '—'}`,
+      );
+      await refreshAlerts(primary || undefined);
+    } catch (e: any) {
+      toast?.error?.(e?.message || '导入样例告警失败');
+    } finally {
+      setAlertBusy(false);
+    }
+  };
+
+  const importTableMapSample = async () => {
+    setAlertBusy(true);
+    try {
+      const r = await fetch(API('/graph/import'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain_id: 'it-ops', source_type: 'table_map', use_sample: true }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '表映射导入失败');
+      const primary = d.primary_alert_id || d.primary_id || '';
+      toast?.success?.(
+        `已导入表/CSV样例（路径B table_map）：实体 ${(d.created_entities || []).length}；主告警 ${primary || '—'}`,
+      );
+      await refreshAlerts(primary || undefined);
+    } catch (e: any) {
+      toast?.error?.(e?.message || '表映射导入失败');
+    } finally {
+      setAlertBusy(false);
+    }
+  };
+
+  const loadPillars = async (did = 'it-ops') => {
+    setPillarsBusy(true);
+    try {
+      const r = await fetch(API(`/ontology/pillars/${encodeURIComponent(did)}`));
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '加载三柱失败');
+      setPillars(d);
+    } catch (e: any) {
+      toast?.error?.(e?.message || '加载三柱失败');
+    } finally {
+      setPillarsBusy(false);
+    }
+  };
+
+  const createGovDemoAssets = async () => {
+    setGovBusy(true);
+    try {
+      const r = await fetch(API('/graph/entities'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenario: 'data-gov-assets' }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '创建失败');
+      toast?.success?.(
+        `已创建治理教学图 ${d.entity_id}（幽灵 ${d.ghost_id}；目录 ${d.catalog_id || 'CAT-积分流水'}；ACL=${d.acl_seeded ? '已种' : '无'}）`,
+      );
+      if (d.catalog_id) setGovCatalogId(d.catalog_id);
+      await refreshGovAssets();
+    } catch (e: any) {
+      toast?.error?.(e?.message || '创建治理教学图失败');
+    } finally {
+      setGovBusy(false);
+    }
+  };
+
+  const demoViewerDiscardBlocked = async () => {
+    if (!govTableId) {
+      toast?.error?.('请先创建治理教学图');
+      return;
+    }
+    setGovBusy(true);
+    try {
+      const r = await fetch(API('/actions/execute'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action_id: 'customer_action:data-gov:discard_ghost',
+          entity_id: ['data-gov', govTableId],
+          params: { new_state: 'discarded' },
+          actor: 'demo_viewer',
+          role: 'viewer',
+        }),
+      });
+      const d = await r.json();
+      if (d.status === 'blocked' && d.constraint_type === 'abox_acl') {
+        toast?.warning?.(`ACL 拦截（预期）：${d.reason || 'viewer 不可 state_change'}`);
+      } else if (d.status === 'executed') {
+        toast?.error?.('未拦截：viewer 不应能丢弃幽灵表');
+        await refreshGovAssets();
+      } else {
+        toast?.info?.(`${d.status}: ${d.reason || d.error || ''}`);
+      }
+    } catch (e: any) {
+      toast?.error?.(e?.message || 'ACL 演示失败');
+    } finally {
+      setGovBusy(false);
     }
   };
 
@@ -3373,6 +3620,162 @@ const AcceptTab: React.FC<{
               className="安装工单"
               state={orderState || 'pending'}
               onExecuted={() => refreshOrders(orderEntityId)}
+            />
+          )}
+        </CardContent>
+      </Card>
+      {/* it-ops alert triage — PPT 故障诊断竖切（与 lock-service 同构） */}
+      <Card>
+        <CardHeader>
+          <span className="text-sm font-medium">故障诊断 Action（it-ops）</span>
+          <p className="text-[11px] text-gray-500 mt-1 font-normal">
+            路径 C：按已有 it-ops 说明书写入真实层（模板种子，非本体「长出」实例）。
+            直线演示或教学复杂拓扑后：分诊 → 挂疑似 → 落根因（L1 硬门）。
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex flex-wrap gap-2 items-center">
+            <Button variant="default" size="sm" loading={alertBusy} onClick={createDemoAlert}>
+              创建演示告警
+            </Button>
+            <Button variant="secondary" size="sm" loading={alertBusy} onClick={createComplexDemoAlert}>
+              创建教学复杂拓扑
+            </Button>
+            <Button variant="secondary" size="sm" loading={alertBusy} onClick={importSampleAlerts}>
+              导入样例告警JSON
+            </Button>
+            <Button variant="secondary" size="sm" loading={alertBusy} onClick={importTableMapSample}>
+              导入表/CSV样例
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => refreshAlerts()}>刷新</Button>
+            <span className="text-[11px] text-gray-500">当前状态: {alertState || '—'}</span>
+          </div>
+          <select
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300"
+            value={alertEntityId}
+            onChange={e => {
+              const id = e.target.value;
+              setAlertEntityId(id);
+              const hit = alertList.find(x => x.entity_id === id);
+              setAlertState(hit?.state || 'open');
+            }}
+          >
+            {!alertList.length && <option value="">（无告警 — 请先创建）</option>}
+            {alertList.map(o => (
+              <option key={o.entity_id} value={o.entity_id}>
+                {o.entity_id} · {o.state || '?'} · {o.name}
+              </option>
+            ))}
+          </select>
+          {alertEntityId && (
+            <ActionCardsSection
+              specId={alertEntityId}
+              domainId="it-ops"
+              className="告警"
+              state={alertState || 'open'}
+              defaultParams={{
+                suspected_root: 'MW-Redis主',
+                root_entity_id: 'MW-Redis主',
+                path_note: 'SVC-查询→SVC-动作→MW-Redis主',
+              }}
+              onExecuted={() => refreshAlerts(alertEntityId)}
+            />
+          )}
+        </CardContent>
+      </Card>
+      {/* 三柱速览 — 数据 / 逻辑 / 行动（只读聚合） */}
+      <Card>
+        <CardHeader>
+          <span className="text-sm font-medium">本体三柱速览</span>
+          <p className="text-[11px] text-gray-500 mt-1 font-normal">
+            数据=图实体；逻辑=公理/推理规则（软约束）；行动=customer_action（硬门）。建议≠权威。
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex flex-wrap gap-2 items-center">
+            <Button variant="default" size="sm" loading={pillarsBusy} onClick={() => loadPillars('it-ops')}>
+              加载 it-ops 三柱
+            </Button>
+            <Button variant="ghost" size="sm" loading={pillarsBusy} onClick={() => loadPillars('lock-service')}>
+              lock-service
+            </Button>
+            <Button variant="ghost" size="sm" loading={pillarsBusy} onClick={() => loadPillars('data-gov')}>
+              data-gov
+            </Button>
+          </div>
+          {pillars && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-gray-300">
+              <div className="border border-gray-700 rounded p-2">
+                <div className="font-medium text-gray-200 mb-1">数据</div>
+                <div>实体 {pillars.data?.entity_count ?? 0} · 边 {pillars.data?.relation_count ?? 0}</div>
+                <div className="text-gray-500 mt-1 truncate">
+                  {Object.entries(pillars.data?.by_class || {})
+                    .slice(0, 6)
+                    .map(([k, v]) => `${k}:${v}`)
+                    .join(' · ') || '—'}
+                </div>
+              </div>
+              <div className="border border-gray-700 rounded p-2">
+                <div className="font-medium text-gray-200 mb-1">逻辑（软）</div>
+                <div>公理 {pillars.logic?.axiom_count ?? 0} · 规则 {pillars.logic?.rule_count ?? 0}</div>
+                <div className="text-gray-500 mt-1">
+                  {(pillars.logic?.axioms || []).slice(0, 2).map((a: any) => a.id || a.description).join(' · ') || '—'}
+                </div>
+              </div>
+              <div className="border border-gray-700 rounded p-2">
+                <div className="font-medium text-gray-200 mb-1">行动（硬）</div>
+                <div>Action {pillars.action?.action_count ?? 0}</div>
+                <div className="text-gray-500 mt-1 truncate">
+                  {(pillars.action?.actions || []).slice(0, 3).map((a: any) => a.label || a.action_id).join(' · ') || '—'}
+                </div>
+              </div>
+            </div>
+          )}
+          {pillars?.authority_note && (
+            <div className="text-[10px] text-amber-500/80">{pillars.authority_note}</div>
+          )}
+        </CardContent>
+      </Card>
+      {/* data-gov — B4 治理洪水筛选 / 闸2 竖切 */}
+      <Card>
+        <CardHeader>
+          <span className="text-sm font-medium">数据治理 Action（data-gov）</span>
+          <p className="text-[11px] text-gray-500 mt-1 font-normal">
+            B4 教学真实层：丢幽灵表 + 主线资产挂目录（闸2 写 ABox）。实例/属性 ACL：viewer 读不到幽灵表。
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex flex-wrap gap-2 items-center">
+            <Button variant="default" size="sm" loading={govBusy} onClick={createGovDemoAssets}>
+              创建治理教学图
+            </Button>
+            <Button variant="secondary" size="sm" loading={govBusy} onClick={demoViewerDiscardBlocked}>
+              viewer试丢弃（应拦截）
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => refreshGovAssets()}>刷新</Button>
+          </div>
+          <div className="text-[11px] text-gray-500">{govAclNote || '—'}</div>
+          <div className="text-[11px] text-gray-500">{govFieldNote || '—'}</div>
+          <div className="text-[11px] text-gray-400">
+            主线资产 {govAssetId} · {govAssetState} · 幽灵表 {govTableId} · {govTableState}
+          </div>
+          {govAssetId && (
+            <ActionCardsSection
+              specId={govAssetId}
+              domainId="data-gov"
+              className="数据资产"
+              state={govAssetState || 'meta_ready'}
+              defaultParams={{ catalog_id: govCatalogId || 'CAT-积分流水' }}
+              onExecuted={() => refreshGovAssets()}
+            />
+          )}
+          {govTableId && (
+            <ActionCardsSection
+              specId={govTableId}
+              domainId="data-gov"
+              className="物理表"
+              state={govTableState || 'raw'}
+              onExecuted={() => refreshGovAssets()}
             />
           )}
         </CardContent>

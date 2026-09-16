@@ -65,9 +65,21 @@ const KnowledgeExtractionPanel: React.FC = () => {
   };
 
   const handleConfirm = async (id: string) => {
-    await fetch(API(`/extractions/${id}/confirm`), { method: 'POST' });
-    setPending(prev => prev.filter(p => p.extraction_id !== id));
-    toast?.success?.('已确认 → 本体提案已入队（非 GraphIndex 实例入库）');
+    try {
+      const r = await fetch(API(`/extractions/${id}/confirm`), { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '确认失败');
+      setPending(prev => prev.filter(p => p.extraction_id !== id));
+      const gw = d.graph_write || {};
+      const nEnt = (gw.created_entities || []).length;
+      const nRel = (gw.relations || []).length;
+      const prop = d.proposal_id ? `提案 ${d.proposal_id}` : '提案跳过/失败';
+      toast?.success?.(
+        `已确认：GraphIndex 实体 ${nEnt}、关系 ${nRel}；${prop}`,
+      );
+    } catch (e: any) {
+      toast?.error?.(e?.message || '确认失败');
+    }
   };
 
   const handleReject = async (id: string) => {
@@ -342,14 +354,41 @@ const OntologyEvolutionPanel: React.FC = () => {
       .catch(() => {});
   }, []);
 
+  const handleApprove = async (id: string) => {
+    setLoading(true);
+    try {
+      const r = await fetch(API(`/ontology/proposals/${id}/approve`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approver_role: 'analyst' }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '审批失败');
+      setProposals(prev => prev.map(p => p.proposal_id === id ? { ...p, status: 'approved' } : p));
+      toast?.success?.(`已批准 ${id}（tier=${d.tier || 'edge'}）`);
+    } catch (e: any) {
+      toast?.error?.(e?.message || '审批失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleApply = async (id: string) => {
     setLoading(true);
     try {
-      await fetch(API(`/ontology/proposals/${id}/apply`), { method: 'POST' });
+      const r = await fetch(API(`/ontology/proposals/${id}/apply`), { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '应用失败');
       setProposals(prev => prev.map(p => p.proposal_id === id ? { ...p, status: 'applied' } : p));
-      toast?.success?.('提案已应用');
-    } catch { toast?.error?.('应用失败'); }
-    finally { setLoading(false); }
+      const added = (d.classes_added || []).join(', ') || '—';
+      toast?.success?.(
+        `已应用 v${d.version_from ?? '?'}→v${d.version_to ?? '?'}；新增类 ${added}`,
+      );
+    } catch (e: any) {
+      toast?.error?.(e?.message || '应用失败');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const statusLabel = (s: string) => {
@@ -415,6 +454,17 @@ const OntologyEvolutionPanel: React.FC = () => {
                 <div className="text-[10px] text-gray-500">
                   作者: {p.author} · 影响: {p.impact_analysis || '-'}
                 </div>
+                {p.status === 'draft' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-amber-400 text-[10px] py-0 h-5 mt-1 mr-2"
+                    loading={loading}
+                    onClick={() => handleApprove(p.proposal_id)}
+                  >
+                    批准
+                  </Button>
+                )}
                 {p.status === 'approved' && (
                   <Button
                     variant="ghost"

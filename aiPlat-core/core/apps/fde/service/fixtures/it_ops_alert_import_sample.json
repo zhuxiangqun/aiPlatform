@@ -1,0 +1,42 @@
+{
+  "source": "monitor-sample",
+  "system_name": "积分系统",
+  "entities": [
+    {"id": "SVC-网关", "name": "gateway", "class": "服务"},
+    {"id": "SVC-查询", "name": "cast-query", "class": "服务"},
+    {"id": "SVC-动作", "name": "cast-action", "class": "服务"},
+    {"id": "SVC-通知", "name": "notify", "class": "服务"},
+    {"id": "MW-Redis主", "name": "redis-primary", "class": "中间件", "props": {"pool_util": "98"}},
+    {"id": "MW-Redis从", "name": "redis-replica", "class": "中间件", "props": {"healthy": "true"}},
+    {"id": "MW-MySQL", "name": "mysql-orders", "class": "中间件"},
+    {"id": "HOST-8", "name": "10.0.0.8", "class": "主机"},
+    {"id": "HOST-9", "name": "10.0.0.9", "class": "主机"},
+    {"id": "HOST-批处理", "name": "10.0.0.20", "class": "主机"},
+    {
+      "id": "ALT-IMPORT-MAIN",
+      "name": "查询超时（导入）",
+      "class": "告警",
+      "state": "open",
+      "props": {"service_name": "SVC-查询", "system_name": "积分系统"}
+    },
+    {
+      "id": "ALT-IMPORT-DISK",
+      "name": "磁盘（导入干扰）",
+      "class": "告警",
+      "state": "open",
+      "props": {"service_name": "HOST-批处理", "system_name": "积分系统"}
+    }
+  ],
+  "relations": [
+    {"from": "SVC-网关", "to": "SVC-查询", "rel": "calls", "label": "调用"},
+    {"from": "SVC-查询", "to": "SVC-动作", "rel": "calls", "label": "调用"},
+    {"from": "SVC-查询", "to": "SVC-通知", "rel": "calls", "label": "调用"},
+    {"from": "SVC-动作", "to": "MW-Redis主", "rel": "calls", "label": "调用"},
+    {"from": "SVC-动作", "to": "MW-MySQL", "rel": "calls", "label": "调用"},
+    {"from": "SVC-通知", "to": "MW-Redis从", "rel": "calls", "label": "调用"},
+    {"from": "MW-Redis主", "to": "HOST-8", "rel": "deployed_on", "label": "部署于"},
+    {"from": "MW-MySQL", "to": "HOST-9", "rel": "deployed_on", "label": "部署于"}
+  ],
+  "primary_alert_id": "ALT-IMPORT-MAIN",
+  "default_root": "MW-Redis主"
+}

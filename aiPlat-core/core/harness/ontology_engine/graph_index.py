@@ -1229,7 +1229,7 @@ class GraphIndex:
         """Load known class labels from the domain YAML for schema validation. (Q)
 
         Returns: set of class label strings or empty set if YAML unavailable.
-        Cached per instance.
+        Cached per instance. Honors AIPLAT_HOME; falls back to workspace_seeds.
         """
         if hasattr(self, '_class_labels_cache'):
             return getattr(self, '_class_labels_cache')
@@ -1237,12 +1237,28 @@ class GraphIndex:
         labels = set()
         try:
             import os
-            path = os.path.expanduser(f"~/.aiplat/ontologies/{self.domain_id}.yaml")
-            if os.path.exists(path):
-                from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
-                dom = load_ontology_from_yaml(path)
-                for cls in dom.classes:
-                    labels.add(cls.label)
+            from pathlib import Path as _P
+            home = os.getenv("AIPLAT_HOME", str(_P.home() / ".aiplat"))
+            candidates = [
+                _P(home) / "ontologies" / f"{self.domain_id}.yaml",
+            ]
+            # repo workspace seed (aiPlat-core/workspace_seeds/ontologies/)
+            # __file__=.../core/harness/ontology_engine/graph_index.py → parents[3]=aiPlat-core
+            seed = (
+                _P(__file__).resolve().parents[3]
+                / "workspace_seeds"
+                / "ontologies"
+                / f"{self.domain_id}.yaml"
+            )
+            candidates.append(seed)
+            from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+            for path in candidates:
+                if path.is_file():
+                    dom = load_ontology_from_yaml(str(path))
+                    for cls in dom.classes:
+                        labels.add(cls.label)
+                    if labels:
+                        break
         except Exception:
             logging.getLogger(__name__).debug('_load_class_labels failed', exc_info=True)
 

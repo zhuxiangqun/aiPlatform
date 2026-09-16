@@ -47,6 +47,9 @@
 ### 跨层规范（standards/）
 [standards/](standards/) — 3 份强制性规范（run_id/trace_id、鉴权透传、session_id）
 
+### 契约（contracts/）
+[contracts/](contracts/) — 本体运行时权威 / 完整性 / 叙事；PPT 场景图解见 [ONTOLOGY_PPT_SCENARIOS.md](contracts/ONTOLOGY_PPT_SCENARIOS.md)；星邺 PPT 五层对标分析见 [ONTOLOGY_XINGYE_PPT_ANALYSIS.md](contracts/ONTOLOGY_XINGYE_PPT_ANALYSIS.md)；能力结果标准见 [ONTOLOGY_OUTCOME_GOALS.md](contracts/ONTOLOGY_OUTCOME_GOALS.md)；故障演示剧本见 [ONTOLOGY_DEMO_PLAYBOOK.md](contracts/ONTOLOGY_DEMO_PLAYBOOK.md)
+
 ### 策略配置（policy/）
 [policy/](policy/) — 2 份安全/运维策略
 

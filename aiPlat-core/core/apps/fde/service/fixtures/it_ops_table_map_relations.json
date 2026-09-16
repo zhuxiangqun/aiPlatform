@@ -1,0 +1,7 @@
+{
+  "relations": [
+    {"from": "ALT-TMAP-1", "to": "SVC-TMAP-1", "rel": "suspects"},
+    {"from": "SVC-TMAP-1", "to": "MW-TMAP-1", "rel": "calls"},
+    {"from": "MW-TMAP-1", "to": "HOST-TMAP-1", "rel": "deployed_on"}
+  ]
+}

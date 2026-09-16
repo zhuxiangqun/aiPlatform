@@ -267,8 +267,50 @@ async def test_confirm_enqueues_ontology_proposal(aiplat_home, tmp_path):
             draft_yaml_path="",
         )
     )
-    assert await pending.confirm("ext_d1") is True
+    receipt = await pending.confirm("ext_d1")
+    assert receipt.get("ok") is True, receipt
+    gw = receipt.get("graph_write") or {}
+    assert "新配件" in gw.get("created_entities", []), gw
     from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore
 
     props = await VersionedOntologyStore(DOMAIN).list_proposals(DOMAIN)
     assert any(p.get("author", "").startswith("extract:") for p in props)
+
+    GraphIndex._loaded_instances.clear()
+    g = GraphIndex.load(DOMAIN)
+    assert "新配件" in g._nodes
+
+
+@pytest.mark.asyncio
+async def test_confirm_writes_relations_receipt(aiplat_home, tmp_path):
+    """P2 gate: confirm → GraphIndex entities + relations + receipt."""
+    pending = PendingExtractionStore(db_path=str(tmp_path / "e2.db"))
+    await pending.initialize()
+    await pending.save(
+        ExtractionResult(
+            extraction_id="ext_abox",
+            domain_id=DOMAIN,
+            source_doc="ops.md",
+            overall_confidence=0.75,
+            entities=[
+                {"name": "积分查询", "class_type": "服务", "entity_id": "SVC-查询"},
+                {"name": "Redis主", "class_type": "中间件", "entity_id": "MW-Redis主"},
+            ],
+            relations=[
+                {"source": "积分查询", "type": "依赖", "target": "Redis主"},
+            ],
+            status="pending",
+            draft_yaml_path="",
+        )
+    )
+    receipt = await pending.confirm("ext_abox", enqueue_proposal=False)
+    assert receipt.get("ok") is True, receipt
+    gw = receipt.get("graph_write") or {}
+    assert set(gw.get("created_entities", [])) >= {"SVC-查询", "MW-Redis主"}
+    assert any("依赖" in r for r in gw.get("relations", [])), gw
+    assert receipt.get("proposal_id") is None
+
+    GraphIndex._loaded_instances.clear()
+    g = GraphIndex.load(DOMAIN)
+    assert g._nodes["SVC-查询"].class_name == "服务"
+    assert g._nodes["MW-Redis主"].metadata.get("source") == "extract-confirm"
