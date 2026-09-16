@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1485
+total_capabilities: 1499
 
 total_capabilities: 1095
 last_updated: 2026-08-25
@@ -1802,6 +1802,16 @@ scan_hash: 8f9548ec24f4
 | import_abox_payload | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | 域可配置 allowlist 写图 | 禁止 harness 硬编码域名 |
 | import_table_map_payload | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | 表/CSV Path B（`source_type=table_map`） | connector.table_map 映射；生成物不适用（平台横切入轨） |
 | map_table_rows_to_payload | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | 行列→entities/relations | 域配置驱动 |
+| connector_path | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | connector.json 路径 | Path B 配置 |
+| ensure_connector_config | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | 安装 workspace seed connector | Path B |
+| load_connector_config | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | 读取域 connector.json | Path B |
+| find_domain_for_source | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | source_id→domain_id | webhook 路由 |
+| verify_webhook_secret | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | webhook 密钥校验 | Path B 鉴权 |
+| parse_csv_text | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | CSV→row dicts | table_map |
+| load_table_map_sample | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | it-ops 表映射样例 | Path B demo |
+| ensure_data_gov_ontology | `aiPlat-core/core/apps/fde/service/data_gov_demo_seed.py` | ✅ | 安装 data-gov 域 YAML | 多域 demo |
+| ensure_retail_ops_ontology | `aiPlat-core/core/apps/fde/service/retail_ops_demo_seed.py` | ✅ | 安装 retail-ops 域 YAML | 多域 demo |
+| suggest_classes_from_snippets | `aiPlat-core/core/apps/fde/service/ontology_code_suggestions.py` | ✅ | 同步代码→提案草稿 | 禁自动 apply |
 | get_ontology_pillars | `aiPlat-core/core/apps/fde/service/ontology_pillars.py` | ✅ | 数据/逻辑/行动三柱只读聚合 | `GET .../ontology/pillars/{domain}`；生成物不适用 |
 | suggest_classes_from_snippets_async | `aiPlat-core/core/apps/fde/service/ontology_code_suggestions.py` | ✅ | 代码→提案草稿（禁自动 apply） | `POST .../ontology/code-suggestions` |
 | review_domain_owl_offline | `aiPlat-core/core/apps/fde/service/offline_owl_review.py` | ✅ | 离线 OWL 审稿；unchecked 禁假绿 | 非运行时权威；生成物不适用 |
@@ -2407,7 +2417,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 168 | 1 | 169 |
 | 记忆子系统 | 41 | 0 | 41 |
-| 知识引擎（本体） | 169 | 8 | 177 |
+| 知识引擎（本体） | 173 | 8 | 181 |
 | RAG 检索 | 50 | 0 | 50 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 52 | 0 | 52 |
@@ -2422,7 +2432,7 @@ scan_hash: 8f9548ec24f4
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
-| 工具生态 | 89 | 0 | 89 |
+| 工具生态 | 99 | 0 | 99 |
 | 微调系统 | 14 | 0 | 14 |
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 6 | 0 | 6 |
@@ -2450,7 +2460,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1476** | **9** | **1485** |
+| **总计** | **1490** | **9** | **1499** |
 
 | **总计** | **1095** | **0** | **1095** |
 
