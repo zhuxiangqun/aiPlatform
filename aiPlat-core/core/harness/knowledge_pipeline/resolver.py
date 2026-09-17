@@ -81,8 +81,10 @@ class CrossDomainCandidate:
 class CrossDomainResolver:
     """Scan entities across domains and propose merge candidates."""
 
-    def __init__(self, registry_path: str = REGISTRY_PATH):
-        self.registry_path = os.path.expanduser(registry_path)
+    def __init__(self, registry_path: Optional[str] = None):
+        # Resolve REGISTRY_PATH at call time so monkeypatches / env rebinding work
+        # (default-arg freeze would pin the import-time path).
+        self.registry_path = os.path.expanduser(registry_path or REGISTRY_PATH)
         self._cache: Dict[str, Any] = {}
         self._cache_ts = 0.0
         self._cache_ttl = 120  # 2 min
