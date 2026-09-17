@@ -1280,14 +1280,11 @@ class OntologyEngine:
                         inferencer = GraphInference(self._domain, graph)
 
                         inf_result = inferencer.infer()
-
-                        added = inferencer.apply_to_graph(inf_result)
-
-                        if added:
-
-                            graph.save()
-
-                            result.stats["inferred_edges"] = added
+                        # Suggestion layer only — must not write GraphIndex here.
+                        # Commit via platform_action:graph:assert_inferred_edge(s).
+                        result.stats["inferred_suggestions"] = inf_result.to_dict()
+                        result.stats["inferred_edges_applied"] = 0
+                        result.stats["inferred_edges"] = len(inf_result.inferred_edges)
 
                     except Exception as e:
 

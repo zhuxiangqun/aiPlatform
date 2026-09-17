@@ -29,6 +29,10 @@ class ActionStore:
     async def initialize(self) -> None:
         """Create tables (idempotent)."""
         import aiosqlite
+        import os
+        parent = os.path.dirname(os.path.abspath(self.db_path))
+        if parent:
+            os.makedirs(parent, exist_ok=True)
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS action_audit (

@@ -1,0 +1,80 @@
+# 零售运营故障诊断 — Phase 2 同构第二域（零改 harness）
+# 与 it-ops 同构：告警→分诊→挂疑似→落根因；非 OWL 运行时
+name: "零售运营故障诊断"
+namespace: "http://aiplat.local/ontology/retail-ops/"
+version: "1.0.0"
+description: "POS/门店告警分诊竖切；证明架构可复制（OCS 中档目标）"
+
+classes:
+  Alert:
+    label: 告警
+    required_fields: [alert_id, status]
+    optional_fields: [system_name, service_name, suspected_root, root_entity_id, path_note]
+    categories: [retail-ops]
+    states:
+      default: open
+      enum:
+        - name: open
+          label: 未分诊
+        - name: triaging
+          label: 分诊中
+        - name: rooted
+          label: 已定位根因
+      transitions:
+        - from: open
+          to: triaging
+          trigger:
+            type: action
+            action_id: customer_action:retail-ops:triage_alert
+        - from: triaging
+          to: rooted
+          trigger:
+            type: action
+            action_id: customer_action:retail-ops:mark_root_cause
+
+  Service:
+    label: 服务
+    required_fields: [name]
+    optional_fields: [system_code]
+    categories: [retail-ops]
+
+  Middleware:
+    label: 中间件
+    required_fields: [name]
+    optional_fields: [component_version]
+    categories: [retail-ops]
+
+  Host:
+    label: 主机
+    required_fields: [host_ip]
+    optional_fields: [hostname]
+    categories: [retail-ops]
+
+object_properties:
+  - name: calls
+    label: 调用
+    domain: [Service]
+    range: [Service, Middleware]
+  - name: deployed_on
+    label: 部署于
+    domain: [Service, Middleware]
+    range: [Host]
+  - name: suspects
+    label: 疑似根因指向
+    domain: [Alert]
+    range: [Service, Middleware, Host]
+  - name: rooted_at
+    label: 根因落点
+    domain: [Alert]
+    range: [Service, Middleware, Host]
+
+axioms:
+  - id: RETOPS-A1
+    severity: error
+    description: "仅 open 可分诊"
+  - id: RETOPS-A2
+    severity: warning
+    description: "rooted 应有 rooted_at 或 root_entity_id"
+  - id: RETOPS-A3
+    severity: warning
+    description: "走图不得跳过分诊状态"

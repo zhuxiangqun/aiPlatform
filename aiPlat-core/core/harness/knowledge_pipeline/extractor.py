@@ -451,6 +451,125 @@ class ExtractionPipeline:
 
 
 # ═══════════════════════════════════════════════════════════
+# Path B helpers — confirm → GraphIndex (ABox receipt)
+# ═══════════════════════════════════════════════════════════
+
+def _entity_to_dict(ent: Any) -> Dict[str, Any]:
+    if isinstance(ent, dict):
+        return ent
+    if isinstance(ent, ExtractedEntity):
+        return {
+            "name": ent.name,
+            "class_type": ent.class_type,
+            "attributes": ent.attributes or {},
+            "confidence": ent.confidence,
+            "evidence": ent.evidence,
+            "source_doc": ent.source_doc,
+            "entity_id": ent.entity_id,
+        }
+    return {"name": str(ent), "class_type": "概念"}
+
+
+def _relation_to_dict(rel: Any) -> Dict[str, Any]:
+    if isinstance(rel, dict):
+        return rel
+    if isinstance(rel, ExtractedRelation):
+        return {
+            "source": rel.source_entity,
+            "source_entity": rel.source_entity,
+            "type": rel.relation_type,
+            "relation_type": rel.relation_type,
+            "target": rel.target_entity,
+            "target_entity": rel.target_entity,
+            "confidence": rel.confidence,
+            "evidence": rel.evidence,
+        }
+    return {}
+
+
+def _slug_entity_id(name: str, fallback: str = "ENT") -> str:
+    raw = (name or "").strip() or fallback
+    safe = "".join(ch if (ch.isalnum() or ch in "-_") else "_" for ch in raw)[:80]
+    return safe or fallback
+
+
+def write_extraction_to_graph_index(
+    domain_id: str,
+    entities: List[Any],
+    relations: List[Any],
+    *,
+    source_doc_id: str = "extract-confirm",
+) -> Dict[str, Any]:
+    """Path B (doc confirm): write extracted entities/relations into GraphIndex.
+
+    Returns a receipt: created_entities / relations / skipped / primary_entity_id.
+    Unknown domain classes log warnings (GraphIndex behavior) but still write.
+    """
+    from core.harness.ontology_engine.graph_index import GraphIndex
+
+    GraphIndex._loaded_instances.clear()
+    g = GraphIndex.load(domain_id) if domain_id else GraphIndex.load("default")
+
+    created: List[str] = []
+    skipped: List[Dict[str, str]] = []
+    relations_ok: List[str] = []
+    name_to_id: Dict[str, str] = {}
+
+    for raw in entities or []:
+        ent = _entity_to_dict(raw)
+        name = str(ent.get("name") or "").strip()
+        cls = str(
+            ent.get("class_type") or ent.get("type") or ent.get("class") or "概念"
+        ).strip() or "概念"
+        eid = str(ent.get("entity_id") or "").strip() or _slug_entity_id(name)
+        if not name:
+            skipped.append({"id": eid or "?", "reason": "missing_name"})
+            continue
+        if eid not in g._nodes:
+            g.add_entity(eid, name, cls, source_doc_id=source_doc_id)
+            created.append(eid)
+        else:
+            created.append(eid)
+        name_to_id[name] = eid
+        name_to_id[eid] = eid
+        attrs = ent.get("attributes") if isinstance(ent.get("attributes"), dict) else {}
+        for pk, pv in attrs.items():
+            g.add_entity_property(eid, str(pk), str(pv))
+        if ent.get("evidence"):
+            g.add_entity_property(eid, "evidence", str(ent.get("evidence"))[:500])
+        g.add_entity_property(eid, "source", "extract-confirm")
+
+    for raw in relations or []:
+        rel = _relation_to_dict(raw)
+        src_name = str(rel.get("source_entity") or rel.get("source") or "").strip()
+        dst_name = str(rel.get("target_entity") or rel.get("target") or "").strip()
+        rtype = str(rel.get("relation_type") or rel.get("type") or rel.get("rel") or "").strip()
+        if not src_name or not dst_name or not rtype:
+            skipped.append({"id": f"{src_name}->{dst_name}", "reason": "incomplete_relation"})
+            continue
+        src = name_to_id.get(src_name) or _slug_entity_id(src_name)
+        dst = name_to_id.get(dst_name) or _slug_entity_id(dst_name)
+        if src not in g._nodes or dst not in g._nodes:
+            skipped.append({"id": f"{src}->{dst}", "reason": "endpoint_missing"})
+            continue
+        # GraphIndex relations prefer English keys when present; Chinese labels OK as rel name
+        g.add_relation(src, dst, rtype, relation_label=rtype)
+        relations_ok.append(f"{src}-{rtype}->{dst}")
+
+    g.save()
+    GraphIndex._loaded_instances.clear()
+    primary = created[0] if created else ""
+    return {
+        "domain_id": domain_id,
+        "created_entities": sorted(set(created)),
+        "relations": relations_ok,
+        "skipped": skipped,
+        "primary_entity_id": primary,
+        "source_doc_id": source_doc_id,
+    }
+
+
+# ═══════════════════════════════════════════════════════════
 # Pending extractions store (SQLite, same as execution_store)
 # ═══════════════════════════════════════════════════════════
 
@@ -474,37 +593,44 @@ class PendingExtractionStore:
                     status TEXT DEFAULT 'pending',
                     draft_yaml_path TEXT,
                     entities_json TEXT DEFAULT '[]',
+                    relations_json TEXT DEFAULT '[]',
                     created_at TEXT DEFAULT (datetime('now'))
                 )
             """)
             # Migration for existing DBs
-            try:
-                await db.execute(
-                    "ALTER TABLE pending_extractions ADD COLUMN entities_json TEXT DEFAULT '[]'"
-                )
-            except Exception as e:  # noqa: BLE001 — column may already exist
-                logger.debug("pending_extractions entities_json migration skipped: %s", e)
+            for col_sql in (
+                "ALTER TABLE pending_extractions ADD COLUMN entities_json TEXT DEFAULT '[]'",
+                "ALTER TABLE pending_extractions ADD COLUMN relations_json TEXT DEFAULT '[]'",
+            ):
+                try:
+                    await db.execute(col_sql)
+                except Exception as e:  # noqa: BLE001 — column may already exist
+                    logger.debug("pending_extractions migration skipped: %s", e)
             await db.commit()
 
     async def save(self, result: ExtractionResult) -> None:
         import aiosqlite
         import json as _json
+        ents = [_entity_to_dict(e) for e in (result.entities or [])]
+        rels = [_relation_to_dict(r) for r in (result.relations or [])]
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("""
                 INSERT OR REPLACE INTO pending_extractions
                 (extraction_id, domain_id, source_doc, overall_confidence,
-                 entity_count, relation_count, status, draft_yaml_path, entities_json)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 entity_count, relation_count, status, draft_yaml_path,
+                 entities_json, relations_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 result.extraction_id,
                 result.domain_id,
                 result.source_doc,
                 result.overall_confidence,
-                len(result.entities),
-                len(result.relations),
+                len(ents),
+                len(rels),
                 result.status,
                 result.draft_yaml_path,
-                _json.dumps(result.entities or [], ensure_ascii=False),
+                _json.dumps(ents, ensure_ascii=False),
+                _json.dumps(rels, ensure_ascii=False),
             ))
             await db.commit()
 
@@ -524,8 +650,17 @@ class PendingExtractionStore:
                 ) as cur:
                     return [dict(r) for r in await cur.fetchall()]
 
-    async def confirm(self, extraction_id: str, *, enqueue_proposal: bool = True) -> bool:
-        """Mark extraction confirmed; optionally enqueue an edge-tier ontology proposal (D1/P3)."""
+    async def confirm(
+        self,
+        extraction_id: str,
+        *,
+        enqueue_proposal: bool = True,
+        write_graph: bool = True,
+    ) -> Dict[str, Any]:
+        """Confirm extraction: optional GraphIndex ABox write + ontology proposal enqueue.
+
+        Returns receipt dict with ``ok`` (bool), ``graph_write``, ``proposal_id``.
+        """
         import aiosqlite
         import json as _json
 
@@ -538,25 +673,68 @@ class PendingExtractionStore:
             ) as cur:
                 row = await cur.fetchone()
             if not row:
-                return False
+                return {"ok": False, "extraction_id": extraction_id, "reason": "not_found"}
             cur = await db.execute(
                 "UPDATE pending_extractions SET status='confirmed' WHERE extraction_id=?",
                 (extraction_id,),
             )
             await db.commit()
             if cur.rowcount <= 0:
-                return False
+                return {"ok": False, "extraction_id": extraction_id, "reason": "update_failed"}
 
-        if enqueue_proposal and row:
+        row_d = dict(row)
+        domain_id = str(row_d.get("domain_id") or "default")
+        source_doc = str(row_d.get("source_doc") or "extract-confirm")
+
+        def _parse_json_list(raw: Any) -> List[Any]:
+            if isinstance(raw, list):
+                return raw
+            if isinstance(raw, str) and raw.strip():
+                try:
+                    val = _json.loads(raw)
+                    return val if isinstance(val, list) else []
+                except Exception:
+                    return []
+            return []
+
+        entities = _parse_json_list(row_d.get("entities_json"))
+        relations = _parse_json_list(row_d.get("relations_json"))
+
+        receipt: Dict[str, Any] = {
+            "ok": True,
+            "extraction_id": extraction_id,
+            "domain_id": domain_id,
+            "source_doc": source_doc,
+            "proposal_id": None,
+            "graph_write": None,
+        }
+
+        if write_graph and entities:
             try:
-                await self._enqueue_ontology_proposal(dict(row))
+                receipt["graph_write"] = write_extraction_to_graph_index(
+                    domain_id,
+                    entities,
+                    relations,
+                    source_doc_id=f"extract:{extraction_id}",
+                )
+            except Exception:
+                logger.warning(
+                    "confirm: GraphIndex write failed for %s",
+                    extraction_id,
+                    exc_info=True,
+                )
+                receipt["graph_write"] = {"error": "graph_write_failed", "created_entities": []}
+
+        if enqueue_proposal:
+            try:
+                receipt["proposal_id"] = await self._enqueue_ontology_proposal(row_d)
             except Exception:
                 logger.warning(
                     "confirm: ontology proposal enqueue failed for %s",
                     extraction_id,
                     exc_info=True,
                 )
-        return True
+        return receipt
 
     async def _enqueue_ontology_proposal(self, row: Dict[str, Any]) -> str:
         """Create a draft VersionedOntologyStore proposal from confirmed extraction entities."""

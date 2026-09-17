@@ -1,0 +1,78 @@
+# 数据治理教学域 — B4 闸2 / 洪水筛选竖切（非 it-ops 故障词表）
+name: "数据治理"
+namespace: "http://aiplat.local/ontology/data-gov/"
+version: "1.0.0"
+description: "数据资产成熟度 + 挂目录写 ABox；说明书变更仍走本体提案轨"
+
+classes:
+  DataAsset:
+    label: 数据资产
+    required_fields: [asset_id, status]
+    optional_fields: [owner_contact, maturity_note]
+    categories: [data-gov]
+    tier: logic
+    states:
+      default: raw
+      enum:
+        - name: raw
+          label: 原始
+        - name: meta_ready
+          label: 元数据就绪
+        - name: structured
+          label: 已结构化
+        - name: cataloged
+          label: 已入目录
+        - name: agent_ready
+          label: 可喂智能体
+      transitions:
+        - from: meta_ready
+          to: cataloged
+          trigger:
+            type: action
+            action_id: customer_action:data-gov:mount_catalog
+
+  PhysicalTable:
+    label: 物理表
+    required_fields: [table_id]
+    optional_fields: [ghost, status]
+    categories: [data-gov]
+    tier: edge
+    states:
+      default: raw
+      enum:
+        - name: raw
+          label: 原始
+        - name: discarded
+          label: 已丢弃幽灵
+
+  CatalogEntry:
+    label: 目录条目
+    required_fields: [catalog_id]
+    optional_fields: [title]
+    categories: [data-gov]
+    tier: edge
+
+  ExtractionDraft:
+    label: 抽取草稿
+    required_fields: [draft_id]
+    optional_fields: [status]
+    categories: [data-gov]
+    tier: edge
+
+object_properties:
+  - name: feeds
+    label: 业务供给
+    domain: [DataAsset, PhysicalTable]
+    range: [DataAsset, PhysicalTable]
+  - name: lineage
+    label: 血缘
+    domain: [DataAsset]
+    range: [DataAsset, PhysicalTable]
+  - name: mounts
+    label: 挂载目录
+    domain: [DataAsset]
+    range: [CatalogEntry]
+  - name: describes
+    label: 描述
+    domain: [ExtractionDraft]
+    range: [DataAsset]

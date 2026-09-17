@@ -177,8 +177,10 @@ class VersionedOntologyStore:
         logger.info("Proposal %s approved by %s (tier=%s)", proposal_id, role, max_tier)
         return {"success": True, "status": "approved", "tier": max_tier}
 
-    async def apply_proposal(self, proposal_id: str) -> bool:
+    async def apply_proposal(self, proposal_id: str) -> Dict[str, Any]:
         """Apply an approved proposal: generate new version YAML, archive old.
+
+        Returns receipt ``{ok, proposal_id, version_from, version_to, live_path, reason?}``.
 
         P2-L1 tier gate (plan-tier-ontology-layering.md §3):
           - max_tier == core  → 必须已通过架构评审（approval_level == architecture_review）
@@ -189,7 +191,11 @@ class VersionedOntologyStore:
         proposal = await self.store.get_ontology_proposal(proposal_id)
         if not proposal or proposal.get("status") != "approved":
             logger.warning("Proposal %s not found or not approved", proposal_id)
-            return False
+            return {
+                "ok": False,
+                "proposal_id": proposal_id,
+                "reason": "not_found_or_not_approved",
+            }
 
         current_v = int(proposal.get("version_from", "0"))
         new_v = int(proposal.get("version_to", "1"))
@@ -201,7 +207,13 @@ class VersionedOntologyStore:
         gate = self._check_tier_gate(current_data, changes, impact)
         if gate is not None:
             logger.warning("Proposal %s blocked by tier gate: %s", proposal_id, gate)
-            return False
+            return {
+                "ok": False,
+                "proposal_id": proposal_id,
+                "reason": f"tier_gate:{gate}",
+                "version_from": current_v,
+                "version_to": new_v,
+            }
 
         # Normalize classes to list-of-dicts for mutation; restore original layout on write
         classes_layout = current_data.get("classes")
@@ -217,6 +229,7 @@ class VersionedOntologyStore:
         def _find(name: str) -> Optional[Dict[str, Any]]:
             return next((c for c in classes_list if c.get("name") == name), None)
 
+        classes_added: List[str] = []
         # Apply changes to current data
         for action, payload in changes.items():
             if action == "add" and isinstance(payload, dict):
@@ -224,11 +237,13 @@ class VersionedOntologyStore:
                     new_cls = payload["class"]
                     if isinstance(new_cls, dict) and "name" in new_cls:
                         classes_list.append(dict(new_cls))
+                        classes_added.append(str(new_cls["name"]))
                     elif isinstance(new_cls, dict):
                         for _n, _d in new_cls.items():
                             entry = dict(_d) if isinstance(_d, dict) else {}
                             entry.setdefault("name", _n)
                             classes_list.append(entry)
+                            classes_added.append(str(_n))
                 if "property" in payload:
                     current_data.setdefault("object_properties", []).append(payload["property"])
             elif action == "deprecate" and isinstance(payload, list):
@@ -244,11 +259,13 @@ class VersionedOntologyStore:
                 for nc in (payload.get("into") or []):
                     if isinstance(nc, dict) and "name" in nc:
                         classes_list.append(dict(nc))
+                        classes_added.append(str(nc["name"]))
                     elif isinstance(nc, dict):
                         for _n, _d in nc.items():
                             entry = dict(_d) if isinstance(_d, dict) else {}
                             entry.setdefault("name", _n)
                             classes_list.append(entry)
+                            classes_added.append(str(_n))
             elif action == "merge" and isinstance(payload, dict):
                 sources = payload.get("sources", [])
                 for s in sources:
@@ -258,11 +275,13 @@ class VersionedOntologyStore:
                 target = payload.get("into", {})
                 if isinstance(target, dict) and "name" in target:
                     classes_list.append(dict(target))
+                    classes_added.append(str(target["name"]))
                 elif isinstance(target, dict):
                     for _n, _d in target.items():
                         entry = dict(_d) if isinstance(_d, dict) else {}
                         entry.setdefault("name", _n)
                         classes_list.append(entry)
+                        classes_added.append(str(_n))
 
         # Restore original classes layout
         if isinstance(classes_layout, dict):
@@ -314,7 +333,17 @@ class VersionedOntologyStore:
         # Mark proposal as applied
         await self.store.update_ontology_proposal_status(proposal_id, "applied")
         logger.info("Proposal %s applied: v%s → v%s", proposal_id, current_v, new_v)
-        return True
+        return {
+            "ok": True,
+            "proposal_id": proposal_id,
+            "domain_id": self.domain_id,
+            "version_from": current_v,
+            "version_to": new_v,
+            "live_path": legacy,
+            "version_path": new_path,
+            "classes_added": classes_added,
+            "path": "A",
+        }
 
     # ═══════════════════════════════════════════════════════
     # Impact analysis

@@ -112,9 +112,10 @@ async def assign_work_order(entity: Dict[str, Any], params: Dict[str, Any], acto
 async def set_entity_state(entity: Dict[str, Any], params: Dict[str, Any], actor: str = "") -> Dict[str, Any]:
     """Domain-agnostic state transition. Caller/contract supplies target via new_state/target_state.
 
-    Used by customer_action lifecycle seeds (assign / start / complete).
-    Writes evidence relations expected by lock-service YAML transitions:
-      assigned → assigned_to; in_progress → visited_at; completed → installed_by.
+    Used by customer_action lifecycle seeds (assign / start / complete / triage).
+    Writes evidence relations:
+      assigned → assigned_to; in_progress → visited_at; completed → installed_by;
+      triaging/rooted → suspects / rooted_at (it-ops alert path).
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
     from datetime import datetime, timezone
@@ -130,7 +131,16 @@ async def set_entity_state(entity: Dict[str, Any], params: Dict[str, Any], actor
     g.update_entity_property(entity_id, "state", new_state)
     # Dual-write status for TBox required_fields that still say "status"
     g.update_entity_property(entity_id, "status", new_state)
-    for key in ("assigned_technician", "technician_id", "completion_notes", "evidence_ref"):
+    for key in (
+        "assigned_technician",
+        "technician_id",
+        "completion_notes",
+        "evidence_ref",
+        "suspected_root",
+        "root_entity_id",
+        "path_note",
+        "catalog_id",
+    ):
         if params.get(key) is not None:
             g.update_entity_property(entity_id, key, params[key])
 
@@ -151,6 +161,10 @@ async def set_entity_state(entity: Dict[str, Any], params: Dict[str, Any], actor
         except Exception as e:
             logger.warning("%s relation failed %s→%s: %s", name, entity_id, target, e, exc_info=True)
 
+    def _ensure_ref(nid: str, display: str, class_name: str) -> None:
+        if nid and nid not in g._nodes:
+            g.add_entity(str(nid), display, class_name, source_doc_id="action-auto")
+
     if new_state == "assigned" and tech:
         _rel("assigned_to", tech, "派单给")
     if new_state == "in_progress":
@@ -166,6 +180,26 @@ async def set_entity_state(entity: Dict[str, Any], params: Dict[str, Any], actor
     if params.get("installed_by") or (new_state == "completed" and tech):
         _rel("installed_by", params.get("installed_by") or tech, "安装完成")
 
+    # it-ops alert triage: suspects / rooted_at (prefer pre-seeded topology nodes)
+    suspect = str(params.get("suspected_root") or "").strip()
+    root_id = str(params.get("root_entity_id") or "").strip()
+    if suspect:
+        _ensure_ref(suspect, f"Suspect {suspect}", str(params.get("suspect_class") or "中间件"))
+        _rel("suspects", suspect, "疑似根因指向")
+    if root_id and new_state == "rooted":
+        _ensure_ref(root_id, f"Root {root_id}", str(params.get("root_class") or "中间件"))
+        _rel("rooted_at", root_id, "根因落点")
+
+    # data-gov / catalog mount: mounts edge when cataloging
+    catalog_id = str(params.get("catalog_id") or "").strip()
+    if catalog_id and new_state == "cataloged":
+        _ensure_ref(
+            catalog_id,
+            f"Catalog {catalog_id}",
+            str(params.get("catalog_class") or "目录条目"),
+        )
+        _rel("mounts", catalog_id, "挂载目录")
+
     try:
         g.save()
     except Exception as e:
@@ -174,8 +208,110 @@ async def set_entity_state(entity: Dict[str, Any], params: Dict[str, Any], actor
     return {
         "new_state": new_state,
         "updated_by": actor,
+        "suspected_root": suspect or None,
+        "root_entity_id": root_id or None,
+        "catalog_id": catalog_id or None,
     }
 
+
+async def assert_inferred_edge(
+    entity: Dict[str, Any], params: Dict[str, Any], actor: str = ""
+) -> Dict[str, Any]:
+    """Commit one inference suggestion into GraphIndex (authority path).
+
+    Must be invoked via ActionRegistry — marks edge inferred=true for audit/query split.
+    """
+    from core.harness.ontology_engine.graph_index import GraphIndex
+
+    domain_id = entity.get("domain_id") or entity.get("domain") or params.get("domain_id") or ""
+    if not domain_id:
+        raise ValueError("domain_id is required")
+    source_id = str(params.get("source_id") or entity.get("id") or entity.get("entity_id") or "").strip()
+    target_id = str(params.get("target_id") or "").strip()
+    relation_name = str(params.get("relation_name") or params.get("rel") or "").strip()
+    if not source_id or not target_id or not relation_name:
+        raise ValueError("source_id, target_id, relation_name are required")
+
+    g = GraphIndex.load(domain_id)
+    if source_id not in g._nodes or target_id not in g._nodes:
+        raise ValueError(f"endpoints missing: {source_id}→{target_id}")
+
+    conf = float(params.get("confidence") or 0.7)
+    rule_name = str(params.get("rule_name") or "manual_assert")
+    label = str(params.get("relation_label") or relation_name)
+    added = g.add_inferred_edge(
+        source_id,
+        target_id,
+        relation_name,
+        relation_label=label,
+        confidence=conf,
+        rule_name=rule_name,
+    )
+    try:
+        g.save()
+    except Exception as e:
+        logger.debug("GraphIndex.save after assert_inferred_edge: %s", e)
+
+    return {
+        "inferred": True,
+        "added": bool(added),
+        "source_id": source_id,
+        "target_id": target_id,
+        "relation_name": relation_name,
+        "rule_name": rule_name,
+        "confidence": conf,
+        "asserted_by": actor,
+        "authority": "action_asserted",
+    }
+
+
+async def assert_inferred_edges(
+    entity: Dict[str, Any], params: Dict[str, Any], actor: str = ""
+) -> Dict[str, Any]:
+    """Batch-commit inference suggestions (still one Action audit record)."""
+    from core.harness.ontology_engine.graph_index import GraphIndex, GraphEdge
+    from core.harness.ontology_engine.graph_inference import InferenceResult, GraphInference
+
+    domain_id = entity.get("domain_id") or entity.get("domain") or params.get("domain_id") or ""
+    if not domain_id:
+        raise ValueError("domain_id is required")
+    raw_edges = params.get("edges") or []
+    if not isinstance(raw_edges, list) or not raw_edges:
+        raise ValueError("edges list required")
+
+    g = GraphIndex.load(domain_id)
+    inf = InferenceResult()
+    for raw in raw_edges:
+        if not isinstance(raw, dict):
+            continue
+        e = GraphEdge(
+            source_id=str(raw.get("source") or raw.get("source_id") or ""),
+            target_id=str(raw.get("target") or raw.get("target_id") or ""),
+            relation_name=str(raw.get("relation_name") or raw.get("rel") or ""),
+            relation_label=str(raw.get("relation_label") or raw.get("label") or ""),
+            confidence=float(raw.get("confidence") or 0.7),
+        )
+        e.inferred = True
+        e.rule_name = str(raw.get("rule_name") or "batch_assert")
+        if e.source_id and e.target_id and e.relation_name:
+            inf.inferred_edges.append(e)
+
+    class _Dom:
+        inference_rules = []
+
+    added = GraphInference(_Dom(), g).apply_to_graph(inf, via_action=True)
+    try:
+        g.save()
+    except Exception as e:
+        logger.debug("GraphIndex.save after assert_inferred_edges: %s", e)
+
+    return {
+        "inferred": True,
+        "added": added,
+        "requested": len(inf.inferred_edges),
+        "asserted_by": actor,
+        "authority": "action_asserted",
+    }
 
 
 # ═══════════════════════════════════════════════════════════

@@ -118,6 +118,93 @@ actions:
           type: string
 '''
 
+TEST_TMPL = '''"""Scaffold test for {domain_id} — blocked/executed smoke (zero harness edits)."""
+from __future__ import annotations
+
+from unittest.mock import AsyncMock
+
+import pytest
+
+from core.harness.ontology_engine.action_registry import AsyncActionRegistry
+from core.harness.ontology_engine.builtin_actions import register_all
+from core.harness.ontology_engine.graph_index import GraphIndex
+
+DOMAIN = "{domain_id}"
+ASSIGN = "customer_action:{domain_id}:assign"
+
+
+@pytest.fixture()
+def aiplat_home(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("AIPLAT_HOME", str(home))
+    GraphIndex._loaded_instances.clear()
+    return home
+
+
+@pytest.mark.asyncio
+async def test_scaffold_assign_executed_and_blocked(aiplat_home):
+    g = GraphIndex(DOMAIN)
+    g.add_entity("WO-1", "demo", "工单", source_doc_id="scaffold")
+    g.add_entity_property("WO-1", "state", "pending")
+    g.save()
+    GraphIndex._loaded_instances.clear()
+
+    store = AsyncMock()
+    store.insert_audit = AsyncMock(return_value="aud")
+    reg = AsyncActionRegistry(store=store)
+    register_all(reg)
+    assert reg.get(ASSIGN) is not None
+
+    ok = await reg.execute(
+        ASSIGN,
+        (DOMAIN, "WO-1"),
+        {{"new_state": "assigned"}},
+        actor="scaffold",
+        role="analyst",
+        _bypass_approval=True,
+    )
+    assert ok.get("status") == "executed", ok
+
+    g2 = GraphIndex.load(DOMAIN)
+    g2.add_entity("WO-2", "blocked", "工单", source_doc_id="scaffold")
+    g2.add_entity_property("WO-2", "state", "completed")
+    g2.save()
+    GraphIndex._loaded_instances.clear()
+    blocked = await reg.execute(
+        ASSIGN,
+        (DOMAIN, "WO-2"),
+        {{"new_state": "assigned"}},
+        actor="scaffold",
+        role="analyst",
+        _bypass_approval=True,
+    )
+    assert blocked.get("status") == "blocked"
+'''
+
+PLAYBOOK_SNIPPET = '''
+## §脚手架域 `{domain_id}`（`{name}`）
+
+| 分钟 | 操作 | 口述 |
+|:----:|------|------|
+| 0–2 | 确认 YAML 已 install 到 `~/.aiplat/ontologies/{domain_id}.yaml` | 说明书 TBox |
+| 2–5 | `register_all` 后执行 `customer_action:{domain_id}:assign` | L1 硬门 |
+| 5–7 | 对非 pending 工单再派单 | 应 **blocked** |
+
+路径 B：在 `workspace_seeds/connectors/{domain_id}.json` 填 allowlist 后可用 webhook。
+'''
+
+CONNECTOR_TMPL = '''{{
+  "source_id": "{domain_id}-ingest",
+  "domain_id": "{domain_id}",
+  "label": "Scaffold Path B connector for {name}",
+  "allowed_classes": ["工单", "责任人"],
+  "allowed_relations": ["assigned_to"],
+  "primary_class": "工单",
+  "auth": {{"type": "shared_secret_env", "env": "AIPLAT_ABOX_WEBHOOK_SECRET"}}
+}}
+'''
+
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -125,6 +212,8 @@ def main() -> int:
     ap.add_argument("--name", required=True)
     ap.add_argument("--apply", action="store_true", help="Write YAML under AIPLAT_HOME")
     ap.add_argument("--with-action", action="store_true", default=True)
+    ap.add_argument("--with-test", action="store_true", default=True)
+    ap.add_argument("--with-connector", action="store_true", default=True)
     ap.add_argument("--apply-registry", action="store_true", help="Merge domain into registry.json")
     args = ap.parse_args()
 
@@ -146,7 +235,7 @@ def main() -> int:
         print(yaml_body)
 
     action_path = (
-        ROOT / "aiPlat-core" / "workspace_seeds" / "actions" / f"{did.replace('-', '_')}_assign.yaml"
+        ROOT / "aiPlat-core" / "core" / "workspace_seeds" / "actions" / f"{did.replace('-', '_')}_assign.yaml"
     )
     if args.with_action:
         action_body = ACTION_TMPL.format(domain_id=did)
@@ -160,6 +249,49 @@ def main() -> int:
         else:
             print("--- action YAML ---")
             print(action_body)
+
+    if args.with_connector:
+        conn_body = CONNECTOR_TMPL.format(domain_id=did, name=args.name)
+        conn_path = ROOT / "aiPlat-core" / "workspace_seeds" / "connectors" / f"{did}.json"
+        if args.apply:
+            conn_path.parent.mkdir(parents=True, exist_ok=True)
+            if not conn_path.exists():
+                conn_path.write_text(conn_body, encoding="utf-8")
+                print(f"wrote {conn_path}")
+            home_conn = onto_dir / did / "connector.json"
+            home_conn.parent.mkdir(parents=True, exist_ok=True)
+            if not home_conn.exists():
+                home_conn.write_text(conn_body, encoding="utf-8")
+                print(f"wrote {home_conn}")
+        else:
+            print("--- connector.json ---")
+            print(conn_body)
+
+    if args.with_test:
+        test_body = TEST_TMPL.format(domain_id=did)
+        safe = did.replace("-", "_")
+        test_path = (
+            ROOT
+            / "aiPlat-core"
+            / "core"
+            / "tests"
+            / "unit"
+            / "test_harness"
+            / "test_knowledge"
+            / f"test_{safe}_scaffold.py"
+        )
+        if args.apply:
+            if not test_path.exists():
+                test_path.write_text(test_body, encoding="utf-8")
+                print(f"wrote {test_path}")
+            else:
+                print(f"skip existing {test_path}")
+        else:
+            print("--- pytest template ---")
+            print(test_body)
+
+    print("--- PLAYBOOK snippet ---")
+    print(PLAYBOOK_SNIPPET.format(domain_id=did, name=args.name))
 
     fragment = {
         did: {
@@ -181,7 +313,7 @@ def main() -> int:
         reg_path.write_text(json.dumps(reg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(f"updated {reg_path}")
 
-    print("Next: fill scene classes → add GraphIndex instances → raise OCS to ≥70/80")
+    print("Next: fill scene classes → Path B webhook → raise OCS to ≥70/80")
     return 0
 
 

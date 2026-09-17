@@ -165,8 +165,19 @@ class GraphInference:
 
         return round(min(1.0, conf), 3)
 
-    def apply_to_graph(self, result: InferenceResult) -> int:
-        """Apply inferred edges to the graph via add_inferred_edge (SQL-backed)."""
+    def apply_to_graph(self, result: InferenceResult, *, via_action: bool = False) -> int:
+        """Persist inferred edges — ONLY when authorized by an Action handler.
+
+        Direct calls (engine / HTTP) must NOT write GraphIndex. Default via_action=False
+        returns 0 and leaves edges as suggestions (anti false-green / dual-authority).
+        """
+        if not via_action:
+            logger = __import__("logging").getLogger(__name__)
+            logger.warning(
+                "apply_to_graph refused: inference is suggestion-layer only; "
+                "use platform_action:graph:assert_inferred_edge(s) to commit (via_action=True)"
+            )
+            return 0
         added = 0
         for edge in result.inferred_edges:
             if self._graph.add_inferred_edge(

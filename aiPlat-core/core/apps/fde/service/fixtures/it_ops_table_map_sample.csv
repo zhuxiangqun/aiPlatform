@@ -1,0 +1,5 @@
+id,name,class,state
+SVC-TMAP-1,query-api,服务,
+MW-TMAP-1,redis-cache,中间件,
+HOST-TMAP-1,node-a,主机,
+ALT-TMAP-1,latency-spike,告警,open

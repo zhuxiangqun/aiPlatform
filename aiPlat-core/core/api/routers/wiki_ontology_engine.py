@@ -2788,73 +2788,67 @@ async def generate_ontology_sdk(domain_id: str, language: str = "python"):
 
 
 @router.post("/engine/infer", response_model=Dict[str, Any])
-
 async def run_graph_inference(req: dict):
+    """Run inference rules — suggestion layer by default.
 
-    """Run inference rules on the domain graph to derive new edges.
-
-
-
-    请求体: {"domain_id": "ai-knowledge"}
-
-    返回: { inferred_edges, rule_hits, stats }
-
+    Body: {"domain_id": "...", "apply": false}
+    When apply=true, each edge is committed via platform_action:graph:assert_inferred_edge
+    (Action audit, inferred=true) — never via silent apply_to_graph.
     """
-
     domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
-
-
+    do_apply = bool(req.get("apply")) if isinstance(req, dict) else False
 
     from core.api.core_facade import load_ontology_from_yaml
-
     from core.api.core_facade import GraphIndex
-
     from core.harness.ontology_engine.graph_inference import GraphInference
-
     from pathlib import Path as _Path
-
     import os as _os
 
-
-
     ont_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
-
     if not ont_path.exists():
-
         raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
 
-
-
     domain = load_ontology_from_yaml(str(ont_path))
-
     graph = GraphIndex.load(domain_id)
-
     if len(graph) == 0:
-
         raise HTTPException(status_code=404, detail=f"Graph for '{domain_id}' is empty")
 
-
-
     inferencer = GraphInference(domain, graph)
-
     result = inferencer.infer()
+    applied = 0
+    action_results = []
+    if do_apply and result.inferred_edges:
+        from core.api.core_facade import get_action_registry
 
-    applied = inferencer.apply_to_graph(result)
-
-    if applied:
-
-        graph.save()
-
-
+        reg = get_action_registry()
+        for edge in result.inferred_edges:
+            ar = await reg.execute(
+                action_id="platform_action:graph:assert_inferred_edge",
+                entity_ref=(domain_id, edge.source_id),
+                params={
+                    "source_id": edge.source_id,
+                    "target_id": edge.target_id,
+                    "relation_name": edge.relation_name,
+                    "relation_label": edge.relation_label,
+                    "confidence": edge.confidence,
+                    "rule_name": getattr(edge, "rule_name", "") or "",
+                    "inferred": True,
+                },
+                actor=str(req.get("actor") or "inference-ui"),
+                role=str(req.get("role") or "analyst"),
+                _bypass_approval=True,
+            )
+            action_results.append(ar)
+            if ar.get("status") == "executed":
+                applied += 1
 
     return {
-
         "domain_id": domain_id,
-
+        "authority": "suggestion" if not do_apply else "action_asserted",
         "applied": applied,
-
+        "suggestion_only": not do_apply,
+        "action_results": action_results if do_apply else [],
         **result.to_dict(),
-
     }
 
 

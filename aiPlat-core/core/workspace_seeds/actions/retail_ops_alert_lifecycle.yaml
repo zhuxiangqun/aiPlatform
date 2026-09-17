@@ -1,0 +1,84 @@
+# retail-ops alert triage L1 — isomorphic to it-ops (Phase 2)
+actions:
+  - action_id: "customer_action:retail-ops:triage_alert"
+    aliases: []
+    label: "分诊告警"
+    description: "告警 open → triaging"
+    category: mutation
+    scope: domain
+    domain_id: retail-ops
+    target_class: 告警
+    required_state: open
+    effect_semantics: "Alert entered triage"
+    compensation: "revert Alert.state to open"
+    risk_level: low
+    require_approval: false
+    throttle_limit: 0
+    action_namespace: customer_action
+    eval_gate: customer_action_safety
+    handler: "core.harness.ontology_engine.builtin_handlers:set_entity_state"
+    input_schema:
+      type: object
+      required: [new_state]
+      properties:
+        new_state:
+          type: string
+          const: triaging
+        suspected_root:
+          type: string
+
+  - action_id: "customer_action:retail-ops:link_suspect"
+    aliases: []
+    label: "挂接疑似路径"
+    description: "分诊中写 suspects / path_note"
+    category: mutation
+    scope: domain
+    domain_id: retail-ops
+    target_class: 告警
+    required_state: triaging
+    effect_semantics: "Record suspect hop"
+    compensation: "clear suspects edge"
+    risk_level: low
+    require_approval: false
+    throttle_limit: 0
+    action_namespace: customer_action
+    eval_gate: customer_action_safety
+    handler: "core.harness.ontology_engine.builtin_handlers:set_entity_state"
+    input_schema:
+      type: object
+      required: [new_state, suspected_root]
+      properties:
+        new_state:
+          type: string
+          const: triaging
+        suspected_root:
+          type: string
+        path_note:
+          type: string
+
+  - action_id: "customer_action:retail-ops:mark_root_cause"
+    aliases: []
+    label: "确认根因"
+    description: "告警 triaging → rooted"
+    category: mutation
+    scope: domain
+    domain_id: retail-ops
+    target_class: 告警
+    required_state: triaging
+    effect_semantics: "Root cause recorded"
+    compensation: "revert Alert.state to triaging"
+    risk_level: medium
+    require_approval: false
+    throttle_limit: 0
+    action_namespace: customer_action
+    eval_gate: customer_action_safety
+    handler: "core.harness.ontology_engine.builtin_handlers:set_entity_state"
+    input_schema:
+      type: object
+      required: [new_state, root_entity_id]
+      properties:
+        new_state:
+          type: string
+          const: rooted
+        root_entity_id:
+          type: string

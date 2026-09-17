@@ -3,9 +3,9 @@
 | 字段 | 值 |
 |------|-----|
 | 文档 ID | `ONTOLOGY-RUNTIME-AUTHORITY-2026-09` |
-| 版本 | v1.0 |
+| 版本 | v1.1 |
 | 状态 | 生效 |
-| 关联 | [`FDE_WORKBENCH_CONTRACT.md`](./FDE_WORKBENCH_CONTRACT.md) · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_RUNTIME_CLOSEOUT.md`](./ONTOLOGY_RUNTIME_CLOSEOUT.md) · [`ONTOLOGY_COMPLETENESS.md`](./ONTOLOGY_COMPLETENESS.md) · [`FDE_WORKBENCH_CAPABILITY_LEDGER.md`](./FDE_WORKBENCH_CAPABILITY_LEDGER.md) |
+| 关联 | [`FDE_WORKBENCH_CONTRACT.md`](./FDE_WORKBENCH_CONTRACT.md) · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_RUNTIME_CLOSEOUT.md`](./ONTOLOGY_RUNTIME_CLOSEOUT.md) · [`ONTOLOGY_COMPLETENESS.md`](./ONTOLOGY_COMPLETENESS.md) · [`FDE_WORKBENCH_CAPABILITY_LEDGER.md`](./FDE_WORKBENCH_CAPABILITY_LEDGER.md) |
 | 维护人 | Oliver Zhu |
 
 ---
@@ -48,6 +48,17 @@
 顺序：**prompt 失误 → 执行层兜底 → 审计留痕**。  
 任何「仅 L2、无 L1」的高风险动作禁止进入 `customer_action` 生产路径。  
 业务路径的 L2 必须编译**当前域** axioms/required_fields，不得只用 Wiki 全局 `AXIOMS`。
+
+---
+
+## 2.1 推理建议层（非权威）
+
+| 规则 | 要求 |
+|------|------|
+| 展示 | `GraphInference.infer()` / `POST .../engine/infer` 默认仅返回建议；UI/Agent 须标注「建议，非已确认」 |
+| 落图 | **禁止** `apply_to_graph` 静默写入；须 `platform_action:graph:assert_inferred_edge(s)`，审计 params 含 `inferred=true` |
+| 查询 | 推断边 `inferred=1`，与显式事实可分开查询；不得冒充人工确认边 |
+| 假绿 | `graph_validate` / reasoner 未跑检查 → `valid` 不得为 true（见 §6）；推理建议不得显示为「已校验通过」 |
 
 ---
 

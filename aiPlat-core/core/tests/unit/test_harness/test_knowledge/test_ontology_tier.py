@@ -204,7 +204,7 @@ def test_apply_proposal_tier_gate_blocks_core_without_arch_review(monkeypatch, t
             prop, json.dumps({"max_tier": TIER_CORE, "promotions": [], "approval_level": ""}, ensure_ascii=False)
         )
         await store.store.update_ontology_proposal_status(prop, "approved")
-        assert await store.apply_proposal(prop) is False  # 阻断
+        assert (await store.apply_proposal(prop)).get("ok") is False  # 阻断
 
         # 带架构评审证据 → 放行（无实体文件场景下返回 False 但原因不同；此处验证 gate 通过后走到 apply）
         await store.store.update_ontology_proposal_impact(
@@ -213,7 +213,7 @@ def test_apply_proposal_tier_gate_blocks_core_without_arch_review(monkeypatch, t
         await store.store.update_ontology_proposal_status(prop, "approved")
         # apply 应不再被 tier gate 阻断（后续可能因无 YAML 而正常 apply 或报文件不存在，两者都不是 gate 拒绝）
         ok = await store.apply_proposal(prop)
-        assert ok is not False  # 未被 gate 拒绝
+        assert ok.get("ok") is True or not str(ok.get("reason") or "").startswith("tier_gate")
 
     _run(scenario())
 
@@ -252,7 +252,7 @@ classes:
         await store.store.update_ontology_proposal_status(prop, "approved")
 
         # 无复用证明 → 阻断
-        assert await store.apply_proposal(prop) is False
+        assert (await store.apply_proposal(prop)).get("ok") is False
 
         # 复用证明 ≥ 阈值 → gate 放行
         changes["promotion_proof"] = {"reuse_count": PROMOTION_REUSE_THRESHOLD}
@@ -262,7 +262,7 @@ classes:
         )
         await store.store.update_ontology_proposal_status(prop2, "approved")
         ok = await store.apply_proposal(prop2)
-        assert ok is not False
+        assert ok.get("ok") is True or not str(ok.get("reason") or "").startswith("tier_gate")
 
     _run(scenario())
 

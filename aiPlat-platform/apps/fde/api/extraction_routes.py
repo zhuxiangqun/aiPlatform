@@ -88,12 +88,19 @@ async def list_pending_extractions(
 
 @router.post("/extractions/{extraction_id}/confirm")
 async def confirm_extraction(extraction_id: str):
-    """Confirm an extraction → merge into formal ontology."""
+    """Confirm extraction → GraphIndex ABox receipt + ontology proposal enqueue (path A/B)."""
     await _store.initialize()
-    ok = await _store.confirm(extraction_id)
-    if not ok:
+    receipt = await _store.confirm(extraction_id)
+    if not receipt.get("ok"):
         raise HTTPException(status_code=404, detail="Extraction not found or already resolved")
-    return {"status": "confirmed", "extraction_id": extraction_id}
+    return {
+        "status": "confirmed",
+        "extraction_id": extraction_id,
+        "domain_id": receipt.get("domain_id"),
+        "proposal_id": receipt.get("proposal_id"),
+        "graph_write": receipt.get("graph_write"),
+        "path": "B+A",
+    }
 
 
 @router.post("/extractions/{extraction_id}/reject")
@@ -256,7 +263,7 @@ async def list_ontology_proposals(
 async def approve_ontology_proposal(proposal_id: str, body: Dict[str, Any]):
     """P2-L1: tier-gated approval — core→全员/架构评审, logic→产品经理确认, edge→自服务."""
     try:
-        from core.api.core_facade import ActionStore
+        from core.api.core_facade import ActionStore, VersionedOntologyStore
         store = ActionStore()
         await store.initialize()
         proposal = await store.get_ontology_proposal(proposal_id)
@@ -265,10 +272,13 @@ async def approve_ontology_proposal(proposal_id: str, body: Dict[str, Any]):
 
         domain_id = proposal.get("domain_id", "lock-service")
         vstore = VersionedOntologyStore(domain_id)
-        result = await vstore.approve_proposal(proposal_id, approver_role=str(body.get("approver_role", "")))
+        result = await vstore.approve_proposal(
+            proposal_id,
+            approver_role=str(body.get("approver_role") or "analyst"),
+        )
         if not result.get("success"):
             raise HTTPException(status_code=403, detail=result.get("reason", "approval rejected"))
-        return result
+        return {"status": "approved", "proposal_id": proposal_id, **result}
     except HTTPException:
         raise
     except Exception as e:
@@ -277,9 +287,9 @@ async def approve_ontology_proposal(proposal_id: str, body: Dict[str, Any]):
 
 @router.post("/ontology/proposals/{proposal_id}/apply")
 async def apply_ontology_proposal(proposal_id: str):
-    """Apply an approved ontology proposal."""
+    """Apply an approved ontology proposal → live YAML + receipt (path A)."""
     try:
-        from core.api.core_facade import ActionStore
+        from core.api.core_facade import ActionStore, VersionedOntologyStore
         store = ActionStore()
         await store.initialize()
         proposal = await store.get_ontology_proposal(proposal_id)
@@ -287,10 +297,14 @@ async def apply_ontology_proposal(proposal_id: str):
             raise HTTPException(status_code=404, detail="Proposal not found")
 
         domain_id = proposal.get("domain_id", "lock-service")
-        from core.api.core_facade import VersionedOntologyStore
         vstore = VersionedOntologyStore(domain_id)
-        ok = await vstore.apply_proposal(proposal_id)
-        return {"status": "applied" if ok else "failed", "proposal_id": proposal_id}
+        receipt = await vstore.apply_proposal(proposal_id)
+        if not receipt.get("ok"):
+            raise HTTPException(
+                status_code=400,
+                detail=receipt.get("reason") or "apply failed",
+            )
+        return {"status": "applied", **receipt}
     except HTTPException:
         raise
     except Exception as e:

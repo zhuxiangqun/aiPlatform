@@ -22,6 +22,8 @@ from core.harness.infrastructure.action_contract import (
 from core.harness.ontology_engine.builtin_handlers import (  # noqa: F401
     accept_order,
     assign_work_order,
+    assert_inferred_edge,
+    assert_inferred_edges,
     set_entity_state,
 )
 
@@ -33,6 +35,55 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════
 
 BUILTIN_CONTRACTS: List[ActionContractModel] = [
+    ActionContractModel(
+        action_id="platform_action:graph:assert_inferred_edge",
+        label="确认推断边",
+        description="将推理建议层的一条边写入 GraphIndex（inferred=true，须经 Action 审计）",
+        category=ActionCategory.MUTATION,
+        scope=ActionScope.GLOBAL,
+        domain_id="platform",
+        risk_level=RiskLevel.MEDIUM,
+        require_approval=False,
+        throttle_limit=0,
+        failure_strategy=FailureStrategy.LOG_ONLY,
+        action_namespace="platform_action",
+        handler="core.harness.ontology_engine.builtin_handlers:assert_inferred_edge",
+        input_schema={
+            "type": "object",
+            "required": ["source_id", "target_id", "relation_name"],
+            "properties": {
+                "source_id": {"type": "string"},
+                "target_id": {"type": "string"},
+                "relation_name": {"type": "string"},
+                "relation_label": {"type": "string"},
+                "confidence": {"type": "number"},
+                "rule_name": {"type": "string"},
+                "inferred": {"type": "boolean", "const": True},
+            },
+        },
+    ),
+    ActionContractModel(
+        action_id="platform_action:graph:assert_inferred_edges",
+        label="批量确认推断边",
+        description="批量将推理建议写入 GraphIndex（单次 Action 审计，inferred=true）",
+        category=ActionCategory.MUTATION,
+        scope=ActionScope.GLOBAL,
+        domain_id="platform",
+        risk_level=RiskLevel.MEDIUM,
+        require_approval=False,
+        throttle_limit=0,
+        failure_strategy=FailureStrategy.LOG_ONLY,
+        action_namespace="platform_action",
+        handler="core.harness.ontology_engine.builtin_handlers:assert_inferred_edges",
+        input_schema={
+            "type": "object",
+            "required": ["edges"],
+            "properties": {
+                "edges": {"type": "array"},
+                "inferred": {"type": "boolean", "const": True},
+            },
+        },
+    ),
     # ── Legacy bridge actions (for StateMachine backward compat) ──
     ActionContractModel(
         action_id="builtin_webhook_executor",

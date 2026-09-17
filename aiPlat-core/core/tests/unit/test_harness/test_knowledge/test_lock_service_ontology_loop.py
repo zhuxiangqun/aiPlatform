@@ -79,7 +79,8 @@ async def test_mid_tier_extract_confirm_proposal_apply(aiplat_home, tmp_path):
     )
     await pending.save(result)
     assert len(await pending.list_pending(DOMAIN)) == 1
-    assert await pending.confirm("ext_lock_mid_1") is True
+    receipt = await pending.confirm("ext_lock_mid_1")
+    assert receipt.get("ok") is True, receipt
     assert await pending.list_pending(DOMAIN) == []
 
     store = VersionedOntologyStore(DOMAIN)
@@ -98,7 +99,9 @@ async def test_mid_tier_extract_confirm_proposal_apply(aiplat_home, tmp_path):
     )
     approved = await store.approve_proposal(prop_id, approver_role="analyst")
     assert approved.get("success") is True, approved
-    assert await store.apply_proposal(prop_id) is True
+    applied = await store.apply_proposal(prop_id)
+    assert applied.get("ok") is True, applied
+    assert "SparePartKit" in (applied.get("classes_added") or [])
 
     # Live pointer must remain for DomainRouter / compiler
     live = aiplat_home / "ontologies" / f"{DOMAIN}.yaml"
@@ -111,6 +114,46 @@ async def test_mid_tier_extract_confirm_proposal_apply(aiplat_home, tmp_path):
     proposals = await store.list_proposals(DOMAIN)
     applied = [p for p in proposals if p.get("proposal_id") == prop_id]
     assert applied and applied[0].get("status") == "applied"
+
+
+@pytest.mark.asyncio
+async def test_confirm_auto_proposal_approve_apply(aiplat_home, tmp_path):
+    """P3 gate: confirm 自动入队提案 → approve → apply → live YAML 可查."""
+    db = tmp_path / "exec_p3.db"
+    pending = PendingExtractionStore(db_path=str(db))
+    await pending.initialize()
+
+    await pending.save(
+        ExtractionResult(
+            extraction_id="ext_p3_e2e",
+            domain_id=DOMAIN,
+            source_doc="治理纪要.md",
+            overall_confidence=0.8,
+            entities=[{"name": "数据资产目录", "type": "DataAssetCatalog"}],
+            relations=[],
+            status="pending",
+            draft_yaml_path="",
+        )
+    )
+    receipt = await pending.confirm("ext_p3_e2e")
+    assert receipt.get("ok") is True, receipt
+    prop_id = receipt.get("proposal_id")
+    assert prop_id, receipt
+
+    store = VersionedOntologyStore(DOMAIN)
+    approved = await store.approve_proposal(prop_id, approver_role="analyst")
+    assert approved.get("success") is True, approved
+    applied = await store.apply_proposal(prop_id)
+    assert applied.get("ok") is True, applied
+    assert "DataAssetCatalog" in (applied.get("classes_added") or [])
+    assert applied.get("version_to", 0) >= 1
+
+    live = aiplat_home / "ontologies" / f"{DOMAIN}.yaml"
+    text = live.read_text(encoding="utf-8")
+    assert "DataAssetCatalog" in text or "数据资产目录" in text
+    proposals = await store.list_proposals(DOMAIN)
+    row = next(p for p in proposals if p.get("proposal_id") == prop_id)
+    assert row.get("status") == "applied"
 
 
 @pytest.mark.asyncio
@@ -160,7 +203,8 @@ async def test_deep_tier_exception_then_mode_change(aiplat_home):
     )
     ok = await vstore.approve_proposal(prop_id, approver_role="anyone")  # edge → *
     assert ok.get("success") is True, ok
-    assert await vstore.apply_proposal(prop_id) is True
+    applied = await vstore.apply_proposal(prop_id)
+    assert applied.get("ok") is True, applied
 
     after = compile_axiom_rules(DOMAIN)
     assert any("例外回写" in r for r in after)

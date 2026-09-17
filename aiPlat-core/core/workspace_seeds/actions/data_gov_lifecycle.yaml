@@ -1,0 +1,54 @@
+# data-gov 闸2 — 挂目录 / 丢幽灵（写 ABox，非改说明书）
+actions:
+  - action_id: "customer_action:data-gov:mount_catalog"
+    aliases: []
+    label: "挂载目录"
+    description: "数据资产 meta_ready → cataloged；写 mounts 边"
+    category: mutation
+    scope: domain
+    domain_id: data-gov
+    target_class: 数据资产
+    required_state: meta_ready
+    effect_semantics: "Asset cataloged and mounted"
+    compensation: "revert DataAsset.state to meta_ready; clear mounts"
+    risk_level: medium
+    require_approval: false
+    throttle_limit: 0
+    action_namespace: customer_action
+    eval_gate: customer_action_safety
+    handler: "core.harness.ontology_engine.builtin_handlers:set_entity_state"
+    input_schema:
+      type: object
+      required: [new_state, catalog_id]
+      properties:
+        new_state:
+          type: string
+          const: cataloged
+        catalog_id:
+          type: string
+          description: "目录条目实体 ID（如 CAT-积分流水）"
+
+  - action_id: "customer_action:data-gov:discard_ghost"
+    aliases: []
+    label: "丢弃幽灵表"
+    description: "标记幽灵物理表 discarded（洪水筛选）"
+    category: mutation
+    scope: domain
+    domain_id: data-gov
+    target_class: 物理表
+    required_state: raw
+    effect_semantics: "Ghost table discarded from flood"
+    compensation: "revert PhysicalTable.state to raw"
+    risk_level: low
+    require_approval: false
+    throttle_limit: 0
+    action_namespace: customer_action
+    eval_gate: customer_action_safety
+    handler: "core.harness.ontology_engine.builtin_handlers:set_entity_state"
+    input_schema:
+      type: object
+      required: [new_state]
+      properties:
+        new_state:
+          type: string
+          const: discarded

@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-08-16"
 total_capability_domains: 34
-total_capabilities: 1153
+total_capabilities: 1163
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -661,6 +661,142 @@ domains:
         type: "class"
         signature: "LLM 实体/关系抽取（EXTRACTION_PROMPT 注册 prompt_loader + VALID_CLASS_TYPES 域本体配置驱动，2026-08-25）"
         module: "core/harness/knowledge_pipeline/extractor.py"
+      - symbol: "write_extraction_to_graph_index"
+        type: "function"
+        signature: "path-B confirm: entities/relations → GraphIndex receipt"
+        module: "core/harness/knowledge_pipeline/extractor.py"
+      - symbol: "PendingExtractionStore.confirm"
+        type: "function"
+        signature: "confirm → graph_write receipt + optional ontology proposal"
+        module: "core/harness/knowledge_pipeline/extractor.py"
+      - symbol: "confirm_extraction"
+        type: "function"
+        signature: "POST /fde/extractions/{id}/confirm — ABox receipt + proposal_id"
+        module: "aiPlat-platform/apps/fde/api/extraction_routes.py"
+      - symbol: "VersionedOntologyStore.apply_proposal"
+        type: "function"
+        signature: "approved proposal → live YAML + {ok, classes_added, version_*}"
+        module: "core/harness/knowledge/versioned_ontology_store.py"
+      - symbol: "approve_ontology_proposal"
+        type: "function"
+        signature: "POST /fde/ontology/proposals/{id}/approve — tier-gated"
+        module: "aiPlat-platform/apps/fde/api/extraction_routes.py"
+      - symbol: "apply_ontology_proposal"
+        type: "function"
+        signature: "POST /fde/ontology/proposals/{id}/apply — path-A receipt"
+        module: "aiPlat-platform/apps/fde/api/extraction_routes.py"
+      - symbol: "check_entity_acl"
+        type: "function"
+        signature: "domain entity role action → bool (GraphIndex ABox ACL)"
+        module: "core/policy/graph_abox_acl.py"
+      - symbol: "resolve_abox_actor_role"
+        type: "function"
+        signature: "explicit/header/scopes → viewer|analyst|admin"
+        module: "core/policy/graph_abox_acl.py"
+      - symbol: "ingest_webhook_payload"
+        type: "function"
+        signature: "Path B: source_id + payload → GraphIndex receipt"
+        module: "core/apps/fde/service/abox_connector.py"
+      - symbol: "import_abox_payload"
+        type: "function"
+        signature: "domain-configurable ABox import with allowlists"
+        module: "core/apps/fde/service/abox_connector.py"
+      - symbol: "import_table_map_payload"
+        type: "function"
+        signature: "CSV/table rows → GraphIndex via connector.table_map"
+        module: "core/apps/fde/service/abox_connector.py"
+      - symbol: "map_table_rows_to_payload"
+        type: "function"
+        signature: "tabular rows → Path B entities/relations payload"
+        module: "core/apps/fde/service/abox_connector.py"
+      - symbol: "connector_path"
+        type: "function"
+        signature: "connector_path(domain_id)"
+        module: "core/apps/fde/service/abox_connector.py"
+      - symbol: "ensure_connector_config"
+        type: "function"
+        signature: "Install workspace seed connector.json into AIPLAT_HOME when missing."
+        module: "core/apps/fde/service/abox_connector.py"
+      - symbol: "load_connector_config"
+        type: "function"
+        signature: "load_connector_config(domain_id)"
+        module: "core/apps/fde/service/abox_connector.py"
+      - symbol: "find_domain_for_source"
+        type: "function"
+        signature: "Resolve source_id → domain_id via installed connector.json files."
+        module: "core/apps/fde/service/abox_connector.py"
+      - symbol: "verify_webhook_secret"
+        type: "function"
+        signature: "Return True if secret check passes (or auth disabled / unset env)."
+        module: "core/apps/fde/service/abox_connector.py"
+      - symbol: "parse_csv_text"
+        type: "function"
+        signature: "Parse CSV text into list of row dicts (header required)."
+        module: "core/apps/fde/service/abox_connector.py"
+      - symbol: "load_table_map_sample"
+        type: "function"
+        signature: "Bundled CSV + relation sample for demos (it-ops)."
+        module: "core/apps/fde/service/abox_connector.py"
+      - symbol: "ensure_data_gov_ontology"
+        type: "function"
+        signature: "ensure_data_gov_ontology()"
+        module: "core/apps/fde/service/data_gov_demo_seed.py"
+      - symbol: "ensure_retail_ops_ontology"
+        type: "function"
+        signature: "ensure_retail_ops_ontology()"
+        module: "core/apps/fde/service/retail_ops_demo_seed.py"
+      - symbol: "suggest_classes_from_snippets"
+        type: "function"
+        signature: "Scan text/code snippets for class-like names → proposal draft."
+        module: "core/apps/fde/service/ontology_code_suggestions.py"
+      - symbol: "get_ontology_pillars"
+        type: "function"
+        signature: "read-only data/logic/action pillars for a domain"
+        module: "core/apps/fde/service/ontology_pillars.py"
+      - symbol: "suggest_classes_from_snippets_async"
+        type: "function"
+        signature: "code/doc → ontology proposal drafts (no auto-apply)"
+        module: "core/apps/fde/service/ontology_code_suggestions.py"
+      - symbol: "review_domain_owl_offline"
+        type: "function"
+        signature: "offline OWL review; unchecked ⇒ valid=false"
+        module: "core/apps/fde/service/offline_owl_review.py"
+      - symbol: "seed_retail_ops_demo_graph"
+        type: "function"
+        signature: "Phase 2 isomorphic retail-ops Path C seed"
+        module: "core/apps/fde/service/retail_ops_demo_seed.py"
+      - symbol: "check_graph_entity_acl"
+        type: "function"
+        signature: "CoreFacade: GraphIndex ABox instance ACL"
+        module: "core/api/core_facade.py"
+      - symbol: "redact_graph_entity_fields"
+        type: "function"
+        signature: "CoreFacade: GraphIndex field redaction"
+        module: "core/api/core_facade.py"
+      - symbol: "ingest_abox_webhook"
+        type: "function"
+        signature: "CoreFacade: Path B webhook ingest"
+        module: "core/api/core_facade.py"
+      - symbol: "import_abox_table_map"
+        type: "function"
+        signature: "CoreFacade: Path B table/CSV import"
+        module: "core/api/core_facade.py"
+      - symbol: "get_ontology_pillars_view"
+        type: "function"
+        signature: "CoreFacade: ontology three pillars"
+        module: "core/api/core_facade.py"
+      - symbol: "review_ontology_owl_offline"
+        type: "function"
+        signature: "CoreFacade: offline OWL review (no false-green)"
+        module: "core/api/core_facade.py"
+      - symbol: "redact_entity_fields"
+        type: "function"
+        signature: "apply field ACL redaction to entity payload"
+        module: "core/policy/graph_abox_acl.py"
+      - symbol: "seed_data_gov_demo_graph"
+        type: "function"
+        signature: "B4 teaching ABox + optional ACL seed for data-gov"
+        module: "core/apps/fde/service/data_gov_demo_seed.py"
       - symbol: "KnowledgeRetriever"
         type: "class"
         signature: "生产检索（quality gate 真正降级：gate 失败 + deep research → web fallback 并入，2026-08-25）"
@@ -2118,7 +2254,15 @@ domains:
         module: aiPlat-core/core/harness/ontology_engine/builtin_handlers.py
       - symbol: set_entity_state
         type: function
-        signature: "lifecycle state transition + assigned_to/visited_at/installed_by evidence relations"
+        signature: "lifecycle state + assigned_to/visited_at/installed_by + suspects/rooted_at"
+        module: aiPlat-core/core/harness/ontology_engine/builtin_handlers.py
+      - symbol: assert_inferred_edge
+        type: function
+        signature: "commit one inference suggestion to GraphIndex (inferred=true, via Action)"
+        module: aiPlat-core/core/harness/ontology_engine/builtin_handlers.py
+      - symbol: assert_inferred_edges
+        type: function
+        signature: "batch commit inference suggestions via Action (via_action apply)"
         module: aiPlat-core/core/harness/ontology_engine/builtin_handlers.py
       - symbol: list_graph_entities
         type: function
@@ -2126,7 +2270,27 @@ domains:
         module: aiPlat-platform/apps/fde/api/action_routes.py
       - symbol: create_graph_entity
         type: function
-        signature: "POST /fde/graph/entities — mint demo InstallOrder ABox for L1 UI loop"
+        signature: "POST /fde/graph/entities — it-ops-alert|it-ops-alert-complex via seed_it_ops_demo_graph"
+        module: aiPlat-platform/apps/fde/api/action_routes.py
+      - symbol: seed_it_ops_demo_graph
+        type: function
+        signature: "profile=minimal|complex path-C seed into GraphIndex (it-ops labels)"
+        module: aiPlat-core/core/apps/fde/service/it_ops_demo_seed.py
+      - symbol: ensure_it_ops_fault_ontology
+        type: function
+        signature: "install workspace_seeds fault it-ops.yaml into AIPLAT_HOME if Alert missing"
+        module: aiPlat-core/core/apps/fde/service/it_ops_demo_seed.py
+      - symbol: import_it_ops_alert_payload
+        type: function
+        signature: "path-B JSON/monitor payload → GraphIndex with class/rel allowlist"
+        module: aiPlat-core/core/apps/fde/service/it_ops_demo_seed.py
+      - symbol: load_it_ops_import_sample
+        type: function
+        signature: "load fixtures/it_ops_alert_import_sample.json for path-B demo"
+        module: aiPlat-core/core/apps/fde/service/it_ops_demo_seed.py
+      - symbol: import_graph_payload
+        type: function
+        signature: "POST /fde/graph/import — path-B ABox import (it-ops, use_sample|payload)"
         module: aiPlat-platform/apps/fde/api/action_routes.py
       - symbol: FdeDomainLiteralsAstCheck
         type: class
