@@ -1,0 +1,15 @@
+{
+  "unified_customer": {
+    "description": "锁安客户现场与售后客户对齐（有业务价值的跨域消歧）",
+    "sources": [
+      {"domain": "lock-service", "class": "CustomerSite"},
+      {"domain": "service-domain", "class": "Customer"}
+    ],
+    "match_strategy": {
+      "primary": "customer_name||company_name||site_id||customer_id",
+      "secondary": "name",
+      "min_confidence": 0.70
+    },
+    "primary_domain": "lock-service"
+  }
+}

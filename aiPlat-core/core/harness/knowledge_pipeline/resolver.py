@@ -17,6 +17,7 @@ import os
 import time
 from collections import deque
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -55,15 +56,8 @@ def _normalize_one_view(name: str, view: Dict[str, Any]) -> Dict[str, Any]:
     out.setdefault("view_name", name)
     if not out.get("sources") and out.get("domains"):
         domains = out.get("domains") or []
-        # Best-effort class defaults for known pilot pair
-        class_map = {
-            "lock-service": "CustomerSite",
-            "service-domain": "Customer",
-        }
-        out["sources"] = [
-            {"domain": str(d), "class": class_map.get(str(d), "")}
-            for d in domains
-        ]
+        # Class labels come from the view config / ontology — never hardcode domain→class.
+        out["sources"] = [{"domain": str(d), "class": ""} for d in domains]
     if not out.get("match_strategy"):
         keys = out.get("match_keys") or []
         primary = "||".join(str(k) for k in keys) if keys else "name"
@@ -283,8 +277,20 @@ class CrossDomainResolver:
 # Cross-domain views are user-configured. No default seed data.
 # ═══════════════════════════════════════════════════════════
 
+def _workspace_cross_domain_seed() -> Path:
+    """aiPlat-core/workspace_seeds/cross_domain_views.json (optional)."""
+    return (
+        Path(__file__).resolve().parents[3]
+        / "workspace_seeds"
+        / "cross_domain_views.json"
+    )
+
+
 def seed_cross_domain_config() -> bool:
-    """Ensure registry has cross_domain_views; upsert unified_customer from seed."""
+    """Ensure registry has cross_domain_views; load optional workspace seed file.
+
+    No domain IDs are hardcoded in harness — pilot views live in workspace_seeds.
+    """
     if not os.path.exists(REGISTRY_PATH):
         return False
 
@@ -299,26 +305,22 @@ def seed_cross_domain_config() -> bool:
             changed = True
         views = _normalize_cross_domain_views(reg.get("cross_domain_views") or {})
 
-        # Upsert canonical pilot view if missing or empty sources
-        uc = views.get("unified_customer") or {}
-        if not (uc.get("sources") and len(uc.get("sources") or []) >= 2):
-            views["unified_customer"] = _normalize_one_view(
-                "unified_customer",
-                {
-                    "description": "锁安客户现场与售后客户对齐（有业务价值的跨域消歧）",
-                    "sources": [
-                        {"domain": "lock-service", "class": "CustomerSite"},
-                        {"domain": "service-domain", "class": "Customer"},
-                    ],
-                    "match_strategy": {
-                        "primary": "customer_name||company_name||site_id||customer_id",
-                        "secondary": "name",
-                        "min_confidence": 0.70,
-                    },
-                    "primary_domain": "lock-service",
-                },
-            )
-            changed = True
+        # Upsert from workspace seed when a named view is missing / empty sources
+        seed_path = _workspace_cross_domain_seed()
+        if seed_path.is_file():
+            try:
+                seed_views = json.loads(seed_path.read_text(encoding="utf-8")) or {}
+            except Exception:
+                logger.warning("load cross_domain_views seed failed", exc_info=True)
+                seed_views = {}
+            if isinstance(seed_views, dict):
+                for name, view in seed_views.items():
+                    if not isinstance(view, dict):
+                        continue
+                    cur = views.get(name) or {}
+                    if not (cur.get("sources") and len(cur.get("sources") or []) >= 2):
+                        views[name] = _normalize_one_view(str(name), view)
+                        changed = True
 
         # Persist as dict (canonical)
         if changed or isinstance(reg.get("cross_domain_views"), list):
@@ -326,7 +328,7 @@ def seed_cross_domain_config() -> bool:
             reg.setdefault("cross_domain_actions", {})
             with open(REGISTRY_PATH, "w", encoding="utf-8") as f:
                 json.dump(reg, f, ensure_ascii=False, indent=2)
-            logger.info("Ensured cross_domain_views (unified_customer) in registry.json")
+            logger.info("Ensured cross_domain_views from workspace seed / registry.json")
             return True
         return False
     except Exception:

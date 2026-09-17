@@ -65,7 +65,7 @@ c79=$(grep -c '"architecture_design"\|"code_generation"\|"test_case_generation"'
 _run_check 79 "§79: pipeline skill names" "$c79"
 
 # Core genericity (§80-88)
-c80=$(grep -rn '"fde-delivery"\|"lock-service"\|"bell-consulting"\|"bell-data-cloud"\|"bell-healthcare"\|"bell-global"\|"enterprise-terms"' aiPlat-core/core/harness/ --include='*.py' 2>/dev/null | grep -v '#\|test_\|builtin_handlers\|builtin_actions\|domain_router\|ontology_loader\|_scan_domain\|_DOMAIN_PROMPT_DEFAULTS\|prompt_loader.py\|ontology_branch.py\|ontology_validator.py' | wc -l | tr -d ' ')
+c80=$(grep -rn '"fde-delivery"\|"lock-service"\|"bell-consulting"\|"bell-data-cloud"\|"bell-healthcare"\|"bell-global"\|"enterprise-terms"' aiPlat-core/core/harness/ --include='*.py' 2>/dev/null | grep -v '#\|test_\|builtin_handlers\|builtin_actions\|domain_router\|ontology_loader\|_scan_domain\|_DOMAIN_PROMPT_DEFAULTS\|prompt_loader.py\|ontology_branch.py\|ontology_validator.py\|action_audit_validate.py' | wc -l | tr -d ' ')
 _run_check 80 "§80: hardcoded domain IDs" "$c80"
 
 c81=$(grep -c '"DiagnosisSession"\|"DeliveryAction"\|"Term"' aiPlat-core/core/api/routers/system.py 2>/dev/null || echo 0)

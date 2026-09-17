@@ -171,8 +171,8 @@ def _score_c6(domain_id: str, *, credit_test_evidence: bool = True) -> float:
     except Exception:
         logger.debug("C6 proposal scan failed", exc_info=True)
 
-    if score < 100 and credit_test_evidence and domain_id in ("lock-service", "service-domain"):
-        # Mid/deep pytest evidence / Phase C config vertical
+    # Opt-in test credit is domain-agnostic (callers pass credit_test_evidence=True).
+    if score < 100 and credit_test_evidence:
         score = max(score, 80.0)
     return score
 
