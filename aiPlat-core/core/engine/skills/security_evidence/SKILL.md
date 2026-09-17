@@ -24,7 +24,7 @@ effects:
   - type: write
     resources: [filesystem:~/.aiplat/cache]
     idempotent: false
-    rollback_available: false
+    rollback_available: true
 input_schema:
   security_report:
     type: object
