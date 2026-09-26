@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import { Modal, Button, Input, Select } from '../ui';
 import { useSkillStore } from '../../stores';
-import { SKILL_CATEGORIES as SKILL_CAT_NAMES } from '../../services';
+import { SKILL_CATEGORY_OPTIONS, SKILL_CATEGORY_HELP } from '../../services';
 
 interface AddSkillModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
-
-const SKILL_CATEGORIES = SKILL_CAT_NAMES.map(v => ({ value: v, label: v }));
 
 const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess }) => {
   const [name, setName] = useState('');
@@ -52,8 +50,16 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
           <Select
             value={category}
             onChange={(val: string) => setCategory(val)}
-            options={SKILL_CATEGORIES}
+            options={SKILL_CATEGORY_OPTIONS}
           />
+          <div className="text-xs text-gray-500 mt-1">
+            分类只用于列表筛选与推荐，不是权限。内容产出选 generation；拿不准选 general。
+          </div>
+          {SKILL_CATEGORY_HELP[category as keyof typeof SKILL_CATEGORY_HELP] && (
+            <div className="text-xs text-gray-400 mt-0.5">
+              当前：{SKILL_CATEGORY_HELP[category as keyof typeof SKILL_CATEGORY_HELP]}
+            </div>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">描述</label>

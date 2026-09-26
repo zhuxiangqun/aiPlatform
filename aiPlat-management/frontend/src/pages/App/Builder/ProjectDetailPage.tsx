@@ -419,6 +419,14 @@ const ProjectDetailPage: React.FC = () => {
           </Card>
         </div>
 
+        {!prdReady && !editingPrd && (
+          <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 space-y-2">
+            <p className="text-[11px] text-amber-200/90 leading-relaxed">
+              答完 AI PM 追问后需生成完整 PRD，才会出现「确认需求」。若边界已谈妥，可在对话中发送：
+              「请输出完整 PRD」。
+            </p>
+          </div>
+        )}
         {prdReady && !editingPrd && (
           <div className="p-4 rounded-lg border border-green-500/30 bg-green-500/5 space-y-3">
             <div className="text-xs text-gray-400">确认需求后启动流水线</div>

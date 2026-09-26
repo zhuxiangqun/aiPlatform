@@ -96,6 +96,7 @@ async def _execute_smoke_e2e_impl(self, req: ExecutionRequest) -> ExecutionResul
     try:
         exec_backend = None
         try:
+            from core.harness.integration import _resolve_exec_backend
             exec_backend = await _resolve_exec_backend()
         except Exception:
             exec_backend = None

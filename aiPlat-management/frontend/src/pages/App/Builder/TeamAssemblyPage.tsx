@@ -4,6 +4,9 @@ import { Plus, Save, Trash2, Eye, Pencil, Download, Upload, Bookmark, BookOpen, 
 import { builderTeamApi, type AgentCatalogItem, type PipelineStageConfig, type TeamConfig } from '../../../services';
 import { AgentCatalog } from '../../../components/Builder/AgentCatalog';
 import { TeamCanvas } from '../../../components/Builder/TeamCanvas';
+import TeamChatCreateModal from '../../../components/workspace/TeamChatCreateModal';
+import WorkspacePageGuide from '../../../components/workspace/WorkspacePageGuide';
+import AssetBoundaryHint from '../../../components/workspace/AssetBoundaryHint';
 import { Card, CardHeader, CardContent, Button, toast, Select, Modal } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
 
@@ -105,7 +108,10 @@ const TeamAssemblyPage: React.FC = () => {
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [viewingTeam, setViewingTeam] = useState<TeamConfig | null>(null);
   const [showBuilder, setShowBuilder] = useState(false);
+  const [chatCreateOpen, setChatCreateOpen] = useState(false);
   const [catFilter, setCatFilter] = useState('');
+
+  const [deduping, setDeduping] = useState(false);
 
   const loadTeams = useCallback(async () => {
     try {
@@ -113,6 +119,22 @@ const TeamAssemblyPage: React.FC = () => {
       setSavedTeams(resp.teams || []);
     } catch { /* ignore */ }
   }, []);
+
+  const dedupeTeams = useCallback(async () => {
+    if (deduping) return;
+    setDeduping(true);
+    try {
+      const r = await builderTeamApi.dedupeTeams();
+      const removed = (r as any)?.removed ?? 0;
+      if (removed > 0) toast.success(`已清理 ${removed} 个重复团队，保留 ${(r as any)?.remaining ?? '?'} 个`);
+      else toast.success('没有可清理的重复团队');
+      await loadTeams();
+    } catch (e: any) {
+      toastGateError(e, '清理失败');
+    } finally {
+      setDeduping(false);
+    }
+  }, [deduping, loadTeams]);
 
   useEffect(() => { loadTeams(); }, [loadTeams]);
 
@@ -263,12 +285,14 @@ const TeamAssemblyPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-100">团队组装</h1>
-          <p className="text-xs text-gray-500 mt-1">管理你的研发团队，保存后可复用于任何项目</p>
+          <p className="text-xs text-gray-500 mt-1">
+            用 Agent 拼流水线团队；保存后可复用于项目。不同于单资源库（Skill/Agent/Tool/MCP）的一键落盘。
+          </p>
         </div>
         <div className="flex gap-2 items-center">
           {stages.length > 0 && (
             <Button variant="secondary" size="sm" onClick={() => setChatOpen(!chatOpen)} icon={<MessageSquare className="w-4 h-4" />}>
-              {chatOpen ? '关闭测试' : '测试'}
+              {chatOpen ? '关闭冒烟测试' : '冒烟测试'}
             </Button>
           )}
           <Select
@@ -286,13 +310,43 @@ const TeamAssemblyPage: React.FC = () => {
             ]}
             placeholder="全部分类"
           />
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 flex gap-2">
+            {savedTeams.length > 3 && (
+              <Button variant="secondary" loading={deduping} onClick={dedupeTeams} title="合并同名且角色相同的重复团队">
+                清理重复
+              </Button>
+            )}
+            <Button variant="secondary" onClick={() => setChatCreateOpen(true)} icon={<MessageSquare className="w-4 h-4" />}>
+              对话组装
+            </Button>
             <Button variant="primary" onClick={() => { clearBuilder(); setShowBuilder(true); }} icon={<Plus className="w-4 h-4" />}>
               新建团队
             </Button>
           </div>
         </div>
       </div>
+
+      <WorkspacePageGuide
+        steps={[
+          { title: '对话组装', detail: '描述流水线 → 阶段草稿 → 写入画布' },
+          { title: '新建团队', detail: '空白画布，从左侧目录拖入 Agent' },
+          { title: '保存', detail: '画布确认后点保存；「冒烟测试」只验证已有阶段，不是创建' },
+        ]}
+        tip="对话组装不会自动落库，写入画布后仍可拖拽调整再保存。工厂推荐失败时曾会反复写入「默认团队」——可用「清理重复」合并。"
+      />
+      <AssetBoundaryHint kind="team" />
+
+      <TeamChatCreateModal
+        open={chatCreateOpen}
+        onClose={() => setChatCreateOpen(false)}
+        onApplyDraft={({ name, description, stages: nextStages }) => {
+          setTeamName(name || description || '未命名团队');
+          setStages(nextStages.map((s, i) => ({ ...s, order: i })));
+          setEditingTeamId(null);
+          setShowBuilder(true);
+          setViewingTeam(null);
+        }}
+      />
 
       {/* Quick Test Chat Panel */}
       {chatOpen && (

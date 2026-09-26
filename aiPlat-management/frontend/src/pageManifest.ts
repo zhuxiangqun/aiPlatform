@@ -41,6 +41,7 @@ export const menuItems: MenuEntry[] = [
   // ════════════════════════════════════════════════════════════════
   { group: 'dashboard', label: '📊 仪表盘', items: [
     { key: '/system-overview', icon: Activity, label: '系统概览' },
+    { key: '/org/pilot', icon: Users, label: '组织试点', roles: ['admin', 'developer', 'operator', 'business', 'fde', 'approver'] },
     { key: '/alerts', icon: Bell, label: '告警中心' },
     { key: '/system-graph', icon: Share2, label: '系统图谱' },
     { key: '/governance', icon: Shield, label: '治理仪表盘' },
@@ -51,7 +52,7 @@ export const menuItems: MenuEntry[] = [
   // 知识（双轨：业务本体 | 知识库）
   // ════════════════════════════════════════════════════════════════
   { group: 'knowledge', label: '🧠 知识', items: [
-    { key: '/knowledge/business', icon: Box, label: '业务本体' },
+    { key: '/knowledge/business', icon: Box, label: '业务说明书' },
     { key: '/knowledge/library', icon: Database, label: '知识库' },
   ]},
   { divider: true },
@@ -70,6 +71,7 @@ export const menuItems: MenuEntry[] = [
     { key: '/workspace/skills', icon: Sparkles, label: 'Skill' },
     { key: '/workspace/tools', icon: Wrench, label: 'Tool' },
     { key: '/workspace/mcp', icon: Plug, label: 'MCP' },
+    { key: '/core/workflows', icon: GitBranch, label: 'Workflow' },
     { key: '/workspace/teams', icon: Users, label: 'Teams' },
     { key: '/workspace/marketplace', icon: ShoppingBag, label: '能力市场' },
     // ── 配置 ──

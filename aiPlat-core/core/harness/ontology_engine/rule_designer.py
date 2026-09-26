@@ -228,6 +228,9 @@ def deploy_rule(domain_id: str, rule: Dict[str, Any]) -> Dict[str, Any]:
     domain["inference_rules"] = existing_rules
 
     # Write back to YAML
+    from core.harness.knowledge.ontology_yaml_gate import assert_live_yaml_write
+
+    assert_live_yaml_write()
     path.write_text(_yaml.dump(domain, allow_unicode=True, default_flow_style=False, sort_keys=False), encoding="utf-8")
 
     logger.info("Rule '%s' deployed to domain '%s'", rule_name, domain_id)

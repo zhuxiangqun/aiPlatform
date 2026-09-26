@@ -82,9 +82,37 @@ export const builderTeamApi = {
     return apiClient.post<TeamConfig>('/platform/builder/teams', data);
   },
 
+  createDialog: async (data: {
+    text: string;
+    history?: { role: string; content: string }[];
+    agents?: Array<Record<string, unknown>>;
+  }) => {
+    return apiClient.post<{
+      next: 'ask' | 'draft';
+      reply: string;
+      questions?: string[];
+      draft?: {
+        name?: string;
+        display_name?: string;
+        description?: string;
+        stages?: PipelineStageConfig[];
+      };
+      team_preview?: string;
+      error?: string;
+    }>('/platform/builder/teams/create-dialog', data);
+  },
+
   /** List saved teams */
   listTeams: async () => {
     return apiClient.get<{ teams: TeamConfig[] }>('/platform/builder/teams');
+  },
+
+  /** Collapse duplicate teams (same name + same agent stage list) */
+  dedupeTeams: async () => {
+    return apiClient.post<{ ok: boolean; kept: number; removed: number; remaining: number }>(
+      '/platform/builder/teams/dedupe',
+      {}
+    );
   },
 
   /** Delete a saved team */

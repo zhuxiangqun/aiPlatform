@@ -442,6 +442,119 @@ async def ontology_code_suggestions(body: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e)[:300])
 
 
+@router.post("/ontology/schema-suggestions")
+async def ontology_schema_suggestions(body: Dict[str, Any]):
+    """Table/CSV headers → Path A proposal draft only (never auto-apply, never write graph)."""
+    domain_id = str(body.get("domain_id") or "it-ops").strip() or "it-ops"
+    try:
+        from core.api.core_facade import suggest_ontology_from_table_schema
+
+        columns = body.get("columns") if isinstance(body.get("columns"), list) else None
+        sample_rows = body.get("sample_rows") if isinstance(body.get("sample_rows"), list) else None
+        result = await suggest_ontology_from_table_schema(
+            domain_id,
+            table_name=str(body.get("table_name") or body.get("table") or ""),
+            columns=columns,
+            csv_text=str(body.get("csv_text") or body.get("csv") or ""),
+            sample_rows=sample_rows,
+            author=str(body.get("author") or "schema-suggest"),
+            enqueue=bool(body.get("enqueue", True)),
+        )
+        result["auto_apply"] = False
+        result["writes_graph"] = False
+        return result
+    except Exception as e:
+        logger.error("ontology_schema_suggestions failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.get("/ontology/governance-loop")
+async def ontology_governance_loop():
+    """Read-only 8-step data-governance scenario map (honest status; no material KPIs)."""
+    try:
+        from core.api.core_facade import get_governance_scenario_loop
+
+        return get_governance_scenario_loop()
+    except Exception as e:
+        logger.error("ontology_governance_loop failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.get("/ontology/governance/quality")
+async def ontology_governance_quality(domain_id: str = Query("data-gov")):
+    """Step ⑥: OCS + data-gov actions + value links (vertical slice)."""
+    try:
+        from core.api.core_facade import governance_quality_view
+
+        return governance_quality_view(domain_id or "data-gov")
+    except Exception as e:
+        logger.error("ontology_governance_quality failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.post("/ontology/governance/locate")
+async def ontology_governance_locate(body: Dict[str, Any]):
+    """Step ⑦: locate GraphIndex entities by business query (not raw DB fetch)."""
+    domain_id = str(body.get("domain_id") or "data-gov").strip() or "data-gov"
+    query = str(body.get("query") or body.get("q") or "").strip()
+    try:
+        from core.api.core_facade import governance_locate_view
+
+        return await governance_locate_view(
+            domain_id,
+            query,
+            top_k=int(body.get("top_k") or 8),
+            with_graphrag=bool(body.get("with_graphrag", False)),
+        )
+    except Exception as e:
+        logger.error("ontology_governance_locate failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.post("/ontology/governance/fetch")
+async def ontology_governance_fetch(body: Dict[str, Any]):
+    """Compat shim → CoreFacade (canonical also under /api/platform/apps/org/connectors/fetch)."""
+    domain_id = str(body.get("domain_id") or "it-ops").strip() or "it-ops"
+    entity_id = str(body.get("entity_id") or body.get("id") or "").strip()
+    purpose = str(body.get("purpose") or "org_pilot").strip() or "org_pilot"
+    try:
+        from core.api.core_facade import governance_fetch_view
+
+        out = governance_fetch_view(domain_id, entity_id, purpose=purpose)
+        if isinstance(out, dict):
+            out = {
+                **out,
+                "deprecated_path": True,
+                "canonical": "POST /api/platform/apps/org/connectors/fetch",
+            }
+        return out
+    except Exception as e:
+        logger.error("ontology_governance_fetch failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.post("/ontology/governance/write-preview")
+async def ontology_governance_write_preview(body: Dict[str, Any]):
+    """Compat shim → CoreFacade (canonical: /api/platform/apps/org/connectors/write-preview)."""
+    domain_id = str(body.get("domain_id") or "it-ops").strip() or "it-ops"
+    entity_id = str(body.get("entity_id") or body.get("id") or "").strip()
+    patch = body.get("patch") if isinstance(body.get("patch"), dict) else {}
+    try:
+        from core.api.core_facade import governance_write_preview
+
+        out = governance_write_preview(domain_id, entity_id, patch)
+        if isinstance(out, dict):
+            out = {
+                **out,
+                "deprecated_path": True,
+                "canonical": "POST /api/platform/apps/org/connectors/write-preview",
+            }
+        return out
+    except Exception as e:
+        logger.error("ontology_governance_write_preview failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
 @router.post("/ontology/owl-review/{domain_id}")
 async def ontology_owl_review(domain_id: str):
     """Offline OWL consistency review — suggestion only; unchecked ≠ valid."""
@@ -454,6 +567,131 @@ async def ontology_owl_review(domain_id: str):
         return result
     except Exception as e:
         logger.error("ontology_owl_review failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.post("/ontology/cases")
+async def ontology_record_case(body: Dict[str, Any]):
+    """P0: record an ontology learning case (no TBox mutate)."""
+    domain_id = str(body.get("domain_id") or "default").strip() or "default"
+    try:
+        from core.api.core_facade import record_ontology_case
+
+        return record_ontology_case(
+            domain_id,
+            title=str(body.get("title") or body.get("summary") or "case"),
+            summary=str(body.get("summary") or body.get("title") or ""),
+            outcome=str(body.get("outcome") or "success"),
+            reward=body.get("reward"),
+            action_id=str(body.get("action_id") or ""),
+            entity_id=str(body.get("entity_id") or ""),
+            tags=body.get("tags") if isinstance(body.get("tags"), list) else None,
+            metadata=body.get("metadata") if isinstance(body.get("metadata"), dict) else None,
+            write_graph=bool(body.get("write_graph", False)),
+        )
+    except Exception as e:
+        logger.error("ontology_record_case failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.get("/ontology/cases/search")
+async def ontology_search_cases(
+    domain_id: str = Query("default"),
+    q: str = Query(""),
+    top_k: int = Query(5, ge=1, le=50),
+    outcome: str = Query(""),
+):
+    """P0: reward-weighted case retrieval."""
+    try:
+        from core.api.core_facade import search_ontology_cases
+
+        return search_ontology_cases(domain_id, q, top_k=top_k, outcome=outcome or "")
+    except Exception as e:
+        logger.error("ontology_search_cases failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.get("/ontology/cases/meta")
+async def ontology_cases_meta(domain_id: str = Query("")):
+    """P2.5: learning flags (UCB / EDGE_AUTO_APPLY) + optional domain counters."""
+    try:
+        from core.api.core_facade import ontology_case_learning_status
+
+        return ontology_case_learning_status(domain_id or "")
+    except Exception as e:
+        logger.error("ontology_cases_meta failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.post("/ontology/cases/{case_id}/feedback")
+async def ontology_case_feedback(case_id: str, body: Dict[str, Any]):
+    """P0 feedback; optional P1 draft proposal when reward threshold met."""
+    try:
+        from core.api.core_facade import feedback_ontology_case
+
+        rating = body.get("rating")
+        if rating is None:
+            raise HTTPException(status_code=400, detail="rating required (0..1)")
+        return await feedback_ontology_case(
+            case_id,
+            rating=float(rating),
+            note=str(body.get("note") or ""),
+            actor=str(body.get("actor") or "user"),
+            auto_enqueue=bool(body.get("auto_enqueue", True)),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("ontology_case_feedback failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.post("/ontology/cases/{case_id}/evolve")
+async def ontology_case_evolve(case_id: str, body: Optional[Dict[str, Any]] = None):
+    """P1/P2: enqueue VersionedOntologyStore draft; edge auto-apply only if env enabled."""
+    body = body or {}
+    try:
+        from core.api.core_facade import evolve_ontology_from_case
+
+        result = await evolve_ontology_from_case(
+            case_id,
+            force=bool(body.get("force", False)),
+            author=str(body.get("author") or "ontology-case-learning"),
+        )
+        # Preserve honesty: default path never auto-applies unless env + edge gate
+        if "auto_apply" not in result:
+            result["auto_apply"] = False
+        return result
+    except Exception as e:
+        logger.error("ontology_case_evolve failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.post("/ontology/cases/{case_id}/rollback")
+async def ontology_case_rollback(case_id: str):
+    """P2: rollback live YAML for case-linked applied proposal."""
+    try:
+        from core.api.core_facade import rollback_ontology_case_evolution
+
+        return await rollback_ontology_case_evolution(case_id)
+    except Exception as e:
+        logger.error("ontology_case_rollback failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.post("/ontology/proposals/{proposal_id}/rollback")
+async def ontology_proposal_rollback(proposal_id: str, body: Optional[Dict[str, Any]] = None):
+    """P2: rollback applied proposal by id (requires domain_id)."""
+    body = body or {}
+    domain_id = str(body.get("domain_id") or "").strip()
+    if not domain_id:
+        raise HTTPException(status_code=400, detail="domain_id required")
+    try:
+        from core.api.core_facade import rollback_ontology_proposal
+
+        return await rollback_ontology_proposal(domain_id, proposal_id)
+    except Exception as e:
+        logger.error("ontology_proposal_rollback failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)[:300])
 
 

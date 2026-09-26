@@ -34,6 +34,11 @@ class SkillMixin:
             except Exception:
                 tenant_id = None
 
+        start_raw = record.get("start_time")
+        end_raw = record.get("end_time")
+        start_time = float(start_raw) if start_raw not in (None, "", 0, 0.0) else 0.0
+        end_time = float(end_raw) if end_raw not in (None, "", 0, 0.0) else 0.0
+
         payload = (
             record.get("id"),
             record.get("skill_id"),
@@ -43,8 +48,8 @@ class SkillMixin:
             _json_dumps(record.get("output")),
             record.get("error"),
             error_code,
-            float(record.get("start_time") or 0.0),
-            float(record.get("end_time") or 0.0),
+            start_time,
+            end_time,
             int(record.get("duration_ms") or 0),
             record.get("user_id"),
             record.get("trace_id"),
@@ -64,15 +69,27 @@ class SkillMixin:
                       skill_id=excluded.skill_id,
                       tenant_id=excluded.tenant_id,
                       status=excluded.status,
-                      input_json=excluded.input_json,
-                      output_json=excluded.output_json,
+                      input_json=COALESCE(excluded.input_json, skill_executions.input_json),
+                      output_json=COALESCE(excluded.output_json, skill_executions.output_json),
                       error=excluded.error,
                       error_code=excluded.error_code,
-                      start_time=excluded.start_time,
-                      end_time=excluded.end_time,
-                      duration_ms=excluded.duration_ms,
-                      user_id=excluded.user_id,
-                      trace_id=excluded.trace_id,
+                      start_time=CASE
+                        WHEN excluded.start_time IS NULL OR excluded.start_time = 0
+                          THEN skill_executions.start_time
+                        ELSE excluded.start_time
+                      END,
+                      end_time=CASE
+                        WHEN excluded.end_time IS NULL OR excluded.end_time = 0
+                          THEN skill_executions.end_time
+                        ELSE excluded.end_time
+                      END,
+                      duration_ms=CASE
+                        WHEN excluded.duration_ms IS NULL OR excluded.duration_ms = 0
+                          THEN skill_executions.duration_ms
+                        ELSE excluded.duration_ms
+                      END,
+                      user_id=COALESCE(excluded.user_id, skill_executions.user_id),
+                      trace_id=COALESCE(excluded.trace_id, skill_executions.trace_id),
                       metadata_json=excluded.metadata_json;
                     """,
                     payload,

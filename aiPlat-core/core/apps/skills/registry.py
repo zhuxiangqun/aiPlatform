@@ -440,7 +440,6 @@ class SkillRegistry:
                     existing_meta = getattr(existing_cfg, "metadata", {}) or {} if existing_cfg else {}
                     stored_digest = existing_meta.get("contract_digest")
                     if stored_digest and stored_digest != digest:
-                        import logging
                         logging.getLogger("aiplat.skills").warning(
                             "Skill integrity warning: contract digest changed for '%s' (version=%s). "
                             "Stored: %s..., Computed: %s...",
@@ -1730,7 +1729,6 @@ class _GenericSkill(BaseSkill):
                 result = await agent.execute(agent_ctx)
                 # Log stop reason for debugging skill execution limits
                 try:
-                    import logging
                     _log = logging.getLogger("aiplat.skills")
                     sr = getattr(result, "metadata", {}) or {}
                     sr = sr.get("stop_reason", "unknown") if isinstance(sr, dict) else "unknown"
@@ -1764,7 +1762,7 @@ class _GenericSkill(BaseSkill):
             parent_span_id = (getattr(context, "metadata", {}) or {}).get("_span_id")
 
             # ContextBus: inject 10-layer domain knowledge for field-assessment
-            if self._config.name == "field-assessment":
+            if self._config.name in ("field-assessment", "field_assessment"):
                 try:
                     from core.harness.knowledge.context_bus import assemble_field_assessment
                     system_parts, diag = assemble_field_assessment(params, system_parts)
@@ -1785,7 +1783,7 @@ class _GenericSkill(BaseSkill):
                 trace_context={"run_id": run_id, "parent_span_id": parent_span_id},
             )
             # ── Post-generation: field-assessment metadata extraction ──
-            if self._config.name == "field-assessment":
+            if self._config.name in ("field-assessment", "field_assessment"):
                 import time as _time_sid
                 company = (params.get("company_name") or "").strip()
                 ts = int(_time_sid.time())

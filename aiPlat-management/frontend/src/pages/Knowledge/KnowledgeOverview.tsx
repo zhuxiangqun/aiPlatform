@@ -47,11 +47,11 @@ const PIPELINE: PipelineStage[] = [
   {
     key: 'wiki',
     icon: BookOpen,
-    label: 'LLM Wiki',
-    sublabel: 'KnowledgeSynthesizer → 推理链/事实卡',
+    label: '阅读资料',
+    sublabel: 'Wiki 资料页（人读，非业务权威）',
     metrics: [],
     link: '/knowledge/library?tab=wiki',
-    linkLabel: '编辑 Wiki',
+    linkLabel: '打开资料',
   },
   {
     key: 'rag',

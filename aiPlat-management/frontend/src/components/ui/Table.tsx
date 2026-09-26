@@ -7,6 +7,11 @@ interface Column<T> {
   render?: (value: any, record: T, index: number) => React.ReactNode;
   width?: number | string;
   align?: 'left' | 'center' | 'right';
+  /** Truncate overflowing cell text with ellipsis */
+  ellipsis?: boolean;
+  /** Sticky column (e.g. actions on the right) */
+  sticky?: 'left' | 'right';
+  className?: string;
 }
 
 interface TableProps<T> {
@@ -77,8 +82,11 @@ export function Table<T>({
                 className={`
                   px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide
                   ${column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : 'text-left'}
+                  ${column.sticky === 'right' ? 'sticky right-0 z-20 bg-dark-bg shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.35)]' : ''}
+                  ${column.sticky === 'left' ? 'sticky left-0 z-20 bg-dark-bg shadow-[6px_0_8px_-6px_rgba(0,0,0,0.35)]' : ''}
+                  ${column.className || ''}
                 `}
-                style={{ width: column.width }}
+                style={{ width: column.width, minWidth: column.width }}
               >
                 {column.title}
               </th>
@@ -125,7 +133,24 @@ export function Table<T>({
                         className={`
                           px-4 py-3 text-sm text-gray-200
                           ${column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : 'text-left'}
+                          ${column.ellipsis ? 'max-w-[280px] truncate' : ''}
+                          ${column.sticky === 'right' ? 'sticky right-0 z-10 bg-dark-card shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.35)]' : ''}
+                          ${column.sticky === 'left' ? 'sticky left-0 z-10 bg-dark-card shadow-[6px_0_8px_-6px_rgba(0,0,0,0.35)]' : ''}
+                          ${column.className || ''}
                         `}
+                        style={{ width: column.width, minWidth: column.width }}
+                        title={
+                          column.ellipsis && column.dataIndex
+                            ? String(
+                                getNestedValue(
+                                  record,
+                                  Array.isArray(column.dataIndex)
+                                    ? column.dataIndex
+                                    : [column.dataIndex as string]
+                                ) ?? ''
+                              )
+                            : undefined
+                        }
                       >
                         {renderCell(column, record, index)}
                       </td>

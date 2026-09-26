@@ -133,9 +133,12 @@ def list_collections() -> List[Dict[str, Any]]:
             idx = d / "index.json"
             page_count = 0
             try:
-                if idx.exists():
+                for child in d.iterdir():
+                    if child.is_dir() and not child.name.startswith("."):
+                        page_count += sum(1 for _ in child.glob("*.md"))
+                if page_count == 0 and idx.exists():
                     pages = _json.loads(idx.read_text(encoding="utf-8")).get("pages", {})
-                    page_count = len(pages)
+                    page_count = len(pages) if isinstance(pages, dict) else 0
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
             result.append({"collection_id": d.name, "page_count": page_count})
@@ -1752,7 +1755,7 @@ def list_all_pages(*, collection_id: str = "default") -> List[Dict[str, Any]]:
 
 def build_graph(*, category: str = "", keyword: str = "", source: str = "", max_nodes: int = 300, collection_id: str = "default") -> Dict[str, Any]:
     u"""Build node/edge graph for ECharts force-layout visualization (cached)."""
-    cache_key = f"{category}|{keyword}|{source}|{max_nodes}|{collection_id}"
+    cache_key = f"v2|{category}|{keyword}|{source}|{max_nodes}|{collection_id}"
     cached = _read_graph_cache(cache_key)
     if cached:
         return cached
@@ -1851,21 +1854,38 @@ def _build_graph_raw(*, category: str = "", keyword: str = "", source: str = "",
             if rel in in_degree:
                 in_degree[rel] += 1
 
-    # Auto-link pages with no related links (one-time backfill using embedding similarity)
-    _titles_list = list(all_pages.keys())
-    for title, page in all_pages.items():
-        if not page.get("related") and len(_titles_list) > 1:
-            try:
-                auto_links = auto_link_page(title, page.get("body", ""), _titles_list)
-                if auto_links:
-                    page["related"] = auto_links
-            except Exception:
-                logging.getLogger(__name__).debug('_build_graph_raw failed', exc_info=True)
+    # Auto-link is an embedding backfill. Doing it per page on a large
+    # collection blocks the graph request (each call embeds every other page).
+    unlinked = sum(1 for p in all_pages.values() if not p.get("related"))
+    if unlinked <= 20:
+        _titles_list = list(all_pages.keys())
+        for title, page in all_pages.items():
+            if not page.get("related") and len(_titles_list) > 1:
+                try:
+                    auto_links = auto_link_page(title, page.get("body", ""), _titles_list)
+                    if auto_links:
+                        page["related"] = auto_links
+                except Exception:
+                    logging.getLogger(__name__).debug('_build_graph_raw failed', exc_info=True)
+    elif unlinked:
+        logging.getLogger(__name__).info(
+            "wiki graph skip auto-link: %d pages without related (collection=%s)",
+            unlinked, collection_id,
+        )
 
-    cat_colors = {"entities": "#4d9fff", "topics": "#a855f7", "contradictions": "#ef4444"}
+    cat_colors = {
+        "entities": "#4d9fff",
+        "topics": "#a855f7",
+        "atoms": "#f59e0b",
+        "contradictions": "#ef4444",
+    }
+    total_pages = len(all_pages)
     titles = list(all_pages.keys())
     if max_nodes > 0 and len(titles) > max_nodes:
-        titles.sort(key=lambda t: len(all_pages[t].get("related", [])) + in_degree.get(t, 0), reverse=True)
+        titles.sort(key=lambda t: (
+            -(len(all_pages[t].get("related", [])) + in_degree.get(t, 0)),
+            t,
+        ))
         titles = titles[:max_nodes]
         keep = set(titles)
         all_pages = {t: p for t, p in all_pages.items() if t in keep}
@@ -1878,10 +1898,9 @@ def _build_graph_raw(*, category: str = "", keyword: str = "", source: str = "",
         link_count = len(p.get("related", [])) + in_degree.get(title, 0)
         total_links += link_count
         cat_name = p.get("category", "entities")
-        # Wiki graph categories are a fixed 3-class visual grouping (entities/topics/
-        # contradictions). Normalize any leaked ontology-class category (e.g.
-        # "ai-techniques") to the default so the node contract stays valid.
-        if cat_name not in ("entities", "topics", "contradictions"):
+        # Keep the four wiki folders distinct. Other leaked class names
+        # (for example an ontology class id) collapse to entities.
+        if cat_name not in ("entities", "topics", "atoms", "contradictions"):
             cat_name = "entities"
         cat_counts[cat_name] = cat_counts.get(cat_name, 0) + 1
         symbol_size = min(12 + link_count * 3, 55)
@@ -1904,6 +1923,7 @@ def _build_graph_raw(*, category: str = "", keyword: str = "", source: str = "",
     return {
         "nodes": nodes, "edges": edges,
         "stats": {"totalNodes": len(nodes), "totalEdges": len(edges),
+                  "totalPages": total_pages,
                   "avgLinksPerPage": round(total_links / max(len(nodes), 1), 2),
                   "categories": cat_counts},
     }

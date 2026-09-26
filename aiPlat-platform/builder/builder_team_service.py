@@ -36,6 +36,68 @@ class BuilderTeamService:
 
     # ── Persistence ──────────────────────────────────────────────────
 
+    @staticmethod
+    def _agent_fingerprint(stages: Any) -> tuple:
+        """Ordered agent_id tuple used to detect duplicate default-team dumps."""
+        out: List[str] = []
+        for s in stages or []:
+            if hasattr(s, "model_dump"):
+                s = s.model_dump()
+            if not isinstance(s, dict):
+                continue
+            aid = str(s.get("agent_id") or s.get("name") or "").strip()
+            if aid:
+                out.append(aid)
+        return tuple(out)
+
+    def _find_equivalent(self, name: str, stages: Any) -> Optional[TeamConfig]:
+        want_name = (name or "").strip()
+        want_fp = self._agent_fingerprint(stages)
+        if not want_name or not want_fp:
+            return None
+        for team in self._teams.values():
+            if (team.name or "").strip() != want_name:
+                continue
+            if self._agent_fingerprint(team.stages) == want_fp:
+                return team
+        return None
+
+    def dedupe_teams(self) -> Dict[str, Any]:
+        """Keep newest team per (name, agent fingerprint); drop the rest.
+
+        Factory recommend-team used to always create_team() on LLM fallback,
+        flooding teams.json with identical 默认开发团队 / Agent 研发团队 copies.
+        """
+        groups: Dict[tuple, List[TeamConfig]] = {}
+        for team in self._teams.values():
+            key = ((team.name or "").strip(), self._agent_fingerprint(team.stages))
+            groups.setdefault(key, []).append(team)
+
+        removed: List[str] = []
+        kept = 0
+        for _key, items in groups.items():
+            if len(items) <= 1:
+                kept += 1
+                continue
+            items.sort(
+                key=lambda t: (t.updated_at or t.created_at or "", t.team_id),
+                reverse=True,
+            )
+            kept += 1
+            for dup in items[1:]:
+                if dup.team_id in self._teams:
+                    del self._teams[dup.team_id]
+                    removed.append(dup.team_id)
+        if removed:
+            self._save_teams()
+        return {
+            "ok": True,
+            "kept": kept,
+            "removed": len(removed),
+            "removed_ids": removed[:50],
+            "remaining": len(self._teams),
+        }
+
     def _load_teams(self) -> None:
         try:
             if os.path.exists(_TEAMS_FILE):
@@ -43,6 +105,8 @@ class BuilderTeamService:
                     data = json.load(f)
                 for item in data.get("teams", []):
                     team = TeamConfig(**item)
+                    if not team.team_id:
+                        continue
                     self._teams[team.team_id] = team
         except Exception as e:
             logging.debug(str(e), exc_info=True)
@@ -63,15 +127,30 @@ class BuilderTeamService:
 
     # ── CRUD ─────────────────────────────────────────────────────────
 
-    async def create_team(self, req: TeamAssembleRequest) -> TeamConfig:
+    async def create_team(self, req: TeamAssembleRequest, *, reuse_equivalent: bool = False) -> TeamConfig:
+        """Create a team. When ``reuse_equivalent``, return existing same name+agents."""
+        if reuse_equivalent:
+            existing = self._find_equivalent(req.name, req.stages)
+            if existing is not None:
+                # Refresh description so newest reasoning is visible, without a new row.
+                new_desc = (req.description or "").strip()
+                if new_desc and new_desc != (existing.description or ""):
+                    existing.description = new_desc
+                    existing.updated_at = time.strftime("%Y-%m-%dT%H:%M:%S")
+                    self._save_teams()
+                return existing
+
         team_id = f"team_{uuid.uuid4().hex[:8]}"
         stages_raw = [s.model_dump() if hasattr(s, 'model_dump') else s for s in req.stages]
+        now = time.strftime("%Y-%m-%dT%H:%M:%S")
         team = TeamConfig(
             team_id=team_id,
             name=req.name or f"团队 {team_id}",
             description=req.description,
             stages=stages_raw,
             max_tokens_per_run=req.max_tokens_per_run,
+            created_at=now,
+            updated_at=now,
         )
         self._teams[team_id] = team
         self._save_teams()

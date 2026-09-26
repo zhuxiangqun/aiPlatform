@@ -62,6 +62,8 @@ cp ~/.aiplat/tests/service-domain_tests.yaml ~/.aiplat/tests/{新域}_tests.yaml
 - `object_properties`：每个关系含 `name`、`from`、`to`
 - `inference_rules`：定义 `exclusive_states`（互斥状态）和 `state_dependencies`（状态依赖）
 
+**也可用 UI**：管理端 → **知识 → 业务本体** → `/knowledge/business`（域管理 / 编辑器）。CLI 脚手架见合册 [`FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md)。
+
 ### Step 1.3：加载并验证（1 小时）
 
 ```bash
@@ -181,9 +183,9 @@ print(v.check_transition('test', '待指派', '已指派'))
 ### Step 5.1：培训业务管理员（2 小时）
 
 教会业务方三件事：
-1. 怎么提新动作：写 YAML → POST `/actions/from-yaml`
+1. 怎么提新动作：写 YAML → POST `/actions/from-yaml`（或合册中的 Action 注册路径）
 2. 怎么看审计日志：⑧ 运营监控 → 筛选时间/动作/状态
-3. 怎么提本体演进：① 业务认知 → 本体演进面板 → 提交提案
+3. 怎么提本体演进：**知识 → 业务本体 → 工厂流水线**（`/knowledge/business?tab=factory`）确认抽取/提案后 **人批 apply**；不要在 FDE ① 里找「直写活 YAML」
 
 ### Step 5.2：正式上线（2 小时）
 
@@ -207,6 +209,9 @@ python3 scripts/sop_validate.py --domain {domain}
 | 动作执行返回 executed | ☐ |
 | 业务方完成培训 | ☐ |
 | ⑧ 运营监控 有实时日志 | ☐ |
+| （若 it-ops 试点）组织试点 `/org/pilot` 八闸门与签收剧本已知晓 | ☐ |
+
+> Day 5 的「验收移交」签的是 **FDE 项目签收单**。组织级 it-ops 送审材料见 [`ORG_M4_SIGNOFF_PACK.md`](../../contracts/ORG_M4_SIGNOFF_PACK.md)，勿混为一谈。
 
 ---
 

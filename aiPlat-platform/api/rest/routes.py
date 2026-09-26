@@ -7255,6 +7255,10 @@ from apps.fde.api.router import router as fde_platform_router  # noqa: E402
 
 app.include_router(fde_platform_router, prefix="/api/platform/apps")
 
+from apps.org.api.router import router as org_platform_router  # noqa: E402
+
+app.include_router(org_platform_router, prefix="/api/platform/apps")
+
 
 
 # ── Workbench module (v2.5) ──

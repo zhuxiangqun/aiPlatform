@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Pencil, Zap, Clock, MessageSquare, ShieldCheck, Upload, Key, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, RotateCw, Upload, Key, Search, Zap, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Table, Select, Button, Modal, toast } from '../../../components/ui';
+import { Table, Select, Button, Modal, toast, Input } from '../../../components/ui';
 import { useWorkspaceAgentStore } from '../../../stores';
 import { workspaceAgentApi, type Agent } from '../../../services';
 import AddAgentModal from '../../../components/workspace/AddAgentModal';
+import AgentChatCreateModal from '../../../components/workspace/AgentChatCreateModal';
+import WorkspacePageGuide from '../../../components/workspace/WorkspacePageGuide';
 import EditAgentModal from '../../../components/workspace/EditAgentModal';
 import ExecuteAgentModal from '../../../components/ExecuteAgentModal';
 import AgentDetailModal from '../../../components/workspace/AgentDetailModal';
 import AgentVersionsModal from '../../../components/workspace/AgentVersionsModal';
 import AgentHistoryModal from '../../../components/workspace/AgentHistoryModal';
+import AgentRowActions from '../../../components/workspace/AgentRowActions';
+import AssetStatusLegend from '../../../components/workspace/AssetStatusLegend';
 import ImportBar from '../../../components/workspace/ImportBar';
 import { ChatPanel } from '../../../components/core';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
@@ -17,13 +22,17 @@ import { StatusBadge } from '../../../utils/statusLabel';
 import { reportPageData, clearPageData } from '../../../lib/pageDataBridge';
 
 const WorkspaceAgents: React.FC = () => {
+  const navigate = useNavigate();
   const { agents, loading, fetchAgents, startAgent, stopAgent, deleteAgent } = useWorkspaceAgentStore();
   const [typeFilter, setTypeFilter] = useState<string | undefined>();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
+  const [search, setSearch] = useState('');
   const [seedsModalOpen, setSeedsModalOpen] = useState(false);
   const [seeds, setSeeds] = useState<any[]>([]);
   const [seedsLoading, setSeedsLoading] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [addMode, setAddMode] = useState<'manual' | 'auto'>('manual');
+  const [chatCreateOpen, setChatCreateOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [executeModalOpen, setExecuteModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -36,12 +45,18 @@ const WorkspaceAgents: React.FC = () => {
   const [testAllResults, setTestAllResults] = useState<{ agentId: string; status: string; ok: boolean }[]>([]);
   const [testAllOpen, setTestAllOpen] = useState(false);
   const [chatAgent, setChatAgent] = useState<Agent | null>(null);
+  const [deduping, setDeduping] = useState(false);
 
   // Batch signing state
   const [batchSignOpen, setBatchSignOpen] = useState(false);
   const [batchSignKey, setBatchSignKey] = useState('');
   const [batchSigning, setBatchSigning] = useState(false);
   const [batchResult, setBatchResult] = useState<{ total: number; signed: number; failed: number } | null>(null);
+
+  // ── Smart Agent Router ──
+  const [routeInput, setRouteInput] = useState('');
+  const [routeResult, setRouteResult] = useState<{ intent: string; confidence: number; target: string; has_data: boolean } | null>(null);
+  const [routeLoading, setRouteLoading] = useState(false);
 
   useEffect(() => {
     fetchAgents();
@@ -51,11 +66,6 @@ const WorkspaceAgents: React.FC = () => {
     setChatAgent(agent);
     setSelectedAgent(agent);
   };
-
-  // ── Smart Agent Router ──
-  const [routeInput, setRouteInput] = useState('');
-  const [routeResult, setRouteResult] = useState<{ intent: string; confidence: number; target: string; has_data: boolean } | null>(null);
-  const [routeLoading, setRouteLoading] = useState(false);
 
   const handleRoute = async () => {
     if (!routeInput.trim()) return;
@@ -158,6 +168,25 @@ const WorkspaceAgents: React.FC = () => {
     }
   };
 
+  const handleDedupe = async () => {
+    if (deduping) return;
+    setDeduping(true);
+    try {
+      const r: any = await workspaceAgentApi.dedupe();
+      const n = Number(r?.removed_count ?? 0);
+      toast.success(
+        n > 0
+          ? `已清理 ${n} 个重复 Agent，保留 ${r?.remaining ?? '?'} 个`
+          : '没有发现可合并的重复 Agent',
+      );
+      fetchAgents({ agent_type: typeFilter, status: statusFilter });
+    } catch (e: any) {
+      toast.error('清理失败', e?.detail || e?.message || String(e));
+    } finally {
+      setDeduping(false);
+    }
+  };
+
   const handleSubmitForReview = async (agent: Agent) => {
     try {
       await workspaceAgentApi.submitForReview(agent.id);
@@ -228,6 +257,11 @@ const WorkspaceAgents: React.FC = () => {
   const filteredAgents = agents.filter(a => {
     if (typeFilter && a.agent_type !== typeFilter) return false;
     if (statusFilter && a.status !== statusFilter) return false;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      const hay = `${a.id || ''} ${a.name || ''} ${(a as any).display_name || ''} ${a.description || ''} ${a.agent_type || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
     return true;
   });
 
@@ -241,7 +275,7 @@ const WorkspaceAgents: React.FC = () => {
           onClick={() => { setSelectedAgent(record); setDetailModalOpen(true); }}
           className="text-primary hover:text-primary-hover font-medium"
         >
-          {name}
+          {(record as any).display_name || name}
         </button>
       ),
     },
@@ -258,98 +292,74 @@ const WorkspaceAgents: React.FC = () => {
       title: '描述',
       dataIndex: 'description',
       key: 'description',
+      width: 280,
       ellipsis: true,
       render: (desc: string) => (
-        <span className="text-xs text-gray-500">{desc || '-'}</span>
+        <span className="text-xs text-gray-500 line-clamp-2" title={desc || undefined}>
+          {desc || '-'}
+        </span>
       ),
     },
     {
-      title: '上架状态',
+      title: (
+        <span title="生命周期：草稿→待审核→已发布→已上架。草稿也可本机执行。">上架状态</span>
+      ),
       key: 'status',
-      width: 80,
+      width: 100,
       render: (_: unknown, record: Agent) => <StatusBadge status={record.status} />,
     },
     {
-      title: '治理',
+      title: (
+        <span title="签名轨：未签名→已签名→已验签。与上架无关。">治理</span>
+      ),
       key: 'governance',
-      width: 90,
+      width: 100,
       render: (_: unknown, record: Agent) => {
         const prov: any = (record.metadata as any)?.provenance || {};
-        if (prov?.signature_verified) return <span className="text-xs text-green-400">已验签</span>;
-        if (prov?.signature) return <span className="text-xs text-blue-400">已签名</span>;
-        return <span className="text-xs text-gray-500">未签名</span>;
+        if (prov?.signature_verified) {
+          return <span className="text-xs text-green-400" title="签名已通过可信公钥校验">已验签</span>;
+        }
+        if (prov?.signature) {
+          return <span className="text-xs text-blue-400" title="已写入 Ed25519 签名，尚未验签">已签名</span>;
+        }
+        return (
+          <span className="text-xs text-gray-500" title="未签名不影响本地执行；生产启用可能要求签名">
+            未签名
+          </span>
+        );
       },
     },
     {
       title: '操作',
       key: 'actions',
-      width: 160,
-      align: 'center' as const,
-      render: (_: unknown, record: Agent) => {
-        const isRunning = (record.runtime_state || '') === 'running';
-        const isProtected = Boolean((record as any)?.metadata?.protected === true || (record as any)?.protected === true);
-        return (
-        <div className="flex items-center justify-center gap-1">
-          <button
-            onClick={() => handleChatOpen(record)}
-            className="p-1.5 rounded-lg text-blue-400 hover:bg-blue-500/10 transition-colors"
-            title="打开对话"
-          >
-            <MessageSquare className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => isRunning ? handleStop(record) : handleStart(record)}
-            className={`p-1.5 rounded-lg transition-colors ${isRunning ? 'text-warning hover:bg-warning-light' : 'text-success hover:bg-success-light'}`}
-            title={isRunning ? '停止' : '启动'}
-          >
-            {isRunning ? <PauseCircle className="w-4 h-4" /> : <PlayCircle className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={() => { setSelectedAgent(record); setExecuteModalOpen(true); }}
-            className="p-1.5 rounded-lg text-primary hover:bg-primary-light transition-colors"
-            title="执行"
-          >
-            <Zap className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => { setSelectedAgent(record); setEditModalOpen(true); }}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
-            title="编辑"
-          >
-            <Pencil className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => { setSelectedAgent(record); setVersionsModalOpen(true); }}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
-            title="版本/历史"
-          >
-            <Clock className="w-4 h-4" />
-          </button>
-          {(record.status || '').toLowerCase() === 'draft' || (record.status || '').toLowerCase() === 'enabled' ? (
-            <button
-              onClick={() => handleSubmitForReview(record)}
-              className="p-1.5 rounded-lg text-amber-400 hover:bg-amber-400/10 transition-colors"
-              title="提交审批"
-            >
-              <ShieldCheck className="w-4 h-4" />
-            </button>
-          ) : null}
-          {!isProtected && (
-          <button onClick={() => setDeleteConfirm({ open: true, agent: record, hard: false })} className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors" title="删除">
-            <Trash2 className="w-4 h-4" />
-          </button>
-          )}
-          {(record.status || '').toLowerCase() === 'deprecated' && (
-            <button onClick={() => handleRestore(record)} className="p-1.5 rounded-lg text-success hover:bg-success-light transition-colors" title="恢复">
-              <RotateCw size={14} />
-            </button>
-          )}
-          <button onClick={() => handleExportPlugin(record)} className="p-1.5 rounded-lg text-purple-400 hover:bg-purple-400/10 transition-colors" title="导出为插件">
-            <Upload className="w-4 h-4" />
-          </button>
-        </div>
-        );
-      },
+      width: 220,
+      align: 'right' as const,
+      sticky: 'right' as const,
+      render: (_: unknown, record: Agent) => (
+        <AgentRowActions
+          agent={record}
+          onChat={handleChatOpen}
+          onExecute={(a) => { setSelectedAgent(a); setExecuteModalOpen(true); }}
+          onEdit={(a) => { setSelectedAgent(a); setEditModalOpen(true); }}
+          onDetail={(a) => { setSelectedAgent(a); setDetailModalOpen(true); }}
+          onStart={handleStart}
+          onStop={handleStop}
+          onVersions={(a) => { setSelectedAgent(a); setVersionsModalOpen(true); }}
+          onHistory={(a) => { setSelectedAgent(a); setHistoryModalOpen(true); }}
+          onSubmitReview={handleSubmitForReview}
+          onOpenApproval={() => navigate('/approval?type=agent&status=ready')}
+          onExport={handleExportPlugin}
+          onDelete={(a) =>
+            setDeleteConfirm({
+              open: true,
+              agent: a,
+              // 已废弃再点删除 → 默认硬删（软删已无意义）
+              hard: String(a.status || '').toLowerCase() === 'deprecated',
+            })
+          }
+          onRestore={handleRestore}
+        />
+      ),
     },
   ];
 
@@ -397,15 +407,31 @@ const WorkspaceAgents: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddModalOpen(true)}>创建</Button>
+          <Button icon={<Plus className="w-4 h-4" />} onClick={() => { setAddMode('manual'); setAddModalOpen(true); }}>创建</Button>
+          <Button variant="secondary" onClick={() => setChatCreateOpen(true)}>对话创建</Button>
+          <Button variant="secondary" loading={deduping} onClick={handleDedupe} title="合并同名且技能/工具相同的重复 Agent">
+            清理重复
+          </Button>
           <Button variant="secondary" icon={<Upload className="w-4 h-4" />} onClick={() => { loadSeeds(); setSeedsModalOpen(true); }}>从模板安装</Button>
           <Button variant="secondary" icon={<Key className="w-4 h-4" />} onClick={() => setBatchSignOpen(true)}>批量签名</Button>
+          <Button variant="secondary" icon={<ShieldCheck className="w-4 h-4" />} onClick={() => navigate('/approval?type=agent&status=ready')}>
+            资产审批
+          </Button>
           <Button icon={<Zap className="w-4 h-4" />} onClick={handleTestAll} loading={testAllRunning} variant="primary">
             {testAllRunning ? '测试中...' : '测试全部'}
           </Button>
           <Button icon={<RotateCw className="w-4 h-4" />} onClick={() => fetchAgents({ agent_type: typeFilter, status: statusFilter })} loading={loading}>刷新</Button>
         </div>
       </div>
+
+      <WorkspacePageGuide
+        steps={[
+          { title: '创建 / 对话创建', detail: '得到草稿 draft，可先「对话 / 执行」自测' },
+          { title: '提交审批', detail: '行内「更多 → 提交审批」：draft → 待审核(ready)' },
+          { title: '资产审批', detail: '管理员在「资产审批」点通过 → 已发布；再点上架 → 已上架' },
+        ]}
+        tip="「待审核」不能在本页点通过。请用顶部「资产审批」（或更多 → 去资产审批）。签名是另一条治理线，本地执行一般不强制。"
+      />
 
       <ImportBar assetType="agents" alsoScan={['skills', 'mcps']} onImported={() => fetchAgents({})} />
 
@@ -439,21 +465,12 @@ const WorkspaceAgents: React.FC = () => {
         <div className="w-44">
           <Select value={statusFilter || ''} onChange={(v: string) => { setStatusFilter(v || undefined); fetchAgents({ agent_type: typeFilter, status: v || undefined }); }} options={statusOptions} />
         </div>
+        <div className="flex-1 min-w-[200px] max-w-md">
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索名称、ID 或描述..." />
+        </div>
       </div>
 
-      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
-        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
-        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
-          <div><span className="text-gray-300">名称</span><span className="ml-2 text-gray-600">AGENT.md 的 display_name，点击查看详情</span></div>
-          <div><span className="text-gray-300">类型</span><span className="ml-2 text-gray-600">agent_type：react / plan / conversational / tool / rag</span></div>
-          <div><span className="text-gray-300">模型</span><span className="ml-2 text-gray-600">config.model，决定 Agent 调用的 LLM</span></div>
-          <div><span className="text-gray-300">上架状态</span><span className="ml-2 text-gray-600"><span className="text-gray-400">draft</span> 开发中 · <span className="text-yellow-400">ready</span> 待审 · <span className="text-blue-400">published</span> 已发布 · <span className="text-green-400">listed</span> 上架 · <span className="text-red-400">deprecated</span> 废弃</span></div>
-          <div><span className="text-gray-300">运行状态</span><span className="ml-2 text-gray-600"><span className="text-green-400">运行中</span> · <span className="text-yellow-400">启动中</span> · <span className="text-gray-400">已停止</span> · <span className="text-red-400">错误</span> · <span className="text-yellow-400">暂停</span></span></div>
-          <div><span className="text-gray-300">配置</span><span className="ml-2 text-gray-600"><span className="text-red-300">空壳</span>=缺少 system_prompt/skills/tools；<span className="text-gray-300">OK</span>=完整</span></div>
-          <div><span className="text-gray-300">启用</span><span className="ml-2 text-gray-600">点击切换。禁用后不可被调用。与上架状态独立</span></div>
-          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">对话/启动/停止/执行/编辑/版本/审批/删除/导出</span></div>
-        </div>
-      </details>
+      <AssetStatusLegend kind="agent" howToSubmit="更多 → 提交审批" />
 
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
         <Table columns={columns} data={filteredAgents} rowKey="id" loading={loading} emptyText="暂无 Agent" />
@@ -507,17 +524,23 @@ const WorkspaceAgents: React.FC = () => {
       >
         <div className="text-sm text-gray-300 space-y-3">
           <p>将对 Agent "{deleteConfirm.agent?.name}" 执行删除操作：</p>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400">删除方式</span>
-            <Select
-              value={deleteConfirm.hard ? 'hard' : 'soft'}
-              onChange={(v: string) => setDeleteConfirm({ ...deleteConfirm, hard: v === 'hard' })}
-              options={[
-                { value: 'soft', label: '软删除 (废弃，可恢复)' },
-                { value: 'hard', label: '硬删除 (删除目录，不可撤销)' },
-              ]}
-            />
-          </div>
+          {String(deleteConfirm.agent?.status || '').toLowerCase() === 'deprecated' ? (
+            <p className="text-xs text-amber-300/90">
+              该 Agent 已是「已废弃」。确认将<strong>硬删除</strong>目录，从列表与磁盘移除（不可恢复）。
+            </p>
+          ) : (
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-400">删除方式</span>
+              <Select
+                value={deleteConfirm.hard ? 'hard' : 'soft'}
+                onChange={(v: string) => setDeleteConfirm({ ...deleteConfirm, hard: v === 'hard' })}
+                options={[
+                  { value: 'soft', label: '软删除 (仅标废弃，列表仍可见)' },
+                  { value: 'hard', label: '硬删除 (删除目录，不可撤销)' },
+                ]}
+              />
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -566,7 +589,14 @@ const WorkspaceAgents: React.FC = () => {
 
       <AddAgentModal
         open={addModalOpen}
+        initialMode={addMode}
         onClose={() => setAddModalOpen(false)}
+        onSuccess={() => fetchAgents({ agent_type: typeFilter, status: statusFilter })}
+      />
+
+      <AgentChatCreateModal
+        open={chatCreateOpen}
+        onClose={() => setChatCreateOpen(false)}
         onSuccess={() => fetchAgents({ agent_type: typeFilter, status: statusFilter })}
       />
 

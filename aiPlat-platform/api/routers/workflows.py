@@ -50,6 +50,12 @@ async def list_workflows_endpoint(_auth: str = Depends(require_auth)):
     return {"workflows": items, "total": len(items)}
 
 
+@router.post("/dedupe", response_model=StatusResponse)
+async def dedupe_workflows_endpoint(_auth: str = Depends(require_auth)):
+    """Merge workflows that share the same name + node fingerprint; keep newest."""
+    return await _svc.dedupe()
+
+
 @router.get("/{workflow_id}", response_model=StatusResponse)
 async def get_workflow_endpoint(workflow_id: str, _auth: str = Depends(require_auth)):
     item = await _svc.get(workflow_id)
@@ -61,11 +67,13 @@ async def get_workflow_endpoint(workflow_id: str, _auth: str = Depends(require_a
 @router.post("", response_model=StatusResponse)
 async def create_workflow_endpoint(req: Dict[str, Any], _auth: str = Depends(require_auth)):
     try:
+        reuse = req.get("reuse_equivalent", True)
         item = await _svc.create(
             name=str(req.get("name") or "未命名工作流"),
             description=str(req.get("description") or ""),
             nodes=req.get("nodes") or [],
             edges=req.get("edges") or [],
+            reuse_equivalent=bool(reuse),
         )
         await _record_workflow_changeset("create_workflow", item["id"], args={"name": item.get("name", "")})
         return item

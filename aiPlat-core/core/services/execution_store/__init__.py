@@ -51,6 +51,7 @@ from .plugin_mixin import PluginMixin
 from .onboard_mixin import OnboardMixin
 from .prompt_mixin import PromptMixin
 from .eval_mixin import EvalMixin
+from .run_graph_mixin import RunGraphMixin
 
 
 class ExecutionStore(
@@ -60,8 +61,9 @@ class ExecutionStore(
     AgentMixin, SkillMixin, JobMixin,
     MemoryMixin, ReleaseMixin, PluginMixin, OnboardMixin,
     PromptMixin, EvalMixin, SkillPackMixin, PackageMixin, AdapterMixin, SettingsMixin, TenantMixin, LongTermMemoryMixin, CostsMixin, SessionMixin,
+    RunGraphMixin,
 ):
-    """Composed ExecutionStore — inherits from base + 19 mixins."""
+    """Composed ExecutionStore — inherits from base + mixins."""
     pass
 
 

@@ -1557,7 +1557,7 @@ async def simulate_state_transitions(req: dict):
 
 
 
-    ctx = EvalContext(instances)
+    ctx = EvalContext(instances, simulate=True)
 
     state_transitions = []
 
@@ -1615,11 +1615,20 @@ async def simulate_state_transitions(req: dict):
 
 
 
+    hint = ""
+    if not state_transitions:
+        hint = (
+            "（未触发转换：检查焦点类是否有状态机；沙盘已自动放行 action 触发，"
+            "后续步仍需配齐关系目标类实例，如「派单」需 ≥1「安装师傅」）"
+        )
+
     return {
 
         "state_transitions": state_transitions,
 
         "affected_instances": affected_instances,
+
+        "simulate": True,
 
         "summary": (
 
@@ -1627,7 +1636,11 @@ async def simulate_state_transitions(req: dict):
 
             f"{', 影响 ' + str(len(affected_instances)) + ' 个关联实例' if affected_instances else ''}"
 
+            f"{hint}"
+
         ),
+
+        "hint": hint.strip("（）") if hint else "",
 
     }
 
@@ -2937,7 +2950,20 @@ def _remove_from_registry(domain_id: str) -> None:
 
 def _write_domain_yaml(domain_id: str, data: dict) -> None:
 
-    """Save domain ontology back to YAML file."""
+    """Save domain ontology back to YAML file. Denied outside apply/rollback."""
+
+    from core.harness.knowledge.ontology_yaml_gate import (
+        LiveYamlDirectWriteDenied,
+        assert_live_yaml_write,
+    )
+
+    try:
+        assert_live_yaml_write()
+    except LiveYamlDirectWriteDenied as e:
+        raise HTTPException(
+            status_code=409,
+            detail={"reason": "live_yaml_requires_approved_proposal", "message": str(e)},
+        )
 
     import yaml as _yaml
 

@@ -150,6 +150,11 @@ async def list_tools(limit: int = 100, offset: int = 0, available_only: bool = F
             continue  # workspace tools belong in /workspace/tools, not here
         info["protected"] = True if not prov.get("scope") else False
         info["scope"] = prov.get("scope") or "engine"
+        try:
+            from core.apps.tools.lifecycle import get_tool_status
+            info["status"] = get_tool_status(t, tool_path=prov.get("tool_path"))
+        except Exception:
+            info["status"] = "draft"
         if prov:
             info["provenance"] = {"scope": info["scope"], "tool_path": prov.get("tool_path", ""),
                 "source_type": prov.get("source_type", "filesystem"),
@@ -182,6 +187,11 @@ async def get_tool(tool_name: str):
     prov = (meta or {}).get('provenance', {}) if isinstance(meta, dict) else {}
     info["protected"] = True if not prov.get("scope") else False
     info["scope"] = prov.get("scope") or "engine"
+    try:
+        from core.apps.tools.lifecycle import get_tool_status
+        info["status"] = get_tool_status(tool_name, tool_path=prov.get("tool_path"))
+    except Exception:
+        info["status"] = "draft"
     if prov:
         info["provenance"] = {"scope": info["scope"], "tool_path": prov.get("tool_path", ""),
             "source_type": prov.get("source_type", "filesystem"),
@@ -227,11 +237,55 @@ async def delete_workspace_tool(tool_name: str, http_request: Request):
 
 @router.put("/tools/{tool_name}", response_model=Dict[str, Any])
 async def update_tool_config(tool_name: str, request: dict):
-    """Update tool configuration"""
-    raise HTTPException(  # noqa: error-structured
-        status_code=403,
-        detail="Tools are engine-defined and cannot be edited via API. Use configuration files/feature flags instead.",
-    )
+    """Update tool lifecycle status (approval center) or refuse config edits.
+
+    Engine tools are code-defined; only ``status`` may be changed via API.
+    """
+    from core.apps.tools.base import get_tool_registry
+    from core.apps.tools.lifecycle import get_tool_status, set_tool_status
+
+    registry = get_tool_registry()
+    tool = registry.get(tool_name)
+    if not tool:
+        raise HTTPException(status_code=404, detail=f"Tool {tool_name} not found")
+
+    body = request if isinstance(request, dict) else {}
+    new_status = body.get("status")
+    if new_status is None:
+        raise HTTPException(
+            status_code=403,
+            detail="Tools are engine-defined and cannot be edited via API. Pass {\"status\": \"...\"} to update listing lifecycle.",
+        )
+    meta = getattr(tool._config, "metadata", {}) if hasattr(tool, "_config") else {}
+    prov = (meta or {}).get("provenance", {}) if isinstance(meta, dict) else {}
+    previous = get_tool_status(tool_name, tool_path=prov.get("tool_path"))
+    try:
+        st = set_tool_status(tool_name, str(new_status), tool_path=prov.get("tool_path"))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"ok": True, "name": tool_name, "status": st, "previous": previous}
+
+
+@router.post("/tools/{tool_name}/submit-for-review", response_model=Dict[str, Any])
+async def submit_tool_for_review(tool_name: str):
+    """draft/enabled → ready so the tool appears in 资产审批「待审核」."""
+    from core.apps.tools.base import get_tool_registry
+    from core.apps.tools.lifecycle import get_tool_status, set_tool_status
+
+    registry = get_tool_registry()
+    tool = registry.get(tool_name)
+    if not tool:
+        raise HTTPException(status_code=404, detail=f"Tool {tool_name} not found")
+    meta = getattr(tool._config, "metadata", {}) if hasattr(tool, "_config") else {}
+    prov = (meta or {}).get("provenance", {}) if isinstance(meta, dict) else {}
+    cur = get_tool_status(tool_name, tool_path=prov.get("tool_path"))
+    if cur not in ("draft", "enabled"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Tool '{tool_name}' status is '{cur}'; only draft/enabled can submit for review",
+        )
+    st = set_tool_status(tool_name, "ready", tool_path=prov.get("tool_path"))
+    return {"status": "ok", "name": tool_name, "new_status": st}
 
 
 @router.post("/tools", response_model=Dict[str, Any])
@@ -375,6 +429,22 @@ async def tool_auto_fill(request: dict):
         return {"code": text, "category": category, "description": description, "parameters": parameters}
     except Exception as e:
         return {"code": "", "category": "general", "description": description, "parameters": {}, "error": f"Auto-fill failed: {str(e)}"}
+
+
+@router.post("/tools/create-dialog", response_model=Dict[str, Any])
+async def tool_create_dialog(request: dict):
+    """Conversational Tool creation: clarify → draft (auto-fill). Create still via POST /tools."""
+    text = str(request.get("text") or "").strip()
+    history = request.get("history") if isinstance(request.get("history"), list) else []
+    try:
+        from core.apps.tools.service.tool_create_dialog import run_tool_create_dialog_turn
+
+        return await run_tool_create_dialog_turn(text=text, history=history)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception("tool create dialog failed")
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
 @router.post("/tools/{tool_name}/execute", response_model=Dict[str, Any])

@@ -4,6 +4,7 @@ import { modelApi, toolApi, type Model } from '../../services';
 import { workspaceMcpApi, workflowTemplateApi } from '../../services';
 import { Alert, Button, Input, Modal, Select, Textarea, toast, MultiSelect } from '../ui';
 import PromptDiffModal from './PromptDiffModal';
+import AssetBoundaryHint from './AssetBoundaryHint';
 import { diagnosticsApi } from '../../services';
 
 interface AgentConfigTemplate {
@@ -39,9 +40,11 @@ interface AddAgentModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  /** 列表顶栏「自动创建」传入 auto，突出 AI 智能填充路径 */
+  initialMode?: 'manual' | 'auto';
 }
 
-const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess }) => {
+const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess, initialMode = 'manual' }) => {
   const [loading, setLoading] = useState(false);
   const [selectedType, setSelectedType] = useState<string>('base');
   const [name, setName] = useState('');
@@ -67,6 +70,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
   const [kbOptions, setKbOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [autoSmoke, setAutoSmoke] = useState(true);
   const [autoFillLoading, setAutoFillLoading] = useState(false);
+  const [autoFillGaps, setAutoFillGaps] = useState<Array<{ kind: string; name: string; tip: string }>>([]);
   const [optimizeOpen, setOptimizeOpen] = useState(false);
   const [optimizePrompt, setOptimizePrompt] = useState('');
   const [configEdited, setConfigEdited] = useState(false);
@@ -79,7 +83,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
   const [genWarnings, setGenWarnings] = useState<string[]>([]);
 
   // Import mode (file/URL import with AI detection)
-  const [sourceMode, setSourceMode] = useState<'manual' | 'url' | 'file'>('manual');
+  const [sourceMode, setSourceMode] = useState<'manual' | 'auto' | 'url' | 'file'>('manual');
   const [importUrl, setImportUrl] = useState('');
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importDetecting, setImportDetecting] = useState(false);
@@ -103,10 +107,12 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       setTriggerText('');
       setKnowledgeBases([]);
       setConfigEdited(false);
+      setAutoFillGaps([]);
+      setSourceMode(initialMode === 'auto' ? 'auto' : 'manual');
       fetchOptions();
       fetchWikiCollections();
     }
-  }, [open]);
+  }, [open, initialMode]);
 
   React.useEffect(() => {
     setImportUrl('');
@@ -171,7 +177,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
     try {
       const r = await fetch('/api/core/wiki/collections');
       const data = await r.json();
-      const cols = data.collections || [];
+      const cols = data.items || data.collections || [];
       setKbOptions(cols.map((c: any) => ({
         value: c.collection_id,
         label: `${c.collection_id} (${c.page_count} 页)`,
@@ -259,24 +265,36 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       return;
     }
     setAutoFillLoading(true);
+    setAutoFillGaps([]);
     try {
       const result = await workspaceAgentApi.autoFill({ name: name.trim(), description: description.trim() });
-      // Populate form fields from AI response
       if (result.agent_type) setSelectedType(result.agent_type);
       if (result.config) {
         setConfigText(JSON.stringify(result.config, null, 2));
-        // sync model to dropdown
         const cfgModel = (result.config as any)?.model as string | undefined;
         if (cfgModel) {
-          // match model ID/name against dropdown options (handle id vs name differences, e.g. "ollama:qwen2-5-coder-7b" vs "qwen2.5-coder:7b")
           const norm = (s: string) => s.toLowerCase().replace(/^[a-z_]+:/, '').replace(/[-_]/g, '');
           const match = modelOptions.find(o => o.value === cfgModel)
             || modelOptions.find(o => norm(o.value) === norm(cfgModel));
           if (match) setSelectedModel(match.value);
         }
       }
-      if (result.skills?.length) setSkills(result.skills.filter((s: string) => skillOptions.some(o => o.value === s)));
-      if (result.tools?.length) setTools(result.tools.filter((t: string) => toolOptions.some(o => o.value === t)));
+      const matchOpt = (opts: Array<{ value: string; label: string }>, token: string) => {
+        const t = String(token || '').trim();
+        if (!t) return null;
+        return opts.find(o => o.value === t)
+          || opts.find(o => o.label === t)
+          || opts.find(o => o.label.toLowerCase() === t.toLowerCase())
+          || opts.find(o => o.value.toLowerCase() === t.toLowerCase())
+          || null;
+      };
+      // SOP-first backend only returns whitelist ids — still filter for safety
+      if (Array.isArray(result.skills)) {
+        setSkills(result.skills.map((s: string) => matchOpt(skillOptions, s)?.value).filter(Boolean) as string[]);
+      }
+      if (Array.isArray(result.tools)) {
+        setTools(result.tools.map((t: string) => matchOpt(toolOptions, t)?.value).filter(Boolean) as string[]);
+      }
       if (result.mcp_ids?.length) setMcpIds(result.mcp_ids.filter((m: string) => mcpOptions.some(o => o.value === m)));
       if (result.agent_ids?.length) setAgentIds(result.agent_ids.filter((a: string) => agentOptions.some(o => o.value === a)));
       if (result.workflow_ids?.length) setWorkflowIds(result.workflow_ids.filter((w: string) => Array.isArray(workflowOptions) && workflowOptions.some(o => o.value === w)));
@@ -284,7 +302,29 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       if (result.sop_text) setSopText(result.sop_text);
       if (result.trigger_conditions?.length) setTriggerText(result.trigger_conditions.join('\n'));
       setConfigEdited(true);
-      toast.success(`智能填充完成`, result.reasoning || 'AI 已根据描述推荐配置');
+
+      const gaps: Array<{ kind: string; name: string; tip: string }> = [];
+      for (const m of ((result as any).missing_skills || []) as any[]) {
+        gaps.push({ kind: 'Skill', name: String(m.capability || m.suggested_name || ''), tip: String(m.how_to_create || '') });
+      }
+      for (const m of ((result as any).missing_tools || []) as any[]) {
+        gaps.push({ kind: 'Tool', name: String(m.capability || m.suggested_name || ''), tip: String(m.how_to_create || '') });
+      }
+      for (const m of ((result as any).missing_mcps || []) as any[]) {
+        gaps.push({ kind: 'MCP', name: String(m.type || m.description || 'external'), tip: String(m.how_to_create || m.description || '') });
+      }
+      setAutoFillGaps(gaps);
+
+      const summary = [
+        result.skills?.length ? `已绑技能 ${result.skills.length}` : '技能 0',
+        result.tools?.length ? `已绑工具 ${result.tools.length}` : '工具 0',
+        gaps.length ? `缺口建议 ${gaps.length}` : null,
+      ].filter(Boolean).join(' · ');
+      if (gaps.length) {
+        toast.warning(`智能填充完成（${summary}）`, 'SOP 已生成；白名单外能力见下方建议，未强行绑定');
+      } else {
+        toast.success(`智能填充完成（${summary}）`, result.reasoning || '已按 SOP 绑定白名单能力');
+      }
     } catch (e: any) {
       toast.error('智能填充失败', e?.message || String(e));
     } finally {
@@ -484,8 +524,13 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
       }
     >
       {/* ── Source / Import ── */}
-      <div className="flex items-center gap-4 mb-3">
+      <AssetBoundaryHint kind="agent" className="mb-3" />
+      <div className="flex items-center gap-4 mb-3 flex-wrap">
         <span className="text-sm text-gray-400">来源:</span>
+        <label className="flex items-center gap-1 text-sm cursor-pointer">
+          <input type="radio" name="sourceMode" checked={sourceMode === 'auto'} onChange={() => setSourceMode('auto')} />
+          <span className="text-gray-300">自动创建</span>
+        </label>
         <label className="flex items-center gap-1 text-sm cursor-pointer">
           <input type="radio" name="sourceMode" checked={sourceMode === 'manual'} onChange={() => setSourceMode('manual')} />
           <span className="text-gray-300">手动创建</span>
@@ -499,6 +544,15 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
           <span className="text-gray-300">从本地导入</span>
         </label>
       </div>
+
+      {sourceMode === 'auto' && (
+        <div className="mb-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs text-gray-300 space-y-1">
+          <div className="text-sm text-primary font-medium">表单 AI 填充（进阶）</div>
+          <div className="text-gray-500">
+            日常请用列表顶栏「对话创建」（与 Skill 同路径）。此处仍可填名称/描述后点「AI 智能填充」，核对表单再创建。
+          </div>
+        </div>
+      )}
 
       {(sourceMode === 'url' || sourceMode === 'file') && (
         <div className="p-4 rounded-lg border border-blue-500/30 bg-blue-500/5 mb-3">
@@ -579,23 +633,47 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess 
           </div>
         </div>
         <Textarea label="trigger_conditions（每行一条，可选）" rows={3} value={triggerText} onChange={(e: any) => setTriggerText(e.target.value)} placeholder="例如：\n帮我分析代码...\n代码审查\nreview" />
-        {!triggerText.trim() && sourceMode !== 'manual' && (
+        {!triggerText.trim() && sourceMode !== 'manual' && sourceMode !== 'auto' && (
           <div className="text-xs text-blue-400 bg-blue-500/5 border border-blue-500/20 rounded p-2 -mt-2 mb-1">
             💡 此 Agent 未声明触发词，需要手动填写才能被自动匹配。建议 3-6 个中文触发词。
           </div>
         )}
         <Textarea label="permissions（JSON 数组）" rows={3} value={permissionsText} onChange={(e: any) => setPermissionsText(e.target.value)} placeholder='["llm:generate", "network:outbound"]' />
-          {sourceMode === 'manual' && (
+          {(sourceMode === 'manual' || sourceMode === 'auto') && (
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={handleAutoFill} loading={autoFillLoading}>
+            <Button
+              variant={sourceMode === 'auto' ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={handleAutoFill}
+              loading={autoFillLoading}
+            >
               ✨ AI 智能填充
             </Button>
             <Button variant="secondary" size="sm" onClick={() => setWizOpen(true)} disabled={loading}>
               向导
             </Button>
-            <span className="text-xs text-gray-500">根据名称和功能描述自动推荐 Agent 类型、模型、Skills / Tools / MCP / 子 Agent / Workflow / 配置 / SOP / 记忆配置</span>
+            <span className="text-xs text-gray-500">
+              {sourceMode === 'auto'
+                ? '必做一步：先填充，再核对绑定与 SOP'
+                : '先生成 SOP，再按 SOP 绑定白名单内 Skill/Tool；缺口会给出新建建议'}
+            </span>
           </div>
           )}
+        {autoFillGaps.length > 0 && (
+          <div className="rounded border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-100/90 space-y-2">
+            <div className="font-medium text-amber-200">能力缺口建议（未强行绑定）</div>
+            <ul className="space-y-1.5 list-disc pl-4">
+              {autoFillGaps.map((g, i) => (
+                <li key={`${g.kind}-${g.name}-${i}`}>
+                  <span className="text-amber-300">[{g.kind}]</span> {g.name}
+                  {g.tip ? (
+                    <div className="text-gray-400 mt-0.5 whitespace-pre-wrap leading-relaxed">{g.tip}</div>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <label className="flex items-center gap-2 text-sm text-gray-400">
           <input type="checkbox" checked={autoSmoke} onChange={(e) => setAutoSmoke(e.target.checked)} />

@@ -1,14 +1,29 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import { Button, Modal, Textarea, toast } from '../ui';
 import { workspaceSkillApi } from '../../services';
 import { toastGateError } from '../ui';
 import './TraceFlowGraph';
-import ExecutionViewer, { StructuredDetail } from '../ExecutionViewer/ExecutionViewer';
+import { buildExamplesFromSchema, isGenericExampleSet } from '../../utils/executionSamples';
+import ExecuteResultPanel from '../execution/ExecuteResultPanel';
+import ExecuteFlowFullscreen from '../execution/ExecuteFlowFullscreen';
+import { RunVerdictBanner, deriveRunVerdict, outputAsText } from '../execution/runVerdict';
+import { ArtifactDownloadBar, coerceSkillEnvelope, skillOutputDisplayText } from '../execution/artifactDownloads';
+import {
+  isSkillRunInFlight,
+  normalizeSkillExecuteResult as normalizeSkillExecuteResultBase,
+  shouldOpenSkillFlow,
+} from '../../utils/skillExecute';
+import { pollSkillExecutionUntilDone } from '../../utils/pollSkillExecution';
+
+function normalizeSkillExecuteResult(res: any) {
+  const n = normalizeSkillExecuteResultBase(res);
+  return { ...n, output: coerceSkillEnvelope(n.output) };
+}
 
 interface ExecuteSkillModalProps {
   open: boolean;
-  skill: { id: string; name: string } | null;
+  skill: { id: string; name: string; input_schema?: Record<string, unknown> | null } | null;
   onClose: () => void;
 }
 
@@ -143,65 +158,109 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
   const [examples, setExamples] = useState<Array<{ title: string; content: string }>>([]);
   const [toolset, setToolset] = useState<string>('workspace_default');
   const [flowFullscreen, setFlowFullscreen] = useState(false);
-  const [selectedFlowNode, setSelectedFlowNode] = useState<any>(null);
+  const [llmGenerating, setLlmGenerating] = useState(false);
 
-  // Poll for result when streaming (POST returns immediately with run_id)
+  const displayVerdict = useMemo(
+    () =>
+      result
+        ? deriveRunVerdict({
+            status: result.status,
+            error: result.error_message || result.error,
+            outputText: skillOutputDisplayText(result.output) || outputAsText(result.output),
+          })
+        : null,
+    [result],
+  );
+
+  // Poll for result when stream mode returns immediately with run_id
   useEffect(() => {
-    const r = result as any;
-    if (!r || (r.status !== 'running' && r.status !== 'accepted') || !r.run_id || !skill) return;
-    const runId = r.run_id;
-    let attempts = 0;
-    const MAX_ATTEMPTS = 90; // 90 seconds timeout
-    const timer = setInterval(async () => {
-      attempts++;
-      if (attempts > MAX_ATTEMPTS) {
-        clearInterval(timer);
-        setResult({ status: 'failed', error: '执行超时', run_id: runId });
-        return;
-      }
-      try {
-        const resp = await fetch(`/api/core/syscalls/events?run_id=${encodeURIComponent(runId)}&limit=20`);
-        const data = await resp.json();
-        const items = data?.items || data?.events || [];
-        // API returns 'result' (parsed object), not 'result_json' (raw string)
-        const done = items.find((e: any) =>
-          (e.status === 'success' || e.status === 'ok') && e.kind === 'skill' && e.result
-        );
-        if (done) {
-          setResult({
-            status: 'completed',
-            output: done.result?.output || done.result,
-            duration_ms: done.duration_ms,
-            run_id: runId,
-          });
-          clearInterval(timer);
-        } else if (items.some((e: any) => e.status === 'failed' || e.status === 'error')) {
-          const failed = items.find((e: any) => e.status === 'failed' || e.status === 'error');
-          setResult({ status: 'failed', error: failed?.error || '执行失败', run_id: runId });
-          clearInterval(timer);
-        }
-      } catch { /* keep polling */ }
-    }, 1000);
-    return () => clearInterval(timer);
+    if (!result || !isSkillRunInFlight(result.status) || !result.run_id || !skill) return;
+    const runId = result.run_id;
+    let stopped = false;
+    (async () => {
+      const done = await pollSkillExecutionUntilDone(runId, { isStopped: () => stopped });
+      if (stopped) return;
+      setResult(
+        normalizeSkillExecuteResult({
+          ...done,
+          run_id: runId,
+          execution_id: runId,
+        }),
+      );
+      if (done.status === 'completed') toast.success('执行成功');
+      else if (done.status === 'failed' || done.status === 'error') toast.error('执行失败');
+    })();
+    return () => {
+      stopped = true;
+    };
   }, [(result as any)?.run_id, (result as any)?.status]);
 
   useEffect(() => {
     const load = async () => {
       if (!open || !skill) return;
       setHelpLoading(true);
+      setInputText('');
+      setResult(null);
       try {
         const res = await workspaceSkillApi.getExecutionHelp(skill.id);
         setHelpMarkdown(String((res as any)?.help_markdown || ''));
-        setExamples(((res as any)?.examples || []) as any);
+        let exs = (((res as any)?.examples || []) as Array<{ title: string; content: string }>);
+        const schema =
+          ((res as any)?.input_schema as Record<string, unknown> | null) ||
+          skill.input_schema ||
+          null;
+        // Prefer schema-based cases when API still returns generic 通用 chips
+        if (isGenericExampleSet(exs) && schema && Object.keys(schema).length > 0) {
+          const generated = buildExamplesFromSchema(schema, skill.name || skill.id, {
+            skillHint: `${skill.id || ''} ${skill.name || ''}`,
+          });
+          if (generated.length > 0) exs = generated;
+        }
+        setExamples(exs);
+        // Do NOT auto-fill — user clicks「填入」
       } catch {
+        // Offline / help failed: still try local schema from skill list row
+        const generated = skill.input_schema
+          ? buildExamplesFromSchema(skill.input_schema, skill.name || skill.id, {
+              skillHint: `${skill.id || ''} ${skill.name || ''}`,
+            })
+          : [];
         setHelpMarkdown('');
-        setExamples([]);
+        setExamples(generated);
       } finally {
         setHelpLoading(false);
       }
     };
     load();
   }, [open, skill?.id]);
+
+  const handleGenerateLlmExamples = async (persist: boolean) => {
+    if (!skill) return;
+    try {
+      setLlmGenerating(true);
+      const res = await workspaceSkillApi.generateExecutionExamples(skill.id, { persist });
+      const exs = (res?.examples || []) as Array<{ title: string; content: string }>;
+      if (!exs.length) {
+        toast.error('未生成可用用例');
+        return;
+      }
+      setExamples(exs);
+      if (exs[0]?.content) setInputText(exs[0].content);
+      const src = res?.source === 'llm' ? 'LLM' : '启发式回退';
+      if (persist && res?.persisted) {
+        toast.success(`已生成 ${exs.length} 条（${src}）并写入 SKILL.md`);
+      } else if (persist && !res?.persisted) {
+        toast.warning(`已生成 ${exs.length} 条，但写入 SKILL.md 失败`);
+      } else {
+        toast.success(`已生成 ${exs.length} 条（${src}），已填入第一条`);
+      }
+      if (res?.warning) toast.warning(String(res.warning));
+    } catch (e: any) {
+      toastGateError(e, 'LLM 生成用例失败');
+    } finally {
+      setLlmGenerating(false);
+    }
+  };
 
   const handleExecute = async () => {
     if (!skill) return;
@@ -218,30 +277,50 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
         }
       }
 
-      const streamOpts = { ...((payload.options || {}) as Record<string, unknown>), toolset, stream: true };
+      const streamOpts = {
+        ...((payload.options || {}) as Record<string, unknown>),
+        toolset,
+        // stream/trial 由 workspaceSkillApi.execute → withSkillExecuteDefaults 统一注入
+      };
       const res = await workspaceSkillApi.execute(skill.id, { input: payload, options: streamOpts, config: (payload.config || {}) as Record<string, unknown> });
-      setResult(res as any);
-      const status = String((res as any)?.status || '');
+      const normalized = normalizeSkillExecuteResult(res);
+      setResult(normalized);
+      const status = String(normalized.status || '');
       const legacyStatus = String((res as any)?.legacy_status || '');
       const errCode = String((res as any)?.error?.code || '');
-      const runId = (res as any)?.run_id || (res as any)?.execution_id;
+      const runId = normalized.run_id || normalized.execution_id;
 
       if (legacyStatus === 'queued') {
         toast.success('已排队');
       } else if ((status === 'waiting_approval' || legacyStatus === 'approval_required' || errCode === 'APPROVAL_REQUIRED')) {
         const approvalId = (res as any)?.approval_request_id || (res as any)?.error?.detail?.approval_request_id;
-        toast.error(`需要审批：${String(approvalId || '').slice(0, 10)}`);
-        try { window.open('/core/approvals', '_blank', 'noopener,noreferrer'); } catch {}
+        const reason = String((res as any)?.error?.detail?.reason || (res as any)?.error?.reason || '');
+        const reasonHint =
+          reason === 'no_trusted_key_matched'
+            ? '已签名但公钥未匹配（≠已验签）。请用当前可信私钥在详情「治理」重新签名，或走审批单。'
+            : reason === 'no_trusted_keys'
+              ? '系统尚未配置可信公钥。请先在初始化向导生成签名密钥。'
+              : '「已签名」只表示写过签名；「已验签」才表示公钥校验通过。';
+        toast.error(
+          '签名未验签，正式执行需治理审批',
+          approvalId
+            ? `${reasonHint} 审批单 ${String(approvalId).slice(0, 12)}…`
+            : reasonHint,
+        );
+        // 不再自动跳转审批页，避免「点执行却进审批中心」
       } else if (legacyStatus === 'publish_required' || errCode === 'PUBLISH_REQUIRED') {
         const cid = (res as any)?.candidate_id || (res as any)?.error?.detail?.candidate_id;
-        toast.error(`需要发布候选：${String(cid || '').slice(0, 10)}...`);
-        try { window.open('/core/learning/releases', '_blank', 'noopener,noreferrer'); } catch {}
+        toast.error(
+          '需要先发布治理候选',
+          cid ? `candidate ${String(cid).slice(0, 12)}…` : '请到学习/发布页处理候选版本',
+        );
       }
 
-      // Open fullscreen flow immediately when streaming
-      if (runId && (status === 'running' || status === 'completed' || status === 'accepted')) {
+      // 有 run_id 立刻打开流程（stream 下 status=running，可边跑边看）
+      if (runId && shouldOpenSkillFlow(status)) {
         setFlowFullscreen(true);
       }
+      // 同步完成路径才在这里 toast；stream 完成由轮询通知
       if (status === 'completed') {
         toast.success('执行成功');
       }
@@ -278,6 +357,20 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
     >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
+          {(() => {
+            const prov = (skill as any)?.metadata?.provenance || {};
+            if (prov?.signature && prov?.signature_verified !== true) {
+              const reason = String(prov?.signature_verified_reason || '');
+              return (
+                <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200/90">
+                  治理列「已签名」≠「已验签」。当前公钥未匹配
+                  {reason ? `（${reason}）` : ''}
+                  。本机「执行」按试跑放行；要变成已验签：详情 → 治理 → 用<strong>当前</strong>可信私钥重新签名。
+                </div>
+              );
+            }
+            return null;
+          })()}
           <div className="mb-3">
             <div className="text-sm font-medium text-gray-300 mb-2">Toolset（运行时工具集）</div>
             <select
@@ -300,7 +393,7 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
             rows={12}
             value={inputText}
             onChange={(e: any) => setInputText(e.target.value)}
-            placeholder='{"query": "搜索关键词"} 或直接输入文本'
+            placeholder='点右侧「填入」加载测试用例，或直接输入 JSON / 文本'
           />
           <div className="text-xs text-gray-500 mt-2">
             提示：如果输入不是合法 JSON，会自动封装为 {"{ \"message\": \"...\" }"} 传给 Skill。
@@ -322,7 +415,31 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
 
           {examples.length > 0 && (
             <div className="space-y-2">
-              <div className="text-xs font-medium text-gray-300">一键填入示例</div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs font-medium text-gray-300">测试用例 — 点「填入」写入左侧输入框</div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={llmGenerating}
+                  disabled={loading || llmGenerating}
+                  onClick={() => handleGenerateLlmExamples(false)}
+                  title="用 LLM 生成更贴合本 Skill 的冒烟用例（可选，不替换默认启发式）"
+                >
+                  ✨ LLM 生成
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={llmGenerating}
+                  disabled={loading || llmGenerating}
+                  onClick={() => handleGenerateLlmExamples(true)}
+                  title="生成后写入 SKILL.md 的 execution_examples，下次打开优先使用"
+                >
+                  生成并保存
+                </Button>
+              </div>
               <div className="flex flex-col gap-2">
                 {examples.map((ex, idx) => (
                   <div key={idx} className="flex items-center justify-between gap-2">
@@ -351,127 +468,54 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
               </div>
             </div>
           )}
+          {examples.length === 0 && !helpLoading && (
+            <div className="space-y-2">
+              <div className="text-xs text-gray-500">暂无测试用例。</div>
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={llmGenerating}
+                disabled={loading || llmGenerating}
+                onClick={() => handleGenerateLlmExamples(false)}
+              >
+                ✨ LLM 生成用例
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
       {result && (
-        <div className="mt-4 p-4 rounded-lg border border-dark-border bg-dark-bg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-100">执行结果</span>
-            <span className={`text-xs px-2 py-0.5 rounded ${result.status === 'completed' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
-              {result.status}
-            </span>
-            {result.tokens && (
-              <span className="text-xs text-gray-400 ml-3">
-                Token: {result.tokens.total_tokens?.toLocaleString() || '-'}
-                <span className="text-gray-500 ml-1">
-                  (Prompt {result.tokens.prompt_tokens?.toLocaleString() || '-'} + Output {result.tokens.completion_tokens?.toLocaleString() || '-'})
-                </span>
-              </span>
-            )}
-          </div>
-          {result.duration_ms != null && <div className="text-xs text-gray-400 mb-2">耗时: {result.duration_ms}ms</div>}
-          {result.output !== undefined && result.output !== null && (
-            (() => {
-              const out = result.output;
-              // Unwrap handler output: {topic, output, success, ...} → extract .output string
-              if (typeof out === 'object' && out !== null && typeof (out as any).output === 'string') {
-                return <StructuredSkillOutput text={(out as any).output} />;
-              }
-              if (typeof out === 'string') {
-                return <StructuredSkillOutput text={out} />;
-              }
-              return <pre className="text-xs text-gray-300 overflow-auto max-h-60 bg-dark-card border border-dark-border rounded-lg p-3">{JSON.stringify(out as object, null, 2)}</pre>;
-            })()
-          )}
-          {(((result as any).error || (result as any).error_message || (result as any)?.error_detail?.message) && !result.output) && (
-            <div className="text-xs text-red-300 mt-2">
-              {(() => {
-                const errObj =
-                  (result as any).error_detail || (typeof (result as any).error === 'object' ? (result as any).error : null);
-                const errMsg =
-                  (result as any).error_message ||
-                  (typeof (result as any).error === 'string' ? (result as any).error : '') ||
-                  (errObj?.message ? String(errObj.message) : '');
-                const errCode = errObj?.code ? String(errObj.code) : '';
-                return `${errCode ? `[${errCode}] ` : ''}${errMsg}`;
-              })()}
-            </div>
-          )}
-
-          {(result as any)?.run_id && (
-            <div className="mt-3 flex items-center gap-3">
-              <Button variant="primary" onClick={() => setFlowFullscreen(true)} disabled={loading}>
-                ▶ 查看执行流程（全屏）
-              </Button>
-            </div>
-          )}
-
-          {(result as any)?.execution_id && (
-            <div className="mt-3 flex items-center justify-end">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  const url = `/diagnostics/links?execution_id=${encodeURIComponent(String((result as any).execution_id))}`;
-                  window.open(url, '_blank', 'noopener,noreferrer');
-                }}
-                disabled={loading}
-              >
-                查看诊断详情
-              </Button>
-            </div>
-          )}
-        </div>
+        <ExecuteResultPanel
+          result={result as any}
+          loading={loading}
+          onOpenFlow={result.run_id ? () => setFlowFullscreen(true) : undefined}
+          renderOutput={(text) => (text ? <StructuredSkillOutput text={text} /> : null)}
+        />
       )}
 
-      {/* ── 全屏执行流程弹窗 ── */}
-      {flowFullscreen && result && (result as any)?.run_id && (
-        <div className="fixed inset-0 z-[60] bg-dark-bg flex flex-col">
-          <div className="h-10 flex items-center justify-between px-4 border-b border-dark-border bg-dark-card flex-shrink-0">
-            <span className="text-sm font-medium text-gray-200">
-              ▶ 执行流程 · {skill?.name || 'Skill'}
-              {result.duration_ms != null && <span className="text-gray-500 ml-2 text-xs">({result.duration_ms}ms)</span>}
-            </span>
-            <div className="flex items-center gap-2">
-              <span className={`text-xs px-2 py-0.5 rounded ${result.status === 'completed' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
-                {result.status}
-              </span>
-              <Button variant="secondary" onClick={() => setFlowFullscreen(false)}>✕ 关闭</Button>
+      <ExecuteFlowFullscreen
+        open={!!(flowFullscreen && result?.run_id)}
+        runId={String(result?.run_id || '')}
+        title={`执行流程 · ${skill?.name || 'Skill'}`}
+        verdict={displayVerdict}
+        status={result?.status}
+        running={isSkillRunInFlight(String(result?.status || ''))}
+        onClose={() => setFlowFullscreen(false)}
+        footer={
+          result && displayVerdict ? (
+            <div className="space-y-2">
+              <RunVerdictBanner verdict={displayVerdict} />
+              <ArtifactDownloadBar raw={result.output} />
+              {skillOutputDisplayText(result.output) ? (
+                <div className="text-xs text-gray-300 overflow-auto max-h-48">
+                  <StructuredSkillOutput text={skillOutputDisplayText(result.output)} />
+                </div>
+              ) : null}
             </div>
-          </div>
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <ExecutionViewer
-              runId={String((result as any).run_id)}
-              live={true}
-              title=""
-              height={window.innerHeight - 180}
-              onNodeClick={(node: any) => setSelectedFlowNode(node)}
-            />
-          </div>
-          {/* Node detail panel (fixed at bottom, uses full StructuredDetail) */}
-          {selectedFlowNode && (
-            <div className="fixed bottom-0 left-0 right-0 z-[70] border-t border-dark-border bg-dark-card p-4 max-h-72 overflow-y-auto shadow-2xl">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold" style={{ color: selectedFlowNode.color || '#e5e7eb' }}>
-                  {selectedFlowNode.icon} {selectedFlowNode.name}
-                </span>
-                <button onClick={() => setSelectedFlowNode(null)} className="text-gray-500 hover:text-gray-300 text-lg">✕</button>
-              </div>
-              <div className="flex gap-4 text-xs mb-3">
-                <span className="text-gray-400">类型: {selectedFlowNode.type}</span>
-                <span className="text-gray-400">状态: {selectedFlowNode.status}</span>
-                {selectedFlowNode.duration ? <span className="text-gray-400">耗时: {selectedFlowNode.duration}ms</span> : null}
-              </div>
-              <StructuredDetail node={selectedFlowNode} />
-            </div>
-          )}
-          {result.status === 'running' && (
-            <div className="flex-shrink-0 border-t border-dark-border bg-dark-card p-4 text-center">
-              <span className="text-sm text-blue-400 animate-pulse">⏳ 执行中...</span>
-            </div>
-          )}
-        </div>
-      )}
+          ) : null
+        }
+      />
     </Modal>
   );
 };

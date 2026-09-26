@@ -1,0 +1,18 @@
+{
+  "post_id": "it-ops.alert.pilot",
+  "title": "IT 运维告警值班（试点）",
+  "version": "0.1.0",
+  "enabled": true,
+  "scope": {"tenant_id": "", "domain_id": "it-ops"},
+  "domain_id": "it-ops",
+  "org_goal_id": "goal-it-ops-alert-sla",
+  "skill_whitelist": ["org_run"],
+  "interface_refs": ["it-ops.monitor.fetch"],
+  "data_scope": ["it-ops"],
+  "exception_policy": {"triage_requires_hitl": true},
+  "channel_allowlist": ["feishu"],
+  "quota_hooks": ["tenant_quota"],
+  "sla": {"timeout_sec": 3600, "escalate": "hitl"},
+  "audit_requirements": ["trace_id", "actor_id", "interface_ref", "run_id"],
+  "note": "Phase C3 DigitalPost; not a Goal alias"
+}

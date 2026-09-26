@@ -204,7 +204,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     try {
       const r = await fetch('/api/core/wiki/collections');
       const data = await r.json();
-      const cols = data.collections || [];
+      const cols = data.items || data.collections || [];
       setKbOptions(cols.map((c: any) => ({
         value: c.collection_id,
         label: `${c.collection_id} (${c.page_count} 页)`,
@@ -641,14 +641,19 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
             <select value={agentStatus} onChange={(e) => setAgentStatus(e.target.value)}
               className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100">
               <option value="draft">draft（草稿）</option>
-              <option value="ready">ready（就绪，提交审核）</option>
+              <option value="ready">ready（待审核 — 提交后等管理员审批）</option>
             </select>
           ) : (
-            <div className="w-full h-10 px-3 flex items-center bg-dark-card border border-dark-border rounded-lg text-sm text-gray-400">
-              {agentStatus === 'published' ? '已发布 — 需在审批中心操作' :
-               agentStatus === 'listed' ? '已上架 — 需在审批中心操作' :
-               agentStatus === 'deprecated' ? '已废弃 — 只读' :
-               `${agentStatus} — 需在审批中心操作`}
+            <div className="w-full min-h-10 px-3 py-2 flex flex-wrap items-center gap-2 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-400">
+              <span>
+                {agentStatus === 'published' ? '已发布' :
+                 agentStatus === 'listed' ? '已上架' :
+                 agentStatus === 'deprecated' ? '已废弃 — 只读' :
+                 agentStatus}
+              </span>
+              {agentStatus !== 'deprecated' && (
+                <a href="/approval?type=agent" className="text-amber-300 underline text-xs">去资产审批操作</a>
+              )}
             </div>
           )}
         </div>

@@ -875,7 +875,9 @@ class TestDeterministicHandlerPlatformEffects:
         import core.api.core_facade as facade
 
         monkeypatch.setattr(facade, "get_memory_manager", lambda: _MM())
-        monkeypatch.setattr(facade, "get_local_feedback", lambda: fb)
+        import core.harness.feedback_loops.local as local_fb
+
+        monkeypatch.setattr(local_fb, "get_local_feedback", lambda: fb)
 
         svc = BuilderProjectService.__new__(BuilderProjectService)
         effects = asyncio.run(

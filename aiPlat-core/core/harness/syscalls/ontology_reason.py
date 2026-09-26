@@ -276,7 +276,10 @@ async def sys_ontology_reason(
 
         result.mode = "react_fallback"
 
-        result.nl_output = f"No reasoning path found for task in domain '{domain_id}'. Try a different question."
+        result.nl_output = (
+            f"未在域「{domain_id or 'unknown'}」找到匹配推理路径，"
+            "已降级为基于客户输入的诊断建议。"
+        )
 
         return _to_dict(result)
 

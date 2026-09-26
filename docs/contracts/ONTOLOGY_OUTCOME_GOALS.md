@@ -106,3 +106,4 @@ cd aiPlat-core && PYTHONPATH=..:.:../.venv/lib/python*/site-packages \
 | C | `GET .../ontology/pillars/{domain}` 三柱 API + AcceptTab 速览 | ✅ 本轮 |
 | D | 离线 OWL 审稿门：`status=unchecked` 禁假绿（无推理机依赖） | ✅ 本轮 |
 | E | 脚手架回归 + CAPABILITIES | ✅ 本轮 |
+| 文档 | PPT 场景说明 v3.7（图说紧贴图 + 口述稿）· NARRATIVE/PLAYBOOK 同步 | ✅ |

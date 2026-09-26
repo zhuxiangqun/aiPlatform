@@ -244,16 +244,37 @@ class GraphIndex:
         if not node.metadata:
             node.metadata = {}
         node.metadata[key] = value
-        # Persist metadata so GraphIndex.load() sees state after seed/save
+        self._persist_metadata(entity_id)
+        return
+
+    def set_entity_property(self, entity_id: str, key: str, value: Any) -> bool:
+        """Set metadata[key]. None removes the key. False if the entity is absent."""
+        if entity_id not in self._nodes:
+            return False
+        node = self._nodes[entity_id]
+        if not isinstance(node.metadata, dict):
+            node.metadata = {}
+        if value is None:
+            node.metadata.pop(key, None)
+        else:
+            node.metadata[key] = value
+        return self._persist_metadata(entity_id)
+
+    def _persist_metadata(self, entity_id: str) -> bool:
+        node = self._nodes.get(entity_id)
+        if node is None:
+            return False
         try:
             conn = self._get_conn()
             conn.execute(
                 "UPDATE graph_nodes SET metadata=? WHERE domain_id=? AND entity_id=?",
-                (_json.dumps(node.metadata, ensure_ascii=False), self.domain_id, entity_id),
+                (_json.dumps(node.metadata or {}, ensure_ascii=False), self.domain_id, entity_id),
             )
             conn.commit()
+            return True
         except Exception:
             logging.debug("persist metadata failed for %s/%s", self.domain_id, entity_id, exc_info=True)
+            return False
 
     def update_entity_property(self, entity_id: str, key: str, value: Any) -> None:
         """Alias for add_entity_property (handlers historically call update_*)."""

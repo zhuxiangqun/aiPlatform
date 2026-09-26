@@ -40,6 +40,19 @@ modules:
       - canary_runner
       - clarify
 
+  org:
+    name: "组织运行时 (Org L5)"
+    description: "单线组织目标 OrgGoal / OrgRun / HITL / 周报 KPI（企业大脑试点）"
+    enabled: true
+    api_prefix: "/api/platform/apps/org"
+    api_module: "apps.org.api.router"
+    service_module: "core.apps.org.service"
+    prompts_module: null
+    domains: ["it-ops"]
+    agents: []
+    skills: []
+    # 生成物：待接线 — 工厂生成应用可挂组织目标调度；当前平台试点线已接线
+
   workbench:
     name: "用户工作台"
     description: "用户工作台、系统概览、看板视图"

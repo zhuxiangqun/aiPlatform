@@ -517,6 +517,23 @@ async def mcp_auto_fill(request: dict):
         }
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@router.post("/workspace/mcp/servers/create-dialog", response_model=Dict[str, Any])
+async def mcp_create_dialog(request: dict):
+    """Conversational MCP creation: clarify → draft (auto-fill). Create still via POST /workspace/mcp/servers."""
+    text = str(request.get("text") or "").strip()
+    history = request.get("history") if isinstance(request.get("history"), list) else []
+    try:
+        from core.apps.workbench.service.mcp_create_dialog import run_mcp_create_dialog_turn
+
+        return await run_mcp_create_dialog_turn(text=text, history=history)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception("mcp create dialog failed")
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 

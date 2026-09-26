@@ -35,6 +35,10 @@ FDE 工作台是**客户现场的 AI 交付操作系统**。你在左侧选择�
 
 Tab 栏上有进度条——完成显示 ✓，当前蓝色高亮，未开始灰色。
 
+> **⑦「客户签收」≠ Org 组织签收准备**。FDE 八步里的签收是**项目交付签收单**。  
+> it-ops 组织试点（开跑 / 八闸门 / 证据包）在侧边栏 **仪表盘 → 组织试点** `/org/pilot`，见 [ORG_L5_RUNBOOK](../../contracts/ORG_L5_RUNBOOK.md)。  
+> 建域与写活本体在 **知识 → 业务本体** `/knowledge/business`，见 [合册](../../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md)。
+
 ---
 
 ## 两种工作模式

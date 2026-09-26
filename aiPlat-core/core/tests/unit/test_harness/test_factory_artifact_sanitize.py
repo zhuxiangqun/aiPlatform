@@ -16,7 +16,6 @@ from core.harness.execution.factory_artifact_sanitize import (
     ensure_wizard_stage_io,
     extract_real_http_routes,
     ensure_agent_app_skill_consistency,
-    load_canonical_media_skill_md,
     normalize_media_skill_names,
     repair_frontend_pages_with_prd,
     sanitize_architecture_artifact,
@@ -1193,35 +1192,3 @@ output_schema:
     assert "task_lifecycle" not in (obj.get("skill_routing") or {})
     assert obj.get("ui_bindings", {}).get("progress_poller") == "report_json_export"
 
-
-
-def test_load_canonical_media_skill_md_from_seeds():
-    """F5b: canonical SKILL bodies load from workspace_seeds/factory_sanitize."""
-    for name in (
-        "frame_analyzer",
-        "speech_analyzer",
-        "video_downloader",
-        "report_json_export",
-    ):
-        body = load_canonical_media_skill_md(name, "demo_app")
-        assert f"name: {name}" in body
-        assert "demo_app" in body
-        assert "{{app_name}}" not in body
-        assert "execution_type:" in body
-        assert "input_schema:" in body
-        assert "output_schema:" in body
-
-
-def test_load_canonical_media_skill_md_unknown_raises():
-    import pytest
-
-    with pytest.raises(ValueError, match="unknown canonical"):
-        load_canonical_media_skill_md("not_a_skill", "x")
-
-
-def test_canonical_video_downloader_has_segments_contract():
-    body = load_canonical_media_skill_md("video_downloader", "media_x")
-    assert "media_ref" in body
-    assert "segments" in body
-    assert "download_status" in body
-    assert "~/.aiplat/apps/media_x/tasks" in body

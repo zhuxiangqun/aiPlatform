@@ -1,7 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
 import { diagnosticsApi } from '../../services';
-import ExecutionViewer from '../ExecutionViewer/ExecutionViewer';
+import { buildFormParamsFromSchema, buildSampleParamsFromSchema } from '../../utils/executionSamples';
+import ExecuteResultPanel from '../execution/ExecuteResultPanel';
+import ExecuteFlowFullscreen from '../execution/ExecuteFlowFullscreen';
+import { RunVerdictBanner, deriveRunVerdict, outputAsText } from '../execution/runVerdict';
 
 interface ParameterProperty {
   type?: string;
@@ -20,11 +23,25 @@ interface ExecuteToolModalProps {
   onClose: () => void;
 }
 
+type ToolExecResult = {
+  status?: string;
+  success?: boolean;
+  output?: unknown;
+  error?: any;
+  error_message?: string;
+  error_detail?: any;
+  latency?: number;
+  duration_ms?: number;
+  run_id?: string;
+  execution_id?: string;
+};
+
 const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose }) => {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ output?: unknown; error?: any; error_message?: string; error_detail?: any; success?: boolean; latency?: number } | null>(null);
+  const [result, setResult] = useState<ToolExecResult | null>(null);
   const [params, setParams] = useState<Record<string, any>>({});
   const [autoSmoke, setAutoSmoke] = useState(false);
+  const [flowFullscreen, setFlowFullscreen] = useState(false);
 
   const paramSchema = tool?.parameters as any;
   const requiredFields: string[] = paramSchema?.required || [];
@@ -39,35 +56,44 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
   }, [properties, requiredFields]);
 
   const exampleArgsText = useMemo(() => {
-    const ex: Record<string, any> = {};
-    for (const [k, specAny] of Object.entries(properties) as any) {
-      const spec = specAny as ParameterProperty;
-      const isReq = requiredFields.includes(k);
-      if (!isReq && spec.default === undefined) continue;
-      const t = (spec.type || 'string').toLowerCase();
-      if (spec.default !== undefined) ex[k] = spec.default;
-      else if (t === 'integer' || t === 'number') ex[k] = 0;
-      else if (t === 'boolean') ex[k] = false;
-      else if (t === 'array') ex[k] = [];
-      else if (t === 'object') ex[k] = {};
-      else ex[k] = `<填写 ${k}>`;
-    }
-    // ensure required fields exist
-    for (const k of requiredFields) {
-      if (ex[k] !== undefined) continue;
-      const spec = (properties as any)?.[k] as ParameterProperty | undefined;
-      const t = (spec?.type || 'string').toLowerCase();
-      if (t === 'integer' || t === 'number') ex[k] = 0;
-      else if (t === 'boolean') ex[k] = false;
-      else if (t === 'array') ex[k] = [];
-      else if (t === 'object') ex[k] = {};
-      else ex[k] = `<填写 ${k}>`;
-    }
-    return JSON.stringify(ex, null, 2);
-  }, [properties, requiredFields]);
+    const sample = buildSampleParamsFromSchema(paramSchema || {}, { includeOptional: true });
+    return JSON.stringify(sample, null, 2);
+  }, [paramSchema]);
+
+  const requiredExampleText = useMemo(() => {
+    const sample = buildSampleParamsFromSchema(paramSchema || {}, { includeOptional: false });
+    return JSON.stringify(sample, null, 2);
+  }, [paramSchema]);
+
+  const displayVerdict = useMemo(
+    () =>
+      result
+        ? deriveRunVerdict({
+            status: result.status || (result.success === false ? 'failed' : result.success === true ? 'completed' : ''),
+            error: result.error_message || result.error,
+            outputText: outputAsText(result.output),
+          })
+        : null,
+    [result],
+  );
+
+  useEffect(() => {
+    if (!open || !tool) return;
+    setResult(null);
+    setParams({});
+    setFlowFullscreen(false);
+  }, [open, tool?.name]);
+
+  const fillParams = (includeOptional: boolean) => {
+    setParams(buildFormParamsFromSchema(paramSchema || {}, { includeOptional }));
+  };
 
   const troubleshooting = useMemo(() => {
-    return `### 常见问题排查（尤其是 MCP 工具）
+    return `### 如何填写输入
+- 点右侧「填入」按本 Tool 参数 Schema 写入测试用例（必填 / 全量）。
+- object/array 请保持合法 JSON；本页执行前会自动解析。
+
+### 常见问题排查（尤其是 MCP 工具）
 - 404 / Not Found：工具未注册或未放行（MCP：allowed_tools 未包含该 tool_name；或 server 未启用）
 - 401/403：鉴权失败或权限不足（检查 token/auth 与策略）
 - stdio 工具失败：prod 需通过放行策略（allowlist/command prefixes/launcher），并确保目标可执行文件存在
@@ -80,7 +106,6 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
       setLoading(true);
       setResult(null);
 
-      // 简单校验 required
       for (const f of requiredFields) {
         const v = params[f];
         if (v === undefined || v === null || v === '') {
@@ -90,7 +115,6 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
         }
       }
 
-      // 对 object/array 字段做 JSON 解析（若是字符串）
       const normalized: Record<string, any> = { ...params };
       for (const [k, spec] of Object.entries(properties) as any) {
         const t = (spec as any)?.type;
@@ -106,9 +130,18 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
       }
 
       const { toolApi } = await import('../../services');
-      const res = await toolApi.execute(tool.name, normalized);
-      setResult(res as any);
-      toast.success(res.success !== false ? '执行成功' : '执行完成');
+      const res = (await toolApi.execute(tool.name, normalized)) as ToolExecResult;
+      const status =
+        String(res.status || '') ||
+        (res.success === false ? 'failed' : res.success === true ? 'completed' : 'completed');
+      setResult({
+        ...res,
+        status,
+        duration_ms: res.duration_ms ?? (res.latency != null ? Math.round(res.latency) : undefined),
+        run_id: res.run_id || res.execution_id,
+      });
+      if (status === 'completed' || res.success !== false) toast.success('执行完成');
+      else toast.error('执行失败');
 
       if (autoSmoke) {
         try {
@@ -118,9 +151,14 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
           toast.error('全链路冒烟失败', String(e?.message || 'unknown'));
         }
       }
+
+      const rid = res.run_id || res.execution_id;
+      if (rid && (status === 'running' || status === 'accepted' || status === 'completed')) {
+        setFlowFullscreen(true);
+      }
     } catch (error: any) {
       toast.error('执行失败');
-      setResult({ error: error.message || 'Unknown error', success: false });
+      setResult({ status: 'failed', error: error.message || 'Unknown error', success: false });
     } finally {
       setLoading(false);
     }
@@ -129,24 +167,8 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
   const handleClose = () => {
     setResult(null);
     setParams({});
+    setFlowFullscreen(false);
     onClose();
-  };
-
-  const renderError = () => {
-    if (!result) return null;
-    const errObj = (result as any).error_detail || (typeof (result as any).error === 'object' ? (result as any).error : null);
-    const errMsg =
-      (result as any).error_message ||
-      (typeof (result as any).error === 'string' ? (result as any).error : '') ||
-      (errObj?.message ? String(errObj.message) : '');
-    const errCode = errObj?.code ? String(errObj.code) : '';
-    if (!errMsg && !errCode) return null;
-    return (
-      <div className="text-xs text-red-300 mt-2">
-        {errCode ? `[${errCode}] ` : ''}
-        {errMsg}
-      </div>
-    );
   };
 
   const renderField = (name: string, spec: ParameterProperty) => {
@@ -161,7 +183,7 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
           </div>
           <Input
             type="number"
-            value={params[name] ?? (spec.default as any) ?? ''}
+            value={params[name] ?? ''}
             onChange={(e: any) => setParams((p) => ({ ...p, [name]: e.target.value === '' ? '' : Number(e.target.value) }))}
             placeholder={spec.description || `输入 ${name}`}
           />
@@ -187,7 +209,6 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
       );
     }
 
-    // object / array: 用 JSON 输入
     if (fieldType === 'object' || fieldType === 'array') {
       return (
         <div key={name} className="space-y-1">
@@ -196,7 +217,7 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
           </div>
           <Textarea
             rows={4}
-            value={params[name] ?? (spec.default ? JSON.stringify(spec.default, null, 2) : '')}
+            value={params[name] ?? ''}
             onChange={(e: any) => setParams((p) => ({ ...p, [name]: e.target.value }))}
             placeholder={spec.description || `输入 ${name}（JSON）`}
           />
@@ -211,7 +232,7 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
           {name}{isRequired ? <span className="text-error"> *</span> : null}
         </div>
         <Input
-          value={params[name] ?? (spec.default as any) ?? ''}
+          value={params[name] ?? ''}
           onChange={(e: any) => setParams((p) => ({ ...p, [name]: e.target.value }))}
           placeholder={spec.description || `输入 ${name}`}
         />
@@ -245,6 +266,7 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
 
           {sortedFields.length > 0 ? (
             <div className="space-y-4">
+              <div className="text-xs text-gray-500">点右侧「填入」按 Schema 写入测试参数，或手动填写后执行。</div>
               {sortedFields.map(([name, spec]) => renderField(name, spec as ParameterProperty))}
             </div>
           ) : (
@@ -253,29 +275,12 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
             </div>
           )}
 
-          {result && (
-            <div className="mt-4 p-4 rounded-lg border border-dark-border bg-dark-bg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-100">执行结果</span>
-                <span className={`text-xs px-2 py-0.5 rounded ${result.success !== false ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
-                  {result.success !== false ? '成功' : '失败'}
-                </span>
-              </div>
-              {result.latency != null && (
-                <div className="text-xs text-gray-400 mb-2">耗时: {result.latency.toFixed(1)}ms</div>
-              )}
-              {result.output !== undefined && result.output !== null && (
-                <pre className="text-xs text-gray-300 overflow-auto max-h-60 bg-dark-card border border-dark-border rounded-lg p-3">
-                  {typeof result.output === 'string' ? result.output : JSON.stringify(result.output as object, null, 2)}
-                </pre>
-              )}
-              {!result.output && renderError()}
-            </div>
-          )}
-          {(result as any)?.run_id && (
-            <div className="mt-4">
-              <ExecutionViewer runId={String((result as any).run_id)} live={true} title="Tool 执行流程" height={320} />
-            </div>
+          {result && !flowFullscreen && (
+            <ExecuteResultPanel
+              result={result}
+              loading={loading}
+              onOpenFlow={result.run_id || result.execution_id ? () => setFlowFullscreen(true) : undefined}
+            />
           )}
         </div>
 
@@ -288,28 +293,66 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
             {tool?.parameters ? JSON.stringify(tool.parameters as object, null, 2) : '{}'}
           </pre>
 
-          <div className="mt-3 flex items-center justify-between">
-            <div className="text-xs font-medium text-gray-300">调用参数示例（JSON）</div>
-            <Button
-              variant="secondary"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(exampleArgsText);
-                  toast.success('已复制');
-                } catch {
-                  toast.error('复制失败');
-                }
-              }}
-              disabled={loading}
-            >
-              复制示例
-            </Button>
+          <div className="mt-3 space-y-2">
+            <div className="text-xs font-medium text-gray-300">测试用例 — 点「填入」写入左侧参数</div>
+            {[
+              { title: `${tool?.name || 'Tool'}（必填字段）`, content: requiredExampleText, fill: () => fillParams(false) },
+              { title: `${tool?.name || 'Tool'}（含可选字段）`, content: exampleArgsText, fill: () => fillParams(true) },
+            ].map((ex) => (
+              <div key={ex.title} className="flex flex-col gap-1">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs text-gray-300 truncate font-medium">{ex.title}</div>
+                  <div className="flex gap-2">
+                    <Button variant="secondary" onClick={ex.fill} disabled={loading}>填入</Button>
+                    <Button
+                      variant="secondary"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(ex.content);
+                          toast.success('已复制');
+                        } catch {
+                          toast.error('复制失败');
+                        }
+                      }}
+                      disabled={loading}
+                    >
+                      复制
+                    </Button>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500 truncate" style={{ fontFamily: 'monospace' }}>
+                  {ex.content.length > 80 ? `${ex.content.slice(0, 80)}…` : ex.content}
+                </div>
+              </div>
+            ))}
           </div>
           <pre className="mt-2 text-xs text-gray-300 overflow-auto max-h-40 bg-dark-bg border border-dark-border rounded-lg p-3">
             {exampleArgsText}
           </pre>
         </div>
       </div>
+
+      <ExecuteFlowFullscreen
+        open={!!(flowFullscreen && (result?.run_id || result?.execution_id))}
+        runId={String(result?.run_id || result?.execution_id || '')}
+        title={`执行流程 · ${tool?.name || 'Tool'}`}
+        verdict={displayVerdict}
+        status={result?.status}
+        running={result?.status === 'running' || result?.status === 'accepted'}
+        onClose={() => setFlowFullscreen(false)}
+        footer={
+          result && displayVerdict ? (
+            <div className="space-y-2">
+              <RunVerdictBanner verdict={displayVerdict} />
+              {outputAsText(result.output) ? (
+                <pre className="text-xs text-gray-300 overflow-auto max-h-40 bg-dark-bg border border-dark-border rounded-lg p-3 whitespace-pre-wrap">
+                  {outputAsText(result.output).slice(0, 4000)}
+                </pre>
+              ) : null}
+            </div>
+          ) : null
+        }
+      />
     </Modal>
   );
 };

@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Copy, Info, Plus, RotateCw, Trash2, Pencil, Play, Layers, Clock, ShieldCheck, Upload, Key } from 'lucide-react';
+import { Plus, RotateCw, ShieldCheck, Upload, Key } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
+import { Table, Select, Switch, Button, Modal, toast, Input } from '../../../components/ui';
 import { useWorkspaceSkillStore } from '../../../stores';
-import { learningApi, type Skill } from '../../../services';
+import { type Skill } from '../../../services';
 import { workspaceSkillApi } from '../../../services';
 import { toastGateError } from '../../../components/ui';
 import AddSkillModal from '../../../components/workspace/AddSkillModal';
+import SkillChatCreateModal from '../../../components/workspace/SkillChatCreateModal';
+import WorkspacePageGuide from '../../../components/workspace/WorkspacePageGuide';
 import EditSkillModal from '../../../components/workspace/EditSkillModal';
 import ExecuteSkillModal from '../../../components/workspace/ExecuteSkillModal';
 import SkillVersionsModal from '../../../components/workspace/SkillVersionsModal';
 import SkillExecutionsModal from '../../../components/workspace/SkillExecutionsModal';
+import WorkspaceSkillDetailModal from '../../../components/workspace/WorkspaceSkillDetailModal';
+import SkillRowActions from '../../../components/workspace/SkillRowActions';
+import AssetStatusLegend from '../../../components/workspace/AssetStatusLegend';
 import ImportBar from '../../../components/workspace/ImportBar';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
 import { SKILL_CATEGORIES } from '../../../utils/categoryConfig';
@@ -30,16 +35,18 @@ const SKILL_CATEGORY_OPTIONS = [
 ];
 
 const WorkspaceSkills: React.FC = () => {
+  const navigate = useNavigate();
   const { skills, loading, fetchSkills, deleteSkill, restoreSkill } = useWorkspaceSkillStore();
   const location = useLocation() as any;
-  const navigate = useNavigate();
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [enabledOnly, setEnabledOnly] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [search, setSearch] = useState('');
   const [filterSkillIds, setFilterSkillIds] = useState<string[] | null>(null);
   const [detailModal, setDetailModal] = useState<{ open: boolean; skill: Skill | null }>({ open: false, skill: null });
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; skill: Skill | null; hard: boolean }>({ open: false, skill: null, hard: false });
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [chatCreateOpen, setChatCreateOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [executeModalOpen, setExecuteModalOpen] = useState(false);
@@ -47,15 +54,9 @@ const WorkspaceSkills: React.FC = () => {
   const [executeSkill, setExecuteSkill] = useState<Skill | null>(null);
   const [versionsModalOpen, setVersionsModalOpen] = useState(false);
   const [executionsModalOpen, setExecutionsModalOpen] = useState(false);
-  const [skillMdOpen, setSkillMdOpen] = useState(false);
-  const [skillMdLoading, setSkillMdLoading] = useState(false);
-  const [skillMd, setSkillMd] = useState<{ path: string; content: string } | null>(null);
   const [seedsModalOpen, setSeedsModalOpen] = useState(false);
   const [seeds, setSeeds] = useState<any[]>([]);
   const [seedsLoading, setSeedsLoading] = useState(false);
-  const [signing, setSigning] = useState(false);
-  const [signKey, setSignKey] = useState('');
-  const [signResult, setSignResult] = useState<string | null>(null);
   const [batchSignOpen, setBatchSignOpen] = useState(false);
   const [batchSignKey, setBatchSignKey] = useState('');
   const [batchSigning, setBatchSigning] = useState(false);
@@ -166,34 +167,6 @@ const WorkspaceSkills: React.FC = () => {
     } finally { setBatchSigning(false); }
   };
 
-  const handleSign = async () => {
-    if (!detailModal.skill?.id || !signKey.trim()) return;
-    setSigning(true);
-    setSignResult(null);
-    try {
-      const res = await workspaceSkillApi.sign(detailModal.skill.id, { private_key: signKey.trim() });
-      setSignResult(res.signature);
-      toast.success('签名成功');
-      setSignKey('');
-      fetchSkills();
-    } catch (e: any) {
-      toastGateError(e, '签名失败');
-      setSignResult(null);
-    } finally {
-      setSigning(false);
-    }
-  };
-
-  const copyText = async (text: string) => {
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success('已复制');
-    } catch {
-      toast.error('复制失败');
-    }
-  };
-
   const filteredSkills = skills.filter(s => {
     if (filterSkillIds && filterSkillIds.length && !filterSkillIds.includes(s.id)) return false;
     if (categoryFilter && s.category !== categoryFilter) return false;
@@ -201,6 +174,11 @@ const WorkspaceSkills: React.FC = () => {
     if (statusFilter) {
       const st = (s.status || 'draft').toLowerCase();
       if (st !== statusFilter) return false;
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      const hay = `${s.id || ''} ${s.name || ''} ${(s as any).display_name || ''} ${s.description || ''} ${s.category || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
     }
     return true;
   });
@@ -236,100 +214,45 @@ const WorkspaceSkills: React.FC = () => {
       ),
     },
     {
-      title: '上架状态',
+      title: (
+        <span title="生命周期：草稿→待审核→已发布→已上架。已启用≈可用旧状态。">上架状态</span>
+      ),
       key: 'status',
-      width: 80,
+      width: 88,
       render: (_: unknown, record: Skill) => <StatusBadge status={record.status} />,
     },
     {
-      title: '治理',
+      title: (
+        <span title="签名/冒烟校验，与上架审核无关。未签名也可本机执行。">治理</span>
+      ),
       key: 'governance',
-      width: 110,
+      width: 88,
       align: 'center' as const,
       render: (_: unknown, record: Skill) => <div className="flex items-center justify-center">{governanceBadge(record)}</div>,
     },
     {
       title: '操作',
       key: 'actions',
-      width: 160,
-      align: 'center' as const,
+      width: 200,
+      align: 'right' as const,
+      sticky: 'right' as const,
       render: (_: unknown, record: Skill) => (
-        <div className="flex items-center justify-center gap-1">
-          <button
-            onClick={() => { setEditSkill(record); setVersionsModalOpen(true); }}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
-            title="版本"
-          >
-            <Layers className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => { setExecuteSkill(record); setExecutionsModalOpen(true); }}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
-            title="历史"
-          >
-            <Clock className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => { setExecuteSkill(record); setExecuteModalOpen(true); }}
-            className="p-1.5 rounded-lg text-success hover:bg-success-light transition-colors"
-            title="执行"
-          >
-            <Play className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => { setEditSkill(record); setEditModalOpen(true); }}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
-            title="编辑"
-          >
-            <Pencil className="w-4 h-4" />
-          </button>
-          {(record.status || '').toLowerCase() === 'deprecated' ? (
-            <Button size="sm" variant="secondary" onClick={() => handleRestore(record)}>
-              恢复
-            </Button>
-          ) : (
-            <>
-              {(record.status || '').toLowerCase() === 'draft' || (record.status || '').toLowerCase() === 'enabled' ? (
-                <button
-                  onClick={() => handleSubmitForReview(record)}
-                  className="p-1.5 rounded-lg text-amber-400 hover:bg-amber-400/10 transition-colors"
-                  title="提交审批"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                </button>
-              ) : null}
-              <button
-                onClick={() => setDeleteConfirm({ open: true, skill: record, hard: false })}
-                className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
-                title="弃用"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleExportPlugin(record)}
-                className="p-1.5 rounded-lg text-purple-400 hover:bg-purple-400/10 transition-colors"
-                title="导出为插件"
-              >
-                <Upload className="w-4 h-4" />
-              </button>
-            </>
-          )}
-          <button
-            onClick={() => setDetailModal({ open: true, skill: record })}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-dark-hover transition-colors"
-            title="详情"
-          >
-            <Info className="w-4 h-4" />
-          </button>
-        </div>
+        <SkillRowActions
+          skill={record}
+          onExecute={(s) => { setExecuteSkill(s); setExecuteModalOpen(true); }}
+          onEdit={(s) => { setEditSkill(s); setEditModalOpen(true); }}
+          onDetail={(s) => setDetailModal({ open: true, skill: s })}
+          onVersions={(s) => { setEditSkill(s); setVersionsModalOpen(true); }}
+          onHistory={(s) => { setExecuteSkill(s); setExecutionsModalOpen(true); }}
+          onSubmitReview={handleSubmitForReview}
+          onOpenApproval={() => navigate('/approval?type=skill&status=ready')}
+          onExport={handleExportPlugin}
+          onDeprecate={(s) => setDeleteConfirm({ open: true, skill: s, hard: false })}
+          onRestore={handleRestore}
+        />
       ),
     },
   ];
-
-  const fs = ((detailModal.skill as any)?.metadata?.filesystem || {}) as any;
-  const sp = ((detailModal.skill as any)?.metadata?.skill_pack || {}) as any;
-  const gov = ((detailModal.skill as any)?.metadata?.governance || {}) as any;
-  const ver = ((detailModal.skill as any)?.metadata?.verification || {}) as any;
 
   return (
     <div className="space-y-6">
@@ -338,15 +261,15 @@ const WorkspaceSkills: React.FC = () => {
           <h1 className="text-2xl font-semibold text-gray-100 tracking-tight">应用库 Skill</h1>
           <p className="text-sm text-gray-500 mt-1">来自 ~/.aiplat/skills（可编辑、可删除）</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddModalOpen(true)}>
             创建
           </Button>
-          <Button variant="secondary" icon={<Upload className="w-4 h-4" />} onClick={() => { loadSeeds(); setSeedsModalOpen(true); }}>
-            从模板安装
+          <Button variant="secondary" onClick={() => setChatCreateOpen(true)}>
+            对话创建
           </Button>
-          <Button variant="secondary" icon={<ShieldCheck className="w-4 h-4" />} onClick={() => setBatchSignOpen(true)}>
-            批量签名
+          <Button variant="secondary" icon={<ShieldCheck className="w-4 h-4" />} onClick={() => navigate('/approval?type=skill&status=ready')}>
+            资产审批
           </Button>
           <Button icon={<RotateCw className="w-4 h-4" />} onClick={() => fetchSkills()} loading={loading}>
             刷新
@@ -354,7 +277,26 @@ const WorkspaceSkills: React.FC = () => {
         </div>
       </div>
 
-      <ImportBar assetType="skills" alsoScan={['agents', 'mcps']} onImported={() => fetchSkills()} />
+      <WorkspacePageGuide
+        steps={[
+          { title: '执行 / 编辑', detail: '日常就用这两项；草稿可直接自测' },
+          { title: '更多', detail: '提交审批、详情、版本、历史、弃用、导出' },
+          { title: '资产审批', detail: '管理员点通过 → 已发布；再上架 → 已上架' },
+        ]}
+        tip="行内只保留「执行 / 编辑 / 更多」。模板安装、批量签名在下方导入区旁。"
+      />
+
+      <div className="flex flex-wrap items-center gap-2">
+        <ImportBar assetType="skills" alsoScan={['agents', 'mcps']} onImported={() => fetchSkills()} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 -mt-2">
+        <Button variant="secondary" size="sm" icon={<Upload className="w-3.5 h-3.5" />} onClick={() => { loadSeeds(); setSeedsModalOpen(true); }}>
+          从模板安装
+        </Button>
+        <Button variant="secondary" size="sm" icon={<Key className="w-3.5 h-3.5" />} onClick={() => setBatchSignOpen(true)}>
+          批量签名
+        </Button>
+      </div>
 
       {filterSkillIds && filterSkillIds.length > 0 && (
         <div className="bg-dark-card border border-dark-border rounded-xl p-3 flex items-center justify-between">
@@ -397,25 +339,16 @@ const WorkspaceSkills: React.FC = () => {
             ]}
           />
         </div>
+        <div className="flex-1 min-w-[200px] max-w-md">
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索名称、ID 或描述..." />
+        </div>
         <div className="flex items-center gap-2 text-sm text-gray-400">
           <Switch checked={enabledOnly} onChange={() => setEnabledOnly(!enabledOnly)} />
           仅启用
         </div>
       </div>
 
-      {/* Legend */}
-      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group">
-        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
-        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
-          <div><span className="text-gray-300">名称/描述</span><span className="ml-2 text-gray-600">SKILL.md 的 display_name + description</span></div>
-          <div><span className="text-gray-300">分类</span><span className="ml-2 text-gray-600">category：生成/分析/检索/执行/design/document/tool/text</span></div>
-          <div><span className="text-gray-300">上架状态</span><span className="ml-2 text-gray-600"><span className="text-gray-400">draft</span> 开发中 · <span className="text-yellow-400">ready</span> 待审 · <span className="text-green-400">published</span> 已发布 · <span className="text-green-400">listed</span> 上架 · <span className="text-red-400">deprecated</span> 废弃</span></div>
-          <div><span className="text-gray-300">启用</span><span className="ml-2 text-gray-600">即上架状态。draft 可直接执行测试。published/listed 为可用</span></div>
-          <div><span className="text-gray-300">治理</span><span className="ml-2 text-gray-600"><span className="text-green-400">已验签</span> 签名验证通过 · <span className="text-blue-400">已签名</span> 已写入签名 · <span className="text-yellow-400">pending</span> 等待中 · <span className="text-red-400">failed</span> 未通过 · <span className="text-gray-400">未签名</span> 缺少签名</span></div>
-          <div><span className="text-gray-300">Lint</span><span className="ml-2 text-gray-600"><span className="text-red-300">E数</span>=错误 <span className="text-yellow-300">W数</span>=警告 low/medium/high=风险</span></div>
-          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">版本/历史/执行/编辑/审批/弃用/导出/详情</span></div>
-        </div>
-      </details>
+      <AssetStatusLegend kind="skill" showSmokeTrack howToSubmit="更多 → 提交审批" />
 
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
         <Table columns={columns} data={filteredSkills} rowKey="id" loading={loading} emptyText="暂无 Skill" />
@@ -430,7 +363,7 @@ const WorkspaceSkills: React.FC = () => {
 
       <ExecuteSkillModal
         open={executeModalOpen}
-        skill={executeSkill ? { id: executeSkill.id, name: executeSkill.name } : null}
+        skill={executeSkill ? { id: executeSkill.id, name: executeSkill.name, input_schema: executeSkill.input_schema } : null}
         onClose={() => { setExecuteModalOpen(false); setExecuteSkill(null); }}
       />
 
@@ -446,229 +379,15 @@ const WorkspaceSkills: React.FC = () => {
         onClose={() => { setExecutionsModalOpen(false); setExecuteSkill(null); }}
       />
 
-      <Modal
+      <WorkspaceSkillDetailModal
         open={detailModal.open}
+        skill={detailModal.skill}
         onClose={() => setDetailModal({ open: false, skill: null })}
-        title={`Skill 详情：${detailModal.skill?.name || ''}`}
-        width={860}
-        footer={<Button onClick={() => setDetailModal({ open: false, skill: null })}>关闭</Button>}
-      >
-        <div className="space-y-3 text-sm text-gray-300">
-          <div>
-            <div className="text-xs text-gray-500">id</div>
-            <div className="flex items-center justify-between gap-2">
-              <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded break-all">{detailModal.skill?.id}</code>
-              <Button variant="ghost" icon={<Copy className="w-4 h-4" />} onClick={() => copyText(String(detailModal.skill?.id || ''))}>
-                复制
-              </Button>
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-gray-500">skill_pack</div>
-            {sp?.pack_id ? (
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-gray-300">
-                  <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded break-all">{String(sp.pack_id)}</code>
-                  <span className="ml-2 text-xs text-gray-400">{sp?.version ? `v${sp.version}` : ''}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(String(sp.pack_id));
-                        toast.success('已复制 pack_id');
-                      } catch {
-                        toast.error('复制失败');
-                      }
-                    }}
-                  >
-                    复制
-                  </Button>
-                  <Button variant="primary" onClick={() => navigate('/core/skill-packs', { state: { openPackId: String(sp.pack_id) } })}>
-                    查看包
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-gray-500">-</div>
-            )}
-          </div>
-          <div>
-            <div className="text-xs text-gray-500">governance</div>
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                {governanceBadge({ metadata: { governance: gov, verification: ver } } as any)}
-                <span className="text-xs text-gray-500">
-                  {gov?.job_run_id ? `job_run: ${String(gov.job_run_id).slice(0, 10)}...` : ''}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {gov?.candidate_id && String(gov?.published_candidate_id || '') !== String(gov?.candidate_id || '') && (
-                  <Button
-                    variant="primary"
-                    onClick={async () => {
-                      try {
-                        const cid = String(gov.candidate_id);
-                        const r: any = await learningApi.publishCandidate(cid, {
-                          user_id: 'admin',
-                          require_approval: true,
-                          details: `publish workspace skill ${String(detailModal.skill?.id || '')}`,
-                        });
-                        if (r?.status === 'approval_required' && r?.approval_request_id) {
-                          toast.error(`需要审批：${String(r.approval_request_id)}`);
-                          try {
-                            window.open('/core/approvals', '_blank', 'noopener,noreferrer');
-                          } catch {
-                            // ignore
-                          }
-                          return;
-                        }
-                        toast.success('已发布');
-                        fetchSkills();
-                        setDetailModal({ open: false, skill: null });
-                      } catch (e: any) {
-                        toastGateError(e, '发布失败');
-                      }
-                    }}
-                  >
-                    发布
-                  </Button>
-                )}
-                {gov?.candidate_id && (
-                  <Button variant="ghost" onClick={() => copyText(String(gov.candidate_id))}>
-                    复制 candidate_id
-                  </Button>
-                )}
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    try {
-                      window.open('/core/learning/releases', '_blank', 'noopener,noreferrer');
-                    } catch {
-                      // ignore
-                    }
-                  }}
-                >
-                  打开 Releases
-                </Button>
-              </div>
-            </div>
-            <pre className="mt-2 text-xs bg-dark-hover rounded p-2 overflow-auto max-h-40">{JSON.stringify(gov || {}, null, 2)}</pre>
-          </div>
-          <div>
-            <div className="text-xs text-gray-500">filesystem.skill_md</div>
-            <div className="flex items-center justify-between gap-2">
-              <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded break-all">{String(fs.skill_md || '-')}</code>
-              {fs.skill_md && (
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" icon={<Copy className="w-4 h-4" />} onClick={() => copyText(String(fs.skill_md))}>
-                    复制
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={async () => {
-                      if (!detailModal.skill?.id) return;
-                      setSkillMdOpen(true);
-                      setSkillMdLoading(true);
-                      setSkillMd(null);
-                      try {
-                        const res = await workspaceSkillApi.getSkillMarkdown(String(detailModal.skill.id));
-                        setSkillMd({ path: res.path, content: res.content });
-                      } catch (e: any) {
-                        toast.error('预览失败', String(e?.message || ''));
-                      } finally {
-                        setSkillMdLoading(false);
-                      }
-                    }}
-                  >
-                    预览
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs text-gray-500">provenance</div>
-              <pre className="text-xs bg-dark-hover rounded p-2 overflow-auto max-h-40">
-                {JSON.stringify((detailModal.skill as any)?.metadata?.provenance || {}, null, 2)}
-              </pre>
-          </div>
-          <div>
-            <div className="text-xs text-gray-500 mb-1">签名</div>
-            {signResult ? (
-              <div className="flex items-center gap-2 text-success text-xs">
-                <ShieldCheck size={14} />
-                <span>已签名 · {signResult.slice(0, 16)}...</span>
-                <Button variant="ghost" onClick={() => setSignResult(null)}>重新签名</Button>
-              </div>
-            ) : (
-              <div className="flex items-start gap-2">
-                <textarea
-                  className="flex-1 h-16 px-3 py-2 bg-dark-hover border border-dark-border rounded-lg text-xs text-gray-200 placeholder-gray-500 font-mono focus:outline-none focus:border-primary resize-none"
-                  placeholder="粘贴 Ed25519 私钥 PEM（-----BEGIN PRIVATE KEY-----...）"
-                  value={signKey}
-                  onChange={(e) => setSignKey(e.target.value)}
-                />
-                <div className="flex flex-col gap-1">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    icon={<Key size={14} />}
-                    onClick={handleSign}
-                    loading={signing}
-                    disabled={!signKey.trim() || signing}
-                  >
-                    签名
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      try {
-                        window.open('/onboarding', '_blank', 'noopener,noreferrer');
-                      } catch {
-                        // ignore
-                      }
-                    }}
-                  >
-                    生成密钥
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-          <div>
-              <div className="text-xs text-gray-500">integrity</div>
-              <pre className="text-xs bg-dark-hover rounded p-2 overflow-auto max-h-40">
-                {JSON.stringify((detailModal.skill as any)?.metadata?.integrity || {}, null, 2)}
-              </pre>
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-gray-500">metadata</div>
-            <pre className="text-xs bg-dark-hover rounded p-2 overflow-auto max-h-56">{JSON.stringify(detailModal.skill?.metadata || {}, null, 2)}</pre>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal
-        open={skillMdOpen}
-        onClose={() => { setSkillMdOpen(false); setSkillMd(null); }}
-        title={`SKILL.md 预览：${detailModal.skill?.id || ''}`}
-        width={980}
-        footer={<Button onClick={() => { setSkillMdOpen(false); setSkillMd(null); }}>关闭</Button>}
-      >
-        <div className="space-y-3 text-sm text-gray-300">
-          <div className="text-xs text-gray-500">path</div>
-          <code className="text-xs bg-dark-hover px-1.5 py-0.5 rounded break-all">{skillMd?.path || '-'}</code>
-          <div className="text-xs text-gray-500">content</div>
-          <pre className="text-xs bg-dark-hover rounded p-3 overflow-auto max-h-[520px]">
-            {skillMdLoading ? '加载中...' : (skillMd?.content || '')}
-          </pre>
-        </div>
-      </Modal>
+        onRefresh={fetchSkills}
+        onEdit={(s) => { setEditSkill(s); setEditModalOpen(true); }}
+        onExecute={(s) => { setExecuteSkill(s); setExecuteModalOpen(true); }}
+        onVersions={(s) => { setEditSkill(s); setVersionsModalOpen(true); }}
+      />
 
       <Modal
         open={deleteConfirm.open}
@@ -703,6 +422,11 @@ const WorkspaceSkills: React.FC = () => {
       <AddSkillModal
         open={addModalOpen}
         onClose={() => setAddModalOpen(false)}
+        onSuccess={fetchSkills}
+      />
+      <SkillChatCreateModal
+        open={chatCreateOpen}
+        onClose={() => setChatCreateOpen(false)}
         onSuccess={fetchSkills}
       />
 
@@ -774,7 +498,7 @@ const WorkspaceSkills: React.FC = () => {
                 >
                   开始批量签名
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => { try { window.open('/onboarding', '_blank', 'noopener,noreferrer'); } catch {} }}>
+                <Button variant="ghost" size="sm" onClick={() => { try { window.open('/onboarding?step=sign_keys', '_blank', 'noopener,noreferrer'); } catch {} }}>
                   生成密钥
                 </Button>
               </div>

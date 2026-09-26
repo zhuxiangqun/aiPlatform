@@ -21,6 +21,10 @@ const ValueDashboard: React.FC = () => {
   const [data, setData] = useState<ValueData | null>(null);
   const [loading, setLoading] = useState(false);
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [signoff, setSignoff] = useState<{
+    c5_pack_ready?: boolean;
+    m4_claim_allowed?: boolean;
+  } | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -31,6 +35,13 @@ const ValueDashboard: React.FC = () => {
       .catch(() => setLoading(false));
   }, [audience, month]);
 
+  useEffect(() => {
+    fetch('/api/platform/apps/org/signoff?domain_id=it-ops')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => setSignoff(d))
+      .catch(() => setSignoff(null));
+  }, []);
+
   const tabs: { key: typeof audience; label: string; desc: string }[] = [
     { key: 'ceo', label: 'CEO视角', desc: '总价值 + 目标达成' },
     { key: 'cfo', label: 'CFO视角', desc: '成本 + 节省明细' },
@@ -40,9 +51,22 @@ const ValueDashboard: React.FC = () => {
   return (
     <div style={{ padding: 24, background: '#0f172a', minHeight: '100vh', color: '#e2e8f0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700 }}>Value Center</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 700 }}>价值看板</h1>
         <input type="month" value={month} onChange={e => setMonth(e.target.value)}
           style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: '8px 12px', color: '#e2e8f0' }} />
+      </div>
+
+      <div style={{ ...cardStyle, marginBottom: 16 }}>
+        <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>平台指标</div>
+        <div style={{ fontSize: 13 }}>下面的 CEO / CFO / PM 数字是平台自己的价值视图，不是客户签收。</div>
+      </div>
+      <div style={{ ...cardStyle, marginBottom: 24 }}>
+        <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>客户签收</div>
+        <div>材料包 {signoff?.c5_pack_ready ? '就绪' : '未就绪'}</div>
+        <div>签收不允许</div>
+        <div style={{ fontSize: 12, color: '#64748b', marginTop: 8 }}>
+          {signoff?.m4_claim_allowed ? '接口返回异常，仍不可签收。' : '材料包就绪不等于客户已签字。'}
+        </div>
       </div>
 
       {/* Role Tabs */}

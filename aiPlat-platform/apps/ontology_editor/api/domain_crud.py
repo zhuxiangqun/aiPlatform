@@ -19,6 +19,17 @@ from typing import Any, Dict, List
 router = APIRouter(tags=["ontology-editor"])
 
 
+def _live_yaml_or_500(exc: Exception, fallback: str) -> HTTPException:
+    from core.api.core_facade import LiveYamlDirectWriteDenied
+
+    if isinstance(exc, LiveYamlDirectWriteDenied):
+        return HTTPException(
+            status_code=409,
+            detail={"reason": "live_yaml_requires_approved_proposal", "message": str(exc)},
+        )
+    return HTTPException(status_code=500, detail=f"{fallback}: {exc}")
+
+
 @router.get("/domains", response_model=StatusResponse)
 async def list_domains():
     u"""List all ontology domains with class/property/rule counts."""
@@ -63,7 +74,7 @@ async def create_domain(data: Dict[str, Any]):
     except FileExistsError as e:
         raise HTTPException(status_code=409, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create domain: {e}")
+        raise _live_yaml_or_500(e, "Failed to create domain")
 
 
 @router.put("/domains/{domain_id}", response_model=StatusResponse)
@@ -82,7 +93,7 @@ async def update_domain_meta(domain_id: str, data: Dict[str, Any]):
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Domain not found: {domain_id}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update domain: {e}")
+        raise _live_yaml_or_500(e, "Failed to update domain")
 
 
 @router.delete("/domains/{domain_id}", response_model=StatusResponse)
@@ -95,7 +106,7 @@ async def delete_domain(domain_id: str):
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Domain not found: {domain_id}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete domain: {e}")
+        raise _live_yaml_or_500(e, "Failed to delete domain")
 
 
 @router.post("/domains/{domain_id}/classes", response_model=StatusResponse)
@@ -115,20 +126,25 @@ async def upsert_class(domain_id: str, data: Dict[str, Any]):
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Domain not found: {domain_id}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to upsert class: {e}")
+        raise _live_yaml_or_500(e, "Failed to upsert class")
 
 
 @router.delete("/domains/{domain_id}/classes/{class_name}", response_model=StatusResponse)
 async def delete_class(domain_id: str, class_name: str):
-    u"""Remove a class from a domain YAML."""
+    u"""Remove a class via proposal apply (F2: no direct live YAML write)."""
     try:
-        from core.api.core_facade import delete_ontology_class
-        result = delete_ontology_class(domain_id, class_name)
+        from core.api.core_facade import delete_ontology_class_async
+        from urllib.parse import unquote
+
+        name = unquote(class_name)
+        result = await delete_ontology_class_async(domain_id, name)
         return result
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Domain not found: {domain_id}")
+        raise HTTPException(status_code=404, detail=f"Class or domain not found")
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e)[:300])
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete class: {e}")
+        raise _live_yaml_or_500(e, "Failed to delete class")
 
 
 @router.get("/domains/{domain_id}/rule-versions", response_model=StatusResponse)

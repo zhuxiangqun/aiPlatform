@@ -7,52 +7,8 @@ Never match business keywords, agent_id, or skill_name.
 from __future__ import annotations
 
 import json
-import logging
 import re
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
-
-
-_log = logging.getLogger(__name__)
-
-# F5b: canonical media SKILL bodies live under workspace_seeds/factory_sanitize/
-_FACTORY_SANITIZE_SEEDS = Path(__file__).resolve().parents[2] / "workspace_seeds" / "factory_sanitize"
-
-
-def _load_factory_sanitize_skill(filename: str, **subs: str) -> Optional[str]:
-    """Load a SKILL seed and substitute ``{{key}}`` placeholders. None if missing."""
-    try:
-        from core.harness.team_factory_seeds import resolve_factory_sanitize_file
-
-        seed = resolve_factory_sanitize_file(filename)
-    except Exception:
-        seed = None
-    if seed is None:
-        seed = _FACTORY_SANITIZE_SEEDS / filename
-        if not seed.is_file():
-            return None
-    text = seed.read_text(encoding="utf-8")
-    for key, val in subs.items():
-        text = text.replace("{{" + key + "}}", str(val))
-    return text
-
-
-def load_canonical_media_skill_md(skill_name: str, app_name: str) -> str:
-    """Public loader for factory_sanitize canonical media SKILL templates."""
-    mapping = {
-        "frame_analyzer": "frame_analyzer.SKILL.md",
-        "speech_analyzer": "speech_analyzer.SKILL.md",
-        "video_downloader": "video_downloader.SKILL.md",
-        "report_json_export": "report_json_export.SKILL.md",
-    }
-    fname = mapping.get(str(skill_name or "").strip())
-    if not fname:
-        raise ValueError(f"unknown canonical media skill: {skill_name!r}")
-    loaded = _load_factory_sanitize_skill(fname, app_name=app_name)
-    if loaded is not None:
-        return loaded
-    raise FileNotFoundError(f"factory sanitize seed missing: {_FACTORY_SANITIZE_SEEDS / fname}")
-
 
 _REASONING_HEAD = re.compile(
     r"(?m)^(?:#{1,3}\s*)?(?:步骤\s*[0-9]|分析关键约束|列出\s*[0-9]|方案\s*[ABC]|取舍|"
@@ -366,8 +322,8 @@ def ensure_wizard_stage_io(
                 from core.harness.media_skill_handlers import resolve_media_handler_name
 
                 target = resolve_media_handler_name(target) or target
-            except Exception:
-                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+            except Exception:  # noqa: cleanup-best-effort
+                pass
             if target and _skill_looks_ingest(cur_skill, ingest_skills):
                 if cur_skill != target:
                     stage["skill"] = target
@@ -384,8 +340,8 @@ def ensure_wizard_stage_io(
                     if canon and canon != cur_skill:
                         stage["skill"] = canon
                         meta["progress_skill_remap"] = True
-                except Exception:
-                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+                except Exception:  # noqa: cleanup-best-effort
+                    pass
 
             labels = cfg.get("labels")
             if not isinstance(labels, dict):
@@ -935,28 +891,62 @@ def _pick_orchestrator_agent(man: Dict[str, Any]) -> str:
 
 def _report_skill_md(app_name: str, skill_name: str) -> str:
     path = f"~/.aiplat/apps/{app_name}/skills/{skill_name}/SKILL.md"
-    body = _load_factory_sanitize_skill(
-        "report_skill_generic.SKILL.md",
-        app_name=app_name,
-        skill_name=skill_name,
-    )
-    if body is None:
-        # Minimal fallback when seed file is absent (dev / partial checkout).
-        _log.warning("factory_sanitize seed missing: report_skill_generic.SKILL.md")
-        body = (
-            f"---\nname: {skill_name}\n"
-            "description: Aggregate processor outputs into a unified report.\n"
-            "execution_type: prompt\nversion: 1.0.0\nstatus: enabled\n"
-            f"effects:\n  - type: write\n"
-            f"    resources: [filesystem:~/.aiplat/apps/{app_name}/reports]\n"
-            "input_schema:\n  task_id:\n    type: string\n    required: true\n"
-            "output_schema:\n  status:\n    type: string\n    required: true\n"
-            "  report_json:\n    type: object\n    required: true\n"
-            "  report_id:\n    type: string\n    required: true\n"
-            "---\n# Report export\n"
-        )
-    return f"## FILE: {path}\n{body}\n"
+    body = f"""---
+name: {skill_name}
+description: Aggregate processor outputs into a unified report and export JSON for result_dashboard.
+execution_type: prompt
+version: 1.0.0
+status: enabled
+completion_criterion: |
+  - Aggregator: build unified report from shared state; task may reach completed only after export succeeds
+  - Output includes structured report fields and exportable JSON; degrade missing dimensions without failing whole task
+triggers:
+  - 查看报告
+  - 导出报告
+  - 分析结果汇总
+effects:
+  - type: write
+    resources: [filesystem:~/.aiplat/apps/{app_name}/reports]
+    idempotent: true
+    rollback_available: false
+input_schema:
+  task_id:
+    type: string
+    required: true
+    description: Task id from ingress
+  analysis_results:
+    type: object
+    required: true
+    description: Processor outputs keyed by dimension
+output_schema:
+  status:
+    type: string
+    required: true
+    description: completed|failed
+  report_json:
+    type: object
+    required: true
+    description: Unified report payload for result_dashboard
+  report_id:
+    type: string
+    required: true
+    description: Report id for frontend fetch
+---
+# Report export
 
+## 输入校验
+- task_id 必填；analysis_results 须为对象（可含部分维度 unavailable）
+
+## 核心处理
+1. 聚合各 processor 维度结果，按时间轴对齐（若有时间字段）
+2. 生成可导出 JSON 报告，写入受管 reports 目录
+3. 返回 report_id + report_json；本 Skill 为 aggregator，成功后任务可标 completed
+
+## 错误处理
+- 全部维度缺失 → status=failed
+- 部分维度缺失 → 报告中标注 unavailable，status=completed
+"""
+    return f"## FILE: {path}\n{body}\n"
 
 
 # --- Platform catalog Skill contracts (handler SoT; LLM must not redefine) ---
@@ -1074,19 +1064,337 @@ def _speech_contract_ok(body: str) -> bool:
 
 
 def _canonical_frame_analyzer_skill_md(app_name: str) -> str:
-    return load_canonical_media_skill_md("frame_analyzer", app_name)
+    return f"""---
+name: frame_analyzer
+description: >-
+  按间隔抽关键帧并生成画面描述/标签。平台 Path0 handler 执行真实 ffmpeg。
+  task_id / duration_seconds 均可选（handler 可自建 task_id、从媒体探测时长）。
+execution_type: prompt
+version: 1.1.0
+status: enabled
+completion_criterion: |
+  - 输出 keyframes（含 timestamp/description）与 keyframe_count
+  - 无有效画面标签时降级空列表，不硬失败整单
+triggers:
+  - 抽帧
+  - 画面分析
+  - 关键帧
+effects:
+  - type: write
+    resources: [filesystem:~/.aiplat/apps/{app_name}/tasks]
+    idempotent: true
+    rollback_available: false
+input_schema:
+  media_ref:
+    type: string
+    required: false
+  video_path:
+    type: string
+    required: false
+  task_id:
+    type: string
+    required: false
+  duration_seconds:
+    type: number
+    required: false
+    description: optional; handler probes media when absent
+  interval_sec:
+    type: number
+    required: false
+  tenant_id:
+    type: string
+    required: false
+output_schema:
+  task_id:
+    type: string
+    required: true
+  keyframes:
+    type: array
+    required: true
+  keyframe_count:
+    type: number
+    required: true
+  captions:
+    type: array
+    required: false
+  status:
+    type: string
+    required: true
+---
+# 画面关键帧分析
+
+## 输入校验
+- 需要可解析的 media_ref / video_path（或已有 task 落盘视频）
+- duration_seconds / task_id / tenant_id 均为可选
+
+## 核心处理
+1. 按 interval_sec（默认 10s）抽帧
+2. 生成 description/caption
+3. 输出 keyframes 列表
+
+## 错误处理
+- 无媒体 → failed 明确提示
+- 空标签分段 → 空列表 + 标注，不中断流水线
+"""
 
 
 def _canonical_speech_analyzer_skill_md(app_name: str) -> str:
-    return load_canonical_media_skill_md("speech_analyzer", app_name)
+    return f"""---
+name: speech_analyzer
+description: >-
+  对音轨做 ASR 转写（transcript）与声学标签（语种/说话人/情绪/VAD）。
+  平台 Path0 handler 执行；task_id / duration_seconds / tenant_id 可选。
+execution_type: prompt
+version: 1.1.0
+status: enabled
+completion_criterion: |
+  - 输出 transcript（可空）+ transcript_segments；无音轨时 SKIPPED/空转写并标注
+triggers:
+  - 语音转写
+  - ASR
+  - 声学分析
+effects:
+  - type: write
+    resources: [filesystem:~/.aiplat/apps/{app_name}/tasks]
+    idempotent: true
+    rollback_available: false
+input_schema:
+  media_ref:
+    type: string
+    required: false
+  video_path:
+    type: string
+    required: false
+  task_id:
+    type: string
+    required: false
+  duration_seconds:
+    type: number
+    required: false
+    description: optional bound for segment clamps; handler probes when absent
+  has_audio:
+    type: boolean
+    required: false
+  tenant_id:
+    type: string
+    required: false
+output_schema:
+  task_id:
+    type: string
+    required: true
+  transcript:
+    type: string
+    required: true
+  transcript_segments:
+    type: array
+    required: false
+  vad_segments:
+    type: array
+    required: false
+  status:
+    type: string
+    required: true
+---
+# 语音转写与声学分析
+
+## 输入校验
+- 需要可解析媒体路径；duration_seconds/task_id/tenant_id 可选
+- 分段时间戳若提供：start_sec>=0；若已知 duration 则 end_sec<=duration
+
+## 核心处理
+1. ASR → transcript / transcript_segments
+2. VAD / 声学标签
+3. 无音轨 → 空转写 + 原因标注
+
+## 错误处理
+- 无媒体 → failed
+- 无音轨 → 降级继续
+"""
 
 
 def _canonical_video_downloader_skill_md(app_name: str) -> str:
-    return load_canonical_media_skill_md("video_downloader", app_name)
+    return f"""---
+name: video_downloader
+description: >-
+  校验并下载/落盘本地或 URL 视频，探测时长，按 ≤10 分钟切分逻辑分段，输出 media_ref、
+  segments、duration_seconds、download_status。含 SSRF/协议/大小校验。平台 Path0 handler 执行真实 ffmpeg/下载。
+execution_type: prompt
+version: 1.1.0
+status: enabled
+completion_criterion: |
+  - 成功：返回 media_ref + duration_seconds + segments（≤600s）+ download_status
+  - SSRF/非 http(s)/超大文件 → failed，不落盘
+  - 无来源 → clarify，不创建空任务
+triggers:
+  - 上传视频
+  - 下载视频
+  - 导入视频链接
+effects:
+  - type: write
+    resources: [filesystem:~/.aiplat/apps/{app_name}/tasks]
+    idempotent: false
+    rollback_available: true
+input_schema:
+  source_type:
+    type: string
+    required: false
+    description: local|url|file|upload
+  source_url:
+    type: string
+    required: false
+    description: http(s) URL when source_type=url
+  file_path:
+    type: string
+    required: false
+    description: local/upload path
+  file_ref:
+    type: string
+    required: false
+    description: alias of file_path
+  tenant_id:
+    type: string
+    required: false
+    description: tenant isolation key
+  task_id:
+    type: string
+    required: false
+    description: optional existing task id
+output_schema:
+  task_id:
+    type: string
+    required: true
+  media_ref:
+    type: string
+    required: true
+    description: local path of downloaded/accepted video
+  video_path:
+    type: string
+    required: true
+  duration_seconds:
+    type: number
+    required: true
+  segments:
+    type: array
+    required: true
+    description: logical segments ≤10 minutes with start_sec/end_sec/media_ref
+  download_status:
+    type: string
+    required: true
+    description: completed|failed|clarify|pending
+  status:
+    type: string
+    required: true
+---
+# 视频下载与分段
+
+## 输入校验
+- URL 仅允许 http/https；拒绝 file://、内网 IP、未声明协议
+- 本地文件扩展名白名单：mp4/avi/mkv/mov；超限拒绝
+- 无 URL 且无本地文件 → clarify（提示补齐来源）
+
+## 核心处理
+1. SSRF/格式/大小校验，失败立即返回 download_status=failed
+2. URL 下载或本地落盘到租户任务目录，得到 media_ref/video_path
+3. probe 时长 → duration_seconds；按 ≤600s 生成 segments
+4. 返回 download_status=completed（或 pending/clarify）
+
+## 错误处理
+- SSRF/协议非法 → failed + 明确错误消息
+- 下载失败 → failed + 可重试提示
+- 无音轨等不影响本 Skill（下游 SKIPPED_*）
+"""
 
 
 def _canonical_report_json_export_skill_md(app_name: str) -> str:
-    return load_canonical_media_skill_md("report_json_export", app_name)
+    return f"""---
+name: report_json_export
+description: >-
+  汇聚转写/画面/字幕/语音结果，生成结构化报告与统一时间轴并导出 JSON（report_path）。
+  成功后 task_status=completed。ProgressPoller 可重复调用（缓存命中返回同一报告）。
+  禁止把本 Skill 写成「仅进度查询」——进度字段可附带，但主输出必须是报告与时间轴。
+execution_type: prompt
+version: 1.1.0
+status: enabled
+completion_criterion: |
+  - 输出 report + timeline + report_path；成功后 task_status=completed
+  - 缺失模态标注 skipped，不阻塞整单
+  - 可被 progress_poller 与 result_dashboard 复用
+triggers:
+  - 生成报告
+  - 导出结果
+  - 查看分析结果
+  - 任务进度
+effects:
+  - type: write
+    resources: [filesystem:~/.aiplat/apps/{app_name}/reports]
+    idempotent: true
+    rollback_available: false
+input_schema:
+  task_id:
+    type: string
+    required: false
+    description: optional; handler creates when absent
+  media_ref:
+    type: string
+    required: false
+  video_path:
+    type: string
+    required: false
+  tenant_id:
+    type: string
+    required: false
+  frame_result:
+    type: object
+    required: false
+  speech_result:
+    type: object
+    required: false
+  subtitle_result:
+    type: object
+    required: false
+output_schema:
+  task_id:
+    type: string
+    required: true
+  status:
+    type: string
+    required: true
+  task_status:
+    type: string
+    required: true
+    description: completed when export succeeds
+  report:
+    type: object
+    required: true
+  timeline:
+    type: array
+    required: true
+  report_path:
+    type: string
+    required: true
+  keyframes:
+    type: array
+    required: false
+  transcript:
+    type: string
+    required: false
+---
+# 报告合成与导出
+
+## 输入校验
+- task_id / media_ref 至少其一可解析（handler 可自建 task_id）
+- 各模态结果可选；全缺时仍可由 handler 补跑后产出报告
+
+## 核心处理
+1. 汇聚 frame/speech/subtitle（或由平台 handler 补跑）
+2. 生成统一 timeline 与结构化 report
+3. 落盘 report_path；task_status/status=completed
+4. 重复调用可返回缓存（供 progress_poller）
+
+## 错误处理
+- 无 task_id → failed
+- 部分模态缺失 → 报告内标注，仍 completed
+"""
 
 
 def ensure_platform_media_skill_contracts(raw: str) -> Tuple[str, Dict[str, Any]]:
@@ -2405,8 +2713,8 @@ def _questions_from_structured_requirements(
                 from core.harness.execution.prd_markdown import parse_prd_markdown
 
                 doc = parse_prd_markdown(str(doc.get("raw_output")))
-            except Exception:
-                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+            except Exception:  # noqa: cleanup-best-effort
+                pass
     routing: Dict[str, str] = {}
     try:
         from core.harness.execution.app_page_skill_inject import extract_skill_routing
@@ -2801,8 +3109,8 @@ def apply_stage_output_sanitizers(
                 art = prd_art
                 out = str(prd_art.get("raw_output") or out)
                 meta["finalize_structured_doc"] = True
-        except Exception:
-            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+        except Exception:  # noqa: cleanup-best-effort
+            pass
 
     if gate.get("sanitize_architecture"):
         fixed, ameta = sanitize_architecture_artifact(

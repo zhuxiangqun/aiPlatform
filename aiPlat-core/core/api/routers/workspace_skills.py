@@ -404,6 +404,19 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
         # v2 field mapping: persist governance/routing fields into metadata so they survive reload
         if getattr(request, "skill_kind", None):
             md["skill_kind"] = request.skill_kind
+        # execution_type: explicit request > metadata > derive from skill_kind
+        et = getattr(request, "execution_type", None) or md.get("execution_type")
+        if not et:
+            et = "handler" if str(md.get("skill_kind") or request.skill_kind or "") == "executable" else "prompt"
+        et = str(et).strip().lower()
+        if et not in ("prompt", "handler", "python_class"):
+            et = "prompt"
+        md["execution_type"] = et
+        # keep skill_kind aligned with execution_type
+        if et in ("handler", "python_class"):
+            md["skill_kind"] = "executable"
+        elif not md.get("skill_kind"):
+            md["skill_kind"] = "rule"
         if getattr(request, "permissions", None) is not None:
             md["permissions"] = request.permissions
         if getattr(request, "trigger_conditions", None) is not None:
@@ -416,15 +429,51 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
         md["template"] = request.template
         md["sop"] = request.sop
 
-        # Defensive metadata — suppress common lint warnings for imported skills
-        if not md.get("keywords"):
-            md["keywords"] = {
-                "objects": ["topic", "data", "content"],
-                "actions": ["search", "research", "analyze"],
-                "constraints": ["调研", "只读"],
-            }
-        if not md.get("negative_triggers"):
-            md["negative_triggers"] = ["不相关", "不在讨论范围"]
+        # Defensive metadata — fill empty keywords/negatives without misleading defaults.
+        # Write/executable skills must NOT inherit "只读/search/调研" (confuses lint + UI).
+        _sk = str(md.get("skill_kind") or "").lower()
+        _perms = md.get("permissions") if isinstance(md.get("permissions"), list) else []
+        _is_write = _sk == "executable" or any(
+            any(h in str(p) for h in ("workspace_fs_write", "run_command", "file_operations"))
+            for p in _perms
+        )
+        # Dialog-created skills are SOP + tools (no handler.py). Prefer prompt.
+        if str(md.get("source") or "") == "create_dialog" and et == "handler":
+            et = "prompt"
+            md["execution_type"] = "prompt"
+
+        def _is_research_kw(kw: Any) -> bool:
+            if not isinstance(kw, dict):
+                return False
+            actions = {str(x).lower() for x in (kw.get("actions") or [])}
+            constraints = {str(x) for x in (kw.get("constraints") or [])}
+            return bool(actions & {"search", "research", "analyze"}) and bool(
+                constraints & {"调研", "只读"}
+            )
+
+        _write_kw = {
+            "objects": ["document", "file", "output"],
+            "actions": ["generate", "write", "export"],
+            "constraints": ["离线", "不编造"],
+        }
+        _read_kw = {
+            "objects": ["topic", "data", "content"],
+            "actions": ["search", "research", "analyze"],
+            "constraints": ["调研", "只读"],
+        }
+        _write_neg = ["联网搜图找素材", "编造未提供的事实或数据", "只要文字稿不要文件"]
+        _read_neg = ["不相关", "不在讨论范围"]
+
+        if _is_write:
+            if (not md.get("keywords")) or _is_research_kw(md.get("keywords")):
+                md["keywords"] = _write_kw
+            if (not md.get("negative_triggers")) or md.get("negative_triggers") == _read_neg:
+                md["negative_triggers"] = _write_neg
+        else:
+            if not md.get("keywords"):
+                md["keywords"] = _read_kw
+            if not md.get("negative_triggers"):
+                md["negative_triggers"] = _read_neg
 
         skill = await mgr.create_skill(
             name=str(getattr(request, "display_name", None) or request.name),
@@ -695,6 +744,16 @@ async def get_workspace_skill(skill_id: str, rt: RuntimeDep = None):
     }
 
 
+_SKILL_LIFECYCLE_STATUSES = frozenset({"draft", "ready", "published", "listed", "deprecated"})
+_SKILL_LIFECYCLE_GOV = {
+    "draft": "rejected",
+    "ready": "pending",
+    "published": "approved",
+    "listed": "listed",
+    "deprecated": "deprecated",
+}
+
+
 @router.put("/workspace/skills/{skill_id}", response_model=Dict[str, Any])
 async def update_workspace_skill(skill_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     mgr = _ws_skill_mgr(rt)
@@ -707,11 +766,53 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
         return deny
 
     r = SkillUpdateRequest(**(request or {}))
+    fields = r.model_dump(exclude_unset=True)
+    lifecycle_status = str(fields.get("status") or "").strip().lower()
+    # Approval-center transitions (ready→published etc.) must not trigger autosmoke
+    # or overwrite governance back to "pending".
+    is_lifecycle_only = (
+        lifecycle_status in _SKILL_LIFECYCLE_STATUSES
+        and set(fields.keys()).issubset({"status", "metadata"})
+    )
+
     # NOTE: SkillManager.update_skill expects keyword fields; do not pass the dict as positional arg.
-    skill = await mgr.update_skill(skill_id, **r.model_dump(exclude_unset=True))
+    skill = await mgr.update_skill(skill_id, **fields)
     if not skill:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
-    # Mark as pending verification (best-effort)
+
+    if is_lifecycle_only:
+        try:
+            prev_gov = {}
+            if isinstance(getattr(skill, "metadata", None), dict):
+                raw_gov = skill.metadata.get("governance")
+                if isinstance(raw_gov, dict):
+                    prev_gov = dict(raw_gov)
+            prev_gov.update(
+                {
+                    "status": _SKILL_LIFECYCLE_GOV.get(lifecycle_status, lifecycle_status),
+                    "last_op": f"lifecycle:{lifecycle_status}",
+                    "updated_at": time.time(),
+                }
+            )
+            ver_status = "verified" if lifecycle_status in ("published", "listed") else (
+                "failed" if lifecycle_status in ("draft", "deprecated") else "pending"
+            )
+            await mgr.update_skill(
+                str(skill_id),
+                metadata={
+                    "governance": prev_gov,
+                    "verification": {
+                        "status": ver_status,
+                        "updated_at": time.time(),
+                        "source": "approval_center",
+                    },
+                },
+            )
+        except Exception as e:
+            logging.warning(str(e), exc_info=True)
+        return {"status": "updated", "id": skill_id, "new_status": lifecycle_status}
+
+    # Mark as pending verification (best-effort) — content edits only
     eval_artifact_id: Optional[str] = None
     candidate_id: Optional[str] = None
     job_id = None
@@ -1942,6 +2043,30 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
     except Exception as e:
         logging.warning(str(e), exc_info=True)
     gate = _signature_gate_eval(metadata=getattr(skill, "metadata", None), trusted_keys_count=len(trusted))
+    # Management「执行」默认试跑：本机自测不强制签名验签（与资产审批 legend 一致）。
+    # 正式/生产路径显式传 formal / enforce_signature / require_verified。
+    # 仍记录 changeset，便于审计；上架/启用仍走签名治理。
+    formal = bool(opts.get("formal") or opts.get("enforce_signature") or opts.get("require_verified"))
+    trial_run = bool(opts.get("trial") or opts.get("smoke") or opts.get("allow_unverified") or (not formal))
+    if gate.get("required") is True and trial_run:
+        try:
+            await _record_changeset(
+                rt,
+                name="skill_signature_gate",
+                target_type="skill",
+                target_id=str(skill_id),
+                status="bypassed",
+                args={
+                    "scope": "workspace",
+                    "action": "execute",
+                    "reason": gate.get("reason"),
+                    "trial": True,
+                },
+                result={"note": "trial_execute_skip_signature_approval"},
+            )
+        except Exception as e:
+            logging.warning(str(e), exc_info=True)
+        gate = {"required": False, "verified": False, "reason": f"trial_bypass:{gate.get('reason')}"}
     if gate.get("required") is True:
         if not approval_request_id:
             rid = await _require_skill_signature_gate_approval(
@@ -2160,6 +2285,82 @@ async def get_workspace_skill_execution_help(skill_id: str, rt: RuntimeDep = Non
     if not data:
         raise HTTPException(status_code=404, detail="Execution help not found")
     return data
+
+
+@router.post("/workspace/skills/{skill_id}/generate-execution-examples", response_model=Dict[str, Any])
+async def generate_workspace_skill_execution_examples(
+    skill_id: str,
+    request: Dict[str, Any] = None,
+    http_request: Request = None,
+    rt: RuntimeDep = None,
+):
+    """Optional LLM generation of smoke test cases for Execute Skill UI.
+
+    Body:
+      persist: bool — write into SKILL.md frontmatter execution_examples
+      refine_hint: str — optional extra instruction
+    """
+    mgr = _ws_skill_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    skill = await mgr.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+
+    body = request if isinstance(request, dict) else {}
+    persist = bool(body.get("persist"))
+    refine_hint = str(body.get("refine_hint") or "").strip()
+
+    if persist and http_request is not None:
+        deny = await rbac_guard(
+            http_request=http_request,
+            payload=body,
+            action="update",
+            resource_type="skill",
+            resource_id=str(skill_id),
+        )
+        if deny:
+            return deny
+
+    try:
+        from core.apps.skills.service.skill_execution_examples_llm import (
+            generate_skill_execution_examples_llm,
+        )
+
+        result = await generate_skill_execution_examples_llm(
+            skill_id=str(skill_id),
+            skill_name=str(getattr(skill, "display_name", None) or getattr(skill, "name", "") or skill_id),
+            description=str(getattr(skill, "description", "") or ""),
+            input_schema=getattr(skill, "input_schema", None) if isinstance(getattr(skill, "input_schema", None), dict) else {},
+            refine_hint=refine_hint,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)[:200])
+    except Exception as e:
+        logging.exception("generate execution examples failed")
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+    examples = result.get("examples") if isinstance(result, dict) else None
+    if not isinstance(examples, list) or not examples:
+        raise HTTPException(status_code=502, detail="LLM did not return usable examples")
+
+    saved = False
+    if persist:
+        try:
+            saved = bool(mgr.persist_execution_examples(str(skill_id), examples))  # type: ignore[attr-defined]
+        except Exception as e:
+            logging.warning("persist execution examples failed: %s", e, exc_info=True)
+            saved = False
+
+    return {
+        "status": "ok",
+        "skill_id": skill_id,
+        "examples": examples,
+        "model": result.get("model"),
+        "source": result.get("source"),
+        "warning": result.get("warning"),
+        "persisted": saved,
+    }
 
 
 @router.get("/workspace/skills/{skill_id}/skill-md", response_model=Dict[str, Any])
@@ -2569,87 +2770,39 @@ async def skill_auto_fill(request: Dict[str, Any], rt: RuntimeDep = None):
     """AI 生成：根据名称和描述，自动生成 Skill 的 YAML frontmatter + SOP。"""
     name = str(request.get("name") or "").strip()
     description = str(request.get("description") or "").strip()
+    refine_hint = str(request.get("refine_hint") or "").strip()
     if not name or not description:
         raise HTTPException(status_code=400, detail="name and description are required")
-
     try:
-        # Build existing skill catalog for context (avoid overlap)
-        skills_catalog = "(无)"
-        try:
-            from core.api.routers.workspace_agents import _scan_skills_direct
-            entries = _scan_skills_direct()
-            if entries:
-                skills_catalog = "\n".join(entries[:50])
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
+        from core.apps.skills.service.skill_autofill import generate_skill_autofill
 
-        from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
-        prompt = await _async_prompt_resolve("skill-auto-fill",
-            skill_name=name,
+        return await generate_skill_autofill(
+            name=name,
             description=description,
-            skills_catalog=skills_catalog,
+            refine_hint=refine_hint,
         )
-        from core.api.core_facade import create_selected_adapter  # P0-A2: 经 CoreFacade
-        from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
-        model_name = best_model_for_purpose("skill_creation")
-        model = create_selected_adapter(model_name=model_name)
-        from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
-        messages = [
-            {"role": "system", "content": await _async_prompt_resolve("skill-auto-fill-system-role")},
-            {"role": "user", "content": prompt},
-        ]
-        resp = await sys_llm_generate(model, messages)
-        text = str(resp.content if hasattr(resp, 'content') else resp)
-
-        # Parse YAML frontmatter + SOP body
-        import yaml as _yaml
-        import re as _re
-        fm = {}
-        sop = ""
-
-        # Try to extract YAML block
-        m = _re.search(r'```(?:yaml)?\n?(.*?)```', text, _re.DOTALL)
-        if m:
-            try:
-                fm = _yaml.safe_load(m.group(1)) or {}
-            except Exception:
-                try:
-                    docs = list(_yaml.safe_load_all(m.group(1)))
-                    fm = docs[0] if docs else {}
-                except Exception as e:
-                    logging.warning(str(e), exc_info=True)
-        elif text.startswith('---'):
-            parts = text.split('---', 2)
-            if len(parts) >= 3:
-                try:
-                    fm = _yaml.safe_load(parts[1]) or {}
-                except Exception:
-                    try:
-                        docs = list(_yaml.safe_load_all(parts[1]))
-                        fm = docs[0] if docs else {}
-                    except Exception as e:
-                        logging.warning(str(e), exc_info=True)
-                sop = parts[2].strip() if len(parts) > 2 else ""
-
-        if not fm:
-            fm = {"name": name, "display_name": name.replace("_", " ").title(), "description": description}
-
-        return {
-            "name": fm.get("name", name),
-            "display_name": fm.get("display_name", name.replace("_", " ").title()),
-            "description": fm.get("description", description),
-            "category": fm.get("category", "general"),
-            "version": fm.get("version", "1.0.0"),
-            "skill_kind": fm.get("skill_kind", "rule"),
-            "permissions": fm.get("permissions", []),
-            "trigger_conditions": fm.get("trigger_conditions", []),
-            "capabilities": fm.get("capabilities", []),
-            "input_schema": fm.get("input_schema", {}),
-            "output_schema": fm.get("output_schema", {}),
-            "sop": sop or fm.get("sop_body", ""),
-        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)[:200])
     except HTTPException:
         raise
+    except Exception as e:
+        logging.exception("skill auto-fill failed")
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@router.post("/workspace/skills/create-dialog", response_model=Dict[str, Any])
+async def skill_create_dialog(request: Dict[str, Any], rt: RuntimeDep = None):
+    """Conversational Skill creation: clarify → draft (auto-fill). Create still via POST /workspace/skills."""
+    text = str(request.get("text") or "").strip()
+    history = request.get("history") if isinstance(request.get("history"), list) else []
+    try:
+        from core.apps.skills.service.skill_create_dialog import run_skill_create_dialog_turn
+
+        return await run_skill_create_dialog_turn(text=text, history=history)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception("skill create dialog failed")
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 

@@ -919,9 +919,16 @@ async def deploy_rule(domain_id: str = "ai-knowledge", rule: Dict[str, Any] = No
     Returns: {"deployed": true, "rule_name": "...", "total_rules": N}
     """
     from core.harness.ontology_engine.rule_designer import deploy_rule as _deploy
+    from core.harness.knowledge.ontology_yaml_gate import LiveYamlDirectWriteDenied
     if not rule:
         raise HTTPException(status_code=400, detail="rule is required")
-    result = _deploy(domain_id, rule)
+    try:
+        result = _deploy(domain_id, rule)
+    except LiveYamlDirectWriteDenied as e:
+        raise HTTPException(
+            status_code=409,
+            detail={"reason": "live_yaml_requires_approved_proposal", "message": str(e)},
+        )
     if not result.get("deployed"):
         raise HTTPException(status_code=400, detail=result.get("error", "validation failed"))
     return result

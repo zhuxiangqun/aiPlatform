@@ -65,7 +65,10 @@ def import_ontology(source: str, *, target_domain: str, format: str = "auto") ->
     data["_format"] = format
 
     yaml_path = ontologies_dir / f"{target_domain}.yaml"
+    from core.harness.knowledge.ontology_yaml_gate import assert_live_yaml_write
     from core.harness.knowledge.yaml_serializer import dict_to_yaml
+
+    assert_live_yaml_write()
     yaml_str = dict_to_yaml(data)
     yaml_path.write_text(yaml_str, encoding="utf-8")
 

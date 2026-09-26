@@ -31,10 +31,39 @@ class OnErrorReflector:
         self._max_reflect_retries: int = 2
         self._reflect_count: int = 0
         self._enabled = os.getenv("AIPLAT_REFLECTOR_ENABLED", "true").lower() not in ("0", "false", "no")
+        self._streak_tool: str = ""
+        self._streak_error: str = ""
+        self._last_task: str = ""
 
     @property
     def name(self) -> str:
         return "OnErrorReflector"
+
+    @staticmethod
+    def _tool_name(context: Any, tool_result: Any) -> str:
+        for src in (tool_result, context):
+            if src is None:
+                continue
+            name = getattr(src, "tool_name", None) or getattr(src, "name", None)
+            if name:
+                return str(name)
+            if isinstance(src, dict):
+                for key in ("tool_name", "name", "tool", "action_id"):
+                    if src.get(key):
+                        return str(src[key])
+        return "tool"
+
+    @staticmethod
+    def _error_code(tool_result: Any, context: Any) -> str:
+        err = getattr(tool_result, "error", None)
+        if isinstance(tool_result, dict):
+            err = err or tool_result.get("error") or tool_result.get("error_code")
+        if isinstance(err, dict):
+            return str(err.get("code") or err.get("type") or err)[:80]
+        if err:
+            return str(err)[:80]
+        last = getattr(context, "last_error", None)
+        return str(last or "error")[:80]
 
     async def on_post_observe(self, context: Any) -> Optional[Dict[str, Any]]:
         """PostObserve 拦截点。
@@ -54,14 +83,47 @@ class OnErrorReflector:
             return None
 
         is_error = getattr(tool_result, "error", None) or (isinstance(tool_result, dict) and tool_result.get("error"))
+        task = getattr(context, "task", "") or ""
+        if hasattr(self, "_last_task") and task != self._last_task:
+            self._reflect_count = 0
+            self._consecutive_errors = 0
+            self._streak_tool = ""
+            self._streak_error = ""
+        self._last_task = task
 
         if is_error:
-            self._consecutive_errors += 1
-            _log.debug(f"OnErrorReflector: consecutive_errors={self._consecutive_errors}")
+            tool = self._tool_name(context, tool_result)
+            err = self._error_code(tool_result, context)
+            # K4: consecutive only counts same tool + same error class within this Run/task
+            if tool == self._streak_tool and err == self._streak_error:
+                self._consecutive_errors += 1
+            else:
+                self._streak_tool = tool
+                self._streak_error = err
+                self._consecutive_errors = 1
+            _log.debug(f"OnErrorReflector: consecutive_errors={self._consecutive_errors} tool={tool}")
 
             if self._consecutive_errors >= 2 and self._reflect_count < self._max_reflect_retries:
                 self._reflect_count += 1
+                # keep streak identity; reset count after firing case+hint once
+                streak_n = self._consecutive_errors
                 self._consecutive_errors = 0
+
+                if streak_n >= 2:
+                    try:
+                        from core.apps.fde.service.k_wave_case import record_case_from_tool_streak
+
+                        record_case_from_tool_streak(
+                            domain_id=str(getattr(context, "domain_id", "") or ""),
+                            tool_name=tool,
+                            error_code=err,
+                            run_id=str(getattr(context, "run_id", "") or ""),
+                            trace_id=str(getattr(context, "trace_id", "") or ""),
+                            task=str(task)[:300],
+                            detail=str(getattr(context, "last_error", "") or err)[:400],
+                        )
+                    except Exception:
+                        _log.debug("K4 tool streak case skipped", exc_info=True)
 
                 hint = await self._generate_reflection(context)
                 if hint:
@@ -72,12 +134,8 @@ class OnErrorReflector:
                     return {"reasoning_hint": hint}
         else:
             self._consecutive_errors = 0  # Reset on success
-
-        # Reset reflect count on new task
-        task = getattr(context, "task", "")
-        if hasattr(self, "_last_task") and task != self._last_task:
-            self._reflect_count = 0
-        self._last_task = task
+            self._streak_tool = ""
+            self._streak_error = ""
 
         return None
 

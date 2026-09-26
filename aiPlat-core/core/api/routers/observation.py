@@ -64,6 +64,13 @@ def get_diag_events(run_id: str) -> List[Dict[str, Any]]:
     return _diag_buffers.get(run_id, [])
 
 
+@router.get("/runs/{run_id}/graph", response_model=Dict[str, Any])
+async def get_run_graph(run_id: str):
+    """Authoritative RunGraph projection for ExecutionViewer."""
+    from core.harness.observation.run_graph import get_graph
+    return await get_graph(run_id)
+
+
 @router.get("/runs/{run_id}/stream", response_model=Dict[str, Any])
 async def stream_events(run_id: str):
     """SSE 实时事件流。先回放历史事件，再推送新事件。"""
@@ -77,15 +84,39 @@ async def stream_events(run_id: str):
                 yield f"data: {_json.dumps(ev, default=str)}\n\n"
             yield f"data: {_json.dumps({'type': 'replay_done', 'source': 'diag_buffer'})}\n\n"
 
-        # Phase 1: replay historical syscall events from SQLite
+        # Phase 0.5: replay authoritative RunGraph (preferred by ExecutionViewer)
         rt = get_kernel_runtime()
         store = getattr(rt, "execution_store", None) if rt else None
+        seen_ids: set = set()
+        seen_graph_nodes: set = set()
+        has_graph = False
+        try:
+            from core.harness.observation.run_graph import get_graph as _get_rg
+            g = await _get_rg(run_id)
+            has_graph = bool(g.get("has_graph"))
+            if has_graph:
+                nodes = g.get("nodes") or []
+                yield f"data: {_json.dumps({'type': 'replay_start', 'source': 'run_graph', 'count': len(nodes)})}\n\n"
+                for node in nodes:
+                    nid = str((node or {}).get("node_id") or "")
+                    if nid:
+                        seen_graph_nodes.add(nid)
+                    yield f"data: {_json.dumps({'type': 'graph_upsert', 'run_id': run_id, 'node': node}, default=str)}\n\n"
+                st = g.get("status")
+                if st and st not in ("running", None, ""):
+                    yield f"data: {_json.dumps({'type': 'graph_done', 'run_id': run_id, 'status': st})}\n\n"
+                    yield f"data: {_json.dumps({'type': 'done'})}\n\n"
+                    return
+                yield f"data: {_json.dumps({'type': 'replay_done', 'source': 'run_graph'})}\n\n"
+        except Exception as e:
+            logging.debug("run_graph replay failed: %s", e, exc_info=True)
+
+        # Phase 1: replay historical syscall events from SQLite (legacy / audit trail)
         if store:
             try:
                 existing = await store.list_syscall_events(run_id=run_id, limit=200)
                 items = existing.get("items") or existing.get("events") or []
                 yield f"data: {_json.dumps({'type': 'replay_start', 'count': len(items)})}\n\n"
-                seen_ids: set = set()
                 for ev in items:
                     if isinstance(ev, dict):
                         eid = ev.get("id")
@@ -97,6 +128,11 @@ async def stream_events(run_id: str):
                     else:
                         yield f"data: {_json.dumps(dict(ev), default=str)}\n\n"
                 yield f"data: {_json.dumps({'type': 'replay_done'})}\n\n"
+                # Already finished before SSE connected → close immediately
+                # (avoid 2s heartbeat wait that leaves FE badge stuck on "running")
+                if hasattr(store, "has_run_end") and await store.has_run_end(run_id=run_id):
+                    yield f"data: {_json.dumps({'type': 'done'})}\n\n"
+                    return
             except Exception as e:
                 logging.warning(str(e), exc_info=True)
 
@@ -108,6 +144,16 @@ async def stream_events(run_id: str):
             while True:
                 try:
                     event = await asyncio.wait_for(q.get(), timeout=2)
+                    if isinstance(event, dict) and event.get("type") in ("graph_upsert", "graph_done"):
+                        if event.get("type") == "graph_upsert":
+                            nid = str(((event.get("node") or {}) if isinstance(event.get("node"), dict) else {}).get("node_id") or "")
+                            if nid:
+                                seen_graph_nodes.add(nid)
+                        yield f"data: {_json.dumps(event, default=str)}\n\n"
+                        if event.get("type") == "graph_done":
+                            yield f"data: {_json.dumps({'type': 'done'})}\n\n"
+                            return
+                        continue
                     eid = event.get("id") if isinstance(event, dict) else None
                     if eid and eid in seen_ids:
                         continue  # skip duplicate from EventBus
@@ -115,8 +161,43 @@ async def stream_events(run_id: str):
                         seen_ids.add(eid)
                     yield f"data: {_json.dumps(event, default=str)}\n\n"
                 except asyncio.TimeoutError:
+                    # Poll RunGraph for missed upserts (thread-isolated agent runs)
+                    if store and hasattr(store, "list_run_graph_nodes"):
+                        try:
+                            nodes = await store.list_run_graph_nodes(run_id)
+                            for node in nodes or []:
+                                nid = str((node or {}).get("node_id") or "")
+                                key = f"{nid}:{(node or {}).get('status')}:{(node or {}).get('updated_at')}"
+                                if key in seen_graph_nodes:
+                                    continue
+                                if nid:
+                                    seen_graph_nodes.add(key)
+                                yield f"data: {_json.dumps({'type': 'graph_upsert', 'run_id': run_id, 'node': node}, default=str)}\n\n"
+                            gst = await store.get_run_graph_status(run_id) if hasattr(store, "get_run_graph_status") else None
+                            if gst and gst not in ("running", None, ""):
+                                yield f"data: {_json.dumps({'type': 'graph_done', 'run_id': run_id, 'status': gst})}\n\n"
+                                yield f"data: {_json.dumps({'type': 'done'})}\n\n"
+                                return
+                        except Exception as e:
+                            logging.debug("observation graph poll failed: %s", e, exc_info=True)
+                    # Pull newly persisted syscall events (covers thread-isolated agent runs
+                    # where EventBus may miss, and keeps UI live during long LLM calls).
+                    if store:
+                        try:
+                            snap = await store.list_syscall_events(run_id=run_id, limit=200)
+                            for ev in (snap.get("items") or snap.get("events") or []):
+                                if not isinstance(ev, dict):
+                                    continue
+                                eid = ev.get("id")
+                                if eid and eid in seen_ids:
+                                    continue
+                                if eid:
+                                    seen_ids.add(eid)
+                                yield f"data: {_json.dumps(ev, default=str)}\n\n"
+                        except Exception as e:
+                            logging.debug("observation sqlite poll failed: %s", e, exc_info=True)
                     # Only send done if queue is empty AND run has finished
-                    if q.empty():
+                    if q.empty() and store:
                         try:
                             # Check for finish events (MCP, diagnostics)
                             finish_events = await store.list_syscall_events(
@@ -131,11 +212,10 @@ async def stream_events(run_id: str):
                                 if await store.has_run_end(run_id=run_id):
                                     yield f"data: {_json.dumps({'type': 'done'})}\n\n"
                                     return
-                            # If no events at all, also done (stale run_id)
-                            any_events = await store.list_syscall_events(run_id=run_id, limit=1)
-                            if not (any_events.get("items") or []):
-                                yield f"data: {_json.dumps({'type': 'done'})}\n\n"
-                                return
+                            # Empty syscall_events alone is NOT done — stream clients often
+                            # connect before the background thread writes the first event.
+                            # Termination is signaled only by run_end / graph_done / finish above.
+                            pass
                         except Exception as e:
                             logging.warning(str(e), exc_info=True)
                     yield f"data: {_json.dumps({'type': 'heartbeat'})}\n\n"

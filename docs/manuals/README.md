@@ -32,6 +32,9 @@
 | 3 | [交付操作](fde/02-fde-delivery.md) | 八步流程 SOP + POC + 交付模板 |
 | 4 | [运维自演进](fde/03-fde-operations.md) | 日常巡检 + 自演进 + 知识反馈 |
 | 5 | [管理与扩展](fde/04-fde-admin.md) | Agent/Workflow 创建 + CLI + API 参考 |
+| 6 | [管理端创建本体+Agent 合册](../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) | 业务本体 / FDE⑦ / Agent 真实菜单 |
+| 7 | [Org L5 运行手册](../contracts/ORG_L5_RUNBOOK.md) | it-ops 组织试点 `/org/pilot` |
+| 8 | [M4 签收准备包](../contracts/ORG_M4_SIGNOFF_PACK.md) | 八闸门剧本（≠ FDE 交付签收单） |
 
 > 旧版文档（9 个散乱文件）已归档至 `fde/_archive/`。
 
@@ -51,9 +54,13 @@
 | 手册 | 位置 | 行数 | 受众 |
 |------|------|:---:|------|
 | 快速入门 | [getting-started.md](getting-started.md) | 106 | 新用户 |
-| 管理画面操作 | [management.md](management.md) | 992 | 管理员 |
-| 本体模型管理 | [../knowledge-system.md](../knowledge-system.md) | 2200 | 管理员/运维 |
-| 知识管理指南 | [../knowledge-system.md](../knowledge-system.md) | 2200 | 知识管理员 |
+| 管理画面操作 | [management.md](management.md) | — | 管理员 |
+| 管理端 L1 页面手册 | [management-ui-operation-manual.md](management-ui-operation-manual.md) | — | 用户 / 数字人 |
+| 本体模型管理 | [../knowledge-system.md](../knowledge-system.md) 附录 C | — | 管理员/运维 |
+| 知识管理指南 | [../knowledge-system.md](../knowledge-system.md) | — | 知识管理员 |
+| 创建本体+Agent 合册 | [../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md](../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) | — | FDE / 实施 |
+| Org L5 运行手册 | [../contracts/ORG_L5_RUNBOOK.md](../contracts/ORG_L5_RUNBOOK.md) | — | 试点 Owner |
+| M4 签收准备包 | [../contracts/ORG_M4_SIGNOFF_PACK.md](../contracts/ORG_M4_SIGNOFF_PACK.md) | — | 试点 / 客户送审 |
 | 部署指南 | [deployment.md](deployment.md) | 876 | 运维 |
 | 部署速查 | [deploy-guide.md](deploy-guide.md) | 58 | 运维 |
 | 开发指南 | [development.md](development.md) | 697 | 开发者 |
@@ -72,4 +79,4 @@
 
 ---
 
-*最后更新: 2026-07-17*
+*最后更新: 2026-09-20*

@@ -58,7 +58,9 @@ const ClarifyDialog: React.FC<ClarifyDialogProps> = ({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ context, text, history: newConv, extra: extra || {} }),
       });
-      const data = await res.json();
+      const raw = await res.json();
+      // Backend wraps payload in FdeStatusResponse.data
+      const data = (raw?.data && typeof raw.data === 'object') ? raw.data : raw;
 
       if (data.next === 'done') {
         const s = data.structured || {};

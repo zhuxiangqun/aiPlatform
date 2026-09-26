@@ -1,9 +1,17 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import { Button, Modal, Textarea, toast } from '../ui';
 import { diagnosticsApi } from '../../services';
 import { toastGateError } from '../ui';
-import ExecutionViewer from '../ExecutionViewer/ExecutionViewer';
+import ExecuteResultPanel from '../execution/ExecuteResultPanel';
+import ExecuteFlowFullscreen from '../execution/ExecuteFlowFullscreen';
+import { RunVerdictBanner, deriveRunVerdict, outputAsText } from '../execution/runVerdict';
+import {
+  isSkillRunInFlight,
+  normalizeSkillExecuteResult,
+  shouldOpenSkillFlow,
+} from '../../utils/skillExecute';
+import { pollSkillExecutionUntilDone } from '../../utils/pollSkillExecution';
 
 interface ExecuteSkillModalProps {
   open: boolean;
@@ -11,11 +19,55 @@ interface ExecuteSkillModalProps {
   onClose: () => void;
 }
 
+/** Engine Core Skills — same stream + live flow contract as workspace Skills. */
 const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onClose }) => {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ status: string; output?: unknown; error?: any; error_message?: string; error_detail?: any; duration_ms?: number } | null>(null);
+  const [result, setResult] = useState<ReturnType<typeof normalizeSkillExecuteResult> | null>(null);
   const [inputText, setInputText] = useState('');
   const [autoSmoke, setAutoSmoke] = useState(false);
+  const [flowFullscreen, setFlowFullscreen] = useState(false);
+
+  const displayVerdict = useMemo(
+    () =>
+      result
+        ? deriveRunVerdict({
+            status: result.status,
+            error: result.error_message || result.error,
+            outputText: outputAsText(result.output),
+          })
+        : null,
+    [result],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    setResult(null);
+    setInputText('');
+    setFlowFullscreen(false);
+  }, [open, skill?.id]);
+
+  // Stream poll — identical contract to workspace ExecuteSkillModal
+  useEffect(() => {
+    if (!result || !isSkillRunInFlight(result.status) || !result.run_id || !skill) return;
+    const runId = result.run_id;
+    let stopped = false;
+    (async () => {
+      const done = await pollSkillExecutionUntilDone(runId, { isStopped: () => stopped });
+      if (stopped) return;
+      setResult(
+        normalizeSkillExecuteResult({
+          ...done,
+          run_id: runId,
+          execution_id: runId,
+        }),
+      );
+      if (done.status === 'completed') toast.success('执行成功');
+      else if (done.status === 'failed' || done.status === 'error') toast.error('执行失败');
+    })();
+    return () => {
+      stopped = true;
+    };
+  }, [result?.run_id, result?.status, skill?.id]);
 
   const handleExecute = async () => {
     if (!skill) return;
@@ -33,28 +85,46 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
       }
 
       const { skillApi } = await import('../../services');
-      const res = await skillApi.execute(skill.id, { input: payload });
-      setResult(res as any);
-      const st = String((res as any)?.status || '');
+      // stream/trial defaults applied inside skillApi.execute
+      const res = await skillApi.execute(skill.id, {
+        input: payload,
+        options: { ...((payload.options || {}) as Record<string, unknown>) },
+      });
+      const normalized = normalizeSkillExecuteResult(res);
+      setResult(normalized);
+      const st = String(normalized.status || '');
       const legacyStatus = String((res as any)?.legacy_status || '');
+      const errCode = String((res as any)?.error?.code || '');
       const approvalId =
-        (res as any)?.approval_request_id || (res as any)?.error?.detail?.approval_request_id || (res as any)?.error_detail?.approval_request_id;
+        (res as any)?.approval_request_id ||
+        (res as any)?.error?.detail?.approval_request_id ||
+        (res as any)?.error_detail?.approval_request_id;
+      const runId = normalized.run_id || normalized.execution_id;
+
       if (legacyStatus === 'queued') {
         toast.success('已排队');
-      } else if (st === 'waiting_approval' && approvalId) {
-        toast.error(`需要审批：${String(approvalId)}`);
-        try {
-          window.open('/core/approvals', '_blank', 'noopener,noreferrer');
-        } catch {
-          // ignore
-        }
-      } else {
-        toast.success(st === 'completed' ? '执行成功' : `状态: ${st}`);
+      } else if (st === 'waiting_approval' || legacyStatus === 'approval_required' || errCode === 'APPROVAL_REQUIRED') {
+        toast.error(
+          '签名未验签，正式执行需治理审批',
+          approvalId
+            ? `审批单 ${String(approvalId).slice(0, 12)}…（本机试跑已带 trial；或到 Skill 详情完成验签）`
+            : '请到 Skill 详情完成签名验签后再试',
+        );
+      } else if (st === 'completed') {
+        toast.success('执行成功');
       }
 
-      if (autoSmoke) {
+      if (runId && shouldOpenSkillFlow(st)) {
+        setFlowFullscreen(true);
+      }
+
+      if (autoSmoke && !isSkillRunInFlight(st)) {
         try {
-          const smoke = await diagnosticsApi.runE2ESmoke({ tenant_id: 'ops_smoke', actor_id: 'admin', agent_model: 'deepseek-reasoner' });
+          const smoke = await diagnosticsApi.runE2ESmoke({
+            tenant_id: 'ops_smoke',
+            actor_id: 'admin',
+            agent_model: 'deepseek-reasoner',
+          });
           toast.success(smoke?.ok ? '全链路冒烟通过' : '全链路冒烟失败');
         } catch (e: any) {
           toast.error('全链路冒烟失败', String(e?.message || 'unknown'));
@@ -71,6 +141,7 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
   const handleClose = () => {
     setResult(null);
     setInputText('');
+    setFlowFullscreen(false);
     onClose();
   };
 
@@ -79,7 +150,7 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
       open={open}
       onClose={handleClose}
       title={`执行 Skill: ${skill?.name || ''}`}
-      width={640}
+      width={720}
       footer={
         <>
           <Button variant="secondary" onClick={handleClose} disabled={loading}>
@@ -105,57 +176,31 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
       </label>
 
       {result && (
-        <div className="mt-4 p-4 rounded-lg border border-dark-border bg-dark-bg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-100">执行结果</span>
-            <span className={`text-xs px-2 py-0.5 rounded ${result.status === 'completed' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
-              {result.status}
-            </span>
-          </div>
-          {result.duration_ms != null && (
-            <div className="text-xs text-gray-400 mb-2">耗时: {result.duration_ms}ms</div>
-          )}
-          {result.output !== undefined && result.output !== null && (
-            <pre className="text-xs text-gray-300 overflow-auto max-h-60 bg-dark-card border border-dark-border rounded-lg p-3">
-              {typeof result.output === 'string' ? result.output : JSON.stringify(result.output as object, null, 2)}
-            </pre>
-          )}
-          {(((result as any).error || (result as any).error_detail || (result as any).error_message) && !result.output) && (
-            <div className="text-xs text-red-300 mt-2">
-              {(() => {
-                const errObj =
-                  (result as any).error_detail || (typeof (result as any).error === 'object' ? (result as any).error : null);
-                const errMsg =
-                  (result as any).error_message ||
-                  (typeof (result as any).error === 'string' ? (result as any).error : '') ||
-                  (errObj?.message ? String(errObj.message) : '');
-                const errCode = errObj?.code ? String(errObj.code) : '';
-                return `${errCode ? `[${errCode}] ` : ''}${errMsg}`;
-              })()}
-            </div>
-          )}
-
-          {(result as any)?.run_id && (
-            <div className="mt-3">
-              <ExecutionViewer runId={String((result as any).run_id)} live={true} title="执行流程" height={400} />
-            </div>
-          )}
-          {(result as any)?.execution_id && (
-            <div className="mt-3 flex items-center justify-end">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  const url = `/diagnostics/links?execution_id=${encodeURIComponent(String((result as any).execution_id))}`;
-                  window.open(url, '_blank', 'noopener,noreferrer');
-                }}
-                disabled={loading}
-              >
-                查看诊断详情
-              </Button>
-            </div>
-          )}
+        <div className="mt-4">
+          <ExecuteResultPanel
+            result={result as any}
+            loading={loading || isSkillRunInFlight(result.status)}
+            onOpenFlow={result.run_id ? () => setFlowFullscreen(true) : undefined}
+          />
         </div>
       )}
+
+      <ExecuteFlowFullscreen
+        open={!!(flowFullscreen && result?.run_id)}
+        runId={String(result?.run_id || '')}
+        title={`执行流程 · ${skill?.name || 'Skill'}`}
+        verdict={displayVerdict}
+        status={result?.status}
+        running={isSkillRunInFlight(String(result?.status || ''))}
+        onClose={() => setFlowFullscreen(false)}
+        footer={
+          result && displayVerdict ? (
+            <div className="space-y-2">
+              <RunVerdictBanner verdict={displayVerdict} />
+            </div>
+          ) : null
+        }
+      />
     </Modal>
   );
 };

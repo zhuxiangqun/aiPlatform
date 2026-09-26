@@ -268,11 +268,44 @@ async def upload_cases(file: UploadFile = File(...)):
 
 @router.get("/browser/test/download", response_model=ItemResponse)
 async def download_file(path: str = ""):
-    """下载生成的 xlsx 文件。"""
-    if not path or not os.path.exists(path):
+    """下载生成的产物文件（xlsx / pptx 等，限制在白名单根目录下）。"""
+    if not path:
         raise HTTPException(status_code=404, detail="File not found")
-    filename = os.path.basename(path)
-    return FileResponse(path, filename=filename, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    import os as _os
+    from pathlib import Path as _Path
+
+    # Resolve + allowlist (same roots as file_operations when set; else home/.aiplat + tmp)
+    try:
+        target = _Path(path).expanduser().resolve()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    roots_raw = (_os.environ.get("AIPLAT_FILE_OPERATIONS_ALLOWED_ROOTS") or "").strip()
+    roots: list[_Path] = []
+    if roots_raw:
+        for chunk in roots_raw.replace(",", _os.pathsep).split(_os.pathsep):
+            c = chunk.strip()
+            if c:
+                roots.append(_Path(c).expanduser().resolve())
+    else:
+        roots = [
+            (_Path.home() / ".aiplat").resolve(),
+            _Path(_os.environ.get("TMPDIR") or "/tmp").resolve(),
+        ]
+    allowed = any(str(target) == str(r) or str(target).startswith(str(r) + _os.sep) for r in roots)
+    if not allowed:
+        raise HTTPException(status_code=403, detail="path is not under allowed roots")
+
+    filename = target.name
+    suffix = target.suffix.lower()
+    media = {
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        ".pdf": "application/pdf",
+    }.get(suffix, "application/octet-stream")
+    return FileResponse(str(target), filename=filename, media_type=media)
 
 
 @router.post("/browser/test/execute-cases", response_model=StatusResponse)

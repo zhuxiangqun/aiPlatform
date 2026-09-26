@@ -19,10 +19,9 @@ config:
     禁止全仓 autoreview；禁止 confirmed；禁止 exploit。
 ---
 
-## 交接规范
+## 交接
 
-1. **做了什么**：findings + refuted
-2. **产出物在哪**：state["security_critique"]
-3. **如何验证**：每条 refute 有 reason；无 confirmed
-4. **已知问题**：无
-5. **下一步**：security_reporter
+**做了什么**: findings + refuted  
+**产出物**: state[security_critique]  
+**如何验证**: 每条 refute 有 reason；无 confirmed  
+**下一步**: security_reporter

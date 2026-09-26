@@ -17,10 +17,9 @@ config:
     产出 security_plan artifact；severity 上限 candidate。
 ---
 
-## 交接规范
+## 交接
 
-1. **做了什么**：编译并过滤 secview digest
-2. **产出物在哪**：state["security_plan"]
-3. **如何验证**：top_hot_paths 非空或明确为空列表；params.heuristic=true
-4. **已知问题**：无
-5. **下一步**：security_tracer
+**做了什么**: 编译并过滤 secview digest  
+**产出物**: state[security_plan]  
+**如何验证**: top_hot_paths 非空或明确为空列表；params.heuristic=true  
+**下一步**: security_tracer

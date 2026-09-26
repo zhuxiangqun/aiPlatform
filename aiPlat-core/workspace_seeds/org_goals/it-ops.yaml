@@ -1,0 +1,22 @@
+# it-ops OrgGoal seed (org L5 pilot Phase 2)
+goal_id: goal-it-ops-alert-sla
+domain_id: it-ops
+title: 开放告警 SLA 内分诊并标注根因
+status: active
+kpi_refs:
+  - mtta
+  - root_cause_rate
+  - exception_ratio
+schedule: manual
+owner_role: ops_owner
+allow_fleet: false
+query_open: "告警"
+entity_class: "告警"
+steps:
+  - locate
+  - fetch
+  - triage_gate
+exception_policy:
+  triage_requires_hitl: true
+  max_entities_per_run: 20
+  fetch_failure: exception

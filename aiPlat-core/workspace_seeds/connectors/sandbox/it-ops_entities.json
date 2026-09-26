@@ -1,0 +1,43 @@
+{
+  "_by_class": {
+    "告警": {
+      "source": "sandbox-monitor",
+      "severity": "critical",
+      "metric": "error_rate",
+      "value": 0.42,
+      "unit": "ratio"
+    },
+    "服务": {
+      "source": "sandbox-monitor",
+      "health": "degraded",
+      "p99_ms": 820
+    },
+    "中间件": {
+      "source": "sandbox-monitor",
+      "pool_util": 0.98
+    }
+  },
+  "ALT-主": {
+    "source": "sandbox-monitor",
+    "severity": "critical",
+    "fingerprint": "query-timeout",
+    "opened_at_offset_s": 120
+  },
+  "_customer_sandbox": {
+    "_note": "M4 stub — simulated customer monitor/ticket API; NOT production",
+    "_by_class": {
+      "告警": {
+        "external_system": "customer-monitor-stub",
+        "ticket_id": "TKT-STUB-0001",
+        "sla_minutes": 30,
+        "assignee": "oncall-stub"
+      }
+    },
+    "ALT-主": {
+      "external_system": "customer-monitor-stub",
+      "ticket_id": "TKT-STUB-QUERY-TIMEOUT",
+      "correlation_id": "corr-alt-main",
+      "raw_status": "firing"
+    }
+  }
+}

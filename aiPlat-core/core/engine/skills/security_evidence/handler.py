@@ -41,18 +41,9 @@ def _evidence_dir() -> Path:
 def _write_evidence(path_id: str, payload: Dict[str, Any]) -> str:
     ts = time.strftime("%Y%m%dT%H%M%S")
     safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in path_id)[:80]
-    name = f"regression_evidence_{safe}_{ts}.json"
-    try:
-        fp = _evidence_dir() / name
-        fp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        return str(fp)
-    except OSError:
-        # Fallback when ~/.aiplat is not writable (CI sandbox, etc.)
-        fallback = Path.cwd() / "tmp" / "security_evidence"
-        fallback.mkdir(parents=True, exist_ok=True)
-        fp = fallback / name
-        fp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        return str(fp)
+    fp = _evidence_dir() / f"regression_evidence_{safe}_{ts}.json"
+    fp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return str(fp)
 
 
 def _sink_kind(sink_id: str) -> str:

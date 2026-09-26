@@ -163,17 +163,17 @@ FDE 在 ③ 问题重构 → 澄清对话中产生的知识缺口会自动入库
 
 | 你想… | 方式 |
 |------|------|
-| 可视化编辑域本体 | 管理端 → 知识工厂 → **本体编辑器** (`/ontology-editor`) |
-| 查看域健康 | `GET /wiki/health-trend` |
-| 验证域 YAML | `POST /ontology-editor/domains/{id}/publish`（含自动验证+快照） |
-| 查看本体覆盖 | `GET /fde/sessions/{id}/ontology-coverage` |
-| 查看状态分布 | `GET /ontology-editor/domains/{id}/monitor/state-distribution` |
-| 查看流程瓶颈 | `GET /ontology-editor/domains/{id}/monitor/bottlenecks` |
+| 可视化编辑域本体 | 管理端 → **知识 → 业务本体**（`/knowledge/business?tab=editor`） |
+| 工厂流水线（提案 apply） | `/knowledge/business?tab=factory` |
+| 查看域健康 | `GET /api/core/wiki/health-trend`（以实际网关前缀为准） |
+| 验证/发布域 YAML | `POST /api/platform/apps/ontology-editor/domains/{id}/publish`（含自动验证+快照） |
+| 查看本体覆盖 | `GET /api/platform/apps/fde/sessions/{id}/ontology-coverage` |
+| 查看状态分布 | `GET /api/platform/apps/ontology-editor/domains/{id}/monitor/state-distribution` |
+| 查看流程瓶颈 | `GET /api/platform/apps/ontology-editor/domains/{id}/monitor/bottlenecks` |
 | 规则版本管理 | `GET /api/platform/apps/ontology-editor/domains/{id}/rule-versions` |
 
-> 本体编辑器 + 角色视图 + 流程编排 + 流程监控详见 [知识系统完整指南](../../knowledge-system.md) §四、本体模型 和 §十二、本体操作手册。
-
-更多详情参见 [知识系统完整指南](../../knowledge-system.md)。
+> **UI 入口**以业务本体为准；上表含 `ontology-editor` 的为 **后端 API 路径**（平台 apps），不是侧边栏菜单名。  
+> 详细操作见 [知识系统完整指南 · 附录 C](../../knowledge-system.md#附录-c本体操作手册) 与 [合册](../../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md)。
 
 ---
 

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Modal, Button, Input, toast } from '../ui';
 import { toolApi } from '../../services';
+import AssetBoundaryHint from './AssetBoundaryHint';
 
 interface ParamRow { key: string; type: string; desc: string }
 
@@ -96,7 +97,10 @@ const AddToolModal: React.FC<{ open: boolean; onClose: () => void; onSuccess: ()
         </div>
       }>
       <div className="space-y-3 text-sm text-gray-300">
-        <p className="text-xs text-gray-500">新增一个 workspace Tool。代码写入 ~/.aiplat/tools/ 目录，重启 Core 后自动加载。</p>
+        <AssetBoundaryHint kind="tool" />
+        <p className="text-xs text-gray-500">
+          表单创建 Tool。日常请用列表顶栏「对话创建」。此处适合手改 TOOL_DEF；代码写入 ~/.aiplat/tools/。
+        </p>
         <div className="flex gap-1 text-xs mb-2">
           <button onClick={() => setAdvanced(false)} className={`px-3 py-1 rounded text-xs ${!advanced ? 'bg-primary/20 text-primary' : 'text-gray-500 hover:text-gray-300'}`}>向导模式</button>
           <button onClick={() => setAdvanced(true)} className={`px-3 py-1 rounded text-xs ${advanced ? 'bg-primary/20 text-primary' : 'text-gray-500 hover:text-gray-300'}`}>直接写代码</button>

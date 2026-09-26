@@ -59,15 +59,35 @@ SOP
         handler=True,
     )
 
+    _write_skill(
+        tmp_path,
+        "ppt_generation",
+        """---
+name: ppt_generation
+description: 输出 .pptx 文件路径
+skill_kind: executable
+execution_type: prompt
+permissions:
+  - llm:generate
+  - tool:workspace_fs_write
+version: 1.0.0
+---
+SOP
+""",
+    )
+
     from core.management.skill_manager import SkillManager
 
     mgr = SkillManager(seed=False, scope="workspace", reserved_ids=set())
     s1 = anyio_run(mgr.get_skill, "rule1")
     s2 = anyio_run(mgr.get_skill, "exe1")
     s3 = anyio_run(mgr.get_skill, "exe2")
+    s4 = anyio_run(mgr.get_skill, "ppt_generation")
     assert s1 and isinstance(s1.metadata, dict) and s1.metadata.get("skill_kind") == "rule"
     assert s2 and isinstance(s2.metadata, dict) and s2.metadata.get("skill_kind") == "executable"
     assert s3 and isinstance(s3.metadata, dict) and s3.metadata.get("skill_kind") == "rule"
+    assert s4 and isinstance(s4.metadata, dict) and s4.metadata.get("skill_kind") == "executable"
+    assert s4.metadata.get("execution_type") in ("prompt", "handler")
 
 
 def anyio_run(fn, *args, **kwargs):

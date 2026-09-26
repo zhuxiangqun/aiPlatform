@@ -59,6 +59,9 @@ logs/
 *.local.yaml
 secrets/
 credentials/
+# Keep the management UI page (not secret material)
+!aiPlat-management/frontend/src/pages/Core/Credentials/
+!aiPlat-management/frontend/src/pages/Core/Credentials/**
 
 # aiPlatform specific
 *.db

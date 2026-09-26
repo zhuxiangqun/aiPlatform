@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle, AlertTriangle, RotateCw, Download } from 'lucide-react';
 import { onboardingApi, diagnosticsApi } from '../../services';
 import { approvalsApi, policyApi } from '../../services';
@@ -7,6 +7,11 @@ import { ActionableFixes } from '../../components/common/ActionableFixes';
 import { Modal } from '../../components/ui';
 
 type StepKey = 'adapter' | 'default_llm' | 'tenant' | 'strong_gate' | 'autosmoke' | 'secrets' | 'doctor' | 'health' | 'smoke' | 'sign_keys';
+
+const STEP_KEYS: StepKey[] = ['adapter', 'default_llm', 'tenant', 'strong_gate', 'autosmoke', 'secrets', 'sign_keys', 'doctor', 'health', 'smoke'];
+
+const isStepKey = (v: string | null | undefined): v is StepKey =>
+  !!v && (STEP_KEYS as string[]).includes(v);
 
 const StepBadge: React.FC<{ ok?: boolean; loading?: boolean }> = ({ ok, loading }) => {
   if (loading) return <RotateCw className="w-4 h-4 text-primary animate-spin" />;
@@ -62,7 +67,13 @@ const formatTs = (ts: any) => {
 const Onboarding: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [activeStep, setActiveStep] = useState<StepKey>('adapter');
+  const [searchParams] = useSearchParams();
+  const stepFromUrl = useMemo(() => {
+    const raw = searchParams.get('step');
+    return isStepKey(raw) ? raw : null;
+  }, [searchParams]);
+  const focusSignKeys = stepFromUrl === 'sign_keys';
+  const [activeStep, setActiveStep] = useState<StepKey>(() => stepFromUrl || 'adapter');
   const [showModal, setShowModal] = useState(false);
   const [state, setState] = useState<any>(null);
   const [loadingState, setLoadingState] = useState(false);
@@ -493,7 +504,9 @@ const Onboarding: React.FC = () => {
   };
 
   // After initial loads, auto-jump to first failed step (best-effort).
+  // Skip when URL ?step=… pinned a specific step (e.g. 生成密钥 → sign_keys).
   useEffect(() => {
+    if (stepFromUrl) return;
     if (!state && !doctor) return;
     const order: StepKey[] = ['adapter', 'default_llm', 'tenant', 'strong_gate', 'autosmoke', 'secrets', 'doctor', 'health', 'smoke'];
     for (const k of order) {
@@ -504,7 +517,7 @@ const Onboarding: React.FC = () => {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, doctor]);
+  }, [state, doctor, stepFromUrl]);
 
   // Persist activeStep for a more productized experience.
   useEffect(() => {
@@ -514,12 +527,16 @@ const Onboarding: React.FC = () => {
   }, [activeStep]);
 
   useEffect(() => {
+    if (stepFromUrl) {
+      setActiveStep(stepFromUrl);
+      return;
+    }
     try {
       const s = localStorage.getItem('onboarding_active_step') as StepKey | null;
-      if (s) setActiveStep(s);
+      if (isStepKey(s)) setActiveStep(s);
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [stepFromUrl]);
 
   const healthOk = useMemo(() => {
     const h = healthResult?.health || state?.health;
@@ -1109,6 +1126,17 @@ const Onboarding: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {focusSignKeys && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-900/20 px-4 py-3 text-sm text-amber-100/90 space-y-1">
+          <div className="font-medium text-amber-200">你从「生成密钥」进来 — 只需做本步</div>
+          <div className="text-amber-100/70 text-xs leading-relaxed">
+            点下方「生成密钥对」→ 复制私钥 → 回到 Agent/Skill 详情粘贴签名即可。
+            上面其它步骤（模型/租户/冒烟等）是整站初始化，本地跑 PPT 制作数字员工<strong className="text-amber-100">不必</strong>做完。
+            未签名也不影响本机执行。
+          </div>
+        </div>
+      )}
 
       {/* Stepper */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

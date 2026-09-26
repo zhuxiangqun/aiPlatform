@@ -340,6 +340,21 @@ class AsyncActionRegistry:
                 await self._write_audit(c, entity_id, domain_id, current_state, to_state,
                                         exec_status, constraint, params, entity_snapshot, actor, role)
 
+            # ── P0 ontology online learning: case writeback (best-effort, never blocks) ──
+            try:
+                from core.harness.knowledge.ontology_case_learning import record_case_from_action
+
+                record_case_from_action(
+                    domain_id=domain_id,
+                    action_id=action_id,
+                    entity_id=entity_id,
+                    status=exec_status,
+                    result=result,
+                    actor=actor,
+                )
+            except Exception:
+                pass  # noqa: ontology-case-learning-best-effort
+
             return {"status": exec_status, "effect": c.effect_semantics, "compensation": c.compensation, "result": result, "audited": c.audit}
 
         finally:

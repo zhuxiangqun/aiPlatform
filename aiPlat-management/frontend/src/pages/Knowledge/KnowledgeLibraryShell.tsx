@@ -18,7 +18,10 @@ const KnowledgeLibraryShell: React.FC = () => {
       <DualTrackBanner track="library" />
       <div className="px-6 pt-1">
         <p className="text-[11px] text-gray-500 mb-1">
-          主 Tab：向量索引 · LLM Wiki · Vault 文档源（评估/健康为质量辅轨）
+          日常只用三个页签：<b className="text-gray-400 font-medium">检索资料</b>
+          （向量）· <b className="text-gray-400 font-medium">阅读资料</b>
+          （Wiki 页）· <b className="text-gray-400 font-medium">原始文件</b>
+          （Vault）。右侧「更多」里是质量检查 / 评估，不是业务本体。
         </p>
       </div>
       <div className="flex-1 px-3 pb-4">

@@ -98,7 +98,7 @@
 
 | 方式 | 操作 | 适用场景 |
 |------|------|------|
-| 页面上传 | 知识工厂 → 原始资料 → 上传 | 少量文件 |
+| 页面上传 | 知识 → **知识库** / Vault 上传 | 少量文件 |
 | API 上传 | `POST /api/core/wiki/ingest` | 外部系统对接 |
 | URL 导入 | 知识中心 → 粘贴 URL | 在线文档 |
 
@@ -300,7 +300,7 @@ classes:
 
 1. **创建域** — 在 ontology-editor 或 API 创建知识域（如 `my-domain`）
 2. **定义本体** — 编写 YAML 定义类和关系，或使用 AI 自动生成
-3. **上传资料** — 通过知识工厂上传 PDF/Word/HTML 文档
+3. **上传资料** — 通过 **知识 → 知识库**（Vault）上传 PDF/Word/HTML 文档
 4. **运行引擎** — 触发 OntologyEngine 提取实体和关系
 5. **开始检索** — 在对话中测试 RAG 回答质量
 
@@ -426,19 +426,29 @@ CREATE TABLE triples (
 
 ## 附录 C：本体操作手册
 
-> 版本: 1.2 · 2026-07-19  
-> 适用: aiPlatform v2.6+  
-> 入口: 打开 /infra/ontology（本体模型） (`/infra/ontology`) | 🆕 编辑器入口: `/ontology-editor`  
-> 📘 知识管线总览 → [knowledge-management.md](knowledge-management.md)  
-> 🆕 v2.6 新增: 本体编辑器 UI、角色视图、跨实体流程编排、时序 SLA 监控、动态阈值触发器、术语消歧
+> 版本: **1.3** · 2026-09-20  
+> 适用: aiPlat 管理端现状  
+> **正确入口（以侧边栏为准）**：知识 → **业务本体** → `/knowledge/business`  
+> - 域管理 / 编辑器：`?tab=domains` / `?tab=editor`  
+> - **工厂流水线**（抽取确认 → 提案 → apply）：`?tab=factory`  
+> 旧路径 `/infra/ontology`、`/ontology-editor` 若仍可打开，仅作兼容，**操作请以业务本体为准**。  
+> 企业创建合册：[`contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](./contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md)  
+> it-ops 组织试点 / 签收准备（不是本附录职责）：[`contracts/ORG_L5_RUNBOOK.md`](./contracts/ORG_L5_RUNBOOK.md) · [`contracts/ORG_M4_SIGNOFF_PACK.md`](./contracts/ORG_M4_SIGNOFF_PACK.md) · 管理端 `/org/pilot`
 
 ---
 
 ## 本文档范围
 
-本文档聚焦**本体模型的 CRUD 操作**：域管理、类/关系/状态机编辑、引擎运行、验证修复、缺口合成。
+本文档聚焦**业务本体权威轨**的操作：域管理、类/关系/状态机编辑、工厂流水线（提案 apply）、引擎与缺口。
 
-知识管线的整体架构（原始资料→本体→向量→Wiki→RAG→反馈闭环）参见 [知识管理完整指南](knowledge-management.md)。
+| 你要做的事 | 去哪 | 不要去哪 |
+|------------|------|----------|
+| 新建/改域说明书（TBox） | `/knowledge/business` 域管理 / 编辑器 | FDE 工作台（无「新建域」） |
+| 抽取确认 → 提案 → **写活 YAML** | `/knowledge/business?tab=factory` | 组织试点（不 apply） |
+| it-ops 开跑 / 八闸门 / 证据包 / 签收剧本 | `/org/pilot` | 业务本体工厂 Tab |
+| 用一句话生成应用 | `/app/factory` | 业务本体（那是说明书，不是应用产线） |
+
+知识库检索轨（Vault / 向量 / Wiki）见本文前半与知识库页 `/knowledge/library`；**检索不替代本体拍板**。
 
 ## 目录
 
@@ -512,9 +522,9 @@ GraphIndex (SQLite 存储) + Wiki 页面
 
 ### 2.1 用智能生成创建第一个域
 
-1. 打开管理端 → 知识工厂 → **本体模型**
-2. 点击右上角 **🤖 智能生成** 按钮
-3. 填写：
+1. 打开管理端 → **知识 → 业务本体**（`/knowledge/business`）  
+2. 进入 **域管理**（或编辑器中的新建域）  
+3. 若页面提供 **智能生成 / 脚手架**：填写：
 
 | 字段 | 说明 | 示例 |
 |------|------|------|
@@ -549,7 +559,7 @@ GraphIndex (SQLite 存储) + Wiki 页面
 
 ## 三、界面总览
 
-进入 `/infra/ontology` 后，页面分为以下区域：
+进入 **业务本体** `/knowledge/business` 后，页面分为以下区域（旧 `/infra/ontology` 仅兼容）：
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -600,7 +610,7 @@ GraphIndex (SQLite 存储) + Wiki 页面
 | 发布与版本 🆕 | 手动替换文件 | publish → 写回 YAML + graph snapshot + 缓存失效 |
 | 监控 🆕 | 不可用 | Monitor tab：状态分布 + 瓶颈分析 + SLA 违约 |
 
-**入口**：管理端 → 打开 /ontology-editor（本体编辑器） (`/ontology-editor`)
+**入口**：管理端 → **知识 → 业务本体 → 编辑器**（`/knowledge/business?tab=editor`；兼容旧 `/ontology-editor`）
 
 ---
 
@@ -930,13 +940,18 @@ FDE 澄清对话 → 检测到缺失概念
     → FDE 审核确认
 ```
 
-### 11.3 主动推荐
+### 11.4 组织试点缺口 Diff → 工厂提案（必读）
 
-**📢 推荐** Tab（`GET /api/core/ontology/engine/recommend/{domain_id}`）：
+it-ops 现场在 **组织试点** `/org/pilot` 可：
 
-- 基于知识缺口自动生成补充建议
-- 优先级排序（高频缺口优先）
-- 一键触发生成
+1. **预览 Diff**（`GET …/org/ontology/gap-previews`）— 只读，不写活 YAML  
+2. **确认采纳进提案**（`POST …/org/ontology/gap-drafts`）— 进入 **K5 提案账本**，`auto_apply` 关  
+3. 在试点页 **待批 inbox** 打开快照看 Diff；**批准仍走既有审批路由**  
+4. **真正写活本体**：仍须在 **业务本体 → 工厂流水线**（`/knowledge/business?tab=factory`）对提案执行人批后的 **apply**（或既有 approve→apply 链路）
+
+**禁止**：把组织试点的「确认采纳进提案」理解成已 apply；禁止在 live 期望 H4 自动写活本体。
+
+权威步骤另见 [`contracts/ORG_L5_RUNBOOK.md`](./contracts/ORG_L5_RUNBOOK.md) §3.4–3.5 与 [`contracts/ORG_M4_SIGNOFF_PACK.md`](./contracts/ORG_M4_SIGNOFF_PACK.md)。
 
 ---
 
@@ -985,19 +1000,24 @@ classes:
 
 ---
 
-## 十三、与 FDE 交付体系的集成
+## 十三、与 FDE / 组织试点的分工
 
-FDE 现场交付工程师通过 8 步流程使用本体引擎：建域 → 注入文档 → 跑引擎 → 客户 QA → 发现缺口 → 追踪效果 → 持续迭代。
+| 场景 | 手册 / 入口 |
+|------|-------------|
+| 建域、编辑 TBox、工厂 apply | **本附录** · `/knowledge/business` · [`FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](./contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) |
+| FDE ①–⑧ 客户交付（含项目签收单） | [`manuals/fde/`](./manuals/fde/) · `/diagnostics/fde` |
+| it-ops 组织周闭环与 **签收准备**（八闸门，≠ 已签收） | `/org/pilot` · [`ORG_L5_RUNBOOK.md`](./contracts/ORG_L5_RUNBOOK.md) · [`ORG_M4_SIGNOFF_PACK.md`](./contracts/ORG_M4_SIGNOFF_PACK.md) |
+| 一句话生成应用 | `/app/factory` · [`manuals/management-ui-operation-manual.md`](./manuals/management-ui-operation-manual.md) |
 
-完整操作指南和 API 参考详见 **[FDE 运维与自演进手册](./fde/03-fde-operations.md#五fde-与本体引擎集成)**。
+FDE ⑦ 可挂治理面板与 Org L5 取数 shim；**签收准备度 / 剧本 / 证据包以组织试点页为准**，勿在业务本体或 FDE 交付签收单里找八闸门。
 
-诊断中心的以下检查项反映了本体健康度：
+诊断中心本体健康相关检查仍反映图 / Wiki 质量；对应操作在 **业务本体** 页完成验证与修复。
 
-| 检查项 | 含义 | 打开 /infra/ontology（本体模型） 中的对应操作 |
+| 检查项 | 含义 | 在业务本体中的对应动作 |
 |--------|------|---------------------|
-| `wiki_health` | Wiki 页面健康度（死链/孤立/矛盾） | 点击验证报告 |
-| `wiki_content_quality` | Wiki 内容质量评分 | 点击修复 |
-| `rag_quality` | RAG 检索质量（忠实度/精度） | 补充知识缺口 |
+| `wiki_health` | Wiki 页面健康度（死链/孤立/矛盾） | 验证报告 |
+| `wiki_content_quality` | Wiki 内容质量评分 | 修复流程 |
+| `rag_quality` | RAG 检索质量 | 补知识库资料（检索轨）后回本体确认权威 |
 | `assessment` | 成熟度评估 | 域配置完善度 |
 
 ---

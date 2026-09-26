@@ -17,12 +17,16 @@ async def run_fde_agent_one_shot(
     skill_filter: list,
     user_message: str,
     extra_context: dict = None,
+    session_id: Optional[str] = None,
 ) -> Optional[dict]:
     """Execute an FDE Agent in one-shot mode with skill subset filtering.
     
     Uses the Agent's own _skills list (set at creation time) rather than 
     context.skills (merge semantics), to avoid interference with other 
     applications that depend on the existing merge behavior (e.g. intents.py).
+
+    session_id: stable id for MemoryManager across turns. If omitted, a
+    per-call id is generated (no cross-turn memory).
 
     Returns None if Agent system is unavailable → caller falls back to 
     direct Skill/API execution.
@@ -58,11 +62,13 @@ async def run_fde_agent_one_shot(
                 logger.warning("fde_skill_not_found", extra={"skill": sn, "agent_id": agent_id})
         agent._skills = resolved
 
+        meta = dict(extra_context or {})
+        sid = (session_id or meta.get("session_id") or "").strip() or f"fde-{agent_id}-{int(_t0)}"
         context = AgentContext(
-            session_id=f"fde-{agent_id}-{int(_t0)}",
+            session_id=sid,
             user_id="fde",
             messages=[{"role": "user", "content": user_message}],
-            metadata=extra_context or {},
+            metadata=meta,
         )
         result = await agent.execute(context)
         elapsed_ms = int((time.time() - _t0) * 1000)
@@ -70,6 +76,7 @@ async def run_fde_agent_one_shot(
         logger.info("fde_agent_execute", extra={
             "agent_id": agent_id,
             "skill_filter": skill_filter,
+            "session_id": sid,
             "success": result.success,
             "elapsed_ms": elapsed_ms,
         })
@@ -88,6 +95,7 @@ async def run_fde_agent_one_shot(
             "skills_used": skill_filter,
             "elapsed_ms": elapsed_ms,
             "token_usage": result.token_usage,
+            "session_id": sid,
         }
     except ImportError:
         logger.warning("fde_agent_import_error", extra={"agent_id": agent_id})

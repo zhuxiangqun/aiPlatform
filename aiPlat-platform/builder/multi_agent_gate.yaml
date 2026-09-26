@@ -1,0 +1,20 @@
+# multi_agent 晋升门阈值（Phase C / W5 启用；Phase 0–A 仅作契约与文档 SoT）
+# 未达阈值 → multi_agent: denied，附原因。
+schema_version: 1
+min_hops: 20                 # 同模式 hop 样本下限
+min_success_rate: 0.9        # hop 成功率下限
+scope: project               # project | tenant（Phase C 默认项目级）
+# 跑通语义（钉死）：
+#   硬门槛 AND: real_tests+smoke ∧ conformance ∧ hop可归因 ∧ PolicyGate
+#   软门槛: auto_repair未耗尽 OR HITL批准
+hard_gates:
+  - real_tests_and_smoke
+  - conformance
+  - hop_attribution
+  - policy_gate
+soft_gate: auto_repair_or_hitl
+# 允许的 multi 正面形态（禁止自由 spawn / 动态委托）
+allowed_multi_shape: fixed_pipeline_or_static_skill_routing
+forbidden:
+  - free_agent_spawn
+  - dynamic_orchestrator_delegate

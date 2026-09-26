@@ -30,6 +30,7 @@ class SystemRole(str, Enum):
 ROUTE_PERMISSIONS: Dict[str, List[str]] = {
     # Admin-only
     "/system-overview":          ["admin"],
+    "/org/pilot":                ["admin", "developer", "operator", "business", "fde", "approver"],
     "/onboarding":               ["admin"],
     "/value-center/roles":       ["admin"],
     "/value-center":             ["admin", "business", "fde"],  # ValueDashboard shared

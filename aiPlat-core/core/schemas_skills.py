@@ -20,6 +20,7 @@ class SkillCreateRequest(BaseModel):
     version: Optional[str] = None
     status: Optional[str] = None
     skill_kind: Optional[str] = None  # rule|executable
+    execution_type: Optional[str] = None  # prompt|handler|python_class (engine/runtime)
     permissions: Optional[List[str]] = None
     trigger_conditions: Optional[List[str]] = None
     decision_tree: Optional[List[Dict[str, Any]]] = None
@@ -39,6 +40,10 @@ class SkillCreateRequest(BaseModel):
 class SkillUpdateRequest(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    category: Optional[str] = None
+    # Lifecycle (approval center): draft | ready | published | listed | deprecated
+    # Runtime: enabled | disabled
+    status: Optional[str] = None
     input_schema: Optional[Dict[str, Any]] = None
     output_schema: Optional[Dict[str, Any]] = None
     config: Optional[Dict[str, Any]] = None

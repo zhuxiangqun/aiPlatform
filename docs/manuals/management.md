@@ -1,6 +1,8 @@
 # aiPlat 管理画面 操作手册
 
-> 版本 2.3 | 最后更新 2026-08-12 | 适用于 aiPlat v22.0+
+> 版本 **2.4** | 最后更新 **2026-09-20** | 适用于 aiPlat 管理端现状（以 `pageManifest` 为准）
+> **v2.4 更新（2026-09-20）**: 侧边栏以 `pageManifest` 为准——仪表盘含**组织试点** `/org/pilot`；知识为**业务本体 | 知识库**双轨；应用工厂与 FDE 工作台边界写清（写活本体 / 签收准备不在应用工厂完成）。旧「知识工厂九入口」描述已废弃。
+>
 > **v2.3 更新**: 侧边栏 v2.3 重构 — 6 组 92 入口；AI应用工厂精简58%(33→14项)；引擎能力配置独立成组移入平台设置；价值看板→仪表盘；诊断与治理全 per-project | 2026-08-12
 
 本文档详细说明 aiPlat 管理画面（Management Dashboard）的所有功能模块、操作方法和典型工作流。
@@ -12,12 +14,17 @@
 - [1. 系统概述](#1-系统概述)
 - [2. 五大角色与权限体系](#2-五大角色与权限体系)
 - [3. 侧边栏导航](#3-侧边栏导航)
-- [4. 仪表盘](#4-仪表盘)
-- [5. 知识工厂](#5-知识工厂)
-- [6. AI 应用工厂](#6-ai-应用工厂)
-- [7. 诊断与治理](#7-诊断与治理)
-- [8. 平台设置](#8-平台设置)
-- [9. 典型操作流程](#9-典型操作流程)
+- [4. 系统入口页面](#4-系统入口页面)（含 [组织试点](#41b-组织试点orgpilot)）
+- [5. 平台设置](#5-平台设置)
+- [6. AI 应用工厂 — 能力组装](#6-ai-应用工厂--能力组装)
+- [7. 能力市场](#7-能力市场)
+- [8. 平台配置](#8-平台设置--平台配置)
+- [9. AI 应用工厂 — 应用生命周期](#9-ai-应用工厂--应用生命周期)
+- [10. 价值看板](#10-仪表盘--价值看板)
+- [11. 诊断与治理](#11-诊断与治理)
+- [12. 知识（双轨）](#12-知识双轨业务本体--知识库)
+- [13. 审批管理](#13-诊断与治理--审批管理)
+- [14. 典型操作流程](#14-典型操作流程)
 - [附录 A：支持模型类型](#附录-a支持模型类型)
 - [附录 B：常见问题](#附录-b常见问题)
 ---
@@ -86,9 +93,9 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 
 | 分组 | 标签 | 主要角色 | 菜单数 | 说明 |
 |------|------|---------|:---:|------|
-| dashboard | **📊 仪表盘** | 全部 | 5 | 系统概览、告警中心、系统图谱、治理仪表盘、价值看板 |
-| knowledge | **🧠 知识工厂** | admin, developer, fde | 9 | 知识生产→数据源→本体模型→知识库→质量验证 五阶段 |
-| build | **🤖 AI 应用工厂** | admin, developer, fde | 14 | 应用生命周期(3项) + 工作区能力(6项) + 配置(3项) + 开发辅助(2项) |
+| dashboard | **📊 仪表盘** | 全部 | 含组织试点 | 系统概览、**组织试点**、告警、图谱、治理、价值看板 |
+| knowledge | **🧠 知识** | admin, developer, fde | 2 | **业务本体**（权威轨）+ **知识库**（检索轨） |
+| build | **🤖 AI 应用工厂** | admin, developer, fde | — | 应用工厂 / 已部署应用 / FDE 工作台 + 工作区能力 |
 | diagnostics | **🩺 诊断与治理** | 全部 | 12 | 概览与监控(3项) + 排查与追踪(4项) + 项目维护(2项)；全 per-project 范围 |
 | platform | **⚙️ 平台设置** | admin, operator | 54 | 监控与运维(15项) + 能力配置(6项) + 接入配置(5项) + 系统维护(8项) + 安全与合规(8项) + 高级工具(12项) |
 | help | **📖 帮助** | 全部 | 1 | 文档系统 |
@@ -100,51 +107,37 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 | 图标 | 名称 | 路由 | 说明 |
 |------|------|------|------|
 | Activity | 系统概览 | `/system-overview` | 全局健康仪表盘 |
+| Users | **组织试点** | `/org/pilot` | it-ops 开跑 / 八闸门签收准备 / 证据包（≠ 已签收） |
 | Bell | 告警中心 | `/alerts` | 系统告警管理 |
 | Share2 | 系统图谱 | `/system-graph` | 架构可视化 |
 | Shield | 治理仪表盘 | `/governance` | 8 项治理机制健康状态 |
 | BarChart3 | 价值看板 | `/value-center` | 业务价值量化分析 |
 
-#### 🧠 知识工厂
+> 组织试点操作：[`../contracts/ORG_L5_RUNBOOK.md`](../contracts/ORG_L5_RUNBOOK.md) · [`../contracts/ORG_M4_SIGNOFF_PACK.md`](../contracts/ORG_M4_SIGNOFF_PACK.md)。
 
-**📥 数据接入**：
+#### 🧠 知识（双轨）
+
 | 图标 | 名称 | 路由 | 说明 |
 |------|------|------|------|
-| Share2 | 数据管线 | `/knowledge/overview` | 知识处理流水线概览 |
-| FileText | 文档入库 | `/platform/kb?tab=vault` | 上传原始文档 |
+| Box | **业务本体** | `/knowledge/business` | 域管理 / 编辑器 / **工厂流水线（提案 apply）** |
+| Database | **知识库** | `/knowledge/library` | Vault / 向量 / Wiki（检索轨，不替代拍板） |
 
-**🧬 知识建模**：
-| 图标 | 名称 | 路由 | 说明 |
-|------|------|------|------|
-| PenTool | 本体编辑器 | `/ontology-editor` | 域本体 CRUD + NL→YAML |
-| Box | 本体模型 | `/infra/ontology` | 本体图谱可视化 + 推理引擎 |
-
-**🔍 知识索引**：
-| 图标 | 名称 | 路由 | 说明 |
-|------|------|------|------|
-| Database | 向量知识库 | `/platform/kb?tab=documents` | 文档切块与向量索引 |
-| BookOpen | LLM Wiki | `/platform/kb?tab=wiki` | LLM 可读的结构化 Wiki |
-
-**✅ 质量验证**：
-| 图标 | 名称 | 路由 | 说明 |
-|------|------|------|------|
-| Search | 检索评估 | `/platform/kb?tab=eval` | 检索质量评估 |
-| TrendingUp | 质量反馈 | `/platform/kb?tab=quality` | 答案质量与反馈闭环 |
+> 业务本体详细步骤：[`../knowledge-system.md`](../knowledge-system.md) 附录 C · [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md)。  
+> 旧菜单「本体编辑器 `/ontology-editor`」「本体模型 `/infra/ontology`」已收敛到业务本体，勿再当主入口写进 SOP。
 
 #### 🤖 AI 应用工厂
 
 **📦 应用生命周期**：
 | 图标 | 名称 | 路由 | 说明 |
 |------|------|------|------|
-| FolderOpen | 应用工厂 | `/app/factory` | 统一项目管理：对话交互、Pipeline 监控、一键修复 |
-| Palette | 工作室 | `/studio` | 对话式 Agent 应用构建器 |
+| FolderOpen | 应用工厂 | `/app/factory` | 一句话→应用产线（**不是**写活本体；签收准备去 `/org/pilot`） |
 | Rocket | 已部署应用 | `/app/apps` | 部署的应用列表 |
+| Wrench | FDE 工作台 | `/diagnostics/fde` | 8 步诊断交付（交付签收单 ≠ Org M4） |
 | BookOpen | 学习产出 | `/core/learning/artifacts` | 查看技能学习与知识晶体化结果 |
 | Wrench | 修复中心 | `/diagnostics/repairs` | 自动修复 Pipeline 中发现的问题 |
 | Rocket | 发布管理 | `/core/learning/releases` | 版本发布与灰度管理 |
 | Share2 | 技能发布 | `/core/skills-rollouts` | 技能灰度发布与回滚 |
 | Package | 技能包 | `/core/skill-packs` | 技能打包与分发 |
-| Wrench | FDE 工作台 | `/diagnostics/fde` | 8 步诊断交付工作台 |
 
 **🧩 能力组装**（引擎内置 + 工作区双入口）：
 | 来源 | Agent | Skill | Tool | MCP | Workflow | Memory | Teams | 能力市场 |
@@ -216,6 +209,7 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 
 ### 4.1 系统概览（`/system-overview`）
 
+
 **可见角色**：admin
 
 **功能**：四层架构运行状态的全局仪表盘。展示：
@@ -234,6 +228,23 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 - 点击「刷新」按钮手动拉取最新指标
 - 点击「诊断 35s ago」链接跳转到诊断中心查看详细报告
 - 点击各层健康卡片跳转到对应管理页面
+
+### 4.1b 组织试点（`/org/pilot`）
+
+**可见角色**：admin, developer, operator, business, fde, approver
+
+**功能**：it-ops 单线组织闭环与**签收准备**（不是客户已签字）。
+
+**操作**（按页内剧本）：
+1. 按岗位开跑 → 看周报三 KPI（可空值）
+2. 待批 inbox 打开提案 Diff（批准走原路由，本页只读快照）
+3. 价值：可先「试算」再「写入基线」（禁止行业均值冒充客户基线）
+4. 记录值班 / 记回滚演练（按钮不自动 pause Goal / 改 IO）
+5. 缺口：预览 Diff → 确认进提案；**apply 回业务本体工厂 Tab**
+6. 导出证据包 / 准备度清单 Markdown；看八闸门卡片并跳转补齐
+
+**权威**：[`../contracts/ORG_L5_RUNBOOK.md`](../contracts/ORG_L5_RUNBOOK.md) · [`../contracts/ORG_M4_SIGNOFF_PACK.md`](../contracts/ORG_M4_SIGNOFF_PACK.md)。  
+**勿混淆**：FDE ⑦ 项目签收单 ≠ 本页 Org 送审材料；`m4_claim_allowed` 恒 false。
 
 ### 4.2 系统图谱（`/system-graph`）
 
@@ -605,7 +616,9 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 
 ## 8. 平台设置 — 平台配置
 
-### 8.1 知识库管理（`/platform/kb`）
+### 8.1 知识库管理（侧边栏入口 `/knowledge/library`）
+
+> **路由说明**：侧边栏以 `pageManifest` 为准，入口为 **`/knowledge/library`**。下文若仍出现历史路径 `/platform/kb`，视为同一知识库复合页的旧写法，请以侧边栏为准。
 
 **可见角色**：admin
 
@@ -619,13 +632,13 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 - **VaultBrowser**：知识库文件系统浏览器
 - **Wiki 健康仪表盘**：死链/孤立页面/过期文档的监控
 
-### 8.2 Materials Chat（`/platform/kb/chat/:sessionId`）
+### 8.2 Materials Chat（知识库内会话；历史路径 `/platform/kb/chat/:sessionId`）
 
 **可见角色**：admin
 
 **功能**：知识库深度问答。支持视频时间轴引用、多检索路径标记（蓝色=直接检索、紫色=HyDE）、CRAG 三级回退。
 
-### 知识工厂 — 本体模型（`/infra/ontology`）
+### 业务本体（现入口 `/knowledge/business`；旧称知识工厂本体模型 `/infra/ontology`）
 
 **可见角色**：admin, developer
 
@@ -741,18 +754,19 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 - 编辑现有图表
 - 导出为 PNG/SVG
 
-### 9.5 App Studio（`/studio`）
+### 9.5 App Studio（旧 `/studio`）
 
 **可见角色**：admin, user
 
-**功能**：对话式应用构建器。通过与 PM Agent 多轮对话，自动完成需求分析到部署的全流程。
+**现状**：对话式构建能力已收敛到 **AI 应用工厂** `/app/factory`（对话式 Tab）。请以 `/app/factory` 为操作真理；`/studio` 若仍可打开仅作兼容，勿再写入新 SOP。
 
-**操作流程**：
-1. 输入应用目标 → PM Agent 提问澄清需求
+**操作流程（在 `/app/factory`）**：
+1. 选择「对话式」→ 输入应用目标 → PM Agent 提问澄清需求
 2. PM 生成 PRD 草案 → 用户确认或修改
 3. 自动组建开发团队 → 启动 Pipeline
-4. 开发者 (Programmer) 生成代码 → QA 执行测试
-5. 部署到 App Gallery
+4. 开发 / 测试 / 部署（见同页生命周期说明）
+
+**边界**：应用工厂**不**写活本体（去 `/knowledge/business?tab=factory`）；**不**做 it-ops 签收准备（去 `/org/pilot`）。
 
 ### 9.6 已部署应用（`/app/apps`）
 
@@ -972,9 +986,9 @@ Spec 是 FDE 操作系统的核心产物——从碎石路（临时决策）升�
 
 ---
 
-## 12. 知识工厂
+## 12. 知识（双轨：业务本体 + 知识库）
 
-知识工厂是 aiPlat 的"大脑"——管理从原始文档到可检索知识的全流程。
+知识侧是 aiPlat 的"大脑"——**业务本体**管权威说明书与工厂 apply，**知识库**管检索资料。侧边栏入口：`/knowledge/business` · `/knowledge/library`。
 
 ### 数据管线（`/knowledge/overview`）
 
@@ -982,13 +996,13 @@ Spec 是 FDE 操作系统的核心产物——从碎石路（临时决策）升�
 
 **功能**：知识处理流水线的可视化概览。展示各阶段的处理状态和数据流入流出。
 
-### 10.2 原始资料（`/platform/kb?tab=vault`）
+### 10.2 原始资料（`/knowledge/library` · vault）
 
 **可见角色**：admin, developer
 
 **功能**：上传和管理原始文档（PDF、Word、PPT、HTML 等）。支持批量上传、解析状态查看。
 
-### 10.3 本体模型（`/infra/ontology`）
+### 10.3 业务本体（`/knowledge/business`；旧路径 `/infra/ontology` 勿再当主入口）
 
 **可见角色**：admin, developer
 
@@ -1000,25 +1014,25 @@ Spec 是 FDE 操作系统的核心产物——从碎石路（临时决策）升�
 - **引擎运行**：触发本体引擎管线（分类→提取→验证→建图→合成）
 - **状态监控**：查看每个域的通过率、实体数、Skill 绑定
 
-### 10.4 向量知识库（`/platform/kb?tab=documents`）
+### 10.4 向量知识库（`/knowledge/library` · documents）
 
 **可见角色**：admin, developer
 
 **功能**：文档切块与向量索引管理。查看文档切块列表、重建向量索引。
 
-### 10.5 LLM Wiki（`/platform/kb?tab=wiki`）
+### 10.5 LLM Wiki（`/knowledge/library` · wiki）
 
 **可见角色**：admin, developer
 
 **功能**：由引擎自动生成的 LLM 可读 Wiki 页面。支持创建、编辑、健康检查、死链检测。
 
-### 10.6 RAG 检索（`/platform/kb?tab=eval`）
+### 10.6 RAG 检索（`/knowledge/library` · eval）
 
 **可见角色**：admin, developer
 
 **功能**：RAG 检索质量评估。支持 Golden Query 评测、Recall@10 计算。
 
-### 10.7 质量反馈（`/platform/kb?tab=quality`）
+### 10.7 质量反馈（`/knowledge/library` · quality）
 
 **可见角色**：admin, developer
 
@@ -1050,6 +1064,8 @@ Spec 是 FDE 操作系统的核心产物——从碎石路（临时决策）升�
 
 ## 14. 典型操作流程
 
+> **组织试点签收准备**：现场送审材料与八闸门在 **`/org/pilot`** 完成（见 [§4.1b](#41b-组织试点orgpilot)），勿与 FDE 工作台项目签收单、应用工厂「建应用」混淆。
+
 ### 13.1 新建一个 Agent 并测试
 
 ```
@@ -1070,7 +1086,7 @@ Spec 是 FDE 操作系统的核心产物——从碎石路（临时决策）升�
 ### 13.2 创建一个知识库并上传文档
 
 ```
-1. 侧边栏 → Platform → 知识库管理 (/platform/kb)
+1. 侧边栏 → 知识 → 知识库 (/knowledge/library)
 2. 点击「新建集合」→ 输入集合名称
 3. 拖拽 PDF/DOCX 文件到上传区域
 4. 等待解析完成（DocumentParser 自动分块）
@@ -1175,4 +1191,4 @@ A: 架构守卫对 ~3,000+ 文件做 grep 扫描，某些检查（如 §40 模�
 A: 在 Agent 管理页点击「测试」输入任务后，切换到诊断中心 → Runs 工具，搜索该 Agent 的 run_id，查看执行事件流。
 
 **Q: 知识库文档解析失败怎么办？**
-A: 检查文件格式是否支持（PDF/DOCX/PPTX/HTML/MD/TXT）。大文件（>50MB）可能超时。在知识工厂 → LLM Wiki 中查看详细错误。
+A: 检查文件格式是否支持（PDF/DOCX/PPTX/HTML/MD/TXT）。大文件（>50MB）可能超时。在 **知识 → 知识库**（Wiki）中查看详细错误。

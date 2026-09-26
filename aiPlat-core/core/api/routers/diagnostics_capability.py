@@ -7,7 +7,7 @@ GET /api/core/diagnostics/capability-boundary?domain=supply-chain
 from __future__ import annotations
 
 import json, logging, os, time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException, Query
 import yaml as _yaml
@@ -63,30 +63,68 @@ def _calculate_maturity(metrics: dict) -> str:
     return "seeding"
 
 
-def _build_recommend(domain_id: str, metrics: dict, skills: list, gaps: list) -> List[str]:
-    recs = []
+def _build_recommend(
+    domain_id: str, metrics: dict, skills: list, gaps: list
+) -> Tuple[List[str], List[str]]:
+    """Split delivery-facing next steps from optional platform hygiene.
+
+    FDE / 业务说明书 operators were drowning in Skill/Golden/llm_prompt tips
+    while the real gap was often 0 instance edges. Keep ops first.
+    """
+    ops: List[str] = []
+    platform: List[str] = []
     e = metrics.get("wiki_entities", 0)
+    r = metrics.get("wiki_relations", 0)
     s = metrics.get("skills_available", 0)
     q = metrics.get("golden_queries", 0)
     qr = metrics.get("golden_query_pass_rate", 0.0)
     p = metrics.get("domain_prompt_ready", False)
     seed = metrics.get("seed_data_ready", False)
 
-    if e < 15:
-        recs.append(f"种子数据不足（当前{e}实体，需≥15），运行 `python scripts/ingest_seed.py --domain {domain_id}`")
+    # ── Delivery / field path (what FDE & 说明书 should act on) ──
+    if e == 0:
+        ops.append(
+            f"知识图还没有实体：在「知识→业务说明书→从文档生成」对 {domain_id} "
+            "上传材料并点「确认」，或回 FDE ⑦ 跑一遍业务动作"
+        )
+    elif r == 0:
+        ops.append(
+            f"已有 {e} 个实体但实例边=0（结构图有线不算）：再抽一段含多类实体的材料并确认，"
+            "或 FDE ⑦ 验收里做一次派单/到场写出边。FDE ③ 诊断不依赖实例边，可先跑"
+        )
+    elif e < 15:
+        ops.append(
+            f"实体偏少（{e}，建议≥15）：继续文档确认灌图，或 `python scripts/ingest_seed.py --domain {domain_id}`"
+        )
+    else:
+        ops.append(
+            f"交付主路径：FDE ③ 问题重构跑诊断 → ④ 验证价值 → ⑦ 验收演示。"
+            f"图数据就绪（实体 {e} / 边 {r}）"
+        )
+
+    # ── Platform hygiene (optional; never the only banner for field work) ──
     if s == 0:
-        recs.append(f"该域尚无可用的领域Skill，建议创建SKILL.md并设置 domain_id: {domain_id}")
+        platform.append(
+            f"[可选·平台] 缺领域 Skill：以后要自动调技能再补 SKILL.md（domain_id: {domain_id}）"
+        )
     if q == 0:
-        recs.append(f"无Golden Query，在golden_queries.yaml中添加domain_queries.{domain_id}条目")
+        platform.append(
+            f"[可选·平台] 无 Golden Query：要跑域评测时再写入 golden_queries.yaml"
+        )
     if q > 0 and qr < 0.8:
-        recs.append(f"Golden Query通过率偏低（{qr:.0%}），建议增加种子数据和实体关系")
+        platform.append(
+            f"[可选·平台] Golden 通过率偏低（{qr:.0%}），可补种子与实例边"
+        )
     if not p:
-        recs.append(f"域提示词缺失，在~/.aiplat/ontologies/{domain_id}.yaml中添加llm_prompt字段")
+        platform.append(
+            f"[可选·平台] 缺 llm_prompt：要提高该域 LLM 诊断质量时再写入 ontologies/{domain_id}.yaml"
+        )
     if not seed:
-        recs.append(f"种子数据文件不存在，运行 `python scripts/seed_wiki.py --domain {domain_id}`")
-    if e >= 15 and s >= 1:
-        recs.append(f"运行 `python scripts/ingest_seed.py --domain {domain_id}` 完成数据注入和GraphIndex构建")
-    return recs
+        platform.append(
+            f"[可选·平台] 无种子文件时可 `python scripts/seed_wiki.py --domain {domain_id}`"
+        )
+
+    return ops, platform
 
 
 async def _get_wiki_entity_count(domain_id: str) -> int:
@@ -188,7 +226,9 @@ async def build_capability_boundary(domain_filter: Optional[str] = None) -> dict
 
         maturity = _calculate_maturity(metrics)
         gaps = _load_gaps(domain_id)
-        recommend = _build_recommend(domain_id, metrics, domain_skills, gaps)
+        recommend_ops, recommend_platform = _build_recommend(
+            domain_id, metrics, domain_skills, gaps
+        )
 
         domain_results[domain_id] = {
             "name": cfg.get("name", domain_id),
@@ -196,7 +236,9 @@ async def build_capability_boundary(domain_filter: Optional[str] = None) -> dict
             "metrics": metrics,
             "skills": domain_skills,
             "known_gaps": gaps,
-            "recommend_next": recommend,
+            # recommend_next = delivery path only (FDE / 说明书主建议)
+            "recommend_next": recommend_ops,
+            "recommend_platform": recommend_platform,
         }
 
     # Summary counts

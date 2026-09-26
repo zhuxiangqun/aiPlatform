@@ -3,6 +3,7 @@
  */
 
 import { apiClient } from './apiClient';
+import { withSkillExecuteDefaults } from '../utils/skillExecute';
 
 // ==================== Agent API ====================
 
@@ -128,8 +129,29 @@ export const workspaceAgentApi = {
     return apiClient.get<AgentListResponse>(`/core/workspace/agents${qs ? '?' + qs : ''}`);
   },
 
-  create: async (data: { name: string; agent_type: string; config?: Record<string, unknown>; skills?: string[]; tools?: string[]; mcp_ids?: string[]; workflow_ids?: string[]; agent_ids?: string[]; memory_config?: Record<string, unknown>; metadata?: Record<string, unknown> }) => {
+  create: async (data: { name: string; agent_type: string; config?: Record<string, unknown>; skills?: string[]; tools?: string[]; mcp_ids?: string[]; workflow_ids?: string[]; agent_ids?: string[]; memory_config?: Record<string, unknown>; metadata?: Record<string, unknown>; trigger_conditions?: string[]; permissions?: string[]; reuse_equivalent?: boolean }) => {
     return apiClient.post<{ id: string; status: string; name: string }>('/core/workspace/agents', data);
+  },
+
+  dedupe: async () => {
+    return apiClient.post<{
+      ok: boolean;
+      kept: number;
+      removed: string[];
+      removed_count: number;
+      remaining: number;
+    }>('/core/workspace/agents/dedupe');
+  },
+
+  createDialog: async (data: { text: string; history?: { role: string; content: string }[] }) => {
+    return apiClient.post<{
+      next: 'ask' | 'draft';
+      reply: string;
+      questions?: string[];
+      draft?: Record<string, unknown>;
+      agent_md_preview?: string;
+      error?: string;
+    }>('/core/workspace/agents/create-dialog', data);
   },
 
   autoFill: async (data: { name: string; description: string; async_mode?: boolean }) => {
@@ -138,6 +160,7 @@ export const workspaceAgentApi = {
       skills: string[]; tools: string[]; mcp_ids: string[]; agent_ids: string[];
       memory_config: Record<string, unknown>; sop_text: string; reasoning: string;
       workflow_ids: string[]; trigger_conditions: string[];
+      permissions: string[];
       task_id?: string; status?: string;
     }>('/core/workspace/agents/auto-fill', data);
   },
@@ -273,9 +296,13 @@ export const workspaceAgentApi = {
   },
 
   getExecutionHelp: async (agentId: string) => {
-    return apiClient.get<{ agent_id: string; help_markdown: string; examples: Array<{ title: string; content: string }>; input_schema?: Record<string, unknown> | null }>(
-      `/core/workspace/agents/${agentId}/execution-help`
-    );
+    return apiClient.get<{
+      agent_id: string;
+      help_markdown: string;
+      examples: Array<{ title: string; content: string }>;
+      input_schema?: Record<string, unknown> | null;
+      default_input?: string;
+    }>(`/core/workspace/agents/${agentId}/execution-help`);
   },
 
   execute: async (agentId: string, data: { messages?: unknown[]; input?: unknown; context?: Record<string, unknown>; options?: { toolset?: string; force_react?: boolean; loop_engine?: string }; config?: Record<string, unknown> }) => {
@@ -712,6 +739,30 @@ export const workspaceMcpApi = {
     return apiClient.post<{ status: string; server?: { name: string; enabled: boolean } }>('/core/workspace/mcp/servers', payload as any);
   },
 
+  autoFill: async (data: { name: string; description: string }) => {
+    return apiClient.post<{
+      transport?: string;
+      url?: string;
+      command?: string;
+      args?: unknown[];
+      allowed_tools?: string[];
+      auth?: unknown;
+      metadata?: Record<string, unknown>;
+      error?: string;
+    }>('/core/workspace/mcp/servers/auto-fill', data);
+  },
+
+  createDialog: async (data: { text: string; history?: { role: string; content: string }[] }) => {
+    return apiClient.post<{
+      next: 'ask' | 'draft';
+      reply: string;
+      questions?: string[];
+      draft?: Record<string, unknown>;
+      mcp_preview?: string;
+      error?: string;
+    }>('/core/workspace/mcp/servers/create-dialog', data);
+  },
+
   updateServer: async (serverName: string, payload: Partial<McpServer>) => {
     return apiClient.put<{ status: string; server?: { name: string; enabled: boolean } }>(`/core/workspace/mcp/servers/${serverName}`, payload as any);
   },
@@ -773,6 +824,26 @@ export const SKILL_CATEGORIES = [
   "general", "execution", "retrieval", "analysis", "generation", "transformation",
   "reasoning", "coding", "search", "tool", "communication",
 ] as const;
+
+/** Human-readable meaning for each category (wizard / create forms). */
+export const SKILL_CATEGORY_HELP: Record<(typeof SKILL_CATEGORIES)[number], string> = {
+  general: "通用：不好归入其他类，或覆盖多类能力时的默认分类",
+  execution: "执行：调用工具/脚本/命令完成动作（改文件、跑任务、发请求等）",
+  retrieval: "检索：从知识库/文档/资料中查找并整理证据后回答",
+  analysis: "分析：基于已有信息做诊断、对比、归因、评估与建议",
+  generation: "生成：产出新内容（文案、报告、大纲、幻灯片、代码草稿等）",
+  transformation: "转换：格式/结构变换或抽取（JSON↔Markdown、表格整理、字段映射）",
+  reasoning: "推理：多步规划、决策、推演（偏思考链，不一定写文件）",
+  coding: "编码：写/改/审代码、补测试、修缺陷等工程向任务",
+  search: "搜索：偏外部/开放域检索（网页、公开信息），区别于内部 knowledge retrieval",
+  tool: "工具封装：把某个 Tool/API 包装成可复用 Skill（薄编排层）",
+  communication: "沟通：客服对话、通知文案、会议纪要、对外回复等交互向",
+};
+
+export const SKILL_CATEGORY_OPTIONS = SKILL_CATEGORIES.map((v) => ({
+  value: v,
+  label: `${v} — ${SKILL_CATEGORY_HELP[v].split("：")[0] || v}`,
+}));
 
 export interface Skill {
   id: string;
@@ -855,8 +926,11 @@ export const skillApi = {
     return apiClient.post<{ status: string }>(`/core/skills/${skillId}/restore`);
   },
 
-  execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown>; options?: { toolset?: string }; config?: Record<string, unknown> }) => {
-    return apiClient.post<{ execution_id: string; run_id: string; trace_id?: string; ok: boolean; status: string; output?: unknown; error?: any; duration_ms?: number; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } }>(`/core/skills/${skillId}/execute`, data);
+  execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown>; options?: { toolset?: string }; config?: Record<string, unknown> } = {}) => {
+    return apiClient.post<{ execution_id: string; run_id: string; trace_id?: string; ok: boolean; status: string; output?: unknown; error?: any; duration_ms?: number; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } }>(
+      `/core/skills/${skillId}/execute`,
+      withSkillExecuteDefaults(data),
+    );
   },
 
   lint: async (skillId: string) => {
@@ -942,6 +1016,7 @@ export const workspaceSkillApi = {
     version?: string;
     status?: string;
     skill_kind?: string;
+    execution_type?: string;
     permissions?: string[];
     trigger_conditions?: string[];
     decision_tree?: any[];
@@ -991,14 +1066,37 @@ export const workspaceSkillApi = {
     return apiClient.delete<{ status: string }>(`/core/workspace/skills/${skillId}${qs ? '?' + qs : ''}`);
   },
 
-  execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown>; options?: { toolset?: string }; config?: Record<string, unknown> }) => {
-    return apiClient.post<{ execution_id: string; run_id: string; trace_id?: string; ok: boolean; status: string; output?: unknown; error?: any; duration_ms?: number; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } }>(`/core/workspace/skills/${skillId}/execute`, data);
+  execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown>; options?: { toolset?: string }; config?: Record<string, unknown> } = {}) => {
+    return apiClient.post<{ execution_id: string; run_id: string; trace_id?: string; ok: boolean; status: string; output?: unknown; error?: any; duration_ms?: number; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } }>(
+      `/core/workspace/skills/${skillId}/execute`,
+      withSkillExecuteDefaults(data),
+    );
   },
 
   getExecutionHelp: async (skillId: string) => {
-    return apiClient.get<{ skill_id: string; help_markdown: string; examples: Array<{ title: string; content: string }>; input_schema?: Record<string, unknown> | null }>(
-      `/core/workspace/skills/${skillId}/execution-help`
-    );
+    return apiClient.get<{
+      skill_id: string;
+      help_markdown: string;
+      examples: Array<{ title: string; content: string }>;
+      input_schema?: Record<string, unknown> | null;
+      /** First recommended test case; UI auto-fills on open */
+      default_input?: string;
+    }>(`/core/workspace/skills/${skillId}/execution-help`);
+  },
+
+  generateExecutionExamples: async (
+    skillId: string,
+    data?: { persist?: boolean; refine_hint?: string },
+  ) => {
+    return apiClient.post<{
+      status: string;
+      skill_id: string;
+      examples: Array<{ title: string; content: string }>;
+      model?: string;
+      source?: string;
+      warning?: string;
+      persisted?: boolean;
+    }>(`/core/workspace/skills/${skillId}/generate-execution-examples`, data || {});
   },
 
   getSkillMarkdown: async (skillId: string) => {
@@ -1202,8 +1300,19 @@ export const workspaceSkillApi = {
     return apiClient.post<{ total: number; signed: number; failed: number; results: { skill_id: string; status: string }[] }>('/core/workspace/skills/sign-all', data);
   },
 
-  autoFill: async (data: { name: string; description: string }) => {
-    return apiClient.post<{ name: string; display_name: string; description: string; category: string; version: string; skill_kind: string; permissions: string[]; trigger_conditions: string[]; input_schema: any; output_schema: any; sop: string; error?: string }>('/core/workspace/skills/auto-fill', data);
+  autoFill: async (data: { name: string; description: string; refine_hint?: string }) => {
+    return apiClient.post<{ name: string; display_name: string; description: string; category: string; version: string; skill_kind: string; permissions: string[]; trigger_conditions: string[]; input_schema: any; output_schema: any; config?: Record<string, unknown>; sop: string; error?: string }>('/core/workspace/skills/auto-fill', data);
+  },
+
+  createDialog: async (data: { text: string; history?: { role: string; content: string }[] }) => {
+    return apiClient.post<{
+      next: 'ask' | 'draft';
+      reply: string;
+      questions?: string[];
+      draft?: Record<string, any>;
+      skill_md_preview?: string;
+      error?: string;
+    }>('/core/workspace/skills/create-dialog', data);
   },
 
   importDetect: async (data: { url?: string; file_content?: string; sop_body?: string; name?: string; description?: string }) => {
@@ -1967,7 +2076,18 @@ export const toolApi = {
     params: Record<string, unknown>,
     opts?: { toolset?: string; context?: Record<string, unknown>; session_id?: string; user_id?: string }
   ) => {
-    return apiClient.post<{ output?: unknown; error?: string; success: boolean; latency?: number }>(`/core/tools/${toolName}/execute`, {
+    return apiClient.post<{
+      output?: unknown;
+      error?: string | { code?: string; message?: string; detail?: any };
+      success?: boolean;
+      ok?: boolean;
+      status?: string;
+      latency?: number;
+      duration_ms?: number;
+      run_id?: string;
+      execution_id?: string;
+      trace_id?: string;
+    }>(`/core/tools/${toolName}/execute`, {
       input: params,
       options: opts?.toolset ? { toolset: opts.toolset } : undefined,
       context: opts?.context,
@@ -1980,6 +2100,17 @@ export const toolApi = {
     return apiClient.put<{ status: string }>(`/core/tools/${toolName}`, { config });
   },
 
+  updateStatus: async (toolName: string, status: string) => {
+    return apiClient.put<{ ok?: boolean; status: string; name: string }>(`/core/tools/${encodeURIComponent(toolName)}`, { status });
+  },
+
+  submitForReview: async (toolName: string) => {
+    return apiClient.post<{ status: string; name: string; new_status: string }>(
+      `/core/tools/${encodeURIComponent(toolName)}/submit-for-review`,
+      {}
+    );
+  },
+
   sign: async (toolName: string, data: { private_key: string; version?: string }) => {
     return apiClient.post<{ status: string; bundle_sha256: string; version: string; signature: string }>(`/core/tools/${toolName}/sign`, data);
   },
@@ -1990,6 +2121,17 @@ export const toolApi = {
 
   autoFill: async (data: { name: string; description: string }) => {
     return apiClient.post<{ code: string; warning?: string; error?: string }>('/core/tools/auto-fill', data);
+  },
+
+  createDialog: async (data: { text: string; history?: { role: string; content: string }[] }) => {
+    return apiClient.post<{
+      next: 'ask' | 'draft';
+      reply: string;
+      questions?: string[];
+      draft?: Record<string, unknown>;
+      tool_code_preview?: string;
+      error?: string;
+    }>('/core/tools/create-dialog', data);
   },
 
   deleteTool: async (toolName: string) => {
@@ -2385,8 +2527,11 @@ export const workflowApi = {
   get: async (id: string) => {
     return apiClient.get<any>(`/platform/workflows/${id}`);
   },
-  create: async (data: { name: string; description?: string; nodes?: any[]; edges?: any[] }) => {
+  create: async (data: { name: string; description?: string; nodes?: any[]; edges?: any[]; reuse_equivalent?: boolean }) => {
     return apiClient.post<any>('/platform/workflows', data);
+  },
+  dedupe: async () => {
+    return apiClient.post<{ kept: number; removed: string[]; removed_count: number }>('/platform/workflows/dedupe');
   },
   update: async (id: string, data: { name?: string; description?: string; nodes?: any[]; edges?: any[] }) => {
     return apiClient.put<any>(`/platform/workflows/${id}`, data);

@@ -3,10 +3,10 @@
 | 字段 | 值 |
 |------|-----|
 | 文档 ID | `ONTOLOGY-PPT-SCENARIOS-2026-09` |
-| 版本 | v3.6 |
+| 版本 | v3.8 |
 | 关联 | [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_XINGYE_PPT_ANALYSIS.md`](./ONTOLOGY_XINGYE_PPT_ANALYSIS.md) · [`ONTOLOGY_OUTCOME_GOALS.md`](./ONTOLOGY_OUTCOME_GOALS.md) · [`ONTOLOGY_DEMO_PLAYBOOK.md`](./ONTOLOGY_DEMO_PLAYBOOK.md) · [`ONTOLOGY_CONNECTOR_TEMPLATES.md`](./ONTOLOGY_CONNECTOR_TEMPLATES.md) · [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md) |
 | 对标材料 | 《星邺汇捷本体平台介绍 v1.0》约第 17–21 页（场景）；产品分层约第 7 页；实施约第 14–15 页 |
-| 同步 | 2026-09：下篇路径 B / 三柱 / 建议≠权威；**v3.3 图说详解表**；**v3.4 PPT 原页对照 + 口述稿**；**v3.5 镜4 判定表**；**v3.6 §0.1.1 说明书=本体模型（四层图 + 边/动作如何建立）** |
+| 同步 | 2026-09：…；**v3.8 B4.4a 治理8步↔aiPlat 对照；⑥ OCS/闸2 + ⑦ GraphIndex 定位已竖切（禁抄材料 KPI）** |
 
 ---
 
@@ -154,7 +154,8 @@ flowchart TB
 | 三柱 | 数据=GraphIndex；逻辑=axioms / inference_rules（软）；行动=customer_action（硬）。`GET .../ontology/pillars/{domain}` + AcceptTab 速览 |
 | 建议≠权威 | `GraphInference` / 离线 OWL 审稿 → 建议；落图须 `assert_inferred_*` 或提案。未跑检查 → `status=unchecked`，`valid` 不得为 true |
 | 权限竖切 | GraphIndex ABox ACL + 角色桥（viewer/analyst/admin）；**非**企业全域 CBAC |
-| 非目标 | 运行时 HermiT/OWL 权威；建模期内置完备 OWL 推理；星邺人天数字复现 |
+| 非目标 | 运行时 HermiT/OWL 权威；建模期内置完备 OWL 推理；星邺人天数字复现；**无门禁静默扩 TBox / 宣称 RL 已上线** |
+| 在线学习 / 受控进化 | 案例库 + Action/人评反馈 → 奖励+UCB（含 `serve_count`）；高回报→提案；**默认**禁自动 apply；可选 `AIPLAT_ONTOLOGY_EDGE_AUTO_APPLY`（仅 edge + 可回滚）；ContextBus Layer1 overlay；`GET …/cases/meta` | `POST/GET .../ontology/cases*`；钩子在 `ActionRegistry`；`format_cases_for_context` |
 
 ### 0.4 PPT 原页对照（备课索引）
 
@@ -221,17 +222,6 @@ flowchart TB
   end
 ```
 
-**命名约定（上篇故障 · 强制）**
-
-| 层 | 规则 | 例子 |
-|----|------|------|
-| 说明书类 | 裸名 | `告警` `服务` `中间件` |
-| 真实层实例 | `类·专名` | `告警·查询超时` `服务·查询` `中间件·Redis主` |
-| 材料英文别名 | 只作属性/括号备注，**不当第二套节点 id** | 材料称 cast-query → 属性备注，节点仍叫 `服务·查询` |
-| 状态 | 仅用说明书「告警状态」枚举 | `待判定`（本例）；勿自造 |
-
-> 已删未入图的死类 `服务节点`（材料若出现，本篇并入 `服务`）。
-
 > **图说（一句话）**：上篇说明书词表——类 / 关系类型 / 动作类型；不含今晚具体告警实例。
 
 #### 图说（详解）· 上篇 A1 说明书词表
@@ -246,6 +236,19 @@ flowchart TB
 | **动作（右）** | 系统编码查询、疑似根因判定、下游查询、中间件/主机异常判定——描述「解题时允许对哪些对象发令」。 |
 | **本图画了什么 / 没画什么** | **有**：类型词表 + 告警状态枚举。**没有**：具体实例专名（`·` 后面那段）。实例在 A3.2。 |
 | **三层一致** | A3.2 若画出说明书没有的类名或边名，即违规；推理镜若发明第四套动作名，亦违规。 |
+
+
+**命名约定（上篇故障 · 强制）**
+
+| 层 | 规则 | 例子 |
+|----|------|------|
+| 说明书类 | 裸名 | `告警` `服务` `中间件` |
+| 真实层实例 | `类·专名` | `告警·查询超时` `服务·查询` `中间件·Redis主` |
+| 材料英文别名 | 只作属性/括号备注，**不当第二套节点 id** | 材料称 cast-query → 属性备注，节点仍叫 `服务·查询` |
+| 状态 | 仅用说明书「告警状态」枚举 | `待判定`（本例）；勿自造 |
+
+> 已删未入图的死类 `服务节点`（材料若出现，本篇并入 `服务`）。
+
 
 
 故障例关键是 **对象 + 动作 + 走图**。本篇也要求**三层一致**：A1 有的类/关系/动作，A3.2 才能画，A3.3 推理才能用。材料中的推理机名不作为本例关键路径。
@@ -620,6 +623,18 @@ flowchart TB
   end
 ```
 
+> **图说（一句话）**：上篇治理说明书——类/关系/状态河 + 材料「河五步」动作类型；不含具体表实例。
+
+#### 图说（详解）· 上篇 A4.2 治理说明书词表
+
+| 维度 | 说明 |
+|------|------|
+| **读图目的** | 与故障例同构：先定治理向类型词表，再允许画资产图与推理镜。 |
+| **怎么读** | 类 → 关系（含 `错挂`）→ 状态河五档 → 河五步（正式短名 `结构化`）。 |
+| **状态河含义** | 不是告警三态；表示资产从原料到可消费的成熟度台阶。河五步动作挂在资产上推进台阶。 |
+| **没有什么** | 没有具体表名、幽灵表实例——那些在 A4.3。 |
+
+
 **命名约定（上篇治理 · 强制）**
 
 | 层 | 规则 | 例子 |
@@ -631,16 +646,6 @@ flowchart TB
 | 关系 | 含正式类型 `错挂`；幽灵孤立只用图注虚线，不发明 `无供给边` 类型 | |
 | 动作短名 | 说明书正式名 `结构化`（材料全称「结构化/本体与图谱」仅备注） | |
 
-> **图说（一句话）**：上篇治理说明书——类/关系/状态河 + 材料「河五步」动作类型；不含具体表实例。
-
-#### 图说（详解）· 上篇 A4.2 治理说明书词表
-
-| 维度 | 说明 |
-|------|------|
-| **读图目的** | 与故障例同构：先定治理向类型词表，再允许画资产图与推理镜。 |
-| **怎么读** | 类 → 关系（含 `错挂`）→ 状态河五档 → 河五步（正式短名 `结构化`）。 |
-| **状态河含义** | 不是告警三态；表示资产从原料到可消费的成熟度台阶。河五步动作挂在资产上推进台阶。 |
-| **没有什么** | 没有具体表名、幽灵表实例——那些在 A4.3。 |
 
 
 ### A4.3 本篇模拟真实层（复杂资产图）
@@ -1659,6 +1664,42 @@ flowchart LR
 
 OCS 按域打分；**不宣称**企业全域本体建成。
 
+### B4.4a 材料「治理8步」↔ aiPlat（对外一张图）
+
+材料「场景方案」环：①元数据 → ②AI补齐 → ③语料解析 → ④本体构建 → ⑤资产目录 → ⑥数据治理 → ⑦本体查数 → ⑧智能体应用。  
+**禁止**复述材料补齐率/准确率/人天数字。
+
+```mermaid
+flowchart LR
+  s1["① 获取元数据"] --> s2["② AI补齐"]
+  s2 --> s3["③ 语料解析"]
+  s3 --> s4["④ 本体构建"]
+  s4 --> s5["⑤ 资产目录"]
+  s5 --> s6["⑥ 数据治理"]
+  s6 --> s7["⑦ 本体查数"]
+  s7 --> s8["⑧ 智能体应用"]
+  s8 -.->|反馈| s1
+```
+
+> **图说（一句话）**：与材料同构的 8 步环；aiPlat 每步用路径 A/B + 闸门落地，终点明确落到 Agent/FDE。
+
+#### 图说（详解）· 下篇 B4.4a 八步对照
+
+| 步 | 材料说法 | aiPlat 落点 | 状态 |
+|:--:|----------|-------------|------|
+| ① | 获取系统元数据 | Path B：表/CSV `table_map` · JSON · webhook；工厂可粘贴表头 | **已竖切** |
+| ② | AI 补齐元数据 | `schema-suggestions` 启发式列含义 + 抽取 LLM（建议/待审）；**非**权威补齐率产品 | **建议层竖切** |
+| ③ | 语料智能解析 | 工厂抽取待审；AcceptTab 丢幽灵/错挂（去噪） | **已竖切** |
+| ④ | 本体构建 | Path A：confirm/代码/表头 → 提案 → 批准→apply | **已竖切** |
+| ⑤ | 数据资产目录 | `mount_catalog` 等闸2；教学图种子 | **已竖切** |
+| ⑥ | 数据治理（质量/词表/价值） | `GET …/governance/quality`：OCS + data-gov 闸2 动作 + 价值页深链；**非**一体化套件 | **已竖切** |
+| ⑦ | 通过本体查数取数 | `POST …/governance/locate` 定位 + `POST …/governance/fetch` 沙箱快照（Org L5 Phase 1）；**非**直连业务库 / **非** live | **已竖切** |
+| ⑧ | 创建智能体应用 | `/workspace/agents` + FDE⑦ 验收 | **已有入口** |
+
+纪律：①–③ 可产**建议**；④ 改说明书必须闸1；⑤⑥ 写实例走闸2；⑧ 是交付终点，不是静默改 YAML。
+
+**管理端导航**：工厂 / FDE⑦ 挂治理 8 步面板 + **Org L5 面板**（`/api/platform/apps/org`）；⑦ 定位后点击可沙箱 fetch（规范路径 org connectors）。
+
 ### B4.4 已实现竖切（诚实子集）
 
 相对 B3 AcceptTab 三动作，治理竖切分散在知识工厂 / 提案门：
@@ -1669,7 +1710,14 @@ OCS 按域打分；**不宣称**企业全域本体建成。
 | 抽取 → 待审 → confirm | **已实现** | GraphIndex 回执（Path B）+ 提案入队（Path A） |
 | 本体提案 approve→apply | **已实现** | 知识工厂「批准」「应用」；`apply_proposal` 回执 |
 | 代码→类建议 | **已实现竖切** | `POST .../ontology/code-suggestions` → 提案草稿；禁自动 apply |
+| 表头/CSV→类建议 | **已实现竖切** | `POST .../ontology/schema-suggestions` → Path A 草稿；≠ Path B 写图；工厂①b |
+| 在线学习案例库 | **已实现竖切（P0+P2）** | `…/ontology/cases*`；Action 写回；奖励+UCB 检索；AcceptTab 演示 |
+| 受控自我进化 | **已实现竖切（P1+P2）** | 默认提案草稿；`EDGE_AUTO_APPLY` 仅 edge 可自动 apply+回滚；禁升格 |
 | 多表洪水筛选 / 闸2 | **已实现竖切** | AcceptTab「创建治理教学图」种 B4.3 **子集** + `mount_catalog`/`discard_ghost`；实例/属性 ACL |
+| ⑥ 质量/价值竖切 | **已实现竖切** | `GET …/governance/quality`：OCS + 闸2 动作列表 + 价值/工厂深链 |
+| ⑦ 本体定位竖切 | **已实现竖切** | `POST …/governance/locate`：GraphIndex 关键词定位（可选 GraphRAG）；非直连业务库 |
+| ⑦+ 受控取数（Org L5 P1） | **已实现竖切** | 规范入口 `POST …/org/connectors/fetch`（FDE `governance/fetch` 兼容 shim）；图锚点 + sandbox；`live` 拒绝 |
+| Org L5 P0–P4 | **已实现竖切** | OrgGoal/OrgRun/HITL/周报记忆/Fleet门禁/Runbook；客户沙箱 **stub**（`_customer_sandbox`）≠ 生产；**未**宣称 M4/全域 L5 |
 | 企业全域治理 RBAC | **未** | 竖切可演示，非全量 CBAC 产品 |
 
 **B4.3 一键种子**：AcceptTab 已种子集（主线资产/幽灵/错挂/草稿）；全图含 `DOC-流水说明` 等扩展节点仍为教学对照，非宣称全量同构。
@@ -1730,6 +1778,7 @@ cd /path/to/aiPlatform && PYTHONPATH=aiPlat-core:. .venv/bin/python -m pytest \
   aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_executable_ontology_phase12.py \
   aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_executable_ontology_phase_ae.py \
   aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_inference_suggestion_authority.py \
+  aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_ontology_case_learning.py \
   -q
 ```
 

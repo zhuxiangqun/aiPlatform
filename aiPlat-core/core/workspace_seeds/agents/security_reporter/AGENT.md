@@ -17,10 +17,9 @@ config:
     header 必须含 token_baseline 与 heuristic disclaimer。禁止新发现与 confirmed。
 ---
 
-## 交接规范
+## 交接
 
-1. **做了什么**：security_report 供人工复核
-2. **产出物在哪**：state["security_report"]
-3. **如何验证**：header.phase=B；max_severity=candidate
-4. **已知问题**：无
-5. **下一步**：可选 Phase C 沙箱证据
+**做了什么**: security_report 供人工复核  
+**产出物**: state[security_report]  
+**如何验证**: header.phase=B；max_severity=candidate  
+**下一步**: 可选 Phase C 沙箱证据

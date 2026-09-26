@@ -69,6 +69,29 @@ def _resolve_uri(namespace: str, short: str) -> str:
     return f"{namespace}{short}"
 
 
+def _normalize_process_list(raw_proc: Any) -> List[Dict[str, Any]]:
+    """Normalize processes YAML (dict or list) to list of dicts with ``id``."""
+    if isinstance(raw_proc, dict):
+        out: List[Dict[str, Any]] = []
+        for key, val in raw_proc.items():
+            if isinstance(val, dict):
+                item = dict(val)
+                item.setdefault("id", str(key))
+                out.append(item)
+            else:
+                out.append({"id": str(key), "label": str(val)})
+        return out
+    if isinstance(raw_proc, list):
+        out = []
+        for item in raw_proc:
+            if isinstance(item, dict):
+                out.append(item)
+            elif item is not None:
+                out.append({"id": str(item)})
+        return out
+    return []
+
+
 def load_ontology_from_yaml(file_path: str) -> OntologyDomain:
     """Load a domain ontology from a YAML file."""
     import yaml
@@ -161,7 +184,8 @@ def load_ontology_from_yaml(file_path: str) -> OntologyDomain:
     domain.views = dict(raw.get("views") or {})
 
     # ── Load cross-entity processes (v2.6) ──
-    domain.processes = list(raw.get("processes") or [])
+    # YAML 多为 dict（process_id → def）；list(dict) 只会得到 key 字符串，需规范化
+    domain.processes = _normalize_process_list(raw.get("processes"))
 
     # ── Load domain axioms (runtime semantic constraints) ──
     axioms_raw = raw.get("axioms") or []
@@ -197,11 +221,18 @@ def load_ontology_from_yaml(file_path: str) -> OntologyDomain:
 
 
 def list_domain_files(base_dir: str = "") -> List[str]:
-    """List available ontology domain files."""
+    """List available ontology domain files (excludes version sidecars ``*_vN``)."""
+    import re as _re
+
     d = _Path(base_dir or _os.getenv("AIPLAT_HOME", _Path.home() / ".aiplat")) / "ontologies"
     if not d.exists():
         return []
-    return sorted([f.stem for f in d.glob("*.yaml")])
+    sidecar = _re.compile(r"_v\d+$")
+    return sorted(
+        f.stem
+        for f in d.glob("*.yaml")
+        if not sidecar.search(f.stem)
+    )
 
 
 def load_all_domains(base_dir: str = "") -> Dict[str, OntologyDomain]:
@@ -263,7 +294,13 @@ def validate_ontology_yaml(yaml_text: str) -> dict:
 
 
 def save_domain_yaml(domain_id: str, yaml_text: str) -> str:
-    """Write validated YAML to ~/.aiplat/ontologies/{domain_id}.yaml. Auto-aligns YAML name field."""
+    """Write validated YAML to ~/.aiplat/ontologies/{domain_id}.yaml.
+
+    Denied unless called inside allow_live_yaml_write (apply/rollback only).
+    """
+    from core.harness.knowledge.ontology_yaml_gate import assert_live_yaml_write
+
+    assert_live_yaml_write()
     import os as _os, yaml as _yaml
     from pathlib import Path as _Path
 

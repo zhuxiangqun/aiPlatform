@@ -460,7 +460,7 @@ function collectStageOutputs(s: Record<string, any>, keys: string[]): Record<str
   for (const k of keys) {
     const v = s[k];
     if (!v || typeof v !== 'object') continue;
-    if (v.raw_output || v.handoff || v.test_results || v.bug_summary || v.header || Object.keys(v).length > 0) {
+    if (v.raw_output || v.test_results || v.bug_summary || v.header || Object.keys(v).length > 0) {
       outputs[k] = v;
     }
   }
@@ -507,25 +507,9 @@ const ProjectPanel: React.FC<{
   const [deployUrl, setDeployUrl] = useState('');
   const [deploying, setDeploying] = useState(false);
   const [deployChecked, setDeployChecked] = useState(false);
-  const [openable, setOpenable] = useState(false);
-  const [openReason, setOpenReason] = useState('');
-  const [rejectedArtifacts, setRejectedArtifacts] = useState<Array<{
-    kind: string; name: string; path: string; violations: string[]; fix_hint?: string;
-  }>>([]);
-  const [repairBusy, setRepairBusy] = useState(false);
-  const [repairExhausted, setRepairExhausted] = useState(false);
   const [fixingBugs, setFixingBugs] = useState(false);
   const [hitlStageId, setHitlStageId] = useState<string | null>(null);
   const [hitlOutputArtifact, setHitlOutputArtifact] = useState<string | null>(null);
-  const [frictionShare, setFrictionShare] = useState<{
-    signal?: string;
-    stage_id?: string;
-    message?: string;
-    needs_confirm?: boolean;
-    learning_id?: string;
-    detail?: string;
-  } | null>(null);
-  const [frictionBusy, setFrictionBusy] = useState(false);
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
   const [progressState, setProgressState] = useState<Record<string, any> | null>(null);
   const [executingSince, setExecutingSince] = useState<number | null>(null);
@@ -534,8 +518,6 @@ const ProjectPanel: React.FC<{
   const [agentName, setAgentName] = useState('');
   const [loadingHealth, setLoadingHealth] = useState(false);
   const [stageOutputs, setStageOutputs] = useState<Record<string, any> | null>(null);
-  const [bloatMetrics, setBloatMetrics] = useState<Record<string, any> | null>(null);
-  const [teamDigest, setTeamDigest] = useState<Record<string, any> | null>(null);
   const [confirmedPrd, setConfirmedPrd] = useState<Record<string, unknown> | null>(
     (project as any).confirmed_prd || null);
   const [showPrdDetail, setShowPrdDetail] = useState(false);
@@ -682,14 +664,6 @@ const ProjectPanel: React.FC<{
         const p = s.phase as string || phase;
         setPhase(p);
         setProgressState(s._progress || null);
-        if ((st as any)?.friction_share) {
-          setFrictionShare((st as any).friction_share);
-        } else if (s._friction_share_cta) {
-          setFrictionShare(s._friction_share_cta);
-        }
-        if ((st as any)?.team_digest) {
-          setTeamDigest((st as any).team_digest);
-        }
         // v3.1: Track HITL stage from Core's _hitl_stage_id and _hitl_output_artifact
         if (isHitlWaitPhase(p)) {
           const hitlId = s._hitl_stage_id as string;
@@ -727,11 +701,6 @@ const ProjectPanel: React.FC<{
         const orderedKeys = teamStages.map(s => (s as any).output_artifact).filter(Boolean);
         const keys = orderedKeys.length > 0 ? orderedKeys : ['architecture', 'code', 'test_report'];
         const outputs = collectStageOutputs(s, keys);
-        if ((s as any)._bloat_metrics && typeof (s as any)._bloat_metrics === 'object') {
-          setBloatMetrics((s as any)._bloat_metrics);
-        } else if (p === 'done' && (project as any)?.bloat_metrics) {
-          setBloatMetrics((project as any).bloat_metrics);
-        }
         if (Object.keys(outputs).length > 0) {
           if (p === 'done' || p === 'failed') {
             // Full reveal on terminal phase (no progressive hide)
@@ -778,28 +747,6 @@ const ProjectPanel: React.FC<{
       } catch { /* ignore */ }
     }, 3000);
     return () => { clearInterval(id); };
-  }, [phase, project.project_id]);
-
-  // F4: when pipeline reaches done, auto smoke once — open CTA only if healthy
-  const smokeOnDoneRef = useRef(false);
-  useEffect(() => {
-    if (phase !== 'done' || !project.project_id || smokeOnDoneRef.current) return;
-    smokeOnDoneRef.current = true;
-    (async () => {
-      try {
-        const r = await projectApi.runtimeSmoke(project.project_id, true);
-        const can = !!(r as any)?.openable;
-        setOpenable(can);
-        setOpenReason(String((r as any)?.open_reason || ''));
-        if (can) {
-          setDeployUrl(`/app/apps/${project.project_id}`);
-        } else {
-          setDeployUrl('');
-        }
-        const lr = (project as any).last_deploy_rejects;
-        if (Array.isArray(lr) && lr.length) setRejectedArtifacts(lr);
-      } catch { /* smoke optional */ }
-    })();
   }, [phase, project.project_id]);
 
   // ── Independent execution timer — keeps ticking even when state endpoint times out ──
@@ -872,24 +819,6 @@ const ProjectPanel: React.FC<{
       setPhase('team_ready');
       toast.success('PRD 已确认，团队已推荐');
     } catch (e: any) { toastGateError(e, '确认失败'); }
-    finally { setStarting(false); }
-  };
-
-  /** F1: one-click confirm → recommend → start (Done = pipeline started) */
-  const handleConfirmAndBuild = async () => {
-    if (!project.project_id) return;
-    setStarting(true);
-    try {
-      const result = await projectApi.confirmAndBuild(project.project_id);
-      const stages = (result as any)?.team?.plan_stages || [];
-      const rec = (result as any)?.team?.recommendation || {};
-      if (stages.length) setTeamStages(stages);
-      setRecommendedMode((rec.mode as string) || '');
-      setRecommendedReason((rec.reasoning as string) || '');
-      setPhase((result as any)?.phase || 'executing');
-      toast.success('已确认并启动构建');
-      onRefresh();
-    } catch (e: any) { toastGateError(e, '确认并构建失败'); }
     finally { setStarting(false); }
   };
 
@@ -967,62 +896,10 @@ const ProjectPanel: React.FC<{
     setDeploying(true);
     try {
       const result = await projectApi.deployToApp(project.project_id);
-      const rejects = (result as any)?.rejected_artifacts || [];
-      setRejectedArtifacts(rejects);
-      const canOpen = !!(result as any)?.openable;
-      setOpenable(canOpen);
-      setOpenReason(String((result as any)?.open_reason || ''));
-      if (canOpen && (result as any)?.app_url) {
-        setDeployUrl((result as any).app_url);
-        toast.success(rejects.length ? `部署完成（${rejects.length} 个契约拒绝未注册）` : '部署成功，已通过健康探测');
-      } else if ((result as any)?.status === 'error') {
-        toast.error(String((result as any)?.detail || '部署被拒绝'));
-      } else {
-        setDeployUrl('');
-        toast.warning(
-          rejects.length
-            ? `部署写入完成但不可打开：${rejects.length} 个产物未通过契约`
-            : `部署完成但健康探测未通过（${(result as any)?.open_reason || 'unhealthy'}）`
-        );
-      }
+      setDeployUrl((result as any)?.app_url || '');
+      toast.success('部署成功');
     } catch (e: any) { toastGateError(e, '部署失败'); }
     finally { setDeploying(false); }
-  };
-
-  const handleRuntimeSmoke = async () => {
-    if (!project.project_id) return;
-    try {
-      const r = await projectApi.runtimeSmoke(project.project_id, true);
-      const can = !!(r as any)?.openable;
-      setOpenable(can);
-      setOpenReason(String((r as any)?.open_reason || ''));
-      if (can) {
-        setDeployUrl(`/app/apps/${project.project_id}`);
-        toast.success('冒烟通过，可打开应用');
-      } else {
-        setDeployUrl('');
-        toast.warning(`冒烟未通过：${(r as any)?.open_reason || 'unhealthy'}`);
-      }
-    } catch (e: any) { toastGateError(e, '冒烟失败'); }
-  };
-
-  const handleAutoRepair = async () => {
-    if (!project.project_id) return;
-    setRepairBusy(true);
-    try {
-      const r = await projectApi.autoRepair(project.project_id, 2);
-      if ((r as any)?.repaired) {
-        setRepairExhausted(false);
-        toast.success('自动修复成功');
-        await handleRuntimeSmoke();
-      } else if ((r as any)?.repair_exhausted || (r as any)?.next === 'hitl') {
-        setRepairExhausted(true);
-        toast.warning('自动修复已达上限（2 轮），请人工处理或审批');
-      } else {
-        toast.warning(String((r as any)?.reason || '修复未改进'));
-      }
-    } catch (e: any) { toastGateError(e, '自动修复失败'); }
-    finally { setRepairBusy(false); }
   };
 
   const handleRollbackPrd = async () => {
@@ -1405,18 +1282,6 @@ const ProjectPanel: React.FC<{
     const orderedKeys = teamStages.map((ts: any) => ts.output_artifact).filter(Boolean);
     const keys = orderedKeys.length > 0 ? orderedKeys : ['architecture', 'code', 'test_report'];
     const outputs = collectStageOutputs(s, keys);
-    if ((s as any)._bloat_metrics && typeof (s as any)._bloat_metrics === 'object') {
-      setBloatMetrics((s as any)._bloat_metrics);
-    } else if ((p === 'done' || p === 'failed') && (project as any)?.bloat_metrics) {
-      setBloatMetrics((project as any).bloat_metrics);
-    }
-    const cta = (s as any)._friction_share_cta;
-    if (cta && typeof cta === 'object') {
-      setFrictionShare(cta);
-    }
-    if ((s as any)._team_digest && typeof (s as any)._team_digest === 'object') {
-      setTeamDigest((s as any)._team_digest);
-    }
     if (Object.keys(outputs).length > 0) {
       if (p === 'done' || p === 'failed') {
         setStageOutputs(prev => ({ ...prev, ...outputs }));
@@ -1537,12 +1402,9 @@ const ProjectPanel: React.FC<{
     setHitlOutputArtifact(null);
     setRejecting(true);
     try {
-      const rej = await projectApi.reject(project.project_id, feedback);
-      const fs = (rej as any)?.friction_share;
-      if (fs) setFrictionShare(fs);
+      await projectApi.reject(project.project_id, feedback);
       toast.success('已驳回，将重新生成');
       const st = await projectApi.getState(project.project_id);
-      if ((st as any)?.friction_share) setFrictionShare((st as any).friction_share);
       await _refreshFromState((st as any)?.state);
     } catch (e: any) {
       toastGateError(e, '驳回失败');
@@ -1565,55 +1427,6 @@ const ProjectPanel: React.FC<{
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* F-T4: friction share CTA (local learning; regenerate needs confirm) */}
-        {frictionShare && (
-          <div className="p-3 rounded border border-teal-500/40 bg-teal-500/10 text-xs space-y-2">
-            <div className="text-teal-200 font-medium">
-              {frictionShare.message || '检测到可沉淀的摩擦信号'}
-            </div>
-            {frictionShare.detail && (
-              <div className="text-teal-200/70 font-mono text-[10px] truncate">{frictionShare.detail}</div>
-            )}
-            <div className="flex gap-2 items-center">
-              {frictionShare.needs_confirm ? (
-                <button
-                  disabled={frictionBusy}
-                  onClick={async () => {
-                    if (!project.project_id) return;
-                    setFrictionBusy(true);
-                    try {
-                      const r = await projectApi.confirmFrictionShare(project.project_id, {
-                        stage_id: frictionShare.stage_id,
-                        signal: frictionShare.signal || 'regenerate_count',
-                        detail: frictionShare.detail,
-                      });
-                      if ((r as any)?.cta) setFrictionShare((r as any).cta);
-                      else setFrictionShare(null);
-                      toast.success('已写入本地经验草稿（默认不进团队仓）');
-                    } catch (e: any) {
-                      toastGateError(e, '确认失败');
-                    } finally {
-                      setFrictionBusy(false);
-                    }
-                  }}
-                  className="text-[10px] px-2 py-1 rounded bg-teal-500/30 text-teal-100 hover:bg-teal-500/40"
-                >
-                  确认沉淀
-                </button>
-              ) : (
-                <span className="text-teal-300/80">
-                  已记本地草稿{frictionShare.learning_id ? ` · ${frictionShare.learning_id}` : ''}
-                </span>
-              )}
-              <button
-                onClick={() => setFrictionShare(null)}
-                className="text-[10px] px-2 py-1 rounded text-gray-400 hover:text-gray-200"
-              >
-                关闭
-              </button>
-            </div>
-          </div>
-        )}
         {/* Progress */}
         {phase === 'done' ? (
           <div className="space-y-2">
@@ -1634,102 +1447,25 @@ const ProjectPanel: React.FC<{
                   🔀 生成合并预览（L3 增量审批）
                 </Button>
               )}
-              {(agentMode || openable) && deployUrl && (
-                <a href={deployUrl} target="_blank" rel="noreferrer" className="ml-3 text-primary underline text-xs flex items-center gap-1 inline-flex">
-                  <ExternalLink className="w-3 h-3" /> 打开应用
-                </a>
-              )}
-              {agentMode && openable && !deployUrl && (
+              {agentMode && (
                 <a href={`/app/apps/${project.project_id}`} target="_blank" rel="noreferrer" className="ml-3 text-primary underline text-xs flex items-center gap-1 inline-flex">
                   <ExternalLink className="w-3 h-3" /> 使用应用
                 </a>
               )}
-              {!openable && phase === 'done' && (
-                <span className="ml-3 text-amber-300 text-xs">不可打开（{openReason || '未探测'}）</span>
-              )}
               {!agentMode && !deployUrl && (
                 <Button variant="primary" size="sm" className="ml-3" onClick={handleDeploy} loading={deploying}>部署到 App</Button>
               )}
-              <Button variant="secondary" size="sm" className="ml-2" onClick={handleRuntimeSmoke}>健康探测</Button>
-              <Button variant="ghost" size="sm" className="ml-1" onClick={handleAutoRepair} loading={repairBusy}>
-                自动修复
-              </Button>
+              {deployUrl && (
+                <a href={deployUrl} target="_blank" rel="noreferrer" className="ml-3 text-primary underline text-xs flex items-center gap-1 inline-flex">
+                  <ExternalLink className="w-3 h-3" /> 打开应用
+                </a>
+              )}
               {!agentMode && (
                 <Button variant="ghost" size="sm" className="ml-2" onClick={handleRollbackPrd}>
                   重新编辑需求
                 </Button>
               )}
             </div>
-            {teamDigest && (
-              <div className="p-3 rounded bg-slate-500/10 border border-slate-500/30 text-xs text-slate-200 space-y-1">
-                <div className="font-semibold text-slate-100">本轮指标摘要</div>
-                <div className="text-slate-300 font-mono text-[11px]">{teamDigest.summary || '—'}</div>
-                <div className="flex flex-wrap gap-3 text-[10px] text-slate-400">
-                  <span>friction {(teamDigest.friction?.events ?? 0)}/{(teamDigest.friction?.learnings ?? 0)}</span>
-                  <span>gates {teamDigest.outcomes?.gate_events ?? 0}</span>
-                  {teamDigest.bloat?.loc != null && <span>loc {teamDigest.bloat.loc}</span>}
-                  {teamDigest.repair?.repair_exhausted && <span className="text-amber-300">repair_exhausted</span>}
-                  {teamDigest.style?.output_style && <span>style {teamDigest.style.output_style}</span>}
-                </div>
-              </div>
-            )}
-            {rejectedArtifacts.length > 0 && (
-              <div className="p-3 rounded bg-red-500/10 border border-red-500/40 text-xs space-y-1">
-                <div className="text-red-300 font-semibold">契约拒绝（未注册）· {rejectedArtifacts.length}</div>
-                {rejectedArtifacts.slice(0, 8).map((r, i) => (
-                  <div key={i} className="text-red-200/90">
-                    <span className="font-mono">{r.kind}/{r.name}</span>
-                    <span className="text-gray-400"> — {(r.violations || []).slice(0, 2).join('; ')}</span>
-                    {r.fix_hint && <div className="text-amber-200/80 pl-2">修复：{r.fix_hint}</div>}
-                  </div>
-                ))}
-              </div>
-            )}
-            {repairExhausted && (
-              <div className="p-2 rounded bg-amber-500/10 border border-amber-500/40 text-xs text-amber-200">
-                自动修复已达上限（2 轮），请人工处理或进入审批。
-              </div>
-            )}
-            {bloatMetrics && (bloatMetrics.loc != null || bloatMetrics.new_files != null) && (
-              <div className="p-3 rounded bg-slate-500/10 border border-slate-500/30 text-xs space-y-2">
-                <div className="text-slate-300 font-semibold">生成膨胀（相对上次构建）</div>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded bg-dark-hover/50 p-2">
-                    <div className="text-gray-500 text-[10px]">LOC</div>
-                    <div className="text-gray-100 font-mono text-sm">{bloatMetrics.loc ?? 0}</div>
-                    {bloatMetrics.vs_baseline?.has_baseline && (
-                      <div className={`text-[10px] ${(bloatMetrics.vs_baseline.delta_loc || 0) > 0 ? 'text-amber-400' : 'text-green-400'}`}>
-                        {(bloatMetrics.vs_baseline.delta_loc || 0) > 0 ? '+' : ''}{bloatMetrics.vs_baseline.delta_loc ?? 0}
-                      </div>
-                    )}
-                  </div>
-                  <div className="rounded bg-dark-hover/50 p-2">
-                    <div className="text-gray-500 text-[10px]">新文件</div>
-                    <div className="text-gray-100 font-mono text-sm">{bloatMetrics.new_files ?? 0}</div>
-                    {bloatMetrics.vs_baseline?.has_baseline && (
-                      <div className={`text-[10px] ${(bloatMetrics.vs_baseline.delta_new_files || 0) > 0 ? 'text-amber-400' : 'text-green-400'}`}>
-                        {(bloatMetrics.vs_baseline.delta_new_files || 0) > 0 ? '+' : ''}{bloatMetrics.vs_baseline.delta_new_files ?? 0}
-                      </div>
-                    )}
-                  </div>
-                  <div className="rounded bg-dark-hover/50 p-2">
-                    <div className="text-gray-500 text-[10px]">新依赖</div>
-                    <div className="text-gray-100 font-mono text-sm">{bloatMetrics.new_deps ?? 0}</div>
-                    {bloatMetrics.vs_baseline?.has_baseline && (
-                      <div className={`text-[10px] ${(bloatMetrics.vs_baseline.delta_new_deps || 0) > 0 ? 'text-amber-400' : 'text-green-400'}`}>
-                        {(bloatMetrics.vs_baseline.delta_new_deps || 0) > 0 ? '+' : ''}{bloatMetrics.vs_baseline.delta_new_deps ?? 0}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {bloatMetrics.loc_non_import != null && (
-                  <div className="text-gray-500 text-[10px]">
-                    非 import LOC：{bloatMetrics.loc_non_import}
-                    {!bloatMetrics.vs_baseline?.has_baseline && ' · 下次重建可对照本次基线'}
-                  </div>
-                )}
-              </div>
-            )}
             {/* Health Report Card — auto-loads when pipeline done */}
             {healthReport ? (
               <div className="p-3 rounded bg-blue-500/5 border border-blue-500/30 text-xs space-y-1">
@@ -1937,18 +1673,8 @@ const ProjectPanel: React.FC<{
             <h3 className="text-xs font-semibold text-gray-400 uppercase">团队配置</h3>
             {recommendedMode && (
               <div className="flex items-center gap-1.5 text-[10px]">
-                <span className={`px-1.5 py-0.5 rounded ${
-                  recommendedMode === 'agent'
-                    ? 'bg-purple-500/20 text-purple-300'
-                    : recommendedMode === 'hybrid'
-                      ? 'bg-teal-500/20 text-teal-300'
-                      : 'bg-blue-500/20 text-blue-300'
-                }`}>
-                  {recommendedMode === 'agent'
-                    ? 'Agent 应用模式'
-                    : recommendedMode === 'hybrid'
-                      ? 'Hybrid（Agent + 代码）'
-                      : '代码应用模式'}
+                <span className={`px-1.5 py-0.5 rounded ${recommendedMode === 'agent' ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/20 text-blue-300'}`}>
+                  {recommendedMode === 'agent' ? '🤖 Agent 应用模式' : '💻 代码应用模式'}
                 </span>
                 {recommendedReason && <span className="text-gray-500 truncate max-w-[300px]">{recommendedReason.slice(0, 80)}</span>}
               </div>
@@ -2309,37 +2035,13 @@ const ProjectPanel: React.FC<{
           )}
         </div>
 
-        {/* F1 sticky checklist */}
-        <div className="rounded border border-dark-border bg-dark-hover/40 px-3 py-2 text-[11px] text-gray-300">
-          <div className="font-semibold text-gray-200 mb-1">进度</div>
-          <ol className="list-decimal list-inside space-y-0.5">
-            <li className={project.description ? 'text-green-400' : ''}>描述需求 {project.description ? '✓' : ''}</li>
-            <li className={prdReady ? 'text-green-400' : phase === 'dialogue' ? 'text-amber-300' : ''}>
-              PRD 闭合 {prdReady ? '✓' : '← 在对话中完善'}
-            </li>
-            <li className={phase === 'executing' || phase === 'done' || isHitlWaitPhase(phase) || phase === 'team_ready' ? 'text-green-400' : ''}>
-              确认并构建 {['executing', 'done', 'team_ready'].includes(phase) || isHitlWaitPhase(phase) ? '✓' : ''}
-            </li>
-            <li className={isHitlWaitPhase(phase) ? 'text-amber-300' : phase === 'done' ? 'text-green-400' : ''}>
-              审批 {isHitlWaitPhase(phase) ? '← 当前' : phase === 'done' ? '✓' : ''}
-            </li>
-            <li className={deployUrl ? 'text-green-400' : ''}>部署/打开 {deployUrl ? '✓' : ''}</li>
-          </ol>
-          <div className="mt-1 text-gray-500">
-            下一步：{!prdReady ? '继续对话直到 PRD 闭合' : phase === 'dialogue' ? '点击「确认并构建」' : isHitlWaitPhase(phase) ? '审批当前阶段' : deployUrl ? '打开应用' : '等待构建完成'}
-          </div>
-        </div>
-
         {/* Actions — show for team_ready / done / failed so user can always rebuild */}
         <div className="flex flex-wrap gap-2">
           {!prdReady && phase === 'dialogue' && teamStages.length === 0 && (
             <Button variant="secondary" size="sm" onClick={handleRecommend} loading={recommending}>AI 推荐团队</Button>
           )}
           {prdReady && phase === 'dialogue' && (
-            <>
-              <Button variant="primary" size="sm" onClick={handleConfirmAndBuild} loading={starting}>确认并构建</Button>
-              <Button variant="secondary" size="sm" onClick={handleConfirm} loading={starting}>仅确认需求</Button>
-            </>
+            <Button variant="primary" size="sm" onClick={handleConfirm} loading={starting}>确认需求</Button>
           )}
           {(phase === 'team_ready' || phase === 'done' || phase === 'failed' || isHitlWaitPhase(phase)) && (
             <Button variant="primary" size="sm" onClick={handleStart} loading={starting}>{runHistory.length > 0 ? '重新构建' : '启动构建'}</Button>
@@ -2546,25 +2248,12 @@ const ProjectPanel: React.FC<{
                 return null;
               })();
               const bugCount = testReportParsed?.bug_summary?.total_bugs || testReportParsed?.bug_summary?.bugs?.length || 0;
-              const handoff = (val as any)?.handoff && typeof (val as any).handoff === 'object'
-                ? (val as any).handoff as {
-                    summary?: string;
-                    artifact_ref?: string;
-                    verify?: string;
-                    known_issues?: string[];
-                    next?: string;
-                  }
-                : null;
-              const hasHandoff = !!(handoff && (
-                handoff.summary || handoff.next || handoff.verify
-                || (Array.isArray(handoff.known_issues) && handoff.known_issues.length > 0)
-              ));
 
               return (
                 <React.Fragment key={key}>
                   <details className="text-xs rounded border border-dark-border bg-dark-hover/30">
                   <summary className="p-2 cursor-pointer text-gray-300 font-medium flex items-center justify-between">
-                    <span>{label} ({typeof rw === 'string' ? rw.length : 0} 字符{elapsed ? ` · ⏱ ${elapsed}s` : ''}{summary ? ' · ' + summary : ''}{hasHandoff ? ' · 交接' : ''})</span>
+                    <span>{label} ({typeof rw === 'string' ? rw.length : 0} 字符{elapsed ? ` · ⏱ ${elapsed}s` : ''}{summary ? ' · ' + summary : ''})</span>
                     <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                       {bugCount > 0 && (
                         <button onClick={e => { e.preventDefault(); handleFixBugs(); }}
@@ -2572,35 +2261,6 @@ const ProjectPanel: React.FC<{
                           className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 hover:text-blue-200 transition-colors">
                           {fixingBugs ? <Loader2 className="w-3 h-3 animate-spin inline mr-0.5" /> : <Wrench className="w-3 h-3 inline mr-0.5" />}
                           一键修复 ({bugCount} Bug)
-                        </button>
-                      )}
-                      {hasHandoff && (handoff?.next || (handoff?.known_issues?.length ?? 0) > 0) && (
-                        <button
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            if (!project.project_id || !matchedStage) return;
-                            const sid = (matchedStage as any).id
-                              || (matchedStage as any).agent_id
-                              || key;
-                            try {
-                              const rr = await projectApi.regenerateStage(
-                                project.project_id,
-                                sid,
-                                '按交接包 known_issues / next 修复后重新生成',
-                              );
-                              if ((rr as any)?.friction_share) {
-                                setFrictionShare((rr as any).friction_share);
-                              }
-                              toast.success('已按交接包上下文重新生成');
-                              setPhase('executing');
-                              onRefresh();
-                            } catch (err: any) {
-                              toastGateError(err, '重新生成失败');
-                            }
-                          }}
-                          className="text-[10px] px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 hover:bg-teal-500/30 transition-colors"
-                        >
-                          按交接重做
                         </button>
                       )}
                       {rw && (
@@ -2629,33 +2289,6 @@ const ProjectPanel: React.FC<{
                       )}
                     </div>
                   </summary>
-                  {hasHandoff && handoff && (
-                    <div className="px-2 py-1.5 border-t border-dark-border bg-teal-500/5 space-y-1 text-[10px] text-gray-300">
-                      <div className="text-teal-300/90 font-semibold">阶段交接</div>
-                      {handoff.summary && (
-                        <div><span className="text-gray-500">做了什么：</span>{handoff.summary}</div>
-                      )}
-                      {handoff.artifact_ref && (
-                        <div><span className="text-gray-500">产物：</span><code className="text-gray-400">{handoff.artifact_ref}</code></div>
-                      )}
-                      {handoff.verify && (
-                        <div><span className="text-gray-500">如何验证：</span>{handoff.verify}</div>
-                      )}
-                      {Array.isArray(handoff.known_issues) && handoff.known_issues.length > 0 && (
-                        <div>
-                          <span className="text-amber-400/90">已知问题：</span>
-                          <ul className="list-disc pl-4 text-amber-200/80">
-                            {handoff.known_issues.slice(0, 5).map((issue, ii) => (
-                              <li key={ii}>{issue}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {handoff.next && (
-                        <div><span className="text-teal-300/80">下一步：</span>{handoff.next}</div>
-                      )}
-                    </div>
-                  )}
                   <div className="p-2 max-h-72 overflow-y-auto border-t border-dark-border text-gray-300 text-xs max-w-none">
                     {qaParsed ? (
                       <table className="w-full text-[10px] border-collapse">
@@ -2990,22 +2623,16 @@ const ProjectPanel: React.FC<{
   );
 };
 
-export type FactoryEntryMode = 'quick' | 'chat' | 'advanced';
-
 // ── Main Factory Page ──
-const FactoryPage: React.FC<{ entryMode?: FactoryEntryMode }> = ({ entryMode = 'advanced' }) => {
+const FactoryPage: React.FC = () => {
   const nav = useNavigate();
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [deployedApps, setDeployedApps] = useState<any[]>([]);
 	const [loadingApps, setLoadingApps] = useState(true);
 	const [projectStates, setProjectStates] = useState<Record<string, string>>({});
 	const [projectPassRates, setProjectPassRates] = useState<Record<string, number>>({});
-	const [projectHopRates, setProjectHopRates] = useState<Record<string, { n: number; rate: number; ok?: boolean; blockers?: string[] }>>({});
 	const [desc, setDesc] = useState('');
 	const [appName, setAppName] = useState('');
-  const [factoryProfile, setFactoryProfile] = useState<'standard' | 'demo'>('standard');
-  const [outputStyle, setOutputStyle] = useState<'default' | 'adhd'>('default');
-  const [factoryMode, setFactoryMode] = useState<'auto' | 'agent' | 'code' | 'hybrid'>('auto');
   const [creating, setCreating] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
   const [selectedApp, setSelectedApp] = useState<string>('');
@@ -3019,7 +2646,6 @@ const FactoryPage: React.FC<{ entryMode?: FactoryEntryMode }> = ({ entryMode = '
 	        // ── v3.1: fetch real-time pipeline phase from Core ──
 	        const states: Record<string, string> = {};
 	        const rates: Record<string, number> = {};
-	        const hops: Record<string, { n: number; rate: number; ok?: boolean; blockers?: string[] }> = {};
 	        await Promise.all(p.projects.map(async (prj: ProjectItem) => {
 	          try {
 	            const st = await projectApi.getState(prj.project_id);
@@ -3032,49 +2658,18 @@ const FactoryPage: React.FC<{ entryMode?: FactoryEntryMode }> = ({ entryMode = '
 	                if (trj.meta?.pass_rate != null) rates[prj.project_id] = trj.meta.pass_rate;
 	              } catch {}
 	            }
-              // Prefer list-card pass_rate (avoids N+1 when run already finished)
-              if (rates[prj.project_id] == null) {
-                const latest = Array.isArray(prj.runs) && prj.runs.length
-                  ? prj.runs[prj.runs.length - 1]
-                  : null;
-                if (latest?.finished_at && latest.pass_rate != null) {
-                  const pr = Number(latest.pass_rate);
-                  if (Number.isFinite(pr)) {
-                    rates[prj.project_id] = pr <= 1 ? pr * 100 : pr;
-                  }
-                }
-              }
               // Fallback: last persisted true-test report (state may drop test_report after re-run)
               if (rates[prj.project_id] == null) {
                 try {
                   const last = await projectApi.getLastTestReport(prj.project_id);
-                  if (last) {
-                    const meta = (last as any)?.meta || (last as any)?.report?.meta;
-                    if (meta?.pass_rate != null) rates[prj.project_id] = meta.pass_rate;
-                  }
-                } catch { /* network/auth — ignore */ }
+                  const meta = (last as any)?.meta || (last as any)?.report?.meta;
+                  if (meta?.pass_rate != null) rates[prj.project_id] = meta.pass_rate;
+                } catch { /* no report yet */ }
               }
-              try {
-                const promo = await projectApi.getPromotion(prj.project_id);
-                const hn = Number((promo as any)?.hops?.effective_n ?? (promo as any)?.hops?.n_runs ?? 0);
-                const hr = Number((promo as any)?.hops?.effective_success_rate ?? 0);
-                const blockers = Array.isArray((promo as any)?.blockers)
-                  ? ((promo as any).blockers as string[]).slice(0, 3)
-                  : [];
-                if (hn > 0 || blockers.length > 0 || (promo as any)?.ok === true) {
-                  hops[prj.project_id] = {
-                    n: hn,
-                    rate: hr,
-                    ok: Boolean((promo as any)?.ok),
-                    blockers,
-                  };
-                }
-              } catch { /* no hops yet */ }
 	          } catch { /* skip */ }
 	        }));
 	        setProjectStates(states);
 	        if (Object.keys(rates).length > 0) setProjectPassRates(rates);
-	        setProjectHopRates(hops);
 	      }
     } catch { /* keep existing state, retry on next loadAll */ }
     try {
@@ -3116,17 +2711,10 @@ const FactoryPage: React.FC<{ entryMode?: FactoryEntryMode }> = ({ entryMode = '
     if (!desc.trim()) { toast.warning('请输入应用描述'); return; }
     setCreating(true);
     try {
-      const project = await projectApi.create({
-        name: desc.trim().slice(0, 30) || '新项目',
-        description: desc.trim(),
-        app_name: appName.trim() || undefined,
-        factory_profile: factoryProfile,
-        output_style: outputStyle,
-        factory_mode: factoryMode === 'auto' ? '' : factoryMode,
-      });
+      const project = await projectApi.create({ name: desc.trim().slice(0, 30) || '新项目', description: desc.trim(), app_name: appName.trim() || undefined });
       setDesc('');
       setAppName('');
-      toast.success(entryMode === 'quick' ? '项目已创建，请在对话中闭合 PRD 后点「确认并构建」' : '项目已创建');
+      toast.success('项目已创建');
       setSelectedProject(project);
       loadAll();
     } catch (e) { toastGateError(e, '创建失败'); }
@@ -3179,52 +2767,8 @@ const FactoryPage: React.FC<{ entryMode?: FactoryEntryMode }> = ({ entryMode = '
           placeholder="应用英文名（可选，如 video_parser）"
           className="mb-3 w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-blue-500/50"
         />
-        <div className="flex flex-wrap gap-4 mb-3 text-xs text-gray-400">
-          <label className="flex items-center gap-2">
-            应用模式
-            <select
-              value={factoryMode}
-              onChange={e => setFactoryMode(e.target.value as 'auto' | 'agent' | 'code' | 'hybrid')}
-              className="bg-dark-bg border border-dark-border rounded px-2 py-1 text-gray-200"
-            >
-              <option value="auto">auto（LLM 判断）</option>
-              <option value="agent">agent（对话/编排）</option>
-              <option value="code">code（API/服务）</option>
-              <option value="hybrid">hybrid（Agent + 代码）</option>
-            </select>
-          </label>
-          <label className="flex items-center gap-2">
-            HITL 档
-            <select
-              value={factoryProfile}
-              onChange={e => setFactoryProfile(e.target.value as 'standard' | 'demo')}
-              className="bg-dark-bg border border-dark-border rounded px-2 py-1 text-gray-200"
-              title="生产默认 standard（三闸）；demo 仅演示轻审批"
-            >
-              <option value="standard">standard（生产三闸，默认）</option>
-              <option value="demo">demo（轻审批，仅演示）</option>
-            </select>
-          </label>
-          {factoryProfile === 'demo' && (
-            <span className="text-amber-400/90 text-xs">demo 会减弱中间 HITL，勿当生产门禁</span>
-          )}
-          <label className="flex items-center gap-2">
-            输出样式
-            <select
-              value={outputStyle}
-              onChange={e => setOutputStyle(e.target.value as 'default' | 'adhd')}
-              className="bg-dark-bg border border-dark-border rounded px-2 py-1 text-gray-200"
-            >
-              <option value="default">default</option>
-              <option value="adhd">adhd（行动优先）</option>
-            </select>
-          </label>
-          {entryMode !== 'advanced' && (
-            <span className="text-gray-500">入口：{entryMode}</span>
-          )}
-        </div>
         <Button variant="primary" onClick={create} loading={creating} icon={<Plus className="w-4 h-4" />}>
-          {entryMode === 'quick' ? '创建并开始对话' : '创建项目'}
+          开始构建
         </Button>
       </motion.div>
 
@@ -3314,27 +2858,13 @@ const FactoryPage: React.FC<{ entryMode?: FactoryEntryMode }> = ({ entryMode = '
                   </div>
                 )}
                 {status.phase === 'done' && (
-                  <div className="flex items-center gap-2 pt-2 border-t border-dark-border flex-wrap">
+                  <div className="flex items-center gap-2 pt-2 border-t border-dark-border">
                     <span className="text-[10px] text-green-400 flex items-center gap-1">
                        <CheckCircle className="w-3 h-3" />
                        {passRate != null && (hasLiveRate || passRate > 0)
                          ? `通过率 ${Number(passRate).toFixed(0)}%`
                          : '暂无测真通过率'}
                     </span>
-                    {projectHopRates[p.project_id] != null && (
-                      <span
-                        className={`text-[10px] ${projectHopRates[p.project_id].ok ? 'text-emerald-400' : 'text-sky-400'}`}
-                        title={
-                          projectHopRates[p.project_id].ok
-                            ? '跑通晋升门：已通过'
-                            : `跑通晋升门阻塞：${(projectHopRates[p.project_id].blockers || []).join('；') || '未满足四维'}`
-                        }
-                      >
-                        hop {(projectHopRates[p.project_id].rate * 100).toFixed(0)}%
-                        ·n={projectHopRates[p.project_id].n}
-                        {projectHopRates[p.project_id].ok ? ' ·晋升✓' : ' ·晋升✗'}
-                      </span>
-                    )}
                     <button onClick={async (e) => {
                       e.stopPropagation();
                       try {

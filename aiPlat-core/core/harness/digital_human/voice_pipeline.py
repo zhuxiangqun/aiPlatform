@@ -35,6 +35,15 @@ from typing import AsyncIterator, Dict, Optional, Tuple
 logger = logging.getLogger("aiplat.digital_human")
 
 
+def _agent_timeout_sec() -> float:
+    """LLM+RAG budget for digital-human turns (env-overridable)."""
+    try:
+        return max(15.0, float(os.getenv("AIPLAT_DIGITAL_HUMAN_TIMEOUT_SEC", "90")))
+    except Exception:
+        return 90.0
+
+
+
 
 # Cache Whisper model to avoid reloading per request
 
@@ -171,6 +180,7 @@ async def generate_answer(text: str, page_context = "", session_id: str = "digit
         return "", b""
 
     import asyncio as _aio
+    answer = ""
 
     try:
 
@@ -214,7 +224,7 @@ async def generate_answer(text: str, page_context = "", session_id: str = "digit
                         model=_model,
                         temperature=0.4,
                         max_tokens=2000,
-                        timeout=30,
+                        timeout=int(_agent_timeout_sec()),
                         max_retries=2,
                         metadata={"name": "materials_chat", "agent_type": "materials_chat"},
                     ),
@@ -260,7 +270,7 @@ async def generate_answer(text: str, page_context = "", session_id: str = "digit
 
             try:
 
-                result = await _aio.wait_for(agent.execute(ctx), timeout=30.0)
+                result = await _aio.wait_for(agent.execute(ctx), timeout=_agent_timeout_sec())
 
                 if result.success:
 
@@ -276,7 +286,7 @@ async def generate_answer(text: str, page_context = "", session_id: str = "digit
 
                 answer = "抱歉，处理超时了，请稍后再试。"
 
-                logger.warning("Agent execution timed out after 30s")
+                logger.warning("Agent execution timed out after %.0fs", _agent_timeout_sec())
 
 
 
@@ -288,13 +298,14 @@ async def generate_answer(text: str, page_context = "", session_id: str = "digit
 
 
 
-    # Generate TTS audio
-
-    from core.harness.syscalls.tts import sys_tts_generate
-
-    audio = await sys_tts_generate(answer)
-
-
+    # Generate TTS audio (bounded so a slow Piper load cannot block the turn forever)
+    audio = b""
+    try:
+        import asyncio as _aio_tts
+        from core.harness.syscalls.tts import sys_tts_generate
+        audio = await _aio_tts.wait_for(sys_tts_generate(answer), timeout=20.0)
+    except Exception:
+        logger.warning("TTS failed or timed out — returning text-only answer", exc_info=True)
 
     # A: Collect trajectory for fine-tuning
 
@@ -401,20 +412,20 @@ async def voice_chat_handler(websocket, session_id: str = "digital_human"):
 
                 user_text = msg.get("data", "")
 
+                try:
+                    await websocket.send_text(json.dumps({"type": "status", "data": "thinking"}))
+                except Exception:  # noqa: cleanup-best-effort
+                    pass
+
                 answer, audio = await generate_answer(user_text, page_context, session_id=conn_session, page_data=conn_page_data)
 
+                # Send text immediately so UI unlocks even if audio is empty
                 resp = {
-
                     "type": "answer",
-
                     "text": answer,
-
                     "audio": base64.b64encode(audio).decode() if audio else "",
-
-                    "format": "wav",  # P1-3: TTS 实际输出格式（Piper WAV），前端按此设置播放 MIME
-
+                    "format": "wav",
                 }
-
                 await websocket.send_text(json.dumps(resp))
 
 
@@ -432,21 +443,17 @@ async def voice_chat_handler(websocket, session_id: str = "digital_human"):
                     await websocket.send_text(json.dumps({"type": "text", "data": text}))
 
                     if text:
-
+                        try:
+                            await websocket.send_text(json.dumps({"type": "status", "data": "thinking"}))
+                        except Exception:  # noqa: cleanup-best-effort
+                            pass
                         answer, audio = await generate_answer(text, page_context, session_id=conn_session, page_data=conn_page_data)
-
                         resp = {
-
                             "type": "answer",
-
                             "text": answer,
-
                             "audio": base64.b64encode(audio).decode() if audio else "",
-
-                            "format": "wav",  # P1-3: TTS 实际输出格式（Piper WAV）
-
+                            "format": "wav",
                         }
-
                         await websocket.send_text(json.dumps(resp))
 
 

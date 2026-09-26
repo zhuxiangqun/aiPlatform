@@ -382,7 +382,10 @@ async def get_layer_trace(
 
     # Priority: execution_id -> trace, trace_id -> trace, else list traces
     if execution_id:
-        trace = await core_client.get_trace_by_execution(execution_id)
+        try:
+            trace = await core_client.get_trace_by_execution(execution_id)
+        except Exception as e:
+            raise HTTPException(status_code=404, detail=f"Trace not found for execution {execution_id}: {e}") from e
         return {"layer": "core", "supported": True, "trace": trace, "mode": "by_execution_id", "execution_id": execution_id}
 
     if trace_id:
@@ -1380,29 +1383,40 @@ async def get_layer_links(
 
     resolved_trace_id = trace_id
     resolved_run_id = run_id or graph_run_id
+    healed_trace = None
 
     if execution_id:
-        t = await core_client.get_trace_by_execution(execution_id)
-        resolved_trace_id = t.get("trace_id") if isinstance(t, dict) else resolved_trace_id
+        # Workspace agents may only have agent_executions.trace_id; core heals traces row.
+        try:
+            t = await core_client.get_trace_by_execution(execution_id)
+            if isinstance(t, dict):
+                healed_trace = t
+                resolved_trace_id = t.get("trace_id") or resolved_trace_id
+        except Exception:
+            healed_trace = None
 
     run = None
     lineage = []
     if resolved_run_id:
-        run = await core_client.get_graph_run(resolved_run_id)
-        # Prefer explicit column trace_id, fallback to metadata.trace_id
-        resolved_trace_id = run.get("trace_id") or ((run.get("initial_state") or {}).get("metadata") or {}).get("trace_id") or resolved_trace_id
-        # lineage chain (best effort)
-        cur = run
-        for _ in range(max(0, int(lineage_depth))):
-            parent = cur.get("parent_run_id") if isinstance(cur, dict) else None
-            if not parent:
-                break
-            try:
-                parent_run = await core_client.get_graph_run(parent)
-                lineage.append(parent_run)
-                cur = parent_run
-            except Exception:
-                break
+        try:
+            run = await core_client.get_graph_run(resolved_run_id)
+        except Exception:
+            run = None
+        if isinstance(run, dict):
+            # Prefer explicit column trace_id, fallback to metadata.trace_id
+            resolved_trace_id = run.get("trace_id") or ((run.get("initial_state") or {}).get("metadata") or {}).get("trace_id") or resolved_trace_id
+            # lineage chain (best effort)
+            cur = run
+            for _ in range(max(0, int(lineage_depth))):
+                parent = cur.get("parent_run_id") if isinstance(cur, dict) else None
+                if not parent:
+                    break
+                try:
+                    parent_run = await core_client.get_graph_run(parent)
+                    lineage.append(parent_run)
+                    cur = parent_run
+                except Exception:
+                    break
 
     trace = None
     executions = None
@@ -1410,12 +1424,18 @@ async def get_layer_links(
     if resolved_trace_id:
         try:
             trace = await core_client.get_trace(resolved_trace_id)
-            if not include_spans and isinstance(trace, dict) and "spans" in trace:
-                # 默认不返回 spans，避免 payload 过大；需要时由 include_spans=true 打开
-                trace = {**trace}
-                trace.pop("spans", None)
         except Exception:
             trace = None
+        if not trace and healed_trace:
+            trace = healed_trace
+        elif include_spans and healed_trace and isinstance(trace, dict):
+            # get_trace_by_execution may attach syscall-derived spans that spans table lacks
+            if not (trace.get("spans") or []) and (healed_trace.get("spans") or []):
+                trace = {**trace, "spans": healed_trace.get("spans")}
+        if not include_spans and isinstance(trace, dict) and "spans" in trace:
+            # 默认不返回 spans，避免 payload 过大；需要时由 include_spans=true 打开
+            trace = {**trace}
+            trace.pop("spans", None)
         try:
             executions = await core_client.list_executions_by_trace(resolved_trace_id, limit=limit, offset=offset)
         except Exception:
@@ -1424,6 +1444,8 @@ async def get_layer_links(
             graph_runs = await core_client.list_graph_runs(limit=limit, offset=offset, trace_id=resolved_trace_id)
         except Exception:
             graph_runs = None
+    elif healed_trace:
+        trace = healed_trace if include_spans else {k: v for k, v in healed_trace.items() if k != "spans"}
 
     return {
         "layer": "core",

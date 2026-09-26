@@ -113,6 +113,7 @@ const ObservabilityDashboard = lazy(() => import('./pages/Diagnostics/Observabil
 const KnowledgeOverview = lazy(() => import('./pages/Knowledge/KnowledgeOverview'));
 const BusinessOntologyShell = lazy(() => import('./pages/Knowledge/BusinessOntologyShell'));
 const KnowledgeLibraryShell = lazy(() => import('./pages/Knowledge/KnowledgeLibraryShell'));
+const OrgPilotPage = lazy(() => import('./pages/Knowledge/OrgPilotPage'));
 const DocsViewer = lazy(() => import('./pages/Docs/DocsViewer'));
 const GovernanceDashboard = lazy(() => import('./pages/Governance'));
 const CapabilitiesAdmin = lazy(() => import('./pages/Admin/Capabilities'));
@@ -158,6 +159,7 @@ const router = createBrowserRouter([
       { path: 'knowledge/overview', element: withSuspense(KnowledgeOverview) },
       { path: 'knowledge/business', element: withSuspense(BusinessOntologyShell) },
       { path: 'knowledge/library', element: withSuspense(KnowledgeLibraryShell) },
+      { path: 'org/pilot', element: withSuspense(OrgPilotPage) },
       { path: 'knowledge-factory', element: <Navigate to="/knowledge/business?tab=factory" replace /> },
       { path: 'docs', element: withSuspense(DocsViewer) },
       { path: 'ontology-editor', element: <Navigate to="/knowledge/business?tab=editor" replace /> },

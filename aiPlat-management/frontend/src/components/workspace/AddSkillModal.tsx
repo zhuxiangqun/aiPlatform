@@ -1,17 +1,20 @@
 import React, { useMemo, useState } from 'react';
-import { workspaceSkillApi, SKILL_CATEGORIES as SKILL_CAT_NAMES } from '../../services';
+import {
+  workspaceSkillApi,
+  SKILL_CATEGORY_OPTIONS,
+  SKILL_CATEGORY_HELP,
+  diagnosticsApi,
+} from '../../services';
 import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
-import { diagnosticsApi } from '../../services';
 import SkillWizardV2Modal, { type SkillWizardV2Value } from './SkillWizardV2Modal';
 import PromptDiffModal from './PromptDiffModal';
+import AssetBoundaryHint from './AssetBoundaryHint';
 
 interface AddSkillModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
-
-const SKILL_CATEGORIES = SKILL_CAT_NAMES.map(v => ({ value: v, label: v }));
 
 const SKILL_TEMPLATES: Record<
   string,
@@ -89,6 +92,7 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
   const [category, setCategory] = useState('general');
   const [description, setDescription] = useState('');
   const [skillKind, setSkillKind] = useState<'rule' | 'executable'>('rule');
+  const [executionType, setExecutionType] = useState<'prompt' | 'handler' | 'python_class'>('prompt');
   const [triggerText, setTriggerText] = useState('');
   const [permissionsText, setPermissionsText] = useState('["llm:generate"]');
   const [configText, setConfigText] = useState('');
@@ -122,7 +126,7 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
     }
   }, [sourceMode]);
 
-  const categoryOptions = useMemo(() => SKILL_CATEGORIES, []);
+  const categoryOptions = useMemo(() => SKILL_CATEGORY_OPTIONS, []);
 
   const handleAiFill = async () => {
     if (!name.trim() || !description.trim()) return;
@@ -134,6 +138,15 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
       setDescription(res.description || description);
       setCategory(res.category || 'general');
       setSkillKind((res.skill_kind === 'executable' ? 'executable' : 'rule') as any);
+      const et = (res as any).execution_type;
+      if (et === 'handler' || et === 'python_class' || et === 'prompt') {
+        setExecutionType(et);
+        setSkillKind(et === 'prompt' ? 'rule' : 'executable');
+      } else if (res.skill_kind === 'executable') {
+        setExecutionType('handler');
+      } else {
+        setExecutionType('prompt');
+      }
       setTriggerText(JSON.stringify(res.trigger_conditions || [], null, 2));
       setPermissionsText(JSON.stringify(res.permissions || [], null, 2));
       setInputSchemaText(JSON.stringify(res.input_schema || {}, null, 2));
@@ -183,7 +196,9 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
         } catch { setConfigText(JSON.stringify({ timeout_seconds: res.timeout }, null, 2)); }
       }
       if (res.execution_type) {
-        setSkillKind(res.execution_type === 'handler' ? 'executable' : 'rule');
+        const et = res.execution_type as string;
+        setExecutionType(et === 'handler' || et === 'python_class' ? et : 'prompt');
+        setSkillKind(et === 'handler' || et === 'python_class' ? 'executable' : 'rule');
       }
       setImportMeta({
         tools: res.tools || [],
@@ -282,6 +297,7 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
         category,
         description: description || '',
         skill_kind: skillKind,
+        execution_type: executionType,
         ...(permissions ? { permissions } : {}),
         ...(trigger_conditions.length > 0 ? { trigger_conditions } : {}),
         config,
@@ -289,7 +305,7 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
         output_schema,
         template: category,
         sop: sopText || '',
-        metadata: importMeta,
+        metadata: { ...importMeta, execution_type: executionType, skill_kind: skillKind },
       } as any);
 
       toast.success('已创建');
@@ -313,6 +329,7 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
       setCategory('general');
       setDescription('');
       setSkillKind('rule');
+      setExecutionType('prompt');
       setTriggerText('');
       setPermissionsText('["llm:generate"]');
       setConfigText('');
@@ -344,6 +361,7 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
         </>
       }
     >
+      <AssetBoundaryHint kind="skill" className="mb-3" />
       <label className="mb-3 flex items-center gap-2 text-sm text-gray-400">
         <input type="checkbox" checked={autoSmoke} onChange={(e) => setAutoSmoke(e.target.checked)} />
         创建后自动运行全链路冒烟（会创建/清理资源）
@@ -443,6 +461,14 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
               }}
               options={categoryOptions}
             />
+            <div className="text-xs text-gray-500 mt-1">
+              分类只用于列表筛选与推荐，不是权限。内容产出选 generation；拿不准选 general。
+            </div>
+            {SKILL_CATEGORY_HELP[category as keyof typeof SKILL_CATEGORY_HELP] && (
+              <div className="text-xs text-gray-400 mt-0.5">
+                当前：{SKILL_CATEGORY_HELP[category as keyof typeof SKILL_CATEGORY_HELP]}
+              </div>
+            )}
           </div>
           {sourceMode === 'manual' && (
             <Button variant="secondary" onClick={() => applyTemplate(category)} disabled={loading}>
@@ -456,14 +482,40 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
           )}
         </div>
         <Select
-          label="形态"
+          label="形态（治理）"
           value={skillKind}
-          onChange={(v) => setSkillKind(v as any)}
+          onChange={(v) => {
+            const kind = v as 'rule' | 'executable';
+            setSkillKind(kind);
+            // keep execution_type coherent
+            if (kind === 'rule' && executionType !== 'prompt') setExecutionType('prompt');
+            if (kind === 'executable' && executionType === 'prompt') setExecutionType('handler');
+          }}
           options={[
-            { value: 'rule', label: 'rule（纯 SOP）' },
+            { value: 'rule', label: 'rule（纯 SOP / 偏 LLM）' },
             { value: 'executable', label: 'executable（可执行/需权限）' },
           ]}
         />
+        <Select
+          label="execution_type（运行时）"
+          value={executionType}
+          onChange={(v) => {
+            const et = v as 'prompt' | 'handler' | 'python_class';
+            setExecutionType(et);
+            setSkillKind(et === 'prompt' ? 'rule' : 'executable');
+          }}
+          options={[
+            { value: 'prompt', label: 'prompt — 纯 LLM 按 SOP 推理（无需代码文件）' },
+            { value: 'handler', label: 'handler — 需同目录 handler.py 真实执行' },
+            { value: 'python_class', label: 'python_class — Python 类实现' },
+          ]}
+        />
+        {executionType === 'handler' && (
+          <div className="text-xs text-amber-300/90 bg-amber-500/5 border border-amber-500/20 rounded p-2 -mt-2">
+            选择 handler 后，还需在该 Skill 目录下放置可执行的 <code className="px-1 bg-dark-hover rounded">handler.py</code>
+            （仅改表单不会自动生成代码）。PPT 生成若暂无 handler，可先选 prompt，SOP 里调用已有 <code className="px-1 bg-dark-hover rounded">code</code> + <code className="px-1 bg-dark-hover rounded">file_operations</code>。
+          </div>
+        )}
         <Input label="描述" value={description} onChange={(e: any) => setDescription(e.target.value)} placeholder="描述用途" />
         <Textarea label="trigger_conditions（每行一条，可选）" rows={3} value={triggerText} onChange={(e: any) => setTriggerText(e.target.value)} placeholder="例如：\n帮我查一下...\n检索..." />
         {!triggerText.trim() && sourceMode !== 'manual' && (
@@ -545,6 +597,7 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({ open, onClose, onSuccess 
         setDescription(v.description);
         setCategory(v.category);
         setSkillKind(v.skill_kind);
+        setExecutionType(v.skill_kind === 'executable' ? 'handler' : 'prompt');
         setTriggerText((v.trigger_conditions || []).join('\n'));
         setPermissionsText(JSON.stringify(v.permissions || ['llm:generate']));
         setConfigText(JSON.stringify(v.config || {}, null, 2));

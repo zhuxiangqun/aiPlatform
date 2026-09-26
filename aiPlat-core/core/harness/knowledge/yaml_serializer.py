@@ -65,8 +65,11 @@ def domain_to_dict(domain) -> Dict[str, Any]:
                 class_entry["states"]["enum"] = list(states_cfg["enum"])
             if transitions:
                 class_entry["states"]["transitions"] = _clean_transitions(transitions)
+                # 前端兼容：顶层也挂一份，避免只读 data.transitions 时看成「全无」
+                class_entry["transitions"] = class_entry["states"]["transitions"]
             if side_effects:
                 class_entry["states"]["side_effects"] = _clean_side_effects(side_effects)
+                class_entry["side_effects"] = class_entry["states"]["side_effects"]
 
         result["classes"][cls_name] = class_entry
 
@@ -172,9 +175,24 @@ def _clean_transitions(transitions: List[Dict]) -> List[Dict]:
             entry["trigger"] = {
                 "type": trigger.get("type", ""),
             }
-            for k in ("relation", "field", "condition", "threshold", "operator"):
+            for k in (
+                "relation",
+                "field",
+                "condition",
+                "threshold",
+                "operator",
+                "action_id",
+                "action",
+            ):
                 if trigger.get(k) is not None:
                     entry["trigger"][k] = trigger[k]
+        # legacy: action at transition root
+        if t.get("action") and "trigger" not in entry:
+            act = t.get("action")
+            entry["trigger"] = {
+                "type": "action",
+                "action_id": act if isinstance(act, str) else (act or {}).get("action_id", ""),
+            }
         result.append(entry)
     return result
 

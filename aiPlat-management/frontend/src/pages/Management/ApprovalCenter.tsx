@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, Button, Input, Select, toast } from '../../components/ui';
 
 interface ApprovalItem {
@@ -19,6 +20,7 @@ const PAGE_SIZE = 20;
 
 const statusOptions = [
   { value: '', label: '全部状态' },
+  { value: 'draft', label: '草稿' },
   { value: 'ready', label: '待审核' },
   { value: 'published', label: '已发布' },
   { value: 'listed', label: '已上架' },
@@ -31,20 +33,29 @@ const typeOptions = [
   { value: 'skill', label: 'Skill' },
   { value: 'mcp', label: 'MCP' },
   { value: 'workflow', label: 'Workflow' },
+  { value: 'tool', label: 'Tool' },
 ];
 
 const statusLabels: Record<string, string> = { draft: '草稿', ready: '待审核', published: '已发布', listed: '已上架', deprecated: '已废弃' };
 const statusColors: Record<string, string> = { draft: '#888', ready: '#f59e0b', published: '#3b82f6', listed: '#10b981', deprecated: '#6b7280' };
 
 const ApprovalCenter: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [items, setItems] = useState<ApprovalItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState(() => searchParams.get('type') || '');
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState('');
+
+  useEffect(() => {
+    const t = searchParams.get('type');
+    const s = searchParams.get('status');
+    if (t != null) setTypeFilter(t);
+    if (s != null) setStatusFilter(s);
+  }, [searchParams]);
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -91,13 +102,20 @@ const ApprovalCenter: React.FC = () => {
     setActionLoading(id + action);
     try {
       const res = await fetch(`/api/approval/${action}?id=${encodeURIComponent(id)}&type=${encodeURIComponent(itemType)}`, { method: 'POST' });
-      const data = await res.json();
-      if (data.ok) {
-        const msgs: Record<string, string> = { approve: '功能审核通过', publish: '已上架', reject: '已退回', deprecate: '已废弃', unlist: '已下架' };
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        const msgs: Record<string, string> = { approve: '功能审核通过', publish: '已上架', reject: '已退回', deprecate: '已废弃', unlist: '已下架', submit: '已提交审核' };
         toast.success(msgs[action] || '操作完成');
         fetchList();
       } else {
-        toast.error(data.detail || '操作失败');
+        const detail = data.detail;
+        let msg = '操作失败';
+        if (typeof detail === 'string') msg = detail;
+        else if (detail && typeof detail === 'object') {
+          const deps = Array.isArray(detail.deps) ? detail.deps.join(', ') : '';
+          msg = [detail.message, deps, detail.hint].filter(Boolean).join(' — ');
+        } else if (data.message) msg = String(data.message);
+        toast.error(msg || `操作失败 (${res.status})`);
       }
     } catch { toast.error('操作失败'); }
     finally { setActionLoading(null); }
@@ -205,6 +223,15 @@ const ApprovalCenter: React.FC = () => {
                   )}
                 </>
               )}
+              {item.type === 'tool' && (
+                <>
+                  <div style={{ fontSize: 12, marginBottom: 4 }}>{ok(item.name?.length > 1)} 名称规范</div>
+                  <div style={{ fontSize: 12, marginBottom: 4 }}>{ok(item.description?.length > 5)} 描述完整</div>
+                  <div style={{ fontSize: 12, marginBottom: 4 }}>范围: {m.scope || 'engine'}</div>
+                  <div style={{ fontSize: 12, marginBottom: 4 }}>分类: {m.category || 'general'}</div>
+                  <div style={{ fontSize: 12, marginBottom: 4 }}>{ok(m.available !== false)} 运行时可用</div>
+                </>
+              )}
               {(item.dep_warnings?.length ?? 0) > 0 && (
                 <div style={{ marginTop: 4, padding: '4px 8px', background: '#2d1f00', borderRadius: 4, fontSize: 11, color: '#f59e0b' }}>
                   ⚠ {(item.dep_warnings || []).join(', ')}
@@ -237,6 +264,14 @@ const ApprovalCenter: React.FC = () => {
             <div style={{ color: '#aaa', marginBottom: 4 }}>已通过功能审核。确认以下内容后可执行上架：</div>
             <div style={{ marginBottom: 4 }}>{ok(item.description?.length > 20)} 文案清晰可对外发布</div>
             <div style={{ marginBottom: 4 }}>{ok(item.deps_ok !== false)} 所有依赖均已上架</div>
+            {item.deps_ok === false && (item.dep_warnings?.length || 0) > 0 && (
+              <div style={{ marginTop: 6, padding: '8px 10px', background: '#1c1917', border: '1px solid #78350f', borderRadius: 6, color: '#fbbf24' }}>
+                <div style={{ marginBottom: 4, fontWeight: 500 }}>未上架依赖（需先把这些 Skill 审到「已发布/已上架」）：</div>
+                {(item.dep_warnings || []).map((w, i) => (
+                  <div key={i} style={{ fontSize: 11, color: '#fcd34d', fontFamily: 'ui-monospace, monospace' }}>• {w}</div>
+                ))}
+              </div>
+            )}
             <div style={{ color: '#666', marginTop: 4 }}>描述: {item.description?.slice(0, 200) || '无'}</div>
           </div>
         )}
@@ -260,6 +295,14 @@ const ApprovalCenter: React.FC = () => {
     const s = item.status;
     const loadingFor = (a: string) => actionLoading === (item.id + a);
 
+    if (s === 'draft' || s === 'enabled') {
+      return (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <Button variant="primary" size="sm" onClick={() => handleAction(item.id, 'submit', item.type)} loading={loadingFor('submit')}>📤 提交审核</Button>
+        </div>
+      );
+    }
+
     // Fallback: runtime states treated like ready
     if (s === 'ready' || s === 'initializing' || s === 'running') {
       return (
@@ -270,9 +313,22 @@ const ApprovalCenter: React.FC = () => {
       );
     }
     if (s === 'published') {
+      const blocked = item.type === 'agent' && item.deps_ok === false;
       return (
-        <div style={{ display: 'flex', gap: 6 }}>
-          <Button variant="primary" size="sm" onClick={() => handleAction(item.id, 'publish', item.type)} loading={loadingFor('publish')}>📦 上架</Button>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => handleAction(item.id, 'publish', item.type)}
+            loading={loadingFor('publish')}
+            disabled={blocked}
+            title={blocked ? `依赖未就绪：${(item.dep_warnings || []).join(', ')}` : undefined}
+          >
+            📦 上架
+          </Button>
+          {blocked && (
+            <span style={{ fontSize: 11, color: '#f59e0b' }}>先上架依赖</span>
+          )}
           <Button variant="secondary" size="sm" onClick={() => handleAction(item.id, 'reject', item.type)} loading={loadingFor('reject')}>↩ 退回</Button>
           <Button variant="danger" size="sm" onClick={() => handleAction(item.id, 'deprecate', item.type)} loading={loadingFor('deprecate')}>🗑 废弃</Button>
         </div>
@@ -287,7 +343,7 @@ const ApprovalCenter: React.FC = () => {
   };
 
   const typeCounts = useMemo(() => {
-    const c: Record<string, number> = { agent: 0, skill: 0, mcp: 0, workflow: 0 };
+    const c: Record<string, number> = { agent: 0, skill: 0, mcp: 0, workflow: 0, tool: 0 };
     items.forEach(i => { c[i.type] = (c[i.type] || 0) + 1; });
     return c;
   }, [items]);
@@ -300,11 +356,17 @@ const ApprovalCenter: React.FC = () => {
 
   return (
     <div style={{ padding: 20, maxWidth: 1100 }}>
-      <h2 style={{ margin: 0 }}>审批中心</h2>
-      <p style={{ color: '#888', margin: '4px 0 16px' }}>
-        总计 {items.length} 项 | Agent {typeCounts.agent} | Skill {typeCounts.skill} | MCP {typeCounts.mcp} | Workflow {typeCounts.workflow}
+      <h2 style={{ margin: 0 }}>资产审批</h2>
+      <p style={{ color: '#888', margin: '4px 0 8px' }}>
+        总计 {items.length} 项 | Agent {typeCounts.agent || 0} | Skill {typeCounts.skill || 0} | MCP {typeCounts.mcp || 0} | Workflow {typeCounts.workflow || 0} | Tool {typeCounts.tool || 0}
         &nbsp;| 待审核 {statusCounts.ready || 0} | 已发布 {statusCounts.published || 0} | 已上架 {statusCounts.listed || 0} | 已废弃 {statusCounts.deprecated || 0}
       </p>
+      <div style={{ fontSize: 12, color: '#9ca3af', background: '#111827', border: '1px solid #1f2937', borderRadius: 8, padding: '10px 12px', marginBottom: 16, lineHeight: 1.6 }}>
+        <b style={{ color: '#e5e7eb' }}>怎么审核 Agent：</b>
+        列表里「待审核」的项 → 展开 → 点「✅ 通过」变为「已发布」；需要对外可见再点「📦 上架」。
+        Agent 上架前，其 Skill / MCP / Tool 须已是「已发布」或「已上架」，否则禁止上架。
+        「↩ 退回」回到草稿。签名在 Agent 详情「治理」页操作，与本页功能审核是两条线。
+      </div>
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
@@ -355,8 +417,16 @@ const ApprovalCenter: React.FC = () => {
                           <div style={{ fontWeight: 500 }}>
                             {item.name}
                             {item.deps_ok === false && item.status !== 'deprecated' && (
-                              <span style={{ color: '#f59e0b', fontSize: 11, marginLeft: 6 }} title={(item.dep_warnings || []).join(', ')}>
+                              <span
+                                style={{ color: '#f59e0b', fontSize: 11, marginLeft: 6 }}
+                                title={(item.dep_warnings || []).join('\n')}
+                              >
                                 ⚠ 依赖未上架
+                                {(item.dep_warnings || []).length > 0 && (
+                                  <span style={{ color: '#a8a29e', marginLeft: 4 }}>
+                                    ({(item.dep_warnings || []).map(w => w.replace(/^skill:/, '').replace(/\([^)]*\)$/, '')).join(', ')})
+                                  </span>
+                                )}
                               </span>
                             )}
                           </div>
@@ -366,8 +436,8 @@ const ApprovalCenter: React.FC = () => {
                         </td>
                         <td style={{ padding: '8px 10px', fontSize: 12 }}>
                           <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: 11,
-                            background: item.type === 'agent' ? '#1e3a5f' : item.type === 'skill' ? '#3d2e1e' : item.type === 'mcp' ? '#2e1e3d' : '#1e3d2e',
-                            color: item.type === 'agent' ? '#60a5fa' : item.type === 'skill' ? '#fbbf24' : item.type === 'mcp' ? '#c084fc' : '#34d399',
+                            background: item.type === 'agent' ? '#1e3a5f' : item.type === 'skill' ? '#3d2e1e' : item.type === 'mcp' ? '#2e1e3d' : item.type === 'tool' ? '#1e2d3d' : '#1e3d2e',
+                            color: item.type === 'agent' ? '#60a5fa' : item.type === 'skill' ? '#fbbf24' : item.type === 'mcp' ? '#c084fc' : item.type === 'tool' ? '#38bdf8' : '#34d399',
                           }}>{item.type}</span>
                         </td>
                         <td style={{ padding: '8px 10px' }}>

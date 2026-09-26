@@ -78,7 +78,19 @@ curl -X POST http://localhost:8000/api/diagnostics/run-all
 
 ## 下一步
 
-- [API Reference](api-reference.md) — 完整 API 文档
+管理端 UI（`./start.sh` 后通常为前端端口，如 `http://localhost:5173`）：
+
+| 你要做的事 | 打开 |
+|------------|------|
+| 建域 / 改说明书 / 提案 apply | **知识 → 业务本体** `/knowledge/business` |
+| 文档入库与检索 | **知识 → 知识库** `/knowledge/library` |
+| 一句话生成应用 | **AI 应用工厂** `/app/factory` |
+| FDE 现场八步交付 | **FDE 工作台** `/diagnostics/fde` |
+| it-ops 组织试点 / 签收准备 | **组织试点** `/org/pilot` |
+
+操作手册入口：[`manuals/README.md`](README.md) · 合册 [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) · Org [`../contracts/ORG_L5_RUNBOOK.md`](../contracts/ORG_L5_RUNBOOK.md)。
+
+- [API Reference](api-reference.md) — 完整 API 文档（若仓库内仍保留）
 - [自主性评估报告](../framework/aiplat-complete-assessment.md) — 系统能力评估
 - [验证协议](../framework/verification-protocol.md) — 独立复现验证
 

@@ -38,8 +38,13 @@
     "category": {
       "type": "string",
       "title": "分类",
+      "description": "用于列表筛选、SOP 模板推荐与路由提示；不影响能否执行。内容产出类选 generation。",
       "enum": ["general", "execution", "retrieval", "analysis", "generation", "transformation", "reasoning", "coding", "search", "tool", "communication"],
-      "x-ui": { "step": 0, "order": 50 }
+      "x-ui": {
+        "step": 0,
+        "order": 50,
+        "help": "分类只用于组织与推荐，不是权限。generation=内容生成（文案/报告/幻灯片等）；retrieval=查内部资料；execution=跑工具/脚本；coding=写改代码；search=外部网页搜索；拿不准选 general。"
+      }
     },
     "version": {
       "type": "string",

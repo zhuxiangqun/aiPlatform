@@ -335,9 +335,77 @@ class WorkflowManager:
     def get_workflow(self, workflow_id: str) -> Optional[WorkflowInfo]:
         return self._workflows.get(workflow_id)
 
-    def create_workflow(self, name: str, description: str = "", nodes: List[Any] = None, edges: List[Any] = None) -> WorkflowInfo:
+    @staticmethod
+    def _node_fingerprint(nodes: Any) -> tuple:
+        """Stable ordered fingerprint of node identities (type + bound id/name)."""
+        out: List[str] = []
+        for n in nodes or []:
+            if not isinstance(n, dict):
+                continue
+            ntype = str(n.get("type") or n.get("kind") or "").strip()
+            nid = str(
+                n.get("agent_id")
+                or n.get("skill_id")
+                or n.get("tool_id")
+                or n.get("id")
+                or n.get("name")
+                or ""
+            ).strip()
+            out.append(f"{ntype}:{nid}")
+        return tuple(out)
+
+    def find_equivalent(self, name: str, nodes: Any = None) -> Optional[WorkflowInfo]:
+        want_name = (name or "").strip()
+        want_fp = self._node_fingerprint(nodes)
+        if not want_name:
+            return None
+        for wf in self._workflows.values():
+            if (wf.name or "").strip() != want_name:
+                continue
+            if self._node_fingerprint(wf.nodes) == want_fp:
+                return wf
+        return None
+
+    def dedupe_workflows(self) -> Dict[str, Any]:
+        """Keep newest workflow per (name, node fingerprint); delete the rest."""
+        groups: Dict[tuple, List[WorkflowInfo]] = {}
+        for wf in self._workflows.values():
+            key = ((wf.name or "").strip(), self._node_fingerprint(wf.nodes))
+            groups.setdefault(key, []).append(wf)
+
+        removed: List[str] = []
+        kept = 0
+        for _key, items in groups.items():
+            if len(items) <= 1:
+                kept += 1
+                continue
+            items_sorted = sorted(
+                items,
+                key=lambda w: (w.updated_at or w.created_at or datetime.min.replace(tzinfo=timezone.utc)),
+                reverse=True,
+            )
+            keep = items_sorted[0]
+            kept += 1
+            for dup in items_sorted[1:]:
+                if self.delete_workflow(dup.id):
+                    removed.append(dup.id)
+        return {"kept": kept, "removed": removed, "removed_count": len(removed)}
+
+    def create_workflow(
+        self,
+        name: str,
+        description: str = "",
+        nodes: List[Any] = None,
+        edges: List[Any] = None,
+        *,
+        reuse_equivalent: bool = True,
+    ) -> WorkflowInfo:
         if not name.strip():
             raise ValueError("name is required")
+        if reuse_equivalent:
+            existing = self.find_equivalent(name, nodes)
+            if existing is not None:
+                return existing
         wf_id = new_prefixed_id("wf")
         now = datetime.now(timezone.utc)
         base = self._resolve_base_path()

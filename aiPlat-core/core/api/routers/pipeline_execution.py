@@ -393,23 +393,6 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
             if config.get("pm_chat_history"):
                 state["pm_chat_history"] = config.get("pm_chat_history")
 
-            # B: coding intensity → state for ReAct / skill policy resolution
-            try:
-                from core.harness.utils.coding_intensity import (
-                    intensity_to_policy_profile,
-                    normalize_coding_intensity,
-                )
-                _ci = normalize_coding_intensity(config.get("coding_intensity") or "full")
-                state["coding_intensity"] = _ci
-                state["_coding_intensity"] = _ci
-                state["_coding_policy_profile"] = intensity_to_policy_profile(_ci)
-            except Exception:
-                _log.debug("coding_intensity seed skipped", exc_info=True)
-
-            # F5a: previous build bloat baseline for delta
-            if isinstance(config.get("bloat_baseline"), dict):
-                state["_bloat_baseline"] = config.get("bloat_baseline")
-
             # Rebuild / start with confirmed PRD: attach as prd_data baseline.
             # PM still regenerates (overwrite); context inject locks scope to dialogue.
             from core.harness.execution.prd_quality_gate import seed_confirmed_prd_into_state

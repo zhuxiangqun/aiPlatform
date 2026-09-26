@@ -77,8 +77,8 @@ def parse_prd_markdown(reply: str) -> Dict[str, Any]:
             from core.harness.execution.prd_quality_gate import normalize_constraints
 
             prd = normalize_constraints(prd)
-        except Exception:
-            pass  # noqa: cleanup-best-effort
+        except Exception:  # noqa: cleanup-best-effort
+            pass
 
     return prd
 

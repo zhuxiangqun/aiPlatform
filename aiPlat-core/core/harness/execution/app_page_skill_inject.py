@@ -134,8 +134,8 @@ def extract_skill_routing(source: Any) -> Dict[str, str]:
             got = extract_skill_routing(obj)
             if got:
                 return got
-        except json.JSONDecodeError:
-            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+        except json.JSONDecodeError:  # noqa: cleanup-best-effort
+            pass
     return {}
 
 
@@ -226,8 +226,8 @@ def parse_app_page_payload(raw: str) -> Tuple[Optional[Dict[str, Any]], str]:
             obj = json.loads(text[start : end + 1])
             if isinstance(obj, dict) and isinstance(obj.get("stages"), list):
                 return obj, "json"
-        except json.JSONDecodeError:
-            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+        except json.JSONDecodeError:  # noqa: cleanup-best-effort
+            pass
     return None, "none"
 
 

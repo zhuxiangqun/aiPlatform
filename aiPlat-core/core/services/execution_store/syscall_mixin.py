@@ -177,6 +177,12 @@ class SyscallMixin:
             export_syscall_as_span(event)
         except Exception as e:
             logging.debug(str(e), exc_info=True)
+        # Mirror into RunGraph when this run already has a graph projection
+        try:
+            from core.harness.observation.run_graph import mirror_syscall_to_graph
+            await mirror_syscall_to_graph(event)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def add_import_audit(
         self,

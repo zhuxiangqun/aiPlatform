@@ -149,25 +149,9 @@ _dash_cache: Dict[str, Any] = {}
 _dash_cache_ts = 0.0
 _DASH_CACHE_TTL = 30.0
 
-# ── Domain extraction keywords (business data, not code logic) ──
-_INDUSTRY_KEYWORDS = [
-    "政务", "医疗", "金融", "制造", "零售", "教育", "物流", "农业",
-    "能源", "交通", "地产", "保险", "通信", "互联网", "软件", "游戏",
-]
-_COMPANY_SUFFIXES = ["公司", "集团", "有限公司", "科技"]
-_PAIN_POINT_KEYWORDS = [
-    "痛点", "问题", "困难", "效率低", "不准确", "人工", "手动", "无法",
-    "串标", "围标", "检测", "检索", "识别", "分析", "预测", "优化",
-]
 # ── Evidence source labels ──
 _EVIDENCE_SOURCE_LLM = "LLM推测"
 _EVIDENCE_SOURCE_INDUSTRY = "行业普遍痛点"
-# ── Dialog constants ──
-_FINISH_COMMANDS = {"结束澄清", "结束", "finish", "done", "生成报告", "生成诊断"}
-_DIALOG_COMPLETION_MSG = "澄清已完成。请回复「生成报告」来生成诊断报告，或继续补充其他信息。"
-_DIALOG_COMPLETION_OPTS = ["生成报告", "继续补充"]
-_DIALOG_FALLBACK_OPTS = ["是", "否", "部分是", "其他"]
-_DIALOG_DEFAULT_MSG = "请提供更多关于客户业务的信息。"
 
 
 # ════════════════════════════════════════════════════════════
@@ -1063,7 +1047,8 @@ async def clarify(body: Dict[str, Any]):
         history=list(body.get("history", [])),
         extra=body.get("extra", {}) or {},
     )
-    return result
+    # FdeStatusResponse only keeps status/message/data — payload must live in data
+    return {"status": "ok", "message": "", "data": result}
 
 
 @router.post("/infer-industry", response_model=FdeStatusResponse)
@@ -1074,7 +1059,7 @@ async def infer_industry(body: Dict[str, Any]):
     desc = str(body.get("description", "") or body.get("customer_desc", ""))
     
     if not name and not desc:
-        return {"industry": "general", "confidence": 0, "method": "empty", "reason": "无企业信息"}
+        return {"status": "ok", "message": "", "data": {"industry": "general", "confidence": 0, "method": "empty", "reason": "无企业信息"}}
     
     try:
         from core.api.core_facade import sys_llm_generate
@@ -1087,7 +1072,7 @@ async def infer_industry(body: Dict[str, Any]):
         
         model_name = best_model_for_purpose("classify")
         if not model_name:
-            return {"industry": "general", "confidence": 0, "method": "fallback", "reason": "无可用 classify 模型"}
+            return {"status": "ok", "message": "", "data": {"industry": "general", "confidence": 0, "method": "fallback", "reason": "无可用 classify 模型"}}
         
         result = await sys_llm_generate(None, [
             {"role": "system", "content": system_prompt},
@@ -1106,11 +1091,11 @@ async def infer_industry(body: Dict[str, Any]):
         if jm:
             parsed = _j.loads(jm.group(0))
             parsed["method"] = "llm"
-            return parsed
+            return {"status": "ok", "message": "", "data": parsed}
     except Exception as _exc:
         logging.getLogger("fde").warning("infer-industry LLM failed: %s", str(_exc)[:200])
     
-    return {"industry": "general", "confidence": 0, "method": "fallback", "reason": "LLM 不可用"}
+    return {"status": "ok", "message": "", "data": {"industry": "general", "confidence": 0, "method": "fallback", "reason": "LLM 不可用"}}
 
 
 @router.post("/feedback/submit", response_model=FdeStatusResponse)
@@ -1767,177 +1752,17 @@ async def generate_delivery_manual(
     }
 
 
-# Assess Dialog — multi-turn clarification before diagnosis
+# Assess Dialog — thin proxy → core run_clarify_turn (MemoryManager + Agent)
 # ════════════════════════════════════════════════════════════
-
-
-def _simple_extract_fields(answer: str, context: dict) -> dict:
-    """Keyword-based extraction when LLM is unavailable."""
-    updated = {}
-    a = answer.strip()
-    if not a:
-        return updated
-
-    # Industry keywords
-    for kw in _INDUSTRY_KEYWORDS:
-        if kw in a and not context.get("industry"):
-            updated["industry"] = kw
-            break
-
-    # Company name: contains company suffix like 公司/集团
-    has_company = any(p in a for p in _COMPANY_SUFFIXES)
-    if has_company and not context.get("company_name"):
-        import re as _re_cn
-        # "我们公司叫南京明图" → extract "南京明图"
-        m = _re_cn.search(r'(?:叫|是|为)\s*([^\s，,。.叫是为]{2,20})(?:\s*(?:公司|集团|有限公司|科技))?', a)
-        if not m:
-            # "南京明图科技有限公司" → extract "南京明图"
-            m = _re_cn.search(r'([^\s，,。.叫是为]{2,20})\s*(?:公司|集团|有限公司|科技)', a)
-        if m:
-            name = m.group(1).strip("，,。. ")
-            if len(name) >= 2 and name not in ("我们", "这个", "那个", "一家", "一个"):
-                updated["company_name"] = name
-        if not updated.get("company_name"):
-            for sent in a.replace("，", "。").split("。"):
-                if any(p in sent for p in _COMPANY_SUFFIXES):
-                    cs = sent.strip()
-                    for p in _COMPANY_SUFFIXES:
-                        if p in cs:
-                            name = cs[:cs.index(p)].strip()
-                            if len(name) >= 2:
-                                updated["company_name"] = name[:40]
-                                break
-                    break
-
-    # Team size: number near 人/团队
-    import re as _re_ts
-    m = _re_ts.search(r'(\d+)[\s~到至-]*(\d*)\s*(?:人|个?人|员工|团队)', a)
-    if m and not context.get("team_size"):
-        if m.group(2):
-            updated["team_size"] = f'{m.group(1)}-{m.group(2)}人'
-        else:
-            updated["team_size"] = f'{m.group(1)}人'
-
-    # Budget: number near 万/千/元/预算
-    m = _re_ts.search(r'(\d+)\s*(?:万|k|w)\s*(?:预算|元|块|以内|左右)?', a)
-    if m and not context.get("budget"):
-        updated["budget"] = f'{m.group(1)}万'
-
-    # Pain points: anything remaining with pain keywords, or entire answer
-    if any(kw in a for kw in _PAIN_POINT_KEYWORDS) and not context.get("pain_points"):
-        updated["pain_points"] = a[:200]
-
-    # Supplementary field keywords
-    tech_kw = ["Java", "Python", "Go", "MySQL", "PostgreSQL", "Oracle", "Docker",
-               "K8s", "Kubernetes", "React", "Vue", "Angular", "Spring", "Flask",
-               "ERP", "OA", "CRM", "Hadoop", "Spark", "云服务", "私有云", "公有云"]
-    if not context.get("existing_tech_stack"):
-        found = [kw for kw in tech_kw if kw.lower() in a.lower()]
-        if found:
-            updated["existing_tech_stack"] = ", ".join(found[:5])
-
-    if "等保" in a and not context.get("compliance_requirements"):
-        updated["compliance_requirements"] = "等保"
-
-    return updated
-
-
-def _rotate_default_question(gaps: list, pending_qs: list, turn: int) -> str:
-    """Generate a rotating default question when LLM is unavailable."""
-    if pending_qs and turn <= len(pending_qs):
-        return _sync_resolve("fde-dialog-pending-q", question=pending_qs[turn - 1])
-    if gaps:
-        g = gaps[(turn - 1) % len(gaps)]
-        # Gap-specific templates for better UX
-        gap_templates = {
-            "公司名称": "fde-dialog-gap-q",
-            "行业": "fde-dialog-gap-q",
-            "痛点": "fde-dialog-gap-q",
-            "团队规模": "fde-dialog-gap-q",
-            "现有技术栈": "fde-dialog-gap-q",
-            "预算范围": "fde-dialog-gap-q",
-            "数据源": "fde-dialog-gap-q",
-            "合规要求": "fde-dialog-gap-q",
-            "时间线": "fde-dialog-gap-q",
-        }
-        tmpl = gap_templates.get(g, "fde-dialog-gap-q")
-        return _sync_resolve(tmpl, gap=g)
-    return _DIALOG_DEFAULT_MSG
-
-
-# ── Pending questions cache per request (avoids duplicate LLM calls) ──
-_pending_qs_cache: dict = {}
-
-async def _extract_pending_questions(session_id: str) -> list:
-    """## platform:allowed
-    LLM-based extraction: reads the diagnosis report and identifies
-    all questions that require customer confirmation. Returns question strings."""
-    if not session_id:
-        return []
-
-    # Return cached result for this request
-    if session_id in _pending_qs_cache:
-        return _pending_qs_cache[session_id]
-
-    import json as _json_pq
-    try:
-        from core.api.core_facade import GraphIndex
-        fd = GraphIndex.load("fde-delivery")
-        rpt = ""
-        for nid, node in list(fd._nodes.items()):
-            if getattr(node, "class_name", "") == "SessionMeta" and getattr(node, "entity_id", "") == session_id:
-                try:
-                    md = _json_pq.loads(node.entity_name)
-                except Exception:
-                    md = {}
-                rpt = md.get("report_text", "") or md.get("pain_points", "")
-                break
-
-        if not rpt or len(rpt) < 200:
-            _pending_qs_cache[session_id] = []
-            return []
-
-        # Use LLM to extract confirmation questions
-        from core.api.core_facade import sys_llm_generate
-        # Pass messages to best_model_for_purpose so complexity router
-        # can detect this is a simple extraction and select a small model (T1-T2)
-        # instead of defaulting to the heavy 32B general-purpose model.
-        from core.api.core_facade import best_model_for_purpose
-        model_name = best_model_for_purpose("skill_execution",
-            messages=[{"role":"user","content":extract_prompt[:500]}])
-        if not model_name:
-            _pending_qs_cache[session_id] = []
-            return []
-
-        extract_prompt = (
-            f'从以下诊断报告中提取所有需要客户确认的问题，以JSON返回。\n\n'
-            f'报告内容:\n{rpt[:8000]}\n\n'
-            f'返回格式: {{"questions": ["完整的问题文本1", "完整的问题文本2", ...]}}\n'
-            f'每条应该是完整的一句话，不要截断。不要包含报告中的建议或可选方案，只提取问题本身。\n'
-            f'仅返回JSON，无其他文字。'
-        )
-        try:
-            resp = await sys_llm_generate(None, [{"role":"user","content":extract_prompt}],
-                                          model_name=model_name, max_tokens=300, temperature=0.1)
-            content = str(getattr(resp, "content", "") or "{}")
-            result = _json_pq.loads(content)
-            questions = result.get("questions", [])
-            # Filter out clearly non-question items
-            questions = [q.strip() for q in questions if isinstance(q, str) and len(q.strip()) > 10 and ("？" in q or "?" in q or "如何" in q or "是否" in q or "能否" in q or "怎样" in q)]
-        except Exception:
-            questions = []
-
-        _pending_qs_cache[session_id] = questions
-        return questions
-    except Exception:
-        _pending_qs_cache[session_id] = []
-        return []
 
 
 class FdeDialogRequest(_PydanticBaseModel):
     turn: int = 1
     answer: str = ""
     session_id: str = ""
+    report_text: str = ""
+    dialog_id: str = ""
+    history: List[Dict[str, str]] = []
     industry: str = ""
     company_name: str = ""
     pain_points: str = ""
@@ -1949,169 +1774,40 @@ class FdeDialogRequest(_PydanticBaseModel):
     compliance_requirements: str = ""
     poc_timeline: str = ""
     production_timeline: str = ""
+    domain_id: str = ""
+    run_diagnosis: bool = False
 
 
 @router.post("/assess/dialog", response_model=FdeStatusResponse)
 async def fde_assess_dialog(req: FdeDialogRequest):
     """## platform:allowed
-    LLM-driven multi-turn clarification dialogue.
-    
-    Uses LLM to: (1) extract fields from natural language answers,
-    (2) generate context-aware questions based on form gaps + §8 pending items.
-    Supports Agent-based diagnosis via _run_fde_agent_one_shot.
+    Thin proxy: multi-turn clarify → core.apps.fde.service.clarify_dialog.run_clarify_turn.
+    Conversational memory via MemoryManager (session_id); diagnosis via FDE Agent.
     """
-    import json as _json_dg
+    from core.api.core_facade import run_clarify_turn, ClarifyTurnInput
 
-    # Agent-driven diagnosis path (v2.4): triggered on "运行诊断" or finished=true
-    trigger_diagnosis = req.answer.strip() in ("运行诊断", "开始诊断", "run diagnosis") 
-    if trigger_diagnosis or getattr(req, 'run_diagnosis', False):
-        agent_result = await _run_fde_agent_one_shot(
-            agent_id="fde_solution_architect",
-            skill_filter=["field_assessment"],
-            user_message=(f"客户名称：{req.company_name}\n行业：{req.industry}\n"
-                         f"痛点：{req.pain_points}\n团队规模：{req.team_size}\n"
-                         f"技术栈：{req.existing_tech_stack}\n"
-                         f"数据源：内部-{req.internal_data_sources} 外部-{req.external_data_sources}\n"
-                         f"合规要求：{req.compliance_requirements}"),
-        )
-        if agent_result and agent_result.get("success"):
-            return {
-                "turn": req.turn + 1,
-                "diagnosis": agent_result["output"],
-                "fully_ready": True, "core_ready": True, "finished": True,
-                "agent_used": agent_result["agent_id"],
-                "skills_used": agent_result["skills_used"],
-                "gaps": [], "readiness": 100,
-            }
-        # Fallback: continue with legacy LLM path
-
-    from core.apps.skills.registry import _compute_readiness
-    from core.api.core_facade import sys_llm_generate
-    from core.api.core_facade import best_model_for_purpose
-
-    model_name = best_model_for_purpose("skill_execution")
-    llm_available = model_name is not None
-
-    turn = req.turn
-    context = {
-        "company_name": req.company_name.strip(),
-        "industry": req.industry.strip(),
-        "pain_points": req.pain_points.strip(),
-        "team_size": req.team_size.strip(),
-        "budget": req.budget.strip(),
-        "existing_tech_stack": req.existing_tech_stack.strip(),
-        "internal_data_sources": req.internal_data_sources.strip(),
-        "external_data_sources": req.external_data_sources.strip(),
-        "compliance_requirements": req.compliance_requirements.strip(),
-        "poc_timeline": req.poc_timeline.strip(),
-        "production_timeline": req.production_timeline.strip(),
-    }
-
-    # ── Extract fields from user answer ──
-    if turn > 1 and req.answer.strip():
-        # Always run keyword extraction (works without LLM)
-        kw_extracted = _simple_extract_fields(req.answer, context)
-        for k, v in kw_extracted.items():
-            if v and k in context:
-                context[k] = v
-        # Enhance with LLM extraction if available
-        if llm_available:
-            try:
-                extract_prompt = _sync_resolve("fde-field-extract",
-                    answer=req.answer, context_json=_json_dg.dumps(context, ensure_ascii=False))
-                resp = await sys_llm_generate(None, [{"role":"user","content":extract_prompt}],
-                                              model_name=model_name, max_tokens=150, temperature=0.1)
-                content_raw = str(getattr(resp, "content", "") or "")
-                try:
-                    extracted = _json_dg.loads(content_raw)
-                    for k, v in extracted.items():
-                        if v and isinstance(v, str) and k in context:
-                            context[k] = str(v).strip()
-                except Exception as e:
-                    import logging as _log_extract
-                    _log_extract.warning(f"dialog extract JSON parse failed: {e}, raw={content_raw[:120]}")
-            except Exception as e:
-                import logging as _log_extract2
-                _log_extract2.warning(f"dialog extract LLM call failed: {e}")
-
-    score, gaps = _compute_readiness(context)
-    core_ready = score >= 40 and not any(g in gaps for g in ['公司名称', '行业', '痛点'])
-    fully_ready = score >= 80
-
-    # ── Detect "结束澄清" command ──
-    finished = (req.answer.strip().lower() if turn > 1 else "") in _FINISH_COMMANDS
-
-    # ── Extract §8 pending questions if session_id provided ──
-    pending_qs = await _extract_pending_questions(req.session_id) if req.session_id else []
-
-    # ── LLM generate: next question or finalize ──
-    question, options = "", []
-    if finished or (fully_ready and not gaps and not pending_qs):
-        question = "所有信息已收集完毕。请回复「生成报告」来生成完整的FDE交付手册。"
-        options = ["生成报告", "继续补充"]
-    elif pending_qs:
-        # §8 questions take priority — ask them even if core_ready
-        if not llm_available:
-            q = pending_qs[turn % len(pending_qs)]
-            question = f"请确认以下问题：{q}"
-            options = list(_DIALOG_FALLBACK_OPTS)
-        else:
-            question = _rotate_default_question(gaps, pending_qs, turn)
-            options = list(_DIALOG_FALLBACK_OPTS)
-    elif core_ready:
-        question = "基础信息已充分，可以生成初步诊断报告。建议继续提供更多信息以获得完整的交付手册。请回复「生成报告」，或继续提供信息。"
-        options = ["生成报告", "继续补充"]
-    else:
-        if not llm_available:
-            # ── Static fallback (no LLM): rotate through gaps ──
-            if gaps:
-                g = gaps[(turn - 1) % len(gaps)]
-                question = f"请提供「{g}」的相关信息。"
-                options = []
-            else:
-                finished = True
-                question = "所有信息已收集完毕。请回复「生成报告」来生成完整的FDE交付手册。"
-                options = ["生成报告", "继续补充"]
-        else:
-            try:
-                extra = f"\n诊断报告中的待确认问题: {pending_qs}" if pending_qs else ""
-                has_pending = "true" if pending_qs else "false"
-                gen_prompt = _sync_resolve("fde-dialog-generation",
-                    context_json=_json_dg.dumps(context, ensure_ascii=False),
-                    gaps=str(gaps), has_pending=has_pending, pending_extra=extra)
-                resp = await sys_llm_generate(None, [{"role":"user","content":gen_prompt}],
-                                              model_name=model_name, max_tokens=200, temperature=0.3)
-                try:
-                    result = _json_dg.loads(str(getattr(resp, "content", "") or "{}"))
-                    if result.get("action") == "generate":
-                        finished = True
-                        question = "所有信息已收集完毕。请回复「生成报告」来生成完整的FDE交付手册。"
-                        options = ["生成报告", "继续补充"]
-                    else:
-                        question = result.get("question", _rotate_default_question(gaps, pending_qs, turn))
-                        options = result.get("options", [])
-                except Exception as e:
-                    import logging as _log_gen_json
-                    _log_gen_json.warning(f"dialog gen JSON parse failed: {e}")
-                    question = _rotate_default_question(gaps, pending_qs, turn)
-                    options = []
-            except Exception as e:
-                import logging as _log_gen_llm
-                _log_gen_llm.warning(f"dialog gen LLM call failed: {e}")
-                question = _rotate_default_question(gaps, pending_qs, turn)
-                options = []
-
-    return {
-        "turn": turn + 1,
-        "readiness": score,
-        "question": question,
-        "options": options,
-        "fully_ready": fully_ready,
-        "core_ready": core_ready,
-        "finished": finished,
-        "gaps": gaps,
-        "context": context,
-    }
+    data = await run_clarify_turn(ClarifyTurnInput(
+        turn=req.turn,
+        answer=req.answer or "",
+        session_id=req.session_id or "",
+        report_text=req.report_text or "",
+        dialog_id=req.dialog_id or "",
+        history=list(req.history or []),
+        industry=req.industry or "",
+        company_name=req.company_name or "",
+        pain_points=req.pain_points or "",
+        team_size=req.team_size or "",
+        budget=req.budget or "",
+        existing_tech_stack=req.existing_tech_stack or "",
+        internal_data_sources=req.internal_data_sources or "",
+        external_data_sources=req.external_data_sources or "",
+        compliance_requirements=req.compliance_requirements or "",
+        poc_timeline=req.poc_timeline or "",
+        production_timeline=req.production_timeline or "",
+        domain_id=req.domain_id or "",
+        run_diagnosis=bool(getattr(req, "run_diagnosis", False)),
+    ))
+    return {"status": "ok", "message": "", "data": data}
 
 
 # ════════════════════════════════════════════════════════════

@@ -75,6 +75,11 @@ def _scan_workspace_tools() -> List[Dict[str, Any]]:
                 "available": True,
                 "provenance": prov,
             }
+            try:
+                from core.apps.tools.lifecycle import get_tool_status
+                entry["status"] = get_tool_status(name, tool_path=prov.get("tool_path"))
+            except Exception:
+                entry["status"] = "draft"
             result.append(entry)
         return result
     except Exception:
@@ -276,6 +281,7 @@ async def update_workspace_tool(tool_name: str, request: dict):
 
     description = request.get('description')
     category = request.get('category')
+    new_status = request.get('status')
 
     if description is not None and hasattr(tool._config, 'description'):
         setattr(tool._config, 'description', description)
@@ -283,6 +289,13 @@ async def update_workspace_tool(tool_name: str, request: dict):
         setattr(tool._config, 'category', category)
 
     tool_path = prov.get('tool_path', '')
+    if new_status is not None:
+        try:
+            from core.apps.tools.lifecycle import set_tool_status
+            set_tool_status(tool_name, str(new_status), tool_path=tool_path or None)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
     if tool_path and os.path.exists(tool_path):
         try:
             content = Path(tool_path).read_text(encoding='utf-8')

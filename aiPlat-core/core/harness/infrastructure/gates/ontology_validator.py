@@ -248,11 +248,30 @@ class OntologyValidator:
             home = os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat"))
             yaml_path = f"{home}/ontologies/{domain_id}.yaml"
             if not os.path.exists(yaml_path):
-                versioned = f"{home}/ontologies/{domain_id}_v"
-                for i in range(10, 0, -1):
-                    if os.path.exists(f"{versioned}{i}.yaml"):
-                        yaml_path = f"{versioned}{i}.yaml"
-                        break
+                # Prefer history version archives; never treat live *_vN as domains.
+                hist = f"{home}/ontologies/history"
+                best = 0
+                best_path = ""
+                if os.path.isdir(hist):
+                    import re as _re
+
+                    pat = _re.compile(rf"^{_re.escape(domain_id)}_v(\d+)\.yaml$")
+                    for name in os.listdir(hist):
+                        m = pat.match(name)
+                        if m:
+                            n = int(m.group(1))
+                            if n > best:
+                                best = n
+                                best_path = os.path.join(hist, name)
+                if best_path:
+                    yaml_path = best_path
+                else:
+                    # Legacy live sidecars (pre-fix layout)
+                    versioned = f"{home}/ontologies/{domain_id}_v"
+                    for i in range(10, 0, -1):
+                        if os.path.exists(f"{versioned}{i}.yaml"):
+                            yaml_path = f"{versioned}{i}.yaml"
+                            break
 
             if not os.path.exists(yaml_path):
                 return []

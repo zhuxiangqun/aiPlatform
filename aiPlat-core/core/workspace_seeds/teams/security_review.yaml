@@ -161,4 +161,4 @@ stages:
         phase: {type: string}
         results: {type: array}
         enabled: {type: boolean}
-    gate_on_fail: ""
+    gate_on_fail: skip_stage

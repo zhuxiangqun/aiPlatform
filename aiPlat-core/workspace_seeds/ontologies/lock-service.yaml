@@ -136,6 +136,10 @@ object_properties:
     domain: [Technician]
     range: [InstallOrder]
     inverse: assigned_to
+  - name: visited_at
+    label: 到场
+    domain: [InstallOrder]
+    range: [CustomerSite]
 
 inference_rules:
   - name: overload_detection

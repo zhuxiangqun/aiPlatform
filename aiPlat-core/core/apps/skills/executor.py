@@ -219,39 +219,57 @@ class SkillExecutor:
             self._registry.record_execution(skill_name, success=result.success, latency=record.latency)
             return result
 
-        try:
-            is_valid = await skill.validate(params)
-            if not is_valid:
-                record.status = "failed"
-                record.end_time = time.time()
-                record.error = "Parameter validation failed"
-                record.latency = record.end_time - record.start_time
-                self._registry.record_execution(skill_name, success=False, latency=record.latency)
-                return SkillResult(success=False, error="Parameter validation failed")
+        is_valid = await skill.validate(params)
+        if not is_valid:
+            record.status = "failed"
+            record.end_time = time.time()
+            record.error = "Parameter validation failed"
+            record.latency = record.end_time - record.start_time
+            self._registry.record_execution(skill_name, success=False, latency=record.latency)
+            return SkillResult(success=False, error="Parameter validation failed")
 
-            _run_id = (getattr(context, "variables", {}) or {}).get("_run_id") or getattr(context, "session_id", "")
-            _parent_span_id = (getattr(context, "variables", {}) or {}).get("_parent_span_id") or None
-            # Emit skill_start root event for unified tree (mirrors agent_start in core_facade)
+        _run_id = (getattr(context, "variables", {}) or {}).get("_run_id") or getattr(context, "session_id", "")
+        _parent_span_id = (getattr(context, "variables", {}) or {}).get("_parent_span_id") or None
+        # Single work node for standalone skill runs (no skill_start container wrapper).
+        _skill_node = f"skill:{skill_name}"
+
+        async def _finish_skill(*, status: str, error: Optional[str] = None, result_obj: Any = None) -> None:
+            if not _run_id:
+                return
             try:
-                from core.services.execution_store import get_execution_store
-                _es = get_execution_store()
-                await _es.add_syscall_event({
-                    "id": f"{_run_id}:skill_start",
-                    "parent_span_id": _parent_span_id,
-                    "kind": "skill",
-                    "name": "skill_start",
-                    "status": "running",
-                    "span_id": f"skill:{skill_name}:start",
-                    "run_id": _run_id,
-                    "start_time": time.time(),
-                    "target_type": skill_name,
-                    "duration_ms": 0,
-                })
+                from core.harness.observation.run_graph import close_node, mark_run_done
+                _st = "ok" if status in ("ok", "success", "completed") else "error"
+                await close_node(
+                    str(_run_id),
+                    _skill_node,
+                    status=_st,
+                    result={"output": getattr(result_obj, "output", None) if result_obj is not None else None},
+                    error=error,
+                    audit=True,
+                )
+                await mark_run_done(str(_run_id), status="completed" if _st == "ok" else "failed")
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
-            tc = {"run_id": _run_id}
-            if _parent_span_id:
-                tc["parent_span_id"] = _parent_span_id
+
+        if _run_id:
+            try:
+                from core.harness.observation.run_graph import open_node
+                await open_node(
+                    str(_run_id),
+                    _skill_node,
+                    kind="skill",
+                    name=skill_name,
+                    parent_id=_parent_span_id,
+                    label=skill_name,
+                    role="work",
+                    audit=True,
+                )
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+
+        # Child syscalls (llm/tool) nest under this skill node; skill event itself coalesces into it.
+        tc = {"run_id": _run_id, "parent_span_id": _skill_node}
+        try:
             result = await asyncio.wait_for(
                 sys_skill_call(
                     skill,
@@ -261,7 +279,7 @@ class SkillExecutor:
                     session_id=context.session_id,
                     trace_context=tc,
                 ),
-                timeout=effective_timeout
+                timeout=effective_timeout,
             )
 
             record.status = "success" if result.success else "failed"
@@ -272,27 +290,32 @@ class SkillExecutor:
             self._registry.record_execution(
                 skill_name,
                 success=result.success,
-                latency=record.latency
+                latency=record.latency,
+            )
+            await _finish_skill(
+                status="ok" if result.success else "error",
+                error=result.error,
+                result_obj=result,
             )
             return result
-
         except asyncio.TimeoutError:
             record.status = "timeout"
             record.end_time = time.time()
             record.latency = record.end_time - record.start_time
             record.error = f"Skill execution timed out after {effective_timeout}s"
             self._registry.record_execution(skill_name, success=False, latency=record.latency)
+            await _finish_skill(status="error", error=record.error)
             return SkillResult(
                 success=False,
-                error=f"Skill execution timed out after {effective_timeout}s"
+                error=f"Skill execution timed out after {effective_timeout}s",
             )
-
         except Exception as e:
             record.status = "failed"
             record.end_time = time.time()
             record.latency = record.end_time - record.start_time
             record.error = str(e)
             self._registry.record_execution(skill_name, success=False, latency=record.latency)
+            await _finish_skill(status="error", error=str(e))
             return SkillResult(success=False, error=str(e))
 
     async def execute_stream(

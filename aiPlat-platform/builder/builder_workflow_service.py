@@ -68,15 +68,33 @@ class WorkflowService:
         from storage.sqlite import get_workflow
         return get_workflow(workflow_id)
 
-    async def create(self, name: str, description: str = "", nodes: List[Any] = None, edges: List[Any] = None) -> Dict[str, Any]:
+    async def create(self, name: str, description: str = "", nodes: List[Any] = None, edges: List[Any] = None, *, reuse_equivalent: bool = True) -> Dict[str, Any]:
         mgr = _get_wf_mgr()
         if mgr:
-            wf = mgr.create_workflow(name, description.strip(), nodes or [], edges or [])
+            wf = mgr.create_workflow(
+                name, description.strip(), nodes or [], edges or [],
+                reuse_equivalent=reuse_equivalent,
+            )
             return mgr.get_workflow_dict(wf.id) or {}
-        from storage.sqlite import create_workflow
+        from storage.sqlite import create_workflow, list_workflows
+        # SQLite fallback: reuse by name+node fingerprint when possible
+        if reuse_equivalent:
+            want_name = name.strip()
+            want_nodes = nodes or []
+            for w in list_workflows() or []:
+                if str(w.get("name") or "").strip() != want_name:
+                    continue
+                existing_nodes = w.get("nodes") or []
+                if existing_nodes == want_nodes:
+                    return w
         wid = new_prefixed_id("wf")
         return create_workflow(wid, name.strip(), description.strip(), nodes or [], edges or [])
 
+    async def dedupe(self) -> Dict[str, Any]:
+        mgr = _get_wf_mgr()
+        if mgr:
+            return mgr.dedupe_workflows()
+        return {"kept": 0, "removed": [], "removed_count": 0, "note": "sqlite_fallback_no_dedupe"}
     async def update(self, workflow_id: str, **kwargs: Any) -> Optional[Dict[str, Any]]:
         mgr = _get_wf_mgr()
         if mgr:

@@ -2264,6 +2264,29 @@ async def sys_llm_generate(
 
             timeout = float(timeout_seconds) if timeout_seconds else None
 
+            # Emit llm/running BEFORE the call so ExecutionViewer shows live "thinking"
+            # while the request is in-flight (otherwise UI stays empty until LLM returns).
+            try:
+                _rt_pre = get_kernel_runtime()
+                _store_pre = getattr(_rt_pre, "execution_store", None) if _rt_pre else None
+                if _store_pre is not None and run_id_val:
+                    await _store_pre.add_syscall_event({
+                        "id": f"{run_id_val}:llm:generate:start:{int(time.time() * 1000)}",
+                        "trace_id": span.trace_id,
+                        "span_id": getattr(span, "span_id", None),
+                        "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
+                        "run_id": run_id_val,
+                        "kind": "llm",
+                        "name": "generate",
+                        "status": "running",
+                        "start_time": time.time(),
+                        "duration_ms": 0,
+                        "model_name": model_name,
+                        "args": {"prompt_type": "messages" if isinstance(prepared, list) else "text"},
+                    })
+            except Exception:
+                logging.debug("llm running event emit failed", exc_info=True)
+
             result = await res_gate.run(
 
                 _call, retries=retries, timeout_seconds=timeout,

@@ -449,6 +449,21 @@ class PolicyGate:
 
 
 
+    def decide_ontology_approval(self, role: str, tier: str) -> PolicyResult:
+        """Single decision for proposal approval. Empty identity is not a grant."""
+        role_n = (role or "").strip().lower()
+        if not role_n:
+            return PolicyResult(decision=PolicyDecision.DENY, reason="identity_missing")
+        from core.harness.knowledge.knowledge_ontology import TIER_LOGIC, normalize_tier
+        from core.harness.knowledge.versioned_ontology_store import TIER_APPROVAL_ROLES
+
+        tier_n = normalize_tier(tier)
+        allowed = TIER_APPROVAL_ROLES.get(tier_n, (TIER_LOGIC,))
+        names = {str(item).lower() for item in allowed}
+        if "*" in names or role_n in names:
+            return PolicyResult(decision=PolicyDecision.ALLOW, reason="tier_allow")
+        return PolicyResult(decision=PolicyDecision.DENY, reason="role_not_in_tier")
+
     @staticmethod
 
     def _match_tool_rule(rule: Dict[str, Any], tool_name: str, tool_args: Optional[Dict[str, Any]]) -> bool:

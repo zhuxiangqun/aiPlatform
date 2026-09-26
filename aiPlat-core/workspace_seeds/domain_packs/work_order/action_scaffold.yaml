@@ -1,0 +1,11 @@
+status: draft
+registered: false
+wrote_live_actions: false
+note: "动作脚手架。不进入 ActionRegistry。改前置条件后人批，才可另拷到 actions/。"
+actions:
+  - action_id: "customer_action:{{domain_id}}:assign_scaffold"
+    label: "派单（待补全）"
+    domain_id: "{{domain_id}}"
+    target_class: WorkOrder
+    required_state: open
+    require_approval: true

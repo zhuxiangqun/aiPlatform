@@ -1,0 +1,6 @@
+# Optional platform-default baseline (copy to AIPLAT_HOME/org/value_baseline.yaml).
+# Prefer tenant file: AIPLAT_HOME/org/tenants/{tenant_id}/value_baseline.yaml
+# Do not invent savings without a real baseline file.
+#
+# baseline_minutes_per_incident: 30
+# baseline_mtta_seconds: 900

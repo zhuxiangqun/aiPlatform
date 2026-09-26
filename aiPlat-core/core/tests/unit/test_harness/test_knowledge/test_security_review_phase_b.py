@@ -18,37 +18,29 @@ def test_security_review_team_loads():
     tpl = load_team_template("security_review")
     assert tpl is not None
     assert tpl.name == "security_review"
-    assert len(tpl.stages) == 5
+    assert len(tpl.stages) == 4
     ids = [s.get("id") for s in tpl.stages]
     assert ids == [
         "security_plan",
         "security_trace",
         "security_critique",
         "security_report",
-        "security_evidence",
     ]
-    assert tpl.stages[0]["skill_name"] == "security_plan"
-    assert tpl.stages[3].get("hitl") is True  # security_report
-    assert tpl.stages[4].get("skill_name") == "security_evidence"
-    assert (tpl.stages[4].get("node_config") or {}).get("enabled") is False
-    assert tpl.stages[0].get("failure_strategy") == "fail_pipeline"
     for s in tpl.stages:
         assert s.get("allow_dynamic_spawn") is False
         assert s.get("skill_name")
         assert s.get("output_artifact")
+    assert tpl.stages[0]["skill_name"] == "security_plan"
+    assert tpl.stages[-1].get("hitl") is True
+    assert tpl.stages[0].get("failure_strategy") == "fail_pipeline"
+    for s in tpl.stages:
         assert s.get("execution_backend") == "llm"
         assert (s.get("tools") or []) == []
 
 
 def test_security_plan_skill_files_exist():
     core = Path(__file__).resolve().parents[4]  # .../core
-    for name in (
-        "security_plan",
-        "security_trace",
-        "security_critique",
-        "security_report",
-        "security_evidence",
-    ):
+    for name in ("security_plan", "security_trace", "security_critique", "security_report"):
         skill = core / "engine" / "skills" / name / "SKILL.md"
         assert skill.is_file(), skill
         assert (core / "engine" / "skills" / name / "handler.py").is_file()
@@ -409,84 +401,3 @@ def test_critique_refutes_prose_eval_false_positive():
     assert out["header"]["max_severity"] == "candidate"
     assert out["findings"][0]["severity"] == "candidate"
     assert out["header"]["counts"]["refuted"] == 1
-
-
-def test_phase_c_default_off():
-    from core.engine.skills.security_evidence.handler import execute as ev
-
-    out = asyncio.run(
-        ev(
-            {
-                "security_report": {
-                    "findings": [
-                        {
-                            "path_id": "path:1",
-                            "severity": "candidate",
-                            "sink_id": "sink:eval_exec:aiPlat-core/core/apps/exec_drivers/ssh.py",
-                            "category": "rce",
-                        }
-                    ]
-                },
-                "enabled": False,
-            }
-        )
-    )
-    assert out["enabled"] is False
-    assert out["results"] == []
-
-
-def test_phase_c_ssh_driver_refute_and_merge():
-    from core.engine.skills.security_evidence.handler import (
-        execute as ev,
-        merge_evidence_into_report,
-    )
-
-    finding = {
-        "path_id": "path:35",
-        "severity": "candidate",
-        "sink_id": "sink:eval_exec:aiPlat-core/core/apps/exec_drivers/ssh.py",
-        "entry_id": "entry:aiPlat-core/core/api/routers/diagnostics.py",
-        "category": "rce",
-    }
-    evidence = asyncio.run(
-        ev({"security_report": {"findings": [finding]}, "enabled": True})
-    )
-    assert evidence["enabled"] is True
-    assert evidence["counts"]["candidates"] == 1
-    assert evidence["results"][0]["disposition"] == "refuted"
-    assert evidence["results"][0]["physical_evidence"] is True
-    assert Path(evidence["results"][0]["evidence_path"]).is_file()
-
-    report = {
-        "header": {"phase": "B", "max_severity": "candidate"},
-        "findings": [dict(finding)],
-        "refuted": [],
-    }
-    merged = merge_evidence_into_report(report, evidence)
-    assert merged["header"]["phase"] == "C"
-    assert merged["findings"][0]["severity"] == "refuted"
-    assert merged["findings"][0]["physical_evidence"] is True
-
-
-def test_phase_c_ssrf_fixture():
-    from core.engine.skills.security_evidence.handler import execute as ev
-
-    evidence = asyncio.run(
-        ev(
-            {
-                "enabled": True,
-                "security_report": {
-                    "findings": [
-                        {
-                            "path_id": "path:ssrf",
-                            "severity": "candidate",
-                            "category": "ssrf",
-                            "sink_id": "sink:network_egress:x.py",
-                        }
-                    ]
-                },
-            }
-        )
-    )
-    assert evidence["results"][0]["assert_id"] == "ssrf_fixture_block"
-    assert evidence["results"][0]["disposition"] in {"refuted", "confirmed"}

@@ -117,7 +117,7 @@ class ExecutionStoreConfig:
 
 
 class _ExecutionStoreBase:
-    CURRENT_SCHEMA_VERSION = 51
+    CURRENT_SCHEMA_VERSION = 55
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config

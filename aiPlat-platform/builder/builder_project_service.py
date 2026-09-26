@@ -2328,12 +2328,16 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                             description=recommendation.get("reasoning", ""),
                             stages=team_stages,
                         )
-                        team = await self._team_service.create_team(team_req)
+                        # Reuse identical name+agents (stops default-team flood on LLM fallback)
+                        team = await self._team_service.create_team(
+                            team_req, reuse_equivalent=True
+                        )
                         proj["team_id"] = team.team_id
                         proj["team_stages"] = [s.model_dump() if hasattr(s, 'model_dump') else s for s in team_stages]
                         self._save_projects()
                         recommendation["_team_created"] = True
                         recommendation["_team_id"] = team.team_id
+                        recommendation["_team_reused"] = True
                 except Exception as e:
                     recommendation["_team_create_failed"] = str(e)[:200]
 

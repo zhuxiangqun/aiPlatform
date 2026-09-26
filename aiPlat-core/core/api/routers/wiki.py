@@ -8,6 +8,7 @@ from pydantic import BaseModel
 try:
     from core.api.routers.wiki_ontology_engine import (
         OntologyDomainCreate, OntologyClassCreate, OntologyPropertyCreate,
+        _write_domain_yaml,
     )
 except ImportError:
     OntologyDomainCreate = Any  # type: ignore
@@ -822,9 +823,17 @@ async def wiki_graph(
     keyword: str = "",
     source: str = "",
     max_nodes: int = 300,
- collection: str = "default"):
-    from core.api.core_facade import build_graph
-    return build_graph(category=category, keyword=keyword, source=source, max_nodes=max_nodes, collection_id=collection)
+    collection: str = "default",
+):
+    # core_facade.build_graph is the code-symbol graph (repo roots), not this view.
+    from core.harness.knowledge.wiki_engine import build_graph
+    return build_graph(
+        category=category,
+        keyword=keyword,
+        source=source,
+        max_nodes=max_nodes,
+        collection_id=collection,
+    )
 
 
 @router.post("/ingest", response_model=Dict[str, Any])
@@ -1121,7 +1130,19 @@ async def generate_domain(
     }
 
     # 5. 写入文件
+    from core.harness.knowledge.ontology_yaml_gate import (
+        LiveYamlDirectWriteDenied,
+        assert_live_yaml_write,
+    )
+
     out_path = ont_dir / f"{domain_id}.yaml"
+    try:
+        assert_live_yaml_write()
+    except LiveYamlDirectWriteDenied as e:
+        raise HTTPException(
+            status_code=409,
+            detail={"reason": "live_yaml_requires_approved_proposal", "message": str(e)},
+        )
     with open(out_path, "w", encoding="utf-8") as f:
         yaml.safe_dump(domain_yaml, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
 
@@ -1743,13 +1764,17 @@ async def detect_wiki_duplicates(collection: str = "default"):
 
 # ── Collection Management ───────────────────────────────────────
 
-@router.get("/collections", response_model=ListResponse[Dict[str, Any]])
+@router.get("/collections", response_model=Dict[str, Any])
 async def list_wiki_collections():
-    """List all wiki collections with page counts."""
+    """List all wiki collections with page counts.
+
+    Both ``items`` and ``collections`` are the same list: ListResponse used to
+    drop ``collections`` and the library page then showed ``(0)``.
+    """
     try:
         from core.harness.knowledge.wiki_engine import list_collections
         cols = list_collections()
-        return {"collections": cols, "total": len(cols)}
+        return {"items": cols, "collections": cols, "total": len(cols)}
     except HTTPException:
         raise
     except Exception as e:
@@ -2712,6 +2737,19 @@ async def delete_ontology_domain(domain_id: str):
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
 
+    from core.harness.knowledge.ontology_yaml_gate import (
+        LiveYamlDirectWriteDenied,
+        assert_live_yaml_write,
+    )
+
+    try:
+        assert_live_yaml_write()
+    except LiveYamlDirectWriteDenied as e:
+        raise HTTPException(
+            status_code=409,
+            detail={"reason": "live_yaml_requires_approved_proposal", "message": str(e)},
+        )
+
     # Auto-snapshot before destructive delete (best-effort, non-blocking)
     try:
         from core.api.core_facade import GraphIndex
@@ -2902,10 +2940,20 @@ async def delete_ontology_class(domain_id: str, class_name: str, force: bool = F
         except Exception as e:
             logging.warning(str(e), exc_info=True)
 
-    del classes[class_name]
-    raw["classes"] = classes
-    _write_domain_yaml(domain_id, raw)
-    return {"status": "deleted", "domain": domain_id, "class": class_name}
+    # F2: live YAML only via proposal apply
+    from core.api.core_facade import delete_ontology_class_async
+
+    try:
+        result = await delete_ontology_class_async(domain_id, class_name)
+    except Exception as e:
+        raise HTTPException(status_code=409, detail={"reason": "delete_via_proposal_failed", "message": str(e)[:300]})
+    return {
+        "status": "deleted",
+        "domain": domain_id,
+        "class": class_name,
+        "proposal_id": result.get("proposal_id"),
+        "via": "proposal",
+    }
 
 
 class MigrateClassifyRequest(BaseModel):

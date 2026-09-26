@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Download, Lightbulb, RefreshCw } from 'lucide-react';
 import { Button, Modal, toast } from '../../components/ui';
 
-const ONTO_API = '/api/core/ontology';
+const ONTO_API = '/api/core/wiki/ontology';
 
 interface Suggestion {
   id: string;

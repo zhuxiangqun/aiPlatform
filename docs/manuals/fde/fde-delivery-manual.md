@@ -13,10 +13,10 @@
 | # | 检查项 | 操作路径 | 通过标准 |
 |---|------|------|------|
 | 0.1 | 离线部署包已打包 | Tab 2 → 部署管理 → 打包 | 下载 `.tar.gz` 文件 |
-| 0.2 | Agent 可用 | 打开 /core/agents（Agent 管理页面） → 搜索"{{AGENT_NAME}}" | 状态为 `ready` |
+| 0.2 | Agent 可用 | 打开 /workspace/agents（应用库 Agent） → 搜索"{{AGENT_NAME}}" | 状态为 `ready` |
 | 0.3 | Agent 配置核查 | 查看 AGENT.md | model: {{MODEL}}, temperature: {{TEMPERATURE}}, skills: {{SKILL_LIST}}, tools: {{TOOL_LIST}} |
-| 0.4 | 依赖资产就绪 | 打开 /core/skills（Skill 管理页面） / Tool管理 / MCP管理 | Agent 引用的 Skill、Tool 均已注册且启用；MCP 连接正常 |
-| 0.5 | Workflow 可用 | 打开 /core/workflows（Workflow 管理页面） → 搜索项目 Workflow | 节点拓扑完整，无断连 |
+| 0.4 | 依赖资产就绪 | 打开 `/workspace/skills` · `/workspace/tools`（AI 应用工厂）；MCP 在平台设置对应页 | Agent 引用的 Skill、Tool 均已注册且启用；MCP 连接正常 |
+| 0.5 | Workflow 可用 | 打开 `/core/workflows`（平台设置 → Workflow） → 搜索项目 Workflow | 节点拓扑完整，无断连 |
 | 0.6 | POC 行业模板已就绪 | Tab 6 → POC 工具箱 | {{INDUSTRY}} 模板可加载 |
 | 0.7 | 样例数据已准备 | 本地文件 | {{SAMPLE_DATA_COUNT}} 份样例数据（已脱敏） |
 | 0.8 | 网络确认 | 客户现场 | 如需离线部署，使用 0.1 的离线包 |
@@ -51,11 +51,11 @@
 
 | 检查项 | 异常情况 | 处理方式 |
 |------|------|------|
-| Agent 不存在 | 搜索无结果 | FDE 创建：打开 /core/agents（Agent 管理页面） → 创建 → 自动生成 AGENT.md；或联系开发团队按需求定制 |
+| Agent 不存在 | 搜索无结果 | FDE 创建：打开 /workspace/agents（应用库 Agent） → 创建 → 自动生成 AGENT.md；或联系开发团队按需求定制 |
 | Agent 非 ready | 状态为 draft/error | 检查 AGENT.md frontmatter 语法 → 修正后切换状态为 ready |
 | Agent 配置不对 | model/skills/tools 不符预期 | 编辑 AGENT.md → 更新对应字段 → 保存 |
 | 依赖资产缺失 | Skill/Tool 未注册，MCP 断开 | Skill/Tool：联系开发团队创建或导入（FDE 不负责开发）。MCP：检查服务端连通性 |
-| Workflow 不存在 | 节点拓扑为空 | FDE 创建：打开 /core/workflows（Workflow 管理页面） → 新建 → 关联 Agent 节点 |
+| Workflow 不存在 | 节点拓扑为空 | FDE 创建：打开 `/core/workflows`（平台设置 → Workflow） → 新建 → 关联 Agent 节点 |
 | 模板加载失败 | Tab 6 无响应或报错 | 确认模板配置文件存在 → 仍失败则联系运维排查 |
 | 样例数据缺失 | 客户未提供数据 | 用 Tab 6 → POC 工具箱 → 注入模拟数据；并行催促客户提供真实数据 |
 | 打包失败 | 脚本报错或超时 | 检查 install.sh 日志。在线部署环境可跳过打包（联网直接安装）。常见原因：端口占用 → 修改 docker-compose.yml ports 映射 |
@@ -87,7 +87,7 @@
 |:---:|------|------|
 | 1.3.1 | 加载行业模板 | Tab 6 → 加载行业模板 → 选择"{{INDUSTRY}}" |
 | 1.3.2 | 注入样例数据 | Tab 6 → 注入客户数据 → 拖入样例文件 |
-| 1.3.3 | 验证 Agent | 打开 /core/agents（Agent 管理页面） → "{{AGENT_NAME}}" → 输入测试文本 |
+| 1.3.3 | 验证 Agent | 打开 /workspace/agents（应用库 Agent） → "{{AGENT_NAME}}" → 输入测试文本 |
 
 **1.3.3 测试用例**：
 
@@ -169,7 +169,7 @@
 
 | 步骤 | 操作 | 路径 |
 |:---:|------|------|
-| 2.2.1 | 编辑 AGENT.md | 打开 /core/agents（Agent 管理页面） → "{{AGENT_NAME}}" → 编辑 |
+| 2.2.1 | 编辑 AGENT.md | 打开 /workspace/agents（应用库 Agent） → "{{AGENT_NAME}}" → 编辑 |
 | 2.2.2 | 追加定制规则 | 根据客户反馈和 KPI 目标追加行业特定检查项 |
 | 2.2.3 | 微调输出格式 | 按客户偏好调整 |
 | 2.2.4 | 验证改动 | 用客户真实数据测试 → 与 KPI 目标对比 |
@@ -182,7 +182,7 @@
 
 | 步骤 | 操作 | 路径 |
 |:---:|------|------|
-| 2.3.1 | 打开 Workflow | 打开 /core/workflows（Workflow 管理页面） → 搜索项目 Workflow |
+| 2.3.1 | 打开 Workflow | 打开 `/core/workflows`（平台设置 → Workflow） → 搜索项目 Workflow |
 | 2.3.2 | 核查节点配置 | 确认各节点绑定的 Agent/Skill 与项目需求一致 |
 | 2.3.3 | 测试执行 | 运行 Workflow → 确认各阶段产出正确 |
 
@@ -260,6 +260,9 @@
 | 3.5.5 | 数据量级确认 | 模型所需的最小数据量已达标（如：≥30 个项目数据） | `wc -l <data_file>` 行数 ≥ 最小数量 | ☐ |
 
 ## 4. Phase 4: 验收移交（1 天）
+
+> **口径**：本章「验收签收」指 **FDE 项目交付签收**（工作台 Tab 8 / 签收单）。  
+> it-ops **组织试点签收准备**（八闸门、证据包、材料齐≠已签收）在管理端 **`/org/pilot`**，见 [`ORG_M4_SIGNOFF_PACK`](../../contracts/ORG_M4_SIGNOFF_PACK.md)；两套流程勿混用，程序也不会因此打开 `m4_claim_allowed`。
 
 ### 4.1-4.2 验收签收
 

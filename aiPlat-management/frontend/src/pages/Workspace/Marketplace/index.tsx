@@ -9,8 +9,57 @@ import {
 type TabKey = 'skills' | 'agents' | 'tools' | 'mcp' | 'workflows' | 'published';
 
 interface CatalogEntry {
-  name: string; label?: string; description?: string; category?: string;
-  installed?: boolean; source?: string; version?: string;
+  name: string;
+  label?: string;
+  description?: string;
+  category?: string;
+  installed?: boolean;
+  source?: string;
+  version?: string;
+  /** Extra capability hints for distinguishing similar items */
+  capabilities?: string[];
+}
+
+function pickDescription(...candidates: unknown[]): string {
+  for (const c of candidates) {
+    const s = typeof c === 'string' ? c.trim() : '';
+    if (s) return s;
+  }
+  return '';
+}
+
+function DescBlock({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const long = text.length > 160 || text.includes('\n');
+
+  useEffect(() => {
+    setExpanded(false);
+  }, [text]);
+
+  if (!text) {
+    return <div className="text-xs text-gray-600 mt-1 italic">暂无功能说明</div>;
+  }
+
+  return (
+    <div className="mt-2">
+      <div
+        className={`text-xs text-gray-400 whitespace-pre-wrap break-words leading-relaxed ${
+          expanded || !long ? '' : 'line-clamp-4'
+        }`}
+      >
+        {text}
+      </div>
+      {long && (
+        <button
+          type="button"
+          className="text-[11px] text-primary/90 hover:text-primary mt-1"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? '收起' : '展开全部说明'}
+        </button>
+      )}
+    </div>
+  );
 }
 
 const MarketplacePage: React.FC = () => {
@@ -94,7 +143,9 @@ const MarketplacePage: React.FC = () => {
       const instNames = new Set(instList.map((i: any) => i.name));
       setPubPackages(
         ((pkgs as any).packages || []).map((p: any) => ({
-          name: p.name, label: p.name, description: `${p.versions || '?'} 版本`, category: 'package',
+          name: p.name, label: p.name,
+          description: pickDescription(p.description, p.summary, `${p.versions || '?'} 个版本`),
+          category: 'package',
           version: p.version, installed: instNames.has(p.name),
         }))
       );
@@ -107,12 +158,17 @@ const MarketplacePage: React.FC = () => {
     try {
       const installed = await workspaceSkillApi.list({ limit: 500 });
       const skills = (installed as any).skills || [];
-      // Only show listed (已上架) workspace skills
       setSkillCatalog(
         skills.filter((s: any) => s.status === 'listed').map((s: any) => ({
-          name: s.id || s.name, label: s.display_name || s.name,
-          description: s.description, category: s.category || 'skill',
+          name: s.id || s.name,
+          label: s.display_name || s.name,
+          description: pickDescription(s.description, s.summary, (s.metadata || {}).description),
+          category: s.category || 'skill',
           installed: true,
+          capabilities: [
+            s.execution_type ? `执行:${s.execution_type}` : '',
+            ...(Array.isArray(s.tags) ? s.tags.slice(0, 4).map(String) : []),
+          ].filter(Boolean),
         }))
       );
     } catch { setSkillCatalog([]); }
@@ -124,13 +180,29 @@ const MarketplacePage: React.FC = () => {
     try {
       const wsRes = await workspaceAgentApi.list({ limit: 200 });
       const ws = (wsRes as any).agents || [];
-      // Only show listed (已上架) workspace agents, skip engine agents
       setAgentItems(
-        ws.filter((a: any) => a.status === 'listed').map((a: any) => ({
-          name: a.id || a.name, label: a.name,
-          description: a.type || (a.metadata?.description), category: a.category || a.type,
-          installed: true,
-        }))
+        ws.filter((a: any) => a.status === 'listed').map((a: any) => {
+          const skills = (a.skills || []).filter(Boolean).map(String);
+          const tools = (a.tools || []).filter(Boolean).map(String);
+          const mcps = (a.mcp_ids || []).filter(Boolean).map(String);
+          return {
+            name: a.id || a.name,
+            label: a.display_name || a.name,
+            // Never use agent_type as description — that hid real capability text
+            description: pickDescription(
+              a.description,
+              (a.metadata || {}).description,
+              (a.config || {}).system_prompt,
+            ),
+            category: a.category || a.agent_type || a.type || 'agent',
+            installed: true,
+            capabilities: [
+              ...skills.slice(0, 4).map((s: string) => `Skill:${s}`),
+              ...tools.slice(0, 3).map((t: string) => `Tool:${t}`),
+              ...mcps.slice(0, 2).map((m: string) => `MCP:${m}`),
+            ],
+          };
+        })
       );
     } catch { setAgentItems([]); }
     finally { setAgentLoading(false); }
@@ -143,8 +215,15 @@ const MarketplacePage: React.FC = () => {
       const tools = (res as any).tools || [];
       setToolItems(
         tools.filter((t: any) => t.status === 'listed').map((t: any) => ({
-          name: t.name, label: t.name, description: t.description, category: t.category || 'general',
+          name: t.name,
+          label: t.name,
+          description: pickDescription(t.description, (t.provenance || {}).source),
+          category: t.category || t.scope || 'general',
           installed: t.available !== false,
+          capabilities: [
+            t.scope ? `范围:${t.scope}` : '',
+            t.category ? String(t.category) : '',
+          ].filter(Boolean),
         }))
       );
     } catch { setToolItems([]); }
@@ -157,10 +236,20 @@ const MarketplacePage: React.FC = () => {
       const res = await workspaceMcpApi.listServers();
       const servers = (res as any).servers || [];
       setMcpItems(
-        servers.filter((s: any) => s.status === 'listed').map((s: any) => ({
-          name: s.name || s.id, label: s.name || s.id, description: s.description || s.display_name,
-          installed: s.enabled !== false,
-        }))
+        servers.filter((s: any) => s.status === 'listed').map((s: any) => {
+          const toolCount = Array.isArray(s.tools) ? s.tools.length : (s.tool_count || 0);
+          return {
+            name: s.name || s.id,
+            label: s.display_name || s.name || s.id,
+            description: pickDescription(s.description, s.summary),
+            category: s.transport || 'mcp',
+            installed: s.enabled !== false,
+            capabilities: [
+              s.transport ? `传输:${s.transport}` : '',
+              toolCount ? `${toolCount} 个工具` : '',
+            ].filter(Boolean),
+          };
+        })
       );
     } catch { setMcpItems([]); }
     finally { setMcpLoading(false); }
@@ -170,12 +259,22 @@ const MarketplacePage: React.FC = () => {
     setWorkflowLoading(true);
     try {
       const res = await (workflowTemplateApi as any).list({ limit: 200 });
-      const workflows = (res as any).workflows || (res as any).items || [];
+      const workflows = (res as any).workflows || (res as any).items || (res as any).templates || [];
       setWorkflowItems(
-        workflows.filter((w: any) => w.status === 'listed').map((w: any) => ({
-          name: w.id || w.name, label: w.display_name || w.name,
-          description: w.description, category: w.category || 'workflow', installed: true,
-        }))
+        workflows.filter((w: any) => w.status === 'listed').map((w: any) => {
+          const nodes = Array.isArray(w.nodes) ? w.nodes.length : (w.node_count || 0);
+          return {
+            name: w.id || w.name,
+            label: w.display_name || w.name,
+            description: pickDescription(w.description, w.summary, (w.metadata || {}).description),
+            category: w.category || 'workflow',
+            installed: true,
+            capabilities: [
+              nodes ? `${nodes} 节点` : '',
+              w.app ? `App:${w.app}` : '',
+            ].filter(Boolean),
+          };
+        })
       );
     } catch { setWorkflowItems([]); }
     finally { setWorkflowLoading(false); }
@@ -227,11 +326,17 @@ const MarketplacePage: React.FC = () => {
     items.length === 0 ? <div className="text-sm text-gray-500 py-8 text-center">暂无可用项</div> :
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
       {items.map((item) => (
-        <div key={item.name} className="rounded-xl border border-dark-border bg-dark-card p-4 hover:border-gray-600 transition-colors">
-          <div className="flex items-start justify-between mb-2">
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-200 truncate">{item.label || item.name}</div>
-              {item.category && <span className="text-[10px] text-gray-500">{item.category}</span>}
+        <div key={item.name} className="rounded-xl border border-dark-border bg-dark-card p-4 hover:border-gray-600 transition-colors flex flex-col">
+          <div className="flex items-start justify-between mb-1">
+            <div className="flex-1 min-w-0 pr-2">
+              <div className="text-sm font-medium text-gray-200" title={item.label || item.name}>
+                {item.label || item.name}
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                {item.category && <span className="text-[10px] text-gray-500">{item.category}</span>}
+                {item.version && <span className="text-[10px] text-gray-600">v{item.version}</span>}
+                <span className="text-[10px] text-gray-600 font-mono truncate max-w-[140px]" title={item.name}>{item.name}</span>
+              </div>
             </div>
             {item.installed ? (
               <div style={{ display: 'flex', gap: 4, flexShrink: 0, marginLeft: 8 }}>
@@ -252,8 +357,21 @@ const MarketplacePage: React.FC = () => {
               )
             )}
           </div>
-          {item.description && <div className="text-xs text-gray-500 mt-1 line-clamp-2">{item.description}</div>}
-          {item.source && <div className="text-[10px] text-gray-600 mt-1 truncate">{item.source}</div>}
+          <DescBlock text={item.description || ''} />
+          {!!item.capabilities?.length && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {item.capabilities.slice(0, 8).map((c) => (
+                <span
+                  key={c}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-dark-hover text-gray-400 border border-dark-border max-w-full truncate"
+                  title={c}
+                >
+                  {c}
+                </span>
+              ))}
+            </div>
+          )}
+          {item.source && <div className="text-[10px] text-gray-600 mt-2 truncate" title={item.source}>{item.source}</div>}
         </div>
       ))}
     </div>
@@ -261,7 +379,10 @@ const MarketplacePage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold text-gray-100">商城</h1>
+      <div>
+        <h1 className="text-lg font-semibold text-gray-100">商城</h1>
+        <p className="text-xs text-gray-500 mt-1">每张卡片展示完整功能说明；说明过长可点「展开全部说明」。能力标签帮助快速分辨绑定的 Skill / Tool / MCP。</p>
+      </div>
 
       <div className="flex gap-1 border-b border-dark-border pb-2">
         {tabs.map((t) => (

@@ -12,6 +12,10 @@
 | **需要理解完整交付方法论** | [05 - 实施流程](./05-fde-implementation-process.md) | — |
 | **已交付项目需要维护监控** | [03 - 运维与自演进](./03-fde-operations.md) | ✅ |
 | **我要扩展系统（创建Agent/Workflow）** | [04 - 管理与扩展](./04-fde-admin.md) | — |
+| **建域 / 工厂 apply / 应用库 Agent** | [创建本体+Agent 合册](../../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) | ✅ |
+| **it-ops 组织试点与签收准备（八闸门）** | [ORG_L5_RUNBOOK](../../contracts/ORG_L5_RUNBOOK.md) · [ORG_M4_SIGNOFF_PACK](../../contracts/ORG_M4_SIGNOFF_PACK.md) · 管理端 `/org/pilot` | ✅ |
+
+> **勿混淆**：本目录「⑦ 验收移交 / 客户签收」指 **FDE 项目交付签收单**；it-ops **Org M4 签收准备**（材料齐可送审，程序不打开 `m4_claim`）在仪表盘 **组织试点**，不在 FDE 工作台八步里完成。
 
 ### FDE 工作台工具箱（v28.0 新增）
 

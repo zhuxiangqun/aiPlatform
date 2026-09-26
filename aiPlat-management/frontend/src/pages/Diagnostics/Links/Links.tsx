@@ -13,6 +13,28 @@ const shortId = (id?: string, left: number = 8, right: number = 6) => {
   return `${id.slice(0, left)}...${id.slice(-right)}`;
 };
 
+/** Format epoch seconds / ms / ISO for Links tables. Heal start=0 via end - duration. */
+const formatTs = (raw: unknown, row?: { end_time?: unknown; duration_ms?: unknown }): string => {
+  let n = typeof raw === 'number' ? raw : Number(raw);
+  if ((!Number.isFinite(n) || n <= 0) && row) {
+    const end = typeof row.end_time === 'number' ? row.end_time : Number(row.end_time);
+    const dur = typeof row.duration_ms === 'number' ? row.duration_ms : Number(row.duration_ms);
+    if (Number.isFinite(end) && end > 0 && Number.isFinite(dur) && dur > 0) {
+      n = end - dur / 1000;
+    }
+  }
+  if (!Number.isFinite(n) || n <= 0) {
+    const s = raw == null || raw === '' ? '' : String(raw);
+    return s && s !== '0' ? s : '—';
+  }
+  const ms = n > 1e12 ? n : n * 1000;
+  try {
+    return new Date(ms).toLocaleString();
+  } catch {
+    return String(raw);
+  }
+};
+
 const Links: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -29,7 +51,10 @@ const Links: React.FC = () => {
     const executionId = searchParams.get('execution_id');
     const runId = searchParams.get('graph_run_id');
     const changeId = searchParams.get('change_id');
-    const spans = searchParams.get('include_spans') === 'true';
+    const spansParam = searchParams.get('include_spans');
+    // From Agent「查看诊断详情」默认打开 spans，否则 Trace 只有空壳元数据
+    const spans =
+      spansParam === 'true' || (spansParam !== 'false' && !!executionId);
     setIncludeSpans(spans);
     if (changeId) {
       setMode('change_id');
@@ -50,8 +75,16 @@ const Links: React.FC = () => {
     const v = input.trim();
     if (!v) return 'trace_id';
     if (v.startsWith('chg-')) return 'change_id';
-    // aiPlat v2: run_id is used as execution_id (time-sortable ULID)
-    if (v.startsWith('run_') || v.startsWith('exec-') || v.startsWith('execution_')) return 'execution_id';
+    // aiPlat v2: run_id is used as execution_id (time-sortable ULID / hex suffix)
+    if (
+      v.startsWith('run_') ||
+      v.startsWith('run-') ||
+      v.startsWith('exec-') ||
+      v.startsWith('execution_') ||
+      v.startsWith('execution-')
+    ) {
+      return 'execution_id';
+    }
     // assume UUID-like => trace_id by default
     if (/^[0-9a-fA-F-]{32,}$/.test(v)) return 'trace_id';
     // fallback: graph_run_id
@@ -105,6 +138,7 @@ const Links: React.FC = () => {
   const executions = data?.executions || null;
   const graphRuns = data?.graph_runs || null;
   const lineage = Array.isArray(data?.lineage) ? data.lineage : [];
+  const traceSpans: any[] = Array.isArray(trace?.spans) ? trace.spans : [];
 
   const runs = Array.isArray(graphRuns?.runs) ? graphRuns.runs : [];
   const agentExecs = Array.isArray(executions?.items?.agent_executions)
@@ -113,6 +147,37 @@ const Links: React.FC = () => {
   const skillExecs = Array.isArray(executions?.items?.skill_executions)
     ? executions.items.skill_executions.map((x: any) => ({ ...x, type: x.type || 'skill' }))
     : [];
+
+  const runStatus = String(
+    agentExecs[0]?.status || skillExecs[0]?.status || trace?.status || summary?.status || '',
+  ).toLowerCase();
+  const runError = String(agentExecs[0]?.error || skillExecs[0]?.error || trace?.attributes?.error || '').trim();
+  const verdict = (() => {
+    if (!data || mode === 'change_id') return null;
+    if (runStatus === 'running' || runStatus === 'accepted') {
+      return { label: '执行中', hint: '尚未结束，可稍后刷新。', tone: 'blue' as const };
+    }
+    if (runStatus === 'failed' || runStatus === 'error' || runStatus === 'timeout') {
+      return { label: runStatus === 'timeout' ? '超时' : '未成功', hint: runError || '请查看 Executions / spans。', tone: 'red' as const };
+    }
+    if (runStatus === 'completed' || runStatus === 'ok' || runStatus === 'success') {
+      if (runError) return { label: '已结束（有告警）', hint: runError, tone: 'amber' as const };
+      return {
+        label: '已正常结束',
+        hint: `耗时 ${trace?.duration_ms != null ? `${(Number(trace.duration_ms) / 1000).toFixed(1)}s` : '—'} · executions ${agentExecs.length + skillExecs.length} · spans ${includeSpans ? traceSpans.length : '（请打开 spans）'}`,
+        tone: 'green' as const,
+      };
+    }
+    if (!runStatus) return null;
+    return { label: `状态 ${runStatus}`, hint: '可打开 spans 或 Executions 核对。', tone: 'gray' as const };
+  })();
+  const verdictClass: Record<string, string> = {
+    green: 'border-green-700/40 bg-green-950/30 text-green-100',
+    red: 'border-red-700/40 bg-red-950/30 text-red-100',
+    amber: 'border-amber-700/40 bg-amber-950/30 text-amber-100',
+    blue: 'border-blue-700/40 bg-blue-950/30 text-blue-100',
+    gray: 'border-gray-600/40 bg-gray-900/40 text-gray-200',
+  };
 
   const highlightId = value;
   const highlightMode = mode;
@@ -184,8 +249,25 @@ const Links: React.FC = () => {
           );
         },
       },
-      { key: 'start_time', title: 'start_time', dataIndex: 'start_time' },
-      { key: 'duration_ms', title: 'duration_ms', dataIndex: 'duration_ms', align: 'right' as const },
+      {
+        key: 'start_time',
+        title: 'start_time',
+        dataIndex: 'start_time',
+        render: (val: any, row: any) => (
+          <span className="text-xs text-gray-300 whitespace-nowrap">{formatTs(val, row)}</span>
+        ),
+      },
+      {
+        key: 'duration_ms',
+        title: 'duration_ms',
+        dataIndex: 'duration_ms',
+        align: 'right' as const,
+        render: (val: any) => {
+          const n = Number(val);
+          if (!Number.isFinite(n) || n <= 0) return <span className="text-xs text-gray-500">—</span>;
+          return <span className="text-xs text-gray-300">{n < 1000 ? `${Math.round(n)}ms` : `${(n / 1000).toFixed(1)}s`}</span>;
+        },
+      },
     ],
     [highlightId, highlightMode]
   );
@@ -266,7 +348,11 @@ const Links: React.FC = () => {
         <CardContent>
           {error && <div className="text-sm text-error mb-3">{error}</div>}
           {!data ? (
-            <div className="text-sm text-gray-500">请输入 ID 并查询</div>
+            <div className="text-sm text-gray-500">
+              {error
+                ? '查询未返回数据。若刚执行完 Agent，可刷新后重试；或确认 execution_id / trace_id 是否正确。'
+                : '请输入 ID 并查询'}
+            </div>
           ) : mode === 'change_id' ? (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
@@ -339,6 +425,12 @@ const Links: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-4">
+              {verdict && (
+                <div className={`p-3 rounded-lg border text-sm ${verdictClass[verdict.tone]}`}>
+                  <div className="font-medium">{verdict.label}</div>
+                  <div className="text-xs opacity-80 mt-1">{verdict.hint}</div>
+                </div>
+              )}
               {/* Summary cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
                 <div className="p-3 bg-dark-bg rounded-lg">
@@ -409,14 +501,41 @@ const Links: React.FC = () => {
               </details>
 
               <Tabs
+                defaultActiveKey={mode === 'execution_id' ? 'executions' : 'trace'}
                 tabs={[
                   {
                     key: 'trace',
-                    label: `Trace`,
+                    label: `Trace${includeSpans ? ` · spans ${traceSpans.length}` : ''}`,
                     children: (
-                      <pre className="text-xs text-gray-200 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
-                        {JSON.stringify(trace, null, 2)}
-                      </pre>
+                      <div className="space-y-3">
+                        {!includeSpans && (
+                          <div className="text-xs text-amber-200/90 bg-amber-950/20 border border-amber-800/40 rounded-lg px-3 py-2">
+                            当前 spans: off，Trace 只有元数据。点上方「spans: on」可看步骤轨迹（llm / skill / tool）。
+                          </div>
+                        )}
+                        {includeSpans && traceSpans.length > 0 && (
+                          <div className="bg-dark-hover border border-dark-border rounded-lg p-3 max-h-64 overflow-auto">
+                            <div className="text-xs text-gray-400 mb-2">步骤轨迹（{traceSpans.length}）</div>
+                            <ol className="space-y-1 text-xs text-gray-200 font-mono">
+                              {traceSpans.slice(0, 80).map((s: any, i: number) => (
+                                <li key={String(s.span_id || i)} className="flex gap-2">
+                                  <span className="text-gray-500 w-5 shrink-0">{i + 1}.</span>
+                                  <span className={s.status === 'failed' || s.status === 'error' ? 'text-red-300' : ''}>
+                                    {String(s.name || s.kind || 'span')}
+                                  </span>
+                                  <span className="text-gray-500">{String(s.status || '')}</span>
+                                  {s.duration_ms != null ? (
+                                    <span className="text-gray-600">{Number(s.duration_ms).toFixed?.(0) ?? s.duration_ms}ms</span>
+                                  ) : null}
+                                </li>
+                              ))}
+                            </ol>
+                          </div>
+                        )}
+                        <pre className="text-xs text-gray-200 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto max-h-80">
+                          {JSON.stringify(trace, null, 2)}
+                        </pre>
+                      </div>
                     ),
                   },
                   {

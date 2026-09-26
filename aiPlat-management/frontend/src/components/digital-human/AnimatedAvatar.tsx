@@ -10,7 +10,9 @@ interface AnimatedAvatarProps {
 
 export default function AnimatedAvatar({ state, audioAmplitude = 0, config = DEFAULT_ANIM_CONFIG, size = 200 }: AnimatedAvatarProps) {
   const [timestamp, setTimestamp] = useState(Date.now());
+  const [blink, setBlink] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const blinkRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [visible, setVisible] = useState(true);
   const rafRef = useRef<number>(0);
   // Visibility-aware 60fps animation loop — pauses when off-screen
@@ -75,6 +77,7 @@ export default function AnimatedAvatar({ state, audioAmplitude = 0, config = DEF
 
   return (
     <div
+      ref={containerRef}
       style={{
         width: size,
         height: size,
@@ -103,8 +106,8 @@ export default function AnimatedAvatar({ state, audioAmplitude = 0, config = DEF
       {/* Avatar image */}
       <div
         style={{
-          width: avatarSize,
-          height: avatarSize,
+          width: size,
+          height: size,
           borderRadius: '50%',
           overflow: 'hidden',
           border: '3px solid rgba(59,130,246,0.3)',

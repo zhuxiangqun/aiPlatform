@@ -1,16 +1,34 @@
 """Auto-extracted from integration.py — 2026-07-13"""
 from __future__ import annotations
 
+import asyncio
+import logging
+import os
+
 
 async def _execute_tool_impl(self, req: ExecutionRequest) -> ExecutionResult:
     from core.harness.kernel.types import ExecutionResult
+    from core.harness.integration import _resolve_tool_registry, _resolve_exec_backend
+    from core.harness.syscalls import sys_tool_call
+
     registry = _resolve_tool_registry()
     tool = registry.get(req.target_id)
     if not tool:
         return self._fail(code="NOT_FOUND", message=f"Tool {req.target_id} not found", http_status=404)
 
     payload = req.payload or {}
-    input_data = payload.get("input", {}) if isinstance(payload, dict) else {}
+    # Accept both {input:{...}} and flat {operation,path,...} bodies from /tools/*/execute
+    if isinstance(payload, dict):
+        nested = payload.get("input")
+        if isinstance(nested, dict) and nested:
+            input_data = nested
+        else:
+            input_data = {
+                k: v for k, v in payload.items()
+                if k not in ("context", "options", "user_id", "session_id", "toolset", "input")
+            }
+    else:
+        input_data = {}
 
     runtime = getattr(self, "_runtime", None)
 

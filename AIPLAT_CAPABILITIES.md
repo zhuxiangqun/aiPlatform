@@ -1,8 +1,8 @@
 ---
-total_capabilities: 1499
+total_capabilities: 1747
 
-total_capabilities: 1095
-last_updated: 2026-08-25
+total_capabilities: 1756
+last_updated: 2026-09-27
 version: "30.2"
 auto_sync: true
 core_guarantees:
@@ -570,7 +570,7 @@ scan_hash: 8f9548ec24f4
 
 > 代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-20 — 1059✅）
+> 评分：98/100（2026-07-20 — 1756✅）
 
 ---
 
@@ -590,6 +590,11 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| mirror_syscall_to_graph | `core/harness/observation/run_graph.py` | ✅ | 自动同步 | 已合入 |
+| mark_run_done | `core/harness/observation/run_graph.py` | ✅ | 自动同步 | 已合入 |
+| upsert_node | `core/harness/observation/run_graph.py` | ✅ | 自动同步 | 已合入 |
+| close_node | `core/harness/observation/run_graph.py` | ✅ | 自动同步 | 已合入 |
+| open_node | `core/harness/observation/run_graph.py` | ✅ | 自动同步 | 已合入 |
 | stage_allows_dynamic_spawn | `core/harness/coordination/spawn_policy.py` | ✅ | 自动同步 | 已合入 |
 | reset_dynamic_spawn | `core/harness/coordination/spawn_policy.py` | ✅ | 自动同步 | 已合入 |
 | set_dynamic_spawn_disabled | `core/harness/coordination/spawn_policy.py` | ✅ | 自动同步 | 已合入 |
@@ -743,19 +748,8 @@ scan_hash: 8f9548ec24f4
 | Prompt Caching | harness/utils/prompt_caching.py | ✅ | system_and_N 缓存策略，system + 末尾N消息标记cache_control | 已合入 |
 | Log Redaction | harness/utils/redaction.py | ✅ | RedactingFormatter 全局日志脱敏 | 已合入 |
 | Decorrelated Jitter | harness/infrastructure/gates/resilience_gate.py | ✅ | golden-ratio hash退避抖动，避免惊群效应 | 已合入 |
-| **Action Registry v3** | `harness/infrastructure/action_contract.py` + `action_registry.py` + `action_store.py` + `entity_lock.py` + `action_audit_validate.py` + `workbench_runtime_guard.py` | ✅ | 企业级可治理 AI 执行层：`ActionContractModel`（Pydantic v2 + 实体约束 + handler白名单安全沙箱）、`AsyncActionRegistry`（7步执行流水线 + 审批回调 + 审计持久化）、`EntityLock`（mutex/stake双语义锁）、`ActionStore`（aiosqlite + entity_snapshot不可变审计）、`builtin_actions`（legacy+YAML+workspace_seeds）、`builtin_handlers`、`action_routes.py`；**Phase 1**：`audit_schema.v1` JSON 嵌入、`change_surface_whitelist` 可加载、`WorkbenchRuntimeGuard`、`scripts/fde_audit_mapping.py` dry-run；**Phase 2**：`customer_action:lock-service:accept_order` + `aliases`/`resolve_action_id`、GraphIndex metadata 持久化、D4 200 压测脚本；**L1 UI 闭环**：`GET/POST .../fde/graph/entities` + AcceptTab 活 state 链式接单/派单/开工/完工 + `set_entity_state` 写 assigned_to/visited_at/installed_by；**it-ops 故障诊断竖切**：`workspace_seeds/ontologies/it-ops.yaml` + `it_ops_alert_lifecycle.yaml`（triage→link_suspect→mark_root）+ AcceptTab 告警卡 + 路径 C `it-ops-alert`/`it-ops-alert-complex` + 路径 B `POST .../graph/import`（`import_it_ops_alert_payload` / 导入样例告警JSON） | 已合入 |
-| FDE accept_order D3/D4 | `workspace_seeds/actions/lock_service_accept_order.yaml` + `scripts/seed_lock_service_orders.py` + `scripts/bench_accept_order_p95.py` | ✅ | Phase 2 竖切：namespaced id + legacy 别名；200 工单 seed；execute→audit P95&lt;500ms + entity 查询 P95&lt;100ms；生成物：平台横切 ActionRegistry，FDE 工作台只消费（已接线 AcceptTab） | 已合入 |
-| FDE audit 映射 dry-run | `scripts/fde_audit_mapping.py` + `docs/contracts/audit_mapping_report.md` | ✅ | audit_schema↔ActionStore 字段分类 present/embedded/missing + ADD/ROLLBACK SQL（默认不改库） | 已合入 |
-| WorkbenchRuntimeGuard | `harness/infrastructure/workbench_runtime_guard.py` | ✅ | 工作台运行时否定项：未注册 Action / policy_gate 审计形状 / stub KPI；经 CoreFacade 导出；dashboard 挂 kpi_guard | 已合入 |
-| FDE 交付 Pipeline session | `apps/fde/service/delivery_pipeline_session.py` + `apps/fde/api/fde_delivery_pipeline.py` | ✅ | Phase 1：启动/查询/批准 `fde_delivery_v1` 服务端 stage cursor；workspace seed 模板；Tab⑤ 接线；≥2 HITL approve 单测；**Phase 3**：链接 Builder `project_id`、observe/start 工厂 Pipeline、`fde_delivery_pipeline` Eval 门、产物链接展示；生成物：工作台不平行构建，交付物走 builder 已接线路径 | 已合入 |
-| FDE Phase 4 安全预检+Evolve | `apps/fde/service/security_preflight.py` + `evolve_proposal_gate.py` + `apps/fde/api/fde_phase4.py` + PreflightTab/EvolutionTab | ✅ | 4A 预检+签收硬门；4B：白名单 HITL；apply→**observing→stable**；quality/canary **sync-ops** 自动回滚；D6；Applied UI；生成物：不适用 | 已合入 |
-| FDE 使用信号 S1–S4 | `apps/fde/service/usage_signal.py` + `ActionStore.query_usage_signal` + `/usage-signal` + Tab⑧ | ✅ | 日活/调用/成功率/活跃天 + 基线/趋势；非 ROI；生成物：不适用（平台横切观测） | 已合入 |
-| FDE 客户成功交接 | `apps/fde/service/customer_success.py` + `/metric-handover` + `/escort-exit` + AcceptTab/EvolutionTab | ✅ | 业务指标交接单（≠ROI）+ 条件护航退出（信号复评）+ 域级 peer；生成物：不适用 | 已合入 |
-| FDE Phase 5 多客户接入 | `docs/contracts/FDE_PHASE5_CUSTOMER_ONBOARDING.md` + `fde_domain_literals` error | ✅ | 新客户=DomainRouter+本体/Action 配置（不改 harness）；守卫 error+AST=0；Agent Fleet 不产品化；生成物：不适用（平台控制台接入路径，生成物仍走 builder） | 已合入 |
-| FDE 工作台能力台账 | `docs/contracts/FDE_WORKBENCH_CAPABILITY_LEDGER.md` + `FDE_CAPABILITY_LEDGER_TEMPLATE.md` | ✅ | Tab/竖切/执行核可审计台账（T/V/E ID）；生成物：不适用（平台契约） | 已合入 |
-| AI FDE 受控应用闭环设计 | `docs/contracts/FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md` | ✅ | 4B：观测窗+自动回滚+反向 KPI；对照半步已合代码；生成物：不适用（设计文档） | 已合入 |
-| DomainRouter.require_known_domain | `harness/knowledge/domain_router.py` | ✅ | Phase 1 硬闸：未知域拒绝；tracking 域放行 | 已合入 |
-| **Knowledge Pipeline v3** | `harness/knowledge_pipeline/extractor.py` + `resolver.py` + `retriever.py` | ✅ | 知识生命周期三层管线；**P2** confirm→GraphIndex；**P3** approve→apply；**P4** `graph_abox_acl` 实例/属性 ACL + `data-gov` 教学种图闸2；**可执行本体 Phase0–3**：`ONTOLOGY_EXECUTABLE_MODEL` + Path B webhook connector + ACL 身份桥 + `retail-ops` 同构域 + ACL CRUD API；生成物适用：**已接线**（工厂经 Action/syscall，禁止平行写图） | 已合入 |
+| **Action Registry v3** | `harness/infrastructure/action_contract.py` + `action_registry.py` + `action_store.py` + `entity_lock.py` | ✅ | 企业级可治理 AI 执行层：`ActionContractModel`（Pydantic v2 + 实体约束 + handler白名单安全沙箱）、`AsyncActionRegistry`（7步执行流水线 + 审批回调 + 审计持久化）、`EntityLock`（mutex/stake双语义锁）、`ActionStore`（aiosqlite + entity_snapshot不可变审计）、`builtin_actions`（2业务+4legacy+YAML自助注册）、`builtin_handlers`（4个可调用handler）、`action_routes.py`（REST API + FDE AcceptTab前端动作卡片）、StateMachine零停机桥接 | 已合入 |
+| **Knowledge Pipeline v3** | `harness/knowledge_pipeline/extractor.py` + `resolver.py` + `retriever.py` | ✅ | 知识生命周期三层管线：`DocumentIngestor`（文档分块）→ `EntityExtractor`（LLM驱动9实体+10关系自动抽取，置信度三级路由≥0.85自动/0.60-0.85待审/<0.60丢弃）→ `DraftYamlWriter`（YAML草稿输出）→ `CrossDomainResolver`（三级匹配：精确键0.6+Jaro-Winkler名称0.25+向量余弦0.15）→ `GraphRAGRetriever`（实体路由→BFS 2跳子图→定向向量检索→推理路径注入） | 已合入 |
 | **Knowledge Pipeline 生成物适用性** | 生成 agent 运行时知识检索接入 | ⚠️ | 生成物不适用（理由：生成 agent 运行时知识检索由 core 全局 syscall `sys_kb_retrieve`（harness/syscalls/retrieval.py，ReActLoop 天然可用）平台横切强制执行，生成物无需自建检索路径；与 platform kb 能力族评估结论一致，2026-08-27 收尾） | 已评估 |
 | **CC/Codex hooks 协议桥（G6）** | `harness/infrastructure/hooks/cc_bridge.py` + `cc_bridge_rules.py` | ✅ | 直接消费 Claude Code / Codex `hooks.json`：事件映射表（CC 7/30 + Codex 4/10 → HookPhase 子集）+ command handler 执行（shell=False/超时/fail-open）+ 默认关（`~/.aiplat/hooks.json` 或 `AIPLAT_CC_HOOKS_PATH` 存在时装载）；http/mcp_tool/prompt/agent handler 跳过记 WARNING，unmapped 事件不静默执行（对齐 DSH hooks 桥诚实披露） | 已合入 |
 | **service-domain 参考实现** | `~/.aiplat/ontologies/service-domain.yaml` + `~/.aiplat/actions/service-domain_actions.yaml` + `custom_handlers/service_handlers.py` + `~/.aiplat/tests/service-domain_tests.yaml` + `scripts/sop_validate.py` + `docs/manuals/fde/06-sop-domain-delivery.md` | ✅ | 生产级参考实现：6类实体+6种关系+4态状态机+inference_rules + 5个动作（assign/start/submit/complete/reopen）+ 5个async handler + 12条测试用例 + SOP验证脚本6/6 PASS + 5天标准交付流程文档 | 已合入 |
@@ -814,10 +808,11 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
-| ingest_abox_webhook | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
-| VersionedOntologyStore.apply_proposal | `core/harness/knowledge/versioned_ontology_store.py` | ✅ | 自动同步 | 已合入 |
-| PendingExtractionStore.confirm | `core/harness/knowledge_pipeline/extractor.py` | ✅ | 自动同步 | 已合入 |
-| EntityExtractor | `core/harness/knowledge_pipeline/extractor.py` | ✅ | 自动同步 | 已合入 |
+| live_yaml_write_allowed | `core/harness/knowledge/ontology_yaml_gate.py` | ✅ | 自动同步 | 已合入 |
+| LiveYamlDirectWriteDenied | `core/harness/knowledge/ontology_yaml_gate.py` | ✅ | 自动同步 | 已合入 |
+| find_case | `core/harness/knowledge/ontology_case_learning.py` | ✅ | 自动同步 | 已合入 |
+| is_cold_archive_candidate | `core/harness/knowledge/ontology_case_learning.py` | ✅ | 自动同步 | 已合入 |
+| OntologyCase | `core/harness/knowledge/ontology_case_learning.py` | ✅ | 自动同步 | 已合入 |
 | compute_all_ocs | `core/harness/knowledge/ontology_completeness.py` | ✅ | 自动同步 | 已合入 |
 | load_rules | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
 | SecurityView | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
@@ -825,15 +820,194 @@ scan_hash: 8f9548ec24f4
 | LayerStats | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
 | HotPath | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
 | Sink | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
-| code_intel_hot_paths | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | merge_evidence_into_report | `core/engine/skills/security_evidence/handler.py` | ✅ | 自动同步 | 已合入 |
 | security_evidence.execute | `core/engine/skills/security_evidence/handler.py` | ✅ | 自动同步 | 已合入 |
 | run_security_plan | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | security_plan.execute | `core/engine/skills/security_plan/handler.py` | ✅ | 自动同步 | 已合入 |
+| code_intel_hot_paths | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | sys_code_intel_security_view | `core/harness/syscalls/code_intel_syscall.py` | ✅ | 自动同步 | 已合入 |
 | compact_security_digest | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
 | get_security_view | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
 | build_security_view | `core/harness/knowledge/security_view.py` | ✅ | 自动同步 | 已合入 |
+| seed_data_gov_demo_graph | `core/apps/fde/service/data_gov_demo_seed.py` | ✅ | 自动同步 | 已合入 |
+| redact_entity_fields | `core/policy/graph_abox_acl.py` | ✅ | 自动同步 | 已合入 |
+| VersionedOntologyStore.try_auto_apply_edge_proposal | `core/harness/knowledge/versioned_ontology_store.py` | ✅ | 自动同步 | 已合入 |
+| VersionedOntologyStore.rollback_proposal | `core/harness/knowledge/versioned_ontology_store.py` | ✅ | 自动同步 | 已合入 |
+| org_list_cold_cases | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| org_archive_cold_cases | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| list_cold_cases | `core/harness/knowledge/ontology_case_learning.py` | ✅ | 自动同步 | 已合入 |
+| archive_cold_cases | `core/harness/knowledge/ontology_case_learning.py` | ✅ | 自动同步 | 已合入 |
+| context_hit_rate | `core/harness/knowledge/ontology_case_learning.py` | ✅ | 自动同步 | 已合入 |
+| select_cases_for_context | `core/harness/knowledge/ontology_case_learning.py` | ✅ | 自动同步 | 已合入 |
+| format_cases_for_context | `core/harness/knowledge/ontology_case_learning.py` | ✅ | 自动同步 | 已合入 |
+| rollback_case_evolution | `core/harness/knowledge/ontology_case_learning.py` | ✅ | 自动同步 | 已合入 |
+| rollback_ontology_proposal | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| rollback_ontology_case_evolution | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| evolve_ontology_from_case | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| feedback_ontology_case | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| ontology_case_learning_meta | `core/harness/knowledge/ontology_case_learning.py` | ✅ | 自动同步 | 已合入 |
+| ontology_case_learning_status | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| search_ontology_cases | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| record_ontology_case | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| maybe_enqueue_evolution_proposal | `core/harness/knowledge/ontology_case_learning.py` | ✅ | 自动同步 | 已合入 |
+| record_feedback_and_maybe_evolve | `core/harness/knowledge/ontology_case_learning.py` | ✅ | 自动同步 | 已合入 |
+| record_case_from_action | `core/harness/knowledge/ontology_case_learning.py` | ✅ | 自动同步 | 已合入 |
+| OntologyCaseStore | `core/harness/knowledge/ontology_case_learning.py` | ✅ | 自动同步 | 已合入 |
+| review_ontology_owl_offline | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| get_ontology_pillars_view | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| import_abox_table_map | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| ingest_abox_webhook | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| redact_graph_entity_fields | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| check_graph_entity_acl | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| seed_retail_ops_demo_graph | `core/apps/fde/service/retail_ops_demo_seed.py` | ✅ | 自动同步 | 已合入 |
+| review_domain_owl_offline | `core/apps/fde/service/offline_owl_review.py` | ✅ | 自动同步 | 已合入 |
+| suggest_classes_from_snippets_async | `core/apps/fde/service/ontology_code_suggestions.py` | ✅ | 自动同步 | 已合入 |
+| get_ontology_pillars | `core/apps/fde/service/ontology_pillars.py` | ✅ | 自动同步 | 已合入 |
+| enrich_column_meanings | `core/apps/fde/service/ontology_code_suggestions.py` | ✅ | 自动同步 | 已合入 |
+| org_event_previews | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| org_event_preview_start | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| list_event_previews | `core/apps/org/service/org_ingress.py` | ✅ | 自动同步 | 已合入 |
+| start_event_preview | `core/apps/org/service/org_ingress.py` | ✅ | 自动同步 | 已合入 |
+| org_ingest_feishu | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| org_usage_weekly | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| weekly_usage | `core/apps/org/service/org_usage.py` | ✅ | 自动同步 | 已合入 |
+| schedule_run_usage | `core/apps/org/service/org_usage.py` | ✅ | 自动同步 | 已合入 |
+| org_list_posts | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_post_gate | `core/apps/org/service/org_post.py` | ✅ | 自动同步 | 已合入 |
+| get_post | `core/apps/org/service/org_post.py` | ✅ | 自动同步 | 已合入 |
+| post_channel_allowed | `core/apps/org/service/org_ingress.py` | ✅ | 自动同步 | 已合入 |
+| verify_lark_signature | `core/apps/org/service/org_ingress.py` | ✅ | 自动同步 | 已合入 |
+| ingest_feishu_event | `core/apps/org/service/org_ingress.py` | ✅ | 自动同步 | 已合入 |
+| process_channel_message | `core/apps/org/service/org_ingress.py` | ✅ | 自动同步 | 已合入 |
+| org_get_interface | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| org_list_interfaces | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| live_io_gates | `core/apps/org/service/org_live_adapter.py` | ✅ | 自动同步 | 已合入 |
+| fetch_live_http | `core/apps/org/service/org_live_adapter.py` | ✅ | 自动同步 | 已合入 |
+| validate_interface_spec | `core/apps/org/service/org_interface.py` | ✅ | 自动同步 | 已合入 |
+| normalize_interface_spec | `core/apps/org/service/org_interface.py` | ✅ | 自动同步 | 已合入 |
+| assert_action_bound | `core/apps/org/service/org_interface.py` | ✅ | 自动同步 | 已合入 |
+| list_interface_specs | `core/apps/org/service/org_interface.py` | ✅ | 自动同步 | 已合入 |
+| org_materialize_interface | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| materialize_interface_yaml | `core/apps/org/service/org_interface.py` | ✅ | 自动同步 | 已合入 |
+| get_interface_spec | `core/apps/org/service/org_interface.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_live_unlock | `core/apps/org/service/org_field_ops.py` | ✅ | 自动同步 | 已合入 |
+| org_signoff_prep | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| org_customer_signoff | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| render_signoff_prep_markdown | `core/apps/org/service/org_field_ops.py` | ✅ | 自动同步 | 已合入 |
+| signoff_playbook_steps | `core/apps/org/service/org_field_ops.py` | ✅ | 自动同步 | 已合入 |
+| signoff_prep_view | `core/apps/org/service/org_field_ops.py` | ✅ | 自动同步 | 已合入 |
+| customer_signoff_view | `core/apps/org/service/org_field_ops.py` | ✅ | 自动同步 | 已合入 |
+| field_ops_checklist | `core/apps/org/service/org_field_ops.py` | ✅ | 自动同步 | 已合入 |
+| org_sandbox_rehearsals | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| org_sandbox_rehearsal_start | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| list_sandbox_rehearsals | `core/apps/org/service/org_fleet.py` | ✅ | 自动同步 | 已合入 |
+| start_sandbox_rehearsal | `core/apps/org/service/org_fleet.py` | ✅ | 自动同步 | 已合入 |
+| org_fleet_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_fleet_gate | `core/apps/org/service/org_fleet.py` | ✅ | 自动同步 | 已合入 |
+| org_search_memory | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| search_exceptions | `core/apps/org/service/org_memory.py` | ✅ | 自动同步 | 已合入 |
+| record_run_memory | `core/apps/org/service/org_memory.py` | ✅ | 自动同步 | 已合入 |
+| org_joint_health | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| joint_health_view | `core/apps/org/service/org_kpi.py` | ✅ | 自动同步 | 已合入 |
+| weekly_kpi_report | `core/apps/org/service/org_kpi.py` | ✅ | 自动同步 | 已合入 |
+| resume_run | `core/apps/org/service/org_runtime.py` | ✅ | 自动同步 | 已合入 |
+| run_org_goal | `core/apps/org/service/org_runtime.py` | ✅ | 自动同步 | 已合入 |
+| org_resume_run | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| org_authorize_console_run | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| authorize_console_run | `core/apps/org/service/org_post.py` | ✅ | 自动同步 | 已合入 |
+| org_replay_trace | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| org_run_goal | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| org_list_goals | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| fetch_entity_snapshot | `core/apps/fde/service/abox_connector.py` | ✅ | 自动同步 | 已合入 |
+| fetch_by_entity | `core/apps/org/service/org_io.py` | ✅ | 自动同步 | 已合入 |
+| governance_fetch_view | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| locate_via_ontology | `core/apps/fde/service/governance_deepen.py` | ✅ | 自动同步 | 已合入 |
+| governance_locate_view | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| governance_quality_snapshot | `core/apps/fde/service/governance_deepen.py` | ✅ | 自动同步 | 已合入 |
+| governance_quality_view | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| get_governance_loop_map | `core/apps/fde/service/governance_loop.py` | ✅ | 自动同步 | 已合入 |
+| get_governance_scenario_loop | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| suggest_ontology_from_table_schema | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| suggest_classes_from_table_schema_async | `core/apps/fde/service/ontology_code_suggestions.py` | ✅ | 自动同步 | 已合入 |
+| suggest_classes_from_table_schema | `core/apps/fde/service/ontology_code_suggestions.py` | ✅ | 自动同步 | 已合入 |
+| suggest_classes_from_snippets | `core/apps/fde/service/ontology_code_suggestions.py` | ✅ | 自动同步 | 已合入 |
+| ensure_retail_ops_ontology | `core/apps/fde/service/retail_ops_demo_seed.py` | ✅ | 自动同步 | 已合入 |
+| ensure_data_gov_ontology | `core/apps/fde/service/data_gov_demo_seed.py` | ✅ | 自动同步 | 已合入 |
+| load_table_map_sample | `core/apps/fde/service/abox_connector.py` | ✅ | 自动同步 | 已合入 |
+| parse_csv_text | `core/apps/fde/service/abox_connector.py` | ✅ | 自动同步 | 已合入 |
+| verify_webhook_secret | `core/apps/fde/service/abox_connector.py` | ✅ | 自动同步 | 已合入 |
+| find_domain_for_source | `core/apps/fde/service/abox_connector.py` | ✅ | 自动同步 | 已合入 |
+| load_connector_config | `core/apps/fde/service/abox_connector.py` | ✅ | 自动同步 | 已合入 |
+| ensure_connector_config | `core/apps/fde/service/abox_connector.py` | ✅ | 自动同步 | 已合入 |
+| connector_path | `core/apps/fde/service/abox_connector.py` | ✅ | 自动同步 | 已合入 |
+| map_table_rows_to_payload | `core/apps/fde/service/abox_connector.py` | ✅ | 自动同步 | 已合入 |
+| import_table_map_payload | `core/apps/fde/service/abox_connector.py` | ✅ | 自动同步 | 已合入 |
+| import_abox_payload | `core/apps/fde/service/abox_connector.py` | ✅ | 自动同步 | 已合入 |
+| ingest_webhook_payload | `core/apps/fde/service/abox_connector.py` | ✅ | 自动同步 | 已合入 |
+| resolve_abox_actor_role | `core/policy/graph_abox_acl.py` | ✅ | 自动同步 | 已合入 |
+| check_entity_acl | `core/policy/graph_abox_acl.py` | ✅ | 自动同步 | 已合入 |
+| apply_ontology_proposal | `aiPlat-platform/apps/fde/api/extraction_routes.py` | ✅ | 自动同步 | 已合入 |
+| approve_ontology_proposal | `aiPlat-platform/apps/fde/api/extraction_routes.py` | ✅ | 自动同步 | 已合入 |
+| json_change_diff | `core/harness/knowledge/versioned_ontology_store.py` | ✅ | 自动同步 | 已合入 |
+| delete_ontology_class_async | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| VersionedOntologyStore.apply_proposal | `core/harness/knowledge/versioned_ontology_store.py` | ✅ | 自动同步 | 已合入 |
+| confirm_extraction | `aiPlat-platform/apps/fde/api/extraction_routes.py` | ✅ | 自动同步 | 已合入 |
+| replay_org_trace | `core/apps/org/service/v_wave_replay.py` | ✅ | 自动同步 | 已合入 |
+| edge_auto_apply_block | `core/apps/fde/service/v_wave_guard.py` | ✅ | 自动同步 | 已合入 |
+| org_h5_approve_draft | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| org_h5_drafts | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| assemble_skill_bundle | `core/apps/org/service/org_skill_draft.py` | ✅ | 自动同步 | 已合入 |
+| list_action_gap_hints | `core/apps/org/service/org_skill_draft.py` | ✅ | 自动同步 | 已合入 |
+| create_skill_draft | `core/apps/org/service/org_skill_draft.py` | ✅ | 自动同步 | 已合入 |
+| list_skill_drafts | `core/apps/org/service/org_skill_draft.py` | ✅ | 自动同步 | 已合入 |
+| org_value_baseline_put | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| save_signoff_progress | `core/apps/org/service/org_signoff_progress.py` | ✅ | 自动同步 | 已合入 |
+| install_domain_pack | `core/apps/org/service/domain_pack_install.py` | ✅ | 自动同步 | 已合入 |
+| org_value_roi_preview | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| preview_value_roi | `core/apps/org/service/org_value_translation.py` | ✅ | 自动同步 | 已合入 |
+| save_value_baseline | `core/apps/org/service/org_value_translation.py` | ✅ | 自动同步 | 已合入 |
+| org_h4_rules | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| org_h4_auto_audit | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| org_h4_auto_pass | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| sandbox_live_delta | `core/apps/org/service/org_auto_pass.py` | ✅ | 自动同步 | 已合入 |
+| h4_rules_view | `core/apps/org/service/org_auto_pass.py` | ✅ | 自动同步 | 已合入 |
+| h4_auto_audit | `core/apps/org/service/org_auto_pass.py` | ✅ | 自动同步 | 已合入 |
+| run_h4_auto_pass | `core/apps/org/service/org_auto_pass.py` | ✅ | 自动同步 | 已合入 |
+| org_value_translation | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| translate_org_value | `core/apps/org/service/org_value_translation.py` | ✅ | 自动同步 | 已合入 |
+| org_evidence_pack | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| build_evidence_pack | `core/apps/org/service/org_evidence_pack.py` | ✅ | 自动同步 | 已合入 |
+| org_approval_snapshot | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| org_approval_inbox | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| get_approval_snapshot | `core/apps/org/service/org_approvals.py` | ✅ | 自动同步 | 已合入 |
+| list_approval_inbox | `core/apps/org/service/org_approvals.py` | ✅ | 自动同步 | 已合入 |
+| org_rollback_scope | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| rollback_scope | `core/apps/fde/service/k_wave_rollback.py` | ✅ | 自动同步 | 已合入 |
+| decide_ontology_approval | `core/harness/infrastructure/gates/policy_gate.py` | ✅ | 自动同步 | 已合入 |
+| approve_proposal_once | `core/apps/fde/service/k_wave_approve.py` | ✅ | 自动同步 | 已合入 |
+| k5_scan_repeat_failures | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| org_draft_schema_gaps | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| org_preview_schema_gaps | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| project_ontology_changes | `core/harness/knowledge/versioned_ontology_store.py` | ✅ | 自动同步 | 已合入 |
+| preview_schema_gaps | `core/apps/fde/service/k_wave_propose.py` | ✅ | 自动同步 | 已合入 |
+| draft_schema_gaps | `core/apps/fde/service/k_wave_propose.py` | ✅ | 自动同步 | 已合入 |
+| enqueue_repeat_failure_proposals | `core/apps/fde/service/k_wave_propose.py` | ✅ | 自动同步 | 已合入 |
+| record_case_from_tool_streak | `core/apps/fde/service/k_wave_case.py` | ✅ | 自动同步 | 已合入 |
+| record_case_from_org_run | `core/apps/fde/service/k_wave_case.py` | ✅ | 自动同步 | 已合入 |
+| allow_live_yaml_write | `core/harness/knowledge/ontology_yaml_gate.py` | ✅ | 自动同步 | 已合入 |
+| assert_live_yaml_write | `core/harness/knowledge/ontology_yaml_gate.py` | ✅ | 自动同步 | 已合入 |
+| build_org_run_reasoning | `core/apps/fde/service/k_wave_reason.py` | ✅ | 自动同步 | 已合入 |
+| k2_rollback_arbitration_edge | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| k2_apply_arbitration | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| k2_propose_arbitration | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| rollback_ticket_edge | `core/apps/fde/service/k_wave_arbit.py` | ✅ | 自动同步 | 已合入 |
+| apply_ticket | `core/apps/fde/service/k_wave_arbit.py` | ✅ | 自动同步 | 已合入 |
+| decide_ticket | `core/apps/fde/service/k_wave_arbit.py` | ✅ | 自动同步 | 已合入 |
+| propose_ticket | `core/apps/fde/service/k_wave_arbit.py` | ✅ | 自动同步 | 已合入 |
+| k1_confirm_extraction | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| confirm_extraction_k1 | `core/apps/fde/service/k_wave_signal.py` | ✅ | 自动同步 | 已合入 |
+| PendingExtractionStore.confirm | `core/harness/knowledge_pipeline/extractor.py` | ✅ | 自动同步 | 已合入 |
+| write_extraction_to_graph_index | `core/harness/knowledge_pipeline/extractor.py` | ✅ | 自动同步 | 已合入 |
 | KnowledgeRetriever | `core/harness/knowledge/retriever.py` | ✅ | 自动同步 | 已合入 |
 | audit_trace_rules | `core/harness/ontology_engine/sirg_auditor.py` | ✅ | 自动同步 | 已合入 |
 | SirgAuditor | `core/harness/ontology_engine/sirg_auditor.py` | ✅ | 自动同步 | 已合入 |
@@ -1010,7 +1184,7 @@ scan_hash: 8f9548ec24f4
 | sqlite_retriever | harness/knowledge/sqlite_retriever.py | ✅ | 自动同步 | 已合入 |
 | code_graph | harness/knowledge/code_graph.py | ✅ | 代码图谱（AST imports/calls/symbols/routes，5 仓库全量 + mtime 增量 + 新文件发现）；经 get_aiplat_home() 解析（2026-08-28 修复） | 已合入 |
 | **security_view** | harness/knowledge/security_view.py | ✅ | 基于 code_graph 的确定性安全视图编译器（secview.v1：entries/sinks/gates/scored hot_paths）；无 LLM；reachability≠taint（heuristic）；CoreFacade + sys_code_intel_security_* + diagnostics/code-intel/security-view | 已合入 |
-| **security_review team (Phase B/C)** | workspace_seeds/teams/security_review.yaml + engine/skills/security_{plan,trace,critique,report,evidence} | ✅ | B：全 handler 干跑至 candidate；C：`security_evidence` 默认关闭（enabled / AIPLAT_SECURITY_PHASE_C）；regression_evidence.v1；SSH/SSRF mock 断言；`run_security_review_dry(phase_c_enabled=…)` | 已合入 |
+| **security_review team (Phase B)** | workspace_seeds/teams/security_review.yaml + engine/skills/security_{plan,trace,critique,report} | ✅ | 全 handler 无 LLM 干跑：plan→trace→critique→report；`run_security_review_dry` + `POST .../security-review-dry`；severity≤candidate | 已合入 |
 | doc_compressor | harness/knowledge/doc_compressor.py | ✅ | 自动同步 | 已合入 |
 | ontology_query_mapper | harness/knowledge/ontology_query_mapper.py | ✅ | 自动同步 | 已合入 |
 | wiki_retriever | harness/knowledge/wiki_retriever.py | ✅ | 自动同步 | 已合入 |
@@ -1097,6 +1271,75 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| get_value_baseline_view | `core/apps/org/service/org_value_translation.py` | ✅ | 自动同步 | 已合入 |
+| load_value_baseline | `core/apps/org/service/org_value_translation.py` | ✅ | 自动同步 | 已合入 |
+| append_events | `core/apps/org/service/org_usage.py` | ✅ | 自动同步 | 已合入 |
+| events_from_run | `core/apps/org/service/org_usage.py` | ✅ | 自动同步 | 已合入 |
+| reject_skill_draft | `core/apps/org/service/org_skill_draft.py` | ✅ | 自动同步 | 已合入 |
+| approve_skill_draft | `core/apps/org/service/org_skill_draft.py` | ✅ | 自动同步 | 已合入 |
+| list_skill_candidates | `core/apps/org/service/org_skill_draft.py` | ✅ | 自动同步 | 已合入 |
+| drafts_dir | `core/apps/org/service/org_skill_draft.py` | ✅ | 自动同步 | 已合入 |
+| get_signoff_progress | `core/apps/org/service/org_signoff_progress.py` | ✅ | 自动同步 | 已合入 |
+| load_signoff_progress | `core/apps/org/service/org_signoff_progress.py` | ✅ | 自动同步 | 已合入 |
+| default_progress | `core/apps/org/service/org_signoff_progress.py` | ✅ | 自动同步 | 已合入 |
+| progress_path | `core/apps/org/service/org_signoff_progress.py` | ✅ | 自动同步 | 已合入 |
+| get_run | `core/apps/org/service/org_runtime.py` | ✅ | 自动同步 | 已合入 |
+| list_runs | `core/apps/org/service/org_runtime.py` | ✅ | 自动同步 | 已合入 |
+| patch_goal | `core/apps/org/service/org_runtime.py` | ✅ | 自动同步 | 已合入 |
+| set_goal_status | `core/apps/org/service/org_runtime.py` | ✅ | 自动同步 | 已合入 |
+| list_goals | `core/apps/org/service/org_runtime.py` | ✅ | 自动同步 | 已合入 |
+| ensure_pilot_goal | `core/apps/org/service/org_runtime.py` | ✅ | 自动同步 | 已合入 |
+| list_posts | `core/apps/org/service/org_post.py` | ✅ | 自动同步 | 已合入 |
+| load_posts | `core/apps/org/service/org_post.py` | ✅ | 自动同步 | 已合入 |
+| validate_post | `core/apps/org/service/org_post.py` | ✅ | 自动同步 | 已合入 |
+| normalize_post | `core/apps/org/service/org_post.py` | ✅ | 自动同步 | 已合入 |
+| list_memory | `core/apps/org/service/org_memory.py` | ✅ | 自动同步 | 已合入 |
+| adapter_declared | `core/apps/org/service/org_live_adapter.py` | ✅ | 自动同步 | 已合入 |
+| live_config | `core/apps/org/service/org_live_adapter.py` | ✅ | 自动同步 | 已合入 |
+| preview_write | `core/apps/org/service/org_io.py` | ✅ | 自动同步 | 已合入 |
+| interface_ready_for_outbound | `core/apps/org/service/org_interface.py` | ✅ | 自动同步 | 已合入 |
+| resolve_interface_raw | `core/apps/org/service/org_interface.py` | ✅ | 自动同步 | 已合入 |
+| load_live_raw | `core/apps/org/service/org_interface.py` | ✅ | 自动同步 | 已合入 |
+| load_event_allowlist | `core/apps/org/service/org_ingress.py` | ✅ | 自动同步 | 已合入 |
+| build_dispatch_evidence | `core/apps/org/service/org_ingress.py` | ✅ | 自动同步 | 已合入 |
+| resolve_actor | `core/apps/org/service/org_ingress.py` | ✅ | 自动同步 | 已合入 |
+| ingress_status | `core/apps/org/service/org_ingress.py` | ✅ | 自动同步 | 已合入 |
+| normalize_channel | `core/apps/org/service/org_ingress.py` | ✅ | 自动同步 | 已合入 |
+| ensure_approval_rules_seed | `core/apps/org/service/org_h4_seed.py` | ✅ | 自动同步 | 已合入 |
+| probe_sandbox_conflict | `core/apps/org/service/org_fleet.py` | ✅ | 自动同步 | 已合入 |
+| request_fleet_or_run | `core/apps/org/service/org_fleet.py` | ✅ | 自动同步 | 已合入 |
+| set_allow_fleet | `core/apps/org/service/org_fleet.py` | ✅ | 自动同步 | 已合入 |
+| live_unlock_marker_path | `core/apps/org/service/org_field_ops.py` | ✅ | 自动同步 | 已合入 |
+| default_rules | `core/apps/org/service/org_auto_pass.py` | ✅ | 自动同步 | 已合入 |
+| sandbox_switch_on | `core/apps/org/service/org_auto_pass.py` | ✅ | 自动同步 | 已合入 |
+| audit_path | `core/apps/org/service/org_auto_pass.py` | ✅ | 自动同步 | 已合入 |
+| rules_path | `core/apps/org/service/org_auto_pass.py` | ✅ | 自动同步 | 已合入 |
+| list_domain_packs | `core/apps/org/service/domain_pack_install.py` | ✅ | 自动同步 | 已合入 |
+| packs_root | `core/apps/org/service/domain_pack_install.py` | ✅ | 自动同步 | 已合入 |
+| edge_auto_apply_switch_on | `core/apps/fde/service/v_wave_guard.py` | ✅ | 自动同步 | 已合入 |
+| live_yaml_hash | `core/apps/fde/service/k_wave_signal.py` | ✅ | 自动同步 | 已合入 |
+| live_yaml_path | `core/apps/fde/service/k_wave_signal.py` | ✅ | 自动同步 | 已合入 |
+| signals_path | `core/apps/fde/service/k_wave_signal.py` | ✅ | 自动同步 | 已合入 |
+| ledger_path | `core/apps/fde/service/k_wave_propose.py` | ✅ | 自动同步 | 已合入 |
+| is_approved_for_resolve | `core/apps/fde/service/k_wave_arbit.py` | ✅ | 自动同步 | 已合入 |
+| list_tickets | `core/apps/fde/service/k_wave_arbit.py` | ✅ | 自动同步 | 已合入 |
+| get_ticket | `core/apps/fde/service/k_wave_arbit.py` | ✅ | 自动同步 | 已合入 |
+| tickets_path | `core/apps/fde/service/k_wave_arbit.py` | ✅ | 自动同步 | 已合入 |
+| locate_via_ontology_async | `core/apps/fde/service/governance_deepen.py` | ✅ | 自动同步 | 已合入 |
+| prioritize_gaps | `core/apps/fde/service/clarify_dialog.py` | ✅ | 自动同步 | 已合入 |
+| simple_extract_fields | `core/apps/fde/service/clarify_dialog.py` | ✅ | 自动同步 | 已合入 |
+| guess_agent_display_name | `core/apps/common/create_dialog_utils.py` | ✅ | 自动同步 | 已合入 |
+| agent_create_corpus_ready | `core/apps/common/create_dialog_utils.py` | ✅ | 自动同步 | 已合入 |
+| join_user_corpus | `core/apps/common/create_dialog_utils.py` | ✅ | 自动同步 | 已合入 |
+| is_draft_ready | `core/apps/common/create_dialog_utils.py` | ✅ | 自动同步 | 已合入 |
+| parse_clarify_payload | `core/apps/common/create_dialog_utils.py` | ✅ | 自动同步 | 已合入 |
+| history_as_text | `core/apps/common/create_dialog_utils.py` | ✅ | 自动同步 | 已合入 |
+| trim_history | `core/apps/common/create_dialog_utils.py` | ✅ | 自动同步 | 已合入 |
+| extract_json_object | `core/apps/common/create_dialog_utils.py` | ✅ | 自动同步 | 已合入 |
+| hints_for_mcp_draft | `core/apps/common/boundary_hints.py` | ✅ | 自动同步 | 已合入 |
+| hints_for_tool_draft | `core/apps/common/boundary_hints.py` | ✅ | 自动同步 | 已合入 |
+| wants_outbound_network | `core/apps/common/boundary_hints.py` | ✅ | 自动同步 | 已合入 |
+| mentions_external_system | `core/apps/common/boundary_hints.py` | ✅ | 自动同步 | 已合入 |
 | save_escort_exit | `core/apps/fde/service/customer_success.py` | ✅ | 自动同步 | 已合入 |
 | get_escort_exit | `core/apps/fde/service/customer_success.py` | ✅ | 自动同步 | 已合入 |
 | refresh_handover_from_usage | `core/apps/fde/service/customer_success.py` | ✅ | 自动同步 | 已合入 |
@@ -1106,6 +1349,9 @@ scan_hash: 8f9548ec24f4
 | list_delivery_sessions | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
 | get_delivery_session | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
 | load_delivery_template | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
+| run_fde_agent_one_shot | `core/apps/fde/service/agent.py` | ✅ | 自动同步 | 已合入 |
+| ClarifyTurnInput | `core/apps/fde/service/clarify_dialog.py` | ✅ | 自动同步 | 已合入 |
+| run_clarify_turn | `core/apps/fde/service/clarify_dialog.py` | ✅ | 自动同步 | 已合入 |
 | collect_turn | `core/harness/digital_human/trajectory_collector.py` | ✅ | 自动同步 | 已合入 |
 | voice_chat_handler | `core/harness/digital_human/voice_pipeline.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_four_questions | `core/apps/fde/service/four_questions.py` | ✅ | 自动同步 | 已合入 |
@@ -1156,6 +1402,26 @@ scan_hash: 8f9548ec24f4
 ## 六、Skill 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| WorkflowManager.dedupe_workflows | `core/management/workflow_manager.py` | ✅ | 自动同步 | 已合入 |
+| WorkflowManager.find_equivalent | `core/management/workflow_manager.py` | ✅ | 自动同步 | 已合入 |
+| AgentManager.dedupe_agents | `core/management/agent_manager.py` | ✅ | 自动同步 | 已合入 |
+| AgentManager.find_equivalent | `core/management/agent_manager.py` | ✅ | 自动同步 | 已合入 |
+| dedupe_workspace_agents | `core/api/routers/workspace_agents.py` | ✅ | 自动同步 | 已合入 |
+| build_sample_payload | `core/management/execution_examples.py` | ✅ | 自动同步 | 已合入 |
+| build_agent_task_examples | `core/management/execution_examples.py` | ✅ | 自动同步 | 已合入 |
+| build_examples_from_input_schema | `core/management/execution_examples.py` | ✅ | 自动同步 | 已合入 |
+| hints_for_skill_draft | `core/apps/common/boundary_hints.py` | ✅ | 自动同步 | 已合入 |
+| hints_for_agent_draft | `core/apps/common/boundary_hints.py` | ✅ | 自动同步 | 已合入 |
+| run_team_create_dialog_turn | `core/apps/builder/service/team_create_dialog.py` | ✅ | 自动同步 | 已合入 |
+| run_mcp_create_dialog_turn | `core/apps/workbench/service/mcp_create_dialog.py` | ✅ | 自动同步 | 已合入 |
+| run_tool_create_dialog_turn | `core/apps/tools/service/tool_create_dialog.py` | ✅ | 自动同步 | 已合入 |
+| list_workspace_templates | `core/api/routers/workspace_agents.py` | ✅ | 自动同步 | 已合入 |
+| upload_workspace_template | `core/api/routers/workspace_agents.py` | ✅ | 自动同步 | 已合入 |
+| run_agent_create_dialog_turn | `core/apps/builder/service/agent_create_dialog.py` | ✅ | 自动同步 | 已合入 |
+| run_skill_create_dialog_turn | `core/apps/skills/service/skill_create_dialog.py` | ✅ | 自动同步 | 已合入 |
+| generate_workspace_skill_execution_examples | `core/api/routers/workspace_skills.py` | ✅ | 自动同步 | 已合入 |
+| generate_skill_execution_examples_llm | `core/apps/skills/service/skill_execution_examples_llm.py` | ✅ | 自动同步 | 已合入 |
+| generate_skill_autofill | `core/apps/skills/service/skill_autofill.py` | ✅ | 自动同步 | 已合入 |
 | BaseSkill | `apps/skills/base.py` | ✅ | 自动同步 | 已合入 |
 | SkillManager | `apps/skills/skill_manager.py` | ✅ | 自动同步 | 已合入 |
 | review_report | engine/skills/autoreview/review_report.py | ✅ | 自动同步 | 已合入 |
@@ -1178,7 +1444,7 @@ scan_hash: 8f9548ec24f4
 | SkillRouting | harness/routing/skill_routing.py | ✅ | Canary/A-B/Shadow/Auto-Rollback | 已合入 |
 | Completion Criterion | [概念] | ✅ | 30个 SKILL.md frontmatter — 统计数据；每个 skill 显式声明完成条件，5类模板（知识/生成/工程/测试/交互） | 待核实 |
 | Grilling 追问技能 | engine/skills/grilling/SKILL.md | ✅ | Matt Pocock 风格：一次一问 + ≤3推荐选项 + 读文件原则 | 已合入 |
-| **GrillingBridge** | core/api/core_facade.py:1103-1276` + `routers/grilling.py | ✅ | v2.9: 11入口统一需求澄清 —— start/answer/skip/finalize API + 10种默认维度 + domain YAML interview_dimensions + GrillPanel前端组件(modal/sidebar/inline) | 已合入 |
+| **GrillingBridge** | ⚠️ deprecated core/api/core_facade.py:1103-1276` + `routers/grilling.py | ✅ | v2.9: 11入口统一需求澄清 —— start/answer/skip/finalize API + 10种默认维度 + domain YAML interview_dimensions + GrillPanel前端组件(modal/sidebar/inline) | 已合入 |
 | **migrate-classify** | routers/wiki.py:2703` + `graph_index.py:212 | ✅ | v2.9: 本体类重命名安全迁移 —— YAML改名 + GraphIndex节点class_name批量更新 | 已合入 |
 | **DomainRouter 自动失效** | wiki_ontology_engine.py:1408` + `core_facade.py:2310+ | ✅ | v2.9: 本体YAML CRUD操作后自动失效DomainRouter缓存，下次classify()重建索引 | 已合入 |
 | **auto_ontology_pipeline** | core_facade.py:1037 | ✅ | v2.9: 文档变化→本体引擎自动触发，闭合向量KB→Wiki→GraphIndex三段断层 | 已合入 |
@@ -1245,6 +1511,9 @@ scan_hash: 8f9548ec24f4
 | AppLayout | `aiPlat-management/frontend/src/components/layout/AppLayout.tsx` | ✅ | 自动同步 | 已合入 |
 | SystemOverview | `aiPlat-management/frontend/src/pages/SystemOverview/SystemOverview.tsx` | ✅ | 自动同步 | 已合入 |
 | ValueDashboard | `aiPlat-management/frontend/src/pages/ValueCenter/ValueDashboard.tsx` | ✅ | 自动同步 | 已合入 |
+| ExecutionViewer | `aiPlat-management/frontend/src/components/ExecutionViewer/ExecutionViewer.tsx` | ✅ | 自动同步 | 已合入 |
+| WorkflowsPage | `aiPlat-management/frontend/src/pages/Core/Workflows/WorkflowsPage.tsx` | ✅ | 自动同步 | 已合入 |
+| Credentials | `aiPlat-management/frontend/src/pages/Core/Credentials/Credentials.tsx` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | PolicyGate | harness/infrastructure/gates/policy_gate.py | ✅ | 统一权限检查 + 架构边界实时拦截 | 已合入 |
 | ApprovalGate | harness/infrastructure/approval/manager.py | ✅ | approve/deny/pending，双门禁 | 已合入 |
@@ -1282,6 +1551,10 @@ scan_hash: 8f9548ec24f4
 ## 八、可观测性
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| mark_run_graph_done | `core/harness/observation/run_graph.py` | ✅ | 自动同步 | 已合入 |
+| get_run_graph | `core/harness/observation/run_graph.py` | ✅ | 自动同步 | 已合入 |
+| close_run_graph_node | `core/harness/observation/run_graph.py` | ✅ | 自动同步 | 已合入 |
+| open_run_graph_node | `core/harness/observation/run_graph.py` | ✅ | 自动同步 | 已合入 |
 | build_os_sandbox_cmd | `core/harness/infrastructure/os_sandbox.py` | ✅ | 自动同步 | 已合入 |
 | start_stdio_kernel | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | register_cc_hooks | `core/harness/infrastructure/hooks/cc_bridge.py` | ✅ | 自动同步 | 已合入 |
@@ -1525,8 +1798,7 @@ scan_hash: 8f9548ec24f4
 | Value Center API | ⚠️ deprecated core/api/routers/value.py` + `core/schemas_value.py | ✅ | CRUD endpoints: `/all/goals`, `/all/goals/{id}`, `/all/goals/{id}/trend`, `/all/strategy`; Schemas: `GoalCreateRequest`, `GoalUpdateRequest`, `GoalSourceConfigRequest` | 已合入 |
  `core/api/routers/value.py` | ✅ | `get_all_goals`, `create_goal_all`, `update_goal_all`, `delete_goal_all`, `create_business_goal`, `get_goal_trend_all`, `get_strategy_all` + 4 REST endpoints (`/all/goals`, `/all/strategy`, `/all/goals/{id}`, `/all/goals/{id}/trend`) | 已合入 |
 | Proposal 工作流 | harness/learning/proposal_store.py | ✅ | draft→pending_approval→approved→merged/rejected + branch/merge语义 (Palantir AIP对齐) | 已合入 |
-| FDEBuilderOrchestrator | apps/fde/service/_archive/builder.py | ❌ | Phase 0 D1 归档：零生产 caller；交付一律工厂 Pipeline。勿再导出/接线 | 已归档 |
-
+| FDEBuilderOrchestrator | apps/fde/service/builder.py | ✅ | FDE 对话式 Agent 构建：_clarify()→DomainRouter→SkillRegistry→auto_fill→Builder.deploy_app() | 已合入 |
 | Agent 可发现性 | wiki.py:/ontology/{domain}/discover | ✅ | Agent动态查询 ObjectTypes/Links/Actions/Interfaces，自主发现操作能力 | 已合入 |
 
 ---
@@ -1783,71 +2055,40 @@ scan_hash: 8f9548ec24f4
 ## 十六、工具生态
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
-| create_graph_entity | `aiPlat-platform/apps/fde/api/action_routes.py` | ✅ | 自动同步 | it-ops-alert / **it-ops-alert-complex**（路径 C：`seed_it_ops_demo_graph`） |
-| seed_it_ops_demo_graph | `aiPlat-core/core/apps/fde/service/it_ops_demo_seed.py` | ✅ | 自动同步 | 路径 C：minimal/complex 教学真实层种子 |
-| ensure_it_ops_fault_ontology | `aiPlat-core/core/apps/fde/service/it_ops_demo_seed.py` | ✅ | 自动同步 | 种图前安装故障诊断版 it-ops.yaml（备份知识本体） |
-| import_it_ops_alert_payload | `aiPlat-core/core/apps/fde/service/it_ops_demo_seed.py` | ✅ | 自动同步 | 路径 B：监控/JSON → GraphIndex（类/关系白名单） |
-| load_it_ops_import_sample | `aiPlat-core/core/apps/fde/service/it_ops_demo_seed.py` | ✅ | 自动同步 | 路径 B 样例 `fixtures/it_ops_alert_import_sample.json` |
-| import_graph_payload | `aiPlat-platform/apps/fde/api/action_routes.py` | ✅ | 自动同步 | `POST /fde/graph/import`（use_sample / payload） |
-| write_extraction_to_graph_index | `aiPlat-core/core/harness/knowledge_pipeline/extractor.py` | ✅ | 自动同步 | 路径 B：抽取 confirm → GraphIndex 回执 |
-| confirm_extraction | `aiPlat-platform/apps/fde/api/extraction_routes.py` | ✅ | 自动同步 | `POST /fde/extractions/{id}/confirm` 返回 graph_write + proposal_id |
-| apply_proposal | `aiPlat-core/core/harness/knowledge/versioned_ontology_store.py` | ✅ | 自动同步 | 路径 A：批准后写 live YAML；回执含 classes_added/version |
-| approve_ontology_proposal | `aiPlat-platform/apps/fde/api/extraction_routes.py` | ✅ | 自动同步 | `POST /fde/ontology/proposals/{id}/approve` |
-| apply_ontology_proposal | `aiPlat-platform/apps/fde/api/extraction_routes.py` | ✅ | 自动同步 | `POST /fde/ontology/proposals/{id}/apply` 返回回执 |
-| check_entity_acl | `aiPlat-core/core/policy/graph_abox_acl.py` | ✅ | 自动同步 | GraphIndex 实例级 ACL（T9） |
-| check_graph_entity_acl | `aiPlat-core/core/api/core_facade.py` | ✅ | 自动同步 | CoreFacade 再导出 ABox ACL |
-| redact_graph_entity_fields | `aiPlat-core/core/api/core_facade.py` | ✅ | 自动同步 | CoreFacade 再导出属性脱敏 |
-| resolve_abox_actor_role | `aiPlat-core/core/policy/graph_abox_acl.py` | ✅ | 身份/scopes→viewer\|analyst\|admin | T9 与 PolicyGate 角色桥 |
-| ingest_webhook_payload | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | 路径 B 生产 webhook | connector.json → GraphIndex |
-| import_abox_payload | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | 域可配置 allowlist 写图 | 禁止 harness 硬编码域名 |
-| import_table_map_payload | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | 表/CSV Path B（`source_type=table_map`） | connector.table_map 映射；生成物不适用（平台横切入轨） |
-| map_table_rows_to_payload | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | 行列→entities/relations | 域配置驱动 |
-| connector_path | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | connector.json 路径 | Path B 配置 |
-| ensure_connector_config | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | 安装 workspace seed connector | Path B |
-| load_connector_config | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | 读取域 connector.json | Path B |
-| find_domain_for_source | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | source_id→domain_id | webhook 路由 |
-| verify_webhook_secret | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | webhook 密钥校验 | Path B 鉴权 |
-| parse_csv_text | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | CSV→row dicts | table_map |
-| load_table_map_sample | `aiPlat-core/core/apps/fde/service/abox_connector.py` | ✅ | it-ops 表映射样例 | Path B demo |
-| ensure_data_gov_ontology | `aiPlat-core/core/apps/fde/service/data_gov_demo_seed.py` | ✅ | 安装 data-gov 域 YAML | 多域 demo |
-| ensure_retail_ops_ontology | `aiPlat-core/core/apps/fde/service/retail_ops_demo_seed.py` | ✅ | 安装 retail-ops 域 YAML | 多域 demo |
-| suggest_classes_from_snippets | `aiPlat-core/core/apps/fde/service/ontology_code_suggestions.py` | ✅ | 同步代码→提案草稿 | 禁自动 apply |
-| get_ontology_pillars | `aiPlat-core/core/apps/fde/service/ontology_pillars.py` | ✅ | 数据/逻辑/行动三柱只读聚合 | `GET .../ontology/pillars/{domain}`；生成物不适用 |
-| suggest_classes_from_snippets_async | `aiPlat-core/core/apps/fde/service/ontology_code_suggestions.py` | ✅ | 代码→提案草稿（禁自动 apply） | `POST .../ontology/code-suggestions` |
-| review_domain_owl_offline | `aiPlat-core/core/apps/fde/service/offline_owl_review.py` | ✅ | 离线 OWL 审稿；unchecked 禁假绿 | 非运行时权威；生成物不适用 |
-| import_abox_table_map | `aiPlat-core/core/api/core_facade.py` | ✅ | CoreFacade 表/CSV Path B | 生成物不适用（平台横切） |
-| get_ontology_pillars_view | `aiPlat-core/core/api/core_facade.py` | ✅ | CoreFacade 三柱 | 生成物不适用 |
-| review_ontology_owl_offline | `aiPlat-core/core/api/core_facade.py` | ✅ | CoreFacade 离线 OWL 审稿 | 生成物不适用 |
-| seed_retail_ops_demo_graph | `aiPlat-core/core/apps/fde/service/retail_ops_demo_seed.py` | ✅ | Phase 2 同构第二域 | 零改 harness |
-| redact_entity_fields | `aiPlat-core/core/policy/graph_abox_acl.py` | ✅ | 自动同步 | GraphIndex 属性脱敏 |
-| seed_data_gov_demo_graph | `aiPlat-core/core/apps/fde/service/data_gov_demo_seed.py` | ✅ | 自动同步 | B4 治理教学真实层 + ACL 种子 |
-| list_graph_entities | `aiPlat-platform/apps/fde/api/action_routes.py` | ✅ | 自动同步 | 支持 `actor_role` ACL 过滤 |
-| list_audit_domains | `core/harness/infrastructure/action_store.py` | ✅ | 自动同步 | 已合入 |
+| approve_delivery_session | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
+| FdeDomainLiteralsAstCheck | `core/management/arch_guard_rules/fde_workbench.py` | ✅ | 自动同步 | 已合入 |
+| import_graph_payload | `aiPlat-platform/apps/fde/api/action_routes.py` | ✅ | 自动同步 | 已合入 |
+| load_it_ops_import_sample | `core/apps/fde/service/it_ops_demo_seed.py` | ✅ | 自动同步 | 已合入 |
+| import_it_ops_alert_payload | `core/apps/fde/service/it_ops_demo_seed.py` | ✅ | 自动同步 | 已合入 |
+| ensure_it_ops_fault_ontology | `core/apps/fde/service/it_ops_demo_seed.py` | ✅ | 自动同步 | 已合入 |
+| seed_it_ops_demo_graph | `core/apps/fde/service/it_ops_demo_seed.py` | ✅ | 自动同步 | 已合入 |
+| create_graph_entity | `aiPlat-platform/apps/fde/api/action_routes.py` | ✅ | 自动同步 | 已合入 |
+| list_graph_entities | `aiPlat-platform/apps/fde/api/action_routes.py` | ✅ | 自动同步 | 已合入 |
+| assert_inferred_edges | `core/harness/ontology_engine/builtin_handlers.py` | ✅ | 自动同步 | 已合入 |
+| assert_inferred_edge | `core/harness/ontology_engine/builtin_handlers.py` | ✅ | 自动同步 | 已合入 |
+| set_entity_state | `core/harness/ontology_engine/builtin_handlers.py` | ✅ | 自动同步 | 已合入 |
+| assign_work_order | `core/harness/ontology_engine/builtin_handlers.py` | ✅ | 自动同步 | 已合入 |
 | preflight_signoff_gate | `core/apps/fde/service/security_preflight.py` | ✅ | 自动同步 | 已合入 |
 | list_evolve_applied | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
+| query_independence_stats | `core/harness/infrastructure/action_store.py` | ✅ | 自动同步 | 已合入 |
+| list_audit_domains | `core/harness/infrastructure/action_store.py` | ✅ | 自动同步 | 已合入 |
+| capture_usage_baseline | `core/apps/fde/service/usage_signal.py` | ✅ | 自动同步 | 已合入 |
+| list_domain_peers | `core/apps/fde/service/customer_success.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_escort_exit_from_signals | `core/apps/fde/service/customer_success.py` | ✅ | 自动同步 | 已合入 |
+| save_metric_handover | `core/apps/fde/service/customer_success.py` | ✅ | 自动同步 | 已合入 |
+| get_metric_handover | `core/apps/fde/service/customer_success.py` | ✅ | 自动同步 | 已合入 |
+| query_usage_trend | `core/harness/infrastructure/action_store.py` | ✅ | 自动同步 | 已合入 |
+| query_usage_signal | `core/harness/infrastructure/action_store.py` | ✅ | 自动同步 | 已合入 |
+| get_usage_trend | `core/apps/fde/service/usage_signal.py` | ✅ | 自动同步 | 已合入 |
+| get_usage_signal | `core/apps/fde/service/usage_signal.py` | ✅ | 自动同步 | 已合入 |
+| sync_evolve_ops_signals | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
 | record_evolve_observation | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
 | tick_evolve_observations | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
-| sync_evolve_ops_signals | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | Quality Bus + canary → observing 自动回滚；platform `POST …/sync-ops` | 已合入 |
-| get_usage_signal | `core/apps/fde/service/usage_signal.py` | ✅ | S1–S4；`GET …/usage-signal` | 已合入 |
-| get_usage_trend | `core/apps/fde/service/usage_signal.py` | ✅ | 按日趋势；`GET …/usage-trend` | 已合入 |
-| query_usage_signal | `core/harness/infrastructure/action_store.py` | ✅ | action_audit 聚合 | 已合入 |
-| query_usage_trend | `core/harness/infrastructure/action_store.py` | ✅ | action_audit 按日趋势 | 已合入 |
-| get_metric_handover | `core/apps/fde/service/customer_success.py` | ✅ | 业务指标交接单；`GET …/metric-handover` | 已合入 |
-| save_metric_handover | `core/apps/fde/service/customer_success.py` | ✅ | 草稿/确认/签署 | 已合入 |
-| evaluate_escort_exit_from_signals | `core/apps/fde/service/customer_success.py` | ✅ | 护航退出信号复评；`POST …/escort-exit` | 已合入 |
-| list_domain_peers | `core/apps/fde/service/customer_success.py` | ✅ | 域级横向基线；`GET …/domain-peers` | 已合入 |
-| query_independence_stats | `core/harness/infrastructure/action_store.py` | ✅ | 护航 A 组非平台 actor/失败代理 | 已合入 |
-| capture_usage_baseline | `core/apps/fde/service/usage_signal.py` | ✅ | 交付后基线；`POST …/usage-baseline/capture` | 已合入 |
-| assign_work_order | `core/harness/ontology_engine/builtin_handlers.py` | ✅ | 自动同步 | 已合入 |
-| assert_inferred_edge | `core/harness/ontology_engine/builtin_handlers.py` | ✅ | 推理建议落图唯一 Action 路径；`inferred=true` | 已合入 |
-| assert_inferred_edges | `core/harness/ontology_engine/builtin_handlers.py` | ✅ | 批量确认推断边（via_action） | 已合入 |
 | get_evolve_metrics | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
 | rollback_evolve_proposal | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
 | apply_evolve_proposal | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
 | reject_evolve_proposal | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
 | approve_evolve_proposal | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
-| approve_delivery_session | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
-| FdeDomainLiteralsAstCheck | `core/management/arch_guard_rules/fde_workbench.py` | ✅ | 自动同步 | 已合入 |
 | enqueue_evolve_proposal | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_evolve_proposal | `core/apps/fde/service/evolve_proposal_gate.py` | ✅ | 自动同步 | 已合入 |
 | summarize_security_dry_run | `core/apps/fde/service/security_preflight.py` | ✅ | 自动同步 | 已合入 |
@@ -1856,10 +2097,13 @@ scan_hash: 8f9548ec24f4
 | attach_builder_observation | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
 | link_builder_project | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
 | start_delivery_session | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
+| require_known_domain | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
 | load_change_surface_whitelist | `core/harness/infrastructure/action_audit_validate.py` | ✅ | 自动同步 | 已合入 |
 | classify_audit_fields | `core/harness/infrastructure/action_audit_validate.py` | ✅ | 自动同步 | 已合入 |
 | check_change_surface | `core/harness/infrastructure/action_audit_validate.py` | ✅ | 自动同步 | 已合入 |
+| WorkbenchRuntimeGuard | `core/harness/infrastructure/workbench_runtime_guard.py` | ✅ | 自动同步 | 已合入 |
 | update_entity_property | `core/harness/ontology_engine/graph_index.py` | ✅ | 自动同步 | 已合入 |
+| resolve_action_id | `core/harness/ontology_engine/action_registry.py` | ✅ | 自动同步 | 已合入 |
 | CLOSURE_FP_RATE_MAX | `core/harness/infrastructure/action_contract.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Browser 自动化 | apps/tools/browser.py` + `apps/tools/browser_test_engine.py | ✅ | Playwright 全浏览器自动化，BFS遍历/RPA/截图 | 已合入 |
@@ -1965,6 +2209,8 @@ scan_hash: 8f9548ec24f4
 | Roles Schemas | core/schemas_roles.py | ✅ | `RoleAgentUpdateRequest` + `RoleStrategyOverrideRequest` | 已合入 |
 | workspace_packages | api/routers/workspace_packages.py | ✅ | 自动同步 | 已合入 |
 | workspace_agents | api/routers/workspace_agents.py | ✅ | 自动同步 | 已合入 |
+| Agent 防重复 | `core/management/agent_manager.py` + `POST /workspace/agents/dedupe` | ✅ | display_name+skills/tools 指纹复用；清理同名重复 | 已合入 |
+| Workflow 防重复 | `core/management/workflow_manager.py` + `POST /platform/workflows/dedupe` | ✅ | name+节点指纹复用；清理同名同构图重复 | 已合入 |
 | wiki_ontology_patterns | api/routers/wiki_ontology_patterns.py | ✅ | 自动同步 | 已合入 |
 | wiki_ontology_domains | api/routers/wiki_ontology_domains.py | ✅ | 自动同步 | 已合入 |
 | fde_domain_ops | apps/fde/api/fde_domain_ops.py | ✅ | 自动同步 | 已合入 |
@@ -2029,11 +2275,11 @@ scan_hash: 8f9548ec24f4
 | Builder Project Service | platform/builder/builder_project_service.py | ✅ | 全功能应用项目CRUD + 双模式自动路由（agent→配置/code→代码，team_planner mode 判断）+ pass_rate 来源标注（real_pytest/estimated）；PM/PRD 默认模型按 purpose=`agent` 选型（不用 latency-first `chat`，避免落小模型） | 已合入 |
 | 生成物契约校验（conformance） | platform/builder/generated_conformance.py + generated_conformance.yaml + builder_project_service.py | ✅ | 注册前契约校验生成 AGENT.md/SKILL.md/agent_manifest：首行 `---`、治理字段、schema 对象格式；**Phase A**：`validate_manifest` 校验 mode/skill_routing/ui_bindings；`multi_agent` 必填 rationale+success_metrics+upgrade_criteria（五条 AND）；不合规跳过注册并记 rejected_artifacts；生成物适用：**已接线** | 已合入 |
 | 工厂跑通晋升门（promotion_gate） | platform/builder/promotion_gate.py + promotion_gate.yaml + hop_metrics.py | ✅ | 四维「跑通」+ multi 五条 AND；**Phase C**：hop JSONL 聚合（N/成功率/failed_stage）→ `GET .../promotion` + 部署 `promotion_gate` 快照；生成物适用：**已接线** | 已合入 |
-| 工厂动态 spawn 门禁（spawn_policy） | core/harness/coordination/spawn_policy.py + factory_profile + StageRunner + sys_agent_call | ✅ | Phase B W3：工厂阶段 `allow_dynamic_spawn=False`；ContextVar/state 阻断 DynamicOrchestrator.spawn 与 sys_agent_call 自由委派；非工厂默认允许；生成物适用：**已接线**（构建链契约化） | 已合入 |
+| 工厂动态 spawn 门禁（spawn_policy） | ⚠️ deprecated core/harness/coordination/spawn_policy.py + factory_profile + StageRunner + sys_agent_call | ✅ | Phase B W3：工厂阶段 `allow_dynamic_spawn=False`；ContextVar/state 阻断 DynamicOrchestrator.spawn 与 sys_agent_call 自由委派；非工厂默认允许；生成物适用：**已接线**（构建链契约化） | 已合入 |
 | 工厂 Skill hop schema 门（skill_hop_gate） | platform/builder/skill_hop_gate.py + builder_project_service.execute_skill | ✅ | Phase B W4：execute_skill 调用 LLM 前按 SKILL input_schema 校验；缺必填 → 422/结构化错误 + failed_stage=tool_selection + handoff 五字段；生成物适用：**已接线** | 已合入 |
 | 工厂 hop 度量（hop_metrics） | platform/builder/hop_metrics.py | ✅ | Phase C W5：execute_skill 每次写入 JSONL；aggregate + evaluate_project_run_through；`derive_test_evidence` 从 `last_test_report`/state 推导 real_tests+物理证据（run_tests/部署/promotion API 共用）；无 failed_stage 的失败剔除出有效成功率；生成物适用：**已接线** | 已合入 |
-| 工厂多 Agent 只读基线（baseline） | scripts/factory_multi_agent_baseline.py | ✅ | Phase 0→post-ABC：只读采集 multi 占比 / conformance+manifest / spawn 门禁接线 / hop 摘要 / promotion_gate SoT；`--write` 落盘 `~/.aiplat/builder/baselines/`；生成物适用：**不适用**（运维观测脚本，不进入生成应用） | 已合入 |
-| 工厂存量 manifest 迁移 | scripts/migrate_factory_manifests.py | ✅ | 不合规 multi_agent→single + 补 ui_bindings；`.bak` 备份；生成物适用：**不适用**（运维迁移脚本） | 已合入 |
+| 工厂多 Agent 只读基线（baseline） | ⚠️ deprecated scripts/factory_multi_agent_baseline.py | ✅ | Phase 0→post-ABC：只读采集 multi 占比 / conformance+manifest / spawn 门禁接线 / hop 摘要 / promotion_gate SoT；`--write` 落盘 `~/.aiplat/builder/baselines/`；生成物适用：**不适用**（运维观测脚本，不进入生成应用） | 已合入 |
+| 工厂存量 manifest 迁移 | ⚠️ deprecated scripts/migrate_factory_manifests.py | ✅ | 不合规 multi_agent→single + 补 ui_bindings；`.bak` 备份；生成物适用：**不适用**（运维迁移脚本） | 已合入 |
 | 工厂晋升门 hop 验收 | scripts/factory_promotion_accept.py | ✅ | 写入 N≥20 hop 样本并调用 evaluate_project_run_through；隔离 HOME 默认；生成物适用：**不适用**（验收脚本） | 已合入 |
 | 工厂存量 conformance 修复 | scripts/repair_factory_conformance.py | ✅ | 修复 AGENT.md/SKILL.md：围栏残留 / input→input_schema / triggers∈description / 缺治理字段；`.bak` 备份；生成物适用：**不适用**（运维修复脚本） | 已合入 |
 | 工厂真实 hop 种子 | scripts/factory_hop_seed_real.py | ✅ | 对 AIPLAT_HOME 真实 project_id 写入 N≥20 hop（同 execute_skill 的 record_hop 路径）并验收晋升；生成物适用：**不适用**（运维验收） | 已合入 |
@@ -2078,7 +2324,7 @@ scan_hash: 8f9548ec24f4
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 |------|------|:---:|------|------|
 | Intent API (Unified) | core/api/intents.py | ✅ | 三统一意图：core_chat, core_execute, core_query | 已合入 |
-| CoreFacade | core/api/core_facade.py | ✅ | 统一门面，84K行暴露所有核心能力 | 已合入 |
+| CoreFacade | ⚠️ deprecated core/api/core_facade.py | ✅ | 统一门面，84K行暴露所有核心能力 | 已合入 |
 | CoreFacade Graph API | core_facade.py:get_graph_health/get_graph_neighbors/get_graph_sessions | ✅ | 图谱健康状态 + 邻居查询 + 会话图查询，经 CoreFacade 暴露 | 已合入 |
 | CoreFacade Wiki API | core_facade.py:wiki_search_pages | ✅ | Wiki 全文搜索，经 CoreFacade 暴露 | 已合入 |
 | ContextService | core/services/context_service.py | ✅ | 完整对话上下文管理 + 记忆集成 | 已合入 |
@@ -2415,29 +2661,29 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 168 | 1 | 169 |
+| Harness 执行引擎 | 162 | 1 | 163 |
 | 记忆子系统 | 41 | 0 | 41 |
-| 知识引擎（本体） | 173 | 8 | 181 |
+| 知识引擎（本体） | 353 | 8 | 361 |
 | RAG 检索 | 50 | 0 | 50 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 52 | 0 | 52 |
-| Skill 系统 | 54 | 0 | 54 |
-| 安全与治理 | 58 | 0 | 58 |
-| 可观测性 | 27 | 0 | 27 |
+| Agent 系统 | 124 | 0 | 124 |
+| Skill 系统 | 74 | 0 | 74 |
+| 安全与治理 | 61 | 0 | 61 |
+| 可观测性 | 31 | 0 | 31 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
-| 扩展与学习 | 129 | 0 | 129 |
+| 扩展与学习 | 130 | 0 | 130 |
 | Gate 系统 | 150 | 0 | 150 |
 | 评估系统 | 18 | 0 | 18 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
-| 工具生态 | 99 | 0 | 99 |
+| 工具生态 | 71 | 0 | 71 |
 | 微调系统 | 14 | 0 | 14 |
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 6 | 0 | 6 |
 | Arena & 调度 | 7 | 0 | 7 |
-| 平台治理 | 97 | 0 | 97 |
+| 平台治理 | 99 | 0 | 99 |
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
@@ -2460,7 +2706,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1490** | **9** | **1499** |
+| **总计** | **1738** | **9** | **1747** |
 
 | **总计** | **1095** | **0** | **1095** |
 

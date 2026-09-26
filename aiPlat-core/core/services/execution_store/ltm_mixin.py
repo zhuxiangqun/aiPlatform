@@ -33,16 +33,31 @@ class LongTermMemoryMixin:
             }
             conn = self._connect()
             try:
-                conn.execute(
-                    "INSERT INTO long_term_memories("
-                    "id,user_id,key,content,metadata_json,"
-                    "created_at,updated_at,relevance_decay,"
-                    "source_tag,trust_weight,provenance"
-                    ") VALUES(?,?,?,?,?,?,?,?,?,?,?);",
-                    (rec["id"], rec["user_id"], rec["key"], rec["content"], rec["metadata_json"],
-                     rec["created_at"], rec["updated_at"], rec["relevance_decay"],
-                     rec["source_tag"], rec["trust_weight"], rec["provenance"]),
-                )
+                # Schema may predate migration v50 (updated_at); detect columns.
+                cols = {
+                    str(r[1])
+                    for r in conn.execute("PRAGMA table_info(long_term_memories)").fetchall()
+                }
+                if "updated_at" in cols:
+                    conn.execute(
+                        "INSERT INTO long_term_memories("
+                        "id,user_id,key,content,metadata_json,"
+                        "created_at,updated_at,relevance_decay,"
+                        "source_tag,trust_weight,provenance"
+                        ") VALUES(?,?,?,?,?,?,?,?,?,?,?);",
+                        (rec["id"], rec["user_id"], rec["key"], rec["content"], rec["metadata_json"],
+                         rec["created_at"], rec["updated_at"], rec["relevance_decay"],
+                         rec["source_tag"], rec["trust_weight"], rec["provenance"]),
+                    )
+                else:
+                    # Legacy table: only base columns
+                    conn.execute(
+                        "INSERT INTO long_term_memories("
+                        "id,user_id,key,content,metadata_json,created_at"
+                        ") VALUES(?,?,?,?,?,?);",
+                        (rec["id"], rec["user_id"], rec["key"], rec["content"], rec["metadata_json"],
+                         rec["created_at"]),
+                    )
                 # Best-effort: keep FTS in sync if available.
                 try:
                     conn.execute(

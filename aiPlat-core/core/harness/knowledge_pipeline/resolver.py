@@ -78,6 +78,27 @@ class CrossDomainCandidate:
     strategy: str = ""      # exact | fuzzy | embedding
 
 
+def _graph_node_to_record(node: Any) -> Dict[str, Any]:
+    """GraphIndex nodes are GraphNode objects. Matchers expect dict.get()."""
+    if isinstance(node, dict):
+        rec = dict(node)
+        rec.setdefault("id", str(rec.get("entity_id") or rec.get("id") or rec.get("name") or ""))
+        rec.setdefault("name", str(rec.get("entity_name") or rec.get("name") or rec.get("id") or ""))
+        return rec
+    meta = dict(getattr(node, "metadata", None) or {})
+    entity_id = str(getattr(node, "entity_id", "") or meta.get("id") or "")
+    name = str(getattr(node, "entity_name", "") or meta.get("name") or entity_id)
+    rec: Dict[str, Any] = {
+        "id": entity_id,
+        "name": name,
+        "class": str(getattr(node, "class_name", "") or meta.get("class") or ""),
+        "description": str(meta.get("description") or name),
+    }
+    for key, value in meta.items():
+        rec.setdefault(key, value)
+    return rec
+
+
 class CrossDomainResolver:
     """Scan entities across domains and propose merge candidates."""
 
@@ -160,27 +181,34 @@ class CrossDomainResolver:
         primary = strategy.get("primary", "")
         primary_keys = [k.strip() for k in primary.split("||") if k.strip()]
         exact_matched = False
+        keys_comparable = False
         for key in primary_keys:
-            v1 = str(e1.get(key, "")).strip()
-            v2 = str(e2.get(key, "")).strip()
+            v1 = str(e1.get(key, "") or (e1.get("attributes") or {}).get(key, "")).strip()
+            v2 = str(e2.get(key, "") or (e2.get("attributes") or {}).get(key, "")).strip()
+            if v1 and v2:
+                keys_comparable = True
             if v1 and v2 and v1 == v2:
                 evidence["exact_match"] = f"{key}: {v1} == {v2}"
                 scores.append(("exact", 0.60))
                 exact_matched = True
                 break
 
-        # Strategy 2: name similarity (weight 0.25)
+        # Strategy 2: name similarity (weight 0.25) — or full score when no keys to compare
         secondary = strategy.get("secondary", "")
-        if secondary:
-            n1 = str(e1.get("name", "")).strip()
-            n2 = str(e2.get("name", "")).strip()
-            if n1 and n2:
-                sim = self._name_similarity(n1, n2)
-                evidence["name_similarity"] = f"'{n1}' ↔ '{n2}' = {sim:.3f}"
-                if sim >= 0.85:
-                    scores.append(("fuzzy", 0.25 * min(1, sim)))
-                elif sim >= 0.70:
-                    scores.append(("fuzzy", 0.25 * (sim * 0.5)))
+        n1 = str(e1.get("name", "")).strip()
+        n2 = str(e2.get("name", "")).strip()
+        name_sim = 0.0
+        if secondary and n1 and n2:
+            name_sim = self._name_similarity(n1, n2)
+            evidence["name_similarity"] = f"'{n1}' ↔ '{n2}' = {name_sim:.3f}"
+            if not keys_comparable and not exact_matched:
+                # Primary keys absent on both sides → name similarity is the score (0–1)
+                # otherwise fuzzy alone (max 0.25) can never pass min_confidence≈0.7
+                return name_sim, "name", evidence
+            if name_sim >= 0.85:
+                scores.append(("fuzzy", 0.25 * min(1, name_sim)))
+            elif name_sim >= 0.70:
+                scores.append(("fuzzy", 0.25 * (name_sim * 0.5)))
 
         # Strategy 3: embedding cosine (weight 0.15)
         tertiary = strategy.get("tertiary", "")
@@ -225,21 +253,25 @@ class CrossDomainResolver:
 
     @staticmethod
     def _load_entities(domain_id: str, class_name: str, tenant_id: str = "default") -> List[Dict[str, Any]]:
-        """Load all entities of a given class from GraphIndex."""
+        """Load entities of a class as dicts. GraphIndex returns GraphNode, not dict."""
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
             g = GraphIndex.load(domain_id, tenant_id)
-            if class_name:
-                return g.get_entities_by_class(class_name) or []
-            return list(g._nodes.values())
+            nodes = g.get_entities_by_class(class_name) if class_name else list(g._nodes.values())
+            return [_graph_node_to_record(n) for n in (nodes or [])]
         except Exception:
+            logger.warning("Failed to load entities for %s/%s", domain_id, class_name, exc_info=True)
             return []
 
     @staticmethod
     def resolve(view_name: str, left_id: str, right_id: str,
                 left_domain: str, right_domain: str,
                 confidence: float = 1.0) -> bool:
-        """Create a cross-domain edge between two entities."""
+        """Create a cross-domain edge between two entities.
+
+        Phase K2: production HTTP must not call this directly. Use
+        ``k_wave_arbit.apply_ticket`` after an approved merge ticket.
+        """
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
             g_left = GraphIndex.load(left_domain)

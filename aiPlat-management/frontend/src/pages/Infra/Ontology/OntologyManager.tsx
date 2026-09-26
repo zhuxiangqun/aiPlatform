@@ -1,12 +1,38 @@
-import React, { useEffect, useState } from 'react';
-import { Plus, Trash2, RefreshCw, Eye, EyeOff, ArrowRight, Search } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Plus, Trash2, RefreshCw, Eye, EyeOff, ArrowRight, Search, Network } from 'lucide-react';
 import { Button, Modal, toast, Input } from '../../../components/ui';
 import OntologyGraph from '../../../components/wiki/OntologyGraph';
 import WikiHealthDashboard from '../../../components/wiki/WikiHealthDashboard';
 import GrillPanel from '../../../components/grilling/GrillPanel';
 import OntologyLearningPanel from '../../../components/ontology/OntologyLearningPanel';
+import { assessClassHygiene, classDisplay, fieldDisplay, propDisplay } from '../../../utils/ontologyDisplay';
+import BusinessOntologyGuide from '../../../components/knowledge/BusinessOntologyGuide';
 
-const WIKI_API = '/api/core';
+const WIKI_API = '/api/core/wiki/ontology';
+
+/** 日常交付常碰的域；其它多为样例/平台/客户线种子 */
+const PREFERRED_DOMAIN_IDS = ['lock-service', 'it-ops', 'supply-chain', 'procurement-mvo', 'service-domain'];
+const PLATFORM_DOMAIN_IDS = new Set([
+  'default', 'ai-knowledge', 'ai-solution', 'aiplat-system',
+  'enterprise-terms', 'fde-delivery', 'knowledge-atom',
+]);
+
+type DomainFilter = 'preferred' | 'industry' | 'bell' | 'platform' | 'all';
+
+/** 审计数字：0 是有效值，不能用 || 显示成 ... */
+function fmtAuditNum(v: unknown): string | number {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v))) return Number(v);
+  return '...';
+}
+
+function domainBucket(id: string): Exclude<DomainFilter, 'all'> {
+  if (PREFERRED_DOMAIN_IDS.includes(id)) return 'preferred';
+  if (id.startsWith('bell-')) return 'bell';
+  if (PLATFORM_DOMAIN_IDS.has(id)) return 'platform';
+  return 'industry';
+}
 
 // ── Inline: Graph Stats + Inference Button ──
 const GraphStats: React.FC<{ domainId: string }> = React.memo(({ domainId }) => {
@@ -97,54 +123,10 @@ const GraphStats: React.FC<{ domainId: string }> = React.memo(({ domainId }) => 
   );
 });
 
-// ── AIP Assist Panel ──
-const AIPAssist: React.FC<{ domainId: string }> = React.memo(({ domainId }) => {
-  const [insights, setInsights] = useState<{gaps:number, reviews:number, velocity:string, suggestion:string}|null>(null);
-  useEffect(() => {
-    Promise.all([
-      fetch(`${WIKI_API}/engine/graph-stats/${domainId}`).then(r=>r.json()).catch(()=>({})),
-      fetch(`${WIKI_API}/engine/reviews/${domainId}`).then(r=>r.json()).catch(()=>({})),
-      fetch(`${WIKI_API}/engine/state-history/${domainId}?limit=5`).then(r=>r.json()).catch(()=>({})),
-    ]).then(([stats, reviews, hist]) => {
-      const pending = (reviews.reviews || []).filter((r:any) => r.status === 'pending').length;
-      const total = (hist.history || []).length;
-      const velocity = total > 0 && (hist.history||[])[0]?.timestamp
-        ? `${total} 次转换`
-        : '无数据';
-      // Simple suggestion logic
-      const nodes = stats.node_count || 0;
-      let suggestion = '';
-      if (nodes === 0) suggestion = '上传文档或连接数据源以开始构建知识图谱';
-      else if (pending > 0) suggestion = `${pending} 条待复查，建议优先处理`;
-      else if (stats.inferred_edges > 0) suggestion = '推理边已生成，运行知识合成生成Wiki页';
-      else suggestion = '运行引擎处理文档开始知识构建';
-      setInsights({ gaps: 0, reviews: pending, velocity, suggestion });
-    }).catch(()=>{});
-  }, [domainId]);
-  if (!insights) return null;
-  return (
-    <div className="bg-dark-card rounded-lg border border-dark-border p-4 space-y-2">
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-gray-200">🤖 AIP Assist</span>
-        <span className="text-[10px] text-gray-500">智能辅助</span>
-      </div>
-       <div className="grid grid-cols-3 gap-2 text-xs">
-         <div className="p-2 rounded bg-dark-bg border border-dark-border/30" title="待审查的关联实体变更提醒数量">
-           <div className="text-gray-500">复查</div>
-           <div className="text-gray-200 font-medium">{insights.reviews} 条待处理</div>
-         </div>
-         <div className="p-2 rounded bg-dark-bg border border-dark-border/30" title="状态机驱动的实体状态转换总次数">
-           <div className="text-gray-500">状态</div>
-           <div className="text-gray-200 font-medium">{insights.velocity}</div>
-         </div>
-         <div className="p-2 rounded bg-dark-bg border border-dark-border/30" title="基于当前本体状态的智能操作建议">
-           <div className="text-gray-500">建议</div>
-           <div className="text-gray-200 font-medium text-[10px]">{insights.suggestion}</div>
-        </div>
-      </div>
-    </div>
-  );
-});
+// ── AIP Assist：委托给统一进度条，避免与工厂页说法打架 ──
+const AIPAssist: React.FC<{ domainId: string }> = React.memo(({ domainId }) => (
+  <BusinessOntologyGuide domainId={domainId} mode="domains" />
+));
 
 interface Domain {
   id: string; name: string; version: string; description: string;
@@ -155,11 +137,13 @@ interface Domain {
 interface OntoClass {
   uri?: string; label: string; required_fields: string[];
   optional_fields: string[]; categories: string[];
+  fields?: Array<{ name?: string; id?: string; label?: string; description?: string }>;
   states?: any; transitions?: any[]; side_effects?: any[];
   description?: string;
 }
 
 const OntologyManager: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [domains, setDomains] = useState<Domain[]>([]);
   const [selectedDomain, setSelectedDomain] = useState<string>('');
   const [domainClasses, setDomainClasses] = useState<OntoClass[]>([]);
@@ -167,6 +151,8 @@ const OntologyManager: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showGraph, setShowGraph] = useState(false);
   const [graphData, setGraphData] = useState<any>(null);
+  const detailRef = useRef<HTMLDivElement | null>(null);
+  const [domainFilter, setDomainFilter] = useState<DomainFilter>('preferred');
   const [scoringOpen, setScoringOpen] = useState(false);
   const [scoringWeights, setScoringWeights] = useState({ semantic: 0.55, fts_keyword: 0.15, freshness: 0.10, credibility: 0.10, density: 0.10 });
   const [scoringSaving, setScoringSaving] = useState(false);
@@ -195,6 +181,12 @@ const OntologyManager: React.FC = () => {
   const [clsReq, setClsReq] = useState('');
   const [clsOpt, setClsOpt] = useState('');
   const [clsCat, setClsCat] = useState('');
+  const [pendingDeleteClass, setPendingDeleteClass] = useState<{
+    name: string;
+    label: string;
+    orphanNodes: number;
+  } | null>(null);
+  const [deletingClass, setDeletingClass] = useState(false);
 
   // ── Add property ──
   const [propOpen, setPropOpen] = useState(false);
@@ -322,14 +314,59 @@ const OntologyManager: React.FC = () => {
     const clsName = (cls.uri || '').includes('/')
       ? (cls.uri || '').split('/').pop() || cls.label
       : (cls.uri || '').split('#').pop() || cls.label;
-    const checkResp = await fetch(`${WIKI_API}/domains/${selectedDomain}/classes/${encodeURIComponent(clsName)}`, { method: 'DELETE' });
-    const checkData = await checkResp.json();
-    if (checkData.status === 'confirm_required') {
-      const msg = `删除类 "${checkData.label}"？\n\n将级联删除 ${checkData.orphan_nodes} 个图节点。`;
-      if (!confirm(msg)) return;
-      await fetch(`${WIKI_API}/domains/${selectedDomain}/classes/${encodeURIComponent(clsName)}?force=true`, { method: 'DELETE' });
+    // 预检：不弹 window.confirm，避免 Chrome click Violation
+    try {
+      const checkResp = await fetch(
+        `${WIKI_API}/domains/${selectedDomain}/classes/${encodeURIComponent(clsName)}`,
+        { method: 'DELETE' },
+      );
+      const checkData = await checkResp.json().catch(() => ({}));
+      if (checkData.status === 'confirm_required') {
+        setPendingDeleteClass({
+          name: clsName,
+          label: checkData.label || classDisplay(cls),
+          orphanNodes: Number(checkData.orphan_nodes || 0),
+        });
+        return;
+      }
+      if (!checkResp.ok) {
+        toast.error(
+          (typeof checkData?.detail === 'object' ? checkData.detail?.message : checkData?.detail) ||
+            checkData?.message ||
+            '删除失败',
+        );
+        return;
+      }
+      fetchDomainDetail(selectedDomain);
+      toast.success('已删除');
+    } catch (e: any) {
+      toast.error(e?.message || '删除失败');
     }
-    fetchDomainDetail(selectedDomain); toast.success('已删除');
+  };
+
+  const confirmPendingDeleteClass = async () => {
+    if (!pendingDeleteClass || !selectedDomain) return;
+    setDeletingClass(true);
+    try {
+      const r = await fetch(
+        `${WIKI_API}/domains/${selectedDomain}/classes/${encodeURIComponent(pendingDeleteClass.name)}?force=true`,
+        { method: 'DELETE' },
+      );
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        toast.error(
+          (typeof d?.detail === 'object' ? d.detail?.message : d?.detail) || d?.message || '删除失败',
+        );
+        return;
+      }
+      setPendingDeleteClass(null);
+      fetchDomainDetail(selectedDomain);
+      toast.success('已删除');
+    } catch (e: any) {
+      toast.error(e?.message || '删除失败');
+    } finally {
+      setDeletingClass(false);
+    }
   };
 
   const fetchDomains = async (retry = 0) => {
@@ -367,60 +404,175 @@ const OntologyManager: React.FC = () => {
       setDomainClasses(d.classes || []);
       setDomainProps(d.object_properties || []);
       setGraphData(d);
-    } catch { }
+      return d;
+    } catch {
+      return null;
+    }
   };
 
-  // v2.9: Fetch ontology audit stats for all domains
+  const scrollToDetail = () => {
+    // detail 面板随 selectedDomain 条件渲染，等一帧再滚
+    setTimeout(() => {
+      detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  };
+
+  /** 选中域并打开类/关系结构图（入口显式，避免只藏在详情 ghost 按钮里） */
+  const openStructureGraph = async (id: string) => {
+    setSelectedDomain(id);
+    setValidationReport(null);
+    setShowGraph(true);
+    scrollToDetail();
+    const d = await fetchDomainDetail(id);
+    if (!d) {
+      toast.error('加载域结构失败');
+      setShowGraph(false);
+      return;
+    }
+    fetch(`${WIKI_API}/engine/reviews/${id}`).then(r => r.json()).then(x => setReviews(x.reviews || [])).catch(() => {});
+    fetch(`${WIKI_API}/engine/state-history/${id}`).then(r => r.json()).then(x => setStateHistory(x.history || [])).catch(() => {});
+    fetch(`${WIKI_API}/domains/${id}/verify`, { method: 'POST' }).then(r => r.json()).then(x => setValidationReport(x)).catch(() => {});
+    scrollToDetail();
+  };
+
+  const toggleStructureGraph = async () => {
+    if (!selectedDomain) return;
+    if (showGraph) {
+      setShowGraph(false);
+      return;
+    }
+    await openStructureGraph(selectedDomain);
+  };
+
+  // 域审计：summary 扫全表 + 当前域明细（边数可能为 0，不能用 || 当成缺失）
   useEffect(() => {
-    fetch('/api/core/diagnostics/ontology-audit/summary')
-      .then(r => r.json()).then(d => {
-        const stats: Record<string, any> = {};
-        for (const w of (d.worst_domains || [])) {
-          stats[w.domain] = { entities: w.entities, edges: w.edge_count, orphans: w.orphans };
+    let cancelled = false;
+    (async () => {
+      try {
+        const [sumRes, detailRes] = await Promise.all([
+          fetch('/api/core/diagnostics/ontology-audit/summary').then((r) => r.json()).catch(() => ({})),
+          selectedDomain
+            ? fetch(`/api/core/diagnostics/ontology-audit?domain_id=${encodeURIComponent(selectedDomain)}`)
+                .then((r) => r.json())
+                .catch(() => ({}))
+            : Promise.resolve({}),
+        ]);
+        if (cancelled) return;
+
+        const next: Record<string, any> = {};
+        for (const w of sumRes.worst_domains || []) {
+          next[w.domain] = {
+            entities: w.entities ?? 0,
+            edges: w.edge_count ?? 0,
+            orphans: w.orphans ?? 0,
+          };
         }
-        // Add relation coverage from individual audit
-        if (selectedDomain) {
-          fetch(`/api/core/diagnostics/ontology-audit?domain_id=${selectedDomain}`)
-            .then(r => r.json()).then(r2 => {
-              const cov = r2.report?.relation_coverage;
-              if (cov) {
-                setDomainStats(prev => ({
-                  ...prev,
-                  [selectedDomain]: { ...prev[selectedDomain], covered: cov.covered, total_defined: cov.total_defined }
-                }));
-              }
-            }).catch(() => {});
+        const report = detailRes.report;
+        if (selectedDomain && report) {
+          const cov = report.relation_coverage;
+          const orphanNames: string[] = report.orphan_classes || [];
+          next[selectedDomain] = {
+            ...next[selectedDomain],
+            entities: report.total_entities ?? 0,
+            edges: report.total_edges ?? 0,
+            orphans: orphanNames.length,
+            orphanNames,
+            covered: cov ? `${cov.covered ?? 0}/${cov.total_defined ?? 0}` : undefined,
+            total_defined: cov?.total_defined,
+          };
         }
-        setDomainStats(stats);
-      }).catch(() => {});
+        setDomainStats(next);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => { cancelled = true; };
   }, [selectedDomain]);
 
   useEffect(() => { fetchDomains(); }, []);
 
+  // 支持 ?domain=lock-service 从「从文档生成」跳转过来时预选中
+  useEffect(() => {
+    const fromUrl = (searchParams.get('domain') || '').trim();
+    if (!fromUrl || !domains.length) return;
+    if (!domains.some((d) => d.id === fromUrl)) return;
+    if (selectedDomain === fromUrl) return;
+    setSelectedDomain(fromUrl);
+    setDomainFilter((prev) =>
+      prev === 'all' || domainBucket(fromUrl) === prev ? prev : domainBucket(fromUrl),
+    );
+    fetchDomainDetail(fromUrl);
+  }, [domains, searchParams]);
+
+  // 选中变化时写回 URL，便于与工厂页互跳
+  useEffect(() => {
+    if (!selectedDomain) return;
+    const cur = (searchParams.get('domain') || '').trim();
+    if (cur === selectedDomain) return;
+    const next = new URLSearchParams(searchParams);
+    next.set('domain', selectedDomain);
+    setSearchParams(next, { replace: true });
+  }, [selectedDomain]);
+
   const handleSelect = (id: string) => {
     setSelectedDomain(id);
     setValidationReport(null);
-    fetchDomainDetail(id);
     setShowGraph(false);
+    fetchDomainDetail(id);
     // Also fetch reviews and state history
     fetch(`${WIKI_API}/engine/reviews/${id}`).then(r => r.json()).then(d => setReviews(d.reviews || [])).catch(() => {});
     fetch(`${WIKI_API}/engine/state-history/${id}`).then(r => r.json()).then(d => setStateHistory(d.history || [])).catch(() => {});
     // Auto-verify on domain select
     fetch(`${WIKI_API}/domains/${id}/verify`, { method: 'POST' }).then(r => r.json()).then(d => setValidationReport(d)).catch(() => {});
+    scrollToDetail();
   };
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-100">本体模型管理</h1>
-        <OntologyLearningPanel collection="default" />
-          <p className="text-sm text-gray-500 mt-1">
-            领域业务本体（域 YAML + GraphIndex）。从 Wiki/Vault 生成仅作草稿辅助；
-            业务 Action / 审计不以 Wiki TBox 为权威。
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="max-w-3xl space-y-2">
+          <h1 className="text-2xl font-semibold text-gray-100">手动画类与关系</h1>
+          <p className="text-sm text-gray-400 leading-relaxed">
+            不经过文档，直接维护「当前业务地盘」里有哪些<strong className="text-gray-300 font-medium">类</strong>
+            （东西的种类）和<strong className="text-gray-300 font-medium">关系</strong>（怎么连）。
+            改的是权威说明书本身；写具体订单/告警等实例数据请去{' '}
+            <a href="/diagnostics/fde" className="text-sky-400 hover:underline">FDE 工作台</a>，
+            从文档生成草稿请回「从文档建说明书」。
           </p>
+          <div className="rounded-lg border border-sky-800/40 bg-sky-950/20 px-3 py-2.5 text-[12px] text-gray-300 leading-relaxed space-y-1.5">
+            <div className="text-sky-100 font-medium text-[12px]">今天怎么用</div>
+            <ol className="list-decimal list-inside space-y-1 text-gray-400">
+              <li>
+                默认只显示<strong className="text-gray-300 font-medium">常用交付域</strong>
+                （锁服务 / IT运维 / 供应链等）。Bell、平台域是样例种子，点上方筛选可展开；
+                <strong className="text-gray-300 font-medium">不必每条业务线都维护</strong>。
+              </li>
+              <li>
+                在本页<strong className="text-gray-300 font-medium">往下滚</strong>，
+                <strong className="text-gray-300 font-medium">点一张域卡片</strong>即可选中
+                （例如「智能锁安装维保 / lock-service」）。
+              </li>
+              <li>
+                想看结构图：点卡片上的<strong className="text-gray-300 font-medium">「结构图」</strong>，
+                或选中后点上方蓝色<strong className="text-gray-300 font-medium">「查看结构图」</strong>
+                （会滚到下方图示区）。
+              </li>
+              <li>选中后用「+ 类 / + 关系」增补；需要整域时用右上角「新建域」。</li>
+              <li>「从 Vault / Wiki 生成」只是草稿辅助，生成后仍要你核对，不会自动变成生产实例图。</li>
+            </ol>
+            <details className="text-[11px] text-gray-500 pt-1">
+              <summary className="cursor-pointer text-gray-400 hover:text-gray-300 select-none">名词白话</summary>
+              <ul className="mt-1.5 space-y-1 pl-1">
+                <li><b className="text-gray-300 font-medium">域</b>：一块业务说明书的容器（不是数据库名）。</li>
+                <li><b className="text-gray-300 font-medium">类</b>：一种业务对象（如「安装工单」「设备型号」）。</li>
+                <li><b className="text-gray-300 font-medium">关系/属性</b>：类与类怎么连、字段叫什么。</li>
+                <li><b className="text-gray-300 font-medium">推理 / 合成 / 缺口</b>：高级辅助，可跳过；日常建说明书不必点。</li>
+                <li><b className="text-gray-300 font-medium">健康 / Grill / 学习</b>：质量对照与追问工具，不是建类必做步骤。</li>
+              </ul>
+            </details>
+          </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
           <Button icon={<Plus className="w-4 h-4" />} onClick={() => { setNewId(''); setNewName(''); setNewDesc(''); setCreateOpen(true); }}>新建域</Button>
           <Button variant="ghost" size="sm" onClick={() => setShowWizard(true)}>🧬 创建向导</Button>
           <Button variant="secondary" onClick={() => { setGenId(''); setGenName(''); setGenDesc(''); setGenLimit(20); setGenSubdir(''); setGenKeywords(''); setGenResult(null); setGenYamlEdit(''); setGenOpen(true); fetchVaultDirs(); }}>🤖 从 Vault 生成</Button>
@@ -441,29 +593,202 @@ const OntologyManager: React.FC = () => {
         </div>
       </div>
 
-      {/* ═══════════ Wiki 知识库健康概览 ═══════ */}
-      <WikiHealthDashboard />
+      <details className="rounded-lg border border-gray-700/50 bg-gray-900/40">
+        <summary className="cursor-pointer select-none px-4 py-2.5 text-sm text-gray-300 hover:text-gray-100">
+          进阶工具（可跳过）· 学习建议 / 健康度
+          <span className="ml-2 text-[11px] text-gray-600">默认收起</span>
+        </summary>
+        <div className="px-3 pb-3 space-y-3 border-t border-gray-800/80 pt-3">
+          <p className="text-[11px] text-gray-500 px-1">
+            下面是质量与学习辅助，不是「手动画类」的必做步骤。
+          </p>
+          <OntologyLearningPanel collection="default" />
+          <WikiHealthDashboard />
+        </div>
+      </details>
 
       {/* v2.9: Ontology audit summary */}
       {selectedDomain && (
-        <div className="grid grid-cols-4 gap-3 mb-4">
-          <AuditStat label="实体" value={domainStats?.[selectedDomain]?.entities || '...'} color="text-blue-400" />
-          <AuditStat label="边" value={domainStats?.[selectedDomain]?.edges || '...'} color="text-green-400" />
-          <AuditStat label="孤儿类" value={domainStats?.[selectedDomain]?.orphans ?? '...'} color="text-yellow-400" />
-          <AuditStat label="已覆盖关系" value={domainStats?.[selectedDomain]?.covered ?? '...'} color="text-purple-400" />
+        <div className="space-y-2 mb-4">
+          <div className="grid grid-cols-4 gap-3">
+            <AuditStat
+              label="实体"
+              value={fmtAuditNum(domainStats?.[selectedDomain]?.entities)}
+              color="text-blue-400"
+              hint="知识图里的实例节点数（不是结构图上的类）"
+            />
+            <AuditStat
+              label="实例边"
+              value={fmtAuditNum(domainStats?.[selectedDomain]?.edges)}
+              color="text-green-400"
+              hint="知识图里实体之间的连线。结构图上的线是「关系定义」，不算在这里"
+            />
+            <AuditStat
+              label="孤儿类"
+              value={fmtAuditNum(domainStats?.[selectedDomain]?.orphans)}
+              color="text-yellow-400"
+              hint="YAML 里有定义、图里还没有任何实体实例的类"
+            />
+            <AuditStat
+              label="已覆盖关系"
+              value={domainStats?.[selectedDomain]?.covered ?? '...'}
+              color="text-purple-400"
+              hint="YAML 关系定义中，至少有一条实例边用过的比例"
+            />
+          </div>
+          {domainStats?.[selectedDomain]?.edges === 0 && (
+            <div className="text-[11px] text-gray-500 px-1 leading-relaxed">
+              <strong className="text-gray-400 font-medium">结构图有边、这里是 0 是正常的：</strong>
+              结构图画的是说明书里的<strong className="text-gray-400 font-medium">关系定义</strong>
+              （如 InstallOrder → assigned_to → Technician，当前约{' '}
+              {domainProps.length || domainStats?.[selectedDomain]?.total_defined || '—'} 条）；
+              本行「实例边」数的是知识图里<strong className="text-gray-400 font-medium">具体工单/师傅之间</strong>是否已连上。
+              要产生实例边：FDE 写业务行，或文档抽取确认后建边。
+            </div>
+          )}
+          {(domainStats?.[selectedDomain]?.orphanNames?.length ?? 0) > 0 && (
+            <div className="text-[11px] text-amber-200/90 bg-amber-950/25 border border-amber-800/40 rounded px-3 py-2 leading-relaxed">
+              <span className="text-amber-400/90 font-medium">孤儿类明细：</span>
+              {(domainStats[selectedDomain].orphanNames as string[]).map((name: string) => {
+                const cls = domainClasses.find(
+                  (c) => c.label === name || (c.uri || '').endsWith(`/${name}`) || (c.uri || '').endsWith(`#${name}`),
+                );
+                const shown = cls ? `${name}（${cls.label}）` : name;
+                return (
+                  <span
+                    key={name}
+                    className="inline-block mr-2 mt-1 px-2 py-0.5 rounded bg-gray-900/60 border border-amber-800/30 text-gray-200"
+                  >
+                    {shown}
+                  </span>
+                );
+              })}
+              <span className="block mt-1.5 text-gray-500">
+                含义：说明书里定义了这类，但知识图里还没有对应实体（0 条实例）。可删类，或先灌文档/建实例再消掉孤儿。
+              </span>
+            </div>
+          )}
+          {(() => {
+            const dirty = domainClasses
+              .map((cls) => ({ cls, h: assessClassHygiene(cls) }))
+              .filter((x) => x.h.dirty);
+            if (!dirty.length) return null;
+            return (
+              <div className="text-[11px] text-rose-200/90 bg-rose-950/20 border border-rose-800/40 rounded px-3 py-2 leading-relaxed">
+                <span className="text-rose-300/90 font-medium">疑似脏类 {dirty.length} 个：</span>
+                {dirty.map(({ cls, h }) => (
+                  <span
+                    key={cls.uri || cls.label}
+                    className="inline-block mr-2 mt-1 px-2 py-0.5 rounded bg-gray-900/60 border border-rose-800/30 text-gray-200"
+                    title={h.reasons.join('；')}
+                  >
+                    {classDisplay(cls)}
+                  </span>
+                ))}
+                <span className="block mt-1.5 text-gray-500">
+                  含义：类名像「类型 + 具体实例」（如 安装工单→智能锁安装服务 / 王五），通常是抽取时把实例抬成了类。
+                  与孤儿类不同。建议在下方类卡片删掉带「脏类」角标的项。
+                </span>
+              </div>
+            );
+          })()}
         </div>
       )}
 
-      {/* ── Domain List ── */}
+      {selectedDomain && (
+        <div className="mb-4">
+          <AIPAssist domainId={selectedDomain} />
+        </div>
+      )}
+
+      {/* ── Domain List（点卡片 = 选域；默认常用交付，避免 20+ 样例挤满）── */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="text-sm text-gray-200 font-medium">
+            选择业务域
+            <span className="ml-2 text-xs font-normal text-gray-500">
+              注册表共 {domains.length} 个 · 当前筛选显示{' '}
+              {domains.filter((d) => domainFilter === 'all' || domainBucket(d.id) === domainFilter).length} 个
+            </span>
+          </div>
+          {selectedDomain ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="text-xs text-sky-300 bg-sky-950/40 border border-sky-800/50 rounded px-2.5 py-1">
+                当前：{domains.find(d => d.id === selectedDomain)?.name || selectedDomain}
+                <span className="text-gray-500 ml-1.5 font-mono">{selectedDomain}</span>
+              </div>
+              <Button
+                size="sm"
+                icon={<Network className="w-3.5 h-3.5" />}
+                onClick={() => openStructureGraph(selectedDomain)}
+              >
+                {showGraph ? '刷新结构图' : '查看结构图'}
+              </Button>
+              {showGraph && (
+                <Button variant="secondary" size="sm" icon={<EyeOff className="w-3.5 h-3.5" />} onClick={() => setShowGraph(false)}>
+                  切回表格
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="text-xs text-amber-300/90 bg-amber-950/30 border border-amber-800/40 rounded px-2.5 py-1">
+              尚未选中 — 请点击下方任意卡片（或点卡片上的「结构图」）
+            </div>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1.5 items-center">
+          {([
+            { id: 'preferred' as const, label: '常用交付', hint: '锁服务/IT运维/供应链等，日常只看这些' },
+            { id: 'industry' as const, label: '其他行业', hint: '金融/政务/船舶等样例' },
+            { id: 'bell' as const, label: 'Bell 业务线', hint: '演示客户多线种子，非必维护' },
+            { id: 'platform' as const, label: '平台/系统', hint: '系统自用，勿当客户业务域' },
+            { id: 'all' as const, label: '全部', hint: '注册表全量' },
+          ]).map((f) => {
+            const n = f.id === 'all'
+              ? domains.length
+              : domains.filter((d) => domainBucket(d.id) === f.id).length;
+            const active = domainFilter === f.id;
+            return (
+              <button
+                key={f.id}
+                type="button"
+                title={f.hint}
+                onClick={() => setDomainFilter(f.id)}
+                className={`px-2.5 py-1 rounded text-[11px] border transition-colors ${
+                  active
+                    ? 'border-sky-500 bg-sky-950/40 text-sky-200'
+                    : 'border-gray-700 text-gray-500 hover:text-gray-300 hover:border-gray-500'
+                }`}
+              >
+                {f.label}
+                <span className="ml-1 opacity-70">{n}</span>
+              </button>
+            );
+          })}
+        </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {domains.map(d => (
+        {domains
+          .filter((d) => domainFilter === 'all' || domainBucket(d.id) === domainFilter
+            || (selectedDomain === d.id)) // 已选中的始终可见，避免筛选后「消失」
+          .map(d => (
           <div key={d.id}
+            role="button"
+            tabIndex={0}
+            aria-pressed={selectedDomain === d.id}
             onClick={() => handleSelect(d.id)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelect(d.id); } }}
             className={`p-4 rounded-lg border cursor-pointer transition-colors ${
-              selectedDomain === d.id ? 'border-primary bg-primary/5' : 'border-dark-border bg-dark-card hover:border-gray-600'
+              selectedDomain === d.id
+                ? 'border-sky-500 bg-sky-950/30 ring-1 ring-sky-500/40'
+                : 'border-dark-border bg-dark-card hover:border-gray-600'
             }`}>
             <div className="flex items-center justify-between">
-              <div className="text-sm font-medium text-gray-200">{d.name}</div>
+              <div className="text-sm font-medium text-gray-200 flex items-center gap-2">
+                {d.name}
+                {selectedDomain === d.id && (
+                  <span className="text-[10px] font-normal text-sky-300 border border-sky-700/60 rounded px-1.5 py-0.5">已选中</span>
+                )}
+              </div>
               <span className="text-[10px] text-gray-500">v{d.version}</span>
             </div>
             <div className="text-xs text-gray-500 mt-1">{d.id}</div>
@@ -477,12 +802,20 @@ const OntologyManager: React.FC = () => {
               <span title="子类展开">{d.expand_subclasses ? '子类✓' : '子类✗'}</span>
               <span title="跨域降级阈值">降级: {d.min_cross_results}</span>
             </div>
-            <div className="flex gap-1 mt-2">
-              <Button variant="ghost" size="sm" onClick={async (e) => { e.stopPropagation();
+            <div className="flex gap-1 mt-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+              <Button
+                size="sm"
+                variant={selectedDomain === d.id && showGraph ? 'secondary' : 'default'}
+                icon={<Network className="w-3 h-3" />}
+                onClick={() => openStructureGraph(d.id)}
+              >
+                结构图
+              </Button>
+              <Button variant="ghost" size="sm" onClick={async () => {
                 await fetch(`/api/core/engine/rebuild?collection=${d.collection_id || d.id}`, { method: 'POST' });
                 fetchDomains(); toast.success(`已重建 ${d.name}`);
               }} title="重建本体 A-Box"><RefreshCw className="w-3 h-3" /></Button>
-              <Button variant="ghost" size="sm" onClick={async (e) => { e.stopPropagation();
+              <Button variant="ghost" size="sm" onClick={async () => {
                 try {
                   const r = await fetch(`${WIKI_API}/domains/${d.id}/sync-search-index`, { method: 'POST' });
                   const data = await r.json();
@@ -493,7 +826,7 @@ const OntologyManager: React.FC = () => {
                   }
                 } catch { toast.error('同步失败'); }
               }} title="同步实体到检索索引"><Search className="w-3 h-3" /></Button>
-              <Button variant="ghost" size="sm" onClick={async (e) => { e.stopPropagation();
+              <Button variant="ghost" size="sm" onClick={async () => {
                 if (!confirm(`确定删除域 "${d.name}"？此操作不可逆。`)) return;
                 await fetch(`${WIKI_API}/domains/${d.id}`, { method: 'DELETE' });
                 fetchDomains(); setSelectedDomain(''); toast.success('已删除');
@@ -504,24 +837,38 @@ const OntologyManager: React.FC = () => {
         {domains.length === 0 && (
           <div className="col-span-full text-center text-gray-500 py-8 text-sm">暂无领域本体，点击"新建域"创建</div>
         )}
+        {domains.length > 0
+          && domains.filter((d) => domainFilter === 'all' || domainBucket(d.id) === domainFilter || selectedDomain === d.id).length === 0 && (
+          <div className="col-span-full text-center text-gray-500 py-8 text-sm">
+            当前筛选无域 — 换到「全部」或「常用交付」
+          </div>
+        )}
+      </div>
       </div>
 
       {/* ── Domain Detail ── */}
       {selectedDomain && (
-        <div className="bg-dark-card rounded-lg border border-dark-border p-4 space-y-4">
-          <div className="flex items-center justify-between">
+        <div ref={detailRef} className="bg-dark-card rounded-lg border border-dark-border p-4 space-y-4 scroll-mt-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="text-sm font-medium text-gray-200">
               {domains.find(d => d.id === selectedDomain)?.name || selectedDomain}
+              <span className="ml-2 text-xs font-normal text-gray-500">
+                {showGraph ? '结构图示' : '类/关系表'}
+              </span>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button variant="ghost" size="sm" onClick={() => { setEditingClass(null); setClsName(''); setClsLabel(''); setClsReq(''); setClsOpt(''); setClsCat(''); setClassOpen(true); }}>+ 类</Button>
               <Button variant="ghost" size="sm" onClick={() => { setEditingProp(null); setPropName(''); setPropLabel(''); setPropDomain(''); setPropRange(''); setPropOpen(true); }}>+ 关系</Button>
               <Button variant="ghost" size="sm" onClick={() => {
                 const d = domains.find(x => x.id === selectedDomain);
                 if (d) { setEditDomainName(d.name); setEditDomainDesc(d.description || ''); setDomainEditOpen(true); }
               }} title="编辑域信息"><span className="text-[10px]">✏️</span></Button>
-              <Button variant="ghost" size="sm" onClick={() => { if (!graphData) fetchDomainDetail(selectedDomain).then(() => setShowGraph(true)); else setShowGraph(!showGraph); }}>
-                {showGraph ? <><EyeOff className="w-3 h-3" /> 表</> : <><Eye className="w-3 h-3" /> 图</>}
+              <Button
+                size="sm"
+                icon={showGraph ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                onClick={() => toggleStructureGraph()}
+              >
+                {showGraph ? '切回表格' : '查看结构图'}
               </Button>
             </div>
           </div>
@@ -709,13 +1056,31 @@ const OntologyManager: React.FC = () => {
           )}
 
           {/* ── Graph View ── */}
-          {showGraph && graphData && (
-            <div className="border border-dark-border rounded-lg overflow-hidden">
-              <OntologyGraph
-                classes={graphData.classes || []}
-                objectProperties={graphData.object_properties || []}
-                name={graphData.name}
-              />
+          {showGraph && (
+            <div className="border border-sky-800/40 rounded-lg overflow-hidden bg-sky-950/10">
+              <div className="px-3 py-2 border-b border-sky-900/40 text-xs text-sky-200 flex items-center justify-between">
+                <span>类与关系结构图（含动作 / 流程 · 按住卡片拖动 · 滚轮缩放）</span>
+                <button type="button" className="text-gray-400 hover:text-gray-200" onClick={() => setShowGraph(false)}>切回表格</button>
+              </div>
+              {graphData ? (
+                <>
+                  <OntologyGraph
+                    classes={graphData.classes || []}
+                    objectProperties={graphData.object_properties || []}
+                    dataProperties={graphData.data_properties || []}
+                    processes={graphData.processes || []}
+                    interfaces={graphData.interfaces || []}
+                    inferenceRules={graphData.inference_rules || []}
+                    name={graphData.name}
+                    viewMode="all"
+                  />
+                  <p className="text-[11px] text-gray-500 px-3 py-2 border-t border-sky-900/40">
+                    左上角可切换：全部（类/属性/关系 + 动作/状态/流程）· 结构 · 行为。函数对应推理规则 inference_rules。
+                  </p>
+                </>
+              ) : (
+                <div className="py-16 text-center text-sm text-gray-500">正在加载结构图…</div>
+              )}
             </div>
           )}
 
@@ -725,13 +1090,41 @@ const OntologyManager: React.FC = () => {
               <div className="text-xs text-gray-400 mb-1">类定义</div>
               <div className="text-[11px] text-blue-300/80 bg-blue-900/15 border border-blue-800/20 rounded px-2.5 py-1 mb-2">领域内的知识类别，每个类有必填/可选字段和 Wiki 分类</div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {domainClasses.map(cls => (
-                  <div key={cls.uri || cls.label} className="flex items-start justify-between p-2 rounded border border-dark-border/30 bg-dark-bg text-xs">
+                {domainClasses.map(cls => {
+                  const hygiene = assessClassHygiene(cls);
+                  return (
+                  <div
+                    key={cls.uri || cls.label}
+                    className={`flex items-start justify-between p-2 rounded border bg-dark-bg text-xs ${
+                      hygiene.dirty
+                        ? 'border-rose-700/50 bg-rose-950/15'
+                        : 'border-dark-border/30'
+                    }`}
+                  >
                     <div>
-                      <div className="text-gray-200 font-medium">{cls.label}</div>
+                      <div className="text-gray-200 font-medium flex items-center gap-1.5 flex-wrap">
+                        {classDisplay(cls)}
+                        {hygiene.dirty && (
+                          <span
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-700/40"
+                            title={hygiene.reasons.join('；')}
+                          >
+                            脏类
+                          </span>
+                        )}
+                      </div>
+                      {hygiene.dirty && (
+                        <div className="text-[10px] text-rose-300/80 mt-0.5">{hygiene.reasons[0]}</div>
+                      )}
                       <div className="text-gray-500 mt-0.5">
-                        <span className="text-amber-400">必填: {cls.required_fields?.join(', ') || '无'}</span>
-                        {cls.optional_fields?.length > 0 && <span className="ml-2 text-gray-600">可选: {cls.optional_fields.join(', ')}</span>}
+                        <span className="text-amber-400">
+                          必填: {(cls.required_fields || []).map((f) => fieldDisplay(f, cls.fields)).join('、') || '无'}
+                        </span>
+                        {cls.optional_fields?.length > 0 && (
+                          <span className="ml-2 text-gray-600">
+                            可选: {cls.optional_fields.map((f) => fieldDisplay(f, cls.fields)).join('、')}
+                          </span>
+                        )}
                       </div>
                       {cls.categories?.length > 0 && <div className="text-gray-600">分类: {cls.categories.join(', ')}</div>}
                       <button className="text-[10px] text-blue-400 hover:text-blue-300 mt-1 inline-block"
@@ -744,14 +1137,12 @@ const OntologyManager: React.FC = () => {
                       <Button variant="ghost" size="sm" title="删除类" onClick={() => handleDeleteClass(cls)}><Trash2 className="w-3 h-3" /></Button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
-              {/* ── Graph Stats + Inference ── */}
-              <AIPAssist domainId={selectedDomain} />
-
               <div className="mt-3 flex items-center gap-2 text-[10px] text-gray-500">
-                <span>🕸️ 图</span>
+                <span>🕸️ 知识图统计</span>
                 <GraphStats domainId={selectedDomain} />
               </div>
 
@@ -784,10 +1175,10 @@ const OntologyManager: React.FC = () => {
                             ))}
                           </div>
                           {/* Transition rules */}
-                          {(cls.transitions || []).length > 0 && (
+                          {(cls.transitions || cls.states?.transitions || []).length > 0 && (
                             <div className="space-y-1 mt-2">
                               <div className="text-[10px] text-gray-500 mb-1">转换规则：</div>
-                              {(cls.transitions || []).map((t: any, i: number) => {
+                              {(cls.transitions || cls.states?.transitions || []).map((t: any, i: number) => {
                                 const fromList = Array.isArray(t.from) ? t.from : [t.from];
                                 const triggerLabel = t.trigger?.type === 'relation_count'
                                   ? `${t.trigger.relation} ${t.trigger.operator} ${t.trigger.threshold}`
@@ -795,6 +1186,8 @@ const OntologyManager: React.FC = () => {
                                     ? `${t.trigger.field} ${t.trigger.condition}`
                                     : t.trigger?.type === 'relation_exists'
                                       ? `存在 ${t.trigger.relation} 关系`
+                                      : t.trigger?.type === 'action' || t.trigger?.action_id
+                                        ? `动作 ${t.trigger.action_id || ''}`
                                       : t.trigger?.type || '';
                                 return (
                                   <div key={i} className="flex items-center gap-1 text-[10px] text-gray-500 pl-2">
@@ -830,15 +1223,15 @@ const OntologyManager: React.FC = () => {
                     {domainProps.map(p => (
                       <div key={p.uri || p.label} className="flex items-center gap-2 text-xs text-gray-300 p-2 rounded border border-dark-border/30 bg-dark-bg"
                         title={p.description || `${p.domain?.join(', ')} → ${p.label} → ${p.range?.join(', ')}`}>
-                        <span className="text-purple-400">{p.domain?.join(', ')}</span>
+                        <span className="text-purple-400">{(p.domain || []).join(', ')}</span>
                         <ArrowRight className="w-3 h-3 text-gray-500" />
-                        <span className="text-purple-400">{p.label}</span>
+                        <span className="text-purple-400 font-medium">{propDisplay(p)}</span>
                         <ArrowRight className="w-3 h-3 text-gray-500" />
-                        <span className="text-purple-400">{p.range?.join(', ')}</span>
+                        <span className="text-purple-400">{(p.range || []).join(', ')}</span>
                         {p.transitive && <span className="text-[10px] text-gray-500" title="如果 A→B 且 B→C, 则 A→C">(传递)</span>}
                         {p.symmetric && <span className="text-[10px] text-gray-500" title="A→B 等价于 B→A">(对称)</span>}
                         <Button variant="ghost" size="sm" title="编辑关系" className="ml-auto" onClick={() => {
-                          const pname = (p.uri || '').split('#').pop() || p.label;
+                          const pname = (p.uri || '').split('#').pop() || (p.uri || '').split('/').pop() || p.label;
                           setEditingProp(pname);
                           setPropName(pname);
                           setPropLabel(p.label);
@@ -848,7 +1241,7 @@ const OntologyManager: React.FC = () => {
                         }}><span className="text-[10px]">✏️</span></Button>
                         <Button variant="ghost" size="sm" title="删除关系" onClick={async () => {
                           if (!confirm('确定删除此关系？')) return;
-                          const pname = (p.uri || '').split('#').pop() || p.label;
+                          const pname = (p.uri || '').split('#').pop() || (p.uri || '').split('/').pop() || p.label;
                           await fetch(`${WIKI_API}/domains/${selectedDomain}/properties/${encodeURIComponent(pname)}`, { method: 'DELETE' });
                           fetchDomainDetail(selectedDomain); toast.success('已删除');
                         }}><span className="text-[10px]">🗑️</span></Button>
@@ -892,7 +1285,7 @@ const OntologyManager: React.FC = () => {
             ))}
             <Button variant="primary" size="sm" loading={simLoading}
               onClick={async () => {
-                if (!simFocus) return;
+                if (!simFocus) { toast.error('请先选择焦点类'); return; }
                 setSimLoading(true); setSimResult(null);
                 try {
                   const insts: any[] = [];
@@ -901,12 +1294,12 @@ const OntologyManager: React.FC = () => {
                   // Co-occurring instances
                   let ci = 1;
                   for (const [clsLabel, cnt] of Object.entries(simCounts)) {
-                    for (let i = 0; i < cnt; i++) {
+                    for (let i = 0; i < (cnt as number); i++) {
                       insts.push({ class_name: clsLabel, properties: { name: `${clsLabel}_${ci}` }, chunk_id: 'sim-c0' });
                       ci++;
                     }
                   }
-                  // Also add 1 of focus class to trigger relation_exists
+                  // Duplicate focus instance only when same-class relation_exists needs a peer
                   if (simCounts[simFocus] === undefined || simCounts[simFocus] === 0) {
                     insts.push({ class_name: simFocus, properties: { name: simFocus + '_关联' }, chunk_id: 'sim-c0' });
                   }
@@ -914,33 +1307,50 @@ const OntologyManager: React.FC = () => {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ domain_id: selectedDomain, instances: insts }),
                   });
-                  setSimResult(await r.json());
-                } catch { toast.error('模拟失败'); }
+                  if (!r.ok) {
+                    const err = await r.json().catch(() => ({}));
+                    throw new Error(err.detail || `HTTP ${r.status}`);
+                  }
+                  const data = await r.json();
+                  setSimResult(data);
+                  const n = data.state_transitions?.length || 0;
+                  if (n > 0) toast.success(data.summary || `触发 ${n} 次状态转换`);
+                  else toast.info(data.hint || data.summary || '未触发状态转换');
+                } catch (e: any) { toast.error(e?.message || '模拟失败'); }
                 finally { setSimLoading(false); }
               }}>
               ▶ 模拟
             </Button>
           </div>
+          <div className="text-[10px] text-gray-500">
+            沙盘会自动放行「动作」类触发（如接单）；后续步仍需配齐关系目标实例（派单需 ≥1 安装师傅；开工需 ≥1 客户现场）。
+          </div>
 
           {simResult && (
             <div className="space-y-3">
-              <div className="text-xs text-gray-400">{simResult.summary}</div>
+              <div className="text-xs text-gray-300 font-medium">{simResult.summary}</div>
 
               {/* Transitions */}
-              {simResult.state_transitions?.length > 0 && (
+              {(simResult.state_transitions?.length ?? 0) === 0 ? (
+                <div className="px-3 py-2 rounded border border-amber-500/30 bg-amber-500/5 text-[11px] text-amber-200/90">
+                  {simResult.hint || '本次未触发任何状态转换。请确认焦点类有状态机，并配齐后续关系所需的目标类实例。'}
+                </div>
+              ) : (
                 <div className="space-y-1">
                   <div className="text-[10px] text-gray-500">状态转换：</div>
                   <div className="flex flex-wrap gap-2">
                     {simResult.state_transitions.map((t: any, i: number) => {
                       const clr = t.to_state === 'deprecated' || t.to_state === 'retired' ? '#ef4444'
-                        : t.to_state === 'canonical' || t.to_state === 'resolved' || t.to_state === 'industrial' ? '#22c55e'
+                        : t.to_state === 'canonical' || t.to_state === 'resolved' || t.to_state === 'industrial' || t.to_state === 'completed' || t.to_state === 'assigned' ? '#22c55e'
                         : '#3b82f6';
                       return (
                         <div key={i} className="flex items-center gap-1 px-2 py-1 rounded border border-dark-border/30 bg-dark-bg text-[10px]">
                           <span className="text-gray-200">{t.entity_text?.slice(0, 15)}</span>
                           <span className="text-gray-500">{t.class_name}</span>
+                          <span className="text-gray-500">{t.from_state}</span>
                           <span className="text-gray-500">→</span>
                           <span style={{ color: clr }}>{t.to_state}</span>
+                          <span className="text-gray-600">({t.trigger_type})</span>
                         </div>
                       );
                     })}
@@ -1440,7 +1850,7 @@ const OntologyManager: React.FC = () => {
                 <div>暂无实例</div>
                 <div className="text-[10px] text-gray-600">
                   该类别下还没有 Wiki 页面。
-                  在编缉知识页面创建页面或从 Vault 导入文件后，
+                  在知识库「阅读资料」创建页面或从「原始文件」导入后，
                   在域详情运行 <span className="text-blue-400">🔨 分类+构建</span> 即可自动归类。
                 </div>
               </div>
@@ -1491,6 +1901,29 @@ const OntologyManager: React.FC = () => {
       </Modal>
 
       {/* ── Add / Edit Class Modal ── */}
+      <Modal
+        open={!!pendingDeleteClass}
+        onClose={() => { if (!deletingClass) setPendingDeleteClass(null); }}
+        title="确认删除类"
+      >
+        <div className="space-y-3 text-sm text-gray-300">
+          <p>
+            删除「{pendingDeleteClass?.label || pendingDeleteClass?.name}」？
+          </p>
+          <p className="text-xs text-gray-500">
+            将级联清理约 {pendingDeleteClass?.orphanNodes ?? 0} 个图节点，并经说明书提案写入（非直接改 YAML）。
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" size="sm" disabled={deletingClass} onClick={() => setPendingDeleteClass(null)}>
+              取消
+            </Button>
+            <Button variant="default" size="sm" disabled={deletingClass} onClick={() => { void confirmPendingDeleteClass(); }}>
+              {deletingClass ? '删除中…' : '确认删除'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       <Modal open={classOpen} onClose={() => { setClassOpen(false); setEditingClass(null); }} title={editingClass ? '编辑类' : '添加类'}>
         <div className="space-y-3">
           <Input label="类名 (英文)" value={clsName} onChange={(e: any) => setClsName(e.target.value)} placeholder="AITechnique" disabled={!!editingClass} />
@@ -1589,8 +2022,10 @@ const OntologyManager: React.FC = () => {
 };
 
 // v2.9: Inline audit stat component
-const AuditStat: React.FC<{ label: string; value: string | number; color: string }> = ({ label, value, color }) => (
-  <div className="p-2 rounded bg-dark-card border border-dark-border/30 text-center">
+const AuditStat: React.FC<{ label: string; value: string | number; color: string; hint?: string }> = ({
+  label, value, color, hint,
+}) => (
+  <div className="p-2 rounded bg-dark-card border border-dark-border/30 text-center" title={hint || undefined}>
     <div className={`text-lg font-bold ${color}`}>{value}</div>
     <div className="text-xs text-gray-500">{label}</div>
   </div>

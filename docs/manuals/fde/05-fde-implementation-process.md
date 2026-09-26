@@ -4,7 +4,8 @@
 
 > **定位**：FDE 交付方法论——定义角色、阶段、输入输出和验收标准。  
 > **受众**：FDE 交付团队、项目经理、客户对接人。  
-> **阅读建议**：先看 §一～三 理解整体框架，再按交付步骤逐段对照执行。
+> **阅读建议**：先看 §一～三 理解整体框架，再按交付步骤逐段对照执行。  
+> **勿混淆**：文中「验收签收 / `signoff_approval`」指 **FDE 项目签收单**；it-ops **Org M4 签收准备**在管理端 `/org/pilot`（见 [`ORG_M4_SIGNOFF_PACK`](../../contracts/ORG_M4_SIGNOFF_PACK.md)），两套流程独立。
 
 ---
 
@@ -693,6 +694,9 @@ FDE 标准交付手册 — {{PROJECT_NAME}}
 | ⑦ | 验收 Checklist | 全部通过 | 逐项修复后重新验收 |
 
 ### 7.2 HITL 审批点
+
+> **`signoff_approval` 口径**：本表仅覆盖 **FDE 项目签收单**（步骤⑦ / [`template-signoff`](templates/template-signoff.md)）。  
+> it-ops 组织试点的「签收准备 / 八闸门」在 **`/org/pilot`**（[`ORG_M4_SIGNOFF_PACK`](../../contracts/ORG_M4_SIGNOFF_PACK.md)），**不是**本表 `signoff_approval`，也不会由程序翻转 `m4_claim_allowed`。
 
 | 审批关卡 | 所在步骤 | 审批人 | 触发时机 | 流转条件 |
 |------|:---:|------|------|------|

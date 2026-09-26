@@ -571,10 +571,35 @@ async def project_deploy(project_id: str, _auth: str = Depends(require_builder_a
 async def create_team(req: TeamAssembleRequest, _auth: str = Depends(require_builder_access)):
     return await _team_get_svc().create_team(req)
 
+
+@router.post("/teams/create-dialog", response_model=StatusResponse)
+async def team_create_dialog(body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
+    """Conversational team assembly: clarify → stage draft. Apply to canvas then POST /teams to save."""
+    text = str(body.get("text") or "").strip()
+    history = body.get("history") if isinstance(body.get("history"), list) else []
+    agents = body.get("agents") if isinstance(body.get("agents"), list) else []
+    try:
+        from core.apps.builder.service.team_create_dialog import run_team_create_dialog_turn
+
+        return await run_team_create_dialog_turn(text=text, history=history, agents=agents)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
 @router.get("/teams", response_model=TeamListResponse)
 async def list_teams(_auth: str = Depends(require_builder_access)):
     teams = await _team_get_svc().list_teams()
     return {"teams": [t.model_dump() if hasattr(t, 'model_dump') else t for t in teams], "total": len(teams)}
+
+
+@router.post("/teams/dedupe", response_model=StatusResponse)
+async def dedupe_teams(_auth: str = Depends(require_builder_access)):
+    """Remove duplicate teams that share the same name + agent stage list.
+
+    Keeps the newest copy. Safe after factory recommend-team flooded defaults.
+    """
+    return _team_get_svc().dedupe_teams()
+
 
 @router.get("/teams/{team_id}", response_model=StatusResponse)
 async def get_team(team_id: str, _auth: str = Depends(require_builder_access)):

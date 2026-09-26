@@ -495,3 +495,184 @@ def ingest_webhook_payload(
         "domain_id": did,
         **meta,
     }
+
+
+def _sandbox_overlay_path(domain_id: str) -> Path:
+    return (
+        Path(__file__).resolve().parents[4]
+        / "workspace_seeds"
+        / "connectors"
+        / "sandbox"
+        / f"{domain_id}_entities.json"
+    )
+
+
+def _load_sandbox_overlay(domain_id: str, cfg: Dict[str, Any]) -> Dict[str, Any]:
+    inline = cfg.get("sandbox_entities")
+    if isinstance(inline, dict) and inline:
+        return inline
+    path = _sandbox_overlay_path(domain_id)
+    if path.is_file():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8")) or {}
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            logger.warning("sandbox overlay load failed %s", domain_id, exc_info=True)
+    return {}
+
+
+def _fetch_live_gated(domain_id: str, entity_id: str, *, purpose: str) -> Dict[str, Any]:
+    """Delegate live mode to the allowlisted http_json adapter (never arbitrary SQL)."""
+    from core.apps.org.service.org_live_adapter import fetch_live_http
+
+    out = fetch_live_http(domain_id, entity_id, purpose=purpose)
+    out.setdefault("mode", "live")
+    return out
+
+
+def fetch_entity_snapshot(
+    domain_id: str,
+    entity_id: str,
+    *,
+    purpose: str = "org_pilot",
+) -> Dict[str, Any]:
+    """Controlled read: GraphIndex entity + sandbox overlay (no customer DB SQL).
+
+    IO mode resolution (Org L5 D3):
+      1) AIPLAT_ORG_IO_MODE env: sandbox|deny|live
+      2) else connector.json io.mode (default sandbox)
+    ``live`` delegates to the http_json allowlist adapter (still gated).
+    Never opens arbitrary SQL against production.
+    """
+    did = (domain_id or "").strip() or "it-ops"
+    eid = (entity_id or "").strip()
+    if not eid:
+        return {
+            "status": "need_entity",
+            "domain_id": did,
+            "entity_id": "",
+            "authority_note": "entity_id required; fetch is ontology-anchored, not free-form SQL",
+        }
+
+    env_mode = (os.getenv("AIPLAT_ORG_IO_MODE") or "").strip().lower()
+    if env_mode == "deny":
+        return {
+            "status": "mode_blocked",
+            "domain_id": did,
+            "entity_id": eid,
+            "mode": "deny",
+            "authority_note": "AIPLAT_ORG_IO_MODE=deny; fetch blocked",
+        }
+    if env_mode == "live":
+        return _fetch_live_gated(did, eid, purpose=purpose)
+
+    cfg = load_connector_config(did)
+    io_cfg = cfg.get("io") if isinstance(cfg.get("io"), dict) else {}
+    mode = env_mode or str(io_cfg.get("mode") or "sandbox").strip().lower() or "sandbox"
+    if mode == "live":
+        return _fetch_live_gated(did, eid, purpose=purpose)
+    if mode not in ("sandbox", "readonly_graph"):
+        return {
+            "status": "mode_blocked",
+            "domain_id": did,
+            "entity_id": eid,
+            "mode": mode,
+            "authority_note": "only sandbox|readonly_graph allowed in org L5 pilot (D3)",
+        }
+
+    node_payload: Dict[str, Any] = {}
+    try:
+        from core.harness.ontology_engine.graph_index import GraphIndex
+
+        g = GraphIndex.load(did)
+        node = (getattr(g, "_nodes", {}) or {}).get(eid)
+        if node is None:
+            return {
+                "status": "not_found",
+                "domain_id": did,
+                "entity_id": eid,
+                "mode": mode,
+                "authority_note": "entity missing on GraphIndex; seed or Path B ingest first",
+            }
+        meta = dict(getattr(node, "metadata", None) or {})
+        node_payload = {
+            "entity_id": eid,
+            "entity_name": getattr(node, "entity_name", "") or eid,
+            "class_name": getattr(node, "class_name", "") or "",
+            "state": str(meta.get("state") or meta.get("status") or ""),
+            "metadata": meta,
+            "out_degree": len(getattr(node, "out_edges", []) or []),
+            "in_degree": len(getattr(node, "in_edges", []) or []),
+        }
+    except Exception as e:
+        logger.warning("fetch_entity_snapshot graph failed", exc_info=True)
+        return {
+            "status": "error",
+            "domain_id": did,
+            "entity_id": eid,
+            "error": type(e).__name__,
+        }
+
+    overlay = _load_sandbox_overlay(did, cfg)
+    sand = overlay.get(eid) if isinstance(overlay.get(eid), dict) else {}
+    # class-level fallback
+    if not sand:
+        cls = node_payload.get("class_name") or ""
+        by_class = overlay.get("_by_class") if isinstance(overlay.get("_by_class"), dict) else {}
+        sand = by_class.get(cls) if isinstance(by_class.get(cls), dict) else {}
+
+    # Customer sandbox stub (M4): not production — simulated external system snapshot
+    cust_root = overlay.get("_customer_sandbox") if isinstance(overlay.get("_customer_sandbox"), dict) else {}
+    cust = cust_root.get(eid) if isinstance(cust_root.get(eid), dict) else {}
+    if not cust:
+        cls = node_payload.get("class_name") or ""
+        by_c = cust_root.get("_by_class") if isinstance(cust_root.get("_by_class"), dict) else {}
+        cust = by_c.get(cls) if isinstance(by_c.get(cls), dict) else {}
+
+    return {
+        "status": "ok",
+        "domain_id": did,
+        "entity_id": eid,
+        "purpose": purpose,
+        "mode": mode,
+        "graph": node_payload,
+        "sandbox": sand or {
+            "source": "synthetic",
+            "note": "no overlay; synthetic monitor stub",
+            "severity": "unknown",
+            "last_seen": None,
+        },
+        "customer_sandbox": cust or None,
+        "sandbox_tier": "customer_stub" if cust else "platform",
+        "authority_note": (
+            "sandbox/readonly fetch only; customer_sandbox is stub not production DB; "
+            "writes require AIPLAT_ORG_IO_WRITE=1 + connector.io.allow_write"
+        ),
+    }
+
+
+def preview_entity_write(
+    domain_id: str,
+    entity_id: str,
+    patch: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Always dry-run unless explicitly unlocked (pilot D3 defaults to blocked)."""
+    did = (domain_id or "").strip() or "it-ops"
+    eid = (entity_id or "").strip()
+    cfg = load_connector_config(did)
+    io_cfg = cfg.get("io") if isinstance(cfg.get("io"), dict) else {}
+    allow = bool(io_cfg.get("allow_write"))
+    env_on = (os.getenv("AIPLAT_ORG_IO_WRITE") or "").strip() in ("1", "true", "TRUE", "yes")
+    unlocked = allow and env_on
+    return {
+        "status": "would_write" if unlocked else "dry_run_blocked",
+        "domain_id": did,
+        "entity_id": eid,
+        "patch": patch or {},
+        "applied": False,
+        "unlocked": unlocked,
+        "authority_note": (
+            "org L5 pilot D3: production write dual-gated "
+            "(connector.io.allow_write + AIPLAT_ORG_IO_WRITE); default blocked"
+        ),
+    }

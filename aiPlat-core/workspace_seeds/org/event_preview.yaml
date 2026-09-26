@@ -1,0 +1,3 @@
+events:
+  - event_type: signal.preview
+    note: "沙箱预演白名单。不进 live，不推渠道。"

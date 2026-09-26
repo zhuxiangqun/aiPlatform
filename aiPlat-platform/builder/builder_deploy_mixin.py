@@ -85,8 +85,8 @@ class BuilderDeployMixin:
                     _f = float(_pr) if _pr is not None else None
                     if _f is not None and 0.0 < _f <= 1.0:
                         _card_pr = round(_f * 100, 2)
-                except (TypeError, ValueError):
-                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+                except (TypeError, ValueError):  # noqa: cleanup-best-effort
+                    pass
                 proj["runs"][-1]["pass_rate"] = _card_pr
                 proj["runs"][-1]["pass_rate_source"] = _pr_source
                 if _pr_reason:
@@ -115,50 +115,7 @@ class BuilderDeployMixin:
                     "detail": "测试证据显示 pass_rate=0（真实 pytest 全失败）——拒绝部署（证据门控）。"
                               "请先修复测试并重建，或确认后重试。"}
         deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
-        result = _deploy_to_app_for_project(project_id, deploy_dir or "", proj)
-        # F4: persist rejects + post-deploy smoke; openable only when healthy or static fallback
-        try:
-            rejected = list(result.get("rejected_artifacts") or [])
-            proj["last_deploy_rejects"] = rejected
-            smoke_info: Dict[str, Any] = {}
-            openable = False
-            open_reason = ""
-            try:
-                from builder.app_runtime import detect_runtime, smoke_test
-                det = detect_runtime(project_id)
-                if not det.get("found"):
-                    # Managed/static AppPage path — no local server to probe
-                    openable = True
-                    open_reason = "static_or_managed"
-                    smoke_info = {"smoke_passed": None, "skipped": True, "reason": open_reason}
-                else:
-                    smoke_info = smoke_test(project_id, keep_alive=True)
-                    openable = bool(smoke_info.get("smoke_passed"))
-                    open_reason = "healthy" if openable else "unhealthy"
-            except Exception as _sm_exc:
-                smoke_info = {"smoke_passed": False, "error": str(_sm_exc)[:200]}
-                openable = False
-                open_reason = "smoke_error"
-            result["smoke"] = smoke_info
-            result["openable"] = openable
-            result["open_reason"] = open_reason
-            if not openable:
-                result["app_url_blocked"] = result.get("app_url")
-                # Do not advertise open URL when unhealthy
-                result["app_url"] = ""
-            proj["last_runtime"] = {
-                "smoke": smoke_info,
-                "openable": openable,
-                "open_reason": open_reason,
-                "rejected_count": len(rejected),
-            }
-            self._save_projects()
-        except Exception:
-            import logging as _log_f4
-            _log_f4.getLogger("aiplat.builder").debug(
-                "F4 post-deploy smoke skipped", exc_info=True
-            )
-        return result
+        return _deploy_to_app_for_project(project_id, deploy_dir or "", proj)
     async def get_agent_insight(self, agent_id: str) -> Dict[str, Any]:
         from builder.builder_project_service import _get_agent_insight_for
         """Get insight metrics for a single agent."""

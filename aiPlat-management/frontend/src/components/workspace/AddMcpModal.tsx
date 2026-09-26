@@ -4,6 +4,7 @@ import { workspaceMcpApi } from '../../services';
 import type { McpServer } from '../../services';
 import { Alert, Button, Input, Modal, Select, Switch, Textarea, toast } from '../ui';
 import { diagnosticsApi } from '../../services';
+import AssetBoundaryHint from './AssetBoundaryHint';
 
 interface DiscoveredTool {
   name: string;
@@ -460,6 +461,10 @@ const AddMcpModal: React.FC<AddMcpModalProps> = ({ open, onClose, onSuccess, onC
         </>
       }
     >
+      <AssetBoundaryHint kind="mcp" className="mb-3" />
+      <div className="mb-3 text-xs text-gray-500">
+        日常请用列表顶栏「对话创建」。此处为表单 + AI 智能填充 / 向导（精细改 transport、allowed_tools）。
+      </div>
       <label className="mb-3 flex items-center gap-2 text-sm text-gray-400">
         <input type="checkbox" checked={autoSmoke} onChange={(e) => setAutoSmoke(e.target.checked)} />
         创建后自动运行全链路冒烟（会创建/清理资源）

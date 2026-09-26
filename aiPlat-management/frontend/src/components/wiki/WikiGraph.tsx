@@ -8,7 +8,15 @@ const LazyECharts: any = React.lazy(() => import('echarts-for-react'));
 const CAT_COLORS: Record<string, string> = {
   entities: '#3b82f6',
   topics: '#a855f7',
+  atoms: '#f59e0b',
   contradictions: '#ef4444',
+};
+
+const CAT_LABELS: Record<string, string> = {
+  entities: '概念',
+  topics: '专题',
+  atoms: '知识片段',
+  contradictions: '矛盾',
 };
 
 const CAT_GLOW: Record<string, string> = {
@@ -37,7 +45,13 @@ interface GraphEdge {
 interface GraphData {
   nodes: GraphNode[];
   edges: GraphEdge[];
-  stats?: { totalNodes: number; totalEdges: number; categories: Record<string, number>; avgLinksPerPage: number };
+  stats?: {
+    totalNodes: number;
+    totalEdges: number;
+    totalPages?: number;
+    categories: Record<string, number>;
+    avgLinksPerPage: number;
+  };
 }
 
 interface WikiGraphProps {
@@ -69,7 +83,7 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onEx
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [collection]);
 
   useEffect(() => { fetchGraph(''); }, [fetchGraph]);
 
@@ -147,8 +161,9 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onEx
           return `<span style="color:#71717a;font-size:11px">${p?.data?.source} → ${p?.data?.target}</span>`;
         },
       },
-      legend: nodeCount > 0 ? [{
+        legend: nodeCount > 0 ? [{
         data: categories.map((c: any) => c.name),
+        formatter: (name: string) => CAT_LABELS[name] || name,
         left: 12, top: 12,
         textStyle: { color: '#71717a', fontSize: 10 },
         itemWidth: 10, itemHeight: 10,
@@ -249,7 +264,7 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onEx
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
           <Input
-            placeholder="搜索节点…"
+            placeholder="搜索资料…"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             onKeyDown={handleSearch}
@@ -262,7 +277,11 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onEx
           )}
         </div>
         <span className="text-[10px] text-gray-500">
-          {data?.stats?.totalNodes != null ? `${data.stats.totalNodes} 节点 · ${data.stats.totalEdges} 边` : ''}
+          {data?.stats?.totalNodes != null
+            ? `${(data.stats.totalPages && data.stats.totalPages > data.stats.totalNodes)
+                ? `预览 ${data.stats.totalNodes} / 共 ${data.stats.totalPages} 页`
+                : `${data.stats.totalNodes} 页`} · ${data.stats.totalEdges > 0 ? `${data.stats.totalEdges} 条互相引用` : '尚无互相引用'}`
+            : ''}
         </span>
         <div className="flex-1" />
         {exploreTitles && (
@@ -307,7 +326,39 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onEx
             <span className="text-[10px] text-gray-600">导入文档或新建 Wiki 页面后出现</span>
           </div>
         )}
-        {!loading && !error && data && data.nodes.length > 0 && option && (
+        {!loading && !error && data && data.nodes.length > 0 && data.edges.length === 0 && (
+          <div className="h-full bg-[#0a0b0f] flex flex-col">
+            <p className="shrink-0 px-3 py-2 text-[11px] text-amber-200/90 border-b border-dark-border leading-relaxed">
+              这些资料页之间还没有互相引用，所以画不出关系网。下面按标题列出
+              {data.stats?.totalPages && data.stats.totalPages > data.nodes.length
+                ? `其中 ${data.nodes.length} 页（集合里共 ${data.stats.totalPages} 页）`
+                : `这 ${data.nodes.length} 页`}
+              。点一条看摘要。需要连线时，可在上方点「策展」补引用——这仍是知识库资料，不是业务本体图。
+            </p>
+            <div className="flex-1 overflow-auto">
+              {data.nodes.map((n) => (
+                <button
+                  key={n.id}
+                  type="button"
+                  onClick={() => onSelectPage(n.id)}
+                  className="w-full text-left px-3 py-2 border-b border-dark-border/60 hover:bg-white/5"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: CAT_COLORS[n.category] || '#3b82f6' }} />
+                    <span className="text-xs text-gray-200 truncate">{n.name}</span>
+                    <span className="ml-auto text-[10px] text-gray-500 shrink-0">{CAT_LABELS[n.category] || '资料'}</span>
+                  </div>
+                  {n.summary ? (
+                    <div className="mt-0.5 pl-3.5 text-[11px] text-gray-500 line-clamp-2">
+                      {n.summary.replace(/<!--[\s\S]*?-->/g, '').replace(/\*\*/g, '').trim()}
+                    </div>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {!loading && !error && data && data.nodes.length > 0 && data.edges.length > 0 && option && (
           <React.Suspense fallback={<div className="flex items-center justify-center h-full bg-[#0a0b0f]"><span className="text-xs text-gray-500">加载图表…</span></div>}>
             <LazyECharts
               option={option}
@@ -325,10 +376,14 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onEx
           {Object.entries(data.stats.categories || {}).map(([cat, count]) => (
             <span key={cat} className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full" style={{ background: CAT_COLORS[cat] || '#3b82f6', boxShadow: `0 0 4px ${CAT_COLORS[cat] || '#3b82f6'}66` }} />
-              {cat}: {count}
+              {CAT_LABELS[cat] || cat}: {count}
             </span>
           ))}
-          <span className="ml-auto">平均 {data.stats.avgLinksPerPage} 链接/页</span>
+          <span className="ml-auto">
+            {data.stats.totalEdges > 0
+              ? `平均 ${data.stats.avgLinksPerPage} 条引用/页`
+              : '页与页之间还没有引用'}
+          </span>
         </div>
       )}
     </div>

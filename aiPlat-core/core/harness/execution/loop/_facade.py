@@ -626,23 +626,33 @@ class ReActLoop(BaseLoop):
 
             state.context["_current_step_span_id"] = step_span_id
 
-            await store.add_syscall_event({
-
-                "id": f"{state.context.get('_run_id','?')}:step:{state.step_count}",
-
-                "span_id": step_span_id,
-
-                "parent_span_id": f"agent:{agent_id}:start",
-
-                "kind": "step", "name": f"step_{state.step_count}", "status": "running",
-
-                "run_id": state.context.get("_run_id") or "",
-
-                "start_time": time.time(),
-
-                "step_number": state.step_count,
-
-            })
+            _run_id = state.context.get("_run_id") or ""
+            _parent = f"agent:{agent_id}:start"
+            try:
+                from core.harness.observation.run_graph import open_node as _rg_open
+                if _run_id:
+                    await _rg_open(
+                        str(_run_id),
+                        step_span_id,
+                        kind="step",
+                        name=f"step_{state.step_count}",
+                        parent_id=_parent,
+                        label=f"step_{state.step_count}",
+                        role="container",
+                        audit=True,
+                    )
+                else:
+                    raise RuntimeError("no run_id")
+            except Exception:
+                await store.add_syscall_event({
+                    "id": f"{_run_id or '?'}:step:{state.step_count}",
+                    "span_id": step_span_id,
+                    "parent_span_id": _parent,
+                    "kind": "step", "name": f"step_{state.step_count}", "status": "running",
+                    "run_id": _run_id,
+                    "start_time": time.time(),
+                    "step_number": state.step_count,
+                })
 
             if state.step_count == 1:
 
@@ -910,8 +920,7 @@ class ReActLoop(BaseLoop):
 
         parsed = parse_action_call(reasoning) if reasoning else None
 
-        # Extract text from chitchat-style JSON (e.g. {"type":"chitchat","input":"..."})
-
+        # Extract text from JSON envelopes (chitchat / done).
         # Used by Qwen-family models. Handles both raw JSON and fenced code blocks.
 
         if not parsed and reasoning:
@@ -928,9 +937,15 @@ class ReActLoop(BaseLoop):
 
                 _t = json.loads(_fenced) if _fenced != _raw else json.loads(_raw)
 
-                if isinstance(_t, dict) and _t.get("type") == "chitchat":
-
-                    reasoning = str(_t.get("input") or _t.get("text") or reasoning)
+                if isinstance(_t, dict):
+                    _typ = str(_t.get("type") or "").strip().lower()
+                    if _typ == "chitchat":
+                        reasoning = str(_t.get("input") or _t.get("text") or reasoning)
+                    elif _typ == "done" or (_t.get("answer") and _typ in ("", "done", "final", "response")):
+                        # ReAct prompt asks for {"type":"done","answer":"..."}; never surface raw envelope
+                        reasoning = str(_t.get("answer") or _t.get("text") or _t.get("response") or reasoning)
+                    elif _t.get("answer") and len(_t) <= 4:
+                        reasoning = str(_t.get("answer"))
 
             except Exception:
 
@@ -938,9 +953,12 @@ class ReActLoop(BaseLoop):
 
                     _t = json.loads(reasoning)
 
-                    if isinstance(_t, dict) and _t.get("type") == "chitchat":
-
-                        reasoning = str(_t.get("input") or _t.get("text") or reasoning)
+                    if isinstance(_t, dict):
+                        _typ = str(_t.get("type") or "").strip().lower()
+                        if _typ == "chitchat":
+                            reasoning = str(_t.get("input") or _t.get("text") or reasoning)
+                        elif _typ == "done" or _t.get("answer"):
+                            reasoning = str(_t.get("answer") or _t.get("text") or _t.get("response") or reasoning)
 
                 except Exception:
 
@@ -1085,7 +1103,7 @@ class ReActLoop(BaseLoop):
 
                 hint = action_error.split("schema_validation_failed: ", 1)[-1] if ": " in action_error else action_error
 
-                state.messages.append({"role": "user", "content": hint})
+                state.context.setdefault("messages", []).append({"role": "user", "content": hint})
 
                 state.context["_schema_retry"] = self._schema_retry_count
 
@@ -1211,7 +1229,7 @@ class ReActLoop(BaseLoop):
 
             if intervention.triggered:
 
-                state.messages.append({"role": "user", "content": intervention.hint_message})
+                state.context.setdefault("messages", []).append({"role": "user", "content": intervention.hint_message})
 
                 state.context["_howl_stall"] = intervention.details
 

@@ -3,9 +3,9 @@
 | 字段 | 值 |
 |------|-----|
 | 文档 ID | `ONTOLOGY-DEMO-PLAYBOOK-2026-09` |
-| 版本 | v1.2 |
-| 关联 | [`ONTOLOGY_OUTCOME_GOALS.md`](./ONTOLOGY_OUTCOME_GOALS.md) · [`ONTOLOGY_PPT_SCENARIOS.md`](./ONTOLOGY_PPT_SCENARIOS.md) B3/B4 · [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_CONNECTOR_TEMPLATES.md`](./ONTOLOGY_CONNECTOR_TEMPLATES.md) |
-| 时长 | 故障约 15 分钟；治理约 10 分钟；权限+webhook 约 5 分钟 |
+| 版本 | v1.3 |
+| 关联 | [`ONTOLOGY_OUTCOME_GOALS.md`](./ONTOLOGY_OUTCOME_GOALS.md) · [`ONTOLOGY_PPT_SCENARIOS.md`](./ONTOLOGY_PPT_SCENARIOS.md) B3/B4（含口述 B3.6/B4.6） · [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_CONNECTOR_TEMPLATES.md`](./ONTOLOGY_CONNECTOR_TEMPLATES.md) |
+| 时长 | 故障约 15 分钟；治理约 10 分钟；权限+webhook+表映射约 8 分钟 |
 
 ### 对外三句话（开场必说）
 
@@ -19,13 +19,13 @@
 
 | 分钟 | 操作 | 口述 |
 |:----:|------|------|
-| 0–2 | 念三句话；勾选 T6 | 告警进图→调用链→硬门落根因 |
-| 2–4 | **创建教学复杂拓扑** | 路径 C：模板写入 |
-| 4–7 | 对照 B3.2 镜 | 主告警、calls、旁路 Redis 从 |
-| 7–11 | 分诊 → 挂疑似 → 确认根因 | 写回 GraphIndex |
+| 0–2 | 念三句话；勾选 T6；可选先念 PPT **B3.6 30s** | 告警进图→调用链→硬门落根因 |
+| 2–4 | **创建教学复杂拓扑** | 路径 C：模板写入；对照 B3.2 图说 |
+| 4–7 | 对照 B3 镜1–4（含镜4 判定表） | 主告警、calls、旁路 Redis 从 |
+| 7–11 | 分诊 → 挂疑似 → 确认根因 | 写回 GraphIndex（B3.6 90s 可并行） |
 | 11–12 | 对 `open` 直接确认根因 | 应 **blocked** |
-| 12–14 | 可选：**导入样例告警JSON** 或 **webhook** | 路径 B 生产入口 |
-| 14–15 | 对比 minimal 种子 | complex ⊃ minimal |
+| 12–14 | **导入样例告警JSON** 或 **导入表/CSV样例** 或 webhook | 路径 B（非路径 C） |
+| 14–15 | 可选：加载 **本体三柱速览** | 数据/逻辑软/行动硬 |
 
 ```http
 POST /api/platform/apps/fde/graph/import
@@ -129,3 +129,52 @@ GET /api/platform/apps/fde/ontology/pillars/{domain_id}
 ```
 
 口述：数据=图实体计数；逻辑=axioms/inference_rules；行动=customer_action 列表；建议≠权威。
+
+---
+
+## §在线学习 / 受控进化（P0–P2.5）— AcceptTab
+
+| 步 | 操作 | 期望 |
+|----|------|------|
+| 0 | **刷新学习状态** | 见 UCB / EDGE_AUTO / serves 计数 |
+| 1 | **写入演示案例**（域 `it-ops`） | 返回 `case_id`；**不**改 live YAML |
+| 2 | **加权检索**（词含 ServiceEndpoint / triage） | 高 `reward_ema` 靠前；`serve_count`+1；可能带 `ucb_bonus` |
+| 3 | **高分反馈**（rating≈0.95） | `reward_ema` 上升；可能 `evolve.status=draft` + `proposal_id` |
+| 4 | **强制入队提案** | 默认 `auto_apply=false`；开 `AIPLAT_ONTOLOGY_EDGE_AUTO_APPLY` 时 edge 可自动 apply |
+| 5 | **回滚提案**（若已 apply） | 恢复 apply 前快照；status=`rolled_back` |
+| 6 | （可选）再执行一次告警分诊 Action | ActionRegistry 自动写回案例（best-effort） |
+
+```http
+GET  /api/platform/apps/fde/ontology/cases/meta?domain_id=it-ops
+POST /api/platform/apps/fde/ontology/cases
+GET  /api/platform/apps/fde/ontology/cases/search?domain_id=it-ops&q=ServiceEndpoint
+POST /api/platform/apps/fde/ontology/cases/{case_id}/feedback
+POST /api/platform/apps/fde/ontology/cases/{case_id}/evolve
+POST /api/platform/apps/fde/ontology/cases/{case_id}/rollback
+```
+
+口述红线：学习改的是**案例排序**；默认进化出口是**提案门**；edge 自动 apply 是 opt-in，且可回滚、禁升格。  
+入队后点 **打开知识工厂批准此提案** → `/knowledge/business?tab=factory&domain=…&proposal=…`。
+
+---
+
+## §治理洪水（P4）— AcceptTab data-gov
+
+| 步 | 操作 | 期望 |
+|----|------|------|
+| 0 | 看 **数据治理场景 · 8 步对照** | 每步有状态标签 + 深链；无材料 KPI |
+| 1–3 | 创建治理教学图 → 丢幽灵 / 挂目录 | 闸2 写 ABox；viewer 丢弃应拦截 |
+| — | （可选）工厂①b 表头/CSV → 见 AI补齐启发式 → 入队提案 | Path A；≠写图 |
+
+---
+
+## §工厂 ①b 代码建议 / 表头→提案
+
+业务本体 → 工厂流水线 → **①b**：
+
+| Tab | 作用 | API |
+|-----|------|-----|
+| 表头/CSV | 表名+CSV → edge 类提案草稿（≠写图） | `POST …/ontology/schema-suggestions` |
+| 代码片段 | 代码/ER → 类提案草稿 | `POST …/ontology/code-suggestions` |
+
+须 ③ 批准→apply。写实例仍走 FDE⑦ `source_type=table_map`。

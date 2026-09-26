@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-08-16"
 total_capability_domains: 34
-total_capabilities: 1163
+total_capabilities: 1244
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -497,6 +497,30 @@ domains:
         type: function
         signature: 'PipelineStageConfig.allow_dynamic_spawn (default True).'
         module: aiPlat-core/core/harness/coordination/spawn_policy.py
+      - symbol: open_node
+        type: function
+        signature: 'Create or reset a node to running.'
+        module: aiPlat-core/core/harness/observation/run_graph.py
+      - symbol: close_node
+        type: function
+        signature: 'UPDATE node to a terminal status (ok/error/warning).'
+        module: aiPlat-core/core/harness/observation/run_graph.py
+      - symbol: upsert_node
+        type: function
+        signature: 'Partial update without forcing open/close semantics.'
+        module: aiPlat-core/core/harness/observation/run_graph.py
+      - symbol: mark_run_done
+        type: function
+        signature: 'Mark run finished and force-close any still-running nodes.'
+        module: aiPlat-core/core/harness/observation/run_graph.py
+      - symbol: get_graph
+        type: function
+        signature: 'Return authoritative graph projection for a run.'
+        module: aiPlat-core/core/harness/observation/run_graph.py
+      - symbol: mirror_syscall_to_graph
+        type: function
+        signature: 'Mirror a syscall_events row into run_graph when the run already has a graph.'
+        module: aiPlat-core/core/harness/observation/run_graph.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"
@@ -639,7 +663,7 @@ domains:
         signature: '用关键词匹配建立 Wiki 页面→Agent 的三元组。'
         module: aiPlat-core/core/harness/knowledge/cross_domain_bridge.py
         type: "class"
-        signature: "add_entity, add_relation, add_hyperedge, traverse, snapshot"
+        signature: "add_entity, add_relation, add_hyperedge, traverse, snapshot, set_entity_property"
         module: "core/harness/ontology_engine/graph_index.py"
       - symbol: "OntologyEngine"
         type: "class"
@@ -667,15 +691,239 @@ domains:
         module: "core/harness/knowledge_pipeline/extractor.py"
       - symbol: "PendingExtractionStore.confirm"
         type: "function"
-        signature: "confirm → graph_write receipt + optional ontology proposal"
+        signature: "legacy confirm flags; K1 HTTP path disables graph+proposal"
         module: "core/harness/knowledge_pipeline/extractor.py"
+      - symbol: "confirm_extraction_k1"
+        type: "function"
+        signature: "Phase K1: confirm → change signal with trace_id; no live YAML/edge"
+        module: "core/apps/fde/service/k_wave_signal.py"
+      - symbol: "k1_confirm_extraction"
+        type: "function"
+        signature: "CoreFacade: K1 extraction confirm"
+        module: "core/api/core_facade.py"
+      - symbol: "propose_ticket"
+        type: "function"
+        signature: "Phase K2: open arbitration ticket; no edge write"
+        module: "core/apps/fde/service/k_wave_arbit.py"
+      - symbol: "decide_ticket"
+        type: "function"
+        signature: "Phase K2: human decide; no edge; no apply_proposal"
+        module: "core/apps/fde/service/k_wave_arbit.py"
+      - symbol: "apply_ticket"
+        type: "function"
+        signature: "Phase K2/E1: snapshot _cross_domain, then approved merge → resolve once. Refuses a rolled-back ticket"
+        module: "core/apps/fde/service/k_wave_arbit.py"
+      - symbol: "rollback_ticket_edge"
+        type: "function"
+        signature: "E2: restore one merge ticket from edge_before; empty role denied; no live YAML"
+        module: "core/apps/fde/service/k_wave_arbit.py"
+      - symbol: "k2_propose_arbitration"
+        type: "function"
+        signature: "CoreFacade: K2 propose"
+        module: "core/api/core_facade.py"
+      - symbol: "k2_apply_arbitration"
+        type: "function"
+        signature: "CoreFacade: K2 apply approved ticket"
+        module: "core/api/core_facade.py"
+      - symbol: "k2_rollback_arbitration_edge"
+        type: "function"
+        signature: "CoreFacade: E2 rollback one snapshotted merge edge"
+        module: "core/api/core_facade.py"
+      - symbol: "build_org_run_reasoning"
+        type: "function"
+        signature: "Phase K3: reasoning_paths or skip; can_execute always false"
+        module: "core/apps/fde/service/k_wave_reason.py"
+      - symbol: "assert_live_yaml_write"
+        type: "function"
+        signature: "F2: deny live ontology YAML write outside apply/rollback token"
+        module: "core/harness/knowledge/ontology_yaml_gate.py"
+      - symbol: "allow_live_yaml_write"
+        type: "function"
+        signature: "F2: context token held only by apply_proposal and rollback_proposal"
+        module: "core/harness/knowledge/ontology_yaml_gate.py"
+      - symbol: "record_case_from_org_run"
+        type: "function"
+        signature: "Phase K4: OrgRun → case overlay; no TBox; optional skill_candidate"
+        module: "core/apps/fde/service/k_wave_case.py"
+      - symbol: "record_case_from_tool_streak"
+        type: "function"
+        signature: "Phase K4: same-run same-tool same-error streak → failure case"
+        module: "core/apps/fde/service/k_wave_case.py"
+      - symbol: "enqueue_repeat_failure_proposals"
+        type: "function"
+        signature: "Phase K5: repeat failure → edge draft; auto_apply false"
+        module: "core/apps/fde/service/k_wave_propose.py"
+      - symbol: "draft_schema_gaps"
+        type: "function"
+        signature: "Schema-gap cases → same K5 ledger; never applies"
+        module: "core/apps/fde/service/k_wave_propose.py"
+      - symbol: "preview_schema_gaps"
+        type: "function"
+        signature: "Read-only Diff for schema_gap; no proposal; no YAML write"
+        module: "core/apps/fde/service/k_wave_propose.py"
+      - symbol: "project_ontology_changes"
+        type: "function"
+        signature: "In-memory proposal projection; does not write YAML"
+        module: "core/harness/knowledge/versioned_ontology_store.py"
+      - symbol: "org_preview_schema_gaps"
+        type: "function"
+        signature: "CoreFacade: preview schema-gap Diff"
+        module: "core/api/core_facade.py"
+      - symbol: "org_draft_schema_gaps"
+        type: "function"
+        signature: "CoreFacade: draft schema gaps; identity required"
+        module: "core/api/core_facade.py"
+      - symbol: "k5_scan_repeat_failures"
+        type: "function"
+        signature: "CoreFacade: K5 scan; refuses when edge auto-apply switch is on"
+        module: "core/api/core_facade.py"
+      - symbol: "approve_proposal_once"
+        type: "function"
+        signature: "V4: PolicyGate once; approve does not write live YAML"
+        module: "core/apps/fde/service/k_wave_approve.py"
+      - symbol: "decide_ontology_approval"
+        type: "function"
+        signature: "V4: PolicyGate single decision for proposal approve; empty identity denied"
+        module: "core/harness/infrastructure/gates/policy_gate.py"
+      - symbol: "rollback_scope"
+        type: "function"
+        signature: "E2: rollback boundary; snapshotted merge edges only; not every edge"
+        module: "core/apps/fde/service/k_wave_rollback.py"
+      - symbol: "org_rollback_scope"
+        type: "function"
+        signature: "CoreFacade: V5 rollback boundary"
+        module: "core/api/core_facade.py"
+      - symbol: "list_approval_inbox"
+        type: "function"
+        signature: "H1: paginated read-only approval inbox; no write"
+        module: "core/apps/org/service/org_approvals.py"
+      - symbol: "get_approval_snapshot"
+        type: "function"
+        signature: "H1: role-redacted snapshot; proposal includes read-only Diff; no write"
+        module: "core/apps/org/service/org_approvals.py"
+      - symbol: "org_approval_inbox"
+        type: "function"
+        signature: "CoreFacade: H1 approval inbox"
+        module: "core/api/core_facade.py"
+      - symbol: "org_approval_snapshot"
+        type: "function"
+        signature: "CoreFacade: H1 approval snapshot"
+        module: "core/api/core_facade.py"
+      - symbol: "build_evidence_pack"
+        type: "function"
+        signature: "H2: read-only signoff evidence pack; not a signature; max 5 traces"
+        module: "core/apps/org/service/org_evidence_pack.py"
+      - symbol: "org_evidence_pack"
+        type: "function"
+        signature: "CoreFacade: H2 evidence pack"
+        module: "core/api/core_facade.py"
+      - symbol: "translate_org_value"
+        type: "function"
+        signature: "H3: audit value translation; missing baseline hides savings"
+        module: "core/apps/org/service/org_value_translation.py"
+      - symbol: "org_value_translation"
+        type: "function"
+        signature: "CoreFacade: H3 value translation"
+        module: "core/api/core_facade.py"
+      - symbol: "run_h4_auto_pass"
+        type: "function"
+        signature: "H4: sandbox queue auto-pass; never apply_ticket or live YAML"
+        module: "core/apps/org/service/org_auto_pass.py"
+      - symbol: "h4_auto_audit"
+        type: "function"
+        signature: "H4: admin-only auto-pass audit"
+        module: "core/apps/org/service/org_auto_pass.py"
+      - symbol: "h4_rules_view"
+        type: "function"
+        signature: "H4: read-only rules + sandbox/live pass delta; no shadow apply"
+        module: "core/apps/org/service/org_auto_pass.py"
+      - symbol: "sandbox_live_delta"
+        type: "function"
+        signature: "Read-only sandbox vs live pass rates; never enables live auto-pass"
+        module: "core/apps/org/service/org_auto_pass.py"
+      - symbol: "org_h4_auto_pass"
+        type: "function"
+        signature: "CoreFacade: H4 sandbox queue auto-pass"
+        module: "core/api/core_facade.py"
+      - symbol: "org_h4_auto_audit"
+        type: "function"
+        signature: "CoreFacade: H4 admin auto-audit"
+        module: "core/api/core_facade.py"
+      - symbol: "org_h4_rules"
+        type: "function"
+        signature: "CoreFacade: H4 rules view"
+        module: "core/api/core_facade.py"
+      - symbol: "save_value_baseline"
+        type: "function"
+        signature: "S2: write tenant value baseline; never flips m4_claim"
+        module: "core/apps/org/service/org_value_translation.py"
+      - symbol: "preview_value_roi"
+        type: "function"
+        signature: "What-if ROI; simulation only; never writes baseline"
+        module: "core/apps/org/service/org_value_translation.py"
+      - symbol: "org_value_roi_preview"
+        type: "function"
+        signature: "CoreFacade: what-if ROI preview"
+        module: "core/api/core_facade.py"
+      - symbol: "install_domain_pack"
+        type: "function"
+        signature: "S3: install named domain pack; action scaffold stays a draft"
+        module: "core/apps/org/service/domain_pack_install.py"
+      - symbol: "save_signoff_progress"
+        type: "function"
+        signature: "S4: record oncall/dual-sign; m4_claim_allowed stays false"
+        module: "core/apps/org/service/org_signoff_progress.py"
+      - symbol: "org_value_baseline_put"
+        type: "function"
+        signature: "CoreFacade: S2 baseline write"
+        module: "core/api/core_facade.py"
+      - symbol: "list_skill_drafts"
+        type: "function"
+        signature: "H5: list skill draft packs; not listed until human approve"
+        module: "core/apps/org/service/org_skill_draft.py"
+      - symbol: "create_skill_draft"
+        type: "function"
+        signature: "H5: draft pack from skill_candidate; no SKILL.md"
+        module: "core/apps/org/service/org_skill_draft.py"
+      - symbol: "list_action_gap_hints"
+        type: "function"
+        signature: "Repeated action failure hint; does not write YAML"
+        module: "core/apps/org/service/org_skill_draft.py"
+      - symbol: "assemble_skill_bundle"
+        type: "function"
+        signature: "H5: bundle existing drafts; no SKILL.md"
+        module: "core/apps/org/service/org_skill_draft.py"
+      - symbol: "org_h5_drafts"
+        type: "function"
+        signature: "CoreFacade: H5 draft list"
+        module: "core/api/core_facade.py"
+      - symbol: "org_h5_approve_draft"
+        type: "function"
+        signature: "CoreFacade: H5 human approve then register"
+        module: "core/api/core_facade.py"
+      - symbol: "edge_auto_apply_block"
+        type: "function"
+        signature: "V1-pre: refuse org run and K5 scan when AIPLAT_ONTOLOGY_EDGE_AUTO_APPLY is on"
+        module: "core/apps/fde/service/v_wave_guard.py"
+      - symbol: "replay_org_trace"
+        type: "function"
+        signature: "V1: read-only five-step trace replay; missing step stays absent"
+        module: "core/apps/org/service/v_wave_replay.py"
       - symbol: "confirm_extraction"
         type: "function"
-        signature: "POST /fde/extractions/{id}/confirm — ABox receipt + proposal_id"
+        signature: "POST /fde/extractions/{id}/confirm — K1 signal path"
         module: "aiPlat-platform/apps/fde/api/extraction_routes.py"
       - symbol: "VersionedOntologyStore.apply_proposal"
         type: "function"
-        signature: "approved proposal → live YAML + {ok, classes_added, version_*}"
+        signature: "approved proposal → live YAML + pre snapshot + shallow JSON diff"
+        module: "core/harness/knowledge/versioned_ontology_store.py"
+      - symbol: "delete_ontology_class_async"
+        type: "function"
+        signature: "remove class via create→approve→apply proposal (F2-safe)"
+        module: "core/api/core_facade.py"
+      - symbol: "json_change_diff"
+        type: "function"
+        signature: "Shallow before/after for an approved apply; does not write YAML"
         module: "core/harness/knowledge/versioned_ontology_store.py"
       - symbol: "approve_ontology_proposal"
         type: "function"
@@ -749,6 +997,274 @@ domains:
         type: "function"
         signature: "Scan text/code snippets for class-like names → proposal draft."
         module: "core/apps/fde/service/ontology_code_suggestions.py"
+      - symbol: "suggest_classes_from_table_schema"
+        type: "function"
+        signature: "table/CSV headers → edge class suggestion (no graph write)"
+        module: "core/apps/fde/service/ontology_code_suggestions.py"
+      - symbol: "suggest_classes_from_table_schema_async"
+        type: "function"
+        signature: "table schema → VersionedOntologyStore draft only"
+        module: "core/apps/fde/service/ontology_code_suggestions.py"
+      - symbol: "suggest_ontology_from_table_schema"
+        type: "function"
+        signature: "CoreFacade: Path A table header → proposal draft"
+        module: "core/api/core_facade.py"
+      - symbol: "get_governance_scenario_loop"
+        type: "function"
+        signature: "CoreFacade: 8-step governance map (honest, no material KPIs)"
+        module: "core/api/core_facade.py"
+      - symbol: "get_governance_loop_map"
+        type: "function"
+        signature: "read-only Xingye-shaped governance loop → aiPlat status"
+        module: "core/apps/fde/service/governance_loop.py"
+      - symbol: "governance_quality_view"
+        type: "function"
+        signature: "CoreFacade: step ⑥ OCS + gate-2 actions + value links"
+        module: "core/api/core_facade.py"
+      - symbol: "governance_quality_snapshot"
+        type: "function"
+        signature: "step ⑥ quality vertical slice (OCS/actions)"
+        module: "core/apps/fde/service/governance_deepen.py"
+      - symbol: "governance_locate_view"
+        type: "function"
+        signature: "CoreFacade: step ⑦ GraphIndex locate (+ optional GraphRAG)"
+        module: "core/api/core_facade.py"
+      - symbol: "locate_via_ontology"
+        type: "function"
+        signature: "step ⑦ ontology-first asset locate (no customer DB SQL)"
+        module: "core/apps/fde/service/governance_deepen.py"
+      - symbol: "governance_fetch_view"
+        type: "function"
+        signature: "CoreFacade: Org L5 P1 sandbox fetch by entity_id"
+        module: "core/api/core_facade.py"
+      - symbol: "fetch_by_entity"
+        type: "function"
+        signature: "org I/O: ontology-anchored sandbox fetch (migratable)"
+        module: "core/apps/org/service/org_io.py"
+      - symbol: "fetch_entity_snapshot"
+        type: "function"
+        signature: "abox connector: GraphIndex + sandbox overlay fetch"
+        module: "core/apps/fde/service/abox_connector.py"
+      - symbol: "org_list_goals"
+        type: "function"
+        signature: "CoreFacade: list OrgGoals"
+        module: "core/api/core_facade.py"
+      - symbol: "org_run_goal"
+        type: "function"
+        signature: "CoreFacade: execute OrgRun locate→fetch→HITL; refuses if edge auto-apply is on"
+        module: "core/api/core_facade.py"
+      - symbol: "org_replay_trace"
+        type: "function"
+        signature: "CoreFacade: V1 read-only five-step trace replay"
+        module: "core/api/core_facade.py"
+      - symbol: "authorize_console_run"
+        type: "function"
+        signature: "V2: one decision for management OrgRun; not the Feishu path"
+        module: "core/apps/org/service/org_post.py"
+      - symbol: "org_authorize_console_run"
+        type: "function"
+        signature: "CoreFacade: V2 console run authorization"
+        module: "core/api/core_facade.py"
+      - symbol: "org_resume_run"
+        type: "function"
+        signature: "CoreFacade: resume needs_hitl OrgRun"
+        module: "core/api/core_facade.py"
+      - symbol: "run_org_goal"
+        type: "function"
+        signature: "OrgRun: locate→fetch→triage_gate"
+        module: "core/apps/org/service/org_runtime.py"
+      - symbol: "resume_run"
+        type: "function"
+        signature: "OrgRun HITL resume (approve/reject)"
+        module: "core/apps/org/service/org_runtime.py"
+      - symbol: "weekly_kpi_report"
+        type: "function"
+        signature: "Org L5 D2 weekly KPI + Phase3 attribution"
+        module: "core/apps/org/service/org_kpi.py"
+      - symbol: "joint_health_view"
+        type: "function"
+        signature: "Read-only ontology/agent health; no YAML write; no coverage without cases"
+        module: "core/apps/org/service/org_kpi.py"
+      - symbol: "org_joint_health"
+        type: "function"
+        signature: "CoreFacade: joint health view"
+        module: "core/api/core_facade.py"
+      - symbol: "record_run_memory"
+        type: "function"
+        signature: "Org L5 P3: append OrgRun digest (+ optional case mirror)"
+        module: "core/apps/org/service/org_memory.py"
+      - symbol: "search_exceptions"
+        type: "function"
+        signature: "Org L5 P3: exception jurisprudence search"
+        module: "core/apps/org/service/org_memory.py"
+      - symbol: "org_search_memory"
+        type: "function"
+        signature: "CoreFacade: org memory / exception search"
+        module: "core/api/core_facade.py"
+      - symbol: "evaluate_fleet_gate"
+        type: "function"
+        signature: "Org L5 P4 W6: multi-agent fleet hard gate (default deny)"
+        module: "core/apps/org/service/org_fleet.py"
+      - symbol: "org_fleet_gate"
+        type: "function"
+        signature: "CoreFacade: fleet gate"
+        module: "core/api/core_facade.py"
+      - symbol: "start_sandbox_rehearsal"
+        type: "function"
+        signature: "Sandbox handoff log; one dry OrgRun; never starts fleet"
+        module: "core/apps/org/service/org_fleet.py"
+      - symbol: "list_sandbox_rehearsals"
+        type: "function"
+        signature: "Read sandbox rehearsal logs; does not start a fleet"
+        module: "core/apps/org/service/org_fleet.py"
+      - symbol: "org_sandbox_rehearsal_start"
+        type: "function"
+        signature: "CoreFacade: start sandbox rehearsal"
+        module: "core/api/core_facade.py"
+      - symbol: "org_sandbox_rehearsals"
+        type: "function"
+        signature: "CoreFacade: list sandbox rehearsals"
+        module: "core/api/core_facade.py"
+      - symbol: "field_ops_checklist"
+        type: "function"
+        signature: "Org L5 P4+C5: checklist; c5_pack_ready; m4_claim_allowed always false"
+        module: "core/apps/org/service/org_field_ops.py"
+      - symbol: "customer_signoff_view"
+        type: "function"
+        signature: "V3: read-only customer signoff; no button; m4_claim_allowed false"
+        module: "core/apps/org/service/org_field_ops.py"
+      - symbol: "signoff_prep_view"
+        type: "function"
+        signature: "Read-only prep A1–A8 gates + playbook; optional markdown; m4 stays false"
+        module: "core/apps/org/service/org_field_ops.py"
+      - symbol: "signoff_playbook_steps"
+        type: "function"
+        signature: "6-step signoff script to review; not a signature"
+        module: "core/apps/org/service/org_field_ops.py"
+      - symbol: "render_signoff_prep_markdown"
+        type: "function"
+        signature: "Markdown checklist for customer review; not a signature"
+        module: "core/apps/org/service/org_field_ops.py"
+      - symbol: "org_customer_signoff"
+        type: "function"
+        signature: "CoreFacade: V3 customer signoff view"
+        module: "core/api/core_facade.py"
+      - symbol: "org_signoff_prep"
+        type: "function"
+        signature: "CoreFacade: signoff prep score; never flips m4"
+        module: "core/api/core_facade.py"
+      - symbol: "evaluate_live_unlock"
+        type: "function"
+        signature: "Org L5 P4: live unlock intent (never enables SQL)"
+        module: "core/apps/org/service/org_field_ops.py"
+      - symbol: "get_interface_spec"
+        type: "function"
+        signature: "Phase C1.5: yaml authority; connector.live read-compat only"
+        module: "core/apps/org/service/org_interface.py"
+      - symbol: "materialize_interface_yaml"
+        type: "function"
+        signature: "Phase C1.5: copy InterfaceSpec to AIPLAT_HOME yaml; no connector write"
+        module: "core/apps/org/service/org_interface.py"
+      - symbol: "org_materialize_interface"
+        type: "function"
+        signature: "CoreFacade: materialize InterfaceSpec yaml"
+        module: "core/api/core_facade.py"
+      - symbol: "list_interface_specs"
+        type: "function"
+        signature: "Phase C1: list InterfaceSpecs (connector.live single source)"
+        module: "core/apps/org/service/org_interface.py"
+      - symbol: "assert_action_bound"
+        type: "function"
+        signature: "Phase C1: Action must be in InterfaceSpec.bound_action_ids"
+        module: "core/apps/org/service/org_interface.py"
+      - symbol: "normalize_interface_spec"
+        type: "function"
+        signature: "Phase C1: normalize live block to InterfaceSpec shape"
+        module: "core/apps/org/service/org_interface.py"
+      - symbol: "validate_interface_spec"
+        type: "function"
+        signature: "Phase C1: hard errors + soft schema warnings"
+        module: "core/apps/org/service/org_interface.py"
+      - symbol: "fetch_live_http"
+        type: "function"
+        signature: "Org L5/C1: allowlisted http_json GET via InterfaceSpec"
+        module: "core/apps/org/service/org_live_adapter.py"
+      - symbol: "live_io_gates"
+        type: "function"
+        signature: "Org L5/C1: whether InterfaceSpec outbound may run"
+        module: "core/apps/org/service/org_live_adapter.py"
+      - symbol: "org_list_interfaces"
+        type: "function"
+        signature: "CoreFacade: list InterfaceSpecs"
+        module: "core/api/core_facade.py"
+      - symbol: "org_get_interface"
+        type: "function"
+        signature: "CoreFacade: get InterfaceSpec"
+        module: "core/api/core_facade.py"
+      - symbol: "process_channel_message"
+        type: "function"
+        signature: "Phase C2: verified feishu message to confirm gate then org_run_goal"
+        module: "core/apps/org/service/org_ingress.py"
+      - symbol: "ingest_feishu_event"
+        type: "function"
+        signature: "Phase C2: signed Feishu webhook ingest"
+        module: "core/apps/org/service/org_ingress.py"
+      - symbol: "verify_lark_signature"
+        type: "function"
+        signature: "Phase C2: Feishu sha256 signature + replay window"
+        module: "core/apps/org/service/org_ingress.py"
+      - symbol: "post_channel_allowed"
+        type: "function"
+        signature: "Phase C2/C3: DigitalPost channel gate"
+        module: "core/apps/org/service/org_ingress.py"
+      - symbol: "get_post"
+        type: "function"
+        signature: "Phase C3: load DigitalPost"
+        module: "core/apps/org/service/org_post.py"
+      - symbol: "evaluate_post_gate"
+        type: "function"
+        signature: "Phase C3: channel + data scope + contract gate"
+        module: "core/apps/org/service/org_post.py"
+      - symbol: "org_list_posts"
+        type: "function"
+        signature: "CoreFacade: list DigitalPosts"
+        module: "core/api/core_facade.py"
+      - symbol: "schedule_run_usage"
+        type: "function"
+        signature: "Phase C4: async usage ledger write; never blocks OrgRun"
+        module: "core/apps/org/service/org_usage.py"
+      - symbol: "weekly_usage"
+        type: "function"
+        signature: "Phase C4: replay usage.jsonl; billing always null"
+        module: "core/apps/org/service/org_usage.py"
+      - symbol: "org_usage_weekly"
+        type: "function"
+        signature: "CoreFacade: org usage weekly"
+        module: "core/api/core_facade.py"
+      - symbol: "org_ingest_feishu"
+        type: "function"
+        signature: "CoreFacade: Feishu ingress"
+        module: "core/api/core_facade.py"
+      - symbol: "start_event_preview"
+        type: "function"
+        signature: "Whitelist event → dry OrgRun; no live IO; no channel push"
+        module: "core/apps/org/service/org_ingress.py"
+      - symbol: "list_event_previews"
+        type: "function"
+        signature: "Read sandbox event previews; does not start live IO"
+        module: "core/apps/org/service/org_ingress.py"
+      - symbol: "org_event_preview_start"
+        type: "function"
+        signature: "CoreFacade: start sandbox event preview"
+        module: "core/api/core_facade.py"
+      - symbol: "org_event_previews"
+        type: "function"
+        signature: "CoreFacade: list sandbox event previews"
+        module: "core/api/core_facade.py"
+      - symbol: "enrich_column_meanings"
+        type: "function"
+        signature: "heuristic column → business gloss (step ② suggestion)"
+        module: "core/apps/fde/service/ontology_code_suggestions.py"
       - symbol: "get_ontology_pillars"
         type: "function"
         signature: "read-only data/logic/action pillars for a domain"
@@ -789,6 +1305,94 @@ domains:
         type: "function"
         signature: "CoreFacade: offline OWL review (no false-green)"
         module: "core/api/core_facade.py"
+      - symbol: "OntologyCaseStore"
+        type: "class"
+        signature: "per-domain ontology case library + reward-weighted search"
+        module: "core/harness/knowledge/ontology_case_learning.py"
+      - symbol: "record_case_from_action"
+        type: "function"
+        signature: "ActionRegistry hook: write ontology learning case (best-effort)"
+        module: "core/harness/knowledge/ontology_case_learning.py"
+      - symbol: "record_feedback_and_maybe_evolve"
+        type: "function"
+        signature: "feedback writeback; optional draft proposal enqueue (no auto-apply)"
+        module: "core/harness/knowledge/ontology_case_learning.py"
+      - symbol: "maybe_enqueue_evolution_proposal"
+        type: "function"
+        signature: "high-reward case → VersionedOntologyStore draft only"
+        module: "core/harness/knowledge/ontology_case_learning.py"
+      - symbol: "record_ontology_case"
+        type: "function"
+        signature: "CoreFacade: record ontology learning case"
+        module: "core/api/core_facade.py"
+      - symbol: "search_ontology_cases"
+        type: "function"
+        signature: "CoreFacade: reward-weighted / UCB case retrieval (+serve_count)"
+        module: "core/api/core_facade.py"
+      - symbol: "ontology_case_learning_status"
+        type: "function"
+        signature: "CoreFacade: learning flags + domain counters"
+        module: "core/api/core_facade.py"
+      - symbol: "ontology_case_learning_meta"
+        type: "function"
+        signature: "flags: UCB / EDGE_AUTO / serve+feedback counts"
+        module: "core/harness/knowledge/ontology_case_learning.py"
+      - symbol: "feedback_ontology_case"
+        type: "function"
+        signature: "CoreFacade: case feedback + optional gated evolve"
+        module: "core/api/core_facade.py"
+      - symbol: "evolve_ontology_from_case"
+        type: "function"
+        signature: "CoreFacade: case→proposal; edge auto-apply only if AIPLAT_ONTOLOGY_EDGE_AUTO_APPLY"
+        module: "core/api/core_facade.py"
+      - symbol: "rollback_ontology_case_evolution"
+        type: "function"
+        signature: "CoreFacade: rollback applied proposal linked to ontology case"
+        module: "core/api/core_facade.py"
+      - symbol: "rollback_ontology_proposal"
+        type: "function"
+        signature: "CoreFacade: restore live YAML from pre-apply snapshot"
+        module: "core/api/core_facade.py"
+      - symbol: "rollback_case_evolution"
+        type: "function"
+        signature: "case-linked proposal rollback helper"
+        module: "core/harness/knowledge/ontology_case_learning.py"
+      - symbol: "format_cases_for_context"
+        type: "function"
+        signature: "Context overlay; demotes repeated low-yield failures; does not delete"
+        module: "core/harness/knowledge/ontology_case_learning.py"
+      - symbol: "select_cases_for_context"
+        type: "function"
+        signature: "Filter injected cases; no delete; no live YAML"
+        module: "core/harness/knowledge/ontology_case_learning.py"
+      - symbol: "context_hit_rate"
+        type: "function"
+        signature: "Served cases with feedback over served; none served means no rate"
+        module: "core/harness/knowledge/ontology_case_learning.py"
+      - symbol: "archive_cold_cases"
+        type: "function"
+        signature: "Move low-yield cases to cold store; no delete; no TBox change"
+        module: "core/harness/knowledge/ontology_case_learning.py"
+      - symbol: "list_cold_cases"
+        type: "function"
+        signature: "Read-only cold archive listing; not injected"
+        module: "core/harness/knowledge/ontology_case_learning.py"
+      - symbol: "org_archive_cold_cases"
+        type: "function"
+        signature: "CoreFacade: archive cold cases; identity required"
+        module: "core/api/core_facade.py"
+      - symbol: "org_list_cold_cases"
+        type: "function"
+        signature: "CoreFacade: list cold cases"
+        module: "core/api/core_facade.py"
+      - symbol: "VersionedOntologyStore.rollback_proposal"
+        type: "method"
+        signature: "restore live YAML from rollback_snapshot after apply"
+        module: "core/harness/knowledge/versioned_ontology_store.py"
+      - symbol: "VersionedOntologyStore.try_auto_apply_edge_proposal"
+        type: "method"
+        signature: "edge-only approve→apply; blocks logic/core promotions"
+        module: "core/harness/knowledge/versioned_ontology_store.py"
       - symbol: "redact_entity_fields"
         type: "function"
         signature: "apply field ACL redaction to entity payload"
@@ -881,6 +1485,26 @@ domains:
         type: function
         signature: 'compute_all_ocs()'
         module: aiPlat-core/core/harness/knowledge/ontology_completeness.py
+      - symbol: OntologyCase
+        type: dataclass
+        signature: 'to_dict, from_dict'
+        module: aiPlat-core/core/harness/knowledge/ontology_case_learning.py
+      - symbol: is_cold_archive_candidate
+        type: function
+        signature: 'Stricter than inject demotion. Does not mutate.'
+        module: aiPlat-core/core/harness/knowledge/ontology_case_learning.py
+      - symbol: find_case
+        type: function
+        signature: 'find_case(case_id)'
+        module: aiPlat-core/core/harness/knowledge/ontology_case_learning.py
+      - symbol: LiveYamlDirectWriteDenied
+        type: class
+        signature: 'Raised when code tries to overwrite live ontology YAML outside apply/rollback.'
+        module: aiPlat-core/core/harness/knowledge/ontology_yaml_gate.py
+      - symbol: live_yaml_write_allowed
+        type: function
+        signature: 'live_yaml_write_allowed()'
+        module: aiPlat-core/core/harness/knowledge/ontology_yaml_gate.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/wiki.py"
@@ -1004,6 +1628,18 @@ domains:
         type: function
         signature: "P2-L0 立项四问评估：反复/跨系统/Owner+指标/Action → 总分+结论+MVP tier"
         module: aiPlat-core/core/apps/fde/service/four_questions.py
+      - symbol: run_clarify_turn
+        type: function
+        signature: "FDE 智能澄清一轮：MemoryManager session + 字段抽取 + 可选 Agent field_assessment"
+        module: aiPlat-core/core/apps/fde/service/clarify_dialog.py
+      - symbol: ClarifyTurnInput
+        type: class
+        signature: "clarify turn input dataclass"
+        module: aiPlat-core/core/apps/fde/service/clarify_dialog.py
+      - symbol: run_fde_agent_one_shot
+        type: function
+        signature: "FDE Agent one-shot；session_id 稳定跨轮接入 MemoryManager"
+        module: aiPlat-core/core/apps/fde/service/agent.py
       - symbol: "BaseAgent"
       - symbol: run_voice_brainstorm
       - symbol: run_voice_brainstorm
@@ -1120,6 +1756,286 @@ domains:
         type: function
         signature: 'save_escort_exit(domain_id, patch)'
         module: aiPlat-core/core/apps/fde/service/customer_success.py
+      - symbol: mentions_external_system
+        type: function
+        signature: 'True for real SaaS/API integration intent — not「外部内容」negations.'
+        module: aiPlat-core/core/apps/common/boundary_hints.py
+      - symbol: wants_outbound_network
+        type: function
+        signature: 'Least-privilege network:「不联网」wins over substring「联网」; bare「搜索」不算。'
+        module: aiPlat-core/core/apps/common/boundary_hints.py
+      - symbol: hints_for_tool_draft
+        type: function
+        signature: 'hints_for_tool_draft(draft)'
+        module: aiPlat-core/core/apps/common/boundary_hints.py
+      - symbol: hints_for_mcp_draft
+        type: function
+        signature: 'hints_for_mcp_draft(draft)'
+        module: aiPlat-core/core/apps/common/boundary_hints.py
+      - symbol: extract_json_object
+        type: function
+        signature: 'extract_json_object(text)'
+        module: aiPlat-core/core/apps/common/create_dialog_utils.py
+      - symbol: trim_history
+        type: function
+        signature: 'trim_history(history)'
+        module: aiPlat-core/core/apps/common/create_dialog_utils.py
+      - symbol: history_as_text
+        type: function
+        signature: 'history_as_text(trimmed)'
+        module: aiPlat-core/core/apps/common/create_dialog_utils.py
+      - symbol: parse_clarify_payload
+        type: function
+        signature: 'Normalize clarify LLM JSON into next/reply/questions/name fields.'
+        module: aiPlat-core/core/apps/common/create_dialog_utils.py
+      - symbol: is_draft_ready
+        type: function
+        signature: 'is_draft_ready()'
+        module: aiPlat-core/core/apps/common/create_dialog_utils.py
+      - symbol: join_user_corpus
+        type: function
+        signature: 'Concatenate user turns + latest for readiness heuristics.'
+        module: aiPlat-core/core/apps/common/create_dialog_utils.py
+      - symbol: agent_create_corpus_ready
+        type: function
+        signature: 'True when user text already has goal + I/O + enough execution policy to draft.'
+        module: aiPlat-core/core/apps/common/create_dialog_utils.py
+      - symbol: guess_agent_display_name
+        type: function
+        signature: 'guess_agent_display_name(corpus)'
+        module: aiPlat-core/core/apps/common/create_dialog_utils.py
+      - symbol: simple_extract_fields
+        type: function
+        signature: 'Keyword/label-based extraction when LLM is unavailable or as a first pass.'
+        module: aiPlat-core/core/apps/fde/service/clarify_dialog.py
+      - symbol: prioritize_gaps
+        type: function
+        signature: 'prioritize_gaps(gaps)'
+        module: aiPlat-core/core/apps/fde/service/clarify_dialog.py
+      - symbol: locate_via_ontology_async
+        type: function
+        signature: 'Locate + optional GraphRAG overlay (best-effort).'
+        module: aiPlat-core/core/apps/fde/service/governance_deepen.py
+      - symbol: tickets_path
+        type: function
+        signature: 'tickets_path()'
+        module: aiPlat-core/core/apps/fde/service/k_wave_arbit.py
+      - symbol: get_ticket
+        type: function
+        signature: 'get_ticket(ticket_id)'
+        module: aiPlat-core/core/apps/fde/service/k_wave_arbit.py
+      - symbol: list_tickets
+        type: function
+        signature: 'list_tickets()'
+        module: aiPlat-core/core/apps/fde/service/k_wave_arbit.py
+      - symbol: is_approved_for_resolve
+        type: function
+        signature: 'is_approved_for_resolve(ticket_id)'
+        module: aiPlat-core/core/apps/fde/service/k_wave_arbit.py
+      - symbol: ledger_path
+        type: function
+        signature: 'ledger_path()'
+        module: aiPlat-core/core/apps/fde/service/k_wave_propose.py
+      - symbol: signals_path
+        type: function
+        signature: 'signals_path()'
+        module: aiPlat-core/core/apps/fde/service/k_wave_signal.py
+      - symbol: live_yaml_path
+        type: function
+        signature: 'live_yaml_path(domain_id)'
+        module: aiPlat-core/core/apps/fde/service/k_wave_signal.py
+      - symbol: live_yaml_hash
+        type: function
+        signature: 'live_yaml_hash(domain_id)'
+        module: aiPlat-core/core/apps/fde/service/k_wave_signal.py
+      - symbol: edge_auto_apply_switch_on
+        type: function
+        signature: 'edge_auto_apply_switch_on()'
+        module: aiPlat-core/core/apps/fde/service/v_wave_guard.py
+      - symbol: packs_root
+        type: function
+        signature: 'packs_root()'
+        module: aiPlat-core/core/apps/org/service/domain_pack_install.py
+      - symbol: list_domain_packs
+        type: function
+        signature: 'list_domain_packs()'
+        module: aiPlat-core/core/apps/org/service/domain_pack_install.py
+      - symbol: rules_path
+        type: function
+        signature: 'rules_path()'
+        module: aiPlat-core/core/apps/org/service/org_auto_pass.py
+      - symbol: audit_path
+        type: function
+        signature: 'audit_path()'
+        module: aiPlat-core/core/apps/org/service/org_auto_pass.py
+      - symbol: sandbox_switch_on
+        type: function
+        signature: 'No rules file: sandbox/readonly_graph starts enabled. Live stays off.'
+        module: aiPlat-core/core/apps/org/service/org_auto_pass.py
+      - symbol: default_rules
+        type: function
+        signature: 'default_rules()'
+        module: aiPlat-core/core/apps/org/service/org_auto_pass.py
+      - symbol: live_unlock_marker_path
+        type: function
+        signature: 'live_unlock_marker_path()'
+        module: aiPlat-core/core/apps/org/service/org_field_ops.py
+      - symbol: set_allow_fleet
+        type: function
+        signature: 'Flip OrgGoal.allow_fleet (explicit ops action; still needs gate checks).'
+        module: aiPlat-core/core/apps/org/service/org_fleet.py
+      - symbol: request_fleet_or_run
+        type: function
+        signature: 'If force_fleet: require gate; on pass still execute single OrgRun with fleet_met'
+        module: aiPlat-core/core/apps/org/service/org_fleet.py
+      - symbol: probe_sandbox_conflict
+        type: function
+        signature: 'Two mutex acquires on one resource. Second must be denied. No live write.'
+        module: aiPlat-core/core/apps/org/service/org_fleet.py
+      - symbol: ensure_approval_rules_seed
+        type: function
+        signature: 'Copy seed only when AIPLAT_HOME/org/approval_rules.yaml is absent.'
+        module: aiPlat-core/core/apps/org/service/org_h4_seed.py
+      - symbol: normalize_channel
+        type: function
+        signature: 'normalize_channel(channel)'
+        module: aiPlat-core/core/apps/org/service/org_ingress.py
+      - symbol: ingress_status
+        type: function
+        signature: 'ingress_status()'
+        module: aiPlat-core/core/apps/org/service/org_ingress.py
+      - symbol: resolve_actor
+        type: function
+        signature: 'resolve_actor(channel, user_id)'
+        module: aiPlat-core/core/apps/org/service/org_ingress.py
+      - symbol: build_dispatch_evidence
+        type: function
+        signature: 'C0-shaped evidence: Object/Action/Interface/Skill/PolicyGate on one trace.'
+        module: aiPlat-core/core/apps/org/service/org_ingress.py
+      - symbol: load_event_allowlist
+        type: function
+        signature: 'Event types allowed to start a sandbox preview. Not a channel list.'
+        module: aiPlat-core/core/apps/org/service/org_ingress.py
+      - symbol: load_live_raw
+        type: function
+        signature: 'load_live_raw(domain_id)'
+        module: aiPlat-core/core/apps/org/service/org_interface.py
+      - symbol: resolve_interface_raw
+        type: function
+        signature: 'YAML wins. connector.live is used only when no yaml exists for the domain.'
+        module: aiPlat-core/core/apps/org/service/org_interface.py
+      - symbol: interface_ready_for_outbound
+        type: function
+        signature: 'Hard gate used by live_io_gates: valid spec + declared + enabled.'
+        module: aiPlat-core/core/apps/org/service/org_interface.py
+      - symbol: preview_write
+        type: function
+        signature: 'Dry-run write preview; default blocked (D3).'
+        module: aiPlat-core/core/apps/org/service/org_io.py
+      - symbol: live_config
+        type: function
+        signature: 'live_config(domain_id)'
+        module: aiPlat-core/core/apps/org/service/org_live_adapter.py
+      - symbol: adapter_declared
+        type: function
+        signature: 'Whether connector declares a valid InterfaceSpec (http_json + hosts).'
+        module: aiPlat-core/core/apps/org/service/org_live_adapter.py
+      - symbol: list_memory
+        type: function
+        signature: 'list_memory(limit, domain_id)'
+        module: aiPlat-core/core/apps/org/service/org_memory.py
+      - symbol: normalize_post
+        type: function
+        signature: 'normalize_post(raw)'
+        module: aiPlat-core/core/apps/org/service/org_post.py
+      - symbol: validate_post
+        type: function
+        signature: 'validate_post(post)'
+        module: aiPlat-core/core/apps/org/service/org_post.py
+      - symbol: load_posts
+        type: function
+        signature: 'Override file wins; else posts dir; else workspace seed.'
+        module: aiPlat-core/core/apps/org/service/org_post.py
+      - symbol: list_posts
+        type: function
+        signature: 'list_posts()'
+        module: aiPlat-core/core/apps/org/service/org_post.py
+      - symbol: ensure_pilot_goal
+        type: function
+        signature: 'Install seed OrgGoal into AIPLAT_HOME when missing for domain.'
+        module: aiPlat-core/core/apps/org/service/org_runtime.py
+      - symbol: list_goals
+        type: function
+        signature: 'list_goals(domain_id)'
+        module: aiPlat-core/core/apps/org/service/org_runtime.py
+      - symbol: get_goal
+        type: function
+        signature: 'get_goal(goal_id)'
+        module: aiPlat-core/core/apps/org/service/org_runtime.py
+      - symbol: set_goal_status
+        type: function
+        signature: 'set_goal_status(goal_id, status)'
+        module: aiPlat-core/core/apps/org/service/org_runtime.py
+      - symbol: patch_goal
+        type: function
+        signature: 'Patch allowlisted OrgGoal fields (Phase 4 fleet flag etc.).'
+        module: aiPlat-core/core/apps/org/service/org_runtime.py
+      - symbol: list_runs
+        type: function
+        signature: 'list_runs(goal_id, limit)'
+        module: aiPlat-core/core/apps/org/service/org_runtime.py
+      - symbol: get_run
+        type: function
+        signature: 'get_run(run_id)'
+        module: aiPlat-core/core/apps/org/service/org_runtime.py
+      - symbol: progress_path
+        type: function
+        signature: 'progress_path()'
+        module: aiPlat-core/core/apps/org/service/org_signoff_progress.py
+      - symbol: default_progress
+        type: function
+        signature: 'default_progress()'
+        module: aiPlat-core/core/apps/org/service/org_signoff_progress.py
+      - symbol: load_signoff_progress
+        type: function
+        signature: 'load_signoff_progress()'
+        module: aiPlat-core/core/apps/org/service/org_signoff_progress.py
+      - symbol: get_signoff_progress
+        type: function
+        signature: 'get_signoff_progress()'
+        module: aiPlat-core/core/apps/org/service/org_signoff_progress.py
+      - symbol: drafts_dir
+        type: function
+        signature: 'drafts_dir()'
+        module: aiPlat-core/core/apps/org/service/org_skill_draft.py
+      - symbol: list_skill_candidates
+        type: function
+        signature: 'list_skill_candidates()'
+        module: aiPlat-core/core/apps/org/service/org_skill_draft.py
+      - symbol: approve_skill_draft
+        type: function
+        signature: 'approve_skill_draft()'
+        module: aiPlat-core/core/apps/org/service/org_skill_draft.py
+      - symbol: reject_skill_draft
+        type: function
+        signature: 'reject_skill_draft()'
+        module: aiPlat-core/core/apps/org/service/org_skill_draft.py
+      - symbol: events_from_run
+        type: function
+        signature: 'events_from_run(run)'
+        module: aiPlat-core/core/apps/org/service/org_usage.py
+      - symbol: append_events
+        type: function
+        signature: 'append_events(events)'
+        module: aiPlat-core/core/apps/org/service/org_usage.py
+      - symbol: load_value_baseline
+        type: function
+        signature: 'Tenant-isolated baseline. Never reads another tenant''s file.'
+        module: aiPlat-core/core/apps/org/service/org_value_translation.py
+      - symbol: get_value_baseline_view
+        type: function
+        signature: 'get_value_baseline_view()'
+        module: aiPlat-core/core/apps/org/service/org_value_translation.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
@@ -1135,7 +2051,7 @@ domains:
   skill-system:
     section: "六"
     section_name: "Skill 系统"
-    caps_count: 29
+    caps_count: 32
     provides:
       - symbol: "SkillRegistry"
         type: "class"
@@ -1157,6 +2073,86 @@ domains:
         type: function
         signature: 'execute(params)'
         module: aiPlat-core/core/engine/skills/security_critique/handler.py
+      - symbol: "generate_skill_autofill"
+        type: "function"
+        signature: "generate_skill_autofill(name, description, refine_hint='')→dict"
+        module: "core/apps/skills/service/skill_autofill.py"
+      - symbol: "generate_skill_execution_examples_llm"
+        type: "function"
+        signature: "generate_skill_execution_examples_llm(skill_id, skill_name='', description='', input_schema=None, refine_hint='')→{examples,model,source}"
+        module: "core/apps/skills/service/skill_execution_examples_llm.py"
+      - symbol: "generate_workspace_skill_execution_examples"
+        type: "endpoint"
+        signature: "POST /workspace/skills/{skill_id}/generate-execution-examples → {examples,persisted}"
+        module: "core/api/routers/workspace_skills.py"
+      - symbol: "run_skill_create_dialog_turn"
+        type: "function"
+        signature: "run_skill_create_dialog_turn(text, history)→{next,reply,draft?}"
+        module: "core/apps/skills/service/skill_create_dialog.py"
+      - symbol: "run_agent_create_dialog_turn"
+        type: "function"
+        signature: "run_agent_create_dialog_turn(text, history)→{next,reply,draft?}"
+        module: "core/apps/builder/service/agent_create_dialog.py"
+      - symbol: "upload_workspace_template"
+        type: "endpoint"
+        signature: "POST /workspace/templates/upload → {ok,path,filename,size} (.pptx/.potx → ~/.aiplat/templates)"
+        module: "core/api/routers/workspace_agents.py"
+      - symbol: "list_workspace_templates"
+        type: "endpoint"
+        signature: "GET /workspace/templates → {ok,templates[{filename,path,size,mtime,is_default}],dir}"
+        module: "core/api/routers/workspace_agents.py"
+      - symbol: "dedupe_workspace_agents"
+        type: "endpoint"
+        signature: "POST /workspace/agents/dedupe → {ok,kept,removed,removed_count,remaining}"
+        module: "core/api/routers/workspace_agents.py"
+      - symbol: "AgentManager.find_equivalent"
+        type: "method"
+        signature: "find_equivalent(display_name, skills, tools, agent_type)→AgentInfo|None"
+        module: "core/management/agent_manager.py"
+      - symbol: "AgentManager.dedupe_agents"
+        type: "method"
+        signature: "async dedupe_agents()→{ok,kept,removed,removed_count,remaining}"
+        module: "core/management/agent_manager.py"
+      - symbol: "WorkflowManager.find_equivalent"
+        type: "method"
+        signature: "find_equivalent(name, nodes)→WorkflowInfo|None"
+        module: "core/management/workflow_manager.py"
+      - symbol: "WorkflowManager.dedupe_workflows"
+        type: "method"
+        signature: "dedupe_workflows()→{kept,removed,removed_count}"
+        module: "core/management/workflow_manager.py"
+      - symbol: "run_tool_create_dialog_turn"
+        type: "function"
+        signature: "run_tool_create_dialog_turn(text, history)→{next,reply,draft?}"
+        module: "core/apps/tools/service/tool_create_dialog.py"
+      - symbol: "run_mcp_create_dialog_turn"
+        type: "function"
+        signature: "run_mcp_create_dialog_turn(text, history)→{next,reply,draft?}"
+        module: "core/apps/workbench/service/mcp_create_dialog.py"
+      - symbol: "run_team_create_dialog_turn"
+        type: "function"
+        signature: "run_team_create_dialog_turn(text, history, agents)→{next,reply,draft?}"
+        module: "core/apps/builder/service/team_create_dialog.py"
+      - symbol: "hints_for_agent_draft"
+        type: "function"
+        signature: "hints_for_agent_draft(draft, description='')→list[str]"
+        module: "core/apps/common/boundary_hints.py"
+      - symbol: "hints_for_skill_draft"
+        type: "function"
+        signature: "hints_for_skill_draft(draft, description='')→list[str]"
+        module: "core/apps/common/boundary_hints.py"
+      - symbol: "build_examples_from_input_schema"
+        type: "function"
+        signature: "build_examples_from_input_schema(input_schema,*,skill_id,skill_name)→list[{title,content}]"
+        module: "core/management/execution_examples.py"
+      - symbol: "build_agent_task_examples"
+        type: "function"
+        signature: "build_agent_task_examples(*,display_name,description,skill_ids,tool_ids)→list[{title,content}]"
+        module: "core/management/execution_examples.py"
+      - symbol: "build_sample_payload"
+        type: "function"
+        signature: "build_sample_payload(schema,*,include_optional=True)→dict"
+        module: "core/management/execution_examples.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
@@ -1169,6 +2165,8 @@ domains:
         reason: "Skill REST 端点"
       - module: "core/engine/skills/autoreview/handler.py"
         reason: "autoreview Skill handler"
+      - module: "core/api/routers/workspace_skills.py"
+        reason: "auto-fill + create-dialog HTTP"
 
   # ══════════════════════════════════════════════════════════════
   # 七、安全与治理 (33 caps)
@@ -1233,6 +2231,22 @@ domains:
         type: "class"
         signature: "start, publish, subscribe"
         module: "core/harness/observation/event_bus.py"
+      - symbol: "open_run_graph_node"
+        type: "function"
+        signature: "open_node(run_id, node_id, kind, name, ...) — RunGraph authoritative open"
+        module: "core/harness/observation/run_graph.py"
+      - symbol: "close_run_graph_node"
+        type: "function"
+        signature: "close_node(run_id, node_id, status=ok|error) — RunGraph authoritative close"
+        module: "core/harness/observation/run_graph.py"
+      - symbol: "get_run_graph"
+        type: "function"
+        signature: "get_graph(run_id) → {roots, nodes, status, has_graph}"
+        module: "core/harness/observation/run_graph.py"
+      - symbol: "mark_run_graph_done"
+        type: "function"
+        signature: "mark_run_done(run_id, status) — close running nodes + graph_done"
+        module: "core/harness/observation/run_graph.py"
       - symbol: "MetricsAggregator"
         type: "class"
         signature: "aggregate metrics across layers"

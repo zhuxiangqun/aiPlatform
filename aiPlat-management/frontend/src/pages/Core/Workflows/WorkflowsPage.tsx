@@ -18,6 +18,7 @@ const WorkflowsPage: React.FC = () => {
   const [signKey, setSignKey] = useState('');
   const [signing, setSigning] = useState(false);
   const [signResult, setSignResult] = useState<string | null>(null);
+  const [deduping, setDeduping] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -37,6 +38,21 @@ const WorkflowsPage: React.FC = () => {
     } catch { toast.error('加载失败'); }
     finally { setLoading(false); }
   }, []);
+
+  const dedupeWorkflows = useCallback(async () => {
+    if (deduping) return;
+    setDeduping(true);
+    try {
+      const r: any = await workflowApi.dedupe();
+      const n = Number(r?.removed_count || 0);
+      toast.success(n > 0 ? `已清理 ${n} 条重复 Workflow` : '没有可合并的重复项');
+      await refresh();
+    } catch (e: any) {
+      toastGateError(e, '清理失败');
+    } finally {
+      setDeduping(false);
+    }
+  }, [deduping, refresh]);
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ wf: any } | null>(null);
 
@@ -86,9 +102,14 @@ const WorkflowsPage: React.FC = () => {
           <h1 className="text-lg font-semibold text-gray-100">Workflow</h1>
           <p className="text-xs text-gray-500 mt-1">管理你的 AI Workflow，拖拽节点构建流水线</p>
         </div>
-        <Button icon={<Plus className="w-4 h-4" />} variant="primary" onClick={() => navigate('/core/workflows/new')}>
-          新建 Workflow
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" loading={deduping} onClick={dedupeWorkflows} title="合并同名且节点相同的重复 Workflow">
+            清理重复
+          </Button>
+          <Button icon={<Plus className="w-4 h-4" />} variant="primary" onClick={() => navigate('/core/workflows/new')}>
+            新建 Workflow
+          </Button>
+        </div>
       </div>
 
       <ImportBar assetType="workflows" alsoScan={['agents', 'skills', 'mcps']} onImported={() => refresh()} />
@@ -166,7 +187,7 @@ const WorkflowsPage: React.FC = () => {
                     value={signKey} onChange={(e) => setSignKey(e.target.value)} />
                   <div className="flex flex-col gap-1">
                     <Button variant="primary" size="sm" icon={<Key size={14} />} onClick={handleSign} loading={signing} disabled={!signKey.trim() || signing}>签名</Button>
-                    <Button variant="ghost" size="sm" onClick={() => { try { window.open('/onboarding', '_blank', 'noopener,noreferrer'); } catch {} }}>生成密钥</Button>
+                    <Button variant="ghost" size="sm" onClick={() => { try { window.open('/onboarding?step=sign_keys', '_blank', 'noopener,noreferrer'); } catch {} }}>生成密钥</Button>
                   </div>
                 </div>
               )}

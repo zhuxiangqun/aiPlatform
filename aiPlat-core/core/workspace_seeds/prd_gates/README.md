@@ -40,11 +40,10 @@ pm_hints:                 # optional; injected into PM chat *before* PRD generat
 checks:                   # assess-only; block confirm when severity=error
   - id: my_check_code
     severity: error       # error | warning
-    block_finalize_wash: true  # optional; raw hit → factory_finalize scrub must NOT green-pass
     when: { all: [ ... ] }
     message: human text
 
-repairs:                  # enrich / factory_finalize word-level rewrites (scrub alone)
+repairs:                  # enrich / factory_finalize rewrites
   - id: my_repair
     when: { all: [ ... ] }
     actions:
@@ -60,19 +59,8 @@ repairs:                  # enrich / factory_finalize word-level rewrites (scrub
       - ensure_constraint_security_ssrf: true
       - infer_url_scope: true
       - infer_speech_pipeline: true
-
-structural_repairs:       # optional; run when wash-blocked codes match clears_codes
-  - id: my_structural
-    clears_codes: [asr_topic_contradiction]  # may clear wash block after re-assess
-    when: { all: [ ... ] }
-    actions:
-      - upsert_fr: { match: "语音|音轨", fr: { id: FR-004, name: "...", acceptance_criteria: [...] } }
-      - upsert_us: { match: "语音|主题", id: US-004, related_fr: [FR-004], story: "..." }
 ```
 
-`block_finalize_wash`: scrub (`repairs`) alone must not green-pass. `structural_repairs`
-rewrites whole FR/US from templates; if those codes no longer fire on re-assess, factory
-may READY.
 ### Condition operators (`when`)
 
 - `always: true`

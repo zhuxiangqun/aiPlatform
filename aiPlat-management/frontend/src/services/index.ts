@@ -50,7 +50,7 @@ export {
   workflowApi,
   appApi,
 } from './coreApi';
-export { gatewayAdminApi, SKILL_CATEGORIES } from './coreApi';
+export { gatewayAdminApi, SKILL_CATEGORIES, SKILL_CATEGORY_HELP, SKILL_CATEGORY_OPTIONS } from './coreApi';
 
 // Legacy monitoring API (for layer metrics)
 export { monitoringApi as layerMonitoringApi } from './apiClient';

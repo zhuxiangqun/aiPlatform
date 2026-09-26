@@ -163,23 +163,89 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             return 502, {"Content-Type": "application/json"}, json.dumps({"error": str(e)}).encode()
 
+    @staticmethod
+    def _header_get(headers, name, default=""):
+        """Case-insensitive header lookup (urllib may lowercase keys)."""
+        if not headers:
+            return default
+        want = name.lower()
+        for k, v in headers.items():
+            if str(k).lower() == want:
+                return v
+        return default
+
+    def _is_sse_path(self):
+        path = (self.path or "").split("?", 1)[0]
+        return path.endswith("/stream") or "/observation/runs/" in path and path.endswith("/stream")
+
+    def _proxy_sse(self, target):
+        """True streaming proxy for SSE — do not buffer the full response."""
+        hop_by_hop = {"host", "content-length", "connection", "keep-alive",
+                      "proxy-authenticate", "proxy-authorization", "te", "trailers",
+                      "transfer-encoding", "upgrade"}
+        headers = {}
+        for k, v in self.headers.items():
+            if k.lower() in hop_by_hop:
+                continue
+            headers[k] = v
+        headers["Accept"] = "text/event-stream"
+        req = urllib.request.Request(f"{target}{self.path}", method="GET", headers=headers)
+        try:
+            resp = urllib.request.urlopen(req, timeout=600)
+        except urllib.error.HTTPError as e:
+            body = e.read()
+            self._send_response(e.code, dict(e.headers), body)
+            return
+        except Exception as e:
+            self._send_response(502, {"Content-Type": "application/json"},
+                                json.dumps({"error": str(e)}).encode())
+            return
+        try:
+            upstream_ct = self._header_get(dict(resp.headers), "Content-Type", "text/event-stream")
+            # EventSource requires text/event-stream; never fall back to octet-stream
+            if "event-stream" not in upstream_ct.lower():
+                upstream_ct = "text/event-stream"
+            self.send_response(resp.status)
+            self.send_header("Content-Type", upstream_ct)
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self.send_header("X-Accel-Buffering", "no")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            while True:
+                chunk = resp.read(1024)
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                self.wfile.flush()
+        finally:
+            try:
+                resp.close()
+            except Exception:  # noqa: cleanup-best-effort
+                pass
+
     def _send_response(self, status, headers, body):
         self.send_response(status)
         path = (self.path or "").split("?", 1)[0]
-        ct = headers.get("Content-Type", "application/octet-stream")
+        ct = self._header_get(headers, "Content-Type", "application/octet-stream")
         # App static artifacts often arrive as octet-stream from 8004
         if path.endswith(".json") and ("json" not in (ct or "").lower()):
             ct = "application/json; charset=utf-8"
+        if self._is_sse_path() and "event-stream" not in (ct or "").lower():
+            ct = "text/event-stream"
         self.send_header("Content-Type", ct)
         self.send_header("Access-Control-Allow-Origin", "*")
         # Deployed wizard configs must not stick in browser cache after redeploy
         if path.endswith((".json", ".html")) or path.endswith("/app_page.json"):
             self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
             self.send_header("Pragma", "no-cache")
-        cd = headers.get("Content-Disposition", "")
+        if self._is_sse_path():
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("X-Accel-Buffering", "no")
+        cd = self._header_get(headers, "Content-Disposition", "")
         if cd:
             self.send_header("Content-Disposition", cd)
-        cl = headers.get("Content-Length", "")
+        cl = self._header_get(headers, "Content-Length", "")
         if cl:
             self.send_header("Content-Length", cl)
         elif body is not None:
@@ -191,6 +257,11 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         target, is_precise = self._get_target(self.path)
         if target is None:
             self.send_error(404)
+            return
+
+        # SSE must stream; buffering the whole response breaks EventSource MIME checks
+        if method == "GET" and self._is_sse_path():
+            self._proxy_sse(target)
             return
 
         status, headers, body = self._do_proxy_request(target, method)

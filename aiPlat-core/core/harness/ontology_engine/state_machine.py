@@ -23,8 +23,9 @@ from typing import Any, Dict, List, Optional
 class EvalContext:
     """Evaluation context containing all instances and their relations."""
 
-    def __init__(self, instances: List[Dict[str, Any]]):
+    def __init__(self, instances: List[Dict[str, Any]], *, simulate: bool = False):
         self._instances = instances
+        self.simulate = bool(simulate)
         # Build class index: class_label → list of instances
         self._class_index: Dict[str, List[Dict[str, Any]]] = {}
         # Build chunk index: chunk_id → list of instances (co-occurrence)
@@ -120,6 +121,11 @@ class StateMachine:
         self._cls_by_label: Dict[str, Any] = {}
         for cls in domain.classes:
             self._cls_by_label[cls.label] = cls
+            # Also index by URI local name (InstallOrder) for sim/API callers
+            uri = str(getattr(cls, "uri", "") or "")
+            short = uri.rsplit("/", 1)[-1].rsplit("#", 1)[-1]
+            if short and short not in self._cls_by_label:
+                self._cls_by_label[short] = cls
 
     def evaluate_instance(
         self,
@@ -242,9 +248,12 @@ class StateMachine:
         elif trigger_type == "property_condition":
             return self._eval_property_condition(trigger, instance)
         elif trigger_type == "relation_exists":
-            return self._eval_relation_exists(trigger, context)
+            return self._eval_relation_exists(trigger, instance, context)
         elif trigger_type == "time_elapsed":
             return self._eval_time_elapsed(trigger, instance, context)
+        elif trigger_type == "action":
+            # 真实运行需 Action Registry；沙盘 simulate=True 时视为动作已批准执行
+            return bool(getattr(context, "simulate", False))
         return False
 
     def _eval_relation_count(
@@ -359,14 +368,22 @@ class StateMachine:
     def _eval_relation_exists(
         self,
         trigger: Dict[str, Any],
+        instance: Dict[str, Any],
         context: EvalContext,
     ) -> bool:
-        """Check if at least one OTHER instance of the target class exists."""
+        """Check that a target-class instance exists for the relation.
+
+        Cross-class (派单给→安装师傅): need ≥1 of the target class.
+        Same-class: need ≥2 so there is at least one *other* instance.
+        """
         relation_name = str(trigger.get("relation", ""))
         target_class = self._relation_to_target_class(relation_name)
         if not target_class:
             return False
-        return context.count_by_class(target_class) >= 2
+        count = context.count_by_class(target_class)
+        focal_cls = str(instance.get("class_name", ""))
+        need = 2 if focal_cls == target_class else 1
+        return count >= need
 
     def _eval_time_elapsed(
         self,

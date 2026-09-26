@@ -1,9 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { skillApi, SKILL_CATEGORIES as SKILL_CAT_NAMES } from '../../services';
+import { skillApi, SKILL_CATEGORY_OPTIONS, SKILL_CATEGORY_HELP } from '../../services';
 import type { Skill } from '../../services';
 import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
-
-const SKILL_CATEGORIES = SKILL_CAT_NAMES.map(v => ({ value: v, label: v }));
 
 interface EditSkillModalProps {
   open: boolean;
@@ -85,7 +83,7 @@ const EditSkillModal: React.FC<EditSkillModalProps> = ({ open, skill, onClose, o
     }
   };
 
-  const categoryOptions = useMemo(() => SKILL_CATEGORIES, []);
+  const categoryOptions = useMemo(() => SKILL_CATEGORY_OPTIONS, []);
 
   return (
     <Modal
@@ -109,7 +107,17 @@ const EditSkillModal: React.FC<EditSkillModalProps> = ({ open, skill, onClose, o
       ) : (
         <div className="space-y-4">
           <Input label="名称" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="例如：Python代码审查助手" />
-          <Select value={category} onChange={(v) => setCategory(v)} options={categoryOptions} label="分类" />
+          <div>
+            <Select value={category} onChange={(v) => setCategory(v)} options={categoryOptions} label="分类" />
+            <div className="text-xs text-gray-500 mt-1">
+              分类只用于列表筛选与推荐，不是权限。内容产出选 generation；拿不准选 general。
+            </div>
+            {SKILL_CATEGORY_HELP[category as keyof typeof SKILL_CATEGORY_HELP] && (
+              <div className="text-xs text-gray-400 mt-0.5">
+                当前：{SKILL_CATEGORY_HELP[category as keyof typeof SKILL_CATEGORY_HELP]}
+              </div>
+            )}
+          </div>
           <Textarea label="描述" value={description} onChange={(e: any) => setDescription(e.target.value)} rows={3} placeholder="描述此技能的用途和使用场景" />
           <Textarea label="配置 (JSON)" value={configText} onChange={(e: any) => setConfigText(e.target.value)} rows={8} placeholder='{"timeout_seconds": 60, "max_concurrent": 10, "retry_count": 3}' />
         </div>

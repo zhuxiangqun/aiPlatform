@@ -24,6 +24,102 @@ from typing import Any, Dict, List, Optional, Literal
 
 logger = logging.getLogger(__name__)
 
+# Factory extraction: avoid thousands of LLM calls on large decks/PDFs.
+# Override with AIPLAT_EXTRACT_MAX_CHUNKS (default 8 ≈ 16k chars).
+def _extract_max_chunks() -> int:
+    try:
+        return max(1, int(os.getenv("AIPLAT_EXTRACT_MAX_CHUNKS", "8")))
+    except ValueError:
+        return 8
+
+
+_BINARY_EXTS = {
+    ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx",
+    ".odt", ".odp", ".ods", ".rtf", ".epub",
+}
+
+
+def file_bytes_to_text(raw: bytes, filename: str = "uploaded_doc") -> Dict[str, Any]:
+    """Parse uploaded bytes into plain text for entity extraction.
+
+    Historical bug: route did ``raw.decode("utf-8", errors="replace")`` on PPTX/PDF,
+    feeding megabytes of binary garbage into the LLM (thousands of sequential chunks).
+    """
+    name = filename or "uploaded_doc"
+    ext = os.path.splitext(name)[1].lower()
+    kind_map = {
+        ".pdf": "pdf", ".doc": "docx", ".docx": "docx",
+        ".ppt": "pptx", ".pptx": "pptx",
+        ".xls": "xlsx", ".xlsx": "xlsx",
+        ".md": "md", ".markdown": "md",
+        ".html": "html", ".htm": "html",
+        ".csv": "csv", ".txt": "txt", ".json": "json",
+    }
+    kind = kind_map.get(ext, ext.lstrip(".") or "txt")
+
+    text = ""
+    parser = "utf8"
+    tmp_path = ""
+    try:
+        if ext in _BINARY_EXTS or (raw[:4] == b"%PDF") or (raw[:2] == b"PK"):
+            import tempfile
+            suffix = ext if ext else ".bin"
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                tmp.write(raw)
+                tmp_path = tmp.name
+            from core.api.core_facade import kb_parse_document
+            elements = kb_parse_document(tmp_path, kind) or []
+            parts = []
+            for el in elements:
+                if not isinstance(el, dict):
+                    continue
+                t = (el.get("text") or "").strip()
+                if t:
+                    parts.append(t)
+            text = "\n\n".join(parts)
+            parser = f"kb_parse:{kind}"
+        else:
+            text = raw.decode("utf-8", errors="replace")
+            parser = "utf8"
+    except Exception:
+        logger.warning("file_bytes_to_text parse failed for %s", name, exc_info=True)
+        # Last resort: only if looks like text
+        guess = raw.decode("utf-8", errors="replace")
+        printable = sum(1 for c in guess[:4000] if c.isprintable() or c in "\n\r\t")
+        if printable / max(len(guess[:4000]), 1) >= 0.85:
+            text = guess
+            parser = "utf8_fallback"
+        else:
+            text = ""
+            parser = "failed"
+    finally:
+        if tmp_path:
+            try:
+                os.unlink(tmp_path)
+            except OSError:  # noqa: cleanup-best-effort
+                pass
+
+    # Strip NULs / control noise from bad fallbacks
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", " ", text or "")
+    text = re.sub(r"[ \t]{3,}", "  ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+
+    max_chars = _extract_max_chunks() * 2000
+    truncated = False
+    if len(text) > max_chars:
+        text = text[:max_chars]
+        truncated = True
+
+    return {
+        "text": text,
+        "parser": parser,
+        "char_count": len(text),
+        "truncated": truncated,
+        "max_chars": max_chars,
+        "filename": name,
+        "kind": kind,
+    }
+
 
 # ═══════════════════════════════════════════════════════════
 # Data models
@@ -71,21 +167,21 @@ class ExtractionResult:
 EXTRACTION_PROMPT = """你是企业知识抽取专家。从以下文本中抽取实体和关系。
 
 预定义实体类型（只使用这些）:
-  人物, 组织, 产品, 地点, 时间, 事件, 文档, 概念, 方法
+  {class_list}
 
 预定义关系类型（只使用这些）:
   属于, 参与, 负责, 包含, 依赖, 导致, 演化为, 部署于, 开始于, 结束于
 
 输出严格 JSON（不含 markdown 标记）:
-{
+{{
   "entities": [
-    {"name": "实体名", "class_type": "预定义类型", "attributes": {}, "evidence": "原文证据"}
+    {{"name": "实体名", "class_type": "预定义类型", "attributes": {{}}, "evidence": "原文证据"}}
   ],
   "relations": [
-    {"source": "实体A", "type": "关系类型", "target": "实体B", "evidence": "原文证据"}
+    {{"source": "实体A", "type": "关系类型", "target": "实体B", "evidence": "原文证据"}}
   ],
   "overall_confidence": 0.0
-}
+}}
 
 待抽取文本:
 {chunk_text}"""
@@ -97,10 +193,10 @@ try:
     from core.harness.utils.prompt_loader import _register as _register_prompt
     _register_prompt(
         "knowledge-extraction",
-        EXTRACTION_PROMPT.replace("{chunk_text}", "${chunk_text}"),
+        EXTRACTION_PROMPT.replace("{chunk_text}", "${chunk_text}").replace("{class_list}", "${class_list}"),
         category="knowledge",
-        variables=["chunk_text"],
-        version="1.0.0",
+        variables=["chunk_text", "class_list"],
+        version="1.1.0",
     )
 except Exception:  # noqa: BLE001  # 注册失败不影响导入（prompt_loader 为可选依赖）
     pass
@@ -115,19 +211,22 @@ class DocumentIngestor:
 
     MAX_CHUNK_SIZE = 2000
 
-    def ingest(self, text: str, doc_name: str = "unknown") -> List[Dict[str, Any]]:
-        """Return list of {offset, text, doc_name} chunks."""
+    def ingest(self, text: str, doc_name: str = "unknown", *, max_chunks: int | None = None) -> List[Dict[str, Any]]:
+        """Return list of {offset, text, doc_name} chunks (capped for factory speed)."""
+        limit = max_chunks if max_chunks is not None else _extract_max_chunks()
         chunks = []
         offset = 0
-        while offset < len(text):
+        while offset < len(text) and len(chunks) < limit:
             chunk = text[offset:offset + self.MAX_CHUNK_SIZE]
             # Try to break at sentence boundary
             if len(chunk) == self.MAX_CHUNK_SIZE and offset + self.MAX_CHUNK_SIZE < len(text):
                 last_period = max(chunk.rfind("。"), chunk.rfind(". "), chunk.rfind("\n"), 0)
                 if last_period > self.MAX_CHUNK_SIZE // 2:
                     chunk = chunk[:last_period + 1]
-            chunks.append({"offset": offset, "text": chunk.strip(), "doc_name": doc_name})
-            offset += len(chunk)
+            piece = chunk.strip()
+            if piece:
+                chunks.append({"offset": offset, "text": piece, "doc_name": doc_name})
+            offset += len(chunk) if chunk else self.MAX_CHUNK_SIZE
         return chunks
 
 
@@ -178,13 +277,28 @@ class EntityExtractor:
         try:
             # Use the system LLM call
             result_text = await self._call_llm(prompt)
-            parsed = self._parse_response(result_text, chunk["doc_name"], chunk["offset"])
-            # 过滤非法 class_type（域类清单外）——Q3 校验落地
-            if parsed.get("entities"):
-                parsed["entities"] = [
-                    e for e in parsed["entities"]
-                    if not e.get("class_type") or e["class_type"] in class_types
-                ]
+            parsed = self._parse_response(
+                result_text,
+                chunk["doc_name"],
+                chunk["offset"],
+                allowed_class_types=class_types,
+            )
+            # 域类清单校验：非法类型 remap，不静默丢实体（否则 UI 显示 0 实体）
+            entities = parsed.get("entities") or []
+            if entities:
+                kept = []
+                for e in entities:
+                    ct = getattr(e, "class_type", None)
+                    if ct is None and isinstance(e, dict):
+                        ct = e.get("class_type")
+                    if ct and ct not in class_types:
+                        fallback = "概念" if "概念" in class_types else next(iter(class_types), ct)
+                        if hasattr(e, "class_type"):
+                            e.class_type = fallback
+                        elif isinstance(e, dict):
+                            e["class_type"] = fallback
+                    kept.append(e)
+                parsed["entities"] = kept
             return parsed
         except Exception as e:
             logger.warning("Extraction failed for chunk at offset %d: %s", chunk.get("offset", 0), e, exc_info=True)
@@ -195,52 +309,120 @@ class EntityExtractor:
         """构建抽取提示词：优先 prompt_loader 注册模板，回退模块级 EXTRACTION_PROMPT。"""
         try:
             from core.harness.utils.prompt_loader import _sync_resolve
-            return _sync_resolve("knowledge-extraction", chunk_text=chunk_text)
+            return _sync_resolve(
+                "knowledge-extraction",
+                chunk_text=chunk_text,
+                class_list=class_list,
+            )
         except Exception:  # noqa: BLE001
-            return EXTRACTION_PROMPT.format(chunk_text=chunk_text)
+            return EXTRACTION_PROMPT.format(chunk_text=chunk_text, class_list=class_list)
 
     async def _call_llm(self, prompt: str) -> str:
-        """Call LLM via the harness syscall channel."""
+        """Call LLM for extraction via purpose-routed generate_with_fallback.
+
+        Historical bug: called ``sys_llm_generate(messages, purpose=...)`` which
+        is not the syscall signature (needs adapter first). That raised TypeError,
+        swallowed as empty string → UI showed 「0 实体」with no pending rows.
+        """
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "你是企业知识抽取器。只输出合法 JSON 对象，"
+                    "不要输出思考过程、标题或 markdown。"
+                    "顶层必须含 entities、relations、overall_confidence。"
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ]
         try:
+            from core.harness.utils.model_injection import generate_with_fallback
+            resp, model = await generate_with_fallback("doc_llm", messages, timeout=90)
+            content = getattr(resp, "content", None)
+            if content is None and isinstance(resp, dict):
+                content = resp.get("content")
+            text = (content if content is not None else str(resp or "")).strip()
+            if text:
+                return text
+            logger.warning("doc_llm returned empty content (model=%s)", model)
+        except Exception:
+            logger.warning("generate_with_fallback(doc_llm) failed", exc_info=True)
+
+        try:
+            from core.harness.utils.model_injection import (
+                best_model_for_purpose,
+                create_selected_adapter,
+            )
             from core.harness.syscalls.llm import sys_llm_generate
-            messages = [{"role": "user", "content": prompt}]
-            result = await sys_llm_generate(messages, purpose="doc_llm")
-            return result.get("content", "") or str(result)
+            model_name = best_model_for_purpose("doc_llm")
+            adapter = create_selected_adapter(model_name=model_name)
+            result = await sys_llm_generate(
+                adapter,
+                messages,
+                model_name=model_name,
+                gate_mode="minimal",
+            )
+            if isinstance(result, dict):
+                return (result.get("content") or "").strip()
+            return (getattr(result, "content", None) or str(result or "")).strip()
         except Exception:
-            logger.warning("sys_llm_generate unavailable, using fallback", exc_info=True)
-            return ""
-        # If sys_llm_generate not available, try adapter
-        try:
-            from core.harness.utils.model_injection import create_selected_adapter
-            adapter = create_selected_adapter("doc_llm")
-            return adapter.generate([{"role": "user", "content": prompt}])
-        except Exception:
-            logger.warning("LLM adapter also unavailable", exc_info=True)
+            logger.warning("LLM adapter fallback also unavailable", exc_info=True)
             return ""
 
-    def _parse_response(self, result_text: str, doc_name: str, offset: int) -> Dict[str, Any]:
-        """Parse LLM JSON response, handle noise."""
+    def _parse_response(
+        self,
+        result_text: str,
+        doc_name: str,
+        offset: int,
+        allowed_class_types: set | None = None,
+    ) -> Dict[str, Any]:
+        """Parse LLM JSON response, handle noise / chain-of-thought wrappers."""
+        allowed = allowed_class_types or self.VALID_CLASS_TYPES
         # Strip markdown code fences
-        cleaned = re.sub(r'```(?:json)?\s*', '', result_text)
+        cleaned = re.sub(r'```(?:json)?\s*', '', result_text or '')
         cleaned = cleaned.replace('```', '').strip()
 
+        data = None
         try:
             data = json.loads(cleaned)
         except json.JSONDecodeError:
-            # Try to extract JSON from mixed text
-            match = re.search(r'\{[\s\S]*\}', cleaned)
-            if not match:
-                return {"entities": [], "relations": [], "overall_confidence": 0.0}
-            try:
-                data = json.loads(match.group(0))
-            except json.JSONDecodeError:
+            # Prefer the last JSON object — models often put reasoning first.
+            candidates = list(re.finditer(r'\{[\s\S]*\}', cleaned))
+            for match in reversed(candidates):
+                snippet = match.group(0)
+                try:
+                    data = json.loads(snippet)
+                    break
+                except json.JSONDecodeError:
+                    idx = snippet.rfind('{"entities"')
+                    if idx < 0:
+                        idx = snippet.rfind('"entities"')
+                        if idx > 0:
+                            brace = snippet.rfind('{', 0, idx)
+                            if brace >= 0:
+                                idx = brace
+                    if idx >= 0:
+                        try:
+                            data = json.loads(snippet[idx:])
+                            break
+                        except json.JSONDecodeError:  # noqa: cleanup-best-effort
+                            pass
+            if data is None:
+                logger.warning(
+                    "Could not parse extraction JSON (doc=%s offset=%d, head=%s)",
+                    doc_name, offset, (cleaned or "")[:180],
+                )
                 return {"entities": [], "relations": [], "overall_confidence": 0.0}
 
+        if not isinstance(data, dict):
+            return {"entities": [], "relations": [], "overall_confidence": 0.0}
+
+        default_type = "概念" if "概念" in allowed else next(iter(allowed), "概念")
         entities = []
         for e in data.get("entities", []):
-            class_type = e.get("class_type", "概念")
-            if class_type not in self.VALID_CLASS_TYPES:
-                class_type = "概念"
+            class_type = e.get("class_type", default_type)
+            if class_type not in allowed:
+                class_type = default_type
             entities.append(ExtractedEntity(
                 entity_id=str(uuid.uuid4())[:12],
                 name=e.get("name", "unknown"),
@@ -354,8 +536,13 @@ class ExtractionPipeline:
     async def run(self, text: str, doc_name: str = "uploaded_doc",
                   domain_id: str = "default") -> List[ExtractionResult]:
         """Run full extraction pipeline on a document. Returns results by confidence tier."""
-        chunks = self.ingestor.ingest(text, doc_name)
-        logger.info("Document '%s' split into %d chunks", doc_name, len(chunks))
+        max_chunks = _extract_max_chunks()
+        chunks = self.ingestor.ingest(text, doc_name, max_chunks=max_chunks)
+        truncated_chunks = len(text) > max_chunks * self.ingestor.MAX_CHUNK_SIZE
+        logger.info(
+            "Document '%s' split into %d chunks (max=%d truncated=%s)",
+            doc_name, len(chunks), max_chunks, truncated_chunks,
+        )
 
         all_entities: List[ExtractedEntity] = []
         all_relations: List[ExtractedRelation] = []
@@ -375,6 +562,8 @@ class ExtractionPipeline:
 
         avg_conf = total_confidence / max(chunk_count, 1)
         extraction_id = str(uuid.uuid4())[:12]
+        # 工厂页要求「待确认列表逐条确认」：高置信度也进 pending，不静默 auto_accept
+        status = self._route_status(avg_conf, entity_count=len(all_entities))
 
         result = ExtractionResult(
             extraction_id=extraction_id,
@@ -383,9 +572,12 @@ class ExtractionPipeline:
             entities=all_entities,
             relations=all_relations,
             overall_confidence=round(avg_conf, 3),
-            status=self._route_status(avg_conf),
+            status=status,
             created_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         )
+        # stash truncate flag for API warning (non-persisted attr)
+        result._truncated_chunks = truncated_chunks  # type: ignore[attr-defined]
+        result._chunk_count = len(chunks)  # type: ignore[attr-defined]
 
         if result.status in ("auto_accepted", "pending"):
             path = self.writer.write(result)
@@ -395,8 +587,9 @@ class ExtractionPipeline:
 
         # ── P0-3 接线：抽取结果 → kb_graph（文档三元组）+ kb_embeddings（向量库）──
         # Best-effort: 无 LLM/embedding 模型时静默跳过，不阻断抽取主流程。
+        # Only wire the (already capped) chunks used for LLM — never the full dump.
         try:
-            await self._wire_kb(all_relations, chunks, doc_name, tenant_id)
+            await self._wire_kb(all_relations, chunks, doc_name, tenant_id="default")
         except Exception:
             logger.debug("kb wiring (graph/vector) failed", exc_info=True)
         return [result]
@@ -442,10 +635,11 @@ class ExtractionPipeline:
             logger.info("kb_embeddings: %d/%d chunks stored (tenant=%s)",
                         with_emb, len(entries), tenant_id)
 
-    def _route_status(self, confidence: float) -> str:
-        if confidence >= 0.85:
-            return "auto_accepted"
-        elif confidence >= 0.60:
+    def _route_status(self, confidence: float, entity_count: int = 0) -> str:
+        """Route by confidence. Factory UX always needs human confirm → pending."""
+        if entity_count <= 0:
+            return "rejected"
+        if confidence >= 0.60:
             return "pending"
         return "rejected"
 
@@ -634,6 +828,21 @@ class PendingExtractionStore:
             ))
             await db.commit()
 
+    async def get_row(self, extraction_id: str) -> Optional[Dict[str, Any]]:
+        import aiosqlite
+
+        eid = (extraction_id or "").strip()
+        if not eid:
+            return None
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT * FROM pending_extractions WHERE extraction_id=?",
+                (eid,),
+            ) as cur:
+                row = await cur.fetchone()
+        return dict(row) if row else None
+
     async def list_pending(self, domain_id: str = "") -> List[Dict[str, Any]]:
         import aiosqlite
         async with aiosqlite.connect(self.db_path) as db:
@@ -752,15 +961,33 @@ class PendingExtractionStore:
             # Fallback stub so confirm still creates a reviewable proposal
             entities = [{"name": str(row.get("source_doc") or "ExtractedEntity"), "type": "ExtractedEntity"}]
 
-        # Propose first new-looking entity as edge-tier class stub
-        ent = entities[0] if isinstance(entities[0], dict) else {"name": str(entities[0])}
-        class_name = str(ent.get("type") or ent.get("class") or "ExtractedEntity")
-        label = str(ent.get("name") or class_name)
-        safe_name = "".join(ch if ch.isalnum() or ch == "_" else "_" for ch in class_name)[:64] or "ExtractedEntity"
+        # Propose unique class_types from extraction as edge-tier stubs
+        class_types: list[str] = []
+        labels: dict[str, str] = {}
+        for item in entities:
+            ent = item if isinstance(item, dict) else {"name": str(item)}
+            ct = str(
+                ent.get("class_type") or ent.get("type") or ent.get("class") or ""
+            ).strip()
+            if not ct:
+                continue
+            if ct not in class_types:
+                class_types.append(ct)
+                labels[ct] = str(ent.get("name") or ct)
+        if not class_types:
+            class_types = ["ExtractedEntity"]
+            labels["ExtractedEntity"] = str(
+                (entities[0].get("name") if isinstance(entities[0], dict) else entities[0])
+                if entities else "ExtractedEntity"
+            )
 
         from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore
 
         store = VersionedOntologyStore(domain_id)
+        # One proposal with first new-looking type (reviewable in ③)
+        class_name = class_types[0]
+        safe_name = "".join(ch if ch.isalnum() or ch == "_" else "_" for ch in class_name)[:64] or "ExtractedEntity"
+        label = labels.get(class_name, class_name)
         proposal_id = await store.create_proposal(
             {
                 "add": {
@@ -769,7 +996,10 @@ class PendingExtractionStore:
                         "label": label,
                         "tier": "edge",
                         "required_fields": ["name"],
-                        "description": f"Auto-proposed from extraction {row.get('extraction_id')}",
+                        "description": (
+                            f"Auto-proposed from extraction {row.get('extraction_id')}; "
+                            f"types={','.join(class_types[:8])}"
+                        ),
                     }
                 }
             },

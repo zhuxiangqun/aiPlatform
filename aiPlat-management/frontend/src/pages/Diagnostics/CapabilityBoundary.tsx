@@ -41,6 +41,7 @@ interface DomainData {
   skills: DomainSkill[];
   known_gaps: KnownGap[];
   recommend_next: string[];
+  recommend_platform?: string[];
 }
 
 interface CapabilityBoundaryData {
@@ -94,15 +95,18 @@ const SEVERITY_CONFIG: Record<string, { icon: any; color: string }> = {
 
 interface CapabilityBoundaryProps {
   readonly industry?: string | null;
+  /** 当前 FDE 已选评估域 — 置顶并默认展开，避免 20+ 域淹没交付建议 */
+  readonly focusDomainId?: string | null;
   readonly onSelect?: ((domain: { id: string; maturity: string; skillsAvailable: number }) => void) | null;
 }
 
-const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({ industry, onSelect }) => {
+const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({ industry, focusDomainId, onSelect }) => {
   const [data, setData] = useState<CapabilityBoundaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [l6Status, setL6Status] = useState<{[k: string]: boolean}>({});
+  const [onlyFocus, setOnlyFocus] = useState(!!focusDomainId);
 
   useEffect(() => {
     fetch('/api/core/diagnostics/capability-boundary')
@@ -122,6 +126,12 @@ const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({ industry, onSel
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!focusDomainId) return;
+    setOnlyFocus(true);
+    setExpanded((prev) => ({ ...prev, [focusDomainId]: true }));
+  }, [focusDomainId]);
 
   const toggleExpand = (id: string) => {
     setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
@@ -144,15 +154,24 @@ const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({ industry, onSel
     );
   }
 
-  const sortedDomains = Object.entries(data.domains || {}).sort(
-    ([, a], [, b]) => maturityStyle(a.maturity).order - maturityStyle(b.maturity).order
-  );
+  const sortedDomains = Object.entries(data.domains || {})
+    .filter(([id]) => {
+      if (!onlyFocus || !focusDomainId) return true;
+      return id === focusDomainId;
+    })
+    .sort(([idA, a], [idB, b]) => {
+      if (focusDomainId) {
+        if (idA === focusDomainId) return -1;
+        if (idB === focusDomainId) return 1;
+      }
+      return maturityStyle(a.maturity).order - maturityStyle(b.maturity).order;
+    });
 
   const allSeeding = sortedDomains.length > 0 && sortedDomains.every(
     ([, d]) => d.maturity === 'seeding'
   );
 
-  if (allSeeding) {
+  if (allSeeding && !focusDomainId) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
         <Database className="w-10 h-10 text-gray-600" />
@@ -161,21 +180,47 @@ const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({ industry, onSel
         </div>
         <div className="text-xs text-gray-500 max-w-md space-y-2">
           <p>
-            下一步：打开侧边栏「基础设施层」→「本体管理」，
-            选择与客户行业最接近的域，注入种子数据。
+            下一步：打开侧边栏「知识 → 业务说明书」，
+            选择与客户行业最接近的域，从文档生成并确认写入知识图。
           </p>
-          <p>
-            💻 或通过终端：<code className="text-blue-400 bg-gray-800 px-1 rounded">seed_wiki.py</code> + <code className="text-blue-400 bg-gray-800 px-1 rounded">ingest_seed.py</code>
-            （详见 CLI 参考文档）。
-          </p>
-          <p>创建域 Skill 后，这里会显示"构建中"状态。</p>
+          <p>FDE 主路径仍是 ①客户 → ②选域 → ③诊断，不必先补 Skill / Golden Query。</p>
         </div>
       </div>
     );
   }
 
+  const focusMeta = focusDomainId ? data.domains[focusDomainId] : null;
+
   return (
     <div className="space-y-6">
+      {focusDomainId && (
+        <div className="rounded-lg border border-sky-700/40 bg-sky-950/25 px-4 py-3 space-y-2">
+          <div className="text-sm text-sky-100 font-medium">
+            当前交付域：{focusMeta?.name || focusDomainId}
+            <span className="ml-2 font-mono text-[11px] text-gray-500">{focusDomainId}</span>
+          </div>
+          <div className="text-[11px] text-gray-400 leading-relaxed">
+            FDE 主路径看上方蓝条（通常是「前往 ③ 问题重构」）。下面「交付下一步」才是图数据缺口；
+            Skill / Golden / llm_prompt 已收进「平台完善（可选）」，不是进场阻塞。
+          </div>
+          <div className="flex items-center gap-3 text-[11px]">
+            <button
+              type="button"
+              onClick={() => setOnlyFocus((v) => !v)}
+              className="text-sky-300 hover:text-sky-200 underline-offset-2 hover:underline"
+            >
+              {onlyFocus ? '显示全部域' : '只看当前交付域'}
+            </button>
+            <a
+              href={`/knowledge/business?tab=factory&domain=${encodeURIComponent(focusDomainId)}`}
+              className="text-emerald-300/90 hover:text-emerald-200"
+            >
+              去业务说明书补图 →
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* Summary bar */}
       <div className="grid grid-cols-5 gap-3">
         {(['production-ready', 'stable', 'building', 'growing', 'seeding'] as Maturity[]).map(m => {
@@ -221,10 +266,14 @@ const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({ industry, onSel
          {sortedDomains.map(([id, domain]) => {
            const mc = maturityStyle(domain.maturity);
            const isExpanded = expanded[id] ?? false;
+           const isFocus = !!focusDomainId && id === focusDomainId;
            const isRecommended = !!industry && INDUSTRY_DOMAIN_MAP[industry.toLowerCase()]?.includes(id);
+           const platformRecs = domain.recommend_platform || [];
 
            return (
-             <div key={id} className={`rounded-lg bg-gray-800/50 border overflow-hidden ${isRecommended ? 'border-green-500/50' : 'border-gray-700/50'}`}>
+             <div key={id} className={`rounded-lg bg-gray-800/50 border overflow-hidden ${
+               isFocus ? 'border-sky-500/60' : isRecommended ? 'border-green-500/50' : 'border-gray-700/50'
+             }`}>
                {/* Header — clickable */}
                <div
                  className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-800/70"
@@ -233,14 +282,16 @@ const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({ industry, onSel
                  <div className="flex items-center gap-3">
                    {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-gray-500" />}
                    <span className="font-medium text-gray-200">{domain.name}</span>
-                   {isRecommended && <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full">推荐</span>}
+                   {isFocus && <span className="text-[10px] bg-sky-500/20 text-sky-300 px-1.5 py-0.5 rounded-full">当前交付</span>}
+                   {isRecommended && !isFocus && <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full">推荐</span>}
                    <span className={`text-xs px-2 py-0.5 rounded-full ${mc.bg} ${mc.color}`}>
                     {mc.label}
                   </span>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-gray-400">
                   <span className="flex items-center gap-1"><Database className="w-3 h-3" />{domain.metrics.wiki_entities}</span>
-                  <span className="flex items-center gap-1"><Zap className="w-3 h-3" />{domain.metrics.skills_available}/{domain.metrics.skills_available}</span>
+                  <span className="flex items-center gap-1 text-gray-500">边 {domain.metrics.wiki_relations}</span>
+                  <span className="flex items-center gap-1"><Zap className="w-3 h-3" />{domain.metrics.skills_available}</span>
                   <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" />{domain.metrics.golden_queries}</span>
                 </div>
               </div>
@@ -295,19 +346,36 @@ const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({ industry, onSel
                     </div>
                   )}
 
-                  {/* Recommendations */}
+                  {/* Delivery recommendations */}
                   {domain.recommend_next.length > 0 && (
                     <div>
-                      <div className="text-xs font-semibold text-gray-400 mb-2">建议下一步</div>
+                      <div className="text-xs font-semibold text-amber-300/90 mb-2">交付下一步（优先）</div>
                       <ul className="space-y-1">
                         {domain.recommend_next.map((rec, i) => (
-                          <li key={i} className="text-xs text-blue-300 flex items-start gap-1">
-                            <span className="text-blue-500 mt-0.5">→</span>
+                          <li key={i} className="text-xs text-amber-100/90 flex items-start gap-1">
+                            <span className="text-amber-400 mt-0.5">→</span>
                             {rec}
                           </li>
                         ))}
                       </ul>
                     </div>
+                  )}
+
+                  {/* Platform hygiene — collapsed by default via details */}
+                  {platformRecs.length > 0 && (
+                    <details className="rounded border border-gray-700/50 bg-gray-900/40">
+                      <summary className="cursor-pointer select-none px-2.5 py-1.5 text-xs text-gray-500 hover:text-gray-300">
+                        平台完善（可选 · 非交付阻塞）· {platformRecs.length} 项
+                      </summary>
+                      <ul className="px-2.5 pb-2 space-y-1">
+                        {platformRecs.map((rec, i) => (
+                          <li key={i} className="text-xs text-gray-500 flex items-start gap-1">
+                            <span className="text-gray-600 mt-0.5">·</span>
+                            {rec}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
                   )}
                 </div>
               )}

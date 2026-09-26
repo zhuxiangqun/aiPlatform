@@ -62,20 +62,29 @@ export function getGovDetailLabel(record: Record<string, any> | null | undefined
   const g = (record.metadata as any)?.governance || {};
   const v = (record.metadata as any)?.verification || {};
   const st = String((g?.status || v?.status || '')).toLowerCase();
-  if (st === 'verified')  return { label: 'verified', color: '#10b981' };
-  if (st === 'published') return { label: 'published', color: '#3b82f6' };
-  if (st === 'failed')    return { label: 'failed', color: '#ef4444' };
-  if (st === 'pending')   return { label: 'pending', color: '#f59e0b' };
+  if (st === 'verified')  return { label: '已通过', color: '#10b981' };
+  if (st === 'published') return { label: '已发布', color: '#3b82f6' };
+  if (st === 'failed')    return { label: '未通过', color: '#ef4444' };
+  if (st === 'pending')   return { label: '评测中', color: '#f59e0b' };
   return { label: '未签名', color: '#6b7280' };
 }
 
 /** Rich governance badge (Workspace Skills) */
 export function GovDetailBadge({ record }: { record?: Record<string, any> | null }) {
   const { label, color } = getGovDetailLabel(record);
+  const prov = (record?.metadata as any)?.provenance || {};
+  const reason = String(prov?.signature_verified_reason || '');
+  const title =
+    label === '已签名'
+      ? `已写入签名，但尚未通过可信公钥校验（≠已验签）${reason ? `：${reason}` : ''}。本机试跑一般不受影响。`
+      : label === '已验签'
+        ? '签名已通过可信公钥校验'
+        : undefined;
   return (
     <span
       className="inline-flex px-2 py-0.5 rounded text-xs font-medium"
       style={{ color, background: `${color}15`, border: `1px solid ${color}30` }}
+      title={title}
     >
       {label}
     </span>

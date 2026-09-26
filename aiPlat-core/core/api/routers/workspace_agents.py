@@ -28,6 +28,21 @@ kLlmConfig = _LlmConfig(model="", timeout=120)
 
 router = APIRouter()
 
+# agent-role-system / agent-auto-fill* live in apps/builder/prompts; core server
+# never imports that package, so register here before auto-fill resolves them.
+def _ensure_builder_agent_prompts() -> None:
+    try:
+        from core.apps.builder.prompts import register_builder_prompts
+        register_builder_prompts()
+    except Exception:
+        logging.getLogger(__name__).warning(
+            "builder agent prompts not registered — auto-fill may 503",
+            exc_info=True,
+        )
+
+
+_ensure_builder_agent_prompts()
+
 RuntimeDep = Annotated[Optional[KernelRuntime], Depends(get_kernel_runtime)]
 
 # Legacy in-memory fallback for dev-mode / no ExecutionStore scenarios.
@@ -201,6 +216,7 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
                          if getattr(request, "trigger_conditions", None) else {}),
                       **({"permissions": getattr(request, "permissions", None)}
                          if getattr(request, "permissions", None) else {}),},
+            reuse_equivalent=bool(getattr(request, "reuse_equivalent", True)),
         )
         # If created from import (URL or file), materialize all source files into agent dir
         md = request.metadata or {}
@@ -431,38 +447,75 @@ def _extract_json_fallback(clean: str, raw_content: str, _re, _json, _log) -> di
     return None
 
 
-def _scan_skills_direct() -> List[Dict[str, Any]]:
-    """Scan engine + workspace skill directories, return structured entries.
-    
-    Returns list of {name, display_name, category, description, triggers}.
+# LLM often invents engine skill / tool names; map to workspace MultiSelect ids.
+_SKILL_ALIAS_TO_WORKSPACE: Dict[str, str] = {
+    "file_read": "knowledge_ingest_doc",
+    "text_generation": "summarize",
+    "summarization": "summarize",
+    "summarize": "summarize",
+    "doc_query": "knowledge_query_doc",
+    "document_query": "knowledge_query_doc",
+    "knowledge_query": "knowledge_query_doc",
+    "knowledge_ingest": "knowledge_ingest_doc",
+    "information_search": "knowledge_multi_query",
+    "code_generation": "code",
+    "code_gen": "code",
+    "requirement_analysis": "requirement_analysis",
+    "http_request": "http_request",
+    "http": "http_request",
+    "grilling": "requirement_analysis",
+}
+
+_TOOL_ALIAS_TO_NAME: Dict[str, str] = {
+    "file_operations": "file_operations",
+    "file_read": "file_operations",
+    "file_write": "file_operations",
+    "code_execution": "code",
+    "code_execution_sandbox": "code",
+    "http": "http",
+    "http_request": "http",
+    "search": "search",
+    "web_search": "web_search",
+    "information_search": "web_search",
+    "webfetch": "webfetch",
+    "browser": "browser",
+}
+
+
+def _scan_skills_direct(*, workspace_only: bool = False) -> List[Dict[str, Any]]:
+    """Scan skill directories; return {id, name, display_name, category, description, triggers}.
+
+    workspace_only=True: only ~/.aiplat/skills — same pool as 应用库 Agent MultiSelect.
     """
     import yaml as _yaml
     from pathlib import Path as _Py
     import os as _os
-    entries = []
-    
-    # Engine skills
+    entries: List[Dict[str, Any]] = []
+    seen: set = set()
+
     engine_root = None
-    here = _Py(__file__).resolve()
-    for _ in range(6):
-        candidate = here.parent
-        eng = candidate / "core" / "engine" / "skills"
-        if eng.exists():
-            engine_root = eng
-            break
-        here = here.parent
-    if not engine_root:
-        try:
-            import core as _core
-            if hasattr(_core, '__file__') and _core.__file__:
-                engine_root = _Py(_os.path.dirname(_core.__file__)) / "engine" / "skills"
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-    
+    if not workspace_only:
+        here = _Py(__file__).resolve()
+        for _ in range(6):
+            candidate = here.parent
+            eng = candidate / "core" / "engine" / "skills"
+            if eng.exists():
+                engine_root = eng
+                break
+            here = here.parent
+        if not engine_root:
+            try:
+                import core as _core
+                if hasattr(_core, '__file__') and _core.__file__:
+                    engine_root = _Py(_os.path.dirname(_core.__file__)) / "engine" / "skills"
+            except Exception as e:
+                logging.warning(str(e), exc_info=True)
+
     aiplat_home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
     workspace_root = _Py(aiplat_home) / "skills"
-    
-    for root in (engine_root, workspace_root):
+
+    roots = (workspace_root,) if workspace_only else (workspace_root, engine_root)
+    for root in roots:
         if not root or not root.exists():
             continue
         for skill_dir in sorted(root.iterdir()):
@@ -479,10 +532,16 @@ def _scan_skills_direct() -> List[Dict[str, Any]]:
                 if len(parts) < 3:
                     continue
                 fm = _yaml.safe_load(parts[1]) or {}
-                skill_id = str(fm.get("name") or skill_dir.name)
+                # Prefer directory name: matches workspace SkillManager id / frontend value
+                skill_id = str(skill_dir.name).strip()
+                skill_name = str(fm.get("name") or skill_id).strip()
+                if skill_id in seen:
+                    continue
+                seen.add(skill_id)
                 entries.append({
-                    "name": skill_id,
-                    "display_name": str(fm.get("display_name") or fm.get("displayName") or skill_id),
+                    "id": skill_id,
+                    "name": skill_name,
+                    "display_name": str(fm.get("display_name") or fm.get("displayName") or skill_name or skill_id),
                     "category": str(fm.get("category") or ""),
                     "description": str(fm.get("description") or ""),
                     "triggers": list(fm.get("triggers") or []),
@@ -492,46 +551,151 @@ def _scan_skills_direct() -> List[Dict[str, Any]]:
     return entries
 
 
+def _scan_tools_direct() -> List[Dict[str, str]]:
+    """List bindable tool names for auto-fill (same names frontend MultiSelect uses)."""
+    known = [
+        ("calculator", "执行数学计算"),
+        ("search", "搜索互联网信息"),
+        ("file_operations", "读写文件"),
+        ("webfetch", "抓取网页内容"),
+        ("http", "发送 HTTP 请求"),
+        ("code", "沙箱执行代码"),
+        ("database", "数据库查询"),
+        ("browser", "浏览器自动化"),
+        ("web_search", "统一 Web 搜索"),
+        ("routed_retrieve", "意图路由检索"),
+    ]
+    return [{"id": n, "name": n, "description": d} for n, d in known]
+
+
+def _scan_mcp_direct() -> List[Dict[str, str]]:
+    """List bindable MCP server names (engine + workspace)."""
+    entries: List[Dict[str, str]] = []
+    seen = set()
+    try:
+        from core.management.mcp_manager import MCPManager as _Mgr
+
+        for scope in (None, "workspace"):
+            mgr = _Mgr() if scope is None else _Mgr(scope="workspace")
+            for srv in list(mgr.list_servers() or []):
+                name = str(getattr(srv, "name", "") or "").strip()
+                if not name or name in seen:
+                    continue
+                seen.add(name)
+                meta = getattr(srv, "metadata", None) or {}
+                desc = ""
+                if isinstance(meta, dict):
+                    desc = str(meta.get("description") or "")[:80]
+                entries.append(
+                    {
+                        "id": name,
+                        "name": name,
+                        "description": desc
+                        or f"transport={getattr(srv, 'transport', '')} enabled={getattr(srv, 'enabled', True)}",
+                    }
+                )
+    except Exception:  # noqa: cleanup-best-effort
+        pass
+    return entries
+
+
+def _resolve_skill_id(token: str, catalog_ids: set, name_to_id: Dict[str, str]) -> Optional[str]:
+    """Map LLM token → workspace skill id, or None if unknown."""
+    if not token or not isinstance(token, str):
+        return None
+    t = token.strip()
+    if not t:
+        return None
+    if t in catalog_ids:
+        return t
+    if t in name_to_id and name_to_id[t] in catalog_ids:
+        return name_to_id[t]
+    alias = _SKILL_ALIAS_TO_WORKSPACE.get(t) or _SKILL_ALIAS_TO_WORKSPACE.get(t.lower())
+    if alias and alias in catalog_ids:
+        return alias
+    # display-name / fuzzy: case-insensitive id match
+    lower = {c.lower(): c for c in catalog_ids}
+    if t.lower() in lower:
+        return lower[t.lower()]
+    return None
+
+
+def _resolve_tool_names(tokens: List[str], text_blob: str = "") -> List[str]:
+    """Map explicit tool tokens → real tool names. No free-text keyword expansion."""
+    tool_ids = {t["id"] for t in _scan_tools_direct()}
+    out: List[str] = []
+
+    def _add(name: str) -> None:
+        if name in tool_ids and name not in out:
+            out.append(name)
+
+    for tok in tokens or []:
+        if not isinstance(tok, str):
+            continue
+        t = tok.strip()
+        if t in tool_ids:
+            _add(t)
+            continue
+        alias = _TOOL_ALIAS_TO_NAME.get(t) or _TOOL_ALIAS_TO_NAME.get(t.lower())
+        if alias:
+            _add(alias)
+    # text_blob kept for call-site compat; intentionally unused (SOP-driven bind instead)
+    _ = text_blob
+    return out[:6]
+
+
+# Soft SOP tokens must never auto-bind these unless explicitly backticked / needed_*.
+_SOFT_BIND_DENY_SKILLS = frozenset({
+    "app_page_generation", "webhook_trigger", "auth_agent", "parser_agent",
+    "orchestrator_agent", "capability_scout", "refactor_flat_to_layered",
+    "ponytail-lazy", "security-auditor", "skill_format_validate", "test-engineer",
+    "web-perf-auditor", "output_style_adhd", "last30days",
+})
+_SOFT_BIND_DENY_TOOLS = frozenset({
+    "search", "web_search", "webfetch", "browser", "database", "http",
+    "calculator", "routed_retrieve",
+})
+_PPT_LIKE_HINTS = ("PPT", "ppt", "pptx", "幻灯", "演示文稿", "模版", "模板")
+_PPT_MIN_TOOLS = ("file_operations", "code")
+_PPT_MIN_SKILLS = ("requirement_analysis", "summarize", "code")
+
+
 def _map_capabilities_to_skills(capabilities: list, skill_catalog: list) -> list:
     """Map role capabilities to skills via SKILL.md description + triggers overlap.
     
     No hardcoded keywords. Pure configuration-driven.
+    Returns skill ids (frontend MultiSelect values).
     """
-    import re as _re
     scored = []
     for skill in skill_catalog:
         desc = (skill.get('description','') or '').lower()
         trigs = ' '.join(str(t) for t in (skill.get('triggers') or [])).lower()
-        cat = (skill.get('category','') or '').lower()
         name = (skill.get('name','') or '').lower()
         disp = (skill.get('display_name','') or '').lower()
+        sid = skill.get('id') or skill.get('name') or ''
         
         score = 0
         for cap in capabilities:
             cap_lower = cap.lower()
-            # Triggers match = strongest signal (3x)
             if cap_lower in trigs:
                 score += 6
-            # Display name / skill name direct match
             if cap_lower in name or cap_lower in disp:
                 score += 5
-            # Description contains capability
             if cap_lower in desc:
                 score += 4
-            # Character bigram overlap (Chinese word-like matching)
             cap_bigrams = {cap_lower[i:i+2] for i in range(len(cap_lower)-1)} if len(cap_lower) >= 2 else set()
             trig_bigrams = {trigs[i:i+2] for i in range(len(trigs)-1)} if len(trigs) >= 2 else set()
             desc_bigrams = {desc[i:i+2] for i in range(len(desc)-1)} if len(desc) >= 2 else set()
-            trig_hit = len(cap_bigrams & trig_bigrams)  # Matches against triggers (higher weight)
+            trig_hit = len(cap_bigrams & trig_bigrams)
             desc_hit = len(cap_bigrams & desc_bigrams)
             if trig_hit >= 1:
                 score += trig_hit * 3
             elif desc_hit >= 2:
                 score += desc_hit
-        if score > 0:
-            scored.append((skill["name"], score))
+        if score > 0 and sid:
+            scored.append((sid, score))
     scored.sort(key=lambda x: -x[1])
-    return [s[0] for s in scored[:3]]  # Top 3 matches
+    return [s[0] for s in scored[:3]]
 
 
 def _generate_sop_from_role(role_def: dict, skills: list) -> str:
@@ -766,75 +930,529 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
         import traceback, logging
         logging.getLogger("auto-fill").error("agent_auto_fill crashed: %s\n%s", e, traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
+
+
+@router.post("/workspace/agents/create-dialog", response_model=Dict[str, Any])
+async def agent_create_dialog(request: Dict[str, Any], rt: RuntimeDep = None):
+    """Conversational Agent creation: clarify → draft (auto-fill). Create still via POST /workspace/agents."""
+    import logging as _logging
+
+    text = str(request.get("text") or "").strip()
+    history = request.get("history") if isinstance(request.get("history"), list) else []
+    try:
+        from core.apps.builder.service.agent_create_dialog import run_agent_create_dialog_turn
+
+        return await run_agent_create_dialog_turn(text=text, history=history)
+    except HTTPException:
+        raise
+    except Exception as e:
+        _logging.getLogger("agent-create-dialog").exception("agent create dialog failed")
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+def _extract_tokens_from_sop(sop: str) -> Dict[str, List[str]]:
+    """Pull SOP refs. intentional = backticks / [[need:]]; soft = bare snake_case (bind only if whitelisted)."""
+    import re as _re
+    intentional: List[str] = []
+    soft: List[str] = []
+    if not sop:
+        return {"intentional": [], "soft": []}
+    for m in _re.finditer(r"\[\[\s*need\s*:\s*([^\]]+?)\s*\]\]", sop, flags=_re.IGNORECASE):
+        intentional.append(m.group(1).strip())
+    for m in _re.finditer(r"`([a-zA-Z][\w\-]{1,64})`", sop):
+        intentional.append(m.group(1).strip())
+    for m in _re.finditer(r"\b([a-z][a-z0-9_]{2,48})\b", sop):
+        soft.append(m.group(1).strip())
+    def _dedupe(items: List[str]) -> List[str]:
+        out: List[str] = []
+        seen = set()
+        skip = {
+            "the", "and", "for", "with", "from", "that", "this", "then", "when",
+            "user", "page", "file", "files", "step", "steps", "using", "use",
+            "output", "input", "return", "path", "default", "template", "content",
+            "python", "pptx", "html", "json", "markdown", "title", "outline",
+        }
+        for t in items:
+            key = t.lower()
+            if key in seen or len(t) < 3 or key in skip:
+                continue
+            seen.add(key)
+            out.append(t)
+        return out
+    return {"intentional": _dedupe(intentional), "soft": _dedupe(soft)}
+
+
+def _bind_from_sop(
+    sop_text: str,
+    *,
+    skill_catalog: List[Dict[str, Any]],
+    tool_catalog: List[Dict[str, Any]],
+    name_to_id: Dict[str, str],
+    llm_needed_skills: Optional[List[str]] = None,
+    llm_needed_tools: Optional[List[str]] = None,
+    llm_needed_mcps: Optional[List[str]] = None,
+    mcp_catalog: Optional[List[Dict[str, Any]]] = None,
+    agent_blob: str = "",
+) -> Dict[str, Any]:
+    """Bind only whitelist hits referenced by SOP (+ intentional needed_*); rest → suggestions."""
+    catalog_ids = {str(s.get("id") or s.get("name")) for s in skill_catalog if s.get("id") or s.get("name")}
+    display_to_id: Dict[str, str] = {}
+    for s in skill_catalog:
+        sid = str(s.get("id") or s.get("name") or "")
+        if not sid:
+            continue
+        for key in (s.get("display_name"), s.get("name"), sid):
+            if key:
+                display_to_id[str(key).strip().lower()] = sid
+    tool_ids = {t["id"] for t in tool_catalog}
+    tool_alias = dict(_TOOL_ALIAS_TO_NAME)
+    mcp_ids_set = {
+        str(m.get("id") or m.get("name") or "").strip()
+        for m in (mcp_catalog or [])
+        if m.get("id") or m.get("name")
+    }
+    mcp_ids_set.discard("")
+    mcp_norm = {x.lower(): x for x in mcp_ids_set}
+
+    extracted = _extract_tokens_from_sop(sop_text)
+    intentional = list(extracted.get("intentional") or [])
+    soft = list(extracted.get("soft") or [])
+    sop_explicit = {t.lower() for t in intentional}
+    soft_keys = {t.lower() for t in soft}
+    sop_l = sop_text or ""
+    catalog_ids_early = catalog_ids
+    tool_ids_early = tool_ids
+
+    for lst in (llm_needed_skills or [], llm_needed_tools or [], llm_needed_mcps or []):
+        for x in lst:
+            if not isinstance(x, str) or not x.strip():
+                continue
+            tok = x.strip()
+            if tok.lower().startswith("mcp:"):
+                tok = tok.split(":", 1)[1].strip() or tok
+            key = tok.lower()
+            in_sop = key in sop_explicit or f"`{tok}`" in sop_l
+            if not in_sop and key in soft_keys:
+                if tok not in _SOFT_BIND_DENY_SKILLS and key not in _SOFT_BIND_DENY_TOOLS:
+                    in_sop = True
+            in_whitelist = (
+                tok in catalog_ids_early
+                or tok in tool_ids_early
+                or key in mcp_norm
+                or key in {a.lower() for a in _TOOL_ALIAS_TO_NAME}
+                or key in {a.lower() for a in _SKILL_ALIAS_TO_WORKSPACE}
+            )
+            if in_sop or not in_whitelist:
+                intentional.append(tok)
+
+    skills: List[str] = []
+    tools: List[str] = []
+    mcp_ids: List[str] = []
+    missing_skills: List[Dict[str, str]] = []
+    missing_tools: List[Dict[str, str]] = []
+    missing_mcps: List[Dict[str, str]] = []
+    seen_miss_s, seen_miss_t, seen_miss_m = set(), set(), set()
+
+    def _add_skill(sid: str) -> None:
+        if sid in catalog_ids and sid not in skills:
+            skills.append(sid)
+
+    def _add_tool(name: str) -> None:
+        if name in tool_ids and name not in tools:
+            tools.append(name)
+
+    def _add_mcp(name: str) -> None:
+        real = mcp_norm.get(name.lower()) or (name if name in mcp_ids_set else "")
+        if real and real not in mcp_ids:
+            mcp_ids.append(real)
+
+    for tok in soft:
+        key = tok.lower()
+        if tok in tool_ids and key not in _SOFT_BIND_DENY_TOOLS:
+            _add_tool(tok)
+            continue
+        if key in mcp_norm:
+            _add_mcp(tok)
+            continue
+        if tok in catalog_ids and tok not in _SOFT_BIND_DENY_SKILLS:
+            _add_skill(tok)
+
+    for disp, sid in display_to_id.items():
+        if len(disp) < 2 or sid not in catalog_ids or sid in skills:
+            continue
+        if not any("\u4e00" <= ch <= "\u9fff" for ch in disp):
+            continue
+        if disp not in sop_l:
+            continue
+        if sid in _SOFT_BIND_DENY_SKILLS and sid.lower() not in sop_explicit and disp.lower() not in sop_explicit:
+            continue
+        _add_skill(sid)
+
+    for tok in intentional:
+        raw = tok
+        if tok.lower().startswith("mcp:"):
+            tok = tok.split(":", 1)[1].strip() or tok
+        t_alias = tool_alias.get(tok) or tool_alias.get(tok.lower())
+        if tok in tool_ids or (t_alias and t_alias in tool_ids):
+            _add_tool(tok if tok in tool_ids else t_alias)  # type: ignore[arg-type]
+            continue
+
+        if tok.lower() in mcp_norm or tok in mcp_ids_set:
+            _add_mcp(tok)
+            continue
+
+        sid = _resolve_skill_id(tok, catalog_ids, name_to_id)
+        if not sid:
+            sid = display_to_id.get(tok.lower())
+        if sid and sid in catalog_ids:
+            _add_skill(sid)
+            continue
+
+        looks_mcp = (
+            raw.lower().startswith("mcp:")
+            or tok.lower().startswith("mcp_")
+            or tok.lower().endswith("_mcp")
+        )
+        looks_tool = (
+            tok.lower() in tool_alias
+            or tok.endswith("_tool")
+            or tok in ("browser", "webfetch", "calculator", "database", "repo", "search", "http")
+        )
+        if looks_mcp:
+            if tok.lower() not in seen_miss_m:
+                seen_miss_m.add(tok.lower())
+                missing_mcps.append(
+                    {
+                        "capability": tok,
+                        "how_to_create": (
+                            f"应用能力层 → MCP 库 → 对话创建/创建「{tok}」→ 启用并测试 → 回到 Agent 重新填充"
+                        ),
+                    }
+                )
+        elif looks_tool:
+            if tok.lower() not in seen_miss_t:
+                seen_miss_t.add(tok.lower())
+                missing_tools.append(_describe_tool_gap(tok))
+        else:
+            if tok.lower() not in seen_miss_s:
+                seen_miss_s.add(tok.lower())
+                missing_skills.append(
+                    _describe_skill_gap(tok, sop_text=sop_text, agent_blob=agent_blob)
+                )
+
+    blob = f"{agent_blob} {sop_text}"
+    if any(h in blob for h in _PPT_LIKE_HINTS):
+        tools = [
+            t for t in tools
+            if t in _PPT_MIN_TOOLS or t.lower() in sop_explicit
+        ]
+        for t in _PPT_MIN_TOOLS:
+            if t in tool_ids and t not in tools:
+                tools.append(t)
+        skills = [
+            s for s in skills
+            if s not in _SOFT_BIND_DENY_SKILLS or s.lower() in sop_explicit
+        ]
+        for sid in _PPT_MIN_SKILLS:
+            if sid in catalog_ids and sid not in skills:
+                skills.append(sid)
+        skills = list(dict.fromkeys(skills))[:6]
+        tools = list(dict.fromkeys(tools))[:6]
+        mcp_ids = [m for m in mcp_ids if m.lower() in sop_explicit]
+
+    return {
+        "skills": skills[:8],
+        "tools": tools[:8],
+        "mcp_ids": mcp_ids[:8],
+        "missing_skills": missing_skills[:8],
+        "missing_tools": missing_tools[:8],
+        "missing_mcps": missing_mcps[:8],
+    }
+
+
+
+def _describe_skill_gap(capability: str, *, sop_text: str = "", agent_blob: str = "") -> Dict[str, str]:
+    """Explain what a missing skill must do + how to create it (user-facing)."""
+    cap = (capability or "").strip()
+    key = cap.lower().replace("-", "_")
+    blob = f"{agent_blob}\n{sop_text}"
+
+    # Known capability blueprints
+    if key in ("ppt_generation", "pptx_generation", "powerpoint", "slide_generation"):
+        must = (
+            "1) 输入：结构化大纲（标题/章节/每页要点）+ 可选模版路径(.pptx/.potx)或默认模版名；"
+            "2) 按模版母版/占位符逐页填充，控制单页字数；"
+            "3) 输出：生成的 .pptx 文件路径 + 页数/所用模版等元信息；"
+            "4) 不联网找素材、不编造用户未提供的事实。"
+        )
+        how = (
+            "创建步骤：\n"
+            "① 打开 应用能力层 → Skill 库 → 新建 Skill\n"
+            "② id/目录名填 ppt_generation；display_name 可用「PPT生成」\n"
+            "③ execution_type 建议 handler（真实生成文件）；若暂时用 prompt，须在 SOP 中明确调用 code+file_operations 写出 pptx\n"
+            "④ 粘贴下方「建议 SOP」到 SKILL.md 正文后保存\n"
+            "⑤ 回到本页再点「AI 智能填充」，将自动绑定该 Skill\n"
+            "临时绕过：把 Agent SOP 第 5 步改成调用已有 `code`（python-pptx）+ `file_operations`，删掉 [[need:ppt_generation]]。"
+        )
+        draft = (
+            "## 输入\n"
+            "- outline: 结构化大纲（标题、章节、每页要点）\n"
+            "- template_path: 可选，用户模版 .pptx/.potx；空则用默认商务模版\n"
+            "- output_dir: 输出目录\n\n"
+            "## 步骤\n"
+            "1. 校验 outline；模版存在则解析版式，否则加载默认模版\n"
+            "2. 按页填充占位符（标题≤20字，正文≤6条×20字）\n"
+            "3. 写出 .pptx 到 output_dir\n"
+            "4. 返回 {path, page_count, template_used}\n\n"
+            "## 约束\n"
+            "- 忠实用户内容，不编造数据\n"
+            "- 有用户模版时不擅自改母版/配色"
+        )
+        return {
+            "capability": cap,
+            "suggested_name": "ppt_generation",
+            "must_have": must,
+            "draft_sop": draft,
+            "how_to_create": f"应具备：{must}\n\n{how}\n\n建议 SOP：\n{draft}",
+        }
+
+    # Generic: pull nearby SOP line for context
+    hint = ""
+    for line in (sop_text or "").splitlines():
+        if cap in line or f"need:{cap}" in line.replace(" ", ""):
+            hint = line.strip()
+            break
+    must = (
+        f"实现 SOP 中对该能力的调用（上下文：{hint or '见 Agent SOP'}）。"
+        f"明确输入/输出 schema，能被 ReAct 通过 sys_skill_call 调用并返回可验收结果。"
+    )
+    if any(h in blob for h in _PPT_LIKE_HINTS) and "ppt" in key:
+        must += " 就本 Agent 而言，核心是「大纲+模版 → .pptx 文件」。"
+    how = (
+        f"创建步骤：应用能力层 → Skill 库 → 新建 → id 用「{cap}」→ "
+        f"写清输入/输出与步骤 SOP → 保存 → 回到本页重新智能填充。\n"
+        f"或：改写 Agent SOP，删掉 [[need:{cap}]]，改用已有白名单 Skill/Tool。"
+    )
+    return {
+        "capability": cap,
+        "suggested_name": cap,
+        "must_have": must,
+        "draft_sop": "",
+        "how_to_create": f"应具备：{must}\n\n{how}",
+    }
+
+
+def _describe_tool_gap(capability: str) -> Dict[str, str]:
+    cap = (capability or "").strip()
+    how = (
+        f"SOP 需要工具「{cap}」，当前工具白名单没有。\n"
+        f"请到 能力组装 → Tool 确认是否已注册；或改写 SOP 使用已有工具"
+        f"（常用：file_operations / code / http / web_search）。"
+    )
+    return {
+        "capability": cap,
+        "suggested_name": cap,
+        "how_to_create": how,
+    }
+
+
+def _strip_resolved_need_markers(sop: str, resolved_ids: List[str]) -> str:
+    """Replace [[need:X]] with `X` when X is already bound."""
+    import re as _re
+
+    if not sop:
+        return sop
+    resolved = {str(x).strip() for x in (resolved_ids or []) if str(x).strip()}
+    resolved_norm = {x.lower().replace("-", "_") for x in resolved}
+
+    def _repl(m):
+        name = (m.group(1) or "").strip()
+        key = name.lower().replace("-", "_")
+        if name in resolved or key in resolved_norm:
+            return f"`{name}`"
+        return m.group(0)
+
+    return _re.sub(r"\[\[\s*need\s*:\s*([^\]]+?)\s*\]\]", _repl, sop, flags=_re.IGNORECASE)
+
+
+def _wants_outbound_network(*, tools: List[str], blob: str) -> bool:
+    from core.apps.common.boundary_hints import wants_outbound_network
+
+    return wants_outbound_network(tools=tools, text=blob)
+
+
+def _mentions_external_system(text: str) -> bool:
+    """Real external SaaS/API integration — not「外部内容」/「不引入外部」negations."""
+    from core.apps.common.boundary_hints import mentions_external_system
+
+    return mentions_external_system(text)
+
+
+def _derive_agent_permissions(
+    *,
+    tools: Optional[List[str]] = None,
+    skills: Optional[List[str]] = None,
+    mcp_ids: Optional[List[str]] = None,
+    description: str = "",
+    sop_text: str = "",
+) -> List[str]:
+    """Minimal permissions from bindings + description (least privilege)."""
+    tools = [str(t) for t in (tools or []) if str(t).strip()]
+    skills = [str(s) for s in (skills or []) if str(s).strip()]
+    mcp_ids = [str(m) for m in (mcp_ids or []) if str(m).strip()]
+    blob = f"{description}\n{sop_text}\n{' '.join(tools)}\n{' '.join(skills)}".lower()
+    perms: List[str] = ["llm:generate"]
+
+    if _wants_outbound_network(tools=tools, blob=blob):
+        if "network:outbound" not in perms:
+            perms.append("network:outbound")
+
+    write_hints = (
+        "file_operations" in tools
+        or "code" in tools
+        or any(k in blob for k in ("写文件", "保存", "pptx", "落盘", "workspace_fs", "下载", "导出"))
+    )
+    if write_hints and "tool:workspace_fs_write" not in perms:
+        perms.append("tool:workspace_fs_write")
+
+    if "code" in tools and "tool:run_command" not in perms:
+        # code sandbox often needs run; keep optional — only if SOP mentions 执行/脚本
+        if any(k in blob for k in ("执行脚本", "bash", "shell", "run_command", "沙箱")):
+            perms.append("tool:run_command")
+
+    if mcp_ids and "mcp:invoke" not in perms:
+        perms.append("mcp:invoke")
+
+    # de-dupe preserve order
+    out: List[str] = []
+    seen = set()
+    for p in perms:
+        if p not in seen:
+            seen.add(p)
+            out.append(p)
+    return out
+
+
+def _append_gap_section(
+    sop: str,
+    missing_skills: list,
+    missing_tools: list,
+    missing_mcps: Optional[list] = None,
+) -> str:
+    miss_m = missing_mcps or []
+    if not missing_skills and not missing_tools and not miss_m:
+        return sop
+    lines = [sop.rstrip(), "", "## 能力缺口（需新建或改写 SOP）"]
+    for m in missing_skills:
+        must = (m.get("must_have") or "").strip()
+        how = (m.get("how_to_create") or "").strip()
+        cap = m.get("capability") or ""
+        if must:
+            lines.append(f"- Skill 缺失: {cap}")
+            lines.append(f"  - 应具备: {must}")
+            if how:
+                first = how.split("\n", 1)[0]
+                lines.append(f"  - 创建: {first}")
+        else:
+            lines.append(f"- Skill 缺失: {cap} — {how}")
+    for m in missing_tools:
+        lines.append(f"- Tool 缺失: {m.get('capability')} — {m.get('how_to_create')}")
+    for m in miss_m:
+        if not isinstance(m, dict):
+            continue
+        cap = m.get("capability") or m.get("type") or "mcp"
+        how = m.get("how_to_create") or m.get("description") or ""
+        lines.append(f"- MCP 缺失: {cap} — {how}")
+    return "\n".join(lines)[:8000]
+
+
 async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
-    """Sync auto-fill — LLM generates role, backend maps skills/tools/SOP."""
+    """SOP-first auto-fill: generate SOP → bind whitelist refs → suggest gaps."""
     import json as _json, re as _re
 
-    # ── Build role section for prompt ──────────────────────────────
-    role_section = ""
     rd = None
     if hasattr(req, "role_definition") and isinstance(req.role_definition, dict):
         rd = req.role_definition
-        role_section = f"""
-## 已确认的角色定义
-- 角色名称: {rd.get('role_name', '')}
-- 职责: {', '.join(rd.get('responsibilities', []))}
-- 使用场景: {', '.join(rd.get('scenarios', []))}
-- 需要的能力: {', '.join(rd.get('required_capabilities', []))}
-- 协作关系: {rd.get('workflow_hint', '无')}
-"""
 
-    # ── Call LLM (simplified: only agent_type + system_prompt + memory + triggers) ──
-    from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
-    # Build skill catalog summary for LLM to directly suggest matching skill names
-    # (P1: include id so LLM returns the id the frontend MultiSelect expects)
-    skill_catalog = _scan_skills_direct()
-    _name_to_id = {}
+    skill_catalog = _scan_skills_direct(workspace_only=True)
+    tool_catalog = _scan_tools_direct()
+    mcp_catalog = _scan_mcp_direct()
+    _name_to_id: Dict[str, str] = {}
     skills_text_lines = []
     for s in skill_catalog:
-        sid = s.get("id", s["name"])
-        _name_to_id[s["name"]] = sid
-        skills_text_lines.append(f"- {sid}: {s.get('description','')[:60]}")
-    skills_text = "\n".join(skills_text_lines)
+        sid = str(s.get("id") or s.get("name") or "")
+        if not sid:
+            continue
+        _name_to_id[str(s.get("name") or "")] = sid
+        _name_to_id[str(s.get("display_name") or "")] = sid
+        _name_to_id[sid] = sid
+        skills_text_lines.append(
+            f"- {sid}: {s.get('display_name') or s.get('name') or sid} — {(s.get('description') or '')[:60]}"
+        )
+    skills_text = "\n".join(skills_text_lines) or "(无可用技能)"
+    tools_text = "\n".join(
+        f"- {t['id']}: {t.get('description') or t['id']}" for t in tool_catalog
+    ) or "(无可用工具)"
+    mcps_text = "\n".join(
+        f"- {m['id']}: {m.get('description') or m['id']}" for m in mcp_catalog
+    ) or "(无可用 MCP；需要外部系统时写 [[need:mcp:名称]])"
 
-    # Build inline prompt — LLM generates skills + config + SOP in one pass
     role_hint = ""
     if rd and isinstance(rd, dict):
-        role_hint = f"\n角色: {rd.get('role_name','')}. 职责: {', '.join(rd.get('responsibilities',[])[:3])}"
+        role_hint = (
+            f"\n角色: {rd.get('role_name','')}."
+            f" 职责: {', '.join(rd.get('responsibilities',[])[:3])}"
+        )
+
+    # Pass 1: SOP-first. Do NOT ask LLM to pick final bind lists as source of truth.
     inline_prompt = (
-        f"你是AI平台配置专家。为以下Agent推荐最佳配置。只输出JSON。\n\n"
+        f"你是 AI Agent 流程设计师。先写出可执行的 SOP，再给出配置元数据。只输出 JSON。\n\n"
         f"Agent名称: {req.name or '(待填写)'}\n"
-        f"描述: {req.description or '(无)'}\n"
+        f"功能描述: {req.description or '(无)'}\n"
         f"{role_hint}\n\n"
-        f"可用技能列表（必须从中选择，禁止使用不存在于列表中的id）:\n{skills_text}\n\n"
-        f'输出JSON: {{"agent_type":"react",'
-        f'"skills":["skill-id1","skill-id2"],"sop_text":"1. x\\n2. y\\n3. z",'
-        f'"memory_config":{{}},"reasoning":"..."}}\n'
-        f"skills必须严格从以上列表选取。若无匹配项skills留空[]。sop_text中禁止引用你未选的技能。"
+        f"## 可用 Skill 白名单（SOP 步骤里尽量用这些 id，写成 `id` 反引号）\n{skills_text}\n\n"
+        f"## 可用 Tool 白名单（同上）\n{tools_text}\n\n"
+        f"## 可用 MCP 白名单（外部系统对接时引用，写成 `server_name`）\n{mcps_text}\n\n"
+        f"规则：\n"
+        f"1. 先写 sop_text：4~8 个编号步骤，可执行、可验收。\n"
+        f"2. 步骤需要调用能力时，优先引用白名单 id（Skill/Tool/MCP）。\n"
+        f"3. 若白名单没有必需能力，不要假装已有；Skill/Tool 写 [[need:能力名]]，MCP 写 [[need:mcp:名称]]，并分别列入 needed_skills/needed_tools/needed_mcps。\n"
+        f"4. 不要为了塞满而引用无关 id（例如做 PPT 不要引用 search/webfetch/无关 MCP，除非描述明确要求联网或外部对接）。\n"
+        f"5. PPT/文档生成类：白名单已有 `ppt_generation` 时必须写成 `ppt_generation`；没有时才写 [[need:ppt_generation]]。可辅以 `summarize`/`requirement_analysis`/`file_operations`。\n"
+        f"6. system_prompt 写角色与边界（≠ SOP 第一行）。\n\n"
+        f"输出JSON："
+        f'{{"agent_type":"react",'
+        f'"sop_text":"1. ...\\n2. ...",'
+        f'"system_prompt":"你是…",'
+        f'"memory_config":{{"type":"conversation","max_turns":20,"persist":true}},'
+        f'"trigger_conditions":["触发短语"],'
+        f'"needed_skills":["白名单id或缺口名"],'
+        f'"needed_tools":["白名单id或缺口名"],'
+        f'"needed_mcps":["白名单MCP名或缺口名"],'
+        f'"reasoning":"说明SOP设计与缺口"}}'
     )
-    prompt = inline_prompt
 
     try:
-        from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
-        from core.api.core_facade import sys_llm_generate  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import best_model_for_purpose
+        from core.api.core_facade import sys_llm_generate
+        from core.api.core_facade import _async_prompt_resolve
         model_name = best_model_for_purpose("agent_creation")
         messages = [
             {"role": "system", "content": await _async_prompt_resolve("agent-role-system")},
-            {"role": "user", "content": prompt},
+            {"role": "user", "content": inline_prompt},
         ]
         resp = await sys_llm_generate(model=None, prompt=messages, model_name=model_name)
-        content = resp.content if hasattr(resp, 'content') else str(resp)
+        content = resp.content if hasattr(resp, "content") else str(resp)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
 
-    # ── Parse JSON response (only agent_type + config + memory + triggers + reasoning) ──
     import logging as _log
     clean = content.strip()
     if clean.startswith("```"):
-        clean = _re.sub(r'^```\w*\n?', '', clean)
-        clean = _re.sub(r'\n?```$', '', clean)
-    if '{' in clean and clean.index('{') > 0 and clean.index('{') < 200:
-        clean = clean[clean.index('{'):]
+        clean = _re.sub(r"^```\w*\n?", "", clean)
+        clean = _re.sub(r"\n?```$", "", clean)
+    if "{" in clean and clean.index("{") > 0 and clean.index("{") < 200:
+        clean = clean[clean.index("{"):]
     try:
         data, _end = _json.JSONDecoder().raw_decode(clean)
     except _json.JSONDecodeError:
@@ -844,113 +1462,93 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 
     agent_type = str(data.get("agent_type", "react"))[:20]
     config = data.get("config", {}) if isinstance(data.get("config"), dict) else {}
+    if data.get("system_prompt") and not config.get("system_prompt"):
+        config["system_prompt"] = str(data.get("system_prompt"))[:500]
 
-    # ── Skill matching: LLM ids > LLM names→ids > capability map > empty ──
-    skill_catalog = _scan_skills_direct()
-    catalog_ids = {s.get("id", s["name"]) for s in skill_catalog}
-    # Rebuild name→id map (P1 fix: return IDs, not names)
-    _name_to_id = {}
-    for s in skill_catalog:
-        _name_to_id[s["name"]] = s.get("id", s["name"])
-    skills = []
-    missing_skills = []
-    llm_skills = data.get("skills", [])
-    if isinstance(llm_skills, list) and llm_skills:
-        unknown_skills = []
-        mapped = []
-        for s in llm_skills:
-            if not isinstance(s, str): continue
-            sid = _name_to_id.get(s, s)
-            if sid in catalog_ids:
-                mapped.append(sid)
-            else:
-                unknown_skills.append(s)
-        skills = mapped[:5]
-        for s in unknown_skills[:5]:
-            missing_skills.append({
-                "capability": s,
-                "suggested_name": s,
-                "how_to_create": f"Skill库 → 新建 → 名称'{s}' → 编辑SOP → 保存 → 回到本页重新AI填充",
-            })
-    tools = []
-
-    # ── Detect missing assets and provide actionable guidance ──
-    capabilities = list((rd or {}).get("required_capabilities", []) or [])
-    # If no role definition, infer capabilities from description keywords
-    if not capabilities:
-        desc = str(getattr(req, "description", "") or "").strip()
-        _desc_caps = []
-        for kw, cap in [("诊断", "诊断分析"), ("检测", "异常检测"), ("分析", "数据分析"),
-                         ("文档", "文档处理"), ("检索", "知识检索"), ("图谱", "关联图谱"),
-                         ("代码", "代码生成"), ("安全", "安全检查"), ("监控", "监控告警")]:
-            if kw in desc: _desc_caps.append(cap)
-        capabilities = _desc_caps[:5]
-    if not skills:
-        skills = _map_capabilities_to_skills(capabilities, skill_catalog) if capabilities else []
-    else:
-        # Supplement: also map capabilities to skills (LLM may miss some)
-        extra = _map_capabilities_to_skills(capabilities, skill_catalog) if capabilities else []
-        for s in extra:
-            if s not in skills:
-                skills.append(s)
-    if not skills and capabilities:
-        for cap in capabilities[:5]:
-            missing_skills.append({
-                "capability": cap,
-                "suggested_name": _suggest_skill_name(cap),
-                "how_to_create": f"Skill库 → 新建 → 名称'{_suggest_skill_name(cap)}' → 编辑SOP → 保存 → 回到本页重新AI填充",
-            })
-
-    # If everything is empty, provide a generic guidance
-    if not skills and not missing_skills:
-        missing_skills.append({
-            "capability": "诊断分析",
-            "suggested_name": "field-assessment",
-            "how_to_create": "Skill库 → 新建 → 名称'field-assessment' → 粘贴下方SOP → 保存 → 回到本页重新AI填充",
-        })
-
-    missing_tools = []
-    if not tools and skills:
-        missing_tools = _infer_missing_tools_for_skills(skills)
-
-    missing_mcps: list = []
-    desc = getattr(req, "description", "") or ""
-    if desc and any(kw in str(desc) for kw in ("对接", "外部", "API", "数据库", "IM", "飞书", "企微")):
-        missing_mcps = [{
-            "type": "external_api",
-            "description": "Agent描述涉及外部系统对接，建议配置MCP连接",
-            "how_to_create": "应用能力层 → MCP库 → 新建 → 配置连接参数 → 测试连通 → 回到本页重新AI填充",
-        }]
-
-    # ── SOP: LLM-generated > role-definition-derived > empty ──
-    sop_text = data.get("sop_text", "")
+    sop_text = str(data.get("sop_text") or "").strip()
     if not sop_text and rd and isinstance(rd, dict):
-        sop_text = _generate_sop_from_role(rd, skills)
+        sop_text = _generate_sop_from_role(rd, [])
 
-    # Auto-sync system_prompt from sop_text if missing
-    if (not config.get("system_prompt") or not str(config.get("system_prompt", "")).strip()) and sop_text:
-        lines = sop_text.strip().split('\n')
-        first = [l.strip() for l in lines if l.strip() and not l.strip().startswith('#')]
-        if first:
-            config["system_prompt"] = first[0][:200]
+    needed_skills = data.get("needed_skills") if isinstance(data.get("needed_skills"), list) else []
+    needed_tools = data.get("needed_tools") if isinstance(data.get("needed_tools"), list) else []
+    needed_mcps = data.get("needed_mcps") if isinstance(data.get("needed_mcps"), list) else []
+
+    bound = _bind_from_sop(
+        sop_text,
+        skill_catalog=skill_catalog,
+        tool_catalog=tool_catalog,
+        name_to_id=_name_to_id,
+        llm_needed_skills=[x for x in needed_skills if isinstance(x, str)],
+        llm_needed_tools=[x for x in needed_tools if isinstance(x, str)],
+        llm_needed_mcps=[x for x in needed_mcps if isinstance(x, str)],
+        mcp_catalog=mcp_catalog,
+        agent_blob=f"{getattr(req, 'name', '')} {getattr(req, 'description', '')}",
+    )
+    skills = bound["skills"]
+    tools = bound["tools"]
+    mcp_ids = list(bound.get("mcp_ids") or [])
+    missing_skills = bound["missing_skills"]
+    missing_tools = bound["missing_tools"]
+    missing_mcps = list(bound.get("missing_mcps") or [])
+
+    # Already-bound capabilities should not remain as [[need:...]] in SOP
+    sop_text = _strip_resolved_need_markers(
+        sop_text,
+        list(skills) + list(tools) + list(mcp_ids) + [f"mcp:{m}" for m in mcp_ids],
+    )
+    sop_text = _append_gap_section(sop_text, missing_skills, missing_tools, missing_mcps)
+
+    desc = getattr(req, "description", "") or ""
+    if not mcp_ids and not missing_mcps and desc and _mentions_external_system(str(desc)):
+        missing_mcps = [{
+            "capability": "external_integration",
+            "how_to_create": "描述涉及外部系统对接，建议在 MCP 库创建并启用对应 Server，再重新智能填充绑定",
+        }]
+        sop_text = _append_gap_section(sop_text, [], [], missing_mcps)
+
+    sp = str(config.get("system_prompt") or "").strip()
+    if not sp or (sp[:1].isdigit() and "." in sp[:4]):
+        nm = (getattr(req, "name", None) or "Agent").strip() or "Agent"
+        ds = (getattr(req, "description", None) or "").strip()
+        config["system_prompt"] = (
+            f"你是“{nm}”。{('职责：' + ds) if ds else ''}"
+            " 严格按 SOP 执行；只使用已绑定的 Skill/Tool/MCP；缺口能力需提示用户补齐。"
+        )[:500]
+
+    gap_note = ""
+    if missing_skills or missing_tools or missing_mcps:
+        gap_note = (
+            f" 另有 Skill缺口{len(missing_skills)} / Tool缺口{len(missing_tools)} / "
+            f"MCP缺口{len(missing_mcps)}，已写入 SOP「能力缺口」并返回建议，未强行绑定。"
+        )
+    reasoning = (str(data.get("reasoning", ""))[:420] + gap_note).strip()
+
+    permissions = _derive_agent_permissions(
+        tools=tools,
+        skills=skills,
+        mcp_ids=mcp_ids,
+        description=str(getattr(req, "description", "") or ""),
+        sop_text=sop_text,
+    )
 
     return AgentAutoFillResponse(
         agent_type=agent_type,
         config=config,
         skills=skills,
         tools=tools,
-        mcp_ids=[],
+        mcp_ids=mcp_ids,
         missing_skills=missing_skills,
         missing_tools=missing_tools,
         missing_mcps=missing_mcps,
         agent_ids=[],
         memory_config=_ensure_memory_config(data.get("memory_config")),
         sop_text=sop_text,
-        reasoning=str(data.get("reasoning", ""))[:500],
+        reasoning=reasoning[:500],
         workflow_ids=[],
         trigger_conditions=list(data.get("trigger_conditions", []))[:20],
+        permissions=permissions,
         template_id="",
-        stages=list(data.get("stages", []))[:20],
+        stages=list(data.get("stages", []))[:20] if isinstance(data.get("stages"), list) else [],
     )
 
 
@@ -1041,10 +1639,13 @@ async def agent_auto_fill_batch(req: AgentAutoFillBatchRequest) -> AgentAutoFill
 
 
 async def _build_skill_catalog() -> List[str]:
-    entries = _scan_skills_direct()
-    if not entries:
-        entries = ["(unable to load skill catalog)"]
-    return entries
+    raw = _scan_skills_direct(workspace_only=True)
+    if not raw:
+        return ["(unable to load skill catalog)"]
+    return [
+        f"  - {s.get('id') or s.get('name')}: {s.get('display_name') or s.get('name')} — {(s.get('description') or '')[:80]}"
+        for s in raw
+    ]
 
 
 async def _build_tool_catalog() -> List[str]:
@@ -1128,6 +1729,15 @@ async def _build_wf_catalog() -> List[str]:
 
 
 # ── Seed templates (must be before {agent_id} to avoid route conflict) ──
+
+@router.post("/workspace/agents/dedupe", response_model=Dict[str, Any])
+async def dedupe_workspace_agents(rt: RuntimeDep = None):
+    """Merge agents that share the same display_name + skills/tools fingerprint; keep newest."""
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    return await mgr.dedupe_agents()
+
 
 @router.get("/workspace/agents/seeds", response_model=Dict[str, Any])
 async def list_agent_seeds():
@@ -2375,6 +2985,94 @@ async def workspace_agents_installer_upload_install(
     finally:
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
+
+
+@router.post("/workspace/templates/upload", response_model=Dict[str, Any])
+async def upload_workspace_template(
+    file: UploadFile = File(...),
+    http_request: Request = None,
+    rt: RuntimeDep = None,
+):
+    """Upload a .pptx/.potx into ~/.aiplat/templates for PPT agents (方案 B confirm step)."""
+    import re as _re
+    from pathlib import Path as _Path
+
+    if http_request is not None:
+        deny = await rbac_guard(
+            http_request=http_request,
+            payload={},
+            action="write",
+            resource_type="template",
+            resource_id="upload",
+        )
+        if deny:
+            return deny
+
+    raw_name = (file.filename or "upload.pptx").strip()
+    base = _Path(raw_name).name
+    if not _re.search(r"\.(pptx|potx)$", base, _re.I):
+        raise HTTPException(status_code=400, detail="only .pptx / .potx templates are accepted")
+    safe = _re.sub(r"[^\w.\-一-龥]+", "_", base).strip("._") or "upload.pptx"
+    if not _re.search(r"\.(pptx|potx)$", safe, _re.I):
+        safe = f"{safe}.pptx"
+
+    home = _Path(os.environ.get("AIPLAT_HOME") or _Path.home() / ".aiplat")
+    dest_dir = home / "templates"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / safe
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="empty file")
+    if len(content) > 50 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="template too large (>50MB)")
+    dest.write_bytes(content)
+
+    return {
+        "ok": True,
+        "path": str(dest.resolve()),
+        "filename": safe,
+        "size": len(content),
+    }
+
+
+@router.get("/workspace/templates", response_model=Dict[str, Any])
+async def list_workspace_templates(http_request: Request = None, rt: RuntimeDep = None):
+    """List .pptx/.potx files under ~/.aiplat/templates for confirm-step pickers."""
+    from pathlib import Path as _Path
+
+    if http_request is not None:
+        deny = await rbac_guard(
+            http_request=http_request,
+            payload={},
+            action="read",
+            resource_type="template",
+            resource_id="list",
+        )
+        if deny:
+            return deny
+
+    home = _Path(os.environ.get("AIPLAT_HOME") or _Path.home() / ".aiplat")
+    dest_dir = home / "templates"
+    items = []
+    if dest_dir.is_dir():
+        for p in sorted(dest_dir.iterdir(), key=lambda x: x.name.lower()):
+            if not p.is_file():
+                continue
+            if p.suffix.lower() not in (".pptx", ".potx"):
+                continue
+            try:
+                st = p.stat()
+                items.append({
+                    "filename": p.name,
+                    "path": str(p.resolve()),
+                    "size": int(st.st_size),
+                    "mtime": float(st.st_mtime),
+                    "is_default": p.name.lower() == "default.pptx",
+                })
+            except Exception:
+                continue
+    return {"ok": True, "templates": items, "dir": str(dest_dir)}
 
 
 @router.post("/workspace/agents/{agent_id}/submit-for-review", response_model=Dict[str, Any])

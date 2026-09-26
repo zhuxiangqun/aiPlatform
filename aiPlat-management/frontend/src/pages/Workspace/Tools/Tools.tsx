@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Plus, RotateCw, Trash2, Pencil, Play, Key, Download, Clock, RefreshCw } from 'lucide-react';
-import { Badge, Table, Button, Modal, toast, Select } from '../../../components/ui';
+import { Badge, Table, Button, Modal, toast, Select, Input } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
 import { useWorkspaceToolStore } from '../../../stores';
 import { ToolDetailModal, ExecuteToolModal } from '../../../components/core';
 import AddToolModal from '../../../components/workspace/AddToolModal';
+import ToolChatCreateModal from '../../../components/workspace/ToolChatCreateModal';
+import WorkspacePageGuide from '../../../components/workspace/WorkspacePageGuide';
 import { workspaceToolApi, toolApi } from '../../../services';
 import type { ToolInfo } from '../../../services';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
@@ -30,11 +32,13 @@ const TOOL_CATEGORY_OPTIONS = [
 const WorkspaceTools: React.FC = () => {
   const { tools, loading, fetchTools, deleteTool, signTool, reloadTool, saveSource } = useWorkspaceToolStore();
   const [categoryFilter, setCategoryFilter] = useState<string>('');
+  const [search, setSearch] = useState('');
 
   const [detailTool, setDetailTool] = useState<ToolInfo | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [chatCreateOpen, setChatCreateOpen] = useState(false);
 
   const [executeTool, setExecuteTool] = useState<ToolInfo | null>(null);
   const [executeOpen, setExecuteOpen] = useState(false);
@@ -239,6 +243,11 @@ TOOL_DEF = {
 
   const filteredTools = tools.filter(t => {
     if (categoryFilter && t.category !== categoryFilter) return false;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      const hay = `${t.name || ''} ${t.description || ''} ${t.category || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
     return true;
   });
 
@@ -268,8 +277,12 @@ TOOL_DEF = {
     },
     {
       title: '上架状态', key: 'status', width: 80,
-      render: (_: unknown, record: any) => (
-        <StatusBadge status={record.available === false ? 'deprecated' : 'listed'} />
+      render: (_: unknown, record: ToolInfo) => (
+        <StatusBadge status={
+          record.available === false
+            ? 'deprecated'
+            : (record.status || 'draft')
+        } />
       ),
     },
     {
@@ -321,6 +334,9 @@ TOOL_DEF = {
           <p className="text-sm text-gray-500 mt-1">来自 ~/.aiplat/tools（可编辑源码、在线执行、签名管理）</p>
         </div>
         <div className="flex items-center gap-3">
+          <div className="w-64">
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索名称或描述..." />
+          </div>
           <div className="flex items-center gap-2">
             <Select
               placeholder="分类筛选"
@@ -331,6 +347,7 @@ TOOL_DEF = {
             />
           </div>
           <Button icon={<Plus className="w-4 h-4" />} variant="primary" onClick={() => setAddModalOpen(true)}>创建</Button>
+          <Button variant="secondary" onClick={() => setChatCreateOpen(true)}>对话创建</Button>
           <Button variant="secondary" onClick={() => { setSeedsModalOpen(true); if (seeds.length === 0) loadSeeds(); }}>从模板安装</Button>
           {unsignedCount > 0 && (
             <Button variant="secondary" onClick={() => setBatchSignOpen(true)}>批量签名 ({unsignedCount})</Button>
@@ -339,9 +356,18 @@ TOOL_DEF = {
         </div>
       </div>
 
+      <WorkspacePageGuide
+        steps={[
+          { title: '对话创建', detail: '自然语言描述 → 草稿预览 → 确认写入' },
+          { title: '创建', detail: '表单 + AI 智能填充（手改代码）' },
+          { title: '执行/签名', detail: '行内按钮可试跑、编辑源码、签名' },
+        ]}
+        tip="推荐日常用「对话创建」。边界：Agent 编排 → Skill 流程 → Tool 原子 → MCP 外部服务。"
+      />
+
       {/* Table */}
       <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
-        <Table columns={columns} data={filteredTools} rowKey="name" loading={loading} emptyText="暂无 workspace 工具，点击「创建」或「从模板安装」添加" />
+        <Table columns={columns} data={filteredTools} rowKey="name" loading={loading} emptyText="暂无 workspace 工具，点「对话创建」或「创建」添加" />
       </div>
 
       {/* Detail Modal */}
@@ -529,6 +555,12 @@ TOOL_DEF = {
 
       <AddToolModal open={addModalOpen} onClose={() => setAddModalOpen(false)}
         onSuccess={() => { fetchTools(); setAddModalOpen(false); }} />
+
+      <ToolChatCreateModal
+        open={chatCreateOpen}
+        onClose={() => setChatCreateOpen(false)}
+        onSuccess={() => fetchTools()}
+      />
     </div>
   );
 };

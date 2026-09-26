@@ -1,0 +1,13 @@
+{
+  "_by_class": {
+    "数据资产": {
+      "source": "sandbox-catalog",
+      "freshness_hours": 6,
+      "row_estimate": 120000
+    },
+    "物理表": {
+      "source": "sandbox-catalog",
+      "ghost_score": 0.8
+    }
+  }
+}

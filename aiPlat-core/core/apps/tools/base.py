@@ -606,7 +606,8 @@ class FileOperationsTool(BaseTool):
             from pathlib import Path
             import hashlib
 
-            operation = (params.get("operation") or "").strip().lower()
+            # LLMs often pass "action" (browser-style); accept as alias for "operation"
+            operation = (params.get("operation") or params.get("action") or "").strip().lower()
             raw_path = str(params.get("path") or "").strip()
             content = str(params.get("content") or "")
             recursive = bool(params.get("recursive", False))

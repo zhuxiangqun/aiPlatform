@@ -1,0 +1,19 @@
+{
+  "source_id": "data-gov-catalog",
+  "source_aliases": ["data-gov-meta"],
+  "domain_id": "data-gov",
+  "label": "Data-gov catalog metadata (Path B / org L5 read slice)",
+  "allowed_classes": ["数据资产", "物理表", "目录"],
+  "allowed_relations": ["mounts", "derived_from"],
+  "primary_class": "数据资产",
+  "io": {
+    "mode": "sandbox",
+    "allow_write": false,
+    "note": "org L5 D5 thin slice: readonly sandbox fetch only"
+  },
+  "auth": {
+    "type": "shared_secret_env",
+    "env": "AIPLAT_ABOX_WEBHOOK_SECRET",
+    "header": "X-AIPLAT-WEBHOOK-SECRET"
+  }
+}

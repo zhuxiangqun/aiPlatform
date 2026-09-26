@@ -1,0 +1,11 @@
+enabled: true
+sandbox_only: true
+confidence_min: 0.95
+domains:
+  - it-ops
+exact_strategies:
+  - exact
+daily_auto_rate_max: 0.2
+min_sample: 5
+circuit_reason: ""
+circuit_at: 0

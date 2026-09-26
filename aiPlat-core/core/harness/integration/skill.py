@@ -1,10 +1,14 @@
 """Auto-extracted from integration.py — 2026-07-13"""
 from __future__ import annotations
 
+import logging
+import os
+
 
 async def _execute_skill_impl(self, req: ExecutionRequest) -> ExecutionResult:
     from core.apps.tools.permission import Permission  # noqa: data type (enum) — allowed
     from core.harness.kernel.types import ExecutionResult
+    from core.harness.integration import _resolve_or_import, _resolve_exec_backend
 
     runtime = self._runtime
     perm = _resolve_or_import("PermissionManager", "core.apps.tools.permission:get_permission_manager")
@@ -12,7 +16,12 @@ async def _execute_skill_impl(self, req: ExecutionRequest) -> ExecutionResult:
     if runtime is None or runtime.skill_manager is None:
         return self._fail(code="NOT_INITIALIZED", message="Kernel runtime not initialized", http_status=503)
 
-    skill_id = req.target_id
+    # Historical alias: hyphenated display names → registered skill ids
+    _SKILL_ID_ALIASES = {
+        "field-assessment": "field_assessment",
+    }
+    skill_id = _SKILL_ID_ALIASES.get(str(req.target_id or "").strip(), str(req.target_id or "").strip())
+    req.target_id = skill_id
     user_id = req.user_id or (req.payload.get("context", {}) or {}).get("user_id", "system")
 
     if not perm_mgr.check_permission(user_id, skill_id, Permission.EXECUTE):
@@ -127,6 +136,7 @@ async def _execute_skill_impl(self, req: ExecutionRequest) -> ExecutionResult:
         tenant_policy_token = None
 
     # Phase 6.7: optional LearningApplier (behavior-preserving; metadata-only)
+    active_release = None
     if os.getenv("AIPLAT_ENABLE_LEARNING_APPLIER", "false").lower() in ("1", "true", "yes", "y"):
         try:
             from core.learning.apply import LearningApplier

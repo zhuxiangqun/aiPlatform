@@ -22,6 +22,7 @@ class AgentCreateRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     trigger_conditions: Optional[List[str]] = None
     permissions: Optional[List[str]] = None
+    reuse_equivalent: bool = True
 
 
 class AgentUpdateRequest(BaseModel):
@@ -75,15 +76,16 @@ class AgentAutoFillResponse(BaseModel):
     skills: List[str] = Field(default_factory=list)
     tools: List[str] = Field(default_factory=list)
     mcp_ids: List[str] = Field(default_factory=list)
-    missing_skills: List[Dict[str, str]] = Field(default_factory=list)
-    missing_tools: List[Dict[str, str]] = Field(default_factory=list)
-    missing_mcps: List[Dict[str, str]] = Field(default_factory=list)
+    missing_skills: List[Dict[str, Any]] = Field(default_factory=list)
+    missing_tools: List[Dict[str, Any]] = Field(default_factory=list)
+    missing_mcps: List[Dict[str, Any]] = Field(default_factory=list)
     agent_ids: List[str] = Field(default_factory=list)
     memory_config: Dict[str, Any] = Field(default_factory=dict)
     sop_text: str = ""
     reasoning: str = ""
     workflow_ids: List[str] = Field(default_factory=list)
     trigger_conditions: List[str] = Field(default_factory=list)
+    permissions: List[str] = Field(default_factory=list)
     template_id: str = ""  # recommended prompt app template
     stages: List[Dict[str, Any]] = Field(default_factory=list)  # v4.0 pipeline stages
     # Async mode fields

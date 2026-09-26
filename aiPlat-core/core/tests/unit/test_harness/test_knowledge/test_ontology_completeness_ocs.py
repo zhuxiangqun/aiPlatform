@@ -314,3 +314,33 @@ async def test_confirm_writes_relations_receipt(aiplat_home, tmp_path):
     g = GraphIndex.load(DOMAIN)
     assert g._nodes["SVC-查询"].class_name == "服务"
     assert g._nodes["MW-Redis主"].metadata.get("source") == "extract-confirm"
+
+
+def test_load_entities_converts_graphnode(monkeypatch):
+    """Candidates matcher uses dict.get; GraphIndex returns GraphNode."""
+    from core.harness.knowledge_pipeline.resolver import CrossDomainResolver
+    from core.harness.ontology_engine.graph_index import GraphNode
+
+    node = GraphNode(
+        entity_id="site-1",
+        entity_name="甲公司",
+        class_name="CustomerSite",
+        metadata={"customer_name": "甲公司"},
+    )
+
+    class _FakeIndex:
+        def get_entities_by_class(self, class_name):
+            return [node]
+
+    monkeypatch.setattr(GraphIndex, "load", staticmethod(lambda domain_id, tenant_id="default": _FakeIndex()))
+    rows = CrossDomainResolver._load_entities("lock-service", "CustomerSite")
+    assert rows[0]["customer_name"] == "甲公司"
+    score, strategy, _evidence = CrossDomainResolver()._compute_match(
+        rows[0],
+        rows[0],
+        {"primary": "customer_name", "secondary": "name", "min_confidence": 0.70},
+        {"domain": "lock-service", "class": "CustomerSite"},
+        {"domain": "service-domain", "class": "Customer"},
+    )
+    assert score >= 0.60
+    assert "exact" in strategy

@@ -3,7 +3,7 @@
 | 字段 | 值 |
 |------|-----|
 | 文档 ID | `ONTOLOGY-NARRATIVE-2026-09` |
-| 版本 | v1.19 |
+| 版本 | v1.21 |
 | 关联 | [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_OWL_CONCEPT_MAP.md`](./ONTOLOGY_OWL_CONCEPT_MAP.md) · [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_COMPLETENESS.md`](./ONTOLOGY_COMPLETENESS.md) · [`ONTOLOGY_PPT_SCENARIOS.md`](./ONTOLOGY_PPT_SCENARIOS.md) · [`ONTOLOGY_XINGYE_PPT_ANALYSIS.md`](./ONTOLOGY_XINGYE_PPT_ANALYSIS.md) · [`ONTOLOGY_OUTCOME_GOALS.md`](./ONTOLOGY_OUTCOME_GOALS.md) · [`ONTOLOGY_DEMO_PLAYBOOK.md`](./ONTOLOGY_DEMO_PLAYBOOK.md) · [`ONTOLOGY_CONNECTOR_TEMPLATES.md`](./ONTOLOGY_CONNECTOR_TEMPLATES.md) |
 | 维护人 | Oliver Zhu |
 
@@ -26,12 +26,12 @@
 1. **定位**：我们是 **Palantir 式可执行本体（企业 OS 内核）**——说明书 + 真实层 + Action 硬门；**不是**运行时 OWL 推理机产品。详见 [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md)。OWL 教科书概念如何映射到本平台：[`ONTOLOGY_OWL_CONCEPT_MAP.md`](./ONTOLOGY_OWL_CONCEPT_MAP.md)。  
 2. **权威**：业务 Action / 审计快照 / GraphRAG 业务对象 → 域 YAML + GraphIndex；Wiki 仅知识库轨道。  
 3. **约束**：L1 Action 硬门 > L2 域公理 prompt 软约束 > L3 审计；无 L1 不得上 customer_action 生产。  
-4. **演化二分**：Evolve = 白名单配置键；本体演化 = VersionedOntologyStore tier 门。  
+4. **演化二分**：Evolve = 白名单配置键；本体演化 = VersionedOntologyStore tier 门。在线学习 = 案例库 + 奖励/UCB **检索排序**（非 RL）；高回报可入队提案；**默认**不自动 apply；仅 opt-in `AIPLAT_ONTOLOGY_EDGE_AUTO_APPLY` 允许 **edge** 自动 apply 且可回滚（禁升格 logic/core）。  
 5. **注册**：`registry.json` 为配置源，`DomainRouter` 为运行时权威。  
 6. **入轨**：路径 A（提案改说明书）/ B（webhook·JSON·**表/CSV 映射** 写真实层）/ C（模板种图）；生产监控进图走 B webhook。  
 7. **试点**：`lock-service` · `it-ops` · `data-gov` · `retail-ops`；ACL 接身份角色（viewer/analyst/admin）。  
-8. **建议层**：`GraphInference` / 导出 OWL **不是**已确认事实；落图须 `assert_inferred_*` 或提案。  
-9. **非目标**：运行时 HermiT/Pellet/ELK、建模期内置 OWL 推理机、SQL Bridge 全量接通、28 域全量 axioms、Fleet、全域 CBAC。
+8. **建议层**：`GraphInference` / 导出 OWL / **案例 overlay** 不是已确认事实；落图须 `assert_inferred_*` 或提案。  
+9. **非目标**：运行时 HermiT/Pellet/ELK、建模期内置 OWL 推理机、SQL Bridge 全量接通、28 域全量 axioms、Fleet、全域 CBAC、无门禁静默扩 TBox、宣称策略梯度 RL 已上线。
 
 **禁止表述**：「完整企业本体已建成」「OWL/SPARQL 级推理已上线」「全域统一语义」「HermiT 已融合进运行时」「推理建议已自动确认为业务事实」「建模已内置 OWL 完备推理」。
 
@@ -70,10 +70,13 @@
 
 ## 场景说明入口（星邺 / aiPlat 请分开读）
 
-详细图文见 [`ONTOLOGY_PPT_SCENARIOS.md`](./ONTOLOGY_PPT_SCENARIOS.md)（**v3.0**）：
+详细图文见 [`ONTOLOGY_PPT_SCENARIOS.md`](./ONTOLOGY_PPT_SCENARIOS.md)（**v3.7**）：
 
 - **应有能力路径 A/B/C**（§0.2）：数据源→说明书 / 数据源→真实层（含 **webhook·表/CSV**） / **已有说明书→模板或手动种真实层**  
+- **§0.1.1**：说明书 = 本体模型（不必再夹一层）；入轨+硬门建边  
 - **§0.3**：三柱、建议≠权威、ACL 竖切、OWL 非目标  
+- **§0.4 / 口述稿**：PPT 页码对照；A3.5 / A4.6 / B3.6 / B4.6  
+- 每张图：**图说（一句话）** + **图说（详解）** 表，紧贴 mermaid  
 - 路径 C：AcceptTab 演示直线 + 教学复杂拓扑；路径 B：表/CSV 样例（B3.3b）  
 - 本体不凭空生成实例；生产真实层主路径仍是数据源  
 - 两篇分开读  

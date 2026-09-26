@@ -24,6 +24,11 @@ from pathlib import Path
 
 import json
 
+from core.management.execution_examples import (
+    build_examples_from_input_schema as _build_examples_from_input_schema,
+    examples_are_generic as _examples_are_generic,
+)
+
 import hashlib
 
 import logging
@@ -54,7 +59,7 @@ class SkillInfo:
 
     description: str
 
-    status: str  # enabled, disabled, deprecated
+    status: str  # enabled/disabled/deprecated + listing: draft/ready/published/listed
 
     input_schema: Dict[str, Any]
 
@@ -292,7 +297,17 @@ class SkillManager:
 
                     status = str(fm.get("status") or ("enabled")).lower()
 
-                    if status not in ["enabled", "disabled", "deprecated"]:
+                    # Runtime: enabled/disabled/deprecated
+                    # Governance listing: draft/ready/published/listed
+                    if status not in [
+                        "enabled",
+                        "disabled",
+                        "deprecated",
+                        "draft",
+                        "ready",
+                        "published",
+                        "listed",
+                    ]:
 
                         status = "enabled"
 
@@ -484,136 +499,78 @@ class SkillManager:
 
         Rules (production-safe, default conservative):
 
-        1) frontmatter explicit:
-
-           - executable:false -> rule
-
-           - executable:true + runtime + entrypoint -> executable
-
-        2) fallback inference:
-
-           - handler.py or manifest.(json|yml|yaml) present -> executable
-
-           - otherwise -> rule
-
-        3) security threshold:
-
-           - executable MUST declare permissions; otherwise degrade to rule and record warning.
-
+        1) frontmatter explicit skill_kind / execution_type / executable flag
+        2) fallback inference: handler.py or manifest → executable
+        3) security threshold: executable MUST declare permissions; else degrade to rule
         """
 
         fm = front_matter if isinstance(front_matter, dict) else {}
 
         warnings: List[str] = []
 
-
-
         def _bool(v: Any) -> Optional[bool]:
-
             if isinstance(v, bool):
-
                 return v
-
             if isinstance(v, str):
-
                 s = v.strip().lower()
-
                 if s in {"1", "true", "yes", "y", "on"}:
-
                     return True
-
                 if s in {"0", "false", "no", "n", "off"}:
-
                     return False
-
             return None
 
-
-
         explicit = _bool(fm.get("executable"))
-
         runtime = str(fm.get("runtime") or "").strip()
-
         entrypoint = str(fm.get("entrypoint") or fm.get("handler") or "").strip()
-
-
+        declared_kind = str(fm.get("skill_kind") or "").strip().lower()
+        exec_type = str(fm.get("execution_type") or "").strip().lower()
 
         kind = "rule"
 
-        if explicit is False:
-
+        # Prefer explicit skill_kind from SKILL.md / create API (e.g. prompt+tools executable)
+        if declared_kind in ("executable", "rule"):
+            kind = declared_kind
+        elif exec_type in ("handler", "python_class"):
+            kind = "executable"
+        elif explicit is False:
             kind = "rule"
-
         elif explicit is True:
-
-            # explicit executable request
-
-            if runtime and entrypoint:
-
-                kind = "executable"
-
-            else:
-
-                kind = "executable"
-
-                if not runtime:
-
-                    warnings.append("missing_runtime")
-
-                if not entrypoint:
-
-                    warnings.append("missing_entrypoint")
-
+            kind = "executable"
+            if not runtime:
+                warnings.append("missing_runtime")
+            if not entrypoint:
+                warnings.append("missing_entrypoint")
         else:
-
             # infer from structure
-
             has_handler = skill_dir.joinpath("handler.py").exists()
-
             has_manifest = any(
-
                 skill_dir.joinpath(f).exists()
-
                 for f in ["manifest.json", "manifest.yaml", "manifest.yml", "SKILL.manifest.json"]
-
             )
-
             if has_handler or has_manifest:
-
                 kind = "executable"
-
-
 
         # security threshold for executable
-
         if kind == "executable":
-
             perms = fm.get("permissions")
-
             if not perms:
-
                 kind = "rule"
-
                 warnings.append("degraded_to_rule_missing_permissions")
 
-
-
         extra: Dict[str, Any] = {}
-
         if runtime:
-
             extra["runtime"] = runtime
-
         if entrypoint:
-
             extra["entrypoint"] = entrypoint
-
+        # Preserve / normalize execution_type for UI
+        if exec_type in ("prompt", "handler", "python_class"):
+            extra["execution_type"] = exec_type
+        elif kind == "executable" and not exec_type:
+            # prompt-governed executable (tools/fs) without handler.py
+            extra["execution_type"] = "prompt" if not skill_dir.joinpath("handler.py").exists() else "handler"
         if warnings:
-
             extra["kind_warnings"] = warnings
-
         return kind, extra
-
 
 
     def _read_skill_manifest_json(self, skill_dir: Path) -> Dict[str, Any]:
@@ -1197,6 +1154,14 @@ class SkillManager:
 
             raise ValueError(f"Skill id '{skill_id}' is reserved by engine scope and cannot be created in workspace.")
 
+        # Same id → reuse (prevents factory/dialog retries from overwriting or flooding).
+
+        existing = self._skills.get(skill_id)
+
+        if existing is not None:
+
+            return existing
+
         now = datetime.now(timezone.utc)
 
         
@@ -1342,26 +1307,35 @@ class SkillManager:
                 sop_body = ""
 
                 if isinstance(sop_override, str) and sop_override.strip():
-
                     # normalize: ensure numbered list format looks ok
-
                     sop_body = sop_override.strip().rstrip()
 
-                default_sop = "1. 第一步……\n2. 第二步……\n3. 第三步……"
+                def _looks_like_full_sop(text: str) -> bool:
+                    t = (text or "").strip()
+                    if len(t) < 80:
+                        return False
+                    markers = (
+                        "## 工作流程",
+                        "## 何时使用",
+                        "# 概述",
+                        "## 验收清单",
+                        "## Checklist",
+                        "## 硬性要求",
+                    )
+                    return sum(1 for m in markers if m in t) >= 2
 
-                body = f"""
-
-
+                if _looks_like_full_sop(sop_body):
+                    # Complete body from dialog/autofill — do not wrap in empty scaffold.
+                    body = sop_body if sop_body.lstrip().startswith("#") else f"# {name}\n\n{sop_body}"
+                else:
+                    default_sop = "1. 第一步……\n2. 第二步……\n3. 第三步……"
+                    body = f"""
 
 # {name}
-
-
 
 ## 目标
 
 用 1-3 句话说明此技能要达成的目标。
-
-
 
 ## 输入
 
@@ -1369,21 +1343,15 @@ class SkillManager:
 
 - 若依赖外部资源/路径/权限，请写清楚
 
-
-
 ## 输出
 
 - 输出物是什么（文本/文件/报告）
 
 - 输出位置与命名规则（如适用）
 
-
-
 ## 工作流程（SOP）
 
 {sop_body or default_sop}
-
-
 
 ## 质量要求（Checklist）
 
@@ -2239,13 +2207,17 @@ class SkillManager:
 
         description: Optional[str] = None,
 
+        category: Optional[str] = None,
+
         input_schema: Optional[Dict[str, Any]] = None,
 
         output_schema: Optional[Dict[str, Any]] = None,
 
         config: Optional[Dict[str, Any]] = None,
 
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
+
+        status: Optional[str] = None,
 
     ) -> Optional[SkillInfo]:
 
@@ -2279,26 +2251,35 @@ class SkillManager:
 
             skill.description = description
 
-        if input_schema:
+        if category:
 
-            skill.input_schema.update(input_schema)
+            skill.type = str(category).strip() or skill.type
 
-        if output_schema:
+        if input_schema is not None:
 
-            skill.output_schema.update(output_schema)
+            skill.input_schema = dict(input_schema)
 
-        if config:
+        if output_schema is not None:
 
-            skill.config.update(config)
+            skill.output_schema = dict(output_schema)
+
+        if config is not None:
+
+            # Replace (not shallow-merge) so unchecked flags like require_confirmation can clear.
+
+            skill.config = dict(config)
 
         if metadata:
 
             skill.metadata.update(metadata)
 
+        if status is not None and str(status).strip():
+
+            skill.status = str(status).strip()
+
         
 
         skill.updated_at = datetime.now(timezone.utc)
-
 
 
         # Record audit trail (best-effort, bounded)
@@ -2332,6 +2313,8 @@ class SkillManager:
                             "config": bool(config),
 
                             "metadata": bool(metadata),
+
+                            "status": bool(status),
 
                         },
 
@@ -3013,6 +2996,8 @@ class SkillManager:
 
         Get execution input help/examples/schema for a skill.
 
+
+
         Priority:
 
         1) SKILL.md frontmatter:
@@ -3023,7 +3008,7 @@ class SkillManager:
 
            - execution_input_schema (object)
 
-        2) Generate defaults based on skill category + input_schema.
+        2) Generate defaults based on skill input_schema (auto test cases).
 
         """
 
@@ -3077,6 +3062,74 @@ class SkillManager:
 
 
 
+        skill_input_schema = getattr(skill, "input_schema", None) or {}
+
+        if not isinstance(skill_input_schema, dict):
+
+            skill_input_schema = {}
+
+        effective_schema = schema if isinstance(schema, dict) and schema else skill_input_schema
+
+
+
+        skill_label = (
+
+            str(getattr(skill, "display_name", "") or "").strip()
+
+            or str(getattr(skill, "name", "") or "").strip()
+
+            or skill_id
+
+        )
+
+
+
+        if _examples_are_generic(norm_examples):
+
+            generated = _build_examples_from_input_schema(
+
+                skill_input_schema or (effective_schema if isinstance(effective_schema, dict) else {}),
+
+                skill_id=skill_id,
+
+                skill_name=skill_label,
+
+            )
+
+            if generated:
+
+                norm_examples = generated
+
+            else:
+
+                norm_examples = [
+
+                    {"title": "通用（文本）", "content": "请完成以下任务：\n<描述你的需求>"},
+
+                    {
+
+                        "title": "通用（JSON）",
+
+                        "content": json.dumps(
+
+                            {"message": "请完成以下任务：<描述你的需求>"},
+
+                            ensure_ascii=False,
+
+                            indent=2,
+
+                        ),
+
+                    },
+
+                ]
+
+
+
+        default_input = str(norm_examples[0]["content"]) if norm_examples else ""
+
+
+
         if isinstance(help_md, str) and help_md.strip():
 
             return {
@@ -3087,7 +3140,9 @@ class SkillManager:
 
                 "examples": norm_examples,
 
-                "input_schema": schema if isinstance(schema, dict) else None,
+                "input_schema": effective_schema if isinstance(effective_schema, dict) and effective_schema else None,
+
+                "default_input": default_input,
 
             }
 
@@ -3095,19 +3150,11 @@ class SkillManager:
 
         # -------------------- default help generation --------------------
 
-        category = str(getattr(skill, "type", "") or "general")
-
-        input_schema = getattr(skill, "input_schema", {}) or {}
-
-
-
-        # provide a short, stable contract for UI users
-
         fields = []
 
-        if isinstance(input_schema, dict) and input_schema:
+        if isinstance(skill_input_schema, dict) and skill_input_schema:
 
-            for k, v in input_schema.items():
+            for k, v in skill_input_schema.items():
 
                 if isinstance(v, dict):
 
@@ -3133,6 +3180,8 @@ class SkillManager:
 
             "- 如果输入不是合法 JSON，系统会自动封装为：`{\"message\": \"...\"}`。\n"
 
+            "- 点右侧「填入」可按本 Skill 输入字段写入一条可执行测试用例。\n"
+
             "\n"
 
             "### 推荐输入字段\n"
@@ -3149,18 +3198,6 @@ class SkillManager:
 
 
 
-        if not norm_examples:
-
-            norm_examples = [
-
-                {"title": "通用（文本）", "content": "请完成以下任务：\n<描述你的需求>"},
-
-                {"title": "通用（JSON）", "content": json.dumps({"input": "请完成以下任务：<描述你的需求>"}, ensure_ascii=False, indent=2)},
-
-            ]
-
-
-
         return {
 
             "skill_id": skill_id,
@@ -3169,11 +3206,42 @@ class SkillManager:
 
             "examples": norm_examples,
 
-            "input_schema": schema if isinstance(schema, dict) else None,
+            "input_schema": effective_schema if isinstance(effective_schema, dict) and effective_schema else None,
+
+            "default_input": default_input,
 
         }
 
-    
+    def persist_execution_examples(
+        self,
+        skill_id: str,
+        examples: List[Dict[str, Any]],
+    ) -> bool:
+        """Write execution_examples into SKILL.md frontmatter (best-effort)."""
+        skill = self._skills.get(skill_id)
+        if not skill:
+            return False
+        cleaned: List[Dict[str, str]] = []
+        for e in examples or []:
+            if not isinstance(e, dict):
+                continue
+            title = str(e.get("title") or "").strip()
+            content = e.get("content")
+            if content is None:
+                continue
+            if isinstance(content, (dict, list)):
+                content = json.dumps(content, ensure_ascii=False, indent=2)
+            else:
+                content = str(content).strip()
+            if title and content:
+                cleaned.append({"title": title[:80], "content": content[:8000]})
+        if not cleaned:
+            return False
+        if not isinstance(skill.metadata, dict):
+            skill.metadata = {}
+        skill.metadata["execution_examples"] = cleaned
+        self._writeback_skill_md(skill, extra_frontmatter={"execution_examples": cleaned})
+        return True
 
     async def execute_skill(
 
@@ -3349,13 +3417,20 @@ class SkillManager:
 
                     resolved_user_id = None
 
+            # Keep input_data clean for skill params; put run linkage only on context.variables.
+            _ctx_vars: Dict[str, Any] = dict(input_data) if isinstance(input_data, dict) else {}
+            _ctx_vars.setdefault("_run_id", execution_id)
+            if isinstance(context, dict):
+                for _k in ("_parent_span_id", "tenant_id", "session_id"):
+                    if context.get(_k) is not None and _k not in _ctx_vars:
+                        _ctx_vars[_k] = context.get(_k)
             skill_context = SkillContext(
 
                 session_id=execution_id,
 
                 user_id=str(resolved_user_id or "system"),
 
-                variables=input_data,
+                variables=_ctx_vars,
 
                 tools=skill_tools,
 

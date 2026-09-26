@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from core.schemas_run import RunStatus
-from core.utils.ids import new_prefixed_id
 import logging
 
 
@@ -61,8 +60,12 @@ def wrap_execution_result_as_run_summary(result: Any) -> Dict[str, Any]:
         or payload.get("run_id")
         or payload.get("execution_id")
         or payload.get("executionId")
-        or new_prefixed_id("run")
     )
+    # Never invent a run_id here — a synthetic id is not persisted and breaks
+    # ExecutionViewer status polling (/executions/{id}/status → 404).
+    if not run_id:
+        run_id = ""
+        logging.warning("wrap_execution_result_as_run_summary: missing run_id on result")
     trace_id = getattr(result, "trace_id", None) or payload.get("trace_id")
 
     err_detail = getattr(result, "error_detail", None) if isinstance(getattr(result, "error_detail", None), dict) else None

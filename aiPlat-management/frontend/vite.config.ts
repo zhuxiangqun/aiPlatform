@@ -75,6 +75,20 @@ export default defineConfig({
         target: 'http://localhost:8002',
         changeOrigin: true,
         timeout: 600000,
+        // SSE: disable buffering so EventSource sees text/event-stream promptly
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes) => {
+            const ct = String(proxyRes.headers['content-type'] || '')
+            if (ct.includes('text/event-stream') || String(proxyRes.headers['transfer-encoding'] || '').includes('chunked')) {
+              proxyRes.headers['cache-control'] = 'no-cache'
+              proxyRes.headers['x-accel-buffering'] = 'no'
+              // Ensure browser EventSource accepts the stream (some proxies strip charset)
+              if (!ct.includes('text/event-stream')) {
+                proxyRes.headers['content-type'] = 'text/event-stream; charset=utf-8'
+              }
+            }
+          })
+        },
       },
       '/api/core': {
         target: 'http://localhost:8002',

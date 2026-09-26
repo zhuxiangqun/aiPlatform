@@ -33,4 +33,6 @@ export interface ExecutionViewerProps {
   live?: boolean;
   runId?: string;
   replayRunId?: string;
+  /** Fired when live SSE/poll status changes (connecting/streaming/done/error) */
+  onLiveStatusChange?: (status: 'disconnected' | 'connecting' | 'streaming' | 'done' | 'error') => void;
 }

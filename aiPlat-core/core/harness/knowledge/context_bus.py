@@ -98,7 +98,7 @@ def assemble_field_assessment(
         _layer_count += 1
         before = len(system_parts)
         try:
-            _inject_historical_cases(system_parts, did)
+            _inject_historical_cases(system_parts, did, params)
             if not _check_budget("historical_cases"):
                 del system_parts[before:]
                 return system_parts, diagnostics
@@ -259,8 +259,8 @@ def assemble_field_assessment(
 # Individual context layers
 # ═══════════════════════════════════════════════════════════════
 
-def _inject_historical_cases(parts: List[str], did: str):
-    """Layer 1: Historical diagnosis cases in the same domain."""
+def _inject_historical_cases(parts: List[str], did: str, params: Optional[Dict] = None):
+    """Layer 1: Historical diagnosis cases + ontology learning overlay (same domain)."""
     try:
         from core.harness.knowledge.wiki_engine import search_pages
         hist = search_pages("诊断报告", collection_id=did, limit=3)
@@ -275,6 +275,20 @@ def _inject_historical_cases(parts: List[str], did: str):
             )
     except Exception:
         logger.debug("_inject_historical_cases: search_pages failed for did=%s", did, exc_info=True)
+
+    try:
+        from core.harness.knowledge.ontology_case_learning import format_cases_for_context
+
+        p = params or {}
+        query = " ".join(
+            str(p.get(k) or "")
+            for k in ("pain_points", "query", "task", "company_name")
+        ).strip() or did
+        overlay = format_cases_for_context(did, query[:400], top_k=3)
+        if overlay:
+            parts.append(overlay)
+    except Exception:
+        logger.debug("_inject_historical_cases: ontology cases overlay skipped did=%s", did, exc_info=True)
 
 
 def _inject_cross_domain_analogs(parts: List[str], did: str,

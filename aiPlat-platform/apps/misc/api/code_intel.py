@@ -757,19 +757,14 @@ async def security_plan_run(
 @router.post("/diagnostics/code-intel/security-review-dry", response_model=ItemResponse)
 async def security_review_dry_run(
     force: bool = False,
-    max_paths: int = 20,
-    phase_c_enabled: bool = False,
+    max_paths: int = 12,
     rt=Depends(get_kernel_runtime),
 ):
-    """Phase B(+optional C) dry-run. Phase C requires phase_c_enabled=true."""
+    """Phase B dry-run: plan→trace→critique→report (all handlers, no LLM)."""
     from core.api.core_facade import run_security_review_dry
 
     _ = rt
-    return run_security_review_dry(
-        force=bool(force),
-        max_paths=int(max_paths or 20),
-        phase_c_enabled=bool(phase_c_enabled),
-    )
+    return run_security_review_dry(force=bool(force), max_paths=int(max_paths or 12))
 
 
 @router.get("/diagnostics/code-intel/tour", response_model=ItemResponse)

@@ -20,10 +20,9 @@ config:
     仅读取路径上的锚点片段；禁止全仓审查与 exploit。允许动态 spawn=否。
 ---
 
-## 交接规范
+## 交接
 
-1. **做了什么**：为每条 hot_path 收集 anchors
-2. **产出物在哪**：state["security_trace"]
-3. **如何验证**：traces[].confidence=heuristic
-4. **已知问题**：无
-5. **下一步**：security_critic
+**做了什么**: 为每条 hot_path 收集 anchors  
+**产出物**: state[security_trace]  
+**如何验证**: traces[].confidence=heuristic  
+**下一步**: security_critic

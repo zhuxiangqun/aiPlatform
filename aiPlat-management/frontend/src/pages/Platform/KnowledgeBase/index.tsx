@@ -23,6 +23,23 @@ const METRIC_LABELS: Record<string, string> = {
   context_recall: '上下文召回率',
 };
 
+function readableWiki(raw: string | undefined | null): string {
+  return String(raw || '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/^\s*confidence\s*:\s*[\d.]+\s*$/gim, '')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\*\*/g, '')
+    .replace(/`+/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/^\s*\|.*\|\s*$/gm, (line) =>
+      line.replace(/\|/g, ' ').replace(/[-:]{3,}/g, ' ').trim(),
+    )
+    .replace(/\|/g, ' ')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 const KnowledgeBasePage: React.FC = () => {
   const {
     documents, loading, totalDocuments,
@@ -42,7 +59,10 @@ const KnowledgeBasePage: React.FC = () => {
   // Wiki states
   const [wikiPages, setWikiPages] = useState<any[]>([]);
   const [wikiQuery, setWikiQuery] = useState('');
-  const [wikiViewMode, setWikiViewMode] = useState<'graph' | 'list'>('graph');
+  // Default list: system_docs has hundreds of pages with almost no related links,
+  // so a force-graph of orphans is harder to read than a browsable list.
+  const [wikiViewMode, setWikiViewMode] = useState<'graph' | 'list'>('list');
+  const [showAuxTabs, setShowAuxTabs] = useState(false);
   const [wikiCategory, setWikiCategory] = useState('');
   const [wikiCategories, setWikiCategories] = useState<string[]>([]);
   const [wikiLoading] = useState(false);
@@ -408,7 +428,7 @@ const KnowledgeBasePage: React.FC = () => {
     try {
       const res = await fetch(`${WIKI_API}/collections`);
       const data = await res.json();
-      const cols = (data.collections || []) as Array<{ collection_id: string; page_count: number }>;
+      const cols = (data.items || data.collections || []) as Array<{ collection_id: string; page_count: number }>;
       // 确保当前选中的集合至少出现在列表中
       if (wikiCollection && !cols.find(c => c.collection_id === wikiCollection)) {
         cols.push({ collection_id: wikiCollection, page_count: 0 });
@@ -662,7 +682,7 @@ const KnowledgeBasePage: React.FC = () => {
   const isSplitRoute = !isLibraryShell && (location.pathname.endsWith('/wiki') || location.pathname.endsWith('/eval') || location.pathname.endsWith('/vault') || location.pathname.endsWith('/health'));
   const pageTitle = isLibraryShell
     ? '知识库'
-    : location.pathname.endsWith('/wiki') ? 'LLM Wiki' : location.pathname.endsWith('/eval') ? '检索评估' : location.pathname.endsWith('/vault') ? 'Vault 文档库' : location.pathname.endsWith('/health') ? '质量反馈' : '知识库';
+    : location.pathname.endsWith('/wiki') ? '阅读资料' : location.pathname.endsWith('/eval') ? '检索评估' : location.pathname.endsWith('/vault') ? '原始文件' : location.pathname.endsWith('/health') ? '质量检查' : '知识库';
 
   const SPLIT_VISIBLE_TABS = ['documents', 'wiki', 'eval']; // only these appear in split-route navigation
 
@@ -672,18 +692,53 @@ const KnowledgeBasePage: React.FC = () => {
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-semibold text-gray-100">{pageTitle}</h1>
           {!isSplitRoute && (
-          <div className="flex gap-1">
-            {(['documents', '编缉知识', '本体观测', '观测', 'Vault', '健康', '评估'] as const).map((label) => {
-              const k = label === '评估' ? 'eval' : label === '编缉知识' ? 'wiki' : label === '健康' ? 'health' : label === '本体观测' ? 'ontology' : label === '观测' ? 'observe' : label === 'Vault' ? 'vault' : 'documents';
-              return (
+          <div className="flex items-center gap-1">
+            {([
+              { k: 'documents', label: '检索资料' },
+              { k: 'wiki', label: '阅读资料' },
+              { k: 'vault', label: '原始文件' },
+            ] as const).map(({ k, label }) => (
                 <button key={k} onClick={() => selectTab(k)}
                   className={`px-3 py-1 rounded text-sm transition-colors ${
                     activeTab === k ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-gray-200'
                   }`}>
                   {label}
                 </button>
-              );
-            })}
+            ))}
+            <div className="relative ml-1">
+              <button
+                type="button"
+                onClick={() => setShowAuxTabs((v) => !v)}
+                className={`px-2.5 py-1 rounded text-sm transition-colors ${
+                  ['health', 'eval', 'ontology', 'observe'].includes(activeTab)
+                    ? 'bg-primary/20 text-primary'
+                    : 'text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                更多
+              </button>
+              {showAuxTabs && (
+                <div className="absolute left-0 top-full mt-1 z-30 min-w-[140px] rounded-lg border border-dark-border bg-dark-card py-1 shadow-lg">
+                  {([
+                    { k: 'health', label: '质量检查' },
+                    { k: 'eval', label: '检索评估' },
+                    { k: 'ontology', label: '结构指标' },
+                    { k: 'observe', label: '运行记录' },
+                  ] as const).map(({ k, label }) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => { selectTab(k); setShowAuxTabs(false); }}
+                      className={`w-full text-left px-3 py-1.5 text-xs ${
+                        activeTab === k ? 'text-primary bg-primary/10' : 'text-gray-300 hover:bg-dark-hover'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           )}
         </div>
@@ -707,7 +762,7 @@ const KnowledgeBasePage: React.FC = () => {
           <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={() => selectTab('wiki')}
             className="text-xs text-yellow-400 hover:text-yellow-300">
-            前往 LLM Wiki 处理 →
+            前往阅读资料处理 →
           </Button>
         </div>
       )}
@@ -911,27 +966,34 @@ const KnowledgeBasePage: React.FC = () => {
           {/* Toolbar */}
           <div className="flex items-center gap-2 mb-3">
             <div className="flex gap-1">
-              <button onClick={() => setWikiViewMode('graph')}
-                className={`px-2.5 py-1 rounded text-xs ${wikiViewMode === 'graph' ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-gray-200'}`}>
-                图谱
-              </button>
               <button onClick={() => setWikiViewMode('list')}
                 className={`px-2.5 py-1 rounded text-xs ${wikiViewMode === 'list' ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-gray-200'}`}>
-                列表
+                资料列表
+              </button>
+              <button onClick={() => setWikiViewMode('graph')}
+                className={`px-2.5 py-1 rounded text-xs ${wikiViewMode === 'graph' ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-gray-200'}`}>
+                引用关系
               </button>
             </div>
-            <Input placeholder="搜索..." value={wikiQuery} onChange={e => setWikiQuery(e.target.value)}
+            <Input placeholder="搜索标题…" value={wikiQuery} onChange={e => setWikiQuery(e.target.value)}
               className="w-40 h-7 text-xs" />
             <select value={wikiCategory} onChange={e => setWikiCategory(e.target.value)}
               className="h-7 px-2 bg-dark-card border border-dark-border rounded text-xs text-gray-300">
               <option value="">全部分类</option>
-              {wikiCategories.map(c => <option key={c} value={c}>{c}</option>)}
+              {wikiCategories.map(c => (
+                <option key={c} value={c}>
+                  {c === 'atoms' ? '知识片段' : c === 'entities' ? '概念' : c === 'topics' ? '专题' : c === 'contradictions' ? '矛盾' : c}
+                </option>
+              ))}
             </select>
             <div className="flex-1" />
             <select value={wikiCollection} onChange={e => setWikiCollection(e.target.value)}
-              className="h-7 px-2 bg-dark-card border border-dark-border rounded text-xs text-gray-300">
+              className="h-7 px-2 bg-dark-card border border-dark-border rounded text-xs text-gray-300"
+              title="资料集合（不是业务域）">
               {wikiCollections.map(c => (
-                <option key={c.collection_id} value={c.collection_id}>{c.collection_id} ({c.page_count})</option>
+                <option key={c.collection_id} value={c.collection_id}>
+                  {c.collection_id === 'system_docs' ? '系统文档' : c.collection_id} · {c.page_count} 页
+                </option>
               ))}
             </select>
             <Button variant="ghost" size="sm" onClick={handleCurate} loading={curating} className="text-xs">策展</Button>
@@ -991,7 +1053,17 @@ const KnowledgeBasePage: React.FC = () => {
                       <button onClick={() => setSelectedPage(null)} className="text-gray-500 hover:text-gray-300 text-xs">✕</button>
                     </div>
                   </div>
-                  <pre className="text-xs text-gray-300 whitespace-pre-wrap p-2 max-h-64 overflow-auto">{selectedPage.body || '(无正文)'}</pre>
+                  <div className="px-3 py-2 space-y-1.5">
+                    {selectedPage.summary ? (
+                      <p className="text-xs text-gray-200 leading-relaxed">{readableWiki(selectedPage.summary)}</p>
+                    ) : null}
+                    <p className="text-[11px] text-gray-400 leading-relaxed whitespace-pre-wrap">
+                      {readableWiki(selectedPage.body).slice(0, 480) || '（没有可阅读的正文）'}
+                    </p>
+                    <p className="text-[10px] text-gray-600">
+                      这是检索用资料页，不是业务本体实体。
+                    </p>
+                  </div>
                   {(selectedPage.source_articles?.length > 0) && (
                     <div className="px-2 pb-2 text-[10px] text-gray-500 border-t border-dark-border pt-1.5 mt-1">
                       📎 来源: {(selectedPage.source_articles || []).filter((s: string) => s.startsWith('kb:')).join(', ').replace(/kb:/g, '') || '未知'}
@@ -1002,15 +1074,15 @@ const KnowledgeBasePage: React.FC = () => {
                     <div className="px-2 pb-2 border-t border-dark-border pt-1.5 mt-1">
                       <button onClick={() => setShowEvidence(!showEvidence)}
                         className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1">
-                        {showEvidence ? '▼' : '▶'} 证据链
+                        {showEvidence ? '▼' : '▶'} 出处摘录
                         {evidenceChain.has_controversy && <span className="text-amber-400">⚠️ 争议</span>}
                       </button>
                       {showEvidence && (
                         <div className="mt-1 space-y-1 text-[10px]">
                           {evidenceChain.evidence_text && (
                             <div className="bg-dark-bg rounded p-1">
-                              <span className="text-gray-500">证据原文: </span>
-                              <span className="text-gray-300">{evidenceChain.evidence_text.slice(0, 150)}</span>
+                              <span className="text-gray-500">摘录: </span>
+                              <span className="text-gray-300">{readableWiki(evidenceChain.evidence_text).slice(0, 180)}</span>
                             </div>
                           )}
                           {evidenceChain.contradictions?.length > 0 && (
@@ -1522,7 +1594,7 @@ const KnowledgeBasePage: React.FC = () => {
       {activeTab === 'ontology' && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-medium text-gray-200">本体观测<span style={{fontSize:11,color:freshnessColor('onto'),marginLeft:8}}>● {freshnessAgo('onto')}</span></h2>
+            <h2 className="text-base font-medium text-gray-200">结构指标<span style={{fontSize:11,color:freshnessColor('onto'),marginLeft:8}}>● {freshnessAgo('onto')}</span></h2>
             <a href="/knowledge/business?tab=domains" className="text-xs text-primary hover:underline">→ 本体管理</a>
             <Button variant="ghost" size="sm" onClick={handleForceRefresh} loading={refreshMetricsLoading} className="text-xs">刷新指标</Button>
             <Button variant="ghost" size="sm" onClick={generateOntoSuggestions} loading={ontoGenerating} className="text-xs">生成建议</Button>

@@ -250,6 +250,7 @@ async def save_ontology_domain(domain_id: str = "", yaml_content: str = ""):
     try:
 
         from core.harness.knowledge.ontology_loader import validate_ontology_yaml, save_domain_yaml
+        from core.harness.knowledge.ontology_yaml_gate import LiveYamlDirectWriteDenied
 
         validation = validate_ontology_yaml(yaml_content)
 
@@ -263,6 +264,11 @@ async def save_ontology_domain(domain_id: str = "", yaml_content: str = ""):
 
                 "classes_n": validation["classes_n"], "properties_n": validation["properties_n"]}
 
+    except LiveYamlDirectWriteDenied as e:
+        raise HTTPException(
+            status_code=409,
+            detail={"reason": "live_yaml_requires_approved_proposal", "message": str(e)},
+        )
     except ValueError as e:
 
         raise HTTPException(status_code=400, detail=str(e))
@@ -275,9 +281,12 @@ async def save_ontology_domain(domain_id: str = "", yaml_content: str = ""):
 
 async def list_ontology_domains():
 
-    """List available domain ontology files."""
+    """List registered domain ontologies (registry.json is source of truth).
 
-    from core.harness.knowledge.ontology_loader import list_domain_files
+    Orphan YAML files (e.g. accidental ``*_v2`` copies) are ignored so the
+    UI does not show duplicate same-name domains.
+    """
+
     from core.api.core_facade import load_ontology_from_yaml  # P0-A2: 经 CoreFacade
 
     from core.api.core_facade import DomainRouter  # P0-A2: 经 CoreFacade
@@ -294,19 +303,31 @@ async def list_ontology_domains():
 
     domains = []
 
-    for domain_id in list_domain_files():
+    for domain_id in router.list_domains():
 
-        file_path = str(base_dir / f"{domain_id}.yaml")
+        cfg = router.domain_config(domain_id)
+
+        file_name = cfg.get("ontology_file") or f"{domain_id}.yaml"
+
+        file_path = base_dir / file_name
+
+        if not file_path.is_file():
+
+            file_path = base_dir / f"{domain_id}.yaml"
+
+        if not file_path.is_file():
+
+            logging.warning("registered domain %s missing ontology file %s", domain_id, file_name)
+
+            continue
 
         try:
 
-            domain = load_ontology_from_yaml(file_path)
-
-            cfg = router.domain_config(domain.id)
+            domain = load_ontology_from_yaml(str(file_path))
 
             domains.append({
 
-                "id": domain.id,
+                "id": domain_id,
 
                 "name": domain.name,
 
@@ -328,7 +349,7 @@ async def list_ontology_domains():
 
                 "system_prompt_id": cfg.get("system_prompt_id", ""),
 
-                "collection_id": cfg.get("collection_id", domain.id),
+                "collection_id": cfg.get("collection_id", domain_id),
 
             })
 
@@ -418,6 +439,10 @@ async def get_ontology_domain(domain_id: str):
 
                 "synonyms": getattr(c, "synonyms", None) or [],
 
+                "implements": list(getattr(c, "implements", None) or []),
+
+                "tier": getattr(c, "tier", None) or "logic",
+
             } for c in domain.classes],
 
             "object_properties": [{
@@ -443,6 +468,32 @@ async def get_ontology_domain(domain_id: str):
                 "range": p.range,
 
             } for p in domain.data_properties],
+
+            "processes": list(getattr(domain, "processes", None) or []),
+
+            "interfaces": [{
+
+                "name": iface.name,
+
+                "label": getattr(iface, "label", "") or iface.name,
+
+                "description": getattr(iface, "description", "") or "",
+
+                "properties": list(getattr(iface, "properties", None) or []),
+
+            } for iface in (getattr(domain, "interfaces", None) or [])],
+
+            "inference_rules": list(getattr(domain, "inference_rules", None) or []),
+
+            "axioms": [{
+
+                "id": ax.id,
+
+                "description": ax.description,
+
+                "severity": getattr(ax, "severity", "") or "error",
+
+            } for ax in (getattr(domain, "axioms", None) or [])],
 
         }
 

@@ -155,6 +155,65 @@ ${agent_catalog}
 输出 JSON（无 markdown 标记, 字段完整）:
 {"agent_type":"react","skills":["code_review","summarization"],"tools":["search","file_operations"],"mcp_ids":[],"agent_ids":[],"sop_text":"1. 接收任务\\n2. 分析需求\\n3. 执行操作\\n4. 输出结果","config":{"temperature":0.1,"max_tokens":4096},"reasoning":"AGENT.md 描述了多步推理需求，适合 ReAct 模式..."}""",
         "agent-auto-fill-system-role": """你是一个 AI Agent 配置专家。只输出 JSON，不要加任何解释或 markdown 标记。skills 字段只能使用提示词中列出的 id，禁止编造不存在的 id。如果无匹配项，skills 留空 []。""",
+        "agent-create-dialog-system-role": """你是 Agent / 数字员工创建顾问。通过简短对话收集需求，信息足够后输出可生成草稿的结构化 JSON。只输出 JSON，不要 Markdown 代码围栏。""",
+        "agent-create-dialog": """根据对话历史与用户最新回复，判断是继续追问还是已可生成 Agent 草稿。
+
+## 对话历史
+${history}
+
+## 用户最新回复
+${latest_user}
+
+## 输出（严格 JSON 对象）
+若还缺关键信息：
+{
+  "next": "ask",
+  "reply": "对用户的一句话回应",
+  "questions": ["问题1", "问题2"]
+}
+
+若已足够生成草稿（至少有：目标、输入、输出；模版/写文件/联网约束如有则写明）：
+{
+  "next": "draft",
+  "reply": "已收集足够信息，正在生成草稿",
+  "display_name": "中文显示名",
+  "name": "english_snake_case_or_中文名均可",
+  "description": "完整功能描述（含输入/处理/输出/约束，供后续 auto-fill 使用，建议 >=80 字）"
+}
+
+## 规则
+1. 每轮最多 3 个问题，短句；禁止重复追问用户已在「对话历史」或「最新回复」中答过的内容
+2. 优先澄清（仅当尚未出现时）：输入字段、输出形态（文本/文件/pptx）、无模版时策略、是否写盘/下载、是否联网、禁止事项
+3. 用户已说清目标+输入+输出时必须 next=draft；不要为「再确认一遍」而 ask
+4. 若最新回复已包含对上一轮问题的答案（如「停下来问用户」「保存到项目空间」「自动判断」），一律 next=draft
+5. description 必须可独立理解，合并历史与最新回复中的约束，不要只写“同上”
+6. 只输出 JSON""",
+        "team-create-dialog-system-role": """你是团队流水线组装顾问。根据目标从可用 Agent 目录挑选阶段顺序。只输出 JSON，不要 Markdown 代码围栏。stages 里的 agent_id 必须来自目录。""",
+        "team-create-dialog": """根据对话与可用 Agent 目录，判断继续追问还是生成团队阶段草稿。
+
+## 对话历史
+${history}
+
+## 用户最新回复
+${latest_user}
+
+## 可用 Agent 目录
+${agent_catalog}
+
+## 输出（严格 JSON）
+若还缺信息：
+{"next":"ask","reply":"...","questions":["..."]}
+
+若已足够：
+{
+  "next":"draft",
+  "reply":"...",
+  "display_name":"团队名",
+  "description":"团队目标与产出说明",
+  "stages":[{"agent_id":"必须来自目录","phase":"可选","hitl":false}]
+}
+
+规则：stages 按执行顺序；agent_id 禁止编造；每轮最多3问；尽快 draft；只输出 JSON。""",
     }
     for pid, content in prompts.items():
         register_prompt(pid, content, category="builder")

@@ -3375,6 +3375,52 @@ def run_migrations(conn, current: int, target_version: int) -> int:
         current = 54
 
 
+    # ---- Migration v55: run_graph_nodes — authoritative ExecutionViewer projection ----
+
+    if current < 55:
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS run_graph_nodes (
+              run_id TEXT NOT NULL,
+              node_id TEXT NOT NULL,
+              parent_id TEXT,
+              kind TEXT NOT NULL,
+              name TEXT NOT NULL,
+              label TEXT,
+              role TEXT NOT NULL DEFAULT 'work',
+              status TEXT NOT NULL,
+              start_time REAL,
+              end_time REAL,
+              duration_ms REAL,
+              args_json TEXT,
+              result_json TEXT,
+              error TEXT,
+              sort_key REAL,
+              input_tokens INTEGER DEFAULT 0,
+              output_tokens INTEGER DEFAULT 0,
+              cost REAL DEFAULT 0,
+              updated_at REAL NOT NULL,
+              PRIMARY KEY (run_id, node_id)
+            );
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_run_graph_nodes_run ON run_graph_nodes(run_id, sort_key, start_time);"
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS run_graph_meta (
+              run_id TEXT PRIMARY KEY,
+              status TEXT NOT NULL DEFAULT 'running',
+              updated_at REAL NOT NULL
+            );
+            """
+        )
+        _set_version(55)
+        current = 55
+
+
     # If legacy db exists with tables but without meta, upgrade meta to current
 
     if current < target_version:

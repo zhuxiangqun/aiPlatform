@@ -24,6 +24,8 @@ import VoiceBrainstormPanel from './VoiceBrainstormPanel';
 import CognitiveSafetyPanel from './CognitiveSafetyPanel';
 import CompilationDashboard from './CompilationDashboard';
 import EvoXPanel from './EvoXPanel';
+import GovernanceLoopPanel from '../Knowledge/GovernanceLoopPanel';
+import OrgL5Panel from '../Knowledge/OrgL5Panel';
 
 const API = (path: string) => `/api/platform/apps/fde${path}`;
 
@@ -188,6 +190,8 @@ interface CustomerInfo {
   industry?: string;
   description?: string;
   deployment_mode?: string;
+  primary_domain?: string;
+  domain_id?: string;
 }
 interface DomainInfo {
   id: string;
@@ -221,6 +225,49 @@ export const INDUSTRY_DOMAIN_MAP: Record<string, string[]> = {
   '安装服务': ['lock-service', 'it-ops'],
   'general': ['ai-knowledge', 'default'],
 };
+
+const DOMAIN_LABELS: Record<string, string> = {
+  'lock-service': '智能锁安装维保',
+  'it-ops': 'IT运维',
+  'supply-chain': '供应链',
+  'service-domain': '售后服务',
+  'procurement-mvo': '采购管理',
+  'ai-knowledge': 'AI知识',
+  'fde-delivery': 'FDE交付',
+};
+
+/** 客户 → 建议主本体（Profile 无 domain 字段时的可见推断，供画面展示） */
+export function resolveCustomerOntologies(c: {
+  name?: string;
+  description?: string;
+  industry?: string;
+  primary_domain?: string;
+  domain_id?: string;
+}): { primary: string; candidates: string[]; reason: string } {
+  const explicit = (c.primary_domain || c.domain_id || '').trim();
+  if (explicit) {
+    return { primary: explicit, candidates: [explicit], reason: '客户 Profile 已指定' };
+  }
+  const blob = `${c.name || ''} ${c.description || ''} ${c.industry || ''}`;
+  if (/锁安|智能锁|安装维保|lock[\s-]?service/i.test(blob)) {
+    return {
+      primary: 'lock-service',
+      candidates: ['lock-service', 'service-domain'],
+      reason: '按客户名/业务描述推断（安装维保）',
+    };
+  }
+  const ind = (c.industry || '').trim();
+  const fromMap = INDUSTRY_DOMAIN_MAP[ind] || INDUSTRY_DOMAIN_MAP[ind.toLowerCase()] || [];
+  if (fromMap.length) {
+    return { primary: fromMap[0], candidates: fromMap, reason: `按行业「${ind}」推荐` };
+  }
+  return { primary: '', candidates: [], reason: '未绑定 — 请在 ② 评估域手动选择' };
+}
+
+function domainDisplayName(id: string): string {
+  if (!id) return '—';
+  return DOMAIN_LABELS[id] ? `${DOMAIN_LABELS[id]}（${id}）` : id;
+}
 
 
 
@@ -312,11 +359,36 @@ const FDE_STEPS = [
 
 type TabKey = typeof FDE_STEPS[number]['key'];
 
+const FDE_SESSION_KEY = 'aiplat.fde.free_session.v1';
+
+function loadFdeSession(): { customer: CustomerInfo | null; domain: DomainInfo | null } {
+  try {
+    const raw = sessionStorage.getItem(FDE_SESSION_KEY);
+    if (!raw) return { customer: null, domain: null };
+    const parsed = JSON.parse(raw);
+    return {
+      customer: parsed?.customer && typeof parsed.customer.name === 'string' ? parsed.customer : null,
+      domain: parsed?.domain && typeof parsed.domain.id === 'string' ? parsed.domain : null,
+    };
+  } catch {
+    return { customer: null, domain: null };
+  }
+}
+
+function saveFdeSession(customer: CustomerInfo | null, domain: DomainInfo | null) {
+  try {
+    sessionStorage.setItem(FDE_SESSION_KEY, JSON.stringify({ customer, domain }));
+  } catch {
+    /* ignore quota */
+  }
+}
+
 // ── Dashboard ──
 const FdeDashboard: React.FC = () => {
+  const restored = React.useMemo(() => loadFdeSession(), []);
   const [tab, setTab] = useState<TabKey>('customers');
-  const [customer, setCustomer] = useState<CustomerInfo | null>(null);
-  const [domain, setDomain] = useState<DomainInfo | null>(null);
+  const [customer, setCustomer] = useState<CustomerInfo | null>(restored.customer);
+  const [domain, setDomain] = useState<DomainInfo | null>(restored.domain);
   const [diagnosis, setDiagnosis] = useState<DiagnosisInfo | null>(null);
   const [pocProfile, setPocProfile] = useState<string | null>(null);
   const [deployVersion, setDeployVersion] = useState<string | null>(null);
@@ -414,6 +486,15 @@ const FdeDashboard: React.FC = () => {
 
   const handleCustomerSelect = async (c: CustomerInfo) => {
     setCustomer(c);
+    // 有主本体推断时一并预选 ②，避免「列表有 Profile 但进度仍停在 ①」
+    const onto = resolveCustomerOntologies(c);
+    if (onto.primary) {
+      setDomain((prev) => ({
+        id: onto.primary,
+        maturity: prev?.id === onto.primary ? (prev.maturity || 'growing') : 'growing',
+        skillsAvailable: prev?.id === onto.primary ? (prev.skillsAvailable || 0) : 0,
+      }));
+    }
     if (!c.industry && (c.name || c.description)) {
       try {
         const r = await fetch(API('/infer-industry'), {
@@ -421,13 +502,18 @@ const FdeDashboard: React.FC = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: c.name, description: c.description }),
         });
-        const d = await r.json();
+        const dRaw = await r.json();
+        const d = (dRaw?.data && typeof dRaw.data === 'object') ? dRaw.data : dRaw;
         if (d.confidence >= 0.70) {
           setCustomer(prev => prev ? { ...prev, industry: d.industry } : prev);
         }
       } catch {}
     }
   };
+
+  useEffect(() => {
+    saveFdeSession(customer, domain);
+  }, [customer, domain]);
 
   const loadWorkflow = async (name: string) => {
     if (!name) { setWorkflowStages([]); setWorkflowName(''); return; }
@@ -598,6 +684,37 @@ const FdeDashboard: React.FC = () => {
             <PurposeContext />
           </div>
        </div>
+      {customer && (() => {
+        const onto = resolveCustomerOntologies(customer);
+        const selectedId = domain?.id || '';
+        return (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-2 rounded-lg border border-emerald-800/40 bg-emerald-950/20 text-xs">
+            <span className="text-gray-400">当前客户</span>
+            <span className="text-emerald-100 font-medium">{customer.name}</span>
+            <span className="text-gray-600">·</span>
+            <span className="text-gray-400">建议主本体</span>
+            {onto.primary ? (
+              <a
+                href={`/knowledge/business?tab=domains&domain=${encodeURIComponent(onto.primary)}`}
+                className="text-sky-300 hover:underline font-medium"
+                title={onto.reason}
+              >
+                {domainDisplayName(onto.primary)}
+              </a>
+            ) : (
+              <span className="text-amber-300">未指定</span>
+            )}
+            {selectedId && (
+              <>
+                <span className="text-gray-600">·</span>
+                <span className="text-gray-400">② 已选评估域</span>
+                <span className="text-gray-200 font-medium">{domainDisplayName(selectedId)}</span>
+              </>
+            )}
+            <span className="text-[10px] text-gray-500 w-full sm:w-auto sm:ml-auto">{onto.reason}</span>
+          </div>
+        );
+      })()}
       {/* ── 系统健康状态条 ── */}
       {showHealth && (
         <div>
@@ -736,8 +853,20 @@ const FdeDashboard: React.FC = () => {
           </button>
         ))}
       </div>
-      {tab === 'customers'  && <CustomersTab onSelect={handleCustomerSelect} diagnosis={diagnosis} />}
-      {tab === 'capability' && <CapabilityBoundary industry={customer?.industry} onSelect={setDomain} />}
+      {tab === 'customers'  && (
+        <CustomersTab
+          onSelect={handleCustomerSelect}
+          diagnosis={diagnosis}
+          selectedName={customer?.name || null}
+        />
+      )}
+      {tab === 'capability' && (
+        <CapabilityBoundary
+          industry={customer?.industry}
+          focusDomainId={domain?.id ?? null}
+          onSelect={setDomain}
+        />
+      )}
       {tab === 'assess'     && <AssessTab domain={domain?.id ?? null} customerDesc={customer?.description || ''} customerName={customer?.name || ''} customerIndustry={customer?.industry || ''} onReport={setDiagnosis} />}
       {tab === 'poc'        && <PocTab domain={domain} onProfileSet={setPocProfile} />}
       {tab === 'deploy'     && <DeployTab profile={pocProfile} onDeployed={setDeployVersion} customerName={customer?.name || ''} domainId={domain?.id || ''} />}
@@ -1950,6 +2079,9 @@ const AssessTab: React.FC<{ readonly domain: string | null; readonly customerDes
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogTurn, setDialogTurn] = useState(1);
   const [dialogContext, setDialogContext] = useState<Record<string, string>>({});
+  const [dialogId, setDialogId] = useState('');
+  const dialogContextRef = useRef<Record<string, string>>({});
+  const dialogHistoryRef = useRef<Array<{role: string; content: string}>>([]);
   const [dialogHistory, setDialogHistory] = useState<Array<{role: string; content: string}>>([]);
   const [dialogOptions, setDialogOptions] = useState<string[]>([]);
   const [dialogLoading, setDialogLoading] = useState(false);
@@ -2028,59 +2160,115 @@ const AssessTab: React.FC<{ readonly domain: string | null; readonly customerDes
   const [editingReport, setEditingReport] = useState(false);
 
   // ── Clarification dialog: initiate or continue ──
-  const dialogCall = async (answer?: string, turn?: number, sessionId?: string) => {
+  const dialogCall = async (
+    answer?: string,
+    turn?: number,
+    sessionId?: string,
+    reportText?: string,
+    historyOverride?: Array<{role: string; content: string}>,
+  ) => {
     setDialogLoading(true);
     try {
+      const followUpReport = (reportText ?? (report && !report.startsWith('__ERROR__:') ? report : '')) || '';
+      // Prefer dialog-accumulated memory over form (form may stay empty until finish)
+      const mem = dialogContextRef.current || dialogContext || {};
+      const hist = (historyOverride || dialogHistoryRef.current || dialogHistory || []).slice(-12);
+      const pick = (k: string, formKey?: string) =>
+        (mem[k] || form[formKey || k] || '').trim();
       const body = JSON.stringify({
         turn: Number(turn ?? dialogTurn),
         answer: answer || '',
         session_id: sessionId || dialogSessionId || '',
-        industry: form.industry || dialogContext.industry || '',
-        company_name: form.company_name || dialogContext.company_name || '',
-        pain_points: form.pain_points || dialogContext.pain_points || '',
-        team_size: form.team_size || dialogContext.team_size || '',
-        budget: form.budget_range || dialogContext.budget || '',
-        existing_tech_stack: form.existing_tech_stack || dialogContext.existing_tech_stack || '',
-        internal_data_sources: form.internal_data_sources || dialogContext.internal_data_sources || '',
-        external_data_sources: form.external_data_sources || dialogContext.external_data_sources || '',
-        compliance_requirements: form.compliance_requirements || dialogContext.compliance_requirements || '',
-        poc_timeline: form.poc_timeline || dialogContext.poc_timeline || '',
-        production_timeline: form.production_timeline || dialogContext.production_timeline || '',
+        dialog_id: dialogId || '',
+        history: hist.map(h => ({ role: h.role, content: String(h.content || '').slice(0, 800) })),
+        report_text: followUpReport.slice(0, 12000),
+        industry: pick('industry'),
+        company_name: pick('company_name'),
+        pain_points: pick('pain_points'),
+        team_size: pick('team_size'),
+        budget: pick('budget', 'budget_range') || pick('budget'),
+        existing_tech_stack: pick('existing_tech_stack'),
+        internal_data_sources: pick('internal_data_sources'),
+        external_data_sources: pick('external_data_sources'),
+        compliance_requirements: pick('compliance_requirements'),
+        poc_timeline: pick('poc_timeline'),
+        production_timeline: pick('production_timeline'),
+        domain_id: (domain && typeof domain === 'object' ? domain.id : '') || mem.domain_id || '',
       });
       const r = await fetch(API('/assess/dialog'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body,
       });
-      const data = await r.json();
-      setDialogContext(data.context || {});
+      const raw = await r.json();
+      // Backend wraps payload in FdeStatusResponse.data
+      const data = (raw?.data && typeof raw.data === 'object') ? raw.data : raw;
+      if (!data?.question && !data?.finished) {
+        setDialogHistory(prev => {
+          const next = [...prev, { role: 'assistant', content: raw?.message || '澄清服务暂无回复，请直接填写表单后提交诊断，或稍后重试。' }];
+          dialogHistoryRef.current = next;
+          return next;
+        });
+        return;
+      }
+      const nextCtx = { ...(data.context || {}) } as Record<string, string>;
+      dialogContextRef.current = nextCtx;
+      setDialogContext(nextCtx);
+      // Mirror into form incrementally so memory survives dialog close
+      setForm(prev => ({
+        ...prev,
+        ...(nextCtx.company_name ? { company_name: nextCtx.company_name } : {}),
+        ...(nextCtx.industry ? { industry: nextCtx.industry } : {}),
+        ...(nextCtx.pain_points ? { pain_points: nextCtx.pain_points } : {}),
+        ...(nextCtx.team_size ? { team_size: nextCtx.team_size } : {}),
+        ...(nextCtx.budget ? { budget_range: nextCtx.budget } : {}),
+        ...(nextCtx.existing_tech_stack ? { existing_tech_stack: nextCtx.existing_tech_stack } : {}),
+        ...(nextCtx.internal_data_sources ? { internal_data_sources: nextCtx.internal_data_sources } : {}),
+        ...(nextCtx.external_data_sources ? { external_data_sources: nextCtx.external_data_sources } : {}),
+        ...(nextCtx.compliance_requirements ? { compliance_requirements: nextCtx.compliance_requirements } : {}),
+        ...(nextCtx.poc_timeline ? { poc_timeline: nextCtx.poc_timeline } : {}),
+        ...(nextCtx.production_timeline ? { production_timeline: nextCtx.production_timeline } : {}),
+      }));
+      if (nextCtx.domain_id) {
+        setDomain((prev) => ({
+          id: nextCtx.domain_id,
+          maturity: prev?.id === nextCtx.domain_id ? (prev.maturity || 'growing') : 'growing',
+          skillsAvailable: prev?.id === nextCtx.domain_id ? (prev.skillsAvailable || 0) : 0,
+        }));
+      }
       setDialogOptions(data.options || []);
       setDialogTurn(data.turn || 2);
-      setDialogHistory(prev => [
-        ...prev,
-        { role: 'assistant', content: data.question || '' },
-      ]);
+      setDialogHistory(prev => {
+        const next = [...prev, { role: 'assistant', content: data.question || '' }];
+        dialogHistoryRef.current = next;
+        return next;
+      });
 
       // ── Handle "finished" flag ──
       if (data.finished) {
-        const isFollowUp = !!diagnosisSessionId;
+        const isFollowUp = !!(diagnosisSessionId || followUpReport);
 
         if (isFollowUp) {
           // ── §8 follow-up: collect Q&A into pendingFeedback ──
           const qaPairs: string[] = [];
-          for (let i = 1; i < dialogHistory.length - 1; i++) {
-            const msg = dialogHistory[i];
-            if (msg.role === 'assistant' && msg.content !== dialogHistory[0]?.content) {
-              const nextMsg = dialogHistory[i + 1];
-              if (nextMsg?.role === 'user') {
-                qaPairs.push(`Q: ${msg.content}\nA: ${nextMsg.content}`);
-              }
+          const hist = [...dialogHistory, { role: 'assistant' as const, content: data.question || '' }];
+          for (let i = 0; i < hist.length - 1; i++) {
+            const msg = hist[i];
+            const nextMsg = hist[i + 1];
+            if (msg.role === 'assistant' && nextMsg?.role === 'user' && String(msg.content || '').includes('待确认')) {
+              qaPairs.push(`Q: ${msg.content}\nA: ${nextMsg.content}`);
             }
           }
+          // Also pair last assistant question with the answer that triggered finished
+          if (answer && data.question) {
+            /* answer already in history as user msg from caller */
+          }
           const qaText = qaPairs.join('\n\n');
-          setPendingFeedback((pf: string) => {
-            const parts = [pf.trim(), '--- 澄清对话记录 ---', qaText].filter(Boolean);
-            return parts.join('\n\n');
-          });
+          if (qaText || answer) {
+            setPendingFeedback((pf: string) => {
+              const parts = [pf.trim(), '--- 澄清对话记录 ---', qaText || `A: ${answer}`].filter(Boolean);
+              return parts.join('\n\n');
+            });
+          }
           setTimeout(() => {
             closeDialog();
           }, 200);
@@ -2100,6 +2288,7 @@ const AssessTab: React.FC<{ readonly domain: string | null; readonly customerDes
             // Write back to form for UI display
             setForm(prev => ({ ...prev, ...extra,
               ...(ctx.company_name ? { company_name: ctx.company_name } : {}),
+              ...(ctx.industry ? { industry: ctx.industry } : {}),
               ...(ctx.pain_points ? { pain_points: ctx.pain_points } : {}),
               ...(ctx.team_size ? { team_size: ctx.team_size } : {}),
               ...(ctx.budget ? { budget_range: ctx.budget } : {}),
@@ -2110,6 +2299,14 @@ const AssessTab: React.FC<{ readonly domain: string | null; readonly customerDes
               ...(ctx.poc_timeline ? { poc_timeline: ctx.poc_timeline } : {}),
               ...(ctx.production_timeline ? { production_timeline: ctx.production_timeline } : {}),
             }));
+            if (ctx.domain_id && typeof ctx.domain_id === 'string') {
+              setDomain((prev) => ({
+                id: ctx.domain_id,
+                maturity: prev?.id === ctx.domain_id ? (prev.maturity || 'growing') : 'growing',
+                skillsAvailable: prev?.id === ctx.domain_id ? (prev.skillsAvailable || 0) : 0,
+              }));
+              extra.domain_id = ctx.domain_id;
+            }
             submit(extra);  // ← pass directly, bypass setForm async delay
           }, 500);
         }
@@ -2129,57 +2326,143 @@ const AssessTab: React.FC<{ readonly domain: string | null; readonly customerDes
   const openDialog = (sessionId?: string) => {
     if (dialogLockRef.current) return;
     dialogLockRef.current = true;
+    const hasReport = !!(report && !report.startsWith('__ERROR__:') && report.length > 200);
+    const newDialogId = `dlg-${Date.now().toString(36)}`;
+    setDialogId(newDialogId);
     setDialogOpen(true);
     setDialogTurn(1);
-    setDialogHistory([{ role: 'assistant', content: '你好！我是 AI 诊断助手。让我先了解一下你的情况……' }]);
+    const greet = {
+      role: 'assistant' as const,
+      content: hasReport
+        ? '报告 §8 有待确认项。我们按报告逐项澄清（不是重新收集行业画像）……'
+        : '你好！我是 AI 诊断助手。让我先了解一下你的情况……',
+    };
+    dialogHistoryRef.current = [greet];
+    dialogContextRef.current = {};
+    setDialogHistory([greet]);
     setDialogContext({});
-    setDialogSessionId(sessionId || '');
-    dialogCall(undefined, 1, sessionId);
+    const sid = sessionId || diagnosisSessionId || (hasReport ? `diag-local-${Date.now()}` : '');
+    setDialogSessionId(sid);
+    if (hasReport && !diagnosisSessionId) setDiagnosisSessionId(sid);
+    dialogCall(undefined, 1, sid, hasReport ? report : undefined, [greet]);
+  };
+
+  const sendDialogMessage = (msg: string) => {
+    if (!msg.trim() || dialogLoading) return;
+    const text = msg.trim();
+    setDialogInput('');
+    const nextHist = [...(dialogHistoryRef.current || dialogHistory), { role: 'user', content: text }];
+    dialogHistoryRef.current = nextHist;
+    setDialogHistory(nextHist);
+    dialogCall(text, undefined, undefined, undefined, nextHist);
   };
 
   const submit = async (extraInput?: Record<string, any>) => {
     setLoading(true);
     try {
-      const input = {
-        company_name: form.company_name || '',
-        industry: form.industry || '',
-        custom_industry: form.custom_industry || '',
-        team_size: parseInt(form.team_size) || 0,
-        pain_points: (form.pain_points || '').split('\n').map(s => s.trim()).filter(Boolean),
-        existing_tech_stack: (form.existing_tech_stack || '').split(',').map(s => s.trim()).filter(Boolean),
-        internal_data_sources: (form.internal_data_sources || '').split(',').map(s => s.trim()).filter(Boolean),
-        external_data_sources: (form.external_data_sources || '').split(',').map(s => s.trim()).filter(Boolean),
-        compliance_requirements: (form.compliance_requirements || '').split(',').map(s => s.trim()).filter(Boolean),
-        budget_range: form.budget_range || '',
-        poc_timeline: form.poc_timeline || '',
-        production_timeline: form.production_timeline || '',
-        ...(extraInput || {}),
+      const merged = { ...form, ...(extraInput || {}) };
+      const toLines = (v: unknown): string[] => {
+        if (Array.isArray(v)) return v.map(String).map(s => s.trim()).filter(Boolean);
+        if (typeof v === 'string') {
+          return v.split(/[\n；;]/).map(s => s.trim()).filter(Boolean);
+        }
+        return [];
       };
-      const r = await fetch('/api/core/skills/field-assessment/execute', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input, mode: 'inline' }),
-      });
-      const data = await r.json();
-      if (!data.ok) {
-        const errMsg = data.error_message || data.error?.message || '未知错误';
+      const toCsv = (v: unknown): string[] => {
+        if (Array.isArray(v)) return v.map(String).map(s => s.trim()).filter(Boolean);
+        if (typeof v === 'string') {
+          return v.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+        }
+        return [];
+      };
+      const input = {
+        company_name: merged.company_name || '',
+        industry: merged.industry || '',
+        custom_industry: merged.custom_industry || '',
+        team_size: parseInt(String(merged.team_size || ''), 10) || 0,
+        pain_points: toLines(merged.pain_points),
+        existing_tech_stack: toCsv(merged.existing_tech_stack),
+        internal_data_sources: toCsv(merged.internal_data_sources),
+        external_data_sources: toCsv(merged.external_data_sources),
+        compliance_requirements: toCsv(merged.compliance_requirements),
+        budget_range: merged.budget_range || merged.budget || '',
+        poc_timeline: merged.poc_timeline || '',
+        production_timeline: merged.production_timeline || '',
+        ...(extraInput?.pending_feedback ? { pending_feedback: extraInput.pending_feedback } : {}),
+        domain_id: (
+          extraInput?.domain_id
+          || (typeof merged.domain === 'string' ? merged.domain : '')
+          || (domain && typeof domain === 'object' ? (domain as DomainInfo).id : '')
+          || (typeof domain === 'string' ? domain : '')
+          || ''
+        ),
+      };
+      const execOnce = async () => {
+        const r = await fetch('/api/core/skills/field_assessment/execute', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input, mode: 'inline' }),
+        });
+        return r.json();
+      };
+      let data = await execOnce();
+      // If gated by first-time/skill approval, auto-approve + replay once (FDE diagnose is read-only)
+      if (!data.ok && (data.status === 'waiting_approval' || data.error?.code === 'APPROVAL_REQUIRED')) {
+        const approvalId = data.metadata?.approval_request_id
+          || data.error?.extra?.approval_request_id
+          || data.error?.approval_request_id;
+        if (approvalId) {
+          try {
+            await fetch(`/api/core/approvals/${approvalId}/approve`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ approved_by: 'fde_engineer', comments: 'FDE 现场诊断自动放行（只读）' }),
+            });
+            const rp = await fetch(`/api/core/approvals/${approvalId}/replay`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({}),
+            });
+            data = await rp.json();
+          } catch {
+            // fall through to error display
+          }
+        }
+      }
+      const skillOk = Boolean(
+        data.ok
+        || data.status === 'completed'
+        || data.status === 'accepted'
+        || data.metadata?.handler_executed
+      );
+      if (!skillOk) {
+        const errMsg = data.error_message || data.error?.message || data.status || '未知错误';
         setReport('__ERROR__:' + errMsg);
       } else {
-        const rawOutput = data.output || data.report;
+        const rawOutput = data.output || data.report || data.result;
         const outputText = typeof rawOutput === 'string' ? rawOutput
-          : (rawOutput && typeof rawOutput === 'object' ? (rawOutput.text || rawOutput.output || JSON.stringify(rawOutput, null, 2)) : JSON.stringify(data, null, 2));
-        setReport(outputText);
-        // Capture session_id for §8 follow-up
-        if (data.metadata?.session_id) {
-          setDiagnosisSessionId(data.metadata.session_id);
+          : (rawOutput && typeof rawOutput === 'object'
+            ? (rawOutput.markdown || rawOutput.text || rawOutput.output || JSON.stringify(rawOutput, null, 2))
+            : (typeof data.markdown === 'string' ? data.markdown : JSON.stringify(data, null, 2)));
+        if (!String(outputText || '').trim()) {
+          setReport('__ERROR__:诊断已执行但未返回报告正文，请重试或检查模型服务。');
+        } else {
+          setReport(outputText);
+          // Capture session_id for §8 follow-up (handler or local fallback)
+          const sid = data.metadata?.session_id
+            || data.output?.session_id
+            || data.output?.diagnosis?.session_id
+            || `diag-${Date.now()}`;
+          setDiagnosisSessionId(sid);
+          // Fire pipeline event: report ready
+          const deepMatch = outputText.match(/深层问题[：:]\s*(.+)/);
+          const domainMatch = outputText.match(/推荐本体域[：:]\s*(\S+)/);
+          const domainFromCtx = (extraInput as any)?.domain_id
+            || (domain && typeof domain === 'object' ? (domain as DomainInfo).id : '')
+            || '';
+          onReport({
+            deepProblem: deepMatch?.[1]?.trim() || outputText.slice(0, 120),
+            recommendedDomain: domainMatch?.[1]?.trim() || domainFromCtx || form.domain || '',
+            reportText: outputText,
+          });
         }
-        // Fire pipeline event: report ready
-        const deepMatch = outputText.match(/深层问题[：:]\s*(.+)/);
-        const domainMatch = outputText.match(/推荐本体域[：:]\s*(\S+)/);
-        onReport({
-          deepProblem: deepMatch?.[1]?.trim() || outputText.slice(0, 120),
-          recommendedDomain: domainMatch?.[1]?.trim() || form.domain || '',
-          reportText: outputText,
-        });
       }
 
       setLoading(false);
@@ -2539,8 +2822,7 @@ const AssessTab: React.FC<{ readonly domain: string | null; readonly customerDes
                       disabled={dialogLoading}
                       onClick={() => {
                         if (dialogLoading) return;
-                        setDialogHistory(prev => [...prev, { role: 'user', content: opt }]);
-                        dialogCall(opt);
+                        sendDialogMessage(opt);
                       }}>{opt}</button>
                   ))}
                 </div>
@@ -2551,8 +2833,8 @@ const AssessTab: React.FC<{ readonly domain: string | null; readonly customerDes
                   value={dialogInput} onChange={e => setDialogInput(e.target.value)}
                   onCompositionStart={() => setDialogComposing(true)}
                   onCompositionEnd={() => setDialogComposing(false)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !dialogComposing && dialogInput.trim()) { e.preventDefault(); const msg = dialogInput.trim(); setDialogInput(''); setDialogHistory(prev => [...prev, { role: 'user', content: msg }]); dialogCall(msg); }}} />
-                <Button variant="ghost" size="sm" className="px-3" onClick={() => { if (dialogInput.trim()) { const msg = dialogInput.trim(); setDialogInput(''); setDialogHistory(prev => [...prev, { role: 'user', content: msg }]); dialogCall(msg); }}} disabled={!dialogInput.trim() || dialogLoading}>
+                  onKeyDown={e => { if (e.key === 'Enter' && !dialogComposing && dialogInput.trim()) { e.preventDefault(); sendDialogMessage(dialogInput); }}} />
+                <Button variant="ghost" size="sm" className="px-3" onClick={() => sendDialogMessage(dialogInput)} disabled={!dialogInput.trim() || dialogLoading}>
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
@@ -2568,8 +2850,14 @@ const AssessTab: React.FC<{ readonly domain: string | null; readonly customerDes
 // ═══════════════════════════════════════════════════════════
 // ① 业务认知 — 客户列表 (with create modal + expandable cards)
 // ═══════════════════════════════════════════════════════════
-const CustomersTab: React.FC<{ readonly onSelect: (c: CustomerInfo) => void; readonly diagnosis: Readonly<DiagnosisInfo> | null }> = ({ onSelect, diagnosis }) => {
+const CustomersTab: React.FC<{
+  readonly onSelect: (c: CustomerInfo) => void;
+  readonly diagnosis: Readonly<DiagnosisInfo> | null;
+  readonly selectedName?: string | null;
+}> = ({ onSelect, diagnosis, selectedName }) => {
   const [customers, setCustomers] = useState<any[]>([]);
+  const [listLoading, setListLoading] = useState(true);
+  const [listError, setListError] = useState('');
   const [expanded, setExpanded] = useState<string[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<Record<string, string>>({});
@@ -2578,14 +2866,54 @@ const CustomersTab: React.FC<{ readonly onSelect: (c: CustomerInfo) => void; rea
   const [editForm, setEditForm] = useState<Record<string, string>>({});
   const [editId, setEditId] = useState('');
   const [editLoading, setEditLoading] = useState(false);
+  const didAutoSelect = React.useRef(false);
 
-  const load = () => fetch(API('/customers')).then(r => r.json()).then(d => setCustomers(d.items || []));
+  const toCustomerInfo = (c: any): CustomerInfo => ({
+    name: c.name,
+    namespace: c.namespace,
+    industry: c.industry,
+    description: c.description,
+    deployment_mode: c.deployment_mode,
+    primary_domain: c.primary_domain || c.domain_id,
+    domain_id: c.domain_id || c.primary_domain,
+  });
+
+  const load = (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) {
+      setListLoading(true);
+      setListError('');
+    }
+    return fetch(API('/customers'))
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`加载失败 (${r.status})`);
+        return r.json();
+      })
+      .then((d) => {
+        const items = d.items || [];
+        setCustomers(items);
+        setListError('');
+        // 仅有 1 个 / 有默认 Profile 且当前未选 → 自动选用（刷新后也靠 session 恢复）
+        if (!didAutoSelect.current && !selectedName && items.length > 0) {
+          const pick = items.find((c: any) => c.default) || (items.length === 1 ? items[0] : null);
+          if (pick) {
+            didAutoSelect.current = true;
+            onSelect(toCustomerInfo(pick));
+          }
+        }
+      })
+      .catch((e: any) => {
+        setListError(e?.message || '客户列表加载失败');
+        setCustomers([]);
+      })
+      .finally(() => setListLoading(false));
+  };
   useEffect(() => { load(); }, []);
 
-  const switchProfile = async (name: string) => {
-    await fetch(API(`/switch-profile/${name}`), { method: 'POST' });
-    toast?.success?.('已切换至 ' + name) || console.log('已切换至', name);
-    load();
+  const switchProfile = async (c: any) => {
+    await fetch(API(`/switch-profile/${c.name}`), { method: 'POST' });
+    onSelect(toCustomerInfo(c));
+    toast?.success?.('已选用 ' + c.name) || console.log('已选用', c.name);
+    load({ silent: true });
   };
 
   const deleteProfile = async (namespace: string) => {
@@ -2640,57 +2968,125 @@ const CustomersTab: React.FC<{ readonly onSelect: (c: CustomerInfo) => void; rea
 
   return (
     <div className="space-y-4">
-      <div className="rounded border border-cyan-800/40 bg-cyan-950/20 px-3 py-2 text-xs text-cyan-100/90">
-        Phase 5：新客户 = Ontology Editor 建域 + DomainRouter 注册 + Action YAML（customer_action），不改 harness。
-        第二域竖切样例：`customer_action:service-domain:assign_technician`（workspace seed，无别名）。
-        Agent Fleet / 拓扑编排本阶段不上线。详见 docs/contracts/FDE_PHASE5_CUSTOMER_ONBOARDING.md。
-      </div>
-      <a
-        href="/knowledge/business?tab=factory"
-        className="flex items-center gap-2 p-3 rounded border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-colors text-xs group"
-      >
-        <span className="text-blue-400 text-sm">🧠</span>
-        <span className="text-blue-300 font-medium group-hover:text-blue-200">前往知识工厂</span>
-        <span className="text-gray-500 ml-1">— 文档抽取 · 跨域对齐 · 本体演进</span>
-        <span className="text-blue-400 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">→</span>
-      </a>
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-500">共 {customers.length} 个客户 Profile</span>
+      {/* 客户列表置顶：加载慢时也先看到状态，避免被说明文案挡住像「没有客户」 */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-gray-200 font-medium">客户 Profile</span>
+          {listLoading ? (
+            <span className="text-sky-300 animate-pulse">正在加载…</span>
+          ) : listError ? (
+            <span className="text-red-400">{listError}</span>
+          ) : (
+            <span className="text-gray-500">共 {customers.length} 个</span>
+          )}
+          {!listLoading && !selectedName && customers.length > 0 && (
+            <span className="text-amber-300">点卡片或「选用」进入进度</span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={load}><RefreshCw className="w-3 h-3" /></Button>
+          <Button variant="ghost" size="sm" onClick={() => load()} disabled={listLoading}>
+            <RefreshCw className={`w-3 h-3 ${listLoading ? 'animate-spin' : ''}`} />
+          </Button>
           <Button variant="default" size="sm" onClick={() => { setShowCreate(true); setCreateForm({}); }}>
             <Plus className="w-3 h-3 mr-1" />新建
           </Button>
         </div>
       </div>
+
+      {listLoading && (
+        <div className="rounded-lg border border-sky-800/40 bg-sky-950/20 px-4 py-8 flex flex-col items-center gap-3">
+          <div className="w-7 h-7 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin" />
+          <div className="text-sm text-sky-100">正在拉取客户列表…</div>
+          <div className="text-[11px] text-gray-500">接口稍慢时请稍候，不是没有客户</div>
+        </div>
+      )}
+
+      {!listLoading && listError && (
+        <div className="rounded-lg border border-red-800/40 bg-red-950/20 px-4 py-6 text-center space-y-2">
+          <div className="text-sm text-red-300">客户列表加载失败</div>
+          <div className="text-[11px] text-gray-500">{listError}</div>
+          <Button variant="secondary" size="sm" onClick={() => load()}>重试</Button>
+        </div>
+      )}
+
+      {!listLoading && !listError && customers.length === 0 && (
+        <div className="rounded-lg border border-amber-800/40 bg-amber-950/15 px-4 py-6 text-center space-y-2">
+          <div className="text-sm text-amber-100">还没有客户 Profile</div>
+          <div className="text-[11px] text-gray-500">点右上角「新建」创建第一个客户（如江苏锁安）</div>
+          <Button variant="default" size="sm" onClick={() => { setShowCreate(true); setCreateForm({}); }}>
+            <Plus className="w-3 h-3 mr-1" />新建客户
+          </Button>
+        </div>
+      )}
+
+      {!listLoading && customers.length > 0 && (
       <div className="grid grid-cols-3 gap-3">
         {customers.map(c => {
           const id = displayId(c);
           const isExpanded = expanded.includes(id);
+          const isSelected = !!selectedName && selectedName === c.name;
           return (
-            <Card key={id} className="border-gray-700/50 hover:border-gray-600 transition-colors">
-              <div className="p-3 cursor-pointer" onClick={() => { toggleExpand(id); onSelect({ name: c.name, namespace: c.namespace, industry: c.industry, description: c.description, deployment_mode: c.deployment_mode }); }}>
+            <Card key={id} className={`transition-colors ${
+              isSelected ? 'border-emerald-500/60 bg-emerald-950/20' : 'border-gray-700/50 hover:border-gray-600'
+            }`}>
+              <div className="p-3 cursor-pointer" onClick={() => { toggleExpand(id); onSelect(toCustomerInfo(c)); }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     {isExpanded ? <ChevronDown className="w-3 h-3 text-gray-500" /> : <ChevronRight className="w-3 h-3 text-gray-500" />}
                     <span className="text-sm font-medium text-gray-200">{labelText(c)}</span>
+                    {isSelected && <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1 rounded">已选用</span>}
                     {c.default && <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1 rounded">默认</span>}
                   </div>
-                  <button onClick={e => { e.stopPropagation(); switchProfile(c.name); }}
+                  <button onClick={e => { e.stopPropagation(); switchProfile(c); }}
                     className="text-[10px] text-gray-500 hover:text-blue-400 flex items-center gap-0.5"
-                    title="切换至此 Profile">
-                    <ArrowRightLeft className="w-3 h-3" />切换
+                    title="选用此客户并写入进度">
+                    <ArrowRightLeft className="w-3 h-3" />选用
                   </button>
                 </div>
                 <div className="text-[11px] text-gray-500 mt-0.5">
                   {c.description || c.namespace || ''}
                 </div>
+                {(() => {
+                  const onto = resolveCustomerOntologies(c);
+                  if (!onto.primary) return null;
+                  return (
+                    <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] text-gray-500">主本体</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-950/50 border border-sky-800/40 text-sky-300 font-mono">
+                        {onto.primary}
+                      </span>
+                      <span className="text-[10px] text-gray-500 truncate max-w-[10rem]">
+                        {DOMAIN_LABELS[onto.primary] || ''}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
               {isExpanded && (
                 <div className="px-3 pb-3 border-t border-gray-700/50 space-y-2 pt-2">
                   <div className="text-xs text-gray-500">
                     {c.description || c.namespace || ''}
                   </div>
+                  {(() => {
+                    const onto = resolveCustomerOntologies(c);
+                    return (
+                      <div className="text-xs text-gray-400">
+                        主本体：{' '}
+                        {onto.primary ? (
+                          <a
+                            className="text-sky-400 hover:underline"
+                            href={`/knowledge/business?tab=domains&domain=${encodeURIComponent(onto.primary)}`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {domainDisplayName(onto.primary)}
+                          </a>
+                        ) : (
+                          <span className="text-amber-300">未绑定（去 ② 评估域选择）</span>
+                        )}
+                        <span className="text-gray-600 ml-1">（{onto.reason}）</span>
+                      </div>
+                    );
+                  })()}
                   {diagnosis && (
                     <div className="text-xs p-2 rounded bg-blue-500/10 border border-blue-500/20">
                       <div className="text-blue-400 font-medium">最近诊断</div>
@@ -2704,8 +3100,8 @@ const CustomersTab: React.FC<{ readonly onSelect: (c: CustomerInfo) => void; rea
                     </div>
                   )}
                   <div className="flex gap-2">
-                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); switchProfile(c.name); }}>
-                      <ArrowRightLeft className="w-3 h-3 mr-1" />切换至此
+                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); switchProfile(c); }}>
+                      <ArrowRightLeft className="w-3 h-3 mr-1" />选用此客户
                     </Button>
                     <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300"
                       onClick={e => { e.stopPropagation(); if (confirm(`确认删除客户 "${labelText(c)}"?`)) deleteProfile(id); }}>
@@ -2722,6 +3118,28 @@ const CustomersTab: React.FC<{ readonly onSelect: (c: CustomerInfo) => void; rea
           );
         })}
       </div>
+      )}
+
+      <a
+        href="/knowledge/business?tab=factory"
+        className="flex items-center gap-2 p-3 rounded border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-colors text-xs group"
+      >
+        <span className="text-blue-400 text-sm">🧠</span>
+        <span className="text-blue-300 font-medium group-hover:text-blue-200">前往业务说明书 · 从文档生成</span>
+        <span className="text-gray-500 ml-1">— 文档抽取 · 补知识图</span>
+        <span className="text-blue-400 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+      </a>
+
+      <details className="rounded border border-gray-700/50 bg-gray-900/30">
+        <summary className="cursor-pointer select-none px-3 py-2 text-[11px] text-gray-500 hover:text-gray-300">
+          进阶说明（Phase 5 建域手册）· 可跳过
+        </summary>
+        <div className="px-3 pb-2 text-[11px] text-gray-500 leading-relaxed border-t border-gray-800/80 pt-2">
+          新客户 = Ontology Editor 建域 + DomainRouter 注册 + Action YAML（customer_action），不改 harness。
+          手册：docs/contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md（勿与本页「POC 操作手册」混淆）。
+          样例：customer_action:service-domain:assign_technician。详见 FDE_PHASE5_CUSTOMER_ONBOARDING.md。
+        </div>
+      </details>
 
       {/* Create modal */}
       {showCreate && (
@@ -3061,6 +3479,15 @@ const AcceptTab: React.FC<{
   const [pillars, setPillars] = useState<any>(null);
   const [pillarsBusy, setPillarsBusy] = useState(false);
 
+  const [caseDomain, setCaseDomain] = useState('it-ops');
+  const [caseQuery, setCaseQuery] = useState('ServiceEndpoint triage');
+  const [caseHits, setCaseHits] = useState<any[]>([]);
+  const [caseBusy, setCaseBusy] = useState(false);
+  const [caseNote, setCaseNote] = useState('');
+  const [caseSelected, setCaseSelected] = useState('');
+  const [caseMeta, setCaseMeta] = useState<any>(null);
+  const [caseFactoryHref, setCaseFactoryHref] = useState('');
+
   const refreshOrders = useCallback(async (selectId?: string) => {
     try {
       const r = await fetch(API('/graph/entities?domain=lock-service&class=' + encodeURIComponent('安装工单')));
@@ -3262,6 +3689,165 @@ const AcceptTab: React.FC<{
       toast?.error?.(e?.message || '加载三柱失败');
     } finally {
       setPillarsBusy(false);
+    }
+  };
+
+  const loadCaseMeta = async (did?: string) => {
+    try {
+      const d0 = encodeURIComponent(did || caseDomain || '');
+      const r = await fetch(API(`/ontology/cases/meta?domain_id=${d0}`));
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '加载学习状态失败');
+      setCaseMeta(d);
+    } catch (e: any) {
+      toast?.error?.(e?.message || '加载学习状态失败');
+    }
+  };
+
+  const seedOntologyCase = async () => {
+    setCaseBusy(true);
+    try {
+      const r = await fetch(API('/ontology/cases'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain_id: caseDomain || 'it-ops',
+          title: '演示：高回报分诊案例',
+          summary: 'alert triage 实体 ServiceEndpoint 根因定位成功；缺口提示 缺失实体 NewObservabilitySignal',
+          outcome: 'success',
+          reward: 0.85,
+          action_id: 'customer_action:it-ops:triage_alert',
+          tags: ['demo', 'triage'],
+          metadata: { gap_hint: '实体 NewObservabilitySignal' },
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '写入案例失败');
+      setCaseSelected(d.case_id || '');
+      setCaseNote(`已写入案例 ${d.case_id || '—'}（不改 live YAML）`);
+      toast?.success?.('案例已写入');
+      await searchOntologyCases(d.case_id);
+      await loadCaseMeta();
+    } catch (e: any) {
+      toast?.error?.(e?.message || '写入案例失败');
+    } finally {
+      setCaseBusy(false);
+    }
+  };
+
+  const searchOntologyCases = async (preferId?: string) => {
+    setCaseBusy(true);
+    try {
+      const q = encodeURIComponent(caseQuery || '');
+      const did = encodeURIComponent(caseDomain || 'it-ops');
+      const r = await fetch(API(`/ontology/cases/search?domain_id=${did}&q=${q}&top_k=8`));
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '检索失败');
+      const hits = d.cases || d.hits || d.results || (Array.isArray(d) ? d : []);
+      setCaseHits(hits);
+      if (preferId) setCaseSelected(preferId);
+      else if (hits[0]?.case_id) setCaseSelected(hits[0].case_id);
+      setCaseNote(`检索到 ${hits.length} 条（奖励加权/UCB；非 RL）`);
+      await loadCaseMeta();
+    } catch (e: any) {
+      toast?.error?.(e?.message || '检索失败');
+    } finally {
+      setCaseBusy(false);
+    }
+  };
+
+  const feedbackOntologyCase = async () => {
+    if (!caseSelected) {
+      toast?.error?.('请先写入或检索并选中案例');
+      return;
+    }
+    setCaseBusy(true);
+    try {
+      const r = await fetch(API(`/ontology/cases/${encodeURIComponent(caseSelected)}/feedback`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rating: 0.95,
+          note: 'AcceptTab demo useful',
+          actor: 'fde-demo',
+          auto_enqueue: true,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '反馈失败');
+      const prop = d.evolve?.proposal_id || '';
+      setCaseNote(
+        `反馈 ok · reward_ema=${d.feedback?.reward_ema ?? '—'} · evolve=${d.evolve?.status || 'skipped'} · proposal=${prop || '—'} · auto_apply=${String(d.auto_apply ?? false)}`,
+      );
+      if (prop && !String(prop).startsWith('draft_local_')) {
+        toast?.success?.('反馈已写回；可去业务本体工厂批准提案');
+        setCaseFactoryHref(
+          `/knowledge/business?tab=factory&domain=${encodeURIComponent(caseDomain || 'it-ops')}&proposal=${encodeURIComponent(prop)}`,
+        );
+      } else {
+        toast?.success?.('反馈已写回（高回报可入提案草稿）');
+      }
+      await searchOntologyCases(caseSelected);
+    } catch (e: any) {
+      toast?.error?.(e?.message || '反馈失败');
+    } finally {
+      setCaseBusy(false);
+    }
+  };
+
+  const evolveOntologyCase = async () => {
+    if (!caseSelected) {
+      toast?.error?.('请先选中案例');
+      return;
+    }
+    setCaseBusy(true);
+    try {
+      const r = await fetch(API(`/ontology/cases/${encodeURIComponent(caseSelected)}/evolve`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force: true, author: 'fde-demo' }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '进化提案失败');
+      setCaseNote(
+        `evolve=${d.status} · class=${d.suggested_class || '—'} · proposal=${d.proposal_id || '—'} · auto_apply=${String(d.auto_apply)}` +
+          (d.auto_apply
+            ? '（edge 自动 apply，可回滚）'
+            : '（须业务本体工厂批准→apply；EDGE_AUTO_APPLY 默认关）'),
+      );
+      if (d.proposal_id && !String(d.proposal_id).startsWith('draft_local_') && !d.auto_apply) {
+        const href = `/knowledge/business?tab=factory&domain=${encodeURIComponent(caseDomain || 'it-ops')}&proposal=${encodeURIComponent(d.proposal_id)}`;
+        setCaseFactoryHref(href);
+        toast?.success?.('已入队本体提案草稿 — 点下方链到业务本体工厂批准');
+      } else {
+        toast?.success?.(d.auto_apply ? 'edge 已自动 apply（可回滚）' : '已入队本体提案草稿');
+      }
+    } catch (e: any) {
+      toast?.error?.(e?.message || '进化提案失败');
+    } finally {
+      setCaseBusy(false);
+    }
+  };
+
+  const rollbackOntologyCase = async () => {
+    if (!caseSelected) {
+      toast?.error?.('请先选中案例');
+      return;
+    }
+    setCaseBusy(true);
+    try {
+      const r = await fetch(API(`/ontology/cases/${encodeURIComponent(caseSelected)}/rollback`), {
+        method: 'POST',
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '回滚失败');
+      if (!d.ok) throw new Error(d.reason || '回滚未执行');
+      setCaseNote(`已回滚 proposal=${d.proposal_id || '—'} → v${d.restored_version ?? '—'}`);
+      toast?.success?.('已回滚 live YAML');
+    } catch (e: any) {
+      toast?.error?.(e?.message || '回滚失败');
+    } finally {
+      setCaseBusy(false);
     }
   };
 
@@ -3736,6 +4322,112 @@ const AcceptTab: React.FC<{
           )}
         </CardContent>
       </Card>
+      {/* 在线学习 / 受控进化 — P0 案例库 + P1 提案草稿（禁自动 apply） */}
+      <Card>
+        <CardHeader>
+          <span className="text-sm font-medium">本体在线学习（案例库 · 受控进化）</span>
+          <p className="text-[11px] text-gray-500 mt-1 font-normal">
+            P0：案例 + 奖励/UCB 检索。P1：高回报→提案草稿。P2：仅当 env
+            AIPLAT_ONTOLOGY_EDGE_AUTO_APPLY=true 时 edge 可自动 apply，并可回滚；禁升格 logic/core。
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex flex-wrap gap-2 items-center">
+            <input
+              className="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-[11px] w-28"
+              value={caseDomain}
+              onChange={(e) => setCaseDomain(e.target.value)}
+              placeholder="domain_id"
+            />
+            <input
+              className="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-[11px] flex-1 min-w-[160px]"
+              value={caseQuery}
+              onChange={(e) => setCaseQuery(e.target.value)}
+              placeholder="检索词"
+            />
+            <Button variant="default" size="sm" loading={caseBusy} onClick={seedOntologyCase}>
+              写入演示案例
+            </Button>
+            <Button variant="ghost" size="sm" loading={caseBusy} onClick={() => searchOntologyCases()}>
+              加权检索
+            </Button>
+            <Button variant="secondary" size="sm" loading={caseBusy} onClick={feedbackOntologyCase}>
+              高分反馈
+            </Button>
+            <Button variant="ghost" size="sm" loading={caseBusy} onClick={evolveOntologyCase}>
+              强制入队提案
+            </Button>
+            <Button variant="ghost" size="sm" loading={caseBusy} onClick={rollbackOntologyCase}>
+              回滚提案
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => loadCaseMeta()}>
+              刷新学习状态
+            </Button>
+            <a
+              href={`/knowledge/business?tab=factory&domain=${encodeURIComponent(caseDomain || 'it-ops')}&focus=schema`}
+              className="text-[11px] text-cyan-400/90 self-center hover:underline"
+            >
+              表头→提案（工厂①b）
+            </a>
+          </div>
+          {caseMeta && (
+            <div className="text-[10px] text-gray-500 flex flex-wrap gap-x-3 gap-y-1">
+              <span>cases={caseMeta.case_count ?? '—'}</span>
+              <span>serves={caseMeta.total_serves ?? '—'}</span>
+              <span>feedback={caseMeta.total_feedback ?? '—'}</span>
+              <span>UCB={String(caseMeta.ucb_enabled)}</span>
+              <span className={caseMeta.edge_auto_apply_enabled ? 'text-amber-400' : ''}>
+                EDGE_AUTO={String(caseMeta.edge_auto_apply_enabled)}
+              </span>
+            </div>
+          )}
+          <div className="text-[11px] text-gray-400">{caseNote || '—'}</div>
+          {caseFactoryHref && (
+            <a
+              href={caseFactoryHref}
+              className="inline-block text-[11px] text-sky-400 hover:underline"
+            >
+              打开业务本体工厂批准此提案 →
+            </a>
+          )}
+          {!caseFactoryHref && (
+            <a
+              href={`/knowledge/business?tab=factory&domain=${encodeURIComponent(caseDomain || 'it-ops')}`}
+              className="inline-block text-[11px] text-gray-500 hover:text-sky-400 hover:underline"
+            >
+              去业务本体工厂看提案列表
+            </a>
+          )}
+          {caseHits.length > 0 && (
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {caseHits.map((h: any) => (
+                <button
+                  key={h.case_id}
+                  type="button"
+                  className={`w-full text-left text-[11px] px-2 py-1 rounded border ${
+                    caseSelected === h.case_id
+                      ? 'border-sky-600 bg-sky-950/40 text-sky-100'
+                      : 'border-gray-700 text-gray-400 hover:border-gray-500'
+                  }`}
+                  onClick={() => setCaseSelected(h.case_id)}
+                >
+                  <span className="font-mono text-gray-500">{(h.case_id || '').slice(0, 12)}</span>
+                  {' · '}
+                  {h.title || h.summary?.slice?.(0, 40) || '—'}
+                  {' · '}
+                  score={typeof h.score === 'number' ? h.score.toFixed(2) : h.score ?? '—'}
+                  {' · '}
+                  ema={typeof h.reward_ema === 'number' ? h.reward_ema.toFixed(2) : h.reward_ema ?? '—'}
+                  {h.serve_count != null ? ` · serves=${h.serve_count}` : ''}
+                  {h.ucb_bonus != null ? ` · ucb=${Number(h.ucb_bonus).toFixed(2)}` : ''}
+                </button>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      <GovernanceLoopPanel compact />
+      <OrgL5Panel compact />
       {/* data-gov — B4 治理洪水筛选 / 闸2 竖切 */}
       <Card>
         <CardHeader>

@@ -5,9 +5,12 @@ from __future__ import annotations
 import logging
 
 
-
-
 async def _execute_agent_impl(self, req: ExecutionRequest) -> ExecutionResult:
+    from core.harness.integration import (
+        _resolve_or_import,
+        _resolve_tool_registry,
+        _resolve_exec_backend,
+    )
 
     agent_reg = _resolve_or_import("AgentRegistry", "core.apps.agents:get_agent_registry")
 

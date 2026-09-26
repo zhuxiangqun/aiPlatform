@@ -1,17 +1,25 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Copy, Info, Pencil, Plus, RotateCw, ShieldCheck, Zap, Play, Trash2, Upload } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Badge, Table, Switch, Button, Modal, toast } from '../../../components/ui';
+import { Badge, Table, Switch, Button, Modal, toast, Input } from '../../../components/ui';
 import { useWorkspaceMcpStore } from '../../../stores';
 import type { McpServer } from '../../../services';
 import { workspaceMcpApi, mcpApi } from '../../../services';
 import { ExecutionViewer } from '../../../components/ExecutionViewer';
+import ExecuteResultPanel from '../../../components/execution/ExecuteResultPanel';
+import ExecuteFlowFullscreen from '../../../components/execution/ExecuteFlowFullscreen';
+import { RunVerdictBanner, deriveRunVerdict, outputAsText } from '../../../components/execution/runVerdict';
 import AddMcpModal from '../../../components/workspace/AddMcpModal';
+import McpChatCreateModal from '../../../components/workspace/McpChatCreateModal';
+import WorkspacePageGuide from '../../../components/workspace/WorkspacePageGuide';
 import EditMcpModal from '../../../components/workspace/EditMcpModal';
 import { toastGateError } from '../../../components/ui';
 import ImportBar from '../../../components/workspace/ImportBar';
+import AssetStatusLegend from '../../../components/workspace/AssetStatusLegend';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
 import { StatusBadge } from '../../../utils/statusLabel';
+import { buildFormParamsFromSchema, buildSampleParamsFromSchema } from '../../../utils/executionSamples';
 
 const MCP_TEMPLATES = [
   { id: 'http_bridge', name: 'HTTP API 桥接', icon: '🌐', desc: '调用任何 REST/HTTP API', tools: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] },
@@ -21,9 +29,12 @@ const MCP_TEMPLATES = [
 ];
 
 const WorkspaceMCP: React.FC = () => {
+  const navigate = useNavigate();
   const { servers, loading, fetchServers, setServerEnabled } = useWorkspaceMcpStore();
+  const [search, setSearch] = useState('');
   const [detailModal, setDetailModal] = useState<{ open: boolean; server: McpServer | null }>({ open: false, server: null });
   const [addOpen, setAddOpen] = useState(false);
+  const [chatCreateOpen, setChatCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editServer, setEditServer] = useState<McpServer | null>(null);
   const [autoDiscover, setAutoDiscover] = useState(false);
@@ -40,6 +51,14 @@ const WorkspaceMCP: React.FC = () => {
   const [testRunId, setTestRunId] = useState('');
   const [testServerName, setTestServerName] = useState('');
   const [testModal, setTestModal] = useState(false);
+  const [testFlowFullscreen, setTestFlowFullscreen] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    status: string;
+    run_id?: string;
+    output?: unknown;
+    error?: unknown;
+    duration_ms?: number;
+  } | null>(null);
 
   // Test config panel state
   const [testConfigOpen, setTestConfigOpen] = useState(false);
@@ -54,6 +73,13 @@ const WorkspaceMCP: React.FC = () => {
   useEffect(() => {
     fetchServers();
   }, [fetchServers]);
+
+  const filteredServers = servers.filter((s) => {
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    const hay = `${s.name || ''} ${(s as any).display_name || ''} ${s.description || ''} ${(s as any).transport || ''}`.toLowerCase();
+    return hay.includes(q);
+  });
 
   const copyText = async (text: string) => {
     if (!text) return;
@@ -156,11 +182,19 @@ const WorkspaceMCP: React.FC = () => {
     setTestConfigOpen(false);
     setTestModal(true);
     setTestRunId('');
+    setTestResult({ status: 'running' });
+    setTestFlowFullscreen(true);
     // Use schema-based params if available, otherwise JSON textarea
     const schema = testToolSchemas[testToolName];
     let args: any;
     if (schema?.properties && Object.keys(schema.properties).length > 0) {
-      args = testToolParams;
+      args = { ...testToolParams };
+      for (const [k, spec] of Object.entries(schema.properties as Record<string, any>)) {
+        const t = String(spec?.type || '').toLowerCase();
+        if ((t === 'object' || t === 'array') && typeof args[k] === 'string' && args[k].trim()) {
+          try { args[k] = JSON.parse(args[k]); } catch { /* keep string */ }
+        }
+      }
     } else {
       try { args = JSON.parse(testToolArgs); } catch { args = {}; }
     }
@@ -175,15 +209,58 @@ const WorkspaceMCP: React.FC = () => {
       const data = await res.json();
       if (!res.ok) {
         toast.error(`${srvName}: ${data.detail || data.message || `HTTP ${res.status}`}`);
-        setTestModal(false);
+        setTestResult({ status: 'failed', error: data.detail || data.message || `HTTP ${res.status}` });
+        setTestFlowFullscreen(false);
         return;
       }
       setTestRunId(data.run_id);
+      setTestResult({ status: 'running', run_id: data.run_id });
     } catch (e: any) {
       toast.error(`测试请求失败: ${e?.message || ''}`);
-      setTestModal(false);
+      setTestResult({ status: 'failed', error: e?.message || '测试请求失败' });
+      setTestFlowFullscreen(false);
     }
   };
+
+  const finalizeMcpTest = async (runId: string) => {
+    try {
+      const resp = await fetch(`/api/core/syscalls/events?run_id=${encodeURIComponent(runId)}&limit=50`);
+      const data = await resp.json();
+      const items = data?.items || data?.events || [];
+      const failed = items.find((e: any) => e.status === 'failed' || e.status === 'error');
+      const invoke = [...items].reverse().find((e: any) => e.kind === 'mcp' || e.name === 'invoke' || e.result);
+      if (failed) {
+        setTestResult({
+          status: 'failed',
+          run_id: runId,
+          error: failed.error || failed.result || '测试失败',
+          duration_ms: failed.duration_ms,
+        });
+        return;
+      }
+      const out = invoke?.result ?? invoke?.result_json ?? items[items.length - 1]?.result;
+      setTestResult({
+        status: 'completed',
+        run_id: runId,
+        output: out ?? { message: '测试流程已结束，详见执行轨迹节点。' },
+        duration_ms: invoke?.duration_ms,
+      });
+    } catch {
+      setTestResult((prev) => ({
+        status: 'completed',
+        run_id: runId,
+        output: prev?.output ?? { message: '实时事件已结束；若需细节请打开诊断详情。' },
+      }));
+    }
+  };
+
+  const testVerdict = testResult
+    ? deriveRunVerdict({
+        status: testResult.status,
+        error: testResult.error,
+        outputText: outputAsText(testResult.output),
+      })
+    : null;
 
   const handleDeleteConfirm = async () => {
     const s = mcpDelete.server;
@@ -281,8 +358,18 @@ const WorkspaceMCP: React.FC = () => {
     {
       title: '上架状态',
       key: 'status',
-      width: 80,
-      render: (_: unknown, record: McpServer) => <StatusBadge status={(record as any).status} />,
+      width: 100,
+      render: (_: unknown, record: McpServer) => {
+        const st = String((record as any).status || '').toLowerCase();
+        return (
+          <div className="flex flex-col gap-0.5">
+            <StatusBadge status={(record as any).status} />
+            {(st === 'draft' || st === 'enabled') && (
+              <span className="text-[10px] text-gray-500">盾牌图标 → 提交审批</span>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: '治理',
@@ -380,11 +467,14 @@ const WorkspaceMCP: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-100 tracking-tight">应用库 MCP</h1>
-          <p className="text-sm text-gray-500 mt-1">来自 ~/.aiplat/mcps（可编辑）</p>
+          <p className="text-sm text-gray-500 mt-1">来自 ~/.aiplat/mcps（可编辑；启用前请核对 transport / 策略）</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>
-            新增
+            创建
+          </Button>
+          <Button variant="secondary" onClick={() => setChatCreateOpen(true)}>
+            对话创建
           </Button>
           <Button variant="secondary" icon={<Upload className="w-4 h-4" />} onClick={() => { loadSeeds(); setSeedsModalOpen(true); }}>
             从模板安装
@@ -392,30 +482,40 @@ const WorkspaceMCP: React.FC = () => {
           <Button variant="secondary" size="sm" icon={<Zap className="w-4 h-4" />} onClick={() => setTemplateModal(true)}>
             从模板创建
           </Button>
+          <Button variant="secondary" icon={<ShieldCheck className="w-4 h-4" />} onClick={() => navigate('/approval?type=mcp&status=ready')}>
+            资产审批
+          </Button>
           <Button icon={<RotateCw className="w-4 h-4" />} onClick={fetchServers} loading={loading}>
             刷新
           </Button>
         </div>
       </div>
 
+      <WorkspacePageGuide
+        steps={[
+          { title: '创建 / 对话创建', detail: '得到草稿 draft（默认未启用）' },
+          { title: '提交审批', detail: '行内盾牌图标：draft → 待审核(ready)' },
+          { title: '资产审批', detail: '管理员在「资产审批」点通过 → 已发布；再点上架 → 已上架' },
+        ]}
+        tip="「待审核」不能在本页点通过。请用顶部「资产审批」（或更多 → 去资产审批）。启用开关与上架状态是两条线。"
+      />
+
       <ImportBar assetType="mcps" alsoScan={['agents', 'skills']} onImported={() => fetchServers()} />
 
-      <details className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-500 cursor-pointer group mb-3">
-        <summary className="text-gray-400 hover:text-gray-200 select-none">📖 表头说明</summary>
-        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
-          <div><span className="text-gray-300">名称</span><span className="ml-2 text-gray-600">MCP Server 名称，点击查看详情</span></div>
-          <div><span className="text-gray-300">Transport</span><span className="ml-2 text-gray-600">传输方式：stdio / sse / http</span></div>
-          <div><span className="text-gray-300">来源</span><span className="ml-2 text-gray-600"><span className="text-blue-300">内部</span> 本地工作台工具 · <span className="text-gray-300">外部</span> 第三方 MCP Server</span></div>
-          <div><span className="text-gray-300">描述</span><span className="ml-2 text-gray-600">metadata.description，功能说明</span></div>
-          <div><span className="text-gray-300">上架状态</span><span className="ml-2 text-gray-600"><span className="text-gray-400">draft</span> 开发中 · <span className="text-yellow-400">ready</span> 待审 · <span className="text-blue-400">published</span> 已发布 · <span className="text-green-400">listed</span> 上架 · <span className="text-red-400">deprecated</span> 废弃</span></div>
-          <div><span className="text-gray-300">启用</span><span className="ml-2 text-gray-600">开关控制 MCP Server 是否可用。禁用后不可调用</span></div>
-          <div><span className="text-gray-300">allowed_tools</span><span className="ml-2 text-gray-600">该 MCP Server 提供的工具数量</span></div>
-          <div><span className="text-gray-300">操作</span><span className="ml-2 text-gray-600">测试/详情/编辑/审批/删除/导出</span></div>
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex-1 min-w-[200px] max-w-md">
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索名称或描述..." />
         </div>
-      </details>
+      </div>
+
+      <AssetStatusLegend
+        kind="mcp"
+        howToSubmit="行内盾牌 → 提交审批"
+        extraNote="「启用」开关与上架状态独立：禁用后不可测试/调用。"
+      />
 
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
-        <Table columns={columns} data={servers} rowKey="name" loading={loading} emptyText="暂无 MCP Server" />
+        <Table columns={columns} data={filteredServers} rowKey="name" loading={loading} emptyText="暂无 MCP Server" />
       </motion.div>
 
       <Modal
@@ -457,7 +557,7 @@ const WorkspaceMCP: React.FC = () => {
                   <Button variant="primary" size="sm" onClick={handleSign} loading={signing} disabled={!signKey.trim() || signing}>
                     签名
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => { try { window.open('/onboarding', '_blank', 'noopener,noreferrer'); } catch {} }}>
+                  <Button variant="ghost" size="sm" onClick={() => { try { window.open('/onboarding?step=sign_keys', '_blank', 'noopener,noreferrer'); } catch {} }}>
                     生成密钥
                   </Button>
                 </div>
@@ -481,6 +581,12 @@ const WorkspaceMCP: React.FC = () => {
           setAutoDiscover(true);
           setEditOpen(true);
         }}
+      />
+
+      <McpChatCreateModal
+        open={chatCreateOpen}
+        onClose={() => setChatCreateOpen(false)}
+        onSuccess={fetchServers}
       />
 
       <EditMcpModal
@@ -553,7 +659,7 @@ const WorkspaceMCP: React.FC = () => {
         open={testConfigOpen}
         onClose={() => setTestConfigOpen(false)}
         title={`测试 MCP: ${testServerName}`}
-        width={500}
+        width={720}
         footer={
           <>
             <Button variant="secondary" onClick={() => setTestConfigOpen(false)}>取消</Button>
@@ -561,7 +667,8 @@ const WorkspaceMCP: React.FC = () => {
           </>
         }
       >
-        <div className="space-y-4 text-sm text-gray-300">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
+          <div className="space-y-4">
           {testAllowedTools.length > 0 ? (
             <div>
               <label className="block text-xs text-gray-400 mb-1">调用工具</label>
@@ -596,6 +703,7 @@ const WorkspaceMCP: React.FC = () => {
             if (props && Object.keys(props).length > 0) {
               return (
                 <div className="space-y-3">
+                  <div className="text-xs text-gray-500">点右侧「填入」按 inputSchema 写入测试参数，再点「开始测试」。</div>
                   <label className="block text-xs text-gray-400">参数</label>
                   {Object.entries(props as Record<string, any>).map(([name, spec]: [string, any]) => {
                     const isRequired = required.includes(name);
@@ -611,6 +719,20 @@ const WorkspaceMCP: React.FC = () => {
                             value={testToolParams[name] ?? ''}
                             onChange={(e) => setTestToolParams(p => ({ ...p, [name]: e.target.value === '' ? '' : Number(e.target.value) }))}
                             placeholder={spec.description || `输入 ${name}`}
+                          />
+                          {spec.description && <div className="text-xs text-gray-500 mt-0.5">{spec.description}</div>}
+                        </div>
+                      );
+                    }
+                    if (fieldType === 'object' || fieldType === 'array') {
+                      return (
+                        <div key={name}>
+                          <div className="text-xs text-gray-400 mb-1">{label}</div>
+                          <textarea
+                            className="w-full h-20 px-3 py-2 bg-dark-card border border-dark-border rounded-lg text-xs text-gray-200 font-mono resize-none"
+                            value={typeof testToolParams[name] === 'string' ? testToolParams[name] : (testToolParams[name] != null ? JSON.stringify(testToolParams[name], null, 2) : '')}
+                            onChange={(e) => setTestToolParams(p => ({ ...p, [name]: e.target.value }))}
+                            placeholder={spec.description || `输入 ${name}（JSON）`}
                           />
                           {spec.description && <div className="text-xs text-gray-500 mt-0.5">{spec.description}</div>}
                         </div>
@@ -641,34 +763,126 @@ const WorkspaceMCP: React.FC = () => {
                   className="w-full h-24 px-3 py-2 bg-dark-hover border border-dark-border rounded text-xs text-gray-200 placeholder-gray-500 font-mono resize-none"
                   value={testToolArgs}
                   onChange={(e) => setTestToolArgs(e.target.value)}
-                  placeholder='{"num": 5}'
+                  placeholder='点右侧「填入」加载测试用例，或直接输入 JSON'
                 />
-                <p className="text-xs text-gray-500 mt-1">留空或 `{}` 表示不传参数</p>
+                <p className="text-xs text-gray-500 mt-1">留空或 `{}` 表示不传参数；有 Schema 时请用右侧「填入」。</p>
               </div>
             );
           })()}
+          </div>
+
+          <div className="border border-dark-border rounded-lg bg-dark-card p-3 space-y-3">
+            <div className="text-sm font-medium text-gray-200">使用说明 / 测试用例</div>
+            <div className="text-xs text-gray-400 leading-relaxed whitespace-pre-wrap">
+{`### 如何填写
+- 选择工具后，点「填入」按 inputSchema 写入冒烟参数。
+- 可切换必填 / 全量字段后再「开始测试」。`}
+            </div>
+            {(() => {
+              const schema = testToolSchemas[testToolName];
+              if (!schema) {
+                return <div className="text-xs text-gray-500">暂无 Schema（可手动填写 JSON）。</div>;
+              }
+              const requiredJson = JSON.stringify(buildSampleParamsFromSchema(schema, { includeOptional: false }), null, 2);
+              const fullJson = JSON.stringify(buildSampleParamsFromSchema(schema, { includeOptional: true }), null, 2);
+              return (
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-gray-300">测试用例 — 点「填入」写入左侧参数</div>
+                  {[
+                    {
+                      title: `${testToolName || 'tool'}（必填字段）`,
+                      content: requiredJson,
+                      apply: () => {
+                        setTestToolParams(buildFormParamsFromSchema(schema, { includeOptional: false }));
+                        setTestToolArgs(requiredJson);
+                      },
+                    },
+                    {
+                      title: `${testToolName || 'tool'}（含可选字段）`,
+                      content: fullJson,
+                      apply: () => {
+                        setTestToolParams(buildFormParamsFromSchema(schema, { includeOptional: true }));
+                        setTestToolArgs(fullJson);
+                      },
+                    },
+                  ].map((ex) => (
+                    <div key={ex.title} className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-xs text-gray-300 truncate font-medium">{ex.title}</div>
+                        <div className="flex gap-2">
+                          <Button variant="secondary" onClick={ex.apply}>填入</Button>
+                          <Button variant="secondary" onClick={() => copyText(ex.content)}>复制</Button>
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-500 truncate" style={{ fontFamily: 'monospace' }}>
+                        {ex.content.length > 80 ? `${ex.content.slice(0, 80)}…` : ex.content}
+                      </div>
+                    </div>
+                  ))}
+                  <pre className="text-xs text-gray-300 overflow-auto max-h-40 bg-dark-bg border border-dark-border rounded-lg p-3">{fullJson}</pre>
+                </div>
+              );
+            })()}
+          </div>
         </div>
       </Modal>
 
-      {/* Test Execution Viewer Modal */}
+      {/* Test result + flow (Agent-aligned) */}
       <Modal
         open={testModal}
-        onClose={() => { setTestModal(false); setTestRunId(''); }}
+        onClose={() => { setTestModal(false); setTestRunId(''); setTestResult(null); setTestFlowFullscreen(false); }}
         title={`测试 MCP: ${testServerName}`}
-        width={900}
-        footer={<Button onClick={() => { setTestModal(false); setTestRunId(''); }}>关闭</Button>}
+        width={980}
+        footer={<Button onClick={() => { setTestModal(false); setTestRunId(''); setTestResult(null); setTestFlowFullscreen(false); }}>关闭</Button>}
       >
-        {testRunId ? (
-          <ExecutionViewer
-            title={testServerName}
-            live
-            runId={testRunId}
-            height={420}
+        {!testFlowFullscreen && testResult && (
+          <ExecuteResultPanel
+            result={testResult}
+            onOpenFlow={testRunId ? () => setTestFlowFullscreen(true) : undefined}
           />
-        ) : (
+        )}
+        {!testFlowFullscreen && testRunId && !testResult?.output && testResult?.status === 'running' && (
+          <div className="mt-3">
+            <ExecutionViewer title={testServerName} live runId={testRunId} height={360} />
+            <div className="mt-3">
+              <Button variant="primary" onClick={() => setTestFlowFullscreen(true)}>▶ 查看执行流程（全屏）</Button>
+            </div>
+          </div>
+        )}
+        {!testRunId && testResult?.status === 'running' && (
           <div className="text-sm text-gray-400 text-center py-8">正在启动测试...</div>
         )}
+        {!testFlowFullscreen && testResult?.status === 'failed' && !testRunId && (
+          <div className="text-sm text-red-300 py-4">{String(testResult.error || '测试失败')}</div>
+        )}
       </Modal>
+
+      <ExecuteFlowFullscreen
+        open={!!(testFlowFullscreen && testRunId)}
+        runId={testRunId}
+        title={`MCP 测试流程 · ${testServerName}`}
+        verdict={testVerdict}
+        status={testResult?.status}
+        running={testResult?.status === 'running'}
+        onClose={() => setTestFlowFullscreen(false)}
+        onLiveStatusChange={async (st) => {
+          if (st !== 'done' || !testRunId) return;
+          if (testResult?.status === 'completed' || testResult?.status === 'failed') return;
+          await finalizeMcpTest(testRunId);
+        }}
+        footer={
+          testResult && testVerdict ? (
+            <div className="space-y-2">
+              <RunVerdictBanner verdict={testVerdict} />
+              {outputAsText(testResult.output) ? (
+                <pre className="text-xs text-gray-300 overflow-auto max-h-40 bg-dark-bg border border-dark-border rounded-lg p-3 whitespace-pre-wrap">
+                  {outputAsText(testResult.output).slice(0, 4000)}
+                </pre>
+              ) : null}
+            </div>
+          ) : null
+        }
+      />
 
       <Modal
         open={seedsModalOpen}

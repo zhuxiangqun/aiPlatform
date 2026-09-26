@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 _log = logging.getLogger("aiplat.event_bus")
 
@@ -21,6 +21,7 @@ _buses: Dict[str, asyncio.Queue] = {}
 _running: bool = False
 _dlq: asyncio.Queue | None = None
 _worker_task: asyncio.Task | None = None
+_loop: Optional[asyncio.AbstractEventLoop] = None
 _BATCH_SIZE = 50
 
 
@@ -42,29 +43,60 @@ class EventBus:
     @classmethod
     def publish(cls, run_id: str, event: Dict[str, Any]) -> None:
         """发布事件到指定 run 的订阅者。非阻塞。
-        如果没有订阅者，事件进入 DLQ 等待持久化。"""
-        if not run_id or not _running:
+        支持跨线程：Agent 在独立线程跑时，经 call_soon_threadsafe 投递到主 loop。
+        """
+        if not run_id:
             return
         q = _buses.get(run_id)
-        if q is None:
-            # No subscriber → buffer in DLQ for eventual persistence
-            cls._enqueue_dlq(event)
+        if q is not None:
+            def _put() -> None:
+                try:
+                    q.put_nowait(event)
+                except asyncio.QueueFull:
+                    _log.warning("EventBus queue full for run_id=%s", run_id)
+                    if _running:
+                        cls._enqueue_dlq(event)
+
+            loop = _loop
+            try:
+                running = asyncio.get_running_loop()
+            except RuntimeError:
+                running = None
+            if loop is not None and loop.is_running() and running is not loop:
+                try:
+                    loop.call_soon_threadsafe(_put)
+                except Exception:
+                    _log.debug("EventBus threadsafe publish failed", exc_info=True)
+            else:
+                _put()
             return
-        try:
-            q.put_nowait(event)
-        except asyncio.QueueFull:
-            _log.warning("EventBus queue full for run_id=%s", run_id)
-            cls._enqueue_dlq(event)  # fallback to DLQ
+        if _running:
+            cls._enqueue_dlq(event)
 
     @classmethod
     def _enqueue_dlq(cls, event: Dict[str, Any]) -> None:
         """Enqueue event to dead-letter queue for async persistence."""
         if _dlq is None:
             return
-        try:
-            _dlq.put_nowait(event)
-        except asyncio.QueueFull:
-            _log.warning("EventBus DLQ full, dropping event")
+
+        def _put() -> None:
+            try:
+                _dlq.put_nowait(event)
+            except asyncio.QueueFull:
+                _log.warning("EventBus DLQ full, dropping event")
+
+        if _loop is not None and _loop.is_running():
+            try:
+                running = asyncio.get_running_loop()
+            except RuntimeError:
+                running = None
+            if running is not _loop:
+                try:
+                    _loop.call_soon_threadsafe(_put)
+                    return
+                except Exception:
+                    _log.debug("EventBus DLQ threadsafe enqueue failed", exc_info=True)
+        _put()
 
     @classmethod
     async def _dlq_worker(cls) -> None:
@@ -72,7 +104,6 @@ class EventBus:
         while _running:
             batch = []
             try:
-                # Collect at least one event, then drain up to batch size
                 batch.append(await asyncio.wait_for(_dlq.get(), timeout=5))
                 for _ in range(_BATCH_SIZE - 1):
                     try:
@@ -90,7 +121,6 @@ class EventBus:
                 store = get_execution_store()
                 for evt in batch:
                     try:
-                        # Use _insert_event_raw: pure SQL, no re-publish to EventBus
                         await store._insert_event_raw(evt)
                     except Exception as e:
                         logging.debug(str(e), exc_info=True)
@@ -103,20 +133,20 @@ class EventBus:
     @classmethod
     def start(cls) -> None:
         """Start the EventBus service with DLQ worker."""
-        global _running, _dlq, _worker_task
+        global _running, _dlq, _worker_task, _loop
         _running = True
         _dlq = asyncio.Queue(maxsize=5000)
         try:
-            loop = asyncio.get_running_loop()
+            _loop = asyncio.get_running_loop()
             _worker_task = asyncio.create_task(cls._dlq_worker())
         except RuntimeError:
-            pass  # noqa: cleanup-best-effort
+            _loop = None
         _log.info("EventBus started with DLQ worker")
 
     @classmethod
     def stop(cls) -> None:
         """Stop the EventBus service."""
-        global _running, _dlq, _worker_task
+        global _running, _dlq, _worker_task, _loop
         _running = False
         if _worker_task:
             _worker_task.cancel()
@@ -128,5 +158,5 @@ class EventBus:
                     _dlq.task_done()
                 except asyncio.QueueEmpty:
                     break
+        _loop = None
         _log.info("EventBus stopped")
-

@@ -22,6 +22,50 @@
     "env": "AIPLAT_ABOX_WEBHOOK_SECRET",
     "header": "X-AIPLAT-WEBHOOK-SECRET"
   },
+  "io": {
+    "mode": "sandbox",
+    "allow_write": false,
+    "note": "org L5 pilot D3: read sandbox only; dual-gate writes"
+  },
+  "live": {
+    "interface_ref": "it-ops.monitor.fetch",
+    "domain_id": "it-ops",
+    "version": "0.1.0",
+    "adapter": "http_json",
+    "enabled": false,
+    "allowed_hosts": [],
+    "path_template": "/v1/entities/{entity_id}",
+    "base_url_env": "AIPLAT_ORG_LIVE_BASE_URL",
+    "timeout_sec": 5,
+    "retry": {"max_attempts": 0, "backoff_sec": 0},
+    "rate_limit": {"qps": 0, "burst": 0},
+    "idempotency_key_path": "",
+    "auth": {"type": "bearer_env", "env": "AIPLAT_ORG_LIVE_TOKEN"},
+    "tenant_id_path": "",
+    "input_schema": {
+      "type": "object",
+      "required": ["entity_id"],
+      "properties": {
+        "entity_id": {"type": "string"},
+        "purpose": {"type": "string"}
+      }
+    },
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "ticket": {"type": "string"},
+        "state": {"type": "string"}
+      }
+    },
+    "bound_action_ids": ["triage_alert", "link_suspect", "mark_root_cause"],
+    "audit_fields": ["interface_ref", "entity_id", "http.status_code", "purpose"],
+    "error_codes": {
+      "live_blocked": "gates not satisfied",
+      "url_rejected": "host not allowlisted or SSRF",
+      "action_not_bound": "action_id not in bound_action_ids"
+    },
+    "note": "Phase C1 InterfaceSpec; empty allowlist = declared false; never arbitrary SQL"
+  },
   "payload_schema": {
     "entities": [{"id": "string", "name": "string", "class": "string", "state": "string?", "props": "object?"}],
     "relations": [{"from": "string", "to": "string", "rel": "string", "label": "string?"}],

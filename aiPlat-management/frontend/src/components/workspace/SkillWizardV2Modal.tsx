@@ -1,7 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Badge, Button, Input, Modal, Select, Textarea, toast } from '../ui';
 import localSkillSpecV2Schema from '../../schemas/skillSpecV2.schema.json';
-import { workspaceSkillApi, SKILL_CATEGORIES as SKILL_CAT_NAMES } from '../../services';
+import {
+  workspaceSkillApi,
+  SKILL_CATEGORY_OPTIONS,
+  SKILL_CATEGORY_HELP,
+  SKILL_CATEGORIES,
+} from '../../services';
 
 type SkillKind = 'rule' | 'executable';
 
@@ -18,9 +23,14 @@ export type SkillWizardV2Value = {
   input_schema: Record<string, unknown>;
   output_schema: Record<string, unknown>;
   sop: string;
+  keywords?: { objects: string[]; actions: string[]; constraints: string[]; synonyms: string[] };
+  negative_triggers?: string[];
+  required_questions?: string[];
+  decision_tree?: Array<{ if: string; then: string; notes?: string }>;
+  resources?: { scripts?: string[]; assets?: string[]; references?: string[] };
 };
 
-const CATEGORY_OPTIONS = SKILL_CAT_NAMES.map(v => ({ value: v, label: v }));
+const CATEGORY_OPTIONS = SKILL_CATEGORY_OPTIONS;
 
 type Schema = any;
 const getDefaultSop = (schema: Schema): string => {
@@ -62,9 +72,291 @@ const ensureMarkdownSchema = (out: Record<string, any>) => {
   return o;
 };
 
+/** Derive a stable skill_id from Chinese/English display names (「PPT生成」→ ppt_generation). */
 const normalizeSkillId = (s: string) => {
-  const t = (s || '').trim().toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
-  return t.replace(/[^a-z0-9_]/g, '');
+  const raw = (s || '').trim();
+  if (!raw) return '';
+  const lower = raw.toLowerCase();
+  const asciiParts = lower.match(/[a-z][a-z0-9]*/g) || [];
+  const CN_TOKENS: Array<[RegExp, string]> = [
+    [/pptx?|幻灯片|演示稿/i, 'ppt'],
+    [/生成|产出/, 'generation'],
+    [/检索|召回/, 'retrieval'],
+    [/分析|诊断/, 'analysis'],
+    [/转换|抽取|格式化/, 'transform'],
+    [/搜索|上网/, 'search'],
+    [/编码|写代码|编程/, 'coding'],
+    [/执行|运行/, 'execution'],
+    [/助手|助理/, 'assistant'],
+    [/客服|对话/, 'support'],
+    [/总结|摘要/, 'summarize'],
+    [/报告/, 'report'],
+  ];
+  const tokens: string[] = [...asciiParts];
+  for (const [pat, id] of CN_TOKENS) {
+    if (pat.test(raw) && !tokens.includes(id)) tokens.push(id);
+  }
+  let id = tokens.join('_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+  if (!id || id.length < 3) {
+    id = `skill_${Array.from(raw)
+      .slice(0, 6)
+      .map((c) => c.codePointAt(0)!.toString(36))
+      .join('')}`;
+  }
+  if (!/^[a-z]/.test(id)) id = `s_${id}`;
+  return id.slice(0, 64);
+};
+
+const looksLikeFileProducingSkill = (description: string, name: string) => {
+  const t = `${name}\n${description}`.toLowerCase();
+  return /\.pptx|\.potx|\.docx|\.xlsx|\.pdf|文件路径|写文件|输出.*路径|模版路径|模板路径|落盘/.test(t);
+};
+
+const HIGH_RISK_PERMS = ['tool:run_command', 'tool:workspace_fs_write', 'tool:file_operations'];
+
+const ensureHighRiskConfig = (cfg: Record<string, unknown>, permissions: string[]) => {
+  const next = { ...(cfg || {}) };
+  const risky = permissions.some((p) => HIGH_RISK_PERMS.some((h) => String(p).includes(h)));
+  if (risky && next.require_confirmation !== true) {
+    next.require_confirmation = true;
+  }
+  if (risky && next.timeout_seconds == null) {
+    next.timeout_seconds = 120;
+  }
+  return next;
+};
+
+/** Map LLM / legacy category aliases onto wizard enum. */
+const normalizeCategory = (raw: string): string => {
+  const c = String(raw || '').trim().toLowerCase();
+  if ((SKILL_CATEGORIES as readonly string[]).includes(c)) return c;
+  const aliases: Record<string, string> = {
+    development: 'coding',
+    design: 'generation',
+    document: 'generation',
+    text: 'generation',
+    docs: 'generation',
+    presentation: 'generation',
+    summarize: 'analysis',
+    summary: 'analysis',
+    rag: 'retrieval',
+    kb: 'retrieval',
+    chat: 'communication',
+    support: 'communication',
+  };
+  return aliases[c] || 'general';
+};
+
+/**
+ * Generic category inference: keep specific LLM picks; only override vague "general"
+ * using description signals (no per-product special cases).
+ */
+const inferCategory = (aiCategory: string, name: string, description: string): string => {
+  const mapped = normalizeCategory(aiCategory);
+  if (mapped !== 'general') return mapped;
+  const t = `${name}\n${description}`;
+  if (/检索|知识库|召回|RAG/i.test(t)) return 'retrieval';
+  if (/分析|诊断|对比|评估/i.test(t)) return 'analysis';
+  if (/转换|抽取|格式化|解析/i.test(t)) return 'transformation';
+  if (/代码|编程|修复|单测/i.test(t)) return 'coding';
+  if (/执行|运行|调用工具|跑脚本/i.test(t)) return 'execution';
+  if (/生成|写一份|产出|起草|大纲|报告|文案|幻灯片|\.pptx|\.docx/i.test(t)) return 'generation';
+  if (/搜索|上网|公开信息/i.test(t)) return 'search';
+  if (looksLikeFileProducingSkill(description, name)) return 'generation';
+  return mapped;
+};
+
+/** Keep user-typed CJK display name; avoid LLM title-case corruption. */
+const pickDisplayName = (userName: string, aiDisplay?: string): string => {
+  const user = (userName || '').trim();
+  const ai = String(aiDisplay || '').trim();
+  if (!ai) return user;
+  if (!user) return ai;
+  if (/[\u4e00-\u9fff]/.test(user)) return user;
+  return ai;
+};
+
+/** Generic weak-trigger filter (fluff patterns), not product-specific. */
+const isWeakTrigger = (t: string, noun: string): boolean => {
+  const s = String(t || '').trim();
+  if (s.length < 3) return true;
+  if (/^(使用|帮我用|处理)/.test(s) && (s.includes(noun) || /相关$/.test(s))) return true;
+  return false;
+};
+
+const buildLocalTriggers = (args: { name: string; description: string; category: string }): string[] => {
+  const nm = (args.name || '').trim();
+  const noun = nm.replace(/(生成|助手|技能|工具|服务)$/u, '').trim() || nm;
+  const fileOut = looksLikeFileProducingSkill(args.description, args.name);
+  const byCat: Record<string, string[]> = {
+    retrieval: [`查${noun}`, `检索${noun}`, `搜索${noun}相关`, `帮我找${noun}资料`],
+    execution: [`执行${noun}`, `运行${noun}`, `帮我做${noun}`, `用${noun}处理`],
+    analysis: [`分析${noun}`, `总结${noun}`, `${noun}对比`, `提取${noun}要点`],
+    generation: fileOut
+      ? [`生成${noun}`, `做一份${noun}`, `帮我写${noun}`, `按要求生成${noun}`, `输出${noun}文件`]
+      : [`生成${noun}`, `写一份${noun}`, `帮我写${noun}`, `按要求生成${noun}`, `润色${noun}`, `改写${noun}`],
+    transformation: [`转换${noun}`, `格式化${noun}`, `抽取${noun}`, `解析成${noun}`],
+    coding: [`写${noun}代码`, `改${noun}`, `审查${noun}`, `补${noun}测试`],
+    search: [`搜索${noun}`, `上网查${noun}`, `找公开信息：${noun}`],
+    tool: [`调用${noun}`, `用${noun}工具`, `跑一下${noun}`],
+    communication: [`回复${noun}`, `写${noun}通知`, `${noun}会议纪要`],
+    general: [`帮我处理${noun}`, `关于${noun}`, `${noun}怎么做`],
+  };
+  const cand = [
+    noun.length >= 4 ? noun : '',
+    nm && nm !== noun ? nm : '',
+    ...(byCat[args.category] || byCat.general),
+  ]
+    .map((x) => String(x || '').trim())
+    .filter((x) => x.length >= 3 && !(x.length <= 3 && /^[A-Za-z]+$/.test(x)))
+    .filter((x) => !isWeakTrigger(x, noun));
+  const uniq: string[] = [];
+  for (const x of cand) if (!uniq.includes(x)) uniq.push(x);
+  return uniq.slice(0, 10);
+};
+
+/** Accept either flat field-map or JSON Schema {properties, required}. */
+const flattenFieldSchema = (schema: any): Record<string, unknown> => {
+  if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return {};
+  if (schema.properties && typeof schema.properties === 'object') {
+    const out: Record<string, unknown> = {};
+    const req = new Set<string>(Array.isArray(schema.required) ? schema.required.map(String) : []);
+    for (const [k, v] of Object.entries(schema.properties as Record<string, any>)) {
+      const field = v && typeof v === 'object' ? { ...v } : { type: 'string' };
+      if (req.has(k) && field.required == null) field.required = true;
+      out[k] = field;
+    }
+    return out;
+  }
+  return { ...schema };
+};
+
+const isSopSkeletonOnly = (sop: string) => {
+  const body = (sop || '')
+    .replace(/^#\s*概述\s*/m, '')
+    .replace(/^##\s+[^\n]+\s*$/gm, '')
+    .replace(/^-\s*\[[ x]\]\s*$/gm, '')
+    .replace(/\s+/g, '')
+    .trim();
+  return body.length < 20;
+};
+
+/** True when schema has no usable business fields (empty or markdown-only). */
+const isThinSchema = (schema: Record<string, unknown>): boolean => {
+  const keys = Object.keys(schema || {}).filter((k) => k !== 'markdown' && k !== 'type' && k !== 'properties');
+  return keys.length === 0;
+};
+
+const GENERIC_IN_KEYS = new Set(['prompt', 'style', 'format', 'input', 'text', 'content']);
+const GENERIC_OUT_KEYS = new Set(['text', 'output', 'result', 'content']);
+
+/** Description implies concrete I/O (not free-form chat). Product-agnostic. */
+const descriptionNeedsStructuredIO = (desc: string): boolean =>
+  /大纲|字段|路径|占位符|母版|页数|模版|模板|章节|结构化|输入[：:]|输出[：:]|\.[a-z]{3,4}\b/i.test(
+    desc || ''
+  );
+
+/** Category-template-like schemas that ignore a structured description. */
+const isGenericPlaceholderSchema = (
+  inn: Record<string, unknown>,
+  out: Record<string, unknown>
+): boolean => {
+  if (isThinSchema(inn) && isThinSchema(out)) return true;
+  const inKeys = Object.keys(inn || {});
+  const outKeys = Object.keys(out || {}).filter((k) => k !== 'markdown');
+  const inGeneric = inKeys.length > 0 && inKeys.every((k) => GENERIC_IN_KEYS.has(k));
+  const outGeneric = outKeys.length === 0 || outKeys.every((k) => GENERIC_OUT_KEYS.has(k));
+  return inGeneric && outGeneric;
+};
+
+/** SOP that never mentions distinctive tokens from a structured description. */
+const isSopTooGenericForDescription = (sop: string, desc: string): boolean => {
+  if (!sop || isSopSkeletonOnly(sop)) return true;
+  if (!descriptionNeedsStructuredIO(desc)) return false;
+  const signals = desc.match(/大纲|占位符|母版|模版|模板|页数|路径|章节|\.[a-z]{3,4}\b/gi) || [];
+  if (signals.length === 0) return false;
+  const lower = sop.toLowerCase();
+  return !signals.some((s) => lower.includes(String(s).toLowerCase()));
+};
+
+const SCHEMA_REFINE_HINT =
+  'input_schema/output_schema/SOP 必须从功能描述提取具体字段名与步骤；禁止只用 prompt/style/format/text 等空泛占位；若描述含文件路径/大纲/模版等，字段与步骤必须体现这些概念；output_schema 必须含 markdown。';
+
+const CATEGORY_CONTRACTS: Record<
+  string,
+  { input: Record<string, unknown>; output: Record<string, unknown> }
+> = {
+  generation: {
+    input: {
+      prompt: { type: 'string', required: true, description: '生成指令/要点' },
+      style: { type: 'string', required: false, description: '风格/语气' },
+      format: { type: 'string', required: false, description: '输出格式要求' },
+    },
+    output: {
+      text: { type: 'string', required: true, description: '生成文本' },
+      markdown: {
+        type: 'string',
+        required: true,
+        description: '面向人阅读的 Markdown 输出，与结构化字段一致',
+      },
+    },
+  },
+  retrieval: {
+    input: {
+      query: { type: 'string', required: true, description: '检索问题/关键词' },
+      top_k: { type: 'integer', required: false, description: '召回数量（默认 5）' },
+    },
+    output: {
+      passages: { type: 'array', required: true, description: '召回片段（含文本与元信息）' },
+      markdown: {
+        type: 'string',
+        required: true,
+        description: '面向人阅读的 Markdown 输出，与结构化字段一致',
+      },
+    },
+  },
+  analysis: {
+    input: {
+      input: { type: 'string', required: true, description: '待分析内容' },
+      constraints: { type: 'object', required: false, description: '约束（口径/指标/维度）' },
+    },
+    output: {
+      summary: { type: 'string', required: true, description: '结论摘要' },
+      details: { type: 'string', required: false, description: '分析细节' },
+      markdown: {
+        type: 'string',
+        required: true,
+        description: '面向人阅读的 Markdown 输出，与结构化字段一致',
+      },
+    },
+  },
+  execution: {
+    input: {
+      action: { type: 'string', required: true, description: '要执行的动作（业务语义）' },
+      params: { type: 'object', required: false, description: '动作参数' },
+      dry_run: { type: 'boolean', required: false, description: '是否仅生成执行计划（默认 true）' },
+    },
+    output: {
+      plan: { type: 'object', required: false, description: '工具调用计划' },
+      result: { type: 'string', required: false, description: '执行结果/说明' },
+      markdown: {
+        type: 'string',
+        required: true,
+        description: '面向人阅读的 Markdown 输出，与结构化字段一致',
+      },
+    },
+  },
+  general: {
+    input: { input: { type: 'string', required: true, description: '输入' } },
+    output: {
+      output: { type: 'string', required: true, description: '输出' },
+      markdown: {
+        type: 'string',
+        required: true,
+        description: '面向人阅读的 Markdown 输出，与结构化字段一致',
+      },
+    },
+  },
 };
 
 const yamlLike = (obj: any, indent = 0): string => {
@@ -179,10 +471,10 @@ const recommendSop = (args: { category: string; skillKind: string; name: string;
       '提出下一步建议与风险提示。',
     ],
     generation: [
-      '确认生成目标与风格：受众、语气、长度、格式。',
-      '生成初稿并进行自检：一致性、事实性、敏感内容。',
-      '给出最终输出：结构化字段 + Markdown 版本（可直接使用）。',
-      '可选：提供 1-2 个变体供用户选择。',
+      '确认产出物形态：受众、语气/风格、长度、目标格式（文本/结构化/文件等）。',
+      '校验输入是否充分：对照功能描述中的输入/约束；缺项先澄清，不编造用户未提供的事实。',
+      `按功能描述执行生成（约束摘要）：${(description || '').trim().slice(0, 180) || '（见 description）'}`,
+      '输出符合 output_schema 的结构化结果，并附带与字段一致的 markdown 摘要。',
     ],
     transformation: [
       '确认输入格式与目标格式（示例优先）。',
@@ -364,6 +656,26 @@ const SkillWizardV2Modal: React.FC<SkillWizardV2ModalProps> = ({ open, initial, 
   const [inputSchemaText, setInputSchemaText] = useState(JSON.stringify(initial?.input_schema || {}, null, 2));
   const [outputSchemaText, setOutputSchemaText] = useState(JSON.stringify(ensureMarkdownSchema(initial?.output_schema || {}), null, 2));
 
+  const [negativeTriggersText, setNegativeTriggersText] = useState(
+    (initial?.negative_triggers || []).join('\n')
+  );
+  const [requiredQuestionsText, setRequiredQuestionsText] = useState(
+    (initial?.required_questions || []).join('\n')
+  );
+  const [keywordsText, setKeywordsText] = useState(
+    JSON.stringify(
+      initial?.keywords || { objects: [], actions: [], constraints: [], synonyms: [] },
+      null,
+      2
+    )
+  );
+  const [decisionTreeText, setDecisionTreeText] = useState(
+    JSON.stringify(initial?.decision_tree || [], null, 2)
+  );
+  const [resourcesText, setResourcesText] = useState(
+    JSON.stringify(initial?.resources || { scripts: [], assets: [], references: [] }, null, 2)
+  );
+
   const [sopText, setSopText] = useState(ensureSopSections((initial?.sop || getDefaultSop(localSkillSpecV2Schema as any) || '').trim()));
   const [previewOpen, setPreviewOpen] = useState(false);
   const [diffOpen, setDiffOpen] = useState(false);
@@ -381,10 +693,18 @@ const SkillWizardV2Modal: React.FC<SkillWizardV2ModalProps> = ({ open, initial, 
   const [sopSuggestTitle, setSopSuggestTitle] = useState('');
   const [sopSuggestText, setSopSuggestText] = useState('');
   const [sopSelected, setSopSelected] = useState<Record<string, boolean>>({});
+  const [aiFillLoading, setAiFillLoading] = useState(false);
+  const [aiFillDone, setAiFillDone] = useState(false);
 
   const steps = useMemo(() => ['基础信息', '治理与触发', '输入输出契约', 'SOP（可精修）', '预览与生成'], []);
 
   const required = useMemo(() => getRequiredSet(activeSchema), [activeSchema]);
+
+  useEffect(() => {
+    if (!open) return;
+    setAiFillDone(false);
+    setAiFillLoading(false);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -455,23 +775,65 @@ const SkillWizardV2Modal: React.FC<SkillWizardV2ModalProps> = ({ open, initial, 
       if (!name.trim()) return toast.error('请填写名称（显示名称）'), false;
       const minDesc = Number(getProp(activeSchema, 'description')?.minLength || 0) || 0;
       if (minDesc > 0 && (description || '').trim().length < minDesc) return toast.error(`描述建议至少 ${minDesc} 个字（用于路由与可解释性）`), false;
+      // Auto-fill skill_id from display name when empty (「PPT生成」→ ppt_generation)
+      if (!skillId.trim()) {
+        const sid = normalizeSkillId(name);
+        if (sid) setSkillId(sid);
+      }
+      if (looksLikeFileProducingSkill(description, name) && skillKind === 'rule') {
+        setSkillKind('executable');
+        toast.info('检测到文件产出描述，已建议形态为 executable（可在下一步改回）');
+      }
       return true;
     }
     if (step === 1) {
+      if (!skillId.trim()) {
+        const sid = normalizeSkillId(name);
+        if (!sid || sid.length < 3) return toast.error('请填写 Skill ID（例如 customer_support）'), false;
+        setSkillId(sid);
+      } else if (!/^[a-z][a-z0-9_-]{2,}$/.test(skillId.trim())) {
+        return toast.error('Skill ID 须为小写字母开头，仅含 a-z / 0-9 / _ / -，至少 3 位'), false;
+      }
       if (skillKind === 'executable') {
         const p = (permissionsText || '').trim();
         if (!p) return toast.error('executable 技能必须声明 permissions'), false;
+      }
+      // Auto-fill require_confirmation for high-risk permissions before leaving step
+      try {
+        const perms = parsePermissions();
+        const cur = JSON.parse(configText || '{}');
+        const next = ensureHighRiskConfig(cur && typeof cur === 'object' ? cur : {}, perms);
+        if (JSON.stringify(next) !== JSON.stringify(cur || {})) {
+          setConfigText(JSON.stringify(next, null, 2));
+          toast.info('已自动补齐 config.require_confirmation（高风险写权限）');
+        }
+      } catch {
+        // ignore parse errors; config field validation is soft
+      }
+      const triggers = (triggerText || '')
+        .split('\n')
+        .map((x) => x.trim())
+        .filter(Boolean);
+      if (triggers.length > 0 && triggers.length < 3) {
+        return toast.error('触发条件建议至少 3 条（或清空后点「一键推荐触发词」）'), false;
       }
       return true;
     }
     if (step === 2) {
       try {
-        JSON.parse(inputSchemaText || '{}');
+        const inn = JSON.parse(inputSchemaText || '{}');
+        if (!inn || typeof inn !== 'object' || Array.isArray(inn) || Object.keys(inn).length === 0) {
+          return toast.error('请填写 input_schema（可点「按分类补齐契约」）'), false;
+        }
       } catch {
         return toast.error('input_schema JSON 格式错误'), false;
       }
       try {
         const out = ensureMarkdownSchema(JSON.parse(outputSchemaText || '{}'));
+        const keys = Object.keys(out).filter((k) => k !== 'markdown');
+        if (keys.length === 0) {
+          return toast.error('output_schema 除 markdown 外至少再有一个业务字段（可点「按分类补齐契约」）'), false;
+        }
         setOutputSchemaText(JSON.stringify(out, null, 2));
       } catch {
         return toast.error('output_schema JSON 格式错误'), false;
@@ -481,6 +843,10 @@ const SkillWizardV2Modal: React.FC<SkillWizardV2ModalProps> = ({ open, initial, 
     if (step === 3) {
       if (!(sopText || '').trim()) {
         setSopText(ensureSopSections(getDefaultSop(activeSchema)));
+        return toast.error('请先生成或粘贴 SOP（可用「一键生成 SOP」）'), false;
+      }
+      if (isSopSkeletonOnly(sopText)) {
+        return toast.error('SOP 仍是空章节模板，请点「一键生成 SOP」后再精修'), false;
       }
       return true;
     }
@@ -504,13 +870,82 @@ const SkillWizardV2Modal: React.FC<SkillWizardV2ModalProps> = ({ open, initial, 
         .filter(Boolean);
     }
 
-    const config = JSON.parse(configText || '{}');
+    const config = ensureHighRiskConfig(
+      (() => {
+        try {
+          return JSON.parse(configText || '{}');
+        } catch {
+          return {};
+        }
+      })(),
+      permissions
+    );
     const input_schema = JSON.parse(inputSchemaText || '{}');
     const output_schema = ensureMarkdownSchema(JSON.parse(outputSchemaText || '{}'));
+    const sid = skillId.trim() || normalizeSkillId(name) || normalizeSkillId(displayName);
+
+    const negative_triggers = (negativeTriggersText || '')
+      .split('\n')
+      .map((x) => x.trim())
+      .filter(Boolean);
+    const required_questions = (requiredQuestionsText || '')
+      .split('\n')
+      .map((x) => x.trim())
+      .filter(Boolean);
+
+    let keywords: SkillWizardV2Value['keywords'] = {
+      objects: [],
+      actions: [],
+      constraints: [],
+      synonyms: [],
+    };
+    try {
+      const k = JSON.parse(keywordsText || '{}');
+      if (k && typeof k === 'object') {
+        keywords = {
+          objects: Array.isArray(k.objects) ? k.objects.map(String) : [],
+          actions: Array.isArray(k.actions) ? k.actions.map(String) : [],
+          constraints: Array.isArray(k.constraints) ? k.constraints.map(String) : [],
+          synonyms: Array.isArray(k.synonyms) ? k.synonyms.map(String) : [],
+        };
+      }
+    } catch {
+      // keep empty
+    }
+
+    let decision_tree: SkillWizardV2Value['decision_tree'] = [];
+    try {
+      const dt = JSON.parse(decisionTreeText || '[]');
+      if (Array.isArray(dt)) {
+        decision_tree = dt
+          .filter((x) => x && typeof x === 'object' && String(x.if || '').trim() && String(x.then || '').trim())
+          .map((x) => ({
+            if: String(x.if).trim(),
+            then: String(x.then).trim(),
+            ...(String(x.notes || '').trim() ? { notes: String(x.notes).trim() } : {}),
+          }));
+      }
+    } catch {
+      decision_tree = [];
+    }
+
+    let resources: SkillWizardV2Value['resources'] = { scripts: [], assets: [], references: [] };
+    try {
+      const r = JSON.parse(resourcesText || '{}');
+      if (r && typeof r === 'object') {
+        resources = {
+          scripts: Array.isArray(r.scripts) ? r.scripts.map(String) : [],
+          assets: Array.isArray(r.assets) ? r.assets.map(String) : [],
+          references: Array.isArray(r.references) ? r.references.map(String) : [],
+        };
+      }
+    } catch {
+      // keep empty
+    }
 
     return {
       name: name.trim(),
-      skill_id: skillId.trim() || undefined,
+      skill_id: sid || undefined,
       display_name: (displayName.trim() || name.trim()) || undefined,
       description: (description || '').trim(),
       category,
@@ -521,6 +956,11 @@ const SkillWizardV2Modal: React.FC<SkillWizardV2ModalProps> = ({ open, initial, 
       input_schema,
       output_schema,
       sop: ensureSopSections(sopText || ''),
+      keywords,
+      negative_triggers,
+      required_questions,
+      decision_tree,
+      resources,
     };
   };
 
@@ -628,29 +1068,143 @@ const SkillWizardV2Modal: React.FC<SkillWizardV2ModalProps> = ({ open, initial, 
     })();
   }, [open, step]);
 
-  const applyTriggerRecommendations = () => {
+  const applyAiFillAll = async () => {
     const nm = (name || '').trim();
-    const verbsByCat: Record<string, string[]> = {
-      retrieval: ['帮我查', '帮我检索', '搜索', '查一下'],
-      execution: ['帮我执行', '帮我创建', '帮我更新', '帮我删除'],
-      analysis: ['分析', '总结', '提取要点', '对比'],
-      generation: ['帮我写', '生成', '润色', '改写'],
-      transformation: ['转换', '抽取', '格式化', '解析'],
-      general: ['帮我', '使用', '处理'],
-    };
-    const verbs = verbsByCat[category] || verbsByCat.general;
-    const cand = [
-      nm,
-      nm ? `使用${nm}` : '',
-      nm ? `帮我用${nm}` : '',
-      ...verbs.map((v) => (nm ? `${v}${nm}` : v)),
-      ...verbs.map((v) => v),
-    ]
-      .map((x) => String(x || '').trim())
-      .filter(Boolean);
-    const uniq: string[] = [];
-    for (const x of cand) if (!uniq.includes(x)) uniq.push(x);
-    setTriggerText(uniq.slice(0, 10).join('\n'));
+    const desc = (description || '').trim();
+    if (!nm || !desc) {
+      toast.error('请先填写名称与描述，再一键填满');
+      return;
+    }
+    setAiFillLoading(true);
+    try {
+      let res = await workspaceSkillApi.autoFill({ name: nm, description: desc });
+      if ((res as any)?.error) {
+        toast.error('AI 填满失败', String((res as any).error));
+        return;
+      }
+
+      const display = pickDisplayName(nm, res.display_name);
+      setDisplayName(display);
+      const aiDesc = String(res.description || '').trim();
+      if (aiDesc && aiDesc.length > desc.length + 20) setDescription(aiDesc);
+
+      const cat = inferCategory(String(res.category || ''), nm, desc);
+      setCategory(cat);
+
+      let kind: SkillKind = res.skill_kind === 'executable' ? 'executable' : 'rule';
+      let perms = Array.isArray(res.permissions)
+        ? res.permissions.map((x: any) => String(x).trim()).filter(Boolean)
+        : [];
+      if (!perms.includes('llm:generate')) perms = ['llm:generate', ...perms];
+      if (/不联网|禁止联网|不要联网/.test(desc)) {
+        perms = perms.filter((p) => !/websearch|webfetch/i.test(p));
+      }
+      if (looksLikeFileProducingSkill(desc, nm)) {
+        kind = 'executable';
+        if (!perms.some((p) => p.includes('workspace_fs_write') || p.includes('file_operations'))) {
+          perms = [...perms, 'tool:workspace_fs_write'];
+        }
+      }
+      setSkillKind(kind);
+      setPermissionsText(JSON.stringify(perms, null, 0));
+
+      const sidFromAi = String((res as any).name || '').trim();
+      const sid =
+        (sidFromAi && /^[a-z][a-z0-9_-]{2,}$/.test(sidFromAi) ? sidFromAi : '') ||
+        normalizeSkillId(display) ||
+        normalizeSkillId(nm);
+      if (sid) setSkillId(sid);
+
+      const noun = display.replace(/(生成|助手|技能|工具|服务)$/u, '').trim() || display;
+      const aiTriggers = Array.isArray(res.trigger_conditions)
+        ? res.trigger_conditions.map((x: any) => String(x).trim()).filter(Boolean)
+        : [];
+      const strongAi = aiTriggers.filter((t) => !isWeakTrigger(t, noun));
+      const localTriggers = buildLocalTriggers({ name: display, description: desc, category: cat });
+      const triggers =
+        strongAi.length >= 3
+          ? strongAi
+          : localTriggers.length >= 3
+            ? localTriggers
+            : Array.from(new Set([...strongAi, ...localTriggers]));
+      setTriggerText(triggers.slice(0, 10).join('\n'));
+
+      let inn = flattenFieldSchema(res.input_schema);
+      let out = flattenFieldSchema(res.output_schema);
+      let sop = String(res.sop || '').trim();
+
+      // Structured description but placeholder schema/SOP → one generic refine retry (no product special-case)
+      const needsRefine =
+        descriptionNeedsStructuredIO(desc) &&
+        (isGenericPlaceholderSchema(inn, out) || isSopTooGenericForDescription(sop, desc));
+      if (needsRefine) {
+        try {
+          const refined = await workspaceSkillApi.autoFill({
+            name: nm,
+            description: desc,
+            refine_hint: SCHEMA_REFINE_HINT,
+          });
+          if (!(refined as any)?.error) {
+            const inn2 = flattenFieldSchema(refined.input_schema);
+            const out2 = flattenFieldSchema(refined.output_schema);
+            const sop2 = String(refined.sop || '').trim();
+            if (!isGenericPlaceholderSchema(inn2, out2)) {
+              inn = inn2;
+              out = out2;
+            }
+            if (sop2 && !isSopTooGenericForDescription(sop2, desc)) {
+              sop = sop2;
+            }
+            res = { ...res, ...refined };
+          }
+        } catch {
+          // keep first-pass result
+        }
+      }
+
+      // Do NOT overwrite with category presets — that erases task-specific fields.
+      // User can still click「按分类补齐契约」manually.
+      if (isThinSchema(inn) || isThinSchema(out)) {
+        toast.warning('契约仍偏空，请在「输入输出契约」步核对或点按分类补齐');
+      } else if (descriptionNeedsStructuredIO(desc) && isGenericPlaceholderSchema(inn, out)) {
+        toast.warning('契约仍偏泛（未贴合描述中的具体字段），建议在契约步手工精修');
+      }
+      setInputSchemaText(JSON.stringify(inn, null, 2));
+      setOutputSchemaText(JSON.stringify(ensureMarkdownSchema(out), null, 2));
+
+      if (sop && !isSopTooGenericForDescription(sop, desc)) {
+        setSopText(ensureSopSections(sop));
+      } else {
+        setSopText(
+          ensureSopSections(
+            recommendSop({ category: cat, skillKind: kind, name: display, description: desc })
+          )
+        );
+        if (descriptionNeedsStructuredIO(desc)) {
+          toast.info('SOP 已用分类模板兜底并写入描述约束，建议在 SOP 步精修步骤');
+        }
+      }
+
+      const cfgFromAi =
+        (res as any).config && typeof (res as any).config === 'object' ? (res as any).config : {};
+      const cfg = ensureHighRiskConfig(cfgFromAi, perms);
+      setConfigText(JSON.stringify(cfg, null, 2));
+      if (kind === 'executable') setShowAdvanced(true);
+      setAiFillDone(true);
+      toast.success('已根据描述填满草稿，请到「治理与触发」审权限后继续');
+      setStep(1);
+    } catch (e: any) {
+      toast.error('AI 填满失败', e?.detail || e?.message || String(e));
+    } finally {
+      setAiFillLoading(false);
+    }
+  };
+
+  const applyTriggerRecommendations = () => {
+    const display = (displayName || name || '').trim();
+    const cat = category || 'general';
+    const uniq = buildLocalTriggers({ name: display, description, category: cat });
+    setTriggerText(uniq.join('\n'));
     toast.success('已生成触发词推荐');
   };
 
@@ -670,6 +1224,19 @@ const SkillWizardV2Modal: React.FC<SkillWizardV2ModalProps> = ({ open, initial, 
     const uniq: string[] = [];
     for (const x of arr.map((s) => String(s).trim()).filter(Boolean)) if (!uniq.includes(x)) uniq.push(x);
     setPermissionsText(JSON.stringify(uniq, null, 0));
+    // High-risk write/exec perms → auto enable confirmation in config
+    try {
+      const cur = JSON.parse(configText || '{}');
+      const next = ensureHighRiskConfig(cur && typeof cur === 'object' ? cur : {}, uniq);
+      if (JSON.stringify(next) !== JSON.stringify(cur || {})) {
+        setConfigText(JSON.stringify(next, null, 2));
+        if (next.require_confirmation && !(cur || {}).require_confirmation) {
+          toast.info('已自动在 config 中启用 require_confirmation=true');
+        }
+      }
+    } catch {
+      setConfigText(JSON.stringify(ensureHighRiskConfig({}, uniq), null, 2));
+    }
   };
 
   const openSopSuggestion = (title: string, txt: string) => {
@@ -733,8 +1300,9 @@ const SkillWizardV2Modal: React.FC<SkillWizardV2ModalProps> = ({ open, initial, 
   };
 
   const buildSkillMdPreview = (v: SkillWizardV2Value): string => {
+    const sid = (v.skill_id || '').trim() || normalizeSkillId(v.name) || normalizeSkillId(v.display_name || '');
     const fmObj: any = {
-      name: (v.skill_id || '').trim() || normalizeSkillId(v.name),
+      name: sid || 'unnamed_skill',
       display_name: v.display_name || v.name,
       description: v.description,
       category: v.category,
@@ -745,6 +1313,30 @@ const SkillWizardV2Modal: React.FC<SkillWizardV2ModalProps> = ({ open, initial, 
       input_schema: v.input_schema,
       output_schema: v.output_schema,
     };
+    if (v.config && typeof v.config === 'object' && Object.keys(v.config).length > 0) {
+      fmObj.config = v.config;
+    }
+    if (v.negative_triggers && v.negative_triggers.length > 0) {
+      fmObj.negative_triggers = v.negative_triggers;
+    }
+    if (v.required_questions && v.required_questions.length > 0) {
+      fmObj.required_questions = v.required_questions;
+    }
+    if (v.keywords) {
+      const hasKw = ['objects', 'actions', 'constraints', 'synonyms'].some(
+        (k) => Array.isArray((v.keywords as any)[k]) && (v.keywords as any)[k].length > 0
+      );
+      if (hasKw) fmObj.keywords = v.keywords;
+    }
+    if (v.decision_tree && v.decision_tree.length > 0) {
+      fmObj.decision_tree = v.decision_tree;
+    }
+    if (v.resources) {
+      const hasRes = ['scripts', 'assets', 'references'].some(
+        (k) => Array.isArray((v.resources as any)[k]) && (v.resources as any)[k].length > 0
+      );
+      if (hasRes) fmObj.resources = v.resources;
+    }
     const header = yamlLike(fmObj, 0);
     const body = v.sop || '';
     return `---\n${header}\n---\n\n${body.replace(/^\n+/, '')}`.replace(/\n{3,}/g, '\n\n');
@@ -759,19 +1351,46 @@ const SkillWizardV2Modal: React.FC<SkillWizardV2ModalProps> = ({ open, initial, 
     const widget = String(p?.['x-ui']?.widget || '');
 
     if (key === 'category') {
-      return <Select label={title} value={category} onChange={(v: string) => setCategory(v)} options={CATEGORY_OPTIONS} />;
+      const selectedHelp =
+        SKILL_CATEGORY_HELP[category as keyof typeof SKILL_CATEGORY_HELP] || '';
+      const categoryHelp =
+        help ||
+        '分类只用于列表筛选与推荐，不是权限。generation=内容生成；retrieval=查内部资料；execution=跑工具/脚本；coding=写改代码；search=外部网页搜索；拿不准选 general。';
+      return (
+        <div>
+          <Select
+            label={title}
+            value={category}
+            onChange={(v: string) => setCategory(v)}
+            options={CATEGORY_OPTIONS}
+          />
+          <div className="text-xs text-gray-500 mt-1 whitespace-pre-wrap">{categoryHelp}</div>
+          {selectedHelp && (
+            <div className="text-xs text-gray-400 mt-0.5">当前：{selectedHelp}</div>
+          )}
+        </div>
+      );
     }
     if (key === 'skill_kind') {
+      const fileHint = looksLikeFileProducingSkill(description, name);
       return (
-        <Select
-          label={title}
-          value={skillKind}
-          onChange={(v: string) => setSkillKind(v as any)}
-          options={[
-            { value: 'rule', label: 'rule（纯 SOP）' },
-            { value: 'executable', label: 'executable（可执行/需权限）' },
-          ]}
-        />
+        <div>
+          <Select
+            label={title}
+            value={skillKind}
+            onChange={(v: string) => setSkillKind(v as any)}
+            options={[
+              { value: 'rule', label: 'rule（纯 SOP）' },
+              { value: 'executable', label: 'executable（可执行/需权限）' },
+            ]}
+          />
+          {help && <div className="text-xs text-gray-500 mt-1">{help}</div>}
+          {fileHint && skillKind === 'rule' && (
+            <div className="text-xs text-amber-500 mt-1">
+              描述提到写出文件/路径：建议选 executable，否则通常只会生成说明文字，不会真正落盘。
+            </div>
+          )}
+        </div>
       );
     }
     if (key === 'trigger_conditions') {
@@ -929,8 +1548,50 @@ const SkillWizardV2Modal: React.FC<SkillWizardV2ModalProps> = ({ open, initial, 
         </div>
       );
     }
-    if (key === 'config') return <Textarea label={title} rows={6} value={configText} onChange={(e: any) => setConfigText(e.target.value)} placeholder={placeholder || '{}'} />;
-    if (key === 'input_schema') return <Textarea label={title} rows={10} value={inputSchemaText} onChange={(e: any) => setInputSchemaText(e.target.value)} placeholder={placeholder || '{}'} />;
+    if (key === 'config') {
+      const risky = HIGH_RISK_PERMS.some((h) => (permissionsText || '').includes(h));
+      return (
+        <div>
+          <Textarea
+            label={title}
+            rows={6}
+            value={configText}
+            onChange={(e: any) => setConfigText(e.target.value)}
+            placeholder={placeholder || '{"require_confirmation": true, "timeout_seconds": 120}'}
+          />
+          {risky && (
+            <div className="text-xs text-amber-500 mt-1">
+              已勾选高风险写/执行权限：建议 config 含 require_confirmation=true（离开本步时会自动补齐）。
+            </div>
+          )}
+        </div>
+      );
+    }
+    if (key === 'input_schema') {
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-sm font-medium text-gray-300">{title}</div>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const preset = CATEGORY_CONTRACTS[category] || CATEGORY_CONTRACTS.general;
+                setInputSchemaText(JSON.stringify(preset.input, null, 2));
+                setOutputSchemaText(JSON.stringify(ensureMarkdownSchema(preset.output), null, 2));
+                toast.success(`已按分类「${category}」补齐契约`);
+              }}
+            >
+              按分类补齐契约
+            </Button>
+          </div>
+          <Textarea rows={10} value={inputSchemaText} onChange={(e: any) => setInputSchemaText(e.target.value)} placeholder={placeholder || '{}'} />
+          {help && <div className="text-xs text-gray-500">{help}</div>}
+          <div className="text-xs text-gray-500">
+            按当前分类补齐常用 input/output；任务专用字段优先靠「根据描述一键填满」由 AI 生成。
+          </div>
+        </div>
+      );
+    }
     if (key === 'output_schema') {
       return (
         <div className="space-y-2">
@@ -1120,7 +1781,30 @@ const SkillWizardV2Modal: React.FC<SkillWizardV2ModalProps> = ({ open, initial, 
       );
     }
     if (key === 'name') return <Input label={title} value={name} onChange={(e: any) => setName(e.target.value)} placeholder={placeholder} />;
-    if (key === 'skill_id') return <Input label={title} value={skillId} onChange={(e: any) => setSkillId(e.target.value)} placeholder={placeholder} />;
+    if (key === 'skill_id') {
+      const suggested = normalizeSkillId(name || displayName);
+      return (
+        <div>
+          <Input
+            label={title}
+            value={skillId}
+            onChange={(e: any) => setSkillId(e.target.value)}
+            placeholder={placeholder || '例如：customer_support'}
+          />
+          {!skillId.trim() && suggested && (
+            <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+              <span>建议：{suggested}</span>
+              <Button variant="secondary" onClick={() => setSkillId(suggested)}>
+                填入
+              </Button>
+            </div>
+          )}
+          <div className="text-xs text-gray-500 mt-1">
+            写入 SKILL.md 的 <code>name</code> 字段；中文显示名请留在「名称」。空着会按名称自动推导（例如「客服助手」→ support_assistant）。
+          </div>
+        </div>
+      );
+    }
     if (key === 'display_name') return <Input label={title} value={displayName} onChange={(e: any) => setDisplayName(e.target.value)} placeholder={placeholder} />;
     if (key === 'description') return <Textarea label={title} rows={3} value={description} onChange={(e: any) => setDescription(e.target.value)} placeholder={placeholder} />;
 
@@ -1179,9 +1863,17 @@ const SkillWizardV2Modal: React.FC<SkillWizardV2ModalProps> = ({ open, initial, 
                 {Array.isArray(govPreview?.hints) && govPreview.hints.length > 0 && (
                   <div className="text-xs text-gray-500">提示：{govPreview.hints.slice(0, 3).join('；')}</div>
                 )}
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
                   <Button variant="secondary" onClick={applyTriggerRecommendations}>
                     一键推荐触发词
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    loading={aiFillLoading}
+                    disabled={!name.trim() || description.trim().length < 8 || aiFillLoading}
+                    onClick={applyAiFillAll}
+                  >
+                    重新根据描述填满
                   </Button>
                 </div>
               </div>
@@ -1190,6 +1882,27 @@ const SkillWizardV2Modal: React.FC<SkillWizardV2ModalProps> = ({ open, initial, 
           {basic.map((k) => (
             <div key={k}>{renderField(k)}</div>
           ))}
+          {step === 0 && (
+            <Alert type="info" title="根据描述一键填满（推荐）">
+              <div className="space-y-2">
+                <div className="text-xs text-gray-400">
+                  调用 AI（skill-auto-fill）一次写入形态、权限、触发词、输入输出契约与 SOP。
+                  高风险写权限 / 二次确认请在下一步「治理与触发」人工审阅，不要跳过。
+                </div>
+                <Button
+                  variant="primary"
+                  loading={aiFillLoading}
+                  disabled={!name.trim() || description.trim().length < 8 || aiFillLoading}
+                  onClick={applyAiFillAll}
+                >
+                  根据描述一键填满
+                </Button>
+                {aiFillDone && (
+                  <div className="text-xs text-green-500">已填满草稿；请审权限与 config 后再继续。</div>
+                )}
+              </div>
+            </Alert>
+          )}
           {canShowAdv && adv.length > 0 && (
             <div className="flex items-center justify-between border-t border-dark-border pt-3">
               <div className="text-sm text-gray-400">高级选项（权限/配置）</div>

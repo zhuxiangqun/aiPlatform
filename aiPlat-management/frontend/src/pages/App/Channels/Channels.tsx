@@ -28,6 +28,8 @@ const Channels: React.FC = () => {
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; channel: Channel | null }>({ open: false, channel: null });
   const [deleting, setDeleting] = useState(false);
 
+  const [connectedHint, setConnectedHint] = useState('');
+
   const fetchChannels = useCallback(async () => {
     setLoading(true);
     try {
@@ -43,6 +45,15 @@ const Channels: React.FC = () => {
 
   useEffect(() => {
     fetchChannels();
+    fetch('/api/platform/apps/org/channels/feishu/status')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => {
+        if (!body) return;
+        const inbound = (body.inbound || []).map((c: { id?: string }) => c.id).filter(Boolean).join('、');
+        const outbound = (body.outbound_only || []).map((c: { id?: string }) => c.id).filter(Boolean).join('、');
+        setConnectedHint(`组织任务入站：${inbound || '无'}。只出站：${outbound || '无'}。`);
+      })
+      .catch(() => setConnectedHint(''));
   }, [fetchChannels]);
 
   const handleDelete = async () => {
@@ -153,7 +164,7 @@ const Channels: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="渠道管理"
-        description="管理多渠道消息适配器，包括Telegram、Slack、WebChat、API接入等"
+        description={connectedHint || '管理多渠道消息适配器，包括Telegram、Slack、WebChat、API接入等'}
         extra={
           <div className="flex items-center gap-3">
             <Select

@@ -497,6 +497,86 @@ class AgentManager:
         for agent_id, agent_info in self._agents.items():
             self._bridge_to_registry(agent_info)
     
+    @staticmethod
+    def _display_name_of(agent: "AgentInfo") -> str:
+        meta = agent.metadata if isinstance(getattr(agent, "metadata", None), dict) else {}
+        return str(meta.get("display_name") or getattr(agent, "name", "") or "").strip()
+
+    @staticmethod
+    def _content_fingerprint(
+        skills: Optional[List[str]] = None,
+        tools: Optional[List[str]] = None,
+        agent_type: str = "",
+    ) -> tuple:
+        """Identity for equivalent agents: type + sorted skill/tool bindings."""
+        sk = tuple(sorted(str(s).strip() for s in (skills or []) if str(s).strip()))
+        tl = tuple(sorted(str(t).strip() for t in (tools or []) if str(t).strip()))
+        at = str(agent_type or "").strip().lower()
+        return (at, sk, tl)
+
+    def find_equivalent(
+        self,
+        display_name: str,
+        skills: Optional[List[str]] = None,
+        tools: Optional[List[str]] = None,
+        agent_type: str = "",
+    ) -> Optional[AgentInfo]:
+        want_name = (display_name or "").strip()
+        if not want_name:
+            return None
+        want_fp = self._content_fingerprint(skills, tools, agent_type)
+        for agent in self._agents.values():
+            if self._display_name_of(agent) != want_name:
+                continue
+            if self._content_fingerprint(agent.skills, agent.tools, agent.type) == want_fp:
+                return agent
+        return None
+
+    async def dedupe_agents(self) -> Dict[str, Any]:
+        """Keep newest agent per (display_name, content fingerprint); delete the rest.
+
+        Chat-create used to mint ``agent_${Date.now()}`` ids for CJK labels, flooding
+        ~/.aiplat/agents with near-identical display_name copies.
+        """
+        groups: Dict[tuple, List[AgentInfo]] = {}
+        for agent in self._agents.values():
+            key = (
+                self._display_name_of(agent),
+                self._content_fingerprint(agent.skills, agent.tools, agent.type),
+            )
+            groups.setdefault(key, []).append(agent)
+
+        removed: List[str] = []
+        kept = 0
+        for key, items in groups.items():
+            if not key[0] or len(items) <= 1:
+                kept += len(items) if not key[0] else 1
+                continue
+            items_sorted = sorted(
+                items,
+                key=lambda a: (
+                    a.updated_at
+                    or a.created_at
+                    or datetime.min.replace(tzinfo=timezone.utc)
+                ),
+                reverse=True,
+            )
+            kept += 1
+            for dup in items_sorted[1:]:
+                try:
+                    if await self.delete_agent(dup.id):
+                        removed.append(dup.id)
+                except PermissionError:
+                    # Protected engine agents stay; skip from removed list.
+                    kept += 1
+        return {
+            "ok": True,
+            "kept": kept,
+            "removed": removed,
+            "removed_count": len(removed),
+            "remaining": len(self._agents),
+        }
+
     async def create_agent(
         self,
         name: str,
@@ -508,17 +588,35 @@ class AgentManager:
         workflow_ids: Optional[List[str]] = None,
         agent_ids: Optional[List[str]] = None,
         memory_config: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
+        *,
+        reuse_equivalent: bool = True,
     ) -> AgentInfo:
-        """Create a new agent"""
-        agent_id = name.lower().replace(" ", "_").replace("-", "_")
+        """Create a new agent.
+
+        When ``reuse_equivalent`` (default), return an existing agent that shares
+        the same display_name + skills/tools fingerprint instead of minting another id.
+        """
+        meta = dict(metadata or {})
+        display_name = str(meta.get("display_name") or name or "").strip() or str(name).strip()
+        agent_id = self._slugify_agent_id(str(name or ""), fallback_display=display_name)
         if self._reserved_ids and agent_id in self._reserved_ids:
             raise ValueError(f"Agent id '{agent_id}' is reserved by engine scope and cannot be created in workspace.")
+        if reuse_equivalent:
+            eq = self.find_equivalent(display_name, skills or [], tools or [], agent_type)
+            if eq is not None:
+                return eq
+        # Same slug → reuse (prevents silent overwrite / duplicate flood from factory retries).
+        existing = self._agents.get(agent_id)
+        if existing is not None:
+            return existing
+        # Keep human label in metadata; id stays ASCII slug.
+        meta["display_name"] = display_name
         now = datetime.now(timezone.utc)
         
         agent = AgentInfo(
             id=agent_id,
-            name=name,
+            name=display_name,
             type=agent_type,
             status="ready",  # ready by default — auto-smoke gates verify before execute
             runtime_state=AgentStateEnum.INITIALIZING.value,
@@ -531,7 +629,7 @@ class AgentManager:
             memory_config=memory_config or {"type": "short_term", "recall_count": 5},
             created_at=now,
             updated_at=now,
-            metadata=metadata or {}
+            metadata=meta
         )
         
         self._agents[agent_id] = agent
@@ -563,8 +661,8 @@ class AgentManager:
             if not agent_md_path.exists():
                 manifest = {
                     "name": agent_id,
-                    "display_name": name,
-                    "description": metadata.get("description") if isinstance(metadata, dict) else "",
+                    "display_name": display_name,
+                    "description": meta.get("description") if isinstance(meta, dict) else "",
                     "agent_type": agent_type,
                     "version": "1.0.0",
                     "status": agent.status,
@@ -574,17 +672,17 @@ class AgentManager:
                     "workflows": workflow_ids or [],
                     "agent_ids": agent_ids or [],
                     "config": config or {},
-                    "toolset": (metadata.get("toolset") if isinstance(metadata, dict) else "workspace_default") or "workspace_default",
-                    "loop_type": (agent_type if agent_type == "react" else (metadata.get("loop_type") if isinstance(metadata, dict) else "react")) or "react",
+                    "toolset": (meta.get("toolset") if isinstance(meta, dict) else "workspace_default") or "workspace_default",
+                    "loop_type": (agent_type if agent_type == "react" else (meta.get("loop_type") if isinstance(meta, dict) else "react")) or "react",
                     "memory_config": memory_config or {"type": "short_term", "recall_count": 5},
-                    "knowledge_bases": metadata.get("knowledge_bases") if isinstance(metadata, dict) else [],
-                    "trigger_conditions": metadata.get("trigger_conditions") if isinstance(metadata, dict) else [],
-                    "permissions": metadata.get("permissions") if isinstance(metadata, dict) else [],
+                    "knowledge_bases": meta.get("knowledge_bases") if isinstance(meta, dict) else [],
+                    "trigger_conditions": meta.get("trigger_conditions") if isinstance(meta, dict) else [],
+                    "permissions": meta.get("permissions") if isinstance(meta, dict) else [],
                 }
                 header = yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True).strip()
                 body = f"""
 
-# {name}
+# {display_name}
 
 ## 目标
 说明该 Agent 的职责边界与适用场景。
@@ -615,6 +713,30 @@ class AgentManager:
         
         _notify_resource_mutated("agent", "created", agent.id)
         return agent
+
+    @staticmethod
+    def _slugify_agent_id(name: str, *, fallback_display: str = "") -> str:
+        """ASCII agent id: prefer english snake_case; never keep CJK in id."""
+        import re
+        import hashlib
+
+        raw = str(name or "").strip()
+        # Already a good id
+        if re.fullmatch(r"[a-z][a-z0-9_]{2,63}", raw.lower().replace("-", "_")):
+            return raw.lower().replace("-", "_")
+        blob = f"{raw} {fallback_display}"
+        # Hint from display (e.g. PPT → ppt_maker) before short ascii leftovers
+        if re.search(r"ppt|pptx|演示文稿|幻灯片", blob, flags=re.I):
+            return "ppt_maker"
+        # Strip to ascii tokens
+        lowered = raw.lower().replace("-", "_").replace(" ", "_")
+        ascii_only = re.sub(r"[^a-z0-9_]+", "", lowered)
+        ascii_only = re.sub(r"_+", "_", ascii_only).strip("_")
+        if re.fullmatch(r"[a-z][a-z0-9_]{2,63}", ascii_only or ""):
+            return ascii_only[:64]
+        digest = hashlib.md5(f"{raw}|{fallback_display}".encode("utf-8")).hexdigest()[:8]
+        return f"agent_{digest}"
+
     def _bridge_to_registry(self, agent_info: AgentInfo) -> None:
         """Bridge: register agent in execution-layer AgentRegistry."""
         try:
@@ -925,8 +1047,13 @@ class AgentManager:
            - execution_help (markdown string)
            - execution_examples (list of {title, content})
            - execution_input_schema (object)
-        2) Generate defaults based on bound skills/tools.
+        2) Generate defaults from input_schema / bound skills/tools.
         """
+        from core.management.execution_examples import (
+            build_agent_task_examples,
+            build_examples_from_input_schema,
+        )
+
         agent = self._agents.get(agent_id)
         if not agent:
             return None
@@ -939,7 +1066,6 @@ class AgentManager:
         examples = fm.get("execution_examples")
         schema = fm.get("execution_input_schema")
 
-        # Fallback: read from agent.metadata if AGENT.md frontmatter doesn't have it
         if not help_md and isinstance(getattr(agent, "metadata", None), dict):
             help_md = agent.metadata.get("execution_help")
         if not examples and isinstance(getattr(agent, "metadata", None), dict):
@@ -947,44 +1073,55 @@ class AgentManager:
         if not schema and isinstance(getattr(agent, "metadata", None), dict):
             schema = agent.metadata.get("execution_input_schema")
 
-        # normalize examples
         norm_examples: list[dict] = []
         if isinstance(examples, list):
             for e in examples:
                 if isinstance(e, dict) and e.get("title") and e.get("content") is not None:
                     norm_examples.append({"title": str(e["title"]), "content": str(e["content"])})
 
+        skill_ids = list(getattr(agent, "skills", []) or [])
+        tool_ids = list(getattr(agent, "tools", []) or [])
+        display = str(
+            (agent.metadata or {}).get("display_name")
+            or getattr(agent, "name", None)
+            or agent_id
+        )
+        desc = str((agent.metadata or {}).get("description") or "")
+
+        effective_schema = schema if isinstance(schema, dict) and schema else None
+        if not norm_examples and effective_schema:
+            norm_examples = build_examples_from_input_schema(
+                effective_schema, skill_id=agent_id, skill_name=display
+            )
+        if not norm_examples:
+            norm_examples = build_agent_task_examples(
+                display_name=display,
+                description=desc,
+                skill_ids=skill_ids,
+                tool_ids=tool_ids,
+            )
+
+        default_input = str(norm_examples[0]["content"]) if norm_examples else ""
+
+        has_file_ops = "file_operations" in tool_ids
+        has_browser = "browser" in skill_ids or any("browser" in str(s) for s in skill_ids)
+        category = (agent.metadata or {}).get("category", "")
+
         if isinstance(help_md, str) and help_md.strip():
             return {
                 "agent_id": agent_id,
                 "help_markdown": help_md.strip(),
                 "examples": norm_examples,
-                "input_schema": schema if isinstance(schema, dict) else None,
+                "input_schema": effective_schema,
+                "default_input": default_input,
             }
 
-        # -------------------- default help generation --------------------
-        skill_ids = list(getattr(agent, "skills", []) or [])
-        tool_ids = list(getattr(agent, "tools", []) or [])
-        _name = (agent.name or "").lower()
-        _desc = str((agent.metadata or {}).get("description", "")).lower()
-        _conf_sys = str((agent.config or {}).get("system_prompt", "")).lower()
-        _type = (agent.type or "").lower()
-
-        has_file_ops = "file_operations" in tool_ids
-        has_browser = "browser" in skill_ids or any("browser" in s for s in skill_ids)
-
-        # ── Generic help based on agent metadata (no business role inference) ──
-        category = (agent.metadata or {}).get("category", "")
-        tags_list = (agent.metadata or {}).get("tags", [])
-
-        # Build help markdown
         help_parts = [
             "### 如何填写输入\n"
             "- 你可以输入 **文本** 或 **JSON**。\n"
-            "- 如果输入不是合法 JSON，系统会自动封装为：`{\"message\": \"...\"}`。\n",
+            "- 如果输入不是合法 JSON，系统会自动封装为：`{\"message\": \"...\"}`。\n"
+            "- 点右侧「填入」可按本 Agent 绑定的技能/工具写入一条可执行测试用例。\n",
         ]
-
-        # Generic field recommendations based on agent's own declared category/tags
         field_lines = ["\n### 推荐输入字段\n", "- `message`：任务描述（最通用）\n"]
         if has_file_ops:
             field_lines.append("- `directory`：项目目录（绝对路径）\n")
@@ -992,9 +1129,12 @@ class AgentManager:
             field_lines.append("- `url`：要操作的页面地址\n")
         if category:
             field_lines.append(f"- `category`：任务分类（当前 agent 类别: {category}）\n")
+        if skill_ids:
+            field_lines.append(
+                f"- 已绑定技能：`{', '.join(str(s) for s in skill_ids[:8])}`\n"
+            )
         help_parts.extend(field_lines)
 
-        # File operations preconditions — only when relevant
         if has_file_ops:
             help_parts.append(
                 "\n### 文件/目录操作说明\n"
@@ -1002,49 +1142,14 @@ class AgentManager:
                 "- 服务器需配置 `AIPLAT_FILE_OPERATIONS_ALLOWED_ROOTS` 允许读取的根目录（白名单）。\n"
             )
 
-        default_help = "".join(help_parts)
-
-        # ── Build generic examples (no role inference) ──
-        if not norm_examples:
-            display = str((agent.metadata or {}).get("display_name") or agent.name or "Agent")
-            desc_hint = str((agent.metadata or {}).get("description") or "")
-            prompt_hint = f"（{display}）" if display else ""
-            task_hint = f"任务背景：{desc_hint}\n" if desc_hint else ""
-            norm_examples = [
-                {"title": f"任务执行（文本）", "content": f"{task_hint}请完成以下任务：\n<描述你的需求>"},
-                {"title": f"任务执行（JSON）", "content": json.dumps(
-                    {"message": f"请完成以下任务：<描述你的需求> {prompt_hint}".strip()},
-                    ensure_ascii=False, indent=2)},
-            ]
-
         return {
             "agent_id": agent_id,
-            "help_markdown": default_help,
+            "help_markdown": "".join(help_parts),
             "examples": norm_examples,
-            "input_schema": schema if isinstance(schema, dict) else None,
+            "input_schema": effective_schema,
+            "default_input": default_input,
         }
-        # protect engine scope agents
-        if (self._scope or "engine").strip().lower() == "engine":
-            if isinstance(getattr(agent, "metadata", None), dict) and agent.metadata.get("protected") is True:
-                raise PermissionError("Protected engine agent cannot be edited")
 
-        info = self._read_agent_md(agent_id)
-        if not info:
-            return False
-        try:
-            from pathlib import Path
-            p = Path(str(info.get("path")))
-            raw = str(info.get("raw") or "")
-            fm = info.get("frontmatter") or {}
-            body = str(info.get("body") or "")
-            new_body = self._replace_sop_in_body(body, sop_markdown)  # noqa: F821
-            header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
-            p.write_text(f"---\n{header}\n---\n{new_body.lstrip()}", encoding="utf-8")
-            agent.updated_at = datetime.now(timezone.utc)
-            return True
-        except Exception:
-            return False
-    
     async def delete_agent(self, agent_id: str) -> bool:
         """Delete agent"""
         if agent_id not in self._agents:

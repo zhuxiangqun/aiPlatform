@@ -4,12 +4,12 @@ export type KnowledgeTrack = 'business' | 'library';
 
 const COPY: Record<KnowledgeTrack, { title: string; body: string }> = {
   business: {
-    title: '业务本体轨（权威）',
-    body: '域 YAML + GraphIndex 决定 Action / 审计 / 业务 GraphRAG。配置 Evolve 与本体提案分门；Wiki 不在此冒充业务权威。',
+    title: '业务说明书',
+    body: '两类东西别混：说明书=有哪些类/关系（结构图）；知识图=具体实体怎么连（实例边）。日常优先「从文档生成 → 确认」写知识图。',
   },
   library: {
-    title: '知识检索轨（非业务权威）',
-    body: '向量索引 + Wiki 页面服务 RAG 与人读资料。冲突时域本体胜出；不得用 Wiki/向量片段顶替 GraphIndex 实体。',
+    title: '知识库（查资料）',
+    body: '给人读、给检索用。和业务说明书冲突时，以业务说明书为准。',
   },
 };
 
@@ -22,7 +22,7 @@ export const DualTrackBanner: React.FC<{ track: KnowledgeTrack }> = ({ track }) 
       : 'border-sky-800/40 bg-sky-950/20 text-sky-200/90';
   return (
     <div className={`mx-6 mt-4 mb-2 rounded-lg border px-3 py-2 text-xs ${tone}`}>
-      <div className="font-semibold text-[11px] uppercase tracking-wide opacity-90">{c.title}</div>
+      <div className="font-semibold text-[12px] tracking-wide">{c.title}</div>
       <p className="mt-0.5 text-gray-300/90 leading-relaxed">{c.body}</p>
     </div>
   );

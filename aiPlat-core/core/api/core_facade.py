@@ -19,6 +19,8 @@ from typing import Any, Dict, List, Optional
 import logging
 from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 from core.harness.utils.model_injection import best_model_for_purpose
+from core.harness.knowledge.ontology_yaml_gate import LiveYamlDirectWriteDenied, assert_live_yaml_write
+from core.harness.knowledge.ontology_case_learning import OntologyCase  # noqa: F401 — facade re-export / wiring
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -2054,6 +2056,24 @@ async def run_workspace_agent(
             "created_at": _now,
             "trace_id": trace_id,
         })
+        # Persist traces row so Diagnostics Links can resolve execution_id → trace
+        try:
+            await _es.upsert_trace({
+                "trace_id": trace_id,
+                "name": f"workspace_agent:{agent_id}",
+                "status": "running",
+                "start_time": _now,
+                "end_time": None,
+                "duration_ms": None,
+                "attributes": {
+                    "execution_id": run_id,
+                    "agent_id": agent_id,
+                    "session_id": session_id,
+                    "source": "workspace_agent",
+                },
+            })
+        except Exception:
+            logging.debug("upsert_trace at agent start failed run_id=%s", run_id, exc_info=True)
         # Mark gate coverage (Phase 3 GateTracer)
         try:
             from core.harness.kernel.execution_context import mark_gate_passed
@@ -2077,14 +2097,58 @@ async def run_workspace_agent(
     except Exception:
         logging.debug(f"Failed to emit run_start event for {agent_id} run {run_id}", exc_info=True)
 
-    # ── Stream mode: return immediately, execute in background ──
+    # ── Stream mode: return immediately, execute off the API event loop ──
+    # Running on the same Uvicorn loop starves SSE/poll while LLM is in-flight
+    # (FE shows empty "loading steps"). Isolate in a daemon thread so observation
+    # endpoints stay responsive; EventBus.publish is threadsafe.
     if stream:
-        _asyncio.ensure_future(_execute_workspace_agent_background(
-            agent_info=agent_info, agent_id=agent_id, run_id=run_id,
-            trace_id=trace_id,
-            user_message=user_message, max_steps=max_steps, toolset=toolset,
-            session_id=session_id,
-        ))
+        import threading as _threading
+
+        # Pre-subscribe + seed agent_start BEFORE returning run_id so SSE Phase-1
+        # replay / EventBus never race an empty window into premature type:done.
+        try:
+            from core.harness.observation.event_bus import EventBus as _EB
+            _EB.subscribe(run_id)
+        except Exception:
+            logging.debug("EventBus pre-subscribe failed run_id=%s", run_id, exc_info=True)
+        try:
+            from core.harness.observation.run_graph import open_node as _rg_open
+            await _rg_open(
+                run_id,
+                f"agent:{agent_id}:start",
+                kind="agent",
+                name="agent_start",
+                label=str(agent_id),
+                role="container",
+                audit=True,
+            )
+        except Exception:
+            logging.debug("seed agent_start run_graph failed run_id=%s", run_id, exc_info=True)
+
+        def _bg_runner() -> None:
+            try:
+                _asyncio.run(
+                    _execute_workspace_agent_background(
+                        agent_info=agent_info,
+                        agent_id=agent_id,
+                        run_id=run_id,
+                        trace_id=trace_id,
+                        user_message=user_message,
+                        max_steps=max_steps,
+                        toolset=toolset,
+                        session_id=session_id,
+                    )
+                )
+            except Exception:
+                logging.getLogger("aiplat.core_facade").exception(
+                    "background agent run failed run_id=%s agent_id=%s", run_id, agent_id
+                )
+
+        _threading.Thread(
+            target=_bg_runner,
+            name=f"ws-agent-{run_id}",
+            daemon=True,
+        ).start()
         return {"ok": True, "status": "running", "output": None, "run_id": run_id, "execution_id": run_id,
                 "eval": await _get_latest_eval_score_async(agent_id)}
 
@@ -2343,26 +2407,21 @@ async def _execute_workspace_agent_background(
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
-    # ── Emit agent_start via syscall_events so both SSE replay and EventBus see it ──
-    # Delay 0.3s to give frontend SSE EventSource time to connect before execution begins.
-    await _asyncio.sleep(0.3)
+    # ── Emit agent_start via RunGraph (authoritative) + audit syscall ──
+    # Brief yield so HTTP response/SSE can flush before heavy work.
+    await _asyncio.sleep(0.05)
     try:
-        from core.services.execution_store import get_execution_store as _get_es_agent
-        _es_agent = _get_es_agent()
+        from core.harness.observation.run_graph import open_node as _rg_open
         t0_agent = _time.time()
-        await _es_agent.add_syscall_event({
-            "id": f"{run_id}:agent_start",
-            "parent_span_id": None,
-            "kind": "agent",
-            "name": "agent_start",
-            "status": "running",
-            "span_id": f"agent:{agent_id}:start",
-            "trace_id": trace_id,
-            "run_id": run_id,
-            "start_time": t0_agent,
-            "target_type": str(agent_id),
-            "duration_ms": 0,
-        })
+        await _rg_open(
+            run_id,
+            f"agent:{agent_id}:start",
+            kind="agent",
+            name="agent_start",
+            label=str(agent_id),
+            role="container",
+            audit=True,
+        )
     except Exception:
         t0_agent = _now
 
@@ -2396,29 +2455,42 @@ async def _execute_workspace_agent_background(
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
 
-    # ── Emit agent_end + run_end for ExecutionViewer done detection + live events ──
-    import json as _json
+    # ── Close agent root + agent_end via RunGraph, then mark_run_done ──
     _end = _time.time()
     _duration_ms = int((_end - (t0_agent or _now)) * 1000)
+    _rg_status = "ok" if status == "completed" else "error"
 
-    # Emit agent_end FIRST so SSE catches it before run_end triggers done
     try:
-        from core.harness.observation.event_bus import EventBus
-        EventBus.publish(run_id, {
-            "id": f"{run_id}:agent_end",
-            "parent_span_id": None,
-            "kind": "agent",
-            "name": "agent_end",
-            "status": "ok" if status == "completed" else "error",
-            "span_id": f"agent:{agent_id}:end",
-            "trace_id": trace_id,
-            "run_id": run_id,
-            "start_time": _time.time(),
-            "duration_ms": _duration_ms,
-            "target_type": str(agent_id),
-            "result_json": _json.dumps({"text": str(result_text or "")[:5000]}),
-            "error": error_msg,
-        })
+        from core.harness.observation.run_graph import close_node as _rg_close, open_node as _rg_open2, mark_run_done as _rg_done
+        await _rg_close(
+            run_id,
+            f"agent:{agent_id}:start",
+            status=_rg_status,
+            result={"text": str(result_text or "")[:5000]},
+            error=error_msg,
+            duration_ms=_duration_ms,
+            audit=True,
+        )
+        await _rg_open2(
+            run_id,
+            f"agent:{agent_id}:end",
+            kind="agent",
+            name="agent_end",
+            parent_id=f"agent:{agent_id}:start",
+            label="完成",
+            role="work",
+            audit=True,
+        )
+        await _rg_close(
+            run_id,
+            f"agent:{agent_id}:end",
+            status=_rg_status,
+            result={"text": str(result_text or "")[:5000]},
+            error=error_msg,
+            duration_ms=_duration_ms,
+            audit=True,
+        )
+        await _rg_done(run_id, status="completed" if status == "completed" else "failed")
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
@@ -2431,10 +2503,29 @@ async def _execute_workspace_agent_background(
             "status": status,
             "output": {"text": result_text or ""},
             "error": error_msg or "",
+            "start_time": float(t0_agent or _now),
             "end_time": _end,
             "duration_ms": _duration_ms,
             "trace_id": trace_id,
         })
+        try:
+            await _es.upsert_trace({
+                "trace_id": trace_id,
+                "name": f"workspace_agent:{agent_id}",
+                "status": "completed" if status == "completed" else status,
+                "start_time": float(t0_agent or _now),
+                "end_time": _end,
+                "duration_ms": _duration_ms,
+                "attributes": {
+                    "execution_id": run_id,
+                    "agent_id": agent_id,
+                    "session_id": session_id,
+                    "source": "workspace_agent",
+                    "error": error_msg or "",
+                },
+            })
+        except Exception:
+            logging.debug("upsert_trace at agent end failed run_id=%s", run_id, exc_info=True)
         # Emit run_end so SSE can detect completion
         await _es.append_run_event(
             run_id=run_id,
@@ -2696,6 +2787,838 @@ def get_ontology_pillars_view(domain_id: str) -> Dict[str, Any]:
 def review_ontology_owl_offline(domain_id: str) -> Dict[str, Any]:
     from core.apps.fde.service.offline_owl_review import review_domain_owl_offline
     return review_domain_owl_offline(domain_id)
+
+
+def get_governance_scenario_loop() -> Dict[str, Any]:
+    """Xingye-shaped 8-step governance map with aiPlat honest status (read-only)."""
+    from core.apps.fde.service.governance_loop import get_governance_loop_map
+
+    return get_governance_loop_map()
+
+
+def governance_quality_view(domain_id: str = "data-gov") -> Dict[str, Any]:
+    """Step ⑥ vertical: OCS + gate-2 actions + value links."""
+    from core.apps.fde.service.governance_deepen import governance_quality_snapshot
+
+    return governance_quality_snapshot(domain_id)
+
+
+async def governance_locate_view(
+    domain_id: str,
+    query: str,
+    *,
+    top_k: int = 8,
+    with_graphrag: bool = False,
+) -> Dict[str, Any]:
+    """Step ⑦ vertical: locate entities on GraphIndex (+ optional GraphRAG)."""
+    from core.apps.fde.service.governance_deepen import locate_via_ontology_async
+
+    return await locate_via_ontology_async(
+        domain_id, query, top_k=top_k, with_graphrag=with_graphrag
+    )
+
+
+def governance_fetch_view(
+    domain_id: str,
+    entity_id: str,
+    *,
+    purpose: str = "org_pilot",
+) -> Dict[str, Any]:
+    """Org L5 Phase 1: locate→fetch sandbox snapshot (no live DB; D3)."""
+    from core.apps.org.service.org_io import fetch_by_entity
+
+    return fetch_by_entity(domain_id, entity_id, purpose=purpose)
+
+
+def governance_write_preview(
+    domain_id: str,
+    entity_id: str,
+    patch: Any = None,
+) -> Dict[str, Any]:
+    """Org L5 Phase 1: write dry-run (default blocked)."""
+    from core.apps.org.service.org_io import preview_write
+
+    return preview_write(domain_id, entity_id, patch if isinstance(patch, dict) else {})
+
+
+def org_list_goals(domain_id: str = "") -> Dict[str, Any]:
+    """Org L5 Phase 2: list OrgGoals."""
+    from core.apps.org.service.org_runtime import list_goals
+
+    return list_goals(domain_id or "")
+
+
+def org_set_goal_status(goal_id: str, status: str) -> Dict[str, Any]:
+    """Org L5 Phase 2: activate/pause/done OrgGoal."""
+    from core.apps.org.service.org_runtime import set_goal_status
+
+    return set_goal_status(goal_id, status)
+
+
+def org_run_goal(
+    goal_id: str = "",
+    *,
+    domain_id: str = "it-ops",
+    dry_actions: bool = True,
+    week_label: str = "",
+) -> Dict[str, Any]:
+    """Org L5 Phase 2: execute one OrgRun (locate→fetch→HITL gate)."""
+    from core.apps.org.service.org_runtime import run_org_goal
+
+    return run_org_goal(
+        goal_id,
+        domain_id=domain_id,
+        dry_actions=dry_actions,
+        week_label=week_label,
+    )
+
+
+def org_list_runs(goal_id: str = "", limit: int = 20) -> Dict[str, Any]:
+    from core.apps.org.service.org_runtime import list_runs
+
+    return list_runs(goal_id, limit=limit)
+
+
+def org_get_run(run_id: str) -> Dict[str, Any]:
+    from core.apps.org.service.org_runtime import get_run
+
+    return get_run(run_id)
+
+
+def org_replay_trace(trace_id: str = "", *, domain_id: str = "it-ops") -> Dict[str, Any]:
+    """V1: read-only five-step replay. Does not write ontology, edges, or runs."""
+    from core.apps.org.service.v_wave_replay import replay_org_trace
+
+    return replay_org_trace(trace_id, domain_id=domain_id)
+
+
+def org_resume_run(
+    run_id: str,
+    *,
+    approve: bool = True,
+    resolution: str = "",
+) -> Dict[str, Any]:
+    """Org L5 Phase 2: resume needs_hitl run after human decision."""
+    from core.apps.org.service.org_runtime import resume_run
+
+    return resume_run(run_id, approve=approve, resolution=resolution)
+
+
+def org_weekly_kpi(
+    domain_id: str = "it-ops",
+    goal_id: str = "",
+    *,
+    week: str = "",
+) -> Dict[str, Any]:
+    """Org L5: weekly KPI snapshot (D2) + Phase 3 attribution."""
+    from core.apps.org.service.org_kpi import weekly_kpi_report
+
+    return weekly_kpi_report(domain_id, goal_id, week=week)
+
+
+def org_joint_health(domain_id: str = "it-ops") -> Dict[str, Any]:
+    """Read-only joint health. Never writes live YAML."""
+    from core.apps.org.service.org_kpi import joint_health_view
+
+    return joint_health_view(domain_id or "it-ops")
+
+
+def org_search_memory(
+    query: str = "",
+    *,
+    domain_id: str = "",
+    limit: int = 20,
+) -> Dict[str, Any]:
+    """Org L5 Phase 3: exception jurisprudence / run memory search."""
+    from core.apps.org.service.org_memory import search_exceptions
+
+    return search_exceptions(query, domain_id=domain_id, limit=limit)
+
+
+def org_list_memory(domain_id: str = "", limit: int = 50) -> Dict[str, Any]:
+    from core.apps.org.service.org_memory import list_memory
+
+    return list_memory(limit=limit, domain_id=domain_id)
+
+
+def org_fleet_gate(
+    goal_id: str = "",
+    *,
+    domain_id: str = "it-ops",
+    project_id: str = "",
+) -> Dict[str, Any]:
+    """Org L5 Phase 4 W6: evaluate multi-agent fleet hard gate."""
+    from core.apps.org.service.org_fleet import evaluate_fleet_gate
+
+    return evaluate_fleet_gate(goal_id, domain_id=domain_id, project_id=project_id)
+
+
+def org_set_allow_fleet(goal_id: str, allow: bool) -> Dict[str, Any]:
+    from core.apps.org.service.org_fleet import set_allow_fleet
+
+    return set_allow_fleet(goal_id, allow)
+
+
+def org_sandbox_rehearsals(limit: int = 5) -> Dict[str, Any]:
+    """List sandbox rehearsals. Does not start a fleet."""
+    from core.apps.org.service.org_fleet import list_sandbox_rehearsals
+
+    return list_sandbox_rehearsals(limit=limit)
+
+
+async def org_sandbox_conflict_probe(
+    *,
+    domain_id: str = "it-ops",
+    resource_id: str = "shared_interface",
+) -> Dict[str, Any]:
+    """Sandbox concurrent lock probe. No live write."""
+    from core.apps.org.service.org_fleet import probe_sandbox_conflict
+
+    return await probe_sandbox_conflict(domain_id or "it-ops", resource_id=resource_id or "shared_interface")
+
+
+async def org_sandbox_rehearsal_start(
+    *,
+    role: str,
+    domain_id: str,
+    roles: List[Any],
+) -> Dict[str, Any]:
+    """Record a sandbox handoff. Never flips allow_fleet."""
+    from core.apps.org.service.org_fleet import start_sandbox_rehearsal
+
+    return await start_sandbox_rehearsal(role=role, domain_id=domain_id, roles=roles)
+
+
+def org_field_ops_checklist(domain_id: str = "it-ops") -> Dict[str, Any]:
+    """Org L5 Phase 4 W7: field ops readiness checklist."""
+    from core.apps.org.service.org_field_ops import field_ops_checklist
+
+    return field_ops_checklist(domain_id)
+
+
+def org_customer_signoff(domain_id: str = "it-ops") -> Dict[str, Any]:
+    """V3: customer signoff layer. Read-only. m4_claim_allowed stays false."""
+    from core.apps.org.service.org_field_ops import customer_signoff_view
+
+    return customer_signoff_view(domain_id or "it-ops")
+
+
+def org_signoff_prep(
+    domain_id: str = "it-ops",
+    goal_id: str = "goal-it-ops-alert-sla",
+    *,
+    as_markdown: bool = False,
+) -> Dict[str, Any]:
+    """Read-only signoff prep score. Never flips m4_claim_allowed."""
+    from core.apps.org.service.org_field_ops import signoff_prep_view
+
+    return signoff_prep_view(
+        domain_id or "it-ops",
+        goal_id or "goal-it-ops-alert-sla",
+        as_markdown=bool(as_markdown),
+    )
+
+
+async def org_approval_inbox(
+    *,
+    role: str,
+    domain_id: str = "it-ops",
+    goal_id: str = "goal-it-ops-alert-sla",
+    kind: str = "",
+    offset: int = 0,
+    limit: int = 20,
+) -> Dict[str, Any]:
+    """H1: read-only approval inbox. Does not approve."""
+    from core.apps.org.service.org_approvals import list_approval_inbox
+
+    return await list_approval_inbox(
+        role=role,
+        domain_id=domain_id or "it-ops",
+        goal_id=goal_id or "goal-it-ops-alert-sla",
+        kind=kind or "",
+        offset=offset,
+        limit=limit,
+    )
+
+
+async def org_approval_snapshot(
+    kind: str,
+    item_id: str,
+    *,
+    role: str,
+    domain_id: str = "it-ops",
+) -> Dict[str, Any]:
+    """H1: read-only approval snapshot. Does not approve."""
+    from core.apps.org.service.org_approvals import get_approval_snapshot
+
+    return await get_approval_snapshot(
+        kind, item_id, role=role, domain_id=domain_id or "it-ops"
+    )
+
+
+def org_evidence_pack(
+    *,
+    role: str,
+    domain_id: str = "it-ops",
+    goal_id: str = "goal-it-ops-alert-sla",
+    week: str = "",
+    max_traces: int = 5,
+    sandbox_mode: bool = False,
+    as_markdown: bool = False,
+) -> Dict[str, Any]:
+    """H2: read-only signoff evidence pack. Not a signature."""
+    from core.apps.org.service.org_evidence_pack import build_evidence_pack
+
+    return build_evidence_pack(
+        role=role,
+        domain_id=domain_id or "it-ops",
+        goal_id=goal_id or "goal-it-ops-alert-sla",
+        week=week or "",
+        max_traces=max_traces,
+        sandbox_mode=sandbox_mode,
+        as_markdown=as_markdown,
+    )
+
+
+def org_value_translation(
+    *,
+    domain_id: str = "it-ops",
+    goal_id: str = "goal-it-ops-alert-sla",
+    week: str = "",
+    tenant_id: str = "",
+) -> Dict[str, Any]:
+    """H3: audit-friendly value translation. Not a signature."""
+    from core.apps.org.service.org_value_translation import translate_org_value
+
+    return translate_org_value(
+        domain_id=domain_id or "it-ops",
+        goal_id=goal_id or "goal-it-ops-alert-sla",
+        week=week or "",
+        tenant_id=tenant_id or "",
+    )
+
+
+def org_value_roi_preview(
+    *,
+    domain_id: str = "it-ops",
+    goal_id: str = "goal-it-ops-alert-sla",
+    week: str = "",
+    trial_minutes_per_incident: float,
+    trial_mtta_seconds: float,
+) -> Dict[str, Any]:
+    """What-if ROI. Never writes baseline; never flips m4."""
+    from core.apps.org.service.org_value_translation import preview_value_roi
+
+    return preview_value_roi(
+        domain_id=domain_id or "it-ops",
+        goal_id=goal_id or "goal-it-ops-alert-sla",
+        week=week or "",
+        trial_minutes_per_incident=trial_minutes_per_incident,
+        trial_mtta_seconds=trial_mtta_seconds,
+    )
+
+
+def org_h4_rules(*, role: str) -> Dict[str, Any]:
+    """H4: read-only view of queue auto-pass rules. Sandbox switch on when no file."""
+    from core.apps.org.service.org_auto_pass import h4_rules_view
+
+    return h4_rules_view(role=role)
+
+
+def org_h4_auto_audit(*, role: str, limit: int = 50) -> Dict[str, Any]:
+    """H4: today's auto-pass audit. Admin only."""
+    from core.apps.org.service.org_auto_pass import h4_auto_audit
+
+    return h4_auto_audit(role=role, limit=limit)
+
+
+async def org_h4_auto_pass(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+    """H4: sandbox queue status pass. Never writes live YAML or edges."""
+    from core.apps.org.service.org_auto_pass import run_h4_auto_pass
+    from core.apps.org.service.org_h4_seed import ensure_approval_rules_seed
+
+    try:
+        ensure_approval_rules_seed()
+    except Exception:  # noqa: cleanup-best-effort
+        pass
+    return await run_h4_auto_pass(role=role, domain_id=domain_id or "it-ops")
+
+
+def org_h5_drafts(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+    """H5: list draft packs and skill_candidate cases. Not a listing."""
+    from core.apps.org.service.org_skill_draft import list_skill_drafts
+
+    return list_skill_drafts(role=role, domain_id=domain_id or "it-ops")
+
+
+def org_h5_create_draft(*, role: str, case_id: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+    """H5: write a draft pack. Does not register or write SKILL.md."""
+    from core.apps.org.service.org_skill_draft import create_skill_draft
+
+    return create_skill_draft(role=role, case_id=case_id, domain_id=domain_id or "it-ops")
+
+
+def org_h5_approve_draft(*, role: str, draft_id: str) -> Dict[str, Any]:
+    """H5: human approve then register on the existing marketplace."""
+    from core.apps.org.service.org_skill_draft import approve_skill_draft
+
+    return approve_skill_draft(role=role, draft_id=draft_id)
+
+
+def org_h5_reject_draft(*, role: str, draft_id: str) -> Dict[str, Any]:
+    """H5: reject a draft. Does not register."""
+    from core.apps.org.service.org_skill_draft import reject_skill_draft
+
+    return reject_skill_draft(role=role, draft_id=draft_id)
+
+
+def org_gap_hints(*, domain_id: str = "it-ops") -> Dict[str, Any]:
+    """Read-only: repeated action failures may draft via existing proposal path."""
+    from core.apps.org.service.org_skill_draft import list_action_gap_hints
+
+    return list_action_gap_hints(domain_id=domain_id or "it-ops")
+
+
+def org_preview_schema_gaps(*, domain_id: str = "it-ops") -> Dict[str, Any]:
+    """Read-only Diff for schema_gap cases. Does not create proposals."""
+    from core.apps.fde.service.k_wave_propose import preview_schema_gaps
+
+    return preview_schema_gaps(domain_id or "it-ops")
+
+
+def org_list_cold_cases(*, domain_id: str = "it-ops", limit: int = 20) -> Dict[str, Any]:
+    """Read-only cold case archive. Not injected."""
+    from core.harness.knowledge.ontology_case_learning import list_cold_cases
+
+    return list_cold_cases(domain_id or "it-ops", limit=limit)
+
+
+def org_archive_cold_cases(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+    """Move low-yield cases to cold store. Does not delete or change TBox."""
+    role_n = (role or "").strip().lower()
+    if not role_n:
+        return {"ok": False, "reason": "identity_missing", "deleted": False, "wrote_live_yaml": False}
+    if role_n not in ("admin", "operator"):
+        return {"ok": False, "reason": "archive_forbidden", "deleted": False, "wrote_live_yaml": False}
+    from core.harness.knowledge.ontology_case_learning import archive_cold_cases
+
+    return archive_cold_cases(domain_id or "it-ops")
+
+
+async def org_draft_schema_gaps(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+    """Draft edge proposals from schema_gap cases. Does not apply."""
+    role_n = (role or "").strip().lower()
+    if not role_n:
+        return {"ok": False, "reason": "identity_missing", "wrote_live_yaml": False, "auto_apply": False}
+    if role_n not in ("admin", "operator"):
+        return {"ok": False, "reason": "draft_forbidden", "wrote_live_yaml": False, "auto_apply": False}
+    from core.apps.fde.service.k_wave_propose import draft_schema_gaps
+
+    return await draft_schema_gaps(domain_id or "it-ops")
+
+
+def org_skill_bundle(*, role: str, draft_ids: list) -> Dict[str, Any]:
+    """H5: assemble existing drafts. No SKILL.md."""
+    from core.apps.org.service.org_skill_draft import assemble_skill_bundle
+
+    return assemble_skill_bundle(role=role, draft_ids=list(draft_ids or []))
+
+
+def org_value_baseline_get(*, role: str, tenant_id: str = "") -> Dict[str, Any]:
+    """S2: read tenant value baseline."""
+    from core.apps.org.service.org_value_translation import get_value_baseline_view
+
+    return get_value_baseline_view(role=role, tenant_id=tenant_id or "")
+
+
+def org_value_baseline_put(
+    *,
+    role: str,
+    tenant_id: str,
+    baseline_minutes_per_incident: float,
+    baseline_mtta_seconds: float,
+) -> Dict[str, Any]:
+    """S2: write tenant value baseline."""
+    from core.apps.org.service.org_value_translation import save_value_baseline
+
+    return save_value_baseline(
+        role=role,
+        tenant_id=tenant_id,
+        baseline_minutes_per_incident=baseline_minutes_per_incident,
+        baseline_mtta_seconds=baseline_mtta_seconds,
+    )
+
+
+def org_domain_packs() -> Dict[str, Any]:
+    """S3: list installable domain packs."""
+    from core.apps.org.service.domain_pack_install import list_domain_packs
+
+    return list_domain_packs()
+
+
+def org_domain_pack_install(
+    *,
+    role: str,
+    template_id: str,
+    domain_id: str,
+    display_name: str = "",
+) -> Dict[str, Any]:
+    """S3: install a domain pack into AIPLAT_HOME."""
+    from core.apps.org.service.domain_pack_install import install_domain_pack
+
+    return install_domain_pack(
+        role=role,
+        template_id=template_id,
+        domain_id=domain_id,
+        display_name=display_name or "",
+    )
+
+
+def org_signoff_progress_get(*, role: str) -> Dict[str, Any]:
+    """S4: read signoff progress. Never claims M4."""
+    from core.apps.org.service.org_signoff_progress import get_signoff_progress
+
+    return get_signoff_progress(role=role)
+
+
+def org_signoff_progress_put(*, role: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    """S4: write oncall / dual-sign progress. m4_claim_allowed stays false."""
+    from core.apps.org.service.org_signoff_progress import save_signoff_progress
+
+    return save_signoff_progress(role=role, body=body or {})
+
+
+def org_live_unlock_status(domain_id: str = "it-ops") -> Dict[str, Any]:
+    from core.apps.org.service.org_field_ops import evaluate_live_unlock
+    from core.apps.org.service.org_live_adapter import live_io_gates
+
+    intent = evaluate_live_unlock()
+    gates = live_io_gates(domain_id or "it-ops")
+    intent["http_gates"] = {
+        "status": gates.get("status"),
+        "live_io_enabled": gates.get("live_io_enabled"),
+        "base_url_reason": gates.get("base_url_reason"),
+        "interface_ref": gates.get("interface_ref"),
+        "adapter": (gates.get("adapter") or {}).get("adapter"),
+    }
+    return intent
+
+
+def org_list_interfaces(domain_id: str = "") -> Dict[str, Any]:
+    """Phase C1.5: list InterfaceSpecs (yaml, else connector.live read-compat)."""
+    from core.apps.org.service.org_interface import list_interface_specs
+
+    return list_interface_specs(domain_id or "")
+
+
+def org_get_interface(domain_id: str = "it-ops") -> Dict[str, Any]:
+    """Phase C1: get + validate InterfaceSpec for domain."""
+    from core.apps.org.service.org_interface import get_interface_spec
+
+    return get_interface_spec(domain_id or "it-ops")
+
+
+def org_assert_action_interface(domain_id: str, action_id: str) -> Dict[str, Any]:
+    """Phase C1: whether action_id is bound to domain InterfaceSpec."""
+    from core.apps.org.service.org_interface import assert_action_bound
+
+    return assert_action_bound(domain_id or "it-ops", action_id)
+
+
+def org_materialize_interface(domain_id: str = "it-ops") -> Dict[str, Any]:
+    """Phase C1.5: copy InterfaceSpec into AIPLAT_HOME yaml. Never writes connector.live."""
+    from core.apps.org.service.org_interface import materialize_interface_yaml
+
+    return materialize_interface_yaml(domain_id or "it-ops")
+
+
+def org_usage_weekly(domain_id: str = "", week: str = "") -> Dict[str, Any]:
+    from core.apps.org.service.org_usage import weekly_usage
+
+    return weekly_usage(domain_id or "", week or "")
+
+
+async def k1_confirm_extraction(extraction_id: str, *, actor: str = "") -> Dict[str, Any]:
+    """Phase K1: confirm extraction → change signal. Does not write live YAML or edges."""
+    from core.apps.fde.service.k_wave_signal import confirm_extraction_k1
+
+    return await confirm_extraction_k1(extraction_id, actor=actor)
+
+
+def k2_propose_arbitration(**kwargs: Any) -> Dict[str, Any]:
+    """Phase K2: open arbitration ticket; never writes cross-domain edge."""
+    from core.apps.fde.service.k_wave_arbit import propose_ticket
+
+    return propose_ticket(**kwargs)
+
+
+def k2_list_arbitration(
+    status: str = "",
+    domain_id: str = "",
+    tenant_id: str = "",
+) -> Dict[str, Any]:
+    from core.apps.fde.service.k_wave_arbit import list_tickets
+
+    return list_tickets(status=status, domain_id=domain_id, tenant_id=tenant_id)
+
+
+def k2_decide_arbitration(
+    ticket_id: str,
+    *,
+    decision: str,
+    actor: str = "",
+    note: str = "",
+) -> Dict[str, Any]:
+    from core.apps.fde.service.k_wave_arbit import decide_ticket
+
+    return decide_ticket(ticket_id, decision=decision, actor=actor, note=note)
+
+
+def k2_apply_arbitration(ticket_id: str, *, actor: str = "") -> Dict[str, Any]:
+    from core.apps.fde.service.k_wave_arbit import apply_ticket
+
+    return apply_ticket(ticket_id, actor=actor)
+
+
+def k2_rollback_arbitration_edge(ticket_id: str, *, role: str) -> Dict[str, Any]:
+    """E2: one PolicyGate decision, then restore that ticket's cross-domain mark."""
+    from core.apps.fde.service.k_wave_arbit import rollback_ticket_edge
+
+    return rollback_ticket_edge(ticket_id, role=role)
+
+
+async def k5_scan_repeat_failures(domain_id: str = "it-ops") -> Dict[str, Any]:
+    """Phase K5: repeated failures → edge draft. auto_apply stays false."""
+    from core.apps.fde.service.k_wave_propose import enqueue_repeat_failure_proposals
+
+    return await enqueue_repeat_failure_proposals(domain_id or "it-ops")
+
+
+async def approve_proposal_once(proposal_id: str, *, role: str) -> Dict[str, Any]:
+    """V4: one PolicyGate decision. Does not apply live YAML."""
+    from core.apps.fde.service.k_wave_approve import approve_proposal_once as _once
+
+    return await _once(proposal_id, role=role)
+
+
+def org_list_posts() -> Dict[str, Any]:
+    from core.apps.org.service.org_post import list_posts
+
+    return list_posts()
+
+
+def org_get_post(post_id: str = "") -> Dict[str, Any]:
+    from core.apps.org.service.org_post import get_post
+
+    return get_post(post_id)
+
+
+def org_ingress_status() -> Dict[str, Any]:
+    """Phase C2: feishu ingress readiness (no secrets)."""
+    from core.apps.org.service.org_ingress import ingress_status
+
+    return ingress_status()
+
+
+def org_authorize_console_run(
+    *,
+    role: str,
+    domain_id: str = "",
+    goal_id: str = "",
+    post_id: str = "",
+) -> Dict[str, Any]:
+    """V2: one decision for the management run route. Not the Feishu path."""
+    from core.apps.org.service.org_post import authorize_console_run
+
+    return authorize_console_run(
+        role=role,
+        domain_id=domain_id,
+        goal_id=goal_id,
+        post_id=post_id,
+    )
+
+
+def org_ingest_feishu(
+    payload: Dict[str, Any],
+    *,
+    headers: Optional[Dict[str, str]] = None,
+    raw_body: bytes = b"",
+) -> Dict[str, Any]:
+    """Phase C2: signed Feishu event → confirm gate → org_run_goal."""
+    from core.apps.org.service.org_ingress import ingest_feishu_event
+
+    return ingest_feishu_event(payload, headers=headers, raw_body=raw_body)
+
+
+def org_event_previews(limit: int = 5) -> Dict[str, Any]:
+    """List sandbox event previews. Does not start live IO."""
+    from core.apps.org.service.org_ingress import list_event_previews
+
+    return list_event_previews(limit=limit)
+
+
+def org_event_preview_start(
+    *,
+    role: str,
+    domain_id: str,
+    event_type: str,
+) -> Dict[str, Any]:
+    """Whitelist event → dry OrgRun. No channel push."""
+    from core.apps.org.service.org_ingress import start_event_preview
+
+    return start_event_preview(role=role, domain_id=domain_id, event_type=event_type)
+
+
+async def suggest_ontology_from_table_schema(
+    domain_id: str,
+    *,
+    table_name: str = "",
+    columns: Any = None,
+    csv_text: str = "",
+    sample_rows: Any = None,
+    author: str = "schema-suggest",
+    enqueue: bool = True,
+) -> Dict[str, Any]:
+    """Path A: table/CSV headers → ontology proposal draft (never apply / never GraphIndex)."""
+    from core.apps.fde.service.ontology_code_suggestions import (
+        suggest_classes_from_table_schema_async,
+    )
+
+    return await suggest_classes_from_table_schema_async(
+        domain_id,
+        table_name=table_name or "",
+        columns=list(columns) if columns is not None else None,
+        csv_text=csv_text or "",
+        sample_rows=list(sample_rows) if sample_rows is not None else None,
+        author=author or "schema-suggest",
+        enqueue=bool(enqueue),
+    )
+
+
+def record_ontology_case(
+    domain_id: str,
+    *,
+    title: str,
+    summary: str,
+    outcome: str = "success",
+    reward: Any = None,
+    action_id: str = "",
+    entity_id: str = "",
+    tags: Any = None,
+    metadata: Any = None,
+    write_graph: bool = False,
+) -> Dict[str, Any]:
+    """P0: write ontology learning case (does not mutate TBox YAML)."""
+    from core.harness.knowledge.ontology_case_learning import OntologyCaseStore
+
+    return OntologyCaseStore(domain_id).record(
+        title=title,
+        summary=summary,
+        outcome=outcome,
+        reward=float(reward) if reward is not None else None,
+        action_id=action_id or "",
+        entity_id=entity_id or "",
+        tags=list(tags or []) if tags is not None else None,
+        metadata=dict(metadata or {}) if metadata is not None else None,
+        write_graph=bool(write_graph),
+    )
+
+
+def search_ontology_cases(
+    domain_id: str,
+    query: str = "",
+    *,
+    top_k: int = 5,
+    outcome: str = "",
+) -> Dict[str, Any]:
+    """P0: reward-weighted case retrieval (optional UCB; may bump serve_count)."""
+    from core.harness.knowledge.ontology_case_learning import OntologyCaseStore
+
+    hits = OntologyCaseStore(domain_id).search(query, top_k=top_k, outcome=outcome or "")
+    return {"domain_id": domain_id, "query": query, "cases": hits, "count": len(hits)}
+
+
+def ontology_case_learning_status(domain_id: str = "") -> Dict[str, Any]:
+    """P2.5: learning flags + optional per-domain counters (no TBox mutate)."""
+    from core.harness.knowledge.ontology_case_learning import ontology_case_learning_meta
+
+    return ontology_case_learning_meta(domain_id or "")
+
+
+async def feedback_ontology_case(
+    case_id: str,
+    *,
+    rating: float,
+    note: str = "",
+    actor: str = "user",
+    auto_enqueue: bool = True,
+) -> Dict[str, Any]:
+    """P0 feedback + optional P1 gated proposal enqueue (never auto-apply)."""
+    from core.harness.knowledge.ontology_case_learning import record_feedback_and_maybe_evolve
+
+    return await record_feedback_and_maybe_evolve(
+        case_id,
+        rating=float(rating),
+        note=note or "",
+        actor=actor or "user",
+        auto_enqueue=bool(auto_enqueue),
+    )
+
+
+async def evolve_ontology_from_case(
+    case_id: str,
+    *,
+    force: bool = False,
+    author: str = "ontology-case-learning",
+) -> Dict[str, Any]:
+    """P1: high-reward case → VersionedOntologyStore draft proposal only.
+
+    P2: when ``AIPLAT_ONTOLOGY_EDGE_AUTO_APPLY=true``, edge-only proposals may
+    auto approve→apply (rollback via ``rollback_ontology_case_evolution``).
+    """
+    from core.harness.knowledge.ontology_case_learning import maybe_enqueue_evolution_proposal
+
+    return await maybe_enqueue_evolution_proposal(
+        case_id, force=bool(force), author=author or "ontology-case-learning"
+    )
+
+
+async def rollback_ontology_case_evolution(case_id: str) -> Dict[str, Any]:
+    """P2: restore live YAML from pre-apply snapshot for a case-linked proposal."""
+    from core.apps.fde.service.k_wave_rollback import rollback_scope
+    from core.harness.knowledge.ontology_case_learning import rollback_case_evolution
+
+    out = await rollback_case_evolution(case_id)
+    out["scope"] = rollback_scope()
+    return out
+
+
+def org_rollback_scope() -> Dict[str, Any]:
+    """V5: read-only rollback boundary. Does not roll back."""
+    from core.apps.fde.service.k_wave_rollback import rollback_scope
+
+    return rollback_scope()
+
+
+async def rollback_ontology_proposal(domain_id: str, proposal_id: str) -> Dict[str, Any]:
+    """P2: restore live YAML for an applied ontology proposal. Not edges, not local drafts."""
+    from core.apps.fde.service.k_wave_rollback import rollback_scope
+    from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore
+
+    scope = rollback_scope()
+    pid = (proposal_id or "").strip()
+    if pid.startswith("draft_local_") or pid.startswith("k5_local_"):
+        return {
+            "ok": False,
+            "reason": "local_draft_not_applied",
+            "proposal_id": pid,
+            "scope": scope,
+            "covers_edges": False,
+        }
+    out = await VersionedOntologyStore(domain_id).rollback_proposal(pid)
+    out["scope"] = scope
+    out["covers_edges"] = False
+    return out
 
 
 def get_abox_acl_doc(domain_id: str) -> Dict[str, Any]:
@@ -3021,6 +3944,7 @@ def create_ontology_domain(
         "inference_rules": [],
     }
     yaml_str = dict_to_yaml(data)
+    assert_live_yaml_write()
     Path(file_path).parent.mkdir(parents=True, exist_ok=True)
     Path(file_path).write_text(yaml_str, encoding="utf-8")
 
@@ -3077,6 +4001,7 @@ def update_ontology_domain_meta(
 
     from core.harness.knowledge.yaml_serializer import dict_to_yaml
     yaml_str = dict_to_yaml(raw)
+    assert_live_yaml_write()
     Path(file_path).write_text(yaml_str, encoding="utf-8")
 
     if name:
@@ -3092,6 +4017,7 @@ def delete_ontology_domain(domain_id: str) -> Dict[str, Any]:
     if not Path(file_path).exists():
         raise FileNotFoundError(f"Domain not found: {domain_id}")
 
+    assert_live_yaml_write()
     Path(file_path).unlink()
     _remove_domain_from_registry(domain_id)
     return {"id": domain_id, "status": "deleted"}
@@ -3118,6 +4044,7 @@ def upsert_ontology_class(
 
     from core.harness.knowledge.yaml_serializer import dict_to_yaml
     yaml_str = dict_to_yaml(merged)
+    assert_live_yaml_write()
     Path(file_path).write_text(yaml_str, encoding="utf-8")
 
     _invalidate_domain_caches(domain_id)
@@ -3125,26 +4052,95 @@ def upsert_ontology_class(
 
 
 def delete_ontology_class(domain_id: str, class_name: str) -> Dict[str, Any]:
-    u"""Remove a class from a domain YAML."""
-    import yaml
+    u"""Remove a class — always via VersionedOntologyStore proposal (F2 live YAML gate)."""
+    import asyncio
 
-    base_dir = _resolve_ontologies_dir()
-    file_path = f"{base_dir}/{domain_id}.yaml"
-    if not Path(file_path).exists():
-        raise FileNotFoundError(f"Domain not found: {domain_id}")
+    async def _via_proposal() -> Dict[str, Any]:
+        store = VersionedOntologyStore(domain_id)
+        proposal_id = await store.create_proposal(
+            {"remove": [class_name]},
+            author="ontology-editor-delete",
+        )
+        approved = await store.approve_proposal(
+            proposal_id,
+            approver_role="admin",
+            gate_passed=True,
+        )
+        if not approved.get("success"):
+            return {
+                "domain_id": domain_id,
+                "class_name": class_name,
+                "status": "approve_failed",
+                "proposal_id": proposal_id,
+                "reason": approved.get("reason"),
+            }
+        receipt = await store.apply_proposal(proposal_id)
+        if not receipt.get("ok"):
+            return {
+                "domain_id": domain_id,
+                "class_name": class_name,
+                "status": "apply_failed",
+                "proposal_id": proposal_id,
+                "reason": receipt.get("reason"),
+            }
+        _invalidate_domain_caches(domain_id)
+        return {
+            "domain_id": domain_id,
+            "class_name": class_name,
+            "status": "deleted",
+            "proposal_id": proposal_id,
+            "via": "proposal",
+        }
 
-    with open(file_path, "r", encoding="utf-8") as f:
-        raw = yaml.safe_load(f) or {}
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop and loop.is_running():
+        # Caller is async FastAPI — use dedicated async entry instead
+        raise RuntimeError("use delete_ontology_class_async from async routes")
+    return asyncio.run(_via_proposal())
 
-    from core.harness.knowledge.yaml_serializer import remove_class_from_domain
-    cleaned = remove_class_from_domain(raw, class_name)
 
-    from core.harness.knowledge.yaml_serializer import dict_to_yaml
-    yaml_str = dict_to_yaml(cleaned)
-    Path(file_path).write_text(yaml_str, encoding="utf-8")
+async def delete_ontology_class_async(domain_id: str, class_name: str) -> Dict[str, Any]:
+    """Async delete class via create→approve→apply proposal (F2-safe)."""
+    store = VersionedOntologyStore(domain_id)
+    current = store.load_current() or {}
+    classes = current.get("classes") or {}
+    if isinstance(classes, dict):
+        exists = class_name in classes
+    elif isinstance(classes, list):
+        exists = any(
+            isinstance(c, dict) and str(c.get("name") or "") == class_name for c in classes
+        )
+    else:
+        exists = False
+    if not exists:
+        raise FileNotFoundError(f"Class '{class_name}' not found in '{domain_id}'")
 
+    await store.store.initialize()
+    proposal_id = await store.create_proposal(
+        {"remove": [class_name]},
+        author="ontology-editor-delete",
+    )
+    approved = await store.approve_proposal(
+        proposal_id,
+        approver_role="admin",
+        gate_passed=True,
+    )
+    if not approved.get("success"):
+        raise PermissionError(approved.get("reason") or "approve_failed")
+    receipt = await store.apply_proposal(proposal_id)
+    if not receipt.get("ok"):
+        raise RuntimeError(receipt.get("reason") or "apply_failed")
     _invalidate_domain_caches(domain_id)
-    return {"domain_id": domain_id, "class_name": class_name, "status": "deleted"}
+    return {
+        "domain_id": domain_id,
+        "class_name": class_name,
+        "status": "deleted",
+        "proposal_id": proposal_id,
+        "via": "proposal",
+    }
 
 
 def publish_ontology_domain(domain_id: str) -> Dict[str, Any]:
@@ -3407,6 +4403,13 @@ from core.harness.learning.skill_simulator import SkillSimulator  # v2.5  # noqa
 from core.services.execution_store import get_execution_store  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 from core.services.tenant_store_protocol import get_tenant_store, set_tenant_store  # P0-A3  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.knowledge.wiki_engine import delete_page, read_page  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.observation.run_graph import (  # noqa: boundary — RunGraph ExecutionViewer projection
+    open_node as open_run_graph_node,
+    close_node as close_run_graph_node,
+    upsert_node as upsert_run_graph_node,
+    mark_run_done as mark_run_graph_done,
+    get_graph as get_run_graph,
+)
 
 # v2.9: Additional canonical re-exports to close platform→core boundary
 from core.harness.finance.value_calculator import get_value_calculator  # noqa: boundary
@@ -3745,6 +4748,11 @@ from core.management.skill_manager import SkillManager  # v2.5  # noqa: boundary
 from core.services.execution_store import ExecutionStore, ExecutionStoreConfig  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 
 from core.apps.fde.service.agent import run_fde_agent_one_shot  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.apps.fde.service.clarify_dialog import (  # noqa: boundary — CoreFacade canonical re-export
+    ClarifyTurnInput,
+    run_clarify_turn,
+    simple_extract_fields as clarify_simple_extract_fields,
+)
 from core.apps.fde.service.voice import run_voice_brainstorm  # noqa: boundary — CoreFacade canonical re-export
 from core.apps.fde.service.delivery_pipeline_session import (  # noqa: boundary — CoreFacade canonical re-export
     approve_delivery_session as approve_fde_delivery_session,
@@ -3937,7 +4945,7 @@ from core.harness.syscalls.retrieval import sys_knowledge_retrieve  # noqa: boun
 from core.harness.learning.playbook import PlaybookManifest, pack_playbook, unpack_playbook  # noqa: boundary
 from core.harness.finance.value_calculator import BusinessGoal, get_value_calculator  # noqa: boundary
 from core.harness.execution.simulation import ScenarioDefinition, ScenarioType  # noqa: boundary
-from core.harness.knowledge_pipeline.extractor import ExtractionPipeline, ExtractionResult, PendingExtractionStore, write_extraction_to_graph_index  # noqa: boundary
+from core.harness.knowledge_pipeline.extractor import ExtractionPipeline, ExtractionResult, PendingExtractionStore, write_extraction_to_graph_index, file_bytes_to_text  # noqa: boundary
 from core.harness.infrastructure.gates.marking_propagation import get_entity_max_marking_level, MARKING_LABELS  # noqa: boundary
 
 # v2.7.2 — de-privatized internal symbols

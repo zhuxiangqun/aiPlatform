@@ -147,6 +147,10 @@ def _load_exec_skill_permission_rules() -> Dict[str, str]:
 def resolve_executable_skill_permission(skill_name: str) -> str:
     """
     Returns: allow | deny | ask
+
+    Read-only executable skills (effects all type=read) default to allow so
+    FDE diagnostics and similar inline tools are not blocked by the global
+    "*":"ask" posture. Explicit env rules still win.
     """
     name = str(skill_name or "").strip()
     if not name:
@@ -159,10 +163,37 @@ def resolve_executable_skill_permission(skill_name: str) -> str:
                 matched.append((len(pat), decision))
         except Exception:
             continue
-    if not matched:
-        return "ask"
-    matched.sort(key=lambda x: x[0], reverse=True)
-    return matched[0][1]
+    if matched:
+        matched.sort(key=lambda x: x[0], reverse=True)
+        decision = matched[0][1]
+    else:
+        decision = "ask"
+
+    # Explicit deny/allow from env always wins; only soften default "ask"
+    if decision != "ask":
+        return decision
+
+    # Prefer allow when skill declares only read effects (idempotent diagnostics)
+    try:
+        from core.apps.skills.registry import get_skill_registry
+
+        skill = get_skill_registry().get(name)
+        cfg = getattr(skill, "_config", None) if skill is not None else None
+        meta = getattr(cfg, "metadata", None) if cfg is not None else None
+        effects = meta.get("effects") if isinstance(meta, dict) else None
+        if isinstance(effects, list) and effects:
+            types = []
+            for e in effects:
+                if isinstance(e, dict) and e.get("type"):
+                    types.append(str(e.get("type")).strip().lower())
+                elif isinstance(e, str):
+                    types.append(e.strip().lower())
+            if types and all(t in {"read", "readonly", "query"} for t in types):
+                return "allow"
+    except Exception:  # noqa: cleanup-best-effort
+        pass
+
+    return decision
 
 
 class SkillFindTool(BaseTool):

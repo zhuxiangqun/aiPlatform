@@ -261,9 +261,9 @@ def test_suggest_platform_media_skill_catalog():
     assert resolve_media_handler_name("subtitle_track_extraction") == "subtitle_extractor"
     assert suggest_platform_media_skill("video_fetch") == "video_downloader"
     assert suggest_platform_media_skill("auth_login") is None
-    assert resolve_media_handler_name("video_qa") == "video_qa"
-    assert suggest_platform_media_skill("video_qa") == "video_qa"
-    assert resolve_media_handler_name("content_qa") == "video_qa"
+    assert resolve_media_handler_name("video_qa") is None
+    assert suggest_platform_media_skill("video_qa") is None
+    assert resolve_media_handler_name("content_qa") is None
     assert resolve_media_handler_name("analyze_frames") == "frame_analyzer"
     assert resolve_media_handler_name("extract_highlights") == "frame_analyzer"
     assert resolve_media_handler_name("build_timeline") == "report_json_export"
@@ -303,6 +303,13 @@ def test_build_true_test_report_ignores_prompt_only_video_qa():
     report = _build_true_test_report(
         [
             {
+                "id": "TQ-017",
+                "result": "SKIP",
+                "evidence": "no_platform_handler:video_qa; prompt_skill_skip_structured_asserts:video_qa; missing:answer",
+                "diagnostics": ["no_platform_handler:video_qa"],
+                "question": "ask about video",
+            },
+            {
                 "id": "TQ-018",
                 "result": "PASS",
                 "evidence": "prompt_only_skill_soft_pass:video_qa; missing:answer",
@@ -323,7 +330,7 @@ def test_video_download_accepts_source_url_and_upload_file_path():
         "video_download",
         {"app_name": "videosense", "source_url": "https://example.com/video.mp4"},
     )
-    assert r1.get("status") in ("ready", "pending", "completed", "SUCCESS", "downloaded", "queued")
+    assert r1.get("status") in ("ready", "pending", "completed")
     assert r1.get("video_path")
     assert r1.get("metadata") or r1.get("video_metadata")
 
@@ -331,7 +338,7 @@ def test_video_download_accepts_source_url_and_upload_file_path():
         "video_download",
         {"app_name": "videosense", "upload_file_path": "/tmp/uploads/user_video.mp4"},
     )
-    assert r2.get("status") in ("ready", "pending", "completed", "SUCCESS", "downloaded", "queued")
+    assert r2.get("status") in ("ready", "pending", "completed")
     assert r2.get("video_path")
 
 
@@ -373,7 +380,7 @@ def test_task_decomposition_alias_and_ingress_asserts():
         },
     )
     assert ok.get("task_id")
-    assert ok.get("status") in ("pending", "completed", "ready", "SUCCESS", "downloaded", "queued")
+    assert ok.get("status") in ("pending", "completed", "ready")
     blob = json.dumps(ok, ensure_ascii=False)
     assert ok.get("status") in blob
 

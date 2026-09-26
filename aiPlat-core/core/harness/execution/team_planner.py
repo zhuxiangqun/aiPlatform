@@ -47,35 +47,9 @@ class TeamRecommendation:
     reasoning: str
     stages: List[Dict[str, Any]] = field(default_factory=list)
     raw_reply: str = ""
-    # v3.2 / F2b — application mode: "code" | "agent" | "hybrid"
+    # v3.2 — application mode: "code" | "agent" | "hybrid"(预留,暂不启用)
     mode: str = ""
 
-
-FACTORY_MODES = frozenset({"agent", "code", "hybrid"})
-_MODE_TO_TEMPLATE = {"agent": "default", "code": "code", "hybrid": "hybrid"}
-_TEMPLATE_TO_MODE = {"default": "agent", "code": "code", "hybrid": "hybrid"}
-
-
-def normalize_factory_mode(raw: Any, default: str = "") -> str:
-    """Normalize to agent|code|hybrid or empty (auto)."""
-    val = str(raw or "").strip().lower()
-    if val in ("auto", "llm", ""):
-        return default
-    if val in FACTORY_MODES:
-        return val
-    if val in _TEMPLATE_TO_MODE:
-        return _TEMPLATE_TO_MODE[val]
-    return default
-
-
-def mode_to_team_template(mode: str) -> str:
-    m = normalize_factory_mode(mode)
-    return _MODE_TO_TEMPLATE.get(m, "")
-
-
-def team_template_to_mode(template_name: str) -> str:
-    n = str(template_name or "").strip().removesuffix(".yaml").lower()
-    return _TEMPLATE_TO_MODE.get(n, "")
 
 @dataclass
 class TeamTemplate:
@@ -85,6 +59,56 @@ class TeamTemplate:
     team_name: str
     description: str
     stages: List[Dict[str, Any]]
+
+
+# ── Factory mode (agent | code | hybrid) ─────────────────────────
+# Maps product-facing factory_mode ↔ ~/.aiplat/teams/*.yaml templates.
+
+FACTORY_MODES = frozenset({"agent", "code", "hybrid"})
+
+_MODE_ALIASES = {
+    "default": "agent",
+    "agents": "agent",
+    "coding": "code",
+    "codegen": "code",
+    "source": "code",
+}
+
+_MODE_TO_TEMPLATE = {
+    "agent": "default",
+    "code": "code",
+    "hybrid": "hybrid",
+}
+
+_TEMPLATE_TO_MODE = {
+    "default": "agent",
+    "code": "code",
+    "hybrid": "hybrid",
+}
+
+
+def normalize_factory_mode(raw: Any) -> str:
+    """Normalize user/LLM factory_mode to agent|code|hybrid, or '' if unset/auto."""
+    s = str(raw or "").strip().lower()
+    if not s or s in ("auto", "none", "unset"):
+        return ""
+    s = _MODE_ALIASES.get(s, s)
+    if s in FACTORY_MODES:
+        return s
+    return ""
+
+
+def mode_to_team_template(mode: str) -> str:
+    """Map normalized factory_mode → team YAML stem (default|code|hybrid)."""
+    m = normalize_factory_mode(mode)
+    return _MODE_TO_TEMPLATE.get(m, "default") if m else "default"
+
+
+def team_template_to_mode(template: str) -> str:
+    """Map team YAML name/path → factory_mode."""
+    name = str(template or "").strip().removesuffix(".yaml").removesuffix(".yml")
+    name = name.rsplit("/", 1)[-1]
+    return _TEMPLATE_TO_MODE.get(name, "")
 
 
 # ── Team template discovery ──────────────────────────────────────
@@ -137,32 +161,27 @@ def list_team_templates() -> List[TeamTemplate]:
 
 
 def _team_yaml_candidates(name: str) -> List[str]:
-    """Resolve team template paths: team/ → ~/.aiplat/teams → workspace seeds."""
-    try:
-        from core.harness.team_factory_seeds import resolve_team_yaml_candidates
-
-        return resolve_team_yaml_candidates(name)
-    except Exception:
-        n = (name or "").strip().removesuffix(".yaml")
-        if not n:
-            return []
-        home = os.path.expanduser(f"~/.aiplat/teams/{n}.yaml")
-        seeds = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "..",
-            "..",
-            "workspace_seeds",
-            "teams",
-            f"{n}.yaml",
-        )
-        return [home, os.path.normpath(seeds)]
+    """Resolve team template paths: user home first, then workspace seeds."""
+    n = (name or "").strip().removesuffix(".yaml")
+    if not n:
+        return []
+    home = os.path.expanduser(f"~/.aiplat/teams/{n}.yaml")
+    seeds = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "..",
+        "workspace_seeds",
+        "teams",
+        f"{n}.yaml",
+    )
+    return [home, os.path.normpath(seeds)]
 
 
 def load_team_template(name: str) -> Optional[TeamTemplate]:
     """Load a specific team template by name (without .yaml extension).
 
-    Search order: ``~/.aiplat/team/teams/`` → ``~/.aiplat/teams/`` →
-    ``workspace_seeds/teams/``. Returns None if missing.
+    Search order: ``~/.aiplat/teams/{name}.yaml`` then
+    ``workspace_seeds/teams/{name}.yaml``. Returns None if missing.
     """
     import yaml as _yaml
 
@@ -386,8 +405,6 @@ def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
         ("skill_name",         "skill_name",         "",     str),
         ("output_artifact",    "output_artifact",    "",     str),
         ("required_skills",    "required_skills",    [],     lambda v: v if isinstance(v, list) else []),
-        ("skill_allow_tags",   "skill_allow_tags",   [],     lambda v: v if isinstance(v, list) else []),
-        ("skill_allow_roles",  "skill_allow_roles",  [],     lambda v: v if isinstance(v, list) else []),
         ("tools",              "required_tools",    [],     lambda v: v if isinstance(v, list) else []),
         # execution_backend is set ONLY by YAML — not from AGENT.md (see CLAUDE.md §5.4.1)
         ("test_execution_mode","test_execution_mode","",      str),
@@ -524,21 +541,22 @@ async def recommend_team_stages(
         model: LLM adapter for inference
         extra_context: Additional text to include in the prompt (e.g., industry context)
         team_template: Name of a team template from ~/.aiplat/teams/ to use instead
-                       of LLM recommendation (e.g., 'default', 'data-science', 'hybrid')
-        preferred_mode: F2b — ``agent``|``code``|``hybrid``; maps to team template when
-                        ``team_template`` is empty (user override / create-time choice)
+                       of LLM recommendation (e.g., 'default', 'data-science')
+        preferred_mode: Optional factory_mode (agent|code|hybrid). When set and
+                        team_template is empty, loads the mapped team YAML.
 
     Returns:
-        TeamRecommendation with team_name, reasoning, mode, and stages
+        TeamRecommendation with team_name, reasoning, and stages
     """
+    from core.api.intents import core_chat, ChatContext
     from core.utils.json_utils import extract_json
 
     recommendation = TeamRecommendation(team_name="", reasoning="", raw_reply="")
 
-    # F2b: preferred_mode → template when caller did not pass team_template
-    _pref = normalize_factory_mode(preferred_mode)
-    if not team_template and _pref:
-        team_template = mode_to_team_template(_pref)
+    # Resolve preferred factory_mode → template when caller did not pass one.
+    _mode = normalize_factory_mode(preferred_mode)
+    if not team_template and _mode:
+        team_template = mode_to_team_template(_mode)
 
     # ── Path 1: User explicitly selected a team template ──
     if team_template:
@@ -546,7 +564,7 @@ async def recommend_team_stages(
         if tmpl and tmpl.stages:
             recommendation.team_name = tmpl.team_name
             recommendation.reasoning = f"using team template: {tmpl.team_name} ({team_template}.yaml)"
-            recommendation.mode = team_template_to_mode(team_template) or _pref or "agent"
+            recommendation.mode = team_template_to_mode(team_template) or _mode or ""
             for i, s in enumerate(tmpl.stages):
                 stage = dict(s)
                 stage.setdefault("id", f"stage_{i}")
@@ -557,8 +575,6 @@ async def recommend_team_stages(
             return recommendation
 
     # ── Path 2: LLM-based team recommendation ──
-    from core.api.intents import core_chat, ChatContext
-
     if available_agents is None:
         available_agents = list_available_agents()
 
@@ -571,30 +587,24 @@ async def recommend_team_stages(
     )
     if extra_context:
         prompt += f"## Additional Context\n\n{extra_context}\n\n"
+    if _mode:
+        prompt += f"## Preferred Mode\n\npreferred_mode={_mode}\n\n"
     prompt += (
         "## Task\n"
         "0. First determine the application MODE and output it as a `mode` field:\n"
-        "   - `agent`: conversational / intent-understanding / multi-turn interaction "
-        "(e.g. chatbot, QA assistant) — generates AGENT.md + SKILL.md apps\n"
-        "   - `code`: deterministic functions / clear API / performance-sensitive "
-        "(e.g. upload/transcode, data analysis, CRUD) — generates source code services\n"
-        "   - `hybrid`: BOTH natural-language orchestration AND heavy compute/API services "
-        "(e.g. chat UI + video analysis backend, RAG Q&A + data pipeline). "
-        "Use hybrid when the product needs Agent skills for dialogue/routing AND "
-        "FastAPI/code for media/compute/SLA-critical paths.\n"
+        "   - `agent`: conversational / intent-understanding / multi-turn interaction (e.g. chatbot, QA assistant)\n"
+        "   - `code`: deterministic functions / clear API / performance-sensitive (e.g. upload/transcode, data analysis, CRUD)\n"
+        "   - `hybrid`: both natural-language orchestration AND generated source code in one pipeline\n"
+        "   (Judge: is the core 'natural-language interaction', 'deterministic computation/API', or both?)\n"
         "1. Select the best agents from the available types above for each stage\n"
-        "   (agent → Agent-app generators; code → source-code generators; "
-        "hybrid → both code service stages and Agent orchestration stages)\n"
+        "   (agent mode → the agent generating Agent apps (AGENT.md+SKILL.md); code mode → the agent generating source code)\n"
         "2. Assign agent_id matching exactly the names listed in the catalog\n"
         "3. Order stages by logical dependency (upstream stages before downstream)\n"
         "4. Set uses_file_output=True for agents that generate source files\n"
         "5. Set generate_test_plan=True for agents that validate/verify output\n"
         "6. Set hitl=True for stages that require human approval\n"
         "7. Output JSON with team_name, reasoning, mode, and stages array\n"
-        "8. If Agent Performance History is provided, prefer agents with higher "
-        "first_pass_rate and lower rejection_rate when multiple agents could fulfill "
-        "the same role. Include a brief note in reasoning about why you preferred "
-        "certain agents."
+        "8. If Agent Performance History is provided, prefer agents with higher first_pass_rate and lower rejection_rate when multiple agents could fulfill the same role. Include a brief note in reasoning about why you preferred certain agents."
     )
 
     result = await core_chat(ChatContext(
@@ -613,7 +623,7 @@ async def recommend_team_stages(
             data = _json.loads(json_str)
             recommendation.team_name = str(data.get("team_name", ""))
             recommendation.reasoning = str(data.get("reasoning", ""))
-            _mode = normalize_factory_mode(data.get("mode", ""))
+            _mode = str(data.get("mode", "")).strip().lower()
             if _mode in FACTORY_MODES:
                 recommendation.mode = _mode
             stages_raw = (

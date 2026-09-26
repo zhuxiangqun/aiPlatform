@@ -42,6 +42,8 @@ export AIPLAT_HOME="${AIPLAT_HOME:-$HOME/.aiplat}"
 export AIPLAT_PROJECT_ROOT="${AIPLAT_PROJECT_ROOT:-$PROJECT_ROOT}"
 export AIPLAT_KB_TENANTS_DIR="${AIPLAT_KB_TENANTS_DIR:-$AIPLAT_HOME/kb/tenants}"
 export AIPLAT_REPO_ROOT="${AIPLAT_REPO_ROOT:-$PROJECT_ROOT}"
+# file_operations 白名单：模版库/输出目录在 AIPLAT_HOME；仓库内素材可读。空值会禁用整个工具。
+export AIPLAT_FILE_OPERATIONS_ALLOWED_ROOTS="${AIPLAT_FILE_OPERATIONS_ALLOWED_ROOTS:-$AIPLAT_HOME:$PROJECT_ROOT}"
 mkdir -p "$AIPLAT_HOME/logs"
 
 # Execution DB retention: keep last 7 days of syscall events, auto-prune on start
@@ -205,10 +207,14 @@ ensure_deps () {
   fi
   echo "正在安装/更新依赖（可设置 AIPLAT_FORCE_PIP_INSTALL=1 强制重装）..."
   # NOTE: do not silence output; missing deps should be visible in terminal/logs.
-  "$PY" -m pip install $PIP_FLAGS --no-warn-script-location -e "$PROJECT_ROOT/aiPlat-core"
+  # infra MUST be installed before core — aiplat-core declares dependency on aiplat-infra
+  # (local editable package; not on PyPI). Wrong order → "No matching distribution found for aiplat-infra".
   "$PY" -m pip install $PIP_FLAGS --no-warn-script-location -e "$PROJECT_ROOT/aiPlat-infra"
+  "$PY" -m pip install $PIP_FLAGS --no-warn-script-location -e "$PROJECT_ROOT/aiPlat-core"
   # aiPlat-platform / aiPlat-app currently run via PYTHONPATH (no packaging metadata)
   "$PY" -m pip install $PIP_FLAGS --no-warn-script-location -e "$PROJECT_ROOT/aiPlat-management[dev]"
+  # Process manager used by all layer start commands (gunicorn -c gunicorn.conf.py ...)
+  "$PY" -m pip install $PIP_FLAGS --no-warn-script-location gunicorn
   # platform upload endpoints require multipart parsing
   "$PY" -m pip install $PIP_FLAGS --no-warn-script-location python-multipart
   # Browser test case generator/executor (Excel I/O)
@@ -302,6 +308,18 @@ mkdir -p "$AIPLAT_HOME/task_skills"   # L3 TaskSkill 记忆持久化
 mkdir -p "$AIPLAT_HOME/auto_pipelines" # 自动审批流水线配置
 mkdir -p "$AIPLAT_HOME/hooks"         # 用户空间 Hook 脚本
 mkdir -p "$AIPLAT_HOME/ontologies"   # 多域本体 YAML 文件
+# Execution DB: ~/.aiplat/aiplat_executions.sqlite3 may be a symlink into the repo;
+# ensure the target directory exists so gunicorn lifespan can open it.
+mkdir -p "$PROJECT_ROOT/aiPlat-core/core/data"
+# If symlink target is missing, create an empty sqlite so core can boot.
+_EXEC_DB_LINK="$AIPLAT_HOME/aiplat_executions.sqlite3"
+_EXEC_DB_TARGET="$PROJECT_ROOT/aiPlat-core/core/data/aiplat_executions.sqlite3"
+if [ -L "$_EXEC_DB_LINK" ] && [ ! -e "$_EXEC_DB_LINK" ]; then
+  "$PY" -c "import sqlite3; c=sqlite3.connect(r'$_EXEC_DB_TARGET'); c.execute('PRAGMA journal_mode=WAL'); c.close()" 2>/dev/null || true
+elif [ ! -e "$_EXEC_DB_LINK" ] && [ ! -e "$_EXEC_DB_TARGET" ]; then
+  "$PY" -c "import sqlite3; c=sqlite3.connect(r'$_EXEC_DB_TARGET'); c.execute('PRAGMA journal_mode=WAL'); c.close()" 2>/dev/null || true
+  ln -sfn "$_EXEC_DB_TARGET" "$_EXEC_DB_LINK" 2>/dev/null || true
+fi
 
 echo "============================================================"
 echo "  aiPlat-platform - 启动服务"
@@ -392,7 +410,9 @@ export AIPLAT_EMBEDDING_BACKEND="${AIPLAT_EMBEDDING_BACKEND:-hash}"
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 
 cd "$PROJECT_ROOT/aiPlat-core"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m gunicorn -c gunicorn.conf.py -w 1 --threads 4 server:app > "$AIPLAT_HOME/logs/core.log" 2>&1 &
+# platform on PYTHONPATH so optional `import apps.fde` registration works
+PYTHONPATH="$PROJECT_ROOT/aiPlat-core:$PROJECT_ROOT/aiPlat-platform:$PROJECT_ROOT/aiPlat-infra" \
+  nohup "$PY" -m gunicorn -c gunicorn.conf.py -w 1 --threads 4 server:app > "$AIPLAT_HOME/logs/core.log" 2>&1 &
 CORE_PID=$!
 echo "PID: $CORE_PID"
 
@@ -537,10 +557,14 @@ echo "PID: $MGMT_PID"
 
 sleep 3
 for i in 1 2 3 4 5; do
-    curl -s http://localhost:8000/api/dashboard/status >/dev/null 2>&1 && echo "✓ aiPlat-management 启动成功 (8000)" && break
+    curl -s --max-time 3 http://localhost:8000/api/dashboard/status >/dev/null 2>&1 && echo "✓ aiPlat-management 启动成功 (8000)" && break
     echo "等待... ($i/5)"
     sleep 1
 done
+# Management waits up to ~2min for core in its lifespan; don't block start.sh forever.
+if ! curl -s --max-time 2 http://localhost:8000/api/dashboard/status >/dev/null 2>&1; then
+  echo "⚠ aiPlat-management 健康检查暂未通过（可能仍在等待 core），继续启动前端"
+fi
 
 # ===== Step 6: Frontend =====
 echo ""
