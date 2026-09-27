@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-08-16"
 total_capability_domains: 34
-total_capabilities: 1244
+total_capabilities: 1245
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -2036,6 +2036,10 @@ domains:
         type: function
         signature: 'get_value_baseline_view()'
         module: aiPlat-core/core/apps/org/service/org_value_translation.py
+      - symbol: register_agents_prompts
+        type: function
+        signature: 'Register agents domain prompts.'
+        module: aiPlat-core/core/apps/agents/prompts.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
