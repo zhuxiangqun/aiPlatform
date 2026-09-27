@@ -719,7 +719,15 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess,
         </div>
 
         {mcpOptions.length > 0 && <MultiSelect label="绑定 MCP" options={mcpOptions} selected={mcpIds} onChange={setMcpIds} hint="MCP 服务器提供的工具会全局注册到工具池" />}
-        {workflowOptions.length > 0 && <MultiSelect label="绑定 Workflow" options={workflowOptions} selected={workflowIds} onChange={setWorkflowIds} />}
+        {workflowOptions.length > 0 && (
+          <MultiSelect
+            label="关联 Workflow（可选）"
+            options={workflowOptions}
+            selected={workflowIds}
+            onChange={setWorkflowIds}
+            hint="编排模板关联，非运行时必绑；日常执行靠 Skill/Tool/MCP。空着即可。"
+          />
+        )}
         {agentOptions.length > 0 && <MultiSelect label="绑定子 Agent" options={agentOptions} selected={agentIds} onChange={setAgentIds} hint="当前 Agent 可以将任务委派给选中的子 Agent" />}
         {kbOptions.length > 0 && <MultiSelect label="知识库（Wiki 集合）" options={kbOptions} selected={knowledgeBases} onChange={setKnowledgeBases} hint="指定 Agent 使用的 Wiki 知识库集合；不选则默认用 default" />}
 

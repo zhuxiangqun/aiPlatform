@@ -308,6 +308,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
   const [helpLoading, setHelpLoading] = useState(false);
   const [helpMarkdown, setHelpMarkdown] = useState<string>('');
   const [examples, setExamples] = useState<Array<{ title: string; content: string }>>([]);
+  const [llmGenerating, setLlmGenerating] = useState(false);
   const [result, setResult] = useState<{ status: string; execution_id?: string; output?: unknown; error?: any; error_message?: string; error_detail?: any; run_id?: string; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }; eval?: { score?: number; grade?: string; total_tasks?: number; has_data?: boolean }; duration_ms?: number; steps?: number } | null>(null);
   const [toolset, setToolset] = useState<string>('workspace_default');
   const [stopping, setStopping] = useState(false);
@@ -404,6 +405,9 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
         let exs = (((res as any)?.examples || []) as Array<{ title: string; content: string }>);
         const schema = ((res as any)?.input_schema as Record<string, unknown> | null) || null;
         const label = agent.display_name || agent.name || agent.id;
+        const meta = (agent.metadata || {}) as Record<string, unknown>;
+        const reqSkills = Array.isArray(meta.required_skills) ? (meta.required_skills as string[]) : [];
+        const skillIds = [...new Set([...(agent.skills || []), ...reqSkills])];
         if (isGenericExampleSet(exs)) {
           if (schema && Object.keys(schema).length > 0) {
             const generated = buildExamplesFromSchema(schema, label);
@@ -411,8 +415,8 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
           } else {
             exs = buildAgentTaskExamples({
               displayName: label,
-              description: agent.description || String((agent.metadata as any)?.description || ''),
-              skillIds: agent.skills || [],
+              description: agent.description || String(meta.description || ''),
+              skillIds,
               toolIds: agent.tools || [],
             });
           }
@@ -421,12 +425,14 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
         // Do NOT auto-fill — user clicks「填入」
       } catch {
         const label = agent.display_name || agent.name || agent.id;
+        const meta = (agent.metadata || {}) as Record<string, unknown>;
+        const reqSkills = Array.isArray(meta.required_skills) ? (meta.required_skills as string[]) : [];
         setHelpMarkdown('');
         setExamples(
           buildAgentTaskExamples({
             displayName: label,
-            description: agent.description || String((agent.metadata as any)?.description || ''),
-            skillIds: agent.skills || [],
+            description: agent.description || String(meta.description || ''),
+            skillIds: [...new Set([...(agent.skills || []), ...reqSkills])],
             toolIds: agent.tools || [],
           }),
         );
@@ -436,6 +442,34 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
     };
     load();
   }, [open, agent?.id]);
+
+  const handleGenerateLlmExamples = async (persist: boolean) => {
+    if (!agent) return;
+    try {
+      setLlmGenerating(true);
+      const res = await workspaceAgentApi.generateExecutionExamples(agent.id, { persist });
+      const exs = (res?.examples || []) as Array<{ title: string; content: string }>;
+      if (!exs.length) {
+        toast.error('未生成可用用例');
+        return;
+      }
+      setExamples(exs);
+      if (exs[0]?.content) setInput(exs[0].content);
+      const src = res?.source === 'llm' ? 'LLM' : '启发式回退';
+      if (persist && res?.persisted) {
+        toast.success(`已生成 ${exs.length} 条（${src}）并写入 AGENT.md`);
+      } else if (persist && !res?.persisted) {
+        toast.warning(`已生成 ${exs.length} 条，但写入 AGENT.md 失败`);
+      } else {
+        toast.success(`已生成 ${exs.length} 条（${src}），已填入第一条`);
+      }
+      if (res?.warning) toast.warning(String(res.warning));
+    } catch (e: any) {
+      toastGateError(e, 'LLM 生成用例失败');
+    } finally {
+      setLlmGenerating(false);
+    }
+  };
 
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
@@ -1295,6 +1329,28 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
           {examples.length > 0 && (
             <div className="space-y-2">
               <div className="text-xs font-medium text-gray-300">测试用例 — 点「填入」写入左侧输入框</div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={llmGenerating}
+                  disabled={loading || llmGenerating}
+                  onClick={() => handleGenerateLlmExamples(false)}
+                  title="用 LLM 生成更贴合本 Agent 职责的冒烟用例（可选）"
+                >
+                  ✨ LLM 生成
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={llmGenerating}
+                  disabled={loading || llmGenerating}
+                  onClick={() => handleGenerateLlmExamples(true)}
+                  title="生成后写入 AGENT.md 的 execution_examples，下次打开优先使用"
+                >
+                  生成并保存
+                </Button>
+              </div>
               <div className="flex flex-col gap-2">
                 {examples.map((ex, idx) => (
                   <div key={idx} className="flex flex-col gap-1">
@@ -1309,6 +1365,20 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+          {examples.length === 0 && !helpLoading && (
+            <div className="space-y-2">
+              <div className="text-xs text-gray-500">暂无测试用例。</div>
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={llmGenerating}
+                disabled={loading || llmGenerating}
+                onClick={() => handleGenerateLlmExamples(false)}
+              >
+                ✨ LLM 生成用例
+              </Button>
             </div>
           )}
         </div>

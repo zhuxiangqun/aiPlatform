@@ -134,7 +134,7 @@ export const menuItems: MenuEntry[] = [
     { key: '/core/skills', icon: Sparkles, label: '引擎 Skill' },
     { key: '/core/tools', icon: Wrench, label: '引擎 Tool' },
     { key: '/core/mcp', icon: Plug, label: '引擎 MCP' },
-    { key: '/core/workflows', icon: GitBranch, label: 'Workflow' },
+    // Workflow 属于应用编排（工作区能力），不是引擎内置原子能力 —— 不挂在此
     { key: '/core/memory', icon: Brain, label: 'Memory' },
     { key: '/core/checkpoints', icon: History, label: '文件 Checkpoint' },
     // ── 接入配置 ──

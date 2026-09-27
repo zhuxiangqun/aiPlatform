@@ -49,6 +49,9 @@ export function Table<T>({
   expandedRowRender,
   className = '',
 }: TableProps<T>) {
+  const cols = Array.isArray(columns) ? columns : [];
+  const rows = Array.isArray(data) ? data : [];
+
   const getRowKey = (record: T, index: number): string => {
     if (typeof rowKey === 'function') {
       return rowKey(record);
@@ -76,7 +79,7 @@ export function Table<T>({
       <table className="w-full">
         <thead>
           <tr className="bg-dark-bg border-b border-dark-border">
-            {columns.map((column) => (
+            {cols.map((column) => (
               <th
                 key={column.key}
                 className={`
@@ -96,7 +99,7 @@ export function Table<T>({
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={columns.length} className="px-4 py-12 text-center">
+              <td colSpan={Math.max(cols.length, 1)} className="px-4 py-12 text-center">
                 <div className="flex justify-center">
                   <svg className="animate-spin h-6 w-6 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -105,14 +108,14 @@ export function Table<T>({
                 </div>
               </td>
             </tr>
-          ) : data.length === 0 ? (
+          ) : rows.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="px-4 py-12 text-center text-gray-400">
+              <td colSpan={Math.max(cols.length, 1)} className="px-4 py-12 text-center text-gray-400">
                 {emptyText}
               </td>
             </tr>
           ) : (
-            data.map((record, index) => {
+            rows.map((record, index) => {
               const rowProps = onRow?.(record);
               const k = getRowKey(record, index);
               const expanded = !!(expandedRowKeys && expandedRowKeys.includes(k) && expandedRowRender);
@@ -127,7 +130,7 @@ export function Table<T>({
                     onClick={rowProps?.onClick}
                     style={{ cursor: rowProps?.onClick ? 'pointer' : 'default' }}
                   >
-                    {columns.map((column) => (
+                    {cols.map((column) => (
                       <td
                         key={column.key}
                         className={`
@@ -158,7 +161,7 @@ export function Table<T>({
                   </tr>
                   {expanded && (
                     <tr className="border-b border-dark-border bg-dark-bg">
-                      <td colSpan={columns.length} className="px-4 py-3">
+                      <td colSpan={Math.max(cols.length, 1)} className="px-4 py-3">
                         {expandedRowRender ? expandedRowRender(record, index) : null}
                       </td>
                     </tr>

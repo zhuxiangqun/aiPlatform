@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1747
+total_capabilities: 1752
 
 total_capabilities: 1756
 last_updated: 2026-09-27
@@ -1409,6 +1409,7 @@ scan_hash: 8f9548ec24f4
 | dedupe_workspace_agents | `core/api/routers/workspace_agents.py` | ✅ | 自动同步 | 已合入 |
 | build_sample_payload | `core/management/execution_examples.py` | ✅ | 自动同步 | 已合入 |
 | build_agent_task_examples | `core/management/execution_examples.py` | ✅ | 自动同步 | 已合入 |
+| examples_are_generic | `core/management/execution_examples.py` | ✅ | 自动同步 | 已合入 |
 | build_examples_from_input_schema | `core/management/execution_examples.py` | ✅ | 自动同步 | 已合入 |
 | hints_for_skill_draft | `core/apps/common/boundary_hints.py` | ✅ | 自动同步 | 已合入 |
 | hints_for_agent_draft | `core/apps/common/boundary_hints.py` | ✅ | 自动同步 | 已合入 |
@@ -1421,6 +1422,9 @@ scan_hash: 8f9548ec24f4
 | run_skill_create_dialog_turn | `core/apps/skills/service/skill_create_dialog.py` | ✅ | 自动同步 | 已合入 |
 | generate_workspace_skill_execution_examples | `core/api/routers/workspace_skills.py` | ✅ | 自动同步 | 已合入 |
 | generate_skill_execution_examples_llm | `core/apps/skills/service/skill_execution_examples_llm.py` | ✅ | 自动同步 | 已合入 |
+| generate_agent_execution_examples_llm | `core/apps/agents/service/agent_execution_examples_llm.py` | ✅ | 自动同步 | 已合入 |
+| generate_workspace_agent_execution_examples | `core/api/routers/workspace_agents.py` | ✅ | 自动同步 | 已合入 |
+| AgentManager.persist_execution_examples | `core/management/agent_manager.py` | ✅ | 自动同步 | 已合入 |
 | generate_skill_autofill | `core/apps/skills/service/skill_autofill.py` | ✅ | 自动同步 | 已合入 |
 | BaseSkill | `apps/skills/base.py` | ✅ | 自动同步 | 已合入 |
 | SkillManager | `apps/skills/skill_manager.py` | ✅ | 自动同步 | 已合入 |
@@ -2210,6 +2214,7 @@ scan_hash: 8f9548ec24f4
 | workspace_packages | api/routers/workspace_packages.py | ✅ | 自动同步 | 已合入 |
 | workspace_agents | api/routers/workspace_agents.py | ✅ | 自动同步 | 已合入 |
 | Agent 防重复 | `core/management/agent_manager.py` + `POST /workspace/agents/dedupe` | ✅ | display_name+skills/tools 指纹复用；清理同名重复 | 已合入 |
+| Agent 配置 AI 审核（含工具上架门禁） | `POST /workspace/agents/{id}/audit`（`workspace_agents.audit_agent_config`） | ✅ | 除注册表存在外，绑定工具须 published\|listed，否则 `tool_not_listed`（与资产审批上架硬门禁对齐）；一键修复可解绑 | 已合入 |
 | Workflow 防重复 | `core/management/workflow_manager.py` + `POST /platform/workflows/dedupe` | ✅ | name+节点指纹复用；清理同名同构图重复 | 已合入 |
 | wiki_ontology_patterns | api/routers/wiki_ontology_patterns.py | ✅ | 自动同步 | 已合入 |
 | wiki_ontology_domains | api/routers/wiki_ontology_domains.py | ✅ | 自动同步 | 已合入 |
@@ -2667,7 +2672,7 @@ scan_hash: 8f9548ec24f4
 | RAG 检索 | 50 | 0 | 50 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 124 | 0 | 124 |
-| Skill 系统 | 74 | 0 | 74 |
+| Skill 系统 | 78 | 0 | 78 |
 | 安全与治理 | 61 | 0 | 61 |
 | 可观测性 | 31 | 0 | 31 |
 | 模型基础设施 | 42 | 0 | 42 |
@@ -2683,7 +2688,7 @@ scan_hash: 8f9548ec24f4
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 6 | 0 | 6 |
 | Arena & 调度 | 7 | 0 | 7 |
-| 平台治理 | 99 | 0 | 99 |
+| 平台治理 | 100 | 0 | 100 |
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
@@ -2706,7 +2711,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1738** | **9** | **1747** |
+| **总计** | **1743** | **9** | **1752** |
 
 | **总计** | **1095** | **0** | **1095** |
 

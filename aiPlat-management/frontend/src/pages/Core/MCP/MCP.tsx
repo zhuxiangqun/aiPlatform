@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RotateCw, Server, Wrench, Power, PowerOff, Eye, Copy, Search } from 'lucide-react';
-import { Button, Modal, toast, Table, Switch, Badge } from '../../../components/ui';
+import { Button, Modal, toast, Table, Switch, Badge, Input } from '../../../components/ui';
 import { mcpApi } from '../../../services';
 import { toastGateError } from '../../../components/ui';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
@@ -25,6 +25,7 @@ interface MCPServer {
 const MCP: React.FC = () => {
   const [servers, setServers] = useState<MCPServer[]>([]);
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
   const [detailServer, setDetailServer] = useState<MCPServer | null>(null);
   const [detailTools, setDetailTools] = useState<MCPTool[]>([]);
   const [toolsLoading, setToolsLoading] = useState(false);
@@ -73,6 +74,14 @@ const MCP: React.FC = () => {
     }
   };
 
+  const filteredServers = servers.filter((srv) => {
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    const desc = String((srv as any)?.metadata?.description || (srv as any)?.description || '');
+    const hay = `${srv.name || ''} ${desc} ${srv.transport || ''} ${srv.url || ''} ${srv.command || ''}`.toLowerCase();
+    return hay.includes(q);
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -80,9 +89,14 @@ const MCP: React.FC = () => {
           <h1 className="text-2xl font-semibold text-gray-100 tracking-tight">MCP 管理</h1>
           <p className="text-sm text-gray-400 mt-1">管理引擎内置 MCP (Model Context Protocol) 服务器 — 连接外部工具到 Agent 和工作流</p>
         </div>
-        <Button icon={<RotateCw className="w-4 h-4" />} onClick={fetchServers} loading={loading}>
-          刷新
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="w-56">
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索名称或描述..." />
+          </div>
+          <Button icon={<RotateCw className="w-4 h-4" />} onClick={fetchServers} loading={loading}>
+            刷新
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -97,7 +111,8 @@ const MCP: React.FC = () => {
         <Table
           rowKey="name"
           loading={loading}
-          data={servers}
+          data={filteredServers}
+          emptyText={search.trim() ? '无匹配 MCP' : '暂无数据'}
           columns={[
             {
               title: '名称', dataIndex: 'name', key: 'name',

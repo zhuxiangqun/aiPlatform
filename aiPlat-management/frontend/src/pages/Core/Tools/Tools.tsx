@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { RotateCw, Wrench, Play, Settings, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Table, Button } from '../../../components/ui';
+import { Table, Button, Input } from '../../../components/ui';
 import { ToolDetailModal, ExecuteToolModal, EditToolConfigModal } from '../../../components/core';
 import { toolApi } from '../../../services';
 import type { ToolInfo } from '../../../services';
@@ -11,6 +11,7 @@ import { TOOL_CATEGORIES } from '../../../utils/categoryConfig';
 const Tools: React.FC = () => {
   const [tools, setTools] = useState<ToolInfo[]>([]);
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
   const [detailTool, setDetailTool] = useState<ToolInfo | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [executeTool, setExecuteTool] = useState<ToolInfo | null>(null);
@@ -34,6 +35,13 @@ const Tools: React.FC = () => {
   useEffect(() => {
     fetchTools();
   }, []);
+
+  const filteredTools = tools.filter((t) => {
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    const hay = `${t.name || ''} ${t.description || ''} ${t.category || ''} ${(t as any).status || ''}`.toLowerCase();
+    return hay.includes(q);
+  });
 
   const columns = [
     {
@@ -141,6 +149,9 @@ const Tools: React.FC = () => {
           <p className="text-sm text-gray-400 mt-1">查看和管理核心能力层注册的工具</p>
         </div>
         <div className="flex items-center gap-3">
+          <div className="w-56">
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索名称或描述..." />
+          </div>
           <Button
             icon={<RotateCw className="w-4 h-4" />}
             onClick={fetchTools}
@@ -177,10 +188,10 @@ const Tools: React.FC = () => {
         ) : (
           <Table
             columns={columns}
-            data={tools}
+            data={filteredTools}
             rowKey="name"
             loading={loading}
-            emptyText="暂无Tool数据"
+            emptyText={search.trim() ? '无匹配工具' : '暂无Tool数据'}
           />
         )}
       </motion.div>

@@ -6,7 +6,7 @@ description: >-
   输出必须含 functional_requirements（含 acceptance_criteria）、user_stories、
   constraints（performance+security）、decisions、open_questions=[]。
 category: analysis
-version: 1.1.0
+version: 1.2.0
 status: enabled
 execution_mode: prompt
 execution_type: prompt
@@ -41,10 +41,11 @@ idempotent: false
 completion_criterion: |
   1. functional_requirements至少3条,每条包含acceptance_criteria
   2. user_stories覆盖所有核心功能
-  3. constraints 含 performance 与 security（结构化，勿只写功能 AC）
+  3. constraints 含 performance 与 security（结构化，勿只写功能 AC）；客户已声明的硬约束必须原样保留
   4. decisions 为对象（可为空对象，但媒体/URL/语音等边界出现时必须填对应键）
-  5. open_questions 为空数组才可视为定稿
+  5. open_questions 为空数组才可视为定稿；草稿轮允许非空，但须标「待确认」
   6. 用户可见输出不得含「步骤1/方案比较」推理过程
+  7. 禁止编造客户未提供的 NFR/渠道/集成细节；未知项进 open_questions 或标「待确认」
 keywords:
   objects:
   - PRD
@@ -74,6 +75,10 @@ skip_when: 已有完整PRD文档
 6. 出现「不转写」时：禁止主题/语义/要点/关键词类验收；仅允许声学粗标签；`decisions.speech_pipeline=audio_features_only`（或显式允许 `asr`/`hybrid`）。
 7. 「字/分钟」语速：须区分有字幕/无字幕双路径，或改用音节密度。
 8. **范围锁定**：若上下文有 `## pm_chat_history` 或 `## confirmed_prd_baseline`，以二者为范围上限——禁止发明用户未要求的能力（如未要求的 OCR、ASR/转写、额外 FR/模块）；重建时覆盖旧稿但不得扩 scope。
+9. **证据优先（强制）**：客户已口述的硬约束（如「不上公网」「无 API 文档」「试点范围」）必须在 FR/constraints/决策中显式出现，不得弱化改写。
+10. **禁止编造**：客户未提及的多语言、具体 SLA 数值、加密方案、交付渠道（如「钉钉小程序内完成全流程」）不得写成已确认需求；只能进 `open_questions` 或正文标「待确认」。
+11. **AC 可测**：禁止「清晰可见 / 实际操作测试 / 功能正常」等软 AC；优先可计数、可复现步骤、可判定通过/失败的条件。
+12. **输出形态**：定稿/草稿直接输出 Markdown（或 JSON+Markdown）；禁止在文末再套一层 ```markdown 复读全文。
 
 ## SOP（内部思考，勿写入用户可见输出）
 
@@ -163,3 +168,8 @@ skip_when: 已有完整PRD文档
 | 缺 decisions / open_questions 非空就 READY | 边界写入 decisions，open_questions=[] |
 | decisions value 写成中文长句 | 只用枚举：`direct_media_url` / `audio_features_only` / `soft_track_only` |
 | 把技术实现细节当需求 | 需求只写「做什么」与可测 AC |
+| 编造「多语言 / P95<1s / 已加密」等未口述 NFR | 未确认项写入 open_questions 或标「待确认」 |
+| 客户说「不上公网」却改成笼统「合规检查」 | constraints.security 保留「照片/附件不得离开内网/不上公网」 |
+| 客户说「想打通钉钉但无 API」却写成「已在钉钉应用内完成」 | 集成方式标「待确认」；decision 用 `dingtalk_integration: pending_api` |
+| 「里程碑」节只重复开放问题 | 写可执行分期（如「W1–2 试点范围与账号」「W3–4 主路径」「W5–6 看板与复盘」）并标注假设 |
+| 文末再用 markdown 代码围栏复读全文 | 只输出一份 Markdown，勿二次包裹 |

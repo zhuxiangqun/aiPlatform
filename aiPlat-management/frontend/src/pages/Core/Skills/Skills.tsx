@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Info, RotateCw, RotateCcw, Trash2, Pencil, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
+import { Table, Select, Switch, Button, Modal, Input, toast } from '../../../components/ui';
 import { EditSkillModal, ExecuteSkillModal, SkillDetailModal } from '../../../components/core';
 import { useSkillStore } from '../../../stores';
 import type { Skill } from '../../../services';
@@ -14,6 +14,7 @@ const Skills: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>();
   const [enabledOnly, setEnabledOnly] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [search, setSearch] = useState('');
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [executeModalOpen, setExecuteModalOpen] = useState(false);
   const [editSkill, setEditSkill] = useState<Skill | null>(null);
@@ -50,12 +51,17 @@ const Skills: React.FC = () => {
     }
   };
 
-  const filteredSkills = skills.filter(s => {
+  const filteredSkills = (skills || []).filter(s => {
     if (categoryFilter && s.category !== categoryFilter) return false;
     if (enabledOnly && !s.enabled) return false;
     if (statusFilter) {
       const st = (s.status || (s.enabled ? 'enabled' : 'disabled')).toLowerCase();
       if (st !== statusFilter) return false;
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      const hay = `${s.id || ''} ${s.name || ''} ${(s as any).display_name || ''} ${s.description || ''} ${s.category || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
     }
     return true;
   });
@@ -204,6 +210,9 @@ const Skills: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-500">仅启用</span>
             <Switch checked={enabledOnly} onChange={setEnabledOnly} />
+          </div>
+          <div className="w-56">
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索名称、ID 或描述..." />
           </div>
           <Button
             icon={<RotateCw className="w-4 h-4" />}

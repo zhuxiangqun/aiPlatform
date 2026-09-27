@@ -447,12 +447,18 @@ class AgentManager:
             config = {}
             skills = []
             tools = []
+            category = ""
+            tags: list = []
+            phase = ""
+            fm: dict = {}
 
             if raw.startswith("---"):
                 parts = raw.split("---", 2)
                 if len(parts) >= 3:
                     try:
                         fm = _yaml.safe_load(parts[1]) or {}
+                        if not isinstance(fm, dict):
+                            fm = {}
                         name = str(fm.get("name", dirname))
                         display_name = str(fm.get("display_name", display_name))
                         agent_type = str(fm.get("agent_type", "react"))
@@ -469,8 +475,10 @@ class AgentManager:
                         category = str(fm.get("category") or "")
                         tags = fm.get("tags") or []
                         tags = tags if isinstance(tags, list) else []
+                        phase = str(fm.get("phase") or "")
                     except Exception as e:
                         logging.debug(str(e), exc_info=True)
+                        fm = {}
 
             if name in self._agents:
                 continue
@@ -483,8 +491,15 @@ class AgentManager:
                 agent_ids=fm.get("agent_ids", []) if isinstance(fm.get("agent_ids"), list) else [],
                 memory_config={"type": "short_term", "recall_count": 5},
                 created_at=now, updated_at=now,
-                metadata={"version": "1.0.0", "display_name": display_name, "description": fm.get("description", "")},
-                category=category, tags=tags, phase=phase, enabled=True,  # noqa: F821
+                metadata={
+                    "version": "1.0.0",
+                    "display_name": display_name,
+                    "description": str(fm.get("description") or "") if isinstance(fm, dict) else "",
+                },
+                category=category,
+                tags=tags,
+                phase=phase,
+                enabled=True,
             )
             self._stats[name] = AgentStats(
                 total_executions=0, success_count=0, failed_count=0, avg_duration_ms=0.0, success_rate=0.0
@@ -844,8 +859,11 @@ class AgentManager:
         
         if name:
             agent.name = name
-        if status and status in ("draft", "ready", "running", "stopped", "error", "published", "listed", "deprecated"):
-            agent.status = status
+        if status:
+            _status_map = {"enabled": "ready", "active": "ready", "ok": "ready", "online": "ready"}
+            status = _status_map.get(status, status)
+            if status in ("draft", "ready", "running", "stopped", "error", "published", "listed", "deprecated", "disabled"):
+                agent.status = status
         if config:
             agent.config.update(config)
         if skills is not None:
@@ -927,6 +945,11 @@ class AgentManager:
                     "memory_config": agent.memory_config or fm.get("memory_config", {"type": "short_term", "recall_count": 5}),
                     "knowledge_bases": (agent.metadata or {}).get("knowledge_bases") or fm.get("knowledge_bases", []),
                 })
+                # Prefer required_* ; drop legacy keys so audit won't keep warning.
+                fm.pop("tools", None)
+                fm.pop("skills", None)
+                if str(fm.get("status") or "") in ("enabled", "active", "ok", "online"):
+                    fm["status"] = "ready"
                 header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
                 agent_md_path.write_text(f"---\n{header}\n---\n{body.lstrip()}", encoding="utf-8")
         except Exception as e:
@@ -1052,6 +1075,7 @@ class AgentManager:
         from core.management.execution_examples import (
             build_agent_task_examples,
             build_examples_from_input_schema,
+            examples_are_generic,
         )
 
         agent = self._agents.get(agent_id)
@@ -1080,6 +1104,12 @@ class AgentManager:
                     norm_examples.append({"title": str(e["title"]), "content": str(e["content"])})
 
         skill_ids = list(getattr(agent, "skills", []) or [])
+        # Prefer required_skills from frontmatter when skills list is thin (e.g. only chitchat).
+        req_skills = fm.get("required_skills") if isinstance(fm.get("required_skills"), list) else []
+        for s in req_skills:
+            sid = str(s).strip()
+            if sid and sid not in skill_ids:
+                skill_ids.append(sid)
         tool_ids = list(getattr(agent, "tools", []) or [])
         display = str(
             (agent.metadata or {}).get("display_name")
@@ -1089,11 +1119,11 @@ class AgentManager:
         desc = str((agent.metadata or {}).get("description") or "")
 
         effective_schema = schema if isinstance(schema, dict) and schema else None
-        if not norm_examples and effective_schema:
+        if (not norm_examples or examples_are_generic(norm_examples)) and effective_schema:
             norm_examples = build_examples_from_input_schema(
                 effective_schema, skill_id=agent_id, skill_name=display
             )
-        if not norm_examples:
+        if not norm_examples or examples_are_generic(norm_examples):
             norm_examples = build_agent_task_examples(
                 display_name=display,
                 description=desc,
@@ -1120,7 +1150,8 @@ class AgentManager:
             "### 如何填写输入\n"
             "- 你可以输入 **文本** 或 **JSON**。\n"
             "- 如果输入不是合法 JSON，系统会自动封装为：`{\"message\": \"...\"}`。\n"
-            "- 点右侧「填入」可按本 Agent 绑定的技能/工具写入一条可执行测试用例。\n",
+            "- 点右侧「填入」可按本 Agent 绑定的技能/工具写入一条可执行测试用例。\n"
+            "- 也可点「✨ LLM 生成」按职责动态生成用例；「生成并保存」写入 AGENT.md。\n",
         ]
         field_lines = ["\n### 推荐输入字段\n", "- `message`：任务描述（最通用）\n"]
         if has_file_ops:
@@ -1149,6 +1180,51 @@ class AgentManager:
             "input_schema": effective_schema,
             "default_input": default_input,
         }
+
+    def persist_execution_examples(
+        self,
+        agent_id: str,
+        examples: List[Dict[str, Any]],
+    ) -> bool:
+        """Write execution_examples into AGENT.md frontmatter (best-effort)."""
+        agent = self._agents.get(agent_id)
+        if not agent:
+            return False
+        cleaned: List[Dict[str, str]] = []
+        for e in examples or []:
+            if not isinstance(e, dict):
+                continue
+            title = str(e.get("title") or "").strip()
+            content = e.get("content")
+            if content is None:
+                continue
+            if isinstance(content, (dict, list)):
+                content = json.dumps(content, ensure_ascii=False, indent=2)
+            else:
+                content = str(content).strip()
+            if title and content:
+                cleaned.append({"title": title[:80], "content": content[:8000]})
+        if not cleaned:
+            return False
+        info = self._read_agent_md(agent_id)
+        if not info:
+            return False
+        try:
+            p = Path(info["path"])
+            fm = info.get("frontmatter") or {}
+            if not isinstance(fm, dict):
+                fm = {}
+            fm["execution_examples"] = cleaned
+            body = info.get("body") or ""
+            fm_text = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).rstrip("\n")
+            p.write_text(f"---\n{fm_text}\n---\n{body}", encoding="utf-8")
+            if not isinstance(agent.metadata, dict):
+                agent.metadata = {}
+            agent.metadata["execution_examples"] = cleaned
+            return True
+        except Exception as e:
+            logging.warning("persist agent execution examples failed: %s", e, exc_info=True)
+            return False
 
     async def delete_agent(self, agent_id: str) -> bool:
         """Delete agent"""

@@ -102,7 +102,15 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
 
         <div className="grid grid-cols-2 gap-3">
           {mcpOptions.length > 0 && <MultiSelect label="MCP 服务器" options={mcpOptions} selected={mcpIds} onChange={setMcpIds} />}
-          {workflowOptions.length > 0 && <MultiSelect label="Workflow" options={workflowOptions} selected={workflowIds} onChange={setWorkflowIds} />}
+          {workflowOptions.length > 0 && (
+            <MultiSelect
+              label="关联 Workflow（可选）"
+              options={workflowOptions}
+              selected={workflowIds}
+              onChange={setWorkflowIds}
+              hint="编排模板关联，非运行时必绑；日常执行靠 Skill/Tool/MCP。"
+            />
+          )}
         </div>
 
         {agentOptions.length > 0 && <MultiSelect label="子 Agent" options={agentOptions} selected={agentIds} onChange={setAgentIds} />}

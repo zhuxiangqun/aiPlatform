@@ -1,9 +1,11 @@
 """Tool listing lifecycle (draft → ready → published → listed → deprecated).
 
-Engine and workspace tools share one status store under AIPLAT_HOME so Agent
-上架 can require published|listed the same way as Skills/MCP.
+Engine/builtin tools (code-registered, not workspace-scoped) default to
+``listed`` so application-layer Agents can bind them without a separate
+上架 flow — same rule as engine-only Skills in approval deps.
 
-Workspace tools also mirror ``status`` into ``*.TOOL.manifest.json`` when present.
+Workspace tools still default to ``draft``. Explicit entries in
+``tool_lifecycle.json`` / ``*.TOOL.manifest.json`` always win.
 """
 from __future__ import annotations
 
@@ -102,8 +104,38 @@ def _write_manifest_status(tool_name: str, status: str, tool_path: Optional[str]
         _logger.warning("Failed to write tool manifest status %s", mp, exc_info=True)
 
 
+def _is_engine_registered(tool_name: str) -> bool:
+    """True when name is in the tool registry and not a workspace-scoped tool.
+
+    Matches ``GET /tools`` semantics: missing provenance.scope ⇒ engine/builtin.
+    """
+    try:
+        from core.apps.tools.base import get_tool_registry
+
+        tool = get_tool_registry().get(tool_name)
+        if tool is None:
+            return False
+        meta = getattr(getattr(tool, "_config", None), "metadata", None) or {}
+        if not isinstance(meta, dict):
+            return True
+        prov = meta.get("provenance") or {}
+        if isinstance(prov, dict) and str(prov.get("scope") or "").strip().lower() == "workspace":
+            return False
+        return True
+    except Exception:
+        return False
+
+
 def get_tool_status(tool_name: str, *, tool_path: Optional[str] = None) -> str:
-    """Return lifecycle status; default ``draft`` when unset."""
+    """Return lifecycle status.
+
+    Precedence: explicit store → workspace manifest → engine builtin ``listed``
+    → default ``draft`` (workspace-created tools).
+
+    Engine/builtin tools are platform-owned and safe for application-layer
+    binding without a separate 上架 flow (aligned with engine-only Skills).
+    Explicit store/manifest still wins (e.g. admin can deprecate).
+    """
     name = str(tool_name or "").strip()
     if not name:
         return _DEFAULT
@@ -113,6 +145,8 @@ def get_tool_status(tool_name: str, *, tool_path: Optional[str] = None) -> str:
     ms = _read_manifest_status(name, tool_path)
     if ms:
         return ms
+    if _is_engine_registered(name):
+        return "listed"
     return _DEFAULT
 
 

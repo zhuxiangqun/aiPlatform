@@ -19,7 +19,8 @@ export const Tabs: React.FC<TabsProps> = ({
   onChange,
   className = '',
 }) => {
-  const [activeTab, setActiveTab] = useState(defaultActiveKey || tabs[0]?.key);
+  const list = Array.isArray(tabs) ? tabs : [];
+  const [activeTab, setActiveTab] = useState(defaultActiveKey || list[0]?.key);
 
   const handleTabClick = (key: string) => {
     setActiveTab(key);
@@ -28,16 +29,17 @@ export const Tabs: React.FC<TabsProps> = ({
 
   return (
     <div className={className}>
-      <div className="flex border-b border-gray-200">
-        {tabs.map((tab) => (
+      <div className="flex gap-1 border-b border-dark-border overflow-x-auto">
+        {list.map((tab) => (
           <button
             key={tab.key}
+            type="button"
             onClick={() => handleTabClick(tab.key)}
             className={`
-              relative px-4 py-2.5 text-sm font-medium transition-colors
+              relative px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap
               ${activeTab === tab.key
                 ? 'text-primary'
-                : 'text-gray-500 hover:text-gray-700'
+                : 'text-gray-500 hover:text-gray-300'
               }
             `}
           >
@@ -48,8 +50,8 @@ export const Tabs: React.FC<TabsProps> = ({
           </button>
         ))}
       </div>
-      <div className="mt-4">
-        {tabs.find((tab) => tab.key === activeTab)?.children}
+      <div className="mt-3">
+        {list.find((tab) => tab.key === activeTab)?.children}
       </div>
     </div>
   );

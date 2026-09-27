@@ -1879,6 +1879,110 @@ async def get_workspace_agent_execution_help(agent_id: str, rt: RuntimeDep = Non
     return data
 
 
+@router.post("/workspace/agents/{agent_id}/generate-execution-examples", response_model=Dict[str, Any])
+async def generate_workspace_agent_execution_examples(
+    agent_id: str,
+    request: Dict[str, Any] = None,
+    http_request: Request = None,
+    rt: RuntimeDep = None,
+):
+    """Optional LLM generation of smoke test cases for Execute Agent UI.
+
+    Body:
+      persist: bool — write into AGENT.md frontmatter execution_examples
+      refine_hint: str — optional extra instruction
+    """
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+
+    body = request if isinstance(request, dict) else {}
+    persist = bool(body.get("persist"))
+    refine_hint = str(body.get("refine_hint") or "").strip()
+
+    if persist and http_request is not None:
+        deny = await rbac_guard(
+            http_request=http_request,
+            payload=body,
+            action="update",
+            resource_type="agent",
+            resource_id=str(agent_id),
+        )
+        if deny:
+            return deny
+
+    skill_ids = list(getattr(agent, "skills", []) or [])
+    info = None
+    try:
+        info = mgr._read_agent_md(agent_id)  # type: ignore[attr-defined]
+    except Exception:
+        info = None
+    fm = (info or {}).get("frontmatter") if isinstance(info, dict) else {}
+    if isinstance(fm, dict):
+        for s in fm.get("required_skills") or []:
+            sid = str(s).strip()
+            if sid and sid not in skill_ids:
+                skill_ids.append(sid)
+    tool_ids = list(getattr(agent, "tools", []) or [])
+    display = str(
+        (getattr(agent, "metadata", None) or {}).get("display_name")
+        or getattr(agent, "name", None)
+        or agent_id
+    )
+    desc = str((getattr(agent, "metadata", None) or {}).get("description") or "")
+    schema = None
+    if isinstance(fm, dict) and isinstance(fm.get("execution_input_schema"), dict):
+        schema = fm.get("execution_input_schema")
+    meta = getattr(agent, "metadata", None) or {}
+    if schema is None and isinstance(meta, dict) and isinstance(meta.get("execution_input_schema"), dict):
+        schema = meta.get("execution_input_schema")
+
+    try:
+        from core.apps.agents.service.agent_execution_examples_llm import (
+            generate_agent_execution_examples_llm,
+        )
+
+        result = await generate_agent_execution_examples_llm(
+            agent_id=str(agent_id),
+            agent_name=display,
+            description=desc,
+            skill_ids=skill_ids,
+            tool_ids=tool_ids,
+            input_schema=schema if isinstance(schema, dict) else {},
+            refine_hint=refine_hint,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)[:200])
+    except Exception as e:
+        logging.exception("generate agent execution examples failed")
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+    examples = result.get("examples") if isinstance(result, dict) else None
+    if not isinstance(examples, list) or not examples:
+        raise HTTPException(status_code=502, detail="LLM did not return usable examples")
+
+    saved = False
+    if persist:
+        try:
+            saved = bool(mgr.persist_execution_examples(str(agent_id), examples))  # type: ignore[attr-defined]
+        except Exception as e:
+            logging.warning("persist agent execution examples failed: %s", e, exc_info=True)
+            saved = False
+
+    return {
+        "status": "ok",
+        "agent_id": agent_id,
+        "examples": examples,
+        "model": result.get("model"),
+        "source": result.get("source"),
+        "warning": result.get("warning"),
+        "persisted": saved,
+    }
+
+
 @router.post("/workspace/routing/classify", response_model=Dict[str, Any])
 async def classify_user_request(request: Request, rt: RuntimeDep = None):
     """Agent 路由：根据用户输入自动推荐最合适的 Agent。
@@ -3315,45 +3419,108 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
                     logging.warning(str(e), exc_info=True)
 
     # ── Check tools ──
+    # Align with Agent 上架硬门禁 (approval.py): tool must be published|listed.
+    # Registry membership alone is not enough — draft tools look "missing" in 资产库.
+    _OK_TOOL_LIFECYCLE = frozenset({"published", "listed"})
+    _TOOL_ALIASES = {
+        "knowledge_retrieve": "routed_retrieve",
+        "knowledge_retrieval": "routed_retrieve",
+        "kb_retrieve": "routed_retrieve",
+        "sys_file_read": "file_operations",
+        "sys_file_write": "file_operations",
+    }
     tools = fm.get("required_tools") or fm.get("tools") or []
     for t in tools:
         t_str = str(t).strip()
-        if t_str in valid_tools:
+        if not t_str:
             continue
-        # Check if it's a syscall
+        if t_str in valid_tools:
+            try:
+                from core.apps.tools.lifecycle import get_tool_status
+                tool_st = get_tool_status(t_str)
+            except Exception:
+                tool_st = "draft"
+            if tool_st not in _OK_TOOL_LIFECYCLE:
+                issues.append({
+                    "severity": "error",
+                    "category": "tool_not_listed",
+                    "field": "tools",
+                    "current": t_str,
+                    "message": (
+                        f"工具 '{t_str}' 已在引擎注册表中，但未上架"
+                        f"（status={tool_st}）——资产库/Agent 上架会视为不可用"
+                    ),
+                    "suggestion": (
+                        f"先在工具库将 '{t_str}' 提交审核并上架到 published/listed，"
+                        "或从 required_tools 解绑"
+                    ),
+                    "fix_available": True,
+                    "fix": {"type": "remove_tool", "tool": t_str},
+                })
+            continue
         is_syscall = t_str.startswith("sys_")
-        suggestion = ""
-        fix = None
-        if t_str == "sys_file_read":
-            suggestion = "替换为 file_operations（sys_file_read 是内核级 syscall，非用户层 tool）"
-            fix = {"type": "replace_tool", "from": "sys_file_read", "to": "file_operations"}
+        alias = _TOOL_ALIASES.get(t_str)
+        if alias and (alias in valid_tools or alias == "file_operations"):
+            issues.append({
+                "severity": "error",
+                "category": "invalid_tool",
+                "field": "tools",
+                "current": t_str,
+                "message": f"工具 '{t_str}' 已废弃/未注册",
+                "suggestion": f"替换为已注册工具 '{alias}'",
+                "fix_available": True,
+                "fix": {"type": "replace_tool", "from": t_str, "to": alias},
+            })
         elif is_syscall:
-            suggestion = f"'{t_str}' 是 syscall，不是 tool——从 tools 列表中移除"
-            fix = {"type": "remove_tool", "tool": t_str}
+            issues.append({
+                "severity": "error",
+                "category": "invalid_tool",
+                "field": "tools",
+                "current": t_str,
+                "message": f"'{t_str}' 是 syscall，不是 tool",
+                "suggestion": "从 tools / required_tools 列表中移除",
+                "fix_available": True,
+                "fix": {"type": "remove_tool", "tool": t_str},
+            })
         else:
-            suggestion = f"工具 '{t_str}' 在系统中不存在——检查是否为拼写错误或未安装的 MCP 工具"
-            fix = {"type": "remove_tool", "tool": t_str}
-        issues.append({
-            "severity": "error", "category": "invalid_tool", "field": "tools",
-            "current": t_str, "message": suggestion, "suggestion": suggestion,
-            "fix_available": fix is not None,
-            "fix": fix,
-        })
-
+            issues.append({
+                "severity": "error",
+                "category": "invalid_tool",
+                "field": "tools",
+                "current": t_str,
+                "message": f"工具 '{t_str}' 在系统中不存在",
+                "suggestion": "检查拼写，或移除后改绑已注册且已上架的工具",
+                "fix_available": True,
+                "fix": {"type": "remove_tool", "tool": t_str},
+            })
     # ── Old format tools field ──
     if fm.get("tools") and not fm.get("required_tools"):
+        keep = []
+        for t in tools:
+            t_str = str(t).strip()
+            alias = _TOOL_ALIASES.get(t_str, t_str)
+            if alias in valid_tools:
+                keep.append(alias)
         issues.append({
-            "severity": "warning", "category": "old_format", "field": "tools",
+            "severity": "warning",
+            "category": "old_format",
+            "field": "tools",
             "message": "使用了旧格式 'tools:' 字段，应迁移到 'required_tools:'",
-            "suggestion": "将 tools: 中的有效条目迁移到 required_tools: 中",
-            "fix": {"type": "migrate_field", "from": "tools", "to": "required_tools", "keep": [t for t in tools if str(t).strip() in valid_tools]},
+            "suggestion": "将有效条目写入 required_tools，并删除旧 tools 字段",
+            "fix_available": True,
+            "fix": {
+                "type": "migrate_field",
+                "from": "tools",
+                "to": "required_tools",
+                "keep": keep,
+            },
         })
 
     # ── Coze import artifacts ──
     tags = fm.get("tags") or []
     if "coze" in tags or "imported" in tags:
         has_coze_issues = any(
-            i["category"] in ("invalid_tool", "invalid_skill", "old_format")
+            i["category"] in ("invalid_tool", "tool_not_listed", "invalid_skill", "old_format")
             for i in issues
         )
         if has_coze_issues:
@@ -3397,18 +3564,43 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
     config = fm.get("config") or {}
     if isinstance(config, dict) and not config.get("system_prompt"):
         issues.append({
-            "severity": "warning", "category": "missing_system_prompt", "field": "config.system_prompt",
+            "severity": "warning",
+            "category": "missing_system_prompt",
+            "field": "config.system_prompt",
             "message": "缺少 system_prompt——运行时将使用 CLAUDE.md 作为回退",
-            "suggestion": "添加 config.system_prompt 字段或在编辑页使用 AI 优化 System Prompt",
+            "suggestion": "添加 config.system_prompt，或在「SOP / 高级」页用 AI 优化 System Prompt",
+            "fix_available": True,
+            "fix": {
+                "type": "set_system_prompt",
+                "system_prompt": (
+                    f"你是{(fm.get('display_name') or fm.get('name') or agent_id)}。"
+                    f"{str(fm.get('description') or '').strip() or '按 AGENT.md 的 Persona/Workflow 执行任务。'}"
+                ),
+            },
         })
 
     # ── Status validity ──
-    status = fm.get("status", "")
-    if status and status not in ("ready", "published", "initializing", "disabled", "deprecated"):
+    status = str(fm.get("status") or "").strip()
+    _STATUS_ALIASES = {
+        "enabled": "ready",
+        "active": "ready",
+        "ok": "ready",
+        "online": "ready",
+        "listed": "published",
+    }
+    if status and status not in ("ready", "published", "initializing", "disabled", "deprecated", "draft"):
+        mapped = _STATUS_ALIASES.get(status)
         issues.append({
-            "severity": "error", "category": "invalid_status", "field": "status",
-            "current": status, "message": f"status 值 '{status}' 不合法",
-            "suggestion": "使用 ready / published / deprecated / disabled 之一",
+            "severity": "error",
+            "category": "invalid_status",
+            "field": "status",
+            "current": status,
+            "message": f"status 值 '{status}' 不合法",
+            "suggestion": (
+                f"改为 '{mapped}'" if mapped else "使用 ready / published / deprecated / disabled / draft 之一"
+            ),
+            "fix_available": bool(mapped),
+            "fix": {"type": "set_status", "status": mapped} if mapped else None,
         })
 
     # ── SOP cleanliness ──
@@ -3419,7 +3611,12 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
             "message": "SOP 正文包含残留空行或裸逗号",
             "suggestion": "清理 SOP 中空的 'Available Plugins' 或残留标点",
         })
-    if '## persona' not in body_lower and '## 角色' not in body_lower and body.strip():
+    if (
+        '## persona' not in body_lower
+        and '## 角色' not in body_lower
+        and '# 角色' not in body_lower
+        and body.strip()
+    ):
         issues.append({
             "severity": "info", "category": "sop_structure", "field": "sop_body",
             "message": "SOP 建议包含 ## Persona 和 ## Workflow 章节",

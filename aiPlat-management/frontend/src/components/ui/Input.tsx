@@ -105,13 +105,14 @@ interface SelectProps {
 export const Select: React.FC<SelectProps> = ({
   value,
   onChange,
-  options,
+  options = [],
   placeholder = '请选择',
   label,
   error,
   disabled,
   className = '',
 }) => {
+  const opts = Array.isArray(options) ? options : [];
   return (
     <div className="w-full">
       {label && (
@@ -141,7 +142,7 @@ export const Select: React.FC<SelectProps> = ({
         <option value="" disabled>
           {placeholder}
         </option>
-        {options.map((opt) => (
+        {opts.map((opt) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}
           </option>

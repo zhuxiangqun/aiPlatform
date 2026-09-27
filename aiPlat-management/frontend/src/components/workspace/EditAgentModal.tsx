@@ -3,7 +3,7 @@ import { workspaceAgentApi, workspaceSkillApi, modelsApi } from '../../services'
 import { toolApi } from '../../services';
 import { workspaceMcpApi, workflowTemplateApi } from '../../services';
 import type { Agent } from '../../services';
-import { Alert, Button, Input, Modal, Textarea, toast, MultiSelect } from '../ui';
+import { Alert, Button, Input, Modal, Textarea, toast, MultiSelect, Tabs } from '../ui';
 import PromptDiffModal from './PromptDiffModal';
 
 interface EditAgentModalProps {
@@ -509,37 +509,227 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     }
   };
 
+  const applyAuditFixLocal = (fix: any): boolean => {
+    if (!fix?.type) return false;
+    if (fix.type === 'replace_tool') {
+      setTools((prev) => {
+        const next = prev.map((t) => (t === fix.from ? fix.to : t));
+        return next.includes(fix.to) ? next : [...next, fix.to];
+      });
+      _ensureOptions(toolOptions, setToolOptions, [String(fix.to)]);
+      return true;
+    }
+    if (fix.type === 'remove_tool') {
+      setTools((prev) => prev.filter((t) => t !== fix.tool));
+      return true;
+    }
+    if (fix.type === 'migrate_field') {
+      const keep = Array.isArray(fix.keep) ? fix.keep.map(String) : [];
+      setTools((prev) => {
+        const cleaned = prev.filter((t) => t !== 'knowledge_retrieve' && t !== 'knowledge_retrieval');
+        return [...new Set([...cleaned, ...keep])];
+      });
+      if (keep.length) _ensureOptions(toolOptions, setToolOptions, keep);
+      return true;
+    }
+    if (fix.type === 'add_skill') {
+      setSkills((prev) => (prev.includes(fix.skill) ? prev : [...prev, fix.skill]));
+      return true;
+    }
+    if (fix.type === 'set_kb_collection') {
+      setKnowledgeBases([fix.collection]);
+      return true;
+    }
+    if (fix.type === 'set_status') {
+      setAgentStatus(String(fix.status || 'ready'));
+      return true;
+    }
+    if (fix.type === 'set_system_prompt') {
+      const sp = String(fix.system_prompt || '').trim();
+      if (!sp) return false;
+      try {
+        const cfg = configText?.trim() ? JSON.parse(configText) : {};
+        cfg.system_prompt = sp;
+        if (selectedModel && !cfg.model) cfg.model = selectedModel;
+        setConfigText(JSON.stringify(cfg, null, 2));
+      } catch {
+        setConfigText(JSON.stringify({ model: selectedModel || 'qwen2.5:3b', system_prompt: sp }, null, 2));
+      }
+      return true;
+    }
+    return false;
+  };
+
   const applyAuditFix = async (fix: any) => {
     if (!agent || !fix) return;
     try {
-      if (fix.type === 'replace_tool') {
-        setTools(prev => prev.map(t => t === fix.from ? fix.to : t));
-        toast.success(`已替换: ${fix.from} → ${fix.to}`);
-      } else if (fix.type === 'remove_tool') {
-        setTools(prev => prev.filter(t => t !== fix.tool));
-        toast.success(`已移除: ${fix.tool}`);
-      } else if (fix.type === 'migrate_field') {
-        toast.success('字段已迁移到 required_tools');
-      } else if (fix.type === 'add_skill') {
-        setSkills(prev => prev.includes(fix.skill) ? prev : [...prev, fix.skill]);
-        toast.success(`已添加技能: ${fix.skill}`);
-      } else if (fix.type === 'set_kb_collection') {
-        setKnowledgeBases([fix.collection]);
-        toast.success(`已设置知识库集合: ${fix.collection}`);
+      const ok = applyAuditFixLocal(fix);
+      if (!ok) {
+        toast.warning('该问题暂无自动修复');
+        return;
       }
-      // Re-audit after fix
-      await handleAudit();
+      toast.success('已应用到表单，请点「保存」写入 AGENT.md');
     } catch (e: any) {
       toast.error('修复失败', String(e?.message || ''));
     }
   };
 
   const handleApplyAllFixes = async () => {
-    if (!auditResult?.issues) return;
+    if (!agent || !auditResult?.issues) return;
     const fixable = auditResult.issues.filter((i: any) => i.fix_available && i.fix);
-    if (!fixable.length) { toast.info('没有可自动修复的问题'); return; }
-    for (const issue of fixable) {
-      await applyAuditFix(issue.fix);
+    if (!fixable.length) {
+      toast.info('没有可自动修复的问题');
+      return;
+    }
+    try {
+      setLoading(true);
+      // 1) Apply all fixes into local React state (order: replace → migrate → others)
+      const ordered = [...fixable].sort((a: any, b: any) => {
+        const rank = (t: string) =>
+          t === 'replace_tool' ? 0 : t === 'remove_tool' ? 1 : t === 'migrate_field' ? 2 : 3;
+        return rank(String(a.fix?.type || '')) - rank(String(b.fix?.type || ''));
+      });
+      let applied = 0;
+      let nextTools = [...tools];
+      let nextSkills = [...skills];
+      let nextStatus = agentStatus;
+      let nextKb = [...knowledgeBases];
+      let nextConfigText = configText;
+
+      for (const issue of ordered) {
+        const fix = issue.fix;
+        if (!fix?.type) continue;
+        if (fix.type === 'replace_tool') {
+          nextTools = nextTools.map((t) => (t === fix.from ? fix.to : t));
+          if (!nextTools.includes(fix.to)) nextTools.push(fix.to);
+          applied += 1;
+        } else if (fix.type === 'remove_tool') {
+          nextTools = nextTools.filter((t) => t !== fix.tool);
+          applied += 1;
+        } else if (fix.type === 'migrate_field') {
+          const keep = Array.isArray(fix.keep) ? fix.keep.map(String) : [];
+          nextTools = [...new Set([
+            ...nextTools.filter((t) => t !== 'knowledge_retrieve' && t !== 'knowledge_retrieval'),
+            ...keep,
+          ])];
+          applied += 1;
+        } else if (fix.type === 'add_skill') {
+          if (!nextSkills.includes(fix.skill)) nextSkills.push(fix.skill);
+          applied += 1;
+        } else if (fix.type === 'set_kb_collection') {
+          nextKb = [fix.collection];
+          applied += 1;
+        } else if (fix.type === 'set_status') {
+          nextStatus = String(fix.status || 'ready');
+          applied += 1;
+        } else if (fix.type === 'set_system_prompt') {
+          const sp = String(fix.system_prompt || '').trim();
+          if (sp) {
+            try {
+              const cfg = nextConfigText?.trim() ? JSON.parse(nextConfigText) : {};
+              cfg.system_prompt = sp;
+              if (selectedModel && !cfg.model) cfg.model = selectedModel;
+              nextConfigText = JSON.stringify(cfg, null, 2);
+            } catch {
+              nextConfigText = JSON.stringify(
+                { model: selectedModel || 'qwen2.5:3b', system_prompt: sp },
+                null,
+                2,
+              );
+            }
+            applied += 1;
+          }
+        }
+      }
+
+      setTools(nextTools);
+      setSkills(nextSkills);
+      setAgentStatus(nextStatus);
+      setKnowledgeBases(nextKb);
+      setConfigText(nextConfigText);
+      _ensureOptions(toolOptions, setToolOptions, nextTools);
+      _ensureOptions(skillOptions, setSkillOptions, nextSkills);
+
+      // 2) Persist immediately so subsequent audit reads fixed AGENT.md
+      let config: Record<string, unknown> = {};
+      try {
+        config = nextConfigText?.trim() ? JSON.parse(nextConfigText) : {};
+      } catch {
+        toast.error('配置 JSON 格式错误，已应用表单但未保存');
+        setLoading(false);
+        return;
+      }
+      let memory_config: Record<string, unknown> | undefined;
+      if (memoryConfigText?.trim()) {
+        try {
+          memory_config = JSON.parse(memoryConfigText);
+        } catch {
+          toast.error('memory_config JSON 格式错误');
+          setLoading(false);
+          return;
+        }
+      }
+      const metadata: Record<string, unknown> = { ...(agent.metadata || {}) };
+      if (description.trim()) metadata.description = description.trim();
+      metadata.generate_test_plan = generateTestPlan;
+      metadata.auto_hitl = autoHitl;
+      metadata.phase_description = phaseDescription.trim() || undefined;
+      metadata.hitl_after_execute = hitlAfterExecute;
+      metadata.hitl_after_phase = hitlAfterPhase.trim() || undefined;
+      metadata.loop_type = loopType;
+      metadata.knowledge_bases = nextKb;
+      if (defaultToolset && defaultToolset !== 'workspace_default') metadata.toolset = defaultToolset;
+      else delete (metadata as any).toolset;
+
+      await workspaceAgentApi.update(agent.id, {
+        name: name.trim() || undefined,
+        status: nextStatus || undefined,
+        config,
+        skills: nextSkills.length ? nextSkills : undefined,
+        tools: nextTools.length ? nextTools : [],
+        mcp_ids: mcpIds.length ? mcpIds : undefined,
+        workflow_ids: workflowIds.length ? workflowIds : undefined,
+        agent_ids: agentIds.length ? agentIds : undefined,
+        memory_config,
+        metadata,
+        ...(triggerText.trim()
+          ? { trigger_conditions: triggerText.split('\n').map((s) => s.trim()).filter(Boolean) }
+          : {}),
+        ...(permissionsText.trim() ? { permissions: JSON.parse(permissionsText) as string[] } : {}),
+      });
+
+      // sync tool/skill bindings
+      try {
+        const curSkillsRes = await workspaceAgentApi.getSkills(agent.id);
+        const curToolsRes = await workspaceAgentApi.getTools(agent.id);
+        const curSkills = new Set<string>(((curSkillsRes as any).skill_ids || []) as string[]);
+        const curTools = new Set<string>(((curToolsRes as any).tool_ids || []) as string[]);
+        const desiredSkills = new Set(nextSkills);
+        const desiredTools = new Set(nextTools);
+        await Promise.all(
+          Array.from(curSkills)
+            .filter((id) => !desiredSkills.has(id))
+            .map((id) => workspaceAgentApi.unbindSkill(agent.id, id)),
+        );
+        await Promise.all(
+          Array.from(curTools)
+            .filter((id) => !desiredTools.has(id))
+            .map((id) => workspaceAgentApi.unbindTool(agent.id, id)),
+        );
+        const toAddSkills = Array.from(desiredSkills).filter((id) => !curSkills.has(id));
+        const toAddTools = Array.from(desiredTools).filter((id) => !curTools.has(id));
+        if (toAddSkills.length) await workspaceAgentApi.bindSkills(agent.id, toAddSkills);
+        if (toAddTools.length) await workspaceAgentApi.bindTools(agent.id, toAddTools);
+      } catch {
+        // binding sync best-effort
+      }
+
+      toast.success(`已自动修复 ${applied} 项并保存，正在重新审核…`);
+      await handleAudit();
+    } catch (e: any) {
+      toast.error('一键修复失败', String(e?.message || e?.detail || ''));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -551,8 +741,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     <Modal
       open={open}
       onClose={onClose}
-      title="编辑应用库 Agent"
-      width={720}
+      title={`编辑应用库 Agent${name ? ` · ${name}` : ''}`}
+      width={880}
       footer={
         <>
           <Button variant="secondary" onClick={handleSmartFill} loading={smartFillLoading}>
@@ -571,8 +761,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         </>
       }
     >
-      <div className="space-y-4">
-        {/* AI 审核结果 */}
+      <div className="space-y-3">
         {auditResult && (
           <div className={`p-3 rounded-lg border text-xs ${
             auditResult.summary?.health === 'A' ? 'border-green-500/30 bg-green-900/10' :
@@ -623,253 +812,271 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
             </div>)}
           </div>
         )}
-        <Input label="名称（显示名）" value={name} onChange={(e: any) => setName(e.target.value)} />
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">功能描述</label>
-          <Textarea
-            value={description}
-            onChange={(e: any) => setDescription(e.target.value)}
-            rows={3}
-            placeholder="描述这个 Agent 的功能目标、工作流程和适用场景，AI 智能填充将根据此描述推荐 Agent 类型、模型、Skills / Tools / MCP / 子 Agent / Workflow / 配置 / SOP / 记忆配置"
-          />
+
+        <div className="flex flex-wrap gap-2 text-[11px] text-gray-500">
+          <span className="px-2 py-0.5 rounded bg-dark-card border border-dark-border">技能 {skills.length}</span>
+          <span className="px-2 py-0.5 rounded bg-dark-card border border-dark-border">工具 {tools.length}</span>
+          <span className="px-2 py-0.5 rounded bg-dark-card border border-dark-border">子Agent {agentIds.length}</span>
+          <span className="px-2 py-0.5 rounded bg-dark-card border border-dark-border">知识库 {knowledgeBases.length}</span>
+          <span className="px-2 py-0.5 rounded bg-dark-card border border-dark-border">模型 {selectedModel || '—'}</span>
         </div>
-        <Textarea label="trigger_conditions（每行一条，可选）" rows={3} value={triggerText} onChange={(e: any) => setTriggerText(e.target.value)} placeholder="例如：\n帮我分析代码...\n代码审查" />
-        <Textarea label="permissions（JSON 数组）" rows={3} value={permissionsText} onChange={(e: any) => setPermissionsText(e.target.value)} placeholder='["llm:generate"]' />
-        <div className="mb-2">
-          <label className="block text-sm font-medium text-gray-300 mb-1">状态</label>
-          {['draft', 'ready'].includes(agentStatus) ? (
-            <select value={agentStatus} onChange={(e) => setAgentStatus(e.target.value)}
-              className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100">
-              <option value="draft">draft（草稿）</option>
-              <option value="ready">ready（待审核 — 提交后等管理员审批）</option>
-            </select>
-          ) : (
-            <div className="w-full min-h-10 px-3 py-2 flex flex-wrap items-center gap-2 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-400">
-              <span>
-                {agentStatus === 'published' ? '已发布' :
-                 agentStatus === 'listed' ? '已上架' :
-                 agentStatus === 'deprecated' ? '已废弃 — 只读' :
-                 agentStatus}
-              </span>
-              {agentStatus !== 'deprecated' && (
-                <a href="/approval?type=agent" className="text-amber-300 underline text-xs">去资产审批操作</a>
+
+        <Tabs
+          key={agent?.id || 'edit-agent'}
+          defaultActiveKey="basic"
+          tabs={[
+            {
+              key: 'basic',
+              label: '基本信息',
+              children: (
+          <div className="space-y-3">
+            <Input label="名称（显示名）" value={name} onChange={(e: any) => setName(e.target.value)} />
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">功能描述</label>
+              <Textarea
+                value={description}
+                onChange={(e: any) => setDescription(e.target.value)}
+                rows={3}
+                placeholder="描述功能目标与适用场景；一键生成会据此推荐绑定与 SOP"
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">状态</label>
+                {['draft', 'ready'].includes(agentStatus) ? (
+                  <select value={agentStatus} onChange={(e) => setAgentStatus(e.target.value)}
+                    className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100">
+                    <option value="draft">draft（草稿）</option>
+                    <option value="ready">ready（待审核）</option>
+                  </select>
+                ) : (
+                  <div className="w-full min-h-10 px-3 py-2 flex flex-wrap items-center gap-2 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-400">
+                    <span>
+                      {agentStatus === 'published' ? '已发布' :
+                       agentStatus === 'listed' ? '已上架' :
+                       agentStatus === 'deprecated' ? '已废弃 — 只读' :
+                       agentStatus}
+                    </span>
+                    {agentStatus !== 'deprecated' && (
+                      <a href="/approval?type=agent" className="text-amber-300 underline text-xs">去资产审批</a>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="text-sm font-medium text-gray-300 mb-1">模型</div>
+                <select
+                  value={selectedModel}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSelectedModel(v);
+                    try {
+                      const cfg = configText?.trim() ? JSON.parse(configText) : {};
+                      cfg.model = v;
+                      setConfigText(JSON.stringify(cfg, null, 2));
+                    } catch {
+                      setConfigText(JSON.stringify({ model: v, temperature: 0.1 }, null, 2));
+                    }
+                  }}
+                  className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
+                >
+                  {modelOptions.map((m) => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <div className="text-sm font-medium text-gray-300 mb-1">默认 Toolset</div>
+                <select
+                  value={defaultToolset}
+                  onChange={(e) => setDefaultToolset(e.target.value)}
+                  className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
+                >
+                  <option value="workspace_default">workspace_default（默认）</option>
+                  <option value="safe_readonly">safe_readonly（只读）</option>
+                  <option value="mcp_readonly">mcp_readonly（MCP）</option>
+                  <option value="browser">browser（浏览器/HTTP）</option>
+                  <option value="full">full（全量/高风险）</option>
+                </select>
+                <div className="text-[10px] text-gray-500 mt-1">写入 metadata.toolset；执行时可临时覆盖</div>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-gray-300 mb-1">Agent 策略</div>
+                <select
+                  value={loopType}
+                  onChange={(e) => setLoopType(e.target.value)}
+                  className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
+                >
+                  <option value="react">ReAct — 透明推理循环</option>
+                  <option value="function_call">Function Calling — 原生工具调用</option>
+                </select>
+              </div>
+            </div>
+            <details className="rounded-lg border border-dark-border bg-dark-card/30">
+              <summary className="cursor-pointer px-3 py-2 text-sm text-gray-400 hover:text-gray-200">触发词 / 权限（可选）</summary>
+              <div className="px-3 pb-3 space-y-2 border-t border-dark-border/50">
+                <Textarea label="trigger_conditions（每行一条）" rows={2} value={triggerText} onChange={(e: any) => setTriggerText(e.target.value)} placeholder="例如：帮我分析需求" />
+                <Textarea label="permissions（JSON 数组）" rows={2} value={permissionsText} onChange={(e: any) => setPermissionsText(e.target.value)} placeholder='["llm:generate"]' />
+              </div>
+            </details>
+            <details className="rounded-lg border border-dark-border bg-dark-card/30">
+              <summary className="cursor-pointer px-3 py-2 text-sm text-gray-400 hover:text-gray-200">流水线配置</summary>
+              <div className="px-3 pb-3 space-y-2 border-t border-dark-border/50">
+                <Input label="阶段描述（phase_description）" value={phaseDescription} onChange={(e: any) => setPhaseDescription(e.target.value)} placeholder="如：需求分析与PRD生成" />
+                <label className="flex items-center gap-2 text-xs text-gray-400">
+                  <input type="checkbox" checked={generateTestPlan} onChange={(e) => setGenerateTestPlan(e.target.checked)} className="w-4 h-4" />
+                  自动生成测试计划
+                </label>
+                <label className="flex items-center gap-2 text-xs text-gray-400">
+                  <input type="checkbox" checked={autoHitl} onChange={(e) => setAutoHitl(e.target.checked)} className="w-4 h-4" />
+                  自动启用 HITL
+                </label>
+                <label className="flex items-center gap-2 text-xs text-gray-400">
+                  <input type="checkbox" checked={hitlAfterExecute} onChange={(e) => setHitlAfterExecute(e.target.checked)} className="w-4 h-4" />
+                  执行后暂停
+                </label>
+                {hitlAfterExecute && (
+                  <Input label="暂停阶段名" value={hitlAfterPhase} onChange={(e: any) => setHitlAfterPhase(e.target.value)} />
+                )}
+              </div>
+            </details>
+            <div className="flex flex-wrap gap-2 justify-end">
+              <Button variant="secondary" onClick={handleAutoFill} loading={autoFillLoading}>
+                📋 生成角色定义
+              </Button>
+              {showRolePreview && roleDefinition && (
+                <Button variant="primary" onClick={handleAutoFillWithRole} loading={autoFillLoading}>
+                  ✨ 更新推荐配置
+                </Button>
               )}
             </div>
-          )}
-        </div>
-
-        {/* ── 流水线配置 ── */}
-        <details className="mt-2">
-          <summary className="text-sm font-medium text-gray-300 cursor-pointer hover:text-gray-200">⚙️ 流水线配置</summary>
-          <div className="mt-2 ml-2 space-y-2 p-2 rounded bg-dark-hover/30">
-            <Input label="阶段描述（phase_description）" value={phaseDescription} onChange={(e: any) => setPhaseDescription(e.target.value)} placeholder="如：系统架构设计" />
-            <div className="flex items-center gap-2 mt-1">
-              <input type="checkbox" checked={generateTestPlan} onChange={(e) => setGenerateTestPlan(e.target.checked)} className="w-4 h-4" />
-              <span className="text-xs text-gray-400">自动生成测试计划（generate_test_plan）</span>
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              <input type="checkbox" checked={autoHitl} onChange={(e) => setAutoHitl(e.target.checked)} className="w-4 h-4" />
-              <span className="text-xs text-gray-400">自动启用 HITL 确认（auto_hitl）</span>
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              <input type="checkbox" checked={hitlAfterExecute} onChange={(e) => setHitlAfterExecute(e.target.checked)} className="w-4 h-4" />
-              <span className="text-xs text-gray-400">执行后暂停（hitl_after_execute）</span>
-            </div>
-            {hitlAfterExecute && (
-              <Input label="执行后暂停阶段名（hitl_after_phase）" value={hitlAfterPhase} onChange={(e: any) => setHitlAfterPhase(e.target.value)} placeholder="如：awaiting_test_report_review" />
+            {showRolePreview && roleDefinition && (
+              <div className="bg-blue-900/20 border border-blue-500/20 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-blue-300">角色定义 JSON</span>
+                  <button
+                    type="button"
+                    onClick={() => { setShowRolePreview(false); setRoleDefinition(null); }}
+                    className="text-xs text-gray-500 hover:text-gray-300"
+                  >
+                    关闭
+                  </button>
+                </div>
+                <Textarea
+                  value={JSON.stringify(roleDefinition, null, 2)}
+                  onChange={(e: any) => {
+                    try { setRoleDefinition(JSON.parse(e.target.value)); } catch { /* keep editing */ }
+                  }}
+                  rows={8}
+                />
+              </div>
             )}
           </div>
-        </details>
-
-        <div>
-          <div className="text-sm font-medium text-gray-300 mb-2">默认 Toolset（运行时工具集）</div>
-          <select
-            value={defaultToolset}
-            onChange={(e) => setDefaultToolset(e.target.value)}
-            className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
-          >
-            <option value="workspace_default">workspace_default（默认）</option>
-            <option value="safe_readonly">safe_readonly（只读）</option>
-            <option value="mcp_readonly">mcp_readonly（MCP 工具）</option>
-            <option value="browser">browser（浏览器/HTTP）</option>
-            <option value="full">full（全量/高风险）</option>
-          </select>
-          <div className="text-xs text-gray-500 mt-1">
-            提示：该字段会写入 Agent metadata.toolset；执行弹窗会默认读取它，也可在执行时临时覆盖。
+              ),
+            },
+            {
+              key: 'bindings',
+              label: `能力绑定 (${skills.length + tools.length + mcpIds.length + workflowIds.length + agentIds.length + knowledgeBases.length})`,
+              children: (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-500">已选项显示为标签；在搜索框中查找并添加，不再整页铺满「+」按钮。</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <MultiSelect label="绑定技能" options={skillOptions} selected={skills} onChange={setSkills} />
+                {missingSkills.length > 0 && (
+                  <div className="text-yellow-400 text-xs bg-yellow-900/20 border border-yellow-800 rounded px-3 py-2 mt-1 space-y-1">
+                    <p className="font-medium">⚠️ Skill 库未找到匹配：</p>
+                    {missingSkills.map((m: any, i: number) => (
+                      <div key={i} className="ml-2 border-l-2 border-yellow-700 pl-2">
+                        <p>需要：<b>{m.capability}</b> → 建议：<code>{m.suggested_name}</code></p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <MultiSelect label="绑定工具" options={toolOptions} selected={tools} onChange={setTools} />
+                {missingTools.length > 0 && (
+                  <div className="text-yellow-400 text-xs bg-yellow-900/20 border border-yellow-800 rounded px-3 py-2 mt-1 space-y-1">
+                    <p className="font-medium">⚠️ 建议补充工具：</p>
+                    {missingTools.map((m: any, i: number) => (
+                      <div key={i} className="ml-2 border-l-2 border-yellow-700 pl-2">
+                        <p><b>{m.tool}</b> — {m.reason}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            {missingMcps.length > 0 && (
+              <div className="text-yellow-400 text-xs bg-yellow-900/20 border border-yellow-800 rounded px-3 py-2 space-y-1">
+                <p className="font-medium">⚠️ 建议配置 MCP：</p>
+                {missingMcps.map((m: any, i: number) => (
+                  <p key={i} className="ml-2">{m.description}</p>
+                ))}
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {mcpOptions.length > 0 && <MultiSelect label="绑定 MCP" options={mcpOptions} selected={mcpIds} onChange={setMcpIds} />}
+              {workflowOptions.length > 0 && (
+                <MultiSelect
+                  label="关联 Workflow（可选）"
+                  options={workflowOptions}
+                  selected={workflowIds}
+                  onChange={setWorkflowIds}
+                  hint="编排模板关联，非运行时必绑；日常执行靠 Skill/Tool/MCP。空着即可。"
+                />
+              )}
+            </div>
+            {agentOptions.length > 0 && (
+              <MultiSelect label="绑定子 Agent" options={agentOptions} selected={agentIds} onChange={setAgentIds} hint="可将任务委派给选中的子 Agent" />
+            )}
+            {kbOptions.length > 0 && (
+              <MultiSelect label="知识库（Wiki 集合）" options={kbOptions} selected={knowledgeBases} onChange={setKnowledgeBases} hint="不选则默认 default" />
+            )}
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <div className="text-sm font-medium text-gray-300 mb-2">模型（来自基础设施模型库）</div>
-            <select
-              value={selectedModel}
-              onChange={(e) => {
-                const v = e.target.value;
-                setSelectedModel(v);
+              ),
+            },
+            {
+              key: 'advanced',
+              label: 'SOP / 高级',
+              children: (
+          <div className="space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium text-gray-300">SOP（Markdown）</span>
+                {sopLoading && <span className="text-xs text-gray-500">加载中…</span>}
+              </div>
+              <Textarea
+                value={sopText}
+                onChange={(e: any) => setSopText(e.target.value)}
+                rows={12}
+                placeholder="角色定义与工作流程（写入 AGENT.md body）"
+              />
+            </div>
+            <Textarea label="配置（JSON）" value={configText} onChange={(e: any) => setConfigText(e.target.value)} rows={6} />
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => {
                 try {
-                  const cfg = configText?.trim() ? JSON.parse(configText) : {};
-                  cfg.model = v;
-                  setConfigText(JSON.stringify(cfg, null, 2));
-                } catch {
-                  setConfigText(JSON.stringify({ model: v, temperature: 0.1 }, null, 2));
-                }
-              }}
-              className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
-            >
-              {modelOptions.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-end justify-end">
-            <Button
-              variant="primary"
-              onClick={handleAutoFill}
-              disabled={autoFillLoading}
-              loading={autoFillLoading}
-            >
-              📋 生成角色定义
-            </Button>
-          </div>
-        </div>
-
-        {/* Role Definition Preview */}
-        {showRolePreview && roleDefinition && (
-          <div className="bg-blue-900/20 border border-blue-500/20 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-               <span className="text-sm font-medium text-blue-300">📋 角色定义（可编辑 JSON）</span>
-               <div className="flex items-center gap-2">
-                 <button
-                   onClick={() => { setShowRolePreview(false); setRoleDefinition(null); }}
-                   className="text-xs text-gray-500 hover:text-gray-300"
-                 >
-                   关闭
-                 </button>
-               </div>
+                  const cfg = JSON.parse(configText || '{}');
+                  const sp = cfg.system_prompt || '';
+                  if (!sp) { toast.warning('配置中无 system_prompt 可优化'); return; }
+                  setOptimizePrompt(sp);
+                  setOptimizeOpen(true);
+                } catch { toast.warning('配置 JSON 格式错误'); }
+              }}>🤖 AI 优化 System Prompt</Button>
             </div>
-            <div className="text-xs text-gray-400 mb-2">
-              格式：{'{ "role_name": "...", "responsibilities": [...], "scenarios": [...], "required_capabilities": [...], "workflow_hint": "...", "reasoning": "..." }'}
-            </div>
-            <Textarea
-              value={JSON.stringify(roleDefinition, null, 2)}
-              onChange={(e: any) => {
-                try { setRoleDefinition(JSON.parse(e.target.value)); } catch { /* invalid JSON, keep editing */ }
-              }}
-              rows={12}
-              placeholder='{"role_name":"产品经理","responsibilities":["需求收集","PRD生成"],...}'
-            />
+            <Textarea label="memory_config（JSON，可选）" value={memoryConfigText} onChange={(e: any) => setMemoryConfigText(e.target.value)} rows={4} />
+            <Alert type="info" title="说明">
+              {configHint} {configHint2}
+            </Alert>
           </div>
-        )}
-
-        {/* AI fill button — only when role definition exists */}
-        {showRolePreview && roleDefinition && (
-          <div className="flex items-end justify-end">
-            <Button variant="primary" onClick={handleAutoFillWithRole} loading={autoFillLoading}>
-              ✨ 更新推荐配置
-            </Button>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <MultiSelect label="绑定技能" options={skillOptions} selected={skills} onChange={setSkills} />
-            {missingSkills.length > 0 && (
-              <div className="text-yellow-400 text-xs bg-yellow-900/20 border border-yellow-800 rounded px-3 py-2 mt-1 space-y-1">
-                <p className="font-medium">⚠️ AI 检测到以下能力需求，但 Skill 库中未找到匹配项：</p>
-                {missingSkills.map((m: any, i: number) => (
-                  <div key={i} className="ml-2 border-l-2 border-yellow-700 pl-2">
-                    <p>需要能力：<b>{m.capability}</b> → 建议创建：<code>{m.suggested_name}</code></p>
-                    <p className="text-gray-400">{m.how_to_create}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div>
-            <MultiSelect label="绑定工具" options={toolOptions} selected={tools} onChange={setTools} />
-            {missingTools.length > 0 && (
-              <div className="text-yellow-400 text-xs bg-yellow-900/20 border border-yellow-800 rounded px-3 py-2 mt-1 space-y-1">
-                <p className="font-medium">⚠️ 未自动匹配工具，根据已绑定 Skill 建议添加：</p>
-                {missingTools.map((m: any, i: number) => (
-                  <div key={i} className="ml-2 border-l-2 border-yellow-700 pl-2">
-                    <p>工具：<b>{m.tool}</b> — {m.reason}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {missingMcps.length > 0 && (
-          <div className="text-yellow-400 text-xs bg-yellow-900/20 border border-yellow-800 rounded px-3 py-2 space-y-1">
-            <p className="font-medium">⚠️ Agent 描述涉及外部系统对接，建议配置 MCP 连接：</p>
-            {missingMcps.map((m: any, i: number) => (
-              <div key={i} className="ml-2 border-l-2 border-yellow-700 pl-2">
-                <p>{m.description}</p>
-                <p className="text-gray-400">{m.how_to_create}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {mcpOptions.length > 0 && <MultiSelect label="绑定 MCP" options={mcpOptions} selected={mcpIds} onChange={setMcpIds} />}
-          {workflowOptions.length > 0 && <MultiSelect label="绑定 Workflow" options={workflowOptions} selected={workflowIds} onChange={setWorkflowIds} />}
-        </div>
-
-        {agentOptions.length > 0 && (
-          <MultiSelect label="绑定子 Agent" options={agentOptions} selected={agentIds} onChange={setAgentIds} hint="当前 Agent 可以将任务委派给选中的子 Agent" />
-        )}
-        {kbOptions.length > 0 && <MultiSelect label="知识库（Wiki 集合）" options={kbOptions} selected={knowledgeBases} onChange={setKnowledgeBases} hint="指定 Agent 使用的 Wiki 知识库集合；不选则默认用 default" />}
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-sm font-medium text-gray-300 mb-2">Agent 策略</div>
-            <select
-              value={loopType}
-              onChange={(e) => setLoopType(e.target.value)}
-              className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
-            >
-              <option value="react">ReAct (Reason + Act) — 透明推理循环</option>
-              <option value="function_call">Function Calling — 模型原生工具调用</option>
-            </select>
-            <div className="text-xs text-gray-500 mt-1">
-              ReAct 适用于大多数模型；Function Calling 需要模型支持（GPT-4 / Claude）
-            </div>
-          </div>
-        </div>
-
-        <Textarea label="配置（JSON）" value={configText} onChange={(e: any) => setConfigText(e.target.value)} rows={10} />
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={() => {
-            try {
-              const cfg = JSON.parse(configText || '{}');
-              const sp = cfg.system_prompt || '';
-              if (!sp) { toast.warning('配置中无 system_prompt 可优化'); return; }
-              setOptimizePrompt(sp);
-              setOptimizeOpen(true);
-            } catch { toast.warning('配置 JSON 格式错误'); }
-          }}>🤖 AI 优化 System Prompt</Button>
-        </div>
-        <Textarea label="memory_config（JSON，可选）" value={memoryConfigText} onChange={(e: any) => setMemoryConfigText(e.target.value)} rows={6} />
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-medium text-gray-300">SOP（Markdown，可选）</span>
-          </div>
-          <Textarea
-          value={sopText}
-          onChange={(e: any) => setSopText(e.target.value)}
-          rows={10}
-          placeholder={'例如：\n1. 澄清问题与范围。\n2. 调用 knowledge_retrieval 检索证据。\n3. 综合生成答案并引用证据。'}
-          />
-          </div>
-        {sopLoading && <div className="text-xs text-gray-500">SOP 加载中...</div>}
-        <Alert type="info" title="说明">
-          {configHint} {configHint2}
-        </Alert>
+              ),
+            },
+          ]}
+        />
       </div>
     </Modal>
 

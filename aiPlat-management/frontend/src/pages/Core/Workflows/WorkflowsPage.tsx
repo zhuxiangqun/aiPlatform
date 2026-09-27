@@ -100,7 +100,7 @@ const WorkflowsPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-gray-100">Workflow</h1>
-          <p className="text-xs text-gray-500 mt-1">管理你的 AI Workflow，拖拽节点构建流水线</p>
+          <p className="text-xs text-gray-500 mt-1">工作区编排：拖拽节点组装 Agent/Skill/Tool 流水线（非引擎内置能力）</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" loading={deduping} onClick={dedupeWorkflows} title="合并同名且节点相同的重复 Workflow">

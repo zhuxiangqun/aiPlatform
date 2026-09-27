@@ -305,6 +305,21 @@ export const workspaceAgentApi = {
     }>(`/core/workspace/agents/${agentId}/execution-help`);
   },
 
+  generateExecutionExamples: async (
+    agentId: string,
+    data?: { persist?: boolean; refine_hint?: string },
+  ) => {
+    return apiClient.post<{
+      status: string;
+      agent_id: string;
+      examples: Array<{ title: string; content: string }>;
+      model?: string;
+      source?: string;
+      warning?: string;
+      persisted?: boolean;
+    }>(`/core/workspace/agents/${agentId}/generate-execution-examples`, data || {});
+  },
+
   execute: async (agentId: string, data: { messages?: unknown[]; input?: unknown; context?: Record<string, unknown>; options?: { toolset?: string; force_react?: boolean; loop_engine?: string }; config?: Record<string, unknown> }) => {
     return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string; duration_ms?: number; metadata?: Record<string, unknown> }>(`/core/workspace/agents/${agentId}/execute`, data);
   },

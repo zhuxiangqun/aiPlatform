@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { RotateCw, PlayCircle, PauseCircle, Trash2, Zap, Pencil, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Table, Select, Button, Modal, toast } from '../../../components/ui';
+import { Table, Select, Button, Modal, Input, toast } from '../../../components/ui';
 import { EditAgentModal, ExecuteAgentModal, AgentDetailModal, ChatPanel } from '../../../components/core';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
 import { getCategoryColor } from '../../../utils/statusLabel';
@@ -12,6 +12,7 @@ const Agents: React.FC = () => {
   const { agents, loading, fetchAgents, startAgent, stopAgent, deleteAgent } = useAgentStore();
   const [typeFilter, setTypeFilter] = useState<string | undefined>();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
+  const [search, setSearch] = useState('');
   const [executeModalOpen, setExecuteModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -202,9 +203,14 @@ const Agents: React.FC = () => {
     },
   ];
 
-  const filteredAgents = agents.filter(a => {
+  const filteredAgents = (agents || []).filter(a => {
     if (typeFilter && a.agent_type !== typeFilter) return false;
     if (statusFilter && a.status !== statusFilter) return false;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      const hay = `${a.id || ''} ${a.name || ''} ${(a as any).display_name || ''} ${a.description || ''} ${a.agent_type || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
     return true;
   });
 
@@ -243,6 +249,9 @@ const Agents: React.FC = () => {
             ]}
             placeholder="状态筛选"
           />
+          <div className="w-56">
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索名称、ID 或描述..." />
+          </div>
           <Button
             icon={<RotateCw className="w-4 h-4" />}
             onClick={fetchAgents}
