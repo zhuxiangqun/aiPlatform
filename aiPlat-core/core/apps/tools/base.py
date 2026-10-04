@@ -39,8 +39,32 @@ class BaseTool(ITool):
     Provides common functionality for all tool implementations.
     """
 
-    def __init__(self, config: ToolConfig):
-        self._config = config
+    def __init__(self, config: Any):
+        # Accept ToolConfig or legacy ToolMetadata (+ later input_schema assignment).
+        if isinstance(config, ToolConfig):
+            self._config = config
+        elif isinstance(config, ToolMetadata):
+            self._config = ToolConfig(
+                name=config.name,
+                description=config.description,
+                parameters={},
+                metadata={
+                    "category": config.category,
+                    "tags": list(config.tags or []),
+                    "version": config.version,
+                },
+            )
+        else:
+            self._config = ToolConfig(
+                name=str(getattr(config, "name", "") or ""),
+                description=str(getattr(config, "description", "") or ""),
+                parameters=dict(getattr(config, "parameters", None) or {})
+                if isinstance(getattr(config, "parameters", None), dict)
+                else {},
+                metadata=dict(getattr(config, "metadata", None) or {})
+                if isinstance(getattr(config, "metadata", None), dict)
+                else {},
+            )
         self._permission_manager = None
         self._tracer = None
         self._stats_lock = threading.Lock()
@@ -51,6 +75,20 @@ class BaseTool(ITool):
             "total_latency": 0.0,
             "avg_latency": 0.0
         }
+
+    @property
+    def input_schema(self) -> Dict[str, Any]:
+        """JSON Schema for tool args; keep in sync with ToolConfig.parameters."""
+        params = getattr(self._config, "parameters", None)
+        return params if isinstance(params, dict) else {}
+
+    @input_schema.setter
+    def input_schema(self, value: Any) -> None:
+        if isinstance(value, dict):
+            self._config.parameters = value
+        elif value is None:
+            self._config.parameters = {}
+
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
         """Execute tool - to be implemented by subclass"""

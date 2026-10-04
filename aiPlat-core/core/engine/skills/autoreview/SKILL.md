@@ -3,8 +3,10 @@ name: autoreview
 display_name: 自动代码审查
 description: >
   提交前自动审查代码质量。Diff-only模式——绝不审查全量文件。
-  单引擎模式 reasoning 扫描 P0/P1，code_gen 扫描 P2 并生成修复补丁。
-  面板模式(panel=true)仅在 focus=security 时启用三引擎并行投票。
+  默认 panel=auto：按 diff 敏感信号 / focus 自动选单引擎或多引擎 panel；
+  也可显式 panel=true|false 强制。
+  单引擎：reasoning 扫 P0/P1，code_gen 扫 P2。
+  面板：三引擎并行（quick 投票 / deep MoA 聚合）。
 version: 1.0.0
 category: analysis
 status: enabled
@@ -53,24 +55,26 @@ input_schema:
       审查维度。security=全维度+面板模式可用, comprehensive=全维度单引擎,
        style=仅P2风格检查, performance=性能反模式
   panel:
-    type: boolean
-    default: false
+    type: string
+    default: auto
     description: >
-      多引擎面板模式。仅在 focus=security 时生效(reasoning+code_gen+chat 三引擎并行投票)。
-      其他 focus 值自动降级为单引擎并记录 warning 日志。
+      审查引擎模式。auto=按 focus 与 diff 安全信号自动选单引擎或 panel；
+      true=强制多引擎 panel（非 security/architecture 时会提升 focus）；
+      false=强制单引擎。也可用布尔 true/false。
   mode:
     type: string
     default: quick
     enum: [quick, deep]
     description: >
-      quick=硬投票聚合(2-3s), deep=Aggregator LLM综合判断(10-15s, MoA风格)。
-      deep 模式仅在 panel=true 且 focus=security 时生效。
-      diff >500 行时自动建议切换到 deep。
+      panel 聚合方式。quick=硬投票；deep=Aggregator LLM。
+      auto 路由在 diff 行数较大时可能自动升为 deep。
+      仅在 use_panel 时生效。
   preset:
     type: string
     default: code_review
     description: >
       MoA preset。可选: code_review | architecture | security。
+      auto 在安全信号命中时默认选 security。
       自定义 preset 在 presets.yaml 中配置。
   auto_fix:
     type: boolean

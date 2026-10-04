@@ -11,6 +11,7 @@ def test_conflict_pair_fix_generated():
         "input_schema": {"prompt": {"type": "string", "required": True}},
         "output_schema": {"markdown": {"type": "string", "required": True}},
         "metadata": {
+            "scope": "workspace",
             "tags": ["coding"],
             "category": "coding",
             "trigger_conditions": ["帮我看看代码", "代码审查", "review code"],
@@ -48,3 +49,5 @@ def test_conflict_pair_fix_generated():
     v = neg_op.get("value") if isinstance(neg_op, dict) else None
     assert isinstance(v, list)
     assert any("性能优化" in str(x) for x in v)
+    assert not any(op.get("path") == ["trigger_conditions"] for op in ops)
+    assert f.get("auto_applicable") is True

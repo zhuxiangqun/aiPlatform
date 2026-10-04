@@ -15,13 +15,48 @@ class TriggerTooFewCheck(LintRule):
     def check(self, skill: Any) -> List[LintIssue]:
         meta = self._get_meta(skill)
         tc = self._as_list(meta.get("trigger_conditions") or meta.get("trigger_keywords"))
-        if tc and len(tc) < 6:
-            return [LintIssue(
-                level=self.level, code=self.code,
-                message="trigger_conditions 建议 6-12 条（覆盖口语/同义表达/约束词），以提升命中率与稳定性",
-                location="frontmatter.trigger_conditions",
-            )]
-        return []
+        # Also count legacy/top-level `triggers:` (short phrases used by routing)
+        triggers = self._as_list(meta.get("triggers"))
+        if not triggers and not isinstance(skill, dict):
+            triggers = self._as_list(getattr(skill, "triggers", None))
+        if isinstance(skill, dict) and not triggers:
+            triggers = self._as_list(skill.get("triggers"))
+        combined = []
+        seen = set()
+        for it in (tc + triggers):
+            s = str(it).strip()
+            if s and s not in seen:
+                seen.add(s)
+                combined.append(s)
+        if not combined or len(combined) >= 6:
+            return []
+
+        # Soft-pass: prompt/analysis skills with keywords + exclusion already route stably
+        if self._routing_signals_ok(meta, skill):
+            return []
+
+        return [LintIssue(
+            level=self.level, code=self.code,
+            message="trigger_conditions 建议 6-12 条（覆盖口语/同义表达/约束词），以提升命中率与稳定性",
+            location="frontmatter.trigger_conditions",
+        )]
+
+    @staticmethod
+    def _routing_signals_ok(meta: dict, skill: Any) -> bool:
+        keywords = meta.get("keywords") if isinstance(meta.get("keywords"), dict) else {}
+        objects = TriggerTooFewCheck._as_list((keywords or {}).get("objects"))
+        actions = TriggerTooFewCheck._as_list((keywords or {}).get("actions"))
+        if not objects or not actions:
+            return False
+        if meta.get("skip_when") or TriggerTooFewCheck._as_list(meta.get("negative_triggers")):
+            return True
+        desc = str(
+            getattr(skill, "description", "")
+            or (skill.get("description") if isinstance(skill, dict) else "")
+            or meta.get("description")
+            or ""
+        )
+        return ("不" in desc) or ("不适用" in desc)
 
     @staticmethod
     def _get_meta(skill: Any) -> dict:
@@ -99,15 +134,23 @@ class MissingNegativeTriggersCheck(LintRule):
     def check(self, skill: Any) -> List[LintIssue]:
         desc = str(getattr(skill, "description", "") or (skill.get("description") if isinstance(skill, dict) else "") or "").strip()
         meta = self._get_meta(skill)
+        if not desc:
+            desc = str(meta.get("description") or "").strip()
         negative_triggers = self._as_list(meta.get("negative_triggers"))
         tc = self._as_list(meta.get("trigger_conditions") or meta.get("trigger_keywords"))
-        if (not negative_triggers) and desc and ("不" not in desc) and tc:
-            return [LintIssue(
-                level=self.level, code=self.code,
-                message='建议补充 negative_triggers 或在 description 中写明"不适用于..."，以减少误触发',
-                location="frontmatter.negative_triggers",
-            )]
-        return []
+        triggers = self._as_list(meta.get("triggers"))
+        # skip_when is an exclusion signal equivalent to negative routing
+        if meta.get("skip_when") or negative_triggers:
+            return []
+        if ("不" in desc) or ("不适用" in desc) or ("禁止" in desc):
+            return []
+        if not (tc or triggers):
+            return []
+        return [LintIssue(
+            level=self.level, code=self.code,
+            message='建议补充 negative_triggers 或在 description 中写明"不适用于..."，以减少误触发',
+            location="frontmatter.negative_triggers",
+        )]
 
     @staticmethod
     def _get_meta(skill: Any) -> dict:

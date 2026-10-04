@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 import anyio
 
-from ._base import _json_dumps, _json_loads
+from ._base import _json_dumps, _json_loads, run_store_io
 
 
 class RunGraphMixin:
@@ -57,22 +57,58 @@ class RunGraphMixin:
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(run_id, node_id) DO UPDATE SET
                       parent_id=COALESCE(excluded.parent_id, run_graph_nodes.parent_id),
-                      kind=excluded.kind,
-                      name=excluded.name,
+                      kind=CASE
+                        WHEN run_graph_nodes.role = 'container'
+                             AND IFNULL(excluded.role, '') != 'container'
+                             AND excluded.kind IS NOT NULL
+                             AND excluded.kind != run_graph_nodes.kind
+                        THEN run_graph_nodes.kind
+                        WHEN run_graph_nodes.kind = 'skill'
+                             AND IFNULL(run_graph_nodes.name, '') NOT IN ('skill_start', 'skill_end')
+                             AND excluded.kind = 'routing'
+                        THEN run_graph_nodes.kind
+                        ELSE COALESCE(excluded.kind, run_graph_nodes.kind) END,
+                      name=CASE
+                        WHEN run_graph_nodes.role = 'container'
+                             AND IFNULL(excluded.role, '') != 'container'
+                             AND excluded.name IS NOT NULL
+                             AND excluded.name != run_graph_nodes.name
+                        THEN run_graph_nodes.name
+                        WHEN run_graph_nodes.kind = 'skill'
+                             AND IFNULL(run_graph_nodes.name, '') NOT IN ('skill_start', 'skill_end')
+                             AND excluded.kind = 'routing'
+                        THEN run_graph_nodes.name
+                        ELSE COALESCE(excluded.name, run_graph_nodes.name) END,
                       label=COALESCE(excluded.label, run_graph_nodes.label),
-                      role=excluded.role,
+                      role=CASE
+                        WHEN run_graph_nodes.role = 'container' THEN 'container'
+                        ELSE COALESCE(excluded.role, run_graph_nodes.role) END,
                       status=excluded.status,
-                      start_time=COALESCE(excluded.start_time, run_graph_nodes.start_time),
+                      start_time=CASE
+                        WHEN run_graph_nodes.role = 'container'
+                             AND IFNULL(excluded.role, '') != 'container'
+                        THEN run_graph_nodes.start_time
+                        ELSE COALESCE(excluded.start_time, run_graph_nodes.start_time) END,
                       end_time=COALESCE(excluded.end_time, run_graph_nodes.end_time),
                       duration_ms=COALESCE(excluded.duration_ms, run_graph_nodes.duration_ms),
                       args_json=CASE
+                        WHEN run_graph_nodes.role = 'container'
+                             AND IFNULL(excluded.role, '') != 'container'
+                        THEN run_graph_nodes.args_json
                         WHEN excluded.args_json IS NOT NULL AND excluded.args_json NOT IN ('', '{}')
                         THEN excluded.args_json ELSE run_graph_nodes.args_json END,
                       result_json=CASE
+                        WHEN run_graph_nodes.role = 'container'
+                             AND IFNULL(excluded.role, '') != 'container'
+                        THEN run_graph_nodes.result_json
                         WHEN excluded.result_json IS NOT NULL AND excluded.result_json NOT IN ('', '{}')
                         THEN excluded.result_json ELSE run_graph_nodes.result_json END,
                       error=COALESCE(excluded.error, run_graph_nodes.error),
-                      sort_key=COALESCE(excluded.sort_key, run_graph_nodes.sort_key),
+                      sort_key=CASE
+                        WHEN run_graph_nodes.role = 'container'
+                             AND IFNULL(excluded.role, '') != 'container'
+                        THEN run_graph_nodes.sort_key
+                        ELSE COALESCE(excluded.sort_key, run_graph_nodes.sort_key) END,
                       input_tokens=CASE
                         WHEN excluded.input_tokens > 0 THEN excluded.input_tokens
                         ELSE run_graph_nodes.input_tokens END,
@@ -144,7 +180,7 @@ class RunGraphMixin:
             finally:
                 conn.close()
 
-        rows = await anyio.to_thread.run_sync(_sync)
+        rows = await run_store_io(_sync)
         return [self._row_to_graph_node(r) for r in rows]
 
     async def set_run_graph_status(self, run_id: str, status: str) -> None:

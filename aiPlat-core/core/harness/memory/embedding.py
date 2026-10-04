@@ -85,30 +85,55 @@ class EmbeddingProvider:
             return await self._embed_transform(texts)
 
     async def _embed_transform(self, texts: List[str]) -> List[List[float]]:
+        """Local ST embed — never load the model on the asyncio event loop.
+
+        Cold SentenceTransformer init blocked ReAct before the first llm syscall
+        (step_1 + context_snapshot only; Ollama idle). Always offload load+encode
+        to a worker with a hard timeout; fall back to hash vectors.
+        """
         try:
-            # Prefer InfraEmbeddingAdapter
-            from core.harness.infrastructure.base_model_adapter import create_adapter
-            if self._model is None:
-                self._model = create_adapter("embedding")
-            loop = asyncio.get_running_loop()
-            embeddings = await loop.run_in_executor(
-                None, lambda: self._model.embed_batch_sync(texts)
-            )
-            return [[float(v) for v in emb] for emb in embeddings]
-        except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            timeout = float(os.getenv("AIPLAT_EMBED_TRANSFORM_TIMEOUT", "12") or "12")
+        except Exception:
+            timeout = 12.0
+        timeout = max(1.0, timeout)
+
+        # Prefer cheap backends when configured (start.sh uses hash).
+        backend_pref = (os.getenv("AIPLAT_EMBED_BACKEND") or os.getenv("AIPLAT_EMBEDDING_BACKEND") or "").strip().lower()
+        if backend_pref in ("hash", "simple"):
+            return self._embed_simple(texts)
+
+        def _load_and_encode() -> List[List[float]]:
+            model = self._model
+            if model is None:
+                try:
+                    from core.harness.infrastructure.base_model_adapter import create_adapter
+                    model = create_adapter("embedding")
+                except Exception:
+                    model = None
+                if model is None:
+                    from sentence_transformers import SentenceTransformer
+                    model = SentenceTransformer(self._model_name, local_files_only=True)
+                self._model = model
+            if hasattr(model, "embed_batch_sync"):
+                return model.embed_batch_sync(texts)
+            encoded = model.encode(texts, show_progress_bar=False)
+            return [[float(v) for v in emb] for emb in encoded]
+
         try:
-            from sentence_transformers import SentenceTransformer
-            if self._model is None:
-                self._model = SentenceTransformer(self._model_name, local_files_only=True)
             loop = asyncio.get_running_loop()
-            embeddings = await loop.run_in_executor(
-                None, lambda: self._model.encode(texts, show_progress_bar=False).tolist()
+            return await asyncio.wait_for(
+                loop.run_in_executor(None, _load_and_encode),
+                timeout=timeout,
             )
-            return [[float(v) for v in emb] for emb in embeddings]
+        except asyncio.TimeoutError:
+            logging.getLogger(__name__).warning(
+                "embed_transform timed out after %.1fs — using hash fallback", timeout
+            )
+            return self._embed_simple(texts)
         except ImportError:
             return self._embed_simple(texts)
         except Exception:
+            logging.getLogger(__name__).debug("embed_transform failed", exc_info=True)
             return self._embed_simple(texts)
 
     async def _embed_api(self, texts: List[str]) -> List[List[float]]:

@@ -1,18 +1,56 @@
 /**
  * Poll Skill execution until terminal status (stream mode).
  * Prefer /executions/{id}/status; fall back to syscall events.
+ *
+ * Important: frontend wait must be ≥ skill timeout (e.g. requirement_analysis=480s).
+ * Also: stream runs often return status=unknown + not_found until run_start is written —
+ * that must NOT be treated as a terminal failure.
  */
+
+const IN_FLIGHT = new Set(['running', 'accepted', 'queued', 'started', 'pending']);
+const KEEP_POLLING = new Set([...IN_FLIGHT, 'unknown', '']);
+
+function resolveMaxAttempts(opts?: {
+  maxAttempts?: number;
+  timeoutSec?: number;
+  intervalMs?: number;
+}): { maxAttempts: number; timeoutSec: number; intervalMs: number } {
+  const intervalMs = Math.max(200, opts?.intervalMs ?? 1000);
+  const timeoutSec = Math.max(
+    60,
+    Number(opts?.timeoutSec || 0) > 0 ? Number(opts?.timeoutSec) : 360,
+  );
+  const computed = Math.ceil((timeoutSec * 1.15) / (intervalMs / 1000));
+  const maxAttempts = opts?.maxAttempts ?? Math.max(computed, 60);
+  return { maxAttempts, timeoutSec, intervalMs };
+}
+
+function mapTerminalStatus(raw: string): string {
+  const st = String(raw || '').toLowerCase();
+  if (st === 'ok' || st === 'success' || st === 'done') return 'completed';
+  if (st === 'canceled') return 'cancelled';
+  return st;
+}
+
 export async function pollSkillExecutionUntilDone(
   runId: string,
   opts?: {
     maxAttempts?: number;
+    /** Skill / server timeout in seconds (from metadata.timeout). */
+    timeoutSec?: number;
     intervalMs?: number;
     isStopped?: () => boolean;
-    onTick?: (attempt: number) => void;
+    onTick?: (attempt: number, info: { elapsedSec: number; timeoutSec: number }) => void;
   },
-): Promise<{ status: string; output?: unknown; error?: unknown; duration_ms?: number }> {
-  const maxAttempts = opts?.maxAttempts ?? 180;
-  const intervalMs = opts?.intervalMs ?? 1000;
+): Promise<{
+  status: string;
+  output?: unknown;
+  input?: unknown;
+  error?: unknown;
+  duration_ms?: number;
+  quality_review?: unknown;
+}> {
+  const { maxAttempts, timeoutSec, intervalMs } = resolveMaxAttempts(opts);
   let attempts = 0;
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -22,19 +60,26 @@ export async function pollSkillExecutionUntilDone(
       return { status: 'cancelled' };
     }
     attempts += 1;
-    opts?.onTick?.(attempts);
+    const elapsedSec = Math.round((attempts * intervalMs) / 1000);
+    opts?.onTick?.(attempts, { elapsedSec, timeoutSec });
 
     try {
       const resp = await fetch(`/api/core/executions/${encodeURIComponent(runId)}/status`);
       if (resp.ok) {
         const sData = await resp.json();
-        const newStatus = String(sData?.status || '');
-        if (newStatus && newStatus !== 'running' && newStatus !== 'accepted' && newStatus !== 'queued') {
+        const newStatus = String(sData?.status || '').toLowerCase();
+        const notFound = Boolean(sData?.not_found);
+        // Stream race: run_id returned before run_start / skill_executions row exists
+        if (notFound || KEEP_POLLING.has(newStatus)) {
+          /* keep polling */
+        } else if (newStatus) {
           return {
-            status: newStatus === 'ok' || newStatus === 'success' ? 'completed' : newStatus,
+            status: mapTerminalStatus(newStatus),
             output: sData?.output,
+            input: sData?.input,
             error: sData?.error,
             duration_ms: sData?.duration_ms,
+            quality_review: sData?.quality_review,
           };
         }
       }
@@ -56,9 +101,14 @@ export async function pollSkillExecutionUntilDone(
           duration_ms: done.duration_ms,
         };
       }
-      if (items.some((e: any) => e.status === 'failed' || e.status === 'error')) {
-        const failed = items.find((e: any) => e.status === 'failed' || e.status === 'error');
-        return { status: 'failed', error: failed?.error || '执行失败' };
+      if (items.some((e: any) => e.status === 'failed' || e.status === 'error' || e.status === 'timeout')) {
+        const failed = items.find(
+          (e: any) => e.status === 'failed' || e.status === 'error' || e.status === 'timeout',
+        );
+        return {
+          status: failed?.status === 'timeout' ? 'timeout' : 'failed',
+          error: failed?.error || (failed?.status === 'timeout' ? '执行超时' : '执行失败'),
+        };
       }
     } catch {
       /* keep polling */
@@ -67,5 +117,39 @@ export async function pollSkillExecutionUntilDone(
     await sleep(intervalMs);
   }
 
-  return { status: 'failed', error: '执行超时' };
+  try {
+    const resp = await fetch(`/api/core/executions/${encodeURIComponent(runId)}/status`);
+    if (resp.ok) {
+      const sData = await resp.json();
+      const st = String(sData?.status || '').toLowerCase();
+      const notFound = Boolean(sData?.not_found);
+      if (notFound || KEEP_POLLING.has(st)) {
+        return {
+          status: 'timeout',
+          error: `前端等待已超过约 ${timeoutSec}s，但服务端仍可能在运行（status=${st || 'unknown'}）。请打开诊断详情继续查看。`,
+          output: sData?.output,
+          input: sData?.input,
+          duration_ms: sData?.duration_ms,
+          quality_review: sData?.quality_review,
+        };
+      }
+      if (st) {
+        return {
+          status: mapTerminalStatus(st),
+          output: sData?.output,
+          input: sData?.input,
+          error: sData?.error,
+          duration_ms: sData?.duration_ms,
+          quality_review: sData?.quality_review,
+        };
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+
+  return {
+    status: 'timeout',
+    error: `执行等待超时（约 ${timeoutSec}s）。若诊断里仍显示 running，说明前端先放弃了，不是 Skill 已失败。`,
+  };
 }

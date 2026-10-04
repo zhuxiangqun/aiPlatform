@@ -1,5 +1,7 @@
-team_name: "软件研发团队（代码模式）"
-description: "确定性功能软件：后端 FastAPI 代码(pytest 可测) + 声明式前端(app_page)"
+# Legacy / L2-import path: single programmer_agent. Factory mode=code defaults to
+# code_split.yaml instead; select this template only via explicit team_id="code".
+team_name: "软件研发团队（单编·兼容）"
+description: "兼容路径：programmer 单编 FastAPI + 声明式 app_page；新产品请用 code_split"
 stages:
   - agent_id: pm_agent
     order: 0

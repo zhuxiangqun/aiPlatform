@@ -30,6 +30,7 @@ export {
   jobApi,
   skillPackApi,
   runApi,
+  agentEvalApi,
   auditApi,
   policyApi,
   gatePolicyApi,

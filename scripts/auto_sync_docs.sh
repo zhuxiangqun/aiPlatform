@@ -114,6 +114,7 @@ for root in "aiPlat-core/core/harness" "aiPlat-core/core/harness/execution" \
         mod="${basename%.py}"
         dirname="$(dirname "$f")"
         [[ "$basename" == __init__.py ]] && continue
+        [[ "$f" == tmp/* || "$f" == */tmp/* ]] && continue
         [[ "$f" == */tests/* || "$f" == tests/* || "$f" == *"/tests/"* ]] && continue
         [[ "$f" == */__pycache__/* ]] && continue
         if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
@@ -121,7 +122,7 @@ for root in "aiPlat-core/core/harness" "aiPlat-core/core/harness/execution" \
                 NEW_MODULES="$NEW_MODULES $mod|$f"
             fi
         fi
-     done < <(git -C "$WORKSPACE" ls-files --others --exclude-standard 2>/dev/null | grep '\.py$' | sort -u)
+     done < <(git -C "$WORKSPACE" ls-files --others --exclude-standard 2>/dev/null | grep '\.py$' | grep -v '^tmp/' | sort -u)
 done
 
 # ── Step 1b: Frontend .tsx/.ts files ─────────────────────

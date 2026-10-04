@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 
 import importlib
+import importlib.util  # noqa: F401 — ensure importlib.util on py3.9 (bare importlib has no .util)
 import os
 import re
 from dataclasses import dataclass, asdict, field

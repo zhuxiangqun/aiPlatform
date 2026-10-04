@@ -37,10 +37,12 @@ class InfraEmbeddingAdapter(BaseModelAdapter):
         return [[float(v) for v in emb] for emb in embeddings]
 
     async def embed(self, text: str) -> List[float]:
-        return self.embed_sync(text)
+        import asyncio
+        return await asyncio.to_thread(self.embed_sync, text)
 
     async def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        return self.embed_batch_sync(texts)
+        import asyncio
+        return await asyncio.to_thread(self.embed_batch_sync, texts)
 
 
 def create_infra_embedding_adapter(**kwargs) -> InfraEmbeddingAdapter:

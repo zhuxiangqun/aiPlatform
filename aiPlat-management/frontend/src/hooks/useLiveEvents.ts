@@ -57,7 +57,10 @@ async function fetchSyscallEvents(runId: string, signal?: AbortSignal): Promise<
   return (body?.items || body?.events || []) as LiveEvent[];
 }
 
-async function fetchRunStatus(runId: string, signal?: AbortSignal): Promise<{ status: string; notFound: boolean }> {
+async function fetchRunStatus(
+  runId: string,
+  signal?: AbortSignal,
+): Promise<{ status: string; notFound: boolean; error?: string }> {
   const res = await fetch(
     `/api/core/executions/${encodeURIComponent(runId)}/status`,
     { signal },
@@ -66,7 +69,8 @@ async function fetchRunStatus(runId: string, signal?: AbortSignal): Promise<{ st
   if (!res.ok) return { status: '', notFound: false };
   const body = await res.json();
   if (body?.not_found === true) return { status: '', notFound: true };
-  return { status: String(body?.status || '').toLowerCase(), notFound: false };
+  const err = body?.error != null ? String(body.error) : undefined;
+  return { status: String(body?.status || '').toLowerCase(), notFound: false, error: err };
 }
 
 export function useLiveEvents(runId: string | null) {
@@ -178,7 +182,7 @@ export function useLiveEvents(runId: string | null) {
         const items = await fetchSyscallEvents(runId, ctrl.signal);
         if (cancelled || doneRef.current) return;
         ingestMany(items);
-        const { status: st, notFound } = await fetchRunStatus(runId, ctrl.signal);
+        const { status: st, notFound, error: stErr } = await fetchRunStatus(runId, ctrl.signal);
         if (cancelled || doneRef.current) return;
         if (notFound) {
           // Stream/queue: row may appear shortly after run_id is returned.
@@ -196,6 +200,9 @@ export function useLiveEvents(runId: string | null) {
         } else {
           consecutiveFailRef.current = 0;
           backoffMsRef.current = POLL_BASE_MS;
+          if (st === 'queued' || st === 'pending' || (stErr && /session_locked/i.test(stErr))) {
+            setError(stErr || 'session_locked');
+          }
         }
       } catch {
         failed = true;
@@ -228,7 +235,7 @@ export function useLiveEvents(runId: string | null) {
           const items = await fetchSyscallEvents(runId, ctrl.signal);
           if (cancelled) return;
           ingestMany(items);
-          const { status: st, notFound } = await fetchRunStatus(runId, ctrl.signal);
+          const { status: st, notFound, error: stErr } = await fetchRunStatus(runId, ctrl.signal);
           if (cancelled) return;
           if (notFound) {
             // Stream/queue often connects before skill_execution row exists — keep waiting.
@@ -237,6 +244,9 @@ export function useLiveEvents(runId: string | null) {
             await markDone();
           } else if (!doneRef.current) {
             setStatus('streaming');
+            if (st === 'queued' || st === 'pending' || (stErr && /session_locked/i.test(stErr))) {
+              setError(stErr || 'session_locked');
+            }
           }
         } finally {
           window.clearTimeout(kill);

@@ -33,9 +33,27 @@ class TestNormalizeFactoryMode:
     def test_mode_template_roundtrip(self):
         assert mode_to_team_template("hybrid") == "hybrid"
         assert mode_to_team_template("agent") == "default"
-        assert mode_to_team_template("code") == "code"
+        # Product default: code → startable scaffold team (not legacy programmer-only)
+        assert mode_to_team_template("code") == "code_split"
         assert team_template_to_mode("hybrid") == "hybrid"
         assert team_template_to_mode("default.yaml") == "agent"
+        assert team_template_to_mode("code_split") == "code"
+        assert team_template_to_mode("code") == "code"
+
+    def test_preferred_code_loads_scaffold_team(self):
+        rec = asyncio.run(
+            recommend_team_stages(
+                requirement={"description": "巡检报障 Web 系统"},
+                preferred_mode="code",
+            )
+        )
+        assert rec.mode == "code"
+        aids = [s.get("agent_id") for s in rec.stages]
+        assert "scaffold_agent" in aids
+        assert "frontend_engineer" in aids
+        assert "backend_developer" in aids
+        assert "test_executor" in aids
+        assert "programmer_agent" not in aids
 
 
 class TestPreferredModeLoadsHybrid:

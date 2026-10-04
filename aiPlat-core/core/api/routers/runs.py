@@ -23,6 +23,7 @@ from core.api.core_facade import KernelRuntime, get_harness  # P0-A2: 经 CoreFa
 from core.services.tenant_store_protocol import get_tenant_store  # P0-A3
 from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
 from core.api.core_facade import ExecutionRequest  # P0-A2: 经 CoreFacade
+from core.harness.utils.execute_session import mint_execute_session_id
 from core.schemas_eval import AutoEvalRequest, EvidenceDiffRequest
 from core.schemas_run import RunStatus
 from core.api.core_facade import get_llm_api_key, get_llm_base_url  # P0-A2: 经 CoreFacade
@@ -1354,7 +1355,11 @@ async def _spawn_child_internal(
         target_id=str(target_id),
         payload=payload if isinstance(payload, dict) else {},
         user_id=str(actor.get("actor_id") or "system"),
-        session_id=str(actor.get("actor_id") or "default"),
+        session_id=mint_execute_session_id(
+            kind=str(kind),
+            target_id=str(target_id),
+            session_id=actor.get("actor_id"),
+        ),
         run_id=str(child_id),
     )
     result = await get_harness().execute(exec_req)
@@ -1465,7 +1470,11 @@ async def _redo_node_internal(
         target_id=str(target_id),
         payload=base_payload,
         user_id=str(actor.get("actor_id") or "system"),
-        session_id=str(actor.get("actor_id") or "default"),
+        session_id=mint_execute_session_id(
+            kind=str(kind),
+            target_id=str(target_id),
+            session_id=actor.get("actor_id"),
+        ),
         run_id=str(new_child_id),
     )
     result = await get_harness().execute(exec_req)
@@ -1950,7 +1959,11 @@ async def redo_from_checkpoint(run_id: str, checkpoint_id: str, request: dict, h
         target_id=str(target_id),
         payload=req_payload,
         user_id=str(payload0.get("user_id") or actor.get("actor_id") or "system"),
-        session_id=str(payload0.get("session_id") or "default"),
+        session_id=mint_execute_session_id(
+            kind=str(kind),
+            target_id=str(target_id),
+            session_id=payload0.get("session_id"),
+        ),
         run_id=new_id,
     )
     result = await get_harness().execute(exec_req)
@@ -1981,14 +1994,24 @@ async def cancel_run(run_id: str, http_request: Request, body: Optional[Dict[str
     - If run is queued (session_queue), mark it cancelled so it won't be dequeued.
     - Always write a cancel_requested marker to run_events.
     - If run has no run_end yet, append run_end(status=cancelled) so UI becomes stable.
+    - Also cancel matching agent/skill execution rows (zombie ReAct runs).
     """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     rid = str(run_id)
     run = await store.get_run_summary(run_id=rid)
+    # Workspace agent executions often have no run_events summary — still cancel
+    # the agent_executions / skill_executions row so Stop is not a no-op.
     if not run:
-        raise HTTPException(status_code=404, detail="run_not_found")
+        try:
+            from core.api.routers.executions_trace import cancel_execution
+
+            return await cancel_execution(rid, body=body if isinstance(body, dict) else None, rt=rt)
+        except HTTPException as he:
+            if he.status_code == 404:
+                raise HTTPException(status_code=404, detail="run_not_found") from he
+            raise
     actor = actor_from_http(http_request, None)
     reason = str((body or {}).get("reason") or "user_requested") if isinstance(body, dict) else "user_requested"
     cancelled_queued = False
@@ -2017,6 +2040,13 @@ async def cancel_run(run_id: str, http_request: Request, body: Optional[Dict[str
             )
     except Exception as e:
         logging.warning(str(e), exc_info=True)
+    # Best-effort: also flip agent/skill execution if this rid is one.
+    try:
+        from core.api.routers.executions_trace import cancel_execution
+
+        await cancel_execution(rid, body={"reason": reason}, rt=rt)
+    except Exception:
+        logging.debug("runs.cancel: agent/skill cancel skipped for %s", rid, exc_info=True)
     return {"status": "cancel_requested", "run_id": rid, "cancelled_queued": bool(cancelled_queued)}
 
 
@@ -2039,7 +2069,6 @@ async def retry_run(run_id: str, http_request: Request, rt: RuntimeDep = None):
     kind = str(payload.get("kind") or "").strip()
     req_payload = payload.get("request_payload") if isinstance(payload.get("request_payload"), dict) else {}
     user_id = str(payload.get("user_id") or "system")
-    session_id = str(payload.get("session_id") or "default")
     target_id = None
     if kind == "agent":
         target_id = payload.get("agent_id")
@@ -2062,7 +2091,11 @@ async def retry_run(run_id: str, http_request: Request, rt: RuntimeDep = None):
         target_id=str(target_id),
         payload=req_payload if isinstance(req_payload, dict) else {},
         user_id=user_id,
-        session_id=session_id,
+        session_id=mint_execute_session_id(
+            kind=kind,
+            target_id=str(target_id),
+            session_id=payload.get("session_id"),
+        ),
         run_id=new_id,
     )
     result = await get_harness().execute(req)
@@ -2258,7 +2291,11 @@ async def wait_run(run_id: str, request: dict, http_request: Request, rt: Runtim
                     target_id=str(skill_id0),
                     payload={"input": inp, "context": dict(ctx_in) if isinstance(ctx_in, dict) else ctx},
                     user_id=str(ctx.get("actor_id") or "system"),
-                    session_id=str(ctx.get("session_id") or "default"),
+                    session_id=mint_execute_session_id(
+                        kind="skill",
+                        target_id=str(skill_id0),
+                        session_id=ctx.get("session_id"),
+                    ),
                     run_id=str(rid),
                 )
                 await h.execute(exec_req)
@@ -2272,7 +2309,11 @@ async def wait_run(run_id: str, request: dict, http_request: Request, rt: Runtim
                     target_id=str(tool_name),
                     payload={"input": tool_args, "context": ctx},
                     user_id=str(ctx.get("actor_id") or "system"),
-                    session_id=str(ctx.get("session_id") or "default"),
+                    session_id=mint_execute_session_id(
+                        kind="tool",
+                        target_id=str(tool_name),
+                        session_id=ctx.get("session_id"),
+                    ),
                     run_id=str(rid),
                 )
                 await h.execute(exec_req)
@@ -2297,7 +2338,11 @@ async def wait_run(run_id: str, request: dict, http_request: Request, rt: Runtim
                 target_id=str(skill_id),
                 payload={"input": skill_args, "context": ctx},
                 user_id=str(ctx.get("actor_id") or "system"),
-                session_id=str(ctx.get("session_id") or "default"),
+                session_id=mint_execute_session_id(
+                    kind="skill",
+                    target_id=str(skill_id),
+                    session_id=ctx.get("session_id"),
+                ),
                 run_id=str(rid),
             )
             await h.execute(exec_req)

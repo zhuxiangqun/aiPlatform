@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
 import { diagnosticsApi } from '../../services';
-import { buildFormParamsFromSchema, buildSampleParamsFromSchema } from '../../utils/executionSamples';
+import { buildFormParamsFromSchema, buildParamSmokeExamples } from '../../utils/executionSamples';
 import ExecuteResultPanel from '../execution/ExecuteResultPanel';
 import ExecuteFlowFullscreen from '../execution/ExecuteFlowFullscreen';
+import ExecutionQualityReviewPanel, {
+  type ExecutionQualityReview,
+} from '../execution/ExecutionQualityReviewPanel';
 import { RunVerdictBanner, deriveRunVerdict, outputAsText } from '../execution/runVerdict';
 
 interface ParameterProperty {
@@ -34,6 +37,7 @@ type ToolExecResult = {
   duration_ms?: number;
   run_id?: string;
   execution_id?: string;
+  quality_review?: ExecutionQualityReview | null;
 };
 
 const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose }) => {
@@ -42,8 +46,11 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
   const [params, setParams] = useState<Record<string, any>>({});
   const [autoSmoke, setAutoSmoke] = useState(false);
   const [flowFullscreen, setFlowFullscreen] = useState(false);
+  const [resolvedTool, setResolvedTool] = useState<ExecuteToolModalProps['tool']>(null);
+  const [schemaLoading, setSchemaLoading] = useState(false);
 
-  const paramSchema = tool?.parameters as any;
+  const activeTool = resolvedTool || tool;
+  const paramSchema = activeTool?.parameters as any;
   const requiredFields: string[] = paramSchema?.required || [];
   const properties = paramSchema?.properties || {};
 
@@ -55,15 +62,52 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
     });
   }, [properties, requiredFields]);
 
-  const exampleArgsText = useMemo(() => {
-    const sample = buildSampleParamsFromSchema(paramSchema || {}, { includeOptional: true });
-    return JSON.stringify(sample, null, 2);
-  }, [paramSchema]);
+  const smokeExamples = useMemo(() => {
+    return buildParamSmokeExamples(paramSchema || {}, activeTool?.name || 'Tool', {
+      skillHint: `${activeTool?.name || ''} ${activeTool?.description || ''}`,
+    });
+  }, [paramSchema, activeTool?.name, activeTool?.description]);
 
-  const requiredExampleText = useMemo(() => {
-    const sample = buildSampleParamsFromSchema(paramSchema || {}, { includeOptional: false });
-    return JSON.stringify(sample, null, 2);
-  }, [paramSchema]);
+  const exampleArgsText = useMemo(() => {
+    const complex = smokeExamples.find((e) => e.title.includes('复杂') || e.title.includes('全量'));
+    return complex?.content || smokeExamples[0]?.content || '{}';
+  }, [smokeExamples]);
+
+  const fillFromExample = (content: string) => {
+    try {
+      const obj = JSON.parse(content);
+      if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+        const flat = (paramSchema as any)?.properties || {};
+        const next: Record<string, any> = {};
+        for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+          const typ = String(flat[k]?.type || '').toLowerCase();
+          if ((typ === 'object' || typ === 'array') && typeof v === 'object' && v !== null) {
+            next[k] = JSON.stringify(v, null, 2);
+          } else {
+            next[k] = v;
+          }
+        }
+        setParams(next);
+        return;
+      }
+    } catch {
+      /* ignore */
+    }
+    toast.error('用例不是合法 JSON');
+  };
+
+  const troubleshooting = useMemo(() => {
+    return `### 如何填写输入
+- 点右侧「填入」写入测试用例：主路径（必填）/ 边界异常 / 复杂全量。
+- 「边界/异常」故意含空值、不可达 URL、0/-1 等，用于验收校验与失败路径。
+- object/array 请保持合法 JSON；本页执行前会自动解析。
+
+### 常见问题排查（尤其是 MCP 工具）
+- 404 / Not Found：工具未注册或未放行（MCP：allowed_tools 未包含该 tool_name；或 server 未启用）
+- 401/403：鉴权失败或权限不足（检查 token/auth 与策略）
+- stdio 工具失败：prod 需通过放行策略（allowlist/command prefixes/launcher），并确保目标可执行文件存在
+- 参数错误：对 object/array 参数请传合法 JSON（本页会自动解析字符串 JSON）`;
+  }, []);
 
   const displayVerdict = useMemo(
     () =>
@@ -78,41 +122,56 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
   );
 
   useEffect(() => {
-    if (!open || !tool) return;
+    if (!open || !tool?.name) {
+      setResolvedTool(null);
+      return;
+    }
+    let cancelled = false;
     setResult(null);
-    setParams({});
     setFlowFullscreen(false);
+    setSchemaLoading(true);
+    (async () => {
+      try {
+        const { toolApi } = await import('../../services');
+        const fresh = await toolApi.get(tool.name);
+        if (cancelled) return;
+        const merged = {
+          name: String(fresh?.name || tool.name),
+          description: String(fresh?.description || tool.description || ''),
+          parameters: (fresh as any)?.parameters || tool.parameters || {},
+        };
+        setResolvedTool(merged);
+        const schema = (merged.parameters as any) || {};
+        const hasProps = schema?.properties && Object.keys(schema.properties).length > 0;
+        setParams(hasProps ? buildFormParamsFromSchema(schema, { includeOptional: false }) : {});
+      } catch {
+        if (cancelled) return;
+        // Fall back to list-row payload (may be stale / empty schema).
+        setResolvedTool(tool);
+        const schema = (tool.parameters as any) || {};
+        const hasProps = schema?.properties && Object.keys(schema.properties).length > 0;
+        setParams(hasProps ? buildFormParamsFromSchema(schema, { includeOptional: false }) : {});
+      } finally {
+        if (!cancelled) setSchemaLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [open, tool?.name]);
 
-  const fillParams = (includeOptional: boolean) => {
-    setParams(buildFormParamsFromSchema(paramSchema || {}, { includeOptional }));
-  };
-
-  const troubleshooting = useMemo(() => {
-    return `### 如何填写输入
-- 点右侧「填入」按本 Tool 参数 Schema 写入测试用例（必填 / 全量）。
-- object/array 请保持合法 JSON；本页执行前会自动解析。
-
-### 常见问题排查（尤其是 MCP 工具）
-- 404 / Not Found：工具未注册或未放行（MCP：allowed_tools 未包含该 tool_name；或 server 未启用）
-- 401/403：鉴权失败或权限不足（检查 token/auth 与策略）
-- stdio 工具失败：prod 需通过放行策略（allowlist/command prefixes/launcher），并确保目标可执行文件存在
-- 参数错误：对 object/array 参数请传合法 JSON（本页会自动解析字符串 JSON）`;
-  }, []);
-
   const handleExecute = async () => {
-    if (!tool) return;
+    if (!activeTool) return;
     try {
       setLoading(true);
       setResult(null);
 
-      for (const f of requiredFields) {
-        const v = params[f];
-        if (v === undefined || v === null || v === '') {
-          toast.error(`请输入 ${f}`);
-          setLoading(false);
-          return;
-        }
+      // 允许空串以覆盖「边界/异常」用例；仅缺 key 时拦截
+      const missing = requiredFields.filter((f) => params[f] === undefined || params[f] === null);
+      if (missing.length) {
+        toast.error(`请输入 ${missing[0]}`);
+        setLoading(false);
+        return;
       }
 
       const normalized: Record<string, any> = { ...params };
@@ -130,7 +189,7 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
       }
 
       const { toolApi } = await import('../../services');
-      const res = (await toolApi.execute(tool.name, normalized)) as ToolExecResult;
+      const res = (await toolApi.execute(activeTool.name, normalized)) as ToolExecResult;
       const status =
         String(res.status || '') ||
         (res.success === false ? 'failed' : res.success === true ? 'completed' : 'completed');
@@ -139,9 +198,16 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
         status,
         duration_ms: res.duration_ms ?? (res.latency != null ? Math.round(res.latency) : undefined),
         run_id: res.run_id || res.execution_id,
+        quality_review: (res as any)?.quality_review || null,
       });
-      if (status === 'completed' || res.success !== false) toast.success('执行完成');
-      else toast.error('执行失败');
+      const qr = (res as any)?.quality_review as ExecutionQualityReview | undefined;
+      if (qr && (qr.verdict === 'fail' || qr.verdict === 'warn')) {
+        toast.warning(qr.headline || '执行结束，产物/返回需改进（见质量复核）');
+      } else if (status === 'completed' || res.success !== false) {
+        toast.success('执行完成');
+      } else {
+        toast.error('执行失败');
+      }
 
       if (autoSmoke) {
         try {
@@ -167,8 +233,14 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
   const handleClose = () => {
     setResult(null);
     setParams({});
+    setResolvedTool(null);
     setFlowFullscreen(false);
     onClose();
+  };
+
+  const handleRerunSameCase = () => {
+    setFlowFullscreen(true);
+    void handleExecute();
   };
 
   const renderField = (name: string, spec: ParameterProperty) => {
@@ -245,12 +317,12 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
     <Modal
       open={open}
       onClose={handleClose}
-      title={`执行 Tool: ${tool?.name || ''}`}
+      title={`执行 Tool: ${activeTool?.name || tool?.name || ''}`}
       width={1100}
       footer={
         <>
           <Button variant="secondary" onClick={handleClose} disabled={loading}>关闭</Button>
-          <Button variant="primary" onClick={handleExecute} loading={loading}>执行</Button>
+          <Button variant="primary" onClick={handleExecute} loading={loading || schemaLoading}>执行</Button>
         </>
       }
     >
@@ -260,11 +332,13 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
       </label>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          {tool?.description && (
-            <div className="mb-4 text-sm text-gray-400">{tool.description}</div>
+          {activeTool?.description && (
+            <div className="mb-4 text-sm text-gray-400">{activeTool.description}</div>
           )}
 
-          {sortedFields.length > 0 ? (
+          {schemaLoading ? (
+            <div className="py-4 text-center text-gray-400 text-sm">正在加载参数 Schema…</div>
+          ) : sortedFields.length > 0 ? (
             <div className="space-y-4">
               <div className="text-xs text-gray-500">点右侧「填入」按 Schema 写入测试参数，或手动填写后执行。</div>
               {sortedFields.map(([name, spec]) => renderField(name, spec as ParameterProperty))}
@@ -279,7 +353,13 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
             <ExecuteResultPanel
               result={result}
               loading={loading}
+              qualityReview={result.quality_review}
               onOpenFlow={result.run_id || result.execution_id ? () => setFlowFullscreen(true) : undefined}
+              onEditSop={() =>
+                toast.info('Tool 请走「编辑 / AI 审核」补 description / parameters，勿套 Skill SOP 一键修复')
+              }
+              onRerunSameCase={handleRerunSameCase}
+              rerunLoading={loading}
             />
           )}
         </div>
@@ -290,20 +370,17 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
 
           <div className="text-xs font-medium text-gray-300 mb-2">参数 Schema（只读）</div>
           <pre className="text-xs text-gray-300 overflow-auto max-h-40 bg-dark-bg border border-dark-border rounded-lg p-3">
-            {tool?.parameters ? JSON.stringify(tool.parameters as object, null, 2) : '{}'}
+            {activeTool?.parameters ? JSON.stringify(activeTool.parameters as object, null, 2) : '{}'}
           </pre>
 
           <div className="mt-3 space-y-2">
-            <div className="text-xs font-medium text-gray-300">测试用例 — 点「填入」写入左侧参数</div>
-            {[
-              { title: `${tool?.name || 'Tool'}（必填字段）`, content: requiredExampleText, fill: () => fillParams(false) },
-              { title: `${tool?.name || 'Tool'}（含可选字段）`, content: exampleArgsText, fill: () => fillParams(true) },
-            ].map((ex) => (
+            <div className="text-xs font-medium text-gray-300">测试用例 — 点「填入」写入左侧参数（主路径 / 边界 / 复杂）</div>
+            {smokeExamples.map((ex) => (
               <div key={ex.title} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-xs text-gray-300 truncate font-medium">{ex.title}</div>
                   <div className="flex gap-2">
-                    <Button variant="secondary" onClick={ex.fill} disabled={loading}>填入</Button>
+                    <Button variant="secondary" onClick={() => fillFromExample(ex.content)} disabled={loading || schemaLoading}>填入</Button>
                     <Button
                       variant="secondary"
                       onClick={async () => {
@@ -314,7 +391,7 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
                           toast.error('复制失败');
                         }
                       }}
-                      disabled={loading}
+                      disabled={loading || schemaLoading}
                     >
                       复制
                     </Button>
@@ -335,7 +412,7 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
       <ExecuteFlowFullscreen
         open={!!(flowFullscreen && (result?.run_id || result?.execution_id))}
         runId={String(result?.run_id || result?.execution_id || '')}
-        title={`执行流程 · ${tool?.name || 'Tool'}`}
+        title={`执行流程 · ${activeTool?.name || 'Tool'}`}
         verdict={displayVerdict}
         status={result?.status}
         running={result?.status === 'running' || result?.status === 'accepted'}
@@ -344,6 +421,15 @@ const ExecuteToolModal: React.FC<ExecuteToolModalProps> = ({ open, tool, onClose
           result && displayVerdict ? (
             <div className="space-y-2">
               <RunVerdictBanner verdict={displayVerdict} />
+              <ExecutionQualityReviewPanel
+                review={result.quality_review}
+                persistKey="tool-exec"
+                onEditSop={() =>
+                  toast.info('Tool 请走「编辑 / AI 审核」补 description / parameters，勿套 Skill SOP 一键修复')
+                }
+                onRerunSameCase={handleRerunSameCase}
+                rerunLoading={loading}
+              />
               {outputAsText(result.output) ? (
                 <pre className="text-xs text-gray-300 overflow-auto max-h-40 bg-dark-bg border border-dark-border rounded-lg p-3 whitespace-pre-wrap">
                   {outputAsText(result.output).slice(0, 4000)}

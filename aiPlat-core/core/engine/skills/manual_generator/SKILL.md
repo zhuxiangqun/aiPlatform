@@ -12,10 +12,10 @@ effects:
     resources: ["http://localhost:8002/api/core/fde/manual/generate"]
     idempotent: true
     rollback_available: false
-  - type: write
-    resources: ["filesystem:~/fde_workspace/"]
-    idempotent: false
-    rollback_available: true
+  - type: emit
+    resources: ["artifact:delivery_manual"]
+    idempotent: true
+    rollback_available: false
 input_schema:
   type: object
   properties:

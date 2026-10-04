@@ -27,6 +27,8 @@ import json
 from core.management.execution_examples import (
     build_examples_from_input_schema as _build_examples_from_input_schema,
     examples_are_generic as _examples_are_generic,
+    resolve_skill_example_schema as _resolve_skill_example_schema,
+    sanitize_execution_examples as _sanitize_execution_examples,
 )
 
 import hashlib
@@ -324,6 +326,10 @@ class SkillManager:
                     if not isinstance(output_schema, dict):
 
                         output_schema = {}
+
+                    if not input_schema:
+
+                        input_schema = _resolve_skill_example_schema(live={}, frontmatter=fm)
 
 
 
@@ -974,6 +980,10 @@ class SkillManager:
                         if not isinstance(output_schema, dict):
 
                             output_schema = {}
+
+                        if not input_schema:
+
+                            input_schema = _resolve_skill_example_schema(live={}, frontmatter=fm)
 
                     except Exception:
 
@@ -2920,9 +2930,28 @@ class SkillManager:
 
         try:
 
-            base_dir = self._resolve_skills_base_path()
+            # Prefer the skill's known on-disk path (workspace vs engine), else scope base path
+            skill_md_path: Optional[Path] = None
+            skill_dir: Optional[Path] = None
+            try:
+                md0 = skill.metadata if isinstance(getattr(skill, "metadata", None), dict) else {}
+                fs0 = md0.get("filesystem") if isinstance(md0.get("filesystem"), dict) else {}
+                cand_md = Path(str(fs0.get("skill_md") or ""))
+                cand_dir = Path(str(fs0.get("skill_dir") or ""))
+                if cand_md.is_file():
+                    skill_md_path = cand_md
+                    skill_dir = cand_md.parent
+                elif cand_dir.is_dir():
+                    skill_dir = cand_dir
+                    skill_md_path = cand_dir / "SKILL.md"
+            except Exception:
+                skill_md_path = None
+                skill_dir = None
 
-            skill_dir = base_dir / skill.id
+            if skill_md_path is None or skill_dir is None:
+                base_dir = self._resolve_skills_base_path()
+                skill_dir = base_dir / skill.id
+                skill_md_path = skill_dir / "SKILL.md"
 
             skill_dir.mkdir(parents=True, exist_ok=True)
 
@@ -2931,10 +2960,6 @@ class SkillManager:
             (skill_dir / "scripts").mkdir(exist_ok=True)
 
             (skill_dir / "assets").mkdir(exist_ok=True)
-
-
-
-            skill_md_path = skill_dir / "SKILL.md"
 
             if not skill_md_path.exists():
 
@@ -3046,7 +3071,10 @@ class SkillManager:
 
         examples = fm.get("execution_examples")
 
-        schema = fm.get("execution_input_schema")
+        resolved = _resolve_skill_example_schema(
+            live=getattr(skill, "input_schema", None),
+            frontmatter=fm,
+        )
 
 
 
@@ -3062,13 +3090,13 @@ class SkillManager:
 
 
 
-        skill_input_schema = getattr(skill, "input_schema", None) or {}
+        skill_input_schema = resolved if isinstance(resolved, dict) else {}
 
         if not isinstance(skill_input_schema, dict):
 
             skill_input_schema = {}
 
-        effective_schema = schema if isinstance(schema, dict) and schema else skill_input_schema
+        effective_schema = skill_input_schema
 
 
 
@@ -3082,13 +3110,17 @@ class SkillManager:
 
         )
 
+        schema_for_examples = effective_schema if isinstance(effective_schema, dict) else {}
+        if isinstance(schema_for_examples, dict) and schema_for_examples:
+            norm_examples = _sanitize_execution_examples(
+                norm_examples, schema_for_examples, skill_hint=f"{skill_id} {skill_label}",
+            )
 
-
-        if _examples_are_generic(norm_examples):
+        if _examples_are_generic(norm_examples, schema_for_examples if isinstance(schema_for_examples, dict) else None):
 
             generated = _build_examples_from_input_schema(
 
-                skill_input_schema or (effective_schema if isinstance(effective_schema, dict) else {}),
+                schema_for_examples,
 
                 skill_id=skill_id,
 
@@ -3198,6 +3230,16 @@ class SkillManager:
 
 
 
+        timeout_val = None
+        try:
+            meta = getattr(skill, "metadata", None) or {}
+            if isinstance(meta, dict) and meta.get("timeout") is not None:
+                timeout_val = float(meta.get("timeout"))
+            elif fm.get("timeout") is not None:
+                timeout_val = float(fm.get("timeout"))
+        except Exception:
+            timeout_val = None
+
         return {
 
             "skill_id": skill_id,
@@ -3209,6 +3251,8 @@ class SkillManager:
             "input_schema": effective_schema if isinstance(effective_schema, dict) and effective_schema else None,
 
             "default_input": default_input,
+
+            "timeout": timeout_val,
 
         }
 
@@ -3235,6 +3279,21 @@ class SkillManager:
                 content = str(content).strip()
             if title and content:
                 cleaned.append({"title": title[:80], "content": content[:8000]})
+        schema = getattr(skill, "input_schema", None) if isinstance(getattr(skill, "input_schema", None), dict) else {}
+        if not schema:
+            fm: dict = {}
+            md_path = self._find_skill_md(skill_id)
+            if md_path and md_path.exists():
+                try:
+                    raw = md_path.read_text(encoding="utf-8")
+                    _fm, _body = self._split_front_matter(raw)
+                    if isinstance(_fm, dict):
+                        fm = _fm
+                except Exception:
+                    fm = {}
+            schema = _resolve_skill_example_schema(live={}, frontmatter=fm)
+        if schema:
+            cleaned = _sanitize_execution_examples(cleaned, schema, skill_hint=str(skill_id))
         if not cleaned:
             return False
         if not isinstance(skill.metadata, dict):
@@ -3439,8 +3498,16 @@ class SkillManager:
             
 
             timeout = context.get("timeout") if context else None
-
-            
+            if timeout is None:
+                try:
+                    from core.apps.skills import get_skill_registry
+                    sk = get_skill_registry().get(skill_id)
+                    cfg = getattr(sk, "_config", None) if sk else None
+                    meta = getattr(cfg, "metadata", None) if cfg else None
+                    if isinstance(meta, dict) and meta.get("timeout") is not None:
+                        timeout = float(meta.get("timeout"))
+                except Exception:
+                    timeout = None
 
             result = await executor.execute(
 

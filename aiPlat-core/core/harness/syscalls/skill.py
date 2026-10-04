@@ -94,19 +94,29 @@ async def sys_skill_call(
 
     skill_name = str(getattr(skill, "name", None) or getattr(getattr(skill, "_config", None), "name", "") or "")
 
-    span = await trace_gate.start(
+    try:
+        import asyncio as _aio_span
 
-        "sys.skill.call",
+        span = await _aio_span.wait_for(
+            trace_gate.start(
+                "sys.skill.call",
+                attributes={
+                    "skill": skill_name,
+                    "trace_id": (trace_context or {}).get("trace_id") if isinstance(trace_context, dict) else None,
+                },
+            ),
+            timeout=3.0,
+        )
+    except Exception:
+        span = None
+    if span is None:
+        from core.harness.infrastructure.gates.trace_gate import TraceSpan as _TraceSpan
 
-        attributes={
-
-            "skill": skill_name,
-
-            "trace_id": (trace_context or {}).get("trace_id") if isinstance(trace_context, dict) else None,
-
-        },
-
-    )
+        span = _TraceSpan(
+            trace_id=(trace_context or {}).get("trace_id") if isinstance(trace_context, dict) else None,
+            span_id=None,
+            name="sys.skill.call",
+        )
 
     start_ts = time.time()
 
@@ -219,15 +229,29 @@ async def sys_skill_call(
 
             end_ts = time.time()
 
+            # Never reuse the skill TraceGate span_id — that overwrites the Skill
+            # canvas card with「路由 · 选技能」(run-2e8529 / run-eec14e).
+            _skill_span = getattr(span, "span_id", None)
+            _route_span = (
+                f"routing:skill_route:{_skill_span}"
+                if _skill_span
+                else f"routing:skill_route:{skill_name or 'unknown'}:{int(end_ts * 1000)}"
+            )
+            _parent = None
+            if isinstance(trace_context, dict):
+                _parent = trace_context.get("parent_span_id") or _skill_span
+            else:
+                _parent = _skill_span
+
             await store.add_syscall_event(
 
                 {
 
                     "trace_id": span.trace_id,
 
-                    "span_id": getattr(span, "span_id", None),
+                    "span_id": _route_span,
 
-                    "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
+                    "parent_span_id": _parent,
 
                     "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
 
@@ -597,6 +621,78 @@ async def sys_skill_call(
 
     await _emit_routing_event("selected")
 
+    # Close agent pre_llm_prep + emit in-flight skill row NOW. Completion-only
+    # skill rows left orphan_watchdog blind: skill_route selected → 60s later
+    # false pre_llm_prep_stalled killed live code_generation (run-320e4de31f66).
+    _run_id_skill = (
+        str((trace_context or {}).get("run_id") or "").strip()
+        if isinstance(trace_context, dict)
+        else ""
+    )
+    _skill_evt_id = (
+        f"{_run_id_skill}:skill:{skill_name}:{start_ts}"
+        if _run_id_skill and skill_name
+        else None
+    )
+    try:
+        runtime_early = get_kernel_runtime()
+        store_early = getattr(runtime_early, "execution_store", None) if runtime_early else None
+        if store_early is not None and _run_id_skill:
+            try:
+                from core.harness.utils.execute_session import emit_pre_llm_prep_close
+
+                _tc = trace_context if isinstance(trace_context, dict) else {}
+                await emit_pre_llm_prep_close(
+                    store_early,
+                    _run_id_skill,
+                    status="ok",
+                    step_count=_tc.get("step_count"),
+                    parent_span_id=str(_tc.get("parent_span_id") or ""),
+                    reason="before_skill_call",
+                    extra_args={"skill": skill_name},
+                )
+            except Exception:
+                logging.debug("pre_llm_prep close before skill skipped", exc_info=True)
+            if _skill_evt_id:
+                try:
+                    await store_early.add_syscall_event(
+                        {
+                            "id": _skill_evt_id,
+                            "trace_id": span.trace_id,
+                            "span_id": getattr(span, "span_id", None),
+                            "parent_span_id": (
+                                (trace_context or {}).get("parent_span_id")
+                                if isinstance(trace_context, dict)
+                                else None
+                            ),
+                            "run_id": _run_id_skill,
+                            "kind": "skill",
+                            "name": skill_name or "<unknown>",
+                            "status": "running",
+                            "target_type": _ar.target_type if _ar else None,
+                            "target_id": _ar.target_id if _ar else None,
+                            "tenant_id": getattr(_pr, "tenant_id", None),
+                            "user_id": user_id,
+                            "session_id": session_id,
+                            "start_time": start_ts,
+                            "args": {
+                                "params_keys": sorted(list((params or {}).keys()))[:50],
+                                "routing_decision_id": (
+                                    (trace_context or {}).get("routing_decision_id")
+                                    if isinstance(trace_context, dict)
+                                    else None
+                                ),
+                                "coding_policy_profile": coding_profile,
+                                "phase": "selected",
+                            },
+                            "created_at": time.time(),
+                        }
+                    )
+                except Exception:
+                    logging.debug("skill running span emit skipped", exc_info=True)
+    except Exception:
+        logging.debug("skill early progress emit skipped", exc_info=True)
+
     # candidates snapshot might be emitted at the router/loop layer; avoid double counting.
 
     try:
@@ -641,6 +737,19 @@ async def sys_skill_call(
 
                 logging.warning(str(e), exc_info=True)
 
+            # Agent required_skills: carry into args so PolicyGate can waive second HITL
+            # (loop may put them on params and/or trace_context).
+            try:
+                bound = args.get("_bound_skill_ids")
+                if not (isinstance(bound, list) and bound) and isinstance(trace_context, dict):
+                    tc_bound = trace_context.get("_bound_skill_ids")
+                    if isinstance(tc_bound, list) and tc_bound:
+                        args["_bound_skill_ids"] = [
+                            str(x).strip() for x in tc_bound if str(x).strip()
+                        ]
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+
             # Inject graph context for Skill awareness
 
             try:
@@ -677,13 +786,7 @@ async def sys_skill_call(
 
                             gc["wiki_available"] = True
 
-                            total = 0
-
-                            for cid in (kbs or ["default"]):
-
-                                total += len(search_pages(limit=500, collection_id=cid))
-
-                            gc["wiki_pages"] = total
+                            gc["wiki_pages"] = 1
 
                             if kbs:
 
@@ -736,6 +839,23 @@ async def sys_skill_call(
                 except Exception as e:
 
                     logging.warning(str(e), exc_info=True)
+
+            # Keep SkillContext.variables in sync — handlers (code_generation) read
+            # run_id / parent span from context.variables, not only prepared_params.
+            try:
+                _rid_sync = str(args.get("_run_id") or "").strip()
+                if _rid_sync and isinstance(getattr(ctx, "variables", None), dict):
+                    ctx.variables.setdefault("_run_id", _rid_sync)
+                _psp_sync = ""
+                if isinstance(trace_context, dict):
+                    _psp_sync = str(trace_context.get("parent_span_id") or "").strip()
+                if not _psp_sync:
+                    _psp_sync = str(args.get("_parent_span_id") or "").strip()
+                if _psp_sync and isinstance(getattr(ctx, "variables", None), dict):
+                    ctx.variables.setdefault("_parent_span_id", _psp_sync)
+                    args.setdefault("_parent_span_id", _psp_sync)
+            except Exception as e:
+                logging.warning(str(e), exc_info=True)
 
             try:
 
@@ -940,8 +1060,16 @@ async def sys_skill_call(
                 return SkillResult(success=False, output=None, error="policy_denied", metadata={"reason": "exec_skill_denied", "skill": skill_name})
 
             if decision == "ask":
+                # Agent-bound required_skills: already authorized by Agent execute.
+                try:
+                    from core.apps.tools.skill_tools import is_agent_bound_required_skill
 
-                args["_approval_required"] = True
+                    if is_agent_bound_required_skill(skill_name, args):
+                        decision = "allow"
+                    else:
+                        args["_approval_required"] = True
+                except Exception:
+                    args["_approval_required"] = True
 
 
 
@@ -1008,12 +1136,32 @@ async def sys_skill_call(
                 meta = meta if isinstance(meta, dict) else {}
 
                 if approval_layer_policy != "tool_only" and meta.get("requires_approval") is True:
+                    try:
+                        from core.apps.tools.skill_tools import is_agent_bound_required_skill
 
-                    args["_approval_required"] = True
+                        if not is_agent_bound_required_skill(skill_name, args):
+                            args["_approval_required"] = True
+                    except Exception:
+                        args["_approval_required"] = True
 
             except Exception as e:
 
                 logging.warning(str(e), exc_info=True)
+
+            # Final bound-skill waiver: clear any prior force-approval flags when
+            # the skill is listed on this Agent's required_skills.
+            try:
+                from core.apps.tools.skill_tools import is_agent_bound_required_skill
+
+                if (
+                    isinstance(args, dict)
+                    and args.get("_approval_required")
+                    and is_agent_bound_required_skill(skill_name, args)
+                ):
+                    args.pop("_approval_required", None)
+                    args["_approval_waived"] = "agent_bound_required_skill"
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
 
 
@@ -1146,6 +1294,21 @@ async def sys_skill_call(
                 await _emit_routing_event("policy_denied", extra={"reason": pr.reason})
 
                 return SkillResult(success=False, output=None, error="policy_denied", metadata={"reason": pr.reason, "skill": skill_name})
+
+            if pr is not None and pr.decision == PolicyDecision.APPROVAL_REQUIRED:
+                # Bound required_skills were already authorized by Agent execute.
+                try:
+                    from core.apps.tools.skill_tools import is_agent_bound_required_skill
+
+                    if is_agent_bound_required_skill(skill_name, args):
+                        await _emit_routing_event(
+                            "approval_bypassed",
+                            extra={"reason": "agent_bound_required_skill", "orig": getattr(pr, "reason", "")},
+                            approval_request_id=getattr(pr, "approval_request_id", None),
+                        )
+                        pr = None
+                except Exception:
+                    logging.debug("bound-skill approval waiver skipped", exc_info=True)
 
             if pr is not None and pr.decision == PolicyDecision.APPROVAL_REQUIRED:
 
@@ -1401,6 +1564,16 @@ async def sys_skill_call(
 
                             await dep.execute(ctx, prepared_params)
 
+                from core.harness.execution.skill_side_effect_gate import (
+                    skill_result_if_unrealized_side_effects,
+                )
+
+                refused = skill_result_if_unrealized_side_effects(skill)
+
+                if refused is not None:
+
+                    return refused
+
                 return await skill.execute(ctx, prepared_params)  # type: ignore[misc]
 
             finally:
@@ -1433,22 +1606,6 @@ async def sys_skill_call(
 
     try:
 
-        # §5.31: Ensure skill has a usable LLM model before execution
-
-        if not getattr(skill, "_model", None):
-
-            try:
-
-                from core.harness.utils.model_injection import ensure_skill_model, best_model_for_purpose
-
-                ensure_skill_model(skill, model_name=best_model_for_purpose("skill_execution"), force=False)
-
-            except Exception as e:
-
-                logging.warning(str(e), exc_info=True)
-
-
-
         # §5.19: refuse retry on non-idempotent write skills
 
         cfg = getattr(skill, "_config", None)
@@ -1469,7 +1626,52 @@ async def sys_skill_call(
 
             )
 
-        result = await res_gate.run(_run, retries=retries, timeout_seconds=timeout_seconds)
+        # Agent ReAct often calls without timeout_seconds — then ResilienceGate
+        # awaits forever (test_executor run-49fc6a85db3c: skill stuck 2443s).
+        # Honor SKILL.md / metadata.timeout, else same default as SkillExecutor.
+        if timeout_seconds is None:
+            try:
+                meta = getattr(cfg, "metadata", None) if cfg is not None else None
+                if isinstance(meta, dict) and meta.get("timeout") is not None:
+                    timeout_seconds = float(meta.get("timeout"))
+            except Exception:
+                timeout_seconds = None
+        if timeout_seconds is None:
+            try:
+                timeout_seconds = float(
+                    os.getenv("AIPLAT_SKILL_DEFAULT_TIMEOUT", "180") or "180"
+                )
+            except Exception:
+                timeout_seconds = 180.0
+
+        async def _run_with_model():
+            # Model inject must sit inside the skill timeout budget — sync
+            # ModelManager / Ollama scan outside wait_for wedged ReAct for 40min.
+            if not getattr(skill, "_model", None):
+                try:
+                    from core.harness.utils.model_injection import (
+                        ensure_skill_model,
+                        best_model_for_purpose,
+                    )
+                    from core.harness.utils.execute_session import (
+                        resolve_skill_model_purpose,
+                    )
+
+                    _purpose = resolve_skill_model_purpose(
+                        skill, default="skill_execution"
+                    )
+                    ensure_skill_model(
+                        skill,
+                        model_name=best_model_for_purpose(_purpose),
+                        force=False,
+                    )
+                except Exception as e:
+                    logging.warning(str(e), exc_info=True)
+            return await _run()
+
+        result = await res_gate.run(
+            _run_with_model, retries=retries, timeout_seconds=timeout_seconds
+        )
 
         end_ts = time.time()
 
@@ -1645,30 +1847,29 @@ async def sys_skill_call(
 
                     actual_mode = "handler" if exec_type == "handler" else ("mock" if err and "mock" in str(err).lower() else "prompt")
 
+                    # AuditMixin.add_audit_log takes detail= (not kind=/payload=);
+                    # wrong kwargs made Execution audit recording fail every skill
+                    # (run-58363c7935f6 WARNING spam).
                     await store.add_audit_log(
-
                         action="skill_executed",
-
-                        kind="execution_realness",
-
-                        payload={
-
+                        status="ok" if is_ok else "failed",
+                        resource_type="skill",
+                        resource_id=str(skill_name),
+                        run_id=str(
+                            (getattr(context, "variables", None) or {}).get("_run_id")
+                            or ""
+                        )
+                        or None,
+                        trace_id=span.trace_id,
+                        detail={
+                            "kind": "execution_realness",
                             "skill_name": str(skill_name),
-
                             "execution_type": str(exec_type),
-
                             "action_type": action_type,
-
                             "audit_level": audit_level,
-
                             "actual_mode": actual_mode,
-
                             "success": is_ok,
-
-                            "trace_id": span.trace_id,
-
                         },
-
                     )
 
             except Exception as e:

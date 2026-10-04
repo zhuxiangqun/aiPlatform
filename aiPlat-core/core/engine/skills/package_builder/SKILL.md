@@ -7,10 +7,10 @@ category: fde
 status: enabled
 execution_type: prompt
 effects:
-  - type: write
-    resources: ["filesystem:/tmp"]
-    idempotent: false
-    rollback_available: true
+  - type: emit
+    resources: ["artifact:deploy_package"]
+    idempotent: true
+    rollback_available: false
 input_schema:
   type: object
   properties:

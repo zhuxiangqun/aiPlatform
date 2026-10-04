@@ -25,11 +25,11 @@ triggers:
 permissions:
 - llm:generate
 effects:
-- type: write
+- type: emit
   resources:
-  - filesystem:~
-  idempotent: false
-  rollback_available: true
+  - artifact:file_blocks
+  idempotent: true
+  rollback_available: false
 input_schema:
   requirement:
     type: string
@@ -100,9 +100,6 @@ trigger_conditions:
   description: 跳过条件：用户仅询问概念、对比工具而非实际写代码时不触发。
 skip_when: 跳过条件：用户仅询问概念、对比工具而非实际写代码时不触发。
 ---
-
-
-
 # 代码生成（Engine）
 
 ## 输出格式（backend 模式——API 路由+model 落盘 JSON，AGENT.md 引用此节，2026-08-26 归属迁移）
@@ -115,13 +112,29 @@ skip_when: 跳过条件：用户仅询问概念、对比工具而非实际写代
 ```
 
 ## SOP
-1. 解析需求：语言/框架/代码风格/测试要求。
+1. 先判定交付模式（见下表），再选语言/框架。
 2. 生成代码：## FILE: 格式，每文件包含完整实现。
-3. 自检：语法正确、导入完备、安全无注入。
+3. 自检：语法正确、导入完备、安全无注入；未列出的工程入口文件不要交。
 
-## 技术栈（强制 — 后端必须用 Python）
-- **后端一律用 Python + FastAPI + SQLAlchemy 2.0 + Pydantic v2**。**绝对禁止** JavaScript/Node.js/TypeScript/Go 等——测试执行器用 pytest 跑，只有 Python 代码能被测试
-- 目录结构统一 `backend/app/`（main.py、api/、models/、schemas/、services/、core/、utils/），测试从 `from app.xxx import` 导入
+## 交付模式（强制 — 所有绑定本 Skill 的 Agent 共用，禁止只写在某一个 AGENT.md）
+按**当前任务输入**选一种，禁止混用：
+
+| 输入信号 | 应交付 | 禁止 |
+|---------|--------|------|
+| 单独测 / 可组装切片 / 无 project_scaffold / 不要 package.json / 不是完整 Vite 或 uvicorn 工程 | 只交任务列出的模块文件。前端：types + apiClient + pages（可加 components）。后端：routes + Pydantic。鉴权标 `// TODO: auth` | `package.json`、`vite.config`、`index.html`、`main.tsx`、`App.tsx`；不要用 `npm run dev` / `uvicorn` 当验收 |
+| 单独测后端 + PRD 含「上报/审批/派修」 | 只交 Python API 切片（routes + schemas），**不要**因此补 TSX 三页 | 把业务三元组当成前端页面任务 |
+| 单独测前端 + 同上三元组 | types + apiClient + 三页 TSX | 只交一页或用 Python 冒充 |
+| 有脚手架挂路由 / 假定 Vite 骨架已存在 | 上列切片 + 改已有 `App.tsx` 挂路由 | 重写 package.json、拆掉可启动工程 |
+| 工程脚手架 / 可启动骨架 | FastAPI `main.py`+`requirements.txt` + Vite 入口链 | 只交 `frontend/README.md`；不要写业务 CRUD |
+
+## 语言（强制 — 跟任务走，禁止套错栈）
+- 任务或 Agent `preferred_language` 指定 TypeScript/TSX → 前端切片，**禁止**用 Python/FastAPI 冒充
+- 任务是后端 API、或 preferred_language=python → Python + FastAPI + Pydantic v2
+- 「后端必须用 Python」**只适用于后端任务**，不得套到前端单独测
+
+## 技术栈（当任务为后端时）
+- 后端用 Python + FastAPI + SQLAlchemy 2.0 + Pydantic v2；测试执行器用 pytest
+- 目录结构统一 `backend/app/`（main.py、api/、models/、schemas/、services/）——**完整工程/脚手架**才需要；单独测切片按任务 `## FILE` 清单即可
 
 ## 平台能力接线（强制 — Code 模式托管 ≠ 自动继承全部能力）
 平台只托管进程与路由；**生成后端不会自动获得** Memory / KB / PolicyGate / SECI / ReActLoop。需要能力时必须显式接线：
@@ -136,9 +149,8 @@ skip_when: 跳过条件：用户仅询问概念、对比工具而非实际写代
 **选型提示**：只要 PRD 含「智能理解 / 多步推理 / 工具编排」，默认 **hybrid**，不要纯 code。
 
 ## 聚焦原则（强制 — 避免单次输出超时）
-- **优先核心业务文件**：main.py、routers/*.py、models/*.py、schemas、核心 service
-- **合并样板**：config/settings/database 合并为 1-2 个文件；不要输出空 `__init__.py`、纯 re-export 文件、冗余 requirements.txt
-- **目标 ≤ 15 个文件**：输出可运行的 MVP（核心功能可跑通），而非完整生产应用
+- 单独测：只交任务 `## FILE` 清单，不要为凑结构输出 Vite/`main.py` 空壳
+- 完整工程/脚手架：优先 main.py、routers、models、schemas；合并样板；目标 ≤ 15 个文件
 - 每个文件必须有实质内容，禁止为凑结构而拆文件
 
 ## 输出格式（强制）
@@ -151,6 +163,12 @@ skip_when: 跳过条件：用户仅询问概念、对比工具而非实际写代
 - 例如 `from app.api.routes import router` → `backend/app/api/routes/__init__.py` 里必须有 `router = APIRouter()` 或 `from .parse import router`
 - 引用不存在的符号会报 `ImportError: cannot import name`，pytest 直接判失败
 - 若某目录需要被 `from app.api import xxx` 引用，其 `__init__.py` 必须显式 re-export 这些符号（`from .xxx import yyy`），**禁止留空的 `__init__.py`**（空 __init__ 会导致子模块无法被上层 import）
+- **允许**同批 `## FILE` 交付物互相相对 import（如页面 `import '../api/apiClient'`、`import '../types'`）
+- **禁止** `from './utils'` 等引用未交付文件；辅助逻辑须内联或另起 `## FILE` 一并交付
+
+## API 字段假设（强制 — 防自相矛盾）
+- 任务要求「不自行推断 API」且 contracts **无字段级细节**时：可写最小可运行 Request/Response，但须在类型旁显式标注「临时假设 / ASSUMPTION，以真实 api_contracts 覆盖」
+- **禁止**写「本文件不推断 API」同时又编造完整请求字段却无假设声明；概览里的「假设」**不能**代替 types 文件内的标注
 
 ## 依赖声明（强制 — 所有第三方依赖必须写入 requirements.txt）
 - **自由使用任何第三方库**：passlib、bcrypt、email-validator、python-multipart、python-jose 等都可以用
@@ -165,3 +183,8 @@ skip_when: 跳过条件：用户仅询问概念、对比工具而非实际写代
 - [ ] 输出格式符合规范
 - [ ] 正确处理错误和边界条件
 - [ ] 返回结果包含引用和来源标注
+
+<!-- eq_fix:undeclared_api_schema_assumption -->
+### 一键加固：API 字段须标临时假设
+- 任务要求「不自行推断 API 格式」且 contracts 无字段级细节时，可写最小可运行 Request/Response，但必须在类型旁显式标注「临时假设 / ASSUMPTION / 以真实 contracts 覆盖」。
+- 禁止写「本文件不推断 API」同时又定义完整请求字段却无假设声明。

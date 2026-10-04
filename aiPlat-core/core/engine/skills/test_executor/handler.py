@@ -27,7 +27,11 @@ def _lang_tag_pattern():
     global _LANG_TAG_RE
     if _LANG_TAG_RE is None:
         import re
-        _LANG_TAG_RE = re.compile(r'^(python3?|json|bash|sh|yaml|yml|typescript|javascript|js|ts|sql)\s*\n', re.IGNORECASE)
+        # Allow EOF (body is only a fence tag like bare ``python`` with no newline).
+        _LANG_TAG_RE = re.compile(
+            r'^(python3?|json|bash|sh|yaml|yml|typescript|javascript|js|ts|tsx|jsx|sql)\s*(?:\n|$)',
+            re.IGNORECASE,
+        )
     return _LANG_TAG_RE
 
 
@@ -63,6 +67,103 @@ def _extract_questions(test_cases: Any) -> List[Dict[str, Any]]:
             except Exception:
                 pass
     return []
+
+
+# Pipeline code_split passes scaffold/FE/BE as separate input_artifacts — not ``code``.
+_CODE_ARTIFACT_KEYS = (
+    "code",
+    "project_scaffold",
+    "frontend_code",
+    "backend_code",
+    "frontend",
+    "backend",
+)
+
+
+def _artifact_text(value: Any) -> str:
+    if isinstance(value, dict):
+        return str(value.get("raw_output") or value.get("content") or "")
+    if value is None:
+        return ""
+    return str(value)
+
+
+def _file_blocks_have_bodies(text: str) -> bool:
+    """True when ## FILE: blocks include substantive bodies (not path-only stubs)."""
+    if not text or "## FILE:" not in text:
+        return False
+    for block in re.split(r"^#{2,4}\s*FILE:\s*", text, flags=re.MULTILINE)[1:]:
+        lines = block.strip().split("\n", 1)
+        if len(lines) < 2:
+            continue
+        body = lines[1].strip()
+        if not body:
+            continue
+        # Skip language-tag-only / empty fence leftovers
+        body = _lang_tag_pattern().sub("", body, count=1).strip()
+        if len(body) >= 40:
+            return True
+    return False
+
+
+def _assemble_code_from_params(params: Dict[str, Any]) -> str:
+    """Merge code-like input_artifacts into one ## FILE: blob for pytest.
+
+    code_split team YAML declares input_artifacts:
+      [test_cases, project_scaffold, frontend_code, backend_code]
+    without a single ``code`` key — handler must assemble them.
+    Later keys overwrite same paths when written in order.
+    """
+    parts: List[str] = []
+    for key in _CODE_ARTIFACT_KEYS:
+        text = _artifact_text(params.get(key)).strip()
+        if text and "## FILE:" in text:
+            parts.append(text)
+    tc = _artifact_text(params.get("test_cases")).strip()
+    if tc and _file_blocks_have_bodies(tc):
+        parts.append(tc)
+    return "\n\n".join(parts)
+
+
+def _hydrate_params(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Fill ``test_cases`` from execute JSON nested in input/message.
+
+    ReAct skill_call often only sends ``input=请执行…``; management execute still
+    has ``{message, test_cases}`` on the Agent payload (run-74a19d55326c: 0 cases).
+    Also assemble ``code`` from scaffold/FE/BE when pytest mode lacks ``code``.
+    """
+    p = dict(params or {})
+    if not _extract_questions(p.get("test_cases")):
+        for extra in (p.get("input"), p.get("message"), p.get("user_requirement")):
+            got = _extract_questions(extra)
+            if got:
+                p["test_cases"] = got
+                break
+            if isinstance(extra, dict):
+                got = _extract_questions(extra.get("test_cases"))
+                if got:
+                    p["test_cases"] = got
+                    if not p.get("agent_app") and extra.get("agent_app"):
+                        p["agent_app"] = extra.get("agent_app")
+                    break
+            if isinstance(extra, str) and extra.strip().startswith("{"):
+                try:
+                    nested = json.loads(extra)
+                except Exception:
+                    nested = None
+                if isinstance(nested, dict):
+                    got = _extract_questions(nested.get("test_cases") or nested)
+                    if got:
+                        p["test_cases"] = got
+                        break
+
+    mode = str(p.get("mode") or p.get("test_execution_mode") or "").strip().lower()
+    assembled = _assemble_code_from_params(p)
+    if assembled:
+        # Always prefer assembled blob in pytest mode (covers multi-artifact teams).
+        if mode in ("pytest", "code_pytest") or not str(p.get("code") or "").strip():
+            p["code"] = assembled
+    return p
 
 
 def _check_assertion(text: str, assertion: Dict[str, Any]) -> Dict[str, Any]:
@@ -693,6 +794,29 @@ def _build_true_test_report(
         )
 
     total = len(results)
+    # All-SKIP (e.g. standalone execute without agent_app) is incomplete env, not APPROVED.
+    if failed:
+        recommendation = "REJECTED"
+    elif diagnostics:
+        recommendation = "NEEDS_FIX"
+    elif skipped and not passed:
+        recommendation = "NEEDS_FIX"
+    else:
+        recommendation = "APPROVED"
+    meta: Dict[str, Any] = {
+        "total_test_cases": total,
+        "passed": passed,
+        "failed": len(failed),
+        "warnings": len(skipped),
+        "pass_rate": round(passed / total * 100) if total else 0,
+        "diagnostics": diagnostics,
+    }
+    if skipped and not passed:
+        meta["standalone_note"] = (
+            "全部用例被 SKIP：独立执行缺少 agent_app / 可调用 Skill。"
+            "流水线或输入中提供被测 Agent 产物后再跑测真；"
+            "本报告仅证明执行器能产出结构化结果。"
+        )
     return {
         "header": {
             "report_id": "TR-TRUE-0001",
@@ -701,17 +825,10 @@ def _build_true_test_report(
             "date": today,
             "executor": "test_executor",
         },
-        "meta": {
-            "total_test_cases": total,
-            "passed": passed,
-            "failed": len(failed),
-            "warnings": len(skipped),
-            "pass_rate": round(passed / total * 100) if total else 0,
-            "diagnostics": diagnostics,
-        },
+        "meta": meta,
         "test_results": results,
         "bug_summary": {"total_bugs": len(bugs), "bugs": bugs},
-        "recommendation": "APPROVED" if not failed and not diagnostics else ("REJECTED" if failed else "NEEDS_FIX"),
+        "recommendation": recommendation,
         "improvements": [
             {"priority": "MUST_FIX" if b.get("severity") == "high" else "SHOULD_FIX",
              "item": b["suggested_fix"], "ref": b["id"]}
@@ -722,6 +839,8 @@ def _build_true_test_report(
 
 async def _run_agent_true_test(params: Dict[str, Any]) -> Dict[str, Any]:
     """测真：platform_check / skill_invoke / page_smoke / conversation 混合执行。"""
+    import asyncio
+
     from core.harness.execution.true_test_runtime import (
         classify_execution,
         run_true_test_case,
@@ -754,7 +873,15 @@ async def _run_agent_true_test(params: Dict[str, Any]) -> Dict[str, Any]:
             or ((tc.get("invoke") or {}).get("skill") if isinstance(tc.get("invoke"), dict) else None),
         }
         if kind == "conversation":
-            # Reuse single conversation path for soft NL cases
+            if not str(params.get("agent_app") or "").strip():
+                results.append({
+                    **base,
+                    "result": "SKIP",
+                    "reason": "conversation 需要 agent_app（被测 Agent）；本次为独立执行，无法嵌套跑对话",
+                    "execution": "conversation",
+                    "is_bug": False,
+                })
+                continue
             raw = str(params.get("agent_app") or "")
             manifest = _parse_agent_manifest(raw)
             routing = (manifest or {}).get("skill_routing", {}) or {}
@@ -779,21 +906,39 @@ async def _run_agent_true_test(params: Dict[str, Any]) -> Dict[str, Any]:
             results.append({**base, **one, "execution": "conversation"})
             continue
 
-        out = await run_true_test_case(
-            tc, agent_app=agent_app, frontend_pages=frontend_pages
-        )
+        try:
+            out = await asyncio.wait_for(
+                run_true_test_case(
+                    tc, agent_app=agent_app, frontend_pages=frontend_pages
+                ),
+                timeout=25.0,
+            )
+        except asyncio.TimeoutError:
+            results.append(
+                {
+                    **base,
+                    "result": "FAIL",
+                    "reason": "case_timeout",
+                    "failures": ["case_timeout"],
+                    "is_bug": True,
+                }
+            )
+            continue
+        _result = str(out.get("result") or ("PASS" if out.get("ok") else "FAIL"))
         results.append(
             {
                 **base,
-                "result": out.get("result") or ("PASS" if out.get("ok") else "FAIL"),
+                "result": _result,
                 "evidence": out.get("evidence") or "",
                 "failures": out.get("failures") or [],
                 "reason": (
                     out.get("evidence")
-                    if out.get("ok")
+                    if out.get("ok") or _result == "SKIP"
                     else "; ".join(out.get("failures") or [str(out.get("error") or "fail")])
                 ),
-                "is_bug": not bool(out.get("ok")),
+                "diagnostics": out.get("diagnostics") or [],
+                # SKIP = environment gap, not a product defect
+                "is_bug": _result in ("FAIL", "TIMEOUT", "ERROR"),
             }
         )
 
@@ -831,12 +976,51 @@ async def _run_agent_true_test(params: Dict[str, Any]) -> Dict[str, Any]:
 # ══════════════════════════════════════════════════════════════════
 # 入口：分流
 # ══════════════════════════════════════════════════════════════════
-async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
+async def _execute_body(params: Dict[str, Any]) -> Dict[str, Any]:
+    params = _hydrate_params(params)
+    mode = str(params.get("mode") or params.get("test_execution_mode") or "").strip().lower()
     code = params.get("code")
     if code and str(code).strip():
         return await _run_pytest(params)
 
-    mode = str(params.get("mode") or params.get("test_execution_mode") or "").strip().lower()
+    # Explicit pytest must not silently greenwash via document_check (0 cases / APPROVED).
+    if mode in ("pytest", "code_pytest"):
+        today = _dt.date.today().isoformat()
+        return {
+            "success": False,
+            "error": "pytest_mode_missing_code",
+            "header": {
+                "report_id": f"TR-{today.replace('-', '')}-0000",
+                "project": str(params.get("project") or ""),
+                "test_mode": "pytest",
+                "date": today,
+                "executor": "test_executor",
+            },
+            "meta": {
+                "total_test_cases": 0,
+                "passed": 0,
+                "failed": 0,
+                "warnings": 0,
+                "pass_rate": 0,
+            },
+            "test_results": [],
+            "bug_summary": {
+                "total_bugs": 1,
+                "bugs": [
+                    {
+                        "id": "ENV-NO-CODE",
+                        "severity": "critical",
+                        "title": "pytest 模式缺少可执行代码产物",
+                        "description": (
+                            "test_execution_mode=pytest 但未收到 code / "
+                            "project_scaffold / frontend_code / backend_code 的 ## FILE: 正文"
+                        ),
+                    }
+                ],
+            },
+            "recommendation": "NEEDS_FIX",
+        }
+
     agent_app = params.get("agent_app")
     cases = _extract_questions(params.get("test_cases"))
 
@@ -861,8 +1045,50 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
         )
         # Empty mode + agent_app → true test (conversation cases still classified per-case)
         if wants_true or mode in ("agent_true_test", "true_test", ""):
-            return await _run_agent_true_test(params)
+            import asyncio
+
+            try:
+                return await asyncio.wait_for(_run_agent_true_test(params), timeout=90.0)
+            except asyncio.TimeoutError:
+                return {
+                    "success": False,
+                    "error": "true_test_timeout",
+                    "header": {"title": "测试执行超时", "date": _dt.date.today().isoformat()},
+                    "test_results": [],
+                    "recommendation": "NEEDS_FIX",
+                }
 
     if agent_app and "agent_manifest.json" in str(agent_app):
         return await _run_agent_conversation(params)
     return await _run_document_check(params)
+
+
+async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Skill entry. Hard cap so nested true_test cannot hold ReAct forever.
+
+    Pytest mode allows a longer wall clock (deps install + suite); true_test stays 90s.
+    """
+    import asyncio
+
+    mode = str(
+        (params or {}).get("mode")
+        or (params or {}).get("test_execution_mode")
+        or ""
+    ).strip().lower()
+    has_code = bool(str((params or {}).get("code") or "").strip()) or any(
+        "## FILE:" in _artifact_text((params or {}).get(k))
+        for k in _CODE_ARTIFACT_KEYS
+        if k != "code"
+    )
+    timeout = 300.0 if mode in ("pytest", "code_pytest") or has_code else 90.0
+
+    try:
+        return await asyncio.wait_for(_execute_body(params), timeout=timeout)
+    except asyncio.TimeoutError:
+        return {
+            "success": False,
+            "error": "test_executor_timeout",
+            "header": {"title": "测试执行超时", "date": _dt.date.today().isoformat()},
+            "test_results": [],
+            "recommendation": "NEEDS_FIX",
+        }

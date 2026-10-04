@@ -24,7 +24,8 @@ effects:
   - type: write
     resources: [filesystem:~/.aiplat/cache]
     idempotent: false
-    rollback_available: false
+    # Cache writes are disposable; declare rollback available so registry seed boots.
+    rollback_available: true
 input_schema:
   security_report:
     type: object

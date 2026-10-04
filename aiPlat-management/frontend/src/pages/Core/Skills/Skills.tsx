@@ -300,6 +300,12 @@ const Skills: React.FC = () => {
         open={executeModalOpen}
         skill={executeSkill}
         onClose={() => setExecuteModalOpen(false)}
+        onEditSop={() => {
+          if (!executeSkill) return;
+          setEditSkill(executeSkill);
+          setExecuteModalOpen(false);
+          setEditModalOpen(true);
+        }}
       />
     </div>
   );

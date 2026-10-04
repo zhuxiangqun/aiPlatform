@@ -12,6 +12,7 @@ from core.harness.execution.true_test_runtime import (
     classify_execution,
     deterministic_precheck_from_params,
     evaluate_result_asserts,
+    invoke_skill_via_agent,
     is_blocked_url,
     run_page_smoke,
     run_platform_check,
@@ -297,7 +298,8 @@ def test_build_true_test_report_emits_no_platform_handler_bugs():
     assert any(b.get("diagnostic") == "no_platform_handler" for b in report["bug_summary"]["bugs"])
 
 
-def test_build_true_test_report_ignores_prompt_only_video_qa():
+def test_build_true_test_report_ignores_prompt_only_chat_skill():
+    """video_qa is a real handler now; use a chat-only name for soft-pass ignore."""
     from core.engine.skills.test_executor.handler import _build_true_test_report
 
     report = _build_true_test_report(
@@ -305,14 +307,17 @@ def test_build_true_test_report_ignores_prompt_only_video_qa():
             {
                 "id": "TQ-017",
                 "result": "SKIP",
-                "evidence": "no_platform_handler:video_qa; prompt_skill_skip_structured_asserts:video_qa; missing:answer",
-                "diagnostics": ["no_platform_handler:video_qa"],
-                "question": "ask about video",
+                "evidence": (
+                    "no_platform_handler:customer_faq_chat; "
+                    "prompt_skill_skip_structured_asserts:customer_faq_chat; missing:answer"
+                ),
+                "diagnostics": ["no_platform_handler:customer_faq_chat"],
+                "question": "ask faq",
             },
             {
                 "id": "TQ-018",
                 "result": "PASS",
-                "evidence": "prompt_only_skill_soft_pass:video_qa; missing:answer",
+                "evidence": "prompt_only_skill_soft_pass:customer_faq_chat; missing:answer",
                 "question": "ask again",
             },
         ],
@@ -640,3 +645,169 @@ def test_enrich_media_injects_wizard_io_page_smoke():
     )
     assert meta2.get("injected_wizard_io") is True
     assert any(q.get("id") == "TQ-PAGE-WIZARD-IO" for q in out2)
+
+
+@pytest.mark.asyncio
+async def test_skill_invoke_no_agent_app_skips_nested_react(monkeypatch):
+    """Isolated execute: unknown skill must not fuzzy-map to media or nest ReAct."""
+
+    def _boom(*_a, **_k):
+        raise AssertionError("must not execute media handler without exact match")
+
+    monkeypatch.setattr(
+        "core.harness.media_skill_handlers.execute_media_skill",
+        _boom,
+    )
+
+    async def _no_agent(*_a, **_k):
+        raise AssertionError("must not nest run_workspace_agent")
+
+    monkeypatch.setattr(
+        "core.api.core_facade.run_workspace_agent",
+        _no_agent,
+    )
+
+    call = await invoke_skill_via_agent(
+        agent_app="", skill="report_submit", params={"x": 1}, timeout=2.0
+    )
+    assert call.get("ok") is False
+    assert call.get("error") == "missing_agent_app"
+    assert call.get("mode") == "skipped"
+
+    out = await run_true_test_case(
+        {
+            "id": "API-001",
+            "execution": "skill_invoke",
+            "invoke": {"skill": "report_submit", "params": {}},
+        },
+        agent_app="",
+        frontend_pages=None,
+    )
+    assert out["result"] == "SKIP"
+    assert "missing_agent_app" in (out.get("failures") or [])
+
+
+@pytest.mark.asyncio
+async def test_skill_invoke_empty_skill_is_skip_not_fail():
+    out = await run_true_test_case(
+        {
+            "id": "API-EMPTY",
+            "execution": "skill_invoke",
+            "title": "缺 skill 名",
+        },
+        agent_app="",
+        frontend_pages=None,
+    )
+    assert out["result"] == "SKIP"
+    assert "missing_skill" in (out.get("failures") or [])
+
+
+def test_build_true_test_report_all_skip_is_needs_fix_not_approved():
+    from core.engine.skills.test_executor.handler import _build_true_test_report
+
+    report = _build_true_test_report(
+        [
+            {
+                "id": "SMK-001",
+                "result": "SKIP",
+                "reason": "conversation 需要 agent_app",
+                "is_bug": False,
+            },
+            {
+                "id": "API-001",
+                "result": "SKIP",
+                "failures": ["missing_skill"],
+                "is_bug": False,
+            },
+        ],
+        project="standalone",
+        today="2026-10-04",
+    )
+    assert report["recommendation"] == "NEEDS_FIX"
+    assert report["meta"].get("standalone_note")
+    assert report["bug_summary"]["total_bugs"] == 0
+
+
+@pytest.mark.asyncio
+async def test_handler_timeout_does_not_fall_through(monkeypatch):
+    import asyncio as aio
+
+    async def _wait(coro, timeout=None):
+        if coro is not None:
+            coro.close()
+        raise aio.TimeoutError()
+
+    monkeypatch.setattr(aio, "wait_for", _wait)
+
+    async def _no_agent(*_a, **_k):
+        raise AssertionError("timeout must not fall through to nested agent")
+
+    monkeypatch.setattr("core.api.core_facade.run_workspace_agent", _no_agent)
+
+    call = await invoke_skill_via_agent(
+        agent_app="name: demo\n",
+        skill="video_downloader",
+        params={},
+        timeout=0.05,
+    )
+    assert call.get("ok") is False
+    assert call.get("error") == "timeout"
+    assert call.get("mode") == "skill_invoke_handler"
+
+
+@pytest.mark.asyncio
+async def test_isolated_test_executor_execute_finishes_quickly(monkeypatch):
+    """Standalone 测试执行器 (no agent_app) must not nest ReAct or media handlers."""
+    import asyncio
+
+    from core.engine.skills.test_executor.handler import execute
+
+    async def _no_agent(*_a, **_k):
+        raise AssertionError("must not nest run_workspace_agent")
+
+    monkeypatch.setattr("core.api.core_facade.run_workspace_agent", _no_agent)
+
+    cases = [
+        {
+            "id": "SMK-001",
+            "execution": "conversation",
+            "title": "上报",
+            "steps": ["提交"],
+            "expected": "工单号",
+            "min_expectation": "工单号",
+        },
+        {
+            "id": "API-001",
+            "execution": "skill_invoke",
+            "invoke": {"skill": "report_submit", "params": {"photo": "smoke.jpg"}},
+        },
+        {
+            "id": "SMK-004",
+            "execution": "page_smoke",
+            "asserts": [{"type": "stage.component_known"}],
+        },
+        {
+            "id": "SMK-006",
+            "execution": "platform_check",
+            "asserts": [
+                {
+                    "type": "platform.file_rules",
+                    "file_name": "oversize.jpg",
+                    "file_size": 20971520,
+                    "allowed_extensions": ["jpg"],
+                    "max_bytes": 10485760,
+                    "expect_ok": False,
+                }
+            ],
+        },
+    ]
+    out = await asyncio.wait_for(
+        execute({"test_cases": cases, "message": "请执行下列 test_cases"}),
+        timeout=5.0,
+    )
+    assert isinstance(out, dict)
+    results = out.get("test_results") or []
+    assert len(results) >= 3
+    by_id = {str(r.get("id")): r for r in results if isinstance(r, dict)}
+    assert by_id.get("API-001", {}).get("result") in ("SKIP", "FAIL")
+    assert by_id.get("SMK-006", {}).get("result") in ("PASS", "FAIL")

@@ -1269,11 +1269,12 @@ class MemoryManager:
 
             )
 
-            # Fire background importance scoring (never blocks main loop)
-
+            # Fire background importance scoring (never blocks main loop).
+            # Use background callable (skip_claude_md) so scoring cannot nest a
+            # full ReAct-weight generate behind the primary sys_llm_generate.
             if self._episodic._scoring_enabled:
 
-                llm = self._get_llm_callable()
+                llm = self._get_llm_callable(background=True)
 
                 if llm:
 
@@ -1281,21 +1282,26 @@ class MemoryManager:
 
 
 
-        # Update episodic summary if needed
-
+        # Update episodic summary if needed.
+        #
+        # CRITICAL: never ``await`` nested ``sys_llm_generate`` on this hot path.
+        # ReAct ``_reason`` calls save_interaction *after* the primary generate
+        # returns and *before* routing_decision — an awaited episodic LLM summary
+        # wedges the worker with generate=success and no routing (intermittent
+        # when message_count crosses update_interval on the process singleton).
         if stability != "low" and await self._episodic.should_update():
 
-            llm_callable = self._get_llm_callable()
+            summary = await self._episodic.update_summary()  # rule-based, sync-cheap
 
-            if self._config.use_llm_summary and llm_callable:
+            logger.info("Updated episodic summary (rule): %s", (summary.summary or "")[:100])
 
-                summary = await self._episodic.update_summary(llm_callable=llm_callable)
+            if self._config.use_llm_summary:
 
-                logger.info(f"Updated episodic summary: {summary.summary[:100]}")
+                llm_callable = self._get_llm_callable(background=True)
 
-            else:
+                if llm_callable:
 
-                summary = await self._episodic.update_summary()
+                    asyncio.create_task(self._bg_polish_episodic_summary(llm_callable))
 
 
 
@@ -2300,12 +2306,40 @@ class MemoryManager:
 
 
 
-    def _get_llm_callable(self):
+    async def _bg_polish_episodic_summary(self, llm_callable) -> None:
+        """Best-effort LLM polish of episodic summary — never awaited on ReAct hot path."""
+        try:
+            import os as _os
+
+            try:
+                to = float(_os.getenv("AIPLAT_EPISODIC_SUMMARY_TIMEOUT", "60") or "60")
+            except Exception:
+                to = 60.0
+            result = await asyncio.wait_for(
+                self._episodic._llm_summary(llm_callable),
+                timeout=max(5.0, to),
+            )
+            if result is not None and getattr(result, "summary", None):
+                self._episodic._summary = result.summary
+                logger.info(
+                    "Polished episodic summary (bg LLM): %s",
+                    str(result.summary)[:100],
+                )
+        except Exception:
+            logging.getLogger("memory").debug(
+                "bg episodic LLM polish skipped", exc_info=True
+            )
+
+    def _get_llm_callable(self, *, background: bool = False):
 
         """Get a reusable LLM callable for episodic summarization and scoring.
 
         If model wasn't injected at init time (env vars not yet available),
         attempts lazy injection on first use.
+
+        ``background=True`` (scoring / polish tasks): skip CLAUDE.md inject and
+        heavy gate assembly so background work cannot starve the ReAct loop or
+        wedge local Ollama behind a full-weight nested generate.
         """
 
         if not self._config.use_llm_summary:
@@ -2328,8 +2362,9 @@ class MemoryManager:
             return None
 
         try:
+            _bg = bool(background)
 
-            async def _call_llm(prompt: str):
+            async def _call_llm(prompt: str, *, _background: bool = _bg):
 
                 from ..syscalls.llm import sys_llm_generate
 
@@ -2339,7 +2374,13 @@ class MemoryManager:
 
                     raise RuntimeError("No model available — set MemoryConfig.model")
 
-                resp = await sys_llm_generate(model, prompt)
+                kwargs: Dict[str, Any] = {}
+                if _background:
+                    kwargs["trace_context"] = {"skip_claude_md": True}
+                    kwargs["inject_context"] = False
+                    kwargs["gate_mode"] = "minimal"
+
+                resp = await sys_llm_generate(model, prompt, **kwargs)
 
                 return getattr(resp, "content", str(resp))
 
@@ -2348,7 +2389,6 @@ class MemoryManager:
         except Exception:
 
             return None
-
 
 
     def _count_consecutive_reads(self, context: List[Dict]) -> int:

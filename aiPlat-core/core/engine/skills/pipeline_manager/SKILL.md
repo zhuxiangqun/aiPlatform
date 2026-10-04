@@ -31,10 +31,10 @@ effects:
     resources: ["pipeline_state:project"]
     idempotent: true
     rollback_available: false
-  - type: write
-    resources: ["pipeline_state:deploy"]
-    idempotent: false
-    rollback_available: true
+  - type: emit
+    resources: ["artifact:deploy_plan"]
+    idempotent: true
+    rollback_available: false
 ---
 
 # 流水线管理器 (Pipeline Manager)

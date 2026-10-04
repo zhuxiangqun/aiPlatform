@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { workspaceAgentApi, workspaceSkillApi } from '../../services';
+import { workspaceAgentApi, workspaceSkillApi, skillApi } from '../../services';
 import { modelApi, toolApi, type Model } from '../../services';
 import { workspaceMcpApi, workflowTemplateApi } from '../../services';
 import { Alert, Button, Input, Modal, Select, Textarea, toast, MultiSelect } from '../ui';
@@ -187,15 +187,24 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess,
 
   const fetchOptions = async () => {
     try {
-      const [skillRes, toolRes, modelRes] = await Promise.all([
+      const [skillRes, engineSkillRes, toolRes, modelRes] = await Promise.all([
         workspaceSkillApi.list({ limit: 200 }),
+        skillApi.list({ limit: 500 }).catch(() => ({ skills: [] } as any)),
         toolApi.list({ limit: 200 } as any),
         modelApi.list({ enabled: true, status: 'available' }),
       ]);
       const baseSkillOptions = (skillRes.skills || []).map((s: any) => ({ value: s.id, label: s.name }));
       const baseToolOptions = (toolRes.tools || []).map((t: any) => ({ value: t.name, label: t.description || t.name }));
-      // If user already selected ids not present in options, keep them visible.
       const skillSet = new Set(baseSkillOptions.map((o: any) => o.value));
+      const engineSkillOptions = (engineSkillRes.skills || [])
+        .map((s: any) => {
+          const id = String(s.id || s.name || '').trim();
+          if (!id || skillSet.has(id)) return null;
+          skillSet.add(id);
+          const name = String(s.name || s.display_name || id);
+          return { value: id, label: `${name}（引擎）` };
+        })
+        .filter(Boolean) as { value: string; label: string }[];
       const toolSet = new Set(baseToolOptions.map((o: any) => o.value));
       const missingSkillOptions = (skills || [])
         .filter((id) => id && !skillSet.has(id))
@@ -203,7 +212,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess,
       const missingToolOptions = (tools || [])
         .filter((id) => id && !toolSet.has(id))
         .map((id) => ({ value: id, label: `${id}（未在 Tool 列表中找到）` }));
-      setSkillOptions([...baseSkillOptions, ...missingSkillOptions]);
+      setSkillOptions([...baseSkillOptions, ...engineSkillOptions, ...missingSkillOptions]);
       setToolOptions([...baseToolOptions, ...missingToolOptions]);
 
       try {

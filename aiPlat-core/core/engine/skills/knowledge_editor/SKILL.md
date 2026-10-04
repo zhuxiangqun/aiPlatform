@@ -14,14 +14,13 @@ triggers:
   - 更新知识
   - 知识编辑
 permissions:
-- wiki:write
 - llm:generate
 effects:
-- type: write
+- type: emit
   resources:
-  - filesystem:~/.aiplat/wiki
-  idempotent: false
-  rollback_available: true
+  - artifact:wiki
+  idempotent: true
+  rollback_available: false
 input_schema:
   source_text:
     type: string

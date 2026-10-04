@@ -144,6 +144,24 @@ def _load_exec_skill_permission_rules() -> Dict[str, str]:
     return {"*": "allow"}  # default: allow
 
 
+def is_agent_bound_required_skill(skill_name: str, args: Any = None) -> bool:
+    """True when skill is listed on the running Agent's required_skills.
+
+    Starting an Agent execute already authorizes its bound skills; PolicyGate
+    must not demand a second HITL for the same skill mid-loop (e.g. autoreview
+    after code_generation). Driven by ``_bound_skill_ids`` in skill args —
+    not by agent_id string matching.
+    """
+    name = str(skill_name or "").strip()
+    if not name or not isinstance(args, dict):
+        return False
+    bound = args.get("_bound_skill_ids") or []
+    if not isinstance(bound, (list, tuple, set)):
+        return False
+    bound_s = {str(x).strip() for x in bound if str(x).strip()}
+    return name in bound_s
+
+
 def resolve_executable_skill_permission(skill_name: str) -> str:
     """
     Returns: allow | deny | ask
@@ -173,14 +191,23 @@ def resolve_executable_skill_permission(skill_name: str) -> str:
     if decision != "ask":
         return decision
 
-    # Prefer allow when skill declares only read effects (idempotent diagnostics)
+    # Prefer allow when skill declares only read effects (idempotent diagnostics).
+    # Check cfg.effects / metadata / skill.metadata — registry load paths differ.
     try:
         from core.apps.skills.registry import get_skill_registry
 
         skill = get_skill_registry().get(name)
         cfg = getattr(skill, "_config", None) if skill is not None else None
         meta = getattr(cfg, "metadata", None) if cfg is not None else None
-        effects = meta.get("effects") if isinstance(meta, dict) else None
+        effects = None
+        if isinstance(meta, dict):
+            effects = meta.get("effects")
+        if not effects and cfg is not None:
+            effects = getattr(cfg, "effects", None)
+        if not effects and skill is not None:
+            sm = getattr(skill, "metadata", None)
+            if isinstance(sm, dict):
+                effects = sm.get("effects")
         if isinstance(effects, list) and effects:
             types = []
             for e in effects:
@@ -190,6 +217,21 @@ def resolve_executable_skill_permission(skill_name: str) -> str:
                     types.append(e.strip().lower())
             if types and all(t in {"read", "readonly", "query"} for t in types):
                 return "allow"
+        # Prompt-only design skills (llm:generate) are read-path LLM drafts —
+        # do not force HITL in local/workspace trial executes.
+        perms = []
+        if isinstance(meta, dict):
+            perms = meta.get("permissions") or []
+        if isinstance(perms, str):
+            perms = [perms]
+        if (
+            isinstance(meta, dict)
+            and str(meta.get("execution_type") or "").lower() == "prompt"
+            and isinstance(perms, list)
+            and perms
+            and all(str(p).strip().lower() in {"llm:generate", "llm", "read"} for p in perms if str(p).strip())
+        ):
+            return "allow"
     except Exception:  # noqa: cleanup-best-effort
         pass
 

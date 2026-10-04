@@ -43,6 +43,20 @@ _FALLBACK_PREFIXES: dict[str, list[str]] = {
     "/api/platform": [MGMT_URL, PLATFORM_URL],
 }
 
+# Stale SPA bundles called management Doctor with a core prefix (404 on 8002).
+_PATH_REWRITES: tuple[tuple[str, str, str], ...] = (
+    ("/api/core/diagnostics/doctor", "/api/diagnostics/doctor", MGMT_URL),
+)
+
+
+def apply_path_rewrite(path: str):
+    """Return (override_target, upstream_path) when a compatibility rewrite applies."""
+    path_only, sep, qs = (path or "").partition("?")
+    for src, dest, target in _PATH_REWRITES:
+        if path_only == src:
+            return target, dest + ((sep + qs) if qs else "")
+    return None, path or ""
+
 def _discover_routes() -> dict[str, str]:
     """Fetch OpenAPI specs from all backends and build a routing table.
     Returns a dict of path_prefix → target_url.
@@ -119,6 +133,9 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         Returns (target_url, is_precise_match) tuple.
         Precise matches (e.g. /api/platform/apps) don't trigger 404 fallback.
         """
+        rewrite_target, _ = apply_path_rewrite(path)
+        if rewrite_target:
+            return rewrite_target, True
         best_prefix = ""
         best_target = None
         for prefix, target in PROXY_ROUTES.items():
@@ -154,8 +171,9 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 headers[k] = v
             if body and "Content-Type" not in headers:
                 headers["Content-Type"] = self.headers.get("Content-Type", "application/json")
+            _, upstream = apply_path_rewrite(self.path)
             req = urllib.request.Request(
-                f"{target}{self.path}", data=body, method=method, headers=headers)
+                f"{target}{upstream}", data=body, method=method, headers=headers)
             with urllib.request.urlopen(req, timeout=600) as resp:
                 return resp.status, dict(resp.headers), resp.read()
         except urllib.error.HTTPError as e:

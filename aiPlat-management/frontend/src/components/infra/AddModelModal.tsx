@@ -55,31 +55,41 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
   const modelOptions = modelsForProvider.map((m) => ({ value: m.name, label: m.display }));
   const [selectedModel, setSelectedModel] = useState('');
 
-  const _initialized = useMemo(() => Object.keys(providerModels).length > 0, [providerModels]);
-
-  // Load dynamic model catalog from backend
+  // Load dynamic model catalog from backend (optional — edit must not wait on it).
+  // provider-models.json may be empty → previously blocked all edit prefill
+  // (Provider stayed "选择 Provider", capabilities all unchecked).
   useEffect(() => {
     modelApi.getProviderModels().then((data) => {
       if (data.providers) setProviderModels(data.providers);
     }).catch(() => {});
   }, []);
 
-  // Initialize form on open (editing → pre-fill, new → reset)
+  // Initialize form on open (editing → pre-fill, new → reset).
+  // Do NOT gate on provider catalog: API model.capabilities is the source of truth.
   useEffect(() => {
-    if (!open || !_initialized) return;
+    if (!open) return;
     if (editingModel) {
-      const catalogModels = providerModels[editingModel.provider || ''] || [];
+      const pRaw = editingModel.provider || '';
+      const p = pRaw === 'openai_compatible' ? 'openai' : pRaw;
+      const catalogModels = providerModels[p] || providerModels[pRaw] || [];
       const catalog = catalogModels.find((m) => m.name === editingModel.name);
-      const p = editingModel.provider || '';
-      setProvider(p === 'openai' || p === 'openai_compatible' ? 'deepseek' : p);
+      const caps = Array.isArray(editingModel.capabilities)
+        ? editingModel.capabilities.map(String).filter(Boolean)
+        : [];
+      setProvider(p);
       setSelectedModel(catalog ? catalog.name : (editingModel.name || ''));
       setName(catalog ? catalog.name : (editingModel.name || ''));
-      setDisplayName(catalog ? catalog.display : (editingModel.displayName || ''));
+      setDisplayName(catalog ? catalog.display : (editingModel.displayName || editingModel.name || ''));
       setType((catalog ? catalog.type : (editingModel.type || 'chat')) as 'chat' | 'embedding' | 'rerank');
       setDescription(editingModel.description || '');
       setTags((editingModel.tags || []).join(', '));
-      setCapabilities(editingModel.capabilities || []);
-      setBaseUrl(editingModel.config?.baseUrl || PROVIDER_BASE[editingModel.provider || '']?.baseUrl || '');
+      setCapabilities(caps);
+      setBaseUrl(
+        editingModel.config?.baseUrl
+        || PROVIDER_BASE[p]?.baseUrl
+        || PROVIDER_BASE[pRaw]?.baseUrl
+        || ''
+      );
       setApiKey(''); // 密钥不预填，用户可重新输入
       setTemperature(String(catalog?.temperature ?? editingModel.config?.temperature ?? 0.7));
       setMaxTokens(String(catalog?.max_tokens ?? editingModel.config?.maxTokens ?? 2048));
@@ -101,13 +111,14 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
     setTemperature('0.7');
     setMaxTokens('2048');
     setTopP('1.0');
-  }, [open, _initialized, editingModel]);
+  }, [open, editingModel]);
 
   useEffect(() => {
     if (!provider) return;
-    const base = PROVIDER_BASE[provider];
-    if (base) {
-      setBaseUrl(base.baseUrl);
+    // Prefer existing model baseUrl when editing; only fill default for blank/new.
+    if (!editingModel?.config?.baseUrl) {
+      const base = PROVIDER_BASE[provider];
+      if (base) setBaseUrl(base.baseUrl);
     }
     const models = modelsForProvider;
     if (models.length > 0 && !selectedModel) {
@@ -116,6 +127,8 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
   }, [provider, modelsForProvider]);
 
   useEffect(() => {
+    // Catalog auto-fill is for *new* model picker only — don't clobber edit prefill.
+    if (editingModel) return;
     const model = modelsForProvider.find((m) => m.name === selectedModel);
     if (!model) return;
     setName(model.name);
@@ -124,7 +137,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
     setTemperature(String(model.temperature ?? 0.7));
     setMaxTokens(String(model.max_tokens ?? 2048));
     setTopP(String(model.top_p ?? 1.0));
-  }, [selectedModel, modelsForProvider]);
+  }, [selectedModel, modelsForProvider, editingModel]);
 
   const handleTestConnectivity = async () => {
     if (!baseUrl.trim()) return toast.warning('请输入 baseUrl');
@@ -213,7 +226,15 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
         </>
       }
     >
-      <div className="space-y-4">
+      {/* Wrap in <form> so password fields satisfy browser autofill/DOM rules */}
+      <form
+        className="space-y-4"
+        autoComplete="on"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void handleSubmit();
+        }}
+      >
         <Select label="Provider" value={provider} onChange={setProvider} options={providerOptions} placeholder="选择 Provider" disabled={isConfigModel} />
 
         {selectedProviderInfo && (
@@ -263,7 +284,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
           <div className="text-sm font-semibold text-gray-200 mb-3">连接配置</div>
           <Input label="baseUrl" value={baseUrl} onChange={(e: any) => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" disabled={isConfigModel} />
           <div className="flex items-center gap-2 mt-2">
-            <Button variant="secondary" onClick={handleTestConnectivity} loading={testLoading}>测试 baseUrl</Button>
+            <Button type="button" variant="secondary" onClick={handleTestConnectivity} loading={testLoading}>测试 baseUrl</Button>
             {testResult && (
               <div className={`text-sm ${testResult.success ? 'text-green-400' : 'text-red-400'}`}>{testResult.message}</div>
             )}
@@ -273,6 +294,8 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
             <>
               <Input
                 label="API Key（填写后自动创建 Adapter 并绑定）"
+                name="api_key"
+                autoComplete="current-password"
                 value={apiKey}
                 onChange={(e: any) => setApiKey(e.target.value)}
                 placeholder="sk-..."
@@ -294,7 +317,9 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
             <Input label="topP" type="number" value={topP} onChange={(e: any) => setTopP(e.target.value)} disabled={isConfigModel} />
           </div>
         </div>
-      </div>
+        {/* Hidden submit keeps Enter key working; footer 保存按钮仍走 onClick */}
+        <button type="submit" className="hidden" tabIndex={-1} aria-hidden="true" />
+      </form>
     </Modal>
   );
 };

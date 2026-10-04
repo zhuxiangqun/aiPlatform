@@ -38,6 +38,12 @@ T = TypeVar("T")
 
 
 
+# TimeoutError ⊂ OSError (Python 3.3+). Never treat deadline failures as
+# retryable transport errors — each abandoned to_thread HTTP call stays
+# alive and N×timeout recreates 「一直执行中」 hangs.
+_NEVER_RETRY: tuple[Type[BaseException], ...] = (TimeoutError, asyncio.TimeoutError)
+
+
 class ResilienceGate:
 
     def __init__(self) -> None:
@@ -66,9 +72,9 @@ class ResilienceGate:
 
         timeout_seconds: Optional[float] = None,
 
+        # Do NOT list TimeoutError here. Even if callers pass OSError,
+        # _NEVER_RETRY hard-excludes TimeoutError (it is an OSError subclass).
         retry_on: Sequence[Type[BaseException]] = (
-
-            asyncio.TimeoutError,
 
             ConnectionError,
 
@@ -93,8 +99,38 @@ class ResilienceGate:
             try:
 
                 if timeout_seconds is not None:
+                    # IMPORTANT: do not use bare ``asyncio.wait_for(fn())``.
+                    # ``fn`` often awaits ``asyncio.to_thread`` (sync OpenAI/Ollama).
+                    # wait_for's cancel cannot kill that thread, so wait_for then
+                    # *blocks until the HTTP call finishes* (seen 490–540s with a
+                    # declared 180s timeout). Create a task, wait with a hard
+                    # deadline, cancel + **abandon** the task so we fail fast;
+                    # callers (sys_llm_generate) unload Ollama on TimeoutError.
+                    _task = asyncio.create_task(fn())
+                    try:
+                        _done, _pending = await asyncio.wait(
+                            {_task}, timeout=float(timeout_seconds)
+                        )
+                        if _pending:
+                            _task.cancel()
 
-                    result = await asyncio.wait_for(fn(), timeout=timeout_seconds)
+                            def _drain_abandoned(t: "asyncio.Task[T]") -> None:
+                                try:
+                                    t.exception()
+                                except Exception:
+                                    pass  # noqa: cleanup-best-effort
+
+                            _task.add_done_callback(_drain_abandoned)
+                            raise asyncio.TimeoutError(
+                                f"operation timed out after {timeout_seconds}s"
+                            )
+                        result = _task.result()
+                    except asyncio.TimeoutError:
+                        raise
+                    except Exception:
+                        if not _task.done():
+                            _task.cancel()
+                        raise
 
                 else:
 
@@ -122,13 +158,27 @@ class ResilienceGate:
 
                 last_exc = e
 
+                # Hard fail-fast: TimeoutError is OSError, so isinstance(e, OSError)
+                # is True — without this guard, AIPLAT_LLM_RETRIES=2 turns one 180s
+                # hang into ~540s and leaves 2 zombie provider calls.
+                if isinstance(e, _NEVER_RETRY):
+                    raise
+
+                # ClassifiedError(reason=timeout) is also a deadline/transport timeout;
+                # retrying multiplies the same hang (each attempt still uses full
+                # timeout_seconds budget).
+                from core.harness.infrastructure.gates.error_translator import (
+                    ClassifiedError,
+                    FailoverReason,
+                )
+                if isinstance(e, ClassifiedError) and e.reason == FailoverReason.timeout:
+                    raise
+
                 actual_retries += 1
 
                 self._total_retries += 1
 
                 # ClassifiedError with retryable=True → always retry
-
-                from core.harness.infrastructure.gates.error_translator import ClassifiedError
 
                 if isinstance(e, ClassifiedError):
 

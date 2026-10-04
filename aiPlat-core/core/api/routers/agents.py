@@ -746,7 +746,17 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request, rt:
 
     user_id = payload.get("user_id") or (ctx0.get("actor_id") if isinstance(ctx0, dict) else None) or "system"
 
-    session_id = payload.get("session_id") or (ctx0.get("session_id") if isinstance(ctx0, dict) else None) or "default"
+    from core.harness.utils.execute_session import mint_execute_session_id
+
+    session_id = mint_execute_session_id(
+
+        kind="agent",
+
+        target_id=str(agent_id),
+
+        session_id=payload.get("session_id") or (ctx0.get("session_id") if isinstance(ctx0, dict) else None),
+
+    )
 
 
 
@@ -755,6 +765,38 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request, rt:
     result = await get_harness().execute(exec_req)
 
     resp = wrap_execution_result_as_run_summary(result)
+
+
+
+    try:
+
+        st = str((resp or {}).get("status") or "").lower()
+
+        if st in ("completed", "ok", "success") and isinstance(resp, dict):
+
+            from core.management.execution_quality_review import review_execution_output
+
+            resp["quality_review"] = review_execution_output(
+
+                kind="agent",
+
+                asset_id=str(agent_id),
+
+                asset_name=str(agent_id),
+
+                input_payload=(payload.get("input") if isinstance(payload, dict) else None) or payload.get("message") or payload,
+
+                output=resp.get("output"),
+
+                status=st,
+
+                hints=str(agent_id),
+
+            )
+
+    except Exception as e:
+
+        logging.warning("agent execute quality_review skipped: %s", e, exc_info=True)
 
 
 
@@ -875,6 +917,86 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request, rt:
         content=resp,
 
         headers={"X-AIPLAT-RUN-ID": run_id} if run_id else None,
+
+    )
+
+
+
+
+
+@router.post("/agents/{agent_id}/review-output", response_model=Dict[str, Any])
+
+async def review_engine_agent_output(agent_id: str, request: dict):
+
+    """Post-run product-quality review for engine agents (stream / re-check).
+
+    When body.input is empty, restores from execution store via execution_id.
+
+    """
+
+    body = request if isinstance(request, dict) else {}
+
+    from core.management.execution_quality_review import (
+
+        pick_embedded_quality_review,
+
+        resolve_review_io_from_store,
+
+        review_execution_output,
+
+    )
+
+
+
+    eid = body.get("execution_id") or body.get("run_id")
+
+    inp, out, st, embedded = await resolve_review_io_from_store(
+
+        execution_id=str(eid) if eid else None,
+
+        kind="agent",
+
+        body_input=body.get("input"),
+
+        body_output=body.get("output"),
+
+        body_status=body.get("status"),
+
+    )
+
+    chosen = pick_embedded_quality_review(
+
+        embedded=embedded,
+
+        body_output=body.get("output"),
+
+        resolved_output=out,
+
+        prefer_embedded=bool(body.get("prefer_embedded")),
+
+    )
+
+    if chosen is not None:
+
+        return chosen
+
+    return review_execution_output(
+
+        kind="agent",
+
+        asset_id=str(agent_id),
+
+        asset_name=str(agent_id),
+
+        input_payload=inp,
+
+        output=out,
+
+        status=st,
+
+        hints=str(agent_id),
+
+        execution_id=str(eid or ""),
 
     )
 
@@ -1177,6 +1299,8 @@ async def resume_agent_execution(execution_id: str, request: dict, rt: RuntimeDe
 
 
 
+    from core.harness.utils.execute_session import mint_execute_session_id
+
     exec_req = ExecutionRequest(
 
         kind="agent",
@@ -1187,7 +1311,15 @@ async def resume_agent_execution(execution_id: str, request: dict, rt: RuntimeDe
 
         user_id=original_request.get("user_id", "system"),
 
-        session_id=original_request.get("session_id", "default"),
+        session_id=mint_execute_session_id(
+
+            kind="agent",
+
+            target_id=str(agent_id),
+
+            session_id=original_request.get("session_id"),
+
+        ),
 
     )
 
@@ -1346,56 +1478,58 @@ async def rollback_agent_version(agent_id: str, version: str, rt: RuntimeDep = N
 
 
 @router.get("/models", response_model=Dict[str, Any])
-
 async def list_models():
-
     """List available LLM models grouped by provider (for agent editor dropdown)."""
-
+    _LLM_TYPES = frozenset({"chat", "llm", "language", "language_model"})
     try:
-
         from core.api.facades.skill_tool_facade import get_model_manager
-
         registry = get_model_manager()
-
         # infra ModelManager returns models as list of objects
-
         if hasattr(registry, '_models'):
-
-            entries = [{"name": m.name, "provider": m.provider, "enabled": m.enabled, "type": m.type.value if hasattr(m.type, 'value') else str(m.type)}
-
-                       for m in registry._models.values()]
-
+            entries = [
+                {
+                    "name": m.name,
+                    "provider": m.provider,
+                    "enabled": m.enabled,
+                    "type": m.type.value if hasattr(m.type, "value") else str(m.type),
+                    "capabilities": list(getattr(m, "capabilities", None) or []),
+                }
+                for m in registry._models.values()
+            ]
         else:
+            entries = registry.list_all_entries() if hasattr(registry, "list_all_entries") else []
 
-            entries = registry.list_all_entries() if hasattr(registry, 'list_all_entries') else []
+        # Agent 编辑器只要生成式 LLM；排除 OCR / embedding / audio 等
+        filtered: list = []
+        for e in entries:
+            if not isinstance(e, dict):
+                continue
+            t = str(e.get("type") or "chat").lower()
+            if t and t not in _LLM_TYPES:
+                continue
+            name = str(e.get("name") or "")
+            if not name:
+                continue
+            nl = name.lower()
+            if "tesseract" in nl or "ocr" in nl.split():
+                continue
+            filtered.append(e)
+        entries = filtered
 
         groups: Dict[str, list] = {}
-
         for e in entries:
-
             provider = e.get("provider", "unknown")
-
             groups.setdefault(provider, []).append(e)
-
         return {"models": entries, "by_provider": groups}
-
     except Exception:
-
         # Fallback: return models from centralized model resolution
-
         from core.api.core_facade import get_default_model  # P0-A2: 经 CoreFacade
-
         models = []
-
         for purpose in ("chat", "agent"):
-
             name = get_default_model(purpose=purpose) or ""
-
-            models.append({"name": name, "provider": "deepseek"})
-
+            if name:
+                models.append({"name": name, "provider": "deepseek", "type": "chat", "capabilities": ["chat"]})
         return {"models": models, "by_provider": {"deepseek": models}}
-
-
 
 @router.get("/approvals/pending", response_model=Dict[str, Any])
 

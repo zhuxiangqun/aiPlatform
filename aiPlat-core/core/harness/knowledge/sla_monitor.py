@@ -62,9 +62,15 @@ def scan_once(ontologies_dir: str = "") -> List[Dict[str, Any]]:
 
         for cls in domain.classes:
             transitions = getattr(cls, "transitions", []) or []
-            time_triggers = [t for t in transitions
-                             if isinstance(t.get("trigger", {}), dict)
-                             and t["trigger"].get("type") == "time_elapsed"]
+            # Use .get once: t.get("trigger", {}) can be {} while t["trigger"]
+            # still KeyErrors when the key is absent (classic listcomp bug).
+            time_triggers = []
+            for t in transitions:
+                if not isinstance(t, dict):
+                    continue
+                trig = t.get("trigger")
+                if isinstance(trig, dict) and trig.get("type") == "time_elapsed":
+                    time_triggers.append(t)
             if not time_triggers:
                 continue
 

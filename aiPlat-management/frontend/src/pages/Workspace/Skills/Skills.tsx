@@ -48,6 +48,7 @@ const WorkspaceSkills: React.FC = () => {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [chatCreateOpen, setChatCreateOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editInitialSection, setEditInitialSection] = useState<'basic' | 'gov' | 'io' | 'sop'>('basic');
   const [deleting, setDeleting] = useState(false);
   const [executeModalOpen, setExecuteModalOpen] = useState(false);
   const [editSkill, setEditSkill] = useState<Skill | null>(null);
@@ -240,7 +241,7 @@ const WorkspaceSkills: React.FC = () => {
         <SkillRowActions
           skill={record}
           onExecute={(s) => { setExecuteSkill(s); setExecuteModalOpen(true); }}
-          onEdit={(s) => { setEditSkill(s); setEditModalOpen(true); }}
+          onEdit={(s) => { setEditSkill(s); setEditInitialSection('basic'); setEditModalOpen(true); }}
           onDetail={(s) => setDetailModal({ open: true, skill: s })}
           onVersions={(s) => { setEditSkill(s); setVersionsModalOpen(true); }}
           onHistory={(s) => { setExecuteSkill(s); setExecutionsModalOpen(true); }}
@@ -357,14 +358,31 @@ const WorkspaceSkills: React.FC = () => {
       <EditSkillModal
         open={editModalOpen}
         skill={editSkill}
-        onClose={() => { setEditModalOpen(false); setEditSkill(null); }}
+        initialSection={editInitialSection}
+        onClose={() => { setEditModalOpen(false); setEditSkill(null); setEditInitialSection('basic'); }}
         onSuccess={() => fetchSkills()}
       />
 
       <ExecuteSkillModal
         open={executeModalOpen}
-        skill={executeSkill ? { id: executeSkill.id, name: executeSkill.name, input_schema: executeSkill.input_schema } : null}
+        skill={
+          executeSkill
+            ? {
+                id: executeSkill.id,
+                name: executeSkill.name,
+                input_schema: executeSkill.input_schema,
+                metadata: (executeSkill as any).metadata || null,
+              }
+            : null
+        }
         onClose={() => { setExecuteModalOpen(false); setExecuteSkill(null); }}
+        onEditSop={() => {
+          if (!executeSkill) return;
+          setEditSkill(executeSkill);
+          setEditInitialSection('sop');
+          setExecuteModalOpen(false);
+          setEditModalOpen(true);
+        }}
       />
 
       <SkillVersionsModal
@@ -384,7 +402,7 @@ const WorkspaceSkills: React.FC = () => {
         skill={detailModal.skill}
         onClose={() => setDetailModal({ open: false, skill: null })}
         onRefresh={fetchSkills}
-        onEdit={(s) => { setEditSkill(s); setEditModalOpen(true); }}
+        onEdit={(s) => { setEditSkill(s); setEditInitialSection('basic'); setEditModalOpen(true); }}
         onExecute={(s) => { setExecuteSkill(s); setExecuteModalOpen(true); }}
         onVersions={(s) => { setEditSkill(s); setVersionsModalOpen(true); }}
       />

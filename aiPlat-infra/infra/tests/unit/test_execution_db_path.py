@@ -83,3 +83,69 @@ def test_load_adapter_models_uses_home_default(monkeypatch, tmp_path):
     assert "deepseek-chat" in names, names
     ds = next(m for m in models if m.name == "deepseek-chat")
     assert ds.provider == "deepseek"
+
+
+def test_load_adapter_models_works_without_optional_columns(monkeypatch, tmp_path):
+    """Production adapters table has no capabilities_json/model_type — must still list DeepSeek.
+
+    Regression: SELECT ... capabilities_json raised OperationalError, swallowed → UI empty.
+    """
+    from infra.management.model import config_loader as cl
+
+    db = tmp_path / "aiplat_executions.sqlite3"
+    conn = sqlite3.connect(str(db))
+    conn.execute(
+        """
+        CREATE TABLE adapters (
+            adapter_id TEXT PRIMARY KEY,
+            name TEXT,
+            provider TEXT,
+            api_base_url TEXT,
+            models_json TEXT,
+            api_key TEXT,
+            api_key_enc TEXT,
+            status TEXT,
+            updated_at TEXT
+        )
+        """
+    )
+    conn.execute(
+        """
+        INSERT INTO adapters (
+            adapter_id, name, provider, api_base_url, models_json,
+            api_key, api_key_enc, status, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "adapter-05a5377a",
+            "DeepSeek",
+            "deepseek",
+            "https://api.deepseek.com",
+            json.dumps(
+                [
+                    {"name": "deepseek-chat"},
+                    {"name": "deepseek-v4-pro"},
+                ]
+            ),
+            "sk-live-placeholder-key-xyz",
+            None,
+            "active",
+            "2026-01-01T00:00:00",
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+    monkeypatch.setattr(
+        "infra.management.model.paths.execution_db_path",
+        lambda: str(db),
+    )
+
+    models = cl._load_adapter_models()
+    names = {m.name for m in models}
+    assert "deepseek-chat" in names, names
+    assert "deepseek-v4-pro" in names, names
+    ds = next(m for m in models if m.name == "deepseek-chat")
+    assert ds.provider == "deepseek"
+    assert ds.source.value == "external"
+    assert "chat" in (ds.capabilities or [])

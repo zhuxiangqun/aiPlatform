@@ -123,10 +123,12 @@ has_caller() {
         "$WORKSPACE/aiPlat-core" \
         "$WORKSPACE/aiPlat-platform" \
         "$WORKSPACE/aiPlat-app" \
+        "$WORKSPACE/aiPlat-management" \
         --include='*.py' 2>/dev/null \
         | grep -v "$basename" \
         | grep -v '__pycache__' \
         | grep -v '/tests/' \
+        | grep -v '\.test\.py$' \
         | grep -v 'conftest.py' \
         | sort -u 2>/dev/null || true)
     

@@ -307,6 +307,38 @@ async def mark_run_done(run_id: str, status: str = "completed") -> Dict[str, Any
     return {"run_id": str(run_id), "status": st, "closed": closed}
 
 
+def _repair_step_container_nodes(nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Heal step:* rows overwritten by routing/work events (span_id collision)."""
+    import re
+
+    out: List[Dict[str, Any]] = []
+    for n in nodes:
+        item = dict(n)
+        nid = str(item.get("node_id") or "")
+        m = re.match(r"^step:([^:]+):(\d+)$", nid)
+        if m:
+            expected = f"step_{m.group(2)}"
+            name = str(item.get("name") or "")
+            kind = str(item.get("kind") or "")
+            role = str(item.get("role") or "")
+            corrupted = (
+                name != expected
+                or kind not in ("step", "")
+                or role != "container"
+                or str(item.get("parent_id") or "") == nid
+            )
+            if corrupted:
+                agent_id = m.group(1)
+                item["name"] = expected
+                item["label"] = expected
+                item["kind"] = "step"
+                item["role"] = "container"
+                if str(item.get("parent_id") or "") == nid or not item.get("parent_id"):
+                    item["parent_id"] = f"agent:{agent_id}:start"
+        out.append(item)
+    return out
+
+
 def _build_tree(nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     by_id: Dict[str, Dict[str, Any]] = {}
     for n in nodes:
@@ -352,6 +384,7 @@ async def get_graph(run_id: str) -> Dict[str, Any]:
     except Exception:
         _log.debug("get_graph failed", exc_info=True)
         return {"run_id": run_id, "status": None, "nodes": [], "roots": [], "has_graph": False}
+    nodes = _repair_step_container_nodes(nodes)
     roots = _build_tree(nodes)
     return {
         "run_id": str(run_id),
@@ -395,13 +428,38 @@ async def mirror_syscall_to_graph(event: Dict[str, Any]) -> None:
 
     st = _normalize_status(str(event.get("status") or "running"))
     kind = str(event.get("kind") or "default")
-    parent_id = event.get("parent_span_id")
+    # Empty string parent is as bad as None — canvas parks the node in 「其它」.
+    _raw_parent = event.get("parent_span_id")
+    parent_id = _raw_parent if (_raw_parent is not None and str(_raw_parent).strip()) else None
     role = "work"
     if name.startswith("step_") or kind == "step":
         role = "container"
         kind = "step"
 
     node_id = span_id
+    # Routing telemetry shares the skill TraceGate span_id. If we park skill_route
+    # on that id first, status=selected→ok and later skill/running is refused by
+    # "don't reopen closed nodes" — canvas keeps only「路由 · 选技能」(run-2e8529).
+    if kind == "routing" and name in (
+        "skill_route",
+        "skill_candidates",
+        "skill_candidates_snapshot",
+    ):
+        node_id = f"routing:{name}:{span_id}"
+    # Never let work events reuse a ReAct/session container id (historical bug:
+    # routing_decision/strict_eval sometimes arrive with span_id == step:* and
+    # ON CONFLICT overwrites the step card → canvas shows「step_1 · 路由」).
+    _CONTAINER_PREFIXES = ("step:", "agent:", "skill:")
+    _is_container_id = any(str(node_id).startswith(p) for p in _CONTAINER_PREFIXES)
+    if _is_container_id and not (
+        name.startswith("step_")
+        or kind == "step"
+        or name in ("agent_start", "agent_end", "skill_start", "skill_end")
+    ):
+        # Force a distinct work id under the container
+        node_id = f"{kind or 'work'}:{name}:{span_id}"
+        if not parent_id:
+            parent_id = span_id
     # Coalesce skill work into stable skill:{name} when executor (or prior open) already created it.
     # Prevents standalone skill runs from showing container + duplicate UUID work node.
     if kind == "skill" and name not in ("skill_start", "skill_end"):
@@ -414,11 +472,204 @@ async def mirror_syscall_to_graph(event: Dict[str, Any]) -> None:
             node_id = stable_id
             parent_id = existing_stable.get("parent_id")
             role = existing_stable.get("role") or "work"
+    # Diagnostic context markers: always one node per name under the run.
+    # Open/close historically used mismatched span_ids (prep:{agent} vs prep:react /
+    # {run}:pre_llm_prep) → twin cards (running + completed). Fold into the earliest
+    # existing same-name node when present; else stable ctx:{name}.
+    if name in ("pre_llm_prep", "llm_enter", "context_snapshot") and kind in (
+        "context",
+        "default",
+        "",
+    ):
+        node_id = f"ctx:{name}"
+        try:
+            twins = [
+                n
+                for n in await store.list_run_graph_nodes(run_id)
+                if str(n.get("name") or "") == name
+            ]
+        except Exception:
+            twins = []
+        if twins:
+            twins.sort(
+                key=lambda n: float(n.get("start_time") or n.get("sort_key") or 0),
+            )
+            keep = twins[0]
+            node_id = str(keep.get("node_id") or node_id)
+            if keep.get("parent_id") and not parent_id:
+                parent_id = keep.get("parent_id")
+            # Close/ok: also seal any leftover twin ids so the canvas does not keep
+            # a stale 「执行中」card alongside the completed one.
+            if st in ("ok", "error", "warning") and len(twins) > 1:
+                now_seal = time.time()
+                for twin in twins[1:]:
+                    tid = str(twin.get("node_id") or "")
+                    if not tid or tid == node_id:
+                        continue
+                    try:
+                        await store.upsert_run_graph_node(
+                            {
+                                "run_id": run_id,
+                                "node_id": tid,
+                                "parent_id": twin.get("parent_id"),
+                                "kind": twin.get("kind") or kind,
+                                "name": name,
+                                "label": twin.get("label") or name,
+                                "role": twin.get("role") or "work",
+                                "status": st,
+                                "start_time": twin.get("start_time") or now_seal,
+                                "end_time": now_seal,
+                                "duration_ms": twin.get("duration_ms") or 0,
+                                "args": twin.get("args") or {},
+                                "sort_key": twin.get("sort_key") or twin.get("start_time") or now_seal,
+                                "updated_at": now_seal,
+                            }
+                        )
+                    except Exception:
+                        _log.debug("seal twin context marker failed", exc_info=True)
 
     try:
         existing = await store.get_run_graph_node(run_id, node_id)
         if existing and existing.get("status") in ("ok", "error", "warning") and st == "running":
-            return  # don't reopen closed nodes
+            # Exception: skill work may arrive after skill_route(selected→ok) on the
+            # same TraceGate span — must still open the Skill card.
+            _allow_reopen = (
+                kind == "skill"
+                and name not in ("skill_start", "skill_end")
+                and str(existing.get("kind") or "") == "routing"
+            )
+            if not _allow_reopen:
+                return  # don't reopen closed nodes
+        # Protect container rows: never overwrite step/agent name with routing/llm/etc.
+        if existing and str(existing.get("role") or "") == "container":
+            existing_name = str(existing.get("name") or "")
+            if name and name != existing_name and not (
+                name.startswith("step_") or name in ("agent_start", "agent_end", "skill_start", "skill_end")
+            ):
+                node_id = f"{kind or 'work'}:{name}:{existing.get('node_id')}"
+                parent_id = existing.get("node_id") or parent_id
+                existing = await store.get_run_graph_node(run_id, node_id) or {}
+        # Protect skill work rows: skill_route/routing_* reuse the skill TraceGate
+        # span_id and would overwrite「Skill · autoreview」→「路由 · 选技能」.
+        if (
+            existing
+            and str(existing.get("kind") or "") == "skill"
+            and str(existing.get("name") or "") not in ("skill_start", "skill_end")
+            and kind == "routing"
+        ):
+            node_id = f"routing:{name}:{existing.get('node_id')}"
+            parent_id = existing.get("parent_id") or parent_id or existing.get("node_id")
+            existing = await store.get_run_graph_node(run_id, node_id) or {}
+        # Reverse race: skill_route arrived first on the TraceGate span. Relocate
+        # the routing card so skill can own the span id (Skill · autoreview).
+        if (
+            existing
+            and kind == "skill"
+            and name not in ("skill_start", "skill_end")
+            and str(existing.get("kind") or "") == "routing"
+        ):
+            route_id = f"routing:{existing.get('name') or 'skill_route'}:{node_id}"
+            try:
+                await store.upsert_run_graph_node(
+                    {
+                        "run_id": run_id,
+                        "node_id": route_id,
+                        "parent_id": existing.get("parent_id") or parent_id,
+                        "kind": "routing",
+                        "name": existing.get("name") or "skill_route",
+                        "label": existing.get("label") or existing.get("name") or "skill_route",
+                        "role": "work",
+                        "status": existing.get("status") or "ok",
+                        "start_time": existing.get("start_time"),
+                        "end_time": existing.get("end_time"),
+                        "duration_ms": existing.get("duration_ms") or 0,
+                        "args": existing.get("args") or {},
+                        "result": existing.get("result") or {},
+                        "sort_key": existing.get("sort_key") or existing.get("start_time"),
+                        "updated_at": time.time(),
+                    }
+                )
+            except Exception:
+                _log.debug("relocate skill_route before skill claim failed", exc_info=True)
+            # Fall through: overwrite node_id with the skill card
+        # Self-parent is meaningless and breaks column layout
+        if parent_id and str(parent_id) == str(node_id):
+            parent_id = (existing or {}).get("parent_id")
+            if parent_id and str(parent_id) == str(node_id):
+                parent_id = None
+        # Dangling / missing parent → remap invented `{run}:skill:NAME` to the
+        # real skill node (UUID or skill:NAME), else adopt under latest step:*.
+        # Historical bug: code_generation invented `{run}:skill:code_generation`
+        # which is never opened → canvas parks generate as an orphan root.
+        import re as _re_parent
+
+        _need_adopt = False
+        if parent_id:
+            try:
+                _pe = await store.get_run_graph_node(run_id, str(parent_id))
+            except Exception:
+                _pe = None
+            if not _pe:
+                m = _re_parent.match(
+                    r"^(?:run[-_][^:]+:)?skill:(?P<sname>[^:]+)$",
+                    str(parent_id),
+                )
+                if m:
+                    sname = m.group("sname")
+                    try:
+                        cands = [
+                            n
+                            for n in await store.list_run_graph_nodes(run_id)
+                            if str(n.get("kind") or "") == "skill"
+                            and str(n.get("name") or "") == sname
+                        ]
+                    except Exception:
+                        cands = []
+                    if cands:
+                        cands.sort(
+                            key=lambda n: float(n.get("start_time") or n.get("sort_key") or 0),
+                        )
+                        parent_id = str(cands[-1].get("node_id") or "") or None
+                    else:
+                        # Prefer stable skill:{name} even if not yet listed
+                        stable = f"skill:{sname}"
+                        try:
+                            _stn = await store.get_run_graph_node(run_id, stable)
+                        except Exception:
+                            _stn = None
+                        if _stn:
+                            parent_id = stable
+                        else:
+                            _need_adopt = True
+                else:
+                    _need_adopt = True
+        if not parent_id:
+            _need_adopt = kind in ("llm", "reason", "context") and name in (
+                "generate", "LLM·generate", "pre_llm_prep", "llm_enter", "context_snapshot",
+            )
+        if _need_adopt:
+            try:
+                steps = [
+                    n
+                    for n in await store.list_run_graph_nodes(run_id)
+                    if str(n.get("role") or "") == "container"
+                    and str(n.get("kind") or "") == "step"
+                    and str(n.get("node_id") or "").startswith("step:")
+                ]
+                if steps:
+                    steps.sort(
+                        key=lambda n: float(n.get("start_time") or n.get("sort_key") or 0),
+                    )
+                    parent_id = str(steps[-1].get("node_id") or "") or None
+                elif not parent_id:
+                    parent_id = None
+                else:
+                    # Keep dangling only if no step yet (early agent-level markers)
+                    parent_id = parent_id if (
+                        name == "context_snapshot" or kind == "agent"
+                    ) else None
+            except Exception:
+                _log.debug("adopt dangling parent under step failed", exc_info=True)
         # Also skip creating a child skill event that only duplicates stable node under itself
         if (
             kind == "skill"

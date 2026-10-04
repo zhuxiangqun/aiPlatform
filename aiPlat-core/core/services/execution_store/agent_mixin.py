@@ -6,7 +6,7 @@ Auto-generated via Mixin split. Contains entity-specific CRUD methods.
 from typing import Any, Dict, List, Optional, Tuple
 import json, time, sqlite3, logging
 import anyio
-from ._base import _json_dumps, _json_loads
+from ._base import _json_dumps, _json_loads, run_store_io
 
 
 class AgentMixin:
@@ -69,28 +69,61 @@ class AgentMixin:
                     ON CONFLICT(id) DO UPDATE SET
                       agent_id=excluded.agent_id,
                       tenant_id=excluded.tenant_id,
-                      status=excluded.status,
+                      -- Orphan/cancel finals are sticky: a hung LLM that later returns
+                      -- "Model error" must not flip timeout → completed (UI 假完成).
+                      status=CASE
+                        WHEN lower(coalesce(agent_executions.status, '')) IN ('timeout', 'cancelled', 'canceled')
+                             AND lower(coalesce(excluded.status, '')) IN ('completed', 'ok', 'success', 'running')
+                          THEN agent_executions.status
+                        ELSE excluded.status
+                      END,
                       input_json=COALESCE(excluded.input_json, agent_executions.input_json),
-                      output_json=COALESCE(excluded.output_json, agent_executions.output_json),
-                      error=excluded.error,
-                      error_code=excluded.error_code,
+                      output_json=CASE
+                        WHEN lower(coalesce(agent_executions.status, '')) IN ('timeout', 'cancelled', 'canceled')
+                             AND lower(coalesce(excluded.status, '')) IN ('completed', 'ok', 'success', 'running')
+                          THEN agent_executions.output_json
+                        ELSE COALESCE(excluded.output_json, agent_executions.output_json)
+                      END,
+                      error=CASE
+                        WHEN lower(coalesce(agent_executions.status, '')) IN ('timeout', 'cancelled', 'canceled')
+                             AND lower(coalesce(excluded.status, '')) IN ('completed', 'ok', 'success', 'running')
+                          THEN agent_executions.error
+                        ELSE excluded.error
+                      END,
+                      error_code=CASE
+                        WHEN lower(coalesce(agent_executions.status, '')) IN ('timeout', 'cancelled', 'canceled')
+                             AND lower(coalesce(excluded.status, '')) IN ('completed', 'ok', 'success', 'running')
+                          THEN agent_executions.error_code
+                        ELSE excluded.error_code
+                      END,
                       start_time=CASE
                         WHEN excluded.start_time IS NULL OR excluded.start_time = 0
                           THEN agent_executions.start_time
                         ELSE excluded.start_time
                       END,
                       end_time=CASE
+                        WHEN lower(coalesce(agent_executions.status, '')) IN ('timeout', 'cancelled', 'canceled')
+                             AND lower(coalesce(excluded.status, '')) IN ('completed', 'ok', 'success', 'running')
+                          THEN agent_executions.end_time
                         WHEN excluded.end_time IS NULL OR excluded.end_time = 0
                           THEN agent_executions.end_time
                         ELSE excluded.end_time
                       END,
                       duration_ms=CASE
+                        WHEN lower(coalesce(agent_executions.status, '')) IN ('timeout', 'cancelled', 'canceled')
+                             AND lower(coalesce(excluded.status, '')) IN ('completed', 'ok', 'success', 'running')
+                          THEN agent_executions.duration_ms
                         WHEN excluded.duration_ms IS NULL OR excluded.duration_ms = 0
                           THEN agent_executions.duration_ms
                         ELSE excluded.duration_ms
                       END,
                       trace_id=COALESCE(excluded.trace_id, agent_executions.trace_id),
-                      metadata_json=excluded.metadata_json,
+                      metadata_json=CASE
+                        WHEN lower(coalesce(agent_executions.status, '')) IN ('timeout', 'cancelled', 'canceled')
+                             AND lower(coalesce(excluded.status, '')) IN ('completed', 'ok', 'success', 'running')
+                          THEN agent_executions.metadata_json
+                        ELSE excluded.metadata_json
+                      END,
                       approval_request_id=excluded.approval_request_id;
                     """,
                     payload,
@@ -134,7 +167,7 @@ class AgentMixin:
             finally:
                 conn.close()
 
-        return await anyio.to_thread.run_sync(_sync)
+        return await run_store_io(_sync)
 
     async def list_agent_executions_by_approval_request_id(
         self,

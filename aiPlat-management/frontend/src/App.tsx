@@ -5,14 +5,18 @@ import AppLayout from './components/layout/AppLayout';
 import './index.css';
 import './styles/tokens.css';
 
-const Loading = () => (
-  <div className="flex items-center justify-center min-h-screen bg-dark-bg">
+const Loading = ({ label = '正在加载页面…' }: { label?: string }) => (
+  <div className="flex flex-col items-center justify-center gap-3 min-h-[50vh] bg-dark-bg text-gray-300">
     <Loader2 className="w-8 h-8 text-primary animate-spin" />
+    <p className="text-sm text-gray-400">{label}</p>
   </div>
 );
 
-const withSuspense = (Component: React.LazyExoticComponent<React.FC>) => (
-  <Suspense fallback={<Loading />}>
+const withSuspense = (
+  Component: React.LazyExoticComponent<React.FC>,
+  label?: string,
+) => (
+  <Suspense fallback={<Loading label={label} />}>
     <Component />
   </Suspense>
 );
@@ -235,7 +239,7 @@ const router = createBrowserRouter([
       { path: 'diagnostics/traces/:traceId', element: withSuspense(DiagnosticsTraceDetail) },
       { path: 'diagnostics/graphs', element: withSuspense(DiagnosticsGraphs) },
       { path: 'diagnostics/graphs/:runId', element: withSuspense(DiagnosticsGraphRunDetail) },
-      { path: 'diagnostics/links', element: withSuspense(DiagnosticsLinks) },
+      { path: 'diagnostics/links', element: withSuspense(DiagnosticsLinks, '正在加载诊断详情…') },
       { path: 'diagnostics/repo', element: withSuspense(DiagnosticsRepo) },
       { path: 'diagnostics/runs', element: withSuspense(DiagnosticsRuns) },
       { path: 'diagnostics/audit', element: withSuspense(DiagnosticsAudit) },

@@ -50,7 +50,16 @@ def _store():
     if _execution_store:
         return _execution_store
     rt = _rt()
-    return getattr(rt, "execution_store", None) if rt else None
+    store = getattr(rt, "execution_store", None) if rt else None
+    if store:
+        return store
+    # Lifespan never assigned `_execution_store`; open the same SQLite Core uses.
+    try:
+        from core.api.core_facade import get_execution_store
+
+        return get_execution_store()
+    except Exception:
+        return None
 
 
 def _approval_manager():

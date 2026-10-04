@@ -192,3 +192,77 @@ class TestSummarizeArtifactStatic:
         assert isinstance(out, dict)
         assert "summary" in out
         assert len(out["summary"]) <= 40
+
+
+def test_deploy_followup_uses_file_output_writes_same_workspace(tmp_path):
+    """After scaffold deploy, a later uses_file_output stage lands in the same dir."""
+    engine = PipelineEngine.__new__(PipelineEngine)
+    target = tmp_path / "app"
+    state = {"project_id": "prj_split", "_deploy_files_dir": str(target)}
+    stage = SimpleNamespace(
+        deploy_files_target_dir="",
+        output_artifact="frontend_code",
+    )
+    result = (
+        "## FILE: frontend/src/pages/ReportFaultPage.tsx\n"
+        "export default function ReportFaultPage() { return null }\n"
+    )
+    engine._deploy_result_files(state, stage, result)
+    written = target / "frontend" / "src" / "pages" / "ReportFaultPage.tsx"
+    assert written.is_file()
+    assert "ReportFaultPage" in written.read_text()
+    assert state["_deploy_files_dir"] == str(target)
+
+
+def test_deploy_falls_back_to_artifact_files_list(tmp_path):
+    engine = PipelineEngine.__new__(PipelineEngine)
+    target = tmp_path / "app"
+    state = {
+        "project_id": "prj_files",
+        "backend_code": {
+            "files": [{"path": "backend/routes.py", "content": "from fastapi import APIRouter\n"}]
+        },
+    }
+    stage = SimpleNamespace(
+        deploy_files_target_dir=str(target),
+        output_artifact="backend_code",
+    )
+    engine._deploy_result_files(state, stage, "no file headers here")
+    assert (target / "backend" / "routes.py").is_file()
+
+
+def test_deploy_strips_leaked_python_lang_tag(tmp_path):
+    """LLM often prefixes FILE bodies with bare ``python\\n``; must not land on disk."""
+    engine = PipelineEngine.__new__(PipelineEngine)
+    target = tmp_path / "app"
+    state = {"project_id": "prj_lang", "_deploy_files_dir": str(target)}
+    stage = SimpleNamespace(deploy_files_target_dir="", output_artifact="backend_code")
+    result = (
+        "## FILE: backend/app/main.py\n"
+        "python\n"
+        "from fastapi import FastAPI\n"
+        "app = FastAPI()\n"
+        "## FILE: backend/app/__init__.py\n"
+        "python\n"
+        "## FILE: backend/app/empty_pkg/__init__.py\n"
+        "python"
+    )
+    engine._deploy_result_files(state, stage, result)
+    body = (target / "backend" / "app" / "main.py").read_text()
+    assert not body.startswith("python")
+    assert "from fastapi import FastAPI" in body
+    assert (target / "backend" / "app" / "__init__.py").read_text().strip() == ""
+    assert (target / "backend" / "app" / "empty_pkg" / "__init__.py").read_text().strip() == ""
+
+
+def test_code_split_seed_deploys_fe_and_be_slices():
+    import yaml
+
+    path = CORE_ROOT / "core" / "workspace_seeds" / "teams" / "code_split.yaml"
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    by_id = {s["agent_id"]: s for s in data["stages"]}
+    assert by_id["scaffold_agent"].get("deploy_files_to_disk") is True
+    assert by_id["frontend_engineer"].get("deploy_files_to_disk") is True
+    assert by_id["backend_developer"].get("deploy_files_to_disk") is True
+    assert by_id["frontend_engineer"].get("uses_file_output") is True
+    assert by_id["backend_developer"].get("uses_file_output") is True

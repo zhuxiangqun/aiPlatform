@@ -34,7 +34,10 @@ export interface AgentListResponse {
 // ── Models (for agent editor dropdowns) ──
 export const modelsApi = {
   list: async () => {
-    return apiClient.get<{ models: { name: string; provider: string; capabilities: string[] }[]; by_provider: Record<string, { name: string; provider: string; capabilities: string[] }[]> }>('/core/models');
+    return apiClient.get<{
+      models: { name: string; provider: string; capabilities?: string[]; type?: string; enabled?: boolean }[];
+      by_provider: Record<string, { name: string; provider: string; capabilities?: string[]; type?: string }[]>;
+    }>('/core/models');
   },
 };
 
@@ -86,7 +89,14 @@ export const agentApi = {
   },
 
   execute: async (agentId: string, data: { messages?: unknown[]; input?: unknown; context?: Record<string, unknown>; options?: { toolset?: string; force_react?: boolean; loop_engine?: string }; config?: Record<string, unknown> }) => {
-    return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string; duration_ms?: number; metadata?: Record<string, unknown> }>(`/core/agents/${agentId}/execute`, data);
+    return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string; duration_ms?: number; metadata?: Record<string, unknown>; quality_review?: Record<string, unknown> }>(`/core/agents/${agentId}/execute`, data);
+  },
+
+  reviewOutput: async (
+    agentId: string,
+    data: { input?: unknown; output?: unknown; status?: string; execution_id?: string; run_id?: string; prefer_embedded?: boolean } = {},
+  ) => {
+    return apiClient.post<Record<string, unknown>>(`/core/agents/${agentId}/review-output`, data);
   },
 
   getHistory: async (agentId: string) => {
@@ -183,7 +193,17 @@ export const workspaceAgentApi = {
     }>('/core/workspace/routing/classify', data);
   },
 
-  audit: async (agentId: string) => {
+  audit: async (
+    agentId: string,
+    draft?: { sop_body?: string; system_prompt?: string },
+  ) => {
+    const body =
+      draft && (draft.sop_body != null || draft.system_prompt != null)
+        ? {
+            ...(draft.sop_body != null ? { sop_body: draft.sop_body } : {}),
+            ...(draft.system_prompt != null ? { system_prompt: draft.system_prompt } : {}),
+          }
+        : {};
     return apiClient.post<{
       agent_id: string;
       issues: Array<{
@@ -193,7 +213,7 @@ export const workspaceAgentApi = {
         fix?: { type: string; from?: string; to?: string; tool?: string };
       }>;
       summary: { errors: number; warnings: number; info: number; total: number; health: string };
-    }>(`/core/workspace/agents/${encodeURIComponent(agentId)}/audit`);
+    }>(`/core/workspace/agents/${encodeURIComponent(agentId)}/audit`, body);
   },
 
   importDetect: async (data: { url?: string; file_content?: string }) => {
@@ -320,8 +340,24 @@ export const workspaceAgentApi = {
     }>(`/core/workspace/agents/${agentId}/generate-execution-examples`, data || {});
   },
 
-  execute: async (agentId: string, data: { messages?: unknown[]; input?: unknown; context?: Record<string, unknown>; options?: { toolset?: string; force_react?: boolean; loop_engine?: string }; config?: Record<string, unknown> }) => {
-    return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string; duration_ms?: number; metadata?: Record<string, unknown> }>(`/core/workspace/agents/${agentId}/execute`, data);
+  execute: async (
+    agentId: string,
+    data: { messages?: unknown[]; input?: unknown; context?: Record<string, unknown>; options?: { toolset?: string; force_react?: boolean; loop_engine?: string }; config?: Record<string, unknown> },
+    opts?: { timeoutMs?: number; signal?: AbortSignal },
+  ) => {
+    // Stream accept must return run_id quickly; long hangs mean Core is wedged.
+    return apiClient.post<{ execution_id: string; status: string; output?: unknown; error?: string; duration_ms?: number; metadata?: Record<string, unknown>; quality_review?: Record<string, unknown>; run_id?: string; ok?: boolean }>(
+      `/core/workspace/agents/${agentId}/execute`,
+      data,
+      { timeoutMs: opts?.timeoutMs ?? 45_000, signal: opts?.signal },
+    );
+  },
+
+  reviewOutput: async (
+    agentId: string,
+    data: { input?: unknown; output?: unknown; status?: string; execution_id?: string; run_id?: string; prefer_embedded?: boolean } = {},
+  ) => {
+    return apiClient.post<Record<string, unknown>>(`/core/workspace/agents/${agentId}/review-output`, data);
   },
 
   getSkills: async (agentId: string) => {
@@ -794,6 +830,17 @@ export const workspaceMcpApi = {
     return apiClient.post<{ status: string; lint: Record<string, unknown> }>(`/core/workspace/mcp/servers/${serverName}/submit-for-review`);
   },
 
+  audit: async (serverName: string) => {
+    return apiClient.post<{
+      server_name: string;
+      issues: Array<{
+        severity: string; category: string; field?: string; message: string;
+        suggestion?: string; fix_available?: boolean; fix?: { type: string; [k: string]: unknown };
+      }>;
+      summary: { errors: number; warnings: number; info: number; total: number; health: string };
+    }>(`/core/workspace/mcp/servers/${encodeURIComponent(serverName)}/audit`);
+  },
+
   reloadServers: async () => {
     return apiClient.post<{ status: string; servers: string[] }>('/core/workspace/mcp/servers/reload', {});
   },
@@ -942,10 +989,33 @@ export const skillApi = {
   },
 
   execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown>; options?: { toolset?: string }; config?: Record<string, unknown> } = {}) => {
-    return apiClient.post<{ execution_id: string; run_id: string; trace_id?: string; ok: boolean; status: string; output?: unknown; error?: any; duration_ms?: number; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } }>(
+    return apiClient.post<{ execution_id: string; run_id: string; trace_id?: string; ok: boolean; status: string; output?: unknown; error?: any; duration_ms?: number; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }; quality_review?: Record<string, unknown> }>(
       `/core/skills/${skillId}/execute`,
       withSkillExecuteDefaults(data),
     );
+  },
+
+  /** Post-run product quality (stream complete path). Runtime ok ≠ content ok. */
+  reviewOutput: async (
+    skillId: string,
+    data: { input?: unknown; output?: unknown; status?: string; execution_id?: string; run_id?: string; prefer_embedded?: boolean } = {},
+  ) => {
+    return apiClient.post<Record<string, unknown>>(`/core/skills/${skillId}/review-output`, data);
+  },
+
+  /** Append quality SOP iron-laws into SKILL.md (idempotent). */
+  applyQualityFix: async (
+    skillId: string,
+    data: { issue_codes?: string[]; fix_ids?: string[] } = {},
+  ) => {
+    return apiClient.post<{
+      status: string;
+      applied?: string[];
+      skipped?: string[];
+      message?: string;
+      path?: string;
+      error?: string;
+    }>(`/core/skills/${skillId}/apply-quality-fix`, data);
   },
 
   lint: async (skillId: string) => {
@@ -954,6 +1024,32 @@ export const skillApi = {
 
   applyLintFix: async (skillId: string, body: { fix_ids?: string[]; issue_codes?: string[]; dry_run?: boolean } = {}) => {
     return apiClient.post<any>(`/core/skills/${skillId}/apply-lint-fix`, body as any);
+  },
+
+  getExecutionHelp: async (skillId: string) => {
+    return apiClient.get<{
+      skill_id: string;
+      help_markdown: string;
+      examples: Array<{ title: string; content: string }>;
+      input_schema?: Record<string, unknown> | null;
+      default_input?: string;
+      timeout?: number;
+    }>(`/core/skills/${skillId}/execution-help`);
+  },
+
+  generateExecutionExamples: async (
+    skillId: string,
+    data?: { persist?: boolean; refine_hint?: string },
+  ) => {
+    return apiClient.post<{
+      status: string;
+      skill_id: string;
+      examples: Array<{ title: string; content: string }>;
+      model?: string;
+      source?: string;
+      warning?: string;
+      persisted?: boolean;
+    }>(`/core/skills/${skillId}/generate-execution-examples`, data || {});
   },
 
   lintConflicts: async (params: { threshold?: number; min_overlap?: number; limit?: number } = {}) => {
@@ -1082,10 +1178,31 @@ export const workspaceSkillApi = {
   },
 
   execute: async (skillId: string, data: { input?: Record<string, unknown>; context?: Record<string, unknown>; options?: { toolset?: string }; config?: Record<string, unknown> } = {}) => {
-    return apiClient.post<{ execution_id: string; run_id: string; trace_id?: string; ok: boolean; status: string; output?: unknown; error?: any; duration_ms?: number; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } }>(
+    return apiClient.post<{ execution_id: string; run_id: string; trace_id?: string; ok: boolean; status: string; output?: unknown; error?: any; duration_ms?: number; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }; quality_review?: Record<string, unknown> }>(
       `/core/workspace/skills/${skillId}/execute`,
       withSkillExecuteDefaults(data),
     );
+  },
+
+  reviewOutput: async (
+    skillId: string,
+    data: { input?: unknown; output?: unknown; status?: string; execution_id?: string; run_id?: string } = {},
+  ) => {
+    return apiClient.post<Record<string, unknown>>(`/core/workspace/skills/${skillId}/review-output`, data);
+  },
+
+  applyQualityFix: async (
+    skillId: string,
+    data: { issue_codes?: string[]; fix_ids?: string[] } = {},
+  ) => {
+    return apiClient.post<{
+      status: string;
+      applied?: string[];
+      skipped?: string[];
+      message?: string;
+      path?: string;
+      error?: string;
+    }>(`/core/workspace/skills/${skillId}/apply-quality-fix`, data);
   },
 
   getExecutionHelp: async (skillId: string) => {
@@ -1225,6 +1342,17 @@ export const workspaceSkillApi = {
 
   lint: async (skillId: string) => {
     return apiClient.get<{ skill_id: string; lint: any; fixes?: any[]; fix_summary?: any }>(`/core/workspace/skills/${skillId}/lint`);
+  },
+
+  audit: async (skillId: string) => {
+    return apiClient.post<{
+      skill_id: string;
+      issues: Array<{
+        severity: string; category: string; field?: string; message: string;
+        suggestion?: string; fix_available?: boolean; fix?: { type: string; fix_id?: string };
+      }>;
+      summary: { errors: number; warnings: number; info: number; total: number; health: string };
+    }>(`/core/workspace/skills/${encodeURIComponent(skillId)}/audit`);
   },
 
   applyLintFix: async (skillId: string, body: { fix_ids?: string[]; issue_codes?: string[]; dry_run?: boolean } = {}) => {
@@ -2126,6 +2254,17 @@ export const toolApi = {
     );
   },
 
+  audit: async (toolName: string) => {
+    return apiClient.post<{
+      tool_name: string;
+      issues: Array<{
+        severity: string; category: string; field?: string; message: string;
+        suggestion?: string; fix_available?: boolean; fix?: { type: string; [k: string]: unknown };
+      }>;
+      summary: { errors: number; warnings: number; info: number; total: number; health: string };
+    }>(`/core/tools/${encodeURIComponent(toolName)}/audit`);
+  },
+
   sign: async (toolName: string, data: { private_key: string; version?: string }) => {
     return apiClient.post<{ status: string; bundle_sha256: string; version: string; signature: string }>(`/core/tools/${toolName}/sign`, data);
   },
@@ -2360,6 +2499,31 @@ export interface AuditLogEntry {
   created_at: number;
 }
 
+/** Unique Core path: scoring_dimensions + eval_metric/eval_runner (eval_engineer). */
+export const agentEvalApi = {
+  inspect: async (agentId: string) => {
+    return apiClient.get<{
+      agent_id: string;
+      found: boolean;
+      has_scoring?: boolean;
+      has_eval_files?: boolean;
+      complete?: boolean;
+      trace_count?: number;
+      scoring_dimensions?: Array<{ name?: string; weight?: number; description?: string }>;
+      eval_dir?: string;
+      last_action?: { action?: string; message?: string; at?: string } | null;
+      message?: string;
+    }>(`/core/entropy/eval/${encodeURIComponent(agentId)}`);
+  },
+  generate: async (agentId: string, force = false) => {
+    const q = force ? '?force=true' : '';
+    return apiClient.post<Record<string, unknown>>(
+      `/core/entropy/eval/generate/${encodeURIComponent(agentId)}${q}`,
+      {},
+    );
+  },
+};
+
 export const auditApi = {
   listLogs: async (params: {
     tenant_id?: string;
@@ -2541,6 +2705,16 @@ export const workflowApi = {
   },
   get: async (id: string) => {
     return apiClient.get<any>(`/platform/workflows/${id}`);
+  },
+  audit: async (id: string) => {
+    return apiClient.post<{
+      workflow_id: string;
+      issues: Array<{
+        severity: string; category: string; field?: string; message: string;
+        suggestion?: string; fix_available?: boolean; fix?: { type: string; [k: string]: unknown };
+      }>;
+      summary: { errors: number; warnings: number; info: number; total: number; health: string };
+    }>(`/platform/workflows/${encodeURIComponent(id)}/audit`);
   },
   create: async (data: { name: string; description?: string; nodes?: any[]; edges?: any[]; reuse_equivalent?: boolean }) => {
     return apiClient.post<any>('/platform/workflows', data);

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, RefreshCw, TrendingUp, TrendingDown, Minus, Zap } from 'lucide-react';
-import { insightApi, type AgentInsight } from '../../../services';
+import { insightApi, agentEvalApi, type AgentInsight } from '../../../services';
 import { Card, CardHeader, CardContent, Button, toast } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
 
@@ -24,12 +24,20 @@ const AgentInsightPage: React.FC = () => {
   const [insight, setInsight] = useState<AgentInsight | null>(null);
   const [allInsights, setAllInsights] = useState<Record<string, AgentInsight>>({});
   const [loading, setLoading] = useState(true);
+  const [evalSnap, setEvalSnap] = useState<Record<string, unknown> | null>(null);
+  const [evalBusy, setEvalBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
       if (agentId) {
         const d = await insightApi.get(agentId);
         setInsight(d);
+        try {
+          const snap = await agentEvalApi.inspect(agentId);
+          setEvalSnap(snap as Record<string, unknown>);
+        } catch {
+          setEvalSnap(null);
+        }
       }
       const all = await insightApi.all();
       setAllInsights(all || {});
@@ -102,6 +110,52 @@ const AgentInsightPage: React.FC = () => {
         <MetricCard label="QA回退率" value={(ins.qa_rollback_rate * 100).toFixed(0)} suffix="%" />
         <MetricCard label="运行次数" value={ins.total_runs} />
       </div>
+
+      <Card>
+        <CardHeader title="评估脚手架（generate_agent_eval）" />
+        <CardContent>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={evalBusy}
+              onClick={async () => {
+                if (!agentId) return;
+                setEvalBusy(true);
+                try {
+                  const res = await agentEvalApi.generate(agentId, false);
+                  setEvalSnap(res as Record<string, unknown>);
+                  toast.success(String((res as { message?: string }).message || '已调用评估入口'));
+                } catch (e: unknown) {
+                  toastGateError(e, '生成评估失败');
+                } finally {
+                  setEvalBusy(false);
+                }
+              }}
+            >
+              {evalBusy ? '处理中…' : '生成评估代码'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => nav(`/diagnostics/eval?agent=${encodeURIComponent(agentId)}`)}
+            >
+              打开诊断评估页
+            </Button>
+          </div>
+          {evalSnap ? (
+            <div className="text-xs text-gray-400 space-y-1">
+              <div>
+                {evalSnap.complete ? <span className="text-green-400">已齐全</span> : <span className="text-amber-300">未齐全</span>}
+                {' · 轨迹 '}{String(evalSnap.trace_count ?? '—')}
+                {' · '}{String((evalSnap.last_action as { message?: string } | undefined)?.message || evalSnap.message || '')}
+              </div>
+            </div>
+          ) : (
+            <div className="text-xs text-gray-500">尚无脚手架快照（Agent 未找到或 Core 未启动）。</div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader title="最近运行" />

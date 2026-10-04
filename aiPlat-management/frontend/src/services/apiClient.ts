@@ -24,9 +24,10 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit & { timeoutMs?: number } = {}
   ): Promise<ApiResult<T>> {
     const url = `${this.baseUrl}${endpoint}`;
+    const { timeoutMs, ...fetchOptions } = options;
     
     const defaultHeaders: HeadersInit = {
       'Content-Type': 'application/json',
@@ -49,15 +50,20 @@ class ApiClient {
       // ignore (SSR / privacy mode)
     }
 
-    const TIMEOUT_MS = 180_000;
+    const TIMEOUT_MS = typeof timeoutMs === 'number' && timeoutMs > 0 ? timeoutMs : 180_000;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    if (fetchOptions.signal) {
+      const outer = fetchOptions.signal;
+      if (outer.aborted) controller.abort();
+      else outer.addEventListener('abort', () => controller.abort(), { once: true });
+    }
 
     const config: RequestInit = {
-      ...options,
+      ...fetchOptions,
       headers: {
         ...defaultHeaders,
-        ...options.headers,
+        ...fetchOptions.headers,
       },
       signal: controller.signal,
     };
@@ -87,20 +93,24 @@ class ApiClient {
     } catch (err: any) {
       clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
+        if (fetchOptions.signal?.aborted) {
+          throw new Error('请求已取消');
+        }
         throw new Error('请求超时，请检查后端服务是否正常运行');
       }
       throw err;
     }
   }
 
-  async get<T>(endpoint: string): Promise<ApiResult<T>> {
-    return this.request<T>(endpoint, { method: 'GET' });
+  async get<T>(endpoint: string, opts?: { timeoutMs?: number; signal?: AbortSignal }): Promise<ApiResult<T>> {
+    return this.request<T>(endpoint, { method: 'GET', ...opts });
   }
 
-  async post<T>(endpoint: string, data?: unknown): Promise<ApiResult<T>> {
+  async post<T>(endpoint: string, data?: unknown, opts?: { timeoutMs?: number; signal?: AbortSignal }): Promise<ApiResult<T>> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
+      ...opts,
     });
   }
 
@@ -155,7 +165,7 @@ export const diagnosticsApi = {
   },
 
   getDoctor: async () => {
-    return apiClient.get<any>('/core/diagnostics/doctor');
+    return apiClient.get<any>('/diagnostics/doctor');
   },
 
   getContextConfig: async () => {
@@ -284,7 +294,8 @@ export const diagnosticsApi = {
     if (params.graph_run_id) q.set('graph_run_id', params.graph_run_id);
     if (params.include_spans) q.set('include_spans', 'true');
     const qs = q.toString();
-    return apiClient.get<any>(`/diagnostics/links/core/ui${qs ? `?${qs}` : ''}`);
+    // Diagnostics deep-link should fail fast; default 180s looks like a hang.
+    return apiClient.get<any>(`/diagnostics/links/core/ui${qs ? `?${qs}` : ''}`, { timeoutMs: 25_000 });
   },
 
   listSyscalls: async (params: {

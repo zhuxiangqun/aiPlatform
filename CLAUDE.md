@@ -44,8 +44,10 @@ language: zh-CN
 |:---|:---:|:---|
 | FDE 澄清对话 (`_clarify()`) | ✅ | 澄清场景聚焦业务问题，架构规则导致 hallucination |
 | Prompt-type Skill 执行 | ✅ | Skill 自带 SOP，架构上下文为噪音 |
-| Agent ReActLoop / 代码生成 | ❌ | 需要架构规则和编码宪法做决策引导 |
+| Agent ReActLoop / 代码生成 | ❌ 禁止 skip；可用 **slim** | 需要架构规则和编码宪法做决策引导。非编码策略（`coding_policy_profile=off`）走精简注入（`_resolve_claude_md_inject_mode`→slim），禁止按 `output_artifact`/业务 Agent 名推断 skip |
 | 检索生成 (RAG) / 材料问答 | ❌ | 需要知识治理和引用规则 |
+
+注入预算（配置驱动，非按 Agent 捷径）：`AIPLAT_CLAUDE_MD_INJECT_MODE=full|slim|off` 可强制；未设时由 `coding_policy_profile` 与是否文件写操作决定。写代码/改仓库时强制 full。
 
 **内容归属规范（v2.5+）**：每段知识在系统中有且仅有唯一归属。同一份 SOP / 输出格式 / 域参考数据禁止出现在两个地方。
 

@@ -11,6 +11,7 @@ Until fully migrated, NO NEW reverse imports should be added to this file.
 """
 
 from __future__ import annotations
+import json
 import logging
 
 from typing import Any, Dict, List, Optional
@@ -535,6 +536,30 @@ class HarnessIntegration:
                     )
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)
+                # Holder may already be dead (expired lock) — kick drain now and again
+                # after TTL so queued runs are not stuck until an unrelated execute finishes.
+                try:
+                    tid = str(tenant_id) if tenant_id is not None else None
+                    self._kick_session_drain(tenant_id=tid, session_id=session_id)
+                    ttl = int(os.getenv("AIPLAT_SESSION_LOCK_TTL_SECONDS", "300") or "300")
+                    delay = float(min(max(ttl, 1), 300) + 1)
+
+                    def _later_drain(
+                        _tid: Optional[str] = tid,
+                        _sid: str = session_id,
+                    ) -> None:
+                        try:
+                            self._kick_session_drain(tenant_id=_tid, session_id=_sid)
+                        except Exception:
+                            logging.debug("delayed session drain failed", exc_info=True)
+
+                    try:
+                        loop = asyncio.get_running_loop()
+                        loop.call_later(delay, _later_drain)
+                    except RuntimeError:
+                        pass  # noqa: cleanup-best-effort
+                except Exception as e:
+                    logging.debug("session drain schedule failed: %s", e, exc_info=True)
                 return ExecutionResult(
                     ok=True,
                     payload={
@@ -556,7 +581,17 @@ class HarnessIntegration:
         except Exception as e:
             logging.debug(str(e), exc_info=True)
         if stream_mode:
-            asyncio.create_task(self._execute_stream_background(request))
+            # Lock must be released in the background task — returning here used to leak
+            # session_locks for the full TTL, causing later Skill runs on session_id=default
+            # to stick in queued / 「正在加载执行步骤」with an empty graph.
+            asyncio.create_task(
+                self._execute_stream_background(
+                    request,
+                    lock_acquired=lock_acquired,
+                    tenant_id=str(tenant_id) if tenant_id is not None else None,
+                    session_id=session_id,
+                )
+            )
             return ExecutionResult(
                 ok=True,
                 run_id=run_id,
@@ -623,18 +658,66 @@ class HarnessIntegration:
             http_status=400,
         )
 
-    async def _execute_stream_background(self, request: ExecutionRequest) -> None:
+    async def _execute_stream_background(
+        self,
+        request: ExecutionRequest,
+        *,
+        lock_acquired: bool = False,
+        tenant_id: Optional[str] = None,
+        session_id: str = "",
+    ) -> None:
         """Run execution in background for stream mode (returns run_id immediately)."""
         import time as _time
         run_id = request.run_id
         runtime = getattr(self, "_runtime", None)
         store = runtime.execution_store if runtime and hasattr(runtime, "execution_store") else None
+        t0 = _time.time()
+        kind = str(request.kind or "")
+        target_id = str(getattr(request, "target_id", None) or "")
+
+        # Persist a running row immediately so /executions/{id}/status is not not_found
+        # while the background task is still starting (UI used to show status=unknown).
+        try:
+            if store and kind == "skill" and hasattr(store, "upsert_skill_execution"):
+                await store.upsert_skill_execution(
+                    {
+                        "id": run_id,
+                        "skill_id": target_id or "unknown",
+                        "status": "running",
+                        "input": (request.payload or {}).get("input") if isinstance(request.payload, dict) else None,
+                        "output": None,
+                        "error": None,
+                        "start_time": t0,
+                        "end_time": 0,
+                        "duration_ms": 0,
+                        "user_id": getattr(request, "user_id", None),
+                        "metadata": {"stream": True},
+                    }
+                )
+            elif store and kind == "agent" and hasattr(store, "upsert_agent_execution"):
+                await store.upsert_agent_execution(
+                    {
+                        "id": run_id,
+                        "agent_id": target_id or "unknown",
+                        "status": "running",
+                        "input": (request.payload or {}).get("input") if isinstance(request.payload, dict) else None,
+                        "output": None,
+                        "error": None,
+                        "start_time": t0,
+                        "end_time": 0,
+                        "duration_ms": 0,
+                        "user_id": getattr(request, "user_id", None),
+                        "metadata": {"stream": True},
+                    }
+                )
+        except Exception as e:
+            logging.debug("stream early upsert failed: %s", e, exc_info=True)
 
         try:
             if store:
                 await store.append_run_event(
                     run_id=run_id, event_type="run_start", trace_id=None, tenant_id=None,
-                    payload={"kind": str(request.kind), "status": "running", "stream": True},
+                    payload={"kind": kind, "status": "running", "stream": True, "target_id": target_id},
                 )
         except Exception as e:
             logging.debug(str(e), exc_info=True)
@@ -654,14 +737,83 @@ class HarnessIntegration:
         except Exception as e:
             result = ExecutionResult(ok=False, error=str(e), run_id=run_id)
 
+        ok = bool(result and result.ok)
+        end_status = "completed" if ok else "failed"
+        try:
+            err = None
+            if result and not ok:
+                err = getattr(result, "error", None) or (
+                    (getattr(result, "payload", None) or {}).get("error")
+                    if isinstance(getattr(result, "payload", None), dict)
+                    else None
+                )
+                st = ""
+                if isinstance(getattr(result, "payload", None), dict):
+                    st = str((result.payload or {}).get("status") or "").lower()
+                if st == "timeout" or (isinstance(err, str) and "timeout" in err.lower()):
+                    end_status = "timeout"
+            if store and kind == "skill" and hasattr(store, "upsert_skill_execution"):
+                await store.upsert_skill_execution(
+                    {
+                        "id": run_id,
+                        "skill_id": target_id or "unknown",
+                        "status": end_status,
+                        "output": (getattr(result, "payload", None) or {}).get("output")
+                        if isinstance(getattr(result, "payload", None), dict)
+                        else getattr(result, "output", None),
+                        "error": err if isinstance(err, str) else (json.dumps(err, ensure_ascii=False) if err else None),
+                        "start_time": t0,
+                        "end_time": _time.time(),
+                        "duration_ms": int((_time.time() - t0) * 1000),
+                        "user_id": getattr(request, "user_id", None),
+                        "metadata": {"stream": True},
+                    }
+                )
+            elif store and kind == "agent" and hasattr(store, "upsert_agent_execution"):
+                await store.upsert_agent_execution(
+                    {
+                        "id": run_id,
+                        "agent_id": target_id or "unknown",
+                        "status": end_status,
+                        "output": (getattr(result, "payload", None) or {}).get("output")
+                        if isinstance(getattr(result, "payload", None), dict)
+                        else getattr(result, "output", None),
+                        "error": err if isinstance(err, str) else (json.dumps(err, ensure_ascii=False) if err else None),
+                        "start_time": t0,
+                        "end_time": _time.time(),
+                        "duration_ms": int((_time.time() - t0) * 1000),
+                        "user_id": getattr(request, "user_id", None),
+                        "metadata": {"stream": True},
+                    }
+                )
+        except Exception as e:
+            logging.debug("stream final upsert failed: %s", e, exc_info=True)
+
         try:
             if store:
                 await store.append_run_event(
                     run_id=run_id, event_type="run_end", trace_id=None, tenant_id=None,
-                    payload={"status": "completed" if (result and result.ok) else "failed"},
+                    payload={"status": end_status, "error": getattr(result, "error", None) if result and not ok else None},
                 )
         except Exception as e:
             logging.debug(str(e), exc_info=True)
+        finally:
+            if lock_acquired and store is not None and session_id:
+                try:
+                    await store.release_session_lock(
+                        tenant_id=str(tenant_id) if tenant_id is not None else None,
+                        session_id=str(session_id),
+                        run_id=str(run_id),
+                    )
+                except Exception as e:
+                    logging.debug("stream release_session_lock failed: %s", e, exc_info=True)
+                try:
+                    self._kick_session_drain(
+                        tenant_id=str(tenant_id) if tenant_id is not None else None,
+                        session_id=str(session_id),
+                    )
+                except Exception as e:
+                    logging.debug("stream kick_session_drain failed: %s", e, exc_info=True)
 
     async def _execute_skill_lint_scan(self, req: ExecutionRequest) -> ExecutionResult:
         """Scheduled lint scan over skills (workspace/engine), returns aggregated report."""
@@ -1601,7 +1753,12 @@ class HarnessIntegration:
                     run_id=run_id,
                 )
                 if req.target_id:
-                    await self.execute(req)
+                    result = await self.execute(req)
+                    # Lock still held by another run — item was re-enqueued; stop so we
+                    # do not spin dequeue→requeue for the rest of the lane.
+                    payload = getattr(result, "payload", None) if result is not None else None
+                    if isinstance(payload, dict) and payload.get("queued"):
+                        return
             except Exception as e:
                 # best-effort: swallow to continue draining other sessions
                 logging.debug(str(e), exc_info=True)

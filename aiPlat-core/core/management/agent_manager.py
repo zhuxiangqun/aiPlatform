@@ -207,8 +207,10 @@ class AgentManager:
                     config = fm.get("config") or {}
                     if not isinstance(config, dict):
                         config = {}
+                    # Keep ``auto`` unresolved until execute — purpose comes from
+                    # skill_model_purpose / loop_type (see resolve_workspace_agent_model_purpose).
                     if not config.get("model"):
-                        config["model"] = fm.get("model") or best_model_for_purpose("chat")
+                        config["model"] = fm.get("model") or "auto"
 
                     category = str(fm.get("category") or "")
                     tags = fm.get("tags") or []
@@ -851,6 +853,7 @@ class AgentManager:
         agent = self._agents.get(agent_id)
         if not agent:
             return None
+        prev_status = str(getattr(agent, "status", "") or "").strip().lower()
 
         # Engine agents marked as protected are core capabilities and should not be edited via API.
         if (self._scope or "engine").strip().lower() == "engine":
@@ -880,7 +883,11 @@ class AgentManager:
             agent.memory_config.update(memory_config)
         if metadata:
             agent.metadata.update(metadata)
-        
+        if not str(getattr(agent, "type", "") or "").strip():
+            lt = str((agent.metadata or {}).get("loop_type") or "").strip()
+            at = str((agent.metadata or {}).get("agent_type") or "").strip()
+            agent.type = at or lt or "react"
+
         agent.updated_at = datetime.now(timezone.utc)
 
         # Best-effort: persist updates back to directory-based AGENT.md (keep body unchanged).
@@ -935,16 +942,34 @@ class AgentManager:
                     "retry_llm_on_rate_limit": (agent.metadata or {}).get("retry_llm_on_rate_limit", fm.get("retry_llm_on_rate_limit", True)),
                     "max_consecutive_llm_failures": (agent.metadata or {}).get("max_consecutive_llm_failures") or fm.get("max_consecutive_llm_failures", 3),
                     "trigger_conditions": (agent.metadata or {}).get("trigger_conditions") or fm.get("trigger_conditions", []),
-                    "permissions": (agent.metadata or {}).get("permissions") or fm.get("permissions", []),
+                    "permissions": (
+                        (agent.metadata or {}).get("permissions")
+                        if isinstance((agent.metadata or {}).get("permissions"), list)
+                        else (fm.get("permissions") if isinstance(fm.get("permissions"), list) else ["llm:generate"])
+                    ),
                     "auto_hitl": (agent.metadata or {}).get("auto_hitl", fm.get("auto_hitl", False)),
                     "phase_description": (agent.metadata or {}).get("phase_description") or fm.get("phase_description", ""),
                     "hitl_after_execute": (agent.metadata or {}).get("hitl_after_execute", fm.get("hitl_after_execute", False)),
                     "hitl_after_phase": (agent.metadata or {}).get("hitl_after_phase") or fm.get("hitl_after_phase", ""),
-                    "loop_type": (agent.metadata or {}).get("loop_type") or fm.get("loop_type", "react"),
+                    "loop_type": (agent.metadata or {}).get("loop_type") or fm.get("loop_type") or "react",
                     "toolset": (agent.metadata or {}).get("toolset") or fm.get("toolset", "workspace_default"),
+                    "preferred_language": (
+                        (agent.metadata or {}).get("preferred_language")
+                        or fm.get("preferred_language")
+                        or (agent.config or {}).get("preferred_language")
+                        or ""
+                    ),
+                    "skill_model_purpose": (
+                        (agent.metadata or {}).get("skill_model_purpose")
+                        or fm.get("skill_model_purpose")
+                        or ""
+                    ),
                     "memory_config": agent.memory_config or fm.get("memory_config", {"type": "short_term", "recall_count": 5}),
                     "knowledge_bases": (agent.metadata or {}).get("knowledge_bases") or fm.get("knowledge_bases", []),
                 })
+                # Drop empty skill_model_purpose so YAML stays clean
+                if not fm.get("skill_model_purpose"):
+                    fm.pop("skill_model_purpose", None)
                 # Prefer required_* ; drop legacy keys so audit won't keep warning.
                 fm.pop("tools", None)
                 fm.pop("skills", None)
@@ -954,6 +979,14 @@ class AgentManager:
                 agent_md_path.write_text(f"---\n{header}\n---\n{body.lstrip()}", encoding="utf-8")
         except Exception as e:
             logging.debug(str(e), exc_info=True)
+
+        if str(getattr(agent, "status", "") or "").strip().lower() == "listed" and prev_status != "listed":
+            try:
+                from core.api.core_facade import enqueue_listed_agent_eval
+
+                enqueue_listed_agent_eval(agent.id)
+            except Exception:
+                logging.debug("enqueue listed agent eval skipped id=%s", agent.id, exc_info=True)
         
         _notify_resource_mutated("agent", "updated", agent.id)
         return agent
@@ -1002,38 +1035,18 @@ class AgentManager:
 
     @staticmethod
     def _extract_sop_from_body(body: str) -> str:
-        """Extract the '## SOP' section content from markdown body.
-        If no SOP section found, returns the entire body so caller can still view it."""
-        import re
-        text = body or ""
-        m = re.search(r"(?m)^##\s+SOP\s*$", text)
-        if not m:
-            return text.strip("\n").strip()
-        start = m.end()
-        rest = text[start:]
-        m2 = re.search(r"(?m)^##\s+[^\n]+\s*$", rest)
-        sop = rest[: m2.start()] if m2 else rest
-        return sop.strip("\n").strip()
+        """Return the full AGENT.md markdown body (after frontmatter).
+
+        Edit/audit/one-click-fix must see 角色/成功标准/交接附录, not only the
+        ``## SOP`` slice. Slicing until the next ``##`` dropped 审核附录
+        (inner ``## 目标``) so save+re-audit resurrected sop_missing_goal.
+        """
+        return str(body or "").strip("\n").strip()
 
     @staticmethod
     def _replace_sop_in_body(body: str, sop_markdown: str) -> str:
-        """Replace or insert the '## SOP' section content."""
-        import re
-        text = body or ""
-        sop_markdown = (sop_markdown or "").strip("\n").rstrip() + "\n"
-        header = "## SOP\n"
-        m = re.search(r"(?m)^##\s+SOP\s*$", text)
-        if not m:
-            # append new SOP section at end
-            sep = "" if text.endswith("\n") or text == "" else "\n"
-            return f"{text}{sep}\n{header}{sop_markdown}"
-        start = m.end()
-        rest = text[start:]
-        m2 = re.search(r"(?m)^##\s+[^\n]+\s*$", rest)
-        before = text[:start]
-        after = rest[m2.start():] if m2 else ""
-        # keep one blank line between header and content
-        return f"{before}\n{sop_markdown}{after.lstrip()}"
+        """Replace the entire markdown body after frontmatter."""
+        return (sop_markdown or "").strip("\n").rstrip() + "\n"
 
     async def get_agent_sop(self, agent_id: str) -> Optional[Dict[str, Any]]:
         """Get SOP markdown for agent (workspace-friendly)."""
@@ -1052,6 +1065,12 @@ class AgentManager:
         if not info:
             return False
         body = info.get("body") or ""
+        try:
+            from core.management.asset_audit import _collapse_audit_appendices
+
+            sop_markdown = _collapse_audit_appendices(sop_markdown)
+        except Exception:
+            pass  # noqa: cleanup-best-effort
         new_body = self._replace_sop_in_body(str(body), sop_markdown)
         try:
             p = Path(info["path"])
@@ -1076,6 +1095,7 @@ class AgentManager:
             build_agent_task_examples,
             build_examples_from_input_schema,
             examples_are_generic,
+            sanitize_execution_examples,
         )
 
         agent = self._agents.get(agent_id)
@@ -1119,11 +1139,15 @@ class AgentManager:
         desc = str((agent.metadata or {}).get("description") or "")
 
         effective_schema = schema if isinstance(schema, dict) and schema else None
-        if (not norm_examples or examples_are_generic(norm_examples)) and effective_schema:
+        if effective_schema:
+            norm_examples = sanitize_execution_examples(
+                norm_examples, effective_schema, skill_hint=f"{agent_id} {display}",
+            )
+        if (not norm_examples or examples_are_generic(norm_examples, effective_schema)) and effective_schema:
             norm_examples = build_examples_from_input_schema(
                 effective_schema, skill_id=agent_id, skill_name=display
             )
-        if not norm_examples or examples_are_generic(norm_examples):
+        if not norm_examples or examples_are_generic(norm_examples, effective_schema):
             norm_examples = build_agent_task_examples(
                 display_name=display,
                 description=desc,
@@ -1150,12 +1174,13 @@ class AgentManager:
             "### 如何填写输入\n"
             "- 你可以输入 **文本** 或 **JSON**。\n"
             "- 如果输入不是合法 JSON，系统会自动封装为：`{\"message\": \"...\"}`。\n"
-            "- 点右侧「填入」可按本 Agent 绑定的技能/工具写入一条可执行测试用例。\n"
-            "- 也可点「✨ LLM 生成」按职责动态生成用例；「生成并保存」写入 AGENT.md。\n",
+            "- 请优先点右侧「填入」使用系统/已保存的测试用例（按技能角色写的冒烟）。\n"
+            "- 「✨ LLM 生成」是可选草稿：生成后请先核对测试用例正文再点「填入」；"
+            "「生成并保存」会覆盖 AGENT.md 里的用例，编码/脚手架 Agent 请慎用。\n",
         ]
         field_lines = ["\n### 推荐输入字段\n", "- `message`：任务描述（最通用）\n"]
         if has_file_ops:
-            field_lines.append("- `directory`：项目目录（绝对路径）\n")
+            field_lines.append("- `directory`：仅当确实要落盘时填写（绝对路径，须在白名单内）\n")
         if has_browser:
             field_lines.append("- `url`：要操作的页面地址\n")
         if category:
@@ -1166,11 +1191,25 @@ class AgentManager:
             )
         help_parts.extend(field_lines)
 
+        skill_l = {str(s).strip().lower().replace("-", "_") for s in skill_ids}
+        if "code_generation" in skill_l:
+            help_parts.append(
+                "\n### 编码/脚手架单独测\n"
+                "- 单独测切片：成功标准是 `## FILE:` 是否交齐，不是本机 `npm run dev`。\n"
+                "- 可启动脚手架：`## FILE:` 交齐后由 Harness 写入 "
+                "`$AIPLAT_HOME/run_workspaces/{run_id}/`（须在 "
+                "`AIPLAT_FILE_OPERATIONS_ALLOWED_ROOTS` 内），再用该目录启动 uvicorn / npm。\n"
+                "- 请直接调用 `code_generation` 交付；不要把「先澄清」写进冒烟，"
+                "也不要让模型用 `file_operations` 往仓库根落盘。\n"
+                "- 脚手架只测可启动空壳（禁止业务 CRUD）；业务页/API 切片用前端工程师或后端开发的用例。\n"
+            )
+
         if has_file_ops:
             help_parts.append(
                 "\n### 文件/目录操作说明\n"
-                "- 当前 Agent 已绑定 `file_operations` 工具，可以读取、创建、修改文件。\n"
-                "- 服务器需配置 `AIPLAT_FILE_OPERATIONS_ALLOWED_ROOTS` 允许读取的根目录（白名单）。\n"
+                "- 已绑定 `file_operations`：需要写到磁盘时才用，且路径必须在 "
+                "`AIPLAT_FILE_OPERATIONS_ALLOWED_ROOTS` 白名单内。\n"
+                "- 未配置白名单或未填 `directory` 时，以执行结果中的 `## FILE:` 正文为准即可。\n"
             )
 
         return {
@@ -1204,8 +1243,6 @@ class AgentManager:
                 content = str(content).strip()
             if title and content:
                 cleaned.append({"title": title[:80], "content": content[:8000]})
-        if not cleaned:
-            return False
         info = self._read_agent_md(agent_id)
         if not info:
             return False
@@ -1214,6 +1251,14 @@ class AgentManager:
             fm = info.get("frontmatter") or {}
             if not isinstance(fm, dict):
                 fm = {}
+            schema = fm.get("execution_input_schema")
+            if not isinstance(schema, dict) or not schema:
+                schema = agent.metadata.get("execution_input_schema") if isinstance(agent.metadata, dict) else None
+            if isinstance(schema, dict) and schema:
+                from core.management.execution_examples import sanitize_execution_examples
+                cleaned = sanitize_execution_examples(cleaned, schema, skill_hint=str(agent_id))
+            if not cleaned:
+                return False
             fm["execution_examples"] = cleaned
             body = info.get("body") or ""
             fm_text = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).rstrip("\n")

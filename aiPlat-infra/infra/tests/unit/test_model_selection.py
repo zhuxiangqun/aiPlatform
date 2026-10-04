@@ -105,6 +105,177 @@ class TestGetDefaultModelValidation:
         assert mgr.get_default_model("eval_code") == "mapped-model"
 
 
+class TestLocalRamHardFilter:
+    """Local Ollama models must respect RAM budget (no external-process bypass)."""
+
+    def test_gemma_rejected_on_16gb(self):
+        from infra.management.model.manager import PlatformResources, _hard_filter
+
+        res = PlatformResources(
+            ram_bytes=4 * 1024**3,  # low available must not matter
+            ram_total_bytes=16 * 1024**3,
+            vram_bytes=16 * 1024**3,
+            disk_free_bytes=100 * 1024**3,
+            gpu_compatible=False,
+            gpu_vendor=None,
+            cpu_cores=8,
+        )
+        gemma = _mk(
+            "gemma4:12b",
+            source=ModelSource.LOCAL,
+            provider="ollama",
+            size=int(7.6 * 1024**3),
+        )
+        coder = _mk(
+            "qwen2.5-coder:7b",
+            source=ModelSource.LOCAL,
+            provider="ollama",
+            size=int(4.7 * 1024**3),
+        )
+        profile = {"fallback": {"local_max_ram_ratio": 0.40}}
+        ok_g, reason_g = _hard_filter(gemma, res, profile)
+        ok_c, _ = _hard_filter(coder, res, profile)
+        assert ok_g is False, reason_g
+        assert "wedge" in reason_g or "exceeds" in reason_g
+        assert ok_c is True
+
+
+class TestOllamaKeepAlive:
+    def test_default_keep_alive_not_forever_on_16gb(self, monkeypatch):
+        """local_hot must not return -1 (forever pin) on ≤24GB hosts."""
+        from infra.llm.providers.openai_compatible import OpenAICompatibleClient
+        from infra.llm.schemas import LLMConfig
+
+        class _FakeVM:
+            total = 16 * 1024**3
+
+        monkeypatch.setattr(
+            "infra.management.model.manager._derive_model_state",
+            lambda m: "local_hot",
+        )
+        monkeypatch.delenv("AIPLAT_OLLAMA_KEEP_ALIVE", raising=False)
+        try:
+            import psutil
+            monkeypatch.setattr(psutil, "virtual_memory", lambda: _FakeVM())
+        except Exception:
+            pytest.skip("psutil required")
+
+        cfg = LLMConfig(
+            provider="ollama",
+            model="qwen2.5:3b",
+            api_key="ollama",
+            base_url="http://127.0.0.1:11434",
+        )
+        p = OpenAICompatibleClient(cfg)
+        ka = p._get_keep_alive()
+        assert ka == "0"
+        assert ka != "-1"
+
+
+class TestSkillExecutionAutoSelect:
+    """skill_execution must prefer interactive local models over large wedge-prone ones."""
+
+    def test_local_size_latency_penalty_applied(self):
+        from infra.management.model.manager import PlatformResources, _score_model
+
+        profile = _profile()
+        purpose = "skill_execution"
+        pp = profile.get("purpose_profiles", {}).get(purpose, {})
+        # Plenty of free RAM so resource_pressure alone does not eliminate gemma.
+        res = PlatformResources(
+            ram_bytes=32 * 1024**3,
+            vram_bytes=0,
+            disk_free_bytes=100 * 1024**3,
+            gpu_compatible=False,
+            gpu_vendor=None,
+            cpu_cores=8,
+        )
+        small = _mk(
+            "qwen2.5:3b",
+            source=ModelSource.LOCAL,
+            provider="ollama",
+            size=int(1.9 * 1024**3),
+        )
+        large = _mk(
+            "gemma4:12b",
+            source=ModelSource.LOCAL,
+            provider="ollama",
+            size=int(7.6 * 1024**3),
+        )
+        s_small = _score_model(small, purpose, pp, res, {}, profile)
+        s_large = _score_model(large, purpose, pp, res, {}, profile)
+        assert s_small > s_large, f"expected 3b>{'gemma'} got {s_small} vs {s_large}"
+
+    def test_unified_pipeline_picks_smaller_local(self):
+        profile = _profile()
+        mgr = ModelManager()
+        mgr._models = {
+            "s": _mk(
+                "qwen2.5:3b",
+                source=ModelSource.LOCAL,
+                provider="ollama",
+                size=int(1.9 * 1024**3),
+            ),
+            "g": _mk(
+                "gemma4:12b",
+                source=ModelSource.LOCAL,
+                provider="ollama",
+                size=int(7.6 * 1024**3),
+            ),
+            "c": _mk(
+                "qwen2.5-coder:7b",
+                source=ModelSource.LOCAL,
+                provider="ollama",
+                size=int(4.7 * 1024**3),
+            ),
+        }
+        picked = mgr.unified_pipeline("skill_execution", None, {}, profile)
+        assert picked in ("qwen2.5:3b", "qwen2.5-coder:7b")
+        assert picked != "gemma4:12b"
+
+    def test_agent_purpose_avoids_gemma_wedge(self):
+        """purpose=agent must not recommend gemma4:12b (known Ollama stall).
+
+        Pure unified_pipeline scoring — no model_overrides name lock.
+        """
+        from infra.management.model.manager import PlatformResources, _score_model
+
+        profile = _profile()
+        purpose = "agent"
+        pp = profile.get("purpose_profiles", {}).get(purpose, {})
+        assert not (profile.get("model_overrides") or {}).get(purpose), (
+            "agent must stay capability-driven; do not point-name via model_overrides"
+        )
+        res = PlatformResources(
+            ram_bytes=32 * 1024**3,
+            vram_bytes=0,
+            disk_free_bytes=100 * 1024**3,
+            gpu_compatible=False,
+            gpu_vendor=None,
+            cpu_cores=8,
+        )
+        coder = _mk(
+            "qwen2.5-coder:7b",
+            source=ModelSource.LOCAL,
+            provider="ollama",
+            size=int(4.7 * 1024**3),
+        )
+        gemma = _mk(
+            "gemma4:12b",
+            source=ModelSource.LOCAL,
+            provider="ollama",
+            size=int(7.6 * 1024**3),
+        )
+        s_coder = _score_model(coder, purpose, pp, res, {}, profile)
+        s_gemma = _score_model(gemma, purpose, pp, res, {}, profile)
+        assert s_coder > s_gemma, f"expected coder>gemma got {s_coder} vs {s_gemma}"
+
+        mgr = ModelManager()
+        mgr._models = {"c": coder, "g": gemma}
+        picked = mgr.unified_pipeline(purpose, None, {}, profile)
+        assert picked == "qwen2.5-coder:7b"
+
+
 class TestSelectQualityGate:
     """P2-7: select() local-first must be quality-gated, not unconditional."""
 

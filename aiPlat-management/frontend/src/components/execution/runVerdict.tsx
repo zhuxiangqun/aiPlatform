@@ -1,4 +1,6 @@
 import React from 'react';
+import { tryParseJsonOrPythonLiteral } from './pythonLiteral';
+import { executeProductAsText } from './executeProduct';
 
 export type RunVerdictTone = 'green' | 'red' | 'amber' | 'blue' | 'gray';
 export type RunVerdictKind =
@@ -36,8 +38,36 @@ export function deriveRunVerdict(opts: {
             : (errRaw as any)?.message || (errRaw as any)?.detail || JSON.stringify(errRaw),
         ).slice(0, 220);
 
-  if (!status || status === 'running' || status === 'accepted' || status === 'started') {
-    return { kind: 'running', label: '执行中', hint: '流程进行中，节点跑完后再看最终状态。', tone: 'blue', ok: null };
+  if (status === 'queued' || status === 'pending') {
+    return {
+      kind: 'running',
+      label: '排队中',
+      hint:
+        errStr && /session_locked/i.test(errStr)
+          ? '同一会话有其它执行尚未释放锁，正在排队；可关闭后稍候重试，或换一次独立执行。'
+          : '已入队，等待前序执行释放会话后开始。',
+      tone: 'amber',
+      ok: null,
+    };
+  }
+  if (
+    !status ||
+    status === 'running' ||
+    status === 'accepted' ||
+    status === 'started' ||
+    // Stream mode may briefly report unknown until run_start is persisted
+    status === 'unknown'
+  ) {
+    return {
+      kind: 'running',
+      label: status === 'unknown' ? '执行中（同步状态中）' : '执行中',
+      hint:
+        status === 'unknown'
+          ? '刚拿到 run_id，轨迹/状态库还在同步；请稍候，不要当成失败。'
+          : '流程进行中，节点跑完后再看最终状态。',
+      tone: 'blue',
+      ok: null,
+    };
   }
   if (status === 'timeout') {
     return {
@@ -135,12 +165,14 @@ export function RunVerdictBanner({ verdict }: { verdict: RunVerdict }) {
 
 /** Best-effort unwrap of nested {output|text|answer} envelopes to readable text. */
 export function outputAsText(raw: unknown): string {
+  const peeled = executeProductAsText(raw);
+  if (peeled && !/"type"\s*:\s*"done"/.test(peeled)) return peeled;
   let cur: unknown = raw;
   for (let depth = 0; depth < 8; depth++) {
     if (cur == null) return '';
     if (typeof cur === 'string') {
       const s = cur.trim();
-      if (s.startsWith('{')) {
+      if (s.startsWith('{') || s.startsWith('[')) {
         try {
           const d = JSON.parse(s);
           if (d && typeof d === 'object') {
@@ -148,7 +180,12 @@ export function outputAsText(raw: unknown): string {
             continue;
           }
         } catch {
-          /* keep string */
+          /* try python-repr below */
+        }
+        const d = tryParseJsonOrPythonLiteral(s);
+        if (d && typeof d === 'object') {
+          cur = d;
+          continue;
         }
       }
       return s;
@@ -157,6 +194,10 @@ export function outputAsText(raw: unknown): string {
       const o = cur as Record<string, unknown>;
       if (typeof o.answer === 'string') {
         cur = o.answer;
+        continue;
+      }
+      if (typeof o.code === 'string' && o.code.trim()) {
+        cur = o.code;
         continue;
       }
       if (typeof o.text === 'string') {

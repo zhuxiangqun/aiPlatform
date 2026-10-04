@@ -7,11 +7,72 @@ import { ToolDetailModal, ExecuteToolModal } from '../../../components/core';
 import AddToolModal from '../../../components/workspace/AddToolModal';
 import ToolChatCreateModal from '../../../components/workspace/ToolChatCreateModal';
 import WorkspacePageGuide from '../../../components/workspace/WorkspacePageGuide';
+import AssetAuditPanel, { auditRemainToast } from '../../../components/workspace/AssetAuditPanel';
+import type { AssetAuditResult } from '../../../components/workspace/AssetAuditPanel';
 import { workspaceToolApi, toolApi } from '../../../services';
 import type { ToolInfo } from '../../../services';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
 import { StatusBadge } from '../../../utils/statusLabel';
 import { TOOL_CATEGORIES } from '../../../utils/categoryConfig';
+
+/** Best-effort patch TOOL_DEF["description"] / description= in Python source. */
+function patchToolSourceDescription(source: string, description: string): string {
+  const esc = description.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  if (/"description"\s*:/.test(source)) {
+    return source.replace(
+      /("description"\s*:\s*)(["'])(?:\\.|(?!\2)[\s\S])*?\2/,
+      `$1"${esc}"`,
+    );
+  }
+  if (/description\s*=/.test(source)) {
+    return source.replace(
+      /(description\s*=\s*)(["'])(?:\\.|(?!\2)[\s\S])*?\2/,
+      `$1"${esc}"`,
+    );
+  }
+  // Insert into TOOL_DEF dict if present
+  if (/TOOL_DEF\s*=\s*\{/.test(source)) {
+    return source.replace(
+      /(TOOL_DEF\s*=\s*\{)/,
+      `$1\n    "description": "${esc}",`,
+    );
+  }
+  return source;
+}
+
+/** Patch or insert TOOL_DEF["parameters"] JSON in Python source. */
+function patchToolSourceParameters(source: string, parameters: Record<string, unknown>): string {
+  const json = JSON.stringify(parameters, null, 4).replace(/^/gm, '    ').replace(/^    /, '');
+  // Prefer replacing an existing "parameters": { ... } block (brace-balanced, best-effort)
+  const key = /"parameters"\s*:\s*\{/;
+  const m = source.match(key);
+  if (m && m.index != null) {
+    const start = m.index + m[0].length - 1; // at '{'
+    let depth = 0;
+    let end = -1;
+    for (let i = start; i < source.length; i++) {
+      const ch = source[i];
+      if (ch === '{') depth += 1;
+      else if (ch === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          end = i + 1;
+          break;
+        }
+      }
+    }
+    if (end > start) {
+      return source.slice(0, m.index) + `"parameters": ${json}` + source.slice(end);
+    }
+  }
+  if (/TOOL_DEF\s*=\s*\{/.test(source)) {
+    return source.replace(
+      /(TOOL_DEF\s*=\s*\{)/,
+      `$1\n    "parameters": ${json},`,
+    );
+  }
+  return source;
+}
 
 const governanceBadge = (record: any) => {
   const prov = record?.provenance || {};
@@ -50,6 +111,8 @@ const WorkspaceTools: React.FC = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editSyntaxError, setEditSyntaxError] = useState<string | null>(null);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditResult, setAuditResult] = useState<AssetAuditResult | null>(null);
 
   // Execution history modal state
   const [historyTool, setHistoryTool] = useState<ToolInfo | null>(null);
@@ -132,6 +195,7 @@ const WorkspaceTools: React.FC = () => {
     setEditOpen(true);
     setEditSource('');
     setEditSyntaxError(null);
+    setAuditResult(null);
     setEditLoading(true);
     try {
       const r = await workspaceToolApi.getSource(record.name);
@@ -139,6 +203,130 @@ const WorkspaceTools: React.FC = () => {
     } catch {
       setEditSource(`# Failed to load source for ${record.name}\n# Please check file permissions.`);
     } finally { setEditLoading(false); }
+  };
+
+  const handleToolAudit = async () => {
+    if (!editTool?.name) return;
+    setAuditLoading(true);
+    setAuditResult(null);
+    try {
+      const res: any = await toolApi.audit(editTool.name);
+      setAuditResult(res);
+      if (!res?.summary?.total) toast.success('审核通过，配置无问题');
+      else toast.success(`审核完成: ${res.summary?.errors || 0} 错误 ${res.summary?.warnings || 0} 警告`);
+    } catch (e: any) {
+      toast.error('审核失败', String(e?.message || ''));
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  const applyToolFixLocal = async (fix: { type: string; [k: string]: unknown }) => {
+    if (!editTool?.name || !fix?.type) return false;
+    if (fix.type === 'set_description') {
+      const desc = String(fix.description || editTool.name);
+      setEditSource((prev) => patchToolSourceDescription(prev, desc));
+      return true;
+    }
+    if (fix.type === 'set_parameters') {
+      const params = (fix.parameters && typeof fix.parameters === 'object')
+        ? (fix.parameters as Record<string, unknown>)
+        : null;
+      const props = params && typeof params.properties === 'object'
+        ? (params.properties as Record<string, unknown>)
+        : {};
+      if (!params || !Object.keys(props).length) {
+        toast.info('请按真实入参手工补全 parameters（不会自动写入占位 schema）');
+        return false;
+      }
+      setEditSource((prev) => patchToolSourceParameters(prev, params));
+      return true;
+    }
+    if (fix.type === 'set_status') {
+      // Listing/approval is user-driven; do not auto-submit from audit one-click.
+      toast.info('请到工具页自行「提交审核」，并在审批中心完成上架');
+      return false;
+    }
+    return false;
+  };
+
+  const applyToolFix = async (fix: { type: string; [k: string]: unknown }) => {
+    const ok = await applyToolFixLocal(fix);
+    if (!ok) {
+      toast.warning('该问题暂无自动修复');
+      return;
+    }
+    if (fix.type === 'set_description' || fix.type === 'set_parameters') {
+      toast.success('已写入源码，请点「保存 & 重载」');
+    } else {
+      toast.success('已应用修复');
+      await handleToolAudit();
+      fetchTools();
+    }
+  };
+
+  const handleApplyAllToolFixes = async () => {
+    if (!editTool?.name || !auditResult?.issues) return;
+    const fixable = auditResult.issues.filter((i) => i.fix_available && i.fix);
+    const unfixableBefore = (auditResult.issues || []).filter((i) => !i.fix_available).length;
+    if (!fixable.length) {
+      toast.info(
+        unfixableBefore
+          ? `没有可自动修复项（${unfixableBefore} 项需手工：上架/语法/真实入参 schema 等）`
+          : '没有可自动修复的问题',
+      );
+      return;
+    }
+    let nextSource = editSource;
+    let applied = 0;
+    let needSave = false;
+    for (const issue of fixable) {
+      const fix = issue.fix!;
+      if (fix.type === 'set_description') {
+        nextSource = patchToolSourceDescription(nextSource, String(fix.description || editTool.name));
+        needSave = true;
+        applied += 1;
+      } else if (fix.type === 'set_parameters') {
+        // Only apply when enriching/normalizing an existing schema — never invent placeholder input
+        const params = (fix.parameters && typeof fix.parameters === 'object')
+          ? (fix.parameters as Record<string, unknown>)
+          : null;
+        const props = params && typeof params.properties === 'object'
+          ? (params.properties as Record<string, unknown>)
+          : {};
+        if (!params || !Object.keys(props).length) continue;
+        nextSource = patchToolSourceParameters(nextSource, params);
+        needSave = true;
+        applied += 1;
+      } else if (fix.type === 'set_status') {
+        continue;
+      }
+    }
+    if (!applied) {
+      toast.info(
+        unfixableBefore
+          ? `没有可安全自动修复的项（${unfixableBefore} 项需手工）`
+          : '没有可自动修复的问题',
+      );
+      return;
+    }
+    setEditSource(nextSource);
+    try {
+      if (needSave) {
+        setEditSaving(true);
+        await saveSource(editTool.name, nextSource);
+      }
+      const again: any = await toolApi.audit(editTool.name);
+      setAuditResult(again);
+      const msg = auditRemainToast(applied, again?.summary);
+      if (msg.kind === 'success') toast.success(msg.text);
+      else toast.info(msg.text);
+      fetchTools();
+    } catch (e: any) {
+      toast.error('一键修复失败', String(e?.message || ''));
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   // Validate source before save
@@ -395,6 +583,13 @@ TOOL_DEF = {
           </div>
         }>
         <div className="space-y-3 text-sm text-gray-300">
+          <AssetAuditPanel
+            result={auditResult}
+            loading={auditLoading}
+            onAudit={handleToolAudit}
+            onApplyFix={(fix) => applyToolFix(fix as any)}
+            onApplyAll={handleApplyAllToolFixes}
+          />
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <label className="block text-xs text-gray-400 mb-1">名称（只读）</label>

@@ -11,6 +11,7 @@ Until fully migrated, NO NEW reverse imports should be added to this file.
 """
 
 from __future__ import annotations
+import json
 import logging
 
 from typing import Any, Dict, List, Optional
@@ -535,6 +536,30 @@ class HarnessIntegration:
                     )
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)
+                # Holder may already be dead (expired lock) — kick drain now and again
+                # after TTL so queued runs are not stuck until an unrelated execute finishes.
+                try:
+                    tid = str(tenant_id) if tenant_id is not None else None
+                    self._kick_session_drain(tenant_id=tid, session_id=session_id)
+                    ttl = int(os.getenv("AIPLAT_SESSION_LOCK_TTL_SECONDS", "300") or "300")
+                    delay = float(min(max(ttl, 1), 300) + 1)
+
+                    def _later_drain(
+                        _tid: Optional[str] = tid,
+                        _sid: str = session_id,
+                    ) -> None:
+                        try:
+                            self._kick_session_drain(tenant_id=_tid, session_id=_sid)
+                        except Exception:
+                            logging.debug("delayed session drain failed", exc_info=True)
+
+                    try:
+                        loop = asyncio.get_running_loop()
+                        loop.call_later(delay, _later_drain)
+                    except RuntimeError:
+                        pass  # noqa: cleanup-best-effort
+                except Exception as e:
+                    logging.debug("session drain schedule failed: %s", e, exc_info=True)
                 return ExecutionResult(
                     ok=True,
                     payload={
@@ -556,7 +581,17 @@ class HarnessIntegration:
         except Exception as e:
             logging.debug(str(e), exc_info=True)
         if stream_mode:
-            asyncio.create_task(self._execute_stream_background(request))
+            # Lock must be released in the background task — returning here used to leak
+            # session_locks for the full TTL, causing later Skill runs on session_id=default
+            # to stick in queued / 「正在加载执行步骤」with an empty graph.
+            asyncio.create_task(
+                self._execute_stream_background(
+                    request,
+                    lock_acquired=lock_acquired,
+                    tenant_id=str(tenant_id) if tenant_id is not None else None,
+                    session_id=session_id,
+                )
+            )
             return ExecutionResult(
                 ok=True,
                 run_id=run_id,
@@ -623,18 +658,28 @@ class HarnessIntegration:
             http_status=400,
         )
 
-    async def _execute_stream_background(self, request: ExecutionRequest) -> None:
+    async def _execute_stream_background(
+        self,
+        request: ExecutionRequest,
+        *,
+        lock_acquired: bool = False,
+        tenant_id: Optional[str] = None,
+        session_id: str = "",
+    ) -> None:
         """Run execution in background for stream mode (returns run_id immediately)."""
         import time as _time
         run_id = request.run_id
         runtime = getattr(self, "_runtime", None)
         store = runtime.execution_store if runtime and hasattr(runtime, "execution_store") else None
+        t0 = _time.time()
+        kind = str(request.kind or "")
+        target_id = str(getattr(request, "target_id", None) or "")
 
         try:
             if store:
                 await store.append_run_event(
                     run_id=run_id, event_type="run_start", trace_id=None, tenant_id=None,
-                    payload={"kind": str(request.kind), "status": "running", "stream": True},
+                    payload={"kind": kind, "target_id": target_id, "status": "running", "stream": True},
                 )
                 # Seed RunGraph meta so status polling / SSE do not treat the run as missing
                 # before the first open_node lands.
@@ -645,49 +690,274 @@ class HarnessIntegration:
                     logging.debug("seed run_graph_meta running failed", exc_info=True)
                 # Seed skill/agent execution row as running for /executions/{id}/status
                 try:
-                    if request.kind == "skill" and hasattr(store, "upsert_skill_execution"):
+                    seed_meta: Dict[str, Any] = {"stream": True}
+                    try:
+                        opts0 = (
+                            (request.payload or {}).get("options")
+                            if isinstance(request.payload, dict)
+                            else None
+                        )
+                        if isinstance(opts0, dict):
+                            for _tk in ("timeout", "skill_timeout", "stream_timeout"):
+                                try:
+                                    _tv = float(opts0.get(_tk) or 0)
+                                    if _tv > 0:
+                                        seed_meta["timeout"] = _tv
+                                        break
+                                except Exception:
+                                    pass  # noqa: cleanup-best-effort
+                    except Exception:
+                        pass  # noqa: cleanup-best-effort
+                    if kind == "skill" and hasattr(store, "upsert_skill_execution"):
                         await store.upsert_skill_execution({
                             "id": str(run_id),
-                            "skill_id": str(request.target_id),
+                            "skill_id": target_id,
                             "status": "running",
                             "input": (request.payload or {}).get("input") if isinstance(request.payload, dict) else None,
                             "output": None,
                             "error": None,
-                            "start_time": _time.time(),
+                            "start_time": t0,
                             "end_time": 0.0,
                             "duration_ms": 0,
                             "user_id": str(getattr(request, "user_id", None) or "system"),
                             "trace_id": None,
-                            "metadata": {"stream": True},
+                            "metadata": seed_meta,
+                        })
+                    elif kind == "agent" and hasattr(store, "upsert_agent_execution"):
+                        await store.upsert_agent_execution({
+                            "id": str(run_id),
+                            "agent_id": target_id,
+                            "status": "running",
+                            "input": (request.payload or {}).get("input") if isinstance(request.payload, dict) else None,
+                            "output": None,
+                            "error": None,
+                            "start_time": t0,
+                            "end_time": 0.0,
+                            "duration_ms": 0,
+                            "user_id": str(getattr(request, "user_id", None) or "system"),
+                            "trace_id": None,
+                            "metadata": seed_meta,
                         })
                 except Exception:
-                    logging.debug("seed skill_execution running failed", exc_info=True)
+                    logging.debug("seed execution running failed", exc_info=True)
         except Exception as e:
             logging.debug(str(e), exc_info=True)
 
         result = None
+        # Wall-clock cap so a hung LLM cannot leave skill_executions=running forever
+        # after the session lock TTL expires (UI would spin on 「执行中」).
+        wall_timeout = 0.0
         try:
+            opts = {}
+            if isinstance(request.payload, dict):
+                opts = request.payload.get("options") if isinstance(request.payload.get("options"), dict) else {}
+            for key in ("timeout", "skill_timeout", "stream_timeout"):
+                try:
+                    v = float((opts or {}).get(key) or 0)
+                    if v > 0:
+                        wall_timeout = max(wall_timeout, v)
+                except Exception:
+                    pass  # noqa: cleanup-best-effort
+            env_wall = float(os.getenv("AIPLAT_STREAM_EXEC_TIMEOUT", "0") or "0")
+            if env_wall > 0:
+                wall_timeout = max(wall_timeout, env_wall)
+            if wall_timeout <= 0:
+                wall_timeout = float(os.getenv("AIPLAT_SKILL_DEFAULT_TIMEOUT", "180") or "180") + 30.0
+            # Buffer past skill-internal wait_for so executor can mark timeout first
+            wall_timeout = float(wall_timeout) + 15.0
+        except Exception:
+            wall_timeout = 540.0
+
+        async def _run_kind() -> ExecutionResult:
             if request.kind == "agent":
-                result = await self._execute_agent(request)
-            elif request.kind == "skill":
-                result = await self._execute_skill(request)
-            elif request.kind == "tool":
-                result = await self._execute_tool(request)
-            elif request.kind == "graph":
-                result = await self._execute_graph(request)
+                return await self._execute_agent(request)
+            if request.kind == "skill":
+                return await self._execute_skill(request)
+            if request.kind == "tool":
+                return await self._execute_tool(request)
+            if request.kind == "graph":
+                return await self._execute_graph(request)
+            return ExecutionResult(ok=False, error=f"Unsupported kind: {request.kind}", run_id=run_id)
+
+        try:
+            import asyncio as _asyncio
+
+            if wall_timeout > 0:
+                result = await _asyncio.wait_for(_run_kind(), timeout=wall_timeout)
             else:
-                result = ExecutionResult(ok=False, error=f"Unsupported kind: {request.kind}", run_id=run_id)
+                result = await _run_kind()
         except Exception as e:
-            result = ExecutionResult(ok=False, error=str(e), run_id=run_id)
+            import asyncio as _asyncio
+
+            if isinstance(e, _asyncio.TimeoutError):
+                result = ExecutionResult(
+                    ok=False,
+                    error=f"stream wall timeout after {int(wall_timeout)}s",
+                    run_id=run_id,
+                    payload={"status": "timeout", "error": f"stream wall timeout after {int(wall_timeout)}s"},
+                )
+            else:
+                result = ExecutionResult(ok=False, error=str(e), run_id=run_id)
+
+        ok = bool(result and result.ok)
+        end_status = "completed" if ok else "failed"
+        err = getattr(result, "error", None) if result else None
+        try:
+            # Skill/Agent impls often return ok=True with payload.status=failed/timeout
+            # (or nested error.message containing "timed out") — map that correctly.
+            payloads: List[Any] = []
+            if isinstance(getattr(result, "payload", None), dict):
+                payloads.append(result.payload)
+                inner = (result.payload or {}).get("output")
+                if isinstance(inner, dict):
+                    payloads.append(inner)
+            st_payload = ""
+            for p in payloads:
+                st_payload = str((p or {}).get("status") or "").lower()
+                if st_payload in ("timeout", "failed", "error", "cancelled", "canceled"):
+                    break
+                pe = (p or {}).get("error")
+                if isinstance(pe, dict) and pe.get("message"):
+                    err = err or str(pe.get("message"))
+                elif isinstance(pe, str) and pe:
+                    err = err or pe
+                em = (p or {}).get("error_message")
+                if isinstance(em, str) and em:
+                    err = err or em
+            blob = f"{err or ''} {st_payload}".lower()
+            if st_payload == "timeout" or "timed out" in blob or "timeout" in blob:
+                end_status = "timeout"
+                ok = False
+            elif st_payload in ("failed", "error"):
+                end_status = "failed"
+                ok = False
+            elif st_payload in ("cancelled", "canceled"):
+                end_status = "cancelled"
+                ok = False
+            elif result and not ok:
+                if "timeout" in blob:
+                    end_status = "timeout"
+        except Exception:
+            pass  # noqa: cleanup-best-effort
+        try:
+            if store:
+                # Orphan watchdog may have already finalized this run — do not clobber
+                # a terminal timeout with a late/empty background result.
+                skip_upsert = False
+                try:
+                    existing = None
+                    if kind == "skill" and hasattr(store, "get_skill_execution"):
+                        existing = await store.get_skill_execution(str(run_id))
+                    elif kind == "agent" and hasattr(store, "get_agent_execution"):
+                        existing = await store.get_agent_execution(str(run_id))
+                    if isinstance(existing, dict):
+                        est = str(existing.get("status") or "").lower()
+                        emeta = existing.get("metadata") if isinstance(existing.get("metadata"), dict) else {}
+                        if est in ("timeout", "cancelled", "canceled") and emeta.get("orphan_watchdog"):
+                            skip_upsert = True
+                except Exception:
+                    skip_upsert = False
+                duration_ms = int(max(0.0, (_time.time() - t0) * 1000))
+                _stream_meta: Dict[str, Any] = {"stream": True, "wall_timeout": wall_timeout}
+                try:
+                    if isinstance(existing, dict) and isinstance(existing.get("metadata"), dict):
+                        for _k in ("timeout", "skill_timeout", "stream_timeout"):
+                            if existing["metadata"].get(_k) is not None and _k not in _stream_meta:
+                                _stream_meta[_k] = existing["metadata"][_k]
+                except Exception:
+                    pass  # noqa: cleanup-best-effort
+                _in_payload = (request.payload or {}).get("input") if isinstance(request.payload, dict) else None
+                _out_payload = getattr(result, "payload", None) if result else None
+                if end_status in ("completed", "ok", "success"):
+                    try:
+                        from core.management.execution_quality_review import (
+                            review_execution_output,
+                            quality_review_blocks_success,
+                        )
+
+                        _stream_meta["quality_review"] = review_execution_output(
+                            kind=str(kind or "skill"),
+                            asset_id=str(target_id or ""),
+                            asset_name=str(target_id or ""),
+                            input_payload=_in_payload,
+                            output=_out_payload,
+                            status=end_status,
+                        )
+                        if quality_review_blocks_success(_stream_meta["quality_review"]):
+                            end_status = "failed"
+                            ok = False
+                            err = str(
+                                (_stream_meta["quality_review"] or {}).get("headline")
+                                or "coding deliverable failed quality review"
+                            )
+                            _stream_meta["quality_block_completed"] = True
+                    except Exception as _qr_e:
+                        logging.warning(
+                            "stream quality_review skipped run_id=%s: %s",
+                            run_id,
+                            _qr_e,
+                            exc_info=True,
+                        )
+                if not skip_upsert and kind == "skill" and hasattr(store, "upsert_skill_execution"):
+                    await store.upsert_skill_execution({
+                        "id": str(run_id),
+                        "skill_id": target_id,
+                        "status": end_status,
+                        "input": _in_payload,
+                        "output": _out_payload,
+                        "error": err if isinstance(err, str) else (json.dumps(err, ensure_ascii=False) if err else None),
+                        "start_time": t0,
+                        "end_time": _time.time(),
+                        "duration_ms": duration_ms,
+                        "user_id": str(getattr(request, "user_id", None) or "system"),
+                        "trace_id": None,
+                        "metadata": _stream_meta,
+                    })
+                elif not skip_upsert and kind == "agent" and hasattr(store, "upsert_agent_execution"):
+                    await store.upsert_agent_execution({
+                        "id": str(run_id),
+                        "agent_id": target_id,
+                        "status": end_status,
+                        "input": _in_payload,
+                        "output": _out_payload,
+                        "error": err if isinstance(err, str) else (json.dumps(err, ensure_ascii=False) if err else None),
+                        "start_time": t0,
+                        "end_time": _time.time(),
+                        "duration_ms": duration_ms,
+                        "user_id": str(getattr(request, "user_id", None) or "system"),
+                        "trace_id": None,
+                        "metadata": _stream_meta,
+                    })
+                if not skip_upsert and hasattr(store, "set_run_graph_status"):
+                    await store.set_run_graph_status(str(run_id), end_status)
+        except Exception as e:
+            logging.debug("stream final upsert failed: %s", e, exc_info=True)
 
         try:
             if store:
                 await store.append_run_event(
                     run_id=run_id, event_type="run_end", trace_id=None, tenant_id=None,
-                    payload={"status": "completed" if (result and result.ok) else "failed"},
+                    payload={"status": end_status, "error": err if not ok else None},
                 )
         except Exception as e:
             logging.debug(str(e), exc_info=True)
+        finally:
+            if lock_acquired and store is not None and session_id:
+                try:
+                    await store.release_session_lock(
+                        tenant_id=str(tenant_id) if tenant_id is not None else None,
+                        session_id=str(session_id),
+                        run_id=str(run_id),
+                    )
+                except Exception as e:
+                    logging.debug("stream release_session_lock failed: %s", e, exc_info=True)
+                try:
+                    self._kick_session_drain(
+                        tenant_id=str(tenant_id) if tenant_id is not None else None,
+                        session_id=str(session_id),
+                    )
+                except Exception as e:
+                    logging.debug("stream kick_session_drain failed: %s", e, exc_info=True)
 
     async def _execute_skill_lint_scan(self, req: ExecutionRequest) -> ExecutionResult:
         """Scheduled lint scan over skills (workspace/engine), returns aggregated report."""
@@ -1627,7 +1897,12 @@ class HarnessIntegration:
                     run_id=run_id,
                 )
                 if req.target_id:
-                    await self.execute(req)
+                    result = await self.execute(req)
+                    # Lock still held by another run — item was re-enqueued; stop so we
+                    # do not spin dequeue→requeue for the rest of the lane.
+                    payload = getattr(result, "payload", None) if result is not None else None
+                    if isinstance(payload, dict) and payload.get("queued"):
+                        return
             except Exception as e:
                 # best-effort: swallow to continue draining other sessions
                 logging.debug(str(e), exc_info=True)

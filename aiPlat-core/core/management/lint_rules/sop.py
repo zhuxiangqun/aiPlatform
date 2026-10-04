@@ -24,6 +24,38 @@ def _read_skill_md_body(skill: Any) -> str:
         return ""
 
 
+def _has_goal_signal(sop: str, skill: Any) -> bool:
+    """Accept common goal/quality headings used by mature prompt skills."""
+    if not sop:
+        return False
+    markers = (
+        "## 目标", "# 目标", "目标：", "## 目的", "目的：",
+        "输出铁律", "## 验收", "验收标准", "## Goal", "## Objective",
+    )
+    if any(m in sop for m in markers):
+        return True
+    meta = getattr(skill, "metadata", None) if not isinstance(skill, dict) else skill.get("metadata")
+    if isinstance(meta, dict) and str(meta.get("completion_criterion") or "").strip():
+        return True
+    return False
+
+
+def _has_checklist_signal(sop: str, skill: Any) -> bool:
+    """Accept checklist / quality / iron-law sections and completion_criterion."""
+    if not sop:
+        return False
+    markers = (
+        "Checklist", "质量要求", "- [ ]",
+        "输出铁律", "验收标准", "completion_criterion", "强制",
+    )
+    if any(m in sop for m in markers):
+        return True
+    meta = getattr(skill, "metadata", None) if not isinstance(skill, dict) else skill.get("metadata")
+    if isinstance(meta, dict) and str(meta.get("completion_criterion") or "").strip():
+        return True
+    return False
+
+
 class SopGoalCheck(LintRule):
     code = "sop_missing_goal"
     level = "warning"
@@ -31,13 +63,29 @@ class SopGoalCheck(LintRule):
 
     def check(self, skill: Any) -> List[LintIssue]:
         sop = _read_skill_md_body(skill)
-        if sop and not (("## 目标" in sop) or ("# 目标" in sop) or ("目标：" in sop)):
+        if sop and not _has_goal_signal(sop, skill):
             return [LintIssue(
                 level=self.level, code=self.code,
                 message='SOP 缺少"目标"章节/说明（建议补齐）',
                 location="SKILL.md.body",
             )]
         return []
+
+
+def _has_flow_signal(sop: str) -> bool:
+    if not sop:
+        return False
+    markers = (
+        "## SOP",
+        "工作流程",
+        "执行流程",
+        "## 流程",
+        "### 流程",
+        "步骤",
+        "Steps",
+        "## Flow",
+    )
+    return any(m in sop for m in markers)
 
 
 class SopFlowCheck(LintRule):
@@ -47,7 +95,7 @@ class SopFlowCheck(LintRule):
 
     def check(self, skill: Any) -> List[LintIssue]:
         sop = _read_skill_md_body(skill)
-        if sop and not (("## SOP" in sop) or ("工作流程" in sop) or ("步骤" in sop)):
+        if sop and not _has_flow_signal(sop):
             return [LintIssue(
                 level=self.level, code=self.code,
                 message='SOP 缺少"流程/步骤"章节（建议补齐）',
@@ -63,7 +111,7 @@ class SopChecklistCheck(LintRule):
 
     def check(self, skill: Any) -> List[LintIssue]:
         sop = _read_skill_md_body(skill)
-        if sop and not (("Checklist" in sop) or ("质量要求" in sop) or ("- [ ]" in sop)):
+        if sop and not _has_checklist_signal(sop, skill):
             return [LintIssue(
                 level=self.level, code=self.code,
                 message="SOP 缺少 Checklist/质量要求（建议补齐以便回归测试）",

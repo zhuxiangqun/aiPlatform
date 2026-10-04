@@ -145,33 +145,45 @@ class TraceService:
         # Optional persistence backend (ExecutionStore)
         self._store = execution_store
     
-    async def start_trace(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> Trace:
+    async def start_trace(
+        self,
+        name: str,
+        attributes: Optional[Dict[str, Any]] = None,
+        *,
+        trace_id: Optional[str] = None,
+    ) -> Trace:
         """
         Start a new trace.
-        
+
         Args:
             name: Trace name
             attributes: Trace attributes
-            
+            trace_id: Optional stable id (e.g. workspace agent ``trace-…``).
+                      When omitted, a UUID is generated. Idempotent if already registered.
+
         Returns:
             Started Trace
         """
-        trace_id = str(uuid.uuid4())
-        
+        tid = str(trace_id).strip() if trace_id else str(uuid.uuid4())
+        existing = self._traces.get(tid)
+        if existing is not None:
+            self._context = TraceContext(tid)
+            return existing
+
         trace = Trace(
-            trace_id=trace_id,
+            trace_id=tid,
             name=name,
-            attributes=attributes or {}
+            attributes=attributes or {},
         )
-        
-        self._traces[trace_id] = trace
-        self._context = TraceContext(trace_id)
+
+        self._traces[tid] = trace
+        self._context = TraceContext(tid)
 
         if self._store is not None:
             try:
                 await self._store.upsert_trace(
                     {
-                        "trace_id": trace_id,
+                        "trace_id": tid,
                         "name": name,
                         "status": trace.status.value,
                         "start_time": trace.start_time.timestamp(),
@@ -182,7 +194,7 @@ class TraceService:
                 )
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
-        
+
         return trace
     
     async def end_trace(self, trace_id: str, status: SpanStatus = SpanStatus.SUCCESS) -> Optional[Trace]:

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface Tab {
   key: string;
@@ -9,6 +9,8 @@ interface Tab {
 interface TabsProps {
   tabs: Tab[];
   defaultActiveKey?: string;
+  /** Controlled active tab (overrides internal state when provided). */
+  activeKey?: string;
   onChange?: (key: string) => void;
   className?: string;
 }
@@ -16,14 +18,22 @@ interface TabsProps {
 export const Tabs: React.FC<TabsProps> = ({
   tabs,
   defaultActiveKey,
+  activeKey,
   onChange,
   className = '',
 }) => {
   const list = Array.isArray(tabs) ? tabs : [];
-  const [activeTab, setActiveTab] = useState(defaultActiveKey || list[0]?.key);
+  const [internalKey, setInternalKey] = useState(defaultActiveKey || list[0]?.key);
+  const activeTab = activeKey ?? internalKey;
+
+  useEffect(() => {
+    if (activeKey == null && defaultActiveKey) {
+      setInternalKey(defaultActiveKey);
+    }
+  }, [defaultActiveKey, activeKey]);
 
   const handleTabClick = (key: string) => {
-    setActiveTab(key);
+    if (activeKey == null) setInternalKey(key);
     onChange?.(key);
   };
 

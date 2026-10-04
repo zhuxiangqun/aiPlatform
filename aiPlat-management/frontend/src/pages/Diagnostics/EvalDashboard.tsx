@@ -6,7 +6,8 @@ import * as echarts from 'echarts/core';
 import { BarChart } from 'echarts/charts';
 import { TooltipComponent, GridComponent, LegendComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import { Card, CardContent, CardHeader } from '../../components/ui';
+import { Button, Card, CardContent, CardHeader, Input } from '../../components/ui';
+import { agentEvalApi } from '../../services';
 
 echarts.use([BarChart, TooltipComponent, GridComponent, LegendComponent, CanvasRenderer]);
 
@@ -79,20 +80,31 @@ const EvalDashboard: React.FC = () => {
   const [agentHistory, setAgentHistory] = useState<EvalHistory | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
+  const [evalSnap, setEvalSnap] = useState<Record<string, unknown> | null>(null);
+  const [evalSnapError, setEvalSnapError] = useState<string | null>(null);
+  const [evalBusy, setEvalBusy] = useState(false);
+  const [agentDraft, setAgentDraft] = useState('');
 
   useEffect(() => {
+    const urlAgent = (searchParams.get('agent') || '').trim();
     fetch('/api/core/evaluation/overview')
       .then(r => r.json())
       .then(data => {
         setOverview(data);
-        const urlAgent = searchParams.get('agent');
-        if (urlAgent && data.agents?.some((a: any) => a.agent_id === urlAgent)) {
+        if (urlAgent) {
           setSelectedAgent(urlAgent);
+          setAgentDraft(urlAgent);
         } else if (data.agents?.length > 0) {
           setSelectedAgent(data.agents[0].agent_id);
+          setAgentDraft(data.agents[0].agent_id);
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        if (urlAgent) {
+          setSelectedAgent(urlAgent);
+          setAgentDraft(urlAgent);
+        }
+      })
       .finally(() => setLoading(false));
   }, [searchParams]);
 
@@ -106,7 +118,29 @@ const EvalDashboard: React.FC = () => {
       .then(r => r.json())
       .then(setAgentHistory)
       .catch(() => {});
+    setEvalSnapError(null);
+    agentEvalApi.inspect(selectedAgent)
+      .then((res) => setEvalSnap(res as Record<string, unknown>))
+      .catch((e: { message?: string }) => {
+        setEvalSnap(null);
+        setEvalSnapError(e?.message || '无法读取评估脚手架');
+      });
   }, [selectedAgent]);
+
+  const runGenerateEval = async (force: boolean) => {
+    if (!selectedAgent) return;
+    setEvalBusy(true);
+    setEvalSnapError(null);
+    try {
+      const res = await agentEvalApi.generate(selectedAgent, force);
+      setEvalSnap(res);
+    } catch (e: unknown) {
+      const msg = e && typeof e === 'object' && 'message' in e ? String((e as { message?: string }).message) : '生成失败';
+      setEvalSnapError(msg);
+    } finally {
+      setEvalBusy(false);
+    }
+  };
 
   const scoreBar = useMemo(() => {
     if (!overview?.agents?.length) return null;
@@ -206,6 +240,116 @@ const EvalDashboard: React.FC = () => {
         ) : null}
       </div>
 
+      <Card className="bg-dark-card border-dark-border">
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="text-sm font-semibold text-gray-200">评估脚手架（eval_engineer）</div>
+                <p className="text-xs text-gray-500 mt-1">
+                  与 Arena 评分榜分开：走唯一入口 generate_agent_eval。上架 listed 会自动入队；失败不挡上架。无 Arena 数据也可填 agent_id。
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="w-48">
+                <Input
+                  placeholder="agent_id，如 qa_agent"
+                  value={agentDraft}
+                  onChange={(e) => setAgentDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const id = agentDraft.trim();
+                      if (id) setSelectedAgent(id);
+                    }
+                  }}
+                />
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={!agentDraft.trim()}
+                  onClick={() => {
+                    const id = agentDraft.trim();
+                    if (id) setSelectedAgent(id);
+                  }}
+                >
+                  查看
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={evalBusy || !selectedAgent}
+                  onClick={() => runGenerateEval(false)}
+                >
+                  {evalBusy ? '处理中…' : '生成评估代码'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={evalBusy || !selectedAgent}
+                  onClick={() => runGenerateEval(true)}
+                >
+                  强制重生成
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {evalSnapError ? (
+              <div className="text-sm text-amber-300">{evalSnapError}</div>
+            ) : evalSnap ? (
+              <div className="space-y-2 text-xs text-gray-400">
+                <div>
+                  agent_id <code className="text-gray-200">{String(evalSnap.agent_id || selectedAgent)}</code>
+                  {' · '}
+                  {evalSnap.complete ? <span className="text-green-400">已齐全</span> : <span className="text-amber-300">未齐全</span>}
+                  {' · 轨迹 '}{String(evalSnap.trace_count ?? '—')}
+                  {' · 维度 '}{evalSnap.has_scoring ? '有' : '无'}
+                  {' · 文件 '}{evalSnap.has_eval_files ? '有' : '无'}
+                </div>
+                {evalSnap.eval_dir ? (
+                  <div className="break-all">目录 {String(evalSnap.eval_dir)}</div>
+                ) : null}
+                {Array.isArray(evalSnap.scoring_dimensions) && evalSnap.scoring_dimensions.length > 0 ? (
+                  <ul className="list-disc pl-4 space-y-1 text-gray-300">
+                    {(evalSnap.scoring_dimensions as Array<{ name?: string; weight?: number; description?: string; threshold?: number }>).map((d) => (
+                      <li key={String(d.name)}>
+                        <code className="text-gray-100">{String(d.name)}</code>
+                        {d.weight != null ? ` · w=${d.weight}` : ''}
+                        {d.threshold != null ? ` · 阈=${d.threshold}` : ''}
+                        {d.description ? ` — ${d.description}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {evalSnap.last_action && typeof evalSnap.last_action === 'object' ? (
+                  <div className="text-gray-300">
+                    最近：{String((evalSnap.last_action as { action?: string }).action || '—')}
+                    {' — '}
+                    {String((evalSnap.last_action as { message?: string }).message || evalSnap.message || '')}
+                  </div>
+                ) : evalSnap.message ? (
+                  <div className="text-gray-300">{String(evalSnap.message)}</div>
+                ) : null}
+                {evalSnap.action ? (
+                  <div>本次：{String(evalSnap.action)} — {String(evalSnap.message || '')}</div>
+                ) : null}
+                {evalSnap.last_report && typeof evalSnap.last_report === 'object' ? (
+                  <div className="text-gray-300">
+                    试跑 composite{' '}
+                    {String(
+                      (evalSnap.last_report as { composite?: number }).composite ?? '—',
+                    )}
+                    {' · '}completed {(evalSnap.last_report as { completed?: number }).completed ?? '—'}
+                    {' / '}total {(evalSnap.last_report as { total_runs?: number }).total_runs ?? '—'}
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500">输入或选择 agent_id 后显示脚手架状态（可直接打开 /diagnostics/eval?agent=qa_agent）。</div>
+            )}
+          </CardContent>
+        </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Agent Scoreboard */}
         <Card className="bg-dark-card border-dark-border lg:col-span-1">
@@ -221,7 +365,10 @@ const EvalDashboard: React.FC = () => {
                 {[...overview.agents].sort((a, b) => b.latest_score - a.latest_score).map((a, i) => (
                   <div
                     key={a.agent_id}
-                    onClick={() => setSelectedAgent(a.agent_id)}
+                    onClick={() => {
+                      setSelectedAgent(a.agent_id);
+                      setAgentDraft(a.agent_id);
+                    }}
                     className={`flex items-center justify-between px-2 py-1.5 rounded cursor-pointer text-xs transition-colors
                       ${selectedAgent === a.agent_id ? 'bg-primary/10 border border-primary/30' : 'hover:bg-dark-hover'}`}
                   >

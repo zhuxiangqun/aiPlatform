@@ -53,7 +53,7 @@ class SkillExecutor:
         discovery=None
     ):
         self._registry = registry or get_skill_registry()
-        self._default_timeout = default_timeout or float(os.getenv("AIPLAT_SKILL_DEFAULT_TIMEOUT", "60"))
+        self._default_timeout = default_timeout or float(os.getenv("AIPLAT_SKILL_DEFAULT_TIMEOUT", "180"))
         self._executions: Dict[str, ExecutionRecord] = {}
         self._discovery = discovery
 
@@ -111,6 +111,13 @@ class SkillExecutor:
                     success=False,
                     error=f"Skill '{skill_name}': execution_type={exec_type} but handler.py not found"
                 )
+
+        from core.harness.execution.skill_side_effect_gate import (
+            skill_result_if_unrealized_side_effects,
+        )
+        _refused = skill_result_if_unrealized_side_effects(skill)
+        if _refused is not None:
+            return _refused
 
         # ── P1: Submission criteria validation ──
         if cfg and cfg.submission_criteria:
@@ -185,12 +192,41 @@ class SkillExecutor:
             if tool_names:
                 context.tools = list(tool_names)
 
-        # Priority: explicit timeout > skill SKILL.md timeout > env var default
+        # Priority: explicit timeout > SKILL.md on disk (SoT, hot-reload) > metadata > env default
+        # Disk is preferred over in-memory metadata so bumping frontmatter timeout takes effect
+        # without requiring a full registry reload (stale metadata used to pin old 60/180/300).
         effective_timeout = timeout
+        meta = None
+        try:
+            cfg = getattr(skill, '_config', None)
+            meta = getattr(cfg, 'metadata', None) if cfg else None
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
+            meta = None
+        disk_timeout = None
+        try:
+            fs = (meta or {}).get("filesystem") if isinstance(meta, dict) else None
+            skill_md = (fs or {}).get("skill_md") if isinstance(fs, dict) else None
+            if not skill_md and isinstance(meta, dict):
+                skill_md = meta.get("skill_path")
+            if skill_md and isinstance(skill_md, str):
+                import yaml as _yaml
+                with open(skill_md, "r", encoding="utf-8") as f:
+                    raw = f.read(4000)
+                if raw.startswith("---"):
+                    parts = raw.split("---", 2)
+                    if len(parts) >= 3:
+                        fm = _yaml.safe_load(parts[1]) or {}
+                        if fm.get("timeout") is not None:
+                            disk_timeout = float(fm.get("timeout"))
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
+        if not effective_timeout and disk_timeout is not None:
+            effective_timeout = disk_timeout
+            if isinstance(meta, dict):
+                meta["timeout"] = disk_timeout
         if not effective_timeout:
             try:
-                cfg = getattr(skill, '_config', None)
-                meta = getattr(cfg, 'metadata', None) if cfg else None
                 skill_timeout = meta.get('timeout') if isinstance(meta, dict) else None
                 if skill_timeout is not None:
                     effective_timeout = float(skill_timeout)
@@ -198,6 +234,12 @@ class SkillExecutor:
                 logging.debug(str(e), exc_info=True)
         if not effective_timeout:
             effective_timeout = self._default_timeout
+        elif disk_timeout is not None and float(disk_timeout) > float(effective_timeout):
+            # Explicit caller timeout wins unless disk asks for longer (safety for long PRD)
+            if timeout is None:
+                effective_timeout = float(disk_timeout)
+                if isinstance(meta, dict):
+                    meta["timeout"] = effective_timeout
 
         # Workflow check: if SKILL.md has steps:, execute as multi-step pipeline
         workflow_steps = None
@@ -304,6 +346,17 @@ class SkillExecutor:
             record.latency = record.end_time - record.start_time
             record.error = f"Skill execution timed out after {effective_timeout}s"
             self._registry.record_execution(skill_name, success=False, latency=record.latency)
+            # wait_for cannot kill nested sync LLM threads; unload so the next
+            # ReAct step is not queued behind a zombie local generate.
+            try:
+                from core.harness.utils.local_llm_recover import unload_local_llm_best_effort
+
+                await asyncio.wait_for(
+                    asyncio.to_thread(unload_local_llm_best_effort),
+                    timeout=3.0,
+                )
+            except Exception:
+                logging.debug("skill timeout ollama unload failed", exc_info=True)
             await _finish_skill(status="error", error=record.error)
             return SkillResult(
                 success=False,
@@ -378,6 +431,13 @@ class SkillExecutor:
         if not skill:
             return SkillResult(success=False, error=f"Skill not found: {skill_name}")
 
+        from core.harness.execution.skill_side_effect_gate import (
+            skill_result_if_unrealized_side_effects,
+        )
+        _refused = skill_result_if_unrealized_side_effects(skill)
+        if _refused is not None:
+            return _refused
+
         effective_timeout = timeout or self._default_timeout
 
         async def run_in_fork():
@@ -415,6 +475,21 @@ class SkillExecutor:
                     meta = getattr(config, "metadata", None) or {}
                     if isinstance(meta, dict):
                         sop_text = meta.get("sop_markdown", "") or ""
+                        # Hot-read SKILL.md body so one-click SOP patches take effect
+                        # without a full registry reload (stale sop_markdown otherwise).
+                        fs = meta.get("filesystem") if isinstance(meta.get("filesystem"), dict) else {}
+                        skill_md = fs.get("skill_md") or meta.get("skill_path") or ""
+                        if skill_md and isinstance(skill_md, str):
+                            try:
+                                with open(skill_md, "r", encoding="utf-8") as f:
+                                    raw_md = f.read()
+                                if raw_md.startswith("---"):
+                                    parts = raw_md.split("---", 2)
+                                    if len(parts) >= 3 and (parts[2] or "").strip():
+                                        sop_text = parts[2].strip()
+                                        meta["sop_markdown"] = sop_text
+                            except Exception:
+                                logging.debug("hot-read skill_md sop failed", exc_info=True)
                 except Exception:
                     sop_text = ""
 

@@ -81,7 +81,8 @@ export function normalizeSkillExecuteResult(res: any): NormalizedSkillExecuteRes
 
 export function isSkillRunInFlight(status: string): boolean {
   const s = String(status || '').toLowerCase();
-  return s === 'running' || s === 'accepted' || s === 'queued';
+  // unknown: stream race before run_start / skill_executions row exists — keep polling
+  return s === 'running' || s === 'accepted' || s === 'queued' || s === 'pending' || s === 'unknown';
 }
 
 export function shouldOpenSkillFlow(status: string): boolean {

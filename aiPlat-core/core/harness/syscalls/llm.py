@@ -902,6 +902,38 @@ def _try_inject_governance_rules(messages) -> str:
 
 # ── Project config injection (consolidated — duplicate removed in P2 cleanup) ──
 
+def _resolve_claude_md_inject_mode(trace_context: Optional[Dict[str, Any]] = None) -> str:
+    """Resolve CLAUDE.md injection budget: full | slim | off.
+
+    Constitution: Agent ReAct must not *skip* project rules for code paths.
+    Budget is driven by coding_policy_profile / env — not by agent_id or artifact type.
+
+    - skip_claude_md → off (prompt skills, clarify, explicit opt-in)
+    - AIPLAT_CLAUDE_MD_INJECT_MODE=full|slim|off overrides
+    - coding_policy_profile in {off,none,minimal} → slim (still injects, capped)
+    - file-write operations → full even if profile is off
+    - otherwise → full
+    """
+    tc = trace_context if isinstance(trace_context, dict) else {}
+    if tc.get("skip_claude_md") in (True, "1", "true"):
+        return "off"
+    try:
+        env_mode = str(os.getenv("AIPLAT_CLAUDE_MD_INJECT_MODE", "") or "").strip().lower()
+    except Exception:
+        env_mode = ""
+    if env_mode in ("full", "slim", "off"):
+        return env_mode
+    try:
+        if _is_file_write_operation(tc):
+            return "full"
+    except Exception:
+        pass  # noqa: cleanup-best-effort
+    profile = str(tc.get("coding_policy_profile") or "").strip().lower()
+    if profile in ("off", "none", "minimal"):
+        return "slim"
+    return "full"
+
+
 def _try_inject_claude_md(messages: List[Message], trace_context: Optional[Dict[str, Any]] = None) -> None:
 
     """Read CLAUDE.md from disk and inject as a system message header.
@@ -918,7 +950,9 @@ def _try_inject_claude_md(messages: List[Message], trace_context: Optional[Dict[
 
     sections of aiPlat-core/CLAUDE.md (the 56K-char rules file). Root CLAUDE.md
 
-    and SOUL.md are always injected in full.
+    and SOUL.md are always injected in full under *full* mode; *slim* mode caps
+
+    root rules for non-coding profiles (coding_policy_profile=off).
 
     
 
@@ -928,8 +962,8 @@ def _try_inject_claude_md(messages: List[Message], trace_context: Optional[Dict[
 
     """
 
-    if (trace_context or {}).get("skip_claude_md") in (True, "1", "true"):
-
+    mode = _resolve_claude_md_inject_mode(trace_context)
+    if mode == "off":
         return
 
     try:
@@ -939,6 +973,12 @@ def _try_inject_claude_md(messages: List[Message], trace_context: Optional[Dict[
         project_root = os.getenv("AIPLAT_PROJECT_ROOT") or os.getcwd()
 
         content_parts = []
+
+        try:
+            slim_chars = int(os.getenv("AIPLAT_CLAUDE_MD_SLIM_CHARS", "3000") or "3000")
+        except Exception:
+            slim_chars = 3000
+        slim_chars = max(800, min(slim_chars, 12000))
 
 
 
@@ -956,7 +996,8 @@ def _try_inject_claude_md(messages: List[Message], trace_context: Optional[Dict[
 
             if soul_text and not soul_text.startswith("<!--"):
 
-                content_parts.append("[SOUL.md] " + soul_text[:2000])
+                soul_cap = 800 if mode == "slim" else 2000
+                content_parts.append("[SOUL.md] " + soul_text[:soul_cap])
 
 
 
@@ -972,7 +1013,7 @@ def _try_inject_claude_md(messages: List[Message], trace_context: Optional[Dict[
 
 
 
-        # Project rules: CLAUDE.md (never compressed, §5.25)
+        # Project rules: CLAUDE.md (never compressed away once injected, §5.25)
 
         claude_paths = [
 
@@ -992,17 +1033,24 @@ def _try_inject_claude_md(messages: List[Message], trace_context: Optional[Dict[
 
             if i == 0:
 
-                # Root CLAUDE.md: always inject full (only ~10K chars, critical guard rules)
-
-                content_parts.append(f"[{p.name}] {full[:12000]}")
+                if mode == "slim":
+                    content_parts.append(
+                        f"[{p.name}·slim] {full[:slim_chars]}\n"
+                        "（非编码策略下注入精简规约；写代码/改仓库时自动恢复全文。）"
+                    )
+                else:
+                    # Root CLAUDE.md: full mode caps at 12K
+                    content_parts.append(f"[{p.name}] {full[:12000]}")
 
             else:
 
-                # aiPlat-core/CLAUDE.md: inject relevant sections only (56K chars)
-
-                filtered = _filter_claude_md_sections(full, task_text)
-
-                content_parts.append(f"[{p.name}] {filtered}")
+                if mode == "slim":
+                    # Core CLAUDE.md is engineering-heavy; slim keeps a short header only.
+                    content_parts.append(f"[{p.name}·slim] {full[:1200]}")
+                else:
+                    # aiPlat-core/CLAUDE.md: inject relevant sections only (56K chars)
+                    filtered = _filter_claude_md_sections(full, task_text)
+                    content_parts.append(f"[{p.name}] {filtered}")
 
 
 
@@ -1028,19 +1076,13 @@ def _try_inject_claude_md(messages: List[Message], trace_context: Optional[Dict[
 
 
 
-        # Architecture rules guard (§5.1~§5.7, §5.29)
-
-        arch_rules = _try_inject_arch_rules(messages)
-
-        guard = guard + arch_rules if arch_rules else guard
-
-
-
-        # Knowledge governance guard (citation, conflict, timeliness)
-
-        gov_rules = _try_inject_governance_rules(messages)
-
-        guard = guard + gov_rules if gov_rules else guard
+        # Architecture rules guard (§5.1~§5.7, §5.29) — full coding profile only
+        if mode == "full":
+            arch_rules = _try_inject_arch_rules(messages)
+            guard = guard + arch_rules if arch_rules else guard
+            # Knowledge governance guard (citation, conflict, timeliness)
+            gov_rules = _try_inject_governance_rules(messages)
+            guard = guard + gov_rules if gov_rules else guard
 
 
 
@@ -1420,12 +1462,21 @@ async def sys_llm_generate(
     _mem_user_input: Optional[str] = None
     if session_id and isinstance(prompt, list) and prompt:
         try:
+            import asyncio as _aio_llm_mem
             from core.harness.memory.manager import get_memory_manager as _get_mem3
             _mgr = _get_mem3()
-            _mem_ctx = await _mgr.build_context(
-                current_query=str(prompt[-1].get("content", "")) if hasattr(prompt[-1], 'get') else "",
-                system_prompt="",
-                session_id=session_id,
+            try:
+                _mem_to = float(os.getenv("AIPLAT_MEMORY_BUILD_TIMEOUT", "8") or "8")
+            except Exception:
+                _mem_to = 8.0
+            _mem_ctx = await _aio_llm_mem.wait_for(
+                _mgr.build_context(
+                    current_query=str(prompt[-1].get("content", "")) if hasattr(prompt[-1], 'get') else "",
+                    system_prompt="",
+                    session_id=session_id,
+                    retrieval_budget="working_only",
+                ),
+                timeout=max(1.0, _mem_to),
             )
             if _mem_ctx and hasattr(_mem_ctx, 'messages') and _mem_ctx.messages:
                 # Prepend memory context before the last user message
@@ -1473,6 +1524,38 @@ async def sys_llm_generate(
 
             logging.getLogger(__name__).debug('sys_llm_generate failed', exc_info=True)
 
+
+    # Visible enter-marker BEFORE model resolve / CLAUDE inject.
+    # Use kind=context (not llm) so no_progress watchdogs still fire if we hang here.
+    _llm_enter_id = ""
+    try:
+        _early_run_id = ""
+        _early_parent = None
+        if isinstance(trace_context, dict):
+            _early_run_id = str(trace_context.get("run_id") or "")
+            _early_parent = trace_context.get("parent_span_id")
+        if _early_run_id:
+            _rt0 = get_kernel_runtime()
+            _st0 = getattr(_rt0, "execution_store", None) if _rt0 else None
+            if _st0 is not None:
+                # Stable id so open/close merge; parent under current ReAct step
+                # (without parent_span_id the canvas parks this in 「其它」 as an orphan).
+                _llm_enter_id = f"{_early_run_id}:llm_enter"
+                await _st0.add_syscall_event({
+                    "id": _llm_enter_id,
+                    "span_id": _llm_enter_id,
+                    "parent_span_id": _early_parent,
+                    "run_id": _early_run_id,
+                    "kind": "context",
+                    "name": "llm_enter",
+                    "status": "running",
+                    "start_time": time.time(),
+                    "duration_ms": 0,
+                    "args": {"phase": "pre_generate_prep"},
+                })
+    except Exception:
+        logging.debug("llm_enter emit failed", exc_info=True)
+        _llm_enter_id = ""
 
     # Model routing: auto-detect model_name and resolve via model_injection (canonical path).
 
@@ -1692,20 +1775,21 @@ async def sys_llm_generate(
 
                 if store2 is not None:
 
+                    # AuditMixin.add_audit_log uses detail=, not kind=/payload=
                     await store2.add_audit_log(
-
                         action="safety_audit",
-
-                        kind="prompt_injection",
-
-                        payload={
-
+                        status="warn",
+                        resource_type="llm",
+                        resource_id="prompt_injection",
+                        trace_id=(
+                            (trace_context or {}).get("trace_id")
+                            if isinstance(trace_context, dict)
+                            else None
+                        ),
+                        detail={
+                            "kind": "prompt_injection",
                             "alerts": message_guard_stats["injection_alerts"],
-
-                            "trace_id": (trace_context or {}).get("trace_id") if isinstance(trace_context, dict) else None,
-
                         },
-
                     )
 
             except Exception:
@@ -2260,18 +2344,97 @@ async def sys_llm_generate(
 
             retries = int(os.getenv("AIPLAT_LLM_RETRIES", "2") or "2")
 
+            # Hard wall for a single generate call. Unset used to mean "no wait_for",
+            # so a hung provider left Skill UI on 「推理 generate · 执行中」until the
+            # outer skill timeout (often 480s). Default 180s remote / 300s local;
+            # override via env. orphan_watchdog stall must stay *above* this
+            # (see llm_generate_stall_seconds).
             timeout_seconds = os.getenv("AIPLAT_LLM_TIMEOUT_SECONDS")
+            if timeout_seconds is not None and str(timeout_seconds).strip() != "":
+                timeout = float(timeout_seconds)
+            else:
+                _localish = False
+                try:
+                    from core.harness.utils.local_llm_recover import looks_like_local_llm
 
-            timeout = float(timeout_seconds) if timeout_seconds else None
+                    _localish = looks_like_local_llm(
+                        model_name=str(model_name or ""),
+                        model=model,
+                    )
+                except Exception:
+                    _localish = False
+                _default = "300" if _localish else "180"
+                timeout = float(
+                    os.getenv("AIPLAT_LLM_DEFAULT_TIMEOUT_SECONDS", _default) or _default
+                )
+
+            # Per-call override (e.g. code_generation SKILL.md timeout=420 needs nested
+            # generate budget ≥360; default local 300 caused false skill failures).
+            if isinstance(trace_context, dict):
+                for _tk in ("timeout_seconds", "llm_timeout_seconds"):
+                    _ov = trace_context.get(_tk)
+                    if _ov is None or str(_ov).strip() == "":
+                        continue
+                    try:
+                        timeout = max(float(timeout), float(_ov))
+                    except Exception:
+                        pass  # noqa: cleanup-best-effort
+                    break
+
+            # Propagate wait_for budget onto adapter HTTP timeout (do not leave
+            # provider client at a lower default while ResilienceGate waits longer).
+            try:
+                _cfg = getattr(model, "_config", None)
+                if _cfg is not None and hasattr(_cfg, "timeout"):
+                    _cfg.timeout = float(timeout)
+            except Exception:
+                logging.debug("propagate llm timeout to model config skipped", exc_info=True)
 
             # Emit llm/running BEFORE the call so ExecutionViewer shows live "thinking"
             # while the request is in-flight (otherwise UI stays empty until LLM returns).
+            _llm_gen_start_id = ""
             try:
                 _rt_pre = get_kernel_runtime()
                 _store_pre = getattr(_rt_pre, "execution_store", None) if _rt_pre else None
                 if _store_pre is not None and run_id_val:
+                    # Close pre-generate markers so they do not stick as 「执行中」
+                    # while the real wait is on llm generate.
+                    if _llm_enter_id:
+                        try:
+                            await _store_pre.add_syscall_event({
+                                "id": _llm_enter_id,
+                                "span_id": _llm_enter_id,
+                                "parent_span_id": (trace_context or {}).get("parent_span_id")
+                                if isinstance(trace_context, dict)
+                                else None,
+                                "run_id": run_id_val,
+                                "kind": "context",
+                                "name": "llm_enter",
+                                "status": "ok",
+                                "start_time": time.time(),
+                                "end_time": time.time(),
+                                "duration_ms": 0,
+                                "args": {"phase": "pre_generate_prep", "closed": "before_generate"},
+                            })
+                        except Exception:
+                            logging.debug("llm_enter close failed", exc_info=True)
+                    try:
+                        from core.harness.utils.execute_session import emit_pre_llm_prep_close
+
+                        _tc = trace_context if isinstance(trace_context, dict) else {}
+                        await emit_pre_llm_prep_close(
+                            _store_pre,
+                            run_id_val,
+                            status="ok",
+                            step_count=_tc.get("step_count"),
+                            parent_span_id=str(_tc.get("parent_span_id") or ""),
+                            reason="before_generate",
+                        )
+                    except Exception:
+                        logging.debug("pre_llm_prep close-before-generate failed", exc_info=True)
+                    _llm_gen_start_id = f"{run_id_val}:llm:generate:start:{int(time.time() * 1000)}"
                     await _store_pre.add_syscall_event({
-                        "id": f"{run_id_val}:llm:generate:start:{int(time.time() * 1000)}",
+                        "id": _llm_gen_start_id,
                         "trace_id": span.trace_id,
                         "span_id": getattr(span, "span_id", None),
                         "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
@@ -2282,18 +2445,35 @@ async def sys_llm_generate(
                         "start_time": time.time(),
                         "duration_ms": 0,
                         "model_name": model_name,
-                        "args": {"prompt_type": "messages" if isinstance(prepared, list) else "text"},
+                        "args": {
+                            "prompt_type": "messages" if isinstance(prepared, list) else "text",
+                            "timeout_seconds": float(timeout),
+                        },
                     })
             except Exception:
                 logging.debug("llm running event emit failed", exc_info=True)
+                _llm_gen_start_id = ""
 
-            result = await res_gate.run(
+            # TimeoutError ⊂ OSError; ResilienceGate hard-excludes it so
+            # retries only apply to real transport/runtime failures, not
+            # deadline abandons (which leave zombie to_thread HTTP calls).
+            # Local providers (Ollama/LM Studio): process-wide single-flight so a
+            # nested episodic/scoring generate cannot start while the primary
+            # ReAct generate still holds the llama-server (cross event-loop safe).
+            from core.harness.utils.local_llm_recover import local_llm_inflight
 
-                _call, retries=retries, timeout_seconds=timeout,
+            async with local_llm_inflight(
+                model_name=str(model_name or ""),
+                model=model,
+                acquire_timeout=float(timeout) + 30.0,
+            ):
+                result = await res_gate.run(
 
-                retry_on=(asyncio.TimeoutError, ConnectionError, OSError, RuntimeError),
+                    _call, retries=retries, timeout_seconds=timeout,
 
-            )
+                    retry_on=(ConnectionError, OSError, RuntimeError),
+
+                )
 
         finally:
 
@@ -2432,6 +2612,7 @@ async def sys_llm_generate(
                     try:
 
                         import yaml as _yaml, os as _os
+                        import anyio as _anyio_price
 
                         from pathlib import Path as _Path
 
@@ -2439,11 +2620,15 @@ async def sys_llm_generate(
 
                             str(_Path(__file__).resolve().parents[4] / "aiPlat-infra" / "config" / "infra" / "llm_profile.yaml"))
 
-                        profile = _yaml.safe_load(open(config_path))
+                        def _load_pricing():
+                            with open(config_path, encoding="utf-8") as _fh:
+                                return _yaml.safe_load(_fh)
 
-                        caps = (profile.get("model_capabilities") or {}).get(model_name, {})
+                        profile = await _anyio_price.to_thread.run_sync(_load_pricing)
 
-                        p = caps.get("pricing", {})
+                        caps = (profile.get("model_capabilities") or {}).get(model_name, {}) if isinstance(profile, dict) else {}
+
+                        p = caps.get("pricing", {}) if isinstance(caps, dict) else {}
 
                         if p:
 
@@ -2464,6 +2649,59 @@ async def sys_llm_generate(
 
                     )
 
+                _rid_ok = (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None
+                # Prefer UPSERT of the in-flight start row so mirror_syscall_to_graph
+                # closes the same canvas node_id (span_id). close_running alone does a
+                # raw UPDATE that can leave the graph card 「推理中」if the process dies
+                # before the follow-up add_syscall_event (run-ff1319e103fd).
+                if _rid_ok and _llm_gen_start_id:
+                    try:
+                        await store.add_syscall_event(
+                            {
+                                "id": _llm_gen_start_id,
+                                "trace_id": span.trace_id,
+                                "span_id": getattr(span, "span_id", None),
+                                "parent_span_id": (trace_context or {}).get("parent_span_id")
+                                if isinstance(trace_context, dict)
+                                else None,
+                                "run_id": _rid_ok,
+                                "kind": "llm",
+                                "name": "generate",
+                                "status": "success",
+                                "start_time": start_ts,
+                                "end_time": end_ts,
+                                "duration_ms": (end_ts - start_ts) * 1000.0,
+                                "model_name": model_name,
+                                "input_tokens": input_tokens,
+                                "output_tokens": output_tokens,
+                                "cost": cost,
+                                "args": {
+                                    "prompt_type": "messages" if isinstance(prepared, list) else "text",
+                                    "timeout_seconds": float(timeout) if "timeout" in dir() else None,
+                                    "message_guard": message_guard_stats,
+                                },
+                                "result": {
+                                    "has_content": bool(getattr(result, "content", None)),
+                                    "usage": usage,
+                                },
+                            }
+                        )
+                    except Exception:
+                        logging.debug("upsert llm generate start→success failed", exc_info=True)
+                if _rid_ok and hasattr(store, "close_running_syscall_events"):
+                    try:
+                        await store.close_running_syscall_events(
+                            str(_rid_ok),
+                            status="success",
+                            error=None,
+                            error_code=None,
+                            kind="llm",
+                            name="generate",
+                        )
+                    except Exception:
+                        logging.debug("close running llm events on success failed", exc_info=True)
+
+                # Ledger / analytics row (may share span_id; distinct id is fine).
                 await store.add_syscall_event(
 
                     {
@@ -2474,7 +2712,7 @@ async def sys_llm_generate(
 
                         "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
 
-                        "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
+                        "run_id": _rid_ok,
 
                         "kind": "llm",
 
@@ -2538,20 +2776,18 @@ async def sys_llm_generate(
 
                 logging.getLogger("llm").warning("best-effort skipped", exc_info=True)
 
-        # Notify infra ModelManager of success (for health tracking)
-
+        # Notify infra ModelManager of success (for health tracking).
+        # Never ``ModelManager()`` on this hot path — ctor re-scans Ollama and
+        # ThreadPoolExecutor shutdown can block forever after result() timeout
+        # (qa_agent run-44724b8b8107: generate=success then post_llm_zombie).
         if model_name:
-
             try:
+                from core.harness.utils.model_injection import (
+                    _record_cached_model_outcome,
+                )
 
-                from infra.management.model.manager import ModelManager
-
-                mgr = ModelManager()
-
-                mgr.record_success(model_name)
-
+                _record_cached_model_outcome(model_name, success=True)
             except Exception:
-
                 logging.getLogger(__name__).debug('code failed', exc_info=True)
         # Phase 3.1: best-effort hallucination detection on generated content
 
@@ -2641,86 +2877,129 @@ async def sys_llm_generate(
 
 
 
-        # Notify infra ModelManager of failure (for cooldown tracking)
-
+        # Notify infra ModelManager of failure (for cooldown tracking).
+        # Same rule as success: cached singleton only (no Ollama re-scan).
         if model_name:
-
             try:
+                from core.harness.utils.model_injection import (
+                    _record_cached_model_outcome,
+                )
 
-                from infra.management.model.manager import ModelManager
-
-                mgr = ModelManager()
-
-                mgr.record_failure(model_name)
-
+                _record_cached_model_outcome(model_name, success=False)
             except Exception:
-
                 logging.getLogger(__name__).debug('code failed', exc_info=True)
 
+        # Resolve exception once for timeout classification + local LLM recover.
+        try:
+            import sys as _sys_fail
+            import asyncio as _aio_fail
 
+            _fail_exc = _exc_value if "_exc_value" in locals() else _sys_fail.exc_info()[1]
+            _is_timeout = isinstance(_fail_exc, (_aio_fail.TimeoutError, TimeoutError)) or (
+                "timeout" in type(_fail_exc).__name__.lower()
+                or "timed out" in str(_fail_exc or "").lower()
+            )
+        except Exception:
+            _fail_exc = None
+            _is_timeout = False
+
+        # Close the in-flight llm/generate row FIRST. Unloading Ollama can hang when
+        # the model is wedged; if we unload before flip, orphan_watchdog sees
+        # status=running past wait_for+slack and marks the whole Agent timeout.
         runtime = get_kernel_runtime()
-
         store = getattr(runtime, "execution_store", None) if runtime else None
+        _rid = (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None
+        _fail_status = "timeout" if _is_timeout else "failed"
+        _fail_code = "LLM_TIMEOUT" if _is_timeout else "LLM_ERROR"
+        _fail_err = "llm_timeout" if _is_timeout else "llm_error"
+        closed = 0
+        if store is not None and _rid and hasattr(store, "close_running_syscall_events"):
+            try:
+                closed = int(await store.close_running_syscall_events(
+                    str(_rid),
+                    status=_fail_status,
+                    error=_fail_err,
+                    error_code=_fail_code,
+                    kind="llm",
+                    name="generate",
+                ) or 0)
+            except Exception:
+                closed = 0
+
+        # Timeout/cancel cannot kill the sync OpenAI to_thread call — unload local
+        # Ollama models so the next Skill 试跑 is not queued behind a zombie generate.
+        # Cap wait: wedged Ollama must not block the fail path (orphan already armed).
+        if _is_timeout:
+            try:
+                import asyncio as _aio_to
+                from core.harness.utils.local_llm_recover import unload_local_llm_best_effort
+
+                await _aio_to.wait_for(
+                    _aio_to.to_thread(unload_local_llm_best_effort),
+                    timeout=3.0,
+                )
+            except Exception:
+                logging.getLogger(__name__).debug("llm timeout ollama unload failed", exc_info=True)
 
         if store is not None:
 
             try:
+                if closed <= 0:
+                    await store.add_syscall_event(
 
-                await store.add_syscall_event(
+                        {
 
-                    {
+                            "trace_id": span.trace_id,
 
-                        "trace_id": span.trace_id,
+                            "span_id": getattr(span, "span_id", None),
 
-                        "span_id": getattr(span, "span_id", None),
+                            "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
 
-                        "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
+                            "run_id": _rid,
 
-                        "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
+                            "kind": "llm",
 
-                        "kind": "llm",
+                            "name": "generate",
 
-                        "name": "generate",
+                            "status": _fail_status,
 
-                        "status": "failed",
+                            "target_type": _ar.target_type if _ar else None,
 
-                        "target_type": _ar.target_type if _ar else None,
+                            "target_id": _ar.target_id if _ar else None,
 
-                        "target_id": _ar.target_id if _ar else None,
+                            "tenant_id": getattr(_pr, "tenant_id", None),
 
-                        "tenant_id": getattr(_pr, "tenant_id", None),
+                            "user_id": getattr(_pr, "user_id", None),
 
-                        "user_id": getattr(_pr, "user_id", None),
+                            "session_id": getattr(_pr, "session_id", None),
 
-                        "session_id": getattr(_pr, "session_id", None),
+                            "start_time": start_ts,
 
-                        "start_time": start_ts,
+                            "end_time": end_ts,
 
-                        "end_time": end_ts,
+                            "duration_ms": (end_ts - start_ts) * 1000.0,
 
-                        "duration_ms": (end_ts - start_ts) * 1000.0,
+                            "args": {"prompt_type": "messages" if isinstance(prepared, list) else "text"},
 
-                        "args": {"prompt_type": "messages" if isinstance(prepared, list) else "text"},
+                            "error": _fail_err,
 
-                        "error": "llm_error",
+                            "error_code": _fail_code,
 
-                        "error_code": "LLM_ERROR",
+                            "result": {
 
-                        "result": {
+                                "prompt_version": prompt_version,
 
-                            "prompt_version": prompt_version,
+                                "applied_prompt_revision_ids": applied_prompt_revision_ids,
 
-                            "applied_prompt_revision_ids": applied_prompt_revision_ids,
+                                "ignored_prompt_revision_ids": ignored_prompt_revision_ids,
 
-                            "ignored_prompt_revision_ids": ignored_prompt_revision_ids,
+                                "prompt_revision_conflicts": prompt_revision_conflicts,
 
-                            "prompt_revision_conflicts": prompt_revision_conflicts,
+                            },
 
-                        },
+                        }
 
-                    }
-
-                )
+                    )
 
             except Exception:
 

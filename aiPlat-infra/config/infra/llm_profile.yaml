@@ -21,45 +21,53 @@ purpose_profiles:
       latency: -3.0
       api_credential: 1.0
   agent:
-    description: Agent编排/测试执行 — 需要强推理+大上下文+低幻觉
+    # 实测 gemma4:12b 在长 Agent/Skill prompt 下常楔死 Ollama；本地优先稳 + 可交互时延
+    description: Agent编排 — 中等推理+可控时延；忌选易楔死本地运行时的大模型
     require:
-      reasoning_quality: 3
-      context_window: 32000
-      hallucination_max: 0.06
+      reasoning_quality: 2
+      context_window: 16000
+      hallucination_max: 0.08
     weights:
-      reasoning: 3.5
-      quality: 1.5
-      latency: -1.0
+      reasoning: 1.0
+      quality: 1.0
+      latency: -3.0
+      resource_pressure: 2.5
       cost: -0.5
   code_gen:
-    description: 代码生成 — 需要强推理+编码能力
+    description: 代码生成 — 编码能力优先；本地同样忌过大模型卡死；有云端 coder 时应优先质量
     require:
       reasoning_quality: 2
       context_window: 16000
     weights:
-      reasoning: 2.5
-      latency: -0.5
+      reasoning: 1.5
+      latency: -2.0
+      resource_pressure: 2.0
       api_credential: 1.0
+    # false：接入 DeepSeek/云端 coder 后允许凭能力赢过本地 7b（当前机无 API 时仍只能落到 coder:7b）
+    prefer_local: false
   reasoning:
-    description: 复杂推理 — 需要最强推理+低幻觉+大上下文
+    description: 复杂推理 — 强推理+低幻觉；无 API 时勿默认楔死型本地大模型
     require:
-      reasoning_quality: 4
-      context_window: 64000
-      hallucination_max: 0.05
+      reasoning_quality: 3
+      context_window: 16000
+      hallucination_max: 0.08
     weights:
-      reasoning: 3.5
-      quality: 1.8
-      latency: -1.0
-      resource_pressure: 0.3
+      reasoning: 2.0
+      quality: 1.2
+      latency: -2.0
+      resource_pressure: 2.0
       cost: -0.3
   skill_execution:
-    description: Skill执行 — 需要稳定可靠+中等推理
+    description: Skill执行 — 稳定可靠优先；本地试跑忌选过大模型（易楔死 Ollama）
     require:
-      reasoning_quality: 2
+      # 1 允许 qwen2.5:3b 等轻量本地模型；先前 require=2 会把 3b 滤掉，导致只剩 7b/12b
+      reasoning_quality: 1
       context_window: 16000
     weights:
-      reasoning: 1.2
-      resource_pressure: 1.5
+      # 压低 reasoning、抬高资源/时延惩罚，避免 RAM 充裕时 gemma4:12b 凭 rq=4 赢走试跑
+      reasoning: 0.6
+      resource_pressure: 2.5
+      latency: -3.0
   ontology_gen:
     description: 本体生成 — 本地优先,基础推理即可
     require:
@@ -79,6 +87,15 @@ fallback:
   safe_model: qwen2.5:3b
   safe_model_alt: qwen2.5-coder:7b
   safe_model_ram_limit: 4
+  # Local Ollama/LM Studio: refuse models larger than this fraction of host RAM
+  # (unified-memory Macs need OS/browser/KV headroom). 0.40 ⇒ 16GB 拒 gemma~7.6GB，允 coder:7b~4.7GB。
+  local_max_ram_ratio: 0.40
+
+# Preferred models (moved to head of scored list; soft +80 only — not a hard lock).
+# code_gen → deepseek-chat：避免 deepseek-v4-pro / reasoner 把 max_tokens 耗在
+# reasoning_content 上导致 content 空（run-69d821 finish_reason=length）。
+model_overrides:
+  code_gen: deepseek-chat
 
 # ── Purpose → env var mapping (P2-6 config-driven; get_default_model derives
 #    from here, built-in map in code remains as fallback for old configs) ──
@@ -88,6 +105,7 @@ env_model_map:
   document: [AIPLAT_DOC_LLM_MODEL]
   code_gen: [AIPLAT_CODE_GEN_MODEL]
   code: [AIPLAT_CODE_GEN_MODEL]
+  skill_execution: [AIPLAT_SKILL_MODEL, AIPLAT_AGENT_MODEL]
   query_translation: [AIPLAT_QUERY_MODEL]
   wiki_curation: [AIPLAT_WIKI_CURATION_MODEL]
   reranker: [AIPLAT_RERANK_MODEL]
@@ -159,13 +177,14 @@ model_capabilities:
     effective_utilization: 0.80
     input_token_budget: 60000
     semantic_understanding: 5
-    reasoning_quality: 4
+    # 纸面能力高，但本机 Ollama 长 prompt 实测常 >90s/楔死；降档以免 unified_pipeline 误选
+    reasoning_quality: 2
     hallucination_rate: 0.05
     strength_areas: ["chat", "fact_lookup", "instruction_following", "multi_doc_synthesis"]
-    weakness_areas: ["code_generation"]
+    weakness_areas: ["code_generation", "long_prompt_local"]
     routing_rules:
       min_complexity: 1
-      max_complexity: 4
+      max_complexity: 3
   qwen2.5-coder:7b:
     context_window: 32768
     effective_utilization: 0.75

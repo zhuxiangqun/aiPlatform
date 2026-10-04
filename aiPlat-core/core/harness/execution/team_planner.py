@@ -74,15 +74,18 @@ _MODE_ALIASES = {
     "source": "code",
 }
 
+# Product default for factory_mode=code is code_split (scaffold → FE → BE → pytest).
+# Legacy single-programmer template remains loadable as team_id/team_template="code".
 _MODE_TO_TEMPLATE = {
     "agent": "default",
-    "code": "code",
+    "code": "code_split",
     "hybrid": "hybrid",
 }
 
 _TEMPLATE_TO_MODE = {
     "default": "agent",
     "code": "code",
+    "code_split": "code",
     "hybrid": "hybrid",
 }
 
@@ -99,7 +102,11 @@ def normalize_factory_mode(raw: Any) -> str:
 
 
 def mode_to_team_template(mode: str) -> str:
-    """Map normalized factory_mode → team YAML stem (default|code|hybrid)."""
+    """Map normalized factory_mode → team YAML stem (default|code_split|hybrid).
+
+    ``code`` maps to ``code_split`` (startable Vite+FastAPI scaffold team).
+    Explicit ``team_template="code"`` still loads the legacy programmer-only YAML.
+    """
     m = normalize_factory_mode(mode)
     return _MODE_TO_TEMPLATE.get(m, "default") if m else "default"
 

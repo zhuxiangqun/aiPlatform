@@ -1,0 +1,92 @@
+# FE/BE 拆分 + 工程脚手架：architect 后先落盘骨架，再由前后端在骨架上增量编码，最后 pytest。
+# Factory factory_mode=code 的默认团队（mode_to_team_template → code_split）。
+# 旧单编路径仍可用显式 team_template/team_id=code（programmer_agent）。
+# 与 default.yaml（Agent 模式）对照：交付侧用 frontend_engineer/backend_developer，
+# 而非 frontend_developer/agent_engineer；共用 pm/architect/qa 靠 architecture_mode=code 分叉。
+team_name: "软件研发团队（前后端拆分）"
+description: "PRD→架构→可启动前后端脚手架（Vite+FastAPI）→增量编码→QA→pytest"
+stages:
+  - agent_id: pm_agent
+    order: 0
+    output_artifact: prd
+    skill_name: requirement_analysis
+    execution_backend: llm
+    hitl: true
+    hitl_phase: review
+
+  - agent_id: architect_agent
+    order: 1
+    output_artifact: architecture
+    skill_name: architecture_design
+    execution_backend: llm
+    architecture_mode: code
+    input_artifacts: [prd]
+    depends_on: [pm_agent]
+    hitl: true
+    hitl_phase: review
+
+  - agent_id: scaffold_agent
+    order: 2
+    output_artifact: project_scaffold
+    skill_name: code_generation
+    execution_backend: llm
+    architecture_mode: code
+    input_artifacts: [prd, architecture]
+    depends_on: [architect_agent]
+    uses_file_output: true
+    code_target: scaffold
+    inject_imported_context: true
+    deploy_files_to_disk: true
+    review_gate: quick
+    stage_timeout_seconds: 900
+
+  - agent_id: frontend_engineer
+    order: 3
+    output_artifact: frontend_code
+    skill_name: code_generation
+    execution_backend: llm
+    input_artifacts: [prd, architecture, project_scaffold]
+    depends_on: [scaffold_agent]
+    uses_file_output: true
+    code_target: frontend
+    deploy_files_to_disk: true
+    stage_timeout_seconds: 900
+
+  - agent_id: backend_developer
+    order: 4
+    output_artifact: backend_code
+    skill_name: code_generation
+    execution_backend: llm
+    input_artifacts: [prd, architecture, project_scaffold]
+    depends_on: [scaffold_agent]
+    uses_file_output: true
+    code_target: backend
+    deploy_files_to_disk: true
+    stage_timeout_seconds: 900
+
+  - agent_id: qa_agent
+    order: 5
+    output_artifact: test_cases
+    skill_name: test_case_generation
+    execution_backend: llm
+    architecture_mode: code
+    input_artifacts: [prd, architecture, project_scaffold, frontend_code, backend_code]
+    depends_on: [frontend_engineer, backend_developer]
+    quality_gate:
+      min_output_length: 100
+      sanitize_test_cases: true
+      requirements_artifact: prd
+    hitl: true
+    hitl_phase: review
+    stage_timeout_seconds: 600
+
+  - agent_id: test_executor
+    order: 6
+    output_artifact: test_report
+    skill_name: test_executor
+    execution_backend: llm
+    architecture_mode: code
+    test_execution_mode: pytest
+    input_artifacts: [test_cases, project_scaffold, frontend_code, backend_code]
+    depends_on: [qa_agent]
+    stage_timeout_seconds: 900

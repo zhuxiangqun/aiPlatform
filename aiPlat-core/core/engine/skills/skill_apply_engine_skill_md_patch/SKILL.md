@@ -12,8 +12,8 @@ completion_criterion: |
   1. 每个改动都有明确的验收标准（可验证的 pass/fail 条件）
   2. 如存在相关测试，修改后所有测试通过或明确标注预期失败
   3. 不产生新的已知 lint 问题
-execution_mode: prompt
-execution_type: prompt
+execution_mode: inline
+execution_type: python_class
 triggers:
   - 更新skill
   - apply patch

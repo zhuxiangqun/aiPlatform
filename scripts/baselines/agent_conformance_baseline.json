@@ -7,12 +7,20 @@
     "max_lines: 173 行超过预算 100（§5.27 规则 3——超限拆分 docs/）",
     "model: frontmatter 硬编码模型名 'deepseek-chat'（§12——走 skill_model_purpose 路由）"
   ],
+  "architect_agent": [
+    "max_lines: 131 行超过预算 100（§5.27 规则 3——超限拆分 docs/）",
+    "handoff: 缺交接字段「如何验证」（§5.27 规则 2.1 五字段）",
+    "handoff: 缺交接字段「已知问题」（§5.27 规则 2.1 五字段）"
+  ],
   "auth_agent": [
     "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）"
   ],
   "autoreview_reviewer": [
     "model: frontmatter 硬编码模型名 'deepseek-chat'（§12——走 skill_model_purpose 路由）",
     "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）"
+  ],
+  "backend_developer": [
+    "max_lines: 156 行超过预算 100（§5.27 规则 3——超限拆分 docs/）"
   ],
   "bench_graph_agent": [
     "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）"
@@ -70,10 +78,12 @@
     "model: frontmatter 硬编码模型名 'auto'（§12——走 skill_model_purpose 路由）",
     "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）"
   ],
+  "frontend_developer": [
+    "max_lines: 189 行超过预算 100（§5.27 规则 3——超限拆分 docs/）"
+  ],
   "frontend_engineer": [
-    "max_lines: 112 行超过预算 100（§5.27 规则 3——超限拆分 docs/）",
-    "model: frontmatter 硬编码模型名 'deepseek-chat'（§12——走 skill_model_purpose 路由）",
-    "output_format: 「## 输出格式」段含代码块模板——输出格式唯一归属 SKILL.md，AGENT.md 只留引用（内容归属规范）"
+    "max_lines: 363 行超过预算 100（§5.27 规则 3——超限拆分 docs/）",
+    "model: frontmatter 硬编码模型名 'auto'（§12——走 skill_model_purpose 路由）"
   ],
   "guard_agent": [
     "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）",
@@ -126,6 +136,10 @@
   "newsletter_research": [
     "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）"
   ],
+  "notification_agent": [
+    "model: frontmatter 硬编码模型名 'auto'（§12——走 skill_model_purpose 路由）",
+    "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）"
+  ],
   "notifier_agent": [
     "model: frontmatter 硬编码模型名 'auto'（§12——走 skill_model_purpose 路由）",
     "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）"
@@ -138,6 +152,10 @@
     "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）"
   ],
   "orchestrator_agent": [
+    "model: frontmatter 硬编码模型名 'auto'（§12——走 skill_model_purpose 路由）",
+    "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）"
+  ],
+  "order_agent": [
     "model: frontmatter 硬编码模型名 'auto'（§12——走 skill_model_purpose 路由）",
     "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）"
   ],
@@ -160,18 +178,30 @@
     "model: frontmatter 硬编码模型名 'deepseek-reasoner'（§12——走 skill_model_purpose 路由）"
   ],
   "pm_agent": [
-    "max_lines: 101 行超过预算 100（§5.27 规则 3——超限拆分 docs/）"
+    "max_lines: 136 行超过预算 100（§5.27 规则 3——超限拆分 docs/）"
+  ],
+  "product_agent": [
+    "model: frontmatter 硬编码模型名 'auto'（§12——走 skill_model_purpose 路由）",
+    "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）"
   ],
   "programmer_agent": [
-    "max_lines: 115 行超过预算 100（§5.27 规则 3——超限拆分 docs/）",
+    "max_lines: 123 行超过预算 100（§5.27 规则 3——超限拆分 docs/）",
     "model: frontmatter 硬编码模型名 'deepseek-chat'（§12——走 skill_model_purpose 路由）",
     "output_format: 「## 输出格式」段含代码块模板——输出格式唯一归属 SKILL.md，AGENT.md 只留引用（内容归属规范）"
+  ],
+  "qa_agent": [
+    "max_lines: 118 行超过预算 100（§5.27 规则 3——超限拆分 docs/）"
   ],
   "report_agent": [
     "model: frontmatter 硬编码模型名 'auto'（§12——走 skill_model_purpose 路由）",
     "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）"
   ],
+  "return_exchange_agent": [
+    "model: frontmatter 硬编码模型名 'auto'（§12——走 skill_model_purpose 路由）",
+    "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）"
+  ],
   "scaffold_agent": [
+    "max_lines: 741 行超过预算 100（§5.27 规则 3——超限拆分 docs/）",
     "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）"
   ],
   "secure-reviewer": [
@@ -199,6 +229,9 @@
   "subtitle_extractor_agent": [
     "model: frontmatter 硬编码模型名 'auto'（§12——走 skill_model_purpose 路由）",
     "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）"
+  ],
+  "test_executor": [
+    "max_lines: 117 行超过预算 100（§5.27 规则 3——超限拆分 docs/）"
   ],
   "test_report_orchestrator": [
     "max_lines: 119 行超过预算 100（§5.27 规则 3——超限拆分 docs/）",
@@ -238,6 +271,9 @@
   ],
   "video_qa_agent": [
     "model: frontmatter 硬编码模型名 'auto'（§12——走 skill_model_purpose 路由）",
+    "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）"
+  ],
+  "video_understanding_agent": [
     "handoff: 缺「## 交接规范」段（§5.27 规则 2.1）"
   ],
   "video_understanding_orchestrator": [

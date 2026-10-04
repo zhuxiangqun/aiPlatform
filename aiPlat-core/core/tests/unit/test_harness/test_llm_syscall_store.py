@@ -29,6 +29,13 @@ def test_sys_llm_generate_uses_execution_store_not_tenant_store():
     assert "async def add_syscall_event" in mixin_src
 
 
+def test_sys_llm_generate_does_not_construct_model_manager():
+    """Post-generate health ping must use the cached manager (Ollama re-scan hangs)."""
+    src = (_CORE_ROOT / "core/harness/syscalls/llm.py").read_text(encoding="utf-8")
+    assert "ModelManager()" not in src
+    assert "_get_cached_model_manager" in src
+
+
 def test_tenant_store_has_no_syscall_event_method():
     """平台 TenantStore 不应承担 syscall 事件记录（职责边界）。"""
     # 平台 TenantStore 类不得定义 add_syscall_event

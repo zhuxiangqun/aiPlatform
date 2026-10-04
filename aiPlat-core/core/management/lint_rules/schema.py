@@ -14,14 +14,24 @@ class ChangeContractCheck(LintRule):
     _REQUIRED_KEYS = ["change_plan", "changed_files", "unrelated_changes", "acceptance_criteria", "rollback_plan"]
 
     def check(self, skill: Any) -> List[LintIssue]:
-        category = str(getattr(skill, "type", "") or (skill.get("category") if isinstance(skill, dict) else "") or "").strip()
+        """Only for coding skills (category/tags).
+
+        change_plan/changed_files/rollback 面向「改代码」验收，不适用于
+        generation/analysis 的 handler（如 PPT）或 prompt+tools executable。
+        """
+        category = str(
+            getattr(skill, "type", "")
+            or getattr(skill, "category", "")
+            or (skill.get("category") if isinstance(skill, dict) else "")
+            or (skill.get("type") if isinstance(skill, dict) else "")
+            or ""
+        ).strip()
         meta = self._get_meta(skill)
-        executable = bool(meta.get("executable") is True) or str(meta.get("skill_kind") or "").lower() == "executable"
         tags = meta.get("tags") or []
         tags = [str(t).strip().lower() for t in tags] if isinstance(tags, list) else []
         is_coding = category.lower() == "coding" or ("coding" in tags) or ("code" in tags)
 
-        if not (is_coding or executable):
+        if not is_coding:
             return []
 
         output_schema = getattr(skill, "output_schema", None) if not isinstance(skill, dict) else skill.get("output_schema")

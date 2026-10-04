@@ -58,13 +58,17 @@ def resolve_model_name(capability: str) -> str:
         if model:
             return model
 
-    # Try infra ModelManager (single source of truth for model selection)
+    # Try infra ModelManager (cached singleton — never new ModelManager() here;
+    # each construct re-scans Ollama up to ~10s and can stall pre-LLM ReAct).
     try:
-        from infra.management.model.manager import ModelManager
-        mgr = ModelManager()
+        from core.harness.utils.model_injection import _get_cached_model_manager
+
+        mgr = _get_cached_model_manager()
         target_type = _MODEL_TYPE_MAP.get(capability, capability)
-        for m in mgr._models.values():
-            if m.type.value == target_type and m.enabled:
+        for m in getattr(mgr, "_models", {}).values():
+            if getattr(getattr(m, "type", None), "value", None) == target_type and getattr(
+                m, "enabled", False
+            ):
                 return m.name
     except Exception as e:
         logging.debug(str(e), exc_info=True)

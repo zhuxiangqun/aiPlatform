@@ -102,6 +102,7 @@ def _detect_system_capability_models() -> List[ModelInfo]:
 def _load_adapter_models() -> List[ModelInfo]:
     """Discover models from adapters table (API keys configured via management UI)."""
     import json as _json
+    import logging as _logging
     import sqlite3
     from .paths import execution_db_path
     models: List[ModelInfo] = []
@@ -114,9 +115,25 @@ def _load_adapter_models() -> List[ModelInfo]:
         conn = sqlite3.connect(db_path, timeout=5.0)
         conn.row_factory = sqlite3.Row
         try:
+            # Production adapters schema may lack optional columns
+            # (capabilities_json / model_type). Selecting them raises and used
+            # to be swallowed → empty list → 模型管理页只有 Ollama (DeepSeek 不可见).
+            cols = {
+                str(r[1])
+                for r in conn.execute("PRAGMA table_info(adapters)").fetchall()
+            }
+            select_cols = [
+                "adapter_id",
+                "name",
+                "provider",
+                "api_base_url",
+                "models_json",
+            ]
+            for opt in ("capabilities_json", "model_type"):
+                if opt in cols:
+                    select_cols.append(opt)
             rows = conn.execute(
-                "SELECT adapter_id, name, provider, api_base_url, models_json, "
-                "capabilities_json, model_type "
+                f"SELECT {', '.join(select_cols)} "
                 "FROM adapters WHERE status='active' "
                 "AND adapter_id NOT LIKE 'local-scan:%' "
                 "AND ((api_key IS NOT NULL AND api_key != '') OR (api_key_enc IS NOT NULL AND api_key_enc != '')) "
@@ -149,23 +166,31 @@ def _load_adapter_models() -> List[ModelInfo]:
                     adapter_name = (d.get("name") or "").strip()
                     model_list = [{"name": adapter_name or f"{provider}-chat"}]
                 for entry in model_list:
+                    if isinstance(entry, dict) and entry.get("enabled") is False:
+                        continue
                     name = entry.get("name") if isinstance(entry, dict) else str(entry)
                     if not name or name in seen_names or "," in name:
                         continue
                     seen_names.add(name)
-                    # Capabilities & type from SQLite adapters table (single source of truth)
+                    # Capabilities & type: optional adapter columns, else provider defaults
                     caps_json = d.get("capabilities_json") or "[]"
                     try:
                         caps = _json.loads(caps_json) if isinstance(caps_json, str) else (caps_json or [])
                     except Exception:
-                        caps = ["chat"]
+                        caps = []
                     if not caps:
                         caps = ["chat"]
+                        if provider in providers_with_reasoning:
+                            caps.append("reasoning")
                     _mtype = d.get("model_type") or "chat"
                     try:
                         _mtype = ModelType(_mtype)
                     except Exception:
                         _mtype = ModelType.CHAT
+                    try:
+                        _mt = int((entry.get("max_tokens") if isinstance(entry, dict) else 0) or 0) or None
+                    except Exception:
+                        _mt = None
                     safe_id = f"adapter:{adapter_id}:{name}"
                     models.append(ModelInfo(
                         id=safe_id, name=name, provider=provider,
@@ -174,14 +199,20 @@ def _load_adapter_models() -> List[ModelInfo]:
                         description=f"Remote model — from adapter {adapter_id[:12]}",
                         tags=[provider] + caps[:3], capabilities=caps,
                         status=ModelStatus.AVAILABLE,
-                        config=ModelConfig(adapter_id=adapter_id, base_url=base_url or None),
+                        config=ModelConfig(
+                            adapter_id=adapter_id,
+                            base_url=base_url or None,
+                            max_tokens=_mt or 8192,
+                        ),
                         stats=ModelStats(),
                         created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
                     ))
         finally:
             conn.close()
-    except Exception:  # noqa: fallback-return-empty
-        pass
+    except Exception:
+        _logging.getLogger(__name__).warning(
+            "adapter model load failed db=%s", db_path, exc_info=True
+        )
     return models
 
 

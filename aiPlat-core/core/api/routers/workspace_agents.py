@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Annotated, Dict, List, Optional
 from pydantic import BaseModel
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 
 from core.api.deps import actor_from_http, rbac_guard
@@ -201,6 +201,16 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
     try:
+        md0 = request.metadata or {}
+        # Imports may carry stale foreign IDs — keep for audit; normal create must bind known assets only.
+        if not (md0.get("source_url") or md0.get("source_file_content")):
+            _raise_if_unknown_bindings(
+                skills=request.skills,
+                tools=request.tools,
+                mcp_ids=request.mcp_ids,
+                agent_ids=request.agent_ids,
+                workflow_ids=request.workflow_ids,
+            )
         agent = await mgr.create_agent(
             name=request.name,
             agent_type=request.agent_type,
@@ -1256,6 +1266,310 @@ def _describe_tool_gap(capability: str) -> Dict[str, str]:
     }
 
 
+def _binding_catalogs() -> Dict[str, set]:
+    """Known workspace/engine asset IDs for bind-time validation."""
+    from pathlib import Path as _P
+    import yaml as _yaml
+
+    skills: set = set()
+    tools: set = set()
+    mcps: set = set()
+    agents: set = set()
+    workflows: set = set()
+
+    home = _P(os.path.expanduser("~/.aiplat"))
+    for root in (home / "skills",):
+        if not root.exists():
+            continue
+        for d in root.iterdir():
+            if d.is_dir() and (d / "SKILL.md").exists():
+                skills.add(d.name)
+                try:
+                    sp = (d / "SKILL.md").read_text(encoding="utf-8", errors="ignore").split("---", 2)
+                    if len(sp) >= 2:
+                        fm = _yaml.safe_load(sp[1]) or {}
+                        nm = str(fm.get("name") or "").strip()
+                        if nm:
+                            skills.add(nm)
+                except Exception:
+                    pass  # noqa: best-effort catalog
+    try:
+        eng = _P(__file__).resolve().parents[3] / "core" / "engine" / "skills"
+        if eng.exists():
+            for d in eng.iterdir():
+                if d.is_dir() and (d / "SKILL.md").exists():
+                    skills.add(d.name)
+                    try:
+                        sp = (d / "SKILL.md").read_text(encoding="utf-8", errors="ignore").split("---", 2)
+                        if len(sp) >= 2:
+                            fm = _yaml.safe_load(sp[1]) or {}
+                            nm = str(fm.get("name") or "").strip()
+                            if nm:
+                                skills.add(nm)
+                    except Exception:
+                        pass  # noqa  # noqa: cleanup-best-effort
+    except Exception:
+        pass  # noqa  # noqa: cleanup-best-effort
+
+    try:
+        from core.apps.tools.base import get_tool_registry
+        for tn in (get_tool_registry().list_tools() or []):
+            tools.add(str(tn))
+    except Exception:
+        pass  # noqa  # noqa: cleanup-best-effort
+
+    try:
+        from core.management.mcp_manager import MCPManager
+        for s in (MCPManager(scope="workspace").list_servers() or []):
+            nm = str(getattr(s, "name", "") or "").strip()
+            if nm:
+                mcps.add(nm)
+    except Exception:
+        pass  # noqa  # noqa: cleanup-best-effort
+
+    agents_dir = home / "agents"
+    if agents_dir.exists():
+        for d in agents_dir.iterdir():
+            if d.is_dir() and (d / "AGENT.md").exists():
+                agents.add(d.name)
+
+    wf_dir = home / "workflows"
+    if wf_dir.exists():
+        for d in wf_dir.iterdir():
+            if d.is_dir():
+                workflows.add(d.name)
+            elif d.suffix in (".json", ".yaml", ".yml"):
+                workflows.add(d.stem)
+    try:
+        from core.api.core_facade import WorkflowManager
+        for w in (WorkflowManager(scope="workspace").list_workflows() or []):
+            for key in (getattr(w, "id", None), getattr(w, "name", None)):
+                wid = str(key or "").strip()
+                if wid:
+                    workflows.add(wid)
+    except Exception:
+        pass  # noqa  # noqa: cleanup-best-effort
+
+    return {
+        "skills": skills,
+        "tools": tools,
+        "mcp": mcps,
+        "agents": agents,
+        "workflows": workflows,
+    }
+
+
+def _raise_if_unknown_bindings(
+    *,
+    skills: Optional[List[str]] = None,
+    tools: Optional[List[str]] = None,
+    mcp_ids: Optional[List[str]] = None,
+    agent_ids: Optional[List[str]] = None,
+    workflow_ids: Optional[List[str]] = None,
+    self_agent_id: str = "",
+) -> None:
+    """Reject bind/update that references assets not present in catalogs."""
+    cat = _binding_catalogs()
+    unknown: List[Dict[str, str]] = []
+    for s in skills or []:
+        sid = str(s or "").strip()
+        if sid and sid not in cat["skills"]:
+            unknown.append({"kind": "skill", "id": sid})
+    for t in tools or []:
+        tid = str(t or "").strip()
+        if tid and tid not in cat["tools"]:
+            unknown.append({"kind": "tool", "id": tid})
+    for m in mcp_ids or []:
+        mid = str(m or "").strip()
+        if mid and mid not in cat["mcp"]:
+            unknown.append({"kind": "mcp", "id": mid})
+    for a in agent_ids or []:
+        aid = str(a or "").strip()
+        if not aid or aid == self_agent_id:
+            continue
+        if aid not in cat["agents"]:
+            unknown.append({"kind": "agent", "id": aid})
+    for w in workflow_ids or []:
+        wid = str(w or "").strip()
+        if wid and wid not in cat["workflows"]:
+            unknown.append({"kind": "workflow", "id": wid})
+    if not unknown:
+        return
+    lines = [f"{u['kind']}:{u['id']}" for u in unknown]
+    raise HTTPException(
+        status_code=400,
+        detail={
+            "error": "unknown_bindings",
+            "message": (
+                "绑定失败：以下资产不存在，请先在对应库中创建后再绑定——"
+                + "、".join(lines)
+            ),
+            "unknown": unknown,
+        },
+    )
+
+
+def _missing_binding_create_issue(
+    *,
+    kind: str,
+    name: str,
+    agent_display: str,
+    description: str,
+    sop_text: str,
+) -> Dict[str, Any]:
+    """Audit issue for a missing binding: recommend create (no auto-remove)."""
+    name = str(name or "").strip()
+    agent_display = str(agent_display or "本 Agent").strip() or "本 Agent"
+    desc = str(description or "").strip()
+    sop_hint = ""
+    for line in (sop_text or "").splitlines():
+        if name and name in line:
+            sop_hint = line.strip()
+            break
+    if not sop_hint:
+        for line in (sop_text or "").splitlines():
+            s = line.strip()
+            if s.startswith("-") or s.startswith("1.") or "调用" in s:
+                sop_hint = s
+                break
+    sop_hint = (sop_hint or "见 AGENT.md Persona/Workflow")[:160]
+
+    if kind == "skill":
+        gap = _describe_skill_gap(name, sop_text=sop_text, agent_blob=desc)
+        must = gap.get("must_have") or (
+            f"支撑「{agent_display}」完成：{desc or '其 SOP 中声明的任务'}。"
+            f"须可被 ReAct 通过 sys_skill_call 调用，输入/输出可验收。"
+        )
+        how = gap.get("how_to_create") or (
+            f"到 应用能力层 → Skill 库 → 新建，id 用「{name}」，写清输入/输出与步骤后保存，再回到本 Agent 绑定。"
+        )
+        category = "invalid_skill"
+        field = "skills"
+        label = "技能"
+        where = "技能库"
+    elif kind == "tool":
+        gap = _describe_tool_gap(name)
+        must = (
+            f"为「{agent_display}」提供可调用能力「{name}」。"
+            f"上下文：{sop_hint}。"
+            f"须在 TOOL_DEF 声明 name/description/parameters，execute 返回结构化结果。"
+        )
+        how = gap.get("how_to_create") or (
+            f"到 能力组装 → Tool → 新建「{name}」，补全 TOOL_DEF 后保存重载，再绑定到本 Agent。"
+        )
+        category = "invalid_tool"
+        field = "tools"
+        label = "工具"
+        where = "工具库"
+    elif kind == "mcp":
+        must = (
+            f"对接外部系统/服务，供「{agent_display}」调用。"
+            f"Agent 描述：{desc or '（无）'}；SOP 线索：{sop_hint}。"
+            f"Server 应暴露最小工具集（allowed_tools），transport/url 或 stdio command 可用。"
+        )
+        how = (
+            f"到 MCP 库 → 新建 Server，name=「{name}」→ 选 transport 并填 url/command → "
+            f"发现工具并勾选最小权限 → 保存后回到本 Agent 绑定。"
+        )
+        category = "invalid_mcp"
+        field = "mcp_servers"
+        label = "MCP"
+        where = "MCP 库"
+    elif kind == "agent":
+        must = (
+            f"作为「{agent_display}」的子 Agent 承接委派任务。"
+            f"父 Agent 描述：{desc or '（无）'}；SOP 线索：{sop_hint}。"
+            f"须有清晰 Persona/Workflow，以及可验收的 output_artifact。"
+        )
+        how = (
+            f"到 应用库 → 新建 Agent，id=「{name}」→ 写描述与 SOP → 保存后回到本 Agent 绑定为子 Agent。"
+        )
+        category = "invalid_sub_agent"
+        field = "agent_ids"
+        label = "子 Agent"
+        where = "应用库"
+    else:  # workflow
+        must = (
+            f"编排「{agent_display}」相关多步流程。"
+            f"Agent 描述：{desc or '（无）'}；SOP 线索：{sop_hint}。"
+            f"画布应含可执行节点与明确连线顺序。"
+        )
+        how = (
+            f"到 编排/Workflow → 新建「{name}」→ 添加节点并连线 → 保存后回到本 Agent 绑定。"
+        )
+        category = "invalid_workflow"
+        field = "workflows"
+        label = "Workflow"
+        where = "编排库"
+
+    suggestion = (
+        f"{label}「{name}」不存在——绑定本应在创建时从目录选择。\n"
+        f"· 若仍需要该能力：到{where}按下列说明新建后再绑定（一键修复不会代建）。\n"
+        f"· 若确认不需要：可用一键修复解绑。\n\n"
+        f"【应具备】\n{must}\n\n【如何创建】\n{how}"
+    )
+    fix_by_kind = {
+        "skill": {"type": "remove_skill", "skill": name},
+        "tool": {"type": "remove_tool", "tool": name},
+        "mcp": {"type": "remove_mcp", "mcp": name},
+        "agent": {"type": "remove_agent", "agent": name},
+        "workflow": {"type": "remove_workflow", "workflow": name},
+    }
+    return {
+        "severity": "error",
+        "category": category,
+        "field": field,
+        "current": name,
+        "message": f"{label} '{name}' 在系统中不存在",
+        "suggestion": suggestion,
+        "fix_available": True,
+        "fix": fix_by_kind.get(kind) or {"type": "remove_skill", "skill": name},
+        "create_brief": {
+            "kind": kind,
+            "suggested_id": name,
+            "must_have": must,
+            "how_to_create": how,
+            "where": where,
+        },
+    }
+
+
+def _not_listed_unbind_issue(
+    *,
+    category: str,
+    field: str,
+    name: str,
+    kind: str,
+    message: str,
+    list_where: str,
+    severity: str = "error",
+) -> Dict[str, Any]:
+    """Asset exists but is not listed: never auto-publish; optional per-issue unbind."""
+    name = str(name or "").strip()
+    fix_by_kind = {
+        "skill": {"type": "remove_skill", "skill": name},
+        "tool": {"type": "remove_tool", "tool": name},
+        "mcp": {"type": "remove_mcp", "mcp": name},
+        "agent": {"type": "remove_agent", "agent": name},
+        "workflow": {"type": "remove_workflow", "workflow": name},
+    }
+    fix = dict(fix_by_kind.get(kind) or {"type": "remove_skill", "skill": name})
+    fix["apply_all"] = False
+    return {
+        "severity": severity,
+        "category": category,
+        "field": field,
+        "current": name,
+        "message": message,
+        "suggestion": (
+            f"{list_where}上架需人工操作，一键修复不会代提。"
+            f"若本 Agent 暂不需要该绑定，可对该条点修复以解绑。"
+        ),
+        "fix_available": True,
+        "fix": fix,
+    }
+
+
 def _strip_resolved_need_markers(sop: str, resolved_ids: List[str]) -> str:
     """Replace [[need:X]] with `X` when X is already bound."""
     import re as _re
@@ -1879,6 +2193,25 @@ async def get_workspace_agent_execution_help(agent_id: str, rt: RuntimeDep = Non
     return data
 
 
+def _agent_sop_excerpt(info) -> str:
+    try:
+        from core.management.execution_examples import sop_excerpt_from_markdown
+        if not isinstance(info, dict):
+            return ""
+        body = str(info.get("body") or "").strip()
+        if body:
+            return sop_excerpt_from_markdown(body)
+        path = info.get("path")
+        if path:
+            from pathlib import Path as _P
+            p = _P(str(path))
+            if p.exists():
+                return sop_excerpt_from_markdown(p.read_text(encoding="utf-8", errors="ignore"))
+    except Exception:
+        return ""
+    return ""
+
+
 @router.post("/workspace/agents/{agent_id}/generate-execution-examples", response_model=Dict[str, Any])
 async def generate_workspace_agent_execution_examples(
     agent_id: str,
@@ -1933,12 +2266,14 @@ async def generate_workspace_agent_execution_examples(
         or agent_id
     )
     desc = str((getattr(agent, "metadata", None) or {}).get("description") or "")
-    schema = None
-    if isinstance(fm, dict) and isinstance(fm.get("execution_input_schema"), dict):
-        schema = fm.get("execution_input_schema")
     meta = getattr(agent, "metadata", None) or {}
-    if schema is None and isinstance(meta, dict) and isinstance(meta.get("execution_input_schema"), dict):
-        schema = meta.get("execution_input_schema")
+    schema: Dict[str, Any] = {}
+    from core.management.execution_examples import resolve_skill_example_schema
+    schema = resolve_skill_example_schema(
+        live=(meta.get("execution_input_schema") if isinstance(meta, dict) else None)
+        or (meta.get("input_schema") if isinstance(meta, dict) else None),
+        frontmatter=fm if isinstance(fm, dict) else {},
+    )
 
     try:
         from core.apps.agents.service.agent_execution_examples_llm import (
@@ -1953,6 +2288,7 @@ async def generate_workspace_agent_execution_examples(
             tool_ids=tool_ids,
             input_schema=schema if isinstance(schema, dict) else {},
             refine_hint=refine_hint,
+            sop_excerpt=_agent_sop_excerpt(info),
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)[:200])
@@ -1965,12 +2301,15 @@ async def generate_workspace_agent_execution_examples(
         raise HTTPException(status_code=502, detail="LLM did not return usable examples")
 
     saved = False
-    if persist:
+    if persist and str(result.get("source") or "") == "llm":
         try:
             saved = bool(mgr.persist_execution_examples(str(agent_id), examples))  # type: ignore[attr-defined]
         except Exception as e:
             logging.warning("persist agent execution examples failed: %s", e, exc_info=True)
             saved = False
+    elif persist:
+        extra = str(result.get("warning") or "").strip()
+        result["warning"] = (extra + "；" if extra else "") + "启发式回退未写入 AGENT.md（避免覆盖已有用例）"
 
     return {
         "status": "ok",
@@ -2089,6 +2428,22 @@ async def update_workspace_agent(agent_id: str, request: AgentUpdateRequest, htt
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    # Align with create_workspace_agent: top-level permissions / trigger_conditions
+    # must land in metadata so AGENT.md persist writes them (UI sends them at top-level).
+    meta = dict(request.metadata or {})
+    if getattr(request, "permissions", None) is not None:
+        meta["permissions"] = list(request.permissions or [])
+    if getattr(request, "trigger_conditions", None) is not None:
+        meta["trigger_conditions"] = list(request.trigger_conditions or [])
+    # Bind-time gate: only validate fields explicitly provided on this update.
+    _raise_if_unknown_bindings(
+        skills=request.skills,
+        tools=request.tools,
+        mcp_ids=request.mcp_ids,
+        agent_ids=request.agent_ids,
+        workflow_ids=request.workflow_ids,
+        self_agent_id=str(agent_id),
+    )
     agent = await mgr.update_agent(
         agent_id,
         name=request.name,
@@ -2100,7 +2455,7 @@ async def update_workspace_agent(agent_id: str, request: AgentUpdateRequest, htt
         workflow_ids=request.workflow_ids,
         agent_ids=request.agent_ids,
         memory_config=request.memory_config,
-        metadata=request.metadata,
+        metadata=meta or None,
     )
     if not agent:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
@@ -2184,6 +2539,7 @@ async def bind_workspace_agent_skills(agent_id: str, request: dict, rt: RuntimeD
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
     skill_ids = (request or {}).get("skill_ids", [])
     if skill_ids:
+        _raise_if_unknown_bindings(skills=[str(x) for x in skill_ids])
         await mgr.bind_skills(agent_id, skill_ids)
     return {"status": "bound", "skill_ids": skill_ids}
 
@@ -2229,6 +2585,7 @@ async def bind_workspace_agent_tools(agent_id: str, request: dict, rt: RuntimeDe
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
     tool_ids = (request or {}).get("tool_ids", [])
     if tool_ids:
+        _raise_if_unknown_bindings(tools=[str(x) for x in tool_ids])
         await mgr.bind_tools(agent_id, tool_ids)
     return {"status": "bound", "tool_ids": tool_ids}
 
@@ -2267,6 +2624,8 @@ async def bind_workspace_agent_mcp(agent_id: str, request: dict, rt: RuntimeDep 
     if not agent:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
     mcp_ids = (request or {}).get("mcp_ids", [])
+    if mcp_ids:
+        _raise_if_unknown_bindings(mcp_ids=[str(x) for x in mcp_ids])
     await mgr.update_agent(agent_id, mcp_ids=mcp_ids)
     return {"status": "bound", "mcp_ids": mcp_ids}
 
@@ -2306,6 +2665,8 @@ async def bind_workspace_agent_workflows(agent_id: str, request: dict, rt: Runti
     if not agent:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
     workflow_ids = (request or {}).get("workflow_ids", [])
+    if workflow_ids:
+        _raise_if_unknown_bindings(workflow_ids=[str(x) for x in workflow_ids])
     await mgr.update_agent(agent_id, workflow_ids=workflow_ids)
     return {"status": "bound", "workflow_ids": workflow_ids}
 
@@ -2345,6 +2706,11 @@ async def bind_workspace_agent_sub_agents(agent_id: str, request: dict, rt: Runt
     if not agent:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
     agent_ids = (request or {}).get("agent_ids", [])
+    if agent_ids:
+        _raise_if_unknown_bindings(
+            agent_ids=[str(x) for x in agent_ids],
+            self_agent_id=str(agent_id),
+        )
     await mgr.update_agent(agent_id, agent_ids=agent_ids)
     return {"status": "bound", "agent_ids": agent_ids}
 
@@ -2406,23 +2772,161 @@ async def execute_workspace_agent(agent_id: str, request: dict, http_request: Re
         user_config.update(payload["config"])
     opts = payload.get("options") if isinstance(payload.get("options"), dict) else {}
 
+    # AGENT.md config.max_steps is the default; request config may override.
+    default_steps = 10
+    try:
+        acfg = getattr(agent, "config", None)
+        if isinstance(acfg, dict) and acfg.get("max_steps") is not None:
+            default_steps = max(1, int(acfg.get("max_steps")))
+    except Exception:
+        default_steps = 10
+
     # Delegate to CoreFacade
     from core.api.core_facade import run_workspace_agent
-    stream_mode = str(opts.get("stream", "")).lower() in ("1", "true", "yes")
+    from core.harness.utils.execute_session import mint_execute_session_id
+
+    # Accept stream from options or config (UI often uses options; smoke scripts
+    # may put it under config — both must flip stream mode).
+    _stream_raw = opts.get("stream", None)
+    if _stream_raw is None:
+        _stream_raw = user_config.get("stream", False)
+    stream_mode = str(_stream_raw).lower() in ("1", "true", "yes")
     resp = await run_workspace_agent(
         agent_info=agent,
         user_message=user_message,
-        max_steps=int(user_config.get("max_steps", 10)),
+        max_steps=int(user_config.get("max_steps", default_steps)),
         toolset=str(opts.get("toolset", "")),
-        session_id=str(payload.get("session_id", "") or f"ws-{agent_id}"),
+        session_id=mint_execute_session_id(
+            kind="agent",
+            target_id=str(agent_id),
+            session_id=payload.get("session_id") or None,
+        ),
         stream=stream_mode,
+        input_payload=inp if inp is not None else user_message,
     )
+
+    try:
+        st = str((resp or {}).get("status") or "").lower()
+        if st in ("completed", "ok", "success") and isinstance(resp, dict):
+            from core.management.execution_quality_review import (
+                review_execution_output,
+                quality_review_blocks_success,
+            )
+
+            skills = list(getattr(agent, "required_skills", None) or getattr(agent, "skills", None) or [])
+            skill_hint = " ".join(str(s) for s in skills[:8])
+            _qr = review_execution_output(
+                kind="agent",
+                asset_id=str(agent_id),
+                asset_name=str(getattr(agent, "display_name", None) or getattr(agent, "name", None) or agent_id),
+                input_payload=user_message or inp,
+                output=resp.get("output"),
+                status=st,
+                hints=f"{skill_hint} {getattr(agent, 'name', '')}",
+            )
+            resp["quality_review"] = _qr
+            if quality_review_blocks_success(_qr):
+                resp["status"] = "failed"
+                resp["ok"] = False
+                resp["error"] = str(
+                    (_qr.get("headline") if isinstance(_qr, dict) else None)
+                    or resp.get("error")
+                    or "coding deliverable failed quality review"
+                )
+                resp["quality_block_completed"] = True
+    except Exception as e:
+        logging.warning("agent execute quality_review skipped: %s", e, exc_info=True)
 
     try:
         await _audit_execute(rt, http_request=http_request, payload=payload, resource_type="agent", resource_id=str(agent_id), resp=resp)
     except Exception as e:
         logging.warning(str(e), exc_info=True)
     return JSONResponse(status_code=200 if resp.get("ok") else 500, content=resp)
+
+
+@router.post("/workspace/agents/{agent_id}/review-output", response_model=Dict[str, Any])
+async def review_workspace_agent_output(agent_id: str, request: dict, rt: RuntimeDep = None):
+    """Post-run product-quality review for Agent execute (stream path / re-check).
+
+    When body.input is empty, restores from execution store via execution_id.
+    """
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    body = request if isinstance(request, dict) else {}
+    from core.management.execution_quality_review import (
+        pick_embedded_quality_review,
+        resolve_review_io_from_store,
+        review_execution_output,
+    )
+
+    eid = body.get("execution_id") or body.get("run_id")
+    inp, out, st, embedded = await resolve_review_io_from_store(
+        execution_id=str(eid) if eid else None,
+        kind="agent",
+        body_input=body.get("input"),
+        body_output=body.get("output"),
+        body_status=body.get("status"),
+    )
+    chosen = pick_embedded_quality_review(
+        embedded=embedded,
+        body_output=body.get("output"),
+        resolved_output=out,
+        prefer_embedded=bool(body.get("prefer_embedded")),
+    )
+    if chosen is not None:
+        return chosen
+    skills = list(getattr(agent, "required_skills", None) or getattr(agent, "skills", None) or [])
+    skill_hint = " ".join(str(s) for s in skills[:8])
+    return review_execution_output(
+        kind="agent",
+        asset_id=str(agent_id),
+        asset_name=str(getattr(agent, "display_name", None) or getattr(agent, "name", None) or agent_id),
+        input_payload=inp,
+        output=out,
+        status=st,
+        hints=f"{skill_hint} {getattr(agent, 'name', '')}",
+        execution_id=str(eid or ""),
+    )
+
+
+@router.post("/workspace/agents/{agent_id}/apply-quality-fix", response_model=Dict[str, Any])
+async def apply_workspace_agent_quality_fix(
+    agent_id: str, request: dict, rt: RuntimeDep = None
+):
+    """Append quality SOP into AGENT.md and bound Skill SKILL.md mirrors."""
+    mgr = _ws_agent_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace agent manager not available")
+    agent = await mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    body = request if isinstance(request, dict) else {}
+    primary = None
+    try:
+        info = mgr._read_agent_md(agent_id) if hasattr(mgr, "_read_agent_md") else None
+        if isinstance(info, dict) and info.get("path"):
+            from pathlib import Path as _P
+
+            primary = _P(str(info["path"]))
+    except Exception as e:
+        logging.warning("read AGENT.md for apply-quality-fix: %s", e, exc_info=True)
+    bound = list(getattr(agent, "required_skills", None) or getattr(agent, "skills", None) or [])
+    from core.management.execution_quality_review import apply_quality_sop_for_agent_id
+
+    result = apply_quality_sop_for_agent_id(
+        str(agent_id),
+        primary_path=primary,
+        issue_codes=body.get("issue_codes") or [],
+        fix_ids=body.get("fix_ids") or [],
+        bound_skill_ids=bound,
+    )
+    if result.get("status") == "error":
+        raise HTTPException(status_code=400, detail=str(result.get("error") or "apply failed"))
+    return result
 
 
 @router.post("/workspace/agents/{agent_id}/sign", response_model=Dict[str, Any])
@@ -3328,11 +3832,17 @@ async def invoke_agent(agent_id: str, request: dict, http_request: Request, rt: 
         user_message = str(request.get("message") or request.get("prompt") or "")
 
     from core.api.core_facade import run_workspace_agent
+    from core.harness.utils.execute_session import mint_execute_session_id
+
     resp = await run_workspace_agent(
         agent_info=agent,
         user_message=user_message,
         max_steps=int(request.get("config", {}).get("max_steps", 10) if isinstance(request.get("config"), dict) else 10),
-        session_id=str(request.get("session_id", "") or f"invoke-{agent_id}"),
+        session_id=mint_execute_session_id(
+            kind="agent",
+            target_id=str(agent_id),
+            session_id=request.get("session_id") if isinstance(request, dict) else None,
+        ),
     )
     return {
         "run_id": resp.get("run_id", ""),
@@ -3345,19 +3855,293 @@ async def invoke_agent(agent_id: str, request: dict, http_request: Request, rt: 
 
 # ── Agent Configuration Audit ──────────────────────────────────────────────
 
+class AgentAuditRequest(BaseModel):
+    """Optional draft overrides so Edit UI can audit unsaved SOP / system_prompt."""
+
+    sop_body: Optional[str] = None
+    system_prompt: Optional[str] = None
+
+
 class AgentAuditResponse(BaseModel):
     agent_id: str
     issues: List[Dict[str, Any]]
     summary: Dict[str, Any]
 
 
+def _audit_agent_sop_content(
+    body: str,
+    *,
+    skills: list,
+    tools: list,
+    system_prompt: str = "",
+) -> list:
+    """Rule-based Agent SOP content checks (generic — not role-specific).
+
+    Aligns with Skill lint signals (goal / flow / acceptance) but applied to
+    AGENT.md body. Kept deterministic / no LLM (same as rest of audit_agent_config).
+    """
+    import re as _re
+
+    out: list = []
+    text = (body or "").strip()
+    lower = text.lower()
+
+    if _re.search(r"^\s*,\s*$", text, _re.MULTILINE):
+        out.append({
+            "severity": "info",
+            "category": "sop_cleanup",
+            "field": "sop_body",
+            "message": "SOP 正文包含残留空行或裸逗号",
+            "suggestion": "清理 SOP 中空的 'Available Plugins' 或残留标点",
+        })
+
+    n = len(text)
+    # Empty SOP: fall through so role/flow/goal/quality one-click appendices apply.
+    # Short body is informational once structure warnings exist.
+    if 0 < n < 80:
+        out.append({
+            "severity": "info",
+            "category": "sop_short",
+            "field": "sop_body",
+            "message": f"SOP 正文过短（{n} 字符）——难以约束决策与产物",
+            "suggestion": "一键修复可先补角色/流程/目标/质量骨架，再按真实职责改写至约 200 字",
+        })
+    elif n < 200:
+        out.append({
+            "severity": "info",
+            "category": "sop_short",
+            "field": "sop_body",
+            "message": f"SOP 正文偏短（{n} 字符）",
+            "suggestion": "补充工作步骤与输出/验收要求，便于执行与审核对齐",
+        })
+
+    has_role = any(
+        m in lower
+        for m in (
+            "## persona",
+            "## 角色",
+            "# 角色",
+            "角色：",
+            "你是",
+            "## role",
+        )
+    )
+    if not has_role:
+        from core.management.asset_audit import fix_append_sop_role
+
+        out.append({
+            "severity": "warning",
+            "category": "sop_missing_role",
+            "field": "sop_body",
+            "message": "SOP 缺少角色/Persona 说明",
+            "suggestion": (
+                "增加「# 角色」或「## Persona」段落，写清职责与边界。"
+                "一键修复可追加角色骨架，请再按真实职责改写。"
+            ),
+            "fix_available": True,
+            "fix": fix_append_sop_role(),
+        })
+
+    has_flow = any(
+        m in lower
+        for m in (
+            "## workflow",
+            "## 工作流",
+            "## 工作流程",
+            "工作流程",
+            "步骤",
+            "## sop",
+            "1.",
+            "1、",
+        )
+    ) or bool(_re.search(r"(?m)^\s*\d+[\.\、\)]\s+\S", text))
+    if not has_flow:
+        from core.management.asset_audit import fix_append_sop_flow
+
+        out.append({
+            "severity": "warning",
+            "category": "sop_missing_flow",
+            "field": "sop_body",
+            "message": "SOP 缺少可执行的工作流程/步骤",
+            "suggestion": (
+                "增加编号步骤（输入→分析→调用 Skill/Tool→产出→验收）。"
+                "一键修复可追加流程骨架，请再按真实步骤改写。"
+            ),
+            "fix_available": True,
+            "fix": fix_append_sop_flow(),
+        })
+
+    has_goal = any(
+        m in text
+        for m in (
+            "## 目标",
+            "# 目标",
+            "目标：",
+            "## 目的",
+            "## Goal",
+            "## Objective",
+            "输出格式",
+            "输出要求",
+            "产出",
+            "output",
+        )
+    )
+    if not has_goal:
+        from core.management.asset_audit import fix_append_sop_goal
+
+        out.append({
+            "severity": "warning",
+            "category": "sop_missing_goal",
+            "field": "sop_body",
+            "message": "SOP 缺少目标/产出说明",
+            "suggestion": (
+                "写明要交付什么（例如结构化 JSON 字段、文档章节、验收结果）。"
+                "一键修复可追加目标/输出骨架，请再按真实产物改写。"
+            ),
+            "fix_available": True,
+            "fix": fix_append_sop_goal(),
+        })
+
+    has_quality = any(
+        m in text
+        for m in (
+            "验收",
+            "验证",
+            "Checklist",
+            "质量要求",
+            "输出铁律",
+            "禁止",
+            "强制",
+            "completion_criterion",
+            "- [ ]",
+            "不得",
+            "必须",
+            "不要",
+            "## 规则",
+            "## 约束",
+            "## 反模式",
+        )
+    )
+    if not has_quality:
+        from core.management.asset_audit import fix_append_sop_quality
+
+        out.append({
+            "severity": "warning",
+            "category": "sop_missing_quality",
+            "field": "sop_body",
+            "message": "SOP 缺少验收/质量约束（铁律、禁止项或 Checklist）",
+            "suggestion": (
+                "补充可验证要求（必须/禁止/验收标准），避免「跑通即合格」。"
+                "一键修复可追加标准骨架，请再按本 Agent 真实产物改写。"
+            ),
+            "fix_available": True,
+            "fix": fix_append_sop_quality(),
+        })
+
+    bound_skills = [str(s).strip() for s in (skills or []) if str(s).strip()]
+    bound_tools = [str(t).strip() for t in (tools or []) if str(t).strip()]
+    if bound_skills:
+        mentioned = 0
+        for sid in bound_skills:
+            if sid in text or f"`{sid}`" in text or sid.replace("_", "-") in text:
+                mentioned += 1
+        if mentioned == 0 and len(bound_skills) >= 1:
+            from core.management.asset_audit import (
+                SOP_SKILL_REFS_HEADING,
+                upsert_sop_skill_refs_appendix,
+            )
+
+            appendix = upsert_sop_skill_refs_appendix("", bound_skills)
+            out.append({
+                "severity": "warning",
+                "category": "sop_skills_unreferenced",
+                "field": "sop_body",
+                "message": (
+                    f"已绑定 {len(bound_skills)} 个 Skill，但 SOP 正文未引用任一 id"
+                    f"（如 {', '.join(bound_skills[:3])}）"
+                ),
+                "suggestion": (
+                    "更佳：在步骤中用反引号写出要调用的 Skill id。"
+                    "一键修复可安全追加「已绑定 Skill」附录（只列 id，不改步骤语义）。"
+                ),
+                "fix_available": True,
+                "fix": {
+                    "type": "append_sop_skill_refs",
+                    "skills": bound_skills,
+                    "section_heading": SOP_SKILL_REFS_HEADING,
+                    "appendix": appendix,
+                },
+            })
+
+    if bound_tools:
+        mentioned_t = 0
+        for tid in bound_tools:
+            if tid in text or f"`{tid}`" in text:
+                mentioned_t += 1
+        if mentioned_t == 0 and len(bound_tools) >= 2:
+            out.append({
+                "severity": "info",
+                "category": "sop_tools_unreferenced",
+                "field": "sop_body",
+                "message": (
+                    f"已绑定 {len(bound_tools)} 个 Tool，SOP 未点名引用"
+                    f"（{', '.join(bound_tools[:4])}）"
+                ),
+                "suggestion": "若步骤依赖某工具，建议在 SOP 中显式写出工具 id",
+            })
+
+    sp = (system_prompt or "").strip()
+    if sp and len(sp) > 400 and len(text) < len(sp):
+        out.append({
+            "severity": "info",
+            "category": "sop_prompt_imbalance",
+            "field": "sop_body",
+            "message": "System Prompt 长于 SOP 正文——细节宜放 SOP，prompt 保持短边界",
+            "suggestion": "把长流程/输出格式挪到 SOP Markdown，System Prompt 只留角色与硬边界",
+        })
+
+    # Pass-visible summary (same pattern as tool_binding_ok)
+    has_sop_warning = any(
+        i.get("severity") == "warning" and str(i.get("category") or "").startswith("sop_")
+        for i in out
+    )
+    if not has_sop_warning:
+        checks = ["角色", "流程", "产出/目标", "验收/质量"]
+        out.append({
+            "severity": "info",
+            "category": "sop_content_ok",
+            "field": "sop_body",
+            "message": (
+                f"已检查 SOP 内容（{len(text)} 字）："
+                + "、".join(checks)
+                + "结构齐全"
+            ),
+            "suggestion": (
+                "SOP 内容门禁通过（规则驱动，非 LLM 评分）。"
+                "产物质量仍由执行后 review_execution_output 复核。"
+            ),
+            "fix_available": False,
+        })
+
+    return out
+
+
 @router.post("/workspace/agents/{agent_id}/audit", response_model=AgentAuditResponse)
-async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
+async def audit_agent_config(
+    agent_id: str,
+    req: Annotated[Optional[AgentAuditRequest], Body()] = None,
+) -> AgentAuditResponse:
     u"""AI 审核：检查 Agent 配置的问题点及建议。规则驱动，毫秒返回，无需 LLM。
 
-    检查项包括：工具有效性/技能有效性/字段格式/Coze残留/必填字段/
-    system_prompt/status规范/SOP干净度。
+    检查项包括：工具/技能上架门禁、字段格式、Coze 残留、必填字段、
+    system_prompt/status、**SOP 结构**（角色/流程/目标/验收/绑定引用对齐）、
+    **AGENT.md 正文质量**（``prompt_auditor``：模糊形容词、流水线交接/frontmatter、正文长度）、
+    以及模型（infra unified_pipeline 策略）、Toolset、loop_type、permissions/triggers、流水线字段。
+
+    请求体可选 ``sop_body`` / ``system_prompt``：编辑页传入未保存草稿，避免只审磁盘旧正文。
     """
+    if req is None:
+        req = AgentAuditRequest()
     issues = []
     # Load AGENT.md
     from pathlib import Path as _P
@@ -3377,6 +4161,34 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
         raise HTTPException(status_code=400, detail="AGENT.md frontmatter YAML 非法")
 
     body = parts[2] if len(parts) > 2 else ""
+    # Edit-screen draft: prefer form SOP / system_prompt over disk when provided
+    _draft_sop = False
+    disk_body = str(body)
+    if req.sop_body is not None:
+        body = str(req.sop_body)
+        # Same text as disk (e.g. 一键修复刚写入) is not an unsaved draft.
+        if body.strip() != disk_body.strip():
+            _draft_sop = True
+    if not isinstance(fm, dict):
+        fm = {}
+    config = fm.get("config") if isinstance(fm.get("config"), dict) else {}
+    if not isinstance(config, dict):
+        config = {}
+    else:
+        config = dict(config)
+    if req.system_prompt is not None:
+        config["system_prompt"] = str(req.system_prompt)
+        fm = dict(fm)
+        fm["config"] = config
+    if _draft_sop:
+        issues.append({
+            "severity": "info",
+            "category": "audit_draft_sop",
+            "field": "sop_body",
+            "message": "本次审核使用了编辑框中的 SOP 草稿（尚未点保存也会审）",
+            "suggestion": "通过后请点「保存」写入 AGENT.md，否则下次打开仍是磁盘旧正文",
+            "fix_available": False,
+        })
 
     # ── Tool catalog ──
     valid_tools: set = set()
@@ -3388,8 +4200,15 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
-    # ── Skill catalog ──
+    # ── Skill catalog (+ lifecycle for Agent 上架门禁) ──
+    # Engine skills are first-class (runtime-resolvable). Workspace skills need
+    # published|listed. Binding an engine-only skill is OK — do NOT require a
+    # workspace copy. Lifecycle gate applies only to workspace catalog entries.
+    _OK_SKILL_LIFECYCLE = frozenset({"published", "listed"})
     valid_skills: set = set()
+    skill_statuses: Dict[str, str] = {}
+    workspace_skill_ids: set = set()
+    engine_skill_ids: set = set()
     skill_dir = _P(os.path.expanduser("~/.aiplat")) / "skills"
     if skill_dir.exists():
         for d in skill_dir.iterdir():
@@ -3399,11 +4218,23 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
                     sp = sk_raw.split("---", 2)
                     if len(sp) >= 2:
                         sk_fm = _yaml.safe_load(sp[1]) or {}
-                        name = sk_fm.get("name", d.name)
+                        name = str(sk_fm.get("name") or d.name).strip()
+                        if not name:
+                            continue
+                        st = str(sk_fm.get("status") or "draft").strip().lower() or "draft"
                         valid_skills.add(name)
+                        workspace_skill_ids.add(name)
+                        workspace_skill_ids.add(d.name)
+                        skill_statuses[name] = st
+                        skill_statuses[d.name] = st
+                        dn = str(sk_fm.get("display_name") or "").strip()
+                        if dn:
+                            valid_skills.add(dn)
+                            skill_statuses[dn] = st
+                            workspace_skill_ids.add(dn)
                 except Exception as e:
                     logging.warning(str(e), exc_info=True)
-    # Also engine skills
+    # Engine skills (runtime-resolvable; optional workspace mirror not required)
     engine_skill_dir = _P(__file__).resolve().parents[3] / "core" / "engine" / "skills"
     if engine_skill_dir.exists():
         for d in engine_skill_dir.iterdir():
@@ -3413,8 +4244,22 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
                     sp = sk_raw.split("---", 2)
                     if len(sp) >= 2:
                         sk_fm = _yaml.safe_load(sp[1]) or {}
-                        name = sk_fm.get("name", d.name)
+                        name = str(sk_fm.get("name") or d.name).strip()
+                        if not name:
+                            continue
                         valid_skills.add(name)
+                        engine_skill_ids.add(name)
+                        engine_skill_ids.add(d.name)
+                        dn = str(sk_fm.get("display_name") or "").strip()
+                        if dn:
+                            valid_skills.add(dn)
+                            engine_skill_ids.add(dn)
+                        # Engine-only: treat as always available (no workspace lifecycle)
+                        if name not in workspace_skill_ids:
+                            skill_statuses.setdefault(name, "listed")
+                            skill_statuses.setdefault(d.name, "listed")
+                            if dn:
+                                skill_statuses.setdefault(dn, "listed")
                 except Exception as e:
                     logging.warning(str(e), exc_info=True)
 
@@ -3430,6 +4275,7 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
         "sys_file_write": "file_operations",
     }
     tools = fm.get("required_tools") or fm.get("tools") or []
+    tools_ok: list = []
     for t in tools:
         t_str = str(t).strip()
         if not t_str:
@@ -3441,22 +4287,20 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
             except Exception:
                 tool_st = "draft"
             if tool_st not in _OK_TOOL_LIFECYCLE:
-                issues.append({
-                    "severity": "error",
-                    "category": "tool_not_listed",
-                    "field": "tools",
-                    "current": t_str,
-                    "message": (
+                issues.append(_not_listed_unbind_issue(
+                    category="tool_not_listed",
+                    field="tools",
+                    name=t_str,
+                    kind="tool",
+                    message=(
                         f"工具 '{t_str}' 已在引擎注册表中，但未上架"
                         f"（status={tool_st}）——资产库/Agent 上架会视为不可用"
                     ),
-                    "suggestion": (
-                        f"先在工具库将 '{t_str}' 提交审核并上架到 published/listed，"
-                        "或从 required_tools 解绑"
-                    ),
-                    "fix_available": True,
-                    "fix": {"type": "remove_tool", "tool": t_str},
-                })
+                    list_where="请到工具库提交审核并完成「已发布/已上架」。",
+                ))
+            else:
+                tools_ok.append(t_str)
+            # Known tool (listed or not) — never fall through to "不存在"
             continue
         is_syscall = t_str.startswith("sys_")
         alias = _TOOL_ALIASES.get(t_str)
@@ -3478,21 +4322,31 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
                 "field": "tools",
                 "current": t_str,
                 "message": f"'{t_str}' 是 syscall，不是 tool",
-                "suggestion": "从 tools / required_tools 列表中移除",
+                "suggestion": "从 tools / required_tools 列表中移除（syscall 不能当 Tool 绑定）",
                 "fix_available": True,
                 "fix": {"type": "remove_tool", "tool": t_str},
             })
         else:
-            issues.append({
-                "severity": "error",
-                "category": "invalid_tool",
-                "field": "tools",
-                "current": t_str,
-                "message": f"工具 '{t_str}' 在系统中不存在",
-                "suggestion": "检查拼写，或移除后改绑已注册且已上架的工具",
-                "fix_available": True,
-                "fix": {"type": "remove_tool", "tool": t_str},
-            })
+            issues.append(_missing_binding_create_issue(
+                kind="tool",
+                name=t_str,
+                agent_display=str(fm.get("display_name") or fm.get("name") or agent_id),
+                description=str(fm.get("description") or ""),
+                sop_text=body,
+            ))
+    if tools_ok:
+        issues.append({
+            "severity": "info",
+            "category": "tool_binding_ok",
+            "field": "tools",
+            "current": ", ".join(tools_ok),
+            "message": (
+                f"已检查 {len(tools_ok)} 个绑定工具（已注册且上架）："
+                + "、".join(tools_ok)
+            ),
+            "suggestion": "工具绑定通过；仍会结合默认 Toolset 校验是否允许调用",
+            "fix_available": False,
+        })
     # ── Old format tools field ──
     if fm.get("tools") and not fm.get("required_tools"):
         keep = []
@@ -3520,12 +4374,22 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
     tags = fm.get("tags") or []
     if "coze" in tags or "imported" in tags:
         has_coze_issues = any(
-            i["category"] in ("invalid_tool", "tool_not_listed", "invalid_skill", "old_format")
+            i["category"] in (
+                "invalid_tool",
+                "tool_not_listed",
+                "invalid_skill",
+                "skill_not_listed",
+                "old_format",
+            )
             for i in issues
         )
         if has_coze_issues:
-            bad_tools = [i["current"] for i in issues if i["category"] == "invalid_tool"]
-            bad_skills = [i["current"] for i in issues if i["category"] == "invalid_skill"]
+            bad_tools = [i["current"] for i in issues if i["category"] in ("invalid_tool", "tool_not_listed")]
+            bad_skills = [
+                i["current"]
+                for i in issues
+                if i["category"] in ("invalid_skill", "skill_not_listed")
+            ]
             detail = []
             if bad_tools: detail.append(f"工具: {', '.join(bad_tools)}")
             if bad_skills: detail.append(f"技能: {', '.join(bad_skills)}")
@@ -3540,25 +4404,84 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
                 "message": "从 Coze 导入 — 所有配置项已修正 ✓",
             })
 
-    # ── Skills validity ──
+    # ── Skills validity (+ workspace lifecycle; engine skills are first-class) ──
     skills = fm.get("required_skills") or fm.get("skills") or []
+    engine_bound: list = []
     for s in skills:
         s_str = str(s).strip()
-        if s_str not in valid_skills and s_str not in ("", "[]", "null"):
-            issues.append({
-                "severity": "warning", "category": "invalid_skill", "field": "skills",
-                "current": s_str, "message": f"技能 '{s_str}' 在系统中未找到",
-                "suggestion": "检查名称或从绑定列表中移除",
-            })
+        if not s_str or s_str in ("[]", "null"):
+            continue
+        if s_str not in valid_skills:
+            issues.append(_missing_binding_create_issue(
+                kind="skill",
+                name=s_str,
+                agent_display=str(fm.get("display_name") or fm.get("name") or agent_id),
+                description=str(fm.get("description") or ""),
+                sop_text=body,
+            ))
+            continue
+        in_workspace = s_str in workspace_skill_ids
+        in_engine = s_str in engine_skill_ids
+        # Engine-only: runtime OK — collect for one summary info (not N× tips)
+        if in_engine and not in_workspace:
+            engine_bound.append(s_str)
+            continue
+        skill_st = str(skill_statuses.get(s_str) or "unknown").strip().lower() or "unknown"
+        if skill_st not in _OK_SKILL_LIFECYCLE:
+            issues.append(_not_listed_unbind_issue(
+                category="skill_not_listed",
+                field="skills",
+                name=s_str,
+                kind="skill",
+                message=(
+                    f"技能 '{s_str}' 在工作区库中，但未上架（status={skill_st}）"
+                    "——Agent 上架会视为不可用"
+                ),
+                list_where="请到 Skill 库提交审核并完成「已发布/已上架」。",
+            ))
+            continue
+    if engine_bound:
+        issues.append({
+            "severity": "info",
+            "category": "engine_skill_binding",
+            "field": "skills",
+            "current": ", ".join(engine_bound),
+            "message": (
+                f"已绑定 {len(engine_bound)} 个引擎内置 Skill（可直接执行）："
+                + "、".join(engine_bound)
+            ),
+            "suggestion": (
+                "引擎 Skill 为平台核心能力，无需同步到工作区库。"
+                "若需单独改 SOP/上架态，可再安装工作区副本（同名禁止覆盖引擎）。"
+            ),
+            "fix_available": False,
+        })
 
     # ── Required fields ──
-    for field in ["name", "agent_type"]:
-        if not fm.get(field):
-            issues.append({
-                "severity": "error", "category": "missing_required", "field": field,
-                "message": f"缺少必填字段 '{field}'",
-                "suggestion": f"添加 {field}: '{agent_id}' → name, 'react' → agent_type",
-            })
+    if not fm.get("name"):
+        issues.append({
+            "severity": "error",
+            "category": "missing_required",
+            "field": "name",
+            "message": "缺少必填字段 'name'",
+            "suggestion": f"写入目录 id「{agent_id}」（保存 AGENT.md 时也会自动补）",
+            "fix_available": True,
+            "fix": {"type": "set_name", "name": agent_id},
+        })
+    if not fm.get("agent_type"):
+        loop_hint = str(fm.get("loop_type") or "").strip().lower()
+        type_val = loop_hint if loop_hint in (
+            "react", "plan", "plan_execute", "function_call", "conversational", "base", "tool",
+        ) else "react"
+        issues.append({
+            "severity": "error",
+            "category": "missing_required",
+            "field": "agent_type",
+            "message": "缺少必填字段 'agent_type'",
+            "suggestion": f"写入 agent_type: {type_val}（与 loop_type / 默认 react 对齐，不编造业务角色）",
+            "fix_available": True,
+            "fix": {"type": "set_agent_type", "agent_type": type_val},
+        })
 
     # ── system_prompt ──
     config = fm.get("config") or {}
@@ -3603,40 +4526,43 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
             "fix": {"type": "set_status", "status": mapped} if mapped else None,
         })
 
-    # ── SOP cleanliness ──
-    body_lower = body.lower()
-    if _audit_re.search(r'^\s*,\s*$', body, _audit_re.MULTILINE):
-        issues.append({
-            "severity": "info", "category": "sop_cleanup", "field": "sop_body",
-            "message": "SOP 正文包含残留空行或裸逗号",
-            "suggestion": "清理 SOP 中空的 'Available Plugins' 或残留标点",
-        })
-    if (
-        '## persona' not in body_lower
-        and '## 角色' not in body_lower
-        and '# 角色' not in body_lower
-        and body.strip()
-    ):
-        issues.append({
-            "severity": "info", "category": "sop_structure", "field": "sop_body",
-            "message": "SOP 建议包含 ## Persona 和 ## Workflow 章节",
-            "suggestion": "使用 AI 生成角色定义来创建结构化 SOP",
-        })
-    if body.strip() and len(body.strip()) < 50:
-        issues.append({
-            "severity": "info", "category": "sop_short", "field": "sop_body",
-            "message": f"SOP 正文过短 ({len(body.strip())} 字符)",
-            "suggestion": "建议至少 200 字符的 SOP，包含角色定义和工作流",
-        })
-
     # ── Semantic rules: role-tool mismatch (capability-driven) ──
     agent_name_lower = (fm.get("name") or agent_id).lower()
     agent_type = str(fm.get("agent_type") or "").lower()
     tools_list = fm.get("required_tools") or fm.get("tools") or []
     skills_list = fm.get("required_skills") or fm.get("skills") or []
 
+    # ── SOP content (generic structure + binding alignment; no LLM) ──
+    _sp_for_sop = ""
+    if isinstance(config, dict):
+        _sp_for_sop = str(config.get("system_prompt") or "")
+    issues.extend(
+        _audit_agent_sop_content(
+            body,
+            skills=list(skills_list or []),
+            tools=list(tools_list or []),
+            system_prompt=_sp_for_sop,
+        )
+    )
+
+    # Deep AGENT.md quality (CLAUDE.md §5.27) — was implemented but unwired.
+    try:
+        from core.harness.audit import audit_agent_md, prompt_audit_to_issues
+
+        _prompt_rec = audit_agent_md(agent_id, body, frontmatter=fm if isinstance(fm, dict) else {})
+        issues.extend(
+            prompt_audit_to_issues(
+                _prompt_rec,
+                frontmatter=fm if isinstance(fm, dict) else {},
+            )
+        )
+    except Exception:
+        logging.getLogger(__name__).debug(
+            "prompt_auditor skipped for %s", agent_id, exc_info=True
+        )
+
     # Infer capabilities from SOP Knowledge Base + system_prompt context
-    _caps_text = (body + " " + str(config.get("system_prompt", ""))).lower() if isinstance(config, dict) else body.lower()
+    _caps_text = (body + " " + _sp_for_sop).lower()
     # Check if SOP has actual knowledge base references (Product Manual, Pricing Guide, etc.)
     _sop_has_kb_content = bool(_audit_re.search(
         r'(?:Product Manual|Pricing Guide|FAQ|知识库|产品手册|定价指南|售后政策|Datasets?:?\s*\S)',
@@ -3695,15 +4621,748 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
             "fix": {"type": "set_kb_collection", "collection": "default"},
         })
 
-    # ── Summary ──
-    severity_count = {"error": 0, "warning": 0, "info": 0}
-    for i in issues:
-        severity_count[i["severity"]] = severity_count.get(i["severity"], 0) + 1
+    # ── Model strategy (infra unified_pipeline / best_model_for_purpose) ──
+    # Not just "is the model registered": evaluate against purpose requirements.
+    # Prefer skill_model_purpose; else loop_type (ReAct⇒agent); else agent_type.
+    # (conversational + loop_type=react must NOT silently audit as weak "chat".)
+    _AGENT_TYPE_PURPOSE = {
+        "rag": "chat",
+        "react": "agent",
+        "conversational": "chat",
+        "wiki_curator": "chat",
+        "materials_chat": "chat",
+        "plan_execute": "agent",
+        "function_call": "agent",
+    }
+    _LOOP_PURPOSE = {
+        "react": "agent",
+        "plan": "agent",
+        "plan_execute": "agent",
+        "function_call": "agent",
+    }
+    purpose_explicit = str(fm.get("skill_model_purpose") or "").strip()
+    agent_type = str(fm.get("agent_type") or "").strip().lower()
+    loop_type_early = str(fm.get("loop_type") or "").strip().lower()
+    if purpose_explicit:
+        model_purpose = purpose_explicit
+    elif loop_type_early in _LOOP_PURPOSE:
+        model_purpose = _LOOP_PURPOSE[loop_type_early]
+    else:
+        model_purpose = _AGENT_TYPE_PURPOSE.get(agent_type, "chat")
+    configured_model = ""
+    if isinstance(config, dict):
+        configured_model = str(config.get("model") or "").strip()
 
-    errors = severity_count["error"]
-    warnings = severity_count["warning"]
-    total_issues = len(issues)
-    health = "A" if total_issues == 0 else "B" if errors == 0 else "C" if errors <= 2 else "D"
+    _should_declare_purpose = (
+        agent_type in ("react", "plan_execute", "function_call")
+        or loop_type_early in ("react", "plan", "plan_execute", "function_call")
+    )
+    if not purpose_explicit and _should_declare_purpose:
+        issues.append({
+            "severity": "info",
+            "category": "missing_skill_model_purpose",
+            "field": "skill_model_purpose",
+            "message": (
+                f"未声明 skill_model_purpose，将按 "
+                f"loop_type={loop_type_early or '—'} / agent_type={agent_type or '—'} "
+                f"推断 purpose={model_purpose}"
+            ),
+            "suggestion": (
+                f"建议显式设置 skill_model_purpose: {model_purpose} "
+                "（与产品经理等 Agent 对齐），以便审核/流水线走同一套 infra 选型"
+            ),
+            "fix_available": True,
+            "fix": {"type": "set_skill_model_purpose", "purpose": model_purpose},
+        })
+
+    try:
+        from core.harness.utils.model_injection import (
+            best_model_for_purpose_with_meta,
+            _load_llm_profile,
+            _get_cached_model_manager,
+        )
+        profile_data = _load_llm_profile() or {}
+        known_purposes = set((profile_data.get("purpose_profiles") or {}).keys())
+        if purpose_explicit and known_purposes and purpose_explicit not in known_purposes:
+            issues.append({
+                "severity": "warning",
+                "category": "invalid_skill_model_purpose",
+                "field": "skill_model_purpose",
+                "current": purpose_explicit,
+                "message": f"skill_model_purpose '{purpose_explicit}' 不在 llm_profile.purpose_profiles 中",
+                "suggestion": (
+                    f"改为已知 purpose 之一（如 {', '.join(sorted(known_purposes)[:8])}），"
+                    "或补齐工作区 llm_profile 覆盖"
+                ),
+                "fix_available": True,
+                "fix": {
+                    "type": "set_skill_model_purpose",
+                    "purpose": _AGENT_TYPE_PURPOSE.get(agent_type, "chat"),
+                },
+            })
+            model_purpose = _AGENT_TYPE_PURPOSE.get(agent_type, "chat")
+
+        recommended_meta = best_model_for_purpose_with_meta(model_purpose)
+        recommended_model = str(recommended_meta.get("model") or "").strip()
+        recommended_tier = str(recommended_meta.get("model_tier") or "unknown")
+
+        if not configured_model or configured_model.lower() == "auto":
+            issues.append({
+                "severity": "info",
+                "category": "model_auto",
+                "field": "config.model",
+                "message": (
+                    f"模型未固定（auto）——运行时将按 purpose={model_purpose} "
+                    f"走 infra 自动选择；当前推荐 {recommended_model or '（无）'}"
+                    f"（tier={recommended_tier}）"
+                ),
+                "suggestion": (
+                    "可保持 auto 以跟随策略；若需固定，一键写入当前推荐模型"
+                ),
+                "fix_available": bool(recommended_model),
+                "fix": (
+                    {"type": "set_model", "model": recommended_model}
+                    if recommended_model else None
+                ),
+            })
+        else:
+            mgr = _get_cached_model_manager()
+            mi = mgr.select(model_name=configured_model) if mgr else None
+            if not mi:
+                issues.append({
+                    "severity": "error",
+                    "category": "model_unavailable",
+                    "field": "config.model",
+                    "current": configured_model,
+                    "message": (
+                        f"模型 '{configured_model}' 不在 infra ModelManager 注册表中"
+                        f"（purpose={model_purpose} 推荐 {recommended_model or 'auto'}）"
+                    ),
+                    "suggestion": (
+                        f"改为 infra 策略推荐的 '{recommended_model}'，或设为 auto"
+                        if recommended_model else "检查模型是否已启用/健康，或改为 auto"
+                    ),
+                    "fix_available": True,
+                    "fix": {
+                        "type": "set_model",
+                        "model": recommended_model or "auto",
+                    },
+                })
+            else:
+                purpose_profile = (profile_data.get("purpose_profiles") or {}).get(
+                    model_purpose, {}
+                )
+                fits_cap = True
+                try:
+                    from infra.management.model.manager import _filter_capability
+                    fits_cap = bool(
+                        _filter_capability(mi, model_purpose, purpose_profile, profile_data)
+                    )
+                except Exception:
+                    fits_cap = True  # noqa: audit best-effort
+
+                # Local Ollama RAM budget (same hard filter as unified_pipeline).
+                # Capability-only audit previously let gemma4:12b pass as "usable"
+                # on 16GB Macs while runtime selection already rejects it.
+                fits_ram = True
+                ram_reason = ""
+                try:
+                    from infra.management.model.manager import (
+                        _hard_filter,
+                        collect_platform_resources,
+                    )
+                    _res = collect_platform_resources()
+                    fits_ram, ram_reason = _hard_filter(mi, _res, profile_data)
+                except Exception:
+                    fits_ram = True  # noqa: audit best-effort
+
+                configured_tier = "unknown"
+                try:
+                    configured_tier = str(mgr.get_model_tier(configured_model, profile_data))
+                except Exception:
+                    configured_tier = "unknown"
+
+                if not fits_ram:
+                    issues.append({
+                        "severity": "warning",
+                        "category": "model_local_ram_exceeded",
+                        "field": "config.model",
+                        "current": configured_model,
+                        "message": (
+                            f"模型 '{configured_model}' 超过本机本地模型 RAM 预算，"
+                            f"容易楔死 Ollama：{ram_reason or 'exceeds local_max_ram_ratio'}"
+                        ),
+                        "suggestion": (
+                            f"改为 auto（当前策略推荐 '{recommended_model}'），"
+                            "或换更小的本地模型 / 使用远程 API"
+                            if recommended_model
+                            else "改为 auto，或换更小的本地模型 / 使用远程 API"
+                        ),
+                        "fix_available": True,
+                        "fix": {
+                            "type": "set_model",
+                            "model": recommended_model or "auto",
+                        },
+                    })
+                elif not fits_cap:
+                    issues.append({
+                        "severity": "warning",
+                        "category": "model_unsuitable",
+                        "field": "config.model",
+                        "current": configured_model,
+                        "message": (
+                            f"模型 '{configured_model}'（tier={configured_tier}）"
+                            f"不满足 purpose={model_purpose} 的能力要求"
+                            f"（infra unified_pipeline 会优先选 {recommended_model or '其他合格模型'}）"
+                        ),
+                        "suggestion": (
+                            f"按策略改为 '{recommended_model}'，或将 config.model 设为 auto"
+                            if recommended_model else "改为 auto，交由 infra 自动选择"
+                        ),
+                        "fix_available": True,
+                        "fix": {
+                            "type": "set_model",
+                            "model": recommended_model or "auto",
+                        },
+                    })
+                elif (
+                    recommended_model
+                    and configured_model != recommended_model
+                ):
+                    # 同 tier 也可能次优（例：gemma4:12b 与 qwen2.5-coder:7b 同为 T4，
+                    # 但 unified_pipeline 因时延/楔死风险仍推荐后者）。不得再要求 tier 不同。
+                    tier_note = (
+                        f"；当前 tier={configured_tier}，推荐 tier={recommended_tier}"
+                        if recommended_tier not in ("unknown", "")
+                        and configured_tier != recommended_tier
+                        else f"（tier={configured_tier}）"
+                    )
+                    issues.append({
+                        "severity": "warning",
+                        "category": "model_suboptimal",
+                        "field": "config.model",
+                        "current": configured_model,
+                        "message": (
+                            f"当前模型 '{configured_model}'{tier_note}可用，"
+                            f"但 purpose={model_purpose} 的 infra 自动选型更推荐 "
+                            f"'{recommended_model}'"
+                            + (
+                                f"（tier={recommended_tier}）"
+                                if recommended_tier not in ("unknown", "")
+                                else ""
+                            )
+                        ),
+                        "suggestion": (
+                            "一键切换到策略推荐模型，或改回 auto；"
+                            "大本地模型在长 prompt 下可能楔死 Ollama"
+                        ),
+                        "fix_available": True,
+                        "fix": {"type": "set_model", "model": recommended_model},
+                    })
+                else:
+                    issues.append({
+                        "severity": "info",
+                        "category": "model_binding_ok",
+                        "field": "config.model",
+                        "current": configured_model,
+                        "message": (
+                            f"已固定模型 '{configured_model}'（tier={configured_tier}），"
+                            f"与 purpose={model_purpose} 策略一致"
+                            + (
+                                f"（推荐 {recommended_model}）"
+                                if recommended_model else ""
+                            )
+                        ),
+                        "suggestion": "可保持固定；若希望跟随 infra 策略变化，改为 auto",
+                    })
+    except Exception as e:
+        logging.warning("model strategy audit skipped: %s", e, exc_info=True)
+        if configured_model and configured_model.lower() != "auto":
+            issues.append({
+                "severity": "info",
+                "category": "model_audit_skipped",
+                "field": "config.model",
+                "current": configured_model,
+                "message": f"无法完成 infra 模型策略审核：{e}",
+                "suggestion": "确认 infra ModelManager / llm_profile 可用后重试审核",
+            })
+
+    # ── Toolset ──
+    toolset_name = str(fm.get("toolset") or "").strip() or "workspace_default"
+    try:
+        from core.harness.tools.toolsets import DEFAULT_TOOLSETS, resolve_toolset, is_tool_allowed
+        if toolset_name not in DEFAULT_TOOLSETS:
+            issues.append({
+                "severity": "warning",
+                "category": "invalid_toolset",
+                "field": "toolset",
+                "current": toolset_name,
+                "message": f"Toolset '{toolset_name}' 未定义，运行时会回退到 workspace_default",
+                "suggestion": (
+                    f"改为已知值：{', '.join(sorted(DEFAULT_TOOLSETS.keys()))}"
+                ),
+                "fix_available": True,
+                "fix": {"type": "set_toolset", "toolset": "workspace_default"},
+            })
+            toolset_policy = resolve_toolset("workspace_default")
+        else:
+            toolset_policy = resolve_toolset(toolset_name)
+
+        # Only gate tools that toolsets actually govern (packs cover file/web/browser/…).
+        # Engine tools like routed_retrieve sit outside packs — skip to avoid false positives.
+        _toolset_governed = set()
+        for _pol in DEFAULT_TOOLSETS.values():
+            _toolset_governed |= set(_pol.allowed_tools or set())
+        for t in tools_list:
+            t_str = str(t).strip()
+            if not t_str:
+                continue
+            if t_str not in valid_tools and not t_str.startswith("mcp."):
+                continue
+            if not t_str.startswith("mcp.") and t_str not in _toolset_governed:
+                continue
+            allowed, reason = is_tool_allowed(toolset_policy, t_str, None)
+            if not allowed:
+                issues.append({
+                    "severity": "warning",
+                    "category": "toolset_tool_mismatch",
+                    "field": "toolset",
+                    "current": t_str,
+                    "message": (
+                        f"工具 '{t_str}' 不在 toolset '{toolset_policy.name}' 允许列表中"
+                        f"{f'（{reason}）' if reason else ''}"
+                    ),
+                    "suggestion": (
+                        "换用包含该工具的 toolset（如 full/browser），或从 required_tools 解绑"
+                    ),
+                })
+
+        if toolset_name == "mcp_readonly":
+            if skills_list:
+                issues.append({
+                    "severity": "warning",
+                    "category": "toolset_blocks_skills",
+                    "field": "toolset",
+                    "message": "toolset=mcp_readonly 禁止调用 Skill，但 Agent 已绑定技能",
+                    "suggestion": "改用 workspace_default，或解绑技能仅走 MCP 工具",
+                    "fix_available": True,
+                    "fix": {"type": "set_toolset", "toolset": "workspace_default"},
+                })
+            mcp_bound = fm.get("mcp_servers") or fm.get("mcp_ids") or []
+            if not mcp_bound:
+                issues.append({
+                    "severity": "warning",
+                    "category": "toolset_mcp_unbound",
+                    "field": "toolset",
+                    "message": "toolset=mcp_readonly 但未绑定 MCP 服务器",
+                    "suggestion": "在 Agent 中绑定 MCP，或改用其他 toolset",
+                })
+
+        if toolset_name == "full":
+            high_risk = {"http", "browser", "database", "code"}
+            bound_risk = {str(t).strip() for t in tools_list} & high_risk
+            if not bound_risk:
+                issues.append({
+                    "severity": "info",
+                    "category": "toolset_overprivileged",
+                    "field": "toolset",
+                    "message": "使用了高风险 toolset=full，但未绑定 http/browser/database/code",
+                    "suggestion": "若无需高风险能力，改为 workspace_default 降低暴露面",
+                    "fix_available": True,
+                    "fix": {"type": "set_toolset", "toolset": "workspace_default"},
+                })
+    except Exception as e:
+        logging.warning("toolset audit skipped: %s", e, exc_info=True)
+
+    # ── Loop type / Agent policy ──
+    # Runtime + UI default is react; missing is fine — only flag illegal values.
+    loop_type = str(fm.get("loop_type") or "").strip().lower()
+    _VALID_LOOPS = frozenset({"react", "function_call"})
+    if loop_type and loop_type not in _VALID_LOOPS:
+        issues.append({
+            "severity": "warning",
+            "category": "invalid_loop_type",
+            "field": "loop_type",
+            "current": loop_type,
+            "message": f"loop_type '{loop_type}' 非法",
+            "suggestion": "使用 react 或 function_call",
+            "fix_available": True,
+            "fix": {"type": "set_loop_type", "loop_type": "react"},
+        })
+
+    # ── Permissions / triggers ──
+    # UI/runtime default is ["llm:generate"] when omitted — don't nag "未声明".
+    perms_raw = fm.get("permissions")
+    if perms_raw is None:
+        perms = ["llm:generate"]
+        derived = _derive_agent_permissions(
+            tools=[str(t) for t in tools_list],
+            skills=[str(s) for s in skills_list],
+            mcp_ids=[str(m) for m in (fm.get("mcp_servers") or fm.get("mcp_ids") or [])],
+            description=str(fm.get("description") or ""),
+            sop_text=body,
+        )
+        missing_perms = [p for p in derived if p not in perms]
+        if missing_perms:
+            issues.append({
+                "severity": "info",
+                "category": "permissions_incomplete",
+                "field": "permissions",
+                "message": (
+                    f"未显式声明 permissions（默认 llm:generate），"
+                    f"按绑定能力建议补充：{', '.join(missing_perms)}"
+                ),
+                "suggestion": "一键写入最小权限集到 AGENT.md",
+                "fix_available": True,
+                "fix": {
+                    "type": "set_permissions",
+                    "permissions": list(dict.fromkeys([*perms, *missing_perms])),
+                },
+            })
+    elif not isinstance(perms_raw, list) or any(not isinstance(p, str) for p in perms_raw):
+        issues.append({
+            "severity": "error",
+            "category": "invalid_permissions",
+            "field": "permissions",
+            "message": "permissions 必须是字符串数组",
+            "suggestion": '例如 ["llm:generate"]',
+            "fix_available": True,
+            "fix": {"type": "set_permissions", "permissions": ["llm:generate"]},
+        })
+    else:
+        perms = [str(p).strip() for p in perms_raw if str(p).strip()]
+        if "llm:generate" not in perms:
+            issues.append({
+                "severity": "warning",
+                "category": "permissions_missing_llm",
+                "field": "permissions",
+                "message": "permissions 缺少 llm:generate，Agent 对话/生成可能被拒",
+                "suggestion": "加入 llm:generate",
+                "fix_available": True,
+                "fix": {
+                    "type": "set_permissions",
+                    "permissions": ["llm:generate", *perms],
+                },
+            })
+        derived = _derive_agent_permissions(
+            tools=[str(t) for t in tools_list],
+            skills=[str(s) for s in skills_list],
+            mcp_ids=[str(m) for m in (fm.get("mcp_servers") or fm.get("mcp_ids") or [])],
+            description=str(fm.get("description") or ""),
+            sop_text=body,
+        )
+        missing_perms = [p for p in derived if p not in perms]
+        if missing_perms:
+            issues.append({
+                "severity": "info",
+                "category": "permissions_incomplete",
+                "field": "permissions",
+                "message": f"按绑定能力建议补充权限：{', '.join(missing_perms)}",
+                "suggestion": "一键合并最小权限集（最小特权推导）",
+                "fix_available": True,
+                "fix": {
+                    "type": "set_permissions",
+                    "permissions": list(dict.fromkeys([*perms, *missing_perms])),
+                },
+            })
+
+    triggers_raw = fm.get("trigger_conditions")
+    if triggers_raw is not None:
+        if not isinstance(triggers_raw, list):
+            issues.append({
+                "severity": "warning",
+                "category": "invalid_triggers",
+                "field": "trigger_conditions",
+                "message": "trigger_conditions 应为字符串数组（每行一条触发词）",
+                "suggestion": "改为 YAML 列表，或在编辑器中按行填写",
+            })
+        elif any(not str(t).strip() for t in triggers_raw):
+            issues.append({
+                "severity": "info",
+                "category": "empty_trigger",
+                "field": "trigger_conditions",
+                "message": "trigger_conditions 含空条目",
+                "suggestion": "删除空行，保留有效触发短语",
+            })
+
+    # ── Pipeline fields ──
+    phase = str(fm.get("phase") or "").strip()
+    phase_desc = str(fm.get("phase_description") or "").strip()
+    hitl_after = bool(fm.get("hitl_after_execute"))
+    hitl_phase = str(fm.get("hitl_after_phase") or "").strip()
+    output_artifact = str(fm.get("output_artifact") or "").strip()
+    scoring = fm.get("scoring_dimensions")
+
+    if hitl_after and not hitl_phase:
+        issues.append({
+            "severity": "warning",
+            "category": "hitl_phase_missing",
+            "field": "hitl_after_phase",
+            "message": "已启用 hitl_after_execute 但未填写 hitl_after_phase",
+            "suggestion": "填写暂停阶段名，或关闭「执行后暂停」",
+            "fix_available": True,
+            "fix": {
+                "type": "set_hitl_after_phase",
+                "phase": phase or phase_desc or "review",
+            },
+        })
+
+    if phase and not phase_desc:
+        issues.append({
+            "severity": "info",
+            "category": "missing_phase_description",
+            "field": "phase_description",
+            "message": f"已声明 phase={phase} 但缺少 phase_description",
+            "suggestion": "补充阶段描述，便于流水线 UI / 交接说明",
+            "fix_available": True,
+            "fix": {
+                "type": "set_phase_description",
+                "phase_description": f"{phase} 阶段",
+            },
+        })
+
+    if phase and not output_artifact:
+        issues.append({
+            "severity": "info",
+            "category": "missing_output_artifact",
+            "field": "output_artifact",
+            "message": f"流水线阶段 phase={phase} 未声明 output_artifact",
+            "suggestion": "设置产物 key（如 prd / architecture），便于下游 depends_on",
+        })
+
+    if scoring is not None:
+        if not isinstance(scoring, list):
+            issues.append({
+                "severity": "warning",
+                "category": "invalid_scoring_dimensions",
+                "field": "scoring_dimensions",
+                "message": "scoring_dimensions 应为对象数组",
+                "suggestion": "每项含 name/weight/threshold/description",
+            })
+        else:
+            for idx, dim in enumerate(scoring):
+                if not isinstance(dim, dict) or not dim.get("name"):
+                    issues.append({
+                        "severity": "warning",
+                        "category": "invalid_scoring_dimensions",
+                        "field": "scoring_dimensions",
+                        "message": f"scoring_dimensions[{idx}] 缺少 name",
+                        "suggestion": "每项至少包含 name 与 weight",
+                    })
+                    break
+
+    depends_on = fm.get("depends_on")
+    if depends_on is not None and not isinstance(depends_on, list):
+        issues.append({
+            "severity": "warning",
+            "category": "invalid_depends_on",
+            "field": "depends_on",
+            "message": "depends_on 应为字符串数组（上游 artifact key）",
+            "suggestion": "例如 depends_on: [prd]",
+        })
+
+    # ── Bound assets: MCP / sub-agents / workflows（存在性 + 上架态）──
+    _OK_ASSET = frozenset({"published", "listed"})
+    agents_home = _P(os.path.expanduser("~/.aiplat")) / "agents"
+
+    def _agent_status_on_disk(aid: str) -> Optional[str]:
+        p = agents_home / aid / "AGENT.md"
+        if not p.exists():
+            return None
+        try:
+            raw_a = p.read_text(encoding="utf-8", errors="ignore")
+            sp = raw_a.split("---", 2)
+            if len(sp) < 2:
+                return "unknown"
+            afm = _yaml.safe_load(sp[1]) or {}
+            return str(afm.get("status") or "draft").strip().lower() or "draft"
+        except Exception:
+            return "unknown"
+
+    mcp_bound = [
+        str(m).strip()
+        for m in (fm.get("mcp_servers") or fm.get("mcp_ids") or [])
+        if str(m).strip()
+    ]
+    mcp_ok: list = []
+    if mcp_bound:
+        mcp_mgr = None
+        try:
+            from core.management.mcp_manager import MCPManager
+            mcp_mgr = MCPManager(scope="workspace")
+        except Exception as e:
+            logging.warning("mcp binding audit: %s", e, exc_info=True)
+        for mid in mcp_bound:
+            srv = mcp_mgr.get_server(mid) if mcp_mgr else None
+            if not srv:
+                issues.append(_missing_binding_create_issue(
+                    kind="mcp",
+                    name=mid,
+                    agent_display=str(fm.get("display_name") or fm.get("name") or agent_id),
+                    description=str(fm.get("description") or ""),
+                    sop_text=body,
+                ))
+                continue
+            st = str(getattr(srv, "status", "") or "draft").strip().lower() or "draft"
+            if st not in _OK_ASSET:
+                issues.append(_not_listed_unbind_issue(
+                    category="mcp_not_listed",
+                    field="mcp_servers",
+                    name=mid,
+                    kind="mcp",
+                    message=f"MCP '{mid}' 未上架（status={st}）——Agent 上架硬门禁会拒绝",
+                    list_where="请到 MCP 库提交审核并上架到 published/listed。",
+                ))
+            else:
+                mcp_ok.append(mid)
+            if not getattr(srv, "enabled", True):
+                issues.append(_not_listed_unbind_issue(
+                    category="mcp_disabled",
+                    field="mcp_servers",
+                    name=mid,
+                    kind="mcp",
+                    message=f"MCP '{mid}' 已绑定但未启用（enabled=false）",
+                    list_where="请在 MCP 编辑页开启 enabled。",
+                    severity="warning",
+                ))
+    if mcp_ok:
+        issues.append({
+            "severity": "info",
+            "category": "mcp_binding_ok",
+            "field": "mcp_servers",
+            "current": ", ".join(mcp_ok),
+            "message": (
+                f"已检查 {len(mcp_ok)} 个绑定 MCP（已存在且上架）："
+                + "、".join(mcp_ok)
+            ),
+            "suggestion": "MCP 绑定通过；若某服务 enabled=false 仍会单独告警",
+            "fix_available": False,
+        })
+
+    sub_agents = [
+        str(a).strip()
+        for a in (fm.get("agent_ids") or [])
+        if str(a).strip() and str(a).strip() != agent_id
+    ]
+    sub_agent_ok: list = []
+    for sid in sub_agents:
+        st = _agent_status_on_disk(sid)
+        if st is None:
+            issues.append(_missing_binding_create_issue(
+                kind="agent",
+                name=sid,
+                agent_display=str(fm.get("display_name") or fm.get("name") or agent_id),
+                description=str(fm.get("description") or ""),
+                sop_text=body,
+            ))
+        elif st not in _OK_ASSET and st not in ("ready",):
+            # ready = 待审核，仍不可给生产 Agent 委派；与上架门禁对齐用 published|listed
+            issues.append(_not_listed_unbind_issue(
+                category="sub_agent_not_listed",
+                field="agent_ids",
+                name=sid,
+                kind="agent",
+                message=f"子 Agent '{sid}' 未上架（status={st}）",
+                list_where="请到应用库提交审核并上架到 published/listed。",
+                severity="error" if st in ("draft", "deprecated", "disabled") else "warning",
+            ))
+        elif st == "ready":
+            issues.append(_not_listed_unbind_issue(
+                category="sub_agent_not_listed",
+                field="agent_ids",
+                name=sid,
+                kind="agent",
+                message=f"子 Agent '{sid}' 仍为待审核（status=ready）",
+                list_where="请在审批中心完成功能审核与上架后再委派。",
+                severity="warning",
+            ))
+        elif st in _OK_ASSET:
+            sub_agent_ok.append(sid)
+    if sub_agent_ok:
+        issues.append({
+            "severity": "info",
+            "category": "sub_agent_binding_ok",
+            "field": "agent_ids",
+            "current": ", ".join(sub_agent_ok),
+            "message": (
+                f"已检查 {len(sub_agent_ok)} 个子 Agent（已存在且上架）："
+                + "、".join(sub_agent_ok)
+            ),
+            "suggestion": "子 Agent 绑定通过",
+            "fix_available": False,
+        })
+
+    wf_bound = [
+        str(w).strip()
+        for w in (fm.get("workflows") or fm.get("workflow_ids") or [])
+        if str(w).strip()
+    ]
+    workflow_ok: list = []
+    if wf_bound:
+        known_wf: dict = {}  # id/name -> status
+        try:
+            wf_dir = _P(os.path.expanduser("~/.aiplat")) / "workflows"
+            if wf_dir.exists():
+                for d in wf_dir.iterdir():
+                    if d.is_dir():
+                        known_wf.setdefault(d.name, "ready")
+                    elif d.suffix in (".json", ".yaml", ".yml"):
+                        known_wf.setdefault(d.stem, "ready")
+        except Exception as e:
+            logging.warning("workflow dir scan: %s", e, exc_info=True)
+        try:
+            from core.api.core_facade import WorkflowManager
+            wmgr = WorkflowManager(scope="workspace")
+            for w in (wmgr.list_workflows() or []):
+                st = str(getattr(w, "status", "") or "ready").lower()
+                for key in (getattr(w, "id", None), getattr(w, "name", None)):
+                    wid = str(key or "").strip()
+                    if wid:
+                        known_wf[wid] = st
+        except Exception:
+            pass  # noqa: optional
+        for wid in wf_bound:
+            if known_wf and wid not in known_wf:
+                issues.append(_missing_binding_create_issue(
+                    kind="workflow",
+                    name=wid,
+                    agent_display=str(fm.get("display_name") or fm.get("name") or agent_id),
+                    description=str(fm.get("description") or ""),
+                    sop_text=body,
+                ))
+            elif wid in known_wf:
+                st = known_wf[wid]
+                if st not in _OK_ASSET and st != "ready":
+                    issues.append(_not_listed_unbind_issue(
+                        category="workflow_not_listed",
+                        field="workflows",
+                        name=wid,
+                        kind="workflow",
+                        message=f"Workflow '{wid}' 未上架（status={st}）",
+                        list_where="请到编排库提交审核并上架。",
+                        severity="warning",
+                    ))
+                else:
+                    # published|listed|ready（编排侧 ready 视为可用关联）
+                    workflow_ok.append(wid)
+    if workflow_ok:
+        issues.append({
+            "severity": "info",
+            "category": "workflow_binding_ok",
+            "field": "workflows",
+            "current": ", ".join(workflow_ok),
+            "message": (
+                f"已检查 {len(workflow_ok)} 个关联 Workflow（已存在且可用）："
+                + "、".join(workflow_ok)
+            ),
+            "suggestion": "Workflow 关联通过（编排模板可选绑定）",
+            "fix_available": False,
+        })
+
+    # ── Summary ──
+    from core.management.asset_audit import summarize_audit_issues
+
+    summary = summarize_audit_issues(issues)
 
     # ── Model quality feedback: audit result → model scoring ──
     try:
@@ -3718,8 +5377,5 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
     return AgentAuditResponse(
         agent_id=agent_id,
         issues=issues,
-        summary={
-            "errors": errors, "warnings": warnings, "info": severity_count["info"],
-            "total": total_issues, "health": health,
-        },
+        summary=summary,
     )

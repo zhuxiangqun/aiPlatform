@@ -78,6 +78,28 @@ def _engine_managers():
     )
 
 
+def _persist_mcp_discovered_tools(mgr, server, tools) -> List[str]:
+    """Cache tools/list names into server.yaml metadata. Never writes allowed_tools."""
+    from datetime import datetime, timezone
+
+    from core.management.asset_audit import infer_mcp_allowed_tools
+
+    names = infer_mcp_allowed_tools(metadata={"discovered_tools": tools})
+    if not names or mgr is None or server is None:
+        return names
+    md = dict(getattr(server, "metadata", None) or {})
+    if md.get("last_discovered_tools") == names:
+        return names
+    md["last_discovered_tools"] = names
+    md["last_discovered_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    server.metadata = md
+    try:
+        mgr.upsert_server(server)
+    except Exception:
+        logger.warning("persist MCP discovered tools failed name=%s", getattr(server, "name", ""), exc_info=True)
+    return names
+
+
 # ---------------------------
 # MCP (directory-based config)
 # ---------------------------
@@ -727,7 +749,8 @@ async def list_mcp_server_tools(server_name: str, timeout_seconds: int = 25):
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported transport: {transport}")
 
-    return {"tools": tools, "total": len(tools)}
+    cached = _persist_mcp_discovered_tools(mgr, s, tools)
+    return {"tools": tools, "total": len(tools), "cached_tool_names": cached}
 
 
 @router.post("/workspace/mcp/servers/{server_name}/test-invoke", response_model=Dict[str, Any])
@@ -940,6 +963,13 @@ async def _run_mcp_test(
             tools = (tools_resp.get("result") or {}).get("tools") or []
         else:
             raise Exception(f"Unsupported transport: {transport}")
+
+        try:
+            _wm = _workspace_mcp_manager()
+            _srv = _wm.get_server(server_name) if _wm else None
+            _persist_mcp_discovered_tools(_wm, _srv, tools)
+        except Exception:
+            logger.debug("MCP test list_tools cache skipped", exc_info=True)
 
         # Filter tools by allowed_tools whitelist if configured
         if allowed and tools:
@@ -1157,6 +1187,279 @@ async def workspace_mcps_installer_upload_install(
     finally:
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
+
+
+@router.post("/workspace/mcp/servers/{server_name}/audit", response_model=Dict[str, Any])
+async def audit_mcp_server_config(server_name: str):
+    """AI 审核：MCP server.yaml / 运行时配置（规则驱动）。"""
+    from pathlib import Path as _Path
+    from core.management.asset_audit import (
+        _mcp_evidence_metadata,
+        infer_mcp_allowed_tools,
+        infer_mcp_endpoint,
+        issue,
+        summarize_audit_issues,
+    )
+    from core.management.mcp_config_validator import validate_mcp_server
+
+    mgr = _workspace_mcp_manager()
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    s = mgr.get_server(server_name)
+    if not s:
+        raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+
+    issues: List[Dict[str, Any]] = []
+    home = _Path.home() / ".aiplat" / "mcps" / server_name / "server.yaml"
+    yaml_data: Dict[str, Any] = {}
+    if home.exists():
+        try:
+            import yaml as _yaml
+
+            loaded = _yaml.safe_load(home.read_text(encoding="utf-8")) or {}
+            if isinstance(loaded, dict):
+                yaml_data = loaded
+        except Exception:
+            yaml_data = {}
+    evidence_md = _mcp_evidence_metadata(s, yaml_data)
+    policy_data: Dict[str, Any] = {}
+    pol_home = home.parent / "policy.yaml"
+    if pol_home.exists():
+        try:
+            import yaml as _yaml_pol
+
+            loaded_pol = _yaml_pol.safe_load(pol_home.read_text(encoding="utf-8")) or {}
+            if isinstance(loaded_pol, dict):
+                policy_data = loaded_pol
+        except Exception:
+            policy_data = {}
+    runtime_allowed = [
+        str(x).strip()
+        for x in (getattr(s, "allowed_tools", None) or [])
+        if str(x).strip()
+    ]
+
+    def _allowed_tools_fix():
+        if runtime_allowed:
+            return None
+        names = infer_mcp_allowed_tools(
+            metadata=evidence_md,
+            yaml_data=yaml_data,
+            policy_data=policy_data,
+        )
+        if not names:
+            return None
+        fix_body: Dict[str, Any] = {"type": "set_allowed_tools", "allowed_tools": names}
+        if len(names) > 8:
+            fix_body["apply_all"] = False
+        return fix_body
+
+    if home.exists():
+        for iss in validate_mcp_server(home):
+            sev = "error" if iss.severity == "error" else "warning"
+            cat = "mcp_config"
+            msg = iss.message
+            fix = None
+            if "allowed_tools is empty" in msg:
+                if runtime_allowed:
+                    continue
+                fix = _allowed_tools_fix()
+                cat = "empty_allowed_tools"
+            elif "Missing required field: transport" in msg:
+                fix = {"type": "set_transport", "transport": "sse"}
+            elif "Missing display_name or description" in msg:
+                fix = {"type": "set_display_name", "display_name": server_name}
+            elif "Missing url for" in msg:
+                evidence = infer_mcp_endpoint(
+                    name=server_name,
+                    transport=str(getattr(s, "transport", "") or yaml_data.get("transport") or ""),
+                    url="",
+                    command=str(getattr(s, "command", "") or yaml_data.get("command") or ""),
+                    metadata=evidence_md,
+                    description=str(getattr(s, "description", "") or yaml_data.get("description") or ""),
+                )
+                if evidence.get("url"):
+                    fix = {"type": "set_url", "url": evidence["url"]}
+                elif evidence.get("transport") == "stdio":
+                    fix = {"type": "set_transport", "transport": "stdio"}
+                else:
+                    fix = None
+            elif "stdio transport requires 'command'" in msg:
+                evidence = infer_mcp_endpoint(
+                    name=server_name,
+                    transport="stdio",
+                    url="",
+                    command="",
+                    metadata=evidence_md,
+                    description=str(getattr(s, "description", "") or yaml_data.get("description") or ""),
+                )
+                if evidence.get("command"):
+                    fix = {"type": "set_command", "command": evidence["command"]}
+                else:
+                    fix = None
+            issues.append(issue(
+                severity=sev, category=cat, field="server.yaml" if cat != "empty_allowed_tools" else "allowed_tools",
+                message=msg,
+                suggestion=(
+                    "一键修复写入 policy.yaml / 已发现工具列表中的白名单"
+                    if cat == "empty_allowed_tools" and fix
+                    else "点「发现工具」后勾选最小权限集（无缓存名单时不会编造）"
+                    if cat == "empty_allowed_tools"
+                    else "填写真实可访问的 url / command 后保存"
+                    if fix is None and ("url" in msg.lower() or "command" in msg.lower())
+                    else "按 transport 补齐必填字段后保存"
+                ),
+                fix=fix,
+            ))
+    else:
+        # Runtime object checks when yaml missing
+        transport = str(getattr(s, "transport", "") or "").strip().lower()
+        if not transport:
+            issues.append(issue(
+                severity="error", category="missing_transport", field="transport",
+                message="缺少 transport",
+                suggestion="选择 sse / http / stdio",
+                fix={"type": "set_transport", "transport": "sse"},
+            ))
+        if transport in ("sse", "http", "streamable_http") and not str(getattr(s, "url", "") or "").strip():
+            evidence = infer_mcp_endpoint(
+                name=server_name,
+                transport=transport,
+                url="",
+                command=str(getattr(s, "command", "") or ""),
+                metadata=evidence_md,
+                description=str(getattr(s, "description", "") or ""),
+            )
+            if evidence.get("url"):
+                issues.append(issue(
+                    severity="error", category="missing_url", field="url",
+                    message=f"{transport} 缺少 url（已从环境/元数据推断）",
+                    suggestion="一键修复写入已发现的真实 endpoint，保存后再探测连通性",
+                    fix={"type": "set_url", "url": evidence["url"]},
+                ))
+            elif evidence.get("transport") == "stdio":
+                issues.append(issue(
+                    severity="error", category="missing_url", field="url",
+                    message=f"{transport} 缺少 url，但已配置 command——更像 stdio",
+                    suggestion="一键修复将 transport 改为 stdio（不编造 URL）",
+                    fix={"type": "set_transport", "transport": "stdio"},
+                ))
+            else:
+                issues.append(issue(
+                    severity="error", category="missing_url", field="url",
+                    message=f"{transport} 缺少 url",
+                    suggestion="填写真实可访问的 MCP endpoint（配置/环境中无依据时，一键修复不会写入占位 URL）",
+                ))
+        if transport == "stdio" and not str(getattr(s, "command", "") or "").strip():
+            evidence = infer_mcp_endpoint(
+                name=server_name,
+                transport=transport,
+                url=str(getattr(s, "url", "") or ""),
+                command="",
+                metadata=evidence_md,
+                description=str(getattr(s, "description", "") or ""),
+            )
+            if evidence.get("command"):
+                issues.append(issue(
+                    severity="error", category="missing_command", field="command",
+                    message="stdio 缺少 command（已从环境/元数据推断）",
+                    suggestion="一键修复写入已发现的启动命令，保存后再探测",
+                    fix={"type": "set_command", "command": evidence["command"]},
+                ))
+            else:
+                issues.append(issue(
+                    severity="error", category="missing_command", field="command",
+                    message="stdio 缺少 command",
+                    suggestion="填写真实启动命令或绝对路径（一键修复不会写入占位 command）",
+                ))
+        if not runtime_allowed:
+            at_fix = _allowed_tools_fix()
+            issues.append(issue(
+                severity="warning", category="empty_allowed_tools", field="allowed_tools",
+                message="allowed_tools 为空——不会向 Agent 暴露任何工具",
+                suggestion=(
+                    "一键修复写入 policy.yaml / 已发现工具列表中的白名单"
+                    if at_fix
+                    else "点「发现工具」后勾选最小权限集（无缓存名单时不会编造）"
+                ),
+                fix=at_fix,
+            ))
+        md = getattr(s, "metadata", None) or {}
+        if not (isinstance(md, dict) and (md.get("display_name") or md.get("description"))):
+            if not getattr(s, "description", None):
+                issues.append(issue(
+                    severity="warning", category="missing_display", field="metadata",
+                    message="缺少 display_name / description",
+                    suggestion="补充可读名称便于资产库识别",
+                    fix={"type": "set_display_name", "display_name": server_name},
+                ))
+
+    # ── Connectivity probe (report-only; never auto-fix with placeholders) ──
+    transport = str(getattr(s, "transport", "") or "").strip().lower()
+    if home.exists():
+        try:
+            import yaml as _yaml
+            data = _yaml.safe_load(home.read_text(encoding="utf-8")) or {}
+            if isinstance(data, dict):
+                transport = str(data.get("transport") or transport).strip().lower()
+                if data.get("url"):
+                    setattr(s, "url", data.get("url"))
+                if data.get("command"):
+                    setattr(s, "command", data.get("command"))
+        except Exception:
+            pass  # noqa: probe still uses runtime object
+
+    if transport in ("sse", "http", "streamable_http"):
+        url = str(getattr(s, "url", "") or "").strip()
+        if not url:
+            issues.append(issue(
+                severity="info", category="mcp_unprobed", field="url",
+                message="未配置 url，跳过 HTTP 连通性探测",
+                suggestion="补齐真实 endpoint 后再次审核会自动探测；stdio 则检查 command 是否在 PATH",
+            ))
+        elif url.startswith(("http://", "https://")):
+            try:
+                import urllib.request
+                req = urllib.request.Request(url, method="GET")
+                with urllib.request.urlopen(req, timeout=3) as resp:
+                    code = getattr(resp, "status", None) or resp.getcode()
+                if int(code or 0) >= 500:
+                    issues.append(issue(
+                        severity="warning", category="mcp_unreachable", field="url",
+                        message=f"MCP endpoint 返回 HTTP {code}（{url}）",
+                        suggestion="检查服务是否启动、路径是否正确；连通性失败不能靠改 YAML 假装通了",
+                    ))
+                else:
+                    issues.append(issue(
+                        severity="info", category="mcp_reachable", field="url",
+                        message=f"已探测 {url} → HTTP {code}",
+                    ))
+            except Exception as e:
+                issues.append(issue(
+                    severity="warning", category="mcp_unreachable", field="url",
+                    message=f"无法连通 MCP endpoint（{url}）：{type(e).__name__}",
+                    suggestion="确认进程已启动且网络可达；不自动写入占位 URL",
+                ))
+    elif transport == "stdio":
+        cmd = str(getattr(s, "command", "") or "").strip()
+        if cmd:
+            import shutil
+            if "/" in cmd or "\\" in cmd:
+                resolved = cmd if _Path(cmd).exists() else None
+            else:
+                resolved = shutil.which(cmd)
+            if not resolved:
+                issues.append(issue(
+                    severity="warning", category="mcp_command_missing", field="command",
+                    message=f"stdio command 未找到可执行文件：{cmd}",
+                    suggestion="安装依赖或改用绝对路径；不自动改写 command",
+                ))
+
+    return {
+        "server_name": server_name,
+        "issues": issues,
+        "summary": summarize_audit_issues(issues),
+    }
 
 
 @router.post("/workspace/mcp/servers/{server_name}/submit-for-review", response_model=Dict[str, Any])

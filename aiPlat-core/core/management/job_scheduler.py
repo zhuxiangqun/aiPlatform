@@ -169,11 +169,19 @@ class JobScheduler:
                 continue
 
     async def _execute_job(self, job: Dict[str, Any], *, scheduled_for: float, force: bool = False) -> Dict[str, Any]:
+        from core.harness.utils.execute_session import mint_execute_session_id
+
         job_id = str(job.get("id"))
         kind = str(job.get("kind") or "agent")
         target_id = str(job.get("target_id") or "")
         user_id = str(job.get("user_id") or "system")
-        session_id = str(job.get("session_id") or "default")
+        # Per-run mint when unset/default — avoids all cron jobs sharing session lock "default"
+        # with management trial executes. Explicit job.session_id is preserved for intentional lanes.
+        session_id = mint_execute_session_id(
+            kind=f"job-{kind}",
+            target_id=target_id or job_id,
+            session_id=job.get("session_id"),
+        )
 
         now = time.time()
         run_id = f"jobrun-{uuid.uuid4().hex[:12]}"

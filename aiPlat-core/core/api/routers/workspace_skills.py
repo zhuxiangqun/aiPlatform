@@ -1130,6 +1130,97 @@ async def _lint_conflicts_workspace_skills(
     return {"status": "ok", "items": conflicts[:limit], "total": len(conflicts), "threshold": threshold, "min_overlap": min_overlap}
 
 
+@router.post("/workspace/skills/{skill_id}/audit", response_model=Dict[str, Any])
+async def audit_workspace_skill(skill_id: str, rt: RuntimeDep = None):
+    """AI 审核：将 skill lint + propose_skill_fixes 归一为 Agent 同款 issues/summary。"""
+    from core.management.asset_audit import index_skill_lint_fixes, summarize_audit_issues
+
+    lint_payload = await lint_workspace_skill(skill_id, rt=rt)
+    lint = lint_payload.get("lint") if isinstance(lint_payload, dict) else {}
+    fixes = lint_payload.get("fixes") if isinstance(lint_payload, dict) else []
+    fixes = fixes if isinstance(fixes, list) else []
+    fix_by_code = index_skill_lint_fixes(fixes)
+
+    issues: List[Dict[str, Any]] = []
+    for e in (lint.get("errors") or []) if isinstance(lint, dict) else []:
+        if not isinstance(e, dict):
+            continue
+        code = str(e.get("code") or "lint_error")
+        fx = fix_by_code.get(code)
+        item: Dict[str, Any] = {
+            "severity": "error",
+            "category": code,
+            "field": str(e.get("location") or "skill"),
+            "message": str(e.get("message") or code),
+            "suggestion": (fx.get("title") if fx else "见 LintDashboard 或手动修正"),
+            "fix_available": bool(fx),
+        }
+        if fx:
+            item["fix"] = {
+                "type": "apply_lint_fix",
+                "fix_id": fx.get("fix_id"),
+                "issue_code": code,
+                "auto_applicable": bool(fx.get("auto_applicable")),
+            }
+        issues.append(item)
+    for w in (lint.get("warnings") or []) if isinstance(lint, dict) else []:
+        if not isinstance(w, dict):
+            continue
+        code = str(w.get("code") or "lint_warning")
+        fx = fix_by_code.get(code)
+        item = {
+            "severity": "warning",
+            "category": code,
+            "field": str(w.get("location") or "skill"),
+            "message": str(w.get("message") or code),
+            "suggestion": (fx.get("title") if fx else "建议修复"),
+            "fix_available": bool(fx),
+        }
+        if fx:
+            item["fix"] = {
+                "type": "apply_lint_fix",
+                "fix_id": fx.get("fix_id"),
+                "issue_code": code,
+                "auto_applicable": bool(fx.get("auto_applicable")),
+            }
+        issues.append(item)
+
+    # Surface applyable fixes that don't map to a lint code as info
+    covered = {str(i.get("fix", {}).get("fix_id") or "") for i in issues if i.get("fix")}
+    for f in fixes:
+        if not isinstance(f, dict):
+            continue
+        patch = f.get("patch") if isinstance(f.get("patch"), dict) else {}
+        ops = patch.get("ops") if isinstance(patch.get("ops"), list) else []
+        if not ops:
+            continue
+        fid = str(f.get("fix_id") or "")
+        if not fid or fid in covered:
+            continue
+        issues.append({
+            "severity": "info",
+            "category": str(f.get("issue_code") or "suggested_fix"),
+            "field": "skill",
+            "message": str(f.get("title") or fid),
+            "suggestion": str(f.get("markdown") or "")[:200],
+            "fix_available": True,
+            "fix": {
+                "type": "apply_lint_fix",
+                "fix_id": fid,
+                "issue_code": f.get("issue_code"),
+                "auto_applicable": bool(f.get("auto_applicable")),
+            },
+        })
+
+    return {
+        "skill_id": str(skill_id),
+        "issues": issues,
+        "summary": summarize_audit_issues(issues),
+        "lint": lint,
+        "fixes": fixes,
+    }
+
+
 @router.get("/workspace/skills/{skill_id}/lint", response_model=Dict[str, Any])
 async def lint_workspace_skill(skill_id: str, rt: RuntimeDep = None):
     mgr = _ws_skill_mgr(rt)
@@ -1139,6 +1230,13 @@ async def lint_workspace_skill(skill_id: str, rt: RuntimeDep = None):
     if not s:
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
     from core.management.skill_linter import lint_skill, propose_skill_fixes
+
+    # Mark scope so propose_skill_fixes can enable workspace auto_applicable fixes
+    try:
+        md0 = s.metadata if isinstance(getattr(s, "metadata", None), dict) else {}
+        s.metadata = {**md0, "scope": "workspace", "skill_scope": "workspace"}
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Attach observability hint (best-effort) for routing-quality fixes
     try:
@@ -1219,6 +1317,13 @@ async def apply_lint_fix_workspace_skill(
 
     from core.management.skill_linter import lint_skill, propose_skill_fixes
 
+    # Workspace apply path: force scope so trigger/SOP fixes are auto_applicable
+    try:
+        md0 = s.metadata if isinstance(getattr(s, "metadata", None), dict) else {}
+        s.metadata = {**md0, "scope": "workspace", "skill_scope": "workspace"}
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
+
     # Attach observability hint to allow routing-related fixes by issue_code
     try:
         fun = await _skill_routing_funnel(rt, tenant_id=None, since_hours=24, limit=20000)
@@ -1291,6 +1396,13 @@ async def apply_lint_fix_workspace_skill(
         ("required_questions",),
         ("keywords",),
         ("permissions",),
+        ("completion_criterion",),
+        ("_sop_append",),
+        ("input_schema",),
+        ("output_schema",),
+        ("execution_type",),
+        ("category",),
+        ("version",),
     }
 
     ops = []
@@ -1317,12 +1429,21 @@ async def apply_lint_fix_workspace_skill(
         return {"status": "noop", "skill_id": str(skill_id), "selected": selected, "ops": []}
 
     out_patch: Dict[str, Any] = {}
+    in_replace: Optional[Dict[str, Any]] = None
     meta_patch: Dict[str, Any] = {}
     name_patch: Optional[str] = None
     desc_patch: Optional[str] = None
+    category_patch: Optional[str] = None
+    sop_append_chunks: List[str] = []
     for op in ops:
         v = op.get("value")
         path = op.get("path") if isinstance(op.get("path"), list) else []
+        if path == ["input_schema"] and isinstance(v, dict):
+            in_replace = dict(v)
+            continue
+        if path == ["output_schema"] and isinstance(v, dict):
+            out_patch.update(v)
+            continue
         if path == ["output_schema", "markdown"] and isinstance(v, dict):
             out_patch["markdown"] = v
             continue
@@ -1335,18 +1456,73 @@ async def apply_lint_fix_workspace_skill(
         if path == ["description"] and isinstance(v, str):
             desc_patch = v
             continue
-        if path and path[0] in ("trigger_conditions", "negative_triggers", "required_questions", "keywords", "permissions"):
+        if path == ["category"] and isinstance(v, str) and v.strip():
+            category_patch = v.strip()
+            continue
+        if path == ["_sop_append"] and isinstance(v, str) and v.strip():
+            sop_append_chunks.append(v.strip())
+            continue
+        if path and path[0] in (
+            "trigger_conditions",
+            "negative_triggers",
+            "required_questions",
+            "keywords",
+            "permissions",
+            "completion_criterion",
+            "execution_type",
+            "version",
+        ):
             meta_patch[str(path[0])] = v
 
+    if isinstance(meta_patch.get("version"), str):
+        try:
+            setattr(s, "version", str(meta_patch["version"]))
+        except Exception:
+            pass  # noqa: cleanup-best-effort
+    merged_out = None
+    if out_patch:
+        merged_out = dict(getattr(s, "output_schema", None) or {})
+        merged_out.update(out_patch)
     skill2 = await mgr.update_skill(
         skill_id,
         name=name_patch,
         description=desc_patch,
+        category=category_patch,
         metadata=meta_patch if meta_patch else None,
-        output_schema=out_patch if out_patch else None,
+        input_schema=in_replace,
+        output_schema=merged_out,
     )
     if not skill2:
         raise HTTPException(status_code=500, detail="Failed to update skill")
+
+    # Append SOP scaffolds to SKILL.md body (best-effort)
+    if sop_append_chunks:
+        try:
+            from pathlib import Path as _Path
+
+            md_meta = skill2.metadata if isinstance(getattr(skill2, "metadata", None), dict) else {}
+            fs = md_meta.get("filesystem") if isinstance(md_meta.get("filesystem"), dict) else {}
+            skill_md = fs.get("skill_md") or ""
+            p = _Path(str(skill_md)) if skill_md else None
+            if p and p.is_file():
+                raw = p.read_text(encoding="utf-8")
+                if raw.startswith("---"):
+                    parts = raw.split("---", 2)
+                    if len(parts) >= 3:
+                        body = parts[2] or ""
+                        for chunk in sop_append_chunks:
+                            marker = chunk.split("\n", 1)[0].strip()
+                            if marker and marker in body:
+                                continue
+                            body = body.rstrip() + "\n\n" + chunk.strip() + "\n"
+                        p.write_text(f"---{parts[1]}---\n{body.lstrip()}", encoding="utf-8")
+        except Exception as e:
+            logging.warning("sop_append failed for %s: %s", skill_id, e, exc_info=True)
+        # reload so subsequent lint sees new body
+        try:
+            skill2 = await mgr.get_skill(skill_id) or skill2
+        except Exception:
+            pass  # noqa: cleanup-best-effort
 
     lint2 = lint_skill(skill2)
     fx2 = propose_skill_fixes(skill=skill2, lint=lint2)
@@ -2140,21 +2316,161 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
             logging.warning(str(e), exc_info=True)
 
     user_id = str(ctx_for_user.get("actor_id") or ctx_for_user.get("user_id") or "system")
+    # Management executes must not share session_id=default — a leaked stream lock on
+    # that key blocks every subsequent Skill run into queued-with-empty-graph.
+    from core.harness.utils.execute_session import mint_execute_session_id
+
+    sid = mint_execute_session_id(
+        kind="skill",
+        target_id=str(skill_id),
+        session_id=ctx_for_user.get("session_id"),
+    )
     harness = get_harness()
     exec_req = ExecutionRequest(
         kind="skill",
         target_id=skill_id,
         payload={"input": request.input, "context": ctx_for_user, "mode": getattr(request, "mode", "inline"), "options": getattr(request, "options", None) or None},
         user_id=user_id,
-        session_id=str(ctx_for_user.get("session_id") or "default"),
+        session_id=sid,
     )
     result = await harness.execute(exec_req)
     resp = wrap_execution_result_as_run_summary(result)
+    try:
+        st = str(resp.get("status") or getattr(result, "status", "") or "").lower()
+        if st in ("completed", "ok", "success"):
+            from core.management.execution_quality_review import (
+                quality_review_blocks_success,
+                review_execution_output,
+            )
+
+            _qr = review_execution_output(
+                kind="skill",
+                asset_id=str(skill_id),
+                asset_name=str(getattr(skill, "name", None) or skill_id),
+                input_payload=getattr(request, "input", None),
+                output=resp.get("output") if isinstance(resp, dict) else getattr(result, "output", None),
+                status=st,
+            )
+            resp["quality_review"] = _qr
+            if quality_review_blocks_success(_qr):
+                resp["status"] = "failed"
+                resp["ok"] = False
+                resp["error"] = str(
+                    (_qr.get("headline") if isinstance(_qr, dict) else None)
+                    or resp.get("error")
+                    or "skill output failed quality review"
+                )
+                resp["quality_block_completed"] = True
+    except Exception as e:
+        logging.warning("skill execute quality_review skipped: %s", e, exc_info=True)
     try:
         await _audit_execute(rt, http_request=http_request, payload={"context": ctx_for_user}, resource_type="skill", resource_id=str(skill_id), resp=resp, action="execute_skill")
     except Exception as e:
         logging.warning(str(e), exc_info=True)
     return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
+
+
+@router.post("/workspace/skills/{skill_id}/review-output", response_model=Dict[str, Any])
+async def review_workspace_skill_output(skill_id: str, request: dict, rt: RuntimeDep = None):
+    """Post-run product-quality review (stream complete path / manual re-check).
+
+    Runtime completed ≠ content acceptable. Returns issues + where/how to fix SOP.
+    When body.input is empty, restores from execution store via execution_id.
+    """
+    mgr = _ws_skill_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    skill = await mgr.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    body = request if isinstance(request, dict) else {}
+    from core.management.execution_quality_review import (
+        pick_embedded_quality_review,
+        resolve_review_io_from_store,
+        review_execution_output,
+    )
+
+    eid = body.get("execution_id") or body.get("run_id")
+    inp, out, st, embedded = await resolve_review_io_from_store(
+        execution_id=str(eid) if eid else None,
+        kind="skill",
+        body_input=body.get("input"),
+        body_output=body.get("output"),
+        body_status=body.get("status"),
+    )
+    chosen = pick_embedded_quality_review(
+        embedded=embedded,
+        body_output=body.get("output"),
+        resolved_output=out,
+        prefer_embedded=bool(body.get("prefer_embedded")),
+    )
+    if chosen is not None:
+        return chosen
+    return review_execution_output(
+        kind="skill",
+        asset_id=str(skill_id),
+        asset_name=str(getattr(skill, "name", None) or skill_id),
+        input_payload=inp,
+        output=out,
+        status=st,
+    )
+
+
+@router.post("/workspace/skills/{skill_id}/apply-quality-fix", response_model=Dict[str, Any])
+async def apply_workspace_skill_quality_fix(skill_id: str, request: dict, rt: RuntimeDep = None):
+    """Append quality SOP iron-laws into workspace + engine SKILL.md mirrors (idempotent).
+
+    Engine-shipped skills (e.g. architecture_design) are often bound on workspace Agents
+    but live under core/engine/skills — do not 404 solely because WorkspaceSkillManager
+    has no row; apply_quality_sop_for_skill_id resolves engine + ~/.aiplat mirrors by id.
+    """
+    mgr = _ws_skill_mgr(rt)
+    skill = None
+    if mgr:
+        try:
+            skill = await mgr.get_skill(skill_id)
+        except Exception as e:
+            logging.warning("workspace get_skill for apply-quality-fix: %s", e, exc_info=True)
+    sop_data = None
+    try:
+        if mgr and skill and hasattr(mgr, "get_skill_sop"):
+            sop_data = await mgr.get_skill_sop(skill_id)
+    except Exception as e:
+        logging.warning("get_skill_sop failed for %s: %s", skill_id, e, exc_info=True)
+    from pathlib import Path
+
+    from core.management.execution_quality_review import (
+        apply_quality_sop_for_skill_id,
+        resolve_skill_md_path,
+    )
+
+    primary = None
+    if isinstance(sop_data, dict) and sop_data.get("skill_md"):
+        primary = Path(str(sop_data["skill_md"]))
+    if skill is not None and (primary is None or not primary.is_file()):
+        primary = resolve_skill_md_path(skill)
+    body = request if isinstance(request, dict) else {}
+    result = apply_quality_sop_for_skill_id(
+        str(skill_id),
+        primary_path=primary,
+        issue_codes=body.get("issue_codes") or [],
+        fix_ids=body.get("fix_ids") or [],
+    )
+    if result.get("status") == "error":
+        # Distinguish "no SKILL.md anywhere" from apply failure
+        err = str(result.get("error") or "apply failed")
+        code = 404 if "not found" in err.lower() else 400
+        raise HTTPException(status_code=code, detail=err)
+    try:
+        from core.apps.skills.registry import get_skill_registry
+
+        reg = get_skill_registry()
+        if reg is not None and hasattr(reg, "_body_cache"):
+            reg._body_cache.pop(str(skill_id), None)
+            reg._body_cache.pop(f"{skill_id}_stub", None)
+    except Exception as e:
+        logging.debug("body_cache invalidate after quality fix: %s", e, exc_info=True)
+    return result
 
 
 @router.get("/workspace/skills/{skill_id}/agents", response_model=Dict[str, Any])
@@ -2324,14 +2640,14 @@ async def generate_workspace_skill_execution_examples(
 
     try:
         from core.apps.skills.service.skill_execution_examples_llm import (
-            generate_skill_execution_examples_llm,
+            run_generate_skill_execution_examples,
         )
 
-        result = await generate_skill_execution_examples_llm(
+        result = await run_generate_skill_execution_examples(
+            mgr=mgr,
+            skill=skill,
             skill_id=str(skill_id),
-            skill_name=str(getattr(skill, "display_name", None) or getattr(skill, "name", "") or skill_id),
-            description=str(getattr(skill, "description", "") or ""),
-            input_schema=getattr(skill, "input_schema", None) if isinstance(getattr(skill, "input_schema", None), dict) else {},
+            persist=persist,
             refine_hint=refine_hint,
         )
     except ValueError as e:
@@ -2344,14 +2660,6 @@ async def generate_workspace_skill_execution_examples(
     if not isinstance(examples, list) or not examples:
         raise HTTPException(status_code=502, detail="LLM did not return usable examples")
 
-    saved = False
-    if persist:
-        try:
-            saved = bool(mgr.persist_execution_examples(str(skill_id), examples))  # type: ignore[attr-defined]
-        except Exception as e:
-            logging.warning("persist execution examples failed: %s", e, exc_info=True)
-            saved = False
-
     return {
         "status": "ok",
         "skill_id": skill_id,
@@ -2359,7 +2667,7 @@ async def generate_workspace_skill_execution_examples(
         "model": result.get("model"),
         "source": result.get("source"),
         "warning": result.get("warning"),
-        "persisted": saved,
+        "persisted": bool(result.get("persisted")),
     }
 
 

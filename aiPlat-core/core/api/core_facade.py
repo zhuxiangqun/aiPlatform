@@ -2027,6 +2027,7 @@ async def _get_latest_eval_score_async(agent_id: str):
 async def run_workspace_agent(
     agent_info: Any, user_message: str, *, max_steps: int = 10,
     toolset: str = "", session_id: str = "", stream: bool = False,
+    input_payload: Any = None,
 ) -> Dict[str, Any]:
     """Execute a single workspace agent via StageRunner → ReActLoop.
     
@@ -2042,19 +2043,32 @@ async def run_workspace_agent(
     run_id = f"run-{_uuid.uuid4().hex[:12]}"
     trace_id = f"trace-{_uuid.uuid4().hex[:12]}"
     session_id = session_id or run_id
+    # Persist original execute payload so status/review-output can restore input
+    # after stream (FE lastInputRef alone is not authoritative).
+    _stored_input: Any = input_payload if input_payload is not None else (
+        {"message": user_message} if user_message else None
+    )
 
     # Persist run to agent_executions via execution_store (unified path)
     _now = _time.time()
     try:
+        from core.harness.utils.execute_session import agent_stream_timeout_seconds
         from core.services.execution_store import get_execution_store
         _es = get_execution_store()
+        _agent_wall = float(agent_stream_timeout_seconds(int(max_steps or 10)))
         await _es.upsert_agent_execution({
             "id": run_id,
             "agent_id": agent_id,
             "status": "running",
+            "input": _stored_input,
             "start_time": _now,
             "created_at": _now,
             "trace_id": trace_id,
+            "metadata": {
+                "stream": bool(stream),
+                "timeout": _agent_wall,
+                "max_steps": int(max_steps or 10),
+            },
         })
         # Persist traces row so Diagnostics Links can resolve execution_id → trace
         try:
@@ -2074,6 +2088,12 @@ async def run_workspace_agent(
             })
         except Exception:
             logging.debug("upsert_trace at agent start failed run_id=%s", run_id, exc_info=True)
+        # Seed RunGraph meta (same as skill stream) so Links / status polling see has_graph.
+        try:
+            if hasattr(_es, "set_run_graph_status"):
+                await _es.set_run_graph_status(str(run_id), "running")
+        except Exception:
+            logging.debug("seed run_graph_meta running failed run_id=%s", run_id, exc_info=True)
         # Mark gate coverage (Phase 3 GateTracer)
         try:
             from core.harness.kernel.execution_context import mark_gate_passed
@@ -2082,6 +2102,26 @@ async def run_workspace_agent(
             logging.debug("execution_store_persist gate marker failed", exc_info=True)
     except Exception:
         logging.warning(f"Failed to persist agent execution record for {agent_id} run {run_id}", exc_info=True)
+
+    # Register TraceService in-memory so TraceGate.start_span(trace_id=…) succeeds
+    # (SQLite upsert alone is not enough — start_span looks up _traces).
+    try:
+        from core.harness.kernel.runtime import get_kernel_runtime
+        _rt = get_kernel_runtime()
+        _ts = getattr(_rt, "trace_service", None) if _rt else None
+        if _ts is not None:
+            await _ts.start_trace(
+                name=f"workspace_agent:{agent_id}",
+                attributes={
+                    "execution_id": run_id,
+                    "agent_id": agent_id,
+                    "session_id": session_id,
+                    "source": "workspace_agent",
+                },
+                trace_id=trace_id,
+            )
+    except Exception:
+        logging.debug("TraceService.start_trace for workspace agent failed run_id=%s", run_id, exc_info=True)
 
     # ── Emit run_start so ExecutionViewer + Runs page can discover this run ──
     try:
@@ -2125,6 +2165,25 @@ async def run_workspace_agent(
         except Exception:
             logging.debug("seed agent_start run_graph failed run_id=%s", run_id, exc_info=True)
 
+        # API-loop early watch: survives if bg thread hangs before StageRunner
+        # (model resolve / skill load) — that was the stuck 「会话 进行中 · 0 步骤」case.
+        try:
+            import time as _time_seed
+            from core.harness.utils.execute_session import watch_agent_no_progress
+
+            _asyncio.create_task(
+                watch_agent_no_progress(
+                    run_id=str(run_id),
+                    agent_id=str(agent_id),
+                    start_time=_time_seed.time(),
+                    input_payload=_stored_input,
+                    trace_id=str(trace_id or ""),
+                    source="api_loop_early_no_progress",
+                )
+            )
+        except Exception:
+            logging.debug("early no_progress watch schedule failed run_id=%s", run_id, exc_info=True)
+
         def _bg_runner() -> None:
             try:
                 _asyncio.run(
@@ -2137,6 +2196,7 @@ async def run_workspace_agent(
                         max_steps=max_steps,
                         toolset=toolset,
                         session_id=session_id,
+                        input_payload=_stored_input,
                     )
                 )
             except Exception:
@@ -2157,16 +2217,21 @@ async def run_workspace_agent(
         trace_id=trace_id,
         user_message=user_message, max_steps=max_steps, toolset=toolset,
         session_id=session_id,
+        input_payload=_stored_input,
     )
 
 
 async def _execute_workspace_agent_background(
     agent_info: Any, agent_id: str, run_id: str, *, trace_id: str = "", user_message: str,
     max_steps: int = 10, toolset: str = "", session_id: str = "",
+    input_payload: Any = None,
 ) -> Dict[str, Any]:
     """Core execution logic used by both synchronous and stream paths."""
     import asyncio as _asyncio, os as _os, time as _time, json as _json
     _now = _time.time()
+    _stored_input: Any = input_payload if input_payload is not None else (
+        {"message": user_message} if user_message else None
+    )
     sop_body = ""
     meta = getattr(agent_info, "metadata", None)
     if isinstance(meta, dict):
@@ -2185,33 +2250,69 @@ async def _execute_workspace_agent_background(
 
     def _resolve_model():
         from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        from core.harness.utils.execute_session import resolve_workspace_agent_model_purpose
         
         cfg = getattr(agent_info, "config", None)
         model_name = cfg.get("model") if isinstance(cfg, dict) else ""
+        purpose = resolve_workspace_agent_model_purpose(agent_info)
         
         # Always go through infra ModelManager for model resolution (single source of truth)
         if not model_name or model_name == "auto":
-            model_name = best_model_for_purpose("chat")
+            model_name = best_model_for_purpose(purpose)
         else:
             # Explicit model: validate it exists in infra registry; if not, fall back to auto
             try:
-                from infra.management.model.manager import ModelManager
-                mgr = ModelManager()
+                from core.harness.utils.model_injection import _get_cached_model_manager
+                mgr = _get_cached_model_manager()
                 if not mgr.select(model_name=model_name):
                     import logging as _logging
                     _logging.getLogger("aiplat.core_facade").warning(
                         f"Agent '{agent_id}' specified model '{model_name}' not found in infra registry; "
-                        f"falling back to best_model_for_purpose('chat')")
-                    model_name = best_model_for_purpose("chat")
+                        f"falling back to best_model_for_purpose('{purpose}')")
+                    model_name = best_model_for_purpose(purpose)
             except Exception:
-                model_name = best_model_for_purpose("chat")
+                model_name = best_model_for_purpose(purpose)
         
         try:
             return create_selected_adapter(model_name=model_name)
         except Exception:
             return None
 
-    agent_model = _resolve_model()
+    agent_model = None
+    try:
+        agent_model = await _asyncio.wait_for(
+            _asyncio.to_thread(_resolve_model),
+            timeout=45.0,
+        )
+    except _asyncio.TimeoutError:
+        logging.getLogger("aiplat.core_facade").error(
+            "model resolve timed out (45s) run_id=%s agent_id=%s", run_id, agent_id
+        )
+        try:
+            from core.harness.utils.execute_session import mark_agent_no_progress_timeout
+
+            await mark_agent_no_progress_timeout(
+                run_id=str(run_id),
+                agent_id=str(agent_id),
+                start_time=_now,
+                input_payload=_stored_input,
+                trace_id=str(trace_id or ""),
+                source="model_resolve_timeout",
+            )
+        except Exception:
+            logging.debug("model_resolve_timeout mark failed", exc_info=True)
+        return {
+            "ok": False,
+            "status": "timeout",
+            "output": None,
+            "error": "Timeout: model resolve hung >45s before first LLM",
+            "run_id": run_id,
+        }
+    except Exception:
+        logging.getLogger("aiplat.core_facade").exception(
+            "model resolve failed run_id=%s agent_id=%s", run_id, agent_id
+        )
+        agent_model = None
     if not agent_model:
         return {"ok": False, "status": "error", "output": None, "error": "No LLM model", "run_id": run_id}
 
@@ -2234,9 +2335,20 @@ async def _execute_workspace_agent_background(
     try:
         from core.harness.integration import get_skill_registry
         sk_reg = get_skill_registry()
+        _want = []
         for sn in (getattr(agent_info, "skills", []) or []):
+            if str(sn).strip():
+                _want.append(str(sn).strip())
+        _m0 = getattr(agent_info, "metadata", None) or {}
+        if isinstance(_m0, dict):
+            for sn in (_m0.get("required_skills") or []):
+                s = str(sn).strip()
+                if s and s not in _want:
+                    _want.append(s)
+        for sn in _want:
             s = sk_reg.get(str(sn)) if hasattr(sk_reg, "get") else None
-            if s: resolved_skills.append(s)
+            if s:
+                resolved_skills.append(s)
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
@@ -2259,6 +2371,50 @@ async def _execute_workspace_agent_background(
     if sys_prompt:
         prompt = sys_prompt + "\n\n" + prompt
 
+    from core.harness.utils.execute_session import agent_stream_timeout_seconds
+    _agent_wall = float(agent_stream_timeout_seconds(int(max_steps or 10)))
+    _meta_skills = []
+    try:
+        _m = getattr(agent_info, "metadata", None) or {}
+        if isinstance(_m, dict) and isinstance(_m.get("required_skills"), list):
+            _meta_skills = [str(s).strip() for s in _m["required_skills"] if str(s).strip()]
+    except Exception:
+        _meta_skills = []
+    _skill_names = [
+        str(s).strip()
+        for s in (getattr(agent_info, "skills", None) or [])
+        if str(s).strip()
+    ]
+    for s in _meta_skills:
+        if s not in _skill_names:
+            _skill_names.append(s)
+    _cfg = cfg if isinstance(cfg, dict) else {}
+    _skill_delivery = str(_cfg.get("skill_delivery") or "").strip().lower()
+    if not _skill_delivery and len(_skill_names) == 1:
+        _skill_delivery = "once"
+    # Soft preference only — do not bypass ReAct. Bound prompt-skills still skip
+    # CLAUDE.md inside sys_skill_call (constitution); agent reason step stays on ReAct.
+    if len(_skill_names) == 1:
+        _sid = _skill_names[0]
+        prompt = (
+            f"{prompt}\n\n[执行提示] 本 Agent 仅绑定技能 `{_sid}`。\n"
+            f"1) 第一轮必须调用该技能（skill_call），把用户任务/PRD 作为 input；\n"
+            f"2) 技能返回可用产物后，下一轮必须输出 "
+            f'{{\"type\":\"done\",\"answer\":...}} 或 DONE: 总结，禁止无故重复调用同一技能。'
+        )
+    elif _skill_delivery == "once" and _skill_names:
+        prompt = (
+            f"{prompt}\n\n[执行提示] skill_delivery=once：优先调用绑定技能 "
+            f"({', '.join(_skill_names[:4])})；"
+            f"任一主要技能成功产出后，下一轮必须 DONE，勿反复重跑同一技能。"
+        )
+
+    # Explicit frontmatter opt-in only (never infer from output_artifact).
+    _meta0 = getattr(agent_info, "metadata", None) or {}
+    if not isinstance(_meta0, dict):
+        _meta0 = {}
+    _explicit_skip_claude = _meta0.get("skip_claude_md") in (True, "1", "true", "yes")
+
     from core.harness.execution.langgraph.stage_runner import StageRunner
     # Create a minimal pipeline config so StageRunner uses the caller's max_steps (default=10),
     # not the fallback of 1 when self._config is None.
@@ -2279,10 +2435,27 @@ async def _execute_workspace_agent_background(
         "_run_id": run_id,
         "_agent_id": agent_id,
         "_trace_id": trace_id,
+        # Workspace trial agents are not code-gen by default; slim CLAUDE inject
+        # is driven by this profile in sys_llm_generate (not by skipping Agent ReAct).
         "_coding_policy_profile": "off",
+        # First-turn oral execute: never pay query-rewrite LLM before ReAct generate
+        # (was True → rewrite_with_history could stall pre-LLM with Ollama idle).
+        "_enable_query_rewrite": False,
         "_user_id": "system",
-        "_enable_query_rewrite": True,
         "_sys_prompt": sys_prompt,
+        "_skip_claude_md": _explicit_skip_claude,
+        "_bound_skill_ids": list(_skill_names),
+        "_skill_delivery": _skill_delivery,
+        "_user_task": str(user_message or ""),
+        "_execute_input": _stored_input if isinstance(_stored_input, dict) else {},
+        # Agent-declared coding language (AGENT.md preferred_language). Injected
+        # into code_generation; task text wins over preferred; preferred wins over
+        # model-echoed schema default (often python).
+        "_preferred_language": str(
+            (_cfg.get("preferred_language") if isinstance(_cfg, dict) else None)
+            or (_meta0.get("preferred_language") if isinstance(_meta0, dict) else None)
+            or ""
+        ).strip().lower(),
         "context": {"system_prompt": sys_prompt, "task": user_message},
     }
 
@@ -2428,11 +2601,54 @@ async def _execute_workspace_agent_background(
     status = "completed"
     result_text = ""
     error_msg = None
+    run_task = _asyncio.create_task(runner.run(prompt, state))
+    # note: status may flip to approval_required / policy_denied after runner returns
+
+    async def _agent_no_progress_watch() -> None:
+        from core.harness.utils.execute_session import watch_agent_no_progress
+
+        await watch_agent_no_progress(
+            run_id=str(run_id),
+            agent_id=str(agent_id),
+            start_time=float(t0_agent or _now),
+            input_payload=_stored_input,
+            trace_id=str(trace_id or ""),
+            cancel_cb=run_task.cancel,
+            source="bg_loop_no_progress",
+        )
+
+    watch_task = _asyncio.create_task(_agent_no_progress_watch())
     try:
-        result_text = await _asyncio.wait_for(runner.run(prompt, state), timeout=300)
+        result_text = await _asyncio.wait_for(run_task, timeout=_agent_wall)
+    except _asyncio.CancelledError:
+        status = "timeout"
+        if not error_msg:
+            error_msg = (
+                "Timeout (no_progress): hung before first LLM/skill syscall"
+            )
     except _asyncio.TimeoutError:
         status = "timeout"
-        error_msg = "Timeout (300s)"
+        error_msg = f"Timeout ({int(_agent_wall)}s)"
+        try:
+            from core.harness.utils.local_llm_recover import unload_local_llm_best_effort
+            import anyio as _anyio
+
+            await _anyio.to_thread.run_sync(unload_local_llm_best_effort)
+        except Exception:
+            logging.debug("agent timeout ollama unload failed", exc_info=True)
+        try:
+            from core.services.execution_store import get_execution_store as _ges
+
+            _es_to = _ges()
+            if hasattr(_es_to, "close_running_syscall_events"):
+                await _es_to.close_running_syscall_events(
+                    str(run_id),
+                    status="timeout",
+                    error=error_msg,
+                    error_code="AGENT_WALL_TIMEOUT",
+                )
+        except Exception:
+            logging.debug("agent timeout close syscalls failed", exc_info=True)
     except Exception as e:
         status = "failed"
         error_msg = str(e) or repr(e) or type(e).__name__
@@ -2442,6 +2658,12 @@ async def _execute_workspace_agent_background(
         import traceback as _tb
         state["_error_traceback"] = _tb.format_exc()
     finally:
+        if not watch_task.done():
+            watch_task.cancel()
+            try:
+                await watch_task
+            except Exception:
+                pass  # noqa: cleanup-best-effort
         if ws_token is not None:
             try:
                 from core.harness.kernel.execution_context import reset_active_workspace_context
@@ -2490,24 +2712,132 @@ async def _execute_workspace_agent_background(
             duration_ms=_duration_ms,
             audit=True,
         )
-        await _rg_done(run_id, status="completed" if status == "completed" else "failed")
+        await _rg_done(run_id, status="completed" if status == "completed" else ("timeout" if status == "timeout" else "failed"))
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
     try:
         from core.services.execution_store import get_execution_store
         _es = get_execution_store()
-        await _es.upsert_agent_execution({
-            "id": run_id,
-            "agent_id": agent_id,
-            "status": status,
-            "output": {"text": result_text or ""},
-            "error": error_msg or "",
-            "start_time": float(t0_agent or _now),
-            "end_time": _end,
-            "duration_ms": _duration_ms,
-            "trace_id": trace_id,
-        })
+        _final_meta: Dict[str, Any] = {"stream": True}
+        try:
+            existing = await _es.get_agent_execution(str(run_id)) if hasattr(_es, "get_agent_execution") else None
+            if isinstance(existing, dict) and isinstance(existing.get("metadata"), dict):
+                _final_meta = {**existing["metadata"], **_final_meta}
+        except Exception:
+            existing = None
+        # Eager skill_delivery finalize may have already closed the row — do not
+        # wipe a good product with empty result_text if runner hung after FINISHED.
+        _already_done = False
+        try:
+            if isinstance(existing, dict):
+                _est = str(existing.get("status") or "").lower()
+                _eout = existing.get("output")
+                _etext = ""
+                if isinstance(_eout, str):
+                    _etext = _eout.strip()
+                elif isinstance(_eout, dict):
+                    # skill_delivery often stores {code, language, text} — do not
+                    # miss a sealed product that only has ``code`` (HTTP 500 after
+                    # DeepSeek FE pass when text key empty).
+                    _etext = str(
+                        _eout.get("text")
+                        or _eout.get("code")
+                        or _eout.get("output")
+                        or _eout.get("answer")
+                        or ""
+                    ).strip()
+                if _est in ("completed", "ok", "success", "done") and len(_etext) >= 20:
+                    _already_done = True
+                    if not str(result_text or "").strip():
+                        result_text = _etext
+                    status = "completed"
+                    error_msg = None
+        except Exception:
+            _already_done = False
+        _out_payload: Dict[str, Any] = {"text": result_text or ""}
+        # Normalize architecture drafts so overview→context etc. land in stored
+        # product + quality_review (local LLMs often omit the context key).
+        try:
+            from core.management.execution_quality_review import (
+                ensure_architecture_section_fields,
+                sanitize_architecture_third_party,
+                _unwrap_output as _eq_unwrap,
+                _input_text as _eq_input_text,
+            )
+            import json as _json_norm
+
+            _before = _eq_unwrap(_out_payload)
+            _normed = ensure_architecture_section_fields(_before)
+            _normed = sanitize_architecture_third_party(
+                _normed, _eq_input_text(_stored_input)
+            )
+            if isinstance(_normed, dict) and _normed != _before:
+                _out_payload = {"text": _json_norm.dumps(_normed, ensure_ascii=False)}
+                result_text = _out_payload["text"]
+        except Exception:
+            logging.debug("architecture section normalize skipped", exc_info=True)
+        if (not _already_done) and str(status or "").lower() in ("completed", "ok", "success"):
+            try:
+                from core.management.execution_quality_review import (
+                    review_execution_output,
+                    quality_review_blocks_success,
+                )
+
+                skills = list(
+                    getattr(agent_info, "required_skills", None)
+                    or getattr(agent_info, "skills", None)
+                    or []
+                )
+                skill_hint = " ".join(str(s) for s in skills[:8])
+                _qr = review_execution_output(
+                    kind="agent",
+                    asset_id=str(agent_id),
+                    asset_name=str(
+                        getattr(agent_info, "display_name", None)
+                        or getattr(agent_info, "name", None)
+                        or agent_id
+                    ),
+                    input_payload=_stored_input,
+                    output=_out_payload,
+                    status=str(status),
+                    hints=f"{skill_hint} {getattr(agent_info, 'name', '')}",
+                )
+                _final_meta["quality_review"] = _qr
+                if quality_review_blocks_success(_qr):
+                    status = "failed"
+                    error_msg = str(
+                        (_qr.get("headline") if isinstance(_qr, dict) else None)
+                        or error_msg
+                        or "coding deliverable failed quality review"
+                    )
+                    _final_meta["quality_block_completed"] = True
+                    logging.info(
+                        "agent stream blocked by quality_review run_id=%s verdict=%s",
+                        run_id,
+                        (_qr or {}).get("verdict") if isinstance(_qr, dict) else None,
+                    )
+            except Exception as _qr_e:
+                logging.warning(
+                    "agent stream quality_review skipped run_id=%s: %s",
+                    run_id,
+                    _qr_e,
+                    exc_info=True,
+                )
+        if not _already_done:
+            await _es.upsert_agent_execution({
+                "id": run_id,
+                "agent_id": agent_id,
+                "status": status,
+                "input": _stored_input,
+                "output": _out_payload,
+                "error": error_msg or "",
+                "start_time": float(t0_agent or _now),
+                "end_time": _end,
+                "duration_ms": _duration_ms,
+                "trace_id": trace_id,
+                "metadata": _final_meta,
+            })
         try:
             await _es.upsert_trace({
                 "trace_id": trace_id,
@@ -2643,6 +2973,47 @@ async def generate_ontology_suggestions(
         confidence_threshold=confidence_threshold,
     )
     return {"suggestions": suggestions, "total": len(suggestions), "source": "llm"}
+
+
+# ── Agent eval artifacts (scoring_dimensions + eval_metric/runner) ──
+
+
+async def generate_agent_eval(
+    agent_id: str,
+    *,
+    force: bool = False,
+    max_traces: int = 50,
+    run_runner: bool = True,
+    use_llm: bool = True,
+) -> Dict[str, Any]:
+    """Unique Core entry: generate Agent eval code / scoring_dimensions.
+
+    All HTTP / 上架钩子 / eval_code_generator handler must call this
+    (via core.apps.eval.agent_eval). Do not reimplement in routers.
+    """
+    from core.apps.eval.agent_eval import generate_agent_eval as _impl
+
+    return await _impl(
+        agent_id,
+        force=force,
+        max_traces=max_traces,
+        run_runner=run_runner,
+        use_llm=use_llm,
+    )
+
+
+def inspect_agent_eval(agent_id: str) -> Dict[str, Any]:
+    """Read-only: scoring_dimensions + eval files + traces for one Agent."""
+    from core.apps.eval.agent_eval import inspect_agent_eval as _impl
+
+    return _impl(agent_id)
+
+
+def enqueue_listed_agent_eval(agent_id: str) -> None:
+    """Fire-and-forget after Agent 上架 (listed). Never raises to caller."""
+    from core.apps.eval.agent_eval import enqueue_listed_agent_eval as _impl
+
+    _impl(agent_id)
 
 
 def predict_evolution_impact_for(

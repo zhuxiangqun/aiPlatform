@@ -203,7 +203,9 @@ class WorkflowService:
                 "model": agent_fm.get("model", ""),
                 "agent_type": agent_fm.get("agent_type", "react"),
                 "review_gate": cfg.get("reviewGate", "quick"),
-                "required_skills": cfg.get("requiredSkills", []),
+                # Canvas stores `skills`; engine StageRunner reads `required_skills`.
+                "required_skills": cfg.get("requiredSkills") or cfg.get("skills") or [],
+                "skill_name": cfg.get("skillName") or cfg.get("skill_name") or "",
                 # v2.5: LLM nodes with agentId use Agent→ReActLoop→Skill (via _execute_agent_node)  # noqa: boundary
                 # StageRunner._resolve_skills() picks up required_skills from PipelineStageConfig.
             })

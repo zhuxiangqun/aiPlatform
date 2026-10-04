@@ -6,7 +6,7 @@ Auto-generated via Mixin split. Contains entity-specific CRUD methods.
 from typing import Any, Dict, List, Optional, Tuple
 import json, time, sqlite3, logging
 import anyio
-from ._base import _json_dumps, _json_loads
+from ._base import _json_dumps, _json_loads, run_store_io
 
 
 class SkillMixin:
@@ -68,29 +68,60 @@ class SkillMixin:
                     ON CONFLICT(id) DO UPDATE SET
                       skill_id=excluded.skill_id,
                       tenant_id=excluded.tenant_id,
-                      status=excluded.status,
+                      status=CASE
+                        WHEN lower(coalesce(skill_executions.status, '')) IN ('timeout', 'cancelled', 'canceled')
+                             AND lower(coalesce(excluded.status, '')) IN ('completed', 'ok', 'success', 'running')
+                          THEN skill_executions.status
+                        ELSE excluded.status
+                      END,
                       input_json=COALESCE(excluded.input_json, skill_executions.input_json),
-                      output_json=COALESCE(excluded.output_json, skill_executions.output_json),
-                      error=excluded.error,
-                      error_code=excluded.error_code,
+                      output_json=CASE
+                        WHEN lower(coalesce(skill_executions.status, '')) IN ('timeout', 'cancelled', 'canceled')
+                             AND lower(coalesce(excluded.status, '')) IN ('completed', 'ok', 'success', 'running')
+                          THEN skill_executions.output_json
+                        ELSE COALESCE(excluded.output_json, skill_executions.output_json)
+                      END,
+                      error=CASE
+                        WHEN lower(coalesce(skill_executions.status, '')) IN ('timeout', 'cancelled', 'canceled')
+                             AND lower(coalesce(excluded.status, '')) IN ('completed', 'ok', 'success', 'running')
+                          THEN skill_executions.error
+                        ELSE excluded.error
+                      END,
+                      error_code=CASE
+                        WHEN lower(coalesce(skill_executions.status, '')) IN ('timeout', 'cancelled', 'canceled')
+                             AND lower(coalesce(excluded.status, '')) IN ('completed', 'ok', 'success', 'running')
+                          THEN skill_executions.error_code
+                        ELSE excluded.error_code
+                      END,
                       start_time=CASE
                         WHEN excluded.start_time IS NULL OR excluded.start_time = 0
                           THEN skill_executions.start_time
                         ELSE excluded.start_time
                       END,
                       end_time=CASE
+                        WHEN lower(coalesce(skill_executions.status, '')) IN ('timeout', 'cancelled', 'canceled')
+                             AND lower(coalesce(excluded.status, '')) IN ('completed', 'ok', 'success', 'running')
+                          THEN skill_executions.end_time
                         WHEN excluded.end_time IS NULL OR excluded.end_time = 0
                           THEN skill_executions.end_time
                         ELSE excluded.end_time
                       END,
                       duration_ms=CASE
+                        WHEN lower(coalesce(skill_executions.status, '')) IN ('timeout', 'cancelled', 'canceled')
+                             AND lower(coalesce(excluded.status, '')) IN ('completed', 'ok', 'success', 'running')
+                          THEN skill_executions.duration_ms
                         WHEN excluded.duration_ms IS NULL OR excluded.duration_ms = 0
                           THEN skill_executions.duration_ms
                         ELSE excluded.duration_ms
                       END,
                       user_id=COALESCE(excluded.user_id, skill_executions.user_id),
                       trace_id=COALESCE(excluded.trace_id, skill_executions.trace_id),
-                      metadata_json=excluded.metadata_json;
+                      metadata_json=CASE
+                        WHEN lower(coalesce(skill_executions.status, '')) IN ('timeout', 'cancelled', 'canceled')
+                             AND lower(coalesce(excluded.status, '')) IN ('completed', 'ok', 'success', 'running')
+                          THEN skill_executions.metadata_json
+                        ELSE excluded.metadata_json
+                      END;
                     """,
                     payload,
                 )
@@ -133,7 +164,7 @@ class SkillMixin:
             finally:
                 conn.close()
 
-        return await anyio.to_thread.run_sync(_sync)
+        return await run_store_io(_sync)
 
     async def list_skill_executions(self, skill_id: str, limit: int, offset: int) -> Tuple[List[Dict[str, Any]], int]:
         await self.init()

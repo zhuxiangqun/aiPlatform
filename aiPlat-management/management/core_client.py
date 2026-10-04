@@ -153,6 +153,10 @@ class CoreAPIClient:
     async def get_trace_by_execution(self, execution_id: str) -> Dict[str, Any]:
         return await self._request("GET", f"/api/core/executions/{execution_id}/trace")
 
+    async def get_observation_run_graph(self, run_id: str) -> Dict[str, Any]:
+        """Authoritative ReAct/ExecutionViewer run_graph (not LangGraph graph_runs)."""
+        return await self._request("GET", f"/api/core/observation/runs/{run_id}/graph")
+
     async def list_executions_by_trace(self, trace_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         return await self._request("GET", f"/api/core/traces/{trace_id}/executions", params=params)

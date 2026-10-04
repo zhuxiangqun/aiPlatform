@@ -11,7 +11,9 @@ purpose_profiles:
   agent_creation:
     prefer_local: true
   code_gen:
-    prefer_local: true
+    # false：编码质量优先；有云端 coder 时不应被本地 7b 行政加分锁死
+    # （当前环境无 API + RAM 40% 门 → 仍只会落到 qwen2.5-coder:7b）
+    prefer_local: false
   ontology_gen:
     prefer_local: true
 

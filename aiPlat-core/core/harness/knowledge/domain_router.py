@@ -399,6 +399,7 @@ class DomainRouter:
             f"判断以下问题属于哪个领域，只输出领域ID名称：\n{query[:500]}"
         )
 
+        fallback = self._load_registry().get("fallback_domain", "ai-knowledge")
         try:
             import asyncio
             from core.harness.syscalls.llm import sys_llm_generate
@@ -412,14 +413,21 @@ class DomainRouter:
                 )
 
             try:
-                loop = asyncio.get_running_loop()
-                # Already in async context — run coroutine in same loop via thread pool
-                import concurrent.futures
-                future = asyncio.run_coroutine_threadsafe(_call(), loop)
-                result = future.result(timeout=15)
+                asyncio.get_running_loop()
             except RuntimeError:
-                # No running loop (sync context) — use asyncio.run
+                # Sync / worker-thread context — safe to spin a private loop.
                 result = asyncio.run(_call())
+            else:
+                # Already on an event loop: waiting on run_coroutine_threadsafe
+                # against *this* loop deadlocks (pre-LLM hang: step_1, Ollama idle).
+                # Fail open; callers that need T3 should use an async path or
+                # invoke classify() via asyncio.to_thread (no running loop there).
+                logging.warning(
+                    "DomainRouter._llm_classify: skip T3 on running event loop "
+                    "(deadlock risk); fallback=%s",
+                    fallback,
+                )
+                return fallback
 
             answer = str(result.get("content", "")).strip().lower()
             for did in domains:
@@ -428,7 +436,7 @@ class DomainRouter:
         except Exception as e:
             logging.debug(str(e), exc_info=True)
 
-        return self._load_registry().get("fallback_domain", "ai-knowledge")
+        return fallback
 
     def _load_registry(self) -> dict:
         u"""Lazy-load registry.json (cached per instance)."""

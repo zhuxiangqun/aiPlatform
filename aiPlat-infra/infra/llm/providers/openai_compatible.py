@@ -47,24 +47,65 @@ class OpenAICompatibleClient(LLMClient):
             self._pool = None
 
     def _get_keep_alive(self) -> str | None:
-        """Dynamic keep_alive based on model deployment state (v3).
+        """Ollama keep_alive for local models (API providers → None).
 
-        Returns None for API models, '-1' for hot-loaded local models,
-        '30' for cold-loaded local models (prevents thrashing).
+        Historical bug: ``local_hot → "-1"`` pinned models forever and wedged
+        16GB Apple Silicon once a generate hung (single-flight llama-server).
+
+        Policy (config/env overridable):
+        - ``AIPLAT_OLLAMA_KEEP_ALIVE`` if set (``0`` / ``30`` / ``-1`` / ``60s`` …)
+        - else ≤24GB RAM → ``0`` (unload immediately after each call)
+        - else → ``60`` (short warm cache, never forever)
         """
         try:
+            import os as _os
+            provider = (getattr(self.config, "provider", "") or "").lower()
+            if provider not in ("ollama", "lmstudio", "omlx"):
+                # Still allow derive for unknown local OpenAI-compatible hosts
+                pass
             from infra.management.model.manager import _derive_model_state
-            # Construct a lightweight model info object
-            class _M: pass
+
+            class _M:
+                pass
+
             m = _M()
-            m.provider = getattr(self.config, 'provider', '') or ''
-            m.name = getattr(self.config, 'model', '') or ''
+            m.provider = getattr(self.config, "provider", "") or ""
+            m.name = getattr(self.config, "model", "") or ""
             m.size = 0
             ds = _derive_model_state(m)
-            if ds == "local_hot":
-                return "-1"
-            elif ds == "local_cold":
-                return "30"
+            if ds not in ("local_hot", "local_cold"):
+                return None
+
+            env_ka = (_os.getenv("AIPLAT_OLLAMA_KEEP_ALIVE") or "").strip()
+            if env_ka:
+                return env_ka
+
+            # LLMConfig.ollama_keep_alive default is "60s" — honor explicit non-forever values.
+            cfg_ka = str(getattr(self.config, "ollama_keep_alive", "") or "").strip()
+            if cfg_ka and cfg_ka not in ("-1", "forever", "infinite"):
+                # On ≤24GB still force unload-after-call unless operator set env above.
+                ram_gb = 0.0
+                try:
+                    import psutil
+
+                    ram_gb = float(psutil.virtual_memory().total) / (1024 ** 3)
+                except Exception:
+                    ram_gb = 0.0
+                if ram_gb > 0 and ram_gb <= 24.0:
+                    return "0"
+                return cfg_ka
+
+            ram_gb = 0.0
+            try:
+                import psutil
+
+                ram_gb = float(psutil.virtual_memory().total) / (1024 ** 3)
+            except Exception:
+                ram_gb = 0.0
+            # 16–24GB unified-memory laptops: never pin; unload after each call.
+            if ram_gb > 0 and ram_gb <= 24.0:
+                return "0"
+            return "60"
         except Exception:
             logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         return None
@@ -178,17 +219,32 @@ class OpenAICompatibleClient(LLMClient):
         if self._pool is not None and self._current_key is not None:
             self._pool.mark_success(self._current_key)
 
+        content = resp.content or ""
+        # DeepSeek reasoner / v4-pro: CoT may fill max_tokens while content stays empty
+        # (run-69d821: finish_reason=length, content='', completion_tokens=4096).
+        reasoning = getattr(resp, "reasoning_content", None) or ""
+        finish_reason = response.choices[0].finish_reason
+        if not str(content).strip() and reasoning:
+            # Prefer not to ship raw CoT as user-visible code; surface a clear empty
+            # so callers can retry with higher max_tokens / non-reasoner model.
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "LLM empty content with reasoning_content model=%s finish=%s "
+                "completion_tokens=%s reasoning_len=%s",
+                response.model, finish_reason, completion_tokens, len(str(reasoning)),
+            )
+
         return ChatResponse(
             id=response.id,
             model=response.model,
-            content=resp.content or "",
+            content=content,
             role=resp.role,
             usage={
                 "prompt_tokens": prompt_tokens,
                 "completion_tokens": completion_tokens,
                 "total_tokens": total_tokens,
             },
-            finish_reason=response.choices[0].finish_reason,
+            finish_reason=finish_reason,
             latency=latency,
         )
 

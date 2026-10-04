@@ -1152,6 +1152,8 @@ async def lifespan(app: FastAPI):
         ("core.apps.tools.web.web_crawl", "WebMapTool", {}),
         # P0-2: 意图路由统一检索（AnySearch 借鉴，2026-08-28）
         ("core.apps.tools.routed_retrieve", "RoutedRetrieveTool", {}),
+        ("core.apps.tools.kb_tools", "KBIngestTool", {}),
+        ("core.apps.tools.kb_tools", "KBQueryTool", {}),
     ]
     for module_path, cls_name, kwargs in _tool_modules:
         try:
@@ -2482,12 +2484,20 @@ async def gateway_execute(http_request: Request, body: Dict[str, Any] = None):
         http_request.headers.get("X-AIPLAT-REQUEST-ID")
         or http_request.headers.get("x-aiplat-request-id")
     )
+    from core.harness.utils.execute_session import mint_execute_session_id
+
+    kind = str(body.get("kind") or "agent")
+    target_id = str(body.get("target_id") or "")
     exec_req = ExecutionRequest(
-        kind=body.get("kind", "agent"),
-        target_id=body.get("target_id", ""),
+        kind=kind,
+        target_id=target_id,
         payload=body.get("payload", {}),
         user_id=body.get("user_id", "system"),
-        session_id=body.get("session_id", "default"),
+        session_id=mint_execute_session_id(
+            kind=kind,
+            target_id=target_id,
+            session_id=body.get("session_id"),
+        ),
         request_id=req_id,
     )
     result = await get_harness().execute(exec_req)

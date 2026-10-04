@@ -104,12 +104,13 @@ from dataclasses import dataclass as _dc
 
 @_dc
 class PlatformResources:
-    ram_bytes: int
+    ram_bytes: int            # available RAM (soft scoring / pressure)
     vram_bytes: int           # Apple=vram==ram, NVIDIA=nvidia-smi, no-GPU=0
     gpu_vendor: Optional[str] # "apple" | "nvidia" | "amd" | None
     gpu_compatible: bool
     cpu_cores: int
     disk_free_bytes: int
+    ram_total_bytes: int = 0  # physical total — hard filter for local Ollama budget
     _collected_at: float = 0.0
 
 _RESOURCE_CACHE: Optional[tuple] = None
@@ -126,7 +127,8 @@ def collect_platform_resources() -> PlatformResources:
 
     import platform as _platform
 
-    ram = psutil.virtual_memory().available if _psutil_available else 0
+    ram_avail = psutil.virtual_memory().available if _psutil_available else 0
+    ram_total = psutil.virtual_memory().total if _psutil_available else 0
     disk = psutil.disk_usage("/").free if _psutil_available else 0
     cpu = os.cpu_count() or 1
 
@@ -134,7 +136,8 @@ def collect_platform_resources() -> PlatformResources:
     machine = _platform.machine()
 
     if sys_name == "Darwin" and machine == "arm64":
-        gpu_vendor, vram, gpu_compatible = "apple", ram, True
+        # Unified memory: VRAM budget tracks total RAM, not momentary available.
+        gpu_vendor, vram, gpu_compatible = "apple", (ram_total or ram_avail), True
     elif sys_name == "Linux":
         vram, gpu_vendor = _detect_nvidia_gpu()
         gpu_compatible = gpu_vendor is not None
@@ -142,11 +145,12 @@ def collect_platform_resources() -> PlatformResources:
         vram, gpu_vendor, gpu_compatible = 0, None, False
 
     res = PlatformResources(
-        ram_bytes=ram or 0,
+        ram_bytes=ram_avail or 0,
         vram_bytes=vram or 0,
         gpu_vendor=gpu_vendor,
         gpu_compatible=gpu_compatible,
         cpu_cores=cpu,
+        ram_total_bytes=ram_total or 0,
         disk_free_bytes=disk or 0,
         _collected_at=now,
     )
@@ -204,7 +208,28 @@ def _get_model_caps(m, profile_data: dict = None) -> set:
     return caps
 
 
-def _hard_filter(model, res: PlatformResources) -> tuple:
+def _local_max_ram_ratio(profile_data: dict | None = None) -> float:
+    """Max fraction of total RAM a local Ollama/LM Studio model may occupy.
+
+    Unified-memory Macs need headroom for OS + browser + KV cache. Default 0.40
+    blocks gemma4:12b (~7.6GB) on 16GB hosts while still allowing coder:7b (~4.7GB).
+    """
+    try:
+        fb = (profile_data or {}).get("fallback") or {}
+        ratio = float(fb.get("local_max_ram_ratio") or 0.40)
+    except Exception:
+        ratio = 0.40
+    try:
+        import os as _os
+        env = (_os.getenv("AIPLAT_LOCAL_MAX_RAM_RATIO") or "").strip()
+        if env:
+            ratio = float(env)
+    except Exception:
+        pass  # noqa: cleanup-best-effort
+    return max(0.15, min(0.85, ratio))
+
+
+def _hard_filter(model, res: PlatformResources, profile_data: dict | None = None) -> tuple:
     """物理硬约束。返回 (通过: bool, 原因: str)。永不放宽。"""
     if not model.enabled:
         return False, "disabled"
@@ -213,9 +238,34 @@ def _hard_filter(model, res: PlatformResources) -> tuple:
         return True, "ok (unknown size)"
     if model.size == 0:
         return True, "ok"  # API model
-    # Models running in separate processes (Ollama, LM Studio) skip RAM/VRAM checks
-    if _derive_model_state(model) in ("local_hot", "local_cold"):
-        return True, "ok (external process)"
+
+    provider = (getattr(model, "provider", "") or "").lower()
+    ds = _derive_model_state(model)
+    # Ollama/LM Studio share host unified memory — do NOT skip RAM checks.
+    # Old "external process" bypass let 7–12GB models load on 16GB Macs and wedge.
+    # Apply budget for any sized local runner (hot/cold/unavailable-but-sized).
+    is_local_runner = (
+        ds in ("local_hot", "local_cold")
+        or provider in ("ollama", "lmstudio", "omlx")
+    )
+    if is_local_runner and model.size > 0:
+        ratio = _local_max_ram_ratio(profile_data)
+        # Budget against physical total RAM — available fluctuates and would
+        # falsely reject 3b/7b under transient pressure.
+        total = int(getattr(res, "ram_total_bytes", 0) or 0) or int(res.ram_bytes or 0)
+        budget = int(total * ratio) if total else 0
+        if budget > 0 and model.size > budget:
+            return False, (
+                f"local model {model.size/1e9:.1f}GB exceeds "
+                f"{ratio:.0%} of RAM ({budget/1e9:.1f}GB budget / "
+                f"{total/1e9:.1f}GB total) — would wedge Ollama"
+            )
+        if ds in ("local_hot", "local_cold"):
+            return True, "ok (local within ram budget)"
+        # provider-tagged but derive said unavailable: still size-ok for selection
+        # if file check flickers; capability/health filters handle missing files.
+        if provider in ("ollama", "lmstudio", "omlx"):
+            return True, "ok (local provider within ram budget)"
 
     if model.size > res.ram_bytes:
         return False, (f"requires {model.size/1e9:.1f}GB RAM, "
@@ -505,13 +555,27 @@ def _score_model(
     if require.get("context_window", 0) and context_window >= require["context_window"]:
         score += 20
 
-    # 7. Latency: API models have network overhead
+    # 7. Latency: API network overhead + local model size (generation wall time).
     #    weights["latency"] is negative (latency is a negative factor); the
     #    penalty value is also negative — multiply by abs(weight) so the
     #    combination stays a penalty (P0-1 sign fix: -20 × -2.5 must be -50).
+    #    Previously only API got a latency penalty; large local models (e.g.
+    #    gemma4:12b) then won skill_execution on reasoning when free RAM looked OK.
     latency_penalty = 0
     if _ds == "api":
         latency_penalty = -20
+    elif _ds in ("local_hot", "local_cold"):
+        # Quantized "12b" often lands ~7–8GB on disk but still wedges Ollama under
+        # long agent/skill prompts — treat ≥7GB as heavy, not mid-tier.
+        size_gb = ((model.size or 0) or 0) / (1024 ** 3)
+        if size_gb >= 12:
+            latency_penalty = -45
+        elif size_gb >= 7:
+            latency_penalty = -35
+        elif size_gb >= 5:
+            latency_penalty = -18
+        elif size_gb >= 3:
+            latency_penalty = -6
     score += int(latency_penalty * abs(weights.get("latency", -1.0)))
 
     # 8. Load: concurrency pressure (v3 new)
@@ -745,9 +809,14 @@ class ModelManager:
         # 2. Scan local Ollama / LM Studio / vLLM models (always, not just when empty)
         try:
             import concurrent.futures as _cfutures
-            with _cfutures.ThreadPoolExecutor(max_workers=1) as _pool:
+            _pool = _cfutures.ThreadPoolExecutor(max_workers=1)
+            try:
                 _future = _pool.submit(self._scan_local_models_sync)
                 _future.result(timeout=10.0)
+            finally:
+                # wait=True after result() timeout joins a hung Ollama scan forever
+                # (blocks ReAct after generate success).
+                _pool.shutdown(wait=False, cancel_futures=True)
         except Exception as e:
             logging.debug(str(e), exc_info=True)
         # 3. 补全所有模型的 size / is_downloaded / supports_gpu
@@ -948,6 +1017,41 @@ class ModelManager:
     
     # ===== 查询接口 =====
     
+    def _refresh_adapter_models(self) -> None:
+        """Re-read SQLite adapters into the in-memory registry.
+
+        Management UI lists this process's ``_models``; core/onboarding can
+        insert DeepSeek after infra boot. Without a refresh, /infra/models
+        stays local-only until restart.
+        """
+        from .config_loader import _load_adapter_models
+
+        try:
+            fresh = _load_adapter_models()
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "adapter model refresh skipped", exc_info=True
+            )
+            return
+        wanted = {m.id: m for m in fresh}
+        stale = [
+            mid
+            for mid in list(self._models)
+            if str(mid).startswith("adapter:") and mid not in wanted
+        ]
+        for mid in stale:
+            self._models.pop(mid, None)
+        for mid, model in wanted.items():
+            cur = self._models.get(mid)
+            if cur is None:
+                self._models[mid] = model
+                continue
+            cur.config = model.config
+            cur.provider = model.provider
+            cur.enabled = model.enabled
+            cur.status = model.status
+            cur.display_name = model.display_name or cur.display_name
+
     async def list_models(
         self,
         source: Optional[str] = None,
@@ -959,6 +1063,7 @@ class ModelManager:
         if not self._local_scanned:
             self._local_scanned = True
             await self._scan_local_models()
+        self._refresh_adapter_models()
         models = list(self._models.values())
         
         # 过滤
@@ -1288,7 +1393,7 @@ class ModelManager:
 
         for level_name, soft_fn in soft_filters:
             passed = [m for m in models
-                       if _hard_filter(m, res)[0] and soft_fn(m)]
+                       if _hard_filter(m, res, profile_data)[0] and soft_fn(m)]
             if passed:
                 if level_name != "full":
                     # P2-8: degraded levels (-cap-hlt / none) drop the health filter —
@@ -1300,6 +1405,33 @@ class ModelManager:
                         "Model selection degraded to level=%s for purpose=%s; "
                         "candidates with poor health (failure_rate>50%%): %s",
                         level_name, purpose, _health_bad or "none")
+
+                # Sole survivor: explain near-misses (e.g. code_gen on 16GB Mac
+                # only keeps qwen2.5-coder:7b — 14b RAM-gated, 3b rq-gated, no API).
+                if level_name == "full" and len(passed) == 1:
+                    _near: list[str] = []
+                    for _m in models:
+                        if _m.name == passed[0].name:
+                            continue
+                        _ok, _why = _hard_filter(_m, res, profile_data)
+                        if not _ok:
+                            _near.append(f"{_m.name}:hard:{_why}")
+                            continue
+                        if not _filter_capability(_m, purpose, profile, profile_data):
+                            _near.append(f"{_m.name}:cap_fail")
+                            continue
+                        if not _filter_health(_m):
+                            _near.append(f"{_m.name}:health_fail")
+                            continue
+                        if not _filter_latency(_m):
+                            _near.append(f"{_m.name}:latency_fail")
+                    logging.getLogger(__name__).info(
+                        "Model selection sole candidate for purpose=%s: %s; "
+                        "near_misses=%s",
+                        purpose,
+                        passed[0].name,
+                        _near[:12] or "none",
+                    )
 
                 # Pre-compute best API model for quality-gated comparison (#15)
                 best_api_model = None
@@ -1337,7 +1469,7 @@ class ModelManager:
             safe_m = self._find_model_by_name(safe_name)
             if safe_m is None:
                 continue
-            ok, _reason = _hard_filter(safe_m, res)
+            ok, _reason = _hard_filter(safe_m, res, profile_data)
             if not ok:
                 continue
             if safe_m.size and safe_m.size > 0:

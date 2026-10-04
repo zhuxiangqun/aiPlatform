@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
 import { Button } from '../ui';
+import { extractCodingDeliveryText } from './fileDelivery';
+import { tryParseJsonOrPythonLiteral } from './pythonLiteral';
 
 const PATH_RE =
   /(?:\/(?:Users|home|var|tmp|opt)[^\s`"')\]}>]+?\.(?:pptx|potx|docx|xlsx|pdf)|~\/\.aiplat\/[^\s`"')\]}>]+?\.(?:pptx|potx|docx|xlsx|pdf))/gi;
@@ -15,6 +17,11 @@ export function coerceSkillEnvelope(raw: unknown): unknown {
         cur = JSON.parse(s);
         continue;
       } catch {
+        const py = tryParseJsonOrPythonLiteral(s);
+        if (py && typeof py === 'object') {
+          cur = py;
+          continue;
+        }
         return cur;
       }
     }
@@ -23,6 +30,11 @@ export function coerceSkillEnvelope(raw: unknown): unknown {
       // unwrap one more layer of { output: {...} } / { result: {...object...} }
       if (o.output && typeof o.output === 'object') {
         cur = o.output;
+        continue;
+      }
+      // code_generation observe: { code, language } — peel to inner for display helpers
+      if (typeof o.code === 'string' && o.code.trim() && ('language' in o || '_language_locked' in o)) {
+        cur = o.code;
         continue;
       }
       if (
@@ -82,6 +94,15 @@ export function downloadArtifactPath(path: string) {
 
 /** Prefer human markdown from skill envelopes; fall back to structured summary. */
 export function skillOutputDisplayText(raw: unknown): string {
+  // Coding double-envelope: { text: "{'code': '...\\n## FILE...'}" } → clean body
+  const coding = extractCodingDeliveryText(
+    typeof raw === 'string' ? raw : '',
+    raw,
+  );
+  if (coding.trim() && /##\s*FILE:\s*\S/.test(coding)) {
+    return coding;
+  }
+
   const cur = coerceSkillEnvelope(raw);
   if (cur == null) return '';
   if (typeof cur === 'string') {
@@ -89,18 +110,30 @@ export function skillOutputDisplayText(raw: unknown): string {
     if (/\.(pptx|potx|docx|xlsx|pdf)$/i.test(cur.trim())) {
       return `# 已生成\n- 路径: \`${cur.trim()}\``;
     }
+    // Python-repr / JSON skill blob still as string
+    const unwrapped = extractCodingDeliveryText(cur, null);
+    if (unwrapped.trim() && unwrapped.trim() !== cur.trim()) return unwrapped;
     return cur;
   }
   if (typeof cur === 'object') {
     const o = cur as Record<string, unknown>;
     if (typeof o.markdown === 'string' && o.markdown.trim()) return o.markdown;
+    // code_generation / language-locked envelopes
+    if (typeof o.code === 'string' && o.code.trim()) return o.code;
+    if (typeof o.generated_code === 'string' && String(o.generated_code).trim()) {
+      return String(o.generated_code);
+    }
     if (typeof o.output === 'string' && o.output.trim()) {
       // nested string may itself be JSON
       const nested = skillOutputDisplayText(o.output);
       if (nested && nested !== o.output) return nested;
       return o.output;
     }
-    if (typeof o.text === 'string' && o.text.trim()) return o.text;
+    if (typeof o.text === 'string' && o.text.trim()) {
+      const nested = extractCodingDeliveryText(o.text, o);
+      if (nested.trim()) return nested;
+      return o.text;
+    }
     const path = o.result || o.pptx_path || o.path || o.file_path;
     if (typeof path === 'string' && path) {
       const pages = o.page_count != null ? `\n- 页数: ${o.page_count}` : '';

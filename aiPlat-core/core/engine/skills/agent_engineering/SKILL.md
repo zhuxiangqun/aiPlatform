@@ -15,14 +15,14 @@ triggers:
   - 生成Agent
   - Agent Engineering
 permissions:
-- fs:write
+- llm:generate
 - fs:read
 effects:
-- type: write
+- type: emit
   resources:
-  - filesystem:~/.aiplat
-  idempotent: false
-  rollback_available: true
+  - artifact:agent_app
+  idempotent: true
+  rollback_available: false
 input_schema:
   prd:
     type: object

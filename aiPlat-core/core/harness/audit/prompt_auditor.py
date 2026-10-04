@@ -139,6 +139,152 @@ def audit_agent_md(agent_id: str, sop_body: str, frontmatter: Dict = None) -> Pr
     return record
 
 
+_VAGUE_LABELS: Dict[str, str] = {
+    "vague_quality_code": "「写高质量代码」不可执行——改为具体格式/命令/验收标准",
+    "vague_best_practices": "「遵循最佳实践」不可执行——写出可检查的步骤或约束",
+    "vague_security": "「注意安全」不可执行——列出具体检查项（注入/鉴权/脱敏等）",
+    "vague_full_testing": "「充分测试」不可执行——写明测试命令与覆盖要求",
+    "vague_maintainable": "「确保可维护」不可执行——写明模块边界/命名/禁止事项",
+    "vague_elegant": "「编写优雅的…」不可执行——改为具体产出格式",
+    "vague_performance": "「高性能」不可执行——写明延迟/吞吐等可度量目标",
+}
+
+
+def prompt_audit_to_issues(
+    record: PromptAuditRecord,
+    *,
+    frontmatter: Optional[Dict[str, Any]] = None,
+) -> List[Dict[str, Any]]:
+    """Map PromptAuditRecord → AssetAudit issue dicts for Edit Agent「AI 审核」.
+
+    Severity policy (avoid flooding standalone trial agents):
+    - vague adjectives → warning
+    - pipeline frontmatter gaps → warning
+    - handoff fields → warning only when ``output_artifact`` set (pipeline);
+      otherwise skipped (trial/chat agents rarely need 5-way handoff)
+    - instruction_dispatch → info (many code agents intentionally use numbered SOP)
+    - body >100 lines → info
+    """
+    from core.management.asset_audit import issue
+
+    fm = frontmatter if isinstance(frontmatter, dict) else {}
+    is_pipeline = bool(str(fm.get("output_artifact") or "").strip())
+    out: List[Dict[str, Any]] = []
+    seen: set = set()
+
+    for tag in record.anti_patterns_found or []:
+        tag_s = str(tag or "").strip()
+        if not tag_s or tag_s == "instruction_dispatch_style":
+            continue
+        cat = f"prompt_{tag_s}"
+        if cat in seen:
+            continue
+        seen.add(cat)
+        out.append(
+            issue(
+                severity="warning",
+                category=cat,
+                field="sop_body",
+                message=_VAGUE_LABELS.get(tag_s, f"AGENT.md 反模式：{tag_s}"),
+                suggestion="把形容词改成可执行约束（格式、命令、字段、禁止项）",
+                current=tag_s,
+            )
+        )
+
+    for ci in record.compliance_issues or []:
+        if not isinstance(ci, dict):
+            continue
+        rule = str(ci.get("rule") or "").strip()
+        detail = str(ci.get("detail") or "").strip()
+        if rule == "handoff_completeness":
+            if not is_pipeline:
+                continue
+            cat = "prompt_handoff_incomplete"
+            if cat in seen:
+                continue
+            seen.add(cat)
+            from core.management.asset_audit import fix_append_sop_handoff
+
+            out.append(
+                issue(
+                    severity="warning",
+                    category=cat,
+                    field="sop_body",
+                    message=(
+                        "流水线 Agent 的 AGENT.md 缺少交接协议字段"
+                        "（做了什么/产出物在哪/如何验证/已知问题/下一步）"
+                    ),
+                    suggestion=(
+                        "在正文补齐 CLAUDE.md §5.27 交接 5 项，便于下游阶段接手。"
+                        "一键修复可追加交接骨架，请再按本阶段真实产物改写。"
+                    ),
+                    current=detail,
+                    fix=fix_append_sop_handoff(),
+                )
+            )
+        elif rule == "frontmatter_completeness":
+            cat = "prompt_frontmatter_incomplete"
+            key = f"{cat}:{detail}"
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(
+                issue(
+                    severity="warning",
+                    category=cat,
+                    field="frontmatter",
+                    message=f"流水线 Agent frontmatter 不完整：{detail}",
+                    suggestion="补齐 agent_type / output_artifact / phase 等流水线字段",
+                    current=detail,
+                )
+            )
+        elif rule == "delegation_style":
+            cat = "prompt_instruction_dispatch"
+            if cat in seen:
+                continue
+            seen.add(cat)
+            out.append(
+                issue(
+                    severity="info",
+                    category=cat,
+                    field="sop_body",
+                    message="AGENT.md 偏「指令派发」风格（细步骤堆叠）",
+                    suggestion=(
+                        "可改为：验收标准 + 边界约束，由 Agent 自行规划步骤（intent-delegation）"
+                    ),
+                    current=record.delegation_style,
+                )
+            )
+
+    if record.sop_body_lines > 100:
+        out.append(
+            issue(
+                severity="info",
+                category="prompt_body_long",
+                field="sop_body",
+                message=f"AGENT.md 正文偏长（{record.sop_body_lines} 行）——维护成本高",
+                suggestion="按两错法则拆到 docs/，AGENT.md 只保留核心铁律与路由（建议 <100 行）",
+                current=record.sop_body_lines,
+            )
+        )
+
+    actionable = [i for i in out if str(i.get("severity")) in ("error", "warning")]
+    if not actionable and (record.sop_body_chars or 0) > 0:
+        out.append(
+            issue(
+                severity="info",
+                category="prompt_md_ok",
+                field="sop_body",
+                message=(
+                    f"AGENT.md 正文质量门禁通过（score≈{record.score:.0f}，"
+                    f"{record.sop_body_chars} 字 / {record.sop_body_lines} 行）"
+                ),
+                suggestion="已检查模糊形容词与（流水线）交接/frontmatter；产物质量仍由执行后复核。",
+            )
+        )
+    return out
+
+
 def _detect_delegation_style(body: str, lines: List[str]) -> str:
     import re
     intent_signals = 0

@@ -181,6 +181,25 @@ class SkillRegistry:
                 enabled = True
                 uses_file_output = False
                 body = raw
+                skill_timeout = None
+                execution_mode = "inline"
+                execution_type = ""
+                protected = False
+                executable = False
+                permissions = []
+                input_schema = {}
+                output_schema = {}
+                effects = []
+                submission_criteria = []
+                side_effects_raw = []
+                perm_config = None
+                skill_chain = []
+                skip_conditions = []
+                triggers = []
+                domain_id = ""
+                skill_model_purpose = ""
+                version = "1.0.0"
+                skill_max_tokens = None
 
                 if raw.startswith("---"):
                     parts = raw.split("---", 2)
@@ -209,6 +228,18 @@ class SkillRegistry:
                             skip_conditions = fm.get("skip_when") or fm.get("skip_conditions") or []
                             triggers = fm.get("triggers") or []
                             domain_id = str(fm.get("domain_id", ""))
+                            skill_model_purpose = str(fm.get("skill_model_purpose") or "").strip()
+                            # SkillExecutor reads metadata["timeout"] (seconds)
+                            if fm.get("timeout") is not None:
+                                try:
+                                    skill_timeout = float(fm.get("timeout"))
+                                except (TypeError, ValueError):
+                                    skill_timeout = None
+                            if fm.get("max_tokens") is not None:
+                                try:
+                                    skill_max_tokens = int(fm.get("max_tokens"))
+                                except (TypeError, ValueError):
+                                    skill_max_tokens = None
                             body = ""  # Lazy: don't load body at startup, load on first use
                         except Exception as e:
                             logging.debug(str(e), exc_info=True)
@@ -302,12 +333,20 @@ class SkillRegistry:
                             cfg.metadata["permissions_config"] = perm_config
                         if domain_id:
                             cfg.metadata["domain_id"] = domain_id
+                        if skill_model_purpose:
+                            cfg.metadata["skill_model_purpose"] = skill_model_purpose
+                        if skill_timeout is not None:
+                            cfg.metadata["timeout"] = skill_timeout
+                        if skill_max_tokens is not None and skill_max_tokens > 0:
+                            cfg.metadata["max_tokens"] = skill_max_tokens
                         cfg.metadata["filesystem"] = {"skill_md": skill_md, "skill_dir": skill_dir}
                     self.register(skill)
                 else:
                     config = SkillConfig(
                         name=name,
                         description=description,
+                        input_schema=input_schema if isinstance(input_schema, dict) else {},
+                        output_schema=output_schema if isinstance(output_schema, dict) else {},
                         effects=effects,
                         submission_criteria=submission_criteria,  # P1
                         side_effects=side_effects_raw,            # P1
@@ -326,6 +365,9 @@ class SkillRegistry:
                               "skip_conditions": skip_conditions,
                               "triggers": triggers,
                               "layer_dirs": layer_dirs,
+                              **({"skill_model_purpose": skill_model_purpose} if skill_model_purpose else {}),
+                              **({"timeout": skill_timeout} if skill_timeout is not None else {}),
+                              **({"max_tokens": skill_max_tokens} if skill_max_tokens is not None and skill_max_tokens > 0 else {}),
                               "filesystem": {"skill_md": skill_md, "skill_dir": skill_dir}}
                     )
                     skill = _GenericSkill(config)
@@ -1427,6 +1469,45 @@ def start_bg_curator(interval_hours: int = 6):
         pass  # no event loop yet — will start when loop starts  # noqa: cleanup-best-effort
 
 
+# UI / JSON-Schema scaffolding keys — never treat as LLM payload fields.
+_OUTPUT_SCHEMA_META_KEYS = frozenset(
+    {
+        "x-display-profile",
+        "type",
+        "required",
+        "description",
+        "properties",
+        "items",
+        "additionalProperties",
+        "definitions",
+        "$defs",
+        "$schema",
+        "examples",
+        "default",
+    }
+)
+
+
+def _output_schema_payload_keys(out_schema: Any) -> List[str]:
+    """Keys the model must emit — prefer ``properties``; skip UI/schema meta.
+
+    Bug (run-cadf97): architecture_design ``output_schema`` starts with
+    ``x-display-profile: architecture``. Using ``list(schema.keys())[0]`` made
+    JSON-parse failures wrap CoT into ``{x-display-profile: \"### 步骤1…\"}`` and
+    the JSON-override prompt ordered the model to fill that UI flag as content.
+    """
+    if not isinstance(out_schema, dict) or not out_schema:
+        return []
+    props = out_schema.get("properties")
+    if isinstance(props, dict) and props:
+        return [str(k) for k in props.keys() if str(k).strip()]
+    return [
+        str(k)
+        for k in out_schema.keys()
+        if str(k) not in _OUTPUT_SCHEMA_META_KEYS and str(k).strip()
+    ]
+
+
 class _GenericSkill(BaseSkill):
     """Generic skill for skills without a dedicated subclass.
     
@@ -1443,6 +1524,14 @@ class _GenericSkill(BaseSkill):
         self._model = model
     
     async def execute(self, context, params):
+        from core.harness.execution.skill_side_effect_gate import (
+            skill_result_if_unrealized_side_effects,
+        )
+
+        refused = skill_result_if_unrealized_side_effects(self)
+        if refused is not None:
+            return refused
+
         # ── Resolve execution_type FIRST (handler-type skills don't need an LLM) ──
         meta = (self._config.metadata or {})
         exec_type = meta.get("execution_type", "")
@@ -1573,12 +1662,20 @@ class _GenericSkill(BaseSkill):
             _log.warning("Hybrid mode: LLM planning for skill '%s'", self._config.name)
             try:
                 from ...harness.syscalls.llm import sys_llm_generate
+                from core.harness.utils.execute_session import skill_nested_llm_trace_context
+
                 plan_response = await sys_llm_generate(
                     self._model,
                     [
                         {"role": "system", "content": plan_system_prompt},
                         {"role": "user", "content": f"Task: {user_input}"},
                     ],
+                    trace_context=skill_nested_llm_trace_context(
+                        context,
+                        params,
+                        source=str(self._config.name or "skill_hybrid"),
+                        extra={"skip_claude_md": True},
+                    ),
                 )
                 plan_text = getattr(plan_response, "content", "") or ""
                 from core.utils.json_utils import parse_json
@@ -1683,7 +1780,12 @@ class _GenericSkill(BaseSkill):
                 out_schema = self._config.output_schema or {}
             except Exception:
                 out_schema = {}
-            out_keys = list(out_schema.keys()) if isinstance(out_schema, dict) and out_schema else []
+            if not out_schema:
+                try:
+                    out_schema = (self._config.metadata or {}).get("output_schema") or {}
+                except Exception:
+                    out_schema = {}
+            out_keys = _output_schema_payload_keys(out_schema)
 
             system_parts = []
             if out_keys and not allowed_tools:
@@ -1747,9 +1849,10 @@ class _GenericSkill(BaseSkill):
                             error=result.error,
                             metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools, "parsed_json": True},
                         )
+                    # Never wrap into UI meta keys (e.g. x-display-profile).
                     return SkillResult(
                         success=True,
-                        output={out_keys[0]: str(result.output)} if out_keys else {"text": result.output},
+                        output={"text": result.output},
                         metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools, "parsed_json": False},
                     )
                 return SkillResult(success=bool(result.success), output={"text": result.output}, error=result.error, metadata={"skill": self._config.name, "agent": result.metadata, "tools": allowed_tools})
@@ -1757,9 +1860,21 @@ class _GenericSkill(BaseSkill):
             # Fallback: plain LLM generation (no tools)
             from ...harness.syscalls.llm import sys_llm_generate
 
-            run_id = ((getattr(context, "variables", {}) or {}).get("_run_id")
-                      or getattr(context, "session_id", ""))
-            parent_span_id = (getattr(context, "metadata", {}) or {}).get("_span_id")
+            from core.harness.utils.execute_session import skill_nested_llm_trace_context
+
+            _nested_tc = skill_nested_llm_trace_context(
+                context,
+                params,
+                source=str(self._config.name or "skill"),
+                extra={"skip_claude_md": True},
+            )
+            run_id = _nested_tc.get("run_id") or (
+                (getattr(context, "variables", {}) or {}).get("_run_id")
+                or getattr(context, "session_id", "")
+            )
+            parent_span_id = _nested_tc.get("parent_span_id") or (
+                (getattr(context, "metadata", {}) or {}).get("_span_id")
+            )
 
             # ContextBus: inject 10-layer domain knowledge for field-assessment
             if self._config.name in ("field-assessment", "field_assessment"):
@@ -1774,13 +1889,31 @@ class _GenericSkill(BaseSkill):
                 except Exception:
                     logging.getLogger(__name__).debug("SkillRegistry.unknown failed", exc_info=True)
 
+            # Prompt-type skills carry their own SOP; CLAUDE.md (~20K) is noise and
+            # routinely wedges local Ollama past the UI stall watchdog.
+            skill_max_tokens = None
+            try:
+                raw_mt = (self._config.metadata or {}).get("max_tokens")
+                if raw_mt is not None:
+                    skill_max_tokens = int(raw_mt)
+            except (TypeError, ValueError):
+                skill_max_tokens = None
+            gen_kwargs: Dict[str, Any] = {
+                "trace_context": {
+                    "run_id": run_id,
+                    "parent_span_id": parent_span_id,
+                    "skip_claude_md": True,
+                },
+            }
+            if skill_max_tokens and skill_max_tokens > 0:
+                gen_kwargs["max_tokens"] = skill_max_tokens
             response = await sys_llm_generate(
                 self._model,
                 [
                     {"role": "system", "content": "\n".join(system_parts)},
                     {"role": "user", "content": prompt},
                 ],
-                trace_context={"run_id": run_id, "parent_span_id": parent_span_id},
+                **gen_kwargs,
             )
             # ── Post-generation: field-assessment metadata extraction ──
             if self._config.name in ("field-assessment", "field_assessment"):
@@ -1916,10 +2049,105 @@ class _GenericSkill(BaseSkill):
             if isinstance(out_schema, dict) and out_schema:
                 parsed = parse_json(str(getattr(response, "content", "") or ""))
                 if isinstance(parsed, dict):
+                    # Reject lone-endpoint echo as full architecture (fail-constraint bait).
+                    # Prefer ONE in-skill LLM retry before failing out to ReAct — a full
+                    # agent round burns another reason+skill local generate and often
+                    # hits the 300s wall (run-9c10c1bdf658).
+                    try:
+                        profile = str(
+                            (out_schema or {}).get("x-display-profile")
+                            or (self._config.metadata or {}).get("output_schema", {}).get("x-display-profile")
+                            or ""
+                        ).lower()
+                        skill_l = str(self._config.name or "").lower()
+                        if profile == "architecture" or "architecture" in skill_l:
+                            from core.management.execution_quality_review import (
+                                _architecture_output_is_lone_api,
+                            )
+
+                            if _architecture_output_is_lone_api(parsed):
+                                lone_err = (
+                                    "architecture_lone_api: output is a single "
+                                    "{method,path,request,response} endpoint — "
+                                    "emit full architecture JSON with title, context, "
+                                    "components, data_flow, api_contracts (≥3), "
+                                    "security, rollout_and_risks"
+                                )
+                                retry_enabled = os.getenv(
+                                    "AIPLAT_ARCHITECTURE_LONE_API_RETRY", "1"
+                                ).strip().lower() not in ("0", "false", "no", "off")
+                                if retry_enabled:
+                                    import json as _json_lone
+
+                                    retry_user = (
+                                        f"{prompt}\n\n"
+                                        "——纠错（上一次输出不合格，须整份重写）——\n"
+                                        f"{lone_err}\n"
+                                        "刚才被拒绝的片段（仅作反例，禁止再只输出单个端点）：\n"
+                                        f"{_json_lone.dumps(parsed, ensure_ascii=False)[:1500]}\n"
+                                        "请输出完整架构 JSON 对象，顶层必须含："
+                                        "title, context, components, data_flow, "
+                                        "api_contracts(数组≥3项), security, rollout_and_risks。"
+                                    )
+                                    try:
+                                        response2 = await sys_llm_generate(
+                                            self._model,
+                                            [
+                                                {
+                                                    "role": "system",
+                                                    "content": "\n".join(system_parts),
+                                                },
+                                                {"role": "user", "content": retry_user},
+                                            ],
+                                            **gen_kwargs,
+                                        )
+                                        parsed2 = parse_json(
+                                            str(getattr(response2, "content", "") or "")
+                                        )
+                                        if isinstance(parsed2, dict) and not _architecture_output_is_lone_api(
+                                            parsed2
+                                        ):
+                                            return SkillResult(
+                                                success=True,
+                                                output=parsed2,
+                                                metadata={
+                                                    "model": getattr(
+                                                        response2, "model", None
+                                                    ),
+                                                    "skill": self._config.name,
+                                                    "parsed_json": True,
+                                                    "lone_api_retried": True,
+                                                },
+                                            )
+                                        if isinstance(parsed2, dict):
+                                            parsed = parsed2
+                                            response = response2
+                                    except Exception:
+                                        logging.getLogger(__name__).warning(
+                                            "architecture lone_api in-skill retry failed",
+                                            exc_info=True,
+                                        )
+                                return SkillResult(
+                                    success=False,
+                                    error=lone_err,
+                                    output=parsed,
+                                    metadata={
+                                        "model": getattr(response, "model", None),
+                                        "skill": self._config.name,
+                                        "parsed_json": True,
+                                        "lone_api_rejected": True,
+                                        "lone_api_retry_attempted": bool(retry_enabled),
+                                    },
+                                )
+                    except Exception:
+                        logging.getLogger(__name__).debug(
+                            "lone_api check skipped", exc_info=True
+                        )
                     return SkillResult(success=True, output=parsed, metadata={"model": getattr(response, "model", None), "skill": self._config.name, "parsed_json": True})
+                # Unparsed → plain text envelope (not first schema key / x-display-profile)
                 return SkillResult(
                     success=True,
-                    output={out_keys[0]: str(getattr(response, "content", ""))} if out_keys else {"text": getattr(response, "content", None)},
+                    output={"text": getattr(response, "content", None)},
                     metadata={"model": getattr(response, "model", None), "skill": self._config.name, "parsed_json": False},
                 )
             return SkillResult(success=True, output={"text": response.content}, metadata={"model": response.model, "skill": self._config.name})

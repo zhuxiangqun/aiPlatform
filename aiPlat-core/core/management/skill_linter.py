@@ -16,9 +16,9 @@ propose_skill_fixes) for backward compatibility with existing API callers.
 
 from __future__ import annotations
 import logging
-
 import re
 from dataclasses import dataclass, asdict, field
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
@@ -213,6 +213,263 @@ def _standard_change_contract_schema() -> Dict[str, Dict[str, Any]]:
     }
 
 
+def _io_list_to_schema(items: Any) -> Dict[str, Any]:
+    """Promote legacy frontmatter ``input:`` / ``output:`` lists to object schema."""
+    out: Dict[str, Any] = {}
+    if not isinstance(items, list):
+        return out
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        name = str(it.get("name") or it.get("key") or "").strip()
+        if not name:
+            continue
+        spec: Dict[str, Any] = {"type": str(it.get("type") or "string")}
+        if it.get("required") in (True, "true", "yes", 1):
+            spec["required"] = True
+        desc = str(it.get("description") or "").strip()
+        if desc:
+            spec["description"] = desc
+        out[name] = spec
+    return out
+
+
+def _frontmatter_io_lists(skill: Any) -> Dict[str, Any]:
+    """Best-effort read input/output lists from object or SKILL.md frontmatter."""
+    data: Dict[str, Any] = {}
+    if isinstance(skill, dict):
+        data = skill
+    else:
+        meta = getattr(skill, "metadata", None)
+        if isinstance(meta, dict):
+            data = dict(meta)
+            fs = meta.get("filesystem") if isinstance(meta.get("filesystem"), dict) else {}
+            p = fs.get("skill_md")
+            if p:
+                try:
+                    raw = Path(str(p)).read_text(encoding="utf-8")
+                    if raw.startswith("---"):
+                        parts = raw.split("---", 2)
+                        if len(parts) >= 3:
+                            import yaml
+
+                            loaded = yaml.safe_load(parts[1]) or {}
+                            if isinstance(loaded, dict):
+                                data = {**loaded, **data}
+                except Exception:
+                    pass  # noqa: cleanup-best-effort
+    return {
+        "input": data.get("input"),
+        "output": data.get("output"),
+    }
+
+
+_REQ_NAME_RULES: List[tuple] = [
+    (re.compile(r"play_url|播放链接|播放地址|可播放"), "play_url", "string", "out"),
+    (re.compile(r"file_size|文件大小"), "file_size", "integer", "in"),
+    (re.compile(r"template_path|模版路径|模板路径"), "template_path", "string", "in"),
+    (re.compile(r"pptx_path|\.pptx|\.potx"), "pptx_path", "string", "out"),
+    (re.compile(r"docx_path|\.docx"), "docx_path", "string", "out"),
+    (re.compile(r"error_message|错误提示|错误信息"), "error_message", "string", "out"),
+    (re.compile(r"resolution|清晰度|分辨率"), "resolution", "string", "out"),
+    (re.compile(r"progress|上传进度|进度百分比"), "progress", "integer", "out"),
+    (re.compile(r"duration|时长"), "duration", "string", "out"),
+    (re.compile(r"outline|结构化大纲|章节要点"), "outline", "object", "in"),
+    (re.compile(r"视频文件|本地文件|上传的文件|上传文件"), "file", "file", "in"),
+    (re.compile(r"\btopic\b|主题描述"), "topic", "string", "in"),
+    (re.compile(r"\btitle\b|视频标题|标题"), "title", "string", "out"),
+]
+
+
+def _requirement_text(skill: Any) -> str:
+    chunks: List[str] = []
+    if isinstance(skill, dict):
+        chunks.append(str(skill.get("description") or ""))
+        chunks.append(str(skill.get("sop") or skill.get("sop_body") or ""))
+        meta = skill.get("metadata") if isinstance(skill.get("metadata"), dict) else {}
+    else:
+        chunks.append(str(getattr(skill, "description", "") or ""))
+        meta = getattr(skill, "metadata", None)
+        meta = meta if isinstance(meta, dict) else {}
+    chunks.append(str(meta.get("sop") or ""))
+    fs = meta.get("filesystem") if isinstance(meta.get("filesystem"), dict) else {}
+    p = fs.get("skill_md")
+    if p:
+        try:
+            chunks.append(Path(str(p)).read_text(encoding="utf-8"))
+        except Exception:
+            pass  # noqa: cleanup-best-effort
+    chunks.append(_read_skill_md_body(skill))
+    return "\n".join(c for c in chunks if str(c).strip())
+
+
+def _clause_after(text: str, heads: str) -> str:
+    m = re.search(
+        rf"(?:^|\n)\s*(?:#{1,3}\s*)?(?:{heads})[:：]?\s*(.+?)(?=(?:^|\n)\s*(?:#{1,3}\s*)?(?:输入|入参|输出|出参|返回|功能|限制|执行流程|错误处理|目标|质量)|\Z)",
+        text,
+        re.S | re.I | re.M,
+    )
+    return (m.group(1) or "").strip() if m else ""
+
+
+def _ident_in_phrase(phrase: str) -> str:
+    m = re.search(r"`([a-z][a-z0-9_]{1,63})`", phrase, re.I)
+    if m:
+        return m.group(1).lower()
+    m = re.search(r"\b([a-z][a-z0-9_]{1,63})\b", phrase)
+    return m.group(1).lower() if m else ""
+
+
+def _spec_from_phrase(phrase: str, default_side: str) -> Optional[tuple]:
+    p = str(phrase or "").strip()
+    if len(p) < 2:
+        return None
+    ident = _ident_in_phrase(p)
+    for rx, name, typ, side in _REQ_NAME_RULES:
+        if rx.search(p):
+            return name, {"type": typ, "required": True, "description": p[:120]}, side
+    if ident and ident not in {"http", "https", "mp4", "mov", "avi", "mkv"}:
+        typ = "string"
+        if re.search(r"文件(?!路径)|file\b", p) and ident in {"file", "video", "upload"}:
+            typ = "file"
+            ident = "file"
+        elif re.search(r"大小|字节|进度|页数|整数", p):
+            typ = "integer"
+        side = default_side
+        if re.search(r"输出|返回|生成", p) and default_side == "in":
+            side = "out"
+        if re.search(r"输入|接收|上传|校验", p) and default_side == "out":
+            side = "in"
+        return ident, {"type": typ, "required": True, "description": p[:120]}, side
+    return None
+
+
+def _extract_io_from_requirement(text: str) -> Dict[str, Dict[str, Any]]:
+    """Fill schemas from SOP/需求 wording. Skip unnamed fragments; never invent prompt/result."""
+    inn: Dict[str, Any] = {}
+    out: Dict[str, Any] = {}
+    blob = str(text or "")
+    if not blob.strip():
+        return {"input": inn, "output": out}
+
+    def consume(chunk: str, default_side: str) -> None:
+        parts = re.split(r"[+；;\n]|、", chunk)
+        for raw in parts:
+            hit = _spec_from_phrase(raw, default_side)
+            if not hit:
+                continue
+            name, spec, side = hit
+            target = inn if side == "in" else out
+            if name not in target:
+                target[name] = spec
+
+    consume(_clause_after(blob, "输入|入参|input"), "in")
+    consume(_clause_after(blob, "输出|出参|返回|output"), "out")
+    # Whole-doc noun scan when clauses were empty (功能/限制/流程里已写清合同).
+    if not inn or not out:
+        for rx, name, typ, side in _REQ_NAME_RULES:
+            if not rx.search(blob):
+                continue
+            target = inn if side == "in" else out
+            if name in target:
+                continue
+            if side == "in" and inn and name not in inn and len(inn) >= 4:
+                continue
+            target[name] = {"type": typ, "required": True}
+    return {"input": inn, "output": out}
+
+
+_ALLOWED_CATEGORIES = (
+    "general", "execution", "retrieval", "analysis", "generation",
+    "transformation", "reasoning", "coding", "search", "tool", "communication",
+)
+_GENERIC_KW_OBJECTS = ("代码", "SQL", "日志")
+_GENERIC_KW_CONSTRAINTS = ("按项目", "最近7天")
+_GENERIC_KW_ACTIONS = ("分析", "生成")
+
+
+def _description_from_requirement(text: str, *, min_len: int = 8, max_len: int = 280) -> str:
+    blob = str(text or "")
+    para = ""
+    m = re.search(r"(?:^|\n)##\s*功能\s*\n+(.+?)(?=\n## |\Z)", blob, re.S)
+    if m:
+        para = (m.group(1) or "").strip()
+    if not para:
+        body = blob
+        if body.lstrip().startswith("---"):
+            parts = body.split("---", 2)
+            body = parts[2] if len(parts) >= 3 else body
+        for line in body.splitlines():
+            s = line.strip()
+            if s and not s.startswith("#") and not s.startswith("-") and len(s) >= min_len:
+                para = s
+                break
+    para = re.sub(r"\s+", " ", para).strip()
+    if len(para) < min_len:
+        return ""
+    return para[:max_len]
+
+
+def _objects_actions_from_requirement(text: str, label: str) -> tuple:
+    blob = str(text or "")
+    objects: List[str] = []
+    actions: List[str] = []
+    for rx, word in (
+        (r"视频", "视频"),
+        (r"大纲|outline", "大纲"),
+        (r"PPT|幻灯片|pptx", "PPT"),
+        (r"报告", "报告"),
+        (r"文件", "文件"),
+    ):
+        if re.search(rx, blob, re.I) and word not in objects:
+            objects.append(word)
+    for rx, word in (
+        (r"上传", "上传"),
+        (r"生成|写出", "生成"),
+        (r"分析|审查", "分析"),
+        (r"转换", "转换"),
+        (r"检索|搜索", "检索"),
+    ):
+        if re.search(rx, blob, re.I) and word not in actions:
+            actions.append(word)
+    lab = re.sub(r"[_\-]+", "", str(label or "").strip())
+    if lab and lab not in objects and not re.match(r"^[a-z0-9]+$", lab, re.I):
+        objects.append(lab[:12])
+    if not objects:
+        objects.append((str(label or "本技能").replace("_", "") or "本技能")[:12])
+    if not actions:
+        actions.append("处理")
+    return objects[:6], actions[:6]
+
+
+def _infer_execution_type(skill: Any) -> str:
+    from core.management.lint_rules.metadata import ExecTypeDirectoryMismatch
+    from core.management.lint_rules.side_effects import UnrealizedSideEffectCheck  # noqa: F401 — discover() registers it
+
+    skill_dir = ExecTypeDirectoryMismatch._resolve_skill_dir(skill)
+    if not skill_dir:
+        return ""
+    root = Path(skill_dir)
+    has_handler = (root / "handler.py").exists()
+    has_scripts = (root / "scripts").is_dir() and bool(list((root / "scripts").glob("*.py")))
+    if has_handler or has_scripts:
+        return "handler"
+    return "prompt"
+
+
+def _current_execution_type(skill: Any) -> str:
+    if isinstance(skill, dict):
+        v = skill.get("execution_type") or (skill.get("metadata") or {}).get("execution_type")
+        return str(v or "").strip().lower()
+    v = getattr(skill, "execution_type", None)
+    if v:
+        return str(v).strip().lower()
+    meta = getattr(skill, "metadata", None)
+    if isinstance(meta, dict):
+        return str(meta.get("execution_type") or "").strip().lower()
+    return ""
+
+
 def propose_skill_fixes(*, skill: Any, lint: Dict[str, Any]) -> Dict[str, Any]:
     """
     Generate deterministic fix proposals based on lint results.
@@ -279,6 +536,204 @@ def propose_skill_fixes(*, skill: Any, lint: Dict[str, Any]) -> Dict[str, Any]:
                 "preview": {"before_snippet": before or "", "after_snippet": after or ""},
                 "markdown": md or "",
             }
+        )
+
+    req_text = _requirement_text(skill)
+    inferred_exec = _infer_execution_type(skill)
+    cur_exec = _current_execution_type(skill)
+    if "exec_type_dir_mismatch" in codes and inferred_exec and inferred_exec != cur_exec:
+        add_fix(
+            fix_id="fix_align_execution_type",
+            issue_code="exec_type_dir_mismatch",
+            title=f"按目录内容将 execution_type 改为 {inferred_exec}",
+            priority="P0",
+            risk_level="low",
+            auto_applicable=True,
+            requires_approval=(scope == "engine"),
+            touches=["SKILL.md.frontmatter.execution_type"],
+            ops=[{"op": "upsert", "path": ["execution_type"], "value": inferred_exec}],
+            before=f"execution_type: {cur_exec or '(empty)'}\n",
+            after=f"execution_type: {inferred_exec}\n",
+            md="### 对齐 execution_type\n- 有 handler.py/scripts 则为 handler，否则 prompt。\n",
+        )
+    if "missing_name" in codes:
+        nm = str(sid).strip() if sid and sid != "<unknown>" else ""
+        if not nm:
+            fs = meta.get("filesystem") if isinstance(meta.get("filesystem"), dict) else {}
+            p = str(fs.get("skill_dir") or fs.get("skill_md") or "")
+            nm = Path(p).stem if p else ""
+        if nm:
+            add_fix(
+                fix_id="fix_missing_name",
+                issue_code="missing_name",
+                title="用目录/id 补齐 name",
+                priority="P0",
+                risk_level="low",
+                auto_applicable=True,
+                requires_approval=(scope == "engine"),
+                touches=["SKILL.md.frontmatter.name"],
+                ops=[{"op": "upsert", "path": ["name"], "value": nm}],
+                before="name:\n",
+                after=f"name: {nm}\n",
+                md="### 补齐 name\n- 使用 skill id 或目录名。\n",
+            )
+    if "non_semver_version" in codes:
+        add_fix(
+            fix_id="fix_semver_version",
+            issue_code="non_semver_version",
+            title="将 version 规范为 1.0.0",
+            priority="P2",
+            risk_level="low",
+            auto_applicable=True,
+            requires_approval=False,
+            touches=["SKILL.md.frontmatter.version"],
+            ops=[{"op": "upsert", "path": ["version"], "value": "1.0.0"}],
+            before="version: (non-semver)\n",
+            after="version: 1.0.0\n",
+            md="### 规范 version\n- 写入 1.0.0。\n",
+        )
+    if "unknown_category" in codes:
+        mapped = "general"
+        blob = f"{desc}\n{req_text}\n{sid}"
+        for rx, cat in (
+            (r"检索|搜索|RAG", "retrieval"),
+            (r"生成|PPT|报告|文案", "generation"),
+            (r"代码|编程|coding", "coding"),
+            (r"分析|审查", "analysis"),
+            (r"转换|抽取", "transformation"),
+        ):
+            if re.search(rx, blob, re.I):
+                mapped = cat
+                break
+        if mapped not in _ALLOWED_CATEGORIES:
+            mapped = "general"
+        add_fix(
+            fix_id="fix_category_enum",
+            issue_code="unknown_category",
+            title=f"将 category 归入推荐枚举（{mapped}）",
+            priority="P2",
+            risk_level="low",
+            auto_applicable=True,
+            requires_approval=False,
+            touches=["SKILL.md.frontmatter.category"],
+            ops=[{"op": "upsert", "path": ["category"], "value": mapped}],
+            before="category: (unknown)\n",
+            after=f"category: {mapped}\n",
+            md="### 规范 category\n- 映射到 lint 允许枚举，无法判断则为 general。\n",
+        )
+    if "weak_description" in codes or "generic_description" in codes:
+        lifted = _description_from_requirement(req_text) or _description_from_requirement(desc)
+        if lifted and lifted != desc:
+            add_fix(
+                fix_id="fix_lift_description_from_sop",
+                issue_code="weak_description" if "weak_description" in codes else "generic_description",
+                title="从 SOP/功能段提升 description",
+                priority="P1",
+                risk_level="low",
+                auto_applicable=True,
+                requires_approval=(scope == "engine"),
+                touches=["SKILL.md.frontmatter.description"],
+                ops=[{"op": "upsert", "path": ["description"], "value": lifted}],
+                before="description: " + (desc[:80] + ("..." if len(desc) > 80 else "")) + "\n",
+                after="description: " + lifted[:80] + "\n",
+                md="### 提升 description\n- 使用 SOP「功能」段或首段，不套用代码/SQL 模板。\n",
+            )
+            if "generic_description" in codes and "weak_description" in codes:
+                fixes[-1]["covers_issue_codes"] = ["weak_description", "generic_description"]
+            elif "generic_description" in codes and "weak_description" not in codes:
+                fixes[-1]["covers_issue_codes"] = ["generic_description"]
+    if "missing_sop_body" in codes:
+        add_fix(
+            fix_id="fix_sop_append_body",
+            issue_code="missing_sop_body",
+            title="写入 SOP 骨架（目标/流程/质量）",
+            priority="P1",
+            risk_level="low",
+            auto_applicable=True,
+            requires_approval=(scope == "engine"),
+            touches=["SKILL.md.body"],
+            ops=[{
+                "op": "upsert",
+                "path": ["_sop_append"],
+                "value": (
+                    "## 目标\n\n明确本技能要交付的结果，以及完成标准。\n\n"
+                    "## 执行流程\n\n"
+                    "1. 校验入参（input_schema 必填项）\n"
+                    "2. 按本技能职责执行主路径\n"
+                    "3. 按 output_schema 返回结果；失败写 error_message\n\n"
+                    "## 质量要求\n\n"
+                    "- [ ] 输出符合 output_schema\n"
+                    "- [ ] 关键验收标准可验证\n"
+                    "- [ ] 未知项进入 open_questions 或标「待确认」\n"
+                ),
+            }],
+            before="(SOP 正文为空)\n",
+            after="## 目标 / ## 执行流程 / ## 质量要求\n",
+            md="### 补齐 SOP 正文\n- 空正文时写入骨架，不编造业务步骤。\n",
+        )
+
+    # ---- Fix: long_description (truncate for L1 routing) ----
+    if "long_description" in codes and desc:
+        max_len = 280
+        truncated = desc.strip()
+        if len(truncated) > max_len:
+            cut = truncated[: max_len - 1]
+            for sep in ("。", "；", ";", ".", "，", ","):
+                idx = cut.rfind(sep)
+                if idx >= int(max_len * 0.55):
+                    cut = cut[: idx + 1]
+                    break
+            truncated = cut.rstrip() + "…"
+        add_fix(
+            fix_id="fix_truncate_description",
+            issue_code="long_description",
+            title="压缩 description 至 ≤280 字（保留触发信息）",
+            priority="P2",
+            risk_level="low",
+            auto_applicable=(scope == "workspace"),
+            requires_approval=(scope == "engine"),
+            touches=["SKILL.md.frontmatter.description"],
+            ops=[{"op": "upsert", "path": ["description"], "value": truncated}],
+            before="description: " + (desc[:80] + "..." if len(desc) > 80 else desc) + "\n",
+            after="description: " + (truncated[:80] + "..." if len(truncated) > 80 else truncated) + "\n",
+            md="### 压缩 description\n- 原因：过长 description 会稀释路由匹配信号。\n- 修改：截断到约 280 字，优先在句号处切断。\n",
+        )
+
+    # ---- Fix: high_risk_missing_constraints ----
+    if "high_risk_missing_constraints" in codes:
+        kw = meta.get("keywords") if isinstance(meta.get("keywords"), dict) else {}
+        objects = _as_list((kw or {}).get("objects")) or []
+        actions = _as_list((kw or {}).get("actions")) or []
+        constraints = _as_list((kw or {}).get("constraints"))
+        add_c = []
+        for c in ("写操作需确认范围", "生产环境谨慎", "不可逆操作需审批"):
+            if c not in constraints:
+                add_c.append(c)
+        new_constraints = (constraints + add_c)[:12]
+        add_fix(
+            fix_id="fix_high_risk_constraints",
+            issue_code="high_risk_missing_constraints",
+            title="为高风险权限补齐 keywords.constraints",
+            priority="P1",
+            risk_level="low",
+            auto_applicable=(scope == "workspace"),
+            requires_approval=(scope == "engine"),
+            touches=["SKILL.md.frontmatter.keywords.constraints"],
+            ops=[
+                {
+                    "op": "upsert",
+                    "path": ["keywords"],
+                    "value": {
+                        "objects": objects,
+                        "actions": actions,
+                        "constraints": new_constraints,
+                        "synonyms": _as_list((kw or {}).get("synonyms")),
+                    },
+                }
+            ],
+            before="keywords.constraints:\n" + _yaml_like(constraints, 1) + "\n",
+            after="keywords.constraints:\n" + _yaml_like(new_constraints, 1) + "\n",
+            md="### 高风险约束词\n- 在 keywords.constraints 写入生产/不可逆/确认范围等约束，降低误触发。\n",
         )
 
     # ---- Fix: output_schema.markdown ----
@@ -381,31 +836,70 @@ def propose_skill_fixes(*, skill: Any, lint: Dict[str, Any]) -> Dict[str, Any]:
     # ---- Fix: triggers ----
     tc = meta.get("trigger_conditions") or meta.get("trigger_keywords") or []
     tc_list = _as_list(tc)
+    existing_triggers = _as_list(meta.get("triggers"))
     if "missing_triggers" in codes:
-        # Phase-1: suggest-only, because auto-generated triggers may be wrong.
+        label = str(getattr(skill, "name", "") or sid or "本技能").strip() or "本技能"
+        seed = []
+        for t in (
+            label,
+            f"帮我{label}",
+            f"使用{label}",
+            f"运行{label}",
+            f"{label}一下",
+            f"请{label}",
+        ):
+            if t and t not in seed:
+                seed.append(t)
+        seed = (tc_list + existing_triggers + seed)
+        dedup_miss: List[str] = []
+        for t in seed:
+            if t and t not in dedup_miss:
+                dedup_miss.append(t)
+        dedup_miss = dedup_miss[:12]
         add_fix(
-            fix_id="fix_missing_triggers_suggestion",
+            fix_id="fix_missing_triggers",
             issue_code="missing_triggers",
-            title="补齐 trigger_conditions（建议手工补）",
+            title="补齐 trigger_conditions（基于名称生成）",
             priority="P1",
             risk_level="low",
-            auto_applicable=False,
-            requires_approval=False,
+            auto_applicable=(scope == "workspace"),
+            requires_approval=(scope == "engine"),
             touches=["SKILL.md.frontmatter.trigger_conditions"],
-            ops=[],
+            ops=[{"op": "upsert", "path": ["trigger_conditions"], "value": dedup_miss}],
             before="trigger_conditions:\n" + _yaml_like(tc_list, 1) + "\n",
-            after="trigger_conditions:\n  - <用户常用说法1>\n  - <用户常用说法2>\n",
-            md="### 补齐 trigger_conditions\n- 原因：缺少触发词会降低路由命中与可解释性。\n- 建议：补充 3-10 条用户真实表达（短词/短句），避免长段文本。\n",
+            after="trigger_conditions:\n" + _yaml_like(dedup_miss, 1) + "\n",
+            md="### 补齐 trigger_conditions\n- 基于 Skill 名称生成口语触发词；可按业务再改。\n",
         )
 
-    # ---- Fix: recall/precision/safety hints (explicit apply required) ----
-    if {"triggers_too_few", "generic_description", "missing_negative_triggers", "missing_keywords", "missing_required_questions"} & codes:
+    # ---- Fix: recall/precision/safety hints ----
+    trigger_bundle_codes = {"triggers_too_few", "missing_negative_triggers", "missing_keywords", "missing_required_questions"}
+    if (trigger_bundle_codes | {"generic_description"}) & codes:
         kw = meta.get("keywords") if isinstance(meta.get("keywords"), dict) else {}
-        objects = _as_list((kw or {}).get("objects")) or ["代码", "SQL", "日志"]
-        actions = _as_list((kw or {}).get("actions")) or []
-        constraints = _as_list((kw or {}).get("constraints")) or ["按项目", "最近7天"]
+        objects = _as_list((kw or {}).get("objects"))
+        actions = _as_list((kw or {}).get("actions"))
+        constraints = _as_list((kw or {}).get("constraints"))
+        if not objects or set(objects) <= set(_GENERIC_KW_OBJECTS):
+            o2, a2 = _objects_actions_from_requirement(req_text or desc, str(getattr(skill, "name", "") or sid or "本技能"))
+            objects = o2
+            if not actions or set(actions) <= set(_GENERIC_KW_ACTIONS):
+                actions = a2
+        if not actions:
+            _, a2 = _objects_actions_from_requirement(req_text or desc, str(sid or "本技能"))
+            actions = a2
+        if not constraints or set(constraints) <= set(_GENERIC_KW_CONSTRAINTS):
+            constraints = ["仅本技能职责范围"]
+            if re.search(r"大小|GB|字节", req_text or desc):
+                constraints.append("遵守文件大小限制")
+        constraints = constraints[:12]
+        if "high_risk_missing_constraints" in codes:
+            for c in ("写操作需确认范围", "生产环境谨慎", "不可逆操作需审批"):
+                if c not in constraints:
+                    constraints.append(c)
+            constraints = constraints[:12]
+        existing_neg = _as_list(meta.get("negative_triggers"))
+        existing_tc = _as_list(meta.get("trigger_conditions")) + existing_triggers
 
-        gen_triggers: List[str] = []
+        gen_triggers: List[str] = list(existing_tc)
         for a in actions[:2]:
             for o in objects[:2]:
                 gen_triggers.append(f"帮我{a}{o}")
@@ -420,53 +914,160 @@ def propose_skill_fixes(*, skill: Any, lint: Dict[str, Any]) -> Dict[str, Any]:
                 dedup.append(t)
         dedup = dedup[:12]
 
-        before = "trigger_conditions:\n" + _yaml_like(_as_list(meta.get("trigger_conditions")), 1) + "\n"
+        new_negs = list(existing_neg)
+        for n in ("不做图片 OCR", "不做线上部署/发布", "不适用于闲聊/无上下文请求"):
+            if n not in new_negs:
+                new_negs.append(n)
+        new_negs = new_negs[:20]
+
+        covers = sorted(trigger_bundle_codes & codes)
+        if not covers and "generic_description" not in codes:
+            covers = []
+        primary = (
+            "triggers_too_few"
+            if "triggers_too_few" in codes
+            else ("missing_negative_triggers" if "missing_negative_triggers" in codes else (covers[0] if covers else "triggers_too_few"))
+        )
+        existing_rq = _as_list(meta.get("required_questions"))
+        new_rq = list(existing_rq)
+        if "missing_required_questions" in codes and not new_rq:
+            for q in (
+                "目标产出是什么（文件/格式/页数）？",
+                "输入材料有哪些（大纲/模版/约束）？",
+                "有无不可改的范围或禁止项？",
+            ):
+                if q not in new_rq:
+                    new_rq.append(q)
+        before = "trigger_conditions:\n" + _yaml_like(existing_tc, 1) + "\n"
         after = "trigger_conditions:\n" + _yaml_like(dedup, 1) + "\n"
+        if covers:
+            ops = [
+                {"op": "upsert", "path": ["keywords"], "value": {"objects": objects, "actions": actions, "constraints": constraints, "synonyms": _as_list((kw or {}).get("synonyms"))}},
+                {"op": "upsert", "path": ["trigger_conditions"], "value": dedup},
+                {"op": "upsert", "path": ["negative_triggers"], "value": new_negs},
+            ]
+            if new_rq:
+                ops.append({"op": "upsert", "path": ["required_questions"], "value": new_rq})
+            add_fix(
+                fix_id="fix_generate_triggers_keywords",
+                issue_code=str(primary),
+                title="补齐触发语义（trigger/keywords/负向）",
+                priority="P1",
+                risk_level="low",
+                # Workspace: one-click must actually clear these warnings
+                auto_applicable=(scope == "workspace"),
+                requires_approval=(scope == "engine"),
+                touches=[
+                    "SKILL.md.frontmatter.trigger_conditions",
+                    "SKILL.md.frontmatter.keywords",
+                    "SKILL.md.frontmatter.negative_triggers",
+                    "SKILL.md.frontmatter.required_questions",
+                ],
+                ops=ops,
+                before=before,
+                after=after,
+                md="### 补齐触发语义\n- 合并已有 triggers，补齐至约 6–12 条，并写入 negative_triggers / required_questions\n",
+            )
+            fixes[-1]["covers_issue_codes"] = covers
+
+        # generic_description: only SOP-lift (above). Never rewrite to 代码/SQL 套话.
+
+    # ---- Fix: SOP goal / checklist scaffolds (workspace auto) ----
+    if "sop_missing_goal" in codes:
         add_fix(
-            fix_id="fix_generate_triggers_keywords",
-            issue_code="triggers_too_few" if "triggers_too_few" in codes else "generic_description",
-            title="补齐触发语义（trigger/keywords/负向/追问）",
+            fix_id="fix_sop_append_goal",
+            issue_code="sop_missing_goal",
+            title="补齐 SOP「目标」章节",
             priority="P1",
             risk_level="low",
-            auto_applicable=False,
-            requires_approval=False,
-            touches=[
-                "SKILL.md.frontmatter.trigger_conditions",
-                "SKILL.md.frontmatter.keywords",
-                "SKILL.md.frontmatter.negative_triggers",
-                "SKILL.md.frontmatter.required_questions",
-            ],
+            auto_applicable=(scope == "workspace"),
+            requires_approval=(scope == "engine"),
+            touches=["SKILL.md.body"],
+            ops=[{"op": "upsert", "path": ["_sop_append"], "value": "## 目标\n\n明确本技能要交付的结果，以及完成标准。\n"}],
+            before="(SOP 缺少目标章节)\n",
+            after="## 目标\n\n明确本技能要交付的结果，以及完成标准。\n",
+            md="### 补齐目标章节\n- 在 SKILL.md 正文追加 `## 目标`。\n",
+        )
+    if "sop_missing_checklist" in codes:
+        add_fix(
+            fix_id="fix_sop_append_checklist",
+            issue_code="sop_missing_checklist",
+            title="补齐 SOP 质量要求 / Checklist",
+            priority="P1",
+            risk_level="low",
+            auto_applicable=(scope == "workspace"),
+            requires_approval=(scope == "engine"),
+            touches=["SKILL.md.body", "SKILL.md.frontmatter.completion_criterion"],
             ops=[
-                {"op": "upsert", "path": ["keywords"], "value": {"objects": objects, "actions": actions, "constraints": constraints, "synonyms": []}},
-                {"op": "upsert", "path": ["trigger_conditions"], "value": dedup},
-                {"op": "upsert", "path": ["negative_triggers"], "value": ["不做图片 OCR", "不做线上部署/发布"]},
-                {"op": "upsert", "path": ["required_questions"], "value": ["目标环境/范围是什么？（dev/staging/prod）", "影响面有多大？（单条/批量）", "需要回滚策略吗？"]},
+                {"op": "upsert", "path": ["_sop_append"], "value": "## 质量要求\n\n- [ ] 输出符合 output_schema\n- [ ] 关键验收标准可验证\n- [ ] 未知项进入 open_questions 或标「待确认」\n"},
+                {"op": "upsert", "path": ["completion_criterion"], "value": "输出符合契约；关键验收可验证；未知项待确认。"},
             ],
-            before=before,
-            after=after,
-            md="### 补齐触发语义（建议人工确认后应用）\n- 将补齐：keywords、trigger_conditions、negative_triggers、required_questions\n- 目标：提升命中率、降低误触发，并增强高风险门控下的稳定召回\n",
+            before="(SOP 缺少 Checklist/质量要求)\n",
+            after="## 质量要求\n\n- [ ] ...\n",
+            md="### 补齐质量要求\n- 追加 `## 质量要求` Checklist，并写入 completion_criterion。\n",
+        )
+    if "sop_missing_flow" in codes:
+        add_fix(
+            fix_id="fix_sop_append_flow",
+            issue_code="sop_missing_flow",
+            title="补齐 SOP「流程/步骤」章节",
+            priority="P1",
+            risk_level="low",
+            auto_applicable=(scope == "workspace"),
+            requires_approval=(scope == "engine"),
+            touches=["SKILL.md.body"],
+            ops=[{
+                "op": "upsert",
+                "path": ["_sop_append"],
+                "value": (
+                    "## 执行流程\n\n"
+                    "1. 校验入参（input_schema 必填项）\n"
+                    "2. 按本技能职责执行主路径\n"
+                    "3. 按 output_schema 返回结果；失败写 error_message\n"
+                ),
+            }],
+            before="(SOP 缺少流程/步骤)\n",
+            after="## 执行流程\n\n1. ...\n",
+            md="### 补齐流程章节\n- 追加 `## 执行流程` 步骤列表（lint 识别「执行流程/步骤」）。\n",
         )
 
-        add_fix(
-            fix_id="fix_rewrite_description_contract",
-            issue_code="generic_description",
-            title="重写 description 为触发式契约（可复制）",
-            priority="P2",
-            risk_level="low",
-            auto_applicable=False,
-            requires_approval=False,
-            touches=["SKILL.md.frontmatter.description"],
-            ops=[
-                {
-                    "op": "upsert",
-                    "path": ["description"],
-                    "value": f"当用户提到{objects[0] if objects else '具体内容'}/{objects[1] if len(objects)>1 else (objects[0] if objects else '场景')}并希望{actions[0] if actions else '操作'}时触发；关键词覆盖：{objects[0] if objects else ''}/{actions[0] if actions else ''}/{constraints[0] if constraints else ''}；输入需要：关键上下文/文件/范围；输出为：结构化建议+markdown；不适用于：OCR/部署。",
-                }
-            ],
-            before="description: " + (desc[:80] + "..." if len(desc) > 80 else desc) + "\n",
-            after="description: <触发场景+动作+对象+输出+不适用>\n",
-            md="### 重写 description（触发式契约）\n- 说明：description 不是宣传文案，而是“检索入口+边界+输入输出线索”。\n",
-        )
+    # Lists first; else 需求/SOP wording. Never invent prompt/result.
+    io_lists = _frontmatter_io_lists(skill)
+    from_req = _extract_io_from_requirement(_requirement_text(skill))
+    if "missing_input_schema" in codes:
+        promoted_in = _io_list_to_schema(io_lists.get("input")) or dict(from_req.get("input") or {})
+        if promoted_in:
+            add_fix(
+                fix_id="fix_promote_input_schema",
+                issue_code="missing_input_schema",
+                title="从 input 列表或需求正文补齐 input_schema",
+                priority="P1",
+                risk_level="low",
+                auto_applicable=True,
+                requires_approval=(scope == "engine"),
+                touches=["SKILL.md.frontmatter.input_schema"],
+                ops=[{"op": "upsert", "path": ["input_schema"], "value": promoted_in}],
+                before="input_schema: {}\n",
+                after="input_schema:\n" + _yaml_like(promoted_in, 1) + "\n",
+                md="### 补齐 input_schema\n- 优先提升 `input:` 列表；否则从 SOP/需求中的输入条款抽取，不编造字段。\n",
+            )
+    if "missing_output_schema" in codes:
+        promoted_out = _io_list_to_schema(io_lists.get("output")) or dict(from_req.get("output") or {})
+        if promoted_out:
+            add_fix(
+                fix_id="fix_promote_output_schema",
+                issue_code="missing_output_schema",
+                title="从 output 列表或需求正文补齐 output_schema",
+                priority="P1",
+                risk_level="low",
+                auto_applicable=True,
+                requires_approval=(scope == "engine"),
+                touches=["SKILL.md.frontmatter.output_schema"],
+                ops=[{"op": "upsert", "path": ["output_schema"], "value": promoted_out}],
+                before="output_schema: {}\n",
+                after="output_schema:\n" + _yaml_like(promoted_out, 1) + "\n",
+                md="### 补齐 output_schema\n- 优先提升 `output:` 列表；否则从 SOP/需求中的输出条款抽取，不编造字段。\n",
+            )
 
     if "routing_needs_disambiguation" in codes:
         kw = meta.get("keywords") if isinstance(meta.get("keywords"), dict) else {}
@@ -498,8 +1099,8 @@ def propose_skill_fixes(*, skill: Any, lint: Dict[str, Any]) -> Dict[str, Any]:
             title="路由优化：补充 constraints/negative_triggers（降低错命中）",
             priority="P1",
             risk_level="low",
-            auto_applicable=False,
-            requires_approval=False,
+            auto_applicable=(scope == "workspace"),
+            requires_approval=(scope == "engine"),
             touches=["SKILL.md.frontmatter.keywords.constraints", "SKILL.md.frontmatter.negative_triggers"],
             ops=[
                 {"op": "upsert", "path": ["keywords"], "value": {"objects": objects, "actions": actions, "constraints": new_constraints, "synonyms": _as_list((kw or {}).get("synonyms")) or []}},
@@ -526,20 +1127,7 @@ def propose_skill_fixes(*, skill: Any, lint: Dict[str, Any]) -> Dict[str, Any]:
         constraints = _as_list((kw or {}).get("constraints")) or []
         triggers = _as_list(meta.get("trigger_conditions")) or _as_list(getattr(skill, "trigger_conditions", None))
 
-        # remove most generic triggers that directly appear in overlap tokens (best-effort)
-        overlap_set = set([_norm_text(x) for x in overlap if str(x).strip()])
-        removed = []
-        kept = []
-        for t in triggers:
-            nt = _norm_text(t)
-            if nt in overlap_set and len(removed) < 3:
-                removed.append(t)
-            else:
-                kept.append(t)
-        # ensure not to wipe triggers entirely
-        new_triggers = kept if len(kept) >= 3 else triggers
-
-        # More precise disambiguation: mine opponent-only tokens to form neg triggers.
+        # Never drop positive triggers — only add negative_triggers / constraints.
         add_negs = []
         try:
             other_tr = _as_list(other_skill.get("trigger_conditions"))
@@ -580,22 +1168,16 @@ def propose_skill_fixes(*, skill: Any, lint: Dict[str, Any]) -> Dict[str, Any]:
             {"op": "upsert", "path": ["negative_triggers"], "value": new_negs},
             {"op": "upsert", "path": ["keywords"], "value": new_kw},
         ]
-        if new_triggers != triggers:
-            ops.append({"op": "upsert", "path": ["trigger_conditions"], "value": new_triggers})
 
         before = (
-            "trigger_conditions:\n"
-            + _yaml_like(triggers, 1)
-            + "\nnegative_triggers:\n"
+            "negative_triggers:\n"
             + _yaml_like(neg, 1)
             + "\nkeywords.constraints:\n"
             + _yaml_like(constraints, 1)
             + "\n"
         )
         after = (
-            "trigger_conditions:\n"
-            + _yaml_like(new_triggers, 1)
-            + "\nnegative_triggers:\n"
+            "negative_triggers:\n"
             + _yaml_like(new_negs, 1)
             + "\nkeywords.constraints:\n"
             + _yaml_like(new_constraints, 1)
@@ -607,9 +1189,9 @@ def propose_skill_fixes(*, skill: Any, lint: Dict[str, Any]) -> Dict[str, Any]:
             title=f"冲突对消歧：与 {other_name} 定向区分",
             priority="P1",
             risk_level="low",
-            auto_applicable=False,
+            auto_applicable=(scope == "workspace"),
             requires_approval=(scope == "engine"),
-            touches=["SKILL.md.frontmatter.negative_triggers", "SKILL.md.frontmatter.keywords.constraints", "SKILL.md.frontmatter.trigger_conditions"],
+            touches=["SKILL.md.frontmatter.negative_triggers", "SKILL.md.frontmatter.keywords.constraints"],
             ops=ops,
             before=before,
             after=after,
@@ -617,8 +1199,7 @@ def propose_skill_fixes(*, skill: Any, lint: Dict[str, Any]) -> Dict[str, Any]:
             f"- 冲突对象：{other_name}（{other_id}）\n"
             f"- overlap_tokens（Top）：{', '.join([str(x) for x in overlap[:10]])}\n"
             + (f"- 对手独有 tokens（用于生成 negative_triggers）：{', '.join([str(x) for x in (opp_only2 if 'opp_only2' in locals() else [])][:10])}\n" if "opp_only2" in locals() else "")
-            + ("- 建议：移除最泛化的 triggers（减少重合召回）\n" if removed else "")
-            + "- 建议：补充 negative_triggers（明确不适用场景）与 keywords.constraints（执行边界）\n",
+            + "- 补充 negative_triggers（明确不适用场景）与 keywords.constraints；不删除正向触发词。\n",
         )
 
     # Summary

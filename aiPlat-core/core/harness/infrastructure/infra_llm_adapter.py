@@ -183,7 +183,35 @@ class InfraLLMAdapter(ILLMAdapter):
 
                 req.timeout = config.timeout
 
+        # Cap HTTP timeout on the sync OpenAI client (runs in to_thread).
+        # Default wall when unset; do NOT min-cap an explicit higher request timeout
+        # (code_generation needs 360s nested LLM under skill timeout 420).
+        # Optional hard ceiling: AIPLAT_LLM_TIMEOUT_CAP_SECONDS (>0).
+        try:
+            import os as _os
 
+            wall = float(
+                _os.getenv("AIPLAT_LLM_TIMEOUT_SECONDS")
+                or _os.getenv("AIPLAT_LLM_DEFAULT_TIMEOUT_SECONDS")
+                or "180"
+            )
+        except Exception:
+            wall = 180.0
+        try:
+            cur = float(getattr(req, "timeout", None) or 0) or wall
+        except Exception:
+            cur = wall
+        try:
+            import os as _os
+
+            cap_raw = _os.getenv("AIPLAT_LLM_TIMEOUT_CAP_SECONDS")
+            if cap_raw is not None and str(cap_raw).strip() != "":
+                cap = float(cap_raw)
+                req.timeout = min(cur, cap) if cap > 0 else cur
+            else:
+                req.timeout = cur
+        except Exception:
+            req.timeout = cur
 
         try:
 

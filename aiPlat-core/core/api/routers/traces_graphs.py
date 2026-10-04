@@ -235,7 +235,12 @@ async def execute_compiled_react_graph(request: dict, http_request: Request):
     payload = _inject_http_request_context(dict(request or {}), http_request, entrypoint="api")
     ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
     user_id = payload.get("user_id") or (ctx0.get("actor_id") if isinstance(ctx0, dict) else None) or "system"
-    session_id = payload.get("session_id") or (ctx0.get("session_id") if isinstance(ctx0, dict) else None) or "default"
+    from core.harness.utils.execute_session import mint_execute_session_id
+    session_id = mint_execute_session_id(
+        kind="graph",
+        target_id="compiled_react",
+        session_id=payload.get("session_id") or (ctx0.get("session_id") if isinstance(ctx0, dict) else None),
+    )
     exec_req = ExecutionRequest(kind="graph", target_id="compiled_react", payload=payload, user_id=str(user_id), session_id=str(session_id))
     result = await get_harness().execute(exec_req)
     resp = wrap_execution_result_as_run_summary(result)

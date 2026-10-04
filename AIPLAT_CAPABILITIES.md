@@ -1,8 +1,8 @@
 ---
-total_capabilities: 1752
+total_capabilities: 1841
 
-total_capabilities: 1756
-last_updated: 2026-09-27
+total_capabilities: 1857
+last_updated: 2026-10-05
 version: "30.2"
 auto_sync: true
 core_guarantees:
@@ -570,7 +570,7 @@ scan_hash: 8f9548ec24f4
 
 > 代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-20 — 1756✅）
+> 评分：98/100（2026-07-20 — 1857✅）
 
 ---
 
@@ -590,6 +590,9 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| skill_descriptor_from_md_path | `core/harness/execution/skill_side_effect_gate.py` | ✅ | 自动同步 | 已合入 |
+| is_mutating_effect | `core/harness/execution/skill_side_effect_gate.py` | ✅ | 自动同步 | 已合入 |
+| handler_exists | `core/harness/execution/skill_side_effect_gate.py` | ✅ | 自动同步 | 已合入 |
 | mirror_syscall_to_graph | `core/harness/observation/run_graph.py` | ✅ | 自动同步 | 已合入 |
 | mark_run_done | `core/harness/observation/run_graph.py` | ✅ | 自动同步 | 已合入 |
 | upsert_node | `core/harness/observation/run_graph.py` | ✅ | 自动同步 | 已合入 |
@@ -714,7 +717,7 @@ scan_hash: 8f9548ec24f4
 | plan_engine | harness/execution/engines/plan_engine.py | ✅ | 自动同步 | 已合入 |
 | team_planner | harness/execution/team_planner.py | ✅ | 自动同步 | 已合入 |
 | state_mgr | harness/execution/loop/state_mgr.py | ✅ | 自动同步 | 已合入 |
-| graph_injector | harness/execution/loop/graph_injector.py | ✅ | 自动同步 | 已合入 |
+| graph_injector | harness/execution/loop/graph_injector.py | ✅ | 非编码 Agent（`_coding_policy_profile=off`）跳过 monorepo 代码图 **与** DomainRouter ontology classify（避免 SentenceTransformer/ModelManager 冷启动卡死 step_1、Ollama 空闲）；编码路径 `to_thread`+短超时；`resolve_model_name` 用缓存 ModelManager | 已合入 |
 | tri_agent | harness/execution/langgraph/graphs/tri_agent.py | ✅ | 自动同步 | 已合入 |
 | target_continuity | harness/execution/loop/target_continuity.py | ✅ | 自动同步 | 已合入 |
 | trace_service | services/trace_service.py | ✅ | 自动同步 | 已合入 |
@@ -1207,6 +1210,7 @@ scan_hash: 8f9548ec24f4
 |------|------|:---:|------|------|
 | 统一知识检索 | harness/syscalls/retrieval.py:569 | ✅ | 并行 Wiki + KB，RRF 三路融合 | 已合入 |
 | 意图路由统一检索（sys_routed_retrieve） | harness/syscalls/retrieval.py（sys_routed_retrieve/_route_intent）+ apps/tools/routed_retrieve.py（RoutedRetrieveTool）+ server.py 工具注册 | ✅ | 查询理解驱动路由（AnySearch 借鉴 P0-2，2026-08-28）：轻量意图判定（code/knowledge/web 三通道，T1 关键词无 LLM）→ 路由到匹配通道（代码搜索/知识 RRF/Web 结构化）→ 统一事实条目 + 信源标注；通道不可用降级（code→knowledge→web），web 可关（include_web=False 隐私场景）；RoutedRetrieveTool 供 Agent 经 sys_tool_call 调用 | 已合入 |
+| KBIngestTool / KBQueryTool | apps/tools/kb_tools.py + server.py 工具注册 | ✅ | 知识库摄入（file_path）与问答（question）作为 Agent 可调用 Tool；生成物适用：不适用（平台横切检索，生成应用走 sys_kb_retrieve） | 已合入 |
 | KB 文档检索 | harness/syscalls/retrieval.py:40 | ✅ | hybrid: LIKE + FTS5 + FAISS 向量 | 已合入 |
 | Wiki 页面检索 | harness/syscalls/retrieval.py:467 | ✅ | FTS5 + embedding + 链接遍历 + 本体过滤 | 已合入 |
 | RRF 三路融合 | harness/knowledge/hybrid_retriever.py:53 | ✅ | Wiki+KB+Graph 统一 1/(k+rank) 融合 | 已合入 |
@@ -1271,6 +1275,7 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| register_agents_prompts | `core/apps/agents/prompts.py` | ✅ | 自动同步 | 已合入 |
 | get_value_baseline_view | `core/apps/org/service/org_value_translation.py` | ✅ | 自动同步 | 已合入 |
 | load_value_baseline | `core/apps/org/service/org_value_translation.py` | ✅ | 自动同步 | 已合入 |
 | append_events | `core/apps/org/service/org_usage.py` | ✅ | 自动同步 | 已合入 |
@@ -1396,21 +1401,82 @@ scan_hash: 8f9548ec24f4
 | 答案提取器 | harness/utils/answer_extractor.py | ✅ | 循环输出 → 纯文本答案 | 已合入 |
 | 重复循环守卫 | harness/utils/repetition_guard.py | ✅ | 检测并截断 LLM 退化重复循环（n-gram 重复检测，qwen2.5:3b 实测 7943 字符/230 次重复 → 截断为 120 字符前缀），core_chat 接入 | 已合入 |
 | 琐问处理器 | harness/utils/trivial_handlers.py | ✅ | 时间/数学表达式即时响应 | 已合入 |
+| Agent 评估代码生成（唯一入口） | `core/apps/eval/agent_eval.py` + CoreFacade `generate_agent_eval` / `inspect_agent_eval` / `enqueue_listed_agent_eval` | ✅ | 评估工程师绑定 `eval_code_generator`；HTTP `POST /entropy/eval/generate/{id}` 薄代理；Agent 上架 listed 异步入队；诊断页可生成/查看 skip 原因；生成物不适用（平台横切评估脚手架，不进入研发团队流水线） | 已合入 |
 
 ---
 
 ## 六、Skill 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| diff_security_score | `core/engine/skills/autoreview/routing.py` | ✅ | 自动同步 | 已合入 |
+| ReviewRouting | `core/engine/skills/autoreview/routing.py` | ✅ | 自动同步 | 已合入 |
+| build_sample_payload | `core/management/execution_examples.py` | ✅ | 自动同步 | 已合入 |
+| rewrite_copied_description_values | `core/management/execution_examples.py` | ✅ | 自动同步 | 已合入 |
+| examples_copy_field_descriptions | `core/management/execution_examples.py` | ✅ | 自动同步 | 已合入 |
+| example_covers_required_schema | `core/management/execution_examples.py` | ✅ | 自动同步 | 已合入 |
+| schema_from_io_list | `core/management/execution_examples.py` | ✅ | 自动同步 | 已合入 |
+| resolve_skill_example_schema | `core/management/execution_examples.py` | ✅ | 自动同步 | 已合入 |
+| _resolve_claude_md_inject_mode | `core/harness/syscalls/llm.py` | ✅ | 自动同步 | 已合入 |
+| extract_skill_delivery_answer | `core/harness/utils/execute_session.py` | ✅ | 自动同步 | 已合入 |
+| extract_file_sections | `core/harness/utils/inline_autoreview_workspace.py` | ✅ | 自动同步 | 已合入 |
+| coerce_inline_delivery_text | `core/harness/utils/inline_autoreview_workspace.py` | ✅ | 自动同步 | 已合入 |
+| stage_inline_delivery | `core/harness/utils/inline_autoreview_workspace.py` | ✅ | 自动同步 | 已合入 |
+| autoreview_git_env_for_inline | `core/harness/utils/inline_autoreview_workspace.py` | ✅ | 自动同步 | 已合入 |
+| emit_pre_llm_prep_close | `core/harness/utils/execute_session.py` | ✅ | 自动同步 | 已合入 |
+| pre_llm_prep_close_ids | `core/harness/utils/execute_session.py` | ✅ | 自动同步 | 已合入 |
+| llm_generate_event_stall_limit | `core/harness/utils/execute_session.py` | ✅ | 自动同步 | 已合入 |
+| apply_workspace_skill_quality_fix | `core/api/routers/workspace_skills.py` | ✅ | 自动同步 | 已合入 |
+| apply_engine_skill_quality_fix | `core/api/routers/engine_skills.py` | ✅ | 自动同步 | 已合入 |
+| apply_quality_sop_to_skill_md | `core/management/execution_quality_review.py` | ✅ | 自动同步 | 已合入 |
+| review_workspace_agent_output | `core/api/routers/workspace_agents.py` | ✅ | 自动同步 | 已合入 |
+| review_engine_agent_output | `core/api/routers/agents.py` | ✅ | 自动同步 | 已合入 |
+| review_workspace_skill_output | `core/api/routers/workspace_skills.py` | ✅ | 自动同步 | 已合入 |
+| review_engine_skill_output | `core/api/routers/engine_skills.py` | ✅ | 自动同步 | 已合入 |
+| resolve_pipeline_stage_review_binding | `core/management/execution_quality_review.py` | ✅ | 自动同步 | 已合入 |
+| has_any_session_lock_for_run | `core/services/execution_store/metrics_mixin.py` | ✅ | 自动同步 | 已合入 |
+| has_active_session_lock_for_run | `core/services/execution_store/metrics_mixin.py` | ✅ | 自动同步 | 已合入 |
+| delete_expired_session_locks | `core/services/execution_store/metrics_mixin.py` | ✅ | 自动同步 | 已合入 |
+| _looks_architecture | `core/management/execution_quality_review.py` | ✅ | 自动同步 | 已合入 |
+| run_store_io | `core/services/execution_store/_base.py` | ✅ | 自动同步 | 已合入 |
+| _output_schema_payload_keys | `core/apps/skills/registry.py` | ✅ | 自动同步 | 已合入 |
+| sanitize_architecture_third_party | `core/management/execution_quality_review.py` | ✅ | 自动同步 | 已合入 |
+| build_sop_handoff_appendix | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
+| build_sop_quality_appendix | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
+| fix_append_sop_goal | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
+| fix_append_sop_flow | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
+| fix_append_sop_role | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
+| fix_append_sop_handoff | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
+| fix_append_sop_quality | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
+| upsert_sop_appendix | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
+| upsert_sop_skill_refs_appendix | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
+| list_workspace_tool_names | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
+| list_workspace_agent_catalog | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
+| infer_id_from_label | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
+| infer_http_url_from_text | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
+| infer_mcp_allowed_tools | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
+| infer_mcp_endpoint | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
+| summarize_audit_issues | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
+| audit_mcp_server_config | `core/api/routers/mcp_admin.py` | ✅ | 自动同步 | 已合入 |
+| audit_tool_config | `core/api/routers/tools.py` | ✅ | 自动同步 | 已合入 |
+| audit_workspace_skill | `core/api/routers/workspace_skills.py` | ✅ | 自动同步 | 已合入 |
+| UnrealizedSideEffectCheck | `core/management/lint_rules/side_effects.py` | ✅ | 自动同步 | 已合入 |
+| skill_result_if_unrealized_side_effects | `core/harness/execution/skill_side_effect_gate.py` | ✅ | 自动同步 | 已合入 |
+| unrealized_side_effect_reason | `core/harness/execution/skill_side_effect_gate.py` | ✅ | 自动同步 | 已合入 |
 | WorkflowManager.dedupe_workflows | `core/management/workflow_manager.py` | ✅ | 自动同步 | 已合入 |
 | WorkflowManager.find_equivalent | `core/management/workflow_manager.py` | ✅ | 自动同步 | 已合入 |
 | AgentManager.dedupe_agents | `core/management/agent_manager.py` | ✅ | 自动同步 | 已合入 |
 | AgentManager.find_equivalent | `core/management/agent_manager.py` | ✅ | 自动同步 | 已合入 |
 | dedupe_workspace_agents | `core/api/routers/workspace_agents.py` | ✅ | 自动同步 | 已合入 |
-| build_sample_payload | `core/management/execution_examples.py` | ✅ | 自动同步 | 已合入 |
+| sanitize_execution_examples | `core/management/execution_examples.py` | ✅ | 审核/LLM/落盘用例统一清洗：禁止 description 或「示例：」当值；Agent/Skill/Tool/MCP 共用 | 已合入 |
+| llm_examples_pass_schema_gate | `core/management/execution_examples.py` | ✅ | LLM 用例 ≥2 条且覆盖必填类型后才算成功；失败回退启发式且不写盘 | 已合入 |
+| accept_llm_execution_examples | `core/management/execution_examples.py` | ✅ | **先拒抄 description 的原文**，再 sanitize/thin；禁止把「示例：说明」洗成路径后当 LLM 成功 | 已合入 |
+| sop_excerpt_from_markdown | `core/management/execution_examples.py` | ✅ | 生成用例 prompt 注入 SKILL/AGENT 正文节选 | 已合入 |
 | build_agent_task_examples | `core/management/execution_examples.py` | ✅ | 自动同步 | 已合入 |
 | examples_are_generic | `core/management/execution_examples.py` | ✅ | 自动同步 | 已合入 |
 | build_examples_from_input_schema | `core/management/execution_examples.py` | ✅ | 自动同步 | 已合入 |
+| build_param_smoke_examples | `core/management/execution_examples.py` | ✅ | Tool/MCP 主路径+边界+复杂冒烟用例 | 已合入 |
+| build_workflow_start_examples | `core/management/execution_examples.py` | ✅ | Workflow Start 测试输入用例 | 已合入 |
+| workflow_example_to_start_inputs | `core/management/execution_examples.py` | ✅ | 用例 JSON → start_inputs | 已合入 |
 | hints_for_skill_draft | `core/apps/common/boundary_hints.py` | ✅ | 自动同步 | 已合入 |
 | hints_for_agent_draft | `core/apps/common/boundary_hints.py` | ✅ | 自动同步 | 已合入 |
 | run_team_create_dialog_turn | `core/apps/builder/service/team_create_dialog.py` | ✅ | 自动同步 | 已合入 |
@@ -1420,10 +1486,12 @@ scan_hash: 8f9548ec24f4
 | upload_workspace_template | `core/api/routers/workspace_agents.py` | ✅ | 自动同步 | 已合入 |
 | run_agent_create_dialog_turn | `core/apps/builder/service/agent_create_dialog.py` | ✅ | 自动同步 | 已合入 |
 | run_skill_create_dialog_turn | `core/apps/skills/service/skill_create_dialog.py` | ✅ | 自动同步 | 已合入 |
-| generate_workspace_skill_execution_examples | `core/api/routers/workspace_skills.py` | ✅ | 自动同步 | 已合入 |
-| generate_skill_execution_examples_llm | `core/apps/skills/service/skill_execution_examples_llm.py` | ✅ | 自动同步 | 已合入 |
-| generate_agent_execution_examples_llm | `core/apps/agents/service/agent_execution_examples_llm.py` | ✅ | 自动同步 | 已合入 |
-| generate_workspace_agent_execution_examples | `core/api/routers/workspace_agents.py` | ✅ | 自动同步 | 已合入 |
+| generate_workspace_skill_execution_examples | `core/api/routers/workspace_skills.py` | ✅ | SOP 节选 + 磁盘 schema（含 YAML input 列表）；`persist` 仅 `source=llm` | 已合入 |
+| generate_engine_skill_execution_examples | `POST /skills/{id}/generate-execution-examples` + Core `ExecuteSkillModal` | ✅ | 与工作区同一 `run_generate_skill_execution_examples`；执行页「填入」+ LLM 生成 | 已合入 · 生成物适用（执行横切） |
+| run_generate_skill_execution_examples | `core/apps/skills/service/skill_execution_examples_llm.py` | ✅ | 工作区/引擎共用生成+落盘门禁 | 已合入 |
+| generate_skill_execution_examples_llm | `core/apps/skills/service/skill_execution_examples_llm.py` | ✅ | skill_execution 模型+SOP 节选；**原文先过 schema 门再清洗**（禁止把「示例：说明」洗成路径后当 LLM 成功）；失败启发式且不落盘 | 已合入 |
+| generate_agent_execution_examples_llm | `core/apps/agents/service/agent_execution_examples_llm.py` | ✅ | 同门禁 + SOP 节选；编码/执行器冲突回退；启发式不写 AGENT.md | 已合入 |
+| generate_workspace_agent_execution_examples | `core/api/routers/workspace_agents.py` | ✅ | SOP 节选；`persist` 仅 `source=llm`；启发式不写 AGENT.md | 已合入 |
 | AgentManager.persist_execution_examples | `core/management/agent_manager.py` | ✅ | 自动同步 | 已合入 |
 | generate_skill_autofill | `core/apps/skills/service/skill_autofill.py` | ✅ | 自动同步 | 已合入 |
 | BaseSkill | `apps/skills/base.py` | ✅ | 自动同步 | 已合入 |
@@ -1432,17 +1500,21 @@ scan_hash: 8f9548ec24f4
 |------|------|:---:|------|------|
 | SkillRegistry | apps/skills/registry.py | ✅ | 注册/启用/禁用/版本管理/semver回滚 | 已合入 |
 | **autoreview skill** | engine/skills/autoreview/ | ✅ | 自动代码审查引擎：单引擎/硬投票面板/MoA Deep Mode、3套preset、Scope Governor、auto_fixer (git stash回滚) | 已合入 |
-| autoreview handler | engine/skills/autoreview/handler.py | ✅ | 执行入口：温度分层(0.6探索/0.3决策)、preset加载、引擎隔离 | 已合入 |
+| autoreview handler | engine/skills/autoreview/handler.py | ✅ | 执行入口：温度分层(0.6探索/0.3决策)、preset加载、引擎隔离；支持 `inline_code` 审查 Agent ## FILE 产物（无 git diff 时） | 已合入 |
 | autoreview diff_loader | engine/skills/autoreview/diff_loader.py | ✅ | Git Diff驱动：8000 tokens截断、dev/null保护、拒绝全仓库审查 | 已合入 |
 | autoreview aggregator | engine/skills/autoreview/report_aggregator.py | ✅ | MoA投票聚合：行号锚点+3级投票+Aggregator LLM综合判断 | 已合入 |
 | autoreview evidence_chain | engine/skills/autoreview/review_report.py | ✅ | v2.2: build_evidence()+clean_evidence()+to_markdown自动附加+_persist_review持久化 | 已合入 |
 | autoreview pipeline_stage | engine/skills/autoreview/pipeline_stage.yaml | ✅ | depends_on[code_gen,test_gen], failure_strategy:skip_stage, timeout:120s | 已合入 |
 | SkillExecutor | apps/skills/executor.py | ✅ | Agent调用 + 独立执行双路径 | 已合入 |
-| skill_call syscall | harness/syscalls/skill.py | ✅ | PolicyGate + ApprovalGate + 审计 | 已合入 |
+| skill_side_effect_gate | harness/execution/skill_side_effect_gate.py | ✅ | prompt 声明 write/network/exec 且无 handler 则拒绝执行（SIDE_EFFECT_UNREALIZED）；未声明 effects 时用 SOP/play_url 等证据推断上传类副作用；生成类 effects 用 emit | 已合入 |
+| file_operations handler | engine/skills/file_operations/handler.py | ✅ | 假 prompt 改走 sys_tool_call → FileOperationsTool | 已合入 |
+| skill_call syscall | harness/syscalls/skill.py | ✅ | PolicyGate + ApprovalGate + 审计；Agent 已绑定 required_skills 中途免二次 HITL（`is_agent_bound_required_skill`） | 已合入 |
+| is_agent_bound_required_skill | apps/tools/skill_tools.py | ✅ | 判断 skill 是否在运行中 Agent 的 `_bound_skill_ids`；用于 PolicyGate 豁免二次审批 | 已合入 |
 | 5 准入标准 | docs/skills/architecture.md | ✅ | 独立/边界/复用/治理/执行单元 | 已合入 |
 | 副作用声明 | [概念] | ✅ | SKILL.md frontmatter — 文档条目；effects: type/idempotent/rollback | 待核实 |
 | EvolutionEngine | apps/skills/evolution/engine.py | ✅ | AI草稿→模拟→人工审批 | 已合入 |
 | Skill Lint 10规则 | management/lint_rules.yaml | ✅ | name/version/category/schema 校验 | 已合入 |
+| unrealized_side_effect | management/lint_rules/side_effects.py | ✅ | prompt 声明 write/network 且无 handler → lint error（不一键编造 handler） | 已合入 |
 | 滑动窗口衰减追踪 | apps/skills/registry.py | ✅ | recent_pass_rate + decayed_at | 已合入 |
 | AutoLearner | harness/evolution_engine.py | ✅ | 失败分析→SkillDraft→审批→注册 | 已合入 |
 | SkillRouting | harness/routing/skill_routing.py | ✅ | Canary/A-B/Shadow/Auto-Rollback | 已合入 |
@@ -1784,7 +1856,8 @@ scan_hash: 8f9548ec24f4
 | VS Code 插件 | aiplat-vscode/ | ✅ | SSE 流式聊天 + 代码选择发送 + Apply fix + 隐式反馈，可打包 .vsix | 已合入 |
 | SpecLifecycle | harness/models/spec_lifecycle.py | ✅ | Spec 版本状态机: DRAFT→PENDING→EXECUTING→REVIEW→STABLE→ARCHIVED | 已合入 |
 | FeedbackRadar | harness/learning/feedback_radar.py | ✅ | 5种用户信号检测→Spec调整建议 (boundary/direction/overload/drift/cold) | 已合入 |
-| InlineSelfCorrect | harness/execution/loop/_facade.py | ✅ | 内联自纠错: PostObserve→reflection-critic→reflection-improve, 1次/步 | 已合入 |
+| InlineSelfCorrect | harness/execution/loop/_facade.py | ✅ | 内联自纠错: PostObserve→reflection-critic→reflection-improve, 1次/步；**Skill error / lone_api Observation 跳过**（避免嵌套 LLM 楔死 step_2） | 已合入 |
+| ArchitectureLoneApiRetry | apps/skills/registry.py `_GenericSkill.execute` | ✅ | architecture 产出单端点时 **Skill 内 1 次强约束重试**（`AIPLAT_ARCHITECTURE_LONE_API_RETRY` 默认开），免绕整轮 ReAct；仍失败才 `Skill error:` 回 Agent | 已合入 · 生成物不适用（引擎横切） |
 | MCPToolLazyLoad | apps/mcp/client.py | ✅ | MCP工具延迟加载: 启动仅加载名称, Schema首次调用时按需获取, AIPLAT_MCP_LAZY_LOAD控制 | 已合入 |
 | PromptCaching | harness/syscalls/llm.py | ✅ | Prompt Caching: stable消息cache_control注入 + SHA256跨会话持久化(~/.aiplat/cache/), AIPLAT_PROMPT_CACHE_ENABLED控制 | 已合入 |
 | ThreeLayerPermissions | gates/policy_gate.py:_match_tool_rule | ✅ | 三层权限(deny>ask>allow)+参数级fnmatch匹配 | 已合入 |
@@ -2214,7 +2287,25 @@ scan_hash: 8f9548ec24f4
 | workspace_packages | api/routers/workspace_packages.py | ✅ | 自动同步 | 已合入 |
 | workspace_agents | api/routers/workspace_agents.py | ✅ | 自动同步 | 已合入 |
 | Agent 防重复 | `core/management/agent_manager.py` + `POST /workspace/agents/dedupe` | ✅ | display_name+skills/tools 指纹复用；清理同名重复 | 已合入 |
-| Agent 配置 AI 审核（含工具上架门禁） | `POST /workspace/agents/{id}/audit`（`workspace_agents.audit_agent_config`） | ✅ | 除注册表存在外，绑定工具须 published\|listed，否则 `tool_not_listed`（与资产审批上架硬门禁对齐）；一键修复可解绑 | 已合入 |
+| Agent 配置 AI 审核（含工具/技能上架门禁 + 模型策略） | `POST /workspace/agents/{id}/audit`（`workspace_agents.audit_agent_config`；可选 body `AgentAuditRequest.sop_body`/`system_prompt` 审编辑草稿） | ✅ | Tool/Skill/MCP/子Agent/Workflow 绑定存在性；**引擎 Skill 可直接绑定**（`engine_skill_binding` info）；**通过态可见**（`tool_binding_ok` / `mcp_binding_ok` / `sub_agent_binding_ok` / `workflow_binding_ok` / `sop_content_ok` / `prompt_md_ok`）；**SOP 结构门禁**（`_audit_agent_sop_content`）；**AGENT.md 正文质量**（`audit_agent_md`→`prompt_audit_to_issues`：模糊形容词/流水线交接/正文长度）；**编辑页草稿覆盖**（`sop_body`/`system_prompt`，info `audit_draft_sop`）；**一键追加 SOP 骨架**（`append_sop_appendix`：角色/流程/目标/质量约束/交接协议；`append_sop_skill_refs`）；summary 含 `fixable`/`unfixable`；工作区 Skill 须 published/listed；模型按 infra purpose；toolset/loop/permissions/流水线；仅 info 不降健康度 | 已合入 · 生成物适用（平台横切；生成 Agent 部署后走同一 audit） |
+| Skill 配置 AI 审核 | `POST /workspace/skills/{id}/audit` + `apply-lint-fix`（`EditSkillModal`/`AssetAuditPanel`） | ✅ | 归一 skill lint/fixes；一键应用 auto_applicable 修复 | 已合入 |
+| 执行后产物质量复核 | `review_execution_output` + `resolve_review_io_from_store` + `pick_embedded_quality_review` + `POST /skills|workspace/skills|agents|workspace/agents/{id}/review-output`（`ExecutionQualityReviewPanel`） | ✅ | PRD 门：soft AC / FR≥3 / …；架构门：`public_cloud_photo_storage` / **`invented_third_party_api`（禁编造钉钉接口）** / sections；**编码硬门**：`language_mismatch` / `off_spec_coding` / `autoreview_incomplete` / **`missing_auth_todo` / `dangling_local_import`**（+ thin/clarify）经 `quality_review_blocks_success` 阻断假绿；**`_ensure_auth_todo_comment` 确定性写入 `// TODO: auth`（禁 markdown 冒充；避免 LLM 二次修复导致 step_2 hang）**；**AGENT.md `preferred_language` → `_inject_preferred_language_into_skill_args`（任务文案 > preferred > 模型默认；`_language_locked`）**；「禁止 Python」不计为要求 Python；**`skill_delivery=once` 主交付后自动跟跑 `autoreview`**；空 `output` 从 store 回填 | 已合入 · 生成物适用（执行横切；按产物形状分叉，不按 Agent 复制 UI） |
+| 执行结果统一结构化展示 | `StructuredSkillOutput` + `GenericObjectOverview`（`ExecuteResultPanel` / Agent·Skill 执行弹窗） | ✅ | 默认按 `output_schema` 排序/标签渲染任意 JSON；`x-display-profile`/`document_type` 可选启用 PRD/架构专属布局；新 Skill 改契约即可，无需新 Modal | 已合入 · 生成物适用（管理端执行横切） |
+| Stream 孤儿执行回收 | `GET /executions/{id}/status` orphan_watchdog + `llm_generate_stall_seconds` / `release_session_locks_for_run` / stream wall `asyncio.wait_for` | ✅ | stall 默认 **max(360, llm+180)**（旧 +90/240 误杀 run-b6f2~337s / run-870f~359s）；按 syscall `args.timeout_seconds+180`；**skill/tool 仍 running 时不因嵌套 generate stall 孤儿**；**`lock_expired_stale` 仅曾持锁**；Agent wall=`agent_stream_timeout_seconds`；**skill_delivery=once 后假 running → finalize completed** | 已合入 |
+| skill_delivery 即时收尾 | `finalize_agent_after_skill_delivery`（observe + status orphan） | ✅ | ReAct `skill_delivery_once` / 对话型 `auto_done` 后立即 upsert Agent completed + 关掉残留 syscall；POST_LOOP 硬超时防 SECI 楔死；orphan 不把编码 Agent 的 premature auto_done 当完成 | 已合入 · 生成物不适用（平台试跑横切） |
+| 本地 LLM 卡死恢复 | `core/harness/utils/local_llm_recover.py` | ✅ | `unload_local_llm_best_effort` — orphan/LLM timeout 后 keep_alive=0 卸载，避免 to_thread 僵尸请求堵队列 | 已合入 |
+| 本地 LLM 单飞闸 | `local_llm_inflight` + `looks_like_local_llm`（`sys_llm_generate` 接线） | ✅ | 跨 event-loop `threading.Semaphore` 序列化 Ollama/LM Studio generate；远程 API 透传；防嵌套 episodic LLM 与主 ReAct generate 抢占 llama-server | 已合入 · 生成物不适用（平台执行横切） |
+| ReAct 热路径无嵌套 LLM | `MemoryManager.save_interaction`（rule summary + bg polish） | ✅ | primary `sys_llm_generate` 成功后禁止 `await` episodic `sys_llm_generate`；规则摘要同步、LLM polish/scoring 后台 `skip_claude_md`；消除 generate=success 后无 routing_decision 的间歇楔死 | 已合入 · 生成物不适用（Harness 横切） |
+| Syscall 运行中收口 | `ExecutionStore.close_running_syscall_events` | ✅ | 将 run 下 status=running 的 syscall 行翻转为 timeout/failed，轨迹不再假「执行中」 | 已合入 |
+| Workflow 阶段产物质量复核 | `review_pipeline_stage` → state `_quality_review_{stageId}`（`WorkflowRunPage` / `WorkflowCanvas` 输出区） | ✅ | 按节点绑定 Skill/Agent/Tool 复核阶段产物；PRD 规则仅对该阶段输出形状触发，不套整条 workflow；画布 `skills`→`required_skills` 已归一 | 已合入 · 生成物适用（builder 已接线：pipeline 状态透传） |
+| 执行质量一键写 SOP | `apply_quality_sop_for_skill_id` + `POST /skills|workspace/skills/{id}/apply-quality-fix` | ✅ | 按 issue_codes 幂等双写 engine+~/.aiplat SKILL.md；面板「一键修复」+「用同一用例重跑验证」；Agent 一键写绑定 Skill | 已合入 |
+| 质量铁律已在→按失败点重跑 | `probe_quality_sop_markers` + `build_fail_constraint_overlay` → `primary_action=rerun_with_fail_constraints`；面板主 CTA「按失败点重跑」；`appendFailConstraintOverlay` | ✅ | 铁律 marker 已在 SKILL/AGENT 时降级一键修复，重跑注入失败约束 | 已合入 · 生成物适用（执行横切） |
+| 管理端执行会话隔离 | `mint_execute_session_id`（Skill/Agent/Tool/Graph/gateway/runs retry·Job） | ✅ | 空/`default` 会话键替换为 `{kind}-exec-{target}-{uuid}`，避免 session lane 泄漏锁导致排队空图；MCP 直连 JSON-RPC 不走该锁 | 已合入 · 生成物不适用（平台试跑横切） |
+| 内联交付→stock autoreview | `staged_inline_worktree` + `_git_work_tree` | ✅ | 物化 `## FILE` 为临时 worktree，经 skill 参数传 cwd；禁止进程级 `GIT_*` 跨 LLM；`load_diff` 超时+`to_thread`；staging 失败不扫 monorepo | 已合入 · 生成物适用（执行横切） |
+| autoreview 自动路由 | `resolve_review_routing` | ✅ | `panel=auto` 按 focus/diff 安全信号选单引擎或 panel（quick/deep）；显式 true/false 可覆盖；结果回传 `routing` | 已合入 · 生成物适用（执行横切） |
+| Tool 配置 AI 审核 | `POST /tools/{name}/audit`（`Tools.tsx` 编辑弹窗） | ✅ | description/parameters 最小 schema/status/源码语法；一键补描述或 parameters | 已合入 |
+| MCP 配置 AI 审核 | `POST /workspace/mcp/servers/{name}/audit`（`EditMcpModal`） | ✅ | validate_mcp_server + 运行时字段；HTTP/stdio 连通性探测（仅报告）；**证据填充** url/command（env/简介 HTTPS，禁占位）；**allowed_tools** 从 policy.yaml / 已发现工具缓存写入（无名单不编造；runtime 已有白名单则不重复告警） | 已合入 · 生成物适用（平台横切） |
+| Workflow 配置 AI 审核 | `POST /platform/workflows/{id}/audit`（`WorkflowCanvas`） | ✅ | 画布 data.type/config；Agent/Tool/HTTP/Condition 必填；孤立节点与环路；名称描述可一键写回；HTTP 节点 url 仅从节点说明中的真实地址一键写入；**Agent/Tool 节点缺 id 时按标题精确/slug/唯一别名匹配工作区目录，不对不上时不编造** | 已合入 · 生成物适用（平台横切） |
 | Workflow 防重复 | `core/management/workflow_manager.py` + `POST /platform/workflows/dedupe` | ✅ | name+节点指纹复用；清理同名同构图重复 | 已合入 |
 | wiki_ontology_patterns | api/routers/wiki_ontology_patterns.py | ✅ | 自动同步 | 已合入 |
 | wiki_ontology_domains | api/routers/wiki_ontology_domains.py | ✅ | 自动同步 | 已合入 |
@@ -2666,18 +2757,18 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 162 | 1 | 163 |
+| Harness 执行引擎 | 165 | 1 | 166 |
 | 记忆子系统 | 41 | 0 | 41 |
 | 知识引擎（本体） | 353 | 8 | 361 |
-| RAG 检索 | 50 | 0 | 50 |
+| RAG 检索 | 51 | 0 | 51 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 124 | 0 | 124 |
-| Skill 系统 | 78 | 0 | 78 |
+| Agent 系统 | 126 | 0 | 126 |
+| Skill 系统 | 144 | 0 | 144 |
 | 安全与治理 | 61 | 0 | 61 |
 | 可观测性 | 31 | 0 | 31 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
-| 扩展与学习 | 130 | 0 | 130 |
+| 扩展与学习 | 131 | 0 | 131 |
 | Gate 系统 | 150 | 0 | 150 |
 | 评估系统 | 18 | 0 | 18 |
 | MCP 协议 | 10 | 0 | 10 |
@@ -2688,7 +2779,7 @@ scan_hash: 8f9548ec24f4
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 6 | 0 | 6 |
 | Arena & 调度 | 7 | 0 | 7 |
-| 平台治理 | 100 | 0 | 100 |
+| 平台治理 | 116 | 0 | 116 |
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
@@ -2711,7 +2802,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1743** | **9** | **1752** |
+| **总计** | **1832** | **9** | **1841** |
 
 | **总计** | **1095** | **0** | **1095** |
 

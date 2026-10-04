@@ -35,4 +35,10 @@ export interface ExecutionViewerProps {
   replayRunId?: string;
   /** Fired when live SSE/poll status changes (connecting/streaming/done/error) */
   onLiveStatusChange?: (status: 'disconnected' | 'connecting' | 'streaming' | 'done' | 'error') => void;
+  /**
+   * Where to render the node detail panel.
+   * - inline (default): under the canvas inside the viewer
+   * - none: parent owns detail (e.g. ExecuteFlowFullscreen footer) — avoid double panels
+   */
+  detailMode?: 'inline' | 'none';
 }

@@ -126,6 +126,9 @@ ${latest_user}
 ## input_schema
 ${input_schema_json}
 
+## SOP（节选，约束真实执行步骤；不要把说明当入参）
+${sop_excerpt}
+
 ## 额外要求
 ${refine_hint}
 
@@ -135,13 +138,23 @@ ${refine_hint}
   {"title": "…", "content": "…"}
 ]
 
-## 硬性要求
-1. 内容必须足够真实、可执行：禁止「请按本能力说明完成一次冒烟测试」这类空占位
-2. 摘要/改写类：content 至少含多段业务材料 + 明确输出要求
-3. 生成类（如 PPT）：给出结构化大纲或足够要点
-4. 检索类：给出具体 query + 期望边界
+## 通用质量门禁（适用于任意 Skill，禁止偷懒）
+1. 至少 2 条：一条「简单但仍可验收」、一条「复杂/多约束」；标题建议带「简单/复杂」
+2. 禁止空占位与一句话主输入（如「做个搜索」「帮我总结一下」「测试一下」）
+3. 主输入字段（message/query/text/user_requirement/prompt/content 等）必须是多行场景描述，至少包含：
+   - 角色与目标
+   - 范围（做什么 / 明确 1 件不做）
+   - 1 条可检查约束或验收点（未知则写「待确认」）
+   - 禁止编造 Skill 描述与 schema 未给出的具体数字/密钥/渠道细节
+4. 按能力类型加料（在通用门禁之上，按 description 自行判断）：
+   - 摘要/改写：多段业务材料 + 明确输出格式
+   - 生成（PPT/文档）：结构化大纲或足够要点
+   - 检索/问答：具体 query + 期望边界/出处要求
+   - 分析/诊断/PRD：边界与未知项必须可对照输出契约验收
 5. 若 schema 有必填字段，至少一条 content 是合法 JSON 对象（字符串形式）覆盖必填字段
-6. 只输出 JSON 数组""",
+6. 叙事类主输入建议 ≥120 字；路径/字节/枚举等参数 JSON 可以短，但必须覆盖全部必填、禁止抄 description /「示例：」
+7. 只输出 JSON 数组
+8. **禁止把 input_schema 的 description 原文当作字段值**，也禁止 `示例：` + 说明。file/path 填真实风格路径（如 `/tmp/sample.mp4`），字节大小填数字（遵守「不超过」上限），枚举填 enum 中的值。""",
     }
     for pid, content in prompts.items():
         register_prompt(pid, content, category="skills")

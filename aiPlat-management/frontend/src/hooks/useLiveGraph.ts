@@ -40,6 +40,33 @@ function mapStatus(s?: string): ENode['status'] {
   return 'idle';
 }
 
+/** True when graph already has a completed done/auto_done/agent_end and no work still running. */
+function graphLooksSealed(map: Map<string, GraphNodeRaw>): boolean {
+  const nodes = [...map.values()];
+  if (nodes.length === 0) return false;
+  let hasTerminal = false;
+  let workRunning = false;
+  for (const n of nodes) {
+    const nm = String(n.name || '').toLowerCase();
+    const kind = String(n.kind || '').toLowerCase();
+    const st = mapStatus(n.status);
+    const isTerm =
+      nm === 'auto_done'
+      || nm === 'agent_end'
+      || nm === 'skill_end'
+      || nm === 'final_answer'
+      || nm.includes('skill_delivery')
+      || kind === 'done';
+    if (isTerm && (st === 'completed' || st === 'failed')) hasTerminal = true;
+    if (st === 'running') {
+      const role = String(n.role || '');
+      // Ignore pure diag leftovers; treat work/container as still in-flight
+      if (role !== 'diag') workRunning = true;
+    }
+  }
+  return hasTerminal && !workRunning;
+}
+
 const KIND_META: Record<string, { icon: string; color: string }> = {
   llm: { icon: '🧠', color: '#6366f1' },
   reason: { icon: '🧠', color: '#6366f1' },
@@ -53,14 +80,32 @@ const KIND_META: Record<string, { icon: string; color: string }> = {
   observe: { icon: '📚', color: '#ec4899' },
 };
 
+function recoverStepName(nodeId: string, name: string, role: string, kind: string): string {
+  // Historical bug: routing_* mirrored onto step:{agent}:{n} and overwrote name.
+  const corrupted = /^(routing_|routing$)/i.test(name) || (role === 'container' && kind === 'routing');
+  if (!corrupted && /^step_\d+$/i.test(name)) return name;
+  const m = String(nodeId || '').match(/^step:[^:]+:(\d+)$/);
+  if (m && (role === 'container' || kind === 'step' || corrupted)) {
+    return `step_${m[1]}`;
+  }
+  return name;
+}
+
 function rawToENode(raw: GraphNodeRaw): ENode {
-  const kind = (raw.kind || 'default').replace(/^sys_/, '');
-  const meta = KIND_META[kind] || { icon: '📋', color: '#6b7280' };
-  const name = String(raw.name || raw.node_id || 'unknown');
   const role = raw.role || 'work';
+  let kind = (raw.kind || 'default').replace(/^sys_/, '');
+  const nodeId = String(raw.node_id || raw.id || '');
+  let name = recoverStepName(nodeId, String(raw.name || nodeId || 'unknown'), role, kind);
+  // Keep step containers as kind=step even if DB was corrupted to routing
+  if (role === 'container' && /^step_\d+$/i.test(name)) {
+    kind = 'step';
+  }
+  const meta = KIND_META[kind] || { icon: '📋', color: '#6b7280' };
   // Keep semantic name for pairing; prefer distinct labels for containers.
   let label = String(raw.label || name);
-  if (role === 'container' && (name === 'skill_start' || name === 'agent_start')) {
+  if (role === 'container' && /^step_\d+$/i.test(name)) {
+    label = name;
+  } else if (role === 'container' && (name === 'skill_start' || name === 'agent_start')) {
     label = name === 'agent_start'
       ? `Agent · ${raw.label || '执行'}`
       : `Skill · ${raw.label || '执行'}`;
@@ -138,6 +183,23 @@ async function fetchGraph(runId: string, signal?: AbortSignal) {
   return res.json();
 }
 
+async function fetchExecStatus(
+  runId: string,
+  signal?: AbortSignal,
+): Promise<{ status: string; error?: string }> {
+  try {
+    const res = await fetch(`/api/core/executions/${encodeURIComponent(runId)}/status`, { signal });
+    if (!res.ok) return { status: '' };
+    const body = await res.json();
+    return {
+      status: String(body?.status || '').toLowerCase(),
+      error: body?.error != null ? String(body.error) : undefined,
+    };
+  } catch {
+    return { status: '' };
+  }
+}
+
 /**
  * Live RunGraph projection for ExecutionViewer.
  * Stays subscribed until graph_done / type:done so late open_node is not missed.
@@ -196,6 +258,7 @@ export function useLiveGraph(runId: string | null) {
       }
       const st = String(g.status || '');
       if (st && st !== 'running') markDone();
+      else if (graphLooksSealed(nodeMapRef.current)) markDone();
     };
 
     (async () => {
@@ -242,6 +305,7 @@ export function useLiveGraph(runId: string | null) {
           if (data?.type === 'graph_upsert' && data.node) {
             upsertFlat(nodeMapRef.current, data.node);
             rebuild();
+            if (graphLooksSealed(nodeMapRef.current)) markDone();
           }
         } catch {
           /* skip */
@@ -263,6 +327,28 @@ export function useLiveGraph(runId: string | null) {
           const g = await fetchGraph(runId);
           if (cancelled || doneRef.current) return;
           applyGraphPayload(g);
+          // Queued-behind-session-lock runs have empty graphs forever until drain;
+          // surface status.error so ExecutionViewer can show 「排队中」 instead of spinning.
+          const st = await fetchExecStatus(runId);
+          if (cancelled || doneRef.current) return;
+          if (st.status === 'queued' || st.status === 'pending' || (st.error && /session_locked/i.test(st.error))) {
+            setError(st.error || 'session_locked');
+          } else if (
+            st.status &&
+            !['running', 'accepted', 'started', 'pending', 'unknown', ''].includes(st.status)
+          ) {
+            // Execution row already terminal (timeout/failed) — do not keep
+            // liveStatus=streaming just because SSE never emitted graph_done.
+            if (st.error) setError(st.error);
+            // Re-hydrate nodes (orphan close_node) then settle.
+            try {
+              const g2 = await fetchGraph(runId);
+              if (!cancelled) applyGraphPayload(g2);
+            } catch {
+              /* ignore */
+            }
+            markDone();
+          }
         } catch {
           /* ignore */
         }

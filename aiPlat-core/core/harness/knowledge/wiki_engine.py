@@ -2637,6 +2637,19 @@ async def _auto_atomize_by_title_impl(title: str, collection_id: str):
     import asyncio as _asyncio, logging as _logging
     _log = _logging.getLogger("wiki_engine")
     try:
+        # Do not contend with Agent/Skill local LLM (status poll starves when
+        # zombie generates fill the shared to_thread pool — run-c604).
+        try:
+            from core.harness.utils.local_llm_recover import local_llm_slot_available
+
+            if not local_llm_slot_available():
+                _log.info(
+                    "Auto-atomize skipped for '%s': local LLM slot busy",
+                    title,
+                )
+                return
+        except Exception:
+            logging.debug("local_llm_slot_available check failed", exc_info=True)
         await _asyncio.sleep(0.5)
         page = read_page(title, collection_id=collection_id)
         if page and len(page.get("body", "")) > 500:

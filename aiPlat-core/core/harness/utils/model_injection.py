@@ -137,12 +137,35 @@ def _get_cached_model_manager() -> Any:
     return _model_manager_cache
 
 
+def _record_cached_model_outcome(model_name: str, *, success: bool) -> None:
+    """Passive health only — never construct ModelManager on the generate hot path.
+
+    ``ModelManager()`` re-scans Ollama and can block on ThreadPoolExecutor
+    shutdown (qa_agent run-44724b8b8107: generate=success then post_llm_zombie).
+    """
+    name = str(model_name or "").strip()
+    mgr = _model_manager_cache
+    if not name or mgr is None:
+        return
+    try:
+        if success:
+            mgr.record_success(name)
+        else:
+            mgr.record_failure(name)
+    except Exception:
+        logging.getLogger(__name__).debug(
+            "cached model outcome skipped", exc_info=True
+        )
+
+
 
 
 
 
 
 def _find_existing_source(mgr, model_name: str):
+    from infra.management.schemas import ModelSource
+
     for m in mgr._models.values():
         if m.name == model_name:
             return m.source
@@ -273,6 +296,8 @@ def _do_inject_adapter_models(mgr: Any) -> int:
 
             ).fetchall()
 
+            seen_names: set = set()
+
             for row in rows:
 
                 d = dict(row)
@@ -310,84 +335,62 @@ def _do_inject_adapter_models(mgr: Any) -> int:
 
                     models = []
 
-
-
-                model_name = ""
-
+                # Collect every model name on this adapter (not only models[0]).
+                # Respect per-model enabled=false (UI / rotate may disable v4-pro etc.).
+                model_entries: list = []
                 if isinstance(models, list) and models:
-
-                    first = models[0]
-
-                    if isinstance(first, dict):
-
-                        model_name = str(first.get("name") or first.get("model") or "")
-
-                    elif isinstance(first, str):
-
-                        model_name = first
-
-                if not model_name:
-
-                    # Fallback: adapter `name` field (e.g. deepseek-v4-pro), else provider-chat
-                    model_name = (d.get("name") or "").strip() or f"{provider}-chat"
-
-
-
-                if model_name in seen_names:
-
+                    for entry in models:
+                        if isinstance(entry, dict):
+                            n = str(entry.get("name") or entry.get("model") or "").strip()
+                            if not n:
+                                continue
+                            if entry.get("enabled") is False:
+                                continue
+                            model_entries.append(entry)
+                        else:
+                            n = str(entry or "").strip()
+                            if n:
+                                model_entries.append({"name": n})
+                if not model_entries:
+                    # Do not invent a model from adapter display name when every
+                    # entry was explicitly enabled=false (would resurrect v4-pro).
                     continue
 
-                seen_names.add(model_name)
-
-
-
                 provider_caps = {"chat"}
-
                 if provider in ("deepseek", "openai", "ollama"):
-
                     provider_caps = {"chat", "reasoning"}
 
+                for entry in model_entries:
+                    model_name = str(entry.get("name") or "").strip()
+                    if not model_name or model_name in seen_names:
+                        continue
+                    seen_names.add(model_name)
+                    try:
+                        _mt = int(entry.get("max_tokens") or 0) or None
+                    except Exception:
+                        _mt = None
 
-
-                mi = ModelInfo(
-
-                    id=f"adapter:{adapter_id}:{model_name}",
-
-                    name=model_name,
-
-                    type=ModelType.CHAT,
-
-                    provider=provider,
-
-                    source=_find_existing_source(mgr, model_name),
-
-                    enabled=True,
-
-                    status=ModelStatus.AVAILABLE,
-
-                    config=ModelConfig(
-
-                        adapter_id=adapter_id,
-
-                        base_url=base_url or None,
-
-                    ),
-
-                    capabilities=list(provider_caps),
-
-                )
-
-                mgr._models[model_name] = mi
-
-                injected += 1
-
-                logging.info(
-
-                    "Injected adapter model: %s (provider=%s, adapter=%s)",
-
-                    model_name, provider, adapter_id,
-
-                )
+                    mi = ModelInfo(
+                        id=f"adapter:{adapter_id}:{model_name}",
+                        name=model_name,
+                        type=ModelType.CHAT,
+                        provider=provider,
+                        source=_find_existing_source(mgr, model_name),
+                        enabled=True,
+                        status=ModelStatus.AVAILABLE,
+                        config=ModelConfig(
+                            adapter_id=adapter_id,
+                            base_url=base_url or None,
+                            max_tokens=_mt or 8192,
+                        ),
+                        capabilities=list(provider_caps),
+                    )
+                    mgr._models[model_name] = mi
+                    injected += 1
+                    logging.info(
+                        "Injected adapter model: %s (provider=%s, adapter=%s)",
+                        model_name, provider, adapter_id,
+                    )
 
         finally:
 
@@ -395,7 +398,7 @@ def _do_inject_adapter_models(mgr: Any) -> int:
 
     except Exception as e:
 
-        logging.info("Adapter model injection failed: %s", e)
+        logging.info("Adapter model injection failed: %s", e, exc_info=True)
 
     return injected
 
@@ -1167,6 +1170,22 @@ async def generate_with_fallback(purpose: str,
                     errors.append({"model": model_name, "error": msg, "transient": True})
 
                     last_error = msg
+
+                    # Abandon leaves a zombie sync HTTP thread holding llama —
+                    # unload so Agent status polls are not queued behind it.
+                    try:
+                        from core.harness.utils.local_llm_recover import (
+                            looks_like_local_llm,
+                            unload_local_llm_best_effort,
+                        )
+
+                        if looks_like_local_llm(model_name=str(model_name or "")):
+                            await _asyncio.wait_for(
+                                _asyncio.to_thread(unload_local_llm_best_effort),
+                                timeout=3.0,
+                            )
+                    except Exception:
+                        _fb_log.debug("fallback timeout unload failed", exc_info=True)
 
                     continue
 

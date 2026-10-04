@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Annotated, Dict, Optional
+from typing import Any, Annotated, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -96,6 +96,27 @@ async def _audit_execute(
         return
 
 
+def _tool_parameters(tool: Any) -> Dict[str, Any]:
+    """Prefer ToolConfig.parameters; fall back to input_schema (legacy ToolMetadata tools)."""
+    cfg = getattr(tool, "_config", None)
+    params = getattr(cfg, "parameters", None) if cfg is not None else None
+    if isinstance(params, dict) and params:
+        return params
+    schema = getattr(tool, "input_schema", None)
+    return schema if isinstance(schema, dict) else {}
+
+
+def _tool_category(tool: Any) -> str:
+    cfg = getattr(tool, "_config", None)
+    cat = getattr(cfg, "category", None) if cfg is not None else None
+    if cat:
+        return str(cat)
+    meta = getattr(cfg, "metadata", None) if cfg is not None else None
+    if isinstance(meta, dict) and meta.get("category"):
+        return str(meta.get("category"))
+    return "general"
+
+
 @router.get("/tools", response_model=Dict[str, Any])
 async def list_tools(limit: int = 100, offset: int = 0, available_only: bool = False):
     """List all tools"""
@@ -141,8 +162,8 @@ async def list_tools(limit: int = 100, offset: int = 0, available_only: bool = F
             if available_only and not info["available"]:
                 continue
             info["description"] = tool.get_description()
-            info["category"] = getattr(tool._config, "category", "general") if hasattr(tool, "_config") else "general"
-            info["parameters"] = getattr(tool._config, "parameters", {}) if hasattr(tool, '_config') else {}
+            info["category"] = _tool_category(tool)
+            info["parameters"] = _tool_parameters(tool)
         # Workspace tools (from discovery) have provenance metadata with scope
         meta = getattr(tool._config, 'metadata', {}) if hasattr(tool, '_config') else {}
         prov = (meta or {}).get('provenance', {}) if isinstance(meta, dict) else {}
@@ -180,8 +201,8 @@ async def get_tool(tool_name: str):
         "available": bool(avail.get("available")),
         "unavailable_reason": avail.get("reason"),
         "description": tool.get_description(),
-        "category": getattr(tool._config, "category", "general") if hasattr(tool, "_config") else "general",
-        "parameters": getattr(tool._config, "parameters", {}) if hasattr(tool, '_config') else {},
+        "category": _tool_category(tool),
+        "parameters": _tool_parameters(tool),
     }
     meta = getattr(tool._config, 'metadata', {}) if hasattr(tool, '_config') else {}
     prov = (meta or {}).get('provenance', {}) if isinstance(meta, dict) else {}
@@ -264,6 +285,150 @@ async def update_tool_config(tool_name: str, request: dict):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return {"ok": True, "name": tool_name, "status": st, "previous": previous}
+
+
+@router.post("/tools/{tool_name}/audit", response_model=Dict[str, Any])
+async def audit_tool_config(tool_name: str):
+    """AI 审核：工具配置健康检查（规则驱动，无需 LLM）。"""
+    from core.management.asset_audit import issue, summarize_audit_issues
+    from core.apps.tools.base import get_tool_registry
+    from core.apps.tools.lifecycle import get_tool_status
+
+    registry = get_tool_registry()
+    tool = registry.get(tool_name)
+    if not tool:
+        raise HTTPException(status_code=404, detail=f"Tool {tool_name} not found")
+
+    issues: List[Dict[str, Any]] = []
+    desc = ""
+    try:
+        desc = str(tool.get_description() or "").strip()
+    except Exception:
+        desc = str(getattr(getattr(tool, "_config", None), "description", "") or "").strip()
+    if not desc:
+        issues.append(issue(
+            severity="warning", category="missing_description", field="description",
+            message="工具缺少 description",
+            suggestion="补充一句话说明工具用途，便于 Agent 选型",
+            fix={"type": "set_description", "description": f"{tool_name} 工具"},
+        ))
+
+    params = getattr(getattr(tool, "_config", None), "parameters", None) or {}
+    if not isinstance(params, dict):
+        issues.append(issue(
+            severity="error", category="invalid_parameters", field="parameters",
+            message="parameters 必须是 JSON Schema 对象",
+            suggestion="在 TOOL_DEF['parameters'] 中声明 type/properties",
+        ))
+    else:
+        props = params.get("properties")
+        if not isinstance(props, dict) or not props:
+            inferred = None
+            try:
+                from core.management.asset_audit import infer_tool_parameters_schema
+                inferred = infer_tool_parameters_schema(tool)
+            except Exception:
+                inferred = None
+            if inferred and isinstance(inferred.get("properties"), dict) and inferred["properties"]:
+                issues.append(issue(
+                    severity="warning", category="empty_parameters", field="parameters",
+                    message="parameters.properties 为空——已从源码/签名/描述推断",
+                    suggestion="一键修复写入推断出的 JSON Schema；请核对字段名与必填项",
+                    fix={"type": "set_parameters", "parameters": inferred},
+                ))
+            else:
+                issues.append(issue(
+                    severity="warning", category="empty_parameters", field="parameters",
+                    message="parameters.properties 为空——调用方无结构化入参提示",
+                    suggestion=(
+                        "请按真实入参在 TOOL_DEF['parameters'] 中声明 properties/required；"
+                        "源码/签名中也没有可推断字段时，一键修复不会写入占位 schema（避免假绿）"
+                    ),
+                ))
+        elif params.get("type") not in (None, "object"):
+            issues.append(issue(
+                severity="warning", category="invalid_parameters_type", field="parameters",
+                message=f"parameters.type 应为 object，当前为 {params.get('type')!r}",
+                suggestion="将 TOOL_DEF['parameters']['type'] 设为 object",
+                fix={
+                    "type": "set_parameters",
+                    "parameters": {
+                        "type": "object",
+                        "properties": props if isinstance(props, dict) else {},
+                        "required": params.get("required") or [],
+                    },
+                },
+            ))
+        else:
+            # Soft: properties exist but none have description
+            undesc = [
+                k for k, v in props.items()
+                if isinstance(v, dict) and not str(v.get("description") or "").strip()
+            ]
+            if undesc and len(undesc) == len(props):
+                enriched = {}
+                for k, v in props.items():
+                    if isinstance(v, dict):
+                        enriched[k] = {**v, "description": v.get("description") or f"{k} 参数"}
+                    else:
+                        enriched[k] = v
+                issues.append(issue(
+                    severity="info", category="parameters_undocumented", field="parameters",
+                    message="parameters.properties 均无 description——Agent 选型可读性差",
+                    suggestion="为每个属性补充 description",
+                    fix={
+                        "type": "set_parameters",
+                        "parameters": {
+                            "type": "object",
+                            "properties": enriched,
+                            "required": params.get("required") or [],
+                        },
+                    },
+                ))
+
+    meta = getattr(getattr(tool, "_config", None), "metadata", None) or {}
+    prov = (meta or {}).get("provenance", {}) if isinstance(meta, dict) else {}
+    tool_path = str((prov or {}).get("tool_path") or "")
+    status = get_tool_status(tool_name, tool_path=tool_path or None)
+    if status in ("draft", "enabled"):
+        # Listing/approval is user-driven — report only, no one-click submit.
+        issues.append(issue(
+            severity="info", category="not_listed", field="status",
+            current=status,
+            message=f"工具 status={status}，Agent 上架硬门禁会视为未上架",
+            suggestion=(
+                "请在工具页自行「提交审核」，并在审批中心完成已发布/已上架；"
+                "上架需人工操作，一键修复不会代提"
+            ),
+        ))
+
+    if tool_path and Path(tool_path).is_file():
+        try:
+            src = Path(tool_path).read_text(encoding="utf-8", errors="replace")
+            compile(src, tool_path, "exec")
+            if "TOOL_DEF" not in src:
+                issues.append(issue(
+                    severity="error", category="missing_tool_def", field="source",
+                    message="源码中未找到 TOOL_DEF",
+                    suggestion="按工作区工具模板声明 TOOL_DEF = {name, description, parameters, execute}",
+                ))
+        except SyntaxError as e:
+            issues.append(issue(
+                severity="error", category="syntax_error", field="source",
+                message=f"Python 语法错误：{e.msg} (line {e.lineno})",
+                suggestion="修复语法后再保存/重载",
+            ))
+        except Exception as e:
+            issues.append(issue(
+                severity="warning", category="source_read_failed", field="source",
+                message=f"无法校验源码：{e}",
+            ))
+
+    return {
+        "tool_name": tool_name,
+        "issues": issues,
+        "summary": summarize_audit_issues(issues),
+    }
 
 
 @router.post("/tools/{tool_name}/submit-for-review", response_model=Dict[str, Any])
@@ -458,10 +623,29 @@ async def execute_tool(tool_name: str, request: dict, http_request: Request, rt:
 
     ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
     user_id = payload.get("user_id") or (ctx0.get("actor_id") if isinstance(ctx0, dict) else None) or "system"
-    session_id = payload.get("session_id") or (ctx0.get("session_id") if isinstance(ctx0, dict) else None) or "default"
+    from core.harness.utils.execute_session import mint_execute_session_id
+    session_id = mint_execute_session_id(
+        kind="tool",
+        target_id=str(tool_name),
+        session_id=payload.get("session_id") or (ctx0.get("session_id") if isinstance(ctx0, dict) else None),
+    )
     exec_req = ExecutionRequest(kind="tool", target_id=tool_name, payload=payload, user_id=str(user_id), session_id=str(session_id))
     result = await harness.execute(exec_req)
     resp = wrap_execution_result_as_run_summary(result)
+    try:
+        st = str((resp or {}).get("status") or "").lower()
+        if isinstance(resp, dict) and st in ("completed", "ok", "success", "failed", "error", ""):
+            from core.management.execution_quality_review import review_execution_output
+            resp["quality_review"] = review_execution_output(
+                kind="tool",
+                asset_id=str(tool_name),
+                asset_name=str(tool_name),
+                input_payload=payload.get("input") if isinstance(payload, dict) else payload,
+                output=resp.get("output") if isinstance(resp, dict) else None,
+                status=st or ("failed" if not resp.get("ok", True) else "completed"),
+            )
+    except Exception as e:
+        logging.warning("tool execute quality_review skipped: %s", e, exc_info=True)
     # Keep legacy behavior: tool execute returns 200 even when failed, but carries {ok:false,error:{...}}.
     try:
         await _audit_execute(http_request=http_request, payload=payload, resource_type="tool", resource_id=str(tool_name), resp=resp, rt=rt)

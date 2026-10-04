@@ -30,7 +30,7 @@
 ## 📂 按目录导航
 
 ### 架构设计（architecture/）
-[architecture/README.md](architecture/README.md) — 23 份文档，分核心参考（6 份）/ ADR（2 份）/ 规划（13 份）/ 合规（1 份）
+[architecture/README.md](architecture/README.md) — 核心参考含 [execution-quality-gates.md](architecture/execution-quality-gates.md)（产物类型→质量门禁矩阵）；另有 ADR / 规划 / 合规
 
 ### 操作手册（manuals/）
 [manuals/README.md](manuals/README.md) — 22 份手册，覆盖开发/部署/测试/本体管理/知识管理/FDE 交付
@@ -88,7 +88,7 @@
 ## 📐 文档治理
 
 - **[DOCUMENT_SYSTEM.md](DOCUMENT_SYSTEM.md)**：文档系统宪法（分类、边界、验证）
-- **[AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md)**：唯一能力清单（1756 ✅）
+- **[AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md)**：唯一能力清单（1857 ✅）
 - **verify_doc_structure.py**：目录树一致性验证
 - **verify_capability_consistency.py**：能力统计表一致
 - **verify_imports.py**：导入模块存在性验证

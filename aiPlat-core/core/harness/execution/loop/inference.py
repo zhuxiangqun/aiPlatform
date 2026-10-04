@@ -45,9 +45,13 @@ async def reason(
             await loop._maybe_compact_messages(state)
 
     # Optional: context compaction + memory injection (best-effort)
+    # Hang fix: coding_policy=off (workspace oral agents) must NOT pay for
+    # semantic retrieve → SentenceTransformer cold-start on the event loop.
+    # That path left only step_1/context_snapshot with zero llm syscalls.
     try:
         await loop._maybe_compact_messages(state)
         from ...memory.manager import get_memory_manager
+        import asyncio as _aio_mem
         try:
             mgr = get_memory_manager()
             # Phase 49: set domain context for Decision Lineage version tracking
@@ -59,7 +63,28 @@ async def reason(
                     logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
             task = state.context.get("task", "")
             sys_prompt = state.context.get("system_prompt", "")
-            mem_ctx = await mgr.build_context(current_query=task, system_prompt=sys_prompt)
+            _prof = str(
+                state.context.get("_coding_policy_profile")
+                or state.context.get("coding_policy_profile")
+                or ""
+            ).strip().lower()
+            _budget = (
+                "working_only"
+                if _prof in ("off", "none", "0", "false", "minimal")
+                else "full"
+            )
+            try:
+                _mem_timeout = float(os.getenv("AIPLAT_MEMORY_BUILD_TIMEOUT", "8") or "8")
+            except Exception:
+                _mem_timeout = 8.0
+            mem_ctx = await _aio_mem.wait_for(
+                mgr.build_context(
+                    current_query=task,
+                    system_prompt=sys_prompt,
+                    retrieval_budget=_budget,
+                ),
+                timeout=max(1.0, _mem_timeout),
+            )
             if mem_ctx and (mem_ctx.working_context or mem_ctx.messages):
                 state.context.setdefault("_memory_context", {
                     "working": str(mem_ctx.working_context)[:2000] if mem_ctx.working_context else "",
@@ -68,6 +93,10 @@ async def reason(
                     "messages": mem_ctx.messages,
                     "token_count": mem_ctx.token_count,
                 })
+        except _aio_mem.TimeoutError:
+            logging.getLogger(__name__).warning(
+                "memory build_context timed out — continuing to LLM without memory inject"
+            )
         except Exception as e:
             logging.warning(str(e), exc_info=True)
     except Exception as e:
@@ -106,14 +135,25 @@ async def reason(
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
-    # Query rewrite: resolve pronouns and implicit references via conversational RAG (§03)
+    # Query rewrite: only when multi-turn history exists (avoids phantom LLM
+    # before first generate on oral workspace agents).
     try:
         enable_qr = state.context.get("_enable_query_rewrite") or os.getenv("AIPLAT_ENABLE_QUERY_REWRITE", "").lower() in ("1", "true", "yes")
-        if enable_qr:
+        history = state.context.get("messages", [])
+        if enable_qr and isinstance(history, list) and len(history) >= 2:
             current_query = state.context.get("task", "")
-            history = state.context.get("messages", [])
             from core.harness.knowledge.query_rewriter import rewrite_with_history
-            rewritten = await rewrite_with_history(current_query, history, model)
+            import asyncio as _aio_qr
+            try:
+                rewritten = await _aio_qr.wait_for(
+                    rewrite_with_history(current_query, history, model),
+                    timeout=float(os.getenv("AIPLAT_QUERY_REWRITE_TIMEOUT", "15") or "15"),
+                )
+            except _aio_qr.TimeoutError:
+                logging.getLogger(__name__).warning(
+                    "query rewrite timed out — continuing with original task"
+                )
+                rewritten = None
             if rewritten and rewritten != current_query:
                 state.context["_original_query"] = current_query
                 state.context["task"] = rewritten
@@ -182,55 +222,143 @@ async def reason(
             logging.debug("Command parsing skipped: %s", e)
 
     # Inject code graph context on first reasoning call (replaces grep/glob exploration)
-    graph_hints = await loop._try_inject_graph_context(state)
-    if graph_hints:
-        state.context.setdefault("_graph_hints", graph_hints)
+    # Hard budget for ALL pre-LLM prep so step_1 cannot wedge the event loop forever
+    # (UI then shows only 「准备 · LLM 前置」with 0 llm spans).
+    import asyncio as _aio_prep
 
-    # Inject ontology domain context (v2.6 — DomainRouter classify + class list)
-    await loop._try_inject_ontology_context(state)
-
-    # Inject memory context + bus messages into prompt assembly
-    mem_hints = ""
     try:
-        mem = state.context.get("_memory_context")
-        if mem:
-            parts = []
-            if mem.get("working"): parts.append(f"Working Memory: {mem['working']}")
-            if mem.get("episodic"): parts.append(f"Recent: {mem['episodic']}")
-            if mem.get("semantic"): parts.append(f"Relevant: {mem['semantic']}")
-            mem_hints = "\n".join(parts)
-    except Exception as e:
-        logging.warning(str(e), exc_info=True)
-    bus_hints = ""
-    try:
-        bus_msgs = state.context.get("_bus_messages", [])
-        if bus_msgs:
-            bus_hints = "\n".join(f"[Bus] {m}" for m in bus_msgs[-3:])
-    except Exception as e:
-        logging.warning(str(e), exc_info=True)
+        _prep_budget = float(os.getenv("AIPLAT_PRE_LLM_PREP_TIMEOUT", "45") or "45")
+    except Exception:
+        _prep_budget = 45.0
+    _prep_budget = max(5.0, _prep_budget)
 
-    task = state.context.get("task", "")
-    history = "\n".join([
-        f"{msg.get('role', 'user')}: {msg.get('content', '')}"
-        for msg in state.context.get("messages", [])[-5:]
-    ])
-    tools_desc, tools_desc_stats = loop._build_tools_desc()
-    # Context pressure (best-effort): used for progressive disclosure budgeting
+    async def _assemble_prompt_ready() -> Any:
+        graph_hints = await loop._try_inject_graph_context(state)
+        if graph_hints:
+            state.context.setdefault("_graph_hints", graph_hints)
+
+        # Inject ontology domain context (v2.6 — DomainRouter classify + class list)
+        await loop._try_inject_ontology_context(state)
+
+        # Inject memory context + bus messages into prompt assembly
+        mem_hints_local = ""
+        try:
+            mem = state.context.get("_memory_context")
+            if mem:
+                parts = []
+                if mem.get("working"):
+                    parts.append(f"Working Memory: {mem['working']}")
+                if mem.get("episodic"):
+                    parts.append(f"Recent: {mem['episodic']}")
+                if mem.get("semantic"):
+                    parts.append(f"Relevant: {mem['semantic']}")
+                mem_hints_local = "\n".join(parts)
+        except Exception as e:
+            logging.warning(str(e), exc_info=True)
+        bus_hints_local = ""
+        try:
+            bus_msgs = state.context.get("_bus_messages", [])
+            if bus_msgs:
+                bus_hints_local = "\n".join(f"[Bus] {m}" for m in bus_msgs[-3:])
+        except Exception as e:
+            logging.warning(str(e), exc_info=True)
+
+        task_local = state.context.get("task", "")
+        history_local = "\n".join([
+            f"{msg.get('role', 'user')}: {msg.get('content', '')}"
+            for msg in state.context.get("messages", [])[-5:]
+        ])
+        # Sync skill/tool index builds can block the event loop on large workspaces.
+        try:
+            tools_desc_local, tools_desc_stats = await _aio_prep.wait_for(
+                _aio_prep.to_thread(loop._build_tools_desc),
+                timeout=min(8.0, _prep_budget),
+            )
+        except Exception:
+            tools_desc_local, tools_desc_stats = "", {}
+        try:
+            max_tokens = float(getattr(config, "max_tokens", state.max_tokens) or state.max_tokens)
+            used_tokens = float(getattr(state, "used_tokens", 0) or 0)
+            pressure = (used_tokens / max_tokens) if max_tokens > 0 else 0.0
+        except Exception:
+            pressure = 0.0
+        try:
+            skills_desc_local, skills_desc_stats = await _aio_prep.wait_for(
+                _aio_prep.to_thread(loop._build_skills_desc, context_pressure=pressure),
+                timeout=min(8.0, _prep_budget),
+            )
+        except Exception:
+            skills_desc_local, skills_desc_stats = "", {}
+        try:
+            state.metadata["tools_desc_stats"] = tools_desc_stats
+            state.context["tools_desc_stats"] = tools_desc_stats
+            state.metadata["skills_desc_stats"] = skills_desc_stats
+            state.context["skills_desc_stats"] = skills_desc_stats
+        except Exception as e:
+            logging.warning(str(e), exc_info=True)
+
+        # Keep downstream assembly using the same locals via state
+        state.context["_prep_tools_desc"] = tools_desc_local
+        state.context["_prep_skills_desc"] = skills_desc_local
+        state.context["_prep_mem_hints"] = mem_hints_local
+        state.context["_prep_bus_hints"] = bus_hints_local
+        state.context["_prep_history"] = history_local
+        state.context["_prep_task"] = task_local
+        return True
+
+    try:
+        await _aio_prep.wait_for(_assemble_prompt_ready(), timeout=_prep_budget)
+    except _aio_prep.TimeoutError:
+        logging.getLogger(__name__).warning(
+            "pre-LLM prep timed out after %.0fs — continuing with minimal prompt",
+            _prep_budget,
+        )
+        state.context.setdefault("_prep_tools_desc", "")
+        state.context.setdefault("_prep_skills_desc", "")
+        state.context.setdefault("_prep_mem_hints", "")
+        state.context.setdefault("_prep_bus_hints", "")
+        state.context.setdefault(
+            "_prep_history",
+            "\n".join([
+                f"{msg.get('role', 'user')}: {msg.get('content', '')}"
+                for msg in state.context.get("messages", [])[-5:]
+            ]),
+        )
+        state.context.setdefault("_prep_task", state.context.get("task", ""))
+        # Close prep marker as timeout so UI leaves 「执行中」
+        try:
+            _rid = str(state.context.get("_run_id") or "")
+            if _rid:
+                from core.harness.utils.execute_session import emit_pre_llm_prep_close
+                from core.services.execution_store import get_execution_store as _ges_prep_to
+
+                await emit_pre_llm_prep_close(
+                    _ges_prep_to(),
+                    _rid,
+                    status="timeout",
+                    step_count=state.step_count,
+                    parent_span_id=str(state.context.get("_current_step_span_id") or ""),
+                    reason="prep_timeout",
+                    extra_args={"budget_s": _prep_budget},
+                    error="pre_llm_prep_timeout",
+                )
+        except Exception:
+            logging.debug("pre_llm_prep timeout close failed", exc_info=True)
+
+    tools_desc = str(state.context.get("_prep_tools_desc") or "")
+    skills_desc = str(state.context.get("_prep_skills_desc") or "")
+    mem_hints = str(state.context.get("_prep_mem_hints") or "")
+    bus_hints = str(state.context.get("_prep_bus_hints") or "")
+    task = str(state.context.get("_prep_task") or state.context.get("task") or "")
+    history = str(state.context.get("_prep_history") or "")
+    tools_desc_stats = state.context.get("tools_desc_stats") if isinstance(state.context.get("tools_desc_stats"), dict) else {}
+    skills_desc_stats = state.context.get("skills_desc_stats") if isinstance(state.context.get("skills_desc_stats"), dict) else {}
     try:
         max_tokens = float(getattr(config, "max_tokens", state.max_tokens) or state.max_tokens)
         used_tokens = float(getattr(state, "used_tokens", 0) or 0)
         pressure = (used_tokens / max_tokens) if max_tokens > 0 else 0.0
     except Exception:
         pressure = 0.0
-    skills_desc, skills_desc_stats = loop._build_skills_desc(context_pressure=pressure)
-    # Best-effort: attach to state for observability/debugging
-    try:
-        state.metadata["tools_desc_stats"] = tools_desc_stats
-        state.context["tools_desc_stats"] = tools_desc_stats
-        state.metadata["skills_desc_stats"] = skills_desc_stats
-        state.context["skills_desc_stats"] = skills_desc_stats
-    except Exception as e:
-        logging.warning(str(e), exc_info=True)
 
     # ── ContextAssembler: token budget + source attribution (Phase 9) ──
     try:
@@ -296,14 +424,23 @@ async def reason(
 
     # P0: context shaping pipeline (observable, default enabled)
     try:
-        await loop._apply_context_shaping_pipeline(state)
+        await _aio_prep.wait_for(
+            loop._apply_context_shaping_pipeline(state),
+            timeout=min(10.0, max(3.0, _prep_budget * 0.25)),
+        )
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
     # Restatement: load latest run_state and periodically refresh next_step
     try:
-        await loop._load_run_state_for_prompt(state)
-        await loop._maybe_restate_and_persist_run_state(state)
+        await _aio_prep.wait_for(
+            loop._load_run_state_for_prompt(state),
+            timeout=3.0,
+        )
+        await _aio_prep.wait_for(
+            loop._maybe_restate_and_persist_run_state(state),
+            timeout=3.0,
+        )
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
@@ -350,6 +487,38 @@ async def reason(
                         prompt.insert(0, {"role": "system", "content": toolset_instruction})
         except Exception as e:
             logging.warning(str(e), exc_info=True)
+        # After primary skill delivery (skill_delivery=once):
+        # if a bound review skill is still pending, steer there; else force DONE.
+        try:
+            delivered = str(state.context.get("_primary_skill_delivered") or "").strip()
+            if delivered and str(state.context.get("_skill_delivery") or "").lower() == "once":
+                follow = None
+                try:
+                    if loop is not None and hasattr(loop, "_pending_coding_followup"):
+                        follow = loop._pending_coding_followup(state)
+                except Exception:
+                    follow = None
+                if follow:
+                    done_rule = (
+                        f"## Delivery follow-up\n"
+                        f"- Skill `{delivered}` already returned usable output (see Observation).\n"
+                        f"- Do NOT re-call `{delivered}`.\n"
+                        f"- Next you MUST call skill `{follow}` "
+                        f"(type=skill_call) on the generated files, then DONE.\n"
+                    )
+                else:
+                    done_rule = (
+                        f"## Delivery complete\n"
+                        f"- Skill `{delivered}` already returned usable output (see Observation).\n"
+                        f"- Your reply MUST be {{\"type\":\"done\",\"answer\":...}} or DONE: …\n"
+                        f"- Do NOT call `{delivered}` again unless Observation is an explicit error."
+                    )
+                if prompt and prompt[0].get("role") == "system":
+                    prompt[0]["content"] = str(prompt[0].get("content") or "") + "\n\n" + done_rule
+                else:
+                    prompt.insert(0, {"role": "system", "content": done_rule})
+        except Exception as e:
+            logging.warning(str(e), exc_info=True)
     else:
         from core.harness.utils.prompt_loader import _sync_resolve
         prompt = _sync_resolve("react-reasoning",
@@ -365,16 +534,57 @@ async def reason(
             "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
             "run_id": state.context.get("_run_id") or state.context.get("run_id"),
             "parent_span_id": state.context.get("_current_step_span_id") or (state.context.get("_agent_id") and f"agent:{state.context['_agent_id']}:start"),
+            "step_count": int(state.step_count or 0),
             "knowledge_bases": state.context.get("_knowledge_bases", []),
+            "coding_policy_profile": str(
+                state.context.get("_coding_policy_profile")
+                or state.context.get("coding_policy_profile")
+                or ""
+            ),
         }
+        # Explicit opt-in only (AGENT.md / caller); never inferred for "doc agents".
+        if state.context.get("_skip_claude_md"):
+            trace_ctx["skip_claude_md"] = True
+        # Close prep marker BEFORE generate so UI does not keep 「LLM 前置 · 执行中」
+        # for the entire Ollama wait (which can be minutes).
+        try:
+            _rid = str(state.context.get("_run_id") or "")
+            if _rid:
+                from core.harness.utils.execute_session import emit_pre_llm_prep_close
+                from core.services.execution_store import get_execution_store as _ges_prep
+
+                await emit_pre_llm_prep_close(
+                    _ges_prep(),
+                    _rid,
+                    status="ok",
+                    step_count=state.step_count,
+                    parent_span_id=str(state.context.get("_current_step_span_id") or ""),
+                    reason="before_generate",
+                )
+        except Exception:
+            logging.debug("pre_llm_prep close-before-generate failed", exc_info=True)
         response = await sys_llm_generate(model, prompt,
             trace_context=trace_ctx,
             model_name=config.model_name)
         # P1-2: track token usage after the call for pre-estimation + pre-compaction before the next call
-        # Persist this interaction to MemoryManager for cross-turn memory
-        await loop._try_save_interaction(state, prompt, getattr(response, "content", str(response)))
-        # L3: Auto-extract user facts from conversation
-        await loop._try_extract_user_facts(state, prompt)
+        # Persist / fact-extract must never wedge ReAct before routing (run-1a2dd /
+        # qa_agent run-44724b8b8107: generate=success then post_llm_zombie).
+        # Fire-and-forget: even wait_for cannot interrupt a sync ModelManager /
+        # SentenceTransformer load on the event loop.
+        import asyncio as _aio_post
+        if loop is not None:
+            try:
+                _aio_post.ensure_future(
+                    loop._try_save_interaction(
+                        state, prompt, getattr(response, "content", str(response))
+                    )
+                )
+            except Exception as e:
+                logging.warning(str(e), exc_info=True)
+            try:
+                _aio_post.ensure_future(loop._try_extract_user_facts(state, prompt))
+            except Exception as e:
+                logging.warning(str(e), exc_info=True)
         # Track token usage (best-effort) for compaction budgets.
         try:
             usage = getattr(response, "usage", None)
@@ -431,6 +641,9 @@ async def reason(
         cf = state.context.get("_consecutive_llm_failures", 0) + 1
         state.context["_consecutive_llm_failures"] = cf
         state.context["_last_action_reason"] = f"llm_call_failed:#{cf}"
+        # Prevent "Model error: …" from being treated as a plain-text final answer
+        # (auto_done → false green / stuck running after llm_timeout).
+        state.context["_llm_call_failed"] = True
         max_cf = state.context.get("_max_consecutive_llm_failures", int(os.getenv("AIPLAT_MAX_CONSECUTIVE_LLM_FAILURES", "3") or "3"))
         if cf >= max_cf:
             state.context["_stop_reason"] = "llm_failure_exhausted"

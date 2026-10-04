@@ -8,12 +8,32 @@ def extract_json_safe(text: str) -> Optional[str]:
     """Extract JSON substring with bracket-balanced truncation handling.
     Unlike extract_json, this finds the first balanced {…} or […] block,
     making it safe for LLM outputs where JSON may be followed by commentary.
+
+    Prefer whole-text JSON when valid so embedded markdown fences inside string
+    values (e.g. skill_call with ```ts code) are not mistaken for a JSON fence.
     """
     if not text:
         return None
-    # 1. Try ```json fence
-    m = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', text, re.IGNORECASE)
-    candidate = m.group(1).strip() if m else text
+    stripped = text.strip()
+    # 0) Whole-text already valid JSON (common for structured skill/tool calls)
+    if stripped[:1] in "{[":
+        try:
+            import json as _json
+
+            _json.loads(stripped)
+            return stripped
+        except Exception:
+            pass  # noqa: cleanup-best-effort — fall through to fence / balanced
+    # 1) Prefer explicit ```json fence (not bare ```ts / ```python)
+    m = re.search(r"```json\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
+    if m:
+        candidate = m.group(1).strip()
+    elif stripped[:1] in "{[":
+        # Already looks like an object/array; do not peel inner ``` fences
+        candidate = stripped
+    else:
+        m = re.search(r"```\s*([\s\S]*?)\s*```", text)
+        candidate = m.group(1).strip() if m else text
     # 2. Find first { or [ at outermost level
     def _balanced(src: str, open_ch: str, close_ch: str) -> Optional[str]:
         i = src.find(open_ch)

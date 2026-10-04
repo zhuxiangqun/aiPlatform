@@ -103,11 +103,33 @@ class BuilderTeamService:
             if os.path.exists(_TEAMS_FILE):
                 with open(_TEAMS_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
+                loaded = 0
+                skipped = 0
                 for item in data.get("teams", []):
-                    team = TeamConfig(**item)
+                    try:
+                        team = TeamConfig(**item)
+                    except Exception:
+                        skipped += 1
+                        _log = logging.getLogger(__name__)
+                        _log.warning(
+                            "skip invalid team in %s: id=%s name=%s",
+                            _TEAMS_FILE,
+                            (item or {}).get("team_id"),
+                            (item or {}).get("name"),
+                            exc_info=True,
+                        )
+                        continue
                     if not team.team_id:
                         continue
                     self._teams[team.team_id] = team
+                    loaded += 1
+                if skipped:
+                    logging.getLogger(__name__).warning(
+                        "teams load: loaded=%s skipped=%s file=%s",
+                        loaded,
+                        skipped,
+                        _TEAMS_FILE,
+                    )
         except Exception as e:
             logging.debug(str(e), exc_info=True)
 

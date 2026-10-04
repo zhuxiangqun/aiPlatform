@@ -125,7 +125,15 @@ class TextGenerationSkill(BaseSkill):
         try:
             from ...harness.syscalls.llm import sys_llm_generate
 
-            response = await sys_llm_generate(self._model, [{"role": "user", "content": prompt}], trace_context={"source": "skill_base"})
+            from core.harness.utils.execute_session import skill_nested_llm_trace_context
+
+            response = await sys_llm_generate(
+                self._model,
+                [{"role": "user", "content": prompt}],
+                trace_context=skill_nested_llm_trace_context(
+                    context, params, source="skill_base"
+                ),
+            )
             
             return SkillResult(
                 success=True,
@@ -154,6 +162,9 @@ class CodeGenerationSkill(BaseSkill):
         config = SkillConfig(
             name="code_generation",
             description="Generate code based on requirements",
+            # Nested LLM asks for up to 420s; outer skill wait must keep headroom
+            # (was SKILL.md timeout — keep here so engine SKILL.md stays untouched).
+            timeout=540,
             input_schema={
                 "requirements": {"type": "string", "description": "Code requirements"},
                 "language": {"type": "string", "description": "Programming language"},
@@ -162,7 +173,8 @@ class CodeGenerationSkill(BaseSkill):
             output_schema={
                 "code": {"type": "string", "description": "Generated code"},
                 "language": {"type": "string", "description": "Language"}
-            }
+            },
+            metadata={"timeout": 540},
         )
         super().__init__(config)
         self._model = None
@@ -171,10 +183,105 @@ class CodeGenerationSkill(BaseSkill):
         """Set model for skill"""
         self._model = model
 
+    @staticmethod
+    def _strip_done_prefix(text: str) -> str:
+        """Normalize DONE / DONE: / DONEn (mangled newline) prefixes from weak models."""
+        import re
+
+        s = str(text or "").strip()
+        s = re.sub(r"^(?:DONE\s*:?\s*|DONEn)", "", s, count=1, flags=re.I).strip()
+        return s
+
+    @staticmethod
+    def _has_code_substance(text: str) -> bool:
+        """True when body has real implementation — not clarify prose mentioning 'class'."""
+        try:
+            from core.management.execution_quality_review import _code_body_has_substance
+
+            return bool(_code_body_has_substance(text))
+        except Exception:
+            import re
+
+            s = CodeGenerationSkill._strip_done_prefix(text)
+            body = re.sub(r"(?m)^##\s*FILE:\s*\S+\s*$", "", s)
+            body = re.sub(r"(?m)^```\w*\s*$", "", body).strip()
+            if len(body) < 40:
+                return False
+            # Fallback: require code-shaped tokens (def name(, class Name:)
+            return bool(
+                re.search(
+                    r"(?:"
+                    r"\b(?:async\s+)?def\s+\w+\s*\(|"
+                    r"\bclass\s+\w+\s*[\(:]|"
+                    r"\bfunction\s+\w+\s*\(|"
+                    r"\bconst\s+\w+\s*=|"
+                    r"@router\.|APIRouter|BaseModel|FastAPI|"
+                    r"\bcurl\s+|"
+                    r"app\.(?:get|post|put|delete|patch)\("
+                    r")",
+                    body,
+                    re.I,
+                )
+            )
+
+    @staticmethod
+    def _resolve_requirements(params: Dict[str, Any]) -> str:
+        """ReAct/sys_skill often passes the user task as ``input``, not ``requirements``."""
+        if not isinstance(params, dict):
+            return ""
+        for key in (
+            "requirements",
+            "requirement",
+            "message",
+            "input",
+            "query",
+            "task",
+            "user_task",
+            "prompt",
+            "text",
+        ):
+            v = params.get(key)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+            if isinstance(v, dict):
+                nested = CodeGenerationSkill._resolve_requirements(v)
+                if nested:
+                    return nested
+        return ""
+
     async def execute(self, context: SkillContext, params: Dict[str, Any]) -> SkillResult:
         """Execute code generation using best-available LLM via model_injection."""
-        language = params.get("language", "python")
-        requirements = params.get("requirements", "")
+        language = params.get("language", "python") if isinstance(params, dict) else "python"
+        _lang_locked = bool(
+            (params if isinstance(params, dict) else {}).get("_language_locked")
+        )
+        requirements = self._resolve_requirements(params if isinstance(params, dict) else {})
+        if not requirements:
+            return SkillResult(
+                success=False,
+                error=(
+                    "code_generation missing requirements/input — "
+                    "pass the user task (ReAct usually sets params.input)."
+                ),
+            )
+
+        # Prefer language demanded by the user task over schema default ``python``
+        # (run-2e2d49539faf: TS client generated but envelope stayed language=python → false thin).
+        # When loop injected preferred_language with ``_language_locked``, do not
+        # re-infer here — inject already applied task > preferred > model.
+        if not _lang_locked:
+            try:
+                from core.management.execution_quality_review import (
+                    _detect_requested_code_language,
+                )
+
+                req_lang = _detect_requested_code_language(requirements)
+                if req_lang:
+                    language = req_lang
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "code_generation language infer skipped", exc_info=True
+                )
 
         # Auto-select model: via model_injection (canonical path), fall back to env config
         model = self._model
@@ -184,28 +291,254 @@ class CodeGenerationSkill(BaseSkill):
             return SkillResult(success=False, error="No model configured for code generation")
 
         from core.harness.utils.prompt_loader import _sync_resolve
+        _user_tail = (
+            "Start each file with ## FILE: path. Put complete runnable code under each header. "
+            "Do not ask clarifying questions. Do not output only a FILE header. "
+            "Do not wrap the whole answer in DONE. If details are missing, state assumptions "
+            "and still deliver a minimal runnable slice. "
+            "Do not import relative modules (./utils) that you did not also deliver as ## FILE."
+        )
+        try:
+            from core.management.execution_quality_review import _input_requires_auth_todo
+
+            if _input_requires_auth_todo(requirements):
+                # Gate (_output_has_auth_todo) only accepts a code-line comment
+                # like `// TODO: auth` — prose / bare `TODO: auth/鉴权` fails
+                # (run-91896f56fcd9: substantive apiClient still missing_auth_todo).
+                _user_tail += (
+                    " Auth details are not given — inside the apiClient/fetch helper "
+                    "add an exact line comment `// TODO: auth` (TypeScript) or "
+                    "`# TODO: auth` (Python); never claim DingTalk/SSO is integrated."
+                )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "code_generation auth-todo hint skipped", exc_info=True
+            )
         msgs = [
             {"role": "system", "content": _sync_resolve("codegen-expert", language=language)},
-            {"role": "user", "content": f"Generate {language} code for:\n{str(requirements)[:4000]}\nOutput ONLY code with ## FILE: path headers. Output DONE: prefix before code."},
+            {
+                "role": "user",
+                "content": (
+                    f"Generate {language} code for:\n{str(requirements)[:4000]}\n"
+                    + _user_tail
+                ),
+            },
         ]
 
         try:
             from ...harness.syscalls.llm import sys_llm_generate
+            import time as _time
 
-            response = await sys_llm_generate(model, msgs)
-            code = getattr(response, "content", "") or str(response)
+            # Nested LLM under skill timeout (540) but above local default 300
+            # (run-8fd66c1b21fa: operation timed out after 300.0s).
+            from core.harness.utils.execute_session import skill_nested_llm_trace_context
 
-            # If DONE: prefix found, extract code after it
-            if "DONE:" in str(code):
-                code = str(code).split("DONE:", 1)[-1].strip()
-            if not code or len(code.strip()) < 10:
-                short_msgs = [{"role": "user", "content": f"Write {language} code for: {str(requirements)[:2000]}. Output with DONE: prefix."}]
-                res = await sys_llm_generate(model, short_msgs, trace_context={"source": "code_gen_retry"})
-                code = getattr(res, "content", "") or str(res)
-                if "DONE:" in str(code):
-                    code = str(code).split("DONE:", 1)[-1].strip()
+            _llm_tc = skill_nested_llm_trace_context(
+                context,
+                params,
+                source="code_generation",
+                extra={"timeout_seconds": 420},
+            )
+            _t0 = _time.monotonic()
+            response = await sys_llm_generate(
+                model,
+                msgs,
+                trace_context=_llm_tc,
+                max_tokens=8192,
+            )
+            # Empty content must NOT fall through to str(LLMResponse(...)) —
+            # that greenwashed finish_reason=length empties as a fake "code" blob
+            # (run-69d8218f39e8 deepseek-v4-pro max_tokens cut-off).
+            _raw = getattr(response, "content", None)
+            if not isinstance(_raw, str) or not _raw.strip():
+                _raw = ""
+            code = self._strip_done_prefix(_raw)
+            _elapsed = _time.monotonic() - _t0
 
-            return SkillResult(success=True, output={"code": code, "language": language})
+            # Retry only when thin AND first call left wall budget (avoid 2×420 > skill 540).
+            if (not self._has_code_substance(code)) and _elapsed < 200.0:
+                _retry_tail = (
+                    f"Write complete {language} code for: {str(requirements)[:2000]}. "
+                    "Use ## FILE: path headers and include full function/class bodies "
+                    "(not just empty file headers). Do not ask questions — assume TODOs."
+                )
+                try:
+                    from core.management.execution_quality_review import (
+                        _input_requires_auth_todo as _req_auth,
+                    )
+
+                    if _req_auth(requirements):
+                        _retry_tail += (
+                            " Must include a code-line comment exactly "
+                            "`// TODO: auth` or `# TODO: auth` where auth would go."
+                        )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "code_gen_retry auth-todo hint skipped", exc_info=True
+                    )
+                short_msgs = [
+                    {
+                        "role": "user",
+                        "content": _retry_tail,
+                    }
+                ]
+                _retry_budget = max(60.0, min(180.0, 500.0 - _elapsed))
+                res = await sys_llm_generate(
+                    model,
+                    short_msgs,
+                    trace_context={
+                        **_llm_tc,
+                        "source": "code_gen_retry",
+                        "timeout_seconds": _retry_budget,
+                    },
+                    max_tokens=8192,
+                )
+                _raw2 = getattr(res, "content", None)
+                if not isinstance(_raw2, str) or not _raw2.strip():
+                    _raw2 = ""
+                code = self._strip_done_prefix(_raw2)
+
+            # Align envelope language with body fences when they disagree —
+            # unless language was locked by task/preferred_language inject
+            # (FE preferred=typescript must not silently adopt a Python body).
+            try:
+                from core.management.execution_quality_review import (
+                    _detect_output_code_language,
+                    _language_families_compatible,
+                )
+
+                body_lang = _detect_output_code_language(code, {"text": code, "code": code})
+                locked = bool(
+                    (params if isinstance(params, dict) else {}).get("_language_locked")
+                )
+                if body_lang and not _language_families_compatible(str(language), body_lang):
+                    if locked:
+                        logging.getLogger(__name__).info(
+                            "code_generation language lock kept=%s body=%s",
+                            language,
+                            body_lang,
+                        )
+                    else:
+                        language = body_lang
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "code_generation language reconcile skipped", exc_info=True
+                )
+
+            # Dual gate: shape check + clarify/thin detector (skill_delivery must not greenwash)
+            thin = not self._has_code_substance(code)
+            contract_hit: List[str] = []
+            _lang_locked = bool(
+                (params if isinstance(params, dict) else {}).get("_language_locked")
+            )
+            _out_env: Dict[str, Any] = {
+                "code": code,
+                "language": language,
+                "text": code,
+            }
+            if _lang_locked:
+                _out_env["_language_locked"] = True
+            if not thin:
+                try:
+                    from core.management.execution_quality_review import (
+                        _coding_contract_fail_codes,
+                        is_non_deliverable_coding_output,
+                    )
+
+                    thin = is_non_deliverable_coding_output(
+                        input_text=requirements,
+                        output_text=code,
+                        raw_out=_out_env,
+                        scope="skill",
+                    )
+                    if thin:
+                        contract_hit = [
+                            c
+                            for c in _coding_contract_fail_codes(
+                                requirements,
+                                code,
+                                _out_env,
+                            )
+                            if c
+                            in (
+                                "language_mismatch",
+                                "missing_auth_todo",
+                                "dangling_local_import",
+                                "fake_integration_claim",
+                            )
+                        ]
+                        # Deterministic line-comment inject when only auth-TODO is
+                        # missing (run-91896f56: prose ``### TODO: auth`` + Bearer
+                        # example, no ``// TODO: auth`` in apiClient). Avoids a
+                        # nested LLM fix and ReAct step_2 hang (0 children / 962s).
+                        if contract_hit == ["missing_auth_todo"]:
+                            try:
+                                from core.management.execution_quality_review import (
+                                    _ensure_auth_todo_comment,
+                                )
+
+                                _patched = _ensure_auth_todo_comment(
+                                    code, language=str(language or "")
+                                )
+                                if _patched.strip() and _patched != code:
+                                    code = _patched
+                                    _out_env["code"] = code
+                                    _out_env["text"] = code
+                                    thin = is_non_deliverable_coding_output(
+                                        input_text=requirements,
+                                        output_text=code,
+                                        raw_out=_out_env,
+                                        scope="skill",
+                                    )
+                                    if thin:
+                                        contract_hit = [
+                                            c
+                                            for c in _coding_contract_fail_codes(
+                                                requirements,
+                                                code,
+                                                _out_env,
+                                            )
+                                            if c
+                                            in (
+                                                "language_mismatch",
+                                                "missing_auth_todo",
+                                                "dangling_local_import",
+                                                "fake_integration_claim",
+                                            )
+                                        ]
+                                    else:
+                                        contract_hit = []
+                            except Exception:
+                                logging.getLogger(__name__).debug(
+                                    "code_gen auth-todo deterministic patch skipped",
+                                    exc_info=True,
+                                )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "code_generation non-deliverable gate skipped", exc_info=True
+                    )
+
+            if thin:
+                hint = (
+                    f" contract={','.join(contract_hit)}"
+                    if contract_hit
+                    else ""
+                )
+                return SkillResult(
+                    success=False,
+                    error=(
+                        "code_generation returned a thin stub or clarification "
+                        f"(no runnable body){hint}. Retry with fuller output: "
+                        "inline helpers (no ./utils), and mark // TODO: auth when asked."
+                    ),
+                    output={k: v for k, v in _out_env.items() if k != "text"},
+                    metadata={"contract_fail_codes": contract_hit} if contract_hit else {},
+                )
+
+            return SkillResult(
+                success=True,
+                output={k: v for k, v in _out_env.items() if k != "text"},
+            )
 
         except Exception as e:
             return SkillResult(success=False, error=str(e))
@@ -270,7 +603,15 @@ class DataAnalysisSkill(BaseSkill):
         try:
             from ...harness.syscalls.llm import sys_llm_generate
 
-            response = await sys_llm_generate(self._model, [{"role": "user", "content": prompt}], trace_context={"source": "skill_base"})
+            from core.harness.utils.execute_session import skill_nested_llm_trace_context
+
+            response = await sys_llm_generate(
+                self._model,
+                [{"role": "user", "content": prompt}],
+                trace_context=skill_nested_llm_trace_context(
+                    context, params, source="skill_base"
+                ),
+            )
             
             return SkillResult(
                 success=True,

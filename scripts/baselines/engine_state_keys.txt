@@ -87,6 +87,17 @@ _tokens_bonus|OK|engine-internal
 _trace_id|OK|engine-internal
 _wake_recovered|OK|engine-internal
 _wake_recovered_from|OK|engine-internal
+_agent_pause|OK|engine-internal
+_approval|OK|engine-internal
+_bound_skill_ids|OK|engine-internal
+_deploy_files_dir|OK|engine-internal
+_enable_query_rewrite|OK|engine-internal
+_execute_input|OK|engine-internal
+_policy|OK|engine-internal
+_preferred_language|OK|engine-internal
+_skill_delivery|OK|engine-internal
+_skip_claude_md|OK|engine-internal
+_user_task|OK|engine-internal
 # -- Generic pipeline keys (OK: universal pipeline concepts) --
 agent_id|OK|generic pipeline
 context|OK|generic pipeline

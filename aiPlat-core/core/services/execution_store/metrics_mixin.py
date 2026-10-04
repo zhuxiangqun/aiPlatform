@@ -202,6 +202,87 @@ class MetricsMixin:
 
         await anyio.to_thread.run_sync(_sync)
 
+    async def release_session_locks_for_run(self, *, run_id: str) -> int:
+        """Drop any session_locks held by ``run_id`` (orphan / timeout recovery)."""
+        await self.init()
+        rid = str(run_id or "").strip()
+        if not rid:
+            return 0
+
+        def _sync() -> int:
+            conn = self._connect()
+            try:
+                cur = conn.execute("DELETE FROM session_locks WHERE run_id=?", (rid,))
+                conn.commit()
+                return int(cur.rowcount or 0)
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def delete_expired_session_locks(self) -> int:
+        """Garbage-collect expired session_locks so drain can proceed."""
+        await self.init()
+
+        def _sync() -> int:
+            now = float(time.time())
+            conn = self._connect()
+            try:
+                cur = conn.execute("DELETE FROM session_locks WHERE expires_at < ?", (now,))
+                conn.commit()
+                return int(cur.rowcount or 0)
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def has_active_session_lock_for_run(self, *, run_id: str) -> bool:
+        """True if a non-expired session_lock row still holds ``run_id``."""
+        await self.init()
+        rid = str(run_id or "").strip()
+        if not rid:
+            return False
+
+        def _sync() -> bool:
+            now = float(time.time())
+            conn = self._connect()
+            try:
+                row = conn.execute(
+                    "SELECT expires_at FROM session_locks WHERE run_id=?",
+                    (rid,),
+                ).fetchone()
+                if not row:
+                    return False
+                return float(row[0] or 0.0) > now
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
+    async def has_any_session_lock_for_run(self, *, run_id: str) -> bool:
+        """True if any session_lock row (expired or not) is held by ``run_id``.
+
+        Used by orphan_watchdog so agent/stream runs that never acquire a lock
+        are not falsely marked ``lock_expired_stale``.
+        """
+        await self.init()
+        rid = str(run_id or "").strip()
+        if not rid:
+            return False
+
+        def _sync() -> bool:
+            conn = self._connect()
+            try:
+                row = conn.execute(
+                    "SELECT 1 FROM session_locks WHERE run_id=? LIMIT 1",
+                    (rid,),
+                ).fetchone()
+                return bool(row)
+            finally:
+                conn.close()
+
+        return await anyio.to_thread.run_sync(_sync)
+
     async def enqueue_session_run(
         self,
         *,
@@ -225,7 +306,16 @@ class MetricsMixin:
                     """
                     INSERT INTO session_queue(tenant_id, session_id, run_id, kind, target_id, user_id, queue_mode, status, payload_json, created_at)
                     VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(run_id) DO NOTHING;
+                    ON CONFLICT(run_id) DO UPDATE SET
+                      status='queued',
+                      tenant_id=excluded.tenant_id,
+                      session_id=excluded.session_id,
+                      kind=excluded.kind,
+                      target_id=excluded.target_id,
+                      user_id=excluded.user_id,
+                      queue_mode=excluded.queue_mode,
+                      payload_json=excluded.payload_json,
+                      created_at=excluded.created_at;
                     """,
                     (
                         t,

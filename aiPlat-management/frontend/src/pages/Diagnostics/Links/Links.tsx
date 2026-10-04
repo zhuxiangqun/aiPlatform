@@ -99,27 +99,37 @@ const Links: React.FC = () => {
     return { trace_id: value };
   }, [mode, value]);
 
-  const load = async () => {
+  const load = async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
     try {
       if (mode === 'change_id') {
         const res = await diagnosticsApi.getChangeControl(value, { limit: 200, offset: 0 });
+        if (signal?.aborted) return;
         setData({ mode: 'change_id', change: res?.change || null });
       } else {
         const res = await diagnosticsApi.linksUi({ ...(query as any), include_spans: includeSpans });
+        if (signal?.aborted) return;
         setData(res);
       }
     } catch (e: any) {
-      setError(e?.message || '加载失败');
+      if (signal?.aborted) return;
+      const msg = String(e?.message || '');
+      setError(
+        msg.includes('aborted') || msg.includes('AbortError') || msg.includes('timeout')
+          ? '加载超时（25s）。请确认 management/core 已启动后点「查询」重试。'
+          : msg || '加载失败',
+      );
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   };
 
   useEffect(() => {
-    // auto load when query exists
-    if (value) load();
+    if (!value) return;
+    const ac = new AbortController();
+    void load(ac.signal);
+    return () => ac.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, value, includeSpans]);
 
@@ -139,6 +149,10 @@ const Links: React.FC = () => {
   const graphRuns = data?.graph_runs || null;
   const lineage = Array.isArray(data?.lineage) ? data.lineage : [];
   const traceSpans: any[] = Array.isArray(trace?.spans) ? trace.spans : [];
+  const runGraph = data?.run_graph && typeof data.run_graph === 'object' ? data.run_graph : null;
+  const runGraphNodes: any[] = Array.isArray(runGraph?.nodes) ? runGraph.nodes : [];
+  const syscallItems: any[] = Array.isArray(data?.syscalls?.items) ? data.syscalls.items : [];
+  const primaryExec = data?.primary_execution && typeof data.primary_execution === 'object' ? data.primary_execution : null;
 
   const runs = Array.isArray(graphRuns?.runs) ? graphRuns.runs : [];
   const agentExecs = Array.isArray(executions?.items?.agent_executions)
@@ -147,29 +161,56 @@ const Links: React.FC = () => {
   const skillExecs = Array.isArray(executions?.items?.skill_executions)
     ? executions.items.skill_executions.map((x: any) => ({ ...x, type: x.type || 'skill' }))
     : [];
+  const displayRunId = summary.run_id || summary.execution_id || (mode === 'execution_id' ? value : '') || '';
+  const isWorkspaceAgentView =
+    mode === 'execution_id' ||
+    String(graphRuns?.source || '') === 'run_graph' ||
+    String(graphRuns?.source || '') === 'execution_stub' ||
+    Boolean(primaryExec?.agent_id);
 
   const runStatus = String(
-    agentExecs[0]?.status || skillExecs[0]?.status || trace?.status || summary?.status || '',
+    primaryExec?.status ||
+      agentExecs[0]?.status ||
+      skillExecs[0]?.status ||
+      summary?.exec_status ||
+      trace?.status ||
+      summary?.status ||
+      '',
   ).toLowerCase();
-  const runError = String(agentExecs[0]?.error || skillExecs[0]?.error || trace?.attributes?.error || '').trim();
+  const runError = String(
+    primaryExec?.error || agentExecs[0]?.error || skillExecs[0]?.error || summary?.exec_error || trace?.attributes?.error || '',
+  ).trim();
   const verdict = (() => {
     if (!data || mode === 'change_id') return null;
-    if (runStatus === 'running' || runStatus === 'accepted') {
+    if (runStatus === 'running' || runStatus === 'accepted' || runStatus === 'started') {
       return { label: '执行中', hint: '尚未结束，可稍后刷新。', tone: 'blue' as const };
     }
     if (runStatus === 'failed' || runStatus === 'error' || runStatus === 'timeout') {
-      return { label: runStatus === 'timeout' ? '超时' : '未成功', hint: runError || '请查看 Executions / spans。', tone: 'red' as const };
+      return {
+        label: runStatus === 'timeout' ? '超时' : '未成功',
+        hint:
+          runError ||
+          summary.diagnosis_hint ||
+          '请看 Trace spans / Syscalls / Executions.error（Graph Runs 对单次 Agent 通常为空）。',
+        tone: 'red' as const,
+      };
     }
     if (runStatus === 'completed' || runStatus === 'ok' || runStatus === 'success') {
       if (runError) return { label: '已结束（有告警）', hint: runError, tone: 'amber' as const };
       return {
         label: '已正常结束',
-        hint: `耗时 ${trace?.duration_ms != null ? `${(Number(trace.duration_ms) / 1000).toFixed(1)}s` : '—'} · executions ${agentExecs.length + skillExecs.length} · spans ${includeSpans ? traceSpans.length : '（请打开 spans）'}`,
+        hint: `耗时 ${
+          primaryExec?.duration_ms != null || trace?.duration_ms != null
+            ? `${(Number(primaryExec?.duration_ms ?? trace?.duration_ms) / 1000).toFixed(1)}s`
+            : '—'
+        } · spans ${includeSpans ? summary.span_count ?? traceSpans.length : '（请打开 spans）'} · syscalls ${
+          summary.syscall_counts?.total ?? syscallItems.length
+        }`,
         tone: 'green' as const,
       };
     }
     if (!runStatus) return null;
-    return { label: `状态 ${runStatus}`, hint: '可打开 spans 或 Executions 核对。', tone: 'gray' as const };
+    return { label: `状态 ${runStatus}`, hint: '可打开 spans / Syscalls 或 Executions 核对。', tone: 'gray' as const };
   })();
   const verdictClass: Record<string, string> = {
     green: 'border-green-700/40 bg-green-950/30 text-green-100',
@@ -347,11 +388,16 @@ const Links: React.FC = () => {
         </CardHeader>
         <CardContent>
           {error && <div className="text-sm text-error mb-3">{error}</div>}
+          {loading && !data && (
+            <div className="text-sm text-gray-400 mb-3">正在查询执行关联数据…</div>
+          )}
           {!data ? (
             <div className="text-sm text-gray-500">
-              {error
-                ? '查询未返回数据。若刚执行完 Agent，可刷新后重试；或确认 execution_id / trace_id 是否正确。'
-                : '请输入 ID 并查询'}
+              {loading
+                ? '请稍候…'
+                : error
+                  ? '查询未返回数据。若刚执行完 Agent，可刷新后重试；或确认 execution_id / trace_id 是否正确。'
+                  : '请输入 ID 并查询'}
             </div>
           ) : mode === 'change_id' ? (
             <div className="space-y-4">
@@ -481,8 +527,16 @@ const Links: React.FC = () => {
                 <div className="p-3 bg-dark-bg rounded-lg">
                   <div className="text-xs text-gray-400 mb-1">graph runs</div>
                   <div className="text-sm font-medium text-gray-100">{summary.graph_run_counts?.total ?? (graphRuns?.total || 0)}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {summary.graph_run_counts?.source === 'run_graph' || summary.run_graph_counts?.has_graph
+                      ? `观测树 nodes ${summary.run_graph_counts?.nodes ?? runGraphNodes.length}`
+                      : 'LangGraph resume 链（Agent 通常无此项）'}
+                  </div>
                   <div className="flex items-center gap-2 mt-2">
                     <Badge variant={summary.actions?.has_trace ? 'success' : 'warning'}>{summary.actions?.has_trace ? 'has trace' : 'no trace'}</Badge>
+                    <Badge variant={summary.actions?.has_run_graph ? 'success' : 'default'}>
+                      {summary.actions?.has_run_graph ? 'has run_graph' : 'no run_graph'}
+                    </Badge>
                     <Badge variant={summary.actions?.can_resume ? 'info' : 'default'}>{summary.actions?.can_resume ? 'can resume' : 'readonly'}</Badge>
                   </div>
                 </div>
@@ -577,26 +631,78 @@ const Links: React.FC = () => {
                     ),
                   },
                   {
+                    key: 'run_graph',
+                    label: `Run Graph (${runGraphNodes.length})`,
+                    children: (
+                      <div className="space-y-3">
+                        <div className="text-xs text-gray-400">
+                          Agent/Skill 观测树（ExecutionViewer 同源）。LangGraph resume 的 Graph Runs 是另一套表。
+                          {summary.run_id ? (
+                            <button
+                              type="button"
+                              className="ml-2 text-primary hover:underline"
+                              onClick={() => navigate(`/diagnostics/runs?run_id=${encodeURIComponent(String(summary.run_id))}`)}
+                            >
+                              打开执行流程
+                            </button>
+                          ) : null}
+                        </div>
+                        {runGraphNodes.length === 0 ? (
+                          <div className="text-xs text-amber-200/90 bg-amber-950/20 border border-amber-800/40 rounded-lg px-3 py-2">
+                            无 run_graph 节点。常见原因：执行在首个 LLM 调用前被超时杀掉，或观测写入失败。可对照 Trace spans / Executions.error。
+                          </div>
+                        ) : (
+                          <ol className="space-y-1 text-xs text-gray-200 font-mono bg-dark-hover border border-dark-border rounded-lg p-3 max-h-72 overflow-auto">
+                            {runGraphNodes.slice(0, 100).map((n: any, i: number) => (
+                              <li key={String(n.node_id || n.id || i)} className="flex gap-2 flex-wrap">
+                                <span className="text-gray-500 w-5 shrink-0">{i + 1}.</span>
+                                <span>{String(n.kind || 'node')}:{String(n.name || n.label || '')}</span>
+                                <span className="text-gray-500">{String(n.status || '')}</span>
+                                {n.duration_ms != null ? (
+                                  <span className="text-gray-600">{Number(n.duration_ms).toFixed?.(0) ?? n.duration_ms}ms</span>
+                                ) : null}
+                              </li>
+                            ))}
+                          </ol>
+                        )}
+                      </div>
+                    ),
+                  },
+                  {
                     key: 'runs',
                     label: `Graph Runs (${runs.length})`,
                     children: (
-                      <Table
-                        columns={runColumns as any}
-                        data={runs}
-                        rowKey="run_id"
-                        onRow={(r: any) => ({
-                          className: highlightMode === 'graph_run_id' && highlightId === r.run_id ? 'bg-primary-light/20' : '',
-                        })}
-                      />
+                      <div className="space-y-2">
+                        {runs.length === 0 && (
+                          <div className="text-xs text-gray-500 px-1">
+                            无 LangGraph graph_runs。Workspace Agent 执行走 run_graph，请看「Run Graph」页签。
+                          </div>
+                        )}
+                        <Table
+                          columns={runColumns as any}
+                          data={runs}
+                          rowKey="run_id"
+                          onRow={(r: any) => ({
+                            className: highlightMode === 'graph_run_id' && highlightId === r.run_id ? 'bg-primary-light/20' : '',
+                          })}
+                        />
+                      </div>
                     ),
                   },
                   {
                     key: 'lineage',
                     label: `Lineage (${lineage.length})`,
                     children: (
-                      <pre className="text-xs text-gray-200 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
-                        {JSON.stringify(lineage, null, 2)}
-                      </pre>
+                      <div className="space-y-2">
+                        {lineage.length === 1 && lineage[0]?.source === 'execution_stub' && (
+                          <div className="text-xs text-gray-500">
+                            Agent 单次执行无父 resume 链；以下为执行 stub（非多跳 lineage）。
+                          </div>
+                        )}
+                        <pre className="text-xs text-gray-200 bg-dark-hover border border-dark-border rounded-lg p-3 overflow-auto">
+                          {JSON.stringify(lineage, null, 2)}
+                        </pre>
+                      </div>
                     ),
                   },
                 ]}

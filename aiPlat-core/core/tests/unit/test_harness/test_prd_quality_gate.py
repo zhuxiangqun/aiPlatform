@@ -192,6 +192,48 @@ def test_open_questions_block_confirm():
     assert any(i["code"] == "open_questions_present" for i in report["issues"])
 
 
+def test_draft_round_allows_open_questions():
+    prd = {
+        "title": "简单工具",
+        "functional_requirements": [
+            {"id": "FR-1", "name": "A", "acceptance_criteria": ["x"]},
+        ],
+        "constraints": {"performance": ["P95<1s"], "security": ["HTTPS"]},
+        "open_questions": ["还要不要支持移动端？"],
+    }
+    report = assess_prd(prd, assessment_round="draft")
+    assert report["assessment_round"] == "draft"
+    assert not any(i["code"] == "open_questions_present" for i in report["issues"])
+    assert report["ok"] is True
+
+
+def test_input_text_blocks_invented_media_pack_on_inspection_prd():
+    """LLM invents「转写」in FR; input is inspection — media pack must not fire."""
+    prd = {
+        "title": "现场巡检报障",
+        "functional_requirements": [
+            {
+                "id": "FR1",
+                "name": "拍照上报",
+                "description": "支持语音转写工单",
+                "acceptance_criteria": ["提交成功"],
+            },
+            {"id": "FR2", "name": "审批", "acceptance_criteria": ["状态已派修"]},
+            {"id": "FR3", "name": "看板", "acceptance_criteria": ["ticket_count 可见"]},
+        ],
+        "constraints": {"performance": ["待压测"], "security": ["照片不上公网"]},
+        "open_questions": ["钉钉 API？"],
+        "decisions": {},
+    }
+    # Without input_text: invented 转写 may match media pack (legacy body match).
+    # With input_text: must not.
+    inp = "现场巡检拍照上报，班组长审批派修，照片不上公网，不要 OCR/转写"
+    report = assess_prd(prd, assessment_round="draft", input_text=inp)
+    codes = {i["code"] for i in report["issues"]}
+    assert "media" not in (report.get("domain_flags") or [])
+    assert not any(c.startswith("media_") or "url_source_scope" in c for c in codes)
+
+
 def test_apply_gate_force():
     prd = _media_prd()
     # Without enrich, still blocked

@@ -34,7 +34,17 @@ class ExecTypeDirectoryMismatch(LintRule):
 
     def check(self, skill: Any) -> List[LintIssue]:
         issues: List[LintIssue] = []
-        exec_type = str(getattr(skill, "execution_type", "") or "").strip().lower()
+        if isinstance(skill, dict):
+            exec_type = str(skill.get("execution_type") or "").strip().lower()
+            if not exec_type:
+                md = skill.get("metadata") if isinstance(skill.get("metadata"), dict) else {}
+                exec_type = str(md.get("execution_type") or "").strip().lower()
+        else:
+            exec_type = str(getattr(skill, "execution_type", "") or "").strip().lower()
+            if not exec_type:
+                md = getattr(skill, "metadata", None)
+                if isinstance(md, dict):
+                    exec_type = str(md.get("execution_type") or "").strip().lower()
         skill_dir = self._resolve_skill_dir(skill)
         if not skill_dir:
             return issues
@@ -49,6 +59,12 @@ class ExecTypeDirectoryMismatch(LintRule):
                 message=f"execution_type=handler but handler.py not found in {skill_dir}",
                 location="frontmatter.execution_type",
             ))
+        if has_handler and exec_type not in ("handler", "python_class", "hybrid"):
+            issues.append(LintIssue(
+                level=self.level, code=self.code,
+                message=f"handler.py exists in {skill_dir} but execution_type={exec_type or '(empty)'} (should be handler)",
+                location="frontmatter.execution_type",
+            ))
         if has_scripts and exec_type == "prompt":
             issues.append(LintIssue(
                 level="warning", code=self.code,
@@ -59,7 +75,12 @@ class ExecTypeDirectoryMismatch(LintRule):
 
     @staticmethod
     def _resolve_skill_dir(skill: Any) -> str:
-        md = getattr(skill, "metadata", {}) or {}
+        if isinstance(skill, dict):
+            md = skill.get("metadata") if isinstance(skill.get("metadata"), dict) else {}
+        else:
+            md = getattr(skill, "metadata", None) or {}
+            if not isinstance(md, dict):
+                md = {}
         if isinstance(md, dict):
             for k in ("skill_dir", "fs", "filesystem"):
                 v = md.get(k)
@@ -69,7 +90,7 @@ class ExecTypeDirectoryMismatch(LintRule):
                     d = v.get("skill_dir") or v.get("root") or v.get("path")
                     if isinstance(d, str) and os.path.isdir(d):
                         return d
-        cfg = getattr(skill, "_config", None)
+        cfg = getattr(skill, "_config", None) if not isinstance(skill, dict) else None
         if cfg:
             meta = getattr(cfg, "metadata", {}) or {}
             if isinstance(meta, dict):

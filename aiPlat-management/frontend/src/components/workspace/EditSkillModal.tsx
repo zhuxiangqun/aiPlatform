@@ -7,12 +7,16 @@ import {
 import type { Skill } from '../../services';
 import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
 import PromptDiffModal from './PromptDiffModal';
+import AssetAuditPanel, { auditRemainToast } from './AssetAuditPanel';
+import type { AssetAuditResult } from './AssetAuditPanel';
 
 interface EditSkillModalProps {
   open: boolean;
   skill: Skill | null;
   onClose: () => void;
   onSuccess: () => void;
+  /** Open directly on SOP / 操作手册 tab (e.g. from quality-review CTA). */
+  initialSection?: 'basic' | 'gov' | 'io' | 'sop';
 }
 
 type SchemaField = {
@@ -281,7 +285,13 @@ function parseJsonObject(label: string, text: string): Record<string, unknown> |
   }
 }
 
-const EditSkillModal: React.FC<EditSkillModalProps> = ({ open, skill, onClose, onSuccess }) => {
+const EditSkillModal: React.FC<EditSkillModalProps> = ({
+  open,
+  skill,
+  onClose,
+  onSuccess,
+  initialSection = 'basic',
+}) => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [name, setName] = useState('');
@@ -306,6 +316,8 @@ const EditSkillModal: React.FC<EditSkillModalProps> = ({ open, skill, onClose, o
   const [skillMdPath, setSkillMdPath] = useState('');
   const [metaBase, setMetaBase] = useState<Record<string, unknown>>({});
   const [optimizeOpen, setOptimizeOpen] = useState(false);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditResult, setAuditResult] = useState<AssetAuditResult | null>(null);
   const [optimizePrompt, setOptimizePrompt] = useState('');
   const [section, setSection] = useState<'basic' | 'gov' | 'io' | 'sop'>('basic');
 
@@ -388,14 +400,81 @@ const EditSkillModal: React.FC<EditSkillModalProps> = ({ open, skill, onClose, o
 
   useEffect(() => {
     if (open && skill?.id) {
-      setSection('basic');
+      setSection(initialSection || 'basic');
       void load(skill.id, skill);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, skill?.id]);
+  }, [open, skill?.id, initialSection]);
 
   const togglePerm = (id: string) => {
     setPermissions((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const handleAudit = async () => {
+    if (!skill?.id) return;
+    setAuditLoading(true);
+    setAuditResult(null);
+    try {
+      const res: any = await workspaceSkillApi.audit(skill.id);
+      setAuditResult(res);
+      if (!res?.summary?.total) toast.success('审核通过，配置无问题');
+      else toast.success(`审核完成: ${res.summary?.errors || 0} 错误 ${res.summary?.warnings || 0} 警告`);
+    } catch (e: any) {
+      toast.error('审核失败', String(e?.message || ''));
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  const applySkillFix = async (fix: { type: string; fix_id?: string }) => {
+    if (!skill?.id || fix.type !== 'apply_lint_fix' || !fix.fix_id) {
+      toast.warning('该问题暂无自动修复');
+      return;
+    }
+    try {
+      await workspaceSkillApi.applyLintFix(skill.id, { fix_ids: [String(fix.fix_id)], dry_run: false });
+      toast.success('已应用修复');
+      await handleAudit();
+      // reload form from disk
+      await load(skill.id, skill);
+    } catch (e: any) {
+      toast.error('修复失败', String(e?.message || ''));
+    }
+  };
+
+  const handleApplyAllSkillFixes = async () => {
+    if (!skill?.id || !auditResult?.issues) return;
+    const fixable = auditResult.issues.filter(
+      (i) => i.fix_available && i.fix?.type === 'apply_lint_fix' && i.fix.fix_id,
+    );
+    const ids = [...new Set(fixable.map((i) => String(i.fix!.fix_id)))];
+    const unfixableBefore = (auditResult.issues || []).filter((i) => !i.fix_available).length;
+    if (!ids.length) {
+      toast.info(
+        unfixableBefore
+          ? `没有可自动修复项（${unfixableBefore} 项需改描述/操作手册）`
+          : '没有可自动修复的问题',
+      );
+      return;
+    }
+    try {
+      setLoading(true);
+      const res: any = await workspaceSkillApi.applyLintFix(skill.id, { fix_ids: ids, dry_run: false });
+      await load(skill.id, skill);
+      const again: any = await workspaceSkillApi.audit(skill.id);
+      setAuditResult(again);
+      if (String(res?.status || '') === 'noop') {
+        toast.warning('修复未写入（可能路径不被允许或已是最新）');
+      } else {
+        const msg = auditRemainToast(ids.length, again?.summary);
+        if (msg.kind === 'success') toast.success(msg.text);
+        else toast.info(msg.text);
+      }
+    } catch (e: any) {
+      toast.error('一键修复失败', String(e?.message || ''));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -563,6 +642,15 @@ const EditSkillModal: React.FC<EditSkillModalProps> = ({ open, skill, onClose, o
             {skillMdPath ? (
               <div className="text-[11px] text-gray-600 break-all -mt-2">磁盘：{skillMdPath}</div>
             ) : null}
+
+            <AssetAuditPanel
+              result={auditResult}
+              loading={auditLoading}
+              onAudit={handleAudit}
+              onApplyFix={(fix) => applySkillFix(fix as any)}
+              onApplyAll={handleApplyAllSkillFixes}
+              fixLabel={(fix) => (fix.type === 'apply_lint_fix' ? '应用' : '修复')}
+            />
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {tabs.map((t) => (

@@ -4173,8 +4173,28 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 "Skill %s: no SOP found, falling back to ReAct", _skill_name)
             return state  # caller falls through to _exec_stage
 
-        # ── 1.5. Handler execution (execution_type: handler — deterministic, no LLM) ──
-        if _execution_type == "handler":
+        def _stage_skill_failed(err: str, backend: str) -> "PipelineState":
+            _artifact_key = getattr(stage, "output_artifact", "") or _skill_name
+            if _artifact_key:
+                state[_artifact_key] = {
+                    "raw_output": err,
+                    "elapsed_sec": round(_time.time() - _t0, 2),
+                    "status": "failed",
+                    "error": err,
+                }
+            state["_progress"] = {
+                "stage": _skill_name,
+                "status": "failed",
+                "elapsed_sec": round(_time.time() - _t0, 2),
+                "backend": backend,
+                "current_step": 0,
+            }
+            if self._persist_callback:
+                self._persist_callback(dict(state))
+            return state
+
+        # ── 1.5. Handler execution (execution_type: handler/hybrid — no LLM fallback) ──
+        if _execution_type in ("handler", "hybrid"):
             _handler_path = _os.path.join(_os.path.dirname(_sp), "handler.py")
             if _os.path.isfile(_handler_path):
                 try:
@@ -4214,9 +4234,41 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                                 _log.getLogger("pipeline_engine").warning(
                                     "Skill %s: handler executed (deterministic)", _skill_name)
                                 return state
+                    return _stage_skill_failed(
+                        f"Skill '{_skill_name}': execution_type={_execution_type} "
+                        "handler.py has no callable execute()",
+                        "handler",
+                    )
                 except Exception as _he:
                     _log.getLogger("pipeline_engine").warning(
-                        "Skill %s: handler execution failed, falling back to LLM: %s", _skill_name, _he)
+                        "Skill %s: handler execution failed (no LLM fallback): %s",
+                        _skill_name,
+                        _he,
+                    )
+                    return _stage_skill_failed(str(_he), "handler")
+            return _stage_skill_failed(
+                f"Skill '{_skill_name}': execution_type={_execution_type} but handler.py not found",
+                "handler",
+            )
+
+        # Prompt skills that claim write/network/exec must not fall through to LLM theater.
+        try:
+            from core.harness.execution.skill_side_effect_gate import (
+                skill_descriptor_from_md_path,
+                skill_result_if_unrealized_side_effects,
+            )
+
+            _desc = skill_descriptor_from_md_path(_sp) if _os.path.isfile(_sp) else None
+            _refused = skill_result_if_unrealized_side_effects(_desc) if _desc else None
+            if _refused is not None:
+                return _stage_skill_failed(
+                    str(_refused.error or "SIDE_EFFECT_UNREALIZED"),
+                    "side_effect_gate",
+                )
+        except Exception as _gate_e:
+            _log.getLogger("pipeline_engine").debug(
+                "side_effect_gate skipped: %s", _gate_e, exc_info=True
+            )
 
         # Emit node_started event for frontend polling visibility
         try:
@@ -4830,7 +4882,25 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
             state = await self._run_chained_skill(_chain_skill, state, _artifact_key, _chain_result_key)
 
         # ── 5.6. Deploy files to disk if configured ──
-        if getattr(stage, 'deploy_files_to_disk', False) and "## FILE:" in _result:
+        # Scaffold sets deploy_files_to_disk. Later uses_file_output stages
+        # (frontend/backend slices) write into the same workspace without
+        # hardcoding agent_id — they follow `_deploy_files_dir` from a prior deploy.
+        _already_dir = str(state.get("_deploy_files_dir") or "").strip()
+        _want_deploy = bool(getattr(stage, "deploy_files_to_disk", False))
+        if (
+            not _want_deploy
+            and getattr(stage, "uses_file_output", False)
+            and _already_dir
+        ):
+            _want_deploy = True
+        _art_now = state.get(_artifact_key)
+        _has_file_blob = "## FILE:" in str(_result or "")
+        _has_file_list = (
+            isinstance(_art_now, dict)
+            and isinstance(_art_now.get("files"), list)
+            and bool(_art_now.get("files"))
+        )
+        if _want_deploy and (_has_file_blob or _has_file_list):
             self._deploy_result_files(state, stage, _result)
 
         # ── 6. HITL gate: pause pipeline if stage requires human approval ──
@@ -5014,11 +5084,14 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
         _target = (getattr(stage, 'deploy_files_target_dir', '') or '').strip()
         if not _target:
+            _target = str(state.get("_deploy_files_dir") or "").strip()
+        if not _target:
             # Default: ~/.aiplat/apps/{project_id}/current
             _pid = state.get("project_id", "") or state.get("_project_id", "")
             _home = _os2.getenv("AIPLAT_HOME", _os2.path.expanduser("~/.aiplat"))
             _target = _os2.path.join(_home, "apps", _pid, "current")
         _os2.makedirs(_target, exist_ok=True)
+        state["_deploy_files_dir"] = _target
         _log.warning("deploy: writing files to %s", _target)
 
         _count = 0
@@ -5034,11 +5107,15 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
             _content = _lines[1].strip()
             _content = _re.sub(r'^```\w*\n?', '', _content)
             _content = _re.sub(r'\n?```\s*$', '', _content)
-            # Strip leaked code block language markers (yaml., json.)
-            if _content.startswith("yaml\n"):
-                _content = _content[5:]
-            elif _content.startswith("json\n"):
-                _content = _content[5:]
+            # Strip leaked fence language tags (python / ts / yaml / …) — same set as
+            # test_executor._lang_tag_pattern. Bare "python" as whole file breaks import.
+            _content = _re.sub(
+                r'^(python3?|json|bash|sh|yaml|yml|typescript|javascript|js|ts|tsx|jsx|sql)\s*(?:\n|$)',
+                '',
+                _content,
+                count=1,
+                flags=_re.IGNORECASE,
+            )
             # Strip leaked YAML terminators from JSON files (trailing ---)
             if _fname.endswith(".json") and _content.rstrip().endswith("---"):
                 _content = _re.sub(r'\n?---\s*$', '', _content)
@@ -5056,6 +5133,28 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 _count += 1
             except Exception as _we:
                 _log.warning("deploy: failed to write %s: %s", _fname, _we)
+        if _count == 0:
+            _art = state.get(getattr(stage, "output_artifact", "") or "")
+            if isinstance(_art, dict):
+                for _f in _art.get("files") or []:
+                    if not isinstance(_f, dict):
+                        continue
+                    _fname = str(_f.get("path") or "").strip()
+                    _content = str(_f.get("content") or _f.get("code") or "")
+                    if not _fname or not _content.strip():
+                        continue
+                    try:
+                        _full = _safe_join(_target, _fname)
+                    except ValueError as _ve:
+                        _log.warning("deploy: blocked path traversal: %s (%s)", _fname, _ve)
+                        continue
+                    try:
+                        _os2.makedirs(_os2.path.dirname(_full) or _target, exist_ok=True)
+                        with open(_full, "w", encoding="utf-8") as _fw:
+                            _fw.write(_content if _content.endswith("\n") else _content + "\n")
+                        _count += 1
+                    except Exception as _we:
+                        _log.warning("deploy: failed to write %s: %s", _fname, _we)
         _log.warning("deploy: wrote %d files", _count)
 
     async def _exec_tdd_cycle(self, stage: PipelineStageConfig, state: PipelineState) -> PipelineState:
@@ -5619,6 +5718,23 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         if artifact is not None:
 
             local_state[f"_stage_output_{stage.id}"] = json.dumps(artifact, ensure_ascii=False)[:2000]
+
+        # Advisory stage product-quality review (Skill/Agent/Tool rules, PRD-gated per output).
+        # Stored on state so WorkflowCanvas / WorkflowRunPage can poll without a new endpoint.
+        try:
+            from core.management.execution_quality_review import review_pipeline_stage
+
+            _st = "failed" if local_state.get("error") or local_state.get(f"_stage_failed_id") == stage.id else "completed"
+            _qr = review_pipeline_stage(
+                stage=stage,
+                artifact=artifact if artifact is not None else local_state.get(stage.output_artifact),
+                input_payload=local_state.get(f"_stage_input_{stage.id}"),
+                status=_st,
+            )
+            if isinstance(_qr, dict):
+                local_state[f"_quality_review_{stage.id}"] = _qr
+        except Exception as e:
+            logging.debug("pipeline stage quality_review skipped: %s", e, exc_info=True)
 
         elapsed = round(t_end - local_state.get(f"_stage_ts_{stage.id}", t_end), 1)
 

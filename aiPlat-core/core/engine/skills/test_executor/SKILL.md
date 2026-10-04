@@ -8,6 +8,7 @@ category: execution
 version: 3.0.0
 skill_model_purpose: code_gen
 status: enabled
+timeout: 90
 execution_type: handler
 tags:
   - 测试

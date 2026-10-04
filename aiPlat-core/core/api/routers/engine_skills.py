@@ -685,68 +685,106 @@ async def apply_lint_fix_engine_skill(skill_id: str, request: Optional[Dict[str,
                 continue
 
     allowed_out_keys = {"markdown", "change_plan", "changed_files", "unrelated_changes", "acceptance_criteria", "rollback_plan"}
+    allowed_meta = {
+        ("negative_triggers",),
+        ("trigger_conditions",),
+        ("required_questions",),
+        ("keywords",),
+        ("description",),
+        ("name",),
+        ("permissions",),
+        ("completion_criterion",),
+        ("execution_type",),
+        ("version",),
+        ("category",),
+        ("_sop_append",),
+        ("input_schema",),
+        ("output_schema",),
+    }
     ops = []
-    meta_ops = []
     for f in selected:
         patch = f.get("patch") if isinstance(f.get("patch"), dict) else {}
         if str(patch.get("format") or "") != "frontmatter_merge":
             continue
         for op in patch.get("ops") if isinstance(patch.get("ops"), list) else []:
-            if not isinstance(op, dict):
-                continue
-            if op.get("op") != "upsert":
+            if not isinstance(op, dict) or op.get("op") != "upsert":
                 continue
             path = op.get("path")
-            if isinstance(path, list) and len(path) == 2 and str(path[0]) == "output_schema" and str(path[1]) in allowed_out_keys:
+            if not isinstance(path, list) or not path:
+                continue
+            tpath = tuple(str(x) for x in path)
+            if tpath in allowed_meta:
                 ops.append(op)
                 continue
-            if path in (["negative_triggers"], ["trigger_conditions"], ["required_questions"], ["keywords"], ["description"], ["name"]):
-                meta_ops.append(op)
-                continue
+            if len(tpath) == 2 and tpath[0] == "output_schema" and tpath[1] in allowed_out_keys:
+                ops.append(op)
 
     if dry_run:
-        return {"status": "dry_run", "skill_id": str(skill_id), "change_id": change_id, "selected": selected, "ops": ops + meta_ops}
+        return {"status": "dry_run", "skill_id": str(skill_id), "change_id": change_id, "selected": selected, "ops": ops}
 
-    if not ops and not meta_ops:
+    if not ops:
         return {"status": "noop", "skill_id": str(skill_id), "change_id": change_id, "selected": selected, "ops": []}
 
     out_patch: Dict[str, Any] = {}
+    in_replace: Optional[Dict[str, Any]] = None
+    meta_patch: Dict[str, Any] = {}
     name_patch: Optional[str] = None
     desc_patch: Optional[str] = None
-    trig_patch: Optional[Any] = None
-    neg_patch: Optional[Any] = None
-    reqq_patch: Optional[Any] = None
-    kw_patch: Optional[Any] = None
+    category_patch: Optional[str] = None
+    sop_append_chunks: List[str] = []
     for op in ops:
         v = op.get("value")
         path = op.get("path") if isinstance(op.get("path"), list) else []
+        if path == ["input_schema"] and isinstance(v, dict):
+            in_replace = dict(v)
+            continue
+        if path == ["output_schema"] and isinstance(v, dict):
+            out_patch.update(v)
+            continue
         if len(path) == 2 and path[0] == "output_schema" and isinstance(path[1], str) and isinstance(v, dict):
             out_patch[str(path[1])] = v
-    for op in meta_ops:
-        v = op.get("value")
-        path = op.get("path") if isinstance(op.get("path"), list) else []
+            continue
         if path == ["name"] and isinstance(v, str):
             name_patch = v
-        elif path == ["description"] and isinstance(v, str):
+            continue
+        if path == ["description"] and isinstance(v, str):
             desc_patch = v
-        elif path == ["trigger_conditions"]:
-            trig_patch = v
-        elif path == ["negative_triggers"]:
-            neg_patch = v
-        elif path == ["required_questions"]:
-            reqq_patch = v
-        elif path == ["keywords"] and isinstance(v, dict):
-            kw_patch = v
+            continue
+        if path == ["category"] and isinstance(v, str) and v.strip():
+            category_patch = v.strip()
+            continue
+        if path == ["_sop_append"] and isinstance(v, str) and v.strip():
+            sop_append_chunks.append(v.strip())
+            continue
+        if path and path[0] in (
+            "trigger_conditions",
+            "negative_triggers",
+            "required_questions",
+            "keywords",
+            "permissions",
+            "completion_criterion",
+            "execution_type",
+            "version",
+        ):
+            meta_patch[str(path[0])] = v
 
+    if isinstance(meta_patch.get("version"), str):
+        try:
+            setattr(s, "version", str(meta_patch["version"]))
+        except Exception:
+            pass  # noqa: cleanup-best-effort
+    merged_out = None
+    if out_patch:
+        merged_out = dict(getattr(s, "output_schema", None) or {})
+        merged_out.update(out_patch)
     skill2 = await mgr.update_skill(
         skill_id,
-        output_schema=out_patch if out_patch else None,
         name=name_patch,
         description=desc_patch,
-        trigger_conditions=trig_patch,
-        negative_triggers=neg_patch,
-        required_questions=reqq_patch,
-        keywords=kw_patch,
+        category=category_patch,
+        metadata=meta_patch if meta_patch else None,
+        input_schema=in_replace,
+        output_schema=merged_out,
     )
     if not skill2:
         raise HTTPException(status_code=500, detail="Failed to update skill")
@@ -1014,6 +1052,84 @@ async def get_skill_active_version(skill_id: str):
     return {"skill_id": skill_id, "active_version": active_version}
 
 
+@router.get("/skills/{skill_id}/execution-help", response_model=Dict[str, Any])
+async def get_engine_skill_execution_help(skill_id: str, rt: RuntimeDep = None):
+    """Get execution input help/examples for an engine skill."""
+    mgr = _skill_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Skill manager not available")
+    skill = await mgr.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    data = await mgr.get_skill_execution_help(skill_id)  # type: ignore[attr-defined]
+    if not data:
+        raise HTTPException(status_code=404, detail="Execution help not found")
+    return data
+
+
+@router.post("/skills/{skill_id}/generate-execution-examples", response_model=Dict[str, Any])
+async def generate_engine_skill_execution_examples(
+    skill_id: str,
+    request: Dict[str, Any] = None,
+    http_request: Request = None,
+    rt: RuntimeDep = None,
+):
+    """Optional LLM generation of smoke cases for Core Skills execute UI."""
+    mgr = _skill_mgr(rt)
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Skill manager not available")
+    skill = await mgr.get_skill(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+
+    body = request if isinstance(request, dict) else {}
+    persist = bool(body.get("persist"))
+    refine_hint = str(body.get("refine_hint") or "").strip()
+
+    if persist and http_request is not None:
+        deny = await rbac_guard(
+            http_request=http_request,
+            payload=body,
+            action="update",
+            resource_type="skill",
+            resource_id=str(skill_id),
+        )
+        if deny:
+            return deny
+
+    try:
+        from core.apps.skills.service.skill_execution_examples_llm import (
+            run_generate_skill_execution_examples,
+        )
+
+        result = await run_generate_skill_execution_examples(
+            mgr=mgr,
+            skill=skill,
+            skill_id=str(skill_id),
+            persist=persist,
+            refine_hint=refine_hint,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)[:200])
+    except Exception as e:
+        logging.exception("generate engine skill execution examples failed")
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+    examples = result.get("examples") if isinstance(result, dict) else None
+    if not isinstance(examples, list) or not examples:
+        raise HTTPException(status_code=502, detail="LLM did not return usable examples")
+
+    return {
+        "status": "ok",
+        "skill_id": skill_id,
+        "examples": examples,
+        "model": result.get("model"),
+        "source": result.get("source"),
+        "warning": result.get("warning"),
+        "persisted": bool(result.get("persisted")),
+    }
+
+
 @router.post("/skills/{skill_id}/execute", response_model=Dict[str, Any])
 async def execute_skill(skill_id: str, request: SkillExecuteRequest, http_request: Request, rt: RuntimeDep = None):
     """Execute skill (engine scope)."""
@@ -1027,21 +1143,152 @@ async def execute_skill(skill_id: str, request: SkillExecuteRequest, http_reques
     if deny:
         return deny
     user_id = str(ctx_for_user.get("actor_id") or ctx_for_user.get("user_id") or "system")
+    # Management executes must not share session_id=default — a leaked stream lock on
+    # that key blocks every subsequent Skill run into queued-with-empty-graph.
+    from core.harness.utils.execute_session import mint_execute_session_id
+
+    sid = mint_execute_session_id(
+        kind="skill",
+        target_id=str(skill_id),
+        session_id=ctx_for_user.get("session_id"),
+    )
     harness = get_harness()
     exec_req = ExecutionRequest(
         kind="skill",
         target_id=skill_id,
         payload={"input": request.input, "context": ctx_for_user, "mode": getattr(request, "mode", "inline"), "options": getattr(request, "options", None) or None},
         user_id=user_id,
-        session_id=str(ctx_for_user.get("session_id") or "default"),
+        session_id=sid,
     )
     result = await harness.execute(exec_req)
     resp = wrap_execution_result_as_run_summary(result)
+    try:
+        st = str(resp.get("status") or getattr(result, "status", "") or "").lower()
+        if st in ("completed", "ok", "success"):
+            registry = get_skill_registry()
+            skill_obj = registry.get(skill_id) if registry else None
+            asset_name = str(
+                getattr(skill_obj, "name", None)
+                or (skill_obj.get("name") if isinstance(skill_obj, dict) else None)
+                or skill_id
+            )
+            from core.management.execution_quality_review import (
+                quality_review_blocks_success,
+                review_execution_output,
+            )
+
+            _qr = review_execution_output(
+                kind="skill",
+                asset_id=str(skill_id),
+                asset_name=asset_name,
+                input_payload=getattr(request, "input", None),
+                output=resp.get("output") if isinstance(resp, dict) else getattr(result, "output", None),
+                status=st,
+            )
+            resp["quality_review"] = _qr
+            if quality_review_blocks_success(_qr):
+                resp["status"] = "failed"
+                resp["ok"] = False
+                resp["error"] = str(
+                    (_qr.get("headline") if isinstance(_qr, dict) else None)
+                    or resp.get("error")
+                    or "skill output failed quality review"
+                )
+                resp["quality_block_completed"] = True
+    except Exception as e:
+        logging.warning("engine skill execute quality_review skipped: %s", e, exc_info=True)
     try:
         await _audit_execute(rt, http_request=http_request, payload={"context": ctx_for_user}, resource_type="skill", resource_id=str(skill_id), resp=resp, action="execute_skill")
     except Exception as e:
         logging.warning(str(e), exc_info=True)
     return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
+
+
+@router.post("/skills/{skill_id}/review-output", response_model=Dict[str, Any])
+async def review_engine_skill_output(skill_id: str, request: dict):
+    """Post-run product-quality review for engine skills (stream complete / re-check).
+
+    Runtime completed ≠ content acceptable. Returns issues + where/how to fix SOP.
+    When body.input is empty, restores from execution store via execution_id.
+    """
+    registry = get_skill_registry()
+    if not registry or not registry.get(skill_id):
+        raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
+    skill_obj = registry.get(skill_id)
+    asset_name = str(
+        getattr(skill_obj, "name", None)
+        or (skill_obj.get("name") if isinstance(skill_obj, dict) else None)
+        or skill_id
+    )
+    body = request if isinstance(request, dict) else {}
+    from core.management.execution_quality_review import (
+        pick_embedded_quality_review,
+        resolve_review_io_from_store,
+        review_execution_output,
+    )
+
+    eid = body.get("execution_id") or body.get("run_id")
+    inp, out, st, embedded = await resolve_review_io_from_store(
+        execution_id=str(eid) if eid else None,
+        kind="skill",
+        body_input=body.get("input"),
+        body_output=body.get("output"),
+        body_status=body.get("status"),
+    )
+    chosen = pick_embedded_quality_review(
+        embedded=embedded,
+        body_output=body.get("output"),
+        resolved_output=out,
+        prefer_embedded=bool(body.get("prefer_embedded")),
+    )
+    if chosen is not None:
+        return chosen
+    return review_execution_output(
+        kind="skill",
+        asset_id=str(skill_id),
+        asset_name=asset_name,
+        input_payload=inp,
+        output=out,
+        status=st,
+    )
+
+
+@router.post("/skills/{skill_id}/apply-quality-fix", response_model=Dict[str, Any])
+async def apply_engine_skill_quality_fix(skill_id: str, request: dict, rt: RuntimeDep = None):
+    """Append quality SOP iron-laws into engine + workspace SKILL.md mirrors (idempotent)."""
+    mgr = _skill_mgr(rt)
+    primary = None
+    if mgr:
+        try:
+            sop_data = await mgr.get_skill_sop(skill_id)
+            if isinstance(sop_data, dict) and sop_data.get("skill_md"):
+                from pathlib import Path
+
+                primary = Path(str(sop_data["skill_md"]))
+        except Exception as e:
+            logging.warning("get_skill_sop for apply-quality-fix: %s", e, exc_info=True)
+    body = request if isinstance(request, dict) else {}
+    from core.management.execution_quality_review import apply_quality_sop_for_skill_id
+
+    result = apply_quality_sop_for_skill_id(
+        str(skill_id),
+        primary_path=primary,
+        issue_codes=body.get("issue_codes") or [],
+        fix_ids=body.get("fix_ids") or [],
+    )
+    if result.get("status") == "error":
+        raise HTTPException(status_code=400, detail=str(result.get("error") or "apply failed"))
+    # Best-effort: drop cached SOP body so next execute sees the patch
+    try:
+        from core.apps.skills.registry import get_skill_registry
+
+        reg = get_skill_registry()
+        if reg is not None and hasattr(reg, "_body_cache"):
+            reg._body_cache.pop(str(skill_id), None)
+            reg._body_cache.pop(f"{skill_id}_stub", None)
+    except Exception as e:
+        logging.debug("body_cache invalidate after quality fix: %s", e, exc_info=True)
+    return result
 
 
 @router.get("/skills/executions/{execution_id}", response_model=Dict[str, Any])

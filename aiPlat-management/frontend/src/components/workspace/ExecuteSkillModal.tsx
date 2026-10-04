@@ -4,173 +4,149 @@ import { Button, Modal, Textarea, toast } from '../ui';
 import { workspaceSkillApi } from '../../services';
 import { toastGateError } from '../ui';
 import './TraceFlowGraph';
-import { buildExamplesFromSchema, isGenericExampleSet } from '../../utils/executionSamples';
+import { buildExampleRefineHint, buildExamplesFromSchema, isGenericExampleSet, sanitizeExecutionExamples } from '../../utils/executionSamples';
 import ExecuteResultPanel from '../execution/ExecuteResultPanel';
 import ExecuteFlowFullscreen from '../execution/ExecuteFlowFullscreen';
+import ExecuteOutputFullscreen from '../execution/ExecuteOutputFullscreen';
 import { RunVerdictBanner, deriveRunVerdict, outputAsText } from '../execution/runVerdict';
 import { ArtifactDownloadBar, coerceSkillEnvelope, skillOutputDisplayText } from '../execution/artifactDownloads';
+import StructuredSkillOutput from '../execution/StructuredSkillOutput';
+import ExecutionQualityReviewPanel, {
+  type ExecutionQualityReview,
+} from '../execution/ExecutionQualityReviewPanel';
 import {
   isSkillRunInFlight,
   normalizeSkillExecuteResult as normalizeSkillExecuteResultBase,
   shouldOpenSkillFlow,
 } from '../../utils/skillExecute';
 import { pollSkillExecutionUntilDone } from '../../utils/pollSkillExecution';
+import { appendFailConstraintOverlay, buildFailConstraintOverlay } from '../../utils/failConstraintOverlay';
 
 function normalizeSkillExecuteResult(res: any) {
   const n = normalizeSkillExecuteResultBase(res);
-  return { ...n, output: coerceSkillEnvelope(n.output) };
+  return { ...n, output: coerceSkillEnvelope(n.output), quality_review: res?.quality_review };
+}
+
+function applyQualityToVerdict(
+  base: ReturnType<typeof deriveRunVerdict>,
+  review: ExecutionQualityReview | null,
+) {
+  if (!review || base.kind !== 'success') return base;
+  const v = String(review.verdict || '');
+  if (v === 'fail') {
+    return {
+      ...base,
+      kind: 'partial' as const,
+      label: '已结束（产物待改进）',
+      hint: review.headline || '流程跑通了，但产物未达可验收标准。请看下方问题点与改 SOP 指引。',
+      tone: 'amber' as const,
+      ok: null,
+    };
+  }
+  if (v === 'warn') {
+    return {
+      ...base,
+      kind: 'partial' as const,
+      label: '已结束（有改进建议）',
+      hint: review.headline || '产物基本可用，仍有建议项。',
+      tone: 'amber' as const,
+      ok: null,
+    };
+  }
+  return base;
 }
 
 interface ExecuteSkillModalProps {
   open: boolean;
-  skill: { id: string; name: string; input_schema?: Record<string, unknown> | null } | null;
+  skill: {
+    id: string;
+    name: string;
+    input_schema?: Record<string, unknown> | null;
+    output_schema?: Record<string, unknown> | null;
+    metadata?: Record<string, unknown> | null;
+  } | null;
   onClose: () => void;
+  /** Jump to edit SOP when quality review fails. */
+  onEditSop?: () => void;
 }
 
-// ── StructuredSkillOutput — renders markdown engine output as sectioned cards ──
-
-const StructuredSkillOutput: React.FC<{ text: string }> = ({ text }) => {
-  if (!text) return <div className="text-xs text-gray-500">(空)</div>;
-
-  // Clean up HTML comments and engine internal instructions
-  text = text.replace(/<!--[\s\S]*?-->/g, '');
-  text = text.replace(/(?:# END OF last30days|Pass through ONLY the PASS-THROUGH|Do not append a trailing|If your response contains)[\s\S]*$/i, '');
-
-  // Split by ## headings, keep heading as part of section content
-  const rawSections = text.split(/(^##\s+[^\n]*$)/m);
-  
-  // Collect sections with their headings
-  const headed: { heading: string; body: string }[] = [];
-  for (let i = 1; i < rawSections.length; i += 2) {
-    const heading = (rawSections[i] || '').replace(/^##\s+/, '').trim();
-    const body = (rawSections[i + 1] || '').trim();
-    headed.push({ heading, body });
+function toastForReview(rev: ExecutionQualityReview | null) {
+  if (rev && String(rev.verdict) === 'fail') {
+    toast.warning('执行完成，但产物质量未过关 — 见问题点与改 SOP 指引');
+  } else if (rev && String(rev.verdict) === 'warn') {
+    toast.info('执行完成，有改进建议');
+  } else {
+    toast.success('执行成功');
   }
+}
 
-  // Determine icon/label/collapsible from heading
-  const classify = (h: string, b: string) => {
-    const hl = h.toLowerCase();
-    if (!b.trim()) return null; // skip empty sections
-    if (hl.includes('warning') || hl.includes('degraded') || hl.includes('pre-research') || hl.includes('警告'))
-      return { icon: '⚠️', label: '警告', collapsible: true, color: 'border-amber-500/30 bg-amber-500/5' };
-    if (hl.includes('ranked evidence') || hl.includes('cluster'))
-      return { icon: '📊', label: '搜索结果', collapsible: true, color: 'border-blue-500/30 bg-blue-500/5' };
-    if (hl.includes('stats') || hl.includes('source coverage') || hl.includes('统计'))
-      return { icon: '📈', label: '统计', collapsible: true, color: 'border-emerald-500/30 bg-emerald-500/5' };
-    return { icon: '📋', label: h, collapsible: true, color: '' };
-  };
-
-  // Build classified sections, merging adjacent same-icon ones
-  const classified = headed
-    .map(h => ({ ...h, ...(classify(h.heading, h.body) || {}) }))
-    .filter((h: any) => h.icon);
-
-  // Merge adjacent sections with same icon
-  const merged: any[] = [];
-  for (const c of classified) {
-    const prev = merged[merged.length - 1];
-    if (prev && prev.icon === c.icon) {
-      prev.body += '\n\n## ' + c.heading + '\n' + c.body;
-    } else {
-      merged.push({ ...c });
-    }
-  }
-
-  // Extract overview: first section is before any ##
-  const firstH2Idx = text.search(/\n##\s+/m);
-  const overview = firstH2Idx > 0 ? text.slice(0, firstH2Idx).trim() : (merged.length === 0 ? text.trim() : '');
-
-  // Build cards list
-  const cards: { icon: string; label: string; body: string; collapsible: boolean; color: string }[] = [];
-  
-  // Overview card (extract badge + date + sources)
-  if (overview) {
-    const badgeMatch = overview.match(/^(🌐\s*last30days[^\n]*)/m);
-    const dateMatch = overview.match(/Date range:\s*([^\n]+)/);
-    const sourcesMatch = overview.match(/- Sources:\s*([^\n]+)/);
-    const summaryLines = [badgeMatch?.[1], dateMatch?.[0], sourcesMatch?.[0]].filter(Boolean).join('\n');
-    const rest = overview.replace(badgeMatch?.[0] || '', '').replace(dateMatch?.[0] || '', '').replace(sourcesMatch?.[0] || '', '').replace(/\n{3,}/g, '\n\n').trim();
-    cards.push({
-      icon: '🌐',
-      label: '概览',
-      body: summaryLines + (rest ? '\n\n' + rest : ''),
-      collapsible: false,
-      color: 'border-sky-500/30 bg-sky-500/5',
-    });
-  }
-
-  // Section cards
-  for (const c of merged) {
-    cards.push({
-      icon: c.icon,
-      label: c.label,
-      body: c.body,
-      collapsible: c.collapsible,
-      color: c.color,
-    });
-  }
-
-  // Footer: extract ✅ All agents block
-  const footerMatch = text.match(/^(✅\s*All agents[^\n]*\n(?:[├└─│].*\n?)*)/m);
-  if (footerMatch) {
-    cards.push({
-      icon: '🦶',
-      label: 'Footer',
-      body: footerMatch[1].trim(),
-      collapsible: true,
-      color: 'border-gray-500/30 bg-gray-500/5',
-    });
-  }
-
-  if (cards.length === 0) {
-    return <div className="text-xs text-gray-300 whitespace-pre-wrap">{text.slice(0, 2000)}</div>;
-  }
-
-  const Card: React.FC<{ icon: string; label: string; body: string; collapsible: boolean; color: string }> = ({ icon, label, body, collapsible, color }) => {
-    const [expanded, setExpanded] = useState(!collapsible);
-    return (
-      <div className={`rounded-lg border ${color || 'border-dark-border'} p-3`}>
-        <div className="flex items-center gap-2 mb-2" onClick={collapsible ? () => setExpanded(!expanded) : undefined} style={{ cursor: collapsible ? 'pointer' : 'default' }}>
-          <span className="text-sm">{icon}</span>
-          <span className="text-xs font-semibold text-gray-200">{label}</span>
-          {collapsible && <span className="text-xs text-gray-500 ml-auto">{expanded ? '▼' : '▶'}</span>}
-        </div>
-        {(!collapsible || expanded) && (
-          <div className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto">{body}</div>
-        )}
-      </div>
-    );
-  };
-
-  return (
-    <div className="flex flex-col gap-2 max-h-80 overflow-y-auto">
-      {cards.map((c, i) => <Card key={i} {...c} />)}
-    </div>
-  );
-};
-
-const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onClose }) => {
+const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onClose, onEditSop }) => {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ status: string; run_id?: string; output?: unknown; error?: any; error_message?: string; error_detail?: any; duration_ms?: number; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } } | null>(null);
+  const [result, setResult] = useState<{ status: string; run_id?: string; output?: unknown; error?: any; error_message?: string; error_detail?: any; duration_ms?: number; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }; quality_review?: ExecutionQualityReview | null } | null>(null);
   const [inputText, setInputText] = useState('');
   const [helpLoading, setHelpLoading] = useState(false);
   const [helpMarkdown, setHelpMarkdown] = useState<string>('');
   const [examples, setExamples] = useState<Array<{ title: string; content: string }>>([]);
   const [toolset, setToolset] = useState<string>('workspace_default');
   const [flowFullscreen, setFlowFullscreen] = useState(false);
+  const [outputFullscreen, setOutputFullscreen] = useState(false);
   const [llmGenerating, setLlmGenerating] = useState(false);
+  const [helpInputSchema, setHelpInputSchema] = useState<Record<string, unknown> | null>(null);
+  const [qualityReview, setQualityReview] = useState<ExecutionQualityReview | null>(null);
+  const [qualityReviewLoading, setQualityReviewLoading] = useState(false);
+  const [postFixReady, setPostFixReady] = useState(false);
+  const [skillTimeoutSec, setSkillTimeoutSec] = useState(300);
+  const lastInputRef = React.useRef<unknown>(null);
 
-  const displayVerdict = useMemo(
-    () =>
-      result
-        ? deriveRunVerdict({
-            status: result.status,
-            error: result.error_message || result.error,
-            outputText: skillOutputDisplayText(result.output) || outputAsText(result.output),
-          })
-        : null,
-    [result],
-  );
+  const fetchQualityReview = async (opts: {
+    input: unknown;
+    output: unknown;
+    status: string;
+    execution_id?: string;
+    embedded?: ExecutionQualityReview | null;
+  }): Promise<ExecutionQualityReview | null> => {
+    if (!skill) return null;
+    const outOk =
+      outputAsText(opts.output).trim().length >= 20
+      || (opts.output != null && typeof opts.output === 'object' && Object.keys(opts.output as object).length > 0);
+    // Only trust embedded QR while body is empty; with payload, refresh gates.
+    if (opts.embedded && typeof opts.embedded === 'object' && !outOk) {
+      setQualityReview(opts.embedded);
+      return opts.embedded;
+    }
+    const st = String(opts.status || '').toLowerCase();
+    if (st !== 'completed' && st !== 'ok' && st !== 'success') {
+      setQualityReview(null);
+      return null;
+    }
+    try {
+      setQualityReviewLoading(true);
+      const rev = (await workspaceSkillApi.reviewOutput(skill.id, {
+        input: opts.input,
+        output: opts.output,
+        status: st,
+        execution_id: opts.execution_id,
+        prefer_embedded: !outOk,
+      })) as ExecutionQualityReview;
+      setQualityReview(rev);
+      return rev;
+    } catch {
+      setQualityReview(null);
+      return null;
+    } finally {
+      setQualityReviewLoading(false);
+    }
+  };
+
+  const displayVerdict = useMemo(() => {
+    if (!result) return null;
+    const base = deriveRunVerdict({
+      status: result.status,
+      error: result.error_message || result.error,
+      outputText: skillOutputDisplayText(result.output) || outputAsText(result.output),
+    });
+    return applyQualityToVerdict(base, qualityReview);
+  }, [result, qualityReview]);
 
   // Poll for result when stream mode returns immediately with run_id
   useEffect(() => {
@@ -178,22 +154,35 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
     const runId = result.run_id;
     let stopped = false;
     (async () => {
-      const done = await pollSkillExecutionUntilDone(runId, { isStopped: () => stopped });
+      const done = await pollSkillExecutionUntilDone(runId, {
+        isStopped: () => stopped,
+        timeoutSec: skillTimeoutSec,
+      });
       if (stopped) return;
-      setResult(
-        normalizeSkillExecuteResult({
-          ...done,
-          run_id: runId,
+      const normalized = normalizeSkillExecuteResult({
+        ...done,
+        run_id: runId,
+        execution_id: runId,
+      });
+      setResult(normalized);
+      if (done.status === 'completed') {
+        const rev = await fetchQualityReview({
+          input: lastInputRef.current ?? (done as any)?.input ?? null,
+          output: normalized.output,
+          status: 'completed',
           execution_id: runId,
-        }),
-      );
-      if (done.status === 'completed') toast.success('执行成功');
-      else if (done.status === 'failed' || done.status === 'error') toast.error('执行失败');
+          embedded: (done as any)?.quality_review || null,
+        });
+        if (rev) setResult((prev) => (prev ? { ...prev, quality_review: rev } : prev));
+        toastForReview(rev);
+      } else if (done.status === 'timeout') {
+        toast.error('等待超时', String(done.error || `前端已等约 ${skillTimeoutSec}s；请看诊断详情确认是否仍在跑`));
+      } else if (done.status === 'failed' || done.status === 'error') toast.error('执行失败');
     })();
     return () => {
       stopped = true;
     };
-  }, [(result as any)?.run_id, (result as any)?.status]);
+  }, [(result as any)?.run_id, (result as any)?.status, skillTimeoutSec]);
 
   useEffect(() => {
     const load = async () => {
@@ -201,18 +190,29 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
       setHelpLoading(true);
       setInputText('');
       setResult(null);
+      setQualityReview(null);
+      setPostFixReady(false);
       try {
+        const metaTimeout = Number((skill as any)?.metadata?.timeout);
+        if (Number.isFinite(metaTimeout) && metaTimeout > 0) setSkillTimeoutSec(metaTimeout);
         const res = await workspaceSkillApi.getExecutionHelp(skill.id);
         setHelpMarkdown(String((res as any)?.help_markdown || ''));
+        const helpTimeout = Number((res as any)?.timeout);
+        if (Number.isFinite(helpTimeout) && helpTimeout > 0) setSkillTimeoutSec(helpTimeout);
         let exs = (((res as any)?.examples || []) as Array<{ title: string; content: string }>);
         const schema =
           ((res as any)?.input_schema as Record<string, unknown> | null) ||
           skill.input_schema ||
           null;
+        setHelpInputSchema(schema && typeof schema === 'object' ? schema : null);
+        const hint = `${skill.id || ''} ${skill.name || ''}`;
+        if (schema && Object.keys(schema).length > 0) {
+          exs = sanitizeExecutionExamples(exs, schema, hint);
+        }
         // Prefer schema-based cases when API still returns generic 通用 chips
         if (isGenericExampleSet(exs) && schema && Object.keys(schema).length > 0) {
           const generated = buildExamplesFromSchema(schema, skill.name || skill.id, {
-            skillHint: `${skill.id || ''} ${skill.name || ''}`,
+            skillHint: hint,
           });
           if (generated.length > 0) exs = generated;
         }
@@ -226,6 +226,7 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
             })
           : [];
         setHelpMarkdown('');
+        setHelpInputSchema(skill.input_schema || null);
         setExamples(generated);
       } finally {
         setHelpLoading(false);
@@ -236,23 +237,42 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
 
   const handleGenerateLlmExamples = async (persist: boolean) => {
     if (!skill) return;
+    if (persist) {
+      const ok = window.confirm(
+        '将覆盖 SKILL.md 里已保存的测试用例（execution_examples）。\n'
+        + '仅当本次被判定为 LLM 成功时才会写入；启发式回退不会覆盖。确认仍要保存？',
+      );
+      if (!ok) return;
+    }
     try {
       setLlmGenerating(true);
-      const res = await workspaceSkillApi.generateExecutionExamples(skill.id, { persist });
+      const schema = (helpInputSchema && Object.keys(helpInputSchema).length)
+        ? helpInputSchema
+        : (skill.input_schema || null);
+      const res = await workspaceSkillApi.generateExecutionExamples(skill.id, {
+        persist,
+        refine_hint: buildExampleRefineHint(schema, inputText) || undefined,
+      });
       const exs = (res?.examples || []) as Array<{ title: string; content: string }>;
       if (!exs.length) {
         toast.error('未生成可用用例');
         return;
       }
-      setExamples(exs);
-      if (exs[0]?.content) setInputText(exs[0].content);
+      const cleaned = schema && Object.keys(schema).length
+        ? sanitizeExecutionExamples(exs, schema, `${skill.id || ''} ${skill.name || ''}`)
+        : exs;
+      if (!cleaned.length) {
+        toast.error('未生成可用用例（已丢弃把说明当入参的芯片）');
+        return;
+      }
+      setExamples(cleaned);
       const src = res?.source === 'llm' ? 'LLM' : '启发式回退';
       if (persist && res?.persisted) {
-        toast.success(`已生成 ${exs.length} 条（${src}）并写入 SKILL.md`);
+        toast.success(`已生成 ${cleaned.length} 条（${src}）并写入 SKILL.md`);
       } else if (persist && !res?.persisted) {
-        toast.warning(`已生成 ${exs.length} 条，但写入 SKILL.md 失败`);
+        toast.warning(`已生成 ${cleaned.length} 条（${src}），未写入 SKILL.md`);
       } else {
-        toast.success(`已生成 ${exs.length} 条（${src}），已填入第一条`);
+        toast.success(`已生成 ${cleaned.length} 条（${src}），请点「填入」写入输入框`);
       }
       if (res?.warning) toast.warning(String(res.warning));
     } catch (e: any) {
@@ -262,24 +282,31 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
     }
   };
 
-  const handleExecute = async () => {
+  const handleExecute = async (opts?: { preserveFlow?: boolean; inputOverride?: string }) => {
     if (!skill) return;
     try {
       setLoading(true);
-      setResult(null);
+      setQualityReview(null);
+      // Re-run: keep prior result until the new run_id arrives so fullscreen stays mounted.
+      if (!opts?.preserveFlow) {
+        setResult(null);
+      }
 
+      const rawInput = (opts?.inputOverride !== undefined ? opts.inputOverride : inputText).trim();
       let payload: Record<string, unknown> = {};
-      if (inputText.trim()) {
+      if (rawInput) {
         try {
-          payload = JSON.parse(inputText);
+          payload = JSON.parse(rawInput);
         } catch {
-          payload = { message: inputText };
+          payload = { message: rawInput };
         }
       }
+      lastInputRef.current = payload;
 
       const streamOpts = {
         ...((payload.options || {}) as Record<string, unknown>),
         toolset,
+        timeout: skillTimeoutSec,
         // stream/trial 由 workspaceSkillApi.execute → withSkillExecuteDefaults 统一注入
       };
       const res = await workspaceSkillApi.execute(skill.id, { input: payload, options: streamOpts, config: (payload.config || {}) as Record<string, unknown> });
@@ -322,7 +349,15 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
       }
       // 同步完成路径才在这里 toast；stream 完成由轮询通知
       if (status === 'completed') {
-        toast.success('执行成功');
+        const rev = await fetchQualityReview({
+          input: payload,
+          output: normalized.output,
+          status,
+          execution_id: runId || undefined,
+          embedded: (res as any)?.quality_review || null,
+        });
+        if (rev) setResult((prev) => (prev ? { ...prev, quality_review: rev } : prev));
+        toastForReview(rev);
       }
     } catch (error: any) {
       toastGateError(error, '执行失败');
@@ -335,7 +370,55 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
   const handleClose = () => {
     setResult(null);
     setInputText('');
+    setFlowFullscreen(false);
+    setOutputFullscreen(false);
+    setQualityReview(null);
     onClose();
+  };
+
+  const handleEditSop = () => {
+    setFlowFullscreen(false);
+    setOutputFullscreen(false);
+    onEditSop?.();
+  };
+
+  const resultOutputText = result
+    ? skillOutputDisplayText(result.output) || outputAsText(result.output)
+    : '';
+
+  const handleRerunSameCase = () => {
+    setPostFixReady(false);
+    setFlowFullscreen(true);
+    // Always rebuild compact overlay — never reuse long stale backend overlay.
+    const overlay = buildFailConstraintOverlay(qualityReview?.issues);
+    const next = appendFailConstraintOverlay(inputText, overlay);
+    if (next !== inputText) setInputText(next);
+    if (overlay) toast.info('一键修复 → 同一用例重跑', '已叠加精简失败点约束');
+    void handleExecute({ preserveFlow: true, inputOverride: next });
+  };
+
+  const handleApplyQualityFix = async (issueCodes: string[]) => {
+    if (!skill?.id || !issueCodes.length) return;
+    try {
+      const res = await workspaceSkillApi.applyQualityFix(skill.id, { issue_codes: issueCodes });
+      const applied = res?.applied?.length || 0;
+      const skipped = res?.skipped?.length || 0;
+      const paths = Array.isArray((res as any)?.paths) ? (res as any).paths.length : 0;
+      if (res?.status === 'applied' && applied > 0) {
+        setPostFixReady(true);
+        toast.success(
+          `已写入 ${applied} 类铁律${paths > 1 ? `（${paths} 个 SKILL.md）` : ''}`,
+          '请点「一键修复 → 同一用例重跑」验证',
+        );
+      } else if (res?.status === 'noop' || skipped > 0) {
+        setPostFixReady(true);
+        toast.info(res?.message || '所选铁律已在 SOP 中；仍建议重跑对照');
+      } else {
+        toast.warning(res?.message || res?.error || '未写入任何铁律');
+      }
+    } catch (e: any) {
+      toastGateError(e, '一键修复 SOP 失败');
+    }
   };
 
   return (
@@ -397,6 +480,7 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
           />
           <div className="text-xs text-gray-500 mt-2">
             提示：如果输入不是合法 JSON，会自动封装为 {"{ \"message\": \"...\" }"} 传给 Skill。
+            本 Skill 超时约 {skillTimeoutSec}s；前端轮询会等到该时间，避免 180s 误报超时。
           </div>
         </div>
         <div className="border border-dark-border rounded-lg bg-dark-card p-3">
@@ -425,7 +509,7 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
                   loading={llmGenerating}
                   disabled={loading || llmGenerating}
                   onClick={() => handleGenerateLlmExamples(false)}
-                  title="用 LLM 生成更贴合本 Skill 的冒烟用例（可选，不替换默认启发式）"
+                  title="用 LLM 生成冒烟用例；抄 schema 说明或过薄会回退启发式，且回退不会写入 SKILL.md"
                 >
                   ✨ LLM 生成
                 </Button>
@@ -435,7 +519,7 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
                   loading={llmGenerating}
                   disabled={loading || llmGenerating}
                   onClick={() => handleGenerateLlmExamples(true)}
-                  title="生成后写入 SKILL.md 的 execution_examples，下次打开优先使用"
+                  title="仅当判定为 LLM 成功时写入 SKILL.md；启发式回退不会覆盖已有用例"
                 >
                   生成并保存
                 </Button>
@@ -489,8 +573,19 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
         <ExecuteResultPanel
           result={result as any}
           loading={loading}
+          qualityReview={qualityReview}
+          qualityReviewLoading={qualityReviewLoading}
+          outputSchema={skill?.output_schema ?? null}
           onOpenFlow={result.run_id ? () => setFlowFullscreen(true) : undefined}
-          renderOutput={(text) => (text ? <StructuredSkillOutput text={text} /> : null)}
+          onOpenOutput={resultOutputText ? () => setOutputFullscreen(true) : undefined}
+          onEditSop={onEditSop ? handleEditSop : undefined}
+          onApplyQualityFix={handleApplyQualityFix}
+          fixApplied={postFixReady}
+          onRerunSameCase={handleRerunSameCase}
+          rerunLoading={loading}
+          renderOutput={(text, raw) => (
+            <StructuredSkillOutput text={text} raw={raw} schema={skill?.output_schema} />
+          )}
         />
       )}
 
@@ -506,14 +601,57 @@ const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onCl
           result && displayVerdict ? (
             <div className="space-y-2">
               <RunVerdictBanner verdict={displayVerdict} />
+              <ExecutionQualityReviewPanel
+                review={qualityReview}
+                loading={qualityReviewLoading}
+                persistKey="workspace-skill-exec"
+                onEditSop={onEditSop ? handleEditSop : undefined}
+                onApplyQualityFix={handleApplyQualityFix}
+                fixApplied={postFixReady}
+                onRerunSameCase={handleRerunSameCase}
+                rerunLoading={loading}
+              />
               <ArtifactDownloadBar raw={result.output} />
-              {skillOutputDisplayText(result.output) ? (
-                <div className="text-xs text-gray-300 overflow-auto max-h-48">
-                  <StructuredSkillOutput text={skillOutputDisplayText(result.output)} />
+              {resultOutputText ? (
+                <div className="space-y-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => {
+                      setFlowFullscreen(false);
+                      setOutputFullscreen(true);
+                    }}
+                  >
+                    📄 全屏查看产出
+                  </Button>
+                  <div className="text-xs text-gray-300 overflow-auto max-h-[min(40vh,28rem)]">
+                    <StructuredSkillOutput
+                      text={resultOutputText}
+                      raw={result.output}
+                      schema={skill?.output_schema}
+                    />
+                  </div>
                 </div>
               ) : null}
             </div>
           ) : null
+        }
+      />
+
+      <ExecuteOutputFullscreen
+        open={!!(outputFullscreen && resultOutputText)}
+        title={`产出 · ${skill?.name || 'Skill'}`}
+        text={resultOutputText}
+        raw={result?.output}
+        schema={skill?.output_schema}
+        onClose={() => setOutputFullscreen(false)}
+        onOpenFlow={
+          result?.run_id
+            ? () => {
+                setOutputFullscreen(false);
+                setFlowFullscreen(true);
+              }
+            : undefined
         }
       />
     </Modal>

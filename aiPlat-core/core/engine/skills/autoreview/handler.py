@@ -56,7 +56,8 @@ REVIEW_SYSTEM_PROMPT = (
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
     target = (params.get("target", "") or "").strip()
     focus = params.get("focus", "comprehensive")
-    panel = params.get("panel", False)
+    # Default auto (None/"auto"); explicit true/false still force.
+    panel = params["panel"] if "panel" in (params or {}) else None
     auto_fix = params.get("auto_fix", False)
 
     # ── entry guard ──
@@ -69,11 +70,32 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
         }
 
     # ── 1. Load diff ──
-    diff = load_diff(target)
+    # Prefer explicit harness worktree param; never rely on process-global GIT_*
+    # across concurrent requests. Optional env fallback for CLI/manual runs only.
+    _wt = (
+        str(params.get("_git_work_tree") or "").strip()
+        or (os.environ.get("GIT_WORK_TREE") or "").strip()
+        or None
+    )
+    if _wt and not os.path.isdir(_wt):
+        _wt = None
+    if params.get("_require_git_work_tree") and not _wt:
+        return {
+            "error": (
+                "autoreview requires _git_work_tree (inline staging). "
+                "Refusing ambient cwd scan."
+            ),
+            "report": {"clean": False, "issues": []},
+            "markdown": "Autoreview aborted: missing staged worktree.",
+        }
+
+    # Off the event loop: sync git must not wedge gunicorn/uvicorn.
+    diff = await asyncio.to_thread(load_diff, target, cwd=_wt)
     if not diff.content:
         return {
             "report": {"clean": True, "issues": []},
             "markdown": "No changes to review.",
+            "truncated": bool(diff.truncated),
         }
 
     # ── 2. Scope Governor baseline ──
@@ -82,30 +104,37 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
         initial_lines=diff.total_lines,
     )
 
-    # ── 3. Review routing (MoA-style two-stage) ──
-    use_panel = panel and focus == "security"
-    preset = {}  # v2.2: 确保 preset 始终有定义（单引擎模式为空dict）
+    # ── 3. Review routing (auto single vs panel) ──
+    from core.engine.skills.autoreview.routing import resolve_review_routing
+
+    routing = resolve_review_routing(
+        panel=panel,
+        focus=str(focus or "comprehensive"),
+        mode=str(params.get("mode", "quick") or "quick"),
+        preset=str(params.get("preset") or ""),
+        files=getattr(diff, "files", None) or [],
+        content=getattr(diff, "content", "") or "",
+        total_lines=int(getattr(diff, "total_lines", 0) or 0),
+    )
+    use_panel = bool(routing.use_panel)
+    focus = routing.focus
+    mode = routing.mode if use_panel else "single"
+    preset = {}
     if use_panel:
-        preset_name = params.get("preset", "code_review")
-        preset = _load_preset(preset_name)
-        mode = params.get("mode", "quick")
-
-        if mode == "quick" and diff.total_lines > 500:
-            _log.info(
-                "Large diff (%d lines). Consider mode:deep for thorough review.",
-                diff.total_lines,
-            )
-
+        preset = _load_preset(routing.preset_name)
+        _log.info(
+            "autoreview routing panel mode=%s focus=%s preset=%s reason=%s",
+            mode,
+            focus,
+            routing.preset_name,
+            routing.reason,
+        )
         if mode == "deep":
             report = await _deep_panel_review(diff, focus, preset)
         else:
             report = await _quick_panel_review(diff, focus, preset)
     else:
-        if panel and focus != "security":
-            _log.warning(
-                "Panel mode only supported for 'security' focus. "
-                "Falling back to single engine."
-            )
+        _log.info("autoreview routing single reason=%s", routing.reason)
         report = await _single_review(diff, focus)
 
     if diff.truncated:
@@ -115,7 +144,7 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
     if auto_fix and report.has_p2_only():
         report = await auto_fix_loop(
             report, governor,
-            diff_refresh_fn=lambda: load_diff(target),
+            diff_refresh_fn=lambda: load_diff(target, cwd=_wt),
             review_callback=_single_review,
         )
 
@@ -126,7 +155,11 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
     report.reviewed_at = time.time()
     report.target = target
     report.mode = mode if use_panel else "single"
-    report.engines_used = preset.get("reference_models", ["reasoning", "code_gen"]) if preset else ["reasoning", "code_gen"]
+    report.engines_used = (
+        preset.get("reference_models", ["reasoning", "code_gen"])
+        if preset
+        else ["reasoning", "code_gen"]
+    )
     report.build_evidence()
 
     # 持久化审查结果（best-effort，不阻断审查流程）
@@ -144,6 +177,13 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
         "markdown": report.to_markdown(),
         "clean": report.is_clean(),
         "scope_ok": scope_ok,
+        "routing": {
+            "use_panel": use_panel,
+            "focus": focus,
+            "mode": report.mode,
+            "preset": routing.preset_name,
+            "reason": routing.reason,
+        },
     }
 
 

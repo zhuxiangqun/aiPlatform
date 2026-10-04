@@ -2242,9 +2242,9 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             proj["plan_stage_ids"] = [s.get("id", f"plan_stage_{i}") for i, s in enumerate(plan_stages)]
 
             # v4.2 / F2b: mode → fixed team template
-            #   agent→default.yaml, code→code.yaml, hybrid→hybrid.yaml
+            #   agent→default.yaml, code→code_split.yaml, hybrid→hybrid.yaml
             recommendation["mode"] = rec.mode
-            _mode_team_map = {"agent": "default", "code": "code", "hybrid": "hybrid"}
+            _mode_team_map = {"agent": "default", "code": "code_split", "hybrid": "hybrid"}
             if rec.mode in _mode_team_map and not proj.get("team_id"):
                 proj["team_id"] = _mode_team_map[rec.mode]
                 proj["team_template"] = _mode_team_map[rec.mode]
@@ -2286,7 +2286,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                         # ── v3.1: copy gates + architecture_mode from team template YAML ──
                         try:
                             from core.api.core_facade import load_team_template
-                            _tmpl_name = {"hybrid": "hybrid", "code": "code"}.get(rec.mode, "default")
+                            _tmpl_name = {"hybrid": "hybrid", "code": "code_split"}.get(rec.mode, "default")
                             tmpl = load_team_template(_tmpl_name) or load_team_template("default")
                             if tmpl and tmpl.stages:
                                 _by_agent = {
@@ -3940,7 +3940,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             or proj.get("architecture_mode")
             or "agent"
         ).strip().lower()
-        return {"agent": "default", "code": "code", "hybrid": "hybrid"}.get(
+        return {"agent": "default", "code": "code_split", "hybrid": "hybrid"}.get(
             mode, "default"
         )
 

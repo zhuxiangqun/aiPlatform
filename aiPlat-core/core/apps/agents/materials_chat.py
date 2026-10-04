@@ -265,7 +265,7 @@ class MaterialsChatAgent(BaseAgent):
                             metadata={"source": "semantic_cache", "pipeline_trace": pipeline_trace},
                         )
                 except Exception:
-                    import logging; logging.getLogger(__name__).debug("Semantic cache check skipped", exc_info=True)
+                    logging.getLogger(__name__).debug("Semantic cache check skipped", exc_info=True)
             collection_id = str(scope.get("collection_id") or vars0.get("collection_id") or "default")
             # D7: ControlProfile 知识域过滤 — 画像驱动的 collection 覆盖
             try:

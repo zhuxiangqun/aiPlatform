@@ -74,3 +74,38 @@ async def test_execution_store_skill_roundtrip(tmp_path):
     assert total == 1
     assert executions[0]["id"] == "sexec_1"
 
+
+@pytest.mark.asyncio
+async def test_agent_timeout_sticky_against_late_completed(tmp_path):
+    """Orphan timeout must not be overwritten by a late hung-LLM completed upsert."""
+    db_path = tmp_path / "executions.sqlite3"
+    store = ExecutionStore(ExecutionStoreConfig(db_path=str(db_path)))
+    await store.init()
+    now = time.time()
+    await store.upsert_agent_execution({
+        "id": "exec_sticky",
+        "agent_id": "architect_agent",
+        "status": "timeout",
+        "error": "orphan_watchdog(llm_generate_stalled)",
+        "start_time": now,
+        "end_time": now + 300,
+        "duration_ms": 300000,
+        "metadata": {"orphan_watchdog": True, "orphan_reason": "llm_generate_stalled"},
+    })
+    await store.upsert_agent_execution({
+        "id": "exec_sticky",
+        "agent_id": "architect_agent",
+        "status": "completed",
+        "output": {"text": "Model error: [RETRIED:2] "},
+        "error": "",
+        "start_time": now,
+        "end_time": now + 600,
+        "duration_ms": 600000,
+        "metadata": {"stream": True},
+    })
+    got = await store.get_agent_execution("exec_sticky")
+    assert got is not None
+    assert got["status"] == "timeout"
+    assert "orphan_watchdog" in str(got.get("error") or "")
+    assert (got.get("metadata") or {}).get("orphan_watchdog") is True
+

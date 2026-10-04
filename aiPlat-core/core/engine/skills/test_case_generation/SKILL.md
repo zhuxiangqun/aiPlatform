@@ -15,14 +15,14 @@ triggers:
   - test case
   - 写测试
 permissions:
-- fs:write
+- llm:generate
 - fs:read
 effects:
-- type: write
+- type: emit
   resources:
-  - filesystem:/tmp
-  idempotent: false
-  rollback_available: true
+  - artifact:test_cases
+  idempotent: true
+  rollback_available: false
 input_schema:
   prd:
     type: object

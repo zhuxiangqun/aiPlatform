@@ -1,12 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { workspaceAgentApi, kbApi, apiClient } from '../services';
+import { workspaceAgentApi, workspaceSkillApi, skillApi, kbApi, apiClient } from '../services';
 import type { Agent } from '../services';
 import { Button, Modal, Textarea, toast } from './ui';
 import { toastGateError } from './ui';
 import ExecutionViewer from './ExecutionViewer/ExecutionViewer';
 import { browserTestApi } from '../services/browserTestApi';
 import GrillPanel from './grilling/GrillPanel';
-import { buildAgentTaskExamples, buildExamplesFromSchema, isGenericExampleSet } from '../utils/executionSamples';
+import { buildAgentTaskExamples, buildExampleRefineHint, buildExamplesFromSchema, isGenericExampleSet, sanitizeExecutionExamples } from '../utils/executionSamples';
+import ExecutionQualityReviewPanel, {
+  type ExecutionQualityReview,
+} from './execution/ExecutionQualityReviewPanel';
+import StructuredSkillOutput from './execution/StructuredSkillOutput';
+import ExecuteOutputFullscreen from './execution/ExecuteOutputFullscreen';
+import { extractCodingDeliveryText, hasFileDeliveryMarkers } from './execution/fileDelivery';
+import { tryParseJsonOrPythonLiteral } from './execution/pythonLiteral';
+import { executeProductAsText, unwrapExecuteProduct } from './execution/executeProduct';
+import { appendFailConstraintOverlay, buildFailConstraintOverlay } from '../utils/failConstraintOverlay';
 
 /** Parse the first top-level JSON object from a string (ignore trailing junk). */
 function parseFirstJsonObject(s: string): Record<string, unknown> | null {
@@ -44,8 +53,27 @@ function parseFirstJsonObject(s: string): Record<string, unknown> | null {
 /** Unwrap agent output envelopes to plain readable text.
  *  Handles nested {text|output}, {"type":"done","answer"}, and JSON-string forms
  *  even when observation trails are concatenated after the JSON.
+ *  Also unwraps Python-dict-repr envelopes with x-display-profile / ```json fences
+ *  (LLM sometimes returns str(dict) instead of JSON).
  */
 function unwrapOutput(raw: unknown): string | unknown {
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    const o = raw as Record<string, unknown>;
+    const persistRoot =
+      typeof o.persisted_root === 'string' ? o.persisted_root.trim()
+      : typeof o.persist_root === 'string' ? o.persist_root.trim()
+      : '';
+    if (typeof o.text === 'string' && persistRoot && hasFileDeliveryMarkers(o.text)) {
+      return {
+        text: o.text,
+        persisted_root: persistRoot,
+        persisted_files: o.persisted_files,
+      };
+    }
+  }
+  const peeled = unwrapExecuteProduct(raw);
+  if (peeled != null && typeof peeled === 'object') return peeled;
+  if (typeof peeled === 'string' && peeled.trim() && peeled !== raw) return peeled;
   let cur: unknown = raw;
   for (let depth = 0; depth < 8; depth++) {
     if (cur == null) return cur;
@@ -61,7 +89,37 @@ function unwrapOutput(raw: unknown): string | unknown {
         cur = o.response;
         continue;
       }
+      // Display-profile envelope: dig into the profile payload
+      const profile = o['x-display-profile'];
+      if (typeof profile === 'string' && profile.trim()) {
+        cur = profile;
+        continue;
+      }
+      if (profile && typeof profile === 'object') {
+        cur = profile;
+        continue;
+      }
+      // Skill envelopes often use ``code`` (not text) — prefer before JSON dump.
+      if (typeof o.code === 'string' && o.code.trim()) {
+        cur = o.code;
+        continue;
+      }
+      if (typeof o.generated_code === 'string' && String(o.generated_code).trim()) {
+        cur = o.generated_code;
+        continue;
+      }
+      const persistRoot =
+        typeof o.persisted_root === 'string' ? o.persisted_root.trim()
+        : typeof o.persist_root === 'string' ? o.persist_root.trim()
+        : '';
       if (typeof o.text === 'string') {
+        if (persistRoot && hasFileDeliveryMarkers(o.text)) {
+          return {
+            text: o.text,
+            persisted_root: persistRoot,
+            persisted_files: o.persisted_files,
+          };
+        }
         cur = o.text;
         continue;
       }
@@ -83,12 +141,41 @@ function unwrapOutput(raw: unknown): string | unknown {
     if (typeof cur === 'string') {
       const s = cur.trim();
       if (!s) return s;
+      // Multi-file coding body: never scrape a nested {"status":"ok"} from
+      // FastAPI/health (or similar) out of ```python fences.
+      if (hasFileDeliveryMarkers(s)) return s;
       // Fast path: whole string is JSON
-      if (s.startsWith('{')) {
+      if (s.startsWith('{') || s.startsWith('[')) {
         try {
           const d = JSON.parse(s);
           if (d && typeof d === 'object') { cur = d; continue; }
-        } catch { /* fall through to prefix parse */ }
+        } catch { /* fall through */ }
+      }
+      // Markdown fenced JSON only — not ```python / ```ts (those contain dicts)
+      const fence = /```(?:json)?[^\n]*\n\s*([{\[][\s\S]*?)```/i.exec(s);
+      if (fence) {
+        const inner = fence[1].trim();
+        try {
+          const d = JSON.parse(inner);
+          if (d && typeof d === 'object') { cur = d; continue; }
+        } catch { /* fall through */ }
+        const dFence = parseFirstJsonObject(inner);
+        if (dFence) { cur = dFence; continue; }
+      }
+      // Python dict/list repr → JSON (local LLMs often return str(dict))
+      if ((s.startsWith('{') || s.startsWith('[')) && (s.includes("'") || s.includes('None') || s.includes('True'))) {
+        const d = tryParseJsonOrPythonLiteral(s);
+        if (d && typeof d === 'object') { cur = d; continue; }
+      }
+      // Python-dict-repr / mixed: locate first real JSON object with "key"
+      if (s.includes('x-display-profile') || s.includes('"title"') || s.includes('"overview"')) {
+        const jsonStart = s.search(/\{\s*"/);
+        if (jsonStart >= 0) {
+          const d = parseFirstJsonObject(s.slice(jsonStart));
+          if (d) { cur = d; continue; }
+        }
+      }
+      if (s.startsWith('{')) {
         const d = parseFirstJsonObject(s);
         if (d) { cur = d; continue; }
       }
@@ -106,10 +193,7 @@ function unwrapOutput(raw: unknown): string | unknown {
 }
 
 function outputAsText(raw: unknown): string {
-  const u = unwrapOutput(raw);
-  if (typeof u === 'string') return u;
-  if (u == null) return '';
-  try { return JSON.stringify(u, null, 2); } catch { return String(u); }
+  return executeProductAsText(unwrapOutput(raw));
 }
 
 /** Heuristic: agent paused for user confirmation (template / path / clarify). */
@@ -122,6 +206,11 @@ function detectAwaitingUser(text: string): { awaiting: boolean; summary: string 
     /是否使用默认模版/,
     /用默认模版吗/,
     /请确认模版/,
+    /请确认以下信息/,
+    /是否已经准备好/,
+    /如果你已经准备好/,
+    /我们可以开始下一步/,
+    /请告诉我[，,]?\s*我们/,
     /请二选一/,
     /请提供模版/,
     /上传模版/,
@@ -133,8 +222,8 @@ function detectAwaitingUser(text: string): { awaiting: boolean; summary: string 
   ].filter((re) => re.test(t));
   if (hits.length === 0) return { awaiting: false, summary: '' };
   // Prefer a short excerpt around the first strong marker
-  const m = t.match(/#{0,3}\s*[^\n]*(?:需要你确认模版|需要你确认|是否使用默认模版|没有可用模版|阻塞项|暂停生成)[^\n]*/);
-  const summary = (m?.[0] || 'Agent 已暂停，正在等待你确认模版（可用默认或指定路径）').replace(/^#+\s*/, '').slice(0, 140);
+  const m = t.match(/#{0,3}\s*[^\n]*(?:需要你确认模版|需要你确认|请确认以下信息|是否已经准备好|是否使用默认模版|没有可用模版|阻塞项|暂停生成)[^\n]*/);
+  const summary = (m?.[0] || 'Agent 已暂停，正在等待你确认（这时还不算最终成功）').replace(/^#+\s*/, '').slice(0, 140);
   return { awaiting: true, summary };
 }
 
@@ -300,16 +389,33 @@ interface ExecuteAgentModalProps {
   open: boolean;
   agent: Agent | null;
   onClose: () => void;
+  /** Jump to edit Agent → SOP / 高级. */
+  onEditSop?: () => void;
 }
 
-const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onClose }) => {
+const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onClose, onEditSop }) => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [helpLoading, setHelpLoading] = useState(false);
   const [helpMarkdown, setHelpMarkdown] = useState<string>('');
   const [examples, setExamples] = useState<Array<{ title: string; content: string }>>([]);
+  const [helpInputSchema, setHelpInputSchema] = useState<Record<string, unknown> | null>(null);
   const [llmGenerating, setLlmGenerating] = useState(false);
   const [result, setResult] = useState<{ status: string; execution_id?: string; output?: unknown; error?: any; error_message?: string; error_detail?: any; run_id?: string; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }; eval?: { score?: number; grade?: string; total_tasks?: number; has_data?: boolean }; duration_ms?: number; steps?: number } | null>(null);
+  const [qualityReview, setQualityReview] = useState<ExecutionQualityReview | null>(null);
+  const [qualityReviewLoading, setQualityReviewLoading] = useState(false);
+  /** Dedupe auto-fetch of quality review per run (live-done vs poll race). */
+  const qualityFetchedForRunRef = useRef<string>('');
+  /** One retry when empty_output was locked before output upserted (fix→rerun). */
+  const emptyOutputRetriedRef = useRef<string>('');
+  /** Active execution id — ignore stale graph-done / quality fetch from previous 按失败点重跑. */
+  const activeRunIdRef = useRef<string>('');
+  /** Abort in-flight execute HTTP while waiting for run_id (Core wedge → spinner). */
+  const executeAbortRef = useRef<AbortController | null>(null);
+  const [postFixReady, setPostFixReady] = useState(false);
+  /** Bound Skill output_schema — drives StructuredSkillOutput without field hardcoding. */
+  const [resultSchema, setResultSchema] = useState<Record<string, unknown> | null>(null);
+  const lastAgentInputRef = useRef<unknown>(null);
   const [toolset, setToolset] = useState<string>('workspace_default');
   const [stopping, setStopping] = useState(false);
   const [progress, setProgress] = useState<{ total_pages: number; total_actions: number; passed: number; failed: number; skipped: number; duration_ms: number } | null>(null);
@@ -319,6 +425,9 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
   const [caseUploadedPath, setCaseUploadedPath] = useState('');
   const [autoApprove, setAutoApprove] = useState(true);
   const [flowFullscreen, setFlowFullscreen] = useState(false);
+  const [outputFullscreen, setOutputFullscreen] = useState(false);
+  /** Fullscreen bottom output strip — collapsed by default so the graph keeps the viewport. */
+  const [fsOutputOpen, setFsOutputOpen] = useState(false);
   const [showGrill, setShowGrill] = useState(false);
   const [confirmReply, setConfirmReply] = useState('');
   const [templateUploading, setTemplateUploading] = useState(false);
@@ -338,20 +447,371 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
 
   const isRagAgent = agent?.agent_type === 'materials_chat';
 
-  const resultText = useMemo(() => outputAsText(result?.output), [result?.output]);
+  /** Prefer coding body (## FILE / code envelope) over dumping {code, language} JSON. */
+  const resultText = useMemo(() => {
+    const out = result?.output;
+    const coding = extractCodingDeliveryText(
+      typeof out === 'string' ? out : '',
+      out,
+    );
+    if (coding.trim()) return coding;
+    return outputAsText(out);
+  }, [result?.output]);
+  /** Prefer unwrapped object so StructuredSkillOutput can detect architecture/PRD shapes. */
+  const resultRaw = useMemo(() => unwrapOutput(result?.output), [result?.output]);
   const awaitInfo = useMemo(() => detectAwaitingUser(resultText), [resultText]);
   const pptxPaths = useMemo(() => extractPptxPaths(resultText), [resultText]);
-  const displayVerdict = useMemo(
-    () =>
-      deriveRunVerdict({
-        status: result?.status,
-        error: result?.error || result?.error_message,
-        outputText: resultText,
-        awaiting: awaitInfo.awaiting,
-        awaitSummary: awaitInfo.summary,
-      }),
-    [result?.status, result?.error, result?.error_message, resultText, awaitInfo.awaiting, awaitInfo.summary],
-  );
+  const displayVerdict = useMemo(() => {
+    const st = String(result?.status || '').toLowerCase();
+    const rid = String(result?.run_id || result?.execution_id || '').trim();
+    // Only coerce running→completed when the review belongs to THIS run.
+    // Otherwise 按失败点重跑 keeps stale C-grade panel while the new graph is live.
+    const reviewForActiveRun =
+      Boolean(qualityReview) &&
+      !!rid &&
+      (qualityFetchedForRunRef.current === rid || activeRunIdRef.current === rid);
+    const streamLagging =
+      reviewForActiveRun &&
+      (!st || st === 'running' || st === 'accepted' || st === 'unknown' || st === 'started');
+    const base = deriveRunVerdict({
+      status: streamLagging ? 'completed' : result?.status,
+      error: result?.error || result?.error_message,
+      outputText: resultText,
+      awaiting: awaitInfo.awaiting,
+      awaitSummary: awaitInfo.summary,
+    });
+    // Never paint「产物待改进」over an in-flight / other-run execution
+    if (!reviewForActiveRun) return base;
+    if (!qualityReview || (base.kind !== 'success' && base.kind !== 'partial')) return base;
+    const v = String(qualityReview.verdict || '');
+    if (v === 'fail') {
+      return {
+        ...base,
+        kind: 'partial' as const,
+        label: '已结束（产物待改进）',
+        hint: qualityReview.headline || '流程跑通了，但产物未达可验收标准。请看下方问题点与改 SOP 指引。',
+        tone: 'amber' as const,
+        ok: null,
+      };
+    }
+    if (v === 'warn') {
+      return {
+        ...base,
+        kind: 'partial' as const,
+        label: '已结束（有改进建议）',
+        hint: qualityReview.headline || '产物基本可用，仍有建议项。',
+        tone: 'amber' as const,
+        ok: null,
+      };
+    }
+    return base;
+  }, [result?.status, result?.error, result?.error_message, result?.run_id, result?.execution_id, resultText, awaitInfo.awaiting, awaitInfo.summary, qualityReview]);
+
+  const resolveAgentSkillTarget = (): string | null => {
+    if (!agent) return null;
+    const meta = ((agent as any)?.metadata || {}) as Record<string, unknown>;
+    const reqSkills = Array.isArray(meta.required_skills) ? (meta.required_skills as string[]) : [];
+    const ids = [...new Set([...(agent.skills || []), ...reqSkills].map(String).filter(Boolean))];
+    // Prefer skill suggested by routing when present; else first bound skill (no business-name hardcode)
+    const routed = routingResult?.suggested_skill_ids?.[0];
+    if (routed && ids.includes(String(routed))) return String(routed);
+    if (routingResult?.primary_route?.kind === 'skill' && routingResult.primary_route.target) {
+      const t = String(routingResult.primary_route.target);
+      if (ids.includes(t)) return t;
+    }
+    return ids[0] || null;
+  };
+
+  // Load output_schema from bound skills — extensibility via Skill contract, not UI field lists
+  useEffect(() => {
+    if (!open || !agent) {
+      setResultSchema(null);
+      return;
+    }
+    let cancelled = false;
+    const meta = ((agent as any)?.metadata || {}) as Record<string, unknown>;
+    const reqSkills = Array.isArray(meta.required_skills) ? (meta.required_skills as string[]) : [];
+    const ids = [...new Set([...(agent.skills || []), ...reqSkills].map(String).filter(Boolean))];
+    const prefer = resolveAgentSkillTarget();
+    const ordered = prefer ? [prefer, ...ids.filter((id) => id !== prefer)] : ids;
+
+    (async () => {
+      for (const id of ordered.slice(0, 8)) {
+        try {
+          let detail: { output_schema?: Record<string, unknown> } | null = null;
+          // Engine skills first (architecture_design etc.) — avoids console 404 on workspace GET
+          try {
+            detail = await skillApi.get(id);
+          } catch {
+            detail = await workspaceSkillApi.get(id);
+          }
+          const os = detail?.output_schema;
+          if (os && typeof os === 'object' && Object.keys(os).length > 0) {
+            if (!cancelled) setResultSchema(os);
+            return;
+          }
+        } catch {
+          /* try next skill */
+        }
+      }
+      if (!cancelled) setResultSchema(null);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- resolveAgentSkillTarget closes over routing; ids + routing are enough
+  }, [open, agent?.id, agent?.skills, routingResult?.suggested_skill_ids, routingResult?.primary_route?.target]);
+
+  const handleRerunSameCase = () => {
+    // 「同一用例」必须以上次执行输入为准；并先停掉旧轮询，避免先看到 completed 空产物就复核。
+    // 若质量复核判定铁律已在 SOP：注入失败点约束（不改 SKILL.md）。
+    setPostFixReady(false);
+    stopPolling();
+    // Best-effort cancel any lingering prior run so fail-rerun does not queue behind a wedge.
+    const prevRid = String(
+      activeRunIdRef.current || result?.run_id || result?.execution_id || '',
+    ).trim();
+    if (prevRid && prevRid !== '__pending__') {
+      void apiClient
+        .post(
+          `/core/executions/${encodeURIComponent(prevRid)}/cancel`,
+          { reason: 'fail_constraint_rerun' },
+          { timeoutMs: 6000 },
+        )
+        .catch(() => undefined);
+    }
+    // Invalidate in-flight callbacks from the previous run (graph-done / quality fetch).
+    // Sentinel + clear run_id: avoid keeping finished previous canvas under 「执行中」.
+    activeRunIdRef.current = '__pending__';
+    // Always rebuild overlay from issues — never reuse a long/stale overlay that
+    // stalls local LLMs or contains echo-bait examples (run-30e631 / run-2ebd).
+    const overlay = buildFailConstraintOverlay(qualityReview?.issues);
+    setQualityReview(null);
+    qualityFetchedForRunRef.current = '';
+    emptyOutputRetriedRef.current = '';
+    setResult((prev) =>
+      prev
+        ? {
+            ...prev,
+            status: 'running',
+            run_id: undefined,
+            execution_id: undefined,
+            error: undefined,
+            error_message: undefined,
+            output: undefined,
+            eval: undefined,
+            duration_ms: undefined,
+          }
+        : { status: 'running' },
+    );
+    setFlowFullscreen(true);
+    const last = lastAgentInputRef.current;
+    let override = '';
+    if (last && typeof last === 'object' && last !== null) {
+      const o = last as Record<string, unknown>;
+      const m = o.message ?? o.user_requirement ?? o.query ?? o.text;
+      if (typeof m === 'string' && m.trim()) override = m.trim();
+      else {
+        try { override = JSON.stringify(last); } catch { override = ''; }
+      }
+    } else if (typeof last === 'string' && last.trim()) {
+      override = last.trim();
+    }
+    if (!override) override = input.trim();
+    override = appendFailConstraintOverlay(override, overlay);
+    if (override && override !== input) setInput(override);
+    if (overlay) {
+      toast.info('一键修复 → 同一用例重跑', '已叠加精简失败点约束');
+    }
+    void handleExecute(override || undefined);
+  };
+
+  const handleApplyQualityFix = async (issueCodes: string[]) => {
+    const skillId = resolveAgentSkillTarget();
+    if (!skillId) {
+      toast.warning('Agent 未绑定 Skill，无法写入 SKILL.md', '请点「去改 SOP」改 Agent 侧铁律');
+      return;
+    }
+    const codes = (issueCodes || []).map(String).filter(Boolean);
+    if (!codes.length) return;
+    try {
+      let res: { status?: string; applied?: string[]; skipped?: string[]; message?: string; error?: string };
+      // Engine-shipped skills (architecture_design, …) live under /core/skills — try that first
+      // to avoid a noisy 404 on /workspace/skills when the Agent only binds an engine skill.
+      try {
+        res = await skillApi.applyQualityFix(skillId, { issue_codes: codes });
+      } catch {
+        res = await workspaceSkillApi.applyQualityFix(skillId, { issue_codes: codes });
+      }
+      const applied = res?.applied?.length || 0;
+      const skipped = res?.skipped?.length || 0;
+      if (res?.status === 'applied' && applied > 0) {
+        setPostFixReady(true);
+        toast.success(
+          `已写入 Skill「${skillId}」${applied} 类铁律`,
+          '请点「一键修复 → 同一用例重跑」验证',
+        );
+      } else if (res?.status === 'noop' || skipped > 0) {
+        setPostFixReady(true);
+        toast.info(
+          res?.message || '所选铁律已在 SOP 中，无需重复写入',
+          '请点「一键修复 → 同一用例重跑」注入失败约束；空输出/超时先看执行轨迹',
+        );
+      } else {
+        toast.warning(res?.message || res?.error || '未写入任何铁律');
+      }
+    } catch (e: any) {
+      toastGateError(e, '一键修复 SOP 失败');
+    }
+  };
+
+  const fetchAgentQualityReview = async (opts: {
+    input: unknown;
+    output: unknown;
+    status: string;
+    execution_id?: string;
+    embedded?: ExecutionQualityReview | null;
+  }) => {
+    if (!agent) return null;
+    const rid = String(opts.execution_id || '').trim();
+    // Stale callback from previous 按失败点重跑 — drop
+    if (rid && activeRunIdRef.current && rid !== activeRunIdRef.current) {
+      return null;
+    }
+    // Never lock empty_output while the active run is still producing
+    const outOkEarly =
+      outputAsText(opts.output).trim().length >= 20
+      || (opts.output != null && typeof opts.output === 'object' && Object.keys(opts.output as object).length > 0);
+    if (!outOkEarly && !opts.embedded && rid && activeRunIdRef.current === rid) {
+      // Defer — poller / live path will retry when payload arrives
+      return null;
+    }
+    const embedded = opts.embedded;
+    const embIssues = Array.isArray(embedded?.issues) ? embedded!.issues : [];
+    const outOk =
+      outputAsText(opts.output).trim().length >= 20
+      || (opts.output != null && typeof opts.output === 'object' && Object.keys(opts.output as object).length > 0);
+    // Only trust status-embedded review while the body is still empty (stream race).
+    // With a real payload, always call review-output fresh — otherwise a stale A/pass
+    // from finalize greenwashes new gates (undeclared_api_schema_assumption, auth TODO).
+    if (
+      embedded &&
+      typeof embedded === 'object' &&
+      (embedded.verdict != null || embIssues.length > 0) &&
+      !outOk
+    ) {
+      if (rid && activeRunIdRef.current && rid !== activeRunIdRef.current) return null;
+      if (rid) qualityFetchedForRunRef.current = rid;
+      setQualityReview(embedded);
+      return embedded;
+    }
+    const st = String(opts.status || '').toLowerCase();
+    if (st !== 'completed' && st !== 'ok' && st !== 'success') {
+      setQualityReview(null);
+      return null;
+    }
+    try {
+      setQualityReviewLoading(true);
+      const rev = (await workspaceAgentApi.reviewOutput(agent.id, {
+        input: opts.input,
+        output: opts.output,
+        status: st,
+        execution_id: opts.execution_id,
+        prefer_embedded: !outOk,
+      })) as ExecutionQualityReview;
+      // Drop if a newer 按失败点重跑 started while we awaited review-output
+      if (rid && activeRunIdRef.current && rid !== activeRunIdRef.current) {
+        return null;
+      }
+      if (rid) qualityFetchedForRunRef.current = rid;
+      setQualityReview(rev);
+      return rev;
+    } catch {
+      setQualityReview(null);
+      return null;
+    } finally {
+      setQualityReviewLoading(false);
+    }
+  };
+
+  // Safety net: live-done path used to finalize status without loading quality_review,
+  // so the「产物质量复核 / 一键修复」panel never appeared.
+  // Also: if we locked onto empty_output while output later arrives (fix→rerun race), re-review.
+  useEffect(() => {
+    if (!agent || !result) return;
+    const st = String(result.status || '').toLowerCase();
+    const rid = String(result.run_id || result.execution_id || '').trim();
+    const lagging = st === 'running' || st === 'accepted' || st === 'unknown' || st === 'started' || !st;
+    // Only reconcile "review exists but UI lagging" when the review belongs to THIS run.
+    // Otherwise 按失败点重跑: stale empty_output review + new running → force-complete + kill poller.
+    const reviewForThisRun =
+      Boolean(qualityReview)
+      && rid
+      && (qualityFetchedForRunRef.current === rid || activeRunIdRef.current === rid);
+    if (qualityReview && lagging && reviewForThisRun) {
+      setResult((prev) =>
+        prev && ['running', 'accepted', 'unknown', 'started', ''].includes(String(prev.status || '').toLowerCase())
+          ? { ...prev, status: 'completed' }
+          : prev,
+      );
+      setLoading(false);
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+      return;
+    }
+    if (qualityReview && lagging && !reviewForThisRun) {
+      // Stale review from previous run — drop so new execution can proceed
+      setQualityReview(null);
+      return;
+    }
+    // Timeout/cancel has no product to grade — never keep prior-run C panel (run-94fcad UI).
+    if (['timeout', 'cancelled', 'canceled'].includes(st)) {
+      if (qualityReview) setQualityReview(null);
+      if (rid) qualityFetchedForRunRef.current = rid;
+      return;
+    }
+    if (st === 'failed' || st === 'error') {
+      // Keep review only when it was fetched for THIS failed run
+      if (qualityReview && rid && qualityFetchedForRunRef.current !== rid) {
+        setQualityReview(null);
+      }
+      return;
+    }
+    if (st !== 'completed' && st !== 'ok' && st !== 'success') return;
+    if (!rid) return;
+    const outText = outputAsText(result.output).trim();
+    const staleEmpty =
+      Array.isArray(qualityReview?.issues)
+      && qualityReview!.issues.some((i) => String((i as { code?: string })?.code || '') === 'empty_output')
+      && outText.length >= 20;
+    if (staleEmpty) {
+      if (emptyOutputRetriedRef.current === rid) return;
+      emptyOutputRetriedRef.current = rid;
+      qualityFetchedForRunRef.current = '';
+      void fetchAgentQualityReview({
+        input: lastAgentInputRef.current,
+        output: result.output,
+        status: 'completed',
+        execution_id: rid,
+      });
+      return;
+    }
+    if (qualityReview || qualityReviewLoading) return;
+    if (qualityFetchedForRunRef.current === rid) return;
+    // Defer quality fetch while output still empty — live-done poller may still be filling it.
+    if (!outText && !result.error) return;
+    qualityFetchedForRunRef.current = rid;
+    void fetchAgentQualityReview({
+      input: lastAgentInputRef.current,
+      output: result.output,
+      status: 'completed',
+      execution_id: rid,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchAgentQualityReview is stable enough; only re-run on terminal result
+  }, [agent?.id, result?.status, result?.run_id, result?.execution_id, result?.output, result?.error, qualityReview, qualityReviewLoading]);
 
   // When Agent pauses for template confirm, refresh template library for picker
   useEffect(() => {
@@ -404,10 +864,14 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
         setHelpMarkdown(String((res as any)?.help_markdown || ''));
         let exs = (((res as any)?.examples || []) as Array<{ title: string; content: string }>);
         const schema = ((res as any)?.input_schema as Record<string, unknown> | null) || null;
+        setHelpInputSchema(schema && Object.keys(schema).length ? schema : null);
         const label = agent.display_name || agent.name || agent.id;
         const meta = (agent.metadata || {}) as Record<string, unknown>;
         const reqSkills = Array.isArray(meta.required_skills) ? (meta.required_skills as string[]) : [];
         const skillIds = [...new Set([...(agent.skills || []), ...reqSkills])];
+        if (schema && Object.keys(schema).length > 0) {
+          exs = sanitizeExecutionExamples(exs, schema, String(agent.id || label));
+        }
         if (isGenericExampleSet(exs)) {
           if (schema && Object.keys(schema).length > 0) {
             const generated = buildExamplesFromSchema(schema, label);
@@ -428,6 +892,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
         const meta = (agent.metadata || {}) as Record<string, unknown>;
         const reqSkills = Array.isArray(meta.required_skills) ? (meta.required_skills as string[]) : [];
         setHelpMarkdown('');
+        setHelpInputSchema(null);
         setExamples(
           buildAgentTaskExamples({
             displayName: label,
@@ -445,23 +910,40 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
 
   const handleGenerateLlmExamples = async (persist: boolean) => {
     if (!agent) return;
+    if (persist) {
+      const ok = window.confirm(
+        '将覆盖 AGENT.md 里已保存的测试用例（execution_examples）。\n'
+        + '仅当本次被判定为 LLM 成功时才会写入；启发式回退不会覆盖。\n'
+        + '编码/脚手架 Agent 请优先用系统「填入」用例；确认仍要写入？',
+      );
+      if (!ok) return;
+    }
     try {
       setLlmGenerating(true);
-      const res = await workspaceAgentApi.generateExecutionExamples(agent.id, { persist });
+      const res = await workspaceAgentApi.generateExecutionExamples(agent.id, {
+        persist,
+        refine_hint: buildExampleRefineHint(helpInputSchema, input) || undefined,
+      });
       const exs = (res?.examples || []) as Array<{ title: string; content: string }>;
       if (!exs.length) {
         toast.error('未生成可用用例');
         return;
       }
-      setExamples(exs);
-      if (exs[0]?.content) setInput(exs[0].content);
+      const cleaned = helpInputSchema && Object.keys(helpInputSchema).length
+        ? sanitizeExecutionExamples(exs, helpInputSchema, String(agent.id || ''))
+        : sanitizeExecutionExamples(exs, {}, String(agent.id || ''));
+      if (!cleaned.length) {
+        toast.error('未生成可用用例（已丢弃把说明当入参的芯片）');
+        return;
+      }
+      setExamples(cleaned);
       const src = res?.source === 'llm' ? 'LLM' : '启发式回退';
       if (persist && res?.persisted) {
-        toast.success(`已生成 ${exs.length} 条（${src}）并写入 AGENT.md`);
+        toast.success(`已生成 ${cleaned.length} 条（${src}）并写入 AGENT.md`);
       } else if (persist && !res?.persisted) {
-        toast.warning(`已生成 ${exs.length} 条，但写入 AGENT.md 失败`);
+        toast.warning(`已生成 ${cleaned.length} 条（${src}），未写入 AGENT.md`);
       } else {
-        toast.success(`已生成 ${exs.length} 条（${src}），已填入第一条`);
+        toast.success(`已生成 ${cleaned.length} 条（${src}），请点「填入」写入输入框`);
       }
       if (res?.warning) toast.warning(String(res.warning));
     } catch (e: any) {
@@ -555,16 +1037,20 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
                 output: typeof out === 'string' ? out : (out ?? prev?.output),
                 error: sData?.error || prev?.error,
                 duration_ms: sData?.duration_ms ?? prev?.duration_ms,
+                // Historical eval_results is not this-run score; drop on failure/timeout.
+                eval: done ? prev?.eval : undefined,
               }));
               if (done && ai.awaiting) {
                 // Keep fullscreen so user can confirm again without closing
                 toast.warning('Agent 在等你确认', ai.summary);
               } else if (done) {
                 toast.success('执行完成');
+              } else if (newStatus === 'timeout') {
+                toast.error('执行超时', String(sData?.error || '').slice(0, 160) || undefined);
               }
             }
           } catch { /* keep polling */ }
-          if (polls >= 150) { stopPolling(); toast.error('执行超时（300s）'); }
+          if (polls >= 900) { stopPolling(); toast.error('执行超时（1800s）'); }
         }, 2000);
       } else if (status === 'completed') {
         const ai = detectAwaitingUser(outputAsText(unwrapOutput((res as any)?.output)));
@@ -615,12 +1101,15 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
     }
   }, [agent, buildTemplateContinueMsg, runContinueExecute]);
 
-  const handleExecute = async () => {
+  const handleExecute = async (inputOverride?: string) => {
     if (!agent) return;
+    // onClick={handleExecute} passes a click event as 1st arg — ignore non-strings.
+    const overrideText = typeof inputOverride === 'string' ? inputOverride : undefined;
     if (isSiteTester) {
       let parsed: Record<string, unknown> = {};
-      if (input.trim()) {
-        try { parsed = JSON.parse(input); } catch { parsed = { message: input }; }
+      const siteRaw = (overrideText ?? input).trim();
+      if (siteRaw) {
+        try { parsed = JSON.parse(siteRaw); } catch { parsed = { message: siteRaw }; }
       }
       const routes: string[] = Array.isArray((parsed as any).routes) ? (parsed as any).routes : [];
       let includePatterns: string[] | undefined = Array.isArray((parsed as any).include_patterns) ? (parsed as any).include_patterns : undefined;
@@ -676,23 +1165,66 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
       } catch (e: any) { toast.error(`启动失败: ${e?.message || e}`); setLoading(false); }
       return;
     }
+    // New run: stop previous poller so it cannot finalize empty_output on a stale completed row
+    // while the new skill is still writing output (common after 一键修复→同一用例重跑).
+    stopPolling();
     let parsedInput: Record<string, unknown> = {};
-    if (input.trim()) { try { parsedInput = JSON.parse(input); } catch { parsedInput = { message: input }; } }
+    const rawIn = (overrideText ?? input).trim();
+    if (rawIn) { try { parsedInput = JSON.parse(rawIn); } catch { parsedInput = { message: rawIn }; } }
     setLoading(true);
+    lastAgentInputRef.current = parsedInput;
+    setQualityReview(null);
+    qualityFetchedForRunRef.current = '';
+    emptyOutputRetriedRef.current = '';
+    // Optimistic in-flight UI — clear prior run_id so canvas does not keep the
+    // finished previous graph under a new 「执行中」header.
+    activeRunIdRef.current = '__pending__';
+    executeAbortRef.current?.abort();
+    const execAbort = new AbortController();
+    executeAbortRef.current = execAbort;
+    setResult((prev) =>
+      prev
+        ? {
+            ...prev,
+            status: 'running',
+            run_id: undefined,
+            execution_id: undefined,
+            error: undefined,
+            error_message: undefined,
+            output: undefined,
+            eval: undefined,
+            duration_ms: undefined,
+          }
+        : { status: 'running' },
+    );
     try {
       const streamOpts = { ...((parsedInput.options || {}) as Record<string, unknown>), toolset, stream: true };
       const execPayload: any = { input: parsedInput, options: streamOpts, config: (parsedInput.config || {}) as Record<string, unknown> };
       if (isRagAgent && selectedDomain) {
         execPayload.context = { scope: { collection_id: selectedDomain, doc_ids: [] }, collection_id: selectedDomain, tenant_id: 'default' };
       }
-      const result = await workspaceAgentApi.execute(agent.id, execPayload);
+      // Stream accept must return run_id in seconds; 45s = Core likely wedged (listen but no reply).
+      const result = await workspaceAgentApi.execute(agent.id, execPayload, {
+        timeoutMs: 45_000,
+        signal: execAbort.signal,
+      });
       const status = String((result as any)?.status || 'ok');
       const runId = (result as any)?.run_id || (result as any)?.execution_id || '';
+      if (runId) activeRunIdRef.current = String(runId);
       const execEval = (result as any)?.eval;
       const execDuration = (result as any)?.duration_ms as number | undefined;
       const execSteps = ((result as any)?.metadata?.steps as number) || undefined;
       const out0 = unwrapOutput((result as any)?.output);
       setResult({ status, execution_id: String((result as any)?.execution_id || ''), run_id: runId, output: out0, error: (result as any)?.error, tokens: (result as any)?.tokens, eval: execEval, duration_ms: execDuration, steps: execSteps });
+      if (status === 'completed' || status === 'ok' || status === 'success') {
+        await fetchAgentQualityReview({
+          input: parsedInput,
+          output: out0,
+          status: 'completed',
+          execution_id: runId || String((result as any)?.execution_id || ''),
+          embedded: (result as any)?.quality_review || null,
+        });
+      }
       // v2.9: auto-show GrillPanel when backend suggests clarification
       if ((result as any)?.metadata?.grill_suggested) {
         setShowGrill(true);
@@ -711,23 +1243,92 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
       if (status === 'running' && runId) {
         let polls = 0;
         let stopped = false;
-        const applyDone = (newStatus: string, sData: any) => {
+        const outputReady = (out: unknown) => {
+          const t = outputAsText(out).trim();
+          if (t.length >= 20) return true;
+          if (out && typeof out === 'object' && Object.keys(out as object).length > 0) return true;
+          return false;
+        };
+        const settleTerminalPayload = async (first: any): Promise<any> => {
+          // Graph/row may flip to completed before output upsert — same race as onLiveStatusChange.
+          let sData = first;
+          for (let i = 0; i < 16; i++) {
+            const raw = String(sData?.status || '').toLowerCase();
+            if (['failed', 'error', 'timeout', 'cancelled', 'canceled'].includes(raw)) return sData;
+            if (sData?.error) return sData;
+            if (outputReady(unwrapOutput(sData?.output)) && !sData?.pending_output) return sData;
+            if (raw === 'completed' || raw === 'ok' || raw === 'success' || raw === 'done') {
+              if (outputReady(unwrapOutput(sData?.output))) return sData;
+            } else {
+              return sData; // still transitional — caller keeps polling
+            }
+            await new Promise((r) => setTimeout(r, 500));
+            try {
+              sData = await apiClient.get(
+                `/core/executions/${encodeURIComponent(runId)}/status`
+              );
+            } catch {
+              break;
+            }
+          }
+          return sData;
+        };
+        const applyDone = async (newStatus: string, sDataIn: any) => {
           if (stopped) return;
+          if (activeRunIdRef.current && runId && activeRunIdRef.current !== runId) return;
+          const sData = await settleTerminalPayload(sDataIn);
+          if (activeRunIdRef.current && runId && activeRunIdRef.current !== runId) return;
+          const rawSt = String(sData?.status || newStatus || '').toLowerCase();
+          const out = unwrapOutput(sData?.output);
+          const hasOut = outputReady(out);
+          let doneSt = rawSt;
+          if (
+            (!rawSt || rawSt === 'running' || rawSt === 'accepted')
+            && hasOut
+            && !sData?.pending_output
+          ) {
+            doneSt = 'completed';
+          }
+          const done = doneSt === 'completed' || doneSt === 'ok' || doneSt === 'success';
+          // completed-but-empty: keep outer poller alive (caller uses polls < 90).
+          // Do not stopPolling / lock empty_output — 按失败点重跑后 Skill LLM 常更慢。
+          if (done && !hasOut && !sData?.error) {
+            setResult(prev => prev ? {
+              ...prev,
+              status: 'running',
+              output: out ?? prev.output,
+              duration_ms: sData?.duration_ms ?? prev.duration_ms,
+            } : prev);
+            setLoading(true);
+            return;
+          }
           stopped = true;
           stopPolling();
-          const done = newStatus === 'completed' || newStatus === 'ok' || newStatus === 'success';
-          const out = unwrapOutput(sData?.output);
           const text = outputAsText(out);
           const awaitInfo = detectAwaitingUser(text);
           setResult(prev => ({
             ...prev!,
-            status: done ? 'completed' : (newStatus || 'failed'),
+            status: done ? 'completed' : (doneSt || 'failed'),
             output: typeof out === 'string' ? out : (out ?? prev?.output),
             error: sData?.error || prev?.error,
             duration_ms: sData?.duration_ms ?? prev?.duration_ms,
+            eval: done ? prev?.eval : undefined,
           }));
+          if (done && hasOut) {
+            void fetchAgentQualityReview({
+              input: lastAgentInputRef.current ?? sData?.input ?? null,
+              output: out,
+              status: 'completed',
+              execution_id: runId,
+              embedded: sData?.quality_review || null,
+            }).then((rev) => {
+              if (rev && String(rev.verdict) === 'fail') {
+                toast.warning('执行完成，但产物质量未过关 — 见问题点与改 SOP 指引');
+              }
+            });
+          }
           const v = deriveRunVerdict({
-            status: done ? 'completed' : (newStatus || 'failed'),
+            status: done ? 'completed' : (doneSt || 'failed'),
             error: sData?.error,
             outputText: text,
             awaiting: awaitInfo.awaiting,
@@ -737,14 +1338,24 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
         };
         pollingRef.current = setInterval(async () => {
           if (stopped) return;
+          if (activeRunIdRef.current && runId && activeRunIdRef.current !== runId) return;
           polls++;
           try {
-            const sData = await apiClient.get<{ status?: string; output?: unknown; error?: unknown; duration_ms?: number }>(
+            const sData = await apiClient.get<{ status?: string; output?: unknown; error?: unknown; duration_ms?: number; pending_output?: boolean; quality_review?: ExecutionQualityReview; input?: unknown }>(
               `/core/executions/${encodeURIComponent(runId)}/status`
             );
             const newStatus = String(sData?.status || '');
+            const raw = newStatus.toLowerCase();
+            // Keep polling while completed-but-empty / pending_output (upsert race after SOP fix / fail-constraint rerun)
+            if (raw === 'completed' || raw === 'ok' || raw === 'success' || raw === 'done') {
+              if (sData?.pending_output || !outputReady(unwrapOutput(sData?.output))) {
+                if (polls < 90) return; // ~180s grace — fail-constraint rerun + architecture LLM
+              }
+              await applyDone(newStatus, sData);
+              return;
+            }
             if (newStatus && newStatus !== 'running' && newStatus !== 'accepted') {
-              applyDone(newStatus, sData);
+              await applyDone(newStatus, sData);
               return;
             }
           } catch {
@@ -755,12 +1366,15 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
               );
               const newStatus = String(rData?.status || '');
               if (newStatus && newStatus !== 'running' && newStatus !== 'accepted') {
-                applyDone(newStatus, rData);
+                await applyDone(newStatus, rData);
                 return;
               }
             } catch { /* still running */ }
           }
-          if (polls >= 150) { stopPolling(); toast.error('执行超时（300s）', 'Agent 可能仍在后台运行，查看诊断详情获取最新状态。'); }
+          if (polls >= 900) {
+            stopPolling();
+            toast.error('执行超时（1800s）', 'Agent 可能仍在后台运行，查看诊断详情获取最新状态。');
+          }
         }, 2000);
       }
       if (status !== 'running' && status !== 'accepted') {
@@ -774,18 +1388,80 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
         // Soft: banner is primary; toast only for fail/await, and slightly delayed
         notifyRunVerdict(v, { preferBanner: !!runId, delayMs: 800 });
       }
-    } catch (e: any) { setResult({ status: 'failed', error: String(e?.message || e?.detail || '执行失败') }); toastGateError(e, '执行失败'); }
-    finally { setLoading(false); }
+    } catch (e: any) {
+      if (activeRunIdRef.current === '__pending__') activeRunIdRef.current = '';
+      const msg = String(e?.message || e?.detail || '执行失败');
+      if (/请求已取消|用户取消|用户停止/.test(msg)) {
+        // handleStop already painted cancelled UI
+        return;
+      }
+      const startStuck =
+        /超时|timeout|abort|failed to fetch|network|ECONNREFUSED/i.test(msg) ||
+        msg.includes('后端服务');
+      setResult({
+        status: 'failed',
+        error: startStuck
+          ? `${msg}（未拿到 run_id：Core 可能卡死，请重启 aiPlat-core 后再执行）`
+          : msg,
+      });
+      toastGateError(e, startStuck ? '启动失败' : '执行失败');
+    }
+    finally {
+      if (executeAbortRef.current === execAbort) executeAbortRef.current = null;
+      setLoading(false);
+    }
   };
 
   const handleStop = async () => {
-    setStopping(true);
+    // Paint cancelled immediately. A hung Core event loop (POST_LOOP after
+    // auto_done) cannot serve /cancel; waiting the default 180s fetch timeout
+    // is what makes the Stop button spin forever.
+    const rid = String(
+      activeRunIdRef.current || result?.run_id || result?.execution_id || ''
+    ).trim();
+    try { executeAbortRef.current?.abort(); } catch { /* ignore */ }
+    executeAbortRef.current = null;
+    stopPolling();
+    setLoading(false);
+    setStopping(false);
+    if (rid && rid !== '__pending__') {
+      setResult((prev) =>
+        prev
+          ? { ...prev, status: 'cancelled', error: '用户停止', run_id: rid, execution_id: prev.execution_id || rid }
+          : { status: 'cancelled', error: '用户停止', run_id: rid, execution_id: rid }
+      );
+      activeRunIdRef.current = '';
+      toast.success('已请求停止执行');
+      try {
+        await apiClient.post<{ status?: string; already_terminal?: boolean }>(
+          `/core/executions/${encodeURIComponent(rid)}/cancel`,
+          { reason: 'user_stop' },
+          { timeoutMs: 6000 },
+        );
+      } catch {
+        try {
+          await apiClient.post(
+            `/core/runs/${encodeURIComponent(rid)}/cancel`,
+            { reason: 'user_stop' },
+            { timeoutMs: 4000 },
+          );
+        } catch { /* Core may be wedged; UI already cancelled */ }
+      }
+    } else if (rid === '__pending__' || loading) {
+      activeRunIdRef.current = '';
+      setResult((prev) =>
+        prev
+          ? { ...prev, status: 'cancelled', error: '用户取消启动', run_id: undefined, execution_id: undefined }
+          : { status: 'cancelled', error: '用户取消启动' },
+      );
+      toast.success('已取消启动');
+    } else {
+      toast.success('已请求停止');
+    }
     try {
       await browserTestApi.stop();
       await browserTestApi.stopCaseExecution();
-      toast.success('已请求停止');
-    } catch (e: any) { toast.error(`停止失败: ${e?.message || e}`); }
-    finally { setStopping(false); }
+    } catch { /* browser stop optional */ }
   };
 
   const handleAnalyzeIntent = async () => {
@@ -921,7 +1597,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
       footer={
         isSiteTester ? (
           <>
-            <Button variant="danger" onClick={handleStop} loading={stopping} disabled={!loading && !caseGenLoading} title={loading || caseGenLoading ? '停止当前操作' : '暂无执行中的任务'}>
+            <Button variant="danger" onClick={handleStop} loading={stopping} disabled={!loading && !caseGenLoading && !['running', 'accepted', 'queued'].includes(String(result?.status || ''))} title={loading || caseGenLoading || ['running', 'accepted', 'queued'].includes(String(result?.status || '')) ? '停止当前操作' : '暂无执行中的任务'}>
               ⏹ 停止
             </Button>
             <div style={{ flex: 1 }} />
@@ -934,8 +1610,25 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
           </>
         ) : (
           <>
+            <Button
+              variant="danger"
+              onClick={handleStop}
+              loading={stopping}
+              disabled={
+                !loading &&
+                !['running', 'accepted', 'queued'].includes(String(result?.status || ''))
+              }
+              title={
+                loading || ['running', 'accepted', 'queued'].includes(String(result?.status || ''))
+                  ? '停止当前执行'
+                  : '暂无执行中的任务'
+              }
+            >
+              ⏹ 停止
+            </Button>
+            <div style={{ flex: 1 }} />
             <Button variant="secondary" onClick={() => { stopPolling(); onClose(); setInput(''); setResult(null); setRoutingResult(null); }} disabled={loading}>关闭</Button>
-            <Button variant="primary" onClick={handleExecute} loading={loading}>执行</Button>
+            <Button variant="primary" onClick={() => { void handleExecute(); }} loading={loading}>执行</Button>
           </>
         )
       }
@@ -1102,6 +1795,27 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
                   <div className="mb-3">
                     <RunVerdictBanner verdict={displayVerdict} />
                   </div>
+                  {!['timeout', 'cancelled', 'canceled', 'running', 'accepted', 'queued'].includes(
+                    String(result?.status || '').toLowerCase(),
+                  ) && (
+                  <div className="mb-3">
+                    <ExecutionQualityReviewPanel
+                      review={qualityReview}
+                      loading={qualityReviewLoading}
+                      persistKey="agent-exec-modal"
+                      onApplyQualityFix={handleApplyQualityFix}
+                      fixApplied={postFixReady}
+                      onRerunSameCase={handleRerunSameCase}
+                      rerunLoading={loading}
+                      onEditSop={
+                        onEditSop ||
+                        (() => {
+                          toast.info('请关闭执行窗，打开「编辑 Agent」→ SOP / 高级，按问题点加固铁律后重跑');
+                        })
+                      }
+                    />
+                  </div>
+                  )}
                   <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                     <span className="text-sm font-medium text-gray-100">执行结果</span>
                     <div className="flex items-center gap-2">
@@ -1118,13 +1832,26 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
                         </span>
                       </span>
                     )}
-                    {result.eval?.has_data && (
-                      <span className={`text-xs px-2 py-0.5 rounded ml-3 ${
-                        (result.eval.grade || '').startsWith('A') ? 'bg-green-900/40 text-green-300' :
-                        (result.eval.grade || '').startsWith('B') ? 'bg-blue-900/40 text-blue-300' :
-                        'bg-orange-900/40 text-orange-300'
-                      }`}>
-                        🏆 {result.eval.grade || '?'}级 {Math.round(result.eval.score || 0)}分 ({result.eval.total_tasks || 0}次)
+                    {result.eval?.has_data &&
+                      ['completed', 'ok', 'success'].includes(String(result.status || '').toLowerCase()) && (
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded ml-3 ${
+                          qualityReview && String(qualityReview.verdict) === 'fail'
+                            ? 'bg-gray-800/60 text-gray-500 line-through'
+                            : (result.eval.grade || '').startsWith('A')
+                              ? 'bg-green-900/40 text-green-300'
+                              : (result.eval.grade || '').startsWith('B')
+                                ? 'bg-blue-900/40 text-blue-300'
+                                : 'bg-orange-900/40 text-orange-300'
+                        }`}
+                        title={
+                          qualityReview && String(qualityReview.verdict) === 'fail'
+                            ? '历史评测仅供参考；本次产物质量复核未通过'
+                            : '历史评测（eval_results），非本次执行打分'
+                        }
+                      >
+                        历史评测 {result.eval.grade || '?'}级 {Math.round(result.eval.score || 0)}分 (
+                        {result.eval.total_tasks || 0}次)
                       </span>
                     )}
                     {(result.duration_ms != null || result.steps != null) && (
@@ -1225,28 +1952,56 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
                     </pre>
                   )}
                   {resultText ? (
-                    <pre className="text-xs text-gray-300 overflow-auto max-h-80 bg-dark-card border border-dark-border rounded-lg p-3 whitespace-pre-wrap break-words">
-                      {resultText}
-                    </pre>
+                    <div className="text-gray-300 min-h-[16rem]">
+                      <StructuredSkillOutput text={resultText} raw={resultRaw ?? result.output} schema={resultSchema} />
+                    </div>
                   ) : result.output != null ? (
-                    <pre className="text-xs text-gray-300 overflow-auto max-h-60 bg-dark-card border border-dark-border rounded-lg p-3">
-                      {typeof result.output === 'string' ? result.output : JSON.stringify(result.output as object, null, 2)}
-                    </pre>
+                    <div className="text-gray-300 min-h-[16rem]">
+                      <StructuredSkillOutput
+                        text={typeof resultRaw === 'string' ? resultRaw : typeof result.output === 'string' ? result.output : ''}
+                        raw={resultRaw ?? result.output}
+                        schema={resultSchema}
+                      />
+                    </div>
                   ) : null}
                   {result.execution_id && (
                     <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
                       <div className="text-xs text-gray-400 break-all">execution_id: {result.execution_id}</div>
                       <div className="flex gap-2">
                         <Button variant="secondary" size="sm" onClick={async () => { try { await navigator.clipboard.writeText(result.execution_id || ''); toast.success('已复制'); } catch { toast.error('复制失败'); } }}>复制ID</Button>
-                        <Button variant="secondary" size="sm" onClick={() => { window.open(`/diagnostics/links?execution_id=${encodeURIComponent(result.execution_id || '')}&include_spans=true`, '_blank', 'noopener,noreferrer'); }}>查看诊断详情</Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onMouseEnter={() => {
+                            // Preload lazy chunk so new-tab Suspense is brief
+                            void import('../pages/Diagnostics/Links/Links');
+                          }}
+                          onClick={() => {
+                            void import('../pages/Diagnostics/Links/Links');
+                            window.open(
+                              `/diagnostics/links?execution_id=${encodeURIComponent(result.execution_id || '')}&include_spans=true`,
+                              '_blank',
+                              'noopener,noreferrer',
+                            );
+                          }}
+                        >
+                          查看诊断详情
+                        </Button>
                       </div>
                     </div>
                   )}
-                  {result.run_id && (
-                    <div className="mt-3">
-                      <Button variant="primary" onClick={() => setFlowFullscreen(true)}>▶ 查看执行流程（全屏）</Button>
-                    </div>
-                  )}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {resultText ? (
+                      <Button variant="primary" onClick={() => setOutputFullscreen(true)}>
+                        📄 全屏查看产出
+                      </Button>
+                    ) : null}
+                    {result.run_id ? (
+                      <Button variant="secondary" onClick={() => setFlowFullscreen(true)}>
+                        ▶ 查看执行流程（全屏）
+                      </Button>
+                    ) : null}
+                  </div>
             </div>
           )}
 
@@ -1384,8 +2139,8 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
         </div>
       </div>
 
-      {/* ── 全屏执行流程弹窗 ── */}
-      {flowFullscreen && result && result.run_id && (
+      {/* ── 全屏执行流程弹窗（重跑清空 run_id 时仍保持挂载，避免闪回上一轮完成图） ── */}
+      {flowFullscreen && result && (result.run_id || displayVerdict.kind === 'running' || loading) && (
         <div className="fixed inset-0 z-[60] bg-dark-bg flex flex-col">
           <div className="h-10 flex items-center justify-between px-4 border-b border-dark-border bg-dark-card flex-shrink-0">
             <span className="text-sm font-medium text-gray-200">
@@ -1396,33 +2151,192 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
                 {displayVerdict.label}
               </span>
               <span className="text-[10px] text-gray-500 font-mono hidden sm:inline">{result.status}</span>
+              <Button
+                variant="danger"
+                onClick={() => { void handleStop(); }}
+                loading={stopping}
+                disabled={
+                  !loading &&
+                  !['running', 'accepted', 'queued'].includes(String(result?.status || ''))
+                }
+                title={
+                  loading || ['running', 'accepted', 'queued'].includes(String(result?.status || ''))
+                    ? '停止当前执行'
+                    : '暂无执行中的任务'
+                }
+              >
+                ⏹ 停止
+              </Button>
+              {resultText ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setFlowFullscreen(false);
+                    setOutputFullscreen(true);
+                  }}
+                >
+                  📄 全屏产出
+                </Button>
+              ) : null}
               <Button variant="secondary" onClick={() => setFlowFullscreen(false)}>✕ 关闭</Button>
             </div>
           </div>
-          <div className="flex-1 min-h-0 flex flex-col p-2">
+          <div className="flex-1 min-h-0 flex flex-col p-2 gap-2">
+            {/* Quality strip ABOVE graph — collapsed by default on fail/warn */}
+            {(qualityReview || qualityReviewLoading) &&
+              !['timeout', 'cancelled', 'canceled', 'running', 'accepted', 'queued'].includes(
+                String(result?.status || '').toLowerCase(),
+              ) && (
+              <div className="flex-shrink-0 rounded-lg">
+                <ExecutionQualityReviewPanel
+                  review={qualityReview}
+                  loading={qualityReviewLoading}
+                  persistKey="agent-exec-fs"
+                  onApplyQualityFix={handleApplyQualityFix}
+                  fixApplied={postFixReady}
+                  onRerunSameCase={handleRerunSameCase}
+                  rerunLoading={loading}
+                  onEditSop={
+                    onEditSop ||
+                    (() => {
+                      toast.info('请关闭执行窗，打开「编辑 Agent」→ SOP / 高级，按问题点加固铁律后重跑');
+                    })
+                  }
+                />
+              </div>
+            )}
             <div className="flex-1 min-h-0">
+              {!result.run_id ? (
+                <div className="h-full flex flex-col items-center justify-center gap-2 text-sm text-gray-400 px-6 text-center">
+                  <span className="inline-block w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                  <span>正在启动新执行，等待 Core 返回 run_id…</span>
+                  <span className="text-xs text-gray-500">若超过约 45 秒仍无进展，多半是 Core 卡死；点「停止」或重启 core 后再试</span>
+                </div>
+              ) : (
               <ExecutionViewer
+                key={result.run_id}
                 runId={result.run_id}
                 live={true}
-                running={result.status === 'running' || displayVerdict.kind === 'running'}
+                running={displayVerdict.kind === 'running'}
                 title=""
-                height={Math.max(240, window.innerHeight - (result.output || result.error || awaitInfo.awaiting || displayVerdict.ok !== null ? 320 : 100))}
+                height={Math.max(240, window.innerHeight - (qualityReview || qualityReviewLoading || result.output || result.error || awaitInfo.awaiting || displayVerdict.ok !== null ? 280 : 100))}
                 onLiveStatusChange={async (liveSt) => {
-                if (liveSt !== 'done' || result.status === 'completed' || result.status === 'failed' || result.status === 'timeout') return;
+                if (activeRunIdRef.current === '__pending__') return;
+                if (liveSt !== 'done' || result.status === 'failed' || result.status === 'timeout') return;
+                const liveRunId = String(result.run_id || '').trim();
+                if (liveRunId && activeRunIdRef.current && liveRunId !== activeRunIdRef.current) return;
+                // Parent already flipped to a newer run — ignore stale done from previous graph
+                if (['running', 'accepted', 'queued'].includes(String(result.status || '').toLowerCase())
+                  && activeRunIdRef.current && liveRunId !== activeRunIdRef.current) {
+                  return;
+                }
+                // Allow refresh when prior review was a false empty_output (upsert race).
+                const priorEmpty =
+                  Array.isArray(qualityReview?.issues)
+                  && qualityReview!.issues.some((i) => String((i as { code?: string })?.code || '') === 'empty_output');
+                if (result.status === 'completed' && qualityReview && !priorEmpty) return;
                 try {
-                  const sData = await apiClient.get<{ status?: string; output?: unknown; error?: unknown; duration_ms?: number }>(
-                    `/core/executions/${encodeURIComponent(result.run_id!)}/status`
+                  type StatusPayload = {
+                    status?: string;
+                    output?: unknown;
+                    error?: unknown;
+                    duration_ms?: number;
+                    input?: unknown;
+                    quality_review?: ExecutionQualityReview;
+                    pending_output?: boolean;
+                  };
+                  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+                  const outputReady = (out: unknown) => {
+                    const t = outputAsText(out).trim();
+                    if (t.length >= 20) return true;
+                    if (out && typeof out === 'object' && Object.keys(out as object).length > 0) return true;
+                    return false;
+                  };
+                  // Graph may close before agent/skill row upserts output — poll until
+                  // payload arrives (or hard fail) so quality review does not see empty_output.
+                  // Fail-constraint rerun often needs >10s — wait up to ~60s here; status poller covers the rest.
+                  let sData: StatusPayload | null = null;
+                  for (let i = 0; i < 60; i++) {
+                    if (liveRunId && activeRunIdRef.current && liveRunId !== activeRunIdRef.current) return;
+                    sData = await apiClient.get<StatusPayload>(
+                      `/core/executions/${encodeURIComponent(result.run_id!)}/status`
+                    );
+                    const raw = String(sData?.status || '').toLowerCase();
+                    if (['failed', 'error', 'timeout', 'cancelled', 'canceled'].includes(raw)) break;
+                    if (sData?.error) break;
+                    if (outputReady(unwrapOutput(sData?.output)) && !sData?.pending_output) break;
+                    if (raw === 'completed' || raw === 'ok' || raw === 'success' || raw === 'done') {
+                      if (outputReady(unwrapOutput(sData?.output))) break;
+                      // completed-but-empty: keep waiting for upsert
+                    }
+                    await sleep(1000);
+                  }
+                  if (liveRunId && activeRunIdRef.current && liveRunId !== activeRunIdRef.current) return;
+                  const rawSt = String(sData?.status || '').toLowerCase();
+                  // Only coerce running→completed when output is actually present
+                  // (or pending_output cleared). Otherwise keep running so UI stays honest.
+                  const out = unwrapOutput(sData?.output);
+                  const hasOut = outputReady(out);
+                  let newStatus = rawSt;
+                  if (
+                    (!rawSt || rawSt === 'running' || rawSt === 'accepted' || rawSt === 'unknown' || rawSt === 'started')
+                    && hasOut
+                    && !sData?.pending_output
+                  ) {
+                    newStatus = 'completed';
+                  } else if (
+                    (!rawSt || rawSt === 'running' || rawSt === 'accepted' || rawSt === 'unknown' || rawSt === 'started')
+                    && !hasOut
+                    && !sData?.pending_output
+                    && !sData?.error
+                  ) {
+                    // Graph SSE may end while Skill LLM is still generating — do NOT
+                    // invent completed+empty (false empty_output → wrong「一键修复 SOP」).
+                    newStatus = rawSt || 'running';
+                  }
+                  const stillRunning = ['running', 'accepted', 'started', 'pending', 'unknown', ''].includes(
+                    String(newStatus || '').toLowerCase(),
                   );
-                  const newStatus = String(sData?.status || 'completed');
                   const done = newStatus === 'completed' || newStatus === 'ok' || newStatus === 'success';
                   setResult(prev => prev ? {
                     ...prev,
-                    status: done ? 'completed' : newStatus,
-                    output: unwrapOutput(sData?.output) ?? prev.output,
+                    status: done ? 'completed' : (stillRunning ? 'running' : newStatus),
+                    output: out ?? prev.output,
                     error: sData?.error || prev.error,
                     duration_ms: sData?.duration_ms ?? prev.duration_ms,
+                    eval: done ? prev.eval : undefined,
                   } : prev);
+                  if (stillRunning && !hasOut) {
+                    // Keep modal in loading/poll; graph-done alone is not enough
+                    setLoading(true);
+                    toast.info('执行仍在进行', '画布已收尾，但输出尚未写入——请稍候，勿点一键修复 SOP。');
+                    return;
+                  }
                   stopPolling();
+                  setLoading(false);
+                  if (done) {
+                    // Prefer status payload over stale closure result.output
+                    const reviewOut = hasOut ? out : (out ?? null);
+                    void fetchAgentQualityReview({
+                      input: lastAgentInputRef.current ?? sData?.input ?? null,
+                      output: reviewOut,
+                      status: 'completed',
+                      execution_id: result.run_id!,
+                      embedded: sData?.quality_review || null,
+                    }).then((rev) => {
+                      if (rev && String(rev.verdict) === 'fail') {
+                        const codes = new Set(
+                          (rev.issues || []).map((i) => String((i as { code?: string })?.code || '')),
+                        );
+                        if (codes.has('empty_output') || codes.has('runtime_timeout') || codes.has('runtime_failed')) {
+                          toast.warning('执行完成但无可用产物', '请看执行轨迹 / 诊断详情，勿点一键修复 SOP。');
+                        } else {
+                          toast.warning('执行完成，但产物质量未过关 — 见上方「产物质量复核」');
+                        }
+                      }
+                    });
+                  }
                 } catch {
                   // Do not invent success — leave status as-is
                   stopPolling();
@@ -1430,10 +2344,30 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
                 }
               }}
               />
+              )}
             </div>
             {(resultText || result.error || awaitInfo.awaiting || displayVerdict.ok === false || displayVerdict.ok === true || displayVerdict.kind === 'partial') && (
-              <div className="flex-shrink-0 border-t border-dark-border bg-dark-card p-3 max-h-[42vh] overflow-y-auto mt-2 rounded-lg space-y-2">
-                <RunVerdictBanner verdict={displayVerdict} />
+              <div className="flex-shrink-0 border border-dark-border bg-dark-card rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-dark-border/60">
+                  <button
+                    type="button"
+                    className="text-xs text-gray-300 hover:text-gray-100 flex items-center gap-1.5 min-w-0"
+                    onClick={() => setFsOutputOpen((v) => !v)}
+                  >
+                    <span className="font-medium">执行输出</span>
+                    {result.error ? <span className="text-red-400">· 有错误</span> : null}
+                    {awaitInfo.awaiting ? <span className="text-amber-300">· 等待确认</span> : null}
+                    <span className="text-[10px] text-gray-500">{fsOutputOpen || awaitInfo.awaiting ? '收起 ▴' : '展开 ▾'}</span>
+                  </button>
+                  {!(qualityReview || qualityReviewLoading) ? (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${VERDICT_BADGE_CLASS[displayVerdict.tone]}`}>
+                      {displayVerdict.label}
+                    </span>
+                  ) : null}
+                </div>
+                {(fsOutputOpen || awaitInfo.awaiting) && (
+              <div className="p-3 max-h-[36vh] overflow-y-auto space-y-2">
+                {!(qualityReview || qualityReviewLoading) ? <RunVerdictBanner verdict={displayVerdict} /> : null}
                 {awaitInfo.awaiting && (
                   <div className="p-3 rounded-lg border border-amber-700/50 bg-amber-950/30 text-sm text-amber-100 space-y-2">
                     <div className="font-medium">⏸ Agent 已暂停，在等你回复</div>
@@ -1537,17 +2471,46 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
                 )}
                 {resultText && (
                   <>
-                    <div className="text-xs font-medium text-gray-300">执行输出</div>
-                    <pre className="text-xs text-gray-300 whitespace-pre-wrap break-words">
-                      {resultText}
-                    </pre>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-xs font-medium text-gray-300">执行输出</div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setFlowFullscreen(false);
+                          setOutputFullscreen(true);
+                        }}
+                      >
+                        📄 全屏查看
+                      </Button>
+                    </div>
+                    <StructuredSkillOutput text={resultText} raw={resultRaw ?? result.output} schema={resultSchema} />
                   </>
+                )}
+              </div>
                 )}
               </div>
             )}
           </div>
         </div>
       )}
+
+      <ExecuteOutputFullscreen
+        open={!!(outputFullscreen && resultText)}
+        title={`产出 · ${agent?.name || 'Agent'}`}
+        text={resultText}
+        raw={resultRaw ?? result?.output}
+        schema={resultSchema}
+        onClose={() => setOutputFullscreen(false)}
+        onOpenFlow={
+          result?.run_id
+            ? () => {
+                setOutputFullscreen(false);
+                setFlowFullscreen(true);
+              }
+            : undefined
+        }
+      />
     </Modal>
     </>
   );

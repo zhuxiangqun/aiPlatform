@@ -5,8 +5,8 @@ description: 读取、写入、编辑文件的原子操作。只读文件可用s
 category: execution
 version: 1.0.0
 status: enabled
-execution_mode: prompt
-execution_type: prompt
+execution_mode: handler
+execution_type: handler
 triggers:
   - 操作文件
   - 读写文件
@@ -22,9 +22,17 @@ effects:
   idempotent: false
   rollback_available: true
 input_schema:
+  operation:
+    type: string
+    required: true
+    description: read | write | list | delete
   path:
     type: string
     required: true
+  content:
+    type: string
+    required: false
+    description: write 时的文件内容
 output_schema:
   result:
     type: object

@@ -19,7 +19,7 @@ import ImportBar from '../../../components/workspace/ImportBar';
 import AssetStatusLegend from '../../../components/workspace/AssetStatusLegend';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
 import { StatusBadge } from '../../../utils/statusLabel';
-import { buildFormParamsFromSchema, buildSampleParamsFromSchema } from '../../../utils/executionSamples';
+import { buildFormParamsFromSchema, buildParamSmokeExamples } from '../../../utils/executionSamples';
 
 const MCP_TEMPLATES = [
   { id: 'http_bridge', name: 'HTTP API 桥接', icon: '🌐', desc: '调用任何 REST/HTTP API', tools: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] },
@@ -775,42 +775,52 @@ const WorkspaceMCP: React.FC = () => {
             <div className="text-sm font-medium text-gray-200">使用说明 / 测试用例</div>
             <div className="text-xs text-gray-400 leading-relaxed whitespace-pre-wrap">
 {`### 如何填写
-- 选择工具后，点「填入」按 inputSchema 写入冒烟参数。
-- 可切换必填 / 全量字段后再「开始测试」。`}
+- 选择工具后，点「填入」写入主路径 / 边界异常 / 复杂全量用例。
+- 「边界/异常」含空值、不可达 URL 等，用于验收校验与失败路径。`}
             </div>
             {(() => {
               const schema = testToolSchemas[testToolName];
               if (!schema) {
                 return <div className="text-xs text-gray-500">暂无 Schema（可手动填写 JSON）。</div>;
               }
-              const requiredJson = JSON.stringify(buildSampleParamsFromSchema(schema, { includeOptional: false }), null, 2);
-              const fullJson = JSON.stringify(buildSampleParamsFromSchema(schema, { includeOptional: true }), null, 2);
+              const smoke = buildParamSmokeExamples(schema, testToolName || 'tool', {
+                skillHint: `${testToolName || ''} ${testServerName || ''}`,
+              });
               return (
                 <div className="space-y-2">
                   <div className="text-xs font-medium text-gray-300">测试用例 — 点「填入」写入左侧参数</div>
-                  {[
-                    {
-                      title: `${testToolName || 'tool'}（必填字段）`,
-                      content: requiredJson,
-                      apply: () => {
-                        setTestToolParams(buildFormParamsFromSchema(schema, { includeOptional: false }));
-                        setTestToolArgs(requiredJson);
-                      },
-                    },
-                    {
-                      title: `${testToolName || 'tool'}（含可选字段）`,
-                      content: fullJson,
-                      apply: () => {
-                        setTestToolParams(buildFormParamsFromSchema(schema, { includeOptional: true }));
-                        setTestToolArgs(fullJson);
-                      },
-                    },
-                  ].map((ex) => (
+                  {smoke.map((ex) => (
                     <div key={ex.title} className="flex flex-col gap-1">
                       <div className="flex items-center justify-between gap-2">
                         <div className="text-xs text-gray-300 truncate font-medium">{ex.title}</div>
                         <div className="flex gap-2">
-                          <Button variant="secondary" onClick={ex.apply}>填入</Button>
+                          <Button
+                            variant="secondary"
+                            onClick={() => {
+                              try {
+                                const obj = JSON.parse(ex.content);
+                                setTestToolParams(buildFormParamsFromSchema(schema, { includeOptional: true }));
+                                const flat = (schema as any)?.properties || {};
+                                const next: Record<string, any> = {};
+                                if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+                                  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+                                    const typ = String(flat[k]?.type || '').toLowerCase();
+                                    if ((typ === 'object' || typ === 'array') && typeof v === 'object' && v !== null) {
+                                      next[k] = JSON.stringify(v, null, 2);
+                                    } else {
+                                      next[k] = v;
+                                    }
+                                  }
+                                  setTestToolParams(next);
+                                  setTestToolArgs(ex.content);
+                                }
+                              } catch {
+                                setTestToolArgs(ex.content);
+                              }
+                            }}
+                          >
+                            填入
+                          </Button>
                           <Button variant="secondary" onClick={() => copyText(ex.content)}>复制</Button>
                         </div>
                       </div>
@@ -819,7 +829,9 @@ const WorkspaceMCP: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                  <pre className="text-xs text-gray-300 overflow-auto max-h-40 bg-dark-bg border border-dark-border rounded-lg p-3">{fullJson}</pre>
+                  <pre className="text-xs text-gray-300 overflow-auto max-h-40 bg-dark-bg border border-dark-border rounded-lg p-3">
+                    {smoke.find((e) => e.title.includes('复杂') || e.title.includes('全量'))?.content || smoke[0]?.content || '{}'}
+                  </pre>
                 </div>
               );
             })()}

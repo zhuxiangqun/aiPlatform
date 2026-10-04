@@ -357,44 +357,52 @@ class BaseLoop(ILoop):
 
 
             # Persist stop_reason for observability (MUST be in output event)
-
             self._current_state.context["_stop_reason"] = stop_reason
 
-
-
             # Save Praxis recording for replay
-
             if hasattr(self, '_praxis_recorder') and self._praxis_recorder:
-
                 try:
-
                     session = self._praxis_recorder.finish(stop_reason or "unknown")
-
                     from core.services.execution_store import get_execution_store
-
                     store = get_execution_store()
-
                     await store.upsert_global_setting(
-
                         key=f"praxis:{session.run_id}",
-
                         value={"session": session.to_dict()},
-
                     )
-
                 except Exception as e:
-
                     logging.warning(str(e), exc_info=True)
 
-
-
-            # Post-loop hook
-
-            await self._trigger_hook(HookPhase.POST_LOOP, {"state": self._current_state})
-
-            await self._trigger_hook(HookPhase.STOP, {"state": self._current_state, "reason": stop_reason})
-
-            await self._trigger_hook(HookPhase.SESSION_END, {"state": self._current_state, "reason": stop_reason})
+            # Post-loop hooks — never block a sealed Agent row on SECI / SESSION_END
+            # (run-124d89d5ef3f: auto_done ok, canvas stuck on step_2 「准备 · LLM 前置」).
+            import asyncio as _asyncio_hooks
+            _hook_timeout = 8.0
+            _already_sealed = bool(
+                self._current_state.context.get("_skill_delivery_finalized")
+                or self._current_state.context.get("_agent_row_finalized")
+            )
+            async def _run_teardown_hooks() -> None:
+                await self._trigger_hook(HookPhase.POST_LOOP, {"state": self._current_state})
+                await self._trigger_hook(HookPhase.STOP, {"state": self._current_state, "reason": stop_reason})
+                await self._trigger_hook(HookPhase.SESSION_END, {"state": self._current_state, "reason": stop_reason})
+            if _already_sealed:
+                try:
+                    _asyncio_hooks.ensure_future(_run_teardown_hooks())
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "POST_LOOP fire-and-forget skipped", exc_info=True
+                    )
+            else:
+                try:
+                    await _asyncio_hooks.wait_for(_run_teardown_hooks(), timeout=_hook_timeout)
+                except _asyncio_hooks.TimeoutError:
+                    logging.getLogger(__name__).warning(
+                        "POST_LOOP/SESSION_END exceeded %.0fs (run_id=%s stop=%s); continuing finalize",
+                        _hook_timeout,
+                        self._current_state.context.get("_run_id"),
+                        stop_reason,
+                    )
+                except Exception as e:
+                    logging.warning(str(e), exc_info=True)
 
             
 
@@ -449,13 +457,32 @@ class BaseLoop(ILoop):
 
             try:
 
-                await self._trigger_hook(HookPhase.STOP, {"state": self._current_state, "reason": stop_reason, "error": str(e)})
+                import asyncio as _asyncio_exc_hooks
 
-                await self._trigger_hook(HookPhase.SESSION_END, {"state": self._current_state, "reason": stop_reason, "error": str(e)})
+                _exc = e
+                _sealed = bool(
+                    self._current_state.context.get("_skill_delivery_finalized")
+                    or self._current_state.context.get("_agent_row_finalized")
+                )
 
-            except Exception as e:
+                async def _exc_hooks() -> None:
+                    await self._trigger_hook(
+                        HookPhase.STOP,
+                        {"state": self._current_state, "reason": stop_reason, "error": str(_exc)},
+                    )
+                    await self._trigger_hook(
+                        HookPhase.SESSION_END,
+                        {"state": self._current_state, "reason": stop_reason, "error": str(_exc)},
+                    )
 
-                logging.warning(str(e), exc_info=True)
+                if _sealed:
+                    _asyncio_exc_hooks.ensure_future(_exc_hooks())
+                else:
+                    await _asyncio_exc_hooks.wait_for(_exc_hooks(), timeout=8.0)
+
+            except Exception as hook_err:
+
+                logging.warning(str(hook_err), exc_info=True)
 
             # Fire-and-forget: trigger AutoLearner on unhandled exceptions
 

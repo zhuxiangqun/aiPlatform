@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 import httpx
 
 from management.api.core import get_core_client
+from management.core_client import CoreAPIError
 
 router = APIRouter(prefix="/policies", tags=["policies"])
 
@@ -14,6 +15,8 @@ async def list_tenant_policies(limit: int = Query(100, ge=1, le=1000), offset: i
     try:
         client = get_core_client()
         return await client._platform_req("GET", f"{_POLICIES_BASE}", params={"limit": limit, "offset": offset})
+    except CoreAPIError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.payload)
     except httpx.HTTPError as e:
         raise HTTPException(status_code=503, detail=f"Platform API unavailable: {str(e)}")
 
@@ -23,8 +26,12 @@ async def get_tenant_policy(tenant_id: str):
     try:
         client = get_core_client()
         return await client._platform_req("GET", f"{_POLICIES_BASE}/{tenant_id}")
-    except Exception:
-        raise HTTPException(status_code=404, detail="Tenant policy not found")
+    except CoreAPIError as e:
+        if e.status_code == 404:
+            raise HTTPException(status_code=404, detail="Tenant policy not found")
+        raise HTTPException(status_code=e.status_code, detail=e.payload)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Platform API unavailable: {str(e)}")
 
 
 @router.put("/tenants/{tenant_id}")

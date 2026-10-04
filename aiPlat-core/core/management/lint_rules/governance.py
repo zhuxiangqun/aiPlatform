@@ -47,9 +47,8 @@ class HighRiskConstraintsCheck(LintRule):
         tc_text = " ".join(tc)
         keywords = meta.get("keywords") if isinstance(meta.get("keywords"), dict) else {}
         kw_constraints = self._as_list((keywords or {}).get("constraints"))
-
-        constraint_hit = any(k in tc_text or k in desc for k in kw_constraints) if kw_constraints else False
-        constraint_hit = constraint_hit or any(m in tc_text or m in desc for m in self._CONSTRAINT_MARKERS)
+        # Declared keywords.constraints is enough; also accept markers in desc/triggers
+        constraint_hit = bool(kw_constraints) or any(m in tc_text or m in desc for m in self._CONSTRAINT_MARKERS)
 
         if not constraint_hit:
             return [LintIssue(

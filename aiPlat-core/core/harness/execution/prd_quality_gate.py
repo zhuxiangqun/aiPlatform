@@ -220,9 +220,75 @@ def _pack_matches(pack: Dict[str, Any], domain_text: str) -> bool:
     return False
 
 
-def matched_domain_packs(prd: Dict[str, Any]) -> List[Dict[str, Any]]:
-    text = _domain_blob(prd)
-    return [p for p in load_prd_gate_packs() if _pack_matches(p, text)]
+# Tokens that commonly appear in out-of-scope / "明确不做" clauses but would
+# otherwise false-trigger vertical packs (e.g. media) when matching on input.
+_PACK_TRIGGER_SCRUB = re.compile(
+    r"转写|ASR|字幕|音轨|VLM|说话人|画面分析|时间线报告|字幕轨道|"
+    r"MP4|MKV|AVI|MOV|\bvideo\b|视频",
+    re.IGNORECASE,
+)
+
+
+def _anchor_text_for_pack_match(text: str) -> str:
+    """Strip domain trigger tokens that only appear under out-of-scope negation.
+
+    Example: 「明确不做：OCR、语音转写」must not activate the media pack.
+    Positive requirements like 「智能视频内容理解」keep their triggers.
+    """
+    s = str(text or "")
+    if not s.strip():
+        return s
+
+    def _scrub_clause(clause: str) -> str:
+        return _PACK_TRIGGER_SCRUB.sub("·", clause)
+
+    # 「不转写 / 无转写 / 非转写」— trigger token 转写 must not fire media pack alone
+    s = re.sub(r"(不|无|非)\s*转写", r"\1·写", s, flags=re.IGNORECASE)
+
+    # 「明确不做：…」「不要 …」— scrub triggers in the following short clause
+    s = re.sub(
+        r"((?:明确)?不做|不要|禁止|不支持|不得)([：:\s]*)([^。；;\n]{0,64})",
+        lambda m: m.group(1) + m.group(2) + _scrub_clause(m.group(3)),
+        s,
+        flags=re.IGNORECASE,
+    )
+    # 「OCR、语音转写：明确不做」— scrub triggers in the preceding short clause
+    s = re.sub(
+        r"([^。；;\n]{0,64})([：:\s]*)(明确不做)",
+        lambda m: _scrub_clause(m.group(1)) + m.group(2) + m.group(3),
+        s,
+        flags=re.IGNORECASE,
+    )
+    return s
+
+
+def matched_domain_packs(
+    prd: Dict[str, Any],
+    *,
+    input_text: str = "",
+) -> List[Dict[str, Any]]:
+    """Return gate packs that match this PRD.
+
+    When ``input_text`` is provided, non-``always`` packs match against the
+    *caller input* (user requirement / chat), not the PRD body. This prevents
+    invented FR wording (e.g.「转写」on an inspection app) from activating
+    vertical packs. Negated out-of-scope mentions in input are scrubbed before
+    trigger match. Without ``input_text``, behavior is unchanged (match PRD).
+    """
+    prd_text = _domain_blob(prd)
+    in_text = str(input_text or "").strip()
+    out: List[Dict[str, Any]] = []
+    for p in load_prd_gate_packs():
+        if p.get("always"):
+            out.append(p)
+            continue
+        if in_text:
+            anchor = _anchor_text_for_pack_match(in_text)
+        else:
+            anchor = prd_text
+        if _pack_matches(p, anchor):
+            out.append(p)
+    return out
 
 
 def matched_packs_for_text(text: str) -> List[Dict[str, Any]]:
@@ -838,8 +904,31 @@ def _apply_structural_repairs(
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
-def assess_prd(prd: Dict[str, Any]) -> Dict[str, Any]:
-    """Assess PRD via matched gate packs. Does not mutate input."""
+def _normalize_assessment_round(raw: Any) -> str:
+    """Return ``draft`` or ``finalize`` (default finalize for confirm/READY paths)."""
+    s = str(raw or "").strip().lower()
+    if s in ("draft", "draft_round", "wip", "oral", "smoke"):
+        return "draft"
+    if s in ("finalize", "final", "ready", "confirm", "prd_ready", ""):
+        return "finalize"
+    return "finalize"
+
+
+def assess_prd(
+    prd: Dict[str, Any],
+    *,
+    assessment_round: str = "finalize",
+    input_text: str = "",
+) -> Dict[str, Any]:
+    """Assess PRD via matched gate packs. Does not mutate input.
+
+    ``assessment_round``:
+      - ``finalize`` (default): open_questions hard-fail; pack ``*_open`` stay errors
+      - ``draft``: open_questions allowed; open/encryption pack misses downgraded to warning
+
+    ``input_text``: when set, vertical packs match against caller input (not invented
+    PRD wording). Factory/confirm paths may omit it to keep PRD-body matching.
+    """
     if not isinstance(prd, dict):
         return {
             "ok": False,
@@ -848,11 +937,13 @@ def assess_prd(prd: Dict[str, Any]) -> Dict[str, Any]:
             "open_decisions": [],
             "normalized_prd": {},
             "scores": {"consistency": 0.0, "open_questions_closed": 0.0, "constraints_structured": 0.0},
+            "assessment_round": _normalize_assessment_round(assessment_round),
         }
 
+    round_kind = _normalize_assessment_round(assessment_round)
     normalized = normalize_constraints(prd)
     blob = _prd_blob(normalized)
-    packs = matched_domain_packs(normalized)
+    packs = matched_domain_packs(normalized, input_text=input_text)
     domain_flags = [str(p.get("domain_id")) for p in packs if p.get("domain_id") and p.get("domain_id") != "_common"]
     issues: List[Dict[str, Any]] = []
     open_decisions: List[str] = []
@@ -892,7 +983,8 @@ def assess_prd(prd: Dict[str, Any]) -> Dict[str, Any]:
         ))
 
     oqs = _open_questions_list(normalized)
-    if oqs:
+    if oqs and round_kind == "finalize":
+        # Draft rounds are expected to keep open_questions; hard-fail only on finalize.
         issues.append(_issue(
             "open_questions_present",
             f"仍有 {len(oqs)} 个未关闭的 open_questions，确认前必须关闭或移入 decisions",
@@ -907,10 +999,20 @@ def assess_prd(prd: Dict[str, Any]) -> Dict[str, Any]:
             if not _eval_cond(when, prd=normalized, blob=blob):
                 continue
             code = str(check.get("id") or "pack_check")
+            sev = str(check.get("severity") or "error")
+            msg = str(check.get("message") or code)
+            # Draft: open decisions / key-mgmt uncertainty are expected, not READY blockers.
+            if round_kind == "draft" and (
+                code.endswith("_open")
+                or "encryption_key_mgmt" in code
+                or ("加密" in msg and "密钥" in msg)
+            ):
+                sev = "warning"
+                msg = f"[草稿轮] {msg}"
             issues.append(_issue(
                 code,
-                str(check.get("message") or code),
-                severity=str(check.get("severity") or "error"),
+                msg,
+                severity=sev,
             ))
             # Track missing decision keys mentioned in message/code
             if "open" in code or code.endswith("_open"):
@@ -925,9 +1027,13 @@ def assess_prd(prd: Dict[str, Any]) -> Dict[str, Any]:
     warn_n = sum(1 for i in issues if i.get("severity") == "warning")
     consistency = max(0.0, 10.0 - error_n * 3.5 - warn_n * 1.0)
     open_n = len(oqs) + len(open_decisions)
-    open_closed = 10.0 if open_n == 0 else max(0.0, 10.0 - open_n * 2.5)
+    # Draft scoring: open questions are intentional, do not tank open_questions_closed.
+    if round_kind == "draft":
+        open_closed = 10.0 if not open_decisions else max(0.0, 10.0 - len(open_decisions) * 2.5)
+    else:
+        open_closed = 10.0 if open_n == 0 else max(0.0, 10.0 - open_n * 2.5)
     cons_score = 10.0 if (has_perf and has_sec) else (6.0 if (has_perf or has_sec) else 2.0)
-    if media_like and open_decisions:
+    if media_like and open_decisions and round_kind == "finalize":
         open_closed = min(open_closed, 4.0)
 
     return {
@@ -936,6 +1042,7 @@ def assess_prd(prd: Dict[str, Any]) -> Dict[str, Any]:
         "domain_flags": domain_flags,
         "open_decisions": open_decisions,
         "normalized_prd": normalized,
+        "assessment_round": round_kind,
         "scores": {
             "consistency": round(consistency, 1),
             "open_questions_closed": round(open_closed, 1),

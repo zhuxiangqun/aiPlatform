@@ -11,7 +11,11 @@ import { Play, Save, ChevronRight, ChevronDown, Square, Loader2, History, CheckC
 import { Button, toast } from '../../../components/ui';
 import { workspaceAgentApi, workflowApi } from '../../../services';
 import { ExecutionViewer } from '../../../components/ExecutionViewer';
+import AssetAuditPanel, { auditRemainToast } from '../../../components/workspace/AssetAuditPanel';
+import type { AssetAuditResult } from '../../../components/workspace/AssetAuditPanel';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { buildWorkflowStartExamples, workflowExampleToStartInputs } from '../../../utils/executionSamples';
+import ExecutionQualityReviewPanel from '../../../components/execution/ExecutionQualityReviewPanel';
 
 /* ---------- LabeledEdge ---------- */
 const LabeledEdge: React.FC<EdgeProps> = (p) => {
@@ -61,7 +65,11 @@ const CanvasInner: React.FC = () => {
   const autoRunRef = useRef(false);
   const [workflowId, setWorkflowId] = useState<string | null>(params.id || null);
   const [workflowName, setWorkflowName] = useState('');
+  const [workflowDescription, setWorkflowDescription] = useState('');
   const [saving, setSaving] = useState(false);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditResult, setAuditResult] = useState<AssetAuditResult | null>(null);
+  const [auditOpen, setAuditOpen] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const onNodesChange = useCallback((changes: any) => { if (isRunning) return; _onNodesChange(changes); }, [isRunning, _onNodesChange]);
   const [runningPid, setRunningPid] = useState('');
@@ -131,12 +139,22 @@ const CanvasInner: React.FC = () => {
       const cleanNodes = nodes.map(n => ({ id: n.id, type: n.type, position: n.position, data: n.data }));
       const cleanEdges = edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle, type: e.type, data: e.data, style: e.style, markerEnd: e.markerEnd }));
       if (workflowId) {
-        await workflowApi.update(workflowId, { name: workflowName || undefined, nodes: cleanNodes as any, edges: cleanEdges as any });
+        await workflowApi.update(workflowId, {
+          name: workflowName || undefined,
+          description: workflowDescription || undefined,
+          nodes: cleanNodes as any,
+          edges: cleanEdges as any,
+        });
         toast.success('已保存');
       } else {
         const name = workflowName || window.prompt('请输入 workflow 名称', '未命名工作流');
         if (!name) { setSaving(false); return; }
-        const r: any = await workflowApi.create({ name: name.trim(), nodes: cleanNodes as any, edges: cleanEdges as any });
+        const r: any = await workflowApi.create({
+          name: name.trim(),
+          description: workflowDescription || undefined,
+          nodes: cleanNodes as any,
+          edges: cleanEdges as any,
+        });
         setWorkflowId(r.id);
         setWorkflowName(r.name);
         navigate(`/core/workflows/${r.id}/edit`, { replace: true });
@@ -144,7 +162,131 @@ const CanvasInner: React.FC = () => {
       }
     } catch (e: any) { toast.error('保存失败', e?.detail || ''); }
     finally { setSaving(false); }
-  }, [nodes, edges, workflowId, workflowName, navigate]);
+  }, [nodes, edges, workflowId, workflowName, workflowDescription, navigate]);
+
+  const handleWorkflowAudit = async () => {
+    if (!workflowId) {
+      toast.warning('请先保存 Workflow 后再审核');
+      return;
+    }
+    setAuditOpen(true);
+    setAuditLoading(true);
+    setAuditResult(null);
+    try {
+      const res: any = await workflowApi.audit(workflowId);
+      setAuditResult(res);
+      if (!res?.summary?.total) toast.success('审核通过，配置无问题');
+      else toast.success(`审核完成: ${res.summary?.errors || 0} 错误 ${res.summary?.warnings || 0} 警告`);
+    } catch (e: any) {
+      toast.error('审核失败', String(e?.message || e?.detail || ''));
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  const applyWorkflowFix = async (fix: { type: string; [k: string]: unknown }) => {
+    if (!fix?.type) return;
+    if (fix.type === 'set_name') {
+      setWorkflowName(String(fix.name || workflowName || '未命名工作流'));
+      toast.success('已写入名称，请点保存');
+      return;
+    }
+    if (fix.type === 'set_description') {
+      setWorkflowDescription(String(fix.description || `${workflowName || workflowId} 编排流程`));
+      toast.success('已写入描述，请点保存');
+      return;
+    }
+    if (fix.type === 'set_node_config') {
+      const nid = String(fix.node_id || '');
+      const key = String(fix.key || '');
+      const value = fix.value;
+      if (!nid || !key || value == null || value === '') {
+        toast.info('没有可写入的节点配置（说明里没有真实 URL/字段时不会编造）');
+        return;
+      }
+      setNodes((nds) => nds.map((n) => {
+        if (n.id !== nid) return n;
+        const data: any = n.data || {};
+        return {
+          ...n,
+          data: { ...data, config: { ...(data.config || {}), [key]: value } },
+        };
+      }));
+      toast.success('已写入节点配置，请点保存');
+      return;
+    }
+    toast.warning('该问题需在画布中手动修复');
+  };
+
+  const handleApplyAllWorkflowFixes = async () => {
+    if (!auditResult?.issues?.length) return;
+    let nextName = workflowName;
+    let nextDesc = workflowDescription;
+    let nextNodes = nodes;
+    let applied = 0;
+    const unfixableBefore = auditResult.issues.filter((i) => !i.fix_available).length;
+    for (const issue of auditResult.issues) {
+      const fix = issue.fix;
+      if (!fix?.type) continue;
+      if (fix.apply_all === false) continue;
+      if (fix.type === 'set_name') {
+        nextName = String(fix.name || nextName || '未命名工作流');
+        applied += 1;
+      } else if (fix.type === 'set_description') {
+        nextDesc = String(fix.description || `${nextName || workflowId} 编排流程`);
+        applied += 1;
+      } else if (fix.type === 'set_node_config') {
+        const nid = String(fix.node_id || '');
+        const key = String(fix.key || '');
+        const value = fix.value;
+        if (!nid || !key || value == null || value === '') continue;
+        nextNodes = nextNodes.map((n) => {
+          if (n.id !== nid) return n;
+          const data: any = n.data || {};
+          return {
+            ...n,
+            data: { ...data, config: { ...(data.config || {}), [key]: value } },
+          };
+        });
+        applied += 1;
+      }
+    }
+    if (!applied) {
+      toast.info(
+        unfixableBefore
+          ? `没有可自动修复项（${unfixableBefore} 项需在画布手工处理：节点绑定/连线/上架）`
+          : '没有可自动修复的问题（节点/连线需在画布手动处理）',
+      );
+      return;
+    }
+    setWorkflowName(nextName);
+    setWorkflowDescription(nextDesc);
+    setNodes(nextNodes);
+    if (!workflowId) {
+      toast.success(`已写入 ${applied} 项到表单，请先保存`);
+      return;
+    }
+    try {
+      setSaving(true);
+      const cleanNodes = nextNodes.map(n => ({ id: n.id, type: n.type, position: n.position, data: n.data }));
+      const cleanEdges = edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle, type: e.type, data: e.data, style: e.style, markerEnd: e.markerEnd }));
+      await workflowApi.update(workflowId, {
+        name: nextName || undefined,
+        description: nextDesc || undefined,
+        nodes: cleanNodes as any,
+        edges: cleanEdges as any,
+      });
+      const again: any = await workflowApi.audit(workflowId);
+      setAuditResult(again);
+      const msg = auditRemainToast(applied, again?.summary);
+      if (msg.kind === 'success') toast.success(msg.text);
+      else toast.info(msg.text);
+    } catch (e: any) {
+      toast.error('一键修复失败', String(e?.message || e?.detail || ''));
+    } finally {
+      setSaving(false);
+    }
+  };
   const pushHistory = useCallback((ns: Node[], es: Edge[]) => { setHistory(prev => { const t = prev.slice(0, historyIdx + 1); const u = [...t, { nodes: JSON.parse(JSON.stringify(ns)), edges: JSON.parse(JSON.stringify(es)) }].slice(-50); setHistoryIdx(u.length - 1); return u; }); }, [historyIdx]);
   const selectedEdgeId = useMemo(() => edges.find(e => e.selected)?.id, [edges]);
   const getConnectedIds = useCallback((nid: string) => { const ids = new Set<string>([nid]); edges.forEach(e => { if (e.source === nid) ids.add(e.target); if (e.target === nid) ids.add(e.source); }); return ids; }, [edges]);
@@ -186,6 +328,7 @@ const CanvasInner: React.FC = () => {
     if (!workflowId) return;
     workflowApi.get(workflowId).then((wf: any) => {
       setWorkflowName(wf.name || '');
+      setWorkflowDescription(String(wf.description || ''));
       const items = wf.nodes || [];
       if (items.length) setNodes(items.map((s: any, i: number) => ({ id: s.id || `n_${i}`, type: 'stageNode', position: s.position || { x: 50 + i * 220, y: 80 }, data: { type: (s.data?.type || s.type || 'agent'), label: (s.data?.label || s.label || 'Node'), config: (s.data?.config || s.config || {}), status: 'idle', output_variables: (s.data?.output_variables || []), input_variables: (s.data?.input_variables || []), start_inputs: (s.data?.start_inputs || []) } })));
       if (wf.edges?.length) setEdges(wf.edges);
@@ -281,11 +424,22 @@ const CanvasInner: React.FC = () => {
             const output = s[`_stage_output_${nid}`] || '';
             const _input = s[`_stage_input_${nid}`] || '';
             const elapsed = s[`_stage_elapsed_${nid}`] || 0;
+            const qualityReview = s[`_quality_review_${nid}`] || undefined;
             let st = 'idle';
             if (failedId === nid) st = 'failed';
             else if (done) st = 'completed';
             else if (s._graph_trace?.some((e: any) => e.node === nid && e.status === 'started')) st = 'running';
-            return { ...n, data: { ...n.data, status: st, _output: output || undefined, _input: _input || undefined, _elapsed: elapsed } };
+            return {
+              ...n,
+              data: {
+                ...n.data,
+                status: st,
+                _output: output || undefined,
+                _input: _input || undefined,
+                _elapsed: elapsed,
+                _qualityReview: qualityReview,
+              },
+            };
           }));
           // Update inspector variables if open
           if (inspectorNodeId) {
@@ -549,8 +703,14 @@ const CanvasInner: React.FC = () => {
                               try { Object.assign(allState, JSON.parse(ev.state_json || '{}')); } catch {}
                             }
                             setNodes(nds => nds.map(n => ({
-                              ...n, data: { ...n.data, status: allState[`_stage_${n.id}_done`] ? 'completed' : lastState._stage_failed_id === n.id ? 'failed' : 'idle',
-                                _output: allState[`_stage_output_${n.id}`] || '', _input: allState[`_stage_input_${n.id}`] || '', _elapsed: allState[`_stage_elapsed_${n.id}`] || 0 }
+                              ...n, data: {
+                                ...n.data,
+                                status: allState[`_stage_${n.id}_done`] ? 'completed' : lastState._stage_failed_id === n.id ? 'failed' : 'idle',
+                                _output: allState[`_stage_output_${n.id}`] || '',
+                                _input: allState[`_stage_input_${n.id}`] || '',
+                                _elapsed: allState[`_stage_elapsed_${n.id}`] || 0,
+                                _qualityReview: allState[`_quality_review_${n.id}`] || undefined,
+                              },
                             })));
                             setIsRunning(false);
                             // Open ExecutionViewer in replay mode
@@ -573,6 +733,9 @@ const CanvasInner: React.FC = () => {
             )}
           </div>
 
+          <Button variant="secondary" onClick={handleWorkflowAudit} loading={auditLoading} disabled={!workflowId}>
+            🔍 AI 审核
+          </Button>
           <Button icon={<Save className="w-3.5 h-3.5" />} onClick={handleSave} variant="secondary">保存</Button>
           {isRunning ? (
             <Button icon={stopping ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Square className="w-3.5 h-3.5" />} variant="primary" onClick={stopRun} className="!bg-red-500/20 !text-red-400 !border-red-500/30 hover:!bg-red-500/30">停止</Button>
@@ -581,6 +744,35 @@ const CanvasInner: React.FC = () => {
           )}
         </div>
       </div>
+      {auditOpen && (
+        <div className="px-4 py-2 border-b border-dark-border bg-dark-card/80">
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <AssetAuditPanel
+                result={auditResult}
+                loading={auditLoading}
+                onAudit={handleWorkflowAudit}
+                onApplyFix={(fix) => applyWorkflowFix(fix as any)}
+                onApplyAll={handleApplyAllWorkflowFixes}
+                auditButtonLabel="重新审核"
+              />
+            </div>
+            <button
+              type="button"
+              className="text-[10px] text-gray-500 hover:text-gray-300 shrink-0"
+              onClick={() => setAuditOpen(false)}
+            >
+              收起
+            </button>
+          </div>
+          <input
+            value={workflowDescription}
+            onChange={(e) => setWorkflowDescription(e.target.value)}
+            placeholder="Workflow description（审核可一键补齐）"
+            className="mt-2 w-full max-w-xl h-7 px-2 bg-dark-bg border border-dark-border rounded text-[11px] text-gray-300 outline-none focus:border-blue-500/40"
+          />
+        </div>
+      )}
       {/* Execution Viewer — shows during + after pipeline runs */}
       {execViewerOpen && lastRunId && (
         <div style={{
@@ -823,6 +1015,34 @@ const CanvasInner: React.FC = () => {
                 setEditNode({ ...editNode, data: { ...editNode.data, start_inputs: sis } });
               }} className="text-xs text-blue-400 hover:text-blue-300">+ 添加变量</button>
             </div>
+            <div className="mt-3 space-y-2 border-t border-dark-border/40 pt-2">
+              <div className="text-xs font-medium text-gray-300">测试用例 — 点「填入」写入上方变量（主路径 / 边界 / 复杂）</div>
+              {buildWorkflowStartExamples({
+                startInputs: (editNode.data as any).start_inputs || [],
+                workflowName: workflowName || 'Workflow',
+              }).map((ex) => (
+                <div key={ex.title} className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs text-gray-300 truncate font-medium">{ex.title}</div>
+                    <button
+                      type="button"
+                      className="text-[10px] px-2 py-0.5 rounded border border-dark-border text-gray-300 hover:text-white hover:border-blue-500/40"
+                      onClick={() => {
+                        const sis = workflowExampleToStartInputs(ex.content);
+                        setNodes(nds => nds.map(n => n.id === editNode.id ? { ...n, data: { ...n.data, start_inputs: sis } } : n));
+                        setEditNode({ ...editNode, data: { ...editNode.data, start_inputs: sis } });
+                        toast.success(`已填入：${ex.title}`);
+                      }}
+                    >
+                      填入
+                    </button>
+                  </div>
+                  <div className="text-[10px] text-gray-500 truncate font-mono">
+                    {ex.content.length > 72 ? `${ex.content.slice(0, 72)}…` : ex.content}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
         {(editNode.data as any).type === 'agent' && (<div className="space-y-3"><div><div className="text-sm text-gray-400 mb-1">Model</div><input value={(editNode.data as any).config?.model || 'deepseek-chat'} onChange={e => { const cfg = { ...(editNode.data as any).config, model: e.target.value }; setNodes(nds => nds.map(n => n.id === editNode.id ? { ...n, data: { ...n.data, config: cfg } } : n)); setEditNode({ ...editNode, data: { ...editNode.data, config: cfg } }); }} className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100" /></div><div><div className="text-sm text-gray-400 mb-1">Skills (逗号分隔)</div><input value={((editNode.data as any).config?.skills || []).join(', ')} onChange={e => { const skills = e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean); const cfg = { ...(editNode.data as any).config, skills }; setNodes(nds => nds.map(n => n.id === editNode.id ? { ...n, data: { ...n.data, config: cfg } } : n)); setEditNode({ ...editNode, data: { ...editNode.data, config: cfg } }); }} className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100" /></div><div className="flex items-center gap-1.5"><label className="flex items-center gap-1.5 text-[10px] text-gray-500 cursor-pointer"><input type="checkbox" checked={(editNode.data as any).config?.memory || false} onChange={e => { const cfg = { ...(editNode.data as any).config, memory: e.target.checked }; updateNode(editNode.id, { config: cfg }); }} className="w-3 h-3" />Memory 会话记忆</label></div></div>)}
@@ -899,6 +1119,21 @@ const CanvasInner: React.FC = () => {
               <pre className="text-xs text-gray-300 whitespace-pre-wrap break-all bg-dark-bg rounded-lg p-3 max-h-60 overflow-y-auto font-mono border border-dark-border/30">{extractOutput(String((editNode?.data as any)?._output || '')) || '(空)'}</pre>
             </div>
           )}
+          {(editNode?.data as any)?._qualityReview ? (
+            <ExecutionQualityReviewPanel
+              review={(editNode?.data as any)._qualityReview}
+              persistKey="workflow-canvas-node"
+              onEditSop={() => {
+                const asset = (editNode?.data as any)?._qualityReview?.asset;
+                const kind = String(asset?.kind || '');
+                const aid = String(asset?.id || '');
+                if (kind === 'skill' && aid) toast.info(`请到 Skills 打开「${aid}」加固 SOP 后重跑 workflow`);
+                else if (kind === 'agent' && aid) toast.info(`请到 Agents 打开「${aid}」加固 SOP 后重跑 workflow`);
+                else if (kind === 'tool' && aid) toast.info(`请到 Tools 打开「${aid}」补 parameters / 描述`);
+                else toast.info('按复核指引打开对应资产后，再执行本 workflow 对照');
+              }}
+            />
+          ) : null}
         </div>)
       }
     </div></div>)}

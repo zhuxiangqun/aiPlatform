@@ -2,6 +2,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, CheckCircle2, XCircle, Clock, Loader2, AlertTriangle } from 'lucide-react';
 import { workflowApi } from '../../../services';
+import ExecutionQualityReviewPanel, {
+  type ExecutionQualityReview,
+} from '../../../components/execution/ExecutionQualityReviewPanel';
+import { toast } from '../../../components/ui';
 
 const NODE_ICONS: Record<string, string> = { start: '▶️', end: '🏁', agent: '🤖', llm: '🧠', code: '💻', http: '🌐', condition: '🔀', human: '👤', loop: '🔄', knowledge: '📚', tool: '🔧', template: '📄', list: '📋', aggregator: '📦', assigner: '✏️' };
 const STATUS_ICON: Record<string, React.FC<any>> = {
@@ -52,6 +56,7 @@ const WorkflowRunPage: React.FC = () => {
         const stId = failedId === nid ? 'failed' : done ? 'done' : graphTrace.some((e: any) => e.node_id === nid && e.event === 'started') ? 'running' : 'idle';
         const rawOutput = mergedState[`_stage_output_${nid}`] || '';
         const elapsedVal = mergedState[`_stage_elapsed_${nid}`] || 0;
+        const qualityReview = (mergedState[`_quality_review_${nid}`] || null) as ExecutionQualityReview | null;
         const cleanOutput = (() => {
           const s = String(rawOutput);
           if (s === '{}' || !s) return '';
@@ -63,7 +68,16 @@ const WorkflowRunPage: React.FC = () => {
           return s.slice(0, 1000);
         })();
         const errText = stId === 'failed' ? stageErr : '';
-        return { id: nid, label: d.label || nid, type: d.type || 'agent', status: stId, output: cleanOutput, error: errText, elapsed: elapsedVal };
+        return {
+          id: nid,
+          label: d.label || nid,
+          type: d.type || 'agent',
+          status: stId,
+          output: cleanOutput,
+          error: errText,
+          elapsed: elapsedVal,
+          qualityReview,
+        };
       });
 
       setStages(stageList);
@@ -123,6 +137,30 @@ const WorkflowRunPage: React.FC = () => {
                     <pre className="text-xs text-gray-300 whitespace-pre-wrap break-all font-mono max-h-40 overflow-y-auto">{typeof s.output === 'string' ? s.output : JSON.stringify(s.output).slice(0, 500)}</pre>
                   </div>
                 )}
+                {s.qualityReview && (s.status === 'done' || s.status === 'failed') ? (
+                  <div className="px-4 py-2 bg-dark-bg border-t border-dark-border/40">
+                    <ExecutionQualityReviewPanel
+                      review={s.qualityReview}
+                      persistKey={`workflow-run-${s.id || 'stage'}`}
+                      onEditSop={() => {
+                        const asset = (s.qualityReview as ExecutionQualityReview)?.asset as
+                          | { kind?: string; id?: string }
+                          | undefined;
+                        const kind = String(asset?.kind || '');
+                        const aid = String(asset?.id || '');
+                        if (kind === 'skill' && aid) {
+                          toast.info(`请到 Skills 打开「${aid}」→ 编辑 SOP / 输出铁律，保存后重跑本 workflow`);
+                        } else if (kind === 'agent' && aid) {
+                          toast.info(`请到 Agents 打开「${aid}」→ SOP / 高级，保存后重跑本 workflow`);
+                        } else if (kind === 'tool' && aid) {
+                          toast.info(`请到 Tools 打开「${aid}」→ 编辑 / AI 审核补 parameters`);
+                        } else {
+                          toast.info('按下方「改哪里」打开对应资产加固后，再执行本 workflow 对照');
+                        }
+                      }}
+                    />
+                  </div>
+                ) : null}
                 {s.error && (
                   <div className="px-4 py-2 bg-red-500/5 border-t border-red-500/20">
                     <div className="text-[10px] text-red-400 mb-1">错误</div>

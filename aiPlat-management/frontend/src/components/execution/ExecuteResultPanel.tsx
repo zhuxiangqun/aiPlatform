@@ -9,9 +9,14 @@ import {
 } from './runVerdict';
 import { ArtifactDownloadBar, skillOutputDisplayText } from './artifactDownloads';
 import { coerceSkillEnvelope } from './artifactDownloads';
+import ExecutionQualityReviewPanel, {
+  type ExecutionQualityReview,
+} from './ExecutionQualityReviewPanel';
+import StructuredSkillOutput from './StructuredSkillOutput';
+import { unwrapExecuteProduct } from './executeProduct';
 
 function coerceForRender(raw: unknown): unknown {
-  return coerceSkillEnvelope(raw);
+  return unwrapExecuteProduct(raw) ?? coerceSkillEnvelope(raw);
 }
 
 export type ExecuteResultLike = {
@@ -30,17 +35,29 @@ export type ExecuteResultLike = {
     completion_tokens?: number;
     total_tokens?: number;
   };
+  quality_review?: ExecutionQualityReview | null;
 };
 
 type Props = {
   result: ExecuteResultLike;
   /** Optional custom output renderer (e.g. StructuredSkillOutput). */
   renderOutput?: (text: string, raw: unknown) => React.ReactNode;
+  /** Skill output_schema when using default StructuredSkillOutput. */
+  outputSchema?: Record<string, unknown> | null;
   onOpenFlow?: () => void;
+  /** Open full-viewport deliverable viewer (## FILE tabs / full text). */
+  onOpenOutput?: () => void;
   loading?: boolean;
   /** Extra blocks under the banner (HITL, downloads…). */
   children?: React.ReactNode;
   title?: string;
+  qualityReview?: ExecutionQualityReview | null;
+  qualityReviewLoading?: boolean;
+  onEditSop?: () => void;
+  onApplyQualityFix?: (issueCodes: string[]) => Promise<void> | void;
+  fixApplied?: boolean;
+  onRerunSameCase?: () => void;
+  rerunLoading?: boolean;
 };
 
 function normalizeStatus(result: ExecuteResultLike): string {
@@ -75,15 +92,47 @@ export function useExecuteVerdict(result: ExecuteResultLike | null, opts?: { awa
 const ExecuteResultPanel: React.FC<Props> = ({
   result,
   renderOutput,
+  outputSchema,
   onOpenFlow,
+  onOpenOutput,
   loading,
   children,
   title = '执行结果',
+  qualityReview,
+  qualityReviewLoading,
+  onEditSop,
+  onApplyQualityFix,
+  fixApplied,
+  onRerunSameCase,
+  rerunLoading,
 }) => {
   const status = normalizeStatus(result);
   const outputText = skillOutputDisplayText(result.output) || outputAsText(result.output);
   const err = pickError(result);
-  const verdict = deriveRunVerdict({ status, error: err, outputText });
+  const review = qualityReview ?? result.quality_review ?? null;
+  let verdict = deriveRunVerdict({ status, error: err, outputText });
+  if (review && verdict.kind === 'success') {
+    const v = String(review.verdict || '');
+    if (v === 'fail') {
+      verdict = {
+        ...verdict,
+        kind: 'partial',
+        label: '已结束（产物待改进）',
+        hint: review.headline || '流程跑通了，但产物未达可验收标准。请看下方问题点与改 SOP 指引。',
+        tone: 'amber',
+        ok: null,
+      };
+    } else if (v === 'warn') {
+      verdict = {
+        ...verdict,
+        kind: 'partial',
+        label: '已结束（有改进建议）',
+        hint: review.headline || '产物基本可用，仍有建议项，见下方质量复核。',
+        tone: 'amber',
+        ok: null,
+      };
+    }
+  }
   const duration = result.duration_ms ?? (result.latency != null ? Math.round(result.latency) : undefined);
   const runId = result.run_id || result.execution_id;
 
@@ -91,6 +140,18 @@ const ExecuteResultPanel: React.FC<Props> = ({
     <div className="mt-4 p-4 rounded-lg border border-dark-border bg-dark-bg">
       <div className="mb-3">
         <RunVerdictBanner verdict={verdict} />
+      </div>
+      <div className="mb-3">
+        <ExecutionQualityReviewPanel
+          review={review}
+          loading={qualityReviewLoading}
+          persistKey="execute-result-panel"
+          onEditSop={onEditSop}
+          onApplyQualityFix={onApplyQualityFix}
+          fixApplied={fixApplied}
+          onRerunSameCase={onRerunSameCase}
+          rerunLoading={rerunLoading}
+        />
       </div>
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <span className="text-sm font-medium text-gray-100">{title}</span>
@@ -131,9 +192,11 @@ const ExecuteResultPanel: React.FC<Props> = ({
         renderOutput ? (
           renderOutput(outputText, coerceForRender(result.output))
         ) : (
-          <pre className="text-xs text-gray-300 overflow-auto max-h-80 bg-dark-card border border-dark-border rounded-lg p-3 whitespace-pre-wrap break-words">
-            {outputText}
-          </pre>
+          <StructuredSkillOutput
+            text={outputText}
+            raw={coerceForRender(result.output)}
+            schema={outputSchema}
+          />
         )
       ) : null}
 
@@ -173,11 +236,18 @@ const ExecuteResultPanel: React.FC<Props> = ({
         </div>
       )}
 
-      {runId && onOpenFlow && (
-        <div className="mt-3">
-          <Button variant="primary" onClick={onOpenFlow} disabled={loading}>
-            ▶ 查看执行流程（全屏）
-          </Button>
+      {(onOpenOutput || (runId && onOpenFlow)) && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {onOpenOutput && outputText ? (
+            <Button variant="primary" onClick={onOpenOutput} disabled={loading}>
+              📄 全屏查看产出
+            </Button>
+          ) : null}
+          {runId && onOpenFlow ? (
+            <Button variant={onOpenOutput && outputText ? 'secondary' : 'primary'} onClick={onOpenFlow} disabled={loading}>
+              ▶ 查看执行流程（全屏）
+            </Button>
+          ) : null}
         </div>
       )}
     </div>

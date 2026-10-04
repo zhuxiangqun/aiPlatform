@@ -1116,8 +1116,26 @@ async def invoke_skill_via_agent(
     """Invoke skill: prefer real handler (media_skill_handlers / registry), else LLM agent.
 
     Handler path enables true_test PASS for Factory media skills without prompt SKIP.
+    Isolated test_executor (no agent_app) must not run handlers or nest ReAct
+    (run-49fc6a85db3c: report_submit fuzzy-matched a media HANDLER, to_thread hung).
     """
     import asyncio
+
+    skill = str(skill or "").strip()
+    if not skill:
+        return {
+            "ok": False,
+            "error": "missing_skill",
+            "skill": "",
+            "mode": "skipped",
+        }
+    if not str(agent_app or "").strip():
+        return {
+            "ok": False,
+            "error": "missing_agent_app",
+            "skill": skill,
+            "mode": "skipped",
+        }
 
     # ── P0: real handler execution (media pipeline + registered handlers) ──
     try:
@@ -1128,7 +1146,13 @@ async def invoke_skill_via_agent(
         )
 
         resolved = resolve_media_handler_name(str(skill))
-        if resolved or str(skill) in HANDLERS:
+        exact = str(skill) in HANDLERS
+        # Fuzzy alias (report_submit → a media handler) is only for factory apps.
+        # Isolated test_executor execute has no agent_app; a wrong alias then
+        # ``to_thread`` can run minutes and TimeoutError used to fall through
+        # into nested ReAct (run-49fc6a85db3c).
+        use_handler = exact or (bool(resolved) and bool(str(agent_app or "").strip()))
+        if use_handler:
             manifest = _parse_manifest(agent_app) or {}
             app_name = str(manifest.get("app_name") or "videosense")
             call_params = dict(params or {})
@@ -1193,8 +1217,24 @@ async def invoke_skill_via_agent(
                 "result": result,
                 "mode": "skill_invoke_handler",
             }
+    except asyncio.TimeoutError:
+        return {
+            "ok": False,
+            "error": "timeout",
+            "skill": skill,
+            "mode": "skill_invoke_handler",
+        }
     except Exception as e:
         _log.warning("handler invoke failed for %s: %s", skill, str(e)[:200])
+
+    skill = str(skill or "").strip()
+    if not skill:
+        return {
+            "ok": False,
+            "error": "missing_skill",
+            "skill": "",
+            "mode": "skipped",
+        }
 
     from core.api.core_facade import run_workspace_agent
     from core.harness.utils.model_injection import best_model_for_purpose
@@ -1592,15 +1632,36 @@ async def run_true_test_case(
                 "platform": plat,
             }
 
+        # Empty skill name cannot be invoked — environment/case gap, not product FAIL.
+        if not skill.strip():
+            return {
+                "ok": False,
+                "result": "SKIP",
+                "failures": ["missing_skill"],
+                "evidence": "skill_invoke missing invoke.skill / target_skill; skipped",
+                "mode": "skill_invoke",
+                "invoke": {"ok": False, "error": "missing_skill", "skill": "", "mode": "skipped"},
+            }
+
         call = await invoke_skill_via_agent(
             agent_app=agent_app, skill=skill, params=params or {}
         )
         if not call.get("ok"):
+            err = str(call.get("error") or "invoke_failed")
+            no_app = not str(agent_app or "").strip()
+            # Standalone / incomplete env: do not REJECT product for missing wiring.
+            skip = err in ("missing_agent_app", "missing_skill", "timeout") and (
+                no_app or err == "missing_skill"
+            )
             return {
                 "ok": False,
-                "result": "FAIL",
-                "failures": [call.get("error") or "invoke_failed"],
-                "evidence": "",
+                "result": "SKIP" if skip else "FAIL",
+                "failures": [err],
+                "evidence": (
+                    f"{err}: standalone run missing agent_app/skill; cannot nest invoke"
+                    if skip
+                    else ""
+                ),
                 "mode": "skill_invoke",
                 "invoke": call,
             }

@@ -120,6 +120,8 @@ const Onboarding: React.FC = () => {
   const [rotateKeyResult, setRotateKeyResult] = useState<any>(null);
   const [signKeyGenLoading, setSignKeyGenLoading] = useState(false);
   const [signKeyGenResult, setSignKeyGenResult] = useState<{ key_id: string; public_key: string; private_key: string } | null>(null);
+  const [signKeyCopied, setSignKeyCopied] = useState(false);
+  const [signKeyCopyError, setSignKeyCopyError] = useState<string | null>(null);
   const [autosmokeLoading, setAutosmokeLoading] = useState(false);
   const [autosmokeResult, setAutosmokeResult] = useState<any>(null);
   const [autosmokeApprovalId, setAutosmokeApprovalId] = useState<string>('');
@@ -288,8 +290,7 @@ const Onboarding: React.FC = () => {
         output: { doctor: res },
         links: { diagnostics: '/diagnostics/doctor' },
       });
-    } catch (e) {
-      console.error(e);
+    } catch {
       setDoctor(null);
     } finally {
       setDoctorLoading(false);
@@ -308,8 +309,7 @@ const Onboarding: React.FC = () => {
         input: {},
         output: st,
       });
-    } catch (e) {
-      console.error(e);
+    } catch {
       setSecretsStatus(null);
     } finally {
       setSecretsLoading(false);
@@ -319,10 +319,14 @@ const Onboarding: React.FC = () => {
   const refreshDefaultTenantPolicy = async () => {
     setTenantPolicyLoading(true);
     try {
-      const p = await policyApi.getTenant('default');
-      setDefaultTenantPolicy(p);
-    } catch (e) {
-      // policy might not exist yet
+      // GET /policies/tenants/{id} 404s when onboarding has not created the
+      // default tenant yet. List is 200 + empty items; do not probe by id
+      // (browser would log a failed request on /onboarding?step=sign_keys).
+      const res = await policyApi.listTenants({ limit: 100, offset: 0 });
+      const items = Array.isArray(res?.items) ? res.items : [];
+      const found = items.find((t) => String(t?.tenant_id || '') === 'default') || null;
+      setDefaultTenantPolicy(found);
+    } catch {
       setDefaultTenantPolicy(null);
     } finally {
       setTenantPolicyLoading(false);
@@ -1090,11 +1094,33 @@ const Onboarding: React.FC = () => {
     }
   };
 
-  const copyText = async (text: string) => {
+  const copyText = async (text: string): Promise<boolean> => {
+    const value = String(text || '');
+    if (!value) return false;
     try {
-      await navigator.clipboard.writeText(text);
-    } catch (e) {
-      console.error(e);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+        return true;
+      }
+    } catch {
+      // Fall through to execCommand (HTTP / iframe / permission denied).
+    }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = value;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '0';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, value.length);
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
     }
   };
 
@@ -1311,6 +1337,13 @@ const Onboarding: React.FC = () => {
         <div className="bg-dark-bg border border-dark-border rounded-xl p-5 space-y-4">
           <div className="text-gray-200 font-medium">Step 1：配置模型 Adapter</div>
           <ChecksPanel checks={activeChecks} />
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void runConfigureAdapter();
+            }}
+          >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <div className="text-xs text-gray-500 mb-1">名称</div>
@@ -1344,6 +1377,8 @@ const Onboarding: React.FC = () => {
               <div className="text-xs text-gray-500 mb-1">API Key</div>
               <input
                 type="password"
+                name="api_key"
+                autoComplete="current-password"
                 value={adapterForm.api_key}
                 onChange={(e) => setAdapterForm({ ...adapterForm, api_key: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
@@ -1360,8 +1395,8 @@ const Onboarding: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
             <button
+              type="submit"
               disabled={adapterLoading}
-              onClick={runConfigureAdapter}
               className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
             >
               保存并测试
@@ -1372,6 +1407,7 @@ const Onboarding: React.FC = () => {
               </div>
             )}
           </div>
+          </form>
         </div>
       )}
 
@@ -1764,21 +1800,32 @@ const Onboarding: React.FC = () => {
                 <div className="text-xs text-gray-500 mb-1">新 API Key</div>
                 <input
                   type="password"
+                  name="rotate_api_key"
+                  autoComplete="new-password"
+                  form="rotate-key-form"
                   value={rotateKeyForm.api_key}
                   onChange={(e) => setRotateKeyForm({ ...rotateKeyForm, api_key: e.target.value })}
                   className="w-full px-3 py-2 rounded-lg bg-dark-hover border border-dark-border text-gray-200 text-sm"
                 />
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <form
+              id="rotate-key-form"
+              className="flex items-center gap-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void rotateKey();
+              }}
+            >
               <button
+                type="submit"
                 disabled={rotateKeyLoading}
-                onClick={rotateKey}
                 className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 disabled:opacity-60"
               >
                 {rotateKeyLoading ? '提交中…' : '轮换 Key'}
               </button>
               <button
+                type="button"
                 onClick={async () => {
                   await refreshState();
                 }}
@@ -1788,7 +1835,7 @@ const Onboarding: React.FC = () => {
               </button>
               {rotateKeyResult?.status === 'rotated' && <div className="text-sm text-gray-500">已更新</div>}
               {rotateKeyResult?.status === 'error' && <div className="text-sm text-red-400">失败：{rotateKeyResult.error}</div>}
-            </div>
+            </form>
           </div>
         </div>
       )}
@@ -1814,16 +1861,28 @@ const Onboarding: React.FC = () => {
               </div>
               <div>
                 <div className="text-xs text-gray-500 mb-1">私钥（复制后去各管理页面签名）</div>
-                <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-2 overflow-auto max-h-32">{signKeyGenResult.private_key}</pre>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(signKeyGenResult.private_key);
-                    // toast would need importing, skip for now
-                  }}
-                  className="mt-2 px-3 py-1 rounded text-xs bg-dark-hover text-gray-200 border border-dark-border hover:bg-dark-border"
-                >
-                  复制私钥
-                </button>
+                <pre className="text-xs text-gray-300 bg-dark-hover border border-dark-border rounded-lg p-2 overflow-auto max-h-32 select-all">{signKeyGenResult.private_key}</pre>
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const ok = await copyText(signKeyGenResult.private_key);
+                      setSignKeyCopied(ok);
+                      setSignKeyCopyError(ok ? null : '复制失败，请选中上方私钥手动复制');
+                      if (ok) {
+                        window.setTimeout(() => setSignKeyCopied(false), 2500);
+                      }
+                    }}
+                    className="px-3 py-1 rounded text-xs bg-dark-hover text-gray-200 border border-dark-border hover:bg-dark-border"
+                  >
+                    {signKeyCopied ? '已复制' : '复制私钥'}
+                  </button>
+                  {signKeyCopyError ? (
+                    <span className="text-xs text-red-400">{signKeyCopyError}</span>
+                  ) : signKeyCopied ? (
+                    <span className="text-xs text-green-400">已写入剪贴板</span>
+                  ) : null}
+                </div>
               </div>
             </div>
           ) : (
@@ -1835,6 +1894,8 @@ const Onboarding: React.FC = () => {
                   try {
                     const res = await onboardingApi.generateSkillKey({ label: 'default' });
                     setSignKeyGenResult(res);
+                    setSignKeyCopied(false);
+                    setSignKeyCopyError(null);
                   } catch (e: any) {
                     // toastGateError not imported, skip
                   } finally {

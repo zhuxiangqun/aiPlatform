@@ -3,6 +3,8 @@ import { RotateCw, CheckSquare, Square } from 'lucide-react';
 import { workspaceMcpApi } from '../../services';
 import type { McpServer } from '../../services';
 import { Alert, Button, Input, Modal, Select, Switch, Textarea, toast } from '../ui';
+import AssetAuditPanel, { auditRemainToast } from './AssetAuditPanel';
+import type { AssetAuditResult } from './AssetAuditPanel';
 
 interface EditMcpModalProps {
   open: boolean;
@@ -72,6 +74,8 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
   const [discoveredTools, setDiscoveredTools] = useState<{ name: string; description: string; selected: boolean }[]>([]);
   const [discoveringTools, setDiscoveringTools] = useState(false);
   const [showTools, setShowTools] = useState(false);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditResult, setAuditResult] = useState<AssetAuditResult | null>(null);
 
   // Seed form from prop immediately on open, then enrich from API
   useEffect(() => {
@@ -280,6 +284,184 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
     toast.success(`已选择 ${selected.length} 个工具`);
   };
 
+  const handleAudit = async () => {
+    if (!server?.name) return;
+    setAuditLoading(true);
+    setAuditResult(null);
+    try {
+      const res: any = await workspaceMcpApi.audit(server.name);
+      setAuditResult(res);
+      if (!res?.summary?.total) toast.success('审核通过');
+      else toast.success(`审核完成: ${res.summary?.errors || 0} 错误 ${res.summary?.warnings || 0} 警告`);
+    } catch (e: any) {
+      toast.error('审核失败', String(e?.message || ''));
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  const applyMcpFixLocal = (fix: { type: string; [k: string]: unknown }): boolean => {
+    if (fix.type === 'set_transport') {
+      setTransport(String(fix.transport || 'sse'));
+      return true;
+    }
+    if (fix.type === 'set_url') {
+      const u = String(fix.url || '').trim();
+      if (!u || /127\.0\.0\.1:8080|localhost:8080/i.test(u)) {
+        toast.info('请填写真实 MCP URL（不会自动写入占位地址）');
+        return false;
+      }
+      setUrl(u);
+      return true;
+    }
+    if (fix.type === 'set_command') {
+      const c = String(fix.command || '').trim();
+      if (!c || c === 'python3' || c === 'python') {
+        toast.info('请填写真实启动命令（不会自动写入占位 command）');
+        return false;
+      }
+      setCommand(c);
+      return true;
+    }
+    if (fix.type === 'set_allowed_tools') {
+      const names = Array.isArray(fix.allowed_tools)
+        ? (fix.allowed_tools as unknown[]).map((x) => String(x).trim()).filter(Boolean)
+        : [];
+      if (!names.length) {
+        toast.info('没有可写入的工具白名单（请先点「发现工具」）');
+        return false;
+      }
+      setAllowedToolsText(names.join('\n'));
+      return true;
+    }
+    if (fix.type === 'set_display_name') {
+      try {
+        const cur = metadataText.trim() ? JSON.parse(metadataText) : {};
+        cur.display_name = String(fix.display_name || server?.name || '');
+        if (!cur.description) cur.description = cur.display_name;
+        setMetadataText(JSON.stringify(cur, null, 2));
+      } catch {
+        setMetadataText(JSON.stringify({
+          display_name: String(fix.display_name || server?.name || ''),
+          description: String(fix.display_name || server?.name || ''),
+        }, null, 2));
+      }
+      return true;
+    }
+    return false;
+  };
+
+  const applyMcpFix = (fix: { type: string; [k: string]: unknown }) => {
+    if (!applyMcpFixLocal(fix)) {
+      toast.warning('该问题暂无自动修复');
+      return;
+    }
+    toast.success('已应用到表单，请点「保存」');
+  };
+
+  const handleApplyAllMcpFixes = async () => {
+    if (!server?.name || !auditResult?.issues) return;
+    const fixable = auditResult.issues.filter((i) => i.fix_available && i.fix);
+    const unfixableBefore = (auditResult.issues || []).filter((i) => !i.fix_available).length;
+    if (!fixable.length) {
+      toast.info(
+        unfixableBefore
+          ? `没有可自动修复项（${unfixableBefore} 项需手工：真实 URL/command/连通性/工具白名单）`
+          : '没有可自动修复的问题',
+      );
+      return;
+    }
+    let applied = 0;
+    let nextTransport = transport;
+    let nextUrl = url;
+    let nextCommand = command;
+    let nextMeta = metadataText;
+    let nextAllowed = allowedToolsText;
+    for (const issue of fixable) {
+      const fix = issue.fix!;
+      if (fix.apply_all === false) continue;
+      if (fix.type === 'set_transport') {
+        nextTransport = String(fix.transport || 'sse');
+        applied += 1;
+      } else if (fix.type === 'set_url') {
+        const u = String(fix.url || '').trim();
+        // Refuse placeholder endpoints — must be filled by user
+        if (!u || /127\.0\.0\.1:8080|localhost:8080/i.test(u)) continue;
+        nextUrl = u;
+        applied += 1;
+      } else if (fix.type === 'set_command') {
+        const c = String(fix.command || '').trim();
+        if (!c || c === 'python3' || c === 'python') continue;
+        nextCommand = c;
+        applied += 1;
+      } else if (fix.type === 'set_allowed_tools') {
+        const names = Array.isArray(fix.allowed_tools)
+          ? (fix.allowed_tools as unknown[]).map((x) => String(x).trim()).filter(Boolean)
+          : [];
+        if (!names.length) continue;
+        nextAllowed = names.join('\n');
+        applied += 1;
+      } else if (fix.type === 'set_display_name') {
+        try {
+          const cur = nextMeta.trim() ? JSON.parse(nextMeta) : {};
+          cur.display_name = String(fix.display_name || server.name);
+          if (!cur.description) cur.description = cur.display_name;
+          nextMeta = JSON.stringify(cur, null, 2);
+        } catch {
+          nextMeta = JSON.stringify({
+            display_name: String(fix.display_name || server.name),
+            description: String(fix.display_name || server.name),
+          }, null, 2);
+        }
+        applied += 1;
+      }
+    }
+    if (!applied) {
+      toast.info(
+        unfixableBefore
+          ? `没有可安全自动修复的项（${unfixableBefore} 项需手工）`
+          : '没有可自动修复的问题',
+      );
+      return;
+    }
+    setTransport(nextTransport);
+    setUrl(nextUrl);
+    setCommand(nextCommand);
+    setMetadataText(nextMeta);
+    setAllowedToolsText(nextAllowed);
+    try {
+      setLoading(true);
+      let args: string[] = [];
+      if (argsText.trim()) {
+        const v = JSON.parse(argsText);
+        if (Array.isArray(v)) args = v.map((x) => String(x));
+      }
+      const allowed_tools = nextAllowed.split('\n').map((s) => s.trim()).filter(Boolean);
+      let metadata: any = undefined;
+      if (nextMeta.trim()) metadata = JSON.parse(nextMeta);
+      await workspaceMcpApi.updateServer(server.name, {
+        enabled,
+        transport: nextTransport,
+        url: nextUrl.trim() || undefined,
+        command: nextCommand.trim() || undefined,
+        args,
+        allowed_tools,
+        source: isInternal ? 'internal' : 'external',
+        ...(metadata ? { metadata } : {}),
+      } as any);
+      const again: any = await workspaceMcpApi.audit(server.name);
+      setAuditResult(again);
+      const msg = auditRemainToast(applied, again?.summary);
+      if (msg.kind === 'success') toast.success(msg.text);
+      else toast.info(msg.text);
+      onSuccess();
+    } catch (e: any) {
+      toast.error('一键修复失败', String(e?.message || ''));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!server?.name) return;
     setLoading(true);
@@ -369,6 +551,14 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-4">
           <Input label="名称（只读）" value={server?.name || ''} onChange={() => {}} disabled />
+
+          <AssetAuditPanel
+            result={auditResult}
+            loading={auditLoading}
+            onAudit={handleAudit}
+            onApplyFix={(fix) => applyMcpFix(fix as any)}
+            onApplyAll={handleApplyAllMcpFixes}
+          />
 
           <Alert type={isInternal ? 'success' : transport === 'stdio' ? 'warning' : 'info'} title="风险提示">
             {riskHint}

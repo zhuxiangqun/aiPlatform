@@ -10,34 +10,95 @@ router = APIRouter(prefix="/diagnostics", tags=["diagnostics"])
 def _links_summary(payload: Dict[str, Any]) -> Dict[str, Any]:
     """将 links 聚合结果压缩为面板友好的摘要信息。"""
     resolved = payload.get("resolved") if isinstance(payload.get("resolved"), dict) else {}
+    query = payload.get("query") if isinstance(payload.get("query"), dict) else {}
     trace = payload.get("trace") if isinstance(payload.get("trace"), dict) else None
     executions = payload.get("executions") if isinstance(payload.get("executions"), dict) else None
     graph_runs = payload.get("graph_runs") if isinstance(payload.get("graph_runs"), dict) else None
+    run_graph = payload.get("run_graph") if isinstance(payload.get("run_graph"), dict) else None
     run = payload.get("run") if isinstance(payload.get("run"), dict) else None
     lineage = payload.get("lineage") if isinstance(payload.get("lineage"), list) else []
+    syscalls = payload.get("syscalls") if isinstance(payload.get("syscalls"), dict) else None
+    primary = payload.get("primary_execution") if isinstance(payload.get("primary_execution"), dict) else None
 
     agent_execs = (executions.get("items", {}).get("agent_executions") if executions else None) or []
     skill_execs = (executions.get("items", {}).get("skill_executions") if executions else None) or []
     runs = (graph_runs.get("runs") if graph_runs else None) or []
+    rg_nodes = (run_graph.get("nodes") if run_graph else None) or []
+    sc_items = (syscalls.get("items") if syscalls else None) or []
+    spans = (trace.get("spans") if trace else None) or []
+
+    # Workspace agent: execution_id == observation run_id (no separate LangGraph run).
+    display_run_id = (
+        resolved.get("run_id")
+        or query.get("execution_id")
+        or (primary or {}).get("execution_id")
+        or (primary or {}).get("id")
+    )
+    exec_status = str((primary or {}).get("status") or "").lower()
+    sparse = (
+        len(rg_nodes) <= 1
+        and len(sc_items) <= 2
+        and len(spans) <= 6
+        and exec_status in ("timeout", "failed", "error", "cancelled", "canceled")
+    )
+    hint = None
+    if sparse:
+        hint = (
+            "观测数据偏少：常见于超时/孤儿回收打断 ReAct（LLM 未返回、skill 未调用）。"
+            "请看 Trace spans、Syscalls、Executions.error；Graph Runs / Lineage 对单次 Workspace Agent 通常为空。"
+        )
+    elif len(runs) == 0 and (agent_execs or primary):
+        hint = (
+            "这是 Workspace Agent 执行：无 LangGraph resume 链。"
+            "请用 Trace spans / Run Graph / Syscalls 看步骤，不要期待 Graph Runs / Lineage。"
+        )
 
     return {
         "trace_id": resolved.get("trace_id"),
-        "run_id": resolved.get("run_id"),
+        "run_id": display_run_id,
+        "execution_id": query.get("execution_id") or (primary or {}).get("execution_id") or (primary or {}).get("id"),
+        "agent_id": (primary or {}).get("agent_id"),
+        "exec_status": exec_status or (trace.get("status") if trace else None),
+        "exec_error": ((primary or {}).get("error") or "")[:240] or None,
         "trace_status": trace.get("status") if trace else None,
         "execution_counts": {
-            "agents": len(agent_execs),
+            "agents": len(agent_execs) or (1 if primary and (primary.get("agent_id") or primary.get("kind") == "agent") else 0),
             "skills": len(skill_execs),
-            "total": len(agent_execs) + len(skill_execs),
+            "total": (len(agent_execs) or (1 if primary else 0)) + len(skill_execs),
         },
         "graph_run_counts": {
             "total": int(graph_runs.get("total", 0) if graph_runs else 0),
             "returned": len(runs),
+            "source": (graph_runs or {}).get("source") if isinstance(graph_runs, dict) else None,
         },
+        "run_graph_counts": {
+            "nodes": len(rg_nodes),
+            "has_graph": bool(run_graph and (run_graph.get("has_graph") or rg_nodes)),
+            "status": (run_graph or {}).get("status") if isinstance(run_graph, dict) else None,
+        },
+        "syscall_counts": {
+            "total": int(syscalls.get("total", len(sc_items)) if syscalls else len(sc_items)),
+            "returned": len(sc_items),
+        },
+        "span_count": len(spans) if isinstance(spans, list) else 0,
         "lineage_depth": len(lineage),
-        "lineage_root_run_id": (lineage[-1].get("run_id") if lineage and isinstance(lineage[-1], dict) else (run.get("run_id") if run else None)),
+        "lineage_root_run_id": (
+            lineage[-1].get("run_id")
+            if lineage and isinstance(lineage[-1], dict)
+            else (run.get("run_id") if run else display_run_id)
+        ),
+        "diagnosis_hint": hint,
+        "sparse_observation": sparse,
         "actions": {
-            "can_resume": bool(run and run.get("run_id")),
+            "can_resume": bool(
+                run
+                and run.get("run_id")
+                and not str(run.get("graph_name") or "").startswith("workspace_")
+                and (graph_runs or {}).get("source") != "run_graph"
+            ),
             "has_trace": bool(resolved.get("trace_id")),
+            "has_run_graph": bool(run_graph and (run_graph.get("has_graph") or rg_nodes)),
+            "has_syscalls": bool(sc_items),
         },
     }
 
@@ -1382,8 +1443,12 @@ async def get_layer_links(
         raise HTTPException(status_code=503, detail="Core client not initialized")
 
     resolved_trace_id = trace_id
-    resolved_run_id = run_id or graph_run_id
+    # Agent/skill execution_id IS the observation run_id (same key as ExecutionViewer).
+    resolved_run_id = run_id or graph_run_id or execution_id
     healed_trace = None
+    run_graph = None
+    primary_execution = None
+    syscalls: Dict[str, Any] = {"items": [], "total": 0}
 
     if execution_id:
         # Workspace agents may only have agent_executions.trace_id; core heals traces row.
@@ -1394,6 +1459,34 @@ async def get_layer_links(
                 resolved_trace_id = t.get("trace_id") or resolved_trace_id
         except Exception:
             healed_trace = None
+        try:
+            rg = await core_client.get_observation_run_graph(execution_id)
+            if isinstance(rg, dict):
+                run_graph = rg
+        except Exception:
+            run_graph = None
+        try:
+            pe = await core_client.get_execution(execution_id)
+            if isinstance(pe, dict) and (pe.get("id") or pe.get("execution_id") or pe.get("agent_id")):
+                primary_execution = {
+                    **pe,
+                    "execution_id": pe.get("execution_id") or pe.get("id") or execution_id,
+                    "kind": pe.get("kind") or "agent",
+                    "type": pe.get("type") or "agent",
+                }
+        except Exception:
+            primary_execution = None
+        try:
+            sc = await core_client.list_syscall_events(run_id=execution_id, limit=min(100, max(20, limit)))
+            if isinstance(sc, dict):
+                items = sc.get("items") or sc.get("events") or []
+                syscalls = {
+                    "items": items if isinstance(items, list) else [],
+                    "total": int(sc.get("total") or len(items or [])),
+                    "source": "syscall_events",
+                }
+        except Exception:
+            syscalls = {"items": [], "total": 0}
 
     run = None
     lineage = []
@@ -1418,6 +1511,27 @@ async def get_layer_links(
                 except Exception:
                     break
 
+    # Workspace agent: no LangGraph graph_runs — synthesize a stub from run_graph / execution
+    # so Links is not a wall of zeros.
+    if not lineage and (execution_id or resolved_run_id):
+        pe_status = None
+        if isinstance(primary_execution, dict):
+            pe_status = primary_execution.get("status")
+        elif isinstance(healed_trace, dict):
+            pe_status = healed_trace.get("status")
+        lineage = [
+            {
+                "run_id": execution_id or resolved_run_id,
+                "graph_name": "workspace_agent",
+                "parent_run_id": None,
+                "trace_id": resolved_trace_id,
+                "status": pe_status,
+                "source": "execution_stub",
+                "node_count": len((run_graph or {}).get("nodes") or []) if isinstance(run_graph, dict) else 0,
+                "syscall_count": int(syscalls.get("total") or 0),
+            }
+        ]
+
     trace = None
     executions = None
     graph_runs = None
@@ -1429,9 +1543,15 @@ async def get_layer_links(
         if not trace and healed_trace:
             trace = healed_trace
         elif include_spans and healed_trace and isinstance(trace, dict):
-            # get_trace_by_execution may attach syscall-derived spans that spans table lacks
+            # get_trace_by_execution may attach syscall/run_graph spans that spans table lacks
             if not (trace.get("spans") or []) and (healed_trace.get("spans") or []):
                 trace = {**trace, "spans": healed_trace.get("spans")}
+            elif include_spans and healed_trace.get("spans"):
+                # Prefer richer healed spans (merged run_graph) when longer
+                hs = healed_trace.get("spans") or []
+                ts = trace.get("spans") or []
+                if len(hs) > len(ts):
+                    trace = {**trace, "spans": hs}
         if not include_spans and isinstance(trace, dict) and "spans" in trace:
             # 默认不返回 spans，避免 payload 过大；需要时由 include_spans=true 打开
             trace = {**trace}
@@ -1447,6 +1567,84 @@ async def get_layer_links(
     elif healed_trace:
         trace = healed_trace if include_spans else {k: v for k, v in healed_trace.items() if k != "spans"}
 
+    # Ensure agent execution appears even when list_by_trace is empty / partial
+    if primary_execution and isinstance(executions, dict):
+        items = executions.get("items") if isinstance(executions.get("items"), dict) else {}
+        agents = list(items.get("agent_executions") or [])
+        eid_key = str(primary_execution.get("execution_id") or primary_execution.get("id") or "")
+        if eid_key and not any(str(a.get("execution_id") or a.get("id") or "") == eid_key for a in agents):
+            agents = [
+                {
+                    "execution_id": eid_key,
+                    "agent_id": primary_execution.get("agent_id"),
+                    "status": primary_execution.get("status"),
+                    "error": primary_execution.get("error"),
+                    "start_time": primary_execution.get("start_time"),
+                    "end_time": primary_execution.get("end_time"),
+                    "duration_ms": primary_execution.get("duration_ms"),
+                    "type": "agent",
+                },
+                *agents,
+            ]
+            executions = {
+                **executions,
+                "items": {**items, "agent_executions": agents},
+            }
+    elif primary_execution and not executions:
+        executions = {
+            "items": {
+                "agent_executions": [
+                    {
+                        "execution_id": primary_execution.get("execution_id") or primary_execution.get("id"),
+                        "agent_id": primary_execution.get("agent_id"),
+                        "status": primary_execution.get("status"),
+                        "error": primary_execution.get("error"),
+                        "start_time": primary_execution.get("start_time"),
+                        "end_time": primary_execution.get("end_time"),
+                        "duration_ms": primary_execution.get("duration_ms"),
+                        "type": "agent",
+                    }
+                ],
+                "skill_executions": [],
+            },
+            "total": 1,
+            "source": "primary_execution",
+        }
+
+    # If no LangGraph runs, project observation run_graph / agent execution as synthetic row
+    gr_total = 0
+    try:
+        gr_total = int((graph_runs or {}).get("total") or 0) if isinstance(graph_runs, dict) else 0
+    except Exception:
+        gr_total = 0
+    rg_nodes = (run_graph or {}).get("nodes") or [] if isinstance(run_graph, dict) else []
+    if gr_total == 0 and (execution_id or resolved_run_id) and (
+        (isinstance(run_graph, dict) and (run_graph.get("has_graph") or rg_nodes))
+        or primary_execution
+        or healed_trace
+    ):
+        pe = primary_execution or {}
+        graph_runs = {
+            "runs": [
+                {
+                    "run_id": execution_id or resolved_run_id,
+                    "graph_name": "workspace_agent_run_graph",
+                    "status": pe.get("status") or (run_graph or {}).get("status") or (healed_trace or {}).get("status"),
+                    "start_time": pe.get("start_time"),
+                    "duration_ms": pe.get("duration_ms"),
+                    "source": "run_graph" if rg_nodes else "execution_stub",
+                    "node_count": len(rg_nodes),
+                    "syscall_count": int(syscalls.get("total") or 0),
+                    "trace_id": resolved_trace_id,
+                    "error": (pe.get("error") or "")[:200] or None,
+                }
+            ],
+            "total": 1,
+            "source": "run_graph" if rg_nodes else "execution_stub",
+        }
+        if not isinstance(run, dict):
+            run = dict(graph_runs["runs"][0])
+
     return {
         "layer": "core",
         "supported": True,
@@ -1455,8 +1653,11 @@ async def get_layer_links(
         "trace": trace,
         "executions": executions,
         "graph_runs": graph_runs,
+        "run_graph": run_graph,
         "run": run,
         "lineage": lineage,
+        "syscalls": syscalls,
+        "primary_execution": primary_execution,
         "limit": limit,
         "offset": offset,
     }
@@ -1502,8 +1703,11 @@ async def get_layer_links_ui(
         "trace": full.get("trace"),
         "executions": full.get("executions"),
         "graph_runs": full.get("graph_runs"),
+        "run_graph": full.get("run_graph"),
         "run": full.get("run"),
         "lineage": full.get("lineage"),
+        "syscalls": full.get("syscalls"),
+        "primary_execution": full.get("primary_execution"),
     }
 
 

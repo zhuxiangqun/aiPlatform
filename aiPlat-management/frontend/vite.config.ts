@@ -31,6 +31,11 @@ export default defineConfig({
         changeOrigin: true,
         timeout: 600000,
       },
+      '/api/core/diagnostics/doctor': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        rewrite: (p) => p.replace('/api/core/diagnostics/doctor', '/api/diagnostics/doctor'),
+      },
       '/api/core/diagnostics': {
         target: 'http://localhost:8002',
         changeOrigin: true,

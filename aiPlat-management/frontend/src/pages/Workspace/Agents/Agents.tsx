@@ -35,6 +35,7 @@ const WorkspaceAgents: React.FC = () => {
   const [chatCreateOpen, setChatCreateOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [executeModalOpen, setExecuteModalOpen] = useState(false);
+  const [editInitialTab, setEditInitialTab] = useState('basic');
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [versionsModalOpen, setVersionsModalOpen] = useState(false);
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
@@ -340,7 +341,7 @@ const WorkspaceAgents: React.FC = () => {
           agent={record}
           onChat={handleChatOpen}
           onExecute={(a) => { setSelectedAgent(a); setExecuteModalOpen(true); }}
-          onEdit={(a) => { setSelectedAgent(a); setEditModalOpen(true); }}
+          onEdit={(a) => { setSelectedAgent(a); setEditInitialTab('basic'); setEditModalOpen(true); }}
           onDetail={(a) => { setSelectedAgent(a); setDetailModalOpen(true); }}
           onStart={handleStart}
           onStop={handleStop}
@@ -497,7 +498,8 @@ const WorkspaceAgents: React.FC = () => {
       <EditAgentModal
         open={editModalOpen}
         agent={selectedAgent}
-        onClose={() => setEditModalOpen(false)}
+        initialTab={editInitialTab}
+        onClose={() => { setEditModalOpen(false); setEditInitialTab('basic'); }}
         onSuccess={() => fetchAgents({ agent_type: typeFilter, status: statusFilter })}
       />
 
@@ -505,6 +507,12 @@ const WorkspaceAgents: React.FC = () => {
         open={executeModalOpen}
         agent={selectedAgent}
         onClose={() => setExecuteModalOpen(false)}
+        onEditSop={() => {
+          if (!selectedAgent) return;
+          setEditInitialTab('advanced');
+          setExecuteModalOpen(false);
+          setEditModalOpen(true);
+        }}
       />
 
       <Modal

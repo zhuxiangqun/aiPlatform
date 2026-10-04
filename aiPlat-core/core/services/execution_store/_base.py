@@ -27,15 +27,35 @@ from __future__ import annotations
 import logging
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Callable, TypeVar
+import concurrent.futures
 import json
 import os
 import sqlite3
 import time
 import uuid
+import asyncio
 import anyio
 
 from ..execution_store_schema import ALL_TABLES
+
+
+_T = TypeVar("_T")
+
+# Dedicated pool for SQLite — must NOT share threads with LLM ``asyncio.to_thread``
+# zombies (sync OpenAI client). Shared default pool starvation → status API hang
+# while Agent is in pre_llm / generate (run-c604da8f129e).
+_STORE_WORKERS = max(2, int(os.getenv("AIPLAT_EXEC_STORE_THREADS", "4") or "4"))
+_STORE_EXECUTOR = concurrent.futures.ThreadPoolExecutor(
+    max_workers=_STORE_WORKERS,
+    thread_name_prefix="aiplat_store",
+)
+
+
+async def run_store_io(fn: Callable[[], _T]) -> _T:
+    """Run sync store work on the dedicated executor (never the LLM thread pool)."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(_STORE_EXECUTOR, fn)
 
 
 def _json_dumps(obj: Any) -> str:
@@ -133,11 +153,19 @@ class _ExecutionStoreBase:
         conn = sqlite3.connect(self._config.db_path, timeout=5.0)
         conn.execute("PRAGMA journal_mode=WAL;")
         conn.execute("PRAGMA foreign_keys=ON;")
+        # Cap lock waits so status/orphan probes cannot block the event loop forever
+        # when a hung LLM thread holds a writer (default SQLite busy wait is unbounded).
+        conn.execute("PRAGMA busy_timeout=5000;")
         conn.row_factory = sqlite3.Row
         return conn
 
     async def init(self) -> None:
         """Init database and run schema migrations (idempotent)."""
+        # Fast path: already inited — never touch the lock (prune/status re-enter).
+        if self._inited:
+            return
+
+        need_prune = False
         async with self._init_once_lock:
             if self._inited:
                 return
@@ -196,13 +224,20 @@ class _ExecutionStoreBase:
 
             await anyio.to_thread.run_sync(_init_sync)
             self._inited = True
+            # NEVER await prune() while holding _init_once_lock — prune() calls
+            # init() again and anyio.Lock is not reentrant → status/links hang forever
+            # (diagnostic detail spinner after Agent execute).
+            need_prune = bool(
+                self._config.prune_on_start
+                and (self._config.retention_days or self._config.max_rows_per_entity)
+            )
 
-            # Optional retention pruning on start (best effort)
-            if self._config.prune_on_start and (self._config.retention_days or self._config.max_rows_per_entity):
-                try:
-                    await self.prune()
-                except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+        # Optional retention pruning on start (best effort) — outside the init lock.
+        if need_prune:
+            try:
+                await self.prune()
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     async def get_schema_version(self) -> int:
         await self.init()

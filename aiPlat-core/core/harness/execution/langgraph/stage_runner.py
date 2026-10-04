@@ -179,14 +179,41 @@ class StageRunner:
                 "messages": [],
                 "_session_id": str(state.get("session_id", "")),
                 "_run_id": str(state.get("_run_id", "")),
+                "_trace_id": str(state.get("_trace_id", "")),
                 "_user_id": "system",
-                "_coding_policy_profile": "off",
+                "_coding_policy_profile": str(state.get("_coding_policy_profile") or "off"),
+                "_skip_claude_md": bool(state.get("_skip_claude_md")),
                 "_agent_id": state.get("_agent_id") or (str(s.agent_id or s.id) if s else ""),
                 "_agent_namespace": str(s.agent_id or s.id) if s else "",
                 "_shared_state_board": state.get("_shared_state_board", []),
-                "_enable_query_rewrite": getattr(s, 'enable_query_rewrite', False) if s else False,
+                "_enable_query_rewrite": bool(
+                    state.get("_enable_query_rewrite")
+                    if "_enable_query_rewrite" in state
+                    else (getattr(s, "enable_query_rewrite", False) if s else False)
+                ),
                 "_max_consecutive_llm_failures": getattr(s, 'max_consecutive_llm_failures', 3),
                 "_knowledge_bases": getattr(s, 'knowledge_bases', []) if s else [],
+                "_bound_skill_ids": list(
+                    state.get("_bound_skill_ids")
+                    or [
+                        str(getattr(sk, "name", None) or getattr(getattr(sk, "_config", None), "name", "") or "").strip()
+                        for sk in (skills or [])
+                        if str(getattr(sk, "name", None) or getattr(getattr(sk, "_config", None), "name", "") or "").strip()
+                    ]
+                ),
+                "_skill_delivery": str(state.get("_skill_delivery") or ""),
+                # Prefer the raw user task for skill_call input (not SOP+hint wrapper).
+                "_user_task": str(
+                    state.get("_user_task")
+                    or (ctx.get("task") if isinstance(ctx, dict) else "")
+                    or ""
+                ),
+                "_execute_input": state.get("_execute_input")
+                if isinstance(state.get("_execute_input"), dict)
+                else {},
+                # AGENT.md preferred_language → code_generation language lock
+                # (must reach LoopState or inject is a no-op; run-ef47960fdfac).
+                "_preferred_language": str(state.get("_preferred_language") or "").strip().lower(),
             },
         )
 
@@ -227,16 +254,44 @@ class StageRunner:
         except Exception as e:
             logging.debug("dynamic_orchestrator skipped: %s", e)
 
-        # Extract best output: prefer reasoning (LLM output) > DONE output > observation > action_result
-        # reasoning is the actual LLM response; observation is often "No action to execute" filler.
+        # Extract best output. Prefer delivered skill body / DONE output over the last
+        # reasoner's short "DONE" envelope (skill_delivery=once often finishes that way).
         ctx = result.final_state.context
-        reasoning = ctx.get("reasoning", "") or ctx.get("output", "") or ctx.get("observation", "") or ctx.get("action_result", "")
+        # Surface HITL pause so run_workspace_agent does not greenwash as completed.
+        try:
+            from core.harness.interfaces.loop import LoopStateEnum as _LSE
+
+            if getattr(result.final_state, "current", None) == _LSE.PAUSED:
+                err = str(ctx.get("error") or "").strip().lower()
+                if err in ("approval_required", "policy_denied"):
+                    state["_agent_pause"] = err
+                    if isinstance(ctx.get("approval"), dict):
+                        state["_approval"] = ctx.get("approval")
+                    if isinstance(ctx.get("policy"), dict):
+                        state["_policy"] = ctx.get("policy")
+        except Exception as e:
+            logging.debug("stage_runner pause surface skipped: %s", e)
+        skill_body = str(ctx.get("_primary_skill_output") or "").split("[DELIVERY]", 1)[0].strip()
+        if skill_body.startswith("[skill_delivery=once]"):
+            parts = skill_body.split("\n\n", 1)
+            skill_body = parts[1].strip() if len(parts) > 1 else skill_body
+        done_out = str(ctx.get("output") or "").strip()
+        reasoning_raw = str(ctx.get("reasoning") or "").strip()
+        # Prefer substantial skill/DONE artifact over brief reasoning text
+        used_skill_body = len(skill_body) >= 40
+        candidates = [
+            skill_body if used_skill_body else "",
+            done_out if len(done_out) >= 40 else "",
+            reasoning_raw,
+            str(ctx.get("observation") or ""),
+            str(ctx.get("action_result") or ""),
+        ]
+        reasoning = next((c for c in candidates if c and str(c).strip()), "") or done_out or reasoning_raw
 
         # ── Merge skill/tool outputs from observations ──
-        # Observations contain actual skill execution results (e.g., code_generation output).
-        # Without this, _exec_stage only sees reasoning text and misses generated code.
+        # Skip when skill_delivery already promoted the skill body (avoid duplicating it).
         observations = ctx.get("_observations", [])
-        if observations and isinstance(observations, list):
+        if (not used_skill_body) and observations and isinstance(observations, list):
             # Collect non-trivial observations (skip filler like "No action to execute")
             meaningful = [
                 str(o) for o in observations

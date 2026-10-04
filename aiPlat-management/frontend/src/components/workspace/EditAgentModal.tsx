@@ -1,19 +1,158 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { workspaceAgentApi, workspaceSkillApi, modelsApi } from '../../services';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { workspaceAgentApi, workspaceSkillApi, skillApi, modelsApi } from '../../services';
 import { toolApi } from '../../services';
 import { workspaceMcpApi, workflowTemplateApi } from '../../services';
 import type { Agent } from '../../services';
-import { Alert, Button, Input, Modal, Textarea, toast, MultiSelect, Tabs } from '../ui';
+import { Button, Input, Modal, Textarea, toast, MultiSelect, Tabs } from '../ui';
 import PromptDiffModal from './PromptDiffModal';
+import AssetAuditPanel, { auditRemainToast } from './AssetAuditPanel';
+
+function parseJsonObject(text: string): Record<string, unknown> {
+  try {
+    const v = JSON.parse(text || '{}');
+    return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function mergeConfigText(configText: string, patch: Record<string, unknown>): string {
+  const cfg = parseJsonObject(configText);
+  return JSON.stringify({ ...cfg, ...patch }, null, 2);
+}
+
+function mergeMemoryText(
+  memoryText: string,
+  patch: { type?: string; recall_count?: number },
+): string {
+  const cfg = parseJsonObject(memoryText);
+  if (patch.type != null) cfg.type = patch.type;
+  if (patch.recall_count != null) cfg.recall_count = patch.recall_count;
+  return JSON.stringify(cfg, null, 2);
+}
+
+const AUDIT_APPENDIX_HEADINGS = [
+  '## 角色（审核附录）',
+  '## 目标与产出（审核附录）',
+  '## 工作流程（审核附录）',
+  '## 已绑定 Skill（审核附录）',
+  '## 验收与质量约束（审核附录）',
+  '## 交接协议（审核附录）',
+];
+
+function collapseAuditAppendices(sop: string): string {
+  const text = String(sop || '').replace(/\r\n/g, '\n');
+  const skelRe = /(?:^|\n)# 角色\n你是本任务的执行 Agent。职责边界：只做本阶段约定工作，不越权改上游契约。\s*/;
+  const starts: number[] = [];
+  const skel = text.match(skelRe);
+  if (skel && skel.index != null) starts.push(skel.index === 0 ? 0 : skel.index + 1);
+  for (const h of AUDIT_APPENDIX_HEADINGS) {
+    const re = new RegExp(`(?:^|\\n)${h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm');
+    const m = re.exec(text);
+    if (m && m.index != null) starts.push(text[m.index] === '\n' ? m.index + 1 : m.index);
+  }
+  if (!starts.length) return text.replace(/\s+$/, '');
+  const idx = Math.min(...starts);
+  let core = text.slice(0, idx).replace(/\s+$/, '');
+  let rest = text.slice(idx).replace(skelRe, '\n').trim();
+  const blocks = new Map<string, string>();
+  const extra: string[] = [];
+  rest.split(/(?=^## [^\n]*（审核附录）\s*$)/m).forEach((raw) => {
+    const part = raw.trim();
+    if (!part) return;
+    const heading = part.split('\n', 1)[0].trim();
+    if (heading.startsWith('## ') && heading.endsWith('（审核附录）')) {
+      if (!blocks.has(heading)) extra.push(heading);
+      blocks.set(heading, part);
+      return;
+    }
+    if (part.includes('你是本任务的执行 Agent。职责边界')) return;
+    core = core ? `${core}\n\n${part}` : part;
+  });
+  const chunks: string[] = core ? [core] : [];
+  const seen = new Set<string>();
+  for (const h of AUDIT_APPENDIX_HEADINGS) {
+    const b = blocks.get(h);
+    if (b) {
+      chunks.push(b);
+      seen.add(h);
+    }
+  }
+  extra.forEach((h) => {
+    if (!seen.has(h)) {
+      const b = blocks.get(h);
+      if (b) chunks.push(b);
+    }
+  });
+  return `${chunks.filter(Boolean).join('\n\n').replace(/\s+$/, '')}\n`;
+}
+
+/** Idempotent ## appendix upsert (matches backend asset_audit.upsert_sop_appendix). */
+function upsertSopAppendix(
+  sop: string,
+  fix: { section_heading?: string; appendix?: string; skills?: string[]; label?: string },
+): string | null {
+  const heading = String(fix.section_heading || '## 已绑定 Skill（审核附录）').trim();
+  let appendix = String(fix.appendix || '').trim();
+  if (!appendix) {
+    // Legacy skill-refs payload: build from skills[] when appendix omitted
+    const ids = (Array.isArray(fix.skills) ? fix.skills : [])
+      .map((s) => String(s || '').trim())
+      .filter(Boolean);
+    if (!ids.length) return null;
+    appendix = [
+      heading,
+      '',
+      '以下 Skill 已在能力绑定中启用；步骤中优先用反引号引用对应 id：',
+      '',
+      ...ids.map((id) => `- \`${id}\``),
+    ].join('\n');
+  }
+  if (!appendix.startsWith(heading)) {
+    appendix = `${heading}\n\n${appendix}`;
+  }
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(
+    `(?:^|\\n)${escaped}\\s*(?:\\n[\\s\\S]*?)(?=\\n## [^\\n]*（审核附录）|$)`,
+    'gm',
+  );
+  let base = collapseAuditAppendices(String(sop || ''));
+  // Loop strip all prior copies (stacked one-click / broken drafts).
+  // Do not stop at ``# `` — role skeleton contains ``# 角色`` and used to stack.
+  for (let i = 0; i < 32; i += 1) {
+    const next = base.replace(re, '').replace(/\s+$/, '');
+    if (next === base.replace(/\s+$/, '')) {
+      base = next;
+      break;
+    }
+    base = next;
+  }
+  base = base.replace(
+    /(?:^|\n)# 角色\n你是本任务的执行 Agent。职责边界：只做本阶段约定工作，不越权改上游契约。\s*/g,
+    '\n',
+  );
+  return (base ? `${base}\n\n${appendix}` : appendix).replace(/\s+$/, '') + '\n';
+}
+
+/** @deprecated alias — skill-refs and generic appendix share the same upsert */
+const upsertSopSkillRefsAppendix = upsertSopAppendix;
 
 interface EditAgentModalProps {
   open: boolean;
   agent: Agent | null;
   onClose: () => void;
   onSuccess: () => void;
+  /** Open on SOP tab when coming from quality-review CTA. */
+  initialTab?: string;
 }
 
-const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, onSuccess }) => {
+const EditAgentModal: React.FC<EditAgentModalProps> = ({
+  open,
+  agent,
+  onClose,
+  onSuccess,
+  initialTab = 'basic',
+}) => {
   const [loading, setLoading] = useState(false);
   const [autoFillLoading, setAutoFillLoading] = useState(false);
   const [smartFillLoading, setSmartFillLoading] = useState(false);
@@ -38,6 +177,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
   const [description, setDescription] = useState('');
   const [memoryConfigText, setMemoryConfigText] = useState('');
   const [sopText, setSopText] = useState('');
+  const sopTextRef = useRef('');
   const [triggerText, setTriggerText] = useState('');
   const [permissionsText, setPermissionsText] = useState('["llm:generate"]');
   const [sopLoading, setSopLoading] = useState(false);
@@ -55,6 +195,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
   const [generateTestPlan, setGenerateTestPlan] = useState(false);
   const [autoHitl, setAutoHitl] = useState(false);
   const [phaseDescription, setPhaseDescription] = useState('');
+  /** Soft default for code_generation when task omits a language (AGENT.md preferred_language). */
+  const [preferredLanguage, setPreferredLanguage] = useState('');
   const [hitlAfterExecute, setHitlAfterExecute] = useState(false);
   const [hitlAfterPhase, setHitlAfterPhase] = useState('');
 
@@ -62,9 +204,11 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
   const [agentStatus, setAgentStatus] = useState<string>('draft');
   const [optimizeOpen, setOptimizeOpen] = useState(false);
   const [optimizePrompt, setOptimizePrompt] = useState('');
+  const [activeTab, setActiveTab] = useState(initialTab || 'basic');
 
   useEffect(() => {
     if (open && agent) {
+      setActiveTab(initialTab || 'basic');
       setName(agent.name || '');
       setDescription(String((agent as any)?.metadata?.description || ''));
       setDefaultToolset(String((agent as any)?.metadata?.toolset || 'workspace_default'));
@@ -99,19 +243,21 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       setGenerateTestPlan(Boolean(md.generate_test_plan));
       setAutoHitl(Boolean(md.auto_hitl));
       setPhaseDescription(String(md.phase_description || ''));
+      setPreferredLanguage(String(md.preferred_language || '').trim().toLowerCase());
       setHitlAfterExecute(Boolean(md.hitl_after_execute));
       setHitlAfterPhase(String(md.hitl_after_phase || ''));
       setKnowledgeBases(Array.isArray(md.knowledge_bases) ? md.knowledge_bases : []);
       fetchOptions();
       fetchSop();
       fetchWikiCollections();
-      // init selectedModel from config if possible
+      // init selectedModel from config — empty/missing → auto（与审核 model_auto 一致）
       try {
         const cfg = (agent as any)?.config || {};
-        if (cfg?.model) setSelectedModel(String(cfg.model));
+        const m = String(cfg?.model || '').trim();
+        setSelectedModel(m || 'auto');
         setLoopType(String((agent as any)?.metadata?.loop_type || 'react'));
       } catch {
-        // ignore
+        setSelectedModel('auto');
       }
     }
   }, [open, agent]);
@@ -121,7 +267,9 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     setSopLoading(true);
     try {
       const res = await workspaceAgentApi.getSop(agent.id).catch(() => ({ sop: '' } as any));
-      setSopText(String((res as any).sop || ''));
+      const sop = String((res as any).sop || '');
+      sopTextRef.current = sop;
+      setSopText(sop);
     } catch {
       setSopText('');
     } finally {
@@ -131,8 +279,9 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
 
   const fetchOptions = async () => {
     try {
-      const [skillRes, toolRes, agentSkills, agentTools] = await Promise.all([
+      const [skillRes, engineSkillRes, toolRes, agentSkills, agentTools] = await Promise.all([
         workspaceSkillApi.list({ limit: 200 }),
+        skillApi.list({ limit: 500 }).catch(() => ({ skills: [] } as any)),
         toolApi.list({ limit: 200 } as any),
         agent ? workspaceAgentApi.getSkills(agent.id).catch(() => ({ skill_ids: agent.skills || [] } as any)) : Promise.resolve({ skill_ids: [] as string[] } as any),
         agent ? workspaceAgentApi.getTools(agent.id).catch(() => ({ tool_ids: agent.tools || [] } as any)) : Promise.resolve({ tool_ids: [] as string[] } as any),
@@ -144,6 +293,16 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       const selectedToolIds: string[] = ((agentTools as any).tool_ids || agent?.tools || []) as string[];
 
       const skillSet = new Set(baseSkillOptions.map((o: any) => o.value));
+      // Engine skills are first-class — show in picker as 「引擎」 instead of 「未找到」
+      const engineSkillOptions = (engineSkillRes.skills || [])
+        .map((s: any) => {
+          const id = String(s.id || s.name || '').trim();
+          if (!id || skillSet.has(id)) return null;
+          skillSet.add(id);
+          const name = String(s.name || s.display_name || id);
+          return { value: id, label: `${name}（引擎）` };
+        })
+        .filter(Boolean) as { value: string; label: string }[];
       const toolSet = new Set(baseToolOptions.map((o: any) => o.value));
       const missingSkillOptions = selectedSkillIds
         .filter((id) => id && !skillSet.has(id))
@@ -152,7 +311,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         .filter((id) => id && !toolSet.has(id))
         .map((id) => ({ value: id, label: `${id}（未在 Tool 列表中找到）` }));
 
-      setSkillOptions([...baseSkillOptions, ...missingSkillOptions]);
+      setSkillOptions([...baseSkillOptions, ...engineSkillOptions, ...missingSkillOptions]);
       setToolOptions([...baseToolOptions, ...missingToolOptions]);
       if (agent) {
         setSkills(selectedSkillIds);
@@ -176,22 +335,34 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
 
       try {
         const modelRes = await modelsApi.list();
-        const models = ((modelRes as any).models || []) as { name: string; provider: string; capabilities: string[] }[];
-        const modelOpts = models.map((m) => ({
-          value: m.name,
-          label: `${m.name} (${m.provider})${m.capabilities?.includes('reasoning') ? ' 🧠' : ''}`,
-        }));
+        const models = ((modelRes as any).models || []) as {
+          name: string; provider: string; capabilities?: string[]; type?: string;
+        }[];
+        // Agent 编辑器只要对话/生成 LLM；排除 OCR/embedding/audio 等（否则 value=auto 无匹配时浏览器会显示第一项如 Tesseract）
+        const llmModels = models.filter((m) => {
+          const t = String(m.type || '').toLowerCase();
+          if (t && !['chat', 'llm', 'language', 'language_model'].includes(t)) return false;
+          const caps = (m.capabilities || []).map((c) => String(c).toLowerCase());
+          if (caps.length && !caps.some((c) => ['chat', 'completion', 'generate', 'reasoning', 'code', 'function_call'].includes(c))) {
+            if (caps.every((c) => ['ocr', 'embedding', 'audio', 'rerank', 'doc-parser'].includes(c))) return false;
+          }
+          const n = String(m.name || '').toLowerCase();
+          if (n.includes('tesseract') || /\bocr\b/.test(n)) return false;
+          return Boolean(m.name);
+        });
+        const modelOpts = [
+          { value: 'auto', label: 'auto（按 purpose 自动选择）' },
+          ...llmModels.map((m) => ({
+            value: m.name,
+            label: `${m.name} (${m.provider})${m.capabilities?.includes('reasoning') ? ' 🧠' : ''}`,
+          })),
+        ];
         setModelOptions(modelOpts);
-        // Only pick default if agent has no configured model
-        const agentModel = String(((agent as any)?.config?.model) || '');
-        if (!agentModel && models.length > 0) {
-          const prefer = models.find((m) => m.name.includes('reasoner'))
-            || models.find((m) => m.capabilities?.includes('reasoning'))
-            || models[0];
-          setSelectedModel(prefer?.name || models[0]?.name || '');
-        }
+        const agentModel = String(((agent as any)?.config?.model) || '').trim();
+        // 已配置（含 auto）保持不动；仅完全未配置时默认 auto
+        if (!agentModel) setSelectedModel('auto');
       } catch {
-        setModelOptions([]);
+        setModelOptions([{ value: 'auto', label: 'auto（按 purpose 自动选择）' }]);
       }
     } catch {
       setSkillOptions([]);
@@ -429,20 +600,45 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       metadata.generate_test_plan = generateTestPlan;
       metadata.auto_hitl = autoHitl;
       metadata.phase_description = phaseDescription.trim() || undefined;
+      if (preferredLanguage.trim()) metadata.preferred_language = preferredLanguage.trim().toLowerCase();
+      else delete (metadata as any).preferred_language;
       metadata.hitl_after_execute = hitlAfterExecute;
       metadata.hitl_after_phase = hitlAfterPhase.trim() || undefined;
-      metadata.loop_type = loopType;
+      metadata.loop_type = loopType || 'react';
+      if (loopType) metadata.agent_type = loopType;
       metadata.knowledge_bases = knowledgeBases;
+      if ((agent.metadata as any)?.skill_model_purpose) {
+        metadata.skill_model_purpose = (agent.metadata as any).skill_model_purpose;
+      }
+      let parsedPermissions: string[] = ['llm:generate'];
+      try {
+        parsedPermissions = permissionsText.trim()
+          ? (JSON.parse(permissionsText) as string[])
+          : ['llm:generate'];
+        if (!Array.isArray(parsedPermissions)) parsedPermissions = ['llm:generate'];
+      } catch {
+        toast.error('permissions JSON 格式错误，请检查');
+        setLoading(false);
+        return;
+      }
+      metadata.permissions = parsedPermissions;
+      const parsedTriggers = triggerText.trim()
+        ? triggerText.split('\n').map((s) => s.trim()).filter(Boolean)
+        : [];
+      if (parsedTriggers.length) metadata.trigger_conditions = parsedTriggers;
 
       await workspaceAgentApi.update(agent.id, { name: name.trim() || undefined, status: agentStatus || undefined, config, skills: skills.length ? skills : undefined, tools: tools.length ? tools : undefined, mcp_ids: mcpIds.length ? mcpIds : undefined, workflow_ids: workflowIds.length ? workflowIds : undefined, agent_ids: agentIds.length ? agentIds : undefined, memory_config, metadata,
-        ...(triggerText.trim() ? { trigger_conditions: triggerText.split('\n').map(s => s.trim()).filter(Boolean) } : {}),
-        ...(permissionsText.trim() ? { permissions: JSON.parse(permissionsText) as string[] } : {}),
+        ...(parsedTriggers.length ? { trigger_conditions: parsedTriggers } : {}),
+        permissions: parsedPermissions,
       });
 
       // update SOP (best-effort; do not block binding changes)
       try {
-        if (typeof sopText === 'string') {
-          await workspaceAgentApi.updateSop(agent.id, sopText);
+        if (typeof sopTextRef.current === 'string') {
+          const collapsed = collapseAuditAppendices(sopTextRef.current);
+          sopTextRef.current = collapsed;
+          setSopText(collapsed);
+          await workspaceAgentApi.updateSop(agent.id, collapsed);
           // create a version record for auditability (best-effort)
           try {
             await workspaceAgentApi.createVersion(agent.id, 'Update SOP');
@@ -476,26 +672,50 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       onSuccess();
       onClose();
     } catch (error: any) {
-      toast.error('更新失败', String(error?.message || ''));
+      const detail = error?.detail ?? error?.response?.data?.detail;
+      const msg = typeof detail === 'object' && detail?.message
+        ? String(detail.message)
+        : String(error?.message || detail || '');
+      toast.error('更新失败', msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAudit = async () => {
-    if (!agent) return;
+  const handleAudit = async (draft?: {
+    sop_body?: string;
+    system_prompt?: string;
+    silent?: boolean;
+  }) => {
+    if (!agent) return null;
+    const opts =
+      draft && typeof draft === 'object' && !('nativeEvent' in (draft as object))
+        ? draft
+        : undefined;
     setAuditLoading(true);
     setAuditResult(null);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
     try {
-      const res: any = await workspaceAgentApi.audit(agent.id);
+      // Prefer caller SOP (一键修复刚写入) or unsaved form so AI 审核 matches the editor.
+      const draftSp =
+        opts?.system_prompt != null
+          ? String(opts.system_prompt)
+          : String(parseJsonObject(configText).system_prompt || '');
+      const res: any = await workspaceAgentApi.audit(agent.id, {
+        sop_body: opts?.sop_body != null ? opts.sop_body : sopText,
+        system_prompt: draftSp,
+      });
       setAuditResult(res);
-      if (res.summary?.total === 0) {
-        toast.success('审核通过，配置无问题');
-      } else {
-        toast.success(`审核完成: ${res.summary?.errors || 0} 错误 ${res.summary?.warnings || 0} 警告`);
+      if (!opts?.silent) {
+        const blockers = Number(res.summary?.errors || 0) + Number(res.summary?.warnings || 0);
+        if (blockers === 0) {
+          toast.success('审核通过，配置无问题');
+        } else {
+          toast.success(`审核完成: ${res.summary?.errors || 0} 错误 ${res.summary?.warnings || 0} 警告`);
+        }
       }
+      return res;
     } catch (e: any) {
       clearTimeout(timeout);
       if (e.name === 'AbortError') {
@@ -503,6 +723,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       } else {
         toast.error('审核失败', String(e?.message || ''));
       }
+      return null;
     } finally {
       clearTimeout(timeout);
       setAuditLoading(false);
@@ -536,12 +757,43 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       setSkills((prev) => (prev.includes(fix.skill) ? prev : [...prev, fix.skill]));
       return true;
     }
+    if (fix.type === 'remove_skill') {
+      setSkills((prev) => prev.filter((s) => s !== fix.skill));
+      return true;
+    }
+    if (fix.type === 'remove_mcp') {
+      setMcpIds((prev) => prev.filter((m) => m !== fix.mcp));
+      return true;
+    }
+    if (fix.type === 'remove_agent') {
+      setAgentIds((prev) => prev.filter((a) => a !== fix.agent));
+      return true;
+    }
+    if (fix.type === 'remove_workflow') {
+      setWorkflowIds((prev) => prev.filter((w) => w !== fix.workflow));
+      return true;
+    }
     if (fix.type === 'set_kb_collection') {
       setKnowledgeBases([fix.collection]);
       return true;
     }
     if (fix.type === 'set_status') {
       setAgentStatus(String(fix.status || 'ready'));
+      return true;
+    }
+    if (fix.type === 'set_name') {
+      const n = String(fix.name || agent?.id || '').trim();
+      if (!n) return false;
+      setName(n);
+      return true;
+    }
+    if (fix.type === 'set_agent_type') {
+      const t = String(fix.agent_type || 'react').trim();
+      if (!t) return false;
+      setLoopType(t);
+      if (agent) {
+        (agent as any).metadata = { ...(agent.metadata || {}), agent_type: t, loop_type: t };
+      }
       return true;
     }
     if (fix.type === 'set_system_prompt') {
@@ -557,6 +809,55 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       }
       return true;
     }
+    if (fix.type === 'append_sop_skill_refs' || fix.type === 'append_sop_appendix') {
+      const next = upsertSopAppendix(sopTextRef.current, fix);
+      if (next == null) return false;
+      sopTextRef.current = next;
+      setSopText(next);
+      return true;
+    }
+    if (fix.type === 'set_model') {
+      const m = String(fix.model || '').trim();
+      if (!m) return false;
+      setSelectedModel(m);
+      try {
+        const cfg = configText?.trim() ? JSON.parse(configText) : {};
+        cfg.model = m;
+        setConfigText(JSON.stringify(cfg, null, 2));
+      } catch {
+        setConfigText(JSON.stringify({ model: m }, null, 2));
+      }
+      _ensureOptions(modelOptions, setModelOptions, [m]);
+      return true;
+    }
+    if (fix.type === 'set_toolset') {
+      setDefaultToolset(String(fix.toolset || 'workspace_default'));
+      return true;
+    }
+    if (fix.type === 'set_loop_type') {
+      setLoopType(String(fix.loop_type || 'react'));
+      return true;
+    }
+    if (fix.type === 'set_permissions') {
+      const perms = Array.isArray(fix.permissions) ? fix.permissions : ['llm:generate'];
+      setPermissionsText(JSON.stringify(perms, null, 2));
+      return true;
+    }
+    if (fix.type === 'set_skill_model_purpose') {
+      const p = String(fix.purpose || '').trim();
+      if (!p || !agent) return false;
+      (agent as any).metadata = { ...(agent.metadata || {}), skill_model_purpose: p };
+      return true;
+    }
+    if (fix.type === 'set_hitl_after_phase') {
+      setHitlAfterExecute(true);
+      setHitlAfterPhase(String(fix.phase || 'review'));
+      return true;
+    }
+    if (fix.type === 'set_phase_description') {
+      setPhaseDescription(String(fix.phase_description || ''));
+      return true;
+    }
     return false;
   };
 
@@ -570,7 +871,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       }
       toast.success('已应用到表单，请点「保存」写入 AGENT.md');
     } catch (e: any) {
-      toast.error('修复失败', String(e?.message || ''));
+      toast.error('修复失败', String(e?.message || e?.detail || ''));
     }
   };
 
@@ -583,7 +884,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     }
     try {
       setLoading(true);
-      // 1) Apply all fixes into local React state (order: replace → migrate → others)
+      // Listing/approval lifecycle is user-driven — never auto-submit for review here.
+      // Apply remaining fixes into local React state (order: replace → migrate → others)
       const ordered = [...fixable].sort((a: any, b: any) => {
         const rank = (t: string) =>
           t === 'replace_tool' ? 0 : t === 'remove_tool' ? 1 : t === 'migrate_field' ? 2 : 3;
@@ -593,12 +895,32 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       let nextTools = [...tools];
       let nextSkills = [...skills];
       let nextStatus = agentStatus;
+      let nextName = name;
       let nextKb = [...knowledgeBases];
       let nextConfigText = configText;
+      let nextToolset = defaultToolset;
+      let nextLoopType = loopType;
+      let nextPermissionsText = permissionsText;
+      let nextHitlAfter = hitlAfterExecute;
+      let nextHitlPhase = hitlAfterPhase;
+      let nextPhaseDesc = phaseDescription;
+      let nextSkillPurpose = String((agent.metadata as any)?.skill_model_purpose || '');
+      let nextMcpIds = [...mcpIds];
+      let nextAgentIds = [...agentIds];
+      let nextWorkflowIds = [...workflowIds];
+      let nextSopText = sopTextRef.current;
+      let sopDirty = false;
 
       for (const issue of ordered) {
         const fix = issue.fix;
         if (!fix?.type) continue;
+        if (
+          fix.type === 'submit_skill_for_review'
+          || fix.type === 'submit_tool_for_review'
+          || fix.apply_all === false
+        ) {
+          continue; // 上架由用户操作；未上架解绑不对「全部」生效
+        }
         if (fix.type === 'replace_tool') {
           nextTools = nextTools.map((t) => (t === fix.from ? fix.to : t));
           if (!nextTools.includes(fix.to)) nextTools.push(fix.to);
@@ -616,12 +938,36 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         } else if (fix.type === 'add_skill') {
           if (!nextSkills.includes(fix.skill)) nextSkills.push(fix.skill);
           applied += 1;
+        } else if (fix.type === 'remove_skill') {
+          nextSkills = nextSkills.filter((s) => s !== fix.skill);
+          applied += 1;
+        } else if (fix.type === 'remove_mcp') {
+          nextMcpIds = nextMcpIds.filter((m) => m !== fix.mcp);
+          applied += 1;
+        } else if (fix.type === 'remove_agent') {
+          nextAgentIds = nextAgentIds.filter((a) => a !== fix.agent);
+          applied += 1;
+        } else if (fix.type === 'remove_workflow') {
+          nextWorkflowIds = nextWorkflowIds.filter((w) => w !== fix.workflow);
+          applied += 1;
         } else if (fix.type === 'set_kb_collection') {
           nextKb = [fix.collection];
           applied += 1;
         } else if (fix.type === 'set_status') {
           nextStatus = String(fix.status || 'ready');
           applied += 1;
+        } else if (fix.type === 'set_name') {
+          const n = String(fix.name || agent.id || '').trim();
+          if (n) {
+            nextName = n;
+            applied += 1;
+          }
+        } else if (fix.type === 'set_agent_type') {
+          const t = String(fix.agent_type || 'react').trim();
+          if (t) {
+            nextLoopType = t;
+            applied += 1;
+          }
         } else if (fix.type === 'set_system_prompt') {
           const sp = String(fix.system_prompt || '').trim();
           if (sp) {
@@ -639,14 +985,74 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
             }
             applied += 1;
           }
+        } else if (fix.type === 'set_model') {
+          const m = String(fix.model || '').trim();
+          if (m) {
+            try {
+              const cfg = nextConfigText?.trim() ? JSON.parse(nextConfigText) : {};
+              cfg.model = m;
+              nextConfigText = JSON.stringify(cfg, null, 2);
+            } catch {
+              nextConfigText = JSON.stringify({ model: m }, null, 2);
+            }
+            setSelectedModel(m);
+            applied += 1;
+          }
+        } else if (fix.type === 'set_toolset') {
+          nextToolset = String(fix.toolset || 'workspace_default');
+          applied += 1;
+        } else if (fix.type === 'set_loop_type') {
+          nextLoopType = String(fix.loop_type || 'react');
+          applied += 1;
+        } else if (fix.type === 'set_permissions') {
+          const perms = Array.isArray(fix.permissions) ? fix.permissions : ['llm:generate'];
+          nextPermissionsText = JSON.stringify(perms, null, 2);
+          applied += 1;
+        } else if (fix.type === 'set_skill_model_purpose') {
+          const p = String(fix.purpose || '').trim();
+          if (p) {
+            nextSkillPurpose = p;
+            applied += 1;
+          }
+        } else if (fix.type === 'set_hitl_after_phase') {
+          nextHitlAfter = true;
+          nextHitlPhase = String(fix.phase || 'review');
+          applied += 1;
+        } else if (fix.type === 'set_phase_description') {
+          nextPhaseDesc = String(fix.phase_description || '');
+          applied += 1;
+        } else if (fix.type === 'append_sop_skill_refs' || fix.type === 'append_sop_appendix') {
+          const next = upsertSopAppendix(nextSopText, fix);
+          if (next != null) {
+            nextSopText = next;
+            sopDirty = true;
+            applied += 1;
+          }
         }
       }
 
       setTools(nextTools);
       setSkills(nextSkills);
       setAgentStatus(nextStatus);
+      if (nextName.trim()) setName(nextName);
       setKnowledgeBases(nextKb);
       setConfigText(nextConfigText);
+      setDefaultToolset(nextToolset);
+      setLoopType(nextLoopType);
+      setPermissionsText(nextPermissionsText);
+      setHitlAfterExecute(nextHitlAfter);
+      setHitlAfterPhase(nextHitlPhase);
+      setPhaseDescription(nextPhaseDesc);
+      setMcpIds(nextMcpIds);
+      setAgentIds(nextAgentIds);
+      setWorkflowIds(nextWorkflowIds);
+      if (sopDirty) {
+        sopTextRef.current = nextSopText;
+        setSopText(nextSopText);
+      }
+      if (nextSkillPurpose) {
+        (agent as any).metadata = { ...(agent.metadata || {}), skill_model_purpose: nextSkillPurpose };
+      }
       _ensureOptions(toolOptions, setToolOptions, nextTools);
       _ensureOptions(skillOptions, setSkillOptions, nextSkills);
 
@@ -673,30 +1079,42 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       if (description.trim()) metadata.description = description.trim();
       metadata.generate_test_plan = generateTestPlan;
       metadata.auto_hitl = autoHitl;
-      metadata.phase_description = phaseDescription.trim() || undefined;
-      metadata.hitl_after_execute = hitlAfterExecute;
-      metadata.hitl_after_phase = hitlAfterPhase.trim() || undefined;
-      metadata.loop_type = loopType;
+      metadata.phase_description = nextPhaseDesc.trim() || undefined;
+      if (preferredLanguage.trim()) metadata.preferred_language = preferredLanguage.trim().toLowerCase();
+      else delete (metadata as any).preferred_language;
+      metadata.hitl_after_execute = nextHitlAfter;
+      metadata.hitl_after_phase = nextHitlPhase.trim() || undefined;
+      metadata.loop_type = nextLoopType;
+      if (nextLoopType) metadata.agent_type = nextLoopType;
       metadata.knowledge_bases = nextKb;
-      if (defaultToolset && defaultToolset !== 'workspace_default') metadata.toolset = defaultToolset;
+      if (nextToolset && nextToolset !== 'workspace_default') metadata.toolset = nextToolset;
       else delete (metadata as any).toolset;
+      if (nextSkillPurpose) metadata.skill_model_purpose = nextSkillPurpose;
 
       await workspaceAgentApi.update(agent.id, {
-        name: name.trim() || undefined,
+        name: nextName.trim() || name.trim() || undefined,
         status: nextStatus || undefined,
         config,
         skills: nextSkills.length ? nextSkills : undefined,
         tools: nextTools.length ? nextTools : [],
-        mcp_ids: mcpIds.length ? mcpIds : undefined,
-        workflow_ids: workflowIds.length ? workflowIds : undefined,
-        agent_ids: agentIds.length ? agentIds : undefined,
+        mcp_ids: nextMcpIds.length ? nextMcpIds : [],
+        workflow_ids: nextWorkflowIds.length ? nextWorkflowIds : [],
+        agent_ids: nextAgentIds.length ? nextAgentIds : [],
         memory_config,
         metadata,
         ...(triggerText.trim()
           ? { trigger_conditions: triggerText.split('\n').map((s) => s.trim()).filter(Boolean) }
           : {}),
-        ...(permissionsText.trim() ? { permissions: JSON.parse(permissionsText) as string[] } : {}),
+        ...(nextPermissionsText.trim()
+          ? { permissions: JSON.parse(nextPermissionsText) as string[] }
+          : {}),
       });
+      if (sopDirty) {
+        const collapsed = collapseAuditAppendices(nextSopText);
+        sopTextRef.current = collapsed;
+        setSopText(collapsed);
+        await workspaceAgentApi.updateSop(agent.id, collapsed);
+      }
 
       // sync tool/skill bindings
       try {
@@ -724,8 +1142,14 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         // binding sync best-effort
       }
 
-      toast.success(`已自动修复 ${applied} 项并保存，正在重新审核…`);
-      await handleAudit();
+      const again = await handleAudit({
+        sop_body: nextSopText,
+        system_prompt: String(parseJsonObject(nextConfigText).system_prompt || ''),
+        silent: true,
+      });
+      const msg = auditRemainToast(applied, again?.summary);
+      if (msg.kind === 'success') toast.success(msg.text);
+      else toast.info(msg.text);
     } catch (e: any) {
       toast.error('一键修复失败', String(e?.message || e?.detail || ''));
     } finally {
@@ -733,8 +1157,47 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
     }
   };
 
-  const configHint = useMemo(() => '提示：此处仅更新 Agent config；名称/类型不可修改。', []);
-  const configHint2 = useMemo(() => '提示：agent_id 不变；“名称”是显示名，可修改。', []);
+  const configHint = useMemo(
+    () => '名称是显示名，可改；agent_id 不变。System Prompt / 模型写在 Agent config，SOP 写在 AGENT.md 正文。',
+    [],
+  );
+
+  const systemPromptValue = useMemo(
+    () => String(parseJsonObject(configText).system_prompt || ''),
+    [configText],
+  );
+  const memoryType = useMemo(
+    () => String(parseJsonObject(memoryConfigText).type || 'short_term'),
+    [memoryConfigText],
+  );
+  const memoryRecall = useMemo(() => {
+    const n = Number(parseJsonObject(memoryConfigText).recall_count);
+    return Number.isFinite(n) && n > 0 ? n : 5;
+  }, [memoryConfigText]);
+
+  const agentFixLabel = (fix: { type: string; [k: string]: unknown }) => {
+    if (fix.type === 'replace_tool') return `替换 → ${fix.to}`;
+    if (fix.type === 'remove_tool') return '移除';
+    if (fix.type === 'remove_skill') return '移除技能';
+    if (fix.type === 'remove_mcp') return '解绑 MCP';
+    if (fix.type === 'remove_agent') return '解绑子Agent';
+    if (fix.type === 'remove_workflow') return '解绑 Workflow';
+    if (fix.type === 'add_skill') return `+${fix.skill}`;
+    if (fix.type === 'set_kb_collection') return '设置知识库';
+    if (fix.type === 'set_name') return `名称 → ${fix.name}`;
+    if (fix.type === 'set_agent_type') return `类型 → ${fix.agent_type}`;
+    if (fix.type === 'set_model') return `模型 → ${fix.model}`;
+    if (fix.type === 'set_toolset') return `Toolset → ${fix.toolset}`;
+    if (fix.type === 'set_loop_type') return `策略 → ${fix.loop_type}`;
+    if (fix.type === 'set_permissions') return '补权限';
+    if (fix.type === 'set_skill_model_purpose') return `purpose → ${fix.purpose}`;
+    if (fix.type === 'set_system_prompt') return '补 System Prompt';
+    if (fix.type === 'append_sop_skill_refs') return '追加 Skill 附录';
+    if (fix.type === 'append_sop_appendix') {
+      return String(fix.label || '').trim() || '追加 SOP 附录';
+    }
+    return '修复';
+  };
 
   return (
     <>
@@ -748,7 +1211,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
           <Button variant="secondary" onClick={handleSmartFill} loading={smartFillLoading}>
             🤖 一键生成全部
           </Button>
-          <Button variant="secondary" onClick={handleAudit} loading={auditLoading}>
+          <Button variant="secondary" onClick={() => { void handleAudit(); }} loading={auditLoading}>
             🔍 AI 审核
           </Button>
           <div className="flex-1" />
@@ -762,56 +1225,15 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       }
     >
       <div className="space-y-3">
-        {auditResult && (
-          <div className={`p-3 rounded-lg border text-xs ${
-            auditResult.summary?.health === 'A' ? 'border-green-500/30 bg-green-900/10' :
-            auditResult.summary?.health === 'B' ? 'border-blue-500/30 bg-blue-900/10' :
-            'border-yellow-500/30 bg-yellow-900/10'
-          }`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-semibold text-gray-200">
-                🔍 审核结果 ({auditResult.summary?.health || '?'})
-              </span>
-              <span className="text-gray-500">
-                {auditResult.summary?.errors || 0}错误 {auditResult.summary?.warnings || 0}警告 {auditResult.summary?.info || 0}提示
-              </span>
-            </div>
-            {auditResult.issues?.map((issue: any, idx: number) => (
-              <div key={idx} className={`flex items-start gap-2 py-1.5 ${
-                idx < auditResult.issues.length - 1 ? 'border-b border-dark-border/30' : ''
-              }`}>
-                <span className="mt-0.5">
-                  {issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️'}
-                </span>
-                <div className="flex-1">
-                  <div className="text-gray-300">{issue.message}</div>
-                  {issue.suggestion && (
-                    <div className="text-gray-500 mt-0.5">{issue.suggestion}</div>
-                  )}
-                </div>
-                {issue.fix_available && issue.fix && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="text-[10px] py-0 px-2 h-6 whitespace-nowrap"
-                    onClick={() => applyAuditFix(issue.fix)}
-                  >
-                  {issue.fix.type === 'replace_tool' ? `替换 → ${issue.fix.to}` :
-                   issue.fix.type === 'remove_tool' ? '移除' :
-                   issue.fix.type === 'add_skill' ? `+${issue.fix.skill}` :
-                   issue.fix.type === 'set_kb_collection' ? '设置知识库' : '修复'}
-                </Button>
-              )}
-            </div>
-          ))}
-          {auditResult.issues?.some((i: any) => i.fix_available && i.fix) && (
-            <div className="mt-2 pt-2 border-t border-dark-border/30">
-              <Button variant="primary" size="sm" onClick={handleApplyAllFixes}>
-                ⚡ 一键修复全部
-              </Button>
-            </div>)}
-          </div>
-        )}
+        <AssetAuditPanel
+          result={auditResult}
+          loading={auditLoading}
+          onAudit={() => { void handleAudit(); }}
+          hideAuditButton
+          onApplyFix={(fix) => applyAuditFix(fix as any)}
+          onApplyAll={handleApplyAllFixes}
+          fixLabel={agentFixLabel}
+        />
 
         <div className="flex flex-wrap gap-2 text-[11px] text-gray-500">
           <span className="px-2 py-0.5 rounded bg-dark-card border border-dark-border">技能 {skills.length}</span>
@@ -823,6 +1245,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
 
         <Tabs
           key={agent?.id || 'edit-agent'}
+          activeKey={activeTab}
+          onChange={setActiveTab}
           defaultActiveKey="basic"
           tabs={[
             {
@@ -866,9 +1290,9 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
               <div>
                 <div className="text-sm font-medium text-gray-300 mb-1">模型</div>
                 <select
-                  value={selectedModel}
+                  value={selectedModel || 'auto'}
                   onChange={(e) => {
-                    const v = e.target.value;
+                    const v = e.target.value || 'auto';
                     setSelectedModel(v);
                     try {
                       const cfg = configText?.trim() ? JSON.parse(configText) : {};
@@ -880,7 +1304,10 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
                   }}
                   className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
                 >
-                  {modelOptions.map((m) => (
+                  {(modelOptions.some((m) => m.value === 'auto')
+                    ? modelOptions
+                    : [{ value: 'auto', label: 'auto（按 purpose 自动选择）' }, ...modelOptions]
+                  ).map((m) => (
                     <option key={m.value} value={m.value}>{m.label}</option>
                   ))}
                 </select>
@@ -925,6 +1352,22 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
               <summary className="cursor-pointer px-3 py-2 text-sm text-gray-400 hover:text-gray-200">流水线配置</summary>
               <div className="px-3 pb-3 space-y-2 border-t border-dark-border/50">
                 <Input label="阶段描述（phase_description）" value={phaseDescription} onChange={(e: any) => setPhaseDescription(e.target.value)} placeholder="如：需求分析与PRD生成" />
+                <div>
+                  <div className="text-sm font-medium text-gray-300 mb-1">编码默认语言（preferred_language）</div>
+                  <select
+                    value={preferredLanguage}
+                    onChange={(e) => setPreferredLanguage(e.target.value)}
+                    className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
+                  >
+                    <option value="">未设置（跟随 skill 默认 / 任务文案）</option>
+                    <option value="typescript">typescript（前端工程师推荐）</option>
+                    <option value="javascript">javascript</option>
+                    <option value="python">python</option>
+                  </select>
+                  <div className="text-[10px] text-gray-500 mt-1">
+                    写入 metadata / AGENT.md；任务文案点名语言时仍以任务为准；可覆盖模型误传的 language=python
+                  </div>
+                </div>
                 <label className="flex items-center gap-2 text-xs text-gray-400">
                   <input type="checkbox" checked={generateTestPlan} onChange={(e) => setGenerateTestPlan(e.target.checked)} className="w-4 h-4" />
                   自动生成测试计划
@@ -1046,32 +1489,98 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
           <div className="space-y-3">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium text-gray-300">SOP（Markdown）</span>
+                <span className="text-sm font-medium text-gray-300">SOP（角色与流程）</span>
                 {sopLoading && <span className="text-xs text-gray-500">加载中…</span>}
               </div>
+              <p className="text-[11px] text-gray-500 mb-1.5">
+                写入 AGENT.md 正文：角色定义、输出格式、工作步骤。与 Skill SOP 分工——Agent 管决策与编排，Skill 管具体产物格式。
+              </p>
               <Textarea
                 value={sopText}
                 onChange={(e: any) => setSopText(e.target.value)}
-                rows={12}
-                placeholder="角色定义与工作流程（写入 AGENT.md body）"
+                rows={10}
+                placeholder={'# 角色：…\n\n## 工作流程\n1. …\n\n## 输出要求\n…'}
               />
             </div>
-            <Textarea label="配置（JSON）" value={configText} onChange={(e: any) => setConfigText(e.target.value)} rows={6} />
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => {
-                try {
-                  const cfg = JSON.parse(configText || '{}');
-                  const sp = cfg.system_prompt || '';
-                  if (!sp) { toast.warning('配置中无 system_prompt 可优化'); return; }
-                  setOptimizePrompt(sp);
-                  setOptimizeOpen(true);
-                } catch { toast.warning('配置 JSON 格式错误'); }
-              }}>🤖 AI 优化 System Prompt</Button>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium text-gray-300">System Prompt</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const sp = systemPromptValue.trim();
+                    if (!sp) {
+                      toast.warning('请先填写 System Prompt');
+                      return;
+                    }
+                    setOptimizePrompt(sp);
+                    setOptimizeOpen(true);
+                  }}
+                >
+                  🤖 AI 优化
+                </Button>
+              </div>
+              <p className="text-[11px] text-gray-500 mb-1.5">
+                运行时注入的短指令（config.system_prompt）。详细 SOP 放上方 Markdown，避免把长文档塞进 prompt。
+              </p>
+              <Textarea
+                value={systemPromptValue}
+                onChange={(e: any) => {
+                  setConfigText(mergeConfigText(configText, { system_prompt: e.target.value }));
+                }}
+                rows={4}
+                placeholder="简洁的角色指令，例如：根据 PRD 输出结构化架构 JSON。"
+              />
             </div>
-            <Textarea label="memory_config（JSON，可选）" value={memoryConfigText} onChange={(e: any) => setMemoryConfigText(e.target.value)} rows={4} />
-            <Alert type="info" title="说明">
-              {configHint} {configHint2}
-            </Alert>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <div className="text-sm font-medium text-gray-300 mb-1">记忆类型</div>
+                <select
+                  value={memoryType}
+                  onChange={(e) => setMemoryConfigText(mergeMemoryText(memoryConfigText, { type: e.target.value }))}
+                  className="w-full h-10 px-3 bg-dark-card border border-dark-border rounded-lg text-sm text-gray-100"
+                >
+                  <option value="short_term">short_term（短期）</option>
+                  <option value="long_term">long_term（长期）</option>
+                  <option value="none">none（关闭）</option>
+                </select>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-gray-300 mb-1">回忆条数</div>
+                <Input
+                  type="number"
+                  value={String(memoryRecall)}
+                  onChange={(e: any) => {
+                    const n = Math.max(1, Math.min(50, Number(e.target.value) || 5));
+                    setMemoryConfigText(mergeMemoryText(memoryConfigText, { recall_count: n }));
+                  }}
+                />
+              </div>
+            </div>
+
+            <details className="rounded-lg border border-dark-border bg-dark-card/30">
+              <summary className="cursor-pointer px-3 py-2 text-sm text-gray-400 hover:text-gray-200">
+                高级：原始 JSON（config / memory_config）
+              </summary>
+              <div className="px-3 pb-3 space-y-2 border-t border-dark-border/50">
+                <Textarea
+                  label="config（JSON）"
+                  value={configText}
+                  onChange={(e: any) => setConfigText(e.target.value)}
+                  rows={6}
+                />
+                <Textarea
+                  label="memory_config（JSON）"
+                  value={memoryConfigText}
+                  onChange={(e: any) => setMemoryConfigText(e.target.value)}
+                  rows={3}
+                />
+                <p className="text-[10px] text-gray-500">{configHint}</p>
+              </div>
+            </details>
           </div>
               ),
             },

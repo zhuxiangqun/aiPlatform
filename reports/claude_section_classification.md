@@ -140,7 +140,7 @@
 | 5.102 | 答案生成管道 (2026-07) | 1841-1844 | 4 | migrated-stub | ☐ |
 | 5.103 | Action 闭环桥接 (2026-07) | 1845-1848 | 4 | migrated-stub | ☐ |
 | 5.104 | 本体感知路由 (Phase 11.1, 2026-07) | 1849-1852 | 4 | migrated-stub | ☐ |
-| 5.105 | SemanticGate — 语义合规门控 (Phase 11.2, 2026-07) | 1853-1856 | 4 | migrated-stub | ☐ |
+| 5.105 | SemanticGate — 语义合规门控 (Phase 11.2, 2026-07) | 1853-（参见 AIPLAT_CAPABILITIES.md 当前计数） | 4 | migrated-stub | ☐ |
 | 5.106 | CrossValidationGate — 跨域验证 (Phase 11.3, 远期) | 1857-1860 | 4 | migrated-stub | ☐ |
 | 5.108 | 复杂度感知模型选择 (Phase 12.1, 2026-07) | 1889-1892 | 4 | migrated-stub | ☐ |
 | 5.109 | 会话模型覆盖 — /model 命令 (Phase 13, 2026-07) | 1893-1896 | 4 | migrated-stub | ☐ |

@@ -46,6 +46,40 @@ def test_parse_action_call_skill_structured():
     assert parsed.args == {"text": "x"}
 
 
+def test_parse_action_call_skill_call_with_embedded_ts_fence():
+    """Regression: extract_json_safe must not peel ```ts inside skill_call JSON strings."""
+    text = (
+        '{"type":"skill_call","skill":"code_generation","input":{'
+        '"language":"typescript","code":"```ts\\n'
+        "function getTasks(params: {status?: string, page?: number}): "
+        'Promise<{items: Task[], total: number}> { return api.get(\'/api/tasks\'); }\\n'
+        '```"}}'
+    )
+    from core.utils.json_utils import extract_json_safe
+
+    cand = extract_json_safe(text)
+    assert cand is not None
+    assert '"skill":"code_generation"' in cand
+    assert cand != "{status?: string, page?: number}"
+
+    parsed = parse_action_call(text)
+    assert parsed is not None
+    assert parsed.kind == "skill"
+    assert parsed.name == "code_generation"
+    assert "getTasks" in str(parsed.args.get("code") or "")
+
+
+def test_looks_like_pending_action_envelope():
+    from core.harness.utils.execute_session import looks_like_pending_action_envelope
+
+    assert looks_like_pending_action_envelope(
+        '{"type":"skill_call","skill":"code_generation","input":{"code":"' + ("x" * 40) + '"}}'
+    )
+    assert not looks_like_pending_action_envelope(
+        '{"title":"架构草稿","overview":"' + ("组件职责。" * 10) + '"}'
+    )
+
+
 @dataclass
 class _SkillResult:
     output: object = None

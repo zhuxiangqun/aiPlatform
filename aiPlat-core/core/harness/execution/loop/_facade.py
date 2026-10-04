@@ -278,6 +278,12 @@ class ReActLoop(BaseLoop):
 
             return None
 
+        # Coding substance gate is independent of file-contract fail-open.
+        # Do not skip it when there is no ActiveChangeContract (typical skill_delivery).
+        coding_veto = self._coding_deliverable_veto(state)
+        if coding_veto:
+            return coding_veto
+
         # Fail-open after 2 vetoes to avoid burning the whole step budget on an
 
         # unsatisfiable criterion (max_steps in should_continue is the hard cap).
@@ -334,7 +340,179 @@ class ReActLoop(BaseLoop):
 
         return None
 
+    def _resolved_bound_skill_ids(self, state: LoopState) -> List[str]:
+        """Agent required_skills for HITL waiver + follow-up gating."""
+        from core.harness.utils.execute_session import resolve_bound_skill_ids
 
+        return resolve_bound_skill_ids(state, getattr(self, "_skills", None))
+
+    def _coding_deliverable_veto(self, state: LoopState) -> Optional[str]:
+        """Reject premature DONE when coding Agents output clarify-only / thin stubs.
+
+        Quality review already flags these post-run; this gate prevents false-green
+        ``completed`` (auto_done after a confirm-only reply or DONE+empty ## FILE).
+
+        After 3 coding vetoes, fail-open (return None) so eager finalize can seal the
+        row; ``quality_review_blocks_success`` then flips status to failed — avoids
+        nested LLM hangs (run-1d72db0b704b).
+        """
+        try:
+            from core.management.execution_quality_review import (
+                _input_asks_coding_delivery,
+                is_non_deliverable_coding_output,
+            )
+        except Exception:
+            return None
+
+        skill_once = str(state.context.get("_skill_delivery") or "").strip().lower() == "once"
+        bound_s = set(self._resolved_bound_skill_ids(state))
+        coding_skills = bound_s & {
+            "code_generation",
+            "code-hygiene",
+            "file_operations",
+        }
+        in_text = str(state.context.get("_user_task") or "").strip()
+        if not in_text:
+            task = str(state.context.get("task") or "").strip()
+            if "## Task\n" in task:
+                in_text = task.split("## Task\n", 1)[1].strip()
+            else:
+                in_text = task
+        # skill_once covers any Agent (PM included: don't DONE before primary skill).
+        # Coding-product veto only when the task/skills actually generate code.
+        asks = _input_asks_coding_delivery(in_text) if in_text else False
+        if not (skill_once or coding_skills or asks):
+            return None
+
+        out = str(state.context.get("output") or "").strip()
+        reason: Optional[str] = None
+
+        if not out:
+            if skill_once and not state.context.get("_primary_skill_delivered"):
+                reason = (
+                    "skill_delivery=once requires a successful primary skill call "
+                    "(e.g. code_generation) before DONE — do not end with clarification"
+                )
+        else:
+            try:
+                from core.harness.utils.execute_session import looks_like_pending_action_envelope
+
+                if looks_like_pending_action_envelope(out):
+                    reason = (
+                        "output is still a skill_call/tool_call envelope — execute the skill "
+                        "(do not DONE with the call JSON as the answer)"
+                    )
+            except Exception:
+                pass  # noqa: cleanup-best-effort
+
+            if reason is None and skill_once and not state.context.get("_primary_skill_delivered"):
+                reason = (
+                    "skill_delivery=once requires a successful primary skill call "
+                    "(e.g. code_generation) before DONE — do not end with clarification"
+                )
+
+            if reason is None and (coding_skills or asks) and is_non_deliverable_coding_output(
+                input_text=in_text,
+                output_text=out,
+                raw_out={"text": out},
+                hints=" ".join(sorted(bound_s)),
+                scope="skill",
+            ):
+                reason = (
+                    "coding deliverable is clarify-only, thin DONE/## FILE stub, "
+                    "wrong language, or off-spec placeholder — "
+                    "call the bound skill and produce task-matching runnable code before DONE"
+                )
+
+            if reason is None and state.context.get("_primary_skill_delivered"):
+                follow = self._pending_coding_followup(state)
+                if follow:
+                    reason = (
+                        f"call bound follow-up skill `{follow}` on the generated files "
+                        "before DONE"
+                    )
+
+        if not reason:
+            return None
+        # Fail-open after repeated coding vetoes (same hang class as infinite followup nudge).
+        # Follow-up-only vetoes exhaust faster (2) — avoid nested LLM while waiting for autoreview.
+        veto_n = int(state.context.get("_acceptance_veto_count", 0) or 0)
+        followup_only = "follow-up skill" in reason or "followup skill" in reason
+        limit = 2 if followup_only else 3
+        if veto_n >= limit:
+            state.context["_coding_veto_exhausted"] = True
+            state.context["_coding_veto_last_reason"] = reason
+            return None
+        return reason
+
+    def _pending_coding_followup(self, state: LoopState) -> Optional[str]:
+        """Next bound review/hygiene skill after a substantial primary coding delivery.
+
+        Driven by required_skills (not agent_id). Prefer autoreview → code_review → code-hygiene.
+        """
+        bound_s = set(self._resolved_bound_skill_ids(state))
+        done = state.context.get("_followup_skills_done") or []
+        if not isinstance(done, list):
+            done = []
+        done_s = {str(x).strip() for x in done if str(x).strip()}
+        for sid in ("autoreview", "code_review", "code-hygiene"):
+            if sid in bound_s and sid not in done_s:
+                return sid
+        return None
+
+    def _bootstrap_primary_coding_skill(self, state: LoopState) -> Optional[str]:
+        """Primary coding skill id for skill_delivery=once first-step bootstrap."""
+        if str(state.context.get("_skill_delivery") or "").strip().lower() != "once":
+            return None
+        if state.context.get("_primary_skill_delivered"):
+            return None
+        if state.context.get("_bootstrap_primary_dispatched"):
+            return None
+        # Only the first ReAct step (avoid re-bootstrap after thin retry / veto).
+        if int(getattr(state, "step_count", 0) or 0) > 1:
+            return None
+        bound_s = set(self._resolved_bound_skill_ids(state))
+        for sid in ("code_generation", "file_operations"):
+            if sid in bound_s:
+                return sid
+        return None
+
+    def _maybe_bootstrap_skill_delivery_once(self, state: LoopState) -> Optional[str]:
+        """Skip flaky first LLM reason: emit skill_call JSON for the primary coding skill.
+
+        run-9d3e9af374ee / run-229a42f46a59: first ``sys.llm.generate`` hung minutes
+        with zero skill calls (local Ollama dual-model load). skill_delivery=once
+        already knows the first action must be code_generation — dispatch it.
+        """
+        primary = self._bootstrap_primary_coding_skill(state)
+        if not primary:
+            return None
+        state.context["_bootstrap_primary_dispatched"] = True
+        task = str(state.context.get("_user_task") or "").strip()
+        if not task:
+            raw = str(state.context.get("task") or "").strip()
+            if "## Task\n" in raw:
+                task = raw.split("## Task\n", 1)[1].strip()
+            else:
+                task = raw
+        payload = {
+            "type": "skill_call",
+            "skill": primary,
+            "input": {
+                "input": task[:12000],
+                "requirements": task[:12000],
+            },
+        }
+        pref = str(state.context.get("_preferred_language") or "").strip().lower()
+        if pref:
+            payload["input"]["language"] = pref
+            payload["input"]["_language_locked"] = True
+        logging.getLogger(__name__).info(
+            "skill_delivery=once bootstrap → skill_call(%s) run_id=%s",
+            primary,
+            state.context.get("_run_id"),
+        )
+        return json.dumps(payload, ensure_ascii=False)
 
     def _apply_acceptance_veto(self, state: LoopState, reason: str) -> None:
 
@@ -687,6 +865,25 @@ class ReActLoop(BaseLoop):
                     },
 
                 })
+            # Visible marker on EVERY step (not only step_1): about to enter
+            # pre-LLM prep. run-91896f56fcd9 step_2 hung with zero children
+            # because this marker was step_1-only → black-box / orphan blind.
+            await store.add_syscall_event({
+                "id": f"{state.context.get('_run_id','?')}:pre_llm_prep:{state.step_count}",
+                "span_id": f"{state.context.get('_run_id','?')}:pre_llm_prep",
+                "parent_span_id": step_span_id,
+                "kind": "context",
+                "name": "pre_llm_prep",
+                "status": "running",
+                "run_id": state.context.get("_run_id") or "",
+                "start_time": time.time(),
+                "args": {
+                    "coding_policy_profile": str(
+                        state.context.get("_coding_policy_profile") or ""
+                    ),
+                    "step_count": int(state.step_count or 0),
+                },
+            })
 
         except Exception as e:
 
@@ -745,34 +942,48 @@ class ReActLoop(BaseLoop):
             reasoning = state.context.get("reasoning", "")
 
         else:
+            bootstrap = self._maybe_bootstrap_skill_delivery_once(state)
+            if bootstrap:
+                state.current = LoopStateEnum.REASONING
+                reasoning = bootstrap
+                state.context["reasoning"] = reasoning
+            else:
 
-            await self._trigger_hook(HookPhase.PRE_REASONING, state.context)
+                await self._trigger_hook(HookPhase.PRE_REASONING, state.context)
 
-            state.current = LoopStateEnum.REASONING
+                state.current = LoopStateEnum.REASONING
 
-            reasoning = await self._reason(state)
+                reasoning = await self._reason(state)
 
-            state.context["reasoning"] = reasoning
+                state.context["reasoning"] = reasoning
 
-            await self._trigger_hook(HookPhase.POST_REASONING, state.context)
+                try:
+                    import asyncio as _aio_post_reason
 
-            drift, reason = self._detect_quality_drift(reasoning, state)
+                    await _aio_post_reason.wait_for(
+                        self._trigger_hook(HookPhase.POST_REASONING, state.context),
+                        timeout=3.0,
+                    )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "POST_REASONING skipped", exc_info=True
+                    )
 
-            if drift:
+                drift, reason = self._detect_quality_drift(reasoning, state)
 
-                state.context["_reasoning_drift"] = reason
+                if drift:
 
-                action_result = await self._anti_divergence_action(reason, state)
+                    state.context["_reasoning_drift"] = reason
 
-                if action_result == "terminate":
+                    action_result = await self._anti_divergence_action(reason, state)
 
-                    state.context["_stop_reason"] = reason
+                    if action_result == "terminate":
 
-                    state.current = LoopStateEnum.ERROR
+                        state.context["_stop_reason"] = reason
 
-                    return state
+                        state.current = LoopStateEnum.ERROR
 
-
+                        return state
 
         # Parse TODO_DONE markers from reasoning too (more "seamless")
 
@@ -812,6 +1023,12 @@ class ReActLoop(BaseLoop):
 
                         break
 
+                _skill_body = self._skill_delivery_body(state)
+
+                if (not final_text or len(final_text) < 40) and _skill_body:
+
+                    final_text = _skill_body
+
                 state.context["output"] = final_text
 
                 try:
@@ -834,7 +1051,7 @@ class ReActLoop(BaseLoop):
 
                         "start_time": time.time(),
 
-                        "result": {"answer": final_text[:500]},
+                        "result": {"answer": final_text[:50000], "source": "final_answer"},
 
                         "step_number": state.step_count,
 
@@ -906,6 +1123,10 @@ class ReActLoop(BaseLoop):
 
                     return state
 
+                await self._eager_finalize_agent_row(
+                    state, output_text=str(final_text), source="reason_final_answer"
+                )
+
                 state.current = LoopStateEnum.FINISHED
 
                 return state
@@ -916,12 +1137,45 @@ class ReActLoop(BaseLoop):
 
 
 
+        # LLM timeout/error text must NOT become auto_done (run-80d7a: llm_timeout →
+        # "Model error: …" treated as plain answer → auto_done + stuck running).
+        _rs_fail = str(reasoning or "").strip()
+        _llm_failed = bool(state.context.pop("_llm_call_failed", None))
+        _looks_model_err = (
+            _rs_fail.lower().startswith("model error:")
+            or "llm_timeout" in _rs_fail.lower()
+            or "timed out" in _rs_fail.lower()
+            or "timeout" in _rs_fail.lower() and "model error" in _rs_fail.lower()
+        )
+        if _llm_failed or _looks_model_err:
+            note = (
+                "[LLM ERROR] Generation failed "
+                f"({_rs_fail[:400] or 'unknown'}). Do not DONE yet — "
+                "retry `code_generation` with a shorter request, or wait for the model."
+            )
+            state.context.setdefault("messages", []).append({"role": "user", "content": note})
+            state.context["observation"] = note
+            if str(state.context.get("_stop_reason") or "") == "llm_failure_exhausted":
+                state.context["output"] = _rs_fail or note
+                await self._eager_finalize_agent_row(
+                    state,
+                    output_text=str(state.context.get("output") or note),
+                    source="reason_llm_failure_exhausted",
+                )
+                # Mark failed via finalize metadata path when possible
+                state.context["_force_failed_status"] = "timeout"
+                state.current = LoopStateEnum.FINISHED
+                return state
+            state.current = LoopStateEnum.REASONING
+            return state
+
         # Auto-detect final output / stagnation
 
         parsed = parse_action_call(reasoning) if reasoning else None
 
         # Extract text from JSON envelopes (chitchat / done).
         # Used by Qwen-family models. Handles both raw JSON and fenced code blocks.
+        # Do NOT unwrap skill_call/tool_call — those must stay as actions.
 
         if not parsed and reasoning:
 
@@ -939,7 +1193,10 @@ class ReActLoop(BaseLoop):
 
                 if isinstance(_t, dict):
                     _typ = str(_t.get("type") or "").strip().lower()
-                    if _typ == "chitchat":
+                    if _typ in ("skill_call", "tool_call", "action_call", "function_call"):
+                        # Re-parse after fence strip so act path can run the skill
+                        parsed = parse_action_call(_fenced if _fenced != _raw else _raw)
+                    elif _typ == "chitchat":
                         reasoning = str(_t.get("input") or _t.get("text") or reasoning)
                     elif _typ == "done" or (_t.get("answer") and _typ in ("", "done", "final", "response")):
                         # ReAct prompt asks for {"type":"done","answer":"..."}; never surface raw envelope
@@ -955,7 +1212,9 @@ class ReActLoop(BaseLoop):
 
                     if isinstance(_t, dict):
                         _typ = str(_t.get("type") or "").strip().lower()
-                        if _typ == "chitchat":
+                        if _typ in ("skill_call", "tool_call", "action_call", "function_call"):
+                            parsed = parse_action_call(reasoning)
+                        elif _typ == "chitchat":
                             reasoning = str(_t.get("input") or _t.get("text") or reasoning)
                         elif _typ == "done" or _t.get("answer"):
                             reasoning = str(_t.get("answer") or _t.get("text") or _t.get("response") or reasoning)
@@ -967,13 +1226,65 @@ class ReActLoop(BaseLoop):
 
         if not parsed and len(str(reasoning or "").strip()) > 0:
 
-            state.context["output"] = reasoning
+            _out = str(reasoning or "").strip()
+
+            # Pending skill_call JSON must never become auto_done / eager finalize
+            try:
+                from core.harness.utils.execute_session import looks_like_pending_action_envelope
+
+                if looks_like_pending_action_envelope(_out):
+                    note = (
+                        "[ACCEPTANCE GATE] Output looks like a skill_call/tool_call envelope — "
+                        "emit a structured skill/tool action (not DONE with the call JSON)."
+                    )
+                    state.context.setdefault("messages", []).append(
+                        {"role": "user", "content": note}
+                    )
+                    state.context["observation"] = note
+                    state.current = LoopStateEnum.REASONING
+                    return state
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "pending action envelope guard skipped", exc_info=True
+                )
+
+            _skill_body = self._skill_delivery_body(state)
+
+            # Empty/short DONE answer must not wipe a delivered skill artifact
+            if (not _out or len(_out) < 40 or _out in ("{}", "null", "None")) and _skill_body:
+
+                _out = _skill_body
+
+            elif _skill_body and len(_skill_body) > len(_out) * 2 and str(state.context.get("_skill_delivery") or "").lower() == "once":
+
+                # Prefer substantial skill body over a brief DONE summary
+                _out = _skill_body
+
+            try:
+                from core.harness.utils.answer_extractor import choose_loop_final_output
+
+                _out = choose_loop_final_output(_out, self._primary_skill_text(state) or _skill_body)
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "choose_loop_final_output skipped", exc_info=True
+                )
+
+            state.context["output"] = _out
+
+            _veto = self._acceptance_gate(state)
+
+            if _veto:
+
+                self._apply_acceptance_veto(state, _veto)
+
+                return state
 
             try:
 
                 from core.services.execution_store import get_execution_store
 
                 store = get_execution_store()
+                _done_t = time.time()
 
                 await store.add_syscall_event({
 
@@ -987,9 +1298,14 @@ class ReActLoop(BaseLoop):
 
                     "run_id": state.context.get("_run_id") or "",
 
-                    "start_time": time.time(),
+                    "start_time": _done_t,
 
-                    "result": {"answer": str(reasoning)[:500]},
+                    "end_time": _done_t,
+
+                    "duration_ms": 0,
+
+                    # Keep enough text for orphan-watch recovery (was [:500] → finalize failed).
+                    "result": {"answer": str(_out)[:50000], "source": "auto_done"},
 
                     "step_number": state.step_count,
 
@@ -999,13 +1315,15 @@ class ReActLoop(BaseLoop):
 
                 logging.warning(str(e), exc_info=True)
 
-            _veto = self._acceptance_gate(state)
-
-            if _veto:
-
-                self._apply_acceptance_veto(state, _veto)
-
-                return state
+            # Eager-finalize Agent row + RunGraph BEFORE POST_LOOP teardown.
+            # Same hang class as skill_delivery_once: FINISHED + auto_done on canvas
+            # while Agent status stays 「执行中」until background upsert (or forever).
+            await self._eager_finalize_agent_row(
+                state, output_text=str(_out), source="reason_auto_done"
+            )
+            await self._close_leftover_running_syscalls(
+                state, status="ok", error="reason_auto_done_seal"
+            )
 
             state.current = LoopStateEnum.FINISHED
 
@@ -1015,6 +1333,10 @@ class ReActLoop(BaseLoop):
 
             state.context["output"] = reasoning
 
+            await self._eager_finalize_agent_row(
+                state, output_text=str(reasoning), source="reason_parsed_none"
+            )
+
             state.current = LoopStateEnum.FINISHED
 
             return state
@@ -1022,6 +1344,10 @@ class ReActLoop(BaseLoop):
         if getattr(self, '_not_found_streak', 0) >= 3 and len(str(reasoning or "").strip()) > 20:
 
             state.context["output"] = reasoning
+
+            await self._eager_finalize_agent_row(
+                state, output_text=str(reasoning), source="reason_not_found_streak"
+            )
 
             state.current = LoopStateEnum.FINISHED
 
@@ -1191,6 +1517,269 @@ class ReActLoop(BaseLoop):
 
         await self._trigger_hook(HookPhase.POST_OBSERVE, state.context)
 
+        # skill_delivery=once + primary coding skill timed out → seal failed now.
+        # Continuing to REASONING nests more LLM calls on a saturated local model
+        # (run-e1bd45c04b80: code_generation failed/timeout then generate left running).
+        if (
+            str(state.context.get("_skill_delivery") or "").lower() == "once"
+            and not state.context.get("_primary_skill_delivered")
+            and not state.context.get("_skill_delivery_finalized")
+            and not state.context.get("_agent_row_finalized")
+        ):
+            _obs_l = str(observation or "").lower()
+            if _obs_l.startswith("skill error:") and (
+                "timed out" in _obs_l
+                or "llm_timeout" in _obs_l
+                or "timeout after" in _obs_l
+                or "skill execution timed out" in _obs_l
+            ):
+                body_err = str(observation or "")[:20000]
+                state.context["output"] = body_err
+                state.context["_skill_delivery_finalized"] = True
+                state.context["_force_failed_status"] = "timeout"
+                await self._eager_finalize_agent_row(
+                    state,
+                    output_text=body_err,
+                    source="observe_primary_skill_timeout",
+                )
+                try:
+                    from core.services.execution_store import get_execution_store
+
+                    _rid = str(state.context.get("_run_id") or "")
+                    _st = get_execution_store()
+                    if _rid and hasattr(_st, "close_running_syscall_events"):
+                        await _st.close_running_syscall_events(
+                            _rid,
+                            status="timeout",
+                            error="primary_skill_timeout_seal",
+                        )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "close syscalls after primary skill timeout skipped",
+                        exc_info=True,
+                    )
+                state.current = LoopStateEnum.FINISHED
+                return state
+
+        # skill_delivery=once: skill body is the deliverable — do not rely on a second
+        # LLM "DONE" round (often emits empty answer → quality empty_output).
+        if (
+            str(state.context.get("_skill_delivery") or "").lower() == "once"
+            and state.context.get("_primary_skill_delivered")
+            and not state.context.get("_skill_delivery_finalized")
+        ):
+            body = self._skill_delivery_body(state)
+            if body:
+                try:
+                    from core.management.execution_quality_review import (
+                        is_non_deliverable_coding_output,
+                    )
+                    _in = str(state.context.get("_user_task") or "").strip()
+                    if is_non_deliverable_coding_output(
+                        input_text=_in,
+                        output_text=body,
+                        raw_out={"text": body},
+                        hints=" ".join(self._resolved_bound_skill_ids(state)),
+                        scope="skill",
+                    ):
+                        # Drop false delivery mark; keep looping for a real skill body
+                        state.context.pop("_primary_skill_delivered", None)
+                        state.context.pop("_primary_skill_output", None)
+                        retries = int(state.context.get("_thin_delivery_retries") or 0) + 1
+                        state.context["_thin_delivery_retries"] = retries
+                        follow = self._pending_coding_followup(state)
+                        follow_bit = (
+                            f" After a substantial body, call `{follow}`, then DONE."
+                            if follow
+                            else " Then DONE."
+                        )
+                        note = (
+                            "[ACCEPTANCE GATE] Primary skill output is clarify-only or a thin "
+                            "DONE/## FILE stub — retry `code_generation` with full runnable "
+                            f"function/class/component bodies (not empty ## FILE headers)."
+                            f"{follow_bit} (thin-retry {retries})"
+                        )
+                        state.context.setdefault("messages", []).append(
+                            {"role": "user", "content": note}
+                        )
+                        state.current = LoopStateEnum.REASONING
+                        return state
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "skill_delivery_once substance check skipped", exc_info=True
+                    )
+                follow = self._pending_coding_followup(state)
+                if follow:
+                    # Deterministic follow-up: call autoreview/etc. once without another
+                    # LLM round. Nudge→reason was sealing incomplete (run-34307006ab2a)
+                    # or nesting LLM hangs (run-1d72db0b704b).
+                    if not state.context.get("_auto_followup_dispatched"):
+                        state.context["_auto_followup_dispatched"] = True
+                        # Close stale pre_llm_prep so orphan_watchdog does not treat the
+                        # whole run as prep-stalled while follow-up LLM runs
+                        # (run-2ff29a641bf5).
+                        try:
+                            _rid_prep = str(state.context.get("_run_id") or "")
+                            if _rid_prep:
+                                from core.harness.utils.execute_session import (
+                                    emit_pre_llm_prep_close,
+                                )
+                                from core.services.execution_store import (
+                                    get_execution_store as _ges_fu,
+                                )
+
+                                await emit_pre_llm_prep_close(
+                                    _ges_fu(),
+                                    _rid_prep,
+                                    status="ok",
+                                    step_count=state.step_count,
+                                    parent_span_id=str(
+                                        state.context.get("_current_step_span_id") or ""
+                                    ),
+                                    reason="before_auto_followup",
+                                )
+                        except Exception:
+                            logging.getLogger(__name__).debug(
+                                "pre_llm_prep close before auto followup skipped",
+                                exc_info=True,
+                            )
+                        try:
+                            from core.harness.execution.tool_calling import ParsedActionCall
+                            import asyncio as _aio_fu
+
+                            # Body is already in state (_primary_skill_output);
+                            # _dispatch_skill_call stages it into GIT_* for stock autoreview.
+                            parsed_fu = ParsedActionCall(
+                                kind="skill",
+                                name=str(follow),
+                                args={
+                                    "target": "diff",
+                                    "focus": "comprehensive",
+                                    "panel": "auto",
+                                },
+                                raw=f'{{"type":"skill_call","skill":"{follow}"}}',
+                                format="json",
+                            )
+                            rid_fu = self._init_routing_id(state)
+                            try:
+                                _fu_budget = float(
+                                    os.getenv("AIPLAT_AUTO_FOLLOWUP_TIMEOUT", "180") or "180"
+                                )
+                            except Exception:
+                                _fu_budget = 180.0
+                            try:
+                                fu_out = await _aio_fu.wait_for(
+                                    self._dispatch_skill_call(state, parsed_fu, rid_fu),
+                                    timeout=max(30.0, _fu_budget),
+                                )
+                            except _aio_fu.TimeoutError:
+                                logging.getLogger(__name__).warning(
+                                    "auto follow-up skill `%s` timed out — sealing primary body",
+                                    follow,
+                                )
+                                state.context["_coding_veto_last_reason"] = (
+                                    f"follow-up skill `{follow}` timed out on auto-dispatch"
+                                )
+                                fu_out = None
+                            if fu_out is not None:
+                                state.context["action_result"] = fu_out
+                                state.context["observation"] = str(fu_out or "")[:20000]
+                                # Keep prior observation list coherent for UI
+                                state.context.setdefault("_observations", []).append(
+                                    str(fu_out or "")[:4000]
+                                )
+                        except Exception:
+                            logging.getLogger(__name__).warning(
+                                "auto follow-up skill `%s` failed; sealing primary body",
+                                follow,
+                                exc_info=True,
+                            )
+                    follow_left = self._pending_coding_followup(state)
+                    if follow_left:
+                        state.context["_coding_veto_exhausted"] = True
+                        state.context["_coding_veto_last_reason"] = (
+                            f"follow-up skill `{follow_left}` not completed after auto-dispatch"
+                        )
+                    state.context["output"] = body
+                    state.context["_skill_delivery_finalized"] = True
+                    await self._eager_finalize_agent_row(
+                        state,
+                        output_text=body,
+                        source="observe_auto_followup_seal",
+                    )
+                    # Close leftover skill/LLM rows so orphan_watchdog does not see
+                    # nested "started" spans after FINISHED (run-054f7ace3a17).
+                    try:
+                        from core.services.execution_store import get_execution_store
+
+                        _rid = str(state.context.get("_run_id") or "")
+                        _st = get_execution_store()
+                        if _rid and hasattr(_st, "close_running_syscall_events"):
+                            await _st.close_running_syscall_events(
+                                _rid,
+                                status="ok",
+                                error="auto_followup_seal_close",
+                            )
+                    except Exception:
+                        logging.getLogger(__name__).debug(
+                            "close syscalls after auto followup seal skipped",
+                            exc_info=True,
+                        )
+                    state.current = LoopStateEnum.FINISHED
+                    return state
+                state.context["output"] = body
+                state.context["_skill_delivery_finalized"] = True
+                try:
+                    from core.services.execution_store import get_execution_store
+                    store = get_execution_store()
+                    _once_t = time.time()
+                    await store.add_syscall_event({
+                        "id": f"{state.context.get('_run_id','?')}:done:{state.step_count}",
+                        "span_id": f"done:{state.context.get('_agent_id','react')}:{state.step_count}",
+                        "parent_span_id": state.context.get("_current_step_span_id"),
+                        "kind": "done",
+                        "name": "skill_delivery_once",
+                        "status": "ok",
+                        "run_id": state.context.get("_run_id") or "",
+                        "start_time": _once_t,
+                        "end_time": _once_t,
+                        "duration_ms": 0,
+                        "result": {"answer": body[:50000], "source": "primary_skill"},
+                        "step_number": state.step_count,
+                    })
+                except Exception as e:
+                    logging.warning(str(e), exc_info=True)
+                # Eager-finalize Agent row + RunGraph BEFORE POST_LOOP teardown.
+                # Otherwise SECI/hooks can hang and UI stays 「执行中」forever.
+                await self._eager_finalize_agent_row(
+                    state, output_text=body, source="observe_skill_delivery_once"
+                )
+                state.current = LoopStateEnum.FINISHED
+                return state
+
+        # Bound handler skill already produced the artifact (test_executor report).
+        # Do not wait for a second DONE LLM (run-74a19d55326c: skill 205ms then
+        # step_1 hung 419s with observation already green).
+        if (
+            state.context.get("_primary_skill_delivered")
+            and not state.context.get("_skill_delivery_finalized")
+            and not state.context.get("_agent_row_finalized")
+            and not self._pending_coding_followup(state)
+        ):
+            body = self._skill_delivery_body(state)
+            if len(body) >= 40:
+                state.context["output"] = body
+                state.context["_skill_delivery_finalized"] = True
+                await self._eager_finalize_agent_row(
+                    state, output_text=body, source="observe_bound_skill_delivery"
+                )
+                await self._close_leftover_running_syscalls(
+                    state, status="ok", error="observe_bound_skill_seal"
+                )
+                state.current = LoopStateEnum.FINISHED
+                return state
+
+
 
 
         # Optional: auto-complete todo items from explicit markers in logs/results.
@@ -1241,6 +1830,15 @@ class ReActLoop(BaseLoop):
 
         if "DONE" in observation.upper() or "FINISHED" in observation.upper():
 
+            _obs_out = str(
+                state.context.get("output")
+                or state.context.get("action_result")
+                or observation
+                or ""
+            ).strip()
+            await self._eager_finalize_agent_row(
+                state, output_text=_obs_out, source="observe_done_marker"
+            )
             state.current = LoopStateEnum.FINISHED
 
 
@@ -1433,6 +2031,8 @@ class ReActLoop(BaseLoop):
                     try:
 
                         await mgr.capture_to_semantic(
+
+                            key=f"loop:{state.context.get('_run_id') or 'na'}:{state.step_count}",
 
                             content=f"User: {user_msg[:500]}\nAssistant: {assistant_msg[:500]}",
 
@@ -2154,7 +2754,7 @@ class ReActLoop(BaseLoop):
 
 
 
-    def _build_tools_desc(self) -> tuple[str, Dict[str, Any]]:
+    def _build_tools_desc(self) -> Tuple[str, Dict[str, Any]]:
 
         """
 
@@ -2439,7 +3039,7 @@ class ReActLoop(BaseLoop):
 
 
 
-    def _build_skills_desc(self, *, context_pressure: float | None = None) -> tuple[str, Dict[str, Any]]:
+    def _build_skills_desc(self, *, context_pressure: Optional[float] = None) -> Tuple[str, Dict[str, Any]]:
 
         """
 
@@ -2776,7 +3376,7 @@ class ReActLoop(BaseLoop):
 
                 "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
 
-                "span_id": state.context.get("_current_step_span_id"),
+                "span_id": f"routing:decision:{state.context.get('_agent_id') or 'react'}:{int(getattr(state, 'step_count', 0) or 0)}",
 
                 "parent_span_id": state.context.get("_current_step_span_id") or "",
 
@@ -2784,7 +3384,11 @@ class ReActLoop(BaseLoop):
 
                 "tenant_id": state.context.get("tenant_id"),
 
-                "kind": "routing", "name": "routing_decision", "status": "decision",
+                "kind": "routing",
+
+                "name": "routing_decision",
+
+                "status": "decision",
 
                 "start_time": end_ts, "end_time": end_ts, "duration_ms": 0.0,
 
@@ -3156,7 +3760,7 @@ class ReActLoop(BaseLoop):
 
                 "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
 
-                "span_id": state.context.get("_current_step_span_id"),
+                "span_id": f"routing:strict:{state.context.get('_agent_id') or 'react'}:{int(getattr(state, 'step_count', 0) or 0)}",
 
                 "parent_span_id": state.context.get("_current_step_span_id") or "",
 
@@ -3428,6 +4032,288 @@ class ReActLoop(BaseLoop):
 
 
 
+
+    @staticmethod
+    def _inject_user_task_into_skill_args(state: LoopState, skill_args: Any) -> Dict[str, Any]:
+        """Ensure skill_call carries the user PRD/task, not the skill's own description.
+
+        Models often pass ``input=`` as the skill SOP blurb and drop the real user
+        brief — quality gates then fail on constraints that the skill never saw.
+        """
+        from core.harness.utils.execute_session import skill_arg_payload_is_thin
+
+        args: Dict[str, Any] = dict(skill_args) if isinstance(skill_args, dict) else {}
+        user_task = str(state.context.get("_user_task") or "").strip()
+        if not user_task:
+            raw_task = str(state.context.get("task") or "").strip()
+            if "## Task\n" in raw_task:
+                user_task = raw_task.split("## Task\n", 1)[1].strip()
+            else:
+                user_task = raw_task
+        if len(user_task) < 40:
+            return args
+
+        input_keys = ("input", "prd", "message", "user_requirement", "text", "content")
+        used_key = next((k for k in input_keys if str(args.get(k) or "").strip()), None)
+
+        if used_key is None:
+            args["input"] = user_task
+        elif skill_arg_payload_is_thin(str(args.get(used_key) or ""), user_task):
+            args[used_key] = user_task
+        return args
+
+    @staticmethod
+    def _inject_execute_payload_into_skill_args(
+        state: LoopState, skill_args: Any
+    ) -> Dict[str, Any]:
+        """Copy structured execute JSON fields the model omitted from skill_call.
+
+        Management execute sends ``{message, test_cases, ...}``. Models often call
+        ``test_executor`` with only a short ``input=`` so the handler sees 0 cases
+        (run-74a19d55326c) then the loop waits for a second DONE LLM that never starts.
+        """
+        args: Dict[str, Any] = dict(skill_args) if isinstance(skill_args, dict) else {}
+        raw = state.context.get("_execute_input")
+        if not isinstance(raw, dict):
+            return args
+        for key in (
+            "test_cases",
+            "agent_app",
+            "frontend_pages",
+            "prd",
+            "project",
+            "target_agent_id",
+            "max_traces",
+            "force",
+        ):
+            cur = args.get(key)
+            if isinstance(cur, (list, dict)) and not cur:
+                cur = None
+            if cur not in (None, "", [], {}):
+                continue
+            val = raw.get(key)
+            if val in (None, "", [], {}):
+                continue
+            args[key] = val
+        return args
+
+    @staticmethod
+    def _inject_preferred_language_into_skill_args(
+        state: LoopState,
+        skill_name: str,
+        skill_args: Any,
+    ) -> Dict[str, Any]:
+        """Fill ``language`` for code_generation from AGENT preferred_language.
+
+        Priority: language named in user task → agent ``_preferred_language`` →
+        explicit skill arg (model) → leave unset (skill schema default).
+
+        Model args are lowest because the schema default is often ``python`` and
+        local models echo it even for FE agents (preferred_language must win).
+        Config-driven; never keys off agent_id.
+        """
+        args: Dict[str, Any] = dict(skill_args) if isinstance(skill_args, dict) else {}
+        name = str(skill_name or "").strip().lower().replace("-", "_")
+        if name not in ("code_generation",):
+            return args
+        user_task = str(state.context.get("_user_task") or "").strip()
+        if not user_task:
+            raw_task = str(state.context.get("task") or "").strip()
+            if "## Task\n" in raw_task:
+                user_task = raw_task.split("## Task\n", 1)[1].strip()
+            else:
+                user_task = raw_task
+        chosen = ""
+        try:
+            from core.management.execution_quality_review import (
+                _detect_requested_code_language,
+            )
+
+            req = _detect_requested_code_language(user_task)
+            if req:
+                chosen = str(req).strip().lower()
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "preferred_language task detect skipped", exc_info=True
+            )
+        if not chosen:
+            pref = str(state.context.get("_preferred_language") or "").strip().lower()
+            if pref:
+                chosen = pref
+        if not chosen:
+            chosen = str(args.get("language") or "").strip().lower()
+        if chosen:
+            args["language"] = chosen
+            # Prevent code_generation from silently adopting a mismatched body language.
+            args["_language_locked"] = True
+        return args
+
+    @staticmethod
+    def _primary_skill_text(state: LoopState) -> str:
+        """Primary skill body even when skill_delivery is not once (qa / conversational)."""
+        raw = state.context.get("_primary_skill_output")
+        try:
+            from core.harness.utils.inline_autoreview_workspace import (
+                coerce_inline_delivery_text,
+            )
+
+            body = coerce_inline_delivery_text(raw).split("[DELIVERY]", 1)[0].strip()
+        except Exception:
+            body = str(raw or "").split("[DELIVERY]", 1)[0].strip()
+        if not body.strip():
+            return ""
+        # Drop the soft "already delivered" wrapper if present
+        if body.startswith("[skill_delivery=once]"):
+            parts = body.split("\n\n", 1)
+            body = parts[1].strip() if len(parts) > 1 else body
+        return body if len(body) >= 40 else ""
+
+    @staticmethod
+    def _skill_delivery_body(state: LoopState) -> str:
+        """Alias used by observe/auto_done — must exist or skill_delivery=once AttributeError hangs step_1."""
+        return ReActLoop._primary_skill_text(state)
+
+    def _finalize_with_skill_delivery(self, state: LoopState) -> bool:
+        """If primary skill already delivered, promote it to final output and finish."""
+        body = self._skill_delivery_body(state)
+        if not body:
+            return False
+        try:
+            from core.management.execution_quality_review import (
+                is_non_deliverable_coding_output,
+            )
+
+            _in = str(state.context.get("_user_task") or "").strip()
+            if is_non_deliverable_coding_output(
+                input_text=_in,
+                output_text=body,
+                raw_out={"text": body},
+                hints=" ".join(self._resolved_bound_skill_ids(state)),
+                scope="skill",
+            ):
+                # Do not greenwash clarify / thin stubs into completed
+                state.context.pop("_primary_skill_delivered", None)
+                state.context.pop("_primary_skill_output", None)
+                return False
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "skill_delivery finalize substance check skipped", exc_info=True
+            )
+        state.context["output"] = body
+        state.context["_skill_delivery_finalized"] = True
+        try:
+            from core.services.execution_store import get_execution_store
+            import asyncio
+            # best-effort sync emit via creating task is awkward here; inline await below in callers
+        except Exception:
+            pass  # noqa: cleanup-best-effort
+        state.current = LoopStateEnum.FINISHED
+        return True
+
+    async def _close_leftover_running_syscalls(
+        self, state: LoopState, *, status: str = "ok", error: str = ""
+    ) -> None:
+        """Flip leftover running syscall rows after the loop already declared done."""
+        import asyncio as _aio_close
+
+        try:
+            from core.services.execution_store import get_execution_store
+
+            rid = str(state.context.get("_run_id") or "")
+            store = get_execution_store()
+            if not rid or not hasattr(store, "close_running_syscall_events"):
+                return
+            await _aio_close.wait_for(
+                store.close_running_syscall_events(
+                    rid,
+                    status=status,
+                    error=error or None,
+                ),
+                timeout=3.0,
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "close leftover syscalls skipped", exc_info=True
+            )
+
+    async def _eager_finalize_agent_row(
+        self, state: LoopState, *, output_text: str, source: str
+    ) -> bool:
+        """Upsert Agent row + seal RunGraph before POST_LOOP can hang the UI on running."""
+        # Close stepped + legacy pre-LLM prep before QR/store can stall.
+        # Open id is ``{run}:pre_llm_prep:{step}``; a legacy-only close leaves
+        # the canvas card running (qa_agent run-124d89d5ef3f).
+        # Must be bounded: an un-timed SQLite lock here never reaches upsert.
+        try:
+            import asyncio as _aio_prep_ef
+
+            rid_prep = str(state.context.get("_run_id") or "")
+            if rid_prep:
+                from core.harness.utils.execute_session import emit_pre_llm_prep_close
+                from core.services.execution_store import get_execution_store as _ges_ef
+
+                await _aio_prep_ef.wait_for(
+                    emit_pre_llm_prep_close(
+                        _ges_ef(),
+                        rid_prep,
+                        status="ok",
+                        step_count=state.step_count,
+                        parent_span_id=str(state.context.get("_current_step_span_id") or ""),
+                        reason=f"eager_finalize:{source}",
+                    ),
+                    timeout=2.0,
+                )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "eager finalize pre_llm_prep close skipped", exc_info=True
+            )
+        if state.context.get("_agent_row_finalized"):
+            return True
+        body = str(output_text or "").strip()
+        if len(body) < 20:
+            return False
+        try:
+            import asyncio as _aio_fin
+
+            from core.harness.utils.execute_session import (
+                finalize_agent_after_skill_delivery,
+            )
+
+            ok = await _aio_fin.wait_for(
+                finalize_agent_after_skill_delivery(
+                    run_id=str(state.context.get("_run_id") or ""),
+                    agent_id=str(state.context.get("_agent_id") or ""),
+                    output_text=body,
+                    trace_id=str(
+                        state.context.get("_trace_id")
+                        or state.context.get("trace_id")
+                        or ""
+                    ),
+                    metadata_extra={
+                        "finalize_source": source,
+                        "user_task": str(state.context.get("_user_task") or "")[:8000],
+                        "bound_skills": list(self._resolved_bound_skill_ids(state)),
+                        "coding_veto_exhausted": bool(state.context.get("_coding_veto_exhausted")),
+                        "coding_veto_last_reason": str(
+                            state.context.get("_coding_veto_last_reason") or ""
+                        )[:500],
+                    },
+                ),
+                timeout=12.0,
+            )
+            if ok:
+                state.context["_agent_row_finalized"] = True
+            return bool(ok)
+        except Exception:
+            logging.getLogger(__name__).warning(
+                "%s eager finalize failed run_id=%s",
+                source,
+                state.context.get("_run_id"),
+                exc_info=True,
+            )
+            return False
+
+
     async def _dispatch_skill_call(
 
         self, state: LoopState, parsed: Any, routing_decision_id: str
@@ -3436,7 +4322,43 @@ class ReActLoop(BaseLoop):
 
         skill_name = parsed.name
 
-        skill_args = parsed.args
+        skill_args = parsed.args if isinstance(getattr(parsed, "args", None), dict) else {}
+        skill_args = self._inject_user_task_into_skill_args(state, skill_args)
+        skill_args = self._inject_execute_payload_into_skill_args(state, skill_args)
+        skill_args = self._inject_preferred_language_into_skill_args(
+            state, str(skill_name or ""), skill_args
+        )
+        # Pass Agent required_skills so PolicyGate can waive second HITL.
+        skill_args = dict(skill_args) if isinstance(skill_args, dict) else {}
+        bound = self._resolved_bound_skill_ids(state)
+        if bound:
+            skill_args["_bound_skill_ids"] = list(bound)
+        # Coding follow-up: stock engine autoreview only speaks load_diff(target).
+        # Materialize ## FILE body into a temp worktree; pass path via skill param
+        # ``_git_work_tree`` (never mutate process-global GIT_* across LLM await).
+        inline_for_ar = ""
+        if str(skill_name or "").strip().lower() == "autoreview":
+            if not str(skill_args.get("target") or "").strip():
+                skill_args["target"] = "diff"
+            body = self._skill_delivery_body(state)
+            if not body:
+                try:
+                    from core.harness.utils.inline_autoreview_workspace import (
+                        coerce_inline_delivery_text,
+                    )
+
+                    body = coerce_inline_delivery_text(
+                        state.context.get("_primary_skill_output")
+                    ).split("[DELIVERY]", 1)[0].strip()
+                except Exception:
+                    body = str(state.context.get("_primary_skill_output") or "").split(
+                        "[DELIVERY]", 1
+                    )[0].strip()
+            inline_for_ar = str(
+                skill_args.pop("inline_code", "") or skill_args.pop("code", "") or ""
+            ).strip()
+            if not inline_for_ar and body and ("## FILE" in body or "```" in body):
+                inline_for_ar = body[:80000]
 
         state.context["skill_call"] = {"skill": skill_name, "args": skill_args, "format": parsed.format}
 
@@ -3462,13 +4384,37 @@ class ReActLoop(BaseLoop):
 
                 await self._emit_routing_decision(state, routing_decision_id, "skill", str(skill_name))
 
-                top = await self._emit_skill_candidates_snapshot(state, routing_decision_id, "skill", str(skill_name))
+                # Observability + PRE_SKILL_USE must not run on the skill hot path.
+                # wait_for cannot interrupt a sync list_skills / hook (test_executor
+                # run-e6d421dfd25e: routing_decision then 4min with no skill_route).
+                import asyncio as _aio_pre_sk
+                top: list = []
 
-                await self._emit_routing_strict_eval(state, routing_decision_id, "skill", str(skill_name), top)
+                async def _pre_skill_obs() -> None:
+                    try:
+                        snap = await self._emit_skill_candidates_snapshot(
+                            state, routing_decision_id, "skill", str(skill_name)
+                        )
+                        await self._emit_routing_strict_eval(
+                            state, routing_decision_id, "skill", str(skill_name), snap
+                        )
+                        await self._trigger_hook(
+                            HookPhase.PRE_SKILL_USE,
+                            {"skill": skill_name, "skill_args": skill_args, "format": parsed.format},
+                        )
+                    except Exception:
+                        logging.getLogger(__name__).debug(
+                            "pre-skill observability/hook skipped", exc_info=True
+                        )
+
+                try:
+                    _aio_pre_sk.ensure_future(_pre_skill_obs())
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "pre-skill observability schedule skipped", exc_info=True
+                    )
 
                 from ...interfaces import SkillContext
-
-                await self._trigger_hook(HookPhase.PRE_SKILL_USE, {"skill": skill_name, "skill_args": skill_args, "format": parsed.format})
 
                 try:
 
@@ -3483,36 +4429,83 @@ class ReActLoop(BaseLoop):
                     )
 
                     _run_id = state.context.get("_run_id")
+                    _step_span = state.context.get("_current_step_span_id")
 
-                    if _run_id and isinstance(skill_context.variables, dict):
+                    if isinstance(skill_context.variables, dict):
+                        if _run_id:
+                            skill_context.variables["_run_id"] = _run_id
+                        if _step_span:
+                            skill_context.variables["_parent_span_id"] = _step_span
 
-                        skill_context.variables["_run_id"] = _run_id
+                    _skill_timeout = None
+                    try:
+                        _cfg_to = getattr(skill, "_config", None)
+                        _meta_to = getattr(_cfg_to, "metadata", None) if _cfg_to else None
+                        if isinstance(_meta_to, dict) and _meta_to.get("timeout") is not None:
+                            _skill_timeout = float(_meta_to.get("timeout"))
+                    except Exception:
+                        _skill_timeout = None
 
-                    result = await sys_skill_call(
+                    async def _do_skill_call():
+                        return await sys_skill_call(
 
-                        skill, skill_args, context=skill_context,
+                            skill, skill_args, context=skill_context,
 
-                        user_id=skill_context.user_id, session_id=skill_context.session_id,
+                            user_id=skill_context.user_id, session_id=skill_context.session_id,
 
-                        trace_context={
+                            timeout_seconds=_skill_timeout,
 
-                            "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
+                            trace_context={
 
-                            "run_id": state.context.get("_run_id") or state.context.get("run_id"),
+                                "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
 
-                            "parent_span_id": state.context.get("_current_step_span_id"),
+                                "run_id": state.context.get("_run_id") or state.context.get("run_id"),
 
-                            "tenant_id": state.context.get("tenant_id"),
+                                "parent_span_id": _step_span,
 
-                            "routing_decision_id": routing_decision_id,
+                                "tenant_id": state.context.get("tenant_id"),
 
-                            "coding_policy_profile": prof,
+                                "routing_decision_id": routing_decision_id,
 
-                            "routing_candidates_emitted": True,
+                                "coding_policy_profile": prof,
 
-                        },
+                                "routing_candidates_emitted": True,
 
-                    )
+                                "_bound_skill_ids": list(bound),
+
+                            },
+
+                        )
+
+                    if inline_for_ar:
+                        from types import SimpleNamespace
+
+                        from core.harness.utils.inline_autoreview_workspace import (
+                            autoreview_git_env_for_inline,
+                            staged_inline_worktree,
+                        )
+
+                        # Explicit worktree path only — never GIT_* + ambient cwd.
+                        with staged_inline_worktree(inline_for_ar) as _ar_wt:
+                            if _ar_wt is None:
+                                result = SimpleNamespace(
+                                    success=True,
+                                    error=None,
+                                    output=(
+                                        "No changes to review "
+                                        "(inline git staging produced empty diff)."
+                                    ),
+                                    metadata={"inline_staging": "empty"},
+                                )
+                            else:
+                                skill_args["_git_work_tree"] = _ar_wt
+                                skill_args["_require_git_work_tree"] = True
+                                if isinstance(skill_context.variables, dict):
+                                    skill_context.variables["_git_work_tree"] = _ar_wt
+                                    skill_context.variables["_require_git_work_tree"] = True
+                                result = await _do_skill_call()
+                    else:
+                        result = await _do_skill_call()
 
                     if getattr(result, "error", None) == "approval_required":
 
@@ -3520,9 +4513,30 @@ class ReActLoop(BaseLoop):
 
                         state.context["approval"] = getattr(result, "metadata", {}) or {}
 
-                        state.metadata["pause_requested"] = True
-
-                        result_output = "Approval required"
+                        _sn = str(skill_name or "").strip()
+                        _follow_ids = {"autoreview", "code_review", "code-hygiene"}
+                        if _sn in _follow_ids:
+                            prev = state.context.get("_followup_skills_done") or []
+                            if not isinstance(prev, list):
+                                prev = []
+                            if _sn not in prev:
+                                state.context["_followup_skills_done"] = [*prev, _sn]
+                            # Coding skill_delivery=once: HITL pause on follow-up review
+                            # wedges the run (nested LLM / cancel hangs). Mark attempted,
+                            # continue to DONE; quality_review flags autoreview_incomplete.
+                            if str(state.context.get("_skill_delivery") or "").lower() == "once":
+                                state.metadata["pause_requested"] = False
+                                result_output = (
+                                    f"Follow-up `{_sn}` returned approval_required "
+                                    "(not blocking coding seal). Proceed to DONE with "
+                                    "the primary skill output."
+                                )
+                            else:
+                                state.metadata["pause_requested"] = True
+                                result_output = "Approval required"
+                        else:
+                            state.metadata["pause_requested"] = True
+                            result_output = "Approval required"
 
                     elif getattr(result, "error", None) == "policy_denied":
 
@@ -3546,7 +4560,18 @@ class ReActLoop(BaseLoop):
 
                     else:
 
-                        result_output = result.output if hasattr(result, 'output') else str(result)
+                        # Surface failure so ReAct does not treat a rejected payload
+                        # (e.g. architecture_lone_api) as a successful Observation.
+                        if (not bool(getattr(result, "success", True))) or getattr(result, "error", None):
+                            err = str(getattr(result, "error", None) or "skill_failed")
+                            out = getattr(result, "output", None)
+                            result_output = (
+                                f"Skill error: {err}\n"
+                                f"Rejected output (do not treat as final answer):\n"
+                                f"{str(out)[:4000]}"
+                            )
+                        else:
+                            result_output = result.output if hasattr(result, 'output') else str(result)
 
                 except Exception as e:
 
@@ -3563,6 +4588,114 @@ class ReActLoop(BaseLoop):
                     logging.warning(str(e), exc_info=True)
 
                 await self._trigger_hook(HookPhase.POST_SKILL_USE, {"skill": skill_name, "result": result_output, "format": parsed.format})
+
+                # Config-driven single delivery: remember success so next reason must DONE
+
+                try:
+
+                    ok = True
+
+                    _res = locals().get("result")
+
+                    if _res is not None:
+
+                        ok = bool(getattr(_res, "success", True)) and not getattr(_res, "error", None)
+
+                    out_s = str(result_output or "")
+
+                    if out_s.startswith("Skill error:") or out_s.startswith("Denied:"):
+
+                        ok = False
+
+                    # Strip prior DELIVERY footer when measuring length
+
+                    body = out_s.split("[DELIVERY]", 1)[0].strip()
+
+                    # Thin / clarify stubs must not count as skill_delivery=once success.
+                    # Only coding skills: a test_executor JSON report is not a code stub
+                    # (run-74a19d55326c: report written, _primary_skill_delivered never set).
+                    _skn = str(skill_name or "").strip().lower().replace("-", "_")
+                    if ok and _skn in {
+                        "code_generation",
+                        "code_hygiene",
+                        "file_operations",
+                    }:
+                        try:
+                            from core.management.execution_quality_review import (
+                                is_non_deliverable_coding_output,
+                                _text_blob,
+                            )
+                            _raw_out = getattr(result, "output", None) if locals().get("result") is not None else None
+                            _blob = _text_blob(_raw_out) if _raw_out is not None else body
+                            _in = str(state.context.get("_user_task") or "").strip()
+                            if is_non_deliverable_coding_output(
+                                input_text=_in,
+                                output_text=_blob or body,
+                                raw_out=_raw_out if isinstance(_raw_out, dict) else {"text": _blob or body},
+                                hints=" ".join(self._resolved_bound_skill_ids(state)),
+                                scope="skill",
+                            ):
+                                ok = False
+                        except Exception:
+                            logging.getLogger(__name__).debug(
+                                "thin_code_stub delivery guard skipped", exc_info=True
+                            )
+
+                    if ok and len(body) >= 40:
+
+                        state.context["_primary_skill_delivered"] = str(skill_name)
+
+                        try:
+                            from core.harness.utils.inline_autoreview_workspace import (
+                                coerce_inline_delivery_text,
+                            )
+
+                            _coerced = coerce_inline_delivery_text(
+                                getattr(result, "output", None)
+                                if locals().get("result") is not None
+                                else out_s
+                            )
+                            state.context["_primary_skill_output"] = (
+                                (_coerced.split("[DELIVERY]", 1)[0].strip() or out_s)
+                                if _coerced.strip()
+                                else out_s
+                            )
+                        except Exception:
+                            state.context["_primary_skill_output"] = out_s
+
+                        _follow_ids = {"autoreview", "code_review", "code-hygiene"}
+                        if str(skill_name).strip() in _follow_ids:
+                            prev = state.context.get("_followup_skills_done") or []
+                            if not isinstance(prev, list):
+                                prev = []
+                            if str(skill_name) not in prev:
+                                state.context["_followup_skills_done"] = [*prev, str(skill_name)]
+
+                        if str(state.context.get("_skill_delivery") or "").lower() == "once":
+                            nxt = self._pending_coding_followup(state)
+                            if nxt and str(skill_name).strip() not in _follow_ids:
+                                result_output = (
+                                    f"{out_s}\n\n"
+                                    f"[DELIVERY] Skill `{skill_name}` succeeded. "
+                                    f"Next call `{nxt}` on the generated files, then DONE. "
+                                    f"Do not re-call `{skill_name}`."
+                                )
+                            else:
+                                result_output = (
+
+                                f"{out_s}\n\n"
+
+                                f"[DELIVERY] Skill `{skill_name}` succeeded. "
+
+                                f"Next response MUST be {{\"type\":\"done\",\"answer\":...}} "
+
+                                f"or DONE: summarizing this output. Do not re-call the same skill."
+
+                            )
+
+                except Exception:
+
+                    logging.getLogger(__name__).debug("skill_delivery mark failed", exc_info=True)
 
                 return str(result_output)
 
@@ -3694,7 +4827,7 @@ class ReActLoop(BaseLoop):
 
                         result_output = (
 
-                            "POLICY_DENIED: 工具调用被策略拒绝。\n"
+                            "POLICY_DENIED: tool call rejected by policy.\n"
 
                             f"- tool: {tool_name}\n"
 
@@ -3708,7 +4841,7 @@ class ReActLoop(BaseLoop):
 
                             "2) Narrow the scope / adjust params (e.g. read a single file, avoid write/execute).\n"
 
-                            "3) 使用 tool_search 搜索可用工具：{\"tool\":\"tool_search\",\"args\":{\"query\":\"read\"}}。\n"
+                            "3) Search tools via tool_search: {\"tool\":\"tool_search\",\"args\":{\"query\":\"read\"}}.\n"
 
                             "4) If a high-risk operation is truly needed, go through the approval flow (if approval_request_id is returned).\n"
 
@@ -3944,6 +5077,40 @@ class ReActLoop(BaseLoop):
 
         if parsed.kind == "skill":
 
+            # skill_delivery=once: do not re-invoke the same primary skill after success
+
+            delivered = str(state.context.get("_primary_skill_delivered") or "").strip().lower()
+
+            want = str(getattr(parsed, "name", "") or "").strip().lower()
+
+            mode = str(state.context.get("_skill_delivery") or "").strip().lower()
+
+            if mode == "once" and delivered and want and delivered == want:
+
+                prev = state.context.get("_primary_skill_output")
+
+                nxt = self._pending_coding_followup(state)
+                if nxt:
+                    steer = (
+                        f"Do NOT call it again. Next call skill `{nxt}` "
+                        f"(type=skill_call), then DONE."
+                    )
+                else:
+                    steer = (
+                        "Do NOT call it again. Output DONE / {\"type\":\"done\"} "
+                        "with the prior result."
+                    )
+
+                return (
+
+                    f"[skill_delivery=once] Skill `{parsed.name}` already delivered. "
+
+                    f"{steer}\n\n"
+
+                    f"""{str(prev or '')[:8000]}"""
+
+                )
+
             return await self._dispatch_skill_call(state, parsed, routing_decision_id)
 
         return await self._dispatch_tool_call(state, parsed, routing_decision_id)
@@ -4014,8 +5181,17 @@ class ReActLoop(BaseLoop):
 
         Max 1 correction attempt per step to prevent infinite loops.
 
+        Never run on Skill/tool failures — a second LLM here wedges the loop
+        after architecture_lone_api rejects (run-467095c8289b: observe ok,
+        then hung in self-correct with no step_2).
+
+        Also skip after a successful skill_call: the skill body is the product
+        (test_executor run-74a19d55326c: observation 7ms then step_1 stuck 419s
+        in nested critic with no step_2 / no auto_done).
+
         """
 
+        import asyncio as _aio_sc
         import os as _os
 
         enabled = _os.getenv("AIPLAT_SELF_CORRECT_ENABLED", "true")
@@ -4024,7 +5200,22 @@ class ReActLoop(BaseLoop):
 
             return ""
 
+        if state.context.get("skill_call") or state.context.get("_primary_skill_delivered"):
+            return ""
 
+        text = str(result)
+        head = text.lstrip()[:240].lower()
+        # Failed skill/tool observations must go back to ReAct reason, not a
+        # nested critic LLM that can starve local_llm_inflight / status API.
+        if (
+            head.startswith("skill error:")
+            or head.startswith("denied:")
+            or head.startswith("policy_denied")
+            or "architecture_lone_api" in head
+            or "lone_api_rejected" in head
+            or "rejected output (do not treat as final answer)" in head
+        ):
+            return ""
 
         correction_count = state.context.get("_correction_count", 0)
 
@@ -4032,111 +5223,74 @@ class ReActLoop(BaseLoop):
 
             return ""
 
-
-
+        # Hard cap so a wedged critic cannot leave the agent row running forever.
         try:
+            sc_timeout = float(_os.getenv("AIPLAT_SELF_CORRECT_TIMEOUT_SECONDS", "45") or "45")
+        except ValueError:
+            sc_timeout = 45.0
 
+        async def _critique_and_improve() -> str:
             from core.harness.utils.prompt_loader import _sync_resolve
 
-
-
-            # Step 1: Critique using reflection-critic template
-
-            critique_prompt = _sync_resolve("reflection-critic",
-
-                output=result[:2000],
-
+            critique_prompt = _sync_resolve(
+                "reflection-critic",
+                output=text[:2000],
                 dimensions="correctness, completeness, logical consistency, format compliance",
-
             )
-
             critique = await sys_llm_generate(
-
                 None,
-
                 [{"role": "user", "content": critique_prompt}],
-
                 model_name=state.context.get("model", ""),
-
                 max_tokens=4000,
-
             )
-
-            critique_text = critique.content if hasattr(critique, 'content') else str(critique)
-
+            critique_text = critique.content if hasattr(critique, "content") else str(critique)
             if not critique_text or len(critique_text) < 20:
-
                 return ""
-
-
-
-            # Check if critic rejected the output
 
             import json as _json
 
             verdict = "PASS"
-
             try:
-
                 parsed = _json.loads(critique_text) if critique_text.strip().startswith("{") else {}
-
                 verdict = parsed.get("verdict", "PASS")
-
             except Exception:
-
                 verdict = "PASS"  # Non-JSON response → don't correct
 
-
-
             if verdict == "PASS":
-
                 return ""
 
-
-
-            # Step 2: Improve using reflection-improve template
-
-            improve_prompt = _sync_resolve("reflection-improve",
-
-                previous_output=result[:1500],
-
+            improve_prompt = _sync_resolve(
+                "reflection-improve",
+                previous_output=text[:1500],
                 feedback=critique_text[:1000],
-
             )
-
             improved = await sys_llm_generate(
-
                 None,
-
                 [{"role": "user", "content": improve_prompt}],
-
                 model_name=state.context.get("model", ""),
-
                 max_tokens=4000,
-
             )
-
-            improved_text = improved.content if hasattr(improved, 'content') else str(improved)
-
+            improved_text = improved.content if hasattr(improved, "content") else str(improved)
             if improved_text and len(improved_text) > 20:
-
                 state.context["_correction_count"] = correction_count + 1
-
                 state.context["_was_corrected"] = True
-
                 logging.getLogger("loop.correct").info(
-
-                    "Self-correction applied at step %d via reflection templates", state.step_count
-
+                    "Self-correction applied at step %d via reflection templates",
+                    state.step_count,
                 )
-
                 return improved_text
+            return ""
 
+        try:
+            return await _aio_sc.wait_for(_critique_and_improve(), timeout=sc_timeout)
+        except _aio_sc.TimeoutError:
+            logging.getLogger("loop.correct").warning(
+                "Self-correction timed out after %.0fs — skipping (run_id=%s)",
+                sc_timeout,
+                state.context.get("_run_id"),
+            )
         except Exception:
-
             logging.getLogger("loop.correct").debug("Self-correction skipped", exc_info=True)
-
-
 
         return ""
 
@@ -4433,13 +5587,24 @@ class PlanExecuteLoop(BaseLoop):
 
                             )
 
-                            await self._trigger_hook(HookPhase.PRE_SKILL_USE, {"skill": skill_name, "skill_args": parsed_action.args, "format": parsed_action.format})
+                            skill_call_args = dict(parsed_action.args) if isinstance(parsed_action.args, dict) else {}
+                            skill_call_args = self._inject_user_task_into_skill_args(state, skill_call_args)
+                            skill_call_args = self._inject_preferred_language_into_skill_args(
+                                state, str(skill_name or ""), skill_call_args
+                            )
+                            from core.harness.utils.execute_session import resolve_bound_skill_ids
+                            bound_ids = resolve_bound_skill_ids(state, self._skills)
+                            if bound_ids:
+                                skill_call_args["_bound_skill_ids"] = list(bound_ids)
+                            skill_context.variables = skill_call_args
+
+                            await self._trigger_hook(HookPhase.PRE_SKILL_USE, {"skill": skill_name, "skill_args": skill_call_args, "format": parsed_action.format})
 
                             result = await sys_skill_call(
 
                                 skill,
 
-                                parsed_action.args,
+                                skill_call_args,
 
                                 context=skill_context,
 
@@ -4454,6 +5619,8 @@ class PlanExecuteLoop(BaseLoop):
                                     "run_id": state.context.get("_run_id") or state.context.get("run_id"),
 
                                     "parent_span_id": state.context.get("_current_step_span_id"),
+
+                                    "_bound_skill_ids": list(bound_ids),
 
                                 },
 
@@ -4539,11 +5706,43 @@ class PlanExecuteLoop(BaseLoop):
 
                 state.context["output"] = state.context.get("step_0_result", step_result)
 
+                try:
+                    from core.harness.utils.execute_session import (
+                        finalize_agent_after_skill_delivery,
+                    )
+                    await finalize_agent_after_skill_delivery(
+                        run_id=str(state.context.get("_run_id") or state.context.get("run_id") or ""),
+                        agent_id=str(state.context.get("_agent_id") or ""),
+                        output_text=str(state.context.get("output") or step_result or ""),
+                        trace_id=str(state.context.get("_trace_id") or state.context.get("trace_id") or ""),
+                        metadata_extra={"finalize_source": "plan_execute_finish"},
+                    )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "plan_execute finalize skipped", exc_info=True
+                    )
+
                 state.current = LoopStateEnum.FINISHED
 
                 self._current_node = "finish"
 
         else:
+
+            try:
+                from core.harness.utils.execute_session import (
+                    finalize_agent_after_skill_delivery,
+                )
+                await finalize_agent_after_skill_delivery(
+                    run_id=str(state.context.get("_run_id") or state.context.get("run_id") or ""),
+                    agent_id=str(state.context.get("_agent_id") or ""),
+                    output_text=str(state.context.get("output") or ""),
+                    trace_id=str(state.context.get("_trace_id") or state.context.get("trace_id") or ""),
+                    metadata_extra={"finalize_source": "plan_execute_empty_plan"},
+                )
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "plan_execute empty finalize skipped", exc_info=True
+                )
 
             state.current = LoopStateEnum.FINISHED
 

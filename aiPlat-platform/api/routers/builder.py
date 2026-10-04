@@ -614,7 +614,10 @@ async def update_team(team_id: str, req: TeamAssembleRequest, _auth: str = Depen
 
 @router.delete("/teams/{team_id}", response_model=StatusResponse)
 async def delete_team(team_id: str, _auth: str = Depends(require_admin_access)):
-    return await _team_get_svc().delete_team(team_id)
+    ok = await _team_get_svc().delete_team(team_id)
+    if not ok:
+        raise HTTPException(404, detail="Team not found")
+    return {"status": "ok", "ok": True, "detail": "", "id": team_id}
 
 @router.post("/teams/{team_id}/run", response_model=StatusResponse)
 async def run_team(team_id: str, body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
