@@ -101,6 +101,35 @@ def test_empty_effects_upload_sop_is_unrealized():
     assert reason and ERROR_CODE in reason
 
 
+def test_defaulted_read_effect_does_not_mask_upload_contract():
+    """SkillManager defaults missing effects to type:read — still refuse upload theater."""
+    skill = _PromptSkill(
+        SkillConfig(
+            name="upload_video",
+            description="接收用户上传的视频文件，存储并生成可访问的播放链接。",
+            effects=[
+                {
+                    "type": "read",
+                    "resources": [],
+                    "idempotent": True,
+                    "rollback_available": True,
+                }
+            ],
+            output_schema={"play_url": {"type": "string", "required": True}},
+            input_schema={"file": {"type": "file", "required": True}},
+            metadata={
+                "execution_type": "prompt",
+                "sop_markdown": (
+                    "## 执行流程\n1. 上传文件到对象存储\n2. 生成播放链接\n"
+                ),
+            },
+        )
+    )
+    reason = unrealized_side_effect_reason(skill)
+    assert reason and ERROR_CODE in reason
+    assert skill_result_if_unrealized_side_effects(skill) is not None
+
+
 def test_emit_code_generation_not_inferred_from_file_blocks():
     skill = _PromptSkill(
         SkillConfig(

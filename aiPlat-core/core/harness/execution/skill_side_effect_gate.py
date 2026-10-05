@@ -313,9 +313,11 @@ def unrealized_side_effect_reason(skill: Any) -> Optional[str]:
     perm_hits = _mutating_permissions(_permissions(skill))
     inferred = False
     if not mutating and not perm_hits:
-        # Explicit emit/read means text-only; do not override with SOP keywords.
-        if effects:
-            return None
+        # SkillManager injects effects:[{type:read}] when frontmatter omits effects.
+        # That synthetic/read-only list must not mask clear upload/object-store
+        # contracts (output keys like play_url, SOP「上传到对象存储」).
+        # Weak prose alone is ignored by _sop_or_schema_implies_mutation so
+        # emit-only skills (e.g. code_generation ## FILE) stay allowed.
         inferred = _sop_or_schema_implies_mutation(skill)
         if not inferred:
             return None
