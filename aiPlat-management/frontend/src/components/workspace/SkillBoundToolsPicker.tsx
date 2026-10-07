@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toolApi, workspaceToolApi } from '../../services';
 import type { ToolInfo } from '../../services';
 import { detectSkillBindIntent, toolMatchesIntent } from './skillBindingIntent';

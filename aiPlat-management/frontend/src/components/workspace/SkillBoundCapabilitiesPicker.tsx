@@ -1,4 +1,3 @@
-import React from 'react';
 import { SkillBoundToolsPicker } from './SkillBoundToolsPicker';
 import { SkillBoundMcpsPicker } from './SkillBoundMcpsPicker';
 
