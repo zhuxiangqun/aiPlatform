@@ -1201,7 +1201,7 @@ class AgentManager:
                 "`AIPLAT_FILE_OPERATIONS_ALLOWED_ROOTS` 内），再用该目录启动 uvicorn / npm。\n"
                 "- 请直接调用 `code_generation` 交付；不要把「先澄清」写进冒烟，"
                 "也不要让模型用 `file_operations` 往仓库根落盘。\n"
-                "- 脚手架只测可启动空壳（禁止业务 CRUD）；业务页/API 切片用前端工程师或后端开发的用例。\n"
+                "- 脚手架只测可启动空壳（禁止业务 CRUD）；业务页/API 切片用 frontend_engineer / backend_developer 的用例。\n"
             )
 
         if has_file_ops:

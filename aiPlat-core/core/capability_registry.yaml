@@ -2235,8 +2235,9 @@ domains:
         module: aiPlat-core/core/apps/org/service/org_value_translation.py
       - symbol: register_agents_prompts
         type: function
-        signature: 'Register agents domain prompts.'
+        signature: 'Register agents domain prompts (incl. agent-sop-design).'
         module: aiPlat-core/core/apps/agents/prompts.py
+        notes: 'workspace_agents autofill resolves agent-sop-design via prompt_loader; no inline f-string prompt'
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"

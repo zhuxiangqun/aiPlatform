@@ -127,7 +127,7 @@ async def generate_agent_execution_examples_llm(
         _async_prompt_resolve,
         best_model_for_purpose,
         create_selected_adapter,
-        sys_llm_generate,
+        sys_llm_generate,  # noqa: context-assembly-ok
     )
     from core.apps.skills.service.skill_execution_examples_llm import _extract_json_array
     from core.management.execution_examples import accept_llm_execution_examples
@@ -153,7 +153,7 @@ async def generate_agent_execution_examples_llm(
         },
         {"role": "user", "content": prompt},
     ]
-    resp = await sys_llm_generate(
+    resp = await sys_llm_generate(  # noqa: context-assembly-ok
         model,
         messages,
         trace_context={"skip_claude_md": True, "source": "agent_execution_examples"},

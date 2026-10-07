@@ -1302,7 +1302,7 @@ scan_hash: 8f9548ec24f4
 | clear_knowledge_caches | `core/harness/digital_human/consultant_knowledge.py` | ✅ | 自动同步 | 已合入 |
 | answer_cites_platform | `core/harness/digital_human/consultant_knowledge.py` | ✅ | 自动同步 | 已合入 |
 | looks_external_generic_question | `core/harness/digital_human/consultant_knowledge.py` | ✅ | 自动同步 | 已合入 |
-| register_agents_prompts | `core/apps/agents/prompts.py` | ✅ | 自动同步 | 已合入 |
+| register_agents_prompts | `core/apps/agents/prompts.py`（含 `agent-sop-design`） | ✅ | Agent autofill SOP 设计走 prompt_loader，不再在 router 内联 f-string | 已合入 |
 | get_value_baseline_view | `core/apps/org/service/org_value_translation.py` | ✅ | 自动同步 | 已合入 |
 | load_value_baseline | `core/apps/org/service/org_value_translation.py` | ✅ | 自动同步 | 已合入 |
 | append_events | `core/apps/org/service/org_usage.py` | ✅ | 自动同步 | 已合入 |

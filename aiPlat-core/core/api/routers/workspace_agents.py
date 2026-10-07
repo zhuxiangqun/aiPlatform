@@ -1719,37 +1719,22 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
         )
 
     # Pass 1: SOP-first. Do NOT ask LLM to pick final bind lists as source of truth.
-    inline_prompt = (
-        f"你是 AI Agent 流程设计师。先写出可执行的 SOP，再给出配置元数据。只输出 JSON。\n\n"
-        f"Agent名称: {req.name or '(待填写)'}\n"
-        f"功能描述: {req.description or '(无)'}\n"
-        f"{role_hint}\n\n"
-        f"## 可用 Skill 白名单（SOP 步骤里尽量用这些 id，写成 `id` 反引号）\n{skills_text}\n\n"
-        f"## 可用 Tool 白名单（同上）\n{tools_text}\n\n"
-        f"## 可用 MCP 白名单（外部系统对接时引用，写成 `server_name`）\n{mcps_text}\n\n"
-        f"规则：\n"
-        f"1. 先写 sop_text：4~8 个编号步骤，可执行、可验收。\n"
-        f"2. 步骤需要调用能力时，优先引用白名单 id（Skill/Tool/MCP）。\n"
-        f"3. 若白名单没有必需能力，不要假装已有；Skill/Tool 写 [[need:能力名]]，MCP 写 [[need:mcp:名称]]，并分别列入 needed_skills/needed_tools/needed_mcps。\n"
-        f"4. 不要为了塞满而引用无关 id（例如做 PPT 不要引用 search/webfetch/无关 MCP，除非描述明确要求联网或外部对接）。\n"
-        f"5. PPT/文档生成类：白名单已有 `ppt_generation` 时必须写成 `ppt_generation`；没有时才写 [[need:ppt_generation]]。可辅以 `summarize`/`requirement_analysis`/`file_operations`。\n"
-        f"6. system_prompt 写角色与边界（≠ SOP 第一行）。\n\n"
-        f"输出JSON："
-        f'{{"agent_type":"react",'
-        f'"sop_text":"1. ...\\n2. ...",'
-        f'"system_prompt":"你是…",'
-        f'"memory_config":{{"type":"conversation","max_turns":20,"persist":true}},'
-        f'"trigger_conditions":["触发短语"],'
-        f'"needed_skills":["白名单id或缺口名"],'
-        f'"needed_tools":["白名单id或缺口名"],'
-        f'"needed_mcps":["白名单MCP名或缺口名"],'
-        f'"reasoning":"说明SOP设计与缺口"}}'
-    )
-
     try:
         from core.api.core_facade import best_model_for_purpose
         from core.api.core_facade import sys_llm_generate
         from core.api.core_facade import _async_prompt_resolve
+        from core.apps.agents.prompts import register_agents_prompts
+
+        register_agents_prompts()
+        inline_prompt = await _async_prompt_resolve(
+            "agent-sop-design",
+            name=req.name or "(待填写)",
+            description=req.description or "(无)",
+            role_hint=role_hint,
+            skills_text=skills_text,
+            tools_text=tools_text,
+            mcps_text=mcps_text,
+        )
         model_name = best_model_for_purpose("agent_creation")
         messages = [
             {"role": "system", "content": await _async_prompt_resolve("agent-role-system")},
@@ -4669,7 +4654,7 @@ async def audit_agent_config(
             ),
             "suggestion": (
                 f"建议显式设置 skill_model_purpose: {model_purpose} "
-                "（与产品经理等 Agent 对齐），以便审核/流水线走同一套 infra 选型"
+                "（与 requirement_analysis 等 Agent 对齐），以便审核/流水线走同一套 infra 选型"
             ),
             "fix_available": True,
             "fix": {"type": "set_skill_model_purpose", "purpose": model_purpose},

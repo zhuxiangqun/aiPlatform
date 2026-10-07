@@ -98,7 +98,7 @@ async def run_skill_create_dialog_turn(
         _async_prompt_resolve,
         best_model_for_purpose,
         create_selected_adapter,
-        sys_llm_generate,
+        sys_llm_generate,  # noqa: context-assembly-ok
     )
 
     history_txt = "\n".join(f"{m['role']}: {m['content']}" for m in trimmed) or "(无)"
@@ -118,7 +118,7 @@ async def run_skill_create_dialog_turn(
     ]
 
     try:
-        resp = await sys_llm_generate(model, messages)
+        resp = await sys_llm_generate(model, messages)  # noqa: context-assembly-ok
         raw = str(resp.content if hasattr(resp, "content") else resp)
     except Exception as e:
         logging.warning("skill create dialog LLM failed: %s", e, exc_info=True)

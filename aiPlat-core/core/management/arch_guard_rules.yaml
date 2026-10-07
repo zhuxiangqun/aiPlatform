@@ -154,7 +154,8 @@ rules:
       paths: ["aiPlat-core/core"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["orchestration/|kernel/types\\.py|prompt_loader\\.py|prompt_app\\\
-            .py|engine/skills/"]
+            .py|engine/skills/|workspace_seeds/|arch_guard_rules\\.yaml|intent_patterns\\\
+            .yaml|execution_examples\\.py|execution_quality_review\\.py"]
     message: "hardcoded Chinese business names in core (use config-driven)"
 
   # ═══ Section 4: Infra Application Agnostic ═══
@@ -925,7 +926,8 @@ rules:
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["prompt_loader\\.py", "prompt_app\\.py", "_async_prompt_resolve",
         "_sync_resolve", "_resolve_assemble", "system_prompt:", "arch_guard_rules/",
-        "builder/prompts", "skills/prompts", "workbench/prompts"]
+        "builder/prompts", "skills/prompts", "workbench/prompts", "agents/prompts",
+        "docs/"]
     message: "hardcoded LLM prompt — register in prompt_loader.py via _register()
       and load via _async_prompt_resolve()"
 

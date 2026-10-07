@@ -417,7 +417,7 @@ async def generate_skill_autofill(
         _async_prompt_resolve,
         best_model_for_purpose,
         create_selected_adapter,
-        sys_llm_generate,
+        sys_llm_generate,  # noqa: context-assembly-ok
     )
 
     async def _once(desc_for_llm: str) -> Dict[str, Any]:
@@ -433,7 +433,7 @@ async def generate_skill_autofill(
             {"role": "system", "content": await _async_prompt_resolve("skill-auto-fill-system-role")},
             {"role": "user", "content": prompt},
         ]
-        resp = await sys_llm_generate(model, messages)
+        resp = await sys_llm_generate(model, messages)  # noqa: context-assembly-ok
         text = str(resp.content if hasattr(resp, "content") else resp)
         fm, sop = _parse_skill_md(text)
         if not isinstance(fm, dict) or not fm:

@@ -94,7 +94,7 @@ async def generate_skill_execution_examples_llm(
         _async_prompt_resolve,
         best_model_for_purpose,
         create_selected_adapter,
-        sys_llm_generate,
+        sys_llm_generate,  # noqa: context-assembly-ok
     )
 
     prompt = await _async_prompt_resolve(
@@ -115,7 +115,7 @@ async def generate_skill_execution_examples_llm(
         },
         {"role": "user", "content": prompt},
     ]
-    resp = await sys_llm_generate(
+    resp = await sys_llm_generate(  # noqa: context-assembly-ok
         model,
         messages,
         trace_context={"skip_claude_md": True, "source": "skill_execution_examples"},

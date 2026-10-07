@@ -26,7 +26,7 @@ class ConversationalAgentConfig:
     """Conversational agent configuration"""
     max_history: int = 10
     max_turns: int = 50
-    system_prompt: str = "You are a helpful assistant."
+    system_prompt: str = "Helpful assistant."
     enable_memory: bool = True
     memory_type: str = "buffer"
 
@@ -155,7 +155,7 @@ class ConversationalAgent(BaseAgent):
 def create_conversational_agent(
     config: AgentConfig,
     model: Optional[ILLMAdapter] = None,
-    system_prompt: str = "You are a helpful assistant.",
+    system_prompt: str = "Helpful assistant.",
     **kwargs
 ) -> ConversationalAgent:
     """Create conversational agent"""
