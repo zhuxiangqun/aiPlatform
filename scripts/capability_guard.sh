@@ -218,6 +218,38 @@ for base in ['aiPlat-core', 'aiPlat-platform', 'aiPlat-infra']:
 
 # ── §E: 签名冲突检测 ──
 print("── §E: 签名冲突检测")
+# Generic verbs appear on every registry/DI/hook class; flagging them floods
+# WARN with false "parallel implementation" noise (was ~230 of ~234 warnings).
+# Keep capability-specific names (get_agent_registry, sys_skill_call, …).
+GENERIC_METHOD_NAMES = {
+    "register", "get", "set", "search", "list", "list_all", "run_all",
+    "store", "track", "match", "evaluate", "create", "update", "delete",
+    "prune", "close", "start", "stop", "encode",
+}
+# Facade / syscall / integration re-exports are the approved surface, not forks.
+FACADE_PATH_MARKERS = (
+    "api/core_facade.py",
+    "api/facades/",
+    "harness/integration.py",
+    "harness/integration/",
+    "harness/syscalls/",
+)
+
+
+def _matches_consumer_patterns(filepath: str, patterns) -> bool:
+    if not patterns:
+        return False
+    norm = filepath.replace("\\", "/")
+    for pat in patterns:
+        try:
+            if re.search(pat, norm):
+                return True
+        except re.error:
+            if pat in norm:
+                return True
+    return False
+
+
 for c in contracts:
     auth_path = c['authoritative']['path']
     auth_dir = str(Path(auth_path).parent)
@@ -225,9 +257,12 @@ for c in contracts:
     for consumer in c.get('consumers', []):
         allowed_files.add(consumer['path'].replace('aiPlat-core/', ''))
         allowed_files.add(consumer['path'])
+    patterns = c.get('consumer_patterns') or []
     
     for method in c.get('methods', []):
         mname = method['name']
+        if mname in GENERIC_METHOD_NAMES:
+            continue
         result = _grep(f"def {mname}\\s*\\(", ['aiPlat-core/', 'aiPlat-platform/'])
         for line in result.split('\n'):
             filepath = _line_to_file(line)
@@ -237,6 +272,10 @@ for c in contracts:
                 continue
             # Don't flag methods inside the authoritative module itself
             if auth_path in filepath or auth_dir in filepath:
+                continue
+            if any(m in filepath.replace("\\", "/") for m in FACADE_PATH_MARKERS):
+                continue
+            if _matches_consumer_patterns(filepath, patterns):
                 continue
             cls_name = c['authoritative'].get('class') or c['authoritative'].get('entry_function') or '?'
             print(f"  [WARN] §E: {filepath} 定义了 def {mname}() — 与 {cls_name} 同名，确认非重复实现")
