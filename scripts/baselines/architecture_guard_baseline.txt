@@ -1,1 +1,9 @@
+# baseline regenerated: repair empty ratchet baseline (was blank since c998cf3); lock current ERROR debt after §88 ok_pattern=errors:0 so only new violations fail CI
+# at: 2026-10-07 21:34:48
+§1:layer_import_core_to_platform_app
+§3:kernel_agnostic_chinese_names
+§40:adapter_no_direct_model_env_var
+§40:model_env_bypass
+§45:prompt_hardcode_in_routers_apps
+§57:agent_context_assembly_compliance
 
