@@ -861,6 +861,7 @@ async def finalize_agent_after_skill_delivery(
             raise RuntimeError("skip_quality_review_orphan_watch")
         from core.management.execution_quality_review import (
             ensure_architecture_section_fields,
+            ensure_architecture_rollout_weeks,
             sanitize_architecture_third_party,
             review_execution_output,
             quality_review_blocks_success,
@@ -870,10 +871,10 @@ async def finalize_agent_after_skill_delivery(
         import json as _json
 
         unwrapped = _eq_unwrap(out_payload)
+        _eq_in = _eq_input_text(existing.get("input"))
         normed = ensure_architecture_section_fields(unwrapped)
-        normed = sanitize_architecture_third_party(
-            normed, _eq_input_text(existing.get("input"))
-        )
+        normed = ensure_architecture_rollout_weeks(normed, _eq_in)
+        normed = sanitize_architecture_third_party(normed, _eq_in)
         if isinstance(normed, dict) and normed != unwrapped:
             out_payload = {"text": _json.dumps(normed, ensure_ascii=False)}
             body = out_payload["text"]

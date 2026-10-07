@@ -2906,6 +2906,7 @@ def sanitize_architecture_third_party(
         (re.compile(r"与钉钉进行交互，?实现[^。；\n]{0,24}"), "钉钉通知待对接（暂无 API 文档）"),
         (re.compile(r"负责对接钉钉实现[^。；\"'}\]\n]{0,24}"), "钉钉通知通道待确认（暂无 API 文档）"),
         (re.compile(r"对接钉钉实现[^。；\"'}\]\n]{0,24}"), "钉钉通知待对接（暂无 API 文档）"),
+        (re.compile(r"通过钉钉通知通道实现[^。；\n]{0,40}"), "钉钉通知通道（待对接，暂无 API 文档）"),
         (re.compile(r"对接钉钉开放平台"), "通知通道（钉钉·待确认）"),
         (re.compile(r"通知钉钉开放平台"), "通知通道（钉钉·待确认）"),
         (re.compile(r"钉钉开放平台"), "通知通道（钉钉·待确认）"),
@@ -3944,6 +3945,69 @@ def _architecture_rollout_thin(input_text: str, output: Any) -> bool:
     return not has_week
 
 
+def ensure_architecture_rollout_weeks(output: Any, input_text: str = "") -> Any:
+    """When input asks for a 6-week pilot but rollout lacks W1–W6, fill a deterministic plan.
+
+    Local models often emit ``phase: 1 / 试点一个车间`` without week slices
+    (run-4c35b853ce52). Delivery + quality review share this normalize so
+    re-runs are not stuck on ``architecture_sections_thin`` after SOP already
+    requires weekly slices.
+    """
+    if not isinstance(output, dict):
+        return output
+    if not input_text or not re.search(r"6\s*周|分期|试点", input_text):
+        return output
+    if not _architecture_rollout_thin(input_text, output):
+        return output
+
+    flow = f"{_text_blob(output.get('data_flow'))} {input_text}"
+    slices: List[str] = []
+    for needle, label in (
+        ("上报", "W1 上报闭环（拍照入库）"),
+        ("审批", "W2 审批闭环"),
+        ("派修", "W3 派修闭环"),
+        ("看板", "W4 看板可见"),
+    ):
+        if needle in flow:
+            slices.append(label)
+    if len(slices) < 2:
+        slices = [
+            "W1 核心上报闭环",
+            "W2 审批闭环",
+            "W3 派修闭环",
+            "W4 看板可见",
+        ]
+    used = {
+        m.group(1)
+        for s in slices
+        for m in [re.search(r"W\s*([1-6])", s, re.I)]
+        if m
+    }
+    if "5" not in used:
+        slices.append("W5 内网存储与通知通道加固")
+    if "6" not in used:
+        slices.append("W6 单车间试点验收与风险复盘")
+
+    prior = ""
+    for k in ("rollout_and_risks", "rollout", "phases", "risks"):
+        if not _arch_field_empty(output.get(k)):
+            prior = _text_blob(output.get(k))
+            break
+    risks = "风险：通知通道（钉钉·待确认）对接延误；内网存储权限与容量。"
+    m = re.search(r"风险[：:]?[^\n]{0,100}", prior) if prior else None
+    if m:
+        risks = m.group(0).strip()
+        if not risks.startswith("风险"):
+            risks = f"风险：{risks}"
+
+    out = dict(output)
+    body = "；".join(slices) + "。" + risks
+    if "车间" in prior or "车间" in input_text:
+        body += " 范围：单车间试点。"
+    out["rollout_and_risks"] = body
+    return out
+
+
 def _dingtalk_invented_integration(input_text: str, output: Any) -> bool:
     """Input says no DingTalk API docs, but product claims concrete DingTalk SDK/通知接口.
 
@@ -4127,7 +4191,10 @@ def review_execution_output(
     in_text = _input_text(input_payload)
     persist_envelope = output
     raw_out = sanitize_architecture_third_party(
-        ensure_architecture_section_fields(_unwrap_output(output)),
+        ensure_architecture_rollout_weeks(
+            ensure_architecture_section_fields(_unwrap_output(output)),
+            in_text,
+        ),
         in_text,
     )
     out_text = _text_blob(raw_out)

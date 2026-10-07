@@ -1478,6 +1478,7 @@ scan_hash: 8f9548ec24f4
 | run_store_io | `core/services/execution_store/_base.py` | ✅ | 自动同步 | 已合入 |
 | _output_schema_payload_keys | `core/apps/skills/registry.py` | ✅ | 自动同步 | 已合入 |
 | sanitize_architecture_third_party | `core/management/execution_quality_review.py` | ✅ | 自动同步 | 已合入 |
+| 架构分期 W1–W6 确定性补全 | `ensure_architecture_rollout_weeks`（`execution_quality_review`；delivery+review） | ✅ | 输入要求 6 周试点但产物只有「一个车间」时，按上报/审批/派修/看板补 W1–W6 + 风险；生成物适用（执行横切） | 已合入 |
 | build_sop_handoff_appendix | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
 | build_sop_quality_appendix | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |
 | fix_append_sop_goal | `core/management/asset_audit.py` | ✅ | 自动同步 | 已合入 |

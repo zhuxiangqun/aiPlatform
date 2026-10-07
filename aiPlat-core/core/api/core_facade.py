@@ -2761,6 +2761,7 @@ async def _execute_workspace_agent_background(
         try:
             from core.management.execution_quality_review import (
                 ensure_architecture_section_fields,
+                ensure_architecture_rollout_weeks,
                 sanitize_architecture_third_party,
                 _unwrap_output as _eq_unwrap,
                 _input_text as _eq_input_text,
@@ -2768,10 +2769,10 @@ async def _execute_workspace_agent_background(
             import json as _json_norm
 
             _before = _eq_unwrap(_out_payload)
+            _eq_in = _eq_input_text(_stored_input)
             _normed = ensure_architecture_section_fields(_before)
-            _normed = sanitize_architecture_third_party(
-                _normed, _eq_input_text(_stored_input)
-            )
+            _normed = ensure_architecture_rollout_weeks(_normed, _eq_in)
+            _normed = sanitize_architecture_third_party(_normed, _eq_in)
             if isinstance(_normed, dict) and _normed != _before:
                 _out_payload = {"text": _json_norm.dumps(_normed, ensure_ascii=False)}
                 result_text = _out_payload["text"]

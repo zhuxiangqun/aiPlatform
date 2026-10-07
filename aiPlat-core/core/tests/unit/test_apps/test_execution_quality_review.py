@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from types import SimpleNamespace
@@ -1552,6 +1553,94 @@ def test_api_numeric_example_leaves_not_placeholder():
         ]
     }
     assert _architecture_api_thin("对外 API 契约草案", arch) is False
+
+
+def test_ensure_architecture_rollout_weeks_fills_phase1_shop_only():
+    """run-4c35: phase=1 / 试点一个车间 without W1–W6 must normalize then pass gate."""
+    from core.management.execution_quality_review import (
+        ensure_architecture_rollout_weeks,
+        _architecture_rollout_thin,
+        review_execution_output,
+    )
+
+    inp = (
+        "现场巡检报障；6 周试点一个车间；输出上下文与假设、数据流（上报/审批/派修/看板）、"
+        "安全与合规、6 周分期与风险；钉钉暂无 API 文档禁止编造。"
+    )
+    thin = {
+        "title": "现场巡检报障小应用架构设计",
+        "context": "目标是开发现场巡检报障小应用；钉钉 API 文档待确认。",
+        "components": [
+            {"name": "上报", "tech": "内网 MinIO + 钉钉通知通道"},
+            {"name": "审批", "tech": "待确认"},
+            {"name": "派修", "tech": "待确认"},
+            {"name": "看板", "tech": "待确认"},
+        ],
+        "data_flow": [
+            {"description": "用户上传照片", "components": ["上报"]},
+            {"description": "班组长审批", "components": ["审批"]},
+            {"description": "班组长派修", "components": ["派修"]},
+            {"description": "看板展示", "components": ["看板"]},
+        ],
+        "api_contracts": [
+            {
+                "method": "POST",
+                "path": "/api/tickets",
+                "request": {"body": {"photo_ref": "内网 key", "shop_id": "S1"}},
+                "response": {"status": 201, "body": {"ticket_id": "t1"}},
+            },
+            {
+                "method": "POST",
+                "path": "/api/approvals",
+                "request": {"body": {"ticket_id": "t1", "status": "approved"}},
+                "response": {"status": 200, "body": {"ticket_id": "t1"}},
+            },
+            {
+                "method": "POST",
+                "path": "/api/assignments",
+                "request": {"body": {"ticket_id": "t1", "status": "assigned"}},
+                "response": {"status": 200, "body": {"ticket_id": "t1"}},
+            },
+            {
+                "method": "GET",
+                "path": "/api/dashboard/tickets",
+                "request": {},
+                "response": {"status": 200, "body": {"ticket_count": 10}},
+            },
+        ],
+        "security": "照片落内网 MinIO，脱敏后入库，内网边界；钉钉通知通道待对接。",
+        "rollout_and_risks": [
+            {
+                "phase": "1",
+                "description": "试点一个车间，确保每个阶段的风险可控。",
+                "risks": ["内网存储实现风险", "钉钉通知通道实现风险"],
+            }
+        ],
+    }
+    assert _architecture_rollout_thin(inp, thin) is True
+    filled = ensure_architecture_rollout_weeks(thin, inp)
+    assert _architecture_rollout_thin(inp, filled) is False
+    assert re.search(r"W\s*1", str(filled["rollout_and_risks"]), re.I)
+    assert re.search(r"W\s*6", str(filled["rollout_and_risks"]), re.I)
+
+    r = review_execution_output(
+        kind="agent",
+        asset_id="architect_agent",
+        asset_name="系统架构师",
+        input_payload={"message": inp},
+        output=thin,
+        status="completed",
+        hints="architecture_design",
+    )
+    thin_msgs = [
+        i["message"]
+        for i in (r.get("issues") or [])
+        if i.get("code") == "architecture_sections_thin" and i.get("severity") == "error"
+    ]
+    assert not any("按周切片" in m or "W1" in m for m in thin_msgs)
+    assert "invented_third_party_api" not in {
+        i["code"] for i in (r.get("issues") or []) if i.get("severity") == "error"
+    }
 
 
 def test_sanitize_architecture_third_party_rewrites_open_platform():
