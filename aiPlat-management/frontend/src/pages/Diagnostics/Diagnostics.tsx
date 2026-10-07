@@ -52,6 +52,9 @@ const DIAG_TO_TOOL: Record<string, { tool: string; threshold: number }[]> = {
   frontend: [{ tool: 'Code Intel', threshold: 80 }],
   skill_realness: [{ tool: 'Doctor', threshold: 75 }],
   full_stack: [{ tool: 'E2E Smoke', threshold: 100 }, { tool: 'Traces', threshold: 90 }, { tool: 'Doctor', threshold: 80 }],
+  production_depth: [{ tool: '生产深度', threshold: 100 }, { tool: 'Exec Backends', threshold: 80 }],
+  memory_health: [{ tool: 'Context', threshold: 80 }],
+  model_health: [{ tool: 'Model Playground', threshold: 80 }],
 };
 
 const Diagnostics: React.FC = () => {
@@ -233,6 +236,8 @@ const Diagnostics: React.FC = () => {
     governance: '治理', cross_lang: '跨语言', domain_coupling: '领域耦合',
     fragile_base: '脆弱基类', route_coverage: '路由覆盖',
     full_stack: '全域测试', llm_review: 'LLM审查',
+    production_depth: '生产深度', model_health: '模型健康', memory_health: '记忆健康',
+    knowledge_gap: '知识缺口', pipeline_latency: '流水线延迟',
   };
   const catColors: Record<string, string> = {
     core_runtime: 'bg-blue-400', code_intel: 'bg-violet-400', capability: 'bg-amber-400',
@@ -245,6 +250,8 @@ const Diagnostics: React.FC = () => {
     governance: 'bg-amber-400', cross_lang: 'bg-gray-400', domain_coupling: 'bg-gray-400',
     fragile_base: 'bg-gray-400', route_coverage: 'bg-gray-400',
     full_stack: 'bg-sky-400', llm_review: 'bg-cyan-400',
+    production_depth: 'bg-sky-500', model_health: 'bg-blue-500', memory_health: 'bg-indigo-500',
+    knowledge_gap: 'bg-amber-500', pipeline_latency: 'bg-orange-500',
   };
   
   const ON_DEMAND_GUIDE: Record<string, {label: string; href: string; action: string}> = {
@@ -300,6 +307,7 @@ const Diagnostics: React.FC = () => {
     { title: 'Context', desc: 'Prompt/context 组装诊断（cache/search/注入）', href: '/diagnostics/context', icon: Activity },
     { title: 'Capability→Policy', desc: '从 skill capabilities 生成工具门禁策略', href: '/diagnostics/capability-policy', icon: Activity },
     { title: 'Exec Backends', desc: '执行后端 health 与当前 backend', href: '/diagnostics/exec-backends', icon: Activity },
+    { title: '生产深度', desc: '反思/Docker/事件/向量/可观测契约 — Agent OS 生产缺口自检', href: '/diagnostics/production-depth', icon: ShieldCheck },
     { title: 'Traces', desc: '链路追踪与 spans 定位', href: '/diagnostics/traces', icon: Activity },
     { title: 'Graph Runs', desc: '执行 runs / checkpoints / 恢复', href: '/diagnostics/graphs', icon: GitBranch },
     { title: 'Links', desc: '输入任意 ID 联动查询', href: '/diagnostics/links', icon: Share2 },

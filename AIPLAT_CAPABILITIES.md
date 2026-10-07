@@ -1,9 +1,7 @@
 ---
-total_capabilities: 1841
-
-total_capabilities: 1857
-last_updated: 2026-10-05
-version: "30.2"
+total_capabilities: 1852
+last_updated: 2026-10-07
+version: "30.4"
 auto_sync: true
 core_guarantees:
   auto:  # 23 active, 0 missing
@@ -590,6 +588,7 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| build_stage_reflection | `core/harness/execution/stage_reflection.py` | ✅ | 自动同步 | 已合入 |
 | skill_descriptor_from_md_path | `core/harness/execution/skill_side_effect_gate.py` | ✅ | 自动同步 | 已合入 |
 | is_mutating_effect | `core/harness/execution/skill_side_effect_gate.py` | ✅ | 自动同步 | 已合入 |
 | handler_exists | `core/harness/execution/skill_side_effect_gate.py` | ✅ | 自动同步 | 已合入 |
@@ -1627,6 +1626,10 @@ scan_hash: 8f9548ec24f4
 ## 八、可观测性
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| get_production_depth_report | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| check_production_depth | `core/diagnostics/checks/production_depth.py` | ✅ | 自动同步 | 已合入 |
+| build_production_depth_report | `core/harness/observability/production_depth.py` | ✅ | 自动同步 | 已合入 |
+| get_agent_event_ingress | `core/harness/infrastructure/agent_event_ingress.py` | ✅ | 自动同步 | 已合入 |
 | mark_run_graph_done | `core/harness/observation/run_graph.py` | ✅ | 自动同步 | 已合入 |
 | get_run_graph | `core/harness/observation/run_graph.py` | ✅ | 自动同步 | 已合入 |
 | close_run_graph_node | `core/harness/observation/run_graph.py` | ✅ | 自动同步 | 已合入 |
@@ -1659,6 +1662,12 @@ scan_hash: 8f9548ec24f4
 | FDE 周报前端 | frontend/Diagnostics/WeeklyReport.tsx | ✅ | 诊断中心新增"周报"卡片：NL 渲染 + 一键复制为客户简报 + FDE 批注修订 | 已合入 |
 | FDE Dashboard | apps/workbench/api/workbench.py:fde-dashboard` + `UserWorkbench.tsx | ✅ | 4卡聚合(待决策/信号预警/执行异常/训练)+时间轴+Spec筛选联动 | 已合入 |
 | TrendDetector (熵增预警) | harness/infrastructure/trend_detector.py | ✅ | 6桶滑动窗口+双缓冲+状态机(NORMAL/ALERTING/HIGH_ALERT/RESOLVED)+7天基线 | 已合入 |
+| **Observability Contract** | `harness/observability/contract.py` + CoreFacade.get_observability_contract + diagnostics health | ✅ | 生产可观测契约：Prometheus + EventBus + run_graph + syscall_events；ELK 明确 out_of_contract | 已合入 |
+| **AgentEventIngress** | `harness/infrastructure/agent_event_ingress.py` + server lifespan | ✅ | 外部事件唤醒 Agent：文件 inbox + 可选 Kafka/Redis → run_workspace_agent（AIPLAT_AGENT_EVENT_INGRESS） | 已合入 |
+| **Stage Reflection** | `harness/execution/stage_reflection.py` → pipeline_engine._capture_stage_reflection | ✅ | Pipeline 阶段反思闭合：确定性 health/error/artifact → crystallize 自改进；可选 LLM（AIPLAT_STAGE_REFLECTION_LLM） | 已合入 |
+| **Production Exec/Sandbox Prefer Docker** | exec_drivers/registry.py + sandbox.create_sandbox | ✅ | AIPLAT_PROFILE=production / PREFER_DOCKER 时危险执行与 stage sandbox 优先 Docker | 已合入 |
+| **resolve_vector_backend** | infra_bridge.resolve_vector_backend | ✅ | 向量后端解析：env → production 默认 milvus → faiss | 已合入 |
+| **Production Depth Report** | `harness/observability/production_depth.py` + `diagnostics/checks/production_depth.py` + GET `/diagnostics/production-depth` + 前端 ProductionDepth | ✅ | 五处生产深度缺口聚合自检；一键诊断类别 production_depth；Doctor 摘要卡；ELK out_of_contract | 已合入 |
 
 ---
 
@@ -2757,7 +2766,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 165 | 1 | 166 |
+| Harness 执行引擎 | 166 | 1 | 167 |
 | 记忆子系统 | 41 | 0 | 41 |
 | 知识引擎（本体） | 353 | 8 | 361 |
 | RAG 检索 | 51 | 0 | 51 |
@@ -2765,7 +2774,7 @@ scan_hash: 8f9548ec24f4
 | Agent 系统 | 126 | 0 | 126 |
 | Skill 系统 | 144 | 0 | 144 |
 | 安全与治理 | 61 | 0 | 61 |
-| 可观测性 | 31 | 0 | 31 |
+| 可观测性 | 41 | 0 | 41 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 131 | 0 | 131 |
@@ -2802,7 +2811,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1832** | **9** | **1841** |
+| **总计** | **1843** | **9** | **1852** |
 
 | **总计** | **1095** | **0** | **1095** |
 

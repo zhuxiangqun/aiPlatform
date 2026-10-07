@@ -2762,9 +2762,15 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
     async def _capture_stage_reflection(self, stage: PipelineStageConfig, state: Dict) -> Any:
 
-        """Capture per-stage reflection for self-improvement loop (stub)."""
+        """Capture per-stage reflection for self-improvement loop.
 
-        return None
+        Deterministic from health/error/artifact; optional LLM via
+        AIPLAT_STAGE_REFLECTION_LLM=true. See stage_reflection.py.
+        """
+
+        from core.harness.execution.stage_reflection import capture_stage_reflection
+
+        return await capture_stage_reflection(stage, state)
 
 
 
@@ -4665,7 +4671,10 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                         {"role": "system", "content": _sop_body},
                         {"role": "user", "content": _context or _desc},
                     ],
-                    model_name=best_model_for_purpose(_purpose),
+                    model_name=best_model_for_purpose(
+                        _purpose,
+                        messages=[{"role": "user", "content": str(_context or _desc or "")}],
+                    ),
                     max_tokens=32000,
                 ), timeout=getattr(stage, 'stage_timeout_seconds', 300))
                 _result = getattr(_response, "content", "") or str(_response)

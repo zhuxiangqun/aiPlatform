@@ -8,3 +8,4 @@
 #   P1: api_contract.py, human_feedback.py, rollback_monitor.py
 #   P2: pipeline_latency.py, knowledge_gap.py
 #   P3: memory_health.py
+#   P4: production_depth.py — Agent OS production-depth gaps

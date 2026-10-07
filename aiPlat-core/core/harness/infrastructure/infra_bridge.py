@@ -50,15 +50,39 @@ def _check_infra_available() -> bool:
     return _INFRA_AVAILABLE
 
 
-def create_infra_vector_client(backend: str = "faiss") -> Optional[Any]:
+def resolve_vector_backend(backend: Optional[str] = None) -> str:
+    """Resolve vector backend: explicit arg → env → production default → faiss.
+
+    Env: AIPLAT_VECTOR_BACKEND or AIPLAT_VECTOR_DB.
+    When AIPLAT_PROFILE=production and unset, default milvus (overridable via
+    AIPLAT_VECTOR_PRODUCTION_BACKEND).
+    """
+    if backend and str(backend).strip():
+        return str(backend).strip().lower()
+    env_backend = (
+        os.getenv("AIPLAT_VECTOR_BACKEND")
+        or os.getenv("AIPLAT_VECTOR_DB")
+        or ""
+    ).strip().lower()
+    if env_backend:
+        return env_backend
+    if (os.getenv("AIPLAT_PROFILE") or "").strip().lower() == "production":
+        return (
+            os.getenv("AIPLAT_VECTOR_PRODUCTION_BACKEND", "milvus") or "milvus"
+        ).strip().lower()
+    return "faiss"
+
+
+def create_infra_vector_client(backend: Optional[str] = None) -> Optional[Any]:
     """Create a vector store client backed by infra's factory.
 
     Args:
-        backend: "faiss", "milvus", "chroma", or "pinecone"
+        backend: "faiss", "milvus", "chroma", or "pinecone". None → resolve_vector_backend().
 
     Returns a VectorStore with .add(vectors, metadata) and
     .search(query_vector, top_k) methods, or None on failure.
     """
+    backend = resolve_vector_backend(backend)
     if not _check_infra_available():
         return None
     try:

@@ -138,3 +138,12 @@ monitoring:
     enabled: true
     path: /health
     interval: 30
+
+# ── Core 生产 profile 环境变量契约（由进程环境注入，非本文件解析）──
+# AIPLAT_PROFILE=production
+# AIPLAT_EXEC_PREFER_DOCKER=true          # CodeExecutionTool → docker when available
+# AIPLAT_SANDBOX_PREFER_DOCKER=true       # Pipeline stage sandbox → DockerSandbox
+# AIPLAT_VECTOR_BACKEND=milvus            # or rely on profile default milvus
+# AIPLAT_AGENT_EVENT_INGRESS=true         # wake agents from inbox / messaging
+# AIPLAT_MESSAGING_BACKEND=kafka          # optional; file inbox works without it
+# Observability contract: Prometheus + EventBus + run_graph (ELK out of contract)

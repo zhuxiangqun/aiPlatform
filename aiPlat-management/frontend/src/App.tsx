@@ -108,6 +108,7 @@ const DiagnosticsCapabilityPolicy = lazy(() => import('./pages/Diagnostics/Capab
 const DiagnosticsCapabilityBoundary = lazy(() => import('./pages/Diagnostics/CapabilityBoundary'));
 const DiagnosticsRAGQuality = lazy(() => import('./pages/Diagnostics/RAGQuality'));
 const DiagnosticsExecBackends = lazy(() => import('./pages/Diagnostics/ExecBackends'));
+const DiagnosticsProductionDepth = lazy(() => import('./pages/Diagnostics/ProductionDepth'));
 const DiagnosticsWorkflows = lazy(() => import('./pages/Diagnostics/Workflows'));
 const DiagnosticsCodeIntel = lazy(() => import('./pages/Diagnostics/CodeIntel/CodeIntel'));
 const DiagnosticsCapabilityGraph = lazy(() => import('./pages/Diagnostics/CapabilityGraph/CapabilityGraph'));
@@ -262,6 +263,7 @@ const router = createBrowserRouter([
       { path: 'diagnostics/capability-boundary', element: withSuspense(DiagnosticsCapabilityBoundary) },
       { path: 'diagnostics/rag-quality', element: withSuspense(DiagnosticsRAGQuality) },
       { path: 'diagnostics/exec-backends', element: withSuspense(DiagnosticsExecBackends) },
+      { path: 'diagnostics/production-depth', element: withSuspense(DiagnosticsProductionDepth) },
       { path: 'diagnostics/workflows', element: withSuspense(DiagnosticsWorkflows) },
       { path: 'diagnostics/code-intel', element: withSuspense(DiagnosticsCodeIntel) },
       { path: 'diagnostics/capability-graph', element: withSuspense(DiagnosticsCapabilityGraph) },

@@ -144,6 +144,7 @@ def _load_check(module_name: str):
         "pipeline_latency": "check_pipeline_latency",
         "knowledge_gap": "check_knowledge_gap",
         "memory_health": "check_memory_health",
+        "production_depth": "check_production_depth",
     }
     actual_fn = _check_fn_map.get(module_name, fn_name)
     return getattr(mod, actual_fn)
@@ -461,6 +462,28 @@ async def _check_core_runtime():
         return {"status": "unavailable", "score": 0}
 
 
+async def _check_observability_contract():
+    """Declared observability stack: Prometheus + EventBus + run_graph (ELK out of contract)."""
+    from core.harness.observability.contract import get_observability_contract
+    contract = get_observability_contract()
+    return {
+        "status": "pass" if contract.get("healthy") else "warn",
+        "score": 100 if contract.get("healthy") else 60,
+        "contract": contract,
+    }
+
+
+async def _check_production_depth():
+    """Agent OS production-depth gaps (reflection / docker / ingress / vector / observability)."""
+    from core.harness.observability.production_depth import build_production_depth_report
+    report = build_production_depth_report()
+    return {
+        "status": report.get("status", "warn"),
+        "score": report.get("score", 0),
+        "report": report,
+    }
+
+
 async def _check_doc_sync():
     """Check that AIPLAT_CAPABILITIES.md is consistent with code."""
     import subprocess, sys, os as _os
@@ -770,6 +793,12 @@ def _register_health_checks():
         reg = get_registry()
         # Runtime check — _check_core_runtime is at module level (verified).
         reg.register(SimpleHealthCheck("runtime", _check_core_runtime, Severity.CRITICAL))
+        reg.register(SimpleHealthCheck(
+            "observability_contract", _check_observability_contract, Severity.MEDIUM,
+        ))
+        reg.register(SimpleHealthCheck(
+            "production_depth", _check_production_depth, Severity.MEDIUM,
+        ))
         reg.register(SimpleHealthCheck("doc_sync", _check_doc_sync, Severity.HIGH))
         reg.register(SimpleHealthCheck("doc_quality", _check_doc_quality, Severity.MEDIUM))
         reg.register(SimpleHealthCheck("wiki_content_quality", _check_wiki_content_quality, Severity.MEDIUM))
@@ -1258,6 +1287,13 @@ async def diagnostics_exec_backends():
     return {"status": "ok", "current_backend": backend, "backends": health.get("backends") if isinstance(health, dict) else [], "non_local_requires_approval": True}
 
 
+@router.get("/diagnostics/production-depth", response_model=Dict[str, Any])
+async def diagnostics_production_depth():
+    """Agent OS production-depth readiness (reflection / docker / ingress / vector / observability)."""
+    from core.harness.observability.production_depth import build_production_depth_report
+    return build_production_depth_report()
+
+
 @router.get("/diagnostics/exec/metrics/summary", response_model=Dict[str, Any])
 async def diagnostics_exec_backend_metrics_summary(window_hours: int = 24, limit: int = 20):
     """Exec backend metrics summary (uses run_events aggregated in ExecutionStore)."""
@@ -1409,13 +1445,14 @@ async def _run_diag_impl(run_id: str = "", quick: bool = False) -> Dict[str, Any
             run_with_timeout(_load_check("pipeline_latency"), 3.0),
             run_with_timeout(_load_check("knowledge_gap"), 3.0),
             run_with_timeout(_load_check("memory_health"), 3.0),
+            run_with_timeout(_load_check("production_depth"), 3.0),
         ]
         _results = await _asyncio.gather(*_check_tasks)
 
         _check_names = [
             "model_health", "artifact_quality", "api_contract",
             "human_feedback", "rollback_monitor", "pipeline_latency",
-            "knowledge_gap", "memory_health",
+            "knowledge_gap", "memory_health", "production_depth",
         ]
         for name, res in zip(_check_names, _results):
             runtime_checks[name] = res
@@ -1601,6 +1638,11 @@ _LABELS = {
     "symbol_health": "符号健康", "lsp": "LSP 诊断", "security": "安全扫描",
     "full_stack": "全域测试",
     "assessment": "成熟度评估",
+    "production_depth": "生产深度",
+    "model_health": "模型健康",
+    "memory_health": "记忆健康",
+    "knowledge_gap": "知识缺口",
+    "pipeline_latency": "流水线延迟",
 }
 
 

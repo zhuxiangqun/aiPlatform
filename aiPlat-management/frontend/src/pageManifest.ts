@@ -94,6 +94,7 @@ export const menuItems: MenuEntry[] = [
     { key: '/diagnostics', icon: Activity, label: '诊断概览' },
     { key: '/diagnostics/control-profile', icon: Cpu, label: '控制画像' },
     { key: '/diagnostics/observability', icon: Monitor, label: '可观测性' },
+    { key: '/diagnostics/production-depth', icon: Shield, label: '生产深度', roles: ['admin','developer','operator'] },
     // ── 排查与追踪 ──
     { key: '_sub_troubleshoot', subLabel: '排查与追踪' },
     { key: '/diagnostics/traces', icon: Network, label: '链路追踪' },

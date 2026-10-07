@@ -729,9 +729,17 @@ def _vector_search_chroma(
 
     Returns None if vector DB not available (falls back to SQLite cosine).
 
-    Configured via AIPLAT_VECTOR_DB env var."""
+    Configured via AIPLAT_VECTOR_BACKEND / AIPLAT_VECTOR_DB / AIPLAT_PROFILE."""
 
-    backend = os.getenv("AIPLAT_VECTOR_DB", "").lower()
+    try:
+
+        from core.harness.infrastructure.infra_bridge import resolve_vector_backend
+
+        backend = resolve_vector_backend(None)
+
+    except Exception:
+
+        backend = (os.getenv("AIPLAT_VECTOR_BACKEND") or os.getenv("AIPLAT_VECTOR_DB") or "").lower()
 
     if backend not in ("chroma", "milvus"):
 

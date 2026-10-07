@@ -357,8 +357,16 @@ def create_sandbox(stage_config: Any, **kwargs) -> StageSandbox:
 
     stage.sandbox_mode="docker" → DockerSandbox (falls back to StageSandbox if Docker missing)
     default → StageSandbox (subprocess with resource limits)
+
+    Production profile / AIPLAT_SANDBOX_PREFER_DOCKER upgrades subprocess → docker.
     """
     mode = getattr(stage_config, "sandbox_mode", "subprocess") or "subprocess"
+    prefer_docker = (
+        (os.getenv("AIPLAT_PROFILE") or "").strip().lower() == "production"
+        or (os.getenv("AIPLAT_SANDBOX_PREFER_DOCKER") or "").lower() in ("1", "true", "yes", "y")
+    )
+    if mode in ("subprocess", "") and prefer_docker:
+        mode = "docker"
     if mode == "docker":
         return DockerSandbox(**kwargs)
     return StageSandbox(**kwargs)

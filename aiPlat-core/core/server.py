@@ -1701,6 +1701,21 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logging.debug("DiscoveryListener startup skipped: %s", e)
 
+    # Agent event ingress: file inbox (+ optional Kafka/Redis) → run_workspace_agent
+    if os.getenv("AIPLAT_AGENT_EVENT_INGRESS", "false").lower() in ("1", "true", "yes", "y"):
+        try:
+            from core.harness.infrastructure.agent_event_ingress import get_agent_event_ingress
+            ingress = get_agent_event_ingress()
+            asyncio.create_task(ingress.start())
+            log.info(
+                "AgentEventIngress started (inbox=%s)",
+                os.path.expanduser(
+                    os.getenv("AIPLAT_AGENT_EVENT_INBOX", "~/.aiplat/agent_events/inbox")
+                ),
+            )
+        except Exception as e:
+            logging.debug("AgentEventIngress startup skipped: %s", e)
+
     # Cross-graph ontology bridge: scan AGENT.md/SKILL.md for dependency triples
     try:
         async def _bootstrap_ontology_triples():

@@ -199,6 +199,10 @@ export const diagnosticsApi = {
     return apiClient.get<any>('/core/diagnostics/exec/backends');
   },
 
+  getProductionDepth: async () => {
+    return apiClient.get<any>('/core/diagnostics/production-depth');
+  },
+
   getExecBackendMetricsSummary: async (params: { window_hours?: number; limit?: number } = {}) => {
     const q = new URLSearchParams();
     if (params.window_hours != null) q.set('window_hours', String(params.window_hours));

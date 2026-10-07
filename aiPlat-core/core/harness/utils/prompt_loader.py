@@ -486,6 +486,22 @@ Please improve your output based on the feedback. Keep what was correct and fix 
     category="engine",
     variables=["previous_output", "feedback"])
 
+_register("pipeline-stage-reflection", """You are reflecting on one pipeline stage for self-improvement.
+
+Stage: ${stage_id}
+Agent: ${agent_id}
+Deterministic verdict: ${verdict}
+Strengths: ${strengths}
+Problems: ${problems}
+Error: ${error}
+Artifact preview:
+${artifact_preview}
+
+Return JSON ONLY:
+{"verdict":"passed|partial|needs_improvement|failed","strengths":["..."],"problems":["..."],"lesson":"one actionable lesson for next runs"}""",
+    category="engine",
+    variables=["stage_id", "agent_id", "verdict", "strengths", "problems", "error", "artifact_preview"])
+
 # === KERNEL — Chain-of-Thought (Skill 2) ===
 _register("cot-auto-inject", """[推理要求] 在回答之前，请按以下步骤思考和展示推理过程：
 1. 分析问题的关键约束和隐含条件
@@ -1381,6 +1397,27 @@ ${conversation}
 只输出JSON。""",
      category="builder",
      variables=["conversation", "name"])
+
+_register("llm-purpose-router", """Classify the user question into exactly one routing purpose.
+Allowed purpose keys (JSON array): ${allowed_json}
+Purpose notes:
+${purpose_notes}
+
+Rules:
+- Reply with JSON only: {"purpose":"<one allowed key>"}
+- Never output a model name.
+- Never invent a key that is not in the allowed list.
+- Prefer clarify for questions about the current screen/page/button.
+- Prefer code_gen when the user wants code, traceback, or refactor.
+- Prefer reasoning for how-to, how to create Agent/Skill/Tool/MCP, architecture, tradeoffs.
+- Prefer chat for greetings and small talk.
+- Creating or configuring a capability is reasoning, not running a skill.
+
+User question:
+${user_text}
+""",
+    category="infra",
+    variables=["allowed_json", "purpose_notes", "user_text"])
 
 _register("tool-rationale-template", """Before calling any tool, output a one-line rationale explaining WHY you chose this specific tool and what you expect it to return.
 

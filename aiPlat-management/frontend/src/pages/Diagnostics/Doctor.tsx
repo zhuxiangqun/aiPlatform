@@ -15,11 +15,16 @@ const Doctor: React.FC = () => {
   const [showRaw, setShowRaw] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const [prodDepth, setProdDepth] = useState<any>(null);
 
   const refresh = async () => {
     setError(null);
-    const res = await diagnosticsApi.getDoctor();
+    const [res, pd] = await Promise.all([
+      diagnosticsApi.getDoctor(),
+      diagnosticsApi.getProductionDepth().catch(() => null),
+    ]);
     setData(res);
+    setProdDepth(pd);
   };
 
   useEffect(() => {
@@ -27,8 +32,14 @@ const Doctor: React.FC = () => {
     (async () => {
       setError(null);
       try {
-        const res = await diagnosticsApi.getDoctor();
-        if (mounted) setData(res);
+        const [res, pd] = await Promise.all([
+          diagnosticsApi.getDoctor(),
+          diagnosticsApi.getProductionDepth().catch(() => null),
+        ]);
+        if (mounted) {
+          setData(res);
+          setProdDepth(pd);
+        }
       } catch (e: any) {
         if (mounted) setError(e?.message || '加载失败');
       }
@@ -170,6 +181,53 @@ const Doctor: React.FC = () => {
           );
         })}
       </div>
+
+      {/* ═══ Production Depth ═══ */}
+      {prodDepth && (
+        <Card className={
+          prodDepth.status === 'pass' ? 'border-green-500/30'
+            : prodDepth.status === 'warn' ? 'border-yellow-500/30'
+              : 'border-red-500/30'
+        }>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-gray-200">生产深度</div>
+              <div className="flex items-center gap-2">
+                <Badge variant={
+                  prodDepth.status === 'pass' ? 'success'
+                    : prodDepth.status === 'warn' ? 'warning' : 'error'
+                }>
+                  score {prodDepth.score ?? '-'}
+                </Badge>
+                <Link
+                  to="/diagnostics/production-depth"
+                  className="text-xs text-sky-400 hover:text-sky-300"
+                >
+                  查看详情 →
+                </Link>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xs text-gray-500 mb-2">
+              profile={String(prodDepth.profile || '(unset)')} ·
+              pass {prodDepth.summary?.pass ?? 0} /
+              warn {prodDepth.summary?.warn ?? 0} /
+              fail {prodDepth.summary?.fail ?? 0}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(prodDepth.checks || []).map((c: any) => (
+                <Badge
+                  key={c.id}
+                  variant={c.status === 'pass' ? 'success' : c.status === 'warn' ? 'warning' : 'error'}
+                >
+                  {c.title || c.id}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ═══ Issues & Recommendations ═══ */}
       {issues.length > 0 && (

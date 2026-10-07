@@ -5386,6 +5386,24 @@ def wake_agent_status() -> dict:
     }
 
 
+def get_observability_contract() -> dict:
+    """Declared production observability stack (Prometheus + EventBus + run_graph)."""
+    from core.harness.observability.contract import get_observability_contract as _get
+    return _get()
+
+
+def get_production_depth_report() -> dict:
+    """Agent OS production-depth readiness report for diagnostics UI."""
+    from core.harness.observability.production_depth import build_production_depth_report
+    return build_production_depth_report()
+
+
+def agent_event_ingress_status() -> dict:
+    """AgentEventIngress stats (file inbox / messaging → run_workspace_agent)."""
+    from core.harness.infrastructure.agent_event_ingress import get_agent_event_ingress
+    return get_agent_event_ingress().stats
+
+
 async def wake_agent_start(paths: list = None) -> dict:
     """Start WakeAgent watching (zero-token checksum polling)."""
     from core.harness.monitoring.wake_agent import get_wake_agent

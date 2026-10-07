@@ -25,7 +25,8 @@ async def get_exec_backend() -> str:
     Priority:
     1) Env AIPLAT_EXEC_BACKEND
     2) global_settings(key="exec_backend")
-    3) local
+    3) production / AIPLAT_EXEC_PREFER_DOCKER → docker when available
+    4) local
     """
     raw = (os.getenv("AIPLAT_EXEC_BACKEND") or "").strip()
     if raw:
@@ -42,6 +43,20 @@ async def get_exec_backend() -> str:
                 return str(v)
     except Exception as e:
         logging.debug(str(e), exc_info=True)
+
+    prefer_docker = (
+        (os.getenv("AIPLAT_PROFILE") or "").strip().lower() == "production"
+        or (os.getenv("AIPLAT_EXEC_PREFER_DOCKER") or "").lower() in ("1", "true", "yes", "y")
+    )
+    if prefer_docker:
+        try:
+            if await DockerExecDriver()._docker_available():
+                return "docker"
+            logging.warning(
+                "exec_backend: production prefers docker but docker unavailable; falling back to local"
+            )
+        except Exception as e:
+            logging.debug("docker prefer probe failed: %s", e, exc_info=True)
     return "local"
 
 
