@@ -78,6 +78,7 @@ consumer_patterns:
   - "apps/tools/"
   - "apps/a2a/"
   - "apps/fde/"
+  - "diagnostics/"
   - "management/"
   - "server\\.py"
   - "builder/"

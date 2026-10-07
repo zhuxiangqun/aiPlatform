@@ -62,6 +62,7 @@ consumer_patterns:
   - "harness/learning/"
   - "diagnostics/checks/"
   - "apps/agents/"
+  - "apps/fde/"
   - "management/"
   - "builder/"
   - "api/"

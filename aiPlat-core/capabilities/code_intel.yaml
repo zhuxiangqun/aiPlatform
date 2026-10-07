@@ -30,6 +30,7 @@ methods:
 
 consumer_patterns:
   - "harness/"
+  - "engine/"
   - "apps/"
   - "api/"
   - "management/"

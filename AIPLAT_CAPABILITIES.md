@@ -906,6 +906,7 @@ scan_hash: 8f9548ec24f4
 | start_sandbox_rehearsal | `core/apps/org/service/org_fleet.py` | ✅ | 自动同步 | 已合入 |
 | org_fleet_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_fleet_gate | `core/apps/org/service/org_fleet.py` | ✅ | 自动同步 | 已合入 |
+| set_hop_aggregate_fn | `core/apps/org/service/org_fleet.py` + platform `routes.py` 注入 | ✅ | fleet 门禁 hop 指标由平台注入，避免 core→platform 反向依赖；生成物不适用（平台组织横切） | 已合入 |
 | org_search_memory | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | search_exceptions | `core/apps/org/service/org_memory.py` | ✅ | 自动同步 | 已合入 |
 | record_run_memory | `core/apps/org/service/org_memory.py` | ✅ | 自动同步 | 已合入 |

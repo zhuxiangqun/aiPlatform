@@ -17,6 +17,15 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
+# Platform injects hop aggregate (builder.hop_metrics) at startup — core must not import platform.
+_hop_aggregate_fn = None  # type: ignore[var-annotated]
+
+
+def set_hop_aggregate_fn(fn) -> None:
+    """Register platform hop metrics aggregator (call from platform startup)."""
+    global _hop_aggregate_fn
+    _hop_aggregate_fn = fn
+
 
 def evaluate_fleet_gate(
     goal_id: str = "",
@@ -75,30 +84,39 @@ def evaluate_fleet_gate(
 
     hop: Dict[str, Any] = {"status": "skipped", "detail": "no project_id"}
     if (project_id or "").strip():
-        try:
-            from builder.hop_metrics import aggregate_hops  # type: ignore
-
-            hop = aggregate_hops(project_id.strip())
-            n = int(hop.get("n_runs") or hop.get("count") or hop.get("n") or 0)
-            ok_hop = n >= 5
-            checks.append(
-                {
-                    "id": "hop_metrics",
-                    "ok": ok_hop,
-                    "required": True,
-                    "detail": f"project={project_id} hop_count={n} (need ≥5)",
-                }
-            )
-        except Exception as e:
+        if _hop_aggregate_fn is None:
             checks.append(
                 {
                     "id": "hop_metrics",
                     "ok": False,
                     "required": True,
-                    "detail": f"hop aggregate unavailable: {type(e).__name__}",
+                    "detail": "hop aggregate provider not registered (platform set_hop_aggregate_fn)",
                 }
             )
-            hop = {"status": "error", "error": type(e).__name__}
+            hop = {"status": "unwired", "detail": "set_hop_aggregate_fn missing"}
+        else:
+            try:
+                hop = _hop_aggregate_fn(project_id.strip()) or {}
+                n = int(hop.get("n_runs") or hop.get("count") or hop.get("n") or 0)
+                ok_hop = n >= 5
+                checks.append(
+                    {
+                        "id": "hop_metrics",
+                        "ok": ok_hop,
+                        "required": True,
+                        "detail": f"project={project_id} hop_count={n} (need ≥5)",
+                    }
+                )
+            except Exception as e:
+                checks.append(
+                    {
+                        "id": "hop_metrics",
+                        "ok": False,
+                        "required": True,
+                        "detail": f"hop aggregate unavailable: {type(e).__name__}",
+                    }
+                )
+                hop = {"status": "error", "error": type(e).__name__}
 
     required_ok = all(c["ok"] for c in checks if c.get("required"))
     return {

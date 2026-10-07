@@ -50,6 +50,7 @@ consumers:
 
 consumer_patterns:
   - "harness/"
+  - "engine/"
   - "api/"
   - "apps/"
   - "management/"

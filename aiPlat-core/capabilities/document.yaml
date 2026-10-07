@@ -61,4 +61,12 @@ consumers:
   - path: aiPlat-core/core/harness/ontology_engine/document_parser.py
     uses: get_document_registry
 
+consumer_patterns:
+  - "harness/document/"
+  - "harness/ontology_engine/"
+  - "api/"
+  - "apps/fde/"
+  - "kb/"
+  - "platform/apps/fde/"
+
 legacy_fixes: []

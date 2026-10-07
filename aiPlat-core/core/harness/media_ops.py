@@ -336,12 +336,8 @@ def _media_audio_adapter():
     """Canonical STT path — InfraAudioAdapter (no direct faster_whisper in harness)."""
     from core.harness.infrastructure.infra_audio_adapter import create_infra_audio_adapter
 
-    model_name = (
-        os.getenv("AIPLAT_MEDIA_WHISPER_MODEL")
-        or os.getenv("AIPLAT_VIDEO_WHISPER_MODEL")
-        or "tiny"
-    )
-    return create_infra_audio_adapter(model_name=model_name)
+    # Model name via BaseModelAdapter.resolve_model_name("audio") — not local getenv.
+    return create_infra_audio_adapter()
 
 
 def _lang_label(code: str) -> str:

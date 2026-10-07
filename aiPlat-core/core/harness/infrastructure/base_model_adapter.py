@@ -57,6 +57,11 @@ def resolve_model_name(capability: str) -> str:
         model = os.getenv(env_var, "").strip()
         if model:
             return model
+    # audio: accept media-scoped alias used by media_ops / video pipelines
+    if capability == "audio":
+        media_alias = os.getenv("AIPLAT_MEDIA_WHISPER_MODEL", "").strip()
+        if media_alias:
+            return media_alias
 
     # Try infra ModelManager (cached singleton — never new ModelManager() here;
     # each construct re-scans Ollama up to ~10s and can stall pre-LLM ReAct).

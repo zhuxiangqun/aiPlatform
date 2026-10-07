@@ -378,10 +378,16 @@ def get_new_files() -> list[str]:
     except Exception:
         pass
 
-    return sorted(f for f in files
-                  if (f.endswith(".py") and "test" not in f.lower()
-                      and "__init__" not in f)
-                  or f.endswith((".tsx", ".ts")))
+    skip_prefixes = ("tmp/", "docs/", ".venv/", "node_modules/")
+    return sorted(
+        f
+        for f in files
+        if not f.startswith(skip_prefixes)
+        and (
+            (f.endswith(".py") and "test" not in f.lower() and "__init__" not in f)
+            or f.endswith((".tsx", ".ts"))
+        )
+    )
 
 
 # ════════════════════════════════════════════════════════════

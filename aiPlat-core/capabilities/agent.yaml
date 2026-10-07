@@ -26,10 +26,16 @@ methods:
     signature: "() -> AgentRegistry"
     purpose: "获取全局 Agent 注册表单例"
 
+consumers:
+  - path: aiPlat-core/core/harness/infrastructure/agent_event_ingress.py
+    uses: get_agent_registry
+    note: "AgentEventIngress 文件/消息唤醒 → run_workspace_agent"
+
 consumer_patterns:
   - "harness/syscalls/"
   - "harness/execution/"
   - "harness/integration"
+  - "harness/infrastructure/"
   - "apps/agents/"
   - "api/"
   - "management/"

@@ -280,6 +280,16 @@ except Exception as e:
     logging.warning(str(e), exc_info=True)
 
 
+# Org fleet gate: inject hop metrics without core→platform import.
+try:
+    from builder.hop_metrics import aggregate_hops
+    from core.apps.org.service.org_fleet import set_hop_aggregate_fn
+
+    set_hop_aggregate_fn(aggregate_hops)
+except Exception as e:
+    logging.warning("org fleet hop aggregate not wired: %s", e, exc_info=True)
+
+
 
 
 
