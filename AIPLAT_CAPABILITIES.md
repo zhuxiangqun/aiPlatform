@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1863
+total_capabilities: 1868
 last_updated: 2026-10-07
 version: "30.5"
 auto_sync: true
@@ -1274,6 +1274,32 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| export_seed_sharegpt_dataset | `core/harness/digital_human/trajectory_collector.py` | ✅ | 自动同步 | 已合入 |
+| clear_brief_cache | `core/harness/digital_human/platform_status_brief.py` | ✅ | 自动同步 | 已合入 |
+| scrub_audit_english | `core/harness/digital_human/platform_status_brief.py` | ✅ | 自动同步 | 已合入 |
+| is_inventory_question | `core/harness/digital_human/platform_status_brief.py` | ✅ | 自动同步 | 已合入 |
+| use_page_only_brief | `core/harness/digital_human/platform_status_brief.py` | ✅ | 自动同步 | 已合入 |
+| asks_open_item_audit | `core/harness/digital_human/platform_status_brief.py` | ✅ | 自动同步 | 已合入 |
+| is_page_followup | `core/harness/digital_human/platform_status_brief.py` | ✅ | 自动同步 | 已合入 |
+| page_data_has_live_facts | `core/harness/digital_human/platform_status_brief.py` | ✅ | 自动同步 | 已合入 |
+| asks_app_vs_agent | `core/harness/digital_human/platform_status_brief.py` | ✅ | 自动同步 | 已合入 |
+| refers_to_current_screen | `core/harness/digital_human/platform_status_brief.py` | ✅ | 自动同步 | 已合入 |
+| clear_reload_cache | `core/harness/digital_human/consultant_reload.py` | ✅ | 自动同步 | 已合入 |
+| load_constitution_fresh | `core/harness/digital_human/consultant_reload.py` | ✅ | 自动同步 | 已合入 |
+| apply_system_prompt | `core/harness/digital_human/consultant_reload.py` | ✅ | 自动同步 | 已合入 |
+| read_agent_system_prompt | `core/harness/digital_human/consultant_reload.py` | ✅ | 自动同步 | 已合入 |
+| parse_agent_system_prompt | `core/harness/digital_human/consultant_reload.py` | ✅ | 自动同步 | 已合入 |
+| constitution_path | `core/harness/digital_human/consultant_reload.py` | ✅ | 自动同步 | 已合入 |
+| agent_md_path | `core/harness/digital_human/consultant_reload.py` | ✅ | 自动同步 | 已合入 |
+| remember_style_pref | `core/harness/digital_human/consultant_personal.py` | ✅ | 自动同步 | 已合入 |
+| remember_from_user | `core/harness/digital_human/consultant_personal.py` | ✅ | 自动同步 | 已合入 |
+| looks_like_short_style | `core/harness/digital_human/consultant_personal.py` | ✅ | 自动同步 | 已合入 |
+| looks_like_lasting_note | `core/harness/digital_human/consultant_personal.py` | ✅ | 自动同步 | 已合入 |
+| memory_path | `core/harness/digital_human/consultant_personal.py` | ✅ | 自动同步 | 已合入 |
+| sanitize_tenant_id | `core/harness/digital_human/consultant_personal.py` | ✅ | 自动同步 | 已合入 |
+| clear_knowledge_caches | `core/harness/digital_human/consultant_knowledge.py` | ✅ | 自动同步 | 已合入 |
+| answer_cites_platform | `core/harness/digital_human/consultant_knowledge.py` | ✅ | 自动同步 | 已合入 |
+| looks_external_generic_question | `core/harness/digital_human/consultant_knowledge.py` | ✅ | 自动同步 | 已合入 |
 | register_agents_prompts | `core/apps/agents/prompts.py` | ✅ | 自动同步 | 已合入 |
 | get_value_baseline_view | `core/apps/org/service/org_value_translation.py` | ✅ | 自动同步 | 已合入 |
 | load_value_baseline | `core/apps/org/service/org_value_translation.py` | ✅ | 自动同步 | 已合入 |
@@ -1340,6 +1366,11 @@ scan_hash: 8f9548ec24f4
 | history_as_text | `core/apps/common/create_dialog_utils.py` | ✅ | 自动同步 | 已合入 |
 | trim_history | `core/apps/common/create_dialog_utils.py` | ✅ | 自动同步 | 已合入 |
 | extract_json_object | `core/apps/common/create_dialog_utils.py` | ✅ | 自动同步 | 已合入 |
+| maybe_upload_tool_clarify | `core/apps/common/upload_create_clarify.py` | ✅ | 对象存储上传 Tool 创建：白话问哪家云/桶/链接公开性，禁 endpoint/env 追问；厂商映射 SDK+常规 env 草稿 | 已合入 |
+| maybe_upload_mcp_clarify | `core/apps/common/upload_create_clarify.py` | ✅ | 同上，MCP 创建对话入口 | 已合入 |
+| parse_upload_plain_facts | `core/apps/common/upload_create_clarify.py` | ✅ | 从用户口语解析 vendor/bucket/link_mode | 已合入 |
+| synthesize_upload_tool_description | `core/apps/common/upload_create_clarify.py` | ✅ | 按厂商模板合成 ≥80 字上传 Tool description | 已合入 |
+| looks_like_upload_create | `core/apps/common/upload_create_clarify.py` | ✅ | 上传/云存储创建意图启发式 | 已合入 |
 | hints_for_mcp_draft | `core/apps/common/boundary_hints.py` | ✅ | 自动同步 | 已合入 |
 | hints_for_tool_draft | `core/apps/common/boundary_hints.py` | ✅ | 自动同步 | 已合入 |
 | wants_outbound_network | `core/apps/common/boundary_hints.py` | ✅ | 自动同步 | 已合入 |
@@ -2782,7 +2813,7 @@ scan_hash: 8f9548ec24f4
 | 知识引擎（本体） | 353 | 8 | 361 |
 | RAG 检索 | 51 | 0 | 51 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 134 | 0 | 134 |
+| Agent 系统 | 139 | 0 | 139 |
 | Skill 系统 | 144 | 0 | 144 |
 | 安全与治理 | 61 | 0 | 61 |
 | 可观测性 | 42 | 0 | 42 |
@@ -2822,7 +2853,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1854** | **9** | **1863** |
+| **总计** | **1859** | **9** | **1868** |
 
 | **总计** | **1095** | **0** | **1095** |
 

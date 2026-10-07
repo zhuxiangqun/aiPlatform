@@ -32,63 +32,85 @@ async def run_mcp_create_dialog_turn(
             ],
         }
 
-    trimmed = trim_history(history)
-    from core.api.core_facade import (
-        _async_prompt_resolve,
-        best_model_for_purpose,
-        create_selected_adapter,
-        sys_llm_generate,
-    )
+    from core.apps.common.upload_create_clarify import maybe_upload_mcp_clarify
 
-    user_prompt = await _async_prompt_resolve(
-        "mcp-create-dialog",
-        history=history_as_text(trimmed),
-        latest_user=text,
-    )
-    model = create_selected_adapter(model_name=best_model_for_purpose("tool_creation"))
-    messages = [
-        {
-            "role": "system",
-            "content": await _async_prompt_resolve("mcp-create-dialog-system-role"),
-        },
-        {"role": "user", "content": user_prompt},
-    ]
-
-    try:
-        resp = await sys_llm_generate(model, messages)
-        raw = str(resp.content if hasattr(resp, "content") else resp)
-    except Exception as e:
-        logging.warning("mcp create dialog LLM failed: %s", e, exc_info=True)
+    upload_gate = maybe_upload_mcp_clarify(text=text, history=history)
+    if upload_gate and upload_gate.get("next") == "ask":
         return {
             "next": "ask",
-            "reply": "暂时无法生成回复。请再补充：能力、传输、地址/命令。",
-            "questions": ["MCP 名称？", "transport？", "url 或 command？"],
-            "error": str(e)[:200],
+            "reply": str(upload_gate.get("reply") or ""),
+            "questions": list(upload_gate.get("questions") or []),
         }
 
-    info = parse_clarify_payload(extract_json_object(raw))
-    reply = info["reply"]
-    questions = info["questions"]
-    display_name = info["display_name"]
-    server_name = info["name"]
-    description = info["description"]
+    reply = ""
+    questions: List[str] = []
+    display_name = ""
+    server_name = ""
+    description = ""
 
-    if not is_draft_ready(
-        next_state=info["next"],
-        description=description,
-        display_name=display_name,
-        name=server_name,
-    ):
-        return {
-            "next": "ask",
-            "reply": reply or "还需要再确认几项，才能生成 MCP 草稿。",
-            "questions": questions
-            or [
-                "传输方式（stdio / sse / http）？",
-                "服务 URL 或启动 command？",
-                "需要限制哪些 allowed_tools？",
-            ],
-        }
+    if upload_gate and upload_gate.get("next") == "draft":
+        display_name = str(upload_gate.get("display_name") or "")
+        server_name = str(upload_gate.get("name") or "")
+        description = str(upload_gate.get("description") or "")
+        reply = "已按你选的云厂商生成上传 MCP 草稿，请确认连接配置后创建。"
+    else:
+        trimmed = trim_history(history)
+        from core.api.core_facade import (
+            _async_prompt_resolve,
+            best_model_for_purpose,
+            create_selected_adapter,
+            sys_llm_generate,
+        )
+
+        user_prompt = await _async_prompt_resolve(
+            "mcp-create-dialog",
+            history=history_as_text(trimmed),
+            latest_user=text,
+        )
+        model = create_selected_adapter(model_name=best_model_for_purpose("tool_creation"))
+        messages = [
+            {
+                "role": "system",
+                "content": await _async_prompt_resolve("mcp-create-dialog-system-role"),
+            },
+            {"role": "user", "content": user_prompt},
+        ]
+
+        try:
+            resp = await sys_llm_generate(model, messages)
+            raw = str(resp.content if hasattr(resp, "content") else resp)
+        except Exception as e:
+            logging.warning("mcp create dialog LLM failed: %s", e, exc_info=True)
+            return {
+                "next": "ask",
+                "reply": "暂时无法生成回复。请再补充：能力、传输、地址/命令。",
+                "questions": ["MCP 名称？", "transport？", "url 或 command？"],
+                "error": str(e)[:200],
+            }
+
+        info = parse_clarify_payload(extract_json_object(raw))
+        reply = info["reply"]
+        questions = info["questions"]
+        display_name = info["display_name"]
+        server_name = info["name"]
+        description = info["description"]
+
+        if not is_draft_ready(
+            next_state=info["next"],
+            description=description,
+            display_name=display_name,
+            name=server_name,
+        ):
+            return {
+                "next": "ask",
+                "reply": reply or "还需要再确认几项，才能生成 MCP 草稿。",
+                "questions": questions
+                or [
+                    "传输方式（stdio / sse / http）？",
+                    "服务 URL 或启动 command？",
+                    "需要限制哪些 allowed_tools？",
+                ],
+            }
 
     if not display_name:
         display_name = server_name or "未命名 MCP"

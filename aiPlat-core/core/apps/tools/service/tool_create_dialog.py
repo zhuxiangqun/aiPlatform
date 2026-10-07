@@ -32,63 +32,85 @@ async def run_tool_create_dialog_turn(
             ],
         }
 
-    trimmed = trim_history(history)
-    from core.api.core_facade import (
-        _async_prompt_resolve,
-        best_model_for_purpose,
-        create_selected_adapter,
-        sys_llm_generate,
-    )
+    from core.apps.common.upload_create_clarify import maybe_upload_tool_clarify
 
-    user_prompt = await _async_prompt_resolve(
-        "tool-create-dialog",
-        history=history_as_text(trimmed),
-        latest_user=text,
-    )
-    model = create_selected_adapter(model_name=best_model_for_purpose("tool_creation"))
-    messages = [
-        {
-            "role": "system",
-            "content": await _async_prompt_resolve("tool-create-dialog-system-role"),
-        },
-        {"role": "user", "content": user_prompt},
-    ]
-
-    try:
-        resp = await sys_llm_generate(model, messages)
-        raw = str(resp.content if hasattr(resp, "content") else resp)
-    except Exception as e:
-        logging.warning("tool create dialog LLM failed: %s", e, exc_info=True)
+    upload_gate = maybe_upload_tool_clarify(text=text, history=history)
+    if upload_gate and upload_gate.get("next") == "ask":
         return {
             "next": "ask",
-            "reply": "暂时无法生成回复。请再补充：目标、参数、输出。",
-            "questions": ["工具名称？", "输入参数？", "输出是什么？"],
-            "error": str(e)[:200],
+            "reply": str(upload_gate.get("reply") or ""),
+            "questions": list(upload_gate.get("questions") or []),
         }
 
-    info = parse_clarify_payload(extract_json_object(raw))
-    reply = info["reply"]
-    questions = info["questions"]
-    display_name = info["display_name"]
-    tool_name = info["name"]
-    description = info["description"]
+    reply = ""
+    questions: List[str] = []
+    display_name = ""
+    tool_name = ""
+    description = ""
 
-    if not is_draft_ready(
-        next_state=info["next"],
-        description=description,
-        display_name=display_name,
-        name=tool_name,
-    ):
-        return {
-            "next": "ask",
-            "reply": reply or "还需要再确认几项，才能生成 Tool 草稿。",
-            "questions": questions
-            or [
-                "输入参数有哪些（名称/类型）？",
-                "输出结构是什么？",
-                "是否需要读写文件或联网？",
-            ],
-        }
+    if upload_gate and upload_gate.get("next") == "draft":
+        display_name = str(upload_gate.get("display_name") or "")
+        tool_name = str(upload_gate.get("name") or "")
+        description = str(upload_gate.get("description") or "")
+        reply = "已按你选的云厂商和桶规则生成上传 Tool 草稿，请确认代码后创建。"
+    else:
+        trimmed = trim_history(history)
+        from core.api.core_facade import (
+            _async_prompt_resolve,
+            best_model_for_purpose,
+            create_selected_adapter,
+            sys_llm_generate,
+        )
+
+        user_prompt = await _async_prompt_resolve(
+            "tool-create-dialog",
+            history=history_as_text(trimmed),
+            latest_user=text,
+        )
+        model = create_selected_adapter(model_name=best_model_for_purpose("tool_creation"))
+        messages = [
+            {
+                "role": "system",
+                "content": await _async_prompt_resolve("tool-create-dialog-system-role"),
+            },
+            {"role": "user", "content": user_prompt},
+        ]
+
+        try:
+            resp = await sys_llm_generate(model, messages)
+            raw = str(resp.content if hasattr(resp, "content") else resp)
+        except Exception as e:
+            logging.warning("tool create dialog LLM failed: %s", e, exc_info=True)
+            return {
+                "next": "ask",
+                "reply": "暂时无法生成回复。请再补充：目标、参数、输出。",
+                "questions": ["工具名称？", "输入参数？", "输出是什么？"],
+                "error": str(e)[:200],
+            }
+
+        info = parse_clarify_payload(extract_json_object(raw))
+        reply = info["reply"]
+        questions = info["questions"]
+        display_name = info["display_name"]
+        tool_name = info["name"]
+        description = info["description"]
+
+        if not is_draft_ready(
+            next_state=info["next"],
+            description=description,
+            display_name=display_name,
+            name=tool_name,
+        ):
+            return {
+                "next": "ask",
+                "reply": reply or "还需要再确认几项，才能生成 Tool 草稿。",
+                "questions": questions
+                or [
+                    "输入参数有哪些（名称/类型）？",
+                    "输出结构是什么？",
+                    "是否需要读写文件或联网？",
+                ],
+            }
 
     if not display_name:
         display_name = tool_name or "未命名工具"

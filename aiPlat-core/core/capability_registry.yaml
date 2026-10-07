@@ -1976,6 +1976,26 @@ domains:
         type: function
         signature: 'guess_agent_display_name(corpus)'
         module: aiPlat-core/core/apps/common/create_dialog_utils.py
+      - symbol: looks_like_upload_create
+        type: function
+        signature: 'looks_like_upload_create(blob)→bool'
+        module: aiPlat-core/core/apps/common/upload_create_clarify.py
+      - symbol: parse_upload_plain_facts
+        type: function
+        signature: 'parse_upload_plain_facts(blob)→{vendor,bucket,link_mode,...}'
+        module: aiPlat-core/core/apps/common/upload_create_clarify.py
+      - symbol: synthesize_upload_tool_description
+        type: function
+        signature: 'synthesize_upload_tool_description(facts)→str'
+        module: aiPlat-core/core/apps/common/upload_create_clarify.py
+      - symbol: maybe_upload_tool_clarify
+        type: function
+        signature: 'maybe_upload_tool_clarify(text, history)→ask|draft|None'
+        module: aiPlat-core/core/apps/common/upload_create_clarify.py
+      - symbol: maybe_upload_mcp_clarify
+        type: function
+        signature: 'maybe_upload_mcp_clarify(text, history)→ask|draft|None'
+        module: aiPlat-core/core/apps/common/upload_create_clarify.py
       - symbol: simple_extract_fields
         type: function
         signature: 'Keyword/label-based extraction when LLM is unavailable or as a first pass.'

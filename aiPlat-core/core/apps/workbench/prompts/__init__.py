@@ -56,7 +56,8 @@ ${latest_user}
 若已足够：
 {"next":"draft","reply":"...","display_name":"中文名","name":"snake_case_id","description":"完整功能描述含输入输出约束，>=80字"}
 
-规则：每轮最多3问；尽快 draft；只输出 JSON。""",
+规则：每轮最多3问；尽快 draft；只输出 JSON。
+对象存储/上传/播放链接类需求：用白话选择题问「哪家云 / 桶名或还没建 / 链接能不能公开点开」；禁止问 endpoint、SSE 地址或环境变量名（密钥由草稿模板里的常规 env 承担）。""",
         "mcp-create-dialog-system-role": """你是 MCP 接入顾问。通过简短对话收集需求，信息足够后输出可生成草稿的结构化 JSON。只输出 JSON。""",
         "mcp-create-dialog": """根据对话历史与用户最新回复，判断是继续追问还是已可生成 MCP 草稿。
 
@@ -73,7 +74,8 @@ ${latest_user}
 若已足够：
 {"next":"draft","reply":"...","display_name":"显示名","name":"server_id","description":"完整描述含 transport/地址或命令/能力，>=80字"}
 
-规则：优先澄清 transport、url/command、allowed_tools；尽快 draft；只输出 JSON。""",
+规则：优先澄清 transport、url/command、allowed_tools；尽快 draft；只输出 JSON。
+对象存储上传类：同样先问「哪家云 / 桶名或还没建 / 链接能否公开」；禁止先问 SSE 地址或环境变量名。""",
     }
     for pid, content in prompts.items():
         register_prompt(pid, content, category="workbench")
