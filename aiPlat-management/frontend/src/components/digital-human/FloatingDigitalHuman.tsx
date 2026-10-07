@@ -152,6 +152,10 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (e.button !== 0 && e.pointerType === 'mouse') return;
+      // Header is the drag handle; buttons/inputs inside must not start capture
+      // or Minimize / collapse clicks never fire (pointer captured by parent).
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.('button, input, textarea, a, [data-no-drag]')) return;
       e.currentTarget.setPointerCapture?.(e.pointerId);
       setDragging(true);
       dragRef.current = {
@@ -357,18 +361,32 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
             </span>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div data-no-drag style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
           <button
-            onClick={() => setMinimized(true)}
-            style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', padding: 4 }}
+            type="button"
+            data-no-drag
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              setMinimized(true);
+            }}
+            style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', padding: 4 }}
             title="最小化"
+            aria-label="最小化"
           >
             <Minimize2 size={14} />
           </button>
           <button
-            onClick={() => setCollapsed(!collapsed)}
-            style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', padding: 4 }}
+            type="button"
+            data-no-drag
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              setCollapsed((c) => !c);
+            }}
+            style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', padding: 4 }}
             title={collapsed ? '展开' : '折叠'}
+            aria-label={collapsed ? '展开' : '折叠'}
           >
             {collapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
