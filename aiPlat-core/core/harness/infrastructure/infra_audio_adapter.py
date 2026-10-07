@@ -30,6 +30,42 @@ class InfraAudioAdapter(BaseModelAdapter):
     def _load_model(self, name: str) -> Any:  # noqa: boundary — adapter override, loaded per-call
         pass  # Whisper model loaded per-call, not cached globally
 
+    def detect_language(self, audio_path: str) -> Dict[str, Any]:
+        """Language-id via Whisper; transcript text is discarded.
+
+        Returns ``{language_code, language_probability?}``.
+        """
+        try:
+            from faster_whisper import WhisperModel
+
+            model = WhisperModel(
+                self._model_name or "tiny",
+                device=self._device,
+                compute_type=self._compute_type,
+            )
+            segments, info = model.transcribe(
+                audio_path,
+                beam_size=1,
+                vad_filter=True,
+                without_timestamps=True,
+            )
+            for _ in segments:
+                pass
+            out: Dict[str, Any] = {
+                "language_code": str(getattr(info, "language", "") or "").strip().lower()
+                or "unknown",
+            }
+            conf = getattr(info, "language_probability", None)
+            if conf is not None:
+                try:
+                    out["language_probability"] = float(conf)
+                except (TypeError, ValueError):
+                    logging.debug("language_probability not numeric: %r", conf)
+            return out
+        except Exception as e:
+            logging.warning("detect_language failed: %s", e, exc_info=True)
+            return {"language_code": "unknown", "error": type(e).__name__}
+
     def transcribe(self, audio_path: str, language: Optional[str] = None) -> List[Dict[str, Any]]:
         lang = _normalize_language(language)
         try:

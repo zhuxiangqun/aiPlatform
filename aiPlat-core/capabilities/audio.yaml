@@ -4,7 +4,7 @@ capability: audio
 description: "音频处理——语音转文字(Whisper/STT)、音频转录"
 owner: core-infra
 version: "1.0.0"
-updated: "2026-07-13"
+updated: "2026-10-07"
 
 authoritative:
   path: aiPlat-core/core/harness/infrastructure/infra_audio_adapter.py
@@ -14,6 +14,7 @@ authoritative:
   public_symbols:
     - InfraAudioAdapter
     - create_infra_audio_adapter
+    - detect_language
 
 forbidden_direct_imports:
   - faster_whisper
@@ -23,6 +24,9 @@ methods:
   - name: transcribe
     signature: "(audio_path: str) -> str"
     purpose: "音频文件→文字转录"
+  - name: detect_language
+    signature: "(audio_path: str) -> Dict"
+    purpose: "语种探测（丢弃转写正文）"
   - name: create_infra_audio_adapter
     signature: "(**kwargs) -> InfraAudioAdapter"
     purpose: "获取全局音频适配器实例"
@@ -33,7 +37,18 @@ consumer_patterns:
   - "harness/document/transcriber"
   - "harness/syscalls/"
   - "harness/digital_human/"
+  - "harness/media_ops"
   - "apps/tools/"
+
+consumers:
+  - path: aiPlat-core/core/harness/media_ops.py
+    role: consumer
+    uses: create_infra_audio_adapter
+    via: core.harness.infrastructure.infra_audio_adapter.create_infra_audio_adapter
+  - path: aiPlat-core/core/harness/document/transcriber.py
+    role: consumer
+    uses: create_infra_audio_adapter
+    via: core.harness.infrastructure.base_model_adapter.create_adapter
 
 # ── 已知例外 ──
 known_exceptions:

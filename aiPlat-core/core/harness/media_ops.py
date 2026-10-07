@@ -332,26 +332,42 @@ def enrich_keyframes_with_captions(
     return out
 
 
-_WHISPER_MODEL = None
-_WHISPER_LOCK_ERR = ""
+def _media_audio_adapter():
+    """Canonical STT path — InfraAudioAdapter (no direct faster_whisper in harness)."""
+    from core.harness.infrastructure.infra_audio_adapter import create_infra_audio_adapter
+
+    model_name = (
+        os.getenv("AIPLAT_MEDIA_WHISPER_MODEL")
+        or os.getenv("AIPLAT_VIDEO_WHISPER_MODEL")
+        or "tiny"
+    )
+    return create_infra_audio_adapter(model_name=model_name)
+
+
+def _lang_label(code: str) -> str:
+    lang = str(code or "").strip().lower() or "unknown"
+    return {
+        "zh": "中文",
+        "en": "英文",
+        "ja": "日文",
+        "ko": "韩文",
+        "yue": "中文",
+        "zh-cn": "中文",
+        "zh-tw": "中文",
+    }.get(lang, lang if lang != "unknown" else "unknown")
 
 
 def detect_speech_language(audio_or_video: str, work_dir: str = "") -> Dict[str, Any]:
-    """Language-id only via faster-whisper (transcript discarded — FR no-ASR).
+    """Language-id only via InfraAudioAdapter (transcript discarded — FR no-ASR).
 
     Returns ``{language, language_method, confidence?}``. Never returns transcript text.
     """
-    global _WHISPER_MODEL, _WHISPER_LOCK_ERR
     enabled = str(os.getenv("AIPLAT_MEDIA_WHISPER_LANG", "1")).strip().lower()
     if enabled in ("0", "false", "off", "no"):
         return {"language": "unknown", "language_method": "disabled"}
     src = Path(str(audio_or_video or ""))
     if not src.is_file():
         return {"language": "unknown", "language_method": "missing_file"}
-    try:
-        from faster_whisper import WhisperModel
-    except Exception as e:
-        return {"language": "unknown", "language_method": f"whisper_unavailable:{e.__class__.__name__}"}
 
     # Extract short wav clip for speed (first ~30s)
     work = Path(work_dir or (src.parent / "speech_lang"))
@@ -381,82 +397,29 @@ def detect_speech_language(audio_or_video: str, work_dir: str = "") -> Dict[str,
         return {"language": "unknown", "language_method": "no_audio_probe"}
 
     try:
-        if _WHISPER_MODEL is None and not _WHISPER_LOCK_ERR:
-            # tiny is enough for language-id; CPU-friendly
-            model_name = os.getenv("AIPLAT_MEDIA_WHISPER_MODEL", "tiny")  # noqa: env-legacy — ASR size, not LLM
-            _WHISPER_MODEL = WhisperModel(model_name, device="cpu", compute_type="int8")
-        if _WHISPER_MODEL is None:
-            return {"language": "unknown", "language_method": "model_failed"}
-        # language detection: transcribe but discard text
-        segments, info = _WHISPER_MODEL.transcribe(
-            str(wav),
-            beam_size=1,
-            vad_filter=True,
-            without_timestamps=True,
-        )
-        # consume iterator without retaining text
-        for _ in segments:
-            pass
-        lang = str(getattr(info, "language", "") or "").strip().lower() or "unknown"
-        # Map ISO codes to PRD-facing labels
-        label_map = {
-            "zh": "中文",
-            "en": "英文",
-            "ja": "日文",
-            "ko": "韩文",
-            "yue": "中文",
-            "zh-cn": "中文",
-            "zh-tw": "中文",
-        }
-        label = label_map.get(lang, lang if lang != "unknown" else "unknown")
-        conf = getattr(info, "language_probability", None)
+        adapter = _media_audio_adapter()
+        info = adapter.detect_language(str(wav))
+        lang = str(info.get("language_code") or "unknown").strip().lower() or "unknown"
+        if info.get("error") and lang == "unknown":
+            return {
+                "language": "unknown",
+                "language_method": f"whisper_unavailable:{info.get('error')}",
+            }
         out: Dict[str, Any] = {
-            "language": label,
+            "language": _lang_label(lang),
             "language_code": lang,
-            "language_method": "faster_whisper",
+            "language_method": "infra_audio_adapter",
         }
+        conf = info.get("language_probability")
         if conf is not None:
             try:
                 out["language_confidence"] = round(float(conf), 3)
             except (TypeError, ValueError):
-                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+                _log.debug("language_confidence not numeric: %r", conf)
         return out
     except Exception as e:
-        _WHISPER_LOCK_ERR = str(e)[:120]
-        _log.warning("detect_speech_language failed: %s", _WHISPER_LOCK_ERR)
+        _log.warning("detect_speech_language failed: %s", str(e)[:120])
         return {"language": "unknown", "language_method": f"error:{e.__class__.__name__}"}
-
-
-def _ensure_whisper_model():
-    """Lazy-load shared faster-whisper model (CPU int8)."""
-    global _WHISPER_MODEL, _WHISPER_LOCK_ERR
-    if _WHISPER_MODEL is not None:
-        return _WHISPER_MODEL
-    if _WHISPER_LOCK_ERR:
-        return None
-    try:
-        from faster_whisper import WhisperModel
-
-        model_name = os.getenv("AIPLAT_MEDIA_WHISPER_MODEL", "tiny")  # noqa: env-legacy — ASR size, not LLM
-        _WHISPER_MODEL = WhisperModel(model_name, device="cpu", compute_type="int8")
-        return _WHISPER_MODEL
-    except Exception as e:
-        _WHISPER_LOCK_ERR = str(e)[:160]
-        _log.warning("whisper model load failed: %s", _WHISPER_LOCK_ERR)
-        return None
-
-
-def _lang_label(code: str) -> str:
-    lang = str(code or "").strip().lower() or "unknown"
-    return {
-        "zh": "中文",
-        "en": "英文",
-        "ja": "日文",
-        "ko": "韩文",
-        "yue": "中文",
-        "zh-cn": "中文",
-        "zh-tw": "中文",
-    }.get(lang, lang if lang != "unknown" else "unknown")
 
 
 def transcribe_speech_asr(
@@ -465,7 +428,7 @@ def transcribe_speech_asr(
     *,
     max_duration_sec: float = 0.0,
 ) -> Dict[str, Any]:
-    """ASR via faster-whisper — returns transcript + timed segments (content understanding).
+    """ASR via InfraAudioAdapter — returns transcript + timed segments.
 
     Env:
       AIPLAT_MEDIA_ASR=1|0 (default **1** — product needs transcript to understand speech)
@@ -487,16 +450,6 @@ def transcribe_speech_asr(
             "transcript": "",
             "transcript_segments": [],
             "asr_method": "missing_file",
-            "status": "degraded",
-        }
-    try:
-        from faster_whisper import WhisperModel  # noqa: F401 — availability check
-    except Exception as e:
-        return {
-            "asr_enabled": True,
-            "transcript": "",
-            "transcript_segments": [],
-            "asr_method": f"whisper_unavailable:{e.__class__.__name__}",
             "status": "degraded",
         }
 
@@ -528,45 +481,33 @@ def transcribe_speech_asr(
             "status": "degraded",
         }
 
-    model = _ensure_whisper_model()
-    if model is None:
-        return {
-            "asr_enabled": True,
-            "transcript": "",
-            "transcript_segments": [],
-            "asr_method": "model_failed",
-            "status": "degraded",
-        }
     try:
-        segments_iter, info = model.transcribe(
-            str(wav),
-            beam_size=1,
-            vad_filter=True,
-            word_timestamps=False,
-        )
+        adapter = _media_audio_adapter()
+        raw_segs = adapter.transcribe(str(wav))
         segs: List[Dict[str, Any]] = []
         texts: List[str] = []
-        for seg in segments_iter:
-            text = str(getattr(seg, "text", "") or "").strip()
+        for seg in raw_segs or []:
+            text = str(seg.get("text") or "").strip()
             if not text:
                 continue
-            start = float(getattr(seg, "start", 0.0) or 0.0)
-            end = float(getattr(seg, "end", start) or start)
+            start = float(seg.get("start_ms") or 0) / 1000.0
+            end = float(seg.get("end_ms") or (start * 1000)) / 1000.0
             segs.append({"start": round(start, 3), "end": round(end, 3), "text": text})
             texts.append(text)
-        lang_code = str(getattr(info, "language", "") or "").strip().lower() or "unknown"
+        lang_info = adapter.detect_language(str(wav))
+        lang_code = str(lang_info.get("language_code") or "unknown").strip().lower() or "unknown"
         full = " ".join(texts).strip()
         return {
             "asr_enabled": True,
             "status": "processed",
-            "asr_method": "faster_whisper",
+            "asr_method": "infra_audio_adapter",
             "transcript": full,
             "transcript_text": full,
             "transcript_segments": segs,
             "segments": segs,  # subtitle_timeline alias
             "language": _lang_label(lang_code),
             "language_code": lang_code,
-            "language_method": "faster_whisper_asr",
+            "language_method": "infra_audio_adapter",
             "has_transcript": bool(full),
         }
     except Exception as e:

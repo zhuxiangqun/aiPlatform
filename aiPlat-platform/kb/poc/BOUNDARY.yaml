@@ -1,16 +1,16 @@
 layer: platform
-ttl: "2026-09-01"  # ← 豁免过期日，过期后 architecture_guard 升级为 ERROR
+# OCR 直导豁免已关闭；保留目录边界说明。无 ttl → capability_guard §D 不再报过期 ERROR。
 rationale: |
   POC（概念验证）目录。
-  
+
   OCR 已于 2026-07 统一到 InfraOCRAdapter：
   - ocr.py → 薄壳委托层，调用 InfraOCRAdapter.ocr_structured()
   - types.py → 从 InfraOCRAdapter 重导出 OCRToken / BBox
   - 不再直接 import paddleocr 或 pytesseract（§5.31）
-  
+
   生产路径应使用：
   - Core: create_infra_ocr_adapter() → ocr_text / ocr_structured / ocr_pdf
   - Platform (via CoreFacade): kb_ocr_keyframes() 用于视频 OCR
 notes: |
-  - EXCEPT_10A 豁免现在仅适用于 POC 原型代码（非 OCR 相关）
-  - OCR 的 import 豁免已不再需要（已全部通过 InfraOCRAdapter）
+  - 2026-10-07：移除过期 ttl（原 2026-09-01）；OCR 豁免不再需要
+  - 目录仅作历史 POC 边界说明，禁止新增直导模型库
