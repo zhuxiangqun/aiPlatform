@@ -2532,7 +2532,7 @@ class SkillManager:
 
                 for k in ("skill_kind", "permissions", "decision_tree", "resources",
 
-                          "tools", "execution_type", "timeout"):
+                          "tools", "mcp_ids", "execution_type", "timeout"):
 
                     if k in skill.metadata and skill.metadata.get(k) is not None:
 

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1868
+total_capabilities: 1870
 last_updated: 2026-10-07
 version: "30.5"
 auto_sync: true
@@ -2340,6 +2340,8 @@ scan_hash: 8f9548ec24f4
 | Agent 防重复 | `core/management/agent_manager.py` + `POST /workspace/agents/dedupe` | ✅ | display_name+skills/tools 指纹复用；清理同名重复 | 已合入 |
 | Agent 配置 AI 审核（含工具/技能上架门禁 + 模型策略） | `POST /workspace/agents/{id}/audit`（`workspace_agents.audit_agent_config`；可选 body `AgentAuditRequest.sop_body`/`system_prompt` 审编辑草稿） | ✅ | Tool/Skill/MCP/子Agent/Workflow 绑定存在性；**引擎 Skill 可直接绑定**（`engine_skill_binding` info）；**通过态可见**（`tool_binding_ok` / `mcp_binding_ok` / `sub_agent_binding_ok` / `workflow_binding_ok` / `sop_content_ok` / `prompt_md_ok`）；**SOP 结构门禁**（`_audit_agent_sop_content`）；**AGENT.md 正文质量**（`audit_agent_md`→`prompt_audit_to_issues`：模糊形容词/流水线交接/正文长度）；**编辑页草稿覆盖**（`sop_body`/`system_prompt`，info `audit_draft_sop`）；**一键追加 SOP 骨架**（`append_sop_appendix`：角色/流程/目标/质量约束/交接协议；`append_sop_skill_refs`）；summary 含 `fixable`/`unfixable`；工作区 Skill 须 published/listed；模型按 infra purpose；toolset/loop/permissions/流水线；仅 info 不降健康度 | 已合入 · 生成物适用（平台横切；生成 Agent 部署后走同一 audit） |
 | Skill 配置 AI 审核 | `POST /workspace/skills/{id}/audit` + `apply-lint-fix`（`EditSkillModal`/`AssetAuditPanel`） | ✅ | 归一 skill lint/fixes；一键应用 auto_applicable 修复 | 已合入 |
+| Skill 意图绑定筛选 | `detectSkillBindIntent` / `toolMatchesIntent` / `mcpMatchesIntent` / `permissionChipsForIntent` / `ioHintForIntent`（`skillBindingIntent.ts`） | ✅ | 按描述启发式区分 upload/file_write/http 等，过滤可绑 Tool/MCP 与权限芯片 | 已合入 |
+| Skill 绑定能力选择器 | `SkillBoundCapabilitiesPicker` + `SkillBoundToolsPicker` + `SkillBoundMcpsPicker` + `SkillPermissionChips`（`EditSkillModal`） | ✅ | 编辑页按意图筛选绑定 tools/mcp_ids，并写入 metadata；上传类要求至少绑一项 | 已合入 |
 | 执行后产物质量复核 | `review_execution_output` + `resolve_review_io_from_store` + `pick_embedded_quality_review` + `POST /skills|workspace/skills|agents|workspace/agents/{id}/review-output`（`ExecutionQualityReviewPanel`） | ✅ | PRD 门：soft AC / FR≥3 / …；架构门：`public_cloud_photo_storage` / **`invented_third_party_api`（禁编造钉钉接口）** / sections；**编码硬门**：`language_mismatch` / `off_spec_coding` / `autoreview_incomplete` / **`missing_auth_todo` / `dangling_local_import`**（+ thin/clarify）经 `quality_review_blocks_success` 阻断假绿；**`_ensure_auth_todo_comment` 确定性写入 `// TODO: auth`（禁 markdown 冒充；避免 LLM 二次修复导致 step_2 hang）**；**AGENT.md `preferred_language` → `_inject_preferred_language_into_skill_args`（任务文案 > preferred > 模型默认；`_language_locked`）**；「禁止 Python」不计为要求 Python；**`skill_delivery=once` 主交付后自动跟跑 `autoreview`**；空 `output` 从 store 回填 | 已合入 · 生成物适用（执行横切；按产物形状分叉，不按 Agent 复制 UI） |
 | 执行结果统一结构化展示 | `StructuredSkillOutput` + `GenericObjectOverview`（`ExecuteResultPanel` / Agent·Skill 执行弹窗） | ✅ | 默认按 `output_schema` 排序/标签渲染任意 JSON；`x-display-profile`/`document_type` 可选启用 PRD/架构专属布局；新 Skill 改契约即可，无需新 Modal | 已合入 · 生成物适用（管理端执行横切） |
 | Stream 孤儿执行回收 | `GET /executions/{id}/status` orphan_watchdog + `llm_generate_stall_seconds` / `release_session_locks_for_run` / stream wall `asyncio.wait_for` | ✅ | stall 默认 **max(360, llm+180)**（旧 +90/240 误杀 run-b6f2~337s / run-870f~359s）；按 syscall `args.timeout_seconds+180`；**skill/tool 仍 running 时不因嵌套 generate stall 孤儿**；**`lock_expired_stale` 仅曾持锁**；Agent wall=`agent_stream_timeout_seconds`；**skill_delivery=once 后假 running → finalize completed** | 已合入 |
@@ -2814,7 +2816,7 @@ scan_hash: 8f9548ec24f4
 | RAG 检索 | 51 | 0 | 51 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 139 | 0 | 139 |
-| Skill 系统 | 144 | 0 | 144 |
+| Skill 系统 | 146 | 0 | 146 |
 | 安全与治理 | 61 | 0 | 61 |
 | 可观测性 | 42 | 0 | 42 |
 | 模型基础设施 | 42 | 0 | 42 |
@@ -2853,7 +2855,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1859** | **9** | **1868** |
+| **总计** | **1861** | **9** | **1870** |
 
 | **总计** | **1095** | **0** | **1095** |
 

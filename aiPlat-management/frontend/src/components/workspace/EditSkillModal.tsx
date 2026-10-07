@@ -9,6 +9,9 @@ import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
 import PromptDiffModal from './PromptDiffModal';
 import AssetAuditPanel, { auditRemainToast } from './AssetAuditPanel';
 import type { AssetAuditResult } from './AssetAuditPanel';
+import { SkillBoundCapabilitiesPicker } from './SkillBoundCapabilitiesPicker';
+import { SkillPermissionChips } from './SkillPermissionChips';
+import { detectSkillBindIntent, ioHintForIntent } from './skillBindingIntent';
 
 interface EditSkillModalProps {
   open: boolean;
@@ -237,14 +240,6 @@ function SchemaFieldsEditor({
   );
 }
 
-const PERM_PRESETS = [
-  { id: 'llm:generate', label: 'llm:generate', hint: '调用模型生成' },
-  { id: 'tool:workspace_fs_write', label: '写文件', hint: '写出 pptx/docx 等' },
-  { id: 'tool:websearch', label: '联网搜索', hint: '与「不联网」冲突时勿勾' },
-  { id: 'tool:webfetch', label: '抓取网页', hint: '与「不联网」冲突时勿勾' },
-  { id: 'tool:run_command', label: '跑命令', hint: '高风险，一般 PPT 不需要' },
-];
-
 /** Strip create-time empty scaffold that wraps a real SOP body. */
 function cleanSopScaffold(body: string): { text: string; cleaned: boolean } {
   const raw = String(body || '');
@@ -300,6 +295,8 @@ const EditSkillModal: React.FC<EditSkillModalProps> = ({
   const [skillKind, setSkillKind] = useState<'rule' | 'executable'>('rule');
   const [executionType, setExecutionType] = useState<'prompt' | 'handler' | 'python_class'>('prompt');
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [boundTools, setBoundTools] = useState<string[]>([]);
+  const [boundMcps, setBoundMcps] = useState<string[]>([]);
   const [triggerText, setTriggerText] = useState('');
   const [negativeText, setNegativeText] = useState('');
   const [requireConfirmation, setRequireConfirmation] = useState(false);
@@ -346,6 +343,18 @@ const EditSkillModal: React.FC<EditSkillModalProps> = ({
         ? meta.permissions.map(String)
         : [];
       setPermissions(perms);
+      const tools0 = Array.isArray(meta.tools)
+        ? meta.tools.map(String).filter(Boolean)
+        : Array.isArray((data.config || {}).tools)
+          ? ((data.config || {}).tools as unknown[]).map(String).filter(Boolean)
+          : [];
+      setBoundTools(tools0);
+      const mcps0 = Array.isArray(meta.mcp_ids)
+        ? meta.mcp_ids.map(String).filter(Boolean)
+        : Array.isArray(meta.mcps)
+          ? meta.mcps.map(String).filter(Boolean)
+          : [];
+      setBoundMcps(mcps0);
       const sk = String(meta.skill_kind || '').toLowerCase() === 'executable' ||
         perms.some((p) => /workspace_fs_write|run_command|file_operations/.test(p))
         ? 'executable'
@@ -406,9 +415,9 @@ const EditSkillModal: React.FC<EditSkillModalProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, skill?.id, initialSection]);
 
-  const togglePerm = (id: string) => {
-    setPermissions((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  };
+  const intentText = `${name} ${description}`;
+  const bindIntent = useMemo(() => detectSkillBindIntent(intentText), [intentText]);
+  const ioHint = useMemo(() => ioHintForIntent(bindIntent), [bindIntent]);
 
   const handleAudit = async () => {
     if (!skill?.id) return;
@@ -527,6 +536,8 @@ const EditSkillModal: React.FC<EditSkillModalProps> = ({
         skill_kind: skillKind,
         execution_type: executionType,
         permissions,
+        tools: boundTools,
+        mcp_ids: boundMcps,
         trigger_conditions: triggers,
         negative_triggers: negatives,
       };
@@ -792,45 +803,26 @@ const EditSkillModal: React.FC<EditSkillModalProps> = ({
                   </details>
                 </div>
 
-                <div className="rounded-xl border border-dark-border p-4 space-y-3">
-                  <div className="text-sm text-gray-200 font-medium">允许做什么？</div>
-                  <div className="text-xs text-gray-500">只勾真正需要的。生成 pptx 至少勾「写文件」。</div>
-                  <div className="space-y-2">
-                    {PERM_PRESETS.map((p) => (
-                      <label
-                        key={p.id}
-                        className={`flex items-start gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors ${
-                          permissions.includes(p.id)
-                            ? 'border-primary/40 bg-primary/5'
-                            : 'border-dark-border hover:border-gray-600'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          className="mt-1"
-                          checked={permissions.includes(p.id)}
-                          onChange={() => togglePerm(p.id)}
-                        />
-                        <span>
-                          <span className="text-sm text-gray-100 block">{p.label}</span>
-                          <span className="text-[11px] text-gray-500">{p.hint}</span>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                  <label className="flex items-start gap-2 text-xs text-amber-200/90 pt-1 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5"
-                      checked={requireConfirmation}
-                      onChange={(e) => setRequireConfirmation(e.target.checked)}
-                    />
-                    <span>
-                      写文件前二次确认
-                      <span className="block text-gray-500 mt-0.5">生产更安全；本机自测可不勾</span>
-                    </span>
-                  </label>
-                  <div className="flex items-center gap-2 pt-1 max-w-xs">
+                <SkillPermissionChips
+                  intentText={intentText}
+                  permissions={permissions}
+                  onChange={setPermissions}
+                  requireConfirmation={requireConfirmation}
+                  onRequireConfirmationChange={setRequireConfirmation}
+                />
+
+                <SkillBoundCapabilitiesPicker
+                  tools={boundTools}
+                  onToolsChange={setBoundTools}
+                  mcps={boundMcps}
+                  onMcpsChange={setBoundMcps}
+                  intentText={intentText}
+                  requiredHint={bindIntent === 'upload'}
+                  returnSkillId={skill?.id}
+                />
+
+                <div className="rounded-xl border border-dark-border p-4">
+                  <div className="flex items-center gap-2 max-w-xs">
                     <span className="text-xs text-gray-500 shrink-0">超时（秒）</span>
                     <Input value={timeoutSeconds} onChange={(e: any) => setTimeoutSeconds(e.target.value)} />
                   </div>
@@ -872,9 +864,9 @@ const EditSkillModal: React.FC<EditSkillModalProps> = ({
             {section === 'io' && (
               <div className="space-y-4">
                 <SectionTip>
-                  <div><span className="text-gray-200">入参</span> = 执行时要填的内容。列表可能较长，但<strong className="text-gray-300 font-medium">只有勾了「必填」的才必须填</strong>。</div>
-                  <div className="mt-0.5"><span className="text-gray-200">出参</span> = 跑完系统返回什么（给程序/诊断看）。日常执行不必手填；建议保留 <code className="text-primary">result</code> + <code className="text-primary">markdown</code>。</div>
-                  <div className="mt-0.5 text-gray-500">以 PPT 为例：入参真正必填通常只有 <code className="text-primary">outline</code>；模版路径、字数上限都是可选。出参里的页数/时间/告警是结果元数据，不是你要再填一遍的表单项。</div>
+                  <div><span className="text-gray-200">入参</span> = {ioHint.in}</div>
+                  <div className="mt-0.5"><span className="text-gray-200">出参</span> = {ioHint.out}</div>
+                  <div className="mt-0.5 text-gray-500">{ioHint.example}</div>
                 </SectionTip>
 
                 {!ioAdvanced ? (
