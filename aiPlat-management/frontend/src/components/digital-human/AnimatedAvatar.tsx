@@ -29,13 +29,15 @@ export default function AnimatedAvatar({ state, audioAmplitude = 0, config = DEF
 
   useEffect(() => {
     if (!visible) return;
+    const needsRaf = state === 'thinking' || state === 'listening' || state === 'speaking';
+    if (!needsRaf) return;
     const loop = () => {
       setTimestamp(Date.now());
       rafRef.current = requestAnimationFrame(loop);
     };
     rafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [visible]);
+  }, [visible, state]);
 
   // Random blink timer
   useEffect(() => {

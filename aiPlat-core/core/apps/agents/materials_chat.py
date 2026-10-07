@@ -209,6 +209,54 @@ class MaterialsChatAgent(BaseAgent):
         except TimeoutError:
             return AgentResult(success=False, error="timeout", metadata={"reason": "execution exceeded 120s"})
 
+    async def _consultant_live_answer(
+        self,
+        context: AgentContext,
+        question: str,
+        vars0: Dict[str, Any],
+    ) -> AgentResult:
+        """G5: digital-human consultant fallback — brief already injected; never wiki/CRAG."""
+        from core.harness.syscalls.llm import sys_llm_generate
+
+        messages = list(context.messages) if context.messages else [
+            {"role": "user", "content": question}
+        ]
+        model = getattr(self, "_model", None)
+        try:
+            resp = await sys_llm_generate(
+                model,
+                messages,
+                session_id=None,
+                trace_context={"skip_claude_md": True, "purpose": "chat"},
+            )
+            answer = (getattr(resp, "content", None) or str(resp) or "").strip()
+        except Exception as e:
+            logging.getLogger(__name__).warning(
+                "consultant_live_only LLM failed: %s", e, exc_info=True
+            )
+            return AgentResult(
+                success=False,
+                error=str(e),
+                metadata={"strategy": "consultant_live_only", "exception": type(e).__name__},
+            )
+        return AgentResult(
+            success=True,
+            output={
+                "answer": answer or "收到。",
+                "citations": [],
+                "items": [],
+                "scope_applied": dict(vars0.get("scope") or {}),
+                "strategy": "consultant_live_only",
+                "skills_used": [],
+                "platform_status_brief": vars0.get("platform_status_brief") or "",
+            },
+            metadata={
+                "strategy": "consultant_live_only",
+                "intent": "consultant",
+                "consultant_agent": str(vars0.get("_consultant_agent") or ""),
+            },
+        )
+
     async def _execute_impl(self, context: AgentContext) -> AgentResult:
         try:
             from core.harness.utils.pipeline_tracer import PipelineTracer
@@ -226,6 +274,10 @@ class MaterialsChatAgent(BaseAgent):
                 question = str(vars0.get("message") or "").strip()
             if not question:
                 return AgentResult(success=False, error="message_required")
+
+            # G5: voice_pipeline consultant fallback — skip RAG / wiki entirely
+            if vars0.get("_consultant_agent"):
+                return await self._consultant_live_answer(context, question, vars0)
             
             # P1-B: parse time range from user question and inject into RunContext
             if run_context and isinstance(run_context, dict):

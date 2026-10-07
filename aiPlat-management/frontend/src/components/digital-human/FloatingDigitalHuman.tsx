@@ -1,16 +1,15 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Mic, Minimize2, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
+import { Minimize2, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useWakeWord } from '../../hooks/useWakeWord';
 import { useVoiceChat, ChatStatus } from '../../hooks/useVoiceChat';
 import { getPageInfo } from '../../pageManifest';
-import { getPageData, pageDataToText } from '../../lib/pageDataBridge';
+import { consultantPagePayload, subscribePageData } from '../../lib/pageDataBridge';
 import AnimatedAvatar from './AnimatedAvatar';
 
 const POS_STORAGE_KEY = 'aiplat.digital_human.pos';
 const ICON_SIZE = 56;
-const PANEL_WIDTH = 260;
-const PANEL_HEIGHT_APPROX = 380;
+const PANEL_WIDTH = 320;
+const PANEL_HEIGHT_APPROX = 420;
 const DRAG_THRESHOLD_PX = 5;
 
 function clampPos(x: number, y: number, w: number, h: number) {
@@ -48,7 +47,6 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
   const [minimized, setMinimized] = useState(true);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
-  const [activated, setActivated] = useState(false);
   const dragRef = useRef({
     startX: 0,
     startY: 0,
@@ -59,23 +57,48 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
   });
   const suppressClickRef = useRef(false);
 
-  const { status, messages, error, answer, wake, sendText, sendContext, minimize, audioRef } = useVoiceChat();
+  const {
+    status,
+    messages,
+    error,
+    answer,
+    modelName,
+    modelPurpose,
+    sendText,
+    sendContext,
+    sendFeedback,
+    audioRef,
+  } = useVoiceChat({
+    textOnly: true,
+  });
+  const [ratedLast, setRatedLast] = useState<'good' | 'bad' | ''>('');
 
-  // Send enriched page context on mount and route change
   useEffect(() => {
-    if (currentRoute) {
+    setRatedLast('');
+  }, [answer]);
+
+  useEffect(() => {
+    const send = () => {
+      if (!currentRoute) return;
       const meta = getPageInfo(currentRoute);
-      // P2-4: 附带当前页面上报的实时数据（页面自愿上报，未上报则为空字符串）
-      const pageData = pageDataToText(getPageData(currentRoute));
+      const pageData = consultantPagePayload(currentRoute);
       if (meta) {
-        sendContext({ route: currentRoute, label: meta.label, group: meta.group, groupLabel: meta.groupLabel, data: pageData });
+        sendContext({
+          route: currentRoute,
+          label: meta.label,
+          group: meta.group,
+          groupLabel: meta.groupLabel,
+          purpose: meta.purpose,
+          data: pageData,
+        });
       } else {
         sendContext({ route: currentRoute, data: pageData });
       }
-    }
+    };
+    send();
+    return subscribePageData(send);
   }, [currentRoute, sendContext]);
 
-  // Parse and execute UI actions from answers: [ACTION:navigate:/path]
   useEffect(() => {
     if (!answer) return;
     const actionMatch = answer.match(/\[ACTION:(\w+):([^\]]+)\]/);
@@ -87,16 +110,10 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
     }
   }, [answer, navigate]);
 
-  const { lastResult, isListening, stopRecognition } = useWakeWord({
-    keyword: '小朱',
-    onWake: () => {
-      setMinimized(false);
-      wake();
-    },
-    enabled: activated && minimized,
-  });
+  /** Hide machine ACTION markers from chat bubbles; navigate still runs above. */
+  const displayText = (text: string) =>
+    (text || '').replace(/\s*\[ACTION:\w+:[^\]]+\]\s*/g, '\n').trim();
 
-  // Default / restore position (bottom-right for icon)
   useEffect(() => {
     const saved = loadSavedPos();
     if (saved) {
@@ -113,7 +130,6 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
     );
   }, []);
 
-  // Keep on-screen when viewport resizes
   useEffect(() => {
     const onResize = () => {
       setPosition((p) =>
@@ -135,7 +151,6 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
-      // Only primary button / touch
       if (e.button !== 0 && e.pointerType === 'mouse') return;
       e.currentTarget.setPointerCapture?.(e.pointerId);
       setDragging(true);
@@ -184,71 +199,22 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
     };
   }, [dragging, boxSize.w, boxSize.h]);
 
-  const isActive = status !== 'idle';
+  const isActive = status === 'thinking';
   const statusText: Record<ChatStatus, string> = {
-    idle: minimized ? '待机中...' : '我在听...',
-    wake: '唤醒中...',
-    listening: '正在听...',
+    idle: '文字咨询',
+    wake: '连接中...',
+    listening: '输入中...',
     thinking: '思考中...',
     speaking: '回答中...',
   };
 
-  // ── Audio amplitude tracking (for mouth sync) ──
-  const [audioAmplitude, setAudioAmplitude] = useState(0);
-  useEffect(() => {
-    if (!audioRef.current) return;
-    let audioCtx: AudioContext | null = null;
-    let analyser: AnalyserNode | null = null;
-    let raf = 0;
-
-    const setup = () => {
-      if (!audioRef.current) return;
-      audioCtx = new AudioContext();
-      const source = audioCtx.createMediaElementSource(audioRef.current);
-      analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 64;
-      source.connect(analyser);
-      analyser.connect(audioCtx.destination);
-
-      const data = new Uint8Array(analyser.frequencyBinCount);
-      let frameSkip = 0;
-      const loop = () => {
-        if (!analyser) return;
-        frameSkip++;
-        analyser.getByteTimeDomainData(data);
-        // Update React state at ~20fps (skip 2 of every 3 rAF frames)
-        if (frameSkip % 3 === 0) {
-          let sum = 0;
-          for (let i = 0; i < data.length; i++) {
-            sum += Math.abs(data[i] - 128);
-          }
-          setAudioAmplitude(sum / data.length / 128);
-        }
-        raf = requestAnimationFrame(loop);
-      };
-      loop();
-    };
-
-    audioRef.current.addEventListener('play', setup, { once: true });
-    return () => {
-      cancelAnimationFrame(raf);
-      audioCtx?.close();
-    };
-  }, [status]);
-
-  // ── Minimized: circle avatar (draggable) ──
   if (minimized) {
     const handleActivate = () => {
       if (suppressClickRef.current) {
         suppressClickRef.current = false;
         return;
       }
-      if (!activated) {
-        setActivated(true);
-        // useWakeWord useEffect will auto-start recognition when enabled flips to true
-      } else {
-        setMinimized(false);
-      }
+      setMinimized(false);
     };
 
     return (
@@ -265,46 +231,39 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
           touchAction: 'none',
         }}
       >
-        {!activated && (
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '100%',
-              marginBottom: 6,
-              background: 'rgba(22,27,34,0.9)',
-              color: '#9CA3AF',
-              padding: '4px 10px',
-              borderRadius: 8,
-              fontSize: 11,
-              whiteSpace: 'nowrap',
-              pointerEvents: 'none',
-            }}
-          >
-            拖动可移动 · 点击唤醒小朱
-          </div>
-        )}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '100%',
+            marginBottom: 6,
+            background: 'rgba(22,27,34,0.9)',
+            color: '#9CA3AF',
+            padding: '4px 10px',
+            borderRadius: 8,
+            fontSize: 11,
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+          }}
+        >
+          拖动可移动 · 点击打开小朱（文字咨询）
+        </div>
         <div
           onPointerDown={onPointerDown}
           onClick={handleActivate}
-          title="拖动移动位置；点击唤醒"
+          title="拖动移动位置；点击打开文字咨询"
           style={{
             width: ICON_SIZE,
             height: ICON_SIZE,
             borderRadius: '50%',
-            border: '2px solid',
-            borderColor: isListening ? '#10B981' : activated ? 'rgba(59,130,246,0.4)' : 'rgba(75,85,99,0.3)',
-            boxShadow: isListening
-              ? '0 4px 24px rgba(16,185,129,0.3)'
-              : activated
-                ? '0 4px 24px rgba(59,130,246,0.2)'
-                : '0 4px 24px rgba(0,0,0,0.2)',
+            border: '2px solid rgba(59,130,246,0.4)',
+            boxShadow: '0 4px 24px rgba(59,130,246,0.2)',
             cursor: dragging ? 'grabbing' : 'grab',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             overflow: 'hidden',
             position: 'relative',
-            transition: dragging ? 'none' : 'transform 0.2s, box-shadow 0.2s, border-color 0.2s',
+            transition: dragging ? 'none' : 'transform 0.2s, box-shadow 0.2s',
             userSelect: 'none',
           }}
           onMouseEnter={(e) => {
@@ -320,26 +279,11 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
             draggable={false}
             style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', pointerEvents: 'none' }}
           />
-          {isListening && (
-            <div
-              style={{
-                position: 'absolute',
-                top: -3,
-                right: -3,
-                width: 12,
-                height: 12,
-                borderRadius: '50%',
-                background: '#10B981',
-                border: '2px solid #0D1117',
-              }}
-            />
-          )}
         </div>
       </div>
     );
   }
 
-  // ── Expanded: floating card ──
   return (
     <div
       style={{
@@ -357,11 +301,8 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
           ? '0 8px 40px rgba(59,130,246,0.25)'
           : '0 4px 20px rgba(0,0,0,0.3)',
         overflow: 'hidden',
-        userSelect: 'none',
-        touchAction: 'none',
       }}
     >
-      {/* Header bar — drag handle */}
       <div
         onPointerDown={onPointerDown}
         style={{
@@ -373,33 +314,21 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
           background: 'rgba(59,130,246,0.08)',
           borderBottom: '1px solid rgba(48,54,61,0.5)',
           cursor: dragging ? 'grabbing' : 'grab',
+          userSelect: 'none',
+          touchAction: 'none',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div
-            style={{
-              width: 24,
-              height: 24,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle at 30% 30%, #3B82F6, #1D4ED8)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 14,
-              lineHeight: 1,
-            }}
-          >
-            <img
-              src="/avatar-lorelei.svg"
-              alt="小朱"
-              draggable={false}
-              style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }}
-            />
-          </div>
+          <img
+            src="/avatar-lorelei.svg"
+            alt="小朱"
+            draggable={false}
+            style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }}
+          />
           {!collapsed && (
             <span style={{ fontSize: 13, fontWeight: 600, color: '#E5E7EB' }}>小朱</span>
           )}
-          {!collapsed && isActive && (
+          {!collapsed && (
             <span
               style={{
                 fontSize: 10,
@@ -410,6 +339,21 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
               }}
             >
               {statusText[status]}
+            </span>
+          )}
+          {!collapsed && modelName && (
+            <span
+              title={modelPurpose ? `${modelName} · ${modelPurpose}` : modelName}
+              style={{
+                fontSize: 10,
+                color: '#9CA3AF',
+                maxWidth: 168,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {modelPurpose ? `${modelName} · ${modelPurpose}` : modelName}
             </span>
           )}
         </div>
@@ -431,71 +375,96 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
         </div>
       </div>
 
-      {/* Avatar */}
       {!collapsed && (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            padding: '16px 0 8px',
-          }}
-        >
-          <AnimatedAvatar state={status} audioAmplitude={audioAmplitude} size={120} />
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
+          <AnimatedAvatar state={status === 'thinking' ? 'thinking' : 'idle'} audioAmplitude={0} size={96} />
         </div>
       )}
 
       {!collapsed && (
         <>
-          {/* Answer display */}
-          {answer && (
-            <div
-              style={{
-                margin: '8px 12px 0',
-                padding: '8px 12px',
-                background: 'rgba(59,130,246,0.08)',
-                border: '1px solid rgba(59,130,246,0.2)',
-                borderRadius: 10,
-                fontSize: 13,
-                color: '#D1D5DB',
-                lineHeight: 1.5,
-                maxHeight: 120,
-                overflowY: 'auto',
-              }}
-            >
-              {answer}
+          {(messages.length > 0 || answer) && (
+            <div style={{ margin: '8px 12px 0', maxHeight: 220, overflowY: 'auto' }}>
+              {(messages.length > 0 ? messages.slice(-8) : [{ role: 'assistant' as const, text: answer }]).map((m, i, arr) => {
+                const isLastAssistant = m.role === 'assistant' && i === arr.length - 1;
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      padding: '6px 10px',
+                      marginBottom: 4,
+                      borderRadius: 8,
+                      fontSize: 12,
+                      lineHeight: 1.4,
+                      background: m.role === 'user' ? 'rgba(59,130,246,0.1)' : 'rgba(59,130,246,0.08)',
+                      border: m.role === 'assistant' ? '1px solid rgba(59,130,246,0.2)' : 'none',
+                      color: m.role === 'user' ? '#93C5FD' : '#D1D5DB',
+                      whiteSpace: 'pre-wrap',
+                      userSelect: 'text',
+                      WebkitUserSelect: 'text',
+                      cursor: 'text',
+                    }}
+                  >
+                    {m.role === 'user' ? '你：' : '小朱：'}
+                    {m.role === 'assistant' ? displayText(m.text) : m.text}
+                    {isLastAssistant && status === 'idle' && (
+                      <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          disabled={!!ratedLast}
+                          onClick={() => {
+                            void sendFeedback('good').then((ok) => {
+                              if (ok) setRatedLast('good');
+                            });
+                          }}
+                          style={{
+                            fontSize: 11,
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            border: '1px solid rgba(52,211,153,0.35)',
+                            background: ratedLast === 'good' ? 'rgba(52,211,153,0.2)' : 'transparent',
+                            color: '#6EE7B7',
+                            cursor: ratedLast ? 'default' : 'pointer',
+                          }}
+                          title="答得有用，记入策展样本"
+                        >
+                          有用
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!!ratedLast}
+                          onClick={() => {
+                            void sendFeedback('bad').then((ok) => {
+                              if (ok) setRatedLast('bad');
+                            });
+                          }}
+                          style={{
+                            fontSize: 11,
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            border: '1px solid rgba(248,113,113,0.35)',
+                            background: ratedLast === 'bad' ? 'rgba(248,113,113,0.2)' : 'transparent',
+                            color: '#FCA5A5',
+                            cursor: ratedLast ? 'default' : 'pointer',
+                          }}
+                          title="答得不对；可再打字「不对，应该是…」写入金标"
+                        >
+                          不对
+                        </button>
+                        {ratedLast === 'good' && (
+                          <span style={{ fontSize: 10, color: '#6B7280' }}>已记入策展</span>
+                        )}
+                        {ratedLast === 'bad' && (
+                          <span style={{ fontSize: 10, color: '#6B7280' }}>可打字纠正</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
-          {/* Messages history */}
-          {messages.length > 0 && !answer && (
-            <div
-              style={{
-                margin: '8px 12px 0',
-                maxHeight: 150,
-                overflowY: 'auto',
-              }}
-            >
-              {messages.slice(-3).map((m, i) => (
-                <div
-                  key={i}
-                  style={{
-                    padding: '6px 10px',
-                    marginBottom: 4,
-                    borderRadius: 8,
-                    fontSize: 12,
-                    lineHeight: 1.4,
-                    background: m.role === 'user' ? 'rgba(59,130,246,0.1)' : 'rgba(75,85,99,0.1)',
-                    color: m.role === 'user' ? '#93C5FD' : '#D1D5DB',
-                  }}
-                >
-                  {m.role === 'user' ? '👤 ' : '🤖 '}
-                  {m.text}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Status bar */}
           {isActive && (
             <div
               style={{
@@ -507,13 +476,11 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
                 color: '#9CA3AF',
               }}
             >
-              {status === 'thinking' && <Loader2 size={14} className="animate-spin" />}
+              <Loader2 size={14} className="animate-spin" />
               <span>{statusText[status]}</span>
-              {lastResult && <span style={{ fontSize: 10, opacity: 0.6 }}>听到: {lastResult}</span>}
             </div>
           )}
 
-          {/* Controls */}
           <div
             style={{
               padding: '8px 12px 12px',
@@ -523,32 +490,9 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
               borderTop: '1px solid rgba(48,54,61,0.3)',
             }}
           >
-            <button
-              onClick={() => {
-                wake();
-              }}
-              disabled={status === 'thinking' || status === 'speaking'}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: '50%',
-                border: '2px solid',
-                borderColor: status === 'listening' ? '#EF4444' : isListening ? '#10B981' : '#3B82F6',
-                background: status === 'listening' ? 'rgba(239,68,68,0.1)' : 'rgba(59,130,246,0.1)',
-                cursor: status === 'thinking' || status === 'speaking' ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: status === 'thinking' || status === 'speaking' ? 0.5 : 1,
-              }}
-              title="点击说话"
-            >
-              <Mic size={18} color={status === 'listening' ? '#EF4444' : '#3B82F6'} />
-            </button>
-
             <input
               type="text"
-              placeholder="输入文字..."
+              placeholder="问平台怎么建、这个页面怎么用…"
               style={{
                 flex: 1,
                 height: 36,
@@ -560,6 +504,7 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
                 color: '#E5E7EB',
                 outline: 'none',
               }}
+              disabled={status === 'thinking'}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   sendText((e.target as HTMLInputElement).value);

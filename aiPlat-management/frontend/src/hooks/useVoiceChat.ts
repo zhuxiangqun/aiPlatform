@@ -3,16 +3,52 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 export type ChatStatus = 'idle' | 'wake' | 'listening' | 'thinking' | 'speaking';
 export type Message = { role: 'user' | 'assistant'; text: string; audio?: string };
 
-/** How long the UI waits for an answer once status=thinking (agent + TTS). */
+/** How long the UI waits for an answer once status=thinking (agent + optional TTS). */
 const THINKING_TIMEOUT_MS = 120_000;
 /** How long to wait for the WebSocket to become OPEN. */
 const CONNECT_TIMEOUT_MS = 8_000;
+const CONSULTANT_SESSION_KEY = 'aiplat.digital_human.session';
 
-export function useVoiceChat() {
+function loadConsultantSessionId(): string {
+  try {
+    const existing = localStorage.getItem(CONSULTANT_SESSION_KEY) || '';
+    if (/^dh_[A-Za-z0-9._-]{6,56}$/.test(existing)) return existing;
+  } catch {
+    /* ignore */
+  }
+  const created = `dh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  try {
+    localStorage.setItem(CONSULTANT_SESSION_KEY, created);
+  } catch {
+    /* ignore */
+  }
+  return created;
+}
+
+/** Same source as apiClient X-AIPLAT-TENANT-ID — scopes 小朱 personal notes (G9). */
+function activeTenantId(): string {
+  try {
+    const tid = (localStorage.getItem('active_tenant_id') || 'default').trim();
+    if (/^[A-Za-z0-9._-]{1,64}$/.test(tid)) return tid;
+  } catch {
+    /* ignore */
+  }
+  return 'default';
+}
+
+export type UseVoiceChatOptions = {
+  /** When true: never request mic, never play TTS (小朱 text consultant). */
+  textOnly?: boolean;
+};
+
+export function useVoiceChat(options: UseVoiceChatOptions = {}) {
+  const textOnly = Boolean(options.textOnly);
   const [status, setStatus] = useState<ChatStatus>('idle');
   const [messages, setMessages] = useState<Message[]>([]);
   const [error, setError] = useState('');
   const [answer, setAnswer] = useState('');
+  const [modelName, setModelName] = useState('');
+  const [modelPurpose, setModelPurpose] = useState('');
 
   const wsRef = useRef<WebSocket | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -22,8 +58,7 @@ export function useVoiceChat() {
   const maxTimerRef = useRef<any>(null);
   const pendingContextRef = useRef<string>('');
   const connectPromiseRef = useRef<Promise<boolean> | null>(null);
-  // P2-3: 每次会话一个稳定 session（多用户/多标签页隔离对话记忆与轨迹）
-  const sessionRef = useRef<string>(`dh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+  const sessionRef = useRef<string>(loadConsultantSessionId());
 
   const buildWsUrl = useCallback(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -35,7 +70,6 @@ export function useVoiceChat() {
         ? configured
         : `${configured.replace(/\/$/, '')}/ws/voice-chat`;
     } else if (window.location.host.includes(':5173')) {
-      // Static proxy on 5173 has no WebSocket upgrade — talk to core directly.
       wsUrl = `${protocol}//${window.location.host.replace(':5173', ':8002')}/ws/voice-chat`;
     } else {
       wsUrl = `${protocol}//${window.location.host}/ws/voice-chat`;
@@ -46,67 +80,69 @@ export function useVoiceChat() {
     return wsUrl;
   }, []);
 
-  const attachHandlers = useCallback((ws: WebSocket) => {
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'status') {
-          // Backend heartbeat while agent/TTS runs — keep UI in thinking
-          if (data.data === 'thinking' || data.data === 'tts') {
-            setStatus('thinking');
-            setError('');
+  const serviceLabel = textOnly ? '咨询服务' : '语音服务';
+
+  const attachHandlers = useCallback(
+    (ws: WebSocket) => {
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'status') {
+            if (data.data === 'thinking' || data.data === 'tts') {
+              setStatus('thinking');
+              setError('');
+            }
+            if (data.model) setModelName(String(data.model));
+            if (data.purpose) setModelPurpose(String(data.purpose));
+          } else if (data.type === 'text') {
+            if (data.data) {
+              setMessages((prev) => {
+                const last = prev[prev.length - 1];
+                if (last?.role === 'user' && last.text === data.data) return prev;
+                return [...prev, { role: 'user', text: String(data.data) }];
+              });
+            }
+          } else if (data.type === 'answer') {
+            setAnswer(data.text);
+            if (data.model) setModelName(String(data.model));
+            if (data.purpose) setModelPurpose(String(data.purpose));
+            setMessages((prev) => [...prev, { role: 'assistant', text: data.text }]);
+            if (!textOnly && data.audio && audioRef.current) {
+              setStatus('speaking');
+              const fmt = (data.format || 'wav').replace(/^audio\//, '');
+              audioRef.current.src = `data:audio/${fmt};base64,${data.audio}`;
+              audioRef.current.play().catch(() => {});
+              audioRef.current.onended = () => setStatus('idle');
+            } else {
+              setStatus('idle');
+            }
+          } else if (data.type === 'tts') {
+            if (!textOnly && data.audio && audioRef.current) {
+              setStatus('speaking');
+              const fmt = (data.format || 'wav').replace(/^audio\//, '');
+              audioRef.current.src = `data:audio/${fmt};base64,${data.audio}`;
+              audioRef.current.play().catch(() => {});
+              audioRef.current.onended = () => setStatus('idle');
+            }
+          } else if (data.type === 'error') {
+            setError(data.data);
+            setStatus('idle');
           }
-        } else if (data.type === 'text') {
-          // Transcription result (optional display)
-          if (data.data) {
-            setMessages((prev) => {
-              const last = prev[prev.length - 1];
-              if (last?.role === 'user' && last.text === data.data) return prev;
-              return [...prev, { role: 'user', text: String(data.data) }];
-            });
-          }
-        } else if (data.type === 'answer') {
-          setStatus(data.audio ? 'speaking' : 'thinking');
-          setAnswer(data.text);
-          setMessages((prev) => [...prev, { role: 'assistant', text: data.text }]);
-          if (data.audio && audioRef.current) {
-            const fmt = (data.format || 'wav').replace(/^audio\//, '');
-            audioRef.current.src = `data:audio/${fmt};base64,${data.audio}`;
-            audioRef.current.play().catch(() => {});
-            audioRef.current.onended = () => setStatus('idle');
-          } else if (!data.audio) {
-            // Text arrived first; TTS may follow as type=tts
-            setTimeout(() => {
-              setStatus((s) => (s === 'thinking' ? 'idle' : s));
-            }, 2500);
-          } else {
-            setTimeout(() => setStatus('idle'), 3000);
-          }
-        } else if (data.type === 'tts') {
-          if (data.audio && audioRef.current) {
-            setStatus('speaking');
-            const fmt = (data.format || 'wav').replace(/^audio\//, '');
-            audioRef.current.src = `data:audio/${fmt};base64,${data.audio}`;
-            audioRef.current.play().catch(() => {});
-            audioRef.current.onended = () => setStatus('idle');
-          }
-        } else if (data.type === 'error') {
-          setError(data.data);
-          setStatus('idle');
+        } catch {
+          /* ignore malformed frames */
         }
-      } catch {
-        /* ignore malformed frames */
-      }
-    };
-    ws.onerror = () => {
-      setError('语音服务未启动（需要后端 8002 端口运行）');
-      setStatus('idle');
-    };
-    ws.onclose = () => {
-      wsRef.current = null;
-      connectPromiseRef.current = null;
-    };
-  }, []);
+      };
+      ws.onerror = () => {
+        setError(`${serviceLabel}未启动（需要后端 8002 端口运行）`);
+        setStatus('idle');
+      };
+      ws.onclose = () => {
+        wsRef.current = null;
+        connectPromiseRef.current = null;
+      };
+    },
+    [serviceLabel, textOnly],
+  );
 
   const ensureConnected = useCallback((): Promise<boolean> => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -129,7 +165,7 @@ export function useVoiceChat() {
             } catch {
               /* ignore */
             }
-            setError('语音服务未启动（需要后端 8002 端口运行）');
+            setError(`${serviceLabel}未启动（需要后端 8002 端口运行）`);
             connectPromiseRef.current = null;
             resolve(false);
           }
@@ -145,6 +181,7 @@ export function useVoiceChat() {
                   type: 'context',
                   data: payload,
                   session: sessionRef.current,
+                  tenant_id: activeTenantId(),
                 }),
               );
             } catch {
@@ -153,6 +190,7 @@ export function useVoiceChat() {
                   type: 'context',
                   data: pendingContextRef.current,
                   session: sessionRef.current,
+                  tenant_id: activeTenantId(),
                 }),
               );
             }
@@ -160,7 +198,7 @@ export function useVoiceChat() {
           resolve(true);
         };
       } catch {
-        setError('无法连接语音服务');
+        setError(`无法连接${serviceLabel}`);
         connectPromiseRef.current = null;
         resolve(false);
       }
@@ -168,13 +206,12 @@ export function useVoiceChat() {
 
     connectPromiseRef.current = promise;
     return promise;
-  }, [attachHandlers, buildWsUrl]);
+  }, [attachHandlers, buildWsUrl, serviceLabel]);
 
   useEffect(() => {
     return () => wsRef.current?.close();
   }, []);
 
-  // Timeout: if thinking too long, reset (agent+TTS can exceed 30s)
   useEffect(() => {
     if (status !== 'thinking') return;
     const id = setTimeout(() => {
@@ -189,6 +226,10 @@ export function useVoiceChat() {
   }, []);
 
   const startRecording = useCallback(async () => {
+    if (textOnly) {
+      setError('小朱已关闭语音，请使用文字输入');
+      return;
+    }
     setError('');
     setAnswer('');
     const ok = await ensureConnected();
@@ -235,7 +276,7 @@ export function useVoiceChat() {
       setError('无法使用麦克风，请改用文字输入');
       setStatus('idle');
     }
-  }, [ensureConnected, stopRecording]);
+  }, [ensureConnected, stopRecording, textOnly]);
 
   const sendText = useCallback(
     async (text: string) => {
@@ -246,17 +287,24 @@ export function useVoiceChat() {
       setStatus('thinking');
       const ok = await ensureConnected();
       if (!ok || wsRef.current?.readyState !== WebSocket.OPEN) {
-        setError('语音服务未连接，请确认后端已启动 (port 8002)');
+        setError(`${serviceLabel}未连接，请确认后端已启动 (port 8002)`);
         setStatus('idle');
         return;
       }
-      wsRef.current.send(JSON.stringify({ type: 'text', data: text }));
+      wsRef.current.send(
+        JSON.stringify({
+          type: 'text',
+          data: text,
+          session: sessionRef.current,
+          tenant_id: activeTenantId(),
+        }),
+      );
     },
-    [ensureConnected],
+    [ensureConnected, serviceLabel],
   );
 
   const sendContext = useCallback(
-    (context: string | { route: string; label?: string; group?: string; groupLabel?: string; data?: string }) => {
+    (context: string | { route: string; label?: string; group?: string; groupLabel?: string; purpose?: string; data?: string }) => {
       const payload =
         typeof context === 'string'
           ? { route: context, label: '', group: '', groupLabel: '', data: '' }
@@ -264,25 +312,71 @@ export function useVoiceChat() {
       pendingContextRef.current = JSON.stringify(payload);
       const session = sessionRef.current;
       if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: 'context', data: payload, session }));
+        wsRef.current.send(
+          JSON.stringify({
+            type: 'context',
+            data: payload,
+            session,
+            tenant_id: activeTenantId(),
+          }),
+        );
       }
     },
     [],
   );
 
+  const sendFeedback = useCallback(
+    async (rating: 'good' | 'bad', correction?: string) => {
+      const ok = await ensureConnected();
+      if (!ok || wsRef.current?.readyState !== WebSocket.OPEN) {
+        setError(`${serviceLabel}未连接，无法提交反馈`);
+        return false;
+      }
+      wsRef.current.send(
+        JSON.stringify({
+          type: 'feedback',
+          rating,
+          correction: correction || '',
+          session: sessionRef.current,
+          tenant_id: activeTenantId(),
+        }),
+      );
+      return true;
+    },
+    [ensureConnected, serviceLabel],
+  );
+
   const wake = useCallback(async () => {
+    if (textOnly) {
+      setError('小朱已关闭语音，请使用文字输入');
+      return;
+    }
     const ok = await ensureConnected();
     if (!ok) {
-      setError('语音服务未连接，请确认后端已启动 (port 8002)');
+      setError(`${serviceLabel}未连接，请确认后端已启动 (port 8002)`);
       return;
     }
     setStatus('wake');
     setTimeout(() => startRecording(), 500);
-  }, [ensureConnected, startRecording]);
+  }, [ensureConnected, serviceLabel, startRecording, textOnly]);
 
   const minimize = useCallback(() => setStatus('idle'), []);
 
-  return { status, messages, error, answer, wake, sendText, sendContext, minimize, audioRef, setStatus };
+  return {
+    status,
+    messages,
+    error,
+    answer,
+    modelName,
+    modelPurpose,
+    wake,
+    sendText,
+    sendContext,
+    sendFeedback,
+    minimize,
+    audioRef,
+    setStatus,
+  };
 }
 
 function blobToBase64(blob: Blob): Promise<string> {

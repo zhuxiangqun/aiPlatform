@@ -1,7 +1,7 @@
 ---
-total_capabilities: 1852
+total_capabilities: 1863
 last_updated: 2026-10-07
-version: "30.4"
+version: "30.5"
 auto_sync: true
 core_guarantees:
   auto:  # 23 active, 0 missing
@@ -1358,6 +1358,14 @@ scan_hash: 8f9548ec24f4
 | run_clarify_turn | `core/apps/fde/service/clarify_dialog.py` | ✅ | 自动同步 | 已合入 |
 | collect_turn | `core/harness/digital_human/trajectory_collector.py` | ✅ | 自动同步 | 已合入 |
 | voice_chat_handler | `core/harness/digital_human/voice_pipeline.py` | ✅ | 自动同步 | 已合入 |
+| build_platform_status_brief | `core/harness/digital_human/platform_status_brief.py` | ✅ | 顾问实况简报（工作区资产/菜单/页面对齐） | 已合入 |
+| build_on_demand_pack | `core/harness/digital_human/consultant_knowledge.py` | ✅ | 概念题按需注入 CAPABILITIES/registry 短摘 | 已合入 |
+| load_constitution_card | `core/harness/digital_human/consultant_knowledge.py` | ✅ | 顾问心智卡（consultant_constitution.md） | 已合入 |
+| ensure_generic_disclaimer | `core/harness/digital_human/consultant_knowledge.py` | ✅ | 外部泛知识答句前置「非本平台资产」标注 | 已合入 |
+| load_personal_notes | `core/harness/digital_human/consultant_personal.py` | ✅ | 租户级小朱个人笔记 | 已合入 |
+| remember_from_turn | `core/harness/digital_human/consultant_personal.py` | ✅ | 从对话轮次写入持久笔记 | 已合入 |
+| refresh_consultant_prompt | `core/harness/digital_human/consultant_reload.py` | ✅ | AGENT.md/心智卡 mtime 热载 | 已合入 |
+| captureVisiblePage | `frontend/src/lib/captureVisiblePage.ts` | ✅ | 可见页 chrome 短摘（非 DOM dump） | 已合入 |
 | evaluate_four_questions | `core/apps/fde/service/four_questions.py` | ✅ | 自动同步 | 已合入 |
 | default_provider_name | `core/apps/agents/base.py` | ✅ | 自动同步 | 已合入 |
 | get_provider_factories | `` | ✅ | 自动同步 | 已合入 |
@@ -1819,7 +1827,9 @@ scan_hash: 8f9548ec24f4
 | trajectory_collector | `harness/digital_human/trajectory_collector.py` | ✅ | P1-2 闭环：轨迹→ShareGPT 数据集（export_sharegpt_dataset → ~/.aiplat/training） | 已合入 |
 | research 文档新鲜度守卫 | `scripts/check_research_docs_freshness.py` | ✅ | Rule 6：状态标记矛盾检测 + 符号引用验证 + 最后验证时间戳对账（--ci 阻断） | 已合入 |
 | 应用工厂页面感知 | `frontend/src/pages/App/Factory/index.tsx` | ✅ | P2-4 扩展：/app/factory 上报项目数/阶段/通过率/选中项目 → 数字人可答状态类问题 | 已合入 |
-| voice_pipeline | `harness/digital_human/voice_pipeline.py` | ✅ | ASR→Agent→TTS 编排；P0 修复 + P1-3 格式链 + P2-1 WS 鉴权 + session 隔离 + P2-4 页面数据感知（8 管理页接入 pageDataBridge） | 已合入 |
+| voice_pipeline | `harness/digital_human/voice_pipeline.py` | ✅ | ASR→Agent→TTS 编排；优先 platform_consultant + 实况简报；降级 materials_chat 走 consultant_live_only 禁 RAG；页面数据感知（pageDataBridge/captureVisiblePage） | 已合入 |
+| platform_consultant | `workspace_seeds/agents/platform_consultant/AGENT.md` + `control_presets.yaml` | ✅ | 管理端文字顾问种子 Agent + ControlProfile（禁检索工具） | 已合入 |
+| consultant_live_only | `apps/agents/materials_chat.py` | ✅ | G5：`_consultant_agent` 时跳过 wiki/CRAG，仅靠注入简报 LLM 作答 | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | harness/learning/experience_vector.py | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | ToolDriftDetector | harness/learning/tool_drift_detector.py | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
@@ -2772,13 +2782,13 @@ scan_hash: 8f9548ec24f4
 | 知识引擎（本体） | 353 | 8 | 361 |
 | RAG 检索 | 51 | 0 | 51 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 126 | 0 | 126 |
+| Agent 系统 | 134 | 0 | 134 |
 | Skill 系统 | 144 | 0 | 144 |
 | 安全与治理 | 61 | 0 | 61 |
-| 可观测性 | 41 | 0 | 41 |
+| 可观测性 | 42 | 0 | 42 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
-| 扩展与学习 | 131 | 0 | 131 |
+| 扩展与学习 | 133 | 0 | 133 |
 | Gate 系统 | 150 | 0 | 150 |
 | 评估系统 | 18 | 0 | 18 |
 | MCP 协议 | 10 | 0 | 10 |
@@ -2812,7 +2822,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1843** | **9** | **1852** |
+| **总计** | **1854** | **9** | **1863** |
 
 | **总计** | **1095** | **0** | **1095** |
 

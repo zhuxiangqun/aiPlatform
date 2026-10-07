@@ -12,7 +12,22 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[5]))
 
+import pytest
+
 from core.harness.digital_human.voice_pipeline import transcribe
+
+
+@pytest.fixture(autouse=True)
+def _ensure_asyncio_loop():
+    """integration import creates EventBus Queue — needs a loop on Py3.9."""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            raise RuntimeError("closed")
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    yield
 
 
 # ═══════════════════════════════════════════════════════════
@@ -89,14 +104,10 @@ def test_integration_registry_is_discovery_singleton(monkeypatch):
 
 
 def test_generate_answer_direct_creation_fallback(monkeypatch):
-    """单例为空时兜底经 CoreFacade.create_agent 创建，不再退化 echo。"""
+    """registry 无顾问时用 materials_chat；注入实况简报；TTS 默认关闭。"""
     from core.harness.digital_human import voice_pipeline
 
     captured = {}
-
-    class FakeRegistry:
-        def get(self, name):
-            return None
 
     class FakeAgent:
         async def execute(self, ctx):
@@ -104,24 +115,167 @@ def test_generate_answer_direct_creation_fallback(monkeypatch):
             from core.harness.interfaces import AgentResult
             return AgentResult(success=True, output={"answer": "真AI回答"})
 
-    async def fake_tts(text, **kw):
-        return b"TTSAUDIO"
+    class FakeRegistry:
+        def get(self, name):
+            if name == "materials_chat":
+                return FakeAgent()
+            return None
 
+    monkeypatch.setenv("AIPLAT_DIGITAL_HUMAN_TTS", "false")
     monkeypatch.setattr("core.harness.integration.get_agent_registry", lambda: FakeRegistry())
-    monkeypatch.setattr("core.harness.syscalls.tts.sys_tts_generate", fake_tts)
+    monkeypatch.setattr(
+        "core.harness.digital_human.platform_status_brief.build_platform_status_brief",
+        lambda **kw: "=== 平台实况简报 ===\n工作区 Agent (0): (空)",
+    )
 
-    def fake_create_agent(agent_type, config):
-        assert agent_type == "materials_chat"
-        return FakeAgent()
-
-    monkeypatch.setattr("core.api.core_facade.create_agent", fake_create_agent)
-
-    async def run():
-        return await voice_pipeline.generate_answer("你好，介绍一下系统")
-
-    answer, audio = asyncio.run(run())
+    answer, audio = asyncio.run(voice_pipeline.generate_answer("你好，介绍一下系统"))
     assert answer == "真AI回答"
-    assert audio == b"TTSAUDIO"
+    assert audio == b""
+    assert "平台实况简报" in captured["ctx"].variables.get("message", "")
+    assert captured["ctx"].variables.get("_consultant_agent") == "materials_chat"
+
+
+def test_generate_answer_prefers_platform_consultant(monkeypatch):
+    """优先使用 platform_consultant，且注入实况简报。"""
+    from core.harness.digital_human import voice_pipeline
+
+    captured = {}
+
+    class FakeConsultant:
+        async def execute(self, ctx):
+            captured["ctx"] = ctx
+            from core.harness.interfaces import AgentResult
+            return AgentResult(success=True, output={"answer": "走应用工厂"})
+
+    class FakeRegistry:
+        def get(self, name):
+            if name == "platform_consultant":
+                return FakeConsultant()
+            return None
+
+    monkeypatch.setenv("AIPLAT_DIGITAL_HUMAN_TTS", "false")
+    monkeypatch.setattr("core.harness.integration.get_agent_registry", lambda: FakeRegistry())
+    monkeypatch.setattr(
+        "core.harness.digital_human.platform_status_brief.build_platform_status_brief",
+        lambda **kw: "=== 平台实况简报 ===\n工作区 Agent (1): factory_agent",
+    )
+
+    answer, audio = asyncio.run(voice_pipeline.generate_answer("设备报修怎么建"))
+    assert answer == "走应用工厂"
+    assert audio == b""
+    msg = captured["ctx"].variables.get("message", "")
+    assert captured["ctx"].variables.get("_consultant_agent") == "platform_consultant"
+    assert captured["ctx"].variables.get("_skip_claude_md") is True
+    assert captured["ctx"].variables.get("_coding_policy_profile") == "off"
+    assert "factory_agent" in msg
+    assert msg.startswith("设备报修怎么建")
+    assert msg.index("设备报修怎么建") < msg.index("平台实况简报")
+    assert "---" in msg
+
+
+def test_rewrite_empty_model_answer():
+    from core.harness.digital_human.voice_pipeline import (
+        _NO_MODEL_USER_MSG,
+        _rewrite_empty_model_answer,
+    )
+    assert _rewrite_empty_model_answer("No model available") == _NO_MODEL_USER_MSG
+    assert _rewrite_empty_model_answer("走应用工厂") == "走应用工厂"
+
+
+def test_strip_consultant_cot_keeps_final_reply():
+    from core.harness.digital_human.voice_pipeline import _strip_consultant_cot
+
+    dumped = """### 步骤1：分析问题约束
+
+用户问画面功能，但没有提供截图。
+
+### 步骤2：可能的解读角度
+
+1. 没发图 2. 当前页
+
+### 步骤4：结论
+
+---
+
+**`/workspace/agents` — Agent 工作区**
+
+这个画面用来管理工作区里的 Agent 资产。
+"""
+    out = _strip_consultant_cot(dumped)
+    assert "步骤1" not in out
+    assert "可能的解读" not in out
+    assert "/workspace/agents" in out
+    assert "Agent 资产" in out
+    assert _strip_consultant_cot("这个页面用来新建 Agent。") == "这个页面用来新建 Agent。"
+
+
+def test_ensure_consultant_llm_resolves_auto(monkeypatch):
+    from types import SimpleNamespace
+    from core.harness.digital_human import voice_pipeline
+
+    bound = {}
+
+    class DummyAdapter:
+        pass
+
+    def fake_ensure(agent, *, model_name, force=False):
+        bound["model_name"] = model_name
+        agent._model = DummyAdapter()
+        return agent._model
+
+    monkeypatch.setattr(
+        "core.harness.utils.model_injection.ensure_agent_model", fake_ensure
+    )
+    monkeypatch.setattr(
+        "core.harness.utils.model_injection.best_model_for_purpose_with_meta",
+        lambda p, messages=None: {
+            "model": "qwen2.5:3b",
+            "model_purpose": "agent" if p == "auto" else "wrong",
+        },
+    )
+
+    agent = SimpleNamespace(
+        _model=None,
+        _config=SimpleNamespace(model="hardcoded:99b", metadata={"system_prompt": "你是小朱"}),
+        _conv_config=SimpleNamespace(system_prompt="default"),
+    )
+    voice_pipeline._ensure_consultant_llm(agent, "怎么在平台上建 Agent")
+    assert bound["model_name"] == "qwen2.5:3b"
+    assert isinstance(agent._model, DummyAdapter)
+    assert agent._conv_config.system_prompt == "你是小朱"
+
+
+def test_ensure_consultant_llm_rebinds_existing_remote(monkeypatch):
+    from types import SimpleNamespace
+    from core.harness.digital_human import voice_pipeline
+
+    bound = {}
+
+    class DummyAdapter:
+        def __init__(self, name):
+            self.model_name = name
+
+    def fake_ensure(agent, *, model_name, force=False):
+        bound["model_name"] = model_name
+        bound["force"] = force
+        agent._model = DummyAdapter(model_name)
+        return agent._model
+
+    monkeypatch.setattr("core.harness.utils.model_injection.ensure_agent_model", fake_ensure)
+    monkeypatch.setattr(
+        "core.harness.utils.model_injection.best_model_for_purpose_with_meta",
+        lambda p, messages=None: {"model": "qwen2.5:3b", "model_purpose": "chat"},
+    )
+
+    agent = SimpleNamespace(
+        _model=DummyAdapter("deepseek-chat"),
+        _config=SimpleNamespace(model="auto", metadata={}),
+        _conv_config=SimpleNamespace(system_prompt=""),
+    )
+    voice_pipeline._ensure_consultant_llm(agent, "你好")
+    assert bound["model_name"] == "qwen2.5:3b"
+    assert bound["force"] is True
+    assert agent._model.model_name == "qwen2.5:3b"
 
 
 def test_generate_answer_echo_fallback_only_when_no_agent(monkeypatch):
@@ -206,22 +360,24 @@ def test_generate_answer_injects_page_data(monkeypatch):
 
     captured = {}
 
-    class FakeRegistry:
-        def get(self, name):
-            return None
-
     class FakeAgent:
         async def execute(self, ctx):
             captured["run_ctx"] = (ctx.variables or {}).get("_run_context", {})
             from core.harness.interfaces import AgentResult
             return AgentResult(success=True, output={"answer": "根据页面数据回答"})
 
-    async def fake_tts(text, **kw):
-        return b""
+    class FakeRegistry:
+        def get(self, name):
+            if name == "materials_chat":
+                return FakeAgent()
+            return None
 
+    monkeypatch.setenv("AIPLAT_DIGITAL_HUMAN_TTS", "false")
     monkeypatch.setattr("core.harness.integration.get_agent_registry", lambda: FakeRegistry())
-    monkeypatch.setattr("core.harness.syscalls.tts.sys_tts_generate", fake_tts)
-    monkeypatch.setattr("core.api.core_facade.create_agent", lambda agent_type, config: FakeAgent())
+    monkeypatch.setattr(
+        "core.harness.digital_human.platform_status_brief.build_platform_status_brief",
+        lambda **kw: "brief",
+    )
 
     async def run():
         return await voice_pipeline.generate_answer(
@@ -243,25 +399,245 @@ def test_page_data_empty_does_not_inject(monkeypatch):
 
     captured = {}
 
-    class FakeRegistry:
-        def get(self, name):
-            return None
-
     class FakeAgent:
         async def execute(self, ctx):
             captured["run_ctx"] = (ctx.variables or {}).get("_run_context", {})
             from core.harness.interfaces import AgentResult
             return AgentResult(success=True, output={"answer": "ok"})
 
-    async def fake_tts(text, **kw):
-        return b""
+    class FakeRegistry:
+        def get(self, name):
+            if name == "materials_chat":
+                return FakeAgent()
+            return None
 
+    monkeypatch.setenv("AIPLAT_DIGITAL_HUMAN_TTS", "false")
     monkeypatch.setattr("core.harness.integration.get_agent_registry", lambda: FakeRegistry())
-    monkeypatch.setattr("core.harness.syscalls.tts.sys_tts_generate", fake_tts)
-    monkeypatch.setattr("core.api.core_facade.create_agent", lambda agent_type, config: FakeAgent())
+    monkeypatch.setattr(
+        "core.harness.digital_human.platform_status_brief.build_platform_status_brief",
+        lambda **kw: "brief",
+    )
 
     async def run():
         return await voice_pipeline.generate_answer("你好")
 
     asyncio.run(run())
     assert "page_data" not in captured["run_ctx"]
+
+
+def test_consultant_status_frame_uses_infra_auto_select(monkeypatch):
+    from core.harness.digital_human import voice_pipeline
+
+    monkeypatch.setattr(
+        "core.harness.utils.model_injection.best_model_for_purpose_with_meta",
+        lambda p, messages=None: {"model": "picked-by-infra", "model_purpose": "agent"},
+    )
+    frame = voice_pipeline._consultant_status_frame("怎么在平台上建 Agent")
+    assert frame["type"] == "status"
+    assert frame["data"] == "thinking"
+    assert frame["model"] == "picked-by-infra"
+    assert frame["purpose"] == "agent"
+    screen = voice_pipeline._consultant_status_frame("这个画面的功能是什么")
+    assert screen["model"] == "picked-by-infra"
+
+
+def test_role_ack_detects_polite_variant():
+    from core.harness.digital_human.voice_pipeline import _is_consultant_role_ack
+
+    assert _is_consultant_role_ack(
+        "好的，了解了您的角色和要求。我会严格按照您的指示进行回答。请告诉我，您是想做一个应用还是做一个Agent呢？"
+    )
+
+
+def test_generate_answer_does_not_template_audit_or_factory(monkeypatch):
+    """Audit / Agent-vs-工厂 questions go through the consultant with injected facts."""
+    from core.harness.digital_human import voice_pipeline
+    from core.harness.interfaces import AgentResult
+
+    captured = {}
+
+    class FakeConsultant:
+        async def execute(self, ctx):
+            captured["msg"] = ctx.variables.get("message", "")
+            return AgentResult(success=True, output={"answer": "LLM_RAN"})
+
+    class FakeRegistry:
+        def get(self, name):
+            return FakeConsultant() if name == "platform_consultant" else None
+
+    monkeypatch.setenv("AIPLAT_DIGITAL_HUMAN_TTS", "false")
+    monkeypatch.setattr("core.harness.integration.get_agent_registry", lambda: FakeRegistry())
+    monkeypatch.setattr(voice_pipeline, "_ensure_consultant_llm", lambda *_a, **_k: "m")
+    monkeypatch.setattr(voice_pipeline, "_consultant_model_meta", lambda _t="": {"model": "m", "model_purpose": "reasoning"})
+
+    q = "解读一下这个画面的审核结果并告知我应该怎么做"
+    data = "skillId: upload_video；issue0: error/unrealized_side_effect SIDE_EFFECT_UNREALIZED"
+    ctx = {"route": "/workspace/skills", "label": "Skill", "purpose": "工作区 Skill"}
+    answer, _ = asyncio.run(voice_pipeline.generate_answer(q, page_context=ctx, page_data=data))
+    assert answer == "LLM_RAN"
+    assert "upload_video" in captured["msg"]
+    assert "unrealized_side_effect" in captured["msg"]
+    assert q in captured["msg"]
+
+    q2 = "我想做一个分析视频的应用，应该是做一个agent还是通过应用工厂做一个应用？"
+    answer2, _ = asyncio.run(voice_pipeline.generate_answer(q2))
+    assert answer2 == "LLM_RAN"
+    assert "/app/factory" in captured["msg"] or "应用工厂" in captured["msg"]
+
+
+def test_generate_answer_injects_this_session_dialogue(monkeypatch, tmp_path):
+    from core.harness.digital_human import trajectory_collector as traj
+    from core.harness.digital_human import voice_pipeline
+    from core.harness.interfaces import AgentResult
+
+    traj._TRAJ_DIR = tmp_path
+    captured = {}
+
+    class FakeConsultant:
+        async def execute(self, ctx):
+            captured["msg"] = ctx.variables.get("message", "")
+            return AgentResult(success=True, output={"answer": "LLM_RAN"})
+
+    class FakeRegistry:
+        def get(self, name):
+            return FakeConsultant() if name == "platform_consultant" else None
+
+    monkeypatch.setenv("AIPLAT_DIGITAL_HUMAN_TTS", "false")
+    monkeypatch.setattr("core.harness.integration.get_agent_registry", lambda: FakeRegistry())
+    monkeypatch.setattr(voice_pipeline, "_ensure_consultant_llm", lambda *_a, **_k: "m")
+    sid = "dh_continuity_test"
+    traj.collect_turn(sid, "user", "解读一下这个画面的审核结果并告知我应该怎么做")
+    traj.collect_turn(sid, "assistant", "upload_video 说会真上传但没绑 Tool")
+    asyncio.run(
+        voice_pipeline.generate_answer(
+            "能不能把解读精简一点解释？",
+            session_id=sid,
+            page_data="skillId: upload_video；issue0: error/unrealized_side_effect",
+        )
+    )
+    assert "本会话刚才" in captured["msg"]
+    assert "解读一下这个画面的审核结果" in captured["msg"]
+    assert captured["msg"].index("能不能把解读精简一点解释？") < captured["msg"].index("本会话刚才")
+
+
+def test_recent_session_turns_reads_jsonl(tmp_path):
+    from core.harness.digital_human import trajectory_collector as traj
+
+    traj._TRAJ_DIR = tmp_path
+    traj.collect_turn("s1", "user", "第一问审核")
+    traj.collect_turn("s1", "assistant", "去绑 Tool")
+    turns = traj.recent_session_turns("s1", max_turns=4)
+    assert [t["role"] for t in turns] == ["user", "assistant"]
+    text = traj.format_session_dialogue(turns)
+    assert "本会话刚才" in text
+    assert "第一问审核" in text
+
+
+def test_role_ack_falls_back_to_page_facts(monkeypatch):
+    from core.harness.digital_human import voice_pipeline
+    from core.harness.interfaces import AgentResult
+
+    class FakeConsultant:
+        async def execute(self, ctx):
+            return AgentResult(
+                success=True,
+                output={"answer": "了解了您的角色。请告诉我用户的具体需求。"},
+            )
+
+    class FakeRegistry:
+        def get(self, name):
+            return FakeConsultant() if name == "platform_consultant" else None
+
+    monkeypatch.setenv("AIPLAT_DIGITAL_HUMAN_TTS", "false")
+    monkeypatch.setattr("core.harness.integration.get_agent_registry", lambda: FakeRegistry())
+    monkeypatch.setattr(voice_pipeline, "_ensure_consultant_llm", lambda *_a, **_k: "m")
+    data = "skillId: upload_video；issue0: error/unrealized_side_effect SIDE_EFFECT_UNREALIZED"
+    answer, _ = asyncio.run(
+        voice_pipeline.generate_answer(
+            "根据这个画面的审核结果，我应该怎么做？",
+            page_data=data,
+        )
+    )
+    assert "upload_video" in answer
+    assert "了解了您的角色" not in answer
+    assert "SIDE_EFFECT_UNREALIZED" not in answer
+    assert "registe" not in answer
+
+
+def test_unasked_factory_dump_falls_back_to_compact_audit(monkeypatch):
+    from core.harness.digital_human import voice_pipeline
+    from core.harness.interfaces import AgentResult
+
+    dump = """好的，我会根据您提供的信息和平台实况简报中的信息来回答您的问题。
+
+### 关于“解读一下这个画面的审核结果”
+
+#### 做应用 vs 做 Agent
+- **应用**：应用工厂
+- **Agent**：对话角色
+"""
+
+    class FakeConsultant:
+        async def execute(self, ctx):
+            return AgentResult(success=True, output={"answer": dump})
+
+    class FakeRegistry:
+        def get(self, name):
+            return FakeConsultant() if name == "platform_consultant" else None
+
+    monkeypatch.setenv("AIPLAT_DIGITAL_HUMAN_TTS", "false")
+    monkeypatch.setattr("core.harness.integration.get_agent_registry", lambda: FakeRegistry())
+    monkeypatch.setattr(voice_pipeline, "_ensure_consultant_llm", lambda *_a, **_k: "m")
+    data = "skillId: upload_video；auditSummary: 1错误 2警告；issue0: error/unrealized_side_effect 真上传：去安装 Tool"
+    answer, _ = asyncio.run(
+        voice_pipeline.generate_answer(
+            "能不能把解读精简一点解释？",
+            page_data=data,
+        )
+    )
+    assert "upload_video" in answer
+    assert "做应用 vs 做 Agent" not in answer
+    assert "prompt" in answer or "改成只出文案" in answer
+
+
+def test_general_question_keeps_inventory_and_llm_answer(monkeypatch):
+    from core.harness.digital_human import voice_pipeline
+    from core.harness.interfaces import AgentResult
+
+    captured = {}
+
+    class FakeConsultant:
+        async def execute(self, ctx):
+            captured["msg"] = ctx.variables.get("message", "")
+            return AgentResult(
+                success=True,
+                output={
+                    "answer": "【通用说明，非 aiPlat 既有】对象存储是把文件放到云上用 URL 访问。",
+                },
+            )
+
+    class FakeRegistry:
+        def get(self, name):
+            return FakeConsultant() if name == "platform_consultant" else None
+
+    calls = {}
+
+    def fake_brief(**kw):
+        calls["include_inventory"] = kw.get("include_inventory")
+        return "=== 平台实况简报 ===\n工作区 Agent (1): factory_agent"
+
+    monkeypatch.setenv("AIPLAT_DIGITAL_HUMAN_TTS", "false")
+    monkeypatch.setattr("core.harness.integration.get_agent_registry", lambda: FakeRegistry())
+    monkeypatch.setattr(voice_pipeline, "_ensure_consultant_llm", lambda *_a, **_k: "m")
+    monkeypatch.setattr(
+        "core.harness.digital_human.platform_status_brief.build_platform_status_brief",
+        fake_brief,
+    )
+    data = "skillId: upload_video；issue0: error/unrealized_side_effect"
+    answer, _ = asyncio.run(
+        voice_pipeline.generate_answer("对象存储是什么？", page_data=data)
+    )
+    assert calls.get("include_inventory") is True
+    assert "通用说明，非 aiPlat 既有" in answer
+    assert "对象存储" in answer
+    assert "改成只出文案" not in answer

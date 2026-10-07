@@ -1660,6 +1660,38 @@ domains:
         type: function
         signature: "数字人对话轨迹采集（~/.aiplat/trajectories）"
         module: aiPlat-core/core/harness/digital_human/trajectory_collector.py
+      - symbol: build_platform_status_brief
+        type: function
+        signature: "顾问实况简报（工作区资产/菜单/页面对齐）"
+        module: aiPlat-core/core/harness/digital_human/platform_status_brief.py
+      - symbol: build_on_demand_pack
+        type: function
+        signature: "概念题按需注入 CAPABILITIES/registry 短摘"
+        module: aiPlat-core/core/harness/digital_human/consultant_knowledge.py
+      - symbol: load_constitution_card
+        type: function
+        signature: "顾问心智卡（consultant_constitution.md）"
+        module: aiPlat-core/core/harness/digital_human/consultant_knowledge.py
+      - symbol: ensure_generic_disclaimer
+        type: function
+        signature: "外部泛知识答句前置非本平台资产标注"
+        module: aiPlat-core/core/harness/digital_human/consultant_knowledge.py
+      - symbol: load_personal_notes
+        type: function
+        signature: "租户级小朱个人笔记"
+        module: aiPlat-core/core/harness/digital_human/consultant_personal.py
+      - symbol: remember_from_turn
+        type: function
+        signature: "从对话轮次写入持久笔记"
+        module: aiPlat-core/core/harness/digital_human/consultant_personal.py
+      - symbol: refresh_consultant_prompt
+        type: function
+        signature: "AGENT.md/心智卡 mtime 热载"
+        module: aiPlat-core/core/harness/digital_human/consultant_reload.py
+      - symbol: captureVisiblePage
+        type: function
+        signature: "可见页 chrome 短摘（非 DOM dump）"
+        module: aiPlat-management/frontend/src/lib/captureVisiblePage.ts
       - symbol: evaluate_four_questions
         type: function
         signature: "P2-L0 立项四问评估：反复/跨系统/Owner+指标/Action → 总分+结论+MVP tier"

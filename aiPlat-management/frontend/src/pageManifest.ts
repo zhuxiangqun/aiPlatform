@@ -270,3 +270,18 @@ export function getAllPages(): PageEntry[] {
   }
   return pages;
 }
+
+/** One-line screen purpose for digital-human brief (小朱). Keep values single-quoted in spirit for TS parser. */
+export const PAGE_PURPOSE: Record<string, string> = {
+  '/system-overview': '平台总览与健康入口',
+  '/app/factory': '应用工厂：从需求到可部署应用的整条流水线',
+  '/app/apps': '已部署应用列表与运行入口',
+  '/diagnostics/fde': 'FDE 交付工作台：诊断、证据与签收',
+  '/workspace/agents': '应用库 Agent：注册与执行平台内角色，不是整条工厂流水线',
+  '/workspace/skills': 'Skill 库：可复用动作与 SOP',
+  '/workspace/tools': 'Tool 库：原子操作与脚本',
+  '/workspace/mcp': 'MCP 接入：外部工具服务',
+  '/infra/models': '模型目录与选模（purpose → unified_pipeline）',
+  '/diagnostics/doctor': '一键诊断与运行时健康',
+  '/diagnostics/production-depth': 'Agent 生产深度（反思/沙箱/事件/向量/观测契约）',
+};

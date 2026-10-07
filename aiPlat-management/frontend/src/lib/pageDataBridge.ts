@@ -23,6 +23,8 @@
  *     return () => clearPageData('/diagnostics');
  *   }, [health, score, activeAlerts]);
  */
+import { captureVisiblePage } from './captureVisiblePage';
+
 type PageData = Record<string, unknown>;
 
 declare global {
@@ -31,6 +33,8 @@ declare global {
   }
 }
 
+const _listeners = new Set<() => void>();
+
 function getStore(): Record<string, PageData> {
   if (!window.__AIPLAT_PAGE_DATA__) {
     window.__AIPLAT_PAGE_DATA__ = {};
@@ -38,10 +42,21 @@ function getStore(): Record<string, PageData> {
   return window.__AIPLAT_PAGE_DATA__;
 }
 
+function _notify(): void {
+  _listeners.forEach((fn) => {
+    try {
+      fn();
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
 /** 上报当前页面数据（覆盖同 route 的旧值）。 */
 export function reportPageData(route: string, data: PageData): void {
   if (!route) return;
   getStore()[route] = { ...data };
+  _notify();
 }
 
 /** 清理某个 route 的页面数据（页面卸载时调用，避免陈旧数据被发送）。 */
@@ -49,6 +64,15 @@ export function clearPageData(route: string): void {
   if (!route) return;
   const store = getStore();
   delete store[route];
+  _notify();
+}
+
+/** Subscribe to page-data changes (digital human re-sends context). */
+export function subscribePageData(listener: () => void): () => void {
+  _listeners.add(listener);
+  return () => {
+    _listeners.delete(listener);
+  };
 }
 
 /** 读取某个 route 的页面数据（FloatingDigitalHuman 发送 context 时调用）。 */
@@ -56,15 +80,43 @@ export function getPageData(route: string): PageData | undefined {
   return route ? getStore()[route] : undefined;
 }
 
+type AuditIssueLike = {
+  severity?: string;
+  category?: string;
+  message?: string;
+  suggestion?: string;
+  create_brief?: { must_have?: string };
+};
+
+function clipFact(text: string, max: number): string {
+  const t = text.replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const sp = Math.max(cut.lastIndexOf('。'), cut.lastIndexOf('；'), cut.lastIndexOf(' '));
+  return `${sp > max * 0.55 ? cut.slice(0, sp) : cut}…`;
+}
+
+/** Prefer UI suggestion over truncated English engine message. */
+export function formatAuditIssueForPage(issue: AuditIssueLike): string {
+  const head = `${issue.severity || 'info'}/${issue.category || 'issue'}`;
+  const suggestion = (issue.suggestion || '').trim();
+  const must = (issue.create_brief?.must_have || '').trim();
+  if (suggestion) {
+    return clipFact(`${head}: ${suggestion}${must ? `；应具备:${must}` : ''}`, 320);
+  }
+  return clipFact(`${head}: ${issue.message || ''}`, 280);
+}
+
 /** 页面数据转紧凑文本摘要（供后端注入 prompt，限长）。 */
-export function pageDataToText(data: PageData | undefined, maxLen = 600): string {
+export function pageDataToText(data: PageData | undefined, maxLen = 1400): string {
   if (!data) return '';
   const lines: string[] = [];
   for (const [k, v] of Object.entries(data)) {
     if (v === undefined || v === null || v === '') continue;
     const val = typeof v === 'object' ? JSON.stringify(v) : String(v);
-    if (val.length > 120) {
-      lines.push(`${k}: ${val.slice(0, 120)}…`);
+    const cap = k.startsWith('issue') ? 400 : 120;
+    if (val.length > cap) {
+      lines.push(`${k}: ${val.slice(0, cap)}…`);
     } else {
       lines.push(`${k}: ${val}`);
     }
@@ -75,4 +127,27 @@ export function pageDataToText(data: PageData | undefined, maxLen = 600): string
     text = text.slice(0, maxLen) + '…';
   }
   return text;
+}
+
+export function mergeConsultantPageText(
+  reported: string,
+  snapshot: string,
+  maxLen = 2000,
+): string {
+  const text = [reported, snapshot].filter((s) => Boolean(s && s.trim())).join('\n');
+  if (text.length > maxLen) return `${text.slice(0, maxLen)}…`;
+  return text;
+}
+
+/** Structured reportPageData + visible chrome (dialog/title/buttons). */
+export function consultantPagePayload(route: string, maxLen = 2000): string {
+  const data = getPageData(route);
+  const hasEditorFacts = Boolean(
+    data && (data.issue0 || data.skillId || data.toolId || data.mcpId || data.agentId),
+  );
+  return mergeConsultantPageText(
+    pageDataToText(data, hasEditorFacts ? 1400 : 800),
+    hasEditorFacts ? '' : captureVisiblePage(1100),
+    maxLen,
+  );
 }

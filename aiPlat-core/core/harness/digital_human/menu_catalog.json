@@ -1,0 +1,506 @@
+{
+  "version": 2,
+  "note": "Fallback if pageManifest.ts is unreadable. Live brief prefers parsing pageManifest.ts.",
+  "purposes": {
+    "/system-overview": "平台总览与健康入口",
+    "/app/factory": "应用工厂：从需求到可部署应用的整条流水线",
+    "/app/apps": "已部署应用列表与运行入口",
+    "/diagnostics/fde": "FDE 交付工作台：诊断、证据与签收",
+    "/workspace/agents": "应用库 Agent：注册与执行平台内角色，不是整条工厂流水线",
+    "/workspace/skills": "Skill 库：可复用动作与 SOP",
+    "/workspace/tools": "Tool 库：原子操作与脚本",
+    "/workspace/mcp": "MCP 接入：外部工具服务",
+    "/infra/models": "模型目录与选模（purpose → unified_pipeline）",
+    "/diagnostics/doctor": "一键诊断与运行时健康",
+    "/diagnostics/production-depth": "Agent 生产深度（反思/沙箱/事件/向量/观测契约）"
+  },
+  "entries": [
+    {
+      "route": "/system-overview",
+      "label": "系统概览",
+      "group": "仪表盘"
+    },
+    {
+      "route": "/org/pilot",
+      "label": "组织试点",
+      "group": "仪表盘"
+    },
+    {
+      "route": "/alerts",
+      "label": "告警中心",
+      "group": "仪表盘"
+    },
+    {
+      "route": "/system-graph",
+      "label": "系统图谱",
+      "group": "仪表盘"
+    },
+    {
+      "route": "/governance",
+      "label": "治理仪表盘",
+      "group": "仪表盘"
+    },
+    {
+      "route": "/value-center",
+      "label": "价值看板",
+      "group": "仪表盘"
+    },
+    {
+      "route": "/knowledge/business",
+      "label": "业务说明书",
+      "group": "知识"
+    },
+    {
+      "route": "/knowledge/library",
+      "label": "知识库",
+      "group": "知识"
+    },
+    {
+      "route": "/app/factory",
+      "label": "应用工厂",
+      "group": "AI 应用工厂"
+    },
+    {
+      "route": "/app/apps",
+      "label": "已部署应用",
+      "group": "AI 应用工厂"
+    },
+    {
+      "route": "/diagnostics/fde",
+      "label": "FDE 工作台",
+      "group": "AI 应用工厂"
+    },
+    {
+      "route": "/workspace/agents",
+      "label": "Agent",
+      "group": "AI 应用工厂"
+    },
+    {
+      "route": "/workspace/skills",
+      "label": "Skill",
+      "group": "AI 应用工厂"
+    },
+    {
+      "route": "/workspace/tools",
+      "label": "Tool",
+      "group": "AI 应用工厂"
+    },
+    {
+      "route": "/workspace/mcp",
+      "label": "MCP",
+      "group": "AI 应用工厂"
+    },
+    {
+      "route": "/core/workflows",
+      "label": "Workflow",
+      "group": "AI 应用工厂"
+    },
+    {
+      "route": "/workspace/teams",
+      "label": "Teams",
+      "group": "AI 应用工厂"
+    },
+    {
+      "route": "/workspace/marketplace",
+      "label": "能力市场",
+      "group": "AI 应用工厂"
+    },
+    {
+      "route": "/core/prompts",
+      "label": "提示词配置",
+      "group": "AI 应用工厂"
+    },
+    {
+      "route": "/core/variables",
+      "label": "变量管理",
+      "group": "AI 应用工厂"
+    },
+    {
+      "route": "/core/credentials",
+      "label": "凭证管理",
+      "group": "AI 应用工厂"
+    },
+    {
+      "route": "/diagnostics/code-intel",
+      "label": "代码智能",
+      "group": "AI 应用工厂"
+    },
+    {
+      "route": "/diagnostics/browser-test",
+      "label": "浏览器测试",
+      "group": "AI 应用工厂"
+    },
+    {
+      "route": "/diagnostics",
+      "label": "诊断概览",
+      "group": "诊断与治理"
+    },
+    {
+      "route": "/diagnostics/control-profile",
+      "label": "控制画像",
+      "group": "诊断与治理"
+    },
+    {
+      "route": "/diagnostics/observability",
+      "label": "可观测性",
+      "group": "诊断与治理"
+    },
+    {
+      "route": "/diagnostics/traces",
+      "label": "链路追踪",
+      "group": "诊断与治理"
+    },
+    {
+      "route": "/diagnostics/runs",
+      "label": "运行记录",
+      "group": "诊断与治理"
+    },
+    {
+      "route": "/diagnostics/run-comparison",
+      "label": "运行对比",
+      "group": "诊断与治理"
+    },
+    {
+      "route": "/diagnostics/llm-review",
+      "label": "LLM 审查",
+      "group": "诊断与治理"
+    },
+    {
+      "route": "/diagnostics/repairs",
+      "label": "修复中心",
+      "group": "诊断与治理"
+    },
+    {
+      "route": "/diagnostics/business-value",
+      "label": "业务价值",
+      "group": "诊断与治理"
+    },
+    {
+      "route": "/infra/monitoring",
+      "label": "监控面板",
+      "group": "平台设置"
+    },
+    {
+      "route": "/infra/llm-stats",
+      "label": "LLM 路由监控",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/routing-dashboard",
+      "label": "路由仪表盘",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/routing-replay",
+      "label": "路由回放",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/policy-debug",
+      "label": "策略调试",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/eval",
+      "label": "Agent 评估",
+      "group": "平台设置"
+    },
+    {
+      "route": "/infra/nodes",
+      "label": "节点管理",
+      "group": "平台设置"
+    },
+    {
+      "route": "/infra/services",
+      "label": "服务管理",
+      "group": "平台设置"
+    },
+    {
+      "route": "/infra/network",
+      "label": "网络管理",
+      "group": "平台设置"
+    },
+    {
+      "route": "/core/jobs",
+      "label": "任务管理",
+      "group": "平台设置"
+    },
+    {
+      "route": "/infra/models",
+      "label": "模型管理",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/model-playground",
+      "label": "模型演练场",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/model-audit",
+      "label": "模型审计",
+      "group": "平台设置"
+    },
+    {
+      "route": "/infra/finetune",
+      "label": "模型微调",
+      "group": "平台设置"
+    },
+    {
+      "route": "/infra/storage",
+      "label": "存储管理",
+      "group": "平台设置"
+    },
+    {
+      "route": "/infra/scheduler",
+      "label": "算力调度",
+      "group": "平台设置"
+    },
+    {
+      "route": "/core/agents",
+      "label": "引擎 Agent",
+      "group": "平台设置"
+    },
+    {
+      "route": "/core/skills",
+      "label": "引擎 Skill",
+      "group": "平台设置"
+    },
+    {
+      "route": "/core/tools",
+      "label": "引擎 Tool",
+      "group": "平台设置"
+    },
+    {
+      "route": "/core/mcp",
+      "label": "引擎 MCP",
+      "group": "平台设置"
+    },
+    {
+      "route": "/core/memory",
+      "label": "Memory",
+      "group": "平台设置"
+    },
+    {
+      "route": "/core/checkpoints",
+      "label": "文件 Checkpoint",
+      "group": "平台设置"
+    },
+    {
+      "route": "/platform/gateway",
+      "label": "API 网关",
+      "group": "平台设置"
+    },
+    {
+      "route": "/platform/auth",
+      "label": "认证鉴权",
+      "group": "平台设置"
+    },
+    {
+      "route": "/platform/tenant",
+      "label": "多租户管理",
+      "group": "平台设置"
+    },
+    {
+      "route": "/app/channels",
+      "label": "渠道管理",
+      "group": "平台设置"
+    },
+    {
+      "route": "/app/sessions",
+      "label": "会话管理",
+      "group": "平台设置"
+    },
+    {
+      "route": "/onboarding",
+      "label": "初始化向导",
+      "group": "平台设置"
+    },
+    {
+      "route": "/pentest",
+      "label": "渗透测试",
+      "group": "平台设置"
+    },
+    {
+      "route": "/releases",
+      "label": "版本管理",
+      "group": "平台设置"
+    },
+    {
+      "route": "/core/learning/releases",
+      "label": "发布管理",
+      "group": "平台设置"
+    },
+    {
+      "route": "/core/skills-rollouts",
+      "label": "技能发布",
+      "group": "平台设置"
+    },
+    {
+      "route": "/core/skill-packs",
+      "label": "技能包",
+      "group": "平台设置"
+    },
+    {
+      "route": "/core/learning/artifacts",
+      "label": "学习产出",
+      "group": "平台设置"
+    },
+    {
+      "route": "/governance/capabilities",
+      "label": "核心能力管理",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/safety",
+      "label": "安全监控",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/audit",
+      "label": "审计日志",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/change-control",
+      "label": "变更控制",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/capability-boundary",
+      "label": "能力边界",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/capability-policy",
+      "label": "能力策略",
+      "group": "平台设置"
+    },
+    {
+      "route": "/approval",
+      "label": "资产审批",
+      "group": "平台设置"
+    },
+    {
+      "route": "/approval/history",
+      "label": "审批记录",
+      "group": "平台设置"
+    },
+    {
+      "route": "/core/approvals",
+      "label": "运行时审批",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/syscalls",
+      "label": "系统调用",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/policies",
+      "label": "策略管理",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/exec-backends",
+      "label": "执行后端",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/context",
+      "label": "上下文分析",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/links",
+      "label": "依赖关系",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/graphs",
+      "label": "知识图谱",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/repo",
+      "label": "仓库分析",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/smoke",
+      "label": "冒烟测试",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/workflows",
+      "label": "工作流诊断",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/ops",
+      "label": "运维诊断",
+      "group": "平台设置"
+    },
+    {
+      "route": "/diagnostics/capability-graph",
+      "label": "能力图谱",
+      "group": "平台设置"
+    },
+    {
+      "route": "/docs",
+      "label": "文档系统",
+      "group": "帮助"
+    }
+  ],
+  "build_paths": [
+    {
+      "id": "app_factory",
+      "title": "应用工厂（需求→团队流水线→部署）",
+      "menu": "/app/factory",
+      "when": "要完整产品/应用，走默认研发团队 stages"
+    },
+    {
+      "id": "workspace_skill",
+      "title": "新建 Skill",
+      "menu": "/workspace/skills",
+      "when": "可复用动作、输入输出清楚，不必整条工厂"
+    },
+    {
+      "id": "workspace_tool",
+      "title": "新建 Tool",
+      "menu": "/workspace/tools",
+      "when": "原子操作（算一下/调 API），非完整应用"
+    },
+    {
+      "id": "workspace_mcp",
+      "title": "接入 MCP",
+      "menu": "/workspace/mcp",
+      "when": "接外部工具服务，优先于新写核心 Tool"
+    },
+    {
+      "id": "workspace_agent",
+      "title": "新建/执行 Agent",
+      "menu": "/workspace/agents",
+      "when": "已有或需单独会话编排的角色"
+    },
+    {
+      "id": "fde",
+      "title": "FDE 交付工作台",
+      "menu": "/diagnostics/fde",
+      "when": "交付诊断、证据、签收类，不走研发流水线"
+    },
+    {
+      "id": "video_simple",
+      "title": "视频理解样例（精简）",
+      "agent": "video_understanding_agent",
+      "menu": "/workspace/agents",
+      "when": "工作区内试跑样例；用户要自己的视频应用仍走应用工厂，不可用本条顶替"
+    },
+    {
+      "id": "video_orchestrated",
+      "title": "视频编排样例（画面/语音/字幕）",
+      "agent": "videosense_orchestrator",
+      "menu": "/workspace/agents",
+      "when": "工作区内试跑样例编排；用户要自己的视频应用仍走应用工厂，不可用本条顶替"
+    }
+  ]
+}

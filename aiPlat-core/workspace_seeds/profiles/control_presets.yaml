@@ -120,6 +120,23 @@ presets:
     require_schema_validation: false
     collection_filter: "system_docs"
 
+  platform_consultant:
+    description: "平台顾问小朱 — 实况简报驱动、禁检索工具、短答、宽松门控"
+    context_layers: 3
+    context_max_sources: 2
+    tool_whitelist: []
+    tool_rank_by: static
+    model_tier: T3
+    temperature_profile: flat
+    temperature: 0.55
+    orchestration_mode: chain
+    max_parallel_agents: 1
+    compression_strictness: 1.0
+    episodic_injection: false
+    semantic_injection: false
+    gate_strictness: 0.6
+    require_schema_validation: false
+
 # task_type → 默认画像名（精确匹配优先，未命中降级到语义插值）
 task_hints:
   code_generation: code_generation
@@ -132,3 +149,4 @@ task_hints:
   code_review: code_generation
   digital_human: digital_human
   voice_assistant: digital_human
+  platform_consultant: platform_consultant
