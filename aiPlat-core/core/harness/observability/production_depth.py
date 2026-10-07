@@ -125,7 +125,10 @@ def build_production_depth_report() -> Dict[str, Any]:
         "title": "可观测契约 (Prometheus+EventBus+run_graph)",
         "status": _status(bool(contract.get("healthy"))),
         "detail": contract.get("note") or str(contract.get("probes") or ""),
-        "hint": "ELK 不在契约内；缺项见 contract.probes",
+        "hint": (
+            "契约内：Prometheus + EventBus + run_graph + syscall_events。"
+            "ELK/OpenSearch 刻意标为 out_of_contract（可选外部接入，不算平台缺口）。"
+        ),
         "contract": contract,
     })
 

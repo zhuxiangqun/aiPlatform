@@ -13,18 +13,38 @@ export AIPLAT_SANDBOX_PREFER_DOCKER=true
 export AIPLAT_VECTOR_BACKEND=milvus
 export AIPLAT_AGENT_EVENT_INGRESS=true`;
 
+type ContractStackItem = {
+  component?: string;
+  role?: string;
+  status?: string;
+  anchor?: string;
+};
+
 type CheckRow = {
   id: string;
   title: string;
   status: 'pass' | 'warn' | 'fail' | string;
   detail?: string;
   hint?: string;
+  contract?: {
+    version?: string;
+    healthy?: boolean;
+    note?: string;
+    stack?: ContractStackItem[];
+    probes?: Record<string, string>;
+  };
 };
 
 const statusBadge = (s: string) => {
   if (s === 'pass') return <Badge variant="success">pass</Badge>;
   if (s === 'warn') return <Badge variant="warning">warn</Badge>;
   return <Badge variant="error">fail</Badge>;
+};
+
+const contractStatusBadge = (s: string) => {
+  if (s === 'required') return <Badge variant="info">required</Badge>;
+  if (s === 'out_of_contract') return <Badge variant="default">out_of_contract</Badge>;
+  return <Badge variant="default">{s || '-'}</Badge>;
 };
 
 const statusIcon = (s: string) => {
@@ -174,26 +194,57 @@ const ProductionDepth: React.FC = () => {
           {checks.length === 0 && (
             <div className="text-sm text-gray-500">{loading ? '加载中…' : '暂无数据'}</div>
           )}
-          {checks.map((c) => (
-            <div
-              key={c.id}
-              className="rounded-lg border border-gray-800 bg-gray-900/40 px-3 py-3 space-y-1"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-sm text-gray-200 font-medium">
-                  {statusIcon(c.status)}
-                  {c.title}
+          {checks.map((c) => {
+            const stack = Array.isArray(c.contract?.stack) ? c.contract!.stack! : [];
+            const showHint = Boolean(c.hint) && (c.status !== 'pass' || c.id === 'observability_contract');
+            return (
+              <div
+                key={c.id}
+                className="rounded-lg border border-gray-800 bg-gray-900/40 px-3 py-3 space-y-1"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm text-gray-200 font-medium">
+                    {statusIcon(c.status)}
+                    {c.title}
+                  </div>
+                  {statusBadge(c.status)}
                 </div>
-                {statusBadge(c.status)}
+                {c.detail ? (
+                  <div className="text-xs text-gray-500 break-all font-mono">{c.detail}</div>
+                ) : null}
+                {showHint ? (
+                  <div className="text-xs text-sky-400/90">
+                    {c.status === 'pass' ? '说明：' : '建议：'}
+                    {c.hint}
+                  </div>
+                ) : null}
+                {c.id === 'observability_contract' && stack.length > 0 ? (
+                  <div className="mt-2 space-y-1.5 border-t border-gray-800 pt-2">
+                    <div className="text-[11px] text-gray-500">
+                      契约栈 v{c.contract?.version || '-'} · healthy=
+                      {String(c.contract?.healthy ?? '-')}
+                    </div>
+                    {stack.map((row) => (
+                      <div
+                        key={String(row.component)}
+                        className="flex flex-wrap items-center gap-2 text-xs text-gray-400"
+                      >
+                        {contractStatusBadge(String(row.status || ''))}
+                        <span className="text-gray-200 font-mono">{row.component}</span>
+                        <span className="text-gray-600">·</span>
+                        <span>{row.role}</span>
+                        {row.status === 'out_of_contract' ? (
+                          <span className="text-gray-500">
+                            （可选外部接入，非平台必交付）
+                          </span>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-              {c.detail ? (
-                <div className="text-xs text-gray-500 break-all font-mono">{c.detail}</div>
-              ) : null}
-              {c.hint && c.status !== 'pass' ? (
-                <div className="text-xs text-sky-400/90">建议：{c.hint}</div>
-              ) : null}
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
 
