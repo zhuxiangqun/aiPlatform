@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-08-16"
 total_capability_domains: 34
-total_capabilities: 1250
+total_capabilities: 1276
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -1688,6 +1688,110 @@ domains:
         type: function
         signature: "AGENT.md/心智卡 mtime 热载"
         module: aiPlat-core/core/harness/digital_human/consultant_reload.py
+      - symbol: looks_external_generic_question
+        type: function
+        signature: 'True when the user asks industry/generic knowledge, not aiPlat inventory.'
+        module: aiPlat-core/core/harness/digital_human/consultant_knowledge.py
+      - symbol: answer_cites_platform
+        type: function
+        signature: 'answer_cites_platform(answer)'
+        module: aiPlat-core/core/harness/digital_human/consultant_knowledge.py
+      - symbol: clear_knowledge_caches
+        type: function
+        signature: 'Drop CAPABILITIES/brief caches; optionally reset AGENT.md mtime tracker.'
+        module: aiPlat-core/core/harness/digital_human/consultant_knowledge.py
+      - symbol: sanitize_tenant_id
+        type: function
+        signature: 'sanitize_tenant_id(tenant_id)'
+        module: aiPlat-core/core/harness/digital_human/consultant_personal.py
+      - symbol: memory_path
+        type: function
+        signature: 'Resolve notes path for tenant.'
+        module: aiPlat-core/core/harness/digital_human/consultant_personal.py
+      - symbol: looks_like_lasting_note
+        type: function
+        signature: 'looks_like_lasting_note(text)'
+        module: aiPlat-core/core/harness/digital_human/consultant_personal.py
+      - symbol: looks_like_short_style
+        type: function
+        signature: 'looks_like_short_style(text)'
+        module: aiPlat-core/core/harness/digital_human/consultant_personal.py
+      - symbol: remember_from_user
+        type: function
+        signature: 'remember_from_user(text)'
+        module: aiPlat-core/core/harness/digital_human/consultant_personal.py
+      - symbol: remember_style_pref
+        type: function
+        signature: 'remember_style_pref(text)'
+        module: aiPlat-core/core/harness/digital_human/consultant_personal.py
+      - symbol: agent_md_path
+        type: function
+        signature: 'agent_md_path(agent_id)'
+        module: aiPlat-core/core/harness/digital_human/consultant_reload.py
+      - symbol: constitution_path
+        type: function
+        signature: 'constitution_path()'
+        module: aiPlat-core/core/harness/digital_human/consultant_reload.py
+      - symbol: parse_agent_system_prompt
+        type: function
+        signature: 'parse_agent_system_prompt(raw)'
+        module: aiPlat-core/core/harness/digital_human/consultant_reload.py
+      - symbol: read_agent_system_prompt
+        type: function
+        signature: 'Return (system_prompt, mtime). Empty prompt / 0.0 mtime if missing.'
+        module: aiPlat-core/core/harness/digital_human/consultant_reload.py
+      - symbol: apply_system_prompt
+        type: function
+        signature: 'Write prompt into ConversationalAgent conv + config.metadata.'
+        module: aiPlat-core/core/harness/digital_human/consultant_reload.py
+      - symbol: load_constitution_fresh
+        type: function
+        signature: 'mtime-aware constitution load (replaces forever lru_cache for iteration).'
+        module: aiPlat-core/core/harness/digital_human/consultant_reload.py
+      - symbol: clear_reload_cache
+        type: function
+        signature: 'Test helper.'
+        module: aiPlat-core/core/harness/digital_human/consultant_reload.py
+      - symbol: refers_to_current_screen
+        type: function
+        signature: 'refers_to_current_screen(text)'
+        module: aiPlat-core/core/harness/digital_human/platform_status_brief.py
+      - symbol: asks_app_vs_agent
+        type: function
+        signature: 'asks_app_vs_agent(text)'
+        module: aiPlat-core/core/harness/digital_human/platform_status_brief.py
+      - symbol: page_data_has_live_facts
+        type: function
+        signature: 'page_data_has_live_facts(page_data)'
+        module: aiPlat-core/core/harness/digital_human/platform_status_brief.py
+      - symbol: is_page_followup
+        type: function
+        signature: 'is_page_followup(text)'
+        module: aiPlat-core/core/harness/digital_human/platform_status_brief.py
+      - symbol: asks_open_item_audit
+        type: function
+        signature: 'asks_open_item_audit(text)'
+        module: aiPlat-core/core/harness/digital_human/platform_status_brief.py
+      - symbol: use_page_only_brief
+        type: function
+        signature: 'use_page_only_brief(text, page_data)'
+        module: aiPlat-core/core/harness/digital_human/platform_status_brief.py
+      - symbol: is_inventory_question
+        type: function
+        signature: 'is_inventory_question(text)'
+        module: aiPlat-core/core/harness/digital_human/platform_status_brief.py
+      - symbol: scrub_audit_english
+        type: function
+        signature: 'scrub_audit_english(text)'
+        module: aiPlat-core/core/harness/digital_human/platform_status_brief.py
+      - symbol: clear_brief_cache
+        type: function
+        signature: 'clear_brief_cache()'
+        module: aiPlat-core/core/harness/digital_human/platform_status_brief.py
+      - symbol: export_seed_sharegpt_dataset
+        type: function
+        signature: 'Write distilled platform-mindset Q&A seeds for FineTune bootstrap.'
+        module: aiPlat-core/core/harness/digital_human/trajectory_collector.py
       - symbol: captureVisiblePage
         type: function
         signature: "可见页 chrome 短摘（非 DOM dump）"
