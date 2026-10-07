@@ -9,6 +9,7 @@ import AnimatedAvatar from './AnimatedAvatar';
 const POS_STORAGE_KEY = 'aiplat.digital_human.pos';
 const ICON_SIZE = 56;
 const PANEL_WIDTH = 320;
+const PANEL_COLLAPSED_WIDTH = 112; // avatar + minimize/collapse; keep a real drag strip
 const PANEL_HEIGHT_APPROX = 420;
 const DRAG_THRESHOLD_PX = 5;
 
@@ -136,7 +137,7 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
         clampPos(
           p.x,
           p.y,
-          minimized ? ICON_SIZE : collapsed ? 48 : PANEL_WIDTH,
+          minimized ? ICON_SIZE : collapsed ? PANEL_COLLAPSED_WIDTH : PANEL_WIDTH,
           minimized ? ICON_SIZE : PANEL_HEIGHT_APPROX,
         ),
       );
@@ -147,7 +148,10 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
 
   const boxSize = minimized
     ? { w: ICON_SIZE, h: ICON_SIZE }
-    : { w: collapsed ? 48 : PANEL_WIDTH, h: collapsed ? 40 : PANEL_HEIGHT_APPROX };
+    : {
+        w: collapsed ? PANEL_COLLAPSED_WIDTH : PANEL_WIDTH,
+        h: collapsed ? 40 : PANEL_HEIGHT_APPROX,
+      };
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -295,7 +299,7 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
         zIndex: 9999,
         left: position.x,
         top: position.y,
-        width: collapsed ? 48 : PANEL_WIDTH,
+        width: collapsed ? PANEL_COLLAPSED_WIDTH : PANEL_WIDTH,
         transition: collapsed && !dragging ? 'width 0.3s' : 'none',
         background: 'rgba(22,27,34,0.95)',
         backdropFilter: 'blur(12px)',
@@ -308,26 +312,45 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
       }}
     >
       <div
-        onPointerDown={onPointerDown}
         style={{
           height: 40,
-          padding: '0 12px',
+          padding: '0 8px 0 12px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          gap: 4,
           background: 'rgba(59,130,246,0.08)',
           borderBottom: '1px solid rgba(48,54,61,0.5)',
-          cursor: dragging ? 'grabbing' : 'grab',
           userSelect: 'none',
-          touchAction: 'none',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Drag only on the left strip — not the whole header — so buttons stay clickable. */}
+        <div
+          onPointerDown={onPointerDown}
+          title="拖动移动位置"
+          style={{
+            flex: 1,
+            minWidth: 28,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            cursor: dragging ? 'grabbing' : 'grab',
+            touchAction: 'none',
+            height: '100%',
+          }}
+        >
           <img
             src="/avatar-lorelei.svg"
             alt="小朱"
             draggable={false}
-            style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }}
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: '50%',
+              objectFit: 'cover',
+              pointerEvents: 'none',
+              flexShrink: 0,
+            }}
           />
           {!collapsed && (
             <span style={{ fontSize: 13, fontWeight: 600, color: '#E5E7EB' }}>小朱</span>
@@ -340,6 +363,7 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
                 background: 'rgba(59,130,246,0.15)',
                 borderRadius: 4,
                 padding: '1px 6px',
+                flexShrink: 0,
               }}
             >
               {statusText[status]}
@@ -361,15 +385,10 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
             </span>
           )}
         </div>
-        <div data-no-drag style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
           <button
             type="button"
-            data-no-drag
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              setMinimized(true);
-            }}
+            onClick={() => setMinimized(true)}
             style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', padding: 4 }}
             title="最小化"
             aria-label="最小化"
@@ -378,12 +397,7 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
           </button>
           <button
             type="button"
-            data-no-drag
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              setCollapsed((c) => !c);
-            }}
+            onClick={() => setCollapsed((c) => !c)}
             style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', padding: 4 }}
             title={collapsed ? '展开' : '折叠'}
             aria-label={collapsed ? '展开' : '折叠'}
