@@ -4291,8 +4291,16 @@ domains:
   management-and-quality:
     section: "二十五"
     section_name: "管理 & 质量"
-    caps_count: 24
+    caps_count: 26
     provides:
+      - symbol: "apply_path_rewrite"
+        type: "function"
+        signature: "compat rewrite doctor + eval-observability SPA paths to mgmt/platform"
+        module: "aiPlat-management/frontend/proxy_server.py"
+      - symbol: "spa_chunk_reload_inject"
+        type: "behavior"
+        signature: "ProxyHandler._serve_spa injects aiplat.chunk_reload once-per-session hard reload"
+        module: "aiPlat-management/frontend/proxy_server.py"
       - symbol: "QualityBus"
         type: "pattern"
         signature: "4-subsystem unified scoring 0-100 (via ScoringEngine)"

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1896
+total_capabilities: 1898
 last_updated: 2026-10-07
 version: "30.5"
 auto_sync: true
@@ -2035,6 +2035,8 @@ scan_hash: 8f9548ec24f4
 | 一键修复断言针别名对齐 | factory_fix_plan.align_result_assert_needles + true_test contains 同义 | ✅ | `missing:export_format` → 断言对齐 `export_json` / 同义匹配，避免 remap 空转；生成物适用：**已接线** | 已合入 |
 | 确定性 handler 平台副作用桥 | builder_project_service._platform_effects_after_deterministic_skill + `AIPLAT_FACTORY_FORCE_AGENT_SKILL` | ✅ | Path0 媒体 handler 成功后补 memory + local_feedback（不完全替代 ReAct）；可选 env 强制走 Agent+ReAct；生成物适用：**已接线** | 已合入 |
 | 前端代理 HTML/JSON no-cache | aiPlat-management/frontend/proxy_server.py | ✅ | `index.html`/`*.json`/`非 hash 静态` no-store；hash 资源 immutable——预览少依赖强刷；生成物不适用（平台 FE 横切） | 已合入 |
+| 前端代理兼容路径改写 | `apply_path_rewrite`（`proxy_server.py` + vite `/api/governance/eval-observability`） | ✅ | Doctor：`/api/core/diagnostics/doctor`→mgmt；评测观测：`/api/governance/eval-observability`→platform `/governance/...`；生成物不适用（平台 FE 横切） | 已合入 |
+| SPA 陈旧 chunk 自动重载 | `proxy_server._serve_spa` 注入 `aiplat.chunk_reload` + `lazyWithRetry` | ✅ | 构建哈希失效时 session 内最多硬刷一次；生成物不适用（平台 FE 横切） | 已合入 |
 | Code 模式平台能力接线规约 | engine/skills/code_generation/SKILL.md | ✅ | 托管≠自动继承；强制经平台 API/hybrid；生成物适用：**已接线**（生成 SOP） | 已合入 |
 | 工厂媒体 Skill 名规范化 | factory_artifact_sanitize.normalize_media_skill_names + ensure_agent_app_skill_consistency + ensure_platform_media_skill_contracts + factory_fix_plan.apply_no_platform_handler_fixes + teams gates + agent_engineering 命名/契约约束 | ✅ | 别名提升 + 三一致 + **目录契约重写**（禁止 downloader 仅建任务、禁止 report 仅进度查询；强制 media_ref/segments/report/timeline；**task_id/duration/tenant 入口不可必填**；**丢弃虚构 task_lifecycle**；progress→report）；handler 补齐 segments/task_status；生成物适用：**已接线** | 已合入 |
 | 工厂 result_dashboard 报告 Skill 兜底 | factory_artifact_sanitize.ensure_result_dashboard_skill + agent_engineering + teams `ensure_result_dashboard_skill` | ✅ | 缺报告 Skill 时注入 `report_json_export` 并绑定 `ui_bindings.result_dashboard`；生成物适用：**已接线** | 已合入 |
@@ -2501,6 +2503,7 @@ scan_hash: 8f9548ec24f4
 ## 二十五、管理 & 质量
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| spa_chunk_reload_inject | `aiPlat-management/frontend/proxy_server.py` | ✅ | 自动同步 | 已合入 |
 | migrate_one | `scripts/migrate_factory_manifests.py` | ✅ | 自动同步 | 已合入 |
 | build_baseline | `scripts/factory_multi_agent_baseline.py` | ✅ | 自动同步 | 已合入 |
 | get_promotion_status | `aiPlat-platform/builder/builder_project_service.py` | ✅ | 自动同步 | 已合入 |
@@ -2822,7 +2825,7 @@ scan_hash: 8f9548ec24f4
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 133 | 0 | 133 |
-| Gate 系统 | 150 | 0 | 150 |
+| Gate 系统 | 152 | 0 | 152 |
 | 评估系统 | 18 | 0 | 18 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
@@ -2855,7 +2858,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1887** | **9** | **1896** |
+| **总计** | **1889** | **9** | **1898** |
 
 | **总计** | **1095** | **0** | **1095** |
 

@@ -44,8 +44,14 @@ _FALLBACK_PREFIXES: dict[str, list[str]] = {
 }
 
 # Stale SPA bundles called management Doctor with a core prefix (404 on 8002).
+# Governance panel calls /api/governance/* which must hit platform (not mgmt /api catch-all).
 _PATH_REWRITES: tuple[tuple[str, str, str], ...] = (
     ("/api/core/diagnostics/doctor", "/api/diagnostics/doctor", MGMT_URL),
+    (
+        "/api/governance/eval-observability",
+        "/governance/eval-observability",
+        PLATFORM_URL,
+    ),
 )
 
 
@@ -307,7 +313,20 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             with open(index_path, "rb") as f:
                 content = f.read()
             sw_unregister = b"<script>navigator.serviceWorker?.getRegistrations().then(r=>r.forEach(x=>x.unregister()))</script>"
-            content = content.replace(b"</head>", sw_unregister + b"</head>", 1)
+            # Belt-and-suspenders for stale hashed chunks after rebuild (lazyWithRetry covers React.lazy).
+            chunk_reload = (
+                b"<script>(function(){var k='aiplat.chunk_reload';"
+                b"function isChunk(m){return /Failed to fetch dynamically imported module|"
+                b"Loading chunk|Importing a module script failed/i.test(String(m||''));}"
+                b"function once(){try{if(sessionStorage.getItem(k)==='1')return;"
+                b"sessionStorage.setItem(k,'1');location.reload();}catch(e){}}"
+                b"window.addEventListener('unhandledrejection',function(e){"
+                b"var r=e&&e.reason;if(isChunk(r&&r.message||r))once();});"
+                b"window.addEventListener('error',function(e){if(isChunk(e&&e.message))once();},true);"
+                b"})();</script>"
+            )
+            inject = sw_unregister + chunk_reload
+            content = content.replace(b"</head>", inject + b"</head>", 1)
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(content)))

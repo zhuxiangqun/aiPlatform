@@ -36,6 +36,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (p) => p.replace('/api/core/diagnostics/doctor', '/api/diagnostics/doctor'),
       },
+      '/api/governance/eval-observability': {
+        target: 'http://localhost:8003',
+        changeOrigin: true,
+        rewrite: (p) =>
+          p.replace('/api/governance/eval-observability', '/governance/eval-observability'),
+      },
       '/api/core/diagnostics': {
         target: 'http://localhost:8002',
         changeOrigin: true,
