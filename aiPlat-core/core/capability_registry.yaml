@@ -8,9 +8,9 @@
 # Generator: generate_impact_matrix.py → docs/matrix/capability-impact-matrix.md
 
 version: "1.1.0"
-generated_at: "2026-08-16"
+generated_at: "2026-10-08"
 total_capability_domains: 34
-total_capabilities: 1276
+total_capabilities: 1041
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -19,7 +19,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 36
+    caps_count: 158
     provides:
       - symbol: "PipelineEngine"
       - symbol: get_pricing
@@ -562,7 +562,7 @@ domains:
   memory-subsystem:
     section: "二"
     section_name: "记忆子系统"
-    caps_count: 33
+    caps_count: 7
     provides:
       - symbol: "MemoryManager"
         type: "class"
@@ -611,7 +611,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 130
+    caps_count: 230
     provides:
       - symbol: normalize_tier
         type: function
@@ -1559,7 +1559,7 @@ domains:
   rag-retrieval:
     section: "四"
     section_name: "RAG 检索"
-    caps_count: 41
+    caps_count: 6
     provides:
       - symbol: "WikiPageRetriever"
         type: "class"
@@ -1602,7 +1602,7 @@ domains:
   knowledge-infrastructure:
     section: "四附"
     section_name: "知识基础设施"
-    caps_count: 29
+    caps_count: 4
     provides:
       - symbol: "KnowledgeSynthesizer"
         type: "class"
@@ -1635,7 +1635,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 29
+    caps_count: 150
     provides:
       - symbol: generate_agent_eval
         type: function
@@ -2253,7 +2253,7 @@ domains:
   skill-system:
     section: "六"
     section_name: "Skill 系统"
-    caps_count: 32
+    caps_count: 136
     provides:
       - symbol: "SkillRegistry"
         type: "class"
@@ -2847,7 +2847,7 @@ domains:
   security-and-governance:
     section: "七"
     section_name: "安全与治理"
-    caps_count: 39
+    caps_count: 8
     provides:
       - symbol: "coupling_metrics"
         type: "script"
@@ -2898,7 +2898,7 @@ domains:
   observability:
     section: "八"
     section_name: "可观测性"
-    caps_count: 30
+    caps_count: 21
     provides:
       - symbol: "get_observability_contract"
         type: "function"
@@ -2999,7 +2999,7 @@ domains:
   model-infrastructure:
     section: "九"
     section_name: "模型基础设施"
-    caps_count: 27
+    caps_count: 5
     provides:
       - symbol: "best_model_for_purpose"
         type: "function"
@@ -3040,7 +3040,7 @@ domains:
   deploy-and-operations:
     section: "十"
     section_name: "部署与运维"
-    caps_count: 21
+    caps_count: 3
     provides:
       - symbol: "CronScheduler"
         type: "class"
@@ -3067,7 +3067,7 @@ domains:
   extension-and-learning:
     section: "十一"
     section_name: "扩展与学习"
-    caps_count: 87
+    caps_count: 10
     provides:
       - symbol: "GoalGenerator"
         type: "class"
@@ -3128,7 +3128,7 @@ domains:
   gate-system:
     section: "十二"
     section_name: "Gate 系统"
-    caps_count: 19
+    caps_count: 133
     provides:
       - symbol: "ErrorTranslator"
         type: "class"
@@ -3677,7 +3677,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 13
+    caps_count: 5
     provides:
       - symbol: "eval_retrieval"
         type: "module"
@@ -3712,7 +3712,7 @@ domains:
   mcp-protocol:
     section: "十四"
     section_name: "MCP 协议"
-    caps_count: 6
+    caps_count: 3
     provides:
       - symbol: "MCPRuntime"
         type: "class"
@@ -3739,7 +3739,7 @@ domains:
   a2a-protocol:
     section: "十四附"
     section_name: "A2A 协议"
-    caps_count: 7
+    caps_count: 2
     provides:
       - symbol: "AgentDiscovery"
         type: "class"
@@ -3762,7 +3762,7 @@ domains:
   document-intelligence:
     section: "十五"
     section_name: "文档智能"
-    caps_count: 24
+    caps_count: 4
     provides:
       - symbol: "DocumentParser"
         type: "class"
@@ -3793,7 +3793,7 @@ domains:
   tool-ecosystem:
     section: "十六"
     section_name: "工具生态"
-    caps_count: 21
+    caps_count: 58
     provides:
       - symbol: "BaseTool"
         type: "class"
@@ -4040,7 +4040,7 @@ domains:
   fine-tuning-system:
     section: "十七"
     section_name: "微调系统"
-    caps_count: 12
+    caps_count: 2
     provides:
       - symbol: "LoRAAutoTrigger"
         type: "class"
@@ -4063,7 +4063,7 @@ domains:
   deploy-and-canary:
     section: "十八"
     section_name: "部署与灰度"
-    caps_count: 4
+    caps_count: 3
     provides:
       - symbol: "DeployEngine"
         type: "class"
@@ -4123,7 +4123,7 @@ domains:
   arena-and-scheduling:
     section: "二十"
     section_name: "Arena & 调度"
-    caps_count: 4
+    caps_count: 6
     provides:
       - symbol: "Swarm (Darwin Arena)"
         type: "pattern"
@@ -4164,7 +4164,7 @@ domains:
   platform-governance:
     section: "二十一"
     section_name: "平台治理"
-    caps_count: 74
+    caps_count: 6
     provides:
       - symbol: "GovernancePipeline"
         type: "class"
@@ -4205,7 +4205,7 @@ domains:
   infra-infrastructure:
     section: "二十二"
     section_name: "Infra 基础设施"
-    caps_count: 12
+    caps_count: 4
     provides:
       - symbol: "ModelManager"
         type: "class"
@@ -4240,7 +4240,7 @@ domains:
   core-api-unified-entry:
     section: "二十三"
     section_name: "核心API统一入口"
-    caps_count: 5
+    caps_count: 2
     provides:
       - symbol: "CoreFacade"
         type: "class"
@@ -4263,7 +4263,7 @@ domains:
   orchestration-system:
     section: "二十四"
     section_name: "编排系统"
-    caps_count: 8
+    caps_count: 6
     provides:
       - symbol: "IntentAnalyzer"
         type: "class"
@@ -4302,7 +4302,7 @@ domains:
   management-and-quality:
     section: "二十五"
     section_name: "管理 & 质量"
-    caps_count: 26
+    caps_count: 37
     provides:
       - symbol: "apply_path_rewrite"
         type: "function"
@@ -4465,7 +4465,7 @@ domains:
   orchestration-layer:
     section: "二十六"
     section_name: "编排层"
-    caps_count: 17
+    caps_count: 5
     provides:
       - symbol: "DynamicOrchestrator"
         type: "class"
@@ -4502,7 +4502,7 @@ domains:
   l6-autonomy:
     section: "二十七"
     section_name: "L6 自主能力"
-    caps_count: 8
+    caps_count: 5
     provides:
       - symbol: "AbstractGoalDecomposer"
         type: "class"
@@ -4543,7 +4543,7 @@ domains:
   memory-white-boxing:
     section: "二十八"
     section_name: "记忆系统白盒化"
-    caps_count: 7
+    caps_count: 5
     provides:
       - symbol: "LongTermMemoryMixin"
         type: "class"
