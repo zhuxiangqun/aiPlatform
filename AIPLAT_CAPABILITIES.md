@@ -1665,6 +1665,7 @@ scan_hash: 8f9548ec24f4
 | **Observability Contract** | `harness/observability/contract.py` + CoreFacade.get_observability_contract + diagnostics health | ✅ | 生产可观测契约：Prometheus + EventBus + run_graph + syscall_events；ELK 明确 out_of_contract | 已合入 |
 | **AgentEventIngress** | `harness/infrastructure/agent_event_ingress.py` + server lifespan | ✅ | 外部事件唤醒 Agent：文件 inbox + 可选 Kafka/Redis → run_workspace_agent（AIPLAT_AGENT_EVENT_INGRESS） | 已合入 |
 | **Stage Reflection** | `harness/execution/stage_reflection.py` → pipeline_engine._capture_stage_reflection | ✅ | Pipeline 阶段反思闭合：确定性 health/error/artifact → crystallize 自改进；可选 LLM（AIPLAT_STAGE_REFLECTION_LLM） | 已合入 |
+| enrich_reflection_with_llm | `core/harness/execution/stage_reflection.py` | ✅ | 可选 LLM 增强阶段反思（AIPLAT_STAGE_REFLECTION_LLM） | 已合入 |
 | **Production Exec/Sandbox Prefer Docker** | exec_drivers/registry.py + sandbox.create_sandbox | ✅ | AIPLAT_PROFILE=production / PREFER_DOCKER 时危险执行与 stage sandbox 优先 Docker | 已合入 |
 | **resolve_vector_backend** | infra_bridge.resolve_vector_backend | ✅ | 向量后端解析：env → production 默认 milvus → faiss | 已合入 |
 | **Production Depth Report** | `harness/observability/production_depth.py` + `diagnostics/checks/production_depth.py` + GET `/diagnostics/production-depth` + 前端 ProductionDepth | ✅ | 五处生产深度缺口聚合自检；一键诊断类别 production_depth；Doctor 摘要卡；ELK out_of_contract | 已合入 |
