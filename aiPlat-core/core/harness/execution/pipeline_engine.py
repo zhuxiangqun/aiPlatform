@@ -968,6 +968,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
                 messages = [{"role": "user", "content": llm_prompt}]
 
+            # bypass-ok: workflow_canvas_llm
             resp = await sys_llm_generate(
 
                 None,
@@ -1321,6 +1322,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
                         from core.harness.syscalls.llm import sys_llm_generate
                         _rerank_model = best_model_for_purpose("chat")
+                        # bypass-ok: workflow_kb_rerank
                         rerank_resp = await sys_llm_generate(
                             _rerank_model,
 
@@ -1770,6 +1772,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
             # Engine infra — progress + trace (shared with _run_stage_skill)
             _plan_model = best_model_for_purpose("chat")
+            # bypass-ok: workflow_plan_node
             resp = await sys_llm_generate(
 
                 None, [{"role": "user", "content": prompt}],
@@ -2881,7 +2884,16 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
     def _should_use_dynamic_routing(self, stages: List[PipelineStageConfig], session_id: str = "") -> bool:
 
-        """Check if any stage has routing_mode='llm' and grayscale allows it."""
+        """LLM supervisor only when explicitly opted in (W5 / architecture plan).
+
+        Requires ALL of:
+          1. some stage.routing_mode == "llm"
+          2. AIPLAT_DYNAMIC_ROUTER_ENABLED in {1,true,yes}  (default off)
+          3. grayscale AIPLAT_DYNAMIC_ROUTER_PERCENTAGE (default 0 = off)
+          4. stage count >= AIPLAT_DYNAMIC_ROUTER_MIN_STAGES (default 3)
+
+        Schema/seeds default routing_mode=static. Rollback: unset ENABLED or PERCENTAGE=0.
+        """
 
         has_llm_stage = any(getattr(s, "routing_mode", "static") == "llm" for s in stages)
 
@@ -2889,9 +2901,41 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
             return False
 
-        # Grayscale percentage — deterministic hash per session
+        enabled = os.getenv("AIPLAT_DYNAMIC_ROUTER_ENABLED", "0").lower() in ("1", "true", "yes", "y")
 
-        pct_str = os.getenv("AIPLAT_DYNAMIC_ROUTER_PERCENTAGE", "100")
+        if not enabled:
+
+            logging.getLogger(__name__).info(
+
+                "dynamic_router: routing_mode=llm present but AIPLAT_DYNAMIC_ROUTER_ENABLED off — static path"
+
+            )
+
+            return False
+
+        try:
+
+            min_stages = int(os.getenv("AIPLAT_DYNAMIC_ROUTER_MIN_STAGES", "3") or "3")
+
+        except ValueError:
+
+            min_stages = 3
+
+        if len(stages) < min_stages:
+
+            logging.getLogger(__name__).warning(
+
+                "dynamic_router: stage_count=%s < min_stages=%s — static path",
+
+                len(stages), min_stages,
+
+            )
+
+            return False
+
+        # Grayscale percentage — default 0 (opt-in); was 100 before W5
+
+        pct_str = os.getenv("AIPLAT_DYNAMIC_ROUTER_PERCENTAGE", "0")
 
         try:
 
@@ -2899,21 +2943,21 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
         except ValueError:
 
-            pct = 100
-
-        if pct >= 100:
-
-            return True
+            pct = 0
 
         if pct <= 0:
 
             return False
 
+        if pct >= 100:
+
+            return True
+
         # Deterministic per-session bucketing (same hash method as SkillRouter)
 
         if not session_id:
 
-            return True  # no session id available, default to on
+            return False  # no session → do not enable (safer than default-on)
 
         bucket = int(hashlib.md5(f"dynamic_router:{session_id}".encode()).hexdigest(), 16) % 100
 
@@ -4602,6 +4646,8 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         # ── 4. Execute: LLM or Agent (config-driven via execution_backend) ──
         from core.harness.syscalls.llm import sys_llm_generate
         from core.harness.utils.model_injection import best_model_for_purpose
+        from core.schemas_builder import apply_architecture_profile
+        apply_architecture_profile(stage)
         _purpose = getattr(stage, 'skill_model_purpose', '') or 'chat'
         _backend = getattr(stage, 'execution_backend', '') or 'llm'
 
@@ -4665,6 +4711,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
             if self._persist_callback:
                 self._persist_callback(dict(state))  # immediate: frontend sees "running"
             try:
+                # bypass-ok: execution_backend_llm
                 _response = await asyncio.wait_for(sys_llm_generate(
                     None,
                     [
@@ -8346,6 +8393,9 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
 
 
+    # A2 keep_capped: process-lifetime budget for harness self-heal LLM calls
+    _harness_heal_llm_used: int = 0
+
     @staticmethod
 
     async def _propose_harness_fix(
@@ -8359,6 +8409,21 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
     ) -> Optional[Dict[str, Any]]:
 
         u"""Stage 2: Generate a Harness modification proposal for a failure pattern."""
+
+        import os as _os_heal
+        _max = int(_os_heal.getenv("AIPLAT_HARNESS_HEAL_MAX_LLM", "3") or "3")
+        if PipelineEngine._harness_heal_llm_used >= _max:
+            logging.getLogger(__name__).warning(
+                "harness_self_heal LLM capped (%s/%s); skip proposal",
+                PipelineEngine._harness_heal_llm_used, _max,
+            )
+            return None
+        # re-entrancy guard — forbid recursive self-heal LLM
+        if getattr(PipelineEngine, "_harness_heal_llm_inflight", False):
+            logging.getLogger(__name__).warning("harness_self_heal re-entrancy blocked")
+            return None
+        PipelineEngine._harness_heal_llm_inflight = True
+        PipelineEngine._harness_heal_llm_used += 1
 
         from core.harness.syscalls.llm import sys_llm_generate
 
@@ -8383,6 +8448,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
         try:
             _hf_model = best_model_for_purpose("chat")
+            # bypass-ok: harness_self_heal
             resp = await sys_llm_generate(
 
                 None, [{"role": "user", "content": prompt}],
@@ -8417,6 +8483,9 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         except Exception as e:
 
             logging.warning(str(e), exc_info=True)
+
+        finally:
+            PipelineEngine._harness_heal_llm_inflight = False
 
         return None
 

@@ -10,7 +10,7 @@ import os
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ── Enums ──────────────────────────────────────────────────────────
@@ -216,6 +216,64 @@ class BuilderSessionCreateRequest(BaseModel):
 
 # ── Team Assembly schemas ─────────────────────────────────────────
 
+# Declarative execution mix (W2/B1). Tool/Memory/RAG stay cross-cutting; these
+# only set backend + loop shape. Unknown profile is ignored (compat).
+ARCHITECTURE_PROFILES: Dict[str, Dict[str, str]] = {
+    "oneshot": {"execution_backend": "llm", "agent_type": "react"},
+    "react_tools": {"execution_backend": "agent", "agent_type": "react"},
+    "plan_execute": {"execution_backend": "agent", "agent_type": "plan"},
+    "reflect_loop": {"execution_backend": "agent", "agent_type": "reflection"},
+}
+
+
+def apply_architecture_profile(stage: "PipelineStageConfig") -> "PipelineStageConfig":
+    """If architecture_profile is set, it wins over execution_backend/agent_type."""
+    raw = str(getattr(stage, "architecture_profile", "") or "").strip().lower()
+    spec = ARCHITECTURE_PROFILES.get(raw)
+    if spec:
+        stage.execution_backend = spec["execution_backend"]
+        stage.agent_type = spec["agent_type"]
+    pol = str(getattr(stage, "upgrade_policy", "") or "").strip().lower()
+    if not pol:
+        stage.upgrade_policy = "signals"
+    elif pol in ("none", "disabled", "false", "0"):
+        stage.upgrade_policy = "off"
+    elif pol not in ("off", "signals", "aggressive"):
+        stage.upgrade_policy = "signals"
+    return stage
+
+
+def resolve_upgrade_agent_type(
+    stage: "PipelineStageConfig",
+    state: Dict[str, Any],
+    *,
+    conversational: Any = None,
+    plan_upgrade: Any = None,
+) -> str:
+    """Signal-based react → plan/reflection; upgrade_policy=off skips."""
+    agent_type = str(getattr(stage, "agent_type", "") or "react")
+    policy = str(getattr(stage, "upgrade_policy", "") or "signals").strip().lower()
+    if policy in ("off", "none", "disabled"):
+        return agent_type
+    conv = conversational or frozenset(
+        {"conversational", "rag", "plan", "plan_execute", "reflection", "review", "materials_chat"}
+    )
+    pup = plan_upgrade or frozenset({"plan", "plan_execute", "reflection"})
+    if agent_type in conv or agent_type in pup:
+        return agent_type
+    is_retry = int(state.get("_auto_retry_count", 0) or 0) > 0 or int(state.get("iteration", 0) or 0) > 1
+    has_errors = bool(state.get("issues") or state.get("_quick_check_issues"))
+    large_th = 200 if policy == "aggressive" else 500
+    is_large = len(str(state.get("description", "") or "")) > large_th
+    if is_retry and (has_errors or policy == "aggressive"):
+        return "plan"
+    if is_large and int(state.get("iteration", 0) or 0) == 1:
+        return "plan"
+    if has_errors and not is_retry:
+        return "reflection"
+    return agent_type
+
+
 class PipelineStageConfig(BaseModel):
     model_config = {"extra": "ignore"}
     id: str
@@ -286,6 +344,11 @@ class PipelineStageConfig(BaseModel):
     architecture_mode: str = ""
     # Phase 12 — execution backend selection (replaces SOP detection / agent_type switching)
     execution_backend: str = "llm"       # "llm"=sys_llm_generate | "agent"=StageRunner.run()→ReActLoop
+    # W2/B1 — optional architecture mix. When set, overrides execution_backend + agent_type.
+    # oneshot | react_tools | plan_execute | reflect_loop | ""
+    architecture_profile: str = ""
+    # off = no runtime react→plan/reflection; signals = current default; aggressive = lower thresholds
+    upgrade_policy: str = "signals"
     # v3.0 — capability profile: replaces binary execution_backend switch with declarative capability tiers.
     # "auto" = engine auto-infers from stage declarations (recommended)
     # "minimal" | "standard" | "full" | "autonomous" = manual override
@@ -373,6 +436,10 @@ class PipelineStageConfig(BaseModel):
     # Phase B W3: factory contracted pipeline — disable DynamicOrchestrator free spawn
     allow_dynamic_spawn: bool = True
     """False = StageRunner skips sense_gap/spawn; factory stages force False via factory_profile."""
+
+    @model_validator(mode="after")
+    def _apply_architecture_profile(self) -> "PipelineStageConfig":
+        return apply_architecture_profile(self)
 
 
 class PipelineConfig(BaseModel):

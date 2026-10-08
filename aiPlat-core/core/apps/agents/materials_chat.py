@@ -827,7 +827,7 @@ class MaterialsChatAgent(BaseAgent):
                             success=True,
                             output={"answer": answer, "citations": citations, "items": [],
                                     "scope_applied": scope, "strategy": "direct_retrieve",
-                                    "skills_used": ["sys_kb_retrieve"], "turn_summary": _build_turn_summary(question, answer),
+                                    "skills_used": ["sys_crag_retrieve"], "turn_summary": _build_turn_summary(question, answer),
                                     "intent": intent, "mode": "", "analysis": analysis,
                                     "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
                                     "reasoning_path": reasoning_path,

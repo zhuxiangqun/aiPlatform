@@ -261,7 +261,9 @@ async def sys_crag_retrieve(
 
                 for r in results:
 
-                    ref = f"[doc:{r['doc_id'][:8]}]"
+                    did = str(r.get("doc_id") or "")
+
+                    ref = f"[doc:{did[:8]}]" if did else "[doc:?]"
 
                     if r.get("start_s") is not None:
 
@@ -271,7 +273,17 @@ async def sys_crag_retrieve(
 
                         ref += f" [p{r['page_idx']}]"
 
-                    citations.append({"source": ref, "text": r["text"][:200]})
+                    # W4: rich citations for platform Q&A (page_idx / doc_id preserved)
+                    citations.append({
+                        "source": ref,
+                        "text": (r.get("text") or "")[:2000],
+                        "doc_id": did,
+                        "page_idx": r.get("page_idx"),
+                        "start_s": r.get("start_s"),
+                        "end_s": r.get("end_s"),
+                        "type": r.get("type"),
+                        "cells": r.get("cells"),
+                    })
 
         except Exception as e:
 

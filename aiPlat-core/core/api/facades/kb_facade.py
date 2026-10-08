@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import logging
 
@@ -11,23 +11,54 @@ import logging
 
 def kb_retrieve(query: str, doc_ids: Any, tenant_id: Optional[str] = None, **kwargs: Any) -> Any:
 
-    """Retrieve relevant KB document content through the syscall boundary.
+    """Low-level KB chunk retrieve (sys_kb_retrieve).
 
-    
+    For user-facing Q&A prefer ``kb_qa_retrieve`` (CRAG + GraphRAG L0).
+    This remains the Level-2 building block inside ``sys_crag_retrieve``.
 
     Args:
-
-        tenant_id: Required for multi-tenant data isolation (§5.62). 
-
-                   If not provided, the syscall boundary will enforce tenant isolation
-
-                   based on the current execution context.
-
+        tenant_id: Required for multi-tenant data isolation (§5.62).
     """
 
     from core.harness.syscalls.retrieval import sys_kb_retrieve
 
     return sys_kb_retrieve(query, doc_ids, **kwargs)
+
+
+
+
+
+async def kb_qa_retrieve(
+    query: str,
+    *,
+    doc_ids: Any = None,
+    tenant_id: Optional[str] = None,
+    collection_id: str = "default",
+    domain_id: Optional[str] = None,
+    top_k: int = 8,
+    enable_hyde: bool = True,
+    **kwargs: Any,
+) -> Tuple[str, List[Dict[str, Any]]]:
+    """Canonical user-facing KB Q&A retrieval (W4).
+
+    Routes through ``sys_crag_retrieve`` (GraphRAG L0 when domain_id set →
+    ontology → FTS via kb_retrieve → HyDE). Do not open a parallel user API
+    for GraphRAG — it is an internal CRAG branch.
+    """
+    from core.harness.syscalls.retrieval_crag import sys_crag_retrieve
+
+    return await sys_crag_retrieve(
+        query,
+        domain_id=domain_id,
+        collection_id=collection_id or "default",
+        tenant_id=tenant_id or "system",
+        doc_ids=doc_ids,
+        top_k=int(top_k or 8),
+        enable_hyde=enable_hyde,
+        **{k: v for k, v in kwargs.items() if k in (
+            "ontology_class_uri", "enable_deep_research", "time_filters", "run_id",
+        )},
+    )
 
 
 

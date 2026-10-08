@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1902
+total_capabilities: 1908
 last_updated: 2026-10-07
 version: "30.5"
 auto_sync: true
@@ -588,6 +588,7 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| resolve_upgrade_agent_type | `core/schemas_builder.py` | ✅ | 自动同步 | 已合入 |
 | build_stage_reflection | `core/harness/execution/stage_reflection.py` | ✅ | 自动同步 | 已合入 |
 | skill_descriptor_from_md_path | `core/harness/execution/skill_side_effect_gate.py` | ✅ | 自动同步 | 已合入 |
 | is_mutating_effect | `core/harness/execution/skill_side_effect_gate.py` | ✅ | 自动同步 | 已合入 |
@@ -1094,6 +1095,10 @@ scan_hash: 8f9548ec24f4
 | 经验回写 L2 链路（experience_feedback） | governance/experience_feedback/experience_feedback.py（ExperienceStore/register_failure/record_verification/confirm_promotion）+ builder/generated_conformance.py（record_rejection 生成物侧接线） | ✅ | gotchas 登记→两次独立验证→升级状态机（HarnessEval × SBA §5.5）：confidence<0.7 拒收、同 case 重复不计数、连续 2 次失败判 rejected、低风险自动 promoted/高风险 require_review 人工确认、升级只生成规则草案不改写 SKILL.md；architecture_guard 失败自动登记接线；生成物侧接线：conformance 拒绝自动登记（generated-conformance-reject-*，confidence=1.0 机器判定）+ 注册成功预置 runtime_governance.md 治理入口 sidecar；AIPLAT_EXPERIENCE_FILE 配置存储；生成物适用：**已接线**（生成 agent 失败经验回写） | 已合入 |
 | 评测观测聚合（eval-observability） | governance/eval_observability.py（aggregate）+ api/rest/routes.py 端点 GET /governance/eval-observability（governance_eval_observability）+ Governance 面板"评测观测"区块 | ✅ | 聚合证据树/守卫路由 trace/经验状态三产物为统一视图（HarnessEval 诊断面板数据源）：sources 存在性、evidence_tree verdict+known_gaps+cross_check_issues、guard_trace verdict+skipped_checks+failed_guards、experiences by_status；前端 Governance/index.tsx 消费展示；生成物不适用（理由：平台评测产物只读聚合视图，供 Governance 面板消费） | 已合入 |
 | 生成物适用性守卫 | scripts/check_generated_artifact_wiring.py（discover_families/check）+ architecture_guard.sh §97 | ✅ | 每个平台能力族（governance 模块 + apps/* + builder + kb，17 个）必须：① CAPABILITIES 有条目（含能力族路径）② 条目含"生成物"适用性评估声明（适用+接线状态 / 不适用+理由）——CLAUDE.md §23 强制规则；防平台-产物脱节 | 已合入 |
+| pipeline LLM 旁路台账守卫 | scripts/check_pipeline_llm_bypass.py + baselines/pipeline_llm_bypass_allowlist.yaml + architecture_guard.sh §91 | ✅ | pipeline_engine 内每处 sys_llm_generate 须 `# bypass-ok:<id>` 且登记 allowlist（keep/keep_capped/migrate）；新增未登记即阻断；生成物不适用（引擎横切） | 已合入 |
+| DynamicRouter 显式 opt-in | pipeline_engine._should_use_dynamic_routing + check_team_routing_mode.py + §91b | ✅ | LLM supervisor 须 ENABLED+PERCENTAGE+MIN_STAGES；种子默认 static；非 static 需 `# routing-ok`；生成物不适用（引擎横切） | 已合入 |
+| kb_qa_retrieve（CRAG 问答入口） | kb_facade.kb_qa_retrieve + core_facade + check_retrieval_entrypoints.py §91c | ✅ | 用户侧问答统一走 sys_crag_retrieve（GraphRAG=L0）；platform slack/intelligence + kb_planner 已收敛；裸 kb_retrieve 仅作 CRAG L2；生成物不适用（平台横切检索） | 已合入 |
+| 架构健康看板（W6） | architecture_health.py + production_depth 分区 + CoreFacade.get_architecture_health_report + 生产深度页 | ✅ | Policy fail_mode / security_degraded / LLM 旁路 / plan_execute 试点 / DynamicRouter / CRAG 入口 / Autonomous 默认关 / Multi-Agent 默认 single；诊断页分区展示；生成物不适用（平台横切治理） | 已合入 |
 | 后台任务托管（daemon jobs） | governance/daemon_jobs.py（DaemonJobStore/start/list/status/attach/kill）+ api/rest/routes.py 端点 /governance/jobs*（governance_jobs_list/governance_jobs_start/governance_job_status/governance_job_output/governance_job_kill）+ builder/builder_project_service.py（runtime_governance.md sidecar 预置 CLI 入口）+ builder/app_runtime.py（launch/stop 生成 app 托管启动） | ✅ | prime-agent 断线续跑借鉴：长任务以新会话组后台运行（终端关闭不终止）、输出重定向文件、JSON 注册表（AIPLAT_DAEMON_JOBS_FILE）、状态含退出码（ps stat 僵尸判定 + 输出尾部 [daemon] exit= 标记）、kill 连同会话组；CLI --start/--status/--attach/--kill；生成物适用：**已接线**（生成 app 运行时经 daemon_jobs 托管启动——builder/app_runtime.py detect→launch→health，生成 app 长任务托管 + 自动测试前置闭环） | 已合入 |
 
 | apps/fde 生成物适用性 | apps/fde | ⚠️ | 生成物不适用（理由：企业业务诊断→交付闭环，非生成应用运行时能力） | 已评估 |
@@ -1600,6 +1605,7 @@ scan_hash: 8f9548ec24f4
 ## 七、安全与治理
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| build_architecture_health_report | `core/harness/observability/architecture_health.py` | ✅ | 自动同步 | 已合入 |
 | truncate_repetition | `core/harness/utils/repetition_guard.py` | ✅ | 自动同步 | 已合入 |
 | arch_guard_b84 | `scripts/architecture_guard.sh` | ✅ | 自动同步 | 已合入 |
 | PromptAuditRules | `core/harness/audit/prompt_audit_rules.py` | ✅ | 提示词审计规则 | 已合入 |
@@ -1633,6 +1639,8 @@ scan_hash: 8f9548ec24f4
 | Credentials | `aiPlat-management/frontend/src/pages/Core/Credentials/Credentials.tsx` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | PolicyGate | harness/infrastructure/gates/policy_gate.py | ✅ | 统一权限检查 + 架构边界实时拦截 | 已合入 |
+| resolve_policy_fail_mode | harness/infrastructure/gates/policy_gate.py | ✅ | 权限 infra 降级策略 open/ask/closed（默认 open；生产 ask 灰度；CRITICAL_MODE 可 closed；非关键固定 open+审计） | 已合入 |
+| apply_architecture_profile | core/schemas_builder.py | ✅ | 阶段 architecture_profile（oneshot/react_tools/plan_execute/reflect_loop）覆盖 backend+agent_type；upgrade_policy=off\|signals\|aggressive；code_split 后端编码试点 plan_execute；生成物适用（team YAML） | 已合入 |
 | ApprovalGate | harness/infrastructure/approval/manager.py | ✅ | approve/deny/pending，双门禁 | 已合入 |
 | Prompt 注入防护 | harness/syscalls/llm.py:125 | ✅ | 6条正则+特殊token过滤+覆盖防护指令 | 已合入 |
 | 记忆投毒防御 | harness/memory/base.py:39 | ✅ | source_tag/trust_weight/provenance | 已合入 |
@@ -2818,12 +2826,12 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 166 | 1 | 167 |
 | 记忆子系统 | 41 | 0 | 41 |
-| 知识引擎（本体） | 354 | 9 | 363 |
+| 知识引擎（本体） | 358 | 9 | 367 |
 | RAG 检索 | 51 | 0 | 51 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 165 | 0 | 165 |
 | Skill 系统 | 145 | 0 | 145 |
-| 安全与治理 | 61 | 0 | 61 |
+| 安全与治理 | 63 | 0 | 63 |
 | 可观测性 | 42 | 0 | 42 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
@@ -2861,7 +2869,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1892** | **10** | **1902** |
+| **总计** | **1898** | **10** | **1908** |
 
 | **总计** | **1095** | **0** | **1095** |
 

@@ -17,7 +17,7 @@ import re
 import time
 from typing import Any, Dict, List, Optional
 
-from core.schemas_builder import PipelineStageConfig
+from core.schemas_builder import PipelineStageConfig, resolve_upgrade_agent_type
 
 
 class PipelineStageMixin:
@@ -418,7 +418,10 @@ class PipelineStageMixin:
         if profile in ("minimal", "standard"):
             if getattr(stage, 'execution_backend', 'llm') == "agent":
                 if not tools and not skills:
-                    stage.execution_backend = "llm"
+                    # architecture_profile (plan_execute/react_tools/…) is an explicit
+                    # agent-loop request — do not silently downgrade to oneshot LLM.
+                    if not str(getattr(stage, "architecture_profile", "") or "").strip():
+                        stage.execution_backend = "llm"
 
         # ── v5.0: Runtime profile calibration ──
         _cal = await self._calibrate_profile_from_history(stage, state)
@@ -631,7 +634,8 @@ class PipelineStageMixin:
 
         1. Sandbox (stage.sandbox=True) — isolated subprocess
 
-        2. Dynamic upgrade from react → plan/reflection based on signals:
+        2. Dynamic upgrade from react → plan/reflection based on signals
+           (skipped when stage.upgrade_policy=off):
 
            - retry + errors → plan (structured repair)
 
@@ -847,29 +851,15 @@ class PipelineStageMixin:
 
         # ── Route: dynamic mode upgrade for ReAct agents under conditions ──
 
-        agent_type = getattr(stage, 'agent_type', '') or 'react'
-
-        is_react_like = agent_type not in self._CONVERSATIONAL_AGENT_TYPES and agent_type not in self._PLAN_UPGRADE_TYPES
-
-        if is_react_like:
-
-            is_retry = state.get("_auto_retry_count", 0) > 0 or state.get("iteration", 0) > 1
-
-            has_errors = bool(state.get("issues") or state.get("_quick_check_issues"))
-
-            is_large = len(str(state.get("description", ""))) > 500
-
-            if is_retry and has_errors:
-
-                agent_type = 'plan'  # Retrying with errors → structured approach
-
-            elif is_large and state.get("iteration", 0) == 1:
-
-                agent_type = 'plan'  # Complex first-run → plan before execute
-
-            elif has_errors and not is_retry:
-
-                agent_type = 'reflection'  # Errors from upstream → verify before proceed
+        agent_type = resolve_upgrade_agent_type(
+            stage,
+            state,
+            conversational=self._CONVERSATIONAL_AGENT_TYPES,
+            plan_upgrade=self._PLAN_UPGRADE_TYPES,
+        )
+        state["_architecture_profile"] = str(getattr(stage, "architecture_profile", "") or "")
+        state["_upgrade_policy"] = str(getattr(stage, "upgrade_policy", "") or "signals")
+        state["_agent_type_effective"] = agent_type
 
 
 

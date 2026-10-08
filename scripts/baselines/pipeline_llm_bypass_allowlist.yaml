@@ -1,0 +1,36 @@
+# pipeline_engine.py 内 sys_llm_generate 旁路台账（A2 / CLAUDE.md §8b）
+# disposition:
+#   keep          — 合法例外（节点/配置路径本身就是 LLM）
+#   keep_capped   — 合法但须封顶（自愈等），后续加 max_calls
+#   migrate       — 应迁出引擎（检索重排等），暂登记防继续增殖
+#
+# 新增调用必须：1) 本文件登记  2) 调用点上一行写 # bypass-ok: <id>
+# 验证：python3 scripts/check_pipeline_llm_bypass.py --ci
+
+version: 1
+file: aiPlat-core/core/harness/execution/pipeline_engine.py
+entries:
+  - id: workflow_canvas_llm
+    method: _run_stage_core
+    disposition: keep
+    reason: "workflow canvas node_type=llm — 节点语义即直调 LLM"
+
+  - id: workflow_kb_rerank
+    method: _run_stage_core
+    disposition: migrate
+    reason: "knowledge 节点可选 LLM rerank；应迁 CRAG/InfraReranker，禁止在引擎拼 prompt"
+
+  - id: workflow_plan_node
+    method: _run_stage_core
+    disposition: keep
+    reason: "workflow canvas node_type=plan — Planner 节点直出任务分解"
+
+  - id: execution_backend_llm
+    method: _run_stage_skill
+    disposition: keep
+    reason: "execution_backend=llm 配置路径（§5.4.1）；agent 路径走 StageRunner"
+
+  - id: harness_self_heal
+    method: _propose_harness_fix
+    disposition: keep_capped
+    reason: "Harness 自愈提案；AIPLAT_HARNESS_HEAL_MAX_LLM 默认 3 + re-entrancy 守卫；禁止递归自愈"

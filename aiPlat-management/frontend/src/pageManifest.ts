@@ -283,5 +283,5 @@ export const PAGE_PURPOSE: Record<string, string> = {
   '/workspace/mcp': 'MCP 接入：外部工具服务',
   '/infra/models': '模型目录与选模（purpose → unified_pipeline）',
   '/diagnostics/doctor': '一键诊断与运行时健康',
-  '/diagnostics/production-depth': 'Agent 生产深度（反思/沙箱/事件/向量/观测契约）',
+  '/diagnostics/production-depth': '生产深度+架构健康（反思/Docker/事件/向量/契约 + Policy/旁路/plan_execute/Router/CRAG/Autonomous）',
 };

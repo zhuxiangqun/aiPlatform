@@ -1198,9 +1198,15 @@ def run_plugin_action(plugin_id: str, action: str, params: Optional[Dict[str, An
 # ── KB Facade ──
 
 def kb_retrieve(query: str, doc_ids: Any, **kwargs: Any) -> Any:
-    """Retrieve relevant KB document content through the syscall boundary."""
+    """Low-level KB chunk retrieve. Prefer kb_qa_retrieve for user-facing Q&A (W4)."""
     from core.harness.syscalls.retrieval import sys_kb_retrieve
     return sys_kb_retrieve(query, doc_ids, **kwargs)
+
+
+async def kb_qa_retrieve(query: str, **kwargs: Any) -> Any:
+    """Canonical KB Q&A retrieval via CRAG (sys_crag_retrieve). GraphRAG is L0 inside CRAG."""
+    from core.api.facades.kb_facade import kb_qa_retrieve as _impl
+    return await _impl(query, **kwargs)
 
 
 def wiki_retrieve(query: str, wiki_titles: list = None, **kwargs: Any) -> Any:
@@ -5397,6 +5403,12 @@ def get_production_depth_report() -> dict:
     """Agent OS production-depth readiness report for diagnostics UI."""
     from core.harness.observability.production_depth import build_production_depth_report
     return build_production_depth_report()
+
+
+def get_architecture_health_report() -> dict:
+    """W6: Agent architecture health (policy/bypass/plan_execute/router/CRAG/autonomy)."""
+    from core.harness.observability.architecture_health import build_architecture_health_report
+    return build_architecture_health_report()
 
 
 def agent_event_ingress_status() -> dict:

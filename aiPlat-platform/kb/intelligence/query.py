@@ -98,18 +98,34 @@ async def query_elements(
             logger.warning("Video window retrieval failed for doc_id=%s", doc_id, exc_info=True)
             picked = []
 
-    from core.api.facades.kb_facade import kb_retrieve
-    import json as _json
+    from core.api.facades.kb_facade import kb_qa_retrieve
 
     picked: List[Dict[str, Any]] = []
     try:
-        kb_results = kb_retrieve(query=question, doc_ids=doc_ids or [], tenant_id=tenant_id, collection_id=collection_id, top_k=max(8, int(top_k) * 2))
-        for r in kb_results:
-            r["_doc_kind"] = doc_kind
+        # W4: user Q&A → CRAG (GraphRAG is L0 inside when domain_id set)
+        _text, citations = await kb_qa_retrieve(
+            question,
+            doc_ids=doc_ids or [],
+            tenant_id=tenant_id,
+            collection_id=collection_id,
+            top_k=max(8, int(top_k) * 2),
+        )
+        kb_results: List[Dict[str, Any]] = []
+        for c in citations or []:
+            if not isinstance(c, dict):
+                continue
+            row = dict(c)
+            row.setdefault("text", c.get("text") or "")
+            row["_doc_kind"] = doc_kind
+            if not row.get("doc_id") and isinstance(c.get("source"), str) and c["source"].startswith("[doc:"):
+                row["doc_id"] = c["source"][5:13]
+            kb_results.append(row)
+        if not kb_results and _text:
+            kb_results = [{"text": _text, "doc_id": doc_id or "", "_doc_kind": doc_kind}]
         picked = kb_results[: max(1, int(top_k))]
-        retrieval_mode = "hybrid_unified"
+        retrieval_mode = "crag_unified"
     except Exception:
-        logger.warning("KB retrieval failed for query", exc_info=True)
+        logger.warning("KB CRAG retrieval failed for query", exc_info=True)
         picked = []
 
     # Map page_idx -> asset_path if possible (page_image first, then frame_image for videos)

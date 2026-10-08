@@ -8,7 +8,9 @@
 #
 # -- Engine-internal keys (OK: prefixed with _) --
 _agent_id|OK|engine-internal
+_agent_type_effective|OK|architecture_profile effective agent_type (B1)
 _approval_request_id|OK|engine-internal
+_architecture_profile|OK|architecture_profile telemetry (B1)
 _auto_approve|OK|engine-internal
 _auto_retry_count|OK|engine-internal
 _baseline_test_report|OK|engine-internal
@@ -85,6 +87,7 @@ _test_pass_rate|OK|engine-internal
 _test_rejected|OK|engine-internal
 _tokens_bonus|OK|engine-internal
 _trace_id|OK|engine-internal
+_upgrade_policy|OK|upgrade_policy telemetry (B1)
 _wake_recovered|OK|engine-internal
 _wake_recovered_from|OK|engine-internal
 _agent_pause|OK|engine-internal

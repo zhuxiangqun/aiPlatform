@@ -92,6 +92,16 @@ def test_build_production_depth_report_shape():
         "vector_backend",
         "observability_contract",
     } <= ids
+    # W6 architecture health folded into the same report
+    assert {
+        "policy_fail_mode",
+        "llm_bypass_allowlist",
+        "architecture_profile_pilot",
+        "dynamic_router_opt_in",
+        "retrieval_crag_entry",
+        "autonomous_default_off",
+    } <= ids
+    assert report.get("architecture_health") is not None
     # reflection wiring must be closed
     ref = next(c for c in report["checks"] if c["id"] == "stage_reflection")
     assert ref["status"] == "pass"

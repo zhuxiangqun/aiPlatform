@@ -17,15 +17,17 @@ Architecture:
   - Feature-flagged via routing_mode field (default "static", backward compatible)
   - Supervisor model: resolved via ModelManager (purpose=chat) or stage.model
 
-Grayscale Deployment:
-  1. Select one low-risk pipeline (e.g., internal doc search, non-production)
-  2. Set routing_mode="llm" on that pipeline's PipelineStageConfig
-  3. Monitor supervisor decisions via state["_dynamic_trace"] for 1 week
-  4. If supervisor routing accuracy > 80% (via human review of traces),
-     expand to 3 more pipelines
-  5. If accuracy drops or cost spikes (>2x baseline), set back to "static"
+Grayscale Deployment (W5 — opt-in; default OFF):
+  1. Select one low-risk pipeline with stage_count >= MIN_STAGES (default 3)
+  2. Set routing_mode="llm" on PipelineStageConfig (+ seed `# routing-ok:` if in YAML)
+  3. export AIPLAT_DYNAMIC_ROUTER_ENABLED=1
+  4. export AIPLAT_DYNAMIC_ROUTER_PERCENTAGE=10  # then ramp; default 0 = off
+  5. Monitor state["_dynamic_trace"]; rollback: unset ENABLED or PERCENTAGE=0
 
 Safety defaults:
+  - AIPLAT_DYNAMIC_ROUTER_ENABLED default off
+  - AIPLAT_DYNAMIC_ROUTER_PERCENTAGE default 0
+  - AIPLAT_DYNAMIC_ROUTER_MIN_STAGES default 3
   - max_steps=15 (hard cap, not LLM-modifiable)
   - Supervisor temperature=0.2 (deterministic routing)
   - Non-blocking: router failures fall back to static dependency_layers

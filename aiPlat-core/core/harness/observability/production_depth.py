@@ -132,6 +132,24 @@ def build_production_depth_report() -> Dict[str, Any]:
         "contract": contract,
     })
 
+    # 6) W6 — Agent architecture health (policy / bypass / plan_execute / router / CRAG / autonomy)
+    arch_report: Dict[str, Any] = {}
+    try:
+        from core.harness.observability.architecture_health import build_architecture_health_report
+
+        arch_report = build_architecture_health_report()
+        for row in arch_report.get("checks") or []:
+            if isinstance(row, dict) and row.get("id"):
+                checks.append(row)
+    except Exception as e:
+        checks.append({
+            "id": "architecture_health",
+            "title": "架构健康 · 聚合失败",
+            "status": "fail",
+            "detail": f"{type(e).__name__}: {e}",
+            "hint": "core.harness.observability.architecture_health",
+        })
+
     passed = sum(1 for c in checks if c["status"] == "pass")
     warned = sum(1 for c in checks if c["status"] == "warn")
     failed = sum(1 for c in checks if c["status"] == "fail")
@@ -143,4 +161,5 @@ def build_production_depth_report() -> Dict[str, Any]:
         "profile": profile or "(unset)",
         "summary": {"pass": passed, "warn": warned, "fail": failed, "total": len(checks)},
         "checks": checks,
+        "architecture_health": arch_report or None,
     }

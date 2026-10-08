@@ -56,7 +56,10 @@ stages:
     order: 4
     output_artifact: backend_code
     skill_name: code_generation
-    execution_backend: llm
+    # B1 试点：多文件后端编码走 Plan-and-Execute，不升 Multi-Agent。
+    # architecture_profile 覆盖 execution_backend/agent_type；upgrade_policy 保持 signals。
+    architecture_profile: plan_execute
+    upgrade_policy: signals
     input_artifacts: [prd, architecture, project_scaffold]
     depends_on: [scaffold_agent]
     uses_file_output: true

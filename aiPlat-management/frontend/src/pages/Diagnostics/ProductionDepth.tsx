@@ -11,7 +11,13 @@ const ENV_SNIPPET = `export AIPLAT_PROFILE=production
 export AIPLAT_EXEC_PREFER_DOCKER=true
 export AIPLAT_SANDBOX_PREFER_DOCKER=true
 export AIPLAT_VECTOR_BACKEND=milvus
-export AIPLAT_AGENT_EVENT_INGRESS=true`;
+export AIPLAT_AGENT_EVENT_INGRESS=true
+# 架构健康（W6）— 生产护栏
+export AIPLAT_POLICY_FAIL_MODE=ask
+# export AIPLAT_POLICY_FAIL_CRITICAL_MODE=closed
+# DynamicRouter 默认关；开启时：
+# export AIPLAT_DYNAMIC_ROUTER_ENABLED=1
+# export AIPLAT_DYNAMIC_ROUTER_PERCENTAGE=10`;
 
 type ContractStackItem = {
   component?: string;
@@ -110,14 +116,28 @@ const ProductionDepth: React.FC = () => {
     load();
   }, []);
 
+  const ARCH_HEALTH_IDS = new Set([
+    'policy_fail_mode',
+    'policy_degraded_count',
+    'llm_bypass_allowlist',
+    'architecture_profile_pilot',
+    'dynamic_router_opt_in',
+    'retrieval_crag_entry',
+    'autonomous_default_off',
+    'multi_agent_default_single',
+    'architecture_health',
+  ]);
   const checks: CheckRow[] = Array.isArray(data?.checks) ? data.checks : [];
+  const depthChecks = checks.filter((c) => !ARCH_HEALTH_IDS.has(c.id) && !String(c.title || '').startsWith('架构健康'));
+  const archChecks = checks.filter((c) => ARCH_HEALTH_IDS.has(c.id) || String(c.title || '').startsWith('架构健康'));
+  const archSummary = data?.architecture_health?.summary || {};
   const summary = data?.summary || {};
   const overall = String(data?.status || '-');
 
   useEffect(() => {
     reportPageData('/diagnostics/production-depth', {
       pageTitle: '生产深度',
-      purpose: 'Agent OS 五处生产深度缺口自检：反思/Docker/事件/向量/可观测契约',
+      purpose: '生产深度+架构健康自检：反思/Docker/事件/向量/契约 + Policy/旁路/plan_execute/Router/CRAG/Autonomous',
       itemNames: checks.map((c) => `${c.id}:${c.status}`).join(', '),
       actions: '刷新',
     });
@@ -133,7 +153,7 @@ const ProductionDepth: React.FC = () => {
             生产深度
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            对照企业级 Agent 缺口：阶段反思、Docker 隔离、事件唤醒、向量后端、可观测契约
+            生产深度 + 架构健康：反思/Docker/事件/向量/契约，以及 Policy/旁路/plan_execute/Router/CRAG/Autonomous
           </p>
         </div>
         <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={load} loading={loading}>
@@ -186,67 +206,94 @@ const ProductionDepth: React.FC = () => {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="text-sm font-semibold text-gray-200">检查项</div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {checks.length === 0 && (
-            <div className="text-sm text-gray-500">{loading ? '加载中…' : '暂无数据'}</div>
-          )}
-          {checks.map((c) => {
-            const stack = Array.isArray(c.contract?.stack) ? c.contract!.stack! : [];
-            const showHint = Boolean(c.hint) && (c.status !== 'pass' || c.id === 'observability_contract');
-            return (
-              <div
-                key={c.id}
-                className="rounded-lg border border-gray-800 bg-gray-900/40 px-3 py-3 space-y-1"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-sm text-gray-200 font-medium">
-                    {statusIcon(c.status)}
-                    {c.title}
-                  </div>
-                  {statusBadge(c.status)}
+      {(() => {
+        const renderCheck = (c: CheckRow) => {
+          const stack = Array.isArray(c.contract?.stack) ? c.contract!.stack! : [];
+          const showHint = Boolean(c.hint) && (c.status !== 'pass' || c.id === 'observability_contract');
+          return (
+            <div
+              key={c.id}
+              className="rounded-lg border border-gray-800 bg-gray-900/40 px-3 py-3 space-y-1"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-sm text-gray-200 font-medium">
+                  {statusIcon(c.status)}
+                  {c.title}
                 </div>
-                {c.detail ? (
-                  <div className="text-xs text-gray-500 break-all font-mono">{c.detail}</div>
-                ) : null}
-                {showHint ? (
-                  <div className="text-xs text-sky-400/90">
-                    {c.status === 'pass' ? '说明：' : '建议：'}
-                    {c.hint}
-                  </div>
-                ) : null}
-                {c.id === 'observability_contract' && stack.length > 0 ? (
-                  <div className="mt-2 space-y-1.5 border-t border-gray-800 pt-2">
-                    <div className="text-[11px] text-gray-500">
-                      契约栈 v{c.contract?.version || '-'} · healthy=
-                      {String(c.contract?.healthy ?? '-')}
-                    </div>
-                    {stack.map((row) => (
-                      <div
-                        key={String(row.component)}
-                        className="flex flex-wrap items-center gap-2 text-xs text-gray-400"
-                      >
-                        {contractStatusBadge(String(row.status || ''))}
-                        <span className="text-gray-200 font-mono">{row.component}</span>
-                        <span className="text-gray-600">·</span>
-                        <span>{row.role}</span>
-                        {row.status === 'out_of_contract' ? (
-                          <span className="text-gray-500">
-                            （可选外部接入，非平台必交付）
-                          </span>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
+                {statusBadge(c.status)}
               </div>
-            );
-          })}
-        </CardContent>
-      </Card>
+              {c.detail ? (
+                <div className="text-xs text-gray-500 break-all font-mono">{c.detail}</div>
+              ) : null}
+              {showHint ? (
+                <div className="text-xs text-sky-400/90">
+                  {c.status === 'pass' ? '说明：' : '建议：'}
+                  {c.hint}
+                </div>
+              ) : null}
+              {c.id === 'observability_contract' && stack.length > 0 ? (
+                <div className="mt-2 space-y-1.5 border-t border-gray-800 pt-2">
+                  <div className="text-[11px] text-gray-500">
+                    契约栈 v{c.contract?.version || '-'} · healthy=
+                    {String(c.contract?.healthy ?? '-')}
+                  </div>
+                  {stack.map((row) => (
+                    <div
+                      key={String(row.component)}
+                      className="flex flex-wrap items-center gap-2 text-xs text-gray-400"
+                    >
+                      {contractStatusBadge(String(row.status || ''))}
+                      <span className="text-gray-200 font-mono">{row.component}</span>
+                      <span className="text-gray-600">·</span>
+                      <span>{row.role}</span>
+                      {row.status === 'out_of_contract' ? (
+                        <span className="text-gray-500">
+                          （可选外部接入，非平台必交付）
+                        </span>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          );
+        };
+        return (
+          <>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-semibold text-gray-200">架构健康（W6）</div>
+                  <div className="text-xs text-gray-500">
+                    pass {archSummary.pass ?? '-'} · warn {archSummary.warn ?? '-'} · fail{' '}
+                    {archSummary.fail ?? '-'}
+                    {data?.architecture_health?.score != null
+                      ? ` · score ${data.architecture_health.score}`
+                      : ''}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {archChecks.length === 0 && (
+                  <div className="text-sm text-gray-500">{loading ? '加载中…' : '暂无架构健康项'}</div>
+                )}
+                {archChecks.filter((c) => c.id !== 'architecture_health').map(renderCheck)}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="text-sm font-semibold text-gray-200">生产深度</div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {depthChecks.length === 0 && (
+                  <div className="text-sm text-gray-500">{loading ? '加载中…' : '暂无数据'}</div>
+                )}
+                {depthChecks.map(renderCheck)}
+              </CardContent>
+            </Card>
+          </>
+        );
+      })()}
 
       <Card>
         <CardHeader>

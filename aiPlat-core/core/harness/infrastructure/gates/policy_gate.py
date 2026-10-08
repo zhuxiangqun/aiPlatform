@@ -273,6 +273,40 @@ def _check_protected_paths(filepath: str) -> str:
 
 
 
+
+def _parse_policy_fail_mode(raw: Optional[str], *, default: str = "open") -> str:
+    """Normalize AIPLAT_POLICY_FAIL_* values to open|ask|closed."""
+    v = (raw or default or "open").strip().lower()
+    if v in ("closed", "deny", "fail-closed", "fail_closed"):
+        return "closed"
+    if v in ("ask", "approval", "fail-ask", "fail_ask"):
+        return "ask"
+    if v in ("open", "allow", "fail-open", "fail_open"):
+        return "open"
+    return "open"
+
+
+def resolve_policy_fail_mode(*, critical: bool = False) -> str:
+    """Resolve policy infra degradation mode (安全体系审计 §4.1 方案 C).
+
+    Env:
+      AIPLAT_POLICY_FAIL_MODE — open|ask|closed (default open, compat / dev)
+      AIPLAT_POLICY_FAIL_CRITICAL_MODE — optional override for critical paths
+        (skill_load deny rules, skill EXECUTE when request context present)
+
+    Non-critical paths always return open (audit + alert only) so DB jitter
+    does not mass-deny unrelated tools. One-click rollback: set FAIL_MODE=open
+    and unset CRITICAL_MODE.
+    """
+    base = _parse_policy_fail_mode(os.getenv("AIPLAT_POLICY_FAIL_MODE"), default="open")
+    if not critical:
+        return "open"
+    crit_raw = os.getenv("AIPLAT_POLICY_FAIL_CRITICAL_MODE")
+    if crit_raw is not None and str(crit_raw).strip() != "":
+        return _parse_policy_fail_mode(crit_raw, default=base)
+    return base
+
+
 class PolicyGate:
 
     def __init__(self) -> None:
@@ -1006,7 +1040,7 @@ class PolicyGate:
 
                 sname = str(tool_args.get("name") or tool_args.get("skill") or "").strip()
 
-                from core.api.core_facade import resolve_skill_permission
+                from core.apps.tools.skill_tools import resolve_skill_permission
 
                 decision = resolve_skill_permission(sname)
 
@@ -1030,10 +1064,11 @@ class PolicyGate:
 
             logging.debug(str(e), exc_info=True)
 
-            # Security audit (安全体系审计报告 §4.1 方案 B): skill-permission
-            # resolver degraded → fail-open (deny rule skipped). Record a
-            # security_degraded event so the bypass is traceable; behaviour
-            # unchanged (decision falls through to subsequent checks).
+            # Security audit §4.1 方案 C: configurable fail mode (default open).
+            # Critical path (skill_load rules): open|ask|closed via env.
+            # Non-critical always open+audit. Rollback: AIPLAT_POLICY_FAIL_MODE=open.
+            _fail_mode = resolve_policy_fail_mode(critical=True)
+            _blocked = _fail_mode in ("ask", "closed")
             try:
                 from core.services.execution_store import get_execution_store
 
@@ -1042,7 +1077,7 @@ class PolicyGate:
                     await _store.add_audit_log(
                         action="security_degraded",
                         kind="skill_permission_resolver_unavailable",
-                        status="warn",
+                        status="warn" if not _blocked else "blocked",
                         tenant_id=str(tenant_id) if tenant_id else None,
                         actor_id=user_id or None,
                         resource_type="tool",
@@ -1050,11 +1085,28 @@ class PolicyGate:
                         detail={
                             "skill": str(locals().get("sname") or "")[:120],
                             "error": str(e)[:200],
-                            "note": "fail-open: skill deny/ask rule skipped (policy infra unavailable)",
+                            "fail_mode": _fail_mode,
+                            "critical": True,
+                            "blocked": _blocked,
+                            "note": (
+                                f"fail-{_fail_mode}: skill deny/ask rule skipped "
+                                "(policy infra unavailable)"
+                            ),
                         },
                     )
             except Exception:
                 pass  # noqa: cleanup-best-effort — audit is best-effort
+            if _fail_mode == "closed":
+                return PolicyResult(
+                    decision=PolicyDecision.DENY,
+                    reason=(
+                        "skill_load permission resolver unavailable "
+                        "(AIPLAT_POLICY_FAIL_MODE=closed)"
+                    ),
+                    tenant_id=str(tenant_id) if tenant_id else None,
+                )
+            if _fail_mode == "ask":
+                force_approval = True
 
         try:
 
@@ -1578,9 +1630,44 @@ class PolicyGate:
 
         except Exception as e:
 
-            # Fail-open for compatibility (Phase 3).
-
+            # Policy infra degraded while request context present / import failed.
+            # Critical skill EXECUTE path: respect fail_mode; non-context stays open.
             logging.debug(str(e), exc_info=True)
+            _fail_mode = resolve_policy_fail_mode(critical=True)
+            try:
+                from core.services.execution_store import get_execution_store
+                _store = get_execution_store()
+                if _store is not None and hasattr(_store, "add_audit_log"):
+                    await _store.add_audit_log(
+                        action="security_degraded",
+                        kind="skill_permission_check_unavailable",
+                        status="warn" if _fail_mode == "open" else "blocked",
+                        actor_id=user_id or None,
+                        resource_type="skill",
+                        resource_id=str(skill_name or "")[:80],
+                        detail={
+                            "error": str(e)[:200],
+                            "fail_mode": _fail_mode,
+                            "critical": True,
+                            "blocked": _fail_mode in ("ask", "closed"),
+                            "note": f"fail-{_fail_mode}: skill permission check skipped",
+                        },
+                    )
+            except Exception:
+                pass  # noqa: cleanup-best-effort — audit is best-effort
+            if _fail_mode == "closed":
+                return PolicyResult(
+                    decision=PolicyDecision.DENY,
+                    reason=(
+                        "skill permission check unavailable "
+                        "(AIPLAT_POLICY_FAIL_MODE=closed)"
+                    ),
+                )
+            if _fail_mode == "ask":
+                force_approval = True
+                # force_approval applied below after args init — set sentinel
+                args = dict(args)
+                args["_approval_required"] = True
 
         tenant_id = args.get("_tenant_id")
 

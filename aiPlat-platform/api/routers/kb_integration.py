@@ -20,6 +20,8 @@ async def kb_slack_query(request: Request):
       - channel_id, user_id, team_id (for future auth)
     Returns in_channel response with KB answer.
     """
+    question = ""
+    doc_ids = None
     try:
         body = await request.form()
         question = str(body.get("text") or "").strip()
@@ -29,28 +31,33 @@ async def kb_slack_query(request: Request):
         try:
             data = await request.json()
             question = str(data.get("text") or data.get("question") or "").strip()
+            doc_ids = data.get("doc_ids")
         except Exception:
             return {"response_type": "ephemeral", "text": "无法解析问题"}
 
     try:
-        # Retrieve from KB
+        # W4: canonical Q&A path = CRAG (kb_qa_retrieve), not raw kb_retrieve
         from core.api.facades.service_facade import llm_generate
-        from core.api.facades.kb_facade import kb_retrieve
+        from core.api.facades.kb_facade import kb_qa_retrieve
 
-        doc_ids = data.get("doc_ids") or ["doc_test_001", "doc_test_002", "doc_test_003"]
-        results = kb_retrieve(query=question, doc_ids=doc_ids, top_k=3)
-        doc_content = "\n\n---\n\n".join(r["text"][:500] for r in results[:3]) if results else ""
+        doc_content, citations = await kb_qa_retrieve(
+            question, doc_ids=doc_ids, top_k=3, tenant_id="system",
+        )
 
         from core.api.core_facade import _sync_resolve as _async_prompt_resolve  # v2.5: canonical path (sync wrapper for async)
         from core.api.core_facade import best_model_for_purpose  # v2.5: canonical path
-        sp = await _async_prompt_resolve("kb-qa", scenario="widget", documents=doc_content, question=question)
+        sp = await _async_prompt_resolve("kb-qa", scenario="widget", documents=doc_content or "", question=question)
         resp = await llm_generate(
             None,
             [{"role": "user", "content": sp}],
             model_name=best_model_for_purpose("chat"), temperature=0.3, max_tokens=1000,
         )
         answer = getattr(resp, "content", "") or str(resp)
-        return {"answer": answer.strip(), "sources": [{"doc_id": r["doc_id"], "text": r["text"][:200]} for r in results[:3]]}
+        sources = [
+            {"doc_id": c.get("doc_id") or c.get("source", ""), "text": (c.get("text") or "")[:200]}
+            for c in (citations or [])[:3]
+        ]
+        return {"answer": answer.strip(), "sources": sources}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

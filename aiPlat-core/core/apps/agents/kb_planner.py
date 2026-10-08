@@ -15,7 +15,7 @@ from core.harness.utils.model_injection import best_model_for_purpose
 
 class KBPlannerAgent:
     """KB multi-step planning agent. Wraps the PlanExecuteAgent pattern
-    with KB-specific tools: sys_kb_retrieve, sys_llm_generate, classify, summarize.
+    with KB-specific tools: kb_qa_retrieve (CRAG), sys_llm_generate, classify, summarize.
     """
 
     def __init__(self, config: AgentConfig, **kwargs):
@@ -92,9 +92,11 @@ class KBPlannerAgent:
         action = str(step.get("action", "retrieve")).lower()
         if action in ("retrieve", "search"):
             query = str(step.get("query", "相关文档"))
-            from core.api.facades.kb_facade import kb_retrieve
-            results = kb_retrieve(query=query, doc_ids=doc_ids, tenant_id=tenant_id, top_k=5)
-            return "\n\n---\n\n".join(r["text"] for r in results) if results else "[无匹配内容]"
+            from core.api.facades.kb_facade import kb_qa_retrieve
+            text, _cites = await kb_qa_retrieve(
+                query, doc_ids=doc_ids, tenant_id=tenant_id, top_k=5,
+            )
+            return text if text and str(text).strip() else "[无匹配内容]"
         elif action in ("analyze", "summarize", "generate"):
             content = str(step.get("content", "\n".join(p.get("result", "") for p in prev[-3:])))
             from core.harness.knowledge.doc_compressor import compress_retrieved_docs
