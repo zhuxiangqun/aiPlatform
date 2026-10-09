@@ -1613,6 +1613,7 @@ scan_hash: 8f9548ec24f4
 | Skill 质量 lint（no-op / FILE 错绑 / invocation_mode） | `management/lint_rules/skill_quality.py` | ✅ | 空话短语、非 codegen 误用 ## FILE: completion、user/auto 与 auto_trigger_allowed 对齐检测 | 已合入 |
 | Engine Skill 全量质量 lint | `scripts/lint_engine_skills.py` + arch_guard §46 `engine_skill_quality_lint` | ✅ | 扫 `core/engine/skills/*/SKILL.md`：handler 配对、FILE 验收错绑、no-op、invocation_mode 冲突；CI + pre-commit（改 engine SKILL 时）阻断；生成物不适用（引擎横切） | 已合入 |
 | Skill invocation_mode | SKILL.md `invocation_mode: user\|auto` + `auto_trigger_allowed` | ✅ | user=仅显式调用（SkillMatcher/candidates 跳过）；auto=可自动路由；工作区 autofill 默认 user；engine 默认 auto | 已合入 · 生成物适用（已接线：discovery/contract/routing） |
+| Skill Corpus syscalls（agentic skill router） | `harness/syscalls/skill_corpus.py`（`sys_skill_corpus_search` / `inspect` / `select`） | ✅ | 可搜索含 disabled 的 skill 语料 → 检视元数据 → 显式 select 取正文并审计；生成物不适用（引擎横切 syscall） | 已合入 |
 | unrealized_side_effect | management/lint_rules/side_effects.py | ✅ | prompt 声明 write/network 且无 handler → lint error（不一键编造 handler） | 已合入 |
 | 滑动窗口衰减追踪 | apps/skills/registry.py | ✅ | recent_pass_rate + decayed_at | 已合入 |
 | AutoLearner | harness/evolution_engine.py | ✅ | 失败分析→SkillDraft→审批→注册 | 已合入 |
