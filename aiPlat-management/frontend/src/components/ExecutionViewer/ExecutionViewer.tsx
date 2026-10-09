@@ -11,6 +11,7 @@ import type { ExecutionNode as ENode, ExecutionViewerProps } from './types';
 import { useLiveEvents } from '../../hooks/useLiveEvents';
 import { useLiveGraph } from '../../hooks/useLiveGraph';
 import { useReplayEvents } from '../../hooks/useReplayEvents';
+import { runApi } from '../../services';
 
 // Canvas node type mapping: syscall event kind → Canvas node type + icon + color
 const CANVAS_NODES: Record<string, { icon: string; color: string; label: string }> = {
@@ -1150,6 +1151,21 @@ const ExecutionViewer: React.FC<ExecutionViewerProps> = ({ nodes: propNodes, tit
   const [expandedSubFlows, setExpandedSubFlows] = useState<Set<string>>(new Set());
   /** null = auto: open while running, collapsed when done (frees canvas). */
   const [roundsPanelOpen, setRoundsPanelOpen] = useState<boolean | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+
+  const handleCancelRun = useCallback(async () => {
+    if (!runId || cancelling) return;
+    if (!window.confirm(`取消运行 ${runId}？进行中的副作用可能无法全部回滚。`)) return;
+    setCancelling(true);
+    try {
+      await runApi.cancel(runId, { reason: 'user_cancel_from_execution_viewer' });
+    } catch (e) {
+      console.warn('cancel run failed', e);
+      window.alert('取消请求失败，请稍后重试或到执行记录页操作。');
+    } finally {
+      setCancelling(false);
+    }
+  }, [runId, cancelling]);
 
   // Expand all children of a sub-flow into the flat node list
   const flattenedNodes: ENode[] = useMemo(() => {
@@ -1737,6 +1753,25 @@ const ExecutionViewer: React.FC<ExecutionViewerProps> = ({ nodes: propNodes, tit
             </span>
           )}
           <div style={{ flex: 1 }} />
+          {runId && (actualRunning || showLiveProgress) && (
+            <button
+              type="button"
+              onClick={handleCancelRun}
+              disabled={cancelling}
+              style={{
+                fontSize: 11,
+                padding: '4px 10px',
+                borderRadius: 6,
+                border: '1px solid #ef444480',
+                background: cancelling ? '#3f1d1d' : '#7f1d1d40',
+                color: '#fca5a5',
+                cursor: cancelling ? 'wait' : 'pointer',
+              }}
+              title="请求取消当前运行（queued 可立即停；进行中依赖引擎协作）"
+            >
+              {cancelling ? '取消中…' : '取消运行'}
+            </button>
+          )}
         </div>
       )}
 

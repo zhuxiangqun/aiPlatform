@@ -113,6 +113,9 @@ def test_acceptance_gate_wires_done_verify(monkeypatch):
 
 def test_acceptance_gate_fail_open_after_two_verify_vetoes(monkeypatch):
     monkeypatch.setenv("AIPLAT_DONE_VERIFY", "true")
+    monkeypatch.delenv("AIPLAT_PROFILE", raising=False)
+    monkeypatch.delenv("AIPLAT_DONE_VERIFY_FAIL_CLOSED", raising=False)
+    monkeypatch.delenv("AIPLAT_DONE_VERIFY_FAIL_OPEN", raising=False)
     loop = ReActLoop(config=LoopConfig(max_steps=4), model=None, tools=[], skills=[])
     state = LoopState(
         current=LoopStateEnum.REASONING,
@@ -125,6 +128,26 @@ def test_acceptance_gate_fail_open_after_two_verify_vetoes(monkeypatch):
         step_count=3,
     )
     assert loop._acceptance_gate(state) is None
+    assert state.context.get("_done_verify_exhausted") is True
+
+
+def test_acceptance_gate_fail_closed_in_production_after_two_vetoes(monkeypatch):
+    monkeypatch.setenv("AIPLAT_DONE_VERIFY", "true")
+    monkeypatch.setenv("AIPLAT_PROFILE", "production")
+    monkeypatch.delenv("AIPLAT_DONE_VERIFY_FAIL_OPEN", raising=False)
+    loop = ReActLoop(config=LoopConfig(max_steps=4), model=None, tools=[], skills=[])
+    state = LoopState(
+        current=LoopStateEnum.REASONING,
+        context={
+            "output": "x",
+            "_done_verify": {"min_output_length": 100, "reject_trivial_done": False},
+            "_done_verify_veto_count": 2,
+            "_bound_skill_ids": [],
+        },
+        step_count=3,
+    )
+    reason = loop._acceptance_gate(state)
+    assert reason and "done_verify" in reason
     assert state.context.get("_done_verify_exhausted") is True
 
 

@@ -822,6 +822,59 @@ const ProjectPanel: React.FC<{
     finally { setStarting(false); }
   };
 
+  /** Confirm → recommend → start in one shot (Agent delivery path). */
+  const handleConfirmAndBuild = async () => {
+    if (!project.project_id) return;
+    setStarting(true);
+    try {
+      const result = await projectApi.confirmAndBuild(project.project_id) as any;
+      const stages = result?.team?.plan_stages || result?.team?.recommendation?.stages || [];
+      if (Array.isArray(stages) && stages.length) setTeamStages(stages);
+      const rec = result?.team?.recommendation || {};
+      setRecommendedMode((rec.mode as string) || '');
+      setRecommendedReason((rec.reasoning as string) || '');
+      setPhase(result?.phase || result?.start?.phase || 'executing');
+      toast.success('已确认并启动构建');
+      onRefresh();
+    } catch (e: any) { toastGateError(e, '确认并构建失败'); }
+    finally { setStarting(false); }
+  };
+
+  const handleRunReport = async () => {
+    if (!project.project_id) return;
+    setStarting(true);
+    try {
+      let testReport = '';
+      if (stageOutputs) {
+        for (const k of ['test_report', 'testReport', ...Object.keys(stageOutputs)]) {
+          const tr = parseTestReportBlob(stageOutputs[k]);
+          if (tr) {
+            testReport = typeof stageOutputs[k] === 'string'
+              ? String(stageOutputs[k])
+              : JSON.stringify(tr);
+            break;
+          }
+        }
+      }
+      const report = await projectApi.runReport(project.project_id, {
+        test_report: testReport,
+        failed_stage_ids: phase === 'failed' ? ['pipeline'] : [],
+      }) as any;
+      if (report?.status === 'error') {
+        toast.error(report.detail || '签收报告失败');
+      } else {
+        toast.success('签收报告已生成（治理可追溯）');
+        try {
+          sessionStorage.setItem(
+            `factory_run_report_${project.project_id}`,
+            JSON.stringify(report),
+          );
+        } catch { /* ignore quota */ }
+      }
+    } catch (e: any) { toastGateError(e, '签收报告失败'); }
+    finally { setStarting(false); }
+  };
+
   const handleStart = async () => {
     if (!project.project_id) return;
     setStarting(true);
@@ -2035,16 +2088,22 @@ const ProjectPanel: React.FC<{
           )}
         </div>
 
-        {/* Actions — show for team_ready / done / failed so user can always rebuild */}
+        {/* Actions — confirm → build → report (Agent delivery loop, not chat) */}
         <div className="flex flex-wrap gap-2">
           {!prdReady && phase === 'dialogue' && teamStages.length === 0 && (
             <Button variant="secondary" size="sm" onClick={handleRecommend} loading={recommending}>AI 推荐团队</Button>
           )}
           {prdReady && phase === 'dialogue' && (
-            <Button variant="primary" size="sm" onClick={handleConfirm} loading={starting}>确认需求</Button>
+            <>
+              <Button variant="secondary" size="sm" onClick={handleConfirm} loading={starting}>确认需求</Button>
+              <Button variant="primary" size="sm" onClick={handleConfirmAndBuild} loading={starting}>确认并构建</Button>
+            </>
           )}
           {(phase === 'team_ready' || phase === 'done' || phase === 'failed' || isHitlWaitPhase(phase)) && (
             <Button variant="primary" size="sm" onClick={handleStart} loading={starting}>{runHistory.length > 0 ? '重新构建' : '启动构建'}</Button>
+          )}
+          {(phase === 'done' || phase === 'failed') && (
+            <Button variant="secondary" size="sm" onClick={handleRunReport} loading={starting}>签收报告</Button>
           )}
         </div>
 

@@ -5097,9 +5097,15 @@ async def delete_gateway_route(route_id: str, _auth: str = Depends(require_admin
 
 async def gateway_metrics(_auth: str = Depends(require_auth)):
 
-    # stubbed metrics
-
-    return {"total_requests": 0, "success_rate": 1.0, "avg_latency_ms": 0, "active_routes": len(platform_store.list_gateway_routes())}
+    # Not instrumented yet — never fake success_rate=1.0 (enterprise trust).
+    return {
+        "status": "unavailable",
+        "total_requests": None,
+        "success_rate": None,
+        "avg_latency_ms": None,
+        "active_routes": len(platform_store.list_gateway_routes()),
+        "detail": "gateway request metrics not instrumented; success_rate withheld",
+    }
 
 
 

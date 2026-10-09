@@ -101,6 +101,21 @@ interface OrgHarnessData {
   notes?: string[];
 }
 
+/** Task / intervention KPIs (Agent vs chat) — never invent fake success_rate */
+interface AdoptionReport {
+  total_agent_calls?: number;
+  total_users?: number;
+  active_users_7d?: number;
+  grill_trigger_rate?: number;
+  grill_completion_rate?: number;
+  hitl_approval_rate?: number;
+  hitl_rejection_rate?: number;
+  adoption_trend?: string;
+  resistance_hotspots?: Array<{ reason?: string; count?: number } | string>;
+  recommendations?: string[];
+  computed_at?: string;
+}
+
 const statusIcons: Record<string, string> = { good: '✅', warning: '⚠️', attention: '🟡', unknown: '❓' };
 const statusLabels: Record<string, string> = {
   version_management: '版本管理', change_approval: '变更审批', mapping_validation: '映射验证',
@@ -112,6 +127,7 @@ export default function GovernanceDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [evalObs, setEvalObs] = useState<EvalObservabilityData | null>(null);
   const [orgHarness, setOrgHarness] = useState<OrgHarnessData | null>(null);
+  const [adoption, setAdoption] = useState<AdoptionReport | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
@@ -129,6 +145,14 @@ export default function GovernanceDashboard() {
       const oh = await apiClient.get<OrgHarnessData>('/governance/org-harness?recent_limit=10');
       if (oh?.ok) setOrgHarness(oh);
     } catch {}
+    try {
+      const ad = await apiClient.get<{ status?: string; report?: AdoptionReport }>(
+        '/core/diagnostics/adoption-metrics',
+      );
+      setAdoption(ad?.report || null);
+    } catch {
+      setAdoption(null);
+    }
     setLoading(false);
   };
 
@@ -225,6 +249,54 @@ export default function GovernanceDashboard() {
             ))
           ) : <div style={{ color: '#555', fontSize: 12 }}>No cycles run yet. Click [运行全量] to start.</div>}
         </div>
+      </div>
+
+      {/* Agent task KPIs — success is intervention + adoption, not chat length */}
+      <div style={{ marginTop: 24, borderTop: '1px solid #222', paddingTop: 16 }}>
+        <h4 style={{ margin: '0 0 10px', fontSize: 14, color: '#888' }}>
+          <CheckCircle size={14} style={{ verticalAlign: -2, marginRight: 4 }} />
+          任务采纳 / 干预（Agent KPI，非对话时长）
+        </h4>
+        {!adoption ? (
+          <div style={{ color: '#555', fontSize: 12 }}>采纳指标暂不可用（unavailable，不展示假成功率）</div>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
+              <Card title="Agent 调用" value={String(adoption.total_agent_calls ?? '—')} color="#4af" />
+              <Card title="7 日活跃用户" value={String(adoption.active_users_7d ?? '—')} color="#4a4" />
+              <Card
+                title="HITL 通过率"
+                value={
+                  adoption.hitl_approval_rate != null
+                    ? `${(Number(adoption.hitl_approval_rate) * 100).toFixed(0)}%`
+                    : '—'
+                }
+                color="#aa4"
+              />
+              <Card
+                title="HITL 驳回率"
+                value={
+                  adoption.hitl_rejection_rate != null
+                    ? `${(Number(adoption.hitl_rejection_rate) * 100).toFixed(0)}%`
+                    : '—'
+                }
+                color="#a44"
+                icon={<AlertTriangle size={18} />}
+              />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 8 }}>
+              <Card
+                title="澄清触发 / 完成"
+                value={`${adoption.grill_trigger_rate ?? '—'} / ${adoption.grill_completion_rate ?? '—'}`}
+                color="#888"
+              />
+              <Card title="采纳趋势" value={String(adoption.adoption_trend || '—')} color="#666" />
+            </div>
+            {adoption.computed_at && (
+              <div style={{ fontSize: 11, color: '#555', marginBottom: 8 }}>@ {adoption.computed_at}</div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Org harness — HITL serial / approval Amdahl dark ledger */}

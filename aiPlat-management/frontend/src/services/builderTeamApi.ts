@@ -256,6 +256,26 @@ export const projectApi = {
       detail?: string;
     }>(`/platform/builder/projects/${projectId}/confirm-and-build`, prd ? { prd } : {});
   },
+  /** Terminal governance report for a finished / failed run (confirm → build → report). */
+  runReport: async (
+    projectId: string,
+    body: {
+      failed_stage_ids?: string[];
+      test_report?: string;
+      cost_used_usd?: number;
+      cost_budget_usd?: number;
+    } = {},
+  ) => {
+    return apiClient.post<Record<string, unknown>>(
+      `/platform/builder/projects/${projectId}/run-report`,
+      {
+        failed_stage_ids: body.failed_stage_ids || [],
+        test_report: body.test_report || '',
+        cost_used_usd: body.cost_used_usd ?? 0,
+        cost_budget_usd: body.cost_budget_usd ?? 0,
+      },
+    );
+  },
   start: async (projectId: string) => {
     return apiClient.post<{ project_id: string; phase: string; run_id: string; state: Record<string, unknown> }>(
       `/platform/builder/projects/${projectId}/start`

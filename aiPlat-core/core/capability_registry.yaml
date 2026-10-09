@@ -1727,7 +1727,7 @@ domains:
   rag-retrieval:
     section: "四"
     section_name: "RAG 检索"
-    caps_count: 6
+    caps_count: 8
     provides:
       - symbol: "WikiPageRetriever"
         type: "class"
@@ -1736,6 +1736,14 @@ domains:
       - symbol: "MaterialsChatAgent"
         type: "class"
         signature: "CRAG 3-level: ontology→FTS5→HyDE"
+        module: "core/apps/agents/materials_chat.py"
+      - symbol: "_is_delivery_mode"
+        type: "function"
+        signature: "_is_delivery_mode(vars)→bool (delivery|task|governed vs Q&A)"
+        module: "core/apps/agents/materials_chat.py"
+      - symbol: "_delivery_gate_block"
+        type: "function"
+        signature: "_delivery_gate_block(...)→Optional[AgentResult] high-risk not success"
         module: "core/apps/agents/materials_chat.py"
       - symbol: "CRAG"
         type: "pattern"

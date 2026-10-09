@@ -285,7 +285,8 @@ class ReActLoop(BaseLoop):
             return coding_veto
 
         # Universal DONE Verify ring (config-driven: quality_gate / expected_outcomes /
-        # _done_verify). Fail-open after 2 verify vetoes so max_steps remains the hard cap.
+        # _done_verify). Dev fail-open after 2 vetoes (max_steps hard cap);
+        # production / AIPLAT_DONE_VERIFY_FAIL_CLOSED keeps vetoing (no soft-seal).
         try:
             from core.harness.execution.done_verify import run_done_verify
 
@@ -297,12 +298,25 @@ class ReActLoop(BaseLoop):
             if int(state.context.get("_done_verify_veto_count", 0) or 0) >= 2:
                 state.context["_done_verify_exhausted"] = True
                 state.context["_done_verify_last_reason"] = verify_veto
+                fail_closed = (
+                    os.getenv("AIPLAT_DONE_VERIFY_FAIL_CLOSED", "").strip().lower()
+                    in ("1", "true", "yes", "on")
+                    or (os.getenv("AIPLAT_PROFILE") or "").strip().lower() == "production"
+                )
+                if os.getenv("AIPLAT_DONE_VERIFY_FAIL_OPEN", "").strip().lower() in (
+                    "1",
+                    "true",
+                    "yes",
+                    "on",
+                ):
+                    fail_closed = False
+                if fail_closed:
+                    return verify_veto
             else:
                 return verify_veto
 
-        # Fail-open after 2 vetoes to avoid burning the whole step budget on an
-
-        # unsatisfiable criterion (max_steps in should_continue is the hard cap).
+        # Fail-open after 2 acceptance vetoes (dev) — max_steps remains the hard cap.
+        # Production done_verify path above already returned when fail-closed.
 
         if int(state.context.get("_acceptance_veto_count", 0) or 0) >= 2:
 

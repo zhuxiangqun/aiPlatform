@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1977
+total_capabilities: 1978
 last_updated: 2026-10-09
 version: "30.9"
 auto_sync: true
@@ -735,9 +735,10 @@ scan_hash: 8f9548ec24f4
 | conditional | harness/execution/conditional.py | ✅ | 自动同步 | 已合入 |
 | stage_runner | harness/execution/langgraph/stage_runner.py | ✅ | 自动同步 | 已合入 |
 | verification | harness/execution/verification.py | ✅ | 自动同步 | 已合入 |
-| DONE Verify 环（验证回路一等公民） | `harness/execution/done_verify.py` + `ReActLoop._acceptance_gate` + `StageRunner`/`CoreFacade` 注入 + `PipelineStageConfig.done_verify` | ✅ | 封 DONE 前确定性检查（配置驱动，禁 agent_id 分支）：min_output_length / require_keys / substrings / expected_outcomes / require_commands / review_gate（绑定审阅 skill 才强制）+ 拒 trivial DONE/action envelope；2 次 veto 后 fail-open；`AIPLAT_DONE_VERIFY`；生成物适用：已接线（Harness 横切） | 已合入 |
+| DONE Verify 环（验证回路一等公民） | `harness/execution/done_verify.py` + `ReActLoop._acceptance_gate` + `StageRunner`/`CoreFacade` 注入 + `PipelineStageConfig.done_verify` | ✅ | 封 DONE 前确定性检查（配置驱动，禁 agent_id 分支）：min_output_length / require_keys / substrings / expected_outcomes / require_commands / review_gate（绑定审阅 skill 才强制）+ 拒 trivial DONE/action envelope；dev 2 次 veto 后 fail-open；**production / `AIPLAT_DONE_VERIFY_FAIL_CLOSED` 保持否决（无软封）**，`AIPLAT_DONE_VERIFY_FAIL_OPEN` 紧急覆写；生成物适用：已接线（Harness 横切） | 已合入 |
 | Code 元工具偏好（图灵完备出口） | `harness/execution/meta_tool.py` + `ReActLoop._build_tools_desc` + `PipelineStageConfig.meta_tool` + StageRunner/CoreFacade/team_planner 注入 | ✅ | 算术/日期/解析/逃逸舱口 → `[META TOOL]` 提示 + 置顶 `code`；配置 `{enabled, auto_bind, force}`；`AIPLAT_META_TOOL_AUTO_BIND=auto`（生产 on / 开发 off）；`AIPLAT_META_TOOL_CODE` 总开关；生成物适用：已接线（Harness 横切） | 已合入 |
 | 组织 Harness 暗账本（HITL/审批 Amdahl） | `harness/meta/org_harness_metrics.py` + `CoreFacade.org_harness_status` + `GET /governance/org-harness` + Governance 面板 + eval_observability 可选切片 | ✅ | `serial_ratio`/审批 + **四指标**（P·R·P0miss·comments/time）+ `serial_chain_recommendations`（串行链改造建议）；vite/proxy；生成物不适用（平台横切治理观测） | 已合入 |
+| Governance 任务采纳/干预 KPI | `pages/Governance/index.tsx` ← `GET /core/diagnostics/adoption-metrics` | ✅ | Agent KPI（调用/7日活跃/HITL 通过·驳回/澄清触发）上治理主面；不可用时显式 unavailable，**不展示假成功率**；生成物不适用（平台横切） | 已合入 |
 | event_loop | harness/execution/event_loop.py | ✅ | 自动同步 | 已合入 |
 | quick_engine | harness/execution/engines/quick_engine.py | ✅ | 自动同步 | 已合入 |
 | graph_engine | harness/execution/engines/graph_engine.py | ✅ | 自动同步 | 已合入 |
@@ -1688,7 +1689,7 @@ scan_hash: 8f9548ec24f4
 | AppLayout | `aiPlat-management/frontend/src/components/layout/AppLayout.tsx` | ✅ | 自动同步 | 已合入 |
 | SystemOverview | `aiPlat-management/frontend/src/pages/SystemOverview/SystemOverview.tsx` | ✅ | 自动同步 | 已合入 |
 | ValueDashboard | `aiPlat-management/frontend/src/pages/ValueCenter/ValueDashboard.tsx` | ✅ | 自动同步 | 已合入 |
-| ExecutionViewer | `aiPlat-management/frontend/src/components/ExecutionViewer/ExecutionViewer.tsx` | ✅ | 自动同步 | 已合入 |
+| ExecutionViewer | `aiPlat-management/frontend/src/components/ExecutionViewer/ExecutionViewer.tsx` | ✅ | 运行图/事件回放；进行中可 `runApi.cancel`（queued 立即停，进行中协作取消）；不假装已完成运行可 undo | 已合入 |
 | WorkflowsPage | `aiPlat-management/frontend/src/pages/Core/Workflows/WorkflowsPage.tsx` | ✅ | 自动同步 | 已合入 |
 | Credentials | `aiPlat-management/frontend/src/pages/Core/Credentials/Credentials.tsx` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
@@ -1927,6 +1928,7 @@ scan_hash: 8f9548ec24f4
 | voice_pipeline | `harness/digital_human/voice_pipeline.py` | ✅ | ASR→Agent→TTS 编排；优先 platform_consultant + 实况简报；降级 materials_chat 走 consultant_live_only 禁 RAG；页面数据感知（pageDataBridge/captureVisiblePage） | 已合入 |
 | platform_consultant | `workspace_seeds/agents/platform_consultant/AGENT.md` + `control_presets.yaml` | ✅ | 管理端文字顾问种子 Agent + ControlProfile（禁检索工具） | 已合入 |
 | consultant_live_only | `apps/agents/materials_chat.py` | ✅ | G5：`_consultant_agent` 时跳过 wiki/CRAG，仅靠注入简报 LLM 作答 | 已合入 |
+| MaterialsChat delivery 门 | `apps/agents/materials_chat.py` `_is_delivery_mode` / `_delivery_gate_block` | ✅ | `mode=delivery\|task\|governed` 时高幻觉/低证据不得 `success=True`（须 HITL）；Q&A 模式不阻断；生成物适用：已接线（对话壳 vs 交付壳） | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | harness/learning/experience_vector.py | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | ToolDriftDetector | harness/learning/tool_drift_detector.py | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
@@ -2112,7 +2114,7 @@ scan_hash: 8f9548ec24f4
 | 工厂 result_dashboard section 类型闭集 | true_test_runtime.check_result_dashboard_sections + RESULT_DASHBOARD_SECTION_TYPES + factory_artifact_sanitize.ensure_result_dashboard_sections(+speech_pipeline) + speech_pipeline_context_block + app_page_generation SKILL + page_smoke `stage.result_sections_ok` | ✅ | 禁止自造 section type；**asr/hybrid 强制 transcript、audio_features_only 禁止 transcript**；FE 上下文注入 speech_pipeline；生成物适用：**已接线** | 已合入 |
 | 工厂 app_page 媒体 Skill 名规范化 | canonicalize_app_page_media_skills + check_wizard skill_alias_not_canonical + repair_app_page | ✅ | `report_assembly`→`report_json_export` 等写入 app_page；测真拦截别名残留；生成物适用：**已接线** | 已合入 |
 | 工厂 app_page skill 自动注入 | harness/execution/app_page_skill_inject.py + pipeline_engine + builder deploy + agent/app_page skills | ✅ | Agent 必出 ui_bindings→FE 抄表→inject 兜底；无 YAML；生成物适用：**已接线** | 已合入 |
-| 工厂 W1：output_style / factory_profile / handoff 字段 / 确认并构建 | `output_style.py` + `output_style_adhd/SKILL.md` + `factory_profile.py` + `stage_handoff.py` + `confirm_and_build` + AIFactory `factory_ia_v2` + Factory 清单/CTA | ✅ | A0 锁定 ADHD 样式；F2a 项目级 demo HITL；C0 handoff 字段冻结；F1 Tab 灰度+一键启动构建；生成物适用：**已接线** | 已合入 |
+| 工厂 W1：output_style / factory_profile / handoff 字段 / 确认并构建 | `output_style.py` + `output_style_adhd/SKILL.md` + `factory_profile.py` + `stage_handoff.py` + `confirm_and_build` + AIFactory `factory_ia_v2` + Factory 清单/CTA | ✅ | A0 锁定 ADHD 样式；F2a 项目级 demo HITL；C0 handoff 字段冻结；F1 Tab 灰度+一键启动构建；**管理端 CTA：确认并构建 + 签收报告**（`confirmAndBuild` / `run-report`）；生成物适用：**已接线** | 已合入 |
 | 工厂 F2b：hybrid 模式端到端 | `team_planner.normalize_factory_mode` + `preferred_mode`→`hybrid.yaml` + `ProjectCreateRequest.factory_mode` + Factory 模式选择器 | ✅ | LLM/创建均可选 hybrid；agent+code 双轨模板；生成物适用：**已接线** | 已合入 |
 | 工厂 F3：阶段交接包 | `stage_handoff.write_stage_handoff` + `_dispatch_execute` + regenerate 注入 + Factory 阶段卡 5 字段 | ✅ | summary/artifact_ref/verify/known_issues/next；失败可见「下一步」；生成物适用：**已接线** | 已合入 |
 | 工厂 C1：stage schema gate | `stage_handoff.gate_check` + `apply_gate_failure` + `_dispatch_execute`/`run()` | ✅ | 空 schema 放行；缺必填按 gate_on_fail=block/hitl/fail_pipeline；生成物适用：**已接线**（team YAML 逐步开必填） | 已合入 |
@@ -2497,6 +2499,7 @@ scan_hash: 8f9548ec24f4
 | Tenant Onboarding | platform/api/routers/onboarding.py | ✅ | 租户引导：LLM配置/执行后端/密钥迁移/信任密钥 | 已合入 |
 | Quota Manager | platform/governance/quota/quota_manager.py | ✅ | 资源配额管理与强制执行；生成物不适用（理由：平台租户配额强制，生成应用受平台侧约束） | 已合入 |
 | Rate Limiter | platform/governance/rate_limit/limiter.py | ✅ | 单进程 in-memory + Redis 分布式令牌桶（原子Lua脚本）；生成物不适用（理由：平台网关限流，生成应用走平台代理） | 已合入 |
+| Gateway 请求指标诚实不可用 | `GET /platform/gateway/metrics` | ✅ | 未埋点时返回 `status=unavailable` + `success_rate=null`，**禁止假绿 1.0**；生成物不适用（平台横切） | 已合入 |
 | Billing Meter | platform/billing/meter.py | ✅ | 用量计量与计费结算 | 已合入 |
 | MQ WriteBack 适配器 | harness/knowledge/knowledge_writeback.py | ✅ | Kafka/RabbitMQ 消息队列写回 + none降级LOG_ONLY | 已合入 |
 | KB Intelligence | platform/kb/intelligence/service.py | ✅ | URL抓取/HTML→text/格式检测/视频URL转录 | 已合入 |
@@ -2903,7 +2906,7 @@ scan_hash: 8f9548ec24f4
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
-| 扩展与学习 | 134 | 0 | 134 |
+| 扩展与学习 | 135 | 0 | 135 |
 | Gate 系统 | 152 | 0 | 152 |
 | 评估系统 | 27 | 0 | 27 |
 | MCP 协议 | 10 | 0 | 10 |
@@ -2937,7 +2940,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1967** | **10** | **1977** |
+| **总计** | **1968** | **10** | **1978** |
 
 | **总计** | **1095** | **0** | **1095** |
 
