@@ -236,6 +236,12 @@ class ContextCompression:
 
         self._compression_stats: List[Tuple[int, int]] = []  # (before, after) msg counts, rolling window
 
+        self._prev_summary: Optional[str] = None
+
+        # P0-2: temperature-aware pruning
+
+        self._last_temperature: float = 0.3
+
 
 
     @property
@@ -245,12 +251,6 @@ class ContextCompression:
         """公开只读访问最近压缩统计（最多 100 条），供 SystemDiagnostician 和 benchmark 使用。"""
 
         return list(self._compression_stats)
-
-        self._prev_summary: Optional[str] = None
-
-        # P0-2: temperature-aware pruning
-
-        self._last_temperature: float = 0.3
 
     
 
