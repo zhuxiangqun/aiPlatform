@@ -127,7 +127,9 @@ def collect_evidence_data(
                 }
             )
         if art:
-            status = "failed" if (phase == "failed" and err and i == last_idx) else "ok"
+            # Terminal failure from error_message (engine-generic) — never branch on
+            # business phase strings (constitution: no phase=="…" in harness).
+            status = "failed" if (err and i == last_idx) else "ok"
             conclusions.append(
                 {
                     "id": f"c_{sid}",

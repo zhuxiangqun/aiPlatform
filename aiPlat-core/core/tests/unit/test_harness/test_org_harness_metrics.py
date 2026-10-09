@@ -6,6 +6,7 @@ from core.harness.meta.org_harness_metrics import (
     aggregate_org_harness,
     build_duty_board,
     collect_org_harness,
+    load_duty_board_thresholds,
     summarize_approvals,
     summarize_gold_regression,
     summarize_hitl_audit,
@@ -171,6 +172,41 @@ def test_duty_board_unavailable_no_fake_green():
     assert board["status"] == "unavailable"
     assert any("invent" in r or "unavailable" in r for r in board["reasons"])
     assert board["checks"].get("howl") == "unavailable"
+
+
+def test_load_duty_board_thresholds_override_and_seed():
+    thr, src = load_duty_board_thresholds(
+        override={"p0_miss_rate_block": 0.15, "serial_ratio_high": 0.5}
+    )
+    assert src == "override"
+    assert thr["p0_miss_rate_block"] == 0.15
+    assert thr["serial_ratio_high"] == 0.5
+    # Unspecified keys keep defaults
+    assert thr["howl_interventions_watch"] == 20.0
+
+    thr2, src2 = load_duty_board_thresholds(override=None)
+    assert thr2["p0_miss_rate_block"] == 0.2
+    assert src2 in ("defaults",) or src2.endswith("duty_board.yaml")
+
+
+def test_duty_board_respects_threshold_override():
+    # With default 0.2, miss=0.18 is go; with block=0.1 it is block
+    payload = {
+        "ok": True,
+        "data_available": True,
+        "availability": {"runs": True, "gold": True, "approvals": False},
+        "summary": {
+            "avg_serial_ratio": 0.05,
+            "gold_regressing": False,
+            "p0_miss_rate": 0.18,
+        },
+    }
+    soft = build_duty_board(payload, thresholds={"p0_miss_rate_block": 0.2})
+    assert soft["checks"]["gold"] == "go"
+    hard = build_duty_board(payload, thresholds={"p0_miss_rate_block": 0.1})
+    assert hard["status"] == "block"
+    assert hard["checks"]["gold"] == "block"
+    assert hard.get("thresholds_source") == "override"
 
 
 def test_duty_board_howl_watch_and_unavailable():

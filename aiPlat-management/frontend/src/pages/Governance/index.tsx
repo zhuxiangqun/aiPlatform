@@ -49,6 +49,8 @@ interface DutyBoard {
   reasons?: string[];
   availability?: { runs?: boolean; gold?: boolean; approvals?: boolean };
   checks?: Record<string, string>;
+  thresholds?: Record<string, number>;
+  thresholds_source?: string;
   release_habit?: string;
 }
 
@@ -286,6 +288,17 @@ export default function GovernanceDashboard() {
         )}
         {duty.release_habit && (
           <div style={{ marginTop: 6, fontSize: 11, color: '#666' }}>{duty.release_habit}</div>
+        )}
+        {duty.thresholds_source && (
+          <div style={{ marginTop: 4, fontSize: 10, color: '#555' }}>
+            thresholds={duty.thresholds_source}
+            {duty.thresholds?.p0_miss_rate_block != null
+              ? ` · p0_block=${duty.thresholds.p0_miss_rate_block}`
+              : ''}
+            {duty.thresholds?.serial_ratio_high != null
+              ? ` · serial_high=${duty.thresholds.serial_ratio_high}`
+              : ''}
+          </div>
         )}
       </div>
 

@@ -5162,11 +5162,23 @@ def build_duty_board(
     payload: Optional[Dict[str, Any]] = None,
     *,
     adoption: Optional[Dict[str, Any]] = None,
+    thresholds: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Governance 值班板裁决（go/watch/block/unavailable；禁止假成功率）。"""
     from core.harness.meta.org_harness_metrics import build_duty_board as _board
 
-    return _board(payload, adoption=adoption)
+    return _board(payload, adoption=adoption, thresholds=thresholds)
+
+
+def load_duty_board_thresholds(
+    *,
+    override: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Duty-board YAML bands（override / AIPLAT_DUTY_BOARD_CONFIG / AIPLAT_HOME / seed）。"""
+    from core.harness.meta.org_harness_metrics import load_duty_board_thresholds as _load
+
+    thr, source = _load(override=override)
+    return {"thresholds": thr, "source": source}
 
 
 def load_adoption_snapshot() -> Dict[str, Any]:

@@ -10,9 +10,22 @@ governance eval_observability (optional slice).
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+import os
+from pathlib import Path
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 logger = logging.getLogger(__name__)
+
+# Defaults match historical hardcoded bands (docs / duty_board seed).
+_DEFAULT_DUTY_THRESHOLDS: Dict[str, float] = {
+    "p0_miss_rate_block": 0.2,
+    "serial_ratio_watch": 0.2,
+    "serial_ratio_high": 0.4,
+    "approval_pending_watch": 5.0,
+    "approval_latency_sec_watch": 3600.0,
+    "hitl_rejection_rate_watch": 0.3,
+    "howl_interventions_watch": 20.0,
+}
 
 # Event types that open / close a serial human wait (pipeline_run_events)
 _HITL_OPEN = frozenset({
@@ -314,6 +327,75 @@ def summarize_gold_regression(reports: Sequence[Dict[str, Any]]) -> Dict[str, An
     }
 
 
+def _duty_seed_path() -> Path:
+    # org_harness_metrics.py → meta → harness → core → aiPlat-core/workspace_seeds
+    return (
+        Path(__file__).resolve().parents[3]
+        / "workspace_seeds"
+        / "org"
+        / "duty_board.yaml"
+    )
+
+
+def _coerce_threshold(raw: Any, default: float) -> float:
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return float(default)
+
+
+def load_duty_board_thresholds(
+    *,
+    override: Optional[Mapping[str, Any]] = None,
+) -> Tuple[Dict[str, float], str]:
+    """Load duty-board bands (config-driven; never invent success_rate).
+
+    Priority:
+      1. ``override`` mapping (tests / caller)
+      2. ``AIPLAT_DUTY_BOARD_CONFIG`` path
+      3. ``$AIPLAT_HOME/org/duty_board.yaml``
+      4. workspace seed ``workspace_seeds/org/duty_board.yaml``
+      5. built-in defaults
+
+    Returns ``(thresholds, source)`` where source is override|path|defaults.
+    """
+    thr: Dict[str, float] = dict(_DEFAULT_DUTY_THRESHOLDS)
+    loaded: Optional[Mapping[str, Any]] = None
+    source = "defaults"
+
+    if isinstance(override, Mapping) and override:
+        loaded = override
+        source = "override"
+    else:
+        candidates: List[Path] = []
+        env_path = (os.getenv("AIPLAT_DUTY_BOARD_CONFIG") or "").strip()
+        if env_path:
+            candidates.append(Path(env_path).expanduser())
+        home = Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+        candidates.append(home / "org" / "duty_board.yaml")
+        candidates.append(_duty_seed_path())
+        for path in candidates:
+            if not path.is_file():
+                continue
+            try:
+                import yaml
+
+                data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+                if isinstance(data, Mapping):
+                    loaded = data
+                    source = str(path)
+                    break
+            except Exception as e:
+                logger.debug("duty_board thresholds load skipped %s: %s", path, e)
+
+    if isinstance(loaded, Mapping):
+        for key, default in _DEFAULT_DUTY_THRESHOLDS.items():
+            if key in loaded and loaded[key] is not None:
+                thr[key] = _coerce_threshold(loaded[key], default)
+
+    return thr, source
+
+
 def load_adoption_snapshot() -> Dict[str, Any]:
     """Best-effort HITL/Howl snapshot for duty_board (never invent rates).
 
@@ -357,6 +439,7 @@ def build_duty_board(
     payload: Optional[Mapping[str, Any]] = None,
     *,
     adoption: Optional[Mapping[str, Any]] = None,
+    thresholds: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Duty-board verdict for Governance / release habit (never invent success_rate).
 
@@ -368,7 +451,17 @@ def build_duty_board(
 
     Facts only from org-harness (+ optional adoption). Fake-green forbidden:
     missing gold → availability.gold=false, not "ok".
+    Bands from ``load_duty_board_thresholds`` (YAML / env / override).
     """
+    thr, thr_source = load_duty_board_thresholds(override=thresholds)
+    p0_block = thr["p0_miss_rate_block"]
+    serial_watch = thr["serial_ratio_watch"]
+    serial_high = thr["serial_ratio_high"]
+    pending_watch = thr["approval_pending_watch"]
+    lat_watch = thr["approval_latency_sec_watch"]
+    hitl_watch = thr["hitl_rejection_rate_watch"]
+    howl_watch = thr["howl_interventions_watch"]
+
     pl = payload if isinstance(payload, dict) else {}
     sm = pl.get("summary") if isinstance(pl.get("summary"), dict) else {}
     avail = pl.get("availability") if isinstance(pl.get("availability"), dict) else {}
@@ -406,6 +499,8 @@ def build_duty_board(
                 "hitl": "unavailable",
                 "howl": "unavailable",
             },
+            "thresholds": thr,
+            "thresholds_source": thr_source,
             "release_habit": "run ops_harness_ready_check.sh + gold match-only before release",
         }
 
@@ -426,9 +521,9 @@ def build_duty_board(
         else:
             try:
                 miss = sm.get("p0_miss_rate")
-                if miss is not None and float(miss) > 0.2:
+                if miss is not None and float(miss) > p0_block:
                     checks["gold"] = "block"
-                    reasons.append(f"p0_miss_rate={miss}>0.2")
+                    reasons.append(f"p0_miss_rate={miss}>{p0_block}")
                     status = "block"
                 else:
                     checks["gold"] = "go"
@@ -450,14 +545,14 @@ def build_duty_board(
     except (TypeError, ValueError):
         r = None
     if r is not None:
-        if r >= 0.4:
+        if r >= serial_high:
             checks["serial"] = "watch"
-            reasons.append(f"serial_ratio={r}≥0.4")
+            reasons.append(f"serial_ratio={r}≥{serial_high}")
             if status == "go":
                 status = "watch"
-        elif r >= 0.2:
+        elif r >= serial_watch:
             checks["serial"] = "watch"
-            reasons.append(f"serial_ratio={r}≥0.2")
+            reasons.append(f"serial_ratio={r}≥{serial_watch}")
             if status == "go":
                 status = "watch"
         else:
@@ -476,12 +571,12 @@ def build_duty_board(
     except (TypeError, ValueError):
         lat = None
     if avail.get("approvals") or pending or lat is not None:
-        if pending >= 5 or (lat is not None and lat >= 3600):
+        if pending >= pending_watch or (lat is not None and lat >= lat_watch):
             checks["approvals"] = "watch"
-            if pending >= 5:
-                reasons.append(f"approval_pending={pending}≥5")
-            if lat is not None and lat >= 3600:
-                reasons.append(f"avg_approval_latency_sec={lat}≥3600")
+            if pending >= pending_watch:
+                reasons.append(f"approval_pending={pending}≥{int(pending_watch)}")
+            if lat is not None and lat >= lat_watch:
+                reasons.append(f"avg_approval_latency_sec={lat}≥{lat_watch}")
             if status == "go":
                 status = "watch"
         else:
@@ -495,9 +590,9 @@ def build_duty_board(
     howl = ad.get("howl_interventions")
     howl_status = str(ad.get("howl_status") or "").strip().lower()
     if rej is not None:
-        if rej > 0.3:
+        if rej > hitl_watch:
             checks["hitl"] = "watch"
-            reasons.append(f"hitl_rejection_rate={rej}>0.3")
+            reasons.append(f"hitl_rejection_rate={rej}>{hitl_watch}")
             if status == "go":
                 status = "watch"
         else:
@@ -510,9 +605,9 @@ def build_duty_board(
             howl_n = None
         if howl_n is not None:
             # Howl presence is informational; high absolute count → watch (ops attention)
-            if howl_n >= 20:
+            if howl_n >= howl_watch:
                 checks["howl"] = "watch"
-                reasons.append(f"howl_interventions={howl_n}≥20")
+                reasons.append(f"howl_interventions={howl_n}≥{int(howl_watch)}")
                 if status == "go":
                     status = "watch"
             else:
@@ -539,6 +634,8 @@ def build_duty_board(
         "reasons": reasons or (["metrics within band"] if status == "go" else []),
         "availability": avail,
         "checks": checks,
+        "thresholds": thr,
+        "thresholds_source": thr_source,
         "release_habit": (
             "BLOCK: hold model upgrade / fix harness before release"
             if status == "block"
@@ -551,8 +648,19 @@ def build_duty_board(
     }
 
 
-def serial_chain_recommendations(summary: Dict[str, Any]) -> List[Dict[str, str]]:
+def serial_chain_recommendations(
+    summary: Dict[str, Any],
+    *,
+    thresholds: Optional[Mapping[str, Any]] = None,
+) -> List[Dict[str, str]]:
     """Actionable Amdahl / HITL redesign hints (ops, not a parallel workflow engine)."""
+    thr, _ = load_duty_board_thresholds(override=thresholds)
+    serial_high = thr["serial_ratio_high"]
+    serial_watch = thr["serial_ratio_watch"]
+    pending_watch = thr["approval_pending_watch"]
+    lat_watch = thr["approval_latency_sec_watch"]
+    p0_block = thr["p0_miss_rate_block"]
+
     sm = summary if isinstance(summary, dict) else {}
     tips: List[Dict[str, str]] = []
     ratio = sm.get("avg_serial_ratio")
@@ -562,16 +670,16 @@ def serial_chain_recommendations(summary: Dict[str, Any]) -> List[Dict[str, str]
         r = float(ratio) if ratio is not None else None
     except (TypeError, ValueError):
         r = None
-    if r is not None and r >= 0.4:
+    if r is not None and r >= serial_high:
         tips.append({
             "severity": "high",
             "action": "redesign_hitl_chain",
             "detail": (
-                f"serial_ratio={r} ≥ 0.4 — AI 加速被 HITL/审批吃掉；"
+                f"serial_ratio={r} ≥ {serial_high} — AI 加速被 HITL/审批吃掉；"
                 "合并串行闸口、并行化独立审批、或把低风险路径改为 async notify"
             ),
         })
-    elif r is not None and r >= 0.2:
+    elif r is not None and r >= serial_watch:
         tips.append({
             "severity": "medium",
             "action": "trim_approval_steps",
@@ -579,7 +687,7 @@ def serial_chain_recommendations(summary: Dict[str, Any]) -> List[Dict[str, str]
         })
     pending = sm.get("approval_pending")
     try:
-        if pending is not None and int(pending) >= 5:
+        if pending is not None and int(pending) >= pending_watch:
             tips.append({
                 "severity": "medium",
                 "action": "clear_approval_backlog",
@@ -589,11 +697,11 @@ def serial_chain_recommendations(summary: Dict[str, Any]) -> List[Dict[str, str]
         pass  # noqa: parse-best-effort
     lat = sm.get("avg_approval_latency_sec")
     try:
-        if lat is not None and float(lat) >= 3600:
+        if lat is not None and float(lat) >= lat_watch:
             tips.append({
                 "severity": "high",
                 "action": "sla_on_approvals",
-                "detail": f"avg approval latency={lat}s ≥ 1h — 设 SLA / 值班轮转，勿只升模型",
+                "detail": f"avg approval latency={lat}s ≥ {lat_watch}s — 设 SLA / 值班轮转，勿只升模型",
             })
     except (TypeError, ValueError):
         pass  # noqa: parse-best-effort
@@ -605,7 +713,7 @@ def serial_chain_recommendations(summary: Dict[str, Any]) -> List[Dict[str, str]
         })
     if sm.get("p0_miss_rate") is not None:
         try:
-            if float(sm["p0_miss_rate"]) > 0.2:
+            if float(sm["p0_miss_rate"]) > p0_block:
                 tips.append({
                     "severity": "high",
                     "action": "raise_p0_recall",
