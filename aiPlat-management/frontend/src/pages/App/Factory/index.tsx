@@ -529,6 +529,7 @@ const ProjectPanel: React.FC<{
   } | null>(null);
   const [showEvidencePage, setShowEvidencePage] = useState(false);
   const [evidenceMetrics, setEvidenceMetrics] = useState<Record<string, number>>({});
+  const [evidenceVerified, setEvidenceVerified] = useState(false);
   const [progressState, setProgressState] = useState<Record<string, any> | null>(null);
   const [executingSince, setExecutingSince] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -692,6 +693,17 @@ const ProjectPanel: React.FC<{
           s._evidence_page ||
           null;
         if (evPage?.html) setEvidencePage(evPage);
+        const evMetrics =
+          (st as any)?.evidence_metrics ||
+          s._evidence_metrics ||
+          null;
+        if (evMetrics && typeof evMetrics === 'object') {
+          const counts = (evMetrics as any).counts;
+          if (counts && typeof counts === 'object') {
+            setEvidenceMetrics(counts as Record<string, number>);
+          }
+          if ((evMetrics as any).verified === true) setEvidenceVerified(true);
+        }
         // v3.1: Track HITL stage from Core's _hitl_stage_id and _hitl_output_artifact
         if (isHitlWaitPhase(p)) {
           const hitlId = s._hitl_stage_id as string;
@@ -824,6 +836,17 @@ const ProjectPanel: React.FC<{
           state._evidence_page ||
           null;
         if (evPage?.html) setEvidencePage(evPage);
+        const evMetrics =
+          (st as any)?.evidence_metrics ||
+          state._evidence_metrics ||
+          null;
+        if (evMetrics && typeof evMetrics === 'object') {
+          const counts = (evMetrics as any).counts;
+          if (counts && typeof counts === 'object') {
+            setEvidenceMetrics(counts as Record<string, number>);
+          }
+          if ((evMetrics as any).verified === true) setEvidenceVerified(true);
+        }
         const orderedKeys = project.team_stages?.map(s => (s as any).output_artifact).filter(Boolean) || [];
         const keys = orderedKeys.length > 0 ? orderedKeys : ['architecture', 'code', 'test_report'];
         const outputs = collectStageOutputs(state, keys);
@@ -851,18 +874,29 @@ const ProjectPanel: React.FC<{
       flushTimer = null;
       if (!project.project_id || pending.length === 0) return;
       const batch = pending.splice(0, pending.length);
-      void projectApi.recordEvidenceMetrics(project.project_id, batch).catch(() => {
-        /* best-effort; local counts already shown */
-      });
+      void projectApi
+        .recordEvidenceMetrics(project.project_id, batch)
+        .then(r => {
+          if ((r as any)?.verified === true) setEvidenceVerified(true);
+          const m = (r as any)?.evidence_metrics;
+          if (m?.verified === true) setEvidenceVerified(true);
+          if (m?.counts && typeof m.counts === 'object') {
+            setEvidenceMetrics(m.counts as Record<string, number>);
+          }
+        })
+        .catch(() => {
+          /* best-effort; local counts already shown */
+        });
     };
     const onMsg = (ev: MessageEvent) => {
       const d = ev.data;
       if (!d || typeof d !== 'object') return;
       if (d.type === 'aiplat_evidence_metric' && typeof d.event === 'string') {
-        setEvidenceMetrics(prev => ({
-          ...prev,
-          [d.event]: (prev[d.event] || 0) + 1,
-        }));
+        setEvidenceMetrics(prev => {
+          const next = { ...prev, [d.event]: (prev[d.event] || 0) + 1 };
+          if (Object.values(next).some(n => (n || 0) > 0)) setEvidenceVerified(true);
+          return next;
+        });
         pending.push(d.event);
         if (flushTimer) clearTimeout(flushTimer);
         flushTimer = setTimeout(flush, 400);
@@ -1797,7 +1831,18 @@ const ProjectPanel: React.FC<{
         {(phase === 'done' || phase === 'failed') && (
           <div className="p-3 rounded bg-slate-500/5 border border-slate-500/30 text-xs space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-slate-300 font-medium">交互证据页（可丢弃）</span>
+              <span className="text-slate-300 font-medium flex items-center gap-2">
+                交互证据页（可丢弃）
+                {evidenceVerified ? (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                    verified
+                  </span>
+                ) : (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-500/20 text-slate-400 border border-slate-500/40">
+                    unverified
+                  </span>
+                )}
+              </span>
               <button
                 type="button"
                 className="text-slate-400 hover:text-slate-200"
@@ -1807,6 +1852,11 @@ const ProjectPanel: React.FC<{
                       const r = await projectApi.getEvidencePage(project.project_id);
                       const d = (r as any)?.evidence_page || r;
                       if (d?.html) setEvidencePage(d);
+                      const m = (r as any)?.evidence_metrics;
+                      if (m?.counts && typeof m.counts === 'object') {
+                        setEvidenceMetrics(m.counts as Record<string, number>);
+                      }
+                      if (m?.verified === true) setEvidenceVerified(true);
                     } catch (e) {
                       toastGateError(e, '证据页加载失败');
                       return;

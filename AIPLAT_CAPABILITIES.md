@@ -2075,7 +2075,7 @@ scan_hash: 8f9548ec24f4
 | stages_to_mermaid | `core/harness/execution/run_structure_diagram.py` | ✅ | depends_on + artifact 边 → flowchart | 已合入 |
 | build_run_evidence_page | `core/harness/execution/run_evidence_page.py` | ✅ | 模板+JSON 可丢弃证据页（TTL/只读/禁编码部署） | 已合入 |
 | write_evidence_page | `core/harness/execution/run_evidence_page.py` | ✅ | run 结束写入 state[_evidence_page] | 已合入 |
-| collect_evidence_data | `core/harness/execution/run_evidence_page.py` | ✅ | stage/handoff/error → tool_result JSON | 已合入 |
+| collect_evidence_data | `core/harness/execution/run_evidence_page.py` | ✅ | stage/handoff/error/gates(done_verify+bloat) → tool_result JSON | 已合入 |
 | render_evidence_html | `core/harness/execution/run_evidence_page.py` | ✅ | 固定模板注入 JSON；无 LLM 脚本 | 已合入 |
 | is_evidence_expired | `core/harness/execution/run_evidence_page.py` | ✅ | 默认 24h TTL 过期判定 | 已合入 |
 | resolve_ttl_hours | `core/harness/execution/run_evidence_page.py` | ✅ | TTL 1..168h；env/state 可配 | 已合入 |

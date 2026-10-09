@@ -306,6 +306,21 @@ class StageRunner:
                         state["_policy"] = ctx.get("policy")
         except Exception as e:
             logging.debug("stage_runner pause surface skipped: %s", e)
+        # Oversight evidence page: surface done_verify counters onto pipeline state
+        # (loop context alone is not persisted; evidence reads tool_result from state).
+        try:
+            for _k in (
+                "_done_verify_veto_count",
+                "_done_verify_exhausted",
+                "_done_verify_last_reason",
+            ):
+                if _k in ctx:
+                    state[_k] = ctx[_k]
+            _dv_cfg = ctx.get("_done_verify")
+            if isinstance(_dv_cfg, dict):
+                state["_done_verify"] = _dv_cfg
+        except Exception as e:
+            logging.debug("stage_runner done_verify surface skipped: %s", e)
         skill_body = str(ctx.get("_primary_skill_output") or "").split("[DELIVERY]", 1)[0].strip()
         if skill_body.startswith("[skill_delivery=once]"):
             parts = skill_body.split("\n\n", 1)

@@ -45,6 +45,52 @@ def test_collect_evidence_from_stages():
     assert any("limit rate" in u["text"] for u in data["uncertainties"])
     assert all(x.get("source_type") == "tool_result" for x in data["inputs"])
     assert all(x.get("source_type") == "tool_result" for x in data["conclusions"])
+    assert data["gates"]["source_type"] == "tool_result"
+    assert data["gates"]["done_verify"] is None
+    assert data["gates"]["bloat"] is None
+
+
+def test_collect_gate_facts_done_verify_and_bloat():
+    state = {
+        "phase": "done",
+        "_done_verify": {
+            "enabled": True,
+            "min_output_length": 40,
+            "review_gate": "autoreview",
+            "require_keys": ["code"],
+            "expected_outcomes": ["tests pass"],
+        },
+        "_done_verify_veto_count": 2,
+        "_done_verify_exhausted": True,
+        "_done_verify_last_reason": "done_verify: missing code",
+        "_bloat_metrics": {
+            "loc": 120,
+            "loc_non_import": 100,
+            "new_files": 3,
+            "new_deps": 1,
+            "sources": ["sandbox"],
+            "vs_baseline": {
+                "has_baseline": True,
+                "delta_loc": 20,
+                "delta_new_files": 1,
+                "delta_new_deps": 0,
+            },
+        },
+    }
+    data = collect_evidence_data(state, stages=[])
+    dv = data["gates"]["done_verify"]
+    bl = data["gates"]["bloat"]
+    assert dv["veto_count"] == 2
+    assert dv["exhausted"] is True
+    assert "missing code" in dv["last_reason"]
+    assert dv["review_gate"] == "autoreview"
+    assert bl["loc"] == 120
+    assert bl["has_baseline"] is True
+    assert bl["delta_loc"] == 20
+    html = build_run_evidence_page(state, stages=[]).get("html") or ""
+    assert "Gates (tool_result)" in html
+    assert "done_verify:" in html
+    assert "bloat:" in html
 
 
 def test_build_html_is_template_injected_not_llm():

@@ -187,6 +187,11 @@ writing_profile|OK|generic pipeline (concise_v1|off; handoff/HITL/error prose)
 _writing_profile|OK|engine-internal (writing_profile alias)
 metadata|OK|generic pipeline (project metadata mirror incl. writing_profile)
 
+# -- Oversight P1 harden: evidence page surfaces done_verify / bloat facts --
+_done_verify_veto_count|OK|engine-internal (done_verify veto counter; loop → evidence)
+_done_verify_exhausted|OK|engine-internal (done_verify fail-open marker)
+_done_verify_last_reason|OK|engine-internal (last done_verify veto reason)
+
 # -- Oversight P1: discardable interactive evidence page --
 _evidence_page|OK|engine-internal (template+JSON oversight HTML; TTL; read-only)
 _evidence_metrics|OK|engine-internal (oversight verification metrics; read-only; no coding/deploy)

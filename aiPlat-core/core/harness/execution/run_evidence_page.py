@@ -196,6 +196,8 @@ def collect_evidence_data(
     if isinstance(structure, Mapping):
         mermaid = str(structure.get("mermaid") or "")
 
+    gates = _collect_gate_facts(st)
+
     return {
         "run_id": run_id,
         "phase": phase,
@@ -203,12 +205,65 @@ def collect_evidence_data(
         "conclusions": conclusions,
         "evidence": evidence[:40],
         "uncertainties": uncertainties[:20],
+        "gates": gates,
         "structure_mermaid": mermaid[:8000],
         "hint": (
             "Change an input value to mark dependent conclusions as stale. "
             "Click evidence to open artifact anchors. No coding/deploy actions."
         ),
     }
+
+
+def _safe_int(raw: Any, default: int = 0) -> int:
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return default
+
+
+def _collect_gate_facts(st: Mapping[str, Any]) -> Dict[str, Any]:
+    """Deterministic done_verify + bloat slices (tool_result only)."""
+    out: Dict[str, Any] = {
+        "done_verify": None,
+        "bloat": None,
+        "source_type": "tool_result",
+        "confidence": 1.0,
+    }
+    dv = st.get("_done_verify")
+    if isinstance(dv, Mapping):
+        eo = dv.get("expected_outcomes")
+        out["done_verify"] = {
+            "enabled": bool(dv.get("enabled", True)),
+            "min_output_length": max(0, _safe_int(dv.get("min_output_length"), 0)),
+            "review_gate": str(dv.get("review_gate") or "").strip(),
+            "require_keys": [str(k) for k in (dv.get("require_keys") or []) if str(k).strip()][
+                :12
+            ],
+            "expected_outcomes": len(eo) if isinstance(eo, list) else 0,
+            "veto_count": max(0, _safe_int(st.get("_done_verify_veto_count"), 0)),
+            "exhausted": bool(st.get("_done_verify_exhausted")),
+            "last_reason": str(st.get("_done_verify_last_reason") or "").strip()[:300],
+            "source_type": "tool_result",
+            "confidence": 1.0,
+        }
+
+    bloat = st.get("_bloat_metrics")
+    if isinstance(bloat, Mapping):
+        vs = bloat.get("vs_baseline") if isinstance(bloat.get("vs_baseline"), Mapping) else {}
+        out["bloat"] = {
+            "loc": max(0, _safe_int(bloat.get("loc"), 0)),
+            "loc_non_import": max(0, _safe_int(bloat.get("loc_non_import"), 0)),
+            "new_files": max(0, _safe_int(bloat.get("new_files"), 0)),
+            "new_deps": max(0, _safe_int(bloat.get("new_deps"), 0)),
+            "sources": [str(s) for s in (bloat.get("sources") or [])[:12]],
+            "delta_loc": vs.get("delta_loc") if isinstance(vs, Mapping) else None,
+            "delta_new_files": vs.get("delta_new_files") if isinstance(vs, Mapping) else None,
+            "delta_new_deps": vs.get("delta_new_deps") if isinstance(vs, Mapping) else None,
+            "has_baseline": bool(vs.get("has_baseline")) if isinstance(vs, Mapping) else False,
+            "source_type": "tool_result",
+            "confidence": 1.0,
+        }
+    return out
 
 
 _TEMPLATE = """<!DOCTYPE html>
@@ -260,6 +315,10 @@ _TEMPLATE = """<!DOCTYPE html>
 <section>
   <h2>Uncertainties</h2>
   <div id="uncertainties"></div>
+</section>
+<section>
+  <h2>Gates (tool_result)</h2>
+  <div id="gates"></div>
 </section>
 <section>
   <h2>Structure (Mermaid source)</h2>
@@ -378,6 +437,35 @@ _TEMPLATE = """<!DOCTYPE html>
       uroot.appendChild(card);
     });
     if (!(data.uncertainties || []).length) uroot.textContent = '(none)';
+    var groot = document.getElementById('gates');
+    groot.innerHTML = '';
+    var gates = data.gates || {};
+    var dv = gates.done_verify;
+    var bl = gates.bloat;
+    if (dv) {
+      var dcard = document.createElement('div');
+      dcard.className = 'card';
+      dcard.textContent = 'done_verify: enabled=' + !!dv.enabled +
+        ' · veto_count=' + (dv.veto_count || 0) +
+        (dv.exhausted ? ' · exhausted' : '') +
+        (dv.review_gate ? ' · review_gate=' + dv.review_gate : '') +
+        (dv.last_reason ? ' · last_reason=' + dv.last_reason : '');
+      groot.appendChild(dcard);
+    }
+    if (bl) {
+      var bcard = document.createElement('div');
+      bcard.className = 'card';
+      var line = 'bloat: loc=' + (bl.loc || 0) +
+        ' · files=' + (bl.new_files || 0) +
+        ' · deps=' + (bl.new_deps || 0);
+      if (bl.has_baseline) {
+        line += ' · Δloc=' + (bl.delta_loc != null ? bl.delta_loc : '?') +
+          ' · Δfiles=' + (bl.delta_new_files != null ? bl.delta_new_files : '?');
+      }
+      bcard.textContent = line;
+      groot.appendChild(bcard);
+    }
+    if (!dv && !bl) groot.textContent = '(no gate metrics on this run)';
     document.getElementById('mermaid').textContent = data.structure_mermaid || '(no structure diagram)';
   }
 
