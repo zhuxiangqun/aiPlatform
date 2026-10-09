@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2002
+total_capabilities: 2008
 last_updated: 2026-10-09
 version: "30.9"
 auto_sync: true
@@ -2078,6 +2078,10 @@ scan_hash: 8f9548ec24f4
 | collect_evidence_data | `core/harness/execution/run_evidence_page.py` | ✅ | stage/handoff/error → tool_result JSON | 已合入 |
 | render_evidence_html | `core/harness/execution/run_evidence_page.py` | ✅ | 固定模板注入 JSON；无 LLM 脚本 | 已合入 |
 | is_evidence_expired | `core/harness/execution/run_evidence_page.py` | ✅ | 默认 24h TTL 过期判定 | 已合入 |
+| resolve_ttl_hours | `core/harness/execution/run_evidence_page.py` | ✅ | TTL 1..168h；env/state 可配 | 已合入 |
+| merge_evidence_metrics | `core/harness/execution/run_evidence_page.py` | ✅ | 验证指标累加（source_click/input_change/…） | 已合入 |
+| empty_evidence_metrics | `core/harness/execution/run_evidence_page.py` | ✅ | evidence_metrics.v1 空结构 | 已合入 |
+| verification_success | `core/harness/execution/run_evidence_page.py` | ✅ | ≥1 验证信号即 verified | 已合入 |
 | resolve_factory_sanitize_file | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
 | resolve_team_yaml_candidates | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
 | rollback_team_factory_seeds | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
@@ -2154,7 +2158,7 @@ scan_hash: 8f9548ec24f4
 | 工厂 F-T1：seeds 从 team/ 更新 | `team_factory_seeds.py` + sanitize/team_planner 解析序 | ✅ | teams/factory_sanitize：team/→runtime→seeds；apply+hash 备份可回滚；pull 成功后自动 apply；生成物适用：**已接线** | 已合入 |
 | 平台 T2 / 工厂 F-T2：Culture 注入 | `team_culture.py` + seed `culture.md` + Factory 对话挂载 | ✅ | ≤200 tokens；序 hard→Culture→style；独立开关；不改 JSON；生成物适用：**已接线**（工厂对话） | 已合入 |
 | 平台 Oversight P0：简洁交接 + run 结构图 | `writing_profile.py` + `run_structure_diagram.py` + Factory 完成面板 + `GET .../structure-diagram` | ✅ | concise_v1 默认开；handoff/错误/对话 overlay；确定性 Mermaid（source_type=tool_result）；生成物适用：**已接线**（oversight UI，可丢弃） | 已合入 |
-| 平台 Oversight P1：交互证据页 | `run_evidence_page.py` + Factory iframe sandbox + `GET .../evidence-page` | ✅ | 模板+JSON；TTL；sandbox=allow-scripts；metrics postMessage；生成物适用：**已接线**（oversight UI，可丢弃，不触发编码/部署） | 已合入 |
+| 平台 Oversight P1：交互证据页 | `run_evidence_page.py` + Factory iframe sandbox + `GET .../evidence-page` + `POST .../evidence-metrics` | ✅ | 模板+JSON；TTL；sandbox=allow-scripts；metrics 持久化（verified）；生成物适用：**已接线**（oversight UI，可丢弃，不触发编码/部署） | 已合入 |
 | 平台 T4a / 工厂 F-T4：Friction 回流 | `team_friction.py` + reject/regenerate/prd 接线 + Factory CTA | ✅ | 闭集 hitl_reject/prd_gate_fail/regenerate≥2（确认或冷却）；learnings 默认仅 local/；生成物适用：**已接线** | 已合入 |
 | 平台 T3a / 工厂 F-T3：skill 订阅过滤 | `team_skill_subscription.py` + StageRunner + stage `skill_allow_tags/roles` | ✅ | required_skills 强制保留；空 allow_* 透传；无 agent_id 硬编码；生成物适用：**已接线** | 已合入 |
 | 平台 T4b：Friction + schema_gate/repair | `record_schema_gate_friction` + stage_handoff + runtime_auto_repair | ✅ | 闭集扩展 schema_gate_* + repair_exhausted；审计可追踪；生成物适用：**已接线** | 已合入 |
@@ -2935,7 +2939,7 @@ scan_hash: 8f9548ec24f4
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 135 | 0 | 135 |
-| Gate 系统 | 162 | 0 | 162 |
+| Gate 系统 | 168 | 0 | 168 |
 | 评估系统 | 27 | 0 | 27 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
@@ -2968,7 +2972,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1992** | **10** | **2002** |
+| **总计** | **1998** | **10** | **2008** |
 
 | **总计** | **1095** | **0** | **1095** |
 

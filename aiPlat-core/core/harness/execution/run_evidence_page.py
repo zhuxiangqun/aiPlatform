@@ -12,9 +12,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Sequence
 
 STATE_EVIDENCE_KEY = "_evidence_page"
+STATE_EVIDENCE_METRICS_KEY = "_evidence_metrics"
 SCHEMA_VERSION = "evidence_page.v1"
+METRICS_SCHEMA_VERSION = "evidence_metrics.v1"
 TEMPLATE_ID = "oversight_verify_v1"
 DEFAULT_TTL_HOURS = 24
+_MAX_RECENT_EVENTS = 50
 
 # Verification success metrics (postMessage → parent may record)
 METRIC_EVENTS = (
@@ -23,6 +26,7 @@ METRIC_EVENTS = (
     "inconsistency_found",
     "hitl_refine",
 )
+ALLOWED_METRIC_EVENTS = frozenset(METRIC_EVENTS)
 
 
 def _utc_now() -> datetime:
@@ -468,3 +472,91 @@ def write_evidence_page(
     payload = build_run_evidence_page(state, stages=stages, ttl_hours=ttl_hours)
     state[STATE_EVIDENCE_KEY] = payload
     return payload
+
+
+def empty_evidence_metrics() -> Dict[str, Any]:
+    return {
+        "schema_version": METRICS_SCHEMA_VERSION,
+        "counts": {k: 0 for k in METRIC_EVENTS},
+        "total": 0,
+        "verified": False,
+        "updated_at": "",
+        "recent": [],
+    }
+
+
+def merge_evidence_metrics(
+    store: MutableMapping[str, Any],
+    *,
+    events: Sequence[Any],
+    now: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    """Accumulate oversight verification metrics (read-only; no coding/deploy).
+
+    ``events`` items may be event name strings or ``{"event": name, ...}`` dicts.
+    Unknown events are ignored. ``verified`` flips true when any allowed count > 0.
+    """
+    if not isinstance(store, MutableMapping):
+        raise TypeError("store must be a mutable mapping")
+    if store.get("schema_version") != METRICS_SCHEMA_VERSION:
+        base = empty_evidence_metrics()
+        # Preserve prior counts when upgrading a partial blob
+        prev_counts = store.get("counts") if isinstance(store.get("counts"), Mapping) else {}
+        for k in METRIC_EVENTS:
+            try:
+                base["counts"][k] = max(0, int(prev_counts.get(k) or 0))
+            except (TypeError, ValueError):
+                base["counts"][k] = 0
+        store.clear()
+        store.update(base)
+
+    counts = store.setdefault("counts", {})
+    if not isinstance(counts, dict):
+        counts = {k: 0 for k in METRIC_EVENTS}
+        store["counts"] = counts
+    recent = store.setdefault("recent", [])
+    if not isinstance(recent, list):
+        recent = []
+        store["recent"] = recent
+
+    ts = _iso(now or _utc_now())
+    accepted = 0
+    for raw in events or ():
+        name = ""
+        detail: Dict[str, Any] = {}
+        if isinstance(raw, str):
+            name = raw.strip()
+        elif isinstance(raw, Mapping):
+            name = str(raw.get("event") or raw.get("name") or "").strip()
+            detail = {k: v for k, v in raw.items() if k not in ("event", "name")}
+        if name not in ALLOWED_METRIC_EVENTS:
+            continue
+        counts[name] = int(counts.get(name) or 0) + 1
+        accepted += 1
+        entry = {"event": name, "at": ts}
+        if detail:
+            entry["detail"] = detail
+        recent.append(entry)
+
+    if len(recent) > _MAX_RECENT_EVENTS:
+        del recent[:-_MAX_RECENT_EVENTS]
+
+    total = sum(int(counts.get(k) or 0) for k in METRIC_EVENTS)
+    store["total"] = total
+    store["verified"] = total > 0
+    store["updated_at"] = ts
+    store["schema_version"] = METRICS_SCHEMA_VERSION
+    store["accepted"] = accepted
+    return dict(store)
+
+
+def verification_success(metrics: Optional[Mapping[str, Any]]) -> bool:
+    """True when oversight UI recorded at least one verification signal."""
+    if not isinstance(metrics, Mapping):
+        return False
+    if metrics.get("verified") is True:
+        return True
+    counts = metrics.get("counts")
+    if isinstance(counts, Mapping):
+        return any(int(counts.get(k) or 0) > 0 for k in METRIC_EVENTS)
+    return int(metrics.get("total") or 0) > 0

@@ -4958,10 +4958,15 @@ from core.harness.execution.run_structure_diagram import (  # noqa: boundary —
 )
 from core.harness.execution.run_evidence_page import (  # noqa: boundary — CoreFacade re-export
     STATE_EVIDENCE_KEY,
+    STATE_EVIDENCE_METRICS_KEY,
     build_run_evidence_page,
     collect_evidence_data,
+    empty_evidence_metrics,
     is_evidence_expired,
+    merge_evidence_metrics,
     render_evidence_html,
+    resolve_ttl_hours,
+    verification_success,
     write_evidence_page,
 )
 from core.harness.execution.factory_bloat_metrics import (  # noqa: boundary — CoreFacade re-export

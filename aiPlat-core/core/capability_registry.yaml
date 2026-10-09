@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-10-08"
 total_capability_domains: 34
-total_capabilities: 1063
+total_capabilities: 1064
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -3721,6 +3721,22 @@ domains:
       - symbol: "is_evidence_expired"
         type: "function"
         signature: "Oversight P1: TTL expiry check for discardable evidence page"
+        module: "aiPlat-core/core/harness/execution/run_evidence_page.py"
+      - symbol: "resolve_ttl_hours"
+        type: "function"
+        signature: "Oversight P1: TTL hours from state/env; clamp 1..168 (default 24)"
+        module: "aiPlat-core/core/harness/execution/run_evidence_page.py"
+      - symbol: "merge_evidence_metrics"
+        type: "function"
+        signature: "Oversight P1: Accumulate verification metrics (source_click/input_change/...)"
+        module: "aiPlat-core/core/harness/execution/run_evidence_page.py"
+      - symbol: "empty_evidence_metrics"
+        type: "function"
+        signature: "Oversight P1: Empty evidence_metrics.v1 blob"
+        module: "aiPlat-core/core/harness/execution/run_evidence_page.py"
+      - symbol: "verification_success"
+        type: "function"
+        signature: "Oversight P1: True when ≥1 verification signal recorded"
         module: "aiPlat-core/core/harness/execution/run_evidence_page.py"
       - symbol: "inject_team_culture"
         type: "function"

@@ -329,6 +329,28 @@ async def project_structure_diagram(
     }
 
 
+@router.post("/projects/{project_id}/evidence-metrics", response_model=StatusResponse)
+async def project_evidence_metrics(
+    project_id: str,
+    body: Dict[str, Any] = {},
+    _auth: str = Depends(require_builder_access),
+):
+    """Oversight P1: record verification metrics from sandboxed evidence UI.
+
+    Body: ``{"events": ["source_click", {"event": "input_change", ...}]}``.
+    Read-only — never triggers coding or deploy.
+    """
+    raw = (body or {}).get("events")
+    events: list = []
+    if isinstance(raw, list):
+        events = raw
+    elif isinstance(raw, str) and raw.strip():
+        events = [raw.strip()]
+    elif isinstance((body or {}).get("event"), str):
+        events = [str(body.get("event"))]
+    return _get_svc().record_evidence_metrics(project_id, events=events)
+
+
 @router.get("/projects/{project_id}/evidence-page", response_model=StatusResponse)
 async def project_evidence_page(
     project_id: str, _auth: str = Depends(require_builder_access)
@@ -362,6 +384,20 @@ async def project_evidence_page(
             state if isinstance(state, dict) else {},
             stages=stages or [],
         )
+    metrics = None
+    try:
+        from core.api.core_facade import STATE_EVIDENCE_METRICS_KEY
+
+        if isinstance(state, dict) and isinstance(state.get(STATE_EVIDENCE_METRICS_KEY), dict):
+            metrics = state[STATE_EVIDENCE_METRICS_KEY]
+        if not isinstance(metrics, dict):
+            card = _get_svc()._projects.get(project_id) or {}
+            if isinstance(card, dict) and isinstance(card.get("evidence_metrics"), dict):
+                metrics = card["evidence_metrics"]
+    except Exception:
+        logging.getLogger(__name__).debug(
+            "evidence_metrics read skipped", exc_info=True
+        )
     if isinstance(page, dict):
         page = dict(page)
         page["expired"] = is_evidence_expired(page)
@@ -371,6 +407,7 @@ async def project_evidence_page(
     return {
         "status": "ok",
         "evidence_page": page if isinstance(page, dict) else {},
+        "evidence_metrics": metrics if isinstance(metrics, dict) else {},
         "source_type": (page or {}).get("source_type", "tool_result")
         if isinstance(page, dict)
         else "tool_result",

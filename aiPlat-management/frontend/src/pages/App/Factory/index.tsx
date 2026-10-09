@@ -845,6 +845,16 @@ const ProjectPanel: React.FC<{
 
   // Oversight P1: receive verification metrics from sandboxed evidence iframe
   useEffect(() => {
+    let flushTimer: ReturnType<typeof setTimeout> | null = null;
+    const pending: string[] = [];
+    const flush = () => {
+      flushTimer = null;
+      if (!project.project_id || pending.length === 0) return;
+      const batch = pending.splice(0, pending.length);
+      void projectApi.recordEvidenceMetrics(project.project_id, batch).catch(() => {
+        /* best-effort; local counts already shown */
+      });
+    };
     const onMsg = (ev: MessageEvent) => {
       const d = ev.data;
       if (!d || typeof d !== 'object') return;
@@ -853,6 +863,9 @@ const ProjectPanel: React.FC<{
           ...prev,
           [d.event]: (prev[d.event] || 0) + 1,
         }));
+        pending.push(d.event);
+        if (flushTimer) clearTimeout(flushTimer);
+        flushTimer = setTimeout(flush, 400);
       }
       if (d.type === 'aiplat_evidence_nav' && typeof d.href === 'string' && d.href.startsWith('#artifact:')) {
         const key = d.href.slice('#artifact:'.length);
@@ -866,8 +879,11 @@ const ProjectPanel: React.FC<{
       }
     };
     window.addEventListener('message', onMsg);
-    return () => window.removeEventListener('message', onMsg);
-  }, [stageOutputs]);
+    return () => {
+      window.removeEventListener('message', onMsg);
+      if (flushTimer) clearTimeout(flushTimer);
+    };
+  }, [stageOutputs, project.project_id]);
 
   const handleConfirm = async () => {
     if (!project.project_id) return;

@@ -9,8 +9,11 @@ from core.harness.execution.run_evidence_page import (
     TEMPLATE_ID,
     build_run_evidence_page,
     collect_evidence_data,
+    empty_evidence_metrics,
     is_evidence_expired,
+    merge_evidence_metrics,
     render_evidence_html,
+    verification_success,
     write_evidence_page,
 )
 
@@ -80,3 +83,22 @@ def test_write_and_render_escape():
     html = render_evidence_html(written)
     assert "</script><img>" not in html
     assert "\\u003c" in html or "<\\/" in html
+
+
+def test_merge_evidence_metrics_and_verification():
+    store = empty_evidence_metrics()
+    assert verification_success(store) is False
+    out = merge_evidence_metrics(
+        store,
+        events=["source_click", {"event": "input_change", "key": "prd"}, "bogus"],
+    )
+    assert out["counts"]["source_click"] == 1
+    assert out["counts"]["input_change"] == 1
+    assert out["counts"]["inconsistency_found"] == 0
+    assert "bogus" not in out["counts"]
+    assert out["total"] == 2
+    assert out["verified"] is True
+    assert out["accepted"] == 2
+    assert verification_success(out) is True
+    assert len(out["recent"]) == 2
+    assert out["recent"][1]["detail"]["key"] == "prd"

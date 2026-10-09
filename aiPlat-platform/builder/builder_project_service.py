@@ -2874,6 +2874,71 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         except Exception as e:
             return {"status": "error", "detail": str(e)[:200]}
 
+    def record_evidence_metrics(
+        self,
+        project_id: str,
+        *,
+        events: Optional[List[Any]] = None,
+    ) -> Dict[str, Any]:
+        """Oversight P1: persist verification metrics (read-only; no coding/deploy)."""
+        from core.api.core_facade import (
+            STATE_EVIDENCE_METRICS_KEY,
+            empty_evidence_metrics,
+            merge_evidence_metrics,
+            verification_success,
+        )
+
+        store: Dict[str, Any] = empty_evidence_metrics()
+        try:
+            st = self._load_pipeline_state(project_id) or {}
+            if isinstance(st, dict):
+                prev = st.get(STATE_EVIDENCE_METRICS_KEY)
+                if isinstance(prev, dict):
+                    store = dict(prev)
+            proj = self._projects.get(project_id) or {}
+            if isinstance(proj, dict) and isinstance(proj.get("evidence_metrics"), dict):
+                # Prefer richer of state vs card when state empty
+                if not store.get("total"):
+                    store = dict(proj["evidence_metrics"])
+
+            metrics = merge_evidence_metrics(store, events=events or [])
+            if isinstance(st, dict):
+                st[STATE_EVIDENCE_METRICS_KEY] = metrics
+                try:
+                    self._save_state(project_id, st)
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "evidence_metrics state save skipped", exc_info=True
+                    )
+            if isinstance(proj, dict):
+                proj["evidence_metrics"] = {
+                    k: metrics.get(k)
+                    for k in (
+                        "schema_version",
+                        "counts",
+                        "total",
+                        "verified",
+                        "updated_at",
+                    )
+                    if k in metrics
+                }
+                try:
+                    self._save_projects()
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "evidence_metrics project save skipped", exc_info=True
+                    )
+            return {
+                "status": "ok",
+                "evidence_metrics": metrics,
+                "verified": verification_success(metrics),
+            }
+        except Exception as e:
+            logging.getLogger(__name__).debug(
+                "record_evidence_metrics failed", exc_info=True
+            )
+            return {"status": "error", "detail": str(e)[:200]}
+
     async def regenerate_stage(
         self,
         project_id: str,
@@ -3946,6 +4011,21 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                     }
         except Exception:
             logging.getLogger(__name__).debug("evidence_page state sync skipped", exc_info=True)
+
+        # Oversight P1: surface persisted verification metrics (if any)
+        try:
+            from core.api.core_facade import STATE_EVIDENCE_METRICS_KEY
+
+            st = result.get("state") if isinstance(result.get("state"), dict) else {}
+            metrics = st.get(STATE_EVIDENCE_METRICS_KEY) if isinstance(st, dict) else None
+            if not isinstance(metrics, dict):
+                proj = self._projects.get(project_id) or {}
+                if isinstance(proj, dict) and isinstance(proj.get("evidence_metrics"), dict):
+                    metrics = proj["evidence_metrics"]
+            if isinstance(metrics, dict):
+                result["evidence_metrics"] = metrics
+        except Exception:
+            logging.getLogger(__name__).debug("evidence_metrics sync skipped", exc_info=True)
 
         # F-T5: metrics digest slice on completion / failure
         try:

@@ -379,9 +379,31 @@ export const projectApi = {
     return apiClient.get<{
       status?: string;
       evidence_page?: EvidencePageSlice;
+      evidence_metrics?: {
+        counts?: Record<string, number>;
+        total?: number;
+        verified?: boolean;
+        updated_at?: string;
+      };
       source_type?: string;
       expired?: boolean;
     }>(`/platform/builder/projects/${projectId}/evidence-page`);
+  },
+
+  /** Oversight P1: persist verification metrics from sandboxed iframe (read-only) */
+  recordEvidenceMetrics: async (
+    projectId: string,
+    events: Array<string | { event: string; [k: string]: unknown }>,
+  ) => {
+    return apiClient.post<{
+      status?: string;
+      evidence_metrics?: {
+        counts?: Record<string, number>;
+        total?: number;
+        verified?: boolean;
+      };
+      verified?: boolean;
+    }>(`/platform/builder/projects/${projectId}/evidence-metrics`, { events });
   },
 
   /** Rollback to a specific pipeline stage or PRD */

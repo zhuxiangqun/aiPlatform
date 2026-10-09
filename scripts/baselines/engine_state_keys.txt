@@ -189,4 +189,5 @@ metadata|OK|generic pipeline (project metadata mirror incl. writing_profile)
 
 # -- Oversight P1: discardable interactive evidence page --
 _evidence_page|OK|engine-internal (template+JSON oversight HTML; TTL; read-only)
+_evidence_metrics|OK|engine-internal (oversight verification metrics; read-only; no coding/deploy)
 run_id|OK|generic pipeline (run identifier for evidence page)
