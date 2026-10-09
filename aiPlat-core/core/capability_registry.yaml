@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-10-08"
 total_capability_domains: 34
-total_capabilities: 1061
+total_capabilities: 1063
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -768,6 +768,14 @@ domains:
         type: function
         signature: 'Build a system message for MemoryManager.build_context injection.'
         module: aiPlat-core/core/harness/memory/team_brain.py
+      - symbol: classify_ide_coding_handoff
+        type: function
+        signature: 'Return handoff if text/tools look like a coding delivery ask.'
+        module: aiPlat-core/core/harness/memory/ide_governed_handoff.py
+      - symbol: ide_coding_handoff_payload
+        type: function
+        signature: 'Structured payload for ingest/API/CLI (kind + route + label).'
+        module: aiPlat-core/core/harness/memory/ide_governed_handoff.py
     breaks: []
     consumers_expected:
       - module: "core/harness/interfaces/loop.py"
