@@ -110,4 +110,16 @@ def ingest_ide_capture(
             logger.debug("session wiki from ide capture skipped: %s", e, exc_info=True)
             out["wiki"] = {"ok": False, "reason": str(e)[:150]}
 
+    # Coding-shaped asks → Factory handoff (confirm-gated); never auto-start.
+    try:
+        from core.harness.memory.ide_governed_handoff import ide_coding_handoff_payload
+
+        handoff = ide_coding_handoff_payload(
+            prompt, result=result, tools=tool_list, tags=tag_list
+        )
+        if handoff:
+            out["governed_handoff"] = handoff
+    except Exception as e:
+        logger.debug("ide governed handoff classify skipped: %s", e, exc_info=True)
+
     return out

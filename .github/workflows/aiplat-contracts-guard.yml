@@ -201,6 +201,7 @@ jobs:
             core/tests/unit/test_lint_engine_skills_script.py \
             core/tests/unit/test_harness/test_memory/test_team_brain.py \
             core/tests/unit/test_harness/test_memory/test_ide_capture.py \
+            core/tests/unit/test_harness/test_memory/test_ide_governed_handoff.py \
             core/tests/unit/test_harness/test_memory/test_session_wiki.py \
             core/tests/unit/test_harness/test_code_review_gold.py \
             core/tests/unit/test_harness/test_gold_profile_gate.py \

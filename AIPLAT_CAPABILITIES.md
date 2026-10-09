@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1988
+total_capabilities: 1989
 last_updated: 2026-10-09
 version: "30.9"
 auto_sync: true
@@ -830,6 +830,7 @@ scan_hash: 8f9548ec24f4
 | SharedMemory | harness/memory/shared_memory.py | ✅ | 跨实例共享，置信度去重 | 已合入 |
 | Team Brain（共享解法 Auto-Recall） | `harness/memory/team_brain.py` + `GET/POST /memory/team-brain` + `MemoryManager.build_context` 注入 + Memory 页 UI | ✅ | Hivemind 对齐薄聚合（不新建平行库）：hot TaskSkill + shared_memory `team_solution:*` + promoted experience → 关键词召回注入 system 卡；晶体化 `publish_task_skill_solution`；经验升级后 `publish_team_brain_manual`；inspect 暴露 `_last_team_brain_recall`；管理端 Memory→Team Brain；生成物适用：已接线（平台横切记忆） | 已合入 |
 | IDE 旁路捕获（Cursor/CC → Team Brain） | `harness/memory/ide_capture.py` + `POST /memory/ide-capture` + `POST /platform/memory/capture` + `scripts/ide_capture.py` + `.cursor/hooks/ide-capture.sh` | ✅ | Hivemind Auto-Capture 对齐：钩子/CLI 只投递，入库仍走 shared_memory / Team Brain；失败记 medium learning；可选 `write_wiki`；种子 `workspace_seeds/hooks/ide_capture_hooks.json.example`；生成物适用：已接线（平台横切记忆入口） | 已合入 |
+| IDE 编码意图 → 工厂受治理交接 | `harness/memory/ide_governed_handoff.py` ← `ingest_ide_capture.governed_handoff` | ✅ | 写代码/修 bug/委托编码等只返回 Factory handoff（沙箱/done_verify/autoreview），**禁止**钩子直启 coding run；生成物适用：已接线（平台横切） | 已合入 |
 | Session→Wiki Worker | `harness/memory/session_wiki.py` + `SESSION_END` hook + `CoreFacade.write_session_wiki` | ✅ | 编码/Agent 会话收尾写短 draft Wiki（`wiki_engine.write_page`，opt-in `AIPLAT_SESSION_WIKI`）；CC `SessionEnd` 已映射 `HookPhase.SESSION_END`；生成物适用：已接线（平台横切知识沉淀） | 已合入 |
 | SessionManager | harness/memory/session.py | ✅ | 会话 CRUD，自动清理 | 已合入 |
 | 语义记忆动态续期 | harness/memory/semantic.py | ✅ | search() 命中自动续期 expires_at | 已合入 |
@@ -2904,7 +2905,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 196 | 1 | 197 |
+| Harness 执行引擎 | 197 | 1 | 198 |
 | 记忆子系统 | 55 | 0 | 55 |
 | 知识引擎（本体） | 358 | 9 | 367 |
 | RAG 检索 | 51 | 0 | 51 |
@@ -2949,7 +2950,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1978** | **10** | **1988** |
+| **总计** | **1979** | **10** | **1989** |
 
 | **总计** | **1095** | **0** | **1095** |
 
