@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-10-08"
 total_capability_domains: 34
-total_capabilities: 1060
+total_capabilities: 1061
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -2422,6 +2422,10 @@ domains:
         signature: 'Register agents domain prompts (incl. agent-sop-design).'
         module: aiPlat-core/core/apps/agents/prompts.py
         notes: 'workspace_agents autofill resolves agent-sop-design via prompt_loader; no inline f-string prompt'
+      - symbol: handoff_card_payload
+        type: function
+        signature: 'Structured payload for APIs/UI (route + label).'
+        module: aiPlat-core/core/harness/digital_human/operational_handoff.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
