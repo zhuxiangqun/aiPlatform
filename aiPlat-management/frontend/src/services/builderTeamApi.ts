@@ -214,6 +214,24 @@ export interface StructureDiagramSlice {
   hint?: string;
 }
 
+/** Oversight P1: discardable interactive evidence page (template+JSON; TTL) */
+export interface EvidencePageSlice {
+  schema_version?: string;
+  template_id?: string;
+  source_type?: string;
+  confidence?: number | string;
+  created_at?: string;
+  expires_at?: string;
+  ttl_hours?: number;
+  read_only?: boolean;
+  can_trigger_coding?: boolean;
+  can_trigger_deploy?: boolean;
+  expired?: boolean;
+  html?: string;
+  metrics_events?: string[];
+  hint?: string;
+}
+
 export interface ProjectItem {
   project_id: string;
   name: string;
@@ -336,6 +354,7 @@ export const projectApi = {
       friction_share?: FrictionShareCta;
       team_digest?: TeamDigestSlice;
       structure_diagram?: StructureDiagramSlice;
+      evidence_page?: EvidencePageSlice;
     }>(
       `/platform/builder/projects/${projectId}/state`
     );
@@ -353,6 +372,16 @@ export const projectApi = {
       structure_diagram?: StructureDiagramSlice;
       source_type?: string;
     }>(`/platform/builder/projects/${projectId}/structure-diagram`);
+  },
+
+  /** Oversight P1: discardable evidence page (sandboxed HTML; TTL) */
+  getEvidencePage: async (projectId: string) => {
+    return apiClient.get<{
+      status?: string;
+      evidence_page?: EvidencePageSlice;
+      source_type?: string;
+      expired?: boolean;
+    }>(`/platform/builder/projects/${projectId}/evidence-page`);
   },
 
   /** Rollback to a specific pipeline stage or PRD */

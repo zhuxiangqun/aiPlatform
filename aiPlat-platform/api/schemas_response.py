@@ -139,6 +139,7 @@ class ProjectStateResponse(BaseModel):
     runs: List[Dict[str, Any]] = Field(default_factory=list)
     # Oversight / completion slices (optional; present on terminal polls)
     structure_diagram: Optional[Dict[str, Any]] = None
+    evidence_page: Optional[Dict[str, Any]] = None
     friction_share: Optional[Dict[str, Any]] = None
     team_digest: Optional[Dict[str, Any]] = None
 

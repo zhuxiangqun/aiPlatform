@@ -329,6 +329,55 @@ async def project_structure_diagram(
     }
 
 
+@router.get("/projects/{project_id}/evidence-page", response_model=StatusResponse)
+async def project_evidence_page(
+    project_id: str, _auth: str = Depends(require_builder_access)
+):
+    """Oversight P1: discardable evidence page (template+JSON; TTL; read-only)."""
+    from core.api.core_facade import (
+        STATE_EVIDENCE_KEY,
+        build_run_evidence_page,
+        is_evidence_expired,
+    )
+
+    st = await _get_svc().get_project_state(project_id)
+    state = st.get("state") if isinstance(st, dict) else {}
+    page = None
+    if isinstance(st, dict) and isinstance(st.get("evidence_page"), dict):
+        page = st["evidence_page"]
+    if (not isinstance(page, dict) or not page.get("html")) and isinstance(state, dict):
+        page = state.get(STATE_EVIDENCE_KEY)
+    if not isinstance(page, dict) or not page.get("html"):
+        proj = {}
+        try:
+            card = _get_svc()._projects.get(project_id) or {}
+            if isinstance(card, dict):
+                proj = card
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "evidence_page project card read skipped", exc_info=True
+            )
+        stages = proj.get("team_stages") if isinstance(proj, dict) else []
+        page = build_run_evidence_page(
+            state if isinstance(state, dict) else {},
+            stages=stages or [],
+        )
+    if isinstance(page, dict):
+        page = dict(page)
+        page["expired"] = is_evidence_expired(page)
+        page["can_trigger_coding"] = False
+        page["can_trigger_deploy"] = False
+        page["read_only"] = True
+    return {
+        "status": "ok",
+        "evidence_page": page if isinstance(page, dict) else {},
+        "source_type": (page or {}).get("source_type", "tool_result")
+        if isinstance(page, dict)
+        else "tool_result",
+        "expired": bool((page or {}).get("expired")) if isinstance(page, dict) else False,
+    }
+
+
 # ── Team harness (T1c / T3b / T6') ──────────────────────────────────────────
 
 @router.post("/team-harness/push", response_model=StatusResponse)

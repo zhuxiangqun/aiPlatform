@@ -2529,6 +2529,19 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                     logging.getLogger(__name__).debug(
                         "write_structure_diagram skipped", exc_info=True
                     )
+                # Oversight P1: discardable evidence page (template + JSON)
+                try:
+                    from core.harness.execution.run_evidence_page import (
+                        write_evidence_page,
+                    )
+                    write_evidence_page(
+                        self._state,
+                        stages=getattr(self._config, "stages", None),
+                    )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "write_evidence_page skipped", exc_info=True
+                    )
 
         except asyncio.CancelledError:
             self._state["phase"] = "failed"
@@ -2558,6 +2571,19 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                     logging.getLogger(__name__).debug(
                         "write_structure_diagram terminal skipped", exc_info=True
                     )
+                try:
+                    from core.harness.execution.run_evidence_page import (
+                        write_evidence_page,
+                    )
+                    if not isinstance(self._state.get("_evidence_page"), dict):
+                        write_evidence_page(
+                            self._state,
+                            stages=getattr(self._config, "stages", None),
+                        )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "write_evidence_page terminal skipped", exc_info=True
+                    )
             if self._state.get("phase") not in ("done", "failed"):
                 self._state["phase"] = "done"
                 try:
@@ -2583,6 +2609,18 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 except Exception:
                     logging.getLogger(__name__).debug(
                         "write_structure_diagram in finally skipped", exc_info=True
+                    )
+                try:
+                    from core.harness.execution.run_evidence_page import (
+                        write_evidence_page,
+                    )
+                    write_evidence_page(
+                        self._state,
+                        stages=getattr(self._config, "stages", None),
+                    )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "write_evidence_page in finally skipped", exc_info=True
                     )
             self._state["finished_at"] = __import__("datetime").datetime.now().isoformat()
             if self._persist_callback:

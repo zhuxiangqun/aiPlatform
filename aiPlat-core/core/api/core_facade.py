@@ -4956,6 +4956,14 @@ from core.harness.execution.run_structure_diagram import (  # noqa: boundary —
     stages_to_mermaid,
     write_structure_diagram,
 )
+from core.harness.execution.run_evidence_page import (  # noqa: boundary — CoreFacade re-export
+    STATE_EVIDENCE_KEY,
+    build_run_evidence_page,
+    collect_evidence_data,
+    is_evidence_expired,
+    render_evidence_html,
+    write_evidence_page,
+)
 from core.harness.execution.factory_bloat_metrics import (  # noqa: boundary — CoreFacade re-export
     BASELINE_PROJECT_KEY,
     STATE_BLOAT_KEY,

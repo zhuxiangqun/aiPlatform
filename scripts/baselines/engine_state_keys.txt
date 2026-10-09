@@ -186,3 +186,7 @@ _structure_diagram|OK|engine-internal (tool_result stage Mermaid payload; no LLM
 writing_profile|OK|generic pipeline (concise_v1|off; handoff/HITL/error prose)
 _writing_profile|OK|engine-internal (writing_profile alias)
 metadata|OK|generic pipeline (project metadata mirror incl. writing_profile)
+
+# -- Oversight P1: discardable interactive evidence page --
+_evidence_page|OK|engine-internal (template+JSON oversight HTML; TTL; read-only)
+run_id|OK|generic pipeline (run identifier for evidence page)

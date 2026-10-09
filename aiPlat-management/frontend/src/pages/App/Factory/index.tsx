@@ -518,6 +518,17 @@ const ProjectPanel: React.FC<{
     hint?: string;
   } | null>(null);
   const [showStructureDiagram, setShowStructureDiagram] = useState(false);
+  const [evidencePage, setEvidencePage] = useState<{
+    html?: string;
+    source_type?: string;
+    confidence?: number | string;
+    expires_at?: string;
+    expired?: boolean;
+    hint?: string;
+    template_id?: string;
+  } | null>(null);
+  const [showEvidencePage, setShowEvidencePage] = useState(false);
+  const [evidenceMetrics, setEvidenceMetrics] = useState<Record<string, number>>({});
   const [progressState, setProgressState] = useState<Record<string, any> | null>(null);
   const [executingSince, setExecutingSince] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -676,6 +687,11 @@ const ProjectPanel: React.FC<{
           s._structure_diagram ||
           null;
         if (diagram?.mermaid) setStructureDiagram(diagram);
+        const evPage =
+          (st as any)?.evidence_page ||
+          s._evidence_page ||
+          null;
+        if (evPage?.html) setEvidencePage(evPage);
         // v3.1: Track HITL stage from Core's _hitl_stage_id and _hitl_output_artifact
         if (isHitlWaitPhase(p)) {
           const hitlId = s._hitl_stage_id as string;
@@ -803,6 +819,11 @@ const ProjectPanel: React.FC<{
           state._structure_diagram ||
           null;
         if (diagram?.mermaid) setStructureDiagram(diagram);
+        const evPage =
+          (st as any)?.evidence_page ||
+          state._evidence_page ||
+          null;
+        if (evPage?.html) setEvidencePage(evPage);
         const orderedKeys = project.team_stages?.map(s => (s as any).output_artifact).filter(Boolean) || [];
         const keys = orderedKeys.length > 0 ? orderedKeys : ['architecture', 'code', 'test_report'];
         const outputs = collectStageOutputs(state, keys);
@@ -821,6 +842,32 @@ const ProjectPanel: React.FC<{
     setTeamStages(project.team_stages || []);
     setRunHistory(project.runs || []);
   }, [project]);
+
+  // Oversight P1: receive verification metrics from sandboxed evidence iframe
+  useEffect(() => {
+    const onMsg = (ev: MessageEvent) => {
+      const d = ev.data;
+      if (!d || typeof d !== 'object') return;
+      if (d.type === 'aiplat_evidence_metric' && typeof d.event === 'string') {
+        setEvidenceMetrics(prev => ({
+          ...prev,
+          [d.event]: (prev[d.event] || 0) + 1,
+        }));
+      }
+      if (d.type === 'aiplat_evidence_nav' && typeof d.href === 'string' && d.href.startsWith('#artifact:')) {
+        const key = d.href.slice('#artifact:'.length);
+        if (key && stageOutputs?.[key]) {
+          setFullscreenTitle(`Artifact: ${key}`);
+          const raw = stageOutputs[key]?.raw_output;
+          setFullscreenContent(
+            typeof raw === 'string' ? raw : JSON.stringify(stageOutputs[key] || {}, null, 2),
+          );
+        }
+      }
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, [stageOutputs]);
 
   const handleConfirm = async () => {
     if (!project.project_id) return;
@@ -1726,6 +1773,57 @@ const ProjectPanel: React.FC<{
               <pre className="text-[10px] text-slate-200 font-mono whitespace-pre-wrap break-all max-h-64 overflow-y-auto bg-black/30 p-2 rounded">
                 {structureDiagram.mermaid}
               </pre>
+            )}
+          </div>
+        )}
+
+        {/* Oversight P1: discardable evidence page (sandbox iframe; TTL; no coding/deploy) */}
+        {(phase === 'done' || phase === 'failed') && (
+          <div className="p-3 rounded bg-slate-500/5 border border-slate-500/30 text-xs space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-300 font-medium">交互证据页（可丢弃）</span>
+              <button
+                type="button"
+                className="text-slate-400 hover:text-slate-200"
+                onClick={async () => {
+                  if (!evidencePage?.html) {
+                    try {
+                      const r = await projectApi.getEvidencePage(project.project_id);
+                      const d = (r as any)?.evidence_page || r;
+                      if (d?.html) setEvidencePage(d);
+                    } catch (e) {
+                      toastGateError(e, '证据页加载失败');
+                      return;
+                    }
+                  }
+                  setShowEvidencePage(v => !v);
+                }}
+              >
+                {showEvidencePage ? '收起' : '打开沙箱预览'}
+              </button>
+            </div>
+            <div className="text-[10px] text-slate-500">
+              template+JSON · iframe sandbox · TTL
+              {evidencePage?.expires_at ? ` · expires ${evidencePage.expires_at}` : ''}
+              {evidencePage?.expired ? ' · EXPIRED' : ''}
+              {evidencePage?.source_type ? ` · source_type=${evidencePage.source_type}` : ''}
+            </div>
+            {Object.keys(evidenceMetrics).length > 0 && (
+              <div className="text-[10px] text-slate-400">
+                metrics:{' '}
+                {Object.entries(evidenceMetrics)
+                  .map(([k, v]) => `${k}=${v}`)
+                  .join(' · ')}
+              </div>
+            )}
+            {showEvidencePage && evidencePage?.html && (
+              <iframe
+                title="oversight-evidence-sandbox"
+                srcDoc={evidencePage.html}
+                sandbox="allow-scripts"
+                referrerPolicy="no-referrer"
+                className="w-full h-80 rounded border border-slate-600/50 bg-slate-950"
+              />
             )}
           </div>
         )}

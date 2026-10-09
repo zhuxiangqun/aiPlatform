@@ -3889,6 +3889,64 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         except Exception:
             logging.getLogger(__name__).debug("structure_diagram state sync skipped", exc_info=True)
 
+        # Oversight P1: discardable evidence page (template + JSON; TTL; read-only)
+        try:
+            from core.api.core_facade import (
+                STATE_EVIDENCE_KEY,
+                build_run_evidence_page,
+                is_evidence_expired,
+            )
+
+            st = result.get("state") if isinstance(result.get("state"), dict) else {}
+            page = st.get(STATE_EVIDENCE_KEY) if isinstance(st, dict) else None
+            stages = (self._projects.get(project_id) or {}).get("team_stages") or []
+            if not isinstance(page, dict) or not page.get("html"):
+                page = build_run_evidence_page(
+                    st if isinstance(st, dict) else {}, stages=stages
+                )
+                if isinstance(st, dict) and isinstance(page, dict):
+                    st[STATE_EVIDENCE_KEY] = page
+                    result["state"] = st
+            if isinstance(page, dict) and page.get("html"):
+                # Recompute expired flag at read time
+                page = dict(page)
+                page["expired"] = is_evidence_expired(page)
+                # Strip bulky html from list polls? Keep on state; expose slim card + html
+                result["evidence_page"] = {
+                    "schema_version": page.get("schema_version"),
+                    "template_id": page.get("template_id"),
+                    "source_type": page.get("source_type"),
+                    "confidence": page.get("confidence"),
+                    "created_at": page.get("created_at"),
+                    "expires_at": page.get("expires_at"),
+                    "ttl_hours": page.get("ttl_hours"),
+                    "read_only": page.get("read_only", True),
+                    "can_trigger_coding": False,
+                    "can_trigger_deploy": False,
+                    "expired": page.get("expired", False),
+                    "html": page.get("html"),
+                    "metrics_events": page.get("metrics_events") or [],
+                    "hint": page.get("hint"),
+                }
+                proj = self._projects.get(project_id)
+                if isinstance(proj, dict):
+                    proj["evidence_page"] = {
+                        k: result["evidence_page"][k]
+                        for k in (
+                            "schema_version",
+                            "template_id",
+                            "source_type",
+                            "confidence",
+                            "created_at",
+                            "expires_at",
+                            "expired",
+                            "hint",
+                        )
+                        if k in result["evidence_page"]
+                    }
+        except Exception:
+            logging.getLogger(__name__).debug("evidence_page state sync skipped", exc_info=True)
+
         # F-T5: metrics digest slice on completion / failure
         try:
             phase = str(result.get("phase") or "")
