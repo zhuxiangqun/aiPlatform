@@ -88,6 +88,8 @@ def test_build_production_depth_report_shape():
         "stage_reflection",
         "exec_docker",
         "sandbox_docker",
+        "os_sandbox_tighten",
+        "subagent_discipline",
         "agent_event_ingress",
         "vector_backend",
         "observability_contract",

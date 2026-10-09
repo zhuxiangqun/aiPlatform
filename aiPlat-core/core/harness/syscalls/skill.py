@@ -447,6 +447,10 @@ async def sys_skill_call(
 
                                 "keywords": meta.get("keywords") if isinstance(meta.get("keywords"), dict) else {},
 
+                                "invocation_mode": meta.get("invocation_mode"),
+
+                                "auto_trigger_allowed": meta.get("auto_trigger_allowed"),
+
                             }
 
                         )

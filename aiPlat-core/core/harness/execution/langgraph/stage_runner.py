@@ -216,6 +216,41 @@ class StageRunner:
                 "_preferred_language": str(state.get("_preferred_language") or "").strip().lower(),
             },
         )
+        # DONE Verify ring — inject quality_gate / expected_outcomes / done_verify
+        try:
+            from core.harness.execution.done_verify import build_done_verify_config
+
+            _qg = (getattr(s, "quality_gate", None) if s else None) or state.get("quality_gate") or {}
+            _eo = (getattr(s, "expected_outcomes", None) if s else None) or state.get("expected_outcomes") or []
+            _rg = str((getattr(s, "review_gate", None) if s else None) or state.get("review_gate") or "")
+            _stage_dv = getattr(s, "done_verify", None) if s else None
+            _ov = _stage_dv if isinstance(_stage_dv, dict) and _stage_dv else None
+            if _ov is None and isinstance(state.get("_done_verify"), dict):
+                _ov = state.get("_done_verify")
+            if _ov is None and isinstance(state.get("done_verify"), dict):
+                _ov = state.get("done_verify")
+            loop_state.context["_done_verify"] = build_done_verify_config(
+                quality_gate=_qg if isinstance(_qg, dict) else {},
+                expected_outcomes=list(_eo) if isinstance(_eo, list) else [],
+                done_verify=_ov,
+                review_gate=_rg,
+            )
+            loop_state.context["quality_gate"] = _qg if isinstance(_qg, dict) else {}
+            loop_state.context["expected_outcomes"] = list(_eo) if isinstance(_eo, list) else []
+            loop_state.context["review_gate"] = _rg
+        except Exception:
+            logging.getLogger(__name__).debug("done_verify inject skipped", exc_info=True)
+
+        # Code meta-tool — stage / state overlay (Turing escape hatch)
+        try:
+            from core.harness.execution.meta_tool import apply_meta_tool_config
+
+            _mt = getattr(s, "meta_tool", None) if s else None
+            if not isinstance(_mt, dict) or not _mt:
+                _mt = state.get("meta_tool") if isinstance(state.get("meta_tool"), dict) else {}
+            apply_meta_tool_config(loop_state.context, _mt if isinstance(_mt, dict) else {})
+        except Exception:
+            logging.getLogger(__name__).debug("meta_tool inject skipped", exc_info=True)
 
         result = await loop.run(loop_state, LoopConfig(max_steps=max_steps))
 

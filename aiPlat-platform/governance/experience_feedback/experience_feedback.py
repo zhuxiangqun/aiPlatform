@@ -50,6 +50,25 @@ STATUS_REJECTED = "rejected"
 VALID_RISKS = ("low", "high")
 
 
+def _publish_promoted_to_team_brain(rec: Dict[str, Any]) -> None:
+    """Best-effort: promoted gotcha → Team Brain shared_memory（跨 Agent Auto-Recall）。"""
+    try:
+        from core.api.core_facade import publish_team_brain_manual
+
+        rule_id = str(rec.get("rule_id") or rec.get("id") or "experience")
+        summary = str(rec.get("content") or rec.get("promote_draft") or "").strip()
+        if not summary:
+            return
+        publish_team_brain_manual(
+            title=f"experience:{rule_id}",
+            summary=summary[:800],
+            source_agent=str(rec.get("source") or "experience_feedback"),
+            keywords=[rule_id] if rule_id else None,
+        )
+    except Exception:
+        pass  # noqa: experience store must not fail if core unavailable
+
+
 def _default_path() -> str:
     """默认存储路径：AIPLAT_EXPERIENCE_FILE > $AIPLAT_HOME/experience_feedback.json > ~/.aiplat/..."""
     env = os.environ.get("AIPLAT_EXPERIENCE_FILE")
@@ -198,6 +217,7 @@ class ExperienceStore:
             return {"promoted": True, "require_review": True, "id": rec["id"],
                     "draft": rec["promote_draft"]}
         self._save(records)
+        _publish_promoted_to_team_brain(rec)
         return {"promoted": True, "require_review": False, "id": rec["id"],
                 "draft": rec["promote_draft"]}
 
@@ -214,6 +234,7 @@ class ExperienceStore:
             rec["require_review"] = False
             rec["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
             self._save(records)
+            _publish_promoted_to_team_brain(rec)
             return {"confirmed": True, "id": rec["id"], "status": STATUS_PROMOTED}
         rec["status"] = STATUS_REJECTED
         rec["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())

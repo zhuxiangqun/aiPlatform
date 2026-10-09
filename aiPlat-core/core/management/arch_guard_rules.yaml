@@ -948,35 +948,33 @@ rules:
       prompt_loader"
 
   # ═══ Section 46: Skill Execution Realness — Automated ═══
-  # 46.1: Upgrade handler type without handler file from WARNING to ERROR
-  - id: skill_handler_type_no_handler_file
+  # 旧 grep_forbidden 只扫 ~/.aiplat/skills/ 且把「有 execution_type」当违规，对 engine 无效。
+  # 现改为 scripts/lint_engine_skills.py：handler 配对 + FILE 错绑 + no-op + invocation_mode 冲突。
+  - id: engine_skill_quality_lint
     section: "§46"
-    section_name: "执行真实性 — handler 缺失"
+    section_name: "Engine Skill 质量/执行真实性全量 lint"
     level: error
     check:
-      type: grep_forbidden
-      pattern: 'execution_type:\s*handler'
-      paths: ["~/.aiplat/skills/"]
-      exclude: ["__pycache__"]
-      grep_exclude: []
-    message: "SKILL.md declares execution_type:handler — verify handler.py exists
-      at same level (run: find ~/.aiplat/skills/ -name SKILL.md -exec dirname {} \\
-      ; | while read d; do grep -l 'execution_type.*handler' \"$d/SKILL.md\" 2>/dev/null
-      && test -f \"$d/handler.py\" || echo \"MISSING: $d/handler.py\"; done)"
+      type: cmd_output
+      shell: python3 scripts/lint_engine_skills.py
+      ok_pattern: "PASS: engine skill quality lint clean"
+    message: "engine SKILL.md 质量 lint 失败（handler 配对 / FILE 验收错绑 / no-op / invocation_mode）。运行: python3 scripts/lint_engine_skills.py"
 
-  # 46.2: Detect handler.py files without execution_type:handler declared
-  - id: skill_execution_type_prompt_with_handler
+  # 工作区技能：有 ~/.aiplat/skills 时同样跑；level=warning → 有债只告警不阻断 CI
+  - id: workspace_skill_quality_lint
     section: "§46"
-    section_name: "执行真实性 — handler/execution_type 不一致"
-    level: info
+    section_name: "Workspace Skill 质量/执行真实性 lint"
+    level: warning
     check:
-      type: grep_forbidden
-      pattern: 'execution_type:\s*prompt'
-      paths: ["~/.aiplat/skills/"]
-      exclude: ["__pycache__"]
-      grep_exclude: []
-    message: "SKILL.md declares execution_type:prompt — if handler.py exists in same
-      dir, change to execution_type:handler"
+      type: cmd_output
+      shell: |
+        if [ -d "$HOME/.aiplat/skills" ]; then
+          python3 scripts/lint_engine_skills.py --path "$HOME/.aiplat/skills" || true
+        else
+          echo "PASS: engine skill quality lint clean"
+        fi
+      ok_pattern: "PASS: engine skill quality lint clean"
+    message: "workspace SKILL.md 质量 lint 有问题（warning）。运行: python3 scripts/lint_engine_skills.py --path ~/.aiplat/skills"
 
   # ═══ Section 47: Structural Completeness — Known Dead Code ═══
   - id: zero_caller_todo_wire

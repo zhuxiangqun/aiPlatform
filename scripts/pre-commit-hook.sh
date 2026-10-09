@@ -293,6 +293,18 @@ if [ -z "${SKIP_ENTITY_GUARD:-}" ]; then
         fi
     done
 
+    # P3.5: engine SKILL.md / skill_quality 变更时跑全量质量 lint（handler 配对 / FILE 错绑 / no-op）
+    if git diff --cached --name-only | grep -qE '(engine/skills/.*/SKILL\.md|lint_rules/skill_quality\.py|scripts/lint_engine_skills\.py)'; then
+        echo "  → Engine skill quality lint (scripts/lint_engine_skills.py)..."
+        if ! python3 "$WORKSPACE/scripts/lint_engine_skills.py"; then
+            echo "  ❌ Engine skill quality lint failed"
+            echo "     → Fix SKILL.md debt or run: python3 scripts/lint_engine_skills.py"
+            ENTITY_ISSUES=1
+        else
+            echo "  ✅ Engine skill quality lint passed"
+        fi
+    fi
+
     # P4: 禁止新增 response_model=dict
     if echo "$STAGED_PY" | xargs grep -l 'response_model=dict\b' 2>/dev/null | grep -v '# noqa: legacy-response-model' > /tmp/precommit_dict.txt; then
         echo "  ⚠️  New response_model=dict detected (advisory):"

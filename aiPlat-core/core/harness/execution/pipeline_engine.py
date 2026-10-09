@@ -1311,39 +1311,52 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
                     return f"Knowledge retrieval failed: {getattr(result, 'error', 'unknown')}"
 
-                # Optional LLM re-ranking of retrieved chunks
+                # Optional re-ranking via InfraReranker (W4/A2 migrate — no engine LLM prompt)
                 if kb_rerank and output:
 
                     try:
 
-                        from core.harness.utils.prompt_loader import _sync_resolve
-                        rerank_prompt = _sync_resolve("relevance-ranker",
-                            top_k=kb_top_k, query=kb_query, passages=str(output)[:3000])
+                        import re as _re_rr
 
-                        from core.harness.syscalls.llm import sys_llm_generate
-                        _rerank_model = best_model_for_purpose("chat")
-                        # bypass-ok: workflow_kb_rerank
-                        rerank_resp = await sys_llm_generate(
-                            _rerank_model,
+                        from core.harness.infrastructure.base_model_adapter import create_adapter
 
-                            [{"role": "user", "content": rerank_prompt}],
+                        raw = str(output)
 
-                            trace_context={"source": f"workflow_knowledge_rerank_{stage.id}"}
+                        parts = [p.strip() for p in _re_rr.split(r"\n\s*---\s*\n|\n\n+", raw) if p.strip()]
 
-                        )
+                        if len(parts) < 2:
 
-                        rerank_text = getattr(rerank_resp, 'content', '') or ''
+                            parts = [ln.strip() for ln in raw.splitlines() if ln.strip()]
 
-                        # Engine infra — model health recording (shared with _run_stage_skill)
-                        try:
-                            from core.harness.utils.model_injection import _record_success as _rerank_record_success
-                            _rerank_record_success(_rerank_model, latency_ms=0, purpose="chat")
-                        except Exception:
-                            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+                        candidates = [{"text": p[:2000]} for p in parts[: max(int(kb_top_k or 5) * 3, 8)]]
 
-                        if rerank_text:
+                        ranked = None
 
-                            output = f"[Re-ranked]\n{rerank_text[:3000]}"
+                        if candidates:
+
+                            adapter = create_adapter("reranker")
+
+                            ranked = adapter.rerank(kb_query, candidates, top_k=int(kb_top_k or 5))
+
+                        if ranked:
+
+                            lines = []
+
+                            for i, r in enumerate(ranked[: int(kb_top_k or 5)]):
+
+                                t = str(r.get("text") or "")[:500]
+
+                                lines.append(f"[{i+1}] {t}")
+
+                            output = "[Re-ranked]\n" + "\n".join(lines)
+
+                        else:
+
+                            logging.getLogger(__name__).debug(
+
+                                "workflow knowledge rerank: InfraReranker unavailable; keeping original hits"
+
+                            )
 
                     except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
 
@@ -7395,6 +7408,16 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 )
 
                 await mm.save_task_skill(task_skill)
+
+                try:
+                    from core.harness.memory.team_brain import publish_task_skill_solution
+                    publish_task_skill_solution(
+                        task_skill,
+                        source_agent=(agent_sequence[0] if agent_sequence else ""),
+                        source_session=str(state.get("session_id") or sid or ""),
+                    )
+                except Exception:
+                    logging.getLogger("pipeline_engine").debug("team_brain publish skipped", exc_info=True)
 
             except Exception:
 

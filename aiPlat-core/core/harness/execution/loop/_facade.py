@@ -284,6 +284,22 @@ class ReActLoop(BaseLoop):
         if coding_veto:
             return coding_veto
 
+        # Universal DONE Verify ring (config-driven: quality_gate / expected_outcomes /
+        # _done_verify). Fail-open after 2 verify vetoes so max_steps remains the hard cap.
+        try:
+            from core.harness.execution.done_verify import run_done_verify
+
+            verify_veto = run_done_verify(state.context if isinstance(state.context, dict) else {})
+        except Exception:
+            logging.getLogger(__name__).debug("done_verify skipped", exc_info=True)
+            verify_veto = None
+        if verify_veto:
+            if int(state.context.get("_done_verify_veto_count", 0) or 0) >= 2:
+                state.context["_done_verify_exhausted"] = True
+                state.context["_done_verify_last_reason"] = verify_veto
+            else:
+                return verify_veto
+
         # Fail-open after 2 vetoes to avoid burning the whole step budget on an
 
         # unsatisfiable criterion (max_steps in should_continue is the hard cap).
@@ -525,6 +541,11 @@ class ReActLoop(BaseLoop):
         state.context["_acceptance_veto_count"] = count
 
         state.context["_acceptance_veto"] = reason
+
+        if str(reason or "").startswith("done_verify:"):
+            state.context["_done_verify_veto_count"] = int(
+                state.context.get("_done_verify_veto_count", 0) or 0
+            ) + 1
 
         note = (
 
@@ -2807,8 +2828,34 @@ class ReActLoop(BaseLoop):
 
 
         # Ensure tool_search is always visible to the model when tools are truncated.
+        # Code meta-tool: pin when deterministic intent matches (article: Turing escape hatch).
 
         always_include = {"tool_search"}
+
+        try:
+            from core.harness.execution.meta_tool import (
+                ensure_code_meta_tool,
+                meta_tool_pin_names,
+                tool_names_from_tools,
+            )
+
+            _task0 = ""
+            _ctx0 = {}
+            if getattr(self, "_current_state", None) is not None:
+                _ctx0 = self._current_state.context if isinstance(self._current_state.context, dict) else {}
+                _task0 = str(_ctx0.get("task") or _ctx0.get("_user_task") or "")
+            self._tools = ensure_code_meta_tool(
+                list(self._tools or []),
+                task=_task0,
+                context=_ctx0 if isinstance(_ctx0, dict) else None,
+            )
+            always_include |= meta_tool_pin_names(
+                tool_names_from_tools(self._tools),
+                task=_task0,
+                context=_ctx0 if isinstance(_ctx0, dict) else None,
+            )
+        except Exception:
+            logging.getLogger(__name__).debug("meta_tool pin skipped", exc_info=True)
 
         ordered = list(self._tools)
 
@@ -3034,6 +3081,25 @@ class ReActLoop(BaseLoop):
 
             logging.getLogger(__name__).debug('code failed', exc_info=True)
 
+        # Code meta-tool overlay (ephemeral; does not reorder — prompt-cache safe)
+        try:
+            from core.harness.execution.meta_tool import build_meta_tool_hint, tool_names_from_tools
+
+            _ctx_m = {}
+            _task_m = ""
+            if getattr(self, "_current_state", None) is not None:
+                _ctx_m = self._current_state.context if isinstance(self._current_state.context, dict) else {}
+                _task_m = str(_ctx_m.get("task") or _ctx_m.get("_user_task") or "")
+            _hint = build_meta_tool_hint(
+                _task_m,
+                tool_names_from_tools(self._tools),
+                context=_ctx_m if isinstance(_ctx_m, dict) else None,
+            )
+            if _hint:
+                lines.append("\n" + _hint)
+                stats["meta_tool_hint"] = True
+        except Exception:
+            logging.getLogger(__name__).debug("meta_tool hint skipped", exc_info=True)
 
         return "\n".join(lines), stats
 

@@ -1,0 +1,6 @@
+# Example: PipelineStageConfig.meta_tool / AGENT.md frontmatter.
+# Prefer sandbox `code` for deterministic steps (Harness meta-tool).
+meta_tool:
+  enabled: true       # prefer code over LLM guess for arithmetic/dates/parse
+  auto_bind: false    # true = append CodeExecutionTool when missing (opt-in)
+  force: false        # true = hint/pin even without intent regex

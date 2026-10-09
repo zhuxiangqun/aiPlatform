@@ -64,6 +64,20 @@ def aggregate(evidence_tree_path: Optional[str] = None,
     if exp_path:
         sources.append({"kind": "experiences", "path": exp_path, "present": bool(experiences)})
 
+    # Optional org-harness slice (HITL serial / approval Amdahl proxy) via CoreFacade.
+    org_harness: Optional[Dict[str, Any]] = None
+    try:
+        from core.api.core_facade import org_harness_status
+
+        org_harness = org_harness_status(recent_limit=5)
+        sources.append({
+            "kind": "org_harness",
+            "path": "core_facade.org_harness_status",
+            "present": bool(org_harness and org_harness.get("ok")),
+        })
+    except Exception:
+        org_harness = None
+
     return {
         "generated_at": None,
         "sources": sources,
@@ -89,6 +103,7 @@ def aggregate(evidence_tree_path: Optional[str] = None,
             "by_status": exp_counts,
             "recent": recent_exp,
         },
+        "org_harness": org_harness,
     }
 
 

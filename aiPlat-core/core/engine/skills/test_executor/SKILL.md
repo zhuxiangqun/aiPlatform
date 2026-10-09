@@ -8,6 +8,7 @@ category: execution
 version: 3.0.0
 skill_model_purpose: code_gen
 status: enabled
+invocation_mode: auto
 timeout: 90
 execution_type: handler
 tags:

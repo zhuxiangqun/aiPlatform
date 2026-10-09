@@ -29,6 +29,12 @@ def test_eval_observability_rewrites_to_platform():
     assert path == "/governance/eval-observability"
 
 
+def test_org_harness_rewrites_to_platform():
+    target, path = apply_path_rewrite("/api/governance/org-harness")
+    assert target == PLATFORM_URL
+    assert path == "/governance/org-harness"
+
+
 def test_other_core_diagnostics_untouched():
     target, path = apply_path_rewrite("/api/core/diagnostics/summary")
     assert target is None

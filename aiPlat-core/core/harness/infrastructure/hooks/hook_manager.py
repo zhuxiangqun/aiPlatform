@@ -444,6 +444,19 @@ def get_default_hooks() -> Dict[str, Hook]:
         priority=100,
     )
 
+    # Hivemind Session→Wiki：opt-in via AIPLAT_SESSION_WIKI=true
+    try:
+        from core.harness.memory.session_wiki import session_wiki_worker_hook
+
+        hooks["session_wiki_worker"] = create_hook(
+            name="session_wiki_worker",
+            callback=session_wiki_worker_hook,
+            phase=HookPhase.SESSION_END,
+            priority=40,
+        )
+    except Exception:
+        logging.getLogger(__name__).debug("session_wiki_worker hook skip", exc_info=True)
+
     # Contract enforcement: require project-level CLAUDE.md (server-side).
     # This makes project guidelines effective in the execution chain, not just in IDEs.
     async def enforce_claude_md_hook(context: HookContext):

@@ -114,8 +114,9 @@ def _completeness_gaps(draft: Dict[str, Any], seed_desc: str) -> List[str]:
         gaps.append("output_schema（含 markdown + 业务产出字段）")
     elif "markdown" not in out:
         gaps.append("output_schema.markdown")
-    if len(_as_str_list(draft.get("trigger_conditions"))) < 3:
-        gaps.append("trigger_conditions（至少 3 条中文触发说法）")
+    inv = str(draft.get("invocation_mode") or "user").strip().lower()
+    if inv == "auto" and len(_as_str_list(draft.get("trigger_conditions"))) < 3:
+        gaps.append("trigger_conditions（invocation_mode=auto 时至少 3 条中文触发说法）")
     perms = _as_str_list(draft.get("permissions"))
     if "llm:generate" not in perms:
         gaps.append("permissions 含 llm:generate")
@@ -286,6 +287,17 @@ def _enrich_draft(draft: Dict[str, Any], *, seed_name: str, seed_desc: str) -> D
     in_schema = _as_schema(draft.get("input_schema"))
     out_schema = _as_schema(draft.get("output_schema"))
 
+    inv = str(draft.get("invocation_mode") or "user").strip().lower()
+    if inv not in ("user", "auto"):
+        inv = "user"
+    ata = draft.get("auto_trigger_allowed")
+    if ata is None:
+        ata = inv == "auto"
+    else:
+        ata = bool(ata)
+    if inv == "user":
+        ata = False
+
     # Fill empty schemas / triggers from description (LLM often drops these)
     if not in_schema or not out_schema:
         syn_in, syn_out = _synthesize_io_schemas(desc, file_write=file_write)
@@ -302,7 +314,8 @@ def _enrich_draft(draft: Dict[str, Any], *, seed_name: str, seed_desc: str) -> D
                 description="面向人阅读的 Markdown，与结构化字段一致",
             ),
         }
-    if len(triggers) < 3:
+    # Only pad triggers for auto-routed skills
+    if inv == "auto" and len(triggers) < 3:
         triggers = _synthesize_triggers(display, name, desc)
 
     sop = str(draft.get("sop") or "").strip()
@@ -316,6 +329,8 @@ def _enrich_draft(draft: Dict[str, Any], *, seed_name: str, seed_desc: str) -> D
         "category": category,
         "version": str(draft.get("version") or "1.0.0"),
         "skill_kind": skill_kind,
+        "invocation_mode": inv,
+        "auto_trigger_allowed": ata,
         "permissions": perms_u,
         "trigger_conditions": triggers,
         "capabilities": _as_str_list(draft.get("capabilities")),
@@ -445,6 +460,8 @@ async def generate_skill_autofill(
             "category": fm.get("category", "general"),
             "version": fm.get("version", "1.0.0"),
             "skill_kind": fm.get("skill_kind", "rule"),
+            "invocation_mode": fm.get("invocation_mode") or "user",
+            "auto_trigger_allowed": fm.get("auto_trigger_allowed"),
             "permissions": fm.get("permissions", []) or [],
             "trigger_conditions": fm.get("trigger_conditions", []) or [],
             "capabilities": fm.get("capabilities", []) or [],

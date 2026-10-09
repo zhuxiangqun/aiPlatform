@@ -7,6 +7,7 @@ description: 【必须使用 browser 工具实际操作网页，禁止凭记忆�
 version: 1.1.0
 category: execution
 status: enabled
+invocation_mode: auto
 triggers:
   - 浏览器测试
   - 网页自动化
@@ -167,6 +168,6 @@ skip_when: 跳过条件：用户未提供具体URL或页面描述时不触发。
 通过浏览器自动化执行网页操作和提取数据
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

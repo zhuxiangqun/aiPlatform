@@ -44,6 +44,24 @@ class LocalExecDriver(ExecDriver):
             else:
                 cmd = ["node", str(p)]
 
+            # Production OS sandbox wrap (fail-closed); dev fail-open
+            try:
+                from core.harness.infrastructure.os_sandbox import (
+                    SandboxRequiredError,
+                    build_os_sandbox_cmd,
+                )
+                cmd = build_os_sandbox_cmd(cmd, workdir=str(Path(td)), network=False)
+            except SandboxRequiredError as e:
+                return ExecResult(
+                    ok=False,
+                    exit_code=125,
+                    error=str(e),
+                    duration_ms=int((time.time() - t0) * 1000),
+                    metadata={"sandbox": "required"},
+                )
+            except Exception as e:
+                logging.debug("os sandbox wrap skipped: %s", e, exc_info=True)
+
             try:
                 proc = await asyncio.create_subprocess_exec(
                     *cmd,

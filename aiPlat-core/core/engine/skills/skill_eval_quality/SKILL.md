@@ -5,6 +5,7 @@ description: 对指定Skill执行质量评测（用例+规则评分）并产出�
 category: execution
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 protected: true
 completion_criterion: |
   1. 每个 acceptance_criteria 至少有一个可执行的验证步骤
@@ -64,9 +65,6 @@ sop_flow:
   - "逐用例执行 Skill，按规则维度评分。"
   - "输出质量报告：各维度得分、总分、不合格项列表。"
   - "多维度评测 Skill 执行质量"
-  - "[ ] 输出格式符合规范"
-  - "[ ] 正确处理错误和边界条件"
-  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - Skill
@@ -101,6 +99,6 @@ skip_when: 跳过条件：Skill未有足够执行次数（<10）进行统计时�
 多维度评测 Skill 执行质量
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

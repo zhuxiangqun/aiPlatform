@@ -5,6 +5,7 @@ description: 对指定Skill进行触发评测（正负例）并产出优化建�
 category: execution
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 protected: true
 completion_criterion: |
   1. 每个 acceptance_criteria 至少有一个可执行的验证步骤
@@ -63,9 +64,6 @@ sop_flow:
   - "对每个用例执行触发评测，记录准确率/召回率/F1。"
   - "输出指标报告：precision, recall, F1, 误触发 case 列表。"
   - "评测 Skill 触发条件的准确性"
-  - "[ ] 输出格式符合规范"
-  - "[ ] 正确处理错误和边界条件"
-  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - Skill
@@ -99,6 +97,6 @@ skip_when: 跳过条件：Skill未在生产中运行或不具备统计分析条�
 评测 Skill 触发条件的准确性
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

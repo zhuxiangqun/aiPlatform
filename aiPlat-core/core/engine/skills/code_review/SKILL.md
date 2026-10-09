@@ -7,6 +7,7 @@ category: analysis
 version: 1.0.0
 skill_model_purpose: code_gen
 status: deprecated
+invocation_mode: auto
 deprecated_reason: 被 autoreview (handler+MoA+auto-fix) 全面覆盖
 protected: true
 completion_criterion: |
@@ -74,9 +75,6 @@ sop_flow:
   - "按维度审查：正确性、安全性、性能、可维护性、风格。"
   - "输出分级问题列表（P0/P1/P2）及改进建议。"
   - "系统性审查代码质量并给出改进建议"
-  - "[ ] 输出格式符合规范"
-  - "[ ] 正确处理错误和边界条件"
-  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - 代码
@@ -114,6 +112,6 @@ skip_when: 跳过条件：用户仅询问最佳实践而非审查具体代码时
 系统性审查代码质量并给出改进建议
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

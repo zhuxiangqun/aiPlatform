@@ -75,6 +75,58 @@ def build_production_depth_report() -> Dict[str, Any]:
         "hint": "export AIPLAT_SANDBOX_PREFER_DOCKER=true（或 AIPLAT_PROFILE=production）",
     })
 
+    # 2b) OS sandbox production tighten (bwrap/seatbelt; fail-open only in dev)
+    os_sb: Dict[str, Any] = {}
+    try:
+        from core.harness.infrastructure.os_sandbox import sandbox_env_ready
+
+        os_sb = sandbox_env_ready()
+    except Exception as e:
+        os_sb = {"error": f"{type(e).__name__}: {e}"}
+    if profile == "production":
+        os_ok = bool(os_sb.get("active") and os_sb.get("fail_closed"))
+        checks.append({
+            "id": "os_sandbox_tighten",
+            "title": "OS 沙箱生产收紧",
+            "status": _status(os_ok, warn=True),
+            "detail": str(os_sb),
+            "hint": "AIPLAT_PROFILE=production 自动启用；安装 bwrap/sandbox-exec；紧急 AIPLAT_SANDBOX_FAIL_OPEN=true",
+        })
+    else:
+        checks.append({
+            "id": "os_sandbox_tighten",
+            "title": "OS 沙箱生产收紧",
+            "status": "pass",
+            "detail": f"non-production fail-open OK; {os_sb}",
+            "hint": "生产切换 AIPLAT_PROFILE=production 后强制 OS sandbox",
+        })
+
+    # 2c) Subagent return discipline (condense + isolate)
+    sub_disc: Dict[str, Any] = {}
+    try:
+        from core.harness.execution.subagent_discipline import discipline_status
+
+        sub_disc = discipline_status()
+    except Exception as e:
+        sub_disc = {"error": f"{type(e).__name__}: {e}"}
+    if profile == "production":
+        disc_ok = bool(sub_disc.get("force_isolate_active"))
+        checks.append({
+            "id": "subagent_discipline",
+            "title": "子代理浓缩回传纪律",
+            "status": _status(disc_ok, warn=True),
+            "detail": str(sub_disc),
+            "hint": "AIPLAT_SUBAGENT_FORCE_ISOLATE=auto|on；AIPLAT_SUBAGENT_MAX_RETURN_CHARS",
+        })
+    else:
+        checks.append({
+            "id": "subagent_discipline",
+            "title": "子代理浓缩回传纪律",
+            "status": "pass",
+            "detail": f"non-production OK; {sub_disc}",
+            "hint": "生产 profile 下强制 isolate_context + 回传硬信封",
+        })
+
     # 3) Agent event ingress
     ingress_enabled = (os.getenv("AIPLAT_AGENT_EVENT_INGRESS") or "").lower() in (
         "1", "true", "yes", "y",

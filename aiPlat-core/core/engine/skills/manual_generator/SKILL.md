@@ -7,6 +7,7 @@ execution_type: prompt
 category: fde
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 effects:
   - type: read
     resources: ["http://localhost:8002/api/core/fde/manual/generate"]

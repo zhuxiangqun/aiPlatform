@@ -55,6 +55,20 @@ class DiscoveredSkill:
     rollback_available: bool = False
 
 
+def _resolve_auto_trigger_allowed(data: Dict[str, Any]) -> Optional[bool]:
+    """Map invocation_mode ↔ auto_trigger_allowed (user ⇒ no auto route)."""
+    inv = str(data.get("invocation_mode") or "").strip().lower()
+    if inv == "user":
+        return False
+    if inv == "auto":
+        if "auto_trigger_allowed" in data and data.get("auto_trigger_allowed") is not None:
+            return bool(data.get("auto_trigger_allowed"))
+        return True
+    if "auto_trigger_allowed" in data and data.get("auto_trigger_allowed") is not None:
+        return bool(data.get("auto_trigger_allowed"))
+    return None
+
+
 class SKILLMD_parser:
     """Parser for SKILL.md format"""
     
@@ -97,7 +111,7 @@ class SKILLMD_parser:
             execution_mode=data.get("execution_mode", "inline"),
             author=data.get("author", ""),
             skill_kind=str(data.get("skill_kind") or data.get("kind") or "rule"),
-            auto_trigger_allowed=(data.get("auto_trigger_allowed") if "auto_trigger_allowed" in data else None),
+            auto_trigger_allowed=_resolve_auto_trigger_allowed(data),
             requires_approval=(data.get("requires_approval") if "requires_approval" in data else None),
             risk_level=(str(data.get("risk_level")) if data.get("risk_level") is not None else None),
             sop_markdown=sop_markdown or "",
@@ -336,6 +350,9 @@ class SkillMatcher:
         input_lower = user_input.lower()
         
         for skill in skills:
+            # user / auto_trigger_allowed=false：仅显式调用，不参与自动匹配
+            if skill.auto_trigger_allowed is False:
+                continue
             # 优先使用显式 trigger_conditions（路由表）；若未配置，再退化到 trigger_keywords（兼容历史）
             conditions = list(skill.trigger_conditions or [])
             keywords = list(skill.trigger_keywords or [])

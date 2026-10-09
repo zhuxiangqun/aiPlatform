@@ -1,0 +1,17 @@
+id: jwt_expiry_skew
+description: "JWT refresh without clock skew tolerance"
+profile: low_noise
+line_window: 8
+gold_findings:
+  - file: services/token.py
+    line: 55
+    severity: P1
+    category: logic
+    keywords: ["jwt", "exp", "skew", "clock"]
+    description: "Validate exp with clock skew before refresh"
+predicted:
+  - file: services/token.py
+    line: 52
+    severity: P1
+    category: logic
+    description: "JWT exp check should allow clock skew before issuing refresh"

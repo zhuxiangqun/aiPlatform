@@ -5,6 +5,7 @@ description: 启动流水线→异步轮询→HITL挂起/恢复→部署—6步�
 category: orchestration
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 execution_type: prompt
 execution_backend: agent
 input_schema:

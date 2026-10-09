@@ -42,6 +42,11 @@ export default defineConfig({
         rewrite: (p) =>
           p.replace('/api/governance/eval-observability', '/governance/eval-observability'),
       },
+      '/api/governance/org-harness': {
+        target: 'http://localhost:8003',
+        changeOrigin: true,
+        rewrite: (p) => p.replace('/api/governance/org-harness', '/governance/org-harness'),
+      },
       '/api/core/diagnostics': {
         target: 'http://localhost:8002',
         changeOrigin: true,

@@ -1,0 +1,157 @@
+"""Organization harness metrics — HITL serial wait / approval Amdahl proxy."""
+
+from __future__ import annotations
+
+from core.harness.meta.org_harness_metrics import (
+    aggregate_org_harness,
+    collect_org_harness,
+    summarize_approvals,
+    summarize_gold_regression,
+    summarize_hitl_audit,
+    summarize_run_events,
+)
+
+
+def test_summarize_run_events_serial_ratio():
+    events = [
+        {"event_type": "stage_started", "created_at": 1000.0, "stage_id": "a"},
+        {"event_type": "hitl_requested", "created_at": 1010.0, "stage_id": "a"},
+        {"event_type": "hitl_approved", "created_at": 1060.0, "stage_id": "a"},
+        {"event_type": "stage_started", "created_at": 1070.0, "stage_id": "b"},
+    ]
+    out = summarize_run_events(events)
+    assert out["hitl_open_count"] == 1
+    assert out["hitl_wait_sec_total"] == 50.0
+    assert out["wall_sec"] == 70.0
+    assert out["serial_ratio"] == round(50.0 / 70.0, 4)
+    assert out["open_unresolved"] == 0
+
+
+def test_soft_close_via_stage_started():
+    events = [
+        {"event_type": "hitl_requested", "created_at": 1.0},
+        {"event_type": "stage_started", "created_at": 2.0},  # soft close
+    ]
+    out = summarize_run_events(events)
+    assert out["hitl_wait_sec_total"] == 1.0
+    assert out["open_unresolved"] == 0
+    assert len(out["hitl_episodes"]) == 1
+
+
+def test_unresolved_hitl_episode():
+    events = [{"event_type": "hitl_requested", "created_at": 1.0}]
+    out = summarize_run_events(events)
+    assert out["open_unresolved"] == 1
+    assert out["hitl_wait_sec_total"] == 0.0
+
+
+def test_summarize_hitl_audit():
+    audit = [
+        {"action": "hitl_requested", "timestamp": 10.0},
+        {"action": "hitl_approved", "timestamp": 25.0},
+    ]
+    out = summarize_hitl_audit(audit)
+    assert out["hitl_wait_sec_total"] == 15.0
+
+
+def test_summarize_approvals_latency():
+    recs = [
+        {"request_id": "1", "status": "approved", "created_at": 100.0, "updated_at": 130.0, "run_id": "r1"},
+        {"request_id": "2", "status": "pending", "created_at": 200.0, "updated_at": 200.0, "run_id": "r1"},
+        {"request_id": "3", "status": "denied", "created_at": 50.0, "updated_at": 80.0, "run_id": "r2"},
+        {
+            "request_id": "4",
+            "status": "approved",
+            "created_at": 10.0,
+            "updated_at": None,
+            "result": {"timestamp": 25.0},
+            "run_id": "r3",
+        },
+    ]
+    out = summarize_approvals(recs)
+    assert out["approval_count"] == 4
+    assert out["pending"] == 1
+    # latencies: 30, 30, 15 → avg 25
+    assert out["avg_latency_sec"] == 25.0
+    assert out["avg_approvals_per_run"] == round(4 / 3, 3)
+
+
+def test_aggregate_org_harness_combines():
+    out = aggregate_org_harness(
+        events=[
+            {"event_type": "stage_started", "created_at": 0.0},
+            {"event_type": "hitl_requested", "created_at": 10.0},
+            {"event_type": "hitl_resolved", "created_at": 40.0},
+            {"event_type": "stage_started", "created_at": 100.0},
+        ],
+        approvals=[
+            {"request_id": "a", "status": "approved", "created_at": 1.0, "updated_at": 11.0, "run_id": "x"},
+        ],
+        run_id="x",
+    )
+    assert out["ok"] is True
+    assert out["summary"]["hitl_wait_sec_total"] == 30.0
+    assert out["summary"]["serial_ratio"] == 0.3
+    assert out["summary"]["approval_count"] == 1
+
+
+def test_summarize_gold_regression_p0_miss_and_delta():
+    reports = [
+        {"precision": 0.8, "recall": 0.7, "p0_recall": 1.0, "novel_count": 0, "written_at": "t1"},
+        {"precision": 0.75, "recall": 0.72, "p0_recall": 0.5, "novel_count": 2, "written_at": "t2",
+         "case_ids": ["a", "b"]},
+    ]
+    out = summarize_gold_regression(reports)
+    assert out["report_count"] == 2
+    assert out["p0_miss_rate"] == 0.5
+    assert out["latest"]["precision"] == 0.75
+    assert out["delta_vs_prev"]["precision"] == -0.05
+    assert out["delta_vs_prev"]["p0_recall"] == -0.5
+    assert out["regressing"] is True
+
+
+def test_summarize_gold_empty():
+    out = summarize_gold_regression([])
+    assert out["report_count"] == 0
+    assert out["p0_miss_rate"] is None
+    assert out["regressing"] is False
+
+
+def test_aggregate_includes_gold():
+    out = aggregate_org_harness(
+        events=[],
+        approvals=[],
+        gold_reports=[
+            {"precision": 0.9, "recall": 0.8, "p0_recall": 1.0, "novel_count": 0},
+        ],
+    )
+    assert out["summary"]["gold_precision"] == 0.9
+    assert out["summary"]["p0_miss_rate"] == 0.0
+    assert out["gold_regression"]["report_count"] == 1
+
+
+def test_collect_fleet_without_stores(monkeypatch):
+    """Fleet path must not crash when pipeline store / approvals unavailable."""
+    import core.harness.meta.org_harness_metrics as m
+
+    monkeypatch.setattr(m, "_load_run_events", lambda *a, **k: [])
+    monkeypatch.setattr(m, "_load_approvals_sync", lambda **k: [])
+    monkeypatch.setattr(m, "_load_gold_reports", lambda **k: [
+        {"precision": 0.6, "recall": 0.5, "p0_recall": 0.75, "novel_count": 1},
+    ])
+
+    class _EmptyStore:
+        def list_recent_runs(self, limit=10):
+            return []
+
+    monkeypatch.setattr(
+        "core.harness.execution.pipeline_run_store.get_pipeline_run_store",
+        lambda: _EmptyStore(),
+        raising=False,
+    )
+    out = collect_org_harness(run_id="", recent_limit=3, load_approvals=True)
+    assert out["ok"] is True
+    assert out["scope"] == "fleet"
+    assert out["summary"]["runs_scanned"] == 0
+    assert out["summary"]["p0_miss_rate"] == 0.25
+    assert out["summary"]["gold_p0_recall"] == 0.75

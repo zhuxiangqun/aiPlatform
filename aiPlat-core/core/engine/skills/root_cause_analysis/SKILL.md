@@ -5,6 +5,7 @@ description: 根据测试失败输出，分析失败根因并给出修复建议�
 category: analysis
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 execution_mode: prompt
 execution_type: prompt
 triggers:
@@ -63,8 +64,6 @@ sop_flow:
   - "对每类失败给出根因+建议修复方向。"
   - "输出结构化分析报告（root_causes + fix_suggestions）。"
   - "追溯故障根因并给出修复建议"
-  - "[ ] 输出格式符合规范"
-  - "[ ] 正确处理错误和边界条件"
 protected: true
 completion_criterion: |
   1. 每个改动都有明确的验收标准（可验证的 pass/fail 条件）
@@ -107,6 +106,6 @@ skip_when: 跳过条件：问题已明确定位且有明确解决方案时不触
 追溯故障根因并给出修复建议
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

@@ -1,0 +1,17 @@
+# Example: PipelineStageConfig.done_verify / AGENT.md frontmatter overlay.
+# Copy fields into stages[].done_verify or agent metadata — not loaded automatically.
+#
+# Seal DONE only after deterministic checks pass (Harness Verify ring).
+done_verify:
+  enabled: true
+  min_output_length: 80
+  reject_trivial_done: true
+  reject_action_envelope: true
+  # require_keys: [status, summary]          # output must be JSON object
+  # require_substrings: ["## FILE:"]          # coding markers
+  # expected_outcomes:
+  #   - field: status
+  #     constraint: equals
+  #     expected: ok
+  # review_gate: required                    # only if agent binds autoreview/code_review
+  # require_commands: ["pytest", "-q"]       # opt-in shell; cwd = workdir

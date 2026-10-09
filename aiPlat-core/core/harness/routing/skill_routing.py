@@ -70,6 +70,11 @@ def compute_skill_candidates(
     out: List[SkillCandidate] = []
     for s in skills or []:
         try:
+            # invocation_mode=user / auto_trigger_allowed=false → 不进自动候选
+            inv = str(s.get("invocation_mode") or "").strip().lower()
+            ata = s.get("auto_trigger_allowed")
+            if inv == "user" or ata is False:
+                continue
             sid = str(s.get("skill_id") or s.get("id") or "").strip()
             name = str(s.get("name") or "").strip()
             scope = str(s.get("scope") or "unknown").strip().lower() or "unknown"

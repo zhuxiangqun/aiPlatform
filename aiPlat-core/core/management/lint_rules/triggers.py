@@ -14,6 +14,10 @@ class TriggerTooFewCheck(LintRule):
 
     def check(self, skill: Any) -> List[LintIssue]:
         meta = self._get_meta(skill)
+        # user-invoked skills are not auto-routed — do not require padded triggers
+        inv = str(meta.get("invocation_mode") or "").strip().lower()
+        if inv == "user" or meta.get("auto_trigger_allowed") is False:
+            return []
         tc = self._as_list(meta.get("trigger_conditions") or meta.get("trigger_keywords"))
         # Also count legacy/top-level `triggers:` (short phrases used by routing)
         triggers = self._as_list(meta.get("triggers"))

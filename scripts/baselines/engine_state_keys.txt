@@ -172,3 +172,11 @@ coding_intensity|OK|generic pipeline (config field mirror)
 agent_app|DEBT|legacy artifact key read in pipeline_stage (prefer stage.output_artifact)
 pm_chat_history|DEBT|factory chat history key still read in engine path
 prd|DEBT|legacy artifact key read in pipeline_stage/engine (prefer stage.output_artifact)
+
+# -- Harness closeout: DONE Verify + meta_tool (config-driven, kernel-agnostic) --
+_done_verify|OK|engine-internal (done_verify resolve cache / stage inject)
+done_verify|OK|generic pipeline (PipelineStageConfig / AGENT.md done_verify block)
+expected_outcomes|OK|generic pipeline (acceptance checklist for DONE-before-verify)
+meta_tool|OK|generic pipeline (meta_tool stage config / preference)
+quality_gate|OK|generic pipeline (stage quality_gate config mirror)
+review_gate|OK|generic pipeline (stage review_gate config mirror)

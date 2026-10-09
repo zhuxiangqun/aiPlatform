@@ -6,6 +6,7 @@ description: 应用 engine skill 的 SKILL.md 补丁（change-control 治理）�
 category: execution
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 protected: true
 idempotent: false
 completion_criterion: |
@@ -68,9 +69,6 @@ sop_flow:
   - "对目标 SKILL.md 做安全审计后应用补丁。"
   - "输出变更摘要：修改行数、新增字段、风险评估。"
   - "安全应用 Skill 配置补丁并验证"
-  - "[ ] 输出格式符合规范"
-  - "[ ] 正确处理错误和边界条件"
-  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - Skill定义
@@ -104,6 +102,6 @@ skip_when: 跳过条件：引擎版本不兼容或补丁非官方来源时不触
 安全应用 Skill 配置补丁并验证
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

@@ -8,6 +8,7 @@ description: >-
 category: analysis
 version: 1.2.0
 status: enabled
+invocation_mode: auto
 execution_mode: prompt
 execution_type: prompt
 triggers:

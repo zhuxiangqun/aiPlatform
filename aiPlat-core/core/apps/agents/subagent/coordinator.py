@@ -125,9 +125,23 @@ class SubagentCoordinator:
         Creates a lightweight conversational agent from the subagent config,
         binds allowed tools, executes the task, and returns a summarized
         result (max ~800 chars per §5.26 Subagent 摘要原则).
+        Production coerces isolate_context=True (subagent_discipline).
         """
         start_time = datetime.now(timezone.utc)
         try:
+            from core.harness.execution.subagent_discipline import (
+                condense_return,
+                max_return_chars,
+                resolve_isolate_context,
+            )
+            isolate_context, _iso_meta = resolve_isolate_context(isolate_context)
+            if _iso_meta.get("coerced"):
+                logger.info(
+                    "subagent isolate_context coerced True (mode=%s)",
+                    _iso_meta.get("mode"),
+                )
+            _max_ret = max_return_chars()
+
             _session_id = f"task-{datetime.now(timezone.utc).timestamp()}"
             instance = await self.create_instance(
                 name=subagent_name,
@@ -260,8 +274,9 @@ class SubagentCoordinator:
                 output = result.output or ""
                 if isinstance(output, dict):
                     output = output.get("content", str(output))
-                # Summarize per §5.26: parent needs concise summary, not full output
-                summarized = await self._summarize_output(str(output), max_chars=800)
+                # Summarize + hard envelope (budget / protocol) for parent loop
+                summarized = await self._summarize_output(str(output), max_chars=_max_ret)
+                summarized = condense_return(summarized, max_chars=_max_ret)
                 duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
                 instance.state = "completed"
                 instance.completed_at = datetime.now(timezone.utc).isoformat()
@@ -337,7 +352,10 @@ class SubagentCoordinator:
                 output = result.output or ""
                 if isinstance(output, dict):
                     output = output.get("content", str(output))
-                summarized = await self._summarize_output(str(output), max_chars=800)
+                from core.harness.execution.subagent_discipline import condense_return, max_return_chars
+                _max_ret = max_return_chars()
+                summarized = await self._summarize_output(str(output), max_chars=_max_ret)
+                summarized = condense_return(summarized, max_chars=_max_ret)
                 duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
                 instance.state = "completed"
                 instance.completed_at = datetime.now(timezone.utc).isoformat()
@@ -388,10 +406,11 @@ class SubagentCoordinator:
             )
         result: ProviderResult = await prov.start(
             name=subagent_name, task=task, context=context)
+        from core.harness.execution.subagent_discipline import condense_return
         return SubagentResult(
             subagent_name=subagent_name,
             success=result.ok,
-            output=result.output[:800] if result.ok else "",
+            output=condense_return(result.output) if result.ok else "",
             error=result.error if not result.ok else "",
         )
 
@@ -432,7 +451,6 @@ class SubagentCoordinator:
         output = SubagentCoordinator._filter_protocol_violations(output)
 
         if len(output) <= max_chars:
-            return output
             return output
 
         # ── 第 1 层: 上下文压缩 ──

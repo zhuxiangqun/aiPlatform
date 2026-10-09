@@ -1,0 +1,329 @@
+# ReviewBench-style seed pack (40 cases) — copy to ~/.aiplat/eval/code_review_gold/
+# or eval/tenants/{id}/code_review_gold/. Each case has ``predicted`` for --match-only.
+# Expand ``target`` with real frozen PR diffs for live autoreview.
+# Install: python3 scripts/eval_code_review_gold.py --install-seeds
+cases:
+  - id: sql_injection_auth
+    description: "f-string SQL in auth"
+    profile: balanced
+    gold_findings:
+      - {file: app/auth.py, line: 42, severity: P0, category: security, keywords: [sql, injection], description: "SQL via f-string"}
+      - {file: app/auth.py, line: 88, severity: P1, category: security, keywords: [password, log], description: "Password logged"}
+    predicted:
+      - {file: app/auth.py, line: 41, severity: P0, description: "SQL injection f-string"}
+      - {file: app/auth.py, line: 90, severity: P1, description: "plaintext password log"}
+
+  - id: jwt_expiry_skew
+    description: "JWT exp skew / none alg"
+    profile: balanced
+    gold_findings:
+      - {file: app/jwt_util.py, line: 17, severity: P0, category: security, keywords: [jwt, none, alg], description: "alg=none accepted"}
+      - {file: app/jwt_util.py, line: 44, severity: P1, category: security, keywords: [exp, skew], description: "no clock skew bound"}
+    predicted:
+      - {file: app/jwt_util.py, line: 18, severity: P0, description: "Accepts JWT alg none"}
+      - {file: app/jwt_util.py, line: 45, severity: P1, description: "Missing exp leeway check"}
+
+  - id: path_traversal_upload
+    description: "upload path traversal"
+    profile: high_coverage
+    gold_findings:
+      - {file: app/upload.py, line: 33, severity: P0, category: security, keywords: [path, traversal, ..], description: "Filename joins without sanitize"}
+    predicted:
+      - {file: app/upload.py, line: 33, severity: P0, description: "Path traversal via ../ in filename"}
+
+  - id: ssrf_webhook
+    description: "SSRF in webhook fetch"
+    profile: high_coverage
+    gold_findings:
+      - {file: app/hooks.py, line: 55, severity: P0, category: security, keywords: [ssrf, url, metadata], description: "User URL fetched without allowlist"}
+    predicted:
+      - {file: app/hooks.py, line: 56, severity: P0, description: "SSRF: unrestricted outbound URL"}
+
+  - id: xss_template_raw
+    description: "XSS unescaped template"
+    profile: balanced
+    gold_findings:
+      - {file: web/templates/page.html, line: 12, severity: P0, category: security, keywords: [xss, escape, html], description: "User HTML rendered raw"}
+    predicted:
+      - {file: web/templates/page.html, line: 12, severity: P0, description: "Unescaped user HTML XSS"}
+
+  - id: csrf_state_missing
+    description: "OAuth CSRF state missing"
+    profile: balanced
+    gold_findings:
+      - {file: app/oauth.py, line: 71, severity: P1, category: security, keywords: [csrf, state, oauth], description: "OAuth callback ignores state"}
+    predicted:
+      - {file: app/oauth.py, line: 72, severity: P1, description: "Missing OAuth state validation"}
+
+  - id: insecure_deserialize
+    description: "pickle.loads on user blob"
+    profile: high_coverage
+    gold_findings:
+      - {file: app/cache.py, line: 29, severity: P0, category: security, keywords: [pickle, deserialize], description: "pickle.loads untrusted"}
+    predicted:
+      - {file: app/cache.py, line: 29, severity: P0, description: "Insecure pickle deserialization"}
+
+  - id: command_injection_shell
+    description: "shell=True with user input"
+    profile: high_coverage
+    gold_findings:
+      - {file: app/jobs.py, line: 48, severity: P0, category: security, keywords: [shell, injection, subprocess], description: "subprocess shell=True"}
+    predicted:
+      - {file: app/jobs.py, line: 48, severity: P0, description: "Command injection via shell=True"}
+
+  - id: hardcoded_secret
+    description: "API key in source"
+    profile: low_noise
+    gold_findings:
+      - {file: app/config.py, line: 9, severity: P0, category: security, keywords: [api_key, secret, hardcoded], description: "Hardcoded cloud API key"}
+    predicted:
+      - {file: app/config.py, line: 9, severity: P0, description: "Secret hardcoded in repo"}
+
+  - id: weak_tls_verify_off
+    description: "TLS verify disabled"
+    profile: low_noise
+    gold_findings:
+      - {file: app/http_client.py, line: 22, severity: P1, category: security, keywords: [verify, ssl, tls], description: "requests verify=False"}
+    predicted:
+      - {file: app/http_client.py, line: 22, severity: P1, description: "TLS verification disabled"}
+
+  - id: race_toctou_file
+    description: "TOCTOU file race"
+    profile: balanced
+    gold_findings:
+      - {file: app/fsutil.py, line: 61, severity: P1, category: correctness, keywords: [race, toctou, exists], description: "exists then open race"}
+    predicted:
+      - {file: app/fsutil.py, line: 62, severity: P1, description: "TOCTOU between exists and open"}
+
+  - id: integer_overflow_price
+    description: "price overflow"
+    profile: balanced
+    gold_findings:
+      - {file: app/billing.py, line: 104, severity: P1, category: correctness, keywords: [overflow, int, price], description: "qty*price without bound"}
+    predicted:
+      - {file: app/billing.py, line: 104, severity: P1, description: "Integer overflow in price calc"}
+
+  - id: nplus_one_query
+    description: "N+1 ORM queries"
+    profile: high_coverage
+    gold_findings:
+      - {file: app/orders.py, line: 38, severity: P2, category: performance, keywords: [n+1, query, loop], description: "Query in loop"}
+    predicted:
+      - {file: app/orders.py, line: 38, severity: P2, description: "N+1 queries in order loop"}
+
+  - id: missing_authz_admin
+    description: "admin route missing authz"
+    profile: low_noise
+    gold_findings:
+      - {file: app/admin_api.py, line: 15, severity: P0, category: security, keywords: [authz, admin, permission], description: "No role check on delete"}
+    predicted:
+      - {file: app/admin_api.py, line: 15, severity: P0, description: "Missing authorization on admin delete"}
+
+  - id: open_redirect
+    description: "open redirect next="
+    profile: balanced
+    gold_findings:
+      - {file: app/login.py, line: 50, severity: P1, category: security, keywords: [redirect, open, next], description: "Redirect to user next URL"}
+    predicted:
+      - {file: app/login.py, line: 51, severity: P1, description: "Open redirect via next param"}
+
+  - id: timing_safe_compare
+    description: "non-constant-time token compare"
+    profile: low_noise
+    gold_findings:
+      - {file: app/tokens.py, line: 27, severity: P1, category: security, keywords: [timing, compare, hmac], description: "== on secrets"}
+    predicted:
+      - {file: app/tokens.py, line: 27, severity: P1, description: "Use hmac.compare_digest for tokens"}
+
+  - id: debug_toolbar_prod
+    description: "debug toolbar in prod"
+    profile: low_noise
+    gold_findings:
+      - {file: app/settings.py, line: 4, severity: P1, category: security, keywords: [debug, true, toolbar], description: "DEBUG=True shipped"}
+    predicted:
+      - {file: app/settings.py, line: 4, severity: P1, description: "DEBUG left enabled"}
+
+  - id: mass_assignment
+    description: "mass assignment role field"
+    profile: balanced
+    gold_findings:
+      - {file: app/users.py, line: 66, severity: P0, category: security, keywords: [mass, assignment, role], description: "User update accepts role from body"}
+    predicted:
+      - {file: app/users.py, line: 66, severity: P0, description: "Mass assignment elevates role"}
+
+  - id: zip_slip_extract
+    description: "zip slip extract"
+    profile: high_coverage
+    gold_findings:
+      - {file: app/archive.py, line: 41, severity: P0, category: security, keywords: [zip, slip, extract], description: "Zip members extracted unsafely"}
+    predicted:
+      - {file: app/archive.py, line: 41, severity: P0, description: "Zip Slip path escape on extract"}
+
+  - id: log_injection_crlf
+    description: "CRLF log injection"
+    profile: balanced
+    gold_findings:
+      - {file: app/logger_fmt.py, line: 19, severity: P2, category: security, keywords: [crlf, log, injection], description: "User agent logged raw"}
+    predicted:
+      - {file: app/logger_fmt.py, line: 19, severity: P2, description: "Log injection via CRLF in UA"}
+
+  # ── batch 21–40 (expand toward 20–50 ReviewBench guidance) ──
+  - id: xxe_xml_parse
+    description: "XXE in XML parser"
+    profile: high_coverage
+    gold_findings:
+      - {file: app/xml_io.py, line: 28, severity: P0, category: security, keywords: [xxe, entity, xml], description: "External entity enabled"}
+    predicted:
+      - {file: app/xml_io.py, line: 28, severity: P0, description: "XXE: resolve_entities on"}
+
+  - id: ldap_injection
+    description: "LDAP filter injection"
+    profile: balanced
+    gold_findings:
+      - {file: app/dir.py, line: 44, severity: P0, category: security, keywords: [ldap, injection, filter], description: "User DN concatenated into filter"}
+    predicted:
+      - {file: app/dir.py, line: 44, severity: P0, description: "LDAP injection in search filter"}
+
+  - id: insecure_random_token
+    description: "random for security token"
+    profile: low_noise
+    gold_findings:
+      - {file: app/tokens.py, line: 11, severity: P1, category: security, keywords: [random, secrets, token], description: "random.random for reset token"}
+    predicted:
+      - {file: app/tokens.py, line: 11, severity: P1, description: "Use secrets module for tokens"}
+
+  - id: cors_star_credentials
+    description: "CORS * with credentials"
+    profile: balanced
+    gold_findings:
+      - {file: app/cors.py, line: 8, severity: P1, category: security, keywords: [cors, origin, credentials], description: "Allow-Origin * + credentials"}
+    predicted:
+      - {file: app/cors.py, line: 8, severity: P1, description: "Dangerous CORS wildcard with credentials"}
+
+  - id: sql_order_by_inject
+    description: "ORDER BY injection"
+    profile: high_coverage
+    gold_findings:
+      - {file: app/reports.py, line: 77, severity: P0, category: security, keywords: [order by, sql, inject], description: "User sort column in SQL"}
+    predicted:
+      - {file: app/reports.py, line: 77, severity: P0, description: "ORDER BY injection via sort param"}
+
+  - id: missing_rate_limit
+    description: "login missing rate limit"
+    profile: balanced
+    gold_findings:
+      - {file: app/login.py, line: 20, severity: P1, category: security, keywords: [rate, limit, brute], description: "No throttle on password attempts"}
+    predicted:
+      - {file: app/login.py, line: 20, severity: P1, description: "Brute-force: missing login rate limit"}
+
+  - id: path_disclosure_error
+    description: "stack path in 500"
+    profile: low_noise
+    gold_findings:
+      - {file: app/errors.py, line: 35, severity: P2, category: security, keywords: [traceback, path, disclosure], description: "Full traceback to client"}
+    predicted:
+      - {file: app/errors.py, line: 35, severity: P2, description: "Path disclosure via error page"}
+
+  - id: insecure_cookie_flags
+    description: "session cookie flags"
+    profile: low_noise
+    gold_findings:
+      - {file: app/session.py, line: 14, severity: P1, category: security, keywords: [secure, httponly, samesite], description: "Cookie missing Secure/HttpOnly"}
+    predicted:
+      - {file: app/session.py, line: 14, severity: P1, description: "Session cookie lacks Secure/HttpOnly"}
+
+  - id: eval_user_input
+    description: "eval on user expression"
+    profile: high_coverage
+    gold_findings:
+      - {file: app/calc.py, line: 22, severity: P0, category: security, keywords: [eval, exec, user], description: "eval(user_expr)"}
+    predicted:
+      - {file: app/calc.py, line: 22, severity: P0, description: "Dangerous eval of user input"}
+
+  - id: weak_password_hash
+    description: "MD5 password hash"
+    profile: low_noise
+    gold_findings:
+      - {file: app/password.py, line: 9, severity: P0, category: security, keywords: [md5, password, hash], description: "MD5 for passwords"}
+    predicted:
+      - {file: app/password.py, line: 9, severity: P0, description: "Weak MD5 password hashing"}
+
+  - id: idor_object_ref
+    description: "IDOR on order id"
+    profile: balanced
+    gold_findings:
+      - {file: app/orders.py, line: 90, severity: P0, category: security, keywords: [idor, ownership, order], description: "Fetch order by id without owner check"}
+    predicted:
+      - {file: app/orders.py, line: 90, severity: P0, description: "IDOR: no ownership check on order"}
+
+  - id: regex_dos
+    description: "ReDoS pattern"
+    profile: high_coverage
+    gold_findings:
+      - {file: app/validate.py, line: 41, severity: P1, category: security, keywords: [redos, regex, catastrophic], description: "Evil regex on user input"}
+    predicted:
+      - {file: app/validate.py, line: 41, severity: P1, description: "ReDoS risk in email regex"}
+
+  - id: tempfile_predictable
+    description: "predictable temp path"
+    profile: balanced
+    gold_findings:
+      - {file: app/export.py, line: 33, severity: P1, category: security, keywords: [temp, mktemp, race], description: "Fixed /tmp/export.csv name"}
+    predicted:
+      - {file: app/export.py, line: 33, severity: P1, description: "Predictable tempfile race"}
+
+  - id: graphql_depth
+    description: "GraphQL unbounded depth"
+    profile: high_coverage
+    gold_findings:
+      - {file: app/gql.py, line: 18, severity: P1, category: security, keywords: [graphql, depth, complexity], description: "No query depth limit"}
+    predicted:
+      - {file: app/gql.py, line: 18, severity: P1, description: "Unbounded GraphQL query depth"}
+
+  - id: s3_public_acl
+    description: "S3 public-read ACL"
+    profile: balanced
+    gold_findings:
+      - {file: app/storage.py, line: 52, severity: P0, category: security, keywords: [s3, public, acl], description: "Upload sets public-read"}
+    predicted:
+      - {file: app/storage.py, line: 52, severity: P0, description: "S3 object ACL public-read"}
+
+  - id: jwt_secret_weak
+    description: "weak JWT HS256 secret"
+    profile: low_noise
+    gold_findings:
+      - {file: app/jwt_util.py, line: 5, severity: P0, category: security, keywords: [jwt, secret, weak], description: "Hardcoded short JWT secret"}
+    predicted:
+      - {file: app/jwt_util.py, line: 5, severity: P0, description: "Weak hardcoded JWT secret"}
+
+  - id: prototype_pollution
+    description: "JS merge pollution"
+    profile: high_coverage
+    gold_findings:
+      - {file: web/merge.js, line: 12, severity: P0, category: security, keywords: [prototype, pollution, merge], description: "Deep merge without __proto__ guard"}
+    predicted:
+      - {file: web/merge.js, line: 12, severity: P0, description: "Prototype pollution in deepMerge"}
+
+  - id: missing_csp
+    description: "no Content-Security-Policy"
+    profile: balanced
+    gold_findings:
+      - {file: app/middleware.py, line: 10, severity: P2, category: security, keywords: [csp, header, xss], description: "Responses lack CSP header"}
+    predicted:
+      - {file: app/middleware.py, line: 10, severity: P2, description: "Missing Content-Security-Policy"}
+
+  - id: unsafe_yaml_load
+    description: "yaml.load without SafeLoader"
+    profile: high_coverage
+    gold_findings:
+      - {file: app/config_load.py, line: 16, severity: P0, category: security, keywords: [yaml, load, unsafe], description: "yaml.load untrusted file"}
+    predicted:
+      - {file: app/config_load.py, line: 16, severity: P0, description: "Unsafe yaml.load"}
+
+  - id: privilege_escalation_claim
+    description: "trust client is_admin claim"
+    profile: low_noise
+    gold_findings:
+      - {file: app/authz.py, line: 30, severity: P0, category: security, keywords: [claim, admin, trust], description: "is_admin taken from request body"}
+    predicted:
+      - {file: app/authz.py, line: 30, severity: P0, description: "Client-controlled is_admin claim"}

@@ -2021,6 +2021,33 @@ export const memoryApi = {
   recoverSemantic: async (key: string) => {
     return apiClient.post<{ recovered: boolean; key: string }>(`/core/memory/semantic/${key}/recover`);
   },
+
+  /** Team Brain — Hivemind-style shared solutions Auto-Recall */
+  getTeamBrain: async (query?: string, limit?: number) => {
+    const params = new URLSearchParams();
+    if (query) params.set('query', query);
+    if (limit) params.set('limit', String(limit));
+    const qs = params.toString();
+    return apiClient.get<{
+      status: string;
+      query: string;
+      items: Array<Record<string, unknown>>;
+      total: number;
+      stats: Record<string, unknown>;
+    }>(`/core/memory/team-brain${qs ? '?' + qs : ''}`);
+  },
+
+  publishTeamBrain: async (data: {
+    title: string;
+    summary: string;
+    keywords?: string[];
+    source_agent?: string;
+  }) => {
+    return apiClient.post<{ status: string; learning: Record<string, unknown> }>(
+      '/core/memory/team-brain',
+      data,
+    );
+  },
 };
 
 // ==================== Skill Packs API (Roadmap-4) ====================

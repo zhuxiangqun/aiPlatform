@@ -5,6 +5,7 @@ description: 分析PRD→能力匹配→Agent选择→拓扑排序→输出完�
 category: orchestration
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 execution_type: prompt
 execution_backend: agent
 input_schema:

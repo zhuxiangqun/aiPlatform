@@ -7,6 +7,7 @@ description: 自动遍历所有页面，发现可交互元素，执行全覆盖�
 version: 1.0.0
 category: execution
 status: enabled
+invocation_mode: auto
 triggers:
   - 网站测试
   - site test
@@ -132,6 +133,6 @@ skip_when: 跳过条件：目标网站不可达或不支持自动化测试时不
 全自动遍历站点执行功能验证
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

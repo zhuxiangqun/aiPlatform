@@ -306,6 +306,9 @@ class MemoryManager:
 
         self._persist_callback = None  # wiring: active — wired by get_memory_manager() → _wire_persist_callback()
 
+        # Last Team Brain Auto-Recall card (observability for /memory/inspect)
+        self._last_team_brain_recall: Optional[Dict[str, Any]] = None
+
 
 
         # Initialize layers
@@ -987,6 +990,29 @@ class MemoryManager:
             except Exception:
 
                 logging.getLogger(__name__).debug('code failed', exc_info=True)
+
+
+        # 8b. Team Brain Auto-Recall (TaskSkill + shared solutions + promoted experience)
+        if not audit_mode:
+            try:
+                from core.harness.memory.team_brain import format_recall_message, recall_team_solutions
+                _tb_q = current_query or ""
+                _tb_items = recall_team_solutions(_tb_q, limit=5)
+                _tb_msg = format_recall_message(_tb_items)
+                if _tb_msg:
+                    messages.append(_tb_msg)
+                    total_tokens += len(str(_tb_msg.get("content") or "").split()) * 1.3
+                    self._last_team_brain_recall = {
+                        "query": _tb_q[:200],
+                        "count": len(_tb_items),
+                        "items": [it.to_dict() for it in _tb_items],
+                        "meta": (_tb_msg.get("meta") or {}),
+                    }
+                else:
+                    self._last_team_brain_recall = {"query": _tb_q[:200], "count": 0, "items": []}
+            except Exception:
+                logging.getLogger(__name__).debug('team_brain recall failed', exc_info=True)
+
 
 
         # Phase 42: Normalize message roles before sending to LLM
@@ -2283,6 +2309,19 @@ class MemoryManager:
                         logging.getLogger("manager").warning("best-effort skipped", exc_info=True)
 
         result["task_skills"]["total"] = len(result["task_skills"]["skills"])
+
+        result["team_brain"] = getattr(self, "_last_team_brain_recall", None) or {
+            "query": "",
+            "count": 0,
+            "items": [],
+            "note": "no Auto-Recall yet in this manager instance",
+        }
+        try:
+            from core.harness.memory.team_brain import team_brain_status
+
+            result["team_brain"]["stats"] = team_brain_status()
+        except Exception:
+            logging.getLogger(__name__).debug("team_brain status inspect failed", exc_info=True)
 
         return result
 

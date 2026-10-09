@@ -99,14 +99,39 @@ class AgentConfigDiffer:
         return self.diff_versions(old_fm, new_fm)
 
 
-def compute_agent_diff(old_content: str, new_content: str) -> Dict[str, Any]:
-    """Convenience function for calling from API endpoints."""
+def compute_agent_diff(
+    old_content: str,
+    new_content: str,
+    *,
+    tenant_id: str = "",
+    gold_profile: str = "balanced",
+    attach_gold_gate: bool = True,
+) -> Dict[str, Any]:
+    """Convenience function for calling from API endpoints.
+
+    High-risk diffs (e.g. model change) attach same-profile gold_gate
+    (ReviewBench discipline) when AIPLAT_GOLD_PROFILE_GATE≠off.
+    """
     differ = AgentConfigDiffer()
     diff = differ.diff_from_files(old_content, new_content)
-    return {
+    out = {
         "added": diff.added,
         "removed": diff.removed,
         "changed": diff.changed,
         "summary": diff.summary,
         "risk_level": diff.risk_level,
     }
+    if attach_gold_gate:
+        try:
+            from core.harness.evaluation.gold_profile_gate import attach_gold_gate_to_diff
+
+            out = attach_gold_gate_to_diff(
+                out, profile=gold_profile or "balanced", tenant_id=tenant_id or "",
+            )
+        except Exception:
+            out["gold_gate"] = {
+                "ok": True,
+                "verdict": "skip",
+                "reason": "gold_gate unavailable",
+            }
+    return out

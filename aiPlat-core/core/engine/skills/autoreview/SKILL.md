@@ -10,6 +10,7 @@ description: >
 version: 1.0.0
 category: analysis
 status: enabled
+invocation_mode: auto
 protected: true
 execution_type: handler
 execution_mode: inline

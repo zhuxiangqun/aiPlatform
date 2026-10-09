@@ -35,6 +35,7 @@ CC_TO_PHASE: Dict[str, HookPhase] = {
     "PreToolUse": HookPhase.PRE_TOOL_USE,
     "PostToolUse": HookPhase.POST_TOOL_USE,
     "Stop": HookPhase.STOP,
+    "SessionEnd": HookPhase.SESSION_END,  # Hivemind：会话收尾 → Session Wiki worker
     "SubagentStart": HookPhase.PRE_LOOP,   # 子代理启动映射 PRE_LOOP 子代理态
     "SubagentStop": HookPhase.POST_LOOP,   # 子代理结束映射 POST_LOOP 子代理态
 }

@@ -52,6 +52,11 @@ _PATH_REWRITES: tuple[tuple[str, str, str], ...] = (
         "/governance/eval-observability",
         PLATFORM_URL,
     ),
+    (
+        "/api/governance/org-harness",
+        "/governance/org-harness",
+        PLATFORM_URL,
+    ),
 )
 
 

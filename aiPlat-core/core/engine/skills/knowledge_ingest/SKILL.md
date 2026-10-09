@@ -5,6 +5,7 @@ description: 多模态知识库入库：PDF/扫描件→渲染→OCR→表格结
 category: retrieval
 version: 0.1.0
 status: enabled
+invocation_mode: auto
 execution_mode: prompt
 execution_type: prompt
 permissions:
@@ -176,6 +177,6 @@ skip_when: 跳过条件：文档格式不支持或已有相同版本时不触发
 将多模态文档结构化为知识库条目
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

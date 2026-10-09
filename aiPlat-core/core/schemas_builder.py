@@ -415,6 +415,13 @@ class PipelineStageConfig(BaseModel):
     # ── v4.0: Declarative quality gates & routing for pipeline agents ──
     quality_gate: Dict[str, Any] = Field(default_factory=lambda: {"min_output_length": 100})  # 4step-verified: engine.py:4650 使用
     """CRAG-style quality gate: {condition, fallback, final_fallback}"""
+    done_verify: Dict[str, Any] = Field(default_factory=dict)
+    """DONE-before Verify ring overlay (Harness first-class): {enabled, min_output_length,
+    require_keys, require_substrings, expected_outcomes, reject_trivial_done,
+    reject_action_envelope, require_commands}. Merged in StageRunner / ReActLoop."""
+    meta_tool: Dict[str, Any] = Field(default_factory=dict)
+    """Code meta-tool preference (Harness first-class): {enabled, auto_bind, force}.
+    Maps to loop context _prefer_code_meta_tool / _meta_tool_auto_bind / _force_code_meta_tool."""
     routing_rules: Dict[str, Any] = Field(default_factory=dict)  # 4step-verified: wired via pipeline_compiler.py + engine.py:1900
     """Domain routing rules: {tiers, fallback_domain}"""
     retry_policy: Dict[str, Any] = Field(default_factory=lambda: {"max_retries": 2, "backoff": "exponential"})  # 4step-verified: engine.py:8306 使用

@@ -857,6 +857,20 @@ class PipelineRunStore:
         finally:
             conn.close()
 
+    def list_recent_runs(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Recent pipeline runs (org-harness / ops dashboards)."""
+        conn = self._get_conn()
+        try:
+            rows = conn.execute(
+                """SELECT * FROM pipeline_runs
+                   ORDER BY updated_at DESC
+                   LIMIT ?""",
+                (max(1, int(limit or 10)),),
+            ).fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+
     def load_stages_config(self, run_id: str) -> List[Dict[str, Any]]:
         """Load full stage config from pipeline_stages for engine reconstruction."""
         return self.get_stages(run_id)

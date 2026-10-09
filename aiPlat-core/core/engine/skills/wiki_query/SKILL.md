@@ -6,6 +6,7 @@ description: 在持久化 Wiki 中搜索知识，沿链接图展开，合成答�
 category: retrieval
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 execution_mode: prompt
 execution_type: prompt
 triggers:
@@ -162,13 +163,13 @@ top-20 chunks 中有大量噪音。参见 [[knowledge_accumulation]]。
 |-----|-----------|
 | 搜索向量空间中的近邻 | 搜索 LLM 创建的交叉链接 |
 | 每次查询从零开始 | 知识已经编缉好 |
-| 需要 reranker 去噪 | 链接本身就是高质量筛选 |
+| 需要 reranker 去噪 | 链接图本身已做交叉筛选 |
 | 回答后扔掉 | 好答案存回 wiki |
 
 ## 目标
 搜索 Wiki 并合成答案
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

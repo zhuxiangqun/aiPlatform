@@ -39,6 +39,66 @@ interface EvalObservabilityData {
     by_status: Record<string, number>;
     recent: Array<{ rule_id?: string; status?: string; content?: string }>;
   };
+  org_harness?: OrgHarnessData | null;
+}
+
+/** Org harness dark ledger — HITL / approvals + gold P/R / P0 miss */
+interface OrgHarnessData {
+  ok?: boolean;
+  scope?: string;
+  summary?: {
+    runs_scanned?: number;
+    hitl_wait_sec_total?: number;
+    avg_serial_ratio?: number | null;
+    serial_ratio?: number | null;
+    wall_sec?: number | null;
+    approval_count?: number;
+    approval_pending?: number;
+    avg_approval_latency_sec?: number | null;
+    avg_approvals_per_run?: number | null;
+    hitl_episode_count?: number;
+    open_unresolved?: number;
+    gold_precision?: number | null;
+    gold_recall?: number | null;
+    gold_p0_recall?: number | null;
+    p0_miss_rate?: number | null;
+    gold_regressing?: boolean;
+    gold_novel_count?: number | null;
+    gold_avg_comment_count?: number | null;
+    gold_elapsed_sec?: number | null;
+  };
+  recommendations?: Array<{ severity?: string; action?: string; detail?: string }>;
+  runs?: Array<{
+    run_id?: string;
+    serial_ratio?: number | null;
+    hitl_wait_sec_total?: number;
+    wall_sec?: number | null;
+  }>;
+  gold_regression?: {
+    report_count?: number;
+    p0_miss_rate?: number | null;
+    regressing?: boolean;
+    latest?: {
+      precision?: number | null;
+      recall?: number | null;
+      p0_recall?: number | null;
+      novel_count?: number | null;
+      avg_comment_count?: number | null;
+      elapsed_sec?: number | null;
+      written_at?: string;
+      profile?: string;
+      harness_factors?: Record<string, unknown> | null;
+    } | null;
+    delta_vs_prev?: {
+      precision?: number | null;
+      recall?: number | null;
+      p0_recall?: number | null;
+      avg_comment_count?: number | null;
+      elapsed_sec?: number | null;
+    } | null;
+    harness_factor_delta?: Record<string, { from?: unknown; to?: unknown }>;
+  };
+  notes?: string[];
 }
 
 const statusIcons: Record<string, string> = { good: '✅', warning: '⚠️', attention: '🟡', unknown: '❓' };
@@ -51,6 +111,7 @@ const statusLabels: Record<string, string> = {
 export default function GovernanceDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [evalObs, setEvalObs] = useState<EvalObservabilityData | null>(null);
+  const [orgHarness, setOrgHarness] = useState<OrgHarnessData | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
@@ -62,6 +123,11 @@ export default function GovernanceDashboard() {
     try {
       const ev = await apiClient.get<EvalObservabilityData>('/governance/eval-observability');
       setEvalObs(ev);
+      if (ev?.org_harness?.ok) setOrgHarness(ev.org_harness);
+    } catch {}
+    try {
+      const oh = await apiClient.get<OrgHarnessData>('/governance/org-harness?recent_limit=10');
+      if (oh?.ok) setOrgHarness(oh);
     } catch {}
     setLoading(false);
   };
@@ -159,6 +225,163 @@ export default function GovernanceDashboard() {
             ))
           ) : <div style={{ color: '#555', fontSize: 12 }}>No cycles run yet. Click [运行全量] to start.</div>}
         </div>
+      </div>
+
+      {/* Org harness — HITL serial / approval Amdahl dark ledger */}
+      <div style={{ marginTop: 24, borderTop: '1px solid #222', paddingTop: 16 }}>
+        <h4 style={{ margin: '0 0 10px', fontSize: 14, color: '#888' }}>
+          <Activity size={14} style={{ verticalAlign: -2, marginRight: 4 }} />
+          组织 Harness（HITL / 审批 / 黄金集 / P0 漏检）
+        </h4>
+        {!orgHarness?.ok ? (
+          <div style={{ color: '#555', fontSize: 12 }}>未获取到组织 harness 指标（无近期 pipeline 运行或审批记录）</div>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
+              <Card
+                title="串行比 serial_ratio"
+                value={
+                  orgHarness.summary?.avg_serial_ratio != null
+                    ? String(orgHarness.summary.avg_serial_ratio)
+                    : orgHarness.summary?.serial_ratio != null
+                      ? String(orgHarness.summary.serial_ratio)
+                      : '—'
+                }
+                color="#aa4"
+                icon={<Activity size={18} />}
+              />
+              <Card
+                title="HITL 等待(s)"
+                value={String(orgHarness.summary?.hitl_wait_sec_total ?? 0)}
+                color="#4af"
+              />
+              <Card
+                title="审批数 / 待审"
+                value={`${orgHarness.summary?.approval_count ?? 0} / ${orgHarness.summary?.approval_pending ?? 0}`}
+                color="#a84"
+                icon={<AlertTriangle size={18} />}
+              />
+              <Card
+                title="审批均延迟(s)"
+                value={
+                  orgHarness.summary?.avg_approval_latency_sec != null
+                    ? String(orgHarness.summary.avg_approval_latency_sec)
+                    : '—'
+                }
+                color="#4a4"
+              />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
+              <Card
+                title="Gold Precision"
+                value={orgHarness.summary?.gold_precision != null ? String(orgHarness.summary.gold_precision) : '—'}
+                color={orgHarness.summary?.gold_regressing ? '#a44' : '#4a4'}
+              />
+              <Card
+                title="Gold Recall / P0"
+                value={
+                  `${orgHarness.summary?.gold_recall ?? '—'} / ${orgHarness.summary?.gold_p0_recall ?? '—'}`
+                }
+                color="#4af"
+              />
+              <Card
+                title="P0 漏检率"
+                value={orgHarness.summary?.p0_miss_rate != null ? String(orgHarness.summary.p0_miss_rate) : '—'}
+                color={
+                  orgHarness.summary?.p0_miss_rate != null && orgHarness.summary.p0_miss_rate > 0
+                    ? '#a44'
+                    : '#4a4'
+                }
+                icon={<AlertTriangle size={18} />}
+              />
+              <Card
+                title="评论数 / 耗时(s)"
+                value={
+                  `${orgHarness.summary?.gold_avg_comment_count ?? '—'} / ${orgHarness.summary?.gold_elapsed_sec ?? '—'}`
+                }
+                color="#888"
+              />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 12 }}>
+              <Card
+                title="Novel / 回归"
+                value={`${orgHarness.summary?.gold_novel_count ?? '—'} / ${orgHarness.summary?.gold_regressing ? '↓' : 'ok'}`}
+                color={orgHarness.summary?.gold_regressing ? '#a44' : '#888'}
+              />
+              <Card
+                title="四指标口径"
+                value="P · R · P0miss · comments/time"
+                color="#666"
+              />
+            </div>
+            {orgHarness.gold_regression?.delta_vs_prev && (
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>
+                Δ vs 上次：P {orgHarness.gold_regression.delta_vs_prev.precision ?? '—'}
+                {' · '}R {orgHarness.gold_regression.delta_vs_prev.recall ?? '—'}
+                {' · '}P0 {orgHarness.gold_regression.delta_vs_prev.p0_recall ?? '—'}
+                {' · '}comments {orgHarness.gold_regression.delta_vs_prev.avg_comment_count ?? '—'}
+                {' · '}time {orgHarness.gold_regression.delta_vs_prev.elapsed_sec ?? '—'}
+                {orgHarness.gold_regression.latest?.written_at
+                  ? ` · @ ${orgHarness.gold_regression.latest.written_at}`
+                  : ''}
+              </div>
+            )}
+            {orgHarness.gold_regression?.harness_factor_delta &&
+              Object.keys(orgHarness.gold_regression.harness_factor_delta).length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>
+                  Harness 因子漂移（同 profile 下非 model 变更）
+                </div>
+                {Object.entries(orgHarness.gold_regression.harness_factor_delta).slice(0, 8).map(([k, v]) => (
+                  <div key={k} style={{
+                    padding: '4px 10px', marginBottom: 3, borderRadius: 4, background: '#111',
+                    fontSize: 11, color: '#aaa',
+                  }}>
+                    <span style={{ color: '#4af' }}>{k}</span>
+                    {': '}
+                    {String(v?.from ?? '—')} → {String(v?.to ?? '—')}
+                  </div>
+                ))}
+              </div>
+            )}
+            {(orgHarness.recommendations?.length || 0) > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>串行链改造建议</div>
+                {orgHarness.recommendations!.slice(0, 5).map((rec, i) => (
+                  <div key={i} style={{
+                    padding: '6px 10px', marginBottom: 4, borderRadius: 4, background: '#111',
+                    borderLeft: `3px solid ${rec.severity === 'high' ? '#a44' : rec.severity === 'medium' ? '#aa4' : '#444'}`,
+                    fontSize: 11,
+                  }}>
+                    <span style={{ color: '#aaa' }}>[{rec.action}]</span> {rec.detail}
+                  </div>
+                ))}
+              </div>
+            )}
+            {(orgHarness.runs?.length || 0) > 0 && (
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 11, color: '#666', marginBottom: 6 }}>
+                  近期 runs（{orgHarness.summary?.runs_scanned ?? orgHarness.runs!.length}）
+                </div>
+                {orgHarness.runs!.slice(0, 8).map((r, i) => (
+                  <div key={i} style={{
+                    padding: '6px 10px', marginBottom: 4, borderRadius: 4, background: '#111',
+                    display: 'flex', justifyContent: 'space-between', fontSize: 11,
+                  }}>
+                    <span style={{ color: '#aaa' }}>{r.run_id || '—'}</span>
+                    <span>
+                      ratio {r.serial_ratio ?? '—'} · wait {r.hitl_wait_sec_total ?? 0}s
+                      {r.wall_sec != null ? ` / wall ${r.wall_sec}s` : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {(orgHarness.notes?.length || 0) > 0 && (
+              <div style={{ fontSize: 11, color: '#666' }}>{orgHarness.notes![0]}</div>
+            )}
+          </>
+        )}
       </div>
 
       {/* HarnessEval 落地：评测观测（证据树 + 路由 trace + 经验状态） */}

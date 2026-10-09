@@ -8,6 +8,7 @@ version: 1.0.0
 skill_model_purpose: code_gen
 category: execution
 status: enabled
+invocation_mode: auto
 triggers:
   - 端到端测试
   - e2e test
@@ -171,6 +172,6 @@ E2E Test Suite 生成完成
 - ❌ 修复失败时不要重写整个测试文件，只改出错部分
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 输出符合 ## FILE: 格式（二级标题，无 ``` 包裹）
+- [ ] 每个文件含完整可运行实现；依赖已声明
+- [ ] 未交付任务外的脚手架/无关文件

@@ -7323,6 +7323,22 @@ async def governance_eval_observability():
     return aggregate()
 
 
+@app.get("/governance/org-harness")
+async def governance_org_harness(
+    run_id: str = "",
+    recent_limit: int = 10,
+    tenant_id: str = "",
+):
+    """组织 harness 暗账本：HITL/审批 Amdahl + 黄金集回归 / P0 漏检。"""
+    from core.api.core_facade import org_harness_status
+
+    return org_harness_status(
+        run_id=run_id or "",
+        recent_limit=int(recent_limit or 10),
+        tenant_id=tenant_id or "",
+    )
+
+
 # ── 后台任务托管（prime-agent 断线续跑借鉴）：长任务脱离终端运行，状态/输出可随时查询 ──
 
 @app.get("/governance/jobs")

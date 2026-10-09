@@ -8,6 +8,7 @@ category: analysis
 version: 2.5.0
 skill_model_purpose: code_gen
 status: enabled
+invocation_mode: auto
 execution_mode: prompt
 execution_type: prompt
 triggers:
@@ -61,7 +62,7 @@ keywords:
 trigger_conditions:
 - when: QA阶段自动触发
   query: 生成测试
-skip_when: 代码模块过小或已有充分测试覆盖
+skip_when: 代码模块过小或已有可验证测试覆盖（pytest 可绿）
 ---
 
 # 测试用例生成（Engine）v2.3

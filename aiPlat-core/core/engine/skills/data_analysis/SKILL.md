@@ -6,11 +6,12 @@ description: 分析数据并提供洞察。触发条件：用户要求分析数�
 category: analysis
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 protected: true
 completion_criterion: |
-  1. 输出符合 ## FILE: 格式规范
-  2. 每个文件包含完整可运行代码
-  3. 所有依赖项已声明，所有外部引用已校验
+  1. 达成：对数据执行统计分析并输出洞察
+  2. 输出字段完整且可验收
+  3. 未知或不确定项明确标「待确认」
 execution_mode: prompt
 execution_type: prompt
 triggers:
@@ -69,9 +70,6 @@ sop_flow:
   - "选择合适的统计/可视化方法并执行。"
   - "输出结构化洞察：关键发现、趋势、异常点、建议。"
   - "对数据执行统计分析并输出洞察"
-  - "[ ] 输出格式符合规范"
-  - "[ ] 正确处理错误和边界条件"
-  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - 数据
@@ -108,6 +106,6 @@ skip_when: 跳过条件：用户未提供数据来源或数据量极少时不触
 对数据执行统计分析并输出洞察
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

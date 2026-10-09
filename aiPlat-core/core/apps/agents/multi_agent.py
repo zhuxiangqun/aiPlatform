@@ -387,22 +387,16 @@ class MultiAgent(ConfigurableAgent):
 
     @staticmethod
     def summarize_subagent_result(result: AgentResult) -> str:
-        """Condense subagent output to a ~1-2K token summary (avoids context bloat)."""
+        """Condense subagent output for parent loop (subagent_discipline envelope)."""
+        from core.harness.execution.subagent_discipline import condense_return
+
         if not result.success:
-            return f"Subagent failed: {str(result.error or 'unknown')[:200]}"
-        output = result.output
-        if isinstance(output, str):
-            return output[:1000]
-        if isinstance(output, dict):
-            parts = []
-            if "answer" in output:
-                parts.append(str(output["answer"])[:800])
-            if output.get("sources"):
-                parts.append(f"Sources: {len(output['sources'])} files")
-            if output.get("errors"):
-                parts.append(f"Errors: {len(output['errors'])}")
-            return "\n".join(parts) if parts else "Subagent completed successfully"
-        return "Subagent completed"
+            return condense_return(
+                f"Subagent failed: {result.error or 'unknown'}",
+                max_chars=200,
+                filter_protocol=False,
+            )
+        return condense_return(result.output)
 
 
 class SwarmAgent(MultiAgent):
