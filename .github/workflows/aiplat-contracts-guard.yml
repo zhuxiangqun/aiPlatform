@@ -210,6 +210,7 @@ jobs:
             core/tests/unit/test_harness/test_os_sandbox.py \
             core/tests/unit/test_harness/test_subagent_discipline.py \
             core/tests/unit/test_harness/test_done_verify.py \
+            core/tests/unit/test_harness/test_coding_stage_defaults.py \
             core/tests/unit/test_apps/test_materials_delivery_gate.py \
             core/tests/unit/test_harness/test_howl_stats.py \
             core/tests/unit/test_harness/test_digital_human/test_operational_handoff.py \

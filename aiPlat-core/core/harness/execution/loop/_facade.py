@@ -3379,7 +3379,8 @@ class ReActLoop(BaseLoop):
 
             meta = meta if isinstance(meta, dict) else {}
 
-            is_coding = bool(meta.get("uses_code_skill"))
+            # Align with skill registry / PolicyGate: coding = file-output or uses_code_skill.
+            is_coding = bool(meta.get("uses_code_skill") or meta.get("uses_file_output"))
 
             if not is_coding:
 

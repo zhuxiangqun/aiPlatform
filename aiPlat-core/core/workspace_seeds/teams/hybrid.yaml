@@ -33,6 +33,13 @@ stages:
     uses_file_output: true
     inject_imported_context: true
     deploy_files_to_disk: true
+    sandbox: true
+    review_gate: quick
+    required_skills: [autoreview]
+    done_verify:
+      enabled: true
+      min_output_length: 20
+      review_gate: quick
     stage_timeout_seconds: 900
 
   - agent_id: agent_engineer
