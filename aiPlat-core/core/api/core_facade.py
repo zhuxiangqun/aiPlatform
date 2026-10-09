@@ -4939,6 +4939,23 @@ from core.harness.utils.coding_intensity import (  # noqa: boundary — CoreFaca
     resolve_coding_intensity,
     resolve_ponytail_mode,
 )
+from core.harness.utils.writing_profile import (  # noqa: boundary — CoreFacade re-export
+    PROFILE_CONCISE,
+    PROFILE_OFF,
+    PROFILE_VERSION,
+    apply_concise_prose,
+    apply_error_message,
+    apply_handoff_fields,
+    apply_project_writing_meta,
+    build_writing_overlay,
+    resolve_writing_profile,
+)
+from core.harness.execution.run_structure_diagram import (  # noqa: boundary — CoreFacade re-export
+    STATE_STRUCTURE_KEY,
+    build_run_structure_diagram,
+    stages_to_mermaid,
+    write_structure_diagram,
+)
 from core.harness.execution.factory_bloat_metrics import (  # noqa: boundary — CoreFacade re-export
     BASELINE_PROJECT_KEY,
     STATE_BLOAT_KEY,

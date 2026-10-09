@@ -55,7 +55,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypedDict
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, TypedDict
 
 
 
@@ -2516,15 +2516,48 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                     logging.getLogger(__name__).debug(
                         "write_bloat_metrics skipped", exc_info=True
                     )
+                # Oversight: deterministic stage Mermaid (no LLM)
+                try:
+                    from core.harness.execution.run_structure_diagram import (
+                        write_structure_diagram,
+                    )
+                    write_structure_diagram(
+                        self._state,
+                        stages=getattr(self._config, "stages", None),
+                    )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "write_structure_diagram skipped", exc_info=True
+                    )
 
         except asyncio.CancelledError:
             self._state["phase"] = "failed"
-            self._state["error_message"] = "Pipeline task cancelled"
+            self._state["error_message"] = self._apply_operator_error(
+                "Pipeline task cancelled"
+            )
             raise
         except Exception as e:
             self._state["phase"] = "failed"
-            self._state["error_message"] = str(e)[:500]
+            raw_err = str(e)[:500]
+            self._state["error_message"] = self._apply_operator_error(
+                raw_err, protect=[raw_err]
+            )
         finally:
+            # Always attach structure diagram on terminal phases (done/failed)
+            if self._state.get("phase") in ("done", "failed"):
+                try:
+                    from core.harness.execution.run_structure_diagram import (
+                        write_structure_diagram,
+                    )
+                    if not isinstance(self._state.get("_structure_diagram"), dict):
+                        write_structure_diagram(
+                            self._state,
+                            stages=getattr(self._config, "stages", None),
+                        )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "write_structure_diagram terminal skipped", exc_info=True
+                    )
             if self._state.get("phase") not in ("done", "failed"):
                 self._state["phase"] = "done"
                 try:
@@ -2538,6 +2571,18 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 except Exception:
                     logging.getLogger(__name__).debug(
                         "write_bloat_metrics in finally skipped", exc_info=True
+                    )
+                try:
+                    from core.harness.execution.run_structure_diagram import (
+                        write_structure_diagram,
+                    )
+                    write_structure_diagram(
+                        self._state,
+                        stages=getattr(self._config, "stages", None),
+                    )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "write_structure_diagram in finally skipped", exc_info=True
                     )
             self._state["finished_at"] = __import__("datetime").datetime.now().isoformat()
             if self._persist_callback:
@@ -2592,8 +2637,31 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         """Emergency: terminate the pipeline immediately."""
         self._shutdown_requested = True
         self._state["phase"] = "failed"
-        self._state["error_message"] = "Force terminated by administrator"
+        self._state["error_message"] = self._apply_operator_error(
+            "Force terminated by administrator"
+        )
         self._resume_event.set()
+
+    def _apply_operator_error(
+        self,
+        message: str,
+        *,
+        protect: Optional[Sequence[str]] = None,
+    ) -> str:
+        """Concise operator-facing errors; keeps diagnostic tokens verbatim."""
+        try:
+            from core.harness.utils.writing_profile import (
+                PROFILE_CONCISE,
+                apply_error_message,
+                resolve_writing_profile,
+            )
+
+            profile = resolve_writing_profile(self._state, default=PROFILE_CONCISE)
+            return apply_error_message(
+                message, profile=profile, protect=list(protect or [])
+            )
+        except Exception:
+            return str(message or "")
 
     def _invalidate_downstream(self, start_idx: int) -> None:
         """Clear artifacts for current and all downstream stages."""

@@ -638,6 +638,7 @@ def build_stage_handoff(
     error: str = "",
     next_hint: str = "",
     existing: Optional[Mapping[str, Any]] = None,
+    writing_source: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Build a thin MetaGPT-style envelope from stage config + artifact shape.
 
@@ -706,6 +707,33 @@ def build_stage_handoff(
         else:
             seed[HANDOFF_NEXT] = "Proceed to next pipeline stage."
 
+    # Concise handoff prose (STE-inspired profile); never rewrite artifact_ref / raw errors
+    try:
+        from core.harness.utils.writing_profile import (
+            PROFILE_CONCISE,
+            PROFILE_OFF,
+            apply_handoff_fields,
+            resolve_writing_profile,
+        )
+
+        # Handoff path defaults to concise_v1 (P0); set writing_profile=off to disable
+        profile = resolve_writing_profile(
+            writing_source, default=PROFILE_CONCISE
+        )
+        if profile != PROFILE_OFF:
+            protect = [p for p in (artifact_key, skill, agent) if p]
+            if error:
+                # Protect raw error verbatim — never rewrite diagnostic strings
+                protect.append(str(error)[:200])
+            seed = apply_handoff_fields(
+                seed,
+                profile=profile,
+                protect=protect,
+                keys=(HANDOFF_SUMMARY, HANDOFF_VERIFY, HANDOFF_NEXT),
+            )
+    except Exception:
+        pass  # noqa: handoff-prose-best-effort
+
     return normalize_handoff(seed)
 
 
@@ -733,6 +761,12 @@ def write_stage_handoff(
     if isinstance(bucket, Mapping) and isinstance(bucket.get(key), Mapping):
         existing = {**(existing or {}), **bucket[key]}
 
+    writing_src: Dict[str, Any] = {}
+    if isinstance(state, Mapping):
+        for k in ("writing_profile", "_writing_profile", "metadata"):
+            if state.get(k) not in (None, ""):
+                writing_src[k] = state.get(k)
+
     norm = build_stage_handoff(
         stage=stage,
         artifact_key=key,
@@ -742,6 +776,7 @@ def write_stage_handoff(
         error=error,
         next_hint=resolve_next_stage_hint(stage, stages),
         existing=existing if isinstance(existing, Mapping) else None,
+        writing_source=writing_src or None,
     )
 
     if isinstance(stored, dict):

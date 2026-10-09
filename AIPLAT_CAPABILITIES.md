@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1990
+total_capabilities: 2000
 last_updated: 2026-10-09
 version: "30.9"
 auto_sync: true
@@ -793,6 +793,8 @@ scan_hash: 8f9548ec24f4
 ## 二、记忆子系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| ide_coding_handoff_payload | `core/harness/memory/ide_governed_handoff.py` | ✅ | 自动同步 | 已合入 |
+| classify_ide_coding_handoff | `core/harness/memory/ide_governed_handoff.py` | ✅ | 自动同步 | 已合入 |
 | format_recall_message | `core/harness/memory/team_brain.py` | ✅ | 自动同步 | 已合入 |
 | list_team_solutions | `core/harness/memory/team_brain.py` | ✅ | 自动同步 | 已合入 |
 | TeamSolution | `core/harness/memory/team_brain.py` | ✅ | 自动同步 | 已合入 |
@@ -2062,6 +2064,15 @@ scan_hash: 8f9548ec24f4
 | inject_team_culture | `core/harness/utils/team_culture.py` | ✅ | 自动同步 | 已合入 |
 | compose_prose_overlays | `core/harness/utils/team_culture.py` | ✅ | 自动同步 | 已合入 |
 | build_culture_overlay | `core/harness/utils/team_culture.py` | ✅ | 自动同步 | 已合入 |
+| resolve_writing_profile | `core/harness/utils/writing_profile.py` | ✅ | 简洁交接文风 profile（STE 精神，非全量词表） | 已合入 |
+| build_writing_overlay | `core/harness/utils/writing_profile.py` | ✅ | 工厂对话 ephemeral overlay；序 hard→Culture→style→writing | 已合入 |
+| apply_concise_prose | `core/harness/utils/writing_profile.py` | ✅ | 确定性精简；保护代码符号/报错原文 | 已合入 |
+| apply_error_message | `core/harness/utils/writing_profile.py` | ✅ | 运维/算子错误文案；pipeline_engine 接线 | 已合入 |
+| apply_handoff_fields | `core/harness/utils/writing_profile.py` | ✅ | handoff summary/verify/next；不改 artifact_ref | 已合入 |
+| apply_project_writing_meta | `core/harness/utils/writing_profile.py` | ✅ | 项目 metadata 持久化 writing_profile | 已合入 |
+| build_run_structure_diagram | `core/harness/execution/run_structure_diagram.py` | ✅ | 确定性 stage Mermaid（tool_result；无 LLM 编节点） | 已合入 |
+| write_structure_diagram | `core/harness/execution/run_structure_diagram.py` | ✅ | run 结束写入 state[_structure_diagram] | 已合入 |
+| stages_to_mermaid | `core/harness/execution/run_structure_diagram.py` | ✅ | depends_on + artifact 边 → flowchart | 已合入 |
 | resolve_factory_sanitize_file | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
 | resolve_team_yaml_candidates | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
 | rollback_team_factory_seeds | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
@@ -2137,6 +2148,7 @@ scan_hash: 8f9548ec24f4
 | 平台 T1b：SESSION_START 异步 autosync | `maybe_autosync_team_harness` + Hook SESSION_START + Factory chat/pipeline kick | ✅ | 默认 `AUTOSYNC=0`；后台线程；超时/离线降级；不阻断首 token；生成物适用：**已接线**（工厂入口 kick） | 已合入 |
 | 工厂 F-T1：seeds 从 team/ 更新 | `team_factory_seeds.py` + sanitize/team_planner 解析序 | ✅ | teams/factory_sanitize：team/→runtime→seeds；apply+hash 备份可回滚；pull 成功后自动 apply；生成物适用：**已接线** | 已合入 |
 | 平台 T2 / 工厂 F-T2：Culture 注入 | `team_culture.py` + seed `culture.md` + Factory 对话挂载 | ✅ | ≤200 tokens；序 hard→Culture→style；独立开关；不改 JSON；生成物适用：**已接线**（工厂对话） | 已合入 |
+| 平台 Oversight P0：简洁交接 + run 结构图 | `writing_profile.py` + `run_structure_diagram.py` + Factory 完成面板 + `GET .../structure-diagram` | ✅ | concise_v1 默认开；handoff/错误/对话 overlay；确定性 Mermaid（source_type=tool_result）；生成物适用：**已接线**（oversight UI，可丢弃） | 已合入 |
 | 平台 T4a / 工厂 F-T4：Friction 回流 | `team_friction.py` + reject/regenerate/prd 接线 + Factory CTA | ✅ | 闭集 hitl_reject/prd_gate_fail/regenerate≥2（确认或冷却）；learnings 默认仅 local/；生成物适用：**已接线** | 已合入 |
 | 平台 T3a / 工厂 F-T3：skill 订阅过滤 | `team_skill_subscription.py` + StageRunner + stage `skill_allow_tags/roles` | ✅ | required_skills 强制保留；空 allow_* 透传；无 agent_id 硬编码；生成物适用：**已接线** | 已合入 |
 | 平台 T4b：Friction + schema_gate/repair | `record_schema_gate_friction` + stage_handoff + runtime_auto_repair | ✅ | 闭集扩展 schema_gate_* + repair_exhausted；审计可追踪；生成物适用：**已接线** | 已合入 |
@@ -2917,7 +2929,7 @@ scan_hash: 8f9548ec24f4
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 135 | 0 | 135 |
-| Gate 系统 | 152 | 0 | 152 |
+| Gate 系统 | 162 | 0 | 162 |
 | 评估系统 | 27 | 0 | 27 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
@@ -2950,7 +2962,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1980** | **10** | **1990** |
+| **总计** | **1990** | **10** | **2000** |
 
 | **总计** | **1095** | **0** | **1095** |
 

@@ -180,3 +180,9 @@ expected_outcomes|OK|generic pipeline (acceptance checklist for DONE-before-veri
 meta_tool|OK|generic pipeline (meta_tool stage config / preference)
 quality_gate|OK|generic pipeline (stage quality_gate config mirror)
 review_gate|OK|generic pipeline (stage review_gate config mirror)
+
+# -- Oversight P0: concise writing + deterministic run Mermaid --
+_structure_diagram|OK|engine-internal (tool_result stage Mermaid payload; no LLM nodes)
+writing_profile|OK|generic pipeline (concise_v1|off; handoff/HITL/error prose)
+_writing_profile|OK|engine-internal (writing_profile alias)
+metadata|OK|generic pipeline (project metadata mirror incl. writing_profile)

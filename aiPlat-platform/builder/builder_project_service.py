@@ -987,18 +987,21 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             "updated_at": now,
             "factory_profile": getattr(req, "factory_profile", "standard") or "standard",
             "output_style": getattr(req, "output_style", "default") or "default",
+            "writing_profile": getattr(req, "writing_profile", "concise_v1") or "concise_v1",
             "factory_mode": getattr(req, "factory_mode", "") or "",
             "coding_intensity": getattr(req, "coding_intensity", "") or "",
         }
         try:
             from core.api.core_facade import (
                 apply_project_style_meta,
+                apply_project_writing_meta,
                 assign_output_style_experiment,
                 default_intensity_for_factory_mode,
                 mode_to_team_template,
                 normalize_coding_intensity,
                 normalize_factory_mode,
                 normalize_factory_profile,
+                resolve_writing_profile,
             )
             self._projects[project_id]["factory_profile"] = normalize_factory_profile(
                 self._projects[project_id].get("factory_profile")
@@ -1014,6 +1017,14 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             apply_project_style_meta(
                 self._projects[project_id],
                 output_style=self._projects[project_id].get("output_style"),
+            )
+            self._projects[project_id]["writing_profile"] = resolve_writing_profile(
+                self._projects[project_id],
+                default="concise_v1",
+            )
+            apply_project_writing_meta(
+                self._projects[project_id],
+                writing_profile=self._projects[project_id].get("writing_profile"),
             )
             # A3b: sticky style arm when experiment pct > 0; explicit adhd locks out
             _os = str(self._projects[project_id].get("output_style") or "").lower()
@@ -1342,19 +1353,26 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                     "prd gate guidance inject skipped", exc_info=True
                 )
 
-        # T2/F-T2 + A0/A3b: Culture then output_style (hard→Culture→style); prose only
+        # T2/F-T2 + A0/A3b + writing: hard→Culture→style→writing; prose only
         try:
             from core.api.core_facade import (
                 apply_project_culture_meta,
+                apply_project_writing_meta,
                 assign_output_style_experiment,
                 build_culture_overlay,
                 build_style_overlay,
+                build_writing_overlay,
                 compose_prose_overlays,
                 resolve_culture_enabled,
                 resolve_output_style,
+                resolve_writing_profile,
                 whitelist_overrides,
             )
             apply_project_culture_meta(proj)
+            apply_project_writing_meta(
+                proj,
+                writing_profile=resolve_writing_profile(proj, default="concise_v1"),
+            )
             _exp = assign_output_style_experiment(proj, sticky_id=project_id)
             if _exp.get("assigned"):
                 try:
@@ -1369,15 +1387,18 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             _style = resolve_output_style(proj)
             _ov = whitelist_overrides(proj)
             _style_overlay = build_style_overlay(_style, _ov)
+            _wp = resolve_writing_profile(proj, default="concise_v1")
+            _writing = build_writing_overlay(_wp)
             _combined = compose_prose_overlays(
                 culture_overlay=_culture,
                 style_overlay=_style_overlay,
+                writing_overlay=_writing,
             )
             if _combined:
                 _enriched_message = f"{_combined}\n\n---\n{_enriched_message}"
         except Exception:
             logging.getLogger(__name__).debug(
-                "culture/output_style inject skipped", exc_info=True
+                "culture/output_style/writing inject skipped", exc_info=True
             )
 
         try:
@@ -3581,6 +3602,15 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             proj["coding_intensity"] = config["coding_intensity"]
         except Exception:
             logging.getLogger(__name__).debug("coding_intensity inject skipped", exc_info=True)
+        try:
+            from core.api.core_facade import resolve_writing_profile
+
+            config["writing_profile"] = resolve_writing_profile(
+                proj, default="concise_v1"
+            )
+            proj["writing_profile"] = config["writing_profile"]
+        except Exception:
+            logging.getLogger(__name__).debug("writing_profile inject skipped", exc_info=True)
         if isinstance(proj.get("bloat_baseline"), dict):
             config["bloat_baseline"] = proj.get("bloat_baseline")
 
@@ -3832,6 +3862,32 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                 result["friction_share"] = cta
         except Exception:
             logging.getLogger(__name__).debug("friction_share state sync skipped", exc_info=True)
+
+        # Oversight: deterministic stage Mermaid (tool_result facts only)
+        try:
+            from core.api.core_facade import STATE_STRUCTURE_KEY, build_run_structure_diagram
+
+            st = result.get("state") if isinstance(result.get("state"), dict) else {}
+            diagram = st.get(STATE_STRUCTURE_KEY) if isinstance(st, dict) else None
+            if not isinstance(diagram, dict) or not diagram.get("mermaid"):
+                stages = (self._projects.get(project_id) or {}).get("team_stages") or []
+                diagram = build_run_structure_diagram(st if isinstance(st, dict) else {}, stages=stages)
+                if isinstance(st, dict) and isinstance(diagram, dict):
+                    st[STATE_STRUCTURE_KEY] = diagram
+                    result["state"] = st
+            if isinstance(diagram, dict) and diagram.get("mermaid"):
+                result["structure_diagram"] = diagram
+                proj = self._projects.get(project_id)
+                if isinstance(proj, dict):
+                    proj["structure_diagram"] = {
+                        "schema_version": diagram.get("schema_version"),
+                        "mermaid": diagram.get("mermaid"),
+                        "source_type": diagram.get("source_type"),
+                        "confidence": diagram.get("confidence"),
+                        "node_refs": diagram.get("node_refs") or [],
+                    }
+        except Exception:
+            logging.getLogger(__name__).debug("structure_diagram state sync skipped", exc_info=True)
 
         # F-T5: metrics digest slice on completion / failure
         try:

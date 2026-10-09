@@ -589,6 +589,7 @@ class ProjectCreateRequest(BaseModel):
     stages: List[Dict[str, Any]] = Field(default_factory=list)  # pre-built workflow stages
     factory_profile: str = "standard"  # F2a: standard | demo (project-level HITL profile)
     output_style: str = "default"  # A0: default | adhd (user-facing prose only)
+    writing_profile: str = "concise_v1"  # concise_v1 | off — STE-inspired handoff/HITL prose (P0 default on)
     factory_mode: str = ""  # F2b: agent | code | hybrid | "" (auto / LLM)
     coding_intensity: str = ""  # B: lite | full | ultra | "" (resolve from mode/env)
 

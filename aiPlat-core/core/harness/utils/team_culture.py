@@ -167,9 +167,14 @@ def compose_prose_overlays(
     culture_overlay: str = "",
     style_overlay: str = "",
     hard_overlay: str = "",
+    writing_overlay: str = "",
 ) -> str:
-    """Concatenate overlays in locked order: hard → Culture → output_style."""
-    parts = [p.strip() for p in (hard_overlay, culture_overlay, style_overlay) if p and str(p).strip()]
+    """Concatenate overlays in locked order: hard → Culture → output_style → writing."""
+    parts = [
+        p.strip()
+        for p in (hard_overlay, culture_overlay, style_overlay, writing_overlay)
+        if p and str(p).strip()
+    ]
     return "\n\n".join(parts)
 
 

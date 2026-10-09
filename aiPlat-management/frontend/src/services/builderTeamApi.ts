@@ -195,6 +195,25 @@ export interface TeamDigestSlice {
   privacy?: string;
 }
 
+/** Oversight: deterministic run-level Mermaid (no LLM-invented nodes) */
+export interface StructureDiagramSlice {
+  schema_version?: string;
+  mermaid?: string;
+  layers?: Record<string, unknown>;
+  node_refs?: Array<{
+    id?: string;
+    stage_id?: string;
+    kind?: string;
+    source_type?: string;
+    confidence?: string;
+    artifact?: string;
+    href?: string;
+  }>;
+  source_type?: string;
+  confidence?: number | string;
+  hint?: string;
+}
+
 export interface ProjectItem {
   project_id: string;
   name: string;
@@ -219,6 +238,7 @@ export const projectApi = {
     app_name?: string;
     factory_profile?: 'standard' | 'demo';
     output_style?: 'default' | 'adhd';
+    writing_profile?: 'concise_v1' | 'off';
     factory_mode?: 'agent' | 'code' | 'hybrid' | '';
   }) => {
     return apiClient.post<ProjectItem>('/platform/builder/projects', data);
@@ -315,6 +335,7 @@ export const projectApi = {
       runs: ProjectRun[];
       friction_share?: FrictionShareCta;
       team_digest?: TeamDigestSlice;
+      structure_diagram?: StructureDiagramSlice;
     }>(
       `/platform/builder/projects/${projectId}/state`
     );
@@ -323,6 +344,15 @@ export const projectApi = {
   /** F-T5: metrics-only digest (also increments view counter) */
   getDigest: async (projectId: string) => {
     return apiClient.get<TeamDigestSlice>(`/platform/builder/projects/${projectId}/digest`);
+  },
+
+  /** Oversight: deterministic stage Mermaid (tool_result facts) */
+  getStructureDiagram: async (projectId: string) => {
+    return apiClient.get<{
+      status?: string;
+      structure_diagram?: StructureDiagramSlice;
+      source_type?: string;
+    }>(`/platform/builder/projects/${projectId}/structure-diagram`);
   },
 
   /** Rollback to a specific pipeline stage or PRD */

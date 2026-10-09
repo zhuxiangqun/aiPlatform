@@ -392,6 +392,13 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
             }
             if config.get("pm_chat_history"):
                 state["pm_chat_history"] = config.get("pm_chat_history")
+            # Oversight writing profile (concise handoff / HITL prose)
+            if config.get("writing_profile") not in (None, ""):
+                state["writing_profile"] = str(config.get("writing_profile"))
+            if config.get("coding_intensity") not in (None, ""):
+                state["coding_intensity"] = str(config.get("coding_intensity"))
+            if isinstance(config.get("bloat_baseline"), dict):
+                state["_bloat_baseline"] = config.get("bloat_baseline")
 
             # Rebuild / start with confirmed PRD: attach as prd_data baseline.
             # PM still regenerates (overwrite); context inject locks scope to dialogue.

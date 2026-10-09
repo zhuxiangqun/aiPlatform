@@ -54,13 +54,18 @@ def test_build_culture_overlay_and_inject_skips_tool():
 
 
 def test_compose_order_hard_culture_style():
+    from core.harness.utils.writing_profile import PROFILE_CONCISE, build_writing_overlay
+
     culture = build_culture_overlay(enabled=True, text="Be careful.\n")
     style = build_style_overlay(STYLE_ADHD, {"list_cap": 3})
+    writing = build_writing_overlay(PROFILE_CONCISE)
     hard = "[hard] never hide errors"
     combined = compose_prose_overlays(
         hard_overlay=hard,
         culture_overlay=culture,
         style_overlay=style,
+        writing_overlay=writing,
     )
     assert combined.index("[hard]") < combined.index("[team_culture=")
     assert combined.index("[team_culture=") < combined.index("[output_style=")
+    assert combined.index("[output_style=") < combined.index("[writing_profile=")

@@ -511,6 +511,13 @@ const ProjectPanel: React.FC<{
   const [hitlStageId, setHitlStageId] = useState<string | null>(null);
   const [hitlOutputArtifact, setHitlOutputArtifact] = useState<string | null>(null);
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
+  const [structureDiagram, setStructureDiagram] = useState<{
+    mermaid?: string;
+    source_type?: string;
+    confidence?: number | string;
+    hint?: string;
+  } | null>(null);
+  const [showStructureDiagram, setShowStructureDiagram] = useState(false);
   const [progressState, setProgressState] = useState<Record<string, any> | null>(null);
   const [executingSince, setExecutingSince] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -664,6 +671,11 @@ const ProjectPanel: React.FC<{
         const p = s.phase as string || phase;
         setPhase(p);
         setProgressState(s._progress || null);
+        const diagram =
+          (st as any)?.structure_diagram ||
+          s._structure_diagram ||
+          null;
+        if (diagram?.mermaid) setStructureDiagram(diagram);
         // v3.1: Track HITL stage from Core's _hitl_stage_id and _hitl_output_artifact
         if (isHitlWaitPhase(p)) {
           const hitlId = s._hitl_stage_id as string;
@@ -786,6 +798,11 @@ const ProjectPanel: React.FC<{
           if (lastArt) setHitlOutputArtifact(String(lastArt));
         }
         setProgressState(state._progress || null);
+        const diagram =
+          (st as any)?.structure_diagram ||
+          state._structure_diagram ||
+          null;
+        if (diagram?.mermaid) setStructureDiagram(diagram);
         const orderedKeys = project.team_stages?.map(s => (s as any).output_artifact).filter(Boolean) || [];
         const keys = orderedKeys.length > 0 ? orderedKeys : ['architecture', 'code', 'test_report'];
         const outputs = collectStageOutputs(state, keys);
@@ -1673,6 +1690,45 @@ const ProjectPanel: React.FC<{
             </div>
           </div>
         ) : null}
+
+        {/* Oversight: deterministic stage Mermaid (tool_result; copyable source) */}
+        {(phase === 'done' || phase === 'failed') && (
+          <div className="p-3 rounded bg-slate-500/5 border border-slate-500/30 text-xs space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-300 font-medium">运行结构图（确定性）</span>
+              <button
+                type="button"
+                className="text-slate-400 hover:text-slate-200"
+                onClick={async () => {
+                  if (!structureDiagram?.mermaid) {
+                    try {
+                      const r = await projectApi.getStructureDiagram(project.project_id);
+                      const d = (r as any)?.structure_diagram || r;
+                      if (d?.mermaid) setStructureDiagram(d);
+                    } catch (e) {
+                      toastGateError(e, '结构图加载失败');
+                      return;
+                    }
+                  }
+                  setShowStructureDiagram(v => !v);
+                }}
+              >
+                {showStructureDiagram ? '收起' : '查看 Mermaid'}
+              </button>
+            </div>
+            {structureDiagram?.source_type && (
+              <div className="text-[10px] text-slate-500">
+                source_type={structureDiagram.source_type}
+                {structureDiagram.confidence != null ? ` · confidence=${structureDiagram.confidence}` : ''}
+              </div>
+            )}
+            {showStructureDiagram && structureDiagram?.mermaid && (
+              <pre className="text-[10px] text-slate-200 font-mono whitespace-pre-wrap break-all max-h-64 overflow-y-auto bg-black/30 p-2 rounded">
+                {structureDiagram.mermaid}
+              </pre>
+            )}
+          </div>
+        )}
 
         {/* PRD summary — always show if confirmed */}
         {confirmedPrd && (
