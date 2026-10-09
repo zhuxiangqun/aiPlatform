@@ -1881,6 +1881,14 @@ domains:
         type: function
         signature: 'Drop CAPABILITIES/brief caches; optionally reset AGENT.md mtime tracker.'
         module: aiPlat-core/core/harness/digital_human/consultant_knowledge.py
+      - symbol: classify_operational_handoff
+        type: function
+        signature: 'classify_operational_handoff(question)→Optional[Dict]'
+        module: aiPlat-core/core/harness/digital_human/operational_handoff.py
+      - symbol: append_handoff_action
+        type: function
+        signature: 'append_handoff_action(answer, question)→str [ACTION:handoff]'
+        module: aiPlat-core/core/harness/digital_human/operational_handoff.py
       - symbol: sanitize_tenant_id
         type: function
         signature: 'sanitize_tenant_id(tenant_id)'
@@ -4418,12 +4426,22 @@ domains:
         type: "function"
         signature: "CoreFacade facade：GET /governance/org-harness"
         module: "core/api/core_facade.py"
+      - symbol: "get_howl_stats"
+        type: "function"
+        signature: "get_howl_stats()→Dict (total_interventions / by_reason)"
+        module: "core/harness/intervention/howl.py"
+      - symbol: "record_intervention"
+        type: "function"
+        signature: "record_intervention(reason, details=None)→None"
+        module: "core/harness/intervention/howl.py"
     breaks: []
     consumers_expected:
       - module: "core/api/routers/adapters.py"
         reason: "/model-override 端点"
       - module: "core/harness/syscalls/llm.py"
         reason: "最佳模型选择"
+      - module: "core/api/routers/diagnostics.py"
+        reason: "adoption-metrics 附带 Howl 干预次数"
 
   # ══════════════════════════════════════════════════════════════
   # 二十、Arena & 调度 (4 caps)

@@ -3166,6 +3166,13 @@ def get_adoption_metrics():
     from core.harness.evaluation.adoption_metrics import AdoptionTracker
     tracker = AdoptionTracker()
     report = tracker.compute_metrics()
+    howl_stats: Dict[str, Any] = {}
+    try:
+        from core.harness.intervention.howl import get_howl_stats
+
+        howl_stats = get_howl_stats()
+    except Exception:
+        howl_stats = {"status": "unavailable", "total_interventions": None}
     return {
         "status": "completed",
         "report": {
@@ -3180,6 +3187,9 @@ def get_adoption_metrics():
             "resistance_hotspots": report.resistance_hotspots,
             "recommendations": report.recommendations,
             "computed_at": report.computed_at,
+            "howl_interventions": howl_stats.get("total_interventions"),
+            "howl_by_reason": howl_stats.get("by_reason") or {},
+            "howl_status": howl_stats.get("status"),
         },
     }
 

@@ -679,6 +679,14 @@ async def generate_answer(
         except Exception:
             logger.warning("TTS failed or timed out — returning text-only answer", exc_info=True)
 
+    # Operational asks → governed handoff card (Factory / Governance), not silent chat success.
+    try:
+        from core.harness.digital_human.operational_handoff import append_handoff_action
+
+        answer = append_handoff_action(answer, text)
+    except Exception:
+        logging.getLogger(__name__).debug("operational handoff annotate failed", exc_info=True)
+
     try:
         from core.harness.digital_human.trajectory_collector import collect_turn
 

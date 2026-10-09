@@ -114,6 +114,9 @@ interface AdoptionReport {
   resistance_hotspots?: Array<{ reason?: string; count?: number } | string>;
   recommendations?: string[];
   computed_at?: string;
+  howl_interventions?: number | null;
+  howl_by_reason?: Record<string, number>;
+  howl_status?: string;
 }
 
 const statusIcons: Record<string, string> = { good: '✅', warning: '⚠️', attention: '🟡', unknown: '❓' };
@@ -284,14 +287,28 @@ export default function GovernanceDashboard() {
                 icon={<AlertTriangle size={18} />}
               />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 8 }}>
               <Card
                 title="澄清触发 / 完成"
                 value={`${adoption.grill_trigger_rate ?? '—'} / ${adoption.grill_completion_rate ?? '—'}`}
                 color="#888"
               />
               <Card title="采纳趋势" value={String(adoption.adoption_trend || '—')} color="#666" />
+              <Card
+                title="Howl 干预次数"
+                value={
+                  adoption.howl_interventions != null
+                    ? String(adoption.howl_interventions)
+                    : '—'
+                }
+                color="#a84"
+              />
             </div>
+            {adoption.howl_by_reason && Object.keys(adoption.howl_by_reason).length > 0 && (
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>
+                干预原因：{Object.entries(adoption.howl_by_reason).map(([k, v]) => `${k}=${v}`).join(' · ')}
+              </div>
+            )}
             {adoption.computed_at && (
               <div style={{ fontSize: 11, color: '#555', marginBottom: 8 }}>@ {adoption.computed_at}</div>
             )}

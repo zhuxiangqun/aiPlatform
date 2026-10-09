@@ -30,7 +30,9 @@ effects:
   resources:
   - artifact:file_blocks
   idempotent: true
-  rollback_available: false
+  # Writes go through sys_file_write → file_checkpoint; restore via
+  # restore_file_checkpoint / Management FileCheckpoints UI (not silent undo).
+  rollback_available: true
 input_schema:
   requirement:
     type: string
@@ -113,6 +115,7 @@ skip_when: 跳过条件：用户仅询问概念、对比工具而非实际写代
 1. 先判定交付模式（见下表），再选语言/框架。
 2. 生成代码：## FILE: 格式，每文件包含完整实现。
 3. 自检：语法正确、导入完备、安全无注入；未列出的工程入口文件不要交。
+4. 落盘经 `sys_file_write` 时会自动 `file_checkpoint`；回滚用 `restore_file_checkpoint` / 管理端「文件 Checkpoint」，禁止假装「答完即撤销」。
 
 ## 交付模式（强制 — 所有绑定本 Skill 的 Agent 共用，禁止只写在某一个 AGENT.md）
 按**当前任务输入**选一种，禁止混用：

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1980
+total_capabilities: 1984
 last_updated: 2026-10-09
 version: "30.9"
 auto_sync: true
@@ -1323,6 +1323,8 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| append_handoff_action | `core/harness/digital_human/operational_handoff.py` | ✅ | 自动同步 | 已合入 |
+| classify_operational_handoff | `core/harness/digital_human/operational_handoff.py` | ✅ | 自动同步 | 已合入 |
 | export_seed_sharegpt_dataset | `core/harness/digital_human/trajectory_collector.py` | ✅ | 自动同步 | 已合入 |
 | clear_brief_cache | `core/harness/digital_human/platform_status_brief.py` | ✅ | 自动同步 | 已合入 |
 | scrub_audit_english | `core/harness/digital_human/platform_status_brief.py` | ✅ | 自动同步 | 已合入 |
@@ -2106,7 +2108,7 @@ scan_hash: 8f9548ec24f4
 | 前端代理 HTML/JSON no-cache | aiPlat-management/frontend/proxy_server.py | ✅ | `index.html`/`*.json`/`非 hash 静态` no-store；hash 资源 immutable——预览少依赖强刷；生成物不适用（平台 FE 横切） | 已合入 |
 | 前端代理兼容路径改写 | `apply_path_rewrite`（`proxy_server.py` + vite `/api/governance/eval-observability`） | ✅ | Doctor：`/api/core/diagnostics/doctor`→mgmt；评测观测：`/api/governance/eval-observability`→platform `/governance/...`；生成物不适用（平台 FE 横切） | 已合入 |
 | SPA 陈旧 chunk 自动重载 | `proxy_server._serve_spa` 注入 `aiplat.chunk_reload` + `lazyWithRetry` | ✅ | 构建哈希失效时 session 内最多硬刷一次；生成物不适用（平台 FE 横切） | 已合入 |
-| Code 模式平台能力接线规约 | engine/skills/code_generation/SKILL.md | ✅ | 托管≠自动继承；强制经平台 API/hybrid；生成物适用：**已接线**（生成 SOP） | 已合入 |
+| Code 模式平台能力接线规约 | engine/skills/code_generation/SKILL.md | ✅ | 托管≠自动继承；强制经平台 API/hybrid；`rollback_available: true`（落盘经 sys_file_write→file_checkpoint，恢复走 restore_file_checkpoint / FileCheckpoints UI）；生成物适用：**已接线**（生成 SOP） | 已合入 |
 | 工厂媒体 Skill 名规范化 | factory_artifact_sanitize.normalize_media_skill_names + ensure_agent_app_skill_consistency + ensure_platform_media_skill_contracts + factory_fix_plan.apply_no_platform_handler_fixes + teams gates + agent_engineering 命名/契约约束 | ✅ | 别名提升 + 三一致 + **目录契约重写**（禁止 downloader 仅建任务、禁止 report 仅进度查询；强制 media_ref/segments/report/timeline；**task_id/duration/tenant 入口不可必填**；**丢弃虚构 task_lifecycle**；progress→report）；handler 补齐 segments/task_status；生成物适用：**已接线** | 已合入 |
 | 工厂 result_dashboard 报告 Skill 兜底 | factory_artifact_sanitize.ensure_result_dashboard_skill + agent_engineering + teams `ensure_result_dashboard_skill` | ✅ | 缺报告 Skill 时注入 `report_json_export` 并绑定 `ui_bindings.result_dashboard`；生成物适用：**已接线** | 已合入 |
 | 工厂 wizard 阶段 I/O 消毒 | factory_artifact_sanitize.ensure_wizard_stage_io + repair_frontend_pages_with_prd + teams default/hybrid/code `repair_app_page` + deploy-to-app + app_page_generation SKILL | ✅ | **域无关**：任意上传→进度→结果向导；`show_when`、path 输入、progress≠入库 Skill；生成物适用：**已接线** | 已合入 |
@@ -2376,6 +2378,7 @@ scan_hash: 8f9548ec24f4
 ## 十九、运行时干预
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| record_intervention | `core/harness/intervention/howl.py` | ✅ | 自动同步 | 已合入 |
 | summarize_gold_regression | `core/harness/meta/org_harness_metrics.py` | ✅ | 自动同步 | 已合入 |
 | aggregate_org_harness | `core/harness/meta/org_harness_metrics.py` | ✅ | 自动同步 | 已合入 |
 | collect_org_harness | `core/harness/meta/org_harness_metrics.py` | ✅ | 自动同步 | 已合入 |
@@ -2384,7 +2387,8 @@ scan_hash: 8f9548ec24f4
 | MetaAgent / get_meta_agent | `harness/meta/meta_agent.py` | ✅ | 数据驱动元认知分析（失败/健康信号聚合 → 策略建议） | 已合入 |
 | MetaSuggestion | `harness/meta/meta_agent.py` | ✅ | area/problem/suggestion/priority/evidence | 已合入 |
 |------|------|:---:|------|------|
-| Howl Intervention | harness/intervention/howl.py | ✅ | Agent 停滞/退化检测 + redirect/clarify/fallback策略 | 已合入 |
+| Howl Intervention | harness/intervention/howl.py | ✅ | Agent 停滞/退化检测 + redirect/clarify/fallback策略；`get_howl_stats` 计数接入 adoption-metrics / Governance「Howl 干预次数」 | 已合入 |
+| 数字人运营意图移交 | `harness/digital_human/operational_handoff.py` + `voice_pipeline` + FloatingDigitalHuman CTA | ✅ | 部署/审批/启动构建等不代执行；`[ACTION:handoff:/path]` → UI 确认卡片再跳转 Factory/Governance；生成物不适用（平台顾问横切） | 已合入 |
 | RunState Restatement | harness/restatement/run_state.py | ✅ | 结构化/版本化/人可编辑的进度制品 | 已合入 |
 
 ---
@@ -2900,7 +2904,7 @@ scan_hash: 8f9548ec24f4
 | 知识引擎（本体） | 358 | 9 | 367 |
 | RAG 检索 | 51 | 0 | 51 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 165 | 0 | 165 |
+| Agent 系统 | 167 | 0 | 167 |
 | Skill 系统 | 157 | 0 | 157 |
 | 安全与治理 | 64 | 0 | 64 |
 | 可观测性 | 43 | 0 | 43 |
@@ -2915,7 +2919,7 @@ scan_hash: 8f9548ec24f4
 | 工具生态 | 71 | 0 | 71 |
 | 微调系统 | 14 | 0 | 14 |
 | 部署与灰度 | 7 | 0 | 7 |
-| 运行时干预 | 9 | 0 | 9 |
+| 运行时干预 | 11 | 0 | 11 |
 | Arena & 调度 | 7 | 0 | 7 |
 | 平台治理 | 119 | 0 | 119 |
 | Infra 基础设施 | 14 | 0 | 14 |
@@ -2940,7 +2944,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1970** | **10** | **1980** |
+| **总计** | **1974** | **10** | **1984** |
 
 | **总计** | **1095** | **0** | **1095** |
 

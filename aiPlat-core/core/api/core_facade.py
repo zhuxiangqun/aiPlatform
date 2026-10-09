@@ -1180,6 +1180,12 @@ def restore_file_checkpoint(checkpoint_id: str, session_id: str = "") -> Dict[st
     return _fn(checkpoint_id, session_id)
 
 
+def get_howl_stats() -> Dict[str, Any]:
+    """Howl stall-intervention counters (Agent KPI for Governance)."""
+    from core.harness.intervention.howl import get_howl_stats as _fn
+    return _fn()
+
+
 def publish_learning_release(release_id: str) -> Dict[str, Any]:
     """Publish a learning release candidate (via handler registry)."""
     return dispatch("publish_release_candidate", release_id)

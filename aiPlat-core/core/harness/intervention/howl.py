@@ -17,6 +17,47 @@ from typing import Any, Dict, List, Optional
 
 log = logging.getLogger(__name__)
 
+# Process-local intervention counters (Agent KPI — not chat length).
+_STATS: Dict[str, Any] = {
+    "total_interventions": 0,
+    "by_reason": {},
+    "last_triggered_at": None,
+    "last_reason": None,
+}
+
+
+def record_intervention(reason: str, *, details: Optional[Dict[str, Any]] = None) -> None:
+    """Bump Howl counters when an intervention fires."""
+    _STATS["total_interventions"] = int(_STATS.get("total_interventions") or 0) + 1
+    by = _STATS.setdefault("by_reason", {})
+    key = str(reason or "unknown")
+    by[key] = int(by.get(key) or 0) + 1
+    _STATS["last_triggered_at"] = time.time()
+    _STATS["last_reason"] = key
+    if details:
+        _STATS["last_details"] = dict(details)
+
+
+def get_howl_stats() -> Dict[str, Any]:
+    """Snapshot for Governance / adoption-metrics (never invent success_rate)."""
+    by = dict(_STATS.get("by_reason") or {})
+    return {
+        "total_interventions": int(_STATS.get("total_interventions") or 0),
+        "by_reason": by,
+        "last_triggered_at": _STATS.get("last_triggered_at"),
+        "last_reason": _STATS.get("last_reason"),
+        "status": "ok",
+    }
+
+
+def _reset_howl_stats_for_tests() -> None:
+    """Test helper — clear process counters (private; not a product API)."""
+    _STATS["total_interventions"] = 0
+    _STATS["by_reason"] = {}
+    _STATS["last_triggered_at"] = None
+    _STATS["last_reason"] = None
+    _STATS.pop("last_details", None)
+
 
 class StallReason(str, Enum):
     NONE = "none"
@@ -136,12 +177,14 @@ class Howl:
         last_actions = last_actions or []
         tool_errors = tool_errors or []
 
+        result = InterventionResult(triggered=False)
+
         # 1. Semantic stall detection
         if len(last_actions) >= self._SEMANTIC_STALL_THRESHOLD:
             recent = last_actions[-self._SEMANTIC_STALL_THRESHOLD:]
             tools = [a.get("tool", "") for a in recent]
             if len(set(tools)) == 1 and len(tools) == self._SEMANTIC_STALL_THRESHOLD:
-                return InterventionResult(
+                result = InterventionResult(
                     triggered=True,
                     stall_reason=StallReason.SEMANTIC_STALL,
                     strategy=InterventionStrategy.REDIRECT,
@@ -153,11 +196,11 @@ class Howl:
                 )
 
         # 2. Parameter loop
-        if len(tool_errors) >= self._PARAMETER_LOOP_THRESHOLD:
+        if not result.triggered and len(tool_errors) >= self._PARAMETER_LOOP_THRESHOLD:
             recent_err = tool_errors[-self._PARAMETER_LOOP_THRESHOLD:]
             err_msgs = [e.get("error", "") for e in recent_err]
             if len(set(err_msgs)) == 1 and len(err_msgs) == self._PARAMETER_LOOP_THRESHOLD:
-                return InterventionResult(
+                result = InterventionResult(
                     triggered=True,
                     stall_reason=StallReason.PARAMETER_LOOP,
                     strategy=InterventionStrategy.REDIRECT,
@@ -170,10 +213,10 @@ class Howl:
                 )
 
         # 3. Wall clock timeout
-        if last_output_time > 0:
+        if not result.triggered and last_output_time > 0:
             elapsed = time.time() - last_output_time
             if elapsed > self._WALL_CLOCK_LIMIT:
-                return InterventionResult(
+                result = InterventionResult(
                     triggered=True,
                     stall_reason=StallReason.WALL_CLOCK_TIMEOUT,
                     strategy=InterventionStrategy.CLARIFY,
@@ -185,7 +228,7 @@ class Howl:
                 )
 
         # 4. Model unavailable
-        if model_status in ("unavailable", "unreachable", "error"):
+        if not result.triggered and model_status in ("unavailable", "unreachable", "error"):
             fallback = fallback_model
             if not fallback:
                 try:
@@ -199,7 +242,7 @@ class Howl:
                     fallback_model=fallback,
                 )
                 if hint:
-                    return InterventionResult(
+                    result = InterventionResult(
                         triggered=True,
                         stall_reason=StallReason.MODEL_UNAVAILABLE,
                         strategy=InterventionStrategy.FALLBACK,
@@ -207,7 +250,15 @@ class Howl:
                         details={"model_status": model_status, "model_error": model_error},
                     )
 
-        return InterventionResult(triggered=False)
+        if result.triggered:
+            try:
+                record_intervention(
+                    result.stall_reason.value,
+                    details=result.details,
+                )
+            except Exception:
+                log.debug("howl record_intervention failed", exc_info=True)
+        return result
 
     def _summarize_state(self, actions: List[Dict[str, Any]]) -> str:
         """Build a concise state summary from recent actions."""
@@ -218,4 +269,11 @@ class Howl:
         return f"recent tools: {', '.join(tools_used)}; statuses: {', '.join(statuses)}"
 
 
-__all__ = ["Howl", "InterventionResult", "StallReason", "InterventionStrategy"]
+__all__ = [
+    "Howl",
+    "InterventionResult",
+    "StallReason",
+    "InterventionStrategy",
+    "get_howl_stats",
+    "record_intervention",
+]
