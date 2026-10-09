@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from core.harness.meta.org_harness_metrics import (
     aggregate_org_harness,
+    build_duty_board,
     collect_org_harness,
     summarize_approvals,
     summarize_gold_regression,
@@ -155,3 +156,132 @@ def test_collect_fleet_without_stores(monkeypatch):
     assert out["summary"]["runs_scanned"] == 0
     assert out["summary"]["p0_miss_rate"] == 0.25
     assert out["summary"]["gold_p0_recall"] == 0.75
+    assert out["data_available"] is True
+    assert out["availability"]["gold"] is True
+    assert out["duty_board"]["status"] == "block"  # p0_miss 0.25 > 0.2
+
+
+def test_duty_board_unavailable_no_fake_green():
+    board = build_duty_board({
+        "ok": True,
+        "data_available": False,
+        "availability": {"runs": False, "gold": False, "approvals": False},
+        "summary": {},
+    })
+    assert board["status"] == "unavailable"
+    assert any("invent" in r or "unavailable" in r for r in board["reasons"])
+    assert board["checks"].get("howl") == "unavailable"
+
+
+def test_duty_board_howl_watch_and_unavailable():
+    watch = build_duty_board(
+        {
+            "ok": True,
+            "data_available": True,
+            "availability": {"runs": True, "gold": True, "approvals": False},
+            "summary": {
+                "avg_serial_ratio": 0.05,
+                "gold_regressing": False,
+                "p0_miss_rate": 0.0,
+            },
+        },
+        adoption={"howl_interventions": 25, "howl_status": "ok"},
+    )
+    assert watch["checks"]["howl"] == "watch"
+    assert watch["status"] == "watch"
+
+    missing = build_duty_board(
+        {
+            "ok": True,
+            "data_available": True,
+            "availability": {"runs": True, "gold": True, "approvals": False},
+            "summary": {
+                "avg_serial_ratio": 0.05,
+                "gold_regressing": False,
+                "p0_miss_rate": 0.0,
+            },
+        },
+        adoption={"howl_status": "unavailable", "howl_interventions": None},
+    )
+    assert missing["checks"]["howl"] == "unavailable"
+
+
+def test_duty_board_block_on_gold_regressing():
+    board = build_duty_board({
+        "ok": True,
+        "data_available": True,
+        "availability": {"runs": True, "gold": True, "approvals": False},
+        "summary": {
+            "avg_serial_ratio": 0.1,
+            "gold_regressing": True,
+            "p0_miss_rate": 0.0,
+        },
+    })
+    assert board["status"] == "block"
+    assert board["checks"]["gold"] == "block"
+
+
+def test_duty_board_watch_serial_and_adoption():
+    board = build_duty_board(
+        {
+            "ok": True,
+            "data_available": True,
+            "availability": {"runs": True, "gold": True, "approvals": True},
+            "summary": {
+                "avg_serial_ratio": 0.45,
+                "gold_regressing": False,
+                "p0_miss_rate": 0.05,
+                "approval_pending": 1,
+            },
+        },
+        adoption={"hitl_rejection_rate": 0.4, "howl_interventions": 2},
+    )
+    assert board["status"] == "watch"
+    assert board["checks"]["serial"] == "watch"
+    assert board["checks"]["hitl"] == "watch"
+
+
+def test_aggregate_attaches_duty_board():
+    out = aggregate_org_harness(
+        events=[],
+        approvals=[],
+        gold_reports=[
+            {"precision": 0.9, "recall": 0.8, "p0_recall": 1.0, "novel_count": 0},
+        ],
+    )
+    assert out["duty_board"]["status"] in ("go", "watch")
+    assert out["duty_board"]["checks"]["gold"] == "go"
+    assert out["data_available"] is True
+
+
+def test_aggregate_merges_adoption_into_duty_board(monkeypatch):
+    from core.harness.meta import org_harness_metrics as ohm
+
+    monkeypatch.setattr(
+        ohm,
+        "load_adoption_snapshot",
+        lambda: {"hitl_rejection_rate": 0.5, "howl_interventions": 3},
+    )
+    out = aggregate_org_harness(
+        events=[],
+        approvals=[],
+        gold_reports=[
+            {"precision": 0.9, "recall": 0.8, "p0_recall": 1.0, "novel_count": 0},
+        ],
+    )
+    assert out["adoption"]["hitl_rejection_rate"] == 0.5
+    assert out["duty_board"]["checks"]["hitl"] == "watch"
+    assert out["duty_board"]["status"] == "watch"
+    assert any("hitl_rejection_rate" in r for r in out["duty_board"]["reasons"])
+
+
+def test_duty_board_gold_missing_not_go():
+    board = build_duty_board({
+        "ok": True,
+        "data_available": True,
+        "availability": {"runs": True, "gold": False, "approvals": False},
+        "summary": {"avg_serial_ratio": 0.05, "runs_scanned": 2},
+    })
+    assert board["checks"]["gold"] == "unavailable"
+    assert board["status"] in ("go", "watch")  # runs present; gold unavailable is reason, not fake go on gold check
+    assert any("gold unavailable" in r for r in board["reasons"])

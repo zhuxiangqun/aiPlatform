@@ -54,13 +54,13 @@ class AdoptionReport:
 
     active_users_7d: int = 0
 
-    grill_trigger_rate: float = 0.0          # GrillingBridge auto-trigger %
+    grill_trigger_rate: Optional[float] = None   # None when denominator=0 (unavailable)
 
-    grill_completion_rate: float = 0.0        # Started grill → completed %
+    grill_completion_rate: Optional[float] = None
 
-    hitl_approval_rate: float = 0.0           # HITL approve %
+    hitl_approval_rate: Optional[float] = None
 
-    hitl_rejection_rate: float = 0.0          # HITL reject %
+    hitl_rejection_rate: Optional[float] = None
 
     resistance_hotspots: List[Dict[str, Any]] = field(default_factory=list)
 
@@ -191,13 +191,13 @@ class AdoptionTracker:
 
 
 
-        # Adoption trend
+        # Adoption trend (None rates = unavailable, not 0)
 
-        if report.active_users_7d < report.total_users * 0.3:
+        if report.total_users > 0 and report.active_users_7d < report.total_users * 0.3:
 
             report.adoption_trend = "declining"
 
-        elif report.grill_trigger_rate > 0.3:
+        elif report.grill_trigger_rate is not None and report.grill_trigger_rate > 0.3:
 
             report.adoption_trend = "rising"
 
@@ -209,11 +209,16 @@ class AdoptionTracker:
 
         # Recommendations
 
-        if report.grill_trigger_rate > 0.2 and report.grill_completion_rate < 0.5:
+        if (
+            report.grill_trigger_rate is not None
+            and report.grill_completion_rate is not None
+            and report.grill_trigger_rate > 0.2
+            and report.grill_completion_rate < 0.5
+        ):
 
             report.recommendations.append("GrillingBridge triggered often but rarely completed — consider simplifying interview questions or reducing required dimensions")
 
-        if report.hitl_rejection_rate > 0.3:
+        if report.hitl_rejection_rate is not None and report.hitl_rejection_rate > 0.3:
 
             report.recommendations.append(f"HITL rejection rate high ({report.hitl_rejection_rate:.0%}) — review stage quality or prompt instructions")
 

@@ -5148,7 +5148,7 @@ def org_harness_status(
     recent_limit: int = 10,
     tenant_id: str = "",
 ) -> Dict[str, Any]:
-    """组织 harness 暗账本：HITL 串行 / 审批 + 黄金集回归 / P0 漏检。"""
+    """组织 harness 暗账本：HITL 串行 / 审批 + 黄金集回归 / P0 漏检 + duty_board。"""
     from core.harness.meta.org_harness_metrics import org_harness_status as _status
 
     return _status(
@@ -5156,6 +5156,24 @@ def org_harness_status(
         recent_limit=int(recent_limit or 10),
         tenant_id=tenant_id or "",
     )
+
+
+def build_duty_board(
+    payload: Optional[Dict[str, Any]] = None,
+    *,
+    adoption: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Governance 值班板裁决（go/watch/block/unavailable；禁止假成功率）。"""
+    from core.harness.meta.org_harness_metrics import build_duty_board as _board
+
+    return _board(payload, adoption=adoption)
+
+
+def load_adoption_snapshot() -> Dict[str, Any]:
+    """Duty board HITL/Howl snapshot（缺失则为空；不发明成功率）。"""
+    from core.harness.meta.org_harness_metrics import load_adoption_snapshot as _snap
+
+    return _snap()
 
 
 def publish_team_brain_manual(

@@ -128,10 +128,13 @@ def compute_agent_diff(
             out = attach_gold_gate_to_diff(
                 out, profile=gold_profile or "balanced", tenant_id=tenant_id or "",
             )
-        except Exception:
+        except Exception as e:
+            # High-risk diffs must not soft-green when the gate cannot load.
+            # Low-risk paths still go through attach_gold_gate (verdict=skip);
+            # load failure → require_eval, never ok=True.
             out["gold_gate"] = {
-                "ok": True,
-                "verdict": "skip",
-                "reason": "gold_gate unavailable",
+                "ok": False,
+                "verdict": "require_eval",
+                "reason": f"gold_gate unavailable: {type(e).__name__}",
             }
     return out

@@ -740,6 +740,7 @@ scan_hash: 8f9548ec24f4
 | 编码 stage 默认闭环 | `schemas_builder.apply_coding_stage_defaults` + `code_split`/`code`/`hybrid` 团队种子 | ✅ | `uses_file_output` → stage sandbox 开 + light done_verify + `required_skills` 绑 autoreview（`review_gate=none` / env 可关）；file_checkpoint 仍全局默认；生成物适用：已接线（工厂编码团队） | 已合入 |
 | Code 元工具偏好（图灵完备出口） | `harness/execution/meta_tool.py` + `ReActLoop._build_tools_desc` + `PipelineStageConfig.meta_tool` + StageRunner/CoreFacade/team_planner 注入 | ✅ | 算术/日期/解析/逃逸舱口 → `[META TOOL]` 提示 + 置顶 `code`；配置 `{enabled, auto_bind, force}`；`AIPLAT_META_TOOL_AUTO_BIND=auto`（生产 on / 开发 off）；`AIPLAT_META_TOOL_CODE` 总开关；生成物适用：已接线（Harness 横切） | 已合入 |
 | 组织 Harness 暗账本（HITL/审批 Amdahl） | `harness/meta/org_harness_metrics.py` + `CoreFacade.org_harness_status` + `GET /governance/org-harness` + Governance 面板 + eval_observability 可选切片 | ✅ | `serial_ratio`/审批 + **四指标**（P·R·P0miss·comments/time）+ `serial_chain_recommendations`（串行链改造建议）；vite/proxy；生成物不适用（平台横切治理观测） | 已合入 |
+| Governance 值班板（KPI 运营化） | `build_duty_board` + `load_adoption_snapshot` + Governance「值班板」+ 无假绿 adoption/机制状态 | ✅ | go/watch/block/unavailable；金标/串行/审批/HITL/Howl；任务成功率标 unavailable；gold_gate 加载失败 require_eval；生成物不适用（平台横切治理观测） | 已合入 |
 | Governance 任务采纳/干预 KPI | `pages/Governance/index.tsx` ← `GET /core/diagnostics/adoption-metrics` | ✅ | Agent KPI（调用/7日活跃/HITL 通过·驳回/澄清触发）上治理主面；不可用时显式 unavailable，**不展示假成功率**；生成物不适用（平台横切） | 已合入 |
 | event_loop | harness/execution/event_loop.py | ✅ | 自动同步 | 已合入 |
 | quick_engine | harness/execution/engines/quick_engine.py | ✅ | 自动同步 | 已合入 |
@@ -2410,6 +2411,8 @@ scan_hash: 8f9548ec24f4
 | summarize_gold_regression | `core/harness/meta/org_harness_metrics.py` | ✅ | 自动同步 | 已合入 |
 | aggregate_org_harness | `core/harness/meta/org_harness_metrics.py` | ✅ | 自动同步 | 已合入 |
 | collect_org_harness | `core/harness/meta/org_harness_metrics.py` | ✅ | 自动同步 | 已合入 |
+| build_duty_board | `core/harness/meta/org_harness_metrics.py` | ✅ | Governance 值班板裁决（go/watch/block/unavailable；禁假成功率） | 已合入 |
+| load_adoption_snapshot | `core/harness/meta/org_harness_metrics.py` | ✅ | HITL/Howl 快照并入 duty_board | 已合入 |
 | set_model_override / clear_model_override | `harness/utils/model_injection.py` | ✅ | 自动同步 | 已合入 |
 | _model_overrides | `harness/utils/model_injection.py` | ✅ | 自动同步 | 已合入 |
 | MetaAgent / get_meta_agent | `harness/meta/meta_agent.py` | ✅ | 数据驱动元认知分析（失败/健康信号聚合 → 策略建议） | 已合入 |

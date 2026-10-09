@@ -10,7 +10,7 @@ governance eval_observability (optional slice).
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -314,6 +314,243 @@ def summarize_gold_regression(reports: Sequence[Dict[str, Any]]) -> Dict[str, An
     }
 
 
+def load_adoption_snapshot() -> Dict[str, Any]:
+    """Best-effort HITL/Howl snapshot for duty_board (never invent rates).
+
+    Returns empty dict when stores/howl unavailable — caller treats as no adoption.
+    """
+    out: Dict[str, Any] = {}
+    try:
+        from core.harness.evaluation.adoption_metrics import AdoptionTracker
+
+        report = AdoptionTracker().compute_metrics()
+        out.update(
+            {
+                "total_agent_calls": report.total_agent_calls,
+                "total_users": report.total_users,
+                "active_users_7d": report.active_users_7d,
+                "grill_trigger_rate": report.grill_trigger_rate,
+                "grill_completion_rate": report.grill_completion_rate,
+                "hitl_approval_rate": report.hitl_approval_rate,
+                "hitl_rejection_rate": report.hitl_rejection_rate,
+                "adoption_trend": report.adoption_trend,
+                "computed_at": report.computed_at,
+            }
+        )
+    except Exception as e:
+        logger.debug("adoption snapshot skipped: %s", e, exc_info=True)
+    try:
+        from core.harness.intervention.howl import get_howl_stats
+
+        howl = get_howl_stats() or {}
+        out["howl_interventions"] = howl.get("total_interventions")
+        out["howl_by_reason"] = howl.get("by_reason") or {}
+        out["howl_status"] = howl.get("status")
+    except Exception as e:
+        logger.debug("howl snapshot skipped: %s", e, exc_info=True)
+        out.setdefault("howl_status", "unavailable")
+        out.setdefault("howl_interventions", None)
+    return out
+
+
+def build_duty_board(
+    payload: Optional[Mapping[str, Any]] = None,
+    *,
+    adoption: Optional[Mapping[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Duty-board verdict for Governance / release habit (never invent success_rate).
+
+    status:
+      - unavailable — no runs / gold / approvals (and no adoption signals)
+      - block — gold regressing or P0 miss too high
+      - watch — high serial_ratio / approval backlog / HITL reject heat
+      - go — data present and no block/watch signals
+
+    Facts only from org-harness (+ optional adoption). Fake-green forbidden:
+    missing gold → availability.gold=false, not "ok".
+    """
+    pl = payload if isinstance(payload, dict) else {}
+    sm = pl.get("summary") if isinstance(pl.get("summary"), dict) else {}
+    avail = pl.get("availability") if isinstance(pl.get("availability"), dict) else {}
+    data_available = bool(pl.get("data_available"))
+    if not avail:
+        # Derive when fleet path omitted availability
+        gold_ok = sm.get("gold_precision") is not None or sm.get("p0_miss_rate") is not None
+        runs_ok = bool(sm.get("runs_scanned") or sm.get("hitl_episode_count") or sm.get("serial_ratio") is not None or sm.get("avg_serial_ratio") is not None)
+        appr_ok = int(sm.get("approval_count") or 0) > 0 or int(sm.get("approval_pending") or 0) > 0
+        avail = {"runs": runs_ok, "gold": gold_ok, "approvals": appr_ok}
+        data_available = data_available or runs_ok or gold_ok or appr_ok
+
+    ad = adoption if isinstance(adoption, dict) else {}
+    if not ad and isinstance(pl.get("adoption"), dict):
+        ad = pl["adoption"]  # type: ignore[assignment]
+    has_adoption = bool(
+        ad.get("total_agent_calls") is not None
+        or ad.get("hitl_rejection_rate") is not None
+        or ad.get("howl_interventions") is not None
+    )
+
+    reasons: List[str] = []
+    status = "go"
+
+    if not data_available and not has_adoption:
+        return {
+            "status": "unavailable",
+            "label": "unavailable",
+            "reasons": ["no runs / gold / approvals / adoption — do not invent success_rate"],
+            "availability": avail,
+            "checks": {
+                "gold": "unavailable",
+                "serial": "unavailable",
+                "approvals": "unavailable",
+                "hitl": "unavailable",
+                "howl": "unavailable",
+            },
+            "release_habit": "run ops_harness_ready_check.sh + gold match-only before release",
+        }
+
+    checks: Dict[str, str] = {
+        "gold": "unavailable",
+        "serial": "unavailable",
+        "approvals": "unavailable",
+        "hitl": "unavailable",
+        "howl": "unavailable",
+    }
+
+    # --- gold ---
+    if avail.get("gold"):
+        if sm.get("gold_regressing"):
+            checks["gold"] = "block"
+            reasons.append("gold_regressing")
+            status = "block"
+        else:
+            try:
+                miss = sm.get("p0_miss_rate")
+                if miss is not None and float(miss) > 0.2:
+                    checks["gold"] = "block"
+                    reasons.append(f"p0_miss_rate={miss}>0.2")
+                    status = "block"
+                else:
+                    checks["gold"] = "go"
+            except (TypeError, ValueError):
+                checks["gold"] = "watch"
+                reasons.append("p0_miss_rate unparseable")
+                if status == "go":
+                    status = "watch"
+    else:
+        checks["gold"] = "unavailable"
+        reasons.append("gold unavailable (no reports)")
+
+    # --- serial ---
+    ratio = sm.get("avg_serial_ratio")
+    if ratio is None:
+        ratio = sm.get("serial_ratio")
+    try:
+        r = float(ratio) if ratio is not None else None
+    except (TypeError, ValueError):
+        r = None
+    if r is not None:
+        if r >= 0.4:
+            checks["serial"] = "watch"
+            reasons.append(f"serial_ratio={r}≥0.4")
+            if status == "go":
+                status = "watch"
+        elif r >= 0.2:
+            checks["serial"] = "watch"
+            reasons.append(f"serial_ratio={r}≥0.2")
+            if status == "go":
+                status = "watch"
+        else:
+            checks["serial"] = "go"
+    elif avail.get("runs"):
+        checks["serial"] = "unavailable"
+        reasons.append("serial_ratio unavailable (no wall/HITL timing)")
+
+    # --- approvals ---
+    try:
+        pending = int(sm.get("approval_pending") or 0)
+    except (TypeError, ValueError):
+        pending = 0
+    try:
+        lat = float(sm["avg_approval_latency_sec"]) if sm.get("avg_approval_latency_sec") is not None else None
+    except (TypeError, ValueError):
+        lat = None
+    if avail.get("approvals") or pending or lat is not None:
+        if pending >= 5 or (lat is not None and lat >= 3600):
+            checks["approvals"] = "watch"
+            if pending >= 5:
+                reasons.append(f"approval_pending={pending}≥5")
+            if lat is not None and lat >= 3600:
+                reasons.append(f"avg_approval_latency_sec={lat}≥3600")
+            if status == "go":
+                status = "watch"
+        else:
+            checks["approvals"] = "go"
+
+    # --- HITL / Howl from adoption (optional; never invent rates) ---
+    try:
+        rej = float(ad["hitl_rejection_rate"]) if ad.get("hitl_rejection_rate") is not None else None
+    except (TypeError, ValueError):
+        rej = None
+    howl = ad.get("howl_interventions")
+    howl_status = str(ad.get("howl_status") or "").strip().lower()
+    if rej is not None:
+        if rej > 0.3:
+            checks["hitl"] = "watch"
+            reasons.append(f"hitl_rejection_rate={rej}>0.3")
+            if status == "go":
+                status = "watch"
+        else:
+            checks["hitl"] = "go"
+
+    if howl is not None and howl_status not in ("unavailable", "error", "disabled"):
+        try:
+            howl_n = int(howl)
+        except (TypeError, ValueError):
+            howl_n = None
+        if howl_n is not None:
+            # Howl presence is informational; high absolute count → watch (ops attention)
+            if howl_n >= 20:
+                checks["howl"] = "watch"
+                reasons.append(f"howl_interventions={howl_n}≥20")
+                if status == "go":
+                    status = "watch"
+            else:
+                checks["howl"] = "go"
+    elif howl_status in ("unavailable", "error", "disabled"):
+        checks["howl"] = "unavailable"
+        reasons.append("howl unavailable")
+
+    if status == "go" and checks["gold"] == "unavailable" and not avail.get("runs"):
+        # Only gold missing with no runs → still unavailable for release habit
+        if not avail.get("approvals") and not has_adoption:
+            status = "unavailable"
+
+    label = {
+        "go": "GO",
+        "watch": "WATCH",
+        "block": "BLOCK",
+        "unavailable": "UNAVAILABLE",
+    }.get(status, status.upper())
+
+    return {
+        "status": status,
+        "label": label,
+        "reasons": reasons or (["metrics within band"] if status == "go" else []),
+        "availability": avail,
+        "checks": checks,
+        "release_habit": (
+            "BLOCK: hold model upgrade / fix harness before release"
+            if status == "block"
+            else "WATCH: clear HITL/approvals friction before celebrating AI speedup"
+            if status == "watch"
+            else "UNAVAILABLE: run gold match-only + pipeline samples; never invent success_rate"
+            if status == "unavailable"
+            else "GO: keep org-harness on the duty board; re-check gold after each release"
+        ),
+    }
+
+
 def serial_chain_recommendations(summary: Dict[str, Any]) -> List[Dict[str, str]]:
     """Actionable Amdahl / HITL redesign hints (ops, not a parallel workflow engine)."""
     sm = summary if isinstance(summary, dict) else {}
@@ -414,8 +651,22 @@ def aggregate_org_harness(
     ratio = round(serial / wall, 4) if wall and wall > 0 else ev.get("serial_ratio")
     latest = gold.get("latest") or {}
 
-    return {
+    report_count = int(gold.get("report_count") or 0)
+    approval_count = int(ap.get("approval_count") or 0)
+    hitl_eps = len(ev.get("hitl_episodes") or []) + len(au.get("hitl_episodes") or [])
+    has_events = bool(events) or bool(hitl_audit)
+    has_gold = report_count > 0
+    has_approvals = approval_count > 0
+    data_available = has_events or has_gold or has_approvals
+
+    out = {
         "ok": True,
+        "data_available": data_available,
+        "availability": {
+            "runs": has_events,
+            "gold": has_gold,
+            "approvals": has_approvals,
+        },
         "run_id": run_id or "",
         "summary": {
             "hitl_wait_sec_total": round(serial, 3),
@@ -425,7 +676,7 @@ def aggregate_org_harness(
             "approval_pending": ap.get("pending"),
             "avg_approval_latency_sec": ap.get("avg_latency_sec"),
             "avg_approvals_per_run": ap.get("avg_approvals_per_run"),
-            "hitl_episode_count": len(ev.get("hitl_episodes") or []) + len(au.get("hitl_episodes") or []),
+            "hitl_episode_count": hitl_eps,
             "open_unresolved": (ev.get("open_unresolved") or 0) + (au.get("open_unresolved") or 0),
             "gold_precision": latest.get("precision"),
             "gold_recall": latest.get("recall"),
@@ -451,8 +702,25 @@ def aggregate_org_harness(
             "serial_ratio ≈ HITL wait / observed wall (Amdahl proxy; not CPU parallel speedup)",
             "p0_miss_rate = 1 − gold p0_recall (ReviewBench-aligned leak proxy)",
             "Complementary capital: redesign serial approvals, do not only upgrade models",
+            "duty_board merges adoption/HITL/Howl when available — never invents success_rate",
         ],
     }
+    adoption = load_adoption_snapshot()
+    if adoption:
+        out["adoption"] = {
+            k: adoption.get(k)
+            for k in (
+                "hitl_approval_rate",
+                "hitl_rejection_rate",
+                "howl_interventions",
+                "howl_status",
+                "adoption_trend",
+                "total_agent_calls",
+            )
+            if k in adoption
+        }
+    out["duty_board"] = build_duty_board(out, adoption=adoption or None)
+    return out
 
 
 def _load_run_events(run_id: str, *, limit: int = 2000) -> List[Dict[str, Any]]:
@@ -616,10 +884,20 @@ def collect_org_harness(
     ap_sum = summarize_approvals(ap)
     gold_sum = summarize_gold_regression(gold)
     latest = gold_sum.get("latest") or {}
-    return {
+    has_gold = int(gold_sum.get("report_count") or 0) > 0
+    has_runs = len(per_run) > 0
+    has_approvals = int(ap_sum.get("approval_count") or 0) > 0
+    data_available = has_gold or has_runs or has_approvals
+    out = {
         "ok": True,
         "scope": "fleet",
         "run_id": "",
+        "data_available": data_available,
+        "availability": {
+            "runs": has_runs,
+            "gold": has_gold,
+            "approvals": has_approvals,
+        },
         "summary": {
             "runs_scanned": len(per_run),
             "hitl_wait_sec_total": round(serial_sum, 3),
@@ -651,8 +929,26 @@ def collect_org_harness(
             "Fleet serial_ratio = mean of per-run HITL wait / wall (Amdahl dark ledger)",
             "p0_miss_rate = 1 − gold p0_recall; regressing if P/R/P0 drops >0.02 vs prior run",
             "Upgrade models only after serial_ratio drops — redesign HITL chains first",
+            "duty_board.status unavailable ≠ go — never invent success_rate",
+            "duty_board merges adoption/HITL/Howl when available",
         ],
     }
+    adoption = load_adoption_snapshot()
+    if adoption:
+        out["adoption"] = {
+            k: adoption.get(k)
+            for k in (
+                "hitl_approval_rate",
+                "hitl_rejection_rate",
+                "howl_interventions",
+                "howl_status",
+                "adoption_trend",
+                "total_agent_calls",
+            )
+            if k in adoption
+        }
+    out["duty_board"] = build_duty_board(out, adoption=adoption or None)
+    return out
 
 
 def org_harness_status(
