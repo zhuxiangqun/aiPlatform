@@ -37,6 +37,19 @@ else
   echo "FAIL: scripts/ide_capture.py missing"; fail=1
 fi
 
+echo "== ontology seeds (offline YAML) =="
+# Workspace parse is the gate; install into ~/.aiplat is best-effort (perms/sandbox).
+if python3 scripts/check_ontology_seeds_offline.py >/tmp/aiplat_onto_seeds.txt 2>/tmp/aiplat_onto_seeds.err; then
+  cat /tmp/aiplat_onto_seeds.txt
+  python3 scripts/check_ontology_seeds_offline.py --install >/tmp/aiplat_onto_install.txt 2>/tmp/aiplat_onto_install.err \
+    && cat /tmp/aiplat_onto_install.txt \
+    || echo "WARN: ontology --install skipped ($(head -n1 /tmp/aiplat_onto_install.err 2>/dev/null || echo permission/env))"
+else
+  echo "FAIL: ontology workspace seeds invalid"
+  cat /tmp/aiplat_onto_seeds.err 2>/dev/null || true
+  fail=1
+fi
+
 echo "== production knobs (informational) =="
 echo "AIPLAT_PROFILE=${AIPLAT_PROFILE:-<(unset, default non-production)}"
 echo "Tip: production → OS sandbox fail-closed; set AIPLAT_SANDBOX_FAIL_OPEN=true only for emergency."

@@ -2108,8 +2108,10 @@ async def retry_run(run_id: str, http_request: Request, rt: RuntimeDep = None):
 @router.post("/runs/{run_id}/undo", response_model=Dict[str, Any])
 async def undo_run(run_id: str, http_request: Request, body: Optional[Dict[str, Any]] = None, rt: RuntimeDep = None):
     """
-    Minimal "undo" for runs: if the run is still queued, cancel it.
-    (For completed runs, undo is not generally defined; use domain-specific rollback endpoints.)
+    Undo when safe: queued → cancel.
+
+    For completed/active runs there is no universal undo — return 409 with
+    explainable alternatives (file checkpoints UI, cancel, domain rollback).
     """
     store = _store(rt)
     if not store:
@@ -2124,7 +2126,48 @@ async def undo_run(run_id: str, http_request: Request, body: Optional[Dict[str, 
         out = await cancel_run(run_id=rid, http_request=http_request, body={"reason": str((body or {}).get("reason") or "undo_queued")}, rt=rt)
         out["status"] = "undone"
         return out
-    raise HTTPException(status_code=409, detail="undo_not_supported")
+
+    run_status = ""
+    session_id = str((body or {}).get("session_id") or "")
+    try:
+        summary = await store.get_run_summary(run_id=rid)
+        if isinstance(summary, dict):
+            run_status = str(summary.get("status") or summary.get("state") or "")
+            if not session_id:
+                session_id = str(summary.get("session_id") or "")
+    except Exception:
+        logging.getLogger(__name__).debug("undo_run summary lookup failed", exc_info=True)
+
+    ck_count = 0
+    ck_preview: list = []
+    try:
+        from core.api.core_facade import list_file_checkpoints
+
+        items = list_file_checkpoints(session_id=session_id or "")
+        if isinstance(items, list):
+            ck_count = len(items)
+            ck_preview = [
+                {
+                    "checkpoint_id": i.get("checkpoint_id"),
+                    "path": i.get("path"),
+                    "timestamp": i.get("timestamp"),
+                }
+                for i in items[:12]
+                if isinstance(i, dict)
+            ]
+    except Exception:
+        logging.getLogger(__name__).debug("undo_run checkpoint list failed", exc_info=True)
+
+    from core.harness.execution.run_rollback_guidance import build_run_rollback_guidance
+
+    guidance = build_run_rollback_guidance(
+        run_id=rid,
+        run_status=run_status,
+        session_id=session_id,
+        checkpoint_count=ck_count,
+        checkpoint_preview=ck_preview,
+    )
+    raise HTTPException(status_code=409, detail=guidance)
 
 
 @router.post("/runs/{run_id}/wait", response_model=Dict[str, Any])

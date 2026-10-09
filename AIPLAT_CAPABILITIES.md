@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1984
+total_capabilities: 1986
 last_updated: 2026-10-09
 version: "30.9"
 auto_sync: true
@@ -588,6 +588,7 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| build_run_rollback_guidance | `core/harness/execution/run_rollback_guidance.py` | ✅ | 自动同步 | 已合入 |
 | summarize_approvals | `core/harness/meta/org_harness_metrics.py` | ✅ | 自动同步 | 已合入 |
 | summarize_hitl_audit | `core/harness/meta/org_harness_metrics.py` | ✅ | 自动同步 | 已合入 |
 | summarize_run_events | `core/harness/meta/org_harness_metrics.py` | ✅ | 自动同步 | 已合入 |
@@ -1323,6 +1324,7 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| handoff_card_payload | `core/harness/digital_human/operational_handoff.py` | ✅ | 自动同步 | 已合入 |
 | append_handoff_action | `core/harness/digital_human/operational_handoff.py` | ✅ | 自动同步 | 已合入 |
 | classify_operational_handoff | `core/harness/digital_human/operational_handoff.py` | ✅ | 自动同步 | 已合入 |
 | export_seed_sharegpt_dataset | `core/harness/digital_human/trajectory_collector.py` | ✅ | 自动同步 | 已合入 |
@@ -1691,7 +1693,9 @@ scan_hash: 8f9548ec24f4
 | AppLayout | `aiPlat-management/frontend/src/components/layout/AppLayout.tsx` | ✅ | 自动同步 | 已合入 |
 | SystemOverview | `aiPlat-management/frontend/src/pages/SystemOverview/SystemOverview.tsx` | ✅ | 自动同步 | 已合入 |
 | ValueDashboard | `aiPlat-management/frontend/src/pages/ValueCenter/ValueDashboard.tsx` | ✅ | 自动同步 | 已合入 |
-| ExecutionViewer | `aiPlat-management/frontend/src/components/ExecutionViewer/ExecutionViewer.tsx` | ✅ | 运行图/事件回放；进行中可 `runApi.cancel`（queued 立即停，进行中协作取消）；不假装已完成运行可 undo | 已合入 |
+| ExecutionViewer | `aiPlat-management/frontend/src/components/ExecutionViewer/ExecutionViewer.tsx` | ✅ | 运行图/事件回放；进行中可 `runApi.cancel`；完成后「副作用恢复指引」→ `POST /runs/{id}/undo` 的可解释 409（file checkpoints / 域回滚），链到 `/core/checkpoints` | 已合入 |
+| 运行回滚可解释指引 | `harness/execution/run_rollback_guidance.py` + `POST /runs/{id}/undo` | ✅ | 完成后无通用 undo；返回 alternatives + checkpoint 预览；生成物不适用（平台横切） | 已合入 |
+| Ontology 种子离线就绪 | `scripts/check_ontology_seeds_offline.py` + `ops_harness_ready_check.sh` | ✅ | 工作区 `workspace_seeds/ontologies/*.yaml` parse 门禁；可选 copy→`~/.aiplat/ontologies`；Graph ingest 仍需 runtime；生成物不适用 | 已合入 |
 | WorkflowsPage | `aiPlat-management/frontend/src/pages/Core/Workflows/WorkflowsPage.tsx` | ✅ | 自动同步 | 已合入 |
 | Credentials | `aiPlat-management/frontend/src/pages/Core/Credentials/Credentials.tsx` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
@@ -2906,7 +2910,7 @@ scan_hash: 8f9548ec24f4
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 167 | 0 | 167 |
 | Skill 系统 | 157 | 0 | 157 |
-| 安全与治理 | 64 | 0 | 64 |
+| 安全与治理 | 66 | 0 | 66 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
@@ -2944,7 +2948,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **1974** | **10** | **1984** |
+| **总计** | **1976** | **10** | **1986** |
 
 | **总计** | **1095** | **0** | **1095** |
 

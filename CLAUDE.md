@@ -585,7 +585,8 @@ python -c "from core.harness.memory.manager import _re_rank_messages; print('OK'
 | K2 | 前端API路径 baseline (16条, 多数为路径格式差异) | 已知基线 |
 | K3 | Phase 4 Agent边界约束注入 | ✅ 已实现 (llm.py _try_inject_boundary_rules + pre-commit hook) |
 <!-- verify: cmd: grep -c _try_inject_boundary_rules aiPlat-core/core/harness/syscalls/llm.py expect: 2 operator: eq desc: _try_inject_boundary_rules 已接线 -->
-| K4 | 种子数据注入端到端 | **部分闭环 (2026-10-09)** — code_review_gold 离线路径已验：`scripts/ops_harness_ready_check.sh` / `--install-seeds`+`--match-only`（验证：`python3 scripts/eval_code_review_gold.py --match-only --gold-dir aiPlat-core/workspace_seeds/eval/code_review_gold --no-persist --limit 5` → ok）。域 ontology 全量种子注入仍需 server 运行时。 |
+| K4 | 种子数据注入端到端 | **部分闭环 (2026-10-09)** — code_review_gold 离线路径已验：`scripts/ops_harness_ready_check.sh` / `--install-seeds`+`--match-only`（验证：`python3 scripts/eval_code_review_gold.py --match-only --gold-dir aiPlat-core/workspace_seeds/eval/code_review_gold --no-persist --limit 5` → ok）。域 ontology **工作区 YAML 离线门**已接：`scripts/check_ontology_seeds_offline.py`（parse + 可选 copy→`~/.aiplat/ontologies`）；Graph/Wiki 全量 ingest 仍需 server 运行时（`ingest_seed.py`）。 |
+<!-- verify: cmd: python3 scripts/check_ontology_seeds_offline.py >/dev/null; echo $? expect: 0 operator: eq desc: ontology workspace seeds offline YAML gate -->
 | K5 | CLAUDE.md §16 已知债务 H (~60+ routes 缺 response_model) | **✅ 已修复 (2026-07-18)** — 全量 typed 化完成 |
 <!-- verify: cmd: grep -rn "response_model=dict" aiPlat-platform/ --include="*.py" | grep -v "# noqa" | grep -v "common_schemas" | wc -l expect: 0 operator: eq desc: response_model=dict 清零 -->
     | K6 | sla_monitor 后台线程未调用 start() — server.py 启动时需接线 | **✅ 已修复 (2026-07-19)** — server.py startup lifecycle 中 start_sla_monitor()。 |

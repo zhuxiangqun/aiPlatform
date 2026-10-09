@@ -213,6 +213,7 @@ jobs:
             core/tests/unit/test_apps/test_materials_delivery_gate.py \
             core/tests/unit/test_harness/test_howl_stats.py \
             core/tests/unit/test_harness/test_digital_human/test_operational_handoff.py \
+            core/tests/unit/test_harness/test_run_rollback_guidance.py \
             core/tests/unit/test_harness/test_meta_tool.py \
             core/tests/unit/test_skill_fix_proposals.py \
             core/tests/unit/test_skill_lint_scan_job_kind.py \
