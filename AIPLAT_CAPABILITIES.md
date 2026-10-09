@@ -1701,6 +1701,7 @@ scan_hash: 8f9548ec24f4
 | ExecutionViewer | `aiPlat-management/frontend/src/components/ExecutionViewer/ExecutionViewer.tsx` | ✅ | 运行图/事件回放；进行中可 `runApi.cancel`；完成后「副作用恢复指引」→ `POST /runs/{id}/undo` 的可解释 409（file checkpoints / 域回滚），链到 `/core/checkpoints` | 已合入 |
 | 运行回滚可解释指引 | `harness/execution/run_rollback_guidance.py` + `POST /runs/{id}/undo` | ✅ | 完成后无通用 undo；返回 alternatives + checkpoint 预览；生成物不适用（平台横切） | 已合入 |
 | Ontology 种子离线就绪 | `scripts/check_ontology_seeds_offline.py` + `ops_harness_ready_check.sh` | ✅ | 工作区 `workspace_seeds/ontologies/*.yaml` parse 门禁；可选 copy→`~/.aiplat/ontologies`；Graph ingest 仍需 runtime；生成物不适用 | 已合入 |
+| 发布习惯门：ops harness ready | `scripts/ops_harness_ready_check.sh` + `.github/workflows/aiplat-contracts-guard.yml`（Ops harness ready） | ✅ | CI 强制：gold `--match-only` + ontology offline YAML + IDE capture hooks；与 Governance 值班板 `release_habit` 同门；install-seeds 最佳努力；生成物不适用（平台横切发布门禁） | 已合入 |
 | WorkflowsPage | `aiPlat-management/frontend/src/pages/Core/Workflows/WorkflowsPage.tsx` | ✅ | 自动同步 | 已合入 |
 | Credentials | `aiPlat-management/frontend/src/pages/Core/Credentials/Credentials.tsx` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|

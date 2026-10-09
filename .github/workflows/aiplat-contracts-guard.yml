@@ -158,6 +158,18 @@ jobs:
         run: |
           python3 ./scripts/lint_engine_skills.py
 
+      # Release habit: gold match-only + ontology YAML offline + IDE capture hooks.
+      # Same gate Governance duty_board points at (ops_harness_ready_check.sh).
+      # install-seeds / ontology --install stay best-effort (HOME may be read-only).
+      - name: Ops harness ready (gold match-only + ontology seeds)
+        env:
+          PYTHONPATH: ${{ github.workspace }}/aiPlat-core:${{ github.workspace }}/aiPlat-platform:${{ github.workspace }}/aiPlat-infra
+          AIPLAT_HOME: ${{ runner.temp }}/aiplat_home
+        run: |
+          set -euo pipefail
+          mkdir -p "$AIPLAT_HOME"
+          bash ./scripts/ops_harness_ready_check.sh
+
       - name: Ontology completeness ratchet (lock-service OCS≥80)
         working-directory: ./aiPlat-core
         run: |
