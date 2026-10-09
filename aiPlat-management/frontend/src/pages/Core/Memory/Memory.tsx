@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, RotateCw, Search, Download, Upload, Eye } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Table, Button, Modal, Input, toast } from '../../../components/ui';
@@ -9,6 +10,7 @@ import type { MemorySession } from '../../../services';
 import { memoryApi } from '../../../services';
 
 const Memory: React.FC = () => {
+  const navigate = useNavigate();
   const { sessions, loading, selectedSession, fetchSessions, getDetail, deleteSession, clearSelectedSession, clearSearchResults } = useMemoryStore();
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -35,6 +37,15 @@ const Memory: React.FC = () => {
   const [teamBrainLoading, setTeamBrainLoading] = useState(false);
   const [teamBrainTitle, setTeamBrainTitle] = useState('');
   const [teamBrainSummary, setTeamBrainSummary] = useState('');
+  const [idePrompt, setIdePrompt] = useState('');
+  const [ideResult, setIdeResult] = useState('');
+  const [ideCapturing, setIdeCapturing] = useState(false);
+  const [ideHandoff, setIdeHandoff] = useState<{
+    route?: string;
+    label?: string;
+    matched?: string;
+    hint?: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchSessions();
@@ -143,6 +154,36 @@ const Memory: React.FC = () => {
       await loadTeamBrain(teamBrainQuery);
     } catch (e) {
       toastGateError(e, '发布失败');
+    }
+  };
+
+  const submitIdeCapture = async () => {
+    if (!idePrompt.trim() && !ideResult.trim()) {
+      toast.error('请填写 IDE 提示或结果摘要');
+      return;
+    }
+    setIdeCapturing(true);
+    setIdeHandoff(null);
+    try {
+      const out = await memoryApi.ideCapture({
+        prompt: idePrompt.trim(),
+        result: ideResult.trim(),
+        source: 'memory_ui',
+        tags: ['memory-ui'],
+        success: true,
+      });
+      const gh = out?.governed_handoff;
+      if (gh?.route) {
+        setIdeHandoff(gh);
+        toast.success('已入库；检测到编码意图 — 请确认后进工厂');
+      } else {
+        toast.success('已捕获到 Team Brain（无编码交接）');
+      }
+      await loadTeamBrain(teamBrainQuery);
+    } catch (e) {
+      toastGateError(e, 'IDE 捕获失败');
+    } finally {
+      setIdeCapturing(false);
     }
   };
 
@@ -390,9 +431,52 @@ const Memory: React.FC = () => {
         <div className="space-y-4 max-h-[28rem] overflow-y-auto">
           <p className="text-xs text-gray-500">
             聚合 hot TaskSkill / 团队解法 / 已升级经验，供其他 Agent Auto-Recall（Hivemind 对齐）。
-            IDE 旁路：`scripts/ide_capture.py` 或 POST /memory/ide-capture。
+            IDE 旁路：下方试投、`scripts/ide_capture.py` 或 POST /core/memory/ide-capture。
+            编码类意图只出工厂交接卡片，不会在此直接开跑。
             {teamBrainStats ? ` 共 ${String(teamBrainStats.total ?? 0)} 条` : ''}
           </p>
+          <div className="border border-dark-border rounded p-3 space-y-2 bg-dark-bg/40">
+            <p className="text-xs text-gray-400">模拟 IDE 捕获（试写「帮我写代码…」可见受治理交接）</p>
+            <Input
+              placeholder="prompt / 用户意图"
+              value={idePrompt}
+              onChange={(v: any) => setIdePrompt(v?.target?.value || '')}
+            />
+            <Input
+              placeholder="result / 摘要（可选）"
+              value={ideResult}
+              onChange={(v: any) => setIdeResult(v?.target?.value || '')}
+            />
+            <Button variant="secondary" loading={ideCapturing} onClick={submitIdeCapture}>
+              投递捕获
+            </Button>
+            {ideHandoff?.route && (
+              <div
+                className="mt-2 rounded-md border border-amber-700/50 bg-amber-950/40 p-3"
+                style={{ borderLeft: '3px solid #d97706' }}
+              >
+                <div className="text-sm text-amber-100 font-medium">
+                  {ideHandoff.label || '受治理编码交接'}
+                </div>
+                {ideHandoff.hint && (
+                  <p className="text-xs text-amber-200/70 mt-1">{ideHandoff.hint}</p>
+                )}
+                {ideHandoff.matched && (
+                  <p className="text-[11px] text-amber-200/50 mt-1">matched: {ideHandoff.matched}</p>
+                )}
+                <Button
+                  variant="primary"
+                  className="mt-2"
+                  onClick={() => {
+                    setTeamBrainOpen(false);
+                    navigate(ideHandoff.route!.startsWith('/') ? ideHandoff.route! : `/${ideHandoff.route}`);
+                  }}
+                >
+                  去应用工厂确认并构建
+                </Button>
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <Input
               placeholder="按关键词召回，如 docker oom"

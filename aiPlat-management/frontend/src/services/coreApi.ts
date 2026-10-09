@@ -2048,6 +2048,33 @@ export const memoryApi = {
       data,
     );
   },
+
+  /** IDE/Cursor capture → Team Brain; may include governed_handoff to Factory */
+  ideCapture: async (data: {
+    prompt: string;
+    result?: string;
+    tools?: string[];
+    tags?: string[];
+    success?: boolean;
+    source?: string;
+    session_id?: string;
+    write_wiki?: boolean;
+  }) => {
+    return apiClient.post<{
+      status: string;
+      ok?: boolean;
+      action?: string;
+      governed_handoff?: {
+        kind?: string;
+        route?: string;
+        label?: string;
+        matched?: string;
+        hint?: string;
+      } | null;
+      learning?: Record<string, unknown>;
+      reason?: string;
+    }>('/core/memory/ide-capture', data);
+  },
 };
 
 // ==================== Skill Packs API (Roadmap-4) ====================
