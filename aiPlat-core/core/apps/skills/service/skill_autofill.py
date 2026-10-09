@@ -248,7 +248,7 @@ def _enrich_draft(draft: Dict[str, Any], *, seed_name: str, seed_desc: str) -> D
     name = _normalize_skill_id(str(draft.get("name") or seed_name), fallback=seed_name)
     display = str(draft.get("display_name") or "").strip() or name
     category = str(draft.get("category") or "general").strip() or "general"
-    if category == "general" and _GEN_RE.search(f"{name}\n{desc}"):
+    if category in ("general",) and _GEN_RE.search(f"{name}\n{desc}"):
         category = "generation"
 
     perms = _as_str_list(draft.get("permissions"))

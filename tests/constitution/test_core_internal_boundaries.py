@@ -16,6 +16,7 @@ CORE_DIR = WORKSPACE_ROOT / "aiPlat-core" / "core"
 # Legitimate cross-boundary imports (documented facade/interface patterns)
 ALLOWED_HARNESS_TO_APPS: Set[Tuple[str, str]] = {
     # DI / integration layer — by design, wires apps into harness
+    # (package path is integration/__init__.py; keep legacy integration.py aliases)
     ("harness/integration.py", "apps/skills/registry"),
     ("harness/integration.py", "apps/tools/base"),
     ("harness/integration.py", "apps/tools/permission"),
@@ -39,7 +40,7 @@ ALLOWED_HARNESS_TO_APPS: Set[Tuple[str, str]] = {
     ("harness/execution/pipeline_eval.py", "apps/skills/evolution/engine"),  # P2-A4 Phase 3 迁移
     # pipeline_engine — lazy import guarded by try/except for evolution triggers
 
-    # P0-A1: integration.py 注册中心设计职责（wire apps into harness）
+    # P0-A1: integration 注册中心设计职责（wire apps into harness）
     ("harness/integration.py", "apps/agents"),
     ("harness/integration.py", "apps/agents/subagent/coordinator"),
     ("harness/integration.py", "apps/exec_drivers/registry"),
@@ -66,7 +67,23 @@ ALLOWED_HARNESS_TO_APPS: Set[Tuple[str, str]] = {
     ("harness/multimodal/integrator.py", "apps/testing/browser_test_engine"),
     ("harness/syscalls/skill.py", "apps/skills/skill_execution_record"),
     ("harness/training/auto_trigger.py", "apps/finetune/schemas"),
+    # Syscall / gate skill binding checks (lazy; PolicyGate path)
+    ("harness/syscalls/skill.py", "apps/tools/skill_tools"),
+    ("harness/infrastructure/gates/policy_gate.py", "apps/tools/skill_tools"),
+    # Meta-tool binds CodeExecutionTool (config-driven code escape hatch)
+    ("harness/execution/meta_tool.py", "apps/tools/code"),
+    # KNOWN_DEBT: on_error_reflector → FDE case recorder (lazy; pending DomainRouter callback)
+    ("harness/infrastructure/hooks/on_error_reflector.py", "apps/fde/service/k_wave_case"),
 }
+
+# Mirror integration.py allowlist onto package path (CI rglob hits __init__.py)
+ALLOWED_HARNESS_TO_APPS.update(
+    {
+        (src.replace("harness/integration.py", "harness/integration/__init__.py"), dst)
+        for src, dst in list(ALLOWED_HARNESS_TO_APPS)
+        if src == "harness/integration.py"
+    }
+)
 
 
 def _get_relpath(fp: Path) -> str:
