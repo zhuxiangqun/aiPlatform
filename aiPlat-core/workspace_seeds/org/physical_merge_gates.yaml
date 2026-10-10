@@ -1,0 +1,100 @@
+# Physical merge gates (P0) — inflation + shape vetoes for agent-driven code bloat.
+# Load order: AIPLAT_PHYSICAL_GATES_CONFIG → $AIPLAT_HOME/org/physical_merge_gates.yaml → this seed.
+# Runtime entry fail-fast (framework) is separate; these are merge-time CI/pre-commit gates.
+version: 1
+
+# warn | block — env AIPLAT_PHYSICAL_GATES_MODE overrides.
+# After block_after (UTC date), warn findings escalate to block unless exempted.
+mode: warn
+block_after: "2026-11-01"
+
+profiles:
+  business:
+    max_files: 8
+    max_net_lines: 200
+    max_new_deps: 0
+    max_new_classes: 3
+    max_new_dirs: 2
+    max_inherit_bases: 1
+  # Interface-field style change (stricter). Select via --profile interface_field.
+  interface_field:
+    max_files: 3
+    max_net_lines: 50
+    max_new_deps: 0
+    max_new_classes: 0
+    max_new_dirs: 0
+    max_inherit_bases: 0
+  framework:
+    max_files: 40
+    max_net_lines: 800
+    max_new_deps: 2
+    max_new_classes: 15
+    max_new_dirs: 5
+    max_inherit_bases: 2
+
+# Paths matching any glob use framework profile (looser).
+framework_globs:
+  - "aiPlat-core/core/harness/**"
+  - "aiPlat-core/core/engine/**"
+  - "aiPlat-infra/**"
+  - "scripts/**"
+  - "**/tests/**"
+  - "**/test_*.py"
+
+# Shape gate — banned path segments for NEW paths only.
+banned_path_segments:
+  - "/generic/"
+  - "/framework/"
+  - "/utils/common/"
+
+# Shape gate — banned new filenames (basename glob-ish; * suffix/prefix).
+banned_new_basenames:
+  - "event_bus.py"
+  - "eventbus.py"
+  - "observer.py"
+  - "observers.py"
+  - "*_scheduler.py"
+  - "scheduler.py"
+
+# Shape gate — banned class name substrings in ADDED lines.
+banned_class_substrings:
+  - "EventBus"
+  - "ObserverTree"
+  - "ObserverScheduler"
+  - "GenericFramework"
+
+# Bases that do not count toward inheritance depth (stdlib / typing).
+allowed_bases:
+  - object
+  - Exception
+  - BaseException
+  - ABC
+  - ABCMeta
+  - Protocol
+  - TypedDict
+  - Enum
+  - IntEnum
+  - StrEnum
+  - NamedTuple
+  - Generic
+  - dict
+  - list
+  - str
+  - int
+  - float
+  - bytes
+  - tuple
+  - set
+  - type
+  - BaseModel
+  - dataclass
+
+# Exemptions: audit + expiry required. Expired entries are ignored.
+exemptions: []
+# Example:
+# exemptions:
+#   - id: "ex-2026-10-migrate-x"
+#     reason: "one-shot migration"
+#     expires: "2026-10-20"
+#     gates: ["inflation", "shape"]
+#     paths: ["aiPlat-platform/apps/foo/**"]

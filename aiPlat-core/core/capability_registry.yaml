@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-10-08"
 total_capability_domains: 34
-total_capabilities: 1064
+total_capabilities: 1069
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -661,6 +661,26 @@ domains:
         type: function
         signature: 'Approval request latency + counts (PolicyGate dark ledger).'
         module: aiPlat-core/core/harness/meta/org_harness_metrics.py
+      - symbol: GateFinding
+        type: dataclass
+        signature: 'GateFinding'
+        module: aiPlat-core/core/harness/meta/physical_merge_gates.py
+      - symbol: DiffStats
+        type: dataclass
+        signature: 'DiffStats'
+        module: aiPlat-core/core/harness/meta/physical_merge_gates.py
+      - symbol: GateReport
+        type: dataclass
+        signature: 'to_dict'
+        module: aiPlat-core/core/harness/meta/physical_merge_gates.py
+      - symbol: select_profile
+        type: function
+        signature: 'select_profile(paths, config, forced)'
+        module: aiPlat-core/core/harness/meta/physical_merge_gates.py
+      - symbol: resolve_mode
+        type: function
+        signature: 'resolve_mode(config, now)'
+        module: aiPlat-core/core/harness/meta/physical_merge_gates.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"
@@ -4514,6 +4534,30 @@ domains:
         type: "function"
         signature: "load_adoption_snapshot()→Dict HITL/Howl snapshot for duty_board"
         module: "core/harness/meta/org_harness_metrics.py"
+      - symbol: "evaluate_diff"
+        type: "function"
+        signature: "evaluate_diff(name_status,numstat,unified_diff,…)→GateReport inflation+shape merge veto"
+        module: "core/harness/meta/physical_merge_gates.py"
+      - symbol: "load_physical_gates_config"
+        type: "function"
+        signature: "load_physical_gates_config(override=None)→(Dict, source) YAML physical merge gates"
+        module: "core/harness/meta/physical_merge_gates.py"
+      - symbol: "collect_diff_stats"
+        type: "function"
+        signature: "collect_diff_stats(name_status,numstat,unified_diff)→DiffStats"
+        module: "core/harness/meta/physical_merge_gates.py"
+      - symbol: "check_inflation"
+        type: "function"
+        signature: "check_inflation(stats, profile)→List[GateFinding]"
+        module: "core/harness/meta/physical_merge_gates.py"
+      - symbol: "check_shape"
+        type: "function"
+        signature: "check_shape(stats, config, profile)→List[GateFinding]"
+        module: "core/harness/meta/physical_merge_gates.py"
+      - symbol: "evaluate_physical_merge_gates"
+        type: "function"
+        signature: "evaluate_physical_merge_gates(…)→Dict CoreFacade merge-time gates"
+        module: "core/api/core_facade.py"
       - symbol: "collect_org_harness"
         type: "function"
         signature: "collect_org_harness(run_id='', recent_limit=10, load_approvals=True)→Dict"

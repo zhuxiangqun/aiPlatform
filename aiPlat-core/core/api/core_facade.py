@@ -5188,6 +5188,30 @@ def load_adoption_snapshot() -> Dict[str, Any]:
     return _snap()
 
 
+def evaluate_physical_merge_gates(
+    *,
+    name_status: str = "",
+    numstat: str = "",
+    unified_diff: str = "",
+    profile_name: str = "",
+    config: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Merge-time inflation + shape gates（非运行时入口校验；见 physical_merge_gates）。"""
+    from core.harness.meta.physical_merge_gates import DiffStats, evaluate_diff as _eval
+
+    report = _eval(
+        name_status=name_status or "",
+        numstat=numstat or "",
+        unified_diff=unified_diff or "",
+        profile_name=profile_name or "",
+        config=config,
+    )
+    # Canonical type re-export for DiffStats (wiring + platform consumers).
+    if report.stats is not None and not isinstance(report.stats, DiffStats):
+        raise TypeError("physical_merge_gates.stats must be DiffStats")
+    return report.to_dict()
+
+
 def publish_team_brain_manual(
     title: str,
     summary: str,
