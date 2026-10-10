@@ -170,6 +170,21 @@ jobs:
           mkdir -p "$AIPLAT_HOME"
           bash ./scripts/ops_harness_ready_check.sh
 
+      # P0 physical merge gates: inflation + shape (warn until block_after in YAML).
+      # Merge-time veto only — separate from runtime entry fail-fast / PolicyGate.
+      - name: Physical merge gates (inflation + shape)
+        env:
+          PYTHONPATH: ${{ github.workspace }}/aiPlat-core
+        run: |
+          set -euo pipefail
+          if [ -n "${{ github.event.pull_request.base.sha }}" ]; then
+            BASE_REF="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE_REF="origin/main"
+          fi
+          python3 ./scripts/check_physical_merge_gates.py --base "$BASE_REF"
+          pytest -q ./aiPlat-core/core/tests/unit/test_harness/test_physical_merge_gates.py --tb=short
+
       - name: Ontology completeness ratchet (lock-service OCS≥80)
         working-directory: ./aiPlat-core
         run: |

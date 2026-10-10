@@ -334,3 +334,15 @@ bash "$WORKSPACE/scripts/pre-commit-engine-guard.sh" || {
     echo "  ❌ Engine layer compliance violations — fix before commit"
     exit 1
 }
+
+# ── Physical merge gates (inflation + shape; warn→block via YAML block_after) ──
+if [ -z "${SKIP_PHYSICAL_GATES:-}" ] && [ -f "$WORKSPACE/scripts/check_physical_merge_gates.py" ]; then
+    echo "=== Pre-commit: Physical merge gates (staged) ==="
+    if ! PYTHONPATH="$WORKSPACE/aiPlat-core${PYTHONPATH:+:$PYTHONPATH}" \
+        "$PY" "$WORKSPACE/scripts/check_physical_merge_gates.py" --staged; then
+        echo "  ❌ Physical merge gates blocked this commit"
+        echo "     → Shrink diff / fix shape, or add dated exemption in physical_merge_gates.yaml"
+        echo "     → SKIP_PHYSICAL_GATES=1 to bypass (not recommended)"
+        exit 1
+    fi
+fi
