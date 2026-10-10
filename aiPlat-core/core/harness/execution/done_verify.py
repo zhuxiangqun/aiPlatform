@@ -84,6 +84,9 @@ def build_done_verify_config(
             for c in (overlay.get("require_commands") or [])
             if str(c).strip()
         ][:8],
+        # P1 testability: core handlers need pure unit tests (not integration-only).
+        "require_testability": bool(overlay.get("require_testability", False)),
+        "testability_mode": str(overlay.get("testability_mode") or "").strip().lower(),
     }
     return out
 
@@ -235,5 +238,30 @@ def run_done_verify(context: Dict[str, Any]) -> Optional[str]:
                     f"done_verify: require_commands exit {proc.returncode}: {cmd[:60]}"
                     + (f" — {err}" if err else "")
                 )[:240]
+
+    # P1: testability gate — handlers need pure I/O unit tests (not full-stack).
+    if cfg.get("require_testability"):
+        try:
+            from core.harness.meta.testability_gate import (
+                collect_files_from_context,
+                evaluate_files,
+                veto_reason_from_report,
+            )
+
+            files = collect_files_from_context(context)
+            if files:
+                tmode = str(cfg.get("testability_mode") or "").strip().lower()
+                report = evaluate_files(files, mode_override=tmode)
+                context["_testability_report"] = report.to_dict()
+                if report.findings and report.mode == "warn":
+                    logger.info(
+                        "done_verify testability warn: %s",
+                        "; ".join(f.code for f in report.findings[:4]),
+                    )
+                veto = veto_reason_from_report(report)
+                if veto:
+                    return veto
+        except Exception:
+            logger.debug("done_verify testability check skipped", exc_info=True)
 
     return None

@@ -1,0 +1,15 @@
+# Testability gate (P1) — pure unit tests for core handlers.
+# Integration-only / DB-network tests do not count as completion.
+# Load: AIPLAT_TESTABILITY_GATES_CONFIG → $AIPLAT_HOME/org/testability_gate.yaml → seed.
+version: 1
+
+# warn | block — AIPLAT_TESTABILITY_GATE_MODE overrides.
+# After block_after (UTC), warn escalates to block (same pattern as physical_merge_gates).
+mode: warn
+block_after: "2026-11-15"
+
+handler_basenames:
+  - handler.py
+  - handlers.py
+
+require_assert: true

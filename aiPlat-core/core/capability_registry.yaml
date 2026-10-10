@@ -681,6 +681,18 @@ domains:
         type: function
         signature: 'resolve_mode(config, now)'
         module: aiPlat-core/core/harness/meta/physical_merge_gates.py
+      - symbol: TestabilityReport
+        type: dataclass
+        signature: 'to_dict'
+        module: aiPlat-core/core/harness/meta/testability_gate.py
+      - symbol: evaluate_files
+        type: function
+        signature: 'evaluate_files(files)→TestabilityReport pure-unit gate'
+        module: aiPlat-core/core/harness/meta/testability_gate.py
+      - symbol: enrich_files_from_workspace
+        type: function
+        signature: 'enrich_files_from_workspace(files, root)→Dict'
+        module: aiPlat-core/core/harness/meta/testability_gate.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"
@@ -4558,6 +4570,30 @@ domains:
         type: "function"
         signature: "evaluate_physical_merge_gates(…)→Dict CoreFacade merge-time gates"
         module: "core/api/core_facade.py"
+      - symbol: "evaluate_testability_gate"
+        type: "function"
+        signature: "evaluate_testability_gate(files, mode, config)→Dict pure-unit testability veto"
+        module: "core/api/core_facade.py"
+      - symbol: "evaluate_files"
+        type: "function"
+        signature: "evaluate_files(files, config, mode_override)→TestabilityReport"
+        module: "core/harness/meta/testability_gate.py"
+      - symbol: "evaluate_diff_snippets"
+        type: "function"
+        signature: "evaluate_diff_snippets(snippets, workspace_root)→TestabilityReport merge-time"
+        module: "core/harness/meta/testability_gate.py"
+      - symbol: "load_testability_config"
+        type: "function"
+        signature: "load_testability_config(override=None)→(Dict, source)"
+        module: "core/harness/meta/testability_gate.py"
+      - symbol: "enrich_files_from_workspace"
+        type: "function"
+        signature: "enrich_files_from_workspace(files, root)→Dict path→content (+disk tests)"
+        module: "core/harness/meta/testability_gate.py"
+      - symbol: "veto_reason_from_report"
+        type: "function"
+        signature: "veto_reason_from_report(report)→Optional[str] done_verify block reason"
+        module: "core/harness/meta/testability_gate.py"
       - symbol: "collect_org_harness"
         type: "function"
         signature: "collect_org_harness(run_id='', recent_limit=10, load_approvals=True)→Dict"
