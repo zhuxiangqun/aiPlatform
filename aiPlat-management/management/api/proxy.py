@@ -28,13 +28,26 @@ async def _proxy(request: Request, upstream_base: str, upstream_path: str) -> Re
         raise HTTPException(status_code=503, detail=f"Upstream unavailable: {str(e)}")
 
 
+def _platform_upstream_path(path: str) -> str:
+    """Map management /api/platform/{path} → platform upstream path.
+
+    Legacy KB/docs/auth live under ``/platform/*``. App modules (eval/fde/…)
+    are mounted at ``/api/platform/apps/*`` — forwarding apps to ``/platform/apps``
+    yields 404 and breaks Governance Gold CTA POSTs.
+    """
+    p = (path or "").lstrip("/")
+    if p == "apps" or p.startswith("apps/"):
+        return f"/api/platform/{p}"
+    return f"/platform/{p}"
+
+
 def build_platform_proxy_router() -> APIRouter:
     router = APIRouter(prefix="/platform", tags=["platform"])
     upstream = _base_url("AIPLAT_PLATFORM_ENDPOINT", "http://localhost:8003")
 
     @router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
     async def platform_proxy(path: str, request: Request):
-        return await _proxy(request, upstream, f"/platform/{path}")
+        return await _proxy(request, upstream, _platform_upstream_path(path))
 
     return router
 

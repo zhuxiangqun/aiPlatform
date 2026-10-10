@@ -77,6 +77,8 @@ def _discover_routes() -> dict[str, str]:
     static: dict[str, str] = {
         "/api/platform/apps/fde": PLATFORM_URL,  # platform-specific sub-paths → 8003
         "/api/platform/apps/ontology-editor": PLATFORM_URL,
+        # Eval / Gold CTA — must hit platform:8003 (mgmt proxy alone used wrong /platform/apps)
+        "/api/platform/apps/code-review-gold": PLATFORM_URL,
         "/api/platform": MGMT_URL,  # base /apps list + documents/kb → management:8000
         "/api/core": CORE_DIRECT_URL,
         "/api/infra": INFRA_URL,
@@ -168,11 +170,20 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 return rest
         return []
 
-    def _do_proxy_request(self, target, method):
-        """Execute a single proxy request. Returns (status, headers, body)."""
+    def _read_request_body(self):
+        """Read request body once — required so 404 fallback can retry POSTs."""
+        content_length = int(self.headers.get("Content-Length", 0))
+        if content_length <= 0:
+            return None
+        return self.rfile.read(content_length)
+
+    def _do_proxy_request(self, target, method, body=None):
+        """Execute a single proxy request. Returns (status, headers, body).
+
+        ``body`` must be pre-read when fallbacks may retry (POST/PUT/PATCH);
+        re-reading ``rfile`` on the second attempt hangs on Content-Length.
+        """
         try:
-            content_length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_length) if content_length > 0 else None
             hop_by_hop = {"host","content-length","connection","keep-alive",
                           "proxy-authenticate","proxy-authorization","te","trailers","transfer-encoding","upgrade"}
             headers = {}
@@ -293,13 +304,16 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._proxy_sse(target)
             return
 
-        status, headers, body = self._do_proxy_request(target, method)
+        req_body = self._read_request_body()
+        status, headers, body = self._do_proxy_request(target, method, body=req_body)
 
         # 404 fallback: try other backends for multi-backend prefixes
         if status == 404 and not is_precise:
             fallbacks = self._proxy_fallback_targets(self.path, target)
             for fb_target in fallbacks:
-                fb_status, fb_headers, fb_body = self._do_proxy_request(fb_target, method)
+                fb_status, fb_headers, fb_body = self._do_proxy_request(
+                    fb_target, method, body=req_body,
+                )
                 if fb_status != 404:
                     status, headers, body = fb_status, fb_headers, fb_body
                     break

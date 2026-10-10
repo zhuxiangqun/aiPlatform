@@ -8,7 +8,22 @@ _FRONTEND = Path(__file__).resolve().parents[1] / "frontend"
 if str(_FRONTEND) not in sys.path:
     sys.path.insert(0, str(_FRONTEND))
 
-from proxy_server import PLATFORM_URL, ProxyHandler, apply_path_rewrite, MGMT_URL  # noqa: E402
+from proxy_server import (  # noqa: E402
+    PLATFORM_URL,
+    PROXY_ROUTES,
+    ProxyHandler,
+    apply_path_rewrite,
+    MGMT_URL,
+)
+
+
+def test_code_review_gold_routes_to_platform():
+    """Governance Gold CTA POST must not land on mgmt (wrong /platform/apps)."""
+    assert PROXY_ROUTES.get("/api/platform/apps/code-review-gold") == PLATFORM_URL
+    handler = ProxyHandler.__new__(ProxyHandler)
+    target, precise = handler._get_target("/api/platform/apps/code-review-gold/evaluate")
+    assert target == PLATFORM_URL
+    assert precise is True
 
 
 def test_doctor_core_prefix_rewrites_to_management():
