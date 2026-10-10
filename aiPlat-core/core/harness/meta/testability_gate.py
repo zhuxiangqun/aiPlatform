@@ -225,8 +225,24 @@ def _test_covers_handler(test_path: str, test_content: str, handler_path: str) -
     return any(n and n.lower() in hay for n in needles if n)
 
 
+def _merge_file_item(out: Dict[str, str], path: str, content: str) -> None:
+    p = _norm_path(path)
+    if not p:
+        return
+    c = content if isinstance(content, str) else ""
+    # Prefer non-empty content when merging duplicate paths.
+    if p not in out or (c and not out.get(p)):
+        out[p] = c
+
+
 def collect_files_from_context(context: Mapping[str, Any]) -> Dict[str, str]:
-    """Gather path→content from done_verify / pipeline context."""
+    """Gather path→content from done_verify / pipeline context.
+
+    Sources (in order): explicit written_files maps, nested ``files=`` lists,
+    then factory ``## FILE:`` blocks via ``factory_bloat_metrics`` (coding
+    stages rarely populate ``_written_files`` — without this scrape the gate
+    silently no-ops).
+    """
     out: Dict[str, str] = {}
     ctx = context if isinstance(context, Mapping) else {}
 
@@ -235,19 +251,20 @@ def collect_files_from_context(context: Mapping[str, Any]) -> Dict[str, str]:
         if isinstance(raw, list):
             for item in raw:
                 if isinstance(item, Mapping):
-                    p = _norm_path(str(item.get("path") or item.get("name") or ""))
-                    c = item.get("content")
-                    if p and isinstance(c, str):
-                        out[p] = c
+                    _merge_file_item(
+                        out,
+                        str(item.get("path") or item.get("name") or ""),
+                        str(item.get("content") or item.get("body") or ""),
+                    )
                 elif isinstance(item, str) and item.strip():
-                    # path-only; try read from cwd
+                    # path-only; try read from cwd later
                     out.setdefault(_norm_path(item), "")
         elif isinstance(raw, Mapping):
             for k, v in raw.items():
                 if isinstance(v, str):
-                    out[_norm_path(str(k))] = v
+                    _merge_file_item(out, str(k), v)
 
-    # Artifact dicts commonly nest files=
+    # Artifact dicts commonly nest files= (and may be JSON strings)
     for key in ("output", "artifact", "last_artifact"):
         art = ctx.get(key)
         if isinstance(art, str) and art.strip().startswith("{"):
@@ -262,10 +279,67 @@ def collect_files_from_context(context: Mapping[str, Any]) -> Dict[str, str]:
             if isinstance(fl, list):
                 for item in fl:
                     if isinstance(item, Mapping):
-                        p = _norm_path(str(item.get("path") or item.get("name") or ""))
-                        c = item.get("content")
-                        if p and isinstance(c, str):
-                            out[p] = c
+                        _merge_file_item(
+                            out,
+                            str(item.get("path") or item.get("name") or ""),
+                            str(item.get("content") or item.get("body") or ""),
+                        )
+
+    # Reuse factory bloat extractors — ## FILE: blocks in stage output / artifacts.
+    try:
+        from core.harness.execution.factory_bloat_metrics import (
+            collect_files_from_artifact,
+            extract_file_blocks,
+        )
+    except Exception:  # pragma: no cover
+        collect_files_from_artifact = None  # type: ignore
+        extract_file_blocks = None  # type: ignore
+
+    if extract_file_blocks is not None:
+        for key in ("output", "raw_output", "answer", "final_answer"):
+            val = ctx.get(key)
+            if isinstance(val, str) and "## FILE:" in val:
+                for item in extract_file_blocks(val):
+                    _merge_file_item(
+                        out,
+                        str(item.get("path") or ""),
+                        str(item.get("content") or ""),
+                    )
+
+    if collect_files_from_artifact is not None:
+        artifact_keys = (
+            "code",
+            "agent_app",
+            "frontend_pages",
+            "frontend",
+            "generated_code",
+            "artifact",
+            "last_artifact",
+            "output",
+        )
+        for key in artifact_keys:
+            if key not in ctx:
+                continue
+            for item in collect_files_from_artifact(ctx.get(key)):
+                _merge_file_item(
+                    out,
+                    str(item.get("path") or ""),
+                    str(item.get("content") or ""),
+                )
+        # Nested pipeline state (some loops stash artifacts under state=)
+        for nest_key in ("state", "pipeline_state"):
+            nest = ctx.get(nest_key)
+            if not isinstance(nest, Mapping):
+                continue
+            for key in artifact_keys:
+                if key not in nest:
+                    continue
+                for item in collect_files_from_artifact(nest.get(key)):
+                    _merge_file_item(
+                        out,
+                        str(item.get("path") or ""),
+                        str(item.get("content") or ""),
+                    )
 
     # Fill empty content from disk when cwd known
     cwd = Path(str(ctx.get("cwd") or ctx.get("workdir") or "") or ".")

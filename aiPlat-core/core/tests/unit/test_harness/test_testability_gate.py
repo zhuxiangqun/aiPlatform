@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from datetime import date
 
+from core.harness.execution.done_verify import run_done_verify
 from core.harness.meta.testability_gate import (
+    collect_files_from_context,
     evaluate_files,
     is_impure_test,
     resolve_mode,
@@ -114,3 +116,50 @@ def test_enrich_loads_disk_test(tmp_path):
     assert any("test_foo" in k for k in enriched)
     r = evaluate_files(enriched, mode_override="block")
     assert r.ok is True
+
+
+def test_collect_files_from_file_markdown_blocks():
+    """done_verify path: coding output uses ## FILE: (not _written_files)."""
+    ctx = {
+        "output": (
+            "## FILE: skills/foo/handler.py\n"
+            "```python\n"
+            "def execute(p):\n"
+            "    return p\n"
+            "```\n"
+            "## FILE: tests/test_foo_handler.py\n"
+            "```python\n"
+            "from skills.foo.handler import execute\n"
+            "def test_execute():\n"
+            "    assert execute(1) == 1\n"
+            "```\n"
+        ),
+    }
+    files = collect_files_from_context(ctx)
+    assert "skills/foo/handler.py" in files
+    assert "tests/test_foo_handler.py" in files
+    assert "def execute" in files["skills/foo/handler.py"]
+
+
+def test_done_verify_testability_from_file_blocks():
+    """require_testability must not no-op when only ## FILE: output is present."""
+    ctx = {
+        "_done_verify": {
+            "enabled": True,
+            "require_testability": True,
+            "testability_mode": "block",
+            "min_output_length": 0,
+            "reject_trivial_done": False,
+            "reject_action_envelope": False,
+        },
+        "output": (
+            "## FILE: skills/bar/handler.py\n"
+            "```python\n"
+            "def execute(p):\n"
+            "    return p\n"
+            "```\n"
+        ),
+    }
+    veto = run_done_verify(ctx)
+    assert veto and "testability" in veto
+    assert ctx.get("_testability_report")
