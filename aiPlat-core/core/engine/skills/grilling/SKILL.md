@@ -5,6 +5,7 @@ description: 当用户需求模糊时，逐一追问直到细节清晰。每次�
 category: analysis
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 execution_type: prompt
 sop_goal: "从用户描述中找出最模糊的点，逐一追问直到细节清晰"
 sop_flow:

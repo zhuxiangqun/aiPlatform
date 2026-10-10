@@ -32,6 +32,7 @@ output_schema:
     cross_validation:
       type: object
       description: "多源交叉验证详情"
+invocation_mode: auto
 ---
 
 # 证据链模板

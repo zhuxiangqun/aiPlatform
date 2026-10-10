@@ -11,6 +11,14 @@ import type { ExecutionNode as ENode, ExecutionViewerProps } from './types';
 import { useLiveEvents } from '../../hooks/useLiveEvents';
 import { useLiveGraph } from '../../hooks/useLiveGraph';
 import { useReplayEvents } from '../../hooks/useReplayEvents';
+import { runApi } from '../../services';
+
+type RollbackGuidance = {
+  status?: string;
+  message?: string;
+  file_checkpoints?: { count?: number; ui?: string };
+  alternatives?: Array<{ action?: string; effect?: string; ui?: string }>;
+};
 
 // Canvas node type mapping: syscall event kind → Canvas node type + icon + color
 const CANVAS_NODES: Record<string, { icon: string; color: string; label: string }> = {
@@ -1150,6 +1158,51 @@ const ExecutionViewer: React.FC<ExecutionViewerProps> = ({ nodes: propNodes, tit
   const [expandedSubFlows, setExpandedSubFlows] = useState<Set<string>>(new Set());
   /** null = auto: open while running, collapsed when done (frees canvas). */
   const [roundsPanelOpen, setRoundsPanelOpen] = useState<boolean | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [rollbackHint, setRollbackHint] = useState<RollbackGuidance | null>(null);
+  const [rollbackLoading, setRollbackLoading] = useState(false);
+
+  const handleCancelRun = useCallback(async () => {
+    if (!runId || cancelling) return;
+    if (!window.confirm(`取消运行 ${runId}？进行中的副作用可能无法全部回滚。`)) return;
+    setCancelling(true);
+    try {
+      await runApi.cancel(runId, { reason: 'user_cancel_from_execution_viewer' });
+    } catch (e) {
+      console.warn('cancel run failed', e);
+      window.alert('取消请求失败，请稍后重试或到执行记录页操作。');
+    } finally {
+      setCancelling(false);
+    }
+  }, [runId, cancelling]);
+
+  /** Completed runs: explain restore paths (file checkpoints) — never pretend universal undo. */
+  const handleRollbackGuidance = useCallback(async () => {
+    if (!runId || rollbackLoading) return;
+    setRollbackLoading(true);
+    setRollbackHint(null);
+    try {
+      const out = await runApi.undo(runId, { reason: 'explain_rollback_from_execution_viewer' });
+      // queued undo succeeded
+      setRollbackHint({
+        status: 'undone',
+        message: (out as any)?.status === 'undone' ? '已取消排队中的运行' : '操作完成',
+      });
+    } catch (e: any) {
+      const detail = e?.detail;
+      if (detail && typeof detail === 'object') {
+        setRollbackHint(detail as RollbackGuidance);
+      } else {
+        setRollbackHint({
+          status: 'undo_not_supported',
+          message: String(e?.message || '完成后运行无通用撤销；请到「文件 Checkpoint」恢复落盘文件。'),
+          file_checkpoints: { ui: '/core/checkpoints' },
+        });
+      }
+    } finally {
+      setRollbackLoading(false);
+    }
+  }, [runId, rollbackLoading]);
 
   // Expand all children of a sub-flow into the flat node list
   const flattenedNodes: ENode[] = useMemo(() => {
@@ -1737,6 +1790,95 @@ const ExecutionViewer: React.FC<ExecutionViewerProps> = ({ nodes: propNodes, tit
             </span>
           )}
           <div style={{ flex: 1 }} />
+          {runId && (actualRunning || showLiveProgress) && (
+            <button
+              type="button"
+              onClick={handleCancelRun}
+              disabled={cancelling}
+              style={{
+                fontSize: 11,
+                padding: '4px 10px',
+                borderRadius: 6,
+                border: '1px solid #ef444480',
+                background: cancelling ? '#3f1d1d' : '#7f1d1d40',
+                color: '#fca5a5',
+                cursor: cancelling ? 'wait' : 'pointer',
+              }}
+              title="请求取消当前运行（queued 可立即停；进行中依赖引擎协作）"
+            >
+              {cancelling ? '取消中…' : '取消运行'}
+            </button>
+          )}
+          {runId && !actualRunning && !showLiveProgress && (
+            <button
+              type="button"
+              onClick={handleRollbackGuidance}
+              disabled={rollbackLoading}
+              style={{
+                fontSize: 11,
+                padding: '4px 10px',
+                borderRadius: 6,
+                border: '1px solid #f59e0b60',
+                background: rollbackLoading ? '#3f2a10' : '#78350f40',
+                color: '#fcd34d',
+                cursor: rollbackLoading ? 'wait' : 'pointer',
+              }}
+              title="完成后运行无通用撤销；查看文件 Checkpoint / 域级回滚路径"
+            >
+              {rollbackLoading ? '查询中…' : '副作用恢复指引'}
+            </button>
+          )}
+        </div>
+      )}
+      {rollbackHint && (
+        <div
+          style={{
+            marginTop: 8,
+            padding: '8px 10px',
+            borderRadius: 8,
+            border: '1px solid #f59e0b40',
+            background: '#1c191780',
+            fontSize: 11,
+            color: '#e7e5e4',
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ marginBottom: 4, color: '#fcd34d' }}>
+            {rollbackHint.message || '无通用撤销'}
+            {rollbackHint.file_checkpoints?.count != null
+              ? ` · 文件 checkpoint ${rollbackHint.file_checkpoints.count} 个`
+              : ''}
+          </div>
+          {rollbackHint.alternatives?.length ? (
+            <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>
+              {rollbackHint.alternatives.map((a, i) => (
+                <li key={i} style={{ marginBottom: 2 }}>
+                  <code style={{ color: '#fbbf24' }}>{a.action}</code>
+                  {a.effect ? ` — ${a.effect}` : ''}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <a
+            href={rollbackHint.file_checkpoints?.ui || '/core/checkpoints'}
+            style={{ color: '#93c5fd', marginTop: 6, display: 'inline-block' }}
+          >
+            打开文件 Checkpoint →
+          </a>
+          <button
+            type="button"
+            onClick={() => setRollbackHint(null)}
+            style={{
+              marginLeft: 12,
+              fontSize: 11,
+              background: 'transparent',
+              border: 'none',
+              color: '#a8a29e',
+              cursor: 'pointer',
+            }}
+          >
+            关闭
+          </button>
         </div>
       )}
 

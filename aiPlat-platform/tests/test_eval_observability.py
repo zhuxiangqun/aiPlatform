@@ -1,6 +1,6 @@
 """test_eval_observability.py — 评测观测聚合器测试。
 
-覆盖：三源聚合、产物缺失降级、经验状态统计、skipped_checks 提取。
+覆盖：三源聚合、产物缺失降级、经验状态统计、skipped_checks 提取、org_harness 可选切片。
 """
 from __future__ import annotations
 
@@ -17,6 +17,11 @@ def _write(tmp_path, name, data):
     p = tmp_path / name
     p.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     return str(p)
+
+
+def _file_sources(v):
+    """File-backed sources only (org_harness is optional live slice)."""
+    return [s for s in v["sources"] if s.get("kind") != "org_harness"]
 
 
 def test_aggregate_full(tmp_path):
@@ -37,7 +42,8 @@ def test_aggregate_full(tmp_path):
     assert v["experiences"]["by_status"] == {"pending": 1, "promoted": 1,
                                              "rejected": 0, "promoted:review": 0}
     assert v["experiences"]["count"] == 2
-    assert all(s["present"] for s in v["sources"])
+    assert all(s["present"] for s in _file_sources(v))
+    assert "org_harness" in v
 
 
 def test_aggregate_missing_products(tmp_path):
@@ -47,11 +53,12 @@ def test_aggregate_missing_products(tmp_path):
     assert v["evidence_tree"] is None
     assert v["guard_trace"] is None
     assert v["experiences"]["count"] == 0
-    assert all(not s["present"] for s in v["sources"])
+    assert all(not s["present"] for s in _file_sources(v))
+    assert "org_harness" in v
 
 
 def test_aggregate_no_env(tmp_path):
-    """未配置任何产物路径时返回空视图。"""
+    """未配置任何产物路径时返回空文件视图（org_harness 可为可选切片）。"""
     import governance.eval_observability as m
     old = {k: m.os.environ.get(k) for k in ("AIPLAT_EVIDENCE_TREE_OUT",
                                             "AIPLAT_GUARD_TRACE_OUT",
@@ -60,8 +67,9 @@ def test_aggregate_no_env(tmp_path):
         m.os.environ.pop(k, None)
     try:
         v = m.aggregate()
-        assert v["sources"] == []
+        assert _file_sources(v) == []
         assert v["experiences"]["count"] == 0
+        assert "org_harness" in v
     finally:
         for k, val in old.items():
             if val is not None:

@@ -38,7 +38,14 @@ export const gatewayApi = {
     return apiClient.delete<{ status: string }>(`/platform/gateway/routes/${id}`);
   },
   getMetrics: async () => {
-    return apiClient.get<{ total_requests: number; success_rate: number; avg_latency_ms: number; active_routes: number }>('/platform/gateway/metrics');
+    return apiClient.get<{
+      status?: string;
+      total_requests: number | null;
+      success_rate: number | null;
+      avg_latency_ms: number | null;
+      active_routes: number;
+      detail?: string;
+    }>('/platform/gateway/metrics');
   },
 };
 

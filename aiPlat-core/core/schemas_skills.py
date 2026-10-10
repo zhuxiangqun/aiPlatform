@@ -21,6 +21,9 @@ class SkillCreateRequest(BaseModel):
     status: Optional[str] = None
     skill_kind: Optional[str] = None  # rule|executable
     execution_type: Optional[str] = None  # prompt|handler|python_class (engine/runtime)
+    # user = 仅显式调用（不进自动路由）；auto = 允许 SkillMatcher / candidates 自动发现
+    invocation_mode: Optional[str] = None  # user|auto
+    auto_trigger_allowed: Optional[bool] = None
     permissions: Optional[List[str]] = None
     trigger_conditions: Optional[List[str]] = None
     decision_tree: Optional[List[Dict[str, Any]]] = None

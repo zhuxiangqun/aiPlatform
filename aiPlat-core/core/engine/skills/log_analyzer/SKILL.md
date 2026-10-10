@@ -8,6 +8,7 @@ description: >
 category: analysis
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 execution_type: prompt
 tags:
   - 测试

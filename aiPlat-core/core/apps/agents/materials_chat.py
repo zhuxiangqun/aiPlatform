@@ -45,6 +45,47 @@ def _build_turn_summary(question: str, answer: str) -> str:
     return build_turn_summary(question, answer)
 
 
+def _is_delivery_mode(vars0: Dict[str, Any]) -> bool:
+    """Q&A vs Delivery: delivery/task/governed require outcome gates, not answer-complete."""
+    mode = str(vars0.get("mode") or vars0.get("delivery_mode") or "").strip().lower()
+    return mode in ("delivery", "task", "governed")
+
+
+def _delivery_gate_block(
+    *,
+    vars0: Dict[str, Any],
+    quality: str,
+    hallucination_meta: Dict[str, Any],
+    output: Dict[str, Any],
+    metadata: Dict[str, Any],
+) -> Optional[AgentResult]:
+    """In delivery mode, high hallucination / low evidence must not seal as success."""
+    if not _is_delivery_mode(vars0):
+        return None
+    try:
+        risk = float((hallucination_meta or {}).get("hallucination_risk") or 0)
+    except (TypeError, ValueError):
+        risk = 0.0
+    if risk <= 0.5 and quality not in ("low_evidence", "needs_review"):
+        return None
+    blocked = dict(output or {})
+    blocked["delivery_gate"] = {
+        "blocked": True,
+        "reason": "hallucination_or_low_evidence",
+        "hallucination_risk": risk,
+        "quality": quality,
+        "hint": "delivery mode requires HITL accept or lower risk before success",
+    }
+    meta = dict(metadata or {})
+    meta["delivery_gate_blocked"] = True
+    return AgentResult(
+        success=False,
+        error="delivery_gate_blocked",
+        output=blocked,
+        metadata=meta,
+    )
+
+
 def _load_doc_kinds(*, tenant_id: str, doc_ids: List[str]) -> List[str]:
     return get_kb_load_doc_kinds_fn()(tenant_id=tenant_id, doc_ids=doc_ids)
 
@@ -746,19 +787,26 @@ class MaterialsChatAgent(BaseAgent):
                                     domain_id or "",
                                     run_context.get("entity", "") if run_context else ""
                                 )
-                                return AgentResult(
-                                    success=True,
-                                    output={"answer": answer, "citations": citations, "items": [],
-                                            "related": related,
-                                            "scope_applied": scope, "strategy": "domain_skill",
-                                            "skills_used": [skill_name], "turn_summary": turn_summary,
-                                            "intent": intent, "mode": "", "analysis": analysis,
-                                            "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
-                                            "reasoning_path": reasoning_path, "pipeline_trace": pipeline_trace,
-                                            "quality": quality, "hallucination": hallucination_meta,
-                                            "rag_diagnosis": rag_diagnosis},
-                                    metadata={"intent": intent, "strategy": "domain_skill", "domain": domain_id,
-                                              "skill": skill_name, "doc_count": len(doc_ids)})
+                                _out = {"answer": answer, "citations": citations, "items": [],
+                                        "related": related,
+                                        "scope_applied": scope, "strategy": "domain_skill",
+                                        "skills_used": [skill_name], "turn_summary": turn_summary,
+                                        "intent": intent, "mode": str(vars0.get("mode") or ""),
+                                        "analysis": analysis,
+                                        "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
+                                        "reasoning_path": reasoning_path, "pipeline_trace": pipeline_trace,
+                                        "quality": quality, "hallucination": hallucination_meta,
+                                        "rag_diagnosis": rag_diagnosis}
+                                _meta = {"intent": intent, "strategy": "domain_skill", "domain": domain_id,
+                                         "skill": skill_name, "doc_count": len(doc_ids)}
+                                blocked = _delivery_gate_block(
+                                    vars0=vars0, quality=quality,
+                                    hallucination_meta=hallucination_meta or {},
+                                    output=_out, metadata=_meta,
+                                )
+                                if blocked:
+                                    return blocked
+                                return AgentResult(success=True, output=_out, metadata=_meta)
 
             # ── Direct answer: if doc_content retrieved, use LLM (with streaming if available) ──
             if retrieved_docs:
@@ -823,23 +871,28 @@ class MaterialsChatAgent(BaseAgent):
                             retrieved_count=len(citations),
                         )
 
-                        return AgentResult(
-                            success=True,
-                            output={"answer": answer, "citations": citations, "items": [],
-                                    "scope_applied": scope, "strategy": "direct_retrieve",
-                                    "skills_used": ["sys_crag_retrieve"], "turn_summary": _build_turn_summary(question, answer),
-                                    "intent": intent, "mode": "", "analysis": analysis,
-                                    "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
-                                    "reasoning_path": reasoning_path,
-                                    "pipeline_trace": pipeline_trace,
-                                    "quality": quality,
-                                    "hallucination": hallucination_meta,
-                                    "rag_diagnosis": rag_diagnosis},
-                            metadata={"intent": intent, "strategy": "direct_retrieve", "doc_count": len(doc_ids),
-                                      # v2.9: suggest grilling when ontology mapping confidence is low
-                                      "grill_suggested": bool(onto_mapping and onto_mapping.get("matched_classes") and onto_mapping["matched_classes"][0].get("score", 0) < 0.5),
-                                      "domain_id": domain_id, "collection_id": collection_id},
+                        _out = {"answer": answer, "citations": citations, "items": [],
+                                "scope_applied": scope, "strategy": "direct_retrieve",
+                                "skills_used": ["sys_crag_retrieve"], "turn_summary": _build_turn_summary(question, answer),
+                                "intent": intent, "mode": str(vars0.get("mode") or ""),
+                                "analysis": analysis,
+                                "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
+                                "reasoning_path": reasoning_path,
+                                "pipeline_trace": pipeline_trace,
+                                "quality": quality,
+                                "hallucination": hallucination_meta,
+                                "rag_diagnosis": rag_diagnosis}
+                        _meta = {"intent": intent, "strategy": "direct_retrieve", "doc_count": len(doc_ids),
+                                 "grill_suggested": bool(onto_mapping and onto_mapping.get("matched_classes") and onto_mapping["matched_classes"][0].get("score", 0) < 0.5),
+                                 "domain_id": domain_id, "collection_id": collection_id}
+                        blocked = _delivery_gate_block(
+                            vars0=vars0, quality=quality,
+                            hallucination_meta=hallucination_meta or {},
+                            output=_out, metadata=_meta,
                         )
+                        if blocked:
+                            return blocked
+                        return AgentResult(success=True, output=_out, metadata=_meta)
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)
 
@@ -883,54 +936,61 @@ class MaterialsChatAgent(BaseAgent):
                 retrieved_count=len(citations),
             )
 
-            return AgentResult(
-                success=True,
-                output={
-                    "answer": answer,
-                    "citations": citations,
-                    "items": out.get("items") or [],
-                    "scope_applied": scope,
-                    "strategy": strategy,
-                    "skills_used": skills_used,
-                    "turn_summary": turn_summary,
-                    "intent": intent,
-                    "mode": mode,
-                    "analysis": analysis,
-                    "retrieval_policy": retrieval_policy,
-                    "answer_strategy": answer_strategy,
-                    "reasoning_path": reasoning_path,
-                    "pipeline_trace": pipeline_trace,
-                    "quality": quality,
-                    "hallucination": hallucination_meta,
-                    "rag_diagnosis": rag_diagnosis,
+            _out = {
+                "answer": answer,
+                "citations": citations,
+                "items": out.get("items") or [],
+                "scope_applied": scope,
+                "strategy": strategy,
+                "skills_used": skills_used,
+                "turn_summary": turn_summary,
+                "intent": intent,
+                "mode": mode or str(vars0.get("mode") or ""),
+                "analysis": analysis,
+                "retrieval_policy": retrieval_policy,
+                "answer_strategy": answer_strategy,
+                "reasoning_path": reasoning_path,
+                "pipeline_trace": pipeline_trace,
+                "quality": quality,
+                "hallucination": hallucination_meta,
+                "rag_diagnosis": rag_diagnosis,
+            }
+            _meta = {
+                "intent": intent,
+                "skill_name": skill_name,
+                "strategy": strategy,
+                "mode": mode or str(vars0.get("mode") or ""),
+                "analysis": analysis,
+                "retrieval_policy": retrieval_policy,
+                "answer_strategy": answer_strategy,
+                "doc_count": len(doc_ids),
+                # Phase C6: latency baseline + routing cost breakdown
+                "latency_ms": int((time.time() - _t0) * 1000),
+                "cost_routing": {
+                    "rag_est_tokens": _cost.rag_est_tokens,
+                    "full_est_tokens": _cost.full_est_tokens,
+                    "recommendation": _cost.recommendation,
+                    "cache_saving": _cost.cache_saving,
+                    "cache_available": _cost.cache_saving > 0,
                 },
-                metadata={
-                    "intent": intent,
-                    "skill_name": skill_name,
-                    "strategy": strategy,
-                    "mode": mode,
-                    "analysis": analysis,
-                    "retrieval_policy": retrieval_policy,
-                    "answer_strategy": answer_strategy,
-                    "doc_count": len(doc_ids),
-                    # Phase C6: latency baseline + routing cost breakdown
-                    "latency_ms": int((time.time() - _t0) * 1000),
-                    "cost_routing": {
-                        "rag_est_tokens": _cost.rag_est_tokens,
-                        "full_est_tokens": _cost.full_est_tokens,
-                        "recommendation": _cost.recommendation,
-                        "cache_saving": _cost.cache_saving,
-                        "cache_available": _cost.cache_saving > 0,
-                    },
-                    "fallback_chain": [
-                        t for t in pipeline_trace
-                        if t.get("phase") in ("检索质量门", "CRAG", "HyDE", "FTS5 fallback", "缓存命中")
-                    ],
-                },
-            )
+                "fallback_chain": [
+                    t for t in pipeline_trace
+                    if t.get("phase") in ("检索质量门", "CRAG", "HyDE", "FTS5 fallback", "缓存命中")
+                ],
+            }
             # Phase C6: record latency for aggregate P50/P95 stats
             from core.harness.knowledge.cost_estimator import record_latency as _rec_lat
             _rec_lat(_cost.recommendation, (time.time() - _t0) * 1000)
+            blocked = _delivery_gate_block(
+                vars0=vars0,
+                quality=quality,
+                hallucination_meta=hallucination_meta or {},
+                output=_out,
+                metadata=_meta,
+            )
+            if blocked:
+                return blocked
+            return AgentResult(success=True, output=_out, metadata=_meta)
         except Exception as e:
             self._status = AgentStatus.ERROR
             return AgentResult(success=False, error=str(e), metadata={"exception": type(e).__name__})

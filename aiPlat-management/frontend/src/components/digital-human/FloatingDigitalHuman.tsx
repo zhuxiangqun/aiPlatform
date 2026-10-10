@@ -73,6 +73,7 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
     textOnly: true,
   });
   const [ratedLast, setRatedLast] = useState<'good' | 'bad' | ''>('');
+  const [handoffCard, setHandoffCard] = useState<{ route: string; label: string } | null>(null);
 
   useEffect(() => {
     setRatedLast('');
@@ -101,7 +102,21 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
   }, [currentRoute, sendContext]);
 
   useEffect(() => {
-    if (!answer) return;
+    if (!answer) {
+      setHandoffCard(null);
+      return;
+    }
+    const handoff = answer.match(/\[ACTION:handoff:([^\]]+)\]/);
+    if (handoff && handoff[1].startsWith('/')) {
+      const route = handoff[1];
+      const label =
+        route.startsWith('/governance') ? '去治理确认审批'
+          : route.startsWith('/core/runs') ? '去执行记录取消/查看'
+            : '去应用工厂确认并执行';
+      setHandoffCard({ route, label });
+      return; // never auto-navigate operational handoffs
+    }
+    setHandoffCard(null);
     const actionMatch = answer.match(/\[ACTION:(\w+):([^\]]+)\]/);
     if (actionMatch) {
       const [, action, target] = actionMatch;
@@ -111,7 +126,7 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
     }
   }, [answer, navigate]);
 
-  /** Hide machine ACTION markers from chat bubbles; navigate still runs above. */
+  /** Hide machine ACTION markers from chat bubbles; handoff shows as CTA card. */
   const displayText = (text: string) =>
     (text || '').replace(/\s*\[ACTION:\w+:[^\]]+\]\s*/g, '\n').trim();
 
@@ -510,6 +525,43 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
             >
               <Loader2 size={14} className="animate-spin" />
               <span>{statusText[status]}</span>
+            </div>
+          )}
+
+          {handoffCard && (
+            <div
+              data-no-drag
+              style={{
+                margin: '4px 12px 8px',
+                padding: '10px 12px',
+                borderRadius: 8,
+                background: 'rgba(59,130,246,0.12)',
+                border: '1px solid rgba(59,130,246,0.35)',
+                fontSize: 12,
+                color: '#BFDBFE',
+              }}
+            >
+              <div style={{ marginBottom: 8, lineHeight: 1.4 }}>
+                运营动作需你确认后再执行（不代点部署/审批/启动）。
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  navigate(handoffCard.route);
+                  setHandoffCard(null);
+                }}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  border: 'none',
+                  background: '#2563EB',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                }}
+              >
+                {handoffCard.label}
+              </button>
             </div>
           )}
 

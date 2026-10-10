@@ -6,6 +6,7 @@ description: 从知识库和互联网中检索相关信息。触发条件：用�
 category: retrieval
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 protected: true
 completion_criterion: |
   1. 用户的问题已被直接完整回答
@@ -72,9 +73,6 @@ sop_flow:
   - "执行多源检索并对结果去重排序。"
   - "输出相关性排序的结果列表及每条的去源信息。"
   - "从多数据源检索并融合信息"
-  - "[ ] 输出格式符合规范"
-  - "[ ] 正确处理错误和边界条件"
-  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - 资料
@@ -111,6 +109,6 @@ skip_when: 跳过条件：用户已明确知道答案或仅需确认时不触发
 从多数据源检索并融合信息
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

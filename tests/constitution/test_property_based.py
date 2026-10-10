@@ -261,7 +261,7 @@ def test_migrated_files_use_prompt_loader():
         "aiPlat-core/core/harness/coordination/patterns/base.py",
         "aiPlat-core/core/api/routers/knowledge_graph.py",
         "aiPlat-core/core/api/routers/workspace_agents.py",
-        "aiPlat-core/core/api/routers/entropy.py",
+        # entropy.py is ledger CRUD only (no LLM prompts) — not a prompt_loader migrate target
         "aiPlat-core/core/api/intents.py",
         "aiPlat-core/core/apps/skills/executor.py",
         "aiPlat-core/core/apps/skills/registry.py",

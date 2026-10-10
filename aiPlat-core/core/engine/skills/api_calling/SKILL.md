@@ -6,11 +6,12 @@ description: 调用外部API接口获取数据。触发条件：需要调用第�
 category: execution
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 protected: true
 completion_criterion: |
-  1. 输出符合 ## FILE: 格式规范
-  2. 每个文件包含完整可运行代码
-  3. 所有依赖项已声明，所有外部引用已校验
+  1. 达成：安全地调用外部 API 并返回结构化响应
+  2. 输出字段完整且可验收
+  3. 未知或不确定项明确标「待确认」
 execution_mode: prompt
 execution_type: prompt
 triggers:
@@ -76,9 +77,6 @@ sop_flow:
   - "构造请求并发送，处理 HTTP 状态码和重试。"
   - "解析响应并返回结构化结果。"
   - "安全地调用外部 API 并返回结构化响应"
-  - "[ ] 输出格式符合规范"
-  - "[ ] 正确处理错误和边界条件"
-  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - API
@@ -114,6 +112,6 @@ skip_when: 跳过条件：用户未提供API地址或认证信息时不触发。
 安全地调用外部 API 并返回结构化响应
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

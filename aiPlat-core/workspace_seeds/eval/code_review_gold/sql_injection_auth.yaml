@@ -1,0 +1,35 @@
+# Seed: copy to ~/.aiplat/eval/code_review_gold/ then expand with real PR targets.
+# ``predicted`` enables --match-only smoke without LLM / git.
+id: sql_injection_auth
+description: "f-string SQL interpolation in auth path"
+profile: balanced
+line_window: 5
+gold_findings:
+  - file: app/auth.py
+    line: 42
+    severity: P0
+    category: security
+    keywords: ["sql", "injection", "f-string"]
+    description: "User input interpolated into SQL via f-string"
+  - file: app/auth.py
+    line: 88
+    severity: P1
+    category: security
+    keywords: ["password", "plaintext", "log"]
+    description: "Password logged in plaintext"
+predicted:
+  - file: app/auth.py
+    line: 41
+    severity: P0
+    category: security
+    description: "SQL injection risk: query built with f-string from user input"
+  - file: app/auth.py
+    line: 90
+    severity: P1
+    category: security
+    description: "Avoid logging plaintext password values"
+  - file: app/utils.py
+    line: 3
+    severity: P2
+    category: style
+    description: "Unused import os"  # intentional false positive for precision < 1

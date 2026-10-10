@@ -17,12 +17,12 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-# Platform injects hop aggregate (builder.hop_metrics) at startup — core must not import platform.
+# Layer-2 injects hop aggregate (builder.hop_metrics) at startup — core must not import that layer.
 _hop_aggregate_fn = None  # type: ignore[var-annotated]
 
 
 def set_hop_aggregate_fn(fn) -> None:
-    """Register platform hop metrics aggregator (call from platform startup)."""
+    """Register hop metrics aggregator (call from layer-2 startup)."""
     global _hop_aggregate_fn
     _hop_aggregate_fn = fn
 

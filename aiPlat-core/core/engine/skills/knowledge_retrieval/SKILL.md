@@ -6,6 +6,7 @@ description: 从内部知识库召回相关片段。触发条件：用户问"查
 category: retrieval
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 protected: true
 completion_criterion: |
   1. 所有引用的数据/文档都有具体来源（page/section/line）
@@ -118,6 +119,6 @@ skip_when: 跳过条件：用户明确指定了外部数据源（非知识库）
 从内部向量库召回相关文档片段
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

@@ -191,22 +191,34 @@ class DelegateManager:
             from core.harness.integration import get_subagent_coordinator  # P0-A1: DI 解析
             coordinator = get_subagent_coordinator()
 
+            from core.harness.execution.subagent_discipline import (
+                condense_return,
+                resolve_isolate_context,
+            )
+            isolate, _ = resolve_isolate_context(bool(config.isolate_context))
             result = await coordinator.execute_single(
                 subagent_name=config.subagent_name,
                 task=config.task,
-                isolate_context=config.isolate_context,
-                max_tokens=config.max_tokens,
+                isolate_context=isolate,
             )
-            # Summarize output per §5.26
-            output = str(result.get("output", "")) if isinstance(result, dict) else str(result)
-            if len(output) > config.max_output_chars:
-                output = output[:config.max_output_chars] + f"\n... [{len(output) - config.max_output_chars} more chars truncated]"
+            # Hard envelope for parent (coordinator already condenses; re-cap budget)
+            if hasattr(result, "output"):
+                raw = getattr(result, "output", "") or ""
+                ok = bool(getattr(result, "success", True))
+                tokens = int(getattr(result, "tokens_used", 0) or 0)
+            elif isinstance(result, dict):
+                raw = result.get("output", "")
+                ok = bool(result.get("success", True))
+                tokens = int(result.get("token_used", 0) or result.get("tokens_used", 0) or 0)
+            else:
+                raw, ok, tokens = str(result), True, 0
+            output = condense_return(raw, max_chars=int(config.max_output_chars or 800))
 
             return DelegateResult(
                 subagent_name=config.subagent_name,
-                success=bool(result.get("success", True)) if isinstance(result, dict) else True,
+                success=ok,
                 output=output,
-                token_used=result.get("token_used", 0) if isinstance(result, dict) else 0,
+                token_used=tokens,
             )
         except ImportError:
             return DelegateResult(

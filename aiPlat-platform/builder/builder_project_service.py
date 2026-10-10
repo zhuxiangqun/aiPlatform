@@ -987,18 +987,21 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             "updated_at": now,
             "factory_profile": getattr(req, "factory_profile", "standard") or "standard",
             "output_style": getattr(req, "output_style", "default") or "default",
+            "writing_profile": getattr(req, "writing_profile", "concise_v1") or "concise_v1",
             "factory_mode": getattr(req, "factory_mode", "") or "",
             "coding_intensity": getattr(req, "coding_intensity", "") or "",
         }
         try:
             from core.api.core_facade import (
                 apply_project_style_meta,
+                apply_project_writing_meta,
                 assign_output_style_experiment,
                 default_intensity_for_factory_mode,
                 mode_to_team_template,
                 normalize_coding_intensity,
                 normalize_factory_mode,
                 normalize_factory_profile,
+                resolve_writing_profile,
             )
             self._projects[project_id]["factory_profile"] = normalize_factory_profile(
                 self._projects[project_id].get("factory_profile")
@@ -1014,6 +1017,14 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             apply_project_style_meta(
                 self._projects[project_id],
                 output_style=self._projects[project_id].get("output_style"),
+            )
+            self._projects[project_id]["writing_profile"] = resolve_writing_profile(
+                self._projects[project_id],
+                default="concise_v1",
+            )
+            apply_project_writing_meta(
+                self._projects[project_id],
+                writing_profile=self._projects[project_id].get("writing_profile"),
             )
             # A3b: sticky style arm when experiment pct > 0; explicit adhd locks out
             _os = str(self._projects[project_id].get("output_style") or "").lower()
@@ -1342,19 +1353,26 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                     "prd gate guidance inject skipped", exc_info=True
                 )
 
-        # T2/F-T2 + A0/A3b: Culture then output_style (hard→Culture→style); prose only
+        # T2/F-T2 + A0/A3b + writing: hard→Culture→style→writing; prose only
         try:
             from core.api.core_facade import (
                 apply_project_culture_meta,
+                apply_project_writing_meta,
                 assign_output_style_experiment,
                 build_culture_overlay,
                 build_style_overlay,
+                build_writing_overlay,
                 compose_prose_overlays,
                 resolve_culture_enabled,
                 resolve_output_style,
+                resolve_writing_profile,
                 whitelist_overrides,
             )
             apply_project_culture_meta(proj)
+            apply_project_writing_meta(
+                proj,
+                writing_profile=resolve_writing_profile(proj, default="concise_v1"),
+            )
             _exp = assign_output_style_experiment(proj, sticky_id=project_id)
             if _exp.get("assigned"):
                 try:
@@ -1369,15 +1387,18 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             _style = resolve_output_style(proj)
             _ov = whitelist_overrides(proj)
             _style_overlay = build_style_overlay(_style, _ov)
+            _wp = resolve_writing_profile(proj, default="concise_v1")
+            _writing = build_writing_overlay(_wp)
             _combined = compose_prose_overlays(
                 culture_overlay=_culture,
                 style_overlay=_style_overlay,
+                writing_overlay=_writing,
             )
             if _combined:
                 _enriched_message = f"{_combined}\n\n---\n{_enriched_message}"
         except Exception:
             logging.getLogger(__name__).debug(
-                "culture/output_style inject skipped", exc_info=True
+                "culture/output_style/writing inject skipped", exc_info=True
             )
 
         try:
@@ -2853,6 +2874,71 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         except Exception as e:
             return {"status": "error", "detail": str(e)[:200]}
 
+    def record_evidence_metrics(
+        self,
+        project_id: str,
+        *,
+        events: Optional[List[Any]] = None,
+    ) -> Dict[str, Any]:
+        """Oversight P1: persist verification metrics (read-only; no coding/deploy)."""
+        from core.api.core_facade import (
+            STATE_EVIDENCE_METRICS_KEY,
+            empty_evidence_metrics,
+            merge_evidence_metrics,
+            verification_success,
+        )
+
+        store: Dict[str, Any] = empty_evidence_metrics()
+        try:
+            st = self._load_pipeline_state(project_id) or {}
+            if isinstance(st, dict):
+                prev = st.get(STATE_EVIDENCE_METRICS_KEY)
+                if isinstance(prev, dict):
+                    store = dict(prev)
+            proj = self._projects.get(project_id) or {}
+            if isinstance(proj, dict) and isinstance(proj.get("evidence_metrics"), dict):
+                # Prefer richer of state vs card when state empty
+                if not store.get("total"):
+                    store = dict(proj["evidence_metrics"])
+
+            metrics = merge_evidence_metrics(store, events=events or [])
+            if isinstance(st, dict):
+                st[STATE_EVIDENCE_METRICS_KEY] = metrics
+                try:
+                    self._save_state(project_id, st)
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "evidence_metrics state save skipped", exc_info=True
+                    )
+            if isinstance(proj, dict):
+                proj["evidence_metrics"] = {
+                    k: metrics.get(k)
+                    for k in (
+                        "schema_version",
+                        "counts",
+                        "total",
+                        "verified",
+                        "updated_at",
+                    )
+                    if k in metrics
+                }
+                try:
+                    self._save_projects()
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "evidence_metrics project save skipped", exc_info=True
+                    )
+            return {
+                "status": "ok",
+                "evidence_metrics": metrics,
+                "verified": verification_success(metrics),
+            }
+        except Exception as e:
+            logging.getLogger(__name__).debug(
+                "record_evidence_metrics failed", exc_info=True
+            )
+            return {"status": "error", "detail": str(e)[:200]}
+
     async def regenerate_stage(
         self,
         project_id: str,
@@ -3581,6 +3667,15 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             proj["coding_intensity"] = config["coding_intensity"]
         except Exception:
             logging.getLogger(__name__).debug("coding_intensity inject skipped", exc_info=True)
+        try:
+            from core.api.core_facade import resolve_writing_profile
+
+            config["writing_profile"] = resolve_writing_profile(
+                proj, default="concise_v1"
+            )
+            proj["writing_profile"] = config["writing_profile"]
+        except Exception:
+            logging.getLogger(__name__).debug("writing_profile inject skipped", exc_info=True)
         if isinstance(proj.get("bloat_baseline"), dict):
             config["bloat_baseline"] = proj.get("bloat_baseline")
 
@@ -3832,6 +3927,105 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                 result["friction_share"] = cta
         except Exception:
             logging.getLogger(__name__).debug("friction_share state sync skipped", exc_info=True)
+
+        # Oversight: deterministic stage Mermaid (tool_result facts only)
+        try:
+            from core.api.core_facade import STATE_STRUCTURE_KEY, build_run_structure_diagram
+
+            st = result.get("state") if isinstance(result.get("state"), dict) else {}
+            diagram = st.get(STATE_STRUCTURE_KEY) if isinstance(st, dict) else None
+            if not isinstance(diagram, dict) or not diagram.get("mermaid"):
+                stages = (self._projects.get(project_id) or {}).get("team_stages") or []
+                diagram = build_run_structure_diagram(st if isinstance(st, dict) else {}, stages=stages)
+                if isinstance(st, dict) and isinstance(diagram, dict):
+                    st[STATE_STRUCTURE_KEY] = diagram
+                    result["state"] = st
+            if isinstance(diagram, dict) and diagram.get("mermaid"):
+                result["structure_diagram"] = diagram
+                proj = self._projects.get(project_id)
+                if isinstance(proj, dict):
+                    proj["structure_diagram"] = {
+                        "schema_version": diagram.get("schema_version"),
+                        "mermaid": diagram.get("mermaid"),
+                        "source_type": diagram.get("source_type"),
+                        "confidence": diagram.get("confidence"),
+                        "node_refs": diagram.get("node_refs") or [],
+                    }
+        except Exception:
+            logging.getLogger(__name__).debug("structure_diagram state sync skipped", exc_info=True)
+
+        # Oversight P1: discardable evidence page (template + JSON; TTL; read-only)
+        try:
+            from core.api.core_facade import (
+                STATE_EVIDENCE_KEY,
+                build_run_evidence_page,
+                is_evidence_expired,
+            )
+
+            st = result.get("state") if isinstance(result.get("state"), dict) else {}
+            page = st.get(STATE_EVIDENCE_KEY) if isinstance(st, dict) else None
+            stages = (self._projects.get(project_id) or {}).get("team_stages") or []
+            if not isinstance(page, dict) or not page.get("html"):
+                page = build_run_evidence_page(
+                    st if isinstance(st, dict) else {}, stages=stages
+                )
+                if isinstance(st, dict) and isinstance(page, dict):
+                    st[STATE_EVIDENCE_KEY] = page
+                    result["state"] = st
+            if isinstance(page, dict) and page.get("html"):
+                # Recompute expired flag at read time
+                page = dict(page)
+                page["expired"] = is_evidence_expired(page)
+                # Strip bulky html from list polls? Keep on state; expose slim card + html
+                result["evidence_page"] = {
+                    "schema_version": page.get("schema_version"),
+                    "template_id": page.get("template_id"),
+                    "source_type": page.get("source_type"),
+                    "confidence": page.get("confidence"),
+                    "created_at": page.get("created_at"),
+                    "expires_at": page.get("expires_at"),
+                    "ttl_hours": page.get("ttl_hours"),
+                    "read_only": page.get("read_only", True),
+                    "can_trigger_coding": False,
+                    "can_trigger_deploy": False,
+                    "expired": page.get("expired", False),
+                    "html": page.get("html"),
+                    "metrics_events": page.get("metrics_events") or [],
+                    "hint": page.get("hint"),
+                }
+                proj = self._projects.get(project_id)
+                if isinstance(proj, dict):
+                    proj["evidence_page"] = {
+                        k: result["evidence_page"][k]
+                        for k in (
+                            "schema_version",
+                            "template_id",
+                            "source_type",
+                            "confidence",
+                            "created_at",
+                            "expires_at",
+                            "expired",
+                            "hint",
+                        )
+                        if k in result["evidence_page"]
+                    }
+        except Exception:
+            logging.getLogger(__name__).debug("evidence_page state sync skipped", exc_info=True)
+
+        # Oversight P1: surface persisted verification metrics (if any)
+        try:
+            from core.api.core_facade import STATE_EVIDENCE_METRICS_KEY
+
+            st = result.get("state") if isinstance(result.get("state"), dict) else {}
+            metrics = st.get(STATE_EVIDENCE_METRICS_KEY) if isinstance(st, dict) else None
+            if not isinstance(metrics, dict):
+                proj = self._projects.get(project_id) or {}
+                if isinstance(proj, dict) and isinstance(proj.get("evidence_metrics"), dict):
+                    metrics = proj["evidence_metrics"]
+            if isinstance(metrics, dict):
+                result["evidence_metrics"] = metrics
+        except Exception:
+            logging.getLogger(__name__).debug("evidence_metrics sync skipped", exc_info=True)
 
         # F-T5: metrics digest slice on completion / failure
         try:

@@ -6,6 +6,7 @@ category: design
 version: 1.0.0
 skill_model_purpose: reasoning
 status: enabled
+invocation_mode: auto
 execution_type: prompt
 triggers:
   - 架构设计

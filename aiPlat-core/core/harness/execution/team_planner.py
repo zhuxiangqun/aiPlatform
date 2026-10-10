@@ -436,6 +436,14 @@ def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
                 except Exception:
                     stage[stage_key] = default
 
+    # DONE Verify overlay — only when AGENT.md / YAML frontmatter declares it
+    if isinstance(fm.get("done_verify"), dict) and not stage.get("done_verify"):
+        stage["done_verify"] = fm["done_verify"]
+
+    # Code meta-tool overlay — AGENT.md meta_tool: {enabled, auto_bind, force}
+    if isinstance(fm.get("meta_tool"), dict) and not stage.get("meta_tool"):
+        stage["meta_tool"] = fm["meta_tool"]
+
     # ── Capability profile: guarantee all core capabilities are wired ──
     _ensure_capability_profile(stage)
 

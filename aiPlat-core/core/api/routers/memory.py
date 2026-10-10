@@ -247,6 +247,74 @@ async def search_memory(request: SearchRequest, http_request: Request, rt: Runti
     return {"results": results, "total": len(results)}
 
 
+@router.get("/memory/team-brain", response_model=Dict[str, Any])
+async def get_team_brain(
+    query: str = "",
+    limit: int = 20,
+    http_request: Request = None,
+):
+    """Team Brain：跨 Agent 共享解法列表 / Auto-Recall 预览（Hivemind 对齐薄聚合）。"""
+    from core.api.core_facade import recall_team_brain, team_brain_status
+
+    q = (query or "").strip()
+    items = recall_team_brain(q, limit=max(1, min(int(limit or 20), 50)))
+    return {
+        "status": "ok",
+        "query": q,
+        "items": items,
+        "total": len(items),
+        "stats": team_brain_status(),
+    }
+
+
+@router.post("/memory/team-brain", response_model=Dict[str, Any])
+async def post_team_brain_solution(request: dict, http_request: Request = None):
+    """登记一条人工团队解法（供其他 Agent Auto-Recall）。"""
+    from core.api.core_facade import publish_team_brain_manual
+
+    body = request if isinstance(request, dict) else {}
+    title = str(body.get("title") or "").strip()
+    summary = str(body.get("summary") or body.get("content") or "").strip()
+    if not title or not summary:
+        raise HTTPException(status_code=400, detail="title and summary are required")
+    actor0 = actor_from_http(http_request, body) if http_request is not None else {}
+    rec = publish_team_brain_manual(
+        title=title,
+        summary=summary,
+        source_agent=str(actor0.get("actor_id") or body.get("source_agent") or "manual"),
+        keywords=body.get("keywords") if isinstance(body.get("keywords"), list) else None,
+    )
+    return {"status": "published", "learning": rec}
+
+
+@router.post("/memory/ide-capture", response_model=Dict[str, Any])
+async def post_ide_capture(request: dict, http_request: Request = None):
+    """IDE/Cursor/CC 旁路捕获：{prompt,tools,result,success,tags} → Team Brain（可选 Wiki）。"""
+    from core.api.core_facade import ingest_ide_capture
+
+    body = request if isinstance(request, dict) else {}
+    prompt = str(body.get("prompt") or body.get("title") or "").strip()
+    result = str(body.get("result") or body.get("summary") or body.get("content") or "").strip()
+    if not prompt and not result:
+        raise HTTPException(status_code=400, detail="prompt or result is required")
+    actor0 = actor_from_http(http_request, body) if http_request is not None else {}
+    tools = body.get("tools") if isinstance(body.get("tools"), list) else None
+    tags = body.get("tags") if isinstance(body.get("tags"), list) else None
+    out = ingest_ide_capture(
+        prompt=prompt,
+        result=result,
+        tools=tools,
+        success=bool(body.get("success", True)),
+        tags=tags,
+        source=str(body.get("source") or actor0.get("actor_id") or "ide"),
+        session_id=str(body.get("session_id") or ""),
+        write_wiki=bool(body.get("write_wiki", False)),
+    )
+    if not out.get("ok"):
+        raise HTTPException(status_code=400, detail=out.get("reason") or "capture_failed")
+    return {"status": "ok", **out}
+
+
 @router.get("/memory/pins", response_model=Dict[str, Any])
 async def list_memory_pins(http_request: Request, session_id: Optional[str] = None, limit: int = 100, offset: int = 0, rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)

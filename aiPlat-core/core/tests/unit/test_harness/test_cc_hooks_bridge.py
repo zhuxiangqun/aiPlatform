@@ -96,6 +96,11 @@ def test_mapping_coverage_codex():
     assert resolve_phase("SessionEnd", "codex") == HookPhase.SESSION_END
 
 
+def test_mapping_session_end_cc():
+    """CC SessionEnd → SESSION_END（Hivemind Session→Wiki worker）。"""
+    assert resolve_phase("SessionEnd", "cc") == HookPhase.SESSION_END
+
+
 def test_cc_event_fullset_defined():
     # 事件全集常量存在（供覆盖度断言）
     assert len(CC_EVENTS) >= 12

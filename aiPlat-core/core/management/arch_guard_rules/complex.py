@@ -196,9 +196,9 @@ class CoreAppsDirectoryCheck(ArchRule):
     section_number = "§9"
     section_name = "core/apps/ Directory Audit"
 
-    _KNOWN_APPS = {"agents", "skills", "tools", "mcp", "evaluation", "plugins",
+    _KNOWN_APPS = {"agents", "skills", "tools", "mcp", "evaluation", "eval", "plugins",
                    "exec_drivers", "ops", "quality", "document_intelligence", "connectors",
-                   "finetune", "fde"}
+                   "finetune", "fde", "org"}
     _CONCERN_PATTERNS = r"sqlite3\.connect|threading\.Thread|ThreadPool|job_queue|enqueue|tenant.*storage|video.*ingest|multimodal_kb|KBSqlite"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:

@@ -5,12 +5,13 @@ description: 将长文本压缩为结构化摘要。触发条件：用户要求�
 category: transformation
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 protected: true
 completion_criterion: |
-  1. 输出符合 ## FILE: 格式规范
-  2. 每个文件包含完整可运行代码
-  3. 所有依赖项已声明，所有外部引用已校验
-execution_mode: prompt
+  1. 达成：将长文本压缩为结构化摘要
+  2. 输出字段完整且可验收
+  3. 未知或不确定项明确标「待确认」
+execution_mode: handler
 execution_type: handler
 triggers:
   - 总结
@@ -66,9 +67,6 @@ sop_flow:
   - "输出：TL;DR + 要点列表 + 待确认问题。"
   - "长文按章节总结并标注标题。"
   - "将长文本压缩为结构化摘要"
-  - "[ ] 输出格式符合规范"
-  - "[ ] 正确处理错误和边界条件"
-  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - 文章
@@ -105,6 +103,6 @@ skip_when: 跳过条件：仅需要列出事实而不需要归纳时不触发。
 将长文本压缩为结构化摘要
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

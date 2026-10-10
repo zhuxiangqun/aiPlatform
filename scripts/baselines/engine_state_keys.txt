@@ -172,3 +172,27 @@ coding_intensity|OK|generic pipeline (config field mirror)
 agent_app|DEBT|legacy artifact key read in pipeline_stage (prefer stage.output_artifact)
 pm_chat_history|DEBT|factory chat history key still read in engine path
 prd|DEBT|legacy artifact key read in pipeline_stage/engine (prefer stage.output_artifact)
+
+# -- Harness closeout: DONE Verify + meta_tool (config-driven, kernel-agnostic) --
+_done_verify|OK|engine-internal (done_verify resolve cache / stage inject)
+done_verify|OK|generic pipeline (PipelineStageConfig / AGENT.md done_verify block)
+expected_outcomes|OK|generic pipeline (acceptance checklist for DONE-before-verify)
+meta_tool|OK|generic pipeline (meta_tool stage config / preference)
+quality_gate|OK|generic pipeline (stage quality_gate config mirror)
+review_gate|OK|generic pipeline (stage review_gate config mirror)
+
+# -- Oversight P0: concise writing + deterministic run Mermaid --
+_structure_diagram|OK|engine-internal (tool_result stage Mermaid payload; no LLM nodes)
+writing_profile|OK|generic pipeline (concise_v1|off; handoff/HITL/error prose)
+_writing_profile|OK|engine-internal (writing_profile alias)
+metadata|OK|generic pipeline (project metadata mirror incl. writing_profile)
+
+# -- Oversight P1 harden: evidence page surfaces done_verify / bloat facts --
+_done_verify_veto_count|OK|engine-internal (done_verify veto counter; loop → evidence)
+_done_verify_exhausted|OK|engine-internal (done_verify fail-open marker)
+_done_verify_last_reason|OK|engine-internal (last done_verify veto reason)
+
+# -- Oversight P1: discardable interactive evidence page --
+_evidence_page|OK|engine-internal (template+JSON oversight HTML; TTL; read-only)
+_evidence_metrics|OK|engine-internal (oversight verification metrics; read-only; no coding/deploy)
+run_id|OK|generic pipeline (run identifier for evidence page)

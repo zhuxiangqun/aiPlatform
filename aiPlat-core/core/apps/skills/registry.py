@@ -200,6 +200,8 @@ class SkillRegistry:
                 skill_model_purpose = ""
                 version = "1.0.0"
                 skill_max_tokens = None
+                invocation_mode = ""
+                auto_trigger_allowed = None
 
                 if raw.startswith("---"):
                     parts = raw.split("---", 2)
@@ -229,6 +231,13 @@ class SkillRegistry:
                             triggers = fm.get("triggers") or []
                             domain_id = str(fm.get("domain_id", ""))
                             skill_model_purpose = str(fm.get("skill_model_purpose") or "").strip()
+                            invocation_mode = str(fm.get("invocation_mode") or "").strip().lower()
+                            if "auto_trigger_allowed" in fm:
+                                auto_trigger_allowed = bool(fm.get("auto_trigger_allowed"))
+                            elif invocation_mode == "user":
+                                auto_trigger_allowed = False
+                            elif invocation_mode == "auto":
+                                auto_trigger_allowed = True
                             # SkillExecutor reads metadata["timeout"] (seconds)
                             if fm.get("timeout") is not None:
                                 try:
@@ -339,6 +348,10 @@ class SkillRegistry:
                             cfg.metadata["timeout"] = skill_timeout
                         if skill_max_tokens is not None and skill_max_tokens > 0:
                             cfg.metadata["max_tokens"] = skill_max_tokens
+                        if invocation_mode:
+                            cfg.metadata["invocation_mode"] = invocation_mode
+                        if auto_trigger_allowed is not None:
+                            cfg.metadata["auto_trigger_allowed"] = auto_trigger_allowed
                         cfg.metadata["filesystem"] = {"skill_md": skill_md, "skill_dir": skill_dir}
                     self.register(skill)
                 else:
@@ -365,6 +378,8 @@ class SkillRegistry:
                               "skip_conditions": skip_conditions,
                               "triggers": triggers,
                               "layer_dirs": layer_dirs,
+                              **({"invocation_mode": invocation_mode} if invocation_mode else {}),
+                              **({"auto_trigger_allowed": auto_trigger_allowed} if auto_trigger_allowed is not None else {}),
                               **({"skill_model_purpose": skill_model_purpose} if skill_model_purpose else {}),
                               **({"timeout": skill_timeout} if skill_timeout is not None else {}),
                               **({"max_tokens": skill_max_tokens} if skill_max_tokens is not None and skill_max_tokens > 0 else {}),

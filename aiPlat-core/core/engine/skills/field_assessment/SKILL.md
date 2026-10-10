@@ -2,6 +2,7 @@
 name: field_assessment
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 category: fde
 execution_type: handler
 timeout: 600

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, RotateCw, Search, Download, Upload, Eye } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Table, Button, Modal, Input, toast } from '../../../components/ui';
@@ -9,6 +10,7 @@ import type { MemorySession } from '../../../services';
 import { memoryApi } from '../../../services';
 
 const Memory: React.FC = () => {
+  const navigate = useNavigate();
   const { sessions, loading, selectedSession, fetchSessions, getDetail, deleteSession, clearSelectedSession, clearSearchResults } = useMemoryStore();
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -28,6 +30,22 @@ const Memory: React.FC = () => {
   const [inspectData, setInspectData] = useState<any>(null);
   const [inspectNamespace, setInspectNamespace] = useState('');
   const [inspectLoading, setInspectLoading] = useState(false);
+  const [teamBrainOpen, setTeamBrainOpen] = useState(false);
+  const [teamBrainQuery, setTeamBrainQuery] = useState('');
+  const [teamBrainItems, setTeamBrainItems] = useState<Array<Record<string, unknown>>>([]);
+  const [teamBrainStats, setTeamBrainStats] = useState<Record<string, unknown> | null>(null);
+  const [teamBrainLoading, setTeamBrainLoading] = useState(false);
+  const [teamBrainTitle, setTeamBrainTitle] = useState('');
+  const [teamBrainSummary, setTeamBrainSummary] = useState('');
+  const [idePrompt, setIdePrompt] = useState('');
+  const [ideResult, setIdeResult] = useState('');
+  const [ideCapturing, setIdeCapturing] = useState(false);
+  const [ideHandoff, setIdeHandoff] = useState<{
+    route?: string;
+    label?: string;
+    matched?: string;
+    hint?: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchSessions();
@@ -106,6 +124,69 @@ const Memory: React.FC = () => {
     finally { setInspectLoading(false); }
   };
 
+  const loadTeamBrain = async (q?: string) => {
+    setTeamBrainLoading(true);
+    try {
+      const data = await memoryApi.getTeamBrain(q ?? teamBrainQuery, 30);
+      setTeamBrainItems(data.items || []);
+      setTeamBrainStats(data.stats || null);
+      setTeamBrainOpen(true);
+    } catch (e) {
+      toastGateError(e, 'Team Brain 加载失败');
+    } finally {
+      setTeamBrainLoading(false);
+    }
+  };
+
+  const publishTeamBrain = async () => {
+    if (!teamBrainTitle.trim() || !teamBrainSummary.trim()) {
+      toast.error('标题和摘要必填');
+      return;
+    }
+    try {
+      await memoryApi.publishTeamBrain({
+        title: teamBrainTitle.trim(),
+        summary: teamBrainSummary.trim(),
+      });
+      toast.success('已发布到 Team Brain');
+      setTeamBrainTitle('');
+      setTeamBrainSummary('');
+      await loadTeamBrain(teamBrainQuery);
+    } catch (e) {
+      toastGateError(e, '发布失败');
+    }
+  };
+
+  const submitIdeCapture = async () => {
+    if (!idePrompt.trim() && !ideResult.trim()) {
+      toast.error('请填写 IDE 提示或结果摘要');
+      return;
+    }
+    setIdeCapturing(true);
+    setIdeHandoff(null);
+    try {
+      const out = await memoryApi.ideCapture({
+        prompt: idePrompt.trim(),
+        result: ideResult.trim(),
+        source: 'memory_ui',
+        tags: ['memory-ui'],
+        success: true,
+      });
+      const gh = out?.governed_handoff;
+      if (gh?.route) {
+        setIdeHandoff(gh);
+        toast.success('已入库；检测到编码意图 — 请确认后进工厂');
+      } else {
+        toast.success('已捕获到 Team Brain（无编码交接）');
+      }
+      await loadTeamBrain(teamBrainQuery);
+    } catch (e) {
+      toastGateError(e, 'IDE 捕获失败');
+    } finally {
+      setIdeCapturing(false);
+    }
+  };
+
   const columns = [
     {
       title: '会话ID',
@@ -171,6 +252,9 @@ const Memory: React.FC = () => {
           </Button>
           <Button onClick={() => setSemanticOpen(true)}>
             语义记忆
+          </Button>
+          <Button onClick={() => loadTeamBrain('')} loading={teamBrainLoading}>
+            Team Brain
           </Button>
           <Button
             icon={<RotateCw className="w-4 h-4" />}
@@ -333,6 +417,109 @@ const Memory: React.FC = () => {
               </div>
             </div>
           ) : <p className="text-gray-500 text-sm">点击检查加载记忆数据</p>}
+        </div>
+      </Modal>
+
+      {/* Team Brain — shared solutions Auto-Recall */}
+      <Modal
+        open={teamBrainOpen}
+        onClose={() => setTeamBrainOpen(false)}
+        title="Team Brain（共享解法）"
+        width="720px"
+        footer={<Button onClick={() => setTeamBrainOpen(false)}>关闭</Button>}
+      >
+        <div className="space-y-4 max-h-[28rem] overflow-y-auto">
+          <p className="text-xs text-gray-500">
+            聚合 hot TaskSkill / 团队解法 / 已升级经验，供其他 Agent Auto-Recall（Hivemind 对齐）。
+            IDE 旁路：下方试投、`scripts/ide_capture.py` 或 POST /core/memory/ide-capture。
+            编码类意图只出工厂交接卡片，不会在此直接开跑。
+            {teamBrainStats ? ` 共 ${String(teamBrainStats.total ?? 0)} 条` : ''}
+          </p>
+          <div className="border border-dark-border rounded p-3 space-y-2 bg-dark-bg/40">
+            <p className="text-xs text-gray-400">模拟 IDE 捕获（试写「帮我写代码…」可见受治理交接）</p>
+            <Input
+              placeholder="prompt / 用户意图"
+              value={idePrompt}
+              onChange={(v: any) => setIdePrompt(v?.target?.value || '')}
+            />
+            <Input
+              placeholder="result / 摘要（可选）"
+              value={ideResult}
+              onChange={(v: any) => setIdeResult(v?.target?.value || '')}
+            />
+            <Button variant="secondary" loading={ideCapturing} onClick={submitIdeCapture}>
+              投递捕获
+            </Button>
+            {ideHandoff?.route && (
+              <div
+                className="mt-2 rounded-md border border-amber-700/50 bg-amber-950/40 p-3"
+                style={{ borderLeft: '3px solid #d97706' }}
+              >
+                <div className="text-sm text-amber-100 font-medium">
+                  {ideHandoff.label || '受治理编码交接'}
+                </div>
+                {ideHandoff.hint && (
+                  <p className="text-xs text-amber-200/70 mt-1">{ideHandoff.hint}</p>
+                )}
+                {ideHandoff.matched && (
+                  <p className="text-[11px] text-amber-200/50 mt-1">matched: {ideHandoff.matched}</p>
+                )}
+                <Button
+                  variant="primary"
+                  className="mt-2"
+                  onClick={() => {
+                    setTeamBrainOpen(false);
+                    navigate(ideHandoff.route!.startsWith('/') ? ideHandoff.route! : `/${ideHandoff.route}`);
+                  }}
+                >
+                  去应用工厂确认并构建
+                </Button>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="按关键词召回，如 docker oom"
+              value={teamBrainQuery}
+              onChange={(v: any) => setTeamBrainQuery(v?.target?.value || '')}
+            />
+            <Button loading={teamBrainLoading} onClick={() => loadTeamBrain(teamBrainQuery)}>
+              召回
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {teamBrainItems.length === 0 ? (
+              <p className="text-sm text-gray-500">暂无命中。可发布一条人工解法，或等待 Pipeline 晶体化 / 经验升级。</p>
+            ) : (
+              teamBrainItems.map((it, i) => (
+                <div key={i} className="bg-dark-hover rounded p-3 text-sm">
+                  <div className="text-gray-200 font-medium">
+                    [{String(it.kind || '')}] {String(it.title || it.id || '')}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1 whitespace-pre-wrap">{String(it.summary || '')}</p>
+                  <p className="text-[11px] text-gray-600 mt-1">
+                    source={String(it.source || '')} conf={String(it.confidence ?? '')}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+          <div className="border-t border-dark-border pt-3 space-y-2">
+            <p className="text-xs text-gray-400">发布人工解法（周一修好 → 周二全员可召回）</p>
+            <Input
+              placeholder="标题"
+              value={teamBrainTitle}
+              onChange={(v: any) => setTeamBrainTitle(v?.target?.value || '')}
+            />
+            <Input
+              placeholder="摘要 / 解法步骤"
+              value={teamBrainSummary}
+              onChange={(v: any) => setTeamBrainSummary(v?.target?.value || '')}
+            />
+            <Button variant="primary" onClick={publishTeamBrain}>
+              发布到 Team Brain
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>

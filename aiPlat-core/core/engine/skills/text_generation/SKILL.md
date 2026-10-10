@@ -6,11 +6,12 @@ description: 根据提示生成各类文本内容。触发条件：用户要求�
 category: generation
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 protected: true
 completion_criterion: |
-  1. 输出符合 ## FILE: 格式规范
-  2. 每个文件包含完整可运行代码
-  3. 所有依赖项已声明，所有外部引用已校验
+  1. 达成：根据要求生成可验收文本
+  2. 输出字段完整且可验收
+  3. 未知或不确定项明确标「待确认」
 execution_mode: prompt
 execution_type: prompt
 triggers:
@@ -60,16 +61,13 @@ metadata:
   negative_triggers:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
-  sop_goal: 根据要求生成高质量文本
+  sop_goal: 根据要求生成可验收文本
 sop_flow:
   - "文本生成（Engine）"
   - "明确体裁/语气/长度/受众/语言，不足则询问。"
   - "生成：结构清晰，优先要点后正文。"
   - "自检：一致性、格式、是否满足约束。"
-  - "根据要求生成高质量文本"
-  - "[ ] 输出格式符合规范"
-  - "[ ] 正确处理错误和边界条件"
-  - "[ ] 返回结果包含引用和来源标注"
+  - "根据要求生成可验收文本"
 keywords:
   objects:
   - 文章
@@ -105,9 +103,9 @@ skip_when: 跳过条件：涉及代码生成(code_generation)、翻译(translati
 3. 自检：一致性、格式、是否满足约束。
 
 ## 目标
-根据要求生成高质量文本
+根据要求生成可验收文本
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

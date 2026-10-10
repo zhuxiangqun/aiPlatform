@@ -555,16 +555,26 @@ def _score_model(
     if require.get("context_window", 0) and context_window >= require["context_window"]:
         score += 20
 
+    # 6d. Declared local-runtime weaknesses (YAML weakness_areas) — apply even when
+    #     the model file is absent (CI / offline). long_prompt_local marks models
+    #     that stall Ollama under long agent/skill prompts.
+    _src = getattr(model.source, "value", "") if hasattr(model.source, "value") else ""
+    _weaknesses = set(model_caps_data.get("weakness_areas") or [])
+    if _src == "local" and "long_prompt_local" in _weaknesses:
+        score -= int(40 * abs(weights.get("latency", -1.0)))
+
     # 7. Latency: API network overhead + local model size (generation wall time).
     #    weights["latency"] is negative (latency is a negative factor); the
     #    penalty value is also negative — multiply by abs(weight) so the
     #    combination stays a penalty (P0-1 sign fix: -20 × -2.5 must be -50).
     #    Previously only API got a latency penalty; large local models (e.g.
     #    gemma4:12b) then won skill_execution on reasoning when free RAM looked OK.
+    #    Also score declared size when state is unavailable (no Ollama on CI) —
+    #    otherwise heavy locals tie mid-tier coders and flaky CI picks gemma.
     latency_penalty = 0
     if _ds == "api":
         latency_penalty = -20
-    elif _ds in ("local_hot", "local_cold"):
+    elif _ds in ("local_hot", "local_cold") or (_src == "local" and _ds == "unavailable"):
         # Quantized "12b" often lands ~7–8GB on disk but still wedges Ollama under
         # long agent/skill prompts — treat ≥7GB as heavy, not mid-tier.
         size_gb = ((model.size or 0) or 0) / (1024 ** 3)

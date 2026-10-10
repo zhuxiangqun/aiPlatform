@@ -6,8 +6,8 @@ from core.harness.utils.prompt_loader import _register as register_prompt
 def register_skills_prompts():
     """Register skills domain prompts."""
     prompts = {
-        "skill-auto-fill-system-role": """你是 AI Skill 设计专家。只输出 SKILL.md 格式，不要任何额外解释。""",
-        "skill-auto-fill": """你是一个 AI Skill 设计专家。请根据以下需求，设计一个完整的 Skill。
+        "skill-auto-fill-system-role": """你是 AI Skill 设计专家。只输出短而可验收的 SKILL.md，不要任何额外解释。""",
+        "skill-auto-fill": """你是一个 AI Skill 设计专家。请根据以下需求，设计一个完整但精炼的 Skill。
 
 ## Skill 名称
 ${skill_name}
@@ -18,6 +18,14 @@ ${description}
 ## 已有技能（避免重复，功能重叠时复用而非新建）
 ${skills_catalog}
 
+## 写作原则（强制——短/准/可验收）
+1. 只为「反复需要纠正」的步骤写规则；模型本来就会做的事不要写进 SOP
+2. 优先使用模型已认识的引导词/框架名（如 BLUF、premortem、refactor、steelman），禁止从零重讲概念
+3. SOP 只保留会改变输出的步骤；禁止「高质量/最佳实践/要彻底/充分/认真」等空话（no-op）
+4. Checklist 必须可验证（对照字段/格式/命令），禁止「输出格式符合规范」这类套话
+5. 默认 invocation_mode: user（仅用户/显式调用，不进自动路由）；仅当明确需要 Agent 自动发现时才用 auto
+6. 能用已有技能组合完成时，禁止新建重叠技能
+
 ## 输出格式
 直接输出完整 SKILL.md 原文（不要用外层 ```yaml 包裹整个文件）。结构必须是：
 
@@ -25,10 +33,12 @@ ${skills_catalog}
 name: english_snake_case_id
 display_name: 中文显示名
 description: >
-  完整功能描述（保留用户关键约束；含冒号的长描述用 > 折行）
+  完整功能描述（保留用户关键约束；含冒号的长描述用 > 折行；<=280字）
 category: generation
 version: 1.0.0
 status: enabled
+invocation_mode: user
+auto_trigger_allowed: false
 skill_kind: rule
 permissions:
   - llm:generate
@@ -53,6 +63,10 @@ output_schema:
     type: string
     required: true
     description: 面向人阅读的 Markdown，与结构化字段一致
+completion_criterion: |
+  1. 达成：一句话目标
+  2. 输出字段完整且可验收
+  3. 未知项标「待确认」
 ---
 
 # 概述
@@ -65,12 +79,14 @@ output_schema:
 - ❌ 不适用场景
 
 ## 工作流程（SOP）
-1. 第一步
+1. 第一步（会改变输出）
 2. 第二步
 3. 第三步
 
 ## 验收清单（Checklist）
 - [ ] 输出含 markdown 且与结构化字段一致
+- [ ] 关键验收可验证
+- [ ] 未知项标「待确认」
 
 ## 硬性要求
 1. name 必须是小写英文 snake_case（如 ppt_generation），不要用中文
@@ -78,9 +94,9 @@ output_schema:
 3. skill_kind：纯推理/文案用 rule；需要写文件、跑命令、调工具落盘用 executable
 4. 若描述涉及写出文件路径（.pptx/.docx/.xlsx/写文件等）：skill_kind=executable，permissions 至少含 llm:generate 与 tool:workspace_fs_write；不要加 tool:websearch/webfetch，除非用户明确要求联网；config 建议含 require_confirmation: true
 5. permissions 默认至少 llm:generate；遵循最小权限
-6. trigger_conditions 至少 3 条中文常用说法（短词/短句），贴合任务
+6. trigger_conditions：invocation_mode=auto 时至少 3 条中文常用说法；user 模式可少写，供文档检索即可
 7. input_schema / output_schema 必须从「功能描述」抽取具体字段名（扁平：字段 → {type,required,description}）。禁止在描述已给出结构化输入/输出时，退化为 prompt/style/format/text 空泛占位。output_schema 必须含 markdown，并与描述中的产出物一致（如路径、页数、摘要等）
-8. SOP 步骤必须覆盖描述中的输入校验、核心动作、输出回报与约束（如不联网/不编造）；禁止与描述无关的套话；禁止输出「（待补充）」
+8. SOP 步骤必须覆盖描述中的输入校验、核心动作、输出回报与约束（如不联网/不编造）；禁止与描述无关的套话；禁止输出「（待补充）」；正文尽量短（建议 SOP≤12 步）
 9. 参考已有技能，避免重复造功能重叠技能
 10. 只输出 SKILL.md 正文（以 --- 开头），不要额外解释""",
         "skill-create-dialog-system-role": """你是 Skill 创建顾问。通过简短对话收集需求，信息足够后输出可生成草稿的结构化 JSON。只输出 JSON，不要 Markdown 代码围栏。""",

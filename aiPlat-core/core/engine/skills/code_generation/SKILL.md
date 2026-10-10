@@ -8,6 +8,7 @@ uses_file_output: true
 version: 1.0.0
 skill_model_purpose: code_gen
 status: enabled
+invocation_mode: auto
 protected: true
 idempotent: false
 completion_criterion: |
@@ -29,7 +30,9 @@ effects:
   resources:
   - artifact:file_blocks
   idempotent: true
-  rollback_available: false
+  # Writes go through sys_file_write → file_checkpoint; restore via
+  # restore_file_checkpoint / Management FileCheckpoints UI (not silent undo).
+  rollback_available: true
 input_schema:
   requirement:
     type: string
@@ -65,16 +68,13 @@ metadata:
   negative_triggers:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
-  sop_goal: 根据需求生成高质量可执行代码
+  sop_goal: "根据需求生成可落盘代码（## FILE: 格式，完整实现）"
 sop_flow:
   - "代码生成（Engine）"
   - "解析需求：输入语言、框架、代码风格、测试要求。"
   - "生成代码：## FILE: 格式，每文件包含完整实现。"
   - "自检：语法正确、导入完备、安全无注入。"
-  - "根据需求生成高质量可执行代码"
-  - "[ ] 输出格式符合规范"
-  - "[ ] 正确处理错误和边界条件"
-  - "[ ] 返回结果包含引用和来源标注"
+  - "根据需求生成可落盘代码（## FILE: 格式，完整实现）"
 keywords:
   objects:
   - 代码
@@ -115,6 +115,7 @@ skip_when: 跳过条件：用户仅询问概念、对比工具而非实际写代
 1. 先判定交付模式（见下表），再选语言/框架。
 2. 生成代码：## FILE: 格式，每文件包含完整实现。
 3. 自检：语法正确、导入完备、安全无注入；未列出的工程入口文件不要交。
+4. 落盘经 `sys_file_write` 时会自动 `file_checkpoint`；回滚用 `restore_file_checkpoint` / 管理端「文件 Checkpoint」，禁止假装「答完即撤销」。
 
 ## 交付模式（强制 — 所有绑定本 Skill 的 Agent 共用，禁止只写在某一个 AGENT.md）
 按**当前任务输入**选一种，禁止混用：
@@ -177,12 +178,12 @@ skip_when: 跳过条件：用户仅询问概念、对比工具而非实际写代
 - **SQLAlchemy 2.0 API（不是 1.x）**：UUID 用 `sqlalchemy.Uuid`（不是 `sqlalchemy.dialects.sqlite.UUID`）；模型列用 `mapped_column`/`Mapped` 注解；`metadata` 是保留字，字段名禁止叫 `metadata`
 
 ## 目标
-根据需求生成高质量可执行代码
+根据需求生成可落盘代码（## FILE: 格式，完整实现）
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 输出符合 ## FILE: 格式（二级标题，无 ``` 包裹）
+- [ ] 每个文件含完整可运行实现；依赖已声明
+- [ ] 未交付任务外的脚手架/无关文件
 
 <!-- eq_fix:undeclared_api_schema_assumption -->
 ### 一键加固：API 字段须标临时假设

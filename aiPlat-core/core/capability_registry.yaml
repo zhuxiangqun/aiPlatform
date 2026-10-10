@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-10-08"
 total_capability_domains: 34
-total_capabilities: 1041
+total_capabilities: 1064
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -165,13 +165,61 @@ domains:
         type: "class"
         signature: "Reason→Act→Observe, integrate Hooks/compression/memory"
         module: "core/harness/interfaces/loop.py"
+      - symbol: "run_done_verify"
+        type: "function"
+        signature: "run_done_verify(context)→Optional[str] DONE-before Verify ring"
+        module: "core/harness/execution/done_verify.py"
+      - symbol: "build_done_verify_config"
+        type: "function"
+        signature: "build_done_verify_config(quality_gate, expected_outcomes, done_verify, review_gate)→Dict"
+        module: "core/harness/execution/done_verify.py"
+      - symbol: "build_run_rollback_guidance"
+        type: "function"
+        signature: "build_run_rollback_guidance(run_id, run_status, session_id, ...)→Dict explainable undo alternatives"
+        module: "core/harness/execution/run_rollback_guidance.py"
+      - symbol: "build_meta_tool_hint"
+        type: "function"
+        signature: "build_meta_tool_hint(task, available, context=None)→Optional[str]"
+        module: "core/harness/execution/meta_tool.py"
+      - symbol: "ensure_code_meta_tool"
+        type: "function"
+        signature: "ensure_code_meta_tool(tools, task='', context=None)→List (opt-in auto-bind)"
+        module: "core/harness/execution/meta_tool.py"
+      - symbol: "detect_meta_tool_intent"
+        type: "function"
+        signature: "detect_meta_tool_intent(task)→Optional[str]"
+        module: "core/harness/execution/meta_tool.py"
+      - symbol: "apply_meta_tool_config"
+        type: "function"
+        signature: "apply_meta_tool_config(context, meta_tool)→Dict (stage/AGENT.md inject)"
+        module: "core/harness/execution/meta_tool.py"
+      - symbol: "condense_return"
+        type: "function"
+        signature: "condense_return(output, max_chars=None, filter_protocol=True)→str"
+        module: "core/harness/execution/subagent_discipline.py"
+      - symbol: "resolve_isolate_context"
+        type: "function"
+        signature: "resolve_isolate_context(requested=True)→(bool, meta) production coerce"
+        module: "core/harness/execution/subagent_discipline.py"
+      - symbol: "discipline_status"
+        type: "function"
+        signature: "discipline_status()→Dict (force_isolate / max_return_chars)"
+        module: "core/harness/execution/subagent_discipline.py"
+      - symbol: "get_subagent_discipline_status"
+        type: "function"
+        signature: "CoreFacade facade：子代理浓缩回传纪律诊断"
+        module: "core/api/core_facade.py"
       - symbol: "PipelineStageConfig"
         type: "pydantic_model"
         signature: "routing_mode, architecture_profile, upgrade_policy, moa_preset, debate_participants, etc."
         module: "core/schemas_builder.py"
       - symbol: "apply_architecture_profile"
         type: "function"
-        signature: "apply_architecture_profile(stage) → fill execution_backend/agent_type from oneshot|react_tools|plan_execute|reflect_loop"
+        signature: "apply_architecture_profile(stage) → fill execution_backend/agent_type from oneshot|react_tools|plan_execute|reflect_loop; then coding defaults"
+      - symbol: "apply_coding_stage_defaults"
+        type: "function"
+        signature: "apply_coding_stage_defaults(stage)→sandbox+done_verify+autoreview when uses_file_output"
+        module: "core/schemas_builder.py"
         module: "core/schemas_builder.py"
       - symbol: "resolve_upgrade_agent_type"
         type: "function"
@@ -553,6 +601,66 @@ domains:
         type: function
         signature: 'Parse SKILL.md frontmatter into the dict shape the side-effect gate accepts.'
         module: aiPlat-core/core/harness/execution/skill_side_effect_gate.py
+      - symbol: done_verify_enabled
+        type: function
+        signature: 'Master switch. Env AIPLAT_DONE_VERIFY overrides; default on.'
+        module: aiPlat-core/core/harness/execution/done_verify.py
+      - symbol: resolve_done_verify_config
+        type: function
+        signature: 'Read _done_verify from loop context, filling defaults from quality_gate.'
+        module: aiPlat-core/core/harness/execution/done_verify.py
+      - symbol: meta_tool_enabled
+        type: function
+        signature: 'Master switch. Context _prefer_code_meta_tool overrides env.'
+        module: aiPlat-core/core/harness/execution/meta_tool.py
+      - symbol: meta_tool_auto_bind_enabled
+        type: function
+        signature: 'Bind CodeExecutionTool when missing.'
+        module: aiPlat-core/core/harness/execution/meta_tool.py
+      - symbol: resolve_meta_tool_name
+        type: function
+        signature: 'Pick the bound meta-tool name present in available.'
+        module: aiPlat-core/core/harness/execution/meta_tool.py
+      - symbol: tool_names_from_tools
+        type: function
+        signature: 'tool_names_from_tools(tools)'
+        module: aiPlat-core/core/harness/execution/meta_tool.py
+      - symbol: meta_tool_pin_names
+        type: function
+        signature: 'Names to pin in tool ordering (always_include) when intent matches.'
+        module: aiPlat-core/core/harness/execution/meta_tool.py
+      - symbol: is_production_profile
+        type: function
+        signature: 'is_production_profile()'
+        module: aiPlat-core/core/harness/execution/subagent_discipline.py
+      - symbol: max_return_chars
+        type: function
+        signature: 'max_return_chars()'
+        module: aiPlat-core/core/harness/execution/subagent_discipline.py
+      - symbol: force_isolate_mode
+        type: function
+        signature: 'auto | on | off — auto = production on.'
+        module: aiPlat-core/core/harness/execution/subagent_discipline.py
+      - symbol: filter_protocol_violations
+        type: function
+        signature: 'Deterministic strip of tool/thought/code blocks (CLAUDE §5.26).'
+        module: aiPlat-core/core/harness/execution/subagent_discipline.py
+      - symbol: safe_truncate
+        type: function
+        signature: 'safe_truncate(text, max_chars)'
+        module: aiPlat-core/core/harness/execution/subagent_discipline.py
+      - symbol: summarize_run_events
+        type: function
+        signature: 'Fold pipeline_run_events → HITL wait episodes + Amdahl-ish ratio.'
+        module: aiPlat-core/core/harness/meta/org_harness_metrics.py
+      - symbol: summarize_hitl_audit
+        type: function
+        signature: 'Fold state[''_hitl_audit''] rows into wait episodes.'
+        module: aiPlat-core/core/harness/meta/org_harness_metrics.py
+      - symbol: summarize_approvals
+        type: function
+        signature: 'Approval request latency + counts (PolicyGate dark ledger).'
+        module: aiPlat-core/core/harness/meta/org_harness_metrics.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"
@@ -570,12 +678,56 @@ domains:
   memory-subsystem:
     section: "二"
     section_name: "记忆子系统"
-    caps_count: 7
+    caps_count: 13
     provides:
       - symbol: "MemoryManager"
         type: "class"
         signature: "build_context, save_interaction, save_task_skill"
         module: "core/harness/memory/manager.py"
+      - symbol: "recall_team_solutions"
+        type: "function"
+        signature: "recall_team_solutions(query, limit=8)→List[TeamSolution]"
+        module: "core/harness/memory/team_brain.py"
+      - symbol: "publish_task_skill_solution"
+        type: "function"
+        signature: "publish_task_skill_solution(skill, source_agent='')→Optional[Dict]"
+        module: "core/harness/memory/team_brain.py"
+      - symbol: "publish_manual_solution"
+        type: "function"
+        signature: "publish_manual_solution(title, summary, ...)→Dict"
+        module: "core/harness/memory/team_brain.py"
+      - symbol: "team_brain_status"
+        type: "function"
+        signature: "team_brain_status()→Dict"
+        module: "core/harness/memory/team_brain.py"
+      - symbol: "recall_team_brain"
+        type: "function"
+        signature: "recall_team_brain(query='', limit=8)→list"
+        module: "core/api/core_facade.py"
+      - symbol: "publish_team_brain_manual"
+        type: "function"
+        signature: "publish_team_brain_manual(title, summary, ...)→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "ingest_ide_capture"
+        type: "function"
+        signature: "ingest_ide_capture(prompt, result='', tools=None, success=True, ...)→Dict"
+        module: "core/harness/memory/ide_capture.py"
+      - symbol: "ingest_ide_capture"
+        type: "function"
+        signature: "CoreFacade facade：POST /memory/ide-capture + /platform/memory/capture"
+        module: "core/api/core_facade.py"
+      - symbol: "write_session_wiki_page"
+        type: "function"
+        signature: "write_session_wiki_page(title, summary, session_id='', ...)→Dict"
+        module: "core/harness/memory/session_wiki.py"
+      - symbol: "session_wiki_worker_hook"
+        type: "function"
+        signature: "session_wiki_worker_hook(context)→Dict (SESSION_END, AIPLAT_SESSION_WIKI)"
+        module: "core/harness/memory/session_wiki.py"
+      - symbol: "write_session_wiki"
+        type: "function"
+        signature: "write_session_wiki(title, summary, ...)→Dict"
+        module: "core/api/core_facade.py"
       - symbol: "import_claude_sessions"
         type: "function"
         signature: "Claude Code 会话 JSONL → MemoryManager（P0-b：解析/查找/导入，source_tag=claude_import + provenance 溯源）"
@@ -600,6 +752,30 @@ domains:
         type: "dataclass"
         signature: "source_tag, trust_weight, provenance, content"
         module: "core/harness/memory/base.py"
+      - symbol: session_wiki_enabled
+        type: function
+        signature: 'Opt-in via AIPLAT_SESSION_WIKI (default off — avoid noisy pages).'
+        module: aiPlat-core/core/harness/memory/session_wiki.py
+      - symbol: TeamSolution
+        type: dataclass
+        signature: 'to_dict'
+        module: aiPlat-core/core/harness/memory/team_brain.py
+      - symbol: list_team_solutions
+        type: function
+        signature: 'Union of team-visible solutions (no query ranking).'
+        module: aiPlat-core/core/harness/memory/team_brain.py
+      - symbol: format_recall_message
+        type: function
+        signature: 'Build a system message for MemoryManager.build_context injection.'
+        module: aiPlat-core/core/harness/memory/team_brain.py
+      - symbol: classify_ide_coding_handoff
+        type: function
+        signature: 'Return handoff if text/tools look like a coding delivery ask.'
+        module: aiPlat-core/core/harness/memory/ide_governed_handoff.py
+      - symbol: ide_coding_handoff_payload
+        type: function
+        signature: 'Structured payload for ingest/API/CLI (kind + route + label).'
+        module: aiPlat-core/core/harness/memory/ide_governed_handoff.py
     breaks: []
     consumers_expected:
       - module: "core/harness/interfaces/loop.py"
@@ -1567,7 +1743,7 @@ domains:
   rag-retrieval:
     section: "四"
     section_name: "RAG 检索"
-    caps_count: 6
+    caps_count: 8
     provides:
       - symbol: "WikiPageRetriever"
         type: "class"
@@ -1576,6 +1752,14 @@ domains:
       - symbol: "MaterialsChatAgent"
         type: "class"
         signature: "CRAG 3-level: ontology→FTS5→HyDE"
+        module: "core/apps/agents/materials_chat.py"
+      - symbol: "_is_delivery_mode"
+        type: "function"
+        signature: "_is_delivery_mode(vars)→bool (delivery|task|governed vs Q&A)"
+        module: "core/apps/agents/materials_chat.py"
+      - symbol: "_delivery_gate_block"
+        type: "function"
+        signature: "_delivery_gate_block(...)→Optional[AgentResult] high-risk not success"
         module: "core/apps/agents/materials_chat.py"
       - symbol: "CRAG"
         type: "pattern"
@@ -1713,6 +1897,14 @@ domains:
         type: function
         signature: 'Drop CAPABILITIES/brief caches; optionally reset AGENT.md mtime tracker.'
         module: aiPlat-core/core/harness/digital_human/consultant_knowledge.py
+      - symbol: classify_operational_handoff
+        type: function
+        signature: 'classify_operational_handoff(question)→Optional[Dict]'
+        module: aiPlat-core/core/harness/digital_human/operational_handoff.py
+      - symbol: append_handoff_action
+        type: function
+        signature: 'append_handoff_action(answer, question)→str [ACTION:handoff]'
+        module: aiPlat-core/core/harness/digital_human/operational_handoff.py
       - symbol: sanitize_tenant_id
         type: function
         signature: 'sanitize_tenant_id(tenant_id)'
@@ -2246,6 +2438,10 @@ domains:
         signature: 'Register agents domain prompts (incl. agent-sop-design).'
         module: aiPlat-core/core/apps/agents/prompts.py
         notes: 'workspace_agents autofill resolves agent-sop-design via prompt_loader; no inline f-string prompt'
+      - symbol: handoff_card_payload
+        type: function
+        signature: 'Structured payload for APIs/UI (route + label).'
+        module: aiPlat-core/core/harness/digital_human/operational_handoff.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
@@ -2316,6 +2512,34 @@ domains:
         type: "class"
         signature: "check(skill)→List[LintIssue]"
         module: "core/management/lint_rules/side_effects.py"
+      - symbol: "SkillNoOpPhrasesCheck"
+        type: "class"
+        signature: "check(skill)→List[LintIssue]"
+        module: "core/management/lint_rules/skill_quality.py"
+      - symbol: "MisplacedFileCompletionCheck"
+        type: "class"
+        signature: "check(skill)→List[LintIssue]"
+        module: "core/management/lint_rules/skill_quality.py"
+      - symbol: "InvocationModeCheck"
+        type: "class"
+        signature: "check(skill)→List[LintIssue]"
+        module: "core/management/lint_rules/skill_quality.py"
+      - symbol: "UserModeTriggerSoftPass"
+        type: "class"
+        signature: "check(skill)→List[LintIssue]"
+        module: "core/management/lint_rules/skill_quality.py"
+      - symbol: "scan"
+        type: "function"
+        signature: "scan(skills_root)→List[Dict]"
+        module: "scripts/lint_engine_skills.py"
+      - symbol: "main"
+        type: "function"
+        signature: "main()→int"
+        module: "scripts/lint_engine_skills.py"
+      - symbol: "_resolve_auto_trigger_allowed"
+        type: "function"
+        signature: "_resolve_auto_trigger_allowed(data)→Optional[bool]"
+        module: "core/apps/skills/discovery.py"
       - symbol: execute
         type: function
         signature: "execute(params)→dict"
@@ -3018,7 +3242,15 @@ domains:
         module: "aiplat-sdk/aiplat/exec.py"
       - symbol: "build_os_sandbox_cmd"
         type: "function"
-        signature: "OS 原生沙箱命令包装：bwrap/seatbelt 可选执行器，fail-open fallback（P1, 对标 Codex sandboxing）"
+        signature: "OS 沙箱包装：生产 fail-closed / 开发 fail-open；SandboxRequiredError"
+        module: "core/harness/infrastructure/os_sandbox.py"
+      - symbol: "sandbox_fail_closed"
+        type: "function"
+        signature: "sandbox_fail_closed()→bool (AIPLAT_PROFILE=production 默认 True)"
+        module: "core/harness/infrastructure/os_sandbox.py"
+      - symbol: "SandboxRequiredError"
+        type: "class"
+        signature: "RuntimeError：生产要求 OS sandbox 但未激活"
         module: "core/harness/infrastructure/os_sandbox.py"
     breaks: []
     consumers_expected:
@@ -3432,8 +3664,80 @@ domains:
         module: "aiPlat-core/core/harness/utils/team_culture.py"
       - symbol: "compose_prose_overlays"
         type: "function"
-        signature: "T2: Concatenate hard→Culture→output_style overlays"
+        signature: "T2: Concatenate hard→Culture→output_style→writing overlays"
         module: "aiPlat-core/core/harness/utils/team_culture.py"
+      - symbol: "resolve_writing_profile"
+        type: "function"
+        signature: "Oversight P0: Resolve concise_v1|off from project/state/env"
+        module: "aiPlat-core/core/harness/utils/writing_profile.py"
+      - symbol: "build_writing_overlay"
+        type: "function"
+        signature: "Oversight P0: Ephemeral system-tail concise-handoff overlay"
+        module: "aiPlat-core/core/harness/utils/writing_profile.py"
+      - symbol: "apply_concise_prose"
+        type: "function"
+        signature: "Oversight P0: Deterministic concise rewrite; protect symbols/errors"
+        module: "aiPlat-core/core/harness/utils/writing_profile.py"
+      - symbol: "apply_error_message"
+        type: "function"
+        signature: "Oversight P0: Operator-facing error prose; keep diagnostic tokens"
+        module: "aiPlat-core/core/harness/utils/writing_profile.py"
+      - symbol: "apply_handoff_fields"
+        type: "function"
+        signature: "Oversight P0: Concise handoff summary/verify/next only"
+        module: "aiPlat-core/core/harness/utils/writing_profile.py"
+      - symbol: "apply_project_writing_meta"
+        type: "function"
+        signature: "Oversight P0: Persist writing_profile on project metadata"
+        module: "aiPlat-core/core/harness/utils/writing_profile.py"
+      - symbol: "build_run_structure_diagram"
+        type: "function"
+        signature: "Oversight P0: Deterministic stage Mermaid payload (tool_result)"
+        module: "aiPlat-core/core/harness/execution/run_structure_diagram.py"
+      - symbol: "write_structure_diagram"
+        type: "function"
+        signature: "Oversight P0: Persist structure diagram under state[_structure_diagram]"
+        module: "aiPlat-core/core/harness/execution/run_structure_diagram.py"
+      - symbol: "stages_to_mermaid"
+        type: "function"
+        signature: "Oversight P0: Stage topology → Mermaid flowchart + node_refs"
+        module: "aiPlat-core/core/harness/execution/run_structure_diagram.py"
+      - symbol: "build_run_evidence_page"
+        type: "function"
+        signature: "Oversight P1: Template+JSON discardable evidence page (TTL; read-only)"
+        module: "aiPlat-core/core/harness/execution/run_evidence_page.py"
+      - symbol: "write_evidence_page"
+        type: "function"
+        signature: "Oversight P1: Persist evidence page under state[_evidence_page]"
+        module: "aiPlat-core/core/harness/execution/run_evidence_page.py"
+      - symbol: "collect_evidence_data"
+        type: "function"
+        signature: "Oversight P1: Deterministic tool_result JSON for evidence template"
+        module: "aiPlat-core/core/harness/execution/run_evidence_page.py"
+      - symbol: "render_evidence_html"
+        type: "function"
+        signature: "Oversight P1: Inject JSON into fixed HTML template (no LLM JS)"
+        module: "aiPlat-core/core/harness/execution/run_evidence_page.py"
+      - symbol: "is_evidence_expired"
+        type: "function"
+        signature: "Oversight P1: TTL expiry check for discardable evidence page"
+        module: "aiPlat-core/core/harness/execution/run_evidence_page.py"
+      - symbol: "resolve_ttl_hours"
+        type: "function"
+        signature: "Oversight P1: TTL hours from state/env; clamp 1..168 (default 24)"
+        module: "aiPlat-core/core/harness/execution/run_evidence_page.py"
+      - symbol: "merge_evidence_metrics"
+        type: "function"
+        signature: "Oversight P1: Accumulate verification metrics (source_click/input_change/...)"
+        module: "aiPlat-core/core/harness/execution/run_evidence_page.py"
+      - symbol: "empty_evidence_metrics"
+        type: "function"
+        signature: "Oversight P1: Empty evidence_metrics.v1 blob"
+        module: "aiPlat-core/core/harness/execution/run_evidence_page.py"
+      - symbol: "verification_success"
+        type: "function"
+        signature: "Oversight P1: True when ≥1 verification signal recorded"
+        module: "aiPlat-core/core/harness/execution/run_evidence_page.py"
       - symbol: "inject_team_culture"
         type: "function"
         signature: "T2: Append Culture overlay to system messages (skip tools)"
@@ -3735,6 +4039,54 @@ domains:
         type: "class"
         signature: "5 metrics: pipeline P95, graph P95, retrieval recall, state accuracy, calibration"
         module: "core/harness/evaluation/eval_runner.py"
+      - symbol: "run_code_review_gold_eval"
+        type: "function"
+        signature: "run_code_review_gold_eval(profile, gold_dir, match_only, tenant_id, persist, record_novel, ...)→Dict (P/R/P0)"
+        module: "core/harness/evaluation/code_review_gold.py"
+      - symbol: "match_review_findings"
+        type: "function"
+        signature: "match_review_findings(predicted, gold_findings, line_window=5)→Dict"
+        module: "core/harness/evaluation/code_review_gold.py"
+      - symbol: "profile_to_autoreview_args"
+        type: "function"
+        signature: "profile_to_autoreview_args(profile)→Dict (low_noise|balanced|high_coverage)"
+        module: "core/harness/evaluation/code_review_gold.py"
+      - symbol: "persist_eval_report"
+        type: "function"
+        signature: "persist_eval_report(result, tenant_id='')→Optional[str]"
+        module: "core/harness/evaluation/code_review_gold.py"
+      - symbol: "list_eval_reports"
+        type: "function"
+        signature: "list_eval_reports(tenant_id='', limit=20)→List[Dict]"
+        module: "core/harness/evaluation/code_review_gold.py"
+      - symbol: "list_code_review_gold_reports"
+        type: "function"
+        signature: "list_code_review_gold_reports(tenant_id='', limit=20)→list"
+        module: "core/api/core_facade.py"
+      - symbol: "evaluate_gold_profile_gate"
+        type: "function"
+        signature: "evaluate_gold_profile_gate(profile, risk_level, tenant_id, force)→Dict (pass/require_eval/block_regression)"
+        module: "core/harness/evaluation/gold_profile_gate.py"
+      - symbol: "attach_gold_gate_to_diff"
+        type: "function"
+        signature: "attach_gold_gate_to_diff(diff, profile, tenant_id)→Dict"
+        module: "core/harness/evaluation/gold_profile_gate.py"
+      - symbol: "evaluate_gold_profile_gate"
+        type: "function"
+        signature: "CoreFacade facade：同档位黄金集门禁"
+        module: "core/api/core_facade.py"
+      - symbol: "register_novel_as_experience"
+        type: "function"
+        signature: "register_novel_as_experience(novels, source)→List (pending gotchas)"
+        module: "core/harness/evaluation/novel_experience_bridge.py"
+      - symbol: "collect_harness_factors"
+        type: "function"
+        signature: "collect_harness_factors(extra=None)→Dict (coding_policy/done_verify/meta_tool/...)"
+        module: "core/harness/evaluation/harness_factors.py"
+      - symbol: "serial_chain_recommendations"
+        type: "function"
+        signature: "serial_chain_recommendations(summary)→List[{severity,action,detail}]"
+        module: "core/harness/meta/org_harness_metrics.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
@@ -4146,12 +4498,54 @@ domains:
         type: "dataclass"
         signature: "area/problem/suggestion/priority/evidence"
         module: "core/harness/meta/meta_agent.py"
+      - symbol: "org_harness_status"
+        type: "function"
+        signature: "org_harness_status(run_id='', recent_limit=10)→Dict (serial_ratio / HITL / approvals)"
+        module: "core/harness/meta/org_harness_metrics.py"
+      - symbol: "build_duty_board"
+        type: "function"
+        signature: "build_duty_board(payload, adoption=None, thresholds=None)→Dict go/watch/block/unavailable (no fake success_rate)"
+        module: "core/harness/meta/org_harness_metrics.py"
+      - symbol: "load_duty_board_thresholds"
+        type: "function"
+        signature: "load_duty_board_thresholds(override=None)→(Dict, source) YAML duty bands"
+        module: "core/harness/meta/org_harness_metrics.py"
+      - symbol: "load_adoption_snapshot"
+        type: "function"
+        signature: "load_adoption_snapshot()→Dict HITL/Howl snapshot for duty_board"
+        module: "core/harness/meta/org_harness_metrics.py"
+      - symbol: "collect_org_harness"
+        type: "function"
+        signature: "collect_org_harness(run_id='', recent_limit=10, load_approvals=True)→Dict"
+        module: "core/harness/meta/org_harness_metrics.py"
+      - symbol: "aggregate_org_harness"
+        type: "function"
+        signature: "aggregate_org_harness(events, hitl_audit, approvals, gold_reports, run_id)→Dict"
+        module: "core/harness/meta/org_harness_metrics.py"
+      - symbol: "summarize_gold_regression"
+        type: "function"
+        signature: "summarize_gold_regression(reports)→Dict (p0_miss_rate / delta / regressing)"
+        module: "core/harness/meta/org_harness_metrics.py"
+      - symbol: "org_harness_status"
+        type: "function"
+        signature: "CoreFacade facade：GET /governance/org-harness"
+        module: "core/api/core_facade.py"
+      - symbol: "get_howl_stats"
+        type: "function"
+        signature: "get_howl_stats()→Dict (total_interventions / by_reason)"
+        module: "core/harness/intervention/howl.py"
+      - symbol: "record_intervention"
+        type: "function"
+        signature: "record_intervention(reason, details=None)→None"
+        module: "core/harness/intervention/howl.py"
     breaks: []
     consumers_expected:
       - module: "core/api/routers/adapters.py"
         reason: "/model-override 端点"
       - module: "core/harness/syscalls/llm.py"
         reason: "最佳模型选择"
+      - module: "core/api/routers/diagnostics.py"
+        reason: "adoption-metrics 附带 Howl 干预次数"
 
   # ══════════════════════════════════════════════════════════════
   # 二十、Arena & 调度 (4 caps)

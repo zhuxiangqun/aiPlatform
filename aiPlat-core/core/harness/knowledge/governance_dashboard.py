@@ -31,9 +31,20 @@ def aggregate_dashboard() -> Dict[str, Any]:
         domains = compare_domains()
         if domains:
             scores = [d["maturity_score"] for d in domains if d.get("maturity_score", 0) > 0]
-            data["overall_health"] = round(sum(scores) / max(len(scores), 1), 1) if scores else 0
-        data["health_level"] = "good" if data["overall_health"] >= 80 else \
-                                "warning" if data["overall_health"] >= 60 else "critical"
+            if scores:
+                data["overall_health"] = round(sum(scores) / max(len(scores), 1), 1)
+                data["health_level"] = (
+                    "good" if data["overall_health"] >= 80
+                    else "warning" if data["overall_health"] >= 60
+                    else "critical"
+                )
+            else:
+                # No measured maturity → unavailable (not fake 0/critical)
+                data["overall_health"] = None
+                data["health_level"] = "unknown"
+        else:
+            data["overall_health"] = None
+            data["health_level"] = "unknown"
     except Exception:
         logging.getLogger(__name__).debug('aggregate_dashboard failed', exc_info=True)
 
@@ -61,30 +72,15 @@ def aggregate_dashboard() -> Dict[str, Any]:
         data["mechanism_status"]["change_approval"] = {"status": "unknown"}
         data["pending_approvals"] = 0
 
-    # Version management
-    try:
-        data["mechanism_status"]["version_management"] = {
-            "status": "good",
-            "detail": "Snapshots + diff + rollback enabled",
-        }
-        data["mechanism_status"]["asset_publishing"] = {
-            "status": "good",
-            "detail": "Auto-publish with change control gating",
-        }
-        data["mechanism_status"]["agent_audit"] = {
-            "status": "good",
-            "detail": "syscall wrapper records all calls",
-        }
-        data["mechanism_status"]["quality_evaluation"] = {
-            "status": "attention",
-            "detail": "Golden query eval pending (K10)",
-        }
-        data["mechanism_status"]["feedback_loop"] = {
-            "status": "good",
-            "detail": "FeedbackLoops + ActiveSynthesis wired",
-        }
-    except Exception:
-        logging.getLogger(__name__).debug('aggregate_dashboard failed', exc_info=True)
+    # Mechanisms without a live probe stay unknown — never paint fake green.
+    for _mech, _detail in (
+        ("version_management", "not measured (no live probe)"),
+        ("asset_publishing", "not measured (no live probe)"),
+        ("agent_audit", "not measured (no live probe)"),
+        ("quality_evaluation", "not measured (use gold / org-harness KPIs)"),
+        ("feedback_loop", "not measured (no live probe)"),
+    ):
+        data["mechanism_status"][_mech] = {"status": "unknown", "detail": _detail}
 
     # 3. Mapping coverage per domain
     try:

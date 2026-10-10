@@ -1,0 +1,15 @@
+# Governance duty-board thresholds (ops KPIs — never invent success_rate).
+# Load order: AIPLAT_DUTY_BOARD_CONFIG → $AIPLAT_HOME/org/duty_board.yaml → this seed.
+version: 1
+# Gold P0 miss rate above this → BLOCK
+p0_miss_rate_block: 0.2
+# Serial ratio (HITL wait / wall) bands → WATCH
+serial_ratio_watch: 0.2
+serial_ratio_high: 0.4
+# Approval backlog / latency → WATCH
+approval_pending_watch: 5
+approval_latency_sec_watch: 3600
+# HITL rejection rate → WATCH
+hitl_rejection_rate_watch: 0.3
+# Howl intervention count → WATCH
+howl_interventions_watch: 20

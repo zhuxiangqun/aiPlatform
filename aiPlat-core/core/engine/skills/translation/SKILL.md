@@ -6,6 +6,7 @@ description: 多语言翻译，保持术语一致与语气一致。触发条件�
 category: transformation
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 protected: true
 completion_criterion: |
   1. 用户的问题已被直接完整回答
@@ -67,9 +68,6 @@ sop_flow:
   - "翻译并保证术语一致；歧义给出备选译法。"
   - "输出译文（可选：直译/意译/更正式版本）。"
   - "在多语言间准确翻译保持术语一致"
-  - "[ ] 输出格式符合规范"
-  - "[ ] 正确处理错误和边界条件"
-  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - 文本
@@ -105,6 +103,6 @@ skip_when: 跳过条件：用户未指定源语言或目标语言时不触发。
 在多语言间准确翻译保持术语一致
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

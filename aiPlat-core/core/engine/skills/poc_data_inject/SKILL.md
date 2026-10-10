@@ -30,6 +30,7 @@ effects:
     resources: ["filesystem:~/.aiplat/kb/poc"]
     idempotent: true
     rollback_available: false
+invocation_mode: auto
 ---
 
 # POC 数据注入

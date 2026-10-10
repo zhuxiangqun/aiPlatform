@@ -29,6 +29,7 @@ output_schema:
     verdict:
       type: string
       enum: [pass, warn, fail]
+invocation_mode: auto
 ---
 
 # 评分引擎模板

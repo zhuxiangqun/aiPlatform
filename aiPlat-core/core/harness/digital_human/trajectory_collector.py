@@ -432,7 +432,8 @@ _SEED_QA: List[Tuple[str, str]] = [
     (
         "帮忙启动流水线创建项目",
         "结论：我可以指路，但不代执行 pipeline.start、也不未询问就创建项目。"
-        "做应用请你到 /app/factory 自行创建；需要跳转时我只给菜单路径。",
+        "做应用请你到 /app/factory 自行确认并构建；需要跳转时我只给菜单路径。\n"
+        "[ACTION:handoff:/app/factory]",
     ),
 ]
 

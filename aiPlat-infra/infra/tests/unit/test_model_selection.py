@@ -237,7 +237,11 @@ class TestSkillExecutionAutoSelect:
         """purpose=agent must not recommend gemma4:12b (known Ollama stall).
 
         Pure unified_pipeline scoring — no model_overrides name lock.
+        Also covers CI (no Ollama → deployment state unavailable): size +
+        weakness_areas must still prefer coder over gemma.
         """
+        from unittest.mock import patch
+
         from infra.management.model.manager import PlatformResources, _score_model
 
         profile = _profile()
@@ -269,6 +273,16 @@ class TestSkillExecutionAutoSelect:
         s_coder = _score_model(coder, purpose, pp, res, {}, profile)
         s_gemma = _score_model(gemma, purpose, pp, res, {}, profile)
         assert s_coder > s_gemma, f"expected coder>gemma got {s_coder} vs {s_gemma}"
+
+        with patch(
+            "infra.management.model.manager._derive_model_state",
+            return_value="unavailable",
+        ):
+            s_coder_u = _score_model(coder, purpose, pp, res, {}, profile)
+            s_gemma_u = _score_model(gemma, purpose, pp, res, {}, profile)
+        assert s_coder_u > s_gemma_u, (
+            f"expected coder>gemma when unavailable got {s_coder_u} vs {s_gemma_u}"
+        )
 
         mgr = ModelManager()
         mgr._models = {"c": coder, "g": gemma}

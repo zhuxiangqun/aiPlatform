@@ -7,6 +7,7 @@ execution_type: handler
 category: fde
 version: 1.1.0
 status: enabled
+invocation_mode: auto
 effects:
   - type: read
     resources: ["http://localhost:8002/api/platform/apps/fde/canary"]

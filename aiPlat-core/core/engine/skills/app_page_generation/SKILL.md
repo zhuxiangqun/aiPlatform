@@ -8,6 +8,7 @@ category: generation
 version: 1.0.0
 skill_model_purpose: code_gen
 status: enabled
+invocation_mode: auto
 execution_mode: prompt
 execution_type: prompt
 triggers:

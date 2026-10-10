@@ -6,6 +6,7 @@ description: 基于 Amazon Eval Agent 论文方法——通过结构化过程性
 category: analysis
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 execution_mode: handler
 execution_type: handler
 triggers:

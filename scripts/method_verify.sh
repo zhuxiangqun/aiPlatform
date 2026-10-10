@@ -105,8 +105,10 @@ has_caller() {
     # Same-module direct calls: def + ≥1 call site in the same file counts as wired
     # (public helpers used by sibling functions; avoids false DEAD on package internals).
     local same_file_hits
-    same_file_hits=$(grep -cE "(^|[^A-Za-z0-9_])${method_name}\s*\(" "$file_path" 2>/dev/null || echo 0)
-    if [ "${same_file_hits:-0}" -ge 2 ]; then
+    # grep -c exits 1 on zero matches; never append a second "0" (breaks integer test).
+    same_file_hits=$(grep -cE "(^|[^A-Za-z0-9_])${method_name}\s*\(" "$file_path" 2>/dev/null || true)
+    same_file_hits=${same_file_hits:-0}
+    if [ "$same_file_hits" -ge 2 ]; then
         return 0
     fi
 

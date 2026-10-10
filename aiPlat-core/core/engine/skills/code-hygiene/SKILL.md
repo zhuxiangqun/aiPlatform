@@ -6,6 +6,7 @@ description: AI 编码行为规范——减少 LLM 常见编程错误。基于 A
 category: coding
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 negative_triggers:
   - 这不是编程任务
   - 这不需要修改代码

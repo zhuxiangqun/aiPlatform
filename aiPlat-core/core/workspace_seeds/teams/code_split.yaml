@@ -37,7 +37,14 @@ stages:
     code_target: scaffold
     inject_imported_context: true
     deploy_files_to_disk: true
+    # Coding closed loop (also applied by PipelineStageConfig defaults):
+    sandbox: true
     review_gate: quick
+    required_skills: [autoreview]
+    done_verify:
+      enabled: true
+      min_output_length: 20
+      review_gate: quick
     stage_timeout_seconds: 900
 
   - agent_id: frontend_engineer
@@ -50,6 +57,13 @@ stages:
     uses_file_output: true
     code_target: frontend
     deploy_files_to_disk: true
+    sandbox: true
+    review_gate: quick
+    required_skills: [autoreview]
+    done_verify:
+      enabled: true
+      min_output_length: 20
+      review_gate: quick
     stage_timeout_seconds: 900
 
   - agent_id: backend_developer
@@ -65,6 +79,13 @@ stages:
     uses_file_output: true
     code_target: backend
     deploy_files_to_disk: true
+    sandbox: true
+    review_gate: quick
+    required_skills: [autoreview]
+    done_verify:
+      enabled: true
+      min_output_length: 20
+      review_gate: quick
     stage_timeout_seconds: 900
 
   - agent_id: qa_agent

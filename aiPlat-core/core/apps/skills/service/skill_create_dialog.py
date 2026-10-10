@@ -33,12 +33,17 @@ def _build_skill_md_preview(draft: Dict[str, Any]) -> str:
     """Minimal SKILL.md preview for UI (not a full YAML dumper)."""
     import yaml as _yaml
 
+    inv = str(draft.get("invocation_mode") or "user").strip().lower()
+    if inv not in ("user", "auto"):
+        inv = "user"
     fm = {
         "name": draft.get("name"),
         "display_name": draft.get("display_name"),
         "description": draft.get("description"),
         "category": draft.get("category"),
         "status": "enabled",
+        "invocation_mode": inv,
+        "auto_trigger_allowed": bool(draft.get("auto_trigger_allowed")) if draft.get("auto_trigger_allowed") is not None else (inv == "auto"),
         "skill_kind": draft.get("skill_kind"),
         "trigger_conditions": draft.get("trigger_conditions") or [],
         "permissions": draft.get("permissions") or [],

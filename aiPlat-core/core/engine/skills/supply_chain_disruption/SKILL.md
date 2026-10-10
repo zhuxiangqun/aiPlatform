@@ -8,6 +8,7 @@ description: >
 category: domain
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 execution_type: prompt
 domain_id: supply-chain
 triggers:

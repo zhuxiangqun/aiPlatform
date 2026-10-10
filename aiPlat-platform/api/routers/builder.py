@@ -288,6 +288,133 @@ async def project_team_digest(project_id: str, _auth: str = Depends(require_buil
     return dig
 
 
+@router.get("/projects/{project_id}/structure-diagram", response_model=StatusResponse)
+async def project_structure_diagram(
+    project_id: str, _auth: str = Depends(require_builder_access)
+):
+    """Oversight: deterministic stage Mermaid (tool_result facts; no LLM)."""
+    from core.api.core_facade import STATE_STRUCTURE_KEY, build_run_structure_diagram
+
+    st = await _get_svc().get_project_state(project_id)
+    state = st.get("state") if isinstance(st, dict) else {}
+    diagram = None
+    if isinstance(st, dict) and isinstance(st.get("structure_diagram"), dict):
+        diagram = st["structure_diagram"]
+    if not isinstance(diagram, dict) and isinstance(state, dict):
+        diagram = state.get(STATE_STRUCTURE_KEY)
+    if not isinstance(diagram, dict) or not diagram.get("mermaid"):
+        proj = {}
+        try:
+            card = _get_svc()._projects.get(project_id) or {}
+            if isinstance(card, dict):
+                proj = card
+                if isinstance(proj.get("structure_diagram"), dict):
+                    diagram = proj["structure_diagram"]
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "structure_diagram project card read skipped", exc_info=True
+            )
+        if not isinstance(diagram, dict) or not diagram.get("mermaid"):
+            stages = proj.get("team_stages") if isinstance(proj, dict) else []
+            diagram = build_run_structure_diagram(
+                state if isinstance(state, dict) else {},
+                stages=stages or [],
+            )
+    return {
+        "status": "ok",
+        "structure_diagram": diagram if isinstance(diagram, dict) else {},
+        "source_type": (diagram or {}).get("source_type", "tool_result")
+        if isinstance(diagram, dict)
+        else "tool_result",
+    }
+
+
+@router.post("/projects/{project_id}/evidence-metrics", response_model=StatusResponse)
+async def project_evidence_metrics(
+    project_id: str,
+    body: Dict[str, Any] = {},
+    _auth: str = Depends(require_builder_access),
+):
+    """Oversight P1: record verification metrics from sandboxed evidence UI.
+
+    Body: ``{"events": ["source_click", {"event": "input_change", ...}]}``.
+    Read-only — never triggers coding or deploy.
+    """
+    raw = (body or {}).get("events")
+    events: list = []
+    if isinstance(raw, list):
+        events = raw
+    elif isinstance(raw, str) and raw.strip():
+        events = [raw.strip()]
+    elif isinstance((body or {}).get("event"), str):
+        events = [str(body.get("event"))]
+    return _get_svc().record_evidence_metrics(project_id, events=events)
+
+
+@router.get("/projects/{project_id}/evidence-page", response_model=StatusResponse)
+async def project_evidence_page(
+    project_id: str, _auth: str = Depends(require_builder_access)
+):
+    """Oversight P1: discardable evidence page (template+JSON; TTL; read-only)."""
+    from core.api.core_facade import (
+        STATE_EVIDENCE_KEY,
+        build_run_evidence_page,
+        is_evidence_expired,
+    )
+
+    st = await _get_svc().get_project_state(project_id)
+    state = st.get("state") if isinstance(st, dict) else {}
+    page = None
+    if isinstance(st, dict) and isinstance(st.get("evidence_page"), dict):
+        page = st["evidence_page"]
+    if (not isinstance(page, dict) or not page.get("html")) and isinstance(state, dict):
+        page = state.get(STATE_EVIDENCE_KEY)
+    if not isinstance(page, dict) or not page.get("html"):
+        proj = {}
+        try:
+            card = _get_svc()._projects.get(project_id) or {}
+            if isinstance(card, dict):
+                proj = card
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "evidence_page project card read skipped", exc_info=True
+            )
+        stages = proj.get("team_stages") if isinstance(proj, dict) else []
+        page = build_run_evidence_page(
+            state if isinstance(state, dict) else {},
+            stages=stages or [],
+        )
+    metrics = None
+    try:
+        from core.api.core_facade import STATE_EVIDENCE_METRICS_KEY
+
+        if isinstance(state, dict) and isinstance(state.get(STATE_EVIDENCE_METRICS_KEY), dict):
+            metrics = state[STATE_EVIDENCE_METRICS_KEY]
+        if not isinstance(metrics, dict):
+            card = _get_svc()._projects.get(project_id) or {}
+            if isinstance(card, dict) and isinstance(card.get("evidence_metrics"), dict):
+                metrics = card["evidence_metrics"]
+    except Exception:
+        logging.getLogger(__name__).debug(
+            "evidence_metrics read skipped", exc_info=True
+        )
+    if isinstance(page, dict):
+        page = dict(page)
+        page["expired"] = is_evidence_expired(page)
+        page["can_trigger_coding"] = False
+        page["can_trigger_deploy"] = False
+        page["read_only"] = True
+    return {
+        "status": "ok",
+        "evidence_page": page if isinstance(page, dict) else {},
+        "evidence_metrics": metrics if isinstance(metrics, dict) else {},
+        "source_type": (page or {}).get("source_type", "tool_result")
+        if isinstance(page, dict)
+        else "tool_result",
+        "expired": bool((page or {}).get("expired")) if isinstance(page, dict) else False,
+    }
+
+
 # ── Team harness (T1c / T3b / T6') ──────────────────────────────────────────
 
 @router.post("/team-harness/push", response_model=StatusResponse)

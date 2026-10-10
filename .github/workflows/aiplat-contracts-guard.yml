@@ -154,6 +154,22 @@ jobs:
           AIPLAT_EVAL_DRY_RUN=true \
           pytest -q core/tests/eval/test_skill_quality.py -m eval --tb=short
 
+      - name: Engine SKILL.md quality lint (full corpus)
+        run: |
+          python3 ./scripts/lint_engine_skills.py
+
+      # Release habit: gold match-only + ontology YAML offline + IDE capture hooks.
+      # Same gate Governance duty_board points at (ops_harness_ready_check.sh).
+      # install-seeds / ontology --install stay best-effort (HOME may be read-only).
+      - name: Ops harness ready (gold match-only + ontology seeds)
+        env:
+          PYTHONPATH: ${{ github.workspace }}/aiPlat-core:${{ github.workspace }}/aiPlat-platform:${{ github.workspace }}/aiPlat-infra
+          AIPLAT_HOME: ${{ runner.temp }}/aiplat_home
+        run: |
+          set -euo pipefail
+          mkdir -p "$AIPLAT_HOME"
+          bash ./scripts/ops_harness_ready_check.sh
+
       - name: Ontology completeness ratchet (lock-service OCS≥80)
         working-directory: ./aiPlat-core
         run: |
@@ -193,6 +209,26 @@ jobs:
             core/tests/unit/test_skills/test_generic_skill_json_output.py \
             core/tests/unit/test_skills/test_skillmanager_bridge_schema_to_registry.py \
             core/tests/unit/test_skills/test_skill_linter.py \
+            core/tests/unit/test_skill_invocation_mode.py \
+            core/tests/unit/test_lint_engine_skills_script.py \
+            core/tests/unit/test_harness/test_memory/test_team_brain.py \
+            core/tests/unit/test_harness/test_memory/test_ide_capture.py \
+            core/tests/unit/test_harness/test_memory/test_ide_governed_handoff.py \
+            core/tests/unit/test_harness/test_memory/test_session_wiki.py \
+            core/tests/unit/test_harness/test_code_review_gold.py \
+            core/tests/unit/test_harness/test_gold_profile_gate.py \
+            core/tests/unit/test_harness/test_harness_factors_and_serial_tips.py \
+            core/tests/unit/test_harness/test_novel_experience_bridge.py \
+            core/tests/unit/test_harness/test_org_harness_metrics.py \
+            core/tests/unit/test_harness/test_os_sandbox.py \
+            core/tests/unit/test_harness/test_subagent_discipline.py \
+            core/tests/unit/test_harness/test_done_verify.py \
+            core/tests/unit/test_harness/test_coding_stage_defaults.py \
+            core/tests/unit/test_apps/test_materials_delivery_gate.py \
+            core/tests/unit/test_harness/test_howl_stats.py \
+            core/tests/unit/test_harness/test_digital_human/test_operational_handoff.py \
+            core/tests/unit/test_harness/test_run_rollback_guidance.py \
+            core/tests/unit/test_harness/test_meta_tool.py \
             core/tests/unit/test_skill_fix_proposals.py \
             core/tests/unit/test_skill_lint_scan_job_kind.py \
             core/tests/unit/test_skill_lint_alert_contract.py \

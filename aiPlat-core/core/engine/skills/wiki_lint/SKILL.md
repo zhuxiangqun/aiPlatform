@@ -6,6 +6,7 @@ description: 定期对 Wiki 做健康检查——找出矛盾数据、孤儿页�
 category: analysis
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 execution_mode: prompt
 execution_type: prompt
 triggers:
@@ -158,6 +159,6 @@ skip_when: 跳过条件：Wiki页面数量过少（<10）时不触发。
 检测 Wiki 的矛盾和死链接
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

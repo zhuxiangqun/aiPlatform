@@ -1,0 +1,25 @@
+{
+  "_comment": "Copy to ~/.aiplat/hooks.json (CC/Codex) or adapt for Cursor .cursor/hooks.json. Commands only; fail-open.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 scripts/ide_capture.py --from-hook"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 scripts/ide_capture.py --from-hook --write-wiki"
+          }
+        ]
+      }
+    ]
+  }
+}

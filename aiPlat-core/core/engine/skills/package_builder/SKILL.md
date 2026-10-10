@@ -5,6 +5,7 @@ description: 根据方案设计和客户画像，生成完整的部署包，包�
 version: 2.0.0
 category: fde
 status: enabled
+invocation_mode: auto
 execution_type: prompt
 effects:
   - type: emit

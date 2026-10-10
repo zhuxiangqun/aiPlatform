@@ -445,6 +445,12 @@ def _objects_actions_from_requirement(text: str, label: str) -> tuple:
 def _infer_execution_type(skill: Any) -> str:
     from core.management.lint_rules.metadata import ExecTypeDirectoryMismatch
     from core.management.lint_rules.side_effects import UnrealizedSideEffectCheck  # noqa: F401 — discover() registers it
+    from core.management.lint_rules.skill_quality import (  # noqa: F401 — discover() registers
+        InvocationModeCheck,
+        MisplacedFileCompletionCheck,
+        SkillNoOpPhrasesCheck,
+        UserModeTriggerSoftPass,
+    )
 
     skill_dir = ExecTypeDirectoryMismatch._resolve_skill_dir(skill)
     if not skill_dir:

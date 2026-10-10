@@ -195,6 +195,43 @@ export interface TeamDigestSlice {
   privacy?: string;
 }
 
+/** Oversight: deterministic run-level Mermaid (no LLM-invented nodes) */
+export interface StructureDiagramSlice {
+  schema_version?: string;
+  mermaid?: string;
+  layers?: Record<string, unknown>;
+  node_refs?: Array<{
+    id?: string;
+    stage_id?: string;
+    kind?: string;
+    source_type?: string;
+    confidence?: string;
+    artifact?: string;
+    href?: string;
+  }>;
+  source_type?: string;
+  confidence?: number | string;
+  hint?: string;
+}
+
+/** Oversight P1: discardable interactive evidence page (template+JSON; TTL) */
+export interface EvidencePageSlice {
+  schema_version?: string;
+  template_id?: string;
+  source_type?: string;
+  confidence?: number | string;
+  created_at?: string;
+  expires_at?: string;
+  ttl_hours?: number;
+  read_only?: boolean;
+  can_trigger_coding?: boolean;
+  can_trigger_deploy?: boolean;
+  expired?: boolean;
+  html?: string;
+  metrics_events?: string[];
+  hint?: string;
+}
+
 export interface ProjectItem {
   project_id: string;
   name: string;
@@ -219,6 +256,7 @@ export const projectApi = {
     app_name?: string;
     factory_profile?: 'standard' | 'demo';
     output_style?: 'default' | 'adhd';
+    writing_profile?: 'concise_v1' | 'off';
     factory_mode?: 'agent' | 'code' | 'hybrid' | '';
   }) => {
     return apiClient.post<ProjectItem>('/platform/builder/projects', data);
@@ -255,6 +293,26 @@ export const projectApi = {
       start?: Record<string, unknown>;
       detail?: string;
     }>(`/platform/builder/projects/${projectId}/confirm-and-build`, prd ? { prd } : {});
+  },
+  /** Terminal governance report for a finished / failed run (confirm → build → report). */
+  runReport: async (
+    projectId: string,
+    body: {
+      failed_stage_ids?: string[];
+      test_report?: string;
+      cost_used_usd?: number;
+      cost_budget_usd?: number;
+    } = {},
+  ) => {
+    return apiClient.post<Record<string, unknown>>(
+      `/platform/builder/projects/${projectId}/run-report`,
+      {
+        failed_stage_ids: body.failed_stage_ids || [],
+        test_report: body.test_report || '',
+        cost_used_usd: body.cost_used_usd ?? 0,
+        cost_budget_usd: body.cost_budget_usd ?? 0,
+      },
+    );
   },
   start: async (projectId: string) => {
     return apiClient.post<{ project_id: string; phase: string; run_id: string; state: Record<string, unknown> }>(
@@ -295,6 +353,8 @@ export const projectApi = {
       runs: ProjectRun[];
       friction_share?: FrictionShareCta;
       team_digest?: TeamDigestSlice;
+      structure_diagram?: StructureDiagramSlice;
+      evidence_page?: EvidencePageSlice;
     }>(
       `/platform/builder/projects/${projectId}/state`
     );
@@ -303,6 +363,47 @@ export const projectApi = {
   /** F-T5: metrics-only digest (also increments view counter) */
   getDigest: async (projectId: string) => {
     return apiClient.get<TeamDigestSlice>(`/platform/builder/projects/${projectId}/digest`);
+  },
+
+  /** Oversight: deterministic stage Mermaid (tool_result facts) */
+  getStructureDiagram: async (projectId: string) => {
+    return apiClient.get<{
+      status?: string;
+      structure_diagram?: StructureDiagramSlice;
+      source_type?: string;
+    }>(`/platform/builder/projects/${projectId}/structure-diagram`);
+  },
+
+  /** Oversight P1: discardable evidence page (sandboxed HTML; TTL) */
+  getEvidencePage: async (projectId: string) => {
+    return apiClient.get<{
+      status?: string;
+      evidence_page?: EvidencePageSlice;
+      evidence_metrics?: {
+        counts?: Record<string, number>;
+        total?: number;
+        verified?: boolean;
+        updated_at?: string;
+      };
+      source_type?: string;
+      expired?: boolean;
+    }>(`/platform/builder/projects/${projectId}/evidence-page`);
+  },
+
+  /** Oversight P1: persist verification metrics from sandboxed iframe (read-only) */
+  recordEvidenceMetrics: async (
+    projectId: string,
+    events: Array<string | { event: string; [k: string]: unknown }>,
+  ) => {
+    return apiClient.post<{
+      status?: string;
+      evidence_metrics?: {
+        counts?: Record<string, number>;
+        total?: number;
+        verified?: boolean;
+      };
+      verified?: boolean;
+    }>(`/platform/builder/projects/${projectId}/evidence-metrics`, { events });
   },
 
   /** Rollback to a specific pipeline stage or PRD */

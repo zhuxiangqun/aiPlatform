@@ -240,6 +240,54 @@ def apply_architecture_profile(stage: "PipelineStageConfig") -> "PipelineStageCo
         stage.upgrade_policy = "off"
     elif pol not in ("off", "signals", "aggressive"):
         stage.upgrade_policy = "signals"
+    return apply_coding_stage_defaults(stage)
+
+
+def apply_coding_stage_defaults(stage: "PipelineStageConfig") -> "PipelineStageConfig":
+    """Config-driven coding closed loop for ``uses_file_output`` stages.
+
+    Defaults (no agent_id branches): stage sandbox on (unless sandbox_mode=none),
+    light done_verify + review_gate, bind autoreview so review_gate can enforce.
+    Opt out: ``sandbox_mode: none``, ``review_gate: none``, or
+    ``AIPLAT_CODING_STAGE_SANDBOX=false`` / ``AIPLAT_CODING_STAGE_AUTOREVIEW=false``.
+    File checkpoints remain global (sys_file_write), already default-on.
+    """
+    if not bool(getattr(stage, "uses_file_output", False)):
+        return stage
+
+    mode = str(getattr(stage, "sandbox_mode", "") or "").strip().lower()
+    sandbox_default = os.getenv("AIPLAT_CODING_STAGE_SANDBOX", "true").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+    if mode != "none" and sandbox_default and not bool(getattr(stage, "sandbox", False)):
+        stage.sandbox = True
+
+    dv = getattr(stage, "done_verify", None)
+    if not isinstance(dv, dict) or not dv:
+        rg = str(getattr(stage, "review_gate", "") or "quick").strip().lower() or "quick"
+        stage.done_verify = {
+            "enabled": True,
+            "min_output_length": 20,
+            "reject_trivial_done": True,
+            "reject_action_envelope": True,
+            "review_gate": rg if rg != "none" else "none",
+        }
+
+    rg = str(getattr(stage, "review_gate", "") or "quick").strip().lower()
+    autoreview_default = os.getenv("AIPLAT_CODING_STAGE_AUTOREVIEW", "true").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+    if autoreview_default and rg not in ("", "none", "off", "false", "0"):
+        skills = list(getattr(stage, "required_skills", None) or [])
+        if "autoreview" not in skills:
+            skills.append("autoreview")
+            stage.required_skills = skills
     return stage
 
 
@@ -415,6 +463,13 @@ class PipelineStageConfig(BaseModel):
     # ── v4.0: Declarative quality gates & routing for pipeline agents ──
     quality_gate: Dict[str, Any] = Field(default_factory=lambda: {"min_output_length": 100})  # 4step-verified: engine.py:4650 使用
     """CRAG-style quality gate: {condition, fallback, final_fallback}"""
+    done_verify: Dict[str, Any] = Field(default_factory=dict)
+    """DONE-before Verify ring overlay (Harness first-class): {enabled, min_output_length,
+    require_keys, require_substrings, expected_outcomes, reject_trivial_done,
+    reject_action_envelope, require_commands}. Merged in StageRunner / ReActLoop."""
+    meta_tool: Dict[str, Any] = Field(default_factory=dict)
+    """Code meta-tool preference (Harness first-class): {enabled, auto_bind, force}.
+    Maps to loop context _prefer_code_meta_tool / _meta_tool_auto_bind / _force_code_meta_tool."""
     routing_rules: Dict[str, Any] = Field(default_factory=dict)  # 4step-verified: wired via pipeline_compiler.py + engine.py:1900
     """Domain routing rules: {tiers, fallback_domain}"""
     retry_policy: Dict[str, Any] = Field(default_factory=lambda: {"max_retries": 2, "backoff": "exponential"})  # 4step-verified: engine.py:8306 使用
@@ -439,6 +494,7 @@ class PipelineStageConfig(BaseModel):
 
     @model_validator(mode="after")
     def _apply_architecture_profile(self) -> "PipelineStageConfig":
+        # Also applies coding closed-loop defaults when uses_file_output.
         return apply_architecture_profile(self)
 
 
@@ -533,6 +589,7 @@ class ProjectCreateRequest(BaseModel):
     stages: List[Dict[str, Any]] = Field(default_factory=list)  # pre-built workflow stages
     factory_profile: str = "standard"  # F2a: standard | demo (project-level HITL profile)
     output_style: str = "default"  # A0: default | adhd (user-facing prose only)
+    writing_profile: str = "concise_v1"  # concise_v1 | off — STE-inspired handoff/HITL prose (P0 default on)
     factory_mode: str = ""  # F2b: agent | code | hybrid | "" (auto / LLM)
     coding_intensity: str = ""  # B: lite | full | ultra | "" (resolve from mode/env)
 

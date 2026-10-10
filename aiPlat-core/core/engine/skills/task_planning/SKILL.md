@@ -5,6 +5,7 @@ description: 将目标拆解为可执行计划。触发条件：用户描述"怎
 category: execution
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 protected: true
 completion_criterion: |
   1. 每个改动都有明确的验收标准（可验证的 pass/fail 条件）
@@ -64,9 +65,6 @@ sop_flow:
   - "分阶段拆解步骤并标注依赖与风险。"
   - "每阶段给出验证方式与回滚建议。"
   - "根据目标制定执行计划"
-  - "[ ] 输出格式符合规范"
-  - "[ ] 正确处理错误和边界条件"
-  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - 任务
@@ -103,6 +101,6 @@ skip_when: 跳过条件：任务过于简单（单步可完成）时不触发。
 根据目标制定执行计划
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

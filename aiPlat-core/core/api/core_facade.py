@@ -21,6 +21,7 @@ from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 from core.harness.utils.model_injection import best_model_for_purpose
 from core.harness.knowledge.ontology_yaml_gate import LiveYamlDirectWriteDenied, assert_live_yaml_write
 from core.harness.knowledge.ontology_case_learning import OntologyCase  # noqa: F401 — facade re-export / wiring
+from core.harness.evaluation.code_review_gold import GoldCase, GoldFinding  # noqa: F401 — facade re-export / wiring
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1177,6 +1178,12 @@ def restore_file_checkpoint(checkpoint_id: str, session_id: str = "") -> Dict[st
     """Restore a file to the content captured in the given checkpoint (writes it back)."""
     from core.harness.execution.file_checkpoint import restore_file_checkpoint as _fn
     return _fn(checkpoint_id, session_id)
+
+
+def get_howl_stats() -> Dict[str, Any]:
+    """Howl stall-intervention counters (Agent KPI for Governance)."""
+    from core.harness.intervention.howl import get_howl_stats as _fn
+    return _fn()
 
 
 def publish_learning_release(release_id: str) -> Dict[str, Any]:
@@ -2464,6 +2471,42 @@ async def _execute_workspace_agent_background(
         ).strip().lower(),
         "context": {"system_prompt": sys_prompt, "task": user_message},
     }
+    # DONE Verify ring — AGENT.md quality_gate / done_verify / expected_outcomes
+    try:
+        from core.harness.execution.done_verify import build_done_verify_config
+
+        _qg = _cfg.get("quality_gate") if isinstance(_cfg.get("quality_gate"), dict) else None
+        if _qg is None and isinstance(_meta0.get("quality_gate"), dict):
+            _qg = _meta0.get("quality_gate")
+        _eo = _cfg.get("expected_outcomes") if isinstance(_cfg.get("expected_outcomes"), list) else None
+        if _eo is None and isinstance(_meta0.get("expected_outcomes"), list):
+            _eo = _meta0.get("expected_outcomes")
+        _dv = _cfg.get("done_verify") if isinstance(_cfg.get("done_verify"), dict) else None
+        if _dv is None and isinstance(_meta0.get("done_verify"), dict):
+            _dv = _meta0.get("done_verify")
+        state["_done_verify"] = build_done_verify_config(
+            quality_gate=_qg,
+            expected_outcomes=_eo,
+            done_verify=_dv,
+            review_gate=str(_cfg.get("review_gate") or _meta0.get("review_gate") or ""),
+        )
+        if isinstance(_qg, dict):
+            state["quality_gate"] = _qg
+        if isinstance(_eo, list):
+            state["expected_outcomes"] = _eo
+    except Exception:
+        logging.debug("done_verify agent inject skipped", exc_info=True)
+
+    # Code meta-tool — AGENT.md meta_tool: {enabled, auto_bind, force}
+    try:
+        from core.harness.execution.meta_tool import apply_meta_tool_config
+
+        _mt = _cfg.get("meta_tool") if isinstance(_cfg.get("meta_tool"), dict) else None
+        if _mt is None and isinstance(_meta0.get("meta_tool"), dict):
+            _mt = _meta0.get("meta_tool")
+        apply_meta_tool_config(state, _mt)
+    except Exception:
+        logging.debug("meta_tool agent inject skipped", exc_info=True)
 
     # ── Routing classification (ability-level, before ReAct loop) ──
     try:
@@ -4896,6 +4939,36 @@ from core.harness.utils.coding_intensity import (  # noqa: boundary — CoreFaca
     resolve_coding_intensity,
     resolve_ponytail_mode,
 )
+from core.harness.utils.writing_profile import (  # noqa: boundary — CoreFacade re-export
+    PROFILE_CONCISE,
+    PROFILE_OFF,
+    PROFILE_VERSION,
+    apply_concise_prose,
+    apply_error_message,
+    apply_handoff_fields,
+    apply_project_writing_meta,
+    build_writing_overlay,
+    resolve_writing_profile,
+)
+from core.harness.execution.run_structure_diagram import (  # noqa: boundary — CoreFacade re-export
+    STATE_STRUCTURE_KEY,
+    build_run_structure_diagram,
+    stages_to_mermaid,
+    write_structure_diagram,
+)
+from core.harness.execution.run_evidence_page import (  # noqa: boundary — CoreFacade re-export
+    STATE_EVIDENCE_KEY,
+    STATE_EVIDENCE_METRICS_KEY,
+    build_run_evidence_page,
+    collect_evidence_data,
+    empty_evidence_metrics,
+    is_evidence_expired,
+    merge_evidence_metrics,
+    render_evidence_html,
+    resolve_ttl_hours,
+    verification_success,
+    write_evidence_page,
+)
 from core.harness.execution.factory_bloat_metrics import (  # noqa: boundary — CoreFacade re-export
     BASELINE_PROJECT_KEY,
     STATE_BLOAT_KEY,
@@ -5055,15 +5128,204 @@ async def import_claude_memories(
     )
 
 
+def recall_team_brain(query: str = "", limit: int = 8) -> list:
+    """Team Brain Auto-Recall — 聚合 TaskSkill / shared_memory / promoted experience。"""
+    from core.harness.memory.team_brain import recall_team_solutions
+
+    return [it.to_dict() for it in recall_team_solutions(query or "", limit=int(limit or 8))]
+
+
+def team_brain_status() -> Dict[str, Any]:
+    """Team Brain 统计（by_kind / paths）。"""
+    from core.harness.memory.team_brain import team_brain_status as _status
+
+    return _status()
+
+
+def org_harness_status(
+    *,
+    run_id: str = "",
+    recent_limit: int = 10,
+    tenant_id: str = "",
+) -> Dict[str, Any]:
+    """组织 harness 暗账本：HITL 串行 / 审批 + 黄金集回归 / P0 漏检 + duty_board。"""
+    from core.harness.meta.org_harness_metrics import org_harness_status as _status
+
+    return _status(
+        run_id=run_id or "",
+        recent_limit=int(recent_limit or 10),
+        tenant_id=tenant_id or "",
+    )
+
+
+def build_duty_board(
+    payload: Optional[Dict[str, Any]] = None,
+    *,
+    adoption: Optional[Dict[str, Any]] = None,
+    thresholds: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Governance 值班板裁决（go/watch/block/unavailable；禁止假成功率）。"""
+    from core.harness.meta.org_harness_metrics import build_duty_board as _board
+
+    return _board(payload, adoption=adoption, thresholds=thresholds)
+
+
+def load_duty_board_thresholds(
+    *,
+    override: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Duty-board YAML bands（override / AIPLAT_DUTY_BOARD_CONFIG / AIPLAT_HOME / seed）。"""
+    from core.harness.meta.org_harness_metrics import load_duty_board_thresholds as _load
+
+    thr, source = _load(override=override)
+    return {"thresholds": thr, "source": source}
+
+
+def load_adoption_snapshot() -> Dict[str, Any]:
+    """Duty board HITL/Howl snapshot（缺失则为空；不发明成功率）。"""
+    from core.harness.meta.org_harness_metrics import load_adoption_snapshot as _snap
+
+    return _snap()
+
+
+def publish_team_brain_manual(
+    title: str,
+    summary: str,
+    *,
+    source_agent: str = "",
+    keywords: Optional[list] = None,
+) -> Dict[str, Any]:
+    """登记人工团队解法 → shared_memory（供跨 Agent 召回）。"""
+    from core.harness.memory.team_brain import publish_manual_solution
+
+    return publish_manual_solution(
+        title=title,
+        summary=summary,
+        source_agent=source_agent,
+        keywords=keywords,
+    )
+
+
+def ingest_ide_capture(
+    prompt: str,
+    result: str = "",
+    *,
+    tools: Optional[list] = None,
+    success: bool = True,
+    tags: Optional[list] = None,
+    source: str = "ide",
+    session_id: str = "",
+    write_wiki: bool = False,
+) -> Dict[str, Any]:
+    """IDE/Cursor/CC 旁路捕获 → Team Brain（可选 Session Wiki）。不新建平行库。"""
+    from core.harness.memory.ide_capture import ingest_ide_capture as _ingest
+
+    return _ingest(
+        prompt,
+        result,
+        tools=tools,
+        success=success,
+        tags=tags,
+        source=source,
+        session_id=session_id,
+        write_wiki=write_wiki,
+    )
+
+
+def write_session_wiki(
+    title: str,
+    summary: str,
+    *,
+    session_id: str = "",
+    tags: Optional[list] = None,
+    source: str = "session",
+) -> Dict[str, Any]:
+    """编码会话收尾短页 → wiki_engine（draft topics）。"""
+    from core.harness.memory.session_wiki import write_session_wiki_page
+
+    return write_session_wiki_page(
+        title=title,
+        summary=summary,
+        session_id=session_id,
+        tags=tags,
+        source=source,
+    )
+
+
+async def run_code_review_gold_eval(
+    *,
+    profile: str = "balanced",
+    gold_dir: Optional[str] = None,
+    case_ids: Optional[list] = None,
+    match_only: bool = False,
+    limit: int = 0,
+    tenant_id: str = "",
+    persist: bool = True,
+    record_novel: bool = False,
+) -> Dict[str, Any]:
+    """ReviewBench 风格：租户黄金 PR × autoreview → Precision/Recall/P0 召回。"""
+    from core.harness.evaluation.code_review_gold import run_code_review_gold_eval as _run
+
+    return await _run(
+        profile=profile,
+        gold_dir=gold_dir,
+        case_ids=case_ids,
+        match_only=match_only,
+        limit=limit,
+        tenant_id=tenant_id,
+        persist=persist,
+        record_novel=record_novel,
+    )
+
+
+def list_code_review_gold_profiles() -> Dict[str, Any]:
+    """噪声档位 → autoreview 参数映射。"""
+    from core.harness.evaluation.code_review_gold import list_profiles
+
+    return list_profiles()
+
+
+def list_code_review_gold_reports(*, tenant_id: str = "", limit: int = 20) -> list:
+    """黄金评测 JSONL 历史（不改 gold）。"""
+    from core.harness.evaluation.code_review_gold import list_eval_reports
+
+    return list_eval_reports(tenant_id=tenant_id, limit=limit)
+
+
+def evaluate_gold_profile_gate(
+    *,
+    profile: str = "balanced",
+    risk_level: str = "high",
+    tenant_id: str = "",
+    force: bool = False,
+) -> Dict[str, Any]:
+    """同档位黄金集门禁：高风险配置变更须近期非回归 gold（ReviewBench 纪律）。"""
+    from core.harness.evaluation.gold_profile_gate import evaluate_gold_profile_gate as _gate
+
+    return _gate(
+        profile=profile or "balanced",
+        risk_level=risk_level or "low",
+        tenant_id=tenant_id or "",
+        force=bool(force),
+    )
+
+
 def get_os_sandbox_status() -> Dict[str, Any]:
     """返回 OS 原生沙箱模式诊断（P1, 对标 Codex sandboxing）。
 
-    {mode: bwrap|seatbelt|none, available, enabled, active, env}——
-    供诊断端点/运维面板查看 AIPLAT_SANDBOX 生效状态。
+    {mode, available, enabled, active, env, profile, fail_closed, production_tightened}——
+    供诊断端点/运维面板查看 AIPLAT_SANDBOX / 生产收紧生效状态。
     """
     from core.harness.infrastructure.os_sandbox import sandbox_env_ready
 
     return sandbox_env_ready()
+
+
+def get_subagent_discipline_status() -> Dict[str, Any]:
+    """子代理浓缩回传 / 隔离纪律诊断（生产强制 isolate）。"""
+    from core.harness.execution.subagent_discipline import discipline_status
+
+    return discipline_status()
 
 
 def get_document_categories() -> list:

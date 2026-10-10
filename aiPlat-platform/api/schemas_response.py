@@ -137,6 +137,12 @@ class ProjectStateResponse(BaseModel):
     confirmed_prd: Optional[Dict[str, Any]] = None
     state: Dict[str, Any] = Field(default_factory=dict)
     runs: List[Dict[str, Any]] = Field(default_factory=list)
+    # Oversight / completion slices (optional; present on terminal polls)
+    structure_diagram: Optional[Dict[str, Any]] = None
+    evidence_page: Optional[Dict[str, Any]] = None
+    evidence_metrics: Optional[Dict[str, Any]] = None
+    friction_share: Optional[Dict[str, Any]] = None
+    team_digest: Optional[Dict[str, Any]] = None
 
 
 class PipelineStartResponse(BaseModel):

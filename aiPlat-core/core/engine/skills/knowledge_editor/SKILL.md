@@ -6,6 +6,7 @@ description: 阅读新文档，识别受影响的Wiki页面，编排更新。LLM
 category: retrieval
 version: 1.0.0
 status: enabled
+invocation_mode: auto
 execution_mode: prompt
 execution_type: prompt
 triggers:
@@ -173,6 +174,6 @@ skip_when: 跳过条件：页面受保护或用户无编辑权限时不触发。
 持续编缉和维护 Wiki 知识库
 
 ## Checklist
-- [ ] 输出格式符合规范
-- [ ] 正确处理错误和边界条件
-- [ ] 返回结果包含引用和来源标注
+- [ ] 对照目标完成交付（可验证）
+- [ ] 输出符合 output_schema / SOP 约定
+- [ ] 未知项标「待确认」

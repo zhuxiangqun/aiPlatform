@@ -138,3 +138,35 @@ def test_register_helper_signature():
     # 顶层便捷函数可用（供 architecture_guard 接线）
     assert callable(register_failure)
     assert callable(record_verification)
+
+
+def test_publish_promoted_to_team_brain(monkeypatch):
+    """promoted gotcha → CoreFacade.publish_team_brain_manual（Team Brain Auto-Recall）。"""
+    import types
+    from governance.experience_feedback import experience_feedback as ef
+
+    calls: list = []
+
+    facade = types.ModuleType("core.api.core_facade")
+
+    def _publish(**kwargs):
+        calls.append(kwargs)
+        return {"key": f"team_solution:manual:{kwargs.get('title')}"}
+
+    facade.publish_team_brain_manual = _publish  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "core.api.core_facade", facade)
+    # parent packages may already exist; only need facade module for import inside helper
+    if "core" not in sys.modules:
+        monkeypatch.setitem(sys.modules, "core", types.ModuleType("core"))
+    if "core.api" not in sys.modules:
+        monkeypatch.setitem(sys.modules, "core.api", types.ModuleType("core.api"))
+
+    ef._publish_promoted_to_team_brain(
+        {"rule_id": "gotcha-redis", "content": "Use singleflight for hot keys", "source": "unit"}
+    )
+    assert calls and calls[0]["title"] == "experience:gotcha-redis"
+    assert "singleflight" in calls[0]["summary"]
+
+    calls.clear()
+    ef._publish_promoted_to_team_brain({"rule_id": "empty", "content": "   "})
+    assert calls == []

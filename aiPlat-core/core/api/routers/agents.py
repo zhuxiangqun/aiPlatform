@@ -1889,7 +1889,9 @@ async def agent_config_diff(agent_id: str, req: AgentDiffRequest):
 
     Used by HITL review workflows to show approvers exactly what changed
 
-    (added/removed/changed fields, risk assessment).
+    (added/removed/changed fields, risk assessment). High-risk model changes
+
+    attach same-profile gold_gate (require recent non-regressing gold eval).
 
     """
 

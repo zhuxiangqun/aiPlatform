@@ -59,8 +59,14 @@ def build_contract_and_digest(*, name: str, version: str, kind: str, input_schem
 
     # Governance defaults (safe by default):
     # - high risk skills should not be auto-triggered unless explicitly allowed
+    # - invocation_mode=user (Matt-style) forces auto_trigger_allowed=false
+    inv = str(metadata.get("invocation_mode") or "").strip().lower()
     auto_trigger_allowed = metadata.get("auto_trigger_allowed")
-    if auto_trigger_allowed is None:
+    if inv == "user":
+        auto_trigger_allowed = False
+    elif inv == "auto" and auto_trigger_allowed is None:
+        auto_trigger_allowed = True
+    elif auto_trigger_allowed is None:
         auto_trigger_allowed = False if risk_level == "high" else True
     auto_trigger_allowed = bool(auto_trigger_allowed)
 

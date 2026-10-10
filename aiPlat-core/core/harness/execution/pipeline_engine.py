@@ -55,7 +55,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypedDict
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, TypedDict
 
 
 
@@ -1311,39 +1311,52 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
                     return f"Knowledge retrieval failed: {getattr(result, 'error', 'unknown')}"
 
-                # Optional LLM re-ranking of retrieved chunks
+                # Optional re-ranking via InfraReranker (W4/A2 migrate — no engine LLM prompt)
                 if kb_rerank and output:
 
                     try:
 
-                        from core.harness.utils.prompt_loader import _sync_resolve
-                        rerank_prompt = _sync_resolve("relevance-ranker",
-                            top_k=kb_top_k, query=kb_query, passages=str(output)[:3000])
+                        import re as _re_rr
 
-                        from core.harness.syscalls.llm import sys_llm_generate
-                        _rerank_model = best_model_for_purpose("chat")
-                        # bypass-ok: workflow_kb_rerank
-                        rerank_resp = await sys_llm_generate(
-                            _rerank_model,
+                        from core.harness.infrastructure.base_model_adapter import create_adapter
 
-                            [{"role": "user", "content": rerank_prompt}],
+                        raw = str(output)
 
-                            trace_context={"source": f"workflow_knowledge_rerank_{stage.id}"}
+                        parts = [p.strip() for p in _re_rr.split(r"\n\s*---\s*\n|\n\n+", raw) if p.strip()]
 
-                        )
+                        if len(parts) < 2:
 
-                        rerank_text = getattr(rerank_resp, 'content', '') or ''
+                            parts = [ln.strip() for ln in raw.splitlines() if ln.strip()]
 
-                        # Engine infra — model health recording (shared with _run_stage_skill)
-                        try:
-                            from core.harness.utils.model_injection import _record_success as _rerank_record_success
-                            _rerank_record_success(_rerank_model, latency_ms=0, purpose="chat")
-                        except Exception:
-                            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+                        candidates = [{"text": p[:2000]} for p in parts[: max(int(kb_top_k or 5) * 3, 8)]]
 
-                        if rerank_text:
+                        ranked = None
 
-                            output = f"[Re-ranked]\n{rerank_text[:3000]}"
+                        if candidates:
+
+                            adapter = create_adapter("reranker")
+
+                            ranked = adapter.rerank(kb_query, candidates, top_k=int(kb_top_k or 5))
+
+                        if ranked:
+
+                            lines = []
+
+                            for i, r in enumerate(ranked[: int(kb_top_k or 5)]):
+
+                                t = str(r.get("text") or "")[:500]
+
+                                lines.append(f"[{i+1}] {t}")
+
+                            output = "[Re-ranked]\n" + "\n".join(lines)
+
+                        else:
+
+                            logging.getLogger(__name__).debug(
+
+                                "workflow knowledge rerank: InfraReranker unavailable; keeping original hits"
+
+                            )
 
                     except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
 
@@ -2503,15 +2516,74 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                     logging.getLogger(__name__).debug(
                         "write_bloat_metrics skipped", exc_info=True
                     )
+                # Oversight: deterministic stage Mermaid (no LLM)
+                try:
+                    from core.harness.execution.run_structure_diagram import (
+                        write_structure_diagram,
+                    )
+                    write_structure_diagram(
+                        self._state,
+                        stages=getattr(self._config, "stages", None),
+                    )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "write_structure_diagram skipped", exc_info=True
+                    )
+                # Oversight P1: discardable evidence page (template + JSON)
+                try:
+                    from core.harness.execution.run_evidence_page import (
+                        write_evidence_page,
+                    )
+                    write_evidence_page(
+                        self._state,
+                        stages=getattr(self._config, "stages", None),
+                    )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "write_evidence_page skipped", exc_info=True
+                    )
 
         except asyncio.CancelledError:
             self._state["phase"] = "failed"
-            self._state["error_message"] = "Pipeline task cancelled"
+            self._state["error_message"] = self._apply_operator_error(
+                "Pipeline task cancelled"
+            )
             raise
         except Exception as e:
             self._state["phase"] = "failed"
-            self._state["error_message"] = str(e)[:500]
+            raw_err = str(e)[:500]
+            self._state["error_message"] = self._apply_operator_error(
+                raw_err, protect=[raw_err]
+            )
         finally:
+            # Always attach structure diagram on terminal phases (done/failed)
+            if self._state.get("phase") in ("done", "failed"):
+                try:
+                    from core.harness.execution.run_structure_diagram import (
+                        write_structure_diagram,
+                    )
+                    if not isinstance(self._state.get("_structure_diagram"), dict):
+                        write_structure_diagram(
+                            self._state,
+                            stages=getattr(self._config, "stages", None),
+                        )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "write_structure_diagram terminal skipped", exc_info=True
+                    )
+                try:
+                    from core.harness.execution.run_evidence_page import (
+                        write_evidence_page,
+                    )
+                    if not isinstance(self._state.get("_evidence_page"), dict):
+                        write_evidence_page(
+                            self._state,
+                            stages=getattr(self._config, "stages", None),
+                        )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "write_evidence_page terminal skipped", exc_info=True
+                    )
             if self._state.get("phase") not in ("done", "failed"):
                 self._state["phase"] = "done"
                 try:
@@ -2525,6 +2597,30 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 except Exception:
                     logging.getLogger(__name__).debug(
                         "write_bloat_metrics in finally skipped", exc_info=True
+                    )
+                try:
+                    from core.harness.execution.run_structure_diagram import (
+                        write_structure_diagram,
+                    )
+                    write_structure_diagram(
+                        self._state,
+                        stages=getattr(self._config, "stages", None),
+                    )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "write_structure_diagram in finally skipped", exc_info=True
+                    )
+                try:
+                    from core.harness.execution.run_evidence_page import (
+                        write_evidence_page,
+                    )
+                    write_evidence_page(
+                        self._state,
+                        stages=getattr(self._config, "stages", None),
+                    )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "write_evidence_page in finally skipped", exc_info=True
                     )
             self._state["finished_at"] = __import__("datetime").datetime.now().isoformat()
             if self._persist_callback:
@@ -2579,8 +2675,31 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         """Emergency: terminate the pipeline immediately."""
         self._shutdown_requested = True
         self._state["phase"] = "failed"
-        self._state["error_message"] = "Force terminated by administrator"
+        self._state["error_message"] = self._apply_operator_error(
+            "Force terminated by administrator"
+        )
         self._resume_event.set()
+
+    def _apply_operator_error(
+        self,
+        message: str,
+        *,
+        protect: Optional[Sequence[str]] = None,
+    ) -> str:
+        """Concise operator-facing errors; keeps diagnostic tokens verbatim."""
+        try:
+            from core.harness.utils.writing_profile import (
+                PROFILE_CONCISE,
+                apply_error_message,
+                resolve_writing_profile,
+            )
+
+            profile = resolve_writing_profile(self._state, default=PROFILE_CONCISE)
+            return apply_error_message(
+                message, profile=profile, protect=list(protect or [])
+            )
+        except Exception:
+            return str(message or "")
 
     def _invalidate_downstream(self, start_idx: int) -> None:
         """Clear artifacts for current and all downstream stages."""
@@ -7395,6 +7514,16 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 )
 
                 await mm.save_task_skill(task_skill)
+
+                try:
+                    from core.harness.memory.team_brain import publish_task_skill_solution
+                    publish_task_skill_solution(
+                        task_skill,
+                        source_agent=(agent_sequence[0] if agent_sequence else ""),
+                        source_session=str(state.get("session_id") or sid or ""),
+                    )
+                except Exception:
+                    logging.getLogger("pipeline_engine").debug("team_brain publish skipped", exc_info=True)
 
             except Exception:
 
