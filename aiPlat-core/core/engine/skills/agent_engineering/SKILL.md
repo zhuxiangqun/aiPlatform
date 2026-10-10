@@ -110,15 +110,14 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 ---
 
 ### Step 0: 多 Agent 评估
-根据 PRD 的复杂度，决定单 Agent 还是多 Agent 架构：
+**默认** `"mode": "single"`（禁止仅凭 FR 数量拆 multi）。
 
-| PRD 信号 | Agent 数量 | 架构 |
-|---------|:---:|------|
-| ≤3 个功能需求，无异步流程 | 1 | 单 Agent 处理全部 |
-| 4-6 功能需求，有异步任务 | 2-3 | 拆分为: orchestrator + 1-2 个 sub-agent |
-| ≥7 功能需求，有实时+批量混合 | 4+ | orchestrator + 多个 sub-agent |
-| 有实时通知/定时任务 | +1 | 加 notification_agent |
-| 有审批/多角色 | +1 | 加 orchestrator_agent 协调流程 |
+升 `multi_agent` 必须 **五条判据全部 AND**（缺任一条保持 single）：
+1. 存在可并行/可隔离的正交子任务（不是同一流水线的串行步骤）
+2. 单 Agent 有明确能力缺口（工具/权限/上下文预算不够）
+3. 拆分有路由收益（降低上下文或失败域，而非堆 Agent）
+4. 全部经 PolicyGate / 身份注入（tenant/actor/scopes）
+5. 有契约交接（handoff 五字段 / schema 门），**不做无门控互调**（禁止自由 spawn / 直调其他 Agent）
 
 **多 Agent 模式必须生成 `agent_manifest.json`**，记录：
 - 每个 Agent 的 name、display_name
@@ -289,6 +288,9 @@ manifest 字段说明:
   - 报告 Skill 的职责：从共享状态聚合各 processor 产出 → 统一时间轴/结构化报告 → 可导出 JSON；其角色为 Step 1.6 的 `aggregator`（任务级 `completed` 仅在此之后）。
   - `progress_poller` 绑定能反映任务进度/状态的 Skill（可为 ingress 或专用 `check_progress` Skill；禁止绑最终报告 Skill）
 - `mode`: `single`(单Agent) / `multi_agent`(多Agent)
+  - **默认** `"mode": "single"`（禁止仅凭 FR 数量拆 multi）
+  - 升 `multi_agent` 必须 **五条判据全部 AND**（正交子任务、单 Agent 缺口、路由收益、PolicyGate、契约交接）；缺任一条保持 single
+  - **不做无门控互调**（禁止自由 spawn / 直调其他 Agent）
 
 **异步任务状态机（强制 — 按 Step 1.6 角色，禁止业务域名/skill 名硬编码分支）**：
 - `ingress` 成功 → 任务 `pending`/`ready`（**不要** `completed`）

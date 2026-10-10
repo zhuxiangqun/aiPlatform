@@ -29,9 +29,16 @@ def test_max_repair_attempts_is_two():
 
 
 def test_deploy_mixin_surfaces_openable_and_rejects():
-    path = Path(__file__).resolve().parents[1] / "builder" / "builder_deploy_mixin.py"
-    src = path.read_text(encoding="utf-8")
-    assert "rejected_artifacts" in src
-    assert "openable" in src
-    assert "last_deploy_rejects" in src
-    assert "smoke_test" in src
+    # F4 surfaces live on BuilderProjectService after P1-14 God Class split
+    # (builder_deploy_mixin keeps deploy/health/insight entrypoints only).
+    root = Path(__file__).resolve().parents[1] / "builder"
+    service_src = (root / "builder_project_service.py").read_text(encoding="utf-8")
+    mixin_src = (root / "builder_deploy_mixin.py").read_text(encoding="utf-8")
+    assert "rejected_artifacts" in service_src
+    assert "openable" in service_src
+    # Persist key is last_deploy (+ rejected_count/rejected_artifacts), not last_deploy_rejects
+    assert "last_deploy" in service_src
+    assert "rejected_count" in service_src
+    assert "smoke_test" in service_src
+    assert "async def deploy_to_app" in mixin_src
+    assert "async def get_health_report" in mixin_src
