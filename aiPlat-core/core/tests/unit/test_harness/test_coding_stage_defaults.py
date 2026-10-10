@@ -20,6 +20,7 @@ def test_file_output_enables_sandbox_and_autoreview(monkeypatch):
     assert stage.sandbox is True
     assert "autoreview" in (stage.required_skills or [])
     assert isinstance(stage.done_verify, dict) and stage.done_verify.get("enabled") is True
+    assert stage.done_verify.get("require_testability") is True
 
 
 def test_sandbox_mode_none_opts_out(monkeypatch):
@@ -69,4 +70,5 @@ def test_apply_helper_idempotent(monkeypatch):
     )
     again = apply_coding_stage_defaults(stage)
     assert again.done_verify.get("min_output_length") == 40
+    assert again.done_verify.get("require_testability") is True
     assert again.required_skills.count("autoreview") == 1
