@@ -740,7 +740,7 @@ scan_hash: 8f9548ec24f4
 | 编码 stage 默认闭环 | `schemas_builder.apply_coding_stage_defaults` + `code_split`/`code`/`hybrid` 团队种子 | ✅ | `uses_file_output` → stage sandbox 开 + light done_verify + `required_skills` 绑 autoreview（`review_gate=none` / env 可关）；file_checkpoint 仍全局默认；生成物适用：已接线（工厂编码团队） | 已合入 |
 | Code 元工具偏好（图灵完备出口） | `harness/execution/meta_tool.py` + `ReActLoop._build_tools_desc` + `PipelineStageConfig.meta_tool` + StageRunner/CoreFacade/team_planner 注入 | ✅ | 算术/日期/解析/逃逸舱口 → `[META TOOL]` 提示 + 置顶 `code`；配置 `{enabled, auto_bind, force}`；`AIPLAT_META_TOOL_AUTO_BIND=auto`（生产 on / 开发 off）；`AIPLAT_META_TOOL_CODE` 总开关；生成物适用：已接线（Harness 横切） | 已合入 |
 | 组织 Harness 暗账本（HITL/审批 Amdahl） | `harness/meta/org_harness_metrics.py` + `CoreFacade.org_harness_status` + `GET /governance/org-harness` + Governance 面板 + eval_observability 可选切片 | ✅ | `serial_ratio`/审批 + **四指标**（P·R·P0miss·comments/time）+ `serial_chain_recommendations`（串行链改造建议）；vite/proxy；生成物不适用（平台横切治理观测） | 已合入 |
-| Governance 值班板（KPI 运营化） | `build_duty_board` + `load_adoption_snapshot` + Governance「值班板」+ 无假绿 adoption/机制状态 | ✅ | go/watch/block/unavailable；金标/串行/审批/HITL/Howl；任务成功率标 unavailable；gold_gate 加载失败 require_eval；生成物不适用（平台横切治理观测） | 已合入 |
+| Governance 值班板（KPI 运营化） | `build_duty_board` + `load_adoption_snapshot` + Governance「值班板」+ Gold match-only CTA + 无假绿 adoption/机制状态 | ✅ | go/watch/block/unavailable；金标/串行/审批/HITL/Howl；任务成功率标 unavailable；gold_gate 加载失败 require_eval；值班板一键 `POST .../code-review-gold/evaluate`（match_only+persist limit=5）写报告并刷新 org-harness；生成物不适用（平台横切治理观测） | 已合入 |
 | 值班板阈值 YAML | `load_duty_board_thresholds` + `workspace_seeds/org/duty_board.yaml` | ✅ | override → `AIPLAT_DUTY_BOARD_CONFIG` → `$AIPLAT_HOME/org/duty_board.yaml` → seed；duty_board + serial tips 共用；生成物不适用（平台横切） | 已合入 |
 | Governance 任务采纳/干预 KPI | `pages/Governance/index.tsx` ← `GET /core/diagnostics/adoption-metrics` | ✅ | Agent KPI（调用/7日活跃/HITL 通过·驳回/澄清触发）上治理主面；不可用时显式 unavailable，**不展示假成功率**；生成物不适用（平台横切） | 已合入 |
 | event_loop | harness/execution/event_loop.py | ✅ | 自动同步 | 已合入 |
@@ -1702,7 +1702,7 @@ scan_hash: 8f9548ec24f4
 | ExecutionViewer | `aiPlat-management/frontend/src/components/ExecutionViewer/ExecutionViewer.tsx` | ✅ | 运行图/事件回放；进行中可 `runApi.cancel`；完成后「副作用恢复指引」→ `POST /runs/{id}/undo` 的可解释 409（file checkpoints / 域回滚），链到 `/core/checkpoints` | 已合入 |
 | 运行回滚可解释指引 | `harness/execution/run_rollback_guidance.py` + `POST /runs/{id}/undo` | ✅ | 完成后无通用 undo；返回 alternatives + checkpoint 预览；生成物不适用（平台横切） | 已合入 |
 | Ontology 种子离线就绪 | `scripts/check_ontology_seeds_offline.py` + `ops_harness_ready_check.sh` | ✅ | 工作区 `workspace_seeds/ontologies/*.yaml` parse 门禁；可选 copy→`~/.aiplat/ontologies`；Graph ingest 仍需 runtime；生成物不适用 | 已合入 |
-| 发布习惯门：ops harness ready | `scripts/ops_harness_ready_check.sh` + `.github/workflows/aiplat-contracts-guard.yml`（Ops harness ready） | ✅ | CI 强制：gold `--match-only` + ontology offline YAML + IDE capture hooks；与 Governance 值班板 `release_habit` 同门；install-seeds 最佳努力；生成物不适用（平台横切发布门禁） | 已合入 |
+| 发布习惯门：ops harness ready | `scripts/ops_harness_ready_check.sh` + `.github/workflows/aiplat-contracts-guard.yml`（Ops harness ready）+ Governance「Gold match-only」CTA | ✅ | CI 强制：gold `--match-only` + ontology offline YAML + IDE capture hooks；与 Governance 值班板 `release_habit` / 一键 CTA 同门；install-seeds 最佳努力；生成物不适用（平台横切发布门禁） | 已合入 |
 | WorkflowsPage | `aiPlat-management/frontend/src/pages/Core/Workflows/WorkflowsPage.tsx` | ✅ | 自动同步 | 已合入 |
 | Credentials | `aiPlat-management/frontend/src/pages/Core/Credentials/Credentials.tsx` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|

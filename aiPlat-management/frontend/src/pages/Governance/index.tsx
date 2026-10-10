@@ -147,6 +147,13 @@ export default function GovernanceDashboard() {
   const [orgHarness, setOrgHarness] = useState<OrgHarnessData | null>(null);
   const [adoption, setAdoption] = useState<AdoptionReport | null>(null);
   const [loading, setLoading] = useState(true);
+  const [goldBusy, setGoldBusy] = useState(false);
+  const [goldCtaMsg, setGoldCtaMsg] = useState<string | null>(null);
+
+  const fetchOrgHarness = async () => {
+    const oh = await apiClient.get<OrgHarnessData>('/governance/org-harness?recent_limit=10');
+    if (oh?.ok) setOrgHarness(oh);
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -160,8 +167,7 @@ export default function GovernanceDashboard() {
       if (ev?.org_harness?.ok) setOrgHarness(ev.org_harness);
     } catch {}
     try {
-      const oh = await apiClient.get<OrgHarnessData>('/governance/org-harness?recent_limit=10');
-      if (oh?.ok) setOrgHarness(oh);
+      await fetchOrgHarness();
     } catch {}
     try {
       const ad = await apiClient.get<{ status?: string; report?: AdoptionReport }>(
@@ -172,6 +178,60 @@ export default function GovernanceDashboard() {
       setAdoption(null);
     }
     setLoading(false);
+  };
+
+  /** Release-habit CTA: match-only gold → persist report → refresh duty board. */
+  const runGoldMatchOnly = async () => {
+    setGoldBusy(true);
+    setGoldCtaMsg(null);
+    try {
+      const res = await apiClient.post<{
+        data?: {
+          ok?: boolean;
+          reason?: string;
+          precision?: number | null;
+          recall?: number | null;
+          p0_recall?: number | null;
+          case_count?: number;
+          gold_dir?: string;
+          report_path?: string;
+        };
+      }>('/platform/apps/code-review-gold/evaluate', {
+        match_only: true,
+        persist: true,
+        limit: 5,
+        record_novel: false,
+        profile: 'balanced',
+      });
+      const d = res?.data ?? (res as { ok?: boolean; reason?: string });
+      if (!d?.ok) {
+        const reason = (d as { reason?: string })?.reason || 'unknown';
+        const gdir = (d as { gold_dir?: string })?.gold_dir;
+        setGoldCtaMsg(
+          `Gold 失败: ${reason}${gdir ? ` · dir=${gdir}` : ''} · tip: ops_harness_ready_check.sh --install-seeds`,
+        );
+      } else {
+        const row = d as {
+          case_count?: number;
+          precision?: number | null;
+          recall?: number | null;
+          p0_recall?: number | null;
+        };
+        setGoldCtaMsg(
+          `match-only ok · cases=${row.case_count ?? '—'} · P=${row.precision ?? '—'} · R=${row.recall ?? '—'} · P0=${row.p0_recall ?? '—'}`,
+        );
+      }
+      try {
+        await fetchOrgHarness();
+      } catch {
+        /* board refresh best-effort */
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setGoldCtaMsg(`Gold 请求失败: ${msg}`);
+    } finally {
+      setGoldBusy(false);
+    }
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -259,7 +319,7 @@ export default function GovernanceDashboard() {
         marginBottom: 20, padding: '12px 16px', borderRadius: 8,
         border: `1px solid ${dutyColor}`, background: '#141422',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Shield size={18} color={dutyColor} />
             <span style={{ fontWeight: 700, color: dutyColor, fontSize: 15 }}>
@@ -273,11 +333,28 @@ export default function GovernanceDashboard() {
               {' · '}howl={checkOrUnavailable('howl')}
             </span>
           </div>
-          <span style={{ fontSize: 11, color: '#888' }}>
-            {orgHarness?.availability
-              ? `avail runs=${orgHarness.availability.runs ? 'y' : 'n'} gold=${orgHarness.availability.gold ? 'y' : 'n'} appr=${orgHarness.availability.approvals ? 'y' : 'n'}`
-              : 'avail unknown'}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 11, color: '#888' }}>
+              {orgHarness?.availability
+                ? `avail runs=${orgHarness.availability.runs ? 'y' : 'n'} gold=${orgHarness.availability.gold ? 'y' : 'n'} appr=${orgHarness.availability.approvals ? 'y' : 'n'}`
+                : 'avail unknown'}
+            </span>
+            <button
+              type="button"
+              onClick={runGoldMatchOnly}
+              disabled={goldBusy}
+              title="POST /api/platform/apps/code-review-gold/evaluate match_only+persist · 同 ops_harness_ready_check 发布习惯"
+              style={{
+                ...iconBtnStyle,
+                opacity: goldBusy ? 0.6 : 1,
+                borderColor: goldAvail ? '#3a5a3a' : '#555',
+                color: goldBusy ? '#888' : '#cfc',
+              }}
+            >
+              <CheckCircle size={14} />
+              {goldBusy ? 'Gold…' : 'Gold match-only'}
+            </button>
+          </div>
         </div>
         {(duty.reasons?.length || 0) > 0 && (
           <div style={{ marginTop: 8, fontSize: 12, color: '#aaa' }}>
@@ -288,6 +365,14 @@ export default function GovernanceDashboard() {
         )}
         {duty.release_habit && (
           <div style={{ marginTop: 6, fontSize: 11, color: '#666' }}>{duty.release_habit}</div>
+        )}
+        {goldCtaMsg && (
+          <div style={{
+            marginTop: 8, fontSize: 11, fontFamily: 'monospace',
+            color: goldCtaMsg.startsWith('match-only ok') ? '#4a4' : '#aa4',
+          }}>
+            {goldCtaMsg}
+          </div>
         )}
         {duty.thresholds_source && (
           <div style={{ marginTop: 4, fontSize: 10, color: '#555' }}>
