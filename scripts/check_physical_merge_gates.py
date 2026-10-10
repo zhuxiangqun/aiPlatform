@@ -92,14 +92,28 @@ def main() -> int:
         print("internal error: stats type", type(report.stats), file=sys.stderr)
         return 2
 
-    # P1 testability via CoreFacade (production caller for evaluate_diff_snippets).
-    from core.api.core_facade import evaluate_testability_gate
-
+    # P1 testability — prefer CoreFacade (production entry); fall back to harness
+    # when facade import fails (e.g. local Python 3.9 + 3.10-only annotations upstream).
     snippets = dict(report.stats.added_snippets) if report.stats else {}
-    t_payload = evaluate_testability_gate(
-        snippets=snippets,
-        workspace_root=str(ROOT),
-    )
+    try:
+        from core.api.core_facade import evaluate_testability_gate
+
+        t_payload = evaluate_testability_gate(
+            snippets=snippets,
+            workspace_root=str(ROOT),
+        )
+    except Exception as exc:
+        from core.harness.meta.testability_gate import evaluate_diff_snippets
+
+        print(
+            f"[testability-gate] CoreFacade unavailable ({type(exc).__name__}); "
+            "using harness evaluate_diff_snippets",
+            file=sys.stderr,
+        )
+        t_payload = evaluate_diff_snippets(
+            snippets,
+            workspace_root=ROOT,
+        ).to_dict()
 
     payload = report.to_dict()
     payload["testability"] = t_payload
