@@ -5212,6 +5212,41 @@ def evaluate_physical_merge_gates(
     return report.to_dict()
 
 
+def evaluate_testability_gate(
+    *,
+    files: Optional[Dict[str, str]] = None,
+    snippets: Optional[Dict[str, str]] = None,
+    workspace_root: str = "",
+    mode: str = "",
+    config: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """P1 testability gate — handlers need pure unit tests (not integration-only).
+
+    Prefer ``snippets`` + ``workspace_root`` for merge-time diffs (enriches disk tests).
+    ``files`` is the done_verify / in-memory path→content map.
+    """
+    from pathlib import Path
+
+    from core.harness.meta.testability_gate import (
+        evaluate_diff_snippets,
+        evaluate_files,
+    )
+
+    if snippets is not None:
+        root = Path(workspace_root) if str(workspace_root or "").strip() else None
+        return evaluate_diff_snippets(
+            snippets,
+            config=config,
+            mode_override=mode or "",
+            workspace_root=root,
+        ).to_dict()
+    return evaluate_files(
+        files or {},
+        config=config,
+        mode_override=mode or "",
+    ).to_dict()
+
+
 def publish_team_brain_manual(
     title: str,
     summary: str,

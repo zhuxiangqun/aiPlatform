@@ -92,8 +92,20 @@ def main() -> int:
         print("internal error: stats type", type(report.stats), file=sys.stderr)
         return 2
 
+    # P1 testability via CoreFacade (production caller for evaluate_diff_snippets).
+    from core.api.core_facade import evaluate_testability_gate
+
+    snippets = dict(report.stats.added_snippets) if report.stats else {}
+    t_payload = evaluate_testability_gate(
+        snippets=snippets,
+        workspace_root=str(ROOT),
+    )
+
+    payload = report.to_dict()
+    payload["testability"] = t_payload
+
     if args.json:
-        print(json.dumps(report.to_dict(), ensure_ascii=False, indent=2))
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
         stats = report.stats
         print(
@@ -119,10 +131,34 @@ def main() -> int:
                     "  (warn mode — exit 0; set AIPLAT_PHYSICAL_GATES_MODE=block "
                     f"or wait until block_after={report.block_after} to fail CI)"
                 )
+        t_mode = str(t_payload.get("mode") or "")
+        t_findings = t_payload.get("findings") or []
+        print(
+            f"[testability-gate] mode={t_mode} "
+            f"handlers={len(t_payload.get('handlers_checked') or [])} "
+            f"source={t_payload.get('config_source')}"
+        )
+        if not t_findings:
+            print("  OK — no testability findings")
+        else:
+            for f in t_findings:
+                loc = f" @ {f.get('path')}" if f.get("path") else ""
+                print(
+                    f"  {str(f.get('severity') or 'warn').upper()} "
+                    f"[{f.get('code')}]{loc}: {f.get('message')}"
+                )
+            if t_mode == "warn":
+                print(
+                    "  (warn mode — exit 0; AIPLAT_TESTABILITY_GATE_MODE=block "
+                    f"or block_after={t_payload.get('block_after')})"
+                )
 
+    fail = False
     if report.mode == "block" and not report.ok:
-        return 1
-    return 0
+        fail = True
+    if str(t_payload.get("mode") or "") == "block" and not t_payload.get("ok", True):
+        fail = True
+    return 1 if fail else 0
 
 
 if __name__ == "__main__":

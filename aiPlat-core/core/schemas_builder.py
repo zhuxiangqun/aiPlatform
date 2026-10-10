@@ -274,7 +274,14 @@ def apply_coding_stage_defaults(stage: "PipelineStageConfig") -> "PipelineStageC
             "reject_trivial_done": True,
             "reject_action_envelope": True,
             "review_gate": rg if rg != "none" else "none",
+            # P1: handlers in file-output stages must get pure unit tests.
+            "require_testability": True,
+            "testability_mode": "",  # empty → YAML/env resolve_mode (warn→block_after)
         }
+    elif isinstance(dv, dict) and "require_testability" not in dv:
+        dv = dict(dv)
+        dv["require_testability"] = True
+        stage.done_verify = dv
 
     rg = str(getattr(stage, "review_gate", "") or "quick").strip().lower()
     autoreview_default = os.getenv("AIPLAT_CODING_STAGE_AUTOREVIEW", "true").strip().lower() in (
