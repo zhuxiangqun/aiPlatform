@@ -20,6 +20,18 @@ def test_resolve_mode_escalates_after_block_after():
     assert resolve_mode(cfg, now=date(2026, 11, 15)) == "block"
 
 
+def test_seed_block_after_ready_for_nov_1():
+    """Workspace seed + builtin default must share the pulled-forward bite date."""
+    from core.harness.meta.testability_gate import load_testability_config
+
+    cfg, source = load_testability_config()
+    assert cfg.get("block_after", "").startswith("2026-11-01")
+    assert source in ("workspace_seed", "builtin_defaults", "override")
+    # Still warn today; escalates on/after 2026-11-01.
+    assert resolve_mode(cfg, now=date(2026, 10, 11)) == "warn"
+    assert resolve_mode(cfg, now=date(2026, 11, 1)) == "block"
+
+
 def test_impure_detection():
     assert is_impure_test("import sqlite3\nsqlite3.connect(':memory:')")
     assert is_impure_test("requests.get('https://x')")

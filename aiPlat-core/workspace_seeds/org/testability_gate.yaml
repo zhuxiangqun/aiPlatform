@@ -5,8 +5,10 @@ version: 1
 
 # warn | block — AIPLAT_TESTABILITY_GATE_MODE overrides.
 # After block_after (UTC), warn escalates to block (same pattern as physical_merge_gates).
+# Pulled forward 2026-10-11: repo baseline clean (19/19 handler.py with pure unit tests);
+# stagger after physical block_after 2026-10-25 so both gates don't bite the same day.
 mode: warn
-block_after: "2026-11-15"
+block_after: "2026-11-01"
 
 handler_basenames:
   - handler.py
