@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2043
+total_capabilities: 2051
 last_updated: 2026-10-09
 version: "30.9"
 auto_sync: true
@@ -588,6 +588,11 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| envelope_from_review_issue | `core/harness/meta/evidence_envelope.py` | ✅ | 自动同步 | 已合入 |
+| normalize_envelope | `core/harness/meta/evidence_envelope.py` | ✅ | 自动同步 | 已合入 |
+| evidence_item | `core/harness/meta/evidence_envelope.py` | ✅ | 自动同步 | 已合入 |
+| empty_envelope | `core/harness/meta/evidence_envelope.py` | ✅ | 自动同步 | 已合入 |
+| EnvelopeValidation | `core/harness/meta/evidence_envelope.py` | ✅ | 自动同步 | 已合入 |
 | summarize_envelopes | `core/harness/meta/evidence_envelope.py` | ✅ | 自动同步 | 已合入 |
 | allow_release_block | `core/harness/meta/evidence_envelope.py` | ✅ | 自动同步 | 已合入 |
 | attach_envelopes_to_issues | `core/harness/meta/evidence_envelope.py` | ✅ | 自动同步 | 已合入 |
@@ -2966,7 +2971,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 210 | 1 | 211 |
+| Harness 执行引擎 | 214 | 1 | 215 |
 | 记忆子系统 | 58 | 0 | 58 |
 | 知识引擎（本体） | 358 | 9 | 367 |
 | RAG 检索 | 51 | 0 | 51 |
@@ -2986,7 +2991,7 @@ scan_hash: 8f9548ec24f4
 | 工具生态 | 71 | 0 | 71 |
 | 微调系统 | 14 | 0 | 14 |
 | 部署与灰度 | 7 | 0 | 7 |
-| 运行时干预 | 28 | 0 | 28 |
+| 运行时干预 | 32 | 0 | 32 |
 | Arena & 调度 | 7 | 0 | 7 |
 | 平台治理 | 119 | 0 | 119 |
 | Infra 基础设施 | 14 | 0 | 14 |
@@ -3011,7 +3016,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2033** | **10** | **2043** |
+| **总计** | **2041** | **10** | **2051** |
 
 | **总计** | **1095** | **0** | **1095** |
 

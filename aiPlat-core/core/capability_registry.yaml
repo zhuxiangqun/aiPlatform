@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-10-08"
 total_capability_domains: 34
-total_capabilities: 1069
+total_capabilities: 1074
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -708,6 +708,26 @@ domains:
       - symbol: summarize_envelopes
         type: function
         signature: 'summarize_envelopes(issues)→Dict status/confidence counts'
+        module: aiPlat-core/core/harness/meta/evidence_envelope.py
+      - symbol: EnvelopeValidation
+        type: dataclass
+        signature: 'to_dict'
+        module: aiPlat-core/core/harness/meta/evidence_envelope.py
+      - symbol: empty_envelope
+        type: function
+        signature: 'empty_envelope()'
+        module: aiPlat-core/core/harness/meta/evidence_envelope.py
+      - symbol: evidence_item
+        type: function
+        signature: 'evidence_item()'
+        module: aiPlat-core/core/harness/meta/evidence_envelope.py
+      - symbol: normalize_envelope
+        type: function
+        signature: 'Coerce a mapping into a canonical envelope (does not enforce gate rules).'
+        module: aiPlat-core/core/harness/meta/evidence_envelope.py
+      - symbol: envelope_from_review_issue
+        type: function
+        signature: 'Build a derived envelope for static LLM review findings (never auto-confirmed).'
         module: aiPlat-core/core/harness/meta/evidence_envelope.py
     breaks: []
     consumers_expected:
