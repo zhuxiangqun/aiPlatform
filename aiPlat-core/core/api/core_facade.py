@@ -5314,6 +5314,24 @@ def inject_workspace_coding_defaults(
     return _inject(state, agent_cfg=agent_cfg, agent_meta=agent_meta, skills=skills)
 
 
+def coerce_execution_type(
+    raw: str,
+    *,
+    skill_name: str = "",
+) -> tuple:
+    """Normalize SKILL execution_type; production/fail-closed rejects unknown (no silent LLM)."""
+    from core.harness.registry.execution_type_policy import coerce_execution_type as _coerce
+
+    return _coerce(raw, skill_name=skill_name)
+
+
+def execution_type_fail_closed() -> bool:
+    """Whether unknown execution_type must hard-fail (production / FAIL_CLOSED; FAIL_OPEN wins)."""
+    from core.harness.registry.execution_type_policy import execution_type_fail_closed as _fc
+
+    return _fc()
+
+
 def record_gate_run(
     *,
     physical: Optional[Dict[str, Any]] = None,

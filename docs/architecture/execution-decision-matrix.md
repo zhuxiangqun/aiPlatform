@@ -1,8 +1,8 @@
 # 执行决策矩阵（Execution Decision Matrix）
 
 > **状态**：Living Spec（与代码同步；冲突时以代码为准）  
-> **版本**：v1.0 · 2026-10-11  
-> **权威代码锚点**：`schemas_builder.ARCHITECTURE_PROFILES` / `PipelineStageConfig` · `pipeline_engine._run_stage_skill` · `apps/skills/registry.Skill.execute` · `agent_types.yaml` · `agent_engineering/SKILL.md`  
+> **版本**：v1.1 · 2026-10-11  
+> **权威代码锚点**：`schemas_builder.ARCHITECTURE_PROFILES` / `PipelineStageConfig` · `pipeline_engine._run_stage_skill` · `apps/skills/registry.Skill.execute` · `execution_type_policy.coerce_execution_type` · `agent_types.yaml` · `agent_engineering/SKILL.md`  
 > **相关文档**（互补，不替代本文）：  
 > - [capability-profile.md](capability-profile.md) — 能力等级注入表  
 > - [execution-quality-gates.md](execution-quality-gates.md) — **产物质量**门禁（做完后如何验收），非「选哪条执行路径」  
@@ -11,7 +11,22 @@
 
 ---
 
-## 0. 如何迭代本文档
+## 0. 一页纸摘要（新人 / Review）
+
+| 问题 | 答案（现状） |
+|------|--------------|
+| 何时程序、何时 LLM？ | 可规则化/可审计 → 程序；语义生成/多跳探索 → LLM；两者都要 → hybrid / agent 环 |
+| 单 Agent 执行混合几种？ | **4**：`oneshot` / `react_tools` / `plan_execute` / `reflect_loop` |
+| Canonical agent_type 几种？ | **6**：conversational / react / plan_execute / rag / multi_agent / materials_chat |
+| 工厂生成物选什么？ | 只选 `agent_type∈{conversational,react,rag}`；不写 `execution_backend` |
+| 优先级链 | **`architecture_profile` > 团队 YAML 钉 backend > capability 降级推断 > schema 默认 llm** |
+| 显式 profile 会被降级吗？ | **不会**（`_apply_capability_profile` 见 architecture_profile 则跳过 demote；随后再 `apply_architecture_profile`） |
+| handler + Stage `backend=llm`？ | **先 handler**（`_run_stage_skill` §1.5），不绕过到 `sys_llm_generate` |
+| 未知 `execution_type`？ | 生产 / `AIPLAT_EXECUTION_TYPE_FAIL_CLOSED` → **硬失败**；开发默认 WARNING→prompt |
+
+---
+
+## 0.1 如何迭代本文档
 
 | 规则 | 说明 |
 |------|------|
@@ -44,7 +59,8 @@ sys_skill_call
        handler      → handler.py.execute()          【程序，无 LLM】
        hybrid       → LLM 出 plan → handler 执行    【LLM + 程序】
        prompt       → LLM 按 SOP 推理              【LLM】
-       （缺省/未知）→ 当 prompt，并记 WARNING
+       （字段为空）→ 自动探测 handler/hybrid/prompt
+       （未知显式值）→ 生产硬失败；开发 WARNING→prompt
 ```
 
 | `execution_type` | 是否调 LLM | 必要条件 | 证据 |
@@ -53,23 +69,37 @@ sys_skill_call
 | `hybrid` | 是（规划）+ 否（执行） | handler + SOP | 同上 |
 | `prompt`（别名 `llm`） | 是 | SOP 文本 | registry_loader 枚举 |
 | `python_class` / `tool_wrapper` | 声明层存在 | 运行时主路径仍以 handler/hybrid/prompt 为主；新增须先接线再写进本文 | `registry_loader.py` enums |
+| **未知 / 拼写错误** | — | **生产硬失败**；开发 WARNING 后当 `prompt` | `execution_type_policy.coerce_execution_type` |
 
-**自动探测（注册时）**：有 `handler.py` → 倾向 `handler`（SOP 很复杂时可标 hybrid）；无 handler → `prompt`。声明 `handler` 但无文件 → 错误，不是降级 LLM。
+**自动探测（仅当字段为空）**：有 `handler.py` → 倾向 `handler`（SOP 很复杂时可标 hybrid）；无 handler → `prompt`。声明 `handler` 但无文件 → 错误，不是降级 LLM。  
+**显式未知类型**：`AIPLAT_PROFILE=production` 或 `AIPLAT_EXECUTION_TYPE_FAIL_CLOSED=1` → 拒绝执行；`AIPLAT_EXECUTION_TYPE_FAIL_OPEN=1` 可紧急放行（仍 WARNING→prompt）。
 
 ### 2.2 决策树（Pipeline Stage）
 
 ```
-apply_architecture_profile(stage)     # 可改 backend + agent_type
-_apply_capability_profile(...)        # 注入能力；可能降级 agent→llm
-if stage.skill_name:
-  if debate_participants: 辩论编排
-  elif execution_backend == "agent":
-       StageRunner → ReActLoop / PlanExecuteLoop   【多步，可再调 LLM+工具】
-  else:
-       sys_llm_generate                             【oneshot LLM】
-else:
-  _exec_stage（node_type: llm|code|http|condition|…）
+# _run_stage_skill（有 skill_name 时）真实顺序：
+1. 读 SKILL.md → coerce_execution_type（未知生产硬失败）
+2. execution_type ∈ {handler, hybrid} → handler.py.execute()  【程序；直接 return】
+3. side_effect_gate（prompt 宣称写文件/网络等 → 拒）
+4. _apply_capability_profile（minimal/standard 无 tools/skills 可 demote agent→llm
+     —— 但仅当 architecture_profile 为空）
+5. apply_architecture_profile（钉死 backend；覆盖 demote）
+6. execution_backend == "agent" → StageRunner / ReActLoop
+   else → sys_llm_generate（oneshot；读 SOP，不经 Skill.execute）
+# 无 skill_name → _exec_stage（node_type: llm|code|http|…）
 ```
+
+### 2.5 Stage × Skill 组合矩阵（防「handler 被绕过」歧义）
+
+| Stage `execution_backend` | Skill `execution_type` | 实际路径（代码） | handler 是否执行 |
+|---------------------------|------------------------|------------------|------------------|
+| 任意（含 `llm`） | `handler` | `_run_stage_skill` §1.5 → `handler.py`，**不进入** backend 分支 | ✅ 是 |
+| 任意 | `hybrid` | Stage 路径：当前与 handler 同支（直接 `handler.py`）；完整「LLM plan→handler」在 `Skill.execute`（`sys_skill_call`） | ✅ Stage 侧 handler；plan 环在 syscall 路径 |
+| `llm` | `prompt` / 空→prompt | `sys_llm_generate` + SOP | 否（无 handler 声明） |
+| `agent` | `prompt` | StageRunner → ReAct；循环内可再 `sys_skill_call` | 视技能调用 |
+| `llm` / `agent` | **未知**（拼写） | 生产硬失败；开发 soft→prompt 后走上两行 | 否 |
+
+证据：`pipeline_engine._run_stage_skill`（handler 在 backend 分支之前）；`Skill.execute`（syscall 路径）；`execution_type_policy.py`。
 
 | 场景 | 选 LLM | 选程序 | 判定字段 |
 |------|--------|--------|----------|
@@ -194,12 +224,21 @@ aiPlat 里「架构」要分清 **三层正交概念**，不要混称。
 等级：`minimal → standard → full → autonomous → collaborative`（+ 显式 `self_evolving` / `persistent`）。  
 推断优先级见 [capability-profile.md](capability-profile.md)。  
 
-**与 backend 的真实关系（纠正 agent-system.md 过时说法）**：
+**优先级链（强制，代码已闭环）**：
+
+```
+architecture_profile（显式）
+  > 团队 YAML 钉死的 execution_backend
+  > capability_profile 降级推断（仅 demote，不凭空升 agent）
+  > schema 默认 execution_backend=llm
+```
 
 1. 默认 `execution_backend = "llm"`（schema 默认值）。  
-2. 若设置了 `architecture_profile` → **强制**对应 backend（最高优先）。  
-3. `_apply_capability_profile` 可在 `minimal`/`standard` 且无 tools/skills 时把 `agent` **降级**为 `llm`，但 **不会在没有 architecture_profile 时凭空升到 agent**；有 tools/skills 时常推断为 `full`/`autonomous` 并注入 ReAct 能力。  
-4. `execution_backend` **不得**由 AGENT.md 随意自定绕过引擎（安全）；团队 YAML / architecture_profile 才是合法钉死方式。
+2. **`architecture_profile` 非空 → 强制对应 backend**（最高优先）。`_apply_capability_profile` 在 `minimal`/`standard` 且无 tools/skills 时**仅当 `architecture_profile` 为空**才把 `agent` demote 为 `llm`（见 `pipeline_stage.py` 注释与门闩）。随后 `_run_stage_skill` 再次调用 `apply_architecture_profile`，双重保证显式 profile 不被降级。  
+3. capability **不会在没有 architecture_profile 时凭空升到 agent**；有 tools/skills 时常推断为 `full`/`autonomous` 并注入 ReAct 能力标志。  
+4. `execution_backend` **不得**由 AGENT.md 随意自定绕过引擎（安全）；团队 YAML / `architecture_profile` 才是合法钉死方式。  
+
+证据：`pipeline_stage._apply_capability_profile`（`if not architecture_profile: demote`）；`pipeline_engine` 在 backend 分支前 `apply_architecture_profile(stage)`；单测 `test_capability_demote_skips_when_architecture_profile_set`。
 
 ### 4.4 层 D — 编排级「架构」（多 Agent / MoA / Debate）
 
@@ -322,6 +361,9 @@ PipelineStageConfig（capability_profile 常为 auto → 推断）
 | `AIPLAT_DYNAMIC_ROUTER_ENABLED` | llm 动态路由 opt-in |
 | `AIPLAT_EXECUTION_AUDIT` | skill actual_mode 审计 |
 | `AIPLAT_PROFILE_CALIBRATE` | profile 运行时校准 |
+| `AIPLAT_PROFILE=production` | 未知 `execution_type` 默认硬失败 |
+| `AIPLAT_EXECUTION_TYPE_FAIL_CLOSED` | 强制未知类型硬失败 |
+| `AIPLAT_EXECUTION_TYPE_FAIL_OPEN` | 紧急允许未知→prompt（运维逃生） |
 
 ---
 
@@ -353,4 +395,5 @@ PipelineStageConfig（capability_profile 常为 auto → 推断）
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
+| v1.1 | 2026-10-11 | 闭环：优先级链（显式 profile 不 demote）+ Stage×Skill 组合矩阵 + 未知 execution_type 生产硬失败 + 一页纸摘要；`execution_type_policy` + 漂移单测 |
 | v1.0 | 2026-10-11 | 首版：统一 LLM/程序、阶梯、三层 Agent 架构、工厂三选一与运行时路径；纠正 agent-system 过时 backend 说法 |
