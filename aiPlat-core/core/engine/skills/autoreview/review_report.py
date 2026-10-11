@@ -24,15 +24,19 @@ class ReviewIssue:
     deletions: int = 0             # lines deleted by fix
     engine: str = ""               # source engine (panel mode)
     engines: List[str] = field(default_factory=list)
+    evidence_envelope: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        d: Dict[str, Any] = {
             "file": self.file, "line": self.line,
             "severity": self.severity, "category": self.category,
             "description": self.description,
             "fix_suggestion": self.fix_suggestion,
             "engine": self.engine, "engines": self.engines,
         }
+        if self.evidence_envelope:
+            d["evidence_envelope"] = dict(self.evidence_envelope)
+        return d
 
     @property
     def fix_size(self) -> int:
@@ -58,6 +62,8 @@ class ReviewReport:
     reviewed_at: float = 0.0
     target: str = ""
     mode: str = "quick"
+    # Evidence Envelope summary (no fake confirmed)
+    evidence_envelope_summary: Dict[str, Any] = field(default_factory=dict)
 
     # ── properties ──
 
@@ -101,6 +107,7 @@ class ReviewReport:
         """从 self.issues 中自动反推每引擎的发现统计。
         
         无需外部传入监控数据——每条 issue 已标记 engine 来源。
+        Also attaches Evidence Envelopes (LLM findings = derived, never auto-confirmed).
         """
         engine_stats: Dict[str, Dict] = {}
         for issue in self.issues:
@@ -118,7 +125,33 @@ class ReviewReport:
             }
             for eng, stats in engine_stats.items()
         ]
+        self._attach_evidence_envelopes()
         return self
+
+    def _attach_evidence_envelopes(self) -> None:
+        """Stamp validated envelopes onto issues; demote illegal confirmed claims."""
+        try:
+            from core.harness.meta.evidence_envelope import (
+                attach_envelopes_to_issues,
+                empty_envelope,
+                summarize_envelopes,
+            )
+        except ImportError:
+            return
+        issue_dicts = [i.to_dict() for i in self.issues]
+        if not issue_dicts:
+            # Keep report summary honest even on clean runs (no invented confirmed).
+            self.evidence_envelope_summary = summarize_envelopes(
+                [{"evidence_envelope": empty_envelope(status="unverified", confidence="speculative")}]
+            )
+            self.evidence_envelope_summary["issue_count"] = 0
+            return
+        attached = attach_envelopes_to_issues(issue_dicts, run_id=self.target or "")
+        for issue, d in zip(self.issues, attached):
+            env = d.get("evidence_envelope")
+            if isinstance(env, dict):
+                issue.evidence_envelope = env
+        self.evidence_envelope_summary = summarize_envelopes(attached)
 
     def clean_evidence(self) -> str:
         """生成 clean 判决的 Markdown 证据摘要。
@@ -244,7 +277,9 @@ class ReviewReport:
         }
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        if not self.evidence_envelope_summary and self.issues:
+            self._attach_evidence_envelopes()
+        out: Dict[str, Any] = {
             "score": self.score, "clean": self.is_clean(),
             "p0_count": self.p0_count, "p1_count": self.p1_count, "p2_count": self.p2_count,
             "abandoned": self.abandoned, "abandoned_reason": self.abandoned_reason,
@@ -257,6 +292,9 @@ class ReviewReport:
                 for engine, items in self.unique_findings.items()
             },
         }
+        if self.evidence_envelope_summary:
+            out["evidence_envelope_summary"] = dict(self.evidence_envelope_summary)
+        return out
 
     def to_markdown(self) -> str:
         lines = [

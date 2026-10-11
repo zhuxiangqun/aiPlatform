@@ -5265,6 +5265,48 @@ def evaluate_testability_gate(
     ).to_dict()
 
 
+def validate_evidence_envelope(
+    raw: Optional[Dict[str, Any]] = None,
+    *,
+    demote: bool = True,
+) -> Dict[str, Any]:
+    """Evidence Envelope validate/demote — no fake confirmed without measured evidence."""
+    from core.harness.meta.evidence_envelope import EnvelopeValidation, validate_envelope
+
+    result = validate_envelope(raw, demote=demote)
+    if not isinstance(result, EnvelopeValidation):
+        raise TypeError("validate_envelope must return EnvelopeValidation")
+    return result.to_dict()
+
+
+def attach_evidence_envelopes(
+    issues: Optional[list] = None,
+    *,
+    run_id: str = "",
+) -> Dict[str, Any]:
+    """Attach validated envelopes to autoreview/duty issue dicts; return summary."""
+    from core.harness.meta.evidence_envelope import (
+        attach_envelopes_to_issues,
+        summarize_envelopes,
+    )
+
+    attached = attach_envelopes_to_issues(list(issues or []), run_id=run_id or "")
+    return {
+        "issues": attached,
+        "summary": summarize_envelopes(attached),
+    }
+
+
+def allow_evidence_release_block(
+    envelope: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Whether a finding alone may block release (derived/speculative → no)."""
+    from core.harness.meta.evidence_envelope import allow_release_block
+
+    ok, reason = allow_release_block(envelope or {})
+    return {"allow": bool(ok), "reason": reason}
+
+
 def publish_team_brain_manual(
     title: str,
     summary: str,
