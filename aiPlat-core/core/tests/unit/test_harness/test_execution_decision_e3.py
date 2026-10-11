@@ -35,6 +35,20 @@ def test_build_execution_decision_schema_default():
     d = build_execution_decision(path="llm")
     assert d["execution_backend"] == "llm"
     assert d["inferred_from"] == "schema_default"
+    assert d["actual_path"] == "llm"
+    assert "downgrade_reason" in d
+    assert "demote_skipped" in d
+
+
+def test_build_execution_decision_hybrid_path():
+    d = build_execution_decision(
+        execution_type="hybrid",
+        path="handler",
+        execution_backend="llm",
+    )
+    assert d["path"] == "hybrid"
+    assert d["actual_path"] == "hybrid"
+    assert d["execution_type"] == "hybrid"
 
 
 def test_record_decision_persists_execution(tmp_path, monkeypatch):

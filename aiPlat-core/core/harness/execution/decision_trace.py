@@ -68,15 +68,22 @@ def build_execution_decision(
     path: str = "",
     upgrade_policy: str = "",
     inferred_from: Optional[str] = None,
+    downgrade_reason: str = "",
+    demote_skipped: str = "",
 ) -> Dict[str, Any]:
-    """Compact path card for stage events / decision_traces (matrix E3).
+    """Path card for stage events / decision_traces (matrix E3/E3.1).
 
     Fields are config-driven labels only — no business agent/artifact names.
-    ``path`` is the resolved runtime branch: ``handler`` | ``agent`` | ``llm``.
+    ``path`` is the resolved runtime branch:
+    ``handler`` | ``hybrid`` | ``agent`` | ``llm``.
     """
     profile = str(architecture_profile or "").strip().lower()
     backend = str(execution_backend or "").strip().lower()
     et = str(execution_type or "").strip().lower()
+    p = str(path or "").strip().lower()
+    # hybrid Skill on Stage path still runs handler.py; surface as hybrid when typed.
+    if et == "hybrid" and p in ("", "handler"):
+        p = "hybrid"
     if inferred_from is None:
         if profile:
             inferred_from = "architecture_profile"
@@ -90,9 +97,12 @@ def build_execution_decision(
         "agent_type": str(agent_type or "").strip().lower(),
         "capability_profile": str(capability_profile or "").strip().lower(),
         "execution_type": et,
-        "path": str(path or "").strip().lower(),
+        "path": p,
+        "actual_path": p,
         "upgrade_policy": str(upgrade_policy or "").strip().lower(),
         "inferred_from": str(inferred_from or "").strip(),
+        "downgrade_reason": str(downgrade_reason or "").strip(),
+        "demote_skipped": str(demote_skipped or "").strip(),
     }
 
 

@@ -4295,6 +4295,8 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 execution_type=execution_type,
                 path=path,
                 upgrade_policy=str(getattr(stage, "upgrade_policy", "") or ""),
+                downgrade_reason=str(state.get("_capability_downgrade_reason") or ""),
+                demote_skipped=str(state.get("_capability_demote_skipped") or ""),
             )
             state["_execution_decision"] = _ex
             _prog = state.get("_progress")
@@ -4495,7 +4497,11 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                                 self._emit_execution_decision(
                                     stage,
                                     state,
-                                    path="handler",
+                                    path=(
+                                        "hybrid"
+                                        if _execution_type == "hybrid"
+                                        else "handler"
+                                    ),
                                     execution_type=_execution_type,
                                     confidence=0.9,
                                 )
