@@ -8,8 +8,10 @@ import pytest
 from core.harness.meta.evidence_envelope import (
     allow_release_block,
     attach_envelopes_to_issues,
+    envelope_for_gold_block,
     envelope_from_review_issue,
     evidence_item,
+    gate_duty_status_with_envelopes,
     normalize_envelope,
     summarize_envelopes,
     validate_envelope,
@@ -169,3 +171,45 @@ def test_core_facade_validate_and_attach():
     assert attached["summary"]["suspected_count"] >= 1
     block = allow_evidence_release_block(attached["issues"][0]["evidence_envelope"])
     assert block["allow"] is False
+
+
+def test_envelope_for_gold_block_allows_release_block():
+    env = envelope_for_gold_block(
+        reason="gold_regressing",
+        p0_miss_rate=0.3,
+        regressing=True,
+        written_at="2026-10-10T12:00:00Z",
+    )
+    ok, why = allow_release_block(env)
+    assert ok is True
+    assert why == "blocked_measured"
+    assert env["status"] == "blocked"
+    assert env["confidence"] == "measured"
+    assert env["evidence"]
+    assert env["limitations"]
+
+
+def test_gate_duty_status_demotes_block_without_allow():
+    st, extras, rows = gate_duty_status_with_envelopes(
+        "block",
+        [
+            {
+                "status": "suspected",
+                "confidence": "derived",
+                "evidence": [evidence_item(type="file_line", ref="a.py:1")],
+                "limitations": ["static only"],
+                "next_check": "measure",
+            }
+        ],
+    )
+    assert st == "watch"
+    assert "block_demoted_no_envelope_allow_release_block" in extras
+    assert rows and rows[0]["allow_block"] is False
+
+    st2, extras2, rows2 = gate_duty_status_with_envelopes(
+        "block",
+        [envelope_for_gold_block(reason="p0_miss_rate=0.5>0.2", p0_miss_rate=0.5)],
+    )
+    assert st2 == "block"
+    assert not extras2
+    assert rows2[0]["allow_block"] is True

@@ -714,6 +714,7 @@ def build_duty_board(
                 "hitl": "unavailable",
                 "howl": "unavailable",
                 "merge_gates": "unavailable",
+                "envelope": "unavailable",
             },
             "thresholds": thr,
             "thresholds_source": thr_source,
@@ -722,6 +723,18 @@ def build_duty_board(
             "playbook_source": playbook_source,
             "gold_trend_summary": gold_trend_summary,
             "merge_gates": merge_gates,
+            "envelope": {
+                "issue_count": 0,
+                "missing_envelope": 0,
+                "by_status": {},
+                "by_confidence": {},
+                "confirmed_count": 0,
+                "suspected_count": 0,
+                "allow_block_count": 0,
+                "block_allowed": False,
+                "primary": None,
+                "whys": [],
+            },
         }
 
     checks: Dict[str, str] = {
@@ -867,6 +880,57 @@ def build_duty_board(
         if not avail.get("approvals") and not has_adoption:
             status = "unavailable"
 
+    # --- Evidence Envelope: gold BLOCK must allow_release_block (measured+limitations) ---
+    from core.harness.meta.evidence_envelope import (
+        envelope_for_gold_block,
+        gate_duty_status_with_envelopes,
+        summarize_envelopes,
+    )
+
+    envelopes: List[Dict[str, Any]] = []
+    if checks.get("gold") == "block":
+        gold_reason = next(
+            (r for r in reasons if "gold" in r or "p0_miss" in r),
+            "gold_block",
+        )
+        latest = gr.get("latest") if isinstance(gr.get("latest"), dict) else {}
+        envelopes.append(
+            envelope_for_gold_block(
+                reason=str(gold_reason),
+                p0_miss_rate=sm.get("p0_miss_rate"),
+                regressing=bool(sm.get("gold_regressing")),
+                written_at=str(latest.get("written_at") or ""),
+            )
+        )
+
+    prev_status = status
+    status, env_extras, env_rows = gate_duty_status_with_envelopes(status, envelopes)
+    reasons.extend(env_extras)
+    if prev_status == "block" and status != "block":
+        if checks.get("gold") == "block":
+            checks["gold"] = "watch"
+        checks["envelope"] = "watch"
+    elif status == "block" and any(r.get("allow_block") for r in env_rows):
+        checks["envelope"] = "block"
+    elif envelopes:
+        checks["envelope"] = "go"
+    else:
+        checks["envelope"] = "unavailable"
+
+    envelope_summary = summarize_envelopes(
+        [{"evidence_envelope": r["envelope"]} for r in env_rows]
+    )
+    envelope_summary["allow_block_count"] = sum(
+        1 for r in env_rows if r.get("allow_block")
+    )
+    envelope_summary["block_allowed"] = bool(
+        status == "block" and any(r.get("allow_block") for r in env_rows)
+    )
+    envelope_summary["primary"] = (
+        env_rows[0]["envelope"] if env_rows else None
+    )
+    envelope_summary["whys"] = [str(r.get("why") or "") for r in env_rows]
+
     label = {
         "go": "GO",
         "watch": "WATCH",
@@ -895,6 +959,7 @@ def build_duty_board(
         "playbook_source": playbook_source,
         "gold_trend_summary": gold_trend_summary,
         "merge_gates": merge_gates,
+        "envelope": envelope_summary,
     }
 
 
