@@ -72,3 +72,50 @@ execution_type: prompt
         findings = mod.scan(Path(tmp))
         codes = {f.get("code") for f in findings}
         assert "handler_pairing" in codes, findings
+
+
+def test_e4_unknown_execution_type_fails():
+    mod = _load_mod()
+    with tempfile.TemporaryDirectory(prefix="eng_skill_unk_") as tmp:
+        d = Path(tmp) / "weird_type"
+        d.mkdir()
+        (d / "SKILL.md").write_text(
+            """---
+name: weird_type
+description: 未知类型
+execution_type: not_a_real_type
+---
+
+# SOP
+1. x
+""",
+            encoding="utf-8",
+        )
+        findings = mod.scan(Path(tmp))
+        codes = {f.get("code") for f in findings}
+        assert "unknown_execution_type" in codes, findings
+
+
+def test_e4_prompt_mutating_effects_without_handler_fails():
+    mod = _load_mod()
+    with tempfile.TemporaryDirectory(prefix="eng_skill_mut_") as tmp:
+        d = Path(tmp) / "prompt_write"
+        d.mkdir()
+        (d / "SKILL.md").write_text(
+            """---
+name: prompt_write
+description: prompt 却声明写文件
+execution_type: prompt
+effects:
+  - type: write
+    resources: [filesystem:/tmp]
+---
+
+# SOP
+1. 写文件
+""",
+            encoding="utf-8",
+        )
+        findings = mod.scan(Path(tmp))
+        codes = {f.get("code") for f in findings}
+        assert "prompt_mutating_effects" in codes, findings

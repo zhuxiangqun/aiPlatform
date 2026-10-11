@@ -1,7 +1,7 @@
 # 执行决策矩阵
 
 > **一句话**：帮你选「这件事该用程序、LLM、技能、Agent，还是流水线」——先按场景判断，细节与代码证据在文末附录。  
-> **状态**：Living Spec（与实现同步；冲突时以代码为准）· **v1.4** · 2026-10-11  
+> **状态**：Living Spec（与实现同步；冲突时以代码为准）· **v1.5** · 2026-10-11  
 > **互补文档**：[产物怎么验收](execution-quality-gates.md) · [能力剖面细节](capability-profile.md) · [知识 / Memory / CRAG](../knowledge-system.md) · [Agent 总览](../agent-system.md)（后端规则以本文为准）
 
 ---
@@ -12,7 +12,7 @@
 2. **加能力从便宜到贵**——改现有代码 → Skill/CLI → Tool → 插件 → MCP → 新内核接口。  
 3. **行为靠配置字段，不靠「某个 Agent 名字」**——引擎里禁止按业务角色硬编码分支。  
 4. **想钉死怎么跑，写「执行混合」或显式后端**——二者都不会被能力剖面降级。  
-5. **工厂生成物尽量薄**——只选 Agent 类型 + 技能/工具；怎么跑交给引擎或团队配置（期望 profile 见 §8 E1）。
+5. **工厂生成物尽量薄**——只选 Agent 类型 + 技能/工具；可选钉死 `architecture_profile`（E1）；怎么跑也可交给引擎推断。
 
 ---
 
@@ -114,10 +114,12 @@ decision = {
 
 ## 5. 工厂与工作区
 
-- 工厂：**只选** 对话 / react / rag + 技能工具；Skill 默认 prompt；**不要**乱写能力剖面/后端。  
-- 钉死跑法：放**团队 YAML**（执行混合或 `execution_backend`）。工厂尚不能声明期望 profile → §8 E1。  
+- 工厂：**必选** 对话 / react / rag + 技能工具；Skill 一律 `prompt`（不生成 handler.py）。  
+- **可选钉死（E1）**：AGENT.md 可写 `architecture_profile`（oneshot / react_tools / plan_execute / reflect_loop）或仅 `execution_backend`；conformance 校验合法值与 agent_type 不冲突；`apply_agent_md_to_stage` / Workspace Execute 会应用。  
+- 也可放**团队 YAML** 钉死（与 AGENT.md 二选一或叠加，profile 最强）。  
 - 工作区 Execute：写文件类技能会注入编码闭环；`coding_closed_loop: false` 可关。  
-- 编码落盘：Pipeline llm 路径有落盘前校验；优先 Agent 环做 peer-review。
+- 编码落盘：Pipeline llm 路径有落盘前校验；优先 Agent 环做 peer-review。  
+- **E4 CI**：`scripts/lint_engine_skills.py` 阻断 handler/hybrid 无文件、未知 `execution_type`、prompt 声明 mutating effects 却无 handler。
 
 | 评审问题 | 建议 |
 |----------|------|
@@ -166,10 +168,11 @@ Eval / 金标 / 值班板：见 Governance 与 apps/eval（本文不替代）；
 
 | 编号 | 想法 |
 |------|------|
-| E1 | 工厂生成可声明期望 `architecture_profile` / backend；conformance 校验意图与路径 |
 | E2 | 生成物支持产出带 `handler.py` 的 Skill |
-| E4 | CI 静态：prompt 宣称写文件、声明 handler 无文件、未知类型、跳级 MCP/Syscall |
+| E4b | CI：跳级 MCP/新 Syscall 的成本阶梯静态检查 |
 | E5 | `FAIL_OPEN`：开启人/原因/过期自动关 + 告警 |
+
+**已落地**：E1（可选 architecture_profile + conformance + stage/workspace 接线）；E4 主体（lint_engine_skills：pairing / 未知类型 / prompt+mutating effects）。
 
 ---
 
@@ -226,6 +229,7 @@ Eval / 金标 / 值班板：见 Governance 与 apps/eval（本文不替代）；
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
+| v1.5 | 2026-10-11 | **E1+E4**：工厂可选 `architecture_profile`；conformance + `apply_agent_md_to_stage` / workspace 接线；`lint_engine_skills` 增未知类型与 prompt+mutating effects |
 | v1.4 | 2026-10-11 | 完整 Stage×Skill 矩阵；显式 backend 不可 demote；路径卡补齐字段 + hybrid；设计模式映射；安全默认与 Memory/Eval 指针；回应组合/粒度/工厂/CI 缺口 |
 | v1.3 | 2026-10-11 | 可读性改版（场景优先，证据进附录） |
 | v1.2 | 2026-10-11 | E3 路径卡 |

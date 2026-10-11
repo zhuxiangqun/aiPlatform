@@ -437,7 +437,16 @@ def inject_workspace_coding_defaults(
     }
     if _sm:
         stage_kw["sandbox_mode"] = _sm
+    # E1: AGENT.md may declare architecture_profile / execution_backend.
+    _ap = str(cfg.get("architecture_profile") or meta.get("architecture_profile") or "").strip()
+    if _ap:
+        stage_kw["architecture_profile"] = _ap
+    _eb = str(cfg.get("execution_backend") or meta.get("execution_backend") or "").strip().lower()
+    if _eb in ("llm", "agent") and not _ap:
+        stage_kw["execution_backend"] = _eb
     stage = PipelineStageConfig(**stage_kw)
+    if _ap:
+        apply_architecture_profile(stage)
     apply_coding_stage_defaults(stage)
 
     # Policy profile: agent explicit → intensity resolve → karpathy_v1 for coding.
