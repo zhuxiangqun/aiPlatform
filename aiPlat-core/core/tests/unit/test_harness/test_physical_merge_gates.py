@@ -63,6 +63,44 @@ def test_select_profile_framework_when_all_match():
     assert select_profile(["aiPlat-platform/apps/foo/api.py"], cfg) == "business"
 
 
+def test_select_profile_neutral_globs_do_not_force_business():
+    cfg = _cfg(
+        profile_neutral_globs=[
+            "AIPLAT_CAPABILITIES.md",
+            "docs/**",
+            "**/capability_registry.yaml",
+        ],
+        framework_globs=[
+            "aiPlat-core/core/harness/**",
+            "aiPlat-core/core/api/core_facade.py",
+            "**/tests/**",
+        ],
+    )
+    assert (
+        select_profile(
+            [
+                "aiPlat-core/core/harness/meta/evidence_envelope.py",
+                "aiPlat-core/core/api/core_facade.py",
+                "AIPLAT_CAPABILITIES.md",
+                "aiPlat-core/core/capability_registry.yaml",
+                "docs/architecture/system-architecture-contract.md",
+            ],
+            cfg,
+        )
+        == "framework"
+    )
+    # Pure sync / docs still business (tight).
+    assert select_profile(["AIPLAT_CAPABILITIES.md", "docs/x.md"], cfg) == "business"
+    # Platform app + docs → business.
+    assert (
+        select_profile(
+            ["aiPlat-platform/apps/foo/api.py", "AIPLAT_CAPABILITIES.md"],
+            cfg,
+        )
+        == "business"
+    )
+
+
 def test_inflation_blocks_large_diff():
     name_status = "\n".join(
         [

@@ -150,7 +150,7 @@ def _builtin_fallback() -> Dict[str, Any]:
     return {
         "version": 1,
         "mode": "warn",
-        "block_after": "2026-11-01",
+        "block_after": "2026-10-25",
         "profiles": {
             "business": {
                 "max_files": 8,
@@ -170,6 +170,11 @@ def _builtin_fallback() -> Dict[str, Any]:
             },
         },
         "framework_globs": ["**/tests/**", "scripts/**"],
+        "profile_neutral_globs": [
+            "AIPLAT_CAPABILITIES.md",
+            "docs/**",
+            "**/capability_registry.yaml",
+        ],
         "banned_path_segments": ["/generic/", "/framework/"],
         "banned_new_basenames": ["event_bus.py", "observer.py", "scheduler.py"],
         "banned_class_substrings": ["EventBus", "ObserverTree"],
@@ -197,9 +202,21 @@ def select_profile(paths: Sequence[str], config: Mapping[str, Any], forced: str 
     if forced:
         return forced
     globs = list(config.get("framework_globs") or [])
-    if paths and globs and all(
-        any(_match_glob(p, g) for g in globs) for p in paths
-    ):
+    neutral = list(config.get("profile_neutral_globs") or [])
+    # Docs / CAPABILITIES / registry sync must not force business profile —
+    # those files are required by workspace sync rules alongside harness changes.
+    scored = [
+        p
+        for p in paths
+        if p
+        and not (
+            neutral and any(_match_glob(p, g) for g in neutral)
+        )
+    ]
+    if not scored:
+        # Pure docs/sync PR — still use business (tight) so docs-only bloat is visible.
+        return "business"
+    if globs and all(any(_match_glob(p, g) for g in globs) for p in scored):
         return "framework"
     return "business"
 
