@@ -4266,6 +4266,64 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
 
 
+    def _emit_execution_decision(
+        self,
+        stage: PipelineStageConfig,
+        state: PipelineState,
+        *,
+        path: str,
+        execution_type: str = "",
+        input_artifacts: Optional[List[str]] = None,
+        confidence: Optional[float] = None,
+    ) -> None:
+        """E3: stamp ``state["_execution_decision"]`` + decision_trace path card."""
+        try:
+            from core.harness.execution.decision_trace import (
+                build_execution_decision,
+                record_decision as _record_decision,
+            )
+
+            _ex = build_execution_decision(
+                architecture_profile=str(getattr(stage, "architecture_profile", "") or ""),
+                execution_backend=str(getattr(stage, "execution_backend", "") or ""),
+                agent_type=str(getattr(stage, "agent_type", "") or ""),
+                capability_profile=str(
+                    state.get("_capability_profile")
+                    or getattr(stage, "capability_profile", "")
+                    or ""
+                ),
+                execution_type=execution_type,
+                path=path,
+                upgrade_policy=str(getattr(stage, "upgrade_policy", "") or ""),
+            )
+            state["_execution_decision"] = _ex
+            _prog = state.get("_progress")
+            if isinstance(_prog, dict):
+                _prog["execution_decision"] = _ex
+            _run_id = (
+                state.get("project_id")
+                or state.get("session_id")
+                or state.get("_run_id", "")
+            )
+            if not _run_id:
+                return
+            _depends_on: List[str] = []
+            for _s in self._config.stages if self._config else []:
+                if getattr(_s, "output_artifact", "") in (input_artifacts or []):
+                    _depends_on.append(getattr(_s, "id", ""))
+            _record_decision(
+                str(_run_id),
+                stage.id,
+                depends_on=_depends_on,
+                confidence=confidence,
+                agent_id=getattr(stage, "agent_id", "") or "",
+                execution=_ex,
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "execution decision emit skipped", exc_info=True
+            )
+
     async def _run_stage_skill(self, stage: PipelineStageConfig, state: PipelineState) -> PipelineState:
         """Execute a stage via its configured skill, loading SOP from SKILL.md.
 
@@ -4434,6 +4492,13 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                                 state["_progress"] = {"stage": _skill_name, "status": "completed",
                                                       "elapsed_sec": round(_time.time() - _t0, 2),
                                                       "backend": "handler", "current_step": 0}
+                                self._emit_execution_decision(
+                                    stage,
+                                    state,
+                                    path="handler",
+                                    execution_type=_execution_type,
+                                    confidence=0.9,
+                                )
                                 if self._persist_callback:
                                     self._persist_callback(dict(state))
                                 _log.getLogger("pipeline_engine").warning(
@@ -4857,6 +4922,14 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
             _final_steps = int(state.get("step_count", 0) or 0)
             state["_progress"] = {"stage": _skill_name, "status": "completed", "elapsed_sec": _elapsed,
                                   "backend": "agent", "current_step": _final_steps}
+            self._emit_execution_decision(
+                stage,
+                state,
+                path="agent",
+                execution_type=_execution_type,
+                input_artifacts=_input_artifacts if isinstance(_input_artifacts, list) else None,
+                confidence=0.75,
+            )
             if self._persist_callback:
                 self._persist_callback(dict(state))  # immediate: frontend sees "completed"
         else:
@@ -5039,37 +5112,22 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
             "context_enriched": _context_enriched,
         }
 
-        # ── Decision trace: generic per-stage provenance for failure localization ──
-        # Records confidence + upstream dependencies so the fix flow can walk
-        # backward to the max error-contribution node. No business concepts here.
-        try:
-            from core.harness.execution.decision_trace import record_decision as _record_decision
-            # Use project_id as the trace key — it is the stable identifier the
-            # fix flow and frontend query by (session_id drifts to run_id on
-            # regenerate, which would split the trace across files).
-            _run_id = (state.get("project_id") or state.get("session_id")
-                       or state.get("_run_id", ""))
-            if _run_id:
-                _depends_on = []
-                for _s in (self._config.stages if self._config else []):
-                    if getattr(_s, 'output_artifact', '') in (_input_artifacts or []):
-                        _depends_on.append(getattr(_s, 'id', ''))
-                # Coarse confidence heuristic: structured output > plain text >
-                # minimal. (Quality-bus score is a later refinement; this gives
-                # the graph a non-trivial signal today.)
-                _conf = 0.7
-                if _result:
-                    _stripped = _result.strip()
-                    if "## FILE:" in _result or (_stripped.startswith("{") and _stripped.endswith("}")):
-                        _conf = 0.85
-                    elif len(_result) < 200:
-                        _conf = 0.5
-                _record_decision(_run_id, stage.id, depends_on=_depends_on,
-                                 confidence=_conf,
-                                 agent_id=getattr(stage, 'agent_id', '') or '')
-        except Exception as _trace_err:  # noqa: best-effort-trace — decision trace is non-critical
-            _log.getLogger("pipeline_engine").debug(
-                "decision trace record failed for stage %s: %s", stage.id, _trace_err, exc_info=True)
+        # ── Decision trace + E3 execution path card ──
+        _conf = 0.7
+        if _result:
+            _stripped = _result.strip()
+            if "## FILE:" in _result or (_stripped.startswith("{") and _stripped.endswith("}")):
+                _conf = 0.85
+            elif len(_result) < 200:
+                _conf = 0.5
+        self._emit_execution_decision(
+            stage,
+            state,
+            path="llm",
+            execution_type=_execution_type,
+            input_artifacts=_input_artifacts if isinstance(_input_artifacts, list) else None,
+            confidence=_conf,
+        )
 
         # ── Cost budget: accumulate USD from tokens × price (config-driven) ──
         try:

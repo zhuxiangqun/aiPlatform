@@ -11,6 +11,7 @@ _agent_id|OK|engine-internal
 _agent_type_effective|OK|architecture_profile effective agent_type (B1)
 _approval_request_id|OK|engine-internal
 _architecture_profile|OK|architecture_profile telemetry (B1)
+_capability_profile|OK|engine-internal (capability profile applied to stage; E3 path card)
 _auto_approve|OK|engine-internal
 _auto_retry_count|OK|engine-internal
 _baseline_test_report|OK|engine-internal
@@ -29,6 +30,7 @@ _deploy_compile_errors|OK|engine-internal
 _disable_dynamic_spawn|OK|engine-internal (spawn_policy: factory contracted pipelines)
 _dynamic_trace|OK|engine-internal
 _eval_count|OK|engine-internal
+_execution_decision|OK|engine-internal (E3 path card: profile/backend/execution_type/path)
 _failure_classification|OK|engine-internal
 _force_context_compression|OK|engine-internal
 _git_rollback_tag|OK|engine-internal

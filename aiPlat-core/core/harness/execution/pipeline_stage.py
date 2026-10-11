@@ -438,6 +438,7 @@ class PipelineStageMixin:
                 _clog.info("Calibration suggests: %s → %s (mode=log, not applied)",
                            profile, _new)
 
+        state["_capability_profile"] = profile
         _log.getLogger("pipeline_engine").debug(
             "capability_profile=%s backend=%s calibration=%s", profile,
             getattr(stage, 'execution_backend', 'llm'), _cal.get("status", "n/a"))
