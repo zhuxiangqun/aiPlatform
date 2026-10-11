@@ -68,6 +68,44 @@ def apply_path_rewrite(path: str):
             return target, dest + ((sep + qs) if qs else "")
     return None, path or ""
 
+
+def _apps_yaml_platform_routes() -> dict[str, str]:
+    """Map ``registry/apps.yaml`` api_prefix (+ optional proxy_prefixes) → platform:8003.
+
+    Prevents hand-pinned routes drifting from the module registry (#226 class bugs).
+    Best-effort: missing YAML → empty dict (static fallbacks still apply).
+    """
+    out: dict[str, str] = {}
+    here = os.path.dirname(os.path.abspath(__file__))
+    root = os.path.abspath(os.path.join(here, "..", ".."))
+    yaml_path = os.path.join(root, "aiPlat-platform", "registry", "apps.yaml")
+    if not os.path.isfile(yaml_path):
+        return out
+    try:
+        import yaml  # type: ignore
+    except Exception:
+        return out
+    try:
+        with open(yaml_path, encoding="utf-8") as fh:
+            data = yaml.safe_load(fh) or {}
+    except Exception:
+        return out
+    modules = data.get("modules") if isinstance(data, dict) else None
+    if not isinstance(modules, dict):
+        return out
+    for mid, mod in modules.items():
+        if not isinstance(mod, dict) or mod.get("enabled") is False:
+            continue
+        prefix = str(mod.get("api_prefix") or f"/api/platform/apps/{mid}").rstrip("/")
+        if prefix.startswith("/api/platform/apps"):
+            out[prefix] = PLATFORM_URL
+        for extra in mod.get("proxy_prefixes") or []:
+            ep = str(extra or "").rstrip("/")
+            if ep.startswith("/api/platform/apps"):
+                out[ep] = PLATFORM_URL
+    return out
+
+
 def _discover_routes() -> dict[str, str]:
     """Fetch OpenAPI specs from all backends and build a routing table.
     Returns a dict of path_prefix → target_url.
@@ -75,10 +113,6 @@ def _discover_routes() -> dict[str, str]:
     """
     # Static base routes (always present, in priority order)
     static: dict[str, str] = {
-        "/api/platform/apps/fde": PLATFORM_URL,  # platform-specific sub-paths → 8003
-        "/api/platform/apps/ontology-editor": PLATFORM_URL,
-        # Eval / Gold CTA — must hit platform:8003 (mgmt proxy alone used wrong /platform/apps)
-        "/api/platform/apps/code-review-gold": PLATFORM_URL,
         "/api/platform": MGMT_URL,  # base /apps list + documents/kb → management:8000
         "/api/core": CORE_DIRECT_URL,
         "/api/infra": INFRA_URL,
@@ -92,6 +126,12 @@ def _discover_routes() -> dict[str, str]:
         "/app/media": APP_URL,
         "/api": MGMT_URL,  # catch-all for management
     }
+    # apps.yaml modules + proxy_prefixes (code-review-gold, fde, …) → platform:8003
+    static.update(_apps_yaml_platform_routes())
+    # Hard fallback if YAML unreadable (dev without PyYAML / odd cwd)
+    static.setdefault("/api/platform/apps/code-review-gold", PLATFORM_URL)
+    static.setdefault("/api/platform/apps/fde", PLATFORM_URL)
+    static.setdefault("/api/platform/apps/ontology-editor", PLATFORM_URL)
 
     # For multi-backend prefixes: try to discover sub-routes from each backend
     for prefix, backends in _FALLBACK_PREFIXES.items():

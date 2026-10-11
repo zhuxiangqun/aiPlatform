@@ -106,6 +106,10 @@ modules:
     description: "Skill评估、执行评估、KB评估、Prompt评估"
     enabled: true
     api_prefix: "/api/platform/apps/eval"
+    # Routers mounted under /api/platform/apps/* (not under /eval) — FE proxy pins → platform:8003
+    proxy_prefixes:
+      - /api/platform/apps/code-review-gold
+      - /api/platform/apps/kb-eval
     api_module: "apps.eval.api.router"
     service_module: null
     prompts_module: null

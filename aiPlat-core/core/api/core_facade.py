@@ -5181,6 +5181,17 @@ def load_duty_board_thresholds(
     return {"thresholds": thr, "source": source}
 
 
+def load_duty_board_playbook(
+    *,
+    override: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Duty-officer playbook（go/watch/block/unavailable 固定动作列表）。"""
+    from core.harness.meta.org_harness_metrics import load_duty_board_playbook as _load
+
+    playbook, source = _load(override=override)
+    return {"playbook": playbook, "source": source}
+
+
 def load_adoption_snapshot() -> Dict[str, Any]:
     """Duty board HITL/Howl snapshot（缺失则为空；不发明成功率）。"""
     from core.harness.meta.org_harness_metrics import load_adoption_snapshot as _snap

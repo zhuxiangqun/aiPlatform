@@ -52,6 +52,14 @@ interface DutyBoard {
   thresholds?: Record<string, number>;
   thresholds_source?: string;
   release_habit?: string;
+  playbook?: string[];
+  playbook_source?: string;
+  gold_trend_summary?: {
+    n?: number;
+    direction?: 'up' | 'down' | 'flat' | 'unavailable' | string;
+    first?: { precision?: number | null; recall?: number | null; p0_recall?: number | null; written_at?: string } | null;
+    last?: { precision?: number | null; recall?: number | null; p0_recall?: number | null; written_at?: string } | null;
+  } | null;
 }
 
 /** Org harness dark ledger — HITL / approvals + gold P/R / P0 miss */
@@ -112,6 +120,13 @@ interface OrgHarnessData {
       elapsed_sec?: number | null;
     } | null;
     harness_factor_delta?: Record<string, { from?: unknown; to?: unknown }>;
+    trend?: Array<{
+      written_at?: string;
+      precision?: number | null;
+      recall?: number | null;
+      p0_recall?: number | null;
+    }>;
+    trend_summary?: DutyBoard['gold_trend_summary'];
   };
   notes?: string[];
 }
@@ -365,6 +380,32 @@ export default function GovernanceDashboard() {
         )}
         {duty.release_habit && (
           <div style={{ marginTop: 6, fontSize: 11, color: '#666' }}>{duty.release_habit}</div>
+        )}
+        {(() => {
+          const ts = duty.gold_trend_summary
+            || orgHarness?.gold_regression?.trend_summary
+            || null;
+          if (!ts || !ts.n) return null;
+          const dir = String(ts.direction || 'unavailable');
+          const dirColor = dir === 'up' ? '#4a4' : dir === 'down' ? '#a44' : '#888';
+          return (
+            <div style={{ marginTop: 8, fontSize: 11, color: '#aaa' }}>
+              Gold 趋势 n={ts.n} ·{' '}
+              <span style={{ color: dirColor, fontWeight: 600 }}>{dir}</span>
+              {' · '}P0 {ts.first?.p0_recall ?? '—'}→{ts.last?.p0_recall ?? '—'}
+              {' · '}P {ts.first?.precision ?? '—'}→{ts.last?.precision ?? '—'}
+            </div>
+          );
+        })()}
+        {(duty.playbook?.length || 0) > 0 && (
+          <div style={{ marginTop: 8, fontSize: 12, color: '#9ab' }}>
+            <div style={{ fontSize: 10, color: '#666', marginBottom: 4 }}>
+              值班员剧本 ({duty.status || 'unavailable'})
+            </div>
+            {duty.playbook!.slice(0, 4).map((step, i) => (
+              <div key={i}>→ {step}</div>
+            ))}
+          </div>
         )}
         {goldCtaMsg && (
           <div style={{
