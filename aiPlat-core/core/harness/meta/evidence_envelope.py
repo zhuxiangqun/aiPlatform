@@ -482,6 +482,44 @@ def envelope_for_gold_block(
     )
 
 
+def envelope_for_exemption_debt_block(
+    *,
+    reason: str,
+    expired_count: int = 0,
+    invalid_count: int = 0,
+    over_cap: bool = False,
+    active_count: int = 0,
+    max_active: Optional[int] = None,
+    config_ref: str = "physical_merge_gates.yaml",
+) -> Dict[str, Any]:
+    """Measured envelope for duty-board exemption-debt BLOCK (YAML ledger + limitations)."""
+    snippet = (
+        f"{reason}; expired={expired_count}; invalid={invalid_count}; "
+        f"over_cap={over_cap}; active={active_count}"
+        + (f"/{max_active}" if max_active is not None else "")
+    )[:400]
+    return normalize_envelope(
+        {
+            "status": "blocked",
+            "confidence": "measured",
+            "evidence": [
+                evidence_item(
+                    type="file_line",
+                    ref=str(config_ref or "physical_merge_gates.yaml")[:500],
+                    snippet=snippet,
+                )
+            ],
+            "limitations": [
+                "exemption ledger from physical_merge_gates.yaml only; not runtime PolicyGate",
+                "owner/reason/expires validity is structural — does not prove fix landed",
+            ],
+            "next_check": (
+                "renew owner+expires, remove expired rows, or lower active below max_active_exemptions"
+            ),
+        }
+    )
+
+
 def gate_duty_status_with_envelopes(
     status: str,
     envelopes: Sequence[Mapping[str, Any]],

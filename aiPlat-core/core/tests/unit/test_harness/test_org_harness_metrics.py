@@ -232,10 +232,57 @@ def test_collect_merge_gates_posture_surfaces_exemptions():
     assert "physical" in posture and "testability" in posture
     # Seed config has no exemptions → count 0; modes are warn/block/off
     assert posture.get("active_exemption_count") == 0
+    assert posture.get("debt_severity") in ("go", "unavailable")
+    assert "exemption_debt" in posture
     phys = posture["physical"]
     assert phys.get("status") in ("ok", "unavailable")
     if phys.get("status") == "ok":
         assert phys.get("mode") in ("warn", "block", "off")
+
+
+def test_duty_board_exemption_debt_expired_blocks(monkeypatch):
+    """Expired-unreviewed exemptions escalate merge_gates + board status to block."""
+    import core.harness.meta.org_harness_metrics as m
+
+    monkeypatch.setattr(
+        m,
+        "collect_merge_gates_posture",
+        lambda: {
+            "physical": {
+                "status": "ok",
+                "mode": "block",
+                "block_after": "2026-10-25",
+                "days_until_block": None,
+                "exemptions": [],
+            },
+            "testability": {"status": "ok", "mode": "warn"},
+            "active_exemption_count": 0,
+            "exemptions_visible": True,
+            "debt_severity": "block",
+            "exemption_debt": {
+                "severity": "block",
+                "expired": [{"id": "ex-old", "expires": "2020-01-01"}],
+                "invalid": [],
+                "over_cap": False,
+                "reasons": ["exemption_debt_expired=1 (ex-old)"],
+            },
+        },
+    )
+    board = build_duty_board(
+        {
+            "ok": True,
+            "data_available": True,
+            "availability": {"runs": True, "gold": True, "approvals": False},
+            "summary": {
+                "avg_serial_ratio": 0.05,
+                "gold_regressing": False,
+                "p0_miss_rate": 0.0,
+            },
+        },
+    )
+    assert board["checks"]["merge_gates"] == "block"
+    assert board["status"] == "block"
+    assert any("exemption_debt_expired" in r for r in board["reasons"])
 
 
 def test_aggregate_includes_gold():

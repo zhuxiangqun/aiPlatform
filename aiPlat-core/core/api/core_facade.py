@@ -5193,10 +5193,27 @@ def load_duty_board_playbook(
 
 
 def collect_merge_gates_posture() -> Dict[str, Any]:
-    """合入闸门姿态（mode/block_after/活跃豁免）— 豁免必须可见，禁止静默后门。"""
+    """合入闸门姿态（mode/block_after/豁免负债账）— 豁免必须可见，禁止静默后门。"""
     from core.harness.meta.org_harness_metrics import collect_merge_gates_posture as _collect
 
     return _collect()
+
+
+def assess_exemption_debt(
+    config: Optional[Dict[str, Any]] = None,
+    *,
+    now: Any = None,
+) -> Dict[str, Any]:
+    """豁免即负债：owner+上限+到期未复审→block（合入闸门 / 值班板共用）。"""
+    from core.harness.meta.physical_merge_gates import (
+        assess_exemption_debt as _assess,
+        load_physical_gates_config,
+    )
+
+    cfg = config
+    if cfg is None:
+        cfg, _src = load_physical_gates_config()
+    return _assess(cfg, now=now)
 
 
 def load_adoption_snapshot() -> Dict[str, Any]:

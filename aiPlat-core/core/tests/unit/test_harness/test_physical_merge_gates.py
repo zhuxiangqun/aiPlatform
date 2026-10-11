@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import date
 
 from core.harness.meta.physical_merge_gates import (
+    assess_exemption_debt,
     collect_diff_stats,
     evaluate_diff,
     resolve_mode,
@@ -194,6 +195,7 @@ def test_exemption_requires_expiry_and_reason():
         exemptions=[
             {
                 "id": "ex-ok",
+                "owner": "platform-oncall",
                 "reason": "migration",
                 "expires": "2099-12-31",
                 "gates": ["inflation", "shape"],
@@ -214,11 +216,36 @@ def test_exemption_requires_expiry_and_reason():
     assert "ex-ok" in report.exemptions_applied
 
 
+def test_exemption_without_owner_not_applied():
+    cfg = _cfg(
+        exemptions=[
+            {
+                "id": "ex-no-owner",
+                "reason": "migration",
+                "expires": "2099-12-31",
+                "gates": ["inflation", "shape"],
+                "paths": ["**"],
+            }
+        ]
+    )
+    report = evaluate_diff(
+        name_status="A\ta.py\nA\tb.py\nA\tc.py\nA\td.py",
+        numstat="100\t0\ta.py\n100\t0\tb.py\n100\t0\tc.py\n100\t0\td.py",
+        config=cfg,
+        profile_name="business",
+        now=date(2026, 10, 10),
+    )
+    assert "ex-no-owner" not in report.exemptions_applied
+    assert report.ok is False
+    assert any(f.code == "exemption_debt_invalid" for f in report.findings)
+
+
 def test_expired_exemption_ignored():
     cfg = _cfg(
         exemptions=[
             {
                 "id": "ex-old",
+                "owner": "platform-oncall",
                 "reason": "done",
                 "expires": "2020-01-01",
                 "gates": ["inflation"],
@@ -234,6 +261,45 @@ def test_expired_exemption_ignored():
         now=date(2026, 10, 10),
     )
     assert report.ok is False
+    assert any(f.code == "exemption_debt_expired" for f in report.findings)
+
+
+def test_assess_exemption_debt_over_cap_and_expired_block():
+    cfg = _cfg(
+        max_active_exemptions=1,
+        exemptions=[
+            {
+                "id": "ex-a",
+                "owner": "a",
+                "reason": "r1",
+                "expires": "2099-01-01",
+                "gates": ["inflation"],
+                "paths": ["**"],
+            },
+            {
+                "id": "ex-b",
+                "owner": "b",
+                "reason": "r2",
+                "expires": "2099-06-01",
+                "gates": ["inflation"],
+                "paths": ["**"],
+            },
+            {
+                "id": "ex-old",
+                "owner": "c",
+                "reason": "stale",
+                "expires": "2020-01-01",
+                "gates": ["inflation"],
+                "paths": ["**"],
+            },
+        ],
+    )
+    debt = assess_exemption_debt(cfg, now=date(2026, 10, 10))
+    assert debt["severity"] == "block"
+    assert debt["over_cap"] is True
+    assert len(debt["expired"]) == 1
+    assert len(debt["active"]) == 1  # capped
+    assert debt["active"][0]["id"] == "ex-a"  # soonest expiry kept
 
 
 def test_collect_diff_stats_counts_classes():

@@ -23,13 +23,14 @@ playbook:
   watch:
     - "Inspect serial_ratio / approval_pending / HITL rejection / Howl — clear friction first"
     - "Run Gold match-only; if Δ P0 down, treat as watch→block candidate"
-    - "Review active merge-gate exemptions on duty board (must have reason+expiry); remove unjustified"
+    - "Review merge-gate exemption debt on duty board (owner+reason+expires; cap); remove unjustified"
     - "Treat derived/speculative Evidence Envelopes as watch/backlog only — attach measured evidence before block"
     - "Hold non-critical model upgrades until watch reasons clear"
   block:
     - "Do not release / do not upgrade model"
     - "Run Gold match-only + inspect p0_miss_rate and gold_regressing"
     - "Confirm any envelope_measured_block has measured evidence + limitations; demote fake confirmed"
+    - "Clear exemption debt: remove expired/invalid rows or renew with owner+reason+expires under cap"
     - "Fix harness / review Scope Governor diffs; re-run until checks leave block"
   unavailable:
     - "bash scripts/ops_harness_ready_check.sh (install-seeds best-effort)"

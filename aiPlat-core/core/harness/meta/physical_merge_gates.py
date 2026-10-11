@@ -39,7 +39,7 @@ _DEP_FILE_NAMES = {
 
 @dataclass
 class GateFinding:
-    gate: str  # inflation | shape
+    gate: str  # inflation | shape | debt
     code: str
     message: str
     path: str = ""
@@ -72,6 +72,7 @@ class GateReport:
     exemptions_applied: List[str] = field(default_factory=list)
     config_source: str = ""
     block_after: str = ""
+    exemption_debt: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -81,6 +82,7 @@ class GateReport:
             "config_source": self.config_source,
             "block_after": self.block_after,
             "exemptions_applied": list(self.exemptions_applied),
+            "exemption_debt": dict(self.exemption_debt or {}),
             "stats": {
                 "files_changed": self.stats.files_changed if self.stats else 0,
                 "files_added": self.stats.files_added if self.stats else 0,
@@ -179,8 +181,158 @@ def _builtin_fallback() -> Dict[str, Any]:
         "banned_new_basenames": ["event_bus.py", "observer.py", "scheduler.py"],
         "banned_class_substrings": ["EventBus", "ObserverTree"],
         "allowed_bases": ["object", "Exception", "ABC", "Protocol", "BaseModel"],
+        "max_active_exemptions": 3,
         "exemptions": [],
     }
+
+
+def _max_active_exemptions(config: Mapping[str, Any]) -> int:
+    raw = config.get("max_active_exemptions", 3)
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        return 3
+    return max(0, n)
+
+
+def _exemption_row(raw: Mapping[str, Any]) -> Dict[str, Any]:
+    return {
+        "id": str(raw.get("id") or ""),
+        "owner": str(raw.get("owner") or "").strip(),
+        "reason": str(raw.get("reason") or "").strip()[:160],
+        "expires": str(raw.get("expires") or "").strip()[:10],
+        "gates": [str(g) for g in (raw.get("gates") or [])][:8],
+        "paths": [str(p) for p in (raw.get("paths") or [])][:8],
+    }
+
+
+def assess_exemption_debt(
+    config: Mapping[str, Any],
+    now: Optional[date] = None,
+) -> Dict[str, Any]:
+    """Treat exemptions as debt: owner + cap + expired-unreviewed → block.
+
+    Active exemptions without owner/reason/expires never apply (not a silent SKIP).
+    Entries past ``expires`` that remain in YAML are unreviewed debt → severity block.
+    Active count above ``max_active_exemptions`` → over_cap → severity block.
+    """
+    today = now or datetime.now(timezone.utc).date()
+    max_active = _max_active_exemptions(config)
+    active: List[Dict[str, Any]] = []
+    invalid: List[Dict[str, Any]] = []
+    expired: List[Dict[str, Any]] = []
+
+    for raw in config.get("exemptions") or []:
+        if not isinstance(raw, dict):
+            continue
+        row = _exemption_row(raw)
+        eid = row["id"] or row["reason"] or "exemption"
+        owner = row["owner"]
+        reason = row["reason"]
+        exp_s = row["expires"]
+        if not exp_s or not reason or not owner:
+            missing = []
+            if not owner:
+                missing.append("owner")
+            if not reason:
+                missing.append("reason")
+            if not exp_s:
+                missing.append("expires")
+            invalid.append({**row, "id": eid, "missing": missing})
+            continue
+        try:
+            exp_d = date.fromisoformat(exp_s[:10])
+        except ValueError:
+            invalid.append({**row, "id": eid, "missing": ["expires"]})
+            continue
+        if exp_d < today:
+            expired.append({**row, "id": eid})
+            continue
+        active.append({**row, "id": eid, "_expires_date": exp_d})
+
+    active.sort(key=lambda r: r.get("_expires_date") or date.max)
+    for r in active:
+        r.pop("_expires_date", None)
+
+    over_cap = len(active) > max_active
+    capped_active = active[:max_active] if max_active >= 0 else []
+    excess = active[max_active:] if over_cap else []
+
+    reasons: List[str] = []
+    severity = "go"
+    if expired:
+        severity = "block"
+        ids = ",".join(str(x.get("id") or "?") for x in expired[:4])
+        reasons.append(f"exemption_debt_expired={len(expired)} ({ids})")
+    if invalid:
+        severity = "block"
+        ids = ",".join(str(x.get("id") or "?") for x in invalid[:4])
+        reasons.append(f"exemption_debt_invalid={len(invalid)} ({ids})")
+    if over_cap:
+        severity = "block"
+        reasons.append(
+            f"exemption_debt_over_cap={len(active)}>{max_active}"
+        )
+    elif active and severity == "go":
+        severity = "watch"
+        ids = ",".join(str(x.get("id") or "?") for x in active[:4])
+        reasons.append(f"exemption_debt_active={len(active)} ({ids})")
+
+    return {
+        "max_active": max_active,
+        "active_count": len(active),
+        "active": capped_active,
+        "excess": excess,
+        "invalid": invalid,
+        "expired": expired,
+        "over_cap": over_cap,
+        "severity": severity,
+        "reasons": reasons,
+        "policy": "owner+reason+expires required; expired-unreviewed→block; over_cap→block",
+    }
+
+
+def debt_findings_from_ledger(debt: Mapping[str, Any]) -> List[GateFinding]:
+    """Convert exemption debt ledger into non-exemptable GateFindings."""
+    out: List[GateFinding] = []
+    for row in debt.get("expired") or []:
+        eid = str(row.get("id") or "?")
+        out.append(
+            GateFinding(
+                gate="debt",
+                code="exemption_debt_expired",
+                message=(
+                    f"exemption {eid!r} expired {row.get('expires')}; "
+                    "remove or renew with owner+reason+expires (unreviewed debt→block)"
+                ),
+                severity="block",
+            )
+        )
+    for row in debt.get("invalid") or []:
+        eid = str(row.get("id") or "?")
+        missing = ",".join(str(m) for m in (row.get("missing") or [])) or "fields"
+        out.append(
+            GateFinding(
+                gate="debt",
+                code="exemption_debt_invalid",
+                message=f"exemption {eid!r} missing {missing} (not applied; debt→block)",
+                severity="block",
+            )
+        )
+    if debt.get("over_cap"):
+        out.append(
+            GateFinding(
+                gate="debt",
+                code="exemption_debt_over_cap",
+                message=(
+                    f"active exemptions {debt.get('active_count')} > "
+                    f"max_active_exemptions={debt.get('max_active')} "
+                    "(excess not applied)"
+                ),
+                severity="block",
+            )
+        )
+    return out
 
 
 def _match_glob(path: str, pattern: str) -> bool:
@@ -365,22 +517,41 @@ def _active_exemptions(
     config: Mapping[str, Any],
     now: Optional[date] = None,
 ) -> List[Dict[str, Any]]:
+    """Return apply-able exemptions: owner+reason+expires, not expired, within cap.
+
+    Sorted by soonest expiry; entries beyond ``max_active_exemptions`` are dropped
+    (see ``assess_exemption_debt`` / over_cap findings).
+    """
+    debt = assess_exemption_debt(config, now=now)
+    # Map capped active rows back to original dicts (preserve paths/gates for matching).
+    allowed_ids = {
+        str(r.get("id") or r.get("reason") or "")
+        for r in (debt.get("active") or [])
+    }
     today = now or datetime.now(timezone.utc).date()
     out: List[Dict[str, Any]] = []
     for raw in config.get("exemptions") or []:
         if not isinstance(raw, dict):
             continue
+        if not str(raw.get("owner") or "").strip():
+            continue
+        if not str(raw.get("reason") or "").strip():
+            continue
         exp = str(raw.get("expires") or "").strip()
         if not exp:
-            continue  # no expiry → reject (must not be a silent backdoor)
+            continue
         try:
             if date.fromisoformat(exp[:10]) < today:
                 continue
         except ValueError:
             continue
-        if not str(raw.get("reason") or "").strip():
+        eid = str(raw.get("id") or raw.get("reason") or "")
+        if eid not in allowed_ids:
             continue
         out.append(raw)
+    # Preserve soonest-expiry order from debt.ledger
+    order = {str(r.get("id") or r.get("reason") or ""): i for i, r in enumerate(debt.get("active") or [])}
+    out.sort(key=lambda r: order.get(str(r.get("id") or r.get("reason") or ""), 999))
     return out
 
 
@@ -625,6 +796,7 @@ def evaluate_diff(
     profile = dict(profiles.get(prof_name) or profiles.get("business") or {})
 
     raw = check_inflation(stats, profile) + check_shape(stats, cfg, profile)
+    debt = assess_exemption_debt(cfg, now=now)
     exemptions = _active_exemptions(cfg, now=now)
     applied: List[str] = []
     findings: List[GateFinding] = []
@@ -632,6 +804,18 @@ def evaluate_diff(
         if _exempted(f, exemptions, applied):
             continue
         # In warn mode, keep severity as warn for reporting; block mode keeps block.
+        if mode == "warn" and f.severity == "block":
+            f = GateFinding(
+                gate=f.gate,
+                code=f.code,
+                message=f.message,
+                path=f.path,
+                severity="warn",
+            )
+        findings.append(f)
+
+    # Debt findings are never exemptable (cap/owner/expiry governance).
+    for f in debt_findings_from_ledger(debt):
         if mode == "warn" and f.severity == "block":
             f = GateFinding(
                 gate=f.gate,
@@ -657,4 +841,5 @@ def evaluate_diff(
         exemptions_applied=applied,
         config_source=source,
         block_after=str(cfg.get("block_after") or ""),
+        exemption_debt=debt,
     )

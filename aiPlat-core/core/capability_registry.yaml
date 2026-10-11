@@ -745,6 +745,10 @@ domains:
         type: function
         signature: 'envelope_for_gold_block(reason, p0_miss_rate=None, …)→Dict measured blocked envelope'
         module: aiPlat-core/core/harness/meta/evidence_envelope.py
+      - symbol: envelope_for_exemption_debt_block
+        type: function
+        signature: 'envelope_for_exemption_debt_block(reason, expired_count=0, …)→Dict measured blocked envelope'
+        module: aiPlat-core/core/harness/meta/evidence_envelope.py
       - symbol: gate_duty_status_with_envelopes
         type: function
         signature: 'gate_duty_status_with_envelopes(status, envelopes)→(status, extras, rows)'
@@ -4608,8 +4612,16 @@ domains:
         module: "core/harness/meta/org_harness_metrics.py"
       - symbol: "collect_merge_gates_posture"
         type: "function"
-        signature: "collect_merge_gates_posture()→Dict physical/testability mode+block_after+exemptions (visible)"
+        signature: "collect_merge_gates_posture()→Dict physical/testability mode+block_after+exemption_debt (visible)"
         module: "core/harness/meta/org_harness_metrics.py"
+      - symbol: "assess_exemption_debt"
+        type: "function"
+        signature: "assess_exemption_debt(config, now=None)→Dict owner/cap/expired ledger severity go|watch|block"
+        module: "core/harness/meta/physical_merge_gates.py"
+      - symbol: "debt_findings_from_ledger"
+        type: "function"
+        signature: "debt_findings_from_ledger(debt)→List[GateFinding] non-exemptable debt findings"
+        module: "core/harness/meta/physical_merge_gates.py"
       - symbol: "_gold_trend_points"
         type: "function"
         signature: "_gold_trend_points(rows, limit=20)→List[Dict] gold JSONL trend strip"
@@ -4645,6 +4657,10 @@ domains:
       - symbol: "evaluate_physical_merge_gates"
         type: "function"
         signature: "evaluate_physical_merge_gates(…)→Dict CoreFacade merge-time gates"
+        module: "core/api/core_facade.py"
+      - symbol: "assess_exemption_debt"
+        type: "function"
+        signature: "assess_exemption_debt(config=None, now=None)→Dict CoreFacade exemption debt ledger"
         module: "core/api/core_facade.py"
       - symbol: "evaluate_testability_gate"
         type: "function"
@@ -4697,6 +4713,10 @@ domains:
       - symbol: "envelope_for_gold_block"
         type: "function"
         signature: "envelope_for_gold_block(reason, …)→Dict measured blocked for duty board"
+        module: "core/harness/meta/evidence_envelope.py"
+      - symbol: "envelope_for_exemption_debt_block"
+        type: "function"
+        signature: "envelope_for_exemption_debt_block(reason, …)→Dict measured blocked for duty board"
         module: "core/harness/meta/evidence_envelope.py"
       - symbol: "gate_duty_status_with_envelopes"
         type: "function"
