@@ -1,7 +1,7 @@
 # 执行决策矩阵
 
 > **一句话**：帮你选「这件事该用程序、LLM、技能、Agent，还是流水线」——先按场景判断，细节与代码证据在文末附录。  
-> **状态**：Living Spec（与实现同步；冲突时以代码为准）· **v1.6** · 2026-10-12  
+> **状态**：Living Spec（与实现同步；冲突时以代码为准）· **v1.7** · 2026-10-12  
 > **互补文档**：[产物怎么验收](execution-quality-gates.md) · [能力剖面细节](capability-profile.md) · [知识 / Memory / CRAG](../knowledge-system.md) · [Agent 总览](../agent-system.md)（后端规则以本文为准）
 
 ---
@@ -20,15 +20,60 @@
 
 | 你想做的事 | 首选 | 别这样做 |
 |------------|------|----------|
-| 「满足条件就拒绝 / 必须可审计」 | 程序规则、策略门 | 让模型当权限系统 |
-| 稳定的读文件、调 API、算数 | Tool 或带代码的 Skill | 纯提示词假装已经执行成功 |
-| 有固定业务步骤，但中间要模型填语义 | Skill（提示词或「模型规划 + 程序执行」） | 把长 SOP 塞进流水线配置里的 prompt |
-| 多步探索、自己选工具、做错能改 | Agent（工具循环 / 先计划再执行） | 单次调用假装完成多步任务 |
-| 固定多角色流水线（产品→架构→编码） | Workflow / Pipeline | Agent 随便拉其它 Agent、无门控 |
-| 接外部 SaaS 工具集 | MCP（或薄一层 Tool） | 为核心路径新建内核接口 |
-| 写代码并落到磁盘 | 编码闭环（沙箱 + 完成校验 + 审查）；优先 Agent 环 | 空回复直接落盘 |
+| 「满足条件就拒绝 / 必须可审计」 | **程序规则 / PolicyGate** | 让模型当权限系统 |
+| 原子能力：读文件、调 API、算数（无业务 SOP） | **Tool**（可配 `meta_tool` 强制 code） | 纯提示词假装已执行 |
+| 固定业务步骤 + 确定性副作用 | **handler Skill**（`handler.py`） | 用 prompt 假装写盘/调 API 成功 |
+| 固定业务步骤，中间要模型填语义 | **prompt / hybrid Skill** | 把长 SOP 塞进流水线 `config.prompt` |
+| 多步探索、自己选工具、做错能改 | **Agent 环**（`react_tools` 等） | 单次调用假装完成多步 |
+| 固定多角色流水线 | **Workflow 编排**多 stage（stage 内仍是 Agent 或 Skill） | Agent 无门控互调；把 Workflow 当成「不要 Agent」 |
+| 外部多工具 / 第三方维护的工具集 | **MCP**（见下方准入） | 为核心高频路径新建内核 Syscall |
+| 写代码并落到磁盘 | 编码闭环；优先 Agent 环 | 空回复直接落盘 |
 
-**何时用模型、何时用程序：** 能规则化/可审计 → 程序；语义生成/多跳探索 → 模型；两者都要 → 混合或 Agent 循环。
+### 2.1 LLM vs 程序（硬规则）
+
+| 条件 | 路径 |
+|------|------|
+| 结果必须可复现、可审计、可规则化 | **程序**（PolicyGate / handler / Tool） |
+| 需理解自然语言、开放生成、语义填充 | **模型**（prompt / oneshot） |
+| **单次**「模型出计划 → 程序执行」 | **`hybrid` Skill**（syscall `Skill.execute`） |
+| **多轮**工具调用、观察结果、自我纠正 | **`agent` 循环**（`architecture_profile=react_tools` 等） |
+| 算术 / 日期 / 结构化解析 / 转义规范化 | **禁止纯 LLM 心算** → Tool 或 `meta_tool` 强制走 code（见 §2.3） |
+
+> 「两者都要」**不是**随便选 hybrid 或 Agent：单次计划+执行用 hybrid；需要多轮反馈用 Agent。
+
+### 2.2 Tool vs handler Skill vs 程序
+
+| 形态 | 何时选 |
+|------|--------|
+| **程序 / PolicyGate** | 权限、闸门、配额、合规——全局横切，不进业务 SOP |
+| **Tool** | 原子、无业务步骤、多 Agent 可复用（`sys_tool_call`） |
+| **handler Skill** | 有业务步骤/SOP、可复用、副作用可声明（`effects`），且执行是确定性代码 |
+| **prompt Skill** | 步骤在 SOP 里，但中间判断必须靠模型 |
+
+### 2.3 meta-tool（该算就算）
+
+算术、日期差、JSON/CSV 解析、路径规范化等**确定性变换**不得交给模型「心算」。Stage/Agent 可声明：
+
+- `meta_tool.enabled` / `auto_bind` — 优先绑定 code 类元工具  
+- `meta_tool.force` — 强制走 code（逃逸舱口）  
+
+落点：`PipelineStageConfig.meta_tool` → loop 上下文 `_prefer_code_meta_tool` / `_force_code_meta_tool`。
+
+### 2.4 Workflow 与 Agent（不是二选一）
+
+**Workflow / Pipeline = 编排壳**：决定 stage 顺序、handoff、HITL。  
+**每个 stage 内部**仍按 §3/§4 选 `execution_backend` + Skill：可以是 Agent 环，也可以是 handler / oneshot。  
+禁止把「用了 Pipeline」理解成「不许用 Agent」。
+
+### 2.5 MCP 准入（硬标准）
+
+| 选 MCP | 选薄 Tool |
+|--------|-----------|
+| 多工具包、外部维护、协议边界清晰 | 单原子操作 |
+| **非**核心热路径（描述 token 贵） | 内部核心高频（宜进 ToolRegistry） |
+| 已证明阶梯 1–4 做不到（见根 CLAUDE.md §20） | 扩展已有代码 / CLI / Skill 即可 |
+
+新 MCP / 新 Syscall 合入须过 `scripts/check_cost_ladder.py`（E4）。
 
 ---
 
@@ -176,13 +221,14 @@ Eval / 金标 / 值班板：见 Governance 与 apps/eval（本文不替代）；
 
 ## 9. 实施清单
 
-1. 能规则化？→ 程序 / 闸门 / Tool。  
-2. 单次语义、无工具？→ prompt / oneshot。  
-3. 多步工具？→ Agent + react_tools（或 plan / reflect）。  
-4. 多角色流水线？→ Pipeline + handoff。  
-5. 外部系统？→ MCP（先证明便宜档做不到）。  
-6. 编码落盘？→ 闭环；优先 Agent。  
-7. 生成物？→ 三类型 + 推荐 `architecture_profile` + 默认 prompt Skill；确定性副作用才用 E2 handler。
+1. 能规则化 / 权限闸门？→ 程序 / PolicyGate。  
+2. 原子无 SOP？→ Tool；要算数/解析 → meta-tool / code。  
+3. 单次语义、无工具？→ prompt / oneshot。  
+4. 单次「计划→程序」？→ hybrid Skill；多轮纠正？→ Agent 环。  
+5. 多角色？→ Pipeline **编排** stage（stage 内仍是 Agent/Skill）。  
+6. 外部多工具？→ MCP（先证明 Tool/Skill 不够）；合入过 cost ladder。  
+7. 编码落盘？→ 闭环；优先 Agent。  
+8. 生成物？→ 三类型 + 推荐 `architecture_profile` + 默认 prompt；确定性副作用才用 E2 handler。
 
 ---
 
@@ -218,6 +264,7 @@ Eval / 金标 / 值班板：见 Governance 与 apps/eval（本文不替代）；
 | E4 CI | `scripts/lint_engine_skills.py` · `scripts/check_cost_ladder.py` |
 | E2 handler Skill | `generated_conformance.check_handler_pairing` · `builder_project_service` 复制 handler.py · `agent_engineering` SOP |
 | E1 工厂意图 | `generated_conformance._check_architecture_profile_intent` · `team_planner` 回填 · `agent_engineering` SOP |
+| meta-tool | `PipelineStageConfig.meta_tool` · `meta_tool.apply_meta_tool_config` · `_prefer_code_meta_tool` / `_force_code_meta_tool` |
 | 降级门闩 | `pipeline_stage._apply_capability_profile`（跳过显式 agent/profile） |
 | 路径卡 | `build_execution_decision` · `_emit_execution_decision` |
 | 工厂 SOP | `agent_engineering/SKILL.md` |
@@ -233,6 +280,7 @@ Eval / 金标 / 值班板：见 Governance 与 apps/eval（本文不替代）；
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
+| v1.7 | 2026-10-12 | 正文补齐：LLM/程序硬规则、hybrid vs Agent、Tool/handler/程序边界、meta-tool、Workflow 编排语义、MCP 准入（回应 v1.3 选型评审） |
 | v1.6 | 2026-10-12 | E2 handler Skill 闭环标已做；E4 成本阶梯 `check_cost_ladder` 接入 pre-commit / architecture_guard |
 | v1.5 | 2026-10-12 | 默认 fail closed；E1 工厂 architecture_profile + conformance；E4/E5 标已做；SOFT_DEV / FAIL_OPEN 治理 env |
 | v1.4 | 2026-10-11 | 完整 Stage×Skill 矩阵；显式 backend 不可 demote；路径卡补齐字段 + hybrid；设计模式映射；安全默认与 Memory/Eval 指针 |
