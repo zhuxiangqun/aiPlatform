@@ -172,6 +172,21 @@ def main() -> int:
         fail = True
     if str(t_payload.get("mode") or "") == "block" and not t_payload.get("ok", True):
         fail = True
+
+    # Gate meta-eval: append measured run (skip when AIPLAT_GATE_META_PERSIST=0)
+    try:
+        from core.api.core_facade import record_gate_run
+
+        record_gate_run(
+            physical=report.to_dict(),
+            testability=t_payload if isinstance(t_payload, dict) else {},
+            exit_blocked=fail,
+            source="staged" if args.staged else "check",
+            staged=bool(args.staged),
+        )
+    except Exception as exc:
+        print(f"[gate-meta] persist skipped: {type(exc).__name__}", file=sys.stderr)
+
     return 1 if fail else 0
 
 

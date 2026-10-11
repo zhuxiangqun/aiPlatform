@@ -14,16 +14,30 @@ hitl_rejection_rate_watch: 0.3
 # Howl intervention count → WATCH
 howl_interventions_watch: 20
 
+# Gate meta-eval (org/gate_meta JSONL — block/exemption/SKIP/appeal rates)
+gate_meta_window_days: 30
+gate_meta_min_runs: 5
+gate_exemption_rate_watch: 0.15
+gate_exemption_rate_block: 0.35
+gate_skip_rate_watch: 0.05
+gate_skip_rate_block: 0.15
+gate_appeal_rate_watch: 0.10
+gate_appeal_rate_block: 0.25
+# Informational only (high veto may be healthy)
+gate_block_rate_watch: 0.50
+
 # Duty-officer playbook — fixed actions per status (not more dashboard cards).
 playbook:
   go:
     - "Gold match-only (limit=5) before each release; confirm P/R/P0 on duty board"
     - "Keep org-harness on the board; re-check gold after model/harness changes"
     - "Do not celebrate AI speedup without serial_ratio + approval latency in band"
+    - "Skim gate_meta rates (exemption/skip/appeal) — keep in band before celebrating gates"
   watch:
     - "Inspect serial_ratio / approval_pending / HITL rejection / Howl — clear friction first"
     - "Run Gold match-only; if Δ P0 down, treat as watch→block candidate"
     - "Review merge-gate exemption debt on duty board (owner+reason+expires; cap); remove unjustified"
+    - "Gate meta: exemption/skip/appeal rising → tune thresholds or refine shape rules; retire SKIP_*"
     - "Treat derived/speculative Evidence Envelopes as watch/backlog only — attach measured evidence before block"
     - "Hold non-critical model upgrades until watch reasons clear"
   block:
@@ -31,8 +45,10 @@ playbook:
     - "Run Gold match-only + inspect p0_miss_rate and gold_regressing"
     - "Confirm any envelope_measured_block has measured evidence + limitations; demote fake confirmed"
     - "Clear exemption debt: remove expired/invalid rows or renew with owner+reason+expires under cap"
+    - "Gate meta BLOCK: retune physical_merge_gates.yaml / kill SKIP_* habit / process appeals by code"
     - "Fix harness / review Scope Governor diffs; re-run until checks leave block"
   unavailable:
     - "bash scripts/ops_harness_ready_check.sh (install-seeds best-effort)"
     - "Gold match-only CTA or CLI --match-only --persist; never invent success_rate"
     - "Collect pipeline sample runs so serial/approvals leave unavailable"
+    - "Run check_physical_merge_gates.py (persist) so gate_meta leaves unavailable"

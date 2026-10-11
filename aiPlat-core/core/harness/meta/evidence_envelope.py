@@ -520,6 +520,47 @@ def envelope_for_exemption_debt_block(
     )
 
 
+def envelope_for_gate_meta_block(
+    *,
+    reason: str,
+    exemption_rate: Optional[float] = None,
+    skip_rate: Optional[float] = None,
+    appeal_rate: Optional[float] = None,
+    n_runs: int = 0,
+    n_skips: int = 0,
+    n_appeals: int = 0,
+    window_days: float = 30.0,
+    jsonl_ref: str = "org/gate_meta/runs.jsonl",
+) -> Dict[str, Any]:
+    """Measured envelope for gate-meta calibration BLOCK (JSONL rates + limitations)."""
+    snippet = (
+        f"{reason}; exemption_rate={exemption_rate}; skip_rate={skip_rate}; "
+        f"appeal_rate={appeal_rate}; n_runs={n_runs}; n_skips={n_skips}; "
+        f"n_appeals={n_appeals}; window_days={window_days}"
+    )[:400]
+    return normalize_envelope(
+        {
+            "status": "blocked",
+            "confidence": "measured",
+            "evidence": [
+                evidence_item(
+                    type="file_line",
+                    ref=str(jsonl_ref or "org/gate_meta/runs.jsonl")[:500],
+                    snippet=snippet,
+                )
+            ],
+            "limitations": [
+                "rates from local gate_meta JSONL only — not remote CI fleet",
+                "high exemption/skip/appeal implies miscalibration, not a single bad PR",
+            ],
+            "next_check": (
+                "tune physical_merge_gates.yaml thresholds / shape rules; "
+                "retire unjustified SKIP_*; refine rules with appeal codes"
+            ),
+        }
+    )
+
+
 def gate_duty_status_with_envelopes(
     status: str,
     envelopes: Sequence[Mapping[str, Any]],

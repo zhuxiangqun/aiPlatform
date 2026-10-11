@@ -25,6 +25,16 @@ _DEFAULT_DUTY_THRESHOLDS: Dict[str, float] = {
     "approval_latency_sec_watch": 3600.0,
     "hitl_rejection_rate_watch": 0.3,
     "howl_interventions_watch": 20.0,
+    # Gate meta-eval (window rates from org/gate_meta JSONL)
+    "gate_meta_window_days": 30.0,
+    "gate_meta_min_runs": 5.0,
+    "gate_exemption_rate_watch": 0.15,
+    "gate_exemption_rate_block": 0.35,
+    "gate_skip_rate_watch": 0.05,
+    "gate_skip_rate_block": 0.15,
+    "gate_appeal_rate_watch": 0.10,
+    "gate_appeal_rate_block": 0.25,
+    "gate_block_rate_watch": 0.50,
 }
 
 # Event types that open / close a serial human wait (pipeline_run_events)
@@ -609,6 +619,29 @@ def collect_merge_gates_posture() -> Dict[str, Any]:
         logger.debug("testability gates posture skipped: %s", e, exc_info=True)
 
     n_ex = int(debt.get("active_count") or len(physical.get("exemptions") or []))
+
+    # Gate meta-eval (block/exemption/SKIP/appeal rates — calibrate or watch)
+    gate_meta: Dict[str, Any] = {
+        "status": "unavailable",
+        "severity": "unavailable",
+        "n_runs": 0,
+        "n_skips": 0,
+        "n_appeals": 0,
+        "block_rate": None,
+        "exemption_rate": None,
+        "skip_rate": None,
+        "appeal_rate": None,
+        "reasons": ["gate_meta not loaded"],
+    }
+    try:
+        from core.harness.meta.gate_meta_eval import assess_gate_meta
+
+        thr_map, _ = load_duty_board_thresholds()
+        gate_meta = assess_gate_meta(thresholds=thr_map)
+    except Exception as e:
+        logger.debug("gate_meta posture skipped: %s", e, exc_info=True)
+
+    meta_sev = str(gate_meta.get("severity") or "unavailable")
     return {
         "physical": physical,
         "testability": testability,
@@ -616,6 +649,8 @@ def collect_merge_gates_posture() -> Dict[str, Any]:
         "exemptions_visible": True,  # policy: never silent
         "exemption_debt": debt,
         "debt_severity": str(debt.get("severity") or "unavailable"),
+        "gate_meta": gate_meta,
+        "meta_severity": meta_sev,
     }
 
 
@@ -869,11 +904,15 @@ def build_duty_board(
         checks["howl"] = "unavailable"
         reasons.append("howl unavailable")
 
-    # --- merge gates posture (exemptions = debt; expired/invalid/over_cap → block) ---
+    # --- merge gates posture (exemptions = debt; meta rates; expired → block) ---
     n_ex = int(merge_gates.get("active_exemption_count") or 0)
     phys = merge_gates.get("physical") if isinstance(merge_gates.get("physical"), dict) else {}
     debt_sev = str(merge_gates.get("debt_severity") or "").strip().lower()
     debt = merge_gates.get("exemption_debt") if isinstance(merge_gates.get("exemption_debt"), dict) else {}
+    gate_meta = merge_gates.get("gate_meta") if isinstance(merge_gates.get("gate_meta"), dict) else {}
+    meta_sev = str(
+        merge_gates.get("meta_severity") or gate_meta.get("severity") or ""
+    ).strip().lower()
     if debt_sev == "block":
         checks["merge_gates"] = "block"
         for r in (debt.get("reasons") or [])[:4]:
@@ -881,15 +920,28 @@ def build_duty_board(
         if not debt.get("reasons"):
             reasons.append("exemption_debt_block")
         status = "block"
-    elif n_ex > 0 or debt_sev == "watch":
+    elif meta_sev == "block":
+        checks["merge_gates"] = "block"
+        for r in (gate_meta.get("reasons") or [])[:4]:
+            reasons.append(str(r))
+        if not gate_meta.get("reasons"):
+            reasons.append("gate_meta_block")
+        status = "block"
+    elif n_ex > 0 or debt_sev == "watch" or meta_sev == "watch":
         checks["merge_gates"] = "watch"
-        ids = ",".join(
-            str(x.get("id") or "?") for x in (phys.get("exemptions") or [])[:4]
-        )
-        owners = ",".join(
-            str(x.get("owner") or "?") for x in (phys.get("exemptions") or [])[:4]
-        )
-        reasons.append(f"merge_gate_exemptions_active={n_ex} owners=[{owners}] ({ids})")
+        if n_ex > 0 or debt_sev == "watch":
+            ids = ",".join(
+                str(x.get("id") or "?") for x in (phys.get("exemptions") or [])[:4]
+            )
+            owners = ",".join(
+                str(x.get("owner") or "?") for x in (phys.get("exemptions") or [])[:4]
+            )
+            reasons.append(
+                f"merge_gate_exemptions_active={n_ex} owners=[{owners}] ({ids})"
+            )
+        if meta_sev == "watch":
+            for r in (gate_meta.get("reasons") or [])[:3]:
+                reasons.append(str(r))
         if status == "go":
             status = "watch"
     elif phys.get("status") == "unavailable":
@@ -914,6 +966,7 @@ def build_duty_board(
     # --- Evidence Envelope: findings fold + gold BLOCK (measured+limitations) ---
     from core.harness.meta.evidence_envelope import (
         envelope_for_exemption_debt_block,
+        envelope_for_gate_meta_block,
         envelope_for_gold_block,
         fold_findings_for_duty,
         gate_duty_status_with_envelopes,
@@ -951,7 +1004,7 @@ def build_duty_board(
                 written_at=str(latest.get("written_at") or ""),
             )
         )
-    if checks.get("merge_gates") == "block" or debt_sev == "block":
+    if debt_sev == "block":
         debt_reason = next(
             (r for r in reasons if "exemption_debt" in r),
             "exemption_debt_block",
@@ -964,6 +1017,28 @@ def build_duty_board(
                 over_cap=bool(debt.get("over_cap")),
                 active_count=int(merge_gates.get("active_exemption_count") or 0),
                 max_active=debt.get("max_active"),
+            )
+        )
+    if meta_sev == "block":
+        meta_reason = next(
+            (
+                r
+                for r in reasons
+                if any(x in r for x in ("exemption_rate", "skip_rate", "appeal_rate", "gate_meta"))
+            ),
+            "gate_meta_block",
+        )
+        envelopes.append(
+            envelope_for_gate_meta_block(
+                reason=str(meta_reason),
+                exemption_rate=gate_meta.get("exemption_rate"),  # type: ignore[arg-type]
+                skip_rate=gate_meta.get("skip_rate"),  # type: ignore[arg-type]
+                appeal_rate=gate_meta.get("appeal_rate"),  # type: ignore[arg-type]
+                n_runs=int(gate_meta.get("n_runs") or 0),
+                n_skips=int(gate_meta.get("n_skips") or 0),
+                n_appeals=int(gate_meta.get("n_appeals") or 0),
+                window_days=float(gate_meta.get("window_days") or 30),
+                jsonl_ref=str(gate_meta.get("jsonl") or "org/gate_meta/runs.jsonl"),
             )
         )
 

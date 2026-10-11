@@ -93,6 +93,20 @@ interface DutyBoard {
       invalid?: Array<{ id?: string; missing?: string[] }>;
       reasons?: string[];
     };
+    meta_severity?: string;
+    gate_meta?: {
+      status?: string;
+      severity?: string;
+      n_runs?: number;
+      n_skips?: number;
+      n_appeals?: number;
+      block_rate?: number | null;
+      exemption_rate?: number | null;
+      skip_rate?: number | null;
+      appeal_rate?: number | null;
+      window_days?: number;
+      reasons?: string[];
+    };
   } | null;
   /** Evidence Envelope summary — block only when allow_release_block */
   envelope?: {
@@ -484,6 +498,32 @@ export default function GovernanceDashboard() {
                   · {r}
                 </div>
               ))}
+              {(() => {
+                const gm = mg.gate_meta || {};
+                const metaSev = String(mg.meta_severity || gm.severity || 'unavailable');
+                if (metaSev === 'unavailable' && !(gm.n_runs || gm.n_skips)) return null;
+                const metaColor =
+                  metaSev === 'block' ? '#a44' : metaSev === 'watch' ? '#aa4' : '#666';
+                const fmt = (v: number | null | undefined) =>
+                  v == null || Number.isNaN(v) ? '—' : `${(Number(v) * 100).toFixed(0)}%`;
+                return (
+                  <div style={{ marginTop: 4 }}>
+                    <span style={{ color: metaColor, fontWeight: metaSev !== 'go' ? 600 : 400 }}>
+                      gate_meta={metaSev}
+                    </span>
+                    {' · '}runs={gm.n_runs ?? 0}
+                    {' · '}ex={fmt(gm.exemption_rate)}
+                    {' · '}skip={fmt(gm.skip_rate)}
+                    {' · '}appeal={fmt(gm.appeal_rate)}
+                    {' · '}block={fmt(gm.block_rate)}
+                    {(gm.reasons || []).slice(0, 2).map((r, i) => (
+                      <div key={`gm-${i}`} style={{ marginLeft: 8, color: metaSev === 'block' ? '#a66' : '#886' }}>
+                        · {r}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           );
         })()}

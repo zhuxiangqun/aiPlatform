@@ -234,6 +234,8 @@ def test_collect_merge_gates_posture_surfaces_exemptions():
     assert posture.get("active_exemption_count") == 0
     assert posture.get("debt_severity") in ("go", "unavailable")
     assert "exemption_debt" in posture
+    assert "gate_meta" in posture
+    assert posture.get("meta_severity") in ("go", "watch", "block", "unavailable")
     phys = posture["physical"]
     assert phys.get("status") in ("ok", "unavailable")
     if phys.get("status") == "ok":
