@@ -51,7 +51,7 @@ playbook:
     - "Keep org-harness on the board; re-check gold after model/harness changes"
     - "Do not celebrate AI speedup without serial_ratio + approval latency in band"
     - "Skim gate_meta rates (exemption/skip/appeal) — keep in band before celebrating gates"
-    - "Skim repo_health (god/fanout/deps/Δloc) — cron repo_health_weekly + scripts/scan_repo_health.py before celebrating lean tree"
+    - "Skim repo_health (god/fanout/deps/Δloc) — Governance CTA / cron repo_health_weekly / scripts/scan_repo_health.py before celebrating lean tree"
   watch:
     - "Inspect serial_ratio / approval_pending / HITL rejection / Howl — clear friction first"
     - "Run Gold match-only; if Δ P0 down, treat as watch→block candidate"
@@ -66,11 +66,11 @@ playbook:
     - "Confirm any envelope_measured_block has measured evidence + limitations; demote fake confirmed"
     - "Clear exemption debt: remove expired/invalid rows or renew with owner+reason+expires under cap"
     - "Gate meta BLOCK: retune physical_merge_gates.yaml / kill SKIP_* habit / process appeals by code"
-    - "Repo health BLOCK: python3 scripts/scan_repo_health.py; pay down god/fanout/deps before merge flood"
+    - "Repo health BLOCK: Governance「Repo health scan」or python3 scripts/scan_repo_health.py; pay down god/fanout/deps before merge flood"
     - "Fix harness / review Scope Governor diffs; re-run until checks leave block"
   unavailable:
     - "bash scripts/ops_harness_ready_check.sh (install-seeds best-effort)"
     - "Gold match-only CTA or CLI --match-only --persist; never invent success_rate"
     - "Collect pipeline sample runs so serial/approvals leave unavailable"
     - "Run check_physical_merge_gates.py (persist) so gate_meta leaves unavailable"
-    - "python3 scripts/scan_repo_health.py so repo_health leaves unavailable (never invent green)"
+    - "Repo health scan CTA or python3 scripts/scan_repo_health.py so repo_health leaves unavailable (never invent green)"

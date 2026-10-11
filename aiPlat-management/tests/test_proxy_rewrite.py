@@ -60,6 +60,26 @@ def test_org_harness_rewrites_to_platform():
     assert path == "/governance/org-harness"
 
 
+def test_repo_health_scan_rewrites_to_platform():
+    """Duty-board Repo health CTA must hit platform, not mgmt /api catch-all."""
+    target, path = apply_path_rewrite("/api/governance/repo-health/scan")
+    assert target == PLATFORM_URL
+    assert path == "/governance/repo-health/scan"
+    target2, path2 = apply_path_rewrite("/api/governance/repo-health?x=1")
+    assert target2 == PLATFORM_URL
+    assert path2 == "/governance/repo-health?x=1"
+
+
+def test_governance_prefix_exact_and_subpath():
+    """Prefix rewrite: exact /api/governance and /api/governance/* both → platform."""
+    t0, p0 = apply_path_rewrite("/api/governance")
+    assert t0 == PLATFORM_URL
+    assert p0 == "/governance"
+    t1, p1 = apply_path_rewrite("/api/governance/jobs")
+    assert t1 == PLATFORM_URL
+    assert p1 == "/governance/jobs"
+
+
 def test_other_core_diagnostics_untouched():
     target, path = apply_path_rewrite("/api/core/diagnostics/summary")
     assert target is None

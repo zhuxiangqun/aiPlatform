@@ -247,6 +247,8 @@ export default function GovernanceDashboard() {
   const [loading, setLoading] = useState(true);
   const [goldBusy, setGoldBusy] = useState(false);
   const [goldCtaMsg, setGoldCtaMsg] = useState<string | null>(null);
+  const [repoHealthBusy, setRepoHealthBusy] = useState(false);
+  const [repoHealthCtaMsg, setRepoHealthCtaMsg] = useState<string | null>(null);
 
   const fetchOrgHarness = async () => {
     const oh = await apiClient.get<OrgHarnessData>('/governance/org-harness?recent_limit=10');
@@ -329,6 +331,41 @@ export default function GovernanceDashboard() {
       setGoldCtaMsg(`Gold 请求失败: ${msg}`);
     } finally {
       setGoldBusy(false);
+    }
+  };
+
+  /** Ops CTA: full-tree repo health scan → persist JSONL → leave unavailable / refresh board. */
+  const runRepoHealthScan = async () => {
+    setRepoHealthBusy(true);
+    setRepoHealthCtaMsg(null);
+    try {
+      const res = await apiClient.post<{
+        severity?: string;
+        n_snapshots?: number;
+        persisted?: string | null;
+        scan?: {
+          py_loc?: number;
+          god_files?: number;
+          high_fanout_files?: number;
+          dep_entries?: number;
+        };
+        reasons?: string[];
+      }>('/governance/repo-health/scan', { persist: true }, { timeoutMs: 600_000 });
+      const sev = res?.severity || 'unavailable';
+      const scan = res?.scan || {};
+      setRepoHealthCtaMsg(
+        `repo_health=${sev} · loc=${scan.py_loc ?? '—'} · god=${scan.god_files ?? '—'} · fanout=${scan.high_fanout_files ?? '—'} · deps=${scan.dep_entries ?? '—'} · n=${res?.n_snapshots ?? '—'}`,
+      );
+      try {
+        await fetchOrgHarness();
+      } catch {
+        /* board refresh best-effort */
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setRepoHealthCtaMsg(`Repo health 扫描失败: ${msg}`);
+    } finally {
+      setRepoHealthBusy(false);
     }
   };
 
@@ -442,7 +479,7 @@ export default function GovernanceDashboard() {
             <button
               type="button"
               onClick={runGoldMatchOnly}
-              disabled={goldBusy}
+              disabled={goldBusy || repoHealthBusy}
               title="POST /api/platform/apps/code-review-gold/evaluate match_only+persist · 同 ops_harness_ready_check 发布习惯"
               style={{
                 ...iconBtnStyle,
@@ -453,6 +490,21 @@ export default function GovernanceDashboard() {
             >
               <CheckCircle size={14} />
               {goldBusy ? 'Gold…' : 'Gold match-only'}
+            </button>
+            <button
+              type="button"
+              onClick={runRepoHealthScan}
+              disabled={repoHealthBusy || goldBusy}
+              title="POST /api/governance/repo-health/scan persist · 同 scripts/scan_repo_health.py / cron repo_health_weekly"
+              style={{
+                ...iconBtnStyle,
+                opacity: repoHealthBusy ? 0.6 : 1,
+                borderColor: '#3a4a5a',
+                color: repoHealthBusy ? '#888' : '#cdf',
+              }}
+            >
+              <Activity size={14} />
+              {repoHealthBusy ? 'Scan…' : 'Repo health scan'}
             </button>
           </div>
         </div>
@@ -547,9 +599,12 @@ export default function GovernanceDashboard() {
                 const rh = mg.repo_health || {};
                 const healthSev = String(mg.health_severity || rh.severity || 'unavailable');
                 const latest = rh.latest || {};
-                if (healthSev === 'unavailable' && !(rh.n_snapshots || latest.py_loc)) return null;
+                // Always show (incl. unavailable) so Repo health scan CTA has context — never invent green.
                 const healthColor =
-                  healthSev === 'block' ? '#a44' : healthSev === 'watch' ? '#aa4' : '#666';
+                  healthSev === 'block' ? '#a44'
+                    : healthSev === 'watch' ? '#aa4'
+                      : healthSev === 'go' ? '#4a4'
+                        : '#666';
                 const locPct = rh.deltas?.loc_growth_pct;
                 return (
                   <div style={{ marginTop: 4 }}>
@@ -616,6 +671,20 @@ export default function GovernanceDashboard() {
             color: goldCtaMsg.startsWith('match-only ok') ? '#4a4' : '#aa4',
           }}>
             {goldCtaMsg}
+          </div>
+        )}
+        {repoHealthCtaMsg && (
+          <div style={{
+            marginTop: 8, fontSize: 11, fontFamily: 'monospace',
+            color: repoHealthCtaMsg.startsWith('Repo health 扫描失败')
+              ? '#aa4'
+              : repoHealthCtaMsg.includes('repo_health=block')
+                ? '#a44'
+                : repoHealthCtaMsg.includes('repo_health=go')
+                  ? '#4a4'
+                  : '#aa4',
+          }}>
+            {repoHealthCtaMsg}
           </div>
         )}
         {duty.thresholds_source && (

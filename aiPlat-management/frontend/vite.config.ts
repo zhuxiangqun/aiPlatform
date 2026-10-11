@@ -36,16 +36,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (p) => p.replace('/api/core/diagnostics/doctor', '/api/diagnostics/doctor'),
       },
-      '/api/governance/eval-observability': {
+      // All /api/governance/* → platform:8003 /governance/* (org-harness, repo-health CTA, …)
+      '/api/governance': {
         target: 'http://localhost:8003',
         changeOrigin: true,
-        rewrite: (p) =>
-          p.replace('/api/governance/eval-observability', '/governance/eval-observability'),
-      },
-      '/api/governance/org-harness': {
-        target: 'http://localhost:8003',
-        changeOrigin: true,
-        rewrite: (p) => p.replace('/api/governance/org-harness', '/governance/org-harness'),
+        rewrite: (p) => p.replace(/^\/api\/governance/, '/governance'),
+        timeout: 600000,
       },
       '/api/core/diagnostics': {
         target: 'http://localhost:8002',

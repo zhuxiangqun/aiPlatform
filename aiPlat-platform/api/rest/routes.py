@@ -7345,6 +7345,27 @@ async def governance_org_harness(
     )
 
 
+@app.get("/governance/repo-health")
+async def governance_repo_health_status():
+    """合入后仓库健康评估（只读 JSONL；无快照→unavailable，禁发明绿）。"""
+    from core.api.core_facade import assess_repo_health
+
+    return assess_repo_health()
+
+
+@app.post("/governance/repo-health/scan")
+async def governance_repo_health_scan(payload: dict = Body(default={})):
+    """值班板 CTA：全树扫描并可选写入 org/repo_health JSONL（默认同 CLI persist）。"""
+    import asyncio
+
+    from core.api.core_facade import scan_repo_health
+
+    persist = True
+    if isinstance(payload, dict) and "persist" in payload:
+        persist = bool(payload.get("persist"))
+    return await asyncio.to_thread(scan_repo_health, persist=persist)
+
+
 # ── 后台任务托管（prime-agent 断线续跑借鉴）：长任务脱离终端运行，状态/输出可随时查询 ──
 
 @app.get("/governance/jobs")
