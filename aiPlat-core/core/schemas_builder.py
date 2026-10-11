@@ -298,6 +298,212 @@ def apply_coding_stage_defaults(stage: "PipelineStageConfig") -> "PipelineStageC
     return stage
 
 
+def _truthy_flag(val: Any) -> bool:
+    if val is True:
+        return True
+    if isinstance(val, (int, float)) and val == 1:
+        return True
+    return str(val or "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _dict_declares_coding(d: Optional[Dict[str, Any]]) -> bool:
+    if not isinstance(d, dict):
+        return False
+    return _truthy_flag(d.get("uses_file_output")) or _truthy_flag(d.get("uses_code_skill"))
+
+
+def _skill_declares_coding(skill: Any) -> bool:
+    """True when skill config/frontmatter marks file-output / code skill (no name matching)."""
+    if skill is None:
+        return False
+    config = getattr(skill, "_config", None)
+    if config is None and callable(getattr(skill, "get_config", None)):
+        try:
+            config = skill.get_config()
+        except Exception:
+            config = None
+    for obj in (skill, config):
+        if obj is None:
+            continue
+        if bool(getattr(obj, "uses_file_output", False) or getattr(obj, "uses_code_skill", False)):
+            return True
+        meta = getattr(obj, "metadata", None)
+        if _dict_declares_coding(meta if isinstance(meta, dict) else None):
+            return True
+    return False
+
+
+def workspace_agent_needs_coding_defaults(
+    *,
+    agent_cfg: Optional[Dict[str, Any]] = None,
+    agent_meta: Optional[Dict[str, Any]] = None,
+    skills: Optional[List[Any]] = None,
+) -> bool:
+    """Config/skill-signal check — never agent_id string matching.
+
+    Opt in: ``uses_file_output`` / ``uses_code_skill`` on agent or bound skills,
+    ``coding_closed_loop: true``, or non-off ``coding_intensity``.
+    Opt out: ``coding_closed_loop: false`` (wins over skill signals).
+    Does **not** treat ``coding_policy_profile`` alone as opt-in (karpathy is
+    often set without meaning a file-output coding agent).
+    """
+    cfg = agent_cfg if isinstance(agent_cfg, dict) else {}
+    meta = agent_meta if isinstance(agent_meta, dict) else {}
+    for d in (cfg, meta):
+        raw = d.get("coding_closed_loop")
+        if raw is None:
+            continue
+        s = str(raw).strip().lower()
+        if s in ("0", "false", "off", "none", "no"):
+            return False
+        if _truthy_flag(raw):
+            return True
+    if _dict_declares_coding(cfg) or _dict_declares_coding(meta):
+        return True
+    for sk in skills or []:
+        if _skill_declares_coding(sk):
+            return True
+    for d in (cfg, meta):
+        inten = str(d.get("coding_intensity") or "").strip().lower()
+        if inten and inten not in ("off", "none", "0", "false"):
+            return True
+    return False
+
+
+def inject_workspace_coding_defaults(
+    state: Dict[str, Any],
+    *,
+    agent_cfg: Optional[Dict[str, Any]] = None,
+    agent_meta: Optional[Dict[str, Any]] = None,
+    skills: Optional[List[Any]] = None,
+) -> List[str]:
+    """Upgrade Workspace Execute state to the same coding closed loop as factory stages.
+
+    When agent/skills declare file-output coding: set ``_coding_policy_profile`` from
+    intensity, merge ``apply_coding_stage_defaults`` into ``_done_verify``, and return
+    extra skill ids to bind (e.g. ``autoreview`` for review_gate follow-up).
+
+    Non-coding trial agents stay on profile ``off`` (slim CLAUDE inject). Opt out:
+    ``coding_closed_loop: false`` on AGENT.md config/metadata.
+    """
+    if not isinstance(state, dict):
+        return []
+    if not workspace_agent_needs_coding_defaults(
+        agent_cfg=agent_cfg, agent_meta=agent_meta, skills=skills
+    ):
+        return []
+
+    cfg = agent_cfg if isinstance(agent_cfg, dict) else {}
+    meta = agent_meta if isinstance(agent_meta, dict) else {}
+
+    dv_seed = state.get("_done_verify") if isinstance(state.get("_done_verify"), dict) else None
+    if dv_seed is None and isinstance(cfg.get("done_verify"), dict):
+        dv_seed = cfg.get("done_verify")
+    if dv_seed is None and isinstance(meta.get("done_verify"), dict):
+        dv_seed = meta.get("done_verify")
+
+    rg = str(cfg.get("review_gate") or meta.get("review_gate") or state.get("review_gate") or "quick")
+    req = []
+    for src in (
+        cfg.get("required_skills"),
+        meta.get("required_skills"),
+        state.get("_bound_skill_ids"),
+    ):
+        if isinstance(src, list):
+            for x in src:
+                s = str(x).strip()
+                if s and s not in req:
+                    req.append(s)
+
+    _qg = (
+        cfg.get("quality_gate")
+        if isinstance(cfg.get("quality_gate"), dict)
+        else (meta.get("quality_gate") if isinstance(meta.get("quality_gate"), dict) else {})
+    )
+    _eo = cfg.get("expected_outcomes") if isinstance(cfg.get("expected_outcomes"), list) else None
+    if _eo is None and isinstance(meta.get("expected_outcomes"), list):
+        _eo = meta.get("expected_outcomes")
+    _sm = str(cfg.get("sandbox_mode") or meta.get("sandbox_mode") or "").strip()
+    stage_kw: Dict[str, Any] = {
+        "id": "workspace_agent",
+        "agent_id": "",
+        "uses_file_output": True,
+        "done_verify": dict(dv_seed) if isinstance(dv_seed, dict) else {},
+        "review_gate": rg,
+        "required_skills": list(req),
+        "sandbox": bool(cfg.get("sandbox") or meta.get("sandbox") or state.get("_sandbox")),
+        "quality_gate": _qg if isinstance(_qg, dict) else {},
+        "expected_outcomes": list(_eo) if isinstance(_eo, list) else [],
+    }
+    if _sm:
+        stage_kw["sandbox_mode"] = _sm
+    stage = PipelineStageConfig(**stage_kw)
+    apply_coding_stage_defaults(stage)
+
+    # Policy profile: agent explicit → intensity resolve → karpathy_v1 for coding.
+    explicit_prof = str(
+        cfg.get("coding_policy_profile") or meta.get("coding_policy_profile") or ""
+    ).strip().lower()
+    if explicit_prof and explicit_prof not in ("",):
+        if explicit_prof in ("off", "none", "minimal", "disabled"):
+            # Still apply done_verify/testability; keep slim inject if ops asked off.
+            state["_coding_policy_profile"] = "off"
+        else:
+            state["_coding_policy_profile"] = explicit_prof
+    else:
+        try:
+            from core.harness.utils.coding_intensity import (
+                intensity_to_policy_profile,
+                resolve_coding_intensity,
+            )
+
+            inten = resolve_coding_intensity(
+                explicit=cfg.get("coding_intensity") or meta.get("coding_intensity"),
+                state=state,
+                scope="workspace",
+                default="full",
+            )
+            state["_coding_intensity"] = inten
+            state["_coding_policy_profile"] = intensity_to_policy_profile(inten)
+        except Exception:
+            state["_coding_policy_profile"] = "karpathy_v1"
+
+    if isinstance(stage.done_verify, dict):
+        try:
+            from core.harness.execution.done_verify import build_done_verify_config
+
+            state["_done_verify"] = build_done_verify_config(
+                quality_gate=getattr(stage, "quality_gate", None)
+                if isinstance(getattr(stage, "quality_gate", None), dict)
+                else (state.get("quality_gate") if isinstance(state.get("quality_gate"), dict) else None),
+                expected_outcomes=list(getattr(stage, "expected_outcomes", None) or [])
+                or (state.get("expected_outcomes") if isinstance(state.get("expected_outcomes"), list) else None),
+                done_verify=stage.done_verify,
+                review_gate=str(getattr(stage, "review_gate", "") or rg or ""),
+            )
+        except Exception:
+            state["_done_verify"] = dict(stage.done_verify)
+    state["review_gate"] = str(getattr(stage, "review_gate", "") or rg or "")
+    if bool(getattr(stage, "sandbox", False)):
+        state["_sandbox"] = True
+        state["sandbox"] = True
+
+    extra: List[str] = []
+    for sid in list(getattr(stage, "required_skills", None) or []):
+        s = str(sid).strip()
+        if not s:
+            continue
+        bound = state.get("_bound_skill_ids")
+        if not isinstance(bound, list):
+            bound = []
+            state["_bound_skill_ids"] = bound
+        if s not in bound:
+            bound.append(s)
+            extra.append(s)
+    state["_workspace_coding_defaults"] = True
+    return extra
+
+
 def resolve_upgrade_agent_type(
     stage: "PipelineStageConfig",
     state: Dict[str, Any],
