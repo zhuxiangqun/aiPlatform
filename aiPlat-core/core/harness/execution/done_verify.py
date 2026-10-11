@@ -8,6 +8,7 @@ Production callers:
   - ReActLoop._acceptance_gate
   - StageRunner (injects config from PipelineStageConfig)
   - CoreFacade.run_workspace_agent (injects from AGENT.md metadata)
+  - pipeline_engine._run_stage_skill (pre-deploy gate for llm + uses_file_output)
 """
 
 from __future__ import annotations
@@ -265,3 +266,79 @@ def run_done_verify(context: Dict[str, Any]) -> Optional[str]:
             logger.debug("done_verify testability check skipped", exc_info=True)
 
     return None
+
+
+def gate_llm_file_output_stage(
+    *,
+    stage: Any,
+    state: Dict[str, Any],
+    result: str,
+    artifact_key: str = "",
+    backend: str = "llm",
+) -> Optional[str]:
+    """Pre-deploy DONE verify for ``execution_backend=llm`` + ``uses_file_output``.
+
+    Agent/ReAct paths already call ``run_done_verify`` via ``_acceptance_gate``.
+    The llm skill path writes ``## FILE:`` blobs then may ``_deploy_result_files``
+    without that ring — this closes the hole (config-driven; no agent_id branches).
+
+    ``review_gate`` is skipped here: llm backend has no follow-up skill loop.
+    Use ``execution_backend=agent`` / ``architecture_profile=react_tools`` when
+    peer-review before DONE is required.
+    """
+    if not isinstance(state, dict):
+        return None
+    backend_n = str(backend or getattr(stage, "execution_backend", "") or "llm").strip().lower()
+    if backend_n in ("agent", "react", "stage_runner"):
+        return None
+    if not bool(getattr(stage, "uses_file_output", False)):
+        return None
+
+    from core.schemas_builder import apply_coding_stage_defaults
+
+    apply_coding_stage_defaults(stage)
+    dv = getattr(stage, "done_verify", None)
+    if not isinstance(dv, dict):
+        dv = {}
+    # Peer-review needs a tool loop — do not false-veto oneshot llm stages.
+    dv_gate = dict(dv)
+    dv_gate["review_gate"] = "none"
+    cfg = build_done_verify_config(
+        quality_gate=getattr(stage, "quality_gate", None)
+        if isinstance(getattr(stage, "quality_gate", None), dict)
+        else None,
+        expected_outcomes=list(getattr(stage, "expected_outcomes", None) or []) or None,
+        done_verify=dv_gate,
+        review_gate="none",
+    )
+    if not cfg.get("enabled", True):
+        return None
+
+    key = str(artifact_key or getattr(stage, "output_artifact", "") or "").strip()
+    art = state.get(key) if key else None
+    ctx: Dict[str, Any] = {
+        "output": str(result or ""),
+        "raw_output": str(result or ""),
+        "_done_verify": cfg,
+        "artifact": art if isinstance(art, dict) else {"raw_output": str(result or "")},
+        "last_artifact": art if isinstance(art, dict) else None,
+    }
+    if key and isinstance(art, dict):
+        ctx[key] = art
+    if isinstance(art, dict) and isinstance(art.get("files"), list):
+        ctx["files"] = art.get("files")
+    cwd = str(state.get("_deploy_files_dir") or state.get("output_dir") or "").strip()
+    if cwd:
+        ctx["cwd"] = cwd
+        ctx["workdir"] = cwd
+
+    veto = run_done_verify(ctx)
+    if veto:
+        state["_done_verify_last_reason"] = veto
+        state["_done_verify_veto_count"] = int(state.get("_done_verify_veto_count", 0) or 0) + 1
+        if isinstance(ctx.get("_testability_report"), dict):
+            state["_testability_report"] = ctx["_testability_report"]
+        if key and isinstance(state.get(key), dict):
+            state[key]["status"] = "failed"
+            state[key]["done_verify_veto"] = veto
+    return veto
