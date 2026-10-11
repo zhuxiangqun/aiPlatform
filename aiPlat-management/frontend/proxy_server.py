@@ -45,18 +45,10 @@ _FALLBACK_PREFIXES: dict[str, list[str]] = {
 
 # Stale SPA bundles called management Doctor with a core prefix (404 on 8002).
 # Governance panel calls /api/governance/* which must hit platform (not mgmt /api catch-all).
+# Prefix rules (src ends without trailing slash) match exact path and subpaths.
 _PATH_REWRITES: tuple[tuple[str, str, str], ...] = (
     ("/api/core/diagnostics/doctor", "/api/diagnostics/doctor", MGMT_URL),
-    (
-        "/api/governance/eval-observability",
-        "/governance/eval-observability",
-        PLATFORM_URL,
-    ),
-    (
-        "/api/governance/org-harness",
-        "/governance/org-harness",
-        PLATFORM_URL,
-    ),
+    ("/api/governance", "/governance", PLATFORM_URL),
 )
 
 
@@ -64,8 +56,9 @@ def apply_path_rewrite(path: str):
     """Return (override_target, upstream_path) when a compatibility rewrite applies."""
     path_only, sep, qs = (path or "").partition("?")
     for src, dest, target in _PATH_REWRITES:
-        if path_only == src:
-            return target, dest + ((sep + qs) if qs else "")
+        if path_only == src or path_only.startswith(src + "/"):
+            rewritten = dest + path_only[len(src) :]
+            return target, rewritten + ((sep + qs) if qs else "")
     return None, path or ""
 
 

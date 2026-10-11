@@ -5256,6 +5256,7 @@ def scan_repo_health(
         "py_files": metrics.get("py_files"),
         "py_loc": metrics.get("py_loc"),
         "god_files": metrics.get("god_files"),
+        "high_fanout_files": metrics.get("high_fanout_files"),
         "dep_entries": metrics.get("dep_entries"),
     }
     out["persisted"] = persisted
