@@ -6,6 +6,7 @@ from core.harness.meta.org_harness_metrics import (
     aggregate_org_harness,
     build_duty_board,
     collect_org_harness,
+    load_duty_board_playbook,
     load_duty_board_thresholds,
     summarize_approvals,
     summarize_gold_regression,
@@ -110,6 +111,9 @@ def test_summarize_gold_regression_p0_miss_and_delta():
     assert out["delta_vs_prev"]["precision"] == -0.05
     assert out["delta_vs_prev"]["p0_recall"] == -0.5
     assert out["regressing"] is True
+    assert len(out["trend"]) == 2
+    assert out["trend_summary"]["direction"] == "down"
+    assert out["trend_summary"]["n"] == 2
 
 
 def test_summarize_gold_empty():
@@ -117,6 +121,39 @@ def test_summarize_gold_empty():
     assert out["report_count"] == 0
     assert out["p0_miss_rate"] is None
     assert out["regressing"] is False
+    assert out["trend"] == []
+    assert out["trend_summary"]["direction"] == "unavailable"
+
+
+def test_duty_board_playbook_and_gold_trend():
+    pb, src = load_duty_board_playbook()
+    assert "block" in pb and pb["block"]
+    assert src.endswith("duty_board.yaml") or src == "defaults"
+
+    board = build_duty_board(
+        {
+            "ok": True,
+            "data_available": True,
+            "availability": {"runs": True, "gold": True, "approvals": False},
+            "summary": {
+                "avg_serial_ratio": 0.05,
+                "gold_regressing": True,
+                "p0_miss_rate": 0.0,
+            },
+            "gold_regression": {
+                "trend_summary": {
+                    "n": 2,
+                    "direction": "down",
+                    "first": {"p0_recall": 1.0},
+                    "last": {"p0_recall": 0.5},
+                },
+            },
+        },
+    )
+    assert board["status"] == "block"
+    assert board.get("playbook")
+    assert any("Gold" in s or "gold" in s.lower() for s in board["playbook"])
+    assert board.get("gold_trend_summary", {}).get("direction") == "down"
 
 
 def test_aggregate_includes_gold():

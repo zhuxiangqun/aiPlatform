@@ -12,6 +12,7 @@ from proxy_server import (  # noqa: E402
     PLATFORM_URL,
     PROXY_ROUTES,
     ProxyHandler,
+    _apps_yaml_platform_routes,
     apply_path_rewrite,
     MGMT_URL,
 )
@@ -24,6 +25,15 @@ def test_code_review_gold_routes_to_platform():
     target, precise = handler._get_target("/api/platform/apps/code-review-gold/evaluate")
     assert target == PLATFORM_URL
     assert precise is True
+
+
+def test_apps_yaml_drives_platform_app_routes():
+    """New apps modules should pin via apps.yaml, not only hand-written statics."""
+    routes = _apps_yaml_platform_routes()
+    assert routes.get("/api/platform/apps/fde") == PLATFORM_URL
+    assert routes.get("/api/platform/apps/code-review-gold") == PLATFORM_URL
+    assert routes.get("/api/platform/apps/kb-eval") == PLATFORM_URL
+    assert routes.get("/api/platform/apps/eval") == PLATFORM_URL
 
 
 def test_doctor_core_prefix_rewrites_to_management():

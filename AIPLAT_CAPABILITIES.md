@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2039
+total_capabilities: 2040
 last_updated: 2026-10-09
 version: "30.9"
 auto_sync: true
@@ -747,8 +747,9 @@ scan_hash: 8f9548ec24f4
 | 编码 stage 默认闭环 | `schemas_builder.apply_coding_stage_defaults` + `code_split`/`code`/`hybrid` 团队种子 | ✅ | `uses_file_output` → stage sandbox 开 + light done_verify + `required_skills` 绑 autoreview（`review_gate=none` / env 可关）；file_checkpoint 仍全局默认；生成物适用：已接线（工厂编码团队） | 已合入 |
 | Code 元工具偏好（图灵完备出口） | `harness/execution/meta_tool.py` + `ReActLoop._build_tools_desc` + `PipelineStageConfig.meta_tool` + StageRunner/CoreFacade/team_planner 注入 | ✅ | 算术/日期/解析/逃逸舱口 → `[META TOOL]` 提示 + 置顶 `code`；配置 `{enabled, auto_bind, force}`；`AIPLAT_META_TOOL_AUTO_BIND=auto`（生产 on / 开发 off）；`AIPLAT_META_TOOL_CODE` 总开关；生成物适用：已接线（Harness 横切） | 已合入 |
 | 组织 Harness 暗账本（HITL/审批 Amdahl） | `harness/meta/org_harness_metrics.py` + `CoreFacade.org_harness_status` + `GET /governance/org-harness` + Governance 面板 + eval_observability 可选切片 | ✅ | `serial_ratio`/审批 + **四指标**（P·R·P0miss·comments/time）+ `serial_chain_recommendations`（串行链改造建议）；vite/proxy；生成物不适用（平台横切治理观测） | 已合入 |
-| Governance 值班板（KPI 运营化） | `build_duty_board` + `load_adoption_snapshot` + Governance「值班板」+ Gold match-only CTA + 无假绿 adoption/机制状态 | ✅ | go/watch/block/unavailable；金标/串行/审批/HITL/Howl；任务成功率标 unavailable；gold_gate 加载失败 require_eval；值班板一键 `POST .../code-review-gold/evaluate`（match_only+persist limit=5）写报告并刷新 org-harness；生成物不适用（平台横切治理观测） | 已合入 |
-| 值班板阈值 YAML | `load_duty_board_thresholds` + `workspace_seeds/org/duty_board.yaml` | ✅ | override → `AIPLAT_DUTY_BOARD_CONFIG` → `$AIPLAT_HOME/org/duty_board.yaml` → seed；duty_board + serial tips 共用；生成物不适用（平台横切） | 已合入 |
+| Governance 值班板（KPI 运营化） | `build_duty_board` + `load_adoption_snapshot` + Governance「值班板」+ Gold match-only CTA + 无假绿 adoption/机制状态 | ✅ | go/watch/block/unavailable；金标/串行/审批/HITL/Howl；任务成功率标 unavailable；gold_gate 加载失败 require_eval；值班板一键 `POST .../code-review-gold/evaluate`（match_only+persist limit=5）写报告并刷新 org-harness；**Gold JSONL 趋势**（`trend`/`trend_summary`）+ **值班员剧本**（playbook）；生成物不适用（平台横切治理观测） | 已合入 |
+| 值班板阈值 YAML | `load_duty_board_thresholds` + `load_duty_board_playbook` + `workspace_seeds/org/duty_board.yaml` | ✅ | override → `AIPLAT_DUTY_BOARD_CONFIG` → `$AIPLAT_HOME/org/duty_board.yaml` → seed；thresholds + playbook（go/watch/block/unavailable 固定动作）共用；生成物不适用（平台横切） | 已合入 |
+| 治理闭环补齐（Gold 趋势 + 代理配置化） | `summarize_gold_regression.trend*` + `_apps_yaml_platform_routes` + `apps.yaml` `proxy_prefixes` | ✅ | 复用 gold JSONL 出趋势条；FE proxy 从 registry 生成 platform:8003 路由（禁手写 pin 漂移 #226）；生成物不适用（平台横切） | 已合入 |
 | 物理合入闸门 P0（通胀+形态） | `physical_merge_gates.py` + `scripts/check_physical_merge_gates.py` + `workspace_seeds/org/physical_merge_gates.yaml` + contracts-guard / pre-commit | ✅ | 合入时否决器（≠运行时入口校验/PolicyGate）：净增行/文件/新依赖/新类/新目录 + 禁 generic/framework/EventBus/深继承；mode warn→`block_after` 升级；豁免须 reason+expires；生成物不适用（平台横切发布门禁） | 已合入 |
 | 可测性闸门 P1（纯 I/O） | `testability_gate.py` + `done_verify.require_testability` + coding stage defaults + `check_physical_merge_gates` 同跑 | ✅ | handler 须有纯单元测（assert、无 DB/网络/消息队列）；integration-only 不算完成；warn→`block_after`；合入侧磁盘补齐测试；**done_verify 从 `## FILE:` / factory 产物抽文件**（不依赖空 `_written_files`）；生成物适用：已接线（编码 stage done_verify） | 已合入 |
 | Governance 任务采纳/干预 KPI | `pages/Governance/index.tsx` ← `GET /core/diagnostics/adoption-metrics` | ✅ | Agent KPI（调用/7日活跃/HITL 通过·驳回/澄清触发）上治理主面；不可用时显式 unavailable，**不展示假成功率**；生成物不适用（平台横切） | 已合入 |
@@ -2144,7 +2145,7 @@ scan_hash: 8f9548ec24f4
 | 一键修复断言针别名对齐 | factory_fix_plan.align_result_assert_needles + true_test contains 同义 | ✅ | `missing:export_format` → 断言对齐 `export_json` / 同义匹配，避免 remap 空转；生成物适用：**已接线** | 已合入 |
 | 确定性 handler 平台副作用桥 | builder_project_service._platform_effects_after_deterministic_skill + `AIPLAT_FACTORY_FORCE_AGENT_SKILL` | ✅ | Path0 媒体 handler 成功后补 memory + local_feedback（不完全替代 ReAct）；可选 env 强制走 Agent+ReAct；生成物适用：**已接线** | 已合入 |
 | 前端代理 HTML/JSON no-cache | aiPlat-management/frontend/proxy_server.py | ✅ | `index.html`/`*.json`/`非 hash 静态` no-store；hash 资源 immutable——预览少依赖强刷；生成物不适用（平台 FE 横切） | 已合入 |
-| 前端代理兼容路径改写 | `apply_path_rewrite`（`proxy_server.py` + vite `/api/governance/eval-observability`）+ `_platform_upstream_path` | ✅ | Doctor：`/api/core/diagnostics/doctor`→mgmt；评测观测：`/api/governance/eval-observability`→platform `/governance/...`；mgmt `/api/platform/apps/*` 转发保留 `/api/platform/apps`（禁误写 `/platform/apps`）；`code-review-gold` 精确路由→8003 + POST body 可 404 重试；生成物不适用（平台 FE 横切） | 已合入 |
+| 前端代理兼容路径改写 | `apply_path_rewrite` + `_platform_upstream_path` + `_apps_yaml_platform_routes` | ✅ | Doctor/eval-observability 改写；mgmt `/api/platform/apps/*` 保留前缀；**apps.yaml `api_prefix`/`proxy_prefixes`→platform:8003**（硬 fallback 仅兜底）；POST body 404 可重试；生成物不适用（平台 FE 横切） | 已合入 |
 | SPA 陈旧 chunk 自动重载 | `proxy_server._serve_spa` 注入 `aiplat.chunk_reload` + `lazyWithRetry` | ✅ | 构建哈希失效时 session 内最多硬刷一次；生成物不适用（平台 FE 横切） | 已合入 |
 | Code 模式平台能力接线规约 | engine/skills/code_generation/SKILL.md | ✅ | 托管≠自动继承；强制经平台 API/hybrid；`rollback_available: true`（落盘经 sys_file_write→file_checkpoint，恢复走 restore_file_checkpoint / FileCheckpoints UI）；生成物适用：**已接线**（生成 SOP） | 已合入 |
 | 工厂媒体 Skill 名规范化 | factory_artifact_sanitize.normalize_media_skill_names + ensure_agent_app_skill_consistency + ensure_platform_media_skill_contracts + factory_fix_plan.apply_no_platform_handler_fixes + teams gates + agent_engineering 命名/契约约束 | ✅ | 别名提升 + 三一致 + **目录契约重写**（禁止 downloader 仅建任务、禁止 report 仅进度查询；强制 media_ref/segments/report/timeline；**task_id/duration/tenant 入口不可必填**；**丢弃虚构 task_lifecycle**；progress→report）；handler 补齐 segments/task_status；生成物适用：**已接线** | 已合入 |
@@ -2418,6 +2419,8 @@ scan_hash: 8f9548ec24f4
 ## 十九、运行时干预
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| _gold_trend_summary | `core/harness/meta/org_harness_metrics.py` | ✅ | 自动同步 | 已合入 |
+| _gold_trend_points | `core/harness/meta/org_harness_metrics.py` | ✅ | 自动同步 | 已合入 |
 | veto_reason_from_report | `core/harness/meta/testability_gate.py` | ✅ | 自动同步 | 已合入 |
 | enrich_files_from_workspace | `core/harness/meta/testability_gate.py` | ✅ | 自动同步 | 已合入 |
 | load_testability_config | `core/harness/meta/testability_gate.py` | ✅ | 自动同步 | 已合入 |
@@ -2954,7 +2957,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 208 | 1 | 209 |
+| Harness 执行引擎 | 209 | 1 | 210 |
 | 记忆子系统 | 58 | 0 | 58 |
 | 知识引擎（本体） | 358 | 9 | 367 |
 | RAG 检索 | 51 | 0 | 51 |
@@ -2999,7 +3002,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2029** | **10** | **2039** |
+| **总计** | **2030** | **10** | **2040** |
 
 | **总计** | **1095** | **0** | **1095** |
 

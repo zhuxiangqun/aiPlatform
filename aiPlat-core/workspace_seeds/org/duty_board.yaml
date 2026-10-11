@@ -13,3 +13,22 @@ approval_latency_sec_watch: 3600
 hitl_rejection_rate_watch: 0.3
 # Howl intervention count → WATCH
 howl_interventions_watch: 20
+
+# Duty-officer playbook — fixed actions per status (not more dashboard cards).
+playbook:
+  go:
+    - "Gold match-only (limit=5) before each release; confirm P/R/P0 on duty board"
+    - "Keep org-harness on the board; re-check gold after model/harness changes"
+    - "Do not celebrate AI speedup without serial_ratio + approval latency in band"
+  watch:
+    - "Inspect serial_ratio / approval_pending / HITL rejection / Howl — clear friction first"
+    - "Run Gold match-only; if Δ P0 down, treat as watch→block candidate"
+    - "Hold non-critical model upgrades until watch reasons clear"
+  block:
+    - "Do not release / do not upgrade model"
+    - "Run Gold match-only + inspect p0_miss_rate and gold_regressing"
+    - "Fix harness / review Scope Governor diffs; re-run until checks leave block"
+  unavailable:
+    - "bash scripts/ops_harness_ready_check.sh (install-seeds best-effort)"
+    - "Gold match-only CTA or CLI --match-only --persist; never invent success_rate"
+    - "Collect pipeline sample runs so serial/approvals leave unavailable"

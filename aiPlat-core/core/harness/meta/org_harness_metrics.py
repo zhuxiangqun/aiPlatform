@@ -253,10 +253,73 @@ def _metric_delta(cur: Any, prev: Any) -> Optional[float]:
         return None
 
 
+def _gold_trend_points(rows: Sequence[Dict[str, Any]], *, limit: int = 20) -> List[Dict[str, Any]]:
+    """Last N gold reports as plottable points (reuse JSONL; no parallel store)."""
+    pts: List[Dict[str, Any]] = []
+    for r in list(rows)[-max(1, int(limit or 20)) :]:
+        if not isinstance(r, dict):
+            continue
+        pts.append(
+            {
+                "written_at": r.get("written_at"),
+                "precision": r.get("precision"),
+                "recall": r.get("recall"),
+                "p0_recall": r.get("p0_recall"),
+                "avg_comment_count": r.get("avg_comment_count"),
+                "elapsed_sec": r.get("elapsed_sec"),
+                "profile": r.get("profile"),
+            }
+        )
+    return pts
+
+
+def _gold_trend_summary(trend: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+    """Compact first→last direction for duty board (informational; verdict stays on regressing)."""
+    pts = [p for p in (trend or []) if isinstance(p, dict)]
+    if not pts:
+        return {"n": 0, "direction": "unavailable", "first": None, "last": None}
+    first, last = pts[0], pts[-1]
+    direction = "flat"
+    try:
+        a = first.get("p0_recall")
+        b = last.get("p0_recall")
+        if a is not None and b is not None:
+            d = float(b) - float(a)
+            if d < -0.02:
+                direction = "down"
+            elif d > 0.02:
+                direction = "up"
+        elif last.get("precision") is not None and first.get("precision") is not None:
+            d = float(last["precision"]) - float(first["precision"])
+            if d < -0.02:
+                direction = "down"
+            elif d > 0.02:
+                direction = "up"
+    except (TypeError, ValueError):
+        direction = "flat"
+    return {
+        "n": len(pts),
+        "direction": direction,
+        "first": {
+            "precision": first.get("precision"),
+            "recall": first.get("recall"),
+            "p0_recall": first.get("p0_recall"),
+            "written_at": first.get("written_at"),
+        },
+        "last": {
+            "precision": last.get("precision"),
+            "recall": last.get("recall"),
+            "p0_recall": last.get("p0_recall"),
+            "written_at": last.get("written_at"),
+        },
+    }
+
+
 def summarize_gold_regression(reports: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
     """Fold code_review_gold JSONL reports → P/R trend + P0 miss + four-metric card.
 
     p0_miss_rate = 1 - latest.p0_recall (gold P0 漏检代理；无平行库).
+    ``trend`` = last N points for Governance strip; ``trend_summary`` = first→last direction.
     """
     rows = [r for r in (reports or []) if isinstance(r, dict)]
     if not rows:
@@ -267,6 +330,8 @@ def summarize_gold_regression(reports: Sequence[Dict[str, Any]]) -> Dict[str, An
             "p0_miss_rate": None,
             "regressing": False,
             "harness_factor_delta": {},
+            "trend": [],
+            "trend_summary": {"n": 0, "direction": "unavailable", "first": None, "last": None},
         }
     latest = rows[-1]
     prev = rows[-2] if len(rows) >= 2 else None
@@ -306,6 +371,7 @@ def summarize_gold_regression(reports: Sequence[Dict[str, Any]]) -> Dict[str, An
         )
     except Exception:
         factor_delta = {}
+    trend = _gold_trend_points(rows, limit=20)
     return {
         "report_count": len(rows),
         "latest": {
@@ -324,6 +390,8 @@ def summarize_gold_regression(reports: Sequence[Dict[str, Any]]) -> Dict[str, An
         "p0_miss_rate": miss,
         "regressing": regressing,
         "harness_factor_delta": factor_delta,
+        "trend": trend,
+        "trend_summary": _gold_trend_summary(trend),
     }
 
 
@@ -344,6 +412,54 @@ def _coerce_threshold(raw: Any, default: float) -> float:
         return float(default)
 
 
+_DEFAULT_DUTY_PLAYBOOK: Dict[str, List[str]] = {
+    "go": [
+        "Gold match-only (limit=5) before each release; confirm P/R/P0 on duty board",
+        "Keep org-harness on the board; re-check gold after model/harness changes",
+    ],
+    "watch": [
+        "Inspect serial_ratio / approval_pending / HITL / Howl — clear friction first",
+        "Run Gold match-only; treat Δ P0 down as watch→block candidate",
+    ],
+    "block": [
+        "Do not release / do not upgrade model",
+        "Run Gold match-only + inspect p0_miss_rate and gold_regressing",
+    ],
+    "unavailable": [
+        "bash scripts/ops_harness_ready_check.sh",
+        "Gold match-only; never invent success_rate",
+    ],
+}
+
+
+def _load_duty_board_raw(
+    *,
+    override: Optional[Mapping[str, Any]] = None,
+) -> Tuple[Optional[Mapping[str, Any]], str]:
+    """Shared YAML load for thresholds + playbook."""
+    if isinstance(override, Mapping) and override:
+        return override, "override"
+    candidates: List[Path] = []
+    env_path = (os.getenv("AIPLAT_DUTY_BOARD_CONFIG") or "").strip()
+    if env_path:
+        candidates.append(Path(env_path).expanduser())
+    home = Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    candidates.append(home / "org" / "duty_board.yaml")
+    candidates.append(_duty_seed_path())
+    for path in candidates:
+        if not path.is_file():
+            continue
+        try:
+            import yaml
+
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            if isinstance(data, Mapping):
+                return data, str(path)
+        except Exception as e:
+            logger.debug("duty_board load skipped %s: %s", path, e)
+    return None, "defaults"
+
+
 def load_duty_board_thresholds(
     *,
     override: Optional[Mapping[str, Any]] = None,
@@ -360,33 +476,7 @@ def load_duty_board_thresholds(
     Returns ``(thresholds, source)`` where source is override|path|defaults.
     """
     thr: Dict[str, float] = dict(_DEFAULT_DUTY_THRESHOLDS)
-    loaded: Optional[Mapping[str, Any]] = None
-    source = "defaults"
-
-    if isinstance(override, Mapping) and override:
-        loaded = override
-        source = "override"
-    else:
-        candidates: List[Path] = []
-        env_path = (os.getenv("AIPLAT_DUTY_BOARD_CONFIG") or "").strip()
-        if env_path:
-            candidates.append(Path(env_path).expanduser())
-        home = Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
-        candidates.append(home / "org" / "duty_board.yaml")
-        candidates.append(_duty_seed_path())
-        for path in candidates:
-            if not path.is_file():
-                continue
-            try:
-                import yaml
-
-                data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-                if isinstance(data, Mapping):
-                    loaded = data
-                    source = str(path)
-                    break
-            except Exception as e:
-                logger.debug("duty_board thresholds load skipped %s: %s", path, e)
+    loaded, source = _load_duty_board_raw(override=override)
 
     if isinstance(loaded, Mapping):
         for key, default in _DEFAULT_DUTY_THRESHOLDS.items():
@@ -394,6 +484,26 @@ def load_duty_board_thresholds(
                 thr[key] = _coerce_threshold(loaded[key], default)
 
     return thr, source
+
+
+def load_duty_board_playbook(
+    *,
+    override: Optional[Mapping[str, Any]] = None,
+) -> Tuple[Dict[str, List[str]], str]:
+    """Load go/watch/block/unavailable action lists (duty-officer playbook)."""
+    loaded, source = _load_duty_board_raw(override=override)
+    out: Dict[str, List[str]] = {
+        k: list(v) for k, v in _DEFAULT_DUTY_PLAYBOOK.items()
+    }
+    raw = None
+    if isinstance(loaded, Mapping):
+        raw = loaded.get("playbook")
+    if isinstance(raw, Mapping):
+        for key in ("go", "watch", "block", "unavailable"):
+            items = raw.get(key)
+            if isinstance(items, list) and items:
+                out[key] = [str(x).strip() for x in items if str(x).strip()]
+    return out, source
 
 
 def load_adoption_snapshot() -> Dict[str, Any]:
@@ -486,6 +596,16 @@ def build_duty_board(
     reasons: List[str] = []
     status = "go"
 
+    # Threshold override dicts (p0_miss_rate_block=…) must not swallow YAML playbook.
+    playbook_override = (
+        thresholds
+        if isinstance(thresholds, Mapping) and "playbook" in thresholds
+        else None
+    )
+    playbook_all, playbook_source = load_duty_board_playbook(override=playbook_override)
+    gr = pl.get("gold_regression") if isinstance(pl.get("gold_regression"), dict) else {}
+    gold_trend_summary = gr.get("trend_summary") if isinstance(gr.get("trend_summary"), dict) else None
+
     if not data_available and not has_adoption:
         return {
             "status": "unavailable",
@@ -502,6 +622,9 @@ def build_duty_board(
             "thresholds": thr,
             "thresholds_source": thr_source,
             "release_habit": "run ops_harness_ready_check.sh + gold match-only before release",
+            "playbook": list(playbook_all.get("unavailable") or []),
+            "playbook_source": playbook_source,
+            "gold_trend_summary": gold_trend_summary,
         }
 
     checks: Dict[str, str] = {
@@ -645,6 +768,9 @@ def build_duty_board(
             if status == "unavailable"
             else "GO: keep org-harness on the duty board; re-check gold after each release"
         ),
+        "playbook": list(playbook_all.get(status) or playbook_all.get("unavailable") or []),
+        "playbook_source": playbook_source,
+        "gold_trend_summary": gold_trend_summary,
     }
 
 
