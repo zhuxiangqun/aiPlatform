@@ -133,7 +133,7 @@ def load_testability_config(override: Optional[Mapping[str, Any]] = None) -> Tup
 def _default_config() -> Dict[str, Any]:
     return {
         "mode": "warn",
-        "block_after": "2026-11-15",
+        "block_after": "2026-11-01",
         "handler_basenames": ["handler.py", "handlers.py"],
         "require_assert": True,
     }
