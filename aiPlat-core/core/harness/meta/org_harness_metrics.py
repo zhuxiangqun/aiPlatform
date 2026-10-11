@@ -507,9 +507,10 @@ def load_duty_board_playbook(
 
 
 def collect_merge_gates_posture() -> Dict[str, Any]:
-    """Merge-gate posture for duty board — exemptions must be visible (no silent backdoor).
+    """Merge-gate posture for duty board — exemptions as visible debt (no silent backdoor).
 
-    Surfaces inflation/shape + testability mode / block_after / active exemptions.
+    Surfaces inflation/shape + testability mode / block_after / active exemptions
+    plus exemption debt ledger (owner/cap/expired-unreviewed).
     Does not invent pass rates. Failures → empty slices with status unavailable.
     """
     from datetime import date, datetime, timezone
@@ -525,6 +526,18 @@ def collect_merge_gates_posture() -> Dict[str, Any]:
         except ValueError:
             return None
 
+    empty_debt: Dict[str, Any] = {
+        "max_active": 3,
+        "active_count": 0,
+        "active": [],
+        "excess": [],
+        "invalid": [],
+        "expired": [],
+        "over_cap": False,
+        "severity": "unavailable",
+        "reasons": [],
+        "policy": "",
+    }
     physical: Dict[str, Any] = {
         "status": "unavailable",
         "mode": "unavailable",
@@ -532,6 +545,7 @@ def collect_merge_gates_posture() -> Dict[str, Any]:
         "days_until_block": None,
         "config_source": "",
         "exemptions": [],
+        "exemption_debt": dict(empty_debt),
     }
     testability: Dict[str, Any] = {
         "status": "unavailable",
@@ -540,21 +554,23 @@ def collect_merge_gates_posture() -> Dict[str, Any]:
         "days_until_block": None,
         "config_source": "",
     }
+    debt: Dict[str, Any] = dict(empty_debt)
     try:
         from core.harness.meta.physical_merge_gates import (
-            _active_exemptions,
+            assess_exemption_debt,
             load_physical_gates_config,
             resolve_mode,
         )
 
         cfg, src = load_physical_gates_config()
         mode = resolve_mode(cfg, now=today)
-        active = _active_exemptions(cfg, now=today)
+        debt = assess_exemption_debt(cfg, now=today)
         ex_rows = []
-        for ex in active:
+        for ex in debt.get("active") or []:
             ex_rows.append(
                 {
                     "id": str(ex.get("id") or ""),
+                    "owner": str(ex.get("owner") or ""),
                     "reason": str(ex.get("reason") or "")[:160],
                     "expires": str(ex.get("expires") or "")[:10],
                     "gates": [str(g) for g in (ex.get("gates") or [])][:8],
@@ -568,6 +584,7 @@ def collect_merge_gates_posture() -> Dict[str, Any]:
             "days_until_block": _days_until(ba),
             "config_source": src,
             "exemptions": ex_rows,
+            "exemption_debt": debt,
         }
     except Exception as e:
         logger.debug("physical merge gates posture skipped: %s", e, exc_info=True)
@@ -591,12 +608,14 @@ def collect_merge_gates_posture() -> Dict[str, Any]:
     except Exception as e:
         logger.debug("testability gates posture skipped: %s", e, exc_info=True)
 
-    n_ex = len(physical.get("exemptions") or [])
+    n_ex = int(debt.get("active_count") or len(physical.get("exemptions") or []))
     return {
         "physical": physical,
         "testability": testability,
         "active_exemption_count": n_ex,
         "exemptions_visible": True,  # policy: never silent
+        "exemption_debt": debt,
+        "debt_severity": str(debt.get("severity") or "unavailable"),
     }
 
 
@@ -850,15 +869,27 @@ def build_duty_board(
         checks["howl"] = "unavailable"
         reasons.append("howl unavailable")
 
-    # --- merge gates posture (exemptions must surface; never silent backdoor) ---
+    # --- merge gates posture (exemptions = debt; expired/invalid/over_cap → block) ---
     n_ex = int(merge_gates.get("active_exemption_count") or 0)
     phys = merge_gates.get("physical") if isinstance(merge_gates.get("physical"), dict) else {}
-    if n_ex > 0:
+    debt_sev = str(merge_gates.get("debt_severity") or "").strip().lower()
+    debt = merge_gates.get("exemption_debt") if isinstance(merge_gates.get("exemption_debt"), dict) else {}
+    if debt_sev == "block":
+        checks["merge_gates"] = "block"
+        for r in (debt.get("reasons") or [])[:4]:
+            reasons.append(str(r))
+        if not debt.get("reasons"):
+            reasons.append("exemption_debt_block")
+        status = "block"
+    elif n_ex > 0 or debt_sev == "watch":
         checks["merge_gates"] = "watch"
         ids = ",".join(
             str(x.get("id") or "?") for x in (phys.get("exemptions") or [])[:4]
         )
-        reasons.append(f"merge_gate_exemptions_active={n_ex} ({ids})")
+        owners = ",".join(
+            str(x.get("owner") or "?") for x in (phys.get("exemptions") or [])[:4]
+        )
+        reasons.append(f"merge_gate_exemptions_active={n_ex} owners=[{owners}] ({ids})")
         if status == "go":
             status = "watch"
     elif phys.get("status") == "unavailable":
@@ -882,6 +913,7 @@ def build_duty_board(
 
     # --- Evidence Envelope: findings fold + gold BLOCK (measured+limitations) ---
     from core.harness.meta.evidence_envelope import (
+        envelope_for_exemption_debt_block,
         envelope_for_gold_block,
         fold_findings_for_duty,
         gate_duty_status_with_envelopes,
@@ -917,6 +949,21 @@ def build_duty_board(
                 p0_miss_rate=sm.get("p0_miss_rate"),
                 regressing=bool(sm.get("gold_regressing")),
                 written_at=str(latest.get("written_at") or ""),
+            )
+        )
+    if checks.get("merge_gates") == "block" or debt_sev == "block":
+        debt_reason = next(
+            (r for r in reasons if "exemption_debt" in r),
+            "exemption_debt_block",
+        )
+        envelopes.append(
+            envelope_for_exemption_debt_block(
+                reason=str(debt_reason),
+                expired_count=len(debt.get("expired") or []),
+                invalid_count=len(debt.get("invalid") or []),
+                over_cap=bool(debt.get("over_cap")),
+                active_count=int(merge_gates.get("active_exemption_count") or 0),
+                max_active=debt.get("max_active"),
             )
         )
 

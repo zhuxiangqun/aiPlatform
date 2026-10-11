@@ -10,6 +10,7 @@ from core.harness.meta.evidence_envelope import (
     assert_envelope_integrity,
     attach_envelopes_to_issues,
     compact_evidence,
+    envelope_for_exemption_debt_block,
     envelope_for_gold_block,
     envelope_from_review_issue,
     evidence_item,
@@ -230,6 +231,23 @@ def test_envelope_for_gold_block_allows_release_block():
     assert env["limitations"]
 
 
+def test_envelope_for_exemption_debt_block_allows_release_block():
+    env = envelope_for_exemption_debt_block(
+        reason="exemption_debt_expired=1 (ex-old)",
+        expired_count=1,
+        over_cap=False,
+        active_count=0,
+        max_active=3,
+    )
+    ok, why = allow_release_block(env)
+    assert ok is True
+    assert why == "blocked_measured"
+    assert env["status"] == "blocked"
+    assert env["confidence"] == "measured"
+    assert env["evidence"]
+    assert env["limitations"]
+
+
 def test_gate_duty_status_demotes_block_without_allow():
     st, extras, rows = gate_duty_status_with_envelopes(
         "block",
@@ -254,3 +272,11 @@ def test_gate_duty_status_demotes_block_without_allow():
     assert st2 == "block"
     assert not extras2
     assert rows2[0]["allow_block"] is True
+
+    st3, extras3, rows3 = gate_duty_status_with_envelopes(
+        "block",
+        [envelope_for_exemption_debt_block(reason="exemption_debt_over_cap=4>3")],
+    )
+    assert st3 == "block"
+    assert not extras3
+    assert rows3[0]["allow_block"] is True

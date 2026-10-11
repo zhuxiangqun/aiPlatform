@@ -60,14 +60,20 @@ interface DutyBoard {
     first?: { precision?: number | null; recall?: number | null; p0_recall?: number | null; written_at?: string } | null;
     last?: { precision?: number | null; recall?: number | null; p0_recall?: number | null; written_at?: string } | null;
   } | null;
-  /** Merge-gate posture — exemptions must be visible (no silent backdoor) */
+  /** Merge-gate posture — exemptions as visible debt (no silent backdoor) */
   merge_gates?: {
     physical?: {
       status?: string;
       mode?: string;
       block_after?: string;
       days_until_block?: number | null;
-      exemptions?: Array<{ id?: string; reason?: string; expires?: string; gates?: string[] }>;
+      exemptions?: Array<{
+        id?: string;
+        owner?: string;
+        reason?: string;
+        expires?: string;
+        gates?: string[];
+      }>;
     };
     testability?: {
       status?: string;
@@ -77,6 +83,16 @@ interface DutyBoard {
     };
     active_exemption_count?: number;
     exemptions_visible?: boolean;
+    debt_severity?: string;
+    exemption_debt?: {
+      max_active?: number;
+      active_count?: number;
+      over_cap?: boolean;
+      severity?: string;
+      expired?: Array<{ id?: string; owner?: string; expires?: string }>;
+      invalid?: Array<{ id?: string; missing?: string[] }>;
+      reasons?: string[];
+    };
   } | null;
   /** Evidence Envelope summary — block only when allow_release_block */
   envelope?: {
@@ -439,7 +455,12 @@ export default function GovernanceDashboard() {
           const phys = mg.physical || {};
           const tb = mg.testability || {};
           const nEx = mg.active_exemption_count ?? 0;
-          const exColor = nEx > 0 ? '#aa4' : '#666';
+          const debtSev = String(mg.debt_severity || mg.exemption_debt?.severity || 'go');
+          const debt = mg.exemption_debt || {};
+          const nExpired = (debt.expired || []).length;
+          const nInvalid = (debt.invalid || []).length;
+          const exColor =
+            debtSev === 'block' ? '#a44' : nEx > 0 || debtSev === 'watch' ? '#aa4' : '#666';
           return (
             <div style={{ marginTop: 8, fontSize: 11, color: '#aaa' }}>
               合入闸门 phys={phys.mode || '—'}
@@ -447,12 +468,20 @@ export default function GovernanceDashboard() {
               {' · '}testability={tb.mode || '—'}
               {tb.block_after ? `→block@${tb.block_after}` : ''}
               {' · '}
-              <span style={{ color: exColor, fontWeight: nEx > 0 ? 600 : 400 }}>
-                exemptions={nEx}
+              <span style={{ color: exColor, fontWeight: nEx > 0 || debtSev !== 'go' ? 600 : 400 }}>
+                debt={debtSev} exemptions={nEx}/{debt.max_active ?? '—'}
+                {nExpired > 0 ? ` expired=${nExpired}` : ''}
+                {nInvalid > 0 ? ` invalid=${nInvalid}` : ''}
+                {debt.over_cap ? ' over_cap' : ''}
               </span>
               {nEx > 0 && (phys.exemptions || []).slice(0, 3).map((ex, i) => (
                 <div key={i} style={{ marginLeft: 8, color: '#886' }}>
-                  · {ex.id || '?'} exp={ex.expires || '—'} {ex.reason || ''}
+                  · {ex.id || '?'} owner={ex.owner || '?'} exp={ex.expires || '—'} {ex.reason || ''}
+                </div>
+              ))}
+              {(debt.reasons || []).slice(0, 2).map((r, i) => (
+                <div key={`dr-${i}`} style={{ marginLeft: 8, color: debtSev === 'block' ? '#a66' : '#886' }}>
+                  · {r}
                 </div>
               ))}
             </div>

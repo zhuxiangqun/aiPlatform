@@ -101,11 +101,15 @@ allowed_bases:
   - BaseModel
   - dataclass
 
-# Exemptions: audit + expiry required. Expired entries are ignored.
+# Exemptions are debt: owner + reason + expires required; cap enforced.
+# Expired entries left in YAML = unreviewed debt → duty board / CI block.
+# Missing owner/reason/expires → invalid debt (not applied, still blocks posture).
+max_active_exemptions: 3
 exemptions: []
 # Example:
 # exemptions:
 #   - id: "ex-2026-10-migrate-x"
+#     owner: "platform-oncall"
 #     reason: "one-shot migration"
 #     expires: "2026-10-20"
 #     gates: ["inflation", "shape"]
