@@ -8,6 +8,7 @@ Jobs:
 - failed_runs_analysis: analyze recent failures, generate improvement artifacts
 - skill_optimization: scan skill usage stats, suggest consolidations/retires
 - evaluation_summary: generate daily/weekly evaluation reports
+- repo_health_weekly: full-tree LOC/god/fanout/deps → org/repo_health JSONL
 - pipeline_crystallization: auto-crystallize successful pipelines into skills
 """
 
@@ -410,6 +411,56 @@ async def register_builtin_jobs() -> None:
 
     sched.register("kpi_aggregation", 24 * 3600, _kpi_aggregation,
                    description="Daily KPI aggregation: per-model pass rates → model_health")
+
+    # ── Repo health weekly scan: post-merge boiling-frog metrics → duty board ──
+    async def _repo_health_weekly():
+        enable = (os.getenv("AIPLAT_ENABLE_REPO_HEALTH_CRON") or "true").strip().lower()
+        if enable not in ("1", "true", "yes", "y"):
+            return
+        if not await _acquire_lock("repo_health_weekly", ttl=3600):
+            logger.info("repo_health_weekly still running (job_lock), skipping.")
+            return
+        try:
+            from core.harness.meta.repo_health_scan import (
+                append_health_snapshot,
+                assess_repo_health,
+                scan_repo_health,
+            )
+
+            metrics = await asyncio.to_thread(scan_repo_health)
+            persisted = await asyncio.to_thread(append_health_snapshot, metrics)
+            result = await asyncio.to_thread(assess_repo_health)
+            sev = str(result.get("severity") or "unavailable")
+            latest = result.get("latest") or {}
+            logger.info(
+                "repo_health_weekly: severity=%s loc=%s god=%s fanout=%s deps=%s persisted=%s",
+                sev,
+                latest.get("py_loc"),
+                latest.get("god_files"),
+                latest.get("high_fanout_files"),
+                latest.get("dep_entries"),
+                persisted,
+            )
+            if sev == "block":
+                logger.warning(
+                    "repo_health_weekly BLOCK: %s",
+                    "; ".join((result.get("reasons") or [])[:5]),
+                )
+        except Exception as e:
+            logger.warning("repo_health_weekly failed: %s", str(e)[:300], exc_info=True)
+        finally:
+            await _release_lock("repo_health_weekly")
+
+    _rh_hours = float(os.getenv("AIPLAT_REPO_HEALTH_CRON_HOURS", "168") or "168")
+    if _rh_hours > 0:
+        sched.register(
+            "repo_health_weekly",
+            max(_rh_hours * 3600, 10.0),
+            _repo_health_weekly,
+            description="Weekly full-tree repo health scan → org/repo_health JSONL (duty board)",
+            enabled=(os.getenv("AIPLAT_ENABLE_REPO_HEALTH_CRON") or "true").strip().lower()
+            in ("1", "true", "yes", "y"),
+        )
 
 
 __all__ = [

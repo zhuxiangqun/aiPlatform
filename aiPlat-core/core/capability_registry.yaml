@@ -3456,7 +3456,7 @@ domains:
     provides:
       - symbol: "CronScheduler"
         type: "class"
-        signature: "register(interval_seconds, handler)"
+        signature: "register(interval_seconds, handler); builtins incl. repo_health_weekly (168h)"
         module: "core/harness/scheduler/cron.py"
       - symbol: "EvolutionEngine"
         type: "class"

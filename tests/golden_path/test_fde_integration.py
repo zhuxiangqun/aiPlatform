@@ -30,7 +30,7 @@ def _run(coro):
 # ═══════════════════════════════════════════════════════════════
 
 def test_scenario_1_cron_handler_registered():
-    """验证 evaluation_summary handler 已注册为 cron job."""
+    """验证 evaluation_summary + repo_health_weekly 已注册为 cron job."""
     from core.harness.scheduler.cron import CronScheduler, register_builtin_jobs
 
     async def _test():
@@ -43,6 +43,10 @@ def test_scenario_1_cron_handler_registered():
             f"evaluation_summary 未注册, 当前 jobs: {job_names}"
         )
         assert jobs["jobs"]["evaluation_summary"]["interval"] == 7 * 24 * 3600
+        assert "repo_health_weekly" in job_names, (
+            f"repo_health_weekly 未注册, 当前 jobs: {job_names}"
+        )
+        assert jobs["jobs"]["repo_health_weekly"]["interval"] == 7 * 24 * 3600
 
     _run(_test())
 

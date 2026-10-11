@@ -51,7 +51,7 @@ playbook:
     - "Keep org-harness on the board; re-check gold after model/harness changes"
     - "Do not celebrate AI speedup without serial_ratio + approval latency in band"
     - "Skim gate_meta rates (exemption/skip/appeal) — keep in band before celebrating gates"
-    - "Skim repo_health (god/fanout/deps/Δloc) — weekly scan before celebrating lean tree"
+    - "Skim repo_health (god/fanout/deps/Δloc) — cron repo_health_weekly + scripts/scan_repo_health.py before celebrating lean tree"
   watch:
     - "Inspect serial_ratio / approval_pending / HITL rejection / Howl — clear friction first"
     - "Run Gold match-only; if Δ P0 down, treat as watch→block candidate"

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2083
+total_capabilities: 2089
 last_updated: 2026-10-11
 version: "30.10"
 auto_sync: true
@@ -780,7 +780,7 @@ scan_hash: 8f9548ec24f4
 | 物理合入闸门 P0（通胀+形态） | `physical_merge_gates.py` + `scripts/check_physical_merge_gates.py` + `workspace_seeds/org/physical_merge_gates.yaml` + contracts-guard / pre-commit | ✅ | 合入时否决器（≠运行时入口校验/PolicyGate）：净增行/文件/新依赖/新类/新目录 + 禁 generic/framework/EventBus/深继承；mode warn→`block_after`（默认 2026-10-25）升级；`profile_neutral_globs` 使 CAPABILITIES/docs/registry 不逼 business；**豁免即负债**（owner+reason+expires、`max_active_exemptions`、到期未复审/非法/超限→block，值班板可见）；生成物不适用（平台横切发布门禁） | 已合入 |
 | 豁免负债治理 | `assess_exemption_debt` + `collect_merge_gates_posture` debt ledger + Governance 值班板 debt= + `envelope_for_exemption_debt_block` + `CoreFacade.assess_exemption_debt` | ✅ | 豁免非静默 SKIP：缺 owner/reason/expires→invalid debt；YAML 残留过期项→expired debt；活跃数>cap→over_cap；severity go/watch/block 驱动值班板与合入 findings；duty BLOCK 经 measured envelope 防 demote；生成物不适用（平台横切发布门禁） | 已合入 |
 | 门禁元评估（gate meta-eval） | `gate_meta_eval.py` + `record_gate_meta.py` + `check_physical_merge_gates` persist + pre-commit SKIP 记账 + `collect_merge_gates_posture.gate_meta` + `envelope_for_gate_meta_block` + `CoreFacade.assess_gate_meta` / `record_gate_run` / `record_gate_skip` / `record_gate_appeal` + Governance gate_meta= | ✅ | 窗口 JSONL（run/skip/appeal）→ exemption/skip/appeal/block 率；低样本→unavailable（禁发明）；超阈值→值班板 watch/block + measured envelope；`SKIP_*` 非静默；`AIPLAT_GATE_META_PERSIST=0` 可关写入；生成物不适用（平台横切发布门禁校准） | 已合入 |
-| 合入后仓库健康扫描（repo health） | `repo_health_scan.py` + `scripts/scan_repo_health.py` + `collect_merge_gates_posture.repo_health` + `envelope_for_repo_health_block` + `CoreFacade.assess_repo_health` / `scan_repo_health` + duty_board.yaml 阈值/剧本 + Governance repo_health= | ✅ | 全树 LOC/god/multi_base/fanout/deps JSONL（周度/按需）；绝对+Δloc/Δdeps → go/watch/block；无快照→unavailable（禁发明绿）；合入闸门只管 diff，本扫描抓温水煮青蛙；`AIPLAT_REPO_HEALTH_PERSIST=0` 可关写入；生成物不适用（平台横切仓库健康） | 已合入 |
+| 合入后仓库健康扫描（repo health） | `repo_health_scan.py` + `scripts/scan_repo_health.py` + `collect_merge_gates_posture.repo_health` + `envelope_for_repo_health_block` + `CoreFacade.assess_repo_health` / `scan_repo_health` + duty_board.yaml 阈值/剧本 + Governance repo_health= + cron `repo_health_weekly` | ✅ | 全树 LOC/god/multi_base/fanout/deps JSONL（周度/按需）；绝对+Δloc/Δdeps → go/watch/block；无快照→unavailable（禁发明绿）；合入闸门只管 diff，本扫描抓温水煮青蛙；`AIPLAT_REPO_HEALTH_PERSIST=0` 可关写入；**进程内周扫**：`register_builtin_jobs`→`repo_health_weekly`（默认 168h，`AIPLAT_ENABLE_REPO_HEALTH_CRON` / `AIPLAT_REPO_HEALTH_CRON_HOURS`）；生成物不适用（平台横切仓库健康） | 已合入 |
 | 可测性闸门 P1（纯 I/O） | `testability_gate.py` + `done_verify.require_testability` + coding stage defaults + `check_physical_merge_gates` 同跑 | ✅ | handler 须有纯单元测（assert、无 DB/网络/消息队列）；integration-only 不算完成；warn→`block_after`（默认 2026-11-01，错开物理门 10-25）；合入侧磁盘补齐测试；**done_verify 从 `## FILE:` / factory 产物抽文件**（不依赖空 `_written_files`）；生成物适用：已接线（编码 stage done_verify） | 已合入 |
 | Evidence Envelope（诚实结论信封） | `evidence_envelope.py` + `ReviewReport.build_evidence`/`to_dict` + `build_duty_board`（`fold_findings_for_duty` + gold BLOCK）+ Governance 信封摘要 + `CoreFacade.validate_evidence_envelope` / `attach_evidence_envelopes` / `assert_evidence_envelope_integrity` / `allow_evidence_release_block` / `fold_findings_for_duty` + experience_feedback register 强制信封 | ✅ | 每条结论带 status/confidence/evidence/limitations/next_check；**confirmed 必须 measured+非空 evidence**（否则 demote→suspected）；**release block 须 measured+limitations**；derived/speculative 不可单独拦发布；**反形式主义**：`compact_evidence` 去重+采样（cap=8）+ `mode=reject`/`assert_envelope_integrity` 硬拒假 confirmed（`integrity_ok`/`envelope_integrity_rejected`）；**值班板** findings fold→watch / measured→block；无 `allow_release_block` → demote watch；gold 经 `envelope_for_gold_block`；豁免负债经 `envelope_for_exemption_debt_block`；门禁元评估经 `envelope_for_gate_meta_block`；autoreview LLM 发现默认 derived + `envelope_integrity_ok`；experience 登记拒 speculative 空证据；生成物适用：已接线（autoreview 报告 + 值班板 + experience_feedback） | 已合入 |
 | Governance 任务采纳/干预 KPI | `pages/Governance/index.tsx` ← `GET /core/diagnostics/adoption-metrics` | ✅ | Agent KPI（调用/7日活跃/HITL 通过·驳回/澄清触发）上治理主面；不可用时显式 unavailable，**不展示假成功率**；生成物不适用（平台横切） | 已合入 |
@@ -3004,7 +3004,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 234 | 1 | 235 |
+| Harness 执行引擎 | 240 | 1 | 241 |
 | 记忆子系统 | 58 | 0 | 58 |
 | 知识引擎（本体） | 358 | 9 | 367 |
 | RAG 检索 | 51 | 0 | 51 |
@@ -3049,7 +3049,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2073** | **10** | **2083** |
+| **总计** | **2079** | **10** | **2089** |
 
 | **总计** | **1095** | **0** | **1095** |
 
