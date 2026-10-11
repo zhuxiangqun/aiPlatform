@@ -515,8 +515,8 @@ def check_shape(
                     )
                 )
 
-        # AST pass on new files for nested inheritance signals
-        if path in stats.added_paths and text.strip():
+        # AST pass on added/changed .py snippets (not only brand-new paths)
+        if text.strip():
             findings.extend(_ast_shape_findings(path, text, allowed, max_bases, ban_cls))
 
     return findings

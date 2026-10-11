@@ -60,6 +60,24 @@ interface DutyBoard {
     first?: { precision?: number | null; recall?: number | null; p0_recall?: number | null; written_at?: string } | null;
     last?: { precision?: number | null; recall?: number | null; p0_recall?: number | null; written_at?: string } | null;
   } | null;
+  /** Merge-gate posture — exemptions must be visible (no silent backdoor) */
+  merge_gates?: {
+    physical?: {
+      status?: string;
+      mode?: string;
+      block_after?: string;
+      days_until_block?: number | null;
+      exemptions?: Array<{ id?: string; reason?: string; expires?: string; gates?: string[] }>;
+    };
+    testability?: {
+      status?: string;
+      mode?: string;
+      block_after?: string;
+      days_until_block?: number | null;
+    };
+    active_exemption_count?: number;
+    exemptions_visible?: boolean;
+  } | null;
 }
 
 /** Org harness dark ledger — HITL / approvals + gold P/R / P0 miss */
@@ -346,6 +364,7 @@ export default function GovernanceDashboard() {
               {' · '}approvals={checkOrUnavailable('approvals')}
               {' · '}hitl={checkOrUnavailable('hitl')}
               {' · '}howl={checkOrUnavailable('howl')}
+              {' · '}gates={checkOrUnavailable('merge_gates')}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -394,6 +413,31 @@ export default function GovernanceDashboard() {
               <span style={{ color: dirColor, fontWeight: 600 }}>{dir}</span>
               {' · '}P0 {ts.first?.p0_recall ?? '—'}→{ts.last?.p0_recall ?? '—'}
               {' · '}P {ts.first?.precision ?? '—'}→{ts.last?.precision ?? '—'}
+            </div>
+          );
+        })()}
+        {(() => {
+          const mg = duty.merge_gates;
+          if (!mg) return null;
+          const phys = mg.physical || {};
+          const tb = mg.testability || {};
+          const nEx = mg.active_exemption_count ?? 0;
+          const exColor = nEx > 0 ? '#aa4' : '#666';
+          return (
+            <div style={{ marginTop: 8, fontSize: 11, color: '#aaa' }}>
+              合入闸门 phys={phys.mode || '—'}
+              {phys.block_after ? `→block@${phys.block_after}` : ''}
+              {' · '}testability={tb.mode || '—'}
+              {tb.block_after ? `→block@${tb.block_after}` : ''}
+              {' · '}
+              <span style={{ color: exColor, fontWeight: nEx > 0 ? 600 : 400 }}>
+                exemptions={nEx}
+              </span>
+              {nEx > 0 && (phys.exemptions || []).slice(0, 3).map((ex, i) => (
+                <div key={i} style={{ marginLeft: 8, color: '#886' }}>
+                  · {ex.id || '?'} exp={ex.expires || '—'} {ex.reason || ''}
+                </div>
+              ))}
             </div>
           );
         })()}

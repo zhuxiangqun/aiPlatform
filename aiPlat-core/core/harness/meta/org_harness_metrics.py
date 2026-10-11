@@ -506,6 +506,100 @@ def load_duty_board_playbook(
     return out, source
 
 
+def collect_merge_gates_posture() -> Dict[str, Any]:
+    """Merge-gate posture for duty board — exemptions must be visible (no silent backdoor).
+
+    Surfaces inflation/shape + testability mode / block_after / active exemptions.
+    Does not invent pass rates. Failures → empty slices with status unavailable.
+    """
+    from datetime import date, datetime, timezone
+
+    today = datetime.now(timezone.utc).date()
+
+    def _days_until(ba: str) -> Optional[int]:
+        s = (ba or "").strip()
+        if not s:
+            return None
+        try:
+            return (date.fromisoformat(s[:10]) - today).days
+        except ValueError:
+            return None
+
+    physical: Dict[str, Any] = {
+        "status": "unavailable",
+        "mode": "unavailable",
+        "block_after": "",
+        "days_until_block": None,
+        "config_source": "",
+        "exemptions": [],
+    }
+    testability: Dict[str, Any] = {
+        "status": "unavailable",
+        "mode": "unavailable",
+        "block_after": "",
+        "days_until_block": None,
+        "config_source": "",
+    }
+    try:
+        from core.harness.meta.physical_merge_gates import (
+            _active_exemptions,
+            load_physical_gates_config,
+            resolve_mode,
+        )
+
+        cfg, src = load_physical_gates_config()
+        mode = resolve_mode(cfg, now=today)
+        active = _active_exemptions(cfg, now=today)
+        ex_rows = []
+        for ex in active:
+            ex_rows.append(
+                {
+                    "id": str(ex.get("id") or ""),
+                    "reason": str(ex.get("reason") or "")[:160],
+                    "expires": str(ex.get("expires") or "")[:10],
+                    "gates": [str(g) for g in (ex.get("gates") or [])][:8],
+                }
+            )
+        ba = str(cfg.get("block_after") or "")
+        physical = {
+            "status": "ok",
+            "mode": mode,
+            "block_after": ba,
+            "days_until_block": _days_until(ba),
+            "config_source": src,
+            "exemptions": ex_rows,
+        }
+    except Exception as e:
+        logger.debug("physical merge gates posture skipped: %s", e, exc_info=True)
+
+    try:
+        from core.harness.meta.testability_gate import (
+            load_testability_config,
+            resolve_mode as resolve_testability_mode,
+        )
+
+        tcfg, tsrc = load_testability_config()
+        tmode = resolve_testability_mode(tcfg, now=today)
+        tba = str(tcfg.get("block_after") or "")
+        testability = {
+            "status": "ok",
+            "mode": tmode,
+            "block_after": tba,
+            "days_until_block": _days_until(tba),
+            "config_source": tsrc,
+        }
+    except Exception as e:
+        logger.debug("testability gates posture skipped: %s", e, exc_info=True)
+
+    n_ex = len(physical.get("exemptions") or [])
+    return {
+        "physical": physical,
+        "testability": testability,
+        "active_exemption_count": n_ex,
+        "exemptions_visible": True,  # policy: never silent
+    }
+
+
 def load_adoption_snapshot() -> Dict[str, Any]:
     """Best-effort HITL/Howl snapshot for duty_board (never invent rates).
 
@@ -605,6 +699,7 @@ def build_duty_board(
     playbook_all, playbook_source = load_duty_board_playbook(override=playbook_override)
     gr = pl.get("gold_regression") if isinstance(pl.get("gold_regression"), dict) else {}
     gold_trend_summary = gr.get("trend_summary") if isinstance(gr.get("trend_summary"), dict) else None
+    merge_gates = collect_merge_gates_posture()
 
     if not data_available and not has_adoption:
         return {
@@ -618,6 +713,7 @@ def build_duty_board(
                 "approvals": "unavailable",
                 "hitl": "unavailable",
                 "howl": "unavailable",
+                "merge_gates": "unavailable",
             },
             "thresholds": thr,
             "thresholds_source": thr_source,
@@ -625,6 +721,7 @@ def build_duty_board(
             "playbook": list(playbook_all.get("unavailable") or []),
             "playbook_source": playbook_source,
             "gold_trend_summary": gold_trend_summary,
+            "merge_gates": merge_gates,
         }
 
     checks: Dict[str, str] = {
@@ -633,6 +730,7 @@ def build_duty_board(
         "approvals": "unavailable",
         "hitl": "unavailable",
         "howl": "unavailable",
+        "merge_gates": "go",
     }
 
     # --- gold ---
@@ -739,6 +837,31 @@ def build_duty_board(
         checks["howl"] = "unavailable"
         reasons.append("howl unavailable")
 
+    # --- merge gates posture (exemptions must surface; never silent backdoor) ---
+    n_ex = int(merge_gates.get("active_exemption_count") or 0)
+    phys = merge_gates.get("physical") if isinstance(merge_gates.get("physical"), dict) else {}
+    if n_ex > 0:
+        checks["merge_gates"] = "watch"
+        ids = ",".join(
+            str(x.get("id") or "?") for x in (phys.get("exemptions") or [])[:4]
+        )
+        reasons.append(f"merge_gate_exemptions_active={n_ex} ({ids})")
+        if status == "go":
+            status = "watch"
+    elif phys.get("status") == "unavailable":
+        checks["merge_gates"] = "unavailable"
+        reasons.append("merge_gates posture unavailable")
+    else:
+        checks["merge_gates"] = "go"
+        pmode = str(phys.get("mode") or "")
+        if pmode == "warn":
+            days = phys.get("days_until_block")
+            if isinstance(days, int) and 0 <= days <= 14:
+                reasons.append(f"physical_gates warn→block in {days}d ({phys.get('block_after')})")
+                if status == "go":
+                    status = "watch"
+                    checks["merge_gates"] = "watch"
+
     if status == "go" and checks["gold"] == "unavailable" and not avail.get("runs"):
         # Only gold missing with no runs → still unavailable for release habit
         if not avail.get("approvals") and not has_adoption:
@@ -771,6 +894,7 @@ def build_duty_board(
         "playbook": list(playbook_all.get(status) or playbook_all.get("unavailable") or []),
         "playbook_source": playbook_source,
         "gold_trend_summary": gold_trend_summary,
+        "merge_gates": merge_gates,
     }
 
 

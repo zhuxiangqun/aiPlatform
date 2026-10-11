@@ -154,6 +154,23 @@ def test_duty_board_playbook_and_gold_trend():
     assert board.get("playbook")
     assert any("Gold" in s or "gold" in s.lower() for s in board["playbook"])
     assert board.get("gold_trend_summary", {}).get("direction") == "down"
+    assert "merge_gates" in (board.get("checks") or {})
+    assert isinstance(board.get("merge_gates"), dict)
+    assert board["merge_gates"].get("exemptions_visible") is True
+
+
+def test_collect_merge_gates_posture_surfaces_exemptions():
+    from core.harness.meta.org_harness_metrics import collect_merge_gates_posture
+
+    posture = collect_merge_gates_posture()
+    assert posture.get("exemptions_visible") is True
+    assert "physical" in posture and "testability" in posture
+    # Seed config has no exemptions → count 0; modes are warn/block/off
+    assert posture.get("active_exemption_count") == 0
+    phys = posture["physical"]
+    assert phys.get("status") in ("ok", "unavailable")
+    if phys.get("status") == "ok":
+        assert phys.get("mode") in ("warn", "block", "off")
 
 
 def test_aggregate_includes_gold():

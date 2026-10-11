@@ -23,6 +23,7 @@ playbook:
   watch:
     - "Inspect serial_ratio / approval_pending / HITL rejection / Howl — clear friction first"
     - "Run Gold match-only; if Δ P0 down, treat as watch→block candidate"
+    - "Review active merge-gate exemptions on duty board (must have reason+expiry); remove unjustified"
     - "Hold non-critical model upgrades until watch reasons clear"
   block:
     - "Do not release / do not upgrade model"

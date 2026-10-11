@@ -5192,6 +5192,13 @@ def load_duty_board_playbook(
     return {"playbook": playbook, "source": source}
 
 
+def collect_merge_gates_posture() -> Dict[str, Any]:
+    """合入闸门姿态（mode/block_after/活跃豁免）— 豁免必须可见，禁止静默后门。"""
+    from core.harness.meta.org_harness_metrics import collect_merge_gates_posture as _collect
+
+    return _collect()
+
+
 def load_adoption_snapshot() -> Dict[str, Any]:
     """Duty board HITL/Howl snapshot（缺失则为空；不发明成功率）。"""
     from core.harness.meta.org_harness_metrics import load_adoption_snapshot as _snap
