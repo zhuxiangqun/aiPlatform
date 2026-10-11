@@ -49,6 +49,8 @@ class DiscoveredSkill:
     risk_level: Optional[str] = None
     # L2: SOP markdown body (SKILL.md without YAML frontmatter)
     sop_markdown: str = ""
+    # Execution contract (handler | hybrid | prompt | …)
+    execution_type: str = ""
     # §5.19: Skill side effects declaration
     effects: List[Dict[str, Any]] = field(default_factory=list)
     idempotent: bool = True
@@ -117,6 +119,7 @@ class SKILLMD_parser:
             sop_markdown=sop_markdown or "",
             skill_dir=str(skill_dir.resolve()),
             skill_md_path=str(skill_md.resolve()),
+            execution_type=str(data.get("execution_type") or "").strip().lower(),
             effects=data.get("effects", []),
             idempotent=bool(data.get("idempotent", True)),
             rollback_available=bool(data.get("rollback_available", False)),
@@ -130,7 +133,7 @@ class SkillDiscovery:
     Scans directories to find and load skills with SKILL.md metadata.
     """
     
-    def __init__(self, base_path: str, workspace_path: str = None):
+    def __init__(self, base_path: str = "", workspace_path: str = None):
         """
         Initialize discovery system.
 
@@ -138,7 +141,9 @@ class SkillDiscovery:
             base_path: Base directory to scan for skills (engine seeds)
             workspace_path: Optional workspace directory for user skills (~/.aiplat/skills/)
         """
-        self.base_path = Path(base_path)
+        # Empty base_path must NOT become Path(".") (cwd) — factory seed uses workspace only.
+        _bp = (base_path or "").strip()
+        self.base_path = Path(_bp) if _bp else None
         self._parser = SKILLMD_parser()
         self._discovered: Dict[str, DiscoveredSkill] = {}
         self._workspace_path = Path(workspace_path) if workspace_path else None
@@ -150,14 +155,16 @@ class SkillDiscovery:
         Returns:
             Dict mapping skill name to discovered metadata
         """
-        if not self.base_path.exists():
-            return {}
-        
         self._discovered = {}
-        
-        scan_dirs = [self.base_path]
+
+        scan_dirs = []
+        if self.base_path is not None and self.base_path.exists():
+            scan_dirs.append(self.base_path)
         if self._workspace_path and self._workspace_path.exists():
-            scan_dirs.append(self._workspace_path)
+            if self._workspace_path not in scan_dirs:
+                scan_dirs.append(self._workspace_path)
+        if not scan_dirs:
+            return {}
 
         for scan_dir in scan_dirs:
             for item in scan_dir.iterdir():

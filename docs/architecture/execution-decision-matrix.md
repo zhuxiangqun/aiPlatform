@@ -1,7 +1,7 @@
 # 执行决策矩阵
 
 > **一句话**：帮你选「这件事该用程序、LLM、技能、Agent，还是流水线」——先按场景判断，细节与代码证据在文末附录。  
-> **状态**：Living Spec（与实现同步；冲突时以代码为准）· **v1.5** · 2026-10-11  
+> **状态**：Living Spec（与实现同步；冲突时以代码为准）· **v1.6** · 2026-10-12  
 > **互补文档**：[产物怎么验收](execution-quality-gates.md) · [能力剖面细节](capability-profile.md) · [知识 / Memory / CRAG](../knowledge-system.md) · [Agent 总览](../agent-system.md)（后端规则以本文为准）
 
 ---
@@ -12,7 +12,7 @@
 2. **加能力从便宜到贵**——改现有代码 → Skill/CLI → Tool → 插件 → MCP → 新内核接口。  
 3. **行为靠配置字段，不靠「某个 Agent 名字」**——引擎里禁止按业务角色硬编码分支。  
 4. **想钉死怎么跑，写「执行混合」或显式后端**——二者都不会被能力剖面降级。  
-5. **工厂生成物尽量薄**——只选 Agent 类型 + 技能/工具；可选钉死 `architecture_profile`（E1）；怎么跑也可交给引擎推断。
+5. **工厂生成物尽量薄，但可声明期望跑法**——选 Agent 类型 + 技能/工具；推荐写 `architecture_profile`（E1）；团队 YAML 仍可覆盖。
 
 ---
 
@@ -77,7 +77,7 @@
 | **prompt** | 模型按 SOP 推理 |
 
 字段空：有 `handler.py` 倾向 handler，否则 prompt。  
-**未知/拼写**：生产或 `AIPLAT_EXECUTION_TYPE_FAIL_CLOSED=1` → 硬失败；非生产默认 WARNING 后当 prompt（见 §7）。
+**未知/拼写**：**默认硬失败**（fail closed）。开发软降级须显式 `AIPLAT_EXECUTION_TYPE_SOFT_DEV=1` 或 `FAIL_CLOSED=0`。紧急放行见 §7 E5。
 
 ### 组合矩阵（有 `skill_name` 时）
 
@@ -89,7 +89,7 @@
 | 任意 | `hybrid` | 无 | **失败** |
 | `llm` | `prompt` / 空→prompt | — | **`sys_llm_generate` + SOP**（不经 `Skill.execute` 主循环） |
 | `agent` | `prompt` / 空→prompt | — | **StageRunner → ReAct/Plan 环**；环内可再 `sys_skill_call` |
-| 任意 | **未知** | — | 生产硬失败；开发 soft→prompt 后再走上表 |
+| 任意 | **未知** | — | **默认硬失败**；仅 SOFT_DEV / 授权 FAIL_OPEN 才 soft→prompt |
 
 要点：
 
@@ -114,20 +114,19 @@ decision = {
 
 ## 5. 工厂与工作区
 
-- 工厂：**必选** 对话 / react / rag + 技能工具；Skill 一律 `prompt`（不生成 handler.py）。  
-- **可选钉死（E1）**：AGENT.md 可写 `architecture_profile`（oneshot / react_tools / plan_execute / reflect_loop）或仅 `execution_backend`；conformance 校验合法值与 agent_type 不冲突；`apply_agent_md_to_stage` / Workspace Execute 会应用。  
-- 也可放**团队 YAML** 钉死（与 AGENT.md 二选一或叠加，profile 最强）。  
+- 工厂：选 对话 / react / rag + 技能工具；Skill **默认 prompt**。  
+- **E1**：推荐在 AGENT.md 写 `architecture_profile`（conversational→oneshot，react→react_tools，rag→react_tools）。conformance 校验：值∈已知集且与 `agent_type` 兼容。团队 YAML 同名字段优先。  
+- **E2**：仅当 PRD 要求确定性、无 LLM 副作用时，可声明 `execution_type: handler` 并同目录输出 `handler.py`（顶层 `execute`）；媒体目录名禁止自造 handler。注册时复制 sibling。  
 - 工作区 Execute：写文件类技能会注入编码闭环；`coding_closed_loop: false` 可关。  
-- 编码落盘：Pipeline llm 路径有落盘前校验；优先 Agent 环做 peer-review。  
-- **E4 CI**：`scripts/lint_engine_skills.py` 阻断 handler/hybrid 无文件、未知 `execution_type`、prompt 声明 mutating effects 却无 handler。
+- 编码落盘：Pipeline llm 路径有落盘前校验；优先 Agent 环做 peer-review。
 
 | 评审问题 | 建议 |
 |----------|------|
-| 只要问答？ | 对话型 |
-| 要工具 / 多步？ | react + 工具/技能；团队钉 `react_tools` |
-| 主路径检索？ | rag |
+| 只要问答？ | 对话型 + `oneshot` |
+| 要工具 / 多步？ | react + `react_tools` |
+| 主路径检索？ | rag + `react_tools` |
 | 要审完再完成？ | 不要赌 oneshot；用工具循环 |
-| 要业务 handler？ | 工厂不生成 → 手写 Skill |
+| 要确定性副作用？ | E2：`handler` + `handler.py`（非媒体目录名） |
 
 ---
 
@@ -158,21 +157,20 @@ Eval / 金标 / 值班板：见 Governance 与 apps/eval（本文不替代）；
 
 | 行为 | 默认 | 说明 |
 |------|------|------|
-| 未知 `execution_type` | **非 production → soft（WARNING→prompt）**；**production → 硬失败** | CI/生产务必设 `AIPLAT_PROFILE=production` 或 `AIPLAT_EXECUTION_TYPE_FAIL_CLOSED=1` |
-| `AIPLAT_EXECUTION_TYPE_FAIL_OPEN` | 关 | 紧急放行未知类型；**高风险**——须人工记录原因与时限（治理见 §8 E5，尚未自动化） |
+| 未知 `execution_type` | **硬失败（fail closed）** | 开发软降级：`AIPLAT_EXECUTION_TYPE_SOFT_DEV=1` 或 `FAIL_CLOSED=0` |
+| `AIPLAT_EXECUTION_TYPE_FAIL_OPEN` | 关 | 须同时设 `REASON` + `BY` + `UNTIL`（未来时戳）才授权；缺任一或过期 → 仍 fail closed。启动写 sidecar + audit_log |
 | capability 降级 agent→llm | **不对显式 agent / 执行混合生效** | 见 §3 |
 
 ---
 
 ## 8. 还没做完的（勿当现状）
 
-| 编号 | 想法 |
-|------|------|
-| E2 | 生成物支持产出带 `handler.py` 的 Skill |
-| E4b | CI：跳级 MCP/新 Syscall 的成本阶梯静态检查 |
-| E5 | `FAIL_OPEN`：开启人/原因/过期自动关 + 告警 |
-
-**已落地**：E1（可选 architecture_profile + conformance + stage/workspace 接线）；E4 主体（lint_engine_skills：pairing / 未知类型 / prompt+mutating effects）。
+| 编号 | 状态 | 说明 |
+|------|:----:|------|
+| E1 | **已做** | 工厂可写 `architecture_profile`；conformance 校验意图；team_planner 从 AGENT.md 回填（YAML 优先） |
+| E2 | **已做** | 工厂可选 `execution_type: handler` + 同目录 `handler.py`（须顶层 `execute`）；conformance `check_handler_pairing`；注册时复制 sibling；媒体目录名禁止自造 handler |
+| E4 | **已做** | `lint_engine_skills.py`（handler/未知类型/prompt 写文件）+ `check_cost_ladder.py`（新 Syscall/MCP 须 CAPABILITIES 或 `# ladder-ok`）；pre-commit + architecture_guard |
+| E5 | **已做** | FAIL_OPEN 须 reason/by/until；过期自动无效；sidecar + 启动 audit_log |
 
 ---
 
@@ -184,7 +182,7 @@ Eval / 金标 / 值班板：见 Governance 与 apps/eval（本文不替代）；
 4. 多角色流水线？→ Pipeline + handoff。  
 5. 外部系统？→ MCP（先证明便宜档做不到）。  
 6. 编码落盘？→ 闭环；优先 Agent。  
-7. 生成物？→ 三类型 + prompt Skill；钉死放团队配置。
+7. 生成物？→ 三类型 + 推荐 `architecture_profile` + 默认 prompt Skill；确定性副作用才用 E2 handler。
 
 ---
 
@@ -192,14 +190,16 @@ Eval / 金标 / 值班板：见 Governance 与 apps/eval（本文不替代）；
 
 | 键 | 作用 |
 |----|------|
-| `architecture_profile` | 钉死执行混合（最强） |
+| `architecture_profile` | 钉死执行混合（最强）；工厂 AGENT.md 可选（E1） |
 | `execution_backend` | `llm` \| `agent`（写成 agent = 显式钉死） |
 | `upgrade_policy` | `off` \| `signals` \| `aggressive` |
 | `capability_profile` | `auto` 或显式等级 |
 | `agent_type` / `execution_type` | 类工厂 / Skill 执行形态 |
 | `meta_tool` / `done_verify` / `review_gate` / `uses_file_output` | 偏码与编码闭环 |
 | `pipeline_mode` / `routing_mode` / 辩论·MoA | 编排 |
-| `AIPLAT_EXECUTION_TYPE_FAIL_CLOSED` / `FAIL_OPEN` / `AIPLAT_PROFILE` | 未知类型策略 |
+| `AIPLAT_EXECUTION_TYPE_FAIL_CLOSED` | `1` 强制硬失败；`0` 显式 soft（同 SOFT_DEV） |
+| `AIPLAT_EXECUTION_TYPE_SOFT_DEV` | `1` 开发 soft→prompt（默认关） |
+| `AIPLAT_EXECUTION_TYPE_FAIL_OPEN` + `_REASON` / `_BY` / `_UNTIL` | E5 紧急放行（三者齐全且未过期） |
 | `AIPLAT_META_TOOL_*` / `AIPLAT_DONE_VERIFY*` / `AIPLAT_CODING_STAGE_*` | 元工具 / DONE / 编码默认 |
 | `AIPLAT_DYNAMIC_ROUTER_ENABLED` | 模型动态路由 opt-in |
 | `AIPLAT_EXECUTION_AUDIT` | Skill actual_mode 审计 |
@@ -214,6 +214,10 @@ Eval / 金标 / 值班板：见 Governance 与 apps/eval（本文不替代）；
 | Stage×Skill | `pipeline_engine._run_stage_skill` |
 | Skill 执行 | `apps/skills/registry.Skill.execute` |
 | 类型规范化 | `execution_type_policy.coerce_execution_type` |
+| 默认 fail closed / E5 | `execution_type_fail_closed` · `fail_open_governance_status` · `record_fail_open_audit_async` |
+| E4 CI | `scripts/lint_engine_skills.py` · `scripts/check_cost_ladder.py` |
+| E2 handler Skill | `generated_conformance.check_handler_pairing` · `builder_project_service` 复制 handler.py · `agent_engineering` SOP |
+| E1 工厂意图 | `generated_conformance._check_architecture_profile_intent` · `team_planner` 回填 · `agent_engineering` SOP |
 | 降级门闩 | `pipeline_stage._apply_capability_profile`（跳过显式 agent/profile） |
 | 路径卡 | `build_execution_decision` · `_emit_execution_decision` |
 | 工厂 SOP | `agent_engineering/SKILL.md` |
@@ -229,8 +233,9 @@ Eval / 金标 / 值班板：见 Governance 与 apps/eval（本文不替代）；
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
-| v1.5 | 2026-10-11 | **E1+E4**：工厂可选 `architecture_profile`；conformance + `apply_agent_md_to_stage` / workspace 接线；`lint_engine_skills` 增未知类型与 prompt+mutating effects |
-| v1.4 | 2026-10-11 | 完整 Stage×Skill 矩阵；显式 backend 不可 demote；路径卡补齐字段 + hybrid；设计模式映射；安全默认与 Memory/Eval 指针；回应组合/粒度/工厂/CI 缺口 |
+| v1.6 | 2026-10-12 | E2 handler Skill 闭环标已做；E4 成本阶梯 `check_cost_ladder` 接入 pre-commit / architecture_guard |
+| v1.5 | 2026-10-12 | 默认 fail closed；E1 工厂 architecture_profile + conformance；E4/E5 标已做；SOFT_DEV / FAIL_OPEN 治理 env |
+| v1.4 | 2026-10-11 | 完整 Stage×Skill 矩阵；显式 backend 不可 demote；路径卡补齐字段 + hybrid；设计模式映射；安全默认与 Memory/Eval 指针 |
 | v1.3 | 2026-10-11 | 可读性改版（场景优先，证据进附录） |
 | v1.2 | 2026-10-11 | E3 路径卡 |
 | v1.1 | 2026-10-11 | 优先级链 + 未知类型硬失败 |

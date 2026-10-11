@@ -411,6 +411,24 @@ async def lifespan(app: FastAPI):
     _execution_store = get_execution_store()
     await _execution_store.init()
 
+    # E5: FAIL_OPEN escape hatch — audit sidecar + execution_store on startup
+    try:
+        from core.harness.registry.execution_type_policy import record_fail_open_audit_async
+
+        _fo = await record_fail_open_audit_async(source="server_lifespan")
+        if _fo.get("flag") and _fo.get("authorized"):
+            log.warning(
+                "execution_type FAIL_OPEN active by=%s until=%s",
+                _fo.get("by"),
+                _fo.get("until"),
+            )
+        elif _fo.get("flag") and not _fo.get("authorized"):
+            log.error(
+                "execution_type FAIL_OPEN set but unauthorized — staying fail-closed"
+            )
+    except Exception:
+        log.debug("fail_open startup audit skipped", exc_info=True)
+
     # ── v3.1: cleanup orphaned pipelines from previous crash ──
     try:
         from core.api.routers.pipeline_execution import cleanup_orphaned_pipelines

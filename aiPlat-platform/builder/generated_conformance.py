@@ -35,14 +35,21 @@ _KINDS = ("skill", "agent")
 _contract_cache: Optional[Dict[str, Any]] = None
 
 _ALLOWED_MODES = frozenset({"single", "multi_agent"})
-# Keep in sync with schemas_builder.ARCHITECTURE_PROFILES (E1 optional pin).
-_ALLOWED_ARCHITECTURE_PROFILES = frozenset(
+
+# E1: optional architecture_profile on AGENT.md — must match known profiles + agent_type intent.
+_KNOWN_ARCHITECTURE_PROFILES = frozenset(
     {"oneshot", "react_tools", "plan_execute", "reflect_loop"}
 )
-_ALLOWED_EXECUTION_BACKENDS = frozenset({"llm", "agent"})
-_ALLOWED_SKILL_EXECUTION_TYPES = frozenset(
-    {"handler", "hybrid", "prompt", "python_class", "tool_wrapper", "llm"}
-)
+# agent_type (factory) → allowed architecture_profile values when declared
+_AGENT_TYPE_ALLOWED_PROFILES: Dict[str, frozenset] = {
+    "conversational": frozenset({"oneshot"}),
+    "react": frozenset({"react_tools", "plan_execute", "reflect_loop"}),
+    "rag": frozenset({"react_tools", "oneshot"}),
+    "plan": frozenset({"plan_execute"}),
+    "reflection": frozenset({"reflect_loop"}),
+    "tool": frozenset({"react_tools"}),
+    "tool-using": frozenset({"react_tools"}),
+}
 
 
 def load_contract(path: Optional[str] = None) -> Dict[str, Any]:
@@ -143,68 +150,112 @@ def validate_text(text: str, kind: str, contract: Optional[Dict[str, Any]] = Non
                         "（路由命中一致性——用户说触发短语应能命中 description）"
                     )
 
-    # 8. E1 / E4 — optional architecture_profile pin + skill execution_type hygiene
+    # 8. E1: optional architecture_profile ↔ agent_type intent (agents only)
     if kind == "agent":
-        violations.extend(_check_agent_execution_pins(fm))
-    if kind == "skill":
-        violations.extend(_check_skill_execution_type(fm))
+        violations.extend(_check_architecture_profile_intent(fm))
 
     return violations
 
 
-def _check_agent_execution_pins(fm: Dict[str, Any]) -> List[str]:
-    """Optional architecture_profile / execution_backend must be valid when set."""
+def _media_catalog_names() -> frozenset:
+    """Platform media HANDLERS names — must stay prompt + Path0 (no generated handler.py)."""
+    try:
+        from core.api.core_facade import list_platform_media_skill_names
+
+        cat = list_platform_media_skill_names() or {}
+        names = set(cat.get("all") or []) | set(cat.get("canonical") or [])
+        return frozenset(str(n).strip().lower() for n in names if n)
+    except Exception:
+        return frozenset(
+            {
+                "video_downloader",
+                "frame_analyzer",
+                "subtitle_extractor",
+                "speech_analyzer",
+                "report_json_export",
+            }
+        )
+
+
+def _handler_has_execute(handler_path: Path) -> bool:
+    """True if handler.py defines top-level execute (async or sync)."""
+    try:
+        import ast
+
+        tree = ast.parse(handler_path.read_text(encoding="utf-8"), filename=str(handler_path))
+    except (OSError, SyntaxError):
+        return False
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "execute":
+            return True
+    return False
+
+
+def check_handler_pairing(skill_md_path: str, fm: Optional[Dict[str, Any]] = None) -> List[str]:
+    """E2: handler/hybrid requires sibling handler.py; media catalog must stay prompt."""
+    path = Path(skill_md_path)
+    if fm is None:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as e:
+            return [f"file unreadable: {e}"]
+        fm = _parse_frontmatter(text)
+    et = str(fm.get("execution_type") or "").strip().lower()
+    name = str(fm.get("name") or path.parent.name).strip().lower()
     out: List[str] = []
-    ap = str(fm.get("architecture_profile") or "").strip().lower()
-    if ap and ap not in _ALLOWED_ARCHITECTURE_PROFILES:
+    media = _media_catalog_names()
+    if name in media and et in ("handler", "hybrid", "python_class"):
         out.append(
-            "architecture_profile: 必须是 "
-            f"{sorted(_ALLOWED_ARCHITECTURE_PROFILES)} 之一，实际 {ap!r}"
-            "（E1 可选钉死执行混合；留空则由引擎推断）"
+            f"execution_type: 媒体目录 Skill {name!r} 必须保持 prompt（Path0 平台 handler），"
+            f"禁止声明 {et!r} 或自造 handler.py"
         )
-    eb = str(fm.get("execution_backend") or "").strip().lower()
-    if eb and eb not in _ALLOWED_EXECUTION_BACKENDS:
+        return out
+    if et not in ("handler", "hybrid"):
+        return out
+    handler = path.parent / "handler.py"
+    if not handler.is_file():
         out.append(
-            f"execution_backend: 必须是 llm|agent，实际 {eb!r}"
-            "（E1 可选；有 architecture_profile 时可不写）"
+            f"execution_type={et!r} 但缺少同目录 handler.py"
+            f"（E2：声明 handler/hybrid 必须附带可执行 handler.py）"
         )
-    at = str(fm.get("agent_type") or "").strip().lower()
-    if ap and at == "react" and ap == "oneshot":
+        return out
+    if not _handler_has_execute(handler):
         out.append(
-            "architecture_profile: agent_type=react 与 oneshot 冲突"
-            "（多步工具应钉 react_tools / plan_execute / reflect_loop）"
-        )
-    if ap and at == "conversational" and ap in (
-        "react_tools",
-        "plan_execute",
-        "reflect_loop",
-    ):
-        out.append(
-            f"architecture_profile: agent_type=conversational 与 {ap} 冲突"
-            "（对话型宜 oneshot 或留空推断）"
+            f"handler.py 缺少顶层 execute()（E2：须 async/sync def execute(params) → dict）"
         )
     return out
 
 
-def _check_skill_execution_type(fm: Dict[str, Any]) -> List[str]:
-    et = str(fm.get("execution_type") or "").strip().lower()
-    if not et:
-        return ["execution_type: 缺省（生成物必须显式声明）"]
-    if et == "llm":
-        et = "prompt"
-    allowed = (_ALLOWED_SKILL_EXECUTION_TYPES - {"llm"}) | {"prompt"}
-    if et not in allowed:
-        return [
-            f"execution_type: 未知类型 {et!r}"
-            f"（允许 {sorted(allowed)}）"
-        ]
-    # Factory pipeline does not emit handler.py — declaring handler/hybrid is a footgun.
-    if et in ("handler", "hybrid"):
-        return [
-            f"execution_type: 生成物声明 {et} 但工厂不生成 handler.py"
-            "（一律用 prompt；平台 media Path0 例外仍保持 prompt 声明）"
-        ]
-    return []
+def _check_architecture_profile_intent(fm: Dict[str, Any]) -> List[str]:
+    """Validate optional architecture_profile against known set + agent_type.
+
+    Empty profile is allowed (team YAML / engine inference). When present, it must
+    be a known profile and compatible with agent_type (matrix E1).
+    """
+    raw = fm.get("architecture_profile")
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        return []
+    profile = str(raw).strip().lower()
+    out: List[str] = []
+    if profile not in _KNOWN_ARCHITECTURE_PROFILES:
+        out.append(
+            f"architecture_profile: 未知值 {raw!r}，"
+            f"允许 {sorted(_KNOWN_ARCHITECTURE_PROFILES)}"
+        )
+        return out
+    agent_type = str(fm.get("agent_type") or "").strip().lower()
+    if not agent_type:
+        return out
+    allowed = _AGENT_TYPE_ALLOWED_PROFILES.get(agent_type)
+    if allowed is None:
+        # Unknown agent_type — do not invent mapping; other rules may catch it.
+        return out
+    if profile not in allowed:
+        out.append(
+            f"architecture_profile: {profile!r} 与 agent_type={agent_type!r} 不匹配"
+            f"（该类型允许 {sorted(allowed)}）"
+        )
+    return out
 
 
 def validate_file(path: str, kind: str, contract: Optional[Dict[str, Any]] = None) -> List[str]:
@@ -216,14 +267,7 @@ def validate_file(path: str, kind: str, contract: Optional[Dict[str, Any]] = Non
         return [f"file unreadable: {e}"]
     violations = validate_text(text, kind, contract)
     if kind == "skill":
-        fm = _parse_frontmatter(text)
-        et = str(fm.get("execution_type") or "").strip().lower()
-        if et in ("handler", "hybrid"):
-            sibling = Path(path).resolve().parent / "handler.py"
-            if not sibling.is_file():
-                violations.append(
-                    f"handler_pairing: execution_type={et} 但同级无 handler.py"
-                )
+        violations.extend(check_handler_pairing(path, _parse_frontmatter(text)))
     return violations
 
 

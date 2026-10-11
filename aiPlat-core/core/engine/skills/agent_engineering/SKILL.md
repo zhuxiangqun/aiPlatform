@@ -130,12 +130,11 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
    - `conversational` — 纯对话 Agent（引擎授予 minimal: 仅基础上下文+质量评分）
    - `react` — 需要工具调用的复杂任务（引擎授予 autonomous: 全部 ~40 项核心能力）
    - `rag` — 以知识检索为主（引擎授予 full: 上下文+安全+检索+工具调用）
-3. **可选（E1）钉死执行混合**：若作者已明确「怎么跑」，可在 AGENT.md frontmatter 写
-   `architecture_profile:` 取值为 `oneshot` | `react_tools` | `plan_execute` | `reflect_loop`
-   （推荐：`react` → `react_tools`；纯对话 → `oneshot` 或留空）。
-   也可只写 `execution_backend: agent|llm`（schema 默认 llm，写成 agent 即钉死）。
-   **禁止**乱写非法 profile；有 `architecture_profile` 时不必再写 `execution_backend`。
-   留空则仍由引擎按 agent_type + tools/skills 推断（与旧行为一致）。
+3. **（推荐）声明期望执行混合 `architecture_profile`**（E1 — 事前可控，不仅事后路径卡）:
+   - `conversational` → `oneshot`
+   - `react` → `react_tools`（多步分解用 `plan_execute`；质量敏感用 `reflect_loop`）
+   - `rag` → `react_tools`（纯单次问答可用 `oneshot`）
+   - 写入 AGENT.md frontmatter；团队 YAML 若已钉死同名字段则以 YAML 为准。conformance 会校验 profile∈已知集且与 `agent_type` 兼容。
 4. 确定 Agent 的显示名和描述
 
 ### Step 1.5: 派生验收标准（SBA 原则 17：需求是根，Plan 只拥有达成它的细节，2026-08-26）
@@ -173,7 +172,12 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 对 PRD 的每个 `functional_requirement`:
 1. 判断是独立的能力单元还是内部步骤
 2. 独立能力 → 生成 SKILL.md
-3. 统一声明 `execution_type: prompt` — LLM 推理即可。本 pipeline 没有后端代码生成 stage，**不会生成 handler.py**；若声明 `handler` 会导致 Skill 注册时报错（§17），因此一律用 `prompt`。
+3. **默认**声明 `execution_type: prompt` — LLM 推理即可。
+   - **E2 可选 handler**：仅当 PRD 要求**确定性、可审计、无 LLM**的副作用（校验/格式转换/规则计算），且 Skill **不是**平台媒体目录名时，才可：
+     1. 声明 `execution_type: handler`
+     2. 同目录输出 `## FILE: …/skills/{name}/handler.py`，顶层必须有 `async def execute(params: dict) -> dict`
+     3. handler 只做确定性逻辑；禁止生成 FastAPI/React；优先调用已有 Tool/CoreFacade，禁止新 Syscall
+   - **禁止**对平台媒体 Skill 自造 handler（见下）——媒体走 Path0。
    - **例外（平台内置）**：若 Skill 名命中平台 `media_skill_handlers`，测真与前端 `execute_skill` 会走真实 ffmpeg handler，**仍保持 SKILL.md 为 prompt**（无需生成 handler.py）。
    - **媒体能力命名约束（强制）**：凡涉及下载/抽帧/软字幕/语音能量/报告导出的 Skill，**必须**使用平台目录名（canonical 或已登记 alias），**禁止自造近义名**。
      - canonical：`video_downloader` / `frame_analyzer` / `subtitle_extractor` / `speech_analyzer` / `report_json_export`
@@ -216,18 +220,16 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 - 优先复用平台已有的 Engine Skill,不重复造
 
 ### Step 3: 生成 AGENT.md
-1. 写入 frontmatter (agent_type, required_skills, required_tools)
+1. 写入 frontmatter (agent_type, architecture_profile, required_skills, required_tools)
    - agent_type 必须根据 Step 1 的规则设定（react/conversational/rag）
-   - **可选** `architecture_profile`（Step 1 E1）：需要事前可控路径时写入；否则省略
+   - architecture_profile 按 Step 1 第 3 点推荐值填写（事前声明期望跑法）
 2. 写入 SOP: 描述用户对话→调用哪个Skill→得到什么结果→如何反馈
 3. 写入反模式 (常见错误+修正)
 4. 写入 scoring_dimensions (质量评分维度)
 5. 写入 **异步任务状态机**（按 Step 1.6 角色；多 Agent 时各 AGENT.md 状态机必须可拼成一条无冲突流水线）
-6. **无需在 frontmatter 中写 capability_profile / quality_gate /
+6. **无需在 frontmatter 中写 capability_profile / execution_backend / quality_gate /
    context_profile / retry_policy / sandbox ——引擎根据 agent_type + required_tools
-   自动推断能力剖面并注入对应能力集。**
-   `execution_backend` 仅在未写 `architecture_profile` 且需显式钉死 llm|agent 时可选；
-   有 `architecture_profile` 时由引擎覆盖 backend，不必手写。
+   自动推断能力剖面并注入对应能力集。允许写 `architecture_profile`（E1）。**
 
 ### Step 4: 验证（输出前必过；失败则补全后再输出）
 1. 检查所有 required_skills 对应的 SKILL.md 都已生成
@@ -315,6 +317,7 @@ manifest 字段说明:
 name: {agent_name}
 display_name: {显示名}
 agent_type: conversational
+architecture_profile: oneshot   # E1：conversational→oneshot；react→react_tools；rag→react_tools
 model: auto
 required_skills:
   - {skill_1}
@@ -353,7 +356,7 @@ scoring_dimensions:
 ---
 name: {skill_name}                   # 必填：kebab-case
 description: {一句话描述，含触发场景}  # 必填：触发路由/description 命中率依赖它
-execution_type: prompt               # 必填：本 pipeline 一律 prompt（不生成 handler.py）
+execution_type: prompt               # 默认 prompt；E2 确定性副作用可改为 handler（须同目录 handler.py）
 version: 1.0.0                       # 必填：版本（注册回滚依赖）
 status: enabled                      # 必填
 completion_criterion: |              # 必填：引用本轮 PRD 的需求 id/AC；禁止空泛句
@@ -397,18 +400,32 @@ output_schema:                       # 必填：对象格式
 - 内部异常 → 通用错误+建议联系管理员
 ```
 
-frontmatter 字段与 `generated_conformance.yaml` 契约严格对齐：`execution_type` / `input_schema` / `output_schema` / `version` / `status: enabled` / `description` / **`completion_criterion`** 全部必填；首行必须是 `---`。生成后由注册循环 conformance 校验兜底，缺字段会被拒绝注册。
+### handler.py 模板（仅 E2 选用；与 SKILL.md 同目录）
+
+```
+## FILE: apps/{app_name}/skills/{skill_name}/handler.py
+"""Deterministic skill handler — no FastAPI/React; prefer tools over new syscalls."""
+from __future__ import annotations
+from typing import Any, Dict
+
+async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
+    # 确定性校验 / 转换；失败返回 {"error": "..."}
+    return {"success": True, "result": {}}
+```
+
+frontmatter 字段与 `generated_conformance.yaml` 契约严格对齐：`execution_type` / `input_schema` / `output_schema` / `version` / `status: enabled` / `description` / **`completion_criterion`** 全部必填；首行必须是 `---`。`execution_type: handler|hybrid` 时 conformance 要求同目录 `handler.py`。
 
 ## 反模式 (Agent Engineer 自身的)
 
 | ❌ 错误 | ✅ 正确 |
 |--------|--------|
-| 生成 Python/React 代码 | 生成 AGENT.md + SKILL.md |
+| 生成 FastAPI/React 应用代码 | 生成 AGENT.md + SKILL.md（E2 仅允许同目录薄 handler.py） |
 | 把所有功能塞进一个 Skill | 按单一职责拆分 |
 | AGENT.md 的 SOP 太模糊 | 每步明确写调用哪个Skill |
 | 忽略平台已有的 Engine Skill | 优先复用: file_operations/knowledge_retrieve/code_execution |
-| 生成 handler.py (需要编码) | 优先用 execution_type: prompt (LLM推理即可) |
-| 声明 `execution_type: handler` | 一律用 `execution_type: prompt`（本 pipeline 不生成 handler.py，handler 会注册报错） |
+| 语义任务却写 handler.py | 默认 execution_type: prompt；仅确定性副作用才用 handler |
+| 声明 handler 却无 handler.py | 同目录必须有 `async def execute`；conformance/注册会拒 |
+| 媒体 Skill 自造 handler.py | 媒体目录名保持 prompt，走平台 Path0 |
 | 用 ```yaml 包裹 YAML 内容 | ⚠️ AGENT.md/SKILL.md 的 YAML frontmatter 必须从第一行 `---` 开始，禁止前置 `yaml` 代码块标记 |
 | 用 ```json 包裹 JSON 内容 | ⚠️ agent_manifest.json 必须是纯 JSON，禁止任何代码块标记封装，禁止末尾 `---` |
 | 只写 skill_routing、不写 ui_bindings | **必须**同时输出 `ui_bindings`（组件→skill），否则前端无法确定性接线 |
@@ -437,6 +454,6 @@ frontmatter 字段与 `generated_conformance.yaml` 契约严格对齐：`executi
 - [ ] **每个** SKILL.md frontmatter 含非空 `completion_criterion`（引用本轮 PRD FR/AC）
 - [ ] 任务状态机按 ingress/processor/aggregator 一致，无过早 `completed`
 - [ ] scoring_dimensions 已定义(3-4个维度)
-- [ ] 优先使用 execution_type: prompt
-- [ ] 没有生成 Python 或 React 代码
+- [ ] 默认 execution_type: prompt；若用 handler 则同目录有 handler.py 且非媒体目录名
+- [ ] 没有生成 FastAPI/React；handler 仅确定性逻辑
 - [ ] 回复无「步骤1–4」前缀（自检用，不输出）

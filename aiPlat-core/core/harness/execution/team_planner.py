@@ -414,6 +414,9 @@ def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
         ("required_skills",    "required_skills",    [],     lambda v: v if isinstance(v, list) else []),
         ("tools",              "required_tools",    [],     lambda v: v if isinstance(v, list) else []),
         # execution_backend is set ONLY by YAML — not from AGENT.md (see CLAUDE.md §5.4.1)
+        # E1: optional architecture_profile from AGENT.md when team YAML left it empty
+        ("architecture_profile", "architecture_profile", "", str),
+        ("upgrade_policy",     "upgrade_policy",     "",     str),
         ("test_execution_mode","test_execution_mode","",      str),
         ("generate_test_plan", "generate_test_plan",  False,  bool),
         ("deploy_files_to_disk","deploy_files_to_disk",False, bool),

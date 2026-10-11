@@ -4809,6 +4809,13 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                     _dst = os.path.join(_skills_dir, _skill_name, "SKILL.md")
                     os.makedirs(os.path.dirname(_dst), exist_ok=True)
                     shutil.copy2(_src, _dst)
+                    # E2: copy sibling handler.py when present (factory opt-in code skills)
+                    _handler_src = os.path.join(_root, "handler.py")
+                    if os.path.isfile(_handler_src):
+                        shutil.copy2(
+                            _handler_src,
+                            os.path.join(_skills_dir, _skill_name, "handler.py"),
+                        )
                     _reg_count += 1
         if _reg_count > 0 or _rejected > 0:
             _blog.info(

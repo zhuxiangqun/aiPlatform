@@ -305,6 +305,18 @@ if [ -z "${SKIP_ENTITY_GUARD:-}" ]; then
         fi
     fi
 
+    # P3.6: E4 cost ladder — new Syscall / MCP seeds must justify L6 rung (CLAUDE.md §20)
+    if git diff --cached --name-only | grep -qE '(harness/syscalls/.*\.py|workspace_seeds/mcps/.*/server\.yaml|scripts/check_cost_ladder\.py|baselines/cost_ladder_)'; then
+        echo "  → Cost ladder ratchet (scripts/check_cost_ladder.py --check --staged)..."
+        if ! python3 "$WORKSPACE/scripts/check_cost_ladder.py" --check --staged; then
+            echo "  ❌ Cost ladder: new Syscall/MCP without CAPABILITIES or # ladder-ok"
+            echo "     → Document why rungs 1-5 infeasible, then: python3 scripts/check_cost_ladder.py --rebuild"
+            ENTITY_ISSUES=1
+        else
+            echo "  ✅ Cost ladder passed"
+        fi
+    fi
+
     # P4: 禁止新增 response_model=dict
     if echo "$STAGED_PY" | xargs grep -l 'response_model=dict\b' 2>/dev/null | grep -v '# noqa: legacy-response-model' > /tmp/precommit_dict.txt; then
         echo "  ⚠️  New response_model=dict detected (advisory):"

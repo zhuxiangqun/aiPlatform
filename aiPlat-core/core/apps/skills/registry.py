@@ -778,6 +778,7 @@ class SkillRegistry:
             import os
             workspace = os.path.expanduser(os.getenv("AIPLAT_WORKSPACE_SKILLS", "~/.aiplat/skills"))
             from core.apps.skills.discovery import SkillDiscovery
+            # Scan workspace tree (skills/<name>/SKILL.md[+handler.py]); empty base ≠ cwd.
             discovery = SkillDiscovery(base_path="", workspace_path=workspace)
             # 修复 2026-08-26：discover() 是 async——此前未 await 导致 _discovered 恒空，
             # 子目录 SKILL.md（应用工厂生成物注册形态）从不进入平台注册。
@@ -791,11 +792,26 @@ class SkillRegistry:
                 if self.get(name) is None:
                     from core.apps.skills.registry import _GenericSkill as GenSkill
                     from core.harness.interfaces import SkillConfig as SC
+                    _sdir = str(getattr(skill, "skill_dir", "") or "")
+                    _smd = str(getattr(skill, "skill_md_path", "") or "")
+                    _et = str(getattr(skill, "execution_type", "") or "").strip().lower()
+                    _meta = {
+                        "category": skill.category or "general",
+                        "body": skill.sop_markdown or "",
+                        "execution_type": _et,
+                    }
+                    if _sdir or _smd:
+                        _meta["filesystem"] = {
+                            "skill_dir": _sdir,
+                            "skill_md": _smd,
+                        }
                     sc = SC(
                         name=skill.name,
                         description=skill.description or "",
                         effects=list(getattr(skill, "effects", []) or []),  # 修复：未透传 effects → 注册被 _pre_register_validate 静默拒
-                        metadata={"category": skill.category or "general", "body": skill.sop_markdown or ""},
+                        input_schema=dict(getattr(skill, "input_schema", None) or {}),
+                        output_schema=dict(getattr(skill, "output_schema", None) or {}),
+                        metadata=_meta,
                     )
                     s = GenSkill(config=sc)
                     self.register(s)

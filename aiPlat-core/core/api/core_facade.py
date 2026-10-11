@@ -5336,17 +5336,31 @@ def coerce_execution_type(
     *,
     skill_name: str = "",
 ) -> tuple:
-    """Normalize SKILL execution_type; production/fail-closed rejects unknown (no silent LLM)."""
+    """Normalize SKILL execution_type; default fail-closed rejects unknown (no silent LLM)."""
     from core.harness.registry.execution_type_policy import coerce_execution_type as _coerce
 
     return _coerce(raw, skill_name=skill_name)
 
 
 def execution_type_fail_closed() -> bool:
-    """Whether unknown execution_type must hard-fail (production / FAIL_CLOSED; FAIL_OPEN wins)."""
+    """Whether unknown execution_type must hard-fail (default closed; SOFT_DEV / authorized FAIL_OPEN open)."""
     from core.harness.registry.execution_type_policy import execution_type_fail_closed as _fc
 
     return _fc()
+
+
+def fail_open_governance_status() -> dict:
+    """E5: FAIL_OPEN reason/by/until/expiry status (authorized only when complete + not expired)."""
+    from core.harness.registry.execution_type_policy import fail_open_governance_status as _st
+
+    return _st()
+
+
+def known_execution_types() -> frozenset:
+    """Canonical execution_type set for CI / lint."""
+    from core.harness.registry.execution_type_policy import known_execution_types as _k
+
+    return _k()
 
 
 def record_gate_run(

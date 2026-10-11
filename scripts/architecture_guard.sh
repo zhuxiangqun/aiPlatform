@@ -66,7 +66,7 @@ ALL_PIDS=()
 # ══════════════════════════════════════════════════════════════
 echo ""; sep; echo "  GUARD SCRIPTS: ast_behavior + frontend + architecture + capability + evidence (bg)"; sep
 
-FAIL_AST=0; FAIL_FE=0; FAIL_ARCH=0; FAIL_CAP=0; FAIL_EV=0; FAIL_UNDEF=0; FAIL_RULE=0
+FAIL_AST=0; FAIL_FE=0; FAIL_ARCH=0; FAIL_CAP=0; FAIL_EV=0; FAIL_UNDEF=0; FAIL_RULE=0; FAIL_LADDER=0
 
 python3 scripts/guard_ast_behavior.py "$@" &
 PID_AST=$!
@@ -92,6 +92,10 @@ PID_RULE=$!
 python3 scripts/guard_undefined_names.py &
 PID_UNDEF=$!
 
+# E4: cost ladder ratchet — new Syscall/MCP beyond baseline need CAPABILITIES / # ladder-ok
+python3 scripts/check_cost_ladder.py --check &
+PID_LADDER=$!
+
 wait $PID_AST || FAIL_AST=1
 wait $PID_UNDEF || FAIL_UNDEF=1
 wait $PID_FE || FAIL_FE=1
@@ -99,6 +103,7 @@ wait $PID_ARCH || FAIL_ARCH=1
 [ "$PID_CAP" != "0" ] && { wait $PID_CAP || FAIL_CAP=1; }
 wait $PID_EV || FAIL_EV=1
 wait $PID_RULE || FAIL_RULE=1
+wait $PID_LADDER || FAIL_LADDER=1
 [ "$FAIL_AST" -ne 0 ] && FAIL=1
 [ "$FAIL_FE" -ne 0 ] && FAIL=1
 [ "$FAIL_ARCH" -ne 0 ] && FAIL=1
@@ -106,6 +111,7 @@ wait $PID_RULE || FAIL_RULE=1
 [ "$FAIL_EV" -ne 0 ] && FAIL=1
 [ "$FAIL_UNDEF" -ne 0 ] && FAIL=1
 [ "$FAIL_RULE" -ne 0 ] && FAIL=1
+[ "$FAIL_LADDER" -ne 0 ] && FAIL=1
 
 # ── §0.4b: 证据树落盘（HarnessEval Evidence Tree 借鉴——层级化证据 + known_gaps） ──
 # 由 AIPLAT_EVIDENCE_TREE_OUT 环境变量启用；默认关闭，不影响现有门禁行为。
