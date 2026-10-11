@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2090
+total_capabilities: 2092
 last_updated: 2026-10-11
 version: "30.10"
 auto_sync: true
@@ -588,6 +588,7 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| execution_type_fail_closed | `core/harness/registry/execution_type_policy.py` | ✅ | 自动同步 | 已合入 |
 | load_repo_health_thresholds_from_duty | `core/harness/meta/repo_health_scan.py` | ✅ | 自动同步 | 已合入 |
 | list_health_snapshots | `core/harness/meta/repo_health_scan.py` | ✅ | 自动同步 | 已合入 |
 | default_scan_roots | `core/harness/meta/repo_health_scan.py` | ✅ | 自动同步 | 已合入 |
@@ -773,6 +774,7 @@ scan_hash: 8f9548ec24f4
 | DONE Verify 环（验证回路一等公民） | `harness/execution/done_verify.py` + `ReActLoop._acceptance_gate` + `StageRunner`/`CoreFacade` 注入 + `PipelineStageConfig.done_verify` + **`gate_llm_file_output_stage`**（`_run_stage_skill` 落盘前） | ✅ | 封 DONE 前兑现检查（配置驱动，禁 agent_id 分支）：min_output_length / require_keys / substrings / expected_outcomes / require_commands / review_gate（绑定审阅 skill 才强制）+ 拒 trivial DONE/action envelope；dev 2 次 veto 后 fail-open；**production / `AIPLAT_DONE_VERIFY_FAIL_CLOSED` 保持否决（无软封）**，`AIPLAT_DONE_VERIFY_FAIL_OPEN` 紧急覆写；**llm + uses_file_output**：deploy 前跑同一环（`review_gate` 跳过——oneshot 无 follow-up skill；peer-review 须 `execution_backend=agent`）；生成物适用：已接线（Harness 横切） | 已合入 |
 | 编码 stage 默认闭环 | `schemas_builder.apply_coding_stage_defaults` + `code_split`/`code`/`hybrid` 团队种子 | ✅ | `uses_file_output` → stage sandbox 开 + light done_verify + `required_skills` 绑 autoreview（`review_gate=none` / env 可关）；file_checkpoint 仍全局默认；**llm skill 路径**经 `gate_llm_file_output_stage` 防空 DONE 落盘；生成物适用：已接线（工厂编码团队） | 已合入 |
 | 工作区 Execute 编码闭环 | `inject_workspace_coding_defaults` + `workspace_agent_needs_coding_defaults` + `_execute_workspace_agent_background` + `CoreFacade` 同名导出 | ✅ | 绑定 `uses_file_output` 技能 / `coding_closed_loop` / `coding_intensity` 时注入与工厂相同的 sandbox+done_verify+testability+autoreview；`coding_closed_loop:false` 可关；**不**因 `coding_policy_profile` 单独 opt-in；非编码 trial 仍 `_coding_policy_profile=off`；生成物适用：已接线（工作区手改/Execute） | 已合入 |
+| 执行决策矩阵闭环（execution_type） | `execution_type_policy.coerce_execution_type` + `Skill.execute` + `_run_stage_skill`（handler 先于 backend）+ Living Spec `execution-decision-matrix.md` + `CoreFacade.coerce_execution_type` | ✅ | 未知/拼写 `execution_type`：生产或 `AIPLAT_EXECUTION_TYPE_FAIL_CLOSED` **硬失败**（禁静默改 prompt）；`FAIL_OPEN` 逃生；别名 `llm→prompt`；Stage×Skill：`handler`/`hybrid` 在 oneshot llm 之前执行；显式 `architecture_profile` 不被 capability demote；生成物适用：已接线（Harness 横切选型） | 已合入 |
 | Code 元工具偏好（图灵完备出口） | `harness/execution/meta_tool.py` + `ReActLoop._build_tools_desc` + `PipelineStageConfig.meta_tool` + StageRunner/CoreFacade/team_planner 注入 | ✅ | 算术/日期/解析/逃逸舱口 → `[META TOOL]` 提示 + 置顶 `code`；配置 `{enabled, auto_bind, force}`；`AIPLAT_META_TOOL_AUTO_BIND=auto`（生产 on / 开发 off）；`AIPLAT_META_TOOL_CODE` 总开关；生成物适用：已接线（Harness 横切） | 已合入 |
 | 组织 Harness 暗账本（HITL/审批 Amdahl） | `harness/meta/org_harness_metrics.py` + `CoreFacade.org_harness_status` + `GET /governance/org-harness` + Governance 面板 + eval_observability 可选切片 | ✅ | `serial_ratio`/审批 + **四指标**（P·R·P0miss·comments/time）+ `serial_chain_recommendations`（串行链改造建议）；vite/proxy；生成物不适用（平台横切治理观测） | 已合入 |
 | Governance 值班板（KPI 运营化） | `build_duty_board` + `load_adoption_snapshot` + `collect_merge_gates_posture` + Evidence Envelope 摘要 + Governance「值班板」+ Gold match-only CTA + 无假绿 adoption/机制状态 | ✅ | go/watch/block/unavailable；金标/串行/审批/HITL/Howl/**合入闸门姿态**/信封；任务成功率标 unavailable；gold_gate 加载失败 require_eval；值班板一键 `POST .../code-review-gold/evaluate`（match_only+persist limit=5）写报告并刷新 org-harness；**Gold JSONL 趋势** + **值班员剧本** + **豁免负债账**（owner/cap/到期未复审→block）+ **门禁元评估**（exemption/skip/appeal 率）+ **合入后仓库健康**（god/fanout/deps/Δloc）+ **证据信封**（禁无 envelope 的 BLOCK）；生成物不适用（平台横切治理观测） | 已合入 |
@@ -3005,7 +3007,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 241 | 1 | 242 |
+| Harness 执行引擎 | 243 | 1 | 244 |
 | 记忆子系统 | 58 | 0 | 58 |
 | 知识引擎（本体） | 358 | 9 | 367 |
 | RAG 检索 | 51 | 0 | 51 |
@@ -3050,7 +3052,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2080** | **10** | **2090** |
+| **总计** | **2082** | **10** | **2092** |
 
 | **总计** | **1095** | **0** | **1095** |
 

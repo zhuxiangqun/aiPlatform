@@ -4317,6 +4317,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
         # ── 1. Resolve SOP from SKILL.md ──
         _sop_body = ""
+        _execution_type = ""
         _here = _os.path.dirname(_os.path.abspath(__file__))
         _sp = _os.path.join(_here, "..", "..", "engine", "skills", _skill_name, "SKILL.md")
         _sp = _os.path.abspath(_sp)
@@ -4329,7 +4330,6 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
             if _raw.startswith("---"):
                 _parts = _raw.split("---", 2)
                 _sop_body = _parts[2].strip() if len(_parts) > 2 else ""
-                _execution_type = ""
                 try:
                     import yaml as _yaml_mod
                     _fm = _yaml_mod.safe_load(_parts[1])
@@ -4362,7 +4362,43 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 self._persist_callback(dict(state))
             return state
 
+        # Explicit execution_type: coerce aliases; unknown → production hard-fail
+        if _execution_type:
+            try:
+                from core.harness.registry.execution_type_policy import (
+                    coerce_execution_type,
+                    execution_type_fail_closed as _et_fail_closed,
+                )
+
+                _coerced_et, _et_err = coerce_execution_type(
+                    _execution_type, skill_name=_skill_name
+                )
+                if _et_err:
+                    return _stage_skill_failed(_et_err, "execution_type")
+                _execution_type = str(_coerced_et or "")
+            except Exception as _et_exc:
+                _et_fc = False
+                try:
+                    from core.harness.registry.execution_type_policy import (
+                        execution_type_fail_closed as _et_fail_closed,
+                    )
+
+                    _et_fc = bool(_et_fail_closed())
+                except Exception:
+                    _log.getLogger("pipeline_engine").debug(
+                        "execution_type_fail_closed probe failed", exc_info=True
+                    )
+                if _et_fc:
+                    return _stage_skill_failed(
+                        f"Skill '{_skill_name}': execution_type coerce failed: {_et_exc}",
+                        "execution_type",
+                    )
+                _log.getLogger("pipeline_engine").debug(
+                    "execution_type coerce skipped", exc_info=True
+                )
+
         # ── 1.5. Handler execution (execution_type: handler/hybrid — no LLM fallback) ──
+        # Runs BEFORE execution_backend llm/agent split — handler is never bypassed by oneshot LLM.
         if _execution_type in ("handler", "hybrid"):
             _handler_path = _os.path.join(_os.path.dirname(_sp), "handler.py")
             if _os.path.isfile(_handler_path):

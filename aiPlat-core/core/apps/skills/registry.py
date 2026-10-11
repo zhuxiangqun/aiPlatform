@@ -1582,6 +1582,21 @@ class _GenericSkill(BaseSkill):
                     self._config.name
                 )
             meta["execution_type"] = exec_type  # cache for subsequent calls
+        else:
+            # Explicit type: coerce aliases; unknown → production hard-fail (no silent LLM).
+            from core.harness.registry.execution_type_policy import coerce_execution_type
+
+            _coerced, _etype_err = coerce_execution_type(
+                str(exec_type), skill_name=str(self._config.name or "")
+            )
+            if _etype_err:
+                return SkillResult(
+                    success=False,
+                    error=_etype_err,
+                    metadata={"skill": self._config.name, "execution_type_rejected": True},
+                )
+            exec_type = _coerced or "prompt"
+            meta["execution_type"] = exec_type
 
         # Require model for non-handler execution types (handler uses real code, no LLM needed)
         if exec_type != "handler" and not self._model:
