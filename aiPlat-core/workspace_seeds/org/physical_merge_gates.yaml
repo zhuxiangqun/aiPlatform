@@ -5,8 +5,10 @@ version: 1
 
 # warn | block — env AIPLAT_PHYSICAL_GATES_MODE overrides.
 # After block_after (UTC date), warn findings escalate to block unless exempted.
+# Pulled forward 2026-10-11: sidecar-neutral profile so docs sync no longer masks
+# framework diffs; grace shortened so block bites after one more warn cycle.
 mode: warn
-block_after: "2026-11-01"
+block_after: "2026-10-25"
 
 profiles:
   business:
@@ -32,14 +34,24 @@ profiles:
     max_new_dirs: 5
     max_inherit_bases: 2
 
-# Paths matching any glob use framework profile (looser).
+# Paths matching any glob use framework profile (looser) when *all scored*
+# paths match (see profile_neutral_globs).
 framework_globs:
   - "aiPlat-core/core/harness/**"
   - "aiPlat-core/core/engine/**"
+  - "aiPlat-core/core/api/core_facade.py"
   - "aiPlat-infra/**"
   - "scripts/**"
   - "**/tests/**"
   - "**/test_*.py"
+
+# Ignored when choosing business vs framework (still counted in inflation stats).
+# Required doc/registry sync must not force the tight business profile.
+profile_neutral_globs:
+  - "AIPLAT_CAPABILITIES.md"
+  - "docs/**"
+  - "**/capability_registry.yaml"
+  - "**/system-architecture-contract.md"
 
 # Shape gate — banned path segments for NEW paths only.
 banned_path_segments:
