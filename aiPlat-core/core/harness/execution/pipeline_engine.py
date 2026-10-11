@@ -5056,6 +5056,49 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
             _chain_result_key = (getattr(stage, 'test_result_key', '') or _artifact_key) + "_exec"
             state = await self._run_chained_skill(_chain_skill, state, _artifact_key, _chain_result_key)
 
+        # ── 5.55. DONE verify before deploy (llm + uses_file_output only) ──
+        # Agent backend already gated via StageRunner→ReActLoop._acceptance_gate.
+        # llm oneshot must not write ## FILE: blobs to disk without the same ring.
+        try:
+            from core.harness.execution.done_verify import gate_llm_file_output_stage
+
+            _dv_veto = gate_llm_file_output_stage(
+                stage=stage,
+                state=state,
+                result=str(_result or ""),
+                artifact_key=_artifact_key,
+                backend=_backend,
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "gate_llm_file_output_stage skipped", exc_info=True
+            )
+            _dv_veto = None
+        if _dv_veto:
+            _log.getLogger("pipeline_engine").warning(
+                "done_verify veto pre-deploy: stage=%s backend=%s reason=%s",
+                stage.id,
+                _backend,
+                _dv_veto[:160],
+            )
+            try:
+                from core.harness.execution.stage_handoff import write_stage_handoff
+
+                write_stage_handoff(
+                    state,
+                    stage=stage,
+                    artifact_key=_artifact_key,
+                    artifact=state.get(_artifact_key),
+                    status="failed",
+                    error=_dv_veto,
+                    stages=self._config.stages if self._config else None,
+                )
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "write_stage_handoff on done_verify veto skipped", exc_info=True
+                )
+            return state
+
         # ── 5.6. Deploy files to disk if configured ──
         # Scaffold sets deploy_files_to_disk. Later uses_file_output stages
         # (frontend/backend slices) write into the same workspace without

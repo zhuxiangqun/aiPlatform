@@ -191,6 +191,8 @@ metadata|OK|generic pipeline (project metadata mirror incl. writing_profile)
 _done_verify_veto_count|OK|engine-internal (done_verify veto counter; loop → evidence)
 _done_verify_exhausted|OK|engine-internal (done_verify fail-open marker)
 _done_verify_last_reason|OK|engine-internal (last done_verify veto reason)
+_testability_report|OK|engine-internal (done_verify testability report dict; llm pre-deploy)
+_generated_agent|OK|generic pipeline (optional agent name for chained skill context)
 
 # -- Oversight P1: discardable interactive evidence page --
 _evidence_page|OK|engine-internal (template+JSON oversight HTML; TTL; read-only)
