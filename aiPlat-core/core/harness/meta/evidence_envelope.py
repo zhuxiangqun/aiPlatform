@@ -25,6 +25,17 @@ EVIDENCE_TYPES = frozenset({
     "jsonl",
 })
 
+# Prefer high-signal evidence when compacting (anti inflation / formalism).
+_EVIDENCE_TYPE_RANK = {
+    "test_result": 0,
+    "command": 1,
+    "file_line": 2,
+    "jsonl": 3,
+    "tool_result": 4,
+    "log": 5,
+}
+_DEFAULT_EVIDENCE_CAP = 8
+
 # release / duty impact
 _STATUS_RANK = {"confirmed": 3, "blocked": 2, "suspected": 1, "unverified": 0}
 
@@ -81,14 +92,21 @@ def evidence_item(
     }
 
 
-def _normalize_evidence(raw: Any) -> List[Dict[str, Any]]:
-    out: List[Dict[str, Any]] = []
-    if not isinstance(raw, list):
-        return out
-    for item in raw[:32]:
+def compact_evidence(
+    items: Sequence[Mapping[str, Any]],
+    *,
+    max_items: int = _DEFAULT_EVIDENCE_CAP,
+) -> List[Dict[str, Any]]:
+    """Dedupe by (type, ref, hash) and keep highest-signal samples only.
+
+    Caps list length so envelopes cannot bury reviewers in low-value logs.
+    """
+    cap = max(1, min(int(max_items or _DEFAULT_EVIDENCE_CAP), 32))
+    normalized: List[Dict[str, Any]] = []
+    for item in items or []:
         if not isinstance(item, Mapping):
             continue
-        out.append(
+        normalized.append(
             evidence_item(
                 type=str(item.get("type") or "tool_result"),
                 ref=str(item.get("ref") or item.get("path") or ""),
@@ -97,7 +115,28 @@ def _normalize_evidence(raw: Any) -> List[Dict[str, Any]]:
                 snippet=str(item.get("snippet") or item.get("detail") or ""),
             )
         )
-    return out
+    seen: set = set()
+    unique: List[Dict[str, Any]] = []
+    for ev in normalized:
+        key = (ev.get("type"), ev.get("ref"), ev.get("hash"))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(ev)
+    unique.sort(
+        key=lambda e: (
+            _EVIDENCE_TYPE_RANK.get(str(e.get("type")), 9),
+            0 if e.get("hash") else 1,
+            0 if e.get("ref") else 1,
+        )
+    )
+    return unique[:cap]
+
+
+def _normalize_evidence(raw: Any) -> List[Dict[str, Any]]:
+    if not isinstance(raw, list):
+        return []
+    return compact_evidence(raw, max_items=_DEFAULT_EVIDENCE_CAP)
 
 
 def _normalize_limitations(raw: Any) -> List[str]:
@@ -136,6 +175,7 @@ def validate_envelope(
     *,
     demote: bool = True,
     require_limitations_for_block: bool = True,
+    mode: str = "",
 ) -> EnvelopeValidation:
     """Validate + optionally demote illegal confirmed/block claims.
 
@@ -143,7 +183,17 @@ def validate_envelope(
       - confirmed ⇒ measured + non-empty evidence (else demote → suspected)
       - duty block claim (status=blocked) ⇒ non-empty limitations
       - speculative cannot be confirmed/blocked
+
+    ``mode``:
+      - ``demote`` (default when demote=True): rewrite illegal claims; ``ok`` True after demote
+      - ``strict`` (when demote=False): report errors; do not rewrite
+      - ``reject``: rewrite for safe display, but ``ok`` stays False (anti-formalism)
     """
+    m = (mode or "").strip().lower()
+    if m not in ("demote", "reject", "strict"):
+        m = "demote" if demote else "strict"
+    rewrite = m in ("demote", "reject")
+
     env = normalize_envelope(raw)
     errors: List[str] = []
     demotions: List[str] = []
@@ -153,31 +203,45 @@ def validate_envelope(
             errors.append("confirmed_requires_measured")
         if not env["evidence"]:
             errors.append("confirmed_requires_evidence")
-        if errors and demote:
+        if errors and rewrite:
             env["status"] = "suspected"
             if env["confidence"] == "measured" and not env["evidence"]:
                 env["confidence"] = "derived"
             demotions.append("confirmed→suspected")
-            errors = []
+            if m == "demote":
+                errors = []
 
     if env["status"] == "blocked" and require_limitations_for_block:
         if not env["limitations"]:
             errors.append("blocked_requires_limitations")
-            if demote:
+            if rewrite:
                 env["status"] = "suspected"
                 demotions.append("blocked→suspected(no_limitations)")
-                errors = [e for e in errors if e != "blocked_requires_limitations"]
+                if m == "demote":
+                    errors = [e for e in errors if e != "blocked_requires_limitations"]
 
     if env["confidence"] == "speculative" and env["status"] in ("confirmed", "blocked"):
         prev = env["status"]
         errors.append("speculative_cannot_block_or_confirm")
-        if demote:
+        if rewrite:
             env["status"] = "unverified"
             demotions.append(f"{prev}→unverified(speculative)")
-            errors = [e for e in errors if e != "speculative_cannot_block_or_confirm"]
+            if m == "demote":
+                errors = [e for e in errors if e != "speculative_cannot_block_or_confirm"]
 
-    ok = len(errors) == 0
+    # Reject mode: any demotion from an illegal claim ⇒ integrity failure.
+    if m == "reject" and demotions:
+        ok = False
+        if not errors:
+            errors = ["envelope_integrity_rejected"]
+    else:
+        ok = len(errors) == 0
     return EnvelopeValidation(ok=ok, errors=errors, demotions=demotions, envelope=env)
+
+
+def assert_envelope_integrity(raw: Optional[Mapping[str, Any]] = None) -> EnvelopeValidation:
+    """Hard gate: illegal confirmed/block claims fail (still returns demoted envelope)."""
+    return validate_envelope(raw, mode="reject")
 
 
 def allow_release_block(envelope: Mapping[str, Any]) -> Tuple[bool, str]:
@@ -251,16 +315,32 @@ def attach_envelopes_to_issues(
     issues: Sequence[MutableMapping[str, Any]],
     *,
     run_id: str = "",
+    reject_fake: bool = True,
 ) -> List[Dict[str, Any]]:
-    """Ensure each issue dict has a validated evidence envelope (mutates in place)."""
+    """Ensure each issue dict has a validated evidence envelope (mutates in place).
+
+    When ``reject_fake`` and the *caller-supplied* envelope illegally claimed
+    confirmed/blocked, mark ``envelope_integrity_rejected`` (anti-formalism).
+    Autogenerated derived envelopes from review issues are never integrity-rejected.
+    """
     out: List[Dict[str, Any]] = []
     for issue in issues:
         if not isinstance(issue, MutableMapping):
             continue
         raw = issue.get("evidence_envelope") or issue.get("envelope")
-        if isinstance(raw, Mapping) and raw:
-            v = validate_envelope(raw, demote=True)
-            env = v.envelope
+        supplied = isinstance(raw, Mapping) and bool(raw)
+        integrity_rejected = False
+        integrity_errors: List[str] = []
+        if supplied:
+            if reject_fake:
+                hard = assert_envelope_integrity(raw)
+                integrity_rejected = not hard.ok
+                integrity_errors = list(hard.errors)
+                env = hard.envelope
+                v = hard
+            else:
+                v = validate_envelope(raw, demote=True)
+                env = v.envelope
         else:
             env = envelope_from_review_issue(
                 file=str(issue.get("file") or ""),
@@ -279,25 +359,70 @@ def attach_envelopes_to_issues(
             env["status"] = "suspected"
             env["confidence"] = "derived" if env.get("evidence") else "speculative"
         issue["evidence_envelope"] = env
+        issue["envelope_integrity_rejected"] = bool(integrity_rejected)
+        if integrity_errors:
+            issue["envelope_integrity_errors"] = integrity_errors
         confirmed_ok = (
             env.get("status") == "confirmed"
             and env.get("confidence") == "measured"
             and bool(env.get("evidence"))
         )
-        issue["envelope_ok"] = bool(v.ok) and (
-            env.get("status") != "confirmed" or confirmed_ok
-        )
+        # Safe demoted/autogen envelopes are display-ok; fake supplied claims fail integrity.
+        if integrity_rejected:
+            issue["envelope_ok"] = False
+        else:
+            issue["envelope_ok"] = env.get("status") != "confirmed" or confirmed_ok
         out.append(dict(issue))
     return out
+
+
+def check_issues_envelope_integrity(
+    issues: Sequence[Mapping[str, Any]],
+) -> Dict[str, Any]:
+    """Report-level integrity: any fake confirmed/blocked claim ⇒ not ok."""
+    rejected: List[Dict[str, Any]] = []
+    for issue in issues or []:
+        if not isinstance(issue, Mapping):
+            continue
+        if issue.get("envelope_integrity_rejected"):
+            rejected.append(
+                {
+                    "ref": str(issue.get("file") or issue.get("id") or "")[:200],
+                    "errors": list(issue.get("envelope_integrity_errors") or []),
+                }
+            )
+            continue
+        raw = issue.get("evidence_envelope") or issue.get("envelope")
+        if not isinstance(raw, Mapping) or not raw:
+            continue
+        # Only re-check if caller marked confirmed/blocked without going through attach.
+        st = str(raw.get("status") or "").lower()
+        if st not in ("confirmed", "blocked"):
+            continue
+        hard = assert_envelope_integrity(raw)
+        if not hard.ok:
+            rejected.append(
+                {
+                    "ref": str(issue.get("file") or issue.get("id") or "")[:200],
+                    "errors": list(hard.errors),
+                }
+            )
+    return {
+        "ok": len(rejected) == 0,
+        "rejected_count": len(rejected),
+        "rejected": rejected[:20],
+    }
 
 
 def summarize_envelopes(issues: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
     """Aggregate envelope posture for duty board / report footer (no fake green)."""
     by_status: Dict[str, int] = {}
     by_confidence: Dict[str, int] = {}
-    demoted = 0
     missing = 0
+    integrity_rejected = 0
     for issue in issues:
+        if isinstance(issue, Mapping) and issue.get("envelope_integrity_rejected"):
+            integrity_rejected += 1
         env = issue.get("evidence_envelope") if isinstance(issue, Mapping) else None
         if not isinstance(env, Mapping) or not env:
             missing += 1
@@ -306,8 +431,7 @@ def summarize_envelopes(issues: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
         cf = str(env.get("confidence") or "speculative")
         by_status[st] = by_status.get(st, 0) + 1
         by_confidence[cf] = by_confidence.get(cf, 0) + 1
-        if st == "suspected" and cf == "derived":
-            demoted += 0  # informational only
+    integrity = check_issues_envelope_integrity(list(issues))
     return {
         "issue_count": len(list(issues)),
         "missing_envelope": missing,
@@ -315,6 +439,11 @@ def summarize_envelopes(issues: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
         "by_confidence": by_confidence,
         "confirmed_count": int(by_status.get("confirmed") or 0),
         "suspected_count": int(by_status.get("suspected") or 0),
+        "integrity_ok": bool(integrity.get("ok")),
+        "integrity_rejected_count": int(
+            integrity_rejected or integrity.get("rejected_count") or 0
+        ),
+        "evidence_cap": _DEFAULT_EVIDENCE_CAP,
     }
 
 
