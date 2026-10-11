@@ -88,6 +88,39 @@ class TestGeneratedConformance:
     def test_good_agent_passes(self):
         assert validate_text(GOOD_AGENT, "agent") == []
 
+    def test_e1_architecture_profile_optional_ok(self):
+        text = GOOD_AGENT.replace(
+            "agent_type: react\n",
+            "agent_type: react\narchitecture_profile: react_tools\n",
+        )
+        assert validate_text(text, "agent") == []
+
+    def test_e1_architecture_profile_invalid_rejected(self):
+        text = GOOD_AGENT.replace(
+            "agent_type: react\n",
+            "agent_type: react\narchitecture_profile: tot\n",
+        )
+        violations = validate_text(text, "agent")
+        assert any("architecture_profile" in v for v in violations), violations
+
+    def test_e1_react_oneshot_conflict_rejected(self):
+        text = GOOD_AGENT.replace(
+            "agent_type: react\n",
+            "agent_type: react\narchitecture_profile: oneshot\n",
+        )
+        violations = validate_text(text, "agent")
+        assert any("oneshot" in v for v in violations), violations
+
+    def test_e4_generated_skill_handler_rejected(self):
+        bad = GOOD_SKILL.replace("execution_type: prompt", "execution_type: handler")
+        violations = validate_text(bad, "skill")
+        assert any("handler.py" in v or "execution_type" in v for v in violations), violations
+
+    def test_e4_unknown_execution_type_rejected(self):
+        bad = GOOD_SKILL.replace("execution_type: prompt", "execution_type: magic")
+        violations = validate_text(bad, "skill")
+        assert any("未知" in v or "execution_type" in v for v in violations), violations
+
     def test_missing_governance_fields_rejected(self):
         """缺 input_schema/version/effects 等治理字段 → 拒绝（对应审计"生成物仅 5-6 字段"）。"""
         bad = GOOD_SKILL.replace("input_schema:", "# input_schema:")

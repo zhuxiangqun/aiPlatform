@@ -130,7 +130,13 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
    - `conversational` — 纯对话 Agent（引擎授予 minimal: 仅基础上下文+质量评分）
    - `react` — 需要工具调用的复杂任务（引擎授予 autonomous: 全部 ~40 项核心能力）
    - `rag` — 以知识检索为主（引擎授予 full: 上下文+安全+检索+工具调用）
-3. 确定 Agent 的显示名和描述
+3. **可选（E1）钉死执行混合**：若作者已明确「怎么跑」，可在 AGENT.md frontmatter 写
+   `architecture_profile:` 取值为 `oneshot` | `react_tools` | `plan_execute` | `reflect_loop`
+   （推荐：`react` → `react_tools`；纯对话 → `oneshot` 或留空）。
+   也可只写 `execution_backend: agent|llm`（schema 默认 llm，写成 agent 即钉死）。
+   **禁止**乱写非法 profile；有 `architecture_profile` 时不必再写 `execution_backend`。
+   留空则仍由引擎按 agent_type + tools/skills 推断（与旧行为一致）。
+4. 确定 Agent 的显示名和描述
 
 ### Step 1.5: 派生验收标准（SBA 原则 17：需求是根，Plan 只拥有达成它的细节，2026-08-26）
 
@@ -212,13 +218,16 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 ### Step 3: 生成 AGENT.md
 1. 写入 frontmatter (agent_type, required_skills, required_tools)
    - agent_type 必须根据 Step 1 的规则设定（react/conversational/rag）
+   - **可选** `architecture_profile`（Step 1 E1）：需要事前可控路径时写入；否则省略
 2. 写入 SOP: 描述用户对话→调用哪个Skill→得到什么结果→如何反馈
 3. 写入反模式 (常见错误+修正)
 4. 写入 scoring_dimensions (质量评分维度)
 5. 写入 **异步任务状态机**（按 Step 1.6 角色；多 Agent 时各 AGENT.md 状态机必须可拼成一条无冲突流水线）
-6. **无需在 frontmatter 中写 capability_profile / execution_backend / quality_gate /
+6. **无需在 frontmatter 中写 capability_profile / quality_gate /
    context_profile / retry_policy / sandbox ——引擎根据 agent_type + required_tools
    自动推断能力剖面并注入对应能力集。**
+   `execution_backend` 仅在未写 `architecture_profile` 且需显式钉死 llm|agent 时可选；
+   有 `architecture_profile` 时由引擎覆盖 backend，不必手写。
 
 ### Step 4: 验证（输出前必过；失败则补全后再输出）
 1. 检查所有 required_skills 对应的 SKILL.md 都已生成

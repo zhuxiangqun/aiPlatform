@@ -1035,6 +1035,23 @@ def apply_agent_md_to_stage(stage: Any, agent_id: str) -> None:
     if fm.get("knowledge_bases"):
         stage.knowledge_bases = fm["knowledge_bases"]
 
+    # E1: optional architecture_profile on AGENT.md pins execution mix.
+    _ap = str(fm.get("architecture_profile") or "").strip().lower()
+    if _ap:
+        stage.architecture_profile = _ap
+        try:
+            from core.schemas_builder import apply_architecture_profile
+
+            apply_architecture_profile(stage)
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "apply_architecture_profile from AGENT.md skipped", exc_info=True
+            )
+    _eb = str(fm.get("execution_backend") or "").strip().lower()
+    if _eb in ("llm", "agent") and not _ap:
+        # Explicit backend without profile — still a pin (matrix §3).
+        stage.execution_backend = _eb
+
 
 # ═══════════════════════════════════════════════════════════════
 # Governance facade — Platform MUST use these instead of importing
