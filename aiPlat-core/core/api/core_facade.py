@@ -5226,6 +5226,42 @@ def assess_gate_meta(
     return _assess(thresholds=thresholds)
 
 
+def assess_repo_health(
+    *,
+    thresholds: Optional[Dict[str, Any]] = None,
+    run_scan: bool = False,
+    persist: bool = False,
+) -> Dict[str, Any]:
+    """合入后/周度仓库健康：全树 LOC/god/fanout/deps JSONL → go|watch|block|unavailable。"""
+    from core.harness.meta.repo_health_scan import assess_repo_health as _assess
+
+    return _assess(thresholds=thresholds, run_scan=run_scan, persist=persist)
+
+
+def scan_repo_health(
+    *,
+    persist: bool = True,
+) -> Dict[str, Any]:
+    """执行一次全树健康扫描（可选写入 org/repo_health JSONL）。"""
+    from core.harness.meta.repo_health_scan import (
+        append_health_snapshot,
+        assess_repo_health as _assess,
+        scan_repo_health as _scan,
+    )
+
+    metrics = _scan()
+    persisted = append_health_snapshot(metrics) if persist else None
+    out = _assess()
+    out["scan"] = {
+        "py_files": metrics.get("py_files"),
+        "py_loc": metrics.get("py_loc"),
+        "god_files": metrics.get("god_files"),
+        "dep_entries": metrics.get("dep_entries"),
+    }
+    out["persisted"] = persisted
+    return out
+
+
 def record_gate_run(
     *,
     physical: Optional[Dict[str, Any]] = None,

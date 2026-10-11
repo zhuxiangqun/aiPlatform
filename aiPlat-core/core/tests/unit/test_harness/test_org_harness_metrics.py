@@ -236,6 +236,8 @@ def test_collect_merge_gates_posture_surfaces_exemptions():
     assert "exemption_debt" in posture
     assert "gate_meta" in posture
     assert posture.get("meta_severity") in ("go", "watch", "block", "unavailable")
+    assert "repo_health" in posture
+    assert posture.get("health_severity") in ("go", "watch", "block", "unavailable")
     phys = posture["physical"]
     assert phys.get("status") in ("ok", "unavailable")
     if phys.get("status") == "ok":
@@ -268,6 +270,10 @@ def test_duty_board_exemption_debt_expired_blocks(monkeypatch):
                 "over_cap": False,
                 "reasons": ["exemption_debt_expired=1 (ex-old)"],
             },
+            "gate_meta": {"severity": "go", "reasons": []},
+            "meta_severity": "go",
+            "repo_health": {"severity": "go", "reasons": ["repo_health within band"]},
+            "health_severity": "go",
         },
     )
     board = build_duty_board(
@@ -285,6 +291,60 @@ def test_duty_board_exemption_debt_expired_blocks(monkeypatch):
     assert board["checks"]["merge_gates"] == "block"
     assert board["status"] == "block"
     assert any("exemption_debt_expired" in r for r in board["reasons"])
+
+
+def test_duty_board_repo_health_block(monkeypatch):
+    """Post-merge repo health block escalates board + measured envelope."""
+    import core.harness.meta.org_harness_metrics as m
+
+    monkeypatch.setattr(
+        m,
+        "collect_merge_gates_posture",
+        lambda: {
+            "physical": {"status": "ok", "mode": "warn", "exemptions": []},
+            "testability": {"status": "ok", "mode": "warn"},
+            "active_exemption_count": 0,
+            "exemptions_visible": True,
+            "debt_severity": "go",
+            "exemption_debt": {"severity": "go", "reasons": []},
+            "gate_meta": {"severity": "go", "reasons": []},
+            "meta_severity": "go",
+            "health_severity": "block",
+            "repo_health": {
+                "severity": "block",
+                "n_snapshots": 2,
+                "latest": {
+                    "py_loc": 500000,
+                    "god_files": 45,
+                    "multi_base_classes": 10,
+                    "high_fanout_files": 5,
+                    "dep_entries": 50,
+                },
+                "deltas": {"loc_growth_pct": 2.0},
+                "reasons": ["repo_health_god_files=45>=40"],
+                "jsonl": "org/repo_health/snapshots.jsonl",
+            },
+        },
+    )
+    board = build_duty_board(
+        {
+            "ok": True,
+            "data_available": True,
+            "availability": {"runs": True, "gold": True, "approvals": False},
+            "summary": {
+                "avg_serial_ratio": 0.05,
+                "gold_regressing": False,
+                "p0_miss_rate": 0.0,
+            },
+        },
+    )
+    assert board["checks"]["repo_health"] == "block"
+    assert board["status"] == "block"
+    assert any("repo_health_god_files" in r for r in board["reasons"])
+    env = board.get("envelope") or {}
+    assert env.get("block_allowed") is True
+    primary = env.get("primary") or {}
+    assert primary.get("confidence") == "measured"
 
 
 def test_aggregate_includes_gold():

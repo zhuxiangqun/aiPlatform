@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-10-08"
 total_capability_domains: 34
-total_capabilities: 1079
+total_capabilities: 1085
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -781,6 +781,30 @@ domains:
         type: function
         signature: 'Merge duty-board floats into gate-meta defaults (for posture wiring).'
         module: aiPlat-core/core/harness/meta/gate_meta_eval.py
+      - symbol: repo_health_dir
+        type: function
+        signature: 'JSONL home — env AIPLAT_REPO_HEALTH_DIR overrides AIPLAT_HOME/org/repo_health.'
+        module: aiPlat-core/core/harness/meta/repo_health_scan.py
+      - symbol: repo_health_jsonl_path
+        type: function
+        signature: 'repo_health_jsonl_path()'
+        module: aiPlat-core/core/harness/meta/repo_health_scan.py
+      - symbol: workspace_root
+        type: function
+        signature: 'workspace_root(explicit)'
+        module: aiPlat-core/core/harness/meta/repo_health_scan.py
+      - symbol: default_scan_roots
+        type: function
+        signature: 'default_scan_roots(root)'
+        module: aiPlat-core/core/harness/meta/repo_health_scan.py
+      - symbol: list_health_snapshots
+        type: function
+        signature: 'list_health_snapshots()'
+        module: aiPlat-core/core/harness/meta/repo_health_scan.py
+      - symbol: load_repo_health_thresholds_from_duty
+        type: function
+        signature: 'load_repo_health_thresholds_from_duty(duty_thr)'
+        module: aiPlat-core/core/harness/meta/repo_health_scan.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"
@@ -4636,8 +4660,24 @@ domains:
         module: "core/harness/meta/org_harness_metrics.py"
       - symbol: "collect_merge_gates_posture"
         type: "function"
-        signature: "collect_merge_gates_posture()→Dict physical/testability mode+block_after+exemption_debt+gate_meta (visible)"
+        signature: "collect_merge_gates_posture()→Dict physical/testability mode+block_after+exemption_debt+gate_meta+repo_health (visible)"
         module: "core/harness/meta/org_harness_metrics.py"
+      - symbol: "assess_repo_health"
+        type: "function"
+        signature: "assess_repo_health(snapshots=None, thresholds=None, run_scan=False, persist=False)→Dict severity go|watch|block|unavailable"
+        module: "core/harness/meta/repo_health_scan.py"
+      - symbol: "scan_repo_health"
+        type: "function"
+        signature: "scan_repo_health(roots=None, workspace=None, …)→Dict full-tree metrics snapshot"
+        module: "core/harness/meta/repo_health_scan.py"
+      - symbol: "append_health_snapshot"
+        type: "function"
+        signature: "append_health_snapshot(metrics)→Optional[str] JSONL path"
+        module: "core/harness/meta/repo_health_scan.py"
+      - symbol: "envelope_for_repo_health_block"
+        type: "function"
+        signature: "envelope_for_repo_health_block(reason, py_loc=None, …)→Dict measured blocked envelope"
+        module: "core/harness/meta/evidence_envelope.py"
       - symbol: "assess_gate_meta"
         type: "function"
         signature: "assess_gate_meta(events=None, thresholds=None, now_ts=None)→Dict rates severity go|watch|block|unavailable"
@@ -4709,6 +4749,14 @@ domains:
       - symbol: "assess_gate_meta"
         type: "function"
         signature: "assess_gate_meta(thresholds=None)→Dict CoreFacade gate meta rates"
+        module: "core/api/core_facade.py"
+      - symbol: "assess_repo_health"
+        type: "function"
+        signature: "assess_repo_health(thresholds=None, run_scan=False, persist=False)→Dict CoreFacade repo health"
+        module: "core/api/core_facade.py"
+      - symbol: "scan_repo_health"
+        type: "function"
+        signature: "scan_repo_health(persist=True)→Dict CoreFacade scan+assess+persist"
         module: "core/api/core_facade.py"
       - symbol: "record_gate_run"
         type: "function"

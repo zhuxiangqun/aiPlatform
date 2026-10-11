@@ -107,6 +107,25 @@ interface DutyBoard {
       window_days?: number;
       reasons?: string[];
     };
+    health_severity?: string;
+    repo_health?: {
+      status?: string;
+      severity?: string;
+      n_snapshots?: number;
+      latest?: {
+        py_loc?: number;
+        god_files?: number;
+        multi_base_classes?: number;
+        high_fanout_files?: number;
+        dep_entries?: number;
+        written_at?: string;
+      } | null;
+      deltas?: {
+        loc_growth_pct?: number | null;
+        dep_delta?: number | null;
+      };
+      reasons?: string[];
+    };
   } | null;
   /** Evidence Envelope summary — block only when allow_release_block */
   envelope?: {
@@ -518,6 +537,35 @@ export default function GovernanceDashboard() {
                     {' · '}block={fmt(gm.block_rate)}
                     {(gm.reasons || []).slice(0, 2).map((r, i) => (
                       <div key={`gm-${i}`} style={{ marginLeft: 8, color: metaSev === 'block' ? '#a66' : '#886' }}>
+                        · {r}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+              {(() => {
+                const rh = mg.repo_health || {};
+                const healthSev = String(mg.health_severity || rh.severity || 'unavailable');
+                const latest = rh.latest || {};
+                if (healthSev === 'unavailable' && !(rh.n_snapshots || latest.py_loc)) return null;
+                const healthColor =
+                  healthSev === 'block' ? '#a44' : healthSev === 'watch' ? '#aa4' : '#666';
+                const locPct = rh.deltas?.loc_growth_pct;
+                return (
+                  <div style={{ marginTop: 4 }}>
+                    <span style={{ color: healthColor, fontWeight: healthSev !== 'go' ? 600 : 400 }}>
+                      repo_health={healthSev}
+                    </span>
+                    {' · '}loc={latest.py_loc ?? '—'}
+                    {' · '}god={latest.god_files ?? '—'}
+                    {' · '}fanout={latest.high_fanout_files ?? '—'}
+                    {' · '}deps={latest.dep_entries ?? '—'}
+                    {locPct != null && !Number.isNaN(Number(locPct))
+                      ? ` · Δloc=${Number(locPct).toFixed(1)}%`
+                      : ''}
+                    {' · '}n={rh.n_snapshots ?? 0}
+                    {(rh.reasons || []).slice(0, 2).map((r, i) => (
+                      <div key={`rh-${i}`} style={{ marginLeft: 8, color: healthSev === 'block' ? '#a66' : '#886' }}>
                         · {r}
                       </div>
                     ))}

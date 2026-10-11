@@ -26,6 +26,24 @@ gate_appeal_rate_block: 0.25
 # Informational only (high veto may be healthy)
 gate_block_rate_watch: 0.50
 
+# Post-merge / weekly repo health (org/repo_health JSONL — boiling frog)
+repo_health_min_snapshots: 1
+repo_health_god_loc: 800
+repo_health_god_files_watch: 15
+repo_health_god_files_block: 40
+repo_health_multi_base_watch: 40
+repo_health_multi_base_block: 120
+repo_health_high_fanout_imports: 25
+repo_health_high_fanout_watch: 30
+repo_health_high_fanout_block: 80
+repo_health_dep_entries_watch: 180
+repo_health_dep_entries_block: 320
+repo_health_loc_growth_pct_watch: 8
+repo_health_loc_growth_pct_block: 20
+repo_health_dep_delta_watch: 8
+repo_health_dep_delta_block: 25
+repo_health_max_files: 8000
+
 # Duty-officer playbook — fixed actions per status (not more dashboard cards).
 playbook:
   go:
@@ -33,11 +51,13 @@ playbook:
     - "Keep org-harness on the board; re-check gold after model/harness changes"
     - "Do not celebrate AI speedup without serial_ratio + approval latency in band"
     - "Skim gate_meta rates (exemption/skip/appeal) — keep in band before celebrating gates"
+    - "Skim repo_health (god/fanout/deps/Δloc) — weekly scan before celebrating lean tree"
   watch:
     - "Inspect serial_ratio / approval_pending / HITL rejection / Howl — clear friction first"
     - "Run Gold match-only; if Δ P0 down, treat as watch→block candidate"
     - "Review merge-gate exemption debt on duty board (owner+reason+expires; cap); remove unjustified"
     - "Gate meta: exemption/skip/appeal rising → tune thresholds or refine shape rules; retire SKIP_*"
+    - "Repo health watch: split god files / cut high-fanout imports / freeze dep growth; re-scan"
     - "Treat derived/speculative Evidence Envelopes as watch/backlog only — attach measured evidence before block"
     - "Hold non-critical model upgrades until watch reasons clear"
   block:
@@ -46,9 +66,11 @@ playbook:
     - "Confirm any envelope_measured_block has measured evidence + limitations; demote fake confirmed"
     - "Clear exemption debt: remove expired/invalid rows or renew with owner+reason+expires under cap"
     - "Gate meta BLOCK: retune physical_merge_gates.yaml / kill SKIP_* habit / process appeals by code"
+    - "Repo health BLOCK: python3 scripts/scan_repo_health.py; pay down god/fanout/deps before merge flood"
     - "Fix harness / review Scope Governor diffs; re-run until checks leave block"
   unavailable:
     - "bash scripts/ops_harness_ready_check.sh (install-seeds best-effort)"
     - "Gold match-only CTA or CLI --match-only --persist; never invent success_rate"
     - "Collect pipeline sample runs so serial/approvals leave unavailable"
     - "Run check_physical_merge_gates.py (persist) so gate_meta leaves unavailable"
+    - "python3 scripts/scan_repo_health.py so repo_health leaves unavailable (never invent green)"

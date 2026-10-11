@@ -561,6 +561,47 @@ def envelope_for_gate_meta_block(
     )
 
 
+def envelope_for_repo_health_block(
+    *,
+    reason: str,
+    py_loc: Optional[int] = None,
+    god_files: Optional[int] = None,
+    multi_base: Optional[int] = None,
+    high_fanout: Optional[int] = None,
+    dep_entries: Optional[int] = None,
+    loc_growth_pct: Optional[float] = None,
+    n_snapshots: int = 0,
+    jsonl_ref: str = "org/repo_health/snapshots.jsonl",
+) -> Dict[str, Any]:
+    """Measured envelope for post-merge repo-health BLOCK (full-tree JSONL + limitations)."""
+    snippet = (
+        f"{reason}; loc={py_loc}; god={god_files}; multi_base={multi_base}; "
+        f"fanout={high_fanout}; deps={dep_entries}; loc_growth_pct={loc_growth_pct}; "
+        f"n_snapshots={n_snapshots}"
+    )[:400]
+    return normalize_envelope(
+        {
+            "status": "blocked",
+            "confidence": "measured",
+            "evidence": [
+                evidence_item(
+                    type="file_line",
+                    ref=str(jsonl_ref or "org/repo_health/snapshots.jsonl")[:500],
+                    snippet=snippet,
+                )
+            ],
+            "limitations": [
+                "metrics from local repo_health JSONL only — not CI fleet aggregate",
+                "absolute thresholds catch boiling-frog bloat; merge gates still own per-PR diffs",
+            ],
+            "next_check": (
+                "run scripts/scan_repo_health.py weekly; split god files / cut fan-out / "
+                "retire unused deps; retune duty_board.yaml bands if false-positive"
+            ),
+        }
+    )
+
+
 def gate_duty_status_with_envelopes(
     status: str,
     envelopes: Sequence[Mapping[str, Any]],
