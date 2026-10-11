@@ -693,6 +693,22 @@ domains:
         type: function
         signature: 'enrich_files_from_workspace(files, root)→Dict'
         module: aiPlat-core/core/harness/meta/testability_gate.py
+      - symbol: validate_envelope
+        type: function
+        signature: 'validate_envelope(raw, demote=True)→EnvelopeValidation'
+        module: aiPlat-core/core/harness/meta/evidence_envelope.py
+      - symbol: attach_envelopes_to_issues
+        type: function
+        signature: 'attach_envelopes_to_issues(issues, run_id)→List[Dict]'
+        module: aiPlat-core/core/harness/meta/evidence_envelope.py
+      - symbol: allow_release_block
+        type: function
+        signature: 'allow_release_block(envelope)→(bool, reason)'
+        module: aiPlat-core/core/harness/meta/evidence_envelope.py
+      - symbol: summarize_envelopes
+        type: function
+        signature: 'summarize_envelopes(issues)→Dict status/confidence counts'
+        module: aiPlat-core/core/harness/meta/evidence_envelope.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"
@@ -4590,6 +4606,34 @@ domains:
         type: "function"
         signature: "evaluate_testability_gate(files, mode, config)→Dict pure-unit testability veto"
         module: "core/api/core_facade.py"
+      - symbol: "validate_evidence_envelope"
+        type: "function"
+        signature: "validate_evidence_envelope(raw, demote=True)→Dict demote fake confirmed"
+        module: "core/api/core_facade.py"
+      - symbol: "attach_evidence_envelopes"
+        type: "function"
+        signature: "attach_evidence_envelopes(issues, run_id)→Dict issues+summary"
+        module: "core/api/core_facade.py"
+      - symbol: "allow_evidence_release_block"
+        type: "function"
+        signature: "allow_evidence_release_block(envelope)→Dict allow+reason"
+        module: "core/api/core_facade.py"
+      - symbol: "validate_envelope"
+        type: "function"
+        signature: "validate_envelope(raw, demote=True)→EnvelopeValidation"
+        module: "core/harness/meta/evidence_envelope.py"
+      - symbol: "attach_envelopes_to_issues"
+        type: "function"
+        signature: "attach_envelopes_to_issues(issues, run_id)→List[Dict]"
+        module: "core/harness/meta/evidence_envelope.py"
+      - symbol: "allow_release_block"
+        type: "function"
+        signature: "allow_release_block(envelope)→(bool, reason)"
+        module: "core/harness/meta/evidence_envelope.py"
+      - symbol: "summarize_envelopes"
+        type: "function"
+        signature: "summarize_envelopes(issues)→Dict"
+        module: "core/harness/meta/evidence_envelope.py"
       - symbol: "evaluate_files"
         type: "function"
         signature: "evaluate_files(files, config, mode_override)→TestabilityReport"

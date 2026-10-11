@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2042
+total_capabilities: 2043
 last_updated: 2026-10-09
 version: "30.9"
 auto_sync: true
@@ -588,6 +588,10 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| summarize_envelopes | `core/harness/meta/evidence_envelope.py` | ✅ | 自动同步 | 已合入 |
+| allow_release_block | `core/harness/meta/evidence_envelope.py` | ✅ | 自动同步 | 已合入 |
+| attach_envelopes_to_issues | `core/harness/meta/evidence_envelope.py` | ✅ | 自动同步 | 已合入 |
+| validate_envelope | `core/harness/meta/evidence_envelope.py` | ✅ | 自动同步 | 已合入 |
 | enrich_files_from_workspace | `core/harness/meta/testability_gate.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_files | `core/harness/meta/testability_gate.py` | ✅ | 自动同步 | 已合入 |
 | TestabilityReport | `core/harness/meta/testability_gate.py` | ✅ | 自动同步 | 已合入 |
@@ -752,6 +756,7 @@ scan_hash: 8f9548ec24f4
 | 治理闭环补齐（Gold 趋势 + 代理配置化） | `summarize_gold_regression.trend*` + `_apps_yaml_platform_routes` + `apps.yaml` `proxy_prefixes` | ✅ | 复用 gold JSONL 出趋势条；FE proxy 从 registry 生成 platform:8003 路由（禁手写 pin 漂移 #226）；生成物不适用（平台横切） | 已合入 |
 | 物理合入闸门 P0（通胀+形态） | `physical_merge_gates.py` + `scripts/check_physical_merge_gates.py` + `workspace_seeds/org/physical_merge_gates.yaml` + contracts-guard / pre-commit | ✅ | 合入时否决器（≠运行时入口校验/PolicyGate）：净增行/文件/新依赖/新类/新目录 + 禁 generic/framework/EventBus/深继承；mode warn→`block_after` 升级；豁免须 reason+expires；生成物不适用（平台横切发布门禁） | 已合入 |
 | 可测性闸门 P1（纯 I/O） | `testability_gate.py` + `done_verify.require_testability` + coding stage defaults + `check_physical_merge_gates` 同跑 | ✅ | handler 须有纯单元测（assert、无 DB/网络/消息队列）；integration-only 不算完成；warn→`block_after`；合入侧磁盘补齐测试；**done_verify 从 `## FILE:` / factory 产物抽文件**（不依赖空 `_written_files`）；生成物适用：已接线（编码 stage done_verify） | 已合入 |
+| Evidence Envelope（诚实结论信封） | `evidence_envelope.py` + `ReviewReport.build_evidence`/`to_dict` + `CoreFacade.validate_evidence_envelope` / `attach_evidence_envelopes` / `allow_evidence_release_block` | ✅ | 每条结论带 status/confidence/evidence/limitations/next_check；**confirmed 必须 measured+非空 evidence**（否则 demote→suspected）；blocked 须 limitations；derived/speculative 不可单独拦发布；autoreview LLM 发现默认 derived；生成物适用：已接线（autoreview 报告） | 已合入 |
 | Governance 任务采纳/干预 KPI | `pages/Governance/index.tsx` ← `GET /core/diagnostics/adoption-metrics` | ✅ | Agent KPI（调用/7日活跃/HITL 通过·驳回/澄清触发）上治理主面；不可用时显式 unavailable，**不展示假成功率**；生成物不适用（平台横切） | 已合入 |
 | event_loop | harness/execution/event_loop.py | ✅ | 自动同步 | 已合入 |
 | quick_engine | harness/execution/engines/quick_engine.py | ✅ | 自动同步 | 已合入 |
@@ -2419,6 +2424,10 @@ scan_hash: 8f9548ec24f4
 ## 十九、运行时干预
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| summarize_envelopes | `core/harness/meta/evidence_envelope.py` | ✅ | 自动同步 | 已合入 |
+| allow_release_block | `core/harness/meta/evidence_envelope.py` | ✅ | 自动同步 | 已合入 |
+| attach_envelopes_to_issues | `core/harness/meta/evidence_envelope.py` | ✅ | 自动同步 | 已合入 |
+| validate_envelope | `core/harness/meta/evidence_envelope.py` | ✅ | 自动同步 | 已合入 |
 | _gold_trend_summary | `core/harness/meta/org_harness_metrics.py` | ✅ | 自动同步 | 已合入 |
 | _gold_trend_points | `core/harness/meta/org_harness_metrics.py` | ✅ | 自动同步 | 已合入 |
 | veto_reason_from_report | `core/harness/meta/testability_gate.py` | ✅ | 自动同步 | 已合入 |
@@ -2957,7 +2966,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 209 | 1 | 210 |
+| Harness 执行引擎 | 210 | 1 | 211 |
 | 记忆子系统 | 58 | 0 | 58 |
 | 知识引擎（本体） | 358 | 9 | 367 |
 | RAG 检索 | 51 | 0 | 51 |
@@ -3002,7 +3011,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2032** | **10** | **2042** |
+| **总计** | **2033** | **10** | **2043** |
 
 | **总计** | **1095** | **0** | **1095** |
 
