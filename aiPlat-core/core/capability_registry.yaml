@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-10-08"
 total_capability_domains: 34
-total_capabilities: 1074
+total_capabilities: 1079
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -761,6 +761,26 @@ domains:
         type: function
         signature: 'fold_findings_for_duty(findings, run_id)→Dict status_hint/envelopes/summary'
         module: aiPlat-core/core/harness/meta/evidence_envelope.py
+      - symbol: gate_meta_dir
+        type: function
+        signature: 'JSONL home — env AIPLAT_GATE_META_DIR overrides AIPLAT_HOME/org/gate_meta.'
+        module: aiPlat-core/core/harness/meta/gate_meta_eval.py
+      - symbol: gate_meta_jsonl_path
+        type: function
+        signature: 'gate_meta_jsonl_path()'
+        module: aiPlat-core/core/harness/meta/gate_meta_eval.py
+      - symbol: append_gate_event
+        type: function
+        signature: 'Append one event. Returns path or None on skip/failure.'
+        module: aiPlat-core/core/harness/meta/gate_meta_eval.py
+      - symbol: list_gate_events
+        type: function
+        signature: 'Read JSONL events (oldest→newest); returns last limit rows.'
+        module: aiPlat-core/core/harness/meta/gate_meta_eval.py
+      - symbol: load_gate_meta_thresholds_from_duty
+        type: function
+        signature: 'Merge duty-board floats into gate-meta defaults (for posture wiring).'
+        module: aiPlat-core/core/harness/meta/gate_meta_eval.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"
