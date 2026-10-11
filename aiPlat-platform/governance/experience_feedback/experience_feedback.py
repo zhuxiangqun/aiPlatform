@@ -49,6 +49,73 @@ STATUS_REJECTED = "rejected"
 
 VALID_RISKS = ("low", "high")
 
+# Map envelope confidence → float for MIN_CONFIDENCE gate
+_ENVELOPE_CONF_FLOAT = {"measured": 1.0, "derived": 0.85, "speculative": 0.5}
+
+
+def _attach_register_envelope(
+    content: str,
+    source: str,
+    *,
+    evidence_envelope: Optional[Dict[str, Any]] = None,
+    evidence: Optional[List[Dict[str, Any]]] = None,
+    limitations: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Force Evidence Envelope on register (via CoreFacade; demote fake confirmed)."""
+    if isinstance(evidence_envelope, dict) and evidence_envelope:
+        issue: Dict[str, Any] = {
+            "description": content,
+            "source": source,
+            "evidence_envelope": evidence_envelope,
+        }
+    else:
+        ev = list(evidence or [])
+        if not ev:
+            ev = [{
+                "type": "log",
+                "ref": f"experience:{source or 'manual'}",
+                "snippet": (content or "")[:200],
+            }]
+        lim = list(limitations or [])
+        if not lim:
+            lim = [
+                "experience_feedback registration; not auto-written to SKILL.md/AGENT.md",
+                "promote only after two independent verifications",
+            ]
+        issue = {
+            "description": content,
+            "source": source,
+            "evidence_envelope": {
+                "status": "suspected",
+                "confidence": "derived",
+                "evidence": ev,
+                "limitations": lim,
+                "next_check": "record_verification with independent case_id ×2 before promote",
+            },
+        }
+    try:
+        from core.api.core_facade import attach_evidence_envelopes
+
+        out = attach_evidence_envelopes([issue], run_id=f"experience:{source or 'manual'}")
+        issues = out.get("issues") or []
+        if issues and isinstance(issues[0], dict):
+            env = issues[0].get("evidence_envelope")
+            if isinstance(env, dict) and env:
+                return env
+    except Exception:
+        pass  # noqa: fall through to local normalize if core unavailable
+    # Offline fallback (tests without full core import): keep derived + evidence
+    raw = issue.get("evidence_envelope") if isinstance(issue.get("evidence_envelope"), dict) else {}
+    return {
+        "status": str(raw.get("status") or "suspected"),
+        "confidence": str(raw.get("confidence") or "derived"),
+        "evidence": list(raw.get("evidence") or []),
+        "limitations": list(raw.get("limitations") or [
+            "experience_feedback registration; offline envelope fallback",
+        ]),
+        "next_check": str(raw.get("next_check") or "record_verification ×2"),
+    }
+
 
 def _publish_promoted_to_team_brain(rec: Dict[str, Any]) -> None:
     """Best-effort: promoted gotcha → Team Brain shared_memory（跨 Agent Auto-Recall）。"""
@@ -124,14 +191,52 @@ class ExperienceStore:
         os.replace(tmp, self.path)
 
     # ── 状态机 ──
-    def register_failure(self, rule_id: str, content: str, source: str = "manual",
-                         confidence: float = 1.0, risk: str = "low") -> Dict[str, Any]:
-        """登记失败经验 → pending。置信度低于门槛拒绝；同 rule_id 已存在则合并证据。"""
+    def register_failure(
+        self,
+        rule_id: str,
+        content: str,
+        source: str = "manual",
+        confidence: float = 1.0,
+        risk: str = "low",
+        *,
+        evidence_envelope: Optional[Dict[str, Any]] = None,
+        evidence: Optional[List[Dict[str, Any]]] = None,
+        limitations: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """登记失败经验 → pending。置信度低于门槛拒绝；同 rule_id 已存在则合并证据。
+
+        Always attaches an Evidence Envelope (CoreFacade demote path). Speculative
+        with empty evidence cannot register (no fake gotchas).
+        """
         if risk not in VALID_RISKS:
             risk = "low"
         if confidence < MIN_CONFIDENCE:
             return {"registered": False, "reason": "confidence_below_threshold",
                     "threshold": MIN_CONFIDENCE, "confidence": confidence}
+
+        env = _attach_register_envelope(
+            content,
+            source,
+            evidence_envelope=evidence_envelope,
+            evidence=evidence,
+            limitations=limitations,
+        )
+        env_conf = str(env.get("confidence") or "speculative")
+        env_float = float(_ENVELOPE_CONF_FLOAT.get(env_conf, 0.5))
+        if env_conf == "speculative" and not env.get("evidence"):
+            return {
+                "registered": False,
+                "reason": "envelope_speculative_no_evidence",
+                "evidence_envelope": env,
+            }
+        if env_float < MIN_CONFIDENCE:
+            return {
+                "registered": False,
+                "reason": "envelope_confidence_below_threshold",
+                "threshold": MIN_CONFIDENCE,
+                "confidence": env_float,
+                "evidence_envelope": env,
+            }
 
         records = self._load()
         existing = next((r for r in records if r.get("rule_id") == rule_id
@@ -144,18 +249,22 @@ class ExperienceStore:
             existing["sources"] = sources
             existing["occurrences"] = existing.get("occurrences", 1) + 1
             existing["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            existing["evidence_envelope"] = env
             self._save(records)
             return {"registered": True, "id": existing["id"], "merged": True,
-                    "occurrences": existing["occurrences"]}
+                    "occurrences": existing["occurrences"],
+                    "evidence_envelope": env}
 
         exp = Experience(rule_id=rule_id, content=content, source=source,
                          confidence=confidence, risk=risk)
         rec = exp.to_dict()
         rec["sources"] = [source]
         rec["occurrences"] = 1
+        rec["evidence_envelope"] = env
         records.append(rec)
         self._save(records)
-        return {"registered": True, "id": rec["id"], "merged": False}
+        return {"registered": True, "id": rec["id"], "merged": False,
+                "evidence_envelope": env}
 
     def record_verification(self, rule_id: str, case_id: str, outcome: str) -> Dict[str, Any]:
         """记录一次独立案例的验证结果。success 累计（同 case 不重复）；fail 重置累计。"""
@@ -248,10 +357,28 @@ class ExperienceStore:
         return records
 
 
-def register_failure(rule_id: str, content: str, source: str = "manual",
-                     confidence: float = 1.0, risk: str = "low",
-                     path: Optional[str] = None) -> Dict[str, Any]:
-    return ExperienceStore(path).register_failure(rule_id, content, source, confidence, risk)
+def register_failure(
+    rule_id: str,
+    content: str,
+    source: str = "manual",
+    confidence: float = 1.0,
+    risk: str = "low",
+    path: Optional[str] = None,
+    *,
+    evidence_envelope: Optional[Dict[str, Any]] = None,
+    evidence: Optional[List[Dict[str, Any]]] = None,
+    limitations: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    return ExperienceStore(path).register_failure(
+        rule_id,
+        content,
+        source,
+        confidence,
+        risk,
+        evidence_envelope=evidence_envelope,
+        evidence=evidence,
+        limitations=limitations,
+    )
 
 
 def record_verification(rule_id: str, case_id: str, outcome: str,

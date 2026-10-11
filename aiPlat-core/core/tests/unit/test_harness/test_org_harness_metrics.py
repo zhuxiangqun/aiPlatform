@@ -157,6 +157,71 @@ def test_duty_board_playbook_and_gold_trend():
     assert "merge_gates" in (board.get("checks") or {})
     assert isinstance(board.get("merge_gates"), dict)
     assert board["merge_gates"].get("exemptions_visible") is True
+    assert "envelope" in (board.get("checks") or {})
+    assert isinstance(board.get("envelope"), dict)
+
+
+def test_duty_board_derived_findings_watch_not_block():
+    """LLM-style findings alone cannot escalate to block."""
+    board = build_duty_board(
+        {
+            "ok": True,
+            "data_available": True,
+            "availability": {"runs": True, "gold": True, "approvals": False},
+            "summary": {
+                "avg_serial_ratio": 0.05,
+                "gold_regressing": False,
+                "p0_miss_rate": 0.0,
+            },
+            "findings": [
+                {
+                    "file": "x.py",
+                    "line": 2,
+                    "description": "possible bug",
+                    "engine": "reasoning",
+                    "evidence_envelope": {
+                        "status": "confirmed",  # fake — must demote
+                        "confidence": "derived",
+                        "evidence": [{"type": "file_line", "ref": "x.py:2"}],
+                        "limitations": ["static review"],
+                    },
+                }
+            ],
+        },
+    )
+    assert board["status"] in ("watch", "go")  # never block from derived
+    assert board["status"] != "block"
+    assert board["checks"]["envelope"] == "watch"
+    assert int((board.get("envelope") or {}).get("release_block_ok") or 0) == 0
+
+
+def test_duty_board_measured_envelope_can_block():
+    board = build_duty_board(
+        {
+            "ok": True,
+            "data_available": True,
+            "availability": {"runs": True, "gold": True, "approvals": False},
+            "summary": {
+                "avg_serial_ratio": 0.05,
+                "gold_regressing": False,
+                "p0_miss_rate": 0.0,
+            },
+            "findings": [
+                {
+                    "description": "measured gate fail",
+                    "evidence_envelope": {
+                        "status": "confirmed",
+                        "confidence": "measured",
+                        "evidence": [{"type": "command", "ref": "arch_guard"}],
+                        "limitations": ["CI scope"],
+                    },
+                }
+            ],
+        },
+    )
+    assert board["status"] == "block"
+    assert board["checks"]["envelope"] == "block"
+    assert any("envelope_measured_block" in r for r in board["reasons"])
 
 
 def test_collect_merge_gates_posture_surfaces_exemptions():

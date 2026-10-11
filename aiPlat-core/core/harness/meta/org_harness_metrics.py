@@ -880,14 +880,31 @@ def build_duty_board(
         if not avail.get("approvals") and not has_adoption:
             status = "unavailable"
 
-    # --- Evidence Envelope: gold BLOCK must allow_release_block (measured+limitations) ---
+    # --- Evidence Envelope: findings fold + gold BLOCK (measured+limitations) ---
     from core.harness.meta.evidence_envelope import (
         envelope_for_gold_block,
+        fold_findings_for_duty,
         gate_duty_status_with_envelopes,
         summarize_envelopes,
     )
 
+    findings_raw = pl.get("findings") if isinstance(pl.get("findings"), list) else []
+    fold = fold_findings_for_duty(
+        findings_raw,
+        run_id=str(pl.get("run_id") or ""),
+    )
+    fold_hint = str(fold.get("status_hint") or "go")
+    if fold_hint == "block":
+        status = "block"
+        reasons.extend(list(fold.get("reasons") or []))
+    elif fold_hint == "watch" and status == "go":
+        status = "watch"
+        reasons.extend(list(fold.get("reasons") or []))
+
     envelopes: List[Dict[str, Any]] = []
+    for env in fold.get("envelopes") or []:
+        if isinstance(env, Mapping):
+            envelopes.append(dict(env))
     if checks.get("gold") == "block":
         gold_reason = next(
             (r for r in reasons if "gold" in r or "p0_miss" in r),
@@ -912,6 +929,8 @@ def build_duty_board(
         checks["envelope"] = "watch"
     elif status == "block" and any(r.get("allow_block") for r in env_rows):
         checks["envelope"] = "block"
+    elif fold_hint == "watch" or (fold.get("issues") and status != "block"):
+        checks["envelope"] = "watch"
     elif envelopes:
         checks["envelope"] = "go"
     else:
@@ -920,8 +939,14 @@ def build_duty_board(
     envelope_summary = summarize_envelopes(
         [{"evidence_envelope": r["envelope"]} for r in env_rows]
     )
+    fold_summary = fold.get("summary") if isinstance(fold.get("summary"), dict) else {}
     envelope_summary["allow_block_count"] = sum(
         1 for r in env_rows if r.get("allow_block")
+    )
+    envelope_summary["release_block_ok"] = int(
+        fold_summary.get("release_block_ok")
+        or envelope_summary["allow_block_count"]
+        or 0
     )
     envelope_summary["block_allowed"] = bool(
         status == "block" and any(r.get("allow_block") for r in env_rows)
@@ -930,6 +955,7 @@ def build_duty_board(
         env_rows[0]["envelope"] if env_rows else None
     )
     envelope_summary["whys"] = [str(r.get("why") or "") for r in env_rows]
+    envelope_summary["findings_folded"] = int(len(fold.get("issues") or []))
 
     label = {
         "go": "GO",
