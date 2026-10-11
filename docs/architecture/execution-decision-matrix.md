@@ -1,8 +1,8 @@
 # 执行决策矩阵（Execution Decision Matrix）
 
 > **状态**：Living Spec（与代码同步；冲突时以代码为准）  
-> **版本**：v1.1 · 2026-10-11  
-> **权威代码锚点**：`schemas_builder.ARCHITECTURE_PROFILES` / `PipelineStageConfig` · `pipeline_engine._run_stage_skill` · `apps/skills/registry.Skill.execute` · `execution_type_policy.coerce_execution_type` · `agent_types.yaml` · `agent_engineering/SKILL.md`  
+> **版本**：v1.2 · 2026-10-11  
+> **权威代码锚点**：`schemas_builder.ARCHITECTURE_PROFILES` / `PipelineStageConfig` · `pipeline_engine._run_stage_skill` · `apps/skills/registry.Skill.execute` · `execution_type_policy.coerce_execution_type` · `decision_trace.build_execution_decision` · `agent_types.yaml` · `agent_engineering/SKILL.md`  
 > **相关文档**（互补，不替代本文）：  
 > - [capability-profile.md](capability-profile.md) — 能力等级注入表  
 > - [execution-quality-gates.md](execution-quality-gates.md) — **产物质量**门禁（做完后如何验收），非「选哪条执行路径」  
@@ -23,6 +23,7 @@
 | 显式 profile 会被降级吗？ | **不会**（`_apply_capability_profile` 见 architecture_profile 则跳过 demote；随后再 `apply_architecture_profile`） |
 | handler + Stage `backend=llm`？ | **先 handler**（`_run_stage_skill` §1.5），不绕过到 `sys_llm_generate` |
 | 未知 `execution_type`？ | 生产 / `AIPLAT_EXECUTION_TYPE_FAIL_CLOSED` → **硬失败**；开发默认 WARNING→prompt |
+| stage 跑完如何追溯路径？ | `state["_execution_decision"]` + `decision_trace.execution`（profile/backend/execution_type/`path`∈handler\|agent\|llm） |
 
 ---
 
@@ -128,6 +129,18 @@ sys_skill_call
 ### 2.4 一句话规则
 
 > **判定是否「可写成确定性规则 / 可复现 / 可审计」——能 → 程序；需要语义理解、开放生成、多跳探索 → LLM；两者都要 → hybrid 或 agent 循环（LLM 决策 + 程序执行）。**
+
+### 2.6 决策路径卡（E3 · 已接线）
+
+Stage 走完 handler / agent / llm 任一分支后，引擎写统一路径卡（配置字段标签，无业务 agent/artifact 名）：
+
+| 落点 | 字段 |
+|------|------|
+| `state["_execution_decision"]` | `architecture_profile` / `execution_backend` / `agent_type` / `capability_profile` / `execution_type` / `path` / `upgrade_policy` / `inferred_from` |
+| `state["_progress"].execution_decision` | 同上（前端进度可见） |
+| `decision_trace` → `decisions[*].execution` | 同上，按 `project_id` 聚合 |
+
+`path` ∈ `handler` \| `agent` \| `llm`。证据：`build_execution_decision` · `PipelineEngine._emit_execution_decision` · `test_execution_decision_e3.py`。
 
 ---
 
@@ -384,7 +397,6 @@ PipelineStageConfig（capability_profile 常为 auto → 推断）
 |----|------|------------------|
 | E1 | 工厂生成可选写出 `architecture_profile` | conformance 白名单 + agent_engineering Step 更新 |
 | E2 | 生成物支持 `execution_type: handler` 的代码 stage | 工厂增加编码 stage 产 handler.py |
-| E3 | 统一「决策追踪」字段进 trace | stage 事件带 `decision={profile,backend,execution_type}` |
 | E4 | Semgrep/静态规则辅助选路径 | CI 对「prompt Skill 宣称写文件」告警 |
 
 变更 E* → 实装后移入正文对应节，并删演进槽行。
@@ -395,5 +407,6 @@ PipelineStageConfig（capability_profile 常为 auto → 推断）
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
+| v1.2 | 2026-10-11 | **E3 闭环**：`build_execution_decision` + `_emit_execution_decision`；handler/agent/llm 三路径写 `state["_execution_decision"]` 与 `decision_trace.execution`；`_capability_profile` 入 state |
 | v1.1 | 2026-10-11 | 闭环：优先级链（显式 profile 不 demote）+ Stage×Skill 组合矩阵 + 未知 execution_type 生产硬失败 + 一页纸摘要；`execution_type_policy` + 漂移单测 |
 | v1.0 | 2026-10-11 | 首版：统一 LLM/程序、阶梯、三层 Agent 架构、工厂三选一与运行时路径；纠正 agent-system 过时 backend 说法 |

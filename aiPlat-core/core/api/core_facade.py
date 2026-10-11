@@ -5888,7 +5888,15 @@ from core.harness.execution.pipeline_run_store import get_pipeline_run_store  # 
 from core.harness.training.rl_trainer import get_rl_trainer  # noqa: boundary
 from core.harness.knowledge.seci_engine import get_seci_engine, hook_registered  # noqa: boundary
 from core.harness.execution.trace_visualizer import get_trace_visualizer  # noqa: boundary
-from core.harness.execution.decision_trace import record_decision, locate_max_error_node, trace_root_cause_chain, build_fix_plan, get_trace, clear_trace  # noqa: boundary
+from core.harness.execution.decision_trace import (  # noqa: boundary
+    record_decision,
+    locate_max_error_node,
+    trace_root_cause_chain,
+    build_fix_plan,
+    get_trace,
+    clear_trace,
+    build_execution_decision,
+)
 from core.harness.execution.factory_fix_plan import (  # noqa: boundary
     derive_failed_stages_from_report,
     plan_fix_from_report,

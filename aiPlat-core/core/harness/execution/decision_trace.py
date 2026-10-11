@@ -58,6 +58,44 @@ def _save(run_id: str, data: Dict[str, Any]) -> None:
             pass
 
 
+def build_execution_decision(
+    *,
+    architecture_profile: str = "",
+    execution_backend: str = "",
+    agent_type: str = "",
+    capability_profile: str = "",
+    execution_type: str = "",
+    path: str = "",
+    upgrade_policy: str = "",
+    inferred_from: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Compact path card for stage events / decision_traces (matrix E3).
+
+    Fields are config-driven labels only — no business agent/artifact names.
+    ``path`` is the resolved runtime branch: ``handler`` | ``agent`` | ``llm``.
+    """
+    profile = str(architecture_profile or "").strip().lower()
+    backend = str(execution_backend or "").strip().lower()
+    et = str(execution_type or "").strip().lower()
+    if inferred_from is None:
+        if profile:
+            inferred_from = "architecture_profile"
+        elif backend and backend != "llm":
+            inferred_from = "execution_backend"
+        else:
+            inferred_from = "schema_default"
+    return {
+        "architecture_profile": profile,
+        "execution_backend": backend or "llm",
+        "agent_type": str(agent_type or "").strip().lower(),
+        "capability_profile": str(capability_profile or "").strip().lower(),
+        "execution_type": et,
+        "path": str(path or "").strip().lower(),
+        "upgrade_policy": str(upgrade_policy or "").strip().lower(),
+        "inferred_from": str(inferred_from or "").strip(),
+    }
+
+
 def record_decision(
     run_id: str,
     stage_id: str,
@@ -65,6 +103,7 @@ def record_decision(
     confidence: Optional[float] = None,
     error_contribution: Optional[float] = None,
     agent_id: Optional[str] = None,
+    execution: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Record one stage decision into the trace graph.
 
@@ -74,12 +113,13 @@ def record_decision(
     when omitted. ``error_contribution`` is populated later by
     :func:`locate_max_error_node`. ``agent_id`` is recorded so that callers
     can resolve failures by agent_id (the id the fix flow knows) in addition
-    to stage_id.
+    to stage_id. ``execution`` (optional) is the E3 path card from
+    :func:`build_execution_decision`.
     """
     data = _load(run_id)
     decision_id = f"{run_id}_{stage_id}"
     upstream = [f"{run_id}_{sid}" for sid in (depends_on or [])]
-    record = {
+    record: Dict[str, Any] = {
         "run_id": run_id,
         "stage_id": stage_id,
         "agent_id": agent_id or "",
@@ -88,6 +128,8 @@ def record_decision(
         "confidence": confidence if confidence is not None else _DEFAULT_CONFIDENCE,
         "error_contribution": error_contribution,
     }
+    if isinstance(execution, dict) and execution:
+        record["execution"] = dict(execution)
     data["decisions"][decision_id] = record
     _save(run_id, data)
     return record

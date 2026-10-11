@@ -26,6 +26,7 @@ domains:
       - symbol: cost_for
       - symbol: CostBudgetController
       - symbol: record_decision
+      - symbol: build_execution_decision
       - symbol: mark_failed
       - symbol: locate_max_error_node
       - symbol: trace_root_cause_chain
@@ -92,6 +93,9 @@ domains:
         module: aiPlat-core/core/harness/execution/decision_trace.py
         type: function
         signature: 'Record one stage decision into the trace graph.'
+        module: aiPlat-core/core/harness/execution/decision_trace.py
+        type: function
+        signature: 'Compact path card (profile/backend/execution_type/path) for stage events / decision_traces (matrix E3).'
         module: aiPlat-core/core/harness/execution/decision_trace.py
         type: class
         signature: 'Per-run budget enforcer. Cost calc reuses the existing CostTracker pricing.'
