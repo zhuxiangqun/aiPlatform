@@ -418,10 +418,15 @@ class PipelineStageMixin:
         if profile in ("minimal", "standard"):
             if getattr(stage, 'execution_backend', 'llm') == "agent":
                 if not tools and not skills:
-                    # architecture_profile (plan_execute/react_tools/…) is an explicit
-                    # agent-loop request — do not silently downgrade to oneshot LLM.
-                    if not str(getattr(stage, "architecture_profile", "") or "").strip():
-                        stage.execution_backend = "llm"
+                    # Explicit pin wins (matrix §3): architecture_profile OR
+                    # execution_backend=agent (schema default is llm → agent means pinned).
+                    # Only inferred backends may demote; bare agent is never inferred here.
+                    _arch = str(getattr(stage, "architecture_profile", "") or "").strip()
+                    if _arch:
+                        state["_capability_demote_skipped"] = "architecture_profile"
+                    else:
+                        state["_capability_demote_skipped"] = "explicit_execution_backend"
+                    # Do not demote agent → llm.
 
         # ── v5.0: Runtime profile calibration ──
         _cal = await self._calibrate_profile_from_history(stage, state)

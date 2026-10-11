@@ -12,6 +12,8 @@ _agent_type_effective|OK|architecture_profile effective agent_type (B1)
 _approval_request_id|OK|engine-internal
 _architecture_profile|OK|architecture_profile telemetry (B1)
 _capability_profile|OK|engine-internal (capability profile applied to stage; E3 path card)
+_capability_demote_skipped|OK|engine-internal (why capability did not demote agent→llm)
+_capability_downgrade_reason|OK|engine-internal (why capability demoted agent→llm; reserved)
 _auto_approve|OK|engine-internal
 _auto_retry_count|OK|engine-internal
 _baseline_test_report|OK|engine-internal

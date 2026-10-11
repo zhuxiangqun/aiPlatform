@@ -72,7 +72,8 @@ async def test_capability_demote_skips_when_architecture_profile_set():
 
 
 @pytest.mark.asyncio
-async def test_capability_demote_without_architecture_profile():
+async def test_capability_demote_skips_explicit_execution_backend():
+    """Bare execution_backend=agent (schema default is llm) must not demote."""
     from core.harness.execution.pipeline_stage import PipelineStageMixin
 
     stage = PipelineStageConfig(
@@ -84,8 +85,10 @@ async def test_capability_demote_without_architecture_profile():
         architecture_profile="",
     )
     mixin = PipelineStageMixin.__new__(PipelineStageMixin)
-    await mixin._apply_capability_profile(stage, {})
-    assert stage.execution_backend == "llm"
+    state: dict = {}
+    await mixin._apply_capability_profile(stage, state)
+    assert stage.execution_backend == "agent"
+    assert state.get("_capability_demote_skipped") == "explicit_execution_backend"
 
 
 def test_decision_matrix_lists_architecture_profiles():
