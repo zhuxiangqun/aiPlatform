@@ -187,9 +187,15 @@ def allow_release_block(envelope: Mapping[str, Any]) -> Tuple[bool, str]:
     """
     v = validate_envelope(envelope, demote=True)
     env = v.envelope
-    if env.get("status") == "blocked" and env.get("limitations") and env.get("confidence") == "measured":
+    if not env.get("limitations"):
+        return False, "block_requires_limitations"
+    if env.get("status") == "blocked" and env.get("confidence") == "measured":
         return True, "blocked_measured"
-    if env.get("status") == "confirmed" and env.get("confidence") == "measured" and env.get("evidence"):
+    if (
+        env.get("status") == "confirmed"
+        and env.get("confidence") == "measured"
+        and env.get("evidence")
+    ):
         return True, "confirmed_measured"
     if env.get("confidence") == "derived":
         return False, "derived_watch_only"
@@ -377,3 +383,50 @@ def gate_duty_status_with_envelopes(
             st = "watch"
             extras.append("block_demoted_no_envelope_allow_release_block")
     return st, extras, rows
+
+
+def fold_findings_for_duty(
+    findings: Sequence[Any],
+    *,
+    run_id: str = "",
+) -> Dict[str, Any]:
+    """Attach/validate envelopes on finding dicts; return duty-board fold posture.
+
+    - measured + allow_release_block → status_hint=block (+ envelope_measured_block)
+    - any other findings → watch at most (derived/speculative never sole-block)
+    """
+    issues: List[Dict[str, Any]] = []
+    for raw in findings or []:
+        if isinstance(raw, Mapping):
+            issues.append(dict(raw))
+    attached = attach_envelopes_to_issues(issues, run_id=run_id or "")
+    summary = summarize_envelopes(attached)
+    envelopes: List[Dict[str, Any]] = []
+    reasons: List[str] = []
+    release_ok = 0
+    for issue in attached:
+        env = issue.get("evidence_envelope")
+        if not isinstance(env, Mapping):
+            continue
+        envelopes.append(dict(env))
+        ok, why = allow_release_block(env)
+        if ok:
+            release_ok += 1
+            reasons.append(f"envelope_measured_block:{why}")
+    summary["release_block_ok"] = release_ok
+    summary["allow_block_count"] = release_ok
+    if release_ok > 0:
+        status_hint = "block"
+    elif attached:
+        status_hint = "watch"
+        if not reasons:
+            reasons.append("envelope_derived_or_speculative_watch_only")
+    else:
+        status_hint = "go"
+    return {
+        "status_hint": status_hint,
+        "reasons": reasons,
+        "issues": attached,
+        "summary": summary,
+        "envelopes": envelopes,
+    }

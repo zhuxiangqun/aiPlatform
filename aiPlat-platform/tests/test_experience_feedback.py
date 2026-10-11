@@ -38,6 +38,31 @@ def test_register_creates_pending(store):
     assert len(recs) == 1
     assert recs[0]["status"] == "pending"
     assert recs[0]["verify_count"] == 0
+    env = recs[0].get("evidence_envelope") or r.get("evidence_envelope")
+    assert isinstance(env, dict)
+    assert env.get("confidence") in ("derived", "measured")
+    assert env.get("evidence")
+    assert env.get("limitations")
+
+
+def test_register_rejects_speculative_empty_envelope(store):
+    r = store.register_failure(
+        "guess-only",
+        "纯猜测无证据",
+        confidence=0.9,
+        evidence_envelope={
+            "status": "confirmed",
+            "confidence": "speculative",
+            "evidence": [],
+            "limitations": [],
+        },
+    )
+    assert r["registered"] is False
+    assert r["reason"] in (
+        "envelope_speculative_no_evidence",
+        "envelope_confidence_below_threshold",
+    )
+    assert store.status() == []
 
 
 def test_register_below_confidence_rejected(store):

@@ -5307,6 +5307,17 @@ def allow_evidence_release_block(
     return {"allow": bool(ok), "reason": reason}
 
 
+def fold_findings_for_duty(
+    findings: Optional[list] = None,
+    *,
+    run_id: str = "",
+) -> Dict[str, Any]:
+    """Duty-board fold: attach envelopes; derived/speculative → watch, not sole block."""
+    from core.harness.meta.evidence_envelope import fold_findings_for_duty as _fold
+
+    return dict(_fold(findings or [], run_id=run_id or ""))
+
+
 def publish_team_brain_manual(
     title: str,
     summary: str,

@@ -737,6 +737,10 @@ domains:
         type: function
         signature: 'gate_duty_status_with_envelopes(status, envelopes)→(status, extras, rows)'
         module: aiPlat-core/core/harness/meta/evidence_envelope.py
+      - symbol: fold_findings_for_duty
+        type: function
+        signature: 'fold_findings_for_duty(findings, run_id)→Dict status_hint/envelopes/summary'
+        module: aiPlat-core/core/harness/meta/evidence_envelope.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"
@@ -4670,6 +4674,14 @@ domains:
         type: "function"
         signature: "gate_duty_status_with_envelopes(status, envelopes)→(status, extras, rows)"
         module: "core/harness/meta/evidence_envelope.py"
+      - symbol: "fold_findings_for_duty"
+        type: "function"
+        signature: "fold_findings_for_duty(findings, run_id)→Dict status_hint/envelopes/summary"
+        module: "core/harness/meta/evidence_envelope.py"
+      - symbol: "fold_findings_for_duty"
+        type: "function"
+        signature: "fold_findings_for_duty(findings, run_id)→Dict CoreFacade duty fold"
+        module: "core/api/core_facade.py"
       - symbol: "evaluate_files"
         type: "function"
         signature: "evaluate_files(files, config, mode_override)→TestabilityReport"
