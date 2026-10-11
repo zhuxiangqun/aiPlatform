@@ -749,6 +749,10 @@ domains:
         type: function
         signature: 'envelope_for_exemption_debt_block(reason, expired_count=0, …)→Dict measured blocked envelope'
         module: aiPlat-core/core/harness/meta/evidence_envelope.py
+      - symbol: envelope_for_gate_meta_block
+        type: function
+        signature: 'envelope_for_gate_meta_block(reason, exemption_rate=None, …)→Dict measured blocked envelope'
+        module: aiPlat-core/core/harness/meta/evidence_envelope.py
       - symbol: gate_duty_status_with_envelopes
         type: function
         signature: 'gate_duty_status_with_envelopes(status, envelopes)→(status, extras, rows)'
@@ -4612,8 +4616,28 @@ domains:
         module: "core/harness/meta/org_harness_metrics.py"
       - symbol: "collect_merge_gates_posture"
         type: "function"
-        signature: "collect_merge_gates_posture()→Dict physical/testability mode+block_after+exemption_debt (visible)"
+        signature: "collect_merge_gates_posture()→Dict physical/testability mode+block_after+exemption_debt+gate_meta (visible)"
         module: "core/harness/meta/org_harness_metrics.py"
+      - symbol: "assess_gate_meta"
+        type: "function"
+        signature: "assess_gate_meta(events=None, thresholds=None, now_ts=None)→Dict rates severity go|watch|block|unavailable"
+        module: "core/harness/meta/gate_meta_eval.py"
+      - symbol: "record_gate_run"
+        type: "function"
+        signature: "record_gate_run(physical, testability, exit_blocked, …)→Optional[str] JSONL path"
+        module: "core/harness/meta/gate_meta_eval.py"
+      - symbol: "record_gate_skip"
+        type: "function"
+        signature: "record_gate_skip(env, gate, source, note)→Optional[str] JSONL path"
+        module: "core/harness/meta/gate_meta_eval.py"
+      - symbol: "record_gate_appeal"
+        type: "function"
+        signature: "record_gate_appeal(code, owner, note, gate, source)→Optional[str] JSONL path"
+        module: "core/harness/meta/gate_meta_eval.py"
+      - symbol: "summarize_gate_meta"
+        type: "function"
+        signature: "summarize_gate_meta(events, window_days, min_runs, …)→Dict rates+severity"
+        module: "core/harness/meta/gate_meta_eval.py"
       - symbol: "assess_exemption_debt"
         type: "function"
         signature: "assess_exemption_debt(config, now=None)→Dict owner/cap/expired ledger severity go|watch|block"
@@ -4661,6 +4685,22 @@ domains:
       - symbol: "assess_exemption_debt"
         type: "function"
         signature: "assess_exemption_debt(config=None, now=None)→Dict CoreFacade exemption debt ledger"
+        module: "core/api/core_facade.py"
+      - symbol: "assess_gate_meta"
+        type: "function"
+        signature: "assess_gate_meta(thresholds=None)→Dict CoreFacade gate meta rates"
+        module: "core/api/core_facade.py"
+      - symbol: "record_gate_run"
+        type: "function"
+        signature: "record_gate_run(physical, testability, exit_blocked, …)→Optional[str] CoreFacade run ledger"
+        module: "core/api/core_facade.py"
+      - symbol: "record_gate_skip"
+        type: "function"
+        signature: "record_gate_skip(env, gate, source, note)→Optional[str] CoreFacade SKIP ledger"
+        module: "core/api/core_facade.py"
+      - symbol: "record_gate_appeal"
+        type: "function"
+        signature: "record_gate_appeal(code, owner, note, gate, source)→Optional[str] CoreFacade appeal ledger"
         module: "core/api/core_facade.py"
       - symbol: "evaluate_testability_gate"
         type: "function"

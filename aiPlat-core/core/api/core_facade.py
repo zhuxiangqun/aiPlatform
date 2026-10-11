@@ -5216,6 +5216,63 @@ def assess_exemption_debt(
     return _assess(cfg, now=now)
 
 
+def assess_gate_meta(
+    *,
+    thresholds: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """门禁元评估：窗口内 block/豁免/SKIP/申诉率 → go|watch|block（不发明低样本率）。"""
+    from core.harness.meta.gate_meta_eval import assess_gate_meta as _assess
+
+    return _assess(thresholds=thresholds)
+
+
+def record_gate_run(
+    *,
+    physical: Optional[Dict[str, Any]] = None,
+    testability: Optional[Dict[str, Any]] = None,
+    exit_blocked: bool = False,
+    source: str = "check",
+    staged: bool = False,
+) -> Optional[str]:
+    """记录一次合入闸门检查结果（gate_meta JSONL；AIPLAT_GATE_META_PERSIST=0 可关）。"""
+    from core.harness.meta.gate_meta_eval import record_gate_run as _rec
+
+    return _rec(
+        physical=physical,
+        testability=testability,
+        exit_blocked=exit_blocked,
+        source=source,
+        staged=staged,
+    )
+
+
+def record_gate_skip(
+    *,
+    env: str = "SKIP_PHYSICAL_GATES",
+    gate: str = "physical",
+    source: str = "api",
+    note: str = "",
+) -> Optional[str]:
+    """记录 SKIP_* 绕过（值班板 skip_rate；禁止静默）。"""
+    from core.harness.meta.gate_meta_eval import record_gate_skip as _rec
+
+    return _rec(env=env, gate=gate, source=source, note=note)
+
+
+def record_gate_appeal(
+    *,
+    code: str,
+    owner: str,
+    note: str = "",
+    gate: str = "physical",
+    source: str = "api",
+) -> Optional[str]:
+    """记录误杀/假阳性申诉（值班板 appeal_rate → 调参）。"""
+    from core.harness.meta.gate_meta_eval import record_gate_appeal as _rec
+
+    return _rec(code=code, owner=owner, note=note, gate=gate, source=source)
+
+
 def load_adoption_snapshot() -> Dict[str, Any]:
     """Duty board HITL/Howl snapshot（缺失则为空；不发明成功率）。"""
     from core.harness.meta.org_harness_metrics import load_adoption_snapshot as _snap
