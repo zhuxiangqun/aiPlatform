@@ -35,6 +35,23 @@ _DEFAULT_DUTY_THRESHOLDS: Dict[str, float] = {
     "gate_appeal_rate_watch": 0.10,
     "gate_appeal_rate_block": 0.25,
     "gate_block_rate_watch": 0.50,
+    # Post-merge / weekly repo health (org/repo_health JSONL)
+    "repo_health_min_snapshots": 1.0,
+    "repo_health_god_loc": 800.0,
+    "repo_health_god_files_watch": 15.0,
+    "repo_health_god_files_block": 40.0,
+    "repo_health_multi_base_watch": 40.0,
+    "repo_health_multi_base_block": 120.0,
+    "repo_health_high_fanout_imports": 25.0,
+    "repo_health_high_fanout_watch": 30.0,
+    "repo_health_high_fanout_block": 80.0,
+    "repo_health_dep_entries_watch": 180.0,
+    "repo_health_dep_entries_block": 320.0,
+    "repo_health_loc_growth_pct_watch": 8.0,
+    "repo_health_loc_growth_pct_block": 20.0,
+    "repo_health_dep_delta_watch": 8.0,
+    "repo_health_dep_delta_block": 25.0,
+    "repo_health_max_files": 8000.0,
 }
 
 # Event types that open / close a serial human wait (pipeline_run_events)
@@ -642,6 +659,25 @@ def collect_merge_gates_posture() -> Dict[str, Any]:
         logger.debug("gate_meta posture skipped: %s", e, exc_info=True)
 
     meta_sev = str(gate_meta.get("severity") or "unavailable")
+
+    # Post-merge repo health (full-tree boiling frog — JSONL snapshots)
+    repo_health: Dict[str, Any] = {
+        "status": "unavailable",
+        "severity": "unavailable",
+        "n_snapshots": 0,
+        "latest": None,
+        "deltas": {},
+        "reasons": ["repo_health not loaded"],
+    }
+    try:
+        from core.harness.meta.repo_health_scan import assess_repo_health
+
+        thr_map, _ = load_duty_board_thresholds()
+        repo_health = assess_repo_health(thresholds=thr_map)
+    except Exception as e:
+        logger.debug("repo_health posture skipped: %s", e, exc_info=True)
+
+    health_sev = str(repo_health.get("severity") or "unavailable")
     return {
         "physical": physical,
         "testability": testability,
@@ -651,6 +687,8 @@ def collect_merge_gates_posture() -> Dict[str, Any]:
         "debt_severity": str(debt.get("severity") or "unavailable"),
         "gate_meta": gate_meta,
         "meta_severity": meta_sev,
+        "repo_health": repo_health,
+        "health_severity": health_sev,
     }
 
 
@@ -768,6 +806,7 @@ def build_duty_board(
                 "hitl": "unavailable",
                 "howl": "unavailable",
                 "merge_gates": "unavailable",
+                "repo_health": "unavailable",
                 "envelope": "unavailable",
             },
             "thresholds": thr,
@@ -798,6 +837,7 @@ def build_duty_board(
         "hitl": "unavailable",
         "howl": "unavailable",
         "merge_gates": "go",
+        "repo_health": "unavailable",
     }
 
     # --- gold ---
@@ -958,6 +998,37 @@ def build_duty_board(
                     status = "watch"
                     checks["merge_gates"] = "watch"
 
+    # --- post-merge repo health (boiling frog; never invent green) ---
+    repo_health = (
+        merge_gates.get("repo_health")
+        if isinstance(merge_gates.get("repo_health"), dict)
+        else {}
+    )
+    health_sev = str(
+        merge_gates.get("health_severity") or repo_health.get("severity") or ""
+    ).strip().lower()
+    if health_sev == "block":
+        checks["repo_health"] = "block"
+        for r in (repo_health.get("reasons") or [])[:4]:
+            reasons.append(str(r))
+        if not repo_health.get("reasons"):
+            reasons.append("repo_health_block")
+        status = "block"
+    elif health_sev == "watch":
+        checks["repo_health"] = "watch"
+        for r in (repo_health.get("reasons") or [])[:3]:
+            reasons.append(str(r))
+        if status == "go":
+            status = "watch"
+    elif health_sev == "go":
+        checks["repo_health"] = "go"
+    else:
+        checks["repo_health"] = "unavailable"
+        if any("repo_health" in str(r) for r in (repo_health.get("reasons") or [])):
+            reasons.append(str((repo_health.get("reasons") or ["repo_health unavailable"])[0]))
+        else:
+            reasons.append("repo_health unavailable (no snapshots)")
+
     if status == "go" and checks["gold"] == "unavailable" and not avail.get("runs"):
         # Only gold missing with no runs → still unavailable for release habit
         if not avail.get("approvals") and not has_adoption:
@@ -968,6 +1039,7 @@ def build_duty_board(
         envelope_for_exemption_debt_block,
         envelope_for_gate_meta_block,
         envelope_for_gold_block,
+        envelope_for_repo_health_block,
         fold_findings_for_duty,
         gate_duty_status_with_envelopes,
         summarize_envelopes,
@@ -1039,6 +1111,26 @@ def build_duty_board(
                 n_appeals=int(gate_meta.get("n_appeals") or 0),
                 window_days=float(gate_meta.get("window_days") or 30),
                 jsonl_ref=str(gate_meta.get("jsonl") or "org/gate_meta/runs.jsonl"),
+            )
+        )
+    if health_sev == "block":
+        health_reason = next(
+            (r for r in reasons if "repo_health" in r),
+            "repo_health_block",
+        )
+        latest_h = repo_health.get("latest") if isinstance(repo_health.get("latest"), dict) else {}
+        deltas_h = repo_health.get("deltas") if isinstance(repo_health.get("deltas"), dict) else {}
+        envelopes.append(
+            envelope_for_repo_health_block(
+                reason=str(health_reason),
+                py_loc=latest_h.get("py_loc"),
+                god_files=latest_h.get("god_files"),
+                multi_base=latest_h.get("multi_base_classes"),
+                high_fanout=latest_h.get("high_fanout_files"),
+                dep_entries=latest_h.get("dep_entries"),
+                loc_growth_pct=deltas_h.get("loc_growth_pct"),
+                n_snapshots=int(repo_health.get("n_snapshots") or 0),
+                jsonl_ref=str(repo_health.get("jsonl") or "org/repo_health/snapshots.jsonl"),
             )
         )
 

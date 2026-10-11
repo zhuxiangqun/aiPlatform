@@ -209,6 +209,8 @@ def test_duty_board_gate_meta_block(monkeypatch: pytest.MonkeyPatch):
                 "jsonl": "org/gate_meta/runs.jsonl",
                 "reasons": ["exemption_rate=0.5>=0.35"],
             },
+            "health_severity": "go",
+            "repo_health": {"severity": "go", "reasons": ["repo_health within band"]},
         },
     )
     board = build_duty_board(
