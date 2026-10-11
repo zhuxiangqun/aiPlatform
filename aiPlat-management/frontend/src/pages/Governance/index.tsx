@@ -78,6 +78,22 @@ interface DutyBoard {
     active_exemption_count?: number;
     exemptions_visible?: boolean;
   } | null;
+  /** Evidence Envelope summary — block only when allow_release_block */
+  envelope?: {
+    issue_count?: number;
+    allow_block_count?: number;
+    block_allowed?: boolean;
+    by_status?: Record<string, number>;
+    by_confidence?: Record<string, number>;
+    primary?: {
+      status?: string;
+      confidence?: string;
+      limitations?: string[];
+      next_check?: string;
+      evidence?: Array<{ type?: string; ref?: string; snippet?: string }>;
+    } | null;
+    whys?: string[];
+  } | null;
 }
 
 /** Org harness dark ledger — HITL / approvals + gold P/R / P0 miss */
@@ -365,6 +381,7 @@ export default function GovernanceDashboard() {
               {' · '}hitl={checkOrUnavailable('hitl')}
               {' · '}howl={checkOrUnavailable('howl')}
               {' · '}gates={checkOrUnavailable('merge_gates')}
+              {' · '}env={checkOrUnavailable('envelope')}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -438,6 +455,31 @@ export default function GovernanceDashboard() {
                   · {ex.id || '?'} exp={ex.expires || '—'} {ex.reason || ''}
                 </div>
               ))}
+            </div>
+          );
+        })()}
+        {(() => {
+          const env = duty.envelope;
+          const primary = env?.primary;
+          if (!env || (!primary && !(env.issue_count))) return null;
+          const st = String(primary?.status || '—');
+          const cf = String(primary?.confidence || '—');
+          const allow = !!env.block_allowed;
+          const allowColor = allow ? '#a44' : '#888';
+          const lim = (primary?.limitations || []).slice(0, 2);
+          return (
+            <div style={{ marginTop: 8, fontSize: 11, color: '#aaa' }}>
+              证据信封 status={st} · confidence={cf} ·{' '}
+              <span style={{ color: allowColor, fontWeight: allow ? 600 : 400 }}>
+                allow_block={allow ? 'y' : 'n'}
+              </span>
+              {env.whys?.[0] ? ` (${env.whys[0]})` : ''}
+              {lim.map((l, i) => (
+                <div key={i} style={{ marginLeft: 8, color: '#775' }}>· lim: {l}</div>
+              ))}
+              {primary?.next_check ? (
+                <div style={{ marginLeft: 8, color: '#556' }}>→ {primary.next_check}</div>
+              ) : null}
             </div>
           );
         })()}

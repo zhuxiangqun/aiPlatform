@@ -310,3 +310,70 @@ def summarize_envelopes(issues: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
         "confirmed_count": int(by_status.get("confirmed") or 0),
         "suspected_count": int(by_status.get("suspected") or 0),
     }
+
+
+def envelope_for_gold_block(
+    *,
+    reason: str,
+    p0_miss_rate: Any = None,
+    regressing: bool = False,
+    written_at: str = "",
+    report_ref: str = "code_review_gold_reports",
+) -> Dict[str, Any]:
+    """Measured envelope for duty-board gold BLOCK (JSONL evidence + limitations)."""
+    snippet = (
+        f"{reason}; p0_miss_rate={p0_miss_rate}; regressing={regressing}"
+        f"{('; @' + written_at) if written_at else ''}"
+    )[:400]
+    return normalize_envelope(
+        {
+            "status": "blocked",
+            "confidence": "measured",
+            "evidence": [
+                evidence_item(
+                    type="jsonl",
+                    ref=str(report_ref or "code_review_gold_reports")[:500],
+                    snippet=snippet,
+                )
+            ],
+            "limitations": [
+                "gold eval JSONL only (match-only or live); not full SAST/security audit",
+                "thresholds from duty_board.yaml; thin gold sets may under-report misses",
+            ],
+            "next_check": (
+                "run Gold match-only --persist; re-check p0_miss_rate and trend_summary"
+            ),
+        }
+    )
+
+
+def gate_duty_status_with_envelopes(
+    status: str,
+    envelopes: Sequence[Mapping[str, Any]],
+) -> Tuple[str, List[str], List[Dict[str, Any]]]:
+    """Enforce envelope release rules on duty status.
+
+    - block requires ≥1 envelope with allow_release_block=True
+    - otherwise demote block → watch (derived/speculative cannot sole-block)
+    Returns (status, extra_reasons, rows[{envelope, allow_block, why}]).
+    """
+    rows: List[Dict[str, Any]] = []
+    for raw in envelopes:
+        if not isinstance(raw, Mapping):
+            continue
+        ok, why = allow_release_block(raw)
+        v = validate_envelope(raw, demote=True)
+        rows.append(
+            {
+                "envelope": v.envelope,
+                "allow_block": bool(ok),
+                "why": why,
+            }
+        )
+    extras: List[str] = []
+    st = str(status or "unavailable")
+    if st == "block":
+        if not any(r.get("allow_block") for r in rows):
+            st = "watch"
+            extras.append("block_demoted_no_envelope_allow_release_block")
+    return st, extras, rows

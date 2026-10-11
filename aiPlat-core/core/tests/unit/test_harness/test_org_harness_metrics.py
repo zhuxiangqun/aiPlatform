@@ -309,6 +309,41 @@ def test_duty_board_block_on_gold_regressing():
     })
     assert board["status"] == "block"
     assert board["checks"]["gold"] == "block"
+    # Evidence Envelope: gold BLOCK must allow_release_block
+    env = board.get("envelope") or {}
+    assert env.get("block_allowed") is True
+    assert env.get("allow_block_count", 0) >= 1
+    primary = env.get("primary") or {}
+    assert primary.get("status") == "blocked"
+    assert primary.get("confidence") == "measured"
+    assert primary.get("limitations")
+    assert board["checks"].get("envelope") == "block"
+
+
+def test_duty_board_block_demoted_without_allow_envelope(monkeypatch):
+    """block without allow_release_block envelope → demote to watch."""
+    import core.harness.meta.evidence_envelope as ee
+    from core.harness.meta.evidence_envelope import empty_envelope
+
+    def _no_gold_env(*a, **k):
+        return empty_envelope(status="unverified", confidence="speculative")
+
+    monkeypatch.setattr(ee, "envelope_for_gold_block", _no_gold_env)
+    board = build_duty_board({
+        "ok": True,
+        "data_available": True,
+        "availability": {"runs": True, "gold": True, "approvals": False},
+        "summary": {
+            "avg_serial_ratio": 0.1,
+            "gold_regressing": True,
+            "p0_miss_rate": 0.0,
+        },
+    })
+    assert board["status"] == "watch"
+    assert any("block_demoted" in r for r in board["reasons"])
+    assert board["checks"].get("gold") == "watch"
+    assert board["checks"].get("envelope") == "watch"
+    assert (board.get("envelope") or {}).get("block_allowed") is False
 
 
 def test_duty_board_watch_serial_and_adoption():

@@ -729,6 +729,14 @@ domains:
         type: function
         signature: 'Build a derived envelope for static LLM review findings (never auto-confirmed).'
         module: aiPlat-core/core/harness/meta/evidence_envelope.py
+      - symbol: envelope_for_gold_block
+        type: function
+        signature: 'envelope_for_gold_block(reason, p0_miss_rate=None, …)→Dict measured blocked envelope'
+        module: aiPlat-core/core/harness/meta/evidence_envelope.py
+      - symbol: gate_duty_status_with_envelopes
+        type: function
+        signature: 'gate_duty_status_with_envelopes(status, envelopes)→(status, extras, rows)'
+        module: aiPlat-core/core/harness/meta/evidence_envelope.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"
@@ -4653,6 +4661,14 @@ domains:
       - symbol: "summarize_envelopes"
         type: "function"
         signature: "summarize_envelopes(issues)→Dict"
+        module: "core/harness/meta/evidence_envelope.py"
+      - symbol: "envelope_for_gold_block"
+        type: "function"
+        signature: "envelope_for_gold_block(reason, …)→Dict measured blocked for duty board"
+        module: "core/harness/meta/evidence_envelope.py"
+      - symbol: "gate_duty_status_with_envelopes"
+        type: "function"
+        signature: "gate_duty_status_with_envelopes(status, envelopes)→(status, extras, rows)"
         module: "core/harness/meta/evidence_envelope.py"
       - symbol: "evaluate_files"
         type: "function"
