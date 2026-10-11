@@ -1,12 +1,13 @@
 # 能力剖面（Capability Profile）— Agent 等级体系
 
-> 版本: v4.0 | 更新: 2026-08 | 实施: `pipeline_engine.py::_apply_capability_profile()`
+> 版本: v4.0 | 更新: 2026-08 | 实施: `pipeline_engine.py::_apply_capability_profile()`  
+> **与执行后端/架构选型的完整关系**见 [execution-decision-matrix.md](execution-decision-matrix.md)（本文描述能力注入；不单独决定 backend）。
 
 ---
 
 ## 一、概述
 
-`capability_profile` 是 `PipelineStageConfig` 的声明式字段（默认值 `"auto"`），替代原有的二进制 `execution_backend: llm/agent` 开关。
+`capability_profile` 是 `PipelineStageConfig` 的声明式字段（默认值 `"auto"`）。它与 `execution_backend` / `architecture_profile` **共存**：剖面负责注入能力集，并可在无工具时降级 backend；**钉死执行混合**请用 `architecture_profile`。
 
 **核心原则**：引擎根据 Agent 的实际声明（`agent_type`、`required_tools`、`required_skills`）自动推断能力等级。人工可通过显式声明 `capability_profile` 覆盖自动推断。
 

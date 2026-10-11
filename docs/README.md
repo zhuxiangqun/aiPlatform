@@ -30,7 +30,7 @@
 ## 📂 按目录导航
 
 ### 架构设计（architecture/）
-[architecture/README.md](architecture/README.md) — 核心参考含 [execution-quality-gates.md](architecture/execution-quality-gates.md)（产物类型→质量门禁矩阵）；另有 ADR / 规划 / 合规
+[architecture/README.md](architecture/README.md) — 核心参考含 [execution-decision-matrix.md](architecture/execution-decision-matrix.md)（何时 LLM/程序/Agent/Skill/Tool/MCP/Workflow）与 [execution-quality-gates.md](architecture/execution-quality-gates.md)（产物质量门禁）；另有 ADR / 规划 / 合规
 
 ### 操作手册（manuals/）
 [manuals/README.md](manuals/README.md) — 22 份手册，覆盖开发/部署/测试/本体管理/知识管理/FDE 交付

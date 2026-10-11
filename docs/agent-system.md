@@ -1,6 +1,7 @@
 # aiPlat Agent 系统 — 完整指南
 
-> 最后更新: 2026-08-11 · 原理优先，细节后置 · 配置/API 见附录
+> 最后更新: 2026-08-11 · 原理优先，细节后置 · 配置/API 见附录  
+> **执行路径判定（LLM vs 程序、architecture_profile、工厂选型）以** [execution-decision-matrix.md](architecture/execution-decision-matrix.md) **为准**（本文 §4.1 部分措辞已过时）。  
 > 能力等级体系详见 [capability-profile.md](architecture/capability-profile.md)
 
 ---
@@ -148,14 +149,13 @@ Agent 通过 `_calibrate_profile_from_history()` 持续校准自身的能力等�
 
 ### 4.1 两种执行后端
 
-引擎根据 `capability_profile` 自动选择执行后端：
+| 后端 | 执行方式 | 能力 |
+|------|----------|------|
+| `llm` | `sys_llm_generate` 单次调用 | SOP + Pipeline 上下文 + Domain 路由 |
+| `agent` | `StageRunner.run()` → ReActLoop / PlanExecute | 工具/技能/记忆/Hook/PolicyGate/SECI |
 
-| 后端 | 适用等级 | 执行方式 | 能力 |
-|------|:---:|------|------|
-| `llm` | minimal / standard | `sys_llm_generate` 单次调用 | SOP + Pipeline 上下文 + Domain 路由 |
-| `agent` | full 及以上 | `StageRunner.run()` → ReActLoop | 全部能力（工具/技能/记忆/Hook/PolicyGate/SECI） |
-
-`execution_backend` 字段**不可从 AGENT.md 读取**（架构安全规则，防止 Agent 自定执行路径）。它由 `capability_profile` 自动决定或由团队 YAML 显式声明。
+**判定顺序（摘要）**：`architecture_profile`（若设）覆盖 backend → 否则 schema 默认 `llm` → `capability_profile` 注入能力并可在无工具时降级 `agent→llm`。完整矩阵与工厂三选一规则见 [execution-decision-matrix.md](architecture/execution-decision-matrix.md)。  
+`execution_backend` **不可**由 AGENT.md 擅自绕过引擎；合法钉死方式是团队 YAML / `architecture_profile`。
 
 ### 4.2 ReActLoop 执行流程
 

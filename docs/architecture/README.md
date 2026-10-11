@@ -7,7 +7,9 @@
 | [overview.md](overview.md) | 权威架构全景 |
 | [boundary-standard.md](boundary-standard.md) | 层边界判定标准 |
 | [system-architecture-contract.md](system-architecture-contract.md) | 跨层 API 契约 |
-| [execution-quality-gates.md](execution-quality-gates.md) | 执行产物质量门禁 + 结果展示：`output_schema` / `x-display-profile` 驱动统一渲染（非按 Agent 复制 UI） |
+| [execution-decision-matrix.md](execution-decision-matrix.md) | **执行决策矩阵（Living Spec）**：LLM vs 程序；Agent/Skill/Tool/MCP/Workflow 选用；architecture_profile × agent_type × capability_profile；工厂/工作区生成物如何选型 |
+| [execution-quality-gates.md](execution-quality-gates.md) | 执行产物质量门禁 + 结果展示：`output_schema` / `x-display-profile` 驱动统一渲染（非按 Agent 复制 UI；与决策矩阵互补） |
+| [capability-profile.md](capability-profile.md) | 能力剖面等级与注入表（决策矩阵层 C） |
 | [core/core-layer1-latest.md](core/core-layer1-latest.md) | Core 层最新架构详述 |
 | [governance.md](governance.md) | 治理文档 |
 | [../knowledge-system.md](../knowledge-system.md) | 知识系统完整指南：向量KB/GraphIndex/Wiki/本体/检索/运维 |
