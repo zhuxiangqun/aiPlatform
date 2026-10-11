@@ -5269,11 +5269,12 @@ def validate_evidence_envelope(
     raw: Optional[Dict[str, Any]] = None,
     *,
     demote: bool = True,
+    mode: str = "",
 ) -> Dict[str, Any]:
-    """Evidence Envelope validate/demote — no fake confirmed without measured evidence."""
+    """Evidence Envelope validate — demote/reject/strict; no fake confirmed."""
     from core.harness.meta.evidence_envelope import EnvelopeValidation, validate_envelope
 
-    result = validate_envelope(raw, demote=demote)
+    result = validate_envelope(raw, demote=demote, mode=mode or "")
     if not isinstance(result, EnvelopeValidation):
         raise TypeError("validate_envelope must return EnvelopeValidation")
     return result.to_dict()
@@ -5283,18 +5284,41 @@ def attach_evidence_envelopes(
     issues: Optional[list] = None,
     *,
     run_id: str = "",
+    reject_fake: bool = True,
 ) -> Dict[str, Any]:
-    """Attach validated envelopes to autoreview/duty issue dicts; return summary."""
+    """Attach validated envelopes; reject illegal confirmed/block claims by default."""
     from core.harness.meta.evidence_envelope import (
         attach_envelopes_to_issues,
+        check_issues_envelope_integrity,
         summarize_envelopes,
     )
 
-    attached = attach_envelopes_to_issues(list(issues or []), run_id=run_id or "")
+    attached = attach_envelopes_to_issues(
+        list(issues or []),
+        run_id=run_id or "",
+        reject_fake=bool(reject_fake),
+    )
+    summary = summarize_envelopes(attached)
     return {
         "issues": attached,
-        "summary": summarize_envelopes(attached),
+        "summary": summary,
+        "integrity": check_issues_envelope_integrity(attached),
     }
+
+
+def assert_evidence_envelope_integrity(
+    raw: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Hard gate: illegal confirmed/block ⇒ ok=False (safe demoted envelope still returned)."""
+    from core.harness.meta.evidence_envelope import (
+        EnvelopeValidation,
+        assert_envelope_integrity,
+    )
+
+    result = assert_envelope_integrity(raw)
+    if not isinstance(result, EnvelopeValidation):
+        raise TypeError("assert_envelope_integrity must return EnvelopeValidation")
+    return result.to_dict()
 
 
 def allow_evidence_release_block(

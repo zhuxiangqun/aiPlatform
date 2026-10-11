@@ -695,11 +695,23 @@ domains:
         module: aiPlat-core/core/harness/meta/testability_gate.py
       - symbol: validate_envelope
         type: function
-        signature: 'validate_envelope(raw, demote=True)→EnvelopeValidation'
+        signature: "validate_envelope(raw, demote=True, mode=<empty>)→EnvelopeValidation"
+        module: aiPlat-core/core/harness/meta/evidence_envelope.py
+      - symbol: compact_evidence
+        type: function
+        signature: 'compact_evidence(items, max_items=8)→List[Dict]'
+        module: aiPlat-core/core/harness/meta/evidence_envelope.py
+      - symbol: assert_envelope_integrity
+        type: function
+        signature: 'assert_envelope_integrity(raw)→EnvelopeValidation reject mode'
+        module: aiPlat-core/core/harness/meta/evidence_envelope.py
+      - symbol: check_issues_envelope_integrity
+        type: function
+        signature: 'check_issues_envelope_integrity(issues)→Dict ok/rejected'
         module: aiPlat-core/core/harness/meta/evidence_envelope.py
       - symbol: attach_envelopes_to_issues
         type: function
-        signature: 'attach_envelopes_to_issues(issues, run_id)→List[Dict]'
+        signature: 'attach_envelopes_to_issues(issues, run_id, reject_fake=True)→List[Dict]'
         module: aiPlat-core/core/harness/meta/evidence_envelope.py
       - symbol: allow_release_block
         type: function
@@ -707,7 +719,7 @@ domains:
         module: aiPlat-core/core/harness/meta/evidence_envelope.py
       - symbol: summarize_envelopes
         type: function
-        signature: 'summarize_envelopes(issues)→Dict status/confidence counts'
+        signature: 'summarize_envelopes(issues)→Dict status/confidence/integrity'
         module: aiPlat-core/core/harness/meta/evidence_envelope.py
       - symbol: EnvelopeValidation
         type: dataclass
@@ -4640,11 +4652,15 @@ domains:
         module: "core/api/core_facade.py"
       - symbol: "validate_evidence_envelope"
         type: "function"
-        signature: "validate_evidence_envelope(raw, demote=True)→Dict demote fake confirmed"
+        signature: "validate_evidence_envelope(raw, demote=True, mode=<empty>)→Dict"
         module: "core/api/core_facade.py"
       - symbol: "attach_evidence_envelopes"
         type: "function"
-        signature: "attach_evidence_envelopes(issues, run_id)→Dict issues+summary"
+        signature: "attach_evidence_envelopes(issues, run_id, reject_fake=True)→Dict issues+summary+integrity"
+        module: "core/api/core_facade.py"
+      - symbol: "assert_evidence_envelope_integrity"
+        type: "function"
+        signature: "assert_evidence_envelope_integrity(raw)→Dict ok=False on fake confirmed"
         module: "core/api/core_facade.py"
       - symbol: "allow_evidence_release_block"
         type: "function"
@@ -4652,11 +4668,23 @@ domains:
         module: "core/api/core_facade.py"
       - symbol: "validate_envelope"
         type: "function"
-        signature: "validate_envelope(raw, demote=True)→EnvelopeValidation"
+        signature: "validate_envelope(raw, demote=True, mode=<empty>)→EnvelopeValidation"
+        module: "core/harness/meta/evidence_envelope.py"
+      - symbol: "compact_evidence"
+        type: "function"
+        signature: "compact_evidence(items, max_items=8)→List[Dict]"
+        module: "core/harness/meta/evidence_envelope.py"
+      - symbol: "assert_envelope_integrity"
+        type: "function"
+        signature: "assert_envelope_integrity(raw)→EnvelopeValidation"
+        module: "core/harness/meta/evidence_envelope.py"
+      - symbol: "check_issues_envelope_integrity"
+        type: "function"
+        signature: "check_issues_envelope_integrity(issues)→Dict"
         module: "core/harness/meta/evidence_envelope.py"
       - symbol: "attach_envelopes_to_issues"
         type: "function"
-        signature: "attach_envelopes_to_issues(issues, run_id)→List[Dict]"
+        signature: "attach_envelopes_to_issues(issues, run_id, reject_fake=True)→List[Dict]"
         module: "core/harness/meta/evidence_envelope.py"
       - symbol: "allow_release_block"
         type: "function"
@@ -4664,7 +4692,7 @@ domains:
         module: "core/harness/meta/evidence_envelope.py"
       - symbol: "summarize_envelopes"
         type: "function"
-        signature: "summarize_envelopes(issues)→Dict"
+        signature: "summarize_envelopes(issues)→Dict integrity_ok"
         module: "core/harness/meta/evidence_envelope.py"
       - symbol: "envelope_for_gold_block"
         type: "function"

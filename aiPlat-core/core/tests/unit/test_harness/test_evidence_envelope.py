@@ -7,7 +7,9 @@ import pytest
 
 from core.harness.meta.evidence_envelope import (
     allow_release_block,
+    assert_envelope_integrity,
     attach_envelopes_to_issues,
+    compact_evidence,
     envelope_for_gold_block,
     envelope_from_review_issue,
     evidence_item,
@@ -106,10 +108,42 @@ def test_attach_envelopes_strips_fake_confirmed():
     ]
     out = attach_envelopes_to_issues(issues)
     assert out[0]["evidence_envelope"]["status"] != "confirmed"
-    assert out[0]["envelope_ok"] is True
+    assert out[0]["envelope_integrity_rejected"] is True
+    assert out[0]["envelope_ok"] is False
     summary = summarize_envelopes(out)
     assert summary["confirmed_count"] == 0
     assert summary["suspected_count"] >= 1
+    assert summary["integrity_ok"] is False
+    assert summary["integrity_rejected_count"] >= 1
+
+
+def test_reject_mode_keeps_errors_after_safe_demote():
+    v = assert_envelope_integrity(
+        {
+            "status": "confirmed",
+            "confidence": "derived",
+            "evidence": [],
+            "limitations": ["x"],
+        }
+    )
+    assert v.ok is False
+    assert v.envelope["status"] == "suspected"
+    assert "confirmed_requires_measured" in v.errors or "envelope_integrity_rejected" in v.errors
+
+
+def test_compact_evidence_dedupes_and_caps():
+    items = [
+        evidence_item(type="log", ref="a.log", snippet="noise"),
+        evidence_item(type="log", ref="a.log", snippet="dup"),
+        evidence_item(type="test_result", ref="pytest::t1"),
+        evidence_item(type="command", ref="arch_guard"),
+        evidence_item(type="file_line", ref="a.py:1"),
+    ] + [evidence_item(type="log", ref=f"n{i}.log") for i in range(20)]
+    out = compact_evidence(items, max_items=8)
+    assert len(out) == 8
+    assert out[0]["type"] == "test_result"
+    refs = [(e["type"], e["ref"]) for e in out]
+    assert len(refs) == len(set(refs))
 
 
 def test_normalize_preserves_canonical_keys():
@@ -149,11 +183,13 @@ def test_core_facade_validate_and_attach():
     text = facade_path.read_text(encoding="utf-8")
     assert "def validate_evidence_envelope" in text
     assert "def attach_evidence_envelopes" in text
+    assert "def assert_evidence_envelope_integrity" in text
     assert "def allow_evidence_release_block" in text
 
     try:
         from core.api.core_facade import (
             allow_evidence_release_block,
+            assert_evidence_envelope_integrity,
             attach_evidence_envelopes,
             validate_evidence_envelope,
         )
@@ -165,10 +201,15 @@ def test_core_facade_validate_and_attach():
         demote=True,
     )
     assert v["envelope"]["status"] == "suspected"
+    hard = assert_evidence_envelope_integrity(
+        {"status": "confirmed", "confidence": "derived", "evidence": []}
+    )
+    assert hard["ok"] is False
     attached = attach_evidence_envelopes(
         [{"file": "b.py", "line": 1, "description": "x", "engine": "code_gen"}]
     )
     assert attached["summary"]["suspected_count"] >= 1
+    assert attached["integrity"]["ok"] is True
     block = allow_evidence_release_block(attached["issues"][0]["evidence_envelope"])
     assert block["allow"] is False
 

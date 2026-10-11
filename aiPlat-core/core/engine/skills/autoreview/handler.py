@@ -161,6 +161,9 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
         else ["reasoning", "code_gen"]
     )
     report.build_evidence()
+    envelope_integrity_ok = bool(
+        (report.evidence_envelope_summary or {}).get("integrity_ok", True)
+    )
 
     # 持久化审查结果（best-effort，不阻断审查流程）
     try:
@@ -177,6 +180,7 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
         "markdown": report.to_markdown(),
         "clean": report.is_clean(),
         "scope_ok": scope_ok,
+        "envelope_integrity_ok": envelope_integrity_ok,
         "routing": {
             "use_panel": use_panel,
             "focus": focus,
