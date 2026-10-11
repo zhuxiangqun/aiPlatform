@@ -2497,6 +2497,32 @@ async def _execute_workspace_agent_background(
     except Exception:
         logging.debug("done_verify agent inject skipped", exc_info=True)
 
+    # Coding closed loop for workspace Execute (same defaults as factory file-output stages).
+    # Opt-in via uses_file_output / coding_closed_loop / coding_intensity — not agent_id.
+    try:
+        from core.schemas_builder import inject_workspace_coding_defaults
+
+        _extra_coding = inject_workspace_coding_defaults(
+            state,
+            agent_cfg=_cfg,
+            agent_meta=_meta0,
+            skills=resolved_skills,
+        )
+        if _extra_coding:
+            try:
+                from core.harness.integration import get_skill_registry
+
+                _sk_reg = get_skill_registry()
+                for _sn in _extra_coding:
+                    _sk = _sk_reg.get(str(_sn)) if hasattr(_sk_reg, "get") else None
+                    if _sk is not None and _sk not in resolved_skills:
+                        resolved_skills.append(_sk)
+                runner._skills = list(resolved_skills)
+            except Exception:
+                logging.debug("workspace coding skill bind skipped", exc_info=True)
+    except Exception:
+        logging.debug("workspace coding defaults skipped", exc_info=True)
+
     # Code meta-tool — AGENT.md meta_tool: {enabled, auto_bind, force}
     try:
         from core.harness.execution.meta_tool import apply_meta_tool_config
@@ -5261,6 +5287,31 @@ def scan_repo_health(
     }
     out["persisted"] = persisted
     return out
+
+
+def workspace_agent_needs_coding_defaults(
+    *,
+    agent_cfg: Optional[Dict[str, Any]] = None,
+    agent_meta: Optional[Dict[str, Any]] = None,
+    skills: Optional[List[Any]] = None,
+) -> bool:
+    """Workspace Execute 是否应注入编码闭环默认（配置/技能信号，禁 agent_id）。"""
+    from core.schemas_builder import workspace_agent_needs_coding_defaults as _needs
+
+    return _needs(agent_cfg=agent_cfg, agent_meta=agent_meta, skills=skills)
+
+
+def inject_workspace_coding_defaults(
+    state: Dict[str, Any],
+    *,
+    agent_cfg: Optional[Dict[str, Any]] = None,
+    agent_meta: Optional[Dict[str, Any]] = None,
+    skills: Optional[List[Any]] = None,
+) -> List[str]:
+    """升级 Workspace Execute state 至与工厂 uses_file_output 相同的编码闭环。"""
+    from core.schemas_builder import inject_workspace_coding_defaults as _inject
+
+    return _inject(state, agent_cfg=agent_cfg, agent_meta=agent_meta, skills=skills)
 
 
 def record_gate_run(
