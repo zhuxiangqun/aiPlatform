@@ -14,7 +14,7 @@
 | 维度 | 白皮书角色 | 核心问题 | 主要受众 | 仓库权威源（勿另起炉灶） | 状态 |
 |------|------------|----------|----------|--------------------------|------|
 | **技术** | 技术架构 | 为什么这样设计 | CTO / 架构师 / 工程师 | [`../architecture/overview.md`](../architecture/overview.md) · [`../architecture/comparison.md`](../architecture/comparison.md) · 各仓 `CLAUDE.md` · 本目录现状白皮书第 1–3 章 | ✅ 有源；生成白皮书已链入 |
-| **产品** | 产品能力 | 能解决什么问题 | 产品 / 技术评估链 | [`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md)（清单）· [`../manuals/`](../manuals/) · Builder/FDE 手册 · Pi 交付边界 `../architecture/plans/pi-thin-runtime.md` | ✅ 清单完整；场景叙事可继续补专章 |
+| **产品** | 产品能力 | 能解决什么问题 | 产品 / 技术评估链 | 分卷 [`volumes/02-product-capability.md`](./volumes/02-product-capability.md) · [`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md) · manuals / FDE / Pi 边界 | ✅ 分卷已生成（场景切片 + 统计）；细节仍链回清单 |
 | **商业** | 商业价值 | 投资回报如何 | CEO / CFO / 业务线 | [`AIPLAT_ROADMAP.md`](../../AIPLAT_ROADMAP.md) · [`../strategy/`](../strategy/) | ⚠️ 框架有；客户 ROI 案例需持续填充 |
 | **生态** | 生态与集成 | 如何参与协作 | ISV / 社区 / 渠道 | MCP/A2A 章节（CAPABILITIES）· [`../mcp/`](../mcp/) · Pi Package 导出 · 开放接口文档 | ⚠️ 接口散落；待收敛「生态白皮书」专稿 |
 | **治理** | 安全与治理 | 如何可信可控 | CISO / 合规 | CAPABILITIES「安全与治理 / Gate」· [`../security/`](../security/) · [`../compliance/`](../compliance/) · PolicyGate 规约 | ✅ 材料厚；生成白皮书链入评分与安全入口 |
@@ -34,10 +34,20 @@
 
 ## 推进优先级（与你的建议对齐）
 
-1. **P0**：技术架构论证入口 + 安全治理入口 + 对标/评级戳进总白皮书（本文件 + 生成器）  
-2. **P1**：产品能力专章（场景 × CAPABILITIES 切片，仍链回清单）  
-3. **P2**：生态与集成专稿（接口稳定后）  
-4. **持续**：商业价值（`AIPLAT_ROADMAP` + 真实 ROI 案例版本化）
+1. **P0**：技术架构论证入口 + 安全治理入口 + 对标/评级戳进总白皮书 — ✅  
+2. **P1**：产品能力专章（场景 × CAPABILITIES 切片）— ✅ 分卷 `02-product-capability.md`（可再生成）  
+3. **P2**：生态与集成专稿充实（接口/伙伴权益；现有分卷仍标 `gap`）  
+4. **持续**：商业价值（`AIPLAT_ROADMAP` + 真实 ROI 案例；分卷标 `gap`）
+
+## 五维分卷（生成物）
+
+清单：[`whitepaper-suite.yaml`](./whitepaper-suite.yaml)  
+输出：[`volumes/`](./volumes/)  
+
+```bash
+python3 scripts/generate_whitepaper_volumes.py
+python3 scripts/generate_whitepaper_volumes.py --check
+```
 
 ## 反模式
 

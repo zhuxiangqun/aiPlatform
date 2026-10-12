@@ -1,0 +1,165 @@
+# aiPlat 白皮书体系清单（权威索引，非第二能力源）
+# 能力事实仍以 AIPLAT_CAPABILITIES.md 为准；本文件只做「卷册 → 既有文档」映射。
+# 生成器：scripts/generate_platform_whitepaper.py 会收录「对标与评级」目录章。
+
+version: "1.0"
+updated: "2026-10-12"
+
+principle: |
+  五卷白皮书体系 = 受众分层论证链。
+  禁止把对标/评级结论手抄进 CAPABILITIES；
+  现状白皮书只生成「目录 + 元数据 + 指向权威稿」。
+
+volumes:
+  - id: tech-architecture
+    name: 技术架构白皮书
+    audience: CTO、架构师、平台工程师
+    core_question: 为什么这样设计？边界与权衡是什么？
+    priority: P0
+    status: partial  # 现状白皮书卷 + overview；叙事决策仍散落 ADR
+    canonical:
+      - path: docs/whitepaper/aiplat-platform-status-whitepaper.md
+        role: 现状总册（能力全收录，由 CAPABILITIES 生成）
+      - path: docs/architecture/overview.md
+        role: 架构全景唯一入口
+      - path: docs/architecture/execution-decision-matrix.md
+        role: 执行选型矩阵
+      - path: docs/DOCUMENT_SYSTEM.md
+        role: 文档权威模型
+    supporting:
+      - path: docs/architecture/comparison.md
+        role: 架构层对比
+      - path: docs/architecture/plans/comparison.md
+        role: 规划期对比
+      - path: CLAUDE.md
+        role: 执行规约 / 层边界
+
+  - id: product-capability
+    name: 产品能力白皮书
+    audience: 产品负责人、技术评估者、客户技术链
+    core_question: 能解决什么问题？能力边界在哪？
+    priority: P1
+    status: partial  # 能力表已有；场景化产品叙事待成卷
+    canonical:
+      - path: AIPLAT_CAPABILITIES.md
+        role: 唯一能力清单
+      - path: docs/whitepaper/aiplat-platform-status-whitepaper.md
+        role: 可读包装（含完整能力表）
+      - path: docs/matrix/capability-impact-matrix.md
+        role: 变更影响
+    supporting:
+      - path: docs/manuals/getting-started.md
+        role: 上手路径
+      - path: docs/manuals/fde/README.md
+        role: FDE 交付场景入口
+      - path: docs/architecture/execution-decision-matrix.md
+        role: 执行选型（产品/技术评估共用）
+      - path: docs/architecture/plans/pi-thin-runtime.md
+        role: 厂外薄交付边界（Pi）
+      - path: packages/aiplat-pi-runtime/README.md
+        role: Pi Package 用户侧说明
+
+  - id: commercial-value
+    name: 商业价值白皮书
+    audience: CEO、CFO、业务负责人、投资方
+    core_question: 投资回报与 TCO 如何？
+    priority: P3
+    status: gap  # 缺独立成卷；需客户 ROI 案例
+    canonical: []
+    supporting:
+      - path: AIPLAT_ROADMAP.md
+        role: 商业化路线图 / 评分基线（非完整商业白皮书）
+    notes: v1 框架先行；随客户案例填充，禁止虚构 ROI 数字。
+
+  - id: ecosystem-integration
+    name: 生态与集成白皮书
+    audience: ISV、集成商、开源社区、渠道
+    core_question: 如何接入、贡献、协作？
+    priority: P2
+    status: gap  # MCP/A2A 散落 CAPABILITIES；缺伙伴权益卷
+    canonical: []
+    supporting:
+      - path: docs/policy/mcp-stdio-prod-allowlist.md
+        role: MCP 生产准入
+      - path: packages/aiplat-pi-runtime/README.md
+        role: 厂外 Pi 包交付
+      - path: docs/API/api-reference.md
+        role: API 参考（若存在）
+    notes: 核心接口稳定 + 早期伙伴验证后再发正式卷。
+
+  - id: security-governance
+    name: 安全与治理白皮书
+    audience: CISO、合规、风控
+    core_question: 如何可信可控？
+    priority: P0
+    status: partial
+    canonical:
+      - path: docs/security/security-architecture.md
+        role: 安全架构
+      - path: docs/compliance/eu-ai-act-assessment.md
+        role: 合规评估
+      - path: docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
+        role: 自主性定级（L 级，可验证）
+    supporting:
+      - path: docs/framework/aiplat-autonomy-framework.md
+        role: 自主性框架
+      - path: docs/framework/aiplat-complete-assessment.md
+        role: 完整评估叙述
+      - path: docs/framework/assessment-scores.json
+        role: 评分机器源
+      - path: docs/framework/scoring-detail.md
+        role: 评分细则
+      - path: docs/framework/verification-protocol.md
+        role: 外部验证协议
+
+# 对标 / 评级 — 必须出现在现状白皮书目录章（不整篇粘贴，防双源）
+benchmarks_and_ratings:
+  ratings:
+    - path: docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
+      title: 自主性分级评估（L5）
+      kind: rating
+    - path: docs/framework/assessment-scores.json
+      title: 评估分数机器源
+      kind: rating-data
+    - path: docs/framework/aiplat-complete-assessment.md
+      title: 完整评估文档
+      kind: rating
+    - path: docs/framework/aiplat-autonomy-framework.md
+      title: 自主性成熟度框架
+      kind: framework
+    - path: docs/framework/scoring-detail.md
+      title: 评分细则
+      kind: rating
+    - path: docs/framework/skill-maturity.md
+      title: Skill 成熟度
+      kind: rating
+  comparisons:
+    - path: docs/research/aiPlat核心能力对标报告.md
+      title: 核心能力对标报告（主）
+      kind: comparison
+    - path: docs/research/对标吸收与架构纯度评估.md
+      title: 对标吸收与架构纯度
+      kind: comparison
+    - path: docs/framework/hermes-comparison.md
+      title: Hermes 对比
+      kind: comparison
+    - path: docs/strategy/comparison-vs-vendors.md
+      title: 厂商对比策略
+      kind: comparison
+    - path: docs/architecture/comparison.md
+      title: 架构对比
+      kind: comparison
+    - path: docs/architecture/plans/comparison.md
+      title: 规划对比
+      kind: comparison
+    - path: docs/architecture/plans/comprehensive-comparison.md
+      title: 综合对比
+      kind: comparison
+    - path: docs/research/企业级AI可信落地全景图-aiPlat对照.md
+      title: 企业级可信落地对照
+      kind: comparison
+  archive_only:
+    - path: docs/archive/aiPlat-22dim-comparison-v4.md
+      note: 归档，非现状权威
+    - path: docs/archive/AIPLAT_WHITEPAPER.md
+      note: 旧叙事白皮书，非现状权威
