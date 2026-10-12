@@ -3,17 +3,17 @@ title: "aiPlat 技术架构白皮书"
 volume_id: tech-architecture
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-12T16:43:36Z"
+generated_at: "2026-10-12T17:28:56Z"
 audience: "CTO、架构师、平台工程师"
 core_question: "为什么这样设计？边界与权衡是什么？"
 priority: P0
-source_status: partial
+source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
-suite_sha256: "5a33449031aa9306e9e1bdc56ba3b973709e2e7cde04429e6e13fa91cdeee34e"
+suite_sha256: "d8a7651f6dd8898264db21d05f14cc69407c182541fcce8abc8aaa9b4714bfb0"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=tech-architecture suite_sha256=5a33449031aa9306e9e1bdc56ba3b973709e2e7cde04429e6e13fa91cdeee34e -->
+<!-- volume_stamp id=tech-architecture suite_sha256=d8a7651f6dd8898264db21d05f14cc69407c182541fcce8abc8aaa9b4714bfb0 -->
 
 # aiPlat 技术架构白皮书
 
@@ -29,8 +29,8 @@ language: zh-CN
 | 受众 | CTO、架构师、平台工程师 |
 | 核心问题 | 为什么这样设计？边界与权衡是什么？ |
 | 优先级 | P0 |
-| 材料完备度（suite） | `partial` |
-| 生成时间 (UTC) | `2026-10-12T16:43:36Z` |
+| 材料完备度（suite） | `ready` |
+| 生成时间 (UTC) | `2026-10-12T17:28:56Z` |
 
 ## 1. 本卷论证目标
 
@@ -45,6 +45,7 @@ language: zh-CN
 | [`docs/whitepaper/aiplat-platform-status-whitepaper.md`](../aiplat-platform-status-whitepaper.md) | 现状总册（能力全收录，由 CAPABILITIES 生成） | ✅ |
 | [`docs/architecture/overview.md`](../architecture/overview.md) | 架构全景唯一入口 | ✅ |
 | [`docs/architecture/execution-decision-matrix.md`](../architecture/execution-decision-matrix.md) | 执行选型矩阵 | ✅ |
+| [`docs/architecture/plans/pi-thin-runtime.md`](../architecture/plans/pi-thin-runtime.md) | 厂外薄 Runtime 决策边界 | ✅ |
 | [`docs/DOCUMENT_SYSTEM.md`](../DOCUMENT_SYSTEM.md) | 文档权威模型 | ✅ |
 
 
@@ -58,6 +59,21 @@ language: zh-CN
 
 
 ## 3. 正文编排（节选权威源）
+
+### 3.0 关键设计决策索引
+
+本卷不重抄 ADR 全文，以索引方式消解散落问题。设计决策分散在以下权威源：
+
+| 决策域 | 权威源 |
+|--------|--------|
+| 平台总览与边界 | [`docs/architecture/overview.md`](../architecture/overview.md) |
+| 执行决策矩阵 | [`docs/architecture/execution-decision-matrix.md`](../architecture/execution-decision-matrix.md) |
+| Pi 薄运行时 | [`docs/architecture/plans/pi-thin-runtime.md`](../architecture/plans/pi-thin-runtime.md) |
+| 文档体系与 ADR 分布 | [`docs/DOCUMENT_SYSTEM.md`](../DOCUMENT_SYSTEM.md) |
+
+索引维护责任与更新触发条件见 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../WHITEPAPER_SYSTEM.md)「ADR 索引维护」节。
+
+> 索引只指向权威源，不复制 ADR 正文。修改 overview / execution-decision-matrix / pi-thin-runtime / DOCUMENT_SYSTEM 任一文件时，必须同步本索引。
 
 ### 3.1 架构全景（overview）
 

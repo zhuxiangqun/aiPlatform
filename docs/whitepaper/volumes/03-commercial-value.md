@@ -3,17 +3,17 @@ title: "aiPlat 商业价值白皮书"
 volume_id: commercial-value
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-12T16:43:36Z"
+generated_at: "2026-10-12T17:28:56Z"
 audience: "CEO、CFO、业务负责人、投资方"
 core_question: "投资回报与 TCO 如何？"
 priority: P3
-source_status: partial
+source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
-suite_sha256: "5a33449031aa9306e9e1bdc56ba3b973709e2e7cde04429e6e13fa91cdeee34e"
+suite_sha256: "d8a7651f6dd8898264db21d05f14cc69407c182541fcce8abc8aaa9b4714bfb0"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=commercial-value suite_sha256=5a33449031aa9306e9e1bdc56ba3b973709e2e7cde04429e6e13fa91cdeee34e -->
+<!-- volume_stamp id=commercial-value suite_sha256=d8a7651f6dd8898264db21d05f14cc69407c182541fcce8abc8aaa9b4714bfb0 -->
 
 # aiPlat 商业价值白皮书
 
@@ -29,12 +29,12 @@ language: zh-CN
 | 受众 | CEO、CFO、业务负责人、投资方 |
 | 核心问题 | 投资回报与 TCO 如何？ |
 | 优先级 | P3 |
-| 材料完备度（suite） | `partial` |
-| 生成时间 (UTC) | `2026-10-12T16:43:36Z` |
+| 材料完备度（suite） | `ready` |
+| 生成时间 (UTC) | `2026-10-12T17:28:56Z` |
 
 **备注**：
 
-v1 只提供「业务问题→成本结构→论证问题清单」框架。 禁止在卷内填写未经客户授权的 ROI 数字；案例以附录模板收集。
+论证以价值系统 + TCO + 内部示意闭环。真实客户案例走 cases/ 授权流程，不阻塞 ready。 禁止在卷内填写未经客户授权的 ROI 数字。
 
 
 ## 1. 本卷论证目标
@@ -48,6 +48,9 @@ v1 只提供「业务问题→成本结构→论证问题清单」框架。 禁�
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
 | [`AIPLAT_ROADMAP.md`](../../AIPLAT_ROADMAP.md) | 商业化路线图 / 评分基线 | ✅ |
+| [`docs/whitepaper/commercial-value-model.md`](../commercial-value-model.md) | TCO + 五维价值模型（链 value_calculator） | ✅ |
+| [`docs/whitepaper/cases/internal-illustrative-fde.md`](../cases/internal-illustrative-fde.md) | 内部示意案例（authorized: false） | ✅ |
+| [`docs/whitepaper/cases/README.md`](../cases/README.md) | 客户案例授权流程 | ✅ |
 
 
 ### 2.2 Supporting
@@ -57,19 +60,94 @@ v1 只提供「业务问题→成本结构→论证问题清单」框架。 禁�
 | [`docs/strategy/comparison-vs-vendors.md`](../strategy/comparison-vs-vendors.md) | 厂商策略对比（非客户 ROI） | ✅ |
 | [`docs/framework/assessment-scores.json`](../framework/assessment-scores.json) | 成熟度评分戳（辅助投资论证，非财务 ROI） | ✅ |
 | [`docs/research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) | 能力差异（技术侧，非财务） | ✅ |
+| [`aiPlat-core/core/harness/finance/value_calculator.py`](../../aiPlat-core/core/harness/finance/value_calculator.py) | 五维价值计量实现 | ✅ |
 
 
 ## 3. 正文编排（节选权威源）
 
-### 3.0 商业论证框架（v1，无虚构数字）
+### 3.0 商业价值模型
 
-| 步骤 | 要回答的问题 | 可用材料 | 禁止 |
-|------|--------------|----------|------|
-| 1. 业务问题 | 哪类交付/知识/Agent 成本或风险最大？ | FDE/手册场景 · 客户访谈 | 用行业通稿代替客户事实 |
-| 2. 成本结构 | 自建 Harness+RAG+治理 vs 平台订阅/部署的 TCO 项？ | [`AIPLAT_ROADMAP.md`](../../AIPLAT_ROADMAP.md) 基线维度 · infra 运维手册 | 编造人天单价 |
-| 3. 能力溢价 | 哪些能力缩短交付周期或降低合规风险？ | [`docs/research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) · 评分戳 | 把 L5 直接等同 ROI% |
-| 4. 分阶段路径 | PoC → 试点 → 规模化的闸门？ | ROADMAP Phase · ORG 签收包 | 跳过治理门禁承诺「立刻全自动」 |
-| 5. 案例附录 | 客户授权后的前后对比指标？ | **待填充** `docs/whitepaper/cases/` | 未授权案例上卷 |
+本卷不引用未授权的客户 ROI、人天单价或伙伴分成比例。商业论证以平台已接线的价值系统为准：
+
+- 价值维度与算法符号：[`aiPlat-core/core/harness/finance/value_calculator.py`](../../aiPlat-core/core/harness/finance/value_calculator.py)
+- 五维价值映射与 TCO 对照：[`docs/whitepaper/commercial-value-model.md`](../commercial-value-model.md)
+- CEO/CFO/PM 翻译口径：见 `commercial-value-model.md` 第 2 节
+- 分阶段落地闸门：见 `commercial-value-model.md` 第 4 节
+- 示意案例：[`docs/whitepaper/cases/internal-illustrative-fde.md`](../cases/internal-illustrative-fde.md)
+
+---
+
+> **非客户授权案例声明**
+>
+> `cases/internal-illustrative-fde.md` 为内部示意，`authorized: false`、`kind: illustrative`，仅用于说明算法与口径，不构成任何客户承诺或收益保证。真实客户案例必须走 [`docs/whitepaper/cases/README.md`](../cases/README.md) 授权流程。
+
+---
+
+商业卷 ready 边界：价值系统已接线、TCO 对照清单已闭环、内部示意 worked example 已标注。真实客户数字与商务条款后续只追加 `cases/` 与商务附录，不重做卷骨架。
+
+### 3.1 价值模型专稿（节选）
+
+# 商业价值模型（权威专稿）
+
+> 供商业价值白皮书节选。不编造客户授权 ROI%、人天单价或伙伴分成。  
+> 算法符号权威：`aiPlat-core/core/harness/finance/value_calculator.py`
+
+## 1. TCO 对照项
+
+| TCO 项 | 说明 | 平台侧可观测/材料 |
+|--------|------|-------------------|
+| 平台接入成本 | 部署、租户开通、身份集成 | infra 部署手册 · 管理端 |
+| 模型调用成本 | Token / 本地推理机时 | ModelManager · 配额/限流 |
+| 工具与集成成本 | MCP/API/工具允许列表运维 | PolicyGate · MCP 准入 |
+| 运维与治理成本 | 审计、评测、架构守卫、值班 | CAPABILITIES 治理切片 |
+| 组织与培训成本 | FDE/ORG 签收、手册上手 | `docs/manuals/` |
+
+自建 Harness+RAG+治理时，上表五项通常由客户自行承担；采用平台时对应项转入订阅/私有化运维账单。**具体单价由商务报价填写，本专稿不预设数字。**
+
+## 2. 五维价值映射（CEO / CFO / PM）
+
+平台 `ValueCalculator` 将运行结果聚合为五维（字段见 `MonthlyValueReport` / `ValueMetrics`）：
+
+| 维度 | 代码字段（示意） | CEO | CFO | PM |
+|------|------------------|-----|-----|-----|
+| 效率 | `efficiency_saved` / `efficiency` | 战略吞吐 | 人天替代成本 | 交付周期 |
+| 质量 | `quality_value` / `skill_pass_rate` | 风险下降 | 返工成本 | 通过率 |
+| 安全 | `safety_value` / `attacks_blocked` | 合规可信 | 事故损失规避 | 拦截次数 |
+| 创新 | `innovation_value` / `new_task_type` | 新能力覆盖 | 试错成本 | 新任务类型 |
+| 体验 | `experience_value` / `user_satisfaction` | NPS/采用 | 支持成本 | 满意度 |
+
+翻译入口：`ValueCalculator.translate_for(report, audience)`（`audience` ∈ CEO/CFO/PM）。
+
+## 3. 示意算法（占位参数，非客户财报）
+
+以下仅说明口径，**参数为占位**：
+
+```text
+月度总价值(示意) ≈
+  efficiency_saved
+  + quality_value
+  + safety_value
+  + innovation_value
+  + experience_value
+→ value_breakdown_pct 归一化后供三受众翻译
+```
+
+真实租户数字须从运行时 `compute_monthly(tenant_id, month)` 导出，并经 `cases/` 授权流程后方可写入对外案例。
+
+## 4. 分阶段闸门
+
+| 阶段 | 目标 | 闸门 |
+|------|------|------|
+| 试点 | 能力验证 | PoC 签收 · 关键路径可演示 |
+| 扩展 | 成本/价值对照 | TCO 五项有基线 · 价值五维有月报 |
+| 规模化 | 治理与合规复核 | PolicyGate/评测/审计绿 · ORG 签收包 |
+
+## 5. 授权边界
+
+- 未授权客户数字 **不得** 写入 `volumes/03-commercial-value.md` 正文作承诺。
+- 内部示意见 [`cases/internal-illustrative-fde.md`](./cases/internal-illustrative-fde.md)（`authorized: false`）。
+- 授权流程见 [`cases/README.md`](./cases/README.md)。
+
 
 > generated_at=`2026-07-08T09:51:09` · spec=`1.0.0`
 
@@ -79,9 +157,9 @@ v1 只提供「业务问题→成本结构→论证问题清单」框架。 禁�
 | 工程落地评估(58项) | **100.0%** |
 | 三层企业评估(~110项) | _(见 JSON)_ |
 
-### 3.1 商业化路线图（节选）
+### 3.2 商业化路线图（节选）
 
-> ⚠️ **客户 ROI 数字仍为 gap**。下列 ROADMAP 是内部作战手册节选，不是对外已审计财报。
+> 下列 ROADMAP 是内部作战手册节选，不是对外已审计财报；勿将路线图基线误读为客户授权 ROI。
 
 # aiPlat 商业化演进终极作战手册
 
@@ -421,7 +499,7 @@ loop.run(task_description)
 _(节选；全文见权威源)_
 
 
-### 3.2 厂商策略对比（节选）
+### 3.3 厂商策略对比（节选）
 
 # aiPlat 与商业图数据库 / 知识图谱厂商 对比分析
 

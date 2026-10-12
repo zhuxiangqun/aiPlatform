@@ -74,7 +74,7 @@ volumes:
       - path: docs/whitepaper/commercial-value-model.md
         role: TCO + 五维价值模型（链 value_calculator）
       - path: docs/whitepaper/cases/internal-illustrative-fde.md
-        role: 内部示意案例（authorized: false）
+        role: "内部示意案例（authorized: false）"
       - path: docs/whitepaper/cases/README.md
         role: 客户案例授权流程
     supporting:
