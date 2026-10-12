@@ -97,6 +97,14 @@
 - [ ] 修改 `docs/architecture/plans/pi-thin-runtime.md` → 检查索引
 - [ ] 修改 `docs/DOCUMENT_SYSTEM.md` → 检查索引
 
+### 工程落地视图索引（01 卷 §3.3）
+
+技术卷在「设计决策」之外提供 **部署 / 性能 / 可观测 / 数据 / 安全嵌入 / 测试 / 风险演进 / 开发 / 集成 / SLA** 的权威源索引（不扩写第二全文）。
+
+- **维护位置**：`scripts/generate_whitepaper_volumes.py` → `tech-architecture` 分支 §3.3 表
+- **同步触发**：新增或迁移上表任一工程权威源时，同一 PR 内更新 §3.3 行 + `bash scripts/sync_whitepapers.sh`
+- **验收**：生成卷含「工程落地视图索引」；链接目标文件存在（suite supporting 表）
+
 ## 对标与评级（横切，必须进总白皮书目录）
 
 | 类型 | 权威源 | 说明 |

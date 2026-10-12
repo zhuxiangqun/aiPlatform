@@ -36,6 +36,34 @@ volumes:
         role: 规划期对比
       - path: CLAUDE.md
         role: 执行规约 / 层边界
+      - path: docs/manuals/deployment.md
+        role: 部署与运维视图
+      - path: docs/architecture/plans/disaster-recovery-plan.md
+        role: 灾备 / RPO·RTO
+      - path: docs/standards/规范-性能.md
+        role: 性能预算与扩展约束
+      - path: docs/architecture/slo.md
+        role: SLI/SLO / 误差预算
+      - path: docs/architecture/plans/observability-eval-repair-architecture.md
+        role: 可观测性架构
+      - path: docs/knowledge-system.md
+        role: 数据 / 知识存储路径
+      - path: docs/architecture/knowledge-base-architecture.md
+        role: 知识库架构
+      - path: docs/security/security-architecture.md
+        role: 安全嵌入（技术视角交叉）
+      - path: docs/manuals/testing.md
+        role: 测试金字塔与策略
+      - path: docs/architecture/execution-quality-gates.md
+        role: 执行质量门禁
+      - path: docs/research/architecture-evolution-roadmap.md
+        role: 架构演进路线
+      - path: docs/manuals/getting-started.md
+        role: 开发上手
+      - path: docs/architecture/plans/app-module-layout.md
+        role: 应用模块目录规范
+      - path: docs/mcp/index.md
+        role: 集成 / MCP 入口
 
   - id: product-capability
     name: 产品能力白皮书
