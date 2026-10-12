@@ -24,6 +24,7 @@
 | **知识管理员** | [knowledge-system.md](knowledge-system.md) |
 | **FDE 交付工程师** | [manuals/README.md](manuals/README.md)（手册总目录）→ 按需选择 |
 | **新用户** | [manuals/getting-started.md](manuals/getting-started.md) → [AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md) |
+| **要完整平台现状白皮书** | [whitepaper/aiplat-platform-status-whitepaper.md](whitepaper/aiplat-platform-status-whitepaper.md)（由 CAPABILITIES **生成**；`python3 scripts/generate_platform_whitepaper.py`） |
 
 ---
 
@@ -88,7 +89,8 @@
 ## 📐 文档治理
 
 - **[DOCUMENT_SYSTEM.md](DOCUMENT_SYSTEM.md)**：文档系统宪法（分类、边界、验证）
-- **[AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md)**：唯一能力清单（1857 ✅）
+- **[AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md)**：唯一能力清单（计数见该文件）
+- **[whitepaper/aiplat-platform-status-whitepaper.md](whitepaper/aiplat-platform-status-whitepaper.md)**：平台现状白皮书（**从 CAPABILITIES 生成**，`--check` 防过期；非手写第二清单）
 - **verify_doc_structure.py**：目录树一致性验证
 - **verify_capability_consistency.py**：能力统计表一致
 - **verify_imports.py**：导入模块存在性验证

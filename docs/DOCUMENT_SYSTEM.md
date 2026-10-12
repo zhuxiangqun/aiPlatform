@@ -19,6 +19,8 @@ workspace-root/
 │
 ├── CLAUDE.md                          ← 工作区兜底规约（AI 编程行为约束）
 ├── AIPLAT_CAPABILITIES.md            ← 唯一能力清单（当前计数见该文件统计表）
+│                                      ↑ docs/whitepaper/aiplat-platform-status-whitepaper.md
+│                                        由此生成（scripts/generate_platform_whitepaper.py）
 ├── AIPLAT_ROADMAP.md                 ← 商业化路线图（评分 + 基线）
 ├── README.md                         ← 部署手册
 │
