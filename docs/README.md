@@ -24,7 +24,7 @@
 | **知识管理员** | [knowledge-system.md](knowledge-system.md) |
 | **FDE 交付工程师** | [manuals/README.md](manuals/README.md)（手册总目录）→ 按需选择 |
 | **新用户** | [manuals/getting-started.md](manuals/getting-started.md) → [AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md) |
-| **要完整平台现状白皮书** | [whitepaper/aiplat-platform-status-whitepaper.md](whitepaper/aiplat-platform-status-whitepaper.md)（CAPABILITIES 生成 + 对标/评级目录）· 五维体系见 [whitepaper/WHITEPAPER_SYSTEM.md](whitepaper/WHITEPAPER_SYSTEM.md) |
+| **要完整平台现状白皮书** | [whitepaper/aiplat-platform-status-whitepaper.md](whitepaper/aiplat-platform-status-whitepaper.md) · 五维分卷 [whitepaper/volumes/](whitepaper/volumes/) · 体系 [WHITEPAPER_SYSTEM.md](whitepaper/WHITEPAPER_SYSTEM.md) |
 
 ---
 

@@ -192,13 +192,15 @@ def _ratings_and_system_chapter() -> str:
 
 ### 2.5.3 五维白皮书 ↔ 仓库映射（摘要）
 
-| 维度 | 核心问题 | 权威源 |
-|------|----------|--------|
-| 技术 | 为什么这样设计 | `architecture/overview.md` + `comparison.md` + 本白皮书第 1–3 章 |
-| 产品 | 能解决什么问题 | `AIPLAT_CAPABILITIES.md` + `manuals/` + Pi 交付边界计划 |
-| 商业 | 投资回报如何 | `AIPLAT_ROADMAP.md` + `strategy/`（案例持续填充） |
-| 生态 | 如何参与协作 | CAPABILITIES MCP/A2A + `docs/mcp/` + Pi 导出 |
-| 治理 | 如何可信可控 | CAPABILITIES 安全/Gate + `security/` + `compliance/` |
+| 维度 | 核心问题 | 分卷（生成） | 权威源 |
+|------|----------|--------------|--------|
+| 技术 | 为什么这样设计 | [`volumes/01-tech-architecture.md`](./volumes/01-tech-architecture.md) | overview + comparison + 本册第 1–3 章 |
+| 产品 | 能解决什么问题 | [`volumes/02-product-capability.md`](./volumes/02-product-capability.md) | CAPABILITIES + manuals + Pi 边界 |
+| 商业 | 投资回报如何 | [`volumes/03-commercial-value.md`](./volumes/03-commercial-value.md) | ROADMAP + strategy（案例待填） |
+| 生态 | 如何参与协作 | [`volumes/04-ecosystem-integration.md`](./volumes/04-ecosystem-integration.md) | MCP/A2A + Pi 导出（伙伴权益待补） |
+| 治理 | 如何可信可控 | [`volumes/05-security-governance.md`](./volumes/05-security-governance.md) | security + Gate + L 级评估 |
+
+分卷清单：[`whitepaper-suite.yaml`](./whitepaper-suite.yaml) · 重生成：`python3 scripts/generate_whitepaper_volumes.py`
 
 """
 

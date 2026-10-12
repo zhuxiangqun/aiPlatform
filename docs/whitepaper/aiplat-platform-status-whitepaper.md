@@ -3,7 +3,7 @@ title: "aiPlat 平台现状白皮书"
 type: platform-status-whitepaper
 authority: derived-from-capabilities
 status: generated
-generated_at: "2026-10-12T15:33:29Z"
+generated_at: "2026-10-12T15:46:59Z"
 source: AIPLAT_CAPABILITIES.md
 source_sha256: "84c8f1a5b9cdd0d74d2d48e52c45bc78233ec2ad6132622e71404939380a7588"
 total_capabilities: 2098
@@ -37,7 +37,7 @@ language: zh-CN
 
 | 字段 | 值 |
 |------|-----|
-| 生成时间 (UTC) | `2026-10-12T15:33:29Z` |
+| 生成时间 (UTC) | `2026-10-12T15:46:59Z` |
 | 源文件 SHA-256 | `84c8f1a5b9cdd0d74d2d48e52c45bc78233ec2ad6132622e71404939380a7588` |
 | CAPABILITIES version | `30.10` |
 | CAPABILITIES last_updated | `2026-10-11` |
@@ -152,13 +152,15 @@ aiPlat 是企业级 AI **操作系统式平台**：以 Harness 为执行内核�
 
 ### 2.5.3 五维白皮书 ↔ 仓库映射（摘要）
 
-| 维度 | 核心问题 | 权威源 |
-|------|----------|--------|
-| 技术 | 为什么这样设计 | `architecture/overview.md` + `comparison.md` + 本白皮书第 1–3 章 |
-| 产品 | 能解决什么问题 | `AIPLAT_CAPABILITIES.md` + `manuals/` + Pi 交付边界计划 |
-| 商业 | 投资回报如何 | `AIPLAT_ROADMAP.md` + `strategy/`（案例持续填充） |
-| 生态 | 如何参与协作 | CAPABILITIES MCP/A2A + `docs/mcp/` + Pi 导出 |
-| 治理 | 如何可信可控 | CAPABILITIES 安全/Gate + `security/` + `compliance/` |
+| 维度 | 核心问题 | 分卷（生成） | 权威源 |
+|------|----------|--------------|--------|
+| 技术 | 为什么这样设计 | [`volumes/01-tech-architecture.md`](./volumes/01-tech-architecture.md) | overview + comparison + 本册第 1–3 章 |
+| 产品 | 能解决什么问题 | [`volumes/02-product-capability.md`](./volumes/02-product-capability.md) | CAPABILITIES + manuals + Pi 边界 |
+| 商业 | 投资回报如何 | [`volumes/03-commercial-value.md`](./volumes/03-commercial-value.md) | ROADMAP + strategy（案例待填） |
+| 生态 | 如何参与协作 | [`volumes/04-ecosystem-integration.md`](./volumes/04-ecosystem-integration.md) | MCP/A2A + Pi 导出（伙伴权益待补） |
+| 治理 | 如何可信可控 | [`volumes/05-security-governance.md`](./volumes/05-security-governance.md) | security + Gate + L 级评估 |
+
+分卷清单：[`whitepaper-suite.yaml`](./whitepaper-suite.yaml) · 重生成：`python3 scripts/generate_whitepaper_volumes.py`
 
 ## 3. 完整能力清单（由 CAPABILITIES 生成收录）
 
