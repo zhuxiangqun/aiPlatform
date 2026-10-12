@@ -18,9 +18,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
+from typing import Optional
 
 WORKSPACE = Path(__file__).resolve().parent.parent
 RUNTIME_PKG = WORKSPACE / "packages" / "aiplat-pi-runtime"
@@ -40,7 +42,30 @@ def _copytree(src: Path, dst: Path) -> None:
     shutil.copytree(src, dst)
 
 
-def export_bundle(*, app_home: Path, out: Path, project_id: str) -> Path:
+def _resolve_runtime(*, runtime_mode: Optional[str], api_base: Optional[str]) -> dict:
+    """Factory-out delivery mode: thin (default) | hybrid (Pi shell + hosted API)."""
+    mode = (
+        (runtime_mode or os.getenv("AIPLAT_PI_RUNTIME_MODE") or "thin").strip().lower()
+    )
+    if mode not in ("thin", "hybrid"):
+        mode = "thin"
+    base = (
+        api_base
+        or os.getenv("AIPLAT_API_BASE")
+        or os.getenv("AIPLAT_PI_API_BASE")
+        or ""
+    ).strip().rstrip("/")
+    return {"mode": mode, "api_base": base}
+
+
+def export_bundle(
+    *,
+    app_home: Path,
+    out: Path,
+    project_id: str,
+    runtime_mode: str | None = None,
+    api_base: str | None = None,
+) -> Path:
     app_home = app_home.resolve()
     if not app_home.is_dir():
         _die(f"app-home not a directory: {app_home}")
@@ -53,8 +78,27 @@ def export_bundle(*, app_home: Path, out: Path, project_id: str) -> Path:
         shutil.rmtree(out)
     out.mkdir(parents=True)
 
-    # Core artifacts
-    shutil.copy2(manifest, out / "agent_manifest.json")
+    runtime = _resolve_runtime(runtime_mode=runtime_mode, api_base=api_base)
+
+    # Core artifacts — stamp runtime block for hybrid/thin delivery boundary
+    try:
+        man_obj = json.loads(manifest.read_text(encoding="utf-8"))
+        if not isinstance(man_obj, dict):
+            man_obj = {}
+    except Exception:
+        man_obj = {}
+    rt = man_obj.get("runtime") if isinstance(man_obj.get("runtime"), dict) else {}
+    rt = dict(rt)
+    rt["mode"] = runtime["mode"]
+    if runtime["api_base"]:
+        rt["api_base"] = runtime["api_base"]
+    elif "api_base" in rt and runtime["mode"] == "thin":
+        # thin export: do not require hosted API
+        pass
+    man_obj["runtime"] = rt
+    (out / "agent_manifest.json").write_text(
+        json.dumps(man_obj, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
     agents_src = app_home / "agents"
     if agents_src.is_dir():
@@ -132,6 +176,8 @@ pi -e {out}
 ```
 
 Commands: `/aiplat-status`, `/aiplat-sop-check`, `/skill:<name>`
+
+Delivery: runtime.mode={runtime['mode']} (thin = snapshot only; hybrid = set AIPLAT_API_BASE for hosted APIs).
 """
     (out / "README.md").write_text(readme, encoding="utf-8")
 
@@ -141,6 +187,7 @@ Commands: `/aiplat-status`, `/aiplat-sop-check`, `/skill:<name>`
         "project_id": project_id,
         "scheme": "A",
         "skills_copied": True,
+        "runtime": runtime,
     }
     (out / "aiplat-export.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
@@ -162,9 +209,25 @@ def main() -> int:
         default="",
         help="Package name suffix (default: out directory name)",
     )
+    ap.add_argument(
+        "--runtime-mode",
+        default="",
+        help="thin|hybrid (default: AIPLAT_PI_RUNTIME_MODE or thin)",
+    )
+    ap.add_argument(
+        "--api-base",
+        default="",
+        help="Hosted aiPlat API base for hybrid (or AIPLAT_API_BASE)",
+    )
     args = ap.parse_args()
     pid = (args.project_id or args.out.name).strip().replace("/", "-")
-    out = export_bundle(app_home=args.app_home, out=args.out, project_id=pid)
+    out = export_bundle(
+        app_home=args.app_home,
+        out=args.out,
+        project_id=pid,
+        runtime_mode=(args.runtime_mode or None),
+        api_base=(args.api_base or None),
+    )
     print(f"PASS: exported Pi package → {out}")
     print(f"  AIPLAT_APP_HOME={out}")
     print(f"  pi -e {out}")

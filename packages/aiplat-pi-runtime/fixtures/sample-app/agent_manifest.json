@@ -1,5 +1,8 @@
 {
   "mode": "single",
+  "runtime": {
+    "mode": "thin"
+  },
   "agents": [
     {
       "name": "demo_agent",
