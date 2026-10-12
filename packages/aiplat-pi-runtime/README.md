@@ -3,7 +3,18 @@
 Thin **Pi Package** Runtime for aiPlat factory **Agent-mode** artifacts.
 
 - **aiPlat** = heavy factory (PRD → AGENT.md / SKILL.md / `agent_manifest.json`)
-- **This package** = user-side Runtime (Pi extensions + package `skills/`)
+- **This package** = **厂外** user-side thin host (Pi extensions + package `skills/`)
+
+## Two axes (do not merge)
+
+See [`docs/architecture/plans/pi-thin-runtime.md`](../../docs/architecture/plans/pi-thin-runtime.md).
+
+| Axis | Role of Pi | Status |
+|------|------------|--------|
+| **(B) Factory-out** | Thin delivery host (`pi -e` / thin HTTP) | **Shipped** — this package |
+| **(A) Factory-in** | Optional coding exec kernel behind PolicyGate | Experiment only — not default ReActLoop |
+
+**Delivery boundary**: this package runs the export snapshot (SOP + skills + handler). It does **not** carry PolicyGate / Memory / SECI / platform KB. If the customer needs that thickness, ship a thick runtime or hybrid API — do not claim 1:1 parity with in-factory agents.
 
 ## Scheme A (Skills)
 

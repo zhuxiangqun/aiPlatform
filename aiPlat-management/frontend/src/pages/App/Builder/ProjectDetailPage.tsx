@@ -773,10 +773,11 @@ const ProjectDetailPage: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold text-violet-300 flex items-center gap-2">
-                  <Package className="w-4 h-4" />Pi 薄 Runtime
+                  <Package className="w-4 h-4" />Pi 薄 Runtime（厂外交付）
                 </h3>
                 <p className="text-xs text-gray-400 mt-1">
-                  导出 Agent 应用为 Pi Package（无需 8002/8003）；用户侧 <code className="text-violet-200">pi -e</code> 或薄 HTTP
+                  导出为可离厂快照：SOP + skills + handler（无需 8002/8003）。
+                  <span className="text-amber-200/90"> 不含</span> PolicyGate / Memory / SECI / 平台知识库——厚度不够时请改厚运行时或混合回连，勿当作全功能 Agent。
                 </p>
               </div>
               <div className="flex gap-2">
