@@ -3,17 +3,17 @@ title: "aiPlat 商业价值白皮书"
 volume_id: commercial-value
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-12T15:46:59Z"
+generated_at: "2026-10-12T15:58:03Z"
 audience: "CEO、CFO、业务负责人、投资方"
 core_question: "投资回报与 TCO 如何？"
 priority: P3
-source_status: gap
+source_status: partial
 suite: docs/whitepaper/whitepaper-suite.yaml
-suite_sha256: "d81e99f21c3729fe2714e4e604af7e00a5b60d77114df7f25694b3ec66bce425"
+suite_sha256: "5a33449031aa9306e9e1bdc56ba3b973709e2e7cde04429e6e13fa91cdeee34e"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=commercial-value suite_sha256=d81e99f21c3729fe2714e4e604af7e00a5b60d77114df7f25694b3ec66bce425 -->
+<!-- volume_stamp id=commercial-value suite_sha256=5a33449031aa9306e9e1bdc56ba3b973709e2e7cde04429e6e13fa91cdeee34e -->
 
 # aiPlat 商业价值白皮书
 
@@ -29,12 +29,13 @@ language: zh-CN
 | 受众 | CEO、CFO、业务负责人、投资方 |
 | 核心问题 | 投资回报与 TCO 如何？ |
 | 优先级 | P3 |
-| 材料完备度（suite） | `gap` |
-| 生成时间 (UTC) | `2026-10-12T15:46:59Z` |
+| 材料完备度（suite） | `partial` |
+| 生成时间 (UTC) | `2026-10-12T15:58:03Z` |
 
 **备注**：
 
-v1 框架先行；随客户案例填充，禁止虚构 ROI 数字。
+v1 只提供「业务问题→成本结构→论证问题清单」框架。 禁止在卷内填写未经客户授权的 ROI 数字；案例以附录模板收集。
+
 
 ## 1. 本卷论证目标
 
@@ -46,20 +47,41 @@ v1 框架先行；随客户案例填充，禁止虚构 ROI 数字。
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
+| [`AIPLAT_ROADMAP.md`](../../AIPLAT_ROADMAP.md) | 商业化路线图 / 评分基线 | ✅ |
 
 
 ### 2.2 Supporting
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`AIPLAT_ROADMAP.md`](../../AIPLAT_ROADMAP.md) | 商业化路线图 / 评分基线（非完整商业白皮书） | ✅ |
+| [`docs/strategy/comparison-vs-vendors.md`](../strategy/comparison-vs-vendors.md) | 厂商策略对比（非客户 ROI） | ✅ |
+| [`docs/framework/assessment-scores.json`](../framework/assessment-scores.json) | 成熟度评分戳（辅助投资论证，非财务 ROI） | ✅ |
+| [`docs/research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) | 能力差异（技术侧，非财务） | ✅ |
 
 
 ## 3. 正文编排（节选权威源）
 
+### 3.0 商业论证框架（v1，无虚构数字）
+
+| 步骤 | 要回答的问题 | 可用材料 | 禁止 |
+|------|--------------|----------|------|
+| 1. 业务问题 | 哪类交付/知识/Agent 成本或风险最大？ | FDE/手册场景 · 客户访谈 | 用行业通稿代替客户事实 |
+| 2. 成本结构 | 自建 Harness+RAG+治理 vs 平台订阅/部署的 TCO 项？ | [`AIPLAT_ROADMAP.md`](../../AIPLAT_ROADMAP.md) 基线维度 · infra 运维手册 | 编造人天单价 |
+| 3. 能力溢价 | 哪些能力缩短交付周期或降低合规风险？ | [`docs/research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) · 评分戳 | 把 L5 直接等同 ROI% |
+| 4. 分阶段路径 | PoC → 试点 → 规模化的闸门？ | ROADMAP Phase · ORG 签收包 | 跳过治理门禁承诺「立刻全自动」 |
+| 5. 案例附录 | 客户授权后的前后对比指标？ | **待填充** `docs/whitepaper/cases/` | 未授权案例上卷 |
+
+> generated_at=`2026-07-08T09:51:09` · spec=`1.0.0`
+
+| 框架 | 结果 |
+|------|------|
+| 8轴自主性成熟度 | **L5** (5.0) |
+| 工程落地评估(58项) | **100.0%** |
+| 三层企业评估(~110项) | _(见 JSON)_ |
+
 ### 3.1 商业化路线图（节选）
 
-> ⚠️ suite 标注本卷仍为 gap：缺独立客户 ROI 案例卷。以下为现有框架，**禁止当作已验证 ROI 报告**。
+> ⚠️ **客户 ROI 数字仍为 gap**。下列 ROADMAP 是内部作战手册节选，不是对外已审计财报。
 
 # aiPlat 商业化演进终极作战手册
 

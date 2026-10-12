@@ -64,28 +64,46 @@ volumes:
     audience: CEO、CFO、业务负责人、投资方
     core_question: 投资回报与 TCO 如何？
     priority: P3
-    status: gap  # 缺独立成卷；需客户 ROI 案例
-    canonical: []
-    supporting:
+    status: partial  # v1 论证框架已成卷；客户 ROI 数字仍 gap
+    canonical:
       - path: AIPLAT_ROADMAP.md
-        role: 商业化路线图 / 评分基线（非完整商业白皮书）
-    notes: v1 框架先行；随客户案例填充，禁止虚构 ROI 数字。
+        role: 商业化路线图 / 评分基线
+    supporting:
+      - path: docs/strategy/comparison-vs-vendors.md
+        role: 厂商策略对比（非客户 ROI）
+      - path: docs/framework/assessment-scores.json
+        role: 成熟度评分戳（辅助投资论证，非财务 ROI）
+      - path: docs/research/aiPlat核心能力对标报告.md
+        role: 能力差异（技术侧，非财务）
+    notes: >
+      v1 只提供「业务问题→成本结构→论证问题清单」框架。
+      禁止在卷内填写未经客户授权的 ROI 数字；案例以附录模板收集。
 
   - id: ecosystem-integration
     name: 生态与集成白皮书
     audience: ISV、集成商、开源社区、渠道
     core_question: 如何接入、贡献、协作？
     priority: P2
-    status: gap  # MCP/A2A 散落 CAPABILITIES；缺伙伴权益卷
-    canonical: []
-    supporting:
-      - path: docs/policy/mcp-stdio-prod-allowlist.md
-        role: MCP 生产准入
-      - path: packages/aiplat-pi-runtime/README.md
-        role: 厂外 Pi 包交付
+    status: partial  # 开放边界与接入路径已收敛；伙伴权益/分成条款仍 gap
+    canonical:
+      - path: docs/mcp/index.md
+        role: MCP 文档入口
       - path: docs/API/api-reference.md
-        role: API 参考（若存在）
-    notes: 核心接口稳定 + 早期伙伴验证后再发正式卷。
+        role: API 参考
+      - path: docs/policy/mcp-stdio-prod-allowlist.md
+        role: MCP 生产准入（治理边界）
+      - path: packages/aiplat-pi-runtime/README.md
+        role: 厂外 Pi Package 交付面
+    supporting:
+      - path: docs/API/AttributionSchema.md
+        role: 归因协议
+      - path: docs/architecture/plans/pi-thin-runtime.md
+        role: Pi 薄 Runtime 战略边界
+      - path: docs/whitepaper/WHITEPAPER_SYSTEM.md
+        role: 白皮书体系（生态卷定位）
+    notes: >
+      开放面：MCP 工具、HTTP API、Pi Package、A2A（见 CAPABILITIES 切片）。
+      伙伴分层/商业回报条款待商务材料；本卷不杜撰渠道政策。
 
   - id: security-governance
     name: 安全与治理白皮书

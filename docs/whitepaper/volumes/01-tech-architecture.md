@@ -3,17 +3,17 @@ title: "aiPlat 技术架构白皮书"
 volume_id: tech-architecture
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-12T15:46:59Z"
+generated_at: "2026-10-12T15:58:03Z"
 audience: "CTO、架构师、平台工程师"
 core_question: "为什么这样设计？边界与权衡是什么？"
 priority: P0
 source_status: partial
 suite: docs/whitepaper/whitepaper-suite.yaml
-suite_sha256: "d81e99f21c3729fe2714e4e604af7e00a5b60d77114df7f25694b3ec66bce425"
+suite_sha256: "5a33449031aa9306e9e1bdc56ba3b973709e2e7cde04429e6e13fa91cdeee34e"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=tech-architecture suite_sha256=d81e99f21c3729fe2714e4e604af7e00a5b60d77114df7f25694b3ec66bce425 -->
+<!-- volume_stamp id=tech-architecture suite_sha256=5a33449031aa9306e9e1bdc56ba3b973709e2e7cde04429e6e13fa91cdeee34e -->
 
 # aiPlat 技术架构白皮书
 
@@ -30,7 +30,7 @@ language: zh-CN
 | 核心问题 | 为什么这样设计？边界与权衡是什么？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `partial` |
-| 生成时间 (UTC) | `2026-10-12T15:46:59Z` |
+| 生成时间 (UTC) | `2026-10-12T15:58:03Z` |
 
 ## 1. 本卷论证目标
 
