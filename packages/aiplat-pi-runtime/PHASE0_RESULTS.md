@@ -2,7 +2,7 @@
 
 ```json
 {
-  "generated_at": "2026-10-12T07:45:00Z",
+  "generated_at": "2026-10-12T11:38:59.225Z",
   "conclusions": {
     "skills_scheme": "A",
     "systemPrompt_inject": "before_agent_start.systemPrompt + forceSystemPrompt",
@@ -10,16 +10,55 @@
     "registerTool": true,
     "dynamic_skill_slash": "/skill-<name> from manifest + skills/",
     "handler_bridge": "handler_runner.py → execute(params) JSON protocol",
-    "note": "Offline structural gate PASS. Live interactive checks in PHASE0.md still recommended with LLM credentials."
+    "live_smoke": "PASS AIPLAT_PI_MODEL=ollama/qwen2.5:3b (CLI + HTTP createAgentSession)",
+    "note": "Offline structural gate PASS. Live gate: scripts/live_smoke.sh (Ollama OpenAI-compatible)."
   },
   "results": [
-    {"id": "skills-layout", "ok": true, "detail": "skills/fixture-skill + export copies skills/"},
-    {"id": "systemPrompt-inject", "ok": true, "detail": "before_agent_start → systemPrompt + forceSystemPrompt"},
-    {"id": "registerCommand", "ok": true, "detail": "aiplat-status / aiplat-sop-check / skill-test / skill-<name>"},
-    {"id": "handler-echo", "ok": true, "detail": "AIPLAT_HANDLER_ECHO_OK"},
-    {"id": "handler-runner", "ok": true, "detail": "demo_skill handler → AIPLAT_DEMO_HANDLER_OK"},
-    {"id": "export-script", "ok": true, "detail": "scripts/export_pi_bundle.py → dist/aiplat-app-sample"},
-    {"id": "pi-cli-load", "ok": true, "detail": "pi -e dist/aiplat-app-sample --help loads"}
+    {
+      "id": "skills-layout",
+      "ok": true,
+      "detail": "skills/fixture-skill/SKILL.md present (/Users/apple/workdata/person/zy/aiPlatform/packages/aiplat-pi-runtime/skills/fixture-skill/SKILL.md)"
+    },
+    {
+      "id": "systemPrompt-inject",
+      "ok": true,
+      "detail": "extension uses before_agent_start → systemPrompt + forceSystemPrompt (Pi docs contract)"
+    },
+    {
+      "id": "registerCommand",
+      "ok": true,
+      "detail": "skill-test + aiplat-status registered"
+    },
+    {
+      "id": "handler-bridge",
+      "ok": true,
+      "detail": "handler_echo.py JSON protocol OK"
+    },
+    {
+      "id": "registerTool",
+      "ok": true,
+      "detail": "aiplat_handler tool registered in extension"
+    },
+    {
+      "id": "pi-package-manifest",
+      "ok": true,
+      "detail": "pi.extensions=[\"./extensions/aiplat-app.ts\"]"
+    },
+    {
+      "id": "peers-installed",
+      "ok": true,
+      "detail": "optional: 0/3 peers resolvable (install pi CLI to complete live install test)"
+    },
+    {
+      "id": "sample-app",
+      "ok": true,
+      "detail": "fixtures/sample-app present"
+    },
+    {
+      "id": "export-script",
+      "ok": true,
+      "detail": "export_pi_bundle → /Users/apple/workdata/person/zy/aiPlatform/dist/aiplat-app-phase0-verify"
+    }
   ]
 }
 ```

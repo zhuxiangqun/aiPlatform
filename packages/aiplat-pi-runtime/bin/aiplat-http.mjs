@@ -7,17 +7,19 @@
  *
  * Modes:
  *   - stub: AIPLAT_HTTP_STUB=1 or no usable model/credentials
- *   - agent: createAgentSession (pi-coding-agent SDK) when AIPLAT_PI_MODEL set
- *            and provider auth is available (env / auth.json via ModelRuntime)
+ *   - agent: createAgentSession when AIPLAT_PI_MODEL set (resolves SDK from
+ *            local node_modules or global `pi` install; OpenAI-compatible
+ *            endpoints via AIPLAT_PI_BASE_URL, default Ollama)
  *
  * Auth: AIPLAT_HTTP_API_KEY → Authorization: Bearer <key>
  * Env: AIPLAT_HTTP_PORT (8787), AIPLAT_APP_HOME, AIPLAT_PI_MODEL=provider/id
+ *      AIPLAT_PI_BASE_URL, AIPLAT_PI_API_KEY, AIPLAT_PI_SDK_ROOT
  */
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { spawn } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { spawn, execSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -26,6 +28,9 @@ const PORT = Number(process.env.AIPLAT_HTTP_PORT || 8787);
 const API_KEY = (process.env.AIPLAT_HTTP_API_KEY || "").trim();
 const FORCE_STUB = process.env.AIPLAT_HTTP_STUB === "1";
 const MODEL_SPEC = (process.env.AIPLAT_PI_MODEL || "").trim();
+const PI_BASE_URL = (process.env.AIPLAT_PI_BASE_URL || "").trim();
+const PI_API_KEY = (process.env.AIPLAT_PI_API_KEY || "").trim();
+const PI_SDK_ROOT = (process.env.AIPLAT_PI_SDK_ROOT || "").trim();
 
 /** @type {Map<string, any>} */
 const sessions = new Map();
@@ -153,54 +158,134 @@ function parseModelSpec(spec) {
   return { provider: s.slice(0, i), id: s.slice(i + 1) };
 }
 
+function npmGlobalRoot() {
+  try {
+    return execSync("npm root -g", { encoding: "utf8" }).trim();
+  } catch {
+    return "";
+  }
+}
+
+function packageEntryHref(pkgRoot) {
+  const pkgJson = path.join(pkgRoot, "package.json");
+  if (!fs.existsSync(pkgJson)) return null;
+  const j = JSON.parse(fs.readFileSync(pkgJson, "utf8"));
+  const exp = j.exports?.["."];
+  const entry = typeof exp === "string" ? exp : exp?.import || j.main;
+  if (!entry) return null;
+  return pathToFileURL(path.join(pkgRoot, entry)).href;
+}
+
+/** Resolve @earendil-works/pi-coding-agent from local install or global `pi`. */
+function resolveCodingAgentRoots() {
+  const candidates = [];
+  if (PI_SDK_ROOT) candidates.push(PI_SDK_ROOT);
+  candidates.push(path.join(PKG, "node_modules", "@earendil-works", "pi-coding-agent"));
+  const g = npmGlobalRoot();
+  if (g) candidates.push(path.join(g, "@earendil-works", "pi-coding-agent"));
+  // common user prefix (npm -g without sudo)
+  const home = process.env.HOME || "";
+  if (home) {
+    candidates.push(
+      path.join(home, ".npm-global", "lib", "node_modules", "@earendil-works", "pi-coding-agent"),
+    );
+  }
+  return candidates.filter((p) => fs.existsSync(path.join(p, "package.json")));
+}
+
+async function importCodingAgent() {
+  const roots = resolveCodingAgentRoots();
+  const errors = [];
+  for (const root of roots) {
+    try {
+      const href = packageEntryHref(root);
+      if (!href) continue;
+      const coding = await import(href);
+      if (typeof coding.createAgentSession === "function") {
+        return { coding, root };
+      }
+      errors.push(`${root}: createAgentSession missing`);
+    } catch (e) {
+      errors.push(`${root}: ${e && e.message ? e.message : e}`);
+    }
+  }
+  // last resort: bare specifier (works after npm install in package)
+  try {
+    const coding = await import("@earendil-works/pi-coding-agent");
+    if (typeof coding.createAgentSession === "function") {
+      return { coding, root: "(node_modules resolve)" };
+    }
+  } catch (e) {
+    errors.push(`bare: ${e && e.message ? e.message : e}`);
+  }
+  throw new Error(`pi-coding-agent unavailable; tried=${errors.join(" | ")}`);
+}
+
+/** Build an OpenAI-compatible Model for createAgentSession (Ollama / vLLM / LM Studio). */
+function buildCompatibleModel(parsed) {
+  const provider = parsed.provider;
+  const id = parsed.id;
+  const defaultBase =
+    provider === "ollama"
+      ? "http://127.0.0.1:11434/v1"
+      : provider === "lmstudio"
+        ? "http://127.0.0.1:1234/v1"
+        : "http://127.0.0.1:8000/v1";
+  const baseUrl = PI_BASE_URL || defaultBase;
+  // Dummy key makes OpenAI-compatible clients happy; Ollama ignores it.
+  const apiKey =
+    PI_API_KEY ||
+    (provider === "ollama" || provider === "lmstudio"
+      ? "ollama"
+      : process.env.OPENAI_API_KEY || "local");
+  return {
+    id,
+    name: id,
+    api: "openai-completions",
+    provider,
+    baseUrl,
+    apiKey,
+    reasoning: false,
+    input: ["text"],
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 8192,
+    maxTokens: 2048,
+  };
+}
+
 async function ensureAgent(sessionId, meta) {
   if (sessions.has(sessionId)) return sessions.get(sessionId);
 
   if (!FORCE_STUB && MODEL_SPEC) {
     try {
-      const coding = await import("@earendil-works/pi-coding-agent");
-      const ai = await import("@earendil-works/pi-ai");
+      const { coding, root } = await importCodingAgent();
       const { createAgentSession, SessionManager } = coding;
-      const getModel = ai.getModel;
       const parsed = parseModelSpec(MODEL_SPEC);
-      let model = null;
-      if (typeof getModel === "function" && parsed) {
-        try {
-          model = getModel(parsed.provider, parsed.id);
-        } catch (e) {
-          _agentModeDetail = `getModel failed: ${e}`;
-        }
-      } else {
-        _agentModeDetail = "getModel unavailable from @earendil-works/pi-ai";
-      }
-
-      if (model && typeof createAgentSession === "function") {
-        // cwd = exported package (or sample-app) so package.json `pi` resources load
-        const cwd = meta.appHome;
-        const { session } = await createAgentSession({
-          cwd,
-          model,
-          sessionManager: SessionManager.inMemory(),
-          // Prefer extension/custom tools; skip default coding tools for app chat
-          noTools: "builtin",
-        });
-        const entry = {
-          kind: "agent",
-          session,
-          systemPrompt: meta.systemPrompt,
-          dispose: () => {
-            try {
-              session.dispose?.();
-            } catch {
-              /* ignore */
-            }
-          },
-        };
-        sessions.set(sessionId, entry);
-        _agentMode = "agent";
-        _agentModeDetail = `createAgentSession model=${MODEL_SPEC} cwd=${cwd}`;
-        return entry;
-      }
+      if (!parsed) throw new Error(`bad AIPLAT_PI_MODEL: ${MODEL_SPEC}`);
+      const model = buildCompatibleModel(parsed);
+      const cwd = meta.appHome;
+      const { session } = await createAgentSession({
+        cwd,
+        model,
+        sessionManager: SessionManager.inMemory(),
+        noTools: "builtin",
+      });
+      const entry = {
+        kind: "agent",
+        session,
+        systemPrompt: meta.systemPrompt,
+        dispose: () => {
+          try {
+            session.dispose?.();
+          } catch {
+            /* ignore */
+          }
+        },
+      };
+      sessions.set(sessionId, entry);
+      _agentMode = "agent";
+      _agentModeDetail = `createAgentSession model=${MODEL_SPEC} baseUrl=${model.baseUrl} sdk=${root} cwd=${cwd}`;
+      return entry;
     } catch (e) {
       _agentModeDetail = `agent init error: ${e && e.message ? e.message : e}`;
     }
