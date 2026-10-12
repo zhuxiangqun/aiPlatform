@@ -3,23 +3,24 @@ title: "aiPlat 平台现状白皮书"
 type: platform-status-whitepaper
 authority: derived-from-capabilities
 status: generated
-generated_at: "2026-10-12T17:28:56Z"
+generated_at: "2026-10-12T17:49:13Z"
 source: AIPLAT_CAPABILITIES.md
 source_sha256: "e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94"
+scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 total_capabilities: 2105
 capabilities_version: "30.10"
 capabilities_last_updated: "2026-10-11"
 language: zh-CN
 ---
 
-<!-- whitepaper_stamp source_sha256=e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94 total_capabilities=2105 -->
+<!-- whitepaper_stamp source_sha256=e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 total_capabilities=2105 -->
 
 # aiPlat 平台现状白皮书
 
 > **本文是可再生成的平台现状说明书，不是第二真相源。**  
 > 能力清单唯一权威：仓库根目录 [`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md)  
 > 机器登记：[`aiPlat-core/core/capability_registry.yaml`](../../aiPlat-core/core/capability_registry.yaml)  
-> 重新生成：`python3 scripts/generate_platform_whitepaper.py`  
+> 重新生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_platform_whitepaper.py`  
 > 新鲜度校验：`python3 scripts/generate_platform_whitepaper.py --check`
 
 ## 0. 阅读约定与权威模型
@@ -37,8 +38,9 @@ language: zh-CN
 
 | 字段 | 值 |
 |------|-----|
-| 生成时间 (UTC) | `2026-10-12T17:28:56Z` |
-| 源文件 SHA-256 | `e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94` |
+| 生成时间 (UTC) | `2026-10-12T17:49:13Z` |
+| CAPABILITIES SHA-256 | `e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94` |
+| assessment-scores SHA-256 | `96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687` |
 | CAPABILITIES version | `30.10` |
 | CAPABILITIES last_updated | `2026-10-11` |
 | frontmatter total_capabilities | `2105` |

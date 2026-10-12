@@ -19,16 +19,15 @@ if [ "${1:-}" = "--regen" ]; then
 fi
 
 if [ "$REGEN" = 1 ]; then
-  echo "== 1. 重新生成 (--regen) =="
-  python3 scripts/generate_whitepaper_volumes.py
-  python3 scripts/generate_platform_whitepaper.py >/dev/null
+  echo "== 1. 重新生成 (--regen → sync_whitepapers) =="
+  bash scripts/sync_whitepapers.sh
 else
   echo "== 1. 跳过再生成（默认；需要刷新时加 --regen） =="
 fi
 
 echo "== 2. 生成器自检 =="
-python3 scripts/generate_whitepaper_volumes.py --check
 python3 scripts/generate_platform_whitepaper.py --check
+python3 scripts/generate_whitepaper_volumes.py --check
 
 echo "== 3. 关键文件存在 =="
 for f in \
@@ -37,7 +36,8 @@ for f in \
   docs/whitepaper/cases/README.md \
   docs/whitepaper/ecosystem-partner-tiers.md \
   docs/whitepaper/ecosystem-partner-commercial-template.md \
-  scripts/verify-whitepaper-ready.sh
+  scripts/verify-whitepaper-ready.sh \
+  scripts/sync_whitepapers.sh
 do
   test -f "$f" || fail "缺少文件：$f"
 done
@@ -78,18 +78,24 @@ fi
 
 echo "== 9. 生成物一致性（相对 HEAD） =="
 # 忽略未跟踪杂项；白皮书生成物须与 HEAD 一致
-if ! git diff HEAD --quiet -- \
-  docs/whitepaper/volumes/ \
-  docs/whitepaper/aiplat-platform-status-whitepaper.md \
-  docs/whitepaper/whitepaper-suite.yaml \
-  docs/whitepaper/WHITEPAPER_SYSTEM.md \
-  scripts/generate_whitepaper_volumes.py \
-  scripts/verify-whitepaper-ready.sh; then
-  git diff HEAD --stat -- \
+# 仅在非 --regen 模式下要求工作区与 HEAD 一致（regen 后需自行 commit）
+if [ "$REGEN" != 1 ]; then
+  if ! git diff HEAD --quiet -- \
     docs/whitepaper/volumes/ \
     docs/whitepaper/aiplat-platform-status-whitepaper.md \
-    scripts/verify-whitepaper-ready.sh || true
-  fail "白皮书相关文件相对 HEAD 有未提交差异（若刚 --regen，请 git add + commit）"
+    docs/whitepaper/whitepaper-suite.yaml \
+    docs/whitepaper/WHITEPAPER_SYSTEM.md \
+    scripts/generate_whitepaper_volumes.py \
+    scripts/generate_platform_whitepaper.py \
+    scripts/sync_whitepapers.sh \
+    scripts/verify-whitepaper-ready.sh; then
+    git diff HEAD --stat -- \
+      docs/whitepaper/volumes/ \
+      docs/whitepaper/aiplat-platform-status-whitepaper.md \
+      scripts/sync_whitepapers.sh \
+      scripts/verify-whitepaper-ready.sh || true
+    fail "白皮书相关文件相对 HEAD 有未提交差异（请 git add + commit，或先 sync）"
+  fi
 fi
 
 echo "OK: whitepaper ready 验收通过"
