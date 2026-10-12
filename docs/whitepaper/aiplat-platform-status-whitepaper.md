@@ -3,7 +3,7 @@ title: "aiPlat 平台现状白皮书"
 type: platform-status-whitepaper
 authority: derived-from-capabilities
 status: generated
-generated_at: "2026-10-12T15:12:26Z"
+generated_at: "2026-10-12T15:33:29Z"
 source: AIPLAT_CAPABILITIES.md
 source_sha256: "84c8f1a5b9cdd0d74d2d48e52c45bc78233ec2ad6132622e71404939380a7588"
 total_capabilities: 2098
@@ -28,14 +28,16 @@ language: zh-CN
 |------|----------|
 | 平台有哪些能力、是否已接线 | **AIPLAT_CAPABILITIES.md**（本文第 3 章为其完整收录） |
 | 架构分层与依赖方向 | `docs/architecture/overview.md` + 各仓 `CLAUDE.md` |
-| 自主性定级（L5 等） | `docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md`（评估，非整库能力表） |
+| 自主性定级（L5 等） | `docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md` + `framework/assessment-scores.json` |
+| 对标 / 差异化 | `docs/research/aiPlat核心能力对标报告.md` + `architecture/comparison.md` |
+| 五维白皮书体系 | [`WHITEPAPER_SYSTEM.md`](./WHITEPAPER_SYSTEM.md) |
 | 设计目标 vs 现状 | 代码与 CAPABILITIES；设计文档冲突时以代码为准 |
 
 **生成元数据**
 
 | 字段 | 值 |
 |------|-----|
-| 生成时间 (UTC) | `2026-10-12T15:12:26Z` |
+| 生成时间 (UTC) | `2026-10-12T15:33:29Z` |
 | 源文件 SHA-256 | `84c8f1a5b9cdd0d74d2d48e52c45bc78233ec2ad6132622e71404939380a7588` |
 | CAPABILITIES version | `30.10` |
 | CAPABILITIES last_updated | `2026-10-11` |
@@ -117,6 +119,46 @@ aiPlat 是企业级 AI **操作系统式平台**：以 Harness 为执行内核�
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
 | **总计** | **2088** | **10** | **2098** |
+
+## 2.5 对标、评级与五维白皮书体系
+
+> **完整性要求**：仅有能力清单不足以对外论证。对标报告、自主性/工程成熟度评分、安全合规材料必须进入白皮书**体系目录**；本生成章只做**索引 + 评分戳**，正文仍以各权威源为准（避免第二真相源）。
+
+体系说明：[`WHITEPAPER_SYSTEM.md`](./WHITEPAPER_SYSTEM.md)
+
+### 2.5.1 权威评分戳（自动摘录）
+
+> 评分戳来源：[`assessment-scores.json`](../framework/assessment-scores.json)（generated_at=`2026-07-08T09:51:09` · spec=`1.0.0`）。改分请改 `assessment-spec.yaml` 后重算，勿手改本表。
+
+| 框架 | 综合结果 | 说明 |
+|------|----------|------|
+| 8轴自主性成熟度 | **L5** (5.0) | sum(axis_level*weight)/sum(weight) — normalized |
+| 工程落地评估(58项) | **100.0%** | (yes*1 + partial*0.5)/total * 100 |
+| 三层企业评估(~110项) | _(见 JSON tiers)_ | per-tier mean of manual scores (all source=manual) |
+
+
+完整评估叙述：[`../framework/aiplat-complete-assessment.md`](../framework/aiplat-complete-assessment.md) · 自主性 ADR：[`aiplat-l4-autonomy-assessment-v1.0.0.md`](./aiplat-l4-autonomy-assessment-v1.0.0.md)
+
+### 2.5.2 对标与对比入口（勿读 archive 当现行）
+
+| 文档 | 用途 |
+|------|------|
+| [`../research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) | **主对标**：Claude Code / DeepSeek Harness / Hermes（见 `research/README.md`） |
+| [`../architecture/comparison.md`](../architecture/comparison.md) | 架构对比统一入口 |
+| [`../strategy/comparison-vs-vendors.md`](../strategy/comparison-vs-vendors.md) | 厂商/策略对比 |
+| [`../framework/hermes-comparison.md`](../framework/hermes-comparison.md) | Hermes 专项 |
+| [`../research/对标吸收与架构纯度评估.md`](../research/对标吸收与架构纯度评估.md) | 吸收核验 |
+| [`../archive/`](../archive/) | 历史对比（只读，已被主报告取代） |
+
+### 2.5.3 五维白皮书 ↔ 仓库映射（摘要）
+
+| 维度 | 核心问题 | 权威源 |
+|------|----------|--------|
+| 技术 | 为什么这样设计 | `architecture/overview.md` + `comparison.md` + 本白皮书第 1–3 章 |
+| 产品 | 能解决什么问题 | `AIPLAT_CAPABILITIES.md` + `manuals/` + Pi 交付边界计划 |
+| 商业 | 投资回报如何 | `AIPLAT_ROADMAP.md` + `strategy/`（案例持续填充） |
+| 生态 | 如何参与协作 | CAPABILITIES MCP/A2A + `docs/mcp/` + Pi 导出 |
+| 治理 | 如何可信可控 | CAPABILITIES 安全/Gate + `security/` + `compliance/` |
 
 ## 3. 完整能力清单（由 CAPABILITIES 生成收录）
 
@@ -2733,7 +2775,11 @@ python3 scripts/generate_platform_whitepaper.py
 | [`docs/architecture/overview.md`](../architecture/overview.md) | 架构全景 |
 | [`docs/matrix/capability-impact-matrix.md`](../matrix/capability-impact-matrix.md) | 变更影响矩阵 |
 | [`docs/DOCUMENT_SYSTEM.md`](../DOCUMENT_SYSTEM.md) | 文档治理宪法 |
-| [`docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md`](./aiplat-l4-autonomy-assessment-v1.0.0.md) | 自主性定级评估 |
+| [`WHITEPAPER_SYSTEM.md`](./WHITEPAPER_SYSTEM.md) | 五维白皮书体系 |
+| [`aiplat-l4-autonomy-assessment-v1.0.0.md`](./aiplat-l4-autonomy-assessment-v1.0.0.md) | 自主性定级评估 |
+| [`../framework/assessment-scores.json`](../framework/assessment-scores.json) | 评估分数机器源 |
+| [`../research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) | 主对标报告 |
+| [`AIPLAT_ROADMAP.md`](../../AIPLAT_ROADMAP.md) | 商业/路线图 |
 | [`docs/archive/AIPLAT_WHITEPAPER.md`](../archive/AIPLAT_WHITEPAPER.md) | 旧叙事稿（归档，非现状权威） |
 
 ---
