@@ -69,3 +69,35 @@ class TestP1_5ConfigDrivenModelPurpose:
             stage = _enrich_stage_from_agent(
                 {"agent_id": "custom", "skill_name": "code_generation"})
         assert stage["skill_model_purpose"] == "reasoning", stage
+
+    def test_architecture_profile_from_agent_md(self):
+        """E1: empty stage picks architecture_profile from AGENT.md."""
+        with patch(
+            "core.api.facades.agent_facade.get_agent_frontmatter",
+            return_value={
+                "agent_type": "react",
+                "architecture_profile": "react_tools",
+            },
+        ):
+            stage = _enrich_stage_from_agent(
+                {"agent_id": "custom", "skill_name": "demo_skill"}
+            )
+        assert stage.get("architecture_profile") == "react_tools", stage
+
+    def test_yaml_architecture_profile_wins(self):
+        """E1: team YAML architecture_profile is not overwritten by AGENT.md."""
+        with patch(
+            "core.api.facades.agent_facade.get_agent_frontmatter",
+            return_value={
+                "agent_type": "react",
+                "architecture_profile": "oneshot",
+            },
+        ):
+            stage = _enrich_stage_from_agent(
+                {
+                    "agent_id": "custom",
+                    "skill_name": "demo_skill",
+                    "architecture_profile": "plan_execute",
+                }
+            )
+        assert stage.get("architecture_profile") == "plan_execute", stage

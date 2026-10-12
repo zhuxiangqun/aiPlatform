@@ -1064,7 +1064,14 @@ const ProjectPanel: React.FC<{
     try {
       const result = await projectApi.deployToApp(project.project_id);
       setDeployUrl((result as any)?.app_url || '');
-      toast.success('部署成功');
+      const pb = (result as any)?.pi_bundle;
+      if (pb?.ok && pb?.hint) {
+        toast.success(`部署成功 · Pi 包已导出（${pb.hint}）`);
+      } else if (pb?.skipped) {
+        toast.success('部署成功（无 Agent manifest，已跳过 Pi 导出）');
+      } else {
+        toast.success('部署成功');
+      }
     } catch (e: any) { toastGateError(e, '部署失败'); }
     finally { setDeploying(false); }
   };

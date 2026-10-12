@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2092
+total_capabilities: 2098
 last_updated: 2026-10-11
 version: "30.10"
 auto_sync: true
@@ -588,6 +588,10 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| record_fail_open_audit_async | `core/harness/registry/execution_type_policy.py` | ✅ | 自动同步 | 已合入 |
+| known_execution_types | `core/harness/registry/execution_type_policy.py` | ✅ | 自动同步 | 已合入 |
+| fail_open_governance_status | `core/harness/registry/execution_type_policy.py` | ✅ | 自动同步 | 已合入 |
+| coerce_execution_type | `core/harness/registry/execution_type_policy.py` | ✅ | 自动同步 | 已合入 |
 | execution_type_fail_closed | `core/harness/registry/execution_type_policy.py` | ✅ | 自动同步 | 已合入 |
 | load_repo_health_thresholds_from_duty | `core/harness/meta/repo_health_scan.py` | ✅ | 自动同步 | 已合入 |
 | list_health_snapshots | `core/harness/meta/repo_health_scan.py` | ✅ | 自动同步 | 已合入 |
@@ -774,7 +778,8 @@ scan_hash: 8f9548ec24f4
 | DONE Verify 环（验证回路一等公民） | `harness/execution/done_verify.py` + `ReActLoop._acceptance_gate` + `StageRunner`/`CoreFacade` 注入 + `PipelineStageConfig.done_verify` + **`gate_llm_file_output_stage`**（`_run_stage_skill` 落盘前） | ✅ | 封 DONE 前兑现检查（配置驱动，禁 agent_id 分支）：min_output_length / require_keys / substrings / expected_outcomes / require_commands / review_gate（绑定审阅 skill 才强制）+ 拒 trivial DONE/action envelope；dev 2 次 veto 后 fail-open；**production / `AIPLAT_DONE_VERIFY_FAIL_CLOSED` 保持否决（无软封）**，`AIPLAT_DONE_VERIFY_FAIL_OPEN` 紧急覆写；**llm + uses_file_output**：deploy 前跑同一环（`review_gate` 跳过——oneshot 无 follow-up skill；peer-review 须 `execution_backend=agent`）；生成物适用：已接线（Harness 横切） | 已合入 |
 | 编码 stage 默认闭环 | `schemas_builder.apply_coding_stage_defaults` + `code_split`/`code`/`hybrid` 团队种子 | ✅ | `uses_file_output` → stage sandbox 开 + light done_verify + `required_skills` 绑 autoreview（`review_gate=none` / env 可关）；file_checkpoint 仍全局默认；**llm skill 路径**经 `gate_llm_file_output_stage` 防空 DONE 落盘；生成物适用：已接线（工厂编码团队） | 已合入 |
 | 工作区 Execute 编码闭环 | `inject_workspace_coding_defaults` + `workspace_agent_needs_coding_defaults` + `_execute_workspace_agent_background` + `CoreFacade` 同名导出 | ✅ | 绑定 `uses_file_output` 技能 / `coding_closed_loop` / `coding_intensity` 时注入与工厂相同的 sandbox+done_verify+testability+autoreview；`coding_closed_loop:false` 可关；**不**因 `coding_policy_profile` 单独 opt-in；非编码 trial 仍 `_coding_policy_profile=off`；生成物适用：已接线（工作区手改/Execute） | 已合入 |
-| 执行决策矩阵闭环（execution_type） | `execution_type_policy.coerce_execution_type` + `Skill.execute` + `_run_stage_skill`（handler 先于 backend）+ Living Spec `execution-decision-matrix.md` + `CoreFacade.coerce_execution_type` | ✅ | 未知/拼写 `execution_type`：生产或 `AIPLAT_EXECUTION_TYPE_FAIL_CLOSED` **硬失败**（禁静默改 prompt）；`FAIL_OPEN` 逃生；别名 `llm→prompt`；Stage×Skill：`handler`/`hybrid` 在 oneshot llm 之前执行；显式 `architecture_profile` 不被 capability demote；生成物适用：已接线（Harness 横切选型） | 已合入 |
+| 执行决策矩阵闭环（execution_type） | `execution_type_policy`（默认 fail closed + E5 FAIL_OPEN 治理）+ `Skill.execute` + `_run_stage_skill`（handler 先于 backend）+ Living Spec **v1.9** + `lint_engine_skills.py`/`check_cost_ladder.py`(E4/O1 证明质量) + `lint_team_yaml_profile_drift.py`(O2) + 工厂 `architecture_profile`(E1) + handler Skill(E2) + conformance | ✅ | 未知类型**默认硬失败**；SOFT_DEV/`FAIL_CLOSED=0` 才 soft；FAIL_OPEN 须 REASON/BY/UNTIL + 健康检查 WARNING/`expires_within_24h`；Stage×Skill 完整矩阵；路径卡含 stage/skill/handler/fail_closed；新 Syscall/MCP 证明模板或 `# ladder-ok` 质量门槛；生成物适用：已接线（Harness 横切选型） | 已合入 |
+| 成本阶梯 ratchet（Syscall/MCP） | `scripts/check_cost_ladder.py` + `scripts/baselines/cost_ladder_*.txt` | ✅ | 新增 `sys_*` / MCP seed 超出基线须**证明模板**（why_not_1–4/rung/blast_radius）或合格 `# ladder-ok: <reason≥15>`（可 `temporary until`）；仅写 CAPABILITIES 名不够；pre-commit `--staged` + architecture_guard 全量；生成物适用：不适用（平台横切合入闸门） | 已合入 |
 | Code 元工具偏好（图灵完备出口） | `harness/execution/meta_tool.py` + `ReActLoop._build_tools_desc` + `PipelineStageConfig.meta_tool` + StageRunner/CoreFacade/team_planner 注入 | ✅ | 算术/日期/解析/逃逸舱口 → `[META TOOL]` 提示 + 置顶 `code`；配置 `{enabled, auto_bind, force}`；`AIPLAT_META_TOOL_AUTO_BIND=auto`（生产 on / 开发 off）；`AIPLAT_META_TOOL_CODE` 总开关；生成物适用：已接线（Harness 横切） | 已合入 |
 | 组织 Harness 暗账本（HITL/审批 Amdahl） | `harness/meta/org_harness_metrics.py` + `CoreFacade.org_harness_status` + `GET /governance/org-harness` + Governance 面板 + eval_observability 可选切片 | ✅ | `serial_ratio`/审批 + **四指标**（P·R·P0miss·comments/time）+ `serial_chain_recommendations`（串行链改造建议）；vite/proxy；生成物不适用（平台横切治理观测） | 已合入 |
 | Governance 值班板（KPI 运营化） | `build_duty_board` + `load_adoption_snapshot` + `collect_merge_gates_posture` + Evidence Envelope 摘要 + Governance「值班板」+ Gold match-only CTA + 无假绿 adoption/机制状态 | ✅ | go/watch/block/unavailable；金标/串行/审批/HITL/Howl/**合入闸门姿态**/信封；任务成功率标 unavailable；gold_gate 加载失败 require_eval；值班板一键 `POST .../code-review-gold/evaluate`（match_only+persist limit=5）写报告并刷新 org-harness；**Gold JSONL 趋势** + **值班员剧本** + **豁免负债账**（owner/cap/到期未复审→block）+ **门禁元评估**（exemption/skip/appeal 率）+ **合入后仓库健康**（god/fanout/deps/Δloc）+ **证据信封**（禁无 envelope 的 BLOCK）；生成物不适用（平台横切治理观测） | 已合入 |
@@ -801,7 +806,7 @@ scan_hash: 8f9548ec24f4
 | 中文语言数据 | harness/utils/zh_language.py | ✅ | 中文输入解析数据（正则/停用词/关键词/同意前缀），内核隔离，execution 层保持英文 | 已合入 |
 | LLM API Key 解析 | harness/utils/llm_env.py | ✅ | 集中式 LLM API key 解析（infra CredentialPool 单一真相源） | 已合入 |
 | AgentRefiner | harness/learning/agent_refiner.py | ✅ | 早朝复盘→AGENTS.md 自动优化建议（封驳率/阻塞点检测） | 已合入 |
-| 决策溯源图 | harness/execution/decision_trace.py | ✅ | record/locate_max_error_node/trace_root_cause_chain/build_fix_plan；**E3.1** `build_execution_decision` 路径卡含 profile/backend/execution_type/`path`∈handler\|hybrid\|agent\|llm + inferred_from/demote_skipped/downgrade_reason；显式 `execution_backend=agent` 不被 capability demote；生成物适用：已接线（Harness 横切） | 已合入 |
+| 决策溯源图 | harness/execution/decision_trace.py | ✅ | record/locate_max_error_node/trace_root_cause_chain/build_fix_plan；**E3.1/v1.9** `build_execution_decision` 路径卡含 profile/backend/execution_type/`path`∈handler\|hybrid\|agent\|llm + `hybrid_semantics` + `stage_id`/`skill_name`/`handler_present`/`fail_closed_reason` + inferred_from/demote_skipped/downgrade_reason；显式 `execution_backend=agent` 不被 capability demote；Living Spec v1.9；生成物适用：已接线（Harness 横切） | 已合入 |
 | 成本预算控制器 | harness/execution/cost_budget.py | ✅ | CostBudgetController 追踪 USD 成本+预算执行+降级决策，复用现有 CostTracker 定价 | 已合入 |
 | 根因假设生成器 | harness/execution/hypothesis_generator.py | ✅ | 零 LLM 从决策溯源信号生成根因假设 + 定向修复动作 | 已合入 |
 | 治理可解释报告 | harness/execution/governance_report.py | ✅ | build_run_report 聚合 trace+cost+假设+根因链为统一治理报告 | 已合入 |
@@ -1204,6 +1209,7 @@ scan_hash: 8f9548ec24f4
 | apps/org 生成物适用性 | apps/org | ⚠️ | 生成物不适用（理由：企业组织/飞书通道运营与现场签收，属平台内部组织运行时，非应用工厂生成应用能力） | 已评估 |
 | kb 生成物适用性 | kb | ⚠️ | 生成物不适用（理由：生成 agent 运行时知识检索由 core 全局 syscall `sys_kb_retrieve`（harness/syscalls/retrieval.py，ReActLoop 天然可用）平台横切强制执行，生成物无需自建检索路径；kb 为租户隔离知识服务，生成应用由平台侧注入检索上下文） | 已评估 |
 | agent 消息总线（agent_messages） | governance/agent_messages.py（AgentMessageStore/register/unregister/send/inbox/list_agents）+ api/rest/routes.py 端点 /governance/agents* + builder/_register_generated_agent_to_bus | ✅ | 运行中 agent 注册（身份/通知层）→ 点对点邮箱（非用户中转）；**不是**工厂运行时契约协同主路径。协同主路径：Pipeline + stage_handoff / skill_routing + schema 门 + HITL。纪律：不做无门控互调。生成物适用：**已接线（身份注册）**；契约协同走 handoff/hop gate | 已合入 |
+| Pi 薄 Runtime 导出（Agent 用户侧） | `packages/aiplat-pi-runtime/` + `scripts/export_pi_bundle.py` + `builder/pi_bundle_export.py` + `POST …/export-pi-bundle` + `GET …/export-pi-bundle.zip` + deploy `pi_bundle` + 管理端导出/下载 ZIP + `docs/architecture/plans/pi-thin-runtime.md` | ✅ | 工厂 Agent 产物 → Pi Package / ZIP 交付；SOP 注入；skills Scheme A；handler JSON 桥；薄 HTTP stub/`createAgentSession`；**不**搬 PolicyGate/Memory/SECI；生成物适用：**已接线**（导出+用户侧 Pi/HTTP，非 8002/8003） | 已合入 |
 | 生成 app 运行时 | builder/app_runtime.py（detect_runtime/launch/health_check/stop/smoke_test/real_tests/auto_repair + _register_smoke_failure + _register_test_failure）+ api/routers/builder.py 端点 /platform/builder/projects/{id}/runtime*（launch/runtime/stop/smoke/real-tests/auto-repair）+ builder_project_service.py（run_tests 升级真实冒烟 + 真实测试 + 自动修复 + last_test_report 持久化）+ aiPlat-management/frontend（ProjectDetailPage 运行时控制 + 测试报告 bug_summary/suggested_fix 展示） | ✅ | 生成 app 运行能力（2026-08-27，生成物侧接线收尾）：detect_runtime 扫描生成目录识别入口（FastAPI uvicorn/Flask/Node/静态页 http.server）→ launch 经 daemon_jobs 托管启动（派生端口 18000-18999、127.0.0.1 绑定）→ health_check HTTP 轮询探测（2xx/3xx=up）→ stop kill 会话组；run_tests 的 e2e_smoke 从"目录存在"假通过升级为真实冒烟（启动+健康探测，自动测试闭环）+ 结果持久化 last_test_report（GET /last-test-report 供前端展示）；**real_tests 测试经理真实测试**：递归发现生成物测试用例（backend/tests/ 等任意层级 test_*.py）→ 可写临时目录跑 pytest（装依赖 + PYTHONPATH + conftest）→ test_report（header/meta/test_results/bug_summary，对齐 test_executor；失败分类 env/配置/实现，含 suggested_fix）；**auto_repair 自动修复闭环**：测试失败 → LLM（llm_generate 经 CoreFacade）按测试输出修复生成代码 → 可写临时区验证 → 改进则写回部署目录（_sync_repair_writeback，路径段匹配防逃逸）→ 重跑测试，最多 max_rounds 轮；**前端运行时控制面板**（ProjectDetailPage：启动/停止/自动修复按钮 + 测试报告 bug 清单/修复建议展示）；冒烟失败（launch 失败/健康不通过）→ L2 经验回写（generated-smoke-*）；真实测试失败（断言失败/配置错误/超时）→ L2 经验回写（generated-test-failed，含 suggested_fix）——均与 conformance 拒绝登记同源；生成物适用：**已接线**（生成 app 可运行 + 自动测试 + 测试经理真实测试 + 自动修复 + 失败经验回写 + 前端控制） | 已合入 |
 | FDE交付反馈API | platform/apps/fde/api/fde.py | ✅ | POST /fde/delivery/feedback — 标记Session+Action状态→更新交付率统计→触发§4.6ROI重新计算(HMESI D) | 已合入 |
 | FDE诊断自优化 | apps/skills/registry.py:1827-1863 | ✅ | 基于历史交付率(≥60%/30-60%/<30%)自动调整§1置信度标注策略+§6方案推荐排序(HMESI E) | 已合入 |
@@ -3007,9 +3013,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 243 | 1 | 244 |
+| Harness 执行引擎 | 248 | 1 | 249 |
 | 记忆子系统 | 58 | 0 | 58 |
-| 知识引擎（本体） | 358 | 9 | 367 |
+| 知识引擎（本体） | 359 | 9 | 368 |
 | RAG 检索 | 51 | 0 | 51 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 168 | 0 | 168 |
@@ -3052,7 +3058,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2082** | **10** | **2092** |
+| **总计** | **2088** | **10** | **2098** |
 
 | **总计** | **1095** | **0** | **1095** |
 

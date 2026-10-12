@@ -273,22 +273,22 @@ if [ -z "${SKIP_ENTITY_GUARD:-}" ]; then
         ENTITY_ISSUES=1
     fi
 
-    # P2: AGENT.md 目录白名单 — engine / workspace_seeds / ~/.aiplat
+    # P2: AGENT.md 目录白名单 — engine / workspace_seeds / ~/.aiplat / Pi Runtime fixtures
     NEW_AGENTS=$(git diff --cached --name-only --diff-filter=A | grep 'AGENT\.md$' || true)
     for f in $NEW_AGENTS; do
-        if ! echo "$f" | grep -qE '(engine/agents/|workspace_seeds/agents/|\.aiplat/agents/)'; then
+        if ! echo "$f" | grep -qE '(engine/agents/|workspace_seeds/agents/|\.aiplat/agents/|packages/aiplat-pi-runtime/)'; then
             echo "  ❌ New AGENT.md outside allowed directories: $f"
-            echo "     → Allowed: core/engine/agents/, workspace_seeds/agents/, or ~/.aiplat/agents/"
+            echo "     → Allowed: core/engine/agents/, workspace_seeds/agents/, ~/.aiplat/agents/, or packages/aiplat-pi-runtime/"
             ENTITY_ISSUES=1
         fi
     done
 
-    # P3: SKILL.md 目录白名单 — engine / workspace_seeds (skills + factory sanitize templates) / ~/.aiplat
+    # P3: SKILL.md 目录白名单 — engine / workspace_seeds / ~/.aiplat / Pi Runtime package skills
     NEW_SKILLS=$(git diff --cached --name-only --diff-filter=A | grep 'SKILL\.md$' || true)
     for f in $NEW_SKILLS; do
-        if ! echo "$f" | grep -qE '(engine/skills/|workspace_seeds/skills/|workspace_seeds/factory_sanitize/|\.aiplat/skills/)'; then
+        if ! echo "$f" | grep -qE '(engine/skills/|workspace_seeds/skills/|workspace_seeds/factory_sanitize/|\.aiplat/skills/|packages/aiplat-pi-runtime/)'; then
             echo "  ❌ New SKILL.md outside allowed directories: $f"
-            echo "     → Allowed: core/engine/skills/, workspace_seeds/skills/, workspace_seeds/factory_sanitize/, or ~/.aiplat/skills/"
+            echo "     → Allowed: core/engine/skills/, workspace_seeds/skills/, factory_sanitize/, ~/.aiplat/skills/, or packages/aiplat-pi-runtime/"
             ENTITY_ISSUES=1
         fi
     done
@@ -302,6 +302,34 @@ if [ -z "${SKIP_ENTITY_GUARD:-}" ]; then
             ENTITY_ISSUES=1
         else
             echo "  ✅ Engine skill quality lint passed"
+        fi
+    fi
+
+    # P3.6: E4 cost ladder — new Syscall / MCP seeds must justify L6 rung (CLAUDE.md §20)
+    if git diff --cached --name-only | grep -qE '(harness/syscalls/.*\.py|workspace_seeds/mcps/.*/server\.yaml|scripts/check_cost_ladder\.py|baselines/cost_ladder_)'; then
+        echo "  → Cost ladder ratchet (scripts/check_cost_ladder.py --check --staged)..."
+        if ! python3 "$WORKSPACE/scripts/check_cost_ladder.py" --check --staged; then
+            echo "  ❌ Cost ladder: new Syscall/MCP without quality proof or # ladder-ok: <reason≥15>"
+            echo "     → Add proof template (why_not_1..4 / rung / blast_radius) or ladder-ok; then: python3 scripts/check_cost_ladder.py --rebuild"
+            ENTITY_ISSUES=1
+        else
+            echo "  ✅ Cost ladder passed"
+        fi
+    fi
+
+    # P3.7: O2 team YAML vs AGENT.md profile drift (advisory unless AIPLAT_YAML_DRIFT_STRICT=1)
+    if git diff --cached --name-only | grep -qE '(workspace_seeds/.*/.*team.*\.ya?ml|workspace_seeds/teams/|/\.aiplat/teams/|scripts/lint_team_yaml_profile_drift\.py)'; then
+        echo "  → Team YAML profile drift lint (O2)..."
+        _DRIFT_ARGS=()
+        if [ "${AIPLAT_YAML_DRIFT_STRICT:-}" = "1" ]; then
+            _DRIFT_ARGS+=(--strict)
+        fi
+        if ! python3 "$WORKSPACE/scripts/lint_team_yaml_profile_drift.py" "${_DRIFT_ARGS[@]}"; then
+            echo "  ❌ Team YAML profile drift (strict mode)"
+            echo "     → Align architecture_profile/execution_backend or add # drift-ok: <reason>"
+            ENTITY_ISSUES=1
+        else
+            echo "  ✅ Team YAML drift lint complete"
         fi
     fi
 

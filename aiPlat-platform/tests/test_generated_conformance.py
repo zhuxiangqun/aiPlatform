@@ -14,7 +14,12 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "aiPlat-platform"))
 
-from builder.generated_conformance import load_contract, validate_text
+from builder.generated_conformance import (
+    check_handler_pairing,
+    load_contract,
+    validate_file,
+    validate_text,
+)
 
 
 GOOD_SKILL = """---
@@ -88,38 +93,86 @@ class TestGeneratedConformance:
     def test_good_agent_passes(self):
         assert validate_text(GOOD_AGENT, "agent") == []
 
-    def test_e1_architecture_profile_optional_ok(self):
+    def test_architecture_profile_compatible_passes(self):
+        """E1: conversational + oneshot is allowed."""
         text = GOOD_AGENT.replace(
             "agent_type: react\n",
-            "agent_type: react\narchitecture_profile: react_tools\n",
+            "agent_type: conversational\narchitecture_profile: oneshot\n",
         )
         assert validate_text(text, "agent") == []
 
-    def test_e1_architecture_profile_invalid_rejected(self):
+    def test_architecture_profile_mismatch_rejected(self):
+        """E1: conversational + react_tools is incompatible."""
         text = GOOD_AGENT.replace(
             "agent_type: react\n",
-            "agent_type: react\narchitecture_profile: tot\n",
+            "agent_type: conversational\narchitecture_profile: react_tools\n",
         )
         violations = validate_text(text, "agent")
-        assert any("architecture_profile" in v for v in violations), violations
+        assert any("architecture_profile" in v and "不匹配" in v for v in violations), violations
 
-    def test_e1_react_oneshot_conflict_rejected(self):
+    def test_architecture_profile_unknown_rejected(self):
         text = GOOD_AGENT.replace(
             "agent_type: react\n",
-            "agent_type: react\narchitecture_profile: oneshot\n",
+            "agent_type: react\narchitecture_profile: tot_tree\n",
         )
         violations = validate_text(text, "agent")
-        assert any("oneshot" in v for v in violations), violations
+        assert any("未知值" in v for v in violations), violations
 
-    def test_e4_generated_skill_handler_rejected(self):
-        bad = GOOD_SKILL.replace("execution_type: prompt", "execution_type: handler")
-        violations = validate_text(bad, "skill")
-        assert any("handler.py" in v or "execution_type" in v for v in violations), violations
+    def test_handler_missing_sibling_rejected(self, tmp_path):
+        """E2: execution_type=handler without handler.py fails validate_file."""
+        skill_dir = tmp_path / "format_check"
+        skill_dir.mkdir()
+        md = skill_dir / "SKILL.md"
+        text = GOOD_SKILL.replace("name: demo_skill", "name: format_check").replace(
+            "execution_type: prompt", "execution_type: handler"
+        )
+        md.write_text(text, encoding="utf-8")
+        violations = validate_file(str(md), "skill")
+        assert any("handler.py" in v for v in violations), violations
 
-    def test_e4_unknown_execution_type_rejected(self):
-        bad = GOOD_SKILL.replace("execution_type: prompt", "execution_type: magic")
-        violations = validate_text(bad, "skill")
-        assert any("未知" in v or "execution_type" in v for v in violations), violations
+    def test_handler_with_execute_passes(self, tmp_path):
+        """E2: handler + sibling execute() passes pairing."""
+        skill_dir = tmp_path / "format_check"
+        skill_dir.mkdir()
+        md = skill_dir / "SKILL.md"
+        text = GOOD_SKILL.replace("name: demo_skill", "name: format_check").replace(
+            "execution_type: prompt", "execution_type: handler"
+        )
+        md.write_text(text, encoding="utf-8")
+        (skill_dir / "handler.py").write_text(
+            "async def execute(params):\n    return {'ok': True}\n",
+            encoding="utf-8",
+        )
+        pair = check_handler_pairing(str(md))
+        assert pair == [], pair
+        # full skill contract still applies
+        assert validate_file(str(md), "skill") == []
+
+    def test_handler_without_execute_rejected(self, tmp_path):
+        skill_dir = tmp_path / "format_check"
+        skill_dir.mkdir()
+        md = skill_dir / "SKILL.md"
+        text = GOOD_SKILL.replace("name: demo_skill", "name: format_check").replace(
+            "execution_type: prompt", "execution_type: handler"
+        )
+        md.write_text(text, encoding="utf-8")
+        (skill_dir / "handler.py").write_text("def helper():\n    pass\n", encoding="utf-8")
+        violations = check_handler_pairing(str(md))
+        assert any("execute" in v for v in violations), violations
+
+    def test_media_handler_type_rejected(self, tmp_path):
+        skill_dir = tmp_path / "video_downloader"
+        skill_dir.mkdir()
+        md = skill_dir / "SKILL.md"
+        text = GOOD_SKILL.replace("name: demo_skill", "name: video_downloader").replace(
+            "execution_type: prompt", "execution_type: handler"
+        )
+        md.write_text(text, encoding="utf-8")
+        (skill_dir / "handler.py").write_text(
+            "async def execute(params):\n    return {}\n", encoding="utf-8"
+        )
+        violations = check_handler_pairing(str(md))
+        assert any("媒体" in v or "Path0" in v for v in violations), violations
 
     def test_missing_governance_fields_rejected(self):
         """缺 input_schema/version/effects 等治理字段 → 拒绝（对应审计"生成物仅 5-6 字段"）。"""

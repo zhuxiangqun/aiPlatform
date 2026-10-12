@@ -1,0 +1,17 @@
+{
+  "mode": "single",
+  "agents": [
+    {
+      "name": "demo_agent",
+      "skills": ["greet", "demo_skill"]
+    }
+  ],
+  "skill_routing": {
+    "greet": "demo_agent",
+    "demo_skill": "demo_agent"
+  },
+  "ui_bindings": {
+    "primary": "greet",
+    "demo": "demo_skill"
+  }
+}

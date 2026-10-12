@@ -2,6 +2,23 @@
 
 - 简述本次改动内容：
 
+## 成本阶梯（新增 Syscall / MCP 时必填）
+
+若本 PR 新增 `sys_*` 或 MCP seed，须满足其一（见 `docs/architecture/execution-decision-matrix.md` §2.5）：
+
+- [ ] 不适用（未新增 Syscall / MCP）
+- [ ] 完整证明模板（`why_not_1_extend`…`why_not_4_plugin` 各≥20字 + `rung` + `blast_radius`）
+- [ ] 内联 `# ladder-ok: <reason≥15字>`（可选 `temporary until YYYY-MM-DD`）
+
+```text
+why_not_1_extend:
+why_not_2_cli:
+why_not_3_tool:
+why_not_4_plugin:
+rung: MCP | Syscall
+blast_radius:
+```
+
 ## 验证方式
 
 - [ ] 已说明如何验证

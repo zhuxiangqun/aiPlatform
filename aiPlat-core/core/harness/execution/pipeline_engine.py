@@ -4275,14 +4275,18 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         execution_type: str = "",
         input_artifacts: Optional[List[str]] = None,
         confidence: Optional[float] = None,
+        skill_name: str = "",
+        handler_present: Optional[bool] = None,
+        fail_closed_reason: str = "",
     ) -> None:
-        """E3: stamp ``state["_execution_decision"]`` + decision_trace path card."""
+        """E3/v1.9: stamp ``state["_execution_decision"]`` + decision_trace path card."""
         try:
             from core.harness.execution.decision_trace import (
                 build_execution_decision,
                 record_decision as _record_decision,
             )
 
+            _skill = str(skill_name or getattr(stage, "skill_name", "") or "")
             _ex = build_execution_decision(
                 architecture_profile=str(getattr(stage, "architecture_profile", "") or ""),
                 execution_backend=str(getattr(stage, "execution_backend", "") or ""),
@@ -4297,6 +4301,10 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 upgrade_policy=str(getattr(stage, "upgrade_policy", "") or ""),
                 downgrade_reason=str(state.get("_capability_downgrade_reason") or ""),
                 demote_skipped=str(state.get("_capability_demote_skipped") or ""),
+                stage_id=str(getattr(stage, "id", "") or ""),
+                skill_name=_skill,
+                handler_present=handler_present,
+                fail_closed_reason=fail_closed_reason,
             )
             state["_execution_decision"] = _ex
             _prog = state.get("_progress")
@@ -4418,6 +4426,25 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 "backend": backend,
                 "current_step": 0,
             }
+            _fc = err if backend == "execution_type" else ""
+            try:
+                _hp_fail = _os.path.isfile(
+                    _os.path.join(_os.path.dirname(_sp), "handler.py")
+                ) if _sp else False
+                self._emit_execution_decision(
+                    stage,
+                    state,
+                    path="",
+                    execution_type=_execution_type,
+                    skill_name=_skill_name,
+                    handler_present=_hp_fail,
+                    fail_closed_reason=_fc,
+                    confidence=0.0,
+                )
+            except Exception:
+                _log.getLogger("pipeline_engine").debug(
+                    "fail path-card emit skipped", exc_info=True
+                )
             if self._persist_callback:
                 self._persist_callback(dict(state))
             return state
@@ -4503,6 +4530,8 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                                         else "handler"
                                     ),
                                     execution_type=_execution_type,
+                                    skill_name=_skill_name,
+                                    handler_present=True,
                                     confidence=0.9,
                                 )
                                 if self._persist_callback:
@@ -4934,6 +4963,10 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 path="agent",
                 execution_type=_execution_type,
                 input_artifacts=_input_artifacts if isinstance(_input_artifacts, list) else None,
+                skill_name=_skill_name,
+                handler_present=_os.path.isfile(
+                    _os.path.join(_os.path.dirname(_sp), "handler.py")
+                ) if _sp else False,
                 confidence=0.75,
             )
             if self._persist_callback:
@@ -5132,6 +5165,10 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
             path="llm",
             execution_type=_execution_type,
             input_artifacts=_input_artifacts if isinstance(_input_artifacts, list) else None,
+            skill_name=_skill_name,
+            handler_present=_os.path.isfile(
+                _os.path.join(_os.path.dirname(_sp), "handler.py")
+            ) if _sp else False,
             confidence=_conf,
         )
 

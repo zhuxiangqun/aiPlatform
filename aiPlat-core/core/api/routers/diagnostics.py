@@ -809,6 +809,46 @@ def _register_health_checks():
 
         # Additional health checks are registered in run_all_diagnostics()
 
+        class FailOpenExecTypeCheck(HealthCheck):
+            """v1.9: WARN while AIPLAT_EXECUTION_TYPE_FAIL_OPEN is authorized."""
+            module = "execution_type_fail_open"
+            severity = Severity.HIGH
+
+            async def run(self) -> HealthResult:
+                from core.harness.registry.execution_type_policy import (
+                    fail_open_governance_status,
+                )
+
+                st = fail_open_governance_status()
+                if not st.get("flag"):
+                    return HealthResult(
+                        module=self.module,
+                        status=Status.HEALTHY,
+                        severity=self.severity,
+                        message="FAIL_OPEN unset",
+                        details=st,
+                    )
+                if st.get("authorized"):
+                    msg = "FAIL_OPEN authorized (soft unknown execution_type)"
+                    if st.get("expires_within_24h"):
+                        msg += " — expires within 24h"
+                    return HealthResult(
+                        module=self.module,
+                        status=Status.DEGRADED,
+                        severity=self.severity,
+                        message=msg,
+                        details=st,
+                    )
+                return HealthResult(
+                    module=self.module,
+                    status=Status.HEALTHY,
+                    severity=self.severity,
+                    message="FAIL_OPEN flag set but not authorized (fail-closed)",
+                    details=st,
+                )
+
+        reg.register(FailOpenExecTypeCheck())
+
         # New ROSClaw-inspired modules
         class SandboxGateCheck(HealthCheck):
             module = "sandbox_gate"

@@ -525,10 +525,39 @@ export const projectApi = {
         fix_hint?: string;
       }>;
       smoke?: Record<string, unknown>;
+      /** Agent 模式 deploy 后 best-effort Pi Package 导出 */
+      pi_bundle?: {
+        ok?: boolean;
+        skipped?: boolean;
+        error?: string;
+        pi_bundle?: string;
+        hint?: string;
+        http_hint?: string;
+        app_home?: string;
+      };
       status?: string;
       detail?: string;
     }>(`/platform/builder/projects/${projectId}/deploy-to-app`);
   },
+
+  /** 一键导出已部署 Agent 应用为 Pi Package（用户侧薄 Runtime）。 */
+  exportPiBundle: async (projectId: string) => {
+    return apiClient.post<{
+      ok?: boolean;
+      skipped?: boolean;
+      error?: string;
+      pi_bundle?: string;
+      hint?: string;
+      http_hint?: string;
+      app_home?: string;
+      project_id?: string;
+      detail?: string;
+    }>(`/platform/builder/projects/${projectId}/export-pi-bundle`);
+  },
+
+  /** 下载 Pi Package zip（浏览器直接拉文件）。 */
+  downloadPiBundleZipUrl: (projectId: string) =>
+    `/api/platform/builder/projects/${projectId}/export-pi-bundle.zip`,
 
   /** F4: smoke with keep_alive; returns openable. */
   runtimeSmoke: async (projectId: string, keepAlive = true) => {

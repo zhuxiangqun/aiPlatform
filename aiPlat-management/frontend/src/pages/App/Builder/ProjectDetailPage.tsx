@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle, ArrowLeft, BarChart3, Play, Eye, Pencil, X, Rocket, TestTube, Clock, Sparkles, RefreshCw, Save } from 'lucide-react';
+import { CheckCircle, ArrowLeft, BarChart3, Play, Eye, Pencil, X, Rocket, TestTube, Clock, Sparkles, RefreshCw, Save, Package } from 'lucide-react';
 import { projectApi, type ProjectItem, type ProjectRun, type BuilderSession } from '../../../services';
 import { BuilderPipeline } from '../../../components/Builder/BuilderPipeline';
 import { RunEventTimeline } from '../../../components/Builder/RunEventTimeline';
@@ -46,6 +46,8 @@ const ProjectDetailPage: React.FC = () => {
   const [testResult, setTestResult] = useState<Record<string, unknown> | null>(null);
   const [deploying, setDeploying] = useState(false);
   const [deployResult, setDeployResult] = useState<Record<string, unknown> | null>(null);
+  const [piExporting, setPiExporting] = useState(false);
+  const [piBundle, setPiBundle] = useState<Record<string, unknown> | null>(null);
   const [recommending, setRecommending] = useState(false);
   const [recommendedTeam, setRecommendedTeam] = useState<Record<string, unknown> | null>(null);
   const [rebuilding, setRebuilding] = useState(false);
@@ -252,9 +254,26 @@ const ProjectDetailPage: React.FC = () => {
     try {
       const result = await projectApi.deployToApp(id);
       setDeployResult(result as Record<string, unknown>);
+      const pb = (result as Record<string, unknown>).pi_bundle;
+      if (pb && typeof pb === 'object') {
+        setPiBundle(pb as Record<string, unknown>);
+      }
       toast.success('部署成功！');
     } catch (e) { toastGateError(e, '部署失败'); }
     finally { setDeploying(false); }
+  }, [id]);
+
+  const handleExportPiBundle = useCallback(async () => {
+    if (!id) return;
+    setPiExporting(true);
+    try {
+      const r = await projectApi.exportPiBundle(id);
+      setPiBundle(r as Record<string, unknown>);
+      if (r?.ok) toast.success('Pi Package 已导出');
+      else if (r?.skipped) toast.error(String(r.error || '跳过：无 agent_manifest（可能是 Code 模式）'));
+      else toast.error(String(r?.error || r?.detail || '导出失败'));
+    } catch (e) { toastGateError(e, 'Pi 导出失败'); }
+    finally { setPiExporting(false); }
   }, [id]);
 
   // ── 生成 app 运行时（launch/stop/auto-repair，2026-08-27）──
@@ -745,6 +764,54 @@ const ProjectDetailPage: React.FC = () => {
                     {String(deployResult.app_url || '-')}
                   </a>
                 </p>
+              </div>
+            )}
+          </div>
+
+          {/* Pi thin Runtime: Agent 应用导出为可交付用户侧包 */}
+          <div className="p-4 rounded-lg border border-violet-500/30 bg-violet-500/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-violet-300 flex items-center gap-2">
+                  <Package className="w-4 h-4" />Pi 薄 Runtime
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">
+                  导出 Agent 应用为 Pi Package（无需 8002/8003）；用户侧 <code className="text-violet-200">pi -e</code> 或薄 HTTP
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={handleExportPiBundle} loading={piExporting} icon={<Package className="w-4 h-4" />}>
+                  导出 Pi 包
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    if (!id) return;
+                    const a = document.createElement('a');
+                    a.href = projectApi.downloadPiBundleZipUrl(id);
+                    a.download = `aiplat-pi-${id}.zip`;
+                    a.click();
+                  }}
+                  icon={<Package className="w-4 h-4" />}
+                >
+                  下载 ZIP
+                </Button>
+              </div>
+            </div>
+            {piBundle && (
+              <div className="mt-3 p-3 rounded text-xs bg-violet-500/10 text-violet-100 space-y-1 font-mono break-all">
+                {piBundle.ok ? (
+                  <>
+                    <p className="font-sans font-semibold text-violet-200">✓ 已导出</p>
+                    <p>pi_bundle: {String(piBundle.pi_bundle || '-')}</p>
+                    {piBundle.hint ? <p className="text-violet-200/90">{String(piBundle.hint)}</p> : null}
+                    {piBundle.http_hint ? <p className="text-violet-200/80">{String(piBundle.http_hint)}</p> : null}
+                  </>
+                ) : (
+                  <p className="font-sans text-yellow-200">
+                    {piBundle.skipped ? '已跳过' : '失败'}: {String(piBundle.error || '-')}
+                  </p>
+                )}
               </div>
             )}
           </div>

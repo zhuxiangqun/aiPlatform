@@ -49,6 +49,30 @@ def test_build_execution_decision_hybrid_path():
     assert d["path"] == "hybrid"
     assert d["actual_path"] == "hybrid"
     assert d["execution_type"] == "hybrid"
+    assert d["hybrid_semantics"] == "stage_direct_handler"
+
+
+def test_build_execution_decision_hybrid_syscall_semantics():
+    d = build_execution_decision(
+        execution_type="hybrid",
+        path="hybrid",
+        hybrid_semantics="syscall_plan_then_handler",
+    )
+    assert d["hybrid_semantics"] == "syscall_plan_then_handler"
+
+
+def test_build_execution_decision_v19_audit_fields():
+    d = build_execution_decision(
+        path="llm",
+        stage_id="s1",
+        skill_name="demo_skill",
+        handler_present=True,
+        fail_closed_reason="unknown execution_type",
+    )
+    assert d["stage_id"] == "s1"
+    assert d["skill_name"] == "demo_skill"
+    assert d["handler_present"] is True
+    assert "unknown" in d["fail_closed_reason"]
 
 
 def test_record_decision_persists_execution(tmp_path, monkeypatch):
