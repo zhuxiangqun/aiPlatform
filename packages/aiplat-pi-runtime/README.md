@@ -50,4 +50,18 @@ AIPLAT_HTTP_STUB=1 AIPLAT_APP_HOME=./fixtures/sample-app \
 bash scripts/http_smoke.sh
 ```
 
+Agent mode (OpenAI-compatible — Ollama default):
+
+```bash
+# ensures ~/.pi/agent/models.json has ollama provider (for CLI)
+bash scripts/ensure_ollama_models_json.sh
+
+AIPLAT_PI_MODEL=ollama/qwen2.5:3b AIPLAT_APP_HOME=./fixtures/sample-app \
+  AIPLAT_HTTP_API_KEY=dev node bin/aiplat-http.mjs
+# Optional: AIPLAT_PI_BASE_URL / AIPLAT_PI_API_KEY / AIPLAT_PI_SDK_ROOT
+
+# Full live gate (offline + stub HTTP + CLI + HTTP agent)
+AIPLAT_PI_MODEL=ollama/qwen2.5:3b bash scripts/live_smoke.sh
+```
+
 See [PHASE0.md](./PHASE0.md) and `docs/architecture/plans/pi-thin-runtime.md`.

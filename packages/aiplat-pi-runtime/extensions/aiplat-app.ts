@@ -258,28 +258,47 @@ export default function (pi: ExtensionAPI) {
         `skills=${skills.join(",") || "-"}`,
         `skill_routing_keys=${manifest?.skill_routing ? Object.keys(manifest.skill_routing).join(",") : "-"}`,
         "Scheme A: package skills/ + /skill-<name> (no registerSkill)",
+        "AIPLAT_STATUS_OK",
       ];
-      ctx.ui.notify(lines.join("\n"), "info");
+      const text = lines.join("\n");
+      // print/json modes have no UI — console so `pi -p '/aiplat-status'` is visible
+      console.log(text);
+      try {
+        ctx.ui.notify(text, "info");
+      } catch {
+        /* no UI in print mode */
+      }
     },
   });
 
   pi.registerCommand("aiplat-sop-check", {
     description: "Ask the agent to confirm SOP injection marker",
     handler: async (_args, ctx) => {
-      await pi.sendUserMessage(
-        `Confirm that the aiPlat Runtime SOP is active. Reply with the marker ${SOP_MARKER}.`,
-      );
-      ctx.ui.notify("Sent SOP check prompt", "info");
+      // In print mode, slash handlers that only queue may exit before the turn.
+      // Prefer a direct user turn; also log for smoke greps.
+      const prompt = `Confirm that the aiPlat Runtime SOP is active. Reply with the marker ${SOP_MARKER}.`;
+      console.log(`AIPLAT_SOP_CHECK_QUEUED ${SOP_MARKER}`);
+      await pi.sendUserMessage(prompt);
+      try {
+        ctx.ui.notify("Sent SOP check prompt", "info");
+      } catch {
+        /* no UI */
+      }
     },
   });
 
   pi.registerCommand("skill-test", {
     description: "Phase 0: force-load fixture-skill",
     handler: async (_args, ctx) => {
+      console.log("AIPLAT_SKILL_TEST_QUEUED fixture-skill");
       await pi.sendUserMessage(
         "Use skill fixture-skill now. Follow its instructions and include AIPLAT_FIXTURE_SKILL_OK.",
       );
-      ctx.ui.notify("Queued fixture-skill prompt (also try /skill:fixture-skill)", "info");
+      try {
+        ctx.ui.notify("Queued fixture-skill prompt (also try /skill:fixture-skill)", "info");
+      } catch {
+        /* no UI */
+      }
     },
   });
 
@@ -306,8 +325,13 @@ export default function (pi: ExtensionAPI) {
           body ? `\n--- SKILL.md ---\n${body}\n---` : "",
           "Follow the skill instructions for this turn.",
         ].join("\n");
+        console.log(`AIPLAT_SKILL_QUEUED ${skill}`);
         await pi.sendUserMessage(msg);
-        ctx.ui.notify(`Queued skill ${skill}`, "info");
+        try {
+          ctx.ui.notify(`Queued skill ${skill}`, "info");
+        } catch {
+          /* no UI */
+        }
       },
     });
   }

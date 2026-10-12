@@ -1,16 +1,16 @@
 # Plan: aiPlat × Pi 薄 Runtime（1C + 2C）
 
 > Living 摘要 · 2026-10-12 · 包：`packages/aiplat-pi-runtime/`  
-> **状态**：Phase 0–2 + 工厂/FE/ZIP **已合并 main**（PR [#251](https://github.com/zhuxiangqun/aiPlatform/pull/251)，`9620784`）  
-> **剩余门**：本机 `pi /login` 后交互冒烟（`/aiplat-status` · `/skill-greet` · `/aiplat-sop-check`）+ 可选 `AIPLAT_PI_MODEL=…` 真 HTTP Agent
+> **状态**：Phase 0–2 + 工厂/FE/ZIP **已合并 main**（PR [#251](https://github.com/zhuxiangqun/aiPlatform/pull/251)）  
+> **Live 门**：✅ `bash packages/aiplat-pi-runtime/scripts/live_smoke.sh`（Ollama `ollama/qwen2.5:3b` — CLI print + SOP + `/aiplat-status` + HTTP `createAgentSession`）
 
 ## 结论（Phase 0）
 
 | 假设 | 文档结论 | 离线检查 | 在线 LLM 冒烟 |
 |------|----------|:--------:|:-------------:|
-| 包内 `skills/` 自动发现 | **成立**（Pi Skills / Packages 文档） | 结构 ✅ | 待 `/login` |
-| `before_agent_start` 注入 systemPrompt | **成立**（可返回 `systemPrompt` / `forceSystemPrompt`） | 代码含事件 ✅ | 待 `/login` |
-| `registerCommand` / `registerTool` | **成立** | 代码含 API ✅ | 待 `/login` |
+| 包内 `skills/` 自动发现 | **成立**（Pi Skills / Packages 文档） | 结构 ✅ | ✅ live_smoke |
+| `before_agent_start` 注入 systemPrompt | **成立**（可返回 `systemPrompt` / `forceSystemPrompt`） | 代码含事件 ✅ | ✅ SOP marker |
+| `registerCommand` / `registerTool` | **成立** | 代码含 API ✅ | ✅ `/aiplat-status` |
 | `registerSkill` API | **不存在** → **方案 A**（导出复制 skills/） | N/A | N/A |
 
 Skills 策略锁定 **方案 A**：`scripts/export_pi_bundle.py` 把工厂 skills 复制进导出包；扩展只注册斜杠命令与 SOP 注入。
@@ -39,15 +39,20 @@ Skills 策略锁定 **方案 A**：`scripts/export_pi_bundle.py` 把工厂 skill
 ```bash
 python3 packages/aiplat-pi-runtime/scripts/phase0_offline_check.py
 bash packages/aiplat-pi-runtime/scripts/http_smoke.sh
+# Full live gate (Ollama default; needs :11434 + model pulled)
+AIPLAT_PI_MODEL=ollama/qwen2.5:3b bash packages/aiplat-pi-runtime/scripts/live_smoke.sh
+
 python3 scripts/export_pi_bundle.py \
   --app-home packages/aiplat-pi-runtime/fixtures/sample-app \
   --out dist/aiplat-app-sample
-AIPLAT_APP_HOME=$PWD/dist/aiplat-app-sample pi -e dist/aiplat-app-sample
+AIPLAT_APP_HOME=$PWD/dist/aiplat-app-sample \
+  pi -e dist/aiplat-app-sample --model ollama/qwen2.5:3b
 # /aiplat-status  /skill-greet  /skill-demo_skill  /aiplat-sop-check
 
-# Real HTTP Agent (provider auth required)
-# AIPLAT_PI_MODEL=anthropic/claude-sonnet-4-6 AIPLAT_APP_HOME=dist/aiplat-app-sample \
+# Real HTTP Agent (Ollama / OpenAI-compatible)
+# AIPLAT_PI_MODEL=ollama/qwen2.5:3b AIPLAT_APP_HOME=dist/aiplat-app-sample \
 #   node packages/aiplat-pi-runtime/bin/aiplat-http.mjs
+# Cloud: set AIPLAT_PI_BASE_URL + AIPLAT_PI_API_KEY, or pi /login + provider/id
 ```
 
 ## handler 协议
