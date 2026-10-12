@@ -3,17 +3,17 @@ title: "aiPlat 安全与治理白皮书"
 volume_id: security-governance
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-12T16:43:36Z"
+generated_at: "2026-10-12T17:28:56Z"
 audience: "CISO、合规、风控"
 core_question: "如何可信可控？"
 priority: P0
-source_status: partial
+source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
-suite_sha256: "5a33449031aa9306e9e1bdc56ba3b973709e2e7cde04429e6e13fa91cdeee34e"
+suite_sha256: "d8a7651f6dd8898264db21d05f14cc69407c182541fcce8abc8aaa9b4714bfb0"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=security-governance suite_sha256=5a33449031aa9306e9e1bdc56ba3b973709e2e7cde04429e6e13fa91cdeee34e -->
+<!-- volume_stamp id=security-governance suite_sha256=d8a7651f6dd8898264db21d05f14cc69407c182541fcce8abc8aaa9b4714bfb0 -->
 
 # aiPlat 安全与治理白皮书
 
@@ -29,8 +29,8 @@ language: zh-CN
 | 受众 | CISO、合规、风控 |
 | 核心问题 | 如何可信可控？ |
 | 优先级 | P0 |
-| 材料完备度（suite） | `partial` |
-| 生成时间 (UTC) | `2026-10-12T16:43:36Z` |
+| 材料完备度（suite） | `ready` |
+| 生成时间 (UTC) | `2026-10-12T17:28:56Z` |
 
 ## 1. 本卷论证目标
 
@@ -59,6 +59,17 @@ language: zh-CN
 
 
 ## 3. 正文编排（节选权威源）
+
+### 3.0 治理与安全材料
+
+治理卷材料已厚，本卷 suite 状态为 ready，保留以下权威源：
+
+- 评分戳：[`docs/framework/assessment-scores.json`](../framework/assessment-scores.json)
+- 安全架构：[`docs/security/security-architecture.md`](../security/security-architecture.md)
+- Gate 与安全能力：[`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md) 中 Gate / 安全节
+- L 级 ADR：[`docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md`](../aiplat-l4-autonomy-assessment-v1.0.0.md)
+
+> 治理卷不新增示意案例，不引用未授权客户数据。
 
 ### 3.1 权威评分戳
 

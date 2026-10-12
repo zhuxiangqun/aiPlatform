@@ -3,17 +3,17 @@ title: "aiPlat 产品能力白皮书"
 volume_id: product-capability
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-12T16:43:36Z"
+generated_at: "2026-10-12T17:28:56Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
-source_status: partial
+source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
-suite_sha256: "5a33449031aa9306e9e1bdc56ba3b973709e2e7cde04429e6e13fa91cdeee34e"
+suite_sha256: "d8a7651f6dd8898264db21d05f14cc69407c182541fcce8abc8aaa9b4714bfb0"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=5a33449031aa9306e9e1bdc56ba3b973709e2e7cde04429e6e13fa91cdeee34e -->
+<!-- volume_stamp id=product-capability suite_sha256=d8a7651f6dd8898264db21d05f14cc69407c182541fcce8abc8aaa9b4714bfb0 -->
 
 # aiPlat 产品能力白皮书
 
@@ -29,8 +29,8 @@ language: zh-CN
 | 受众 | 产品负责人、技术评估者、客户技术链 |
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
-| 材料完备度（suite） | `partial` |
-| 生成时间 (UTC) | `2026-10-12T16:43:36Z` |
+| 材料完备度（suite） | `ready` |
+| 生成时间 (UTC) | `2026-10-12T17:28:56Z` |
 
 ## 1. 本卷论证目标
 
@@ -66,12 +66,16 @@ language: zh-CN
 |------|------------------|---------------------|
 | **FDE 交付** | 把业务问题做成可签收的 AI 交付 | [`docs/manuals/fde/README.md`](../manuals/fde/README.md) · CAPABILITIES「平台治理 / FDE」 |
 | **App 工厂 / Builder** | 从需求到 Agent/应用产物 | 管理端 Builder · [`docs/architecture/plans/pi-thin-runtime.md`](../architecture/plans/pi-thin-runtime.md)（厂外交付边界） |
+| **Workbench** | 开发与调试工作台 | [`docs/manuals/management.md`](../manuals/management.md) · CAPABILITIES「Workbench」 |
+| **评测治理** | 评测流程与治理规则 | CAPABILITIES「评测 / Governance」 |
+| **ORG 签收** | 组织级签收与现场闭环 | CAPABILITIES「apps/org」· manuals |
+| **渠道接入** | 多渠道消息与集成 | CAPABILITIES「Channel」· 应用端 channels |
 | **知识 / 本体 / RAG** | 企业知识可检索、可治理 | [`docs/knowledge-system.md`](../knowledge-system.md) · CAPABILITIES「知识引擎 / RAG」 |
 | **Agent / Skill 运行** | 多步工具调用与技能执行 | CAPABILITIES「Agent 系统 / Skill 系统」· [`docs/architecture/execution-decision-matrix.md`](../architecture/execution-decision-matrix.md) |
 | **治理下执行** | 权限、审批、审计可证明 | 安全与治理分卷 · CAPABILITIES「Gate / 安全与治理」 |
 | **薄交付（Pi）** | 用户侧轻量跑快照、不装全栈 | [`docs/architecture/plans/pi-thin-runtime.md`](../architecture/plans/pi-thin-runtime.md) · [`packages/aiplat-pi-runtime/README.md`](../../packages/aiplat-pi-runtime/README.md) |
 
-> 上表只指路。**能力是否接线**以 [`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md) 对应行的 ✅/⚠️ 为准。
+> 上表只指路。**接线以 [`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md) 行为为准**；[`docs/manuals/README.md`](../manuals/README.md) 仅提供操作说明，不作为行为契约。
 
 ### 3.1 能力统计（摘自 CAPABILITIES）
 
@@ -103,7 +107,7 @@ language: zh-CN
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 53 | 0 | 53 |
+| 管理 & 质量 | 55 | 0 | 55 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -122,7 +126,7 @@ language: zh-CN
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2093** | **10** | **2103** |
+| **总计** | **2095** | **10** | **2105** |
 
 ### 3.2 上手路径（节选）
 

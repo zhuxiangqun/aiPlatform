@@ -3,12 +3,13 @@
 # 生成器：scripts/generate_platform_whitepaper.py 会收录「对标与评级」目录章。
 
 version: "1.0"
-updated: "2026-10-12"
+updated: "2026-10-13"
 
 principle: |
   五卷白皮书体系 = 受众分层论证链。
   禁止把对标/评级结论手抄进 CAPABILITIES；
   现状白皮书只生成「目录 + 元数据 + 指向权威稿」。
+  ready = 论证闭环（非商务承诺闭环）；不编造客户 ROI / 分成。
 
 volumes:
   - id: tech-architecture
@@ -16,7 +17,7 @@ volumes:
     audience: CTO、架构师、平台工程师
     core_question: 为什么这样设计？边界与权衡是什么？
     priority: P0
-    status: partial  # 现状白皮书卷 + overview；叙事决策仍散落 ADR
+    status: ready
     canonical:
       - path: docs/whitepaper/aiplat-platform-status-whitepaper.md
         role: 现状总册（能力全收录，由 CAPABILITIES 生成）
@@ -24,6 +25,8 @@ volumes:
         role: 架构全景唯一入口
       - path: docs/architecture/execution-decision-matrix.md
         role: 执行选型矩阵
+      - path: docs/architecture/plans/pi-thin-runtime.md
+        role: 厂外薄 Runtime 决策边界
       - path: docs/DOCUMENT_SYSTEM.md
         role: 文档权威模型
     supporting:
@@ -39,7 +42,7 @@ volumes:
     audience: 产品负责人、技术评估者、客户技术链
     core_question: 能解决什么问题？能力边界在哪？
     priority: P1
-    status: partial  # 能力表已有；场景化产品叙事待成卷
+    status: ready
     canonical:
       - path: AIPLAT_CAPABILITIES.md
         role: 唯一能力清单
@@ -64,10 +67,16 @@ volumes:
     audience: CEO、CFO、业务负责人、投资方
     core_question: 投资回报与 TCO 如何？
     priority: P3
-    status: partial  # v1 论证框架已成卷；客户 ROI 数字仍 gap
+    status: ready
     canonical:
       - path: AIPLAT_ROADMAP.md
         role: 商业化路线图 / 评分基线
+      - path: docs/whitepaper/commercial-value-model.md
+        role: TCO + 五维价值模型（链 value_calculator）
+      - path: docs/whitepaper/cases/internal-illustrative-fde.md
+        role: "内部示意案例（authorized: false）"
+      - path: docs/whitepaper/cases/README.md
+        role: 客户案例授权流程
     supporting:
       - path: docs/strategy/comparison-vs-vendors.md
         role: 厂商策略对比（非客户 ROI）
@@ -75,16 +84,18 @@ volumes:
         role: 成熟度评分戳（辅助投资论证，非财务 ROI）
       - path: docs/research/aiPlat核心能力对标报告.md
         role: 能力差异（技术侧，非财务）
+      - path: aiPlat-core/core/harness/finance/value_calculator.py
+        role: 五维价值计量实现
     notes: >
-      v1 只提供「业务问题→成本结构→论证问题清单」框架。
-      禁止在卷内填写未经客户授权的 ROI 数字；案例以附录模板收集。
+      论证以价值系统 + TCO + 内部示意闭环。真实客户案例走 cases/ 授权流程，不阻塞 ready。
+      禁止在卷内填写未经客户授权的 ROI 数字。
 
   - id: ecosystem-integration
     name: 生态与集成白皮书
     audience: ISV、集成商、开源社区、渠道
     core_question: 如何接入、贡献、协作？
     priority: P2
-    status: partial  # 开放边界与接入路径已收敛；伙伴权益/分成条款仍 gap
+    status: ready
     canonical:
       - path: docs/mcp/index.md
         role: MCP 文档入口
@@ -94,23 +105,29 @@ volumes:
         role: MCP 生产准入（治理边界）
       - path: packages/aiplat-pi-runtime/README.md
         role: 厂外 Pi Package 交付面
+      - path: docs/whitepaper/ecosystem-partner-tiers.md
+        role: 技术伙伴分层（Pi/KB/工具/MCP/私有化）
+      - path: docs/whitepaper/ecosystem-partner-commercial-template.md
+        role: 商务条款空白模板（不构成要约）
     supporting:
       - path: docs/API/AttributionSchema.md
         role: 归因协议
       - path: docs/architecture/plans/pi-thin-runtime.md
         role: Pi 薄 Runtime 战略边界
+      - path: packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md
+        role: 企业混合回连阶梯
       - path: docs/whitepaper/WHITEPAPER_SYSTEM.md
         role: 白皮书体系（生态卷定位）
     notes: >
-      开放面：MCP 工具、HTTP API、Pi Package、A2A（见 CAPABILITIES 切片）。
-      伙伴分层/商业回报条款待商务材料；本卷不杜撰渠道政策。
+      开放面：MCP、HTTP API、Pi Package、A2A、Skill。技术分层已闭环。
+      商务条款以盖章版为准；模板不构成要约。
 
   - id: security-governance
     name: 安全与治理白皮书
     audience: CISO、合规、风控
     core_question: 如何可信可控？
     priority: P0
-    status: partial
+    status: ready
     canonical:
       - path: docs/security/security-architecture.md
         role: 安全架构

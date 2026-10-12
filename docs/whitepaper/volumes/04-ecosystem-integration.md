@@ -3,17 +3,17 @@ title: "aiPlat 生态与集成白皮书"
 volume_id: ecosystem-integration
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-12T16:43:36Z"
+generated_at: "2026-10-12T17:28:56Z"
 audience: "ISV、集成商、开源社区、渠道"
 core_question: "如何接入、贡献、协作？"
 priority: P2
-source_status: partial
+source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
-suite_sha256: "5a33449031aa9306e9e1bdc56ba3b973709e2e7cde04429e6e13fa91cdeee34e"
+suite_sha256: "d8a7651f6dd8898264db21d05f14cc69407c182541fcce8abc8aaa9b4714bfb0"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=ecosystem-integration suite_sha256=5a33449031aa9306e9e1bdc56ba3b973709e2e7cde04429e6e13fa91cdeee34e -->
+<!-- volume_stamp id=ecosystem-integration suite_sha256=d8a7651f6dd8898264db21d05f14cc69407c182541fcce8abc8aaa9b4714bfb0 -->
 
 # aiPlat 生态与集成白皮书
 
@@ -29,12 +29,12 @@ language: zh-CN
 | 受众 | ISV、集成商、开源社区、渠道 |
 | 核心问题 | 如何接入、贡献、协作？ |
 | 优先级 | P2 |
-| 材料完备度（suite） | `partial` |
-| 生成时间 (UTC) | `2026-10-12T16:43:36Z` |
+| 材料完备度（suite） | `ready` |
+| 生成时间 (UTC) | `2026-10-12T17:28:56Z` |
 
 **备注**：
 
-开放面：MCP 工具、HTTP API、Pi Package、A2A（见 CAPABILITIES 切片）。 伙伴分层/商业回报条款待商务材料；本卷不杜撰渠道政策。
+开放面：MCP、HTTP API、Pi Package、A2A、Skill。技术分层已闭环。 商务条款以盖章版为准；模板不构成要约。
 
 
 ## 1. 本卷论证目标
@@ -51,6 +51,8 @@ language: zh-CN
 | [`docs/API/api-reference.md`](../API/api-reference.md) | API 参考 | ✅ |
 | [`docs/policy/mcp-stdio-prod-allowlist.md`](../policy/mcp-stdio-prod-allowlist.md) | MCP 生产准入（治理边界） | ✅ |
 | [`packages/aiplat-pi-runtime/README.md`](../../packages/aiplat-pi-runtime/README.md) | 厂外 Pi Package 交付面 | ✅ |
+| [`docs/whitepaper/ecosystem-partner-tiers.md`](../ecosystem-partner-tiers.md) | 技术伙伴分层（Pi/KB/工具/MCP/私有化） | ✅ |
+| [`docs/whitepaper/ecosystem-partner-commercial-template.md`](../ecosystem-partner-commercial-template.md) | 商务条款空白模板（不构成要约） | ✅ |
 
 
 ### 2.2 Supporting
@@ -59,12 +61,93 @@ language: zh-CN
 |------|------|:----:|
 | [`docs/API/AttributionSchema.md`](../API/AttributionSchema.md) | 归因协议 | ✅ |
 | [`docs/architecture/plans/pi-thin-runtime.md`](../architecture/plans/pi-thin-runtime.md) | Pi 薄 Runtime 战略边界 | ✅ |
+| [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md) | 企业混合回连阶梯 | ✅ |
 | [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../WHITEPAPER_SYSTEM.md) | 白皮书体系（生态卷定位） | ✅ |
 
 
 ## 3. 正文编排（节选权威源）
 
-### 3.0 开放边界矩阵（接入面，非渠道政策）
+### 3.0 生态伙伴分层与开放边界
+
+本卷以技术伙伴分层闭环，不写未确认的分成比例、商标授权或排他条款。
+
+- 技术分层：[`docs/whitepaper/ecosystem-partner-tiers.md`](../ecosystem-partner-tiers.md)
+  - Pi-only 接入
+  - KB 混合接入
+  - 工具代理接入
+  - MCP / API ISV 接入
+  - 私有化厚部署
+- 开放边界矩阵：见 `ecosystem-partner-tiers.md` 第 3 节
+- 企业混合部署：[`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md)；能力行以 [`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md) 为准
+- 商务条款模板：[`docs/whitepaper/ecosystem-partner-commercial-template.md`](../ecosystem-partner-commercial-template.md)
+
+---
+
+> **商务条款声明**
+>
+> 分成、权益、商标、排他等条款以双方盖章版协议为准。`ecosystem-partner-commercial-template.md` 仅为空白模板，不构成要约。
+
+---
+
+生态卷 ready 边界：技术分层与开放边界已闭环；商务条款提供可盖章模板附录；正文不写假分成。
+
+### 3.1 技术分层专稿（节选）
+
+# 生态伙伴技术分层（权威专稿）
+
+> 供生态与集成白皮书节选。本专稿只定义**接入权限与交付形态**，不定义分成/返佣。  
+> 商务条款见 [`ecosystem-partner-commercial-template.md`](./ecosystem-partner-commercial-template.md)（以盖章版为准）。
+
+## 1. 分层总览
+
+| 层 | 伙伴做什么 | 典型入口 | 平台侧治理 |
+|----|------------|----------|------------|
+| **L0 Pi-only** | 消费工厂导出的薄 Runtime 包，自备模型 | `packages/aiplat-pi-runtime` · 导出 ZIP | 能力边界写进交付说明；无平台 Memory/SECI |
+| **L1 KB 混合** | Pi 壳 + 只读知识检索回连 | `AIPLAT_ENTERPRISE=1` · `aiplat_kb_retrieve` | 平台 `kb:read` / PolicyGate |
+| **L2 工具代理** | 允许列表内工具 HTTP 执行 | `AIPLAT_ENTERPRISE_TOOLS` · `aiplat_tool_execute` | Core `/api/core/tools/{name}/execute` + RBAC |
+| **L3 MCP / API ISV** | 注册 MCP 工具或调 HTTP API | `docs/mcp/` · `docs/API/` | MCP 生产准入 · 鉴权/租户/限流 |
+| **L4 私有化厚部署** | 驻场/私有化接近全栈 | 特殊合同 · 非默认交付 | 全量治理面由平台侧强制 |
+
+默认交付锁定 **L0**。企业加厚按 L1→L2→L3 阶梯开启；L4 非默认。详见 [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md)。
+
+## 2. 各层说明
+
+### 2.1 Pi-only 接入
+
+仅使用导出包内 SOP / skills / handler + 用户自备 LLM。不要求 8002/8003。
+
+### 2.2 KB 混合接入
+
+在 L0 基础上 opt-in 回连 `POST /platform/kb/query`。断连时回退本地 skills，禁止编造引用。
+
+### 2.3 工具代理接入
+
+须显式允许列表；空列表 = 工具代理关闭。PolicyGate 留在 Core，扩展只转发 Bearer。
+
+### 2.4 MCP / API ISV 接入
+
+通过 MCP 或 REST 暴露/消费平台能力。生产 MCP 须符合 `docs/policy/mcp-stdio-prod-allowlist.md` 与成本阶梯。
+
+### 2.5 私有化厚部署
+
+接近全栈 aiPlat 的驻场形态；**不是**厂外默认交付，须单独合同与运维边界。
+
+## 3. 开放边界矩阵
+
+| 接入面 | 伙伴/集成商做什么 | 权威入口 | 平台侧治理 |
+|--------|-------------------|----------|------------|
+| MCP 工具 | 注册/暴露工具 | `docs/mcp/index.md` | MCP 准入 + 成本阶梯 |
+| HTTP API | 调平台/Core | `docs/API/api-reference.md` | 鉴权 / 租户 / 限流 |
+| A2A | Agent 间互操作 | CAPABILITIES「A2A」 | PolicyGate / 身份透传 |
+| Pi Package | 薄 Runtime 包 | `packages/aiplat-pi-runtime/README.md` | 交付边界说明 |
+| Skill / Handler | 贡献可执行技能 | CAPABILITIES「Skill」 | `execution_type` + lint |
+
+## 4. 治理边界
+
+权限、审计、数据隔离、升级责任以 `docs/security/security-architecture.md` 与 `AIPLAT_CAPABILITIES.md` 安全/治理切片为准。伙伴不得要求在 Pi 进程内重实现 PolicyGate。
+
+
+### 3.2 开放边界矩阵（接入面）
 
 | 接入面 | 伙伴/集成商做什么 | 权威入口 | 平台侧治理 |
 |--------|-------------------|----------|------------|
@@ -74,9 +157,7 @@ language: zh-CN
 | **Pi Package** | 消费工厂导出的薄 Runtime 包 | [`packages/aiplat-pi-runtime/README.md`](../../packages/aiplat-pi-runtime/README.md) · [`docs/architecture/plans/pi-thin-runtime.md`](../architecture/plans/pi-thin-runtime.md) | 能力边界写进交付说明（无平台 Memory/SECI） |
 | **Skill / Handler** | 贡献可执行技能 | CAPABILITIES「Skill 系统」· engine skills | `execution_type` + lint + 准入 |
 
-> ⚠️ **伙伴分层、分成、商标授权**尚未形成商务专稿；本卷只定义技术开放面。贡献流程以仓库 CONTRIBUTING / PR 门禁为准。
-
-### 3.1 MCP / A2A 能力切片（CAPABILITIES）
+### 3.3 MCP / A2A 能力切片（CAPABILITIES）
 
 ## 十四、MCP 协议
 
@@ -114,7 +195,7 @@ language: zh-CN
 
 
 
-### 3.2 MCP 文档入口
+### 3.4 MCP 文档入口
 
 # MCP 协议集成设计
 
@@ -281,7 +362,7 @@ MCPClientConfig(
 - [ ] 连接池管理
 
 
-### 3.3 MCP 生产准入
+### 3.5 MCP 生产准入
 
 #!/bin/false
 # prod 放行 stdio MCP（路线A）策略
@@ -374,7 +455,7 @@ metadata:
 用于后续在 Traces/审计页面统一查询与追踪。
 
 
-### 3.4 API 参考（节选）
+### 3.6 API 参考（节选）
 
 # aiPlat API Reference
 
@@ -524,7 +605,7 @@ find aiPlat-core/core/api/routers -name '*.py' | \
 ```
 
 
-### 3.5 厂外 Pi Package
+### 3.7 厂外 Pi Package
 
 # @aiplat/pi-runtime
 
@@ -653,7 +734,7 @@ See [docs/FACTORY_IN_EXPERIMENT.md](./docs/FACTORY_IN_EXPERIMENT.md).
 See [PHASE0.md](./PHASE0.md) and `docs/architecture/plans/pi-thin-runtime.md`.
 
 
-### 3.6 归因协议（节选）
+### 3.8 归因协议（节选）
 
 # AttributionSchema — Agent 效果归因协议
 

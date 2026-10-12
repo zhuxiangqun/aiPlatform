@@ -3,16 +3,16 @@ title: "aiPlat 平台现状白皮书"
 type: platform-status-whitepaper
 authority: derived-from-capabilities
 status: generated
-generated_at: "2026-10-12T16:43:36Z"
+generated_at: "2026-10-12T17:28:56Z"
 source: AIPLAT_CAPABILITIES.md
-source_sha256: "5684f1bb75871130e324400c437bc337b695733b25127edaee276ade6ff49305"
-total_capabilities: 2103
+source_sha256: "e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94"
+total_capabilities: 2105
 capabilities_version: "30.10"
 capabilities_last_updated: "2026-10-11"
 language: zh-CN
 ---
 
-<!-- whitepaper_stamp source_sha256=5684f1bb75871130e324400c437bc337b695733b25127edaee276ade6ff49305 total_capabilities=2103 -->
+<!-- whitepaper_stamp source_sha256=e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94 total_capabilities=2105 -->
 
 # aiPlat 平台现状白皮书
 
@@ -37,14 +37,14 @@ language: zh-CN
 
 | 字段 | 值 |
 |------|-----|
-| 生成时间 (UTC) | `2026-10-12T16:43:36Z` |
-| 源文件 SHA-256 | `5684f1bb75871130e324400c437bc337b695733b25127edaee276ade6ff49305` |
+| 生成时间 (UTC) | `2026-10-12T17:28:56Z` |
+| 源文件 SHA-256 | `e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94` |
 | CAPABILITIES version | `30.10` |
 | CAPABILITIES last_updated | `2026-10-11` |
-| frontmatter total_capabilities | `2103` |
-| 文中 ✅ 计数 | 2113 |
+| frontmatter total_capabilities | `2105` |
+| 文中 ✅ 计数 | 2115 |
 | 文中 ⚠️ 计数 | 21 |
-| 能力表行（估） | 2112 |
+| 能力表行（估） | 2114 |
 
 ## 1. 平台定位（现状摘要）
 
@@ -99,7 +99,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以 Harness 为执行内核�
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 53 | 0 | 53 |
+| 管理 & 质量 | 55 | 0 | 55 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -118,7 +118,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以 Harness 为执行内核�
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2093** | **10** | **2103** |
+| **总计** | **2095** | **10** | **2105** |
 
 ## 2.5 对标、评级与五维白皮书体系
 
@@ -156,8 +156,8 @@ aiPlat 是企业级 AI **操作系统式平台**：以 Harness 为执行内核�
 |------|----------|--------------|--------|
 | 技术 | 为什么这样设计 | [`volumes/01-tech-architecture.md`](./volumes/01-tech-architecture.md) | overview + comparison + 本册第 1–3 章 |
 | 产品 | 能解决什么问题 | [`volumes/02-product-capability.md`](./volumes/02-product-capability.md) | CAPABILITIES + manuals + Pi 边界 |
-| 商业 | 投资回报如何 | [`volumes/03-commercial-value.md`](./volumes/03-commercial-value.md) | ROADMAP + strategy（案例待填） |
-| 生态 | 如何参与协作 | [`volumes/04-ecosystem-integration.md`](./volumes/04-ecosystem-integration.md) | MCP/A2A + Pi 导出（伙伴权益待补） |
+| 商业 | 投资回报如何 | [`volumes/03-commercial-value.md`](./volumes/03-commercial-value.md) | 价值模型 + ROADMAP + 内部示意（真实案例走 cases/ 授权） |
+| 生态 | 如何参与协作 | [`volumes/04-ecosystem-integration.md`](./volumes/04-ecosystem-integration.md) | 技术伙伴分层 + MCP/A2A/Pi（商务条款以盖章版为准） |
 | 治理 | 如何可信可控 | [`volumes/05-security-governance.md`](./volumes/05-security-governance.md) | security + Gate + L 级评估 |
 
 分卷清单：[`whitepaper-suite.yaml`](./whitepaper-suite.yaml) · 重生成：`python3 scripts/generate_whitepaper_volumes.py`
@@ -2378,6 +2378,8 @@ aiPlat 是企业级 AI **操作系统式平台**：以 Harness 为执行内核�
 ## 二十五、管理 & 质量
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| loadToolProxyConfig | `packages/aiplat-pi-runtime/extensions/enterprise_tools.ts` | ✅ | 自动同步 | 已合入 |
+| registerEnterpriseTools | `packages/aiplat-pi-runtime/extensions/enterprise_tools.ts` | ✅ | 自动同步 | 已合入 |
 | export_bundle | `scripts/export_pi_bundle.py` | ✅ | 自动同步 | 已合入 |
 | loadEnterpriseConfig | `packages/aiplat-pi-runtime/extensions/enterprise_kb.ts` | ✅ | 自动同步 | 已合入 |
 | registerEnterpriseKb | `packages/aiplat-pi-runtime/extensions/enterprise_kb.ts` | ✅ | 自动同步 | 已合入 |
@@ -2717,7 +2719,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以 Harness 为执行内核�
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 53 | 0 | 53 |
+| 管理 & 质量 | 55 | 0 | 55 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -2736,7 +2738,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以 Harness 为执行内核�
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2093** | **10** | **2103** |
+| **总计** | **2095** | **10** | **2105** |
 
 | **总计** | **1095** | **0** | **1095** |
 
