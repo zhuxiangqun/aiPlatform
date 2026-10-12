@@ -26,6 +26,8 @@ CAPS = REPO / "AIPLAT_CAPABILITIES.md"
 OUT = REPO / "docs" / "whitepaper" / "aiplat-platform-status-whitepaper.md"
 OVERVIEW = REPO / "docs" / "architecture" / "overview.md"
 AUTONOMY = REPO / "docs" / "whitepaper" / "aiplat-l4-autonomy-assessment-v1.0.0.md"
+SCORES = REPO / "docs" / "framework" / "assessment-scores.json"
+WHITEPAPER_SYSTEM = REPO / "docs" / "whitepaper" / "WHITEPAPER_SYSTEM.md"
 
 MARKER_BEGIN = "<!-- BEGIN_GENERATED_FROM_AIPLAT_CAPABILITIES -->"
 MARKER_END = "<!-- END_GENERATED_FROM_AIPLAT_CAPABILITIES -->"
@@ -80,6 +82,126 @@ def _count_marks(body: str) -> tuple[int, int, int]:
     # table rows that look like capability rows (rough)
     rows = len(re.findall(r"^\| [^|]+ \| [^|]+ \| [✅⚠️]", body, re.M))
     return ok, warn, rows
+
+
+def _assessment_stamp() -> str:
+    """Pull composite grades from assessment-scores.json (no hand-copy)."""
+    import json
+
+    if not SCORES.is_file():
+        return "_(未找到 `docs/framework/assessment-scores.json`)_\n"
+    try:
+        data = json.loads(SCORES.read_text(encoding="utf-8"))
+    except Exception as e:
+        return f"_(无法解析 assessment-scores.json: {e})_\n"
+
+    generated = data.get("generated_at") or "—"
+    spec_ver = data.get("spec_version") or "—"
+    lines = [
+        f"> 评分戳来源：[`assessment-scores.json`](../framework/assessment-scores.json)"
+        f"（generated_at=`{generated}` · spec=`{spec_ver}`）。改分请改 `assessment-spec.yaml` 后重算，勿手改本表。",
+        "",
+        "| 框架 | 综合结果 | 说明 |",
+        "|------|----------|------|",
+    ]
+    fws = data.get("frameworks") or {}
+    # Stable order for known keys
+    order = [
+        "framework_one",
+        "framework_two",
+        "framework_three",
+        "framework_resilience",
+    ]
+    seen = set()
+    for key in order + [k for k in fws if k not in order]:
+        if key in seen or key not in fws:
+            continue
+        seen.add(key)
+        fw = fws[key] or {}
+        name = fw.get("name") or key
+        grade = fw.get("composite_grade")
+        level = fw.get("composite_level_value")
+        formula = fw.get("formula") or ""
+        # framework_two style
+        pct = fw.get("composite_percent")
+        if pct is None and fw.get("overall_pct") is not None:
+            pct = fw.get("overall_pct")
+        if grade is not None and level is not None:
+            result = f"**{grade}** ({level})"
+        elif pct is not None:
+            result = f"**{pct}%**" if isinstance(pct, (int, float)) else f"**{pct}**"
+        elif fw.get("tiers"):
+            # enterprise three-layer: summarize tier keys if present
+            tiers = fw.get("tiers") or {}
+            if isinstance(tiers, dict) and tiers:
+                bits = []
+                for tk, tv in list(tiers.items())[:3]:
+                    if isinstance(tv, dict) and tv.get("mean") is not None:
+                        bits.append(f"{tk}={tv.get('mean')}")
+                    elif isinstance(tv, (int, float)):
+                        bits.append(f"{tk}={tv}")
+                result = " / ".join(bits) if bits else "_(见 tiers)_"
+            else:
+                result = "_(见 JSON tiers)_"
+        else:
+            bits = []
+            for k in (
+                "composite_grade",
+                "composite_level_value",
+                "composite_percent",
+                "overall_pct",
+                "composite_score",
+            ):
+                if fw.get(k) is not None:
+                    bits.append(f"{k}={fw[k]}")
+            result = ", ".join(bits) if bits else "_(见 JSON)_"
+        lines.append(f"| {name} | {result} | {formula[:80]} |")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _ratings_and_system_chapter() -> str:
+    stamp = _assessment_stamp()
+    system_link = (
+        "[`WHITEPAPER_SYSTEM.md`](./WHITEPAPER_SYSTEM.md)"
+        if WHITEPAPER_SYSTEM.is_file()
+        else "`docs/whitepaper/WHITEPAPER_SYSTEM.md`"
+    )
+    return f"""## 2.5 对标、评级与五维白皮书体系
+
+> **完整性要求**：仅有能力清单不足以对外论证。对标报告、自主性/工程成熟度评分、安全合规材料必须进入白皮书**体系目录**；本生成章只做**索引 + 评分戳**，正文仍以各权威源为准（避免第二真相源）。
+
+体系说明：{system_link}
+
+### 2.5.1 权威评分戳（自动摘录）
+
+{stamp}
+
+完整评估叙述：[`../framework/aiplat-complete-assessment.md`](../framework/aiplat-complete-assessment.md) · 自主性 ADR：[`aiplat-l4-autonomy-assessment-v1.0.0.md`](./aiplat-l4-autonomy-assessment-v1.0.0.md)
+
+### 2.5.2 对标与对比入口（勿读 archive 当现行）
+
+| 文档 | 用途 |
+|------|------|
+| [`../research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) | **主对标**：Claude Code / DeepSeek Harness / Hermes（见 `research/README.md`） |
+| [`../architecture/comparison.md`](../architecture/comparison.md) | 架构对比统一入口 |
+| [`../strategy/comparison-vs-vendors.md`](../strategy/comparison-vs-vendors.md) | 厂商/策略对比 |
+| [`../framework/hermes-comparison.md`](../framework/hermes-comparison.md) | Hermes 专项 |
+| [`../research/对标吸收与架构纯度评估.md`](../research/对标吸收与架构纯度评估.md) | 吸收核验 |
+| [`../archive/`](../archive/) | 历史对比（只读，已被主报告取代） |
+
+### 2.5.3 五维白皮书 ↔ 仓库映射（摘要）
+
+| 维度 | 核心问题 | 权威源 |
+|------|----------|--------|
+| 技术 | 为什么这样设计 | `architecture/overview.md` + `comparison.md` + 本白皮书第 1–3 章 |
+| 产品 | 能解决什么问题 | `AIPLAT_CAPABILITIES.md` + `manuals/` + Pi 交付边界计划 |
+| 商业 | 投资回报如何 | `AIPLAT_ROADMAP.md` + `strategy/`（案例持续填充） |
+| 生态 | 如何参与协作 | CAPABILITIES MCP/A2A + `docs/mcp/` + Pi 导出 |
+| 治理 | 如何可信可控 | CAPABILITIES 安全/Gate + `security/` + `compliance/` |
+
+"""
+
 
 
 def _section_index(body: str) -> list[tuple[str, str]]:
@@ -151,7 +273,9 @@ language: zh-CN
 |------|----------|
 | 平台有哪些能力、是否已接线 | **AIPLAT_CAPABILITIES.md**（本文第 3 章为其完整收录） |
 | 架构分层与依赖方向 | `docs/architecture/overview.md` + 各仓 `CLAUDE.md` |
-| 自主性定级（L5 等） | `docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md`（评估，非整库能力表） |
+| 自主性定级（L5 等） | `docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md` + `framework/assessment-scores.json` |
+| 对标 / 差异化 | `docs/research/aiPlat核心能力对标报告.md` + `architecture/comparison.md` |
+| 五维白皮书体系 | [`WHITEPAPER_SYSTEM.md`](./WHITEPAPER_SYSTEM.md) |
 | 设计目标 vs 现状 | 代码与 CAPABILITIES；设计文档冲突时以代码为准 |
 
 **生成元数据**
@@ -194,7 +318,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以 Harness 为执行内核�
 
 {stats}
 
-## 3. 完整能力清单（由 CAPABILITIES 生成收录）
+{_ratings_and_system_chapter()}## 3. 完整能力清单（由 CAPABILITIES 生成收录）
 
 下列章节为源文件正文能力表的**完整收录**（自「系统架构」或「一、Harness」起至文末统计之前的主体；含全部子系统表）。  
 **请勿手工改本章**——改能力请改 `AIPLAT_CAPABILITIES.md` 后重新运行生成器。
@@ -235,7 +359,11 @@ python3 scripts/generate_platform_whitepaper.py
 | [`docs/architecture/overview.md`](../architecture/overview.md) | 架构全景 |
 | [`docs/matrix/capability-impact-matrix.md`](../matrix/capability-impact-matrix.md) | 变更影响矩阵 |
 | [`docs/DOCUMENT_SYSTEM.md`](../DOCUMENT_SYSTEM.md) | 文档治理宪法 |
-| [`docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md`](./aiplat-l4-autonomy-assessment-v1.0.0.md) | 自主性定级评估 |
+| [`WHITEPAPER_SYSTEM.md`](./WHITEPAPER_SYSTEM.md) | 五维白皮书体系 |
+| [`aiplat-l4-autonomy-assessment-v1.0.0.md`](./aiplat-l4-autonomy-assessment-v1.0.0.md) | 自主性定级评估 |
+| [`../framework/assessment-scores.json`](../framework/assessment-scores.json) | 评估分数机器源 |
+| [`../research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) | 主对标报告 |
+| [`AIPLAT_ROADMAP.md`](../../AIPLAT_ROADMAP.md) | 商业/路线图 |
 | [`docs/archive/AIPLAT_WHITEPAPER.md`](../archive/AIPLAT_WHITEPAPER.md) | 旧叙事稿（归档，非现状权威） |
 
 ---
