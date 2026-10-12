@@ -240,6 +240,24 @@ def _build_volume(vol: Dict[str, Any], suite_sha: str, generated_at: str) -> str
     # Dimension-specific body
     if vid == "tech-architecture":
         parts += [
+            "### 3.0 关键设计决策索引",
+            "",
+            "本卷不重抄 ADR 全文，以索引方式消解散落问题。设计决策分散在以下权威源：",
+            "",
+            "| 决策域 | 权威源 |",
+            "|--------|--------|",
+            f"| 平台总览与边界 | {_link('docs/architecture/overview.md')} |",
+            f"| 执行决策矩阵 | {_link('docs/architecture/execution-decision-matrix.md')} |",
+            f"| Pi 薄运行时 | {_link('docs/architecture/plans/pi-thin-runtime.md')} |",
+            f"| 文档体系与 ADR 分布 | {_link('docs/DOCUMENT_SYSTEM.md')} |",
+            "",
+            "索引维护责任与更新触发条件见 "
+            f"{_link('docs/whitepaper/WHITEPAPER_SYSTEM.md')}「ADR 索引维护」节。",
+            "",
+            "> 索引只指向权威源，不复制 ADR 正文。修改 overview / "
+            "execution-decision-matrix / pi-thin-runtime / DOCUMENT_SYSTEM "
+            "任一文件时，必须同步本索引。",
+            "",
             "### 3.1 架构全景（overview）",
             "",
         ]
@@ -257,6 +275,11 @@ def _build_volume(vol: Dict[str, Any], suite_sha: str, generated_at: str) -> str
             f"{_link('docs/manuals/fde/README.md')} · CAPABILITIES「平台治理 / FDE」 |",
             "| **App 工厂 / Builder** | 从需求到 Agent/应用产物 | "
             f"管理端 Builder · {_link('docs/architecture/plans/pi-thin-runtime.md')}（厂外交付边界） |",
+            "| **Workbench** | 开发与调试工作台 | "
+            f"{_link('docs/manuals/management.md') if _rel('docs/manuals/management.md').is_file() else _link('docs/manuals/getting-started.md')} · CAPABILITIES「Workbench」 |",
+            "| **评测治理** | 评测流程与治理规则 | CAPABILITIES「评测 / Governance」 |",
+            "| **ORG 签收** | 组织级签收与现场闭环 | CAPABILITIES「apps/org」· manuals |",
+            "| **渠道接入** | 多渠道消息与集成 | CAPABILITIES「Channel」· 应用端 channels |",
             "| **知识 / 本体 / RAG** | 企业知识可检索、可治理 | "
             f"{_link('docs/knowledge-system.md') if _rel('docs/knowledge-system.md').is_file() else _link('docs/manuals/ontology.md')} · CAPABILITIES「知识引擎 / RAG」 |",
             "| **Agent / Skill 运行** | 多步工具调用与技能执行 | "
@@ -268,8 +291,10 @@ def _build_volume(vol: Dict[str, Any], suite_sha: str, generated_at: str) -> str
             f"{_link('docs/architecture/plans/pi-thin-runtime.md')} · "
             f"{_link('packages/aiplat-pi-runtime/README.md')} |",
             "",
-            "> 上表只指路。**能力是否接线**以 "
-            f"{_link('AIPLAT_CAPABILITIES.md')} 对应行的 ✅/⚠️ 为准。",
+            "> 上表只指路。**接线以 "
+            f"{_link('AIPLAT_CAPABILITIES.md')} 行为为准**；"
+            f"{_link('docs/manuals/README.md') if _rel('docs/manuals/README.md').is_file() else _link('docs/manuals/getting-started.md')} "
+            "仅提供操作说明，不作为行为契约。",
             "",
             "### 3.1 能力统计（摘自 CAPABILITIES）",
             "",
@@ -315,35 +340,95 @@ def _build_volume(vol: Dict[str, Any], suite_sha: str, generated_at: str) -> str
             parts.append("_(CAPABILITIES 缺失)_")
     elif vid == "commercial-value":
         parts += [
-            "### 3.0 商业论证框架（v1，无虚构数字）",
+            "### 3.0 商业价值模型",
             "",
-            "| 步骤 | 要回答的问题 | 可用材料 | 禁止 |",
-            "|------|--------------|----------|------|",
-            "| 1. 业务问题 | 哪类交付/知识/Agent 成本或风险最大？ | FDE/手册场景 · 客户访谈 | 用行业通稿代替客户事实 |",
-            "| 2. 成本结构 | 自建 Harness+RAG+治理 vs 平台订阅/部署的 TCO 项？ | "
-            f"{_link('AIPLAT_ROADMAP.md')} 基线维度 · infra 运维手册 | 编造人天单价 |",
-            "| 3. 能力溢价 | 哪些能力缩短交付周期或降低合规风险？ | "
-            f"{_link('docs/research/aiPlat核心能力对标报告.md')} · 评分戳 | 把 L5 直接等同 ROI% |",
-            "| 4. 分阶段路径 | PoC → 试点 → 规模化的闸门？ | ROADMAP Phase · ORG 签收包 | 跳过治理门禁承诺「立刻全自动」 |",
-            "| 5. 案例附录 | 客户授权后的前后对比指标？ | **待填充** `docs/whitepaper/cases/` | 未授权案例上卷 |",
+            "本卷不引用未授权的客户 ROI、人天单价或伙伴分成比例。"
+            "商业论证以平台已接线的价值系统为准：",
+            "",
+            f"- 价值维度与算法符号：{_link('aiPlat-core/core/harness/finance/value_calculator.py')}",
+            f"- 五维价值映射与 TCO 对照：{_link('docs/whitepaper/commercial-value-model.md')}",
+            "- CEO/CFO/PM 翻译口径：见 `commercial-value-model.md` 第 2 节",
+            "- 分阶段落地闸门：见 `commercial-value-model.md` 第 4 节",
+            f"- 示意案例：{_link('docs/whitepaper/cases/internal-illustrative-fde.md')}",
+            "",
+            "---",
+            "",
+            "> **非客户授权案例声明**",
+            ">",
+            "> `cases/internal-illustrative-fde.md` 为内部示意，"
+            "`authorized: false`、`kind: illustrative`，仅用于说明算法与口径，"
+            "不构成任何客户承诺或收益保证。真实客户案例必须走 "
+            f"{_link('docs/whitepaper/cases/README.md')} 授权流程。",
+            "",
+            "---",
+            "",
+            "商业卷 ready 边界：价值系统已接线、TCO 对照清单已闭环、"
+            "内部示意 worked example 已标注。"
+            "真实客户数字与商务条款后续只追加 `cases/` 与商务附录，不重做卷骨架。",
+            "",
+            "### 3.1 价值模型专稿（节选）",
+            "",
+        ]
+        excerpt, _ = _read_excerpt(
+            _rel("docs/whitepaper/commercial-value-model.md"), 8000
+        )
+        parts += [
+            excerpt,
             "",
             _assessment_stamp(),
-            "### 3.1 商业化路线图（节选）",
+            "### 3.2 商业化路线图（节选）",
             "",
-            "> ⚠️ **客户 ROI 数字仍为 gap**。下列 ROADMAP 是内部作战手册节选，不是对外已审计财报。",
+            "> 下列 ROADMAP 是内部作战手册节选，不是对外已审计财报；"
+            "勿将路线图基线误读为客户授权 ROI。",
             "",
         ]
         excerpt, _ = _read_excerpt(_rel("AIPLAT_ROADMAP.md"), 12000)
         parts += [excerpt, ""]
         if _rel("docs/strategy/comparison-vs-vendors.md").is_file():
-            parts += ["### 3.2 厂商策略对比（节选）", ""]
+            parts += ["### 3.3 厂商策略对比（节选）", ""]
             excerpt, _ = _read_excerpt(
                 _rel("docs/strategy/comparison-vs-vendors.md"), 8000
             )
             parts += [excerpt, ""]
     elif vid == "ecosystem-integration":
         parts += [
-            "### 3.0 开放边界矩阵（接入面，非渠道政策）",
+            "### 3.0 生态伙伴分层与开放边界",
+            "",
+            "本卷以技术伙伴分层闭环，不写未确认的分成比例、商标授权或排他条款。",
+            "",
+            f"- 技术分层：{_link('docs/whitepaper/ecosystem-partner-tiers.md')}",
+            "  - Pi-only 接入",
+            "  - KB 混合接入",
+            "  - 工具代理接入",
+            "  - MCP / API ISV 接入",
+            "  - 私有化厚部署",
+            "- 开放边界矩阵：见 `ecosystem-partner-tiers.md` 第 3 节",
+            f"- 企业混合部署：{_link('packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md')}；"
+            f"能力行以 {_link('AIPLAT_CAPABILITIES.md')} 为准",
+            f"- 商务条款模板：{_link('docs/whitepaper/ecosystem-partner-commercial-template.md')}",
+            "",
+            "---",
+            "",
+            "> **商务条款声明**",
+            ">",
+            "> 分成、权益、商标、排他等条款以双方盖章版协议为准。"
+            "`ecosystem-partner-commercial-template.md` 仅为空白模板，不构成要约。",
+            "",
+            "---",
+            "",
+            "生态卷 ready 边界：技术分层与开放边界已闭环；"
+            "商务条款提供可盖章模板附录；正文不写假分成。",
+            "",
+            "### 3.1 技术分层专稿（节选）",
+            "",
+        ]
+        excerpt, _ = _read_excerpt(
+            _rel("docs/whitepaper/ecosystem-partner-tiers.md"), 8000
+        )
+        parts += [
+            excerpt,
+            "",
+            "### 3.2 开放边界矩阵（接入面）",
             "",
             "| 接入面 | 伙伴/集成商做什么 | 权威入口 | 平台侧治理 |",
             "|--------|-------------------|----------|------------|",
@@ -360,36 +445,44 @@ def _build_volume(vol: Dict[str, Any], suite_sha: str, generated_at: str) -> str
             "| **Skill / Handler** | 贡献可执行技能 | CAPABILITIES「Skill 系统」· engine skills | "
             "`execution_type` + lint + 准入 |",
             "",
-            "> ⚠️ **伙伴分层、分成、商标授权**尚未形成商务专稿；本卷只定义技术开放面。"
-            "贡献流程以仓库 CONTRIBUTING / PR 门禁为准。",
-            "",
-            "### 3.1 MCP / A2A 能力切片（CAPABILITIES）",
+            "### 3.3 MCP / A2A 能力切片（CAPABILITIES）",
             "",
             _caps_section_extract(["MCP 协议", "A2A 协议"], 6000),
             "",
-            "### 3.2 MCP 文档入口",
+            "### 3.4 MCP 文档入口",
             "",
         ]
         excerpt, _ = _read_excerpt(_rel("docs/mcp/index.md"), 5000)
-        parts += [excerpt, "", "### 3.3 MCP 生产准入", ""]
+        parts += [excerpt, "", "### 3.5 MCP 生产准入", ""]
         excerpt, _ = _read_excerpt(
             _rel("docs/policy/mcp-stdio-prod-allowlist.md"), 6000
         )
-        parts += [excerpt, "", "### 3.4 API 参考（节选）", ""]
+        parts += [excerpt, "", "### 3.6 API 参考（节选）", ""]
         excerpt, _ = _read_excerpt(_rel("docs/API/api-reference.md"), 8000)
-        parts += [excerpt, "", "### 3.5 厂外 Pi Package", ""]
+        parts += [excerpt, "", "### 3.7 厂外 Pi Package", ""]
         excerpt, _ = _read_excerpt(
             _rel("packages/aiplat-pi-runtime/README.md"), 6000
         )
         parts += [excerpt, ""]
         if _rel("docs/API/AttributionSchema.md").is_file():
-            parts += ["### 3.6 归因协议（节选）", ""]
+            parts += ["### 3.8 归因协议（节选）", ""]
             excerpt, _ = _read_excerpt(
                 _rel("docs/API/AttributionSchema.md"), 4000
             )
             parts += [excerpt, ""]
     elif vid == "security-governance":
         parts += [
+            "### 3.0 治理与安全材料",
+            "",
+            "治理卷材料已厚，本卷 suite 状态为 ready，保留以下权威源：",
+            "",
+            f"- 评分戳：{_link('docs/framework/assessment-scores.json')}",
+            f"- 安全架构：{_link('docs/security/security-architecture.md')}",
+            f"- Gate 与安全能力：{_link('AIPLAT_CAPABILITIES.md')} 中 Gate / 安全节",
+            f"- L 级 ADR：{_link('docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md')}",
+            "",
+            "> 治理卷不新增示意案例，不引用未授权客户数据。",
+            "",
             "### 3.1 权威评分戳",
             "",
             _assessment_stamp(),
