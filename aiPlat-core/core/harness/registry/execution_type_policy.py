@@ -69,6 +69,9 @@ def fail_open_governance_status() -> Dict[str, Any]:
     expired = bool(until and until <= now)
     until_invalid = bool(until_raw and until is None)
     authorized = bool(flag and not missing and not expired and not until_invalid)
+    expires_within_24h = False
+    if until and until > now:
+        expires_within_24h = (until - now).total_seconds() <= 86400
     return {
         "flag": flag,
         "authorized": authorized,
@@ -79,6 +82,7 @@ def fail_open_governance_status() -> Dict[str, Any]:
         "expired": expired,
         "until_invalid": until_invalid,
         "active": authorized,
+        "expires_within_24h": expires_within_24h,
     }
 
 
@@ -113,6 +117,11 @@ def record_fail_open_audit(*, source: str = "runtime") -> Dict[str, Any]:
                 status.get("until"),
                 (status.get("reason") or "")[:200],
             )
+            if status.get("expires_within_24h"):
+                logger.warning(
+                    "AIPLAT_EXECUTION_TYPE_FAIL_OPEN expires within 24h (until=%s) — renew or remove",
+                    status.get("until"),
+                )
         else:
             logger.error(
                 "AIPLAT_EXECUTION_TYPE_FAIL_OPEN set but NOT authorized "

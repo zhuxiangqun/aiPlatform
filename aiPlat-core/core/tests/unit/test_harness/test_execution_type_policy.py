@@ -92,6 +92,19 @@ def test_fail_open_expired(monkeypatch):
     assert execution_type_fail_closed() is True
 
 
+def test_fail_open_expires_within_24h(monkeypatch):
+    from datetime import datetime, timedelta, timezone
+
+    soon = (datetime.now(timezone.utc) + timedelta(hours=12)).isoformat()
+    monkeypatch.setenv("AIPLAT_EXECUTION_TYPE_FAIL_OPEN", "1")
+    monkeypatch.setenv("AIPLAT_EXECUTION_TYPE_FAIL_OPEN_REASON", "incident-near-expiry")
+    monkeypatch.setenv("AIPLAT_EXECUTION_TYPE_FAIL_OPEN_BY", "ops@example.com")
+    monkeypatch.setenv("AIPLAT_EXECUTION_TYPE_FAIL_OPEN_UNTIL", soon)
+    st = fail_open_governance_status()
+    assert st["authorized"] is True
+    assert st["expires_within_24h"] is True
+
+
 def test_record_fail_open_sidecar(monkeypatch, tmp_path):
     monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
     monkeypatch.setenv("AIPLAT_EXECUTION_TYPE_FAIL_OPEN", "1")

@@ -71,8 +71,12 @@ def build_execution_decision(
     downgrade_reason: str = "",
     demote_skipped: str = "",
     hybrid_semantics: str = "",
+    stage_id: str = "",
+    skill_name: str = "",
+    handler_present: Optional[bool] = None,
+    fail_closed_reason: str = "",
 ) -> Dict[str, Any]:
-    """Path card for stage events / decision_traces (matrix E3/E3.1).
+    """Path card for stage events / decision_traces (matrix E3/E3.1 / v1.9).
 
     Fields are config-driven labels only — no business agent/artifact names.
     ``path`` is the resolved runtime branch:
@@ -81,6 +85,9 @@ def build_execution_decision(
     When ``execution_type=hybrid``, ``hybrid_semantics`` disambiguates:
     ``stage_direct_handler`` (Pipeline Stage — no LLM plan) vs
     ``syscall_plan_then_handler`` (``Skill.execute`` — LLM plan then handler).
+
+    v1.9 audit fields: ``stage_id``, ``skill_name``, ``handler_present``,
+    ``fail_closed_reason`` (set when unknown execution_type hard-fails).
     """
     profile = str(architecture_profile or "").strip().lower()
     backend = str(execution_backend or "").strip().lower()
@@ -113,6 +120,10 @@ def build_execution_decision(
         "inferred_from": str(inferred_from or "").strip(),
         "downgrade_reason": str(downgrade_reason or "").strip(),
         "demote_skipped": str(demote_skipped or "").strip(),
+        "stage_id": str(stage_id or "").strip(),
+        "skill_name": str(skill_name or "").strip(),
+        "handler_present": bool(handler_present) if handler_present is not None else False,
+        "fail_closed_reason": str(fail_closed_reason or "").strip(),
     }
 
 

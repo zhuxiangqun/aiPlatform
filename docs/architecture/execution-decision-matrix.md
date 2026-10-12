@@ -1,7 +1,7 @@
 # 执行决策矩阵
 
 > **一句话**：帮你选「这件事该用程序、LLM、技能、Agent，还是流水线」——先按场景判断，细节与代码证据在文末附录。  
-> **状态**：Living Spec（与实现同步；冲突时以代码为准）· **v1.8.1** · 2026-10-12  
+> **状态**：Living Spec（与实现同步；冲突时以代码为准）· **v1.9** · 2026-10-12  
 > **互补文档**：[产物怎么验收](execution-quality-gates.md) · [能力剖面细节](capability-profile.md) · [知识 / Memory / CRAG](../knowledge-system.md) · [Agent 总览](../agent-system.md)（后端规则以本文为准）
 
 ---
@@ -94,6 +94,15 @@ rung:             MCP | Syscall
 blast_radius:     <失败/token/权限影响>
 ```
 
+**证明质量最低标准（v1.9）**：
+
+- `why_not_1_extend`、`why_not_2_cli`、`why_not_3_tool`、`why_not_4_plugin` 四项均非空，且每项不少于 20 字；
+- `rung` 必须为 `MCP` 或 `Syscall`；
+- `blast_radius` 必须说明失败/token/权限影响；
+- 缺任一字段或明显占位符（如 `N/A`、`待补`）→ CI 硬失败。
+
+内联 `# ladder-ok: <reason>` 理由需不少于 15 字；支持 `# ladder-ok: temporary until <date>`，到期后重新校验。仅写 CAPABILITIES 名字、无证明块且无合格 `# ladder-ok` → **不通过**。
+
 ---
 
 ## 3. 「架构」三层（别混称）
@@ -177,7 +186,8 @@ decision = {
   execution_type, path / actual_path,   # handler | hybrid | agent | llm
   hybrid_semantics,                    # stage_direct_handler | syscall_plan_then_handler | ""
   upgrade_policy, inferred_from,
-  downgrade_reason, demote_skipped      # 为何降级 / 为何跳过降级
+  downgrade_reason, demote_skipped,     # 为何降级 / 为何跳过降级
+  stage_id, skill_name, handler_present, fail_closed_reason
 }
 ```
 
@@ -191,7 +201,8 @@ decision = {
 
 - 工厂：选 对话 / react / rag + 技能工具；Skill **默认 prompt**。  
 - **E1**：推荐在 AGENT.md 写 `architecture_profile`（conversational→oneshot，react→react_tools，rag→react_tools）。conformance 校验：**生成物 AGENT.md 上**声明的值∈已知集且与 `agent_type` 兼容。  
-- **团队 YAML 覆盖**：YAML 同名字段优先于 AGENT.md（`team_planner` 空才回填）。conformance **不**对「YAML 最终跑法 vs AGENT 期望」做二次意图一致性校验——YAML 是部署钉死，视为运维覆盖；评审时以路径卡 `architecture_profile` / `inferred_from` 为准。若要防漂移，在团队 PR 人工对照或另加团队 YAML lint（未内建）。  
+- **团队 YAML 覆盖**：YAML 同名字段优先于 AGENT.md（`team_planner` 空才回填）。conformance **不**对「YAML 最终跑法 vs AGENT 期望」做二次意图一致性校验——YAML 是部署钉死，视为运维覆盖；评审时以路径卡 `architecture_profile` / `inferred_from` 为准。  
+- **YAML 漂移 lint（v1.9 可选启用）**：`scripts/lint_team_yaml_profile_drift.py`，读取团队 YAML 与 AGENT.md；若 YAML 的 `architecture_profile` / `execution_backend` 与 AGENT.md 期望冲突，输出 WARNING；若冲突且 YAML 未附 `# drift-ok: <reason>`，可加 `--strict` 硬失败。默认 WARNING，不改变“YAML 优先”的部署语义。  
 - **E2**：仅当 PRD 要求确定性、无 LLM 副作用时，可声明 `execution_type: handler` 并同目录输出 `handler.py`（顶层 `execute`）；媒体目录名禁止自造 handler。注册时复制 sibling。  
 - 工作区 Execute：写文件类技能会注入编码闭环；`coding_closed_loop: false` 可关。  
 - 编码落盘：Pipeline llm 路径有落盘前校验；优先 Agent 环做 peer-review。
@@ -228,6 +239,12 @@ decision = {
 **ToT 组合示例**：stage A/B/C 各自 `oneshot`/`react_tools` 出候选 → debate/MoA stage 选优 → 下游执行。  
 **GoT 组合示例**：多 worker Agent 产出带 `depends_on` / schema 边的中间件 → aggregator stage 按边合并 → 单一交付物。
 
+### 6.1 与全局闭环的接口（v1.9）
+
+- **Eval Pipeline**：消费路径卡 `decision` 字段，做离线回归、影子流量、金丝雀对比；关注 `actual_path`、`hybrid_semantics`、`downgrade_reason`、`stage_id`、`skill_name`。具体见 Governance 与 `apps/eval`。  
+- **Memory / CRAG**：消费 `execution_type`、`meta_tool`、`capability_profile`，决定检索深度与回退策略；具体见 [knowledge-system.md](../knowledge-system.md)。  
+- 本文不替代 Eval / Memory 细则，但定义**交互字段契约**：路径卡字段即接口，变更需同 PR 更新本文与其他文档。
+
 Eval / 金标 / 值班板：见 Governance 与 `apps/eval`（`runs_eval` / gold）（本文不替代）；知识 / Memory / CRAG 闭环见 [knowledge-system.md](../knowledge-system.md)。
 
 ---
@@ -240,6 +257,14 @@ Eval / 金标 / 值班板：见 Governance 与 `apps/eval`（`runs_eval` / gold�
 | `AIPLAT_EXECUTION_TYPE_FAIL_OPEN` | 关 | 须同时设 `REASON` + `BY` + `UNTIL`（未来时戳）才授权；缺任一或过期 → 仍 fail closed。启动写 sidecar + audit_log |
 | capability 降级 agent→llm | **不对显式 agent / 执行混合生效** | 见 §3 |
 
+**FAIL_OPEN 治理增强（v1.9）**：
+
+- 开启期间启动写 sidecar + audit_log；
+- 健康检查输出 WARNING（`execution_type_fail_open`）；
+- 过期前 24h 输出提醒（`expires_within_24h`）；
+- 过期后自动失效并记录；
+- 不改变授权逻辑，只增加可观测性。
+
 ---
 
 ## 8. 还没做完的（勿当现状）
@@ -250,9 +275,9 @@ Eval / 金标 / 值班板：见 Governance 与 `apps/eval`（`runs_eval` / gold�
 | E2 | **已做** | 工厂可选 `execution_type: handler` + 同目录 `handler.py`（须顶层 `execute`）；conformance `check_handler_pairing`；注册时复制 sibling；媒体目录名禁止自造 handler |
 | E4 | **已做** | `lint_engine_skills.py`（handler/未知类型/prompt 写文件）+ `check_cost_ladder.py`（新 Syscall/MCP 须 CAPABILITIES 或 `# ladder-ok`）；pre-commit + architecture_guard |
 | E5 | **已做** | FAIL_OPEN 须 reason/by/until；过期自动无效；sidecar + 启动 audit_log |
-| O1 | **可选** | MCP 阶梯证明质量：今日只查有无 CAPABILITIES/`# ladder-ok`，不审证明充分性 → 可加评审清单或模板字段校验 |
-| O2 | **可选** | 团队 YAML vs AGENT.md 漂移 lint（未内建；今日人工 + 路径卡） |
-| O3 | **可选** | Eval/Memory 全局闭环以 `knowledge-system.md` / Governance / `apps/eval` 为准，须同步维护 |
+| O1 | **已做** | MCP 阶梯证明质量：v1.9 起 `check_cost_ladder.py` 校验模板字段完整性与最小长度；缺字段或占位符 → CI 硬失败 |
+| O2 | **已做（可选启用）** | 团队 YAML vs AGENT.md 漂移 lint：`scripts/lint_team_yaml_profile_drift.py`，默认 WARNING，`--strict` 可硬失败 |
+| O3 | **接口已定义** | Eval / Memory 全局闭环交互字段契约见 §6.1；细则以 `knowledge-system.md` / Governance / `apps/eval` 为准，须同步维护 |
 
 ---
 
@@ -282,7 +307,7 @@ Eval / 金标 / 值班板：见 Governance 与 `apps/eval`（`runs_eval` / gold�
 | `pipeline_mode` / `routing_mode` / 辩论·MoA | 编排 |
 | `AIPLAT_EXECUTION_TYPE_FAIL_CLOSED` | `1` 强制硬失败；`0` 显式 soft（同 SOFT_DEV） |
 | `AIPLAT_EXECUTION_TYPE_SOFT_DEV` | `1` 开发 soft→prompt（默认关） |
-| `AIPLAT_EXECUTION_TYPE_FAIL_OPEN` + `_REASON` / `_BY` / `_UNTIL` | E5 紧急放行（三者齐全且未过期） |
+| `AIPLAT_EXECUTION_TYPE_FAIL_OPEN` + `_REASON` / `_BY` / `_UNTIL` | E5 紧急放行（三者齐全且未过期）；v1.9 增加告警与过期提醒 |
 | `AIPLAT_META_TOOL_*` / `AIPLAT_DONE_VERIFY*` / `AIPLAT_CODING_STAGE_*` | 元工具 / DONE / 编码默认 |
 | `AIPLAT_DYNAMIC_ROUTER_ENABLED` | 模型动态路由 opt-in |
 | `AIPLAT_EXECUTION_AUDIT` | Skill actual_mode 审计 |
@@ -303,11 +328,12 @@ Eval / 金标 / 值班板：见 Governance 与 `apps/eval`（`runs_eval` / gold�
 | E1 工厂意图 | `generated_conformance._check_architecture_profile_intent` · `team_planner` 回填 · `agent_engineering` SOP |
 | meta-tool | `PipelineStageConfig.meta_tool` · `meta_tool.apply_meta_tool_config` · `_prefer_code_meta_tool` / `_force_code_meta_tool` |
 | 降级门闩 | `pipeline_stage._apply_capability_profile`（跳过显式 agent/profile） |
-| 路径卡 | `build_execution_decision`（含 `hybrid_semantics`）· `_emit_execution_decision` |
+| 路径卡 | `build_execution_decision`（含 `hybrid_semantics`、`stage_id`、`skill_name`、`handler_present`、`fail_closed_reason`）· `_emit_execution_decision` |
 | meta-tool 意图 | `meta_tool.detect_meta_tool_intent` · `_INTENT_PATTERNS` |
 | 工厂 SOP | `agent_engineering/SKILL.md` |
 | 工作区闭环 | `inject_workspace_coding_defaults` |
 | 成本阶梯 | 根 `CLAUDE.md` §20 · `check_cost_ladder.py` |
+| YAML 漂移 lint | `scripts/lint_team_yaml_profile_drift.py`（v1.9） |
 | Memory / CRAG | [knowledge-system.md](../knowledge-system.md) |
 
 **维护**：改上表路径时同 PR 更新本文；破坏性语义升 minor。  
@@ -319,6 +345,7 @@ Eval / 金标 / 值班板：见 Governance 与 `apps/eval`（`runs_eval` / gold�
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
+| v1.9 | 2026-10-12 | 治理增强：O1 MCP 证明质量校验；O2 YAML 漂移 lint（可选启用）；O3 Eval/Memory 接口定义（§6.1）；路径卡扩展 `stage_id`/`skill_name`/`handler_present`/`fail_closed_reason`；FAIL_OPEN 告警与过期提醒；成本阶梯内联 `# ladder-ok` 与质量最低标准 |
 | v1.8.1 | 2026-10-12 | 可选澄清：Stage prompt `effects`=拒演闸门非整跑 PolicyGate；`path`≡`actual_path`（预留分列）；§8 登记 O1–O3 |
 | v1.8 | 2026-10-12 | 细节澄清：Stage vs Syscall hybrid（`hybrid_semantics`）；prompt 在 agent 环用法；meta-tool 意图检测；程序 vs Tool 一句话；MCP 证明模板；ToT/GoT 组合示例；YAML 覆盖与 conformance 边界；推断降级字段预留 |
 | v1.7 | 2026-10-12 | 正文补齐：LLM/程序硬规则、hybrid vs Agent、Tool/handler/程序边界、meta-tool、Workflow 编排语义、MCP 准入（回应 v1.3 选型评审） |

@@ -61,6 +61,20 @@ def test_build_execution_decision_hybrid_syscall_semantics():
     assert d["hybrid_semantics"] == "syscall_plan_then_handler"
 
 
+def test_build_execution_decision_v19_audit_fields():
+    d = build_execution_decision(
+        path="llm",
+        stage_id="s1",
+        skill_name="demo_skill",
+        handler_present=True,
+        fail_closed_reason="unknown execution_type",
+    )
+    assert d["stage_id"] == "s1"
+    assert d["skill_name"] == "demo_skill"
+    assert d["handler_present"] is True
+    assert "unknown" in d["fail_closed_reason"]
+
+
 def test_record_decision_persists_execution(tmp_path, monkeypatch):
     monkeypatch.setattr(dt, "_TRACE_DIR", str(tmp_path / "traces"))
     run_id = "e3-run-1"
