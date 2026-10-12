@@ -1,6 +1,7 @@
 # 厂内轴（A）实验备忘 — 非主路径
 
-> 状态：**方式四骨架已就绪（CLI）**；**未**接入 PipelineEngine / `inject_workspace_coding_defaults`。  
+> 状态：**方式四 CLI + Workspace Execute 旁路 flag 已接线**；**默认关闭**（`AIPLAT_PI_CODING_EXECUTOR`）。  
+> **未**接入 PipelineEngine / harness；**不得**标 CAPABILITIES「厂内已接线」。  
 > 主产品轴仍是厂外薄 Runtime（本包 + 导出/ZIP）。  
 
 > 权威战略：`docs/architecture/plans/pi-thin-runtime.md` §战略。
@@ -38,6 +39,8 @@ python3 packages/aiplat-pi-runtime/scripts/test_coding_exec_unit.py
 | 文件 | 作用 |
 |------|------|
 | `python/pi_rpc_client.py` | JSONL RPC 客户端 + 沙箱 cwd 门禁 |
+| `scripts/coding_exec.py` | print-mode 编码执行 CLI |
+| `python/workspace_coding_bridge.py` | Workspace Execute 旁路桥（flag 默认 OFF） |
 | `scripts/coding_rpc_probe.py` | `--dry-run` / `--live` 冒烟 |
 
 ```bash
@@ -49,9 +52,11 @@ AIPLAT_PI_MODEL=ollama/qwen2.5:3b \
   python3 packages/aiplat-pi-runtime/scripts/coding_rpc_probe.py --live
 ```
 
-环境变量：`AIPLAT_PI_BIN` · `AIPLAT_PI_MODEL` · `AIPLAT_PI_CODING_SANDBOX_ROOT` · `AIPLAT_PI_CODING_ALLOW_HOST=1`（仅开发）。
+环境变量：`AIPLAT_PI_BIN` · `AIPLAT_PI_MODEL` · `AIPLAT_PI_CODING_SANDBOX_ROOT` · `AIPLAT_PI_CODING_ALLOW_HOST=1`（仅开发） · `AIPLAT_PI_CODING_EXECUTOR=1`（Workspace Execute 旁路，**默认关闭**）。
 
-**下一步（仍属实验）**：在 Workspace Execute / `coding_closed_loop` 旁路加 feature flag（如 `AIPLAT_PI_CODING_EXECUTOR=1`），调用本客户端；**默认关闭**；通过后才考虑 CAPABILITIES 登记。
+**flag 接线（实验，默认 OFF）**：`core_facade._execute_workspace_agent_background` 在 `runner.run` 之前，当 `AIPLAT_PI_CODING_EXECUTOR` 开启且 `state["_workspace_coding_defaults"]` 时，经 `workspace_coding_bridge.run_workspace_coding_via_pi` 可选走 Pi；失败/未启用则回落 ReActLoop。**不**改 CAPABILITIES「厂内已接线」。
+
+**下一步（仍属实验）**：沙箱/PolicyGate 证据齐全后再考虑 CAPABILITIES 登记；PipelineEngine 仍禁止直接塞 Pi。
 
 ## 硬约束
 

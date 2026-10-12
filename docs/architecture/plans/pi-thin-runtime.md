@@ -11,7 +11,7 @@ Pi 是极简 Agent Harness（非治理平台）。与 aiPlat 的关系拆成**�
 | 轴 | 定位 | 状态 | 解决什么 | 不解决什么 |
 |----|------|------|----------|------------|
 | **（B）厂外** | 用户侧薄交付宿主：导出包 → `pi -e` / 薄 HTTP | **既定主路径**（已落地） | 不装全栈也能跑快照（SOP + skills + handler） | 平台级厚度（Memory / SECI / PolicyGate / 知识 syscall） |
-| **（A）厂内** | 可选编码执行核：CLI/RPC 包在 PolicyGate 外 | **实验**：方式四 CLI 骨架（`scripts/coding_exec.py`）；**未**接引擎 | 编码闭环、文件类副作用执行 | 替代编排治理；默认换掉 ReActLoop |
+| **（A）厂内** | 可选编码执行核：CLI/RPC 包在 PolicyGate 外 | **实验**：方式四 CLI + Workspace Execute flag（`AIPLAT_PI_CODING_EXECUTOR`，**默认 OFF**）；**未**接 PipelineEngine；CAPABILITIES **未**标「厂内已接线」 | 编码闭环、文件类副作用执行 | 替代编排治理；默认换掉 ReActLoop |
 
 **产品决策（已锁定 · 2026-10-12）**
 
@@ -54,7 +54,7 @@ Pi 是极简 Agent Harness（非治理平台）。与 aiPlat 的关系拆成**�
 
 1. 巩固 Pi-only 交付（能力边界写进合同；管理端已提示）
 2. 设计/接线 **Pi + aiPlat 混合回连**（企业级）——优先于厂内换心
-3. 方式四：厂内 `coding_closed_loop` 可选 Pi 执行器（沙箱必选）— **CLI 骨架**：`scripts/coding_exec.py`（未接引擎）
+3. 方式四：厂内 `coding_closed_loop` 可选 Pi 执行器（沙箱必选）— CLI + `workspace_coding_bridge` 经 Workspace Execute flag（默认 OFF；未接引擎）
 4. 方式二：handler 经 Pi RPC 做文件类副作用（PolicyGate 外裹）
 5. 方式一：替换 ReActLoop **最后**且旁路可选
 
