@@ -3,19 +3,19 @@ title: "aiPlat 产品能力白皮书"
 volume_id: product-capability
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-12T22:58:17Z"
+generated_at: "2026-10-12T23:15:53Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
-suite_sha256: "4846152b2678c4c985758ab6a2d4083c82f6e70ed41e56c6a521652453d6d1ab"
+suite_sha256: "3d143bcd3a67f7e55f869d4a1a179a2c8bd180756e2e4a0cfea666da8358288e"
 caps_sha256: "e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=4846152b2678c4c985758ab6a2d4083c82f6e70ed41e56c6a521652453d6d1ab caps_sha256=e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=3d143bcd3a67f7e55f869d4a1a179a2c8bd180756e2e4a0cfea666da8358288e caps_sha256=e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-12T22:58:17Z` |
+| 生成时间 (UTC) | `2026-10-12T23:15:53Z` |
 | CAPABILITIES sha256 | `e2e1936484e9…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -134,17 +134,17 @@ language: zh-CN
 
 ### 3.2 上手路径（节选）
 
-# aiPlat 快速入门指南
+### aiPlat 快速入门指南
 
 > 15 分钟从零启动到运行第一个 Agent。
 
-## 前置条件
+#### 前置条件
 
 - Python 3.11+
 - pip
 - 至少一个 LLM API Key (DeepSeek/OpenAI/Qwen 等)
 
-## Step 1: 克隆与安装 (2 分钟)
+#### Step 1: 克隆与安装 (2 分钟)
 
 ```bash
 git clone https://github.com/zhuxiangqun/aiPlatform.git
@@ -154,15 +154,15 @@ source .venv/bin/activate   # Linux/Mac
 pip install -e aiPlat-core/ aiPlat-infra/ aiPlat-platform/ aiPlat-management/
 ```
 
-## Step 2: 配置 API Key (1 分钟)
+#### Step 2: 配置 API Key (1 分钟)
 
 ```bash
 export DEEPSEEK_API_KEY="sk-your-key-here"
-# 或 OpenAI:
+### 或 OpenAI:
 export OPENAI_API_KEY="sk-your-key-here"
 ```
 
-## Step 3: 启动服务 (2 分钟)
+#### Step 3: 启动服务 (2 分钟)
 
 ```bash
 ./start.sh
@@ -177,42 +177,42 @@ export OPENAI_API_KEY="sk-your-key-here"
 | 8002 | Core | Agent 引擎 + Pipeline |
 | 8003 | Platform | 知识库 + Builder |
 
-## Step 4: 验证安装 (1 分钟)
+#### Step 4: 验证安装 (1 分钟)
 
 ```bash
-# 健康检查
+### 健康检查
 curl http://localhost:8000/api/diagnostics/health/all
 
-# 运行验证脚本
+### 运行验证脚本
 bash scripts/verify-l4-pyramid.sh
-# → 预期: L5 (元循环工程)
+### → 预期: L5 (元循环工程)
 ```
 
-## Step 5: 运行第一个 Agent (3 分钟)
+#### Step 5: 运行第一个 Agent (3 分钟)
 
 ```bash
-# 列出可用 Agent
+### 列出可用 Agent
 curl http://localhost:8000/api/core/workspace/agents
 
-# 执行一个 Agent 任务
+### 执行一个 Agent 任务
 curl -X POST http://localhost:8000/api/core/workspace/agents/materials_chat/execute \
   -H "Content-Type: application/json" \
   -d '{"messages":[{"role":"user","content":"用三句话解释 L4 循环工程是什么"}]}'
 ```
 
-## Step 6: 查看诊断面板
+#### Step 6: 查看诊断面板
 
 浏览器打开 `http://localhost:8000/docs` → 查看全部 API 文档。
 
 ```bash
-# 架构守卫检查
+### 架构守卫检查
 curl -X POST http://localhost:8000/api/diagnostics/guard/run
 
-# 全量诊断
+### 全量诊断
 curl -X POST http://localhost:8000/api/diagnostics/run-all
 ```
 
-## 下一步
+#### 下一步
 
 管理端 UI（`./start.sh` 后通常为前端端口，如 `http://localhost:5173`）：
 
@@ -230,20 +230,20 @@ curl -X POST http://localhost:8000/api/diagnostics/run-all
 - [自主性评估报告](../framework/aiplat-complete-assessment.md) — 系统能力评估
 - [验证协议](../framework/verification-protocol.md) — 独立复现验证
 
-## 常见问题
+#### 常见问题
 
 **Q: 启动失败？**
 ```bash
-# 检查端口占用
+### 检查端口占用
 lsof -i :8000 -i :8001 -i :8002 -i :8003
 kill <PID>
 ```
 
 **Q: Agent 执行返回错误？**
 ```bash
-# 检查 API Key
+### 检查 API Key
 echo $DEEPSEEK_API_KEY
-# 查看日志
+### 查看日志
 tail -f ~/.aiplat/logs/core.log
 ```
 
@@ -256,13 +256,13 @@ git pull origin main
 
 ### 3.3 交付边界（Pi 薄 Runtime）
 
-# Plan: aiPlat × Pi 薄 Runtime（1C + 2C）
+### Plan: aiPlat × Pi 薄 Runtime（1C + 2C）
 
 > Living 摘要 · 2026-10-12 · 包：`packages/aiplat-pi-runtime/`  
 > **状态**：Phase 0–2 + 工厂/FE/ZIP **已合并 main**（PR [#251](https://github.com/zhuxiangqun/aiPlatform/pull/251)）  
 > **Live 门**：✅ `bash packages/aiplat-pi-runtime/scripts/live_smoke.sh`（Ollama `ollama/qwen2.5:3b` — CLI print + SOP + `/aiplat-status` + HTTP `createAgentSession`）
 
-## 战略：两条轴，勿合成一条
+#### 战略：两条轴，勿合成一条
 
 Pi 是极简 Agent Harness（非治理平台）。与 aiPlat 的关系拆成**两条产品轴**，禁止写成「一个 Pi 集成路径解决所有问题」。
 
@@ -324,7 +324,7 @@ Pi 是极简 Agent Harness（非治理平台）。与 aiPlat 的关系拆成**�
 方式三（MCP 宿主）：可行但只是执行宿主优化；aiPlat 仍保留 MCP 准入与审计。  
 厂内路径在接线完成前 **不得** 标 CAPABILITIES「已接线」或主文档推荐。
 
-## 结论（Phase 0）
+#### 结论（Phase 0）
 
 | 假设 | 文档结论 | 离线检查 | 在线 LLM 冒烟 |
 |------|----------|:--------:|:-------------:|
@@ -335,7 +335,7 @@ Pi 是极简 Agent Harness（非治理平台）。与 aiPlat 的关系拆成**�
 
 Skills 策略锁定 **方案 A**：`scripts/export_pi_bundle.py` 把工厂 skills 复制进导出包；扩展只注册斜杠命令与 SOP 注入。
 
-## 职责（厂外薄 Runtime）
+#### 职责（厂外薄 Runtime）
 
 | | aiPlat | Pi Runtime（厂外） |
 |--|--------|-------------------|
@@ -345,7 +345,7 @@ Skills 策略锁定 **方案 A**：`scripts/export_pi_bundle.py` 把工厂 skill
 | 设计模式 / 平台上下文压缩 / SECI 自学 | 是 | **不具备**（Pi 自有 compaction ≠ aiPlat Memory） |
 | 扩展 `aiplat-app` | — | 胶水：SOP 注入、斜杠命令、handler 桥；**非** Agent 大脑搬家 |
 
-## 路径
+#### 路径
 
 1. `packages/aiplat-pi-runtime` — Pi Package（扩展 + fixture skills）
 2. `scripts/export_pi_bundle.py` — 从 `~/.aiplat/apps/{id}/current` 导出
@@ -356,12 +356,12 @@ Skills 策略锁定 **方案 A**：`scripts/export_pi_bundle.py` 把工厂 skill
    - stub：`AIPLAT_HTTP_STUB=1`；真 Agent：`AIPLAT_PI_MODEL=provider/id` + `createAgentSession`
 5. 工厂一键导出：`builder/pi_bundle_export.py`；`deploy-to-app` 响应 `pi_bundle`；`POST …/export-pi-bundle`；`GET …/export-pi-bundle.zip`；管理端「导出 / 下载 ZIP」
 
-## 命令
+#### 命令
 
 ```bash
 python3 packages/aiplat-pi-runtime/scripts/phase0_offline_check.py
 bash packages/aiplat-pi-runtime/scripts/http_smoke.sh
-# Full live gate (Ollama default; needs :11434 + model pulled)
+### Full live gate (Ollama default; needs :11434 + model pulled)
 AIPLAT_PI_MODEL=ollama/qwen2.5:3b bash packages/aiplat-pi-runtime/scripts/live_smoke.sh
 
 python3 scripts/export_pi_bundle.py \
@@ -369,15 +369,15 @@ python3 scripts/export_pi_bundle.py \
   --out dist/aiplat-app-sample
 AIPLAT_APP_HOME=$PWD/dist/aiplat-app-sample \
   pi -e dist/aiplat-app-sample --model ollama/qwen2.5:3b
-# /aiplat-status  /skill-greet  /skill-demo_skill  /aiplat-sop-check
+### /aiplat-status  /skill-greet  /skill-demo_skill  /aiplat-sop-check
 
-# Real HTTP Agent (Ollama / OpenAI-compatible)
-# AIPLAT_PI_MODEL=ollama/qwen2.5:3b AIPLAT_APP_HOME=dist/aiplat-app-sample \
-#   node packages/aiplat-pi-runtime/bin/aiplat-http.mjs
-# Cloud: set AIPLAT_PI_BASE_URL + AIPLAT_PI_API_KEY, or pi /login + provider/id
+### Real HTTP Agent (Ollama / OpenAI-compatible)
+### AIPLAT_PI_MODEL=ollama/qwen2.5:3b AIPLAT_APP_HOME=dist/aiplat-app-sample \
+### node packages/aiplat-pi-runtime/bin/aiplat-http.mjs
+### Cloud: set AIPLAT_PI_BASE_URL + AIPLAT_PI_API_KEY, or pi /login + provider/id
 ```
 
-## handler 协议
+#### handler 协议
 
 ```json
 {"skill":"demo_skill","params":{}}

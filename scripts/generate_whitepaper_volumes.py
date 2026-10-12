@@ -85,7 +85,24 @@ def _link(path: str) -> str:
     return f"[`{path}`]({target})"
 
 
-def _read_excerpt(path: Path, max_chars: int = 12000) -> Tuple[str, bool]:
+def _demote_md_headings(text: str, levels: int = 2) -> str:
+    """Shift ATX headings down so excerpt ##/### do not collide with volume TOC."""
+    if levels <= 0:
+        return text
+    prefix = "#" * levels
+
+    def _repl(m: re.Match) -> str:
+        hashes, title = m.group(1), m.group(2)
+        # Cap at ###### (CommonMark practical max)
+        new_hashes = (hashes + prefix)[:6]
+        return f"{new_hashes} {title}"
+
+    return re.sub(r"^(#{1,6})\s+(.*)$", _repl, text, flags=re.M)
+
+
+def _read_excerpt(
+    path: Path, max_chars: int = 12000, *, demote: int = 2
+) -> Tuple[str, bool]:
     if not path.is_file():
         return f"_(存在性检查失败：文件缺失 `{path.relative_to(REPO)}`)_\n", False
     text = path.read_text(encoding="utf-8", errors="replace")
@@ -97,7 +114,71 @@ def _read_excerpt(path: Path, max_chars: int = 12000) -> Tuple[str, bool]:
     truncated = len(text) > max_chars
     if truncated:
         text = text[:max_chars].rstrip() + "\n\n…\n\n_(节选；全文见权威源)_\n"
+    if demote:
+        text = _demote_md_headings(text, demote)
     return text, True
+
+
+def _read_heading_excerpt(
+    path: Path, heading_substr: str, max_chars: int = 6000, *, demote: int = 2
+) -> Tuple[str, bool]:
+    """Extract from first markdown heading containing *heading_substr*."""
+    if not path.is_file():
+        return f"_(存在性检查失败：文件缺失 `{path.relative_to(REPO)}`)_\n", False
+    text = path.read_text(encoding="utf-8", errors="replace")
+    if text.startswith("---"):
+        end = text.find("\n---", 3)
+        if end >= 0:
+            text = text[end + 4 :].lstrip("\n")
+    pat = re.compile(
+        rf"^(#{{1,3}} [^\n]*{re.escape(heading_substr)}[^\n]*)\n(.*?)(?=^#{{1,3}} |\Z)",
+        re.M | re.S,
+    )
+    m = pat.search(text)
+    if not m:
+        return _read_excerpt(path, max_chars, demote=demote)
+    block = m.group(1) + "\n" + m.group(2)
+    if len(block) > max_chars:
+        block = block[:max_chars].rstrip() + "\n\n…\n\n_(节选；全文见权威源)_\n"
+    if demote:
+        block = _demote_md_headings(block, demote)
+    return block, True
+
+
+def _append_eng_section(
+    parts: List[str],
+    heading: str,
+    question: str,
+    sources: List[Tuple[str, int]],
+    *,
+    extra_links: Optional[List[str]] = None,
+    heading_extract: Optional[Tuple[str, str, int]] = None,
+    note: str = "",
+) -> None:
+    """Append #### subsection: framing + authority links + excerpt(s)."""
+    parts += [f"#### {heading}", "", f"**尽调问题**：{question}", ""]
+    if note:
+        parts += [note, ""]
+    link_bits: List[str] = []
+    for path, _ in sources:
+        link_bits.append(_link(path))
+    if heading_extract is not None:
+        link_bits.append(_link(heading_extract[0]))
+    for raw in extra_links or []:
+        link_bits.append(raw)
+    parts += ["**权威源**： " + " · ".join(link_bits), ""]
+    if heading_extract is not None:
+        h_path, h_sub, h_max = heading_extract
+        excerpt, _ = _read_heading_excerpt(_rel(h_path), h_sub, h_max)
+        parts += [
+            f"**节选自** {_link(h_path)}（含「{h_sub}」章节）：",
+            "",
+            excerpt,
+            "",
+        ]
+    for path, max_c in sources:
+        excerpt, _ = _read_excerpt(_rel(path), max_c)
+        parts += [f"**节选自** {_link(path)}：", "", excerpt, ""]
 
 
 def _caps_section_extract(titles: List[str], max_chars: int = 8000) -> str:
@@ -277,62 +358,173 @@ def _build_volume(
         excerpt, _ = _read_excerpt(_rel("docs/architecture/overview.md"), 14000)
         parts += [excerpt, "", "### 3.2 架构对比入口（comparison）", ""]
         excerpt, _ = _read_excerpt(_rel("docs/architecture/comparison.md"), 10000)
+        _trace_id_std = "docs/standards/规范-core-run_id-trace_id-request_id.md"
+        if not _rel(_trace_id_std).is_file():
+            _trace_id_std = "docs/architecture/slo.md"
         parts += [
             excerpt,
             "",
-            "### 3.3 工程落地视图索引（部署 / 性能 / 可观测 / 数据 / 测试 …）",
+            "### 3.3 工程落地视图（索引 + 正文）",
             "",
-            "本卷定位是「为什么这样设计」与架构全景；**工程落地细节不在此卷全文复述**，"
-            "以免形成第二真相源。CTO/架构师做技术尽调时，按下表进入权威源"
-            "（含物理/部署视图、数据视图、开发视图、质量属性）。",
+            "本卷在「为什么这样设计」之外，提供部署 / 性能 / 可观测 / 数据 / 安全嵌入 / "
+            "测试 / 风险演进 / 开发 / 集成 / SLA 的**索引表 + 权威源正文节选**。"
+            "节选随权威源再生，**禁止在卷内手写第二份工程全文或编造 QPS/ROI**；"
+            "完整细节以链接目标为准。",
             "",
-            "| 工程维度 | 读者要回答的问题 | 权威源（优先） | CAPABILITIES / 姊妹卷 |",
-            "|----------|------------------|----------------|----------------------|",
+            "#### 3.3.0 工程维度索引",
+            "",
+            "| 工程维度 | 读者要回答的问题 | 权威源（优先） | CAPABILITIES / 姊妹卷 | 正文节 |",
+            "|----------|------------------|----------------|----------------------|--------|",
             f"| **部署与运维** | 生产怎么布？环境/灾备/灰度？ | "
             f"{_link('docs/manuals/deployment.md')} · "
             f"{_link('docs/architecture/plans/disaster-recovery-plan.md')} · "
-            f"`deploy/helm/aiplat/` | CAPABILITIES「部署与运维 / 部署与灰度」 |",
+            f"`deploy/helm/aiplat/` | CAPABILITIES「部署与运维 / 部署与灰度」 | §3.3.1 |",
             f"| **性能与扩展** | QPS/P95/容量/扩展策略？ | "
             f"{_link('docs/standards/规范-性能.md')} · "
             f"{_link('docs/architecture/slo.md')} · "
-            f"`scripts/benchmark_all.sh` | CAPABILITIES「部署与运维」基准条目 |",
+            f"`scripts/benchmark_all.sh` | CAPABILITIES「部署与运维」基准条目 | §3.3.2 |",
             f"| **可观测性** | 日志/指标/追踪怎么采与告警？ | "
             f"{_link('docs/architecture/plans/observability-eval-repair-architecture.md')} · "
-            f"{_link('docs/standards/规范-core-run_id-trace_id-request_id.md') if _rel('docs/standards/规范-core-run_id-trace_id-request_id.md').is_file() else _link('docs/architecture/slo.md')} | "
-            "CAPABILITIES「可观测性」· 安全卷可交叉 |",
+            f"{_link(_trace_id_std)} | "
+            "CAPABILITIES「可观测性」· 安全卷可交叉 | §3.3.3 |",
             f"| **数据架构** | 存什么、隔离、备份？ | "
             f"{_link('docs/knowledge-system.md')} · "
             f"{_link('docs/architecture/knowledge-base-architecture.md')} | "
-            "CAPABILITIES「知识引擎」· 灾备计划（备份） |",
+            "CAPABILITIES「知识引擎」· 灾备计划（备份） | §3.3.4 |",
             f"| **安全嵌入视图** | Gate/信任边界如何嵌进运行时？ | "
             f"{_link('docs/security/security-architecture.md')} | "
-            f"分卷 05 · CAPABILITIES「安全与治理 / Gate」 |",
+            f"分卷 05 · CAPABILITIES「安全与治理 / Gate」 | §3.3.5 |",
             f"| **测试与验证** | 金字塔 / CI / 质量门？ | "
             f"{_link('docs/manuals/testing.md')} · "
             f"{_link('docs/architecture/execution-quality-gates.md')} · "
-            "`.github/workflows/` | CAPABILITIES「管理 & 质量」 |",
+            "`.github/workflows/` | CAPABILITIES「管理 & 质量」 | §3.3.6 |",
             f"| **技术风险与演进** | 技术债、依赖风险、路线？ | "
             f"{_link('AIPLAT_ROADMAP.md')} · "
             f"{_link('docs/research/architecture-evolution-roadmap.md')} · "
-            f"{_link('CLAUDE.md')} §16 | 商业卷 ROADMAP 节选（非财务） |",
+            f"{_link('CLAUDE.md')} §16 | 商业卷 ROADMAP 节选（非财务） | §3.3.7 |",
             f"| **开发视图** | 代码组织、模块边界、上手？ | "
             f"{_link('CLAUDE.md')} · {_link('docs/DOCUMENT_SYSTEM.md')} · "
             f"{_link('docs/manuals/getting-started.md')} · "
-            f"{_link('docs/architecture/plans/app-module-layout.md')} | — |",
+            f"{_link('docs/architecture/plans/app-module-layout.md')} | — | §3.3.8 |",
             f"| **集成架构** | MCP/A2A/外部适配？ | "
             f"{_link('docs/mcp/index.md')} · "
             f"{_link('docs/policy/mcp-stdio-prod-allowlist.md')} | "
-            f"分卷 04 · CAPABILITIES「MCP / A2A」 |",
+            f"分卷 04 · CAPABILITIES「MCP / A2A」 | §3.3.9 |",
             f"| **质量属性 / SLA·SLO** | 可用性目标与误差预算？ | "
             f"{_link('docs/architecture/slo.md')} · "
             f"{_link('docs/architecture/execution-quality-gates.md')} | "
-            "CAPABILITIES「管理 & 质量」 |",
+            "CAPABILITIES「管理 & 质量」 | §3.3.10 |",
             "",
-            "> **阅读约定**：上表保证「只读本卷也能知道去哪尽调」。"
-            "性能容量叙事以规范预算 + `benchmark_all.sh` + SLO 为准；"
-            "若缺少独立压测报告，以脚本与门禁结果为可执行证据，勿在卷内编造 QPS 数字。",
+            "> **阅读约定**：索引指路；各 §3.3.x 为权威源节选（可再生）。"
+            "性能容量以规范预算 + `benchmark_all.sh` + SLO 实测表为准，"
+            "勿在卷外另抄一套数字。",
             "",
         ]
+        _append_eng_section(
+            parts,
+            "3.3.1 部署与运维",
+            "生产拓扑、环境隔离、Helm/灰度、灾备与配置如何落地？",
+            [
+                ("docs/manuals/deployment.md", 5500),
+                ("docs/architecture/plans/disaster-recovery-plan.md", 3500),
+            ],
+            extra_links=["`deploy/helm/aiplat/`"],
+            note="物理/部署视图以手册与 Helm chart 为准；灾备 RPO/RTO 见计划文档。",
+        )
+        _append_eng_section(
+            parts,
+            "3.3.2 性能与扩展性",
+            "性能预算、P95/容量目标、水平扩展与压测入口是什么？",
+            [
+                ("docs/standards/规范-性能.md", 2000),
+                ("docs/architecture/slo.md", 4500),
+            ],
+            extra_links=["`scripts/benchmark_all.sh`", "`scripts/stress-test.sh`"],
+            note="基线数字仅引用 `slo.md`「Performance Baselines」；无独立压测报告时以脚本与门禁为证据。",
+        )
+        _append_eng_section(
+            parts,
+            "3.3.3 可观测性架构",
+            "日志 / 指标 / 追踪如何采集、关联与告警？",
+            [
+                (
+                    "docs/architecture/plans/observability-eval-repair-architecture.md",
+                    5000,
+                ),
+                (_trace_id_std, 2500),
+            ],
+            note="与安全卷可观测切片交叉；身份三元组规范见 trace/run/request id 标准。",
+        )
+        _append_eng_section(
+            parts,
+            "3.3.4 数据架构",
+            "知识/业务数据存哪里、如何隔离与备份？",
+            [
+                ("docs/knowledge-system.md", 5500),
+                ("docs/architecture/knowledge-base-architecture.md", 800),
+            ],
+            note=(
+                "`knowledge-base-architecture.md` 已合并至 `knowledge-system.md`；"
+                "备份策略交叉 §3.3.1 灾备计划。"
+            ),
+        )
+        _append_eng_section(
+            parts,
+            "3.3.5 安全架构嵌入视图（技术视角）",
+            "PolicyGate / Sandbox / 信任边界如何嵌进运行时？",
+            [("docs/security/security-architecture.md", 4000)],
+            note="完整威胁模型与治理叙事见分卷 05；此处只给技术嵌入视图。",
+        )
+        _append_eng_section(
+            parts,
+            "3.3.6 测试与验证策略",
+            "测试金字塔、CI/CD 与执行质量门禁如何构成验收闭环？",
+            [
+                ("docs/manuals/testing.md", 5000),
+                ("docs/architecture/execution-quality-gates.md", 4500),
+            ],
+            extra_links=["`.github/workflows/`", "`scripts/architecture_guard.sh`"],
+        )
+        _append_eng_section(
+            parts,
+            "3.3.7 技术风险与演进",
+            "技术债、依赖风险、版本兼容与架构演进路线？",
+            [
+                ("AIPLAT_ROADMAP.md", 4500),
+                ("docs/research/architecture-evolution-roadmap.md", 4500),
+            ],
+            heading_extract=("CLAUDE.md", "已知例外与永久债务", 4500),
+            note="债务清单以根 `CLAUDE.md` §16 与 ROADMAP 为准；商业卷只摘非财务路线。",
+        )
+        _append_eng_section(
+            parts,
+            "3.3.8 开发视图",
+            "代码组织、模块边界、构建与本地上手路径？",
+            [
+                ("docs/manuals/getting-started.md", 3500),
+                ("docs/architecture/plans/app-module-layout.md", 4000),
+                ("docs/DOCUMENT_SYSTEM.md", 4000),
+            ],
+            extra_links=[_link("CLAUDE.md") + "（层边界 / 内核无关）"],
+        )
+        _append_eng_section(
+            parts,
+            "3.3.9 集成架构",
+            "MCP / A2A / 外部适配与生产允许列表？",
+            [
+                ("docs/mcp/index.md", 4000),
+                ("docs/policy/mcp-stdio-prod-allowlist.md", 4000),
+            ],
+            note="生态细节与协议切片见分卷 04；此处给出运行时集成入口。",
+        )
+        _append_eng_section(
+            parts,
+            "3.3.10 质量属性场景（SLA / SLO）",
+            "可用性分层、误差预算与告警阈值？",
+            [("docs/architecture/slo.md", 5000)],
+            extra_links=[_link("docs/architecture/execution-quality-gates.md")],
+            note="与 §3.3.2 共用 `slo.md`；本节强调质量属性目标而非压测脚本入口。",
+        )
     elif vid == "product-capability":
         parts += [
             "### 3.0 典型产品场景 → 权威入口（场景切片，非第二清单）",

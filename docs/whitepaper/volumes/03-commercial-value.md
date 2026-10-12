@@ -3,19 +3,19 @@ title: "aiPlat 商业价值白皮书"
 volume_id: commercial-value
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-12T22:58:17Z"
+generated_at: "2026-10-12T23:15:53Z"
 audience: "CEO、CFO、业务负责人、投资方"
 core_question: "投资回报与 TCO 如何？"
 priority: P3
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
-suite_sha256: "4846152b2678c4c985758ab6a2d4083c82f6e70ed41e56c6a521652453d6d1ab"
+suite_sha256: "3d143bcd3a67f7e55f869d4a1a179a2c8bd180756e2e4a0cfea666da8358288e"
 caps_sha256: "e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=commercial-value suite_sha256=4846152b2678c4c985758ab6a2d4083c82f6e70ed41e56c6a521652453d6d1ab caps_sha256=e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=commercial-value suite_sha256=3d143bcd3a67f7e55f869d4a1a179a2c8bd180756e2e4a0cfea666da8358288e caps_sha256=e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 商业价值白皮书
 
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 投资回报与 TCO 如何？ |
 | 优先级 | P3 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-12T22:58:17Z` |
+| 生成时间 (UTC) | `2026-10-12T23:15:53Z` |
 | CAPABILITIES sha256 | `e2e1936484e9…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -91,12 +91,12 @@ language: zh-CN
 
 ### 3.1 价值模型专稿（节选）
 
-# 商业价值模型（权威专稿）
+### 商业价值模型（权威专稿）
 
 > 供商业价值白皮书节选。不编造客户授权 ROI%、人天单价或伙伴分成。  
 > 算法符号权威：`aiPlat-core/core/harness/finance/value_calculator.py`
 
-## 1. TCO 对照项
+#### 1. TCO 对照项
 
 | TCO 项 | 说明 | 平台侧可观测/材料 |
 |--------|------|-------------------|
@@ -108,7 +108,7 @@ language: zh-CN
 
 自建 Harness+RAG+治理时，上表五项通常由客户自行承担；采用平台时对应项转入订阅/私有化运维账单。**具体单价由商务报价填写，本专稿不预设数字。**
 
-## 2. 五维价值映射（CEO / CFO / PM）
+#### 2. 五维价值映射（CEO / CFO / PM）
 
 平台 `ValueCalculator` 将运行结果聚合为五维（字段见 `MonthlyValueReport` / `ValueMetrics`）：
 
@@ -122,7 +122,7 @@ language: zh-CN
 
 翻译入口：`ValueCalculator.translate_for(report, audience)`（`audience` ∈ CEO/CFO/PM）。
 
-## 3. 示意算法（占位参数，非客户财报）
+#### 3. 示意算法（占位参数，非客户财报）
 
 以下仅说明口径，**参数为占位**：
 
@@ -138,7 +138,7 @@ language: zh-CN
 
 真实租户数字须从运行时 `compute_monthly(tenant_id, month)` 导出，并经 `cases/` 授权流程后方可写入对外案例。
 
-## 4. 分阶段闸门
+#### 4. 分阶段闸门
 
 | 阶段 | 目标 | 闸门 |
 |------|------|------|
@@ -146,7 +146,7 @@ language: zh-CN
 | 扩展 | 成本/价值对照 | TCO 五项有基线 · 价值五维有月报 |
 | 规模化 | 治理与合规复核 | PolicyGate/评测/审计绿 · ORG 签收包 |
 
-## 5. 授权边界
+#### 5. 授权边界
 
 - 未授权客户数字 **不得** 写入 `volumes/03-commercial-value.md` 正文作承诺。
 - 内部示意见 [`cases/internal-illustrative-fde.md`](./cases/internal-illustrative-fde.md)（`authorized: false`）。
@@ -165,7 +165,7 @@ language: zh-CN
 
 > 下列 ROADMAP 是内部作战手册节选，不是对外已审计财报；勿将路线图基线误读为客户授权 ROI。
 
-# aiPlat 商业化演进终极作战手册
+### aiPlat 商业化演进终极作战手册
 
 > 基线：代码交叉验证 | 能力计数见 AIPLAT_CAPABILITIES.md 统计表 | 6/6 syntax,5/5服务健康,架构守卫0违规,全域诊断14项,路径标准化158条
 > 对标：Hermes Agent · Claude Code · OpenClaw · Octo (明略科技)  
@@ -177,7 +177,7 @@ language: zh-CN
 
 ---
 
-## 一、基线诊断（来自 `AIPLAT_CAPABILITIES.md` 代码交叉验证，当前计数见该文件统计表）
+#### 一、基线诊断（来自 `AIPLAT_CAPABILITIES.md` 代码交叉验证，当前计数见该文件统计表）
 
 | 维度 | 评分 | 关键发现 |
 |------|:---:|------|
@@ -203,7 +203,7 @@ language: zh-CN
 
 ---
 
-## 二、执行路线图
+#### 二、执行路线图
 
 ```
 2026 Q3              Q4                 2027 Q1           Q2
@@ -262,14 +262,14 @@ Phase 5: 竞品借鉴（✅ 已完成 — 本会话）
 
 ---
 
-### Phase 0：紧急止血 — 安全合规基线
+##### Phase 0：紧急止血 — 安全合规基线
 
 > **目标**: 通过企业 IT 安全/运维评审，拿到金融/政务采购入场券  
 > **周期**: 6 周（Q3 2026） | **人力**: 2 后端 + 1 运维 | **成本增量**: ~$700/月
 
 ---
 
-#### 0.1 PII 自动脱敏（2 周）
+###### 0.1 PII 自动脱敏（2 周）
 
 **实施位置**:
 - `core/services/pii_detector.py` — 新建
@@ -295,7 +295,7 @@ Presidio + 自建正则双跑（并行，取并集）:
 **RBAC 权限模型**:
 
 ```python
-# pii_detector.py
+### pii_detector.py
 ALLOWED_UNMASK_ROLES = {"admin", "data_owner"}
 
 def unmask(text: str, mapping: dict, role: str) -> str:
@@ -316,7 +316,7 @@ def unmask(text: str, mapping: dict, role: str) -> str:
 
 ---
 
-#### 0.2 OpenTelemetry + Prometheus（2 周）
+###### 0.2 OpenTelemetry + Prometheus（2 周）
 
 **实施位置**:
 - `core/server.py` — FastAPI middleware
@@ -325,14 +325,14 @@ def unmask(text: str, mapping: dict, role: str) -> str:
 **技术方案**:
 
 ```python
-# core/server.py
+### core/server.py
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 FastAPIInstrumentor.instrument_app(app)
 
 from prometheus_fastapi_instrumentator import Instrumentator
 Instrumentator().instrument(app).expose(app)  # /metrics
 
-# core/harness/syscalls/llm.py
+### core/harness/syscalls/llm.py
 @tracer.start_as_current_span("sys_llm_generate")
 async def sys_llm_generate(model, messages, **kwargs):
     span = trace.get_current_span()
@@ -356,7 +356,7 @@ async def sys_llm_generate(model, messages, **kwargs):
 
 ---
 
-#### 0.3 语义缓存（2 周）— ⚡ 已部分交付 (2026-06-24)
+###### 0.3 语义缓存（2 周）— ⚡ 已部分交付 (2026-06-24)
 
 **状态**：L1/L2 缓存已接线 + INCR 版本号原子切换 + L1 主动清 + 版本窗口上限。
 待补：所有入库路径 (`/documents/ingest-directory`, `/kb/watch`) 统一调用 `invalidate()`。
@@ -418,14 +418,14 @@ async def execute(self, context):
 
 ---
 
-### Phase 1：铸造"开发者利刃"
+##### Phase 1：铸造"开发者利刃"
 
 > **目标**: 从"精密重型实验室设备"升级为"开发者友好型工具"  
 > **周期**: 12 周（Q4 2026） | **人力**: 3 后端 + 1 前端 | **成本增量**: $0
 
 ---
 
-#### 1.1 Agent SDK（4 周）
+###### 1.1 Agent SDK（4 周）
 
 **实施位置**: `aiplat-sdk/` — 新建独立 Python 包
 
@@ -434,18 +434,18 @@ async def execute(self, context):
 ```python
 from aiplat import Agent, Pipeline, Skill
 
-# ── Level 1: 高级封装 (对齐 Claude Code Agent SDK) ──
+### ── Level 1: 高级封装 (对齐 Claude Code Agent SDK) ──
 
-# 3 行代码创建 + 执行 Agent
+### 3 行代码创建 + 执行 Agent
 agent = Agent(name="my-analyst", model="qwen2.5-coder:7b")
 agent.bind_skill("data_analysis")
 result = agent.execute("分析上周销售数据")
 
-# 流式模式
+### 流式模式
 async for chunk in agent.stream("生成 Q3 报告"):
     print(chunk, end="")
 
-# ── Level 2: 中级流水线 ──
+### ── Level 2: 中级流水线 ──
 
 pipeline = Pipeline()
 pipeline.add_stage("retrieve", skill="knowledge_retrieval")
@@ -453,7 +453,7 @@ pipeline.add_stage("analyze", agent=agent)
 pipeline.add_stage("report", skill="text_generation")
 result = await pipeline.run(input_data)
 
-# ── Level 3: 低级 Harness 控制 ──
+### ── Level 3: 低级 Harness 控制 ──
 
 from aiplat.harness import ReActLoop, StageConfig
 loop = ReActLoop(model="qwen2.5-coder:7b", max_steps=20)
@@ -477,7 +477,7 @@ loop.run(task_description)
 
 ---
 
-#### 1.2 Sub-Agent FanOut 并行（4 周）
+###### 1.2 Sub-Agent FanOut 并行（4 周）
 
 **实施位置**: `core/apps/agents/multi_agent.py` → 新增 `ParallelExecutor`
 
@@ -505,14 +505,14 @@ _(节选；全文见权威源)_
 
 ### 3.3 厂商策略对比（节选）
 
-# aiPlat 与商业图数据库 / 知识图谱厂商 对比分析
+### aiPlat 与商业图数据库 / 知识图谱厂商 对比分析
 
 > 本文对比 aiPlat 与四家国内图数据库 / 知识图谱厂商（海致科技、创邻科技、杭州悦数、星环科技）以及 Hermes Agent 的定位差异。
 > 基于公开资料和各自产品特性整理，不构成采购建议。
 
 ---
 
-## 一、定位差异
+#### 一、定位差异
 
 **aiPlat 不是一个图数据库。它是图驱动的 AI 推理内核。**
 
@@ -531,9 +531,9 @@ Hermes Agent 更像 CLI 个人 AI 助手，而 aiPlat 像可嵌入任何应用�
 
 ---
 
-## 二、六维度 × 五方案对比
+#### 二、六维度 × 五方案对比
 
-### 2.1 产品能力
+##### 2.1 产品能力
 
 | 维度 | 海致科技 | 创邻科技 | 杭州悦数 | 星环科技 | aiPlat |
 |------|:--:|:--:|:--:|:--:|:--:|
@@ -547,7 +547,7 @@ Hermes Agent 更像 CLI 个人 AI 助手，而 aiPlat 像可嵌入任何应用�
 | 本体规模 | — | — | — | — | 5 域/40类/52关系 |
 | 13 步自动管线 | — | — | — | — | ✅ (classify→extract→resolve→state→graph→synthesis) |
 
-### 2.2 生态与集成
+##### 2.2 生态与集成
 
 | 维度 | 商业厂商 | aiPlat |
 |------|---------|--------|
@@ -558,7 +558,7 @@ Hermes Agent 更像 CLI 个人 AI 助手，而 aiPlat 像可嵌入任何应用�
 | 部署形态 | 私有化部署、云服务、一体机 | 开源 MIT，单进程，用户自行部署 |
 | 许可证 | 商业许可 | MIT 开源 |
 
-### 2.3 与 Hermes Agent 的定位
+##### 2.3 与 Hermes Agent 的定位
 
 | 维度 | 商业图厂商 | aiPlat | Hermes Agent |
 |------|:--:|:--:|:--:|
@@ -572,16 +572,16 @@ Hermes Agent 更像 CLI 个人 AI 助手，而 aiPlat 像可嵌入任何应用�
 
 ---
 
-## 三、维度详解
+#### 三、维度详解
 
-### 3.1 图存储与规模 — aiPlat 的短板
+##### 3.1 图存储与规模 — aiPlat 的短板
 
 - **商业厂商**：自研 / 原生图数据库，万亿级节点，LDBC 基准验证
 - **aiPlat**：SQLite 为存储引擎，单域单文件，最大约 1TB 库大小。无分布式分片，无图原生存储引擎。查询靠 BFS 遍历（P95 < 500ms 目标）
 
 **定位**：aiPlat 不适合需要万亿级图数据、高并发查询的场景。它是嵌入在 AI 运行时中的知识辅助层，不是独立图数据库。
 
-### 3.2 图+LLM 融合 — aiPlat 的核心长板
+##### 3.2 图+LLM 融合 — aiPlat 的核心长板
 
 这是商业厂商文章中提及最少、也是 aiPlat 最深的领域：
 
@@ -596,7 +596,7 @@ Hermes Agent 更像 CLI 个人 AI 助手，而 aiPlat 像可嵌入任何应用�
 | 语义缓存 | 3 层（精确→余弦≥0.95→穿透），减少 35-50% LLM 调用 | `semantic_cache.py` |
 | 图推理 | YAML 规则引擎 → 传递闭包推断新边 | `graph_inference.py:174` |
 
-### 3.3 知识图谱构建 — 全自动 13 步
+##### 3.3 知识图谱构建 — 全自动 13 步
 
 | 步骤 | 能力 | 代码行数 |
 |------|------|:--:|
@@ -608,14 +608,14 @@ Hermes Agent 更像 CLI 个人 AI 助手，而 aiPlat 像可嵌入任何应用�
 | 合成 | 推理链/事实卡 → Wiki 页面 | 194 |
 | 外部源 | SQL/API/CSV/JSON/Excel 连接器 | 263 |
 
-### 3.4 部署与自主可控
+##### 3.4 部署与自主可控
 
 - **商业厂商**：私有化部署、云服务、一体机，商业许可证
 - **aiPlat**：开源 MIT 协议，零外部依赖，Python 3.10+ 单进程，SQLite 不需要单独数据库服务。CTO 可低成本验证，无需采购审批
 
 ---
 
-## 四、场景选型建议
+#### 四、场景选型建议
 
 | 你需要什么 | 推荐方案 |
 |-----------|---------|
@@ -631,7 +631,7 @@ Hermes Agent 更像 CLI 个人 AI 助手，而 aiPlat 像可嵌入任何应用�
 
 ---
 
-## 五、总结
+#### 五、总结
 
 aiPlat 不是一个图数据库的替代品，而是图数据库之上的 **AI 推理层**。四家厂商提供"图数据基础设施"，aiPlat 提供"图驱动的 AI 推理内核"——两者处于不同的生态位，互为补充。
 

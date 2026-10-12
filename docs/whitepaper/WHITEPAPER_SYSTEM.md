@@ -1,7 +1,7 @@
 # aiPlat 白皮书体系（五维）
 
 > Living · 2026-10-13  
-> **原则**：每维有唯一权威源；白皮书**索引 + 摘录评分戳**，禁止手抄第二份能力/评分表。  
+> **原则**：每维有唯一权威源；白皮书**索引 + 权威源节选 + 评分戳**，禁止手抄第二份能力/评分表或编造性能数字。  
 > 总入口生成物：[`aiplat-platform-status-whitepaper.md`](./aiplat-platform-status-whitepaper.md)（`scripts/generate_platform_whitepaper.py`）
 
 ## ready 定义
@@ -97,13 +97,13 @@
 - [ ] 修改 `docs/architecture/plans/pi-thin-runtime.md` → 检查索引
 - [ ] 修改 `docs/DOCUMENT_SYSTEM.md` → 检查索引
 
-### 工程落地视图索引（01 卷 §3.3）
+### 工程落地视图（01 卷 §3.3：索引 + 正文）
 
-技术卷在「设计决策」之外提供 **部署 / 性能 / 可观测 / 数据 / 安全嵌入 / 测试 / 风险演进 / 开发 / 集成 / SLA** 的权威源索引（不扩写第二全文）。
+技术卷在「设计决策」之外提供 **部署 / 性能 / 可观测 / 数据 / 安全嵌入 / 测试 / 风险演进 / 开发 / 集成 / SLA** 的权威源索引（§3.3.0）与正文节选（§3.3.1–§3.3.10）。节选由生成器从权威源截取，**禁止手抄第二份工程全文或编造性能数字**。
 
-- **维护位置**：`scripts/generate_whitepaper_volumes.py` → `tech-architecture` 分支 §3.3 表
-- **同步触发**：新增或迁移上表任一工程权威源时，同一 PR 内更新 §3.3 行 + `bash scripts/sync_whitepapers.sh`
-- **验收**：生成卷含「工程落地视图索引」；链接目标文件存在（suite supporting 表）
+- **维护位置**：`scripts/generate_whitepaper_volumes.py` → `tech-architecture` 分支 §3.3（索引表 + `_append_eng_section`）
+- **同步触发**：新增或迁移任一工程权威源时，同一 PR 内更新 §3.3 行/节选参数 + `bash scripts/sync_whitepapers.sh`
+- **验收**：生成卷含「工程落地视图」与 §3.3.1–§3.3.10；链接目标文件存在（suite supporting 表）；`generate_whitepaper_volumes.py --check` 通过
 
 ## 对标与评级（横切，必须进总白皮书目录）
 

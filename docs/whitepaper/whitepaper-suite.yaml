@@ -46,16 +46,20 @@ volumes:
         role: SLI/SLO / 误差预算
       - path: docs/architecture/plans/observability-eval-repair-architecture.md
         role: 可观测性架构
+      - path: docs/standards/规范-core-run_id-trace_id-request_id.md
+        role: run/trace/request id 关联规范
       - path: docs/knowledge-system.md
         role: 数据 / 知识存储路径
       - path: docs/architecture/knowledge-base-architecture.md
-        role: 知识库架构
+        role: 知识库架构（已合并指针）
       - path: docs/security/security-architecture.md
         role: 安全嵌入（技术视角交叉）
       - path: docs/manuals/testing.md
         role: 测试金字塔与策略
       - path: docs/architecture/execution-quality-gates.md
         role: 执行质量门禁
+      - path: AIPLAT_ROADMAP.md
+        role: 路线与风险（非财务）
       - path: docs/research/architecture-evolution-roadmap.md
         role: 架构演进路线
       - path: docs/manuals/getting-started.md
@@ -64,6 +68,8 @@ volumes:
         role: 应用模块目录规范
       - path: docs/mcp/index.md
         role: 集成 / MCP 入口
+      - path: docs/policy/mcp-stdio-prod-allowlist.md
+        role: MCP stdio 生产允许列表
 
   - id: product-capability
     name: 产品能力白皮书
