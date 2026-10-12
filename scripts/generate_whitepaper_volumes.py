@@ -315,9 +315,22 @@ def _build_volume(vol: Dict[str, Any], suite_sha: str, generated_at: str) -> str
             parts.append("_(CAPABILITIES 缺失)_")
     elif vid == "commercial-value":
         parts += [
+            "### 3.0 商业论证框架（v1，无虚构数字）",
+            "",
+            "| 步骤 | 要回答的问题 | 可用材料 | 禁止 |",
+            "|------|--------------|----------|------|",
+            "| 1. 业务问题 | 哪类交付/知识/Agent 成本或风险最大？ | FDE/手册场景 · 客户访谈 | 用行业通稿代替客户事实 |",
+            "| 2. 成本结构 | 自建 Harness+RAG+治理 vs 平台订阅/部署的 TCO 项？ | "
+            f"{_link('AIPLAT_ROADMAP.md')} 基线维度 · infra 运维手册 | 编造人天单价 |",
+            "| 3. 能力溢价 | 哪些能力缩短交付周期或降低合规风险？ | "
+            f"{_link('docs/research/aiPlat核心能力对标报告.md')} · 评分戳 | 把 L5 直接等同 ROI% |",
+            "| 4. 分阶段路径 | PoC → 试点 → 规模化的闸门？ | ROADMAP Phase · ORG 签收包 | 跳过治理门禁承诺「立刻全自动」 |",
+            "| 5. 案例附录 | 客户授权后的前后对比指标？ | **待填充** `docs/whitepaper/cases/` | 未授权案例上卷 |",
+            "",
+            _assessment_stamp(),
             "### 3.1 商业化路线图（节选）",
             "",
-            "> ⚠️ suite 标注本卷仍为 gap：缺独立客户 ROI 案例卷。以下为现有框架，**禁止当作已验证 ROI 报告**。",
+            "> ⚠️ **客户 ROI 数字仍为 gap**。下列 ROADMAP 是内部作战手册节选，不是对外已审计财报。",
             "",
         ]
         excerpt, _ = _read_excerpt(_rel("AIPLAT_ROADMAP.md"), 12000)
@@ -330,26 +343,50 @@ def _build_volume(vol: Dict[str, Any], suite_sha: str, generated_at: str) -> str
             parts += [excerpt, ""]
     elif vid == "ecosystem-integration":
         parts += [
-            "### 3.1 MCP / A2A 能力切片（CAPABILITIES）",
+            "### 3.0 开放边界矩阵（接入面，非渠道政策）",
             "",
-            "> ⚠️ suite 标注本卷仍为 gap：伙伴权益/贡献机制专稿待补。",
+            "| 接入面 | 伙伴/集成商做什么 | 权威入口 | 平台侧治理 |",
+            "|--------|-------------------|----------|------------|",
+            "| **MCP 工具** | 注册/暴露工具供 Agent 调用 | "
+            f"{_link('docs/mcp/index.md')} | "
+            f"{_link('docs/policy/mcp-stdio-prod-allowlist.md')} + 成本阶梯 |",
+            "| **HTTP API** | 调平台/Core 能力 | "
+            f"{_link('docs/API/api-reference.md')} | 鉴权 / 租户 / 限流（platform） |",
+            "| **A2A** | Agent 间互操作 | CAPABILITIES「A2A 协议」切片 | PolicyGate / 身份透传 |",
+            "| **Pi Package** | 消费工厂导出的薄 Runtime 包 | "
+            f"{_link('packages/aiplat-pi-runtime/README.md')} · "
+            f"{_link('docs/architecture/plans/pi-thin-runtime.md')} | "
+            "能力边界写进交付说明（无平台 Memory/SECI） |",
+            "| **Skill / Handler** | 贡献可执行技能 | CAPABILITIES「Skill 系统」· engine skills | "
+            "`execution_type` + lint + 准入 |",
+            "",
+            "> ⚠️ **伙伴分层、分成、商标授权**尚未形成商务专稿；本卷只定义技术开放面。"
+            "贡献流程以仓库 CONTRIBUTING / PR 门禁为准。",
+            "",
+            "### 3.1 MCP / A2A 能力切片（CAPABILITIES）",
             "",
             _caps_section_extract(["MCP 协议", "A2A 协议"], 6000),
             "",
-            "### 3.2 MCP 生产准入",
+            "### 3.2 MCP 文档入口",
             "",
         ]
+        excerpt, _ = _read_excerpt(_rel("docs/mcp/index.md"), 5000)
+        parts += [excerpt, "", "### 3.3 MCP 生产准入", ""]
         excerpt, _ = _read_excerpt(
             _rel("docs/policy/mcp-stdio-prod-allowlist.md"), 6000
         )
-        parts += [excerpt, "", "### 3.3 厂外 Pi Package", ""]
+        parts += [excerpt, "", "### 3.4 API 参考（节选）", ""]
+        excerpt, _ = _read_excerpt(_rel("docs/API/api-reference.md"), 8000)
+        parts += [excerpt, "", "### 3.5 厂外 Pi Package", ""]
         excerpt, _ = _read_excerpt(
             _rel("packages/aiplat-pi-runtime/README.md"), 6000
         )
         parts += [excerpt, ""]
-        if _rel("docs/mcp/index.md").is_file():
-            parts += ["### 3.4 MCP 文档索引", ""]
-            excerpt, _ = _read_excerpt(_rel("docs/mcp/index.md"), 4000)
+        if _rel("docs/API/AttributionSchema.md").is_file():
+            parts += ["### 3.6 归因协议（节选）", ""]
+            excerpt, _ = _read_excerpt(
+                _rel("docs/API/AttributionSchema.md"), 4000
+            )
             parts += [excerpt, ""]
     elif vid == "security-governance":
         parts += [
