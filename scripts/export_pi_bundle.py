@@ -27,6 +27,7 @@ from typing import Optional
 WORKSPACE = Path(__file__).resolve().parent.parent
 RUNTIME_PKG = WORKSPACE / "packages" / "aiplat-pi-runtime"
 RUNTIME_EXT = RUNTIME_PKG / "extensions" / "aiplat-app.ts"
+RUNTIME_EXT_ENTERPRISE = RUNTIME_PKG / "extensions" / "enterprise_kb.ts"
 RUNTIME_HANDLER = RUNTIME_PKG / "fixtures" / "handler_echo.py"
 RUNTIME_RUNNER = RUNTIME_PKG / "fixtures" / "handler_runner.py"
 
@@ -125,13 +126,17 @@ def export_bundle(
             if handler.is_file():
                 shutil.copy2(handler, target / "handler.py")
 
-    # Embed runtime extension + echo handler fixture for bridge smoke
+    # Embed runtime extension + hybrid KB module + echo handler fixture
     ext_dir = out / "extensions"
     ext_dir.mkdir(parents=True, exist_ok=True)
     if RUNTIME_EXT.is_file():
         shutil.copy2(RUNTIME_EXT, ext_dir / "aiplat-app.ts")
     else:
         _die(f"runtime extension missing: {RUNTIME_EXT}")
+    if RUNTIME_EXT_ENTERPRISE.is_file():
+        shutil.copy2(RUNTIME_EXT_ENTERPRISE, ext_dir / "enterprise_kb.ts")
+    else:
+        _die(f"enterprise KB extension missing: {RUNTIME_EXT_ENTERPRISE}")
 
     fixtures = out / "fixtures"
     fixtures.mkdir(parents=True, exist_ok=True)
@@ -175,9 +180,20 @@ pi install {out}
 pi -e {out}
 ```
 
-Commands: `/aiplat-status`, `/aiplat-sop-check`, `/skill:<name>`
+Commands: `/aiplat-status`, `/aiplat-sop-check`, `/skill:<name>`, `/aiplat-enterprise`
 
-Delivery: runtime.mode={runtime['mode']} (thin = snapshot only; hybrid = set AIPLAT_API_BASE for hosted APIs).
+Delivery: runtime.mode={runtime['mode']} (thin = snapshot only; hybrid stamp may set api_base).
+
+Optional enterprise KB reconnect (default off — Pi-only):
+
+```bash
+export AIPLAT_ENTERPRISE=1
+export AIPLAT_PLATFORM_URL=<platform base or …/api>
+export AIPLAT_TENANT_TOKEN=<bearer with kb:read>
+# optional: AIPLAT_KB_COLLECTION_ID=default
+```
+
+Tool: `aiplat_kb_retrieve` → POST /platform/kb/query (PolicyGate stays on platform).
 """
     (out / "README.md").write_text(readme, encoding="utf-8")
 

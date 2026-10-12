@@ -19,10 +19,34 @@ See [`docs/architecture/plans/pi-thin-runtime.md`](../../docs/architecture/plans
 | Mode | Meaning |
 |------|---------|
 | **Pi-only** (default) | Artifacts run with Pi alone: SOP + skills + handler + your LLM. No 8002/8003. |
-| **Pi + aiPlat** (enterprise) | Same Pi shell; enterprise features via aiPlat APIs (PolicyGate / Memory / KB / audit). |
+| **Pi + aiPlat** (enterprise) | Same Pi shell; opt-in hybrid reconnect (`AIPLAT_ENTERPRISE=1`). **KB retrieve (read-only)** is wired; Memory/SECI/full PolicyGate surface still platform-side. |
 | Thick aiPlat-only on user machine | **Not** the default delivery shape. |
 
 Do not claim Pi-only equals full in-factory agent. Enterprise thickness is **Pi + aiPlat**, not “stuff the platform into the Pi process”.
+
+## Enterprise hybrid (KB, opt-in)
+
+Default remains Pi-only. To enable read-only platform KB from the Pi shell:
+
+```bash
+export AIPLAT_ENTERPRISE=1
+export AIPLAT_PLATFORM_URL=http://127.0.0.1:8003   # or http://host:8000/api via management GW
+export AIPLAT_TENANT_TOKEN=<bearer with kb:read>   # or AIPLAT_API_KEY
+# optional: AIPLAT_KB_COLLECTION_ID=default
+
+pi -e .
+# /aiplat-status          → enterprise_hybrid=on|off
+# /aiplat-enterprise      → reconnect status
+# tool: aiplat_kb_retrieve
+```
+
+Offline gate (mock HTTP, no platform process):
+
+```bash
+node packages/aiplat-pi-runtime/scripts/enterprise_kb_smoke.mjs
+```
+
+PolicyGate stays on the platform (`kb:read`); the extension only forwards the bearer token.
 
 ## Scheme A (Skills)
 
