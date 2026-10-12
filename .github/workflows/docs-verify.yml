@@ -69,7 +69,7 @@ jobs:
 
       - name: Post PR comment (warnings only)
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const warnings = process.env.WARNING_MESSAGE || '';
