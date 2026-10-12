@@ -22,7 +22,7 @@ Pi 是极简 Agent Harness（非治理平台）。与 aiPlat 的关系拆成**�
 | 模式 | 用户侧 | 能力 | 状态 |
 |------|--------|------|------|
 | **Pi-only** | 导出包 + `pi` / 薄 HTTP + 自备模型 | SOP + skills + handler（确定性桥） | **默认交付 · 已落地** |
-| **Pi + aiPlat** | 同上 Pi 壳 + `AIPLAT_ENTERPRISE=1` 回连 | + 只读 KB（`aiplat_kb_retrieve` → `POST /platform/kb/query`，平台侧 `kb:read`） | **KB 混合 · 已接线**（Memory/SECI/审批等仍待逐项回连） |
+| **Pi + aiPlat** | 同上 Pi 壳 + `AIPLAT_ENTERPRISE=1` 回连 | + 只读 KB + 允许列表工具代理（`aiplat_tool_execute` → `POST …/tools/{name}/execute`） | **KB+工具 · 已接线**（Memory/SECI/审批仍待逐项） |
 | ~~厚运行时~~ | 用户侧直接跑裁剪 aiPlat | 接近平台 Agent | **非默认**；仅特殊驻场/私有化例外 |
 
 **Pi-only 必须能完成的闭环（验收）**
@@ -41,17 +41,19 @@ Pi 是极简 Agent Harness（非治理平台）。与 aiPlat 的关系拆成**�
 - 运行时审计 / 可观测回写
 - 租户配额与成本治理
 
-混合形态示意（KB 已落地；其余能力仍按需扩展）：
+混合形态示意（KB + 工具代理已落地；Memory/审批仍按需扩展）：
 
 ```text
 用户 ──► Pi（对话壳 + 本地 skills/handler）
               │
               ├── 本地可完成 → 不回连（默认 Pi-only）
-              └── AIPLAT_ENTERPRISE=1 → HTTPS → POST /platform/kb/query
-                    （Bearer + PolicyGate kb:read；扩展不搬门禁）
+              └── AIPLAT_ENTERPRISE=1
+                    ├── POST /platform/kb/query          （只读 KB）
+                    └── AIPLAT_ENTERPRISE_TOOLS=… → POST …/tools/{name}/execute
+                          （Bearer + 服务端 RBAC/PolicyGate；扩展不搬门禁）
 ```
 
-接线入口：`packages/aiplat-pi-runtime/extensions/enterprise_kb.ts`（由 `aiplat-app.ts` 条件注册）。
+接线入口：`enterprise_kb.ts` / `enterprise_tools.ts`（由 `aiplat-app.ts` 条件注册）。详见 `packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`。
 
 **厂内若做，优先级（成本阶梯）** — 详见 `packages/aiplat-pi-runtime/docs/FACTORY_IN_EXPERIMENT.md`
 

@@ -3,7 +3,7 @@ title: "aiPlat 生态与集成白皮书"
 volume_id: ecosystem-integration
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-12T15:58:03Z"
+generated_at: "2026-10-12T16:43:36Z"
 audience: "ISV、集成商、开源社区、渠道"
 core_question: "如何接入、贡献、协作？"
 priority: P2
@@ -30,7 +30,7 @@ language: zh-CN
 | 核心问题 | 如何接入、贡献、协作？ |
 | 优先级 | P2 |
 | 材料完备度（suite） | `partial` |
-| 生成时间 (UTC) | `2026-10-12T15:58:03Z` |
+| 生成时间 (UTC) | `2026-10-12T16:43:36Z` |
 
 **备注**：
 
@@ -547,10 +547,38 @@ See [`docs/architecture/plans/pi-thin-runtime.md`](../../docs/architecture/plans
 | Mode | Meaning |
 |------|---------|
 | **Pi-only** (default) | Artifacts run with Pi alone: SOP + skills + handler + your LLM. No 8002/8003. |
-| **Pi + aiPlat** (enterprise) | Same Pi shell; enterprise features via aiPlat APIs (PolicyGate / Memory / KB / audit). |
+| **Pi + aiPlat** (enterprise) | Same Pi shell; opt-in hybrid (`AIPLAT_ENTERPRISE=1`). **KB retrieve** + **allowlisted tool execute** wired; Memory/SECI/Approval still platform-side. |
 | Thick aiPlat-only on user machine | **Not** the default delivery shape. |
 
 Do not claim Pi-only equals full in-factory agent. Enterprise thickness is **Pi + aiPlat**, not “stuff the platform into the Pi process”.
+
+## Enterprise hybrid (opt-in)
+
+Default remains Pi-only. See [`docs/HYBRID_ENTERPRISE.md`](./docs/HYBRID_ENTERPRISE.md).
+
+```bash
+export AIPLAT_ENTERPRISE=1
+export AIPLAT_PLATFORM_URL=http://127.0.0.1:8003   # or http://host:8000/api via management GW
+export AIPLAT_TENANT_TOKEN=<bearer>                # or AIPLAT_API_KEY
+# optional KB: AIPLAT_KB_COLLECTION_ID=default
+# optional tools (empty = tools off, KB only):
+export AIPLAT_ENTERPRISE_TOOLS=calculator
+# optional: AIPLAT_CORE_URL=http://127.0.0.1:8002
+
+pi -e .
+# /aiplat-status          → enterprise_hybrid / enterprise_tools
+# /aiplat-enterprise      → KB reconnect status
+# tools: aiplat_kb_retrieve | aiplat_tool_execute
+```
+
+Offline gates (mock HTTP, no platform process):
+
+```bash
+node packages/aiplat-pi-runtime/scripts/enterprise_kb_smoke.mjs
+node packages/aiplat-pi-runtime/scripts/enterprise_tools_smoke.mjs
+```
+
+PolicyGate / RBAC stay on the server; extensions only forward the bearer token.
 
 ## Scheme A (Skills)
 
