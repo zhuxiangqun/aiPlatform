@@ -42,6 +42,8 @@ def main() -> int:
             "aiplat_handler",
             "registerEnterpriseKb",
             "enterprise_kb",
+            "registerEnterpriseTools",
+            "enterprise_tools",
         ):
             if needle not in src:
                 errors.append(f"extension missing {needle}")
@@ -59,6 +61,20 @@ def main() -> int:
         ):
             if needle not in ent_src:
                 errors.append(f"enterprise_kb missing {needle}")
+
+    tools = ROOT / "extensions" / "enterprise_tools.ts"
+    if not tools.is_file():
+        errors.append("missing extensions/enterprise_tools.ts")
+    else:
+        tools_src = tools.read_text(encoding="utf-8")
+        for needle in (
+            "AIPLAT_ENTERPRISE_TOOLS",
+            "aiplat_tool_execute",
+            "registerEnterpriseTools",
+            "toolExecuteUrl",
+        ):
+            if needle not in tools_src:
+                errors.append(f"enterprise_tools missing {needle}")
 
     handler = ROOT / "fixtures" / "handler_echo.py"
     if not handler.is_file():

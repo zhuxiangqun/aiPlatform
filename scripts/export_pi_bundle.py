@@ -28,6 +28,7 @@ WORKSPACE = Path(__file__).resolve().parent.parent
 RUNTIME_PKG = WORKSPACE / "packages" / "aiplat-pi-runtime"
 RUNTIME_EXT = RUNTIME_PKG / "extensions" / "aiplat-app.ts"
 RUNTIME_EXT_ENTERPRISE = RUNTIME_PKG / "extensions" / "enterprise_kb.ts"
+RUNTIME_EXT_TOOLS = RUNTIME_PKG / "extensions" / "enterprise_tools.ts"
 RUNTIME_HANDLER = RUNTIME_PKG / "fixtures" / "handler_echo.py"
 RUNTIME_RUNNER = RUNTIME_PKG / "fixtures" / "handler_runner.py"
 
@@ -137,6 +138,10 @@ def export_bundle(
         shutil.copy2(RUNTIME_EXT_ENTERPRISE, ext_dir / "enterprise_kb.ts")
     else:
         _die(f"enterprise KB extension missing: {RUNTIME_EXT_ENTERPRISE}")
+    if RUNTIME_EXT_TOOLS.is_file():
+        shutil.copy2(RUNTIME_EXT_TOOLS, ext_dir / "enterprise_tools.ts")
+    else:
+        _die(f"enterprise tools extension missing: {RUNTIME_EXT_TOOLS}")
 
     fixtures = out / "fixtures"
     fixtures.mkdir(parents=True, exist_ok=True)
@@ -194,6 +199,15 @@ export AIPLAT_TENANT_TOKEN=<bearer with kb:read>
 ```
 
 Tool: `aiplat_kb_retrieve` → POST /platform/kb/query (PolicyGate stays on platform).
+
+Optional tool proxy (allowlist required):
+
+```bash
+export AIPLAT_ENTERPRISE_TOOLS=calculator,file_operations
+# optional: AIPLAT_CORE_URL=http://127.0.0.1:8002  (or …/api/core via GW)
+```
+
+Tool: `aiplat_tool_execute` → POST …/tools/{{name}}/execute.
 """
     (out / "README.md").write_text(readme, encoding="utf-8")
 

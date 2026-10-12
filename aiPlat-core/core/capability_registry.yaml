@@ -5135,7 +5135,7 @@ domains:
   management-and-quality:
     section: "二十五"
     section_name: "管理 & 质量"
-    caps_count: 40
+    caps_count: 42
     provides:
       - symbol: "apply_path_rewrite"
         type: "function"
@@ -5297,9 +5297,17 @@ domains:
         type: "function"
         signature: "Gate AIPLAT_ENTERPRISE + PLATFORM_URL + token; default Pi-only off"
         module: "packages/aiplat-pi-runtime/extensions/enterprise_kb.ts"
+      - symbol: "registerEnterpriseTools"
+        type: "function"
+        signature: "Pi hybrid allowlisted tool proxy → POST /tools/{name}/execute via AIPLAT_ENTERPRISE_TOOLS"
+        module: "packages/aiplat-pi-runtime/extensions/enterprise_tools.ts"
+      - symbol: "loadToolProxyConfig"
+        type: "function"
+        signature: "Enterprise gate + allowlist + core URL resolve; empty allowlist disables tools"
+        module: "packages/aiplat-pi-runtime/extensions/enterprise_tools.ts"
       - symbol: "export_bundle"
         type: "function"
-        signature: "Export Pi package with aiplat-app.ts + enterprise_kb.ts hybrid module"
+        signature: "Export Pi package with aiplat-app.ts + enterprise_kb.ts + enterprise_tools.ts"
         module: "scripts/export_pi_bundle.py"
       - symbol: "Sidebar v2.3 menuItems"
         type: "data"

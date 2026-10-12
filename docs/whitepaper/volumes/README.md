@@ -10,4 +10,4 @@
 | 生态与集成白皮书 (`ecosystem-integration`) | [04-ecosystem-integration.md](./04-ecosystem-integration.md) |
 | 安全与治理白皮书 (`security-governance`) | [05-security-governance.md](./05-security-governance.md) |
 
-suite_sha256=`5a33449031aa9306e9e1bdc56ba3b973709e2e7cde04429e6e13fa91cdeee34e` · generated_at=`2026-10-12T15:58:03Z`
+suite_sha256=`5a33449031aa9306e9e1bdc56ba3b973709e2e7cde04429e6e13fa91cdeee34e` · generated_at=`2026-10-12T16:43:36Z`

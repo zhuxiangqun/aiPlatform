@@ -19,6 +19,11 @@ import {
   enterpriseSystemPromptAddon,
   registerEnterpriseKb,
 } from "./enterprise_kb";
+import {
+  registerEnterpriseTools,
+  toolProxyStatusLines,
+  toolProxySystemPromptAddon,
+} from "./enterprise_tools";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..");
@@ -246,8 +251,9 @@ export default function (pi: ExtensionAPI) {
   let overlay = buildSystemPromptOverlay(appHome);
 
   pi.registerTool(handlerTool);
-  // Optional hybrid: AIPLAT_ENTERPRISE=1 + platform URL/token → aiplat_kb_retrieve
+  // Optional hybrid: AIPLAT_ENTERPRISE=1 + platform URL/token → KB; + TOOLS allowlist → tool proxy
   const enterpriseOn = registerEnterpriseKb(pi);
+  const toolsOn = registerEnterpriseTools(pi);
 
   pi.registerCommand("aiplat-status", {
     description: "Show aiPlat Pi Runtime status (app home, routing, markers)",
@@ -267,7 +273,9 @@ export default function (pi: ExtensionAPI) {
         `skill_routing_keys=${manifest?.skill_routing ? Object.keys(manifest.skill_routing).join(",") : "-"}`,
         "Scheme A: package skills/ + /skill-<name> (no registerSkill)",
         `enterprise_hybrid=${enterpriseOn ? "on" : "off"}`,
+        `enterprise_tools=${toolsOn ? "on" : "off"}`,
         ...enterpriseStatusLines(),
+        ...toolProxyStatusLines(),
         "AIPLAT_STATUS_OK",
       ];
       const text = lines.join("\n");
@@ -353,7 +361,10 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("before_agent_start", async () => {
     appHome = findAppHome();
-    overlay = buildSystemPromptOverlay(appHome) + enterpriseSystemPromptAddon();
+    overlay =
+      buildSystemPromptOverlay(appHome) +
+      enterpriseSystemPromptAddon() +
+      toolProxySystemPromptAddon();
     return {
       systemPrompt: overlay,
       forceSystemPrompt: true,

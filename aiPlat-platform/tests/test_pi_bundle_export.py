@@ -45,6 +45,10 @@ def test_export_sample_app(tmp_path: Path):
     ent = (out / "extensions" / "enterprise_kb.ts").read_text(encoding="utf-8")
     assert "registerEnterpriseKb" in ent
     assert "aiplat_kb_retrieve" in ent
+    assert (out / "extensions" / "enterprise_tools.ts").is_file()
+    tools = (out / "extensions" / "enterprise_tools.ts").read_text(encoding="utf-8")
+    assert "registerEnterpriseTools" in tools
+    assert "aiplat_tool_execute" in tools
     assert (out / "package.json").is_file()
 
 

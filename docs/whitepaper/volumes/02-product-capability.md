@@ -3,7 +3,7 @@ title: "aiPlat 产品能力白皮书"
 volume_id: product-capability
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-12T15:58:03Z"
+generated_at: "2026-10-12T16:43:36Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
@@ -30,7 +30,7 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `partial` |
-| 生成时间 (UTC) | `2026-10-12T15:58:03Z` |
+| 生成时间 (UTC) | `2026-10-12T16:43:36Z` |
 
 ## 1. 本卷论证目标
 
@@ -79,7 +79,7 @@ language: zh-CN
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 248 | 1 | 249 |
 | 记忆子系统 | 58 | 0 | 58 |
-| 知识引擎（本体） | 359 | 9 | 368 |
+| 知识引擎（本体） | 361 | 9 | 370 |
 | RAG 检索 | 51 | 0 | 51 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 168 | 0 | 168 |
@@ -103,7 +103,7 @@ language: zh-CN
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 50 | 0 | 50 |
+| 管理 & 质量 | 53 | 0 | 53 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -122,7 +122,7 @@ language: zh-CN
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2088** | **10** | **2098** |
+| **总计** | **2093** | **10** | **2103** |
 
 ### 3.2 上手路径（节选）
 
@@ -272,7 +272,7 @@ Pi 是极简 Agent Harness（非治理平台）。与 aiPlat 的关系拆成**�
 | 模式 | 用户侧 | 能力 | 状态 |
 |------|--------|------|------|
 | **Pi-only** | 导出包 + `pi` / 薄 HTTP + 自备模型 | SOP + skills + handler（确定性桥） | **默认交付 · 已落地** |
-| **Pi + aiPlat** | 同上 Pi 壳 + `AIPLAT_*` 回连平台 | + PolicyGate / Memory / KB / 审批 / 审计等 | **企业级目标 · 待接线** |
+| **Pi + aiPlat** | 同上 Pi 壳 + `AIPLAT_ENTERPRISE=1` 回连 | + 只读 KB + 允许列表工具代理（`aiplat_tool_execute` → `POST …/tools/{name}/execute`） | **KB+工具 · 已接线**（Memory/SECI/审批仍待逐项） |
 | ~~厚运行时~~ | 用户侧直接跑裁剪 aiPlat | 接近平台 Agent | **非默认**；仅特殊驻场/私有化例外 |
 
 **Pi-only 必须能完成的闭环（验收）**
@@ -291,14 +291,19 @@ Pi 是极简 Agent Harness（非治理平台）。与 aiPlat 的关系拆成**�
 - 运行时审计 / 可观测回写
 - 租户配额与成本治理
 
-混合形态示意（目标态，非当前实现）：
+混合形态示意（KB + 工具代理已落地；Memory/审批仍按需扩展）：
 
 ```text
 用户 ──► Pi（对话壳 + 本地 skills/handler）
               │
-              ├── 本地可完成 → 不回连
-              └── 需企业能力 → HTTPS → aiPlat API（身份 + PolicyGate + KB/Memory…）
+              ├── 本地可完成 → 不回连（默认 Pi-only）
+              └── AIPLAT_ENTERPRISE=1
+                    ├── POST /platform/kb/query          （只读 KB）
+                    └── AIPLAT_ENTERPRISE_TOOLS=… → POST …/tools/{name}/execute
+                          （Bearer + 服务端 RBAC/PolicyGate；扩展不搬门禁）
 ```
+
+接线入口：`enterprise_kb.ts` / `enterprise_tools.ts`（由 `aiplat-app.ts` 条件注册）。详见 `packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`。
 
 **厂内若做，优先级（成本阶梯）** — 详见 `packages/aiplat-pi-runtime/docs/FACTORY_IN_EXPERIMENT.md`
 
