@@ -30,7 +30,7 @@ Skills 策略锁定 **方案 A**：`scripts/export_pi_bundle.py` 把工厂 skill
    - `GET /health` · `POST /v1/chat` · `POST /v1/skills/:name`
    - 有 `handler.py` 时走确定性桥（硬失败）；否则注入 SKILL.md 再对话
    - stub：`AIPLAT_HTTP_STUB=1`；真 Agent：`AIPLAT_PI_MODEL=provider/id` + `createAgentSession`
-5. 工厂一键导出：`builder/pi_bundle_export.py`；`deploy-to-app` 响应 `pi_bundle`；`POST …/export-pi-bundle`
+5. 工厂一键导出：`builder/pi_bundle_export.py`；`deploy-to-app` 响应 `pi_bundle`；`POST …/export-pi-bundle`；管理端 ProjectDetail「导出 Pi 包」
 
 ## 命令
 
