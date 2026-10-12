@@ -40,9 +40,25 @@ def main() -> int:
             "before_agent_start",
             "forceSystemPrompt",
             "aiplat_handler",
+            "registerEnterpriseKb",
+            "enterprise_kb",
         ):
             if needle not in src:
                 errors.append(f"extension missing {needle}")
+
+    ent = ROOT / "extensions" / "enterprise_kb.ts"
+    if not ent.is_file():
+        errors.append("missing extensions/enterprise_kb.ts")
+    else:
+        ent_src = ent.read_text(encoding="utf-8")
+        for needle in (
+            "AIPLAT_ENTERPRISE",
+            "aiplat_kb_retrieve",
+            "registerEnterpriseKb",
+            "kbQueryUrl",
+        ):
+            if needle not in ent_src:
+                errors.append(f"enterprise_kb missing {needle}")
 
     handler = ROOT / "fixtures" / "handler_echo.py"
     if not handler.is_file():

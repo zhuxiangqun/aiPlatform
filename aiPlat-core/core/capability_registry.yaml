@@ -5135,7 +5135,7 @@ domains:
   management-and-quality:
     section: "二十五"
     section_name: "管理 & 质量"
-    caps_count: 37
+    caps_count: 40
     provides:
       - symbol: "apply_path_rewrite"
         type: "function"
@@ -5289,6 +5289,18 @@ domains:
         type: "function"
         signature: "Phase C W5: BuilderProjectService promotion snapshot for GET /promotion"
         module: "aiPlat-platform/builder/builder_project_service.py"
+      - symbol: "registerEnterpriseKb"
+        type: "function"
+        signature: "Pi hybrid opt-in: aiplat_kb_retrieve → POST /platform/kb/query when AIPLAT_ENTERPRISE=1"
+        module: "packages/aiplat-pi-runtime/extensions/enterprise_kb.ts"
+      - symbol: "loadEnterpriseConfig"
+        type: "function"
+        signature: "Gate AIPLAT_ENTERPRISE + PLATFORM_URL + token; default Pi-only off"
+        module: "packages/aiplat-pi-runtime/extensions/enterprise_kb.ts"
+      - symbol: "export_bundle"
+        type: "function"
+        signature: "Export Pi package with aiplat-app.ts + enterprise_kb.ts hybrid module"
+        module: "scripts/export_pi_bundle.py"
       - symbol: "Sidebar v2.3 menuItems"
         type: "data"
         signature: "Task-flow driven sidebar: 6 groups, 92 entries; AI工厂33→14精简58%; 引擎能力配置独立成组; 价值看板→仪表盘"

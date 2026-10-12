@@ -41,6 +41,10 @@ def test_export_sample_app(tmp_path: Path):
     assert (out / "agent_manifest.json").is_file()
     assert (out / "skills" / "greet" / "SKILL.md").is_file()
     assert (out / "extensions" / "aiplat-app.ts").is_file()
+    assert (out / "extensions" / "enterprise_kb.ts").is_file()
+    ent = (out / "extensions" / "enterprise_kb.ts").read_text(encoding="utf-8")
+    assert "registerEnterpriseKb" in ent
+    assert "aiplat_kb_retrieve" in ent
     assert (out / "package.json").is_file()
 
 

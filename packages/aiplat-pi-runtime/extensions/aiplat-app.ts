@@ -14,6 +14,12 @@ import { fileURLToPath } from "node:url";
 import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
+import {
+  enterpriseStatusLines,
+  enterpriseSystemPromptAddon,
+  registerEnterpriseKb,
+} from "./enterprise_kb";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..");
 const HANDLER_ECHO = join(PKG_ROOT, "fixtures", "handler_echo.py");
@@ -240,6 +246,8 @@ export default function (pi: ExtensionAPI) {
   let overlay = buildSystemPromptOverlay(appHome);
 
   pi.registerTool(handlerTool);
+  // Optional hybrid: AIPLAT_ENTERPRISE=1 + platform URL/token → aiplat_kb_retrieve
+  const enterpriseOn = registerEnterpriseKb(pi);
 
   pi.registerCommand("aiplat-status", {
     description: "Show aiPlat Pi Runtime status (app home, routing, markers)",
@@ -258,6 +266,8 @@ export default function (pi: ExtensionAPI) {
         `skills=${skills.join(",") || "-"}`,
         `skill_routing_keys=${manifest?.skill_routing ? Object.keys(manifest.skill_routing).join(",") : "-"}`,
         "Scheme A: package skills/ + /skill-<name> (no registerSkill)",
+        `enterprise_hybrid=${enterpriseOn ? "on" : "off"}`,
+        ...enterpriseStatusLines(),
         "AIPLAT_STATUS_OK",
       ];
       const text = lines.join("\n");
@@ -343,7 +353,7 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("before_agent_start", async () => {
     appHome = findAppHome();
-    overlay = buildSystemPromptOverlay(appHome);
+    overlay = buildSystemPromptOverlay(appHome) + enterpriseSystemPromptAddon();
     return {
       systemPrompt: overlay,
       forceSystemPrompt: true,
