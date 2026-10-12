@@ -277,7 +277,62 @@ def _build_volume(
         excerpt, _ = _read_excerpt(_rel("docs/architecture/overview.md"), 14000)
         parts += [excerpt, "", "### 3.2 架构对比入口（comparison）", ""]
         excerpt, _ = _read_excerpt(_rel("docs/architecture/comparison.md"), 10000)
-        parts += [excerpt, ""]
+        parts += [
+            excerpt,
+            "",
+            "### 3.3 工程落地视图索引（部署 / 性能 / 可观测 / 数据 / 测试 …）",
+            "",
+            "本卷定位是「为什么这样设计」与架构全景；**工程落地细节不在此卷全文复述**，"
+            "以免形成第二真相源。CTO/架构师做技术尽调时，按下表进入权威源"
+            "（含物理/部署视图、数据视图、开发视图、质量属性）。",
+            "",
+            "| 工程维度 | 读者要回答的问题 | 权威源（优先） | CAPABILITIES / 姊妹卷 |",
+            "|----------|------------------|----------------|----------------------|",
+            f"| **部署与运维** | 生产怎么布？环境/灾备/灰度？ | "
+            f"{_link('docs/manuals/deployment.md')} · "
+            f"{_link('docs/architecture/plans/disaster-recovery-plan.md')} · "
+            f"`deploy/helm/aiplat/` | CAPABILITIES「部署与运维 / 部署与灰度」 |",
+            f"| **性能与扩展** | QPS/P95/容量/扩展策略？ | "
+            f"{_link('docs/standards/规范-性能.md')} · "
+            f"{_link('docs/architecture/slo.md')} · "
+            f"`scripts/benchmark_all.sh` | CAPABILITIES「部署与运维」基准条目 |",
+            f"| **可观测性** | 日志/指标/追踪怎么采与告警？ | "
+            f"{_link('docs/architecture/plans/observability-eval-repair-architecture.md')} · "
+            f"{_link('docs/standards/规范-core-run_id-trace_id-request_id.md') if _rel('docs/standards/规范-core-run_id-trace_id-request_id.md').is_file() else _link('docs/architecture/slo.md')} | "
+            "CAPABILITIES「可观测性」· 安全卷可交叉 |",
+            f"| **数据架构** | 存什么、隔离、备份？ | "
+            f"{_link('docs/knowledge-system.md')} · "
+            f"{_link('docs/architecture/knowledge-base-architecture.md')} | "
+            "CAPABILITIES「知识引擎」· 灾备计划（备份） |",
+            f"| **安全嵌入视图** | Gate/信任边界如何嵌进运行时？ | "
+            f"{_link('docs/security/security-architecture.md')} | "
+            f"分卷 05 · CAPABILITIES「安全与治理 / Gate」 |",
+            f"| **测试与验证** | 金字塔 / CI / 质量门？ | "
+            f"{_link('docs/manuals/testing.md')} · "
+            f"{_link('docs/architecture/execution-quality-gates.md')} · "
+            "`.github/workflows/` | CAPABILITIES「管理 & 质量」 |",
+            f"| **技术风险与演进** | 技术债、依赖风险、路线？ | "
+            f"{_link('AIPLAT_ROADMAP.md')} · "
+            f"{_link('docs/research/architecture-evolution-roadmap.md')} · "
+            f"{_link('CLAUDE.md')} §16 | 商业卷 ROADMAP 节选（非财务） |",
+            f"| **开发视图** | 代码组织、模块边界、上手？ | "
+            f"{_link('CLAUDE.md')} · {_link('docs/DOCUMENT_SYSTEM.md')} · "
+            f"{_link('docs/manuals/getting-started.md')} · "
+            f"{_link('docs/architecture/plans/app-module-layout.md')} | — |",
+            f"| **集成架构** | MCP/A2A/外部适配？ | "
+            f"{_link('docs/mcp/index.md')} · "
+            f"{_link('docs/policy/mcp-stdio-prod-allowlist.md')} | "
+            f"分卷 04 · CAPABILITIES「MCP / A2A」 |",
+            f"| **质量属性 / SLA·SLO** | 可用性目标与误差预算？ | "
+            f"{_link('docs/architecture/slo.md')} · "
+            f"{_link('docs/architecture/execution-quality-gates.md')} | "
+            "CAPABILITIES「管理 & 质量」 |",
+            "",
+            "> **阅读约定**：上表保证「只读本卷也能知道去哪尽调」。"
+            "性能容量叙事以规范预算 + `benchmark_all.sh` + SLO 为准；"
+            "若缺少独立压测报告，以脚本与门禁结果为可执行证据，勿在卷内编造 QPS 数字。",
+            "",
+        ]
     elif vid == "product-capability":
         parts += [
             "### 3.0 典型产品场景 → 权威入口（场景切片，非第二清单）",
