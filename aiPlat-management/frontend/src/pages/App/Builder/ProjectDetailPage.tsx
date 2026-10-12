@@ -779,9 +779,24 @@ const ProjectDetailPage: React.FC = () => {
                   导出 Agent 应用为 Pi Package（无需 8002/8003）；用户侧 <code className="text-violet-200">pi -e</code> 或薄 HTTP
                 </p>
               </div>
-              <Button variant="secondary" onClick={handleExportPiBundle} loading={piExporting} icon={<Package className="w-4 h-4" />}>
-                导出 Pi 包
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={handleExportPiBundle} loading={piExporting} icon={<Package className="w-4 h-4" />}>
+                  导出 Pi 包
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    if (!id) return;
+                    const a = document.createElement('a');
+                    a.href = projectApi.downloadPiBundleZipUrl(id);
+                    a.download = `aiplat-pi-${id}.zip`;
+                    a.click();
+                  }}
+                  icon={<Package className="w-4 h-4" />}
+                >
+                  下载 ZIP
+                </Button>
+              </div>
             </div>
             {piBundle && (
               <div className="mt-3 p-3 rounded text-xs bg-violet-500/10 text-violet-100 space-y-1 font-mono break-all">

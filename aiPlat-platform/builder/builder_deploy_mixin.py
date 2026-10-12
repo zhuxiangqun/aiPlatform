@@ -123,6 +123,15 @@ class BuilderDeployMixin:
 
         return export_pi_bundle_for_project(project_id)
 
+    async def export_pi_bundle_zip(self, project_id: str) -> Dict[str, Any]:
+        """Export + zip Pi Package for download. Returns paths (zip may be on disk)."""
+        from builder.pi_bundle_export import zip_pi_bundle_for_project
+
+        zip_path, meta = zip_pi_bundle_for_project(project_id)
+        if zip_path is not None:
+            meta = {**meta, "ok": True, "zip": str(zip_path)}
+        return meta
+
     async def get_agent_insight(self, agent_id: str) -> Dict[str, Any]:
         from builder.builder_project_service import _get_agent_insight_for
         """Get insight metrics for a single agent."""

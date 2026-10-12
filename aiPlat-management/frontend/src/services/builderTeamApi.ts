@@ -555,6 +555,10 @@ export const projectApi = {
     }>(`/platform/builder/projects/${projectId}/export-pi-bundle`);
   },
 
+  /** 下载 Pi Package zip（浏览器直接拉文件）。 */
+  downloadPiBundleZipUrl: (projectId: string) =>
+    `/api/platform/builder/projects/${projectId}/export-pi-bundle.zip`,
+
   /** F4: smoke with keep_alive; returns openable. */
   runtimeSmoke: async (projectId: string, keepAlive = true) => {
     return apiClient.post<{

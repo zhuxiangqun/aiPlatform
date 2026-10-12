@@ -51,3 +51,33 @@ def test_skip_without_manifest(tmp_path: Path):
     r = mod.try_export_after_deploy("x", str(empty))
     assert r.get("ok") is False
     assert r.get("skipped") is True
+
+
+def test_zip_pi_bundle(tmp_path: Path, monkeypatch):
+    mod = _load()
+    sample = (
+        mod.workspace_root()
+        / "packages"
+        / "aiplat-pi-runtime"
+        / "fixtures"
+        / "sample-app"
+    )
+    monkeypatch.setenv("AIPLAT_HOME", str(tmp_path / "home"))
+    out = tmp_path / "pi-out"
+    r = mod.export_pi_bundle_for_project(
+        "zip-test",
+        app_home=str(sample),
+        out=str(out),
+    )
+    assert r.get("ok") is True, r
+    # Reuse exported dir via default_out_dir (zip path prefers existing package)
+    monkeypatch.setattr(mod, "default_out_dir", lambda _pid: out)
+    zip_path, meta = mod.zip_pi_bundle_for_project("zip-test")
+    assert zip_path is not None and zip_path.is_file(), meta
+    assert zip_path.suffix == ".zip"
+    assert meta.get("ok") is True
+    # Also zip with explicit app_home when no prior export under AIPLAT_HOME
+    zip2, meta2 = mod.zip_pi_bundle_for_project(
+        "zip-test-2", app_home=str(sample)
+    )
+    assert zip2 is not None and zip2.is_file(), meta2

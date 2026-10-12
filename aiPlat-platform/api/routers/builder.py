@@ -10,7 +10,7 @@ import os
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from api.schemas_response import ProjectListResponse, ProjectStateResponse, PipelineStartResponse, TeamListResponse, StatusResponse
 
 _svc = None
@@ -876,6 +876,28 @@ async def export_project_pi_bundle(project_id: str, _auth: str = Depends(require
     if not result.get("ok") and not result.get("skipped"):
         raise HTTPException(status_code=400, detail=result.get("error") or "export failed")
     return result
+
+
+@router.get("/projects/{project_id}/export-pi-bundle.zip")
+async def download_project_pi_bundle_zip(
+    project_id: str, _auth: str = Depends(require_builder_access)
+):
+    """Download Pi Package as a zip for user-side delivery (pi -e / thin HTTP)."""
+    from builder.pi_bundle_export import zip_pi_bundle_for_project
+
+    zip_path, meta = zip_pi_bundle_for_project(project_id)
+    if meta.get("skipped"):
+        raise HTTPException(
+            status_code=400,
+            detail=meta.get("error") or "no agent_manifest — Code mode apps have no Pi export",
+        )
+    if not zip_path or not zip_path.is_file():
+        raise HTTPException(status_code=400, detail=meta.get("error") or "zip failed")
+    return FileResponse(
+        path=str(zip_path),
+        media_type="application/zip",
+        filename=str(meta.get("download_name") or f"aiplat-pi-{project_id}.zip"),
+    )
 
 
 @router.post("/projects/{project_id}/deploy-to-app", response_model=StatusResponse)
