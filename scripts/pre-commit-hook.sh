@@ -273,22 +273,22 @@ if [ -z "${SKIP_ENTITY_GUARD:-}" ]; then
         ENTITY_ISSUES=1
     fi
 
-    # P2: AGENT.md 目录白名单 — engine / workspace_seeds / ~/.aiplat
+    # P2: AGENT.md 目录白名单 — engine / workspace_seeds / ~/.aiplat / Pi Runtime fixtures
     NEW_AGENTS=$(git diff --cached --name-only --diff-filter=A | grep 'AGENT\.md$' || true)
     for f in $NEW_AGENTS; do
-        if ! echo "$f" | grep -qE '(engine/agents/|workspace_seeds/agents/|\.aiplat/agents/)'; then
+        if ! echo "$f" | grep -qE '(engine/agents/|workspace_seeds/agents/|\.aiplat/agents/|packages/aiplat-pi-runtime/)'; then
             echo "  ❌ New AGENT.md outside allowed directories: $f"
-            echo "     → Allowed: core/engine/agents/, workspace_seeds/agents/, or ~/.aiplat/agents/"
+            echo "     → Allowed: core/engine/agents/, workspace_seeds/agents/, ~/.aiplat/agents/, or packages/aiplat-pi-runtime/"
             ENTITY_ISSUES=1
         fi
     done
 
-    # P3: SKILL.md 目录白名单 — engine / workspace_seeds (skills + factory sanitize templates) / ~/.aiplat
+    # P3: SKILL.md 目录白名单 — engine / workspace_seeds / ~/.aiplat / Pi Runtime package skills
     NEW_SKILLS=$(git diff --cached --name-only --diff-filter=A | grep 'SKILL\.md$' || true)
     for f in $NEW_SKILLS; do
-        if ! echo "$f" | grep -qE '(engine/skills/|workspace_seeds/skills/|workspace_seeds/factory_sanitize/|\.aiplat/skills/)'; then
+        if ! echo "$f" | grep -qE '(engine/skills/|workspace_seeds/skills/|workspace_seeds/factory_sanitize/|\.aiplat/skills/|packages/aiplat-pi-runtime/)'; then
             echo "  ❌ New SKILL.md outside allowed directories: $f"
-            echo "     → Allowed: core/engine/skills/, workspace_seeds/skills/, workspace_seeds/factory_sanitize/, or ~/.aiplat/skills/"
+            echo "     → Allowed: core/engine/skills/, workspace_seeds/skills/, factory_sanitize/, ~/.aiplat/skills/, or packages/aiplat-pi-runtime/"
             ENTITY_ISSUES=1
         fi
     done
