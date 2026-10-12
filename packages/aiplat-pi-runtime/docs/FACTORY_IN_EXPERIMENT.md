@@ -1,15 +1,34 @@
 # 厂内轴（A）实验备忘 — 非主路径
 
-> 状态：方式四 **探针已具备**（未接 PipelineEngine / ReActLoop）。主产品轴仍是厂外薄 Runtime。  
+> 状态：**方式四骨架已就绪（CLI）**；**未**接入 PipelineEngine / `inject_workspace_coding_defaults`。  
+> 主产品轴仍是厂外薄 Runtime（本包 + 导出/ZIP）。  
+
 > 权威战略：`docs/architecture/plans/pi-thin-runtime.md` §战略。
 
 ## 目标
 
 补 aiPlat **编码场景执行闭环**空白（文件/ bash 类副作用），**不**替代 PipelineEngine / ReActLoop / PolicyGate。
 
+## 方式四骨架（本包）
+
+```bash
+# 无 --allow-host → 拒绝（强制提醒沙箱/隔离）
+python3 packages/aiplat-pi-runtime/scripts/coding_exec.py \
+  --cwd /path/in/sandbox --prompt "…" --model ollama/qwen2.5:3b
+
+# 本地实验（显式放行 host cwd）
+AIPLAT_PI_MODEL=ollama/qwen2.5:3b \
+  bash packages/aiplat-pi-runtime/scripts/coding_exec_smoke.sh
+
+python3 packages/aiplat-pi-runtime/scripts/test_coding_exec_unit.py
+```
+
+调用方责任：在外层跑 PolicyGate / done_verify / review_gate；生产默认须 Docker（或等价）隔离后再 `--allow-host` 指向容器内 cwd。
+
 ## 允许尝试的顺序
 
-1. **方式四**：`coding_closed_loop` 可选执行器 → 沙箱内 `pi --mode rpc` / print（外层仍 done_verify / review_gate）← **探针在此**
+1. **方式四**：`coding_closed_loop` 可选执行器 → 沙箱内 `pi --mode rpc` / print（外层仍 done_verify / review_gate）← **CLI 骨架**
+
 2. **方式二**：`handler.py` 经 Pi RPC 做文件类副作用（syscall/PolicyGate 在启动 Pi 之前或经工具桥回闸）
 3. **方式三**：MCP 执行宿主（aiPlat 保留 `check_cost_ladder` + 审计）
 4. **方式一**：`createAgentSession` 旁路 `react_tools` — **最后**；禁止默认换 StageRunner→ReActLoop
@@ -45,3 +64,4 @@ AIPLAT_PI_MODEL=ollama/qwen2.5:3b \
 
 - 用 Pi 解决「厂外交付不够厚」（那是厚运行时 / 混合回连产品决策）
 - 把 Memory / SECI 塞进 Pi
+- 默认替换 `coding_closed_loop` 的原生工具路径

@@ -11,27 +11,52 @@ Pi 是极简 Agent Harness（非治理平台）。与 aiPlat 的关系拆成**�
 | 轴 | 定位 | 状态 | 解决什么 | 不解决什么 |
 |----|------|------|----------|------------|
 | **（B）厂外** | 用户侧薄交付宿主：导出包 → `pi -e` / 薄 HTTP | **既定主路径**（已落地） | 不装全栈也能跑快照（SOP + skills + handler） | 平台级厚度（Memory / SECI / PolicyGate / 知识 syscall） |
-| **（A）厂内** | 可选编码执行核：CLI/RPC 包在 PolicyGate 外 | **实验 / 旁路**，非主文档推荐 | 编码闭环、文件类副作用执行 | 替代编排治理；默认换掉 ReActLoop |
+| **（A）厂内** | 可选编码执行核：CLI/RPC 包在 PolicyGate 外 | **实验**：方式四 CLI 骨架（`scripts/coding_exec.py`）；**未**接引擎 | 编码闭环、文件类副作用执行 | 替代编排治理；默认换掉 ReActLoop |
 
-**交付边界（强制写进产品/合同说明；管理端导出区已提示）**
+**产品决策（已锁定 · 2026-10-12）**
 
-- 薄 Pi 包 = 「离厂可跑的能力子集」，**不是**平台 Agent 的 1:1 替身。
-- Pi 薄宿主只保证「不装全栈也能跑」；**不够厚不能只靠接 Pi**——须收窄承诺，或改厚运行时 / 混合回连（对话壳在 Pi，厚能力走托管 API）。
+> **默认：只靠 Pi 就能跑产出物。**  
+> **企业级：Pi + aiPlat（混合）——Pi 仍是用户侧宿主，厚能力经 aiPlat 托管 API / 门禁回连。**  
+> **不以「用户侧单独部署厚 aiPlat 运行时」为默认交付形态。**
 
-**交付厚度三选一（产品决策，先于厂内实验）**
+| 模式 | 用户侧 | 能力 | 状态 |
+|------|--------|------|------|
+| **Pi-only** | 导出包 + `pi` / 薄 HTTP + 自备模型 | SOP + skills + handler（确定性桥） | **默认交付 · 已落地** |
+| **Pi + aiPlat** | 同上 Pi 壳 + `AIPLAT_*` 回连平台 | + PolicyGate / Memory / KB / 审批 / 审计等 | **企业级目标 · 待接线** |
+| ~~厚运行时~~ | 用户侧直接跑裁剪 aiPlat | 接近平台 Agent | **非默认**；仅特殊驻场/私有化例外 |
 
-| 模式 | 用户侧跑什么 | 何时选 |
-|------|--------------|--------|
-| **薄**（现状） | Pi 包：SOP + skills + handler + 自备模型 | 合同范围本就是轻助手 / 确定性技能 |
-| **厚** | aiPlat 裁剪运行时（含策略/记忆/检索子集） | 交付承诺接近平台 Agent |
-| **混合** | Pi 对话壳 + 托管 API（知识/工具/审批） | 要轻安装但仍要厚能力 |
+**Pi-only 必须能完成的闭环（验收）**
+
+- 加载导出包（manifest / AGENT.md / skills）
+- 对话 + SOP 注入
+- `/skill-*` 与 `handler.py` 确定性执行
+- 自备 LLM（Ollama / 云厂商均可）
+- **不依赖** 8002/8003 进程
+
+**Pi + aiPlat 才提供的企业能力（混合回连，不搬进 Pi 进程）**
+
+- PolicyGate / RBAC / 审批
+- Memory / SECI / 经验回写
+- 平台知识检索（`sys_kb_retrieve` 等）
+- 运行时审计 / 可观测回写
+- 租户配额与成本治理
+
+混合形态示意（目标态，非当前实现）：
+
+```text
+用户 ──► Pi（对话壳 + 本地 skills/handler）
+              │
+              ├── 本地可完成 → 不回连
+              └── 需企业能力 → HTTPS → aiPlat API（身份 + PolicyGate + KB/Memory…）
+```
 
 **厂内若做，优先级（成本阶梯）** — 详见 `packages/aiplat-pi-runtime/docs/FACTORY_IN_EXPERIMENT.md`
 
-1. 先选定上表交付厚度（薄助手 vs 厚运行时 / 混合）
-2. 方式四：`coding_closed_loop` 可选 Pi CLI/RPC 执行器（沙箱必选）
-3. 方式二：handler 经 Pi RPC 做文件类副作用（PolicyGate 外裹）
-4. 方式一：`react_tools` → Pi `createAgentSession` **最后**；旁路可选，**禁止**默认替换 StageRunner→ReActLoop（工具语义非 drop-in；每次工具调用回闸门禁工作量大）
+1. 巩固 Pi-only 交付（能力边界写进合同；管理端已提示）
+2. 设计/接线 **Pi + aiPlat 混合回连**（企业级）——优先于厂内换心
+3. 方式四：厂内 `coding_closed_loop` 可选 Pi 执行器（沙箱必选）— **CLI 骨架**：`scripts/coding_exec.py`（未接引擎）
+4. 方式二：handler 经 Pi RPC 做文件类副作用（PolicyGate 外裹）
+5. 方式一：替换 ReActLoop **最后**且旁路可选
 
 方式三（MCP 宿主）：可行但只是执行宿主优化；aiPlat 仍保留 MCP 准入与审计。  
 厂内路径在接线完成前 **不得** 标 CAPABILITIES「已接线」或主文档推荐。

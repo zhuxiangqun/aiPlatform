@@ -11,10 +11,18 @@ See [`docs/architecture/plans/pi-thin-runtime.md`](../../docs/architecture/plans
 
 | Axis | Role of Pi | Status |
 |------|------------|--------|
-| **(B) Factory-out** | Thin delivery host (`pi -e` / thin HTTP) | **Shipped** — this package |
+| **(B) Factory-out** | User-side host for artifacts | **Shipped** — this package |
 | **(A) Factory-in** | Optional coding exec kernel behind PolicyGate | Experiment only — not default ReActLoop |
 
-**Delivery boundary**: this package runs the export snapshot (SOP + skills + handler). It does **not** carry PolicyGate / Memory / SECI / platform KB. If the customer needs that thickness, ship a thick runtime or hybrid API — do not claim 1:1 parity with in-factory agents.
+**Product decision (locked)**
+
+| Mode | Meaning |
+|------|---------|
+| **Pi-only** (default) | Artifacts run with Pi alone: SOP + skills + handler + your LLM. No 8002/8003. |
+| **Pi + aiPlat** (enterprise) | Same Pi shell; enterprise features via aiPlat APIs (PolicyGate / Memory / KB / audit). |
+| Thick aiPlat-only on user machine | **Not** the default delivery shape. |
+
+Do not claim Pi-only equals full in-factory agent. Enterprise thickness is **Pi + aiPlat**, not “stuff the platform into the Pi process”.
 
 ## Scheme A (Skills)
 
@@ -74,5 +82,16 @@ AIPLAT_PI_MODEL=ollama/qwen2.5:3b AIPLAT_APP_HOME=./fixtures/sample-app \
 # Full live gate (offline + stub HTTP + CLI + HTTP agent)
 AIPLAT_PI_MODEL=ollama/qwen2.5:3b bash scripts/live_smoke.sh
 ```
+
+## Factory-in experiment (not wired to engine)
+
+Optional way-4 CLI: `scripts/coding_exec.py` (Pi print-mode coding). Refuses host cwd unless `--allow-host`; does **not** replace ReActLoop / PipelineEngine.
+
+```bash
+python3 scripts/test_coding_exec_unit.py
+bash scripts/coding_exec_smoke.sh
+```
+
+See [docs/FACTORY_IN_EXPERIMENT.md](./docs/FACTORY_IN_EXPERIMENT.md).
 
 See [PHASE0.md](./PHASE0.md) and `docs/architecture/plans/pi-thin-runtime.md`.

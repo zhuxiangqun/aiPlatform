@@ -776,8 +776,8 @@ const ProjectDetailPage: React.FC = () => {
                   <Package className="w-4 h-4" />Pi 薄 Runtime（厂外交付）
                 </h3>
                 <p className="text-xs text-gray-400 mt-1">
-                  导出为可离厂快照：SOP + skills + handler（无需 8002/8003）。
-                  <span className="text-amber-200/90"> 不含</span> PolicyGate / Memory / SECI / 平台知识库——厚度不够时请改厚运行时或混合回连，勿当作全功能 Agent。
+                  <span className="text-violet-200/90">默认 Pi-only</span>：导出包即可离厂运行（SOP + skills + handler，无需 8002/8003）。
+                  <span className="text-amber-200/90"> 企业级</span>用 <span className="text-violet-200/90">Pi + aiPlat</span> 混合回连（策略/记忆/知识/审计）——不在包内搬全栈。
                 </p>
               </div>
               <div className="flex gap-2">
