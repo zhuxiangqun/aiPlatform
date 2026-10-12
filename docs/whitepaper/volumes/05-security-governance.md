@@ -3,19 +3,19 @@ title: "aiPlat 安全与治理白皮书"
 volume_id: security-governance
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-12T22:58:17Z"
+generated_at: "2026-10-12T23:15:53Z"
 audience: "CISO、合规、风控"
 core_question: "如何可信可控？"
 priority: P0
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
-suite_sha256: "4846152b2678c4c985758ab6a2d4083c82f6e70ed41e56c6a521652453d6d1ab"
+suite_sha256: "3d143bcd3a67f7e55f869d4a1a179a2c8bd180756e2e4a0cfea666da8358288e"
 caps_sha256: "e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=security-governance suite_sha256=4846152b2678c4c985758ab6a2d4083c82f6e70ed41e56c6a521652453d6d1ab caps_sha256=e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=security-governance suite_sha256=3d143bcd3a67f7e55f869d4a1a179a2c8bd180756e2e4a0cfea666da8358288e caps_sha256=e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 安全与治理白皮书
 
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 如何可信可控？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-12T22:58:17Z` |
+| 生成时间 (UTC) | `2026-10-12T23:15:53Z` |
 | CAPABILITIES sha256 | `e2e1936484e9…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -87,11 +87,11 @@ language: zh-CN
 
 ### 3.2 安全架构（节选）
 
-# aiPlat 安全架构 — 纵深防御模型
+### aiPlat 安全架构 — 纵深防御模型
 
 > 基于零信任原则 (never trust, always verify) 的六层防御体系。
 
-## 防御层级
+#### 防御层级
 
 | 层 | 名称 | 机制 | 实现 |
 |:--:|:---|:---|:---|
@@ -102,7 +102,7 @@ language: zh-CN
 | **L5** | 执行沙箱 | Isolated Subprocess | SandboxGate — 工具执行隔离 |
 | **L6** | 审计追溯 | SHA-256 Chain | Audit Mixin — 回查每条操作 |
 
-## 零信任原则落地
+#### 零信任原则落地
 
 | 原则 | aiPlat 实现 |
 |:---|:---|
@@ -112,7 +112,7 @@ language: zh-CN
 | 假定被破 | SandboxGate 隔离, 工具执行不在主进程 |
 | 全程审计 | SHA-256 hash chain, 每次操作不可否认 |
 
-## 安全边界
+#### 安全边界
 
 ```
 Internet → Management Gateway (唯一入口)
@@ -127,10 +127,10 @@ Internet → Management Gateway (唯一入口)
                     ↓ Audit Log (SHA-256 chain)
 ```
 
-## GitHub Branch Protection Rules (Recommended)
+#### GitHub Branch Protection Rules (Recommended)
 
 ```yaml
-# Apply in GitHub → Settings → Branches → Add rule
+### Apply in GitHub → Settings → Branches → Add rule
 branches: [main]
 rules:
   - require_pull_request: true
@@ -143,7 +143,7 @@ rules:
   - enforce_admins: true
 ```
 
-## 零信任验证清单
+#### 零信任验证清单
 
 | # | 层级 | 验证方式 | 状态 |
 |:--:|:---|:---|:--:|
@@ -154,7 +154,7 @@ rules:
 | L5 | 执行沙箱 | SandboxGate 隔离 — 工具执行不在主进程 | ✅ |
 | L6 | 审计追溯 | SHA-256 chain 可验证 — `audit_mixin.py verify_integrity()` | ✅ |
 
-## FDE 部署验证报告
+#### FDE 部署验证报告
 
 > 外部人员按 deploy-guide.md 从头部署并计时。
 
@@ -169,7 +169,7 @@ rules:
 | 7 | `verify-deploy.sh` 部署验证 | ~30s | ✅ |
 | **总计** | | **~8 分钟** | **从头部署到全量验证通过** |
 
-### FDE 差距
+##### FDE 差距
 
 | 项 | 状态 | 说明 |
 |:---|:--:|:---|
@@ -374,15 +374,15 @@ _(节选)_
 
 ### 3.4 自主性定级 ADR（节选）
 
-# aiPlat 自主性分级评估：L5 组织者级
+### aiPlat 自主性分级评估：L5 组织者级
 
 > **评估原则**：平台的总体等级由其**最低分能力轴**决定，因为最薄弱的环节限制整体系统表现。
 
 ---
 
-## 1. 评估方法论
+#### 1. 评估方法论
 
-### 来源
+##### 来源
 
 分级体系参考以下权威研究框架：
 
@@ -394,7 +394,7 @@ _(节选)_
 | arXiv 十大能力轴 | 多维度评估框架 |
 | Redis 上下文工程模型 | 五阶段成熟度（ad hoc → optimized） |
 
-### 六大能力轴
+##### 六大能力轴
 
 | 能力轴 | 说明 | 评估方法 |
 |:---|:---|:---|
@@ -405,15 +405,15 @@ _(节选)_
 | **E. 协作能力（Coordination）** | 多 Agent 之间的通信与分工 | 并行度、角色分工、冲突解决 |
 | **F. 自进化（Self-Evolution）** | 系统能否从执行中学习和优化 | 策略搜索-评估-比较-回滚闭环 |
 
-### 评估原则
+##### 评估原则
 
 > 平台的总体等级由其**最低分能力轴**决定。六轴取最低分。
 
 ---
 
-## 2. 六轴逐项分析
+#### 2. 六轴逐项分析
 
-### A. 自主性 — L4（高）
+##### A. 自主性 — L4（高）
 
 > **定义**：自主循环执行直到完成，人类仅关键点介入
 
@@ -431,16 +431,16 @@ _(节选)_
 
 ```bash
 grep -c 'async def _retry_loop' core/harness/execution/pipeline_engine.py
-# → 1
+### → 1
 grep -c 'AIPLAT_OPERATOR_CONFIRMATION_LEVEL' core/apps/agents/operator_agent.py
-# → 1
+### → 1
 ```
 
 **差距（→ L5）**：仍需人类设定目标和启动 pipeline。未到 L5"自主选题、定义研究议程"。
 
 ---
 
-### B. 上下文感知 — L4（强）
+##### B. 上下文感知 — L4（强）
 
 > **定义**：全量上下文 + 跨轮次状态 + 跨域知识图谱
 
@@ -459,18 +459,18 @@ grep -c 'AIPLAT_OPERATOR_CONFIRMATION_LEVEL' core/apps/agents/operator_agent.py
 
 ```bash
 grep -c 'class RunContext' core/harness/kernel/types.py
-# → 1
+### → 1
 grep -c 'CRAG\|HyDE' core/apps/agents/materials_chat.py
-# → 多次命中（CRAG 3 级回退 + HyDE 重检）
+### → 多次命中（CRAG 3 级回退 + HyDE 重检）
 find core/harness/ontology_engine/ -name '*.py' | wc -l
-# → 26
+### → 26
 ```
 
 **差距（→ L5）**：跨系统实时上下文（MES/ERP）虽有 DataSource 桥接，但尚未深度集成。
 
 ---
 
-### C. 工具掌握 — L4（20+，动态发现）
+##### C. 工具掌握 — L4（20+，动态发现）
 
 > **定义**：20+ 工具，自动选择，动态发现
 
@@ -489,18 +489,18 @@ find core/harness/ontology_engine/ -name '*.py' | wc -l
 
 ```bash
 wc -l < core/harness/infrastructure/gates/policy_gate.py
-# → 1039
+### → 1039
 wc -l < core/harness/infrastructure/gates/approval_gate.py
-# → 361
+### → 361
 grep -c 'class.*Sandbox' core/harness/infrastructure/gates/sandbox_gate.py
-# → 2
+### → 2
 ```
 
 **差距（→ L5）**：不支持"自举创建新工具"（Agent 自主生成代码 → 注册为 Skill）。
 
 ---
 
-### D. 记忆系统 — L4（强，接近上限）
+##### D. 记忆系统 — L4（强，接近上限）
 
 > **定义**：全栈记忆 + 版本管理 + 冲突解决 + 反馈闭环
 
@@ -520,20 +520,20 @@ grep -c 'class.*Sandbox' core/harness/infrastructure/gates/sandbox_gate.py
 
 ```bash
 grep -c 'build_context\|save_interaction\|cleanup_expired' core/harness/memory/manager.py
-# → 5
+### → 5
 grep -c '_resolve_semantic_conflict' core/harness/memory/semantic.py
-# → 2
+### → 2
 grep -c 'cleanup_expired' core/harness/memory/episodic.py
-# → 1
+### → 1
 test -f ~/.aiplat/agents/memory_os/AGENT.md && echo exists
-# → exists
+### → exists
 ```
 
 **差距（→ L5）**：缺少"蜂群共享记忆"和"组织级知识沉淀"（跨 Agent 实例的知识同步）。
 
 ---
 
-### E. 协作能力 — L4（多 Agent 编队）
+##### E. 协作能力 — L4（多 Agent 编队）
 
 > **定义**：多角色分工 + 并行执行 + 语义通信
 
@@ -551,14 +551,14 @@ test -f ~/.aiplat/agents/memory_os/AGENT.md && echo exists
 
 ```bash
 wc -l < core/harness/integration.py
-# → 3595
+### → 3595
 ```
 
 **差距（→ L5）**：固定 Pipeline stage 顺序（配置驱动但顺序预定义），未到 L5 的"动态组队、自主分工"。
 
 ---
 
-### F. 自进化 — L5
+##### F. 自进化 — L5
 
 > **定义**：UCB1 搜索-评估-比较-回滚闭环 + 数据驱动的策略路由 + 自主工具创建 + 动态组队
 
@@ -579,20 +579,20 @@ wc -l < core/harness/integration.py
 **验证**：
 ```bash
 grep -c 'class StrategySearchEngine' core/harness/optimization/search_engine.py
-# → 1（Phase 29: UCB1 搜索-评估-比较-回滚闭环）
+### → 1（Phase 29: UCB1 搜索-评估-比较-回滚闭环）
 grep -c 'class GoalExecutor' core/harness/optimization/goal_executor.py
-# → 1（Phase 30: 自主闭环执行器）
+### → 1（Phase 30: 自主闭环执行器）
 grep -c 'class ToolBootstrapEngine' core/harness/optimization/tool_bootstrap.py
-# → 1（Phase 31: 自举创建工具）
+### → 1（Phase 31: 自举创建工具）
 grep -c 'class DynamicOrchestrator' core/harness/coordination/dynamic_orchestrator.py
-# → 1（Phase 32: 动态组队引擎）
+### → 1（Phase 32: 动态组队引擎）
 ```
 
 **差距（→ L6）**：UCB1 是收敛算法而非持续优化的在线学习。ToolBootstrap 是基于 prompt 的技能创建，非完整代码生成→部署→注册闭环。DynamicOrchestrator 是基于模式匹配的注册表查询，非 emergent swarm 行为。
 
 ---
 
-### 能力对照矩阵（结论）
+##### 能力对照矩阵（结论）
 
 | 能力轴 | 级别 | 状态 |
 |:---|---:|:--:|
@@ -611,7 +611,7 @@ grep -c 'class DynamicOrchestrator' core/harness/coordination/dynamic_orchestrat
 **六轴最低分 = C/E. L4+** → 系统整体定级为 **L4+（五轴 L4+, 两轴 L5）**。
 按最低分原则，C 轴（工具）和 E 轴（协作）仍为 L4+ 而非 L5。
 
-### L5 全量达成路径
+##### L5 全量达成路径
 
 | 能力 | 状态 | 剩余差距 |
 |:---|:--
