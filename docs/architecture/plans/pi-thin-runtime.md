@@ -1,14 +1,16 @@
 # Plan: aiPlat × Pi 薄 Runtime（1C + 2C）
 
-> Living 摘要 · 2026-10-12 · 包：`packages/aiplat-pi-runtime/`
+> Living 摘要 · 2026-10-12 · 包：`packages/aiplat-pi-runtime/`  
+> **状态**：Phase 0–2 + 工厂/FE/ZIP **已合并 main**（PR [#251](https://github.com/zhuxiangqun/aiPlatform/pull/251)，`9620784`）  
+> **剩余门**：本机 `pi /login` 后交互冒烟（`/aiplat-status` · `/skill-greet` · `/aiplat-sop-check`）+ 可选 `AIPLAT_PI_MODEL=…` 真 HTTP Agent
 
 ## 结论（Phase 0）
 
 | 假设 | 文档结论 | 离线检查 | 在线 LLM 冒烟 |
 |------|----------|:--------:|:-------------:|
-| 包内 `skills/` 自动发现 | **成立**（Pi Skills / Packages 文档） | 结构 ✅ | `/skill:fixture-skill` |
-| `before_agent_start` 注入 systemPrompt | **成立**（可返回 `systemPrompt` / `forceSystemPrompt`） | 代码含事件 ✅ | `/aiplat-sop-check` |
-| `registerCommand` / `registerTool` | **成立** | 代码含 API ✅ | `/aiplat-status` + tool |
+| 包内 `skills/` 自动发现 | **成立**（Pi Skills / Packages 文档） | 结构 ✅ | 待 `/login` |
+| `before_agent_start` 注入 systemPrompt | **成立**（可返回 `systemPrompt` / `forceSystemPrompt`） | 代码含事件 ✅ | 待 `/login` |
+| `registerCommand` / `registerTool` | **成立** | 代码含 API ✅ | 待 `/login` |
 | `registerSkill` API | **不存在** → **方案 A**（导出复制 skills/） | N/A | N/A |
 
 Skills 策略锁定 **方案 A**：`scripts/export_pi_bundle.py` 把工厂 skills 复制进导出包；扩展只注册斜杠命令与 SOP 注入。
