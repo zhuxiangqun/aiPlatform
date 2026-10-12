@@ -276,7 +276,7 @@ Eval / 金标 / 值班板：见 Governance 与 `apps/eval`（`runs_eval` / gold�
 | E4 | **已做** | `lint_engine_skills.py`（handler/未知类型/prompt 写文件）+ `check_cost_ladder.py`（新 Syscall/MCP 须 CAPABILITIES 或 `# ladder-ok`）；pre-commit + architecture_guard |
 | E5 | **已做** | FAIL_OPEN 须 reason/by/until；过期自动无效；sidecar + 启动 audit_log |
 | O1 | **已做** | MCP 阶梯证明质量：v1.9 起 `check_cost_ladder.py` 校验模板字段完整性与最小长度；缺字段或占位符 → CI 硬失败 |
-| O2 | **已做（可选启用）** | 团队 YAML vs AGENT.md 漂移 lint：`scripts/lint_team_yaml_profile_drift.py`，默认 WARNING，`--strict` 可硬失败 |
+| O2 | **已做（可选启用）** | 团队 YAML vs AGENT.md 漂移 lint：`scripts/lint_team_yaml_profile_drift.py`；architecture_guard / pre-commit 默认 WARNING（exit 0）；`AIPLAT_YAML_DRIFT_STRICT=1` 或 `--strict` 硬失败 |
 | O3 | **接口已定义** | Eval / Memory 全局闭环交互字段契约见 §6.1；细则以 `knowledge-system.md` / Governance / `apps/eval` 为准，须同步维护 |
 
 ---

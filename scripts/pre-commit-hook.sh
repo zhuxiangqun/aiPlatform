@@ -309,11 +309,27 @@ if [ -z "${SKIP_ENTITY_GUARD:-}" ]; then
     if git diff --cached --name-only | grep -qE '(harness/syscalls/.*\.py|workspace_seeds/mcps/.*/server\.yaml|scripts/check_cost_ladder\.py|baselines/cost_ladder_)'; then
         echo "  → Cost ladder ratchet (scripts/check_cost_ladder.py --check --staged)..."
         if ! python3 "$WORKSPACE/scripts/check_cost_ladder.py" --check --staged; then
-            echo "  ❌ Cost ladder: new Syscall/MCP without CAPABILITIES or # ladder-ok"
-            echo "     → Document why rungs 1-5 infeasible, then: python3 scripts/check_cost_ladder.py --rebuild"
+            echo "  ❌ Cost ladder: new Syscall/MCP without quality proof or # ladder-ok: <reason≥15>"
+            echo "     → Add proof template (why_not_1..4 / rung / blast_radius) or ladder-ok; then: python3 scripts/check_cost_ladder.py --rebuild"
             ENTITY_ISSUES=1
         else
             echo "  ✅ Cost ladder passed"
+        fi
+    fi
+
+    # P3.7: O2 team YAML vs AGENT.md profile drift (advisory unless AIPLAT_YAML_DRIFT_STRICT=1)
+    if git diff --cached --name-only | grep -qE '(workspace_seeds/.*/.*team.*\.ya?ml|workspace_seeds/teams/|/\.aiplat/teams/|scripts/lint_team_yaml_profile_drift\.py)'; then
+        echo "  → Team YAML profile drift lint (O2)..."
+        _DRIFT_ARGS=()
+        if [ "${AIPLAT_YAML_DRIFT_STRICT:-}" = "1" ]; then
+            _DRIFT_ARGS+=(--strict)
+        fi
+        if ! python3 "$WORKSPACE/scripts/lint_team_yaml_profile_drift.py" "${_DRIFT_ARGS[@]}"; then
+            echo "  ❌ Team YAML profile drift (strict mode)"
+            echo "     → Align architecture_profile/execution_backend or add # drift-ok: <reason>"
+            ENTITY_ISSUES=1
+        else
+            echo "  ✅ Team YAML drift lint complete"
         fi
     fi
 
