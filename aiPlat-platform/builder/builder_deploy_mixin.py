@@ -116,6 +116,13 @@ class BuilderDeployMixin:
                               "请先修复测试并重建，或确认后重试。"}
         deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
         return _deploy_to_app_for_project(project_id, deploy_dir or "", proj)
+
+    async def export_pi_bundle(self, project_id: str) -> Dict[str, Any]:
+        """One-click export of deployed Agent app as a Pi Package (user-side Runtime)."""
+        from builder.pi_bundle_export import export_pi_bundle_for_project
+
+        return export_pi_bundle_for_project(project_id)
+
     async def get_agent_insight(self, agent_id: str) -> Dict[str, Any]:
         from builder.builder_project_service import _get_agent_insight_for
         """Get insight metrics for a single agent."""

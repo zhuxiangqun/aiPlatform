@@ -5,11 +5,13 @@
  *   POST /v1/chat            { session_id?, message }
  *   POST /v1/skills/:name    { session_id?, message?, params? }
  *
- * Without pi-ai credentials → stub mode (still injects SOP for offline smoke).
- * With AIPLAT_PI_MODEL=provider/model + API keys → real Agent via pi-agent-core.
+ * Modes:
+ *   - stub: AIPLAT_HTTP_STUB=1 or no usable model/credentials
+ *   - agent: createAgentSession (pi-coding-agent SDK) when AIPLAT_PI_MODEL set
+ *            and provider auth is available (env / auth.json via ModelRuntime)
  *
  * Auth: AIPLAT_HTTP_API_KEY → Authorization: Bearer <key>
- * Env: AIPLAT_HTTP_PORT (8787), AIPLAT_APP_HOME, AIPLAT_PI_MODEL, AIPLAT_HTTP_STUB=1|0
+ * Env: AIPLAT_HTTP_PORT (8787), AIPLAT_APP_HOME, AIPLAT_PI_MODEL=provider/id
  */
 import http from "node:http";
 import fs from "node:fs";
@@ -23,9 +25,13 @@ const PKG = path.resolve(__dirname, "..");
 const PORT = Number(process.env.AIPLAT_HTTP_PORT || 8787);
 const API_KEY = (process.env.AIPLAT_HTTP_API_KEY || "").trim();
 const FORCE_STUB = process.env.AIPLAT_HTTP_STUB === "1";
+const MODEL_SPEC = (process.env.AIPLAT_PI_MODEL || "").trim();
 
 /** @type {Map<string, any>} */
 const sessions = new Map();
+
+let _agentMode = "stub";
+let _agentModeDetail = FORCE_STUB ? "AIPLAT_HTTP_STUB=1" : "not_probed";
 
 function readJson(req) {
   return new Promise((resolve, reject) => {
@@ -139,38 +145,67 @@ function runHandler(home, skill, params) {
   });
 }
 
+function parseModelSpec(spec) {
+  const s = String(spec || "").trim();
+  if (!s) return null;
+  const i = s.indexOf("/");
+  if (i <= 0) return { provider: "openai", id: s };
+  return { provider: s.slice(0, i), id: s.slice(i + 1) };
+}
+
 async function ensureAgent(sessionId, meta) {
   if (sessions.has(sessionId)) return sessions.get(sessionId);
 
-  if (!FORCE_STUB) {
+  if (!FORCE_STUB && MODEL_SPEC) {
     try {
-      const { Agent } = await import("@earendil-works/pi-agent-core");
+      const coding = await import("@earendil-works/pi-coding-agent");
       const ai = await import("@earendil-works/pi-ai");
-      const models = typeof ai.createModels === "function" ? ai.createModels() : null;
-      const modelId = process.env.AIPLAT_PI_MODEL || "";
+      const { createAgentSession, SessionManager } = coding;
+      const getModel = ai.getModel;
+      const parsed = parseModelSpec(MODEL_SPEC);
       let model = null;
-      if (models && modelId && typeof models.getModel === "function") {
-        const [provider, name] = modelId.includes("/")
-          ? modelId.split("/", 2)
-          : ["openai", modelId];
+      if (typeof getModel === "function" && parsed) {
         try {
-          model = models.getModel(provider, name);
-        } catch {
-          model = null;
+          model = getModel(parsed.provider, parsed.id);
+        } catch (e) {
+          _agentModeDetail = `getModel failed: ${e}`;
         }
+      } else {
+        _agentModeDetail = "getModel unavailable from @earendil-works/pi-ai";
       }
-      if (model && Agent && models?.streamSimple) {
-        const agent = new Agent({
-          initialState: { systemPrompt: meta.systemPrompt, model },
-          streamFn: models.streamSimple.bind(models),
+
+      if (model && typeof createAgentSession === "function") {
+        // cwd = exported package (or sample-app) so package.json `pi` resources load
+        const cwd = meta.appHome;
+        const { session } = await createAgentSession({
+          cwd,
+          model,
+          sessionManager: SessionManager.inMemory(),
+          // Prefer extension/custom tools; skip default coding tools for app chat
+          noTools: "builtin",
         });
-        const entry = { kind: "agent", agent, systemPrompt: meta.systemPrompt };
+        const entry = {
+          kind: "agent",
+          session,
+          systemPrompt: meta.systemPrompt,
+          dispose: () => {
+            try {
+              session.dispose?.();
+            } catch {
+              /* ignore */
+            }
+          },
+        };
         sessions.set(sessionId, entry);
+        _agentMode = "agent";
+        _agentModeDetail = `createAgentSession model=${MODEL_SPEC} cwd=${cwd}`;
         return entry;
       }
-    } catch {
-      // fall through to stub
+    } catch (e) {
+      _agentModeDetail = `agent init error: ${e && e.message ? e.message : e}`;
     }
+  } else if (!MODEL_SPEC && !FORCE_STUB) {
+    _agentModeDetail = "AIPLAT_PI_MODEL unset";
   }
 
   const stub = {
@@ -179,8 +214,9 @@ async function ensureAgent(sessionId, meta) {
     async prompt(text) {
       return {
         text: [
-          "[stub-mode] no LLM credentials / AIPLAT_HTTP_STUB=1",
+          "[stub-mode] no LLM credentials / AIPLAT_HTTP_STUB=1 / model unavailable",
           `marker=${meta.marker}`,
+          `detail=${_agentModeDetail}`,
           `prompt=${text.slice(0, 200)}`,
           meta.systemPrompt.includes(meta.marker)
             ? "sop_injected=true"
@@ -191,14 +227,25 @@ async function ensureAgent(sessionId, meta) {
     },
   };
   sessions.set(sessionId, stub);
+  _agentMode = "stub";
   return stub;
 }
 
 async function runPrompt(session, text) {
   if (session.kind === "stub") return session.prompt(text);
-  const agent = session.agent;
+
+  const agentSession = session.session;
+  // Prepend SOP overlay — session.systemPrompt is read-only; extension may also inject
+  const promptText = [
+    "【aiPlat Runtime SOP】",
+    session.systemPrompt.slice(0, 6000),
+    "",
+    "【User】",
+    text,
+  ].join("\n");
+
   let out = "";
-  const unsub = agent.subscribe((event) => {
+  const unsub = agentSession.subscribe((event) => {
     if (
       event.type === "message_update" &&
       event.assistantMessageEvent?.type === "text_delta"
@@ -206,9 +253,16 @@ async function runPrompt(session, text) {
       out += event.assistantMessageEvent.delta || "";
     }
   });
-  await agent.prompt(text);
-  if (typeof unsub === "function") unsub();
-  return { text: out || "(empty)", mode: "agent" };
+  try {
+    await agentSession.prompt(promptText);
+  } finally {
+    if (typeof unsub === "function") unsub();
+  }
+  const last =
+    typeof agentSession.getLastAssistantText === "function"
+      ? agentSession.getLastAssistantText()
+      : "";
+  return { text: out || last || "(empty)", mode: "agent" };
 }
 
 const home = appHome();
@@ -218,14 +272,16 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://127.0.0.1:${PORT}`);
 
-    // Health is unauthenticated for probes / smoke
     if (req.method === "GET" && url.pathname === "/health") {
       return send(res, 200, {
         ok: true,
         appHome: meta.appHome,
         sessions: sessions.size,
         auth: Boolean(API_KEY),
-        stub: FORCE_STUB || !process.env.AIPLAT_PI_MODEL,
+        mode: FORCE_STUB ? "stub" : _agentMode,
+        model: MODEL_SPEC || null,
+        detail: _agentModeDetail,
+        stub: FORCE_STUB || _agentMode === "stub",
       });
     }
 
@@ -251,7 +307,6 @@ const server = http.createServer(async (req, res) => {
           ? body.params
           : {};
 
-      // Deterministic path: if handler.py exists, call bridge (no LLM theater)
       const handlerPy = path.join(meta.appHome, "skills", skill, "handler.py");
       if (fs.existsSync(handlerPy) || body.force_handler) {
         const hr = await runHandler(meta.appHome, skill, params);
@@ -291,6 +346,6 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, "127.0.0.1", () => {
   console.log(
-    `[aiplat-http] http://127.0.0.1:${PORT} appHome=${meta.appHome} auth=${API_KEY ? "on" : "off"} stub=${FORCE_STUB ? "force" : "auto"}`,
+    `[aiplat-http] http://127.0.0.1:${PORT} appHome=${meta.appHome} auth=${API_KEY ? "on" : "off"} model=${MODEL_SPEC || "(none)"} stub=${FORCE_STUB ? "force" : "auto"}`,
   );
 });

@@ -29,18 +29,23 @@ Skills 策略锁定 **方案 A**：`scripts/export_pi_bundle.py` 把工厂 skill
 4. Phase 2：薄 HTTP — `packages/aiplat-pi-runtime/bin/aiplat-http.mjs`
    - `GET /health` · `POST /v1/chat` · `POST /v1/skills/:name`
    - 有 `handler.py` 时走确定性桥（硬失败）；否则注入 SKILL.md 再对话
-   - 无密钥时 stub 模式（`AIPLAT_HTTP_STUB=1`）；冒烟：`bash packages/aiplat-pi-runtime/scripts/http_smoke.sh`
+   - stub：`AIPLAT_HTTP_STUB=1`；真 Agent：`AIPLAT_PI_MODEL=provider/id` + `createAgentSession`
+5. 工厂一键导出：`builder/pi_bundle_export.py`；`deploy-to-app` 响应 `pi_bundle`；`POST …/export-pi-bundle`
 
 ## 命令
 
 ```bash
 python3 packages/aiplat-pi-runtime/scripts/phase0_offline_check.py
+bash packages/aiplat-pi-runtime/scripts/http_smoke.sh
 python3 scripts/export_pi_bundle.py \
   --app-home packages/aiplat-pi-runtime/fixtures/sample-app \
   --out dist/aiplat-app-sample
 AIPLAT_APP_HOME=$PWD/dist/aiplat-app-sample pi -e dist/aiplat-app-sample
 # /aiplat-status  /skill-greet  /skill-demo_skill  /aiplat-sop-check
-# handler: ask model to call tool aiplat_handler skill=demo_skill
+
+# Real HTTP Agent (provider auth required)
+# AIPLAT_PI_MODEL=anthropic/claude-sonnet-4-6 AIPLAT_APP_HOME=dist/aiplat-app-sample \
+#   node packages/aiplat-pi-runtime/bin/aiplat-http.mjs
 ```
 
 ## handler 协议

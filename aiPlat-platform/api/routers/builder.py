@@ -865,6 +865,19 @@ async def update_stage_artifact(project_id: str, stage_id: str, req: Dict[str, A
     }
 
 
+@router.post("/projects/{project_id}/export-pi-bundle", response_model=StatusResponse)
+async def export_project_pi_bundle(project_id: str, _auth: str = Depends(require_builder_access)):
+    """Export deployed Agent app (~/.aiplat/apps/{id}/current) as a Pi Package.
+
+    One-click user-side Runtime bundle (Scheme A skills + extension). Also runs
+    automatically (best-effort) after deploy-to-app when agent_manifest.json exists.
+    """
+    result = await _get_svc().export_pi_bundle(project_id)
+    if not result.get("ok") and not result.get("skipped"):
+        raise HTTPException(status_code=400, detail=result.get("error") or "export failed")
+    return result
+
+
 @router.post("/projects/{project_id}/deploy-to-app", response_model=StatusResponse)
 async def deploy_project_to_app(project_id: str, _auth: str = Depends(require_builder_access)):
     """Deploy pipeline output to aiPlat-app (port 8004)."""

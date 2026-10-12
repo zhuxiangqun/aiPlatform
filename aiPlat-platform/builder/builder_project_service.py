@@ -5035,6 +5035,16 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
     except Exception:
         logging.getLogger(__name__).debug("promotion_gate snapshot failed", exc_info=True)
 
+    # Thin Pi Runtime export (Agent apps only; best-effort — never fail deploy)
+    _pi_bundle: Dict[str, Any] = {}
+    try:
+        from builder.pi_bundle_export import try_export_after_deploy
+
+        _pi_bundle = try_export_after_deploy(project_id, _app_home)
+    except Exception:
+        logging.getLogger(__name__).debug("pi bundle export after deploy failed", exc_info=True)
+        _pi_bundle = {"ok": False, "error": "export_helper_unavailable", "skipped": True}
+
     return {
         "ok": True,
         "deploy_dir": deploy_dir,
@@ -5047,6 +5057,7 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
         "rejected_count": _rejected,
         "rejected_artifacts": _rejected_artifacts,
         "promotion_gate": _promotion,
+        "pi_bundle": _pi_bundle,
     }
 
 
