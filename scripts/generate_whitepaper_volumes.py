@@ -42,7 +42,8 @@ VOLUME_FILES = {
 }
 
 STAMP_RE = re.compile(
-    r"<!-- volume_stamp id=([^\s]+) suite_sha256=([0-9a-f]+) -->"
+    r"<!-- volume_stamp id=([^\s]+) suite_sha256=([0-9a-f]+)"
+    r" caps_sha256=([0-9a-f]+) scores_sha256=([0-9a-f]+) -->"
 )
 
 
@@ -166,7 +167,13 @@ def _doc_table(entries: List[Dict[str, Any]], suite_dir_note: str = "") -> str:
     return "\n".join(rows) + "\n"
 
 
-def _build_volume(vol: Dict[str, Any], suite_sha: str, generated_at: str) -> str:
+def _build_volume(
+    vol: Dict[str, Any],
+    suite_sha: str,
+    caps_sha: str,
+    scores_sha: str,
+    generated_at: str,
+) -> str:
     vid = str(vol["id"])
     name = str(vol["name"])
     audience = str(vol.get("audience") or "")
@@ -190,17 +197,21 @@ def _build_volume(vol: Dict[str, Any], suite_sha: str, generated_at: str) -> str
         f"source_status: {status}",
         f'suite: docs/whitepaper/whitepaper-suite.yaml',
         f"suite_sha256: \"{suite_sha}\"",
+        f"caps_sha256: \"{caps_sha}\"",
+        f"scores_sha256: \"{scores_sha}\"",
         "language: zh-CN",
         "---",
         "",
-        f"<!-- volume_stamp id={vid} suite_sha256={suite_sha} -->",
+        f"<!-- volume_stamp id={vid} suite_sha256={suite_sha} "
+        f"caps_sha256={caps_sha} scores_sha256={scores_sha} -->",
         "",
         f"# aiPlat {name}",
         "",
         f"> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI  ",
         f"> 体系：[`../WHITEPAPER_SYSTEM.md`](../WHITEPAPER_SYSTEM.md) · "
         f"清单：[`../whitepaper-suite.yaml`](../whitepaper-suite.yaml)  ",
-        f"> 重生成：`python3 scripts/generate_whitepaper_volumes.py`",
+        f"> 重生成：`bash scripts/sync_whitepapers.sh` 或 "
+        f"`python3 scripts/generate_whitepaper_volumes.py`",
         "",
         "## 0. 卷册元信息",
         "",
@@ -212,6 +223,8 @@ def _build_volume(vol: Dict[str, Any], suite_sha: str, generated_at: str) -> str
         f"| 优先级 | {priority} |",
         f"| 材料完备度（suite） | `{status}` |",
         f"| 生成时间 (UTC) | `{generated_at}` |",
+        f"| CAPABILITIES sha256 | `{caps_sha[:12]}…` |",
+        f"| assessment-scores sha256 | `{scores_sha[:12]}…` |",
         "",
     ]
     if notes:
@@ -531,6 +544,8 @@ def generate_all() -> List[Path]:
         raise SystemExit(f"FAIL: missing {SUITE}")
     suite = _load_yaml(SUITE)
     suite_sha = _sha256_file(SUITE)
+    caps_sha = _sha256_file(CAPS)
+    scores_sha = _sha256_file(SCORES)
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     written: List[Path] = []
@@ -542,7 +557,8 @@ def generate_all() -> List[Path]:
             continue
         out = OUT_DIR / fname
         out.write_text(
-            _build_volume(vol, suite_sha, generated_at), encoding="utf-8"
+            _build_volume(vol, suite_sha, caps_sha, scores_sha, generated_at),
+            encoding="utf-8",
         )
         written.append(out)
         print(f"PASS: wrote {out.relative_to(REPO)}")
@@ -552,7 +568,7 @@ def generate_all() -> List[Path]:
         "# 五维白皮书分卷（生成物）",
         "",
         "> 由 `scripts/generate_whitepaper_volumes.py` 根据 "
-        "`../whitepaper-suite.yaml` 生成。勿手改正文。",
+        "`../whitepaper-suite.yaml` + CAPABILITIES + assessment-scores 生成。勿手改正文。",
         "",
         "| 卷 | 文件 |",
         "|----|------|",
@@ -563,7 +579,10 @@ def generate_all() -> List[Path]:
         lines.append(f"| {vol.get('name')} (`{vid}`) | [{fname}](./{fname}) |")
     lines += [
         "",
-        f"suite_sha256=`{suite_sha}` · generated_at=`{generated_at}`",
+        f"suite_sha256=`{suite_sha}` · caps_sha256=`{caps_sha}` · "
+        f"scores_sha256=`{scores_sha}` · generated_at=`{generated_at}`",
+        "",
+        "同步：`bash scripts/sync_whitepapers.sh`",
         "",
     ]
     index.write_text("\n".join(lines), encoding="utf-8")
@@ -577,6 +596,8 @@ def check_fresh() -> int:
         print(f"FAIL: missing {SUITE}", file=sys.stderr)
         return 2
     suite_sha = _sha256_file(SUITE)
+    caps_sha = _sha256_file(CAPS)
+    scores_sha = _sha256_file(SCORES)
     suite = _load_yaml(SUITE)
     ok = True
     for vol in suite.get("volumes") or []:
@@ -591,15 +612,24 @@ def check_fresh() -> int:
             continue
         text = path.read_text(encoding="utf-8")
         m = STAMP_RE.search(text)
-        if not m or m.group(1) != vid or m.group(2) != suite_sha:
+        if (
+            not m
+            or m.group(1) != vid
+            or m.group(2) != suite_sha
+            or m.group(3) != caps_sha
+            or m.group(4) != scores_sha
+        ):
             print(
                 f"FAIL: stale volume {path.relative_to(REPO)} "
-                f"— regenerate whitepaper volumes",
+                f"— run: bash scripts/sync_whitepapers.sh",
                 file=sys.stderr,
             )
             ok = False
     if ok:
-        print("PASS: all five whitepaper volumes fresh vs suite yaml")
+        print(
+            "PASS: all five whitepaper volumes fresh vs "
+            "suite + CAPABILITIES + assessment-scores"
+        )
         return 0
     return 1
 

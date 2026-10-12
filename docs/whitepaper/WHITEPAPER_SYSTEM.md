@@ -42,6 +42,35 @@
 | **生态** | 生态与集成 | 如何接入协作 | ISV / 社区 / 渠道 | 分卷 04 · [`ecosystem-partner-tiers.md`](./ecosystem-partner-tiers.md) · 商务模板 | ready |
 | **治理** | 安全与治理 | 如何可信可控 | CISO / 合规 | CAPABILITIES「安全与治理 / Gate」· [`../security/`](../security/) · L 级 ADR | ready |
 
+## 自动同步（CAPABILITIES → 白皮书）
+
+真相链：
+
+```text
+代码 / 测试
+  → AIPLAT_CAPABILITIES.md（auto_sync_docs + verify_doc_sync + architecture_guard）
+  → assessment-scores.json（评分戳）
+  → whitepaper-suite.yaml（分卷清单）
+  → 现状总册 + 五维分卷（本段自动再生成）
+```
+
+| 动作 | 命令 |
+|------|------|
+| 全量再生成 + 新鲜度检查 | `bash scripts/sync_whitepapers.sh` |
+| 仅检查（CI / pre-commit 后） | `python3 scripts/generate_platform_whitepaper.py --check` + `python3 scripts/generate_whitepaper_volumes.py --check` |
+| ready 验收（含免责声明） | `bash scripts/verify-whitepaper-ready.sh`（加 `--regen` 先 sync） |
+
+**触发（pre-commit Step 2.8）**：staged 变更命中 `AIPLAT_CAPABILITIES.md`、`whitepaper-suite.yaml`、`assessment-scores.json`、商业/生态专稿、`cases/`、或白皮书生成器脚本时，自动 `sync_whitepapers.sh` 并 stage 生成物。
+
+**新鲜度戳**：
+
+- 现状总册：`source_sha256`（CAPABILITIES）+ `scores_sha256`
+- 分卷：`suite_sha256` + `caps_sha256` + `scores_sha256`
+
+任一权威源变化而未再生成 → `--check` / CI 阻断。
+
+能力是否「代码真实接线」仍以 CAPABILITIES ↔ 代码的既有守卫为准；白皮书层保证**不落后于清单与评分戳**。
+
 ## ADR 索引维护
 
 01 技术卷 §3.0「关键设计决策索引」只指向权威源，不复制 ADR 正文。

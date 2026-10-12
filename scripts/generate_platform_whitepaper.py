@@ -32,7 +32,8 @@ WHITEPAPER_SYSTEM = REPO / "docs" / "whitepaper" / "WHITEPAPER_SYSTEM.md"
 MARKER_BEGIN = "<!-- BEGIN_GENERATED_FROM_AIPLAT_CAPABILITIES -->"
 MARKER_END = "<!-- END_GENERATED_FROM_AIPLAT_CAPABILITIES -->"
 STAMP_RE = re.compile(
-    r"<!-- whitepaper_stamp source_sha256=([0-9a-f]+) total_capabilities=(\d+) -->"
+    r"<!-- whitepaper_stamp source_sha256=([0-9a-f]+) "
+    r"scores_sha256=([0-9a-f]+) total_capabilities=(\d+) -->"
 )
 
 
@@ -223,6 +224,9 @@ def build(raw_caps: str) -> str:
     version = str(meta.get("version") or "")
     last_updated = str(meta.get("last_updated") or "")
     source_sha = _sha256(raw_caps)
+    scores_sha = (
+        _sha256(SCORES.read_text(encoding="utf-8")) if SCORES.is_file() else ""
+    )
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     ok_n, warn_n, row_n = _count_marks(body)
     stats = _extract_stats_table(body)
@@ -253,20 +257,21 @@ status: generated
 generated_at: "{generated_at}"
 source: AIPLAT_CAPABILITIES.md
 source_sha256: "{source_sha}"
+scores_sha256: "{scores_sha}"
 total_capabilities: {total or "unknown"}
 capabilities_version: "{version}"
 capabilities_last_updated: "{last_updated}"
 language: zh-CN
 ---
 
-<!-- whitepaper_stamp source_sha256={source_sha} total_capabilities={total or 0} -->
+<!-- whitepaper_stamp source_sha256={source_sha} scores_sha256={scores_sha} total_capabilities={total or 0} -->
 
 # aiPlat 平台现状白皮书
 
 > **本文是可再生成的平台现状说明书，不是第二真相源。**  
 > 能力清单唯一权威：仓库根目录 [`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md)  
 > 机器登记：[`aiPlat-core/core/capability_registry.yaml`](../../aiPlat-core/core/capability_registry.yaml)  
-> 重新生成：`python3 scripts/generate_platform_whitepaper.py`  
+> 重新生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_platform_whitepaper.py`  
 > 新鲜度校验：`python3 scripts/generate_platform_whitepaper.py --check`
 
 ## 0. 阅读约定与权威模型
@@ -285,7 +290,8 @@ language: zh-CN
 | 字段 | 值 |
 |------|-----|
 | 生成时间 (UTC) | `{generated_at}` |
-| 源文件 SHA-256 | `{source_sha}` |
+| CAPABILITIES SHA-256 | `{source_sha}` |
+| assessment-scores SHA-256 | `{scores_sha or "—"}` |
 | CAPABILITIES version | `{version or "—"}` |
 | CAPABILITIES last_updated | `{last_updated or "—"}` |
 | frontmatter total_capabilities | `{total or "—"}` |
@@ -377,10 +383,13 @@ python3 scripts/generate_platform_whitepaper.py
 
 def check_fresh(raw_caps: str, existing: str) -> bool:
     source_sha = _sha256(raw_caps)
+    scores_sha = (
+        _sha256(SCORES.read_text(encoding="utf-8")) if SCORES.is_file() else ""
+    )
     m = STAMP_RE.search(existing)
     if not m:
         return False
-    return m.group(1) == source_sha
+    return m.group(1) == source_sha and m.group(2) == scores_sha
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -409,7 +418,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"PASS: whitepaper fresh vs {CAPS.name}")
             return 0
         print(
-            f"FAIL: whitepaper stale — run: python3 scripts/generate_platform_whitepaper.py",
+            f"FAIL: whitepaper stale — run: bash scripts/sync_whitepapers.sh",
             file=sys.stderr,
         )
         return 1

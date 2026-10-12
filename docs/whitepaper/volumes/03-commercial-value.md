@@ -3,23 +3,25 @@ title: "aiPlat 商业价值白皮书"
 volume_id: commercial-value
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-12T17:28:56Z"
+generated_at: "2026-10-12T17:49:13Z"
 audience: "CEO、CFO、业务负责人、投资方"
 core_question: "投资回报与 TCO 如何？"
 priority: P3
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "d8a7651f6dd8898264db21d05f14cc69407c182541fcce8abc8aaa9b4714bfb0"
+caps_sha256: "e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94"
+scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=commercial-value suite_sha256=d8a7651f6dd8898264db21d05f14cc69407c182541fcce8abc8aaa9b4714bfb0 -->
+<!-- volume_stamp id=commercial-value suite_sha256=d8a7651f6dd8898264db21d05f14cc69407c182541fcce8abc8aaa9b4714bfb0 caps_sha256=e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 商业价值白皮书
 
 > **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI  
 > 体系：[`../WHITEPAPER_SYSTEM.md`](../WHITEPAPER_SYSTEM.md) · 清单：[`../whitepaper-suite.yaml`](../whitepaper-suite.yaml)  
-> 重生成：`python3 scripts/generate_whitepaper_volumes.py`
+> 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
 
 ## 0. 卷册元信息
 
@@ -30,7 +32,9 @@ language: zh-CN
 | 核心问题 | 投资回报与 TCO 如何？ |
 | 优先级 | P3 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-12T17:28:56Z` |
+| 生成时间 (UTC) | `2026-10-12T17:49:13Z` |
+| CAPABILITIES sha256 | `e2e1936484e9…` |
+| assessment-scores sha256 | `96d06b3ea6cd…` |
 
 **备注**：
 

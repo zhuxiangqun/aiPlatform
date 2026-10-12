@@ -58,6 +58,11 @@ jobs:
         run: pip install pyyaml
       - name: Run reference verification
         run: bash scripts/verify_whitepaper_refs.sh
+      - name: Whitepaper freshness (status + five volumes)
+        run: |
+          python3 scripts/generate_platform_whitepaper.py --check
+          python3 scripts/generate_whitepaper_volumes.py --check
+          bash scripts/verify-whitepaper-ready.sh
 
   vuln-sla:
     name: Vulnerability SLA Check
