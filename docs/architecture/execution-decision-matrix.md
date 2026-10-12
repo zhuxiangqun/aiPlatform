@@ -1,7 +1,7 @@
 # 执行决策矩阵
 
 > **一句话**：帮你选「这件事该用程序、LLM、技能、Agent，还是流水线」——先按场景判断，细节与代码证据在文末附录。  
-> **状态**：Living Spec（与实现同步；冲突时以代码为准）· **v1.7** · 2026-10-12  
+> **状态**：Living Spec（与实现同步；冲突时以代码为准）· **v1.8.1** · 2026-10-12  
 > **互补文档**：[产物怎么验收](execution-quality-gates.md) · [能力剖面细节](capability-profile.md) · [知识 / Memory / CRAG](../knowledge-system.md) · [Agent 总览](../agent-system.md)（后端规则以本文为准）
 
 ---
@@ -50,6 +50,8 @@
 | **handler Skill** | 有业务步骤/SOP、可复用、副作用可声明（`effects`），且执行是确定性代码 |
 | **prompt Skill** | 步骤在 SOP 里，但中间判断必须靠模型 |
 
+> **一句话**：横切策略用**程序**（PolicyGate / 闸门）；业务原子能力用 **Tool**；带业务 SOP 的确定性步骤用 **handler Skill**。
+
 ### 2.3 meta-tool（该算就算）
 
 算术、日期差、JSON/CSV 解析、路径规范化等**确定性变换**不得交给模型「心算」。Stage/Agent 可声明：
@@ -57,7 +59,13 @@
 - `meta_tool.enabled` / `auto_bind` — 优先绑定 code 类元工具  
 - `meta_tool.force` — 强制走 code（逃逸舱口）  
 
-落点：`PipelineStageConfig.meta_tool` → loop 上下文 `_prefer_code_meta_tool` / `_force_code_meta_tool`。
+**意图如何识别（不是模型自判）**：
+
+1. **显式配置**：`meta_tool.force=true` / `enabled` → 直接偏好 code（不依赖文本匹配）。  
+2. **任务文本正则**：`meta_tool.detect_meta_tool_intent(task)` 用 `_INTENT_PATTERNS`（arithmetic / datetime / parse_transform / escape_hatch）匹配用户/stage 任务串。  
+3. **提示注入**：命中后在 tools 描述末追加 `[META TOOL]` hint，并把 `code` 置顶（`build_meta_tool_hint` / `ensure_code_meta_tool`）。  
+
+落点：`PipelineStageConfig.meta_tool` → `apply_meta_tool_config` → loop 上下文 `_prefer_code_meta_tool` / `_force_code_meta_tool`。
 
 ### 2.4 Workflow 与 Agent（不是二选一）
 
@@ -74,6 +82,17 @@
 | 已证明阶梯 1–4 做不到（见根 CLAUDE.md §20） | 扩展已有代码 / CLI / Skill 即可 |
 
 新 MCP / 新 Syscall 合入须过 `scripts/check_cost_ladder.py`（E4）。
+
+**最小「阶梯证明」模板**（PR / `# ladder-ok` / CAPABILITIES 任选其一写清）：
+
+```text
+why_not_1_extend: <为何不能扩已有代码/Skill>
+why_not_2_cli:    <为何 CLI+SOP 不够>
+why_not_3_tool:   <为何不能做薄 Tool>
+why_not_4_plugin: <为何不能放 ~/.aiplat/plugins>
+rung:             MCP | Syscall
+blast_radius:     <失败/token/权限影响>
+```
 
 ---
 
@@ -107,6 +126,12 @@
 
 **规则（代码已对齐）**：`architecture_profile` **或** `execution_backend=agent` 均不可被 capability 降成单次模型。只有未来「推断出来的 agent 后端」才允许降级；当前 Stage 上的 `agent` 一律视为钉死。
 
+**未来推断降级（预留）**：一旦实现「推断出的 agent」，降级时路径卡**必须**写清：
+
+- `inferred_from` — 推断依据（如 `capability_profile` / 校准信号）  
+- `downgrade_reason` — 为何从 agent→llm  
+- `demote_skipped` — 若因显式钉死跳过，记 `architecture_profile` / `explicit_execution_backend`  
+
 编排级（辩论 / MoA / 多角色团队）是整条流水线组织方式，不是单个 Agent 的执行混合。
 
 ---
@@ -130,17 +155,19 @@
 |---------------------------|------------------------|:------------:|--------------|
 | 任意（含 `llm`） | `handler` | 有 | **直接 `handler.py`**，不进 llm/agent 分支 |
 | 任意 | `handler` | 无 | **失败**（不降级 LLM） |
-| 任意（含 `llm`） | `hybrid` | 有 | **Stage：直接 `handler.py`**（路径卡 `path=hybrid`）；完整「LLM plan→handler」在 `sys_skill_call` → `Skill.execute` |
+| 任意（含 `llm`） | `hybrid` | 有 | **Stage：直接 `handler.py`**（`path=hybrid`，`hybrid_semantics=stage_direct_handler`）；完整「LLM plan→handler」仅在 `sys_skill_call` → `Skill.execute`（`hybrid_semantics=syscall_plan_then_handler`） |
 | 任意 | `hybrid` | 无 | **失败** |
 | `llm` | `prompt` / 空→prompt | — | **`sys_llm_generate` + SOP**（不经 `Skill.execute` 主循环） |
-| `agent` | `prompt` / 空→prompt | — | **StageRunner → ReAct/Plan 环**；环内可再 `sys_skill_call` |
+| `agent` | `prompt` / 空→prompt | — | **StageRunner → ReAct/Plan 环**（见下「prompt 在 agent 环」） |
 | 任意 | **未知** | — | **默认硬失败**；仅 SOFT_DEV / 授权 FAIL_OPEN 才 soft→prompt |
 
 要点：
 
 1. **handler / hybrid 永远先于 backend**——写了 `execution_backend=llm` 也不能绕过代码 Skill。  
-2. Stage 上的 hybrid **不是**「先 llm 再 handler」；要完整 hybrid 语义请走 syscall 调 Skill，或改 Stage 用 agent + 环内 skill_call。  
-3. `prompt` + `llm`：**不**进 `Skill.execute` 的 handler 分支，是引擎 oneshot 读 SOP。
+2. **Stage hybrid ≠ Syscall hybrid**（务必分清）：Stage 上的 `hybrid` **行为等同直接跑 handler**（无 LLM 规划）；要「模型出计划再跑 handler」必须走 **syscall** `sys_skill_call` → `Skill.execute`，或改用 `agent` 环内再 skill_call。路径卡用 `hybrid_semantics` 区分。  
+3. `prompt` + `llm`：**不**进 `Skill.execute` 的 handler 分支，是引擎 oneshot 读 SOP。  
+4. **`prompt` Skill 在 `agent` 环内**：Stage 绑定的 `skill_name`（prompt）**主要作为 SOP 注入** StageRunner / ReAct 的 system 侧（`_run_stage_skill` 读 SKILL.md body）；**不是**一上来当 Tool 调。环内若再 `sys_skill_call(其它 skill)`，才走 Skill 的 `effects` / PolicyGate / 依赖校验。  
+5. **Stage 绑定 prompt 的 `effects`**：进入 LLM 前会跑 `skill_side_effect_gate`——若 SKILL 声明写盘/网络/exec 等副作用却无 handler，**硬失败**（禁止「LLM 假装已执行」）。这是**拒演**闸门，**不是** PolicyGate 放行后的真实副作用执行；真实副作用仍只在 `sys_skill_call` / `sys_tool_call`（及 handler）路径生效。Stage 级 `effects` **不替代**环内 skill_call 的副作用门禁。
 
 跑完记**路径卡**（不只 `path`）：
 
@@ -148,10 +175,13 @@
 decision = {
   architecture_profile, execution_backend, agent_type, capability_profile,
   execution_type, path / actual_path,   # handler | hybrid | agent | llm
+  hybrid_semantics,                    # stage_direct_handler | syscall_plan_then_handler | ""
   upgrade_policy, inferred_from,
   downgrade_reason, demote_skipped      # 为何降级 / 为何跳过降级
 }
 ```
+
+`path` 与 `actual_path`：**当前恒等**（`build_execution_decision` 写入同一规范化值）。保留双字段是为将来「请求路径 vs 规范化/降级后路径」分列预留；今日审计读任一即可。
 
 落点：`state["_execution_decision"]`、进度条、`decision_trace.execution`。
 
@@ -160,7 +190,8 @@ decision = {
 ## 5. 工厂与工作区
 
 - 工厂：选 对话 / react / rag + 技能工具；Skill **默认 prompt**。  
-- **E1**：推荐在 AGENT.md 写 `architecture_profile`（conversational→oneshot，react→react_tools，rag→react_tools）。conformance 校验：值∈已知集且与 `agent_type` 兼容。团队 YAML 同名字段优先。  
+- **E1**：推荐在 AGENT.md 写 `architecture_profile`（conversational→oneshot，react→react_tools，rag→react_tools）。conformance 校验：**生成物 AGENT.md 上**声明的值∈已知集且与 `agent_type` 兼容。  
+- **团队 YAML 覆盖**：YAML 同名字段优先于 AGENT.md（`team_planner` 空才回填）。conformance **不**对「YAML 最终跑法 vs AGENT 期望」做二次意图一致性校验——YAML 是部署钉死，视为运维覆盖；评审时以路径卡 `architecture_profile` / `inferred_from` 为准。若要防漂移，在团队 PR 人工对照或另加团队 YAML lint（未内建）。  
 - **E2**：仅当 PRD 要求确定性、无 LLM 副作用时，可声明 `execution_type: handler` 并同目录输出 `handler.py`（顶层 `execute`）；媒体目录名禁止自造 handler。注册时复制 sibling。  
 - 工作区 Execute：写文件类技能会注入编码闭环；`coding_closed_loop: false` 可关。  
 - 编码落盘：Pipeline llm 路径有落盘前校验；优先 Agent 环做 peer-review。
@@ -189,12 +220,15 @@ decision = {
 | Router | `routing_mode`（llm 路由须 env opt-in） | **原生** |
 | Debate | `debate_participants` | **原生** |
 | MoA | `routing_mode=moa` / `moa_preset` | **原生** |
-| Memory | MemoryManager / Team Brain / CRAG（横切，非 Stage 字段） | **组合** → [knowledge-system.md](../knowledge-system.md) |
+| Memory | MemoryManager / Team Brain / CRAG（横切，非 Stage 字段） | **组合** → [knowledge-system.md](../knowledge-system.md)（Memory 四层 / CRAG 回退） |
 | Loop Engineering | `done_verify` + `upgrade_policy` + 编码闭环 | **组合** |
-| Tree-of-Thoughts (ToT) | 无一等字段；可用多 stage / 辩论近似 | **需扩展** |
-| Graph-of-Thoughts (GoT) | 无一等字段 | **需扩展** |
+| Tree-of-Thoughts (ToT) | 无一等字段；**近似**：多 stage 并行候选 + `routing_mode=debate` 或 MoA 聚合 | **需扩展**（组合可用） |
+| Graph-of-Thoughts (GoT) | 无一等字段；**近似**：多 Agent + handoff schema 门 + 汇聚 stage 合并子图结果 | **需扩展**（组合可用） |
 
-Eval / 金标 / 值班板：见 Governance 与 apps/eval（本文不替代）；知识闭环见知识系统文档。
+**ToT 组合示例**：stage A/B/C 各自 `oneshot`/`react_tools` 出候选 → debate/MoA stage 选优 → 下游执行。  
+**GoT 组合示例**：多 worker Agent 产出带 `depends_on` / schema 边的中间件 → aggregator stage 按边合并 → 单一交付物。
+
+Eval / 金标 / 值班板：见 Governance 与 `apps/eval`（`runs_eval` / gold）（本文不替代）；知识 / Memory / CRAG 闭环见 [knowledge-system.md](../knowledge-system.md)。
 
 ---
 
@@ -216,6 +250,9 @@ Eval / 金标 / 值班板：见 Governance 与 apps/eval（本文不替代）；
 | E2 | **已做** | 工厂可选 `execution_type: handler` + 同目录 `handler.py`（须顶层 `execute`）；conformance `check_handler_pairing`；注册时复制 sibling；媒体目录名禁止自造 handler |
 | E4 | **已做** | `lint_engine_skills.py`（handler/未知类型/prompt 写文件）+ `check_cost_ladder.py`（新 Syscall/MCP 须 CAPABILITIES 或 `# ladder-ok`）；pre-commit + architecture_guard |
 | E5 | **已做** | FAIL_OPEN 须 reason/by/until；过期自动无效；sidecar + 启动 audit_log |
+| O1 | **可选** | MCP 阶梯证明质量：今日只查有无 CAPABILITIES/`# ladder-ok`，不审证明充分性 → 可加评审清单或模板字段校验 |
+| O2 | **可选** | 团队 YAML vs AGENT.md 漂移 lint（未内建；今日人工 + 路径卡） |
+| O3 | **可选** | Eval/Memory 全局闭环以 `knowledge-system.md` / Governance / `apps/eval` 为准，须同步维护 |
 
 ---
 
@@ -266,10 +303,12 @@ Eval / 金标 / 值班板：见 Governance 与 apps/eval（本文不替代）；
 | E1 工厂意图 | `generated_conformance._check_architecture_profile_intent` · `team_planner` 回填 · `agent_engineering` SOP |
 | meta-tool | `PipelineStageConfig.meta_tool` · `meta_tool.apply_meta_tool_config` · `_prefer_code_meta_tool` / `_force_code_meta_tool` |
 | 降级门闩 | `pipeline_stage._apply_capability_profile`（跳过显式 agent/profile） |
-| 路径卡 | `build_execution_decision` · `_emit_execution_decision` |
+| 路径卡 | `build_execution_decision`（含 `hybrid_semantics`）· `_emit_execution_decision` |
+| meta-tool 意图 | `meta_tool.detect_meta_tool_intent` · `_INTENT_PATTERNS` |
 | 工厂 SOP | `agent_engineering/SKILL.md` |
 | 工作区闭环 | `inject_workspace_coding_defaults` |
-| 成本阶梯 | 根 `CLAUDE.md` §20 |
+| 成本阶梯 | 根 `CLAUDE.md` §20 · `check_cost_ladder.py` |
+| Memory / CRAG | [knowledge-system.md](../knowledge-system.md) |
 
 **维护**：改上表路径时同 PR 更新本文；破坏性语义升 minor。  
 **非目标**：不替代 PolicyGate 细则、合入物理闸门、CAPABILITIES 全表。
@@ -280,6 +319,8 @@ Eval / 金标 / 值班板：见 Governance 与 apps/eval（本文不替代）；
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
+| v1.8.1 | 2026-10-12 | 可选澄清：Stage prompt `effects`=拒演闸门非整跑 PolicyGate；`path`≡`actual_path`（预留分列）；§8 登记 O1–O3 |
+| v1.8 | 2026-10-12 | 细节澄清：Stage vs Syscall hybrid（`hybrid_semantics`）；prompt 在 agent 环用法；meta-tool 意图检测；程序 vs Tool 一句话；MCP 证明模板；ToT/GoT 组合示例；YAML 覆盖与 conformance 边界；推断降级字段预留 |
 | v1.7 | 2026-10-12 | 正文补齐：LLM/程序硬规则、hybrid vs Agent、Tool/handler/程序边界、meta-tool、Workflow 编排语义、MCP 准入（回应 v1.3 选型评审） |
 | v1.6 | 2026-10-12 | E2 handler Skill 闭环标已做；E4 成本阶梯 `check_cost_ladder` 接入 pre-commit / architecture_guard |
 | v1.5 | 2026-10-12 | 默认 fail closed；E1 工厂 architecture_profile + conformance；E4/E5 标已做；SOFT_DEV / FAIL_OPEN 治理 env |

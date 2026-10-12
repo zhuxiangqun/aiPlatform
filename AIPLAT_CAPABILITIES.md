@@ -806,7 +806,7 @@ scan_hash: 8f9548ec24f4
 | 中文语言数据 | harness/utils/zh_language.py | ✅ | 中文输入解析数据（正则/停用词/关键词/同意前缀），内核隔离，execution 层保持英文 | 已合入 |
 | LLM API Key 解析 | harness/utils/llm_env.py | ✅ | 集中式 LLM API key 解析（infra CredentialPool 单一真相源） | 已合入 |
 | AgentRefiner | harness/learning/agent_refiner.py | ✅ | 早朝复盘→AGENTS.md 自动优化建议（封驳率/阻塞点检测） | 已合入 |
-| 决策溯源图 | harness/execution/decision_trace.py | ✅ | record/locate_max_error_node/trace_root_cause_chain/build_fix_plan；**E3.1** `build_execution_decision` 路径卡含 profile/backend/execution_type/`path`∈handler\|hybrid\|agent\|llm + inferred_from/demote_skipped/downgrade_reason；显式 `execution_backend=agent` 不被 capability demote；生成物适用：已接线（Harness 横切） | 已合入 |
+| 决策溯源图 | harness/execution/decision_trace.py | ✅ | record/locate_max_error_node/trace_root_cause_chain/build_fix_plan；**E3.1** `build_execution_decision` 路径卡含 profile/backend/execution_type/`path`∈handler\|hybrid\|agent\|llm + `hybrid_semantics`(stage_direct_handler\|syscall_plan_then_handler) + inferred_from/demote_skipped/downgrade_reason；显式 `execution_backend=agent` 不被 capability demote；Living Spec v1.8；生成物适用：已接线（Harness 横切） | 已合入 |
 | 成本预算控制器 | harness/execution/cost_budget.py | ✅ | CostBudgetController 追踪 USD 成本+预算执行+降级决策，复用现有 CostTracker 定价 | 已合入 |
 | 根因假设生成器 | harness/execution/hypothesis_generator.py | ✅ | 零 LLM 从决策溯源信号生成根因假设 + 定向修复动作 | 已合入 |
 | 治理可解释报告 | harness/execution/governance_report.py | ✅ | build_run_report 聚合 trace+cost+假设+根因链为统一治理报告 | 已合入 |

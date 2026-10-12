@@ -70,20 +70,29 @@ def build_execution_decision(
     inferred_from: Optional[str] = None,
     downgrade_reason: str = "",
     demote_skipped: str = "",
+    hybrid_semantics: str = "",
 ) -> Dict[str, Any]:
     """Path card for stage events / decision_traces (matrix E3/E3.1).
 
     Fields are config-driven labels only — no business agent/artifact names.
     ``path`` is the resolved runtime branch:
     ``handler`` | ``hybrid`` | ``agent`` | ``llm``.
+
+    When ``execution_type=hybrid``, ``hybrid_semantics`` disambiguates:
+    ``stage_direct_handler`` (Pipeline Stage — no LLM plan) vs
+    ``syscall_plan_then_handler`` (``Skill.execute`` — LLM plan then handler).
     """
     profile = str(architecture_profile or "").strip().lower()
     backend = str(execution_backend or "").strip().lower()
     et = str(execution_type or "").strip().lower()
     p = str(path or "").strip().lower()
+    hs = str(hybrid_semantics or "").strip().lower()
     # hybrid Skill on Stage path still runs handler.py; surface as hybrid when typed.
     if et == "hybrid" and p in ("", "handler"):
         p = "hybrid"
+    if et == "hybrid" and p == "hybrid" and not hs:
+        # Stage emitter is the only current path-card source for hybrid → direct handler.
+        hs = "stage_direct_handler"
     if inferred_from is None:
         if profile:
             inferred_from = "architecture_profile"
@@ -99,6 +108,7 @@ def build_execution_decision(
         "execution_type": et,
         "path": p,
         "actual_path": p,
+        "hybrid_semantics": hs,
         "upgrade_policy": str(upgrade_policy or "").strip().lower(),
         "inferred_from": str(inferred_from or "").strip(),
         "downgrade_reason": str(downgrade_reason or "").strip(),

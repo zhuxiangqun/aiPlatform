@@ -134,7 +134,8 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
    - `conversational` → `oneshot`
    - `react` → `react_tools`（多步分解用 `plan_execute`；质量敏感用 `reflect_loop`）
    - `rag` → `react_tools`（纯单次问答可用 `oneshot`）
-   - 写入 AGENT.md frontmatter；团队 YAML 若已钉死同名字段则以 YAML 为准。conformance 会校验 profile∈已知集且与 `agent_type` 兼容。
+   - 写入 AGENT.md frontmatter；团队 YAML 若已钉死同名字段则以 YAML 为准。conformance 校验 **AGENT.md** 声明；YAML 覆盖不二次意图对齐（见 execution-decision-matrix §5）。
+   - **hybrid 注意**：Pipeline Stage 上的 `execution_type: hybrid` **直接跑 handler**（无 LLM 规划）；完整「计划→handler」走 `sys_skill_call`。横切策略用程序/PolicyGate，业务原子能力用 Tool。
 4. 确定 Agent 的显示名和描述
 
 ### Step 1.5: 派生验收标准（SBA 原则 17：需求是根，Plan 只拥有达成它的细节，2026-08-26）
