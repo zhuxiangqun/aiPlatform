@@ -29,27 +29,47 @@ function parseAllowlist(): string[] {
     .filter(Boolean);
 }
 
-/** Resolve core API base for /tools/{name}/execute (mgmt GW or direct core). */
-export function resolveCoreBaseUrl(platformBase: string): string {
-  const override = (process.env.AIPLAT_CORE_URL || "").trim().replace(/\/+$/, "");
-  if (override) return override;
-  const b = String(platformBase || "").trim().replace(/\/+$/, "");
+/** Ensure base ends at the FastAPI prefix that mounts tools (`/api/core`). */
+function withApiCorePrefix(base: string): string {
+  const b = String(base || "").trim().replace(/\/+$/, "");
   if (!b) return "";
-  // Management / unified gateway: …/api → …/api/core
-  if (b.endsWith("/api")) return `${b}/core`;
   if (b.endsWith("/api/core")) return b;
-  // Direct platform :8003 → sibling core :8002 (common local layout)
+  if (b.endsWith("/api")) return `${b}/core`;
   try {
     const u = new URL(b);
-    if (u.port === "8003") {
-      u.port = "8002";
+    const path = (u.pathname || "/").replace(/\/+$/, "") || "/";
+    // Bare origin (http://host:8002) → http://host:8002/api/core
+    if (path === "/") {
+      u.pathname = "/api/core";
       return u.toString().replace(/\/+$/, "");
     }
   } catch {
     /* keep */
   }
-  // Assume caller pointed PLATFORM_URL at core already
   return b;
+}
+
+/** Resolve core API base for /tools/{name}/execute (mgmt GW or direct core). */
+export function resolveCoreBaseUrl(platformBase: string): string {
+  const override = (process.env.AIPLAT_CORE_URL || "").trim().replace(/\/+$/, "");
+  if (override) return withApiCorePrefix(override);
+  const b = String(platformBase || "").trim().replace(/\/+$/, "");
+  if (!b) return "";
+  // Management / unified gateway: …/api → …/api/core
+  if (b.endsWith("/api") || b.endsWith("/api/core")) return withApiCorePrefix(b);
+  // Direct platform :8003 → sibling core :8002/api/core (common local layout)
+  try {
+    const u = new URL(b);
+    if (u.port === "8003") {
+      u.port = "8002";
+      u.pathname = "/api/core";
+      return u.toString().replace(/\/+$/, "");
+    }
+  } catch {
+    /* keep */
+  }
+  // PLATFORM_URL already pointed at core host → append /api/core when bare
+  return withApiCorePrefix(b);
 }
 
 export function toolExecuteUrl(coreBase: string, toolName: string): string {

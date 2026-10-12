@@ -14,7 +14,7 @@
 | 变量 | 含义 |
 |------|------|
 | `AIPLAT_PLATFORM_URL` | 平台基址（如 `https://tenant.example/api` 或 `:8003`） |
-| `AIPLAT_CORE_URL` | 可选；工具执行基址（`:8002` 或 `…/api/core`）。未设时从 PLATFORM_URL 推导 |
+| `AIPLAT_CORE_URL` | 可选；工具执行基址。裸 `http://host:8002` 会自动补 `/api/core`；也可直接写 `…/api/core`。未设时从 PLATFORM_URL 推导（`:8003`→`:8002/api/core`，`…/api`→`…/api/core`） |
 | `AIPLAT_TENANT_TOKEN` / API Key | 身份注入；权限判断在平台 PolicyGate / RBAC |
 | `AIPLAT_ENTERPRISE=1` | 启用回连；未设则严格 Pi-only |
 | `AIPLAT_KB_COLLECTION_ID` | KB 集合（默认 `default`） |
@@ -35,7 +35,7 @@ export AIPLAT_PLATFORM_URL=http://127.0.0.1:8003   # or http://host:8000/api
 export AIPLAT_TENANT_TOKEN=<bearer>
 # KB only by default; add tools:
 export AIPLAT_ENTERPRISE_TOOLS=calculator
-# optional: export AIPLAT_CORE_URL=http://127.0.0.1:8002
+# optional: export AIPLAT_CORE_URL=http://127.0.0.1:8002   # auto → …/api/core
 
 pi -e .
 # /aiplat-status          → enterprise_hybrid / enterprise_tools

@@ -23,12 +23,41 @@ function parseAllowlist() {
   return raw.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
 }
 
+function withApiCorePrefix(base) {
+  const b = String(base || "").trim().replace(/\/+$/, "");
+  if (!b) return "";
+  if (b.endsWith("/api/core")) return b;
+  if (b.endsWith("/api")) return `${b}/core`;
+  try {
+    const u = new URL(b);
+    const path = (u.pathname || "/").replace(/\/+$/, "") || "/";
+    if (path === "/") {
+      u.pathname = "/api/core";
+      return u.toString().replace(/\/+$/, "");
+    }
+  } catch {
+    /* keep */
+  }
+  return b;
+}
+
 function resolveCoreBase(platformBase) {
   const override = (process.env.AIPLAT_CORE_URL || "").trim().replace(/\/+$/, "");
-  if (override) return override;
+  if (override) return withApiCorePrefix(override);
   const b = String(platformBase || "").trim().replace(/\/+$/, "");
-  if (b.endsWith("/api")) return `${b}/core`;
-  return b;
+  if (!b) return "";
+  if (b.endsWith("/api") || b.endsWith("/api/core")) return withApiCorePrefix(b);
+  try {
+    const u = new URL(b);
+    if (u.port === "8003") {
+      u.port = "8002";
+      u.pathname = "/api/core";
+      return u.toString().replace(/\/+$/, "");
+    }
+  } catch {
+    /* keep */
+  }
+  return withApiCorePrefix(b);
 }
 
 function loadCfg() {
@@ -72,8 +101,32 @@ async function main() {
   assert(!off.toolsEnabled, "expected tools off");
   console.log("PASS: tools gated off (no allowlist)");
 
+  // URL resolution (mirrors enterprise_tools.ts resolveCoreBaseUrl)
+  assert(
+    withApiCorePrefix("http://127.0.0.1:8002") === "http://127.0.0.1:8002/api/core",
+    "bare :8002 must get /api/core",
+  );
+  assert(
+    withApiCorePrefix("http://host/api") === "http://host/api/core",
+    "…/api must become …/api/core",
+  );
+  assert(
+    withApiCorePrefix("http://host/api/core") === "http://host/api/core",
+    "…/api/core idempotent",
+  );
+  delete process.env.AIPLAT_CORE_URL;
+  assert(
+    resolveCoreBase("http://127.0.0.1:8003") === "http://127.0.0.1:8002/api/core",
+    ":8003 → sibling :8002/api/core",
+  );
+  console.log("PASS: core base URL resolution");
+
   const server = http.createServer((req, res) => {
-    if (req.method === "POST" && req.url === "/tools/calculator/execute") {
+    // Core mounts tools under /api/core/tools/{name}/execute
+    const okPath =
+      req.url === "/api/core/tools/calculator/execute" ||
+      req.url === "/tools/calculator/execute";
+    if (req.method === "POST" && okPath) {
       const auth = req.headers.authorization || "";
       if (auth !== "Bearer smoke-token") {
         res.writeHead(401);
@@ -99,12 +152,17 @@ async function main() {
   const { port } = server.address();
   process.env.AIPLAT_ENTERPRISE = "1";
   process.env.AIPLAT_PLATFORM_URL = `http://127.0.0.1:${port}`;
+  // Bare origin → client appends /api/core (matches real Core FastAPI mount)
   process.env.AIPLAT_CORE_URL = `http://127.0.0.1:${port}`;
   process.env.AIPLAT_TENANT_TOKEN = "smoke-token";
   process.env.AIPLAT_ENTERPRISE_TOOLS = "calculator";
 
   const on = loadCfg();
   assert(on.toolsEnabled, "expected tools on");
+  assert(
+    on.coreBaseUrl === `http://127.0.0.1:${port}/api/core`,
+    `expected /api/core suffix, got ${on.coreBaseUrl}`,
+  );
   const blocked = await executeTool("not_listed", {}, on);
   assert(!blocked.ok, "expected non-allowlisted blocked");
   console.log("PASS: non-allowlisted blocked");
