@@ -2,6 +2,7 @@
 
 > 状态：**方式四骨架已就绪（CLI）**；**未**接入 PipelineEngine / `inject_workspace_coding_defaults`。  
 > 主产品轴仍是厂外薄 Runtime（本包 + 导出/ZIP）。  
+
 > 权威战略：`docs/architecture/plans/pi-thin-runtime.md` §战略。
 
 ## 目标
@@ -27,9 +28,30 @@ python3 packages/aiplat-pi-runtime/scripts/test_coding_exec_unit.py
 ## 允许尝试的顺序
 
 1. **方式四**：`coding_closed_loop` 可选执行器 → 沙箱内 `pi --mode rpc` / print（外层仍 done_verify / review_gate）← **CLI 骨架**
+
 2. **方式二**：`handler.py` 经 Pi RPC 做文件类副作用（syscall/PolicyGate 在启动 Pi 之前或经工具桥回闸）
 3. **方式三**：MCP 执行宿主（aiPlat 保留 `check_cost_ladder` + 审计）
 4. **方式一**：`createAgentSession` 旁路 `react_tools` — **最后**；禁止默认换 StageRunner→ReActLoop
+
+## 方式四探针（本包）
+
+| 文件 | 作用 |
+|------|------|
+| `python/pi_rpc_client.py` | JSONL RPC 客户端 + 沙箱 cwd 门禁 |
+| `scripts/coding_rpc_probe.py` | `--dry-run` / `--live` 冒烟 |
+
+```bash
+# 无 LLM：起 pi RPC → get_state → 退出（cwd 自动用临时沙箱）
+python3 packages/aiplat-pi-runtime/scripts/coding_rpc_probe.py --dry-run
+
+# 有模型（例 Ollama）
+AIPLAT_PI_MODEL=ollama/qwen2.5:3b \
+  python3 packages/aiplat-pi-runtime/scripts/coding_rpc_probe.py --live
+```
+
+环境变量：`AIPLAT_PI_BIN` · `AIPLAT_PI_MODEL` · `AIPLAT_PI_CODING_SANDBOX_ROOT` · `AIPLAT_PI_CODING_ALLOW_HOST=1`（仅开发）。
+
+**下一步（仍属实验）**：在 Workspace Execute / `coding_closed_loop` 旁路加 feature flag（如 `AIPLAT_PI_CODING_EXECUTOR=1`），调用本客户端；**默认关闭**；通过后才考虑 CAPABILITIES 登记。
 
 ## 硬约束
 
