@@ -30,7 +30,7 @@ jobs:
           AIPLAT_GUARD_TRACE_OUT: ${{ runner.temp }}/eval_artifacts/guard_trace.json
       - name: Upload evaluation artifacts (evidence tree + route trace)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: eval-artifacts
           path: |

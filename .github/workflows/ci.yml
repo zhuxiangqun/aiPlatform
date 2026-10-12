@@ -97,7 +97,7 @@ jobs:
           [ "${{ matrix.component }}" = "aiPlat-infra" ] && TEST_DIR="infra/tests"
           python -m pytest "$TEST_DIR" -v --tb=short -q -m regression 2>/dev/null || echo "No regression tests defined (informational)"
       - name: Upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-${{ matrix.component }}
           path: ${{ matrix.component }}/coverage.xml
