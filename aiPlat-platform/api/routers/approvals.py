@@ -5,6 +5,7 @@ Migrated from aiPlat-core/core/api/routers/approvals.py per architecture contrac
 """
 from __future__ import annotations
 import logging
+from datetime import datetime, timezone
 
 
 from typing import Any, Dict, Optional
@@ -21,6 +22,44 @@ from api.schemas_response import ApprovalListResponse, ApprovalActionResponse, S
 
 
 router = APIRouter(prefix="/platform", tags=["approvals"])
+
+
+def _ts_to_iso(value: Any) -> Optional[str]:
+    """Normalize store timestamps (float epoch / datetime / str) → ISO string."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, (int, float)):
+        try:
+            return datetime.fromtimestamp(float(value), tz=timezone.utc).isoformat()
+        except (OverflowError, OSError, ValueError):
+            return str(value)
+    return str(value)
+
+
+def _normalize_approval_list_response(res: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensure ApprovalListResponse fields match schema (string timestamps)."""
+    items_out = []
+    for it in res.get("items") or []:
+        if not isinstance(it, dict):
+            continue
+        row = dict(it)
+        for key in ("created_at", "updated_at", "expires_at"):
+            if key in row:
+                iso = _ts_to_iso(row.get(key))
+                if key == "expires_at":
+                    row[key] = iso
+                else:
+                    row[key] = iso or ""
+        items_out.append(row)
+    out = dict(res)
+    out["items"] = items_out
+    if "total" not in out:
+        out["total"] = len(items_out)
+    return out
 
 
 def _rt():
@@ -119,7 +158,7 @@ async def list_approvals(
         res["items"] = out_items
     except Exception as e:
         logging.warning(str(e), exc_info=True)
-    return res
+    return _normalize_approval_list_response(res)
 
 
 @router.get("/approvals/pending", response_model=ApprovalListResponse)
@@ -161,7 +200,7 @@ async def list_pending_approvals(
             res["items"] = out_items
         except Exception as e:
             logging.warning(str(e), exc_info=True)
-        return res
+        return _normalize_approval_list_response(res)
 
     mgr = _approval_mgr()
     if not mgr:
@@ -190,7 +229,7 @@ async def list_pending_approvals(
             )
     except Exception as e:
         logging.warning(str(e), exc_info=True)
-    return {"items": out, "total": len(out)}
+    return _normalize_approval_list_response({"items": out, "total": len(out)})
 
 
 @router.get("/approvals/{request_id}", response_model=StatusResponse)
