@@ -28,13 +28,45 @@ def _rt():
 
 
 def _store():
+    """Prefer KernelRuntime.execution_store; else open Core's shared ExecutionStore.
+
+    Platform process often has no KernelRuntime wired at startup (unlike Core).
+    Without this fallback, /platform/approvals* returns 503 and hybrid clients
+    must fall back to /api/core/approvals.
+    """
     rt = _rt()
-    return getattr(rt, "execution_store", None) if rt else None
+    store = getattr(rt, "execution_store", None) if rt else None
+    if store:
+        return store
+    try:
+        from core.api.core_facade import get_execution_store
+
+        return get_execution_store()
+    except Exception as e:
+        logging.warning("approvals: get_execution_store failed: %s", e)
+        return None
 
 
 def _approval_mgr():
+    """Lazy ApprovalManager — same pattern as learning_releases / conversations."""
     rt = _rt()
-    return getattr(rt, "approval_manager", None) if rt else None
+    mgr = getattr(rt, "approval_manager", None) if rt else None
+    if mgr:
+        return mgr
+    store = _store()
+    try:
+        from core.api.core_facade import ApprovalManager
+
+        mgr = ApprovalManager(execution_store=store) if store else ApprovalManager()
+        if rt is not None:
+            try:
+                setattr(rt, "approval_manager", mgr)
+            except Exception as e:
+                logging.warning("approvals: cannot attach manager to runtime: %s", e)
+        return mgr
+    except Exception as e:
+        logging.warning("approvals: ApprovalManager init failed: %s", e, exc_info=True)
+        return None
 
 
 @router.get("/approvals", response_model=ApprovalListResponse)
@@ -99,9 +131,7 @@ async def list_pending_approvals(
     offset: int = 0,
     _auth: str = Depends(require_auth),
 ):
-    mgr = _approval_mgr()
-    if not mgr:
-        raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
+    # Prefer store listing (no in-memory manager required). Lazily resolve store first.
     store = _store()
     if store:
         res = await store.list_approval_requests(
@@ -132,6 +162,10 @@ async def list_pending_approvals(
         except Exception as e:
             logging.warning(str(e), exc_info=True)
         return res
+
+    mgr = _approval_mgr()
+    if not mgr:
+        raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
 
     # Fallback: memory-only (rare)
     out = []
