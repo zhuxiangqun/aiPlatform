@@ -3,19 +3,19 @@ title: "aiPlat 产品能力白皮书"
 volume_id: product-capability
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-13T13:36:50Z"
+generated_at: "2026-10-13T14:02:55Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30"
-caps_sha256: "5234f459b66894c977769c760d3f26ae65c99140e659d8e0015d12caa819a3ba"
+caps_sha256: "d3dffed02cf5ee828bf967fcdd60a180215af2b5ef3e7959a01016f9acf1744b"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=5234f459b66894c977769c760d3f26ae65c99140e659d8e0015d12caa819a3ba scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=d3dffed02cf5ee828bf967fcdd60a180215af2b5ef3e7959a01016f9acf1744b scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-13T13:36:50Z` |
-| CAPABILITIES sha256 | `5234f459b668…` |
+| 生成时间 (UTC) | `2026-10-13T14:02:55Z` |
+| CAPABILITIES sha256 | `d3dffed02cf5…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -87,7 +87,7 @@ language: zh-CN
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 248 | 1 | 249 |
 | 记忆子系统 | 58 | 0 | 58 |
-| 知识引擎（本体） | 363 | 9 | 372 |
+| 知识引擎（本体） | 364 | 9 | 373 |
 | RAG 检索 | 51 | 0 | 51 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 168 | 0 | 168 |
@@ -111,7 +111,7 @@ language: zh-CN
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 58 | 0 | 58 |
+| 管理 & 质量 | 61 | 0 | 61 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -130,7 +130,7 @@ language: zh-CN
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2100** | **10** | **2110** |
+| **总计** | **2104** | **10** | **2114** |
 
 ### 3.2 上手路径（节选）
 
@@ -289,7 +289,7 @@ aiPlat（控制面 / 工厂 / 治理）
     ▼
 Pi（执行面 / 厂外薄宿主）── 默认 Pi-only 可闭环
     │ 可选 AIPLAT_ENTERPRISE=1
-    └── 回连 aiPlat API（KB / 允许列表工具 / 原生门禁 / Memory capture；PolicyGate 留在服务端）
+    └── 回连 aiPlat API（KB / 工具 / 原生门禁 / Memory / 审批等待；PolicyGate 留在服务端）
 ```
 
 **产品决策（已锁定 · 2026-10-12；措辞澄清 · 2026-10-13）**
@@ -302,7 +302,7 @@ Pi（执行面 / 厂外薄宿主）── 默认 Pi-only 可闭环
 | 模式 | 用户侧 | 能力 | 状态 |
 |------|--------|------|------|
 | **Pi-only** | 导出包 + `pi` / 薄 HTTP + 自备模型 | SOP + skills + handler（确定性桥） | **默认交付 · 已落地** |
-| **Pi + aiPlat** | 同上 Pi 壳 + `AIPLAT_ENTERPRISE=1` 回连 | + 只读 KB + 允许列表工具代理 + **原生工具门禁** + **Memory capture**（`AIPLAT_ENTERPRISE_MEMORY=1` → `POST /platform/memory/capture`） | **KB+工具+门禁+Memory · 已接线**（审批仍待逐项） |
+| **Pi + aiPlat** | 同上 Pi 壳 + `AIPLAT_ENTERPRISE=1` 回连 | + 只读 KB + 允许列表工具代理 + **原生工具门禁** + **Memory capture** + **审批等待**（`AIPLAT_ENTERPRISE_APPROVAL=1` → status/pending/wait；裁决在平台 UI） | **混合阶梯 1–5 · 已接线** |
 | ~~厚运行时~~ | 用户侧直接跑裁剪 aiPlat | 接近平台 Agent | **非默认**；仅特殊驻场/私有化例外 |
 
 **Pi-only 必须能完成的闭环（验收）**
@@ -321,7 +321,7 @@ Pi（执行面 / 厂外薄宿主）── 默认 Pi-only 可闭环
 - 运行时审计 / 可观测回写
 - 租户配额与成本治理
 
-混合形态示意（KB + 工具 + 原生门禁 + Memory 已落地；审批仍按需扩展）：
+混合形态示意（KB + 工具 + 原生门禁 + Memory + 审批等待已落地）：
 
 ```text
 用户 ──► Pi（对话壳 + 本地 skills/handler）
@@ -331,11 +331,12 @@ Pi（执行面 / 厂外薄宿主）── 默认 Pi-only 可闭环
                     ├── enterprise_tool_gate：block bash/write/edit（默认）
                     ├── POST /platform/kb/query          （只读 KB）
                     ├── AIPLAT_ENTERPRISE_TOOLS=… → POST …/tools/{name}/execute
-                    └── AIPLAT_ENTERPRISE_MEMORY=1 → POST /platform/memory/capture
-                          （Bearer + 服务端 RBAC/PolicyGate；扩展不搬门禁/Memory 引擎）
+                    ├── AIPLAT_ENTERPRISE_MEMORY=1 → POST /platform/memory/capture
+                    └── AIPLAT_ENTERPRISE_APPROVAL=1 → GET /platform/approvals…
+                          （wait/status only；approve/reject 在平台 UI）
 ```
 
-接线入口：`enterprise_kb.ts` / `enterprise_tools.ts` / `enterprise_tool_gate.ts` / `enterprise_memory.ts`（由 `aiplat-app.ts` 条件注册）。详见 `packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`。
+接线入口：`enterprise_kb.ts` / `enterprise_tools.ts` / `enterprise_tool_gate.ts` / `enterprise_memory.ts` / `enterprise_approval.ts`（由 `aiplat-app.ts` 条件注册）。详见 `packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`。
 
 **厂内若做，优先级（成本阶梯）** — 详见 `packages/aiplat-pi-runtime/docs/FACTORY_IN_EXPERIMENT.md`
 
