@@ -22,6 +22,8 @@ See [`docs/architecture/plans/pi-thin-runtime.md`](../../docs/architecture/plans
 | **Pi + aiPlat** (enterprise) | Same Pi shell; opt-in hybrid (`AIPLAT_ENTERPRISE=1`). **KB retrieve** + **allowlisted tool execute** wired; Memory/SECI/Approval still platform-side. |
 | Thick aiPlat-only on user machine | **Not** the default delivery shape. |
 
+**Layered, not two parallel products:** aiPlat already has agent loops / tools / multi-model in the **platform** sense. Pi exists so **factory artifacts can run without installing the full stack**. Overlap in capability lists ≠ redundant delivery. Do not market Pi and aiPlat as two peer platforms with separate auth/audit. Enterprise entry remains aiPlat (or Pi shell reconnecting to aiPlat).
+
 Do not claim Pi-only equals full in-factory agent. Enterprise thickness is **Pi + aiPlat**, not “stuff the platform into the Pi process”.
 
 ## Enterprise hybrid (opt-in)

@@ -13,11 +13,33 @@ Pi 是极简 Agent Harness（非治理平台）。与 aiPlat 的关系拆成**�
 | **（B）厂外** | 用户侧薄交付宿主：导出包 → `pi -e` / 薄 HTTP | **既定主路径**（已落地） | 不装全栈也能跑快照（SOP + skills + handler） | 平台级厚度（Memory / SECI / PolicyGate / 知识 syscall） |
 | **（A）厂内** | 可选编码执行核：CLI/RPC 包在 PolicyGate 外 | **实验**：方式四 CLI + Workspace Execute flag（`AIPLAT_PI_CODING_EXECUTOR`，**默认 OFF**）；**未**接 PipelineEngine；CAPABILITIES **未**标「厂内已接线」 | 编码闭环、文件类副作用执行 | 替代编排治理；默认换掉 ReActLoop |
 
-**产品决策（已锁定 · 2026-10-12）**
+### 分层，而非两套平行产品（2026-10-13 锁定）
+
+> **能力重叠 ≠ 交付重复。** aiPlat 白皮书里已有 Agent 循环、工具、多模型——那是**平台能力清单**。  
+> Pi 默认交付解决的是另一件事：**工厂产出物如何在用户侧轻量跑起来**（不装 core/platform/infra 全栈）。
+
+| 说法 | 是否采纳 |
+|------|:--------:|
+| 执行面（Pi）与治理面（aiPlat）**分层** | ✅ |
+| 用户对外装「两个平权平台」、两套权限/审计 | ❌ |
+| 企业场景入口仍是 aiPlat（或 Pi 壳回连 aiPlat）；Pi 对用户透明为「更轻的跑法」 | ✅ |
+| 用 Pi 替代 aiPlat 编排/门禁/多租户 | ❌ |
+
+```text
+aiPlat（控制面 / 工厂 / 治理）
+    │ 导出快照（AGENT.md / skills / handler）
+    ▼
+Pi（执行面 / 厂外薄宿主）── 默认 Pi-only 可闭环
+    │ 可选 AIPLAT_ENTERPRISE=1
+    └── 回连 aiPlat API（KB / 允许列表工具；门禁留在服务端）
+```
+
+**产品决策（已锁定 · 2026-10-12；措辞澄清 · 2026-10-13）**
 
 > **默认：只靠 Pi 就能跑产出物。**  
 > **企业级：Pi + aiPlat（混合）——Pi 仍是用户侧宿主，厚能力经 aiPlat 托管 API / 门禁回连。**  
-> **不以「用户侧单独部署厚 aiPlat 运行时」为默认交付形态。**
+> **不以「用户侧单独部署厚 aiPlat 运行时」为默认交付形态。**  
+> **不以「Pi 与 aiPlat 两套平行产品」对外叙事。**
 
 | 模式 | 用户侧 | 能力 | 状态 |
 |------|--------|------|------|

@@ -2,7 +2,7 @@
 
 > Living · 2026-10-13  
 > **原则**：每维有唯一权威源；白皮书**索引 + 摘录评分戳**，禁止手抄第二份能力/评分表。  
-> 总入口生成物：[`aiplat-platform-status-whitepaper.md`](./aiplat-platform-status-whitepaper.md)（`scripts/generate_platform_whitepaper.py`）
+> 总入口生成物：[`aiplat-platform-status-whitepaper.md`](./aiplat-platform-status-whitepaper.md)（executive digest，`scripts/generate_platform_whitepaper.py`）
 
 ## ready 定义
 
