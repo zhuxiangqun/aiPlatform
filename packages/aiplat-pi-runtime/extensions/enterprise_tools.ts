@@ -9,6 +9,10 @@ import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 import {
+  extractApprovalRequestId,
+  formatApprovalRequiredHint,
+} from "./enterprise_approval";
+import {
   loadEnterpriseConfig,
   type EnterpriseConfig,
 } from "./enterprise_kb";
@@ -210,6 +214,13 @@ function summarizeToolResponse(toolName: string, parsed: unknown): string {
   const o = parsed as Record<string, unknown>;
   if (o.ok === false) {
     parts[0] = `AIPLAT_TOOL_EXECUTE_FAILED tool=${toolName}`;
+  }
+  const approvalId = extractApprovalRequestId(parsed);
+  const st = String(o.status || o.legacy_status || "").toLowerCase();
+  if (approvalId || st === "approval_required" || st === "waiting_approval") {
+    parts[0] = `AIPLAT_TOOL_EXECUTE_APPROVAL_REQUIRED tool=${toolName}`;
+    const hint = formatApprovalRequiredHint(approvalId);
+    if (hint) parts.push(hint);
   }
   if (typeof o.run_id === "string") parts.push(`run_id=${o.run_id}`);
   if (typeof o.status === "string") parts.push(`status=${o.status}`);

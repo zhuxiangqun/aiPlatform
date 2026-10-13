@@ -2,7 +2,7 @@
 
 > Living · 2026-10-13  
 > **原则**：每维有唯一权威源；白皮书**索引 + 摘录评分戳**，禁止手抄第二份能力/评分表。  
-> 总入口生成物：[`aiplat-platform-status-whitepaper.md`](./aiplat-platform-status-whitepaper.md)（`scripts/generate_platform_whitepaper.py`）
+> 总入口生成物：[`aiplat-platform-status-whitepaper.md`](./aiplat-platform-status-whitepaper.md)（executive digest，`scripts/generate_platform_whitepaper.py`）
 
 ## ready 定义
 
@@ -29,7 +29,7 @@
 
 ## 为什么不能只靠「能力清单白皮书」
 
-`aiplat-platform-status-whitepaper.md` 完整收录 **CAPABILITIES**，回答「平台有什么、是否接线」。  
+`aiplat-platform-status-whitepaper.md` 是 CAPABILITIES 的**可读包装（executive digest）**：定位叙事 + 统计表 + 各子系统 ✅/⚠️ 摘要；**不**粘贴完整 `文件:行号` 能力表（完整清单仍以根目录 `AIPLAT_CAPABILITIES.md` 为准）。  
 若缺 **对标 / 评级 / 商业 / 生态 / 治理论证**，对外说服链不完整——这些材料仓库里已有，须纳入体系，但**不得**再写成会漂移的手抄本。
 
 ## 五维映射（权威源 → 受众）
@@ -97,20 +97,27 @@
 - [ ] 修改 `docs/architecture/plans/pi-thin-runtime.md` → 检查索引
 - [ ] 修改 `docs/DOCUMENT_SYSTEM.md` → 检查索引
 
-### 工程落地视图索引（01 卷 §3.3）
+### 技术卷正文编排（01 卷 §3）
 
-技术卷在「设计决策」之外提供 **部署 / 性能 / 可观测 / 数据 / 安全嵌入 / 测试 / 风险演进 / 开发 / 集成 / SLA** 的权威源索引（不扩写第二全文）。
+技术卷面向 CTO/架构师，**以设计叙事为主**，避免变成对标报告或源码路径合集：
 
-- **维护位置**：`scripts/generate_whitepaper_volumes.py` → `tech-architecture` 分支 §3.3 表
-- **同步触发**：新增或迁移上表任一工程权威源时，同一 PR 内更新 §3.3 行 + `bash scripts/sync_whitepapers.sh`
-- **验收**：生成卷含「工程落地视图索引」；链接目标文件存在（suite supporting 表）
+| 节 | 内容策略 |
+|----|----------|
+| §3.0 | 关键设计决策**索引**（不复制 ADR） |
+| §3.1 | 架构全景**白话叙事**（分层/请求路径/铁律）；图示与代码入口见 overview |
+| §3.2 | 多系统对标**摘要**（一句话定位 + 加权总分一行）；18 维全文见 `comparison.md` |
+| §3.3 | 工程落地**索引表**（部署/性能/可观测/数据/测试…）；不粘贴手册/源码节选 |
+
+- **维护位置**：`scripts/generate_whitepaper_volumes.py` → `tech-architecture`（`_tech_architecture_narrative` / `_tech_comparison_digest` / §3.3 表）
+- **同步触发**：overview / comparison / 工程权威源变更时，同一 PR 内 `bash scripts/sync_whitepapers.sh`
+- **验收**：01 卷以 §3.1 叙事为主；§3.2 无完整 18 维星级表；无大段 `*.py` 路径清单
 
 ## 对标与评级（横切，必须进总白皮书目录）
 
 | 类型 | 权威源 | 说明 |
 |------|--------|------|
-| 核心能力对标（主） | [`../research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) | vs Claude Code / DeepSeek Harness / Hermes；见 `research/README.md` |
-| 架构对比入口 | [`../architecture/comparison.md`](../architecture/comparison.md) | 旧多份对比已归档，以此为准 |
+| 核心能力对标（主） | [`../research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) | vs Hermes / Claude Code / OpenClaw / DeepSeek Harness / OpenAI Codex（2026-10）；底稿 `research/对标底稿-2026-10-五家.md` |
+| 架构对比入口 | [`../architecture/comparison.md`](../architecture/comparison.md) | 六平台 18 维摘要 + 加权分；旧四平台稿见 archive |
 | 综合评估 / 分数 | [`../framework/aiplat-complete-assessment.md`](../framework/aiplat-complete-assessment.md) · [`../framework/assessment-scores.json`](../framework/assessment-scores.json) | 分数唯一源经 `assessment-spec.yaml` |
 | 自主性 L 级 | [`aiplat-l4-autonomy-assessment-v1.0.0.md`](./aiplat-l4-autonomy-assessment-v1.0.0.md) | L5 定级 ADR + `verify_whitepaper_refs.sh` |
 | 厂商策略对比 | [`../strategy/comparison-vs-vendors.md`](../strategy/comparison-vs-vendors.md) | 商业/厂商视角 |

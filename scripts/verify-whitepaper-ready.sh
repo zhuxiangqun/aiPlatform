@@ -2,6 +2,7 @@
 # verify-whitepaper-ready.sh
 # 五维白皮书 ready 验收脚本（扁平 volumes 适配版）
 # 默认：不重写 generated_at（避免时间戳漂移）；加 --regen 才再生成。
+# 注意：CI 未必有 ripgrep，统一用 grep -E（POSIX 友好）。
 
 set -euo pipefail
 
@@ -43,36 +44,36 @@ do
 done
 
 echo "== 4. suite 五卷 status: ready =="
-ready_count="$(rg -c 'status: ready' docs/whitepaper/whitepaper-suite.yaml || true)"
+ready_count="$(grep -cE 'status: ready' docs/whitepaper/whitepaper-suite.yaml || true)"
 if [ "${ready_count:-0}" -lt 5 ]; then
   fail "whitepaper-suite.yaml 中 status: ready 少于 5 处（实际 ${ready_count:-0}）"
 fi
 
 echo "== 5. 生成卷 source_status: ready（扁平文件，>=5 卷） =="
-src_count="$(rg -l 'source_status: ready' docs/whitepaper/volumes/0*.md | wc -l | tr -d ' ')"
+src_count="$(grep -lE 'source_status: ready' docs/whitepaper/volumes/0*.md 2>/dev/null | wc -l | tr -d ' ')"
 if [ "${src_count:-0}" -lt 5 ]; then
   fail "生成卷 source_status: ready 少于 5 个（实际 ${src_count:-0}）"
 fi
 
 echo "== 6. 阻断词检查（只扫生成卷 volumes/） =="
-if rg -n '仍 gap|待填充|客户 ROI 仍为 gap|伙伴条款未形成' docs/whitepaper/volumes/0*.md; then
+if grep -nE '仍 gap|待填充|客户 ROI 仍为 gap|伙伴条款未形成' docs/whitepaper/volumes/0*.md; then
   fail "生成卷存在阻断性措辞"
 fi
 
 echo "== 7. 免责 / 示意声明存在性（逐条精确匹配） =="
-rg -q 'authorized: false' docs/whitepaper/cases/internal-illustrative-fde.md \
+grep -qE 'authorized: false' docs/whitepaper/cases/internal-illustrative-fde.md \
   || fail "示意案例缺少 authorized: false"
-rg -q 'kind: illustrative' docs/whitepaper/cases/internal-illustrative-fde.md \
+grep -qE 'kind: illustrative' docs/whitepaper/cases/internal-illustrative-fde.md \
   || fail "示意案例缺少 kind: illustrative"
-rg -q '非客户授权' docs/whitepaper/cases/internal-illustrative-fde.md \
+grep -qE '非客户授权' docs/whitepaper/cases/internal-illustrative-fde.md \
   || fail "示意案例缺少「非客户授权」框注"
-rg -q '不构成要约' docs/whitepaper/ecosystem-partner-commercial-template.md \
+grep -qE '不构成要约' docs/whitepaper/ecosystem-partner-commercial-template.md \
   || fail "商务模板缺少「不构成要约」"
-rg -q '以盖章版为准' docs/whitepaper/ecosystem-partner-commercial-template.md \
+grep -qE '以盖章版为准' docs/whitepaper/ecosystem-partner-commercial-template.md \
   || fail "商务模板缺少「以盖章版为准」"
 
 echo "== 8. 总册交叉检查：无「待补」 =="
-if rg -n '待补' docs/whitepaper/aiplat-platform-status-whitepaper.md; then
+if grep -nE '待补' docs/whitepaper/aiplat-platform-status-whitepaper.md; then
   fail "总册仍含「待补」措辞"
 fi
 
@@ -84,7 +85,7 @@ if [ "$REGEN" != 1 ]; then
     docs/whitepaper/volumes/ \
     docs/whitepaper/aiplat-platform-status-whitepaper.md \
     docs/whitepaper/whitepaper-suite.yaml \
-    docs/whitepaper/WHITEPAPER_SYSTEM.md \
+    docs/whitepaper/WHITEOBER_SYSTEM.md \
     scripts/generate_whitepaper_volumes.py \
     scripts/generate_platform_whitepaper.py \
     scripts/sync_whitepapers.sh \

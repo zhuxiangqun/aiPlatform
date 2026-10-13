@@ -8,7 +8,16 @@
 
 ## 目标
 
-补 aiPlat **编码场景执行闭环**空白（文件/ bash 类副作用），**不**替代 PipelineEngine / ReActLoop / PolicyGate。
+补 aiPlat **编码场景执行闭环**空白（文件/ bash 类副作用），**不**替代 PipelineEngine / ReActLoop / PolicyGate。  
+**不为补上下文**：aiPlat 已有 Memory/CRAG/ContextBus；厂内接 Pi 的价值是可选执行引擎 + 本地工具循环（见 `pi-thin-runtime.md` §双模式内涵）。
+
+## 与「三种集成」的对应
+
+| 形态 | 本实验落点 |
+|------|------------|
+| RPC 子进程 | `pi_rpc_client` / `coding_exec` / RPC probe |
+| SDK 嵌入 | **不做默认**（Node 绑定） |
+| 可选执行后端 | `AIPLAT_PI_CODING_EXECUTOR` → Workspace Execute 旁路（默认 OFF） |
 
 ## 方式四骨架（本包）
 
@@ -62,7 +71,7 @@ AIPLAT_PI_MODEL=ollama/qwen2.5:3b \
 
 - PolicyGate / done_verify / review_gate **始终在 Pi 外**
 - 必须选沙箱（Docker / 等价隔离）；禁止裸跑用户工作区当生产默认
-- 工具语义非 drop-in：Pi `read/bash/...` ≠ `sys_tool_call`；若要门禁每次工具调用，须显式工具桥
+- 工具语义非 drop-in：Pi `read/bash/...` ≠ `sys_tool_call`；厂外混合已用 `enterprise_tool_gate` 拦截原生副作用；厂内仍须显式工具桥 + 外层 PolicyGate
 - 不把本实验写进 CAPABILITIES「已接线」或主推荐路径，直至有生产 caller + 门禁证据
 
 ## 非目标
