@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2117
+total_capabilities: 2118
 last_updated: 2026-10-11
 version: "30.10"
 auto_sync: true
@@ -2709,6 +2709,7 @@ scan_hash: 8f9548ec24f4
 ## 二十五、管理 & 质量
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| _store / _approval_mgr lazy | `aiPlat-platform/api/routers/approvals.py` | ✅ | 自动同步 | 已合入 |
 | waitForApproval | `packages/aiplat-pi-runtime/extensions/enterprise_approval.ts` | ✅ | 自动同步 | 已合入 |
 | loadApprovalBridgeConfig | `packages/aiplat-pi-runtime/extensions/enterprise_approval.ts` | ✅ | 自动同步 | 已合入 |
 | registerEnterpriseApproval | `packages/aiplat-pi-runtime/extensions/enterprise_approval.ts` | ✅ | 自动同步 | 已合入 |
@@ -3035,7 +3036,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 248 | 1 | 249 |
 | 记忆子系统 | 58 | 0 | 58 |
-| 知识引擎（本体） | 364 | 9 | 373 |
+| 知识引擎（本体） | 365 | 9 | 374 |
 | RAG 检索 | 51 | 0 | 51 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 168 | 0 | 168 |
@@ -3078,7 +3079,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2107** | **10** | **2117** |
+| **总计** | **2108** | **10** | **2118** |
 
 | **总计** | **1095** | **0** | **1095** |
 
