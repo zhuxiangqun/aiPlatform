@@ -19,7 +19,7 @@
 
 | 变量 | 含义 |
 |------|------|
-| `AIPLAT_PLATFORM_URL` | 平台基址（如 `https://tenant.example/api` 或 `:8003`） |
+| `AIPLAT_PLATFORM_URL` | 平台基址。**本地推荐** `http://127.0.0.1:8000/api`（management GW → `/platform/*`）；裸 `:8003` 常无 hybrid 路由 |
 | `AIPLAT_CORE_URL` | 可选；工具执行基址。裸 `http://host:8002` 会自动补 `/api/core`；也可直接写 `…/api/core`。未设时从 PLATFORM_URL 推导（`:8003`→`:8002/api/core`，`…/api`→`…/api/core`） |
 | `AIPLAT_TENANT_TOKEN` / API Key | 身份注入；权限判断在平台 PolicyGate / RBAC |
 | `AIPLAT_ENTERPRISE=1` | 启用回连意图；未设则严格 Pi-only。**同时默认打开原生工具门禁**（无需 URL/token） |
@@ -48,7 +48,7 @@
 
 ```bash
 export AIPLAT_ENTERPRISE=1
-export AIPLAT_PLATFORM_URL=http://127.0.0.1:8003   # or http://host:8000/api
+export AIPLAT_PLATFORM_URL=http://127.0.0.1:8000/api   # management GW (preferred locally)
 export AIPLAT_TENANT_TOKEN=<bearer>
 # KB only by default; add tools:
 export AIPLAT_ENTERPRISE_TOOLS=calculator
@@ -71,14 +71,18 @@ pi -e .
 #        | aiplat_approval_status | aiplat_approval_pending | aiplat_approval_wait
 ```
 
-Offline gates:
+Offline + optional live gates:
 
 ```bash
+bash packages/aiplat-pi-runtime/scripts/run_all_enterprise_smokes.sh
+# or individually:
 node packages/aiplat-pi-runtime/scripts/enterprise_kb_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_tools_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_tool_gate_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_memory_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_approval_smoke.mjs
+# live (auto-picks :8000/api GW when up; SKIP if down; set AIPLAT_HYBRID_LIVE=1 to require):
+node packages/aiplat-pi-runtime/scripts/enterprise_hybrid_live_smoke.mjs
 ```
 
 ## 非目标
