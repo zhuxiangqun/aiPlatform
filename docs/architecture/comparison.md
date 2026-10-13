@@ -3,7 +3,7 @@
 > **生成/调研时点**：2026-10-13  
 > **对标范围**：aiPlat × Hermes Agent × Claude Code × OpenClaw × DeepSeek Harness × OpenAI Codex  
 > **细节与证据权威**：[`docs/research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) · 底稿 [`docs/research/对标底稿-2026-10-五家.md`](../research/对标底稿-2026-10-五家.md)  
-> **本文角色**：架构入口摘要（供白皮书 §3.2 节选）。**禁止**把本文当作第二能力清单；星级须能回溯底稿。  
+> **本文角色**：架构对比权威入口。白皮书技术卷 §3.2 **只摘定位+总分摘要**，不全文粘贴本文。**禁止**把本文当作第二能力清单；星级须能回溯底稿。  
 > 旧四平台稿已归档：[`docs/archive/comparison-four-platform-2026-07.md`](../archive/comparison-four-platform-2026-07.md)
 
 ---

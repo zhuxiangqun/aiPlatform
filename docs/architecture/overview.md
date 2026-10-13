@@ -1,8 +1,8 @@
 # aiPlatform 系统架构全景
 
 > 最后更新: 2026-07-04 | 当前能力数见 AIPLAT_CAPABILITIES.md | 从 `AIPLAT_CAPABILITIES.md` 聚合生成
-> 
-> 本文档是 aiPlat 架构的**唯一全景入口**。5 分钟读懂系统长什么样。
+>
+> 本文档是 aiPlat 架构的**唯一全景入口**。5 分钟读懂系统长什么样。  
 > 零件清单见 CAPABILITIES，详细规约见 CLAUDE.md，对标见 comparison.md。
 
 ---
@@ -104,18 +104,18 @@ A2A 交互路径:
 
 ## 三、关键架构决策
 
-| # | 决策 | 说明 |
-|:---:|------|------|
-| 1 | **Harness = OS, Agent = App** | 执行内核不懂业务概念。所有行为分叉来自 `PipelineStageConfig` 字段 |
-| 2 | **One Harness, Many Agents** | 7 种 Agent 类型共享一个 ReActLoop 引擎 |
-| 3 | **Syscall 边界** | `sys_llm_generate`/`sys_tool_call`/`sys_skill_call` 是唯一外部交互通道 |
-| 4 | **4 层记忆 (Hermes 对齐)** | Working→Episodic→Semantic→TaskSkills + 投毒防御 |
-| 5 | **CRAG 3 级检索回退** | 本体优先 → FTS5 → HyDE，不可跳过 |
-| 6 | **ModelManager 集中化** | infra 是唯一模型目录，core 不自行加载模型 |
-| 7 | **5 routing_modes** | static/llm/debate/swarm/roundtable — 配置驱动 |
-| 8 | **CI 强制文档同步** | 统计表与章节计数不一致 → CI 阻断 |
-| 9 | **SpecLifecycle** | DRAFT→STABLE 6 状态版本演进 (竞品无) |
-| 10 | **企业治理** | 多租户 + RBAC + PolicyGate + 15维架构守卫 |
+|  #  | 决策                            | 说明                                                            |
+| :-: | ----------------------------- | ------------------------------------------------------------- |
+|  1  | **Harness = OS, Agent = App** | 执行内核不懂业务概念。所有行为分叉来自 `PipelineStageConfig` 字段                  |
+|  2  | **One Harness, Many Agents**  | 7 种 Agent 类型共享一个 ReActLoop 引擎                                 |
+|  3  | **Syscall 边界**                | `sys_llm_generate`/`sys_tool_call`/`sys_skill_call` 是唯一外部交互通道 |
+|  4  | **4 层记忆 (Hermes 对齐)**         | Working→Episodic→Semantic→TaskSkills + 投毒防御                   |
+|  5  | **CRAG 3 级检索回退**              | 本体优先 → FTS5 → HyDE，不可跳过                                       |
+|  6  | **ModelManager 集中化**          | infra 是唯一模型目录，core 不自行加载模型                                    |
+|  7  | **5 routing_modes**           | static/llm/debate/swarm/roundtable — 配置驱动                     |
+|  8  | **CI 强制文档同步**                 | 统计表与章节计数不一致 → CI 阻断                                           |
+|  9  | **SpecLifecycle**             | DRAFT→STABLE 6 状态版本演进 (竞品无)                                   |
+|  10 | **企业治理**                      | 多租户 + RBAC + PolicyGate + 15维架构守卫                             |
 
 详细规约: `aiPlat-core/CLAUDE.md` §5.1-5.95
 
@@ -123,23 +123,23 @@ A2A 交互路径:
 
 ## 四、子系统速查
 
-| 子系统 | 代码入口 | 核心能力 | 能力数 |
-|------|------|------|:---:|
-| **Harness 执行** | `harness/execution/pipeline_engine.py` | 多阶段调度 + ReAct循环 + 5种协作 + HITL | 26 |
-| **记忆** | `harness/memory/manager.py` | 4层记忆 + 5级压缩 + 投毒防御 + 自动学习 | 17 |
-| **知识引擎** | `harness/ontology_engine/engine.py` | 13步本体管线 + GraphIndex + Palantir 对齐 | 20 |
-| **RAG 检索** | `harness/knowledge/retriever.py` | CRAG 3级回退 + RRF融合 + DomainRouter | 26 |
-| **知识基础设施** | `harness/knowledge/` (embedder/db/graph/repo_map/wiki_fts/cap_health...) | 嵌入/图同步/仓库映射/Wiki FTS5/知识质量/进化 | 28 |
-| **Agent 系统** | `apps/agents/` | 7种实现类 + DynamicRouter + SubAgent | 11 |
-| **Skill 系统** | `apps/skills/registry.py` | 31 engine + ~45 workspace + 自进化 | 13 |
-| **安全与治理** | `harness/security/` + `gates/` | ImmuneMemory + PolicyGate(3层) + CircuitBreaker | 27 |
-| **可观测性** | `harness/observability/` | trace/span + Dashboard(含FDE Dashboard 3项) + Prometheus + 全域诊断14项 | 13 |
-| **模型管理** | `aiPlat-infra/` + `harness/infrastructure/` | ModelManager + 多Provider + PromptCaching | 13 |
-| **学习系统** | `harness/learning/` | AutoLearner + FeedbackRadar + SkillEvolver | 45 |
-| **RL 训练** | `harness/training/rl_trainer.py` | RLOO + CodeTestReward + Online Rollout + SFT→RL桥接 | 8 |
-| **业务价值** | `harness/finance/value_calculator.py` | 5维ROI + GoalAwareRouter + FDE Dashboard | — |
-| **SpecLifecycle** | `harness/models/spec_lifecycle.py` | DRAFT→STABLE 版本状态机 | — |
-| **诊断中心** | `api/routers/diagnostics.py` | 25类检查 + 14项全域测试 | — |
+| 子系统               | 代码入口                                                                     | 核心能力                                                             | 能力数 |
+| ----------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------- | :-: |
+| **Harness 执行**    | `harness/execution/pipeline_engine.py`                                   | 多阶段调度 + ReAct循环 + 5种协作 + HITL                                    |  26 |
+| **记忆**            | `harness/memory/manager.py`                                              | 4层记忆 + 5级压缩 + 投毒防御 + 自动学习                                        |  17 |
+| **知识引擎**          | `harness/ontology_engine/engine.py`                                      | 13步本体管线 + GraphIndex + Palantir 对齐                               |  20 |
+| **RAG 检索**        | `harness/knowledge/retriever.py`                                         | CRAG 3级回退 + RRF融合 + DomainRouter                                 |  26 |
+| **知识基础设施**        | `harness/knowledge/` (embedder/db/graph/repo_map/wiki_fts/cap_health...) | 嵌入/图同步/仓库映射/Wiki FTS5/知识质量/进化                                    |  28 |
+| **Agent 系统**      | `apps/agents/`                                                           | 7种实现类 + DynamicRouter + SubAgent                                 |  11 |
+| **Skill 系统**      | `apps/skills/registry.py`                                                | 31 engine + ~45 workspace + 自进化                                  |  13 |
+| **安全与治理**         | `harness/security/` + `gates/`                                           | ImmuneMemory + PolicyGate(3层) + CircuitBreaker                   |  27 |
+| **可观测性**          | `harness/observability/`                                                 | trace/span + Dashboard(含FDE Dashboard 3项) + Prometheus + 全域诊断14项 |  13 |
+| **模型管理**          | `aiPlat-infra/` + `harness/infrastructure/`                              | ModelManager + 多Provider + PromptCaching                         |  13 |
+| **学习系统**          | `harness/learning/`                                                      | AutoLearner + FeedbackRadar + SkillEvolver                       |  45 |
+| **RL 训练**         | `harness/training/rl_trainer.py`                                         | RLOO + CodeTestReward + Online Rollout + SFT→RL桥接                |  8  |
+| **业务价值**          | `harness/finance/value_calculator.py`                                    | 5维ROI + GoalAwareRouter + FDE Dashboard                          |  —  |
+| **SpecLifecycle** | `harness/models/spec_lifecycle.py`                                       | DRAFT→STABLE 版本状态机                                               |  —  |
+| **诊断中心**          | `api/routers/diagnostics.py`                                             | 25类检查 + 14项全域测试                                                  |  —  |
 
 完整清单: `AIPLAT_CAPABILITIES.md`（每项标注代码位置）
 
@@ -149,17 +149,17 @@ A2A 交互路径:
 
 ## 五、数据流关键路径
 
-| 路径 | 参与的子系统 | 入口文件 |
-|------|---------|------|
-| **用户提问→回答** | API → Agent → ReActLoop → LLM | `loop.py:672` |
-| **知识检索** | DomainRouter → WikiRetriever → CRAG → RRF | `retrieval.py:576` |
-| **多 Agent 协作** | DynamicRouter → PipelineEngine → Reducer | `pipeline_engine.py:1266` |
-| **Spec 迭代** | Onboarding → Task → SpecLifecycle → REVIEW | `spec_lifecycle.py` |
-| **自学习** | Failure → AutoLearner → SkillDraft → Simulator → Approval | `learning/__init__.py` |
-| **SFT→RL训练** | AutoLearner审批→TrajectoryScorer评分→混合采样→ShareGPT→SFT Job→latest.json→RL(RLOO)→Online Rollout | `training/auto_trigger.py` → `rl_trainer.py` |
-| **夜间进化** | EvolutionEngine(13步) → ValueCalc → SFT → SpecHealth | `evolution_engine.py:98` |
-| **FDE 仪表板** | SpecLifecycle + FeedbackRadar + TraceVisualizer → Dashboard | `workbench.py:441` |
-| **平台能力提升 (碎石路→高速公路)** | Spec promote → Approval Queue → SkillRegistry | `spec_lifecycle.py:promote_to_platform` → `workbench.py:post /promote` |
+| 路径                    | 参与的子系统                                                                                     | 入口文件                                                                   |
+| --------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| **用户提问→回答**           | API → Agent → ReActLoop → LLM                                                              | `loop.py:672`                                                          |
+| **知识检索**              | DomainRouter → WikiRetriever → CRAG → RRF                                                  | `retrieval.py:576`                                                     |
+| **多 Agent 协作**        | DynamicRouter → PipelineEngine → Reducer                                                   | `pipeline_engine.py:1266`                                              |
+| **Spec 迭代**           | Onboarding → Task → SpecLifecycle → REVIEW                                                 | `spec_lifecycle.py`                                                    |
+| **自学习**               | Failure → AutoLearner → SkillDraft → Simulator → Approval                                  | `learning/__init__.py`                                                 |
+| **SFT→RL训练**          | AutoLearner审批→TrajectoryScorer评分→混合采样→ShareGPT→SFT Job→latest.json→RL(RLOO)→Online Rollout | `training/auto_trigger.py` → `rl_trainer.py`                           |
+| **夜间进化**              | EvolutionEngine(13步) → ValueCalc → SFT → SpecHealth                                        | `evolution_engine.py:98`                                               |
+| **FDE 仪表板**           | SpecLifecycle + FeedbackRadar + TraceVisualizer → Dashboard                                | `workbench.py:441`                                                     |
+| **平台能力提升 (碎石路→高速公路)** | Spec promote → Approval Queue → SkillRegistry                                              | `spec_lifecycle.py:promote_to_platform` → `workbench.py:post /promote` |
 
 ---
 

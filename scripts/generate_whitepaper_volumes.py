@@ -85,19 +85,186 @@ def _link(path: str) -> str:
     return f"[`{path}`]({target})"
 
 
-def _read_excerpt(path: Path, max_chars: int = 12000) -> Tuple[str, bool]:
-    if not path.is_file():
-        return f"_(存在性检查失败：文件缺失 `{path.relative_to(REPO)}`)_\n", False
-    text = path.read_text(encoding="utf-8", errors="replace")
-    # strip yaml frontmatter for readability
+def _demote_md_headings(text: str, levels: int = 2) -> str:
+    """Shift ATX headings so excerpt ## does not collide with volume ###."""
+    if levels <= 0:
+        return text
+    prefix = "#" * levels
+
+    def _repl(m: re.Match) -> str:
+        hashes, title = m.group(1), m.group(2)
+        return f"{(hashes + prefix)[:6]} {title}"
+
+    return re.sub(r"^(#{1,6})\s+(.*)$", _repl, text, flags=re.M)
+
+
+def _strip_frontmatter(text: str) -> str:
     if text.startswith("---"):
         end = text.find("\n---", 3)
         if end >= 0:
-            text = text[end + 4 :].lstrip("\n")
+            return text[end + 4 :].lstrip("\n")
+    return text
+
+
+def _read_excerpt(
+    path: Path, max_chars: int = 12000, *, demote: int = 2
+) -> Tuple[str, bool]:
+    if not path.is_file():
+        return f"_(存在性检查失败：文件缺失 `{path.relative_to(REPO)}`)_\n", False
+    text = _strip_frontmatter(path.read_text(encoding="utf-8", errors="replace"))
     truncated = len(text) > max_chars
     if truncated:
         text = text[:max_chars].rstrip() + "\n\n…\n\n_(节选；全文见权威源)_\n"
+    if demote:
+        text = _demote_md_headings(text, demote)
     return text, True
+
+
+def _read_heading_excerpt(
+    path: Path,
+    heading_substr: str,
+    max_chars: int = 4000,
+    *,
+    demote: int = 2,
+) -> Tuple[str, bool]:
+    """Extract first markdown heading containing *heading_substr*."""
+    if not path.is_file():
+        return f"_(存在性检查失败：文件缺失 `{path.relative_to(REPO)}`)_\n", False
+    text = _strip_frontmatter(path.read_text(encoding="utf-8", errors="replace"))
+    pat = re.compile(
+        rf"^(#{{1,3}} [^\n]*{re.escape(heading_substr)}[^\n]*)\n(.*?)(?=^#{{1,3}} |\Z)",
+        re.M | re.S,
+    )
+    m = pat.search(text)
+    if not m:
+        return (
+            f"_(未命中章节「{heading_substr}」于 `{path.relative_to(REPO)}`)_\n",
+            False,
+        )
+    block = m.group(1) + "\n" + m.group(2)
+    if len(block) > max_chars:
+        block = block[:max_chars].rstrip() + "\n\n…\n\n_(节选；全文见权威源)_\n"
+    if demote:
+        block = _demote_md_headings(block, demote)
+    return block, True
+
+
+def _md_table_rows_matching(section: str, needles: List[str]) -> str:
+    """Keep markdown table header/sep plus rows containing any needle."""
+    out: List[str] = []
+    in_table = False
+    for line in section.splitlines():
+        s = line.strip()
+        if s.startswith("|") and "---" in s.replace(" ", ""):
+            out.append(line)
+            in_table = True
+            continue
+        if s.startswith("|"):
+            if not in_table:
+                out.append(line)  # header
+                in_table = True
+                continue
+            if any(n in line for n in needles):
+                out.append(line)
+            continue
+        if in_table and not s.startswith("|"):
+            in_table = False
+    return "\n".join(out)
+
+
+def _tech_comparison_digest() -> str:
+    """Short executive digest for tech volume — not a full comparison dump."""
+    path = _rel("docs/architecture/comparison.md")
+    lines = [
+        "本卷**主体是架构设计与边界**；对标只作定位参照，避免喧宾夺主。",
+        "完整 18 维表、证据与可借鉴清单见权威源（勿在卷内手抄第二份）。",
+        "",
+        f"- 架构对比入口：{_link('docs/architecture/comparison.md')}",
+        f"- 深度主报告：{_link('docs/research/aiPlat核心能力对标报告.md')}",
+        f"- 证据底稿：{_link('docs/research/对标底稿-2026-10-五家.md')}",
+        "",
+        "#### 六平台一句话定位",
+        "",
+        "| 系统 | 定位（一句话） |",
+        "|------|----------------|",
+        "| **aiPlat** | 企业 AI 操作系统：交付流水线 + 治理 + 知识本体 |",
+        "| **Hermes Agent** | 自学习个人/团队 Agent，多通道 + 多终端后端 |",
+        "| **Claude Code** | 终端/IDE agentic coding（引擎闭源） |",
+        "| **OpenClaw** | 多端个人助手（Gateway + 广通道） |",
+        "| **DeepSeek Harness** | 高纯度插件化 agent harness |",
+        "| **OpenAI Codex** | 可嵌入 coding 运行时（app-server + OS 沙箱） |",
+        "",
+    ]
+    if path.is_file():
+        score_sec, ok = _read_heading_excerpt(
+            path, "综合评分矩阵", 8000, demote=0
+        )
+        if ok:
+            total_tbl = _md_table_rows_matching(
+                score_sec, ["加权总分", "维 |", "---|"]
+            )
+            # Prefer explicit total row + a minimal header reconstructed
+            total_lines = [
+                ln
+                for ln in score_sec.splitlines()
+                if "加权总分" in ln or (ln.strip().startswith("| 维") and "aiPlat" in ln)
+                or (ln.strip().startswith("|:") and "---" in ln)
+            ]
+            if any("加权总分" in ln for ln in total_lines):
+                lines += [
+                    "#### 加权总分（论证用，非商务承诺）",
+                    "",
+                    "| 维 | aiPlat | Hermes | Claude Code | OpenClaw | DSH | Codex |",
+                    "|:---|:---:|:---:|:---:|:---:|:---:|:---:|",
+                ]
+                for ln in total_lines:
+                    if "加权总分" in ln:
+                        lines.append(ln)
+                        break
+                lines += ["", ""]
+            elif total_tbl.strip():
+                lines += [
+                    "#### 加权总分（论证用，非商务承诺）",
+                    "",
+                    total_tbl,
+                    "",
+                ]
+    lines += [
+        "> 18 维拆解与可借鉴清单不在本卷展开。"
+        "尽调请打开 comparison.md / 研究主报告。",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def _tech_architecture_narrative() -> str:
+    """Plain-language architecture story for CTO readers (no path dump)."""
+    return "\n".join(
+        [
+            "aiPlat 按**四层**组织，依赖严格单向 `应用接入 → 平台服务 → AI 核心引擎 → 基础设施`：",
+            "",
+            "1. **应用接入**：管理端 / 应用端 / 频道与会话——用户看得见的入口。",
+            "2. **平台服务**：网关、鉴权、限流、Builder、知识库等平台能力——不实现 Agent 内核。",
+            "3. **AI 核心引擎（Harness）**：像操作系统。负责任务流水线、ReAct 循环、记忆与知识、"
+            "以及唯一的外部交互边界（syscall）。业务 Agent 像「应用」，共享同一套执行内核。",
+            "4. **基础设施**：模型目录、LLM/嵌入客户端、存储与网络——**零业务知识**。",
+            "",
+            "**一次提问怎么跑通**：请求进入 API → 选中 Agent → ReAct（推理 / 调工具或技能 / 观察）→ "
+            "模型与工具只能经 syscall 出去，并经过策略门禁（PolicyGate 等）。",
+            "",
+            "**多阶段交付怎么跑通**：Pipeline 按配置阶段推进，可在人机审批点暂停与恢复，"
+            "再进入下一阶段；这是相对「单会话助手」的关键差异。",
+            "",
+            "**十条设计铁律（摘要）**：Harness=OS 且不懂业务名；Syscall 是唯一出口；"
+            "四层记忆；CRAG 检索回退；模型目录集中在 infra；协作模式由配置驱动；"
+            "文档/能力统计与 CI 同步；Spec 生命周期；企业多租户与治理门禁。",
+            "",
+            f"需要图示、子系统地图或代码入口时，打开 "
+            f"{_link('docs/architecture/overview.md')} "
+            f"（本卷刻意不粘贴路径清单，便于阅读）。",
+            "",
+        ]
+    )
 
 
 def _caps_section_extract(titles: List[str], max_chars: int = 8000) -> str:
@@ -271,20 +438,16 @@ def _build_volume(
             "execution-decision-matrix / pi-thin-runtime / DOCUMENT_SYSTEM "
             "任一文件时，必须同步本索引。",
             "",
-            "### 3.1 架构全景（overview）",
+            "### 3.1 架构全景（设计叙事）",
             "",
-        ]
-        excerpt, _ = _read_excerpt(_rel("docs/architecture/overview.md"), 14000)
-        parts += [excerpt, "", "### 3.2 架构对比入口（comparison）", ""]
-        excerpt, _ = _read_excerpt(_rel("docs/architecture/comparison.md"), 14000)
-        parts += [
-            excerpt,
+            _tech_architecture_narrative(),
+            "### 3.2 多系统对标（摘要）",
             "",
+            _tech_comparison_digest(),
             "### 3.3 工程落地视图索引（部署 / 性能 / 可观测 / 数据 / 测试 …）",
             "",
-            "本卷定位是「为什么这样设计」与架构全景；**工程落地细节不在此卷全文复述**，"
-            "以免形成第二真相源。CTO/架构师做技术尽调时，按下表进入权威源"
-            "（含物理/部署视图、数据视图、开发视图、质量属性）。",
+            "工程落地以**索引指路**为主，本卷不粘贴部署手册/测试手册/源码节选，"
+            "避免变成「文件路径合集」。CTO/架构师尽调时按下表进入权威源。",
             "",
             "| 工程维度 | 读者要回答的问题 | 权威源（优先） | CAPABILITIES / 姊妹卷 |",
             "|----------|------------------|----------------|----------------------|",
@@ -328,9 +491,8 @@ def _build_volume(
             f"{_link('docs/architecture/execution-quality-gates.md')} | "
             "CAPABILITIES「管理 & 质量」 |",
             "",
-            "> **阅读约定**：上表保证「只读本卷也能知道去哪尽调」。"
-            "性能容量叙事以规范预算 + `benchmark_all.sh` + SLO 为准；"
-            "若缺少独立压测报告，以脚本与门禁结果为可执行证据，勿在卷内编造 QPS 数字。",
+            "> **阅读约定**：索引保证「只读本卷也知道去哪尽调」。"
+            "性能数字以 SLO / `benchmark_all.sh` 为准，勿在卷内编造 QPS。",
             "",
         ]
     elif vid == "product-capability":

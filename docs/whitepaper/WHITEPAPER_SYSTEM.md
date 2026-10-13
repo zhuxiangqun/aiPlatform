@@ -97,13 +97,20 @@
 - [ ] 修改 `docs/architecture/plans/pi-thin-runtime.md` → 检查索引
 - [ ] 修改 `docs/DOCUMENT_SYSTEM.md` → 检查索引
 
-### 工程落地视图索引（01 卷 §3.3）
+### 技术卷正文编排（01 卷 §3）
 
-技术卷在「设计决策」之外提供 **部署 / 性能 / 可观测 / 数据 / 安全嵌入 / 测试 / 风险演进 / 开发 / 集成 / SLA** 的权威源索引（不扩写第二全文）。
+技术卷面向 CTO/架构师，**以设计叙事为主**，避免变成对标报告或源码路径合集：
 
-- **维护位置**：`scripts/generate_whitepaper_volumes.py` → `tech-architecture` 分支 §3.3 表
-- **同步触发**：新增或迁移上表任一工程权威源时，同一 PR 内更新 §3.3 行 + `bash scripts/sync_whitepapers.sh`
-- **验收**：生成卷含「工程落地视图索引」；链接目标文件存在（suite supporting 表）
+| 节 | 内容策略 |
+|----|----------|
+| §3.0 | 关键设计决策**索引**（不复制 ADR） |
+| §3.1 | 架构全景**白话叙事**（分层/请求路径/铁律）；图示与代码入口见 overview |
+| §3.2 | 多系统对标**摘要**（一句话定位 + 加权总分一行）；18 维全文见 `comparison.md` |
+| §3.3 | 工程落地**索引表**（部署/性能/可观测/数据/测试…）；不粘贴手册/源码节选 |
+
+- **维护位置**：`scripts/generate_whitepaper_volumes.py` → `tech-architecture`（`_tech_architecture_narrative` / `_tech_comparison_digest` / §3.3 表）
+- **同步触发**：overview / comparison / 工程权威源变更时，同一 PR 内 `bash scripts/sync_whitepapers.sh`
+- **验收**：01 卷以 §3.1 叙事为主；§3.2 无完整 18 维星级表；无大段 `*.py` 路径清单
 
 ## 对标与评级（横切，必须进总白皮书目录）
 

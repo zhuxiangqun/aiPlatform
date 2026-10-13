@@ -3,7 +3,7 @@ title: "aiPlat 生态与集成白皮书"
 volume_id: ecosystem-integration
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-13T01:36:27Z"
+generated_at: "2026-10-13T01:55:01Z"
 audience: "ISV、集成商、开源社区、渠道"
 core_question: "如何接入、贡献、协作？"
 priority: P2
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 如何接入、贡献、协作？ |
 | 优先级 | P2 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-13T01:36:27Z` |
+| 生成时间 (UTC) | `2026-10-13T01:55:01Z` |
 | CAPABILITIES sha256 | `e2e1936484e9…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -97,12 +97,12 @@ language: zh-CN
 
 ### 3.1 技术分层专稿（节选）
 
-# 生态伙伴技术分层（权威专稿）
+### 生态伙伴技术分层（权威专稿）
 
 > 供生态与集成白皮书节选。本专稿只定义**接入权限与交付形态**，不定义分成/返佣。  
 > 商务条款见 [`ecosystem-partner-commercial-template.md`](./ecosystem-partner-commercial-template.md)（以盖章版为准）。
 
-## 1. 分层总览
+#### 1. 分层总览
 
 | 层 | 伙伴做什么 | 典型入口 | 平台侧治理 |
 |----|------------|----------|------------|
@@ -114,29 +114,29 @@ language: zh-CN
 
 默认交付锁定 **L0**。企业加厚按 L1→L2→L3 阶梯开启；L4 非默认。详见 [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md)。
 
-## 2. 各层说明
+#### 2. 各层说明
 
-### 2.1 Pi-only 接入
+##### 2.1 Pi-only 接入
 
 仅使用导出包内 SOP / skills / handler + 用户自备 LLM。不要求 8002/8003。
 
-### 2.2 KB 混合接入
+##### 2.2 KB 混合接入
 
 在 L0 基础上 opt-in 回连 `POST /platform/kb/query`。断连时回退本地 skills，禁止编造引用。
 
-### 2.3 工具代理接入
+##### 2.3 工具代理接入
 
 须显式允许列表；空列表 = 工具代理关闭。PolicyGate 留在 Core，扩展只转发 Bearer。
 
-### 2.4 MCP / API ISV 接入
+##### 2.4 MCP / API ISV 接入
 
 通过 MCP 或 REST 暴露/消费平台能力。生产 MCP 须符合 `docs/policy/mcp-stdio-prod-allowlist.md` 与成本阶梯。
 
-### 2.5 私有化厚部署
+##### 2.5 私有化厚部署
 
 接近全栈 aiPlat 的驻场形态；**不是**厂外默认交付，须单独合同与运维边界。
 
-## 3. 开放边界矩阵
+#### 3. 开放边界矩阵
 
 | 接入面 | 伙伴/集成商做什么 | 权威入口 | 平台侧治理 |
 |--------|-------------------|----------|------------|
@@ -146,7 +146,7 @@ language: zh-CN
 | Pi Package | 薄 Runtime 包 | `packages/aiplat-pi-runtime/README.md` | 交付边界说明 |
 | Skill / Handler | 贡献可执行技能 | CAPABILITIES「Skill」 | `execution_type` + lint |
 
-## 4. 治理边界
+#### 4. 治理边界
 
 权限、审计、数据隔离、升级责任以 `docs/security/security-architecture.md` 与 `AIPLAT_CAPABILITIES.md` 安全/治理切片为准。伙伴不得要求在 Pi 进程内重实现 PolicyGate。
 
@@ -201,21 +201,21 @@ language: zh-CN
 
 ### 3.4 MCP 文档入口
 
-# MCP 协议集成设计
+### MCP 协议集成设计
 
-## 概述
+#### 概述
 
 本文档描述如何将 Model Context Protocol (MCP) 集成到 aiPlat-core 系统，使系统能够连接外部 MCP 服务器并使用其提供的工具。
 
-## 目标
+#### 目标
 
 1. **连接外部 MCP 服务器** - 支持 stdio 和 SSE 传输
 2. **工具接入** - 将 MCP 工具转换为本地 ITool 接口
 3. **工具导出** - 将本地工具暴露为 MCP 服务器
 
-## 架构设计
+#### 架构设计
 
-### 模块结构
+##### 模块结构
 
 ```
 core/apps/mcp/
@@ -227,9 +227,9 @@ core/apps/mcp/
 └── config.py      # 配置管理
 ```
 
-### 核心组件
+##### 核心组件
 
-#### 1. 类型定义 (types.py)
+###### 1. 类型定义 (types.py)
 
 | 类型 | 用途 |
 |------|------|
@@ -242,20 +242,20 @@ core/apps/mcp/
 | `MCPServerConfig` | 服务器配置 |
 | `MCPClientConfig` | 客户端配置 |
 
-#### 2. 协议处理 (protocol.py)
+###### 2. 协议处理 (protocol.py)
 
 - JSON-RPC 2.0 请求/响应编解码
 - SSE (Server-Sent Events) 传输
 - STDIO 传输
 
-#### 3. 客户端 (client.py)
+###### 3. 客户端 (client.py)
 
 | 类 | 职责 |
 |------|------|
 | `MCPClient` | 单个 MCP 服务器连接管理 |
 | `MCPClientManager` | 多服务器连接管理 |
 
-#### 4. 适配器 (adapter.py)
+###### 4. 适配器 (adapter.py)
 
 | 类 | 职责 |
 |------|------|
@@ -263,16 +263,16 @@ core/apps/mcp/
 | `MCPToolExporter` | 本地 ITool → MCP 工具 |
 | `MCPClientWrapper` | 批量注册 MCP 工具到注册表 |
 
-## 使用方式
+#### 使用方式
 
-### 1. 连接外部 MCP 服务器
+##### 1. 连接外部 MCP 服务器
 
 ```python
 from core.apps.mcp import MCPClientManager, MCPClientConfig
 
 manager = MCPClientManager()
 
-# SSE 连接
+### SSE 连接
 client = await manager.add_server(
     "my-server",
     MCPClientConfig(
@@ -281,7 +281,7 @@ client = await manager.add_server(
     )
 )
 
-# STDIO 连接
+### STDIO 连接
 client = await manager.add_server(
     "filesystem",
     MCPClientConfig(
@@ -292,7 +292,7 @@ client = await manager.add_server(
 )
 ```
 
-### 2. 注册 MCP 工具到本地注册表
+##### 2. 注册 MCP 工具到本地注册表
 
 ```python
 from core.apps.mcp.adapter import MCPClientWrapper
@@ -302,7 +302,7 @@ count = await wrapper.register_server_tools("my-server", tool_registry)
 print(f"Registered {count} tools")
 ```
 
-### 3. 启动 MCP 服务器（暴露本地工具）
+##### 3. 启动 MCP 服务器（暴露本地工具）
 
 ```python
 from core.apps.mcp import MCPServer
@@ -311,9 +311,9 @@ server = MCPServer(tool_registry)
 await server.start(host="0.0.0.0", port=8080)
 ```
 
-## 配置
+#### 配置
 
-### 0. 目录化配置（engine vs workspace）
+##### 0. 目录化配置（engine vs workspace）
 
 MCP server 的“启用/禁用/策略”推荐以文件系统为真值来源，并按 scope 分离：
 
@@ -327,7 +327,7 @@ MCP server 的“启用/禁用/策略”推荐以文件系统为真值来源，�
 - engine：`GET/POST /api/core/mcp/servers*`
 - workspace：`GET/POST /api/core/workspace/mcp/servers*`
 
-### 服务器配置 (MCP Server)
+##### 服务器配置 (MCP Server)
 
 ```python
 MCPServerConfig(
@@ -340,7 +340,7 @@ MCPServerConfig(
 )
 ```
 
-### 客户端配置 (MCP Client)
+##### 客户端配置 (MCP Client)
 
 ```python
 MCPClientConfig(
@@ -351,14 +351,14 @@ MCPClientConfig(
 )
 ```
 
-## 安全考虑
+#### 安全考虑
 
 1. **URL 白名单** - HTTP 工具应配置允许的域名
 2. **认证** - 支持 Bearer Token 认证
 3. **超时控制** - 防止工具调用挂起
 4. **响应大小限制** - 防止过大响应占用内存
 
-## 待实现
+#### 待实现
 
 - [ ] STDIO 传输的进程启动和管理
 - [ ] MCP 服务器认证
@@ -369,12 +369,12 @@ MCPClientConfig(
 ### 3.5 MCP 生产准入
 
 #!/bin/false
-# prod 放行 stdio MCP（路线A）策略
+### prod 放行 stdio MCP（路线A）策略
 
 > 背景：stdio MCP 等同于在 core 所在机器上启动本机进程（高风险 L3）。  
 > 目标：在 **prod 也允许使用** 的前提下，提供可审计、可回滚、默认拒绝的显式放行机制。
 
-## 1) 放行条件（必须同时满足）
+#### 1) 放行条件（必须同时满足）
 
 当 `AIPLAT_ENV=prod` 时，以下条件必须全部满足，stdio MCP 才允许：
 
@@ -430,7 +430,7 @@ metadata:
   prod_allowed: true
 ```
 
-## 2) 受影响的操作
+#### 2) 受影响的操作
 
 在 prod 中，stdio MCP 的以下操作都会触发同一套放行校验：
 - 启用：`POST /api/core/workspace/mcp/servers/{name}/enable`
@@ -438,18 +438,18 @@ metadata:
 
 若未满足条件，接口返回 403，并在 UI 中提示策略原因。
 
-## 3) 为什么需要双白名单（server + command 前缀）
+#### 3) 为什么需要双白名单（server + command 前缀）
 
 - **server_name 白名单**：防止任意人创建新 server 并启用（控制面可控）
 - **command 前缀白名单**：防止用 `bash`/`python`/任意路径执行任意代码（执行面可控）
 
-## 4) 建议（进一步增强）
+#### 4) 建议（进一步增强）
 
 - 将 `command` 收敛为受控的 launcher（例如 `/opt/aiplat/mcp/bin/launch`），由 launcher 再选择具体子命令
 - 配置审计：记录 enable/disable 以及 tools/call 的审计日志（输入输出摘要）
 - 资源限制：超时、并发、CPU/内存配额（若支持容器/沙箱更佳）
 
-## 5) 已落地的审计
+#### 5) 已落地的审计
 
 当前已将 MCP 管理动作写入 ExecutionStore 的 `syscall_events`（kind=`mcp_admin`）：
 - workspace.mcp.upsert
@@ -461,11 +461,11 @@ metadata:
 
 ### 3.6 API 参考（节选）
 
-# aiPlat API Reference
+### aiPlat API Reference
 
 > 完整 API 文档通过 Swagger UI 提供。所有端点支持交互式调用。
 
-## Swagger UI
+#### Swagger UI
 
 启动服务后浏览器打开：
 
@@ -476,119 +476,119 @@ metadata:
 | Infra | `http://localhost:8001/docs` | 模型管理 |
 | Platform | `http://localhost:8003/docs` | 知识库 |
 
-## 核心 API 端点
+#### 核心 API 端点
 
-### Agent 管理
+##### Agent 管理
 
 ```bash
-# 列出所有 Agent
+### 列出所有 Agent
 GET /api/core/workspace/agents
 
-# 执行 Agent
+### 执行 Agent
 POST /api/core/workspace/agents/{agent_id}/execute
 Body: {"messages": [{"role": "user", "content": "..."}]}
 
-# 启动 Agent
+### 启动 Agent
 POST /api/core/workspace/agents/{agent_id}/start
 
-# 停止 Agent
+### 停止 Agent
 POST /api/core/workspace/agents/{agent_id}/stop
 ```
 
-### Pipeline
+##### Pipeline
 
 ```bash
-# 创建 Builder 项目
+### 创建 Builder 项目
 POST /api/core/builder/projects
 
-# 运行 Pipeline
+### 运行 Pipeline
 POST /api/core/pipelines/run
 Body: {"pipeline_id": "...", "context": {...}}
 
-# Pipeline 状态
+### Pipeline 状态
 GET /api/core/pipelines/{id}/status
 
-# HITL 人工审批
+### HITL 人工审批
 POST /api/core/pipelines/{id}/hitl-resolve
 ```
 
-### 诊断与监控
+##### 诊断与监控
 
 ```bash
-# 架构守卫 (76 条规则)
+### 架构守卫 (76 条规则)
 POST /api/diagnostics/guard/run
 
-# 全量诊断
+### 全量诊断
 POST /api/diagnostics/run-all
 
-# 4 层健康检查
+### 4 层健康检查
 GET /api/diagnostics/health/all
 
-# 数据血缘
+### 数据血缘
 GET /api/diagnostics/data-lineage
 
-# 模型层级面板
+### 模型层级面板
 GET /api/diagnostics/model-tier
 ```
 
-### 知识库
+##### 知识库
 
 ```bash
-# 检索知识
+### 检索知识
 POST /api/core/knowledge/retrieve
 Body: {"query": "...", "collection_id": "..."}
 
-# Wiki 页面查询
+### Wiki 页面查询
 GET /api/core/wiki/pages?query=...
 
-# 主动综合
+### 主动综合
 POST /api/core/wiki/active-synthesis
 ```
 
-### 模型管理
+##### 模型管理
 
 ```bash
-# 模型列表
+### 模型列表
 GET /api/infra/models
 
-# 模型启用/禁用
+### 模型启用/禁用
 POST /api/infra/models/{model_id}/enable
 POST /api/infra/models/{model_id}/disable
 
-# 会话模型覆盖 (/model 命令)
+### 会话模型覆盖 (/model 命令)
 POST /api/core/model-override
 Body: {"model_name": "deepseek-v4-pro"}
 ```
 
-### Skill 系统
+##### Skill 系统
 
 ```bash
-# Skill 列表
+### Skill 列表
 GET /api/core/skills
 
-# Skill 执行
+### Skill 执行
 POST /api/core/skills/{skill_id}/execute
 
-# Skill 语料库搜索
+### Skill 语料库搜索
 POST /api/core/skills/corpus-search
 Body: {"query": "..."}
 ```
 
-### 安全
+##### 安全
 
 ```bash
-# 审批列表
+### 审批列表
 GET /api/core/approvals
 
-# 审批操作
+### 审批操作
 POST /api/core/approvals/{id}/approve
 POST /api/core/approvals/{id}/reject
 
-# 密钥状态
+### 密钥状态
 GET /api/platform/onboarding/secrets-status
 ```
 
-## 通用约定
+#### 通用约定
 
 | 约定 | 说明 |
 |:---|:---|
@@ -598,27 +598,27 @@ GET /api/platform/onboarding/secrets-status
 | 多租户 | `X-Tenant-ID` header (可选) |
 | 流式 | `?stream=true` (SSE 响应) |
 
-## 总端点统计
+#### 总端点统计
 
 ```bash
-# 统计所有 API 端点
+### 统计所有 API 端点
 find aiPlat-core/core/api/routers -name '*.py' | \
   xargs grep -cEh '@router\.(get|post|put|delete|patch)' | \
   awk '{sum+=$0} END {print sum}'
-# → ~842 端点
+### → ~842 端点
 ```
 
 
 ### 3.7 厂外 Pi Package
 
-# @aiplat/pi-runtime
+### @aiplat/pi-runtime
 
 Thin **Pi Package** Runtime for aiPlat factory **Agent-mode** artifacts.
 
 - **aiPlat** = heavy factory (PRD → AGENT.md / SKILL.md / `agent_manifest.json`)
 - **This package** = **厂外** user-side thin host (Pi extensions + package `skills/`)
 
-## Two axes (do not merge)
+#### Two axes (do not merge)
 
 See [`docs/architecture/plans/pi-thin-runtime.md`](../../docs/architecture/plans/pi-thin-runtime.md).
 
@@ -637,7 +637,7 @@ See [`docs/architecture/plans/pi-thin-runtime.md`](../../docs/architecture/plans
 
 Do not claim Pi-only equals full in-factory agent. Enterprise thickness is **Pi + aiPlat**, not “stuff the platform into the Pi process”.
 
-## Enterprise hybrid (opt-in)
+#### Enterprise hybrid (opt-in)
 
 Default remains Pi-only. See [`docs/HYBRID_ENTERPRISE.md`](./docs/HYBRID_ENTERPRISE.md).
 
@@ -645,15 +645,15 @@ Default remains Pi-only. See [`docs/HYBRID_ENTERPRISE.md`](./docs/HYBRID_ENTERPR
 export AIPLAT_ENTERPRISE=1
 export AIPLAT_PLATFORM_URL=http://127.0.0.1:8003   # or http://host:8000/api via management GW
 export AIPLAT_TENANT_TOKEN=<bearer>                # or AIPLAT_API_KEY
-# optional KB: AIPLAT_KB_COLLECTION_ID=default
-# optional tools (empty = tools off, KB only):
+### optional KB: AIPLAT_KB_COLLECTION_ID=default
+### optional tools (empty = tools off, KB only):
 export AIPLAT_ENTERPRISE_TOOLS=calculator
-# optional: AIPLAT_CORE_URL=http://127.0.0.1:8002
+### optional: AIPLAT_CORE_URL=http://127.0.0.1:8002
 
 pi -e .
-# /aiplat-status          → enterprise_hybrid / enterprise_tools
-# /aiplat-enterprise      → KB reconnect status
-# tools: aiplat_kb_retrieve | aiplat_tool_execute
+### /aiplat-status          → enterprise_hybrid / enterprise_tools
+### /aiplat-enterprise      → KB reconnect status
+### tools: aiplat_kb_retrieve | aiplat_tool_execute
 ```
 
 Offline gates (mock HTTP, no platform process):
@@ -665,22 +665,22 @@ node packages/aiplat-pi-runtime/scripts/enterprise_tools_smoke.mjs
 
 PolicyGate / RBAC stay on the server; extensions only forward the bearer token.
 
-## Scheme A (Skills)
+#### Scheme A (Skills)
 
 Skills are **copied into** the package `skills/` directory at export time. Pi auto-discovers them. There is **no** `registerSkill` API.
 
-## Quick start
+#### Quick start
 
 ```bash
-# Install Pi (Node >= 22.19)
+### Install Pi (Node >= 22.19)
 npm install -g --ignore-scripts @earendil-works/pi-coding-agent
 
-# Smoke this package
+### Smoke this package
 cd packages/aiplat-pi-runtime
 pi -e .
-# /aiplat-status
-# /skill:fixture-skill
-# /aiplat-sop-check
+### /aiplat-status
+### /skill:fixture-skill
+### /aiplat-sop-check
 ```
 
 With an exported app:
@@ -688,7 +688,7 @@ With an exported app:
 ```bash
 export AIPLAT_APP_HOME=/path/to/exported-app   # contains agent_manifest.json
 pi -e /path/to/aiplat-pi-runtime
-# or: aiplat-run
+### or: aiplat-run
 ```
 
 Export from aiPlat disk deploy:
@@ -698,14 +698,14 @@ python3 scripts/export_pi_bundle.py --app-home ~/.aiplat/apps/<project_id>/curre
 pi install ./dist/aiplat-app-<id>
 ```
 
-## Thin HTTP (Phase 2)
+#### Thin HTTP (Phase 2)
 
 ```bash
 AIPLAT_HTTP_STUB=1 AIPLAT_APP_HOME=./fixtures/sample-app \
   AIPLAT_HTTP_API_KEY=dev node bin/aiplat-http.mjs
-# GET  /health
-# POST /v1/chat            Authorization: Bearer dev
-# POST /v1/skills/demo_skill   → handler.py if present
+### GET  /health
+### POST /v1/chat            Authorization: Bearer dev
+### POST /v1/skills/demo_skill   → handler.py if present
 
 bash scripts/http_smoke.sh
 ```
@@ -713,18 +713,18 @@ bash scripts/http_smoke.sh
 Agent mode (OpenAI-compatible — Ollama default):
 
 ```bash
-# ensures ~/.pi/agent/models.json has ollama provider (for CLI)
+### ensures ~/.pi/agent/models.json has ollama provider (for CLI)
 bash scripts/ensure_ollama_models_json.sh
 
 AIPLAT_PI_MODEL=ollama/qwen2.5:3b AIPLAT_APP_HOME=./fixtures/sample-app \
   AIPLAT_HTTP_API_KEY=dev node bin/aiplat-http.mjs
-# Optional: AIPLAT_PI_BASE_URL / AIPLAT_PI_API_KEY / AIPLAT_PI_SDK_ROOT
+### Optional: AIPLAT_PI_BASE_URL / AIPLAT_PI_API_KEY / AIPLAT_PI_SDK_ROOT
 
-# Full live gate (offline + stub HTTP + CLI + HTTP agent)
+### Full live gate (offline + stub HTTP + CLI + HTTP agent)
 AIPLAT_PI_MODEL=ollama/qwen2.5:3b bash scripts/live_smoke.sh
 ```
 
-## Factory-in experiment (not wired to engine)
+#### Factory-in experiment (not wired to engine)
 
 Optional way-4 CLI: `scripts/coding_exec.py` (Pi print-mode coding). Refuses host cwd unless `--allow-host`; does **not** replace ReActLoop / PipelineEngine.
 
@@ -740,7 +740,7 @@ See [PHASE0.md](./PHASE0.md) and `docs/architecture/plans/pi-thin-runtime.md`.
 
 ### 3.8 归因协议（节选）
 
-# AttributionSchema — Agent 效果归因协议
+### AttributionSchema — Agent 效果归因协议
 
 > 版本: 1.0 · 2026-07-17  
 > 目的: 定义外部业务系统向 aiPlatform 回传 Agent 效果的标准化协议  
@@ -748,7 +748,7 @@ See [PHASE0.md](./PHASE0.md) and `docs/architecture/plans/pi-thin-runtime.md`.
 
 ---
 
-## 1. 会话追踪标识
+#### 1. 会话追踪标识
 
 客户在调用 Agent API 时，必须在请求中携带 `X-AiPlatform-Session-ID` header：
 
@@ -761,7 +761,7 @@ aiPlatform 在 Agent 的每次回复中都会返回此标识。客户系统需�
 
 ---
 
-## 2. 效果数据回传（后续实现）
+#### 2. 效果数据回传（后续实现）
 
 > **接口预留，当前版本尚未上线。建议客户侧先做 Session-ID 关联存储，待接口上线后批量回传。**
 
@@ -787,7 +787,7 @@ Content-Type: application/json
 
 ---
 
-## 3. 数据用途
+#### 3. 数据用途
 
 回传的效果数据将用于：
 - **Agent 效果评估**：计算转化率、客单价等业务指标
@@ -796,7 +796,7 @@ Content-Type: application/json
 
 ---
 
-## 4. 数据安全
+#### 4. 数据安全
 
 - 效果数据按 `tenant_id` 严格隔离
 - 不存储客户侧的个人身份信息（PII）
@@ -804,7 +804,7 @@ Content-Type: application/json
 
 ---
 
-## 5. 联系方式
+#### 5. 联系方式
 
 如有技术问题，联系 aiPlatform FDE 团队。
 
