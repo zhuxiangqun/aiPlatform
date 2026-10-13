@@ -80,6 +80,24 @@ def test_lazy_store_without_kernel_runtime():
         res = asyncio.run(mod.list_pending_approvals())
         assert res.get("total") == 0
         assert res.get("items") == []
+
+        # Store may return float epochs — normalize to ISO strings for response_model
+        raw = {
+            "items": [
+                {
+                    "request_id": "a1",
+                    "status": "pending",
+                    "created_at": 1790698319.20875,
+                    "updated_at": 1790698319.208757,
+                    "expires_at": None,
+                }
+            ],
+            "total": 1,
+        }
+        norm = mod._normalize_approval_list_response(raw)
+        assert isinstance(norm["items"][0]["created_at"], str)
+        assert "T" in norm["items"][0]["created_at"]
+        assert norm["items"][0]["expires_at"] is None
     finally:
         for name, prev in saved.items():
             if prev is None:
