@@ -44,7 +44,7 @@
 | 2 | 工具代理（允许列表） | ✅ | `aiplat_tool_execute` → `POST …/tools/{name}/execute` |
 | 3 | 原生工具门禁桥 | ✅ | `enterprise_tool_gate.ts`：`tool_call` block + `setActiveTools`；默认禁 bash/write/edit/powershell |
 | 4 | 会话摘要回写 Memory | ✅ | `enterprise_memory.ts` → `POST /platform/memory/capture`；工具 + `session_shutdown` 软 flush；失败不阻断 |
-| 5 | 审批门 ApprovalGate | ✅ | `enterprise_approval.ts`：status/pending/wait → `GET /platform/approvals…`；工具代理识别 `approval_required`；裁决在平台 UI |
+| 5 | 审批门 ApprovalGate | ✅ | `enterprise_approval.ts`：status/pending/wait → `GET /platform/approvals…`（platform 无 KernelRuntime 时懒加载 store；仍可回退 core `/api/core/approvals`）；工具代理识别 `approval_required`；裁决在平台 UI |
 
 ```bash
 export AIPLAT_ENTERPRISE=1
