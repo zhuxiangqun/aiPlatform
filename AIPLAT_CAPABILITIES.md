@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2110
+total_capabilities: 2114
 last_updated: 2026-10-11
 version: "30.10"
 auto_sync: true
@@ -1209,11 +1209,12 @@ scan_hash: 8f9548ec24f4
 | apps/org 生成物适用性 | apps/org | ⚠️ | 生成物不适用（理由：企业组织/飞书通道运营与现场签收，属平台内部组织运行时，非应用工厂生成应用能力） | 已评估 |
 | kb 生成物适用性 | kb | ⚠️ | 生成物不适用（理由：生成 agent 运行时知识检索由 core 全局 syscall `sys_kb_retrieve`（harness/syscalls/retrieval.py，ReActLoop 天然可用）平台横切强制执行，生成物无需自建检索路径；kb 为租户隔离知识服务，生成应用由平台侧注入检索上下文） | 已评估 |
 | agent 消息总线（agent_messages） | governance/agent_messages.py（AgentMessageStore/register/unregister/send/inbox/list_agents）+ api/rest/routes.py 端点 /governance/agents* + builder/_register_generated_agent_to_bus | ✅ | 运行中 agent 注册（身份/通知层）→ 点对点邮箱（非用户中转）；**不是**工厂运行时契约协同主路径。协同主路径：Pipeline + stage_handoff / skill_routing + schema 门 + HITL。纪律：不做无门控互调。生成物适用：**已接线（身份注册）**；契约协同走 handoff/hop gate | 已合入 |
-| Pi 薄 Runtime 导出（Agent 用户侧） | `packages/aiplat-pi-runtime/` + `scripts/export_pi_bundle.py` + `builder/pi_bundle_export.py` + `POST …/export-pi-bundle` + `GET …/export-pi-bundle.zip` + deploy `pi_bundle` + 管理端导出/下载 ZIP + `docs/architecture/plans/pi-thin-runtime.md` | ✅ | **产品锁定**：默认 **Pi-only**；企业混合：KB + 允许列表工具 + 原生门禁 + Memory capture。SOP+skills+handler；**不**搬 PolicyGate/MemoryManager/SECI。厂内编码核实验未接引擎。生成物适用：**已接线**（Pi-only + 混合）；审批仍待逐项 | 已合入 |
+| Pi 薄 Runtime 导出（Agent 用户侧） | `packages/aiplat-pi-runtime/` + `scripts/export_pi_bundle.py` + `builder/pi_bundle_export.py` + `POST …/export-pi-bundle` + `GET …/export-pi-bundle.zip` + deploy `pi_bundle` + 管理端导出/下载 ZIP + `docs/architecture/plans/pi-thin-runtime.md` | ✅ | **产品锁定**：默认 **Pi-only**；企业混合阶梯 1–5：KB + 工具 + 原生门禁 + Memory + 审批等待。SOP+skills+handler；**不**搬 PolicyGate/MemoryManager/ApprovalGate。厂内编码核实验未接引擎。生成物适用：**已接线**（Pi-only + 混合） | 已合入 |
 | Pi 企业混合 KB 回连 | `packages/aiplat-pi-runtime/extensions/enterprise_kb.ts` + `aiplat-app.ts` + `scripts/enterprise_kb_smoke.mjs` | ✅ | 厂外 opt-in：`aiplat_kb_retrieve` / `/aiplat-enterprise`；默认关闭；软失败；门禁留在平台。生成物适用：**已接线**（导出包同扩展） | 已合入 |
 | Pi 企业混合工具代理 | `packages/aiplat-pi-runtime/extensions/enterprise_tools.ts` + `aiplat-app.ts` + `scripts/enterprise_tools_smoke.mjs` | ✅ | 厂外 opt-in：`aiplat_tool_execute`；须 `AIPLAT_ENTERPRISE_TOOLS` 允许列表；空列表=关闭；软失败；RBAC/PolicyGate 在 Core。生成物适用：**已接线**（导出包同扩展） | 已合入 |
 | Pi 企业原生工具门禁桥 | `packages/aiplat-pi-runtime/extensions/enterprise_tool_gate.ts` + `aiplat-app.ts` + `scripts/enterprise_tool_gate_smoke.mjs` | ✅ | `AIPLAT_ENTERPRISE=1` 时默认 `tool_call` block bash/write/edit/powershell + `setActiveTools`；只读 native 默认放行；`aiplat_*` 始终放行；逃生 `ALLOW_NATIVE` / `TOOL_GATE=0` / `NATIVE_ALLOWLIST`。生成物适用：**已接线**（导出包同扩展；不搬 PolicyGate） | 已合入 |
 | Pi 企业 Memory 回写桥 | `packages/aiplat-pi-runtime/extensions/enterprise_memory.ts` + `aiplat-app.ts` + `scripts/enterprise_memory_smoke.mjs` | ✅ | opt-in：`AIPLAT_ENTERPRISE_MEMORY=1` → `aiplat_memory_capture` + `/aiplat-memory` + `session_shutdown` 软 flush → `POST /platform/memory/capture`；失败不阻断本地会话。生成物适用：**已接线**（导出包同扩展；不搬 MemoryManager） | 已合入 |
+| Pi 企业审批等待桥 | `packages/aiplat-pi-runtime/extensions/enterprise_approval.ts` + `aiplat-app.ts` + `scripts/enterprise_approval_smoke.mjs` | ✅ | opt-in：`AIPLAT_ENTERPRISE_APPROVAL=1` → `aiplat_approval_status` / `pending` / `wait` → `GET /platform/approvals…`；工具代理识别 `approval_required`；**不**从 Pi approve/reject。生成物适用：**已接线**（导出包同扩展；裁决留平台 UI） | 已合入 |
 | 生成 app 运行时 | builder/app_runtime.py（detect_runtime/launch/health_check/stop/smoke_test/real_tests/auto_repair + _register_smoke_failure + _register_test_failure）+ api/routers/builder.py 端点 /platform/builder/projects/{id}/runtime*（launch/runtime/stop/smoke/real-tests/auto-repair）+ builder_project_service.py（run_tests 升级真实冒烟 + 真实测试 + 自动修复 + last_test_report 持久化）+ aiPlat-management/frontend（ProjectDetailPage 运行时控制 + 测试报告 bug_summary/suggested_fix 展示） | ✅ | 生成 app 运行能力（2026-08-27，生成物侧接线收尾）：detect_runtime 扫描生成目录识别入口（FastAPI uvicorn/Flask/Node/静态页 http.server）→ launch 经 daemon_jobs 托管启动（派生端口 18000-18999、127.0.0.1 绑定）→ health_check HTTP 轮询探测（2xx/3xx=up）→ stop kill 会话组；run_tests 的 e2e_smoke 从"目录存在"假通过升级为真实冒烟（启动+健康探测，自动测试闭环）+ 结果持久化 last_test_report（GET /last-test-report 供前端展示）；**real_tests 测试经理真实测试**：递归发现生成物测试用例（backend/tests/ 等任意层级 test_*.py）→ 可写临时目录跑 pytest（装依赖 + PYTHONPATH + conftest）→ test_report（header/meta/test_results/bug_summary，对齐 test_executor；失败分类 env/配置/实现，含 suggested_fix）；**auto_repair 自动修复闭环**：测试失败 → LLM（llm_generate 经 CoreFacade）按测试输出修复生成代码 → 可写临时区验证 → 改进则写回部署目录（_sync_repair_writeback，路径段匹配防逃逸）→ 重跑测试，最多 max_rounds 轮；**前端运行时控制面板**（ProjectDetailPage：启动/停止/自动修复按钮 + 测试报告 bug 清单/修复建议展示）；冒烟失败（launch 失败/健康不通过）→ L2 经验回写（generated-smoke-*）；真实测试失败（断言失败/配置错误/超时）→ L2 经验回写（generated-test-failed，含 suggested_fix）——均与 conformance 拒绝登记同源；生成物适用：**已接线**（生成 app 可运行 + 自动测试 + 测试经理真实测试 + 自动修复 + 失败经验回写 + 前端控制） | 已合入 |
 | FDE交付反馈API | platform/apps/fde/api/fde.py | ✅ | POST /fde/delivery/feedback — 标记Session+Action状态→更新交付率统计→触发§4.6ROI重新计算(HMESI D) | 已合入 |
 | FDE诊断自优化 | apps/skills/registry.py:1827-1863 | ✅ | 基于历史交付率(≥60%/30-60%/<30%)自动调整§1置信度标注策略+§6方案推荐排序(HMESI E) | 已合入 |
@@ -2707,6 +2708,9 @@ scan_hash: 8f9548ec24f4
 ## 二十五、管理 & 质量
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| waitForApproval | `packages/aiplat-pi-runtime/extensions/enterprise_approval.ts` | ✅ | 自动同步 | 已合入 |
+| loadApprovalBridgeConfig | `packages/aiplat-pi-runtime/extensions/enterprise_approval.ts` | ✅ | 自动同步 | 已合入 |
+| registerEnterpriseApproval | `packages/aiplat-pi-runtime/extensions/enterprise_approval.ts` | ✅ | 自动同步 | 已合入 |
 | captureMemory | `packages/aiplat-pi-runtime/extensions/enterprise_memory.ts` | ✅ | 自动同步 | 已合入 |
 | loadMemoryBridgeConfig | `packages/aiplat-pi-runtime/extensions/enterprise_memory.ts` | ✅ | 自动同步 | 已合入 |
 | registerEnterpriseMemory | `packages/aiplat-pi-runtime/extensions/enterprise_memory.ts` | ✅ | 自动同步 | 已合入 |
@@ -3030,7 +3034,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 248 | 1 | 249 |
 | 记忆子系统 | 58 | 0 | 58 |
-| 知识引擎（本体） | 363 | 9 | 372 |
+| 知识引擎（本体） | 364 | 9 | 373 |
 | RAG 检索 | 51 | 0 | 51 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 168 | 0 | 168 |
@@ -3054,7 +3058,7 @@ scan_hash: 8f9548ec24f4
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 58 | 0 | 58 |
+| 管理 & 质量 | 61 | 0 | 61 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -3073,7 +3077,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2100** | **10** | **2110** |
+| **总计** | **2104** | **10** | **2114** |
 
 | **总计** | **1095** | **0** | **1095** |
 

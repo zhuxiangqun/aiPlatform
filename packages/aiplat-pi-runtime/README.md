@@ -19,7 +19,7 @@ See [`docs/architecture/plans/pi-thin-runtime.md`](../../docs/architecture/plans
 | Mode | Meaning |
 |------|---------|
 | **Pi-only** (default) | Artifacts run with Pi alone: SOP + skills + handler + your LLM. No 8002/8003. |
-| **Pi + aiPlat** (enterprise) | Same Pi shell; opt-in hybrid (`AIPLAT_ENTERPRISE=1`). **KB retrieve** + **allowlisted tool execute** + **native tool gate** + **Memory capture** (`AIPLAT_ENTERPRISE_MEMORY=1` → `/platform/memory/capture`); Approval still pending. |
+| **Pi + aiPlat** (enterprise) | Same Pi shell; opt-in hybrid (`AIPLAT_ENTERPRISE=1`). **KB** + **allowlisted tools** + **native tool gate** + **Memory capture** + **Approval wait** (`AIPLAT_ENTERPRISE_APPROVAL=1` → status/pending/wait; humans approve in platform UI). |
 | Thick aiPlat-only on user machine | **Not** the default delivery shape. |
 
 **Layered, not two parallel products:** aiPlat already has agent loops / tools / multi-model in the **platform** sense. Pi exists so **factory artifacts can run without installing the full stack**. Overlap in capability lists ≠ redundant delivery. Do not market Pi and aiPlat as two peer platforms with separate auth/audit. Enterprise entry remains aiPlat (or Pi shell reconnecting to aiPlat).
@@ -42,12 +42,16 @@ export AIPLAT_ENTERPRISE_TOOLS=calculator
 # escape: AIPLAT_ENTERPRISE_ALLOW_NATIVE=1  or  AIPLAT_ENTERPRISE_TOOL_GATE=0
 # optional memory writeback:
 # export AIPLAT_ENTERPRISE_MEMORY=1
+# optional approval wait (no approve from Pi):
+# export AIPLAT_ENTERPRISE_APPROVAL=1
 
 pi -e .
-# /aiplat-status          → enterprise_hybrid / tools / tool_gate / memory
+# /aiplat-status          → enterprise_hybrid / tools / tool_gate / memory / approval
 # /aiplat-enterprise      → KB reconnect status
 # /aiplat-memory          → memory writeback status
+# /aiplat-approval        → approval wait-bridge status
 # tools: aiplat_kb_retrieve | aiplat_tool_execute | aiplat_memory_capture
+#        | aiplat_approval_status | aiplat_approval_pending | aiplat_approval_wait
 ```
 
 Offline gates (mock HTTP / pure policy, no platform process):
@@ -57,6 +61,7 @@ node packages/aiplat-pi-runtime/scripts/enterprise_kb_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_tools_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_tool_gate_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_memory_smoke.mjs
+node packages/aiplat-pi-runtime/scripts/enterprise_approval_smoke.mjs
 ```
 
 PolicyGate / RBAC stay on the server; extensions only forward the bearer token. The native gate **blocks** host-mutating Pi tools so they cannot bypass that server path.

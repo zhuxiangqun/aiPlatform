@@ -50,6 +50,9 @@ def main() -> int:
             "registerEnterpriseMemory",
             "enterprise_memory",
             "memorySystemPromptAddon",
+            "registerEnterpriseApproval",
+            "enterprise_approval",
+            "approvalSystemPromptAddon",
         ):
             if needle not in src:
                 errors.append(f"extension missing {needle}")
@@ -95,6 +98,20 @@ def main() -> int:
         ):
             if needle not in mem_src:
                 errors.append(f"enterprise_memory missing {needle}")
+
+    appr = ROOT / "extensions" / "enterprise_approval.ts"
+    if not appr.is_file():
+        errors.append("missing extensions/enterprise_approval.ts")
+    else:
+        appr_src = appr.read_text(encoding="utf-8")
+        for needle in (
+            "AIPLAT_ENTERPRISE_APPROVAL",
+            "aiplat_approval_wait",
+            "registerEnterpriseApproval",
+            "approvalsBaseUrl",
+        ):
+            if needle not in appr_src:
+                errors.append(f"enterprise_approval missing {needle}")
 
     handler = ROOT / "fixtures" / "handler_echo.py"
     if not handler.is_file():

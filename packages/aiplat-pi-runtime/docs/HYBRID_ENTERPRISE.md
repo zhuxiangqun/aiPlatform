@@ -1,7 +1,7 @@
 # Pi + aiPlat 企业级混合
 
 > 产品锁定：默认 **Pi-only**；企业级 = **Pi 壳 + aiPlat 回连**。  
-> **已接线**：只读 KB + 允许列表工具代理 + **原生工具门禁桥** + **会话摘要 Memory 回写**。审批门仍按阶梯推进。  
+> **已接线**：只读 KB + 允许列表工具代理 + **原生工具门禁桥** + **会话摘要 Memory 回写** + **审批等待桥**。  
 > **分层**：Pi = 执行/薄宿主；aiPlat = 治理/工厂。不是两套平权产品。
 
 ## 原则
@@ -30,6 +30,9 @@
 | `AIPLAT_ENTERPRISE_MEMORY=1` | 启用会话摘要回写（须同时有 URL/token）；空=关闭 |
 | `AIPLAT_ENTERPRISE_MEMORY_AUTO=0` | 仅关闭 `session_shutdown` 自动 flush；保留 `aiplat_memory_capture` 工具 |
 | `AIPLAT_ENTERPRISE_SESSION_ID` | 可选；写入 capture 的 `session_id` |
+| `AIPLAT_ENTERPRISE_APPROVAL=1` | 启用审批等待桥（须 URL/token）；空=关闭。**不**在 Pi 内 approve/reject |
+| `AIPLAT_ENTERPRISE_APPROVAL_POLL_MS` | `aiplat_approval_wait` 轮询间隔（默认 2000） |
+| `AIPLAT_ENTERPRISE_APPROVAL_WAIT_MS` | 等待超时（默认 120000） |
 
 ## 回连能力阶梯
 
@@ -39,7 +42,7 @@
 | 2 | 工具代理（允许列表） | ✅ | `aiplat_tool_execute` → `POST …/tools/{name}/execute` |
 | 3 | 原生工具门禁桥 | ✅ | `enterprise_tool_gate.ts`：`tool_call` block + `setActiveTools`；默认禁 bash/write/edit/powershell |
 | 4 | 会话摘要回写 Memory | ✅ | `enterprise_memory.ts` → `POST /platform/memory/capture`；工具 + `session_shutdown` 软 flush；失败不阻断 |
-| 5 | 审批门 ApprovalGate | 待接线 | 高风险动作等待平台 |
+| 5 | 审批门 ApprovalGate | ✅ | `enterprise_approval.ts`：status/pending/wait → `GET /platform/approvals…`；工具代理识别 `approval_required`；裁决在平台 UI |
 
 ```bash
 export AIPLAT_ENTERPRISE=1
@@ -54,12 +57,16 @@ export AIPLAT_ENTERPRISE_TOOLS=calculator
 # memory writeback (opt-in):
 export AIPLAT_ENTERPRISE_MEMORY=1
 # export AIPLAT_ENTERPRISE_MEMORY_AUTO=0   # keep tool, skip session_shutdown flush
+# approval wait bridge (opt-in; humans approve in platform UI):
+export AIPLAT_ENTERPRISE_APPROVAL=1
 
 pi -e .
-# /aiplat-status          → enterprise_hybrid / tools / tool_gate / memory
+# /aiplat-status          → enterprise_hybrid / tools / tool_gate / memory / approval
 # /aiplat-enterprise      → KB reconnect status
 # /aiplat-memory          → memory writeback status
+# /aiplat-approval        → approval wait-bridge status
 # tools: aiplat_kb_retrieve | aiplat_tool_execute | aiplat_memory_capture
+#        | aiplat_approval_status | aiplat_approval_pending | aiplat_approval_wait
 ```
 
 Offline gates:
@@ -69,11 +76,13 @@ node packages/aiplat-pi-runtime/scripts/enterprise_kb_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_tools_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_tool_gate_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_memory_smoke.mjs
+node packages/aiplat-pi-runtime/scripts/enterprise_approval_smoke.mjs
 ```
 
 ## 非目标
 
-- 在 Pi 内重实现 PolicyGate / MemoryManager / SECI（门禁桥只 **拦截/引导**；Memory 桥只 **投递** capture API）
+- 在 Pi 内重实现 PolicyGate / MemoryManager / SECI / ApprovalGate（桥只 **拦截/引导/等待/投递**）
+- 从 Pi 代批 `approve`/`reject`（必须走平台审批 UI / 管理端）
 - 无允许列表时开放任意平台工具
 - 把「厚运行时私有化」写成默认交付（仅驻场例外）
 

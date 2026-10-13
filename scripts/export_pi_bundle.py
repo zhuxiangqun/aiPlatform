@@ -31,6 +31,7 @@ RUNTIME_EXT_ENTERPRISE = RUNTIME_PKG / "extensions" / "enterprise_kb.ts"
 RUNTIME_EXT_TOOLS = RUNTIME_PKG / "extensions" / "enterprise_tools.ts"
 RUNTIME_EXT_TOOL_GATE = RUNTIME_PKG / "extensions" / "enterprise_tool_gate.ts"
 RUNTIME_EXT_MEMORY = RUNTIME_PKG / "extensions" / "enterprise_memory.ts"
+RUNTIME_EXT_APPROVAL = RUNTIME_PKG / "extensions" / "enterprise_approval.ts"
 RUNTIME_HANDLER = RUNTIME_PKG / "fixtures" / "handler_echo.py"
 RUNTIME_RUNNER = RUNTIME_PKG / "fixtures" / "handler_runner.py"
 
@@ -152,6 +153,10 @@ def export_bundle(
         shutil.copy2(RUNTIME_EXT_MEMORY, ext_dir / "enterprise_memory.ts")
     else:
         _die(f"enterprise memory extension missing: {RUNTIME_EXT_MEMORY}")
+    if RUNTIME_EXT_APPROVAL.is_file():
+        shutil.copy2(RUNTIME_EXT_APPROVAL, ext_dir / "enterprise_approval.ts")
+    else:
+        _die(f"enterprise approval extension missing: {RUNTIME_EXT_APPROVAL}")
 
     fixtures = out / "fixtures"
     fixtures.mkdir(parents=True, exist_ok=True)

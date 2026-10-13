@@ -20,6 +20,11 @@ import {
   registerEnterpriseKb,
 } from "./enterprise_kb";
 import {
+  approvalStatusLines,
+  approvalSystemPromptAddon,
+  registerEnterpriseApproval,
+} from "./enterprise_approval";
+import {
   memoryStatusLines,
   memorySystemPromptAddon,
   registerEnterpriseMemory,
@@ -264,10 +269,12 @@ export default function (pi: ExtensionAPI) {
   // Optional hybrid: AIPLAT_ENTERPRISE=1 + platform URL/token → KB; + TOOLS allowlist → tool proxy
   // Native gate: when enterprise on, block bash/write/edit unless ALLOW_NATIVE / allowlist
   // Memory: AIPLAT_ENTERPRISE_MEMORY=1 → capture tool + soft session_shutdown flush
+  // Approval: AIPLAT_ENTERPRISE_APPROVAL=1 → status/pending/wait (no approve from Pi)
   const enterpriseOn = registerEnterpriseKb(pi);
   const toolsOn = registerEnterpriseTools(pi);
   const gateOn = registerEnterpriseToolGate(pi);
   const memoryOn = registerEnterpriseMemory(pi);
+  const approvalOn = registerEnterpriseApproval(pi);
 
   pi.registerCommand("aiplat-status", {
     description: "Show aiPlat Pi Runtime status (app home, routing, markers)",
@@ -290,10 +297,12 @@ export default function (pi: ExtensionAPI) {
         `enterprise_tools=${toolsOn ? "on" : "off"}`,
         `enterprise_tool_gate=${gateOn ? "on" : "off"}`,
         `enterprise_memory=${memoryOn ? "on" : "off"}`,
+        `enterprise_approval=${approvalOn ? "on" : "off"}`,
         ...enterpriseStatusLines(),
         ...toolProxyStatusLines(),
         ...toolGateStatusLines(),
         ...memoryStatusLines(),
+        ...approvalStatusLines(),
         "AIPLAT_STATUS_OK",
       ];
       const text = lines.join("\n");
@@ -384,7 +393,8 @@ export default function (pi: ExtensionAPI) {
       enterpriseSystemPromptAddon() +
       toolProxySystemPromptAddon() +
       toolGateSystemPromptAddon() +
-      memorySystemPromptAddon();
+      memorySystemPromptAddon() +
+      approvalSystemPromptAddon();
     return {
       systemPrompt: overlay,
       forceSystemPrompt: true,
