@@ -20,6 +20,11 @@ import {
   registerEnterpriseKb,
 } from "./enterprise_kb";
 import {
+  registerEnterpriseToolGate,
+  toolGateStatusLines,
+  toolGateSystemPromptAddon,
+} from "./enterprise_tool_gate";
+import {
   registerEnterpriseTools,
   toolProxyStatusLines,
   toolProxySystemPromptAddon,
@@ -252,8 +257,10 @@ export default function (pi: ExtensionAPI) {
 
   pi.registerTool(handlerTool);
   // Optional hybrid: AIPLAT_ENTERPRISE=1 + platform URL/token → KB; + TOOLS allowlist → tool proxy
+  // Native gate: when enterprise on, block bash/write/edit unless ALLOW_NATIVE / allowlist
   const enterpriseOn = registerEnterpriseKb(pi);
   const toolsOn = registerEnterpriseTools(pi);
+  const gateOn = registerEnterpriseToolGate(pi);
 
   pi.registerCommand("aiplat-status", {
     description: "Show aiPlat Pi Runtime status (app home, routing, markers)",
@@ -274,8 +281,10 @@ export default function (pi: ExtensionAPI) {
         "Scheme A: package skills/ + /skill-<name> (no registerSkill)",
         `enterprise_hybrid=${enterpriseOn ? "on" : "off"}`,
         `enterprise_tools=${toolsOn ? "on" : "off"}`,
+        `enterprise_tool_gate=${gateOn ? "on" : "off"}`,
         ...enterpriseStatusLines(),
         ...toolProxyStatusLines(),
+        ...toolGateStatusLines(),
         "AIPLAT_STATUS_OK",
       ];
       const text = lines.join("\n");
@@ -364,7 +373,8 @@ export default function (pi: ExtensionAPI) {
     overlay =
       buildSystemPromptOverlay(appHome) +
       enterpriseSystemPromptAddon() +
-      toolProxySystemPromptAddon();
+      toolProxySystemPromptAddon() +
+      toolGateSystemPromptAddon();
     return {
       systemPrompt: overlay,
       forceSystemPrompt: true,

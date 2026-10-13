@@ -19,7 +19,7 @@ See [`docs/architecture/plans/pi-thin-runtime.md`](../../docs/architecture/plans
 | Mode | Meaning |
 |------|---------|
 | **Pi-only** (default) | Artifacts run with Pi alone: SOP + skills + handler + your LLM. No 8002/8003. |
-| **Pi + aiPlat** (enterprise) | Same Pi shell; opt-in hybrid (`AIPLAT_ENTERPRISE=1`). **KB retrieve** + **allowlisted tool execute** wired; Memory/SECI/Approval still platform-side. |
+| **Pi + aiPlat** (enterprise) | Same Pi shell; opt-in hybrid (`AIPLAT_ENTERPRISE=1`). **KB retrieve** + **allowlisted tool execute** + **native tool gate** (blocks bash/write/edit by default); Memory/SECI/Approval still platform-side. |
 | Thick aiPlat-only on user machine | **Not** the default delivery shape. |
 
 **Layered, not two parallel products:** aiPlat already has agent loops / tools / multi-model in the **platform** sense. Pi exists so **factory artifacts can run without installing the full stack**. Overlap in capability lists ≠ redundant delivery. Do not market Pi and aiPlat as two peer platforms with separate auth/audit. Enterprise entry remains aiPlat (or Pi shell reconnecting to aiPlat).
@@ -38,21 +38,24 @@ export AIPLAT_TENANT_TOKEN=<bearer>                # or AIPLAT_API_KEY
 # optional tools (empty = tools off, KB only):
 export AIPLAT_ENTERPRISE_TOOLS=calculator
 # optional: AIPLAT_CORE_URL=http://127.0.0.1:8002
+# native gate ON by default under ENTERPRISE=1 (bash/write/edit blocked)
+# escape: AIPLAT_ENTERPRISE_ALLOW_NATIVE=1  or  AIPLAT_ENTERPRISE_TOOL_GATE=0
 
 pi -e .
-# /aiplat-status          → enterprise_hybrid / enterprise_tools
+# /aiplat-status          → enterprise_hybrid / enterprise_tools / enterprise_tool_gate
 # /aiplat-enterprise      → KB reconnect status
 # tools: aiplat_kb_retrieve | aiplat_tool_execute
 ```
 
-Offline gates (mock HTTP, no platform process):
+Offline gates (mock HTTP / pure policy, no platform process):
 
 ```bash
 node packages/aiplat-pi-runtime/scripts/enterprise_kb_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_tools_smoke.mjs
+node packages/aiplat-pi-runtime/scripts/enterprise_tool_gate_smoke.mjs
 ```
 
-PolicyGate / RBAC stay on the server; extensions only forward the bearer token.
+PolicyGate / RBAC stay on the server; extensions only forward the bearer token. The native gate **blocks** host-mutating Pi tools so they cannot bypass that server path.
 
 ## Scheme A (Skills)
 

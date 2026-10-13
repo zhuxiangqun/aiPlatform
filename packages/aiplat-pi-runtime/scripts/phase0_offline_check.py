@@ -44,6 +44,9 @@ def main() -> int:
             "enterprise_kb",
             "registerEnterpriseTools",
             "enterprise_tools",
+            "registerEnterpriseToolGate",
+            "enterprise_tool_gate",
+            "toolGateSystemPromptAddon",
         ):
             if needle not in src:
                 errors.append(f"extension missing {needle}")
