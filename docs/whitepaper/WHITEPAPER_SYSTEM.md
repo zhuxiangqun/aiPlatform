@@ -29,7 +29,7 @@
 
 ## 为什么不能只靠「能力清单白皮书」
 
-`aiplat-platform-status-whitepaper.md` 完整收录 **CAPABILITIES**，回答「平台有什么、是否接线」。  
+`aiplat-platform-status-whitepaper.md` 是 CAPABILITIES 的**可读包装（executive digest）**：定位叙事 + 统计表 + 各子系统 ✅/⚠️ 摘要；**不**粘贴完整 `文件:行号` 能力表（完整清单仍以根目录 `AIPLAT_CAPABILITIES.md` 为准）。  
 若缺 **对标 / 评级 / 商业 / 生态 / 治理论证**，对外说服链不完整——这些材料仓库里已有，须纳入体系，但**不得**再写成会漂移的手抄本。
 
 ## 五维映射（权威源 → 受众）

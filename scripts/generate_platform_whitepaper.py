@@ -4,8 +4,9 @@
 Authority model
 ---------------
 - Capability inventory truth: AIPLAT_CAPABILITIES.md (+ capability_registry.yaml)
-- This whitepaper is a *readable packaging* of that inventory plus architecture pointers.
-- Do NOT hand-edit capability tables in the output — re-run this script.
+- This whitepaper is an *executive digest*: stats, narrative, per-section ✅/⚠️ counts.
+- Full path-level inventory stays in CAPABILITIES.md (not pasted into this file).
+- Do NOT hand-edit generated tables — re-run this script / sync_whitepapers.sh.
 
 Usage
 -----
@@ -218,6 +219,84 @@ def _section_index(body: str) -> list[tuple[str, str]]:
     return out
 
 
+def _iter_h2_sections(body: str) -> list[tuple[str, str]]:
+    """Split CAPABILITIES body into (## title, section body) pairs."""
+    matches = list(re.finditer(r"^(## .+)$", body, re.M))
+    out: list[tuple[str, str]] = []
+    for i, m in enumerate(matches):
+        title = m.group(1).strip()
+        start = m.end()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
+        out.append((title, body[start:end]))
+    return out
+
+
+def _first_prose_line(section_body: str) -> str:
+    for line in section_body.splitlines():
+        s = line.strip()
+        if not s or s.startswith("|") or s.startswith("#") or s.startswith("<!--"):
+            continue
+        if s.startswith("---") or s.startswith("```"):
+            continue
+        # Drop path-heavy one-liners
+        if s.count("`") >= 2 and (".py" in s or ".ts" in s):
+            continue
+        if len(s) > 160:
+            s = s[:157] + "…"
+        return s
+    return ""
+
+
+def _caps_digest_table(body: str) -> str:
+    """One row per CAPABILITIES ## section: counts only — no file paths."""
+    rows = [
+        "| 子系统 / 章节 | ✅ | ⚠️ | 一句话（若有） |",
+        "|---------------|---:|---:|----------------|",
+    ]
+    skip_prefixes = (
+        "## 更新规则",
+        "## 系统架构",
+        "## 统计",
+        "## 附录",
+    )
+    for title, sec in _iter_h2_sections(body):
+        if any(title.startswith(p) for p in skip_prefixes):
+            continue
+        label = title[3:].strip() if title.startswith("## ") else title
+        ok = len(re.findall(r"✅", sec))
+        warn = len(re.findall(r"⚠️", sec))
+        if ok == 0 and warn == 0 and not re.search(r"^\|", sec, re.M):
+            continue
+        prose = _first_prose_line(sec).replace("|", "/")
+        rows.append(f"| {label} | {ok} | {warn} | {prose or '—'} |")
+    if len(rows) <= 2:
+        return "_(未能从 CAPABILITIES 生成章节摘要)_"
+    return "\n".join(rows)
+
+
+def _capability_landscape_narrative(total: str, ok_n: int, warn_n: int) -> str:
+    """Plain-language what the platform covers — no inventory dump."""
+    tot = total or "—"
+    return "\n".join(
+        [
+            "用业务语言概括：aiPlat 把「能跑 Agent」扩展成「能交付、能治理、能积累知识」的平台。",
+            "",
+            f"当前能力登记总量约 **{tot}** 项（✅≈{ok_n} · ⚠️≈{warn_n}，以 CAPABILITIES 扫描为准）。"
+            "对外论证时不必通读路径表，可按下面五块理解：",
+            "",
+            "1. **执行与编排**：多阶段流水线、ReAct 循环、多 Agent 协作——把任务跑完，而不是只聊一轮。",
+            "2. **记忆与知识**：会话记忆 + 企业知识/本体/RAG——回答有出处、可跨会话。",
+            "3. **技能与工具**：Skill / Tool / MCP / A2A——能力可扩展，且走统一调用边界。",
+            "4. **治理与安全**：策略门、审批、审计、多租户——企业可上线的前提。",
+            "5. **质量与运维**：评测、可观测、部署灰度、管理端诊断——可运营、可验收。",
+            "",
+            "薄交付（Pi）只带走快照级运行时，**不等于**上述全平台能力；边界见技术分卷与 "
+            "`docs/architecture/plans/pi-thin-runtime.md`。",
+            "",
+        ]
+    )
+
+
 def build(raw_caps: str) -> str:
     meta, body = _parse_frontmatter(raw_caps)
     total = str(meta.get("total_capabilities") or "")
@@ -249,6 +328,9 @@ def build(raw_caps: str) -> str:
         else "（自主性评估文档缺失）"
     )
 
+    digest_tbl = _caps_digest_table(body)
+    landscape = _capability_landscape_narrative(total, ok_n, warn_n)
+
     narrative = f"""---
 title: "aiPlat 平台现状白皮书"
 type: platform-status-whitepaper
@@ -262,13 +344,14 @@ total_capabilities: {total or "unknown"}
 capabilities_version: "{version}"
 capabilities_last_updated: "{last_updated}"
 language: zh-CN
+packaging: executive-digest
 ---
 
 <!-- whitepaper_stamp source_sha256={source_sha} scores_sha256={scores_sha} total_capabilities={total or 0} -->
 
 # aiPlat 平台现状白皮书
 
-> **本文是可再生成的平台现状说明书，不是第二真相源。**  
+> **本文是可再生成的平台现状说明书（可读包装），不是第二真相源。**  
 > 能力清单唯一权威：仓库根目录 [`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md)  
 > 机器登记：[`aiPlat-core/core/capability_registry.yaml`](../../aiPlat-core/core/capability_registry.yaml)  
 > 重新生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_platform_whitepaper.py`  
@@ -278,12 +361,19 @@ language: zh-CN
 
 | 问题 | 以谁为准 |
 |------|----------|
-| 平台有哪些能力、是否已接线 | **AIPLAT_CAPABILITIES.md**（本文第 3 章为其完整收录） |
-| 架构分层与依赖方向 | `docs/architecture/overview.md` + 各仓 `CLAUDE.md` |
-| 自主性定级（L5 等） | `docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md` + `framework/assessment-scores.json` |
-| 对标 / 差异化 | `docs/research/aiPlat核心能力对标报告.md` + `architecture/comparison.md` |
+| 平台有哪些能力、是否已接线 | **AIPLAT_CAPABILITIES.md**（完整路径表）；本文第 3 章仅为**摘要索引** |
+| 架构分层与依赖方向 | [`docs/architecture/overview.md`](../architecture/overview.md) · 技术分卷 |
+| 自主性定级（L5 等） | [`aiplat-l4-autonomy-assessment-v1.0.0.md`](./aiplat-l4-autonomy-assessment-v1.0.0.md) + `assessment-scores.json` |
+| 对标 / 差异化 | 研究主报告 + [`architecture/comparison.md`](../architecture/comparison.md) |
 | 五维白皮书体系 | [`WHITEPAPER_SYSTEM.md`](./WHITEPAPER_SYSTEM.md) |
-| 设计目标 vs 现状 | 代码与 CAPABILITIES；设计文档冲突时以代码为准 |
+| 设计目标 vs 现状 | 代码与 CAPABILITIES；冲突时以代码为准 |
+
+**怎么读本文**
+
+1. §1 平台定位 → 它是什么、分层与交付边界  
+2. §2 统计与评级戳 → 规模与外部评估入口  
+3. §3 能力全景摘要 → 按子系统看覆盖，**不要**指望在这里读源码路径  
+4. 需要逐项证据 / `文件:行号` → 打开 CAPABILITIES.md  
 
 **生成元数据**
 
@@ -295,30 +385,33 @@ language: zh-CN
 | CAPABILITIES version | `{version or "—"}` |
 | CAPABILITIES last_updated | `{last_updated or "—"}` |
 | frontmatter total_capabilities | `{total or "—"}` |
-| 文中 ✅ 计数 | {ok_n} |
-| 文中 ⚠️ 计数 | {warn_n} |
+| CAPABILITIES 内 ✅ 计数 | {ok_n} |
+| CAPABILITIES 内 ⚠️ 计数 | {warn_n} |
 | 能力表行（估） | {row_n} |
+| 包装模式 | executive-digest（不含完整能力路径表） |
 
 ## 1. 平台定位（现状摘要）
 
-aiPlat 是企业级 AI **操作系统式平台**：以 Harness 为执行内核，叠加记忆、本体/知识、编排、治理与可观测，而不是「又一个 Agent 框架」。
+aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）调度任务，叠加记忆、知识、编排、治理与可观测——目标是「可交付、可审计、可演进」，而不是「又一个聊天 Agent」。
 
-**仓库分层（依赖单向：app → platform → core → infra）**
+{landscape}
 
-| 层 | 仓库 | 职责 |
-|----|------|------|
-| L3 应用接入 | `aiPlat-management` / `aiPlat-app` | 管理端 UI、应用接入 |
-| L2 平台服务 | `aiPlat-platform` | 网关、鉴权、Builder、业务应用 API |
-| L1 AI 核心 | `aiPlat-core` | Pipeline / ReAct / Memory / Knowledge / Syscalls |
-| L0 基础设施 | `aiPlat-infra` | 模型目录、LLM/Embedding 客户端、存储网络 |
+**仓库分层（依赖单向：应用 → 平台 → 核心 → 基础设施）**
+
+| 层 | 仓库 | 读者可记的职责 |
+|----|------|----------------|
+| L3 应用接入 | management / app | 人用的界面与接入通道 |
+| L2 平台服务 | platform | 网关、鉴权、Builder、业务 API |
+| L1 AI 核心 | core | 流水线、Agent 循环、记忆/知识、统一调用边界 |
+| L0 基础设施 | infra | 模型目录与运行时依赖（无业务知识） |
 
 架构全景：{overview_note}  
 自主性评估（L 级定级，**不等于**能力全表）：{autonomy_note}
 
-**交付与运行时边界（摘录）**
+**交付边界（一句话）**
 
-- 工厂内：完整治理（PolicyGate / Memory / SECI / 知识 syscall 等）在 aiPlat。
-- 厂外薄 Runtime（Pi Package）：SOP + skills + handler 快照，**不**等同平台 Agent 全能力；厚度不足须厚运行时或混合回连。详见 `docs/architecture/plans/pi-thin-runtime.md`。
+- **厂内**：完整治理与知识能力在平台侧。  
+- **厂外 Pi 薄 Runtime**：可跑快照技能包，能力厚度远小于全平台；不足时用厚运行时或回连。详见 `pi-thin-runtime` 文档。
 
 ## 2. 能力统计总表
 
@@ -326,24 +419,25 @@ aiPlat 是企业级 AI **操作系统式平台**：以 Harness 为执行内核�
 
 {stats}
 
-{_ratings_and_system_chapter()}## 3. 完整能力清单（由 CAPABILITIES 生成收录）
+{_ratings_and_system_chapter()}## 3. 能力全景摘要（非完整路径表）
 
-下列章节为源文件正文能力表的**完整收录**（自「系统架构」或「一、Harness」起至文末统计之前的主体；含全部子系统表）。  
-**请勿手工改本章**——改能力请改 `AIPLAT_CAPABILITIES.md` 后重新运行生成器。
+> **请勿在本章查找 `*.py` 清单。** 完整能力表、接线状态与位置字段只在  
+> [`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md)。  
+> 本章由生成器按 CAPABILITIES 章节**自动汇总计数**，改能力请改源文件后 `sync_whitepapers`。
 
 ### 3.1 子系统目录
 
 """
     narrative += "\n".join(toc_lines) + "\n\n"
+    narrative += "### 3.2 各子系统覆盖度（摘要表）\n\n"
     narrative += MARKER_BEGIN + "\n\n"
-    # Include body starting from first major content heading
-    start = body.find("## 系统架构")
-    if start < 0:
-        start = body.find("## 一、")
-    if start < 0:
-        start = 0
-    narrative += body[start:].rstrip() + "\n\n"
+    narrative += digest_tbl + "\n\n"
     narrative += MARKER_END + "\n\n"
+    narrative += (
+        f"子系统共 **{len(toc_lines)}** 个章节索引；"
+        "逐项能力说明与代码位置 → "
+        "[`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md)。\n\n"
+    )
 
     narrative += """## 4. 如何验证本文未过期
 

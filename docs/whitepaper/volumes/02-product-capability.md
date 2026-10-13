@@ -3,7 +3,7 @@ title: "aiPlat 产品能力白皮书"
 volume_id: product-capability
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-13T01:55:01Z"
+generated_at: "2026-10-13T03:53:28Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-13T01:55:01Z` |
+| 生成时间 (UTC) | `2026-10-13T03:53:28Z` |
 | CAPABILITIES sha256 | `e2e1936484e9…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
