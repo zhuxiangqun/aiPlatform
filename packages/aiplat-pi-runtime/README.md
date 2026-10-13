@@ -32,7 +32,7 @@ Default remains Pi-only. See [`docs/HYBRID_ENTERPRISE.md`](./docs/HYBRID_ENTERPR
 
 ```bash
 export AIPLAT_ENTERPRISE=1
-export AIPLAT_PLATFORM_URL=http://127.0.0.1:8003   # or http://host:8000/api via management GW
+export AIPLAT_PLATFORM_URL=http://127.0.0.1:8003      # or :8000/api GW; NOT :8003/api
 export AIPLAT_TENANT_TOKEN=<bearer>                # or AIPLAT_API_KEY
 # optional KB: AIPLAT_KB_COLLECTION_ID=default
 # optional tools (empty = tools off, KB only):

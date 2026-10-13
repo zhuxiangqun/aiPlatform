@@ -44,6 +44,56 @@ export function approvalsBaseUrl(baseUrl: string): string {
   return `${b}/platform/approvals`;
 }
 
+/** Resolve core /api/core base for approvals fallback (avoid import cycle with tools). */
+function resolveCoreApprovalsBase(platformBase: string): string {
+  const override = (process.env.AIPLAT_CORE_URL || "").trim().replace(/\/+$/, "");
+  let core = override;
+  if (!core) {
+    const b = String(platformBase || "").trim().replace(/\/+$/, "");
+    if (b.endsWith("/api") || b.endsWith("/api/core")) {
+      core = b.endsWith("/api/core") ? b : `${b}/core`;
+    } else {
+      try {
+        const u = new URL(b);
+        if (u.port === "8003") {
+          u.port = "8002";
+          u.pathname = "/api/core";
+          core = u.toString().replace(/\/+$/, "");
+        } else if (u.port === "8000") {
+          u.port = "8002";
+          u.pathname = "/api/core";
+          core = u.toString().replace(/\/+$/, "");
+        }
+      } catch {
+        /* keep */
+      }
+    }
+  }
+  if (!core) return "";
+  if (!core.endsWith("/api/core") && !core.includes("/api/core")) {
+    try {
+      const u = new URL(core);
+      if ((u.pathname || "/") === "/" || u.pathname === "") {
+        u.pathname = "/api/core";
+        core = u.toString().replace(/\/+$/, "");
+      }
+    } catch {
+      /* keep */
+    }
+  }
+  return `${core.replace(/\/+$/, "")}/approvals`;
+}
+
+/** Candidate approval API roots: platform first, then core (…/api/core/approvals). */
+export function approvalsCandidateBases(platformBase: string): string[] {
+  const primary = approvalsBaseUrl(platformBase);
+  const out: string[] = [];
+  if (primary) out.push(primary);
+  const coreAppr = resolveCoreApprovalsBase(platformBase);
+  if (coreAppr && !out.includes(coreAppr)) out.push(coreAppr);
+  return out;
+}
+
 export function loadApprovalBridgeConfig(cfg?: EnterpriseConfig): ApprovalBridgeConfig {
   const c = cfg || loadEnterpriseConfig();
   const pollMs = envInt("AIPLAT_ENTERPRISE_APPROVAL_POLL_MS", 2000);
@@ -186,23 +236,30 @@ export async function getApprovalStatus(
   }
   const id = String(requestId || "").trim();
   if (!id) return { ok: false, text: "", error: "request_id required" };
-  const url = `${approvalsBaseUrl(c.baseUrl)}/${encodeURIComponent(id)}`;
-  const r = await fetchJson(url, c.token);
-  if (!r.ok) return r;
-  const meta = pickStatus(r.raw);
-  const lines = [
-    "AIPLAT_APPROVAL_STATUS_OK",
-    `request_id=${meta.requestId || id}`,
-    `status=${meta.requestStatus || "-"}`,
-    `decision=${meta.decision || "-"}`,
-  ];
-  return {
-    ...r,
-    text: lines.join("\n"),
-    requestStatus: meta.requestStatus,
-    decision: meta.decision,
-    requestId: meta.requestId || id,
-  };
+  let last: ApprovalHttpResult = { ok: false, text: "", error: "no_candidate" };
+  for (const base of approvalsCandidateBases(c.baseUrl)) {
+    const url = `${base}/${encodeURIComponent(id)}`;
+    const r = await fetchJson(url, c.token);
+    last = r;
+    if (!r.ok && (r.status === 503 || r.status === 404)) continue;
+    if (!r.ok) return r;
+    const meta = pickStatus(r.raw);
+    const lines = [
+      "AIPLAT_APPROVAL_STATUS_OK",
+      `request_id=${meta.requestId || id}`,
+      `status=${meta.requestStatus || "-"}`,
+      `decision=${meta.decision || "-"}`,
+      `via=${base}`,
+    ];
+    return {
+      ...r,
+      text: lines.join("\n"),
+      requestStatus: meta.requestStatus,
+      decision: meta.decision,
+      requestId: meta.requestId || id,
+    };
+  }
+  return last;
 }
 
 export async function listPendingApprovals(
@@ -212,22 +269,28 @@ export async function listPendingApprovals(
   if (!c.approvalEnabled) {
     return { ok: false, text: "", error: `approval_off: ${c.reasonApprovalOff}` };
   }
-  const url = `${approvalsBaseUrl(c.baseUrl)}/pending?limit=50`;
-  const r = await fetchJson(url, c.token);
-  if (!r.ok) return r;
-  const items =
-    r.raw && typeof r.raw === "object" && Array.isArray((r.raw as Record<string, unknown>).items)
-      ? ((r.raw as Record<string, unknown>).items as unknown[])
-      : [];
-  const lines = [`AIPLAT_APPROVAL_PENDING_OK count=${items.length}`];
-  for (const it of items.slice(0, 20)) {
-    if (!it || typeof it !== "object") continue;
-    const row = it as Record<string, unknown>;
-    lines.push(
-      `- ${row.request_id || "?"} status=${row.status || "?"} op=${row.operation || "-"}`,
-    );
+  let last: ApprovalHttpResult = { ok: false, text: "", error: "no_candidate" };
+  for (const base of approvalsCandidateBases(c.baseUrl)) {
+    const url = `${base}/pending?limit=50`;
+    const r = await fetchJson(url, c.token);
+    last = r;
+    if (!r.ok && (r.status === 503 || r.status === 404)) continue;
+    if (!r.ok) return r;
+    const items =
+      r.raw && typeof r.raw === "object" && Array.isArray((r.raw as Record<string, unknown>).items)
+        ? ((r.raw as Record<string, unknown>).items as unknown[])
+        : [];
+    const lines = [`AIPLAT_APPROVAL_PENDING_OK count=${items.length}`, `via=${base}`];
+    for (const it of items.slice(0, 20)) {
+      if (!it || typeof it !== "object") continue;
+      const row = it as Record<string, unknown>;
+      lines.push(
+        `- ${row.request_id || "?"} status=${row.status || "?"} op=${row.operation || "-"}`,
+      );
+    }
+    return { ...r, text: lines.join("\n") };
   }
-  return { ...r, text: lines.join("\n") };
+  return last;
 }
 
 function sleep(ms: number): Promise<void> {

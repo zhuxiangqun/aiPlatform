@@ -21,8 +21,46 @@ function envTruthy(name: string): boolean {
   return v === "1" || v === "true" || v === "yes" || v === "on";
 }
 
+/**
+ * Normalize AIPLAT_PLATFORM_URL so joining `/platform/*` hits the real mount.
+ *
+ * Verified local layout:
+ * - Platform (:8003) serves `/platform/...` (NOT `/api/platform/...`)
+ * - Management GW (:8000) serves `/api/platform/...` → proxies to platform
+ * - Footgun: `http://host:8003/api` + `/platform/...` → `/api/platform/...` → 404
+ */
+export function normalizePlatformBaseUrl(raw: string): string {
+  const b = String(raw || "").trim().replace(/\/+$/, "");
+  if (!b) return "";
+  try {
+    const u = new URL(b);
+    const path = (u.pathname || "/").replace(/\/+$/, "") || "/";
+    // Direct platform with mistaken /api prefix → strip so /platform/* joins cleanly
+    if (u.port === "8003" && (path === "/api" || path.startsWith("/api/"))) {
+      if (path === "/api") {
+        u.pathname = "/";
+      } else if (path.startsWith("/api/platform")) {
+        u.pathname = path.slice("/api".length) || "/";
+      } else {
+        u.pathname = path.slice("/api".length) || "/";
+      }
+      return u.toString().replace(/\/+$/, "");
+    }
+    // Management origin without /api → add gateway prefix
+    if (u.port === "8000" && path === "/") {
+      u.pathname = "/api";
+      return u.toString().replace(/\/+$/, "");
+    }
+  } catch {
+    /* keep raw */
+  }
+  return b;
+}
+
 export function loadEnterpriseConfig(): EnterpriseConfig {
-  const baseUrl = (process.env.AIPLAT_PLATFORM_URL || "").trim().replace(/\/+$/, "");
+  const baseUrl = normalizePlatformBaseUrl(
+    (process.env.AIPLAT_PLATFORM_URL || "").trim(),
+  );
   const token = (
     process.env.AIPLAT_TENANT_TOKEN ||
     process.env.AIPLAT_API_KEY ||
