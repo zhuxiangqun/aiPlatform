@@ -276,7 +276,7 @@ def _build_volume(
         ]
         excerpt, _ = _read_excerpt(_rel("docs/architecture/overview.md"), 14000)
         parts += [excerpt, "", "### 3.2 架构对比入口（comparison）", ""]
-        excerpt, _ = _read_excerpt(_rel("docs/architecture/comparison.md"), 10000)
+        excerpt, _ = _read_excerpt(_rel("docs/architecture/comparison.md"), 14000)
         parts += [
             excerpt,
             "",

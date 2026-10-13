@@ -3,19 +3,19 @@ title: "aiPlat 技术架构白皮书"
 volume_id: tech-architecture
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-12T22:58:17Z"
+generated_at: "2026-10-13T01:36:27Z"
 audience: "CTO、架构师、平台工程师"
 core_question: "为什么这样设计？边界与权衡是什么？"
 priority: P0
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
-suite_sha256: "4846152b2678c4c985758ab6a2d4083c82f6e70ed41e56c6a521652453d6d1ab"
+suite_sha256: "0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30"
 caps_sha256: "e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=tech-architecture suite_sha256=4846152b2678c4c985758ab6a2d4083c82f6e70ed41e56c6a521652453d6d1ab caps_sha256=e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=tech-architecture suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 技术架构白皮书
 
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 为什么这样设计？边界与权衡是什么？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-12T22:58:17Z` |
+| 生成时间 (UTC) | `2026-10-13T01:36:27Z` |
 | CAPABILITIES sha256 | `e2e1936484e9…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -262,7 +262,7 @@ A2A 交互路径:
 
 ## 六、多系统对标
 
-参见 [`docs/architecture/comparison.md`](comparison.md) — 9 维度 vs Hermes Agent / Claude Code / OpenClaw 深度对比。
+参见 [`docs/architecture/comparison.md`](comparison.md) — 18 维度 vs Hermes Agent / Claude Code / OpenClaw / DeepSeek Harness / OpenAI Codex（2026-10）。
 
 ---
 
@@ -275,259 +275,144 @@ A2A 交互路径:
 
 ### 3.2 架构对比入口（comparison）
 
-# aiPlat — 四平台深度对标分析
+# aiPlat — 六平台深度对标摘要（2026-10）
 
-> 生成时间：2026-07-19 | 对标范围：aiPlat △2026-07-19 × Hermes △v0.18.2 × Claude Code △latest × OpenClaw △latest
->
-> 数据来源：aiPlat 内部代码（能力计数见 AIPLAT_CAPABILITIES.md）+ 三平台开源仓库（GitHub README + 代码结构分析）
-
----
-
-## 一、四平台核心定位
-
-| 维度 | aiPlat | Hermes Agent | Claude Code | OpenClaw |
-|:---|:---|:---|:---|:---|
-| **定位** | 企业 AI 操作系统（本体驱动 FDE） | 自学习个人 AI 助手 | 终端编程 Agent | 个人 AI 助手 |
-| **语言** | Python | Python 82% + TS 16% | Python 80% + Shell 14% | TypeScript |
-| **GitHub** | 私有仓库 | 217k⭐ · 40.8k fork · 16,243 commits | 138k⭐ · 22.2k fork · 705 commits | 383k⭐ · 80.5k fork · 70,598 commits |
-| **协议** | 私有 | MIT | 闭源引擎 + 开源插件 | MIT |
-| **版本** | v3.0 (详见 CAPABILITIES.md) | v0.18.2 (2026.7.7) | latest | latest |
-| **架构层级** | 8 层（本体语义→知识创造→上下文注入→质量评分→FDE诊断→治理→自演进→编码宪法） | 单体 Agent 结构 | 插件化 Agent（`.claude-plugin/`） | Gateway + Agent + Nodes 三层 |
-| **行业定位** | 企业 FDE 交付 + 行业解决方案 | 个人消费者 + 开发者工具 | 专业开发者编程辅助 | 个人消费者 + 社区驱动 |
+> **生成/调研时点**：2026-10-13  
+> **对标范围**：aiPlat × Hermes Agent × Claude Code × OpenClaw × DeepSeek Harness × OpenAI Codex  
+> **细节与证据权威**：[`docs/research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) · 底稿 [`docs/research/对标底稿-2026-10-五家.md`](../research/对标底稿-2026-10-五家.md)  
+> **本文角色**：架构入口摘要（供白皮书 §3.2 节选）。**禁止**把本文当作第二能力清单；星级须能回溯底稿。  
+> 旧四平台稿已归档：[`docs/archive/comparison-four-platform-2026-07.md`](../archive/comparison-four-platform-2026-07.md)
 
 ---
 
-## 二、12 维度关键技术对标
+## 一、六平台核心定位
 
-### 维度 1：Harness 执行内核
-
-| 能力 | aiPlat | Hermes | Claude Code | OpenClaw |
-|:---|:---|:---|:---|:---|
-| **执行循环** | ReAct + Plan-Execute + LangGraph 三模式 | ReAct 循环（推理→行动→观察） | 闭源 Agent 引擎 | Agent 循环 |
-| **Hook 系统** | 6 阶段 Hook（PreLoop/PostLoop/PreReasoning/PostReasoning/PreAct/PostObserve） | 事件驱动 Hook | 无公开 Hook | 工具级拦截 |
-| **Token 预算** | 5 级压缩（70/80/85/90/99%）+ 温度感知剪枝 + 语义排序 | 上下文压缩（`/compress`） | 自动压缩 | 自动管理 |
-| **多终端后端** | 单进程 server | Docker/SSH/Singularity/Modal/Daytona | CLI only | Docker + 本地 |
-| **Subagent** | SubagentCoordinator + AgentMessageBus | ✅ 并行工作流 + RPC 零上下文 | ✅ 原生 subagent | ✅ sandbox 隔离 |
-
-**aiPlat 领先项**：Hook 系统粒度 × Token 预算 × LangGraph 集成 × 5 级压缩体系
-
-**aiPlat 可借鉴**：Hermes RPC 零上下文 Subagent 模式（aiPlat subagent 需加载完整上下文）
+| 维度 | aiPlat | Hermes Agent | Claude Code | OpenClaw | DeepSeek Harness | OpenAI Codex |
+|:---|:---|:---|:---|:---|:---|:---|
+| **定位** | 企业 AI 操作系统（交付流水线 + 治理 + 知识） | 自学习个人/团队 Agent | 终端/IDE agentic coding | 多端个人助手（Gateway） | 一切皆插件的 agent harness | 可嵌入 coding agent 运行时 |
+| **语言** | Python | Python + TUI/TS | 闭源引擎（JS 产物） | TypeScript | TypeScript | Rust（`codex-rs`） |
+| **协议** | 私有 / 平台 | MIT | 专有引擎 | MIT | 开源（rc） | Apache-2.0 |
+| **本轮指纹** | HEAD + CAP 2105 | clone `562fda90` / tag v0.21.7 | npm latest 2.1.296（产物 2.1.70） | pkg/GH **2026.10.2** | 0.1.0-rc.5 @ 47f94385 | GH **rust-v0.162.1**（本地树结构） |
+| **架构重心** | Pipeline + Syscall/Gate + 本体/知识 | 单循环 + Gateway + 学习闭环 | Dynamic workflows + hooks | Gateway + Channels + Apps | Cordis 插件 / 事件源 | Thread/Turn + app-server + OS 沙箱 |
 
 ---
 
-### 维度 2：Agent 系统
+## 二、18 维度关键能力对标
 
-| 能力 | aiPlat | Hermes | Claude Code | OpenClaw |
-|:---|:---|:---|:---|:---|
-| **Agent 类型** | ReAct / Plan-Execute / Conversational / RAG / Multi-Agent / Reflection | ReAct 为主 | 闭源 Agent 引擎 | 可配置 Agent 模式 |
-| **多 Agent** | SubagentCoordinator + 消息总线 | Subagent 并行工作流 | 原生 subagent | Multi-agent routing + sandbox |
-| **Agent 注册** | AGENT.md frontmatter + Registry 自动发现 | AGENTS.md + skills 目录 | CLAUDE.md | AGENTS.md + SOUL.md + TOOLS.md |
-| **身份注入** | tenant/actor/roles 三层头注入 | 用户配置 | OAuth | 用户配置 |
-| **消息通道** | ReActLoop REST API | Telegram/Discord/Slack/WhatsApp/Signal/CLI | CLI only | 23 通道（含 WeChat/QQ） |
-| **自学习** | ✅ SECI 引擎（S→E→C→I→S 螺旋） | ✅ 闭环学习：自主技能创建→使用中改进 | ❌ | ❌ |
+评分刻度：★★★★★ 该维领先或企业级完备 · ★★★★☆ 强 · ★★★☆☆ 可用 · ★★☆☆☆ 弱/窄 · ★☆☆☆☆ 基本缺失。  
+依据见底稿；**非**营销分。
 
-**aiPlat 领先项**：Agent 类型多样性 × 自学习 SECI 引擎 × 三层身份注入
+### A. 执行与编排（维 1–4）
 
-**aiPlat 可借鉴**：OpenClaw 23 通道模型（考虑扩展 FDE 的消息通道）
+| 维 | 能力 | aiPlat | Hermes | Claude Code | OpenClaw | DSH | Codex |
+|:--:|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| 1 | Harness 执行内核 | ★★★★★ | ★★★★☆ | ★★★★☆ | ★★★☆☆ | ★★★★☆ | ★★★★☆ |
+| 2 | Agent / 多 Agent | ★★★★★ | ★★★★☆ | ★★★★☆ | ★★★★☆ | ★★★★☆ | ★★★☆☆ |
+| 3 | Skill 系统 | ★★★★☆ | ★★★★★ | ★★★☆☆ | ★★★★☆ | ★★★★☆ | ★★★☆☆ |
+| 4 | MCP / 工具扩展 | ★★★★★ | ★★★★☆ | ★★★★☆ | ★★★★☆ | ★★★★★ | ★★★★☆ |
 
----
+**要点**：aiPlat 以 Pipeline + Syscall 治理见长；Hermes Skill/学习生态最开放；DSH 插件纯度高；Codex/CC 偏 coding harness。
 
-### 维度 3：Skill 系统
+### B. 记忆 · 知识 · 提示（维 5–8）
 
-| 能力 | aiPlat | Hermes | Claude Code | OpenClaw |
-|:---|:---|:---|:---|:---|
-| **Skill 定义** | SKILL.md frontmatter + handler.py（Python 类）/ prompt（LLM） | agentskills.io 开放标准 | Custom Commands（`.claude/commands/`） | ClawHub（`skills/<name>/SKILL.md`） |
-| **数量** | 44 engine + 21 workspace | 社区 + optional-skills 目录 | ~10 built-in | 社区 + workspace |
-| **执行方式** | handler（确定性）+ prompt（LLM 模拟）| prompt + handler | Command 形式 | SKILL.md 形式 |
-| **跨平台标准** | 自定义（YAML frontmatter） | ✅ agentskills.io（开放标准） | 自定义 | 自定义 |
-| **自主创建** | ✅ ActiveSynthesis + STORM 5步 | ✅ 复杂任务后自动创建技能 | ❌ | ❌ |
-| **审计** | ✅ AIPLAT_EXECUTION_AUDIT=true | ❌ | ❌ | ❌ |
+| 维 | 能力 | aiPlat | Hermes | Claude Code | OpenClaw | DSH | Codex |
+|:--:|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| 5 | 记忆 / 上下文工程 | ★★★★★ | ★★★★☆ | ★★★☆☆ | ★★★☆☆ | ★★★★☆ | ★★★★☆ |
+| 6 | 知识库 / 本体 | ★★★★★ | ★★☆☆☆ | ★☆☆☆☆ | ★★☆☆☆ | ★☆☆☆☆ | ★☆☆☆☆ |
+| 7 | RAG / 检索治理 | ★★★★★ | ★★★☆☆ | ★★☆☆☆ | ★★☆☆☆ | ★★☆☆☆ | ★☆☆☆☆ |
+| 8 | 提示词 / Cache 工程 | ★★★★★ | ★★★★☆ | ★★★☆☆ | ★★★☆☆ | ★★★☆☆ | ★★★★☆ |
 
-**aiPlat 领先项**：执行类型双模式 × 自主创建 × 执行审计
+**要点**：知识/本体/企业 RAG 仍为 aiPlat 差异化；Hermes/Codex 在压缩与 cache 友好路径上强。
 
-**aiPlat 可借鉴**：Hermes agentskills.io 开放标准（考虑兼容）
+### C. 质量 · 进化 · 治理（维 9–12）
 
----
+| 维 | 能力 | aiPlat | Hermes | Claude Code | OpenClaw | DSH | Codex |
+|:--:|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| 9 | 可观测性（平台级） | ★★★★★ | ★★☆☆☆ | ★★☆☆☆ | ★★☆☆☆ | ★★★☆☆ | ★★★☆☆ |
+| 10 | 幻觉 / 质量门 | ★★★★☆ | ★★☆☆☆ | ★★☆☆☆ | ★☆☆☆☆ | ★★☆☆☆ | ★★☆☆☆ |
+| 11 | 自演进 / 学习闭环 | ★★★★☆ | ★★★★★ | ★☆☆☆☆ | ★★☆☆☆ | ★★★☆☆ | ★☆☆☆☆ |
+| 12 | 企业治理（多租户/审计/审批） | ★★★★★ | ★☆☆☆☆ | ★★☆☆☆ | ★★☆☆☆ | ★★☆☆☆ | ★★☆☆☆ |
 
-### 维度 4：MCP 集成
+**要点**：治理与平台级可观测 aiPlat 领先；会话内学习 Hermes 最完整；OpenClaw 明确 **非** 敌意多租户边界（SECURITY）。
 
-| 能力 | aiPlat | Hermes | Claude Code | OpenClaw |
-|:---|:---|:---|:---|:---|
-| **MCP 管理** | 统一归属 core/apps/mcp/ + PolicyGate | optional-mcps/ 目录 | MCP Registry 集成 | MCP 工具注册 |
-| **工具适配** | MCPToolAdapter（extends BaseTool） | 内置 MCP 客户端 | 内置 MCP 客户端 | 内置 MCP 客户端 |
-| **安全** | PolicyGate + ApprovalGate 双重门禁 | DM 配对机制 | 命令审批 | DM 配对 + sandbox |
+### D. 新增工程维（维 13–18 = 计划 D15–D20）
 
-**aiPlat 领先项**：统一归属 + 双重门禁
+| 维 | 能力 | aiPlat | Hermes | Claude Code | OpenClaw | DSH | Codex |
+|:--:|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| 13 | 可嵌入 / 协议面（SDK/app-server/A2A） | ★★★★☆ | ★★★★☆ | ★★★☆☆ | ★★★★☆ | ★★★★☆ | ★★★★★ |
+| 14 | 原生端与通道广度 | ★★★☆☆ | ★★★★☆ | ★★☆☆☆ | ★★★★★ | ★★☆☆☆ | ★★☆☆☆ |
+| 15 | 执行后端与部署拓扑 | ★★★★☆ | ★★★★★ | ★★☆☆☆ | ★★★★☆ | ★★★☆☆ | ★★★☆☆ |
+| 16 | 交付 / Spec 生命周期（HITL 流水线） | ★★★★★ | ★★☆☆☆ | ★★★☆☆ | ★★☆☆☆ | ★★☆☆☆ | ★★☆☆☆ |
+| 17 | OS 沙箱与工作树隔离 | ★★★★☆ | ★★★☆☆ | ★★★★☆ | ★★★☆☆ | ★★★☆☆ | ★★★★★ |
+| 18 | 评测 / 质量门 / 可观测拆分 | ★★★★★ | ★★☆☆☆ | ★★★☆☆ | ★★☆☆☆ | ★★★☆☆ | ★★★☆☆ |
 
----
-
-### 维度 5：记忆系统
-
-| 能力 | aiPlat | Hermes | Claude Code | OpenClaw |
-|:---|:---|:---|:---|:---|
-| **分层** | 4 层（Working / Episodic / Semantic / Task Skills） | Honcho 对话建模 + FTS5 搜索 | CLAUDE.md 永驻上下文 | SOUL.md + TOOLS.md |
-| **搜索** | FTS5 + 嵌入语义 + 跨会话 | FTS5 全文搜索 + LLM 摘要 | 项目级上下文 | 项目级上下文 |
-| **长期记忆** | SQLite long_term_memories + 自动过期 | MEMORY.md + USER.md | 会话内 | 会话内 |
-| **压缩** | 5 级（70/80/85/90/99%）+ 温度感知 + 语义排序 | 手动 /compress | 自动压缩 | 自动管理 |
-| **跨会话** | ✅ 语义记忆续期 + 跨会话召回 | ✅ FTS5 + LLM 摘要 | ⚠️ 单会话 | ⚠️ 单会话 |
-
-**aiPlat 领先项**：4 层架构 × 5 级压缩 × 语义排序 × 跨会话持久化
+**要点**：通道/原生端 OpenClaw 第一；多终端后端 Hermes 第一；可嵌入与 OS 沙箱 Codex 第一；交付流水线 aiPlat 独有强度。
 
 ---
 
-### 维度 6：知识库管理
+## 三、综合评分矩阵（加权）
 
-| 能力 | aiPlat | Hermes | Claude Code | OpenClaw |
-|:---|:---|:---|:---|:---|
-| **本体驱动** | ✅ YAML 域本体 + GraphIndex + 13步引擎 | ❌ | ❌ | ❌ |
-| **向量存储** | ✅ InfraEmbeddingAdapter + FTS5 | 项目文件 | 项目文件 | 项目文件 |
-| **知识合成** | ✅ KnowledgeSynthesizer（3 类型） | ❌ | ❌ | ❌ |
-| **外部本体导入** | ✅ OWL/SKOS/JSON-LD | ❌ | ❌ | ❌ |
-| **域路由** | ✅ DomainRouter 3 层级联 | N/A | N/A | N/A |
+权重：维 1,2,5,12,16 各 **8%**；维 3,4,6,7,11,13,17,18 各 **5%**；维 8,9,10,14,15 各 **4%**（合计 100%）。  
+星→分：★=20 … ★★★★★=100，再按权加权。
 
-**aiPlat 领先项**：本体驱动 × 13步引擎 × 知识合成 × 外部导入 × 域路由
+| 维 | aiPlat | Hermes | Claude Code | OpenClaw | DSH | Codex |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| 1 执行内核 | 100 | 80 | 80 | 60 | 80 | 80 |
+| 2 Agent | 100 | 80 | 80 | 80 | 80 | 60 |
+| 3 Skill | 80 | 100 | 60 | 80 | 80 | 60 |
+| 4 MCP/工具 | 100 | 80 | 80 | 80 | 100 | 80 |
+| 5 记忆 | 100 | 80 | 60 | 60 | 80 | 80 |
+| 6 知识/本体 | 100 | 40 | 20 | 40 | 20 | 20 |
+| 7 RAG | 100 | 60 | 40 | 40 | 40 | 20 |
+| 8 提示/Cache | 100 | 80 | 60 | 60 | 60 | 80 |
+| 9 可观测 | 100 | 40 | 40 | 40 | 60 | 60 |
+| 10 质量/幻觉门 | 80 | 40 | 40 | 20 | 40 | 40 |
+| 11 自演进 | 80 | 100 | 20 | 40 | 60 | 20 |
+| 12 治理 | 100 | 20 | 40 | 40 | 40 | 40 |
+| 13 可嵌入 | 80 | 80 | 60 | 80 | 80 | 100 |
+| 14 通道/原生端 | 60 | 80 | 40 | 100 | 40 | 40 |
+| 15 后端/部署 | 80 | 100 | 40 | 80 | 60 | 60 |
+| 16 交付生命周期 | 100 | 40 | 60 | 40 | 40 | 40 |
+| 17 OS 沙箱 | 80 | 60 | 80 | 60 | 60 | 100 |
+| 18 评测/质量门 | 100 | 40 | 60 | 40 | 60 | 60 |
+| **加权总分** | **92** | **70** | **56** | **60** | **62** | **61** |
 
-**核心差异**：aiPlat 是本系列中唯一拥有结构化知识引擎的平台。
-
----
-
-### 维度 7：RAG 检索增强
-
-| 能力 | aiPlat | Hermes | Claude Code | OpenClaw |
-|:---|:---|:---|:---|:---|
-| **检索模式** | CRAG 3 级回退 + HyDE + Self-RAG | FTS5 全文搜索 + LLM 摘要 | Codebase 搜索 | 工具搜索 |
-| **检索融合** | RRF 融合（Wiki + KB + Graph） | 无融合 | 无融合 | 无融合 |
-| **质量门** | CRAG（本体优先→FTS5→HyDE）| 无 | 无 | 无 |
-
-**aiPlat 领先项**：CRAG 多级回退 × RRF 融合 × 本体优先路由
-
----
-
-### 维度 8：提示词工程
-
-| 能力 | aiPlat | Hermes | Claude Code | OpenClaw |
-|:---|:---|:---|:---|:---|
-| **模板管理** | prompt_loader（`_register()` + `_sync_resolve()`）+ 版本化 | AGENTS.md + skills | CLAUDE.md | AGENTS.md + SOUL.md |
-| **注入机制** | 10 层 ContextBus + CLAUDE.md 永驻 | 直接注入 | 直接注入 | 直接注入 |
-| **编码宪法** | ✅ karpathy_v1 全局默认 | ❌ | ❌ | ❌ |
-| **模板数量** | 65+ 模板 | 无集中管理 | 无集中管理 | 无集中管理 |
-
-**aiPlat 领先项**：模板集中管理 × 编码宪法 × 10 层注入
+> 解读：aiPlat 在企业知识/治理/交付上拉开差距；Hermes 在学习与多后端上最强个人 Agent；OpenClaw 通道生态第一；Codex 嵌入与沙箱第一；DSH 插件架构纯度高。分数随证据刷新，**不是**商务承诺。
 
 ---
 
-### 维度 9：可观测性
+## 四、体系性领先与可借鉴（摘要）
 
-| 能力 | aiPlat | Hermes | Claude Code | OpenClaw |
-|:---|:---|:---|:---|:---|
-| **追踪** | trace_id/span_id 全链路 | 基本日志 | 基本日志 | 基本日志 |
-| **审计** | ✅ usage_tracker + AIPLAT_EXECUTION_AUDIT | ❌ | ❌ | ❌ |
-| **OpenTelemetry** | ✅ OTLP（AIPLAT_OTEL_ENABLED） | ❌ | ❌ | ❌ |
-| **诊断矩阵** | 37 类检查 + 架构守卫 | ❌ | ❌ | ❌ |
+### aiPlat 领先区
 
-**aiPlat 领先项**：全链路追踪 × 执行审计 × OTEL × 诊断矩阵
+1. 企业治理链（Policy/Approval/Audit + 多租户）  
+2. 本体/知识引擎与 RAG 治理  
+3. 交付流水线 HITL（approve/reject/checkpoint）  
+4. 平台级质量门与架构守卫  
 
----
+### 可借鉴（本轮仍成立）
 
-### 维度 10：幻觉检测与事实核查
-
-| 能力 | aiPlat | Hermes | Claude Code | OpenClaw |
-|:---|:---|:---|:---|:---|
-| **幻觉检测** | ✅ HallucinationTracker（NLI + Faithfulness） | ❌ | ❌ | ❌ |
-| **事实核查** | GraphInference + RRF + Self-RAG | ❌ | ❌ | ❌ |
-| **语义缓存** | ✅ L1+L2+L3 语义缓存 | ❌ | ❌ | ❌ |
-
-**aiPlat 领先项**：幻觉检测 × 语义缓存 × 事实核查三层防护
+| 来源 | 能力 | 建议 |
+|:---|:---|:---|
+| **OpenClaw** | 20+ 通道 + 原生多端 | 企业通道矩阵继续对齐；勿照搬单操作者信任模型到多租户 |
+| **Hermes** | 7 终端后端 + 学习闭环 + agentskills.io | 后端插件化、Skill 开放标准兼容评估 |
+| **Codex** | app-server / OS 沙箱 / worktree | 加深可嵌入协议与沙箱等价物 |
+| **Claude Code** | hooks / checkpoint / plan 产品体验 | 保持 G6 hooks 桥与体验对齐 |
+| **DSH** | 插件纯度 / continuation 子代理 | 扩展缝保持，不向「一切皆插件」整仓迁 |
 
 ---
 
-### 维度 11：自演进系统
+## 五、验证
 
-| 能力 | aiPlat | Hermes | Claude Code | OpenClaw |
-|:---|:---|:---|:---|:---|
-| **自演进引擎** | ✅ SECI 引擎（S→E→C→I→S）+ EvolutionEngine | ❌ | ❌ | ❌ |
-| **诊断→修复→演化** | ✅ SystemDiagnostician → Healer → Evolver | ❌ | ❌ | ❌ |
-| **反馈闭环** | ✅ FeedbackLoops + CandidatePool + ActiveSynthesis | ✅ 自学习闭环（技能创建→使用中改进） | ❌ | ❌ |
-| **Cron 自动化** | ✅ governance cron + learning scheduler | ✅ 自然语言 cron 任务 | ❌ | ✅ cron jobs |
+```bash
+# 底稿与主报告存在
+test -f docs/research/对标底稿-2026-10-五家.md
+test -f docs/research/aiPlat核心能力对标报告.md
+# 白皮书节选刷新
+python3 scripts/generate_whitepaper_volumes.py --check
+```
 
-**aiPlat 领先项**：完整的诊断→修复→演化闭环 × SECI 引擎 × 反馈闭环
-
-**Hermes 领先项**：自主技能创建的学习闭环（aiPlat 有 ActiveSynthesis 对标，但执行路径不同）
-
----
-
-### 维度 12：治理体系（v3.0 新增）
-
-| 能力 | aiPlat | Hermes | Claude Code | OpenClaw |
-|:---|:---|:---|:---|:---|
-| **本体变更审批** | ✅ OntologyApproval（submit/approve/reject） | ❌ | ❌ | ❌ |
-| **治理管线** | ✅ GovernancePipeline（6步循环） | ❌ | ❌ | ❌ |
-| **映射验证** | ✅ MappingValidator（类型/枚举/覆盖率） | ❌ | ❌ | ❌ |
-| **治理仪表盘** | ✅ 健康总分 + 7 机制状态 + 审批队列 | ❌ | ❌ | ❌ |
-| **RBAC 治理角色** | ✅ 4 种治理角色 × 12 种权限 | ❌ | ❌ | ❌ |
-
-**aiPlat 独有**：三平台均无正式的本体治理体系。
-
----
-
-## 三、aiPlat 体系性领先优势（12 项）
-
-| # | 能力 | 独有程度 |
-|:---:|------|:---:|
-| 1 | YAML 驱动本体引擎（15 域 × 40+ 模块） | 独有 |
-| 2 | 13 步本体引擎管线（12 步确定性 + 1 步 LLM） | 独有 |
-| 3 | GraphIndex 双向图 SQLite 存储（含超边 + 快照） | 独有 |
-| 4 | DomainRouter 3 层级联（T1 标签 <1ms → T2 嵌入 50ms → T3 LLM 300ms） | 独有 |
-| 5 | SECI 知识创造引擎（S→E→C→I→S 螺旋） | 独有 |
-| 6 | GovernancePipeline 6 步治理闭环 | 独有 |
-| 7 | OntologyAgent 5 步推理编排（理解→规划→查询→评分→输出） | 独有 |
-| 8 | ScoringEngine 累加加权评分（via_path 多跳 + 阈值按成熟度自适应） | 独有 |
-| 9 | PathPlanner 目标导向路径规划（预定义模板 + 自动发现 fallback） | 独有 |
-| 10 | ScenarioSelector 4 象限场景优先级（5 条件评估） | 独有 |
-| 11 | 4 层记忆体系（Working + Episodic + Semantic + Task Skills） | 群领先 |
-| 12 | 5 级上下文压缩（温度感知 + 语义排序 + 跨层重排） | 群领先 |
-
----
-
-## 四、从三平台可借鉴的能力
-
-| 来源 | 能力 | 借鉴价值 | 对 aiPlat 的建议 |
-|:---|------|:---:|------|:---:|
-| **Claude Code** | Custom Commands 斜杠命令 | 高 | AGENT.md `commands:` frontmatter + `command_parser.py` | ✅ 已实现 |
-| **OpenClaw** | FDE 消息通知接线 | 高 | `fde_notifier.py` → 飞书/企微/Slack | ✅ 已实现 |
-| **OpenClaw** | Sandbox 接线 PipelineEngine | 高 | `pipeline_engine.py` + `SandboxGate` 预检 | ✅ 已实现 |
-| **Hermes** | Subagent RPC 零上下文调用 | 高 | `multi_agent.py` `_build_task_context()` | ✅ 已实现 |
-| **OpenClaw** | Live Canvas（推理链可视化） | 高 | `ReasoningTracePanel.tsx` + FdeDashboard | ✅ 已实现 |
-| **Hermes** | agentskills.io Skill 开放标准 | 高 | 考虑兼容（当前格式更丰富，延迟评估） | P3 |
-| **Hermes** | 多终端后端（Modal/Daytona serverless） | 中 | 企业私有部署模型不适用 | P3 |
-| **Claude Code** | Plugin 系统（`.claude-plugin/`） | 中 | Skill+MCP+Tool+Hook 已覆盖，Plugin 为语法糖 | P2 |
-| **Claude Code** | Custom Commands（`.claude/commands/`） | 中 | 已通过 AGENT.md `commands:` 实现 | ✅ |
-| **OpenClaw** | 23 通道消息网关 | 中 | 已有 3 通道（飞书/企微/Slack），FDE 已接线 | ✅ | |
-
----
-
-## 五、综合评分矩阵
-
-| 维度 | aiPlat | Hermes | Claude Code | OpenClaw |
-|:---|:---:|:---:|:---:|:---:|
-| 1. Harness 执行内核 | ★★★★★ | ★★★★☆ | ★★★★☆ | ★★★☆☆ |
-| 2. Agent 系统 | ★★★★★ | ★★★★☆ | ★★★★☆ | ★★★★☆ |
-| 3. Skill 系统 | ★★★★★ | ★★★★★ | ★★★☆☆ | ★★★★☆ |
-| 4. MCP 集成 | ★★★★★ | ★★★★☆ | ★★★★☆ | ★★★★☆ |
-| 5. 记忆系统 | ★★★★★ | ★★★★☆ | ★★★☆☆ | ★★★☆☆ |
-| 6. 知识库管理 | ★★★★★ | ★★☆☆☆ | ★★☆☆☆ | ★★☆☆☆ |
-| 7. RAG 检索 | ★★★★★ | ★★★☆☆ | ★★☆☆☆ | ★★☆☆☆ |
-| 8. 提示词工程 | ★★★★★ | ★★★☆☆ | ★★★☆☆ | ★★★☆☆ |
-| 9. 可观测性 | ★★★★★ | ★★☆☆☆ | ★★☆☆☆ | ★★☆☆☆ |
-| 10. 幻觉检测 | ★★★★★ | ★★☆☆☆ | ★★☆☆☆ | ★★☆☆☆ |
-| 11. 自演进系统 | ★★★★★ | ★★★☆☆ | ★☆☆☆☆ | ★☆☆☆☆ |
-| 12. 治理体系 | ★★★★★ | ★☆☆☆☆ | ★☆☆☆☆ | ★☆☆☆☆ |
-| **加权总分** | **98** | **68** | **55** | **52** |
-
----
-
-*对标基准日期：aiPlat 2026-07-19 (v3.0) · Hermes 2026-07-08 (v0.18.2) · Claude Code 2026-07 · OpenClaw 2026-07*
-*权重：维度 1,2,3,5 各 10%；维度 6,7,8,11 各 8%；维度 4,9,10,12 各 7%*
+*对标基准日期：2026-10-13 · 权重见第三节 · 旧稿 archive/comparison-four-platform-2026-07.md*
 
 
 ### 3.3 工程落地视图索引（部署 / 性能 / 可观测 / 数据 / 测试 …）

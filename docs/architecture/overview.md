@@ -165,7 +165,7 @@ A2A 交互路径:
 
 ## 六、多系统对标
 
-参见 [`docs/architecture/comparison.md`](comparison.md) — 9 维度 vs Hermes Agent / Claude Code / OpenClaw 深度对比。
+参见 [`docs/architecture/comparison.md`](comparison.md) — 18 维度 vs Hermes Agent / Claude Code / OpenClaw / DeepSeek Harness / OpenAI Codex（2026-10）。
 
 ---
 

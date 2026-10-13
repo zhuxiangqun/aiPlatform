@@ -3,7 +3,7 @@ title: "aiPlat 平台现状白皮书"
 type: platform-status-whitepaper
 authority: derived-from-capabilities
 status: generated
-generated_at: "2026-10-12T22:58:17Z"
+generated_at: "2026-10-13T01:36:27Z"
 source: AIPLAT_CAPABILITIES.md
 source_sha256: "e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
@@ -38,7 +38,7 @@ language: zh-CN
 
 | 字段 | 值 |
 |------|-----|
-| 生成时间 (UTC) | `2026-10-12T22:58:17Z` |
+| 生成时间 (UTC) | `2026-10-13T01:36:27Z` |
 | CAPABILITIES SHA-256 | `e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94` |
 | assessment-scores SHA-256 | `96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687` |
 | CAPABILITIES version | `30.10` |
@@ -145,8 +145,8 @@ aiPlat 是企业级 AI **操作系统式平台**：以 Harness 为执行内核�
 
 | 文档 | 用途 |
 |------|------|
-| [`../research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) | **主对标**：Claude Code / DeepSeek Harness / Hermes（见 `research/README.md`） |
-| [`../architecture/comparison.md`](../architecture/comparison.md) | 架构对比统一入口 |
+| [`../research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) | **主对标**：Hermes / Claude Code / OpenClaw / DeepSeek Harness / OpenAI Codex（2026-10；见 `research/README.md`） |
+| [`../architecture/comparison.md`](../architecture/comparison.md) | 六平台 18 维架构对比入口 |
 | [`../strategy/comparison-vs-vendors.md`](../strategy/comparison-vs-vendors.md) | 厂商/策略对比 |
 | [`../framework/hermes-comparison.md`](../framework/hermes-comparison.md) | Hermes 专项 |
 | [`../research/对标吸收与架构纯度评估.md`](../research/对标吸收与架构纯度评估.md) | 吸收核验 |

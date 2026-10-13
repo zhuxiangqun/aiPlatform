@@ -184,8 +184,8 @@ def _ratings_and_system_chapter() -> str:
 
 | 文档 | 用途 |
 |------|------|
-| [`../research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) | **主对标**：Claude Code / DeepSeek Harness / Hermes（见 `research/README.md`） |
-| [`../architecture/comparison.md`](../architecture/comparison.md) | 架构对比统一入口 |
+| [`../research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) | **主对标**：Hermes / Claude Code / OpenClaw / DeepSeek Harness / OpenAI Codex（2026-10；见 `research/README.md`） |
+| [`../architecture/comparison.md`](../architecture/comparison.md) | 六平台 18 维架构对比入口 |
 | [`../strategy/comparison-vs-vendors.md`](../strategy/comparison-vs-vendors.md) | 厂商/策略对比 |
 | [`../framework/hermes-comparison.md`](../framework/hermes-comparison.md) | Hermes 专项 |
 | [`../research/对标吸收与架构纯度评估.md`](../research/对标吸收与架构纯度评估.md) | 吸收核验 |

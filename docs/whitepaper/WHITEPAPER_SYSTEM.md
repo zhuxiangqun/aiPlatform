@@ -109,8 +109,8 @@
 
 | 类型 | 权威源 | 说明 |
 |------|--------|------|
-| 核心能力对标（主） | [`../research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) | vs Claude Code / DeepSeek Harness / Hermes；见 `research/README.md` |
-| 架构对比入口 | [`../architecture/comparison.md`](../architecture/comparison.md) | 旧多份对比已归档，以此为准 |
+| 核心能力对标（主） | [`../research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) | vs Hermes / Claude Code / OpenClaw / DeepSeek Harness / OpenAI Codex（2026-10）；底稿 `research/对标底稿-2026-10-五家.md` |
+| 架构对比入口 | [`../architecture/comparison.md`](../architecture/comparison.md) | 六平台 18 维摘要 + 加权分；旧四平台稿见 archive |
 | 综合评估 / 分数 | [`../framework/aiplat-complete-assessment.md`](../framework/aiplat-complete-assessment.md) · [`../framework/assessment-scores.json`](../framework/assessment-scores.json) | 分数唯一源经 `assessment-spec.yaml` |
 | 自主性 L 级 | [`aiplat-l4-autonomy-assessment-v1.0.0.md`](./aiplat-l4-autonomy-assessment-v1.0.0.md) | L5 定级 ADR + `verify_whitepaper_refs.sh` |
 | 厂商策略对比 | [`../strategy/comparison-vs-vendors.md`](../strategy/comparison-vs-vendors.md) | 商业/厂商视角 |

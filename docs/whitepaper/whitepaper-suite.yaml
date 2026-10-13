@@ -198,7 +198,10 @@ benchmarks_and_ratings:
       kind: rating
   comparisons:
     - path: docs/research/aiPlat核心能力对标报告.md
-      title: 核心能力对标报告（主）
+      title: 核心能力对标报告（主·2026-10 五家）
+      kind: comparison
+    - path: docs/research/对标底稿-2026-10-五家.md
+      title: 2026-10 五家对标证据底稿
       kind: comparison
     - path: docs/research/对标吸收与架构纯度评估.md
       title: 对标吸收与架构纯度
@@ -210,7 +213,7 @@ benchmarks_and_ratings:
       title: 厂商对比策略
       kind: comparison
     - path: docs/architecture/comparison.md
-      title: 架构对比
+      title: 六平台 18 维架构对比（2026-10）
       kind: comparison
     - path: docs/architecture/plans/comparison.md
       title: 规划对比
@@ -222,6 +225,10 @@ benchmarks_and_ratings:
       title: 企业级可信落地对照
       kind: comparison
   archive_only:
+    - path: docs/archive/comparison-four-platform-2026-07.md
+      note: 旧四平台 comparison 归档
+    - path: docs/archive/aiPlat核心能力对标报告-2026-08-六系统.md
+      note: 旧六系统主报告（Hermes 双列）归档
     - path: docs/archive/aiPlat-22dim-comparison-v4.md
       note: 归档，非现状权威
     - path: docs/archive/AIPLAT_WHITEPAPER.md
