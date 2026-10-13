@@ -1,7 +1,7 @@
 # Pi + aiPlat 企业级混合
 
 > 产品锁定：默认 **Pi-only**；企业级 = **Pi 壳 + aiPlat 回连**。  
-> **已接线**：只读 KB + 允许列表工具代理 + **原生工具门禁桥**。其余项仍按阶梯推进。  
+> **已接线**：只读 KB + 允许列表工具代理 + **原生工具门禁桥** + **会话摘要 Memory 回写**。审批门仍按阶梯推进。  
 > **分层**：Pi = 执行/薄宿主；aiPlat = 治理/工厂。不是两套平权产品。
 
 ## 原则
@@ -27,6 +27,9 @@
 | `AIPLAT_ENTERPRISE_TOOL_GATE=0` | 仅关闭原生门禁，保留 KB/工具混合 |
 | `AIPLAT_ENTERPRISE_NATIVE_ALLOWLIST` | 额外放行原生工具（可覆盖默认 block，如 `bash`） |
 | `AIPLAT_ENTERPRISE_NATIVE_BLOCKLIST` | 额外拦截原生工具（如 `read`） |
+| `AIPLAT_ENTERPRISE_MEMORY=1` | 启用会话摘要回写（须同时有 URL/token）；空=关闭 |
+| `AIPLAT_ENTERPRISE_MEMORY_AUTO=0` | 仅关闭 `session_shutdown` 自动 flush；保留 `aiplat_memory_capture` 工具 |
+| `AIPLAT_ENTERPRISE_SESSION_ID` | 可选；写入 capture 的 `session_id` |
 
 ## 回连能力阶梯
 
@@ -35,7 +38,7 @@
 | 1 | 只读知识检索 | ✅ | `aiplat_kb_retrieve` → `POST /platform/kb/query` |
 | 2 | 工具代理（允许列表） | ✅ | `aiplat_tool_execute` → `POST …/tools/{name}/execute` |
 | 3 | 原生工具门禁桥 | ✅ | `enterprise_tool_gate.ts`：`tool_call` block + `setActiveTools`；默认禁 bash/write/edit/powershell |
-| 4 | 会话摘要回写 Memory/SECI | 待接线 | 失败不阻断本地对话 |
+| 4 | 会话摘要回写 Memory | ✅ | `enterprise_memory.ts` → `POST /platform/memory/capture`；工具 + `session_shutdown` 软 flush；失败不阻断 |
 | 5 | 审批门 ApprovalGate | 待接线 | 高风险动作等待平台 |
 
 ```bash
@@ -48,11 +51,15 @@ export AIPLAT_ENTERPRISE_TOOLS=calculator
 # native gate is ON by default (bash/write/edit blocked). Escape:
 # export AIPLAT_ENTERPRISE_ALLOW_NATIVE=1
 # export AIPLAT_ENTERPRISE_NATIVE_ALLOWLIST=bash
+# memory writeback (opt-in):
+export AIPLAT_ENTERPRISE_MEMORY=1
+# export AIPLAT_ENTERPRISE_MEMORY_AUTO=0   # keep tool, skip session_shutdown flush
 
 pi -e .
-# /aiplat-status          → enterprise_hybrid / enterprise_tools / enterprise_tool_gate
+# /aiplat-status          → enterprise_hybrid / tools / tool_gate / memory
 # /aiplat-enterprise      → KB reconnect status
-# tools: aiplat_kb_retrieve | aiplat_tool_execute
+# /aiplat-memory          → memory writeback status
+# tools: aiplat_kb_retrieve | aiplat_tool_execute | aiplat_memory_capture
 ```
 
 Offline gates:
@@ -61,11 +68,12 @@ Offline gates:
 node packages/aiplat-pi-runtime/scripts/enterprise_kb_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_tools_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_tool_gate_smoke.mjs
+node packages/aiplat-pi-runtime/scripts/enterprise_memory_smoke.mjs
 ```
 
 ## 非目标
 
-- 在 Pi 内重实现 PolicyGate / Memory / SECI（门禁桥只 **拦截/引导**，不搬策略引擎）
+- 在 Pi 内重实现 PolicyGate / MemoryManager / SECI（门禁桥只 **拦截/引导**；Memory 桥只 **投递** capture API）
 - 无允许列表时开放任意平台工具
 - 把「厚运行时私有化」写成默认交付（仅驻场例外）
 

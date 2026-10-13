@@ -30,6 +30,7 @@ RUNTIME_EXT = RUNTIME_PKG / "extensions" / "aiplat-app.ts"
 RUNTIME_EXT_ENTERPRISE = RUNTIME_PKG / "extensions" / "enterprise_kb.ts"
 RUNTIME_EXT_TOOLS = RUNTIME_PKG / "extensions" / "enterprise_tools.ts"
 RUNTIME_EXT_TOOL_GATE = RUNTIME_PKG / "extensions" / "enterprise_tool_gate.ts"
+RUNTIME_EXT_MEMORY = RUNTIME_PKG / "extensions" / "enterprise_memory.ts"
 RUNTIME_HANDLER = RUNTIME_PKG / "fixtures" / "handler_echo.py"
 RUNTIME_RUNNER = RUNTIME_PKG / "fixtures" / "handler_runner.py"
 
@@ -147,6 +148,10 @@ def export_bundle(
         shutil.copy2(RUNTIME_EXT_TOOL_GATE, ext_dir / "enterprise_tool_gate.ts")
     else:
         _die(f"enterprise tool gate extension missing: {RUNTIME_EXT_TOOL_GATE}")
+    if RUNTIME_EXT_MEMORY.is_file():
+        shutil.copy2(RUNTIME_EXT_MEMORY, ext_dir / "enterprise_memory.ts")
+    else:
+        _die(f"enterprise memory extension missing: {RUNTIME_EXT_MEMORY}")
 
     fixtures = out / "fixtures"
     fixtures.mkdir(parents=True, exist_ok=True)

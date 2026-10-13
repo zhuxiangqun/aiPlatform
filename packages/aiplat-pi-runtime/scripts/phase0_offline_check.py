@@ -47,6 +47,9 @@ def main() -> int:
             "registerEnterpriseToolGate",
             "enterprise_tool_gate",
             "toolGateSystemPromptAddon",
+            "registerEnterpriseMemory",
+            "enterprise_memory",
+            "memorySystemPromptAddon",
         ):
             if needle not in src:
                 errors.append(f"extension missing {needle}")
@@ -78,6 +81,20 @@ def main() -> int:
         ):
             if needle not in tools_src:
                 errors.append(f"enterprise_tools missing {needle}")
+
+    mem = ROOT / "extensions" / "enterprise_memory.ts"
+    if not mem.is_file():
+        errors.append("missing extensions/enterprise_memory.ts")
+    else:
+        mem_src = mem.read_text(encoding="utf-8")
+        for needle in (
+            "AIPLAT_ENTERPRISE_MEMORY",
+            "aiplat_memory_capture",
+            "registerEnterpriseMemory",
+            "memoryCaptureUrl",
+        ):
+            if needle not in mem_src:
+                errors.append(f"enterprise_memory missing {needle}")
 
     handler = ROOT / "fixtures" / "handler_echo.py"
     if not handler.is_file():

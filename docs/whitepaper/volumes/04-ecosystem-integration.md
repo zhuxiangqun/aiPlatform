@@ -3,19 +3,19 @@ title: "aiPlat 生态与集成白皮书"
 volume_id: ecosystem-integration
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-13T12:12:24Z"
+generated_at: "2026-10-13T13:30:54Z"
 audience: "ISV、集成商、开源社区、渠道"
 core_question: "如何接入、贡献、协作？"
 priority: P2
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30"
-caps_sha256: "e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94"
+caps_sha256: "9d9f001d3442f28afec2c2fed7aef8f40fdc0bff094db8780ff3ce9b3669a640"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=ecosystem-integration suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=e2e1936484e9ca34a1fedaa4193db677b76758c50291c870feca845ce034fc94 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=ecosystem-integration suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=9d9f001d3442f28afec2c2fed7aef8f40fdc0bff094db8780ff3ce9b3669a640 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 生态与集成白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 如何接入、贡献、协作？ |
 | 优先级 | P2 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-13T12:12:24Z` |
-| CAPABILITIES sha256 | `e2e1936484e9…` |
+| 生成时间 (UTC) | `2026-10-13T13:30:54Z` |
+| CAPABILITIES sha256 | `9d9f001d3442…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 **备注**：
@@ -632,7 +632,7 @@ See [`docs/architecture/plans/pi-thin-runtime.md`](../../docs/architecture/plans
 | Mode | Meaning |
 |------|---------|
 | **Pi-only** (default) | Artifacts run with Pi alone: SOP + skills + handler + your LLM. No 8002/8003. |
-| **Pi + aiPlat** (enterprise) | Same Pi shell; opt-in hybrid (`AIPLAT_ENTERPRISE=1`). **KB retrieve** + **allowlisted tool execute** wired; Memory/SECI/Approval still platform-side. |
+| **Pi + aiPlat** (enterprise) | Same Pi shell; opt-in hybrid (`AIPLAT_ENTERPRISE=1`). **KB retrieve** + **allowlisted tool execute** + **native tool gate** + **Memory capture** (`AIPLAT_ENTERPRISE_MEMORY=1` → `/platform/memory/capture`); Approval still pending. |
 | Thick aiPlat-only on user machine | **Not** the default delivery shape. |
 
 **Layered, not two parallel products:** aiPlat already has agent loops / tools / multi-model in the **platform** sense. Pi exists so **factory artifacts can run without installing the full stack**. Overlap in capability lists ≠ redundant delivery. Do not market Pi and aiPlat as two peer platforms with separate auth/audit. Enterprise entry remains aiPlat (or Pi shell reconnecting to aiPlat).
@@ -651,21 +651,28 @@ export AIPLAT_TENANT_TOKEN=<bearer>                # or AIPLAT_API_KEY
 ### optional tools (empty = tools off, KB only):
 export AIPLAT_ENTERPRISE_TOOLS=calculator
 ### optional: AIPLAT_CORE_URL=http://127.0.0.1:8002
+### native gate ON by default under ENTERPRISE=1 (bash/write/edit blocked)
+### escape: AIPLAT_ENTERPRISE_ALLOW_NATIVE=1  or  AIPLAT_ENTERPRISE_TOOL_GATE=0
+### optional memory writeback:
+### export AIPLAT_ENTERPRISE_MEMORY=1
 
 pi -e .
-### /aiplat-status          → enterprise_hybrid / enterprise_tools
+### /aiplat-status          → enterprise_hybrid / tools / tool_gate / memory
 ### /aiplat-enterprise      → KB reconnect status
-### tools: aiplat_kb_retrieve | aiplat_tool_execute
+### /aiplat-memory          → memory writeback status
+### tools: aiplat_kb_retrieve | aiplat_tool_execute | aiplat_memory_capture
 ```
 
-Offline gates (mock HTTP, no platform process):
+Offline gates (mock HTTP / pure policy, no platform process):
 
 ```bash
 node packages/aiplat-pi-runtime/scripts/enterprise_kb_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_tools_smoke.mjs
+node packages/aiplat-pi-runtime/scripts/enterprise_tool_gate_smoke.mjs
+node packages/aiplat-pi-runtime/scripts/enterprise_memory_smoke.mjs
 ```
 
-PolicyGate / RBAC stay on the server; extensions only forward the bearer token.
+PolicyGate / RBAC stay on the server; extensions only forward the bearer token. The native gate **blocks** host-mutating Pi tools so they cannot bypass that server path.
 
 #### Scheme A (Skills)
 
