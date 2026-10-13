@@ -67,6 +67,7 @@ def main() -> int:
             "aiplat_kb_retrieve",
             "registerEnterpriseKb",
             "kbQueryUrl",
+            "normalizePlatformBaseUrl",
         ):
             if needle not in ent_src:
                 errors.append(f"enterprise_kb missing {needle}")

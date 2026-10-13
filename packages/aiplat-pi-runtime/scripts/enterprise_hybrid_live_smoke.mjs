@@ -3,10 +3,13 @@
  * Live hybrid E2E against local management GW / platform / core (when up).
  *
  * Default: auto-pick AIPLAT_PLATFORM_URL among:
- *   env → http://127.0.0.1:8000/api (management GW) → :8003/api → :8003
+ *   env → http://127.0.0.1:8003 (direct /platform/*) → http://127.0.0.1:8000/api (GW)
  * Core: AIPLAT_CORE_URL or http://127.0.0.1:8002/api/core
  * SKIP (exit 0) if platform or core down.
  * Require: AIPLAT_HYBRID_LIVE=1 → fail if unreachable.
+ *
+ * Note: platform(:8003) mounts /platform/*; GW(:8000) mounts /api/platform/*.
+ * Never use http://host:8003/api (404). Runtime normalizePlatformBaseUrl strips that footgun.
  *
  * Env:
  *   AIPLAT_TENANT_TOKEN / AIPLAT_API_KEY (optional; local may be auth-off → "dev")
@@ -61,26 +64,47 @@ function toOrigin(base) {
   return b;
 }
 
+/** Strip mistaken :8003/api (same as runtime normalizePlatformBaseUrl). */
+function normalizePlatformBaseUrl(raw) {
+  const b = String(raw || "").trim().replace(/\/+$/, "");
+  if (!b) return "";
+  try {
+    const u = new URL(b);
+    const path = (u.pathname || "/").replace(/\/+$/, "") || "/";
+    if (u.port === "8003" && (path === "/api" || path.startsWith("/api/"))) {
+      if (path === "/api") u.pathname = "/";
+      else if (path.startsWith("/api/platform")) u.pathname = path.slice("/api".length) || "/";
+      else u.pathname = path.slice("/api".length) || "/";
+      return u.toString().replace(/\/+$/, "");
+    }
+    if (u.port === "8000" && path === "/") {
+      u.pathname = "/api";
+      return u.toString().replace(/\/+$/, "");
+    }
+  } catch {
+    /* keep */
+  }
+  return b;
+}
+
 /**
- * Prefer management GW (:8000/api) — local platform :8003 often has no /platform/*
- * mounted for hybrid routes; GW proxies /api/platform/{path}.
+ * Prefer direct platform (:8003 → /platform/*), then management GW (:8000/api).
  */
 async function resolvePlatformBase() {
-  const fromEnv = (process.env.AIPLAT_PLATFORM_URL || "").trim().replace(/\/+$/, "");
+  const fromEnv = normalizePlatformBaseUrl(process.env.AIPLAT_PLATFORM_URL || "");
   const candidates = [
     fromEnv,
-    "http://127.0.0.1:8000/api",
-    "http://127.0.0.1:8003/api",
     "http://127.0.0.1:8003",
+    "http://127.0.0.1:8000/api",
   ].filter(Boolean);
 
   const tried = new Set();
-  for (const c of candidates) {
-    if (tried.has(c)) continue;
+  for (const c0 of candidates) {
+    const c = normalizePlatformBaseUrl(c0);
+    if (!c || tried.has(c)) continue;
     tried.add(c);
     const origin = toOrigin(c);
     if (!(await healthyOrigin(origin))) continue;
-    // Prefer a base that can reach memory/capture (200 or auth-ish), not bare 404.
     const probeUrl = c.endsWith("/platform")
       ? `${c}/memory/capture`
       : `${c}/platform/memory/capture`;
@@ -100,11 +124,11 @@ async function resolvePlatformBase() {
       continue;
     }
   }
-  // Fallback: first healthy origin even if capture probe failed
-  for (const c of candidates) {
-    if (await healthyOrigin(toOrigin(c))) return c;
+  for (const c0 of candidates) {
+    const c = normalizePlatformBaseUrl(c0);
+    if (c && (await healthyOrigin(toOrigin(c)))) return c;
   }
-  return fromEnv || "http://127.0.0.1:8000/api";
+  return fromEnv || "http://127.0.0.1:8003";
 }
 
 function platformPath(platformBase, suffix) {
@@ -181,16 +205,27 @@ async function main() {
   assert(kb.status === 200 || kb.status === 503, `kb/query http ${kb.status}`);
   console.log(`PASS: live kb/query reachable (http=${kb.status})`);
 
-  // 4) Approvals pending (ladder 5) — soft: 200 list or 503 manager not up
-  const ap = await fetchJson(platformPath(PLATFORM, "/approvals/pending"));
+  // 4) Approvals pending (ladder 5)
+  // Platform process may return 503 (ApprovalManager not init); core often has the list.
+  let ap = await fetchJson(platformPath(PLATFORM, "/approvals/pending"));
+  let viaCore = false;
+  if (ap.status === 503 || ap.status === 404) {
+    const coreAp = await fetchJson(`${CORE}/approvals/pending`);
+    if (coreAp.status === 200) {
+      viaCore = true;
+      ap = coreAp;
+    }
+  }
   assert(
     ap.status === 200 || ap.status === 503,
     `approvals/pending unexpected http ${ap.status}: ${ap.text.slice(0, 200)}`,
   );
-  if (ap.status === 503) {
-    console.log("PASS: live approvals/pending soft (ApprovalManager not initialized)");
-  } else {
+  if (ap.status === 200 && viaCore) {
+    console.log("PASS: live approvals/pending via core fallback");
+  } else if (ap.status === 200) {
     console.log("PASS: live approvals/pending");
+  } else {
+    console.log("PASS: live approvals/pending soft (ApprovalManager not initialized)");
   }
 
   // 5) Native gate policy still offline-true
