@@ -80,6 +80,42 @@ Pi（执行面 / 厂外薄宿主）── 默认 Pi-only 可闭环
 
 接线入口：`enterprise_kb.ts` / `enterprise_tools.ts` / `enterprise_tool_gate.ts` / `enterprise_memory.ts` / `enterprise_approval.ts`（由 `aiplat-app.ts` 条件注册）。详见 `packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`。
 
+### 双模式内涵（精确化 · 2026-10-13）
+
+> **合理方向 = 控制面 / 执行面分层**，不是「两套平权平台」。企业级 ≠ 单一功能，而是可观测、可治理、可审计的平台工程；Pi 不承担该体系。
+
+| 模式 | 内涵 | 能力边界 | 不安全假设 |
+|------|------|----------|------------|
+| **模式一 · 仅 Pi** | 独立、可自托管的极简 Agent Harness | `read`/`write`/`edit`/`bash`、会话内循环、多模型抽象；适合个人 / 小团队 / 快速验证 | **无**内置权限、队列、成本、审计 → **禁止**默认无人值守生产 |
+| **模式二 · Pi + aiPlat** | Pi = 执行内核；aiPlat = 平台层包裹 | 权限 / 策略 / 审计 / 成本 / 生命周期 / 多租户在 **aiPlat**；副作用经回连或外层 PolicyGate | 禁止叙事成「再装一套平行平台」；禁止把 Memory/SECI/ApprovalGate 搬进 Pi 进程 |
+
+**厂内集成形态（实验轴 A，与厂外交付正交）**：
+
+| 形态 | 原理 | 现状 |
+|------|------|------|
+| RPC 子进程 | aiPlat 启 Pi 为外部进程，JSONL 通信 | 方式四 CLI / `pi_rpc_client` 骨架（默认 OFF） |
+| SDK 嵌入 | 同进程调 Pi API | **非默认**（强 Node 绑定） |
+| 可选执行后端 | `execution_backend≈pi`；请求仍经 aiPlat 门禁再路由 | Workspace Execute flag；**未**接 PipelineEngine |
+
+接 Pi **不是为了补上下文**：aiPlat 已有 Memory / CRAG / ContextBus。Pi 的集成价值是 **执行引擎标准化** + **本地工具循环** + **协议化旁路**；是否接看「执行引擎要不要换」，不看「上下文谁有」。
+
+### 上下文 · 压缩 · 学习（作用域 × 治理）
+
+划分标准：**会话内 vs 跨会话**；**是否要权限 / 审计 / 共享 / 持久化 / 回滚**。
+
+| 能力 | 归属 | 说明 |
+|------|------|------|
+| 会话内窗口管理 / 自动·手动 compaction / 分支摘要 / `transformContext` | **Pi 原生** | 执行自保：不爆窗口；≠ 平台知识沉淀 |
+| 项目上下文（AGENTS.md/CLAUDE.md）/ system prompt 组装 | **Pi 原生** | 仓库指令进会话；与 aiPlat ContextBus 来源不同 |
+| 上下文选择（Memory / RAG / CRAG / Team Brain） | **aiPlat** | 租户边界 + 策略 |
+| 上下文注入包 | **aiPlat 构建，Pi 消费** | 平台决定「给什么」，Pi 决定「怎么进循环」 |
+| 跨会话压缩 / 蒸馏 / 持久记忆 | **aiPlat** | 混合桥只投递 `memory/capture`，不搬 MemoryManager |
+| 提示 / 知识 / 技能 / 策略层学习 | **aiPlat** | 需持久化、治理、验证、版本与回滚 |
+| 会话内即时适应（重试 / ReAct 自纠） | **Pi** | 单次任务内；跨会话学习仍归平台 |
+| Pi 扩展生态（magic-context / continual-harness 等） | **可选参考，非默认交付** | 若引入跨会话记忆，治理仍须回 aiPlat；禁止双头管理 |
+
+> **一句话**：会话内上下文与压缩 → Pi；跨会话记忆与学习 → aiPlat；Pi 扩展可补执行侧能力，但共享边界与审计不得旁路平台。
+
 **厂内若做，优先级（成本阶梯）** — 详见 `packages/aiplat-pi-runtime/docs/FACTORY_IN_EXPERIMENT.md`
 
 1. 巩固 Pi-only 交付（能力边界写进合同；管理端已提示）
@@ -108,9 +144,10 @@ Skills 策略锁定 **方案 A**：`scripts/export_pi_bundle.py` 把工厂 skill
 |--|--------|-------------------|
 | 工厂 / 合规 / 工作区编辑 | 是 | 否 |
 | 用户侧对话执行（薄快照） | 可全栈 | **已交付路径** |
-| PolicyGate / Memory / SECI | 是 | **不搬** |
-| 设计模式 / 平台上下文压缩 / SECI 自学 | 是 | **不具备**（Pi 自有 compaction ≠ aiPlat Memory） |
-| 扩展 `aiplat-app` | — | 胶水：SOP 注入、斜杠命令、handler 桥；**非** Agent 大脑搬家 |
+| PolicyGate / Memory / SECI / 审批裁决 | 是 | **不搬**（混合只回连 / 等待） |
+| 会话内 compaction / 窗口管理 | 非职责（不侵入循环） | **Pi 原生** |
+| 跨会话记忆 / 蒸馏 / 自学治理 | **平台层** | 可选 capture 投递；扩展生态非默认 |
+| 扩展 `aiplat-app` | — | 胶水：SOP、斜杠、handler、企业桥；**非** Agent 大脑搬家 |
 
 ## 路径
 

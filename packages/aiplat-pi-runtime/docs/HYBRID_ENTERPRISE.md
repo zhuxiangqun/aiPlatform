@@ -2,16 +2,18 @@
 
 > 产品锁定：默认 **Pi-only**；企业级 = **Pi 壳 + aiPlat 回连**。  
 > **已接线**：只读 KB + 允许列表工具代理 + **原生工具门禁桥** + **会话摘要 Memory 回写** + **审批等待桥**。  
-> **分层**：Pi = 执行/薄宿主；aiPlat = 治理/工厂。不是两套平权产品。
+> **分层**：Pi = 执行内核；aiPlat = 平台治理。不是两套平权产品。  
+> 权威边界（上下文/压缩/学习归属）：`docs/architecture/plans/pi-thin-runtime.md` §双模式内涵 / §上下文·压缩·学习。
 
 ## 原则
 
 1. 用户侧始终以 Pi（或薄 HTTP）为对话宿主——不要求用户默认安装全栈 aiPlat。
-2. 包内能力（SOP / skills / handler）在离线/断连时仍可用。
+2. 包内能力（SOP / skills / handler）在离线/断连时仍可用；**Pi-only 默认不具备企业权限/审计/成本**，不可当无人值守生产默认。
 3. 企业能力不复制进 Pi 进程，经认证 API 调用平台（PolicyGate 仍在平台/Core 侧执行一次）。
 4. **能力重叠 ≠ 交付重复**：平台白皮书里的 Agent/工具/多模型不取消 Pi 交付；Pi 解决「产物怎么带走、怎么轻量跑」。
 5. 对外入口：企业客户认 aiPlat（或本混合回连）；禁止叙事成「再装一套平行平台」。
 6. **企业意图下原生副作用不得绕过平台门禁**：`AIPLAT_ENTERPRISE=1` 时默认拦截 bash/write/edit/powershell，迫使副作用走 `aiplat_tool_execute`。
+7. **接 Pi 不为补上下文**：会话内 compaction 归 Pi；跨会话 Memory/学习归 aiPlat。混合桥只投递/等待，不搬引擎。
 
 ## 环境变量
 

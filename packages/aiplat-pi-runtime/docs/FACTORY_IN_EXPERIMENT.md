@@ -8,7 +8,16 @@
 
 ## 目标
 
-补 aiPlat **编码场景执行闭环**空白（文件/ bash 类副作用），**不**替代 PipelineEngine / ReActLoop / PolicyGate。
+补 aiPlat **编码场景执行闭环**空白（文件/ bash 类副作用），**不**替代 PipelineEngine / ReActLoop / PolicyGate。  
+**不为补上下文**：aiPlat 已有 Memory/CRAG/ContextBus；厂内接 Pi 的价值是可选执行引擎 + 本地工具循环（见 `pi-thin-runtime.md` §双模式内涵）。
+
+## 与「三种集成」的对应
+
+| 形态 | 本实验落点 |
+|------|------------|
+| RPC 子进程 | `pi_rpc_client` / `coding_exec` / RPC probe |
+| SDK 嵌入 | **不做默认**（Node 绑定） |
+| 可选执行后端 | `AIPLAT_PI_CODING_EXECUTOR` → Workspace Execute 旁路（默认 OFF） |
 
 ## 方式四骨架（本包）
 
