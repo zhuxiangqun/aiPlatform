@@ -317,4 +317,11 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 - [x] L3 专属值班台：`delivery/l3_duty_desk.py` + `GET /platform/delivery/l3-duty-desk` + `/aiplat-duty` + 导出 `L3_DUTY_DESK.md`（`AIPLAT_L3_DUTY_*`；无配置不编造联系人）
 - [x] 导出必含 `enterprise_l3_duty.ts`；delivery scan smoke 校验 `MONTHLY_OPS_REPORT.md` / `L3_DUTY_DESK.md`
 
-**下一刀（可选）**：hybrid ①–④ 客户可见层（含 L1/L2/L3）已齐；按客户开通 L3 时配置值班 env 并保持 platform 加载当前代码。
+**交付阶梯闭环**：hybrid ①–④ 客户可见层（含 L1/L2/L3）已齐。运营开通清单：
+
+1. platform 加载当前 `main`（改路由后重启 8003）
+2. L3：`AIPLAT_L3_DUTY_CONTACT`（可选 `CHANNEL`/`HOURS`）
+3. 验收：`PYTHONPATH=aiPlat-platform:aiPlat-core:. python3 scripts/smoke_delivery_sku_live.py`（四端点 200+ok）；Pi `/aiplat-kb-health` · `/aiplat-duty`
+4. 导出包含 `COST_REPORT.md` · `KB_HEALTH.md` · `MONTHLY_OPS_REPORT.md` · `L3_DUTY_DESK.md` · `enterprise_l3_duty.ts`
+
+后续增量按客诉/运营反馈单独立项；本阶梯默认不再开「下一刀」。
