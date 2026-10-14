@@ -62,12 +62,17 @@ async def record_kb_query_syscall(
     request_id: str = "",
     out: Optional[Dict[str, Any]] = None,
     error: Optional[str] = None,
+    store: Any = None,
 ) -> bool:
-    """Append knowledge_retrieve event. Returns True if persisted."""
-    try:
-        from core.api.core_facade import get_execution_store
+    """Append knowledge_retrieve event. Returns True if persisted.
 
-        store = get_execution_store()
+    ``store`` is injectable for unit tests (avoids importing CoreFacade on Py3.9).
+    """
+    try:
+        if store is None:
+            from core.api.core_facade import get_execution_store
+
+            store = get_execution_store()
         if not store or not hasattr(store, "add_syscall_event"):
             return False
         now = time.time()

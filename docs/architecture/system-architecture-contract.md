@@ -166,6 +166,18 @@ LLM syscall 事件记录（`add_syscall_event`）**必须**写入 `execution_sto
 | 违反后果 | platform 注入 tenant store 后每次 LLM 调用抛 `AttributeError: 'TenantStore' object has no attribute 'add_syscall_event'` → chat 端点超时 → 前端「发送失败，请重试」（实测 2026-08-28） |
 | 验证 | `test_llm_syscall_store.py`：llm.py store 获取走 execution_store + TenantStore 无 add_syscall_event |
 
+### 5.1.6 KB 查询 syscall 遥测契约（MUST，2026-10-14）
+
+`POST /platform/kb/query` 与 collection query 成功路径**必须** soft-fail 写入 `execution_store.syscall_events`，供 Delivery kb-health（`%kb_retrieve%`）消费；身份透传不变：
+
+| 契约 | 说明 |
+|------|------|
+| 写入点 | `aiPlat-platform/kb/query_telemetry.py` → `record_kb_query_syscall`；由 `api/rest/routes.py` 的 `kb_query` / `collection_query` 调用 |
+| 事件名 | `knowledge_retrieve` / `platform_kb_retrieve`（与 metrics 过滤对齐） |
+| 身份 | `tenant_id` / actor 仍来自既有 platform 鉴权与身份透传；遥测**不得**改变鉴权语义 |
+| soft-fail | 遥测失败不得影响查询响应（`except Exception: pass  # noqa`） |
+| 验证 | `test_kb_query_telemetry.py` + `GET /platform/delivery/kb-health` 在有查询流量后不再 `insufficient_data` |
+
 ### 5.2 应用工厂 P1 修复契约（MUST，2026-08-25）
 
 同源审计（§7.5.4）的 14 项 P1 修复固化 + 生成物契约（SBA 借鉴）：

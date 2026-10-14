@@ -30,16 +30,13 @@ def test_summarize_kb_query_result_empty():
     assert summarize_kb_query_result({"kb": {"count": 3}})["count"] == 3
 
 
-def test_record_kb_query_syscall_calls_store(monkeypatch):
+def test_record_kb_query_syscall_calls_store():
+    """Inject store — do not import CoreFacade (Py3.9 kanban | union breaks)."""
     captured: List[Dict[str, Any]] = []
 
     class _Store:
         async def add_syscall_event(self, event: Dict[str, Any]) -> None:
             captured.append(event)
-
-    import core.api.core_facade as facade
-
-    monkeypatch.setattr(facade, "get_execution_store", lambda: _Store())
 
     ok = asyncio.run(
         record_kb_query_syscall(
@@ -48,6 +45,7 @@ def test_record_kb_query_syscall_calls_store(monkeypatch):
             tenant_id="t1",
             actor_id="u1",
             out={"kb": {"items": [{"source": "a.md", "text": "x"}]}},
+            store=_Store(),
         )
     )
     assert ok is True
@@ -62,15 +60,26 @@ def test_record_kb_query_syscall_calls_store(monkeypatch):
     assert ev["result"]["count"] == 1
 
 
-def test_record_kb_query_syscall_soft_fail(monkeypatch):
-    def _boom():
-        raise RuntimeError("no store")
-
-    import core.api.core_facade as facade
-
-    monkeypatch.setattr(facade, "get_execution_store", _boom)
+def test_record_kb_query_syscall_soft_fail():
+    class _Boom:
+        async def add_syscall_event(self, event: Dict[str, Any]) -> None:
+            raise RuntimeError("write failed")
 
     ok = asyncio.run(
-        record_kb_query_syscall(question="q", out={"kb": {"items": []}})
+        record_kb_query_syscall(
+            question="q",
+            out={"kb": {"items": []}},
+            store=_Boom(),
+        )
+    )
+    assert ok is False
+
+
+def test_record_kb_query_syscall_no_store():
+    class _Empty:
+        pass
+
+    ok = asyncio.run(
+        record_kb_query_syscall(question="q", out={}, store=_Empty())
     )
     assert ok is False
