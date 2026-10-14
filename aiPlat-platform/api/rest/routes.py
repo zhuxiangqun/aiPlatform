@@ -4471,7 +4471,7 @@ async def documents_list_elements(doc_id: str, request: Request, type: Optional[
 
 async def kb_query(req: KBQueryRequest, request: Request):
 
-    # Query KB (MVP): call core engine skill knowledge_query, and convert local citation paths to asset_url.
+    # Structured retrieve via platform_query (not prompt skill) so Pi citation + telemetry get items.
 
     identity = _resolve_identity(request)
 
@@ -4479,61 +4479,37 @@ async def kb_query(req: KBQueryRequest, request: Request):
 
 
 
-    payload = {
+    from kb.platform_query import execute_platform_kb_query
 
-        "input": {
 
-            "tenant_id": identity.tenant_id,
 
-            "collection_id": req.collection_id,
+    out = await execute_platform_kb_query(
 
-            "question": req.question,
+        tenant_id=str(getattr(identity, "tenant_id", "") or "default"),
 
-            "year": req.year,
+        collection_id=str(getattr(req, "collection_id", "") or "default"),
 
-            "limit": req.limit,
+        question=str(getattr(req, "question", "") or ""),
 
-        },
+        limit=int(getattr(req, "limit", None) or 10),
 
-        "context": {"tenant_id": identity.tenant_id, "actor_id": identity.actor_id, "request_id": identity.request_id},
+        normalize_citations=_normalize_citations_with_assets,
 
-        "mode": "inline",
+    )
 
-    }
 
-    core_resp = await _core_request("POST", "/api/core/skills/knowledge_query/execute", identity=identity, json_body=payload)
-
-    out = dict(core_resp or {})
-
-    # unwrap run summary output best-effort
-
-    data = None
-
-    try:
-
-        data = (out.get("output") or {}).get("output") if isinstance(out.get("output"), dict) else None
-
-    except Exception:
-
-        data = None
-
-    if isinstance(data, dict):
-
-        out["kb"] = _normalize_citations_with_assets(tenant_id=identity.tenant_id, data=data)
-
-    # Delivery: feed kb-health / metrics (soft-fail; never block query)
 
     try:
 
         from kb.query_telemetry import record_kb_query_syscall
 
-        _inp = payload.get("input") if isinstance(payload.get("input"), dict) else {}
+
 
         await record_kb_query_syscall(
 
-            question=str(_inp.get("question") or getattr(req, "question", "") or ""),
+            question=str(getattr(req, "question", "") or ""),
 
-            collection_id=str(_inp.get("collection_id") or getattr(req, "collection_id", "") or "default"),
+            collection_id=str(getattr(req, "collection_id", "") or "default"),
 
             tenant_id=str(getattr(identity, "tenant_id", "") or ""),
 
@@ -4543,7 +4519,7 @@ async def kb_query(req: KBQueryRequest, request: Request):
 
             out=out,
 
-            error=(None if out.get("ok", True) else str(out.get("error_message") or out.get("error") or "kb_query_failed")[:500]),
+            error=(None if out.get("ok", True) else str(out.get("error") or "kb_query_failed")[:500]),
 
         )
 
@@ -4561,7 +4537,7 @@ async def kb_query(req: KBQueryRequest, request: Request):
 
 async def collection_query(request: Request):
 
-    """Query a single KB collection — wraps kb_query with top_k→limit mapping."""
+    """Query a single KB collection — wraps structured retrieve with top_k→limit mapping."""
 
     identity = _resolve_identity(request)
 
@@ -4569,55 +4545,37 @@ async def collection_query(request: Request):
 
     body = await request.json()
 
-    payload = {
+    from kb.platform_query import execute_platform_kb_query
 
-        "input": {
 
-            "tenant_id": identity.tenant_id,
 
-            "collection_id": str(body.get("collection_id", "")),
+    out = await execute_platform_kb_query(
 
-            "question": str(body.get("question", "")),
+        tenant_id=str(getattr(identity, "tenant_id", "") or "default"),
 
-            "limit": int(body.get("top_k", 8)),
+        collection_id=str(body.get("collection_id") or "default"),
 
-        },
+        question=str(body.get("question") or ""),
 
-        "context": {"tenant_id": identity.tenant_id, "actor_id": identity.actor_id, "request_id": identity.request_id},
+        limit=int(body.get("top_k", 8) or 8),
 
-        "mode": "inline",
+        normalize_citations=_normalize_citations_with_assets,
 
-    }
+    )
 
-    core_resp = await _core_request("POST", "/api/core/skills/knowledge_query/execute", identity=identity, json_body=payload)
 
-    out = dict(core_resp or {})
-
-    data = None
-
-    try:
-
-        data = (out.get("output") or {}).get("output") if isinstance(out.get("output"), dict) else None
-
-    except Exception:
-
-        data = None
-
-    if isinstance(data, dict):
-
-        out["kb"] = _normalize_citations_with_assets(tenant_id=identity.tenant_id, data=data)
 
     try:
 
         from kb.query_telemetry import record_kb_query_syscall
 
-        _inp = payload.get("input") if isinstance(payload.get("input"), dict) else {}
+
 
         await record_kb_query_syscall(
 
-            question=str(_inp.get("question") or ""),
+            question=str(body.get("question") or ""),
 
-            collection_id=str(_inp.get("collection_id") or "default"),
+            collection_id=str(body.get("collection_id") or "default"),
 
             tenant_id=str(getattr(identity, "tenant_id", "") or ""),
 
@@ -4627,7 +4585,7 @@ async def collection_query(request: Request):
 
             out=out,
 
-            error=(None if out.get("ok", True) else str(out.get("error_message") or out.get("error") or "kb_query_failed")[:500]),
+            error=(None if out.get("ok", True) else str(out.get("error") or "collection_query_failed")[:500]),
 
         )
 
