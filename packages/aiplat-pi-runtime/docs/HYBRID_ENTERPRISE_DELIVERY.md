@@ -286,4 +286,6 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 - [x] 规格与检查表：[`HYBRID_ENTERPRISE_KB_HEALTH.md`](./HYBRID_ENTERPRISE_KB_HEALTH.md)
 - [x] **结构化检索接线**：`kb/platform_query.py` 默认本地 FTS/LIKE（`AIPLAT_KB_QUERY_CRAG=1` 才走 `query_elements`）；不再走 prompt `knowledge_query`；响应含 `kb.items`/`citations`，Pi citation UX 与遥测可吃到真实命中
 
-**下一刀（可选）**：governance 周报 cron 归档；独立 miss-top API；无效请求专用拦截计数；V1/V5 prompt 级增强；平台 HTTP 断路器；`AIPLAT_PLATFORM_BASE_PATH` 显式挂载（弱化端口猜纠偏）。
+**已补（v2 加固）**：平台 HTTP 断路器 + `AIPLAT_PLATFORM_BASE_PATH`（`extensions/enterprise_http.ts`，各桥 `platformFetch`；导出必含）。
+
+**下一刀（可选）**：governance 周报 cron 归档；独立 miss-top API；无效请求专用拦截计数；V1/V5 prompt 级增强。

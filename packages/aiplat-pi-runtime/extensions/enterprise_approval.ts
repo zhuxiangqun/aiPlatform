@@ -11,6 +11,7 @@
 import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
+import { CircuitOpenError, platformFetch } from "./enterprise_http";
 import {
   loadEnterpriseConfig,
   type EnterpriseConfig,
@@ -142,7 +143,7 @@ async function fetchJson(
   init?: RequestInit,
 ): Promise<ApprovalHttpResult> {
   try {
-    const res = await fetch(url, {
+    const res = await platformFetch(url, {
       ...init,
       headers: {
         "content-type": "application/json",
@@ -168,6 +169,9 @@ async function fetchJson(
     }
     return { ok: true, status: res.status, text: bodyText.slice(0, 4000), raw: parsed };
   } catch (e) {
+    if (e instanceof CircuitOpenError) {
+      return { ok: false, text: "", error: `circuit: ${e.message}` };
+    }
     return {
       ok: false,
       text: "",

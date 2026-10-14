@@ -12,6 +12,19 @@ import {
   envCitationEnabled,
   formatKbCitationResponse,
 } from "./enterprise_kb_citation";
+import {
+  CircuitOpenError,
+  normalizePlatformBaseUrl,
+  platformFetch,
+} from "./enterprise_http";
+
+export {
+  normalizePlatformBaseUrl,
+  platformFetch,
+  getPlatformCircuit,
+  CircuitOpenError,
+  resetPlatformCircuits,
+} from "./enterprise_http";
 
 export type EnterpriseConfig = {
   enabled: boolean;
@@ -24,42 +37,6 @@ export type EnterpriseConfig = {
 function envTruthy(name: string): boolean {
   const v = (process.env[name] || "").trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes" || v === "on";
-}
-
-/**
- * Normalize AIPLAT_PLATFORM_URL so joining `/platform/*` hits the real mount.
- *
- * Verified local layout:
- * - Platform (:8003) serves `/platform/...` (NOT `/api/platform/...`)
- * - Management GW (:8000) serves `/api/platform/...` → proxies to platform
- * - Footgun: `http://host:8003/api` + `/platform/...` → `/api/platform/...` → 404
- */
-export function normalizePlatformBaseUrl(raw: string): string {
-  const b = String(raw || "").trim().replace(/\/+$/, "");
-  if (!b) return "";
-  try {
-    const u = new URL(b);
-    const path = (u.pathname || "/").replace(/\/+$/, "") || "/";
-    // Direct platform with mistaken /api prefix → strip so /platform/* joins cleanly
-    if (u.port === "8003" && (path === "/api" || path.startsWith("/api/"))) {
-      if (path === "/api") {
-        u.pathname = "/";
-      } else if (path.startsWith("/api/platform")) {
-        u.pathname = path.slice("/api".length) || "/";
-      } else {
-        u.pathname = path.slice("/api".length) || "/";
-      }
-      return u.toString().replace(/\/+$/, "");
-    }
-    // Management origin without /api → add gateway prefix
-    if (u.port === "8000" && path === "/") {
-      u.pathname = "/api";
-      return u.toString().replace(/\/+$/, "");
-    }
-  } catch {
-    /* keep raw */
-  }
-  return b;
 }
 
 export function loadEnterpriseConfig(): EnterpriseConfig {
@@ -139,7 +116,7 @@ export async function retrieveKb(
 
   const url = kbQueryUrl(c.baseUrl);
   try {
-    const res = await fetch(url, {
+    const res = await platformFetch(url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -172,10 +149,16 @@ export async function retrieveKb(
     });
     return { ok: true, status: res.status, text: summary, raw: parsed };
   } catch (e) {
+    const detail =
+      e instanceof CircuitOpenError
+        ? e.message
+        : e && (e as Error).message
+          ? (e as Error).message
+          : String(e);
     return {
       ok: false,
-      text: `知识库暂不可用（${e && (e as Error).message ? (e as Error).message : e}）。请勿编造引用；可改用包内 skills/SOP。`,
-      error: `network: ${e && (e as Error).message ? (e as Error).message : e}`,
+      text: `知识库暂不可用（${detail}）。请勿编造引用；可改用包内 skills/SOP。`,
+      error: e instanceof CircuitOpenError ? `circuit: ${detail}` : `network: ${detail}`,
     };
   }
 }

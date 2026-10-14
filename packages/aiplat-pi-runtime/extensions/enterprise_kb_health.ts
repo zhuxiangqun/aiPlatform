@@ -5,10 +5,10 @@
  * Soft-fails when enterprise off or platform unreachable.
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { CircuitOpenError, normalizePlatformBaseUrl, platformFetch } from "./enterprise_http";
 import {
   loadEnterpriseConfig,
   type EnterpriseConfig,
-  normalizePlatformBaseUrl,
 } from "./enterprise_kb";
 
 function joinPlatform(base: string, path: string): string {
@@ -39,7 +39,7 @@ export async function fetchKbHealthSummary(
   url.searchParams.set("window_hours", "168");
   url.searchParams.set("format", "json");
   try {
-    const res = await fetch(url.toString(), {
+    const res = await platformFetch(url.toString(), {
       headers: {
         authorization: `Bearer ${c.token}`,
         accept: "application/json",
