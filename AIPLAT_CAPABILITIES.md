@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2135
+total_capabilities: 2136
 last_updated: 2026-10-11
 version: "30.10"
 auto_sync: true
@@ -1212,7 +1212,7 @@ scan_hash: 8f9548ec24f4
 | Pi 薄 Runtime 导出（Agent 用户侧） | `packages/aiplat-pi-runtime/` + `scripts/export_pi_bundle.py` + `builder/pi_bundle_export.py` + `POST …/export-pi-bundle` + `GET …/export-pi-bundle.zip` + deploy `pi_bundle` + 管理端导出/下载 ZIP + `docs/architecture/plans/pi-thin-runtime.md` | ✅ | **产品锁定**：默认 **Pi-only**；企业混合阶梯 1–5：KB + 工具 + 原生门禁 + Memory + 审批等待。SOP+skills+handler；**不**搬 PolicyGate/MemoryManager/ApprovalGate。厂内编码核实验未接引擎。生成物适用：**已接线**（Pi-only + 混合） | 已合入 |
 | Pi 企业混合 KB 回连 | `packages/aiplat-pi-runtime/extensions/enterprise_kb.ts` + `aiplat-app.ts` + `scripts/enterprise_kb_smoke.mjs` + `enterprise_platform_url_smoke.mjs` | ✅ | 厂外 opt-in：`aiplat_kb_retrieve` / `/aiplat-enterprise`；`normalizePlatformBaseUrl` 纠偏 `:8003/api` 脚枪；软失败；门禁留在平台。生成物适用：**已接线**（导出包同扩展） | 已合入 |
 | Pi 企业 KB citation 契约 | `packages/aiplat-pi-runtime/extensions/enterprise_kb_citation.ts` + `enterprise_kb.ts` + `scripts/enterprise_kb_citation_smoke.mjs` + `HYBRID_ENTERPRISE_DELIVERY.md` §3 | ✅ | V2 空结果固定开场、V3a Markdown 参考文献（≤200 字）、V6 top-5；`AIPLAT_ENTERPRISE_KB_CITATION` 可关；零新 RAG。生成物适用：**已接线**（导出包须含 citation 模块） | 已合入 |
-| Pi 出厂交付扫描（A+B） | `scripts/scan_pi_bundle_delivery.py` + `export_pi_bundle.py` 接线 + `DELIVERY_CHECKLIST.md` / `USAGE_BOUNDARY.md` + FDE 手册 §8 | ✅ | 导出时自动扫描密钥/debug/假绿痕迹并生成签收清单；FDE 人工勾选。生成物适用：**已接线**（Pi 包出厂） | 已合入 |
+| Pi 出厂交付扫描（A+B） | `scripts/scan_pi_bundle_delivery.py` + `export_pi_bundle.py` 接线 + `DELIVERY_CHECKLIST.md` / `USAGE_BOUNDARY.md` + `BUNDLE_VERSION` + FDE 手册 §8 | ✅ | 导出时自动扫描密钥/debug/假绿痕迹并生成签收清单；包内 `BUNDLE_VERSION` + `aiplat-export.json.build`（git_sha/build_time）便于客诉定位；FDE 人工勾选。生成物适用：**已接线**（Pi 包出厂） | 已合入 |
 | Pi 交付成本页（§4） | `aiPlat-platform/delivery/cost_report.py` + `GET /platform/delivery/cost-report` + `scripts/render_delivery_cost_report.py` + 导出 `COST_REPORT.md` | ✅ | 聚合 semantic_cache.stats / KB metrics / billing；模型分流为配置快照（禁虚假占比）；¥ 仅在 `AIPLAT_DELIVERY_COST_CNY_PER_CACHE_HIT` 或账单有记录时展示。生成物适用：**已接线**（Pi 包出厂成本页） | 已合入 |
 | Pi 交付库健康分（§④） | `aiPlat-platform/delivery/kb_health.py` + `kb/metrics.py`（`args_json`/`result_json`）+ `kb/query_telemetry.py` + `GET /platform/delivery/kb-health` + `scripts/render_delivery_kb_health.py` + 导出 `KB_HEALTH.md` + `/aiplat-kb-health` | ✅ | 健康分公式（citation/漏召/纠错/重复）+ metrics/stats/cache；零流量→数据不足；`POST /platform/kb/query` 成功写 `knowledge_retrieve`/`platform_kb_retrieve` 供 metrics。生成物适用：**已接线**（Pi 包出厂 + 企业 slash） | 已合入 |
 | KB 查询 syscall 遥测 | `aiPlat-platform/kb/query_telemetry.py` + `api/rest/routes.py`（`kb_query`/`collection_query`） | ✅ | soft-fail 写入 ExecutionStore `syscall_events`，对齐 kb-health `%kb_retrieve%` 过滤；`store=` 可注入测。生成物适用：**不适用**（平台横切遥测） | 已合入 |
@@ -2715,6 +2715,7 @@ scan_hash: 8f9548ec24f4
 ## 二十五、管理 & 质量
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| _bundle_build_meta | `scripts/export_pi_bundle.py` | ✅ | 自动同步 | 已合入 |
 | summarize_kb_query_result | `aiPlat-platform/kb/query_telemetry.py` | ✅ | 自动同步 | 已合入 |
 | record_kb_query_syscall | `aiPlat-platform/kb/query_telemetry.py` | ✅ | 自动同步 | 已合入 |
 | registerEnterpriseKbHealth | `packages/aiplat-pi-runtime/extensions/enterprise_kb_health.ts` | ✅ | 自动同步 | 已合入 |
@@ -3053,7 +3054,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 248 | 1 | 249 |
 | 记忆子系统 | 58 | 0 | 58 |
-| 知识引擎（本体） | 370 | 9 | 379 |
+| 知识引擎（本体） | 371 | 9 | 380 |
 | RAG 检索 | 51 | 0 | 51 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 168 | 0 | 168 |
@@ -3096,7 +3097,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2125** | **10** | **2135** |
+| **总计** | **2126** | **10** | **2136** |
 
 | **总计** | **1095** | **0** | **1095** |
 

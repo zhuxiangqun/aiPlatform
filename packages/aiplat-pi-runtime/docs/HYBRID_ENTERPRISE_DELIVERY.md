@@ -264,6 +264,7 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 - [x] `scripts/scan_pi_bundle_delivery.py`（密钥/debug/假绿等规则）
 - [x] `export_pi_bundle.py` 导出时写入 `DELIVERY_CHECKLIST.md` + `delivery_scan.json` + `USAGE_BOUNDARY.md`
 - [x] 导出包必含 `enterprise_kb_citation.ts`（修复 KB import 断裂）
+- [x] 导出包版本戳：`BUNDLE_VERSION` + `aiplat-export.json.build`（`bundle_version` / `git_sha` / `build_time`；可用 `AIPLAT_PI_BUNDLE_VERSION` 覆盖）
 - [x] FDE 手册 §8 签收表（`docs/manuals/fde/fde-delivery-manual.md`）
 - [x] `enterprise_delivery_scan_smoke.mjs`；默认导出**不**因 warning/error 阻断（CI 可用 `--strict`）
 
