@@ -232,9 +232,11 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 
 ---
 
-## 8. 开发落地检查（② 第一期）
+## 8. 开发落地检查
 
-实现：`extensions/enterprise_kb_citation.ts` + `enterprise_kb.ts` 接线；冒烟 `scripts/enterprise_kb_citation_smoke.mjs`。
+### 8.1 ② Citation（第一期）— 已合入
+
+实现：`extensions/enterprise_kb_citation.ts` + `enterprise_kb.ts`；冒烟 `enterprise_kb_citation_smoke.mjs`。
 
 - [x] 空结果 → 固定 V2 开场文案（工具返回层，不依赖模型自觉）
 - [x] 有结果 → V3a Markdown 参考文献块，片段 ≤200 字，条数 ≤5（V6）
@@ -242,4 +244,12 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 - [x] `enterprise_kb_citation_smoke`；`enterprise_kb_smoke` / hybrid live 仍应绿
 - [x] 不引入新的平台 RAG 管道或 Pi 内 Memory/Approval 实现
 
-**下一刀**：① 出厂清单挂接（FDE 模板库）；③ 成本页计量出口；V1/V5 prompt 级增强可选。
+### 8.2 ① 出厂清单挂接（A+B）— 本迭代
+
+- [x] `scripts/scan_pi_bundle_delivery.py`（密钥/debug/假绿等规则）
+- [x] `export_pi_bundle.py` 导出时写入 `DELIVERY_CHECKLIST.md` + `delivery_scan.json` + `USAGE_BOUNDARY.md`
+- [x] 导出包必含 `enterprise_kb_citation.ts`（修复 KB import 断裂）
+- [x] FDE 手册 §8 签收表（`docs/manuals/fde/fde-delivery-manual.md`）
+- [x] `enterprise_delivery_scan_smoke.mjs`；默认导出**不**因 warning/error 阻断（CI 可用 `--strict`）
+
+**下一刀**：③ 成本页计量出口；④ 库健康分面板客户可见层；V1/V5 prompt 级增强可选。

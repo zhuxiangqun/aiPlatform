@@ -28,12 +28,14 @@ WORKSPACE = Path(__file__).resolve().parent.parent
 RUNTIME_PKG = WORKSPACE / "packages" / "aiplat-pi-runtime"
 RUNTIME_EXT = RUNTIME_PKG / "extensions" / "aiplat-app.ts"
 RUNTIME_EXT_ENTERPRISE = RUNTIME_PKG / "extensions" / "enterprise_kb.ts"
+RUNTIME_EXT_KB_CITATION = RUNTIME_PKG / "extensions" / "enterprise_kb_citation.ts"
 RUNTIME_EXT_TOOLS = RUNTIME_PKG / "extensions" / "enterprise_tools.ts"
 RUNTIME_EXT_TOOL_GATE = RUNTIME_PKG / "extensions" / "enterprise_tool_gate.ts"
 RUNTIME_EXT_MEMORY = RUNTIME_PKG / "extensions" / "enterprise_memory.ts"
 RUNTIME_EXT_APPROVAL = RUNTIME_PKG / "extensions" / "enterprise_approval.ts"
 RUNTIME_HANDLER = RUNTIME_PKG / "fixtures" / "handler_echo.py"
 RUNTIME_RUNNER = RUNTIME_PKG / "fixtures" / "handler_runner.py"
+_SCAN_SCRIPT = WORKSPACE / "scripts" / "scan_pi_bundle_delivery.py"
 
 
 def _die(msg: str, code: int = 1) -> None:
@@ -141,6 +143,11 @@ def export_bundle(
         shutil.copy2(RUNTIME_EXT_ENTERPRISE, ext_dir / "enterprise_kb.ts")
     else:
         _die(f"enterprise KB extension missing: {RUNTIME_EXT_ENTERPRISE}")
+    # enterprise_kb.ts imports ./enterprise_kb_citation — must ship together
+    if RUNTIME_EXT_KB_CITATION.is_file():
+        shutil.copy2(RUNTIME_EXT_KB_CITATION, ext_dir / "enterprise_kb_citation.ts")
+    else:
+        _die(f"enterprise KB citation helper missing: {RUNTIME_EXT_KB_CITATION}")
     if RUNTIME_EXT_TOOLS.is_file():
         shutil.copy2(RUNTIME_EXT_TOOLS, ext_dir / "enterprise_tools.ts")
     else:
@@ -237,6 +244,42 @@ Tool: `aiplat_tool_execute` → POST …/tools/{{name}}/execute.
     (out / "aiplat-export.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
+
+    # A: 出厂扫描 → DELIVERY_CHECKLIST.md + delivery_scan.json + USAGE_BOUNDARY.md
+    # B: FDE 在清单上人工签收（不替代扫描）
+    try:
+        import importlib.util
+
+        if _SCAN_SCRIPT.is_file():
+            spec = importlib.util.spec_from_file_location(
+                "aiplat_scan_pi_bundle_delivery", _SCAN_SCRIPT
+            )
+            if spec and spec.loader:
+                scan_mod = importlib.util.module_from_spec(spec)
+                # dataclasses need the module registered before exec (Py3.9)
+                sys.modules[spec.name] = scan_mod
+                spec.loader.exec_module(scan_mod)
+                write_fn = getattr(scan_mod, "write_scan_artifacts", None)
+                if callable(write_fn):
+                    scan_res = write_fn(out, project_id=project_id)
+                    meta["delivery_scan"] = {
+                        "ok": bool(getattr(scan_res, "ok", False)),
+                        "error_count": int(getattr(scan_res, "error_count", 0)),
+                        "warning_count": int(getattr(scan_res, "warning_count", 0)),
+                    }
+                    (out / "aiplat-export.json").write_text(
+                        json.dumps(meta, ensure_ascii=False, indent=2) + "\n",
+                        encoding="utf-8",
+                    )
+                    if not meta["delivery_scan"]["ok"]:
+                        print(
+                            "WARNING: delivery scan found errors — see DELIVERY_CHECKLIST.md "
+                            "(export not blocked; use scan --strict in CI to gate)",
+                            file=sys.stderr,
+                        )
+    except Exception as exc:
+        print(f"WARNING: delivery scan skipped: {exc}", file=sys.stderr)
+
     return out
 
 

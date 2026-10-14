@@ -395,4 +395,23 @@ FDE 返回办公室后，每天花 5 分钟检查系统健康：
 
 ---
 
+## 8. Pi 包出厂签收（A+B）
+
+> 规格：`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE_DELIVERY.md` §2  
+> **A**：`export_pi_bundle` / `scan_pi_bundle_delivery.py` 自动生成 `DELIVERY_CHECKLIST.md`  
+> **B**：本表由 FDE（或交付负责人）勾选签字后纳入交付包
+
+| # | 检查项 | 通过标准 | FDE |
+|---|--------|----------|:---:|
+| 8.1 | 自动扫描 | 交付包内 `delivery_scan.json` 的 `ok=true`（无 error 级）；warning 已人工确认 | [ ] |
+| 8.2 | 去调试七项 | `DELIVERY_CHECKLIST.md` §B 七项均已勾选 | [ ] |
+| 8.3 | 使用边界 | 客户已收到 `USAGE_BOUNDARY.md`（能做/不能做/FAQ） | [ ] |
+| 8.4 | 企业混合（若启用） | KB citation V2/V3a/V6 + `/aiplat-status` 客户可读 | [ ] |
+| 8.5 | 启动说明 | 客户可按包内 README 一键跑 Pi（企业回连按文档选配） | [ ] |
+
+**签收**：FDE ________ 日期 ________  
+重扫命令：`python3 scripts/scan_pi_bundle_delivery.py --root <pi-bundle> --write --strict`
+
+---
+
 *由 aiPlat FDE 工作台基于标准模板自动生成 — {{GENERATED_AT}}*

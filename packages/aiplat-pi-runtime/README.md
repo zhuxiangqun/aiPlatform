@@ -59,6 +59,7 @@ Offline gates (mock HTTP / pure policy, no platform process):
 ```bash
 node packages/aiplat-pi-runtime/scripts/enterprise_kb_smoke.mjs
 node --experimental-strip-types packages/aiplat-pi-runtime/scripts/enterprise_kb_citation_smoke.mjs
+node packages/aiplat-pi-runtime/scripts/enterprise_delivery_scan_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_tools_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_tool_gate_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_memory_smoke.mjs
