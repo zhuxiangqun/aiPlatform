@@ -2693,152 +2693,68 @@ async def _execute_workspace_agent_background(
     status = "completed"
     result_text = ""
     error_msg = None
-    _used_pi_coding = False
-    # Factory-in way4: optional Pi coding exec (AIPLAT_PI_CODING_EXECUTOR, default OFF).
-    # Workspace path only — do not put Pi into harness/engine. ReActLoop remains default.
-    try:
-        if state.get("_workspace_coding_defaults") and _os.getenv(
-            "AIPLAT_PI_CODING_EXECUTOR", ""
-        ).strip().lower() in ("1", "true", "yes", "on"):
-            from pathlib import Path as _Path
-            import importlib.util as _ilu
-
-            _bridge_path = None
-            _env_root = (
-                _os.getenv("AIPLAT_WORKSPACE_ROOT")
-                or _os.getenv("AIPLAT_ROOT")
-                or ""
-            ).strip()
-            if _env_root:
-                _cand = (
-                    _Path(_env_root)
-                    / "packages"
-                    / "aiplat-pi-runtime"
-                    / "python"
-                    / "workspace_coding_bridge.py"
-                )
-                if _cand.is_file():
-                    _bridge_path = _cand
-            if _bridge_path is None:
-                for _parent in _Path(__file__).resolve().parents:
-                    _cand = (
-                        _parent
-                        / "packages"
-                        / "aiplat-pi-runtime"
-                        / "python"
-                        / "workspace_coding_bridge.py"
-                    )
-                    if _cand.is_file():
-                        _bridge_path = _cand
-                        break
-            if _bridge_path is not None:
-                _spec = _ilu.spec_from_file_location(
-                    "aiplat_workspace_coding_bridge", _bridge_path
-                )
-                if _spec and _spec.loader:
-                    _bridge = _ilu.module_from_spec(_spec)
-                    _spec.loader.exec_module(_bridge)
-                    _pref = ""
-                    _ex = (
-                        state.get("_execute_input")
-                        if isinstance(state.get("_execute_input"), dict)
-                        else {}
-                    )
-                    for _src in (
-                        state.get("_sandbox_cwd"),
-                        state.get("cwd"),
-                        state.get("preferred_cwd"),
-                        _ex.get("cwd"),
-                        _ex.get("preferred_cwd"),
-                    ):
-                        if _src:
-                            _pref = str(_src).strip()
-                            break
-                    _pi_model = str(
-                        _os.getenv("AIPLAT_PI_MODEL")
-                        or (_cfg.get("model") if isinstance(_cfg, dict) else "")
-                        or ""
-                    ).strip()
-                    _pi_res = await _asyncio.to_thread(
-                        _bridge.run_workspace_coding_via_pi,
-                        prompt=str(prompt or ""),
-                        preferred_cwd=_pref,
-                        model=_pi_model,
-                        timeout_sec=int(_agent_wall),
-                    )
-                    if isinstance(_pi_res, dict) and not _pi_res.get("skipped"):
-                        _used_pi_coding = True
-                        result_text = str(_pi_res.get("text") or "")
-                        if _pi_res.get("ok"):
-                            status = "completed"
-                        else:
-                            status = "failed"
-                            error_msg = str(
-                                _pi_res.get("error") or "pi coding exec failed"
-                            )
-    except Exception:
-        logging.debug("pi coding executor bridge skipped", exc_info=True)
-        _used_pi_coding = False
+    # Factory-in way4 Workspace Execute Pi bypass was merge-closed (2026-10-14):
+    # blank_not_proven — coding_closed_loop already has sandbox + sys_file_*.
+    # Offline CLI probes remain under packages/aiplat-pi-runtime/; see FACTORY_IN_EXPERIMENT.md §⓪.
 
     watch_task = None
     try:
-        if not _used_pi_coding:
-            run_task = _asyncio.create_task(runner.run(prompt, state))
-            # note: status may flip to approval_required / policy_denied after runner returns
+        run_task = _asyncio.create_task(runner.run(prompt, state))
+        # note: status may flip to approval_required / policy_denied after runner returns
 
-            async def _agent_no_progress_watch() -> None:
-                from core.harness.utils.execute_session import watch_agent_no_progress
+        async def _agent_no_progress_watch() -> None:
+            from core.harness.utils.execute_session import watch_agent_no_progress
 
-                await watch_agent_no_progress(
-                    run_id=str(run_id),
-                    agent_id=str(agent_id),
-                    start_time=float(t0_agent or _now),
-                    input_payload=_stored_input,
-                    trace_id=str(trace_id or ""),
-                    cancel_cb=run_task.cancel,
-                    source="bg_loop_no_progress",
+            await watch_agent_no_progress(
+                run_id=str(run_id),
+                agent_id=str(agent_id),
+                start_time=float(t0_agent or _now),
+                input_payload=_stored_input,
+                trace_id=str(trace_id or ""),
+                cancel_cb=run_task.cancel,
+                source="bg_loop_no_progress",
+            )
+
+        watch_task = _asyncio.create_task(_agent_no_progress_watch())
+        try:
+            result_text = await _asyncio.wait_for(run_task, timeout=_agent_wall)
+        except _asyncio.CancelledError:
+            status = "timeout"
+            if not error_msg:
+                error_msg = (
+                    "Timeout (no_progress): hung before first LLM/skill syscall"
                 )
-
-            watch_task = _asyncio.create_task(_agent_no_progress_watch())
+        except _asyncio.TimeoutError:
+            status = "timeout"
+            error_msg = f"Timeout ({int(_agent_wall)}s)"
             try:
-                result_text = await _asyncio.wait_for(run_task, timeout=_agent_wall)
-            except _asyncio.CancelledError:
-                status = "timeout"
-                if not error_msg:
-                    error_msg = (
-                        "Timeout (no_progress): hung before first LLM/skill syscall"
+                from core.harness.utils.local_llm_recover import unload_local_llm_best_effort
+                import anyio as _anyio
+
+                await _anyio.to_thread.run_sync(unload_local_llm_best_effort)
+            except Exception:
+                logging.debug("agent timeout ollama unload failed", exc_info=True)
+            try:
+                from core.services.execution_store import get_execution_store as _ges
+
+                _es_to = _ges()
+                if hasattr(_es_to, "close_running_syscall_events"):
+                    await _es_to.close_running_syscall_events(
+                        str(run_id),
+                        status="timeout",
+                        error=error_msg,
+                        error_code="AGENT_WALL_TIMEOUT",
                     )
-            except _asyncio.TimeoutError:
-                status = "timeout"
-                error_msg = f"Timeout ({int(_agent_wall)}s)"
-                try:
-                    from core.harness.utils.local_llm_recover import unload_local_llm_best_effort
-                    import anyio as _anyio
-
-                    await _anyio.to_thread.run_sync(unload_local_llm_best_effort)
-                except Exception:
-                    logging.debug("agent timeout ollama unload failed", exc_info=True)
-                try:
-                    from core.services.execution_store import get_execution_store as _ges
-
-                    _es_to = _ges()
-                    if hasattr(_es_to, "close_running_syscall_events"):
-                        await _es_to.close_running_syscall_events(
-                            str(run_id),
-                            status="timeout",
-                            error=error_msg,
-                            error_code="AGENT_WALL_TIMEOUT",
-                        )
-                except Exception:
-                    logging.debug("agent timeout close syscalls failed", exc_info=True)
-            except Exception as e:
-                status = "failed"
-                error_msg = str(e) or repr(e) or type(e).__name__
-                _log = __import__('logging').getLogger(__name__)
-                _log.error(f"Agent {agent_id} execution failed (run_id={run_id}): {error_msg}", exc_info=True)
-                # Phase 25 diagnostic: capture full traceback for debugging
-                import traceback as _tb
-                state["_error_traceback"] = _tb.format_exc()
+            except Exception:
+                logging.debug("agent timeout close syscalls failed", exc_info=True)
+        except Exception as e:
+            status = "failed"
+            error_msg = str(e) or repr(e) or type(e).__name__
+            _log = __import__('logging').getLogger(__name__)
+            _log.error(f"Agent {agent_id} execution failed (run_id={run_id}): {error_msg}", exc_info=True)
+            # Phase 25 diagnostic: capture full traceback for debugging
+            import traceback as _tb
+            state["_error_traceback"] = _tb.format_exc()
     finally:
         if watch_task is not None and not watch_task.done():
             watch_task.cancel()
