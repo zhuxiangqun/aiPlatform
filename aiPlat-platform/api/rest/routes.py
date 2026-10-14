@@ -4471,7 +4471,7 @@ async def documents_list_elements(doc_id: str, request: Request, type: Optional[
 
 async def kb_query(req: KBQueryRequest, request: Request):
 
-    # Query KB (MVP): call core engine skill kb_query, and convert local citation paths to asset_url.
+    # Query KB (MVP): call core engine skill knowledge_query, and convert local citation paths to asset_url.
 
     identity = _resolve_identity(request)
 
@@ -4501,7 +4501,7 @@ async def kb_query(req: KBQueryRequest, request: Request):
 
     }
 
-    core_resp = await _core_request("POST", f"/api/core/skills/kb_query/execute", identity=identity, json_body=payload)
+    core_resp = await _core_request("POST", "/api/core/skills/knowledge_query/execute", identity=identity, json_body=payload)
 
     out = dict(core_resp or {})
 
@@ -4589,7 +4589,7 @@ async def collection_query(request: Request):
 
     }
 
-    core_resp = await _core_request("POST", "/api/core/skills/kb_query/execute", identity=identity, json_body=payload)
+    core_resp = await _core_request("POST", "/api/core/skills/knowledge_query/execute", identity=identity, json_body=payload)
 
     out = dict(core_resp or {})
 
