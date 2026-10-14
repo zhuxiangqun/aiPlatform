@@ -12,7 +12,7 @@ See [`docs/architecture/plans/pi-thin-runtime.md`](../../docs/architecture/plans
 | Axis | Role of Pi | Status |
 |------|------------|--------|
 | **(B) Factory-out** | User-side host for artifacts | **Shipped** — this package |
-| **(A) Factory-in** | Optional coding exec kernel behind PolicyGate | Experiment only — not default ReActLoop |
+| **(A) Factory-in** | Optional coding exec kernel behind PolicyGate | **Merge-closed** (`blank_not_proven`) — Execute bypass removed; offline probes only |
 
 **Product decision (locked)**
 
@@ -128,15 +128,16 @@ AIPLAT_PI_MODEL=ollama/qwen2.5:3b AIPLAT_APP_HOME=./fixtures/sample-app \
 AIPLAT_PI_MODEL=ollama/qwen2.5:3b bash scripts/live_smoke.sh
 ```
 
-## Factory-in experiment (not wired to engine)
+## Factory-in (merge-closed — offline archive only)
 
-Optional way-4 CLI: `scripts/coding_exec.py` (Pi print-mode coding). Refuses host cwd unless `--allow-host`; does **not** replace ReActLoop / PipelineEngine.
+Way-4 Execute bypass was **removed** (`blank_not_proven`). Optional offline CLI remains for probes only; it does **not** replace ReActLoop / PipelineEngine and is **not** on the Workspace Execute path.
 
 ```bash
 python3 scripts/test_coding_exec_unit.py
 bash scripts/coding_exec_smoke.sh
+python3 scripts/factory_in_evidence_smoke.py
 ```
 
-See [docs/FACTORY_IN_EXPERIMENT.md](./docs/FACTORY_IN_EXPERIMENT.md).
+See [docs/FACTORY_IN_EXPERIMENT.md](./docs/FACTORY_IN_EXPERIMENT.md) §⓪.
 
 See [PHASE0.md](./PHASE0.md) and `docs/architecture/plans/pi-thin-runtime.md`.
