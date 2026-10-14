@@ -153,7 +153,9 @@ L2 库健康分面板（属 ④，规格见 §5）：本周入库 N / 漏召 TOP
 | 桥不可达 | 退回包内 SOP；标注「知识库暂不可用」；不编造 | 既有 soft-fail |
 | 来源 >5 | top-5；可注明共 N 条 | V6 |
 
-### 3.5 配置形态（语义规格，非现行 YAML）
+### 3.5 配置形态（⚠️ 语义规格，非现行 YAML）
+
+> **勿新建 `kb_citation.yaml`。** Pi 企业侧现行配置仅为 **环境变量**（见 [`HYBRID_ENTERPRISE.md`](./HYBRID_ENTERPRISE.md)）。下列表是**语义意图**，落地用 env / extension options。
 
 Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语义意图**，落地可用 env 或 extension options，**勿假定已存在 `kb_citation` YAML 文件**。
 
