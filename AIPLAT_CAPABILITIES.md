@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2140
+total_capabilities: 2143
 last_updated: 2026-10-11
 version: "30.10"
 auto_sync: true
@@ -1212,7 +1212,7 @@ scan_hash: 8f9548ec24f4
 | Pi 薄 Runtime 导出（Agent 用户侧） | `packages/aiplat-pi-runtime/` + `scripts/export_pi_bundle.py` + `builder/pi_bundle_export.py` + `POST …/export-pi-bundle` + `GET …/export-pi-bundle.zip` + deploy `pi_bundle` + 管理端导出/下载 ZIP + `docs/architecture/plans/pi-thin-runtime.md` | ✅ | **产品锁定**：默认 **Pi-only**；企业混合阶梯 1–5：KB + 工具 + 原生门禁 + Memory + 审批等待。SOP+skills+handler；**不**搬 PolicyGate/MemoryManager/ApprovalGate。厂内编码核实验未接引擎。生成物适用：**已接线**（Pi-only + 混合） | 已合入 |
 | Pi 企业混合 KB 回连 | `packages/aiplat-pi-runtime/extensions/enterprise_kb.ts` + `enterprise_http.ts` + `aiplat-app.ts` + `scripts/enterprise_kb_smoke.mjs` + `enterprise_platform_url_smoke.mjs` | ✅ | 厂外 opt-in：`aiplat_kb_retrieve` / `/aiplat-enterprise`；经 `platformFetch`；软失败；门禁留在平台。生成物适用：**已接线**（导出包同扩展） | 已合入 |
 | Pi 企业 HTTP 公共层 | `packages/aiplat-pi-runtime/extensions/enterprise_http.ts` + `scripts/enterprise_http_smoke.mjs` | ✅ | `normalizePlatformBaseUrl`（可选 `AIPLAT_PLATFORM_BASE_PATH`）+ 按 origin 断路器（`AIPLAT_PLATFORM_CIRCUIT*`）；KB/工具/Memory/审批/健康分共用。生成物适用：**已接线**（导出必含） | 已合入 |
-| Pi 企业 KB citation 契约 | `packages/aiplat-pi-runtime/extensions/enterprise_kb_citation.ts` + `enterprise_kb.ts` + `scripts/enterprise_kb_citation_smoke.mjs` + `HYBRID_ENTERPRISE_DELIVERY.md` §3 | ✅ | V2 空结果固定开场、V3a Markdown 参考文献（≤200 字）、V6 top-5；`AIPLAT_ENTERPRISE_KB_CITATION` 可关；零新 RAG。生成物适用：**已接线**（导出包须含 citation 模块） | 已合入 |
+| Pi 企业 KB citation 契约 | `packages/aiplat-pi-runtime/extensions/enterprise_kb_citation.ts` + `enterprise_kb.ts` + `scripts/enterprise_kb_citation_smoke.mjs` + `HYBRID_ENTERPRISE_DELIVERY.md` §3 | ✅ | V2/V3a/V6 + P1 V1 来源标记 / V5「未验证」prompt 契约；`AIPLAT_ENTERPRISE_KB_CITATION` 可关；零新 RAG。生成物适用：**已接线**（导出包须含 citation 模块） | 已合入 |
 | Pi 出厂交付扫描（A+B） | `scripts/scan_pi_bundle_delivery.py` + `export_pi_bundle.py` 接线 + `DELIVERY_CHECKLIST.md` / `USAGE_BOUNDARY.md` + `BUNDLE_VERSION` + FDE 手册 §8 | ✅ | 导出时自动扫描密钥/debug/假绿痕迹并生成签收清单；包内 `BUNDLE_VERSION` + `aiplat-export.json.build`（git_sha/build_time）便于客诉定位；FDE 人工勾选。生成物适用：**已接线**（Pi 包出厂） | 已合入 |
 | Pi 交付成本页（§4） | `aiPlat-platform/delivery/cost_report.py` + `GET /platform/delivery/cost-report` + `scripts/render_delivery_cost_report.py` + 导出 `COST_REPORT.md` | ✅ | 聚合 semantic_cache / KB metrics（含 `empty_retrieve_count` 空检索拦截）/ billing；模型分流为配置快照；¥ 仅在有单价或账单时展示。生成物适用：**已接线**（Pi 包出厂成本页） | 已合入 |
 | Pi 交付库健康分（§④） | `aiPlat-platform/delivery/kb_health.py` + `kb_health_archive.py` + `kb/metrics.py` + `kb/query_telemetry.py` + `GET /platform/delivery/kb-health` + `miss-top` / `low-confidence-top` / `cache-stats` + 周报归档 API + 导出 `KB_HEALTH.md` + `/aiplat-kb-health` | ✅ | 健康分 + TOP + cache-stats；周报写入 `governance/reports/kb-health-YYYY-WW.md`（`AIPLAT_KB_HEALTH_ARCHIVE_HOURS`）；零流量→数据不足。生成物适用：**已接线**（Pi 包出厂 + 企业 slash） | 已合入 |
@@ -3084,7 +3084,7 @@ scan_hash: 8f9548ec24f4
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 79 | 0 | 79 |
+| 管理 & 质量 | 82 | 0 | 82 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -3103,7 +3103,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2130** | **10** | **2140** |
+| **总计** | **2133** | **10** | **2143** |
 
 | **总计** | **1095** | **0** | **1095** |
 
