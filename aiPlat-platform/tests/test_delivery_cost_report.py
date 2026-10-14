@@ -36,9 +36,11 @@ def test_render_cost_report_markdown_no_fake_cny():
             "purpose_to_model": {"chat": "m1", "code_gen": "m2"},
         },
         "empty_intercept": {
-            "available": False,
-            "reason": "待补",
-            "proxy": {"label": "kb_no_answer_rate_pct", "value": 1.0},
+            "available": True,
+            "count": 12,
+            "label": "empty_kb_retrieve",
+            "note": "窗口内空命中检索次数",
+            "proxy": {"label": "kb_no_answer_rate_pct", "value": 10.0},
         },
         "billing": {"available": False},
         "cny_estimate": None,
@@ -48,6 +50,8 @@ def test_render_cost_report_markdown_no_fake_cny():
     assert "40.0%" in md or "40%" in md
     assert "未配置单价" in md
     assert "流量占比" in md
+    assert "空检索拦截次数" in md
+    assert "12" in md
     assert "estimated_saved_cny" not in md
     assert "缓存节省估算" not in md
 
@@ -75,3 +79,34 @@ def test_build_report_soft_fail():
         report
     )
     assert "交付报告" in md
+
+
+def test_empty_intercept_from_metrics(monkeypatch):
+    from delivery import cost_report as cr
+
+    monkeypatch.setattr(
+        cr,
+        "_kb_metrics",
+        lambda tenant_id="", hours=720: {
+            "available": True,
+            "total_queries": 100,
+            "empty_retrieve_count": 17,
+            "no_answer_rate_pct": 17.0,
+            "citation_coverage_pct": 80.0,
+            "window_hours": hours,
+        },
+    )
+    monkeypatch.setattr(cr, "_cache_stats", lambda: {"available": False, "reason": "test"})
+    monkeypatch.setattr(cr, "_billing_snapshot", lambda tenant_id="default": {"available": False})
+    monkeypatch.setattr(
+        cr,
+        "_model_routing_policy",
+        lambda: {"available": True, "usage_share_note": "cfg", "simple_purposes": [], "complex_purposes": [], "purpose_to_model": {}},
+    )
+    report = cr.build_delivery_cost_report(tenant_id="t", window_hours=24)
+    ei = report.get("empty_intercept") or {}
+    assert ei.get("available") is True
+    assert ei.get("count") == 17
+    md = cr.render_cost_report_markdown(report)
+    assert "空检索拦截次数" in md
+    assert "17" in md
