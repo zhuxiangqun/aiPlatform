@@ -321,5 +321,7 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 
 1. platform 加载当前 `main`（改路由后重启 8003）
 2. L3：`AIPLAT_L3_DUTY_CONTACT`（可选 `CHANNEL`/`HOURS`）
-3. 验收：`cost-report` / `kb-health` / `monthly-ops-report` / `l3-duty-desk` 均 200；Pi `/aiplat-kb-health` · `/aiplat-duty`
+3. 验收：`PYTHONPATH=aiPlat-platform:aiPlat-core:. python3 scripts/smoke_delivery_sku_live.py`（四端点 200+ok）；Pi `/aiplat-kb-health` · `/aiplat-duty`
 4. 导出包含 `COST_REPORT.md` · `KB_HEALTH.md` · `MONTHLY_OPS_REPORT.md` · `L3_DUTY_DESK.md` · `enterprise_l3_duty.ts`
+
+后续增量按客诉/运营反馈单独立项；本阶梯默认不再开「下一刀」。
