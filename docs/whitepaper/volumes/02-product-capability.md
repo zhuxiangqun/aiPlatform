@@ -3,19 +3,19 @@ title: "aiPlat 产品能力白皮书"
 volume_id: product-capability
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-14T10:36:11Z"
+generated_at: "2026-10-14T17:04:19Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30"
-caps_sha256: "f43ae93235e10d95aaecc107809b4c88100653889626abafee91233b2590bd61"
+caps_sha256: "1170b4cbf9f62affeb5df197ada8cbd6f40e047aacb6cda3ba6d507148e0f8a3"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=f43ae93235e10d95aaecc107809b4c88100653889626abafee91233b2590bd61 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=1170b4cbf9f62affeb5df197ada8cbd6f40e047aacb6cda3ba6d507148e0f8a3 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-14T10:36:11Z` |
-| CAPABILITIES sha256 | `f43ae93235e1…` |
+| 生成时间 (UTC) | `2026-10-14T17:04:19Z` |
+| CAPABILITIES sha256 | `1170b4cbf9f6…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -87,7 +87,7 @@ language: zh-CN
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 248 | 1 | 249 |
 | 记忆子系统 | 58 | 0 | 58 |
-| 知识引擎（本体） | 370 | 9 | 379 |
+| 知识引擎（本体） | 375 | 9 | 384 |
 | RAG 检索 | 51 | 0 | 51 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 168 | 0 | 168 |
@@ -111,7 +111,7 @@ language: zh-CN
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 76 | 0 | 76 |
+| 管理 & 质量 | 89 | 0 | 89 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -130,7 +130,7 @@ language: zh-CN
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2125** | **10** | **2135** |
+| **总计** | **2143** | **10** | **2153** |
 
 ### 3.2 上手路径（节选）
 
@@ -269,7 +269,7 @@ Pi 是极简 Agent Harness（非治理平台）。与 aiPlat 的关系拆成**�
 | 轴 | 定位 | 状态 | 解决什么 | 不解决什么 |
 |----|------|------|----------|------------|
 | **（B）厂外** | 用户侧薄交付宿主：导出包 → `pi -e` / 薄 HTTP | **既定主路径**（已落地） | 不装全栈也能跑快照（SOP + skills + handler） | 平台级厚度（Memory / SECI / PolicyGate / 知识 syscall） |
-| **（A）厂内** | 可选编码执行核：CLI/RPC 包在 PolicyGate 外 | **⓪ 合并关闭**（2026-10-14 `blank_not_proven`）：Execute 旁路已拆；离线 CLI/探针归档；CAPABILITIES **不**标「厂内已接线」 | （历史宣称）编码闭环副作用 | 替代编排治理；默认换掉 ReActLoop |
+| **（A）厂内** | 可选编码执行核：CLI/RPC 包在 PolicyGate 外 | **⓪ 合并关闭**（2026-10-14 `blank_not_proven`）：Workspace Execute Pi 旁路已拆；离线 CLI/探针归档；CAPABILITIES **不**标「厂内已接线」 | （历史宣称）编码闭环副作用 | 替代编排治理；默认换掉 ReActLoop |
 
 ##### 分层，而非两套平行产品（2026-10-13 锁定）
 
@@ -442,11 +442,7 @@ AIPLAT_APP_HOME=$PWD/dist/aiplat-app-sample \
 → stdout {"ok":true,"result":{...}} exit 0
 ```
 
-`fixtures/handler_runner.py <handler.py>`
-
-…
-
-_(节选；全文见权威源)_
+`fixtures/handler_runner.py <handler.py>` 包装现有 `async def execute(params)`。
 
 
 > 完整能力表见总白皮书第 3 章或直接打开 [`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md)。

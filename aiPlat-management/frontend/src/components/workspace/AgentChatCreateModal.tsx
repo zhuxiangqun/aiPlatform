@@ -219,6 +219,10 @@ const AgentChatCreateModal: React.FC<AgentChatCreateModalProps> = ({ open, onClo
           多轮澄清需求 → 生成草稿预览 → 确认后写入 Agent 库（仍走标准 create API）。与 Skill「对话创建」同一路径。
         </div>
         <AssetBoundaryHint kind="agent" />
+        <div className="text-xs text-gray-500 rounded border border-dark-border/60 bg-dark-card/40 px-3 py-2 leading-relaxed">
+          选型说明：顾问只选平台内部 agent_type（默认 react），不是 LangGraph / CrewAI 等外部框架。
+          生成物统一跑原生 Harness（StageRunner → ReActLoop）；multi_agent 默认关闭，须五条 AND 门禁才升级。
+        </div>
         <div className="flex-1 overflow-y-auto space-y-3 border border-dark-border rounded-lg p-3 bg-dark-bg min-h-[240px]">
           {conversation.map((m, i) => (
             <div

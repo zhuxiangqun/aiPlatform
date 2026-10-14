@@ -76,7 +76,7 @@ skip_when: 纯代码生成模式(code_generation已覆盖)
 
 Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 
-生成的 Agent 运行在平台 ReActLoop 上，自动继承:
+生成的 Agent 运行在平台 **原生 Harness**（StageRunner → ReActLoop / Pipeline）上，自动继承:
 - 知识图谱 (domain 上下文注入)
 - SECI 知识引擎 (对话→知识原子)
 - 4层记忆 (Working/Episodic/Semantic/TaskSkill)
@@ -85,6 +85,8 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 - Quality Bus 评分
 - Policy Gate 权限
 - 自修复 + 自动学习
+
+**选型边界（强制）**：生成时只选内部 `agent_type` / `architecture_profile` / `mode`，**禁止**在 LangGraph、CrewAI、AutoGen、LangChain 等外部多 Agent 框架之间选型或生成对其依赖。框架层已锁死在 aiPlat Harness。
 
 **例外（确定性媒体 handler）**：平台对已注册媒体 Skill 走 Path0 真实 I/O（跳过完整 ReAct），但会经 `_platform_effects_after_deterministic_skill` 补记 memory + local feedback。需要完整 ReAct 时设 `AIPLAT_FACTORY_FORCE_AGENT_SKILL=1`。
 

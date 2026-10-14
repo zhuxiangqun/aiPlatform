@@ -54,7 +54,10 @@ Answer concisely in Chinese, referencing specific file paths. Keep it under 300 
 - 功能描述: ${description}
 ${role_section}
 
-## Agent 类型体系（三层架构）
+## Agent 类型体系（三层架构 · 平台原生 Harness）
+
+**重要**：不要在 LangGraph / CrewAI / AutoGen / LangChain 等外部框架之间选型。
+运行时固定为平台 ReActLoop / Pipeline；你只选内部 `agent_type`（及后续 architecture_profile / mode）。
 
 ### 基础能力层 — 原子执行，无自主推理，不选工具不规划
 - conversational: 纯对话，适用于客服/闲聊（无工具调用）
@@ -67,18 +70,18 @@ ${role_section}
 
 ### 协同编排层 — 组合基础层/推理层作为执行单元
 - plan_execute: 先规划后分步执行（内部创建react/rag子Agent）
-- multi_agent: 多Agent并行/协作处理（内部拆分子任务→创建子Agent）
+- multi_agent: 多Agent并行/协作处理（须五条 AND 门禁；默认勿选，优先 react）
 - router: 意图识别+任务分发（派发到下游基础/推理Agent），不处理业务
 - materials_chat: 企业级RAG复合体（= router + ontology感知 + CRAG检索 + react推理）
 
 ## 任务
 根据角色定义${role_phrase}，输出严格 JSON（无 markdown 标记）:
-{"agent_type":"react|conversational|rag|tool|reflection|plan_execute|multi_agent|router|materials_chat","config":{...},"memory_config":{...},"trigger_conditions":[...],"reasoning":"选择了哪个类型(从上述9个中选)以及为什么(考虑层级归属)"}
+{"agent_type":"react|conversational|rag|tool|reflection|plan_execute|multi_agent|router|materials_chat","config":{...},"memory_config":{...},"trigger_conditions":[...],"reasoning":"选择了哪个类型(从上述9个中选)以及为什么(考虑层级归属；须说明为何不需要外部框架)"}
 
 ## 选择原则（按层级决策）
 1. 先判断是否需要自主推理：否 → 基础能力层（conversational/rag/tool）
 2. 需要推理+工具调用 → 推理决策层（react 默认, reflection 需自查场景）
-3. 需要组合多个Agent → 协同编排层
+3. 需要组合多个Agent → 协同编排层（无五条 AND 证据时勿选 multi_agent）
 4. 不确定时 → react（最通用的推理引擎）
 - system_prompt: 从 role_name + responsibilities 提炼，≤200字
 - trigger_conditions: 5~8 条触发短语，来自名称和职责的关键词

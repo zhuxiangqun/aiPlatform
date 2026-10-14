@@ -382,8 +382,13 @@ def validate_manifest(data: Union[Dict[str, Any], str, bytes]) -> List[str]:
             _pg = _iu.module_from_spec(_spec)
             _spec.loader.exec_module(_pg)
             _up = _pg.evaluate_multi_agent_upgrade(data.get("upgrade_criteria"))
-            for b in _up.get("blockers") or []:
-                violations.append(f"manifest.upgrade_criteria: {b}")
+            if not _up.get("ok"):
+                if _up.get("summary"):
+                    violations.append(f"manifest.upgrade_criteria: {_up['summary']}")
+                for b in _up.get("blockers") or []:
+                    violations.append(f"manifest.upgrade_criteria: {b}")
+                for act in (_up.get("next_actions") or [])[:3]:
+                    violations.append(f"manifest.upgrade_criteria.next: {act}")
         except Exception as e:
             violations.append(f"manifest.upgrade_criteria: 无法评估五条 AND ({e})")
 

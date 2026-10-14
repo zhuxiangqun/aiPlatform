@@ -2104,6 +2104,29 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         out["manifest_mode"] = (_man.get("mode") or "single")
         out["hops_raw_n"] = aggregate_hops(project_id).get("n_runs", 0)
         out["evidence"] = evidence
+        # 多 Agent 五条 AND 可解释快照（mode=multi_agent 或已声明 upgrade_criteria 时）
+        try:
+            from builder.promotion_gate import (
+                evaluate_multi_agent_upgrade,
+                format_upgrade_fix_hint,
+            )
+
+            _crit = _man.get("upgrade_criteria") if isinstance(_man, dict) else None
+            if str(out.get("manifest_mode") or "") == "multi_agent" or isinstance(_crit, dict):
+                _up = evaluate_multi_agent_upgrade(_crit if isinstance(_crit, dict) else {})
+                out["multi_agent_upgrade"] = {
+                    "ok": bool(_up.get("ok")),
+                    "summary": _up.get("summary") or "",
+                    "missing_criteria": list(_up.get("missing_criteria") or []),
+                    "next_actions": list(_up.get("next_actions") or []),
+                    "blockers": list(_up.get("blockers") or []),
+                    "checks": list(_up.get("checks") or []),
+                    "fix_hint": format_upgrade_fix_hint(_up),
+                }
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "multi_agent_upgrade explain snapshot failed", exc_info=True
+            )
         return out
 
     async def _platform_effects_after_deterministic_skill(
@@ -4755,12 +4778,35 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                         _blog.warning("Deploy: agent_manifest.json 不合规 %s: %s",
                                       _src, "; ".join(_violations[:3]))
                         record_rejection(project_id, "manifest", _src, _violations)
+                        _fix_hint = (
+                            "默认 mode=single；multi_agent 需 rationale+success_metrics+"
+                            "upgrade_criteria 五条 AND"
+                        )
+                        try:
+                            import json as _json_man
+                            from builder.promotion_gate import (
+                                evaluate_multi_agent_upgrade,
+                                format_upgrade_fix_hint,
+                            )
+
+                            with open(_src, "r", encoding="utf-8") as _mf:
+                                _man_data = _json_man.load(_mf)
+                            if isinstance(_man_data, dict) and (
+                                _man_data.get("mode") == "multi_agent"
+                                or isinstance(_man_data.get("upgrade_criteria"), dict)
+                            ):
+                                _up = evaluate_multi_agent_upgrade(
+                                    _man_data.get("upgrade_criteria")
+                                )
+                                _fix_hint = format_upgrade_fix_hint(_up)
+                        except Exception:
+                            pass  # noqa: best-effort explain; keep generic hint
                         _rejected_artifacts.append({
                             "kind": "manifest",
                             "name": "agent_manifest",
                             "path": _src,
                             "violations": list(_violations),
-                            "fix_hint": "默认 mode=single；multi_agent 需 rationale+success_metrics+upgrade_criteria 五条 AND",
+                            "fix_hint": _fix_hint,
                         })
                     continue
                 if _f == "AGENT.md":

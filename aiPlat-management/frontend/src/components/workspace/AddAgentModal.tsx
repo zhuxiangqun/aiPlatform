@@ -721,6 +721,10 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess,
             ]}
           />
         </div>
+        <div className="text-xs text-gray-500 -mt-2 rounded border border-dark-border/60 bg-dark-card/40 px-3 py-2 leading-relaxed">
+          选型说明：这里选的是平台内部能力形态（agent_type），不是 LangGraph / CrewAI 等外部框架。
+          生成物统一跑在原生 Harness（StageRunner → ReActLoop），多 Agent 默认关闭，须五条 AND 门禁才升 multi_agent。
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <MultiSelect label="绑定技能" options={skillOptions} selected={skills} onChange={setSkills} />

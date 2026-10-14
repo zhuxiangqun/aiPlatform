@@ -3,19 +3,19 @@ title: "aiPlat 生态与集成白皮书"
 volume_id: ecosystem-integration
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-14T10:36:11Z"
+generated_at: "2026-10-14T17:04:19Z"
 audience: "ISV、集成商、开源社区、渠道"
 core_question: "如何接入、贡献、协作？"
 priority: P2
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30"
-caps_sha256: "f43ae93235e10d95aaecc107809b4c88100653889626abafee91233b2590bd61"
+caps_sha256: "1170b4cbf9f62affeb5df197ada8cbd6f40e047aacb6cda3ba6d507148e0f8a3"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=ecosystem-integration suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=f43ae93235e10d95aaecc107809b4c88100653889626abafee91233b2590bd61 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=ecosystem-integration suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=1170b4cbf9f62affeb5df197ada8cbd6f40e047aacb6cda3ba6d507148e0f8a3 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 生态与集成白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 如何接入、贡献、协作？ |
 | 优先级 | P2 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-14T10:36:11Z` |
-| CAPABILITIES sha256 | `f43ae93235e1…` |
+| 生成时间 (UTC) | `2026-10-14T17:04:19Z` |
+| CAPABILITIES sha256 | `1170b4cbf9f6…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 **备注**：
@@ -741,18 +741,23 @@ AIPLAT_PI_MODEL=ollama/qwen2.5:3b AIPLAT_APP_HOME=./fixtures/sample-app \
 AIPLAT_PI_MODEL=ollama/qwen2.5:3b bash scripts/live_smoke.sh
 ```
 
-#### Factory-in experiment (not wired to engine)
+#### Factory-in (merge-closed — offline archive only)
 
-Optional way-4 CLI: `scripts/coding_exec.py` (Pi print-mode coding). Refuses host cwd unless `--allow-host`; does **not** replace ReActLoop / PipelineEngine.
+Way-4 Execute bypass was **removed** (`blank_not_proven`). Optional offline CLI remains for probes only; it does **not** replace ReActLoop / PipelineEngine and is **not** on the Workspace Execute path.
 
 ```bash
 python3 scripts/test_coding_exec_unit.py
 bash scripts/coding_exec_smoke.sh
+python3 scripts/factory_in_evidence_smoke.py
 ```
 
-See [docs/FACTORY_IN_EXPERIMENT.md](./docs/FACTORY_IN_EXPERIMENT.md).
+See [docs/FACTORY_IN_EXPERIMENT.md](./docs/FACTORY_IN_EXPERIMENT.md) §⓪.
 
-See [PHASE0.md](./PHASE0.md) and `docs/architecture/plans/pi-thin-runtime.md`.
+See [PHASE0.md](./PHASE0.md) and `docs/architecture/plans/pi-thin-
+
+…
+
+_(节选；全文见权威源)_
 
 
 ### 3.8 归因协议（节选）
