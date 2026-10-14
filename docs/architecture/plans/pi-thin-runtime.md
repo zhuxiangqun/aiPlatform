@@ -11,7 +11,7 @@ Pi 是极简 Agent Harness（非治理平台）。与 aiPlat 的关系拆成**�
 | 轴 | 定位 | 状态 | 解决什么 | 不解决什么 |
 |----|------|------|----------|------------|
 | **（B）厂外** | 用户侧薄交付宿主：导出包 → `pi -e` / 薄 HTTP | **既定主路径**（已落地） | 不装全栈也能跑快照（SOP + skills + handler） | 平台级厚度（Memory / SECI / PolicyGate / 知识 syscall） |
-| **（A）厂内** | 可选编码执行核：CLI/RPC 包在 PolicyGate 外 | **实验**：方式四 CLI + Workspace Execute flag（`AIPLAT_PI_CODING_EXECUTOR`，**默认 OFF**）；**未**接 PipelineEngine；CAPABILITIES **未**标「厂内已接线」 | 编码闭环、文件类副作用执行 | 替代编排治理；默认换掉 ReActLoop |
+| **（A）厂内** | 可选编码执行核：CLI/RPC 包在 PolicyGate 外 | **⓪ 合并关闭**（2026-10-14 `blank_not_proven`）：Workspace Execute Pi 旁路已拆；离线 CLI/探针归档；CAPABILITIES **不**标「厂内已接线」 | （历史宣称）编码闭环副作用 | 替代编排治理；默认换掉 ReActLoop |
 
 ### 分层，而非两套平行产品（2026-10-13 锁定）
 
@@ -93,7 +93,7 @@ Pi（执行面 / 厂外薄宿主）── 默认 Pi-only 可闭环
 
 | 形态 | 原理 | 现状 |
 |------|------|------|
-| RPC 子进程 | aiPlat 启 Pi 为外部进程，JSONL 通信 | 方式四 CLI / `pi_rpc_client` 骨架（默认 OFF） |
+| RPC 子进程 | aiPlat 启 Pi 为外部进程，JSONL 通信 | 方式四离线 CLI / `pi_rpc_client`（**⓪ 合并关闭**；不经 Workspace Execute） |
 | SDK 嵌入 | 同进程调 Pi API | **非默认**（强 Node 绑定） |
 | 可选执行后端 | `execution_backend≈pi`；请求仍经 aiPlat 门禁再路由 | Workspace Execute flag；**未**接 PipelineEngine |
 
@@ -119,13 +119,12 @@ Pi（执行面 / 厂外薄宿主）── 默认 Pi-only 可闭环
 **厂内若做，优先级（成本阶梯）** — 详见 `packages/aiplat-pi-runtime/docs/FACTORY_IN_EXPERIMENT.md`
 
 1. 巩固 Pi-only 交付（能力边界写进合同；管理端已提示）
-2. 设计/接线 **Pi + aiPlat 混合回连**（企业级）——优先于厂内换心
-3. 方式四：厂内 `coding_closed_loop` 可选 Pi 执行器（沙箱必选）— CLI + `workspace_coding_bridge` 经 Workspace Execute flag（默认 OFF；未接引擎）
-4. 方式二：handler 经 Pi RPC 做文件类副作用（PolicyGate 外裹）
-5. 方式一：替换 ReActLoop **最后**且旁路可选
+2. 设计/接线 **Pi + aiPlat 混合回连**（企业级）——**当前主产品轴**
+3. ~~方式四：Workspace Execute Pi 旁路~~ → **⓪ 合并关闭**（`blank_not_proven`；旁路已拆；离线 CLI/探针归档）
+4. 方式二 / 一：**不实现**（空白未证明时禁止加平行路径）
 
 方式三（MCP 宿主）：可行但只是执行宿主优化；aiPlat 仍保留 MCP 准入与审计。  
-厂内路径在接线完成前 **不得** 标 CAPABILITIES「已接线」或主文档推荐。
+厂内路径 **不得** 标 CAPABILITIES「厂内已接线」或主文档推荐（已关闭，非待接线）。
 
 ## 结论（Phase 0）
 

@@ -1,10 +1,11 @@
-"""Workspace Execute bridge for optional Pi coding exec (factory-in way 4).
+"""Archived offline bridge for Pi coding exec (factory-in way 4).
 
-Feature flag: ``AIPLAT_PI_CODING_EXECUTOR`` (default OFF).
-Does **not** replace ReActLoop; core_facade opts in only when coding defaults apply.
+**Merge-closed (2026-10-14)** — no longer called from Workspace Execute /
+``core_facade``. Kept for manual CLI/probes only. See
+``docs/FACTORY_IN_EXPERIMENT.md`` §⓪.
 
-Sandbox policy lives here; ``coding_exec.run_coding_exec`` still requires an
-explicit allow for the chosen cwd (bridge passes allow_host after resolving cwd).
+Feature flag ``AIPLAT_PI_CODING_EXECUTOR`` still gates this module when invoked
+directly; it has **no** production Execute effect.
 """
 from __future__ import annotations
 

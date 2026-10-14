@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Factory-in way4 evidence smoke (sandbox + flag OFF + outer PolicyGate).
+"""Factory-in way4 merge-close evidence smoke.
 
-Does NOT mark CAPABILITIES 「厂内已接线」. Proves experimental constraints hold:
+Proves §⓪ disposition (2026-10-14 blank_not_proven):
 
-1. AIPLAT_PI_CODING_EXECUTOR default → bridge skipped
-2. resolve_coding_cwd without ALLOW_HOST → temp sandbox (not preferred host cwd)
+1. core_facade no longer wires Workspace Execute → Pi bridge
+2. Offline bridge still defaults OFF / sandbox cwd
 3. coding_exec refuses host cwd without --allow-host
-4. core_facade wires flag-gated bridge (text evidence)
-5. PolicyGate stays outside bridge module (no PolicyGate import in bridge)
-6. coding_rpc_probe --dry-run PASS
+4. PolicyGate not owned by bridge module
+5. coding_rpc_probe --dry-run PASS (archived offline tool)
+
+Does NOT mark CAPABILITIES 「厂内已接线」.
 """
 from __future__ import annotations
 
@@ -47,7 +48,6 @@ def _load_bridge():
 
 
 def main() -> int:
-    # Clear experimental flags for deterministic defaults
     for k in (
         "AIPLAT_PI_CODING_EXECUTOR",
         "AIPLAT_PI_CODING_ALLOW_HOST",
@@ -60,32 +60,39 @@ def main() -> int:
     if not FACADE.is_file():
         _fail(f"missing {FACADE}")
 
+    # 1) merge-close: facade must NOT call Pi coding bridge
+    facade = FACADE.read_text(encoding="utf-8")
+    for banned in (
+        "run_workspace_coding_via_pi",
+        "workspace_coding_bridge",
+        "AIPLAT_PI_CODING_EXECUTOR",
+    ):
+        if banned in facade:
+            _fail(f"core_facade still references {banned} (expected merge-closed)")
+    if "merge-closed" not in facade and "FACTORY_IN_EXPERIMENT" not in facade:
+        _fail("core_facade missing merge-close comment pointing at FACTORY_IN_EXPERIMENT")
+    _pass("core_facade Workspace Execute Pi bypass removed (merge-closed)")
+
     mod = _load_bridge()
 
-    # 1) flag default OFF
+    # 2) offline bridge still defaults OFF
     if mod.is_enabled():
         _fail("is_enabled() true with AIPLAT_PI_CODING_EXECUTOR unset")
     skipped = mod.run_workspace_coding_via_pi(prompt="noop")
     if not skipped.get("skipped") or skipped.get("reason") != "disabled":
         _fail(f"expected skipped/disabled, got {skipped}")
-    _pass("flag default OFF → bridge skipped")
+    _pass("offline bridge flag default OFF → skipped")
 
-    # 2) sandbox cwd (no ALLOW_HOST)
+    # 3) sandbox cwd (no ALLOW_HOST)
     preferred = str(Path.home())
     cwd = mod.resolve_coding_cwd(preferred)
-    cwd_s = str(cwd.resolve())
-    if cwd_s == str(Path(preferred).resolve()):
-        _fail(f"sandbox leaked preferred host cwd: {cwd_s}")
-    if not cwd.is_dir():
-        _fail(f"sandbox cwd missing: {cwd}")
-    # temp dirs typically under TMPDIR /aiplat_pi_coding_
-    if "aiplat_pi_coding_" not in cwd.name and "aiplat-pi-coding" not in cwd_s:
-        # still OK if under TMPDIR with our prefix from mkdtemp
-        if not cwd.name.startswith("aiplat_pi_coding_"):
-            _fail(f"unexpected sandbox name: {cwd}")
+    if str(cwd.resolve()) == str(Path(preferred).resolve()):
+        _fail(f"sandbox leaked preferred host cwd: {cwd}")
+    if not cwd.is_dir() or not cwd.name.startswith("aiplat_pi_coding_"):
+        _fail(f"unexpected sandbox cwd: {cwd}")
     _pass(f"sandbox cwd (not host preferred): {cwd}")
 
-    # 3) coding_exec refuses without --allow-host
+    # 4) coding_exec refuses without --allow-host
     with tempfile.TemporaryDirectory(prefix="aiplat_factory_host_") as td:
         proc = subprocess.run(
             [
@@ -102,24 +109,7 @@ def main() -> int:
         )
         if proc.returncode == 0:
             _fail("coding_exec allowed host cwd without --allow-host")
-        blob = (proc.stdout or "") + (proc.stderr or "")
-        if "allow-host" not in blob.lower() and "allow_host" not in blob.lower() and "sandbox" not in blob.lower():
-            # still fail closed if non-zero
-            _pass("coding_exec refused host cwd (non-zero exit)")
-        else:
-            _pass("coding_exec refused host cwd without --allow-host")
-
-    # 4) facade flag gate text evidence
-    facade = FACADE.read_text(encoding="utf-8")
-    for needle in (
-        "AIPLAT_PI_CODING_EXECUTOR",
-        "workspace_coding_bridge",
-        "run_workspace_coding_via_pi",
-        "_workspace_coding_defaults",
-    ):
-        if needle not in facade:
-            _fail(f"core_facade missing {needle}")
-    _pass("core_facade flag-gated bridge wiring present")
+        _pass("coding_exec refused host cwd without --allow-host")
 
     # 5) PolicyGate outside bridge
     bridge_src = BRIDGE.read_text(encoding="utf-8")
@@ -127,9 +117,9 @@ def main() -> int:
         _fail("bridge must not import/own PolicyGate (outer layer only)")
     if "get_policy_gate" not in facade and "PolicyGate" not in facade:
         _fail("core_facade missing PolicyGate surface (outer gate)")
-    _pass("PolicyGate stays outside Pi coding bridge")
+    _pass("PolicyGate stays outside archived Pi coding bridge")
 
-    # 6) RPC dry-run
+    # 6) RPC dry-run (archived offline tool)
     if not PROBE.is_file():
         _fail(f"missing {PROBE}")
     probe = subprocess.run(
@@ -145,8 +135,8 @@ def main() -> int:
         _fail(f"dry-run missing PASS marker: {probe.stdout}")
     _pass("coding_rpc_probe --dry-run")
 
-    print("AIPLAT_FACTORY_IN_EVIDENCE_SMOKE_OK")
-    print("NOTE: experimental — do not mark CAPABILITIES 厂内已接线")
+    print("AIPLAT_FACTORY_IN_MERGE_CLOSE_SMOKE_OK")
+    print("NOTE: merge-closed — do not mark CAPABILITIES 厂内已接线")
     return 0
 
 
