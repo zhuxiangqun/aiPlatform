@@ -23,6 +23,7 @@ async function main() {
     formatKbCitationResponse,
     extractKbSourceItems,
     citationSystemPromptLines,
+    envCitationExpandable,
   } = m;
 
   // V2 empty
@@ -126,7 +127,33 @@ async function main() {
   assert(prompt.includes("V5:"), "V5: system prompt line");
   assert(prompt.includes("（未验证）") || prompt.includes("未验证"), "V5: unverified marker");
 
-  console.log("PASS: enterprise_kb_citation V2/V3a/V6 + V1/V5 + dedup + low-confidence");
+  // V3b expandable <details> (opt-in)
+  const expandHit = formatKbCitationResponse(
+    { kb: { items } },
+    { expandable: true },
+  );
+  assert(expandHit.includes("<details>"), "V3b: details open");
+  assert(expandHit.includes("</details>"), "V3b: details close");
+  assert(expandHit.includes("<summary>"), "V3b: summary");
+  assert(expandHit.includes("点击展开"), "V3b: expand hint");
+  assert(!expandHit.includes("── 参考文献 ──"), "V3b: no plain header when expandable");
+  const plainHit = formatKbCitationResponse(
+    { kb: { items } },
+    { expandable: false },
+  );
+  assert(plainHit.includes("── 参考文献 ──"), "V3a: plain header when expandable=false");
+  assert(!plainHit.includes("<details>"), "V3a: no details when expandable=false");
+  const prevExpand = process.env.AIPLAT_ENTERPRISE_KB_CITATION_EXPAND;
+  process.env.AIPLAT_ENTERPRISE_KB_CITATION_EXPAND = "1";
+  assert(envCitationExpandable() === true, "V3b: env on");
+  const envExpandHit = formatKbCitationResponse({ kb: { items } });
+  assert(envExpandHit.includes("<details>"), "V3b: env drives details");
+  process.env.AIPLAT_ENTERPRISE_KB_CITATION_EXPAND = "0";
+  assert(envCitationExpandable() === false, "V3b: env off");
+  if (prevExpand === undefined) delete process.env.AIPLAT_ENTERPRISE_KB_CITATION_EXPAND;
+  else process.env.AIPLAT_ENTERPRISE_KB_CITATION_EXPAND = prevExpand;
+
+  console.log("PASS: enterprise_kb_citation V2/V3a/V3b/V6 + V1/V5 + dedup + low-confidence");
   console.log("AIPLAT_ENTERPRISE_KB_CITATION_SMOKE_OK");
 }
 

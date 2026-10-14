@@ -46,6 +46,7 @@
 | `AIPLAT_ENTERPRISE_APPROVAL_POLL_MS` | `aiplat_approval_wait` 轮询间隔（默认 2000） |
 | `AIPLAT_ENTERPRISE_APPROVAL_WAIT_MS` | 等待超时（默认 120000） |
 | `AIPLAT_ENTERPRISE_KB_CITATION` | KB 引用契约（V2/V3a/V6）。enterprise 下**默认开**；设 `0`/`false` 可关（回退旧版片段 dump）。见 [`HYBRID_ENTERPRISE_DELIVERY.md`](./HYBRID_ENTERPRISE_DELIVERY.md) §3 |
+| `AIPLAT_ENTERPRISE_KB_CITATION_EXPAND` | V3b：`1` 时参考文献用 HTML `<details>` 可展开；默认关（V3a 纯文本头） |
 
 ## 术语（本文档体系）
 

@@ -128,7 +128,7 @@ L2 库健康分面板（属 ④，规格见 §5）：本周入库 N / 漏召 TOP
 | V6 | 单次引用 ≤5；超出取 top-5 by score，可注明「共 N 条展示前 5」 | **P0 必做** | 强制 | 强制 |
 | V1 | 事实陈述附带来源标记（基于工具返回，非 NLP 事实句检测） | P1 prompt/契约 ✅ | 强制 | 可选 |
 | V5 | 无源支撑内容标「（未验证）」或避免输出 | P1 best-effort ✅ | 强制意图 | 不要求 |
-| V3b | 点击展开原文片段 | P2 富客户端 | 可选 | 可选 |
+| V3b | 点击展开原文片段（`<details>`） | P2 富客户端 ✅ | 可选（`AIPLAT_ENTERPRISE_KB_CITATION_EXPAND=1`） | 可选 |
 
 **阻断出厂（enterprise）**：V2 + V3a + V6。V1/V5/V3b 不阻断第一期。
 
@@ -166,7 +166,7 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 | `max_sources` | 5 | 5 | V6 |
 | `enforce_source_tag` | true（P1） | false | V1 |
 | `unverified_tag` | true（P1） | false | V5 |
-| `expandable_reference` | false（待 V3b） | false | V3b |
+| `expandable_reference` | env `AIPLAT_ENTERPRISE_KB_CITATION_EXPAND`（默认 false） | false | V3b |
 
 建议 env 命名（实现时再定，避免与主文档表冲突）：例如 `AIPLAT_ENTERPRISE_KB_CITATION=1` 打开 V2+V3a+V6。
 
@@ -259,6 +259,10 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 - [x] **C. 端到端合规验证**：`enterprise_hybrid_live_smoke.mjs` step 3b 用 `spawnSync --experimental-strip-types` 将 live KB 响应喂入 citation formatter，验证 ref block / source tag / empty prefix；soft-skip 若 strip-types 不可用
 - [x] 冒烟扩展：dedup 测试（同 doc_id 不同 snippet）、低置信测试（全低/全高/无 score/混合）、E2E soft-skip
 
+**P2 V3b 已合入**：
+
+- [x] `AIPLAT_ENTERPRISE_KB_CITATION_EXPAND=1` → 参考文献包在 HTML `<details><summary>…点击展开</summary>…</details>`（默认仍 V3a 纯文本头）
+
 ### 8.2 ① 出厂清单挂接（A+B）— 已合入
 
 - [x] `scripts/scan_pi_bundle_delivery.py`（密钥/debug/假绿等规则）
@@ -296,4 +300,6 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 
 **已补（工具分级）**：`AIPLAT_ENTERPRISE_TOOLS_L1|L2|L3` + `TOOL_CEILING`；L3 须审批桥；扁平 `ENTERPRISE_TOOLS` 仍兼容。
 
-**下一刀（可选）**：V3b 可展开参考文献；模型分流流量占比计量。
+**已补（V3b）**：`AIPLAT_ENTERPRISE_KB_CITATION_EXPAND=1` → `<details>` 可展开参考文献。
+
+**下一刀（可选）**：模型分流流量占比计量。
