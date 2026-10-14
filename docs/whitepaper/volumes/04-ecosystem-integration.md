@@ -625,7 +625,7 @@ See [`docs/architecture/plans/pi-thin-runtime.md`](../../docs/architecture/plans
 | Axis | Role of Pi | Status |
 |------|------------|--------|
 | **(B) Factory-out** | User-side host for artifacts | **Shipped** — this package |
-| **(A) Factory-in** | Optional coding exec kernel behind PolicyGate | Experiment only — not default ReActLoop |
+| **(A) Factory-in** | Optional coding exec kernel behind PolicyGate | **Merge-closed** (`blank_not_proven`) — Execute bypass removed; offline probes only |
 
 **Product decision (locked)**
 

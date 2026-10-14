@@ -60,7 +60,7 @@
 | **薄 Runtime** | 可带走的 Pi 包（extensions + export/ZIP）；断连时退回包内 SOP/skills |
 | **回连能力阶梯** | 本文 §阶梯 1→5（KB→工具→门禁→Memory→审批）；产品主路径 |
 | **交付优先级链** | [`HYBRID_ENTERPRISE_DELIVERY.md`](./HYBRID_ENTERPRISE_DELIVERY.md) ①②③④（出厂清单→Citation→成本→库健康）；**不是**阶梯 1–5 的别名 |
-| **厂内实验** | [`FACTORY_IN_EXPERIMENT.md`](./FACTORY_IN_EXPERIMENT.md) 方式四：**⓪ 合并关闭**（`blank_not_proven`）；Execute 旁路已拆；仅留离线探针 |
+| **厂内轴（A）** | [`FACTORY_IN_EXPERIMENT.md`](./FACTORY_IN_EXPERIMENT.md) 方式四：**⓪ 合并关闭**（`blank_not_proven`）；Execute 旁路已拆；仅留离线探针 |
 
 ## 回连能力阶梯
 
@@ -130,9 +130,9 @@ node packages/aiplat-pi-runtime/scripts/enterprise_hybrid_live_smoke.mjs
 - 无允许列表时开放任意平台工具
 - 把「厚运行时私有化」写成默认交付（仅驻场例外）
 
-## 与厂内实验的关系
+## 与厂内轴（A）的关系
 
-混合回连属于 **厂外企业交付**，优先级高于厂内编码旁路。  
+混合回连属于 **厂外企业交付**，优先级高于已关闭的厂内编码旁路。  
 厂内方式四已 **⓪ 合并关闭**（2026-10-14）：① `blank_not_proven` → 拆除 `core_facade` Workspace Execute Pi 旁路；离线 CLI/RPC 探针归档于 [`FACTORY_IN_EXPERIMENT.md`](./FACTORY_IN_EXPERIMENT.md)。
 
 ## 交付规格附录（SKU / Citation UX / KB Health）
