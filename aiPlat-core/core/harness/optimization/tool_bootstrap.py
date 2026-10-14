@@ -224,7 +224,8 @@ Output ONLY the SKILL.md content, nothing else."""
 
             result = await sys_llm_generate(
                 adapter, prompt,
-                trace_context={"source": "tool_bootstrap", "skill": safe_name},
+                purpose="code_gen",
+                trace_context={"source": "tool_bootstrap", "skill": safe_name, "purpose": "code_gen"},
             )
 
             content = getattr(result, "content", str(result)) if result else ""
@@ -352,7 +353,8 @@ Output ONLY the Python code, no explanations, no markdown fences.'''
 
             result = await sys_llm_generate(
                 adapter, prompt,
-                trace_context={"source": "handler_gen", "skill": safe_name},
+                purpose="code_gen",
+                trace_context={"source": "handler_gen", "skill": safe_name, "purpose": "code_gen"},
             )
             content = getattr(result, "content", str(result)) if result else ""
             if not content or 'def execute' not in content:
@@ -451,7 +453,8 @@ Output ONLY the AGENT.md content, nothing else."""
                 return ""
             result = await sys_llm_generate(
                 adapter, prompt,
-                trace_context={"source": "tool_bootstrap", "phase": "agent_gen"},
+                purpose="code_gen",
+                trace_context={"source": "tool_bootstrap", "phase": "agent_gen", "purpose": "code_gen"},
             )
             content = getattr(result, "content", str(result)) if result else ""
             return content.strip() if len(content) > 100 else ""
@@ -485,7 +488,8 @@ Output ONLY the test file content."""
                 return ""
             result = await sys_llm_generate(
                 adapter, prompt,
-                trace_context={"source": "tool_bootstrap", "phase": "test_gen"},
+                purpose="code_gen",
+                trace_context={"source": "tool_bootstrap", "phase": "test_gen", "purpose": "code_gen"},
             )
             content = getattr(result, "content", str(result)) if result else ""
             if len(content) > 50 and "def test_" in content:

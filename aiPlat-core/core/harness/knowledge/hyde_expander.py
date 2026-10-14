@@ -35,7 +35,10 @@ async def hyde_expand(query: str, model) -> Optional[str]:
     try:
         from core.harness.syscalls.llm import sys_llm_generate
         prompt = HYDE_PROMPT.format(query=query)
-        response = await sys_llm_generate(model, prompt, max_tokens=300, trace_context={"source": "hyde_expander"})
+        response = await sys_llm_generate(
+            model, prompt, max_tokens=300, purpose="doc_llm",
+            trace_context={"source": "hyde_expander", "purpose": "doc_llm"},
+        )
         hyde_text = getattr(response, "content", str(response)).strip()
         return hyde_text if hyde_text and len(hyde_text) > 20 else None
     except Exception:

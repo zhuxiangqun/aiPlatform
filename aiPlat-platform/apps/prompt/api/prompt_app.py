@@ -244,7 +244,10 @@ async def preview_template(template_id: str, req: PromptPreviewRequest):
         messages.append({"role": "user", "content": up})
         if ap:
             messages.append({"role": "assistant", "content": ap})
-        resp = await sys_llm_generate(model, messages)
+        resp = await sys_llm_generate(
+            model, messages, purpose="chat",
+            trace_context={"source": "prompt_app", "purpose": "chat"},
+        )
         output = resp.content if hasattr(resp, 'content') else str(resp)
         return {"output": str(output)[:4000], "model": model_name}
     except Exception as e:
@@ -272,7 +275,10 @@ async def preview_text(req: PromptPreviewTextRequest):
         if sp:
             messages.append({"role": "system", "content": sp})
         messages.append({"role": "user", "content": up})
-        resp = await sys_llm_generate(model, messages)
+        resp = await sys_llm_generate(
+            model, messages, purpose="chat",
+            trace_context={"source": "prompt_app", "purpose": "chat"},
+        )
         output = resp.content if hasattr(resp, 'content') else str(resp)
         return {"output": str(output)[:4000], "model": model_name}
     except Exception as e:
@@ -315,7 +321,10 @@ async def run_prompt(req: PromptRunRequest):
         if sp:
             messages.append({"role": "system", "content": sp})
         messages.append({"role": "user", "content": up})
-        resp = await sys_llm_generate(model, messages)
+        resp = await sys_llm_generate(
+            model, messages, purpose="chat",
+            trace_context={"source": "prompt_app", "purpose": "chat"},
+        )
         output = resp.content if hasattr(resp, 'content') else str(resp)
         return {"output": str(output)[:4000], "model": model_name}
     except Exception as e:
@@ -361,7 +370,7 @@ async def optimize_prompt(req: PromptOptimizeRequest):
         resp = await sys_llm_generate(model, [
             {"role": "system", "content": await _async_prompt_resolve("prompt-optimize-system-role")},
             {"role": "user", "content": optimize_prompt_text},
-        ])
+        ], purpose="chat", trace_context={"source": "prompt_optimize", "purpose": "chat"})
 
         content = resp.content if hasattr(resp, 'content') else str(resp)
         import re

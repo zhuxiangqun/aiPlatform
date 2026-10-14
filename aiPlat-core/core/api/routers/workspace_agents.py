@@ -386,7 +386,11 @@ async def generate_role_definition(req: AgentAutoFillRequest) -> Any:
             {"role": "system", "content": await _async_prompt_resolve("agent-role-system")},
             {"role": "user", "content": prompt},
         ]
-        resp = await sys_llm_generate(model=None, prompt=messages, model_name=model_name)
+        resp = await sys_llm_generate(
+            model=None, prompt=messages, model_name=model_name,
+            purpose="agent_creation",
+            trace_context={"source": "workspace_agents", "purpose": "agent_creation"},
+        )
         content = resp.content if hasattr(resp, 'content') else str(resp)
 
         clean = content.strip()
@@ -867,7 +871,11 @@ async def _run_role_def_task(tid: str, req: "AgentAutoFillRequest"):
             {"role": "system", "content": await _async_prompt_resolve("agent-role-system")},
             {"role": "user", "content": prompt},
         ]
-        resp = await sys_llm_generate(model=None, prompt=messages, model_name=model_name)
+        resp = await sys_llm_generate(
+            model=None, prompt=messages, model_name=model_name,
+            purpose="agent_creation",
+            trace_context={"source": "workspace_agents", "purpose": "agent_creation"},
+        )
         content = resp.content if hasattr(resp, 'content') else str(resp)
 
         clean = content.strip()
@@ -1740,7 +1748,11 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
             {"role": "system", "content": await _async_prompt_resolve("agent-role-system")},
             {"role": "user", "content": inline_prompt},
         ]
-        resp = await sys_llm_generate(model=None, prompt=messages, model_name=model_name)
+        resp = await sys_llm_generate(
+            model=None, prompt=messages, model_name=model_name,
+            purpose="agent_creation",
+            trace_context={"source": "workspace_agents", "purpose": "agent_creation"},
+        )
         content = resp.content if hasattr(resp, "content") else str(resp)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
@@ -1890,7 +1902,11 @@ async def agent_auto_fill_batch(req: AgentAutoFillBatchRequest) -> AgentAutoFill
             {"role": "system", "content": await _async_prompt_resolve("agent-role-system")},
             {"role": "user", "content": prompt},
         ]
-        resp = await sys_llm_generate(model=None, prompt=messages, model_name=model_name)
+        resp = await sys_llm_generate(
+            model=None, prompt=messages, model_name=model_name,
+            purpose="agent_creation",
+            trace_context={"source": "workspace_agents", "purpose": "agent_creation"},
+        )
         content = resp.content if hasattr(resp, 'content') else str(resp)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
@@ -3440,6 +3456,8 @@ async def _ai_recommend_agent_config(
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content},
         ],
+        purpose="agent_creation",
+        trace_context={"source": "workspace_agents", "purpose": "agent_creation"},
     )
 
     text = str(getattr(response, "content", "") or "")
