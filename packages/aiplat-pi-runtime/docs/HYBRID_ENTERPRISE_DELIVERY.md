@@ -294,4 +294,6 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 
 **已补（空拦截 + V1/V5）**：成本页 `empty_retrieve_count`；citation 工具返回层 + system prompt 明确 V1/V5。
 
-**下一刀（可选）**：V3b 可展开参考文献；工具 L1–L3 分级 allowlist；模型分流流量占比计量。
+**已补（工具分级）**：`AIPLAT_ENTERPRISE_TOOLS_L1|L2|L3` + `TOOL_CEILING`；L3 须审批桥；扁平 `ENTERPRISE_TOOLS` 仍兼容。
+
+**下一刀（可选）**：V3b 可展开参考文献；模型分流流量占比计量。

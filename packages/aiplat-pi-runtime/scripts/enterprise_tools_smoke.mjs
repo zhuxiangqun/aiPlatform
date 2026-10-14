@@ -4,6 +4,11 @@
  *
  * 1) Allowlist empty → tools off
  * 2) Mock core: POST /tools/{name}/execute
+ * 3) L1/L2/L3 tier allowlist + L3 approval gate (mirrors enterprise_tools.ts)
+ *
+ * Tier logic is inlined (extensionless .ts imports + @earendil-works/* break
+ * Node strip-types import of enterprise_tools.ts). Keep in sync with
+ * resolveToolAllowlist / executeEnterpriseTool L3 gate in that file.
  */
 import http from "node:http";
 import path from "node:path";
@@ -17,10 +22,63 @@ function envTruthy(name) {
   return v === "1" || v === "true" || v === "yes" || v === "on";
 }
 
+function parseNameList(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return [];
+  return s
+    .split(/[,;\s]+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
 function parseAllowlist() {
-  const raw = (process.env.AIPLAT_ENTERPRISE_TOOLS || "").trim();
-  if (!raw) return [];
-  return raw.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
+  return parseNameList(process.env.AIPLAT_ENTERPRISE_TOOLS || "");
+}
+
+/** Mirror of enterprise_tools.resolveToolAllowlist */
+function resolveToolAllowlist() {
+  const l1 = parseNameList(process.env.AIPLAT_ENTERPRISE_TOOLS_L1 || "");
+  const l2 = parseNameList(process.env.AIPLAT_ENTERPRISE_TOOLS_L2 || "");
+  const l3 = parseNameList(process.env.AIPLAT_ENTERPRISE_TOOLS_L3 || "");
+  const flat = parseAllowlist();
+  const ceilingRaw = (process.env.AIPLAT_ENTERPRISE_TOOL_CEILING || "L3")
+    .trim()
+    .toUpperCase();
+  let ceiling = 3;
+  if (ceilingRaw === "1" || ceilingRaw === "L1") ceiling = 1;
+  else if (ceilingRaw === "2" || ceilingRaw === "L2") ceiling = 2;
+  const tiered = l1.length + l2.length + l3.length > 0;
+  const tiers = {};
+  if (!tiered) {
+    for (const n of flat) tiers[n] = 2;
+    const allowlist = Object.keys(tiers).filter((n) => tiers[n] <= ceiling);
+    return { allowlist, tiers, ceiling, tierMode: "flat" };
+  }
+  for (const n of l1) tiers[n] = 1;
+  for (const n of l2) tiers[n] = 2;
+  for (const n of l3) tiers[n] = 3;
+  for (const n of flat) {
+    if (!(n in tiers)) tiers[n] = 2;
+  }
+  const allowlist = Object.keys(tiers).filter((n) => tiers[n] <= ceiling);
+  return { allowlist, tiers, ceiling, tierMode: "tiered" };
+}
+
+/** Mirror of executeEnterpriseTool L3 gate (no network). */
+function l3GateError(toolName, cfg) {
+  const name = String(toolName || "").trim();
+  if (!cfg.allowlist.includes(name)) {
+    const tier = cfg.tiers[name];
+    if (tier && tier > cfg.ceiling) {
+      return `tool_above_ceiling: ${name} is L${tier} but ceiling=L${cfg.ceiling}`;
+    }
+    return `tool_not_allowlisted: ${name}`;
+  }
+  const tier = cfg.tiers[name] ?? 2;
+  if (tier >= 3 && !envTruthy("AIPLAT_ENTERPRISE_APPROVAL")) {
+    return "l3_requires_approval: set AIPLAT_ENTERPRISE_APPROVAL=1 before L3 (write) tools";
+  }
+  return null;
 }
 
 function withApiCorePrefix(base) {
@@ -173,6 +231,50 @@ async function main() {
   console.log("PASS: mock core tool execute");
 
   server.close();
+
+  // Tiered allowlist + L3 approval gate (mirror of enterprise_tools.ts)
+  delete process.env.AIPLAT_ENTERPRISE_TOOLS;
+  delete process.env.AIPLAT_ENTERPRISE_TOOLS_L1;
+  delete process.env.AIPLAT_ENTERPRISE_TOOLS_L2;
+  delete process.env.AIPLAT_ENTERPRISE_TOOLS_L3;
+  delete process.env.AIPLAT_ENTERPRISE_TOOL_CEILING;
+  delete process.env.AIPLAT_ENTERPRISE_APPROVAL;
+
+  process.env.AIPLAT_ENTERPRISE_TOOLS_L1 = "wiki_search";
+  process.env.AIPLAT_ENTERPRISE_TOOLS_L2 = "calculator";
+  process.env.AIPLAT_ENTERPRISE_TOOLS_L3 = "deploy_tool";
+  process.env.AIPLAT_ENTERPRISE_TOOL_CEILING = "L2";
+  const resolved = resolveToolAllowlist();
+  assert(resolved.tierMode === "tiered", "expected tiered mode");
+  assert(resolved.ceiling === 2, "ceiling L2");
+  assert(resolved.allowlist.includes("wiki_search"), "L1 in allowlist");
+  assert(resolved.allowlist.includes("calculator"), "L2 in allowlist");
+  assert(!resolved.allowlist.includes("deploy_tool"), "L3 above ceiling excluded");
+
+  const l3Cfg = {
+    allowlist: ["deploy_tool"],
+    tiers: { deploy_tool: 3 },
+    ceiling: 3,
+  };
+  const l3Blocked = l3GateError("deploy_tool", l3Cfg);
+  assert(
+    l3Blocked && l3Blocked.includes("l3_requires_approval"),
+    "L3 needs approval",
+  );
+  process.env.AIPLAT_ENTERPRISE_APPROVAL = "1";
+  assert(l3GateError("deploy_tool", l3Cfg) === null, "APPROVAL=1 opens L3 gate");
+
+  // flat legacy still L2
+  delete process.env.AIPLAT_ENTERPRISE_TOOLS_L1;
+  delete process.env.AIPLAT_ENTERPRISE_TOOLS_L2;
+  delete process.env.AIPLAT_ENTERPRISE_TOOLS_L3;
+  delete process.env.AIPLAT_ENTERPRISE_TOOL_CEILING;
+  process.env.AIPLAT_ENTERPRISE_TOOLS = "calculator,wiki_search";
+  const flat = resolveToolAllowlist();
+  assert(flat.tierMode === "flat", "flat mode");
+  assert(flat.tiers.calculator === 2 && flat.tiers.wiki_search === 2, "flat → L2");
+  console.log("PASS: L1/L2/L3 tier allowlist + L3 approval gate");
+
   console.log(`PASS: enterprise_tools_smoke (${pathToFileURL(ENT).href} is TS source of truth)`);
 }
 
