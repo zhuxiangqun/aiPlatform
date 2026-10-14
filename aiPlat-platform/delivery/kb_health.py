@@ -45,7 +45,15 @@ def kb_health_score(metrics: Dict[str, Any]) -> Dict[str, Any]:
       )
       bonus = 1.0 if citation > 0.8 else citation / 0.8
     Missing rates default to neutral 0 (no penalty / no credit).
+
+    When total_queries == 0: do **not** invent a yellow/red score from zero rates —
+    return band=gray / 数据不足 (score stays None).
     """
+    try:
+        total_q = int(metrics.get("total_queries") or 0)
+    except (TypeError, ValueError):
+        total_q = 0
+
     citation = _pct_to_ratio(metrics.get("citation_coverage_pct"))
     no_answer = _pct_to_ratio(metrics.get("no_answer_rate_pct"))
     error = _pct_to_ratio(metrics.get("error_correction_rate_pct"))
@@ -57,6 +65,32 @@ def kb_health_score(metrics: Dict[str, Any]) -> Dict[str, Any]:
     er = error if error is not None else 0.0
     rp = repeat if repeat is not None else 0.0
     bonus = 1.0 if c > 0.8 else (c / 0.8 if c > 0 else 0.0)
+
+    components = {
+        "citation_coverage": c,
+        "no_answer_rate": na,
+        "error_correction_rate": er,
+        "repeat_question_rate": rp,
+        "citation_health_bonus": bonus,
+    }
+    inputs_available = {
+        "citation_coverage_pct": citation is not None,
+        "no_answer_rate_pct": no_answer is not None,
+        "error_correction_rate_pct": error is not None,
+        "repeat_question_rate_pct": repeat is not None,
+        "total_queries": total_q > 0,
+    }
+
+    if total_q <= 0:
+        return {
+            "score": None,
+            "label": "数据不足",
+            "band": "gray",
+            "insufficient_data": True,
+            "reason": "窗口内无知识检索事件（syscall_events 无 knowledge_retrieve/kb_retrieve）",
+            "components": components,
+            "inputs_available": inputs_available,
+        }
 
     raw = (
         c * _W_CITATION
@@ -79,19 +113,9 @@ def kb_health_score(metrics: Dict[str, Any]) -> Dict[str, Any]:
         "score": score,
         "label": label,
         "band": band,
-        "components": {
-            "citation_coverage": c,
-            "no_answer_rate": na,
-            "error_correction_rate": er,
-            "repeat_question_rate": rp,
-            "citation_health_bonus": bonus,
-        },
-        "inputs_available": {
-            "citation_coverage_pct": citation is not None,
-            "no_answer_rate_pct": no_answer is not None,
-            "error_correction_rate_pct": error is not None,
-            "repeat_question_rate_pct": repeat is not None,
-        },
+        "insufficient_data": False,
+        "components": components,
+        "inputs_available": inputs_available,
     }
 
 
@@ -435,8 +459,26 @@ def _suggestions(
     score_info: Dict[str, Any],
     metrics: Dict[str, Any],
     miss_top: Dict[str, Any],
+    stats: Optional[Dict[str, Any]] = None,
 ) -> List[str]:
     tips: List[str] = []
+    try:
+        total_q = int(metrics.get("total_queries") or 0)
+    except (TypeError, ValueError):
+        total_q = 0
+
+    if score_info.get("insufficient_data") or total_q <= 0:
+        docs = (stats or {}).get("documents")
+        if isinstance(docs, int) and docs > 0:
+            tips.append(
+                f"知识库已有 {docs} 篇文档，但窗口内无检索事件 — "
+                "请用企业回连 `aiplat_kb_retrieve` 或确认 `/platform/kb/query` 已成功并写入 syscall_events"
+            )
+        else:
+            tips.append("窗口内无知识检索事件，且文档数为空 — 先入库再产生检索流量后复测健康分")
+        tips.append("当前不根据 0% 引用/漏召率打分，避免零流量误报「待改善」")
+        return tips
+
     items = miss_top.get("items") or []
     if items:
         names = [str(it.get("question") or "").strip() for it in items[:3] if it.get("question")]
@@ -450,10 +492,12 @@ def _suggestions(
     cit = _pct_to_ratio(metrics.get("citation_coverage_pct"))
     if cit is not None and cit < 0.8:
         tips.append("引用覆盖率不足 80%，建议加强回答溯源与资料质量")
-    if score_info.get("score", 100) < 55:
-        tips.append("健康分处于风险档：优先紧急入库 + 检索重训")
-    elif score_info.get("score", 100) < 70:
-        tips.append("健康分待改善：补充文档并关注漏召率")
+    score = score_info.get("score")
+    if isinstance(score, int):
+        if score < 55:
+            tips.append("健康分处于风险档：优先紧急入库 + 检索重训")
+        elif score < 70:
+            tips.append("健康分待改善：补充文档并关注漏召率")
     if not tips:
         tips.append("维持当前入库节奏；关注漏召率与引用覆盖率即可")
     return tips
@@ -487,7 +531,12 @@ def build_kb_health_report(
         limit=5,
         threshold=low_confidence_threshold,
     )
-    suggestions = _suggestions(score_info=score_info, metrics=metrics, miss_top=miss_top)
+    suggestions = _suggestions(
+        score_info=score_info,
+        metrics=metrics,
+        miss_top=miss_top,
+        stats=stats,
+    )
 
     return {
         "ok": True,
@@ -528,25 +577,37 @@ def render_kb_health_markdown(report: Dict[str, Any]) -> str:
         "",
         "规格: `HYBRID_ENTERPRISE_KB_HEALTH.md`",
         "",
-        f"## 知识库健康分: {h.get('score', 'n/a')}/100（{h.get('label', '-')}）",
-        "",
     ]
+    if h.get("insufficient_data") or h.get("score") is None:
+        lines.append(f"## 知识库健康分: —/100（{h.get('label', '数据不足')}）")
+        if h.get("reason"):
+            lines.append("")
+            lines.append(f"> {h.get('reason')}")
+    else:
+        lines.append(
+            f"## 知识库健康分: {h.get('score', 'n/a')}/100（{h.get('label', '-')}）"
+        )
+    lines.append("")
 
     lines.append("## 概览")
     lines.append("")
     if m.get("available"):
         lines.append(f"- **总查询数**: {m.get('total_queries', 0)} 次")
-        na = m.get("no_answer_rate_pct")
-        na_warn = " ⚠️" if isinstance(na, (int, float)) and float(na) > 15 else ""
-        lines.append(f"- **漏召率**: {na if na is not None else 'n/a'}%{na_warn}")
-        lines.append(f"- **引用覆盖率**: {m.get('citation_coverage_pct', 'n/a')}%")
-        lines.append(f"- **纠错率**: {m.get('error_correction_rate_pct', 'n/a')}%")
-        lines.append(f"- **重复问题率**: {m.get('repeat_question_rate_pct', 'n/a')}%")
-        lines.append(f"- **审批触发率**: {m.get('approval_trigger_rate_pct', 'n/a')}%")
-        lines.append(f"- **权限拦截**: {m.get('permission_blocks', 'n/a')}")
-        cycles = m.get("gap_repair_cycles")
-        if cycles is not None:
-            lines.append(f"- **修复周期**: {cycles}")
+        # Rates are only meaningful when there is retrieve traffic
+        if int(m.get("total_queries") or 0) > 0:
+            na = m.get("no_answer_rate_pct")
+            na_warn = " ⚠️" if isinstance(na, (int, float)) and float(na) > 15 else ""
+            lines.append(f"- **漏召率**: {na if na is not None else 'n/a'}%{na_warn}")
+            lines.append(f"- **引用覆盖率**: {m.get('citation_coverage_pct', 'n/a')}%")
+            lines.append(f"- **纠错率**: {m.get('error_correction_rate_pct', 'n/a')}%")
+            lines.append(f"- **重复问题率**: {m.get('repeat_question_rate_pct', 'n/a')}%")
+            lines.append(f"- **审批触发率**: {m.get('approval_trigger_rate_pct', 'n/a')}%")
+            lines.append(f"- **权限拦截**: {m.get('permission_blocks', 'n/a')}")
+            cycles = m.get("gap_repair_cycles")
+            if cycles is not None:
+                lines.append(f"- **修复周期**: {cycles}")
+        else:
+            lines.append("- **漏召/引用等比率**: n/a（无检索流量，不展示 0% 误导项）")
     else:
         lines.append(f"- metrics unavailable（{m.get('reason', 'n/a')}）")
 
@@ -601,17 +662,23 @@ def render_kb_health_plain(report: Dict[str, Any]) -> str:
     st = report.get("stats") or {}
     week = report.get("docs_this_week") or {}
     tips = report.get("suggestions") or []
+    if h.get("insufficient_data") or h.get("score") is None:
+        score_line = f"知识库健康分: —/100（{h.get('label', '数据不足')}）"
+        rate_line = "漏召/引用比率: n/a（无检索流量）"
+    else:
+        score_line = f"知识库健康分: {h.get('score', 'n/a')}/100（{h.get('label', '-')}）"
+        rate_line = (
+            f"漏召率 {m.get('no_answer_rate_pct', 'n/a')}% | "
+            f"引用覆盖率 {m.get('citation_coverage_pct', 'n/a')}%"
+        )
     lines = [
-        f"知识库健康分: {h.get('score', 'n/a')}/100（{h.get('label', '-')}）",
+        score_line,
         (
             f"本周查询 {m.get('total_queries', 'n/a')} 次 | "
             f"文档 {st.get('documents', 'n/a')} 篇 | "
             f"新增 {week.get('count', 'n/a')} 篇"
         ),
-        (
-            f"漏召率 {m.get('no_answer_rate_pct', 'n/a')}% | "
-            f"引用覆盖率 {m.get('citation_coverage_pct', 'n/a')}%"
-        ),
+        rate_line,
         "",
         f"建议: {tips[0] if tips else '维持当前状态'}",
     ]
