@@ -752,3 +752,12 @@ pytest -q \
   - `find aiPlat-core/core/harness -maxdepth 1 -name BOUNDARY.yaml | grep -v __pycache__ | wc -l` 与 `ls -d aiPlat-core/core/harness/*/ | grep -v __pycache__ | wc -l` 相等
   - `grep -c "harness.memory" aiPlat-core/core/tests/unit/test_harness/test_memory/*.py` → 0
   - `python3 scripts/coupling_metrics.py --baseline scripts/baselines/coupling_baseline.json` → baseline OK
+
+### 1.69 应用工厂 Harness 选型叙事 + multi_agent 门禁人话（2026-10）
+- MUST：`agent_engineering` / builder prompts 明示运行时为原生 StageRunner→ReActLoop/Pipeline，**禁止**在 LangGraph/CrewAI/AutoGen/LangChain 等外部框架间选型
+- MUST：`evaluate_multi_agent_upgrade` 失败附 `summary`/`how_to_fix`/`next_actions`；`format_upgrade_fix_hint` 可读
+- 契约登记：系统契约 §5.2 #31 + 边界契约 `01-architecture-contract.md`（clause-sync）
+- 自动化验收：
+  - `grep -c "禁止.*外部" aiPlat-core/core/engine/skills/agent_engineering/SKILL.md`（≥1）
+  - `grep -c "format_upgrade_fix_hint" aiPlat-platform/builder/promotion_gate.py`（≥1）
+  - `cd aiPlat-platform && PYTHONPATH=.:../aiPlat-core python3 -m pytest tests/test_generated_conformance.py::TestPromotionGate::test_multi_upgrade_and -q`（或等价 importlib 直载 promotion_gate 冒烟）
