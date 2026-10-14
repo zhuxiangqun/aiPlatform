@@ -96,3 +96,9 @@ node packages/aiplat-pi-runtime/scripts/enterprise_hybrid_live_smoke.mjs
 ## 与厂内实验的关系
 
 混合回连属于 **厂外企业交付**，优先级高于 `FACTORY_IN_EXPERIMENT.md` 的 ReActLoop 换心。
+
+## 交付规格附录（SKU / Citation UX）
+
+hybrid live 已绿之后的产品收口规格见：
+
+- [`HYBRID_ENTERPRISE_DELIVERY.md`](./HYBRID_ENTERPRISE_DELIVERY.md) — ① 出厂交付清单与归属（A+B）② KB citation 验收（V2/V3a/V6 一期）③ 成本叙事 ④ 托管 SKU；**抄交付节奏，不抄引擎**。
