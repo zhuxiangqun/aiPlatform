@@ -5327,7 +5327,7 @@ domains:
         module: "scripts/scan_pi_bundle_delivery.py"
       - symbol: "build_delivery_cost_report"
         type: "function"
-        signature: "Aggregate cache/KB/billing + model routing policy + selection-log purpose share"
+        signature: "Aggregate cache/KB/billing + model routing + LLM/selection purpose share"
         module: "aiPlat-platform/delivery/cost_report.py"
       - symbol: "render_cost_report_markdown"
         type: "function"
