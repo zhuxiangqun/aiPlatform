@@ -1428,6 +1428,15 @@ def _resolve_llm_purpose(
             raw = src.get(key)
             if raw is not None and str(raw).strip():
                 return str(raw).strip()
+    # Same-task selection via best_model_for_purpose / get_default_model
+    try:
+        from core.harness.utils.model_injection import peek_routing_purpose
+
+        peeked = peek_routing_purpose()
+        if peeked:
+            return peeked
+    except Exception:
+        logging.getLogger(__name__).debug("peek_routing_purpose failed", exc_info=True)
     return None
 
 

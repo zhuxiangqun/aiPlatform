@@ -3470,11 +3470,15 @@ domains:
   model-infrastructure:
     section: "九"
     section_name: "模型基础设施"
-    caps_count: 5
+    caps_count: 6
     provides:
       - symbol: "best_model_for_purpose"
         type: "function"
         signature: "(purpose, messages)→model_name"
+        module: "core/harness/utils/model_injection.py"
+      - symbol: "peek_routing_purpose"
+        type: "function"
+        signature: "()→purpose|None — ContextVar for sys_llm_generate cost share"
         module: "core/harness/utils/model_injection.py"
       - symbol: "ModelTierRouter"
         type: "class"

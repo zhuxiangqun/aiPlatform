@@ -361,6 +361,7 @@ class EntityExtractor:
                 messages,
                 model_name=model_name,
                 gate_mode="minimal",
+                purpose="doc_llm",
             )
             if isinstance(result, dict):
                 return (result.get("content") or "").strip()

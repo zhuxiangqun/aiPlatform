@@ -34,6 +34,7 @@ Model injection helpers.
 
 from __future__ import annotations
 
+import contextvars
 import logging
 
 
@@ -49,7 +50,37 @@ import sqlite3
 from collections import defaultdict
 
 
+# Last best_model_for_purpose / get_default_model purpose in this async context.
+# sys_llm_generate peeks this when callers omit purpose= (delivery cost share).
+_ROUTING_PURPOSE: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+    "aiplat_routing_purpose", default=None
+)
+_ROUTING_PURPOSE_ENTRIES = frozenset({"best_model_for_purpose", "get_default_model"})
+_ROUTING_PURPOSE_SKIP = frozenset({"", "create_adapter", "default"})
 
+
+def peek_routing_purpose() -> Optional[str]:
+    """Return purpose stamped by the latest model selection in this context."""
+    try:
+        raw = _ROUTING_PURPOSE.get()
+        if raw is None:
+            return None
+        s = str(raw).strip()
+        return s or None
+    except Exception:
+        return None
+
+
+def _stamp_routing_purpose(purpose: str, entry: str) -> None:
+    if entry not in _ROUTING_PURPOSE_ENTRIES:
+        return
+    p = str(purpose or "").strip()
+    if p in _ROUTING_PURPOSE_SKIP:
+        return
+    try:
+        _ROUTING_PURPOSE.set(p)
+    except Exception:
+        logging.getLogger(__name__).debug("routing purpose stamp failed", exc_info=True)
 
 
 # ── v3.0 Route Metrics (in-memory) ────────────────────────────────
@@ -411,6 +442,8 @@ def _log_model_selection(purpose: str, selected: str, entry: str = "best_model_f
                          candidates: list = None, **extra):
 
     """Append model selection to shared audit log for observability tab."""
+
+    _stamp_routing_purpose(str(purpose or ""), str(entry or ""))
 
     try:
 

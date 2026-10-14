@@ -672,6 +672,8 @@ class ReActLoop(BaseLoop):
 
                 temperature=0.0,
 
+                purpose="reasoning",
+
             )
 
             text = str(resp).upper().strip()
@@ -5323,6 +5325,7 @@ class ReActLoop(BaseLoop):
                 [{"role": "user", "content": critique_prompt}],
                 model_name=state.context.get("model", ""),
                 max_tokens=4000,
+                purpose="reasoning",
             )
             critique_text = critique.content if hasattr(critique, "content") else str(critique)
             if not critique_text or len(critique_text) < 20:
@@ -5350,6 +5353,7 @@ class ReActLoop(BaseLoop):
                 [{"role": "user", "content": improve_prompt}],
                 model_name=state.context.get("model", ""),
                 max_tokens=4000,
+                purpose="reasoning",
             )
             improved_text = improved.content if hasattr(improved, "content") else str(improved)
             if improved_text and len(improved_text) > 20:
@@ -5504,6 +5508,8 @@ class PlanExecuteLoop(BaseLoop):
 
                 prompt,
 
+                purpose="agent",
+
                                 trace_context={
 
                                     "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
@@ -5511,6 +5517,8 @@ class PlanExecuteLoop(BaseLoop):
                                     "run_id": state.context.get("_run_id") or state.context.get("run_id"),
 
                                     "parent_span_id": state.context.get("_current_step_span_id"),
+
+                                    "purpose": "agent",
 
                                 },
 
@@ -5745,6 +5753,8 @@ class PlanExecuteLoop(BaseLoop):
 
                         prompt,
 
+                        purpose="agent",
+
                                 trace_context={
 
                                     "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
@@ -5752,6 +5762,8 @@ class PlanExecuteLoop(BaseLoop):
                                     "run_id": state.context.get("_run_id") or state.context.get("run_id"),
 
                                     "parent_span_id": state.context.get("_current_step_span_id"),
+
+                                    "purpose": "agent",
 
                                 },
 

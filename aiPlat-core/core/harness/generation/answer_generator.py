@@ -42,6 +42,7 @@ async def generate_answer(
             temperature=temperature,
             max_tokens=max_tokens,
             session_id=session_id,
+            purpose="chat",
         )
         text = getattr(resp, "content", "") or str(resp)
         answer = text.strip() if text and len(text) > 5 else ""

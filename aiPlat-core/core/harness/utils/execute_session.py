@@ -148,6 +148,7 @@ def skill_nested_llm_trace_context(
     params: Optional[Dict[str, Any]] = None,
     *,
     source: str = "skill",
+    purpose: Optional[str] = None,
     extra: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Build ``sys_llm_generate`` trace_context for nested Skill LLM calls.
@@ -155,10 +156,23 @@ def skill_nested_llm_trace_context(
     Any Agent that calls any Skill (prompt / hybrid / handler) can hang the
     orphan watchdog if the nested generate has no ``run_id``. Do not limit this
     to ``code_generation``.
+
+    ``purpose`` stamps cost-report traffic share (defaults from ``source``).
     """
     tc: Dict[str, Any] = {"source": str(source or "skill")}
     if extra:
         tc.update(extra)
+    src = str(source or "skill")
+    resolved_purpose = (
+        str(purpose).strip()
+        if purpose and str(purpose).strip()
+        else (
+            "code_gen"
+            if src in ("code_generation", "code_gen_retry")
+            else "skill_execution"
+        )
+    )
+    tc.setdefault("purpose", resolved_purpose)
     pdata = params if isinstance(params, dict) else {}
     vars_: Dict[str, Any] = {}
     try:

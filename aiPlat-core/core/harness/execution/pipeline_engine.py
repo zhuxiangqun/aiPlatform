@@ -4990,6 +4990,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                         messages=[{"role": "user", "content": str(_context or _desc or "")}],
                     ),
                     max_tokens=32000,
+                    purpose=_purpose,
                 ), timeout=getattr(stage, 'stage_timeout_seconds', 300))
                 _result = getattr(_response, "content", "") or str(_response)
                 # Record success for adaptive model selection

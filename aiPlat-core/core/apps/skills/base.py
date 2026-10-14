@@ -130,8 +130,9 @@ class TextGenerationSkill(BaseSkill):
             response = await sys_llm_generate(
                 self._model,
                 [{"role": "user", "content": prompt}],
+                purpose="skill_execution",
                 trace_context=skill_nested_llm_trace_context(
-                    context, params, source="skill_base"
+                    context, params, source="skill_base", purpose="skill_execution"
                 ),
             )
             
@@ -343,6 +344,7 @@ class CodeGenerationSkill(BaseSkill):
             response = await sys_llm_generate(
                 model,
                 msgs,
+                purpose="code_gen",
                 trace_context=_llm_tc,
                 max_tokens=8192,
             )
@@ -386,10 +388,12 @@ class CodeGenerationSkill(BaseSkill):
                 res = await sys_llm_generate(
                     model,
                     short_msgs,
+                    purpose="code_gen",
                     trace_context={
                         **_llm_tc,
                         "source": "code_gen_retry",
                         "timeout_seconds": _retry_budget,
+                        "purpose": "code_gen",
                     },
                     max_tokens=8192,
                 )
@@ -608,8 +612,9 @@ class DataAnalysisSkill(BaseSkill):
             response = await sys_llm_generate(
                 self._model,
                 [{"role": "user", "content": prompt}],
+                purpose="skill_execution",
                 trace_context=skill_nested_llm_trace_context(
-                    context, params, source="skill_base"
+                    context, params, source="skill_base", purpose="skill_execution"
                 ),
             )
             

@@ -61,7 +61,12 @@ class ChatService:
         reply = ""
         if self._model:
             from core.harness.syscalls.llm import sys_llm_generate
-            result = await sys_llm_generate(self._model, [{"role": "user", "content": full_prompt}], trace_context={"source": "chat_service"})
+            result = await sys_llm_generate(
+                self._model,
+                [{"role": "user", "content": full_prompt}],
+                purpose="chat",
+                trace_context={"source": "chat_service", "purpose": "chat"},
+            )
             reply = result if isinstance(result, str) else getattr(result, "content", str(result))
 
         session["messages"].append({"role": "assistant", "content": reply})
