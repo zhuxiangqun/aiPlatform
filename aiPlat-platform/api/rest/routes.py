@@ -4521,6 +4521,32 @@ async def kb_query(req: KBQueryRequest, request: Request):
 
         out["kb"] = _normalize_citations_with_assets(tenant_id=identity.tenant_id, data=data)
 
+    # Delivery: feed kb-health / metrics (soft-fail; never block query)
+
+    try:
+
+        from kb.query_telemetry import record_kb_query_syscall
+
+        await record_kb_query_syscall(
+
+            question=str(payload.get("question") or ""),
+
+            collection_id=str(payload.get("collection_id") or "default"),
+
+            tenant_id=str(getattr(identity, "tenant_id", "") or ""),
+
+            actor_id=str(getattr(identity, "actor_id", "") or ""),
+
+            request_id=str(getattr(identity, "request_id", "") or ""),
+
+            out=out,
+
+        )
+
+    except Exception:
+
+        pass  # noqa: telemetry soft-fail — query path must not fail
+
     return out
 
 
@@ -4576,6 +4602,30 @@ async def collection_query(request: Request):
     if isinstance(data, dict):
 
         out["kb"] = _normalize_citations_with_assets(tenant_id=identity.tenant_id, data=data)
+
+    try:
+
+        from kb.query_telemetry import record_kb_query_syscall
+
+        await record_kb_query_syscall(
+
+            question=str(payload.get("question") or ""),
+
+            collection_id=str(payload.get("collection_id") or "default"),
+
+            tenant_id=str(getattr(identity, "tenant_id", "") or ""),
+
+            actor_id=str(getattr(identity, "actor_id", "") or ""),
+
+            request_id=str(getattr(identity, "request_id", "") or ""),
+
+            out=out,
+
+        )
+
+    except Exception:
+
+        pass  # noqa: telemetry soft-fail — query path must not fail
 
     return out
 
