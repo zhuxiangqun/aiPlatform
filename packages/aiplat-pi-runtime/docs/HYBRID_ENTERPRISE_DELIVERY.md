@@ -264,6 +264,7 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 - [x] `scripts/scan_pi_bundle_delivery.py`（密钥/debug/假绿等规则）
 - [x] `export_pi_bundle.py` 导出时写入 `DELIVERY_CHECKLIST.md` + `delivery_scan.json` + `USAGE_BOUNDARY.md`
 - [x] 导出包必含 `enterprise_kb_citation.ts`（修复 KB import 断裂）
+- [x] 导出包版本戳：`BUNDLE_VERSION` + `aiplat-export.json.build`（`bundle_version` / `git_sha` / `build_time`；可用 `AIPLAT_PI_BUNDLE_VERSION` 覆盖）
 - [x] FDE 手册 §8 签收表（`docs/manuals/fde/fde-delivery-manual.md`）
 - [x] `enterprise_delivery_scan_smoke.mjs`；默认导出**不**因 warning/error 阻断（CI 可用 `--strict`）
 
@@ -285,4 +286,4 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 - [x] 规格与检查表：[`HYBRID_ENTERPRISE_KB_HEALTH.md`](./HYBRID_ENTERPRISE_KB_HEALTH.md)
 - [x] **结构化检索接线**：`kb/platform_query.py` 默认本地 FTS/LIKE（`AIPLAT_KB_QUERY_CRAG=1` 才走 `query_elements`）；不再走 prompt `knowledge_query`；响应含 `kb.items`/`citations`，Pi citation UX 与遥测可吃到真实命中
 
-**下一刀（可选）**：governance 周报 cron 归档；独立 miss-top API；无效请求专用拦截计数；V1/V5 prompt 级增强。
+**下一刀（可选）**：governance 周报 cron 归档；独立 miss-top API；无效请求专用拦截计数；V1/V5 prompt 级增强；平台 HTTP 断路器；`AIPLAT_PLATFORM_BASE_PATH` 显式挂载（弱化端口猜纠偏）。

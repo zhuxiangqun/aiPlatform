@@ -20,9 +20,11 @@ import argparse
 import json
 import os
 import shutil
+import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 
 WORKSPACE = Path(__file__).resolve().parent.parent
 RUNTIME_PKG = WORKSPACE / "packages" / "aiplat-pi-runtime"
@@ -64,6 +66,41 @@ def _resolve_runtime(*, runtime_mode: Optional[str], api_base: Optional[str]) ->
         or ""
     ).strip().rstrip("/")
     return {"mode": mode, "api_base": base}
+
+
+def _bundle_build_meta() -> Dict[str, Any]:
+    """Stamp export for supportability: version + git sha + UTC build time.
+
+    Override version with ``AIPLAT_PI_BUNDLE_VERSION``. Git lookup is best-effort
+    (offline / non-git trees → ``git_sha`` null, version still stamped).
+    """
+    build_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    git_sha: Optional[str] = None
+    try:
+        r = subprocess.run(
+            ["git", "-C", str(WORKSPACE), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if r.returncode == 0:
+            sha = (r.stdout or "").strip()
+            if sha:
+                git_sha = sha
+    except Exception:
+        git_sha = None
+    short = (git_sha[:12] if git_sha else "nogit")
+    env_ver = (os.getenv("AIPLAT_PI_BUNDLE_VERSION") or "").strip()
+    if env_ver:
+        version = env_ver
+    else:
+        version = f"{build_time[:10].replace('-', '')}-{short}"
+    return {
+        "bundle_version": version,
+        "git_sha": git_sha,
+        "build_time": build_time,
+    }
 
 
 def export_bundle(
@@ -205,6 +242,9 @@ def export_bundle(
 
 Exported from `{app_home}`.
 
+Bundle version: see `BUNDLE_VERSION` and `aiplat-export.json` → `build`
+(override with `AIPLAT_PI_BUNDLE_VERSION` at export time).
+
 ```bash
 export AIPLAT_APP_HOME={out}
 pi install {out}
@@ -238,14 +278,20 @@ Tool: `aiplat_tool_execute` → POST …/tools/{{name}}/execute.
 """
     (out / "README.md").write_text(readme, encoding="utf-8")
 
-    # convenience: record source
+    # convenience: record source + build stamp (support / 客诉定位)
+    build = _bundle_build_meta()
     meta = {
         "source_app_home": str(app_home),
         "project_id": project_id,
         "scheme": "A",
         "skills_copied": True,
         "runtime": runtime,
+        "build": build,
+        "bundle_version": build["bundle_version"],
     }
+    (out / "BUNDLE_VERSION").write_text(
+        str(build["bundle_version"]) + "\n", encoding="utf-8"
+    )
     (out / "aiplat-export.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )

@@ -82,7 +82,16 @@ try {
   assert(checklist.includes("FDE / 交付负责人签收"), "checklist has FDE sign-off");
   const meta = JSON.parse(fs.readFileSync(path.join(out, "aiplat-export.json"), "utf8"));
   assert(meta.delivery_scan && typeof meta.delivery_scan.ok === "boolean", "meta.delivery_scan");
-  console.log("PASS: export embeds citation + checklist + cost + kb-health");
+  assert(fs.existsSync(path.join(out, "BUNDLE_VERSION")), "BUNDLE_VERSION file");
+  const bv = fs.readFileSync(path.join(out, "BUNDLE_VERSION"), "utf8").trim();
+  assert(bv.length > 0, "BUNDLE_VERSION non-empty");
+  assert(meta.bundle_version === bv, "meta.bundle_version matches BUNDLE_VERSION");
+  assert(meta.build && meta.build.build_time, "meta.build.build_time");
+  assert(
+    typeof meta.build.git_sha === "string" || meta.build.git_sha === null,
+    "meta.build.git_sha string|null",
+  );
+  console.log("PASS: export embeds citation + checklist + cost + kb-health + BUNDLE_VERSION");
 } finally {
   fs.rmSync(out, { recursive: true, force: true });
 }
