@@ -62,6 +62,7 @@ async def auto_fix_loop(
                                 ),
                             },
                         ],
+                        purpose="code_gen",
                     )
                     patch = _parse_patch(str(patch_resp))
                     if patch.get("old") is not None and patch.get("new") is not None:

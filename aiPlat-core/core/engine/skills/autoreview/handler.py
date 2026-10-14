@@ -206,6 +206,7 @@ async def _single_review(diff, focus: str) -> ReviewReport:
             },
         ],
         model_name=best_model_for_purpose("reasoning"),
+        purpose="reasoning",
     )
 
     # P2 — code_gen
@@ -219,6 +220,7 @@ async def _single_review(diff, focus: str) -> ReviewReport:
             },
         ],
         model_name=best_model_for_purpose("code_gen"),
+        purpose="code_gen",
     )
 
     return ReviewReport.merge(str(resp_p0), str(resp_p2))
@@ -240,6 +242,7 @@ async def _quick_panel_review(diff, focus: str, preset: dict) -> ReviewReport:
             ],
             model_name=model,
             temperature=ref_temp,
+            purpose="reasoning",
             extra_context={"_active_skill": "autoreview"},
         )
         for model, role_prompt in engines
@@ -268,6 +271,7 @@ async def _deep_panel_review(diff, focus: str, preset: dict) -> ReviewReport:
             ],
             model_name=model,
             temperature=ref_temp,
+            purpose="reasoning",
             extra_context={"_active_skill": "autoreview"},
         )
         for model, role_prompt in engines
@@ -290,6 +294,7 @@ async def _deep_panel_review(diff, focus: str, preset: dict) -> ReviewReport:
         ],
         model_name=aggregator_model,
         temperature=agg_temp,
+        purpose="reasoning",
         extra_context={"_active_skill": "autoreview"},
     )
 
@@ -391,6 +396,7 @@ async def review_file(
                 {"role": "user", "content": prompt + "\n" + fspec["reasoning"]},
             ],
             model_name=best_model_for_purpose("reasoning"),
+            purpose="reasoning",
         )
 
     if need_code_gen:
@@ -400,6 +406,7 @@ async def review_file(
                 {"role": "user", "content": prompt + "\n" + fspec["code_gen"]},
             ],
             model_name=best_model_for_purpose("code_gen"),
+            purpose="code_gen",
         )
 
     report = ReviewReport.merge(str(resp_p0), str(resp_p2))

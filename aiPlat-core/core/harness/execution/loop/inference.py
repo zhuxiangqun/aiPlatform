@@ -530,6 +530,14 @@ async def reason(
         if isinstance(rs, dict):
             prompt += "\n\n" + format_run_state_for_prompt(rs)
     try:
+        # Cost-report metering: prefer explicit purpose from stage/agent context.
+        _llm_purpose = str(
+            state.context.get("_llm_purpose")
+            or state.context.get("llm_purpose")
+            or state.context.get("model_purpose")
+            or state.context.get("skill_model_purpose")
+            or "agent"
+        ).strip() or "agent"
         trace_ctx = {
             "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
             "run_id": state.context.get("_run_id") or state.context.get("run_id"),
@@ -541,6 +549,7 @@ async def reason(
                 or state.context.get("coding_policy_profile")
                 or ""
             ),
+            "purpose": _llm_purpose,
         }
         # Explicit opt-in only (AGENT.md / caller); never inferred for "doc agents".
         if state.context.get("_skip_claude_md"):
@@ -565,7 +574,8 @@ async def reason(
             logging.debug("pre_llm_prep close-before-generate failed", exc_info=True)
         response = await sys_llm_generate(model, prompt,
             trace_context=trace_ctx,
-            model_name=config.model_name)
+            model_name=config.model_name,
+            purpose=_llm_purpose)
         # P1-2: track token usage after the call for pre-estimation + pre-compaction before the next call
         # Persist / fact-extract must never wedge ReAct before routing (run-1a2dd /
         # qa_agent run-44724b8b8107: generate=success then post_llm_zombie).
@@ -633,7 +643,8 @@ async def reason(
                         system_text=system_text, last_text=last_text,
                         task=state.context.get('task', ''))
                     response = await sys_llm_generate(model, emergency_prompt,
-                        trace_context=trace_ctx, model_name=config.model_name)
+                        trace_context=trace_ctx, model_name=config.model_name,
+                        purpose=_llm_purpose)
                     return response.content if hasattr(response, "content") else str(response)
             except Exception as e:
                 logging.warning(str(e), exc_info=True)

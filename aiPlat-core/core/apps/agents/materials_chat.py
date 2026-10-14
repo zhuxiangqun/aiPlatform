@@ -268,6 +268,7 @@ class MaterialsChatAgent(BaseAgent):
                 model,
                 messages,
                 session_id=None,
+                purpose="chat",
                 trace_context={"skip_claude_md": True, "purpose": "chat"},
             )
             answer = (getattr(resp, "content", None) or str(resp) or "").strip()

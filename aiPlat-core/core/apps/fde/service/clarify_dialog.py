@@ -270,6 +270,7 @@ async def _extract_pending_questions(session_id: str = "", report_text: str = ""
                 resp = await sys_llm_generate(
                     None, [{"role": "user", "content": extract_prompt}],
                     model_name=model_name, max_tokens=300, temperature=0.1,
+                    purpose="clarify",
                 )
                 content = str(getattr(resp, "content", "") or "{}")
                 content = content.replace("```json", "").replace("```", "").strip()
@@ -438,7 +439,8 @@ async def run_clarify_turn(req: ClarifyTurnInput) -> Dict[str, Any]:
                     None, [{"role": "user", "content": extract_prompt}],
                     model_name=model_name, max_tokens=150, temperature=0.1,
                     session_id=mem_key or None,
-                    trace_context={"skip_claude_md": True},
+                    purpose="clarify",
+                    trace_context={"skip_claude_md": True, "purpose": "clarify"},
                 )
                 content_raw = str(getattr(resp, "content", "") or "")
                 try:
@@ -552,7 +554,8 @@ async def run_clarify_turn(req: ClarifyTurnInput) -> Dict[str, Any]:
                     None, [{"role": "user", "content": gen_prompt}],
                     model_name=model_name, max_tokens=200, temperature=0.3,
                     session_id=mem_key or None,
-                    trace_context={"skip_claude_md": True},
+                    purpose="clarify",
+                    trace_context={"skip_claude_md": True, "purpose": "clarify"},
                 )
                 try:
                     result = json.loads(str(getattr(resp, "content", "") or "{}"))
