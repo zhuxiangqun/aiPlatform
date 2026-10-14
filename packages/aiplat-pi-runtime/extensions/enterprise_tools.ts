@@ -1,8 +1,11 @@
 /**
  * Factory-out hybrid (enterprise): allowlisted tool execute via aiPlat core HTTP.
  *
- * Requires AIPLAT_ENTERPRISE=1 + URL/token (same gate as KB) **and**
- * AIPLAT_ENTERPRISE_TOOLS=comma-separated allowlist (empty → tools off).
+ * Requires AIPLAT_ENTERPRISE=1 + URL/token (same gate as KB) **and** an allowlist:
+ * - Flat: ``AIPLAT_ENTERPRISE_TOOLS=a,b`` (legacy; all treated as L2)
+ * - Tiered: ``AIPLAT_ENTERPRISE_TOOLS_L1|L2|L3`` (L1 read / L2 compute / L3 write)
+ *   + optional ``AIPLAT_ENTERPRISE_TOOL_CEILING=L1|L2|L3`` (default L3)
+ * L3 execute requires ``AIPLAT_ENTERPRISE_APPROVAL=1`` (fail closed).
  * Soft-fails if platform unreachable. RBAC / PolicyGate stay on the server.
  */
 import { Type } from "@earendil-works/pi-ai";
@@ -18,20 +21,77 @@ import {
   type EnterpriseConfig,
 } from "./enterprise_kb";
 
+/** Risk tier: 1=read-only, 2=compute, 3=write / high-risk (needs approval bridge). */
+export type ToolTier = 1 | 2 | 3;
+
 export type ToolProxyConfig = EnterpriseConfig & {
   toolsEnabled: boolean;
   allowlist: string[];
+  /** tool_name → tier (only present for allowlisted names) */
+  tiers: Record<string, ToolTier>;
+  /** Max tier allowed in this session */
+  ceiling: ToolTier;
+  /** flat = only AIPLAT_ENTERPRISE_TOOLS; tiered = L1/L2/L3 envs present */
+  tierMode: "flat" | "tiered";
   coreBaseUrl: string;
   reasonToolsOff: string;
 };
 
-function parseAllowlist(): string[] {
-  const raw = (process.env.AIPLAT_ENTERPRISE_TOOLS || "").trim();
-  if (!raw) return [];
-  return raw
+function parseNameList(raw: string): string[] {
+  const s = String(raw || "").trim();
+  if (!s) return [];
+  return s
     .split(/[,;\s]+/)
-    .map((s) => s.trim())
+    .map((x) => x.trim())
     .filter(Boolean);
+}
+
+function parseAllowlist(): string[] {
+  return parseNameList(process.env.AIPLAT_ENTERPRISE_TOOLS || "");
+}
+
+function parseCeiling(): ToolTier {
+  const raw = (process.env.AIPLAT_ENTERPRISE_TOOL_CEILING || "L3").trim().toUpperCase();
+  if (raw === "1" || raw === "L1") return 1;
+  if (raw === "2" || raw === "L2") return 2;
+  return 3;
+}
+
+function approvalBridgeEnabled(): boolean {
+  const v = (process.env.AIPLAT_ENTERPRISE_APPROVAL || "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes" || v === "on";
+}
+
+/**
+ * Build allowlist + tier map. Tiered mode when any L1/L2/L3 env is non-empty;
+ * flat ``AIPLAT_ENTERPRISE_TOOLS`` still merges as L2 when tiered.
+ */
+export function resolveToolAllowlist(): {
+  allowlist: string[];
+  tiers: Record<string, ToolTier>;
+  ceiling: ToolTier;
+  tierMode: "flat" | "tiered";
+} {
+  const l1 = parseNameList(process.env.AIPLAT_ENTERPRISE_TOOLS_L1 || "");
+  const l2 = parseNameList(process.env.AIPLAT_ENTERPRISE_TOOLS_L2 || "");
+  const l3 = parseNameList(process.env.AIPLAT_ENTERPRISE_TOOLS_L3 || "");
+  const flat = parseAllowlist();
+  const ceiling = parseCeiling();
+  const tiered = l1.length + l2.length + l3.length > 0;
+  const tiers: Record<string, ToolTier> = {};
+  if (!tiered) {
+    for (const n of flat) tiers[n] = 2;
+    const allowlist = Object.keys(tiers).filter((n) => (tiers[n] as number) <= ceiling);
+    return { allowlist, tiers, ceiling, tierMode: "flat" };
+  }
+  for (const n of l1) tiers[n] = 1;
+  for (const n of l2) tiers[n] = 2;
+  for (const n of l3) tiers[n] = 3;
+  for (const n of flat) {
+    if (!(n in tiers)) tiers[n] = 2;
+  }
+  const allowlist = Object.keys(tiers).filter((n) => (tiers[n] as number) <= ceiling);
+  return { allowlist, tiers, ceiling, tierMode: "tiered" };
 }
 
 /** Ensure base ends at the FastAPI prefix that mounts tools (`/api/core`). */
@@ -89,32 +149,33 @@ export function toolExecuteUrl(coreBase: string, toolName: string): string {
 
 export function loadToolProxyConfig(cfg?: EnterpriseConfig): ToolProxyConfig {
   const c = cfg || loadEnterpriseConfig();
-  const allowlist = parseAllowlist();
+  const resolved = resolveToolAllowlist();
+  const { allowlist, tiers, ceiling, tierMode } = resolved;
   const coreBaseUrl = resolveCoreBaseUrl(c.baseUrl);
+  const baseOff = {
+    ...c,
+    toolsEnabled: false as const,
+    allowlist,
+    tiers,
+    ceiling,
+    tierMode,
+    coreBaseUrl,
+  };
   if (!c.enabled) {
-    return {
-      ...c,
-      toolsEnabled: false,
-      allowlist,
-      coreBaseUrl,
-      reasonToolsOff: c.reasonOff || "enterprise off",
-    };
+    return { ...baseOff, reasonToolsOff: c.reasonOff || "enterprise off" };
   }
   if (!allowlist.length) {
     return {
-      ...c,
-      toolsEnabled: false,
-      allowlist,
-      coreBaseUrl,
-      reasonToolsOff: "AIPLAT_ENTERPRISE_TOOLS empty (allowlist required)",
+      ...baseOff,
+      reasonToolsOff:
+        tierMode === "tiered"
+          ? "no tools at or below AIPLAT_ENTERPRISE_TOOL_CEILING (set L1/L2/L3 and/or raise ceiling)"
+          : "AIPLAT_ENTERPRISE_TOOLS empty (allowlist required)",
     };
   }
   if (!coreBaseUrl) {
     return {
-      ...c,
-      toolsEnabled: false,
-      allowlist,
-      coreBaseUrl,
+      ...baseOff,
       reasonToolsOff: "AIPLAT_CORE_URL / core base unresolved",
     };
   }
@@ -122,6 +183,9 @@ export function loadToolProxyConfig(cfg?: EnterpriseConfig): ToolProxyConfig {
     ...c,
     toolsEnabled: true,
     allowlist,
+    tiers,
+    ceiling,
+    tierMode,
     coreBaseUrl,
     reasonToolsOff: "",
   };
@@ -147,10 +211,27 @@ export async function executeEnterpriseTool(
   const name = String(toolName || "").trim();
   if (!name) return { ok: false, text: "", error: "tool_name required" };
   if (!c.allowlist.includes(name)) {
+    const tier = c.tiers[name];
+    if (tier && tier > c.ceiling) {
+      return {
+        ok: false,
+        text: "",
+        error: `tool_above_ceiling: ${name} is L${tier} but ceiling=L${c.ceiling}`,
+      };
+    }
     return {
       ok: false,
       text: "",
       error: `tool_not_allowlisted: ${name} (allowed=${c.allowlist.join(",")})`,
+    };
+  }
+  const tier = c.tiers[name] ?? 2;
+  if (tier >= 3 && !approvalBridgeEnabled()) {
+    return {
+      ok: false,
+      text: "",
+      error:
+        "l3_requires_approval: set AIPLAT_ENTERPRISE_APPROVAL=1 before L3 (write) tools",
     };
   }
   const url = toolExecuteUrl(c.coreBaseUrl, name);
@@ -243,12 +324,18 @@ function summarizeToolResponse(toolName: string, parsed: unknown): string {
 
 export function toolProxyStatusLines(cfg?: ToolProxyConfig): string[] {
   const c = cfg || loadToolProxyConfig();
+  const tierSummary = Object.entries(c.tiers || {})
+    .map(([n, t]) => `${n}=L${t}`)
+    .join(",") || "(empty)";
   return [
     "aiPlat enterprise tool proxy",
     `tools_enabled=${c.toolsEnabled}`,
     `reason_tools_off=${c.reasonToolsOff || "-"}`,
     `core_base=${c.coreBaseUrl || "(none)"}`,
+    `tier_mode=${c.tierMode}`,
+    `ceiling=L${c.ceiling}`,
     `allowlist=${c.allowlist.join(",") || "(empty)"}`,
+    `tiers=${tierSummary}`,
     c.toolsEnabled ? "AIPLAT_ENTERPRISE_TOOLS_ON" : "AIPLAT_ENTERPRISE_TOOLS_OFF",
   ];
 }
@@ -261,9 +348,11 @@ export function registerEnterpriseTools(pi: ExtensionAPI): boolean {
     name: "aiplat_tool_execute",
     label: "aiPlat Tool Execute",
     description:
-      "Execute an allowlisted aiPlat platform tool via HTTP (hybrid). Only tools in AIPLAT_ENTERPRISE_TOOLS. Soft-fails if platform down.",
+      "Execute an allowlisted aiPlat platform tool via HTTP (hybrid). Flat AIPLAT_ENTERPRISE_TOOLS or tiered L1/L2/L3 (ceiling). L3 needs approval bridge. Soft-fails if platform down.",
     parameters: Type.Object({
-      tool_name: Type.String({ description: "Registered tool name (must be allowlisted)" }),
+      tool_name: Type.String({
+        description: "Registered tool name (must be allowlisted at or below TOOL_CEILING)",
+      }),
       params_json: Type.Optional(
         Type.String({
           description: 'Tool input as JSON object string, e.g. {"operation":"read","path":"..."}',
@@ -331,11 +420,16 @@ export function registerEnterpriseTools(pi: ExtensionAPI): boolean {
 export function toolProxySystemPromptAddon(cfg?: ToolProxyConfig): string {
   const c = cfg || loadToolProxyConfig();
   if (!c.toolsEnabled) return "";
+  const tierHint =
+    c.tierMode === "tiered"
+      ? `tiers=L1(read)/L2(compute)/L3(write); ceiling=L${c.ceiling}; L3 requires approval bridge.`
+      : "flat allowlist (legacy; treated as L2).";
   return [
     "",
     "## aiPlat Enterprise Tool Proxy",
     "Hybrid mode: use tool aiplat_tool_execute for allowlisted platform tools only.",
     `allowlist=${c.allowlist.join(", ")}`,
+    tierHint,
     "If the tool fails, continue with package skills/handler — do not invent tool results.",
   ].join("\n");
 }

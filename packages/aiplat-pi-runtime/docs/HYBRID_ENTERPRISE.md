@@ -30,7 +30,11 @@
 | `AIPLAT_TENANT_TOKEN` / API Key | 身份注入；权限判断在平台 PolicyGate / RBAC |
 | `AIPLAT_ENTERPRISE=1` | 启用回连意图；未设则严格 Pi-only。**同时默认打开原生工具门禁**（无需 URL/token） |
 | `AIPLAT_KB_COLLECTION_ID` | KB 集合（默认 `default`） |
-| `AIPLAT_ENTERPRISE_TOOLS` | **工具允许列表**（逗号分隔）。空 = 工具代理关闭（仅 KB） |
+| `AIPLAT_ENTERPRISE_TOOLS` | **工具允许列表**（逗号分隔，扁平/兼容）。空且未设 L1/L2/L3 = 工具代理关闭（仅 KB） |
+| `AIPLAT_ENTERPRISE_TOOLS_L1` | 可选；只读工具分级列表（如检索/列表） |
+| `AIPLAT_ENTERPRISE_TOOLS_L2` | 可选；计算类工具分级列表 |
+| `AIPLAT_ENTERPRISE_TOOLS_L3` | 可选；写操作/高风险工具；执行须 `AIPLAT_ENTERPRISE_APPROVAL=1` |
+| `AIPLAT_ENTERPRISE_TOOL_CEILING` | 可选；会话最高工具等级 `L1`/`L2`/`L3`（默认 `L3`）。高于 ceiling 的工具不进 allowlist |
 | `AIPLAT_ENTERPRISE_ALLOW_NATIVE=1` | 信任运维逃生：关闭原生门禁（bash/write 等恢复） |
 | `AIPLAT_ENTERPRISE_TOOL_GATE=0` | 仅关闭原生门禁，保留 KB/工具混合 |
 | `AIPLAT_ENTERPRISE_NATIVE_ALLOWLIST` | 额外放行原生工具（可覆盖默认 block，如 `bash`） |
