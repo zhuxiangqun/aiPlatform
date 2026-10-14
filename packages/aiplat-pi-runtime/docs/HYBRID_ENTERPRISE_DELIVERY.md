@@ -278,6 +278,8 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 - [x] `delivery/kb_health.py`（score 公式 + metrics/stats/cache + 建议）
 - [x] `GET /platform/delivery/kb-health`；导出 `KB_HEALTH.md`；`/aiplat-kb-health`
 - [x] 漏召/低置信 TOP best-effort（syscall_events）；无数据不阻断
+- [x] 零流量 → `insufficient_data` / 「数据不足」（不编造 60 分）
+- [x] `kb/query_telemetry.py`：`POST /platform/kb/query`（及 collections/query）写 `knowledge_retrieve`/`platform_kb_retrieve`
 - [x] 规格与检查表：[`HYBRID_ENTERPRISE_KB_HEALTH.md`](./HYBRID_ENTERPRISE_KB_HEALTH.md)
 
 **下一刀（可选）**：governance 周报 cron 归档；独立 miss-top API；无效请求专用拦截计数；V1/V5 prompt 级增强。
