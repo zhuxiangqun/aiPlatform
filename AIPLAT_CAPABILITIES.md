@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2119
+total_capabilities: 2121
 last_updated: 2026-10-11
 version: "30.10"
 auto_sync: true
@@ -1211,6 +1211,8 @@ scan_hash: 8f9548ec24f4
 | agent 消息总线（agent_messages） | governance/agent_messages.py（AgentMessageStore/register/unregister/send/inbox/list_agents）+ api/rest/routes.py 端点 /governance/agents* + builder/_register_generated_agent_to_bus | ✅ | 运行中 agent 注册（身份/通知层）→ 点对点邮箱（非用户中转）；**不是**工厂运行时契约协同主路径。协同主路径：Pipeline + stage_handoff / skill_routing + schema 门 + HITL。纪律：不做无门控互调。生成物适用：**已接线（身份注册）**；契约协同走 handoff/hop gate | 已合入 |
 | Pi 薄 Runtime 导出（Agent 用户侧） | `packages/aiplat-pi-runtime/` + `scripts/export_pi_bundle.py` + `builder/pi_bundle_export.py` + `POST …/export-pi-bundle` + `GET …/export-pi-bundle.zip` + deploy `pi_bundle` + 管理端导出/下载 ZIP + `docs/architecture/plans/pi-thin-runtime.md` | ✅ | **产品锁定**：默认 **Pi-only**；企业混合阶梯 1–5：KB + 工具 + 原生门禁 + Memory + 审批等待。SOP+skills+handler；**不**搬 PolicyGate/MemoryManager/ApprovalGate。厂内编码核实验未接引擎。生成物适用：**已接线**（Pi-only + 混合） | 已合入 |
 | Pi 企业混合 KB 回连 | `packages/aiplat-pi-runtime/extensions/enterprise_kb.ts` + `aiplat-app.ts` + `scripts/enterprise_kb_smoke.mjs` + `enterprise_platform_url_smoke.mjs` | ✅ | 厂外 opt-in：`aiplat_kb_retrieve` / `/aiplat-enterprise`；`normalizePlatformBaseUrl` 纠偏 `:8003/api` 脚枪；软失败；门禁留在平台。生成物适用：**已接线**（导出包同扩展） | 已合入 |
+| Pi 企业 KB citation 契约 | `packages/aiplat-pi-runtime/extensions/enterprise_kb_citation.ts` + `enterprise_kb.ts` + `scripts/enterprise_kb_citation_smoke.mjs` + `HYBRID_ENTERPRISE_DELIVERY.md` §3 | ✅ | V2 空结果固定开场、V3a Markdown 参考文献（≤200 字）、V6 top-5；`AIPLAT_ENTERPRISE_KB_CITATION` 可关；零新 RAG。生成物适用：**已接线**（导出包须含 citation 模块） | 已合入 |
+| Pi 出厂交付扫描（A+B） | `scripts/scan_pi_bundle_delivery.py` + `export_pi_bundle.py` 接线 + `DELIVERY_CHECKLIST.md` / `USAGE_BOUNDARY.md` + FDE 手册 §8 | ✅ | 导出时自动扫描密钥/debug/假绿痕迹并生成签收清单；FDE 人工勾选。生成物适用：**已接线**（Pi 包出厂） | 已合入 |
 | Pi 企业混合工具代理 | `packages/aiplat-pi-runtime/extensions/enterprise_tools.ts` + `aiplat-app.ts` + `scripts/enterprise_tools_smoke.mjs` | ✅ | 厂外 opt-in：`aiplat_tool_execute`；须 `AIPLAT_ENTERPRISE_TOOLS` 允许列表；空列表=关闭；软失败；RBAC/PolicyGate 在 Core。生成物适用：**已接线**（导出包同扩展） | 已合入 |
 | Pi 企业原生工具门禁桥 | `packages/aiplat-pi-runtime/extensions/enterprise_tool_gate.ts` + `aiplat-app.ts` + `scripts/enterprise_tool_gate_smoke.mjs` | ✅ | `AIPLAT_ENTERPRISE=1` 时默认 `tool_call` block bash/write/edit/powershell + `setActiveTools`；只读 native 默认放行；`aiplat_*` 始终放行；逃生 `ALLOW_NATIVE` / `TOOL_GATE=0` / `NATIVE_ALLOWLIST`。生成物适用：**已接线**（导出包同扩展；不搬 PolicyGate） | 已合入 |
 | Pi 企业 Memory 回写桥 | `packages/aiplat-pi-runtime/extensions/enterprise_memory.ts` + `aiplat-app.ts` + `scripts/enterprise_memory_smoke.mjs` | ✅ | opt-in：`AIPLAT_ENTERPRISE_MEMORY=1` → `aiplat_memory_capture` + `/aiplat-memory` + `session_shutdown` 软 flush → `POST /platform/memory/capture`；失败不阻断本地会话。生成物适用：**已接线**（导出包同扩展；不搬 MemoryManager） | 已合入 |
@@ -2709,6 +2711,9 @@ scan_hash: 8f9548ec24f4
 ## 二十五、管理 & 质量
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| write_scan_artifacts | `scripts/scan_pi_bundle_delivery.py` | ✅ | 自动同步 | 已合入 |
+| extractKbSourceItems | `packages/aiplat-pi-runtime/extensions/enterprise_kb_citation.ts` | ✅ | 自动同步 | 已合入 |
+| formatKbCitationResponse | `packages/aiplat-pi-runtime/extensions/enterprise_kb_citation.ts` | ✅ | 自动同步 | 已合入 |
 | _store / _approval_mgr lazy | `aiPlat-platform/api/routers/approvals.py` | ✅ | 自动同步 | 已合入 |
 | waitForApproval | `packages/aiplat-pi-runtime/extensions/enterprise_approval.ts` | ✅ | 自动同步 | 已合入 |
 | loadApprovalBridgeConfig | `packages/aiplat-pi-runtime/extensions/enterprise_approval.ts` | ✅ | 自动同步 | 已合入 |
@@ -3036,7 +3041,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 248 | 1 | 249 |
 | 记忆子系统 | 58 | 0 | 58 |
-| 知识引擎（本体） | 365 | 9 | 374 |
+| 知识引擎（本体） | 367 | 9 | 376 |
 | RAG 检索 | 51 | 0 | 51 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 168 | 0 | 168 |
@@ -3079,7 +3084,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2109** | **10** | **2119** |
+| **总计** | **2111** | **10** | **2121** |
 
 | **总计** | **1095** | **0** | **1095** |
 
