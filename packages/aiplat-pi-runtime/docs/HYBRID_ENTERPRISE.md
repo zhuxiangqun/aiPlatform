@@ -47,6 +47,10 @@
 | `AIPLAT_ENTERPRISE_APPROVAL_WAIT_MS` | 等待超时（默认 120000） |
 | `AIPLAT_ENTERPRISE_KB_CITATION` | KB 引用契约（V2/V3a/V6）。enterprise 下**默认开**；设 `0`/`false` 可关（回退旧版片段 dump）。见 [`HYBRID_ENTERPRISE_DELIVERY.md`](./HYBRID_ENTERPRISE_DELIVERY.md) §3 |
 | `AIPLAT_ENTERPRISE_KB_CITATION_EXPAND` | V3b：`1` 时参考文献用 HTML `<details>` 可展开；默认关（V3a 纯文本头） |
+| `AIPLAT_L3_DUTY_CONTACT` | L3 专属值班联系人/邮箱（未设则值班页标 unavailable，不编造） |
+| `AIPLAT_L3_DUTY_CHANNEL` | 可选；值班通道（如飞书群/热线） |
+| `AIPLAT_L3_DUTY_HOURS` | 可选；值守时段说明（默认话术「按托管协议 SLA」） |
+| `AIPLAT_DELIVERY_COST_CNY_PER_CACHE_HIT` | 可选；成本页缓存节省估算单价（未设不展示 ¥） |
 
 ## 术语（本文档体系）
 
@@ -137,3 +141,14 @@ hybrid live 已绿之后的产品收口规格见：
 
 - [`HYBRID_ENTERPRISE_DELIVERY.md`](./HYBRID_ENTERPRISE_DELIVERY.md) — ① 出厂交付清单与归属（A+B）② KB citation 验收（V2/V3a/V6 一期 + P1 低置信/去重/E2E）③ 成本叙事 ④ 托管 SKU；**抄交付节奏，不抄引擎**。
 - [`HYBRID_ENTERPRISE_KB_HEALTH.md`](./HYBRID_ENTERPRISE_KB_HEALTH.md) — ④ 库健康分面板：`GET /platform/delivery/kb-health` + 导出 `KB_HEALTH.md` + `/aiplat-kb-health`；一期用 metrics/stats/cache；漏召/低置信 TOP best-effort（syscall_events）。
+
+### 客户可见交付出口（平台已接线）
+
+| SKU / 页 | API | Pi / 导出 |
+|----------|-----|-----------|
+| 成本页 §4 | `GET /platform/delivery/cost-report` | 导出 `COST_REPORT.md` |
+| L2 库健康 | `GET /platform/delivery/kb-health`（另 `miss-top` / `low-confidence-top` / `cache-stats`） | `/aiplat-kb-health` · `KB_HEALTH.md` |
+| L1 月报 | `GET /platform/delivery/monthly-ops-report` | 导出 `MONTHLY_OPS_REPORT.md` |
+| L3 值班台 | `GET /platform/delivery/l3-duty-desk` | `/aiplat-duty` · `L3_DUTY_DESK.md` |
+
+开通 L3 时至少配置 `AIPLAT_L3_DUTY_CONTACT`（及可选 `CHANNEL`/`HOURS`）；改路由后需重启 platform 进程。
