@@ -266,7 +266,7 @@ Pi enterprise 模式下可加一个 `/aiplat-kb-health` slash command：
 - [x] 漏召 / 低置信 TOP：从 `syscall_events` best-effort 聚合（无 store 时 unavailable，不阻断一期）
 - [x] 缓存命中率：复用 `cost_report._cache_stats`（进程内；非独立 `/kb/cache-stats`）
 - [x] 「建议补哪些文档」优先用漏召 TOP，否则用漏召率/引用覆盖率叙事
-- [ ] 独立 `GET /platform/kb/miss-top` / `low-confidence-top` / `cache-stats`（可后续拆出）
+- [x] 独立 `GET /platform/kb/miss-top` / `low-confidence-top`（复用 `_miss_and_low_top`；`cache-stats` 仍可后续拆出）
 
 ---
 
