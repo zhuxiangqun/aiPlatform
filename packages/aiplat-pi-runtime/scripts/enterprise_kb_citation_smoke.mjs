@@ -19,6 +19,7 @@ async function main() {
     KB_EMPTY_PREFIX,
     MAX_KB_SOURCES,
     MAX_SNIPPET_CHARS,
+    LOW_CONFIDENCE_THRESHOLD,
     formatKbCitationResponse,
     extractKbSourceItems,
   } = m;
@@ -69,7 +70,54 @@ async function main() {
   assert(legacy.includes("AIPLAT_MOCK_KB_OK"), "legacy keeps text");
   assert(!legacy.includes("── 参考文献 ──"), "legacy no ref block");
 
-  console.log("PASS: enterprise_kb_citation V2/V3a/V6");
+  // B: source deduplication — same doc_id, keep highest-score snippet
+  const dupItems = [
+    { text: "snippet-a-high", doc_id: "doc-A.pdf", score: 0.9 },
+    { text: "snippet-a-low", doc_id: "doc-A.pdf", score: 0.5 },
+    { text: "snippet-b", doc_id: "doc-B.pdf", score: 0.7 },
+  ];
+  const dupExtracted = extractKbSourceItems({ kb: { items: dupItems } });
+  assert(dupExtracted.length === 2, `B: dedup to 2 sources, got ${dupExtracted.length}`);
+  assert(dupExtracted[0].source === "doc-A.pdf", "B: highest score first");
+  assert(dupExtracted[0].text === "snippet-a-high", "B: kept highest-score snippet");
+  const dupResult = formatKbCitationResponse({ kb: { items: dupItems } });
+  assert(!dupResult.includes("snippet-a-low"), "B: dropped lower-score duplicate in output");
+  assert(dupResult.includes("doc-B.pdf"), "B: distinct source still present");
+
+  // A: low-confidence warning — all scores below threshold
+  const lowConfItems = [
+    { text: "low-1", doc_id: "doc-low-1.pdf", score: 0.3 },
+    { text: "low-2", doc_id: "doc-low-2.pdf", score: 0.2 },
+  ];
+  const lowConfResult = formatKbCitationResponse({ kb: { items: lowConfItems } });
+  assert(lowConfResult.includes("置信度较低"), "A: low-confidence warning present");
+  assert(lowConfResult.includes("── 参考文献 ──"), "A: ref block still present with low confidence");
+
+  // A: high-confidence — no warning
+  const highConfItems = [
+    { text: "high-1", doc_id: "doc-high-1.pdf", score: 0.8 },
+    { text: "high-2", doc_id: "doc-high-2.pdf", score: 0.7 },
+  ];
+  const highConfResult = formatKbCitationResponse({ kb: { items: highConfItems } });
+  assert(!highConfResult.includes("置信度较低"), "A: no warning when scores are high");
+
+  // A: no scores provided — no warning (can't determine confidence)
+  const noScoreItems = [
+    { text: "no-score-1", doc_id: "doc-ns-1.pdf" },
+    { text: "no-score-2", doc_id: "doc-ns-2.pdf" },
+  ];
+  const noScoreResult = formatKbCitationResponse({ kb: { items: noScoreItems } });
+  assert(!noScoreResult.includes("置信度较低"), "A: no warning when scores not provided");
+
+  // A: mixed scores (some high, some low) — no warning
+  const mixedItems = [
+    { text: "mixed-high", doc_id: "doc-mh.pdf", score: 0.9 },
+    { text: "mixed-low", doc_id: "doc-ml.pdf", score: 0.2 },
+  ];
+  const mixedResult = formatKbCitationResponse({ kb: { items: mixedItems } });
+  assert(!mixedResult.includes("置信度较低"), "A: no warning when some scores are high");
+
+  console.log("PASS: enterprise_kb_citation V2/V3a/V6 + dedup + low-confidence");
   console.log("AIPLAT_ENTERPRISE_KB_CITATION_SMOKE_OK");
 }
 

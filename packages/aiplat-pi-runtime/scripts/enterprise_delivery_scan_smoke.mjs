@@ -64,11 +64,18 @@ try {
   assert(fs.existsSync(path.join(out, "DELIVERY_CHECKLIST.md")), "DELIVERY_CHECKLIST.md");
   assert(fs.existsSync(path.join(out, "delivery_scan.json")), "delivery_scan.json");
   assert(fs.existsSync(path.join(out, "USAGE_BOUNDARY.md")), "USAGE_BOUNDARY.md");
+  assert(fs.existsSync(path.join(out, "COST_REPORT.md")), "COST_REPORT.md");
+  const costMd = fs.readFileSync(path.join(out, "COST_REPORT.md"), "utf8");
+  assert(costMd.includes("成本页"), "cost report has 成本页 title");
+  assert(
+    costMd.includes("未配置单价") || costMd.includes("缓存"),
+    "cost report mentions cache or pricing caveat",
+  );
   const checklist = fs.readFileSync(path.join(out, "DELIVERY_CHECKLIST.md"), "utf8");
   assert(checklist.includes("FDE / 交付负责人签收"), "checklist has FDE sign-off");
   const meta = JSON.parse(fs.readFileSync(path.join(out, "aiplat-export.json"), "utf8"));
   assert(meta.delivery_scan && typeof meta.delivery_scan.ok === "boolean", "meta.delivery_scan");
-  console.log("PASS: export embeds citation + delivery checklist");
+  console.log("PASS: export embeds citation + delivery checklist + cost report");
 } finally {
   fs.rmSync(out, { recursive: true, force: true });
 }
