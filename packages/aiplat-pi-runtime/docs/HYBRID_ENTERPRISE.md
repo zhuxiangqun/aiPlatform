@@ -37,15 +37,27 @@
 | `AIPLAT_ENTERPRISE_APPROVAL_WAIT_MS` | 等待超时（默认 120000） |
 | `AIPLAT_ENTERPRISE_KB_CITATION` | KB 引用契约（V2/V3a/V6）。enterprise 下**默认开**；设 `0`/`false` 可关（回退旧版片段 dump）。见 [`HYBRID_ENTERPRISE_DELIVERY.md`](./HYBRID_ENTERPRISE_DELIVERY.md) §3 |
 
+## 术语（本文档体系）
+
+| 术语 | 含义 |
+|------|------|
+| **混合回连** | 厂外：Pi 执行壳经认证 API 调用 aiPlat 治理能力（KB/工具/门禁/Memory/审批），不搬引擎 |
+| **薄 Runtime** | 可带走的 Pi 包（extensions + export/ZIP）；断连时退回包内 SOP/skills |
+| **回连能力阶梯** | 本文 §阶梯 1→5（KB→工具→门禁→Memory→审批）；产品主路径 |
+| **交付优先级链** | [`HYBRID_ENTERPRISE_DELIVERY.md`](./HYBRID_ENTERPRISE_DELIVERY.md) ①②③④（出厂清单→Citation→成本→库健康）；**不是**阶梯 1–5 的别名 |
+| **厂内实验** | [`FACTORY_IN_EXPERIMENT.md`](./FACTORY_IN_EXPERIMENT.md) 方式四旁路；默认 OFF；退出条件见该文决策树 |
+
 ## 回连能力阶梯
 
-| # | 能力 | 状态 | 入口 |
-|---|------|:----:|------|
-| 1 | 只读知识检索 | ✅ | `aiplat_kb_retrieve` → `POST /platform/kb/query` |
-| 2 | 工具代理（允许列表） | ✅ | `aiplat_tool_execute` → `POST …/tools/{name}/execute` |
-| 3 | 原生工具门禁桥 | ✅ | `enterprise_tool_gate.ts`：`tool_call` block + `setActiveTools`；默认禁 bash/write/edit/powershell |
-| 4 | 会话摘要回写 Memory | ✅ | `enterprise_memory.ts` → `POST /platform/memory/capture`；工具 + `session_shutdown` 软 flush；失败不阻断 |
-| 5 | 审批门 ApprovalGate | ✅ | `enterprise_approval.ts`：status/pending/wait → `GET /platform/approvals…`（platform 无 KernelRuntime 时懒加载 store；仍可回退 core `/api/core/approvals`）；工具代理识别 `approval_required`；裁决在平台 UI |
+| # | 能力 | 状态 | 合入线索 | 入口 |
+|---|------|:----:|----------|------|
+| 1 | 只读知识检索 | ✅ | KB 桥 + 结构化检索 [#283](https://github.com/zhuxiangqun/aiPlatform/pull/283) | `aiplat_kb_retrieve` → `POST /platform/kb/query` |
+| 2 | 工具代理（允许列表） | ✅ | `enterprise_tools` 扩展 + smoke | `aiplat_tool_execute` → `POST …/tools/{name}/execute` |
+| 3 | 原生工具门禁桥 | ✅ | `enterprise_tool_gate`；enterprise 默认 fail-closed | `tool_call` block + `setActiveTools`；默认禁 bash/write/edit/powershell |
+| 4 | 会话摘要回写 Memory | ✅ | `enterprise_memory` → `POST /platform/memory/capture` | 工具 + `session_shutdown` 软 flush；失败不阻断 |
+| 5 | 审批门 ApprovalGate | ✅ | lazy-store [#271](https://github.com/zhuxiangqun/aiPlatform/pull/271) · ISO 时间 [#272](https://github.com/zhuxiangqun/aiPlatform/pull/272) | status/pending/wait → `/platform/approvals…`；裁决在平台 UI |
+
+交付收口（①②③④）合入线索见 DELIVERY §8（citation [#274](https://github.com/zhuxiangqun/aiPlatform/pull/274) · cost [#276](https://github.com/zhuxiangqun/aiPlatform/pull/276) · kb-health [#277](https://github.com/zhuxiangqun/aiPlatform/pull/277)+[#279](https://github.com/zhuxiangqun/aiPlatform/pull/279)+[#280](https://github.com/zhuxiangqun/aiPlatform/pull/280)）。
 
 ```bash
 export AIPLAT_ENTERPRISE=1
@@ -104,7 +116,8 @@ node packages/aiplat-pi-runtime/scripts/enterprise_hybrid_live_smoke.mjs
 
 ## 与厂内实验的关系
 
-混合回连属于 **厂外企业交付**，优先级高于 `FACTORY_IN_EXPERIMENT.md` 的 ReActLoop 换心。
+混合回连属于 **厂外企业交付**，优先级高于 [`FACTORY_IN_EXPERIMENT.md`](./FACTORY_IN_EXPERIMENT.md) 的 ReActLoop 换心。  
+厂内方式四：**默认 OFF**；① 空白验证（2026-10-14）结论为 `blank_not_proven`（`coding_closed_loop` 已注入 sandbox+done_verify + `sys_file_*`）。退出 / 合并 / 自动放弃时限见该文 **§退出条件**。
 
 ## 交付规格附录（SKU / Citation UX / KB Health）
 

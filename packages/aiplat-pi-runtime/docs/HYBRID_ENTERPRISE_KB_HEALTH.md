@@ -110,6 +110,8 @@ docs_this_week = sum(1 for d in documents if d["created_at"] > now - 604800)
 
 ### 3.2 二期需补 endpoint
 
+> **现状（2026-10）**：下列为**独立 endpoint 规格**。一期已在 `delivery/kb_health.py` 用 `syscall_events` **best-effort 降级实现**漏召/低置信 TOP（见 §6.1），**不**要求再等本节 URL 才可交付面板。独立 endpoint 可后续拆出（无 deadline 则保持降级即可）。
+
 #### 3.2.1 漏召 TOP5
 
 ```
