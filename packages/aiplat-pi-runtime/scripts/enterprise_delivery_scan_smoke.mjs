@@ -71,11 +71,18 @@ try {
     costMd.includes("未配置单价") || costMd.includes("缓存"),
     "cost report mentions cache or pricing caveat",
   );
+  assert(fs.existsSync(path.join(out, "KB_HEALTH.md")), "KB_HEALTH.md");
+  const kbMd = fs.readFileSync(path.join(out, "KB_HEALTH.md"), "utf8");
+  assert(kbMd.includes("知识库健康分"), "kb health title");
+  assert(
+    fs.existsSync(path.join(out, "extensions/enterprise_kb_health.ts")),
+    "export includes enterprise_kb_health.ts",
+  );
   const checklist = fs.readFileSync(path.join(out, "DELIVERY_CHECKLIST.md"), "utf8");
   assert(checklist.includes("FDE / 交付负责人签收"), "checklist has FDE sign-off");
   const meta = JSON.parse(fs.readFileSync(path.join(out, "aiplat-export.json"), "utf8"));
   assert(meta.delivery_scan && typeof meta.delivery_scan.ok === "boolean", "meta.delivery_scan");
-  console.log("PASS: export embeds citation + delivery checklist + cost report");
+  console.log("PASS: export embeds citation + checklist + cost + kb-health");
 } finally {
   fs.rmSync(out, { recursive: true, force: true });
 }

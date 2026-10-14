@@ -66,6 +66,7 @@ export AIPLAT_ENTERPRISE_APPROVAL=1
 pi -e .
 # /aiplat-status          → enterprise_hybrid / tools / tool_gate / memory / approval
 # /aiplat-enterprise      → KB reconnect status
+# /aiplat-kb-health       → KB health score summary (delivery panel)
 # /aiplat-memory          → memory writeback status
 # /aiplat-approval        → approval wait-bridge status
 # tools: aiplat_kb_retrieve | aiplat_tool_execute | aiplat_memory_capture
@@ -80,8 +81,11 @@ bash packages/aiplat-pi-runtime/scripts/run_all_enterprise_smokes.sh
 node packages/aiplat-pi-runtime/scripts/enterprise_kb_smoke.mjs
 node --experimental-strip-types packages/aiplat-pi-runtime/scripts/enterprise_kb_citation_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_delivery_scan_smoke.mjs
-# cost page (offline): PYTHONPATH=aiPlat-platform:aiPlat-core:. python3 scripts/render_delivery_cost_report.py --fixture --out /tmp/COST_REPORT.md
-# live: GET /platform/delivery/cost-report  (Bearer; ?format=markdown)
+node packages/aiplat-pi-runtime/scripts/enterprise_kb_health_smoke.mjs
+# cost / kb-health pages (offline):
+#   PYTHONPATH=aiPlat-platform:aiPlat-core:. python3 scripts/render_delivery_cost_report.py --fixture --out /tmp/COST_REPORT.md
+#   PYTHONPATH=aiPlat-platform:aiPlat-core:. python3 scripts/render_delivery_kb_health.py --fixture --out /tmp/KB_HEALTH.md
+# live: GET /platform/delivery/cost-report|kb-health  (Bearer; ?format=markdown)
 node packages/aiplat-pi-runtime/scripts/enterprise_tools_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_tool_gate_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_memory_smoke.mjs
@@ -107,4 +111,4 @@ node packages/aiplat-pi-runtime/scripts/enterprise_hybrid_live_smoke.mjs
 hybrid live 已绿之后的产品收口规格见：
 
 - [`HYBRID_ENTERPRISE_DELIVERY.md`](./HYBRID_ENTERPRISE_DELIVERY.md) — ① 出厂交付清单与归属（A+B）② KB citation 验收（V2/V3a/V6 一期 + P1 低置信/去重/E2E）③ 成本叙事 ④ 托管 SKU；**抄交付节奏，不抄引擎**。
-- [`HYBRID_ENTERPRISE_KB_HEALTH.md`](./HYBRID_ENTERPRISE_KB_HEALTH.md) — ④ 库健康分面板数据源接线：一期零平台改动（`GET /platform/kb/metrics` 11/15 项已有）；二期需补 3 endpoint（漏召 TOP5 / 低置信 TOP5 / 缓存命中率）；健康分公式 + 面板布局 + L2 SKU 对齐。
+- [`HYBRID_ENTERPRISE_KB_HEALTH.md`](./HYBRID_ENTERPRISE_KB_HEALTH.md) — ④ 库健康分面板：`GET /platform/delivery/kb-health` + 导出 `KB_HEALTH.md` + `/aiplat-kb-health`；一期用 metrics/stats/cache；漏召/低置信 TOP best-effort（syscall_events）。

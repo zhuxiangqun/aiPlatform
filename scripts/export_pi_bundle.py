@@ -33,6 +33,7 @@ RUNTIME_EXT_TOOLS = RUNTIME_PKG / "extensions" / "enterprise_tools.ts"
 RUNTIME_EXT_TOOL_GATE = RUNTIME_PKG / "extensions" / "enterprise_tool_gate.ts"
 RUNTIME_EXT_MEMORY = RUNTIME_PKG / "extensions" / "enterprise_memory.ts"
 RUNTIME_EXT_APPROVAL = RUNTIME_PKG / "extensions" / "enterprise_approval.ts"
+RUNTIME_EXT_KB_HEALTH = RUNTIME_PKG / "extensions" / "enterprise_kb_health.ts"
 RUNTIME_HANDLER = RUNTIME_PKG / "fixtures" / "handler_echo.py"
 RUNTIME_RUNNER = RUNTIME_PKG / "fixtures" / "handler_runner.py"
 _SCAN_SCRIPT = WORKSPACE / "scripts" / "scan_pi_bundle_delivery.py"
@@ -164,6 +165,10 @@ def export_bundle(
         shutil.copy2(RUNTIME_EXT_APPROVAL, ext_dir / "enterprise_approval.ts")
     else:
         _die(f"enterprise approval extension missing: {RUNTIME_EXT_APPROVAL}")
+    if RUNTIME_EXT_KB_HEALTH.is_file():
+        shutil.copy2(RUNTIME_EXT_KB_HEALTH, ext_dir / "enterprise_kb_health.ts")
+    else:
+        _die(f"enterprise KB health extension missing: {RUNTIME_EXT_KB_HEALTH}")
 
     fixtures = out / "fixtures"
     fixtures.mkdir(parents=True, exist_ok=True)
@@ -305,6 +310,31 @@ Tool: `aiplat_tool_execute` → POST …/tools/{{name}}/execute.
         )
     except Exception as exc:
         print(f"WARNING: COST_REPORT.md skipped: {exc}", file=sys.stderr)
+
+    # §④ 库健康分：尽力写入 KB_HEALTH.md
+    try:
+        _delivery_dir = WORKSPACE / "aiPlat-platform"
+        if str(_delivery_dir) not in sys.path:
+            sys.path.insert(0, str(_delivery_dir))
+        from delivery.kb_health import (  # type: ignore
+            build_kb_health_report,
+            render_kb_health_markdown,
+        )
+
+        kb_report = build_kb_health_report(project_id=project_id)
+        (out / "KB_HEALTH.md").write_text(
+            render_kb_health_markdown(kb_report), encoding="utf-8"
+        )
+        meta["delivery_kb_health"] = {
+            "ok": bool(kb_report.get("ok")),
+            "score": (kb_report.get("health") or {}).get("score"),
+        }
+        (out / "aiplat-export.json").write_text(
+            json.dumps(meta, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        print(f"WARNING: KB_HEALTH.md skipped: {exc}", file=sys.stderr)
 
     return out
 

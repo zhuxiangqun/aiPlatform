@@ -265,7 +265,7 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 - [x] FDE 手册 §8 签收表（`docs/manuals/fde/fde-delivery-manual.md`）
 - [x] `enterprise_delivery_scan_smoke.mjs`；默认导出**不**因 warning/error 阻断（CI 可用 `--strict`）
 
-### 8.3 ③ 成本页计量出口 — 本迭代
+### 8.3 ③ 成本页计量出口 — 已合入
 
 - [x] `aiPlat-platform/delivery/cost_report.py`（cache / KB / billing / 分流策略）
 - [x] `GET /platform/delivery/cost-report`（json + markdown）
@@ -273,4 +273,11 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 - [x] 无 `AIPLAT_DELIVERY_COST_CNY_PER_CACHE_HIT` 时不编造 ¥ 节省
 - [x] `aiPlat-platform/tests/test_delivery_cost_report.py` + delivery scan smoke 校验 COST_REPORT.md
 
-**下一刀**：④ 库健康分面板客户可见层（规格见 [`HYBRID_ENTERPRISE_KB_HEALTH.md`](./HYBRID_ENTERPRISE_KB_HEALTH.md)）；无效请求专用拦截计数；V1/V5 prompt 级增强可选。
+### 8.4 ④ 库健康分面板 — 本迭代
+
+- [x] `delivery/kb_health.py`（score 公式 + metrics/stats/cache + 建议）
+- [x] `GET /platform/delivery/kb-health`；导出 `KB_HEALTH.md`；`/aiplat-kb-health`
+- [x] 漏召/低置信 TOP best-effort（syscall_events）；无数据不阻断
+- [x] 规格与检查表：[`HYBRID_ENTERPRISE_KB_HEALTH.md`](./HYBRID_ENTERPRISE_KB_HEALTH.md)
+
+**下一刀（可选）**：governance 周报 cron 归档；独立 miss-top API；无效请求专用拦截计数；V1/V5 prompt 级增强。
