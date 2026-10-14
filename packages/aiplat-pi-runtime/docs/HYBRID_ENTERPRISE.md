@@ -24,6 +24,8 @@
 | `AIPLAT_PLATFORM_CIRCUIT` | 平台 HTTP 断路器（默认开）。设 `0`/`false` 关闭。连续失败后跳过请求，避免超时堆积 |
 | `AIPLAT_PLATFORM_CIRCUIT_FAILURES` | 打开断路器的连续失败阈值（默认 3） |
 | `AIPLAT_PLATFORM_CIRCUIT_COOLDOWN_MS` | 断路器冷却毫秒（默认 30000）后再试 half-open |
+| `AIPLAT_KB_HEALTH_ARCHIVE_HOURS` | 平台进程周报归档间隔小时（默认 168；`0` 关闭）。写入 `AIPLAT_KB_HEALTH_REPORT_DIR` 或 `~/.aiplat/governance/reports/kb-health-YYYY-WW.md` |
+| `AIPLAT_KB_HEALTH_REPORT_DIR` | 可选；KB 健康周报存档目录 |
 | `AIPLAT_CORE_URL` | 可选；工具执行基址。裸 `http://host:8002` 会自动补 `/api/core`。未设时从 PLATFORM_URL 推导（`:8003`→`:8002/api/core`，`…/api`→`…/api/core`） |
 | `AIPLAT_TENANT_TOKEN` / API Key | 身份注入；权限判断在平台 PolicyGate / RBAC |
 | `AIPLAT_ENTERPRISE=1` | 启用回连意图；未设则严格 Pi-only。**同时默认打开原生工具门禁**（无需 URL/token） |
