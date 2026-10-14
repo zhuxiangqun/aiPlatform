@@ -6301,6 +6301,8 @@ from api.routers.onboarding import router as onboarding_router  # noqa: E402
 
 from api.routers.gate_policies import router as gate_policies_router  # noqa: E402
 
+from api.routers.delivery_reports import router as delivery_reports_router  # noqa: E402
+
 app.include_router(change_control_router)
 
 app.include_router(memory_import_router)
@@ -6310,6 +6312,8 @@ app.include_router(approvals_router)
 app.include_router(onboarding_router)
 
 app.include_router(gate_policies_router)
+
+app.include_router(delivery_reports_router)
 
 # Channels and sessions management — migrated from aiPlat-app
 

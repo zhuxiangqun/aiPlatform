@@ -170,15 +170,21 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 
 ---
 
-## 4. ③ 成本叙事接入交付报告（概要）
+## 4. ③ 成本叙事接入交付报告
 
-| 指标 | 数据来源 | 客户可见形式 | 一期要求 |
+| 指标 | 数据来源 | 客户可见形式 | 一期状态 |
 |------|----------|--------------|----------|
-| API 调用总量 | 平台统计 | 「本月共调用 N 次」 | 有出口则展示 |
-| 缓存命中率 | semantic_cache | 「其中 M 次命中缓存」 | **优先**（叙事杠杆高） |
-| 模型分流比例 | best_model_for_purpose | 「简单/复杂分流 N%/M%」 | 有出口则展示 |
-| 空检索/无效拦截 | 平台节流（**计量出口可能待补**） | 「拦截 N 次无效请求」 | P0 **叙事**；实现标 ⚠️ |
-| 月度成本 ¥ | 需单价配置 | 「节省 ¥X」 | **可选**；无价目表不编造金额 |
+| API 调用总量 | billing breakdown 或 `kb/metrics.total_queries` | 「本月共调用 N 次」 | ✅ 有则展示 |
+| 缓存命中率 | `get_semantic_cache().stats` | 「M 次命中 / 命中率 %」 | ✅ **优先** |
+| 模型分流 | `best_model_for_purpose` **配置快照** | 简单/复杂用途→模型表 | ✅ 禁虚假流量占比 |
+| 空检索/无效拦截 | 专用计数待补；可附 KB 无答案率参考 | 标明「待补 / 参考」 | ⚠️ 叙事已接 |
+| 月度成本 ¥ | `billing_records` 或 `AIPLAT_DELIVERY_COST_CNY_PER_CACHE_HIT` | 账单权威 ¥ 或估算 ¥ | ✅ **可选**；无价目不编造 |
+
+**出口**：
+
+- `GET /platform/delivery/cost-report`（`?format=markdown` 可直接拿成本页）
+- `python3 scripts/render_delivery_cost_report.py --out COST_REPORT.md`（`--fixture` 离线）
+- `export_pi_bundle` 写入包内 `COST_REPORT.md`
 
 叙事：回答「一个月花多少」用这一页；优先给命中率与调用次数，避免只甩 token 术语。
 
@@ -244,7 +250,14 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 - [x] `enterprise_kb_citation_smoke`；`enterprise_kb_smoke` / hybrid live 仍应绿
 - [x] 不引入新的平台 RAG 管道或 Pi 内 Memory/Approval 实现
 
-### 8.2 ① 出厂清单挂接（A+B）— 本迭代
+**P1 增强已合入**：
+
+- [x] **A. 低置信标注**（§3.4）：score 全部 < `LOW_CONFIDENCE_THRESHOLD`(0.5) 时插入 ⚠️ 警告；仅当 score 非零时触发（避免无 score 数据时误报）；system prompt 增加置信度传递指令
+- [x] **B. 来源去重**：`dedupeBySource()` 按 source 名去重，保留最高 score 片段；避免同一文档占多个参考文献槽位
+- [x] **C. 端到端合规验证**：`enterprise_hybrid_live_smoke.mjs` step 3b 用 `spawnSync --experimental-strip-types` 将 live KB 响应喂入 citation formatter，验证 ref block / source tag / empty prefix；soft-skip 若 strip-types 不可用
+- [x] 冒烟扩展：dedup 测试（同 doc_id 不同 snippet）、低置信测试（全低/全高/无 score/混合）、E2E soft-skip
+
+### 8.2 ① 出厂清单挂接（A+B）— 已合入
 
 - [x] `scripts/scan_pi_bundle_delivery.py`（密钥/debug/假绿等规则）
 - [x] `export_pi_bundle.py` 导出时写入 `DELIVERY_CHECKLIST.md` + `delivery_scan.json` + `USAGE_BOUNDARY.md`
@@ -252,4 +265,12 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 - [x] FDE 手册 §8 签收表（`docs/manuals/fde/fde-delivery-manual.md`）
 - [x] `enterprise_delivery_scan_smoke.mjs`；默认导出**不**因 warning/error 阻断（CI 可用 `--strict`）
 
-**下一刀**：③ 成本页计量出口；④ 库健康分面板客户可见层；V1/V5 prompt 级增强可选。
+### 8.3 ③ 成本页计量出口 — 本迭代
+
+- [x] `aiPlat-platform/delivery/cost_report.py`（cache / KB / billing / 分流策略）
+- [x] `GET /platform/delivery/cost-report`（json + markdown）
+- [x] `scripts/render_delivery_cost_report.py`；导出写入 `COST_REPORT.md`
+- [x] 无 `AIPLAT_DELIVERY_COST_CNY_PER_CACHE_HIT` 时不编造 ¥ 节省
+- [x] `aiPlat-platform/tests/test_delivery_cost_report.py` + delivery scan smoke 校验 COST_REPORT.md
+
+**下一刀**：④ 库健康分面板客户可见层（规格见 [`HYBRID_ENTERPRISE_KB_HEALTH.md`](./HYBRID_ENTERPRISE_KB_HEALTH.md)）；无效请求专用拦截计数；V1/V5 prompt 级增强可选。

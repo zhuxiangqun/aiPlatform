@@ -3,11 +3,13 @@
  * Pure helpers — no Pi SDK imports (smoke can load via --experimental-strip-types).
  *
  * P0: V2 empty prefix, V3a Markdown references, V6 max 5 sources.
+ * P1 enhancements: low-confidence threshold (§3.4), source deduplication.
  */
 
 export const KB_EMPTY_PREFIX = "未在知识库中找到相关内容";
 export const MAX_KB_SOURCES = 5;
 export const MAX_SNIPPET_CHARS = 200;
+export const LOW_CONFIDENCE_THRESHOLD = 0.5;
 
 export type KbSourceItem = {
   source: string;
@@ -53,8 +55,25 @@ export function extractKbSourceItems(parsed: unknown): KbSourceItem[] {
     }
     out.push({ source, text, score });
   }
-  out.sort((a, b) => b.score - a.score);
-  return out;
+  // B: deduplicate by source, keeping highest-score snippet per document
+  const deduped = dedupeBySource(out);
+  deduped.sort((a, b) => b.score - a.score);
+  return deduped;
+}
+
+/**
+ * Deduplicate items by source name.
+ * When the same document appears multiple times, keep the highest-score snippet.
+ */
+function dedupeBySource(items: KbSourceItem[]): KbSourceItem[] {
+  const map = new Map<string, KbSourceItem>();
+  for (const it of items) {
+    const existing = map.get(it.source);
+    if (!existing || it.score > existing.score) {
+      map.set(it.source, it);
+    }
+  }
+  return Array.from(map.values());
 }
 
 function clipSnippet(text: string, max = MAX_SNIPPET_CHARS): string {
@@ -107,6 +126,17 @@ export function formatKbCitationResponse(
     ].join(""),
   );
 
+  // A: low-confidence warning (§3.4 spec)
+  // Only trigger when scores are actually provided (non-zero) and all below threshold
+  const scoresProvided = top.some((it) => it.score > 0);
+  const allLowConfidence =
+    scoresProvided && top.every((it) => it.score < LOW_CONFIDENCE_THRESHOLD);
+  if (allLowConfidence) {
+    parts.push(
+      "⚠️ 以下检索结果置信度较低，仅供参考。回答时请向用户说明置信度情况，建议补充更多资料或联系管理员确认。",
+    );
+  }
+
   if (answer) {
     parts.push(answer);
   }
@@ -150,5 +180,6 @@ export function citationSystemPromptLines(): string[] {
     `- If tool text starts with 「${KB_EMPTY_PREFIX}」, say so to the user; do not invent sources.`,
     "- If 参考文献 is present: ground every factual claim in those sources using [来源: 文档名]; end with the reference list when answering from KB.",
     "- Never invent citations, doc names, or quotes not in the tool result.",
+    "- If tool text contains ⚠️ 置信度较低 warning, relay this to the user before presenting the information.",
   ];
 }

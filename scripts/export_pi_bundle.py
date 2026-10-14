@@ -280,6 +280,32 @@ Tool: `aiplat_tool_execute` → POST …/tools/{{name}}/execute.
     except Exception as exc:
         print(f"WARNING: delivery scan skipped: {exc}", file=sys.stderr)
 
+    # §4 成本页：尽力写入 COST_REPORT.md（子系统不可用时仍有叙事骨架）
+    try:
+        _delivery_dir = WORKSPACE / "aiPlat-platform"
+        if str(_delivery_dir) not in sys.path:
+            sys.path.insert(0, str(_delivery_dir))
+        from delivery.cost_report import (  # type: ignore
+            build_delivery_cost_report,
+            render_cost_report_markdown,
+        )
+
+        cost_report = build_delivery_cost_report(project_id=project_id)
+        (out / "COST_REPORT.md").write_text(
+            render_cost_report_markdown(cost_report), encoding="utf-8"
+        )
+        meta["delivery_cost_report"] = {
+            "ok": bool(cost_report.get("ok")),
+            "cache_available": bool((cost_report.get("cache") or {}).get("available")),
+            "api_calls_available": bool((cost_report.get("api_calls") or {}).get("available")),
+        }
+        (out / "aiplat-export.json").write_text(
+            json.dumps(meta, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        print(f"WARNING: COST_REPORT.md skipped: {exc}", file=sys.stderr)
+
     return out
 
 
