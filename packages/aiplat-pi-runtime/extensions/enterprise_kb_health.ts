@@ -65,10 +65,17 @@ export async function fetchKbHealthSummary(
     const tips = Array.isArray(parsed.suggestions)
       ? (parsed.suggestions as string[])
       : [];
+    const insufficient = Boolean(health.insufficient_data) || health.score == null;
+    const scoreLine = insufficient
+      ? `知识库健康分: —/100（${health.label ?? "数据不足"}）`
+      : `知识库健康分: ${health.score}/100（${health.label ?? "-"}）`;
+    const rateLine = insufficient
+      ? "漏召/引用比率: n/a（无检索流量）"
+      : `漏召率 ${metrics.no_answer_rate_pct ?? "n/a"}% | 引用覆盖率 ${metrics.citation_coverage_pct ?? "n/a"}%`;
     const lines = [
-      `知识库健康分: ${health.score ?? "n/a"}/100（${health.label ?? "-"}）`,
+      scoreLine,
       `本周查询 ${metrics.total_queries ?? "n/a"} 次 | 文档 ${stats.documents ?? "n/a"} 篇 | 新增 ${week.count ?? "n/a"} 篇`,
-      `漏召率 ${metrics.no_answer_rate_pct ?? "n/a"}% | 引用覆盖率 ${metrics.citation_coverage_pct ?? "n/a"}%`,
+      rateLine,
       "",
       `建议: ${tips[0] || "维持当前入库节奏"}`,
     ];

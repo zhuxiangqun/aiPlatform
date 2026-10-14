@@ -12,6 +12,7 @@ from delivery.kb_health import (
 def test_kb_health_score_bands():
     excellent = kb_health_score(
         {
+            "total_queries": 200,
             "citation_coverage_pct": 95,
             "no_answer_rate_pct": 5,
             "error_correction_rate_pct": 2,
@@ -24,6 +25,7 @@ def test_kb_health_score_bands():
 
     risk = kb_health_score(
         {
+            "total_queries": 200,
             "citation_coverage_pct": 10,
             "no_answer_rate_pct": 80,
             "error_correction_rate_pct": 50,
@@ -38,6 +40,7 @@ def test_kb_health_score_boundary_70():
     # Tuned to land near 70–84 "良好"
     mid = kb_health_score(
         {
+            "total_queries": 100,
             "citation_coverage_pct": 70,
             "no_answer_rate_pct": 20,
             "error_correction_rate_pct": 10,
@@ -45,6 +48,22 @@ def test_kb_health_score_boundary_70():
         }
     )
     assert 55 <= mid["score"] <= 84
+
+
+def test_kb_health_score_zero_traffic_insufficient():
+    z = kb_health_score(
+        {
+            "total_queries": 0,
+            "citation_coverage_pct": 0,
+            "no_answer_rate_pct": 0,
+            "error_correction_rate_pct": 0,
+            "repeat_question_rate_pct": 0,
+        }
+    )
+    assert z["score"] is None
+    assert z["label"] == "数据不足"
+    assert z["band"] == "gray"
+    assert z.get("insufficient_data") is True
 
 
 def test_render_markdown_has_suggestions():
