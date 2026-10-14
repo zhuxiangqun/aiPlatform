@@ -8,7 +8,12 @@ from fastapi import APIRouter, Depends, Query, Response
 from auth.deps import require_auth
 from api.schemas_response import StatusResponse
 from delivery.cost_report import build_delivery_cost_report, render_cost_report_markdown
-from delivery.kb_health import build_kb_health_report, render_kb_health_markdown
+from delivery.kb_health import (
+    build_kb_health_report,
+    kb_low_confidence_top,
+    kb_miss_top,
+    render_kb_health_markdown,
+)
 
 router = APIRouter(prefix="/platform", tags=["delivery"])
 
@@ -56,4 +61,40 @@ async def get_delivery_kb_health(
         return Response(content=body, media_type="text/markdown; charset=utf-8")
     out = dict(report)
     out["status"] = "ok"
+    return out
+
+
+@router.get("/kb/miss-top", response_model=StatusResponse)
+async def get_kb_miss_top(
+    tenant_id: str = Query(default="default"),
+    hours: int = Query(default=168, ge=1, le=8760),
+    limit: int = Query(default=5, ge=1, le=50),
+    _auth: str = Depends(require_auth),
+):
+    """漏召 TOP — best-effort from syscall_events (KB_HEALTH §3.2.1)."""
+    body = kb_miss_top(tenant_id=tenant_id, window_hours=hours, limit=limit)
+    out = dict(body)
+    out["status"] = "ok"
+    out["tenant_id"] = tenant_id
+    return out
+
+
+@router.get("/kb/low-confidence-top", response_model=StatusResponse)
+async def get_kb_low_confidence_top(
+    tenant_id: str = Query(default="default"),
+    hours: int = Query(default=168, ge=1, le=8760),
+    limit: int = Query(default=5, ge=1, le=50),
+    threshold: float = Query(default=0.5, ge=0.0, le=1.0),
+    _auth: str = Depends(require_auth),
+):
+    """低置信 TOP — best-effort from syscall_events (KB_HEALTH §3.2.2)."""
+    body = kb_low_confidence_top(
+        tenant_id=tenant_id,
+        window_hours=hours,
+        limit=limit,
+        threshold=threshold,
+    )
+    out = dict(body)
+    out["status"] = "ok"
+    out["tenant_id"] = tenant_id
     return out

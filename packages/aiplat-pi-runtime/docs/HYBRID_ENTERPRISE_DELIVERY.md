@@ -288,4 +288,6 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 
 **已补（v2 加固）**：平台 HTTP 断路器 + `AIPLAT_PLATFORM_BASE_PATH`（`extensions/enterprise_http.ts`，各桥 `platformFetch`；导出必含）。
 
-**下一刀（可选）**：governance 周报 cron 归档；独立 miss-top API；无效请求专用拦截计数；V1/V5 prompt 级增强。
+**已补（独立 TOP）**：`GET /platform/kb/miss-top` + `GET /platform/kb/low-confidence-top`（`delivery/kb_health.kb_miss_top` / `kb_low_confidence_top`）。
+
+**下一刀（可选）**：governance 周报 cron 归档；`/kb/cache-stats`；无效请求专用拦截计数；V1/V5 prompt 级增强。

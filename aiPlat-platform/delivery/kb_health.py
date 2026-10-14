@@ -454,6 +454,37 @@ def _miss_and_low_top(
     )
 
 
+def kb_miss_top(
+    *,
+    window_hours: int = 168,
+    limit: int = 5,
+    tenant_id: str = "default",
+) -> Dict[str, Any]:
+    """Public miss-TOP for ``GET /platform/kb/miss-top`` (HYBRID_ENTERPRISE_KB_HEALTH §3.2.1).
+
+    ``tenant_id`` is accepted for API compatibility; best-effort scan is store-wide
+    (same as the health panel) until tenant-scoped syscall_events land.
+    """
+    _ = tenant_id  # reserved
+    miss, _low = _miss_and_low_top(window_hours=window_hours, limit=limit)
+    return miss
+
+
+def kb_low_confidence_top(
+    *,
+    window_hours: int = 168,
+    limit: int = 5,
+    threshold: float = 0.5,
+    tenant_id: str = "default",
+) -> Dict[str, Any]:
+    """Public low-confidence TOP for ``GET /platform/kb/low-confidence-top`` (§3.2.2)."""
+    _ = tenant_id  # reserved
+    _miss, low = _miss_and_low_top(
+        window_hours=window_hours, limit=limit, threshold=threshold
+    )
+    return low
+
+
 def _suggestions(
     *,
     score_info: Dict[str, Any],

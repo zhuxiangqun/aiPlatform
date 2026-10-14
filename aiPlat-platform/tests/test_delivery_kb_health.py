@@ -1,9 +1,13 @@
 """Unit tests for KB health score + markdown (HYBRID_ENTERPRISE_KB_HEALTH)."""
 from __future__ import annotations
 
+from unittest.mock import patch
+
 from delivery.kb_health import (
     build_kb_health_report,
     kb_health_score,
+    kb_low_confidence_top,
+    kb_miss_top,
     render_kb_health_markdown,
     render_kb_health_plain,
 )
@@ -109,3 +113,20 @@ def test_build_report_soft_fail():
     assert "health" in report
     assert "score" in report["health"]
     assert isinstance(report.get("suggestions"), list)
+
+
+def test_kb_miss_top_and_low_public_wrappers():
+    miss = {
+        "available": True,
+        "items": [{"question": "差旅", "count": 2}],
+        "window_hours": 24,
+    }
+    low = {
+        "available": True,
+        "items": [{"question": "年假", "score": 0.2}],
+        "window_hours": 24,
+        "threshold": 0.5,
+    }
+    with patch("delivery.kb_health._miss_and_low_top", return_value=(miss, low)):
+        assert kb_miss_top(window_hours=24, limit=5)["items"][0]["question"] == "差旅"
+        assert kb_low_confidence_top(window_hours=24, threshold=0.5)["items"][0]["score"] == 0.2
