@@ -28,7 +28,7 @@ Do not claim Pi-only equals full in-factory agent. Enterprise thickness is **Pi 
 
 ## Enterprise hybrid (opt-in)
 
-Default remains Pi-only. See [`docs/HYBRID_ENTERPRISE.md`](./docs/HYBRID_ENTERPRISE.md).
+Default remains Pi-only. See [`docs/HYBRID_ENTERPRISE.md`](./docs/HYBRID_ENTERPRISE.md) and delivery appendix [`docs/HYBRID_ENTERPRISE_DELIVERY.md`](./docs/HYBRID_ENTERPRISE_DELIVERY.md) (SKU + KB citation acceptance).
 
 ```bash
 export AIPLAT_ENTERPRISE=1
