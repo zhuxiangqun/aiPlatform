@@ -14,6 +14,16 @@ from .kb_health import (
     render_kb_health_plain,
 )
 from .kb_health_archive import archive_kb_health_report, list_kb_health_archives
+from .monthly_ops_report import (
+    build_monthly_ops_report,
+    monthly_ops_summary_lines,
+    render_monthly_ops_markdown,
+)
+from .l3_duty_desk import (
+    build_l3_duty_desk,
+    l3_duty_summary_lines,
+    render_l3_duty_markdown,
+)
 
 __all__ = [
     "build_delivery_cost_report",
@@ -27,4 +37,10 @@ __all__ = [
     "render_kb_health_plain",
     "archive_kb_health_report",
     "list_kb_health_archives",
+    "build_monthly_ops_report",
+    "render_monthly_ops_markdown",
+    "monthly_ops_summary_lines",
+    "build_l3_duty_desk",
+    "render_l3_duty_markdown",
+    "l3_duty_summary_lines",
 ]

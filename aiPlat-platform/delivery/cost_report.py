@@ -315,17 +315,59 @@ def _billing_snapshot(tenant_id: str = "default") -> Dict[str, Any]:
         return {"available": False, "reason": str(e)}
 
 
+def _purpose_models_from_selection_log(
+    purposes: List[str],
+    window_hours: int = 720,
+) -> Dict[str, str]:
+    """Latest selected model per purpose from model_selection_log (newest first)."""
+    path = _selection_log_path()
+    if not os.path.isfile(path):
+        return {}
+    want = set(purposes)
+    try:
+        with open(path, encoding="utf-8") as f:
+            samples = json.load(f)
+        if not isinstance(samples, list):
+            return {}
+        cutoff = time.time() - max(1, int(window_hours)) * 3600.0
+        latest: Dict[str, str] = {}
+        for rec in reversed(samples):
+            if not isinstance(rec, dict):
+                continue
+            purpose = str(rec.get("purpose") or "").strip()
+            entry = str(rec.get("entry") or "")
+            if purpose not in want or purpose in _SKIP_PURPOSES or entry in _SKIP_ENTRIES:
+                continue
+            if purpose in latest:
+                continue
+            try:
+                ts_f = float(rec.get("ts"))
+            except (TypeError, ValueError):
+                continue
+            if ts_f < cutoff:
+                continue
+            selected = str(rec.get("selected") or "").strip()
+            if selected:
+                latest[purpose] = selected
+        return latest
+    except Exception as e:
+        logger.debug("cost_report purpose→model from selection log: %s", e, exc_info=True)
+        return {}
+
+
 def _model_routing_policy(window_hours: int = 720) -> Dict[str, Any]:
     """Configured purpose→model map + best-effort selection-log usage share.
 
     Usage share is independent of model resolution: if ``best_model_for_purpose``
     fails (e.g. runtime typing), still show purpose/档位占比 when the log exists.
+    Empty model cells are backfilled from the latest selection-log pick per purpose.
     """
     # Read share before best_model_for_purpose so this report does not self-inflate counts.
     usage = _purpose_usage_share(window_hours=window_hours)
     purposes = list(dict.fromkeys(_SIMPLE_PURPOSES + _COMPLEX_PURPOSES + ("agent",)))
     mapping: Dict[str, str] = {}
     map_err: Optional[str] = None
+    map_source = "best_model_for_purpose"
     bmp = None
     try:
         from core.api.core_facade import best_model_for_purpose as bmp  # noqa: N813
@@ -340,6 +382,21 @@ def _model_routing_policy(window_hours: int = 720) -> Dict[str, Any]:
                 mapping[p] = ""
     if not mapping:
         mapping = {p: "" for p in purposes}
+    live_filled = sum(1 for p in purposes if (mapping.get(p) or "").strip())
+    log_map = _purpose_models_from_selection_log(purposes, window_hours=window_hours)
+    filled_from_log = 0
+    for p in purposes:
+        if not (mapping.get(p) or "").strip() and log_map.get(p):
+            mapping[p] = log_map[p]
+            filled_from_log += 1
+    if live_filled and filled_from_log:
+        map_source = "mixed"
+    elif filled_from_log and not live_filled:
+        map_source = "model_selection_log"
+    elif live_filled:
+        map_source = "best_model_for_purpose"
+    else:
+        map_source = "none"
     note = usage.get("usage_share_note") or ""
     if not usage.get("usage_share_available"):
         note = note or (
@@ -350,11 +407,17 @@ def _model_routing_policy(window_hours: int = 720) -> Dict[str, Any]:
         "simple_purposes": list(_SIMPLE_PURPOSES),
         "complex_purposes": list(_COMPLEX_PURPOSES),
         "purpose_to_model": mapping,
+        "purpose_to_model_source": map_source,
         **usage,
         "usage_share_note": note,
     }
-    if map_err and not any(mapping.values()):
+    if map_err and not any((mapping.get(p) or "").strip() for p in purposes):
         out["policy_resolve_error"] = map_err
+    elif map_err and filled_from_log:
+        out["policy_resolve_note"] = (
+            f"best_model_for_purpose 不可用（{map_err}）；"
+            f"已用 model_selection_log 回填 {filled_from_log} 个用途→模型"
+        )
     return out
 
 
@@ -516,6 +579,16 @@ def render_cost_report_markdown(report: Dict[str, Any]) -> str:
     if routing.get("available"):
         lines.append(f"> {routing.get('usage_share_note', '')}")
         lines.append("")
+        src_m = routing.get("purpose_to_model_source") or ""
+        if src_m == "model_selection_log":
+            lines.append("> 用途→模型来自 model_selection_log 最近选择（运行时解析不可用时回填）")
+            lines.append("")
+        elif src_m == "mixed":
+            lines.append("> 用途→模型：部分来自运行时解析，空缺由 selection_log 回填")
+            lines.append("")
+        if routing.get("policy_resolve_note"):
+            lines.append(f"> {routing.get('policy_resolve_note')}")
+            lines.append("")
         lines.append("| 用途 (purpose) | 选用模型 | 档位 |")
         lines.append("|----------------|----------|------|")
         simple = set(routing.get("simple_purposes") or [])

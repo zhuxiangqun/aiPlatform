@@ -31,7 +31,7 @@
     │      └─ 依赖：KB 桥已通（已满足）
     │
     ├─ ③ 成本叙事接入交付报告（cache 命中 + 模型分流；¥ 可选）
-    │      └─ 依赖：semantic_cache + best_model_for_purpose（能力已有；计量出口可能待补）
+    │      └─ 依赖：semantic_cache + best_model_for_purpose（计量出口已合入）
     │
     └─ ④ 托管 SKU ↔ 值班板/入库/巡检（客户可见层）
            └─ 依赖：governance cron + daemon_jobs（已有）
@@ -194,11 +194,11 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 
 ## 5. ④ 托管 SKU 对齐（概要）
 
-| SKU | 已有能力 | 需补的客户可见层 |
-|-----|----------|------------------|
-| L1 | daemon_jobs + governance cron | 月度运行报告模板 |
-| L2 | KB + rerank + semantic_cache | 库健康分面板（见下） |
-| L3 | Quality Bus + eval + 值班板 | 专属值班入口 + 迭代记录 + 季度建议 |
+| SKU | 已有能力 | 客户可见层 |
+|-----|----------|------------|
+| L1 | daemon_jobs + governance cron | ✅ 月度运行报告（`MONTHLY_OPS_REPORT.md` + `GET /platform/delivery/monthly-ops-report`） |
+| L2 | KB + rerank + semantic_cache | ✅ 库健康分面板（见下 + `KB_HEALTH.md`） |
+| L3 | Quality Bus + eval + 值班板 | ✅ 专属值班台（`L3_DUTY_DESK.md` + `GET /platform/delivery/l3-duty-desk` + `/aiplat-duty`） |
 
 ### 5.1 库健康分面板（示意）
 
@@ -284,6 +284,8 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 - [x] 高流量调用点透传 purpose：ReAct `inference` / pipeline stage LLM / skills base / autoreview / extractor / materials_chat / loop facade
 - [x] `peek_routing_purpose` ContextVar：同任务 `best_model_for_purpose` 后未显式传 purpose 的 `sys_llm_generate` 可自动带上
 - [x] 长尾 purpose：`_SOURCE_TO_PURPOSE` + workspace_agents / fde_ask / prompt_app / kb_planner / tool_bootstrap / moa / memory / query_rewriter / hyde
+- [x] purpose 占比冒烟：`scripts/smoke_delivery_purpose_share.py`（离线 seed → `usage_share_source=llm_syscall`）；delivery scan 校验 COST_REPORT「流量占比」
+- [x] purpose→model 表：`best_model_for_purpose` 失败时回填 `model_selection_log` 最近选用（不编造模型名）
 
 ### 8.4 ④ 库健康分面板 — 本迭代
 
@@ -307,4 +309,12 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 
 **已补（V3b）**：`AIPLAT_ENTERPRISE_KB_CITATION_EXPAND=1` → `<details>` 可展开参考文献。
 
-**下一刀（可选）**：交付阶梯与 purpose 计量长尾已齐；后续按实机 `usage_share_source=llm_syscall` 占比反馈微调。
+**已补（文档对齐）**：`HYBRID_ENTERPRISE_KB_HEALTH.md` §0/§1.2/§3.2/§5 与代码一致——`miss-top` / `low-confidence-top` / `cache-stats` 标为 ✅ 已合入（不再写「需补 endpoint」）。
+
+### 8.5 ④ 托管 SKU 客户可见层 — 已合入
+
+- [x] L1 月度运行报告：`delivery/monthly_ops_report.py` + `GET /platform/delivery/monthly-ops-report` + 导出 `MONTHLY_OPS_REPORT.md`
+- [x] L3 专属值班台：`delivery/l3_duty_desk.py` + `GET /platform/delivery/l3-duty-desk` + `/aiplat-duty` + 导出 `L3_DUTY_DESK.md`（`AIPLAT_L3_DUTY_*`；无配置不编造联系人）
+- [x] 导出必含 `enterprise_l3_duty.ts`；delivery scan smoke 校验 `MONTHLY_OPS_REPORT.md` / `L3_DUTY_DESK.md`
+
+**下一刀（可选）**：hybrid ①–④ 客户可见层（含 L1/L2/L3）已齐；按客户开通 L3 时配置值班 env 并保持 platform 加载当前代码。

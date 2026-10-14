@@ -75,6 +75,11 @@ try {
     costMd.includes("未配置单价") || costMd.includes("缓存"),
     "cost report mentions cache or pricing caveat",
   );
+  assert(costMd.includes("流量占比"), "cost report has purpose traffic share section");
+  assert(
+    costMd.includes("完成调用") || costMd.includes("选择次数"),
+    "cost report labels share as completion or selection counts",
+  );
   assert(fs.existsSync(path.join(out, "KB_HEALTH.md")), "KB_HEALTH.md");
   const kbMd = fs.readFileSync(path.join(out, "KB_HEALTH.md"), "utf8");
   assert(kbMd.includes("知识库健康分"), "kb health title");
@@ -82,6 +87,18 @@ try {
     fs.existsSync(path.join(out, "extensions/enterprise_kb_health.ts")),
     "export includes enterprise_kb_health.ts",
   );
+  assert(fs.existsSync(path.join(out, "MONTHLY_OPS_REPORT.md")), "MONTHLY_OPS_REPORT.md");
+  const opsMd = fs.readFileSync(path.join(out, "MONTHLY_OPS_REPORT.md"), "utf8");
+  assert(opsMd.includes("月度运行报告"), "monthly ops title");
+  assert(opsMd.includes("存活") || opsMd.includes("托管"), "monthly ops has daemon section");
+  assert(
+    fs.existsSync(path.join(out, "extensions/enterprise_l3_duty.ts")),
+    "export includes enterprise_l3_duty.ts",
+  );
+  assert(fs.existsSync(path.join(out, "L3_DUTY_DESK.md")), "L3_DUTY_DESK.md");
+  const dutyMd = fs.readFileSync(path.join(out, "L3_DUTY_DESK.md"), "utf8");
+  assert(dutyMd.includes("L3 专属值班台"), "l3 duty title");
+  assert(dutyMd.includes("季度建议"), "l3 duty has quarterly tips");
   const checklist = fs.readFileSync(path.join(out, "DELIVERY_CHECKLIST.md"), "utf8");
   assert(checklist.includes("FDE / 交付负责人签收"), "checklist has FDE sign-off");
   const meta = JSON.parse(fs.readFileSync(path.join(out, "aiplat-export.json"), "utf8"));

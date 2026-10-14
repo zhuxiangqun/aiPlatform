@@ -23,11 +23,11 @@
 | 修复周期 | `GET /platform/kb/metrics` → `gap_repair_cycles` | ✅ | 已有 |
 | 重复问题率 | `GET /platform/kb/metrics` → `repeat_question_rate_pct` | ✅ | 已有 |
 | 本周入库 N 条 | `GET /platform/kb/collections/{id}/documents` 按 `created_at` 过滤 | ✅ | 已有（需计算 delta） |
-| 缓存命中率 | `get_semantic_cache().stats` → `GET /platform/delivery/cost-report` | ✅ | ③ 成本页已暴露 hit_rate / hits（进程内计数） |
-| 漏召 TOP5（具体问题） | `syscall_events` WHERE `kind='knowledge_retrieve'` AND `payload LIKE '%"count":0%'` | ⚠️ | **需补 endpoint**：返回问题文本 + 次数 |
-| 低置信回答 TOP5 | `syscall_events` WHERE `kind='knowledge_retrieve'` AND score < threshold | ⚠️ | **需补 endpoint**：返回问题 + score + 回答片段 |
+| 缓存命中率 | `get_semantic_cache().stats` → `GET /platform/kb/cache-stats`（及成本页） | ✅ | 已有独立出口 |
+| 漏召 TOP5（具体问题） | `syscall_events` → `GET /platform/kb/miss-top` | ✅ | 已合入（best-effort；无事件则 unavailable） |
+| 低置信回答 TOP5 | `syscall_events` → `GET /platform/kb/low-confidence-top` | ✅ | 已合入（best-effort；无事件则 unavailable） |
 
-**结论**：11/15 项已有出口；3 项需补（不阻断一期面板，用已有指标先出）；1 项可计算（入库 delta）。
+**结论**：15/15 项均有出口；漏召/低置信为 best-effort（依赖 `syscall_events` 是否有检索记录）；入库 delta 由面板/报告侧计算。
 
 ---
 
@@ -46,14 +46,14 @@
 | **修复周期** | `metrics.gap_repair_cycles` avg `repair_hours` | `平均修复 18.5 小时` |
 | **重复问题率** | `metrics.repeat_question_rate_pct` | `重复问题率 8.2%` |
 
-### 1.2 二期（需补出口，不阻断一期）
+### 1.2 二期（已合入独立出口）
 
 | 面板字段 | 数据需求 | 客户可见形式 |
 |----------|----------|--------------|
-| **漏召 TOP5** | 新 endpoint：返回空结果查询的 question 文本 + 出现次数 | 列表：`1. "差旅报销标准" — 未命中 3 次` |
-| **低置信回答 TOP5** | 新 endpoint：返回 score < 0.5 的查询 + score + 回答片段 | 列表：`1. "公积金提取" — 置信度 0.41` |
-| **缓存命中率** | `semantic_cache.stats()` 或新 endpoint | `缓存命中率 34%（节省 ¥127）` |
-| **建议补哪些文档** | 从漏召 TOP5 自动生成 | `建议补充：差旅报销标准、年假折算规则` |
+| **漏召 TOP5** | `GET /platform/kb/miss-top` | 列表：`1. "差旅报销标准" — 未命中 3 次` |
+| **低置信回答 TOP5** | `GET /platform/kb/low-confidence-top` | 列表：`1. "公积金提取" — 置信度 0.41` |
+| **缓存命中率** | `GET /platform/kb/cache-stats` | `缓存命中率 34%（节省 ¥127）` |
+| **建议补哪些文档** | 健康面板从漏召 TOP / 漏召率叙事生成 | `建议补充：差旅报销标准、年假折算规则` |
 
 ---
 
@@ -108,9 +108,9 @@ GET /platform/kb/collections/{collection_id}/documents?limit=200
 docs_this_week = sum(1 for d in documents if d["created_at"] > now - 604800)
 ```
 
-### 3.2 二期需补 endpoint
+### 3.2 二期独立 endpoint（已合入）
 
-> **现状（2026-10）**：下列为**独立 endpoint 规格**。一期已在 `delivery/kb_health.py` 用 `syscall_events` **best-effort 降级实现**漏召/低置信 TOP（见 §6.1），**不**要求再等本节 URL 才可交付面板。独立 endpoint 可后续拆出（无 deadline 则保持降级即可）。
+> **现状（2026-10）**：下列 URL 已在 `api/routers/delivery_reports.py` 注册；实现见 `delivery/kb_health.py` / `cost_report.kb_cache_stats`。无 `syscall_events` 数据时返回 `available=false`，不阻断一期面板。
 
 #### 3.2.1 漏召 TOP5
 
@@ -166,7 +166,7 @@ GET /platform/kb/cache-stats?tenant_id={tid}&hours=168
 }
 ```
 
-**实现**：`semantic_cache` 对象需补 `stats()` 方法，或从 `syscall_events` 中统计 `cache_hit=true` 的比例。
+**实现**：复用 `get_semantic_cache().stats`（`delivery.cost_report.kb_cache_stats`）；进程内计数，非跨进程账单。
 
 ---
 
@@ -239,7 +239,7 @@ Pi enterprise 模式下可加一个 `/aiplat-kb-health` slash command：
 | L2 承诺 | 面板对应 | 技术落点 |
 |---------|----------|----------|
 | 入库 + 检索调优 | 本周入库 + 漏召率 + 修复周期 | KB ingest + metrics endpoint |
-| cache 命中报告 | 缓存命中率 (二期) | semantic_cache stats (需补) |
+| cache 命中报告 | 缓存命中率 | `GET /platform/kb/cache-stats` |
 | 库健康分 | 健康分 + 分档 + 建议 | 前端计算 + metrics endpoint |
 | 月度运行报告 | 报告 Markdown | governance cron 生成 |
 
