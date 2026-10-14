@@ -10,6 +10,7 @@ import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
   citationSystemPromptLines,
   envCitationEnabled,
+  envCitationExpandable,
   formatKbCitationResponse,
 } from "./enterprise_kb_citation";
 import {
@@ -146,6 +147,7 @@ export async function retrieveKb(
     }
     const summary = formatKbCitationResponse(parsed, {
       citation: envCitationEnabled(true),
+      expandable: envCitationExpandable(),
     });
     return { ok: true, status: res.status, text: summary, raw: parsed };
   } catch (e) {

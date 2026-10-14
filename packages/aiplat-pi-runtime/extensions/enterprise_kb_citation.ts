@@ -4,6 +4,7 @@
  *
  * P0: V2 empty prefix, V3a Markdown references, V6 max 5 sources.
  * P1 enhancements: low-confidence threshold (§3.4), source deduplication.
+ * P2: V3b expandable ``<details>`` refs when AIPLAT_ENTERPRISE_KB_CITATION_EXPAND=1.
  */
 
 export const KB_EMPTY_PREFIX = "未在知识库中找到相关内容";
@@ -21,6 +22,12 @@ export function envCitationEnabled(defaultOn = true): boolean {
   const raw = (process.env.AIPLAT_ENTERPRISE_KB_CITATION || "").trim().toLowerCase();
   if (!raw) return defaultOn;
   if (raw === "0" || raw === "false" || raw === "off" || raw === "no") return false;
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+}
+
+/** V3b: wrap 参考文献 in HTML ``<details>`` for rich clients (default off). */
+export function envCitationExpandable(): boolean {
+  const raw = (process.env.AIPLAT_ENTERPRISE_KB_CITATION_EXPAND || "").trim().toLowerCase();
   return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
 }
 
@@ -88,9 +95,12 @@ function clipSnippet(text: string, max = MAX_SNIPPET_CHARS): string {
  */
 export function formatKbCitationResponse(
   parsed: unknown,
-  opts?: { citation?: boolean },
+  opts?: { citation?: boolean; expandable?: boolean },
 ): string {
   const citation = opts?.citation !== false;
+  const expandable =
+    opts?.expandable === true ||
+    (opts?.expandable !== false && envCitationExpandable());
   const items = extractKbSourceItems(parsed);
   const o = asRecord(parsed);
   const answer =
@@ -143,18 +153,30 @@ export function formatKbCitationResponse(
     parts.push(answer);
   }
 
-  // V3a + V6
-  const refLines: string[] = ["── 参考文献 ──"];
-  if (total > MAX_KB_SOURCES) {
-    refLines.push(`（共 ${total} 条来源，展示前 ${MAX_KB_SOURCES} 条）`);
-  }
+  // V3a (+ optional V3b <details>) + V6
   const circ = ["①", "②", "③", "④", "⑤"];
+  const bodyLines: string[] = [];
+  if (total > MAX_KB_SOURCES) {
+    bodyLines.push(`（共 ${total} 条来源，展示前 ${MAX_KB_SOURCES} 条）`);
+  }
   top.forEach((it, i) => {
     const mark = circ[i] || `${i + 1}.`;
-    refLines.push(`${mark} ${it.source} — "${clipSnippet(it.text)}"`);
-    refLines.push(`   可用标记: [来源: ${it.source}]`);
+    bodyLines.push(`${mark} ${it.source} — "${clipSnippet(it.text)}"`);
+    bodyLines.push(`   可用标记: [来源: ${it.source}]`);
   });
-  parts.push(refLines.join("\n"));
+  if (expandable) {
+    const summary =
+      total > MAX_KB_SOURCES
+        ? `参考文献（展示 ${top.length}/${total}）— 点击展开`
+        : `参考文献（${top.length}）— 点击展开`;
+    parts.push(
+      ["<details>", `<summary>${summary}</summary>`, "", ...bodyLines, "</details>"].join(
+        "\n",
+      ),
+    );
+  } else {
+    parts.push(["── 参考文献 ──", ...bodyLines].join("\n"));
+  }
 
   return parts.join("\n\n");
 }
