@@ -89,15 +89,15 @@ Pi（执行面 / 厂外薄宿主）── 默认 Pi-only 可闭环
 | **模式一 · 仅 Pi** | 独立、可自托管的极简 Agent Harness | `read`/`write`/`edit`/`bash`、会话内循环、多模型抽象；适合个人 / 小团队 / 快速验证 | **无**内置权限、队列、成本、审计 → **禁止**默认无人值守生产 |
 | **模式二 · Pi + aiPlat** | Pi = 执行内核；aiPlat = 平台层包裹 | 权限 / 策略 / 审计 / 成本 / 生命周期 / 多租户在 **aiPlat**；副作用经回连或外层 PolicyGate | 禁止叙事成「再装一套平行平台」；禁止把 Memory/SECI/ApprovalGate 搬进 Pi 进程 |
 
-**厂内集成形态（实验轴 A，与厂外交付正交）**：
+**厂内集成形态（轴 A，与厂外交付正交；已 ⓪ 合并关闭）**：
 
 | 形态 | 原理 | 现状 |
 |------|------|------|
-| RPC 子进程 | aiPlat 启 Pi 为外部进程，JSONL 通信 | 方式四离线 CLI / `pi_rpc_client`（**⓪ 合并关闭**；不经 Workspace Execute） |
+| RPC 子进程 | aiPlat 启 Pi 为外部进程，JSONL 通信 | 离线 CLI / `pi_rpc_client` **归档**（不经 Workspace Execute） |
 | SDK 嵌入 | 同进程调 Pi API | **非默认**（强 Node 绑定） |
-| 可选执行后端 | `execution_backend≈pi`；请求仍经 aiPlat 门禁再路由 | Workspace Execute flag；**未**接 PipelineEngine |
+| 可选执行后端 | 曾拟 `AIPLAT_PI_CODING_EXECUTOR` 旁路 | **已拆除**；flag 无生产效果 |
 
-接 Pi **不是为了补上下文**：aiPlat 已有 Memory / CRAG / ContextBus。Pi 的集成价值是 **执行引擎标准化** + **本地工具循环** + **协议化旁路**；是否接看「执行引擎要不要换」，不看「上下文谁有」。
+接 Pi **不是为了补上下文**：aiPlat 已有 Memory / CRAG / ContextBus。厂内换心须单独 RFC；当前主路径已是 `coding_closed_loop` + sandbox + `sys_file_*`。
 
 ### 上下文 · 压缩 · 学习（作用域 × 治理）
 
@@ -116,15 +116,12 @@ Pi（执行面 / 厂外薄宿主）── 默认 Pi-only 可闭环
 
 > **一句话**：会话内上下文与压缩 → Pi；跨会话记忆与学习 → aiPlat；Pi 扩展可补执行侧能力，但共享边界与审计不得旁路平台。
 
-**厂内若做，优先级（成本阶梯）** — 详见 `packages/aiplat-pi-runtime/docs/FACTORY_IN_EXPERIMENT.md`
+**厂内处置** — 详见 `packages/aiplat-pi-runtime/docs/FACTORY_IN_EXPERIMENT.md`（⓪ 合并关闭）
 
-1. 巩固 Pi-only 交付（能力边界写进合同；管理端已提示）
-2. 设计/接线 **Pi + aiPlat 混合回连**（企业级）——**当前主产品轴**
-3. ~~方式四：Workspace Execute Pi 旁路~~ → **⓪ 合并关闭**（`blank_not_proven`；旁路已拆；离线 CLI/探针归档）
-4. 方式二 / 一：**不实现**（空白未证明时禁止加平行路径）
-
-方式三（MCP 宿主）：可行但只是执行宿主优化；aiPlat 仍保留 MCP 准入与审计。  
-厂内路径 **不得** 标 CAPABILITIES「厂内已接线」或主文档推荐（已关闭，非待接线）。
+1. 巩固 Pi-only 交付 + **Pi + aiPlat 混合回连**（企业 DELIVERY SKU）——主产品轴
+2. ~~方式四 Workspace Execute Pi 旁路~~ → **已拆除**（`blank_not_proven`）
+3. 方式一/二/三：**不实现**，除非 RFC 重做 ① 空白验证 + 真实 caller
+4. 离线 `coding_exec` / RPC 探针仅归档复现，**不得**标 CAPABILITIES「厂内已接线」
 
 ## 结论（Phase 0）
 
