@@ -11,6 +11,7 @@ echo "== offline hybrid smokes =="
 "$NODE" packages/aiplat-pi-runtime/scripts/enterprise_kb_smoke.mjs
 "$NODE" --experimental-strip-types packages/aiplat-pi-runtime/scripts/enterprise_kb_citation_smoke.mjs
 "$NODE" packages/aiplat-pi-runtime/scripts/enterprise_delivery_scan_smoke.mjs
+"$NODE" packages/aiplat-pi-runtime/scripts/enterprise_kb_health_smoke.mjs
 "$NODE" packages/aiplat-pi-runtime/scripts/enterprise_tools_smoke.mjs
 "$NODE" packages/aiplat-pi-runtime/scripts/enterprise_tool_gate_smoke.mjs
 "$NODE" packages/aiplat-pi-runtime/scripts/enterprise_memory_smoke.mjs

@@ -250,22 +250,21 @@ Pi enterprise 模式下可加一个 `/aiplat-kb-health` slash command：
 
 ## 6. 开发落地检查
 
-### 6.1 一期（零平台改动）
+### 6.1 一期 — 已合入
 
-- [ ] 实现 `kb_health_score(metrics)` 计算函数（纯前端/报告脚本）
-- [ ] 实现 `/aiplat-kb-health` Pi slash command（enterprise 模式）
-- [ ] governance cron 接入：每周生成 KB 健康报告 Markdown
-- [ ] 健康分计算单测（覆盖各分档边界）
-- [ ] Pi 断连时 soft-fail："知识库健康面板暂不可用"
+- [x] `kb_health_score(metrics)`（`aiPlat-platform/delivery/kb_health.py`）
+- [x] `GET /platform/delivery/kb-health`（json / markdown）+ 导出 `KB_HEALTH.md`
+- [x] `/aiplat-kb-health` Pi slash（`enterprise_kb_health.ts`；enterprise 模式）
+- [x] 健康分单测（分档边界）+ `enterprise_kb_health_smoke` soft-fail
+- [x] Pi 断连 / 未启用企业回连 → 「知识库健康面板暂不可用」
+- [ ] governance cron 每周归档（可选；报告可先手动 `render_delivery_kb_health.py`）
 
-### 6.2 二期（需平台补 endpoint）
+### 6.2 二期 — 部分 best-effort 已接
 
-- [ ] `GET /platform/kb/miss-top` — 漏召 TOP5
-- [ ] `GET /platform/kb/low-confidence-top` — 低置信 TOP5
-- [ ] `GET /platform/kb/cache-stats` — 缓存命中率
-- [ ] 面板二期字段接入
-- [ ] "建议补哪些文档"从漏召 TOP5 自动生成
-- [ ] 二期 endpoint smoke test
+- [x] 漏召 / 低置信 TOP：从 `syscall_events` best-effort 聚合（无 store 时 unavailable，不阻断一期）
+- [x] 缓存命中率：复用 `cost_report._cache_stats`（进程内；非独立 `/kb/cache-stats`）
+- [x] 「建议补哪些文档」优先用漏召 TOP，否则用漏召率/引用覆盖率叙事
+- [ ] 独立 `GET /platform/kb/miss-top` / `low-confidence-top` / `cache-stats`（可后续拆出）
 
 ---
 

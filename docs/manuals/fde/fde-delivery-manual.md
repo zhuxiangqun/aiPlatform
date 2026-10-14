@@ -409,10 +409,12 @@ FDE 返回办公室后，每天花 5 分钟检查系统健康：
 | 8.4 | 企业混合（若启用） | KB citation V2/V3a/V6 + `/aiplat-status` 客户可读 | [ ] |
 | 8.5 | 启动说明 | 客户可按包内 README 一键跑 Pi（企业回连按文档选配） | [ ] |
 | 8.6 | 成本页 | 交付包含 `COST_REPORT.md`；客户问「一个月多少钱」可据此答复（无单价不编造 ¥） | [ ] |
+| 8.7 | 库健康分 | 交付包含 `KB_HEALTH.md`；客户可见健康分 + 建议补文档（漏召 TOP 有则展示） | [ ] |
 
 **签收**：FDE ________ 日期 ________  
 重扫命令：`python3 scripts/scan_pi_bundle_delivery.py --root <pi-bundle> --write --strict`  
-成本页刷新：`python3 scripts/render_delivery_cost_report.py --out <pi-bundle>/COST_REPORT.md`（或 `GET /platform/delivery/cost-report?format=markdown`）
+成本页刷新：`python3 scripts/render_delivery_cost_report.py --out <pi-bundle>/COST_REPORT.md`（或 `GET /platform/delivery/cost-report?format=markdown`）  
+库健康刷新：`python3 scripts/render_delivery_kb_health.py --out <pi-bundle>/KB_HEALTH.md`（或 `GET /platform/delivery/kb-health?format=markdown`）
 
 ---
 

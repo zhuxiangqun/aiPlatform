@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2125
+total_capabilities: 2132
 last_updated: 2026-10-11
 version: "30.10"
 auto_sync: true
@@ -1214,6 +1214,7 @@ scan_hash: 8f9548ec24f4
 | Pi 企业 KB citation 契约 | `packages/aiplat-pi-runtime/extensions/enterprise_kb_citation.ts` + `enterprise_kb.ts` + `scripts/enterprise_kb_citation_smoke.mjs` + `HYBRID_ENTERPRISE_DELIVERY.md` §3 | ✅ | V2 空结果固定开场、V3a Markdown 参考文献（≤200 字）、V6 top-5；`AIPLAT_ENTERPRISE_KB_CITATION` 可关；零新 RAG。生成物适用：**已接线**（导出包须含 citation 模块） | 已合入 |
 | Pi 出厂交付扫描（A+B） | `scripts/scan_pi_bundle_delivery.py` + `export_pi_bundle.py` 接线 + `DELIVERY_CHECKLIST.md` / `USAGE_BOUNDARY.md` + FDE 手册 §8 | ✅ | 导出时自动扫描密钥/debug/假绿痕迹并生成签收清单；FDE 人工勾选。生成物适用：**已接线**（Pi 包出厂） | 已合入 |
 | Pi 交付成本页（§4） | `aiPlat-platform/delivery/cost_report.py` + `GET /platform/delivery/cost-report` + `scripts/render_delivery_cost_report.py` + 导出 `COST_REPORT.md` | ✅ | 聚合 semantic_cache.stats / KB metrics / billing；模型分流为配置快照（禁虚假占比）；¥ 仅在 `AIPLAT_DELIVERY_COST_CNY_PER_CACHE_HIT` 或账单有记录时展示。生成物适用：**已接线**（Pi 包出厂成本页） | 已合入 |
+| Pi 交付库健康分（§④） | `aiPlat-platform/delivery/kb_health.py` + `GET /platform/delivery/kb-health` + `scripts/render_delivery_kb_health.py` + 导出 `KB_HEALTH.md` + `/aiplat-kb-health` | ✅ | 健康分公式（citation/漏召/纠错/重复）+ metrics/stats/cache；建议行驱动入库；漏召/低置信 TOP best-effort。生成物适用：**已接线**（Pi 包出厂 + 企业 slash） | 已合入 |
 | Pi 企业混合工具代理 | `packages/aiplat-pi-runtime/extensions/enterprise_tools.ts` + `aiplat-app.ts` + `scripts/enterprise_tools_smoke.mjs` | ✅ | 厂外 opt-in：`aiplat_tool_execute`；须 `AIPLAT_ENTERPRISE_TOOLS` 允许列表；空列表=关闭；软失败；RBAC/PolicyGate 在 Core。生成物适用：**已接线**（导出包同扩展） | 已合入 |
 | Pi 企业原生工具门禁桥 | `packages/aiplat-pi-runtime/extensions/enterprise_tool_gate.ts` + `aiplat-app.ts` + `scripts/enterprise_tool_gate_smoke.mjs` | ✅ | `AIPLAT_ENTERPRISE=1` 时默认 `tool_call` block bash/write/edit/powershell + `setActiveTools`；只读 native 默认放行；`aiplat_*` 始终放行；逃生 `ALLOW_NATIVE` / `TOOL_GATE=0` / `NATIVE_ALLOWLIST`。生成物适用：**已接线**（导出包同扩展；不搬 PolicyGate） | 已合入 |
 | Pi 企业 Memory 回写桥 | `packages/aiplat-pi-runtime/extensions/enterprise_memory.ts` + `aiplat-app.ts` + `scripts/enterprise_memory_smoke.mjs` | ✅ | opt-in：`AIPLAT_ENTERPRISE_MEMORY=1` → `aiplat_memory_capture` + `/aiplat-memory` + `session_shutdown` 软 flush → `POST /platform/memory/capture`；失败不阻断本地会话。生成物适用：**已接线**（导出包同扩展；不搬 MemoryManager） | 已合入 |
@@ -2712,6 +2713,10 @@ scan_hash: 8f9548ec24f4
 ## 二十五、管理 & 质量
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| registerEnterpriseKbHealth | `packages/aiplat-pi-runtime/extensions/enterprise_kb_health.ts` | ✅ | 自动同步 | 已合入 |
+| render_kb_health_markdown | `aiPlat-platform/delivery/kb_health.py` | ✅ | 自动同步 | 已合入 |
+| kb_health_score | `aiPlat-platform/delivery/kb_health.py` | ✅ | 自动同步 | 已合入 |
+| build_kb_health_report | `aiPlat-platform/delivery/kb_health.py` | ✅ | 自动同步 | 已合入 |
 | render_cost_report_markdown | `aiPlat-platform/delivery/cost_report.py` | ✅ | 自动同步 | 已合入 |
 | build_delivery_cost_report | `aiPlat-platform/delivery/cost_report.py` | ✅ | 自动同步 | 已合入 |
 | write_scan_artifacts | `scripts/scan_pi_bundle_delivery.py` | ✅ | 自动同步 | 已合入 |
@@ -3044,7 +3049,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 248 | 1 | 249 |
 | 记忆子系统 | 58 | 0 | 58 |
-| 知识引擎（本体） | 368 | 9 | 377 |
+| 知识引擎（本体） | 369 | 9 | 378 |
 | RAG 检索 | 51 | 0 | 51 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 168 | 0 | 168 |
@@ -3068,7 +3073,7 @@ scan_hash: 8f9548ec24f4
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 68 | 0 | 68 |
+| 管理 & 质量 | 74 | 0 | 74 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -3087,7 +3092,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2115** | **10** | **2125** |
+| **总计** | **2122** | **10** | **2132** |
 
 | **总计** | **1095** | **0** | **1095** |
 

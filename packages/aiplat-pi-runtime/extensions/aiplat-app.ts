@@ -39,6 +39,7 @@ import {
   toolProxyStatusLines,
   toolProxySystemPromptAddon,
 } from "./enterprise_tools";
+import { registerEnterpriseKbHealth } from "./enterprise_kb_health";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..");
@@ -275,6 +276,7 @@ export default function (pi: ExtensionAPI) {
   const gateOn = registerEnterpriseToolGate(pi);
   const memoryOn = registerEnterpriseMemory(pi);
   const approvalOn = registerEnterpriseApproval(pi);
+  registerEnterpriseKbHealth(pi);
 
   pi.registerCommand("aiplat-status", {
     description: "Show aiPlat Pi Runtime status (app home, routing, markers)",
