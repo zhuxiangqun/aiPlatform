@@ -8,6 +8,7 @@ PY="${PYTHON:-python3}"
 
 echo "== offline hybrid smokes =="
 "$NODE" packages/aiplat-pi-runtime/scripts/enterprise_platform_url_smoke.mjs
+"$NODE" packages/aiplat-pi-runtime/scripts/enterprise_http_smoke.mjs
 "$NODE" packages/aiplat-pi-runtime/scripts/enterprise_kb_smoke.mjs
 "$NODE" --experimental-strip-types packages/aiplat-pi-runtime/scripts/enterprise_kb_citation_smoke.mjs
 "$NODE" packages/aiplat-pi-runtime/scripts/enterprise_delivery_scan_smoke.mjs

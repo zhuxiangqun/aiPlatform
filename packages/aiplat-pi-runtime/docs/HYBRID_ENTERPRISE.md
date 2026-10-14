@@ -20,6 +20,10 @@
 | 变量 | 含义 |
 |------|------|
 | `AIPLAT_PLATFORM_URL` | 平台基址。两种等价本地写法：`http://127.0.0.1:8003`（直连 platform，挂载 `/platform/*`）或 `http://127.0.0.1:8000/api`（management GW）。**禁止** `http://host:8003/api`（会拼成 `/api/platform/*` → 404）。扩展内 `normalizePlatformBaseUrl` 会纠偏 |
+| `AIPLAT_PLATFORM_BASE_PATH` | 可选显式挂载前缀（如 `/api`）。URL 路径为 `/` 时写入该前缀，**跳过**端口猜纠偏。用于非 8000/8003 反代；标准本地 8003 直连请**勿**设 |
+| `AIPLAT_PLATFORM_CIRCUIT` | 平台 HTTP 断路器（默认开）。设 `0`/`false` 关闭。连续失败后跳过请求，避免超时堆积 |
+| `AIPLAT_PLATFORM_CIRCUIT_FAILURES` | 打开断路器的连续失败阈值（默认 3） |
+| `AIPLAT_PLATFORM_CIRCUIT_COOLDOWN_MS` | 断路器冷却毫秒（默认 30000）后再试 half-open |
 | `AIPLAT_CORE_URL` | 可选；工具执行基址。裸 `http://host:8002` 会自动补 `/api/core`。未设时从 PLATFORM_URL 推导（`:8003`→`:8002/api/core`，`…/api`→`…/api/core`） |
 | `AIPLAT_TENANT_TOKEN` / API Key | 身份注入；权限判断在平台 PolicyGate / RBAC |
 | `AIPLAT_ENTERPRISE=1` | 启用回连意图；未设则严格 Pi-only。**同时默认打开原生工具门禁**（无需 URL/token） |
@@ -103,6 +107,7 @@ node packages/aiplat-pi-runtime/scripts/enterprise_tool_gate_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_memory_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_approval_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_platform_url_smoke.mjs
+node packages/aiplat-pi-runtime/scripts/enterprise_http_smoke.mjs
 # live (probes :8003 then :8000/api; SKIP if down; set AIPLAT_HYBRID_LIVE=1 to require):
 node packages/aiplat-pi-runtime/scripts/enterprise_hybrid_live_smoke.mjs
 ```

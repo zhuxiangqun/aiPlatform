@@ -58,6 +58,10 @@ try {
     "export includes enterprise_kb_citation.ts",
   );
   assert(
+    fs.existsSync(path.join(out, "extensions/enterprise_http.ts")),
+    "export includes enterprise_http.ts",
+  );
+  assert(
     fs.existsSync(path.join(out, "extensions/enterprise_kb.ts")),
     "export includes enterprise_kb.ts",
   );

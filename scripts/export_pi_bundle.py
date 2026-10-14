@@ -30,6 +30,7 @@ WORKSPACE = Path(__file__).resolve().parent.parent
 RUNTIME_PKG = WORKSPACE / "packages" / "aiplat-pi-runtime"
 RUNTIME_EXT = RUNTIME_PKG / "extensions" / "aiplat-app.ts"
 RUNTIME_EXT_ENTERPRISE = RUNTIME_PKG / "extensions" / "enterprise_kb.ts"
+RUNTIME_EXT_HTTP = RUNTIME_PKG / "extensions" / "enterprise_http.ts"
 RUNTIME_EXT_KB_CITATION = RUNTIME_PKG / "extensions" / "enterprise_kb_citation.ts"
 RUNTIME_EXT_TOOLS = RUNTIME_PKG / "extensions" / "enterprise_tools.ts"
 RUNTIME_EXT_TOOL_GATE = RUNTIME_PKG / "extensions" / "enterprise_tool_gate.ts"
@@ -181,7 +182,11 @@ def export_bundle(
         shutil.copy2(RUNTIME_EXT_ENTERPRISE, ext_dir / "enterprise_kb.ts")
     else:
         _die(f"enterprise KB extension missing: {RUNTIME_EXT_ENTERPRISE}")
-    # enterprise_kb.ts imports ./enterprise_kb_citation — must ship together
+    # enterprise_kb.ts imports ./enterprise_http + ./enterprise_kb_citation — must ship together
+    if RUNTIME_EXT_HTTP.is_file():
+        shutil.copy2(RUNTIME_EXT_HTTP, ext_dir / "enterprise_http.ts")
+    else:
+        _die(f"enterprise HTTP helper missing: {RUNTIME_EXT_HTTP}")
     if RUNTIME_EXT_KB_CITATION.is_file():
         shutil.copy2(RUNTIME_EXT_KB_CITATION, ext_dir / "enterprise_kb_citation.ts")
     else:

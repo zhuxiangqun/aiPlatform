@@ -11,6 +11,7 @@
 import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
+import { CircuitOpenError, platformFetch } from "./enterprise_http";
 import {
   loadEnterpriseConfig,
   type EnterpriseConfig,
@@ -124,7 +125,7 @@ export async function captureMemory(
   };
 
   try {
-    const res = await fetch(url, {
+    const res = await platformFetch(url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -155,6 +156,9 @@ export async function captureMemory(
       raw: parsed,
     };
   } catch (e) {
+    if (e instanceof CircuitOpenError) {
+      return { ok: false, text: "", error: `circuit: ${e.message}` };
+    }
     return {
       ok: false,
       text: "",

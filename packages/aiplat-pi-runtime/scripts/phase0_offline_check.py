@@ -57,6 +57,20 @@ def main() -> int:
             if needle not in src:
                 errors.append(f"extension missing {needle}")
 
+    http_ext = ROOT / "extensions" / "enterprise_http.ts"
+    if not http_ext.is_file():
+        errors.append("missing extensions/enterprise_http.ts")
+    else:
+        http_src = http_ext.read_text(encoding="utf-8")
+        for needle in (
+            "normalizePlatformBaseUrl",
+            "platformFetch",
+            "AIPLAT_PLATFORM_BASE_PATH",
+            "PlatformCircuitBreaker",
+        ):
+            if needle not in http_src:
+                errors.append(f"enterprise_http missing {needle}")
+
     ent = ROOT / "extensions" / "enterprise_kb.ts"
     if not ent.is_file():
         errors.append("missing extensions/enterprise_kb.ts")
@@ -68,6 +82,7 @@ def main() -> int:
             "registerEnterpriseKb",
             "kbQueryUrl",
             "normalizePlatformBaseUrl",
+            "platformFetch",
         ):
             if needle not in ent_src:
                 errors.append(f"enterprise_kb missing {needle}")

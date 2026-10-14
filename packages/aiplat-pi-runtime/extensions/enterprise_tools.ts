@@ -12,6 +12,7 @@ import {
   extractApprovalRequestId,
   formatApprovalRequiredHint,
 } from "./enterprise_approval";
+import { CircuitOpenError, platformFetch } from "./enterprise_http";
 import {
   loadEnterpriseConfig,
   type EnterpriseConfig,
@@ -160,7 +161,7 @@ export async function executeEnterpriseTool(
     body.user_id = (process.env.AIPLAT_ACTOR_ID || "pi-enterprise").trim() || "pi-enterprise";
   }
   try {
-    const res = await fetch(url, {
+    const res = await platformFetch(url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -197,6 +198,13 @@ export async function executeEnterpriseTool(
       raw: parsed,
     };
   } catch (e) {
+    if (e instanceof CircuitOpenError) {
+      return {
+        ok: false,
+        text: "",
+        error: `circuit: ${e.message}`,
+      };
+    }
     return {
       ok: false,
       text: "",
