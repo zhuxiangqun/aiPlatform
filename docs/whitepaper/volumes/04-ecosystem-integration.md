@@ -3,19 +3,19 @@ title: "aiPlat 生态与集成白皮书"
 volume_id: ecosystem-integration
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-13T16:20:15Z"
+generated_at: "2026-10-14T10:36:11Z"
 audience: "ISV、集成商、开源社区、渠道"
 core_question: "如何接入、贡献、协作？"
 priority: P2
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30"
-caps_sha256: "fc35247785501f2d864e418731ff309de63d14e5c77a7f1905e4f440ae80a8c2"
+caps_sha256: "f43ae93235e10d95aaecc107809b4c88100653889626abafee91233b2590bd61"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=ecosystem-integration suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=fc35247785501f2d864e418731ff309de63d14e5c77a7f1905e4f440ae80a8c2 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=ecosystem-integration suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=f43ae93235e10d95aaecc107809b4c88100653889626abafee91233b2590bd61 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 生态与集成白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 如何接入、贡献、协作？ |
 | 优先级 | P2 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-13T16:20:15Z` |
-| CAPABILITIES sha256 | `fc3524778550…` |
+| 生成时间 (UTC) | `2026-10-14T10:36:11Z` |
+| CAPABILITIES sha256 | `f43ae93235e1…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 **备注**：
@@ -641,7 +641,7 @@ Do not claim Pi-only equals full in-factory agent. Enterprise thickness is **Pi 
 
 #### Enterprise hybrid (opt-in)
 
-Default remains Pi-only. See [`docs/HYBRID_ENTERPRISE.md`](./docs/HYBRID_ENTERPRISE.md).
+Default remains Pi-only. See [`docs/HYBRID_ENTERPRISE.md`](./docs/HYBRID_ENTERPRISE.md) and delivery appendix [`docs/HYBRID_ENTERPRISE_DELIVERY.md`](./docs/HYBRID_ENTERPRISE_DELIVERY.md) (SKU + KB citation acceptance).
 
 ```bash
 export AIPLAT_ENTERPRISE=1
@@ -671,6 +671,9 @@ Offline gates (mock HTTP / pure policy, no platform process):
 
 ```bash
 node packages/aiplat-pi-runtime/scripts/enterprise_kb_smoke.mjs
+node --experimental-strip-types packages/aiplat-pi-runtime/scripts/enterprise_kb_citation_smoke.mjs
+node packages/aiplat-pi-runtime/scripts/enterprise_delivery_scan_smoke.mjs
+node packages/aiplat-pi-runtime/scripts/enterprise_kb_health_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_tools_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_tool_gate_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_memory_smoke.mjs
