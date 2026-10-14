@@ -4527,11 +4527,13 @@ async def kb_query(req: KBQueryRequest, request: Request):
 
         from kb.query_telemetry import record_kb_query_syscall
 
+        _inp = payload.get("input") if isinstance(payload.get("input"), dict) else {}
+
         await record_kb_query_syscall(
 
-            question=str(payload.get("question") or ""),
+            question=str(_inp.get("question") or getattr(req, "question", "") or ""),
 
-            collection_id=str(payload.get("collection_id") or "default"),
+            collection_id=str(_inp.get("collection_id") or getattr(req, "collection_id", "") or "default"),
 
             tenant_id=str(getattr(identity, "tenant_id", "") or ""),
 
@@ -4540,6 +4542,8 @@ async def kb_query(req: KBQueryRequest, request: Request):
             request_id=str(getattr(identity, "request_id", "") or ""),
 
             out=out,
+
+            error=(None if out.get("ok", True) else str(out.get("error_message") or out.get("error") or "kb_query_failed")[:500]),
 
         )
 
@@ -4607,11 +4611,13 @@ async def collection_query(request: Request):
 
         from kb.query_telemetry import record_kb_query_syscall
 
+        _inp = payload.get("input") if isinstance(payload.get("input"), dict) else {}
+
         await record_kb_query_syscall(
 
-            question=str(payload.get("question") or ""),
+            question=str(_inp.get("question") or ""),
 
-            collection_id=str(payload.get("collection_id") or "default"),
+            collection_id=str(_inp.get("collection_id") or "default"),
 
             tenant_id=str(getattr(identity, "tenant_id", "") or ""),
 
@@ -4620,6 +4626,8 @@ async def collection_query(request: Request):
             request_id=str(getattr(identity, "request_id", "") or ""),
 
             out=out,
+
+            error=(None if out.get("ok", True) else str(out.get("error_message") or out.get("error") or "kb_query_failed")[:500]),
 
         )
 
