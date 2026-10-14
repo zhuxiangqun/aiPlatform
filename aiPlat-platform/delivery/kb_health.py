@@ -275,6 +275,49 @@ def _payload_score(payload: Any) -> Optional[float]:
     return None
 
 
+def _execution_db_path() -> Optional[str]:
+    """Resolve executions sqlite without requiring a full KernelRuntime import."""
+    import os
+    from pathlib import Path
+
+    env = (os.environ.get("AIPLAT_EXECUTION_DB") or "").strip()
+    if env and os.path.isfile(env):
+        return env
+    # Prefer store when runtime already wired (platform process)
+    try:
+        from core.api.core_facade import get_kernel_runtime
+
+        rt = get_kernel_runtime()
+        store = getattr(rt, "execution_store", None) if rt else None
+        if store and hasattr(store, "_config"):
+            p = getattr(store._config, "db_path", None)
+            if p and os.path.isfile(str(p)):
+                return str(p)
+    except Exception as e:
+        logger.debug("kb_health execution db via runtime: %s", e)
+    # Lazy get_execution_store can fail on older Python (kw_only) — ignore
+    try:
+        from core.api.core_facade import get_execution_store
+
+        store = get_execution_store()
+        if store and hasattr(store, "_config"):
+            p = getattr(store._config, "db_path", None)
+            if p and os.path.isfile(str(p)):
+                return str(p)
+    except Exception as e:
+        logger.debug("kb_health execution db via get_execution_store: %s", e)
+    home = (
+        os.environ.get("AIPLAT_PLATFORM_HOME")
+        or os.environ.get("AIPLAT_HOME")
+        or str(Path.home() / ".aiplat")
+    )
+    for name in ("aiplat_executions.sqlite3", "executions.sqlite3"):
+        cand = Path(home).expanduser() / name
+        if cand.is_file():
+            return str(cand)
+    return None
+
+
 def _miss_and_low_top(
     *,
     window_hours: int = 168,
@@ -296,28 +339,26 @@ def _miss_and_low_top(
         "threshold": threshold,
     }
     try:
-        from core.api.core_facade import get_kernel_runtime
-
-        rt = get_kernel_runtime()
-        store = getattr(rt, "execution_store", None) if rt else None
-        if not store:
-            try:
-                from core.api.core_facade import get_execution_store
-
-                store = get_execution_store()
-            except Exception:
-                store = None
-        if not store or not hasattr(store, "_config"):
-            return miss_empty, low_empty
         import sqlite3 as _sq
 
+        db_path = _execution_db_path()
+        if not db_path:
+            return miss_empty, low_empty
         cutoff = time.time() - window_hours * 3600
-        conn = _sq.connect(store._config.db_path)
+        conn = _sq.connect(db_path)
         try:
+            # Real schema: args_json / result_json (not payload); name often
+            # sys_knowledge_retrieve / sys_kb_retrieve / knowledge_retrieve.
             rows = conn.execute(
                 """
-                SELECT payload, created_at FROM syscall_events
-                WHERE kind='knowledge_retrieve' AND created_at > ?
+                SELECT args_json, result_json, created_at, kind, name
+                FROM syscall_events
+                WHERE created_at > ?
+                  AND (
+                    kind IN ('knowledge_retrieve', 'kb', 'retrieval')
+                    OR name LIKE '%knowledge_retrieve%'
+                    OR name LIKE '%kb_retrieve%'
+                  )
                 ORDER BY created_at DESC
                 LIMIT 2000
                 """,
@@ -332,10 +373,16 @@ def _miss_and_low_top(
 
     miss_counts: Dict[str, Dict[str, Any]] = {}
     low_items: List[Dict[str, Any]] = []
-    for payload, created in rows or []:
-        text = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)
-        q = _extract_question(payload)
-        is_miss = '"count":0' in text or '"count": 0' in text
+    for args_json, result_json, created, _kind, _name in rows or []:
+        blob_parts = [p for p in (args_json, result_json) if isinstance(p, str)]
+        text = "\n".join(blob_parts)
+        q = _extract_question(args_json) or _extract_question(result_json)
+        is_miss = (
+            '"count":0' in text
+            or '"count": 0' in text
+            or '"items":[]' in text
+            or '"items": []' in text
+        )
         if is_miss and q:
             slot = miss_counts.get(q) or {"question": q, "count": 0, "last_asked": None}
             slot["count"] += 1
@@ -345,7 +392,9 @@ def _miss_and_low_top(
                 if not slot["last_asked"] or iso > str(slot["last_asked"]):
                     slot["last_asked"] = iso
             miss_counts[q] = slot
-        score = _payload_score(payload)
+        score = _payload_score(result_json)
+        if score is None:
+            score = _payload_score(args_json)
         if score is not None and score < threshold and q:
             low_items.append(
                 {
