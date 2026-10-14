@@ -81,6 +81,7 @@ def _kb_metrics(tenant_id: str = "", hours: int = 720) -> Dict[str, Any]:
         return {
             "available": True,
             "total_queries": int(m.get("total_queries") or 0),
+            "empty_retrieve_count": int(m.get("empty_retrieve_count") or 0),
             "no_answer_rate_pct": m.get("no_answer_rate_pct"),
             "citation_coverage_pct": m.get("citation_coverage_pct"),
             "window_hours": hours,
@@ -178,20 +179,32 @@ def build_delivery_cost_report(
     if api_calls is None and kb.get("available"):
         api_calls = int(kb.get("total_queries") or 0)
 
-    empty_intercept = {
+    empty_intercept: Dict[str, Any] = {
         "available": False,
-        "reason": "专用无效请求拦截计数尚未接线",
+        "reason": "ExecutionStore / knowledge_retrieve 事件不可用",
+        "count": None,
         "proxy": None,
     }
-    if kb.get("available") and kb.get("no_answer_rate_pct") is not None:
-        empty_intercept = {
-            "available": False,
-            "reason": "专用拦截计数待补；暂用 KB 无答案率作参考（非同一指标）",
-            "proxy": {
-                "label": "kb_no_answer_rate_pct",
-                "value": kb.get("no_answer_rate_pct"),
-            },
-        }
+    if kb.get("available"):
+        # Dedicated count: empty retrieve events in window (same SQL as no_answer rate)
+        count = kb.get("empty_retrieve_count")
+        if count is None and kb.get("total_queries") is not None:
+            try:
+                rate = float(kb.get("no_answer_rate_pct") or 0) / 100.0
+                count = int(round(int(kb.get("total_queries") or 0) * rate))
+            except (TypeError, ValueError):
+                count = None
+        if count is not None:
+            empty_intercept = {
+                "available": True,
+                "count": int(count),
+                "label": "empty_kb_retrieve",
+                "note": "窗口内空命中检索次数（syscall_events items=[] / count=0）",
+                "proxy": {
+                    "label": "kb_no_answer_rate_pct",
+                    "value": kb.get("no_answer_rate_pct"),
+                },
+            }
 
     return {
         "ok": True,
@@ -298,17 +311,18 @@ def render_cost_report_markdown(report: Dict[str, Any]) -> str:
         lines.append(f"- 分流策略 unavailable（{routing.get('reason', 'n/a')}）")
 
     lines.extend(["", "## 无效请求 / 空检索", ""])
-    proxy = empty.get("proxy")
-    if proxy:
+    if empty.get("available") and empty.get("count") is not None:
         lines.append(
-            f"- 专用拦截计数: **待补**（{empty.get('reason', '')}）"
+            f"- **空检索拦截次数**: {empty.get('count')} 次"
+            f"（{empty.get('note') or empty.get('label') or 'empty_kb_retrieve'}）"
         )
-        lines.append(
-            f"- 参考指标 `{proxy.get('label')}`: {proxy.get('value')} "
-            "（KB 无答案率，不等于拦截次数）"
-        )
+        proxy = empty.get("proxy")
+        if proxy and proxy.get("value") is not None:
+            lines.append(
+                f"- 对应无答案率 `{proxy.get('label')}`: {proxy.get('value')}%"
+            )
     else:
-        lines.append(f"- {empty.get('reason', 'unavailable')}")
+        lines.append(f"- 空检索计数 unavailable（{empty.get('reason', 'n/a')}）")
 
     lines.extend(
         [

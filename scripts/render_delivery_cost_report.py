@@ -45,12 +45,19 @@ def _fixture_report() -> dict:
             },
         },
         "empty_intercept": {
-            "available": False,
-            "reason": "专用无效请求拦截计数尚未接线",
+            "available": True,
+            "count": 148,
+            "label": "empty_kb_retrieve",
+            "note": "窗口内空命中检索次数",
             "proxy": {"label": "kb_no_answer_rate_pct", "value": 12.3},
         },
         "billing": {"available": False, "reason": "fixture"},
-        "kb_metrics": {"available": True, "total_queries": 1200, "no_answer_rate_pct": 12.3},
+        "kb_metrics": {
+            "available": True,
+            "total_queries": 1200,
+            "empty_retrieve_count": 148,
+            "no_answer_rate_pct": 12.3,
+        },
         "cny_estimate": None,
         "spec": "HYBRID_ENTERPRISE_DELIVERY.md §4",
     }

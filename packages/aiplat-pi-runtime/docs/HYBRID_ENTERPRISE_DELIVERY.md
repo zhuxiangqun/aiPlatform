@@ -126,8 +126,8 @@ L2 库健康分面板（属 ④，规格见 §5）：本周入库 N / 漏召 TOP
 | V2 | 无检索结果：回复以「未在知识库中找到相关内容」开头，禁止编造 | **P0 必做** | 强制 | 强制 |
 | V3a | Markdown：`[来源: 文档名]` + 文末「参考文献」含 ≤200 字片段 | **P0 必做** | 强制 | 可选 |
 | V6 | 单次引用 ≤5；超出取 top-5 by score，可注明「共 N 条展示前 5」 | **P0 必做** | 强制 | 强制 |
-| V1 | 事实陈述附带来源标记（基于工具返回，非 NLP 事实句检测） | P1 prompt/契约 | 强制 | 可选 |
-| V5 | 无源支撑内容标「（未验证）」或避免输出 | P1 best-effort | 强制意图 | 不要求 |
+| V1 | 事实陈述附带来源标记（基于工具返回，非 NLP 事实句检测） | P1 prompt/契约 ✅ | 强制 | 可选 |
+| V5 | 无源支撑内容标「（未验证）」或避免输出 | P1 best-effort ✅ | 强制意图 | 不要求 |
 | V3b | 点击展开原文片段 | P2 富客户端 | 可选 | 可选 |
 
 **阻断出厂（enterprise）**：V2 + V3a + V6。V1/V5/V3b 不阻断第一期。
@@ -179,7 +179,7 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 | API 调用总量 | billing breakdown 或 `kb/metrics.total_queries` | 「本月共调用 N 次」 | ✅ 有则展示 |
 | 缓存命中率 | `get_semantic_cache().stats` | 「M 次命中 / 命中率 %」 | ✅ **优先** |
 | 模型分流 | `best_model_for_purpose` **配置快照** | 简单/复杂用途→模型表 | ✅ 禁虚假流量占比 |
-| 空检索/无效拦截 | 专用计数待补；可附 KB 无答案率参考 | 标明「待补 / 参考」 | ⚠️ 叙事已接 |
+| 空检索/无效拦截 | `kb/metrics.empty_retrieve_count`（syscall_events 空命中） | 「空检索拦截次数 N」+ 无答案率参考 | ✅ 已接 |
 | 月度成本 ¥ | `billing_records` 或 `AIPLAT_DELIVERY_COST_CNY_PER_CACHE_HIT` | 账单权威 ¥ 或估算 ¥ | ✅ **可选**；无价目不编造 |
 
 **出口**：
@@ -292,4 +292,6 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 
 **已补（周报 + cache-stats）**：`kb_health_archive`（默认每 168h 写 `~/.aiplat/governance/reports/kb-health-YYYY-WW.md`）+ `GET /platform/kb/cache-stats`。
 
-**下一刀（可选）**：无效请求专用拦截计数；V1/V5 prompt 级增强。
+**已补（空拦截 + V1/V5）**：成本页 `empty_retrieve_count`；citation 工具返回层 + system prompt 明确 V1/V5。
+
+**下一刀（可选）**：V3b 可展开参考文献；工具 L1–L3 分级 allowlist；模型分流流量占比计量。

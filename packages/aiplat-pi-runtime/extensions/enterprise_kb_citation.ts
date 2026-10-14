@@ -121,7 +121,9 @@ export function formatKbCitationResponse(
 
   parts.push(
     [
-      "以下仅含知识库检索命中。回答事实时必须使用文末来源，格式 `[来源: 文档名]`；",
+      "以下仅含知识库检索命中。",
+      "V1：每条来自知识库的事实陈述后附 `[来源: 文档名]`（可用标记见文末）。",
+      "V5：工具结果未覆盖的内容勿当作事实输出；若必须提及，标「（未验证）」或省略。",
       "禁止编造未列出的文档或内容。",
     ].join(""),
   );
@@ -178,7 +180,8 @@ export function citationSystemPromptLines(): string[] {
   return [
     "KB citation contract (enterprise):",
     `- If tool text starts with 「${KB_EMPTY_PREFIX}」, say so to the user; do not invent sources.`,
-    "- If 参考文献 is present: ground every factual claim in those sources using [来源: 文档名]; end with the reference list when answering from KB.",
+    "- V1: When 参考文献 is present, attach [来源: 文档名] after each factual claim grounded in the tool result; end with the reference list.",
+    "- V5: Do not present facts that are not supported by the tool result; if you must mention them, mark （未验证） or omit.",
     "- Never invent citations, doc names, or quotes not in the tool result.",
     "- If tool text contains ⚠️ 置信度较低 warning, relay this to the user before presenting the information.",
   ];

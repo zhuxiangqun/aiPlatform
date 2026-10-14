@@ -22,6 +22,7 @@ async function main() {
     LOW_CONFIDENCE_THRESHOLD,
     formatKbCitationResponse,
     extractKbSourceItems,
+    citationSystemPromptLines,
   } = m;
 
   // V2 empty
@@ -117,7 +118,15 @@ async function main() {
   const mixedResult = formatKbCitationResponse({ kb: { items: mixedItems } });
   assert(!mixedResult.includes("置信度较低"), "A: no warning when some scores are high");
 
-  console.log("PASS: enterprise_kb_citation V2/V3a/V6 + dedup + low-confidence");
+  // V1 / V5 prompt + tool-result contract lines
+  assert(hit.includes("V1："), "V1: tool-result instructs source tags");
+  assert(hit.includes("V5："), "V5: tool-result instructs unverified tag");
+  const prompt = citationSystemPromptLines().join("\n");
+  assert(prompt.includes("V1:"), "V1: system prompt line");
+  assert(prompt.includes("V5:"), "V5: system prompt line");
+  assert(prompt.includes("（未验证）") || prompt.includes("未验证"), "V5: unverified marker");
+
+  console.log("PASS: enterprise_kb_citation V2/V3a/V6 + V1/V5 + dedup + low-confidence");
   console.log("AIPLAT_ENTERPRISE_KB_CITATION_SMOKE_OK");
 }
 

@@ -35,6 +35,7 @@ class KBMetrics:
     gap_repair_cycles: List[Dict[str, Any]] = field(default_factory=list)
     repeat_question_rate: float = 0.0
     total_queries: int = 0
+    empty_retrieve_count: int = 0  # dedicated empty/no-hit retrieve events
     window_hours: int = 24
 
     def to_dict(self) -> Dict[str, Any]:
@@ -47,6 +48,7 @@ class KBMetrics:
             "gap_repair_cycles": self.gap_repair_cycles[:5],
             "repeat_question_rate_pct": round(self.repeat_question_rate * 100, 1),
             "total_queries": self.total_queries,
+            "empty_retrieve_count": int(self.empty_retrieve_count or 0),
             "window_hours": self.window_hours,
         }
 
@@ -162,6 +164,7 @@ def _query_syscall_metrics(
         params,
     ).fetchone()
     no_answer = row[0] if row else 0
+    metrics.empty_retrieve_count = int(no_answer or 0)
     metrics.no_answer_rate = no_answer / max(metrics.total_queries, 1)
 
     row = conn.execute(
