@@ -37,6 +37,7 @@ RUNTIME_EXT_TOOL_GATE = RUNTIME_PKG / "extensions" / "enterprise_tool_gate.ts"
 RUNTIME_EXT_MEMORY = RUNTIME_PKG / "extensions" / "enterprise_memory.ts"
 RUNTIME_EXT_APPROVAL = RUNTIME_PKG / "extensions" / "enterprise_approval.ts"
 RUNTIME_EXT_KB_HEALTH = RUNTIME_PKG / "extensions" / "enterprise_kb_health.ts"
+RUNTIME_EXT_L3_DUTY = RUNTIME_PKG / "extensions" / "enterprise_l3_duty.ts"
 RUNTIME_HANDLER = RUNTIME_PKG / "fixtures" / "handler_echo.py"
 RUNTIME_RUNNER = RUNTIME_PKG / "fixtures" / "handler_runner.py"
 _SCAN_SCRIPT = WORKSPACE / "scripts" / "scan_pi_bundle_delivery.py"
@@ -211,6 +212,10 @@ def export_bundle(
         shutil.copy2(RUNTIME_EXT_KB_HEALTH, ext_dir / "enterprise_kb_health.ts")
     else:
         _die(f"enterprise KB health extension missing: {RUNTIME_EXT_KB_HEALTH}")
+    if RUNTIME_EXT_L3_DUTY.is_file():
+        shutil.copy2(RUNTIME_EXT_L3_DUTY, ext_dir / "enterprise_l3_duty.ts")
+    else:
+        _die(f"enterprise L3 duty extension missing: {RUNTIME_EXT_L3_DUTY}")
 
     fixtures = out / "fixtures"
     fixtures.mkdir(parents=True, exist_ok=True)
@@ -386,6 +391,60 @@ Tool: `aiplat_tool_execute` → POST …/tools/{{name}}/execute.
         )
     except Exception as exc:
         print(f"WARNING: KB_HEALTH.md skipped: {exc}", file=sys.stderr)
+
+    # §5 L1 月度运行报告：成本 + KB 健康 + daemon 快照
+    try:
+        _delivery_dir = WORKSPACE / "aiPlat-platform"
+        if str(_delivery_dir) not in sys.path:
+            sys.path.insert(0, str(_delivery_dir))
+        from delivery.monthly_ops_report import (  # type: ignore
+            build_monthly_ops_report,
+            render_monthly_ops_markdown,
+        )
+
+        ops_report = build_monthly_ops_report(project_id=project_id)
+        (out / "MONTHLY_OPS_REPORT.md").write_text(
+            render_monthly_ops_markdown(ops_report), encoding="utf-8"
+        )
+        meta["delivery_monthly_ops"] = {
+            "ok": bool(ops_report.get("ok")),
+            "period": ops_report.get("period"),
+            "daemon_available": bool((ops_report.get("daemon") or {}).get("available")),
+        }
+        (out / "aiplat-export.json").write_text(
+            json.dumps(meta, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        print(f"WARNING: MONTHLY_OPS_REPORT.md skipped: {exc}", file=sys.stderr)
+
+    # §5 L3 专属值班台
+    try:
+        _delivery_dir = WORKSPACE / "aiPlat-platform"
+        if str(_delivery_dir) not in sys.path:
+            sys.path.insert(0, str(_delivery_dir))
+        from delivery.l3_duty_desk import (  # type: ignore
+            build_l3_duty_desk,
+            render_l3_duty_markdown,
+        )
+
+        duty_report = build_l3_duty_desk(project_id=project_id)
+        (out / "L3_DUTY_DESK.md").write_text(
+            render_l3_duty_markdown(duty_report), encoding="utf-8"
+        )
+        meta["delivery_l3_duty"] = {
+            "ok": bool(duty_report.get("ok")),
+            "period": duty_report.get("period"),
+            "contact_available": bool(
+                (duty_report.get("duty_contact") or {}).get("available")
+            ),
+        }
+        (out / "aiplat-export.json").write_text(
+            json.dumps(meta, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        print(f"WARNING: L3_DUTY_DESK.md skipped: {exc}", file=sys.stderr)
 
     return out
 

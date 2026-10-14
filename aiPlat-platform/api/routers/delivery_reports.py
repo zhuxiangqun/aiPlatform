@@ -27,6 +27,14 @@ from delivery.kb_health_archive import (
     list_kb_health_archives,
     read_kb_health_archive,
 )
+from delivery.monthly_ops_report import (
+    build_monthly_ops_report,
+    render_monthly_ops_markdown,
+)
+from delivery.l3_duty_desk import (
+    build_l3_duty_desk,
+    render_l3_duty_markdown,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +57,52 @@ async def get_delivery_cost_report(
     )
     if (format or "").lower() in ("md", "markdown", "text"):
         body = render_cost_report_markdown(report)
+        return Response(content=body, media_type="text/markdown; charset=utf-8")
+    out = dict(report)
+    out["status"] = "ok"
+    return out
+
+
+@router.get("/delivery/monthly-ops-report", response_model=StatusResponse)
+async def get_delivery_monthly_ops_report(
+    tenant_id: str = Query(default="default"),
+    window_hours: int = Query(default=720, ge=1, le=8760),
+    project_id: str = Query(default=""),
+    collection_id: str = Query(default="default"),
+    format: Optional[str] = Query(default="json", description="json | markdown"),
+    _auth: str = Depends(require_auth),
+):
+    """L1 monthly ops report: daemon + cost + KB health (DELIVERY §5)."""
+    report = build_monthly_ops_report(
+        tenant_id=tenant_id,
+        window_hours=window_hours,
+        project_id=project_id,
+        collection_id=collection_id,
+    )
+    if (format or "").lower() in ("md", "markdown", "text"):
+        body = render_monthly_ops_markdown(report)
+        return Response(content=body, media_type="text/markdown; charset=utf-8")
+    out = dict(report)
+    out["status"] = "ok"
+    return out
+
+
+@router.get("/delivery/l3-duty-desk", response_model=StatusResponse)
+async def get_delivery_l3_duty_desk(
+    tenant_id: str = Query(default="default"),
+    window_hours: int = Query(default=720, ge=1, le=8760),
+    project_id: str = Query(default=""),
+    format: Optional[str] = Query(default="json", description="json | markdown"),
+    _auth: str = Depends(require_auth),
+):
+    """L3 duty desk: contact + eval observability + miss/low signals + tips."""
+    report = build_l3_duty_desk(
+        tenant_id=tenant_id,
+        window_hours=window_hours,
+        project_id=project_id,
+    )
+    if (format or "").lower() in ("md", "markdown", "text"):
+        body = render_l3_duty_markdown(report)
         return Response(content=body, media_type="text/markdown; charset=utf-8")
     out = dict(report)
     out["status"] = "ok"
