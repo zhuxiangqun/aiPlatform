@@ -55,6 +55,21 @@ def _cache_stats() -> Dict[str, Any]:
         return {"available": False, "reason": str(e)}
 
 
+def kb_cache_stats(*, tenant_id: str = "default") -> Dict[str, Any]:
+    """Public cache stats for ``GET /platform/kb/cache-stats`` (KB_HEALTH §3.2.3).
+
+    ``tenant_id`` reserved for future tenancy; semantic_cache is process-local today.
+    """
+    _ = tenant_id
+    raw = _cache_stats()
+    out = dict(raw)
+    if out.get("available"):
+        hits = int(out.get("hits") or 0)
+        out["cache_hits"] = hits
+        out["estimated_saved_calls"] = hits
+    return out
+
+
 def _kb_metrics(tenant_id: str = "", hours: int = 720) -> Dict[str, Any]:
     """Prefer platform kb.metrics; soft-fail to empty."""
     try:

@@ -290,4 +290,6 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 
 **已补（独立 TOP）**：`GET /platform/kb/miss-top` + `GET /platform/kb/low-confidence-top`（`delivery/kb_health.kb_miss_top` / `kb_low_confidence_top`）。
 
-**下一刀（可选）**：governance 周报 cron 归档；`/kb/cache-stats`；无效请求专用拦截计数；V1/V5 prompt 级增强。
+**已补（周报 + cache-stats）**：`kb_health_archive`（默认每 168h 写 `~/.aiplat/governance/reports/kb-health-YYYY-WW.md`）+ `GET /platform/kb/cache-stats`。
+
+**下一刀（可选）**：无效请求专用拦截计数；V1/V5 prompt 级增强。

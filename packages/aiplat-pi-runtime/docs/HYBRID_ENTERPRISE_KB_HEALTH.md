@@ -259,14 +259,14 @@ Pi enterprise 模式下可加一个 `/aiplat-kb-health` slash command：
 - [x] `/aiplat-kb-health` Pi slash（`enterprise_kb_health.ts`；enterprise 模式）
 - [x] 健康分单测（分档边界）+ `enterprise_kb_health_smoke` soft-fail
 - [x] Pi 断连 / 未启用企业回连 → 「知识库健康面板暂不可用」
-- [ ] governance cron 每周归档（可选；报告可先手动 `render_delivery_kb_health.py`）
+- [x] governance 周报归档：`delivery/kb_health_archive.py` + platform startup cron（`AIPLAT_KB_HEALTH_ARCHIVE_HOURS`，默认 168；`0` 关闭）；`POST /platform/delivery/kb-health/archive`；`GET /platform/governance/reports` + `…/kb-health/{week}`
 
 ### 6.2 二期 — 部分 best-effort 已接
 
 - [x] 漏召 / 低置信 TOP：从 `syscall_events` best-effort 聚合（无 store 时 unavailable，不阻断一期）
-- [x] 缓存命中率：复用 `cost_report._cache_stats`（进程内；非独立 `/kb/cache-stats`）
+- [x] 缓存命中率：复用 `cost_report._cache_stats` + 独立 `GET /platform/kb/cache-stats`
 - [x] 「建议补哪些文档」优先用漏召 TOP，否则用漏召率/引用覆盖率叙事
-- [x] 独立 `GET /platform/kb/miss-top` / `low-confidence-top`（复用 `_miss_and_low_top`；`cache-stats` 仍可后续拆出）
+- [x] 独立 `GET /platform/kb/miss-top` / `low-confidence-top` / `cache-stats`
 
 ---
 
