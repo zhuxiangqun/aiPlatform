@@ -427,6 +427,13 @@ export const projectApi = {
     );
   },
 
+  /** Resume from a stage without clearing artifacts (Platform → Core). */
+  resumeFromStage: async (projectId: string, stageId: string) => {
+    return apiClient.post<{ project_id?: string; phase?: string; status?: string; detail?: string }>(
+      `/platform/builder/projects/${projectId}/resume/${encodeURIComponent(stageId)}`
+    );
+  },
+
   /** Deterministic one-click fix from test_report (no ReAct agent).
    *  Default freezes test_cases; pass regenerateTestCases=true to rewrite the suite. */
   fixFromReport: async (
@@ -478,15 +485,31 @@ export const projectApi = {
     return projectApi.lastTestReport(projectId);
   },
 
-  /** Phase C：hop 度量 + 跑通晋升门快照。 */
+  /** Phase C：hop 度量 + 跑通晋升门快照（含可解释 next_actions / multi_agent_upgrade）。 */
   getPromotion: async (projectId: string) => {
     return apiClient.get<{
       ok?: boolean;
-      hops?: { n_runs?: number; effective_n?: number; effective_success_rate?: number };
+      summary?: string;
       blockers?: string[];
+      next_actions?: string[];
+      checks?: Array<{ name?: string; ok?: boolean; how_to_fix?: string; missing?: string }>;
+      hops?: {
+        n_runs?: number;
+        effective_n?: number;
+        effective_success_rate?: number;
+        by_failed_stage?: Record<string, number>;
+      };
       policy?: string;
       manifest_mode?: string;
       evidence?: { real_tests_green?: boolean; physical_evidence?: boolean };
+      multi_agent_upgrade?: {
+        ok?: boolean;
+        summary?: string;
+        missing_criteria?: string[];
+        next_actions?: string[];
+        blockers?: string[];
+        fix_hint?: string;
+      };
     }>(`/platform/builder/projects/${projectId}/promotion`);
   },
 
