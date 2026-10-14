@@ -7,6 +7,11 @@
  */
 import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import {
+  citationSystemPromptLines,
+  envCitationEnabled,
+  formatKbCitationResponse,
+} from "./enterprise_kb_citation";
 
 export type EnterpriseConfig = {
   enabled: boolean;
@@ -162,41 +167,17 @@ export async function retrieveKb(
         raw: parsed,
       };
     }
-    const summary = summarizeKbResponse(parsed);
+    const summary = formatKbCitationResponse(parsed, {
+      citation: envCitationEnabled(true),
+    });
     return { ok: true, status: res.status, text: summary, raw: parsed };
   } catch (e) {
     return {
       ok: false,
-      text: "",
+      text: `知识库暂不可用（${e && (e as Error).message ? (e as Error).message : e}）。请勿编造引用；可改用包内 skills/SOP。`,
       error: `network: ${e && (e as Error).message ? (e as Error).message : e}`,
     };
   }
-}
-
-function summarizeKbResponse(parsed: unknown): string {
-  if (!parsed || typeof parsed !== "object") return String(parsed || "");
-  const o = parsed as Record<string, unknown>;
-  const kb = o.kb && typeof o.kb === "object" ? (o.kb as Record<string, unknown>) : null;
-  const parts: string[] = ["AIPLAT_KB_RETRIEVE_OK"];
-  if (typeof o.answer === "string" && o.answer.trim()) {
-    parts.push(o.answer.trim().slice(0, 4000));
-  }
-  const items = (kb && Array.isArray(kb.items) ? kb.items : null) ||
-    (Array.isArray(o.items) ? o.items : null) ||
-    (Array.isArray(o.citations) ? o.citations : null);
-  if (items) {
-    for (const it of items.slice(0, 5)) {
-      if (!it || typeof it !== "object") continue;
-      const row = it as Record<string, unknown>;
-      const t = String(row.text || row.content || row.snippet || "").trim();
-      const src = String(row.doc_id || row.source || "").trim();
-      if (t) parts.push(src ? `[${src}] ${t.slice(0, 500)}` : t.slice(0, 500));
-    }
-  }
-  if (parts.length === 1) {
-    parts.push(JSON.stringify(parsed).slice(0, 3000));
-  }
-  return parts.join("\n\n");
 }
 
 export function enterpriseStatusLines(cfg?: EnterpriseConfig): string[] {
@@ -268,11 +249,15 @@ export function registerEnterpriseKb(pi: ExtensionAPI): boolean {
 export function enterpriseSystemPromptAddon(cfg?: EnterpriseConfig): string {
   const c = cfg || loadEnterpriseConfig();
   if (!c.enabled) return "";
-  return [
+  const lines = [
     "",
     "## aiPlat Enterprise Reconnect",
     "Hybrid mode: use tool aiplat_kb_retrieve for platform knowledge (read-only).",
-    "If the tool fails, continue with package skills/SOP only — do not invent citations.",
+    "If the tool fails or marks 知识库暂不可用, continue with package skills/SOP only — do not invent citations.",
     `platform=${c.baseUrl} collection=${c.collectionId}`,
-  ].join("\n");
+  ];
+  if (envCitationEnabled(true)) {
+    lines.push(...citationSystemPromptLines());
+  }
+  return lines.join("\n");
 }
