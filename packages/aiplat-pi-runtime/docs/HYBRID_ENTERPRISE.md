@@ -35,6 +35,7 @@
 | `AIPLAT_ENTERPRISE_APPROVAL=1` | 启用审批等待桥（须 URL/token）；空=关闭。**不**在 Pi 内 approve/reject |
 | `AIPLAT_ENTERPRISE_APPROVAL_POLL_MS` | `aiplat_approval_wait` 轮询间隔（默认 2000） |
 | `AIPLAT_ENTERPRISE_APPROVAL_WAIT_MS` | 等待超时（默认 120000） |
+| `AIPLAT_ENTERPRISE_KB_CITATION` | KB 引用契约（V2/V3a/V6）。enterprise 下**默认开**；设 `0`/`false` 可关（回退旧版片段 dump）。见 [`HYBRID_ENTERPRISE_DELIVERY.md`](./HYBRID_ENTERPRISE_DELIVERY.md) §3 |
 
 ## 回连能力阶梯
 
@@ -77,6 +78,7 @@ Offline + optional live gates:
 bash packages/aiplat-pi-runtime/scripts/run_all_enterprise_smokes.sh
 # or individually:
 node packages/aiplat-pi-runtime/scripts/enterprise_kb_smoke.mjs
+node --experimental-strip-types packages/aiplat-pi-runtime/scripts/enterprise_kb_citation_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_tools_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_tool_gate_smoke.mjs
 node packages/aiplat-pi-runtime/scripts/enterprise_memory_smoke.mjs

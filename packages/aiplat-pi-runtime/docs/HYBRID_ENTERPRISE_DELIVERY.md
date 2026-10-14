@@ -234,12 +234,12 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 
 ## 8. 开发落地检查（② 第一期）
 
-改 `packages/aiplat-pi-runtime/extensions/enterprise_kb.ts`（及必要 smoke）时：
+实现：`extensions/enterprise_kb_citation.ts` + `enterprise_kb.ts` 接线；冒烟 `scripts/enterprise_kb_citation_smoke.mjs`。
 
-- [ ] 空结果 → 固定 V2 开场文案（工具返回层即可，不依赖模型自觉）
-- [ ] 有结果 → V3a Markdown 参考文献块，片段 ≤200 字，条数 ≤5（V6）
-- [ ] system prompt 与工具失败路径仍禁止编造 citation
-- [ ] `enterprise_kb_smoke` / hybrid live 仍绿
-- [ ] 不引入新的平台 RAG 管道或 Pi 内 Memory/Approval 实现
+- [x] 空结果 → 固定 V2 开场文案（工具返回层，不依赖模型自觉）
+- [x] 有结果 → V3a Markdown 参考文献块，片段 ≤200 字，条数 ≤5（V6）
+- [x] system prompt 与桥失败路径禁止编造 citation（失败文案含「知识库暂不可用」）
+- [x] `enterprise_kb_citation_smoke`；`enterprise_kb_smoke` / hybrid live 仍应绿
+- [x] 不引入新的平台 RAG 管道或 Pi 内 Memory/Approval 实现
 
-**下一刀代码**：仅 ② 的 V2 + V3a + V6；① 的模板挂接可并行由交付/FDE 侧推进。
+**下一刀**：① 出厂清单挂接（FDE 模板库）；③ 成本页计量出口；V1/V5 prompt 级增强可选。

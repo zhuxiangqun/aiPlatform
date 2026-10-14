@@ -104,6 +104,7 @@ async function main() {
 
   server.close();
   console.log(`PASS: enterprise_kb_smoke (${pathToFileURL(ENT).href} is TS source of truth)`);
+  console.log("NOTE: citation V2/V3a/V6 → enterprise_kb_citation_smoke.mjs");
 }
 
 main().catch((e) => {
