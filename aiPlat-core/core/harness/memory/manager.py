@@ -2413,9 +2413,16 @@ class MemoryManager:
 
                     raise RuntimeError("No model available — set MemoryConfig.model")
 
-                kwargs: Dict[str, Any] = {}
+                kwargs: Dict[str, Any] = {
+                    "purpose": "doc_llm",
+                    "trace_context": {"source": "memory_manager", "purpose": "doc_llm"},
+                }
                 if _background:
-                    kwargs["trace_context"] = {"skip_claude_md": True}
+                    kwargs["trace_context"] = {
+                        "skip_claude_md": True,
+                        "source": "memory_manager",
+                        "purpose": "doc_llm",
+                    }
                     kwargs["inject_context"] = False
                     kwargs["gate_mode"] = "minimal"
 

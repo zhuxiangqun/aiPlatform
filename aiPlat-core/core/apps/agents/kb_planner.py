@@ -77,6 +77,8 @@ class KBPlannerAgent:
         resp = await sys_llm_generate(
             None, [{"role": "user", "content": prompt}],
             model_name=best_model_for_purpose("chat"), temperature=0.1, max_tokens=500,
+            purpose="chat",
+            trace_context={"source": "kb_planner", "purpose": "chat"},
         )
         import json, re
         raw = getattr(resp, "content", "") or str(resp)
@@ -105,6 +107,8 @@ class KBPlannerAgent:
             resp = await sys_llm_generate(
                 None, [{"role": "user", "content": f"请{action}以下内容：\n{content}"}],
                 model_name=best_model_for_purpose("chat"), temperature=0.3, max_tokens=1000,
+                purpose="chat",
+                trace_context={"source": "kb_planner", "purpose": "chat"},
             )
             return getattr(resp, "content", "") or str(resp)
         return str(step)
@@ -117,6 +121,8 @@ class KBPlannerAgent:
         resp = await sys_llm_generate(
             None, [{"role": "user", "content": f"基于以下中间结果，完成原始任务。\n\n任务：{task}\n\n中间结果：\n{steps_text}\n\n请给出最终答案："}],
             model_name=best_model_for_purpose("chat"), temperature=0.3, max_tokens=2000,
+            purpose="chat",
+            trace_context={"source": "kb_planner", "purpose": "chat"},
         )
         return getattr(resp, "content", "") or str(resp)
 

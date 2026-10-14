@@ -45,3 +45,18 @@ def test_skill_nested_trace_sets_purpose():
     assert tc2.get("purpose") == "skill_execution"
     tc3 = skill_nested_llm_trace_context(source="skill_base", purpose="doc_llm")
     assert tc3.get("purpose") == "doc_llm"
+
+
+def test_resolve_llm_purpose_from_source_map():
+    from core.harness.syscalls.llm import _resolve_llm_purpose
+    from core.harness.utils.model_injection import _ROUTING_PURPOSE
+
+    token = _ROUTING_PURPOSE.set(None)
+    try:
+        assert _resolve_llm_purpose(trace_context={"source": "query_rewriter"}) == "doc_llm"
+        assert _resolve_llm_purpose(trace_context={"source": "moa_executor"}) == "reasoning"
+        assert _resolve_llm_purpose(trace_context={"source": "fde_ask"}) == "skill_execution"
+        assert _resolve_llm_purpose(trace_context={"source": "workflow_plan_stage"}) == "reasoning"
+        assert _resolve_llm_purpose(trace_context={"source": "skill_foo"}) == "skill_execution"
+    finally:
+        _ROUTING_PURPOSE.reset(token)

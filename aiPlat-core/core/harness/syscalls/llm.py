@@ -1414,6 +1414,35 @@ def _llm_call_args(
     return args
 
 
+# Best-effort map when callers only set trace_context.source (long-tail metering).
+_SOURCE_TO_PURPOSE = {
+    "chat_service": "chat",
+    "clarify": "clarify",
+    "fde-clarify": "clarify",
+    "fde_ask": "skill_execution",
+    "fde_infer_industry": "classify",
+    "tool_bootstrap": "code_gen",
+    "handler_gen": "code_gen",
+    "code_generation": "code_gen",
+    "code_gen_retry": "code_gen",
+    "harness_fix_proposer": "reasoning",
+    "compiled_react_observe": "agent",
+    "quick_engine": "chat",
+    "plan_engine": "reasoning",
+    "prompt_app": "chat",
+    "prompt_optimize": "chat",
+    "materials_chat": "chat",
+    "kb_planner": "chat",
+    "wiki_curation": "doc_llm",
+    "doc_compress": "doc_llm",
+    "query_rewriter": "doc_llm",
+    "hyde_expander": "doc_llm",
+    "memory_manager": "doc_llm",
+    "moa_executor": "reasoning",
+    "workspace_agents": "agent_creation",
+}
+
+
 def _resolve_llm_purpose(
     purpose: Optional[str] = None,
     trace_context: Optional[Dict[str, Any]] = None,
@@ -1437,6 +1466,20 @@ def _resolve_llm_purpose(
             return peeked
     except Exception:
         logging.getLogger(__name__).debug("peek_routing_purpose failed", exc_info=True)
+    # Long-tail: map known source tags when purpose omitted
+    for src in (trace_context, extra_context):
+        if not isinstance(src, dict):
+            continue
+        source = str(src.get("source") or "").strip()
+        if not source:
+            continue
+        mapped = _SOURCE_TO_PURPOSE.get(source)
+        if mapped:
+            return mapped
+        if source.startswith("workflow_plan_"):
+            return "reasoning"
+        if source.startswith("skill"):
+            return "skill_execution"
     return None
 
 

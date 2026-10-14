@@ -79,7 +79,10 @@ def _format_history(history: List[dict], max_msgs: int = 6) -> str:
 async def _llm_rewrite(model, prompt: str, fallback: str) -> str:
     try:
         from core.harness.syscalls.llm import sys_llm_generate
-        response = await sys_llm_generate(model, prompt, max_tokens=200, trace_context={"source": "query_rewriter"})
+        response = await sys_llm_generate(
+            model, prompt, max_tokens=200, purpose="doc_llm",
+            trace_context={"source": "query_rewriter", "purpose": "doc_llm"},
+        )
         rewritten = getattr(response, "content", str(response)).strip()
         return rewritten if rewritten and len(rewritten) > 5 else fallback
     except Exception:

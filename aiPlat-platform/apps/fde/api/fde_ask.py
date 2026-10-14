@@ -134,7 +134,11 @@ async def fde_ask(req: FdeAskRequest):
             },
         ]
 
-        resp = await sys_llm_generate(model, messages, max_tokens=600, temperature=0.4)
+        resp = await sys_llm_generate(
+            model, messages, max_tokens=600, temperature=0.4,
+            purpose="skill_execution",
+            trace_context={"source": "fde_ask", "purpose": "skill_execution"},
+        )
         answer = str(getattr(resp, "content", "") or "")
 
         # ── Extract sources from answer for traceability ──

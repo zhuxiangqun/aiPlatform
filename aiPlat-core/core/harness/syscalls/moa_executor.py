@@ -69,6 +69,8 @@ async def _single_model_fallback(query: str, model_purpose: str) -> MoaResult:
     resp = await sys_llm_generate(model=None,
         prompt=[{"role": "user", "content": query}],
         model_name=model, temperature=0.3,
+        purpose="reasoning",
+        trace_context={"source": "moa_executor", "purpose": "reasoning"},
     )
     return MoaResult(
         query=query, preset="fallback",
@@ -140,6 +142,8 @@ async def execute(
             ],
             model_name=model,
             temperature=ref_temp,
+            purpose="reasoning",
+            trace_context={"source": "moa_executor", "purpose": "reasoning"},
         )
         for model, role_hint in engines
     ), return_exceptions=True)
@@ -167,6 +171,8 @@ async def execute(
         ],
         model_name=agg_model_name,
         temperature=agg_temp,
+        purpose="reasoning",
+        trace_context={"source": "moa_executor", "purpose": "reasoning"},
     )
     final = str(final_resp)
 
