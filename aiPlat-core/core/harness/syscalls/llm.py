@@ -1394,6 +1394,43 @@ async def _save_llm_interaction(session_id: str, user_message: str, result: Any,
         logging.getLogger(__name__).debug('_save_llm_interaction failed', exc_info=True)
 
  
+def _llm_call_args(
+    prompt_like: Any,
+    *,
+    purpose: Optional[str] = None,
+    message_guard: Optional[Dict[str, Any]] = None,
+    timeout_seconds: Optional[float] = None,
+) -> Dict[str, Any]:
+    """Build syscall args for llm generate events (purpose enables cost-report share)."""
+    args: Dict[str, Any] = {
+        "prompt_type": "messages" if isinstance(prompt_like, list) else "text",
+    }
+    if purpose:
+        args["purpose"] = purpose
+    if message_guard is not None:
+        args["message_guard"] = message_guard
+    if timeout_seconds is not None:
+        args["timeout_seconds"] = timeout_seconds
+    return args
+
+
+def _resolve_llm_purpose(
+    purpose: Optional[str] = None,
+    trace_context: Optional[Dict[str, Any]] = None,
+    extra_context: Optional[Dict[str, Any]] = None,
+) -> Optional[str]:
+    if purpose and str(purpose).strip():
+        return str(purpose).strip()
+    for src in (trace_context, extra_context):
+        if not isinstance(src, dict):
+            continue
+        for key in ("purpose", "llm_purpose"):
+            raw = src.get(key)
+            if raw is not None and str(raw).strip():
+                return str(raw).strip()
+    return None
+
+
 async def sys_llm_generate(
 
     model: Any,
@@ -1419,6 +1456,8 @@ async def sys_llm_generate(
     gate_mode: str = "full",
 
     inject_context: bool = True,
+
+    purpose: Optional[str] = None,
 
 ) -> Any:
 
@@ -1456,7 +1495,18 @@ async def sys_llm_generate(
 
         response_format: Optional response format (e.g. json_schema).
 
+        purpose: Optional routing purpose (chat/code_gen/…); stamped into
+                 syscall args for delivery cost-report traffic share.
+
     """
+
+    _llm_purpose = _resolve_llm_purpose(purpose, trace_context, extra_context)
+    if _llm_purpose:
+        if isinstance(trace_context, dict):
+            trace_context = dict(trace_context)
+        else:
+            trace_context = {}
+        trace_context.setdefault("purpose", _llm_purpose)
 
     # ── MemoryManager: inject conversation context if session_id provided ──
     _mem_user_input: Optional[str] = None
@@ -1725,7 +1775,7 @@ async def sys_llm_generate(
 
                         "duration_ms": (end_ts - start_ts) * 1000.0,
 
-                        "args": {"prompt_type": "messages" if isinstance(prompt, list) else "text"},
+                        "args": _llm_call_args(prompt, purpose=_llm_purpose),
 
                         "error": "no_model",
 
@@ -2445,10 +2495,11 @@ async def sys_llm_generate(
                         "start_time": time.time(),
                         "duration_ms": 0,
                         "model_name": model_name,
-                        "args": {
-                            "prompt_type": "messages" if isinstance(prepared, list) else "text",
-                            "timeout_seconds": float(timeout),
-                        },
+                        "args": _llm_call_args(
+                            prepared,
+                            purpose=_llm_purpose,
+                            timeout_seconds=float(timeout),
+                        ),
                     })
             except Exception:
                 logging.debug("llm running event emit failed", exc_info=True)
@@ -2675,11 +2726,12 @@ async def sys_llm_generate(
                                 "input_tokens": input_tokens,
                                 "output_tokens": output_tokens,
                                 "cost": cost,
-                                "args": {
-                                    "prompt_type": "messages" if isinstance(prepared, list) else "text",
-                                    "timeout_seconds": float(timeout) if "timeout" in dir() else None,
-                                    "message_guard": message_guard_stats,
-                                },
+                                "args": _llm_call_args(
+                                    prepared,
+                                    purpose=_llm_purpose,
+                                    message_guard=message_guard_stats,
+                                    timeout_seconds=float(timeout) if "timeout" in dir() else None,
+                                ),
                                 "result": {
                                     "has_content": bool(getattr(result, "content", None)),
                                     "usage": usage,
@@ -2744,13 +2796,11 @@ async def sys_llm_generate(
 
                         "cost": cost,
 
-                        "args": {
-
-                            "prompt_type": "messages" if isinstance(prepared, list) else "text",
-
-                            "message_guard": message_guard_stats,
-
-                        },
+                        "args": _llm_call_args(
+                            prepared,
+                            purpose=_llm_purpose,
+                            message_guard=message_guard_stats,
+                        ),
 
                         "result": {
 
@@ -2979,7 +3029,7 @@ async def sys_llm_generate(
 
                             "duration_ms": (end_ts - start_ts) * 1000.0,
 
-                            "args": {"prompt_type": "messages" if isinstance(prepared, list) else "text"},
+                            "args": _llm_call_args(prepared, purpose=_llm_purpose),
 
                             "error": _fail_err,
 

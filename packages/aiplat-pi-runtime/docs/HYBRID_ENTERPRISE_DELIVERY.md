@@ -178,7 +178,7 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 |------|----------|--------------|----------|
 | API 调用总量 | billing breakdown 或 `kb/metrics.total_queries` | 「本月共调用 N 次」 | ✅ 有则展示 |
 | 缓存命中率 | `get_semantic_cache().stats` | 「M 次命中 / 命中率 %」 | ✅ **优先** |
-| 模型分流 | `best_model_for_purpose` **配置快照** + `model_selection_log` 选择占比 | 简单/复杂用途→模型表 + purpose/档位占比 | ✅ 无日志不编造 %；有则标「选择次数」 |
+| 模型分流 | 配置快照 + **LLM syscall `args.purpose`**（优先）/`model_selection_log`（回退） | 简单/复杂→模型表 + purpose/档位占比 | ✅ 无数据不编造 %；完成调用优先于选择次数 |
 | 空检索/无效拦截 | `kb/metrics.empty_retrieve_count`（syscall_events 空命中） | 「空检索拦截次数 N」+ 无答案率参考 | ✅ 已接 |
 | 月度成本 ¥ | `billing_records` 或 `AIPLAT_DELIVERY_COST_CNY_PER_CACHE_HIT` | 账单权威 ¥ 或估算 ¥ | ✅ **可选**；无价目不编造 |
 
@@ -280,6 +280,7 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 - [x] 无 `AIPLAT_DELIVERY_COST_CNY_PER_CACHE_HIT` 时不编造 ¥ 节省
 - [x] `aiPlat-platform/tests/test_delivery_cost_report.py` + delivery scan smoke 校验 COST_REPORT.md
 - [x] 模型分流流量占比：`model_selection_log.json` → purpose/档位 %（选择次数；无日志不编造）
+- [x] LLM 完成调用级 purpose：`sys_llm_generate(purpose=…)` 写入 syscall `args.purpose`；成本页优先聚合完成调用，回退选择日志
 
 ### 8.4 ④ 库健康分面板 — 本迭代
 
@@ -303,4 +304,4 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 
 **已补（V3b）**：`AIPLAT_ENTERPRISE_KB_CITATION_EXPAND=1` → `<details>` 可展开参考文献。
 
-**下一刀（可选）**：交付阶梯 ①–④ 可选加固已齐；后续按实机运营反馈补（如 LLM 完成调用级 purpose 计量）。
+**下一刀（可选）**：交付阶梯 ①–④ 与 purpose 计量链路已齐；后续按实机运营反馈补（更多调用点透传 `purpose=`）。

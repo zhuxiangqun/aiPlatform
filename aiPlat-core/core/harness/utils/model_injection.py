@@ -1118,7 +1118,9 @@ async def generate_with_fallback(purpose: str,
 
                                          model_name=model_name,
 
-                                         gate_mode="minimal"),
+                                         gate_mode="minimal",
+
+                                         purpose=purpose),
 
                         timeout=per_model_timeout
 

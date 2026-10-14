@@ -116,13 +116,88 @@ def test_purpose_usage_share_from_log(tmp_path, monkeypatch):
     ]
     (wiki / "model_selection_log.json").write_text(json.dumps(samples), encoding="utf-8")
     monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+    # No llm purpose events → fall back to selection log
+    monkeypatch.setattr(
+        cr,
+        "_purpose_usage_from_llm_syscalls",
+        lambda window_hours=720: {
+            "usage_share_available": False,
+            "usage_share_note": "",
+            "usage_share_source": "llm_syscall",
+            "purpose_counts": {},
+            "purpose_share_pct": {},
+            "bucket_share_pct": {},
+            "bucket_counts": {},
+            "selection_total": 0,
+            "window_hours": window_hours,
+        },
+    )
     share = cr._purpose_usage_share(window_hours=24)
     assert share["usage_share_available"] is True
+    assert share["usage_share_source"] == "model_selection_log"
     assert share["selection_total"] == 3
     assert share["purpose_counts"]["chat"] == 2
     assert share["purpose_share_pct"]["chat"] == 66.7
     assert share["bucket_share_pct"]["simple"] == 66.7
     assert share["bucket_share_pct"]["complex"] == 33.3
+
+
+def test_purpose_usage_prefers_llm_syscalls(tmp_path, monkeypatch):
+    import sqlite3
+
+    from delivery import cost_report as cr
+
+    db = tmp_path / "aiplat_executions.sqlite3"
+    conn = sqlite3.connect(str(db))
+    conn.execute(
+        "CREATE TABLE syscall_events ("
+        "kind TEXT, name TEXT, status TEXT, args_json TEXT, created_at REAL)"
+    )
+    now = time.time()
+    for purpose, n in (("chat", 3), ("code_gen", 1)):
+        for _ in range(n):
+            conn.execute(
+                "INSERT INTO syscall_events(kind,name,status,args_json,created_at) VALUES (?,?,?,?,?)",
+                (
+                    "llm",
+                    "generate",
+                    "success",
+                    json.dumps({"prompt_type": "messages", "purpose": purpose}),
+                    now - 10,
+                ),
+            )
+    conn.commit()
+    conn.close()
+    monkeypatch.setenv("AIPLAT_EXECUTION_DB", str(db))
+    monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+    share = cr._purpose_usage_share(window_hours=24)
+    assert share["usage_share_available"] is True
+    assert share["usage_share_source"] == "llm_syscall"
+    assert share["selection_total"] == 4
+    assert share["purpose_counts"]["chat"] == 3
+    assert share["purpose_share_pct"]["chat"] == 75.0
+    md = cr.render_cost_report_markdown(
+        {
+            "ok": True,
+            "generated_at": "t",
+            "tenant_id": "t",
+            "window_hours": 24,
+            "api_calls": {"available": False},
+            "cache": {"available": False, "reason": "n/a"},
+            "model_routing": {
+                "available": True,
+                **share,
+                "simple_purposes": ["chat"],
+                "complex_purposes": ["code_gen"],
+                "purpose_to_model": {"chat": "m1", "code_gen": "m2"},
+            },
+            "empty_intercept": {"available": False, "reason": "n/a"},
+            "billing": {"available": False},
+            "cny_estimate": None,
+        }
+    )
+    assert "完成调用" in md
+    assert "真实 LLM 完成调用" in md
 
 
 def test_optional_cny_only_with_env(monkeypatch):
