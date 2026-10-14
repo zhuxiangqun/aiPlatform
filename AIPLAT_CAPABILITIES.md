@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2152
+total_capabilities: 2153
 last_updated: 2026-10-11
 version: "30.10"
 auto_sync: true
@@ -2641,7 +2641,7 @@ scan_hash: 8f9548ec24f4
 | Video Retrieval | platform/kb/intelligence/video_retrieval.py | ✅ | 时间索引视频内容检索 + 转录对齐 | 已合入 |
 | Builder Project Service | platform/builder/builder_project_service.py | ✅ | 全功能应用项目CRUD + 双模式自动路由（agent→配置/code→代码，team_planner mode 判断）+ pass_rate 来源标注（real_pytest/estimated）；PM/PRD 默认模型按 purpose=`agent` 选型（不用 latency-first `chat`，避免落小模型） | 已合入 |
 | 生成物契约校验（conformance） | platform/builder/generated_conformance.py + generated_conformance.yaml + builder_project_service.py | ✅ | 注册前契约校验生成 AGENT.md/SKILL.md/agent_manifest：首行 `---`、治理字段、schema 对象格式；**Phase A**：`validate_manifest` 校验 mode/skill_routing/ui_bindings；`multi_agent` 必填 rationale+success_metrics+upgrade_criteria（五条 AND）；**E1** 可选 `architecture_profile`/`execution_backend` 白名单 + 与 agent_type 冲突检测；**E4** 生成 Skill 禁 handler/hybrid（无工厂 handler.py）；不合规跳过注册并记 rejected_artifacts；生成物适用：**已接线** | 已合入 |
-| 工厂跑通晋升门（promotion_gate） | platform/builder/promotion_gate.py + promotion_gate.yaml + hop_metrics.py | ✅ | 四维「跑通」+ multi 五条 AND；**Phase C**：hop JSONL 聚合（N/成功率/failed_stage）→ `GET .../promotion` + 部署 `promotion_gate` 快照；生成物适用：**已接线** | 已合入 |
+| 工厂跑通晋升门（promotion_gate） | platform/builder/promotion_gate.py + promotion_gate.yaml + hop_metrics.py | ✅ | 四维「跑通」+ multi 五条 AND；**Phase C**：hop JSONL 聚合（N/成功率/failed_stage）→ `GET .../promotion` + 部署 `promotion_gate` 快照；**可解释**：每条检查 `how_to_fix`/`missing` + `next_actions`/`summary`，`format_upgrade_fix_hint` 供部署 rejected_artifacts 与 promotion API；生成物适用：**已接线** | 已合入 |
 | 工厂动态 spawn 门禁（spawn_policy） | ⚠️ deprecated core/harness/coordination/spawn_policy.py + factory_profile + StageRunner + sys_agent_call | ✅ | Phase B W3：工厂阶段 `allow_dynamic_spawn=False`；ContextVar/state 阻断 DynamicOrchestrator.spawn 与 sys_agent_call 自由委派；非工厂默认允许；生成物适用：**已接线**（构建链契约化） | 已合入 |
 | 工厂 Skill hop schema 门（skill_hop_gate） | platform/builder/skill_hop_gate.py + builder_project_service.execute_skill | ✅ | Phase B W4：execute_skill 调用 LLM 前按 SKILL input_schema 校验；缺必填 → 422/结构化错误 + failed_stage=tool_selection + handoff 五字段；生成物适用：**已接线** | 已合入 |
 | 工厂 hop 度量（hop_metrics） | platform/builder/hop_metrics.py | ✅ | Phase C W5：execute_skill 每次写入 JSONL；aggregate + evaluate_project_run_through；`derive_test_evidence` 从 `last_test_report`/state 推导 real_tests+物理证据（run_tests/部署/promotion API 共用）；无 failed_stage 的失败剔除出有效成功率；生成物适用：**已接线** | 已合入 |
@@ -2769,6 +2769,7 @@ scan_hash: 8f9548ec24f4
 | should_skip_dynamic_spawn | `core/harness/coordination/spawn_policy.py` | ✅ | 自动同步 | 已合入 |
 | load_promotion_gate | `aiPlat-platform/builder/promotion_gate.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_multi_agent_upgrade | `aiPlat-platform/builder/promotion_gate.py` | ✅ | 自动同步 | 已合入 |
+| format_upgrade_fix_hint | `aiPlat-platform/builder/promotion_gate.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_run_through | `aiPlat-platform/builder/promotion_gate.py` | ✅ | 自动同步 | 已合入 |
 | validate_manifest_file | `aiPlat-platform/builder/generated_conformance.py` | ✅ | 自动同步 | 已合入 |
 | fix_from_test_report | `aiPlat-platform/builder/builder_project_service.py` | ✅ | 自动同步 | 已合入 |
@@ -3093,7 +3094,7 @@ scan_hash: 8f9548ec24f4
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 88 | 0 | 88 |
+| 管理 & 质量 | 89 | 0 | 89 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -3112,7 +3113,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2142** | **10** | **2152** |
+| **总计** | **2143** | **10** | **2153** |
 
 | **总计** | **1095** | **0** | **1095** |
 

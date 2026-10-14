@@ -386,9 +386,20 @@ class TestPromotionGate:
         assert r["ok"], r
 
     def test_multi_upgrade_and(self):
-        from builder.promotion_gate import evaluate_multi_agent_upgrade
+        from builder.promotion_gate import (
+            evaluate_multi_agent_upgrade,
+            format_upgrade_fix_hint,
+        )
         bad = evaluate_multi_agent_upgrade({})
         assert not bad["ok"]
+        assert bad.get("next_actions")
+        assert bad.get("summary")
+        assert "缺" in str(bad.get("summary") or "") or "/" in str(bad.get("summary") or "")
+        hint = format_upgrade_fix_hint(bad)
+        assert hint and ("子任务" in hint or "AND" in hint or "补" in hint)
+        for check in bad.get("checks") or []:
+            if not check.get("ok"):
+                assert check.get("how_to_fix"), check
         good = evaluate_multi_agent_upgrade({
             "orthogonal_subtasks": ["a", "b", "c"],
             "single_agent_gap": {
@@ -400,6 +411,7 @@ class TestPromotionGate:
             "contracted_handoff": True,
         })
         assert good["ok"], good
+        assert format_upgrade_fix_hint(good).startswith("五条")
 
 
 class TestB2RoutingContextBudget:

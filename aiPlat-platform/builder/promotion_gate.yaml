@@ -1,6 +1,7 @@
 # 应用工厂「跑通」晋升契约（2026-09）
 # 跑通 = 四维全部满足；升级 multi_agent = 另加五条 AND。
 # 校验器：builder/promotion_gate.py；manifest 硬门：generated_conformance.validate_manifest
+# how_to_fix：失败时给人话下一步（API / fix_hint / UI）
 
 version: 1
 
@@ -25,13 +26,18 @@ run_through:
 multi_agent_upgrade_and:
   - id: orthogonal_subtasks
     description: "≥3 正交子任务且无频繁中间状态依赖"
+    how_to_fix: "在 upgrade_criteria.orthogonal_subtasks 列出 ≥3 个可并行/可隔离的子任务名（不是同一流水线的串行步骤）"
   - id: single_agent_gap
     description: "单 Agent N≥20 成功率<阈值，失败在 planning/tool_selection"
+    how_to_fix: "先以 mode=single 跑满 N≥20 次有效 hop；成功率须低于起步阈值（默认 0.80），且失败含 planning 或 tool_selection；再填 single_agent_gap"
   - id: routing_benefit
     description: "明确 skill 路由收益（不同 skill 集 / 上下文溢出）"
+    how_to_fix: "用 ≥8 字说明拆分后的路由收益（不同 skill 集或上下文溢出），写入 upgrade_criteria.routing_benefit"
   - id: policy_gate_stable
     description: "PolicyGate 已稳定 ≥1 迭代，可分 Agent 授权"
+    how_to_fix: "确认工具副作用均经 PolicyGate，且已稳定 ≥1 迭代后，将 upgrade_criteria.policy_gate_stable 设为 true"
   - id: contracted_handoff
     description: "跨 Agent 必经阶段契约+schema 门，禁止自由文本"
+    how_to_fix: "跨 Agent 交接须走阶段契约 + schema 门（禁止自由文本互调）；就绪后将 upgrade_criteria.contracted_handoff 设为 true"
 
 external_message: "不做无门控互调，做阶段契约 + schema 门 + HITL。"
