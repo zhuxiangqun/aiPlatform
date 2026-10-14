@@ -1,13 +1,16 @@
 """Delivery cost narrative page (HYBRID_ENTERPRISE_DELIVERY §4).
 
 Aggregates existing meters — does not invent ¥ savings without a price table.
-Model routing shows **policy snapshot** (purpose→model); usage % is unavailable
-until a call-by-purpose meter exists.
+Model routing shows **policy snapshot** (purpose→model) plus best-effort
+usage share from ``~/.aiplat/wiki/model_selection_log.json`` (selection counts,
+not completed LLM round-trips). Missing log → no fake percentages.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
+import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -16,6 +19,100 @@ logger = logging.getLogger(__name__)
 # Lightweight / heavy purpose buckets for customer language (not usage counts).
 _SIMPLE_PURPOSES = ("chat", "clarify", "skill_execution")
 _COMPLEX_PURPOSES = ("code_gen", "reasoning", "doc_llm", "eval_code")
+# Adapter factory noise — not routing traffic.
+_SKIP_PURPOSES = frozenset({"create_adapter", ""})
+_SKIP_ENTRIES = frozenset({"create_selected_adapter"})
+
+
+def _selection_log_path() -> str:
+    home = os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat"))
+    return os.path.join(home, "wiki", "model_selection_log.json")
+
+
+def _purpose_usage_share(window_hours: int = 720) -> Dict[str, Any]:
+    """Aggregate model_selection_log by purpose within the reporting window.
+
+    Counts are ``best_model_for_purpose`` / ``get_default_model`` selection
+    events (written by model_injection), not completed LLM round-trips.
+    """
+    path = _selection_log_path()
+    empty = {
+        "usage_share_available": False,
+        "usage_share_note": "",
+        "usage_share_source": "model_selection_log",
+        "purpose_counts": {},
+        "purpose_share_pct": {},
+        "bucket_share_pct": {},
+        "bucket_counts": {},
+        "selection_total": 0,
+        "window_hours": window_hours,
+    }
+    if not os.path.isfile(path):
+        empty["usage_share_note"] = (
+            "尚无 model_selection_log；下列为分流策略配置快照，非流量占比"
+        )
+        return empty
+    try:
+        with open(path, encoding="utf-8") as f:
+            samples = json.load(f)
+        if not isinstance(samples, list):
+            empty["usage_share_note"] = "model_selection_log 格式异常；下列为配置快照"
+            return empty
+        cutoff = time.time() - max(1, int(window_hours)) * 3600.0
+        counts: Dict[str, int] = {}
+        for rec in samples:
+            if not isinstance(rec, dict):
+                continue
+            purpose = str(rec.get("purpose") or "").strip()
+            entry = str(rec.get("entry") or "")
+            if purpose in _SKIP_PURPOSES or entry in _SKIP_ENTRIES:
+                continue
+            try:
+                ts_f = float(rec.get("ts"))
+            except (TypeError, ValueError):
+                continue
+            if ts_f < cutoff:
+                continue
+            counts[purpose] = counts.get(purpose, 0) + 1
+        total = sum(counts.values())
+        if total <= 0:
+            empty["usage_share_note"] = (
+                f"窗口 {window_hours}h 内无 purpose 选择记录；下列为配置快照，非流量占比"
+            )
+            return empty
+        share = {
+            p: round(100.0 * c / total, 1)
+            for p, c in sorted(counts.items(), key=lambda x: (-x[1], x[0]))
+        }
+        simple_n = sum(int(counts.get(p, 0)) for p in _SIMPLE_PURPOSES)
+        complex_n = sum(int(counts.get(p, 0)) for p in _COMPLEX_PURPOSES)
+        other_n = max(0, total - simple_n - complex_n)
+        return {
+            "usage_share_available": True,
+            "usage_share_note": (
+                "占比来自 model_selection_log（best_model_for_purpose / "
+                "get_default_model 选择次数，非 LLM 完成调用次数；已排除 create_adapter）"
+            ),
+            "usage_share_source": "model_selection_log",
+            "purpose_counts": dict(sorted(counts.items(), key=lambda x: (-x[1], x[0]))),
+            "purpose_share_pct": share,
+            "bucket_share_pct": {
+                "simple": round(100.0 * simple_n / total, 1),
+                "complex": round(100.0 * complex_n / total, 1),
+                "other": round(100.0 * other_n / total, 1),
+            },
+            "bucket_counts": {
+                "simple": simple_n,
+                "complex": complex_n,
+                "other": other_n,
+            },
+            "selection_total": total,
+            "window_hours": window_hours,
+        }
+    except Exception as e:
+        logger.debug("cost_report purpose usage share: %s", e, exc_info=True)
+        empty["usage_share_note"] = f"读取 model_selection_log 失败（{e}）；下列为配置快照"
+        return empty
 
 
 def _cache_stats() -> Dict[str, Any]:
@@ -114,27 +211,47 @@ def _billing_snapshot(tenant_id: str = "default") -> Dict[str, Any]:
         return {"available": False, "reason": str(e)}
 
 
-def _model_routing_policy() -> Dict[str, Any]:
-    """Configured purpose→model map (not live traffic share)."""
+def _model_routing_policy(window_hours: int = 720) -> Dict[str, Any]:
+    """Configured purpose→model map + best-effort selection-log usage share.
+
+    Usage share is independent of model resolution: if ``best_model_for_purpose``
+    fails (e.g. runtime typing), still show purpose/档位占比 when the log exists.
+    """
+    # Read share before best_model_for_purpose so this report does not self-inflate counts.
+    usage = _purpose_usage_share(window_hours=window_hours)
     purposes = list(dict.fromkeys(_SIMPLE_PURPOSES + _COMPLEX_PURPOSES + ("agent",)))
     mapping: Dict[str, str] = {}
+    map_err: Optional[str] = None
+    bmp = None
     try:
-        from core.api.core_facade import best_model_for_purpose
+        from core.api.core_facade import best_model_for_purpose as bmp  # noqa: N813
     except Exception as e:
-        return {"available": False, "reason": str(e), "usage_share_available": False}
-    for p in purposes:
-        try:
-            mapping[p] = str(best_model_for_purpose(p) or "")
-        except Exception:
-            mapping[p] = ""
-    return {
+        map_err = str(e)
+        bmp = None
+    if bmp is not None:
+        for p in purposes:
+            try:
+                mapping[p] = str(bmp(p) or "")
+            except Exception:
+                mapping[p] = ""
+    if not mapping:
+        mapping = {p: "" for p in purposes}
+    note = usage.get("usage_share_note") or ""
+    if not usage.get("usage_share_available"):
+        note = note or (
+            "尚无按 purpose 的选择计量；下列为当前分流策略（配置快照），非流量占比"
+        )
+    out: Dict[str, Any] = {
         "available": True,
-        "usage_share_available": False,
-        "usage_share_note": "尚无按 purpose 的调用计量；下列为当前分流策略（配置快照），非流量占比",
         "simple_purposes": list(_SIMPLE_PURPOSES),
         "complex_purposes": list(_COMPLEX_PURPOSES),
         "purpose_to_model": mapping,
+        **usage,
+        "usage_share_note": note,
     }
+    if map_err and not any(mapping.values()):
+        out["policy_resolve_error"] = map_err
+    return out
 
 
 def _optional_cny_saved(cache: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -165,7 +282,7 @@ def build_delivery_cost_report(
     cache = _cache_stats()
     kb = _kb_metrics(tenant_id=tenant_id, hours=window_hours)
     billing = _billing_snapshot(tenant_id=tenant_id)
-    routing = _model_routing_policy()
+    routing = _model_routing_policy(window_hours=window_hours)
     cny = _optional_cny_saved(cache)
 
     api_calls = None
@@ -303,10 +420,35 @@ def render_cost_report_markdown(report: Dict[str, Any]) -> str:
             tier = "简单/轻量" if p in simple else ("复杂/推理" if p in complex_ else "其他")
             lines.append(f"| `{p}` | `{m or '-'}` | {tier} |")
         lines.append("")
-        lines.append(
-            "说明：简单问题走轻量模型、复杂问题走推理/代码模型——"
-            "**流量占比需按 purpose 计量后补**，当前不展示虚假百分比。"
-        )
+        if routing.get("usage_share_available"):
+            total = int(routing.get("selection_total") or 0)
+            bucket = routing.get("bucket_share_pct") or {}
+            lines.append(
+                f"### 流量占比（选择次数，窗口 {routing.get('window_hours', report.get('window_hours'))}h，"
+                f"合计 {total}）"
+            )
+            lines.append("")
+            lines.append(
+                f"- **档位占比**: 简单/轻量 {bucket.get('simple', 0)}% · "
+                f"复杂/推理 {bucket.get('complex', 0)}% · 其他 {bucket.get('other', 0)}%"
+            )
+            lines.append("")
+            lines.append("| 用途 (purpose) | 选择次数 | 占比 |")
+            lines.append("|----------------|----------|------|")
+            counts = routing.get("purpose_counts") or {}
+            pcts = routing.get("purpose_share_pct") or {}
+            for p, c in counts.items():
+                lines.append(f"| `{p}` | {c} | {pcts.get(p, 0)}% |")
+            lines.append("")
+            lines.append(
+                "说明：简单问题走轻量模型、复杂问题走推理/代码模型；"
+                "上表为**真实选择计数**占比，非编造百分比。"
+            )
+        else:
+            lines.append(
+                "说明：简单问题走轻量模型、复杂问题走推理/代码模型——"
+                "**流量占比暂无选择日志**，当前不展示虚假百分比。"
+            )
     else:
         lines.append(f"- 分流策略 unavailable（{routing.get('reason', 'n/a')}）")
 
@@ -331,7 +473,7 @@ def render_cost_report_markdown(report: Dict[str, Any]) -> str:
             "",
             "1. 客户问「一个月花多少」→ 优先给**调用次数 + 缓存命中率**，避免只甩 token 术语。",
             "2. 有账单记录时展示权威 ¥；仅有单价 env 时标注「估算」。",
-            "3. 模型分流讲「简单/复杂策略」，在计量出口就绪前不编造占比。",
+            "3. 模型分流讲「简单/复杂策略」；有 model_selection_log 时附真实选择占比，无日志不编造。",
             "",
         ]
     )

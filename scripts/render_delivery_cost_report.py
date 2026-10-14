@@ -34,8 +34,11 @@ def _fixture_report() -> dict:
         },
         "model_routing": {
             "available": True,
-            "usage_share_available": False,
-            "usage_share_note": "尚无按 purpose 的调用计量；下列为当前分流策略（配置快照），非流量占比",
+            "usage_share_available": True,
+            "usage_share_note": (
+                "占比来自 model_selection_log（选择次数，非 LLM 完成调用；fixture）"
+            ),
+            "usage_share_source": "model_selection_log",
             "simple_purposes": ["chat", "clarify", "skill_execution"],
             "complex_purposes": ["code_gen", "reasoning", "doc_llm", "eval_code"],
             "purpose_to_model": {
@@ -43,6 +46,12 @@ def _fixture_report() -> dict:
                 "code_gen": "demo-heavy",
                 "reasoning": "demo-heavy",
             },
+            "purpose_counts": {"chat": 60, "code_gen": 25, "reasoning": 15},
+            "purpose_share_pct": {"chat": 60.0, "code_gen": 25.0, "reasoning": 15.0},
+            "bucket_share_pct": {"simple": 60.0, "complex": 40.0, "other": 0.0},
+            "bucket_counts": {"simple": 60, "complex": 40, "other": 0},
+            "selection_total": 100,
+            "window_hours": 720,
         },
         "empty_intercept": {
             "available": True,

@@ -1,8 +1,9 @@
 """Offline: delivery cost report narrative without live platform."""
 from __future__ import annotations
 
-import os
+import json
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -30,6 +31,7 @@ def test_render_cost_report_markdown_no_fake_cny():
         },
         "model_routing": {
             "available": True,
+            "usage_share_available": False,
             "usage_share_note": "配置快照",
             "simple_purposes": ["chat"],
             "complex_purposes": ["code_gen"],
@@ -54,6 +56,73 @@ def test_render_cost_report_markdown_no_fake_cny():
     assert "12" in md
     assert "estimated_saved_cny" not in md
     assert "缓存节省估算" not in md
+
+
+def test_render_with_usage_share():
+    from delivery.cost_report import render_cost_report_markdown
+
+    report = {
+        "ok": True,
+        "generated_at": "2026-10-14T00:00:00+00:00",
+        "tenant_id": "t1",
+        "window_hours": 24,
+        "api_calls": {"available": False},
+        "cache": {"available": False, "reason": "n/a"},
+        "model_routing": {
+            "available": True,
+            "usage_share_available": True,
+            "usage_share_note": "selection log",
+            "simple_purposes": ["chat"],
+            "complex_purposes": ["code_gen"],
+            "purpose_to_model": {"chat": "m1", "code_gen": "m2"},
+            "purpose_counts": {"chat": 2, "code_gen": 1},
+            "purpose_share_pct": {"chat": 66.7, "code_gen": 33.3},
+            "bucket_share_pct": {"simple": 66.7, "complex": 33.3, "other": 0.0},
+            "selection_total": 3,
+            "window_hours": 24,
+        },
+        "empty_intercept": {"available": False, "reason": "n/a"},
+        "billing": {"available": False},
+        "cny_estimate": None,
+    }
+    md = render_cost_report_markdown(report)
+    assert "流量占比" in md
+    assert "66.7%" in md
+    assert "真实选择计数" in md
+
+
+def test_purpose_usage_share_from_log(tmp_path, monkeypatch):
+    from delivery import cost_report as cr
+
+    wiki = tmp_path / "wiki"
+    wiki.mkdir()
+    now = time.time()
+    samples = [
+        {"ts": now - 100, "purpose": "chat", "selected": "m1", "entry": "best_model_for_purpose"},
+        {"ts": now - 90, "purpose": "chat", "selected": "m1", "entry": "best_model_for_purpose"},
+        {"ts": now - 80, "purpose": "code_gen", "selected": "m2", "entry": "best_model_for_purpose"},
+        {
+            "ts": now - 70,
+            "purpose": "create_adapter",
+            "selected": "m1",
+            "entry": "create_selected_adapter",
+        },
+        {
+            "ts": now - 9_999_999,
+            "purpose": "doc_llm",
+            "selected": "m3",
+            "entry": "best_model_for_purpose",
+        },
+    ]
+    (wiki / "model_selection_log.json").write_text(json.dumps(samples), encoding="utf-8")
+    monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+    share = cr._purpose_usage_share(window_hours=24)
+    assert share["usage_share_available"] is True
+    assert share["selection_total"] == 3
+    assert share["purpose_counts"]["chat"] == 2
+    assert share["purpose_share_pct"]["chat"] == 66.7
+    assert share["bucket_share_pct"]["simple"] == 66.7
+    assert share["bucket_share_pct"]["complex"] == 33.3
 
 
 def test_optional_cny_only_with_env(monkeypatch):
@@ -101,7 +170,13 @@ def test_empty_intercept_from_metrics(monkeypatch):
     monkeypatch.setattr(
         cr,
         "_model_routing_policy",
-        lambda: {"available": True, "usage_share_note": "cfg", "simple_purposes": [], "complex_purposes": [], "purpose_to_model": {}},
+        lambda window_hours=720: {
+            "available": True,
+            "usage_share_note": "cfg",
+            "simple_purposes": [],
+            "complex_purposes": [],
+            "purpose_to_model": {},
+        },
     )
     report = cr.build_delivery_cost_report(tenant_id="t", window_hours=24)
     ei = report.get("empty_intercept") or {}
