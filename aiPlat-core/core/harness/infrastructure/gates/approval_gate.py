@@ -285,6 +285,17 @@ class ApprovalGate:
         if shell_floor is not None:
             return shell_floor
 
+        # OpenWorker P3: executing a path the agent wrote this session → hard floor.
+        sid = str(
+            session_id
+            or args.get("_session_id")
+            or args.get("_run_id")
+            or ""
+        )
+        prov_floor = self._provenance_hard_floor(tool_name, args, session_id=sid)
+        if prov_floor is not None:
+            return prov_floor
+
         for rule in self._rules:
             if not rule.hard_floor and rule.severity != ApprovalSeverity.CRITICAL:
                 continue
@@ -336,6 +347,51 @@ class ApprovalGate:
             approval_source=APPROVAL_SOURCE_HARD_FLOOR,
         )
 
+    def _provenance_hard_floor(
+        self,
+        tool_name: str,
+        tool_args: dict,
+        session_id: str = "",
+    ) -> Optional[ApprovalGateResult]:
+        """Force CRITICAL when shell runs a script written earlier in this session."""
+        try:
+            from core.harness.infrastructure.gates.shell_command_risk import (
+                extract_command_text,
+                shell_tool_needs_command_check,
+            )
+            from core.harness.infrastructure.gates.session_write_provenance import (
+                provenance_forces_hard_floor,
+            )
+        except Exception as e:
+            logging.debug("provenance floor import failed: %s", e, exc_info=True)
+            return None
+        if not shell_tool_needs_command_check(tool_name):
+            return None
+        cmd = extract_command_text(tool_args)
+        if not cmd:
+            return None
+        sid = str(
+            session_id
+            or (tool_args or {}).get("_session_id")
+            or (tool_args or {}).get("_run_id")
+            or ""
+        )
+        rec = provenance_forces_hard_floor(session_id=sid, command=cmd)
+        if rec is None:
+            return None
+        return ApprovalGateResult(
+            verdict=ApprovalVerdict.ASK,
+            rule_id="session_write_provenance",
+            severity=ApprovalSeverity.CRITICAL,
+            message=(
+                f"Executing session-{rec.origin} path requires human approval — "
+                f"{rec.path} (step {rec.step})"
+            ),
+            require_interactive=True,
+            hard_floor=True,
+            approval_source=APPROVAL_SOURCE_HARD_FLOOR,
+        )
+
     def check(
         self,
         tool_name: str,
@@ -354,9 +410,15 @@ class ApprovalGate:
         """
         args = tool_args or {}
 
+        # Provenance check needs session_id — also run before soft-disable path.
+        sid = str(session_id or args.get("_session_id") or args.get("_run_id") or "")
+        prov = self._provenance_hard_floor(tool_name, args, session_id=sid)
+        if prov is not None:
+            return prov
+
         # Hard floors first — even when gate soft-disabled or auto_approve.
         floor = self.check_hard_floor(
-            tool_name, args, user_id=user_id, session_id=session_id,
+            tool_name, args, user_id=user_id, session_id=sid,
         )
         if floor.verdict == ApprovalVerdict.ASK:
             return floor

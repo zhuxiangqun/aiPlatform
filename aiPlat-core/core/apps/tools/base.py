@@ -806,6 +806,21 @@ class FileOperationsTool(BaseTool):
                     os.utime(target_resolved, ns=(now_ns, now_ns))
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)
+                try:
+                    from core.harness.infrastructure.gates.session_write_provenance import (
+                        record_session_write,
+                    )
+                    sid = ""
+                    if isinstance(kwargs, dict):
+                        sid = str(
+                            kwargs.get("_session_id")
+                            or kwargs.get("session_id")
+                            or kwargs.get("_run_id")
+                            or ""
+                        )
+                    record_session_write(str(target_resolved), session_id=sid)
+                except Exception as e:
+                    logging.debug("session_write_provenance: %s", e, exc_info=True)
                 result = "ok"
             elif operation == "delete":
                 if os.environ.get("AIPLAT_FILE_OPERATIONS_ALLOW_DELETE", "false").lower() not in {"1", "true", "yes", "y"}:

@@ -3571,6 +3571,33 @@ def get_unattended_attendance(session_id: str) -> Dict[str, Any]:
     return {"session_id": sid, "attendance": get_approval_inbox().get_attendance(sid)}
 
 
+def list_session_write_provenance(session_id: str = "") -> Dict[str, Any]:
+    """OpenWorker P3: paths written this session (audit / Pi hybrid diagnostics)."""
+    from typing import List, Optional
+
+    from core.harness.infrastructure.gates.session_write_provenance import (
+        OriginRecord,
+        SessionWriteProvenance,
+        get_session_write_provenance,
+    )
+
+    store: SessionWriteProvenance = get_session_write_provenance()
+    sid = str(session_id or "default")
+    records: List[OriginRecord] = []
+    for path in sorted(store.known_paths(sid)):
+        rec: Optional[OriginRecord] = store.lookup(sid, path)
+        if rec is not None:
+            records.append(rec)
+    return {
+        "session_id": sid,
+        "count": len(records),
+        "items": [
+            {"path": r.path, "origin": r.origin, "step": r.step, "at": r.at}
+            for r in records
+        ],
+    }
+
+
 async def org_approval_snapshot(
     kind: str,
     item_id: str,
