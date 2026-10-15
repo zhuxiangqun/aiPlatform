@@ -1953,6 +1953,22 @@ class _GenericSkill(BaseSkill):
             }
             if skill_max_tokens and skill_max_tokens > 0:
                 gen_kwargs["max_tokens"] = skill_max_tokens
+            # Hard-decode when skill declares output_schema (plain LLM path; ReAct+tools 仍走 prompt+parse)
+            if isinstance(out_schema, dict) and out_schema:
+                try:
+                    from core.utils.json_utils import build_llm_response_format
+
+                    _name = "".join(
+                        c if c.isalnum() or c in "_-" else "_"
+                        for c in str(self._config.name or "output")
+                    )[:64] or "output"
+                    _rf = build_llm_response_format(out_schema, name=_name)
+                    if _rf:
+                        gen_kwargs["response_format"] = _rf
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "skill response_format build skipped", exc_info=True
+                    )
             response = await sys_llm_generate(
                 self._model,
                 [

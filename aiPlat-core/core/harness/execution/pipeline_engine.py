@@ -942,9 +942,12 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
                     import json as _json
 
-                    schema = _json.loads(llm_output_schema) if isinstance(llm_output_schema, str) else llm_output_schema
+                    from core.utils.json_utils import build_llm_response_format
 
-                    kwargs['response_format'] = {"type": "json_schema", "json_schema": {"name": "output", "schema": schema}}
+                    schema = _json.loads(llm_output_schema) if isinstance(llm_output_schema, str) else llm_output_schema
+                    _rf = build_llm_response_format(schema, name=f"stage_{getattr(stage, 'id', 'output')}")
+                    if _rf:
+                        kwargs['response_format'] = _rf
 
                 except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
 

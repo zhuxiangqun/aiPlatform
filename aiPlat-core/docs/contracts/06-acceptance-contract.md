@@ -811,3 +811,14 @@ pytest -q \
   - `grep -c "response_format" aiPlat-infra/infra/llm/schemas.py`（≥1）
   - `grep -c "response_format" aiPlat-infra/infra/llm/providers/openai_compatible.py`（≥2）
   - `.venv/bin/python -m pytest aiPlat-core/core/tests/unit/test_infra_llm_adapter_response_format.py aiPlat-infra/infra/tests/test_llm/test_response_format_passthrough.py -q`（通过）
+
+### 1.75 Skill / Pipeline `output_schema` → `response_format`（2026-10）
+- MUST：`build_llm_response_format` 将 JSON Schema 或 legacy 键表包装为 OpenAI `json_schema`（或 `json_object`）；`AIPLAT_LLM_RESPONSE_FORMAT=0` 可关
+- MUST：prompt Skill 声明 `output_schema` 时 plain-LLM 路径自动注入 `response_format`；Pipeline `llm_output_schema` 经同一 helper
+- MUST：ReAct+tools 路径仍 prompt+parse（不强制 schema 硬解码与 tool 冲突）
+- 契约登记：系统契约 §5.2 #49 + 边界契约 `01-architecture-contract.md`（clause-sync）
+- 自动化验收：
+  - `grep -c "def build_llm_response_format" aiPlat-core/core/utils/json_utils.py`（≥1）
+  - `grep -c "build_llm_response_format" aiPlat-core/core/apps/skills/registry.py`（≥1）
+  - `grep -c "build_llm_response_format" aiPlat-core/core/harness/execution/pipeline_engine.py`（≥1）
+  - `pytest aiPlat-core/core/tests/unit/test_utils/test_build_llm_response_format.py -q`（通过）
