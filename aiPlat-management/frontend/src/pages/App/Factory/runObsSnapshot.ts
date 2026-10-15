@@ -119,3 +119,11 @@ export function buildRunObsSnapshot(
 
   return { stageLabel, stageId, whyStuck, hopLine, canResume, preferRegenerate };
 }
+
+/** Short line for Factory project cards (failed / HITL). */
+export function formatCardStuckHint(snap: RunObsSnapshot, maxLen = 56): string {
+  const base = `${snap.stageLabel}: ${snap.whyStuck}`.replace(/\s+/g, ' ').trim();
+  if (!base || base.startsWith('尚未进入阶段')) return '';
+  if (base.length <= maxLen) return base;
+  return `${base.slice(0, Math.max(1, maxLen - 1))}…`;
+}

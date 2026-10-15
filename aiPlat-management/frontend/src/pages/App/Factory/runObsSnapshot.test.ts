@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildRunObsSnapshot,
+  formatCardStuckHint,
   isHitlWaitPhase,
   matchStageByKey,
   type StageLite,
@@ -91,5 +92,27 @@ describe('buildRunObsSnapshot stage resolve', () => {
     );
     expect(snap.whyStuck).toContain('orthogonal_subtasks');
     expect(snap.canResume).toBe(false);
+  });
+});
+
+describe('formatCardStuckHint', () => {
+  it('prefixes stageLabel and truncates', () => {
+    const snap = buildRunObsSnapshot(
+      {
+        phase: 'failed',
+        _current_stage_idx: 1,
+        _handoff: {
+          code: {
+            next: '补齐一段很长很长很长很长很长很长很长很长很长很长很长的鉴权与错误处理说明以便截断展示',
+          },
+        },
+      },
+      stages,
+      null,
+    );
+    const hint = formatCardStuckHint(snap, 40);
+    expect(hint.startsWith('程序员:')).toBe(true);
+    expect(hint.endsWith('…')).toBe(true);
+    expect(hint.length).toBeLessThanOrEqual(40);
   });
 });
