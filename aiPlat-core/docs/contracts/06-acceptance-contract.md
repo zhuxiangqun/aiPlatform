@@ -761,3 +761,13 @@ pytest -q \
   - `grep -c "禁止.*外部" aiPlat-core/core/engine/skills/agent_engineering/SKILL.md`（≥1）
   - `grep -c "format_upgrade_fix_hint" aiPlat-platform/builder/promotion_gate.py`（≥1）
   - `cd aiPlat-platform && PYTHONPATH=.:../aiPlat-core python3 -m pytest tests/test_generated_conformance.py::TestPromotionGate::test_multi_upgrade_and -q`（或等价 importlib 直载 promotion_gate 冒烟）
+
+### 1.70 工厂运行可观测面板「跑到哪 / 为何卡」（2026-10）
+- MUST：失败 / HITL / 完成时 Factory 面板聚合当前阶段 + handoff.next/known_issues + promotion `next_actions`/hop；提供续跑（`resumeFromStage`，保留产物）与从此阶段重建（`regenerateStage`）
+- MUST：阶段 ID 解析优先 `_hitl_stage_id`，并兼容 `id` / `agent_id` / `output_artifact`（与 Core resume/regenerate 查找一致）；失败时可回落 hop `by_failed_stage` 最高频阶段
+- MUST：无新后端；复用 `GET .../state` + `GET .../promotion`
+- 契约登记：系统契约 §5.2 #44 + 边界契约 `01-architecture-contract.md`（clause-sync）
+- 自动化验收：
+  - `grep -c "buildRunObsSnapshot" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
+  - `grep -c "resumeFromStage" aiPlat-management/frontend/src/services/builderTeamApi.ts`（≥1）
+  - `grep -c "跑到哪" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）

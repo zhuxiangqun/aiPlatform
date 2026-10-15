@@ -27,6 +27,16 @@ type RunObsSnapshot = {
   preferRegenerate: boolean;
 };
 
+function matchStageByKey(stages: StageLite[], key: string): StageLite | null {
+  const k = String(key || '').trim();
+  if (!k) return null;
+  return (
+    stages.find(
+      (s) => s.id === k || s.agent_id === k || s.output_artifact === k,
+    ) || null
+  );
+}
+
 /** Derive 跑到哪 / 为何卡 from pipeline state + promotion (no new backend). */
 function buildRunObsSnapshot(
   state: Record<string, unknown> | null | undefined,
@@ -43,14 +53,31 @@ function buildRunObsSnapshot(
     multi_agent_upgrade?: { fix_hint?: string; summary?: string; next_actions?: string[] };
   } | null,
 ): RunObsSnapshot {
+  const phase = String(state?.phase || '');
+  const hops = promotion?.hops;
+  const failed = hops?.by_failed_stage || {};
+  const topFail = Object.entries(failed).sort((a, b) => b[1] - a[1])[0];
+
+  // Prefer Core HITL id (resume/regenerate match s.id | output_artifact); then idx; then hop top-fail; then last artifact.
+  const hitlId = String(state?._hitl_stage_id || '').trim();
   const idxRaw = state?._current_stage_idx;
   const idx = typeof idxRaw === 'number' && idxRaw >= 0 ? idxRaw : -1;
-  const stage = idx >= 0 && idx < stages.length ? stages[idx] : null;
-  const lastWithArt = [...stages].reverse().find((s) => s.output_artifact);
-  const active = stage || lastWithArt || null;
-  const stageId = String(active?.id || active?.agent_id || active?.output_artifact || '');
+  let active =
+    matchStageByKey(stages, hitlId)
+    || (idx >= 0 && idx < stages.length ? stages[idx] : null)
+    || (phase === 'failed' && topFail ? matchStageByKey(stages, topFail[0]) : null)
+    || [...stages].reverse().find((s) => s.output_artifact)
+    || null;
+
+  const stageId = String(
+    (active && (active.id || active.agent_id || active.output_artifact))
+    || hitlId
+    || (topFail && phase === 'failed' ? topFail[0] : '')
+    || '',
+  );
   const stageLabel =
-    (active?.agent_name || active?.agent_id || active?.id || (idx >= 0 ? `阶段 ${idx + 1}` : '尚未进入阶段')) as string;
+    (active?.agent_name || active?.agent_id || active?.id
+      || (idx >= 0 ? `阶段 ${idx + 1}` : stageId || '尚未进入阶段')) as string;
 
   const handoffBucket = (state?._handoff && typeof state._handoff === 'object')
     ? (state._handoff as Record<string, unknown>)
@@ -80,19 +107,15 @@ function buildRunObsSnapshot(
     || String(promoWhy || '').trim()
     || '尚无交接 next / 晋升门提示（可打开部署日志或 hop 证据）';
 
-  const hops = promotion?.hops;
   const n = hops?.effective_n ?? 0;
   let hopLine = '尚无 hop 样本';
   if (n > 0) {
     const rate = hops?.effective_success_rate;
     const pct = typeof rate === 'number' ? `${Math.round(rate * 100)}%` : '—';
-    const failed = hops?.by_failed_stage || {};
-    const topFail = Object.entries(failed).sort((a, b) => b[1] - a[1])[0];
     hopLine = `有效 hop N=${n} · 成功率 ${pct}`
       + (topFail ? ` · 常失败阶段 ${topFail[0]}×${topFail[1]}` : '');
   }
 
-  const phase = String(state?.phase || '');
   const canResume = Boolean(stageId) && (phase === 'failed' || isHitlWaitPhase(phase) || phase === 'paused');
   const preferRegenerate = Boolean(next || issues.length);
 
