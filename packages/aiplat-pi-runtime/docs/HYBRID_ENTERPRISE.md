@@ -71,6 +71,7 @@
 | 3 | 原生工具门禁桥 | ✅ | `enterprise_tool_gate`；enterprise 默认 fail-closed | `tool_call` block + `setActiveTools`；默认禁 bash/write/edit/powershell |
 | 4 | 会话摘要回写 Memory | ✅ | `enterprise_memory` → `POST /platform/memory/capture` | 工具 + `session_shutdown` 软 flush；失败不阻断 |
 | 5 | 审批门 ApprovalGate | ✅ | lazy-store [#271](https://github.com/zhuxiangqun/aiPlatform/pull/271) · ISO 时间 [#272](https://github.com/zhuxiangqun/aiPlatform/pull/272) | status/pending/wait → `/platform/approvals…`；裁决在平台 UI |
+| 5b | Unattended attendance | ✅ | OpenWorker P1 混合桥 | `AIPLAT_ENTERPRISE_ATTENDANCE=attended\|inbox\|auto` → 工具注入 `_attendance`；`aiplat_unattended_inbox` / `aiplat_unattended_wait` → `/platform/approvals/unattended*`；**不**从 Pi resolve |
 
 交付收口（①②③④）合入线索见 DELIVERY §8（citation [#274](https://github.com/zhuxiangqun/aiPlatform/pull/274) · cost [#276](https://github.com/zhuxiangqun/aiPlatform/pull/276) · kb-health [#277](https://github.com/zhuxiangqun/aiPlatform/pull/277)+[#279](https://github.com/zhuxiangqun/aiPlatform/pull/279)+[#280](https://github.com/zhuxiangqun/aiPlatform/pull/280)）。
 
@@ -89,15 +90,19 @@ export AIPLAT_ENTERPRISE_MEMORY=1
 # export AIPLAT_ENTERPRISE_MEMORY_AUTO=0   # keep tool, skip session_shutdown flush
 # approval wait bridge (opt-in; humans approve in platform UI):
 export AIPLAT_ENTERPRISE_APPROVAL=1
+# Unattended Inbox (OpenWorker): daemon/cron → inbox|auto; default attended
+# export AIPLAT_ENTERPRISE_ATTENDANCE=inbox
+# export AIPLAT_ENTERPRISE_SESSION_ID=my-pi-session
 
 pi -e .
 # /aiplat-status          → enterprise_hybrid / tools / tool_gate / memory / approval
 # /aiplat-enterprise      → KB reconnect status
 # /aiplat-kb-health       → KB health score summary (delivery panel)
 # /aiplat-memory          → memory writeback status
-# /aiplat-approval        → approval wait-bridge status
+# /aiplat-approval        → approval wait-bridge + attendance status
 # tools: aiplat_kb_retrieve | aiplat_tool_execute | aiplat_memory_capture
 #        | aiplat_approval_status | aiplat_approval_pending | aiplat_approval_wait
+#        | aiplat_unattended_inbox | aiplat_unattended_wait
 ```
 
 Offline + optional live gates:

@@ -271,7 +271,8 @@ export default function (pi: ExtensionAPI) {
   // Optional hybrid: AIPLAT_ENTERPRISE=1 + platform URL/token → KB; + TOOLS allowlist → tool proxy
   // Native gate: when enterprise on, block bash/write/edit unless ALLOW_NATIVE / allowlist
   // Memory: AIPLAT_ENTERPRISE_MEMORY=1 → capture tool + soft session_shutdown flush
-  // Approval: AIPLAT_ENTERPRISE_APPROVAL=1 → status/pending/wait (no approve from Pi)
+  // Approval: AIPLAT_ENTERPRISE_APPROVAL=1 → status/pending/wait + unattended inbox
+  //   (attendance via AIPLAT_ENTERPRISE_ATTENDANCE; no approve from Pi)
   const enterpriseOn = registerEnterpriseKb(pi);
   const toolsOn = registerEnterpriseTools(pi);
   const gateOn = registerEnterpriseToolGate(pi);

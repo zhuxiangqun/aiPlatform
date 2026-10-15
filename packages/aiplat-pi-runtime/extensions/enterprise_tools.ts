@@ -12,7 +12,9 @@ import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 import {
+  attendanceInjectFields,
   extractApprovalRequestId,
+  extractInboxItemId,
   formatApprovalRequiredHint,
 } from "./enterprise_approval";
 import { CircuitOpenError, platformFetch } from "./enterprise_http";
@@ -238,6 +240,13 @@ export async function executeEnterpriseTool(
   const body: Record<string, unknown> = {
     ...(params && typeof params === "object" ? params : {}),
   };
+  // OpenWorker P1: inject attendance/session so PolicyGate can park Unattended Inbox.
+  const att = attendanceInjectFields();
+  for (const [k, v] of Object.entries(att)) {
+    if (body[k] === undefined || body[k] === null || body[k] === "") {
+      body[k] = v;
+    }
+  }
   if (!body.user_id) {
     body.user_id = (process.env.AIPLAT_ACTOR_ID || "pi-enterprise").trim() || "pi-enterprise";
   }
@@ -305,10 +314,16 @@ function summarizeToolResponse(toolName: string, parsed: unknown): string {
     parts[0] = `AIPLAT_TOOL_EXECUTE_FAILED tool=${toolName}`;
   }
   const approvalId = extractApprovalRequestId(parsed);
+  const inboxId = extractInboxItemId(parsed);
   const st = String(o.status || o.legacy_status || "").toLowerCase();
-  if (approvalId || st === "approval_required" || st === "waiting_approval") {
+  if (
+    approvalId ||
+    inboxId ||
+    st === "approval_required" ||
+    st === "waiting_approval"
+  ) {
     parts[0] = `AIPLAT_TOOL_EXECUTE_APPROVAL_REQUIRED tool=${toolName}`;
-    const hint = formatApprovalRequiredHint(approvalId);
+    const hint = formatApprovalRequiredHint(approvalId, inboxId);
     if (hint) parts.push(hint);
   }
   if (typeof o.run_id === "string") parts.push(`run_id=${o.run_id}`);

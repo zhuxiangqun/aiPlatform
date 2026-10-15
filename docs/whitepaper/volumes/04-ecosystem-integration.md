@@ -3,19 +3,19 @@ title: "aiPlat 生态与集成白皮书"
 volume_id: ecosystem-integration
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-15T17:02:18Z"
+generated_at: "2026-10-15T22:33:13Z"
 audience: "ISV、集成商、开源社区、渠道"
 core_question: "如何接入、贡献、协作？"
 priority: P2
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30"
-caps_sha256: "d63958686404a0f147692ac3154fe4dfee103491ccf0bc60a26fe58c9094acf2"
+caps_sha256: "eb84a3518abf23aae936eeb16c5f66d598e3cedd9e761c8626919bcf992a27d5"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=ecosystem-integration suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=d63958686404a0f147692ac3154fe4dfee103491ccf0bc60a26fe58c9094acf2 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=ecosystem-integration suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=eb84a3518abf23aae936eeb16c5f66d598e3cedd9e761c8626919bcf992a27d5 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 生态与集成白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 如何接入、贡献、协作？ |
 | 优先级 | P2 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-15T17:02:18Z` |
-| CAPABILITIES sha256 | `d63958686404…` |
+| 生成时间 (UTC) | `2026-10-15T22:33:13Z` |
+| CAPABILITIES sha256 | `eb84a3518abf…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 **备注**：
@@ -632,7 +632,7 @@ See [`docs/architecture/plans/pi-thin-runtime.md`](../../docs/architecture/plans
 | Mode | Meaning |
 |------|---------|
 | **Pi-only** (default) | Artifacts run with Pi alone: SOP + skills + handler + your LLM. No 8002/8003. |
-| **Pi + aiPlat** (enterprise) | Same Pi shell; opt-in hybrid (`AIPLAT_ENTERPRISE=1`). **KB** + **allowlisted tools** + **native tool gate** + **Memory capture** + **Approval wait** (`AIPLAT_ENTERPRISE_APPROVAL=1` → status/pending/wait; humans approve in platform UI). |
+| **Pi + aiPlat** (enterprise) | Same Pi shell; opt-in hybrid (`AIPLAT_ENTERPRISE=1`). **KB** + **allowlisted tools** + **native tool gate** + **Memory capture** + **Approval wait** (`AIPLAT_ENTERPRISE_APPROVAL=1` → status/pending/wait + Unattended Inbox via `AIPLAT_ENTERPRISE_ATTENDANCE`; humans approve in platform UI). |
 | Thick aiPlat-only on user machine | **Not** the default delivery shape. |
 
 **Layered, not two parallel products:** aiPlat already has agent loops / tools / multi-model in the **platform** sense. Pi exists so **factory artifacts can run without installing the full stack**. Overlap in capability lists ≠ redundant delivery. Do not market Pi and aiPlat as two peer platforms with separate auth/audit. Enterprise entry remains aiPlat (or Pi shell reconnecting to aiPlat).
@@ -657,6 +657,8 @@ export AIPLAT_ENTERPRISE_TOOLS=calculator
 ### export AIPLAT_ENTERPRISE_MEMORY=1
 ### optional approval wait (no approve from Pi):
 ### export AIPLAT_ENTERPRISE_APPROVAL=1
+### export AIPLAT_ENTERPRISE_ATTENDANCE=inbox   # attended|inbox|auto
+### export AIPLAT_ENTERPRISE_SESSION_ID=my-pi-session
 
 pi -e .
 ### /aiplat-status          → enterprise_hybrid / tools / tool_gate / memory / approval
@@ -665,6 +667,7 @@ pi -e .
 ### /aiplat-approval        → approval wait-bridge status
 ### tools: aiplat_kb_retrieve | aiplat_tool_execute | aiplat_memory_capture
 ### | aiplat_approval_status | aiplat_approval_pending | aiplat_approval_wait
+### | aiplat_unattended_inbox | aiplat_unattended_wait
 ```
 
 Offline gates (mock HTTP / pure policy, no platform process):
@@ -746,14 +749,7 @@ AIPLAT_PI_MODEL=ollama/qwen2.5:3b bash scripts/live_smoke.sh
 Way-4 Execute bypass was **removed** (`blank_not_proven`). Optional offline CLI remains for probes only; it does **not** replace ReActLoop / PipelineEngine and is **not** on the Workspace Execute path.
 
 ```bash
-python3 scripts/test_coding_exec_unit.py
-bash scripts/coding_exec_smoke.sh
-python3 scripts/factory_in_evidence_smoke.py
-```
-
-See [docs/FACTORY_IN_EXPERIMENT.md](./docs/FACTORY_IN_EXPERIMENT.md) §⓪.
-
-See [PHASE0.md](./PHASE0.md) and `docs/architecture/plans/pi-thin-
+python3 scripts/test_coding_exe
 
 …
 

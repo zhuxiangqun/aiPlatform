@@ -5,7 +5,15 @@
  * Soft-fails if platform down. Does NOT reimplement ApprovalGate / approve|reject
  * (those stay on platform UI / PolicyGate). Pi waits and surfaces request_id.
  *
+ * OpenWorker P1 attendance (hybrid):
+ * - ``AIPLAT_ENTERPRISE_ATTENDANCE`` or ``AIPLAT_TOOL_ATTENDANCE`` =
+ *   ``attended`` | ``inbox`` | ``auto`` (default attended).
+ * - Tool proxy injects ``_attendance`` / ``_session_id`` so PolicyGate parks
+ *   to Unattended Inbox; Pi lists/waits via ``/platform/approvals/unattended*``.
+ * - Still **no** approve/reject from Pi (resolve stays on platform UI / API).
+ *
  * Tools: aiplat_approval_status | aiplat_approval_pending | aiplat_approval_wait
+ *        | aiplat_unattended_inbox | aiplat_unattended_wait
  * Command: /aiplat-approval
  */
 import { Type } from "@earendil-works/pi-ai";
@@ -17,11 +25,17 @@ import {
   type EnterpriseConfig,
 } from "./enterprise_kb";
 
+export type AttendanceMode = "attended" | "inbox" | "auto";
+
 export type ApprovalBridgeConfig = EnterpriseConfig & {
   approvalEnabled: boolean;
   reasonApprovalOff: string;
   pollMs: number;
   waitTimeoutMs: number;
+  /** OpenWorker-inspired attendance; injected into tool execute as _attendance. */
+  attendance: AttendanceMode;
+  /** Session id for inbox park / attendance API (env or default). */
+  sessionId: string;
 };
 
 function envTruthy(name: string): boolean {
@@ -34,6 +48,35 @@ function envInt(name: string, fallback: number): number {
   if (!raw) return fallback;
   const n = Number(raw);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+}
+
+/** Normalize attendance; unknown → attended (safe default). */
+export function normalizeAttendance(value: unknown): AttendanceMode {
+  if (typeof value === "boolean") return value ? "inbox" : "attended";
+  const text = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (text === "true" || text === "on" || text === "unattended") return "inbox";
+  if (text === "inbox" || text === "auto" || text === "attended") return text;
+  return "attended";
+}
+
+/** Resolve attendance from enterprise / tool env (attended default). */
+export function resolveAttendance(): AttendanceMode {
+  const raw =
+    process.env.AIPLAT_ENTERPRISE_ATTENDANCE ||
+    process.env.AIPLAT_TOOL_ATTENDANCE ||
+    "";
+  return normalizeAttendance(raw);
+}
+
+export function resolveApprovalSessionId(): string {
+  const sid = (
+    process.env.AIPLAT_ENTERPRISE_SESSION_ID ||
+    process.env.AIPLAT_SESSION_ID ||
+    ""
+  ).trim();
+  return sid || "pi-hybrid";
 }
 
 /** Build …/platform/approvals base from AIPLAT_PLATFORM_URL. */
@@ -99,6 +142,8 @@ export function loadApprovalBridgeConfig(cfg?: EnterpriseConfig): ApprovalBridge
   const c = cfg || loadEnterpriseConfig();
   const pollMs = envInt("AIPLAT_ENTERPRISE_APPROVAL_POLL_MS", 2000);
   const waitTimeoutMs = envInt("AIPLAT_ENTERPRISE_APPROVAL_WAIT_MS", 120000);
+  const attendance = resolveAttendance();
+  const sessionId = resolveApprovalSessionId();
   if (!c.enabled) {
     return {
       ...c,
@@ -106,6 +151,8 @@ export function loadApprovalBridgeConfig(cfg?: EnterpriseConfig): ApprovalBridge
       reasonApprovalOff: c.reasonOff || "enterprise off",
       pollMs,
       waitTimeoutMs,
+      attendance,
+      sessionId,
     };
   }
   if (!envTruthy("AIPLAT_ENTERPRISE_APPROVAL")) {
@@ -115,6 +162,8 @@ export function loadApprovalBridgeConfig(cfg?: EnterpriseConfig): ApprovalBridge
       reasonApprovalOff: "AIPLAT_ENTERPRISE_APPROVAL unset",
       pollMs,
       waitTimeoutMs,
+      attendance,
+      sessionId,
     };
   }
   return {
@@ -123,6 +172,8 @@ export function loadApprovalBridgeConfig(cfg?: EnterpriseConfig): ApprovalBridge
     reasonApprovalOff: "",
     pollMs,
     waitTimeoutMs,
+    attendance,
+    sessionId,
   };
 }
 
@@ -135,6 +186,8 @@ export type ApprovalHttpResult = {
   decision?: string;
   requestStatus?: string;
   requestId?: string;
+  inboxItemId?: string;
+  attendance?: AttendanceMode;
 };
 
 async function fetchJson(
@@ -219,15 +272,51 @@ export function extractApprovalRequestId(parsed: unknown): string {
   return "";
 }
 
-export function formatApprovalRequiredHint(requestId: string): string {
+/** Extract Unattended Inbox park id (OpenWorker P1 / PolicyGate). */
+export function extractInboxItemId(parsed: unknown): string {
+  if (!parsed || typeof parsed !== "object") return "";
+  const o = parsed as Record<string, unknown>;
+  const direct = o.inbox_item_id || o.inboxItemId;
+  if (typeof direct === "string" && direct.trim()) return direct.trim();
+  for (const nestKey of ["detail", "error", "policy", "result", "output"]) {
+    const nest = o[nestKey];
+    if (nest && typeof nest === "object") {
+      const id = extractInboxItemId(nest);
+      if (id) return id;
+    }
+  }
+  return "";
+}
+
+export function formatApprovalRequiredHint(requestId: string, inboxItemId?: string): string {
   const id = String(requestId || "").trim();
-  if (!id) return "";
-  return [
-    "AIPLAT_APPROVAL_REQUIRED",
-    `approval_request_id=${id}`,
-    "Wait for a human on the platform Approvals UI, then call aiplat_approval_status or aiplat_approval_wait.",
-    "Do not invent approval; do not bypass via native bash/write.",
-  ].join("\n");
+  const inbox = String(inboxItemId || "").trim();
+  if (!id && !inbox) return "";
+  const lines = ["AIPLAT_APPROVAL_REQUIRED"];
+  if (id) lines.push(`approval_request_id=${id}`);
+  if (inbox) {
+    lines.push(`inbox_item_id=${inbox}`);
+    lines.push(
+      "Item parked in Unattended Inbox — use aiplat_unattended_wait or resolve on platform UI.",
+    );
+  } else {
+    lines.push(
+      "Wait for a human on the platform Approvals UI, then call aiplat_approval_status or aiplat_approval_wait.",
+    );
+  }
+  lines.push("Do not invent approval; do not bypass via native bash/write.");
+  return lines.join("\n");
+}
+
+/** Fields to inject into tool execute so PolicyGate can park unattended. */
+export function attendanceInjectFields(cfg?: ApprovalBridgeConfig): Record<string, string> {
+  const c = cfg || loadApprovalBridgeConfig();
+  return {
+    _attendance: c.attendance,
+    _session_id: c.sessionId,
+    attendance: c.attendance,
+    session_id: c.sessionId,
+  };
 }
 
 export async function getApprovalStatus(
@@ -353,6 +442,231 @@ export async function waitForApproval(
   };
 }
 
+function pickInboxItem(parsed: unknown): {
+  id?: string;
+  state?: string;
+  resolution?: string;
+  visibility?: string;
+} {
+  if (!parsed || typeof parsed !== "object") return {};
+  const o = parsed as Record<string, unknown>;
+  const item =
+    o.item && typeof o.item === "object"
+      ? (o.item as Record<string, unknown>)
+      : o;
+  return {
+    id: typeof item.id === "string" ? item.id : undefined,
+    state: typeof item.state === "string" ? item.state : undefined,
+    resolution: typeof item.resolution === "string" ? item.resolution : undefined,
+    visibility: typeof item.visibility === "string" ? item.visibility : undefined,
+  };
+}
+
+/** POST attendance for session (platform Unattended Inbox). Soft-fails. */
+export async function setUnattendedAttendance(
+  cfg?: ApprovalBridgeConfig,
+  mode?: AttendanceMode,
+): Promise<ApprovalHttpResult> {
+  const c = cfg || loadApprovalBridgeConfig();
+  if (!c.approvalEnabled) {
+    return { ok: false, text: "", error: `approval_off: ${c.reasonApprovalOff}` };
+  }
+  const attendance = mode || c.attendance;
+  let last: ApprovalHttpResult = { ok: false, text: "", error: "no_candidate" };
+  for (const base of approvalsCandidateBases(c.baseUrl)) {
+    const url = `${base}/unattended/attendance`;
+    const r = await fetchJson(url, c.token, {
+      method: "POST",
+      body: JSON.stringify({
+        session_id: c.sessionId,
+        attendance,
+        mode: attendance,
+      }),
+    });
+    last = r;
+    if (!r.ok && (r.status === 503 || r.status === 404)) continue;
+    if (!r.ok) return { ...r, attendance };
+    return {
+      ...r,
+      attendance,
+      text: [
+        "AIPLAT_UNATTENDED_ATTENDANCE_OK",
+        `session_id=${c.sessionId}`,
+        `attendance=${attendance}`,
+        `via=${base}`,
+      ].join("\n"),
+    };
+  }
+  return { ...last, attendance };
+}
+
+/** List parked Unattended Inbox items (visibility=inbox by default). */
+export async function listUnattendedInbox(
+  cfg?: ApprovalBridgeConfig,
+): Promise<ApprovalHttpResult> {
+  const c = cfg || loadApprovalBridgeConfig();
+  if (!c.approvalEnabled) {
+    return { ok: false, text: "", error: `approval_off: ${c.reasonApprovalOff}` };
+  }
+  let last: ApprovalHttpResult = { ok: false, text: "", error: "no_candidate" };
+  const q = new URLSearchParams({
+    visibility: "inbox",
+    pending_only: "true",
+    session_id: c.sessionId,
+    limit: "50",
+  });
+  for (const base of approvalsCandidateBases(c.baseUrl)) {
+    const url = `${base}/unattended?${q.toString()}`;
+    const r = await fetchJson(url, c.token);
+    last = r;
+    if (!r.ok && (r.status === 503 || r.status === 404)) continue;
+    if (!r.ok) return { ...r, attendance: c.attendance };
+    const items =
+      r.raw && typeof r.raw === "object" && Array.isArray((r.raw as Record<string, unknown>).items)
+        ? ((r.raw as Record<string, unknown>).items as unknown[])
+        : [];
+    const lines = [
+      `AIPLAT_UNATTENDED_INBOX_OK count=${items.length}`,
+      `session_id=${c.sessionId}`,
+      `attendance=${c.attendance}`,
+      `via=${base}`,
+    ];
+    for (const it of items.slice(0, 20)) {
+      if (!it || typeof it !== "object") continue;
+      const row = it as Record<string, unknown>;
+      lines.push(
+        `- ${row.id || "?"} state=${row.state || "?"} tool=${row.tool_name || "-"} hard_floor=${row.hard_floor ?? "-"}`,
+      );
+    }
+    return { ...r, text: lines.join("\n"), attendance: c.attendance };
+  }
+  return { ...last, attendance: c.attendance };
+}
+
+async function getUnattendedItemState(
+  itemId: string,
+  cfg: ApprovalBridgeConfig,
+): Promise<ApprovalHttpResult> {
+  const id = String(itemId || "").trim();
+  if (!id) return { ok: false, text: "", error: "inbox_item_id required" };
+  // List and find — no dedicated GET; resolve is platform-only.
+  const listed = await listUnattendedInbox(cfg);
+  if (listed.ok && listed.raw && typeof listed.raw === "object") {
+    const items = Array.isArray((listed.raw as Record<string, unknown>).items)
+      ? ((listed.raw as Record<string, unknown>).items as unknown[])
+      : [];
+    for (const it of items) {
+      if (!it || typeof it !== "object") continue;
+      const row = it as Record<string, unknown>;
+      if (String(row.id || "") === id) {
+        return {
+          ok: true,
+          text: [
+            "AIPLAT_UNATTENDED_ITEM",
+            `inbox_item_id=${id}`,
+            `state=${row.state || "pending"}`,
+            `resolution=${row.resolution || "-"}`,
+          ].join("\n"),
+          inboxItemId: id,
+          requestStatus: String(row.state || "pending"),
+          decision: typeof row.resolution === "string" ? row.resolution : undefined,
+          raw: row,
+          attendance: cfg.attendance,
+        };
+      }
+    }
+  }
+  // Not in pending list — may be resolved; probe via list with pending_only=false
+  let last: ApprovalHttpResult = { ok: false, text: "", error: "not_found" };
+  const q = new URLSearchParams({
+    visibility: "inbox",
+    pending_only: "false",
+    session_id: cfg.sessionId,
+    limit: "200",
+  });
+  for (const base of approvalsCandidateBases(cfg.baseUrl)) {
+    const url = `${base}/unattended?${q.toString()}`;
+    const r = await fetchJson(url, cfg.token);
+    last = r;
+    if (!r.ok && (r.status === 503 || r.status === 404)) continue;
+    if (!r.ok) return r;
+    const items =
+      r.raw && typeof r.raw === "object" && Array.isArray((r.raw as Record<string, unknown>).items)
+        ? ((r.raw as Record<string, unknown>).items as unknown[])
+        : [];
+    for (const it of items) {
+      if (!it || typeof it !== "object") continue;
+      const row = it as Record<string, unknown>;
+      if (String(row.id || "") !== id) continue;
+      const meta = pickInboxItem(row);
+      return {
+        ok: true,
+        text: [
+          "AIPLAT_UNATTENDED_ITEM",
+          `inbox_item_id=${id}`,
+          `state=${meta.state || row.state || "-"}`,
+          `resolution=${meta.resolution || row.resolution || "-"}`,
+          `via=${base}`,
+        ].join("\n"),
+        inboxItemId: id,
+        requestStatus: String(meta.state || row.state || ""),
+        decision: typeof meta.resolution === "string" ? meta.resolution : undefined,
+        raw: row,
+        attendance: cfg.attendance,
+      };
+    }
+  }
+  return {
+    ok: false,
+    text: last.text || "",
+    error: "inbox_item_not_found",
+    inboxItemId: id,
+    status: last.status,
+  };
+}
+
+/** Poll Unattended Inbox item until resolved or timeout. Does not approve. */
+export async function waitForUnattended(
+  itemId: string,
+  cfg?: ApprovalBridgeConfig,
+): Promise<ApprovalHttpResult> {
+  const c = cfg || loadApprovalBridgeConfig();
+  if (!c.approvalEnabled) {
+    return { ok: false, text: "", error: `approval_off: ${c.reasonApprovalOff}` };
+  }
+  const id = String(itemId || "").trim();
+  if (!id) return { ok: false, text: "", error: "inbox_item_id required" };
+
+  const deadline = Date.now() + c.waitTimeoutMs;
+  let last: ApprovalHttpResult = { ok: false, text: "", error: "not_started" };
+  while (Date.now() < deadline) {
+    last = await getUnattendedItemState(id, c);
+    if (last.ok) {
+      const st = String(last.requestStatus || "").toLowerCase();
+      const dec = String(last.decision || "").toLowerCase();
+      if (st === "resolved" || dec === "allow" || dec === "deny" || dec === "always") {
+        return {
+          ...last,
+          text: `AIPLAT_UNATTENDED_WAIT_DONE\n${last.text}`,
+        };
+      }
+    } else if (last.error === "inbox_item_not_found") {
+      // Still pending somewhere else / race — keep polling briefly
+    }
+    await sleep(c.pollMs);
+  }
+  return {
+    ok: false,
+    text: last.text || "",
+    error: `wait_timeout_ms=${c.waitTimeoutMs}`,
+    inboxItemId: id,
+    requestStatus: last.requestStatus,
+    decision: last.decision,
+    raw: last.raw,
+    attendance: c.attendance,
+  };
+}
+
 export function approvalStatusLines(cfg?: ApprovalBridgeConfig): string[] {
   const c = cfg || loadApprovalBridgeConfig();
   return [
@@ -360,6 +674,8 @@ export function approvalStatusLines(cfg?: ApprovalBridgeConfig): string[] {
     `approval_enabled=${c.approvalEnabled}`,
     `reason_off=${c.reasonApprovalOff || "-"}`,
     `approvals_url=${approvalsBaseUrl(c.baseUrl) || "(none)"}`,
+    `attendance=${c.attendance}`,
+    `session_id=${c.sessionId}`,
     `poll_ms=${c.pollMs}`,
     `wait_timeout_ms=${c.waitTimeoutMs}`,
     "note=no approve/reject from Pi (platform UI only)",
@@ -370,12 +686,15 @@ export function approvalStatusLines(cfg?: ApprovalBridgeConfig): string[] {
 export function approvalSystemPromptAddon(cfg?: ApprovalBridgeConfig): string {
   const c = cfg || loadApprovalBridgeConfig();
   if (!c.approvalEnabled) return "";
-  return [
+  const lines = [
     "",
     "## aiPlat Enterprise Approval",
     "If a tool returns approval_required / AIPLAT_APPROVAL_REQUIRED, use aiplat_approval_wait or aiplat_approval_status.",
+    "If inbox_item_id is present, use aiplat_unattended_wait (item parked under Unattended Inbox).",
+    `Session attendance=${c.attendance} (AIPLAT_ENTERPRISE_ATTENDANCE / AIPLAT_TOOL_ATTENDANCE).`,
     "Humans approve in the platform Approvals UI — do not invent approvals or bypass with native shell.",
-  ].join("\n");
+  ];
+  return lines.join("\n");
 }
 
 export function registerEnterpriseApproval(pi: ExtensionAPI): boolean {
@@ -472,8 +791,79 @@ export function registerEnterpriseApproval(pi: ExtensionAPI): boolean {
     }),
   );
 
+  pi.registerTool(
+    defineTool({
+      name: "aiplat_unattended_inbox",
+      label: "aiPlat Unattended Inbox",
+      description:
+        "List parked Unattended Approval Inbox items for this Pi session (hybrid, read-only).",
+      parameters: Type.Object({}),
+      async execute() {
+        // Best-effort sync attendance before listing (daemon/cron: inbox|auto).
+        if (cfg.attendance !== "attended") {
+          await setUnattendedAttendance(cfg);
+        }
+        const r = await listUnattendedInbox(cfg);
+        if (!r.ok) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `AIPLAT_UNATTENDED_INBOX_FAILED: ${r.error || "unknown"}\n${r.text || ""}`,
+              },
+            ],
+            details: r,
+            isError: true,
+          };
+        }
+        return {
+          content: [{ type: "text" as const, text: r.text }],
+          details: { status: r.status, attendance: r.attendance },
+        };
+      },
+    }),
+  );
+
+  pi.registerTool(
+    defineTool({
+      name: "aiplat_unattended_wait",
+      label: "aiPlat Unattended Wait",
+      description:
+        "Poll Unattended Inbox item until resolved or timeout (hybrid). Does not approve.",
+      parameters: Type.Object({
+        inbox_item_id: Type.String({
+          description: "inbox_item_id from tool execute / PolicyGate park",
+        }),
+      }),
+      async execute(_toolCallId, params) {
+        const r = await waitForUnattended(String(params.inbox_item_id || ""), cfg);
+        if (!r.ok) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `AIPLAT_UNATTENDED_WAIT_FAILED: ${r.error || "unknown"}\n${r.text || ""}`,
+              },
+            ],
+            details: r,
+            isError: true,
+          };
+        }
+        return {
+          content: [{ type: "text" as const, text: r.text }],
+          details: {
+            status: r.status,
+            requestStatus: r.requestStatus,
+            decision: r.decision,
+            inboxItemId: r.inboxItemId,
+          },
+        };
+      },
+    }),
+  );
+
   pi.registerCommand("aiplat-approval", {
-    description: "Show approval wait-bridge status (hybrid)",
+    description: "Show approval wait-bridge + attendance status (hybrid)",
     handler: async (_args, ctx) => {
       const lines = approvalStatusLines(loadApprovalBridgeConfig());
       const text = lines.join("\n");
