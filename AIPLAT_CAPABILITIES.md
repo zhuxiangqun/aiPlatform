@@ -1490,7 +1490,7 @@ scan_hash: 8f9548ec24f4
 | parse_clarify_payload | `core/apps/common/create_dialog_utils.py` | ✅ | 自动同步 | 已合入 |
 | history_as_text | `core/apps/common/create_dialog_utils.py` | ✅ | 自动同步 | 已合入 |
 | trim_history | `core/apps/common/create_dialog_utils.py` | ✅ | 自动同步 | 已合入 |
-| extract_json_object | `core/apps/common/create_dialog_utils.py` | ✅ | 自动同步 | 已合入 |
+| extract_json_object | `core/apps/common/create_dialog_utils.py` | ✅ | 对话创建 JSON 解析收敛：委托 `json_utils.parse_json` / `extract_json_safe`（fence+平衡括号）；Agent/Skill create-dialog 去掉本地 `_extract_json` 副本 | 已合入 |
 | maybe_upload_tool_clarify | `core/apps/common/upload_create_clarify.py` | ✅ | 对象存储上传 Tool 创建：白话问哪家云/桶/链接公开性，禁 endpoint/env 追问；厂商映射 SDK+常规 env 草稿 | 已合入 |
 | maybe_upload_mcp_clarify | `core/apps/common/upload_create_clarify.py` | ✅ | 同上，MCP 创建对话入口 | 已合入 |
 | parse_upload_plain_facts | `core/apps/common/upload_create_clarify.py` | ✅ | 从用户口语解析 vendor/bucket/link_mode | 已合入 |

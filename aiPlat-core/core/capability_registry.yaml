@@ -2354,7 +2354,7 @@ domains:
         module: aiPlat-core/core/apps/common/boundary_hints.py
       - symbol: extract_json_object
         type: function
-        signature: 'extract_json_object(text)'
+        signature: "extract_json_object(text) → dict via json_utils.parse_json / extract_json_safe"
         module: aiPlat-core/core/apps/common/create_dialog_utils.py
       - symbol: build_llm_response_format
         type: function
