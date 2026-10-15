@@ -32,7 +32,7 @@ from dataclasses import dataclass
 
 from enum import Enum
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import os
 
@@ -416,6 +416,83 @@ class PolicyGate:
     }
 
 
+
+    async def _maybe_auto_approve_review(
+        self,
+        *,
+        tool_name: str,
+        tool_args: Optional[Dict[str, Any]],
+        gate_message: str,
+        risk_class: Optional[str],
+        approval_rule_id: Optional[str],
+    ) -> Tuple[Optional[PolicyResult], Optional[str]]:
+        """Second-model reviewer for non-floor ASK under auto-approve.
+
+        Returns ``(PolicyResult, None)`` on allow/deny, or ``(None, reviewer_unsure)``
+        when fail-closed / unsure so the caller can park with provenance.
+        ``(None, None)`` when the reviewer is disabled / unavailable.
+        """
+        try:
+            from core.harness.infrastructure.gates.approval_reviewer import (
+                ReviewerVerdict,
+                reviewer_enabled,
+                review_proposed_action,
+                APPROVAL_SOURCE_REVIEWER_ALLOW,
+                APPROVAL_SOURCE_REVIEWER_DENY,
+                APPROVAL_SOURCE_REVIEWER_UNSURE,
+            )
+        except ImportError:
+            return None, None
+
+        args = tool_args if isinstance(tool_args, dict) else {}
+        if not reviewer_enabled(args):
+            return None, None
+
+        session_id = str(args.get("_session_id") or args.get("_run_id") or "default")
+        try:
+            result = await review_proposed_action(
+                tool_name=tool_name,
+                tool_args=args,
+                gate_message=gate_message,
+                hard_floor=False,
+                session_id=session_id,
+            )
+        except Exception as e:
+            logger.debug("approval_reviewer skipped: %s", e, exc_info=True)
+            return None, APPROVAL_SOURCE_REVIEWER_UNSURE
+
+        if result.verdict == ReviewerVerdict.ALLOW:
+            return (
+                PolicyResult(
+                    decision=PolicyDecision.ALLOW,
+                    reason=f"reviewer_allow — {result.reason}",
+                    risk_class=risk_class,
+                    approval_source=APPROVAL_SOURCE_REVIEWER_ALLOW,
+                    approval_rule_id=approval_rule_id,
+                    hard_floor=False,
+                ),
+                None,
+            )
+        if result.verdict == ReviewerVerdict.DENY:
+            return (
+                PolicyResult(
+                    decision=PolicyDecision.DENY,
+                    reason=f"reviewer_deny — {result.reason}",
+                    risk_class=risk_class,
+                    approval_source=APPROVAL_SOURCE_REVIEWER_DENY,
+                    approval_rule_id=approval_rule_id,
+                    hard_floor=False,
+                ),
+                None,
+            )
+        # unsure / circuit → caller parks for human
+        logger.debug(
+            "approval_reviewer unsure tool=%s reason=%s circuit=%s",
+            tool_name,
+            result.reason,
+            result.circuit_open,
+        )
+        return None, APPROVAL_SOURCE_REVIEWER_UNSURE
 
     def _approval_required_result(
         self,
@@ -1081,13 +1158,31 @@ class PolicyGate:
                         tool_name,
                     )
 
+                # OpenWorker P2: Auto-Approve reviewer — ASK only, never hard floors.
+                park_source = src
+                if (
+                    not approval_result.hard_floor
+                    and (_auto_approve or bool(_args.get("_approval_reviewer")))
+                ):
+                    reviewed, unsure_src = await self._maybe_auto_approve_review(
+                        tool_name=tool_name,
+                        tool_args=_args,
+                        gate_message=str(approval_result.message or ""),
+                        risk_class=_risk_class,
+                        approval_rule_id=approval_result.rule_id,
+                    )
+                    if reviewed is not None:
+                        return reviewed
+                    if unsure_src:
+                        park_source = unsure_src
+
                 return self._approval_required_result(
                     reason=f"approval_gate:ask — {approval_result.message}",
                     tool_name=tool_name,
                     tool_args=_args,
                     user_id=user_id,
                     risk_class=_risk_class,
-                    approval_source=src,
+                    approval_source=park_source,
                     approval_rule_id=approval_result.rule_id,
                     hard_floor=bool(approval_result.hard_floor),
                 )

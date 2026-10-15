@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2173
+total_capabilities: 2176
 last_updated: 2026-10-15
 version: "30.10"
 auto_sync: true
@@ -1736,6 +1736,8 @@ scan_hash: 8f9548ec24f4
 ## 七、安全与治理
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| redact_tool_args | `core/harness/infrastructure/gates/approval_reviewer.py` | ✅ | 自动同步 | 已合入 |
+| review_proposed_action | `core/harness/infrastructure/gates/approval_reviewer.py` | ✅ | 自动同步 | 已合入 |
 | set_unattended_attendance | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | resolve_unattended_approval | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | list_unattended_approval_inbox | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -1816,6 +1818,7 @@ scan_hash: 8f9548ec24f4
 | Tool RiskClass | harness/infrastructure/gates/risk_class.py | ✅ | OpenWorker 启发：`READ/EGRESS/WRITE_LOCAL/EXEC/EXTERNAL`；覆盖只可加严；`PolicyGate.check_tool` + `sys_tool_call` 审计透传；生成物不适用（平台横切治理） | 已合入 |
 | Shell command risk | harness/infrastructure/gates/shell_command_risk.py | ✅ | OpenWorker P1：opaque/`$()`/管道、arg-executor（sudo/xargs/docker…）、解释器 `-c`、find `-exec` 等强制 hard floor；接入 ApprovalGate；生成物不适用（平台横切治理） | 已合入 |
 | Unattended Approval Inbox | harness/infrastructure/gates/approval_inbox.py | ✅ | OpenWorker P1：attendance=`attended\|inbox\|auto`；无人值守 park 持久队列；`auto` 固定拒绝 hard floor（禁自批）；`PolicyGate.check_tool` 返回 `inbox_item_id`；CoreFacade + `GET/POST /platform/approvals/unattended*`；`sys_tool_call` 透传 `AIPLAT_TOOL_ATTENDANCE`/trace；生成物不适用（平台横切治理） | 已合入 |
+| Auto-Approve Reviewer | harness/infrastructure/gates/approval_reviewer.py | ✅ | OpenWorker P2：第二模型仅将非 hard-floor 的 ASK→ALLOW；fail-closed→unsure；不读 body/密钥；熔断后转人工；`AIPLAT_APPROVAL_REVIEWER=1` + `_auto_approve`；生成物不适用（平台横切治理） | 已合入 |
 | SkillsGuard (威胁扫描) | harness/infrastructure/gates/skills_guard.py | ✅ | 78威胁模式，skill注册前安全扫描，11类别全覆盖 | 已合入 |
 
 ---
@@ -3095,7 +3098,7 @@ scan_hash: 8f9548ec24f4
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 168 | 0 | 168 |
 | Skill 系统 | 157 | 0 | 157 |
-| 安全与治理 | 80 | 0 | 80 |
+| 安全与治理 | 83 | 0 | 83 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
 | 部署与运维 | 23 | 0 | 23 |
@@ -3133,7 +3136,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2163** | **10** | **2173** |
+| **总计** | **2166** | **10** | **2176** |
 
 | **总计** | **1095** | **0** | **1095** |
 
