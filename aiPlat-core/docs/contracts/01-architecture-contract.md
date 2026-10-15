@@ -232,3 +232,4 @@ aiPlat 逻辑上分为：
 
 - **工厂运行可观测面板「跑到哪 / 为何卡」（2026-10，clause-sync）**：Factory 失败/HITL/完成时复用 state + promotion，展示当前阶段与可行动下一步；续跑/重建 CTA；阶段 ID 优先 `_hitl_stage_id`。系统契约 §5.2 #44 + acceptance 1.70。验证：`grep -c buildRunObsSnapshot Factory/runObsSnapshot.ts` ≥1。
 - **工厂列表卡为何卡短提示（2026-10，clause-sync）**：列表 failed/HITL 软拉取 promotion → `formatCardStuckHint`。系统契约 §5.2 #45 + acceptance 1.71。验证：`grep -c formatCardStuckHint Factory/runObsSnapshot.ts` ≥1；`grep -c projectStuckHints Factory/index.tsx` ≥1。
+- **工厂 pageData 卡顿样本（2026-10，clause-sync）**：`reportPageData('/app/factory')` 含 failed/awaitingApproval/stuckHints（≤3）。系统契约 §5.2 #46 + acceptance 1.72。验证：`grep -c stuckHints Factory/index.tsx` ≥1；`grep -c awaitingApproval Factory/index.tsx` ≥1。

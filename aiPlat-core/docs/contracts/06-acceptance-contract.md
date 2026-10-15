@@ -782,3 +782,11 @@ pytest -q \
   - `grep -c "formatCardStuckHint" aiPlat-management/frontend/src/pages/App/Factory/runObsSnapshot.ts`（≥1）
   - `grep -c "projectStuckHints" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
   - `cd aiPlat-management/frontend && npm run test:run -- src/pages/App/Factory/runObsSnapshot.test.ts`（通过，含 formatCardStuckHint）
+
+### 1.72 工厂 pageData 上报卡顿样本（2026-10）
+- MUST：`reportPageData('/app/factory', …)` 含 `failed` / `awaitingApproval` / `stuckHintCount`，以及最多 3 条 `stuckHints`（`项目名: 阶段: 为何卡`）供数字人回答「哪些项目卡住」
+- MUST：依赖列表侧已算好的 `projectStuckHints`；无新后端
+- 契约登记：系统契约 §5.2 #46 + 边界契约 `01-architecture-contract.md`（clause-sync）
+- 自动化验收：
+  - `grep -c "stuckHints" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
+  - `grep -c "awaitingApproval" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
