@@ -2003,7 +2003,7 @@ scan_hash: 8f9548ec24f4
 | async_utils | harness/utils/async_utils.py | ✅ | 自动同步 | 已合入 |
 | trajectory_collector | `harness/digital_human/trajectory_collector.py` | ✅ | P1-2 闭环：轨迹→ShareGPT 数据集（export_sharegpt_dataset → ~/.aiplat/training） | 已合入 |
 | research 文档新鲜度守卫 | `scripts/check_research_docs_freshness.py` | ✅ | Rule 6：状态标记矛盾检测 + 符号引用验证 + 最后验证时间戳对账（--ci 阻断） | 已合入 |
-| 应用工厂页面感知 | `frontend/src/pages/App/Factory/index.tsx` | ✅ | P2-4 扩展：/app/factory 上报项目数/阶段/通过率/选中项目 → 数字人可答状态类问题 | 已合入 |
+| 应用工厂页面感知 | `frontend/src/pages/App/Factory/index.tsx` | ✅ | P2-4 扩展：/app/factory 上报项目数/阶段/通过率/选中项目；失败与 HITL 计数 + `stuckHints`（列表为何卡样本，最多 3 条）→ 数字人可答「哪些项目卡住」 | 已合入 |
 | voice_pipeline | `harness/digital_human/voice_pipeline.py` | ✅ | ASR→Agent→TTS 编排；优先 platform_consultant + 实况简报；降级 materials_chat 走 consultant_live_only 禁 RAG；页面数据感知（pageDataBridge/captureVisiblePage） | 已合入 |
 | platform_consultant | `workspace_seeds/agents/platform_consultant/AGENT.md` + `control_presets.yaml` | ✅ | 管理端文字顾问种子 Agent + ControlProfile（禁检索工具） | 已合入 |
 | consultant_live_only | `apps/agents/materials_chat.py` | ✅ | G5：`_consultant_agent` 时跳过 wiki/CRAG，仅靠注入简报 LLM 作答 | 已合入 |

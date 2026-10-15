@@ -3124,7 +3124,7 @@ const FactoryPage: React.FC = () => {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
-  // P2-4: 向数字人上报应用工厂实时状态（项目数/阶段/通过率/选中项目）
+  // P2-4: 向数字人上报应用工厂实时状态（项目数/阶段/通过率/卡顿提示）
   useEffect(() => {
     const stageCount: Record<string, number> = {};
     Object.values(projectStates).forEach((ph: string) => {
@@ -3133,6 +3133,14 @@ const FactoryPage: React.FC = () => {
     });
     const runningCount = Object.values(projectStates).filter(ph => ['executing', 'running', 'pending'].includes(ph)).length;
     const doneCount = Object.values(projectStates).filter(ph => ['done', 'completed'].includes(ph)).length;
+    const failedCount = Object.values(projectStates).filter(ph => ph === 'failed').length;
+    const hitlCount = Object.values(projectStates).filter(ph => isHitlWaitPhase(ph)).length;
+    const stuckSamples = Object.entries(projectStuckHints)
+      .slice(0, 3)
+      .map(([id, hint]) => {
+        const name = projects.find((p) => p.project_id === id)?.name || id.slice(0, 8);
+        return `${name}: ${hint}`;
+      });
     const avgPassRate = Object.values(projectPassRates).length
       ? Math.round(Object.values(projectPassRates).reduce((a, b) => a + (b || 0), 0) / Object.values(projectPassRates).length * 100) / 100
       : undefined;
@@ -3142,12 +3150,16 @@ const FactoryPage: React.FC = () => {
       stageCount,
       running: runningCount,
       done: doneCount,
+      failed: failedCount,
+      awaitingApproval: hitlCount,
+      stuckHintCount: Object.keys(projectStuckHints).length,
+      stuckHints: stuckSamples.length ? stuckSamples : undefined,
       avgPassRate,
       selectedProject: selectedProject?.name || undefined,
       selectedProjectPhase: selectedProject ? (projectStates[selectedProject.project_id] || undefined) : undefined,
     });
     return () => clearPageData('/app/factory');
-  }, [projects, deployedApps, projectStates, projectPassRates, selectedProject]);
+  }, [projects, deployedApps, projectStates, projectPassRates, projectStuckHints, selectedProject]);
 
   const create = async () => {
     if (!desc.trim()) { toast.warning('请输入应用描述'); return; }
