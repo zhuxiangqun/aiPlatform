@@ -2,31 +2,12 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import re
 from typing import Any, Dict, List, Optional
 
+from core.apps.common.create_dialog_utils import extract_json_object
 from core.apps.skills.service.skill_autofill import generate_skill_autofill
-
-
-def _extract_json(text: str) -> Dict[str, Any]:
-    raw = str(text or "").strip()
-    if not raw:
-        return {}
-    try:
-        obj = json.loads(raw)
-        return obj if isinstance(obj, dict) else {}
-    except Exception:  # noqa: cleanup-best-effort
-        pass
-    m = re.search(r"\{[\s\S]*\}", raw)
-    if not m:
-        return {}
-    try:
-        obj = json.loads(m.group(0))
-        return obj if isinstance(obj, dict) else {}
-    except Exception:
-        return {}
 
 
 def _build_skill_md_preview(draft: Dict[str, Any]) -> str:
@@ -138,7 +119,7 @@ async def run_skill_create_dialog_turn(
             "error": str(e)[:200],
         }
 
-    parsed = _extract_json(raw)
+    parsed = extract_json_object(raw)
     next_state = str(parsed.get("next") or "").strip().lower()
     reply = str(parsed.get("reply") or "").strip()
     questions = parsed.get("questions") if isinstance(parsed.get("questions"), list) else []

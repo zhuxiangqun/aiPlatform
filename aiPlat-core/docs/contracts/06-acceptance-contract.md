@@ -822,3 +822,13 @@ pytest -q \
   - `grep -c "build_llm_response_format" aiPlat-core/core/apps/skills/registry.py`（≥1）
   - `grep -c "build_llm_response_format" aiPlat-core/core/harness/execution/pipeline_engine.py`（≥1）
   - `pytest aiPlat-core/core/tests/unit/test_utils/test_build_llm_response_format.py -q`（通过）
+
+### 1.76 对话创建 JSON 提取收敛（2026-10）
+- MUST：`extract_json_object` 委托 `json_utils.parse_json`（内部 `extract_json_safe`），支持 fence / 尾随解说
+- MUST：Agent/Skill create-dialog 使用共享 `extract_json_object`，禁止本地 `_extract_json` 副本
+- 契约登记：系统契约 §5.2 #50 + 边界契约 `01-architecture-contract.md`（clause-sync）
+- 自动化验收：
+  - `grep -c "from core.utils.json_utils import parse_json" aiPlat-core/core/apps/common/create_dialog_utils.py`（≥1）
+  - `grep -c "def _extract_json" aiPlat-core/core/apps/builder/service/agent_create_dialog.py`（=0）
+  - `grep -c "def _extract_json" aiPlat-core/core/apps/skills/service/skill_create_dialog.py`（=0）
+  - `pytest aiPlat-core/core/tests/unit/test_apps/test_create_dialog_extract_json.py -q`（通过）

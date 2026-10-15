@@ -2,29 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import logging
-import re
 from typing import Any, Dict, List, Optional
 
-
-def _extract_json(text: str) -> Dict[str, Any]:
-    raw = str(text or "").strip()
-    if not raw:
-        return {}
-    try:
-        obj = json.loads(raw)
-        return obj if isinstance(obj, dict) else {}
-    except Exception:  # noqa: cleanup-best-effort
-        pass
-    m = re.search(r"\{[\s\S]*\}", raw)
-    if not m:
-        return {}
-    try:
-        obj = json.loads(m.group(0))
-        return obj if isinstance(obj, dict) else {}
-    except Exception:
-        return {}
+from core.apps.common.create_dialog_utils import extract_json_object
 
 
 def _build_agent_md_preview(draft: Dict[str, Any]) -> str:
@@ -189,7 +170,7 @@ async def run_agent_create_dialog_turn(
         try:
             resp = await sys_llm_generate(model, messages)
             raw = str(resp.content if hasattr(resp, "content") else resp)
-            parsed = _extract_json(raw)
+            parsed = extract_json_object(raw)
         except Exception as e:
             logging.warning("agent create dialog LLM failed: %s", e, exc_info=True)
             return {

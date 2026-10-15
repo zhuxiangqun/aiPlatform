@@ -2,28 +2,19 @@
 
 from __future__ import annotations
 
-import json
-import re
 from typing import Any, Dict, List, Optional
+
+from core.utils.json_utils import parse_json
 
 
 def extract_json_object(text: str) -> Dict[str, Any]:
-    raw = str(text or "").strip()
-    if not raw:
-        return {}
-    try:
-        obj = json.loads(raw)
-        return obj if isinstance(obj, dict) else {}
-    except Exception:  # noqa: cleanup-best-effort
-        pass
-    m = re.search(r"\{[\s\S]*\}", raw)
-    if not m:
-        return {}
-    try:
-        obj = json.loads(m.group(0))
-        return obj if isinstance(obj, dict) else {}
-    except Exception:
-        return {}
+    """Parse LLM JSON object via canonical ``extract_json_safe`` / ``parse_json``.
+
+    Handles markdown fences, trailing commentary, and balanced braces.
+    Non-object JSON (arrays/scalars) → {}.
+    """
+    obj = parse_json(str(text or ""))
+    return obj if isinstance(obj, dict) else {}
 
 
 def trim_history(
