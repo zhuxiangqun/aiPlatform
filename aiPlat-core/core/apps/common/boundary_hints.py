@@ -98,6 +98,36 @@ def wants_outbound_network(*, tools: Optional[List[str]] = None, text: str = "")
     return any(k in blob for k in _YES_NETWORK)
 
 
+def normalize_raci(raw: Any) -> Optional[Dict[str, Any]]:
+    """Normalize RACI dict for AGENT.md frontmatter (create-time responsibility boundary).
+
+    Returns None when empty. Lists capped; unknown shapes soft-fail to None.
+    """
+    if not isinstance(raw, dict):
+        return None
+    responsible = str(raw.get("responsible") or raw.get("R") or "").strip()
+    accountable = str(raw.get("accountable") or raw.get("A") or "").strip()
+
+    def _as_list(val: Any) -> List[str]:
+        if isinstance(val, list):
+            return [str(x).strip() for x in val if str(x).strip()][:12]
+        if isinstance(val, str) and val.strip():
+            parts = [p.strip() for p in val.replace("；", ",").replace(";", ",").split(",")]
+            return [p for p in parts if p][:12]
+        return []
+
+    consulted = _as_list(raw.get("consulted") if "consulted" in raw else raw.get("C"))
+    informed = _as_list(raw.get("informed") if "informed" in raw else raw.get("I"))
+    if not (responsible or accountable or consulted or informed):
+        return None
+    return {
+        "responsible": responsible or None,
+        "accountable": accountable or None,
+        "consulted": consulted,
+        "informed": informed,
+    }
+
+
 def hints_for_agent_draft(draft: Optional[Dict[str, Any]] = None, *, description: str = "") -> List[str]:
     d = draft if isinstance(draft, dict) else {}
     skills = d.get("skills") if isinstance(d.get("skills"), list) else []
@@ -107,6 +137,11 @@ def hints_for_agent_draft(draft: Optional[Dict[str, Any]] = None, *, description
     text = _blob(description, d.get("description"), sop)
     out: List[str] = []
 
+    if normalize_raci(d.get("raci")) is None:
+        out.append(
+            "建议补 RACI 责任边界（执行什么 / 对什么结果负责 / 依赖谁 / 知会谁）："
+            "一个业务闭环优先一个 Agent；步骤用 Skill/阶段，勿先拆多 Agent。"
+        )
     if len(skills) <= 1 and len(tools) == 0 and len(mcps) == 0 and len(sop) < 200:
         out.append("绑定偏少：若只是单能力流程，可先建 Skill，再由 Agent 组装；若确需数字员工，请补 Tool/MCP 或加厚 SOP。")
     if mentions_external_system(text) and not mcps:

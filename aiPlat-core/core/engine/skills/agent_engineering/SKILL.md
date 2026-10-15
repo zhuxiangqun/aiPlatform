@@ -111,7 +111,16 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 
 ---
 
-### Step 0: 多 Agent 评估
+### Step 0: 责任边界（RACI）再评估是否多 Agent
+**Agent 是责任单元，不是功能单元。** 生成前先回答（写入每个 AGENT.md frontmatter 可选字段 `raci`）：
+- **R responsible**：负责执行什么（任务/步骤）
+- **A accountable**：对什么可验收结果负责
+- **C consulted**：依赖哪些判断输入（规则/专家/系统）
+- **I informed**：结果需知会谁
+
+**一个业务闭环优先一个 Agent**；流程步骤用 Skill / Pipeline 阶段承接，**禁止**把串行闭环拆成多 Agent 协作网。
+
+### Step 0b: 多 Agent 评估
 **默认** `"mode": "single"`（禁止仅凭 FR 数量拆 multi）。
 
 升 `multi_agent` 必须 **五条判据全部 AND**（缺任一条保持 single）：

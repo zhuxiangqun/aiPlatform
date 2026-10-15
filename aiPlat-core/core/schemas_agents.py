@@ -88,6 +88,8 @@ class AgentAutoFillResponse(BaseModel):
     permissions: List[str] = Field(default_factory=list)
     template_id: str = ""  # recommended prompt app template
     stages: List[Dict[str, Any]] = Field(default_factory=list)  # v4.0 pipeline stages
+    # Optional RACI responsibility boundary (create-time metadata → AGENT.md frontmatter)
+    raci: Optional[Dict[str, Any]] = None
     # Async mode fields
     task_id: Optional[str] = None
     status: Optional[str] = None

@@ -790,3 +790,13 @@ pytest -q \
 - 自动化验收：
   - `grep -c "stuckHints" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
   - `grep -c "awaitingApproval" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
+
+### 1.73 Agent RACI 责任边界（创建时元数据）（2026-10）
+- MUST：`normalize_raci` 规范化 `responsible/accountable/consulted/informed`（兼容 R/A/C/I）；空则 None
+- MUST：创建/更新 Agent 时可将 `metadata.raci` 写入 AGENT.md frontmatter；**非运行时门禁**（升 multi 仍走五条 AND）
+- MUST：缺 RACI 时 `hints_for_agent_draft` / AssetBoundaryHint 提醒「闭环优先单 Agent」
+- 契约登记：系统契约 §5.2 #47 + 边界契约 `01-architecture-contract.md`（clause-sync）
+- 自动化验收：
+  - `grep -c "def normalize_raci" aiPlat-core/core/apps/common/boundary_hints.py`（≥1）
+  - `grep -c "normalize_raci" aiPlat-core/core/management/agent_manager.py`（≥2）
+  - `pytest aiPlat-core/core/tests/unit/test_apps/test_boundary_hints.py -q`（含 normalize_raci / RACI hint）

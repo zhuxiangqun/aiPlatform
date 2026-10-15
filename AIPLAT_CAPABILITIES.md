@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2154
+total_capabilities: 2156
 last_updated: 2026-10-11
 version: "30.10"
 auto_sync: true
@@ -2643,6 +2643,7 @@ scan_hash: 8f9548ec24f4
 | 生成物契约校验（conformance） | platform/builder/generated_conformance.py + generated_conformance.yaml + builder_project_service.py | ✅ | 注册前契约校验生成 AGENT.md/SKILL.md/agent_manifest：首行 `---`、治理字段、schema 对象格式；**Phase A**：`validate_manifest` 校验 mode/skill_routing/ui_bindings；`multi_agent` 必填 rationale+success_metrics+upgrade_criteria（五条 AND）；**E1** 可选 `architecture_profile`/`execution_backend` 白名单 + 与 agent_type 冲突检测；**E4** 生成 Skill 禁 handler/hybrid（无工厂 handler.py）；不合规跳过注册并记 rejected_artifacts；生成物适用：**已接线** | 已合入 |
 | 工厂跑通晋升门（promotion_gate） | platform/builder/promotion_gate.py + promotion_gate.yaml + hop_metrics.py | ✅ | 四维「跑通」+ multi 五条 AND；**Phase C**：hop JSONL 聚合（N/成功率/failed_stage）→ `GET .../promotion` + 部署 `promotion_gate` 快照；**可解释**：每条检查 `how_to_fix`/`missing` + `next_actions`/`summary`，`format_upgrade_fix_hint` 供部署 rejected_artifacts 与 promotion API；生成物适用：**已接线** | 已合入 |
 | 工厂运行可观测面板（跑到哪/为何卡） | `Factory/runObsSnapshot.ts` + `index.tsx` + `GET .../promotion` + `resumeFromStage`/`regenerateStage` | ✅ | 失败/HITL/完成时聚合 `_hitl_stage_id`/`_current_stage` + handoff.next/known_issues + promotion next_actions/hop；一键续跑（保留产物）或从此阶段重建；列表卡 `formatCardStuckHint` 短提示；阶段解析 vitest；无新后端；生成物适用：**已接线**（工厂 oversight UI） | 已合入 |
+| Agent RACI 责任边界（创建时） | `boundary_hints.normalize_raci` + `AgentManager` AGENT.md frontmatter + AddAgentModal / AssetBoundaryHint + `agent_engineering` Step 0 | ✅ | 可选写入 `raci.{responsible,accountable,consulted,informed}`；边界提示缺 RACI 时提醒「闭环优先单 Agent」；非运行时门禁（升 multi 仍走五条 AND）；生成物适用：**已接线** | 已合入 |
 | 工厂动态 spawn 门禁（spawn_policy） | ⚠️ deprecated core/harness/coordination/spawn_policy.py + factory_profile + StageRunner + sys_agent_call | ✅ | Phase B W3：工厂阶段 `allow_dynamic_spawn=False`；ContextVar/state 阻断 DynamicOrchestrator.spawn 与 sys_agent_call 自由委派；非工厂默认允许；生成物适用：**已接线**（构建链契约化） | 已合入 |
 | 工厂 Skill hop schema 门（skill_hop_gate） | platform/builder/skill_hop_gate.py + builder_project_service.execute_skill | ✅ | Phase B W4：execute_skill 调用 LLM 前按 SKILL input_schema 校验；缺必填 → 422/结构化错误 + failed_stage=tool_selection + handoff 五字段；生成物适用：**已接线** | 已合入 |
 | 工厂 hop 度量（hop_metrics） | platform/builder/hop_metrics.py | ✅ | Phase C W5：execute_skill 每次写入 JSONL；aggregate + evaluate_project_run_through；`derive_test_evidence` 从 `last_test_report`/state 推导 real_tests+物理证据（run_tests/部署/promotion API 共用）；无 failed_stage 的失败剔除出有效成功率；生成物适用：**已接线** | 已合入 |
@@ -3092,11 +3093,11 @@ scan_hash: 8f9548ec24f4
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 44 | 0 | 44 |
 | Arena & 调度 | 7 | 0 | 7 |
-| 平台治理 | 120 | 0 | 120 |
+| 平台治理 | 121 | 0 | 121 |
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 89 | 0 | 89 |
+| 管理 & 质量 | 90 | 0 | 90 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -3115,7 +3116,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2144** | **10** | **2154** |
+| **总计** | **2146** | **10** | **2156** |
 
 | **总计** | **1095** | **0** | **1095** |
 

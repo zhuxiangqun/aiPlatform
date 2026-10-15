@@ -6,11 +6,11 @@ const LINES: Record<AssetKind, { title: string; bullets: string[] }> = {
   agent: {
     title: 'Agent = 数字员工（编排层）',
     bullets: [
-      '负责多步推理与编排，绑定 Skill / Tool / MCP',
+      '先定责任边界（RACI）：执行什么 / 对什么结果负责 / 依赖谁 / 知会谁——Agent 是责任单元，不是功能单元',
+      '一个业务闭环优先一个 Agent；步骤用 Skill/阶段，勿先拆多 Agent 网',
       '运行时固定为平台原生 ReActLoop / Pipeline——不选 LangGraph、CrewAI 等外部框架',
-      '生成时只选 agent_type / architecture_profile / mode（默认 single）',
-      '不要把单次原子动作做成 Agent（应建 Tool）',
-      '不要只塞一段 SOP 却零绑定（应先建 Skill 再组装）',
+      '生成时只选 agent_type / architecture_profile / mode（默认 single）；升 multi 须五条 AND',
+      '不要把单次原子动作做成 Agent（应建 Tool）；不要只塞 SOP 却零绑定（应先建 Skill）',
     ],
   },
   skill: {

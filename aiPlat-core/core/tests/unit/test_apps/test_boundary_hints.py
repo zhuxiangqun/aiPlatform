@@ -7,7 +7,44 @@ from core.apps.common.boundary_hints import (
     hints_for_mcp_draft,
     hints_for_skill_draft,
     hints_for_tool_draft,
+    normalize_raci,
 )
+
+
+def test_normalize_raci_empty_and_aliases():
+    assert normalize_raci(None) is None
+    assert normalize_raci({}) is None
+    assert normalize_raci("x") is None
+    out = normalize_raci(
+        {
+            "R": "执行准入资料收集与核验",
+            "A": "供应商准入完成",
+            "C": "法务, 风控",
+            "I": ["采购经理", "财务"],
+        }
+    )
+    assert out is not None
+    assert out["responsible"] == "执行准入资料收集与核验"
+    assert out["accountable"] == "供应商准入完成"
+    assert out["consulted"] == ["法务", "风控"]
+    assert out["informed"] == ["采购经理", "财务"]
+
+
+def test_agent_raci_missing_hint():
+    hints = hints_for_agent_draft(
+        {"skills": ["a", "b"], "tools": ["t"], "mcp_ids": [], "sop_text": "x" * 300}
+    )
+    assert any("RACI" in h for h in hints)
+    hints2 = hints_for_agent_draft(
+        {
+            "skills": ["a", "b"],
+            "tools": ["t"],
+            "mcp_ids": [],
+            "sop_text": "x" * 300,
+            "raci": {"responsible": "跑闭环", "accountable": "交付结果"},
+        }
+    )
+    assert not any("RACI" in h for h in hints2)
 
 
 def test_agent_empty_bindings_hint():

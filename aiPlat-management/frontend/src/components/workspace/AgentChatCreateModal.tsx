@@ -22,6 +22,12 @@ type Draft = {
   trigger_conditions?: string[];
   permissions?: string[];
   reasoning?: string;
+  raci?: {
+    responsible?: string;
+    accountable?: string;
+    consulted?: string[] | string;
+    informed?: string[] | string;
+  };
   missing_skills?: Array<{ capability?: string; suggested_name?: string; must_have?: string; how_to_create?: string }>;
   missing_tools?: Array<{ capability?: string; how_to_create?: string }>;
   missing_mcps?: unknown[];
@@ -151,6 +157,9 @@ const AgentChatCreateModal: React.FC<AgentChatCreateModalProps> = ({ open, onClo
           ? draft.memory_config
           : undefined;
 
+      const raciMeta =
+        draft.raci && typeof draft.raci === 'object' ? draft.raci : undefined;
+
       const created = await workspaceAgentApi.create({
         name: agentId,
         agent_type: agentType,
@@ -166,6 +175,7 @@ const AgentChatCreateModal: React.FC<AgentChatCreateModalProps> = ({ open, onClo
           description,
           display_name: displayName,
           source: 'create_dialog',
+          ...(raciMeta ? { raci: raciMeta } : {}),
         },
         ...(triggers.length ? { trigger_conditions: triggers } : {}),
         ...(permissions.length ? { permissions } : {}),
@@ -222,6 +232,7 @@ const AgentChatCreateModal: React.FC<AgentChatCreateModalProps> = ({ open, onClo
         <div className="text-xs text-gray-500 rounded border border-dark-border/60 bg-dark-card/40 px-3 py-2 leading-relaxed">
           选型说明：顾问只选平台内部 agent_type（默认 react），不是 LangGraph / CrewAI 等外部框架。
           生成物统一跑原生 Harness（StageRunner → ReActLoop）；multi_agent 默认关闭，须五条 AND 门禁才升级。
+          优先先定 RACI 责任边界（一个业务闭环一个 Agent；步骤用 Skill/阶段）。
         </div>
         <div className="flex-1 overflow-y-auto space-y-3 border border-dark-border rounded-lg p-3 bg-dark-bg min-h-[240px]">
           {conversation.map((m, i) => (
@@ -274,6 +285,17 @@ const AgentChatCreateModal: React.FC<AgentChatCreateModalProps> = ({ open, onClo
                 {Array.isArray(draft.trigger_conditions) && draft.trigger_conditions.length
                   ? draft.trigger_conditions.join(' / ')
                   : '（空）'}
+              </div>
+              <div className="col-span-2">
+                RACI：
+                {draft.raci && typeof draft.raci === 'object'
+                  ? [
+                      draft.raci.responsible && `R=${draft.raci.responsible}`,
+                      draft.raci.accountable && `A=${draft.raci.accountable}`,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ') || '（已填）'
+                  : '（未填 · 建议补责任边界）'}
               </div>
             </div>
             <Textarea
