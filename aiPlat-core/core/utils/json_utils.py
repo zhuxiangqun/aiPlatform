@@ -1,5 +1,6 @@
 """JSON extraction utilities — pure functions with no internal dependencies."""
 from __future__ import annotations
+import os
 import re
 from typing import Any, Dict, Optional
 
@@ -78,4 +79,83 @@ def extract_json(text: str) -> str:
     if m:
         return m.group(0).strip()
     return ""
+
+
+_SCHEMA_META = frozenset(
+    {
+        "$schema",
+        "$id",
+        "title",
+        "description",
+        "examples",
+        "default",
+        "x-display-profile",
+        "x-ui",
+        "additionalProperties",
+    }
+)
+
+
+def build_llm_response_format(
+    schema: Any,
+    *,
+    name: str = "output",
+    force_json_object: bool = False,
+) -> Optional[Dict[str, Any]]:
+    """Build OpenAI-compatible ``response_format`` from a JSON-Schema-like dict.
+
+    - Empty / non-dict → None (caller keeps prompt-only constraint).
+    - Valid schema (``type`` / ``properties`` / ``$ref``) → ``json_schema``.
+    - Key-only dict (legacy skill shape) → wrap as object properties then ``json_schema``.
+    - ``force_json_object`` or unusable schema → ``{"type": "json_object"}``.
+
+    Kill-switch: ``AIPLAT_LLM_RESPONSE_FORMAT=0`` → always None.
+    """
+    flag = (os.environ.get("AIPLAT_LLM_RESPONSE_FORMAT") or "1").strip().lower()
+    if flag in ("0", "false", "no", "off"):
+        return None
+    if force_json_object:
+        return {"type": "json_object"}
+    if not isinstance(schema, dict) or not schema:
+        return None
+
+    # Already a full JSON Schema object
+    if (
+        schema.get("type") in ("object", "array")
+        or isinstance(schema.get("properties"), dict)
+        or schema.get("$ref")
+        or schema.get("items")
+    ):
+        clean = {k: v for k, v in schema.items() if not str(k).startswith("x-")}
+        if "type" not in clean and isinstance(clean.get("properties"), dict):
+            clean = {**clean, "type": "object"}
+        return {
+            "type": "json_schema",
+            "json_schema": {
+                "name": (name or "output")[:64] or "output",
+                "schema": clean,
+                "strict": False,
+            },
+        }
+
+    # Legacy: top-level keys are payload fields (not JSON Schema keywords)
+    props: Dict[str, Any] = {}
+    for k, v in schema.items():
+        sk = str(k)
+        if sk in _SCHEMA_META or sk.startswith("x-") or sk.startswith("$"):
+            continue
+        if isinstance(v, dict) and ("type" in v or "properties" in v):
+            props[sk] = v
+        else:
+            props[sk] = {"type": "string"} if v is None or isinstance(v, str) else {"type": "object"}
+    if not props:
+        return {"type": "json_object"}
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": (name or "output")[:64] or "output",
+            "schema": {"type": "object", "properties": props},
+            "strict": False,
+        },
+    }
 

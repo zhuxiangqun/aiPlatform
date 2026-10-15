@@ -3,19 +3,19 @@ title: "aiPlat 产品能力白皮书"
 volume_id: product-capability
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-15T05:18:02Z"
+generated_at: "2026-10-15T07:40:30Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30"
-caps_sha256: "57776051893fb2be91bab435d1de45c027ae8299e3d51e329d5419b5f4ee2fed"
+caps_sha256: "ead7dc5bf29bf8c1107f0f775cf7b4df27ff838615297cbb9d569e794f35cdc9"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=57776051893fb2be91bab435d1de45c027ae8299e3d51e329d5419b5f4ee2fed scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=ead7dc5bf29bf8c1107f0f775cf7b4df27ff838615297cbb9d569e794f35cdc9 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-15T05:18:02Z` |
-| CAPABILITIES sha256 | `57776051893f…` |
+| 生成时间 (UTC) | `2026-10-15T07:40:30Z` |
+| CAPABILITIES sha256 | `ead7dc5bf29b…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
