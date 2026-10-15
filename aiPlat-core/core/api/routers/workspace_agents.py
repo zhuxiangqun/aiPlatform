@@ -1842,6 +1842,14 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
         sop_text=sop_text,
     )
 
+    _raci_out = None
+    try:
+        from core.apps.common.boundary_hints import normalize_raci
+
+        _raci_out = normalize_raci(data.get("raci"))
+    except Exception:
+        _raci_out = None
+
     return AgentAutoFillResponse(
         agent_type=agent_type,
         config=config,
@@ -1860,6 +1868,7 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
         permissions=permissions,
         template_id="",
         stages=list(data.get("stages", []))[:20] if isinstance(data.get("stages"), list) else [],
+        raci=_raci_out,
     )
 
 

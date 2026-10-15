@@ -7,6 +7,7 @@ export type AgentDraftLike = {
   sop_text?: string;
   sop?: string;
   description?: string;
+  raci?: { responsible?: string; accountable?: string; consulted?: unknown; informed?: unknown };
 };
 
 const TOOL_LIKE = ['读写文件', '读文件', '写文件', 'http', 'api', '计算器', '抓取网页', 'shell', '数据库'];
@@ -56,6 +57,21 @@ export function hintsForAgentDraft(draft: AgentDraftLike, description = ''): str
   const sop = String(draft.sop_text || draft.sop || '');
   const text = blob(description, draft.description, sop);
   const out: string[] = [];
+  const raci = draft.raci;
+  const hasRaci = Boolean(
+    raci &&
+      (String(raci.responsible || '').trim() ||
+        String(raci.accountable || '').trim() ||
+        (Array.isArray(raci.consulted) && raci.consulted.length) ||
+        (Array.isArray(raci.informed) && raci.informed.length) ||
+        String(raci.consulted || '').trim() ||
+        String(raci.informed || '').trim()),
+  );
+  if (!hasRaci) {
+    out.push(
+      '建议补 RACI 责任边界（执行什么 / 对什么结果负责 / 依赖谁 / 知会谁）：一个业务闭环优先一个 Agent；步骤用 Skill/阶段，勿先拆多 Agent。',
+    );
+  }
   if (skills.length <= 1 && tools.length === 0 && mcps.length === 0 && sop.length < 200) {
     out.push('绑定偏少：若只是单能力流程，可先建 Skill 再组装；确需数字员工则补 Tool/MCP 或加厚 SOP。');
   }

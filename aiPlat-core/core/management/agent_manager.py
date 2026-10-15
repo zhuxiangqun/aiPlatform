@@ -615,6 +615,16 @@ class AgentManager:
         the same display_name + skills/tools fingerprint instead of minting another id.
         """
         meta = dict(metadata or {})
+        try:
+            from core.apps.common.boundary_hints import normalize_raci
+
+            _raci_meta = normalize_raci(meta.get("raci"))
+            if _raci_meta:
+                meta["raci"] = _raci_meta
+            else:
+                meta.pop("raci", None)
+        except Exception:
+            pass  # noqa: soft — RACI advisory metadata
         display_name = str(meta.get("display_name") or name or "").strip() or str(name).strip()
         agent_id = self._slugify_agent_id(str(name or ""), fallback_display=display_name)
         if self._reserved_ids and agent_id in self._reserved_ids:
@@ -696,6 +706,15 @@ class AgentManager:
                     "trigger_conditions": meta.get("trigger_conditions") if isinstance(meta, dict) else [],
                     "permissions": meta.get("permissions") if isinstance(meta, dict) else [],
                 }
+                # Optional RACI responsibility boundary (create-time; not a runtime gate).
+                try:
+                    from core.apps.common.boundary_hints import normalize_raci
+
+                    _raci = normalize_raci(meta.get("raci") if isinstance(meta, dict) else None)
+                    if _raci:
+                        manifest["raci"] = _raci
+                except Exception:
+                    pass  # noqa: soft — RACI is advisory metadata
                 header = yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True).strip()
                 body = f"""
 
@@ -967,6 +986,16 @@ class AgentManager:
                     "memory_config": agent.memory_config or fm.get("memory_config", {"type": "short_term", "recall_count": 5}),
                     "knowledge_bases": (agent.metadata or {}).get("knowledge_bases") or fm.get("knowledge_bases", []),
                 })
+                try:
+                    from core.apps.common.boundary_hints import normalize_raci
+
+                    _raci_u = normalize_raci((agent.metadata or {}).get("raci"))
+                    if _raci_u:
+                        fm["raci"] = _raci_u
+                    else:
+                        fm.pop("raci", None)
+                except Exception:
+                    pass  # noqa: soft — RACI advisory
                 # Drop empty skill_model_purpose so YAML stays clean
                 if not fm.get("skill_model_purpose"):
                     fm.pop("skill_model_purpose", None)

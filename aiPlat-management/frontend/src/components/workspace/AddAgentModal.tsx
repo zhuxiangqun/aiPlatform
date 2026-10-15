@@ -74,6 +74,10 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess,
   const [optimizeOpen, setOptimizeOpen] = useState(false);
   const [optimizePrompt, setOptimizePrompt] = useState('');
   const [configEdited, setConfigEdited] = useState(false);
+  const [raciResponsible, setRaciResponsible] = useState('');
+  const [raciAccountable, setRaciAccountable] = useState('');
+  const [raciConsulted, setRaciConsulted] = useState('');
+  const [raciInformed, setRaciInformed] = useState('');
 
   // Disambiguation wizard
   const [wizOpen, setWizOpen] = useState(false);
@@ -108,6 +112,10 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess,
       setKnowledgeBases([]);
       setConfigEdited(false);
       setAutoFillGaps([]);
+      setRaciResponsible('');
+      setRaciAccountable('');
+      setRaciConsulted('');
+      setRaciInformed('');
       setSourceMode(initialMode === 'auto' ? 'auto' : 'manual');
       fetchOptions();
       fetchWikiCollections();
@@ -310,6 +318,15 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess,
       if (result.memory_config) setMemoryConfigText(JSON.stringify(result.memory_config, null, 2));
       if (result.sop_text) setSopText(result.sop_text);
       if (result.trigger_conditions?.length) setTriggerText(result.trigger_conditions.join('\n'));
+      const raci = (result as any).raci;
+      if (raci && typeof raci === 'object') {
+        if (raci.responsible) setRaciResponsible(String(raci.responsible));
+        if (raci.accountable) setRaciAccountable(String(raci.accountable));
+        if (Array.isArray(raci.consulted)) setRaciConsulted(raci.consulted.map(String).join(', '));
+        else if (raci.consulted) setRaciConsulted(String(raci.consulted));
+        if (Array.isArray(raci.informed)) setRaciInformed(raci.informed.map(String).join(', '));
+        else if (raci.informed) setRaciInformed(String(raci.informed));
+      }
       setConfigEdited(true);
 
       const gaps: Array<{ kind: string; name: string; tip: string }> = [];
@@ -481,6 +498,20 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess,
       const metadata: Record<string, unknown> = { ...importMeta };
       if (description.trim()) metadata.description = description.trim();
       if (knowledgeBases.length > 0) metadata.knowledge_bases = knowledgeBases;
+      const splitCsv = (s: string) =>
+        s
+          .split(/[,，;；]/)
+          .map((x) => x.trim())
+          .filter(Boolean)
+          .slice(0, 12);
+      if (raciResponsible.trim() || raciAccountable.trim() || raciConsulted.trim() || raciInformed.trim()) {
+        metadata.raci = {
+          responsible: raciResponsible.trim() || null,
+          accountable: raciAccountable.trim() || null,
+          consulted: splitCsv(raciConsulted),
+          informed: splitCsv(raciInformed),
+        };
+      }
 
       const created = await workspaceAgentApi.create({ name: name.trim(), agent_type: selectedType, config, skills, tools, mcp_ids: mcpIds, workflow_ids: workflowIds, agent_ids: agentIds, memory_config, metadata,
         ...(triggerText.trim() ? { trigger_conditions: triggerText.split('\n').map(s => s.trim()).filter(Boolean) } : {}),
@@ -725,6 +756,41 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ open, onClose, onSuccess,
           选型说明：这里选的是平台内部能力形态（agent_type），不是 LangGraph / CrewAI 等外部框架。
           生成物统一跑在原生 Harness（StageRunner → ReActLoop），多 Agent 默认关闭，须五条 AND 门禁才升 multi_agent。
         </div>
+
+        <details className="rounded-lg border border-dark-border/60 bg-dark-card/40 px-3 py-2 text-xs text-gray-400">
+          <summary className="cursor-pointer select-none text-gray-300 hover:text-gray-100">
+            责任边界 RACI（可选 · 写入 AGENT.md）
+          </summary>
+          <p className="mt-2 text-[11px] text-gray-500 leading-relaxed">
+            Agent 是责任单元：一个业务闭环优先一个 Agent；步骤用 Skill/阶段，勿先拆多 Agent。
+          </p>
+          <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Input
+              label="R 执行什么"
+              value={raciResponsible}
+              onChange={(e: any) => setRaciResponsible(e.target.value)}
+              placeholder="负责执行的任务/步骤"
+            />
+            <Input
+              label="A 对什么结果负责"
+              value={raciAccountable}
+              onChange={(e: any) => setRaciAccountable(e.target.value)}
+              placeholder="可验收的业务结果"
+            />
+            <Input
+              label="C 依赖谁（逗号分隔）"
+              value={raciConsulted}
+              onChange={(e: any) => setRaciConsulted(e.target.value)}
+              placeholder="规则/专家/系统输入"
+            />
+            <Input
+              label="I 知会谁（逗号分隔）"
+              value={raciInformed}
+              onChange={(e: any) => setRaciInformed(e.target.value)}
+              placeholder="结果同步对象"
+            />
+          </div>
+        </details>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <MultiSelect label="绑定技能" options={skillOptions} selected={skills} onChange={setSkills} />

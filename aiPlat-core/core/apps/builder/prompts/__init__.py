@@ -76,16 +76,18 @@ ${role_section}
 
 ## 任务
 根据角色定义${role_phrase}，输出严格 JSON（无 markdown 标记）:
-{"agent_type":"react|conversational|rag|tool|reflection|plan_execute|multi_agent|router|materials_chat","config":{...},"memory_config":{...},"trigger_conditions":[...],"reasoning":"选择了哪个类型(从上述9个中选)以及为什么(考虑层级归属；须说明为何不需要外部框架)"}
+{"agent_type":"react|conversational|rag|tool|reflection|plan_execute|multi_agent|router|materials_chat","config":{...},"memory_config":{...},"trigger_conditions":[...],"raci":{"responsible":"执行什么","accountable":"对什么结果负责","consulted":["依赖输入"],"informed":["知会谁"]},"reasoning":"选择了哪个类型(从上述9个中选)以及为什么(须含责任边界；说明为何不需要外部框架/为何不必 multi_agent)"}
 
 ## 选择原则（按层级决策）
+0. 先定 RACI：一个业务闭环优先一个 Agent；步骤用 Skill/阶段，勿先拆多 Agent
 1. 先判断是否需要自主推理：否 → 基础能力层（conversational/rag/tool）
 2. 需要推理+工具调用 → 推理决策层（react 默认, reflection 需自查场景）
 3. 需要组合多个Agent → 协同编排层（无五条 AND 证据时勿选 multi_agent）
 4. 不确定时 → react（最通用的推理引擎）
 - system_prompt: 从 role_name + responsibilities 提炼，≤200字
 - trigger_conditions: 5~8 条触发短语，来自名称和职责的关键词
-- skills/tools/SOP 由系统自动生成，不需要你填写""",
+- skills/tools/SOP 由系统自动生成，不需要你填写
+- raci: 可选但推荐；写入 AGENT.md frontmatter（非运行时门禁）""",
         "agent-role-definition": """你是一个 AI Agent 角色定义专家。根据用户的名称和功能描述，生成一份结构化的角色定义。
 
 ## 用户输入
