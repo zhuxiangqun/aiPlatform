@@ -768,6 +768,8 @@ pytest -q \
 - MUST：无新后端；复用 `GET .../state` + `GET .../promotion`
 - 契约登记：系统契约 §5.2 #44 + 边界契约 `01-architecture-contract.md`（clause-sync）
 - 自动化验收：
-  - `grep -c "buildRunObsSnapshot" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
+  - `grep -c "buildRunObsSnapshot" aiPlat-management/frontend/src/pages/App/Factory/runObsSnapshot.ts`（≥1）
+  - `grep -c "_hitl_stage_id" aiPlat-management/frontend/src/pages/App/Factory/runObsSnapshot.ts`（≥1）
   - `grep -c "resumeFromStage" aiPlat-management/frontend/src/services/builderTeamApi.ts`（≥1）
   - `grep -c "跑到哪" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
+  - `cd aiPlat-management/frontend && npm run test:run -- src/pages/App/Factory/runObsSnapshot.test.ts`（通过）
