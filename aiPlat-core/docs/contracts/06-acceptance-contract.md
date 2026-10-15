@@ -773,3 +773,12 @@ pytest -q \
   - `grep -c "resumeFromStage" aiPlat-management/frontend/src/services/builderTeamApi.ts`（≥1）
   - `grep -c "跑到哪" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
   - `cd aiPlat-management/frontend && npm run test:run -- src/pages/App/Factory/runObsSnapshot.test.ts`（通过）
+
+### 1.71 工厂列表卡「为何卡」短提示（2026-10）
+- MUST：项目列表在 `failed` / HITL（及 `pending`）时，软拉取 `GET .../promotion` + state，经 `formatCardStuckHint(buildRunObsSnapshot(...))` 展示「阶段: 为何卡」截断行；失败时仍可回落 `lastRun.error`
+- MUST：不阻断列表加载（promotion/state 软失败）；无新后端
+- 契约登记：系统契约 §5.2 #45 + 边界契约 `01-architecture-contract.md`（clause-sync）
+- 自动化验收：
+  - `grep -c "formatCardStuckHint" aiPlat-management/frontend/src/pages/App/Factory/runObsSnapshot.ts`（≥1）
+  - `grep -c "projectStuckHints" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
+  - `cd aiPlat-management/frontend && npm run test:run -- src/pages/App/Factory/runObsSnapshot.test.ts`（通过，含 formatCardStuckHint）

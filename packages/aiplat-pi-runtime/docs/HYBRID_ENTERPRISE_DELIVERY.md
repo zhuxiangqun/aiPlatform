@@ -320,7 +320,7 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 **交付阶梯闭环**：hybrid ①–④ 客户可见层（含 L1/L2/L3）已齐。运营开通清单：
 
 1. platform 加载当前 `main`（改路由后重启 8003）
-2. L3：`AIPLAT_L3_DUTY_CONTACT`（可选 `CHANNEL`/`HOURS`）
+2. L3：`AIPLAT_L3_DUTY_CONTACT`（可选 `CHANNEL`/`HOURS`）→ 重启 platform；冒烟应见 `contact=True`（未配则为 `contact=False` + reason，不编造）
 3. 验收：`PYTHONPATH=aiPlat-platform:aiPlat-core:. python3 scripts/smoke_delivery_sku_live.py`（四端点 200+ok）；Pi `/aiplat-kb-health` · `/aiplat-duty`
 4. 导出包含 `COST_REPORT.md` · `KB_HEALTH.md` · `MONTHLY_OPS_REPORT.md` · `L3_DUTY_DESK.md` · `enterprise_l3_duty.ts`
 
