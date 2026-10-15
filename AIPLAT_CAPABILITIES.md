@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2153
+total_capabilities: 2154
 last_updated: 2026-10-11
 version: "30.10"
 auto_sync: true
@@ -2720,6 +2720,7 @@ scan_hash: 8f9548ec24f4
 ## 二十五、管理 & 质量
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| buildRunObsSnapshot | `aiPlat-management/frontend/src/pages/App/Factory/runObsSnapshot.ts` | ✅ | 自动同步 | 已合入 |
 | render_l3_duty_markdown | `aiPlat-platform/delivery/l3_duty_desk.py` | ✅ | 自动同步 | 已合入 |
 | build_l3_duty_desk | `aiPlat-platform/delivery/l3_duty_desk.py` | ✅ | 自动同步 | 已合入 |
 | render_monthly_ops_markdown | `aiPlat-platform/delivery/monthly_ops_report.py` | ✅ | 自动同步 | 已合入 |
@@ -3091,7 +3092,7 @@ scan_hash: 8f9548ec24f4
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 44 | 0 | 44 |
 | Arena & 调度 | 7 | 0 | 7 |
-| 平台治理 | 119 | 0 | 119 |
+| 平台治理 | 120 | 0 | 120 |
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
@@ -3114,7 +3115,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2143** | **10** | **2153** |
+| **总计** | **2144** | **10** | **2154** |
 
 | **总计** | **1095** | **0** | **1095** |
 

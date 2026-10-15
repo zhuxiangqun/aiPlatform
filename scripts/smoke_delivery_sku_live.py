@@ -80,7 +80,11 @@ def main() -> int:
             mr = data.get("model_routing") or {}
             detail = f" share={mr.get('usage_share_source')}"
         elif name == "l3-duty":
-            detail = f" sku={data.get('sku')} contact={((data.get('duty_contact') or {}).get('available'))}"
+            dc = data.get("duty_contact") or {}
+            avail = dc.get("available")
+            detail = f" sku={data.get('sku')} contact={avail}"
+            if avail is False and dc.get("reason"):
+                detail += f" ({dc.get('reason')})"
         elif name == "monthly-ops":
             detail = f" period={data.get('period')}"
         print(f"{'OK' if ok else 'FAIL'} {name} http={code}{detail}")
