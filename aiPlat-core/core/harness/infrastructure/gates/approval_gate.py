@@ -52,6 +52,9 @@ APPROVAL_SOURCE_GATE_DENY = "gate_deny"
 APPROVAL_SOURCE_AUTO = "auto"
 APPROVAL_SOURCE_HUMAN = "human"
 APPROVAL_SOURCE_DISABLED = "approvals_disabled"
+APPROVAL_SOURCE_REVIEWER_ALLOW = "reviewer_allow"
+APPROVAL_SOURCE_REVIEWER_DENY = "reviewer_deny"
+APPROVAL_SOURCE_REVIEWER_UNSURE = "reviewer_unsure"
 
 
 # ── Dataclasses ──────────────────────────────────────────────────────────────
