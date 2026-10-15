@@ -20,6 +20,9 @@ class ChatRequest:
     stop: Optional[List[str]] = None
     tools: Optional[List[dict]] = None
     timeout: int = 30
+    # OpenAI-compatible structured output: {"type":"json_object"} or
+    # {"type":"json_schema","json_schema":{"name":"...","schema":{...}}}
+    response_format: Optional[Dict[str, Any]] = None
 
 
 @dataclass

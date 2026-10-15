@@ -183,6 +183,10 @@ class InfraLLMAdapter(ILLMAdapter):
 
                 req.timeout = config.timeout
 
+            if getattr(config, "response_format", None):
+
+                req.response_format = config.response_format
+
         # Cap HTTP timeout on the sync OpenAI client (runs in to_thread).
         # Default wall when unset; do NOT min-cap an explicit higher request timeout
         # (code_generation needs 360s nested LLM under skill timeout 420).
@@ -302,6 +306,10 @@ class InfraLLMAdapter(ILLMAdapter):
             if config.model:
 
                 req.model = config.model
+
+            if getattr(config, "response_format", None):
+
+                req.response_format = config.response_format
 
 
 

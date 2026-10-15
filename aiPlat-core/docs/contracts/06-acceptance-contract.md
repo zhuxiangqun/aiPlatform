@@ -800,3 +800,14 @@ pytest -q \
   - `grep -c "def normalize_raci" aiPlat-core/core/apps/common/boundary_hints.py`（≥1）
   - `grep -c "normalize_raci" aiPlat-core/core/management/agent_manager.py`（≥2）
   - `pytest aiPlat-core/core/tests/unit/test_apps/test_boundary_hints.py -q`（含 normalize_raci / RACI hint）
+
+### 1.74 LLM `response_format` 硬解码透传（2026-10）
+- MUST：`LLMConfig.response_format` → `InfraLLMAdapter` → `ChatRequest.response_format` → OpenAI 兼容 `chat.completions.create(..., response_format=…)`
+- MUST：支持 `json_object` / `json_schema`；未设则不传（不破坏旧调用）
+- MUST：Pipeline/`sys_llm_generate` 已组的 `response_format` 不再在 adapter/infra 丢弃
+- 契约登记：系统契约 §5.2 #48 + 边界契约 `01-architecture-contract.md`（clause-sync）
+- 自动化验收：
+  - `grep -c "response_format" aiPlat-core/core/adapters/llm/base.py`（≥1）
+  - `grep -c "response_format" aiPlat-infra/infra/llm/schemas.py`（≥1）
+  - `grep -c "response_format" aiPlat-infra/infra/llm/providers/openai_compatible.py`（≥2）
+  - `.venv/bin/python -m pytest aiPlat-core/core/tests/unit/test_infra_llm_adapter_response_format.py aiPlat-infra/infra/tests/test_llm/test_response_format_passthrough.py -q`（通过）
