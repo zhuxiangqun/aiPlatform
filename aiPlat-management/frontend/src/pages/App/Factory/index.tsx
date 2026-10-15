@@ -16,6 +16,89 @@ function isHitlWaitPhase(phase?: string | null): boolean {
   return phase === 'paused' || phase === 'awaiting_approval' || phase.includes('approval');
 }
 
+type StageLite = { agent_name?: string; agent_id?: string; phase?: string; id?: string; output_artifact?: string };
+
+type RunObsSnapshot = {
+  stageLabel: string;
+  stageId: string;
+  whyStuck: string;
+  hopLine: string;
+  canResume: boolean;
+  preferRegenerate: boolean;
+};
+
+/** Derive 跑到哪 / 为何卡 from pipeline state + promotion (no new backend). */
+function buildRunObsSnapshot(
+  state: Record<string, unknown> | null | undefined,
+  stages: StageLite[],
+  promotion: {
+    blockers?: string[];
+    next_actions?: string[];
+    summary?: string;
+    hops?: {
+      effective_n?: number;
+      effective_success_rate?: number;
+      by_failed_stage?: Record<string, number>;
+    };
+    multi_agent_upgrade?: { fix_hint?: string; summary?: string; next_actions?: string[] };
+  } | null,
+): RunObsSnapshot {
+  const idxRaw = state?._current_stage_idx;
+  const idx = typeof idxRaw === 'number' && idxRaw >= 0 ? idxRaw : -1;
+  const stage = idx >= 0 && idx < stages.length ? stages[idx] : null;
+  const lastWithArt = [...stages].reverse().find((s) => s.output_artifact);
+  const active = stage || lastWithArt || null;
+  const stageId = String(active?.id || active?.agent_id || active?.output_artifact || '');
+  const stageLabel =
+    (active?.agent_name || active?.agent_id || active?.id || (idx >= 0 ? `阶段 ${idx + 1}` : '尚未进入阶段')) as string;
+
+  const handoffBucket = (state?._handoff && typeof state._handoff === 'object')
+    ? (state._handoff as Record<string, unknown>)
+    : {};
+  const artKey = String(active?.output_artifact || '');
+  let handoff: Record<string, unknown> | null = null;
+  if (artKey && handoffBucket[artKey] && typeof handoffBucket[artKey] === 'object') {
+    handoff = handoffBucket[artKey] as Record<string, unknown>;
+  } else {
+    const vals = Object.values(handoffBucket).filter((v) => v && typeof v === 'object') as Record<string, unknown>[];
+    handoff = vals.length ? vals[vals.length - 1] : null;
+  }
+
+  const next = String(handoff?.next || '').trim();
+  const issues = Array.isArray(handoff?.known_issues)
+    ? (handoff!.known_issues as unknown[]).map(String).filter(Boolean)
+    : [];
+  const promoWhy =
+    (promotion?.multi_agent_upgrade?.fix_hint || '').trim()
+    || (promotion?.multi_agent_upgrade?.next_actions || [])[0]
+    || (promotion?.next_actions || [])[0]
+    || (promotion?.blockers || [])[0]
+    || (promotion?.summary || '').trim();
+  const whyStuck =
+    next
+    || (issues.length ? `已知问题：${issues.slice(0, 2).join('；')}` : '')
+    || String(promoWhy || '').trim()
+    || '尚无交接 next / 晋升门提示（可打开部署日志或 hop 证据）';
+
+  const hops = promotion?.hops;
+  const n = hops?.effective_n ?? 0;
+  let hopLine = '尚无 hop 样本';
+  if (n > 0) {
+    const rate = hops?.effective_success_rate;
+    const pct = typeof rate === 'number' ? `${Math.round(rate * 100)}%` : '—';
+    const failed = hops?.by_failed_stage || {};
+    const topFail = Object.entries(failed).sort((a, b) => b[1] - a[1])[0];
+    hopLine = `有效 hop N=${n} · 成功率 ${pct}`
+      + (topFail ? ` · 常失败阶段 ${topFail[0]}×${topFail[1]}` : '');
+  }
+
+  const phase = String(state?.phase || '');
+  const canResume = Boolean(stageId) && (phase === 'failed' || isHitlWaitPhase(phase) || phase === 'paused');
+  const preferRegenerate = Boolean(next || issues.length);
+
+  return { stageLabel, stageId, whyStuck, hopLine, canResume, preferRegenerate };
+}
+
 // ── Simple inline chat (replaces crashing ChatWidget) ──
 const InlineChat: React.FC<{
   projectId: string;
@@ -500,7 +583,7 @@ const ProjectPanel: React.FC<{
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectFeedback, setRejectFeedback] = useState('');
   const [recommending, setRecommending] = useState(false);
-  const [teamStages, setTeamStages] = useState<Array<{ agent_name?: string; agent_id?: string; phase?: string; id?: string }>>(project.team_stages || []);
+  const [teamStages, setTeamStages] = useState<Array<{ agent_name?: string; agent_id?: string; phase?: string; id?: string; output_artifact?: string }>>(project.team_stages || []);
   const [recommendedMode, setRecommendedMode] = useState<string>('');
   const [recommendedReason, setRecommendedReason] = useState<string>('');
   const [runHistory, setRunHistory] = useState<ProjectRun[]>(project.runs || []);
@@ -510,6 +593,10 @@ const ProjectPanel: React.FC<{
   const [fixingBugs, setFixingBugs] = useState(false);
   const [hitlStageId, setHitlStageId] = useState<string | null>(null);
   const [hitlOutputArtifact, setHitlOutputArtifact] = useState<string | null>(null);
+  const [runObs, setRunObs] = useState<RunObsSnapshot | null>(null);
+  const [runObsLoading, setRunObsLoading] = useState(false);
+  const [resumingStage, setResumingStage] = useState(false);
+  const lastPipelineStateRef = useRef<Record<string, unknown> | null>(null);
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
   const [structureDiagram, setStructureDiagram] = useState<{
     mermaid?: string;
@@ -680,6 +767,7 @@ const ProjectPanel: React.FC<{
       try {
         const st = await projectApi.getState(project.project_id);
         const s = (st as any)?.state || {};
+        lastPipelineStateRef.current = s;
         const p = s.phase as string || phase;
         setPhase(p);
         setProgressState(s._progress || null);
@@ -813,6 +901,7 @@ const ProjectPanel: React.FC<{
       try {
         const st = await projectApi.getState(project.project_id);
         const state = (st as any)?.state || {};
+        lastPipelineStateRef.current = state;
         const realPhase = state.phase as string;
         // Show all states immediately — no longer skip executing
         if (realPhase && realPhase !== 'idle' && realPhase !== 'pending') {
@@ -1237,6 +1326,69 @@ const ProjectPanel: React.FC<{
         await _refreshFromState((st as any)?.state);
       } catch { window.location.reload(); }
     } catch (e: any) { toastGateError(e, '重新生成失败'); }
+  };
+
+  /** 跑到哪 / 为何卡：复用 getState + getPromotion，无新后端。 */
+  const refreshRunObs = useCallback(async () => {
+    if (!project.project_id) return;
+    setRunObsLoading(true);
+    try {
+      let state = lastPipelineStateRef.current;
+      if (!state || !Object.keys(state).length) {
+        const st = await projectApi.getState(project.project_id);
+        state = ((st as any)?.state || {}) as Record<string, unknown>;
+        lastPipelineStateRef.current = state;
+      }
+      let promotion: Awaited<ReturnType<typeof projectApi.getPromotion>> | null = null;
+      try {
+        promotion = await projectApi.getPromotion(project.project_id);
+      } catch {
+        /* soft-fail：仍展示 stage/handoff */
+      }
+      setRunObs(buildRunObsSnapshot(state, teamStages, promotion));
+    } catch {
+      setRunObs(null);
+    } finally {
+      setRunObsLoading(false);
+    }
+  }, [project.project_id, teamStages]);
+
+  useEffect(() => {
+    if (!project.project_id) return;
+    if (phase === 'failed' || isHitlWaitPhase(phase) || phase === 'done') {
+      void refreshRunObs();
+    }
+  }, [phase, project.project_id, refreshRunObs]);
+
+  const handleResumeObs = async () => {
+    if (!project.project_id || !runObs?.stageId) return;
+    setResumingStage(true);
+    try {
+      await projectApi.resumeFromStage(project.project_id, runObs.stageId);
+      setPhase('executing');
+      toast.success(`已从「${runObs.stageLabel}」续跑（保留已有产物）`);
+      onRefresh();
+    } catch (e: any) {
+      toastGateError(e, '续跑失败');
+    } finally {
+      setResumingStage(false);
+    }
+  };
+
+  const handleRegenerateObs = async () => {
+    if (!project.project_id || !runObs?.stageId) return;
+    setResumingStage(true);
+    try {
+      const feedback = (runObs.whyStuck || '从运行可观测面板重建').slice(0, 200);
+      await projectApi.regenerateStage(project.project_id, runObs.stageId, feedback);
+      setPhase('executing');
+      toast.success(`已从「${runObs.stageLabel}」重建下游`);
+      onRefresh();
+    } catch (e: any) {
+      toastGateError(e, '重建失败');
+    } finally {
+      setResumingStage(false);
+    }
   };
 
   // ── L4: multi-module handlers ──
@@ -1793,7 +1945,77 @@ const ProjectPanel: React.FC<{
               </Button>
             </div>
           </div>
+        ) : phase === 'failed' ? (
+          <div className="p-3 rounded bg-red-500/10 border border-red-500/30 text-sm text-red-300 flex items-center gap-2">
+            <XCircle className="w-4 h-4 flex-shrink-0" /> 构建失败 — 见下方「跑到哪 / 为何卡」
+          </div>
         ) : null}
+
+        {/* Run observability: 跑到哪 / 为何卡（handoff.next + promotion how_to_fix） */}
+        {(phase === 'failed' || isHitlWaitPhase(phase) || (phase === 'done' && runObs)) && (
+          <div className="p-3 rounded border border-violet-500/30 bg-violet-500/5 text-xs space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-violet-200 font-medium flex items-center gap-1.5">
+                <BarChart3 className="w-3.5 h-3.5" /> 跑到哪 / 为何卡
+              </span>
+              <button
+                type="button"
+                className="text-violet-400 hover:text-violet-200 flex items-center gap-1"
+                onClick={() => void refreshRunObs()}
+                disabled={runObsLoading}
+              >
+                {runObsLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                刷新
+              </button>
+            </div>
+            {runObsLoading && !runObs ? (
+              <div className="text-violet-400/80 flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" /> 加载晋升门与交接…
+              </div>
+            ) : runObs ? (
+              <>
+                <div className="text-gray-200">
+                  <span className="text-gray-500">当前阶段：</span>
+                  {runObs.stageLabel}
+                  {runObs.stageId ? (
+                    <span className="text-gray-600 font-mono ml-1">({runObs.stageId})</span>
+                  ) : null}
+                </div>
+                <div className="text-amber-200/90 leading-relaxed">
+                  <span className="text-gray-500">为何卡 / 下一步：</span>
+                  {runObs.whyStuck}
+                </div>
+                <div className="text-gray-400">{runObs.hopLine}</div>
+                {(runObs.canResume || runObs.preferRegenerate) && runObs.stageId ? (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {runObs.canResume && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        loading={resumingStage}
+                        onClick={handleResumeObs}
+                        title="从该阶段续跑，不清空已有产物"
+                      >
+                        <Play className="w-3 h-3 mr-1" /> 从此阶段续跑
+                      </Button>
+                    )}
+                    <Button
+                      variant={runObs.preferRegenerate ? 'primary' : 'ghost'}
+                      size="sm"
+                      loading={resumingStage}
+                      onClick={handleRegenerateObs}
+                      title="重建该阶段并重跑下游"
+                    >
+                      <RefreshCw className="w-3 h-3 mr-1" /> 从此阶段重建
+                    </Button>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="text-gray-500">暂无快照（点刷新重试）</div>
+            )}
+          </div>
+        )}
 
         {/* Oversight: deterministic stage Mermaid (tool_result; copyable source) */}
         {(phase === 'done' || phase === 'failed') && (
