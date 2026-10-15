@@ -2360,6 +2360,10 @@ domains:
         type: function
         signature: "JSON Schema or legacy key-dict → OpenAI response_format (json_schema/json_object); AIPLAT_LLM_RESPONSE_FORMAT=0 kills"
         module: aiPlat-core/core/utils/json_utils.py
+      - symbol: parse_json
+        type: function
+        signature: "extract_json_safe + json.loads + deterministic LLM JSON fixes (trailing comma / True·None / single-quoted values)"
+        module: aiPlat-core/core/utils/json_utils.py
       - symbol: trim_history
         type: function
         signature: 'trim_history(history)'

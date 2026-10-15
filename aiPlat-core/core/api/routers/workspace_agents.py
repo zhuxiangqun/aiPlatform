@@ -423,41 +423,16 @@ async def generate_role_definition(req: AgentAutoFillRequest) -> Any:
 
 
 def _extract_json_fallback(clean: str, raw_content: str, _re, _json, _log) -> dict | None:
-    """Extract first JSON object from LLM output using bracket-matching fallback.
-    
-    Handles common LLM JSON mistakes: trailing commas, Python bools (True/False/None),
-    single quotes, and text preamble before JSON.
-    """
-    start = clean.find('{')
-    if start == -1:
-        _log.getLogger("auto-fill").warning(f"LLM response has no JSON: {raw_content[:500]}")
-        return None
-    depth = 0
-    for i in range(start, len(clean)):
-        if clean[i] == '{':
-            depth += 1
-        elif clean[i] == '}':
-            depth -= 1
-            if depth == 0:
-                candidate = clean[start:i+1]
-                fixes = [
-                    candidate,
-                    _re.sub(r',\s*\}', '}', candidate),
-                    _re.sub(r',\s*\]', ']', candidate),
-                    _re.sub(r',\s*\}', '}', _re.sub(r',\s*\]', ']', candidate)),
-                    # Python bool → JSON bool
-                    candidate.replace(': True', ': true').replace(': False', ': false').replace(': None', ': null'),
-                    # Single quotes → double quotes (for string values only)
-                    _re.sub(r":\s*'([^']*)'", r': "\1"', candidate),
-                ]
-                for fix in fixes:
-                    try:
-                        return _json.loads(fix)
-                    except _json.JSONDecodeError:
-                        continue
-                _log.getLogger("auto-fill").warning(f"LLM response unparseable (tried {len(fixes)} fixes): {candidate[:300]}")
-                return None
-    _log.getLogger("auto-fill").warning(f"LLM response has unclosed braces: {clean[:300]}")
+    """Extract JSON object via canonical ``parse_json`` (fence + deterministic fixes)."""
+    from core.utils.json_utils import parse_json
+
+    for blob in (clean, raw_content):
+        obj = parse_json(blob or "")
+        if isinstance(obj, dict):
+            return obj
+    _log.getLogger("auto-fill").warning(
+        "LLM response has no parseable JSON: %s", (raw_content or clean or "")[:500]
+    )
     return None
 
 

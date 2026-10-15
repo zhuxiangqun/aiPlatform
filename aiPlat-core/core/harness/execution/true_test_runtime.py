@@ -1378,23 +1378,11 @@ def _parse_sops(raw: str) -> Dict[str, str]:
 
 
 def _extract_json_obj(text: str) -> Optional[Dict[str, Any]]:
-    s = (text or "").strip()
-    if not s:
-        return None
-    if s.startswith("{"):
-        try:
-            obj = json.loads(s)
-            return obj if isinstance(obj, dict) else None
-        except json.JSONDecodeError:
-            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
-    start, end = s.find("{"), s.rfind("}")
-    if 0 <= start < end:
-        try:
-            obj = json.loads(s[start : end + 1])
-            return obj if isinstance(obj, dict) else None
-        except json.JSONDecodeError:
-            return None
-    return None
+    """Parse LLM JSON object via canonical ``parse_json`` (fence + tolerant fixes)."""
+    from core.utils.json_utils import parse_json
+
+    obj = parse_json(text or "")
+    return obj if isinstance(obj, dict) else None
 
 
 # ── Page smoke ──────────────────────────────────────────────────────

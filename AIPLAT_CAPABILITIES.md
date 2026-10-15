@@ -1871,6 +1871,7 @@ scan_hash: 8f9548ec24f4
 | InfraLLMAdapter | harness/infrastructure/infra_llm_adapter.py | ✅ | Core 唯一 LLM 适配器 | 已合入 |
 | LLM response_format 硬解码透传 | `LLMConfig.response_format` → `InfraLLMAdapter` → `ChatRequest` → `openai_compatible.create` | ✅ | Pipeline/`sys_llm_generate` 的 `json_schema`/`json_object` 下传到 OpenAI 兼容 provider（解码期硬约束）；未设则不传；Anthropic 路径暂不强制。生成物适用：**已接线**（平台横切 LLM） | 已合入 |
 | Skill output_schema → response_format | `json_utils.build_llm_response_format` + `skills/registry` plain-LLM 路径 + Pipeline `llm_output_schema` | ✅ | 有 `output_schema` 的 prompt Skill 自动组 `json_schema`（legacy 键表包装）；`AIPLAT_LLM_RESPONSE_FORMAT=0` 可关；ReAct+tools 仍 prompt+parse。生成物适用：**已接线** | 已合入 |
+| LLM JSON 容忍解析收敛 | `json_utils.parse_json`（`extract_json_safe` + 尾逗号/True·None/单引号值修复）← create_dialog / true_test / workspace auto-fill | ✅ | 确定性纠错无模型调用；去掉分散 bracket-fallback。生成物适用：**已接线**（平台横切） | 已合入 |
 | InfraEmbeddingAdapter | harness/infrastructure/infra_embedding_adapter.py | ✅ | SentenceTransformer | 已合入 |
 | InfraRerankerAdapter | harness/infrastructure/infra_reranker_adapter.py | ✅ | CrossEncoder | 已合入 |
 | InfraAudioAdapter | harness/document/transcriber.py | ✅ | faster-whisper + openai-whisper | 已合入 |
