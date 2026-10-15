@@ -298,6 +298,15 @@ async def sys_file_write(
 
             logging.getLogger(__name__).debug('sys_file_write failed', exc_info=True)
 
+        try:
+            from core.harness.infrastructure.gates.session_write_provenance import (
+                record_session_write,
+            )
+            record_session_write(resolved, trace_context=trace_context)
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "session_write_provenance record skipped", exc_info=True,
+            )
 
         return {"success": True, "path": resolved, "bytes_written": len(content.encode("utf-8"))}
 
@@ -385,7 +394,15 @@ async def sys_file_edit(
 
             f.write(replaced)
 
-
+        try:
+            from core.harness.infrastructure.gates.session_write_provenance import (
+                record_session_write,
+            )
+            record_session_write(resolved, trace_context=trace_context)
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "session_write_provenance record skipped", exc_info=True,
+            )
 
         return {"success": True, "path": resolved, "replaced": True}
 
