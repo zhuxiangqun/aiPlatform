@@ -95,7 +95,7 @@ Codex：goal/turn，无企业交付 DAG。
 
 | 系统 | 结论 |
 |------|------|
-| aiPlat | 多 Gate + 会话级 approve（企业） |
+| aiPlat | 多 Gate + Hard floors + RiskClass + Unattended Inbox（OpenWorker 启发）+ 会话级 approve（企业） |
 | Hermes | 容器后端隔离强；审批配置化 |
 | Claude Code | sandbox/permissions 产品化（产物可证） |
 | OpenClaw | **单操作者信任模型**；非敌意多租户（SECURITY.md） |

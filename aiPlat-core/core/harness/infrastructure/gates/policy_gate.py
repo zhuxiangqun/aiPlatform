@@ -116,6 +116,11 @@ class PolicyResult:
 
     hard_floor: bool = False
 
+    # Unattended Inbox park id (OpenWorker P1)
+    inbox_item_id: Optional[str] = None
+
+    attendance: Optional[str] = None
+
 
 
 
@@ -411,6 +416,90 @@ class PolicyGate:
     }
 
 
+
+    def _approval_required_result(
+        self,
+        *,
+        reason: str,
+        tool_name: str,
+        tool_args: Optional[Dict[str, Any]],
+        user_id: str = "",
+        risk_class: Optional[str] = None,
+        approval_source: Optional[str] = None,
+        approval_rule_id: Optional[str] = None,
+        hard_floor: bool = False,
+    ) -> PolicyResult:
+        """Build APPROVAL_REQUIRED and park to Unattended Inbox when attendance≠attended."""
+        args = tool_args if isinstance(tool_args, dict) else {}
+        session_id = str(args.get("_session_id") or args.get("_run_id") or user_id or "default")
+        attendance_raw = args.get("_attendance") or args.get("attendance")
+        inbox_item_id: Optional[str] = None
+        attendance: Optional[str] = None
+        try:
+            from core.harness.infrastructure.gates.approval_inbox import (
+                get_approval_inbox,
+                park_if_unattended,
+                refuse_unattended_self_approve,
+                normalize_attendance,
+            )
+
+            store = get_approval_inbox()
+            if attendance_raw is not None:
+                attendance = store.set_attendance(session_id, attendance_raw)
+            else:
+                attendance = store.get_attendance(session_id)
+
+            # Daemon / auto_approve cannot clear hard floors under unattended modes.
+            if refuse_unattended_self_approve(
+                hard_floor=hard_floor,
+                attendance=attendance,
+                auto_approve=bool(args.get("_auto_approve")),
+            ):
+                logger.debug(
+                    "unattended refuse self-approve session=%s hard_floor=%s attendance=%s",
+                    session_id,
+                    hard_floor,
+                    attendance,
+                )
+
+            parked = park_if_unattended(
+                session_id=session_id,
+                title=f"Approve {tool_name}",
+                body=reason or "",
+                hard_floor=hard_floor,
+                tool_name=tool_name,
+                tool_call_id=str(args.get("_tool_call_id") or args.get("call_id") or "") or None,
+                risk_class=risk_class,
+                approval_source=approval_source,
+            )
+            if parked is not None:
+                inbox_item_id = parked.id
+                attendance = normalize_attendance(attendance)
+                # AUTO attendance resolves immediately — hard floors become DENY.
+                if parked.state == "resolved" and parked.resolution == "deny":
+                    return PolicyResult(
+                        decision=PolicyDecision.DENY,
+                        reason=f"inbox_auto_denied:{parked.id} — {reason}",
+                        risk_class=risk_class,
+                        approval_source=approval_source or "inbox_auto",
+                        approval_rule_id=approval_rule_id,
+                        hard_floor=bool(hard_floor),
+                        inbox_item_id=inbox_item_id,
+                        attendance=attendance,
+                    )
+        except Exception as e:
+            logger.debug("approval inbox park skipped: %s", e, exc_info=True)
+
+        return PolicyResult(
+            decision=PolicyDecision.APPROVAL_REQUIRED,
+            reason=reason,
+            risk_class=risk_class,
+            approval_source=approval_source,
+            approval_rule_id=approval_rule_id,
+            hard_floor=bool(hard_floor),
+            inbox_item_id=inbox_item_id,
+            attendance=attendance,
+        )
 
     def _maybe_override_deny(self, user_id: str, reason: str) -> Optional[PolicyResult]:
 
@@ -901,9 +990,11 @@ class PolicyGate:
                     session_id=str(_args.get("_session_id") or ""),
                 )
                 if floor.verdict == ApprovalVerdict.ASK:
-                    return PolicyResult(
-                        decision=PolicyDecision.APPROVAL_REQUIRED,
+                    return self._approval_required_result(
                         reason=f"hard_floor:ask — {floor.message}",
+                        tool_name=tool_name,
+                        tool_args=_args,
+                        user_id=user_id,
                         risk_class=_risk_class,
                         approval_source=APPROVAL_SOURCE_HARD_FLOOR,
                         approval_rule_id=floor.rule_id,
@@ -990,20 +1081,15 @@ class PolicyGate:
                         tool_name,
                     )
 
-                return PolicyResult(
-
-                    decision=PolicyDecision.APPROVAL_REQUIRED,
-
+                return self._approval_required_result(
                     reason=f"approval_gate:ask — {approval_result.message}",
-
+                    tool_name=tool_name,
+                    tool_args=_args,
+                    user_id=user_id,
                     risk_class=_risk_class,
-
                     approval_source=src,
-
                     approval_rule_id=approval_result.rule_id,
-
                     hard_floor=bool(approval_result.hard_floor),
-
                 )
 
         except ImportError:

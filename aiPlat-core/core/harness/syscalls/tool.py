@@ -223,6 +223,18 @@ async def sys_tool_call(
     # Provide identity info for permission wrapper + auditing.
     args.setdefault("_user_id", user_id)
     args.setdefault("_session_id", session_id)
+    # OpenWorker P1: attendance for Unattended Approval Inbox (trace → env → default attended).
+    try:
+        if "_attendance" not in args:
+            att = None
+            if isinstance(trace_context, dict):
+                att = trace_context.get("attendance") or trace_context.get("tool_attendance")
+            if not att:
+                att = os.getenv("AIPLAT_TOOL_ATTENDANCE")
+            if att:
+                args["_attendance"] = str(att)
+    except Exception as e:
+        logging.warning(str(e), exc_info=True)
     # Carry profile for observability/debugging (best-effort).
     if coding_profile and "_coding_policy_profile" not in args:
         args["_coding_policy_profile"] = coding_profile

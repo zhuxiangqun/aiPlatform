@@ -275,21 +275,63 @@ class ApprovalGate:
                 message="hard floors disabled via AIPLAT_HARD_FLOOR_DISABLED",
             )
         args = tool_args or {}
+
+        # OpenWorker P1: opaque constructs / arg-executors / dangerous flags escalate
+        # even when the matching catalogue rule is only HIGH (e.g. code_execution).
+        shell_floor = self._shell_hard_floor(tool_name, args)
+        if shell_floor is not None:
+            return shell_floor
+
         for rule in self._rules:
             if not rule.hard_floor and rule.severity != ApprovalSeverity.CRITICAL:
                 continue
             if not self._match_rule(rule, tool_name, args):
                 continue
+            msg = rule.message
+            # Enrich shell_exec blanket CRITICAL with specific command reasons.
+            try:
+                from core.harness.infrastructure.gates.shell_command_risk import (
+                    evaluate_tool_shell_risk,
+                )
+                report = evaluate_tool_shell_risk(tool_name, args)
+                if report and report.summary:
+                    msg = f"{rule.message} [{report.summary}]"
+            except Exception as e:
+                logging.debug("shell risk enrich skipped: %s", e, exc_info=True)
             return ApprovalGateResult(
                 verdict=ApprovalVerdict.ASK,
                 rule_id=rule.rule_id,
                 severity=ApprovalSeverity.CRITICAL,
-                message=rule.message,
+                message=msg,
                 require_interactive=True,
                 hard_floor=True,
                 approval_source=APPROVAL_SOURCE_HARD_FLOOR,
             )
         return ApprovalGateResult(verdict=ApprovalVerdict.ALLOW, approval_source=APPROVAL_SOURCE_NONE)
+
+    def _shell_hard_floor(
+        self, tool_name: str, tool_args: dict,
+    ) -> Optional[ApprovalGateResult]:
+        """Force CRITICAL when shell heuristics say so (prefix allowlists cannot waive)."""
+        try:
+            from core.harness.infrastructure.gates.shell_command_risk import (
+                evaluate_tool_shell_risk,
+            )
+            report = evaluate_tool_shell_risk(tool_name, tool_args)
+        except Exception as e:
+            logging.debug("shell hard-floor check failed: %s", e, exc_info=True)
+            return None
+        if report is None or not report.forces_hard_floor:
+            return None
+        return ApprovalGateResult(
+            verdict=ApprovalVerdict.ASK,
+            rule_id="shell_risk_escalation",
+            severity=ApprovalSeverity.CRITICAL,
+            message=f"Shell command requires human approval — {report.summary}",
+            require_interactive=True,
+            hard_floor=True,
+            approval_source=APPROVAL_SOURCE_HARD_FLOOR,
+        )
 
     def check(
         self,
