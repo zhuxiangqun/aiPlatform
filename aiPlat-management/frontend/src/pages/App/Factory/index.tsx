@@ -11,8 +11,10 @@ import { toastGateError } from '../../../components/ui';
 import type { BuilderSession } from '../../../services';
 import {
   buildRunObsSnapshot,
+  formatCardStuckHint,
   isHitlWaitPhase,
   type RunObsSnapshot,
+  type StageLite,
 } from './runObsSnapshot';
 
 // ── Simple inline chat (replaces crashing ChatWidget) ──
@@ -3055,6 +3057,7 @@ const FactoryPage: React.FC = () => {
 	const [loadingApps, setLoadingApps] = useState(true);
 	const [projectStates, setProjectStates] = useState<Record<string, string>>({});
 	const [projectPassRates, setProjectPassRates] = useState<Record<string, number>>({});
+  const [projectStuckHints, setProjectStuckHints] = useState<Record<string, string>>({});
 	const [desc, setDesc] = useState('');
 	const [appName, setAppName] = useState('');
   const [creating, setCreating] = useState(false);
@@ -3070,12 +3073,14 @@ const FactoryPage: React.FC = () => {
 	        // ── v3.1: fetch real-time pipeline phase from Core ──
 	        const states: Record<string, string> = {};
 	        const rates: Record<string, number> = {};
+          const stuck: Record<string, string> = {};
 	        await Promise.all(p.projects.map(async (prj: ProjectItem) => {
 	          try {
 	            const st = await projectApi.getState(prj.project_id);
-            const phase = (st as any)?.state?.phase || (st as any)?.phase || '';
+            const state = ((st as any)?.state || {}) as Record<string, unknown>;
+            const phase = String(state.phase || (st as any)?.phase || '');
             states[prj.project_id] = phase; // always set, even if empty (frontend handles 'loading')
-	            const tr = (st as any)?.state?.test_report;
+	            const tr = state.test_report as { raw_output?: string } | undefined;
 	            if (tr?.raw_output) {
 	              try {
 	                const trj = JSON.parse(tr.raw_output);
@@ -3090,9 +3095,22 @@ const FactoryPage: React.FC = () => {
                   if (meta?.pass_rate != null) rates[prj.project_id] = meta.pass_rate;
                 } catch { /* no report yet */ }
               }
+              // List-card stuck hint for failed / HITL (reuse runObsSnapshot; soft-fail)
+              if (phase === 'failed' || isHitlWaitPhase(phase) || phase === 'pending') {
+                try {
+                  let promotion = null;
+                  try {
+                    promotion = await projectApi.getPromotion(prj.project_id);
+                  } catch { /* soft */ }
+                  const stages = (prj.team_stages || []) as StageLite[];
+                  const hint = formatCardStuckHint(buildRunObsSnapshot(state, stages, promotion));
+                  if (hint) stuck[prj.project_id] = hint;
+                } catch { /* skip hint */ }
+              }
 	          } catch { /* skip */ }
 	        }));
 	        setProjectStates(states);
+          setProjectStuckHints(stuck);
 	        if (Object.keys(rates).length > 0) setProjectPassRates(rates);
 	      }
     } catch { /* keep existing state, retry on next loadAll */ }
@@ -3312,26 +3330,41 @@ const FactoryPage: React.FC = () => {
                   </div>
                 )}
                 {status.phase === 'failed' && (
-                  <div className="flex items-center gap-2 pt-2 border-t border-dark-border">
-                    <span className="text-[10px] text-red-400 flex items-center gap-1"><XCircle className="w-3 h-3" />{lastRun?.error?.slice(0, 30) || '执行失败'}</span>
+                  <div className="pt-2 border-t border-dark-border space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-red-400 flex items-center gap-1">
+                        <XCircle className="w-3 h-3" />
+                        {projectStuckHints[p.project_id] || lastRun?.error?.slice(0, 30) || '执行失败'}
+                      </span>
+                    </div>
+                    {projectStuckHints[p.project_id] ? (
+                      <div className="text-[10px] text-gray-500">打开详情见「跑到哪 / 为何卡」</div>
+                    ) : null}
                   </div>
                 )}
                 {status.phase === 'paused' && (
-                  <div className="flex items-center gap-2 pt-2 border-t border-dark-border">
-                    <span className="text-[10px] text-amber-400 flex items-center gap-1"><Clock className="w-3 h-3" />等待审批</span>
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        try {
-                          await projectApi.rebuild(p.project_id);
-                          toast.success('重建已触发');
-                          loadAll();
-                        } catch (err) { toastGateError(err, '重建失败'); }
-                      }}
-                      className="ml-auto text-[10px] px-2 py-1 rounded bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
-                    >
-                      🔄 重新构建
-                    </button>
+                  <div className="pt-2 border-t border-dark-border space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-amber-400 flex items-center gap-1 min-w-0">
+                        <Clock className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">
+                          {projectStuckHints[p.project_id] || '等待审批'}
+                        </span>
+                      </span>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            await projectApi.rebuild(p.project_id);
+                            toast.success('重建已触发');
+                            loadAll();
+                          } catch (err) { toastGateError(err, '重建失败'); }
+                        }}
+                        className="ml-auto flex-shrink-0 text-[10px] px-2 py-1 rounded bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
+                      >
+                        🔄 重新构建
+                      </button>
+                    </div>
                   </div>
                 )}
               </motion.div>
