@@ -237,3 +237,4 @@ aiPlat 逻辑上分为：
 - **LLM response_format 硬解码透传（2026-10，clause-sync）**：`LLMConfig`→adapter→`ChatRequest`→openai_compatible。系统契约 §5.2 #48 + acceptance 1.74。验证：`pytest .../test_infra_llm_adapter_response_format.py .../test_response_format_passthrough.py`。
 - **Skill/Pipeline output_schema → response_format（2026-10，clause-sync）**：`build_llm_response_format` + Skill plain-LLM / Pipeline `llm_output_schema`。系统契约 §5.2 #49 + acceptance 1.75。验证：`pytest .../test_build_llm_response_format.py`；`grep build_llm_response_format skills/registry.py`。
 - **对话创建 JSON 提取收敛（2026-10，clause-sync）**：`extract_json_object`→`parse_json`；去掉 Agent/Skill 本地 `_extract_json`。系统契约 §5.2 #50 + acceptance 1.76。验证：`pytest .../test_create_dialog_extract_json.py`。
+- **LLM JSON 容忍解析收敛（2026-10，clause-sync）**：`parse_json` 确定性修复；true_test/workspace 委托。系统契约 §5.2 #51 + acceptance 1.77。验证：`pytest .../test_parse_json_tolerant.py`。

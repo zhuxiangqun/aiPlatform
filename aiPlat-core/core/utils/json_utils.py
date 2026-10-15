@@ -58,15 +58,31 @@ def extract_json_safe(text: str) -> Optional[str]:
     return _balanced(candidate, '{', '}') or _balanced(candidate, '[', ']')
 
 
+def _apply_llm_json_fixes(text: str) -> str:
+    """Deterministic fixes for common LLM JSON mistakes (no model call)."""
+    t = text or ""
+    t = re.sub(r",\s*}", "}", t)
+    t = re.sub(r",\s*]", "]", t)
+    t = t.replace(": True", ": true").replace(": False", ": false").replace(": None", ": null")
+    t = re.sub(r":\s*'([^']*)'", r': "\1"', t)
+    return t
+
+
 def parse_json(raw: str) -> Optional[Dict[str, Any]]:
-    """Extract and parse JSON from LLM output. Returns parsed dict or None."""
+    """Extract and parse JSON from LLM output. Returns parsed dict or None.
+
+    Pipeline: ``extract_json_safe`` → ``json.loads`` → deterministic LLM fixes → reload.
+    """
     import json
+
     json_str = extract_json_safe(raw or "")
-    if json_str:
+    if not json_str:
+        return None
+    for candidate in (json_str, _apply_llm_json_fixes(json_str)):
         try:
-            return json.loads(json_str)
+            return json.loads(candidate)
         except json.JSONDecodeError:
-            pass  # noqa: cleanup-best-effort
+            continue
     return None
 
 

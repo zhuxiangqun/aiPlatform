@@ -832,3 +832,13 @@ pytest -q \
   - `grep -c "def _extract_json" aiPlat-core/core/apps/builder/service/agent_create_dialog.py`（=0）
   - `grep -c "def _extract_json" aiPlat-core/core/apps/skills/service/skill_create_dialog.py`（=0）
   - `pytest aiPlat-core/core/tests/unit/test_apps/test_create_dialog_extract_json.py -q`（通过）
+
+### 1.77 LLM JSON 容忍解析收敛（2026-10）
+- MUST：`parse_json` = `extract_json_safe` → `json.loads` → 确定性修复（尾逗号 / True·False·None / 单引号字符串值）→ 再 loads；无模型调用
+- MUST：`true_test_runtime._extract_json_obj` 与 `workspace_agents._extract_json_fallback` 委托 `parse_json`
+- 契约登记：系统契约 §5.2 #51 + 边界契约 `01-architecture-contract.md`（clause-sync）
+- 自动化验收：
+  - `grep -c "_apply_llm_json_fixes" aiPlat-core/core/utils/json_utils.py`（≥1）
+  - `grep -c "from core.utils.json_utils import parse_json" aiPlat-core/core/harness/execution/true_test_runtime.py`（≥1）
+  - `grep -c "from core.utils.json_utils import parse_json" aiPlat-core/core/api/routers/workspace_agents.py`（≥1）
+  - `pytest aiPlat-core/core/tests/unit/test_utils/test_parse_json_tolerant.py -q`（通过）
