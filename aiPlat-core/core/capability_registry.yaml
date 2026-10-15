@@ -5180,7 +5180,7 @@ domains:
       - symbol: "buildRunObsSnapshot"
         type: "function"
         signature: "Factory run observability: stage + handoff.next + promotion how_to_fix → resume/regenerate CTAs"
-        module: "aiPlat-management/frontend/src/pages/App/Factory/index.tsx"
+        module: "aiPlat-management/frontend/src/pages/App/Factory/runObsSnapshot.ts"
       - symbol: "plan_fix_from_report"
         type: "function"
         signature: "Map test_report bugs to team stages; default freeze test_cases via preserve_artifacts"
