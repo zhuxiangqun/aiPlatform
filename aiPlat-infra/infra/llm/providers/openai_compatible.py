@@ -196,6 +196,9 @@ class OpenAICompatibleClient(LLMClient):
         if request.timeout:
             import httpx
             create_kwargs["timeout"] = httpx.Timeout(timeout=request.timeout, connect=5.0)
+        # Structured JSON hard-decode (OpenAI / DeepSeek / Qwen / compatible locals)
+        if getattr(request, "response_format", None):
+            create_kwargs["response_format"] = request.response_format
         # Dynamic keep_alive based on model deployment state (v3)
         _ka = self._get_keep_alive()
         if _ka:
@@ -279,16 +282,19 @@ class OpenAICompatibleClient(LLMClient):
             yielded_any = False
             try:
                 client = self._get_client()
-                response = client.chat.completions.create(
+                stream_kwargs: dict = dict(
                     model=request.model,
                     messages=messages,
                     temperature=request.temperature,
                     max_tokens=request.max_tokens,
                     top_p=request.top_p,
                     stop=request.stop,
-                     stream=True,
-                     **self._get_extra_body(),
-                 )
+                    stream=True,
+                    **self._get_extra_body(),
+                )
+                if getattr(request, "response_format", None):
+                    stream_kwargs["response_format"] = request.response_format
+                response = client.chat.completions.create(**stream_kwargs)
                 for chunk in response:
                     if chunk.choices and chunk.choices[0].delta:
                         delta = chunk.choices[0].delta

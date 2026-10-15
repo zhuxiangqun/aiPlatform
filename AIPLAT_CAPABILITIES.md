@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2156
+total_capabilities: 2158
 last_updated: 2026-10-11
 version: "30.10"
 auto_sync: true
@@ -1860,6 +1860,7 @@ scan_hash: 8f9548ec24f4
 ## 九、模型基础设施
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| ChatRequest.response_format | `aiPlat-infra/infra/llm/schemas.py` | ✅ | 自动同步 | 已合入 |
 | LLMClient | `aiPlat-infra/infra/llm/base.py` | ✅ | 自动同步 | 已合入 |
 | ModelTierRouter | `harness/routing/model_tier_router.py` | ✅ | 自动同步 | 已合入 |
 | infra_bridge | harness/infrastructure/infra_bridge.py | ✅ | 自动同步 | 已合入 |
@@ -1868,6 +1869,7 @@ scan_hash: 8f9548ec24f4
 | feedback_translator | harness/infrastructure/feedback_translator.py | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | InfraLLMAdapter | harness/infrastructure/infra_llm_adapter.py | ✅ | Core 唯一 LLM 适配器 | 已合入 |
+| LLM response_format 硬解码透传 | `LLMConfig.response_format` → `InfraLLMAdapter` → `ChatRequest` → `openai_compatible.create` | ✅ | Pipeline/`sys_llm_generate` 的 `json_schema`/`json_object` 下传到 OpenAI 兼容 provider（解码期硬约束）；未设则不传；Anthropic 路径暂不强制。生成物适用：**已接线**（平台横切 LLM） | 已合入 |
 | InfraEmbeddingAdapter | harness/infrastructure/infra_embedding_adapter.py | ✅ | SentenceTransformer | 已合入 |
 | InfraRerankerAdapter | harness/infrastructure/infra_reranker_adapter.py | ✅ | CrossEncoder | 已合入 |
 | InfraAudioAdapter | harness/document/transcriber.py | ✅ | faster-whisper + openai-whisper | 已合入 |
@@ -3080,7 +3082,7 @@ scan_hash: 8f9548ec24f4
 | Skill 系统 | 157 | 0 | 157 |
 | 安全与治理 | 67 | 0 | 67 |
 | 可观测性 | 43 | 0 | 43 |
-| 模型基础设施 | 42 | 0 | 42 |
+| 模型基础设施 | 44 | 0 | 44 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 135 | 0 | 135 |
 | Gate 系统 | 172 | 0 | 172 |
@@ -3116,7 +3118,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2146** | **10** | **2156** |
+| **总计** | **2148** | **10** | **2158** |
 
 | **总计** | **1095** | **0** | **1095** |
 

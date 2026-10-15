@@ -43,6 +43,8 @@ class LLMConfig:
     api_key: Optional[str] = None
     base_url: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
+    # Passed through InfraLLMAdapter → ChatRequest → provider (json_object / json_schema)
+    response_format: Optional[Dict[str, Any]] = None
 
 
 class ILLMAdapter(ABC):
