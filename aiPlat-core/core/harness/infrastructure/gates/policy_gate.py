@@ -107,6 +107,20 @@ class PolicyResult:
 
     policy_version: Optional[int] = None
 
+    # OpenWorker-inspired governance metadata (audit / UI)
+    risk_class: Optional[str] = None
+
+    approval_source: Optional[str] = None
+
+    approval_rule_id: Optional[str] = None
+
+    hard_floor: bool = False
+
+    # Unattended Inbox park id (OpenWorker P1)
+    inbox_item_id: Optional[str] = None
+
+    attendance: Optional[str] = None
+
 
 
 
@@ -337,7 +351,17 @@ class PolicyGate:
 
         self._adaptive_mode = os.getenv("AIPLAT_ADAPTIVE_SECURITY", "false").lower() in ("1", "true")
 
-
+        # Seed / tighten RiskClass catalog (OpenWorker-inspired; no-op if already present).
+        try:
+            from core.harness.infrastructure.gates.risk_class import (
+                RiskClass,
+                register_risk,
+            )
+            register_risk("shell_exec", RiskClass.EXEC)
+            register_risk("code_execution", RiskClass.EXEC)
+            register_risk("file_operations", RiskClass.WRITE_LOCAL)
+        except Exception as e:
+            logging.debug("risk_class seed skipped: %s", e, exc_info=True)
 
     def _compute_risk_score(self, user_id: str, operation: str) -> float:
 
@@ -392,6 +416,90 @@ class PolicyGate:
     }
 
 
+
+    def _approval_required_result(
+        self,
+        *,
+        reason: str,
+        tool_name: str,
+        tool_args: Optional[Dict[str, Any]],
+        user_id: str = "",
+        risk_class: Optional[str] = None,
+        approval_source: Optional[str] = None,
+        approval_rule_id: Optional[str] = None,
+        hard_floor: bool = False,
+    ) -> PolicyResult:
+        """Build APPROVAL_REQUIRED and park to Unattended Inbox when attendance≠attended."""
+        args = tool_args if isinstance(tool_args, dict) else {}
+        session_id = str(args.get("_session_id") or args.get("_run_id") or user_id or "default")
+        attendance_raw = args.get("_attendance") or args.get("attendance")
+        inbox_item_id: Optional[str] = None
+        attendance: Optional[str] = None
+        try:
+            from core.harness.infrastructure.gates.approval_inbox import (
+                get_approval_inbox,
+                park_if_unattended,
+                refuse_unattended_self_approve,
+                normalize_attendance,
+            )
+
+            store = get_approval_inbox()
+            if attendance_raw is not None:
+                attendance = store.set_attendance(session_id, attendance_raw)
+            else:
+                attendance = store.get_attendance(session_id)
+
+            # Daemon / auto_approve cannot clear hard floors under unattended modes.
+            if refuse_unattended_self_approve(
+                hard_floor=hard_floor,
+                attendance=attendance,
+                auto_approve=bool(args.get("_auto_approve")),
+            ):
+                logger.debug(
+                    "unattended refuse self-approve session=%s hard_floor=%s attendance=%s",
+                    session_id,
+                    hard_floor,
+                    attendance,
+                )
+
+            parked = park_if_unattended(
+                session_id=session_id,
+                title=f"Approve {tool_name}",
+                body=reason or "",
+                hard_floor=hard_floor,
+                tool_name=tool_name,
+                tool_call_id=str(args.get("_tool_call_id") or args.get("call_id") or "") or None,
+                risk_class=risk_class,
+                approval_source=approval_source,
+            )
+            if parked is not None:
+                inbox_item_id = parked.id
+                attendance = normalize_attendance(attendance)
+                # AUTO attendance resolves immediately — hard floors become DENY.
+                if parked.state == "resolved" and parked.resolution == "deny":
+                    return PolicyResult(
+                        decision=PolicyDecision.DENY,
+                        reason=f"inbox_auto_denied:{parked.id} — {reason}",
+                        risk_class=risk_class,
+                        approval_source=approval_source or "inbox_auto",
+                        approval_rule_id=approval_rule_id,
+                        hard_floor=bool(hard_floor),
+                        inbox_item_id=inbox_item_id,
+                        attendance=attendance,
+                    )
+        except Exception as e:
+            logger.debug("approval inbox park skipped: %s", e, exc_info=True)
+
+        return PolicyResult(
+            decision=PolicyDecision.APPROVAL_REQUIRED,
+            reason=reason,
+            risk_class=risk_class,
+            approval_source=approval_source,
+            approval_rule_id=approval_rule_id,
+            hard_floor=bool(hard_floor),
+            inbox_item_id=inbox_item_id,
+            attendance=attendance,
+        )
 
     def _maybe_override_deny(self, user_id: str, reason: str) -> Optional[PolicyResult]:
 
@@ -849,17 +957,80 @@ class PolicyGate:
 
         """Single-point permission enforcement for tool execution (§11)."""
 
+        _args = tool_args if isinstance(tool_args, dict) else {}
+        _auto_approve = bool(_args.get("_auto_approve"))
+        _risk_class: Optional[str] = None
+        _risk_floorish = False
+        try:
+            from core.harness.infrastructure.gates.risk_class import (
+                classify as _classify_risk,
+                is_hard_floor_risk,
+            )
+            _rc = _classify_risk(tool_name)
+            _risk_class = _rc.value
+            _risk_floorish = is_hard_floor_risk(_rc)
+        except Exception as e:
+            logging.debug("risk_class classify failed for %s: %s", tool_name, e, exc_info=True)
+            _risk_class = None
+            _risk_floorish = False
+
+        # Soft-disable still enforces hard floors (OpenWorker parity).
         if self._disable_approvals:
-
-            return PolicyResult(decision=PolicyDecision.ALLOW)
-
-
+            try:
+                from core.harness.infrastructure.gates.approval_gate import (
+                    get_approval_gate,
+                    ApprovalVerdict,
+                    APPROVAL_SOURCE_HARD_FLOOR,
+                    APPROVAL_SOURCE_DISABLED,
+                )
+                floor = get_approval_gate().check_hard_floor(
+                    tool_name,
+                    _args,
+                    user_id=user_id,
+                    session_id=str(_args.get("_session_id") or ""),
+                )
+                if floor.verdict == ApprovalVerdict.ASK:
+                    return self._approval_required_result(
+                        reason=f"hard_floor:ask — {floor.message}",
+                        tool_name=tool_name,
+                        tool_args=_args,
+                        user_id=user_id,
+                        risk_class=_risk_class,
+                        approval_source=APPROVAL_SOURCE_HARD_FLOOR,
+                        approval_rule_id=floor.rule_id,
+                        hard_floor=True,
+                    )
+                return PolicyResult(
+                    decision=PolicyDecision.ALLOW,
+                    risk_class=_risk_class,
+                    approval_source=APPROVAL_SOURCE_DISABLED,
+                )
+            except Exception as e:
+                # Fail closed: if we cannot evaluate hard floors, do not silently allow.
+                logging.warning(
+                    "hard_floor check failed under approvals_disabled: %s — deny",
+                    e,
+                    exc_info=True,
+                )
+                return PolicyResult(
+                    decision=PolicyDecision.APPROVAL_REQUIRED,
+                    reason=f"hard_floor:check_failed — {e}",
+                    risk_class=_risk_class,
+                    approval_source="hard_floor",
+                    hard_floor=True,
+                )
 
         # P2-19: ApprovalGate — dangerous command detection before permission check
 
         try:
 
-            from core.harness.infrastructure.gates.approval_gate import get_approval_gate, ApprovalVerdict
+            from core.harness.infrastructure.gates.approval_gate import (
+                get_approval_gate,
+                ApprovalVerdict,
+                APPROVAL_SOURCE_GATE_ASK,
+                APPROVAL_SOURCE_GATE_DENY,
+                APPROVAL_SOURCE_HARD_FLOOR,
+            )
 
             approval_gate = get_approval_gate()
 
@@ -867,11 +1038,13 @@ class PolicyGate:
 
                 tool_name=tool_name,
 
-                tool_args=tool_args or {},
+                tool_args=_args,
 
                 user_id=user_id,
 
-                session_id=(tool_args or {}).get("_session_id", "") if isinstance(tool_args, dict) else "",
+                session_id=str(_args.get("_session_id") or ""),
+
+                auto_approve=_auto_approve,
 
             )
 
@@ -883,16 +1056,40 @@ class PolicyGate:
 
                     reason=f"approval_gate:deny — {approval_result.message}",
 
+                    risk_class=_risk_class,
+
+                    approval_source=approval_result.approval_source or APPROVAL_SOURCE_GATE_DENY,
+
+                    approval_rule_id=approval_result.rule_id,
+
+                    hard_floor=bool(approval_result.hard_floor),
+
                 )
 
             if approval_result.verdict == ApprovalVerdict.ASK:
 
-                return PolicyResult(
+                src = (
+                    APPROVAL_SOURCE_HARD_FLOOR
+                    if approval_result.hard_floor
+                    else (approval_result.approval_source or APPROVAL_SOURCE_GATE_ASK)
+                )
 
-                    decision=PolicyDecision.APPROVAL_REQUIRED,
+                if _risk_floorish and approval_result.hard_floor:
+                    logging.debug(
+                        "hard_floor reinforced by risk_class=%s tool=%s",
+                        _risk_class,
+                        tool_name,
+                    )
 
+                return self._approval_required_result(
                     reason=f"approval_gate:ask — {approval_result.message}",
-
+                    tool_name=tool_name,
+                    tool_args=_args,
+                    user_id=user_id,
+                    risk_class=_risk_class,
+                    approval_source=src,
+                    approval_rule_id=approval_result.rule_id,
+                    hard_floor=bool(approval_result.hard_floor),
                 )
 
         except ImportError:

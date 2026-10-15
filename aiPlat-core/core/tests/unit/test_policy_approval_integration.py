@@ -68,8 +68,8 @@ class TestPolicyGateApprovalGateIntegration:
         assert result.decision == PolicyDecision.APPROVAL_REQUIRED
         assert "approval_gate" in str(result.reason).lower()
 
-    async def test_disable_approvals_bypasses_gate(self):
-        """When approvals are disabled via env, dangerous ops should pass."""
+    async def test_disable_approvals_still_enforces_hard_floor(self):
+        """Approvals soft-disable must not lower CRITICAL hard floors (OpenWorker parity)."""
         import os
         os.environ["AIPLAT_APPROVALS_DISABLED"] = "true"
         try:
@@ -80,6 +80,28 @@ class TestPolicyGateApprovalGateIntegration:
                 tool_name="file_operations",
                 tool_args={"operation": "delete", "path": "/tmp/x"},
             )
-            assert result.decision == PolicyDecision.ALLOW
+            assert result.decision == PolicyDecision.APPROVAL_REQUIRED
+            assert result.hard_floor is True
+        finally:
+            os.environ.pop("AIPLAT_APPROVALS_DISABLED", None)
+
+    async def test_disable_approvals_allows_non_floor_medium(self):
+        """Non-floor MEDIUM rules are skipped when approvals are soft-disabled."""
+        import os
+        os.environ["AIPLAT_APPROVALS_DISABLED"] = "true"
+        try:
+            gate = PolicyGate()
+            gate._disable_approvals = True
+            result = await gate.check_tool(
+                user_id="test_user",
+                tool_name="http",
+                tool_args={"url": "http://example.com", "method": "GET"},
+            )
+            # May DENY on RBAC, but must not be approval_gate for this MEDIUM rule.
+            if result.decision == PolicyDecision.DENY:
+                assert "approval_gate" not in str(result.reason).lower()
+                assert "hard_floor" not in str(result.reason).lower()
+            else:
+                assert result.decision == PolicyDecision.ALLOW
         finally:
             os.environ.pop("AIPLAT_APPROVALS_DISABLED", None)

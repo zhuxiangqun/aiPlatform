@@ -90,10 +90,18 @@ class TestApprovalGate:
             result = gate.check("http", {"method": "DELETE"}, session_id="s1")
             assert result.verdict == ApprovalVerdict.ALLOW
 
-    def test_disable_gate(self):
+    def test_disable_gate_still_enforces_hard_floor(self):
+        """Soft-disable skips non-floor rules; CRITICAL hard floors still ASK."""
         gate = ApprovalGate()
         gate._disabled = True
         result = gate.check("file_operations", {"operation": "delete", "path": "/"})
+        assert result.verdict == ApprovalVerdict.ASK
+        assert result.hard_floor is True
+
+    def test_disable_gate_waives_medium(self):
+        gate = ApprovalGate()
+        gate._disabled = True
+        result = gate.check("http", {"url": "http://example.com"})
         assert result.verdict == ApprovalVerdict.ALLOW
 
     def test_add_custom_rule(self):

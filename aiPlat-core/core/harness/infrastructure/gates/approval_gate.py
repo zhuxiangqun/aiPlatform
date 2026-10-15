@@ -5,6 +5,10 @@ Catalogue of dangerous operations with config-driven approval rules.
 Integrated into PolicyGate.check_tool() as pre-check before execution.
 
 hermes-agent parity: tools/approval.py — dangerous command catalog + approval flow
+
+OpenWorker-inspired hard floors (2026-10): CRITICAL matches always escalate to a
+human — auto-approve modes, session caches, and AIPLAT_APPROVALS_DISABLED cannot
+lower them. Only ``AIPLAT_HARD_FLOOR_DISABLED=1`` (audited escape) skips floors.
 """
 from __future__ import annotations
 
@@ -34,10 +38,20 @@ class ApprovalVerdict(Enum):
 
 class ApprovalSeverity(Enum):
     """Severity level of the dangerous operation."""
-    CRITICAL = "critical"       # Data loss / security breach — always require approval
+    CRITICAL = "critical"       # Hard floor — always require interactive approval
     HIGH = "high"               # Potential damage — require supervisor approval
     MEDIUM = "medium"           # Requires confirmation but auto-allowable in session
     LOW = "low"                 # Informational — logged but not blocked
+
+
+# Provenance sources written into audit detail["approval_provenance"].
+APPROVAL_SOURCE_NONE = "none"
+APPROVAL_SOURCE_HARD_FLOOR = "hard_floor"
+APPROVAL_SOURCE_GATE_ASK = "gate_ask"
+APPROVAL_SOURCE_GATE_DENY = "gate_deny"
+APPROVAL_SOURCE_AUTO = "auto"
+APPROVAL_SOURCE_HUMAN = "human"
+APPROVAL_SOURCE_DISABLED = "approvals_disabled"
 
 
 # ── Dataclasses ──────────────────────────────────────────────────────────────
@@ -53,6 +67,7 @@ class ApprovalRule:
     allow_if_session_approved: bool = False
     allow_if_user_whitelisted: bool = False
     sampling_rate: float = 1.0
+    hard_floor: bool = False  # True for CRITICAL — never auto-waived
 
 
 @dataclass
@@ -63,6 +78,8 @@ class ApprovalGateResult:
     message: str = ""
     require_interactive: bool = False
     approval_token: str = ""
+    hard_floor: bool = False
+    approval_source: str = APPROVAL_SOURCE_NONE
 
 
 # ── Dangerous Command Catalogue ──────────────────────────────────────────────
@@ -173,22 +190,32 @@ class ApprovalGate:
         self._approval_cache: Dict[str, Tuple[float, ApprovalVerdict]] = {}  # token -> (ts, verdict)
         self._cache_ttl: float = float(os.getenv("AIPLAT_APPROVAL_CACHE_TTL", "300"))  # 5 min
 
-        # Override: fully disable approval gate
+        # Override: soft-disable non-floor rules (hard floors still apply unless
+        # AIPLAT_HARD_FLOOR_DISABLED=1).
         self._disabled: bool = os.getenv("AIPLAT_APPROVAL_GATE_DISABLED", "false").lower() in ("1", "true", "yes")
+        self._hard_floor_disabled: bool = os.getenv("AIPLAT_HARD_FLOOR_DISABLED", "false").lower() in (
+            "1", "true", "yes",
+        )
 
         self._build_rules()
 
     def _build_rules(self):
         """Build internal rule list from catalogue + env overrides."""
         for idx, (tool_pat, arg_key, arg_regex, severity, message) in enumerate(_DANGEROUS_PATTERNS):
+            is_floor = severity == ApprovalSeverity.CRITICAL
             self._rules.append(ApprovalRule(
                 rule_id=f"danger_{idx:03d}",
                 tool_name=tool_pat,
                 arg_patterns={arg_key: arg_regex},
                 severity=severity,
                 message=message,
-                allow_if_session_approved=(severity in (ApprovalSeverity.LOW, ApprovalSeverity.MEDIUM)),
+                # CRITICAL never session-auto; MEDIUM/LOW may graduate (HIGH stays interactive).
+                allow_if_session_approved=(
+                    severity in (ApprovalSeverity.LOW, ApprovalSeverity.MEDIUM)
+                    and not is_floor
+                ),
                 allow_if_user_whitelisted=(severity == ApprovalSeverity.LOW),
+                hard_floor=is_floor,
             ))
 
         # Load user whitelist from env
@@ -198,111 +225,233 @@ class ApprovalGate:
             if uid:
                 self._user_whitelist.add(uid)
 
-    def check(self, tool_name: str, tool_args: dict, user_id: str = "", session_id: str = "") -> ApprovalGateResult:
+    def _match_rule(self, rule: ApprovalRule, tool_name: str, tool_args: dict) -> bool:
+        if not fnmatch.fnmatch(tool_name, rule.tool_name):
+            return False
+        matched = False
+        for arg_key, arg_pattern in rule.arg_patterns.items():
+            if arg_key == "*":
+                for val in tool_args.values():
+                    if arg_pattern is None or re.search(arg_pattern, str(val)):
+                        matched = True
+                        break
+            elif arg_pattern is None:
+                if arg_key in tool_args:
+                    matched = True
+                    break
+            else:
+                arg_val = str(tool_args.get(arg_key, ""))
+                if re.search(arg_pattern, arg_val):
+                    matched = True
+                    break
+        if not matched and rule.arg_patterns:
+            first_key = next(iter(rule.arg_patterns), "")
+            if first_key == "batch_size":
+                batch_val = tool_args.get("batch_size", 0)
+                if isinstance(batch_val, (int, float)) and batch_val > 100:
+                    matched = True
+                elif isinstance(batch_val, str) and batch_val.isdigit() and int(batch_val) > 100:
+                    matched = True
+        if not matched and rule.arg_patterns:
+            return False
+        return True
+
+    def check_hard_floor(
+        self,
+        tool_name: str,
+        tool_args: Optional[dict] = None,
+        *,
+        user_id: str = "",
+        session_id: str = "",
+    ) -> ApprovalGateResult:
+        """Evaluate only hard-floor (CRITICAL) rules.
+
+        Used when PolicyGate has approvals soft-disabled — floors still escalate.
+        """
+        if self._hard_floor_disabled:
+            return ApprovalGateResult(
+                verdict=ApprovalVerdict.ALLOW,
+                approval_source=APPROVAL_SOURCE_DISABLED,
+                message="hard floors disabled via AIPLAT_HARD_FLOOR_DISABLED",
+            )
+        args = tool_args or {}
+
+        # OpenWorker P1: opaque constructs / arg-executors / dangerous flags escalate
+        # even when the matching catalogue rule is only HIGH (e.g. code_execution).
+        shell_floor = self._shell_hard_floor(tool_name, args)
+        if shell_floor is not None:
+            return shell_floor
+
+        for rule in self._rules:
+            if not rule.hard_floor and rule.severity != ApprovalSeverity.CRITICAL:
+                continue
+            if not self._match_rule(rule, tool_name, args):
+                continue
+            msg = rule.message
+            # Enrich shell_exec blanket CRITICAL with specific command reasons.
+            try:
+                from core.harness.infrastructure.gates.shell_command_risk import (
+                    evaluate_tool_shell_risk,
+                )
+                report = evaluate_tool_shell_risk(tool_name, args)
+                if report and report.summary:
+                    msg = f"{rule.message} [{report.summary}]"
+            except Exception as e:
+                logging.debug("shell risk enrich skipped: %s", e, exc_info=True)
+            return ApprovalGateResult(
+                verdict=ApprovalVerdict.ASK,
+                rule_id=rule.rule_id,
+                severity=ApprovalSeverity.CRITICAL,
+                message=msg,
+                require_interactive=True,
+                hard_floor=True,
+                approval_source=APPROVAL_SOURCE_HARD_FLOOR,
+            )
+        return ApprovalGateResult(verdict=ApprovalVerdict.ALLOW, approval_source=APPROVAL_SOURCE_NONE)
+
+    def _shell_hard_floor(
+        self, tool_name: str, tool_args: dict,
+    ) -> Optional[ApprovalGateResult]:
+        """Force CRITICAL when shell heuristics say so (prefix allowlists cannot waive)."""
+        try:
+            from core.harness.infrastructure.gates.shell_command_risk import (
+                evaluate_tool_shell_risk,
+            )
+            report = evaluate_tool_shell_risk(tool_name, tool_args)
+        except Exception as e:
+            logging.debug("shell hard-floor check failed: %s", e, exc_info=True)
+            return None
+        if report is None or not report.forces_hard_floor:
+            return None
+        return ApprovalGateResult(
+            verdict=ApprovalVerdict.ASK,
+            rule_id="shell_risk_escalation",
+            severity=ApprovalSeverity.CRITICAL,
+            message=f"Shell command requires human approval — {report.summary}",
+            require_interactive=True,
+            hard_floor=True,
+            approval_source=APPROVAL_SOURCE_HARD_FLOOR,
+        )
+
+    def check(
+        self,
+        tool_name: str,
+        tool_args: dict,
+        user_id: str = "",
+        session_id: str = "",
+        *,
+        auto_approve: bool = False,
+    ) -> ApprovalGateResult:
         """
         Check if a tool call requires approval.
 
-        Returns ApprovalGateResult with verdict and reason.
+        ``auto_approve=True`` may waive MEDIUM (and session-cached HIGH) but never
+        CRITICAL hard floors. Soft-disable (``_disabled``) skips non-floor rules
+        only; floors still ASK unless ``AIPLAT_HARD_FLOOR_DISABLED``.
         """
-        if self._disabled:
-            return ApprovalGateResult(verdict=ApprovalVerdict.ALLOW)
+        args = tool_args or {}
 
-        # Step 1: rules sorted by specificity (non-wildcard args first, then severity)
+        # Hard floors first — even when gate soft-disabled or auto_approve.
+        floor = self.check_hard_floor(
+            tool_name, args, user_id=user_id, session_id=session_id,
+        )
+        if floor.verdict == ApprovalVerdict.ASK:
+            return floor
+
+        if self._disabled:
+            return ApprovalGateResult(
+                verdict=ApprovalVerdict.ALLOW,
+                approval_source=APPROVAL_SOURCE_DISABLED,
+            )
+
         rules_sorted = sorted(self._rules, key=lambda r: (
             0 if all(k != "*" and v is not None for k, v in r.arg_patterns.items()) else 1,
             {"critical": 0, "high": 1, "medium": 2, "low": 3}.get(r.severity.value, 99),
         ))
         for rule in rules_sorted:
-            if not fnmatch.fnmatch(tool_name, rule.tool_name):
+            if rule.hard_floor or rule.severity == ApprovalSeverity.CRITICAL:
+                continue  # already handled
+            if not self._match_rule(rule, tool_name, args):
                 continue
-
-            # Check arg patterns
-            matched = False
-            for arg_key, arg_pattern in rule.arg_patterns.items():
-                if arg_key == "*":
-                    for val in tool_args.values():
-                        if arg_pattern is None or re.search(arg_pattern, str(val)):
-                            matched = True
-                            break
-                elif arg_pattern is None:
-                    if arg_key in tool_args:
-                        matched = True
-                        break
-                else:
-                    arg_val = str(tool_args.get(arg_key, ""))
-                    if re.search(arg_pattern, arg_val):
-                        matched = True
-                        break
-
-            # Check numeric thresholds (only when arg_key was assigned)
-            if not matched and rule.arg_patterns:
-                first_key = next(iter(rule.arg_patterns), "")
-                if first_key == "batch_size":
-                    batch_val = tool_args.get("batch_size", 0)
-                    if isinstance(batch_val, (int, float)) and batch_val > 100:
-                        matched = True
-                    elif isinstance(batch_val, str) and batch_val.isdigit() and int(batch_val) > 100:
-                        matched = True
-
-            if not matched and rule.arg_patterns:
-                continue
-
-            # Rule matched — determine verdict
-            if rule.severity == ApprovalSeverity.CRITICAL:
-                return ApprovalGateResult(
-                    verdict=ApprovalVerdict.ASK,
-                    rule_id=rule.rule_id,
-                    severity=rule.severity,
-                    message=rule.message,
-                    require_interactive=True,
-                )
 
             if rule.severity == ApprovalSeverity.HIGH:
-                # Check session cache
                 if rule.allow_if_session_approved and session_id:
                     session_rules = self._session_approved.get(session_id, set())
                     if rule.rule_id in session_rules:
-                        return ApprovalGateResult(verdict=ApprovalVerdict.ALLOW)
-
+                        return ApprovalGateResult(
+                            verdict=ApprovalVerdict.ALLOW,
+                            rule_id=rule.rule_id,
+                            severity=rule.severity,
+                            approval_source=APPROVAL_SOURCE_AUTO,
+                        )
                 return ApprovalGateResult(
                     verdict=ApprovalVerdict.ASK,
                     rule_id=rule.rule_id,
                     severity=rule.severity,
                     message=rule.message,
                     require_interactive=True,
+                    approval_source=APPROVAL_SOURCE_GATE_ASK,
                 )
 
             if rule.severity == ApprovalSeverity.MEDIUM:
+                if auto_approve:
+                    return ApprovalGateResult(
+                        verdict=ApprovalVerdict.ALLOW,
+                        rule_id=rule.rule_id,
+                        severity=rule.severity,
+                        message=rule.message,
+                        approval_source=APPROVAL_SOURCE_AUTO,
+                    )
                 if rule.allow_if_session_approved and session_id:
                     session_rules = self._session_approved.get(session_id, set())
                     if rule.rule_id in session_rules:
-                        return ApprovalGateResult(verdict=ApprovalVerdict.ALLOW)
-
+                        return ApprovalGateResult(
+                            verdict=ApprovalVerdict.ALLOW,
+                            rule_id=rule.rule_id,
+                            severity=rule.severity,
+                            approval_source=APPROVAL_SOURCE_AUTO,
+                        )
                 return ApprovalGateResult(
                     verdict=ApprovalVerdict.ASK,
                     rule_id=rule.rule_id,
                     severity=rule.severity,
                     message=rule.message,
-                    require_interactive=False,  # auto-allowable
+                    require_interactive=False,
+                    approval_source=APPROVAL_SOURCE_GATE_ASK,
                 )
 
             if rule.severity == ApprovalSeverity.LOW:
                 if rule.allow_if_user_whitelisted and user_id in self._user_whitelist:
-                    return ApprovalGateResult(verdict=ApprovalVerdict.ALLOW)
+                    return ApprovalGateResult(
+                        verdict=ApprovalVerdict.ALLOW,
+                        rule_id=rule.rule_id,
+                        severity=rule.severity,
+                        approval_source=APPROVAL_SOURCE_AUTO,
+                    )
                 return ApprovalGateResult(
                     verdict=ApprovalVerdict.ALLOW,
                     rule_id=rule.rule_id,
                     severity=rule.severity,
                     message=rule.message,
+                    approval_source=APPROVAL_SOURCE_NONE,
                 )
 
-        return ApprovalGateResult(verdict=ApprovalVerdict.ALLOW)
+        return ApprovalGateResult(verdict=ApprovalVerdict.ALLOW, approval_source=APPROVAL_SOURCE_NONE)
 
-    def approve_session_rule(self, session_id: str, rule_id: str):
-        """Record that a rule was approved for the duration of this session."""
+    def approve_session_rule(self, session_id: str, rule_id: str) -> bool:
+        """Record session approval. Returns False if rule is a hard floor (rejected)."""
+        for rule in self._rules:
+            if rule.rule_id == rule_id and (
+                rule.hard_floor or rule.severity == ApprovalSeverity.CRITICAL
+            ):
+                logger.warning(
+                    "refuse session approval for hard-floor rule %s", rule_id,
+                )
+                return False
         if session_id not in self._session_approved:
             self._session_approved[session_id] = set()
         self._session_approved[session_id].add(rule_id)
+        return True
 
     def revoke_session_approval(self, session_id: str, rule_id: Optional[str] = None):
         """Revoke session-level approval for one or all rules."""
@@ -313,6 +462,9 @@ class ApprovalGate:
 
     def add_rule(self, rule: ApprovalRule):
         """Programmatically add a custom approval rule."""
+        if rule.severity == ApprovalSeverity.CRITICAL:
+            rule.hard_floor = True
+            rule.allow_if_session_approved = False
         self._rules.append(rule)
 
     def remove_rule(self, rule_id: str):
@@ -327,6 +479,7 @@ class ApprovalGate:
                 "tool_name": r.tool_name,
                 "severity": r.severity.value,
                 "message": r.message,
+                "hard_floor": bool(r.hard_floor or r.severity == ApprovalSeverity.CRITICAL),
             }
             for r in self._rules
         ]
@@ -335,11 +488,36 @@ class ApprovalGate:
         """Return current gate statistics."""
         return {
             "total_rules": len(self._rules),
+            "hard_floor_rules": sum(
+                1 for r in self._rules
+                if r.hard_floor or r.severity == ApprovalSeverity.CRITICAL
+            ),
             "whitelisted_users": len(self._user_whitelist),
             "active_sessions": len(self._session_approved),
             "disabled": self._disabled,
+            "hard_floor_disabled": self._hard_floor_disabled,
             "cache_size": len(self._approval_cache),
         }
+
+
+def build_approval_provenance(
+    *,
+    source: str,
+    rule_id: Optional[str] = None,
+    severity: Optional[str] = None,
+    hard_floor: bool = False,
+    risk_class: Optional[str] = None,
+    reason: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Stable audit payload: who/why an action was gated or allowed."""
+    return {
+        "source": source or APPROVAL_SOURCE_NONE,
+        "rule_id": rule_id,
+        "severity": severity,
+        "hard_floor": bool(hard_floor),
+        "risk_class": risk_class,
+        "reason": reason,
+    }
 
 
 # ── Global Singleton ──────────────────────────────────────────────────────────

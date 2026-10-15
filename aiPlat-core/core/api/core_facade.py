@@ -3511,6 +3511,66 @@ async def org_approval_inbox(
     )
 
 
+def list_unattended_approval_inbox(
+    *,
+    visibility: str = "inbox",
+    pending_only: bool = True,
+    session_id: str = "",
+    limit: int = 200,
+) -> Dict[str, Any]:
+    """OpenWorker P1: durable wait-queue for tool approvals (not org H1 inbox)."""
+    from core.harness.infrastructure.gates.approval_inbox import (
+        ApprovalInboxStore,
+        get_approval_inbox,
+    )
+
+    store: ApprovalInboxStore = get_approval_inbox()
+    items = store.list_items(
+        visibility=visibility or None,
+        pending_only=bool(pending_only),
+        session_id=session_id or None,
+        limit=limit,
+    )
+    return {"items": items, "total": len(items)}
+
+
+def resolve_unattended_approval(
+    item_id: str,
+    resolution: str,
+    *,
+    resolved_by: str = "",
+) -> Dict[str, Any]:
+    """Resolve a parked unattended approval (first-responder wins)."""
+    from core.harness.infrastructure.gates.approval_inbox import (
+        InboxItem,
+        get_approval_inbox,
+    )
+
+    item = get_approval_inbox().resolve(
+        str(item_id),
+        str(resolution or ""),
+        resolved_by=str(resolved_by or ""),
+    )
+    if item is None or not isinstance(item, InboxItem):
+        return {"ok": False, "error": "not_found"}
+    return {"ok": True, "item": item.to_dict()}
+
+
+def set_unattended_attendance(session_id: str, mode: str) -> Dict[str, Any]:
+    """Set attendance=attended|inbox|auto for a session (daemon/cron use inbox|auto)."""
+    from core.harness.infrastructure.gates.approval_inbox import get_approval_inbox
+
+    norm = get_approval_inbox().set_attendance(str(session_id or "default"), mode)
+    return {"session_id": str(session_id or "default"), "attendance": norm}
+
+
+def get_unattended_attendance(session_id: str) -> Dict[str, Any]:
+    from core.harness.infrastructure.gates.approval_inbox import get_approval_inbox
+
+    sid = str(session_id or "default")
+    return {"session_id": sid, "attendance": get_approval_inbox().get_attendance(sid)}
+
+
 async def org_approval_snapshot(
     kind: str,
     item_id: str,

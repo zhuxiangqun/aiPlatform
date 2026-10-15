@@ -232,6 +232,89 @@ async def list_pending_approvals(
     return _normalize_approval_list_response({"items": out, "total": len(out)})
 
 
+@router.get("/approvals/unattended", response_model=StatusResponse)
+async def list_unattended_approvals(
+    http_request: Request,
+    visibility: str = "inbox",
+    pending_only: bool = True,
+    session_id: Optional[str] = None,
+    limit: int = 200,
+    _auth: str = Depends(require_auth),
+):
+    """OpenWorker P1: park queue for tool approvals under attendance=inbox|auto."""
+    deny = await rbac_guard(
+        http_request=http_request,
+        payload=None,
+        action="approvals_read",
+        resource_type="approvals",
+        resource_id="unattended",
+    )
+    if deny:
+        return deny
+    from core.api.core_facade import list_unattended_approval_inbox
+
+    return list_unattended_approval_inbox(
+        visibility=visibility,
+        pending_only=pending_only,
+        session_id=session_id or "",
+        limit=limit,
+    )
+
+
+@router.post("/approvals/unattended/attendance", response_model=StatusResponse)
+async def set_unattended_attendance_route(
+    body: Dict[str, Any],
+    http_request: Request,
+    _auth: str = Depends(require_auth),
+):
+    deny = await rbac_guard(
+        http_request=http_request,
+        payload=body,
+        action="approvals_write",
+        resource_type="approvals",
+        resource_id="unattended_attendance",
+    )
+    if deny:
+        return deny
+    from core.api.core_facade import set_unattended_attendance
+
+    session_id = str((body or {}).get("session_id") or "default")
+    mode = str((body or {}).get("attendance") or (body or {}).get("mode") or "attended")
+    return set_unattended_attendance(session_id, mode)
+
+
+@router.post("/approvals/unattended/{item_id}/resolve", response_model=StatusResponse)
+async def resolve_unattended_approval_route(
+    item_id: str,
+    body: Dict[str, Any],
+    http_request: Request,
+    _auth: str = Depends(require_auth),
+):
+    deny = await rbac_guard(
+        http_request=http_request,
+        payload=body,
+        action="approvals_write",
+        resource_type="approvals",
+        resource_id=str(item_id),
+    )
+    if deny:
+        return deny
+    from core.api.core_facade import resolve_unattended_approval
+
+    actor = actor_from_http(http_request)
+    resolved_by = str(
+        (body or {}).get("resolved_by")
+        or (actor or {}).get("user_id")
+        or (actor or {}).get("actor_id")
+        or ""
+    )
+    resolution = str((body or {}).get("resolution") or (body or {}).get("decision") or "")
+    out = resolve_unattended_approval(item_id, resolution, resolved_by=resolved_by)
+    if not out.get("ok"):
+        raise HTTPException(status_code=404, detail="Unattended approval item not found")
+    return out
+
+
 @router.get("/approvals/{request_id}", response_model=StatusResponse)
 async def get_approval_request(request_id: str, _auth: str = Depends(require_auth)):
     mgr = _approval_mgr()
