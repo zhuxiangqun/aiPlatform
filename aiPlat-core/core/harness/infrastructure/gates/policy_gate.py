@@ -107,6 +107,15 @@ class PolicyResult:
 
     policy_version: Optional[int] = None
 
+    # OpenWorker-inspired governance metadata (audit / UI)
+    risk_class: Optional[str] = None
+
+    approval_source: Optional[str] = None
+
+    approval_rule_id: Optional[str] = None
+
+    hard_floor: bool = False
+
 
 
 
@@ -337,7 +346,17 @@ class PolicyGate:
 
         self._adaptive_mode = os.getenv("AIPLAT_ADAPTIVE_SECURITY", "false").lower() in ("1", "true")
 
-
+        # Seed / tighten RiskClass catalog (OpenWorker-inspired; no-op if already present).
+        try:
+            from core.harness.infrastructure.gates.risk_class import (
+                RiskClass,
+                register_risk,
+            )
+            register_risk("shell_exec", RiskClass.EXEC)
+            register_risk("code_execution", RiskClass.EXEC)
+            register_risk("file_operations", RiskClass.WRITE_LOCAL)
+        except Exception as e:
+            logging.debug("risk_class seed skipped: %s", e, exc_info=True)
 
     def _compute_risk_score(self, user_id: str, operation: str) -> float:
 
@@ -849,17 +868,78 @@ class PolicyGate:
 
         """Single-point permission enforcement for tool execution (§11)."""
 
+        _args = tool_args if isinstance(tool_args, dict) else {}
+        _auto_approve = bool(_args.get("_auto_approve"))
+        _risk_class: Optional[str] = None
+        _risk_floorish = False
+        try:
+            from core.harness.infrastructure.gates.risk_class import (
+                classify as _classify_risk,
+                is_hard_floor_risk,
+            )
+            _rc = _classify_risk(tool_name)
+            _risk_class = _rc.value
+            _risk_floorish = is_hard_floor_risk(_rc)
+        except Exception as e:
+            logging.debug("risk_class classify failed for %s: %s", tool_name, e, exc_info=True)
+            _risk_class = None
+            _risk_floorish = False
+
+        # Soft-disable still enforces hard floors (OpenWorker parity).
         if self._disable_approvals:
-
-            return PolicyResult(decision=PolicyDecision.ALLOW)
-
-
+            try:
+                from core.harness.infrastructure.gates.approval_gate import (
+                    get_approval_gate,
+                    ApprovalVerdict,
+                    APPROVAL_SOURCE_HARD_FLOOR,
+                    APPROVAL_SOURCE_DISABLED,
+                )
+                floor = get_approval_gate().check_hard_floor(
+                    tool_name,
+                    _args,
+                    user_id=user_id,
+                    session_id=str(_args.get("_session_id") or ""),
+                )
+                if floor.verdict == ApprovalVerdict.ASK:
+                    return PolicyResult(
+                        decision=PolicyDecision.APPROVAL_REQUIRED,
+                        reason=f"hard_floor:ask — {floor.message}",
+                        risk_class=_risk_class,
+                        approval_source=APPROVAL_SOURCE_HARD_FLOOR,
+                        approval_rule_id=floor.rule_id,
+                        hard_floor=True,
+                    )
+                return PolicyResult(
+                    decision=PolicyDecision.ALLOW,
+                    risk_class=_risk_class,
+                    approval_source=APPROVAL_SOURCE_DISABLED,
+                )
+            except Exception as e:
+                # Fail closed: if we cannot evaluate hard floors, do not silently allow.
+                logging.warning(
+                    "hard_floor check failed under approvals_disabled: %s — deny",
+                    e,
+                    exc_info=True,
+                )
+                return PolicyResult(
+                    decision=PolicyDecision.APPROVAL_REQUIRED,
+                    reason=f"hard_floor:check_failed — {e}",
+                    risk_class=_risk_class,
+                    approval_source="hard_floor",
+                    hard_floor=True,
+                )
 
         # P2-19: ApprovalGate — dangerous command detection before permission check
 
         try:
 
-            from core.harness.infrastructure.gates.approval_gate import get_approval_gate, ApprovalVerdict
+            from core.harness.infrastructure.gates.approval_gate import (
+                get_approval_gate,
+                ApprovalVerdict,
+                APPROVAL_SOURCE_GATE_ASK,
+                APPROVAL_SOURCE_GATE_DENY,
+                APPROVAL_SOURCE_HARD_FLOOR,
+            )
 
             approval_gate = get_approval_gate()
 
@@ -867,11 +947,13 @@ class PolicyGate:
 
                 tool_name=tool_name,
 
-                tool_args=tool_args or {},
+                tool_args=_args,
 
                 user_id=user_id,
 
-                session_id=(tool_args or {}).get("_session_id", "") if isinstance(tool_args, dict) else "",
+                session_id=str(_args.get("_session_id") or ""),
+
+                auto_approve=_auto_approve,
 
             )
 
@@ -883,15 +965,44 @@ class PolicyGate:
 
                     reason=f"approval_gate:deny — {approval_result.message}",
 
+                    risk_class=_risk_class,
+
+                    approval_source=approval_result.approval_source or APPROVAL_SOURCE_GATE_DENY,
+
+                    approval_rule_id=approval_result.rule_id,
+
+                    hard_floor=bool(approval_result.hard_floor),
+
                 )
 
             if approval_result.verdict == ApprovalVerdict.ASK:
+
+                src = (
+                    APPROVAL_SOURCE_HARD_FLOOR
+                    if approval_result.hard_floor
+                    else (approval_result.approval_source or APPROVAL_SOURCE_GATE_ASK)
+                )
+
+                if _risk_floorish and approval_result.hard_floor:
+                    logging.debug(
+                        "hard_floor reinforced by risk_class=%s tool=%s",
+                        _risk_class,
+                        tool_name,
+                    )
 
                 return PolicyResult(
 
                     decision=PolicyDecision.APPROVAL_REQUIRED,
 
                     reason=f"approval_gate:ask — {approval_result.message}",
+
+                    risk_class=_risk_class,
+
+                    approval_source=src,
+
+                    approval_rule_id=approval_result.rule_id,
+
+                    hard_floor=bool(approval_result.hard_floor),
 
                 )
 

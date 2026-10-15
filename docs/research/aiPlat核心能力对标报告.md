@@ -57,7 +57,7 @@
 | 子维 | aiPlat | Hermes | Claude Code | OpenClaw | DSH | Codex |
 |------|--------|--------|-------------|----------|-----|-------|
 | 模型 | BaseTool + Syscall | toolsets + terminal 族 | 内置工具集 | tools/skills/plugins | defineTool + MCP | tools + MCP crates |
-| 治理 | PolicyGate 链最深 | 危险命令审批 | allow/deny/ask | 主机默认 + 可选 sandbox | ToolGuard | approval + sandbox |
+| 治理 | PolicyGate 链最深 + Hard floors/RiskClass（OpenWorker P0 对齐） | 危险命令审批 | allow/deny/ask | 主机默认 + 可选 sandbox | ToolGuard | approval + sandbox |
 | 证据 | `policy_gate.py:310` | `tools/terminal_tool_*` | 产物 | `README.md:75,81` | `packages/guard` | `codex-mcp` |
 
 ### 3. 上下文管理

@@ -26,6 +26,32 @@ from core.harness.kernel.execution_context import get_active_release_context
 from core.harness.kernel.execution_context import get_active_tenant_policy_context
 
 
+def _tool_approval_provenance(pr: Any, *, default_source: str) -> Dict[str, Any]:
+    """Build audit approval_provenance from PolicyResult (OpenWorker parity)."""
+    try:
+        from core.harness.infrastructure.gates.approval_gate import build_approval_provenance
+        return build_approval_provenance(
+            source=getattr(pr, "approval_source", None) or default_source,
+            rule_id=getattr(pr, "approval_rule_id", None),
+            severity=None,
+            hard_floor=bool(getattr(pr, "hard_floor", False)),
+            risk_class=getattr(pr, "risk_class", None),
+            reason=getattr(pr, "reason", None),
+        )
+    except Exception as e:
+        logging.getLogger(__name__).debug(
+            "build_approval_provenance fallback: %s", e, exc_info=True,
+        )
+        return {
+            "source": getattr(pr, "approval_source", None) or default_source,
+            "rule_id": getattr(pr, "approval_rule_id", None),
+            "severity": None,
+            "hard_floor": bool(getattr(pr, "hard_floor", False)),
+            "risk_class": getattr(pr, "risk_class", None),
+            "reason": getattr(pr, "reason", None),
+        }
+
+
 async def sys_tool_call(
     tool: Any,
     tool_args: Dict[str, Any],
@@ -516,6 +542,8 @@ async def sys_tool_call(
                     detail={
                         "reason": pr.reason,
                         "policy_version": getattr(pr, "policy_version", None),
+                        "approval_provenance": _tool_approval_provenance(pr, default_source="gate_deny"),
+                        "risk_class": getattr(pr, "risk_class", None),
                     },
                 )
             except Exception as e:
@@ -550,6 +578,9 @@ async def sys_tool_call(
                 "user_id": user_id,
                 "tenant_id": getattr(pr, "tenant_id", None) or args.get("_tenant_id"),
                 "policy_version": getattr(pr, "policy_version", None),
+                "risk_class": getattr(pr, "risk_class", None),
+                "approval_source": getattr(pr, "approval_source", None),
+                "hard_floor": bool(getattr(pr, "hard_floor", False)),
             },
         )
     if pr.decision == PolicyDecision.APPROVAL_REQUIRED:
@@ -597,6 +628,9 @@ async def sys_tool_call(
                         "reason": pr.reason,
                         "approval_request_id": pr.approval_request_id,
                         "policy_version": getattr(pr, "policy_version", None),
+                        "approval_provenance": _tool_approval_provenance(pr, default_source="gate_ask"),
+                        "risk_class": getattr(pr, "risk_class", None),
+                        "hard_floor": bool(getattr(pr, "hard_floor", False)),
                     },
                 )
             except Exception as e:
@@ -650,6 +684,9 @@ async def sys_tool_call(
                 "user_id": user_id,
                 "tenant_id": getattr(pr, "tenant_id", None) or args.get("_tenant_id"),
                 "policy_version": getattr(pr, "policy_version", None),
+                "risk_class": getattr(pr, "risk_class", None),
+                "approval_source": getattr(pr, "approval_source", None),
+                "hard_floor": bool(getattr(pr, "hard_floor", False)),
             },
         )
 
