@@ -3,19 +3,19 @@ title: "aiPlat 安全与治理白皮书"
 volume_id: security-governance
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-15T13:37:29Z"
+generated_at: "2026-10-15T14:52:59Z"
 audience: "CISO、合规、风控"
 core_question: "如何可信可控？"
 priority: P0
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30"
-caps_sha256: "60fcd1882d53c1dd0a7c567f38d349a0f756c8ce2fcb53df362df683a97751cc"
+caps_sha256: "844f0f92beb14373bed99d4df7febc6b184cc616858ade4706815cca3b9c5348"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=security-governance suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=60fcd1882d53c1dd0a7c567f38d349a0f756c8ce2fcb53df362df683a97751cc scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=security-governance suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=844f0f92beb14373bed99d4df7febc6b184cc616858ade4706815cca3b9c5348 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 安全与治理白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 如何可信可控？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-15T13:37:29Z` |
-| CAPABILITIES sha256 | `60fcd1882d53…` |
+| 生成时间 (UTC) | `2026-10-15T14:52:59Z` |
+| CAPABILITIES sha256 | `844f0f92beb1…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -184,6 +184,8 @@ rules:
 ## 七、安全与治理
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| redact_tool_args | `core/harness/infrastructure/gates/approval_reviewer.py` | ✅ | 自动同步 | 已合入 |
+| review_proposed_action | `core/harness/infrastructure/gates/approval_reviewer.py` | ✅ | 自动同步 | 已合入 |
 | set_unattended_attendance | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | resolve_unattended_approval | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | list_unattended_approval_inbox | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -264,10 +266,11 @@ rules:
 | Tool RiskClass | harness/infrastructure/gates/risk_class.py | ✅ | OpenWorker 启发：`READ/EGRESS/WRITE_LOCAL/EXEC/EXTERNAL`；覆盖只可加严；`PolicyGate.check_tool` + `sys_tool_call` 审计透传；生成物不适用（平台横切治理） | 已合入 |
 | Shell command risk | harness/infrastructure/gates/shell_command_risk.py | ✅ | OpenWorker P1：opaque/`$()`/管道、arg-executor（sudo/xargs/docker…）、解释器 `-c`、find `-exec` 等强制 hard floor；接入 ApprovalGate；生成物不适用（平台横切治理） | 已合入 |
 | Unattended Approval Inbox | harness/infrastructure/gates/approval_inbox.py | ✅ | OpenWorker P1：attendance=`attended\|inbox\|auto`；无人值守 park 持久队列；`auto` 固定拒绝 hard floor（禁自批）；`PolicyGate.check_tool` 返回 `inbox_item_id`；CoreFacade + `GET/POST /platform/approvals/unattended*`；`sys_tool_call` 透传 `AIPLAT_TOOL_ATTENDANCE`/trace；生成物不适用（平台横切治理） | 已合入 |
-| SkillsGuard (威胁扫描) | harness/infrastructure/gates/skills_guard.py | ✅ | 78威胁模式，skill注册前安全扫描，11类别全覆盖 | 已合入 |
+| Auto-Approve Reviewer | harness/infrastructure/gates/approval_reviewer.py | ✅ | OpenWorker P2：第二模型仅将非 hard-floor 的 ASK→ALLOW；fail-closed→unsure；不读 body/密钥；熔断后转人工；`AIPLAT_APPROVA
 
----
+…
 
+_(节选)_
 
 ## 十二、Gate 系统
 
