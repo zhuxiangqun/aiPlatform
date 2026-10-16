@@ -1,9 +1,10 @@
 # aiPlat 核心能力对标报告（2026-10 五家重做）
 
-> 最后验证 2026-10-16（security_coworker 种子）
+> 最后验证 2026-10-16（OpenWorker 吸收阶梯收口：#315–#319）
 
-> **调研时点**：2026-10-13  
+> **调研时点**：2026-10-13（列）· 2026-10-16（OpenWorker 吸收）  
 > **对标列（6）**：aiPlat · Hermes Agent · Claude Code · OpenClaw · DeepSeek Harness · OpenAI Codex  
+> **旁路吸收（非列）**：OpenWorker（桌面本地优先 Agent，MIT）— 见 §0.2  
 > **口径**：开源四家以源码/对齐 release 为准；Claude Code 为打包产物级；详见 [`对标底稿-2026-10-五家.md`](./对标底稿-2026-10-五家.md)  
 > **架构摘要入口**：[`docs/architecture/comparison.md`](../architecture/comparison.md)（18 维评分）  
 > **历史稿**：[`docs/archive/aiPlat核心能力对标报告-2026-08-六系统.md`](../archive/aiPlat核心能力对标报告-2026-08-六系统.md)（含 Hermes 双列/Codex-Harness 旧名，只读）  
@@ -21,9 +22,34 @@
 | **OpenClaw** | 开源个人助手：Gateway + 20+ 通道 + 桌面/移动原生端 |
 | **DeepSeek Harness** | 高纯度插件化 Agent harness（事件/工具/子代理可插拔） |
 | **OpenAI Codex** | 开源 coding agent 运行时（Rust）：可嵌入 app-server + OS 沙箱 |
+| **OpenWorker**（旁路） | 桌面本地优先「要成品」Agent；治理内生；不并入对标列（产品位不同） |
 
 **aiPlat 强**：治理、知识/本体、交付 HITL、平台质量门。  
-**aiPlat 相对弱/需追赶**：消费级通道广度（OpenClaw）、会话内学习敏捷度（Hermes）、OS 原生沙箱与 app-server 完备度（Codex）。
+**aiPlat 相对弱/需追赶**：消费级通道广度（OpenClaw）、会话内学习敏捷度（Hermes）、app-server 协议完备度与 OS 沙箱深度（Codex；bwrap/seatbelt 已有，Windows/landlock 仍浅）。
+
+### 0.2 OpenWorker 吸收收口（2026-10-16）
+
+> 定位差：OpenWorker = 本机桌面生产力；aiPlat = 企业控制面；Pi = 厂外薄宿主。  
+> **借语义与闸门，不借 Tauri/25+ SaaS 进 core。**
+
+| 阶梯 | PR | 落地（代码事实） |
+|:---:|:---:|---|
+| P0–P1 | [#315](https://github.com/zhuxiangqun/aiPlatform/pull/315) | Hard floors · RiskClass · shell risk · Unattended Inbox |
+| P2 | [#316](https://github.com/zhuxiangqun/aiPlatform/pull/316) | Auto-Approve Reviewer（fail-closed；不可解 hard floor） |
+| P3 | [#317](https://github.com/zhuxiangqun/aiPlatform/pull/317) | Session write provenance → 写后自跑 hard floor |
+| Pi 桥 | [#318](https://github.com/zhuxiangqun/aiPlatform/pull/318) | `AIPLAT_ENTERPRISE_ATTENDANCE` + unattended list/wait |
+| 专科包 | [#319](https://github.com/zhuxiangqun/aiPlatform/pull/319) | `security_coworker` AGENT + PERSONA + `security_review` 团队种子 |
+
+**验证锚点**（抽查）：
+
+```bash
+rg -n 'check_hard_floor|RiskClass|approval_inbox|approval_reviewer|session_write_provenance' \
+  aiPlat-core/core/harness/infrastructure/gates --glob '*.py' | head
+test -f aiPlat-core/core/workspace_seeds/personas/security_coworker/PERSONA.md
+rg -n 'attendanceInjectFields|aiplat_unattended' packages/aiplat-pi-runtime/extensions/enterprise_approval.ts
+```
+
+**明确不吸收**：桌面 Tauri 壳、本机 Secret Store 产品化、25+ 连接器进 harness（走 MCP/plugin 阶梯）。
 
 ---
 
@@ -31,7 +57,7 @@
 
 | 系统 | 定位 | 本轮指纹 |
 |------|------|----------|
-| aiPlat | 企业 FDE OS | HEAD `e1d87cb`；CAPABILITIES **2105**；`PipelineEngine` `:564` |
+| aiPlat | 企业 FDE OS | HEAD `af3f466`（#319 后）；CAPABILITIES **2185**；`PipelineEngine` `:564` |
 | Hermes | 自进化 Agent | clone `562fda90`；GH **v0.21.7** |
 | Claude Code | Agentic coding | npm **2.1.296** / 本机产物 **2.1.70** |
 | OpenClaw | 多端助手 | **2026.10.2**（= GH latest） |
@@ -165,7 +191,8 @@ aiPlat：Helm/四层服务部署。OpenClaw：Gateway 本机/团队。Codex/CC�
 ### 19. OS 沙箱与工作树
 
 **Codex ★★★★★**：linux-sandbox / windows-sandbox / landlock 路径；git worktree 工具。  
-Claude Code：产品级 sandbox。Hermes：容器后端。OpenClaw：可选 Docker sandbox。aiPlat：SandboxGate + 策略链（非 OS 内核沙箱等价）。
+Claude Code：产品级 sandbox。Hermes：容器后端。OpenClaw：可选 Docker sandbox。  
+aiPlat：**SandboxGate（策略）+ `os_sandbox.py`（bwrap/seatbelt，StageSandbox/exec 已接线）**；生产可 fail-closed。相对 Codex 仍缺 Windows AppContainer / landlock 深度与默认全路径强制。OpenWorker 侧 OpenShell 容器沙箱未搬入（可选后续，非 P0）。
 
 ### 20. 评测 / 质量门 / 可观测拆分
 
@@ -190,7 +217,7 @@ Codex/DSH/CC：hooks/diagnostics/transcript。Hermes/OpenClaw：偏运行洞察�
 |----|------|----------|------|
 | N1 | 消费级通道/原生端广度 | OpenClaw | 企业通道≠全通道；信任模型不可照搬 |
 | N2 | 多终端 serverless 后端矩阵 | Hermes | Modal/Daytona/Vercel 等 |
-| N3 | OS 原生沙箱深度 | Codex | landlock/seatbelt 族 |
+| N3 | OS 原生沙箱深度 | Codex | **部分闭环**：`os_sandbox.py` bwrap/seatbelt 已接线；剩 Windows/landlock 与默认全工具强制 |
 | N4 | app-server 级可嵌入协议完备度 | Codex | 已有 Pi/Facade/hooks，协议面仍可加深 |
 | N5 | 会话内学习闭环产品化完整度 | Hermes | 机制有吸收，体验形态不同 |
 
@@ -235,7 +262,7 @@ P2：DSH continuation 多样性、CC 体验细节。
 |------|--------|--------|----------|-----|-------|-------------|
 | 组织哲学 | 分层 OS + 配置驱动流水线 | 单 Agent + Gateway | Gateway + Nodes/Apps | 一切皆插件 | 可嵌入 runtime | 产品 Agent |
 | 状态 | PipelineState + 多存储 | 会话 DB + 策展文件 | Gateway 会话 | 事件源会话 | Thread/Turn | transcript |
-| 安全边界 | 多租户 + Gate | 配置审批 + 容器 | 单操作者 | guard 包 | OS sandbox | 产品权限 |
+| 安全边界 | 多租户 + Gate + OpenWorker P0–P3（§0.2） | 配置审批 + 容器 | 单操作者 | guard 包 | OS sandbox | 产品权限 |
 | 扩展 | MCP/Skill/Hook/Facade | toolsets/MCP | extensions/ClawHub | Cordis | crates/MCP | hooks/MCP |
 
 ---
@@ -243,7 +270,8 @@ P2：DSH continuation 多样性、CC 体验细节。
 ## 20. 缺口矩阵（2026-10 增量节）
 
 历史 G1–G15 闭环状态见 archive 旧报告与吸收评估。  
-**本轮新增观察项**：N1–N5（§16.2）。不将 N 项自动升级为工程承诺，除非单独立项。
+**本轮新增观察项**：N1–N5（§16.2）。不将 N 项自动升级为工程承诺，除非单独立项。  
+**OpenWorker 旁路吸收**：§0.2 阶梯 #315–#319 **已收口**（治理 + Pi attendance + 安全专科种子）；不进入 N 矩阵（产品位不同，非「缺列」）。
 
 ---
 
@@ -259,6 +287,11 @@ P2：DSH continuation 多样性、CC 体验细节。
 ```bash
 test -f docs/research/对标底稿-2026-10-五家.md
 rg -n '六平台|18 维度|加权总分' docs/architecture/comparison.md
+# OpenWorker 旁路吸收收口（§0.2 / #315–#319）
+rg -n 'check_hard_floor|session_write_provenance|ApprovalInboxStore' \
+  aiPlat-core/core/harness/infrastructure/gates --glob '*.py' | head
+test -f aiPlat-core/core/workspace_seeds/personas/security_coworker/PERSONA.md
+rg -n 'attendanceInjectFields' packages/aiplat-pi-runtime/extensions/enterprise_approval.ts
 python3 scripts/generate_whitepaper_volumes.py --check
 bash scripts/verify-whitepaper-ready.sh
 ```
