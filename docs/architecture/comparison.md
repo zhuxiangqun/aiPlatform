@@ -1,7 +1,8 @@
 # aiPlat — 六平台深度对标摘要（2026-10）
 
-> **生成/调研时点**：2026-10-13  
+> **生成/调研时点**：2026-10-13（六列）· 2026-10-16（OpenWorker 旁路吸收收口）  
 > **对标范围**：aiPlat × Hermes Agent × Claude Code × OpenClaw × DeepSeek Harness × OpenAI Codex  
+> **旁路吸收（非列）**：OpenWorker — 治理/Pi/专科种子已合入（#315–#319）；细节见对标报告 **§0.2**（不进 18 维评分列）  
 > **细节与证据权威**：[`docs/research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) · 底稿 [`docs/research/对标底稿-2026-10-五家.md`](../research/对标底稿-2026-10-五家.md)  
 > **本文角色**：架构对比权威入口。白皮书技术卷 §3.2 **只摘定位+总分摘要**，不全文粘贴本文。**禁止**把本文当作第二能力清单；星级须能回溯底稿。  
 > 旧四平台稿已归档：[`docs/archive/comparison-four-platform-2026-07.md`](../archive/comparison-four-platform-2026-07.md)
@@ -15,7 +16,7 @@
 | **定位** | 企业 AI 操作系统（交付流水线 + 治理 + 知识） | 自学习个人/团队 Agent | 终端/IDE agentic coding | 多端个人助手（Gateway） | 一切皆插件的 agent harness | 可嵌入 coding agent 运行时 |
 | **语言** | Python | Python + TUI/TS | 闭源引擎（JS 产物） | TypeScript | TypeScript | Rust（`codex-rs`） |
 | **协议** | 私有 / 平台 | MIT | 专有引擎 | MIT | 开源（rc） | Apache-2.0 |
-| **本轮指纹** | HEAD + CAP 2105 | clone `562fda90` / tag v0.21.7 | npm latest 2.1.296（产物 2.1.70） | pkg/GH **2026.10.2** | 0.1.0-rc.5 @ 47f94385 | GH **rust-v0.162.1**（本地树结构） |
+| **本轮指纹** | HEAD `af3f466` + CAP **2185** | clone `562fda90` / tag v0.21.7 | npm latest 2.1.296（产物 2.1.70） | pkg/GH **2026.10.2** | 0.1.0-rc.5 @ 47f94385 | GH **rust-v0.162.1**（本地树结构） |
 | **架构重心** | Pipeline + Syscall/Gate + 本体/知识 | 单循环 + Gateway + 学习闭环 | Dynamic workflows + hooks | Gateway + Channels + Apps | Cordis 插件 / 事件源 | Thread/Turn + app-server + OS 沙箱 |
 
 ---
