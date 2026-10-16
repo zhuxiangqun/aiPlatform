@@ -1,5 +1,7 @@
 # aiPlat 核心能力对标报告（2026-10 五家重做）
 
+> 最后验证 2026-10-16（security_coworker 种子）
+
 > **调研时点**：2026-10-13  
 > **对标列（6）**：aiPlat · Hermes Agent · Claude Code · OpenClaw · DeepSeek Harness · OpenAI Codex  
 > **口径**：开源四家以源码/对齐 release 为准；Claude Code 为打包产物级；详见 [`对标底稿-2026-10-五家.md`](./对标底稿-2026-10-五家.md)  
@@ -57,7 +59,7 @@
 | 子维 | aiPlat | Hermes | Claude Code | OpenClaw | DSH | Codex |
 |------|--------|--------|-------------|----------|-----|-------|
 | 模型 | BaseTool + Syscall | toolsets + terminal 族 | 内置工具集 | tools/skills/plugins | defineTool + MCP | tools + MCP crates |
-| 治理 | PolicyGate 链最深 + Hard floors/RiskClass（OpenWorker P0 对齐） | 危险命令审批 | allow/deny/ask | 主机默认 + 可选 sandbox | ToolGuard | approval + sandbox |
+| 治理 | PolicyGate 链最深 + OpenWorker P0–P3 + Pi attendance + 安全专科 coworker 种子 | 危险命令审批 | allow/deny/ask | 主机默认 + 可选 sandbox | ToolGuard | approval + sandbox |
 | 证据 | `policy_gate.py:310` | `tools/terminal_tool_*` | 产物 | `README.md:75,81` | `packages/guard` | `codex-mcp` |
 
 ### 3. 上下文管理
@@ -95,7 +97,7 @@ Codex：goal/turn，无企业交付 DAG。
 
 | 系统 | 结论 |
 |------|------|
-| aiPlat | 多 Gate + Hard floors + RiskClass + Unattended Inbox + Auto-Approve Reviewer + Session Write Provenance（OpenWorker 启发）+ 会话级 approve（企业） |
+| aiPlat | 多 Gate + OpenWorker P0–P3（Hard floors/RiskClass/Inbox/Reviewer/write-provenance）+ Pi Unattended attendance 桥 + security_coworker 出厂种子；会话级 approve（企业） |
 | Hermes | 容器后端隔离强；审批配置化 |
 | Claude Code | sandbox/permissions 产品化（产物可证） |
 | OpenClaw | **单操作者信任模型**；非敌意多租户（SECURITY.md） |

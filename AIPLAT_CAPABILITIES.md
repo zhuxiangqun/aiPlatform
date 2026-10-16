@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2180
+total_capabilities: 2185
 last_updated: 2026-10-15
 version: "30.10"
 auto_sync: true
@@ -1309,6 +1309,7 @@ scan_hash: 8f9548ec24f4
 | code_graph | harness/knowledge/code_graph.py | ✅ | 代码图谱（AST imports/calls/symbols/routes，5 仓库全量 + mtime 增量 + 新文件发现）；经 get_aiplat_home() 解析（2026-08-28 修复） | 已合入 |
 | **security_view** | harness/knowledge/security_view.py | ✅ | 基于 code_graph 的确定性安全视图编译器（secview.v1：entries/sinks/gates/scored hot_paths）；无 LLM；reachability≠taint（heuristic）；CoreFacade + sys_code_intel_security_* + diagnostics/code-intel/security-view | 已合入 |
 | **security_review team (Phase B)** | workspace_seeds/teams/security_review.yaml + engine/skills/security_{plan,trace,critique,report} | ✅ | 全 handler 无 LLM 干跑：plan→trace→critique→report；`run_security_review_dry` + `POST .../security-review-dry`；severity≤candidate | 已合入 |
+| Security coworker persona | workspace_seeds/agents/security_coworker + security_* seeds + personas/security_coworker/PERSONA.md | ✅ | OpenWorker 对位专科同事出厂包：outcome-first SOP + 推荐 `security_review` 团队 + attendance=inbox；startup 同步 `~/.aiplat/agents` + `personas`（不覆盖）；**不**新建并行扫描引擎；生成物适用：已接线（工厂/工作区种子） | 已合入 |
 | doc_compressor | harness/knowledge/doc_compressor.py | ✅ | 自动同步 | 已合入 |
 | ontology_query_mapper | harness/knowledge/ontology_query_mapper.py | ✅ | 自动同步 | 已合入 |
 | wiki_retriever | harness/knowledge/wiki_retriever.py | ✅ | 自动同步 | 已合入 |
@@ -2745,6 +2746,10 @@ scan_hash: 8f9548ec24f4
 ## 二十五、管理 & 质量
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| extractInboxItemId | `packages/aiplat-pi-runtime/extensions/enterprise_approval.ts` | ✅ | 自动同步 | 已合入 |
+| waitForUnattended | `packages/aiplat-pi-runtime/extensions/enterprise_approval.ts` | ✅ | 自动同步 | 已合入 |
+| listUnattendedInbox | `packages/aiplat-pi-runtime/extensions/enterprise_approval.ts` | ✅ | 自动同步 | 已合入 |
+| attendanceInjectFields | `packages/aiplat-pi-runtime/extensions/enterprise_approval.ts` | ✅ | 自动同步 | 已合入 |
 | buildRunObsSnapshot | `aiPlat-management/frontend/src/pages/App/Factory/runObsSnapshot.ts` | ✅ | 自动同步 | 已合入 |
 | render_l3_duty_markdown | `aiPlat-platform/delivery/l3_duty_desk.py` | ✅ | 自动同步 | 已合入 |
 | build_l3_duty_desk | `aiPlat-platform/delivery/l3_duty_desk.py` | ✅ | 自动同步 | 已合入 |
@@ -3098,7 +3103,7 @@ scan_hash: 8f9548ec24f4
 | Harness 执行引擎 | 248 | 1 | 249 |
 | 记忆子系统 | 58 | 0 | 58 |
 | 知识引擎（本体） | 375 | 9 | 384 |
-| RAG 检索 | 51 | 0 | 51 |
+| RAG 检索 | 52 | 0 | 52 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 168 | 0 | 168 |
 | Skill 系统 | 157 | 0 | 157 |
@@ -3121,7 +3126,7 @@ scan_hash: 8f9548ec24f4
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 90 | 0 | 90 |
+| 管理 & 质量 | 94 | 0 | 94 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -3140,7 +3145,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2170** | **10** | **2180** |
+| **总计** | **2175** | **10** | **2185** |
 
 | **总计** | **1095** | **0** | **1095** |
 
