@@ -242,6 +242,14 @@ export async function executeEnterpriseTool(
   };
   // OpenWorker P1: inject attendance/session so PolicyGate can park Unattended Inbox.
   const att = attendanceInjectFields();
+  const task = (
+    process.env.AIPLAT_ENTERPRISE_TASK ||
+    process.env.AIPLAT_USER_GOAL ||
+    ""
+  ).trim();
+  if (task && (body._user_goal === undefined || body._user_goal === "")) {
+    body._user_goal = task.slice(0, 400);
+  }
   for (const [k, v] of Object.entries(att)) {
     if (body[k] === undefined || body[k] === null || body[k] === "") {
       body[k] = v;

@@ -93,6 +93,9 @@ export AIPLAT_ENTERPRISE_APPROVAL=1
 # Unattended Inbox (OpenWorker): daemon/cron → inbox|auto; default attended
 # export AIPLAT_ENTERPRISE_ATTENDANCE=inbox
 # export AIPLAT_ENTERPRISE_SESSION_ID=my-pi-session
+# Task context for auto-approve reviewer (same command ≠ same risk):
+# export AIPLAT_ENTERPRISE_TASK="reset the local dev database"
+# # or: export AIPLAT_USER_GOAL="…"
 
 pi -e .
 # /aiplat-status          → enterprise_hybrid / tools / tool_gate / memory / approval

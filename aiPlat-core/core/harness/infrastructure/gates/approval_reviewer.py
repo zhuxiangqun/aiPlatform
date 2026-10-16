@@ -143,14 +143,45 @@ def redact_tool_args(tool_args: Optional[dict], *, limit: int = 600) -> Dict[str
     return out
 
 
+_TASK_KEYS = ("_user_goal", "_task", "_goal", "_task_context", "goal", "user_goal", "task")
+
+# Side effects that must not be auto-allowed without an owner task string.
+# Same command (e.g. npm run db:reset) is safe or disastrous depending on the task.
+_CONSEQUENTIAL = frozenset({"write_local", "exec", "external", "egress"})
+
+
+def resolve_task_context(
+    tool_args: Optional[dict] = None,
+    extra: Optional[dict] = None,
+) -> str:
+    """Owner task / goal for the reviewer (pi-warden style scope), truncated."""
+    blobs: List[str] = []
+    for src in (extra, tool_args):
+        if not isinstance(src, dict):
+            continue
+        for key in _TASK_KEYS:
+            val = src.get(key)
+            if isinstance(val, str) and val.strip():
+                blobs.append(" ".join(val.split()))
+                break
+    text = " | ".join(blobs)
+    return text[:400]
+
+
 def _owner_goal(tool_args: Optional[dict]) -> str:
-    if not isinstance(tool_args, dict):
-        return ""
-    for key in ("_user_goal", "_task", "_goal", "goal", "user_goal"):
-        val = tool_args.get(key)
-        if isinstance(val, str) and val.strip():
-            return " ".join(val.split())[:400]
-    return ""
+    return resolve_task_context(tool_args)
+
+
+def task_context_required(risk_class: Optional[str]) -> bool:
+    """Consequential tools need a task string before the reviewer may ALLOW."""
+    if os.getenv("AIPLAT_REVIEWER_REQUIRE_TASK", "1").strip().lower() in (
+        "0",
+        "false",
+        "no",
+        "off",
+    ):
+        return False
+    return str(risk_class or "").strip().lower() in _CONSEQUENTIAL
 
 
 def _parse_verdict(text: str) -> ReviewerResult:
@@ -308,8 +339,13 @@ async def review_proposed_action(
     gate_message: str = "",
     hard_floor: bool = False,
     session_id: str = "",
+    risk_class: Optional[str] = None,
 ) -> ReviewerResult:
-    """Review one ASK-level action. Hard floors short-circuit to unsure (caller must not allow)."""
+    """Review one ASK-level action. Hard floors short-circuit to unsure (caller must not allow).
+
+    Consequential risk classes without an owner task short-circuit to unsure
+    (no LLM call) — same command must not auto-allow under an unknown goal.
+    """
     if hard_floor:
         return ReviewerResult(
             reason="hard_floor_not_reviewable",
@@ -326,6 +362,11 @@ async def review_proposed_action(
 
     redacted = redact_tool_args(tool_args)
     goal = _owner_goal(tool_args)
+    if task_context_required(risk_class) and not goal:
+        return ReviewerResult(
+            reason="missing_task_context",
+            source=APPROVAL_SOURCE_REVIEWER_UNSURE,
+        )
     fn = _review_override or _default_llm_review
     try:
         result = await fn(
