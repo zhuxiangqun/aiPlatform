@@ -1,10 +1,10 @@
 # aiPlat 核心能力对标报告（2026-10 五家重做）
 
-> 最后验证 2026-10-16（OpenWorker 吸收阶梯收口：#315–#319）
+> 最后验证 2026-10-16（OpenWorker 收口 + 认知分层旁路 §0.3）
 
-> **调研时点**：2026-10-13（列）· 2026-10-16（OpenWorker 吸收）  
+> **调研时点**：2026-10-13（列）· 2026-10-16（OpenWorker 吸收 · 认知分层旁路）  
 > **对标列（6）**：aiPlat · Hermes Agent · Claude Code · OpenClaw · DeepSeek Harness · OpenAI Codex  
-> **旁路吸收（非列）**：OpenWorker（桌面本地优先 Agent，MIT）— 见 §0.2  
+> **旁路吸收（非列）**：OpenWorker — §0.2；**认知分层**（想·判·行·呈 / Jev·Skill·Knap 理念）— §0.3；**框架层库**（aisuite / LangChain）— 不入列（见 §0.3 末）  
 > **口径**：开源四家以源码/对齐 release 为准；Claude Code 为打包产物级；详见 [`对标底稿-2026-10-五家.md`](./对标底稿-2026-10-五家.md)  
 > **架构摘要入口**：[`docs/architecture/comparison.md`](../architecture/comparison.md)（18 维评分）  
 > **历史稿**：[`docs/archive/aiPlat核心能力对标报告-2026-08-六系统.md`](../archive/aiPlat核心能力对标报告-2026-08-六系统.md)（含 Hermes 双列/Codex-Harness 旧名，只读）  
@@ -23,6 +23,7 @@
 | **DeepSeek Harness** | 高纯度插件化 Agent harness（事件/工具/子代理可插拔） |
 | **OpenAI Codex** | 开源 coding agent 运行时（Rust）：可嵌入 app-server + OS 沙箱 |
 | **OpenWorker**（旁路） | 桌面本地优先「要成品」Agent；治理内生；不并入对标列（产品位不同） |
+| **认知分层**（旁路理念） | 大模型只「想」；判/行/呈交给专用确定性或快决策子系统 — §0.3 |
 
 **aiPlat 强**：治理、知识/本体、交付 HITL、平台质量门。  
 **aiPlat 相对弱/需追赶**：消费级通道广度（OpenClaw）、会话内学习敏捷度（Hermes）、app-server 协议完备度与 OS 沙箱深度（Codex；bwrap/seatbelt 已有，Windows/landlock 仍浅）。
@@ -50,6 +51,46 @@ rg -n 'attendanceInjectFields|aiplat_unattended' packages/aiplat-pi-runtime/exte
 ```
 
 **明确不吸收**：桌面 Tauri 壳、本机 Secret Store 产品化、25+ 连接器进 harness（走 MCP/plugin 阶梯）。
+
+### 0.3 认知分层旁路（想·判·行·呈，2026-10-16）
+
+> 社区/业界叙事（含 TypeSafe「System One」、pi-warden 任务语境护栏、MCP 渐进披露、模板呈现）：**单体 LLM 交成本/延迟/脆弱三税**；生产 Agent 收敛为「LLM 只干难语义，判断·执行·呈现交给专用层」。  
+> **不入六列评分**（理念层 / 产品品牌，非对位完整系统）。**不绑定**商用 Jev / Knap 品牌进 core 叙事。
+
+| 层 | 文章主张 | aiPlat 已对齐（代码事实） | Pi |
+|----|----------|--------------------------|-----|
+| **想 · LLM** | Power for Hard Things | `best_model_for_purpose` + T1–T5；编码宪法 / SOP | 自备模型 + SOP 注入 |
+| **判 · 决策** | 快、校准置信度、类型化原语 | PolicyGate · RiskClass · ApprovalGate · Auto-Approve Reviewer（#316）· Evidence Envelope；**尚无**独立非自回归「System 1 ASIC」 | `enterprise_tool_gate`；裁决回平台 |
+| **行 · Skill/MCP** | 副作用走确定性代码 | `execution_type:handler` · Syscall · MCP · hard floors / Inbox | handler 桥 + 工具代理 |
+| **呈 · 模板** | Schema JSON + 确定性渲染 | Jinja stage · `output_schema`→`response_format` · 交付报告导出 | 导出 Markdown；交付物宜走 handler/模板 |
+
+**典型痛点**（同命令不同任务：`npm run db:reset`）：正则黑名单不够 → 需 **任务语境闸门**（pi-warden / Reviewer 同构）。aiPlat 已有可选 LLM Reviewer；缺口是把 `task/goal/stage` 强制进评审输入，并把「低于置信度 → Inbox」做成可度量 error budget（可选后续，**未立项不承诺**）。
+
+**可选后续（旁路观察，非 N 矩阵自动升级）**：
+
+| 优先级 | 项 | 边界 |
+|:---:|---|---|
+| P0 | 任务语境闸门：Reviewer/Approval 强制带 goal/stage | 不解 hard floor；Pi 只透传 `_task_context` |
+| P1 | 便宜 System 1 决策面（小分类器/logits/规则+校准表） | 不搬进 Pi；不强制商用 Jev |
+| P1 | 呈层：工厂/FDE 交付物「LLM→schema JSON→模板」覆盖面 | Pi 交付物走确定性路径 |
+| P2 | MCP/工具 schema 渐进披露（压上下文） | 成本阶梯既有纪律不变 |
+
+**明确不入列的框架层库**（与六列产品位不同）：
+
+| 库 | 对位 | 为何不进评分列 |
+|----|------|----------------|
+| **aisuite** | 模型统一调用层 ≈ infra `ModelManager` / adapter | SDK/库，非整机 Agent |
+| **LangChain** | 通用 Agent 工具链 | 开发框架，非企业 OS / 完整运行时 |
+
+**验证锚点**（抽查）：
+
+```bash
+rg -n 'best_model_for_purpose|ModelTierRouter' aiPlat-core/core/harness --glob '*.py' | head
+rg -n 'review_proposed_action|RiskClass|check_hard_floor' \
+  aiPlat-core/core/harness/infrastructure/gates --glob '*.py' | head
+rg -n 'build_llm_response_format|output_schema' aiPlat-core --glob '*.py' | head
+rg -n 'execution_type' aiPlat-core/core/engine/skills/*/SKILL.md | head
+```
 
 ---
 
@@ -271,7 +312,8 @@ P2：DSH continuation 多样性、CC 体验细节。
 
 历史 G1–G15 闭环状态见 archive 旧报告与吸收评估。  
 **本轮新增观察项**：N1–N5（§16.2）。不将 N 项自动升级为工程承诺，除非单独立项。  
-**OpenWorker 旁路吸收**：§0.2 阶梯 #315–#319 **已收口**（治理 + Pi attendance + 安全专科种子）；不进入 N 矩阵（产品位不同，非「缺列」）。
+**OpenWorker 旁路吸收**：§0.2 阶梯 #315–#319 **已收口**（治理 + Pi attendance + 安全专科种子）；不进入 N 矩阵（产品位不同，非「缺列」）。  
+**认知分层旁路**：§0.3 — 理念已与 Gate/Skill/schema 对齐；任务语境闸门 / 专用 System 1 / 呈层全覆盖为**可选观察**，不自动升 N 项。aisuite / LangChain **不入列**。
 
 ---
 
@@ -292,6 +334,8 @@ rg -n 'check_hard_floor|session_write_provenance|ApprovalInboxStore' \
   aiPlat-core/core/harness/infrastructure/gates --glob '*.py' | head
 test -f aiPlat-core/core/workspace_seeds/personas/security_coworker/PERSONA.md
 rg -n 'attendanceInjectFields' packages/aiplat-pi-runtime/extensions/enterprise_approval.ts
+# 认知分层旁路（§0.3）
+rg -n 'review_proposed_action|build_llm_response_format' aiPlat-core --glob '*.py' | head
 python3 scripts/generate_whitepaper_volumes.py --check
 bash scripts/verify-whitepaper-ready.sh
 ```
