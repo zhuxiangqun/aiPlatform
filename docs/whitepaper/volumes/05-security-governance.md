@@ -3,19 +3,19 @@ title: "aiPlat 安全与治理白皮书"
 volume_id: security-governance
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-16T00:18:17Z"
+generated_at: "2026-10-16T05:29:45Z"
 audience: "CISO、合规、风控"
 core_question: "如何可信可控？"
 priority: P0
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30"
-caps_sha256: "8efd0f5b71fffa09e9817468b085e3bcf71920b579ed4eff5217f2a7ed5e2d2e"
+caps_sha256: "0fe3644e0b8571725b3c35e9044256ad24e67e0a208159319e6cba04797080a6"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=security-governance suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=8efd0f5b71fffa09e9817468b085e3bcf71920b579ed4eff5217f2a7ed5e2d2e scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=security-governance suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=0fe3644e0b8571725b3c35e9044256ad24e67e0a208159319e6cba04797080a6 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 安全与治理白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 如何可信可控？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-16T00:18:17Z` |
-| CAPABILITIES sha256 | `8efd0f5b71ff…` |
+| 生成时间 (UTC) | `2026-10-16T05:29:45Z` |
+| CAPABILITIES sha256 | `0fe3644e0b85…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -184,6 +184,7 @@ rules:
 ## 七、安全与治理
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| resolve_task_context | `core/harness/infrastructure/gates/approval_reviewer.py` | ✅ | 自动同步 | 已合入 |
 | provenance_forces_hard_floor | `core/harness/infrastructure/gates/session_write_provenance.py` | ✅ | 自动同步 | 已合入 |
 | record_session_write | `core/harness/infrastructure/gates/session_write_provenance.py` | ✅ | 自动同步 | 已合入 |
 | SessionWriteProvenance | `core/harness/infrastructure/gates/session_write_provenance.py` | ✅ | 自动同步 | 已合入 |
@@ -268,7 +269,7 @@ rules:
 | ApprovalGate (危险命令) | harness/infrastructure/gates/approval_gate.py | ✅ | 25规则危险操作检测，CRITICAL/HIGH/MEDIUM/LOW 四级，集成 PolicyGate；**Hard floors**：CRITICAL 不可被 auto_approve / session 批准 / `AIPLAT_APPROVALS_DISABLED` 降低（仅 `AIPLAT_HARD_FLOOR_DISABLED` 逃生）；审计写 `approval_provenance` | 已合入 |
 | Tool RiskClass | harness/infrastructure/gates/risk_class.py | ✅ | OpenWorker 启发：`READ/EGRESS/WRITE_LOCAL/EXEC/EXTERNAL`；覆盖只可加严；`PolicyGate.check_tool` + `sys_tool_call` 审计透传；生成物不适用（平台横切治理） | 已合入 |
 | Shell command risk | harness/infrastructure/gates/shell_command_risk.py | ✅ | OpenWorker P1：opaque/`$()`/管道、arg-executor（sudo/xargs/docker…）、解释器 `-c`、find `-exec` 等强制 hard floor；接入 ApprovalGate；生成物不适用（平台横切治理） | 已合入 |
-| Unattended Approval Inbox | harness/infrastructure/gates/approval_inbox.py | ✅ | OpenWorker P1：attendance=`attended\|inbox\|auto`；无人值守 park 持久队列；`auto` 固定拒绝 hard floor（禁自批）；`PolicyGate.check
+| Unattended Approval Inbox | harness/infrastructure/gates/approval_inbox.py | ✅ | OpenWork
 
 …
 
