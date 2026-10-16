@@ -14,6 +14,7 @@ from core.harness.infrastructure.gates.approval_reviewer import (
     reviewer_enabled,
     set_review_fn_for_tests,
     APPROVAL_SOURCE_REVIEWER_ALLOW,
+    APPROVAL_SOURCE_REVIEWER_UNSURE,
 )
 from core.harness.infrastructure.gates.policy_gate import PolicyDecision, PolicyGate
 from core.harness.infrastructure.gates.approval_gate import reset_approval_gate
@@ -122,6 +123,47 @@ class TestReviewProposedAction:
         assert r.circuit_open is True
         assert r.verdict == ReviewerVerdict.UNSURE
 
+    @pytest.mark.asyncio
+    async def test_consequential_without_task_skips_llm(self):
+        called = {"n": 0}
+
+        async def allow(**kwargs):
+            called["n"] += 1
+            return ReviewerResult(verdict=ReviewerVerdict.ALLOW, reason="nope")
+
+        set_review_fn_for_tests(allow)
+        r = await review_proposed_action(
+            tool_name="code_execution",
+            tool_args={"code": "x = 1", "_session_id": "no-goal"},
+            hard_floor=False,
+            risk_class="exec",
+        )
+        assert called["n"] == 0
+        assert r.verdict == ReviewerVerdict.UNSURE
+        assert r.reason == "missing_task_context"
+
+    @pytest.mark.asyncio
+    async def test_consequential_with_task_reaches_reviewer(self):
+        async def allow(**kwargs):
+            assert "reset" in (kwargs.get("owner_goal") or "")
+            return ReviewerResult(
+                verdict=ReviewerVerdict.ALLOW,
+                reason="matches reset task",
+                source=APPROVAL_SOURCE_REVIEWER_ALLOW,
+            )
+
+        set_review_fn_for_tests(allow)
+        r = await review_proposed_action(
+            tool_name="code_execution",
+            tool_args={
+                "code": "npm run db:reset",
+                "_user_goal": "reset the local dev database",
+                "_session_id": "with-goal",
+            },
+            risk_class="exec",
+        )
+        assert r.verdict == ReviewerVerdict.ALLOW
+
 
 def _high_ask_args(**extra):
     """code_execution is HIGH (ASK) but harmless code avoids shell hard-floor heuristics."""
@@ -157,6 +199,25 @@ class TestPolicyGateReviewerWiring:
         assert pr.decision == PolicyDecision.ALLOW
         assert pr.approval_source == APPROVAL_SOURCE_REVIEWER_ALLOW
         assert pr.hard_floor is False
+
+    async def test_exec_without_task_stays_ask(self, monkeypatch):
+        monkeypatch.setenv("AIPLAT_APPROVAL_REVIEWER", "1")
+
+        async def allow(**kwargs):
+            return ReviewerResult(verdict=ReviewerVerdict.ALLOW, reason="blind")
+
+        set_review_fn_for_tests(allow)
+        gate = PolicyGate()
+        args = _high_ask_args(_session_id="rev-notask")
+        args.pop("_user_goal", None)
+        pr = await gate.check_tool(
+            user_id="u1",
+            tool_name="code_execution",
+            tool_args=args,
+        )
+        assert pr.decision == PolicyDecision.APPROVAL_REQUIRED
+        assert pr.approval_source == APPROVAL_SOURCE_REVIEWER_UNSURE
+        assert "missing_task_context" in (pr.reason or "")
 
     async def test_reviewer_never_lifts_hard_floor(self, monkeypatch):
         monkeypatch.setenv("AIPLAT_APPROVAL_REVIEWER", "1")

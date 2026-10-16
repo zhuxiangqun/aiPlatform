@@ -425,12 +425,12 @@ class PolicyGate:
         gate_message: str,
         risk_class: Optional[str],
         approval_rule_id: Optional[str],
-    ) -> Tuple[Optional[PolicyResult], Optional[str]]:
+    ) -> Tuple[Optional[PolicyResult], Optional[str], str]:
         """Second-model reviewer for non-floor ASK under auto-approve.
 
-        Returns ``(PolicyResult, None)`` on allow/deny, or ``(None, reviewer_unsure)``
-        when fail-closed / unsure so the caller can park with provenance.
-        ``(None, None)`` when the reviewer is disabled / unavailable.
+        Returns ``(PolicyResult, None, "")`` on allow/deny, or
+        ``(None, reviewer_unsure, detail)`` when fail-closed so the caller parks.
+        ``(None, None, "")`` when the reviewer is disabled / unavailable.
         """
         try:
             from core.harness.infrastructure.gates.approval_reviewer import (
@@ -442,11 +442,11 @@ class PolicyGate:
                 APPROVAL_SOURCE_REVIEWER_UNSURE,
             )
         except ImportError:
-            return None, None
+            return None, None, ""
 
         args = tool_args if isinstance(tool_args, dict) else {}
         if not reviewer_enabled(args):
-            return None, None
+            return None, None, ""
 
         session_id = str(args.get("_session_id") or args.get("_run_id") or "default")
         try:
@@ -456,10 +456,11 @@ class PolicyGate:
                 gate_message=gate_message,
                 hard_floor=False,
                 session_id=session_id,
+                risk_class=risk_class,
             )
         except Exception as e:
             logger.debug("approval_reviewer skipped: %s", e, exc_info=True)
-            return None, APPROVAL_SOURCE_REVIEWER_UNSURE
+            return None, APPROVAL_SOURCE_REVIEWER_UNSURE, "reviewer_error"
 
         if result.verdict == ReviewerVerdict.ALLOW:
             return (
@@ -472,6 +473,7 @@ class PolicyGate:
                     hard_floor=False,
                 ),
                 None,
+                "",
             )
         if result.verdict == ReviewerVerdict.DENY:
             return (
@@ -484,6 +486,7 @@ class PolicyGate:
                     hard_floor=False,
                 ),
                 None,
+                "",
             )
         # unsure / circuit → caller parks for human
         logger.debug(
@@ -492,7 +495,7 @@ class PolicyGate:
             result.reason,
             result.circuit_open,
         )
-        return None, APPROVAL_SOURCE_REVIEWER_UNSURE
+        return None, APPROVAL_SOURCE_REVIEWER_UNSURE, str(result.reason or "")
 
     def _approval_required_result(
         self,
@@ -1160,11 +1163,12 @@ class PolicyGate:
 
                 # OpenWorker P2: Auto-Approve reviewer — ASK only, never hard floors.
                 park_source = src
+                review_detail = ""
                 if (
                     not approval_result.hard_floor
                     and (_auto_approve or bool(_args.get("_approval_reviewer")))
                 ):
-                    reviewed, unsure_src = await self._maybe_auto_approve_review(
+                    reviewed, unsure_src, review_detail = await self._maybe_auto_approve_review(
                         tool_name=tool_name,
                         tool_args=_args,
                         gate_message=str(approval_result.message or ""),
@@ -1176,8 +1180,11 @@ class PolicyGate:
                     if unsure_src:
                         park_source = unsure_src
 
+                ask_reason = f"approval_gate:ask — {approval_result.message}"
+                if review_detail:
+                    ask_reason = f"{ask_reason} ({review_detail})"
                 return self._approval_required_result(
-                    reason=f"approval_gate:ask — {approval_result.message}",
+                    reason=ask_reason,
                     tool_name=tool_name,
                     tool_args=_args,
                     user_id=user_id,

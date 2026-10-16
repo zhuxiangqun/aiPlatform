@@ -235,6 +235,22 @@ async def sys_tool_call(
                 args["_attendance"] = str(att)
     except Exception as e:
         logging.warning(str(e), exc_info=True)
+    # Task context for the action reviewer (same command, different goals).
+    try:
+        if not any(isinstance(args.get(k), str) and str(args.get(k)).strip() for k in ("_user_goal", "_task", "_goal")):
+            goal = None
+            if isinstance(trace_context, dict):
+                for key in ("user_goal", "task", "goal", "owner_request", "_user_goal"):
+                    val = trace_context.get(key)
+                    if isinstance(val, str) and val.strip():
+                        goal = val.strip()
+                        break
+            if not goal:
+                goal = (os.getenv("AIPLAT_USER_GOAL") or "").strip() or None
+            if goal:
+                args["_user_goal"] = goal[:400]
+    except Exception as e:
+        logging.warning(str(e), exc_info=True)
     # Carry profile for observability/debugging (best-effort).
     if coding_profile and "_coding_policy_profile" not in args:
         args["_coding_policy_profile"] = coding_profile

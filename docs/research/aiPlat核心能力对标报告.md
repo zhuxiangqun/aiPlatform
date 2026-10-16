@@ -64,16 +64,14 @@ rg -n 'attendanceInjectFields|aiplat_unattended' packages/aiplat-pi-runtime/exte
 | **行 · Skill/MCP** | 副作用走确定性代码 | `execution_type:handler` · Syscall · MCP · hard floors / Inbox | handler 桥 + 工具代理 |
 | **呈 · 模板** | Schema JSON + 确定性渲染 | Jinja stage · `output_schema`→`response_format` · 交付报告导出 | 导出 Markdown；交付物宜走 handler/模板 |
 
-**典型痛点**（同命令不同任务：`npm run db:reset`）：正则黑名单不够 → 需 **任务语境闸门**（pi-warden / Reviewer 同构）。aiPlat 已有可选 LLM Reviewer；缺口是把 `task/goal/stage` 强制进评审输入，并把「低于置信度 → Inbox」做成可度量 error budget（可选后续，**未立项不承诺**）。
+**典型痛点**（同命令不同任务：`npm run db:reset`）：正则黑名单不够 → 需 **任务语境闸门**（pi-warden / Reviewer 同构）。
 
-**可选后续（旁路观察，非 N 矩阵自动升级）**：
-
-| 优先级 | 项 | 边界 |
-|:---:|---|---|
-| P0 | 任务语境闸门：Reviewer/Approval 强制带 goal/stage | 不解 hard floor；Pi 只透传 `_task_context` |
-| P1 | 便宜 System 1 决策面（小分类器/logits/规则+校准表） | 不搬进 Pi；不强制商用 Jev |
-| P1 | 呈层：工厂/FDE 交付物「LLM→schema JSON→模板」覆盖面 | Pi 交付物走确定性路径 |
-| P2 | MCP/工具 schema 渐进披露（压上下文） | 成本阶梯既有纪律不变 |
+| 优先级 | 项 | 状态 |
+|:---:|---|------|
+| P0 | 任务语境闸门：exec/write/egress/external 无 `_user_goal` → `missing_task_context`（不调 LLM）；`sys_tool_call` 注入 trace/`AIPLAT_USER_GOAL`；Pi `AIPLAT_ENTERPRISE_TASK` | **已接线**（`approval_reviewer.resolve_task_context`；`AIPLAT_REVIEWER_REQUIRE_TASK=0` 可关） |
+| P1 | 便宜 System 1 决策面（小分类器/logits/规则+校准表） | 可选观察；不搬进 Pi；不强制商用 Jev |
+| P1 | 呈层：工厂/FDE 交付物「LLM→schema JSON→模板」覆盖面 | 可选观察 |
+| P2 | MCP/工具 schema 渐进披露（压上下文） | 可选观察 |
 
 **明确不入列的框架层库**（与六列产品位不同）：
 
@@ -313,7 +311,7 @@ P2：DSH continuation 多样性、CC 体验细节。
 历史 G1–G15 闭环状态见 archive 旧报告与吸收评估。  
 **本轮新增观察项**：N1–N5（§16.2）。不将 N 项自动升级为工程承诺，除非单独立项。  
 **OpenWorker 旁路吸收**：§0.2 阶梯 #315–#319 **已收口**（治理 + Pi attendance + 安全专科种子）；不进入 N 矩阵（产品位不同，非「缺列」）。  
-**认知分层旁路**：§0.3 — 理念已与 Gate/Skill/schema 对齐；任务语境闸门 / 专用 System 1 / 呈层全覆盖为**可选观察**，不自动升 N 项。aisuite / LangChain **不入列**。
+**认知分层旁路**：§0.3 — 理念已与 Gate/Skill/schema 对齐；**任务语境闸门 P0 已接线**；专用 System 1 / 呈层全覆盖仍为可选观察，不自动升 N 项。aisuite / LangChain **不入列**。
 
 ---
 
@@ -334,8 +332,8 @@ rg -n 'check_hard_floor|session_write_provenance|ApprovalInboxStore' \
   aiPlat-core/core/harness/infrastructure/gates --glob '*.py' | head
 test -f aiPlat-core/core/workspace_seeds/personas/security_coworker/PERSONA.md
 rg -n 'attendanceInjectFields' packages/aiplat-pi-runtime/extensions/enterprise_approval.ts
-# 认知分层旁路（§0.3）
-rg -n 'review_proposed_action|build_llm_response_format' aiPlat-core --glob '*.py' | head
+# 认知分层旁路（§0.3）+ 任务语境闸门 P0
+rg -n 'resolve_task_context|missing_task_context|build_llm_response_format' aiPlat-core --glob '*.py' | head
 python3 scripts/generate_whitepaper_volumes.py --check
 bash scripts/verify-whitepaper-ready.sh
 ```
