@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-18T21:12:00+08:00",
+  "reviewed_at": "2026-10-18T21:38:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "8f7697480cf6e9cdec3b42e47989242d0eaf6cfe",
-  "diff_sha256": "d6dd9b35aa7e79aab1d77e12a9b41478211d0cde4068dd851d216f4ba6ea2dcf",
-  "head_sha": "290830ef5903659cebfa31c9e7423c94327486d3",
+  "merge_base": "2998cab099263bc08c4658c33ff94ee8d73a0326",
+  "diff_sha256": "a0b29eecbb2d552307dbaaa751b307ef875a920798af44393aebe13ce44adec2",
+  "head_sha": "7aa762907f55b8d5c64d0decbd7dbaee82b45002",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Sticky empty only cached after 2xx JSON object; HTTP/parse failures retry. Local lock only."
+  "note": "Handler/KB/L3 use shared JSON object helpers. Local lock only."
 }
