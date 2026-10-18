@@ -607,6 +607,17 @@ class SkillInstaller:
 
             _check_copy_limits(sd)
 
+            from core.apps.skills.skill_boundary import scan_skill_dir
+
+            scan = scan_skill_dir(sd.name, sd / "SKILL.md")
+            if scan.get("blocked"):
+                skipped.append({
+                    "skill_id": sd.name,
+                    "reason": "skill_scan_blocked",
+                    "sarif": scan.get("sarif"),
+                })
+                continue
+
             dst = self._target_base_dir / sd.name
             if dst.exists():
                 if not allow_overwrite:
@@ -696,6 +707,13 @@ class SkillInstaller:
                 raw = ""
             fm, _body = _parse_frontmatter(raw)
 
+            from core.apps.skills.skill_boundary import scan_skill_dir
+
+            scan = scan_skill_dir(sd.name, sd / "SKILL.md")
+            scan_blocked = bool(scan.get("blocked"))
+            if scan_blocked:
+                warnings.append(f"skill_scan_blocked:{sd.name}")
+
             # detect kind (align with contracts / skill_manager)
             exe = fm.get("executable")
             runtime = str(fm.get("runtime") or "").strip()
@@ -730,6 +748,8 @@ class SkillInstaller:
                     "permissions": [str(p).strip() for p in perms if str(p).strip()],
                     "limits_ok": limit_ok,
                     "limits_error": limit_err,
+                    "scan_blocked": scan_blocked,
+                    "sarif": scan.get("sarif") if scan_blocked else None,
                 }
             )
 

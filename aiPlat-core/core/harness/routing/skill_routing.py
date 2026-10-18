@@ -38,6 +38,62 @@ def extract_query_text(params: Dict[str, Any]) -> str:
     return ""
 
 
+def skill_trigger_text(description: str) -> str:
+    """Opening sentence used for wake matching. Procedure text after it stays out."""
+    text = (description or "").strip()
+    if not text:
+        return ""
+    line = text.splitlines()[0].strip()
+    for sep in ("。", ". ", "；", "; "):
+        idx = line.find(sep)
+        if idx > 0:
+            line = line[:idx]
+            break
+    return line[:80]
+
+
+def skill_catalog_entry(name: str, stub: str) -> str:
+    """One catalog line: skill name plus the opening sentence only."""
+    label = (name or "").strip() or "skill"
+    raw = (stub or "").strip()
+    prefix = f"{label}:"
+    desc = raw[len(prefix):].strip() if raw.lower().startswith(prefix.lower()) else raw
+    trigger = skill_trigger_text(desc) or label
+    return f"{label}: {trigger}"
+
+
+def procedural_memory_block(query: str, skills: Sequence[Dict[str, Any]], *, limit: int = 5) -> str:
+    """Hot skills whose opening sentence overlaps the ask. Unrelated stubs stay out."""
+    q = tokenize(query or "")
+    if not q:
+        return ""
+    lines: List[str] = []
+    cap = max(1, int(limit))
+    for item in skills or []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        if not name:
+            continue
+        trigger = skill_trigger_text(str(item.get("stub") or "")) or name
+        if not (q & tokenize(f"{name} {trigger}")):
+            continue
+        rate = item.get("pass_rate")
+        rate_bit = f" (pass_rate={float(rate):.0%})" if isinstance(rate, (int, float)) else ""
+        lines.append(f"- {name}{rate_bit}: {trigger}")
+        if len(lines) >= cap:
+            break
+    if not lines:
+        return ""
+    return "\n".join(
+        [
+            "[Procedural Memory] High-confidence reuse patterns:",
+            *lines,
+            "→ Use sys_skill_call to load full SOP when needed.",
+        ]
+    )
+
+
 def tokenize(text: str) -> Set[str]:
     """轻量分词：英文按空格；中文做 bigram（best-effort）。"""
     s0 = _norm(text)
@@ -60,7 +116,7 @@ def compute_skill_candidates(
     top_k: int = 8,
 ) -> List[SkillCandidate]:
     """
-    基于 query_text 与 skill 的 (name/description/trigger_conditions/keywords) overlap 生成候选列表。
+    基于 query_text 与 skill 的 (name/开头一句描述/trigger_conditions/keywords) overlap 生成候选列表。
     注意：这不是“最终选择”，只是用于可解释的观测与调参。
     """
     qt = tokenize(query_text)
@@ -78,7 +134,7 @@ def compute_skill_candidates(
             sid = str(s.get("skill_id") or s.get("id") or "").strip()
             name = str(s.get("name") or "").strip()
             scope = str(s.get("scope") or "unknown").strip().lower() or "unknown"
-            desc = str(s.get("description") or "").strip()
+            desc = skill_trigger_text(str(s.get("description") or ""))
             tc = s.get("trigger_conditions") or s.get("trigger_keywords") or []
             kw = s.get("keywords") if isinstance(s.get("keywords"), dict) else {}
 

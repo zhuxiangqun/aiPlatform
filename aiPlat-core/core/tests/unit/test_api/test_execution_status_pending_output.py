@@ -49,6 +49,46 @@ async def test_run_graph_completed_empty_row_is_terminal_not_pending():
     assert out.get("pending_output") is not True
 
 
+def test_blank_run_end_is_not_treated_as_completed():
+    from pathlib import Path
+
+    src = (
+        Path(__file__).resolve().parents[3] / "api/routers/executions_trace.py"
+    ).read_text(encoding="utf-8")
+    assert 'elif st in ("completed", "ok", "success", "done"):' in src
+    assert 'elif st in ("completed", "ok", "success", "done", ""):' not in src
+    assert "Blank run_end status is not a success seal." in src
+    assert "def _apply_sealed_failure_status" in src
+    eng = (
+        Path(__file__).resolve().parents[3] / "harness/execution/pipeline_engine.py"
+    ).read_text(encoding="utf-8")
+    assert "_trace_force" in eng
+    assert '_trace_status = "timeout" if _trace_force == "timeout" else "failed"' in eng
+
+
+def test_apply_sealed_failure_status_overrides_completed():
+    from core.harness.utils.execute_session import _sealed_failure_status
+
+    assert (
+        _sealed_failure_status(
+            {
+                "force_failed_status": "timeout",
+                "done_verify_reason": "llm_timeout",
+            }
+        )
+        == "timeout"
+    )
+    assert _sealed_failure_status({}) == ""
+    from pathlib import Path
+
+    src = (
+        Path(__file__).resolve().parents[3] / "api/routers/executions_trace.py"
+    ).read_text(encoding="utf-8")
+    # Agent row + run_graph + run_events all apply the seal.
+    assert src.count("_apply_sealed_failure_status(") >= 3
+    assert "run_graph status row re-read failed" in src
+
+
 @pytest.mark.asyncio
 async def test_run_graph_completed_with_row_returns_output():
     from core.api.routers.executions_trace import get_execution_status

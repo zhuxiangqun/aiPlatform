@@ -253,7 +253,7 @@ class SkillFindTool(BaseTool):
             parameters={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "搜索关键字（匹配 name/description/metadata）"},
+                    "query": {"type": "string", "description": "搜索关键字（匹配名称、描述开头一句、触发短语；不含 SOP 正文）"},
                     "name": {"type": "string", "description": "精确查询某个技能名（优先）"},
                     "kind": {"type": "string", "description": "过滤：rule|executable", "enum": ["rule", "executable"]},
                     "category": {"type": "string", "description": "过滤：分类（metadata.category）"},
@@ -295,17 +295,23 @@ class SkillFindTool(BaseTool):
                 cat = str(meta.get("category") or "").strip().lower()
                 if category and cat != category:
                     return None
-                desc = str(getattr(cfg, "description", "") or "")
-                meta_s = ""
-                try:
-                    meta_s = json.dumps(meta, ensure_ascii=False, sort_keys=True)
-                except Exception:
-                    meta_s = str(meta)
-                if not (_match(skill_name) or _match(desc) or _match(meta_s)):
+                raw_desc = str(getattr(cfg, "description", "") or "")
+                from core.harness.routing.skill_routing import skill_trigger_text
+
+                trigger = skill_trigger_text(raw_desc)
+                tc = meta.get("trigger_conditions") or meta.get("trigger_keywords") or meta.get("triggers") or []
+                kw = meta.get("keywords") if isinstance(meta.get("keywords"), dict) else {}
+                wake_bits = [skill_name, trigger]
+                if isinstance(tc, list):
+                    wake_bits.extend(str(x) for x in tc)
+                for bucket in ("objects", "actions", "constraints"):
+                    wake_bits.extend(str(x) for x in (kw.get(bucket) or []))
+                wake = " ".join(wake_bits)
+                if not _match(wake):
                     return None
                 out: Dict[str, Any] = {
                     "name": cfg.name,
-                    "description": desc[:1024],
+                    "description": trigger or raw_desc[:80],
                     "kind": skind,
                     "version": str(meta.get("version") or ""),
                     "category": str(meta.get("category") or ""),

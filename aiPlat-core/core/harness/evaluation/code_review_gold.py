@@ -16,7 +16,7 @@ import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Sequence
+from typing import Any, Awaitable, Callable, Dict, List, Mapping, Optional, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -79,9 +79,31 @@ def reports_dir(tenant_id: str = "") -> Path:
 
 
 def resolve_gold_dir(gold_dir: Optional[str] = None, tenant_id: str = "") -> Path:
-    if gold_dir:
-        return Path(gold_dir)
-    return default_gold_dir(tenant_id)
+    """Resolve gold_dir; reject paths outside allowed eval / workspace seed roots."""
+    if not gold_dir:
+        return default_gold_dir(tenant_id)
+    from core.utils.paths import get_aiplat_data_dir
+
+    candidate = Path(gold_dir).expanduser().resolve()
+    roots: List[Path] = [Path(get_aiplat_data_dir("eval")).resolve()]
+    try:
+        # code_review_gold.py → evaluation → harness → core → aiPlat-core
+        seed = Path(__file__).resolve().parents[3] / "workspace_seeds" / "eval"
+        if seed.is_dir():
+            roots.append(seed.resolve())
+    except Exception:
+        logging.getLogger(__name__).debug(
+            "gold_dir seed root probe skipped", exc_info=True
+        )
+    for root in roots:
+        try:
+            candidate.relative_to(root)
+            return candidate
+        except ValueError:
+            continue
+    raise ValueError(
+        f"gold_dir not under allowed eval roots {roots}: {gold_dir!r}"
+    )
 
 
 def profile_to_autoreview_args(profile: str) -> Dict[str, Any]:
@@ -572,3 +594,91 @@ async def run_code_review_gold_eval(
 
 def list_profiles() -> Dict[str, Dict[str, Any]]:
     return {k: dict(v) for k, v in PROFILE_ARGS.items()}
+
+
+def _metric_delta(curr: Any, prev: Any) -> Optional[float]:
+    if curr is None or prev is None:
+        return None
+    try:
+        return round(float(curr) - float(prev), 4)
+    except (TypeError, ValueError):
+        return None
+
+
+def compare_gold_reports(
+    current: Mapping[str, Any],
+    previous: Optional[Mapping[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Before/after deltas for the same gold set. Missing previous → no baseline."""
+    cur = current if isinstance(current, Mapping) else {}
+    prev = previous if isinstance(previous, Mapping) else None
+    keys = ("precision", "recall", "p0_recall", "avg_comment_count", "novel_count")
+    deltas: Dict[str, Optional[float]] = {}
+    if prev is None:
+        return {
+            "has_baseline": False,
+            "verdict": "no_baseline",
+            "deltas": {k: None for k in keys},
+            "previous_written_at": None,
+        }
+    for key in keys:
+        deltas[key] = _metric_delta(cur.get(key), prev.get(key))
+    p0_d = deltas.get("p0_recall")
+    prec_d = deltas.get("precision")
+    if p0_d is not None and p0_d < -0.02:
+        verdict = "regressed"
+    elif prec_d is not None and prec_d < -0.02:
+        verdict = "regressed"
+    elif (p0_d is not None and p0_d > 0.02) or (prec_d is not None and prec_d > 0.02):
+        verdict = "improved"
+    else:
+        verdict = "same"
+    return {
+        "has_baseline": True,
+        "verdict": verdict,
+        "deltas": deltas,
+        "previous_written_at": prev.get("written_at"),
+        "previous_precision": prev.get("precision"),
+        "previous_recall": prev.get("recall"),
+        "previous_p0_recall": prev.get("p0_recall"),
+    }
+
+
+async def reevaluate_code_review_gold(
+    *,
+    profile: str = "balanced",
+    gold_dir: Optional[str] = None,
+    case_ids: Optional[Sequence[str]] = None,
+    match_only: bool = False,
+    execute_fn: Optional[Callable[[Dict[str, Any]], Awaitable[Dict[str, Any]]]] = None,
+    limit: int = 0,
+    tenant_id: str = "",
+    persist: bool = True,
+    record_novel: bool = False,
+    baseline: Optional[Mapping[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Run gold eval again and attach delta vs last report (or ``baseline``).
+
+    Persist happens after ``comparison`` is attached so the JSONL row keeps the
+    before/after verdict (not only the bare metrics).
+    """
+    previous = dict(baseline) if isinstance(baseline, Mapping) else None
+    if previous is None:
+        hist = list_eval_reports(tenant_id=tenant_id, limit=1)
+        previous = hist[-1] if hist else None
+    current = await run_code_review_gold_eval(
+        profile=profile,
+        gold_dir=gold_dir,
+        case_ids=case_ids,
+        match_only=match_only,
+        execute_fn=execute_fn,
+        limit=limit,
+        tenant_id=tenant_id,
+        persist=False,
+        record_novel=record_novel,
+    )
+    current = dict(current)
+    current["comparison"] = compare_gold_reports(current, previous)
+    if persist:
+        current["report_path"] = persist_eval_report(current, tenant_id=tenant_id)
+    return current

@@ -264,12 +264,17 @@ class MaterialsChatAgent(BaseAgent):
         ]
         model = getattr(self, "_model", None)
         try:
+            # Slim CLAUDE inject (coding_policy_profile=off) — not skip_claude_md.
+            # Materials/consultant Q&A still needs project rules; full 20K is noise.
             resp = await sys_llm_generate(
                 model,
                 messages,
                 session_id=None,
                 purpose="chat",
-                trace_context={"skip_claude_md": True, "purpose": "chat"},
+                trace_context={
+                    "purpose": "chat",
+                    "coding_policy_profile": "off",
+                },
             )
             answer = (getattr(resp, "content", None) or str(resp) or "").strip()
         except Exception as e:

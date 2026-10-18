@@ -68,11 +68,19 @@ def test_build_execution_decision_v19_audit_fields():
         skill_name="demo_skill",
         handler_present=True,
         fail_closed_reason="unknown execution_type",
+        control={
+            "schedule": "pipeline",
+            "execute": "react",
+            "quality": "external",
+            "fuses": {"execute_max_steps": 10},
+        },
     )
     assert d["stage_id"] == "s1"
     assert d["skill_name"] == "demo_skill"
     assert d["handler_present"] is True
     assert "unknown" in d["fail_closed_reason"]
+    assert d["control"]["execute"] == "react"
+    assert d["control"]["fuses"]["execute_max_steps"] == 10
 
 
 def test_record_decision_persists_execution(tmp_path, monkeypatch):
@@ -113,6 +121,9 @@ def test_emit_execution_decision_on_engine(tmp_path, monkeypatch):
     )
     assert state["_execution_decision"]["path"] == "agent"
     assert state["_execution_decision"]["architecture_profile"] == "react_tools"
+    assert state["_execution_decision"]["control"]["execute"] in ("react", "chat")
+    assert "execute_max_steps" in state["_execution_decision"]["control"]["fuses"]
     tr = get_trace("proj-e3")
     assert tr["decisions"]["proj-e3_s1"]["execution"]["path"] == "agent"
+    assert tr["decisions"]["proj-e3_s1"]["execution"]["control"]["fuses"]
     clear_trace("proj-e3")

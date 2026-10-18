@@ -202,3 +202,24 @@ _generated_agent|OK|generic pipeline (optional agent name for chained skill cont
 _evidence_page|OK|engine-internal (template+JSON oversight HTML; TTL; read-only)
 _evidence_metrics|OK|engine-internal (oversight verification metrics; read-only; no coding/deploy)
 run_id|OK|generic pipeline (run identifier for evidence page)
+
+# -- Review defect closeout: generic loop / completion control (not domain artifacts) --
+_coding_veto_exhausted|OK|engine-internal (coding deliverable veto fail-open marker)
+_completion_seal|OK|engine-internal (completion receipt seal payload)
+_completion_standard_blocked|OK|engine-internal (missing completion standard hard stop)
+_finalize_hard_fail|OK|engine-internal (finalize refused to green-seal)
+_force_failed_status|OK|engine-internal (stage status forced failed after veto)
+_harness_probes|OK|engine-internal (read-only harness probe map)
+_loop_type|OK|engine-internal (resolved loop type mirror)
+_output_empty|OK|engine-internal (empty output marker)
+_output_files|OK|engine-internal (file-output path list)
+_repair_candidate_selected|OK|engine-internal (repair candidate chosen)
+_require_review_incomplete|OK|engine-internal (review follow-up not finished)
+_selected_repair_output|OK|engine-internal (selected repair text)
+action|OK|generic react graph node field
+observation|OK|generic react graph node field
+output|OK|generic react graph node field
+reasoning|OK|generic react graph node field
+refactor_sop|OK|generic pipeline (stage refactor_sop config mirror)
+tdd_enforce|OK|generic pipeline (stage tdd_enforce config mirror)
+uses_file_output|OK|generic pipeline (stage uses_file_output config mirror)

@@ -43,16 +43,19 @@ async def evaluate_gold(
     if record_novel is None:
         record_novel = True
 
-    out = await run_code_review_gold_eval(
-        profile=str(body.get("profile") or "balanced"),
-        gold_dir=str(body.get("gold_dir") or "") or None,
-        case_ids=case_ids,
-        match_only=bool(body.get("match_only", False)),
-        limit=int(body.get("limit") or 0),
-        tenant_id=str(body.get("tenant_id") or ""),
-        persist=bool(body.get("persist", True)),
-        record_novel=bool(record_novel),
-    )
+    try:
+        out = await run_code_review_gold_eval(
+            profile=str(body.get("profile") or "balanced"),
+            gold_dir=str(body.get("gold_dir") or "") or None,
+            case_ids=case_ids,
+            match_only=bool(body.get("match_only", False)),
+            limit=int(body.get("limit") or 0),
+            tenant_id=str(body.get("tenant_id") or ""),
+            persist=bool(body.get("persist", True)),
+            record_novel=bool(record_novel),
+        )
+    except ValueError as e:
+        return {"data": {"ok": False, "error": str(e)}}
     return {"data": out}
 
 
@@ -66,3 +69,45 @@ async def get_reports(
 
     rows = list_code_review_gold_reports(tenant_id=tenant_id, limit=limit)
     return {"data": {"items": rows, "total": len(rows)}}
+
+
+@router.post("/reevaluate", response_model=ItemResponse)
+async def reevaluate_gold(
+    body: Dict[str, Any],
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """Re-run the same gold set and return deltas vs the previous report.
+
+    body: same as /evaluate, plus optional ``baseline`` (prior report object).
+    Without baseline, uses the latest persisted JSONL row for the tenant.
+    """
+    from core.api.core_facade import reevaluate_code_review_gold
+
+    case_ids = body.get("case_ids")
+    if isinstance(case_ids, str):
+        case_ids = [case_ids]
+    if case_ids is not None and not isinstance(case_ids, list):
+        case_ids = None
+    # Reevaluate is audit/replay: do not write novel→experience unless asked.
+    record_novel = body.get("record_novel")
+    if record_novel is None:
+        record_novel = False
+    baseline = body.get("baseline")
+    if baseline is not None and not isinstance(baseline, dict):
+        baseline = None
+
+    try:
+        out = await reevaluate_code_review_gold(
+            profile=str(body.get("profile") or "balanced"),
+            gold_dir=str(body.get("gold_dir") or "") or None,
+            case_ids=case_ids,
+            match_only=bool(body.get("match_only", False)),
+            limit=int(body.get("limit") or 0),
+            tenant_id=str(body.get("tenant_id") or ""),
+            persist=bool(body.get("persist", True)),
+            record_novel=bool(record_novel),
+            baseline=baseline,
+        )
+    except ValueError as e:
+        return {"data": {"ok": False, "error": str(e)}}
+    return {"data": out}

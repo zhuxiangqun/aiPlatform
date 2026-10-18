@@ -28,6 +28,67 @@ from core.apps.tools.base import BaseTool, ToolMetadata
 logger = logging.getLogger(__name__)
 
 
+def infer_recency_days(query: str) -> Optional[int]:
+    """Parse 「最近 N 天 / 过去一周 / last 30 days」 when the caller omitted recency_days."""
+    import re
+
+    text = str(query or "")
+    if not text.strip():
+        return None
+    m = re.search(
+        r"(?:最近|过去|近|last|past)\s*(\d{1,3})\s*(?:天|日|days?)",
+        text,
+        re.I,
+    )
+    if m:
+        days = int(m.group(1))
+        return max(1, min(365, days))
+    if re.search(r"(?:最近|过去|近|last|past)\s*(?:一|1)?\s*周|last\s*week", text, re.I):
+        return 7
+    if re.search(r"(?:最近|过去|近|last|past)\s*(?:一|1)?\s*(?:个)?月|last\s*month", text, re.I):
+        return 30
+    if re.search(r"最近\s*30\s*天|过去\s*30\s*天", text):
+        return 30
+    return None
+
+
+def apply_recency(query: str, recency_days: Any) -> tuple:
+    """Return (query, df). df is DuckDuckGo's week/month/year filter, or ''."""
+    text = str(query or "").strip()
+    days_arg = recency_days
+    if days_arg is None or days_arg == "":
+        days_arg = infer_recency_days(text)
+    if days_arg is None or days_arg == "":
+        return text, ""
+    try:
+        days = int(days_arg)
+    except (TypeError, ValueError):
+        return text, ""
+    if days <= 0:
+        return text, ""
+    if days <= 7:
+        df = "w"
+    elif days <= 31:
+        df = "m"
+    else:
+        df = "y"
+    return text, df
+
+
+def _attach_citations(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Every row with a url also carries citation for agent grounding."""
+    rows = payload.get("results")
+    if not isinstance(rows, list):
+        return payload
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        url = str(row.get("source_url") or row.get("url") or "").strip()
+        if url and not row.get("citation"):
+            row["citation"] = url
+    return payload
+
+
 class WebSearchTool(BaseTool):
     def __init__(self):
         super().__init__(ToolMetadata(
@@ -63,6 +124,12 @@ class WebSearchTool(BaseTool):
                     "default": False,
                     "description": "结构化模式: 返回信源标注的事实条目（claim/source_title/source_url/evidence_snippet/confidence），并融合多后端去重",
                 },
+                "recency_days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 365,
+                    "description": "只搜最近 N 天。≤7 用周、≤31 用月、否则用年（DuckDuckGo df）。查询含「最近30天」等时可省略，会自动推断",
+                },
             },
             "required": ["query"],
         }
@@ -75,17 +142,31 @@ class WebSearchTool(BaseTool):
         limit = min(int(args.get("limit", 10)), 30)
         backend = str(args.get("backend", "html"))
         structured = bool(args.get("structured", False))
+        recency_days = args.get("recency_days")
+        if recency_days is None or recency_days == "":
+            recency_days = infer_recency_days(query)
+        query, df = apply_recency(query, recency_days)
 
         if backend == "json":
-            raw = await self._search_json(query, limit)
+            raw = await self._search_json(query, limit, df=df)
         elif backend == "browser":
-            raw = await self._search_browser(query, limit)
+            # Browser backend has no time filter; honor df via HTML like JSON does.
+            if df:
+                raw = await self._search_html(query, limit, df=df)
+                raw["backend"] = "browser"
+            else:
+                raw = await self._search_browser(query, limit)
         else:
-            raw = await self._search_html(query, limit)
+            raw = await self._search_html(query, limit, df=df)
 
+        raw["recency_days"] = int(recency_days) if df and recency_days not in (None, "") else None
+        raw["time_window"] = df or ""
         if not structured:
-            return raw
-        return await self._to_structured(query, raw, backend, limit)
+            return _attach_citations(raw)
+        out = await self._to_structured(query, raw, backend, limit)
+        out["recency_days"] = raw.get("recency_days")
+        out["time_window"] = raw.get("time_window")
+        return _attach_citations(out)
 
     # ── 结构化输出层（AnySearch 借鉴：信源标注 + 多后端融合，2026-08-28）──
     async def _to_structured(self, query: str, raw: Dict[str, Any],
@@ -120,7 +201,7 @@ class WebSearchTool(BaseTool):
         # 多后端融合：JSON Instant Answer 的摘要信源提升置信度（结构化信源）
         if backend != "json":
             try:
-                json_raw = await self._search_json(query, 5)
+                json_raw = await self._search_json(query, 5, df=str(raw.get("time_window") or ""))
                 for r in (json_raw.get("results") or []):
                     if not isinstance(r, dict):
                         continue
@@ -147,7 +228,7 @@ class WebSearchTool(BaseTool):
                 "structured": True, "query": query,
                 "total": len(ordered), "results": ordered[:limit]}
 
-    async def _search_html(self, query: str, limit: int) -> Dict[str, Any]:
+    async def _search_html(self, query: str, limit: int, df: str = "") -> Dict[str, Any]:
         """DuckDuckGo Lite HTML 搜索 (零外部依赖)."""
         try:
             import urllib.parse
@@ -155,6 +236,8 @@ class WebSearchTool(BaseTool):
             from html.parser import HTMLParser
 
             url = f"https://lite.duckduckgo.com/lite/?q={urllib.parse.quote(query)}"
+            if df:
+                url += f"&df={urllib.parse.quote(df)}"
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=15) as resp:
                 html = resp.read().decode("utf-8", errors="ignore")
@@ -166,8 +249,17 @@ class WebSearchTool(BaseTool):
             logger.warning("HTML search failed: %s", e)
             return {"success": False, "backend": "html", "error": str(e)[:200], "results": []}
 
-    async def _search_json(self, query: str, limit: int) -> Dict[str, Any]:
-        """DuckDuckGo Instant Answer API."""
+    async def _search_json(self, query: str, limit: int, df: str = "") -> Dict[str, Any]:
+        """DuckDuckGo Instant Answer API.
+
+        The instant-answer API ignores time filters. A requested window uses
+        the HTML index, which honors ``df``.
+        """
+        if df:
+            filtered = await self._search_html(query, limit, df=df)
+            filtered["backend"] = "json"
+            filtered["time_window"] = df
+            return filtered
         try:
             import urllib.parse
             import urllib.request

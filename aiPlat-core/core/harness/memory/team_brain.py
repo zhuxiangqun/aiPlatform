@@ -222,9 +222,46 @@ def _load_experience_solutions(limit: int = 40) -> List[TeamSolution]:
     return out
 
 
+def _load_harness_library_solutions(limit: int = 40) -> List[TeamSolution]:
+    """Reusable harness components. Not a whole-harness inherit."""
+    out: List[TeamSolution] = []
+    try:
+        from core.harness.evaluation.harness_recursion import recall_library
+
+        for row in recall_library("", limit=limit):
+            paths = [str(c.get("path") or "") for c in (row.get("components") or []) if c.get("path")]
+            from core.harness.memory.file_store import memory_content_is_fact
+
+            exp = str(row.get("experience") or "").strip()
+            if exp and not memory_content_is_fact(exp):
+                exp = ""
+            summary = (exp + (" paths=" + ",".join(paths) if paths else "")).strip()[:400]
+            out.append(
+                TeamSolution(
+                    id=str(row.get("id") or f"hlib-{len(out)}"),
+                    kind="harness_component",
+                    title=str(row.get("task_id") or "harness_component"),
+                    summary=summary,
+                    source="harness_improvement_library",
+                    confidence=0.75,
+                    keywords=list(_tokenize(f"{row.get('experience', '')} {' '.join(paths)}"))[:12],
+                    created_at="",
+                    meta={"inherit_whole": False, "components": row.get("components") or []},
+                )
+            )
+    except Exception as e:
+        logger.debug("harness library recall failed: %s", e, exc_info=True)
+    return out
+
+
 def list_team_solutions(limit: int = 30) -> List[TeamSolution]:
     """Union of team-visible solutions (no query ranking)."""
-    items = _load_task_skill_solutions() + _load_shared_learning_solutions() + _load_experience_solutions()
+    items = (
+        _load_task_skill_solutions()
+        + _load_shared_learning_solutions()
+        + _load_experience_solutions()
+        + _load_harness_library_solutions()
+    )
     # de-dupe by id+kind
     seen = set()
     uniq: List[TeamSolution] = []
@@ -259,6 +296,31 @@ def recall_team_solutions(
     return [it for _, it in scored[:limit]]
 
 
+def _injectable_recall_text(text: str, *, limit: int = 180) -> str:
+    """Drop command payloads from a recall line. Store stays intact."""
+    from core.harness.memory.file_store import _COMMAND_PREFIXES, memory_content_is_fact
+
+    kept: List[str] = []
+    for raw in (text or "").splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        body = line
+        for sep in ("=", ":"):
+            if sep in line:
+                left, right = line.split(sep, 1)
+                if 0 < len(left.strip()) <= 24:
+                    body = right.strip()
+                break
+        low = body.lower()
+        if any(low.startswith(prefix) for prefix in _COMMAND_PREFIXES):
+            continue
+        if not memory_content_is_fact(body):
+            continue
+        kept.append(line)
+    return " ".join(kept)[:limit]
+
+
 def format_recall_message(items: Sequence[TeamSolution]) -> Optional[Dict[str, Any]]:
     """Build a system message for MemoryManager.build_context injection."""
     if not items:
@@ -266,20 +328,27 @@ def format_recall_message(items: Sequence[TeamSolution]) -> Optional[Dict[str, A
     lines = [
         "[Team Brain] Shared solutions from other agents/sessions — reuse before re-deriving:",
     ]
+    shown = []
     for it in items:
+        summary = _injectable_recall_text(it.summary)
+        if not summary:
+            continue
+        shown.append(it)
         lines.append(
-            f"- ({it.kind}) {it.title}: {it.summary[:180]} "
+            f"- ({it.kind}) {it.title}: {summary} "
             f"[source={it.source or 'team'}, conf={it.confidence:.0%}]"
         )
+    if not shown:
+        return None
     lines.append("→ Prefer sys_skill_call / existing patterns when a match is relevant.")
     return {
         "role": "system",
         "content": "\n".join(lines),
         "meta": {
             "role": "team_brain_recall",
-            "count": len(items),
-            "ids": [it.id for it in items],
-            "kinds": [it.kind for it in items],
+            "count": len(shown),
+            "ids": [it.id for it in shown],
+            "kinds": [it.kind for it in shown],
         },
     }
 

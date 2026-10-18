@@ -1853,9 +1853,19 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
         except Exception as e:
             logging.warning(str(e), exc_info=True)
 
-    ok = await mgr.enable_skill(skill_id)
-    if not ok:
-        raise HTTPException(status_code=400, detail=f"Skill {skill_id} cannot be enabled (maybe deprecated; use restore)")
+    result = await mgr.enable_skill_result(skill_id)
+    if not result.get("ok"):
+        reason = str(result.get("reason") or "cannot_enable")
+        detail = {
+            "message": f"Skill {skill_id} cannot be enabled ({reason})",
+            "reason": reason,
+            "skill_id": skill_id,
+        }
+        if reason == "deprecated":
+            detail["message"] = f"Skill {skill_id} is deprecated; use restore"
+        if result.get("sarif") is not None:
+            detail["sarif"] = result.get("sarif")
+        raise HTTPException(status_code=400, detail=detail)
     try:
         await _record_changeset(
             rt,

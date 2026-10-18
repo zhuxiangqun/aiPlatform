@@ -120,13 +120,24 @@ def team_template_to_mode(template: str) -> str:
 
 # ── Team template discovery ──────────────────────────────────────
 
-def list_team_templates() -> List[TeamTemplate]:
-    """Scan team templates: ``~/.aiplat/teams`` first, then workspace seeds.
+def _team_search_dirs() -> List[str]:
+    """team/teams → AIPLAT_HOME/teams → workspace_seeds/teams (same order as F-T1)."""
+    try:
+        from core.harness.team_factory_seeds import resolve_team_yaml_candidates
 
-    Home entries win on name collision. Seeds fill gaps for fresh installs.
-    """
-    templates: List[TeamTemplate] = []
-    seen: set[str] = set()
+        dirs: List[str] = []
+        for cand in resolve_team_yaml_candidates("_probe_"):
+            root = os.path.dirname(cand)
+            if root and root not in dirs:
+                dirs.append(root)
+        if dirs:
+            return dirs
+    except Exception:
+        logger.debug("team yaml candidate dirs probe skipped", exc_info=True)
+    home = os.path.join(
+        os.environ.get("AIPLAT_HOME") or os.path.expanduser("~/.aiplat"),
+        "teams",
+    )
     seeds_dir = os.path.normpath(
         os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
@@ -136,10 +147,19 @@ def list_team_templates() -> List[TeamTemplate]:
             "teams",
         )
     )
-    dirs = [os.path.expanduser("~/.aiplat/teams"), seeds_dir]
+    return [home, seeds_dir]
+
+
+def list_team_templates() -> List[TeamTemplate]:
+    """Scan team templates: pulled team/ → AIPLAT_HOME/teams → workspace seeds.
+
+    Earlier dirs win on name collision. Seeds fill gaps for fresh installs.
+    """
+    templates: List[TeamTemplate] = []
+    seen: set = set()
 
     import yaml as _yaml
-    for teams_dir in dirs:
+    for teams_dir in _team_search_dirs():
         if not os.path.isdir(teams_dir):
             continue
         for yaml_path in sorted(glob.glob(os.path.join(teams_dir, "*.yaml"))):
@@ -168,31 +188,41 @@ def list_team_templates() -> List[TeamTemplate]:
 
 
 def _team_yaml_candidates(name: str) -> List[str]:
-    """Resolve team template paths: user home first, then workspace seeds."""
-    n = (name or "").strip().removesuffix(".yaml")
-    if not n:
-        return []
-    home = os.path.expanduser(f"~/.aiplat/teams/{n}.yaml")
-    seeds = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "..",
-        "workspace_seeds",
-        "teams",
-        f"{n}.yaml",
-    )
-    return [home, os.path.normpath(seeds)]
+    """Resolve team template paths via F-T1 order (team/ → home → seeds)."""
+    try:
+        from core.harness.team_factory_seeds import resolve_team_yaml_candidates
+
+        return resolve_team_yaml_candidates(name)
+    except Exception:
+        n = (name or "").strip().removesuffix(".yaml")
+        if not n:
+            return []
+        home = os.path.join(
+            os.environ.get("AIPLAT_HOME") or os.path.expanduser("~/.aiplat"),
+            "teams",
+            f"{n}.yaml",
+        )
+        seeds = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "..",
+            "workspace_seeds",
+            "teams",
+            f"{n}.yaml",
+        )
+        return [home, os.path.normpath(seeds)]
 
 
 def load_team_template(name: str) -> Optional[TeamTemplate]:
     """Load a specific team template by name (without .yaml extension).
 
-    Search order: ``~/.aiplat/teams/{name}.yaml`` then
-    ``workspace_seeds/teams/{name}.yaml``. Returns None if missing.
+    Search order: pulled ``team/teams`` → ``$AIPLAT_HOME/teams`` →
+    ``workspace_seeds/teams``. Returns None if missing.
     """
     import yaml as _yaml
 
-    for yaml_path in _team_yaml_candidates(name):
+    n = (name or "").strip().removesuffix(".yaml")
+    for yaml_path in _team_yaml_candidates(n):
         if not os.path.isfile(yaml_path):
             continue
         try:
@@ -202,9 +232,9 @@ def load_team_template(name: str) -> Optional[TeamTemplate]:
                 continue
             stages = data.get("stages", [])
             return TeamTemplate(
-                name=name,
+                name=n,
                 file_path=yaml_path,
-                team_name=str(data.get("team_name", name)),
+                team_name=str(data.get("team_name", n)),
                 description=str(data.get("description", "")),
                 stages=stages if isinstance(stages, list) else [],
             )
@@ -526,15 +556,21 @@ def _match_stage_from_templates(stage: Dict[str, Any]) -> Dict[str, Any]:
     for tmpl in list_team_templates():
         for ts in tmpl.stages:
             if ts.get("agent_id") == aid:
-                # Copy orchestration fields from template if not already set
-                _config_fields = [
-                    "skill_name", "output_artifact", "test_result_key",
-                    "hitl", "hitl_phase", "uses_file_output", "generate_test_plan",
-                    "failure_strategy", "skill_model_purpose",
-                ]
-                for f in _config_fields:
-                    if not stage.get(f) and ts.get(f):
-                        stage[f] = ts[f]
+                # Copy orchestration + coding closed-loop fields if not already set.
+                try:
+                    from core.schemas_builder import apply_template_stage_overlay
+
+                    apply_template_stage_overlay(stage, ts, only_missing=True)
+                except Exception:
+                    _config_fields = [
+                        "skill_name", "output_artifact", "test_result_key",
+                        "hitl", "hitl_phase", "uses_file_output", "generate_test_plan",
+                        "failure_strategy", "skill_model_purpose",
+                        "refactor_sop", "tdd_enforce", "done_verify", "review_gate",
+                    ]
+                    for f in _config_fields:
+                        if not stage.get(f) and ts.get(f):
+                            stage[f] = ts[f]
                 return stage  # First match wins
 
     return stage

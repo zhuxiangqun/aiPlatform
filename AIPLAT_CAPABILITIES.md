@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2186
+total_capabilities: 2291
 last_updated: 2026-10-15
 version: "30.10"
 auto_sync: true
@@ -588,6 +588,54 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| copy_contrast_signals | `core/harness/execution/contrast_signals.py` | ✅ | 自动同步 | 已合入 |
+| surface_contrast_signals | `core/harness/execution/contrast_signals.py` | ✅ | 自动同步 | 已合入 |
+| clear_contrast_signals | `core/harness/execution/contrast_signals.py` | ✅ | 自动同步 | 已合入 |
+| is_coding_seal_context | `core/harness/execution/execution_seal.py` | ✅ | 自动同步 | 已合入 |
+| apply_repair_selection | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
+| receipt_bind_enabled | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
+| sanitize_tool_summary | `core/harness/memory/compression.py` | ✅ | 自动同步 | 已合入 |
+| sanitize_context_summary | `core/harness/memory/compression.py` | ✅ | 自动同步 | 已合入 |
+| backfill_stage_from_team_templates | `core/schemas_builder.py` | ✅ | 自动同步 | 已合入 |
+| apply_template_stage_overlay | `core/schemas_builder.py` | ✅ | 自动同步 | 已合入 |
+| pipeline_stage_from_store_row | `core/schemas_builder.py` | ✅ | 自动同步 | 已合入 |
+| extract_stage_persist_config | `core/schemas_builder.py` | ✅ | 自动同步 | 已合入 |
+| control_fuses_for_stage | `core/schemas_builder.py` | ✅ | 自动同步 | 已合入 |
+| file_stage_control_stack | `core/schemas_builder.py` | ✅ | 自动同步 | 已合入 |
+| stage_uses_react_loop | `core/schemas_builder.py` | ✅ | 自动同步 | 已合入 |
+| settle_repair_prediction | `core/harness/execution/execution_seal.py` | ✅ | 自动同步 | 已合入 |
+| note_prediction_outcome | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
+| block_extra_repair_verify | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
+| block_skipped_repair_write | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
+| revert_skipped_repair_writes | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
+| note_repair_writes_from_code | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
+| maybe_note_repair_fs_delta | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
+| note_repair_writes_from_fs_delta | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
+| capture_repair_fs_baseline | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
+| remember_repair_candidates | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
+| ingest_repair_candidates | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
+| select_repair_candidate | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
+| infer_receipt_status | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
+| reevaluate_code_review_gold | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
+| compare_gold_reports | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
+| record_tool_receipt | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
+| bind_completion_to_receipts | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
+| missing_completion_standard_reason | `core/harness/execution/done_verify.py` | ✅ | 自动同步 | 已合入 |
+| seal_before_finish | `core/harness/execution/execution_seal.py` | ✅ | 自动同步 | 已合入 |
+| seal_answer_with_receipts | `core/harness/execution/execution_seal.py` | ✅ | 自动同步 | 已合入 |
+| check_done_verify | `core/harness/execution/execution_seal.py` | ✅ | 自动同步 | 已合入 |
+| pending_coding_followup | `core/harness/execution/execution_seal.py` | ✅ | 自动同步 | 已合入 |
+| coding_deliverable_veto | `core/harness/execution/execution_seal.py` | ✅ | 自动同步 | 已合入 |
+| is_hard_done_veto | `core/harness/execution/done_verify.py` | ✅ | 自动同步 | 已合入 |
+| done_verify_exception_is_hard | `core/harness/execution/done_verify.py` | ✅ | 自动同步 | 已合入 |
+| rollback_command_missing | `core/harness/execution/done_verify.py` | ✅ | 自动同步 | 已合入 |
+| feature_flag_missing | `core/harness/execution/done_verify.py` | ✅ | 自动同步 | 已合入 |
+| rollback_checkpoint_missing | `core/harness/execution/done_verify.py` | ✅ | 自动同步 | 已合入 |
+| dependency_map_missing | `core/harness/execution/done_verify.py` | ✅ | 自动同步 | 已合入 |
+| refactor_plan_missing | `core/harness/execution/done_verify.py` | ✅ | 自动同步 | 已合入 |
+| diagnosis_list_missing | `core/harness/execution/done_verify.py` | ✅ | 自动同步 | 已合入 |
+| tdd_evidence_missing | `core/harness/execution/done_verify.py` | ✅ | 自动同步 | 已合入 |
+| stage_reflection_due | `core/harness/execution/stage_reflection.py` | ✅ | 自动同步 | 已合入 |
 | record_fail_open_audit_async | `core/harness/registry/execution_type_policy.py` | ✅ | 自动同步 | 已合入 |
 | known_execution_types | `core/harness/registry/execution_type_policy.py` | ✅ | 自动同步 | 已合入 |
 | fail_open_governance_status | `core/harness/registry/execution_type_policy.py` | ✅ | 自动同步 | 已合入 |
@@ -783,6 +831,9 @@ scan_hash: 8f9548ec24f4
 | Code 元工具偏好（图灵完备出口） | `harness/execution/meta_tool.py` + `ReActLoop._build_tools_desc` + `PipelineStageConfig.meta_tool` + StageRunner/CoreFacade/team_planner 注入 | ✅ | 算术/日期/解析/逃逸舱口 → `[META TOOL]` 提示 + 置顶 `code`；配置 `{enabled, auto_bind, force}`；`AIPLAT_META_TOOL_AUTO_BIND=auto`（生产 on / 开发 off）；`AIPLAT_META_TOOL_CODE` 总开关；生成物适用：已接线（Harness 横切） | 已合入 |
 | 组织 Harness 暗账本（HITL/审批 Amdahl） | `harness/meta/org_harness_metrics.py` + `CoreFacade.org_harness_status` + `GET /governance/org-harness` + Governance 面板 + eval_observability 可选切片 | ✅ | `serial_ratio`/审批 + **四指标**（P·R·P0miss·comments/time）+ `serial_chain_recommendations`（串行链改造建议）；vite/proxy；生成物不适用（平台横切治理观测） | 已合入 |
 | Governance 值班板（KPI 运营化） | `build_duty_board` + `load_adoption_snapshot` + `collect_merge_gates_posture` + Evidence Envelope 摘要 + Governance「值班板」+ Gold match-only CTA + 无假绿 adoption/机制状态 | ✅ | go/watch/block/unavailable；金标/串行/审批/HITL/Howl/**合入闸门姿态**/信封；任务成功率标 unavailable；gold_gate 加载失败 require_eval；值班板一键 `POST .../code-review-gold/evaluate`（match_only+persist limit=5）写报告并刷新 org-harness；**Gold JSONL 趋势** + **值班员剧本** + **豁免负债账**（owner/cap/到期未复审→block）+ **门禁元评估**（exemption/skip/appeal 率）+ **合入后仓库健康**（god/fanout/deps/Δloc）+ **证据信封**（禁无 envelope 的 BLOCK）；生成物不适用（平台横切治理观测） | 已合入 |
+| 在线采样 + 发布记分卡（值班板折叠） | `online_sample.summarize_online_samples` / `maybe_record_online_sample` + `release_scorecard.build_release_scorecard` / `release_decision` + `duty_board` 折叠 | ✅ | 未配置采样时 `available=False`（禁发明通过率）；记分卡无测量维→unavailable；生成物不适用（平台横切评测） | 进行中 |
+| 任务模型锁定（可选） | `task_model_lock.held_model_for_task` / `summarize_task_model_routes` / `bind_task_model_scope` + `model_injection` / ReActLoop | ✅ | 默认关（`AIPLAT_TASK_MODEL_LOCK`）；关时 held→None 走原选择链；值班板路由摘要不影响 status；生成物不适用（Harness 横切） | 进行中 |
+| Harness 递归库摘要 | `harness_recursion.summarize_library` / `recursion_budget` + duty_board / team_brain | ✅ | 库空或不可用→unavailable 摘要；对比步预算配置驱动；生成物不适用（Harness 横切） | 进行中 |
 | 值班板阈值 YAML | `load_duty_board_thresholds` + `load_duty_board_playbook` + `workspace_seeds/org/duty_board.yaml` | ✅ | override → `AIPLAT_DUTY_BOARD_CONFIG` → `$AIPLAT_HOME/org/duty_board.yaml` → seed；thresholds + playbook（go/watch/block/unavailable 固定动作）共用；含 gate_meta 窗口/率阈值；生成物不适用（平台横切） | 已合入 |
 | 治理闭环补齐（Gold 趋势 + 代理配置化） | `summarize_gold_regression.trend*` + `_apps_yaml_platform_routes` + `apps.yaml` `proxy_prefixes` | ✅ | 复用 gold JSONL 出趋势条；FE proxy 从 registry 生成 platform:8003 路由（禁手写 pin 漂移 #226）；生成物不适用（平台横切） | 已合入 |
 | 物理合入闸门 P0（通胀+形态） | `physical_merge_gates.py` + `scripts/check_physical_merge_gates.py` + `workspace_seeds/org/physical_merge_gates.yaml` + contracts-guard / pre-commit | ✅ | 合入时否决器（≠运行时入口校验/PolicyGate）：净增行/文件/新依赖/新类/新目录 + 禁 generic/framework/EventBus/深继承；mode warn→`block_after`（默认 2026-10-25）升级；`profile_neutral_globs` 使 CAPABILITIES/docs/registry 不逼 business；**豁免即负债**（owner+reason+expires、`max_active_exemptions`、到期未复审/非法/超限→block，值班板可见）；生成物不适用（平台横切发布门禁） | 已合入 |
@@ -844,6 +895,41 @@ scan_hash: 8f9548ec24f4
 ## 二、记忆子系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| memoryStickyUrl | `packages/aiplat-pi-runtime/extensions/enterprise_memory.ts` | ✅ | 自动同步 | 已合入 |
+| ensureStickyMemory | `packages/aiplat-pi-runtime/extensions/enterprise_memory.ts` | ✅ | 自动同步 | 已合入 |
+| upsert_pinned_memory | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| revise_profile_observation | `core/harness/memory/profile_builder.py` | ✅ | 自动同步 | 已合入 |
+| extract_and_persist_profile | `core/harness/memory/profile_builder.py` | ✅ | 自动同步 | 已合入 |
+| promote_durable_profile_facts | `core/harness/memory/profile_builder.py` | ✅ | 自动同步 | 已合入 |
+| sanitize_user_profile | `core/harness/memory/profile_builder.py` | ✅ | 自动同步 | 已合入 |
+| compose_sticky_memory | `core/harness/memory/profile_builder.py` | ✅ | 自动同步 | 已合入 |
+| user_profile_sticky_text | `core/harness/memory/profile_builder.py` | ✅ | 自动同步 | 已合入 |
+| to_durable_message | `core/harness/memory/profile_builder.py` | ✅ | 自动同步 | 已合入 |
+| semantic_context_block | `core/harness/memory/profile_builder.py` | ✅ | 自动同步 | 已合入 |
+| critical_episodes_block | `core/harness/memory/profile_builder.py` | ✅ | 自动同步 | 已合入 |
+| session_summary_block | `core/harness/memory/profile_builder.py` | ✅ | 自动同步 | 已合入 |
+| sanitize_episodic_summary_text | `core/harness/memory/profile_builder.py` | ✅ | 自动同步 | 已合入 |
+| coding_deliverable_veto | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| check_done_verify | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| seal_answer_with_receipts | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| seal_before_finish | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| sticky_memory_slice | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| searchSessionArchive | `packages/aiplat-pi-runtime/extensions/enterprise_memory.ts` | ✅ | 自动同步 | 已合入 |
+| pinStickyFact | `packages/aiplat-pi-runtime/extensions/enterprise_memory.ts` | ✅ | 自动同步 | 已合入 |
+| query_session_archive | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| session_archive_query | `core/harness/memory/file_store.py` | ✅ | 自动同步 | 已合入 |
+| archive_prompt_snippet | `core/harness/memory/file_store.py` | ✅ | 自动同步 | 已合入 |
+| query_asks_about_past | `core/harness/memory/file_store.py` | ✅ | 自动同步 | 已合入 |
+| text_overlaps_query | `core/harness/memory/file_store.py` | ✅ | 自动同步 | 已合入 |
+| search_session_archive | `core/harness/memory/file_store.py` | ✅ | 自动同步 | 已合入 |
+| archive_compacted_turns | `core/harness/memory/file_store.py` | ✅ | 自动同步 | 已合入 |
+| replace_memory_entry | `core/harness/memory/file_store.py` | ✅ | 自动同步 | 已合入 |
+| pinned_memory_text | `core/harness/memory/file_store.py` | ✅ | 自动同步 | 已合入 |
+| memory_char_budget | `core/harness/memory/file_store.py` | ✅ | 自动同步 | 已合入 |
+| durable_wiki_insight | `core/harness/memory/file_store.py` | ✅ | 自动同步 | 已合入 |
+| durable_semantic_content | `core/harness/memory/file_store.py` | ✅ | 自动同步 | 已合入 |
+| memory_content_is_fact | `core/harness/memory/file_store.py` | ✅ | 自动同步 | 已合入 |
+| latest_by_tag | `core/harness/memory/semantic.py` | ✅ | 自动同步 | 已合入 |
 | ide_coding_handoff_payload | `core/harness/memory/ide_governed_handoff.py` | ✅ | 自动同步 | 已合入 |
 | classify_ide_coding_handoff | `core/harness/memory/ide_governed_handoff.py` | ✅ | 自动同步 | 已合入 |
 | format_recall_message | `core/harness/memory/team_brain.py` | ✅ | 自动同步 | 已合入 |
@@ -1572,6 +1658,18 @@ scan_hash: 8f9548ec24f4
 ## 六、Skill 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| scan_untrusted_skill_text | `core/apps/skills/skill_boundary.py` | ✅ | 自动同步 | 已合入 |
+| skill_skip_reason | `core/apps/skills/skill_boundary.py` | ✅ | 自动同步 | 已合入 |
+| enable_skill_result | `core/apps/skills/skill_boundary.py` | ✅ | 自动同步 | 已合入 |
+| resolve_e2e_url | `core/engine/skills/e2e_test/handler.py` | ✅ | 自动同步 | 已合入 |
+| scaffold_spec_from_recon | `core/engine/skills/e2e_test/handler.py` | ✅ | 自动同步 | 已合入 |
+| e2e_test | `core/engine/skills/e2e_test/handler.py` | ✅ | 自动同步 | 已合入 |
+| orphan_finalize_status_payload | `core/harness/utils/execute_session.py` | ✅ | 自动同步 | 已合入 |
+| orphan_seal_requires_quality_review | `core/harness/utils/execute_session.py` | ✅ | 自动同步 | 已合入 |
+| procedural_memory_block | `core/harness/routing/skill_routing.py` | ✅ | 自动同步 | 已合入 |
+| skill_catalog_entry | `core/harness/routing/skill_routing.py` | ✅ | 自动同步 | 已合入 |
+| skill_trigger_text | `core/harness/routing/skill_routing.py` | ✅ | 自动同步 | 已合入 |
+| scan_skill_dir | `` | ✅ | 自动同步 | 已合入 |
 | _resolve_auto_trigger_allowed | `core/apps/skills/discovery.py` | ✅ | 自动同步 | 已合入 |
 | UserModeTriggerSoftPass | `core/management/lint_rules/skill_quality.py` | ✅ | 自动同步 | 已合入 |
 | InvocationModeCheck | `core/management/lint_rules/skill_quality.py` | ✅ | 自动同步 | 已合入 |
@@ -1737,6 +1835,8 @@ scan_hash: 8f9548ec24f4
 ## 七、安全与治理
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| e2e_recon_wiring | `core/harness/observability/architecture_health.py` | ✅ | 自动同步 | 已合入 |
+| execution_seal_wiring | `core/harness/observability/architecture_health.py` | ✅ | 自动同步 | 已合入 |
 | resolve_task_context | `core/harness/infrastructure/gates/approval_reviewer.py` | ✅ | 自动同步 | 已合入 |
 | provenance_forces_hard_floor | `core/harness/infrastructure/gates/session_write_provenance.py` | ✅ | 自动同步 | 已合入 |
 | record_session_write | `core/harness/infrastructure/gates/session_write_provenance.py` | ✅ | 自动同步 | 已合入 |
@@ -2108,6 +2208,8 @@ scan_hash: 8f9548ec24f4
 ## 十二、Gate 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| coding_closed_loop_runtime_gaps | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
+| sync_coding_closed_loop_team_seeds | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
 | parse_app_page_payload | `core/harness/execution/app_page_skill_inject.py` | ✅ | 自动同步 | 已合入 |
 | skill_routing_context_block | `core/harness/execution/app_page_skill_inject.py` | ✅ | 自动同步 | 已合入 |
 | extract_ui_bindings | `core/harness/execution/app_page_skill_inject.py` | ✅ | 自动同步 | 已合入 |
@@ -2388,6 +2490,9 @@ scan_hash: 8f9548ec24f4
 ## 十六、工具生态
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| infer_recency_days | `core/apps/tools/web/web_search.py` | ✅ | 自动同步 | 已合入 |
+| list_elements | `core/apps/tools/browser.py` | ✅ | 自动同步 | 已合入 |
+| BrowserTool | `core/apps/tools/browser.py` | ✅ | 自动同步 | 已合入 |
 | approve_delivery_session | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
 | FdeDomainLiteralsAstCheck | `core/management/arch_guard_rules/fde_workbench.py` | ✅ | 自动同步 | 已合入 |
 | import_graph_payload | `aiPlat-platform/apps/fde/api/action_routes.py` | ✅ | 自动同步 | 已合入 |
@@ -3101,24 +3206,24 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 248 | 1 | 249 |
-| 记忆子系统 | 58 | 0 | 58 |
+| Harness 执行引擎 | 299 | 1 | 300 |
+| 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 375 | 9 | 384 |
 | RAG 检索 | 52 | 0 | 52 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 168 | 0 | 168 |
-| Skill 系统 | 157 | 0 | 157 |
-| 安全与治理 | 88 | 0 | 88 |
+| Skill 系统 | 169 | 0 | 169 |
+| 安全与治理 | 90 | 0 | 90 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 135 | 0 | 135 |
-| Gate 系统 | 172 | 0 | 172 |
+| Gate 系统 | 174 | 0 | 174 |
 | 评估系统 | 27 | 0 | 27 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
-| 工具生态 | 71 | 0 | 71 |
+| 工具生态 | 74 | 0 | 74 |
 | 微调系统 | 14 | 0 | 14 |
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 44 | 0 | 44 |
@@ -3146,7 +3251,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2176** | **10** | **2186** |
+| **总计** | **2281** | **10** | **2291** |
 
 | **总计** | **1095** | **0** | **1095** |
 

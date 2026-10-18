@@ -8,11 +8,13 @@ from pathlib import Path
 
 from core.harness.team_factory_seeds import (
     apply_team_factory_seeds,
+    coding_closed_loop_runtime_gaps,
     resolve_factory_sanitize_file,
     resolve_team_yaml_candidates,
     rollback_team_factory_seeds,
     runtime_sanitize_dir,
     runtime_teams_dir,
+    sync_coding_closed_loop_team_seeds,
 )
 from core.harness.team_harness import (
     configure_team_harness,
@@ -130,6 +132,89 @@ def test_ft1_apply_and_rollback(tmp_path, monkeypatch):
     assert (runtime_teams_dir() / "hybrid.yaml").read_text(encoding="utf-8").startswith(
         "team_name: Old"
     )
+
+
+def test_load_team_template_respects_aiplat_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+    teams = runtime_teams_dir()
+    teams.mkdir(parents=True)
+    (teams / "code.yaml").write_text(
+        "team_name: From Home\n"
+        "stages:\n"
+        "  - agent_id: programmer_agent\n"
+        "    uses_file_output: true\n"
+        "    refactor_sop: true\n",
+        encoding="utf-8",
+    )
+    from core.harness.execution.team_planner import load_team_template
+
+    tmpl = load_team_template("code")
+    assert tmpl is not None
+    assert tmpl.team_name == "From Home"
+    assert tmpl.file_path.startswith(str(tmp_path))
+    prog = next(s for s in tmpl.stages if s.get("agent_id") == "programmer_agent")
+    assert prog.get("refactor_sop") is True
+
+
+def test_coding_closed_loop_runtime_gaps_detects_stale(tmp_path, monkeypatch):
+    monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+    teams = runtime_teams_dir()
+    teams.mkdir(parents=True)
+    (teams / "code.yaml").write_text(
+        "team_name: Stale\n"
+        "stages:\n"
+        "  - agent_id: programmer_agent\n"
+        "    uses_file_output: true\n",
+        encoding="utf-8",
+    )
+    before = coding_closed_loop_runtime_gaps()
+    assert before.get("ok") is False
+    assert any("refactor_sop" in g for g in before.get("gaps") or [])
+    sync_coding_closed_loop_team_seeds()
+    after = coding_closed_loop_runtime_gaps()
+    assert after.get("ok") is True
+
+
+def test_sync_coding_closed_loop_fills_missing_keys(tmp_path, monkeypatch):
+    monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+    monkeypatch.delenv("AIPLAT_TEAM_CODING_SEED_SYNC", raising=False)
+    teams = runtime_teams_dir()
+    teams.mkdir(parents=True)
+    (teams / "code.yaml").write_text(
+        "team_name: Stale\n"
+        "stages:\n"
+        "  - agent_id: programmer_agent\n"
+        "    uses_file_output: true\n"
+        "    review_gate: quick\n",
+        encoding="utf-8",
+    )
+    (teams / "code_split.yaml").write_text(
+        "team_name: Stale Split\n"
+        "stages:\n"
+        "  - agent_id: backend_developer\n"
+        "    uses_file_output: true\n",
+        encoding="utf-8",
+    )
+    r = sync_coding_closed_loop_team_seeds()
+    assert r.get("ok") is True and not r.get("skipped")
+    code = (teams / "code.yaml").read_text(encoding="utf-8")
+    assert "refactor_sop: true" in code
+    assert "architecture_profile" not in code
+    split = (teams / "code_split.yaml").read_text(encoding="utf-8")
+    assert "tdd_enforce: true" in split
+    assert "architecture_profile" not in split
+    # Explicit false is preserved on second sync.
+    (teams / "code.yaml").write_text(
+        "team_name: Opt Out\n"
+        "stages:\n"
+        "  - agent_id: programmer_agent\n"
+        "    uses_file_output: true\n"
+        "    refactor_sop: false\n",
+        encoding="utf-8",
+    )
+    r2 = sync_coding_closed_loop_team_seeds()
+    assert "already_current" in str(r2.get("patched", {}).get("code", {}))
+    assert "refactor_sop: false" in (teams / "code.yaml").read_text(encoding="utf-8")
 
 
 def test_ft1_apply_skips_without_team_sources(tmp_path, monkeypatch):

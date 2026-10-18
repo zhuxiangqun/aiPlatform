@@ -1,7 +1,7 @@
 # Pi + aiPlat 企业级混合
 
 > 产品锁定：默认 **Pi-only**；企业级 = **Pi 壳 + aiPlat 回连**。  
-> **已接线**：只读 KB + 允许列表工具代理 + **原生工具门禁桥** + **会话摘要 Memory 回写** + **审批等待桥**。  
+> **已接线**：只读 KB + 允许列表工具代理 + **原生工具门禁桥** + **会话摘要 Memory 回写** + **开场读取 `/memory/sticky` 固定事实** + **审批等待桥**。  
 > **分层**：Pi = 执行内核；aiPlat = 平台治理。不是两套平权产品。  
 > 权威边界（上下文/压缩/学习归属）：`docs/architecture/plans/pi-thin-runtime.md` §双模式内涵 / §上下文·压缩·学习。
 
@@ -69,7 +69,7 @@
 | 1 | 只读知识检索 | ✅ | KB 桥 + 结构化检索 [#283](https://github.com/zhuxiangqun/aiPlatform/pull/283) | `aiplat_kb_retrieve` → `POST /platform/kb/query` |
 | 2 | 工具代理（允许列表） | ✅ | `enterprise_tools` 扩展 + smoke | `aiplat_tool_execute` → `POST …/tools/{name}/execute` |
 | 3 | 原生工具门禁桥 | ✅ | `enterprise_tool_gate`；enterprise 默认 fail-closed | `tool_call` block + `setActiveTools`；默认禁 bash/write/edit/powershell |
-| 4 | 会话摘要回写 Memory | ✅ | `enterprise_memory` → `POST /platform/memory/capture` | 工具 + `session_shutdown` 软 flush；失败不阻断 |
+| 4 | 会话摘要回写 + 开场 sticky 读回 | ✅ | `enterprise_memory` → `POST /platform/memory/capture` + `GET /platform/memory/sticky` | 工具 + `session_shutdown` 软 flush；开场/`before_agent_start` 注入**用户画像 + MEMORY.md**（共享预算）；失败不阻断。写入固定事实走工具 `aiplat_memory_pin` → `POST /platform/memory/sticky`（预算满同 key 合并；写完清缓存，本会话下一轮读回）。厂内会话后 ProfileBuilder 也会把稳定偏好 promote 进 MEMORY.md。过去过程按需 `aiplat_session_search` → `GET /platform/memory/archive` |
 | 5 | 审批门 ApprovalGate | ✅ | lazy-store [#271](https://github.com/zhuxiangqun/aiPlatform/pull/271) · ISO 时间 [#272](https://github.com/zhuxiangqun/aiPlatform/pull/272) | status/pending/wait → `/platform/approvals…`；裁决在平台 UI |
 | 5b | Unattended attendance | ✅ | OpenWorker P1 混合桥 | `AIPLAT_ENTERPRISE_ATTENDANCE=attended\|inbox\|auto` → 工具注入 `_attendance`；`aiplat_unattended_inbox` / `aiplat_unattended_wait` → `/platform/approvals/unattended*`；**不**从 Pi resolve |
 
@@ -137,6 +137,9 @@ node packages/aiplat-pi-runtime/scripts/enterprise_hybrid_live_smoke.mjs
 - 从 Pi 代批 `approve`/`reject`（必须走平台审批 UI / 管理端）
 - 无允许列表时开放任意平台工具
 - 把「厚运行时私有化」写成默认交付（仅驻场例外）
+- **执行封存不在 Pi 上**：`done_verify` / `require_review` / 质量复核翻失败 / 编码宪法（karpathy）/ `task_model_lock` / 修复候选筛选与预测回执（`select_repair_candidate`、`_prediction_receipt`）只在 Core。Pi 的 `completion_receipt` **只**给企业 Memory 回写打 `[未核验]`/`[失败]` 与 `completion_*` 标签，不改用户可见完成、不记预测、不代替平台 Execute。矩阵见 [`execution-decision-matrix.md`](../../../docs/architecture/execution-decision-matrix.md) §2.6。混合开通 ≠ 编码闭环已在壳上跑完。
+- **Memory / 选模边界**：sticky=固定事实，capture/archive=过程；任务选模锁不进 Pi。详见 [`memory-lifetime-and-model-lock.md`](../../../docs/architecture/memory-lifetime-and-model-lock.md)。
+- **UI E2E 闭环不在 Pi 上**：先侦察再写用例、语义定位、等待规范、定位变更回执只在 Core `engine/skills/e2e_test` + `browser.list_elements`。不在 Pi 装社区 Playwright Skill，不另起 UI-Agent 子系统。
 
 ## 与厂内轴（A）的关系
 

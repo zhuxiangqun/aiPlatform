@@ -118,7 +118,15 @@ def _checkpoint_before_overwrite(abs_path: str, trace_context: Optional[Dict[str
 
         from core.harness.execution.file_checkpoint import checkpoint_file
 
-        checkpoint_file(abs_path, session_id=session_id, reason=reason)
+        cid = checkpoint_file(abs_path, session_id=session_id, reason=reason)
+        if isinstance(trace_context, dict) and cid:
+            rows = trace_context.get("_file_checkpoints")
+            if not isinstance(rows, list):
+                rows = []
+                trace_context["_file_checkpoints"] = rows
+            rows.append({"id": str(cid), "path": abs_path, "reason": reason})
+            if len(rows) > 40:
+                del rows[:-40]
 
     except Exception as e:
 

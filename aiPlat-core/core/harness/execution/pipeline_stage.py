@@ -218,10 +218,23 @@ class PipelineStageMixin:
                 if not isinstance(_smeta, dict):
                     _smeta = None
             _err = str(result.get("error") or result.get("error_message") or "")
+            _art_failed = isinstance(_art, dict) and str(_art.get("status") or "") == "failed"
+            _raw = str((_art or {}).get("raw_output") or "") if isinstance(_art, dict) else ""
             _st = "failed" if (
                 _err
+                or _art_failed
+                or result.get("_require_review_incomplete")
+                or result.get("_finalize_hard_fail")
+                or str(result.get("_force_failed_status") or "").strip()
+                or _raw.startswith("STAGE_ERROR:")
                 or str(result.get("phase") or "").lower() in ("failed", "error")
             ) else "ok"
+            if _st == "failed" and not _err:
+                _err = str(
+                    result.get("_done_verify_last_reason")
+                    or _raw
+                    or "done_verify failed"
+                )[:500]
             _stages = None
             _cfg = getattr(self, "_config", None)
             if _cfg is not None:
@@ -945,6 +958,43 @@ class PipelineStageMixin:
         try:
 
             result_text = await self._run_stage_core(stage, state, prompt, agent_type, stage_model)
+
+            _rt = str(result_text or "").strip()
+            _dv_failed = bool(
+                state.get("_completion_standard_blocked")
+                or state.get("_require_review_incomplete")
+                or state.get("_finalize_hard_fail")
+                or str(state.get("_force_failed_status") or "").strip()
+                or str(state.get("error") or "").startswith("done_verify:")
+                or _rt.startswith("STAGE_ERROR:")
+            )
+            if _dv_failed:
+                reason = str(
+                    state.get("_done_verify_last_reason")
+                    or state.get("error")
+                    or _rt
+                    or "done_verify failed"
+                ).strip()
+                if reason.startswith("STAGE_ERROR:"):
+                    reason = reason[len("STAGE_ERROR:") :].strip()
+                key = stage.output_artifact or stage.id
+                state[key] = {
+                    "raw_output": reason,
+                    "status": "failed",
+                    "error": reason,
+                    "done_verify_veto": reason,
+                }
+                state["error"] = reason
+                state["_last_action_reason"] = "done_verify_failed"
+                state["phase"] = PipelinePhase.FAILED
+                state["_progress"] = {
+                    "stage": stage.id,
+                    "status": "failed",
+                    "backend": "done_verify",
+                }
+                if "require_review" in reason or state.get("_require_review_incomplete"):
+                    state["_require_review_incomplete"] = True
+                return state
 
             # Accumulate token usage from StageRunner/ReActLoop
 

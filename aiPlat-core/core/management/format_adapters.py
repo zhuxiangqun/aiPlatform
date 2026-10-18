@@ -101,6 +101,12 @@ class HermesAdapter(FormatAdapter):
                     continue
                 raw = skill_md.read_text(encoding="utf-8", errors="replace")
                 if is_agentskills_format(raw):
+                    from core.apps.skills.skill_boundary import scan_skill_dir
+
+                    scan = scan_skill_dir(item.name, skill_md)
+                    if scan.get("blocked"):
+                        skipped.append(f"skill:{item.name}: skill_scan_blocked")
+                        continue
                     new_md = convert_agentskills_to_aiplat(raw, item.name)
                     dest = target_base / item.name
                     if dest.exists():
@@ -178,6 +184,12 @@ class OpenClawAdapter(FormatAdapter):
                     continue
                 raw = skill_md.read_text(encoding="utf-8", errors="replace")
                 if is_agentskills_format(raw):
+                    from core.apps.skills.skill_boundary import scan_skill_dir
+
+                    scan = scan_skill_dir(item.name, skill_md)
+                    if scan.get("blocked"):
+                        skipped.append(f"skill:{item.name}: skill_scan_blocked")
+                        continue
                     new_md = convert_agentskills_to_aiplat(raw, item.name)
                     dest = target_base / item.name
                     if dest.exists():

@@ -792,6 +792,15 @@ def build_duty_board(
     gr = pl.get("gold_regression") if isinstance(pl.get("gold_regression"), dict) else {}
     gold_trend_summary = gr.get("trend_summary") if isinstance(gr.get("trend_summary"), dict) else None
     merge_gates = collect_merge_gates_posture()
+    from core.harness.evaluation.harness_recursion import summarize_library
+    from core.harness.evaluation.online_sample import summarize_online_samples
+    from core.harness.utils.task_model_lock import summarize_task_model_routes
+
+    online_eval = summarize_online_samples()
+    model_route = summarize_task_model_routes()
+    harness_library = summarize_library()
+    if online_eval.get("available"):
+        data_available = True
 
     if not data_available and not has_adoption:
         return {
@@ -807,8 +816,14 @@ def build_duty_board(
                 "howl": "unavailable",
                 "merge_gates": "unavailable",
                 "repo_health": "unavailable",
+                "scorecard": "unavailable",
+                "online_eval": "unavailable",
                 "envelope": "unavailable",
             },
+            "scorecard": {"status": "unavailable", "dims": {}, "overall": None},
+            "online_eval": {"available": False, "sampled": 0},
+            "model_route": model_route,
+            "harness_library": harness_library,
             "thresholds": thr,
             "thresholds_source": thr_source,
             "release_habit": "run ops_harness_ready_check.sh + gold match-only before release",
@@ -838,6 +853,8 @@ def build_duty_board(
         "howl": "unavailable",
         "merge_gates": "go",
         "repo_health": "unavailable",
+        "scorecard": "unavailable",
+        "online_eval": "unavailable",
     }
 
     # --- gold ---
@@ -1034,6 +1051,86 @@ def build_duty_board(
         if not avail.get("approvals") and not has_adoption:
             status = "unavailable"
 
+    # --- release scorecard (6 dims) + online sample summary ---
+    from core.harness.evaluation.release_scorecard import (
+        build_release_scorecard,
+        metrics_from_duty_summary,
+        metrics_from_faithfulness_values,
+        release_decision,
+        scorecard_to_duty_check,
+    )
+
+    sc_raw = pl.get("scorecard") if isinstance(pl.get("scorecard"), dict) else None
+    if sc_raw is None and isinstance(sm.get("scorecard"), dict):
+        sc_raw = sm.get("scorecard")
+    prebuilt = isinstance(sc_raw, dict) and "dims" in sc_raw
+    if prebuilt:
+        scorecard_view = sc_raw
+    else:
+        merged: Dict[str, Any] = {}
+        if isinstance(sc_raw, dict):
+            merged.update(sc_raw)
+        if isinstance(sm.get("release_metrics"), dict):
+            for key, val in sm["release_metrics"].items():
+                merged.setdefault(key, val)
+        for key, val in metrics_from_duty_summary(sm).items():
+            merged.setdefault(key, val)
+        online_metrics = online_eval.get("metrics") if isinstance(online_eval.get("metrics"), dict) else {}
+        for key, val in online_metrics.items():
+            merged.setdefault(key, val)
+        faith_vals: List[Any] = []
+        try:
+            from core.harness.evaluation.hallucination_tracker import get_hallucination_tracker
+
+            faith_vals = [
+                row.get("faithfulness")
+                for row in get_hallucination_tracker().get_recent_reports(limit=50)
+                if isinstance(row, dict)
+            ]
+        except Exception:
+            logger.debug("faithfulness fold skipped", exc_info=True)
+        for key, val in metrics_from_faithfulness_values(faith_vals).items():
+            merged.setdefault(key, val)
+        scorecard_view = build_release_scorecard(merged)
+    eval_profile = str(sm.get("eval_profile") or pl.get("eval_profile") or "").strip() or None
+    release = release_decision(scorecard_view, profile=eval_profile)
+    scorecard_view = dict(scorecard_view)
+    scorecard_view["release"] = release
+    if release.get("mode") == "required":
+        sc_check = str(release.get("status") or "unavailable")
+    else:
+        sc_check = scorecard_to_duty_check(scorecard_view)
+    checks["scorecard"] = sc_check
+    if sc_check == "block":
+        for name in release.get("failed") or scorecard_view.get("failed") or []:
+            reasons.append(f"scorecard_dim_failed={name}")
+        for name in release.get("untested") or []:
+            reasons.append(f"scorecard_dim_untested={name}")
+        if not release.get("failed") and not release.get("untested") and not scorecard_view.get("failed"):
+            reasons.append("scorecard_block")
+        status = "block"
+    elif sc_check == "watch" and prebuilt:
+        for name in scorecard_view.get("unavailable") or []:
+            reasons.append(f"scorecard_dim_unavailable={name}")
+        if status == "go":
+            status = "watch"
+    elif sc_check == "unavailable":
+        reasons.append("scorecard unavailable (no measured dims)")
+
+    if online_eval.get("available"):
+        oe_st = str(online_eval.get("scorecard_status") or "watch")
+        checks["online_eval"] = oe_st if oe_st in ("go", "watch", "block") else "watch"
+        if oe_st == "block":
+            reasons.append(
+                f"online_eval_block sampled={online_eval.get('sampled')} pass_rate={online_eval.get('pass_rate')}"
+            )
+            status = "block"
+        elif oe_st == "watch" and status == "go":
+            reasons.append(f"online_eval_watch sampled={online_eval.get('sampled')}")
+            status = "watch"
+    else:
+        checks["online_eval"] = "unavailable"
+
     # --- Evidence Envelope: findings fold + gold BLOCK (measured+limitations) ---
     from core.harness.meta.evidence_envelope import (
         envelope_for_exemption_debt_block,
@@ -1199,6 +1296,10 @@ def build_duty_board(
         "playbook_source": playbook_source,
         "gold_trend_summary": gold_trend_summary,
         "merge_gates": merge_gates,
+        "scorecard": scorecard_view,
+        "online_eval": online_eval,
+        "model_route": model_route,
+        "harness_library": harness_library,
         "envelope": envelope_summary,
     }
 

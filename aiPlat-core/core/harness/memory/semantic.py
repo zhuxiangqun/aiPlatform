@@ -260,6 +260,32 @@ class SemanticMemory:
             return item
         return None
 
+    def latest_by_tag(self, tag: str) -> Optional[MemoryItem]:
+        """Newest non-deleted item with metadata.tag == tag. Fixed inject, not similarity."""
+        want = (tag or "").strip()
+        if not want:
+            return None
+        best: Optional[MemoryItem] = None
+        best_ts = float("-inf")
+        for item in self._items.values():
+            if item.is_deleted:
+                continue
+            meta = item.metadata if isinstance(item.metadata, dict) else {}
+            if str(meta.get("tag") or "") != want:
+                continue
+            ts = float(meta.get("updated_at") or 0) or 0.0
+            if not ts and item.created_at is not None:
+                try:
+                    ts = item.created_at.timestamp()
+                except Exception:
+                    ts = 0.0
+            if ts >= best_ts:
+                best = item
+                best_ts = ts
+        if best is not None:
+            self._renew_expiry(best)
+        return best
+
     async def get_deleted(self, key: str, *, tenant_id: str, session_id: str) -> Optional[MemoryItem]:
         """Retrieve a soft-deleted memory (for recovery). Requires tenant+session isolation."""
         item = self._items.get(key)

@@ -2333,23 +2333,15 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                             _tmpl_name = {"hybrid": "hybrid", "code": "code_split"}.get(rec.mode, "default")
                             tmpl = load_team_template(_tmpl_name) or load_team_template("default")
                             if tmpl and tmpl.stages:
+                                from core.api.core_facade import apply_template_stage_overlay
+
                                 _by_agent = {
                                     s.get("agent_id"): s for s in tmpl.stages
                                     if isinstance(s, dict) and s.get("agent_id")
                                 }
-                                _COPY_KEYS = (
-                                    "hitl", "hitl_phase", "architecture_mode",
-                                    "input_artifacts", "completeness_check",
-                                    "quality_gate", "skill_name", "output_artifact",
-                                    "execution_backend",
-                                )
                                 for ts in team_stages:
                                     src = _by_agent.get(ts.agent_id) or {}
-                                    for k in _COPY_KEYS:
-                                        val = src.get(k)
-                                        if val in (None, "", [], {}):
-                                            continue
-                                        setattr(ts, k, val)
+                                    apply_template_stage_overlay(ts, src)
                                 proj["team_template"] = _tmpl_name
                                 proj["factory_mode"] = rec.mode or "agent"
                         except Exception:
@@ -4171,6 +4163,16 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         proj = self._projects.get(project_id, {})
         if not proj:
             return False
+        try:
+            # Keep ~/.aiplat/teams coding closed-loop keys (refactor_sop/tdd) current
+            # before load_team_template (home copy wins over workspace seeds).
+            from core.api.core_facade import sync_coding_closed_loop_team_seeds
+
+            sync_coding_closed_loop_team_seeds()
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "coding closed-loop team seed sync skipped", exc_info=True
+            )
         try:
             from core.api.core_facade import _enrich_stage_from_agent
             from core.api.core_facade import load_team_template

@@ -143,6 +143,26 @@ interface DutyBoard {
     } | null;
     whys?: string[];
   } | null;
+  /** Process proxies (tool success, gold, approval wait). Not business outcomes. */
+  scorecard?: {
+    measure_scope?: string;
+    business_outcomes?: string;
+    dims?: Record<string, { score?: number | null; status?: string }>;
+    release?: { measure_scope?: string; business_outcomes?: string; status?: string };
+  } | null;
+  /** Task model-route hold — display only; does not change go/watch/block */
+  model_route?: {
+    available?: boolean;
+    tasks?: number;
+    rows?: number;
+    by_purpose?: Record<string, {
+      tasks?: number;
+      success_rate?: number;
+      upgrade_rate?: number;
+      avg_elapsed_ms?: number | null;
+      final_models?: Record<string, number>;
+    }>;
+  };
 }
 
 /** Org harness dark ledger — HITL / approvals + gold P/R / P0 miss */
@@ -518,6 +538,48 @@ export default function GovernanceDashboard() {
         {duty.release_habit && (
           <div style={{ marginTop: 6, fontSize: 11, color: '#666' }}>{duty.release_habit}</div>
         )}
+        <div style={{ marginTop: 6, fontSize: 11, color: '#888' }}>
+          过程指标
+          {duty.scorecard?.dims && Object.keys(duty.scorecard.dims).length > 0
+            ? `（${Object.keys(duty.scorecard.dims).join('、')}）`
+            : '（工具成功率、黄金集、审批等待、选模升级）'}
+          。经营结果：{(() => {
+            const raw =
+              duty.scorecard?.business_outcomes ||
+              duty.scorecard?.release?.business_outcomes ||
+              '';
+            if (!raw || raw === 'unmeasured' || raw === 'unavailable') return '未测';
+            return raw;
+          })()}
+        </div>
+        {(() => {
+          const mr = duty.model_route;
+          if (!mr?.available || !mr.by_purpose || Object.keys(mr.by_purpose).length === 0) {
+            return (
+              <div style={{ marginTop: 8, fontSize: 11, color: '#555' }}>
+                model routes: no samples yet (task hold logs after agent runs)
+              </div>
+            );
+          }
+          return (
+            <div style={{ marginTop: 8, fontSize: 11, color: '#aaa' }}>
+              <span style={{ color: '#888' }}>
+                model routes · {mr.tasks ?? 0} tasks
+              </span>
+              {Object.entries(mr.by_purpose).slice(0, 6).map(([purpose, row]) => {
+                const top = Object.entries(row.final_models || {}).sort((a, b) => b[1] - a[1])[0];
+                const ok = row.success_rate != null ? `${Math.round(row.success_rate * 100)}%` : '—';
+                const up = row.upgrade_rate != null ? `${Math.round(row.upgrade_rate * 100)}%` : '—';
+                return (
+                  <div key={purpose}>
+                    · {purpose}: ok {ok} · up {up}
+                    {top ? ` · ${top[0]}` : ''}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
         {(() => {
           const ts = duty.gold_trend_summary
             || orgHarness?.gold_regression?.trend_summary

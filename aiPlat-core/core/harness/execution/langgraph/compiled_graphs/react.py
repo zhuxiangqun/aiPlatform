@@ -86,6 +86,17 @@ def create_compiled_react_graph(
         else:
             reasoning = "No model available"
         state["reasoning"] = reasoning
+        ctx = state.get("context")
+        if not isinstance(ctx, dict):
+            ctx = {}
+            state["context"] = ctx
+        ctx["reasoning"] = reasoning
+        try:
+            from core.harness.execution.completion_receipt import remember_repair_candidates
+
+            remember_repair_candidates(ctx)
+        except Exception:
+            logging.getLogger(__name__).debug("remember_repair_candidates skipped", exc_info=True)
         step_count = int(state.get("step_count", 0) or 0) + 1
         state["step_count"] = step_count
         if "DONE" in reasoning.upper():
@@ -113,7 +124,65 @@ def create_compiled_react_graph(
             tool = _find_tool(_tools, action_name)
             if tool:
                 try:
-                    ctx = state.get("context") or {}
+                    ctx = state.get("context")
+                    if not isinstance(ctx, dict):
+                        ctx = {}
+                        state["context"] = ctx
+                    from core.harness.execution.completion_receipt import (
+                        block_extra_repair_verify,
+                        block_skipped_repair_write,
+                    )
+
+                    _blocked_verify = block_extra_repair_verify(ctx, action_name, tool_args)
+                    if _blocked_verify:
+                        action_result = f"Denied: {_blocked_verify}"
+                        state["action"] = action_name
+                        state["observation"] = action_result
+                        try:
+                            from core.harness.execution.completion_receipt import (
+                                record_tool_receipt,
+                            )
+
+                            record_tool_receipt(
+                                ctx,
+                                tool=str(action_name or ""),
+                                status="failed",
+                                detail=action_result[:500],
+                            )
+                        except Exception:
+                            logging.getLogger(__name__).debug(
+                                "deny receipt skipped", exc_info=True
+                            )
+                        return NodeResult(
+                            success=False,
+                            output={"observation": action_result},
+                            next_node="observe",
+                        )
+                    _blocked_write = block_skipped_repair_write(ctx, action_name, tool_args)
+                    if _blocked_write:
+                        action_result = f"Denied: {_blocked_write}"
+                        state["action"] = action_name
+                        state["observation"] = action_result
+                        try:
+                            from core.harness.execution.completion_receipt import (
+                                record_tool_receipt,
+                            )
+
+                            record_tool_receipt(
+                                ctx,
+                                tool=str(action_name or ""),
+                                status="failed",
+                                detail=action_result[:500],
+                            )
+                        except Exception:
+                            logging.getLogger(__name__).debug(
+                                "deny receipt skipped", exc_info=True
+                            )
+                        return NodeResult(
+                            success=False,
+                            output={"observation": action_result},
+                            next_node="observe",
+                        )
                     result = await sys_tool_call(
                         tool,
                         tool_args,
@@ -125,6 +194,16 @@ def create_compiled_react_graph(
                             "tenant_id": ctx.get("tenant_id"),
                         },
                     )
+                    try:
+                        from core.harness.execution.completion_receipt import (
+                            maybe_note_repair_fs_delta,
+                        )
+
+                        maybe_note_repair_fs_delta(ctx)
+                    except Exception:
+                        logging.getLogger(__name__).debug(
+                            "maybe_note_repair_fs_delta skipped", exc_info=True
+                        )
                     action_result = str(result.output or result.error or "Success")
                 except Exception as e:
                     action_result = f"Error: {str(e)}"

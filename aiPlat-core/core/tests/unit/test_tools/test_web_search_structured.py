@@ -20,7 +20,7 @@ def tool():
     from core.apps.tools.web.web_search import WebSearchTool
     t = WebSearchTool()
     # stub 网络方法：单元测试不访问 DuckDuckGo
-    async def _no_json(q, limit):
+    async def _no_json(q, limit, df=""):
         return {"success": True, "backend": "json", "results": []}
     t._search_json = _no_json
     return t
@@ -30,7 +30,7 @@ def _tool_with_json_cross(hit_url: str):
     """构造 JSON 交叉命中指定 url 的工具（验证置信度提升）。"""
     from core.apps.tools.web.web_search import WebSearchTool
     t = WebSearchTool()
-    async def _json_hit(q, limit):
+    async def _json_hit(q, limit, df=""):
         return {"success": True, "backend": "json", "results": [
             {"title": "Cross", "url": hit_url, "snippet": "json abstract"},
         ]}
@@ -84,7 +84,7 @@ def test_legacy_mode_preserved(tool):
     raw = {"success": True, "backend": "html", "total": 1,
            "results": [{"title": "T", "url": "https://t.com", "snippet": "S"}]}
     # 用桩替换内部搜索方法，验证 execute 透传
-    async def fake_html(q, limit):
+    async def fake_html(q, limit, df=""):
         return raw
     tool._search_html = fake_html
     import asyncio
@@ -92,6 +92,61 @@ def test_legacy_mode_preserved(tool):
     assert out.get("structured") is None
     assert out["results"][0]["title"] == "T"
     assert "source_url" not in out["results"][0]  # 原形态无信源字段
+
+
+def test_apply_recency_maps_days_to_df():
+    from core.apps.tools.web.web_search import apply_recency, infer_recency_days
+
+    assert apply_recency("q", 7) == ("q", "w")
+    assert apply_recency("q", 30) == ("q", "m")
+    assert apply_recency("q", 90) == ("q", "y")
+    assert apply_recency("q", None) == ("q", "")
+    assert infer_recency_days("竞品最近30天动态") == 30
+    assert infer_recency_days("last week releases") == 7
+    assert apply_recency("竞品最近30天动态", None)[1] == "m"
+
+
+def test_structured_execute_adds_citation_and_recency(tool):
+    raw = {"success": True, "backend": "html", "results": [
+        {"title": "近况", "url": "https://news.example/a", "snippet": "最近讨论"},
+    ]}
+    seen = {}
+
+    async def fake_html(q, limit, df=""):
+        seen["df"] = df
+        return raw
+
+    tool._search_html = fake_html
+    out = asyncio.run(tool.execute({
+        "query": "竞品近况",
+        "backend": "html",
+        "structured": True,
+        "recency_days": 30,
+    }))
+    assert seen["df"] == "m"
+    assert out["recency_days"] == 30
+    assert out["time_window"] == "m"
+    assert out["results"][0]["citation"] == "https://news.example/a"
+
+
+def test_query_phrase_infers_recency_and_raw_rows_get_citation(tool):
+    raw = {"success": True, "backend": "html", "results": [
+        {"title": "T", "url": "https://news.example/b", "snippet": "s"},
+    ]}
+    seen = {}
+
+    async def fake_html(q, limit, df=""):
+        seen["df"] = df
+        return raw
+
+    tool._search_html = fake_html
+    out = asyncio.run(tool.execute({
+        "query": "看竞品最近30天讨论",
+        "backend": "html",
+    }))
+    assert seen["df"] == "m"
+    assert out["recency_days"] == 30
+    assert out["results"][0]["citation"] == "https://news.example/b"
 
 
 def test_structured_requires_url(tool):

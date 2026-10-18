@@ -19,7 +19,7 @@ import logging
 
 from typing import Any, Dict, List, Optional
 
-from core.harness.execution.loop import ReActLoop
+from core.harness.execution.loop import PlanExecuteLoop, ReActLoop
 from core.harness.interfaces.loop import LoopConfig, LoopState, LoopStateEnum
 from core.schemas_builder import PipelineStageConfig
 
@@ -49,6 +49,33 @@ class StageRunner:
         if self._tools:
             return self._tools
         return self._load_global_tools(self._tools)
+
+    def resolve_stage_loop_type(self, stage: Any = None, state: Optional[Dict[str, Any]] = None) -> str:
+        """Honor pipeline/workspace ``loop_type`` and ``architecture_profile``.
+
+        ``done_verify.require_review`` stays on ReAct: PlanExecute can seal but
+        does not auto-dispatch autoreview. Plain ``uses_file_output`` no longer
+        overrides an explicit ``plan_execute`` profile (code_split backend B1).
+        """
+        s = stage if stage is not None else self._stage
+        raw = "react"
+        if self._config is not None:
+            raw = str(getattr(self._config, "loop_type", "") or raw)
+        if isinstance(state, dict) and str(state.get("_loop_type") or "").strip():
+            raw = str(state.get("_loop_type"))
+        ap = str(getattr(s, "architecture_profile", "") or "").strip().lower() if s is not None else ""
+        if ap == "plan_execute":
+            raw = "plan_execute"
+        elif ap in ("react_tools", "oneshot", "reflect_loop"):
+            raw = "react"
+        key = raw.strip().lower().replace("-", "_")
+        chosen = "plan_execute" if key in ("plan", "plan_execute") else "react"
+        dv = getattr(s, "done_verify", None) if s is not None else None
+        if not isinstance(dv, dict) and isinstance(state, dict):
+            dv = state.get("_done_verify")
+        if isinstance(dv, dict) and dv.get("require_review"):
+            return "react"
+        return chosen
 
     def _resolve_tools_selective(self, prompt: str, override: Optional[List[str]] = None) -> List[Any]:
         """Resolve tools with semantic selection (reduces token cost)."""
@@ -145,6 +172,42 @@ class StageRunner:
         tokens_bonus = int(state.get("_tokens_bonus", 0) or 0)
         if tokens_bonus > 0:
             max_tokens += tokens_bonus
+        # Coding defaults (incl. autoreview bind for require_review) must run
+        # before skill resolve — otherwise follow-up stays unbound and DONE hangs.
+        if s is not None:
+            try:
+                from core.schemas_builder import apply_coding_stage_defaults
+
+                apply_coding_stage_defaults(s)
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "stage_runner coding defaults pre-resolve skipped", exc_info=True
+                )
+                _pre_dv = getattr(s, "done_verify", None)
+                _pre_ctx = {
+                    "_done_verify": dict(_pre_dv) if isinstance(_pre_dv, dict) else {},
+                    "_bound_skill_ids": list(
+                        state.get("_bound_skill_ids")
+                        or getattr(s, "required_skills", None)
+                        or []
+                    ),
+                    "_skill_delivery": str(
+                        getattr(s, "skill_delivery", "") or state.get("_skill_delivery") or ""
+                    ),
+                }
+                _file = bool(getattr(s, "uses_file_output", False)) or bool(
+                    state.get("uses_file_output")
+                )
+                _sop = bool(getattr(s, "refactor_sop", False)) or bool(state.get("refactor_sop"))
+                from core.harness.execution.done_verify import done_verify_exception_is_hard
+
+                if _file or _sop or done_verify_exception_is_hard(_pre_ctx):
+                    _pre_err = (
+                        "done_verify: coding defaults failed "
+                        "(exception; fail-closed for coding/review)"
+                    )
+                    state["_done_verify_last_reason"] = _pre_err
+                    return f"STAGE_ERROR: {_pre_err}"
         skills = self._resolve_skills(stage=s)
         # Auto-skill filter from routing classifier (v2.4): restrict to high-confidence suggestions
         auto_filter = state.get("_auto_skill_filter")
@@ -155,7 +218,9 @@ class StageRunner:
                 "filtered_from": prev_count, "filtered_to": len(skills), "filter": auto_filter,
             })
         tools = self._resolve_tools_selective(prompt, override=tools)
-        loop = ReActLoop(
+        loop_type = self.resolve_stage_loop_type(s, state if isinstance(state, dict) else None)
+        loop_cls = PlanExecuteLoop if loop_type == "plan_execute" else ReActLoop
+        loop = loop_cls(
             config=LoopConfig(
                 max_steps=max_steps,
                 max_tokens=max_tokens,
@@ -216,30 +281,135 @@ class StageRunner:
                 "_preferred_language": str(state.get("_preferred_language") or "").strip().lower(),
             },
         )
-        # DONE Verify ring — inject quality_gate / expected_outcomes / done_verify
+        # Seed pipeline overlay so inject failure cannot drop an existing config.
+        _seed_dv = state.get("_done_verify")
+        if isinstance(_seed_dv, dict) and _seed_dv:
+            loop_state.context["_done_verify"] = dict(_seed_dv)
+        # Completion-standard preflight first — may inject default ## FILE: onto stage.
+        try:
+            from core.harness.execution.done_verify import missing_completion_standard_reason
+
+            _std_veto = missing_completion_standard_reason(s)
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "completion standard preflight skipped", exc_info=True
+            )
+            _uses_file = bool(getattr(s, "uses_file_output", False) if s else False) or bool(
+                state.get("uses_file_output")
+            )
+            if _uses_file:
+                _std_veto = (
+                    "done_verify: completion-standard preflight failed "
+                    "(exception; fail-closed for file-output stages)"
+                )
+            else:
+                _std_veto = None
+        if _std_veto:
+            state["_done_verify_last_reason"] = _std_veto
+            state["_completion_standard_blocked"] = True
+            loop_state.context["_done_verify_last_reason"] = _std_veto
+            return _std_veto
+
+        # DONE Verify ring — inject once after defaults (keeps workspace state overlay).
         try:
             from core.harness.execution.done_verify import build_done_verify_config
+            from core.schemas_builder import apply_coding_stage_defaults
 
+            if s is not None:
+                apply_coding_stage_defaults(s)
             _qg = (getattr(s, "quality_gate", None) if s else None) or state.get("quality_gate") or {}
             _eo = (getattr(s, "expected_outcomes", None) if s else None) or state.get("expected_outcomes") or []
             _rg = str((getattr(s, "review_gate", None) if s else None) or state.get("review_gate") or "")
             _stage_dv = getattr(s, "done_verify", None) if s else None
-            _ov = _stage_dv if isinstance(_stage_dv, dict) and _stage_dv else None
+            _ov = dict(_stage_dv) if isinstance(_stage_dv, dict) and _stage_dv else None
             if _ov is None and isinstance(state.get("_done_verify"), dict):
-                _ov = state.get("_done_verify")
+                _ov = dict(state.get("_done_verify") or {})
             if _ov is None and isinstance(state.get("done_verify"), dict):
-                _ov = state.get("done_verify")
+                _ov = dict(state.get("done_verify") or {})
+            if _ov is None:
+                _ov = {}
+            if bool(getattr(s, "tdd_enforce", False) if s else False) or bool(
+                state.get("tdd_enforce")
+            ):
+                _ov.setdefault("require_tdd", True)
+            # Belt-and-suspenders: expand refactor_sop even if done_verify was a light overlay.
+            _sop = bool(getattr(s, "refactor_sop", False) if s else False) or bool(
+                state.get("refactor_sop")
+            )
+            if _sop:
+                for _k in (
+                    "require_tdd",
+                    "require_diagnosis",
+                    "require_refactor_plan",
+                    "require_dependency_map",
+                    "require_rollback_checkpoint",
+                    "require_rollback_command",
+                    "require_feature_flag",
+                    "require_review",
+                ):
+                    _ov.setdefault(_k, True)
             loop_state.context["_done_verify"] = build_done_verify_config(
                 quality_gate=_qg if isinstance(_qg, dict) else {},
                 expected_outcomes=list(_eo) if isinstance(_eo, list) else [],
-                done_verify=_ov,
+                done_verify=_ov or None,
                 review_gate=_rg,
             )
             loop_state.context["quality_gate"] = _qg if isinstance(_qg, dict) else {}
             loop_state.context["expected_outcomes"] = list(_eo) if isinstance(_eo, list) else []
+            _schema = getattr(s, "output_schema", None) if s else None
+            if isinstance(_schema, dict) and _schema:
+                loop_state.context["output_schema"] = _schema
             loop_state.context["review_gate"] = _rg
+            # SOP Step 5: keep bound ids + skill objects aligned with require_review.
+            _dv_cfg = loop_state.context.get("_done_verify")
+            if isinstance(_dv_cfg, dict) and _dv_cfg.get("require_review"):
+                _bound = list(loop_state.context.get("_bound_skill_ids") or [])
+                if "autoreview" not in _bound:
+                    _bound.append("autoreview")
+                    loop_state.context["_bound_skill_ids"] = _bound
+                try:
+                    _ar_ok = bool(loop._ensure_skill_loaded("autoreview"))
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "stage_runner autoreview ensure skipped", exc_info=True
+                    )
+                    _ar_ok = False
+                if not _ar_ok:
+                    _ar_err = (
+                        "done_verify: require_review — follow-up skill "
+                        "`autoreview` not loadable (fail-closed)"
+                    )
+                    state["_done_verify_last_reason"] = _ar_err
+                    state["_require_review_incomplete"] = True
+                    loop_state.context["_done_verify_last_reason"] = _ar_err
+                    loop_state.context["_require_review_incomplete"] = True
+                    return f"STAGE_ERROR: {_ar_err}"
         except Exception:
             logging.getLogger(__name__).debug("done_verify inject skipped", exc_info=True)
+            from core.harness.execution.done_verify import done_verify_exception_is_hard
+
+            _have_dv = loop_state.context.get("_done_verify")
+            _inject_ctx = dict(loop_state.context)
+            if bool(getattr(s, "uses_file_output", False) if s else False) or bool(
+                state.get("uses_file_output")
+            ):
+                _inject_ctx.setdefault("_done_verify", {"require_completion_standard": True})
+            if bool(getattr(s, "refactor_sop", False) if s else False) or bool(
+                state.get("refactor_sop")
+            ):
+                _ov = dict(_inject_ctx.get("_done_verify") or {})
+                _ov.setdefault("require_review", True)
+                _inject_ctx["_done_verify"] = _ov
+            if done_verify_exception_is_hard(_inject_ctx) and not (
+                isinstance(_have_dv, dict) and _have_dv
+            ):
+                _inj_err = (
+                    "done_verify: inject failed "
+                    "(exception; fail-closed for coding/review)"
+                )
+                state["_done_verify_last_reason"] = _inj_err
+                loop_state.context["_done_verify_last_reason"] = _inj_err
+                return f"STAGE_ERROR: {_inj_err}"
 
         # Code meta-tool — stage / state overlay (Turing escape hatch)
         try:
@@ -313,6 +483,10 @@ class StageRunner:
                 "_done_verify_veto_count",
                 "_done_verify_exhausted",
                 "_done_verify_last_reason",
+                "_require_review_incomplete",
+                "_coding_veto_last_reason",
+                "_force_failed_status",
+                "_finalize_hard_fail",
             ):
                 if _k in ctx:
                     state[_k] = ctx[_k]
@@ -321,6 +495,31 @@ class StageRunner:
                 state["_done_verify"] = _dv_cfg
         except Exception as e:
             logging.debug("stage_runner done_verify surface skipped: %s", e)
+        # Failures must win over skill body (otherwise timeout/ERROR greenwashes).
+        _force = str(ctx.get("_force_failed_status") or "").strip().lower()
+        _loop_failed = (not bool(getattr(result, "success", True))) or bool(
+            ctx.get("_finalize_hard_fail")
+        )
+        if (
+            ctx.get("_require_review_incomplete")
+            or str(ctx.get("error") or "").startswith("done_verify:")
+            or _force in ("timeout", "failed", "error", "cancelled", "canceled")
+            or _loop_failed
+        ):
+            _rr_err = str(
+                ctx.get("error")
+                or ctx.get("_done_verify_last_reason")
+                or getattr(result, "error", None)
+                or (_force and f"forced_{_force}")
+                or "require_review incomplete"
+            ).strip()
+            return f"STAGE_ERROR: {_rr_err}"
+        try:
+            from core.harness.execution.contrast_signals import copy_contrast_signals
+
+            copy_contrast_signals(ctx, state)
+        except Exception as e:
+            logging.debug("stage_runner contrast surface skipped: %s", e)
         skill_body = str(ctx.get("_primary_skill_output") or "").split("[DELIVERY]", 1)[0].strip()
         if skill_body.startswith("[skill_delivery=once]"):
             parts = skill_body.split("\n\n", 1)

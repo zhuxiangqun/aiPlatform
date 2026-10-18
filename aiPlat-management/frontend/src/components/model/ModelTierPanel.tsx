@@ -19,11 +19,23 @@ interface TierInfo {
   status: string;
 }
 
+interface PurposeRoute {
+  tasks: number;
+  success_rate: number;
+  upgrade_rate: number;
+  avg_elapsed_ms: number | null;
+  avg_tool_failures: number | null;
+  priced_tasks: number;
+  avg_listed_unit_cost: number | null;
+  final_models: Record<string, number>;
+}
+
 interface ModelTierData {
-  status: { current_tier: string; current_model: string; last_complexity: string; override_active: boolean };
+  status: { current_tier: string; current_model: string; last_complexity: string; override_active: boolean; overridden_model?: string };
   tiers: Record<string, TierInfo>;
   cost?: Record<string, { model: string; prompt_per_1m: number; estimated_monthly: number }>;
   health?: Record<string, { model: string; latency_p95_s: number; failure_rate: number; status: string }>;
+  task_routes?: { available: boolean; tasks: number; by_purpose: Record<string, PurposeRoute> };
 }
 
 const TIER_COLORS: Record<string, string> = {
@@ -256,9 +268,42 @@ export default function ModelTierPanel() {
             </div>
           )}
 
+          {/* Task route hold: success / upgrade by purpose */}
+          <div className="mt-2 pt-2 border-t border-dark-border">
+            <div className="text-[10px] text-gray-500 mb-1">
+              Task routes
+              {data.task_routes?.available
+                ? ` (${data.task_routes.tasks} tasks)`
+                : ' (no samples yet)'}
+            </div>
+            {data.task_routes?.available && Object.keys(data.task_routes.by_purpose || {}).length > 0 ? (
+              <div className="space-y-1">
+                {Object.entries(data.task_routes.by_purpose).map(([purpose, row]) => {
+                  const topModel = Object.entries(row.final_models || {}).sort((a, b) => b[1] - a[1])[0];
+                  return (
+                    <div key={purpose} className="flex items-center justify-between text-[10px] gap-2">
+                      <span className="text-gray-300 font-medium truncate min-w-0">{purpose}</span>
+                      <span className="text-gray-400 flex-shrink-0">
+                        ok {(row.success_rate * 100).toFixed(0)}%
+                        {' · '}
+                        up {(row.upgrade_rate * 100).toFixed(0)}%
+                        {row.avg_elapsed_ms != null ? ` · ${Math.round(row.avg_elapsed_ms / 1000)}s` : ''}
+                        {topModel ? ` · ${topModel[0]}` : ''}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-[10px] text-gray-600">
+                Run agent tasks to fill success / upgrade rates. Cost stays blank without listed prices.
+              </div>
+            )}
+          </div>
+
           {/* Footer */}
           <div className="mt-3 pt-2 border-t border-dark-border text-[10px] text-gray-500">
-            Auto-routing: simple→T1, medium→T3, complex→T4/T5
+            Task hold: first pick sticks; same failure twice upgrades once. /model still wins.
           </div>
         </>
       )}

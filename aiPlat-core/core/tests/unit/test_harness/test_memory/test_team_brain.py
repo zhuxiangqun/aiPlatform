@@ -48,6 +48,15 @@ def test_publish_and_recall_manual(team_brain_env):
     assert msg is not None
     assert msg["meta"]["role"] == "team_brain_recall"
     assert "[Team Brain]" in msg["content"]
+    cmd = tb.TeamSolution(
+        id="cmd",
+        kind="shared_learning",
+        title="session capture",
+        summary="result=pytest core/tests -q; tools=bash",
+        source="ide:pi",
+    )
+    hidden = tb.format_recall_message([cmd])
+    assert hidden is None or "pytest" not in hidden["content"]
 
 
 def test_hot_task_skill_listed(team_brain_env):
@@ -127,6 +136,29 @@ def test_publish_task_skill_solution_requires_hot(team_brain_env):
     )
     assert hot is not None
     assert "team_solution:task_skill:hot1" in str(hot.get("key") or "")
+
+
+def test_harness_component_summary_drops_command(team_brain_env, monkeypatch):
+    import core.harness.evaluation.harness_recursion as hr
+
+    tb = team_brain_env["tb"]
+    monkeypatch.setattr(
+        hr,
+        "recall_library",
+        lambda *a, **k: [{
+            "id": "h1",
+            "task_id": "check",
+            "experience": "pytest core/tests -q",
+            "components": [{"path": "skills/check/SKILL.md", "content": "pytest core/tests -q"}],
+        }],
+    )
+    items = tb._load_harness_library_solutions()
+    assert items and items[0].kind == "harness_component"
+    assert "pytest" not in items[0].summary
+    assert "SKILL.md" in items[0].summary
+    msg = tb.format_recall_message(items)
+    assert msg and "pytest" not in msg["content"]
+    assert "SKILL.md" in msg["content"]
 
 
 def test_status_counts(team_brain_env):

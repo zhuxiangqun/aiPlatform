@@ -2788,43 +2788,45 @@ class SkillManager:
 
     
 
-    async def enable_skill(self, skill_id: str) -> bool:
-
-        """Enable skill"""
-
+    async def enable_skill_result(self, skill_id: str) -> Dict[str, Any]:
+        """Enable skill. On scan block return reason + SARIF, not a silent False."""
         skill = self._skills.get(skill_id)
-
         if not skill:
-
-            return False
-
+            return {"ok": False, "reason": "not_found", "skill_id": skill_id}
         if skill.status == "deprecated":
-
             # Must use restore_skill to un-deprecate (keeps intent explicit).
+            return {"ok": False, "reason": "deprecated", "skill_id": skill_id}
 
-            return False
+        skill_md = self._find_skill_md(skill_id)
+        if skill_md is not None:
+            from core.apps.skills.skill_boundary import scan_skill_dir
+
+            scan = scan_skill_dir(skill_id, skill_md)
+            if scan.get("blocked"):
+                logging.getLogger(__name__).warning("enable_skill blocked by scan: %s", skill_id)
+                return {
+                    "ok": False,
+                    "reason": "skill_scan_blocked",
+                    "skill_id": skill_id,
+                    "sarif": scan.get("sarif"),
+                }
 
         skill.status = "enabled"
-
         skill.updated_at = datetime.now(timezone.utc)
-
         self._sync_registry_config(skill)
-
         try:
-
             from core.apps.skills import get_skill_registry
 
-
-
             get_skill_registry().enable(skill_id)
-
         except Exception as e:
-
             logging.debug(str(e), exc_info=True)
-
         self._writeback_skill_md(skill, remove_frontmatter_keys=["deprecated_at"])
+        return {"ok": True, "skill_id": skill_id}
 
-        return True
+    async def enable_skill(self, skill_id: str) -> bool:
+        """Enable skill. Prefer enable_skill_result when the caller needs the block reason."""
+        result = await self.enable_skill_result(skill_id)
+        return bool(result.get("ok"))
 
     
 

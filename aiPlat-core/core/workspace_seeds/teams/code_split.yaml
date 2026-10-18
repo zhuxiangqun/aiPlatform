@@ -37,7 +37,8 @@ stages:
     code_target: scaffold
     inject_imported_context: true
     deploy_files_to_disk: true
-    # Coding closed loop (also applied by PipelineStageConfig defaults):
+    # Greenfield: TDD before DONE (full AI refactor SOP: refactor_sop: true).
+    tdd_enforce: true
     sandbox: true
     review_gate: quick
     required_skills: [autoreview]
@@ -45,6 +46,7 @@ stages:
       enabled: true
       min_output_length: 20
       review_gate: quick
+      require_substrings: ["## FILE:"]
     stage_timeout_seconds: 900
 
   - agent_id: frontend_engineer
@@ -57,6 +59,7 @@ stages:
     uses_file_output: true
     code_target: frontend
     deploy_files_to_disk: true
+    tdd_enforce: true
     sandbox: true
     review_gate: quick
     required_skills: [autoreview]
@@ -64,6 +67,7 @@ stages:
       enabled: true
       min_output_length: 20
       review_gate: quick
+      require_substrings: ["## FILE:"]
     stage_timeout_seconds: 900
 
   - agent_id: backend_developer
@@ -79,6 +83,7 @@ stages:
     uses_file_output: true
     code_target: backend
     deploy_files_to_disk: true
+    tdd_enforce: true
     sandbox: true
     review_gate: quick
     required_skills: [autoreview]
@@ -86,6 +91,7 @@ stages:
       enabled: true
       min_output_length: 20
       review_gate: quick
+      require_substrings: ["## FILE:"]
     stage_timeout_seconds: 900
 
   - agent_id: qa_agent

@@ -14,7 +14,8 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+_INFRA_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(_INFRA_ROOT))
 
 import yaml  # noqa: E402
 
@@ -26,7 +27,8 @@ from infra.management.schemas import ModelInfo, ModelSource, ModelType  # noqa: 
 
 
 def _profile() -> dict:
-    return yaml.safe_load(open("config/infra/llm_profile.yaml"))
+    path = _INFRA_ROOT / "config" / "infra" / "llm_profile.yaml"
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
 def _mk(name, type_=ModelType.CHAT, source=ModelSource.EXTERNAL,
@@ -320,11 +322,14 @@ class TestExploration:
         assert isinstance(val, float)
 
     def test_epsilon_zero_stable(self):
-        import yaml
         from infra.management.model.manager import ModelManager
         from infra.management.schemas import ModelInfo, ModelSource
-        cfg = yaml.safe_load(open("config/infra/llm_profile.yaml"))
-        assert cfg["model_exploration"]["explore_epsilon"] == 0.0
+
+        cfg = _profile()
+        explor = dict(cfg.get("model_exploration") or {})
+        explor.setdefault("explore_epsilon", 0.0)
+        cfg = {**cfg, "model_exploration": explor}
+        assert float(cfg["model_exploration"]["explore_epsilon"]) == 0.0
         mgr = ModelManager()
         mgr._models = {
             "a": ModelInfo(id="a", name="deepseek-chat", provider="deepseek", source=ModelSource.EXTERNAL),
@@ -333,11 +338,14 @@ class TestExploration:
         assert mgr.unified_pipeline("chat", [], {}, cfg) == mgr.unified_pipeline("chat", [], {}, cfg)
 
     def test_epsilon_positive_explores(self, monkeypatch):
-        import random, yaml
+        import random
         from infra.management.model.manager import ModelManager
         from infra.management.schemas import ModelInfo, ModelSource
-        cfg = yaml.safe_load(open("config/infra/llm_profile.yaml"))
-        cfg["model_exploration"]["explore_epsilon"] = 1.0
+
+        cfg = _profile()
+        explor = dict(cfg.get("model_exploration") or {})
+        explor["explore_epsilon"] = 1.0
+        cfg = {**cfg, "model_exploration": explor}
         monkeypatch.setattr(random, "random", lambda: 0.0)
         mgr = ModelManager()
         mgr._models = {
@@ -346,6 +354,83 @@ class TestExploration:
         }
         top = mgr.unified_pipeline("chat", [], {}, cfg)
         assert top in ("deepseek-chat", "model-b")  # 探索结果仍是注册表模型
+
+
+class TestLocalOnlyFilter:
+    """Sensitive / offline: local_only drops external candidates before scoring."""
+
+    def test_is_local_model_helpers(self):
+        from infra.management.model.manager import _is_local_model
+
+        assert _is_local_model(_mk("qwen2.5:3b", source=ModelSource.LOCAL, provider="ollama"))
+        assert _is_local_model(_mk("coder", source=ModelSource.LOCAL, provider="lmstudio"))
+        assert not _is_local_model(_mk("deepseek-chat", source=ModelSource.EXTERNAL, provider="deepseek"))
+
+    def test_local_only_pipeline_never_picks_external(self, monkeypatch):
+        from infra.management.model import manager as mm
+
+        mgr = ModelManager()
+        local = _mk("qwen2.5:3b", source=ModelSource.LOCAL, provider="ollama", size=2 * 1024**3)
+        cloud = _mk("deepseek-chat", source=ModelSource.EXTERNAL, provider="deepseek", size=0)
+        mgr._models = {local.id: local, cloud.id: cloud}
+
+        monkeypatch.setattr(mm, "collect_platform_resources", lambda: mm.PlatformResources(
+            ram_bytes=16 * 1024**3,
+            ram_total_bytes=16 * 1024**3,
+            vram_bytes=0,
+            disk_free_bytes=100 * 1024**3,
+            gpu_compatible=False,
+            gpu_vendor=None,
+            cpu_cores=8,
+        ))
+        monkeypatch.setattr(mm, "_filter_health", lambda m: True)
+        monkeypatch.setattr(mm, "_filter_latency", lambda m: True)
+        monkeypatch.setattr(mm, "_filter_capability", lambda *a, **k: True)
+        monkeypatch.setattr(mm, "_score_model", lambda m, *a, **k: 100 if m.name == "deepseek-chat" else 10)
+
+        profile = {
+            "purpose_profiles": {"chat": {"require": {"type": "chat"}}},
+            "fallback": {"safe_model": "qwen2.5:3b", "safe_model_alt": "qwen2.5:3b"},
+            "model_capabilities": {
+                "qwen2.5:3b": {"reasoning_quality": 1, "context_window": 32768},
+                "deepseek-chat": {"reasoning_quality": 5, "context_window": 131072},
+            },
+        }
+        picked = mgr.unified_pipeline("chat", None, {"local_only": True}, profile)
+        assert picked == "qwen2.5:3b"
+
+    def test_local_only_refuses_cloud_safe_fallback(self, monkeypatch):
+        from infra.management.model import manager as mm
+
+        mgr = ModelManager()
+        cloud = _mk("deepseek-chat", source=ModelSource.EXTERNAL, provider="deepseek", size=0)
+        mgr._models = {cloud.id: cloud}
+
+        monkeypatch.setattr(mm, "collect_platform_resources", lambda: mm.PlatformResources(
+            ram_bytes=16 * 1024**3,
+            ram_total_bytes=16 * 1024**3,
+            vram_bytes=0,
+            disk_free_bytes=100 * 1024**3,
+            gpu_compatible=False,
+            gpu_vendor=None,
+            cpu_cores=8,
+        ))
+        monkeypatch.setattr(mm, "_filter_health", lambda m: True)
+        monkeypatch.setattr(mm, "_filter_latency", lambda m: True)
+        monkeypatch.setattr(mm, "_filter_capability", lambda *a, **k: True)
+
+        profile = {
+            "purpose_profiles": {"chat": {"require": {"type": "chat"}}},
+            "fallback": {
+                "safe_model": "deepseek-chat",
+                "safe_model_alt": "deepseek-chat",
+            },
+            "model_capabilities": {
+                "deepseek-chat": {"reasoning_quality": 5, "context_window": 131072},
+            },
+        }
+        with pytest.raises(RuntimeError, match="local_only"):
+            mgr.unified_pipeline("chat", None, {"local_only": True}, profile)
 
 
 class TestProviderBreadth:
@@ -366,7 +451,8 @@ class TestProviderBreadth:
             assert expected in ids, f"provider '{expected}' not discovered"
 
     def test_providers_yaml_has_30_entries(self):
-        cfg = yaml.safe_load(open("config/providers.yaml"))
+        path = _INFRA_ROOT / "config" / "providers.yaml"
+        cfg = yaml.safe_load(path.read_text(encoding="utf-8"))
         assert len(cfg["providers"]) >= 30
         # 所有 external provider 都带 env_key（API key 契约）
         for p in cfg["providers"]:

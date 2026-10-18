@@ -834,6 +834,13 @@ async def lifespan(app: FastAPI):
                     shutil.copy2(item, dst)
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)
+        # Fill missing coding closed-loop keys (refactor_sop / tdd_enforce) on stale copies.
+        try:
+            from core.harness.team_factory_seeds import sync_coding_closed_loop_team_seeds
+
+            sync_coding_closed_loop_team_seeds()
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 

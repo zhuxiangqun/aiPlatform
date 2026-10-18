@@ -25,3 +25,22 @@ def test_skills_desc_budget_truncates_and_hides(monkeypatch):
     assert "…(truncated)" in text
     assert "use skill_find" in text
     assert stats["skills_truncated"] >= 1
+
+
+def test_skills_desc_uses_opening_sentence_only():
+    from core.apps.skills.registry import _GenericSkill
+    from core.harness.interfaces import SkillConfig
+    from core.harness.execution.loop import ReActLoop
+
+    s = _GenericSkill(
+        SkillConfig(
+            name="headline-skill",
+            description="写头条文章时使用。步骤会提到数据库迁移和回滚脚本",
+            metadata={"skill_kind": "rule"},
+            effects=[{"type": "read", "resources": [], "idempotent": True}],
+        )
+    )
+    loop = ReActLoop(skills=[s])
+    text, _ = loop._build_skills_desc()  # type: ignore[attr-defined]
+    assert "写头条文章时使用" in text
+    assert "数据库迁移" not in text

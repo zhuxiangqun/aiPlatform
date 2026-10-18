@@ -77,6 +77,8 @@ async def cleanup_orphaned_pipelines():
                     # Rebuild stage config from saved DB records
                     stage_rows = store.load_stages_config(run_id)
                     stages = []
+                    from core.schemas_builder import pipeline_stage_from_store_row
+
                     for sr in stage_rows:
                         # Only stage-config rows (canvas_node_*) carry agent_id;
                         # artifact/progress rows (prd, test_cases, skill_name, …) are
@@ -84,19 +86,7 @@ async def cleanup_orphaned_pipelines():
                         # becomes misaligned with _current_stage_idx.
                         if not sr.get("agent_id"):
                             continue
-                        input_arts = sr.get("input_artifacts", "")
-                        inputs = [a.strip() for a in input_arts.split(",") if a.strip()] if input_arts else []
-                        stage = PipelineStageConfig(
-                            id=sr["stage_id"],
-                            agent_id=sr.get("agent_id", ""),
-                            agent_name=sr.get("agent_name", ""),
-                            skill_name=sr.get("skill_name", ""),
-                            output_artifact=sr.get("output_artifact", sr.get("artifact_key", "")),
-                            hitl=bool(sr.get("hitl", False)),
-                            hitl_phase=sr.get("hitl_phase", ""),
-                            input_artifacts=inputs,
-                        )
-                        stages.append(stage)
+                        stages.append(pipeline_stage_from_store_row(sr))
 
                     if not stages:
                         _log.warning("Recovery: no stages for run %s, marking as failed", run_id)
@@ -254,19 +244,12 @@ def _reconstruct_engine(project_id: str, run_id: str, store, stages_raw=None):
                 _ensure_capability_profile(s)
                 stages.append(PipelineStageConfig(**s))
     else:
+        from core.schemas_builder import pipeline_stage_from_store_row
+
         for sr in store.load_stages_config(run_id):
-            input_arts = sr.get("input_artifacts", "")
-            inputs = [a.strip() for a in input_arts.split(",") if a.strip()] if input_arts else []
-            stages.append(PipelineStageConfig(
-                id=sr["stage_id"],
-                agent_id=sr.get("agent_id", ""),
-                agent_name=sr.get("agent_name", ""),
-                skill_name=sr.get("skill_name", ""),
-                output_artifact=sr.get("output_artifact", sr.get("artifact_key", "")),
-                hitl=bool(sr.get("hitl", False)),
-                hitl_phase=sr.get("hitl_phase", ""),
-                input_artifacts=inputs,
-            ))
+            if not sr.get("agent_id"):
+                continue
+            stages.append(pipeline_stage_from_store_row(sr))
 
     if not stages:
         return None
@@ -332,6 +315,8 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
     )
 
     # Pre-create stage records with full config for restart recovery
+    from core.schemas_builder import extract_stage_persist_config
+
     for i, s in enumerate(stages_raw[:]):
         if isinstance(s, dict):
             store.upsert_stage(
@@ -345,6 +330,7 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
                 hitl_phase=str(s.get("hitl_phase", "")),
                 agent_name=str(s.get("agent_name", "")),
                 input_artifacts=",".join(s.get("input_artifacts", []) or []),
+                config=extract_stage_persist_config(s),
             )
 
     # Enqueue pipeline execution via background task
