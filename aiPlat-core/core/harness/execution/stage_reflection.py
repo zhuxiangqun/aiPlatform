@@ -13,6 +13,8 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from core.harness.evaluation.harness_recursion import CONTRAST_STATE_KEYS as _CONTRAST_SIGNAL_KEYS
+
 _log = logging.getLogger("aiplat.stage_reflection")
 
 
@@ -147,10 +149,72 @@ async def enrich_reflection_with_llm(
         return None
 
 
+def stage_reflection_due(stage: Any, state: Dict[str, Any]) -> bool:
+    """Capture when the stage produced an artifact or a contrast signal."""
+    if not isinstance(state, dict):
+        return False
+    key = getattr(stage, "output_artifact", "") or ""
+    if key and state.get(key) not in (None, "", {}, []):
+        return True
+    return any(state.get(name) for name in _CONTRAST_SIGNAL_KEYS)
+
+
+def _bind_stage_artifact(stage: Any, state: Dict[str, Any]) -> None:
+    """Stage deliverable counts when the loop did not leave an output string."""
+    if state.get("_output_files") or state.get("_output_empty") or "output" in state:
+        return
+    key = str(getattr(stage, "output_artifact", "") or "").strip()
+    if not key:
+        return
+    art = state.get(key)
+    if art in (None, "", {}, []):
+        state["_output_empty"] = True
+        return
+    text = ""
+    if isinstance(art, dict):
+        text = str(art.get("raw_output") or art.get("output") or "")
+    elif isinstance(art, str):
+        text = art
+    try:
+        from core.harness.evaluation.harness_recursion import file_paths_from_text
+
+        files = file_paths_from_text(text)
+    except Exception:
+        files = []
+    state["_output_files"] = files[:20] if files else [key]
+
+
+def _maybe_contrastive_step(state: Dict[str, Any], stage: Any = None) -> Optional[Dict[str, Any]]:
+    """Compose from ready probes, or from a reference trace paired with this run."""
+    if stage is not None:
+        _bind_stage_artifact(stage, state)
+    payload = state.get("_harness_probes")
+    try:
+        if isinstance(payload, dict) and payload.get("probes"):
+            from core.harness.evaluation.harness_recursion import run_contrastive_step
+
+            return run_contrastive_step(payload)
+        from core.harness.evaluation.harness_recursion import step_from_state
+
+        return step_from_state(state, stage_id=str(getattr(stage, "id", "") or ""))
+    except Exception:
+        _log.debug("contrastive harness step skipped", exc_info=True)
+        return None
+
+
 async def capture_stage_reflection(stage: Any, state: Dict[str, Any]) -> Dict[str, Any]:
     """Public entry: deterministic reflection + optional LLM enrichment."""
     reflection = build_stage_reflection(stage, state)
     enriched = await enrich_reflection_with_llm(stage, state, reflection)
     if enriched:
         reflection.update(enriched)
+    step = _maybe_contrastive_step(state, stage)
+    if step:
+        reflection["harness_recursion"] = step
+    try:
+        from core.harness.evaluation.harness_recursion import clear_contrast_signals
+
+        clear_contrast_signals(state)
+    except Exception:
+        _log.debug("contrast signal clear skipped", exc_info=True)
     return reflection

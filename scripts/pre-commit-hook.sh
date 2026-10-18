@@ -42,7 +42,8 @@ fi
 BOUNDARY_YAML="$WORKSPACE/architecture/boundary_rules.yaml"
 GUARD_SCRIPT="$WORKSPACE/scripts/architecture_guard_rules.sh"
 if [ -f "$BOUNDARY_YAML" ] && [ -f "$GUARD_SCRIPT" ]; then
-    YAML_HASH=$(sha256sum "$BOUNDARY_YAML" | cut -d' ' -f1)
+    # Generator stores sha256[:16]. A full digest never matches and rewrites GENERATED_AT.
+    YAML_HASH=$(python3 -c "import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest()[:16])" "$BOUNDARY_YAML")
     GUARD_HASH=$(grep "SOURCE_HASH:" "$GUARD_SCRIPT" 2>/dev/null | awk '{print $NF}' || echo "")
     if [ "$YAML_HASH" != "$GUARD_HASH" ]; then
         echo ""
@@ -339,11 +340,13 @@ if [ -z "${SKIP_ENTITY_GUARD:-}" ]; then
     # P3.7: O2 team YAML vs AGENT.md profile drift (advisory unless AIPLAT_YAML_DRIFT_STRICT=1)
     if git diff --cached --name-only | grep -qE '(workspace_seeds/.*/.*team.*\.ya?ml|workspace_seeds/teams/|/\.aiplat/teams/|scripts/lint_team_yaml_profile_drift\.py)'; then
         echo "  → Team YAML profile drift lint (O2)..."
-        _DRIFT_ARGS=()
+        # Avoid "${arr[@]}" under set -u when empty (bash unbound-variable).
         if [ "${AIPLAT_YAML_DRIFT_STRICT:-}" = "1" ]; then
-            _DRIFT_ARGS+=(--strict)
+            _DRIFT_CMD=(python3 "$WORKSPACE/scripts/lint_team_yaml_profile_drift.py" --strict)
+        else
+            _DRIFT_CMD=(python3 "$WORKSPACE/scripts/lint_team_yaml_profile_drift.py")
         fi
-        if ! python3 "$WORKSPACE/scripts/lint_team_yaml_profile_drift.py" "${_DRIFT_ARGS[@]}"; then
+        if ! "${_DRIFT_CMD[@]}"; then
             echo "  ❌ Team YAML profile drift (strict mode)"
             echo "     → Align architecture_profile/execution_backend or add # drift-ok: <reason>"
             ENTITY_ISSUES=1

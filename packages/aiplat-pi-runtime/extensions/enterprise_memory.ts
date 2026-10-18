@@ -11,6 +11,7 @@
 import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
+import { bindCompletionToReceipts, receiptsFromMessages } from "./completion_receipt.mjs";
 import { CircuitOpenError, platformFetch } from "./enterprise_http";
 import {
   loadEnterpriseConfig,
@@ -43,6 +44,158 @@ export function memoryCaptureUrl(baseUrl: string): string {
   if (b.endsWith("/platform/memory/capture")) return b;
   if (b.endsWith("/platform")) return `${b}/memory/capture`;
   return `${b}/platform/memory/capture`;
+}
+
+/** GET …/platform/memory/archive — past turns, on demand. */
+export function memoryArchiveUrl(baseUrl: string): string {
+  const sticky = memoryStickyUrl(baseUrl);
+  if (!sticky) return "";
+  if (sticky.endsWith("/sticky")) return `${sticky.slice(0, -"/sticky".length)}/archive`;
+  return `${sticky}/archive`;
+}
+
+/** GET …/platform/memory/sticky — pinned facts for the next session. */
+export function memoryStickyUrl(baseUrl: string): string {
+  const capture = memoryCaptureUrl(baseUrl);
+  if (!capture) return "";
+  if (capture.endsWith("/capture")) return `${capture.slice(0, -"/capture".length)}/sticky`;
+  return `${capture}/sticky`;
+}
+
+let stickyCache = "";
+let stickyLoaded = false;
+
+export function resetStickyMemoryCache(): void {
+  stickyCache = "";
+  stickyLoaded = false;
+}
+
+/** Fetch sticky facts. Cached until the next session_start. Soft-fails to empty. */
+export async function ensureStickyMemory(cfg?: MemoryBridgeConfig): Promise<string> {
+  if (stickyLoaded) return stickyCache;
+  const c = cfg || loadMemoryBridgeConfig();
+  if (!c.memoryEnabled) {
+    stickyLoaded = true;
+    stickyCache = "";
+    return "";
+  }
+  const url = memoryStickyUrl(c.baseUrl);
+  if (!url) {
+    stickyLoaded = true;
+    return "";
+  }
+  try {
+    const res = await platformFetch(url, {
+      method: "GET",
+      headers: { authorization: `Bearer ${c.token}` },
+    });
+    const bodyText = await res.text();
+    if (!res.ok) {
+      stickyLoaded = true;
+      stickyCache = "";
+      return "";
+    }
+    let text = "";
+    try {
+      const parsed = JSON.parse(bodyText) as { text?: string; available?: boolean };
+      if (parsed && parsed.available !== false) text = String(parsed.text || "").trim();
+    } catch {
+      text = "";
+    }
+    stickyCache = text.slice(0, 2000);
+  } catch {
+    stickyCache = "";
+  }
+  stickyLoaded = true;
+  return stickyCache;
+}
+
+/** POST a durable fact onto MEMORY.md. Commands and one-shot notes are refused by the platform. */
+export async function pinStickyFact(
+  content: string,
+  cfg?: MemoryBridgeConfig,
+  opts?: { key?: string; oldText?: string },
+): Promise<MemoryCaptureResult> {
+  const c = cfg || loadMemoryBridgeConfig();
+  if (!c.memoryEnabled) {
+    return { ok: false, text: "", error: `memory_off: ${c.reasonMemoryOff}` };
+  }
+  const body = String(content || "").trim();
+  if (!body) return { ok: false, text: "", error: "content_required" };
+  const url = memoryStickyUrl(c.baseUrl);
+  if (!url) return { ok: false, text: "", error: "sticky_url_missing" };
+  try {
+    const res = await platformFetch(url, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${c.token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        content: body,
+        key: String(opts?.key || "preference"),
+        source: "pi",
+        old_text: String(opts?.oldText || ""),
+      }),
+    });
+    const bodyText = await res.text();
+    if (!res.ok) {
+      return { ok: false, status: res.status, text: bodyText.slice(0, 500), error: "sticky_http" };
+    }
+    let ok = true;
+    try {
+      const parsed = JSON.parse(bodyText) as { ok?: boolean; status?: string };
+      if (parsed.ok === false || parsed.status === "error") ok = false;
+    } catch {
+      ok = false;
+    }
+    if (!ok) return { ok: false, status: res.status, text: bodyText.slice(0, 500), error: "sticky_refused" };
+    resetStickyMemoryCache();
+    return { ok: true, status: res.status, text: "Pinned fact saved." };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "sticky_failed";
+    return { ok: false, text: "", error: message };
+  }
+}
+
+/** On-demand past-turn search. Does not write memory and does not cache. */
+export async function searchSessionArchive(
+  query: string,
+  cfg?: MemoryBridgeConfig,
+  limit = 3,
+): Promise<MemoryCaptureResult> {
+  const c = cfg || loadMemoryBridgeConfig();
+  if (!c.memoryEnabled) {
+    return { ok: false, text: "", error: `memory_off: ${c.reasonMemoryOff}` };
+  }
+  const q = String(query || "").trim();
+  if (!q) return { ok: false, text: "", error: "query_required" };
+  const base = memoryArchiveUrl(c.baseUrl);
+  if (!base) return { ok: false, text: "", error: "archive_url_missing" };
+  const url = `${base}?q=${encodeURIComponent(q)}&limit=${Math.max(1, Math.min(limit, 8))}`;
+  try {
+    const res = await platformFetch(url, {
+      method: "GET",
+      headers: { authorization: `Bearer ${c.token}` },
+    });
+    const bodyText = await res.text();
+    if (!res.ok) {
+      return { ok: false, status: res.status, text: bodyText.slice(0, 500), error: "archive_http" };
+    }
+    let hits: Array<{ at?: string; role?: string; text?: string }> = [];
+    try {
+      const parsed = JSON.parse(bodyText) as { hits?: typeof hits };
+      hits = Array.isArray(parsed.hits) ? parsed.hits : [];
+    } catch {
+      hits = [];
+    }
+    if (!hits.length) return { ok: true, status: res.status, text: "No archived turns matched." };
+    const lines = hits.map((h) => `- [${h.at || ""}] ${h.role || ""}: ${h.text || ""}`);
+    return { ok: true, status: res.status, text: lines.join("\n") };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "archive_failed";
+    return { ok: false, text: "", error: message };
+  }
 }
 
 export function loadMemoryBridgeConfig(cfg?: EnterpriseConfig): MemoryBridgeConfig {
@@ -221,21 +374,29 @@ export function memoryStatusLines(cfg?: MemoryBridgeConfig): string[] {
 export function memorySystemPromptAddon(cfg?: MemoryBridgeConfig): string {
   const c = cfg || loadMemoryBridgeConfig();
   if (!c.memoryEnabled) return "";
-  return [
+  const lines = [
     "",
     "## aiPlat Enterprise Memory",
-    "Hybrid: use tool aiplat_memory_capture to write a short session summary to platform Memory.",
+    "Durable facts that should hold next session: tool aiplat_memory_pin (a statement, not a command).",
+    "This session's summary: tool aiplat_memory_capture. Do not pin one-shot steps, TODOs, or shell commands.",
+    "Before the session ends: pin each stable preference/env fact; capture the episode summary; leave reusable procedures for skills.",
+    "Pinned lines below (if any) are durable facts for every session.",
+    "Past process is not in this prompt. Call aiplat_session_search when the user asks how something was done before.",
     "Failures are soft — continue local work; do not invent confirmations of platform storage.",
-  ].join("\n");
+  ];
+  if (stickyCache) {
+    lines.push("", stickyCache);
+  }
+  return lines.join("\n");
 }
 
-type BufferedTurn = { prompt: string; result: string };
+type BufferedTurn = { prompt: string; result: string; success: boolean; seal: string };
 
 export function registerEnterpriseMemory(pi: ExtensionAPI): boolean {
   const cfg = loadMemoryBridgeConfig();
   if (!cfg.memoryEnabled) return false;
 
-  let buffered: BufferedTurn = { prompt: "", result: "" };
+  let buffered: BufferedTurn = { prompt: "", result: "", success: true, seal: "ok" };
   let flushed = false;
 
   const tool = defineTool({
@@ -280,6 +441,87 @@ export function registerEnterpriseMemory(pi: ExtensionAPI): boolean {
 
   pi.registerTool(tool);
 
+  pi.registerTool(
+    defineTool({
+      name: "aiplat_memory_pin",
+      label: "aiPlat Pin Fact",
+      description:
+        "Save a durable fact for every future session (preference or stable environment). Refuses commands and one-shot notes.",
+      parameters: Type.Object({
+        content: Type.String({ description: "Full fact statement, e.g. 用户偏好简洁回复" }),
+        key: Type.Optional(Type.String({ description: "preference or env" })),
+        old_text: Type.Optional(Type.String({ description: "Substring of the fact to replace" })),
+      }),
+      async execute(_toolCallId, params) {
+        const r = await pinStickyFact(String(params.content || ""), cfg, {
+          key: params.key ? String(params.key) : undefined,
+          oldText: params.old_text ? String(params.old_text) : undefined,
+        });
+        if (!r.ok) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `AIPLAT_MEMORY_PIN_FAILED: ${r.error || "unknown"}`,
+              },
+            ],
+            details: r,
+            isError: true,
+          };
+        }
+        return {
+          content: [{ type: "text" as const, text: r.text }],
+          details: { status: r.status },
+        };
+      },
+    }),
+  );
+
+  pi.registerTool(
+    defineTool({
+      name: "aiplat_session_search",
+      label: "aiPlat Session Search",
+      description:
+        "Search archived past turns on aiPlat (how something was done before). Not for durable preferences.",
+      parameters: Type.Object({
+        query: Type.String({ description: "What past process to look up" }),
+        limit: Type.Optional(Type.Number({ description: "Max hits, 1-8" })),
+      }),
+      async execute(_toolCallId, params) {
+        const r = await searchSessionArchive(
+          String(params.query || ""),
+          cfg,
+          Number(params.limit || 3),
+        );
+        if (!r.ok) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `AIPLAT_SESSION_SEARCH_FAILED: ${r.error || "unknown"}`,
+              },
+            ],
+            details: r,
+            isError: true,
+          };
+        }
+        return {
+          content: [{ type: "text" as const, text: r.text }],
+          details: { status: r.status },
+        };
+      },
+    }),
+  );
+
+  pi.on("session_start", async () => {
+    try {
+      resetStickyMemoryCache();
+      await ensureStickyMemory(loadMemoryBridgeConfig());
+    } catch {
+      /* soft */
+    }
+  });
+
   pi.registerCommand("aiplat-memory", {
     description: "Show memory writeback status (hybrid)",
     handler: async (_args, ctx) => {
@@ -296,8 +538,18 @@ export function registerEnterpriseMemory(pi: ExtensionAPI): boolean {
 
   pi.on("agent_end", async (event: { messages?: unknown[] }) => {
     try {
-      const turn = extractTurnSummary(event?.messages || []);
-      if (turn.prompt || turn.result) buffered = turn;
+      const messages = event?.messages || [];
+      const turn = extractTurnSummary(messages);
+      const bound = bindCompletionToReceipts(turn.result, receiptsFromMessages(messages));
+      turn.result = bound.text;
+      if (turn.prompt || turn.result) {
+        buffered = {
+          prompt: turn.prompt,
+          result: turn.result,
+          success: bound.status === "ok",
+          seal: bound.status,
+        };
+      }
     } catch {
       /* never block */
     }
@@ -313,7 +565,8 @@ export function registerEnterpriseMemory(pi: ExtensionAPI): boolean {
         {
           prompt: buffered.prompt || "pi_session",
           result: buffered.result,
-          tags: ["pi_runtime", "hybrid", "session_shutdown"],
+          success: buffered.success,
+          tags: ["pi_runtime", "hybrid", "session_shutdown", `completion_${buffered.seal}`],
         },
         live,
       );

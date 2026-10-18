@@ -2563,6 +2563,13 @@ async def get_model_tier_status():
     except Exception:
         logging.getLogger(__name__).debug('YAML config unreadable', exc_info=True)
 
+    try:
+        from core.api.core_facade import summarize_task_model_routes
+        result["task_routes"] = summarize_task_model_routes()
+    except Exception:
+        logging.getLogger(__name__).debug("task route summary skipped", exc_info=True)
+        result["task_routes"] = {"available": False, "tasks": 0, "by_purpose": {}}
+
     return result
 
 

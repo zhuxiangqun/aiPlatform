@@ -217,6 +217,12 @@ class EpisodicMemory:
                 result = self._rule_summary()
         else:
             result = self._rule_summary()
+        from core.harness.memory.profile_builder import sanitize_episodic_summary_text
+
+        clean = sanitize_episodic_summary_text(result.summary)
+        if not clean and result.summary:
+            clean = self._rule_summary().summary
+        result.summary = (clean or "")[: self._max_summary_length]
         self._summary = result.summary
         self._message_count = 0
         return result
@@ -232,7 +238,6 @@ class EpisodicMemory:
         response = await llm_callable(prompt)
         import json
         try:
-            json_str = response
             if isinstance(response, dict):
                 data = response
             else:
@@ -244,10 +249,24 @@ class EpisodicMemory:
                     data = json.loads(text[start:end + 1])
                 else:
                     raise ValueError("No JSON found in LLM response")
+            from core.harness.memory.file_store import memory_content_is_fact
+            from core.harness.memory.profile_builder import sanitize_episodic_summary_text
+
+            summary = sanitize_episodic_summary_text(str(data.get("summary", "")))[
+                : self._max_summary_length
+            ]
             return SessionSummary(
-                summary=str(data.get("summary", ""))[:self._max_summary_length],
-                key_points=[str(p)[:200] for p in (data.get("key_points") or [])[:3]],
-                tasks=[str(t)[:200] for t in (data.get("tasks") or [])[:3]],
+                summary=summary,
+                key_points=[
+                    str(p)[:200]
+                    for p in (data.get("key_points") or [])[:3]
+                    if memory_content_is_fact(str(p))
+                ],
+                tasks=[
+                    str(t)[:200]
+                    for t in (data.get("tasks") or [])[:3]
+                    if memory_content_is_fact(str(t))
+                ],
                 decisions=[str(d)[:200] for d in (data.get("decisions") or [])[:3]],
                 updated_at=datetime.now(tz=timezone.utc),
             )
@@ -258,9 +277,10 @@ class EpisodicMemory:
         user_messages = [m["user"] for m in self._full_messages[-self._update_interval:]]
         assistant_messages = [m["assistant"] for m in self._full_messages[-self._update_interval:]]
 
-        summary_text = f"Session with {len(user_messages)} interactions. "
-        if user_messages:
-            summary_text += f"Last user query: {user_messages[-1][:100]}..."
+        from core.harness.memory.file_store import memory_content_is_fact
+
+        facts = [m.strip() for m in user_messages if memory_content_is_fact((m or "")[:200])]
+        summary_text = f"Recent user fact: {facts[-1][:100]}" if facts else ""
 
         return SessionSummary(
             summary=summary_text[:self._max_summary_length],

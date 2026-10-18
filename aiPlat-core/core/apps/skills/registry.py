@@ -543,10 +543,11 @@ class SkillRegistry:
         Returns a short string of "Available skills: name1: desc1, name2: desc2, ..."
         Limited to ~300 tokens to keep the system prompt lean.
         """
+        from core.harness.routing.skill_routing import skill_catalog_entry
+
         stubs = []
         for name in sorted(self._skills.keys())[:30]:
-            stub = self.get_stub(name)
-            stubs.append(stub)
+            stubs.append(skill_catalog_entry(name, self.get_stub(name)))
         return "Available skills (" + str(len(stubs)) + "): " + "; ".join(stubs)
 
     # ── Agentic Skill Router: search → inspect → select ─────
@@ -970,6 +971,14 @@ class SkillRegistry:
             name = fname[:-3]
             if self.get(name) is not None:
                 result["skipped"] += 1
+                continue
+
+            from core.apps.skills.skill_boundary import scan_untrusted_skill_text
+
+            scan = scan_untrusted_skill_text(name, raw)
+            if scan.get("blocked"):
+                result["errors"].append(f"{fname}: blocked by skill scan")
+                result.setdefault("scans", []).append(scan)
                 continue
 
             category = "general"

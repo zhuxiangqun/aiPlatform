@@ -209,6 +209,10 @@ from core.schemas_builder import (
 
     AgentOutput,
 
+    CONVERSATIONAL_AGENT_TYPES,
+
+    stage_uses_react_loop,
+
 )
 
 
@@ -623,7 +627,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
     # Config-driven: agent types that use conversational execution (core_chat) vs ReActLoop
 
-    _CONVERSATIONAL_AGENT_TYPES = frozenset({"conversational", "rag", "plan", "plan_execute", "reflection", "review", "materials_chat"})
+    _CONVERSATIONAL_AGENT_TYPES = CONVERSATIONAL_AGENT_TYPES
 
     _PLAN_UPGRADE_TYPES = frozenset({"plan", "plan_execute", "reflection"})
 
@@ -724,6 +728,15 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         if not isinstance(existing, dict):
             return bool(existing)
         if existing.get("loop_state") == "error":
+            return False
+        # done_verify / hard failures must not be treated as successful stage output
+        status = str(existing.get("status") or "").strip().lower()
+        if status in ("failed", "fail", "error", "veto"):
+            return False
+        if existing.get("done_verify_veto"):
+            return False
+        err = str(existing.get("error") or "")
+        if err.startswith("done_verify:"):
             return False
         src = str(existing.get("source") or "")
         if src.startswith("confirmed_") or src.startswith("frozen_"):
@@ -1818,7 +1831,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
         # Fallback: conversational agents use core_chat, react uses StageRunner
 
-        if not stage.uses_file_output and agent_type in self._CONVERSATIONAL_AGENT_TYPES:
+        if not stage_uses_react_loop(stage, agent_type):
 
             import uuid as _uuid
 
@@ -2085,6 +2098,16 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         # Makes harness "cattle" — restartable from event log without losing progress.
 
         if state.get("error") or state.get("phase") == PipelinePhase.FAILED:
+            # Do not wake-recover past hard done_verify / require_review failures —
+            # that would greenwash a rejected coding seal into the next stage.
+            _hard_fail = (
+                bool(state.get("_require_review_incomplete"))
+                or str(state.get("_last_action_reason") or "") == "done_verify_failed"
+                or str(state.get("_done_verify_last_reason") or "").startswith("done_verify:")
+                or str(state.get("error") or "").startswith("done_verify:")
+            )
+            if _hard_fail:
+                return state
 
             checkpoints = state.get("_checkpoints", [])
 
@@ -4290,6 +4313,15 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
             )
 
             _skill = str(skill_name or getattr(stage, "skill_name", "") or "")
+            try:
+                from core.schemas_builder import control_fuses_for_stage
+
+                _max_steps = int(
+                    getattr(self._config, "max_steps_per_stage", 10) if self._config else 10
+                )
+                _control = control_fuses_for_stage(stage, max_steps=_max_steps)
+            except Exception:
+                _control = {}
             _ex = build_execution_decision(
                 architecture_profile=str(getattr(stage, "architecture_profile", "") or ""),
                 execution_backend=str(getattr(stage, "execution_backend", "") or ""),
@@ -4308,6 +4340,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 skill_name=_skill,
                 handler_present=handler_present,
                 fail_closed_reason=fail_closed_reason,
+                control=_control,
             )
             state["_execution_decision"] = _ex
             _prog = state.get("_progress")
@@ -4505,6 +4538,9 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                             if _aio_mod.iscoroutine(_hres):
                                 _hres = await _hres
                             if isinstance(_hres, dict):
+                                _herr = _hres.get("error")
+                                if _herr:
+                                    return _stage_skill_failed(str(_herr), "handler")
                                 import json as _hj_local
                                 _artifact_key = getattr(stage, 'output_artifact', '') or _skill_name
                                 state[_artifact_key] = {
@@ -4908,6 +4944,24 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         apply_architecture_profile(stage)
         _purpose = getattr(stage, 'skill_model_purpose', '') or 'chat'
         _backend = getattr(stage, 'execution_backend', '') or 'llm'
+        try:
+            from core.harness.execution.done_verify import missing_completion_standard_reason
+
+            _std_veto = missing_completion_standard_reason(stage)
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "completion standard preflight skipped", exc_info=True
+            )
+            if bool(getattr(stage, "uses_file_output", False)):
+                _std_veto = (
+                    "done_verify: completion-standard preflight failed "
+                    "(exception; fail-closed for file-output stages)"
+                )
+            else:
+                _std_veto = None
+        if _std_veto:
+            state["_done_verify_last_reason"] = _std_veto
+            return _stage_skill_failed(_std_veto, "done_verify")
 
         if _backend == "agent":
             # Agent runtime → StageRunner → ReActLoop (tools, hooks, token management)
@@ -4958,8 +5012,53 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
             _result = _result.replace("```json", "").replace("```", "").strip()
             _elapsed = round(_time.time() - _t0, 2)
             _final_steps = int(state.get("step_count", 0) or 0)
-            state["_progress"] = {"stage": _skill_name, "status": "completed", "elapsed_sec": _elapsed,
-                                  "backend": "agent", "current_step": _final_steps}
+            _agent_failed = (
+                _result.startswith("STAGE_ERROR:")
+                or bool(state.get("_require_review_incomplete"))
+                or bool(state.get("_finalize_hard_fail"))
+                or bool(str(state.get("_force_failed_status") or "").strip())
+                or str(state.get("error") or "").startswith("done_verify:")
+            )
+            state["_progress"] = {
+                "stage": _skill_name,
+                "status": "failed" if _agent_failed else "completed",
+                "elapsed_sec": _elapsed,
+                "backend": "agent",
+                "current_step": _final_steps,
+            }
+            if _agent_failed:
+                _why = _result[len("STAGE_ERROR:") :].strip() if _result.startswith("STAGE_ERROR:") else (
+                    str(state.get("_done_verify_last_reason") or state.get("error") or _result)
+                )
+                state["error"] = _why or _result
+                state["phase"] = PipelinePhase.FAILED
+                state["_last_action_reason"] = "done_verify_failed"
+                if "require_review" in str(state["error"]):
+                    state["_require_review_incomplete"] = True
+                _fail_key = getattr(stage, "output_artifact", "") or _skill_name
+                if _fail_key:
+                    state[_fail_key] = {
+                        "raw_output": state["error"],
+                        "elapsed_sec": _elapsed,
+                        "status": "failed",
+                        "error": state["error"],
+                        "done_verify_veto": state["error"],
+                    }
+                self._emit_execution_decision(
+                    stage,
+                    state,
+                    path="agent",
+                    execution_type=_execution_type,
+                    input_artifacts=_input_artifacts if isinstance(_input_artifacts, list) else None,
+                    skill_name=_skill_name,
+                    handler_present=_os.path.isfile(
+                        _os.path.join(_os.path.dirname(_sp), "handler.py")
+                    ) if _sp else False,
+                    confidence=0.0,
+                )
+                if self._persist_callback:
+                    self._persist_callback(dict(state))
+                return state
             self._emit_execution_decision(
                 stage,
                 state,
@@ -4973,7 +5072,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 confidence=0.75,
             )
             if self._persist_callback:
-                self._persist_callback(dict(state))  # immediate: frontend sees "completed"
+                self._persist_callback(dict(state))
         else:
             # Direct LLM call (default, backward-compatible)
             state["_progress"] = {"stage": _skill_name, "status": "running", "started_at": _time.time(),
@@ -5022,10 +5121,10 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                     logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
                 return state
             _elapsed = round(_time.time() - _t0, 2)
-            state["_progress"] = {"stage": _skill_name, "status": "completed", "elapsed_sec": _elapsed,
+            # Stay running until done_verify. Marking completed here showed a green
+            # stage before the pre-deploy gate could fail it.
+            state["_progress"] = {"stage": _skill_name, "status": "running", "elapsed_sec": _elapsed,
                                   "backend": "llm", "current_step": 0}
-            if self._persist_callback:
-                self._persist_callback(dict(state))  # immediate: frontend sees "completed"
         _result = _result.replace("```json", "").replace("```", "").strip()
 
         # Drop LLM reasoning preambles (步骤1–4 / 方案比较) before storage
@@ -5051,21 +5150,29 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                     "elapsed_sec": round(_time.time() - _t0, 2),
                     "status": "failed",
                 }
-                try:
-                    from core.harness.execution.stage_handoff import write_stage_handoff
-                    write_stage_handoff(
-                        state,
-                        stage=stage,
-                        artifact_key=_artifact_key,
-                        artifact=state.get(_artifact_key),
-                        status="failed",
-                        error=f"output shorter than quality_gate.min_output_length={_min_len}",
-                        stages=self._config.stages if self._config else None,
-                    )
-                except Exception:
-                    logging.getLogger(__name__).debug(
-                        "write_stage_handoff on short output skipped", exc_info=True
-                    )
+            state["phase"] = PipelinePhase.FAILED
+            state["error"] = f"output shorter than quality_gate.min_output_length={_min_len}"
+            state["_last_action_reason"] = "quality_gate_short_output"
+            state["_progress"] = {
+                "stage": _skill_name,
+                "status": "failed",
+                "backend": "quality_gate",
+            }
+            try:
+                from core.harness.execution.stage_handoff import write_stage_handoff
+                write_stage_handoff(
+                    state,
+                    stage=stage,
+                    artifact_key=_artifact_key,
+                    artifact=state.get(_artifact_key),
+                    status="failed",
+                    error=f"output shorter than quality_gate.min_output_length={_min_len}",
+                    stages=self._config.stages if self._config else None,
+                )
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "write_stage_handoff on short output skipped", exc_info=True
+                )
             return state
 
         # ── 4. Store result ──
@@ -5092,7 +5199,8 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 )
                 if isinstance(state.get(_artifact_key), dict):
                     state[_artifact_key]["_sanitize_meta"] = _smeta
-            # F3: envelope as soon as artifact is material (UI can poll mid-stage)
+            # F3: envelope as soon as artifact is material (UI can poll mid-stage).
+            # Not "ok" yet — done_verify / require_review still ahead.
             try:
                 from core.harness.execution.stage_handoff import write_stage_handoff
                 write_stage_handoff(
@@ -5101,7 +5209,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                     artifact_key=_artifact_key,
                     artifact=state.get(_artifact_key),
                     sanitize_meta=_smeta if isinstance(_smeta, dict) else None,
-                    status="ok",
+                    status="pending",
                     stages=self._config.stages if self._config else None,
                 )
             except Exception:
@@ -5113,8 +5221,103 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 "apply_stage_output_sanitizers skipped", exc_info=True
             )
 
+        # ── DONE verify before disk write / chain / deploy ──
+        # Agent backend already gated via StageRunner; llm oneshot must not
+        # persist ## FILE: blobs or chain skills when require_review fails.
+        try:
+            from core.harness.execution.done_verify import gate_llm_file_output_stage
 
-        # Write artifact to filesystem (authoritative storage; SQLite is cache)
+            _dv_veto = gate_llm_file_output_stage(
+                stage=stage,
+                state=state,
+                result=str(_result or ""),
+                artifact_key=_artifact_key,
+                backend=_backend,
+            )
+            _picked_repair = state.get("_selected_repair_output")
+            if not _dv_veto and isinstance(_picked_repair, str) and _picked_repair.strip():
+                _result = _picked_repair
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "gate_llm_file_output_stage failed", exc_info=True
+            )
+            # Fail-closed for file/review stages — never treat exception as pass.
+            _dv_cfg = getattr(stage, "done_verify", None)
+            if not isinstance(_dv_cfg, dict):
+                _dv_cfg = {}
+            if (
+                bool(_dv_cfg.get("require_review"))
+                or bool(getattr(stage, "uses_file_output", False))
+                or str(getattr(stage, "review_gate", "") or "").strip().lower()
+                not in ("", "none", "off", "false", "0")
+            ):
+                _dv_veto = (
+                    "done_verify: gate_llm_file_output_stage failed "
+                    "(exception; fail-closed for file/review stages)"
+                )
+            else:
+                _dv_veto = None
+        if _dv_veto:
+            _log.getLogger("pipeline_engine").warning(
+                "done_verify veto pre-persist: stage=%s backend=%s reason=%s",
+                stage.id,
+                _backend,
+                _dv_veto[:160],
+            )
+            state["error"] = _dv_veto
+            state["_done_verify_last_reason"] = _dv_veto
+            state["_last_action_reason"] = "done_verify_failed"
+            state["phase"] = PipelinePhase.FAILED
+            state["_progress"] = {
+                "stage": stage.id,
+                "status": "failed",
+                "backend": "done_verify",
+            }
+            if "require_review" in _dv_veto:
+                state["_require_review_incomplete"] = True
+            _art = state.get(_artifact_key)
+            if isinstance(_art, dict):
+                _art = dict(_art)
+                _art["status"] = "failed"
+                _art["error"] = _dv_veto
+                _art["done_verify_veto"] = _dv_veto
+                state[_artifact_key] = _art
+            try:
+                from core.harness.execution.stage_handoff import write_stage_handoff
+
+                write_stage_handoff(
+                    state,
+                    stage=stage,
+                    artifact_key=_artifact_key,
+                    artifact=state.get(_artifact_key),
+                    status="failed",
+                    error=_dv_veto,
+                    stages=self._config.stages if self._config else None,
+                )
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "write_stage_handoff on done_verify veto skipped", exc_info=True
+                )
+            return state
+
+        # Handoff was pending until done_verify; promote to ok before persist/deploy.
+        try:
+            from core.harness.execution.stage_handoff import write_stage_handoff
+
+            write_stage_handoff(
+                state,
+                stage=stage,
+                artifact_key=_artifact_key,
+                artifact=state.get(_artifact_key),
+                status="ok",
+                stages=self._config.stages if self._config else None,
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "write_stage_handoff after done_verify skipped", exc_info=True
+            )
+
+        # Write artifact to filesystem only after done_verify (authoritative storage)
         _out_dir = state.get("output_dir", "")
         if _out_dir and _artifact_key and not str(_artifact_key).startswith("_"):
             _to_write: Any = _result
@@ -5191,54 +5394,19 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         _log.getLogger("pipeline_engine").warning(
             "Skill %s OK: stage=%s output=%d chars", _skill_name, stage.id, len(_result))
 
-        # ── 5.5. Chain next skill if configured ──
+        # ── 5.5. Chain next skill only after done_verify passed ──
         _chain_skill = getattr(stage, 'chain_skill_after', '') or ''
         if _chain_skill:
             _chain_result_key = (getattr(stage, 'test_result_key', '') or _artifact_key) + "_exec"
             state = await self._run_chained_skill(_chain_skill, state, _artifact_key, _chain_result_key)
+            if state.get("phase") == PipelinePhase.FAILED:
+                return state
 
-        # ── 5.55. DONE verify before deploy (llm + uses_file_output only) ──
-        # Agent backend already gated via StageRunner→ReActLoop._acceptance_gate.
-        # llm oneshot must not write ## FILE: blobs to disk without the same ring.
-        try:
-            from core.harness.execution.done_verify import gate_llm_file_output_stage
-
-            _dv_veto = gate_llm_file_output_stage(
-                stage=stage,
-                state=state,
-                result=str(_result or ""),
-                artifact_key=_artifact_key,
-                backend=_backend,
-            )
-        except Exception:
-            logging.getLogger(__name__).debug(
-                "gate_llm_file_output_stage skipped", exc_info=True
-            )
-            _dv_veto = None
-        if _dv_veto:
-            _log.getLogger("pipeline_engine").warning(
-                "done_verify veto pre-deploy: stage=%s backend=%s reason=%s",
-                stage.id,
-                _backend,
-                _dv_veto[:160],
-            )
-            try:
-                from core.harness.execution.stage_handoff import write_stage_handoff
-
-                write_stage_handoff(
-                    state,
-                    stage=stage,
-                    artifact_key=_artifact_key,
-                    artifact=state.get(_artifact_key),
-                    status="failed",
-                    error=_dv_veto,
-                    stages=self._config.stages if self._config else None,
-                )
-            except Exception:
-                logging.getLogger(__name__).debug(
-                    "write_stage_handoff on done_verify veto skipped", exc_info=True
-                )
-            return state
+        _prog = state.get("_progress")
+        if isinstance(_prog, dict) and str(_prog.get("status") or "") == "running":
+            _prog["status"] = "completed"
+            if self._persist_callback:
+                self._persist_callback(dict(state))
 
         # ── 5.6. Deploy files to disk if configured ──
         # Scaffold sets deploy_files_to_disk. Later uses_file_output stages
@@ -5397,6 +5565,28 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         _result = str(_result or "")
         _result = _result.replace("```json", "").replace("```", "").strip()
 
+        if _result.startswith("STAGE_ERROR:") or state.get("_require_review_incomplete"):
+            _why = (
+                _result[len("STAGE_ERROR:") :].strip()
+                if _result.startswith("STAGE_ERROR:")
+                else str(state.get("_done_verify_last_reason") or state.get("error") or _result)
+            )
+            state["error"] = _why or _result
+            state["phase"] = PipelinePhase.FAILED
+            state["_last_action_reason"] = "done_verify_failed"
+            state["_progress"] = {
+                "stage": skill_name,
+                "status": "failed",
+                "elapsed_sec": round(_time.time() - _t0, 2),
+            }
+            if result_artifact_key:
+                state[result_artifact_key] = {
+                    "raw_output": state["error"],
+                    "status": "failed",
+                    "error": state["error"],
+                }
+            return state
+
         if not _result or len(_result) < 50:
             _log.warning("chained skill '%s': empty/short result (%d chars)", skill_name, len(_result))
             return state
@@ -5549,10 +5739,35 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         """Apply post-stage review based on declarative review_gate field."""
 
         gate = getattr(stage, 'review_gate', 'quick') or 'quick'
-
-        if gate == "none":
+        _dv = getattr(stage, "done_verify", None)
+        _hard_review = isinstance(_dv, dict) and bool(_dv.get("require_review"))
+        # Soft review_gate=none skips; hard require_review still needs a receipt check.
+        if _hard_review and (
+            state.get("_require_review_incomplete")
+            or str(state.get("_done_verify_last_reason") or "").startswith("done_verify:")
+        ):
+            reason = str(
+                state.get("_done_verify_last_reason")
+                or state.get("error")
+                or "require_review incomplete"
+            ).strip()
+            state["phase"] = PipelinePhase.FAILED
+            state["error"] = reason
+            state["_last_action_reason"] = "require_review_incomplete"
+            key = stage.output_artifact or stage.id
+            art = state.get(key)
+            if isinstance(art, dict):
+                art = dict(art)
+                art["status"] = "failed"
+                art["error"] = reason
+                art["done_verify_veto"] = reason
+                state[key] = art
+            return state
+        if gate == "none" and not _hard_review:
 
             return state
+        if gate == "none" and _hard_review:
+            gate = "quick"
 
         if gate == "quick":
 
@@ -5860,6 +6075,13 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
         artifact = None  # Prevent UnboundLocalError in edge cases
 
+        try:
+            from core.harness.evaluation.harness_recursion import clear_contrast_signals
+
+            clear_contrast_signals(local_state)
+        except Exception:
+            logging.debug("stage contrast clear skipped", exc_info=True)
+
         local_state["_current_stage_idx"] = idx
 
         graph_trace: List[Dict] = []
@@ -5947,7 +6169,9 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
                 # Capture per-stage reflection for self-improvement loop
 
-                if local_state.get(stage.output_artifact):
+                from core.harness.execution.stage_reflection import stage_reflection_due
+
+                if stage_reflection_due(stage, local_state):
 
                     try:
 
@@ -6078,10 +6302,13 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
             local_state[f"_stage_output_{stage.id}"] = json.dumps(artifact, ensure_ascii=False)[:2000]
 
-        # Advisory stage product-quality review (Skill/Agent/Tool rules, PRD-gated per output).
-        # Stored on state so WorkflowCanvas / WorkflowRunPage can poll without a new endpoint.
+        # Stage product-quality review (Skill/Agent/Tool rules, PRD-gated per output).
+        # Hard coding failures flip the stage — do not leave green with fail QR only.
         try:
-            from core.management.execution_quality_review import review_pipeline_stage
+            from core.management.execution_quality_review import (
+                review_pipeline_stage,
+                quality_review_blocks_success,
+            )
 
             _st = "failed" if local_state.get("error") or local_state.get(f"_stage_failed_id") == stage.id else "completed"
             _qr = review_pipeline_stage(
@@ -6092,8 +6319,48 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
             )
             if isinstance(_qr, dict):
                 local_state[f"_quality_review_{stage.id}"] = _qr
+                if _st == "completed" and quality_review_blocks_success(_qr):
+                    _qr_err = str(
+                        (_qr.get("headline") if isinstance(_qr, dict) else None)
+                        or "stage product failed quality review"
+                    )[:500]
+                    local_state["error"] = _qr_err
+                    local_state[f"_stage_failed_id"] = stage.id
+                    local_state["_require_review_incomplete"] = True
+                    local_state["phase"] = PipelinePhase.FAILED
+                    local_state["_last_action_reason"] = "quality_review_blocked"
+                    logging.getLogger("pipeline_engine").warning(
+                        "stage quality_review blocked success: stage=%s verdict=%s",
+                        stage.id,
+                        _qr.get("verdict"),
+                    )
         except Exception as e:
             logging.debug("pipeline stage quality_review skipped: %s", e, exc_info=True)
+            _dv_st = getattr(stage, "done_verify", None)
+            if not isinstance(_dv_st, dict):
+                _dv_st = {}
+            _rg_st = str(getattr(stage, "review_gate", "") or "").strip().lower()
+            _qr_hard = (
+                bool(getattr(stage, "uses_file_output", False))
+                or bool(getattr(stage, "refactor_sop", False))
+                or bool(_dv_st.get("require_review"))
+                or bool(local_state.get("_coding_veto_exhausted"))
+                or bool(local_state.get("_require_review_incomplete"))
+                or _rg_st not in ("", "none", "off", "false", "0")
+            )
+            if (
+                _qr_hard
+                and not local_state.get("error")
+                and local_state.get("phase") != PipelinePhase.FAILED
+            ):
+                local_state["error"] = (
+                    "stage quality_review failed "
+                    "(exception; fail-closed for coding/review)"
+                )
+                local_state[f"_stage_failed_id"] = stage.id
+                local_state["_require_review_incomplete"] = True
+                local_state["phase"] = PipelinePhase.FAILED
+                local_state["_last_action_reason"] = "quality_review_exception"
 
         elapsed = round(t_end - local_state.get(f"_stage_ts_{stage.id}", t_end), 1)
 
@@ -6103,7 +6370,9 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
         # Capture reflection after fresh execution too (not just on skip/re-run)
 
-        if local_state.get(stage.output_artifact):
+        from core.harness.execution.stage_reflection import stage_reflection_due
+
+        if stage_reflection_due(stage, local_state):
 
             try:
 
@@ -6167,7 +6436,21 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
         tests_key = cfg_fields.get("test_cases_key", "test_cases")
 
-        graph_trace.append({"node": stage.id, "status": "completed", "ts": time.time(), "metrics": {
+        _trace_status = "completed"
+        _trace_force = str(local_state.get("_force_failed_status") or "").strip().lower()
+        if (
+            local_state.get("phase") == PipelinePhase.FAILED
+            or local_state.get("_finalize_hard_fail")
+            or local_state.get("_require_review_incomplete")
+            or bool(_trace_force)
+            or str(local_state.get("error") or "").startswith("done_verify:")
+            or (
+                isinstance(artifact, dict)
+                and str(artifact.get("status") or "") == "failed"
+            )
+        ):
+            _trace_status = "timeout" if _trace_force == "timeout" else "failed"
+        graph_trace.append({"node": stage.id, "status": _trace_status, "ts": time.time(), "metrics": {
 
             "artifact_fields": list(artifact.keys())[:5] if isinstance(artifact, dict) else [],
 
@@ -6213,6 +6496,12 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         # Phase 10: declarative review gate (replaces old hitl/hitl_after_execute if/elif)
 
         local_state = await self._apply_review_gate(stage, local_state)
+
+        if local_state.get("phase") == PipelinePhase.FAILED:
+
+            graph_trace.append({"node": stage.id, "status": "failed", "reason": "review_gate_failed", "ts": time.time()})
+
+            return local_state, True
 
         if local_state.get("phase") == PipelinePhase.PAUSED:
 
@@ -6427,6 +6716,16 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
     def _git_commit_stage(stage: PipelineStageConfig, state: PipelineState) -> None:
 
         """Auto-commit stage output to git if AIPLAT_GIT_ENABLED is true."""
+
+        if state.get("phase") == PipelinePhase.FAILED or state.get("_require_review_incomplete"):
+
+            return
+
+        if isinstance(state.get(stage.output_artifact), dict) and str(
+            (state.get(stage.output_artifact) or {}).get("status") or ""
+        ) == "failed":
+
+            return
 
         if os.getenv("AIPLAT_GIT_ENABLED", "false").lower() not in ("true", "1", "yes", "y"):
 
@@ -6777,6 +7076,18 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 "artifact_size": len(str(artifact)) if artifact else 0,
 
             }
+
+            if isinstance(reflection, dict):
+                _hr = reflection.get("harness_recursion")
+                if isinstance(_hr, dict):
+                    _composed = _hr.get("composed") if isinstance(_hr.get("composed"), dict) else {}
+                    _lib = _hr.get("library") if isinstance(_hr.get("library"), dict) else {}
+                    signal_value["harness_recursion"] = {
+                        "decision": _composed.get("decision"),
+                        "written": _lib.get("written"),
+                        "reason": _lib.get("reason"),
+                        "components": len(_composed.get("components") or []),
+                    }
 
 
 

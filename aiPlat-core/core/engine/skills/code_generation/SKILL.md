@@ -116,6 +116,7 @@ skip_when: 跳过条件：用户仅询问概念、对比工具而非实际写代
 2. 生成代码：## FILE: 格式，每文件包含完整实现。
 3. 自检：语法正确、导入完备、安全无注入；未列出的工程入口文件不要交。
 4. 落盘经 `sys_file_write` 时会自动 `file_checkpoint`；回滚用 `restore_file_checkpoint` / 管理端「文件 Checkpoint」，禁止假装「答完即撤销」。
+5. 有多个修复方案时，先写 `## REPAIR_CANDIDATES`（JSON 数组，每项 `id` / `score` / `text`）。`score` 由本轮给出。写过一次即可，下一轮不必重贴。不要对每个方案各跑一次验证：平台只保留最高分，并对 `code` / `code_execution` / `shell`/`bash`（pytest、python 补丁或重定向写入）/ `test_executor` / `canary_runner` / `e2e_test` / `acceptance_checker` 只放行一次成功验证（失败可对同一方案重试）。选型后不要把被跳过方案写进磁盘。候选块出现前，第二段明显不同的补丁脚本（含短脚本、`python -c`）会被拦住；`pytest` / `python -m pytest` / `ruff` 等检查命令仍可跑。
 
 ## 交付模式（强制 — 所有绑定本 Skill 的 Agent 共用，禁止只写在某一个 AGENT.md）
 按**当前任务输入**选一种，禁止混用：

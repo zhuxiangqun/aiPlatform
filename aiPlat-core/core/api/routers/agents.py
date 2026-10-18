@@ -770,29 +770,37 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request, rt:
 
     try:
 
-        st = str((resp or {}).get("status") or "").lower()
+        from core.management.execution_quality_review import (
 
-        if st in ("completed", "ok", "success") and isinstance(resp, dict):
+            attach_quality_review_to_execute_response,
 
-            from core.management.execution_quality_review import review_execution_output
+        )
 
-            resp["quality_review"] = review_execution_output(
+        inp = (
 
-                kind="agent",
+            (payload.get("input") if isinstance(payload, dict) else None)
 
-                asset_id=str(agent_id),
+            or (payload.get("message") if isinstance(payload, dict) else None)
 
-                asset_name=str(agent_id),
+            or payload
 
-                input_payload=(payload.get("input") if isinstance(payload, dict) else None) or payload.get("message") or payload,
+        )
 
-                output=resp.get("output"),
+        resp = attach_quality_review_to_execute_response(
 
-                status=st,
+            resp,
 
-                hints=str(agent_id),
+            kind="agent",
 
-            )
+            asset_id=str(agent_id),
+
+            asset_name=str(agent_id),
+
+            input_payload=inp,
+
+            hints=str(agent_id),
+
+        )
 
     except Exception as e:
 

@@ -270,13 +270,10 @@ class ReActLoop(BaseLoop):
 
           positives. Runs with no active contract are unaffected (backward compat).
 
-        - `AIPLAT_ACCEPTANCE_GATE_ENABLED=false` disables the gate entirely.
+        - `AIPLAT_ACCEPTANCE_GATE_ENABLED=false` skips only the file-contract
+          check. Coding substance and ``done_verify`` still run.
 
         """
-
-        if os.getenv("AIPLAT_ACCEPTANCE_GATE_ENABLED", "true").lower() in ("0", "false", "no"):
-
-            return None
 
         # Coding substance gate is independent of file-contract fail-open.
         # Do not skip it when there is no ActiveChangeContract (typical skill_delivery).
@@ -287,14 +284,19 @@ class ReActLoop(BaseLoop):
         # Universal DONE Verify ring (config-driven: quality_gate / expected_outcomes /
         # _done_verify). Dev fail-open after 2 vetoes (max_steps hard cap);
         # production / AIPLAT_DONE_VERIFY_FAIL_CLOSED keeps vetoing (no soft-seal).
-        try:
-            from core.harness.execution.done_verify import run_done_verify
+        self._sync_bound_ids_for_verify(state)
+        from core.harness.execution.execution_seal import check_done_verify
 
-            verify_veto = run_done_verify(state.context if isinstance(state.context, dict) else {})
-        except Exception:
-            logging.getLogger(__name__).debug("done_verify skipped", exc_info=True)
-            verify_veto = None
+        verify_veto = check_done_verify(
+            state.context if isinstance(state.context, dict) else {}
+        )
         if verify_veto:
+            from core.harness.execution.done_verify import is_hard_done_veto
+
+            if is_hard_done_veto(
+                verify_veto, state.context if isinstance(state.context, dict) else None
+            ):
+                return verify_veto
             if int(state.context.get("_done_verify_veto_count", 0) or 0) >= 2:
                 state.context["_done_verify_exhausted"] = True
                 state.context["_done_verify_last_reason"] = verify_veto
@@ -317,6 +319,13 @@ class ReActLoop(BaseLoop):
 
         # Fail-open after 2 acceptance vetoes (dev) — max_steps remains the hard cap.
         # Production done_verify path above already returned when fail-closed.
+        # Env off skips only this file-contract check (coding + done_verify already ran).
+        if os.getenv("AIPLAT_ACCEPTANCE_GATE_ENABLED", "true").lower() in (
+            "0",
+            "false",
+            "no",
+        ):
+            return None
 
         if int(state.context.get("_acceptance_veto_count", 0) or 0) >= 2:
 
@@ -379,116 +388,126 @@ class ReActLoop(BaseLoop):
     def _coding_deliverable_veto(self, state: LoopState) -> Optional[str]:
         """Reject premature DONE when coding Agents output clarify-only / thin stubs.
 
-        Quality review already flags these post-run; this gate prevents false-green
-        ``completed`` (auto_done after a confirm-only reply or DONE+empty ## FILE).
-
-        After 3 coding vetoes, fail-open (return None) so eager finalize can seal the
-        row; ``quality_review_blocks_success`` then flips status to failed — avoids
-        nested LLM hangs (run-1d72db0b704b).
+        Delegates to ``execution_seal.coding_deliverable_veto`` (shared with PlanExecute).
         """
+        from core.harness.execution.execution_seal import coding_deliverable_veto
+
+        return coding_deliverable_veto(
+            state.context if isinstance(state.context, dict) else {},
+            bound_skill_ids=self._resolved_bound_skill_ids(state),
+            skills=getattr(self, "_skills", None),
+            ensure_skill=self._ensure_skill_loaded,
+        )
+
+    def _ensure_skill_loaded(self, name: str) -> bool:
+        """Lazy-bind a skill object so auto-followup can dispatch when unbound."""
+        sid = str(name or "").strip()
+        if not sid:
+            return False
+        if self._get_skill(sid) is not None:
+            return True
         try:
-            from core.management.execution_quality_review import (
-                _input_asks_coding_delivery,
-                is_non_deliverable_coding_output,
-            )
+            from core.harness.integration import get_skill_registry
+
+            reg = get_skill_registry()
+            sk = reg.get(sid) if hasattr(reg, "get") else None
+            if sk is None:
+                return False
+            skills = list(self._skills or [])
+            skills.append(sk)
+            self._skills = skills
+            return True
         except Exception:
-            return None
-
-        skill_once = str(state.context.get("_skill_delivery") or "").strip().lower() == "once"
-        bound_s = set(self._resolved_bound_skill_ids(state))
-        coding_skills = bound_s & {
-            "code_generation",
-            "code-hygiene",
-            "file_operations",
-        }
-        in_text = str(state.context.get("_user_task") or "").strip()
-        if not in_text:
-            task = str(state.context.get("task") or "").strip()
-            if "## Task\n" in task:
-                in_text = task.split("## Task\n", 1)[1].strip()
-            else:
-                in_text = task
-        # skill_once covers any Agent (PM included: don't DONE before primary skill).
-        # Coding-product veto only when the task/skills actually generate code.
-        asks = _input_asks_coding_delivery(in_text) if in_text else False
-        if not (skill_once or coding_skills or asks):
-            return None
-
-        out = str(state.context.get("output") or "").strip()
-        reason: Optional[str] = None
-
-        if not out:
-            if skill_once and not state.context.get("_primary_skill_delivered"):
-                reason = (
-                    "skill_delivery=once requires a successful primary skill call "
-                    "(e.g. code_generation) before DONE — do not end with clarification"
-                )
-        else:
-            try:
-                from core.harness.utils.execute_session import looks_like_pending_action_envelope
-
-                if looks_like_pending_action_envelope(out):
-                    reason = (
-                        "output is still a skill_call/tool_call envelope — execute the skill "
-                        "(do not DONE with the call JSON as the answer)"
-                    )
-            except Exception:
-                pass  # noqa: cleanup-best-effort
-
-            if reason is None and skill_once and not state.context.get("_primary_skill_delivered"):
-                reason = (
-                    "skill_delivery=once requires a successful primary skill call "
-                    "(e.g. code_generation) before DONE — do not end with clarification"
-                )
-
-            if reason is None and (coding_skills or asks) and is_non_deliverable_coding_output(
-                input_text=in_text,
-                output_text=out,
-                raw_out={"text": out},
-                hints=" ".join(sorted(bound_s)),
-                scope="skill",
-            ):
-                reason = (
-                    "coding deliverable is clarify-only, thin DONE/## FILE stub, "
-                    "wrong language, or off-spec placeholder — "
-                    "call the bound skill and produce task-matching runnable code before DONE"
-                )
-
-            if reason is None and state.context.get("_primary_skill_delivered"):
-                follow = self._pending_coding_followup(state)
-                if follow:
-                    reason = (
-                        f"call bound follow-up skill `{follow}` on the generated files "
-                        "before DONE"
-                    )
-
-        if not reason:
-            return None
-        # Fail-open after repeated coding vetoes (same hang class as infinite followup nudge).
-        # Follow-up-only vetoes exhaust faster (2) — avoid nested LLM while waiting for autoreview.
-        veto_n = int(state.context.get("_acceptance_veto_count", 0) or 0)
-        followup_only = "follow-up skill" in reason or "followup skill" in reason
-        limit = 2 if followup_only else 3
-        if veto_n >= limit:
-            state.context["_coding_veto_exhausted"] = True
-            state.context["_coding_veto_last_reason"] = reason
-            return None
-        return reason
+            logging.getLogger(__name__).debug(
+                "ensure skill load failed: %s", sid, exc_info=True
+            )
+            return False
 
     def _pending_coding_followup(self, state: LoopState) -> Optional[str]:
-        """Next bound review/hygiene skill after a substantial primary coding delivery.
+        """Next review/hygiene skill after a substantial primary coding delivery."""
+        from core.harness.execution.execution_seal import pending_coding_followup
 
-        Driven by required_skills (not agent_id). Prefer autoreview → code_review → code-hygiene.
-        """
-        bound_s = set(self._resolved_bound_skill_ids(state))
-        done = state.context.get("_followup_skills_done") or []
-        if not isinstance(done, list):
-            done = []
-        done_s = {str(x).strip() for x in done if str(x).strip()}
-        for sid in ("autoreview", "code_review", "code-hygiene"):
-            if sid in bound_s and sid not in done_s:
-                return sid
-        return None
+        return pending_coding_followup(
+            state.context if isinstance(state.context, dict) else {},
+            bound_skill_ids=self._resolved_bound_skill_ids(state),
+            ensure_skill=self._ensure_skill_loaded,
+        )
+
+    def _done_verify_exception_is_hard(self, state: LoopState) -> bool:
+        """True when a crashed verify ring must not be treated as pass."""
+        from core.harness.execution.done_verify import done_verify_exception_is_hard
+
+        ctx = dict(state.context) if isinstance(state.context, dict) else {}
+        # Prefer resolved bound ids (skills objects) when context list is empty.
+        if not ctx.get("_bound_skill_ids"):
+            bound = self._resolved_bound_skill_ids(state)
+            if bound:
+                ctx["_bound_skill_ids"] = bound
+        return done_verify_exception_is_hard(ctx)
+
+    def _sync_bound_ids_for_verify(self, state: LoopState) -> None:
+        """So exception fail-closed sees skill objects when context ids are empty."""
+        ctx = state.context if isinstance(state.context, dict) else None
+        if ctx is None or ctx.get("_bound_skill_ids"):
+            return
+        bound = self._resolved_bound_skill_ids(state)
+        if bound:
+            ctx["_bound_skill_ids"] = bound
+
+    def _stamp_output_receipts(self, state: LoopState) -> str:
+        """Prefix fix/path claims that lack a successful tool receipt."""
+        from core.harness.execution.execution_seal import seal_answer_with_receipts
+
+        raw = str((state.context or {}).get("output") or "")
+        text, seal = seal_answer_with_receipts(
+            raw, state.context if isinstance(state.context, dict) else None
+        )
+        if isinstance(state.context, dict):
+            state.context["output"] = text
+            state.context["_completion_seal"] = seal
+        return text
+
+    def _done_verify_seal_reason(self, state: LoopState) -> Optional[str]:
+        """Veto string when an observe-path seal would skip the DONE ring."""
+        from core.harness.execution.execution_seal import check_done_verify
+
+        self._sync_bound_ids_for_verify(state)
+        return check_done_verify(
+            state.context if isinstance(state.context, dict) else {}
+        )
+
+    async def _abort_observe_seal(self, state: LoopState, body: str, reason: str) -> LoopState:
+        """Fail the loop instead of green-sealing when done_verify still vetoes."""
+        state.context["output"] = body
+        state.context["_done_verify_last_reason"] = reason
+        state.context["_coding_veto_last_reason"] = reason
+        state.context["error"] = reason
+        state.context["_skill_delivery_finalized"] = True
+        if "require_review" in reason or "review_gate=" in reason:
+            state.context["_require_review_incomplete"] = True
+        await self._eager_finalize_agent_row(
+            state,
+            output_text=body,
+            source="observe_done_verify_blocked",
+        )
+        try:
+            from core.services.execution_store import get_execution_store
+
+            _rid = str(state.context.get("_run_id") or "")
+            _st = get_execution_store()
+            if _rid and hasattr(_st, "close_running_syscall_events"):
+                await _st.close_running_syscall_events(
+                    _rid,
+                    status="error",
+                    error="done_verify_seal_blocked",
+                )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "close syscalls after done_verify seal block skipped",
+                exc_info=True,
+            )
+        state.current = LoopStateEnum.ERROR
+        return state
 
     def _bootstrap_primary_coding_skill(self, state: LoopState) -> Optional[str]:
         """Primary coding skill id for skill_delivery=once first-step bootstrap."""
@@ -984,6 +1003,7 @@ class ReActLoop(BaseLoop):
                 state.current = LoopStateEnum.REASONING
                 reasoning = bootstrap
                 state.context["reasoning"] = reasoning
+                self._remember_repair_candidates(state)
             else:
 
                 await self._trigger_hook(HookPhase.PRE_REASONING, state.context)
@@ -993,6 +1013,7 @@ class ReActLoop(BaseLoop):
                 reasoning = await self._reason(state)
 
                 state.context["reasoning"] = reasoning
+                self._remember_repair_candidates(state)
 
                 try:
                     import asyncio as _aio_post_reason
@@ -1066,6 +1087,10 @@ class ReActLoop(BaseLoop):
 
                     final_text = _skill_body
 
+                from core.harness.execution.execution_seal import seal_answer_with_receipts
+
+                final_text, _seal = seal_answer_with_receipts(final_text, state.context)
+
                 state.context["output"] = final_text
 
                 try:
@@ -1082,7 +1107,7 @@ class ReActLoop(BaseLoop):
 
                         "parent_span_id": state.context.get("_current_step_span_id"),
 
-                        "kind": "done", "name": "final_answer", "status": "ok",
+                        "kind": "done", "name": "final_answer", "status": _seal,
 
                         "run_id": state.context.get("_run_id") or "",
 
@@ -1163,10 +1188,13 @@ class ReActLoop(BaseLoop):
                 await self._eager_finalize_agent_row(
                     state, output_text=str(final_text), source="reason_final_answer"
                 )
+                await self._close_leftover_running_syscalls(
+                    state,
+                    status="ok" if _seal == "ok" else "failed",
+                    error="" if _seal == "ok" else f"completion_{_seal}",
+                )
 
-                state.current = LoopStateEnum.FINISHED
-
-                return state
+                return self._commit_react_finish(state)
 
         except Exception as e:
 
@@ -1194,15 +1222,16 @@ class ReActLoop(BaseLoop):
             state.context["observation"] = note
             if str(state.context.get("_stop_reason") or "") == "llm_failure_exhausted":
                 state.context["output"] = _rs_fail or note
+                # Flag before finalize so Agent row is not sealed as completed.
+                state.context["_force_failed_status"] = "timeout"
+                if not state.context.get("error"):
+                    state.context["error"] = _rs_fail or "llm_failure_exhausted"
                 await self._eager_finalize_agent_row(
                     state,
                     output_text=str(state.context.get("output") or note),
                     source="reason_llm_failure_exhausted",
                 )
-                # Mark failed via finalize metadata path when possible
-                state.context["_force_failed_status"] = "timeout"
-                state.current = LoopStateEnum.FINISHED
-                return state
+                return self._commit_react_finish(state)
             state.current = LoopStateEnum.REASONING
             return state
 
@@ -1270,6 +1299,7 @@ class ReActLoop(BaseLoop):
                 from core.harness.utils.execute_session import looks_like_pending_action_envelope
 
                 if looks_like_pending_action_envelope(_out):
+                    state.context["_pseudo_tool"] = True
                     note = (
                         "[ACCEPTANCE GATE] Output looks like a skill_call/tool_call envelope — "
                         "emit a structured skill/tool action (not DONE with the call JSON)."
@@ -1306,6 +1336,10 @@ class ReActLoop(BaseLoop):
                     "choose_loop_final_output skipped", exc_info=True
                 )
 
+            from core.harness.execution.execution_seal import seal_answer_with_receipts
+
+            _out, _seal = seal_answer_with_receipts(_out, state.context)
+
             state.context["output"] = _out
 
             _veto = self._acceptance_gate(state)
@@ -1331,7 +1365,7 @@ class ReActLoop(BaseLoop):
 
                     "parent_span_id": state.context.get("_current_step_span_id"),
 
-                    "kind": "done", "name": "auto_done", "status": "ok",
+                    "kind": "done", "name": "auto_done", "status": _seal,
 
                     "run_id": state.context.get("_run_id") or "",
 
@@ -1359,36 +1393,58 @@ class ReActLoop(BaseLoop):
                 state, output_text=str(_out), source="reason_auto_done"
             )
             await self._close_leftover_running_syscalls(
-                state, status="ok", error="reason_auto_done_seal"
+                state,
+                status="ok" if _seal == "ok" else "failed",
+                error="" if _seal == "ok" else f"completion_{_seal}",
             )
 
-            state.current = LoopStateEnum.FINISHED
-
-            return state
+            return self._commit_react_finish(state)
 
         if parsed and parsed.kind == "none" and len(str(reasoning or "").strip()) > 200:
 
-            state.context["output"] = reasoning
+            from core.harness.execution.execution_seal import seal_answer_with_receipts
+
+            _none_out, _none_seal = seal_answer_with_receipts(str(reasoning), state.context)
+            state.context["output"] = _none_out
+
+            _none_veto = self._acceptance_gate(state)
+            if _none_veto:
+                self._apply_acceptance_veto(state, _none_veto)
+                return state
 
             await self._eager_finalize_agent_row(
-                state, output_text=str(reasoning), source="reason_parsed_none"
+                state, output_text=str(_none_out), source="reason_parsed_none"
+            )
+            await self._close_leftover_running_syscalls(
+                state,
+                status="ok" if _none_seal == "ok" else "failed",
+                error="" if _none_seal == "ok" else f"completion_{_none_seal}",
             )
 
-            state.current = LoopStateEnum.FINISHED
-
-            return state
+            return self._commit_react_finish(state)
 
         if getattr(self, '_not_found_streak', 0) >= 3 and len(str(reasoning or "").strip()) > 20:
 
-            state.context["output"] = reasoning
+            from core.harness.execution.execution_seal import seal_answer_with_receipts
+
+            _nf_out, _nf_seal = seal_answer_with_receipts(str(reasoning), state.context)
+            state.context["output"] = _nf_out
+
+            _nf_veto = self._acceptance_gate(state)
+            if _nf_veto:
+                self._apply_acceptance_veto(state, _nf_veto)
+                return state
 
             await self._eager_finalize_agent_row(
-                state, output_text=str(reasoning), source="reason_not_found_streak"
+                state, output_text=str(_nf_out), source="reason_not_found_streak"
+            )
+            await self._close_leftover_running_syscalls(
+                state,
+                status="ok" if _nf_seal == "ok" else "failed",
+                error="" if _nf_seal == "ok" else f"completion_{_nf_seal}",
             )
 
-            state.current = LoopStateEnum.FINISHED
-
-            return state
+            return self._commit_react_finish(state)
 
 
 
@@ -1421,6 +1477,21 @@ class ReActLoop(BaseLoop):
         tool_name = getattr(parsed, 'tool_name', '') or getattr(parsed, 'fn', '') or str(parsed)[:40] if parsed else ''
 
         act_status = "completed" if action_result and "error" not in str(action_result).lower() else "failed"
+
+        try:
+            from core.harness.execution.completion_receipt import (
+                infer_receipt_status,
+                record_tool_receipt,
+            )
+
+            record_tool_receipt(
+                state.context,
+                tool=str(tool_name or ""),
+                status=infer_receipt_status(action_result),
+                detail=str(action_result or "")[:500],
+            )
+        except Exception:
+            logging.getLogger(__name__).debug("tool receipt skipped", exc_info=True)
 
         self._recent_actions.append({"tool": tool_name, "status": act_status, "step": state.step_count})
 
@@ -1548,6 +1619,16 @@ class ReActLoop(BaseLoop):
 
         observation = ''.join(result_parts)
 
+        try:
+            from core.harness.execution.context_offload import maybe_offload_text
+            observation, _off_path = maybe_offload_text(
+                state.context,
+                label="observation",
+                text=observation,
+            )
+        except Exception:
+            logging.getLogger(__name__).debug("observation offload skipped", exc_info=True)
+
         state.context["observation"] = observation
 
         state.context.setdefault("_observations", []).append(observation)
@@ -1595,8 +1676,7 @@ class ReActLoop(BaseLoop):
                         "close syscalls after primary skill timeout skipped",
                         exc_info=True,
                     )
-                state.current = LoopStateEnum.FINISHED
-                return state
+                return self._commit_react_finish(state)
 
         # skill_delivery=once: skill body is the deliverable — do not rely on a second
         # LLM "DONE" round (often emits empty answer → quality empty_output).
@@ -1732,12 +1812,71 @@ class ReActLoop(BaseLoop):
                                 exc_info=True,
                             )
                     follow_left = self._pending_coding_followup(state)
+                    _dv_fu = (
+                        state.context.get("_done_verify")
+                        if isinstance(state.context, dict)
+                        else {}
+                    )
+                    _hard_review = isinstance(_dv_fu, dict) and bool(
+                        _dv_fu.get("require_review")
+                    )
+                    if follow_left and _hard_review:
+                        # SOP Step 5: never soft-seal success without autoreview
+                        # receipt (skill_delivery=once used to bypass DONE verify).
+                        _obs = str(
+                            state.context.get("observation")
+                            or state.context.get("action_result")
+                            or ""
+                        )
+                        if "Skill not found:" in _obs:
+                            _rr_reason = (
+                                f"done_verify: require_review — follow-up skill "
+                                f"`{follow_left}` not found in registry"
+                            )
+                        else:
+                            _rr_reason = (
+                                f"done_verify: require_review — follow-up skill "
+                                f"`{follow_left}` not completed after auto-dispatch"
+                            )
+                        state.context["_require_review_incomplete"] = True
+                        state.context["_done_verify_last_reason"] = _rr_reason
+                        state.context["_coding_veto_last_reason"] = _rr_reason
+                        state.context["error"] = _rr_reason
+                        state.context["output"] = body
+                        state.context["_skill_delivery_finalized"] = True
+                        await self._eager_finalize_agent_row(
+                            state,
+                            output_text=body,
+                            source="observe_auto_followup_review_incomplete",
+                        )
+                        try:
+                            from core.services.execution_store import get_execution_store
+
+                            _rid = str(state.context.get("_run_id") or "")
+                            _st = get_execution_store()
+                            if _rid and hasattr(_st, "close_running_syscall_events"):
+                                await _st.close_running_syscall_events(
+                                    _rid,
+                                    status="error",
+                                    error="require_review_incomplete",
+                                )
+                        except Exception:
+                            logging.getLogger(__name__).debug(
+                                "close syscalls after require_review incomplete skipped",
+                                exc_info=True,
+                            )
+                        state.current = LoopStateEnum.ERROR
+                        return state
                     if follow_left:
                         state.context["_coding_veto_exhausted"] = True
                         state.context["_coding_veto_last_reason"] = (
                             f"follow-up skill `{follow_left}` not completed after auto-dispatch"
                         )
                     state.context["output"] = body
+                    body = self._stamp_output_receipts(state)
+                    _seal_veto = self._done_verify_seal_reason(state)
+                    if _seal_veto:
+                        return await self._abort_observe_seal(state, body, _seal_veto)
                     state.context["_skill_delivery_finalized"] = True
                     await self._eager_finalize_agent_row(
                         state,
@@ -1762,9 +1901,11 @@ class ReActLoop(BaseLoop):
                             "close syscalls after auto followup seal skipped",
                             exc_info=True,
                         )
-                    state.current = LoopStateEnum.FINISHED
-                    return state
+                    return self._commit_react_finish(state)
                 state.context["output"] = body
+                _seal_veto = self._done_verify_seal_reason(state)
+                if _seal_veto:
+                    return await self._abort_observe_seal(state, body, _seal_veto)
                 state.context["_skill_delivery_finalized"] = True
                 try:
                     from core.services.execution_store import get_execution_store
@@ -1791,8 +1932,7 @@ class ReActLoop(BaseLoop):
                 await self._eager_finalize_agent_row(
                     state, output_text=body, source="observe_skill_delivery_once"
                 )
-                state.current = LoopStateEnum.FINISHED
-                return state
+                return self._commit_react_finish(state)
 
         # Bound handler skill already produced the artifact (test_executor report).
         # Do not wait for a second DONE LLM (run-74a19d55326c: skill 205ms then
@@ -1806,6 +1946,9 @@ class ReActLoop(BaseLoop):
             body = self._skill_delivery_body(state)
             if len(body) >= 40:
                 state.context["output"] = body
+                _seal_veto = self._done_verify_seal_reason(state)
+                if _seal_veto:
+                    return await self._abort_observe_seal(state, body, _seal_veto)
                 state.context["_skill_delivery_finalized"] = True
                 await self._eager_finalize_agent_row(
                     state, output_text=body, source="observe_bound_skill_delivery"
@@ -1813,8 +1956,7 @@ class ReActLoop(BaseLoop):
                 await self._close_leftover_running_syscalls(
                     state, status="ok", error="observe_bound_skill_seal"
                 )
-                state.current = LoopStateEnum.FINISHED
-                return state
+                return self._commit_react_finish(state)
 
 
 
@@ -1873,10 +2015,17 @@ class ReActLoop(BaseLoop):
                 or observation
                 or ""
             ).strip()
+            state.context["output"] = _obs_out
+            _obs_out = self._stamp_output_receipts(state)
+            # Marker text alone must not skip done_verify / require_review.
+            _obs_veto = self._acceptance_gate(state)
+            if _obs_veto:
+                self._apply_acceptance_veto(state, _obs_veto)
+                return state
             await self._eager_finalize_agent_row(
                 state, output_text=_obs_out, source="observe_done_marker"
             )
-            state.current = LoopStateEnum.FINISHED
+            self._commit_react_finish(state)
 
 
 
@@ -3299,7 +3448,11 @@ class ReActLoop(BaseLoop):
 
                 cfg = getattr(skill, '_config', None) or (skill.get_config() if hasattr(skill, 'get_config') else None)
 
-                desc = str(getattr(cfg, "description", "") or "")
+                from core.harness.routing.skill_routing import skill_trigger_text
+
+                raw_desc = str(getattr(cfg, "description", "") or "")
+
+                desc = skill_trigger_text(raw_desc)
 
                 meta = dict(getattr(cfg, "metadata", {}) or {}) if cfg is not None else {}
 
@@ -3623,7 +3776,9 @@ class ReActLoop(BaseLoop):
 
                         nm = str(getattr(s, "name", "") or "")
 
-                        desc = str(getattr(s, "description", "") or "")
+                        from core.harness.routing.skill_routing import skill_trigger_text
+
+                        desc = skill_trigger_text(str(getattr(s, "description", "") or ""))
 
                         meta = getattr(s, "metadata", None)
 
@@ -4061,11 +4216,16 @@ class ReActLoop(BaseLoop):
 
             elif name == "write" or name == "sys_file_write":
 
+                from core.harness.execution.completion_receipt import block_skipped_repair_write
                 from core.harness.syscalls.file import sys_file_write
 
                 path = str((tool_args or {}).get("path", "") or (tool_args or {}).get("filePath", ""))
 
                 content = str((tool_args or {}).get("content", ""))
+
+                _blocked_write = block_skipped_repair_write(state.context, name, tool_args)
+                if _blocked_write:
+                    return f"Denied: {_blocked_write}"
 
                 result = await sys_file_write(path, content, trace_context={"source": "loop_fallback"})
 
@@ -4073,6 +4233,7 @@ class ReActLoop(BaseLoop):
 
             elif name == "edit" or name == "sys_file_edit":
 
+                from core.harness.execution.completion_receipt import block_skipped_repair_write
                 from core.harness.syscalls.file import sys_file_edit
 
                 path = str((tool_args or {}).get("path", "") or (tool_args or {}).get("filePath", ""))
@@ -4080,6 +4241,10 @@ class ReActLoop(BaseLoop):
                 old_str = str((tool_args or {}).get("old_string", "") or (tool_args or {}).get("oldString", ""))
 
                 new_str = str((tool_args or {}).get("new_string", "") or (tool_args or {}).get("newString", ""))
+
+                _blocked_write = block_skipped_repair_write(state.context, name, tool_args)
+                if _blocked_write:
+                    return f"Denied: {_blocked_write}"
 
                 result = await sys_file_edit(path, old_str, new_str, trace_context={"source": "loop_fallback"})
 
@@ -4256,43 +4421,6 @@ class ReActLoop(BaseLoop):
         """Alias used by observe/auto_done — must exist or skill_delivery=once AttributeError hangs step_1."""
         return ReActLoop._primary_skill_text(state)
 
-    def _finalize_with_skill_delivery(self, state: LoopState) -> bool:
-        """If primary skill already delivered, promote it to final output and finish."""
-        body = self._skill_delivery_body(state)
-        if not body:
-            return False
-        try:
-            from core.management.execution_quality_review import (
-                is_non_deliverable_coding_output,
-            )
-
-            _in = str(state.context.get("_user_task") or "").strip()
-            if is_non_deliverable_coding_output(
-                input_text=_in,
-                output_text=body,
-                raw_out={"text": body},
-                hints=" ".join(self._resolved_bound_skill_ids(state)),
-                scope="skill",
-            ):
-                # Do not greenwash clarify / thin stubs into completed
-                state.context.pop("_primary_skill_delivered", None)
-                state.context.pop("_primary_skill_output", None)
-                return False
-        except Exception:
-            logging.getLogger(__name__).debug(
-                "skill_delivery finalize substance check skipped", exc_info=True
-            )
-        state.context["output"] = body
-        state.context["_skill_delivery_finalized"] = True
-        try:
-            from core.services.execution_store import get_execution_store
-            import asyncio
-            # best-effort sync emit via creating task is awkward here; inline await below in callers
-        except Exception:
-            pass  # noqa: cleanup-best-effort
-        state.current = LoopStateEnum.FINISHED
-        return True
-
     async def _close_leftover_running_syscalls(
         self, state: LoopState, *, status: str = "ok", error: str = ""
     ) -> None:
@@ -4350,6 +4478,12 @@ class ReActLoop(BaseLoop):
             logging.getLogger(__name__).debug(
                 "eager finalize pre_llm_prep close skipped", exc_info=True
             )
+        try:
+            from core.harness.evaluation.online_sample import maybe_record_online_sample
+
+            maybe_record_online_sample(state.context)
+        except Exception:
+            logging.getLogger(__name__).debug("online eval sample skipped", exc_info=True)
         if state.context.get("_agent_row_finalized"):
             return True
         body = str(output_text or "").strip()
@@ -4380,6 +4514,17 @@ class ReActLoop(BaseLoop):
                         "coding_veto_last_reason": str(
                             state.context.get("_coding_veto_last_reason") or ""
                         )[:500],
+                        "require_review_incomplete": bool(
+                            state.context.get("_require_review_incomplete")
+                        ),
+                        "force_failed_status": str(
+                            state.context.get("_force_failed_status") or ""
+                        ).strip(),
+                        "done_verify_reason": str(
+                            state.context.get("_done_verify_last_reason")
+                            or state.context.get("error")
+                            or ""
+                        )[:500],
                     },
                 ),
                 timeout=12.0,
@@ -4394,7 +4539,43 @@ class ReActLoop(BaseLoop):
                 state.context.get("_run_id"),
                 exc_info=True,
             )
+            from core.harness.execution.execution_seal import is_coding_seal_context
+
+            ctx = state.context if isinstance(state.context, dict) else {}
+            if is_coding_seal_context(ctx) and not str(ctx.get("error") or "").startswith(
+                "done_verify:"
+            ):
+                ctx["_finalize_hard_fail"] = True
+                ctx["error"] = (
+                    "done_verify: verify ring failed "
+                    "(react finalize exception; fail-closed for coding/review)"
+                )
+                ctx["_done_verify_last_reason"] = ctx["error"]
             return False
+
+    def _commit_react_finish(self, state: LoopState) -> LoopState:
+        """FINISHED only when coding finalize did not crash and no forced failure."""
+        ctx = state.context if isinstance(state.context, dict) else {}
+        from core.harness.execution.execution_seal import settle_repair_prediction
+
+        settle_repair_prediction(ctx, blocked=False)
+        pred = ctx.get("_prediction_receipt")
+        if isinstance(pred, dict) and pred.get("actual_pass") is False:
+            if not ctx.get("error"):
+                ctx["error"] = "prediction_receipt_actual_fail"
+            state.current = LoopStateEnum.ERROR
+            return state
+        if ctx.get("_finalize_hard_fail"):
+            state.current = LoopStateEnum.ERROR
+            return state
+        force = str(ctx.get("_force_failed_status") or "").strip().lower()
+        if force in ("timeout", "failed", "error", "cancelled", "canceled"):
+            if not ctx.get("error"):
+                ctx["error"] = f"forced_{force}"
+            state.current = LoopStateEnum.ERROR
+            return state
+        state.current = LoopStateEnum.FINISHED
+        return state
 
 
     async def _dispatch_skill_call(
@@ -4560,6 +4741,14 @@ class ReActLoop(BaseLoop):
 
                         )
 
+                    from core.harness.execution.completion_receipt import block_extra_repair_verify
+
+                    _blocked_verify = block_extra_repair_verify(
+                        state.context, skill_name, skill_args
+                    )
+                    if _blocked_verify:
+                        return f"Denied: {_blocked_verify}"
+
                     if inline_for_ar:
                         from types import SimpleNamespace
 
@@ -4598,21 +4787,37 @@ class ReActLoop(BaseLoop):
 
                         _sn = str(skill_name or "").strip()
                         _follow_ids = {"autoreview", "code_review", "code-hygiene"}
+                        _dv_ar = (
+                            state.context.get("_done_verify")
+                            if isinstance(state.context.get("_done_verify"), dict)
+                            else {}
+                        )
+                        _hard_review = bool(_dv_ar.get("require_review"))
                         if _sn in _follow_ids:
-                            prev = state.context.get("_followup_skills_done") or []
-                            if not isinstance(prev, list):
-                                prev = []
-                            if _sn not in prev:
-                                state.context["_followup_skills_done"] = [*prev, _sn]
-                            # Coding skill_delivery=once: HITL pause on follow-up review
-                            # wedges the run (nested LLM / cancel hangs). Mark attempted,
-                            # continue to DONE; quality_review flags autoreview_incomplete.
-                            if str(state.context.get("_skill_delivery") or "").lower() == "once":
+                            # HITL on review is never a receipt (hard or soft).
+                            # Do not append `_followup_skills_done` — that greenwashed
+                            # soft review_gate when orphan skip_qr skipped QR.
+                            state.context["_require_review_incomplete"] = True
+                            _ar_reason = (
+                                f"done_verify: require_review — `{_sn}` "
+                                "approval_required is not a review receipt"
+                                if _hard_review
+                                else (
+                                    f"done_verify: review_gate follow-up `{_sn}` "
+                                    "approval_required is not a review receipt"
+                                )
+                            )
+                            state.context["_done_verify_last_reason"] = _ar_reason
+                            if (
+                                _hard_review
+                                or str(state.context.get("_skill_delivery") or "").lower()
+                                == "once"
+                            ):
+                                # Avoid nested HITL hang on coding once / require_review.
                                 state.metadata["pause_requested"] = False
                                 result_output = (
-                                    f"Follow-up `{_sn}` returned approval_required "
-                                    "(not blocking coding seal). Proceed to DONE with "
-                                    "the primary skill output."
+                                    f"Follow-up `{_sn}` returned approval_required. "
+                                    "Not a review receipt — sealing blocked."
                                 )
                             else:
                                 state.metadata["pause_requested"] = True
@@ -4690,6 +4895,16 @@ class ReActLoop(BaseLoop):
 
                         ok = False
 
+                    if out_s.startswith("skipped:"):
+
+                        ok = False
+
+                    _skip_meta = getattr(_res, "metadata", None) if _res is not None else None
+
+                    if isinstance(_skip_meta, dict) and _skip_meta.get("skipped"):
+
+                        ok = False
+
                     # Strip prior DELIVERY footer when measuring length
 
                     body = out_s.split("[DELIVERY]", 1)[0].strip()
@@ -4748,11 +4963,42 @@ class ReActLoop(BaseLoop):
 
                         _follow_ids = {"autoreview", "code_review", "code-hygiene"}
                         if str(skill_name).strip() in _follow_ids:
-                            prev = state.context.get("_followup_skills_done") or []
-                            if not isinstance(prev, list):
-                                prev = []
-                            if str(skill_name) not in prev:
-                                state.context["_followup_skills_done"] = [*prev, str(skill_name)]
+                            _res_meta = (
+                                getattr(result, "metadata", None)
+                                if locals().get("result") is not None
+                                else None
+                            )
+                            _empty_review = (
+                                isinstance(_res_meta, dict)
+                                and _res_meta.get("inline_staging") == "empty"
+                            )
+                            _dv_ok = (
+                                state.context.get("_done_verify")
+                                if isinstance(state.context.get("_done_verify"), dict)
+                                else {}
+                            )
+                            if _empty_review:
+                                # Empty inline staging is never a review receipt
+                                # (hard require_review or soft review_gate).
+                                state.context["_require_review_incomplete"] = True
+                                state.context["_done_verify_last_reason"] = (
+                                    "done_verify: require_review — empty diff is not "
+                                    "an autoreview receipt"
+                                    if _dv_ok.get("require_review")
+                                    else (
+                                        "done_verify: empty diff is not "
+                                        "an autoreview receipt"
+                                    )
+                                )
+                            else:
+                                prev = state.context.get("_followup_skills_done") or []
+                                if not isinstance(prev, list):
+                                    prev = []
+                                if str(skill_name) not in prev:
+                                    state.context["_followup_skills_done"] = [
+                                        *prev,
+                                        str(skill_name),
+                                    ]
 
                         if str(state.context.get("_skill_delivery") or "").lower() == "once":
                             nxt = self._pending_coding_followup(state)
@@ -4850,6 +5096,18 @@ class ReActLoop(BaseLoop):
 
                             logging.warning(str(e), exc_info=True)
 
+                    from core.harness.execution.completion_receipt import (
+                        block_extra_repair_verify,
+                        block_skipped_repair_write,
+                    )
+
+                    _blocked_verify = block_extra_repair_verify(state.context, tool_name, tool_args)
+                    if _blocked_verify:
+                        return f"Denied: {_blocked_verify}"
+                    _blocked_write = block_skipped_repair_write(state.context, tool_name, tool_args)
+                    if _blocked_write:
+                        return f"Denied: {_blocked_write}"
+
                     result = await sys_tool_call(
 
                         tool, tool_args,
@@ -4875,6 +5133,16 @@ class ReActLoop(BaseLoop):
                         },
 
                     )
+                    try:
+                        from core.harness.execution.completion_receipt import (
+                            maybe_note_repair_fs_delta,
+                        )
+
+                        maybe_note_repair_fs_delta(state.context)
+                    except Exception:
+                        logging.getLogger(__name__).debug(
+                            "maybe_note_repair_fs_delta skipped", exc_info=True
+                        )
 
                     if getattr(result, "error", None) == "approval_required":
 
@@ -5034,11 +5302,22 @@ class ReActLoop(BaseLoop):
 
                 raw_output = str(result_output)
 
-                if len(raw_output) <= 2000:
-
+                display_output = raw_output
+                offloaded = False
+                try:
+                    from core.harness.execution.context_offload import maybe_offload_text
+                    display_output, off_path = maybe_offload_text(
+                        state.context,
+                        label=str(tool_name or "tool"),
+                        text=raw_output,
+                        tool_use_id=str(tool_use_id or ""),
+                    )
+                    offloaded = bool(off_path)
+                except Exception:
+                    logging.getLogger(__name__).debug("tool result offload skipped", exc_info=True)
                     display_output = raw_output
 
-                else:
+                if not offloaded and len(raw_output) > 2000:
 
                     head = raw_output[:1000]
 
@@ -5098,6 +5377,18 @@ class ReActLoop(BaseLoop):
 
                         if str(getattr(tool, 'name', '')).strip().lower() == str(found).strip().lower():
 
+                            from core.harness.execution.completion_receipt import (
+                                block_extra_repair_verify,
+                                block_skipped_repair_write,
+                            )
+
+                            _blocked_verify = block_extra_repair_verify(state.context, found, tool_args)
+                            if _blocked_verify:
+                                return f"Denied: {_blocked_verify}"
+                            _blocked_write = block_skipped_repair_write(state.context, found, tool_args)
+                            if _blocked_write:
+                                return f"Denied: {_blocked_write}"
+
                             result = await sys_tool_call(
 
                                 tool, tool_args,
@@ -5115,6 +5406,16 @@ class ReActLoop(BaseLoop):
                                 },
 
                             )
+                            try:
+                                from core.harness.execution.completion_receipt import (
+                                    maybe_note_repair_fs_delta,
+                                )
+
+                                maybe_note_repair_fs_delta(state.context)
+                            except Exception:
+                                logging.getLogger(__name__).debug(
+                                    "maybe_note_repair_fs_delta skipped", exc_info=True
+                                )
 
                             state.metadata["tool_calls"] = int(state.metadata.get("tool_calls", 0) or 0) + 1
 
@@ -5135,6 +5436,14 @@ class ReActLoop(BaseLoop):
         return f"Tool not found: {tool_name}"
 
 
+
+    def _remember_repair_candidates(self, state: LoopState) -> None:
+        try:
+            from core.harness.execution.completion_receipt import remember_repair_candidates
+
+            remember_repair_candidates(state.context)
+        except Exception:
+            logging.getLogger(__name__).debug("remember_repair_candidates skipped", exc_info=True)
 
     async def _act(self, state: LoopState) -> str:
 
@@ -5218,7 +5527,12 @@ class ReActLoop(BaseLoop):
 
                 "parent_span_id": state.context.get("_current_step_span_id"),
 
-                "kind": "observe", "name": "observation", "status": "ok" if result else "empty",
+                "kind": "observe", "name": "observation",
+                "status": (
+                    "failed"
+                    if state.context.get("_last_tool_receipt_status") == "failed"
+                    else ("ok" if result else "empty")
+                ),
 
                 "run_id": state.context.get("_run_id") or "",
 
@@ -5284,6 +5598,9 @@ class ReActLoop(BaseLoop):
             return ""
 
         if state.context.get("skill_call") or state.context.get("_primary_skill_delivered"):
+            return ""
+
+        if state.context.get("_last_tool_receipt_status") == "failed":
             return ""
 
         text = str(result)
@@ -5447,7 +5764,141 @@ class PlanExecuteLoop(BaseLoop):
 
         self._tools = tools
 
+    def _plan_done_verify_reason(self, state: LoopState) -> Optional[str]:
+        """Plan-execute has no ReAct acceptance gate; check before FINISHED."""
+        from core.harness.execution.execution_seal import check_done_verify
 
+        return check_done_verify(
+            state.context if isinstance(state.context, dict) else None
+        )
+
+    def _bind_plan_completion(self, state: LoopState) -> str:
+        """Same completion-receipt contract as ReAct DONE (prefix, keep original)."""
+        from core.harness.execution.execution_seal import seal_answer_with_receipts
+
+        raw = str(state.context.get("output") or "")
+        text, seal = seal_answer_with_receipts(
+            raw, state.context if isinstance(state.context, dict) else None
+        )
+        state.context["output"] = text
+        state.context["_completion_seal"] = seal
+        return seal
+
+    def _plan_seal_block_reason(self, state: LoopState) -> Optional[str]:
+        """Coding deliverable veto + done_verify (receipts already bound)."""
+        from core.harness.execution.execution_seal import coding_deliverable_veto
+
+        veto = coding_deliverable_veto(
+            state.context if isinstance(state.context, dict) else {},
+            skills=getattr(self, "_skills", None),
+        )
+        if veto:
+            return veto
+        return self._plan_done_verify_reason(state)
+
+    def _seal_plan_finish(self, state: LoopState) -> Optional[str]:
+        """Bind receipts + coding/done_verify in one seal pass. Block reason or None."""
+        from core.harness.execution.execution_seal import seal_before_finish
+
+        _seal, block = seal_before_finish(
+            state.context if isinstance(state.context, dict) else {},
+            skills=getattr(self, "_skills", None),
+            bind_receipts=True,
+        )
+        return block
+
+    def _record_plan_step_receipt(
+        self, state: LoopState, *, tool: str, result: Any
+    ) -> None:
+        """Append tool/skill receipts so PlanExecute seal can bind fix/path claims."""
+        try:
+            from core.harness.execution.completion_receipt import (
+                infer_receipt_status,
+                record_tool_receipt,
+            )
+
+            name = str(tool or "").strip()
+            status = infer_receipt_status(result)
+            record_tool_receipt(
+                state.context if isinstance(state.context, dict) else {},
+                tool=name,
+                status=status,
+                detail=str(result or "")[:500],
+            )
+            low = name.lower()
+            if status == "ok" and low in (
+                "code_generation",
+                "code-hygiene",
+                "file_operations",
+            ):
+                state.context["_primary_skill_delivered"] = True
+                prev = state.context.get("_followup_skills_done")
+                if not isinstance(prev, list):
+                    state.context["_followup_skills_done"] = []
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "plan_execute tool receipt skipped", exc_info=True
+            )
+
+    def _block_plan_finish(self, state: LoopState, reason: str) -> LoopState:
+        state.context["error"] = reason
+        state.context["_done_verify_last_reason"] = reason
+        if (
+            "require_review" in reason
+            or "review_gate=" in reason
+            or "follow-up skill" in reason
+            or "not a review receipt" in reason
+            or "not an autoreview receipt" in reason
+        ):
+            state.context["_require_review_incomplete"] = True
+        state.current = LoopStateEnum.ERROR
+        self._current_node = "finish"
+        return state
+
+    async def _finalize_plan_or_block(
+        self, state: LoopState, *, source: str
+    ) -> Optional[LoopState]:
+        """Persist the agent row. Coding/review finalize crashes must not FINISHED."""
+        ctx = state.context if isinstance(state.context, dict) else {}
+        try:
+            from core.harness.utils.execute_session import (
+                finalize_agent_after_skill_delivery,
+                resolve_bound_skill_ids,
+            )
+
+            await finalize_agent_after_skill_delivery(
+                run_id=str(ctx.get("_run_id") or ctx.get("run_id") or ""),
+                agent_id=str(ctx.get("_agent_id") or ""),
+                output_text=str(ctx.get("output") or ""),
+                trace_id=str(ctx.get("_trace_id") or ctx.get("trace_id") or ""),
+                metadata_extra={
+                    "finalize_source": source,
+                    "user_task": str(ctx.get("_user_task") or "")[:8000],
+                    "bound_skills": resolve_bound_skill_ids(state, getattr(self, "_skills", None)),
+                    "coding_veto_exhausted": bool(ctx.get("_coding_veto_exhausted")),
+                    "coding_veto_last_reason": str(ctx.get("_coding_veto_last_reason") or "")[:500],
+                    "require_review_incomplete": bool(ctx.get("_require_review_incomplete")),
+                    "done_verify_reason": str(
+                        ctx.get("_done_verify_last_reason") or ctx.get("error") or ""
+                    )[:500],
+                },
+            )
+        except Exception:
+            logging.getLogger(__name__).warning(
+                "%s finalize failed run_id=%s",
+                source,
+                ctx.get("_run_id"),
+                exc_info=True,
+            )
+            from core.harness.execution.execution_seal import is_coding_seal_context
+
+            if is_coding_seal_context(ctx):
+                return self._block_plan_finish(
+                    state,
+                    "done_verify: verify ring failed "
+                    "(plan finalize exception; fail-closed for coding/review)",
+                )
+        return None
 
     async def step(self, state: LoopState) -> LoopState:
 
@@ -5618,6 +6069,30 @@ class PlanExecuteLoop(BaseLoop):
 
                             await self._trigger_hook(HookPhase.PRE_TOOL_USE, {"tool": tool_name, "tool_args": parsed_action.args, "format": parsed_action.format})
 
+                            from core.harness.execution.completion_receipt import (
+                                block_extra_repair_verify,
+                                block_skipped_repair_write,
+                            )
+
+                            _blocked_verify = block_extra_repair_verify(
+                                state.context, tool_name, parsed_action.args
+                            )
+                            if _blocked_verify:
+                                step_result = f"Denied: {_blocked_verify}"
+                                self._record_plan_step_receipt(
+                                    state, tool=str(tool_name or ""), result=step_result
+                                )
+                                break
+                            _blocked_write = block_skipped_repair_write(
+                                state.context, tool_name, parsed_action.args
+                            )
+                            if _blocked_write:
+                                step_result = f"Denied: {_blocked_write}"
+                                self._record_plan_step_receipt(
+                                    state, tool=str(tool_name or ""), result=step_result
+                                )
+                                break
+
                             result = await sys_tool_call(
 
                                 tool,
@@ -5637,8 +6112,21 @@ class PlanExecuteLoop(BaseLoop):
                                 },
 
                             )
+                            try:
+                                from core.harness.execution.completion_receipt import (
+                                    maybe_note_repair_fs_delta,
+                                )
+
+                                maybe_note_repair_fs_delta(state.context)
+                            except Exception:
+                                logging.getLogger(__name__).debug(
+                                    "maybe_note_repair_fs_delta skipped", exc_info=True
+                                )
 
                             step_result = result.output if hasattr(result, "output") else str(result)
+                            self._record_plan_step_receipt(
+                                state, tool=str(tool_name or ""), result=step_result
+                            )
 
                             await self._trigger_hook(HookPhase.POST_TOOL_USE, {"tool": tool_name, "result": step_result, "format": parsed_action.format})
 
@@ -5647,6 +6135,9 @@ class PlanExecuteLoop(BaseLoop):
                         except Exception as e:
 
                             step_result = f"Tool error ({tool_name}): {e}"
+                            self._record_plan_step_receipt(
+                                state, tool=str(tool_name or ""), result=step_result
+                            )
 
 
 
@@ -5689,6 +6180,18 @@ class PlanExecuteLoop(BaseLoop):
 
                             await self._trigger_hook(HookPhase.PRE_SKILL_USE, {"skill": skill_name, "skill_args": skill_call_args, "format": parsed_action.format})
 
+                            from core.harness.execution.completion_receipt import block_extra_repair_verify
+
+                            _blocked_verify = block_extra_repair_verify(
+                                state.context, skill_name, skill_call_args
+                            )
+                            if _blocked_verify:
+                                step_result = f"Denied: {_blocked_verify}"
+                                self._record_plan_step_receipt(
+                                    state, tool=str(skill_name or ""), result=step_result
+                                )
+                                break
+
                             result = await sys_skill_call(
 
                                 skill,
@@ -5716,6 +6219,9 @@ class PlanExecuteLoop(BaseLoop):
                             )
 
                             step_result = result.output if hasattr(result, "output") else str(result)
+                            self._record_plan_step_receipt(
+                                state, tool=str(skill_name or ""), result=step_result
+                            )
 
                             await self._trigger_hook(HookPhase.POST_SKILL_USE, {"skill": skill_name, "result": step_result, "format": parsed_action.format})
 
@@ -5724,6 +6230,9 @@ class PlanExecuteLoop(BaseLoop):
                         except Exception as e:
 
                             step_result = f"Skill error ({skill_name}): {e}"
+                            self._record_plan_step_receipt(
+                                state, tool=str(skill_name or ""), result=step_result
+                            )
 
             
 
@@ -5770,18 +6279,22 @@ class PlanExecuteLoop(BaseLoop):
                     )
 
                     step_result = response.content
+                    self._record_plan_step_receipt(
+                        state, tool="llm_step", result=step_result
+                    )
 
                 except Exception as e:
 
                     step_result = f"Model error: {e}"
+                    self._record_plan_step_receipt(
+                        state, tool="llm_step", result=step_result
+                    )
 
             
 
             if step_result is None:
 
                 step_result = f"No handler for step: {action}"
-
-            
 
             state.context[f"step_{current_step}_result"] = step_result
 
@@ -5798,22 +6311,15 @@ class PlanExecuteLoop(BaseLoop):
             if current_step + 1 >= len(self._plan_steps):
 
                 state.context["output"] = state.context.get("step_0_result", step_result)
+                _pv = self._seal_plan_finish(state)
+                if _pv:
+                    return self._block_plan_finish(state, _pv)
 
-                try:
-                    from core.harness.utils.execute_session import (
-                        finalize_agent_after_skill_delivery,
-                    )
-                    await finalize_agent_after_skill_delivery(
-                        run_id=str(state.context.get("_run_id") or state.context.get("run_id") or ""),
-                        agent_id=str(state.context.get("_agent_id") or ""),
-                        output_text=str(state.context.get("output") or step_result or ""),
-                        trace_id=str(state.context.get("_trace_id") or state.context.get("trace_id") or ""),
-                        metadata_extra={"finalize_source": "plan_execute_finish"},
-                    )
-                except Exception:
-                    logging.getLogger(__name__).debug(
-                        "plan_execute finalize skipped", exc_info=True
-                    )
+                _fin_block = await self._finalize_plan_or_block(
+                    state, source="plan_execute_finish"
+                )
+                if _fin_block is not None:
+                    return _fin_block
 
                 state.current = LoopStateEnum.FINISHED
 
@@ -5821,21 +6327,18 @@ class PlanExecuteLoop(BaseLoop):
 
         else:
 
-            try:
-                from core.harness.utils.execute_session import (
-                    finalize_agent_after_skill_delivery,
-                )
-                await finalize_agent_after_skill_delivery(
-                    run_id=str(state.context.get("_run_id") or state.context.get("run_id") or ""),
-                    agent_id=str(state.context.get("_agent_id") or ""),
-                    output_text=str(state.context.get("output") or ""),
-                    trace_id=str(state.context.get("_trace_id") or state.context.get("trace_id") or ""),
-                    metadata_extra={"finalize_source": "plan_execute_empty_plan"},
-                )
-            except Exception:
-                logging.getLogger(__name__).debug(
-                    "plan_execute empty finalize skipped", exc_info=True
-                )
+            _empty_out = str(state.context.get("output") or "").strip()
+            if _empty_out:
+                state.context["output"] = _empty_out
+            _pv_empty = self._seal_plan_finish(state)
+            if _pv_empty:
+                return self._block_plan_finish(state, _pv_empty)
+
+            _fin_empty = await self._finalize_plan_or_block(
+                state, source="plan_execute_empty_plan"
+            )
+            if _fin_empty is not None:
+                return _fin_empty
 
             state.current = LoopStateEnum.FINISHED
 

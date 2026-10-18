@@ -32,6 +32,37 @@ def test_skill_find_filters_denied_and_supports_query(monkeypatch):
     assert "secret-skill" not in names
 
 
+def test_skill_find_ignores_procedure_after_opening(monkeypatch):
+    from core.apps.skills.registry import _GenericSkill
+    from core.harness.interfaces import SkillConfig
+    from core.apps.skills import get_skill_registry
+    from core.apps.tools.skill_tools import SkillFindTool
+
+    reg = get_skill_registry()
+    cfg = SkillConfig(
+        name="headline-find",
+        description="写头条文章时使用。步骤会提到数据库迁移",
+        metadata={
+            "skill_kind": "rule",
+            "version": "1.0.0",
+            "sop_markdown": "必须用 keyboard.type 输入标题",
+            "trigger_conditions": ["写头条"],
+        },
+        effects=[{"type": "read", "resources": [], "idempotent": True}],
+    )
+    reg.register(_GenericSkill(cfg))
+    monkeypatch.setenv("AIPLAT_SKILL_PERMISSION_RULES", '{"*":"allow"}')
+
+    t = SkillFindTool()
+    buried = anyio.run(t.execute, {"query": "数据库迁移", "limit": 50})
+    assert "headline-find" not in {i.get("name") for i in (buried.output or {}).get("items") or []}
+    sop_word = anyio.run(t.execute, {"query": "keyboard.type", "limit": 50})
+    assert "headline-find" not in {i.get("name") for i in (sop_word.output or {}).get("items") or []}
+    hit = anyio.run(t.execute, {"query": "写头条", "limit": 50})
+    names = {i.get("name") for i in (hit.output or {}).get("items") or []}
+    assert "headline-find" in names
+
+
 def test_skill_load_returns_sop_and_blocks_denied(monkeypatch):
     from core.apps.skills.registry import _GenericSkill
     from core.harness.interfaces import SkillConfig

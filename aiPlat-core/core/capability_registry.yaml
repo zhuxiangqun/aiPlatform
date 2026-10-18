@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-10-08"
 total_capability_domains: 34
-total_capabilities: 1085
+total_capabilities: 1090
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -113,6 +113,10 @@ domains:
         type: "function"
         signature: "capture_stage_reflection(stage, state) → reflection dict for crystallize loop"
         module: "core/harness/execution/stage_reflection.py"
+      - symbol: "stage_reflection_due"
+        type: "function"
+        signature: "stage_reflection_due(stage, state)→bool (artifact or contrast signal)"
+        module: "core/harness/execution/stage_reflection.py"
       - symbol: "build_stage_reflection"
         type: "function"
         signature: "deterministic stage reflection from health/error/artifact"
@@ -173,6 +177,136 @@ domains:
         type: "function"
         signature: "run_done_verify(context)→Optional[str] DONE-before Verify ring"
         module: "core/harness/execution/done_verify.py"
+      - symbol: tdd_evidence_missing
+        type: function
+        signature: "None when a pytest/jest (etc.) tool receipt status=ok"
+        module: "core/harness/execution/done_verify.py"
+      - symbol: diagnosis_list_missing
+        type: function
+        signature: "None when output or receipts contain [P0]/[P1]/[P2]"
+        module: "core/harness/execution/done_verify.py"
+      - symbol: refactor_plan_missing
+        type: function
+        signature: "None when turn includes ## Refactor Plan / ## 重构计划"
+        module: "core/harness/execution/done_verify.py"
+      - symbol: dependency_map_missing
+        type: function
+        signature: "None when both safe zone and protected zone are named"
+        module: "core/harness/execution/done_verify.py"
+      - symbol: rollback_checkpoint_missing
+        type: function
+        signature: "None when _file_checkpoints id or git tag / before-refactor present"
+        module: "core/harness/execution/done_verify.py"
+      - symbol: feature_flag_missing
+        type: function
+        signature: "None when feature flag / FEATURE_* / 灰度 / canary named"
+        module: "core/harness/execution/done_verify.py"
+      - symbol: rollback_command_missing
+        type: function
+        signature: "None when git checkout/reset or FEATURE_*=false written"
+        module: "core/harness/execution/done_verify.py"
+      - symbol: "done_verify_exception_is_hard"
+        type: "function"
+        signature: "(context?)→bool — crashed verify ring fail-closed for coding/review"
+        module: "core/harness/execution/done_verify.py"
+      - symbol: "is_hard_done_veto"
+        type: "function"
+        signature: "(reason,context?)→bool — completion-standard / missing review receipt / non-receipt HITL never fail-opens"
+        module: "core/harness/execution/done_verify.py"
+      - symbol: "coding_deliverable_veto"
+        type: "function"
+        signature: "(context,*,bound_skill_ids,skills,ensure_skill)→Optional[str]"
+        module: "core/harness/execution/execution_seal.py"
+        notes: "shared ReAct/PlanExecute coding DONE veto"
+      - symbol: "pending_coding_followup"
+        type: "function"
+        signature: "(context,*,bound_skill_ids,ensure_skill)→Optional[str]"
+        module: "core/harness/execution/execution_seal.py"
+      - symbol: "check_done_verify"
+        type: "function"
+        signature: "(context?)→Optional[str] — run_done_verify + hard exception fail-closed"
+        module: "core/harness/execution/execution_seal.py"
+      - symbol: "seal_answer_with_receipts"
+        type: "function"
+        signature: "(text,context?)→(text,seal_status)"
+        module: "core/harness/execution/execution_seal.py"
+      - symbol: "seal_before_finish"
+        type: "function"
+        signature: "(context,*,…)→(seal_status,block_reason)"
+        module: "core/harness/execution/execution_seal.py"
+      - symbol: "missing_completion_standard_reason"
+        type: "function"
+        signature: "(stage)→Optional[str] — file-output stages do not start without a standard"
+        module: "core/harness/execution/done_verify.py"
+      - symbol: "bind_completion_to_receipts"
+        type: "function"
+        signature: "bind_completion_to_receipts(text, context)→(answer, ok|unverified|failed)"
+        module: "core/harness/execution/completion_receipt.py"
+        notes: "leaf only — production finish paths call seal_answer_with_receipts"
+      - symbol: "record_tool_receipt"
+        type: "function"
+        signature: "record_tool_receipt(context, tool, status, detail) appends _tool_receipts"
+        module: "core/harness/execution/completion_receipt.py"
+      - symbol: "compare_gold_reports"
+        type: "function"
+        signature: "compare_gold_reports(current, previous)→verdict improved|regressed|same"
+        module: "core/harness/evaluation/code_review_gold.py"
+      - symbol: "reevaluate_code_review_gold"
+        type: "function"
+        signature: "reevaluate_code_review_gold(...)→current + comparison vs last report"
+        module: "core/harness/evaluation/code_review_gold.py"
+      - symbol: "infer_receipt_status"
+        type: "function"
+        signature: "infer_receipt_status(action_result)→ok|failed from observation head"
+        module: "core/harness/execution/completion_receipt.py"
+      - symbol: "select_repair_candidate"
+        type: "function"
+        signature: "select_repair_candidate(candidates)→chosen highest score; others skipped; not a world model"
+        module: "core/harness/execution/completion_receipt.py"
+      - symbol: "ingest_repair_candidates"
+        type: "function"
+        signature: "ingest_repair_candidates(context) reads ## REPAIR_CANDIDATES; apply_repair_selection keeps only the winner"
+        module: "core/harness/execution/completion_receipt.py"
+      - symbol: "remember_repair_candidates"
+        type: "function"
+        signature: "remember_repair_candidates(context) keeps ## REPAIR_CANDIDATES after reasoning is replaced"
+        module: "core/harness/execution/completion_receipt.py"
+      - symbol: "capture_repair_fs_baseline"
+        type: "function"
+        signature: "capture_repair_fs_baseline(context) snapshots workdir (cwd/workdir/_deploy_files_dir/output_dir or process cwd) before code tool"
+        module: "core/harness/execution/completion_receipt.py"
+      - symbol: "note_repair_writes_from_fs_delta"
+        type: "function"
+        signature: "note_repair_writes_from_fs_delta(context) notes new/changed cwd files after code tool"
+        module: "core/harness/execution/completion_receipt.py"
+      - symbol: "maybe_note_repair_fs_delta"
+        type: "function"
+        signature: "maybe_note_repair_fs_delta(context) no-op without baseline; called after any tool return"
+        module: "core/harness/execution/completion_receipt.py"
+      - symbol: "note_repair_writes_from_code"
+        type: "function"
+        signature: "note_repair_writes_from_code(context, tool_args) records Path.write_text / open().write literals for later revert"
+        module: "core/harness/execution/completion_receipt.py"
+      - symbol: "revert_skipped_repair_writes"
+        type: "function"
+        signature: "revert_skipped_repair_writes(context) removes new skipped files; restores overwritten files from checkpoint, prior_content, or prior_b64"
+        module: "core/harness/execution/completion_receipt.py"
+      - symbol: "block_skipped_repair_write"
+        type: "function"
+        signature: "block_skipped_repair_write(context, tool_name, tool_args) refuses writing a skipped repair candidate after selection"
+        module: "core/harness/execution/completion_receipt.py"
+      - symbol: "block_extra_repair_verify"
+        type: "function"
+        signature: "block_extra_repair_verify(context, name, tool_args) one successful verify for code/test_executor/canary_runner/e2e_test after candidates; failed runs may retry the winner"
+        module: "core/harness/execution/completion_receipt.py"
+      - symbol: "note_prediction_outcome"
+        type: "function"
+        signature: "note_prediction_outcome(context, predicted_pass, actual_pass)→_prediction_receipt; miss blocks fix claims"
+        module: "core/harness/execution/completion_receipt.py"
+      - symbol: "settle_repair_prediction"
+        type: "function"
+        signature: "settle_repair_prediction(context, blocked)→seal; ReAct commit and PlanExecute share it"
+        module: "core/harness/execution/execution_seal.py"
       - symbol: "gate_llm_file_output_stage"
         type: "function"
         signature: "gate_llm_file_output_stage(stage,state,result,artifact_key,backend)→Optional[str] pre-deploy for llm+uses_file_output"
@@ -224,9 +358,38 @@ domains:
       - symbol: "apply_architecture_profile"
         type: "function"
         signature: "apply_architecture_profile(stage) → fill execution_backend/agent_type from oneshot|react_tools|plan_execute|reflect_loop; then coding defaults"
+        module: "core/schemas_builder.py"
+      - symbol: "stage_uses_react_loop"
+        type: "function"
+        signature: "(stage, agent_type='')→bool — file-output stays ReAct; non-file plan/chat uses core_chat"
+        module: "core/schemas_builder.py"
+      - symbol: "file_stage_control_stack"
+        type: "function"
+        signature: "(stage)→{schedule,execute,quality} — pipeline schedule, ReAct execute, external done_verify"
+        module: "core/schemas_builder.py"
+      - symbol: "control_fuses_for_stage"
+        type: "function"
+        signature: "(stage,*,max_steps)→stack+fuses — execute_max_steps / quality_soft_veto_limit / upgrade_policy"
+        module: "core/schemas_builder.py"
       - symbol: "apply_coding_stage_defaults"
         type: "function"
-        signature: "apply_coding_stage_defaults(stage)→sandbox+done_verify+autoreview when uses_file_output"
+        signature: "apply_coding_stage_defaults(stage)→sandbox+done_verify+autoreview; refactor_sop|env opens SOP gates"
+        module: "core/schemas_builder.py"
+      - symbol: "extract_stage_persist_config"
+        type: "function"
+        signature: "extract_stage_persist_config(raw)→coding closed-loop overlay for config_json"
+        module: "core/schemas_builder.py"
+      - symbol: "pipeline_stage_from_store_row"
+        type: "function"
+        signature: "pipeline_stage_from_store_row(sr)→PipelineStageConfig with resume SOP gates"
+        module: "core/schemas_builder.py"
+      - symbol: "apply_template_stage_overlay"
+        type: "function"
+        signature: "apply_template_stage_overlay(dest, src, only_missing=False)→copy refactor_sop/done_verify"
+        module: "core/schemas_builder.py"
+      - symbol: "backfill_stage_from_team_templates"
+        type: "function"
+        signature: "backfill_stage_from_team_templates(stage)→fill SOP gates from team YAML by agent_id"
         module: "core/schemas_builder.py"
       - symbol: "workspace_agent_needs_coding_defaults"
         type: "function"
@@ -287,6 +450,14 @@ domains:
       - symbol: "ContextCompression"
         type: "class"
         signature: "5-level: NORMAL→WARNING→REPLACE→PRUNE→AGGRESSIVE→EMERGENCY"
+        module: "core/harness/memory/compression.py"
+      - symbol: sanitize_context_summary
+        type: function
+        signature: "CONTEXT_SUMMARY without command or TODO lines"
+        module: "core/harness/memory/compression.py"
+      - symbol: sanitize_tool_summary
+        type: function
+        signature: "Tool summary without command or TODO fragments"
         module: "core/harness/memory/compression.py"
       - symbol: "FailureClassifier"
         type: "class"
@@ -864,6 +1035,22 @@ domains:
         type: function
         signature: 'load_repo_health_thresholds_from_duty(duty_thr)'
         module: aiPlat-core/core/harness/meta/repo_health_scan.py
+      - symbol: receipt_bind_enabled
+        type: function
+        signature: 'receipt_bind_enabled()'
+        module: aiPlat-core/core/harness/execution/completion_receipt.py
+      - symbol: apply_repair_selection
+        type: function
+        signature: 'Select once from _repair_candidates and replace output with the winner.'
+        module: aiPlat-core/core/harness/execution/completion_receipt.py
+      - symbol: note_repair_write
+        type: function
+        signature: 'Remember a write so a later selection can drop a skipped candidate file.'
+        module: aiPlat-core/core/harness/execution/completion_receipt.py
+      - symbol: is_coding_seal_context
+        type: function
+        signature: 'True when missing review / file delivery must not soft-pass.'
+        module: aiPlat-core/core/harness/execution/execution_seal.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"
@@ -949,7 +1136,11 @@ domains:
         module: "core/harness/memory/episodic.py"
       - symbol: "SemanticMemory"
         type: "class"
-        signature: "store, retrieve, delete, recover_deleted"
+        signature: "store, retrieve, delete, recover_deleted, latest_by_tag"
+        module: "core/harness/memory/semantic.py"
+      - symbol: latest_by_tag
+        type: method
+        signature: "(tag)→MemoryItem|None — newest item by metadata.tag, no similarity"
         module: "core/harness/memory/semantic.py"
       - symbol: "MemoryEntry"
         type: "dataclass"
@@ -969,7 +1160,7 @@ domains:
         module: aiPlat-core/core/harness/memory/team_brain.py
       - symbol: format_recall_message
         type: function
-        signature: 'Build a system message for MemoryManager.build_context injection.'
+        signature: 'Recall system message; command payloads omitted from the prompt.'
         module: aiPlat-core/core/harness/memory/team_brain.py
       - symbol: classify_ide_coding_handoff
         type: function
@@ -979,6 +1170,142 @@ domains:
         type: function
         signature: 'Structured payload for ingest/API/CLI (kind + route + label).'
         module: aiPlat-core/core/harness/memory/ide_governed_handoff.py
+      - symbol: memory_content_is_fact
+        type: function
+        signature: "Durable facts only; refuse commands, including after a short User:/result= label"
+        module: "core/harness/memory/file_store.py"
+      - symbol: durable_semantic_content
+        type: function
+        signature: "Semantic store/nudge text; strips command lines; user_profile tag keeps JSON"
+        module: "core/harness/memory/file_store.py"
+      - symbol: durable_wiki_insight
+        type: function
+        signature: "(user, assistant)→(title, body)|None for high-stability wiki extract"
+        module: "core/harness/memory/file_store.py"
+      - symbol: memory_char_budget
+        type: function
+        signature: "Hard cap for pinned MEMORY.md (AIPLAT_MEMORY_CHAR_BUDGET, default 1400)"
+        module: "core/harness/memory/file_store.py"
+      - symbol: pinned_memory_text
+        type: function
+        signature: "Newest facts within budget for every-turn / sticky inject"
+        module: "core/harness/memory/file_store.py"
+      - symbol: replace_memory_entry
+        type: function
+        signature: "Replace whole MEMORY.md entry containing old_text; fact + budget checked"
+        module: "core/harness/memory/file_store.py"
+      - symbol: archive_compacted_turns
+        type: function
+        signature: "Persist dropped turns before compaction for later search"
+        module: "core/harness/memory/file_store.py"
+      - symbol: search_session_archive
+        type: function
+        signature: "Token + CJK-bigram overlap; min 2 hits before a turn is returned"
+        module: "core/harness/memory/file_store.py"
+      - symbol: text_overlaps_query
+        type: function
+        signature: "(query, text, min_overlap=2)→bool — shared tokens before injecting a note"
+        module: "core/harness/memory/file_store.py"
+      - symbol: query_asks_about_past
+        type: function
+        signature: "(query)→bool — retrospective cue before auto-injecting archived turns"
+        module: "core/harness/memory/file_store.py"
+      - symbol: archive_prompt_snippet
+        type: function
+        signature: "Auto-inject archive body; drops command-only turns"
+        module: "core/harness/memory/file_store.py"
+      - symbol: session_archive_query
+        type: function
+        signature: "(query, limit)→{query,hits,count} — on-demand archive payload"
+        module: "core/harness/memory/file_store.py"
+      - symbol: query_session_archive
+        type: function
+        signature: "CoreFacade: GET /platform/memory/archive"
+        module: "core/api/core_facade.py"
+      - symbol: pinStickyFact
+        type: function
+        signature: "Pi hybrid tool aiplat_memory_pin → POST /platform/memory/sticky; clears sticky cache"
+        module: "packages/aiplat-pi-runtime/extensions/enterprise_memory.ts"
+      - symbol: searchSessionArchive
+        type: function
+        signature: "Pi hybrid tool aiplat_session_search; soft-fail"
+        module: "packages/aiplat-pi-runtime/extensions/enterprise_memory.ts"
+      - symbol: sticky_memory_slice
+        type: function
+        signature: "CoreFacade: profile + MEMORY.md under shared char budget for Pi session start"
+        module: "core/api/core_facade.py"
+      - symbol: seal_before_finish
+        type: function
+        signature: "CoreFacade re-export — receipt bind + coding veto + done_verify"
+        module: "core/api/core_facade.py"
+      - symbol: seal_answer_with_receipts
+        type: function
+        signature: "CoreFacade re-export — completion receipt bind"
+        module: "core/api/core_facade.py"
+      - symbol: check_done_verify
+        type: function
+        signature: "CoreFacade re-export — DONE verify fail-closed helper"
+        module: "core/api/core_facade.py"
+      - symbol: coding_deliverable_veto
+        type: function
+        signature: "CoreFacade re-export — coding thin-stub / follow-up veto"
+        module: "core/api/core_facade.py"
+      - symbol: sanitize_episodic_summary_text
+        type: function
+        signature: "Episodic summary body without command/TODO lines"
+        module: "core/harness/memory/profile_builder.py"
+      - symbol: session_summary_block
+        type: function
+        signature: "Session summary for context; drops counters and command lines"
+        module: "core/harness/memory/profile_builder.py"
+      - symbol: critical_episodes_block
+        type: function
+        signature: "High-importance turns for context; drops commands and step lists"
+        module: "core/harness/memory/profile_builder.py"
+      - symbol: semantic_context_block
+        type: function
+        signature: "Query-matched semantic lines; char budget (memory_char_budget//2), skips user_profile"
+        module: "core/harness/memory/profile_builder.py"
+      - symbol: to_durable_message
+        type: method
+        signature: "UserProfile prefs/constraints/style; drops decisions and non-facts"
+        module: "core/harness/memory/profile_builder.py"
+      - symbol: user_profile_sticky_text
+        type: function
+        signature: "(max_chars, tenant_id)→str — latest user_profile for sticky inject"
+        module: "core/harness/memory/profile_builder.py"
+      - symbol: compose_sticky_memory
+        type: function
+        signature: "(max_chars)→{text,has_profile,has_pinned} — profile + MEMORY.md"
+        module: "core/harness/memory/profile_builder.py"
+      - symbol: sanitize_user_profile
+        type: function
+        signature: "Drop non-facts from preferences/constraints/work_style"
+        module: "core/harness/memory/profile_builder.py"
+      - symbol: promote_durable_profile_facts
+        type: function
+        signature: "Write durable profile lines into MEMORY.md via write_memory"
+        module: "core/harness/memory/profile_builder.py"
+      - symbol: extract_and_persist_profile
+        type: function
+        signature: "Sanitize → refuse without evidence ids → prior_versions → capture_to_semantic(user_profile)"
+        module: "core/harness/memory/profile_builder.py"
+      - symbol: revise_profile_observation
+        type: function
+        signature: "revise_profile_observation(previous_content, profile, evidence_ids)→dict|None"
+        module: "core/harness/memory/profile_builder.py"
+      - symbol: upsert_pinned_memory
+        type: function
+        signature: "CoreFacade: write or replace a pinned fact; budget-full same-key merge"
+        module: "core/api/core_facade.py"
+      - symbol: ensureStickyMemory
+        type: function
+        signature: "Pi hybrid: GET /platform/memory/sticky on each session_start; cache until next session; soft-fail"
+        module: "packages/aiplat-pi-runtime/extensions/enterprise_memory.ts"
+      - symbol: memoryStickyUrl
+        type: function
+        signature: "Derive sticky URL from capture base"
+        module: "packages/aiplat-pi-runtime/extensions/enterprise_memory.ts"
     breaks: []
     consumers_expected:
       - module: "core/harness/interfaces/loop.py"
@@ -1952,10 +2279,6 @@ domains:
     section_name: "RAG 检索"
     caps_count: 8
     provides:
-      - symbol: "WikiPageRetriever"
-        type: "class"
-        signature: "retrieve(query, domain_id, collection_id)→chunks"
-        module: "core/harness/knowledge/retrieval.py"
       - symbol: "MaterialsChatAgent"
         type: "class"
         signature: "CRAG 3-level: ontology→FTS5→HyDE"
@@ -2003,10 +2326,6 @@ domains:
     section_name: "知识基础设施"
     caps_count: 4
     provides:
-      - symbol: "KnowledgeSynthesizer"
-        type: "class"
-        signature: "3 types: InferenceChain, FactCard, CrossDocConclusion"
-        module: "core/harness/knowledge/knowledge_synthesis.py"
       - symbol: "ContextBus"
         type: "class"
         signature: "10-layer context injection"
@@ -2678,15 +2997,38 @@ domains:
         type: "class"
         signature: "register, get, get_stub, list_skills, set_active_version, get_active_version"
         module: "core/apps/skills/registry.py"
+      - symbol: scan_skill_dir
+        type: function
+        signature: "scan_skill_dir(skill_id, skill_md) scans skill text; scripts/bin/hooks first; extensionless shebang included"
+      - symbol: enable_skill_result
+        type: method
+        signature: "enable_skill_result(skill_id)→{ok,reason,sarif?}; scan block is not silent False"
+        module: "core/management/skill_manager.py"
+      - symbol: scan_skill_dir
+        type: function
+        signature: "scan_skill_dir(skill_id, skill_md) scans skill tree incl. dotdirs/scripts"
+        module: "core/apps/skills/skill_boundary.py"
+      - symbol: skill_skip_reason
+        type: function
+        signature: "skill_skip_reason(skill, params)→str|None; skip is not success"
+        module: "core/apps/skills/skill_boundary.py"
+      - symbol: skill_trigger_text
+        type: function
+        signature: "Opening sentence of a skill description for wake matching"
+        module: "core/harness/routing/skill_routing.py"
+      - symbol: skill_catalog_entry
+        type: function
+        signature: "Catalog line: name plus opening sentence"
+        module: "core/harness/routing/skill_routing.py"
+      - symbol: procedural_memory_block
+        type: function
+        signature: "Hot skills whose opening sentence overlaps the query"
+        module: "core/harness/routing/skill_routing.py"
       - symbol: "ArchitectureLoneApiRetry"
         type: "behavior"
         signature: "_GenericSkill.execute: architecture lone-endpoint → 1 in-skill LLM retry (AIPLAT_ARCHITECTURE_LONE_API_RETRY)"
         module: "core/apps/skills/registry.py"
         notes: "Avoids full ReAct round after architecture_lone_api; metadata lone_api_retried / lone_api_retry_attempted"
-      - symbol: "SkillManager"
-        type: "class"
-        signature: "update_skill, delete_skill, enable_skill, disable_skill"
-        module: "core/apps/skills/skill_manager.py"
       - symbol: "BaseSkill"
         type: "class"
         signature: "execute(params)→result"
@@ -3088,7 +3430,17 @@ domains:
         type: "function"
         signature: "finalize_agent_after_skill_delivery(*,run_id,agent_id,output_text,...)→bool"
         module: "core/harness/utils/execute_session.py"
-        notes: "eager finalize Agent row+RunGraph; status orphan recovers skill_delivery_once and conversational auto_done"
+        notes: "eager finalize Agent row+RunGraph; status orphan recovers skill_delivery_once and conversational auto_done; coding orphan still runs QR"
+      - symbol: "orphan_seal_requires_quality_review"
+        type: "function"
+        signature: "orphan_seal_requires_quality_review(*,metadata,metadata_extra,syscall_items,output_text)→bool"
+        module: "core/harness/utils/execute_session.py"
+        notes: "coding/skill_delivery_once/bound follow-up/## FILE: must not skip QR on orphan watch"
+      - symbol: "orphan_finalize_status_payload"
+        type: "function"
+        signature: "orphan_finalize_status_payload(store,*,run_id,kind,fallback_output,age,input_payload)→dict"
+        module: "core/harness/utils/execute_session.py"
+        notes: "status probe after orphan finalize returns DB status (never hardcode completed)"
       - symbol: "pre_llm_prep_close_ids"
         type: "function"
         signature: "pre_llm_prep_close_ids(run_id,*,step_count,parent_span_id)→list[str]"
@@ -3139,7 +3491,7 @@ domains:
         module: "core/harness/utils/execute_session.py"
       - symbol: "_resolve_claude_md_inject_mode"
         type: "function"
-        signature: "_resolve_claude_md_inject_mode(trace_context)→full|slim|off"
+        signature: "full|slim|off; inject:always + keyword sections + scenario sibling CLAUDE.md"
         module: "core/harness/syscalls/llm.py"
       - symbol: "AgentManager.persist_execution_examples"
         type: "method"
@@ -3273,29 +3625,6 @@ domains:
         type: function
         signature: '0 = clean; higher = more security-relevant signals.'
         module: aiPlat-core/core/engine/skills/autoreview/routing.py
-    breaks: []
-    consumers_expected:
-      - module: "core/harness/execution/pipeline_engine.py"
-        reason: "Pipeline 调用 Skill"
-      - module: "core/harness/syscalls/skill.py"
-        reason: "sys_skill_call"
-      - module: "core/harness/optimization/tool_bootstrap.py"
-        reason: "ToolBootstrap → SkillRegistry.register"
-      - module: "core/api/routers/engine_skills.py"
-        reason: "Skill REST 端点"
-      - module: "core/engine/skills/autoreview/handler.py"
-        reason: "autoreview Skill handler"
-      - module: "core/api/routers/workspace_skills.py"
-        reason: "auto-fill + create-dialog HTTP"
-
-  # ══════════════════════════════════════════════════════════════
-  # 七、安全与治理 (33 caps)
-  # ══════════════════════════════════════════════════════════════
-  security-and-governance:
-    section: "七"
-    section_name: "安全与治理"
-    caps_count: 8
-    provides:
       - symbol: "coupling_metrics"
         type: "script"
         signature: "耦合度量基线：AST import-degree → avg_degree/max_degree(non-agg)/top-20 + baseline ratchet（roadmap §0.2，2026-08-25）"
@@ -3322,7 +3651,15 @@ domains:
         module: "core/api/facades/kb_facade.py"
       - symbol: "build_architecture_health_report"
         type: "function"
-        signature: "build_architecture_health_report() → status/score/checks (W6 Policy/bypass/plan/router/CRAG/autonomy/multi)"
+        signature: "build_architecture_health_report() → checks incl. coding_closed_loop_seeds / execution_seal_wiring / e2e_recon_wiring / plan_execute"
+        module: "core/harness/observability/architecture_health.py"
+      - symbol: "execution_seal_wiring"
+        type: "check"
+        signature: "_execution_seal_wiring() → ok when facade uses seal_* + PlanExecute step receipts"
+        module: "core/harness/observability/architecture_health.py"
+      - symbol: "e2e_recon_wiring"
+        type: "check"
+        signature: "_e2e_recon_wiring() → ok when e2e_test recon/receipt + shared __aiplatCollectDom"
         module: "core/harness/observability/architecture_health.py"
       - symbol: "get_architecture_health_report"
         type: "function"
@@ -3424,14 +3761,14 @@ domains:
         type: "class"
         signature: "network whitelist + deployment gate"
         module: "core/harness/infrastructure/gates/sandbox_gate.py"
-      - symbol: "PIIDetector"
-        type: "class"
-        signature: "mask/unmask, Presidio + built-in regex"
-        module: "core/harness/infrastructure/pii_detector.py"
       - symbol: "truncate_repetition"
         type: "function"
         signature: "检测并截断 LLM 退化重复循环（n-gram 重复检测，2026-08-29）"
         module: "core/harness/utils/repetition_guard.py"
+      - symbol: scan_untrusted_skill_text
+        type: function
+        signature: 'Static scan. Blocked when a hostile pattern matches. SARIF-shaped results.'
+        module: aiPlat-core/core/apps/skills/skill_boundary.py
     breaks: []
     consumers_expected:
       - module: "core/harness/syscalls/tool.py"
@@ -3654,7 +3991,7 @@ domains:
         module: "core/harness/optimization/search_engine.py"
       - symbol: "SharedKnowledgePool"
         type: "class"
-        signature: "query, publish, cross-session knowledge"
+        signature: "query, publish; facts only (commands refused)"
         module: "core/harness/memory/shared_pool.py"
       - symbol: "LearnNudgeHook"
         type: "function"
@@ -3944,6 +4281,14 @@ domains:
       - symbol: "apply_team_factory_seeds"
         type: "function"
         signature: "F-T1: Copy team/{teams,factory_sanitize} → ~/.aiplat with hash backup"
+        module: "aiPlat-core/core/harness/team_factory_seeds.py"
+      - symbol: "sync_coding_closed_loop_team_seeds"
+        type: "function"
+        signature: "Fill missing refactor_sop/tdd_enforce on ~/.aiplat/teams from seeds"
+        module: "aiPlat-core/core/harness/team_factory_seeds.py"
+      - symbol: "coding_closed_loop_runtime_gaps"
+        type: "function"
+        signature: "Read-only gaps for refactor_sop/tdd_enforce on ~/.aiplat/teams"
         module: "aiPlat-core/core/harness/team_factory_seeds.py"
       - symbol: "rollback_team_factory_seeds"
         type: "function"
@@ -4318,10 +4663,6 @@ domains:
     section_name: "评估系统"
     caps_count: 5
     provides:
-      - symbol: "eval_retrieval"
-        type: "module"
-        signature: "Recall@10, precision, F1 for RAG"
-        module: "core/harness/evaluation/eval_retrieval.py"
       - symbol: "AdversarialTestSuite"
         type: "module"
         signature: "认知安全对抗测试"
@@ -4451,10 +4792,6 @@ domains:
     section_name: "文档智能"
     caps_count: 4
     provides:
-      - symbol: "DocumentParser"
-        type: "class"
-        signature: "parse→StructuredChunk[] + StructuredTable[]"
-        module: "core/harness/document/document_parser.py"
       - symbol: "VideoParser"
         type: "class"
         signature: "ffmpeg extract audio + keyframes + LLM description"
@@ -4486,10 +4823,6 @@ domains:
         type: "class"
         signature: "execute(params)→ToolResult"
         module: "core/apps/tools/base.py"
-      - symbol: "ToolRegistry"
-        type: "class"
-        signature: "register, get, list_tools"
-        module: "core/apps/tools/registry.py"
       - symbol: "is_agent_bound_required_skill"
         type: "function"
         signature: "is_agent_bound_required_skill(skill_name, args) → bool"
@@ -4714,6 +5047,23 @@ domains:
         type: function
         signature: "approve HITL pause and advance (auto-skip non-HITL)"
         module: aiPlat-core/core/apps/fde/service/delivery_pipeline_session.py
+      - symbol: BrowserTool
+        type: class
+        signature: "Playwright browser actions including list_elements recon"
+        module: aiPlat-core/core/apps/tools/browser.py
+      - symbol: list_elements
+        type: method
+        signature: "list_elements(max_items) → {elements[role|visible_text|aria_label|testid], total, url}"
+        module: aiPlat-core/core/apps/tools/browser.py
+        notes: "e2e_test recon gate; pass max as evaluate arg — do not str.format gather JS"
+      - symbol: WebSearchTool
+        type: class
+        signature: "web_search with recency_days / inferred time window and citation on each hit"
+        module: aiPlat-core/core/apps/tools/web/web_search.py
+      - symbol: infer_recency_days
+        type: function
+        signature: "infer_recency_days(query)→int|None from 「最近N天」/last week phrases"
+        module: aiPlat-core/core/apps/tools/web/web_search.py
     breaks: []
     consumers_expected:
       - module: "core/harness/syscalls/tool.py"
@@ -5194,14 +5544,6 @@ domains:
     section_name: "编排系统"
     caps_count: 6
     provides:
-      - symbol: "IntentAnalyzer"
-        type: "class"
-        signature: "classify and decompose intent"
-        module: "core/harness/orchestration/intent_analyzer.py"
-      - symbol: "ChainPlanner"
-        type: "class"
-        signature: "execution chain topology"
-        module: "core/harness/orchestration/chain_planner.py"
       - symbol: "RunEventTimeline"
         type: "component"
         signature: "Pipeline run 事件回放 UI（seq/type/payload 时间线，展开查看详情）"
@@ -5253,14 +5595,6 @@ domains:
         type: "pattern"
         signature: "4-subsystem unified scoring 0-100 (via ScoringEngine)"
         module: "core/harness/knowledge/scoring_engine.py"
-      - symbol: "FeedbackLoops"
-        type: "module"
-        signature: "FeedbackTranslator, policy→natural language"
-        module: "core/harness/feedback/translator.py"
-      - symbol: "SpecLifecycle"
-        type: "class"
-        signature: "7d→stable, 90d→archived"
-        module: "core/harness/specs/lifecycle.py"
       - symbol: "filterItemsByRole"
         type: "function"
         signature: "Sidebar v2.3: two-level role filtering + empty subLabel cleanup + diagnostics per-project scoping"

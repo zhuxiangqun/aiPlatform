@@ -25,6 +25,8 @@ import {
   registerEnterpriseApproval,
 } from "./enterprise_approval";
 import {
+  ensureStickyMemory,
+  resetStickyMemoryCache,
   memoryStatusLines,
   memorySystemPromptAddon,
   registerEnterpriseMemory,
@@ -388,11 +390,17 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("session_start", async () => {
     appHome = findAppHome();
+    resetStickyMemoryCache();
     overlay = buildSystemPromptOverlay(appHome);
   });
 
   pi.on("before_agent_start", async () => {
     appHome = findAppHome();
+    try {
+      await ensureStickyMemory();
+    } catch {
+      /* sticky memory is optional */
+    }
     overlay =
       buildSystemPromptOverlay(appHome) +
       enterpriseSystemPromptAddon() +

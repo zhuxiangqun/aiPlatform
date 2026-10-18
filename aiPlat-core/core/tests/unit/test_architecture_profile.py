@@ -73,6 +73,57 @@ def test_plan_execute_stage_not_re_upgraded():
     assert got == "plan"
 
 
+def test_file_output_plan_execute_stays_on_react():
+    from core.schemas_builder import (
+        control_fuses_for_stage,
+        file_stage_control_stack,
+        stage_uses_react_loop,
+    )
+
+    chat = PipelineStageConfig(id="a", agent_id="x", agent_type="plan", uses_file_output=False)
+    assert stage_uses_react_loop(chat) is False
+    assert file_stage_control_stack(chat)["execute"] == "chat"
+
+    code = PipelineStageConfig(
+        id="be",
+        agent_id="backend_developer",
+        uses_file_output=True,
+        architecture_profile="plan_execute",
+    )
+    assert stage_uses_react_loop(code, "plan") is True
+    stack = file_stage_control_stack(code)
+    assert stack == {
+        "schedule": "pipeline+plan_execute",
+        "execute": "react",
+        "quality": "external",
+    }
+    fuses = control_fuses_for_stage(code, max_steps=12)
+    assert fuses["fuses"]["execute_max_steps"] == 12
+    assert fuses["fuses"]["quality_soft_veto_limit"] == 2
+    assert fuses["fuses"]["schedule_upgrade_policy"] == "signals"
+
+
+def test_code_split_file_stages_use_external_quality():
+    from pathlib import Path
+    import yaml
+
+    from core.schemas_builder import file_stage_control_stack
+
+    p = Path(__file__).resolve().parents[3] / "core/workspace_seeds/teams/code_split.yaml"
+    data = yaml.safe_load(p.read_text(encoding="utf-8"))
+    seen = 0
+    for row in data["stages"]:
+        if not row.get("uses_file_output"):
+            continue
+        kwargs = {k: v for k, v in row.items() if k in PipelineStageConfig.model_fields}
+        kwargs["id"] = kwargs.get("id") or str(row.get("agent_id") or "stage")
+        stack = file_stage_control_stack(PipelineStageConfig(**kwargs))
+        assert stack["execute"] == "react"
+        assert stack["quality"] == "external"
+        seen += 1
+    assert seen == 3
+
+
 def test_code_split_backend_pilot_yaml():
     from pathlib import Path
     import yaml

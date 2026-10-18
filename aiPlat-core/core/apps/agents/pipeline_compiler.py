@@ -43,6 +43,18 @@ class PipelineCompiler:
         "agent_type": "agent_type",
         "hitl": "hitl",
         "execution_mode": "execution_mode",
+        # Coding closed loop / AI refactor SOP (team YAML + AGENT.md stages).
+        "uses_file_output": "uses_file_output",
+        "tdd_enforce": "tdd_enforce",
+        "refactor_sop": "refactor_sop",
+        "done_verify": "done_verify",
+        "sandbox": "sandbox",
+        "sandbox_mode": "sandbox_mode",
+        "required_skills": "required_skills",
+        "deploy_files_to_disk": "deploy_files_to_disk",
+        "inject_imported_context": "inject_imported_context",
+        "skill_name": "skill_name",
+        "skill_model_purpose": "skill_model_purpose",
     }
 
     @classmethod
@@ -77,7 +89,18 @@ class PipelineCompiler:
             kwargs.setdefault("agent_id", raw.get("id", f"auto_{kwargs['order']}"))  # required by PipelineStageConfig
 
             # Convert string values to bool where needed
-            for bool_field in ("hitl", "render_upstream", "expand_subclasses", "streaming"):
+            for bool_field in (
+                "hitl",
+                "render_upstream",
+                "expand_subclasses",
+                "streaming",
+                "uses_file_output",
+                "tdd_enforce",
+                "refactor_sop",
+                "sandbox",
+                "deploy_files_to_disk",
+                "inject_imported_context",
+            ):
                 if bool_field in kwargs and isinstance(kwargs[bool_field], str):
                     kwargs[bool_field] = kwargs[bool_field].lower() in ("true", "1", "yes")
 

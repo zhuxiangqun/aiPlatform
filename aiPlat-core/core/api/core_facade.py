@@ -2474,6 +2474,8 @@ async def _execute_workspace_agent_background(
         "_user_id": "system",
         "_sys_prompt": sys_prompt,
         "_skip_claude_md": _explicit_skip_claude,
+        # StageRunner.resolve_stage_loop_type reads config + state; keep both in sync.
+        "_loop_type": agent_loop_type,
         "_bound_skill_ids": list(_skill_names),
         "_skill_delivery": _skill_delivery,
         "_user_task": str(user_message or ""),
@@ -2826,10 +2828,16 @@ async def _execute_workspace_agent_background(
             existing = None
         # Eager skill_delivery finalize may have already closed the row — do not
         # wipe a good product with empty result_text if runner hung after FINISHED.
+        # Also respect orphan/QR failed seals (do not re-greenwash to completed).
         _already_done = False
         try:
             if isinstance(existing, dict):
                 _est = str(existing.get("status") or "").lower()
+                _emeta = (
+                    existing.get("metadata")
+                    if isinstance(existing.get("metadata"), dict)
+                    else {}
+                )
                 _eout = existing.get("output")
                 _etext = ""
                 if isinstance(_eout, str):
@@ -2845,7 +2853,40 @@ async def _execute_workspace_agent_background(
                         or _eout.get("answer")
                         or ""
                     ).strip()
-                if _est in ("completed", "ok", "success", "done") and len(_etext) >= 20:
+                _force_fail = str(
+                    _emeta.get("force_failed_status")
+                    or _emeta.get("_force_failed_status")
+                    or ""
+                ).strip().lower()
+                _fin_src = str(_emeta.get("finalize_source") or "")
+                # Any sealed failure/timeout must stick — including force_failed /
+                # LLM-exhausted seals that lack quality_block metadata.
+                if _est in ("failed", "error", "timeout") and (
+                    _est == "timeout"
+                    or _force_fail in ("timeout", "failed", "error", "cancelled", "canceled")
+                    or _emeta.get("quality_block_completed")
+                    or _emeta.get("require_review_incomplete")
+                    or _emeta.get("_finalize_hard_fail")
+                    or str(_emeta.get("done_verify_reason") or "").startswith(
+                        "done_verify:"
+                    )
+                    or _fin_src
+                    in (
+                        "observe_done_verify_blocked",
+                        "observe_auto_followup_review_incomplete",
+                        "status_orphan_watch",
+                        "reason_llm_failure_exhausted",
+                        "observe_primary_skill_timeout",
+                    )
+                    or "timeout" in _fin_src
+                    or "llm_failure" in _fin_src
+                ):
+                    _already_done = True
+                    if not str(result_text or "").strip() and _etext:
+                        result_text = _etext
+                    status = "failed" if _est != "timeout" else _est
+                    error_msg = str(existing.get("error") or error_msg or "") or None
+                elif _est in ("completed", "ok", "success", "done") and len(_etext) >= 20:
                     _already_done = True
                     if not str(result_text or "").strip():
                         result_text = _etext
@@ -5146,9 +5187,11 @@ from core.harness.feedback_loops.local import (  # noqa: boundary — CoreFacade
 )
 from core.harness.team_factory_seeds import (  # noqa: boundary — CoreFacade re-export
     apply_team_factory_seeds,
+    coding_closed_loop_runtime_gaps,
     resolve_factory_sanitize_file,
     resolve_team_yaml_candidates,
     rollback_team_factory_seeds,
+    sync_coding_closed_loop_team_seeds,
 )
 from core.harness.team_friction import (  # noqa: boundary — CoreFacade re-export
     attach_friction_cta,
@@ -5424,6 +5467,36 @@ def inject_workspace_coding_defaults(
     return _inject(state, agent_cfg=agent_cfg, agent_meta=agent_meta, skills=skills)
 
 
+def apply_template_stage_overlay(
+    dest: Any, src: Any, *, only_missing: bool = False
+) -> Any:
+    """工厂 recommend_team：把团队模板 YAML 的 coding 闭环字段拷到计划阶段。"""
+    from core.schemas_builder import apply_template_stage_overlay as _apply
+
+    return _apply(dest, src, only_missing=only_missing)
+
+
+def backfill_stage_from_team_templates(stage: Any) -> Any:
+    """resume 无 config_json 时按 agent_id 从团队模板回填闭环字段。"""
+    from core.schemas_builder import backfill_stage_from_team_templates as _backfill
+
+    return _backfill(stage)
+
+
+def extract_stage_persist_config(raw: Any) -> Dict[str, Any]:
+    """流水线启动时写入 pipeline_stages.config_json 的闭环字段快照。"""
+    from core.schemas_builder import extract_stage_persist_config as _extract
+
+    return _extract(raw)
+
+
+def pipeline_stage_from_store_row(sr: Any) -> Any:
+    """resume：从 store 行（含 config_json）重建 PipelineStageConfig。"""
+    from core.schemas_builder import pipeline_stage_from_store_row as _from_row
+
+    return _from_row(sr)
+
+
 def coerce_execution_type(
     raw: str,
     *,
@@ -5690,6 +5763,99 @@ def ingest_ide_capture(
     )
 
 
+def query_session_archive(query: str, *, limit: int = 3) -> Dict[str, Any]:
+    """Past compacted turns. Not pinned facts — caller asks, we search."""
+    from core.harness.memory.file_store import session_archive_query
+
+    return session_archive_query(query, limit=limit)
+
+
+def sticky_memory_slice(
+    max_chars: Optional[int] = None, *, tenant_id: str = "default"
+) -> Dict[str, Any]:
+    """User profile + pinned MEMORY.md for Pi session start. Shared char budget."""
+    from core.harness.memory.profile_builder import compose_sticky_memory
+
+    return compose_sticky_memory(max_chars, tenant_id=tenant_id)
+
+
+def seal_answer_with_receipts(text: str, context: Optional[Dict[str, Any]] = None):
+    """Platform completion-receipt bind (fix/path claims). Re-export for apps."""
+    from core.harness.execution.execution_seal import seal_answer_with_receipts as _fn
+
+    return _fn(text, context)
+
+
+def check_done_verify(context: Optional[Dict[str, Any]] = None) -> Optional[str]:
+    """DONE verify ring with coding/review fail-closed on exceptions."""
+    from core.harness.execution.execution_seal import check_done_verify as _fn
+
+    return _fn(context)
+
+
+def coding_deliverable_veto(
+    context: Optional[Dict[str, Any]] = None,
+    *,
+    bound_skill_ids: Optional[List[Any]] = None,
+    skills: Any = None,
+) -> Optional[str]:
+    """Coding thin-stub / missing follow-up veto before DONE."""
+    from core.harness.execution.execution_seal import coding_deliverable_veto as _fn
+
+    return _fn(context, bound_skill_ids=bound_skill_ids, skills=skills)
+
+
+def seal_before_finish(
+    context: Optional[Dict[str, Any]] = None,
+    *,
+    bound_skill_ids: Optional[List[Any]] = None,
+    skills: Any = None,
+    bind_receipts: bool = True,
+):
+    """Receipt bind + coding veto + done_verify. Returns ``(seal_status, block_reason)``."""
+    from core.harness.execution.execution_seal import seal_before_finish as _fn
+
+    return _fn(
+        context,
+        bound_skill_ids=bound_skill_ids,
+        skills=skills,
+        bind_receipts=bind_receipts,
+    )
+
+
+def upsert_pinned_memory(
+    content: str,
+    *,
+    key: str = "preference",
+    source: str = "agent",
+    old_text: str = "",
+) -> Dict[str, Any]:
+    """Write or replace a durable pinned fact. Budget-full same-key merges automatically."""
+    from core.harness.memory.file_store import (
+        memory_char_budget,
+        replace_memory_entry,
+        write_memory,
+    )
+
+    body = (content or "").strip()
+    needle = (old_text or "").strip()
+    if needle:
+        ok = replace_memory_entry(needle, body, key=key, source=source)
+        return {
+            "ok": ok,
+            "action": "replace",
+            "key": key,
+            "budget": memory_char_budget(),
+        }
+    ok = write_memory(body, key=key, source=source)
+    return {
+        "ok": ok,
+        "action": "write",
+        "key": key,
+        "budget": memory_char_budget(),
+    }
+
+
 def write_session_wiki(
     title: str,
     summary: str,
@@ -5748,6 +5914,41 @@ def list_code_review_gold_reports(*, tenant_id: str = "", limit: int = 20) -> li
     from core.harness.evaluation.code_review_gold import list_eval_reports
 
     return list_eval_reports(tenant_id=tenant_id, limit=limit)
+
+
+async def reevaluate_code_review_gold(
+    *,
+    profile: str = "balanced",
+    gold_dir: Optional[str] = None,
+    case_ids: Optional[list] = None,
+    match_only: bool = False,
+    limit: int = 0,
+    tenant_id: str = "",
+    persist: bool = True,
+    record_novel: bool = False,
+    baseline: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """再跑同一黄金集，并对比上一份报告的 precision/recall/p0_recall。"""
+    from core.harness.evaluation.code_review_gold import reevaluate_code_review_gold as _run
+
+    return await _run(
+        profile=profile,
+        gold_dir=gold_dir,
+        case_ids=case_ids,
+        match_only=match_only,
+        limit=limit,
+        tenant_id=tenant_id,
+        persist=persist,
+        record_novel=record_novel,
+        baseline=baseline,
+    )
+
+
+def summarize_task_model_routes(*, limit: int = 500) -> Dict[str, Any]:
+    """Task model-route aggregates by purpose (success / upgrade / latency)."""
+    from core.harness.utils.task_model_lock import summarize_task_model_routes as _sum
+
+    return _sum(limit=limit)
 
 
 def evaluate_gold_profile_gate(

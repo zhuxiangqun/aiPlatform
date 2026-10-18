@@ -574,6 +574,39 @@ def test_aggregate_merges_adoption_into_duty_board(monkeypatch):
     assert any("hitl_rejection_rate" in r for r in out["duty_board"]["reasons"])
 
 
+def test_duty_board_model_route_does_not_change_status(monkeypatch):
+    monkeypatch.setattr(
+        "core.harness.utils.task_model_lock.summarize_task_model_routes",
+        lambda limit=500: {
+            "available": True,
+            "tasks": 2,
+            "rows": 2,
+            "by_purpose": {"agent": {"success_rate": 0.5, "upgrade_rate": 1.0}},
+        },
+    )
+    monkeypatch.setattr(
+        "core.harness.evaluation.harness_recursion.summarize_library",
+        lambda recent=5: {
+            "available": True,
+            "library_entries": 2,
+            "pending_traces": 1,
+            "inherit_whole": False,
+            "recent": [],
+        },
+    )
+    board = build_duty_board({
+        "ok": True,
+        "data_available": True,
+        "availability": {"runs": True, "gold": False, "approvals": False},
+        "summary": {"avg_serial_ratio": 0.05, "runs_scanned": 2},
+    })
+    assert board["model_route"]["available"] is True
+    assert board["harness_library"]["library_entries"] == 2
+    assert board["status"] in ("go", "watch")
+    assert "model_route" not in " ".join(board["reasons"])
+    assert "harness_library" not in " ".join(board["reasons"])
+
+
 def test_duty_board_gold_missing_not_go():
     board = build_duty_board({
         "ok": True,

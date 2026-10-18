@@ -95,6 +95,21 @@ async def sys_skill_call(
     skill_name = str(getattr(skill, "name", None) or getattr(getattr(skill, "_config", None), "name", "") or "")
 
     try:
+        from core.apps.skills.skill_boundary import skill_skip_reason
+
+        _skip = skill_skip_reason(skill, params)
+    except Exception:
+        logging.getLogger(__name__).debug("skill_skip_reason skipped", exc_info=True)
+        _skip = None
+    if _skip:
+        return SkillResult(
+            success=False,
+            output=f"skipped: {_skip}",
+            error=_skip,
+            metadata={"skipped": True, "reason": _skip, "skill": skill_name},
+        )
+
+    try:
         import asyncio as _aio_span
 
         span = await _aio_span.wait_for(

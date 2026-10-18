@@ -2794,31 +2794,23 @@ async def execute_workspace_agent(agent_id: str, request: dict, http_request: Re
         st = str((resp or {}).get("status") or "").lower()
         if st in ("completed", "ok", "success") and isinstance(resp, dict):
             from core.management.execution_quality_review import (
-                review_execution_output,
-                quality_review_blocks_success,
+                attach_quality_review_to_execute_response,
             )
 
             skills = list(getattr(agent, "required_skills", None) or getattr(agent, "skills", None) or [])
             skill_hint = " ".join(str(s) for s in skills[:8])
-            _qr = review_execution_output(
+            resp = attach_quality_review_to_execute_response(
+                resp,
                 kind="agent",
                 asset_id=str(agent_id),
-                asset_name=str(getattr(agent, "display_name", None) or getattr(agent, "name", None) or agent_id),
+                asset_name=str(
+                    getattr(agent, "display_name", None)
+                    or getattr(agent, "name", None)
+                    or agent_id
+                ),
                 input_payload=user_message or inp,
-                output=resp.get("output"),
-                status=st,
                 hints=f"{skill_hint} {getattr(agent, 'name', '')}",
             )
-            resp["quality_review"] = _qr
-            if quality_review_blocks_success(_qr):
-                resp["status"] = "failed"
-                resp["ok"] = False
-                resp["error"] = str(
-                    (_qr.get("headline") if isinstance(_qr, dict) else None)
-                    or resp.get("error")
-                    or "coding deliverable failed quality review"
-                )
-                resp["quality_block_completed"] = True
     except Exception as e:
         logging.warning("agent execute quality_review skipped: %s", e, exc_info=True)
 

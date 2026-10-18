@@ -891,9 +891,19 @@ async def enable_skill(skill_id: str, rt: RuntimeDep = None):
         raise
     except Exception as e:
         logging.warning(str(e), exc_info=True)
-    success = await mgr.enable_skill(skill_id)
-    if not success:
-        raise HTTPException(status_code=400, detail=f"Skill {skill_id} cannot be enabled (maybe deprecated; use restore)")
+    result = await mgr.enable_skill_result(skill_id)
+    if not result.get("ok"):
+        reason = str(result.get("reason") or "cannot_enable")
+        detail: Dict[str, Any] = {
+            "message": f"Skill {skill_id} cannot be enabled ({reason})",
+            "reason": reason,
+            "skill_id": skill_id,
+        }
+        if reason == "deprecated":
+            detail["message"] = f"Skill {skill_id} is deprecated; use restore"
+        if result.get("sarif") is not None:
+            detail["sarif"] = result.get("sarif")
+        raise HTTPException(status_code=400, detail=detail)
     await _record_changeset(rt, name="skill.enable", target_type="change", target_id=change_id, status="success", args={"targets": [{"type": "skill", "id": str(skill_id)}]}, user_id="admin")
     return {"status": "enabled", "change_id": change_id, "links": _gov_links(change_id=change_id)}
 

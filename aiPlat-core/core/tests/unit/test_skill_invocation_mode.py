@@ -90,6 +90,51 @@ class TestInvocationModeRouting:
         assert "auto_route_skill" in names
         assert "my_personal_process" not in names
 
+    def test_candidates_ignore_procedure_after_opening(self):
+        from core.harness.routing.skill_routing import compute_skill_candidates
+
+        skills = [
+            {
+                "skill_id": "headline",
+                "name": "headline",
+                "description": "写头条文章时使用。步骤里会提到数据库迁移和回滚",
+                "scope": "workspace",
+                "invocation_mode": "auto",
+            },
+        ]
+        woken = compute_skill_candidates(query_text="请做数据库迁移", skills=skills, top_k=8)
+        assert woken == []
+        kept = compute_skill_candidates(query_text="帮我写头条文章", skills=skills, top_k=8)
+        assert [c.name for c in kept] == ["headline"]
+
+    def test_skill_catalog_entry_stops_at_opening(self):
+        from core.harness.routing.skill_routing import skill_catalog_entry
+
+        line = skill_catalog_entry(
+            "headline",
+            "headline: 写头条文章时使用。步骤里会提到数据库迁移",
+        )
+        assert line == "headline: 写头条文章时使用"
+        assert "数据库迁移" not in line
+
+    def test_procedural_memory_uses_opening_sentence(self):
+        from core.harness.routing.skill_routing import procedural_memory_block
+
+        skills = [
+            {
+                "name": "headline",
+                "stub": "写头条文章时使用。步骤里会提到数据库迁移",
+                "pass_rate": 0.9,
+            },
+            {"name": "login", "stub": "修登录页时使用", "pass_rate": 0.95},
+        ]
+        miss = procedural_memory_block("请做数据库迁移", skills)
+        assert miss == ""
+        hit = procedural_memory_block("帮我写头条文章", skills)
+        assert "headline" in hit
+        assert "数据库迁移" not in hit
+        assert "login" not in hit
+
     def test_contract_user_forces_auto_trigger_false(self):
         contract, _ = build_contract_and_digest(
             name="x",

@@ -329,6 +329,17 @@ def _filter_latency(model) -> bool:
         return True
 
 
+def _is_local_model(model) -> bool:
+    """True for on-host runners (Ollama / LM Studio / oMLX) or source=local."""
+    src = getattr(getattr(model, "source", None), "value", None)
+    if src is None:
+        src = getattr(model, "source", "") or ""
+    if str(src).lower() == "local":
+        return True
+    provider = (getattr(model, "provider", "") or "").lower()
+    return provider in ("ollama", "lmstudio", "omlx")
+
+
 def _get_scoring_weights(purpose: str, profile_data: dict) -> dict:
     """Read scoring weights from profile. 'weights' key (v3) takes priority, 'scoring_weights' (v2) as fallback."""
     default = {
@@ -1386,9 +1397,27 @@ class ModelManager:
         safe_ram_limit_gb = safe.get("safe_model_ram_limit", 4)
 
         profile = profile_data.get("purpose_profiles", {}).get(purpose, {})
+        profile = dict(profile) if isinstance(profile, dict) else {}
+        # Upgrade path: raise the reasoning floor and refuse weaker fallbacks.
+        strict = bool((preferences or {}).get("capability_strict"))
+        floor = (preferences or {}).get("reasoning_floor")
+        if floor is not None:
+            try:
+                floor_n = int(floor)
+            except (TypeError, ValueError):
+                floor_n = 0
+            if floor_n > 0:
+                req = dict(profile.get("require") or {})
+                req["reasoning_quality"] = max(int(req.get("reasoning_quality") or 0), floor_n)
+                profile["require"] = req
 
         models = [m for m in self._models.values()
                   if hasattr(m, 'type') and m.type.value == "chat"]
+
+        # Sensitive / offline: drop cloud candidates before scoring (not a third router).
+        local_only = bool((preferences or {}).get("local_only"))
+        if local_only:
+            models = [m for m in models if _is_local_model(m)]
 
         # ── 降级链路（硬约束不变，逐级放宽软约束） ──
         soft_filters = [
@@ -1402,6 +1431,11 @@ class ModelManager:
         ]
 
         for level_name, soft_fn in soft_filters:
+            if strict and level_name != "full":
+                break
+            # local_only must not relax into cloud models via soft degradation.
+            if local_only and level_name == "none":
+                break
             passed = [m for m in models
                        if _hard_filter(m, res, profile_data)[0] and soft_fn(m)]
             if passed:
@@ -1474,10 +1508,17 @@ class ModelManager:
 
                 return scored[0][1].name
 
+        # Upgrade attempts must not fall through to a weaker safe model.
+        if strict:
+            return ""
+
         # ── Safe Model 保底：优先 API，再本地安全模型 ──
+        # local_only must never escape to a cloud safe_model.
         for safe_name in [safe_model_alt, safe_model]:
             safe_m = self._find_model_by_name(safe_name)
             if safe_m is None:
+                continue
+            if local_only and not _is_local_model(safe_m):
                 continue
             ok, _reason = _hard_filter(safe_m, res, profile_data)
             if not ok:
@@ -1491,6 +1532,12 @@ class ModelManager:
             logging.getLogger(__name__).warning("All models filtered, falling back to safe_model=%s", safe_name)
             return safe_name
 
+        if local_only:
+            raise RuntimeError(
+                "local_only=True but no local model passed filters "
+                f"(including safe models {safe_model}, {safe_model_alt}). "
+                "Refusing cloud fallback."
+            )
         raise RuntimeError(
             f"No model can run on this hardware. "
             f"RAM={res.ram_bytes/1e9:.1f}GB, VRAM={res.vram_bytes/1e9:.1f}GB, "

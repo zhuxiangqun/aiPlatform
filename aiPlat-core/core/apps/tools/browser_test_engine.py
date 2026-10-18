@@ -140,10 +140,19 @@ class SessionManager:
                 for el in els:
                     role = el.get("role", "")
                     tp = el.get("type", "")
+                    if role == "search_input":
+                        continue
                     if role == "text_input":
                         if tp == "password":
                             password_input = el
                         elif not username_input:
+                            name = str(el.get("name") or "").lower()
+                            ph = str(el.get("placeholder") or "").lower()
+                            # Header/search boxes are often first text_input; skip them.
+                            if name in (
+                                "q", "wd", "query", "keyword", "search", "w", "k", "qs",
+                            ) or "search" in ph or "搜索" in ph:
+                                continue
                             username_input = el
                     elif role == "submit_button":
                         submit_btn = el

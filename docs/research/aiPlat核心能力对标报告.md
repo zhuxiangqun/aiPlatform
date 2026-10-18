@@ -1,6 +1,6 @@
 # aiPlat 核心能力对标报告（2026-10 五家重做）
 
-> 最后验证 2026-10-16（OpenWorker 收口 + 认知分层旁路 §0.3）
+> 最后验证 2026-10-18（OpenWorker 收口 + 认知分层旁路 §0.3）
 
 > **调研时点**：2026-10-13（列）· 2026-10-16（OpenWorker 吸收 · 认知分层旁路）  
 > **对标列（6）**：aiPlat · Hermes Agent · Claude Code · OpenClaw · DeepSeek Harness · OpenAI Codex  

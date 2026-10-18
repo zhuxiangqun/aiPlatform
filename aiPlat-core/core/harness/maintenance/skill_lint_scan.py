@@ -167,12 +167,46 @@ async def run_skill_lint_scan(
         for s in skills:
             rep = lint_skill(s)
             summ = lint_summary(rep)
+            scan_sarif = None
+            try:
+                skill_md = mgr._find_skill_md(str(getattr(s, "id", "") or ""))
+                if skill_md is not None:
+                    from core.apps.skills.skill_boundary import scan_skill_dir
+
+                    scan = scan_skill_dir(str(getattr(s, "id", "") or ""), skill_md)
+                    if scan.get("blocked"):
+                        scan_sarif = scan.get("sarif")
+                        summ = dict(summ)
+                        summ["blocked"] = True
+                        summ["risk_level"] = "high"
+                        summ["error_count"] = int(summ.get("error_count") or 0) + 1
+                        if isinstance(rep, dict):
+                            errors = list(rep.get("errors") or [])
+                            errors.append({
+                                "code": "skill_scan_blocked",
+                                "message": "hostile pattern in skill directory (incl. scripts/)",
+                            })
+                            rep = dict(rep)
+                            rep["errors"] = errors
+                            rep["blocked"] = True
+                            rep["sarif"] = scan_sarif
+                        code_stats["errors"]["skill_scan_blocked"] = (
+                            int(code_stats["errors"].get("skill_scan_blocked") or 0) + 1
+                        )
+                        code_stats["error_examples"].setdefault(
+                            "skill_scan_blocked",
+                            "hostile pattern in skill directory",
+                        )
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             # Aggregate code-level stats (for productized dashboard / trend view)
             try:
                 for it in (rep.get("errors") if isinstance(rep, dict) else []) or []:
                     if not isinstance(it, dict):
                         continue
                     c = str(it.get("code") or "").strip() or "unknown"
+                    if c == "skill_scan_blocked":
+                        continue  # already counted above
                     code_stats["errors"][c] = int(code_stats["errors"].get(c) or 0) + 1
                     if c not in code_stats["error_examples"] and it.get("message"):
                         code_stats["error_examples"][c] = str(it.get("message"))
@@ -193,15 +227,16 @@ async def run_skill_lint_scan(
             if bool(summ.get("blocked")):
                 totals["blocked"] += 1
 
-            findings.append(
-                {
-                    "scope": sc,
-                    "skill_id": getattr(s, "id", None),
-                    "name": getattr(s, "name", None),
-                    "summary": summ,
-                    "lint": rep if include_full else None,
-                }
-            )
+            item = {
+                "scope": sc,
+                "skill_id": getattr(s, "id", None),
+                "name": getattr(s, "name", None),
+                "summary": summ,
+                "lint": rep if include_full else None,
+            }
+            if scan_sarif is not None:
+                item["sarif"] = scan_sarif
+            findings.append(item)
 
             # Audit only blocked/high-risk findings to reduce noise.
             if execution_store is not None and bool(summ.get("blocked")):

@@ -28,11 +28,14 @@ stages:
     order: 2
     output_artifact: code
     skill_name: code_generation
-    execution_backend: llm
+    # SOP Step 5 needs ReAct follow-up (autoreview); oneshot llm cannot.
+    architecture_profile: react_tools
     input_artifacts: [prd, architecture]
     uses_file_output: true
     inject_imported_context: true
     deploy_files_to_disk: true
+    # L2 import path: AI refactor SOP (diagnosis→deps→plan→tdd→review→flag→rollback).
+    refactor_sop: true
     sandbox: true
     review_gate: quick
     required_skills: [autoreview]
@@ -40,6 +43,7 @@ stages:
       enabled: true
       min_output_length: 20
       review_gate: quick
+      require_substrings: ["## FILE:"]
     stage_timeout_seconds: 900
 
   - agent_id: agent_engineer

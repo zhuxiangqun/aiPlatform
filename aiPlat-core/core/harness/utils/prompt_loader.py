@@ -364,11 +364,12 @@ ${history}""",
 _register("memory-review", """Review the conversation above and extract facts about the user, team, or project.
 
 Output as JSON with these keys:
-- preferences: what the user likes/dislikes
-- constraints: technical or business limitations
-- decisions: key decisions made
+- preferences: durable likes/dislikes that should hold next session (statements, not commands)
+- constraints: durable technical or business limitations
+- decisions: one-task choices from this session only (not every-turn rules)
 - work_style: how the user prefers to work
 
+Put shell commands, numbered steps, TODOs, and session progress into decisions only if needed; never into preferences or constraints.
 Only include information explicitly stated or clearly implied. Do not make assumptions.""",
     category="memory",
     variables=[])
@@ -386,7 +387,8 @@ Should a reusable skill be created? Output JSON:
 
 _register("episodic-summary", """Summarize this conversation session in 2-3 sentences.
 
-Focus on: what was accomplished, key decisions made, and remaining work.
+Focus on: durable outcomes, key decisions, and remaining work.
+Omit shell commands, numbered step lists, TODOs, and session counters.
 
 Output as JSON:
 {"summary": "string", "decisions": ["decision 1", ...], "next_steps": ["step 1", ...]}""",

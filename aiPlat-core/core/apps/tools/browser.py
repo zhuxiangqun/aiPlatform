@@ -209,156 +209,160 @@ class _BrowserSession:
         text = await self._page.content()
         return {"html": text[:50000], "instruction": instruction, "url": self._page.url}
 
-    # ── Shared element gathering JS with RPA-style role detection ──
+    # ── Shared selectors: list_elements / click_index / type_index / *_target ──
 
-    _GATHER_JS = (
-        "(max, action) => {"
-        "  const selectors = ["
-        "    'a[href]', 'button', 'input:not([type=hidden])', 'select', 'textarea',"
-        "    '[role=button]', '[role=link]', '[role=tab]', '[role=menuitem]',"
-        "    '[onclick]', '[contenteditable=true]', 'summary', 'details',"
-        "  ];"
-        "  const elements = [];"
+    _ELEMENT_SELECTORS_JS = (
+        "["
+        "'a[href]', 'button', 'input:not([type=hidden])', 'select', 'textarea',"
+        "'[role=button]', '[role=link]', '[role=tab]', '[role=menuitem]',"
+        "'[onclick]', '[contenteditable=true]', 'summary', 'details'"
+        "]"
+    )
+
+    _COLLECT_DOM_FN = (
+        "function __aiplatCollectDom(maxCap) {"
+        "  const selectors = " + _ELEMENT_SELECTORS_JS + ";"
         "  const seen = new Set();"
+        "  const elements = [];"
+        "  const lim = (typeof maxCap === 'number' && maxCap > 0) ? maxCap : 1e9;"
         "  for (const sel of selectors) {"
         "    document.querySelectorAll(sel).forEach(el => {"
-        "      if (elements.length >= max) return;"
+        "      if (elements.length >= lim) return;"
         "      const r = el.getBoundingClientRect();"
         "      if (r.width === 0 || r.height === 0) return;"
         "      if (seen.has(el)) return;"
         "      seen.add(el);"
-        "      "
-        "      const tag = el.tagName.toLowerCase();"
-        "      const tp = (el.type || '').toLowerCase();"
-        "      const name = el.name || '';"
-        "      const id = el.id || '';"
-        "      const placeholder = el.placeholder || '';"
-        "      const aria = (el.getAttribute('aria-label') || '').toLowerCase();"
-        "      const txt = (el.textContent || '').trim().slice(0, 60).toLowerCase();"
-        "      const value = (el.value || '').toLowerCase();"
-        "      const className = (el.className || '').toLowerCase();"
-        "      "
-        "      let role = '';"
-        "      if (tag === 'a') role = 'link';"
-        "      else if (tag === 'input' && (tp === 'submit' || tp === 'button')) {"
-        "        role = 'submit_button';"
-        "      } else if (tag === 'input' || tag === 'textarea' || el.contentEditable === 'true') {"
-        "        const allText = (placeholder + ' ' + name + ' ' + id + ' ' + aria + ' ' + txt + ' ' + className).toLowerCase();"
-        "        if (/^(q|wd|query|keyword|search|w|k|qs)$/.test(name)) role = 'search_input';"
-        "        else if (allText.includes('搜索') || allText.includes('请输入') || allText.includes('search') || allText.includes('keyword') || allText.includes('検索')) {"
-        "          if (!allText.includes('submit') && !allText.includes('button') && name !== 'su') role = 'search_input';"
-        "          else role = 'text_input';"
-        "        } else {"
-        "          role = 'text_input';"
-        "        }"
-        "      } else if (tag === 'button' || tag === 'select' || el.hasAttribute('role')) {"
-        "        role = el.hasAttribute('role') ? el.getAttribute('role') : tag;"
-        "      } else {"
-        "        role = tag;"
-        "      }"
-        "      "
-        "      let label = '';"
-        "      if (tag === 'a') label = txt || el.href;"
-        "      else if (tag === 'input') label = placeholder || name || value || tp;"
-        "      else if (tag === 'button') label = txt || name || tp;"
-        "      else if (tag === 'select') label = name || id || 'dropdown';"
-        "      else if (tag === 'textarea') label = placeholder || name || 'textarea';"
-        "      else label = txt;"
-        "      "
-        "      elements.push({"
-        "        index: elements.length + 1,"
-        "        tag, role,"
-        "        visible_text: (label || '').slice(0, 40),"
-        "        type: tp, name: (name || '').slice(0, 30), id: (id || '').slice(0, 30),"
-        "        placeholder: (placeholder || '').slice(0, 30),"
-        "      });"
+        "      elements.push(el);"
         "    });"
         "  }"
-        "  "
-        "  if (action === 'list') {"
-        "    return elements;"
-        "  }"
-        "  "
         "  return elements;"
         "}"
     )
 
+    _GATHER_JS = (
+        "(max) => {"
+        + _COLLECT_DOM_FN
+        + "  const raw = __aiplatCollectDom(max);"
+        "  const elements = [];"
+        "  for (let i = 0; i < raw.length; i++) {"
+        "    const el = raw[i];"
+        "    const tag = el.tagName.toLowerCase();"
+        "    const tp = (el.type || '').toLowerCase();"
+        "    const name = el.name || '';"
+        "    const id = el.id || '';"
+        "    const placeholder = el.placeholder || '';"
+        "    const aria = (el.getAttribute('aria-label') || '').toLowerCase();"
+        "    const txt = (el.textContent || '').trim().slice(0, 60).toLowerCase();"
+        "    const value = (el.value || '').toLowerCase();"
+        "    const className = (el.className || '').toLowerCase();"
+        "    let role = '';"
+        "    if (tag === 'a') role = 'link';"
+        "    else if (tag === 'input' && (tp === 'submit' || tp === 'button')) {"
+        "      role = 'submit_button';"
+        "    } else if (tag === 'input' || tag === 'textarea' || el.contentEditable === 'true') {"
+        "      const allText = (placeholder + ' ' + name + ' ' + id + ' ' + aria + ' ' + txt + ' ' + className).toLowerCase();"
+        "      if (/^(q|wd|query|keyword|search|w|k|qs)$/.test(name)) role = 'search_input';"
+        "      else if (allText.includes('搜索') || allText.includes('请输入') || allText.includes('search') || allText.includes('keyword') || allText.includes('検索')) {"
+        "        if (!allText.includes('submit') && !allText.includes('button') && name !== 'su') role = 'search_input';"
+        "        else role = 'text_input';"
+        "      } else {"
+        "        role = 'text_input';"
+        "      }"
+        "    } else if (tag === 'button' || tag === 'select' || el.hasAttribute('role')) {"
+        "      role = el.hasAttribute('role') ? el.getAttribute('role') : tag;"
+        "    } else {"
+        "      role = tag;"
+        "    }"
+        "    let assoc = '';"
+        "    try {"
+        "      if (el.labels && el.labels.length) assoc = (el.labels[0].textContent || '').trim().slice(0, 40);"
+        "      else if (id) {"
+        "        const lab = document.querySelector('label[for=\"' + String(id).replace(/\"/g, '') + '\"]');"
+        "        if (lab) assoc = (lab.textContent || '').trim().slice(0, 40);"
+        "      }"
+        "    } catch (e) { assoc = ''; }"
+        "    let label = '';"
+        "    if (tag === 'a') label = txt || el.href;"
+        "    else if (tag === 'input') label = assoc || placeholder || aria || name || value || tp;"
+        "    else if (tag === 'button') label = txt || assoc || name || tp;"
+        "    else if (tag === 'select') label = assoc || name || id || 'dropdown';"
+        "    else if (tag === 'textarea') label = assoc || placeholder || aria || name || 'textarea';"
+        "    else label = txt || assoc;"
+        "    elements.push({"
+        "      index: elements.length + 1,"
+        "      tag, role,"
+        "      visible_text: (label || '').slice(0, 40),"
+        "      type: tp, name: (name || '').slice(0, 30), id: (id || '').slice(0, 30),"
+        "      placeholder: (placeholder || '').slice(0, 30),"
+        "      testid: ((el.getAttribute('data-testid') || '')).slice(0, 40),"
+        "      aria_label: ((el.getAttribute('aria-label') || '')).slice(0, 40),"
+        "    });"
+        "  }"
+        "  return elements;"
+        "}"
+    )
+
+    _CLICK_INDEX_JS = (
+        "(idx) => {"
+        + _COLLECT_DOM_FN
+        + "  const el = __aiplatCollectDom(0)[idx - 1];"
+        "  if (!el) return null;"
+        "  el.scrollIntoView({behavior:'smooth',block:'center'});"
+        "  el.focus();"
+        "  el.click();"
+        "  return {clicked: el.tagName, text: (el.textContent||'').trim().slice(0,50)};"
+        "}"
+    )
+
+    _TYPE_INDEX_JS = (
+        "(args) => {"
+        "  const idx = args[0]; const txt = args[1];"
+        + _COLLECT_DOM_FN
+        + "  const el = __aiplatCollectDom(0)[idx - 1];"
+        "  if (!el) return null;"
+        "  el.scrollIntoView({behavior:'smooth',block:'center'});"
+        "  el.focus();"
+        "  const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;"
+        "  const desc = Object.getOwnPropertyDescriptor(proto, 'value');"
+        "  const setVal = (v) => {"
+        "    if (desc && desc.set) desc.set.call(el, v);"
+        "    else el.value = v;"
+        "  };"
+        "  setVal('');"
+        "  el.dispatchEvent(new Event('input', {bubbles: true}));"
+        "  setVal(txt);"
+        "  el.dispatchEvent(new Event('input', {bubbles: true}));"
+        "  el.dispatchEvent(new Event('change', {bubbles: true}));"
+        "  return {typed: el.tagName, name: el.name||el.id||''};"
+        "}"
+    )
+
     async def list_elements(self, max_items: int = 50) -> Dict[str, Any]:
-        """Discover all interactive elements with index and role tags (RPA-style)."""
+        """Discover interactive elements (role / text / testid) for e2e recon."""
         await self._lazy_start()
-        js = "(" + self._GATHER_JS + ")({}, 'list')".format(max_items)
-        elements = await self._page.evaluate(js)
+        try:
+            cap = max(1, min(int(max_items or 50), 200))
+        except (TypeError, ValueError):
+            cap = 50
+        # Pass cap as evaluate arg. Do not str.format the gather function body.
+        elements = await self._page.evaluate(self._GATHER_JS, cap)
+        if not isinstance(elements, list):
+            elements = []
+        elements = elements[:cap]
         return {"elements": elements, "total": len(elements), "url": self._page.url}
 
     async def click_index(self, index: int) -> Dict[str, Any]:
-        """Click element by its index (from list_elements). Uses identical element ordering."""
+        """Click by list_elements index (same __aiplatCollectDom order)."""
         await self._lazy_start()
-        js = (
-            "(idx) => {"
-            "  const selectors = ["
-            "    'a[href]', 'button', 'input:not([type=hidden])', 'select', 'textarea',"
-            "    '[role=button]', '[role=link]', '[role=tab]', '[role=menuitem]',"
-            "    '[onclick]', '[contenteditable=true]', 'summary', 'details'"
-            "  ];"
-            "  const seen = new Set();"
-            "  const elements = [];"
-            "  for (const sel of selectors) {"
-            "    document.querySelectorAll(sel).forEach(el => {"
-            "      const r = el.getBoundingClientRect();"
-            "      if (r.width === 0 || r.height === 0) return;"
-            "      if (seen.has(el)) return;"
-            "      seen.add(el);"
-            "      elements.push(el);"
-            "    });"
-            "  }"
-            "  const el = elements[idx - 1];"
-            "  if (!el) return null;"
-            "  el.scrollIntoView({behavior:'smooth',block:'center'});"
-            "  el.focus();"
-            "  el.click();"
-            "  return {clicked: el.tagName, text: (el.textContent||'').trim().slice(0,50)};"
-            "}"
-        )
-        result = await self._page.evaluate(f"({js})({index})")
+        result = await self._page.evaluate(self._CLICK_INDEX_JS, int(index))
         if result is None:
             return {"error": f"未找到元素 #{index}，请先执行 list_elements 获取最新索引", "clicked": None}
         return {"clicked": result["clicked"], "text": result.get("text", ""), "index": index}
 
     async def type_index(self, index: int, text: str) -> Dict[str, Any]:
-        """Type text into element by index (from list_elements). Uses identical element ordering."""
+        """Type by list_elements index (same __aiplatCollectDom order)."""
         await self._lazy_start()
-        js = (
-            "(idx, txt) => {"
-            "  const selectors = ["
-            "    'a[href]', 'button', 'input:not([type=hidden])', 'select', 'textarea',"
-            "    '[role=button]', '[role=link]', '[role=tab]', '[role=menuitem]',"
-            "    '[onclick]', '[contenteditable=true]', 'summary', 'details'"
-            "  ];"
-            "  const seen = new Set();"
-            "  const elements = [];"
-            "  for (const sel of selectors) {"
-            "    document.querySelectorAll(sel).forEach(el => {"
-            "      const r = el.getBoundingClientRect();"
-            "      if (r.width === 0 || r.height === 0) return;"
-            "      if (seen.has(el)) return;"
-            "      seen.add(el);"
-            "      elements.push(el);"
-            "    });"
-            "  }"
-            "  const el = elements[idx - 1];"
-            "  if (!el) return null;"
-            "  el.scrollIntoView({behavior:'smooth',block:'center'});"
-            "  el.focus();"
-            "  const vSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;"
-            "  vSetter.call(el, '');"
-            "  el.dispatchEvent(new Event('input', {bubbles: true}));"
-            "  vSetter.call(el, txt);"
-            "  el.dispatchEvent(new Event('input', {bubbles: true}));"
-            "  el.dispatchEvent(new Event('change', {bubbles: true}));"
-            "  return {typed: el.tagName, name: el.name||el.id||''};"
-            "}"
-        )
-        result = await self._page.evaluate(f"({js})({index}, {repr(text)})")
+        result = await self._page.evaluate(self._TYPE_INDEX_JS, [int(index), str(text)])
         if result is None:
             return {"error": f"未找到输入元素 #{index}，请先执行 list_elements 获取最新索引", "typed": None}
         return {"typed": result["typed"], "name": result.get("name", ""), "index": index, "text": text}
@@ -373,101 +377,89 @@ class _BrowserSession:
         placeholder = str(target.get("placeholder") or "").strip().lower()
         index_fb = int(target.get("index", 0) or 0)
 
-        js = """(target) => {
-            const selectors = [
-                'a[href]', 'button', 'input:not([type=hidden])', 'select', 'textarea',
-                '[role=button]', '[role=link]', '[role=tab]', '[role=menuitem]',
-                '[onclick]', '[contenteditable=true]', 'summary', 'details'
-            ];
-            const seen = new Set();
-            const elements = [];
-            for (const sel of selectors) {
-                document.querySelectorAll(sel).forEach(el => {
-                    const r = el.getBoundingClientRect();
-                    if (r.width === 0 || r.height === 0) return;
-                    if (seen.has(el)) return;
-                    seen.add(el);
-                    elements.push(el);
-                });
-            }
-            const f = {
-                tag: (e) => e.tagName.toLowerCase(),
-                tp: (e) => (e.type || '').toLowerCase(),
-                nm: (e) => (e.name || '').toLowerCase(),
-                id: (e) => (e.id || '').toLowerCase(),
-                ph: (e) => (e.placeholder || '').toLowerCase(),
-                tx: (e) => (e.textContent || e.value || '').toLowerCase().trim().slice(0, 100),
-                ar: (e) => (e.getAttribute('aria-label') || '').toLowerCase(),
-            };
-            const roleOf = (e) => {
-                const t = f.tag(e), tp = f.tp(e), nm = f.nm(e), id = f.id(e);
-                const ph = f.ph(e), tx = f.tx(e), ar = f.ar(e);
-                if (t === 'a') return 'link';
-                if (t === 'input' && (tp === 'submit' || tp === 'button')) return 'submit_button';
-                if (t === 'input' || t === 'textarea' || e.contentEditable === 'true') {
-                    const all = (ph + ' ' + nm + ' ' + id + ' ' + ar + ' ' + tx).toLowerCase();
-                    if (/^(q|wd|query|keyword|search|w|k|qs)$/.test(nm)) return 'search_input';
-                    if (all.includes('搜索') || all.includes('请输入') || all.includes('search') || all.includes('keyword') || all.includes('検索')) {
-                        if (!all.includes('submit') && !all.includes('button') && nm !== 'su') return 'search_input';
-                        return 'text_input';
-                    }
-                    return 'text_input';
-                }
-                if (t === 'button' || t === 'select' || e.hasAttribute('role'))
-                    return e.hasAttribute('role') ? e.getAttribute('role') : t;
-                return t;
-            };
-            const matches = (el) => {
-                const r = roleOf(el), tx = f.tx(el), nm = f.nm(el);
-                const id = f.id(el), ph = f.ph(el), ar = f.ar(el);
-                if (target.id && id !== target.id) return false;
-                if (target.name && nm !== target.name) return false;
-                if (target.role && r !== target.role) return false;
-                if (target.placeholder && !ph.includes(target.placeholder)) return false;
-                if (target.text_contains) {
-                    const ft = (tx + ' ' + ph + ' ' + ar + ' ' + nm).toLowerCase();
-                    if (!ft.includes(target.text_contains)) return false;
-                }
-                return true;
-            };
-            let best = null;
-            for (let i = 0; i < elements.length; i++) {
-                if (matches(elements[i])) { best = elements[i]; break; }
-            }
-            if (!best && target.role === 'search_input') {
-                const cs = [];
-                for (const s of ['input[type=text]', 'input[type=search]', 'textarea', '[contenteditable=true]'])
-                    document.querySelectorAll(s).forEach(el => { if (cs.length < 50) cs.push(el); });
-                for (const el of cs) {
-                    const n = f.nm(el), i = f.id(el), p = f.ph(el);
-                    const a = (n + ' ' + i + ' ' + p).toLowerCase();
-                    if (/^(q|wd|query|search|keyword|w|k|qs)$/.test(n)) { best = el; break; }
-                    if (a.includes('搜索') || a.includes('search')) { best = el; break; }
-                }
-            }
-            if (!best && target.role === 'submit_button') {
-                for (const did of ['su', 'search-btn', 'tsf', 'btnK']) {
-                    const el = document.getElementById(did);
-                    if (el) { best = el; break; }
-                }
-                if (!best) {
-                    const cs = document.querySelectorAll('input[type=submit], button[type=submit]');
-                    for (const el of cs) {
-                        const t = f.tx(el), n = f.nm(el), i = f.id(el);
-                        const a = (t + ' ' + n + ' ' + i).toLowerCase();
-                        if (a.includes('搜索') || a.includes('百度一下') || a.includes('search') || a.includes('submit'))
-                        { best = el; break; }
-                    }
-                }
-            }
-            if (!best && target.index_fb > 0 && target.index_fb <= elements.length)
-                best = elements[target.index_fb - 1];
-            if (!best) return {found: false, total: elements.length};
-            best.scrollIntoView({behavior:'smooth',block:'center'});
-            best.focus();
-            best.click();
-            return {found: true, clicked: best.tagName, text: (best.textContent||'').trim().slice(0,50)};
-        }"""
+        js = (
+            "(target) => {"
+            + self._COLLECT_DOM_FN
+            + "  const elements = __aiplatCollectDom(0);"
+            "  const f = {"
+            "    tag: (e) => e.tagName.toLowerCase(),"
+            "    tp: (e) => (e.type || '').toLowerCase(),"
+            "    nm: (e) => (e.name || '').toLowerCase(),"
+            "    id: (e) => (e.id || '').toLowerCase(),"
+            "    ph: (e) => (e.placeholder || '').toLowerCase(),"
+            "    tx: (e) => (e.textContent || e.value || '').toLowerCase().trim().slice(0, 100),"
+            "    ar: (e) => (e.getAttribute('aria-label') || '').toLowerCase(),"
+            "  };"
+            "  const roleOf = (e) => {"
+            "    const t = f.tag(e), tp = f.tp(e), nm = f.nm(e), id = f.id(e);"
+            "    const ph = f.ph(e), tx = f.tx(e), ar = f.ar(e);"
+            "    if (t === 'a') return 'link';"
+            "    if (t === 'input' && (tp === 'submit' || tp === 'button')) return 'submit_button';"
+            "    if (t === 'input' || t === 'textarea' || e.contentEditable === 'true') {"
+            "      const all = (ph + ' ' + nm + ' ' + id + ' ' + ar + ' ' + tx).toLowerCase();"
+            "      if (/^(q|wd|query|keyword|search|w|k|qs)$/.test(nm)) return 'search_input';"
+            "      if (all.includes('搜索') || all.includes('请输入') || all.includes('search') || all.includes('keyword') || all.includes('検索')) {"
+            "        if (!all.includes('submit') && !all.includes('button') && nm !== 'su') return 'search_input';"
+            "        return 'text_input';"
+            "      }"
+            "      return 'text_input';"
+            "    }"
+            "    if (t === 'button' || t === 'select' || e.hasAttribute('role'))"
+            "      return e.hasAttribute('role') ? e.getAttribute('role') : t;"
+            "    return t;"
+            "  };"
+            "  const matches = (el) => {"
+            "    const r = roleOf(el), tx = f.tx(el), nm = f.nm(el);"
+            "    const id = f.id(el), ph = f.ph(el), ar = f.ar(el);"
+            "    if (target.id && id !== target.id) return false;"
+            "    if (target.name && nm !== target.name) return false;"
+            "    if (target.role && r !== target.role) return false;"
+            "    if (target.placeholder && !ph.includes(target.placeholder)) return false;"
+            "    if (target.text_contains) {"
+            "      const ft = (tx + ' ' + ph + ' ' + ar + ' ' + nm).toLowerCase();"
+            "      if (!ft.includes(target.text_contains)) return false;"
+            "    }"
+            "    return true;"
+            "  };"
+            "  let best = null;"
+            "  for (let i = 0; i < elements.length; i++) {"
+            "    if (matches(elements[i])) { best = elements[i]; break; }"
+            "  }"
+            "  if (!best && target.role === 'search_input') {"
+            "    const cs = [];"
+            "    for (const s of ['input[type=text]', 'input[type=search]', 'textarea', '[contenteditable=true]'])"
+            "      document.querySelectorAll(s).forEach(el => { if (cs.length < 50) cs.push(el); });"
+            "    for (const el of cs) {"
+            "      const n = f.nm(el), i = f.id(el), p = f.ph(el);"
+            "      const a = (n + ' ' + i + ' ' + p).toLowerCase();"
+            "      if (/^(q|wd|query|search|keyword|w|k|qs)$/.test(n)) { best = el; break; }"
+            "      if (a.includes('搜索') || a.includes('search')) { best = el; break; }"
+            "    }"
+            "  }"
+            "  if (!best && target.role === 'submit_button') {"
+            "    for (const did of ['su', 'search-btn', 'tsf', 'btnK']) {"
+            "      const el = document.getElementById(did);"
+            "      if (el) { best = el; break; }"
+            "    }"
+            "    if (!best) {"
+            "      const cs = document.querySelectorAll('input[type=submit], button[type=submit]');"
+            "      for (const el of cs) {"
+            "        const t = f.tx(el), n = f.nm(el), i = f.id(el);"
+            "        const a = (t + ' ' + n + ' ' + i).toLowerCase();"
+            "        if (a.includes('搜索') || a.includes('百度一下') || a.includes('search') || a.includes('submit'))"
+            "        { best = el; break; }"
+            "      }"
+            "    }"
+            "  }"
+            "  if (!best && target.index_fb > 0 && target.index_fb <= elements.length)"
+            "    best = elements[target.index_fb - 1];"
+            "  if (!best) return {found: false, total: elements.length};"
+            "  best.scrollIntoView({behavior:'smooth',block:'center'});"
+            "  best.focus();"
+            "  best.click();"
+            "  return {found: true, clicked: best.tagName, text: (best.textContent||'').trim().slice(0,50)};"
+            "}"
+        )
         result = await self._page.evaluate(js, {
             "role": role, "text_contains": text_contains,
             "name": name_match, "id": id_match, "placeholder": placeholder,
@@ -487,91 +479,79 @@ class _BrowserSession:
         placeholder = str(target.get("placeholder") or "").strip().lower()
         index_fb = int(target.get("index", 0) or 0)
 
-        js = """(target) => {
-            const selectors = [
-                'a[href]', 'button', 'input:not([type=hidden])', 'select', 'textarea',
-                '[role=button]', '[role=link]', '[role=tab]', '[role=menuitem]',
-                '[onclick]', '[contenteditable=true]', 'summary', 'details'
-            ];
-            const seen = new Set();
-            const elements = [];
-            for (const sel of selectors) {
-                document.querySelectorAll(sel).forEach(el => {
-                    const r = el.getBoundingClientRect();
-                    if (r.width === 0 || r.height === 0) return;
-                    if (seen.has(el)) return;
-                    seen.add(el);
-                    elements.push(el);
-                });
-            }
-            const f = {
-                tag: (e) => e.tagName.toLowerCase(),
-                tp: (e) => (e.type || '').toLowerCase(),
-                nm: (e) => (e.name || '').toLowerCase(),
-                id: (e) => (e.id || '').toLowerCase(),
-                ph: (e) => (e.placeholder || '').toLowerCase(),
-                tx: (e) => (e.textContent || e.value || '').toLowerCase().trim().slice(0, 100),
-                ar: (e) => (e.getAttribute('aria-label') || '').toLowerCase(),
-            };
-            const roleOf = (e) => {
-                const t = f.tag(e), tp = f.tp(e), nm = f.nm(e), id = f.id(e);
-                const ph = f.ph(e), tx = f.tx(e), ar = f.ar(e);
-                if (t === 'a') return 'link';
-                if (t === 'input' && (tp === 'submit' || tp === 'button')) return 'submit_button';
-                if (t === 'input' || t === 'textarea' || e.contentEditable === 'true') {
-                    const all = (ph + ' ' + nm + ' ' + id + ' ' + ar + ' ' + tx).toLowerCase();
-                    if (/^(q|wd|query|keyword|search|w|k|qs)$/.test(nm)) return 'search_input';
-                    if (all.includes('搜索') || all.includes('请输入') || all.includes('search') || all.includes('keyword') || all.includes('検索')) {
-                        if (!all.includes('submit') && !all.includes('button') && nm !== 'su') return 'search_input';
-                        return 'text_input';
-                    }
-                    return 'text_input';
-                }
-                if (t === 'button' || t === 'select' || e.hasAttribute('role'))
-                    return e.hasAttribute('role') ? e.getAttribute('role') : t;
-                return t;
-            };
-            const matches = (el) => {
-                const r = roleOf(el), tx = f.tx(el), nm = f.nm(el);
-                const id = f.id(el), ph = f.ph(el), ar = f.ar(el);
-                if (target.id && id !== target.id) return false;
-                if (target.name && nm !== target.name) return false;
-                if (target.role && r !== target.role) return false;
-                if (target.placeholder && !ph.includes(target.placeholder)) return false;
-                if (target.text_contains) {
-                    const ft = (tx + ' ' + ph + ' ' + ar + ' ' + nm).toLowerCase();
-                    if (!ft.includes(target.text_contains)) return false;
-                }
-                return true;
-            };
-            let best = null;
-            for (let i = 0; i < elements.length; i++) {
-                if (matches(elements[i])) { best = elements[i]; break; }
-            }
-            if (!best && target.role === 'search_input') {
-                const cs = [];
-                for (const s of ['input[type=text]', 'input[type=search]', 'textarea', '[contenteditable=true]'])
-                    document.querySelectorAll(s).forEach(el => { if (cs.length < 50) cs.push(el); });
-                for (const el of cs) {
-                    const n = f.nm(el), i = f.id(el), p = f.ph(el);
-                    const a = (n + ' ' + i + ' ' + p).toLowerCase();
-                    if (/^(q|wd|query|search|keyword|w|k|qs)$/.test(n)) { best = el; break; }
-                    if (a.includes('搜索') || a.includes('search')) { best = el; break; }
-                }
-            }
-            if (!best && target.index_fb > 0 && target.index_fb <= elements.length)
-                best = elements[target.index_fb - 1];
-            if (!best) return {found: false, total: elements.length};
-            best.scrollIntoView({behavior:'smooth',block:'center'});
-            best.focus();
-            const vSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-            vSetter.call(best, '');
-            best.dispatchEvent(new Event('input', {bubbles: true}));
-            vSetter.call(best, target._text || '');
-            best.dispatchEvent(new Event('input', {bubbles: true}));
-            best.dispatchEvent(new Event('change', {bubbles: true}));
-            return {found: true, typed: best.tagName, name: best.name||best.id||''};
-        }"""
+        js = (
+            "(target) => {"
+            + self._COLLECT_DOM_FN
+            + "  const elements = __aiplatCollectDom(0);"
+            "  const f = {"
+            "    tag: (e) => e.tagName.toLowerCase(),"
+            "    tp: (e) => (e.type || '').toLowerCase(),"
+            "    nm: (e) => (e.name || '').toLowerCase(),"
+            "    id: (e) => (e.id || '').toLowerCase(),"
+            "    ph: (e) => (e.placeholder || '').toLowerCase(),"
+            "    tx: (e) => (e.textContent || e.value || '').toLowerCase().trim().slice(0, 100),"
+            "    ar: (e) => (e.getAttribute('aria-label') || '').toLowerCase(),"
+            "  };"
+            "  const roleOf = (e) => {"
+            "    const t = f.tag(e), tp = f.tp(e), nm = f.nm(e), id = f.id(e);"
+            "    const ph = f.ph(e), tx = f.tx(e), ar = f.ar(e);"
+            "    if (t === 'a') return 'link';"
+            "    if (t === 'input' && (tp === 'submit' || tp === 'button')) return 'submit_button';"
+            "    if (t === 'input' || t === 'textarea' || e.contentEditable === 'true') {"
+            "      const all = (ph + ' ' + nm + ' ' + id + ' ' + ar + ' ' + tx).toLowerCase();"
+            "      if (/^(q|wd|query|keyword|search|w|k|qs)$/.test(nm)) return 'search_input';"
+            "      if (all.includes('搜索') || all.includes('请输入') || all.includes('search') || all.includes('keyword') || all.includes('検索')) {"
+            "        if (!all.includes('submit') && !all.includes('button') && nm !== 'su') return 'search_input';"
+            "        return 'text_input';"
+            "      }"
+            "      return 'text_input';"
+            "    }"
+            "    if (t === 'button' || t === 'select' || e.hasAttribute('role'))"
+            "      return e.hasAttribute('role') ? e.getAttribute('role') : t;"
+            "    return t;"
+            "  };"
+            "  const matches = (el) => {"
+            "    const r = roleOf(el), tx = f.tx(el), nm = f.nm(el);"
+            "    const id = f.id(el), ph = f.ph(el), ar = f.ar(el);"
+            "    if (target.id && id !== target.id) return false;"
+            "    if (target.name && nm !== target.name) return false;"
+            "    if (target.role && r !== target.role) return false;"
+            "    if (target.placeholder && !ph.includes(target.placeholder)) return false;"
+            "    if (target.text_contains) {"
+            "      const ft = (tx + ' ' + ph + ' ' + ar + ' ' + nm).toLowerCase();"
+            "      if (!ft.includes(target.text_contains)) return false;"
+            "    }"
+            "    return true;"
+            "  };"
+            "  let best = null;"
+            "  for (let i = 0; i < elements.length; i++) {"
+            "    if (matches(elements[i])) { best = elements[i]; break; }"
+            "  }"
+            "  if (!best && target.role === 'search_input') {"
+            "    const cs = [];"
+            "    for (const s of ['input[type=text]', 'input[type=search]', 'textarea', '[contenteditable=true]'])"
+            "      document.querySelectorAll(s).forEach(el => { if (cs.length < 50) cs.push(el); });"
+            "    for (const el of cs) {"
+            "      const n = f.nm(el), i = f.id(el), p = f.ph(el);"
+            "      const a = (n + ' ' + i + ' ' + p).toLowerCase();"
+            "      if (/^(q|wd|query|search|keyword|w|k|qs)$/.test(n)) { best = el; break; }"
+            "      if (a.includes('搜索') || a.includes('search')) { best = el; break; }"
+            "    }"
+            "  }"
+            "  if (!best && target.index_fb > 0 && target.index_fb <= elements.length)"
+            "    best = elements[target.index_fb - 1];"
+            "  if (!best) return {found: false, total: elements.length};"
+            "  best.scrollIntoView({behavior:'smooth',block:'center'});"
+            "  best.focus();"
+            "  const vSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;"
+            "  vSetter.call(best, '');"
+            "  best.dispatchEvent(new Event('input', {bubbles: true}));"
+            "  vSetter.call(best, target._text || '');"
+            "  best.dispatchEvent(new Event('input', {bubbles: true}));"
+            "  best.dispatchEvent(new Event('change', {bubbles: true}));"
+            "  return {found: true, typed: best.tagName, name: best.name||best.id||''};"
+            "}"
+        )
         result = await self._page.evaluate(js, {
             "role": role, "text_contains": text_contains,
             "name": name_match, "id": id_match, "placeholder": placeholder,
@@ -807,7 +787,20 @@ class BrowserTool(BaseTool):
                 max_items = int(params.get("max_items", 50))
                 result = await session.list_elements(max_items)
                 els = result.get("elements", [])
-                lines = [f"[{e['index']}] {e['tag']}" + (f" type={e['type']}" if e.get('type') else "") + (f" {e['visible_text']}" if e.get('visible_text') else "") for e in els[:30]]
+                lines = []
+                for e in els[:max_items]:
+                    bits = [
+                        f"[{e.get('index')}] {e.get('tag')} role={e.get('role') or '-'}"
+                    ]
+                    if e.get("visible_text"):
+                        bits.append(f"text={e.get('visible_text')}")
+                    if e.get("aria_label"):
+                        bits.append(f"aria={e.get('aria_label')}")
+                    if e.get("testid"):
+                        bits.append(f"testid={e.get('testid')}")
+                    if e.get("name"):
+                        bits.append(f"name={e.get('name')}")
+                    lines.append(" ".join(bits))
                 summary = "\n".join(lines)
                 return ToolResult(
                     success=True,

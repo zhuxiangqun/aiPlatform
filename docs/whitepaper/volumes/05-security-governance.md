@@ -3,19 +3,19 @@ title: "aiPlat 安全与治理白皮书"
 volume_id: security-governance
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-16T05:29:45Z"
+generated_at: "2026-10-18T06:13:20Z"
 audience: "CISO、合规、风控"
 core_question: "如何可信可控？"
 priority: P0
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30"
-caps_sha256: "0fe3644e0b8571725b3c35e9044256ad24e67e0a208159319e6cba04797080a6"
+caps_sha256: "5fb645961b1aa0d67132428f85626b03142a7b3a677e511461e55d2244050b3d"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=security-governance suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=0fe3644e0b8571725b3c35e9044256ad24e67e0a208159319e6cba04797080a6 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=security-governance suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=5fb645961b1aa0d67132428f85626b03142a7b3a677e511461e55d2244050b3d scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 安全与治理白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 如何可信可控？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-16T05:29:45Z` |
-| CAPABILITIES sha256 | `0fe3644e0b85…` |
+| 生成时间 (UTC) | `2026-10-18T06:13:20Z` |
+| CAPABILITIES sha256 | `5fb645961b1a…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -184,6 +184,8 @@ rules:
 ## 七、安全与治理
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| e2e_recon_wiring | `core/harness/observability/architecture_health.py` | ✅ | 自动同步 | 已合入 |
+| execution_seal_wiring | `core/harness/observability/architecture_health.py` | ✅ | 自动同步 | 已合入 |
 | resolve_task_context | `core/harness/infrastructure/gates/approval_reviewer.py` | ✅ | 自动同步 | 已合入 |
 | provenance_forces_hard_floor | `core/harness/infrastructure/gates/session_write_provenance.py` | ✅ | 自动同步 | 已合入 |
 | record_session_write | `core/harness/infrastructure/gates/session_write_provenance.py` | ✅ | 自动同步 | 已合入 |
@@ -268,8 +270,7 @@ rules:
 | EmotionTracker | harness/security/emotion_tracker.py | ✅ | 跨会话情绪弧追踪 + 过度依赖检测 | 已合入 |
 | ApprovalGate (危险命令) | harness/infrastructure/gates/approval_gate.py | ✅ | 25规则危险操作检测，CRITICAL/HIGH/MEDIUM/LOW 四级，集成 PolicyGate；**Hard floors**：CRITICAL 不可被 auto_approve / session 批准 / `AIPLAT_APPROVALS_DISABLED` 降低（仅 `AIPLAT_HARD_FLOOR_DISABLED` 逃生）；审计写 `approval_provenance` | 已合入 |
 | Tool RiskClass | harness/infrastructure/gates/risk_class.py | ✅ | OpenWorker 启发：`READ/EGRESS/WRITE_LOCAL/EXEC/EXTERNAL`；覆盖只可加严；`PolicyGate.check_tool` + `sys_tool_call` 审计透传；生成物不适用（平台横切治理） | 已合入 |
-| Shell command risk | harness/infrastructure/gates/shell_command_risk.py | ✅ | OpenWorker P1：opaque/`$()`/管道、arg-executor（sudo/xargs/docker…）、解释器 `-c`、find `-exec` 等强制 hard floor；接入 ApprovalGate；生成物不适用（平台横切治理） | 已合入 |
-| Unattended Approval Inbox | harness/infrastructure/gates/approval_inbox.py | ✅ | OpenWork
+| Shell command risk | harness/infrastructure/gates/shell_command_risk.py | ✅ | OpenWorker P1：opaque/`$()`/管道、arg-executo
 
 …
 
@@ -278,6 +279,8 @@ _(节选)_
 ## 十二、Gate 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| coding_closed_loop_runtime_gaps | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
+| sync_coding_closed_loop_team_seeds | `core/harness/team_factory_seeds.py` | ✅ | 自动同步 | 已合入 |
 | parse_app_page_payload | `core/harness/execution/app_page_skill_inject.py` | ✅ | 自动同步 | 已合入 |
 | skill_routing_context_block | `core/harness/execution/app_page_skill_inject.py` | ✅ | 自动同步 | 已合入 |
 | extract_ui_bindings | `core/harness/execution/app_page_skill_inject.py` | ✅ | 自动同步 | 已合入 |
@@ -382,9 +385,7 @@ _(节选)_
 | seed_confirmed_prd_into_state | `core/harness/execution/prd_quality_gate.py` | ✅ | 自动同步 | 已合入 |
 | factory_finalize_prd | `core/harness/execution/prd_quality_gate.py` | ✅ | 自动同步 | 已合入 |
 | materialize_prd_gate_seeds | `core/harness/execution/prd_gate_loader.py` | ✅ | 自动同步 | 已合入 |
-| load_prd_gate_packs | `core/harness/execution/prd_gate_loader.py` | ✅ | 自动同步 | 已合入 |
-| render_prd_markdown | `core/harness/execution/prd_quality_gate.py` | ✅ | 自动同步 | 已合入 |
-| matched_packs_for_text | `core/harness/execution/prd_
+| load_prd_gate_packs | `core/harness/execu
 
 …
 

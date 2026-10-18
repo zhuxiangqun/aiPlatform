@@ -74,3 +74,49 @@ async def capture_ide_session(
         write_wiki=bool(body.get("write_wiki", False)),
     )
     return {"status": "ok" if out.get("ok") else "error", "message": "ide_capture", **out}
+
+
+@router.get("/memory/archive", response_model=StatusResponse)
+async def session_archive(
+    q: str = "",
+    limit: int = 3,
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """On-demand search of turns archived before compaction. Not the sticky fact list."""
+    from core.api.core_facade import query_session_archive as _query
+
+    out = _query(q, limit=limit)
+    return {"status": "ok", "message": "session_archive", **out}
+
+
+@router.get("/memory/sticky", response_model=StatusResponse)
+async def sticky_memory(
+    max_chars: Optional[int] = None,
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """User profile + pinned MEMORY.md for Pi / hybrid session start. Shared budget."""
+    from core.api.core_facade import sticky_memory_slice as _slice
+
+    out = _slice(max_chars=max_chars)
+    return {"status": "ok", "message": "sticky_memory", **out}
+
+
+@router.post("/memory/sticky", response_model=StatusResponse)
+async def upsert_sticky_memory(
+    body: Dict[str, Any],
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """Add or replace a durable pinned fact. Same-key merge when budget is full."""
+    from core.api.core_facade import upsert_pinned_memory as _upsert
+
+    out = _upsert(
+        str(body.get("content") or ""),
+        key=str(body.get("key") or "preference"),
+        source=str(body.get("source") or "agent"),
+        old_text=str(body.get("old_text") or ""),
+    )
+    return {
+        "status": "ok" if out.get("ok") else "error",
+        "message": "sticky_upsert",
+        **out,
+    }

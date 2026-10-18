@@ -23,6 +23,20 @@ function memoryCaptureUrl(baseUrl) {
   return `${b}/platform/memory/capture`;
 }
 
+function memoryArchiveUrl(baseUrl) {
+  const sticky = memoryStickyUrl(baseUrl);
+  if (!sticky) return "";
+  if (sticky.endsWith("/sticky")) return `${sticky.slice(0, -"/sticky".length)}/archive`;
+  return `${sticky}/archive`;
+}
+
+function memoryStickyUrl(baseUrl) {
+  const capture = memoryCaptureUrl(baseUrl);
+  if (!capture) return "";
+  if (capture.endsWith("/capture")) return `${capture.slice(0, -"/capture".length)}/sticky`;
+  return `${capture}/sticky`;
+}
+
 function loadMemoryBridgeConfig() {
   const baseUrl = (process.env.AIPLAT_PLATFORM_URL || "").trim().replace(/\/+$/, "");
   const token = (
@@ -124,7 +138,15 @@ function main() {
     memoryCaptureUrl(c.baseUrl) === "http://127.0.0.1:8003/api/platform/memory/capture",
     "capture URL",
   );
-  console.log("PASS: MEMORY=1 enables + capture URL");
+  assert(
+    memoryStickyUrl(c.baseUrl) === "http://127.0.0.1:8003/api/platform/memory/sticky",
+    "sticky URL",
+  );
+  assert(
+    memoryArchiveUrl(c.baseUrl) === "http://127.0.0.1:8003/api/platform/memory/archive",
+    "archive URL",
+  );
+  console.log("PASS: MEMORY=1 enables + capture/sticky URL");
 
   process.env.AIPLAT_ENTERPRISE_MEMORY_AUTO = "0";
   c = loadMemoryBridgeConfig();

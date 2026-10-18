@@ -75,6 +75,7 @@ def build_execution_decision(
     skill_name: str = "",
     handler_present: Optional[bool] = None,
     fail_closed_reason: str = "",
+    control: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Path card for stage events / decision_traces (matrix E3/E3.1 / v1.9).
 
@@ -124,6 +125,7 @@ def build_execution_decision(
         "skill_name": str(skill_name or "").strip(),
         "handler_present": bool(handler_present) if handler_present is not None else False,
         "fail_closed_reason": str(fail_closed_reason or "").strip(),
+        "control": dict(control) if isinstance(control, dict) else {},
     }
 
 
