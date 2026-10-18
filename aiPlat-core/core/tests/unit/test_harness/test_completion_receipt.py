@@ -1,6 +1,7 @@
 from core.harness.execution.completion_receipt import (
     bind_completion_to_receipts,
     infer_receipt_status,
+    is_terminal_done_marker,
     record_tool_receipt,
 )
 
@@ -58,3 +59,18 @@ def test_infer_receipt_status_head_only():
     assert infer_receipt_status("AIPLAT_TOOL_EXECUTE_APPROVAL_REQUIRED tool=x") == "failed"
     assert infer_receipt_status("AIPLAT_APPROVAL_WAIT_DENIED\nstatus=rejected") == "failed"
     assert infer_receipt_status("approval_required: need human") == "failed"
+
+
+def test_terminal_done_marker_is_leading_only():
+    assert is_terminal_done_marker("DONE")
+    assert is_terminal_done_marker("DONE: hi")
+    assert is_terminal_done_marker("DONE hello")
+    assert is_terminal_done_marker("FINAL:")
+    assert is_terminal_done_marker("FINISHED")
+    assert is_terminal_done_marker("  finished work")
+    assert not is_terminal_done_marker("NOT DONE")
+    assert not is_terminal_done_marker("UNDONE")
+    assert not is_terminal_done_marker("DONETHING")
+    assert not is_terminal_done_marker("Pattern not found")
+    assert not is_terminal_done_marker("say DONE later")
+    assert not is_terminal_done_marker("")
