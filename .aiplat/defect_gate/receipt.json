@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-19T00:52:00+08:00",
+  "reviewed_at": "2026-10-19T01:24:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "ea7f3e120d684435dd9abf58a195b2a54697156d",
-  "diff_sha256": "5eb1d59bed3ad2c8963717e643c32fa059404bc7d785c6caff5e870eca79f022",
-  "head_sha": "73843f89a0a9455584a4b729253bcd1fb9f25c18",
+  "merge_base": "7e08d76db1b9c53971dd6d894f5470c07cc00dab",
+  "diff_sha256": "851211c6a4c5687b6dc8cb5a03bf7a1f2de88e209b8df22f2900140a4a1aed90",
+  "head_sha": "f86b8f8c493713ee9c82b9043df63d8a0f35957c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Compiled ReAct/facade tool failures share receipt seal. Local lock only."
+  "note": "Leading DONE/FINAL/FINISHED only. Local lock only."
 }

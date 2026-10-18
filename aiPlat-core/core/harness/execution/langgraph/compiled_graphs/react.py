@@ -99,7 +99,9 @@ def create_compiled_react_graph(
             logging.getLogger(__name__).debug("remember_repair_candidates skipped", exc_info=True)
         step_count = int(state.get("step_count", 0) or 0) + 1
         state["step_count"] = step_count
-        if "DONE" in reasoning.upper():
+        from core.harness.execution.completion_receipt import is_terminal_done_marker
+
+        if is_terminal_done_marker(reasoning):
             state["observation"] = "DONE"
             return NodeResult(success=True, output={"reasoning": reasoning}, next_node=None)
         return NodeResult(success=True, output={"reasoning": reasoning}, next_node="act")
@@ -278,7 +280,9 @@ def create_compiled_react_graph(
         obs = str(state.get("observation", "") or "")
         step_count = int(state.get("step_count", 0) or 0)
         max_steps_local = int(state.get("max_steps", max_steps) or max_steps)
-        if "DONE" in obs.upper() or step_count >= max_steps_local:
+        from core.harness.execution.completion_receipt import is_terminal_done_marker
+
+        if is_terminal_done_marker(obs) or step_count >= max_steps_local:
             return NodeResult(success=True, output={}, next_node=None)
         return NodeResult(success=True, output={}, next_node="reason")
 

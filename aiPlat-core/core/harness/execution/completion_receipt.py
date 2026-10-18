@@ -32,6 +32,20 @@ from core.harness.utils.locale_markers import (  # noqa: E402
 )
 
 
+_TERMINAL_DONE_RE = re.compile(
+    r"^(?:DONE|FINAL|FINISHED)(?:\s*[:：]|\s|$)",
+    re.IGNORECASE,
+)
+
+
+def is_terminal_done_marker(text: Any) -> bool:
+    """True when DONE/FINAL/FINISHED starts the text, not a mid-string mention."""
+    raw = str(text or "").strip()
+    if not raw:
+        return False
+    return _TERMINAL_DONE_RE.match(raw) is not None
+
+
 def receipt_bind_enabled() -> bool:
     return os.getenv("AIPLAT_COMPLETION_RECEIPT", "true").strip().lower() not in (
         "0",

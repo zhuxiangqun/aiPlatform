@@ -2012,7 +2012,9 @@ class ReActLoop(BaseLoop):
 
 
 
-        if "DONE" in observation.upper() or "FINISHED" in observation.upper():
+        from core.harness.execution.completion_receipt import is_terminal_done_marker
+
+        if is_terminal_done_marker(observation):
 
             _obs_out = str(
                 state.context.get("output")

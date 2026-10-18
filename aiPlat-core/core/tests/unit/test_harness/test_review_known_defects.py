@@ -92,6 +92,18 @@ def test_infer_receipt_status_ignores_benign_not_found():
     assert infer_receipt_status("Error: boom") == "failed"
 
 
+def test_done_stop_uses_leading_marker_not_substring():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[3] / "harness" / "execution"
+    react = (root / "langgraph" / "compiled_graphs" / "react.py").read_text(encoding="utf-8")
+    facade = (root / "loop" / "_facade.py").read_text(encoding="utf-8")
+    assert '"DONE" in' not in react
+    assert '"DONE" in' not in facade
+    assert "is_terminal_done_marker" in react
+    assert "is_terminal_done_marker" in facade
+
+
 def test_compiled_react_tool_failure_is_not_success_receipt():
     import ast
     from pathlib import Path
