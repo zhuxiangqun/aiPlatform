@@ -18,7 +18,7 @@ import {
   formatApprovalRequiredHint,
 } from "./enterprise_approval";
 import { CircuitOpenError, platformFetch } from "./enterprise_http";
-import { httpJsonObject } from "./json_body.mjs";
+import { httpJsonObject, parseParamsObject } from "./json_body.mjs";
 import {
   loadEnterpriseConfig,
   type EnterpriseConfig,
@@ -390,38 +390,19 @@ export function registerEnterpriseTools(pi: ExtensionAPI): boolean {
     }),
     async execute(_toolCallId, params) {
       const name = String(params.tool_name || "");
-      let p: Record<string, unknown> = {};
-      const raw = String(params.params_json || "").trim();
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw);
-          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-            p = parsed as Record<string, unknown>;
-          } else {
-            return {
-              content: [
-                {
-                  type: "text" as const,
-                  text: "AIPLAT_TOOL_EXECUTE_FAILED: params_json must be a JSON object",
-                },
-              ],
-              isError: true,
-            };
-          }
-        } catch (e) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `AIPLAT_TOOL_EXECUTE_FAILED: params_json parse error: ${
-                  e && (e as Error).message ? (e as Error).message : e
-                }`,
-              },
-            ],
-            isError: true,
-          };
-        }
+      const parsedParams = parseParamsObject(params.params_json);
+      if (!parsedParams.ok || !parsedParams.value) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: "AIPLAT_TOOL_EXECUTE_FAILED: params_json must be a JSON object",
+            },
+          ],
+          isError: true,
+        };
       }
+      const p = parsedParams.value as Record<string, unknown>;
       const r = await executeEnterpriseTool(name, p, cfg);
       if (!r.ok) {
         return {
