@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-18T19:22:54+08:00",
+  "reviewed_at": "2026-10-18T20:10:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "6e69b3b30d2547243a9152994cc91c492f4ed106",
-  "diff_sha256": "61c41d71c99daaea917dda1160775594c2668b1d7feab117164cf955fd68902c",
-  "head_sha": "f8e5f2147a5785be0c95671fc3d07d57ed96aae0",
+  "merge_base": "cc679a62b7565119cd0b0fe3b7fd67eacc67717b",
+  "diff_sha256": "024fab9b717e875b1090a3410f4874f64f7986c001eabc614fe18adea8370184",
+  "head_sha": "a1e184f407fbd7392d086391feb0b178c375412a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "solo maintainer CI unlock; five checks pass on gate script+tests+docs only"
+  "note": "Pi archive JSON parse failure is not an empty hit list. Local lock only."
 }

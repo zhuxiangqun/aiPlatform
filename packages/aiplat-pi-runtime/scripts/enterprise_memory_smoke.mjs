@@ -3,6 +3,7 @@
  * Enterprise memory writeback smoke (no Pi / no platform required).
  * Mirrors packages/aiplat-pi-runtime/extensions/enterprise_memory.ts gating + URL + extract.
  */
+import { parseArchiveHits } from "../extensions/archive_hits.mjs";
 function envTruthy(name) {
   const v = (process.env[name] || "").trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes" || v === "on";
@@ -159,6 +160,12 @@ function main() {
   ]);
   assert(turn.prompt === "hello" && turn.result === "world", "extract turn");
   console.log("PASS: extractTurnSummary");
+
+  const bad = parseArchiveHits("<html>gateway</html>");
+  assert(!bad.ok && bad.error === "archive_parse", "invalid archive body is not an empty hit list");
+  const empty = parseArchiveHits('{"hits":[]}');
+  assert(empty.ok && empty.hits.length === 0, "json empty hits stay empty");
+  console.log("PASS: archive parse does not treat garbage as no-match");
 
   console.log("AIPLAT_ENTERPRISE_MEMORY_SMOKE_OK");
 }

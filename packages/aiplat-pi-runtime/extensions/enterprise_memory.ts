@@ -11,6 +11,7 @@
 import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
+import { parseArchiveHits } from "./archive_hits.mjs";
 import { bindCompletionToReceipts, receiptsFromMessages } from "./completion_receipt.mjs";
 import { CircuitOpenError, platformFetch } from "./enterprise_http";
 import {
@@ -182,13 +183,16 @@ export async function searchSessionArchive(
     if (!res.ok) {
       return { ok: false, status: res.status, text: bodyText.slice(0, 500), error: "archive_http" };
     }
-    let hits: Array<{ at?: string; role?: string; text?: string }> = [];
-    try {
-      const parsed = JSON.parse(bodyText) as { hits?: typeof hits };
-      hits = Array.isArray(parsed.hits) ? parsed.hits : [];
-    } catch {
-      hits = [];
+    const parsedHits = parseArchiveHits(bodyText);
+    if (!parsedHits.ok) {
+      return {
+        ok: false,
+        status: res.status,
+        text: bodyText.slice(0, 500),
+        error: parsedHits.error || "archive_parse",
+      };
     }
+    const hits = parsedHits.hits as Array<{ at?: string; role?: string; text?: string }>;
     if (!hits.length) return { ok: true, status: res.status, text: "No archived turns matched." };
     const lines = hits.map((h) => `- [${h.at || ""}] ${h.role || ""}: ${h.text || ""}`);
     return { ok: true, status: res.status, text: lines.join("\n") };
