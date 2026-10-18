@@ -321,6 +321,14 @@ def test_stage_runner_honors_loop_type_but_forces_react_for_review():
     assert runner.resolve_stage_loop_type(plain, {"_loop_type": "plan_execute"}) == (
         "plan_execute"
     )
+    # File-output alone must not override explicit plan_execute (B1 backend).
+    backend = PipelineStageConfig(
+        id="be",
+        agent_id="backend_developer",
+        uses_file_output=True,
+        architecture_profile="plan_execute",
+    )
+    assert runner.resolve_stage_loop_type(backend, {}) == "plan_execute"
     coding = PipelineStageConfig(
         id="fe",
         agent_id="frontend_engineer",

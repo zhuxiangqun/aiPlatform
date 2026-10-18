@@ -51,10 +51,11 @@ class StageRunner:
         return self._load_global_tools(self._tools)
 
     def resolve_stage_loop_type(self, stage: Any = None, state: Optional[Dict[str, Any]] = None) -> str:
-        """Honor pipeline/workspace ``loop_type``.
+        """Honor pipeline/workspace ``loop_type`` and ``architecture_profile``.
 
-        File-output and ``require_review`` stay on ReAct: PlanExecute can seal
-        but does not auto-dispatch autoreview.
+        ``done_verify.require_review`` stays on ReAct: PlanExecute can seal but
+        does not auto-dispatch autoreview. Plain ``uses_file_output`` no longer
+        overrides an explicit ``plan_execute`` profile (code_split backend B1).
         """
         s = stage if stage is not None else self._stage
         raw = "react"
@@ -72,10 +73,7 @@ class StageRunner:
         dv = getattr(s, "done_verify", None) if s is not None else None
         if not isinstance(dv, dict) and isinstance(state, dict):
             dv = state.get("_done_verify")
-        coding = bool(getattr(s, "uses_file_output", False)) if s is not None else False
         if isinstance(dv, dict) and dv.get("require_review"):
-            coding = True
-        if coding:
             return "react"
         return chosen
 

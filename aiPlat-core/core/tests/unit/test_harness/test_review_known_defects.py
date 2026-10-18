@@ -111,3 +111,73 @@ def test_compiled_react_deny_returns_failure():
     assert "record_tool_receipt" in src
     tree = ast.parse(src)
     assert tree is not None
+
+
+def test_summarize_tool_msg_keeps_command_output():
+    from core.harness.memory.compression import ContextCompression
+
+    out = ContextCompression._summarize_tool_msg(
+        {"name": "bash", "content": "pytest failed\nAssertionError: boom"},
+        0,
+    )
+    assert "pytest" in out
+    assert "[bash] executed" not in out
+
+
+def test_coding_veto_fail_closed_in_production(monkeypatch):
+    from core.harness.execution.execution_seal import coding_deliverable_veto
+
+    monkeypatch.setenv("AIPLAT_PROFILE", "production")
+    monkeypatch.delenv("AIPLAT_CODING_VETO_FAIL_OPEN", raising=False)
+    code = (
+        "## FILE: src/api/tasks.ts\n"
+        "export async function getTasks() {\n"
+        "  return apiClient.get('/api/tasks');\n"
+        "}\n" * 3
+    )
+    ctx = {
+        "_bound_skill_ids": ["code_generation", "autoreview"],
+        "_skill_delivery": "once",
+        "_primary_skill_delivered": "code_generation",
+        "_user_task": "根据 api_contracts 生成 TypeScript 前端代码",
+        "output": code,
+        "_followup_skills_done": [],
+        "_acceptance_veto_count": 3,
+    }
+    veto = coding_deliverable_veto(ctx)
+    assert veto and "autoreview" in veto
+    assert ctx.get("_coding_veto_exhausted") is True
+
+
+def test_type_index_js_supports_textarea_and_contenteditable():
+    from core.apps.tools.browser import _BrowserSession
+
+    js = _BrowserSession._TYPE_INDEX_JS
+    assert "TEXTAREA" in js
+    assert "isContentEditable" in js or "contentEditable" in js
+    assert "HTMLTextAreaElement" in js
+
+
+def test_reevaluate_defaults_record_novel_false():
+    import ast
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parents[5]
+        / "aiPlat-platform"
+        / "apps"
+        / "eval"
+        / "api"
+        / "code_review_gold.py"
+    )
+    if not path.is_file():
+        path = Path("aiPlat-platform/apps/eval/api/code_review_gold.py")
+    src = path.read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    fn = next(
+        n
+        for n in tree.body
+        if isinstance(n, ast.AsyncFunctionDef) and n.name == "reevaluate_gold"
+    )
+    text = ast.get_source_segment(src, fn) or ""
+    assert "record_novel = False" in text or "record_novel=False" in text.replace(" ", "")
