@@ -92,6 +92,39 @@ def test_infer_receipt_status_ignores_benign_not_found():
     assert infer_receipt_status("Error: boom") == "failed"
 
 
+def test_compiled_react_tool_failure_is_not_success_receipt():
+    import ast
+    from pathlib import Path
+
+    react_path = (
+        Path(__file__).resolve().parents[3]
+        / "harness"
+        / "execution"
+        / "langgraph"
+        / "compiled_graphs"
+        / "react.py"
+    )
+    src = react_path.read_text(encoding="utf-8")
+    assert 'seal = "failed" if tool_failed else infer_receipt_status(action_result)' in src
+    assert "attempted = bool(action_name) and bool(_tools)" in src
+    assert "success=node_ok" in src
+    ast.parse(src)
+
+
+def test_facade_act_status_uses_receipt_seal():
+    from pathlib import Path
+
+    facade = (
+        Path(__file__).resolve().parents[3]
+        / "harness"
+        / "execution"
+        / "loop"
+        / "_facade.py"
+    )
+    src = facade.read_text(encoding="utf-8")
+    assert 'act_status = "completed" if _seal == "ok" else "failed"' in src
+
+
 def test_compiled_react_deny_returns_failure():
     import ast
     from pathlib import Path
