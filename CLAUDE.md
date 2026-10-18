@@ -4,6 +4,27 @@ scope: workspace-root
 language: zh-CN
 ---
 
+<!-- inject:always -->
+# 核心约束（每次注入，保持短）
+
+- 子仓规约优先于本文件；与代码冲突时以代码为准，24 小时内同步规约。
+- core / infra 禁止硬编码业务角色、阶段名、artifact key；行为用配置，不用 `if agent_id ==`。
+- 选模只走 `best_model_for_purpose` → `unified_pipeline`。`/model` 优先。任务内锁定后只升不降。敏感或离线用 `local_only` / `AIPLAT_LOCAL_ONLY=1`，不另写一套路由。
+- 平台访问 core 走 CoreFacade。同一能力只有一个入口。
+- 写代码保持 full 注入；澄清和 prompt 型 Skill 才允许 `skip_claude_md`。
+- 新的公共函数要同时写入 `AIPLAT_CAPABILITIES.md` 和 `core/capability_registry.yaml`，并有非测试调用方。
+- 改动保持最小。规则要能在一次 review 里判断有没有遵守。
+- 宣称完成 / 开 PR / push 前：独立缺陷门禁（`.cursor/skills/defect-gate`）→ 零发现回执 → `python3 scripts/defect_gate_validate.py`。架构守卫绿 ≠ 门禁通过。
+- 历史债务、已修复清单、长架构叙述在本标记之后，不进常驻提示词。改 harness / 模型 / 工具时再读 `aiPlat-core/CLAUDE.md` 对应节。
+
+## 场景（按需读文件，不要整篇背进对话）
+
+- 测试与验收 → 子仓 CLAUDE.md 的 Goal-Driven 节
+- 架构边界 → `docs/` 与 `scripts/architecture_guard.sh`
+- 开 PR / 零发现门禁 → `.cursor/skills/defect-gate/SKILL.md`
+- 能力是否已实现 → `AIPLAT_CAPABILITIES.md`（先搜代码）
+<!-- inject:always-end -->
+
 # aiPlat 工作区级 AI 编程规约（Workspace Root）
 
 此文件是 **工作区兜底规约**，用于在系统执行链路中自动推断到 workspace root 时仍然能注入/强制基本规则。
@@ -257,6 +278,11 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
 
     ⑤ 架构守卫（harness / infra 核心层变更时）
        $ bash scripts/architecture_guard.sh
+
+    ⑥ 缺陷门禁（宣称完成 / 开 PR / push 前必跑——与①–⑤互补，不互相替代）
+       $ # 按 .cursor/skills/defect-gate/SKILL.md 做独立缺陷审查（五条核对）
+       $ # 写入 .aiplat/defect_gate/receipt.json（status=pass；diff_sha256 用 --print-template）
+       $ python3 scripts/defect_gate_validate.py
     ```
 
     **归属矩阵**（按变更文件自动选择必须的验证项）：
@@ -268,6 +294,7 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
     | 任何 `.tsx` / `.ts` | ① + ④ |
     | `harness/` / `infra/` 核心模块 | ① + ⑤ |
     | 跨模块改动 | ① + ② + ③ + ④ |
+    | 开 PR / push / 宣称完成 | ⑥（另加上述按文件矩阵） |
 
     **违规信号**：
     - 改动完成后没跑验证 → **立即中断，先跑验证再继续**

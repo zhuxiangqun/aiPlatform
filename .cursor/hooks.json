@@ -10,6 +10,12 @@
       {
         "command": ".cursor/hooks/ide-capture.sh --write-wiki"
       }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "bash .cursor/hooks/defect-gate-shell.sh",
+        "failClosed": true
+      }
     ]
   }
 }

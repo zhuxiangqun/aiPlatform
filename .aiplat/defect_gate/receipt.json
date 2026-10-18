@@ -1,0 +1,20 @@
+{
+  "schema": "aiplat.defect_gate.v1",
+  "status": "pass",
+  "findings_count": 0,
+  "reviewed_at": "2026-10-18T08:58:00+08:00",
+  "base_ref": "origin/main",
+  "merge_base": "4c213dc2dda4c47601ac241f132355c193b4d67d",
+  "diff_sha256": "d5839dd097d1ea379a03319ab2364409c9254bc699fcf53b388635167d83af2d",
+  "head_sha": "4c213dc2dda4c47601ac241f132355c193b4d67d",
+  "checks": {
+    "old_fallback": "pass",
+    "call_signatures": "pass",
+    "failure_as_success": "pass",
+    "second_implementation": "pass",
+    "self_certifying_health": "pass"
+  },
+  "findings": [],
+  "reviewer": "agent",
+  "note": "Gate-only commit, research freshness lines, and the pre-commit whitelist/hash fix those files need. diff_sha256 excludes this receipt. Local AIPLAT_DEFECT_GATE=0 does not apply in CI."
+}
