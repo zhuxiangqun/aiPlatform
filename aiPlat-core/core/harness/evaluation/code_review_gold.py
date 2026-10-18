@@ -87,7 +87,8 @@ def resolve_gold_dir(gold_dir: Optional[str] = None, tenant_id: str = "") -> Pat
     candidate = Path(gold_dir).expanduser().resolve()
     roots: List[Path] = [Path(get_aiplat_data_dir("eval")).resolve()]
     try:
-        seed = Path(__file__).resolve().parents[2] / "workspace_seeds" / "eval"
+        # code_review_gold.py → evaluation → harness → core → aiPlat-core
+        seed = Path(__file__).resolve().parents[3] / "workspace_seeds" / "eval"
         if seed.is_dir():
             roots.append(seed.resolve())
     except Exception:
