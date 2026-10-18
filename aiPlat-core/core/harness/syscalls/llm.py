@@ -72,25 +72,39 @@ class LLMCircuitBreaker:
 
         self._state = "closed"
 
+        self._probe_in_flight = False
+
 
 
     def allow_request(self) -> bool:
 
         if self._state == "open":
 
-            if time.time() - self._open_ts > self.timeout:
+            if time.time() - self._open_ts <= self.timeout:
 
-                self._state = "half_open"
+                return False
 
-                return True
+            self._state = "half_open"
 
-            return False
+            self._probe_in_flight = False
+
+        if self._state == "half_open":
+
+            if self._probe_in_flight:
+
+                return False
+
+            self._probe_in_flight = True
+
+            return True
 
         return True
 
 
 
     def record_success(self):
+
+        self._probe_in_flight = False
 
         self._failures = 0
 
@@ -99,6 +113,8 @@ class LLMCircuitBreaker:
 
 
     def record_failure(self):
+
+        self._probe_in_flight = False
 
         self._failures += 1
 

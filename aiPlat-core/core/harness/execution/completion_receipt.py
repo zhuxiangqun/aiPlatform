@@ -59,6 +59,12 @@ def infer_receipt_status(action_result: Any) -> str:
         or head.startswith("404")
         or "policy_denied" in head
         or "aiplat_tool_execute_failed" in head
+        or "aiplat_tool_execute_approval_required" in head
+        or "aiplat_approval_wait_denied" in head
+        or "aiplat_unattended_wait_denied" in head
+        or "approval_required" in head
+        or "handler_missing" in head
+        or "invalid_skill_name" in head
     ):
         return "failed"
     # Explicit tool/file miss — not grep-style "Pattern not found".
