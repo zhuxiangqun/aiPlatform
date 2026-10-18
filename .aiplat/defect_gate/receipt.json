@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-18T20:10:00+08:00",
+  "reviewed_at": "2026-10-18T20:45:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "cc679a62b7565119cd0b0fe3b7fd67eacc67717b",
-  "diff_sha256": "024fab9b717e875b1090a3410f4874f64f7986c001eabc614fe18adea8370184",
-  "head_sha": "a1e184f407fbd7392d086391feb0b178c375412a",
+  "merge_base": "2c9ee32b51ab490de8f8660755e39eb625fab651",
+  "diff_sha256": "28a8f48888da251bc4acaadc011d8a53fe52492415ae02ad43ad765b545466e4",
+  "head_sha": "07911c71ea852a108c8c501c8468da898e86362c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Pi archive JSON parse failure is not an empty hit list. Local lock only."
+  "note": "Pi HTTP 200 non-JSON is json_parse for KB, tools, approval, sticky, and memory capture. Local lock only."
 }
