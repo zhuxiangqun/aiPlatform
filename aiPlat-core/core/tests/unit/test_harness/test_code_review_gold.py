@@ -27,6 +27,16 @@ SEED = (
 )
 
 
+def _allow_gold_root(monkeypatch, root: Path) -> None:
+    """Point the eval allow-root at a temp tree so gold_dir stays inside it."""
+    root.mkdir(parents=True, exist_ok=True)
+
+    def _data_dir(rel: str = "") -> str:
+        return str(root / str(rel).lstrip("/"))
+
+    monkeypatch.setattr("core.utils.paths.get_aiplat_data_dir", _data_dir)
+
+
 def test_profiles_map_to_autoreview_args():
     low = profile_to_autoreview_args("low_noise")
     assert low["panel"] is False
@@ -106,7 +116,7 @@ async def test_match_only_eval_on_seeds():
 
 
 @pytest.mark.asyncio
-async def test_live_path_uses_execute_fn():
+async def test_live_path_uses_execute_fn(tmp_path, monkeypatch):
     async def fake_execute(params):
         assert params.get("target") == "diff"
         assert "panel" in params
@@ -124,12 +134,13 @@ async def test_live_path_uses_execute_fn():
             "clean": False,
         }
 
-    import tempfile
     import yaml
 
-    with tempfile.TemporaryDirectory() as td:
-        path = Path(td) / "live1.yaml"
-        path.write_text(
+    _allow_gold_root(monkeypatch, tmp_path)
+    gold = tmp_path / "eval" / "code_review_gold"
+    gold.mkdir(parents=True)
+    path = gold / "live1.yaml"
+    path.write_text(
             yaml.safe_dump(
                 {
                     "id": "live1",
@@ -145,13 +156,13 @@ async def test_live_path_uses_execute_fn():
                 }
             ),
             encoding="utf-8",
-        )
-        out = await run_code_review_gold_eval(
-            profile="high_coverage",
-            gold_dir=td,
-            execute_fn=fake_execute,
-            persist=False,
-        )
+    )
+    out = await run_code_review_gold_eval(
+        profile="high_coverage",
+        gold_dir=str(gold),
+        execute_fn=fake_execute,
+        persist=False,
+    )
     assert out["ok"] and out["scored_count"] == 1
     assert out["cases"][0]["precision"] == 1.0
     assert out["cases"][0]["exec"]["mode"] == "live"
@@ -162,8 +173,9 @@ async def test_novel_and_persist_report(tmp_path, monkeypatch):
     import yaml
     from core.harness.evaluation import code_review_gold as crg
 
-    gold = tmp_path / "gold"
-    gold.mkdir()
+    _allow_gold_root(monkeypatch, tmp_path / "home")
+    gold = tmp_path / "home" / "eval" / "code_review_gold"
+    gold.mkdir(parents=True)
     (gold / "n1.yaml").write_text(
         yaml.safe_dump(
             {
