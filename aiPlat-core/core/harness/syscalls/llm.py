@@ -72,19 +72,31 @@ class LLMCircuitBreaker:
 
         self._state = "closed"
 
+        self._probe_in_flight = False
+
 
 
     def allow_request(self) -> bool:
 
         if self._state == "open":
 
-            if time.time() - self._open_ts > self.timeout:
+            if time.time() - self._open_ts <= self.timeout:
 
-                self._state = "half_open"
+                return False
 
-                return True
+            self._state = "half_open"
 
-            return False
+            self._probe_in_flight = False
+
+        if self._state == "half_open":
+
+            if self._probe_in_flight:
+
+                return False
+
+            self._probe_in_flight = True
+
+            return True
 
         return True
 
@@ -92,13 +104,25 @@ class LLMCircuitBreaker:
 
     def record_success(self):
 
+        self._probe_in_flight = False
+
         self._failures = 0
 
         self._state = "closed"
 
 
 
+    def release_probe(self):
+        """Drop a half-open probe without counting a failure.
+
+        ClassifiedError exits (retry/compress) are not circuit failures, but
+        they must not leave the single probe slot stuck closed.
+        """
+        self._probe_in_flight = False
+
     def record_failure(self):
+
+        self._probe_in_flight = False
 
         self._failures += 1
 
@@ -2445,16 +2469,19 @@ async def sys_llm_generate(
 
                             "Context overflow — triggering compression before retry")
 
+                        _llm_cb.release_probe()
                         raise  # let ResilienceGate handle retry after compression
 
                     # 3. Retryable → let ResilienceGate handle
 
                     if ce.retryable:
 
+                        _llm_cb.release_probe()
                         raise
 
                     # 5. Non-retryable → fail fast
 
+                    _llm_cb.release_probe()
                     raise
 
                 except BaseException:

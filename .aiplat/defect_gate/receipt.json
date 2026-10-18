@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-18T22:22:00+08:00",
+  "reviewed_at": "2026-10-18T23:25:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "08cb8e2b7e681e2026cf55b84088e1087fcd4704",
-  "diff_sha256": "a8ab45433e0a5022db7172c6d9e66ca44ed1d3cdc7196101747b1867a10c5e40",
-  "head_sha": "23020e0eff507db09a39883eb68cbc729645555a",
+  "merge_base": "4f3b779fc9896fca6bafc73fc5682e6b1a319459",
+  "diff_sha256": "7d50b0913aa4dbfbd9647176bfbe0f1aa199062ee07f641420af05ecd341963e",
+  "head_sha": "f30649cc9c58a93e372adcb272542e6b96fecb5f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Pi P1: no echo for missing handler; skill path sandbox; approval deny/park fail receipts; half-open single probe. Local lock only."
+  "note": "Receipt markers and single half-open probe; contract row 55. Local lock only."
 }

@@ -55,3 +55,6 @@ def test_infer_receipt_status_head_only():
     assert infer_receipt_status("") == "failed"
     long_ok = "wrote handler\n" + ("error handling stays in the function\n" * 20)
     assert infer_receipt_status(long_ok) == "ok"
+    assert infer_receipt_status("AIPLAT_TOOL_EXECUTE_APPROVAL_REQUIRED tool=x") == "failed"
+    assert infer_receipt_status("AIPLAT_APPROVAL_WAIT_DENIED\nstatus=rejected") == "failed"
+    assert infer_receipt_status("approval_required: need human") == "failed"

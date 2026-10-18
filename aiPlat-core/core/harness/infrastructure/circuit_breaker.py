@@ -51,6 +51,7 @@ class BaseCircuitBreaker:
         self._last_failure_ts = 0.0
         self._open_ts = 0.0
         self._state = "closed"  # closed | open | half_open
+        self._probe_in_flight = False
 
     # ── Public API ──
 
@@ -67,21 +68,29 @@ class BaseCircuitBreaker:
     def allow(self) -> bool:
         """Return True if the request should be attempted.
         
-        Returns True when state is 'closed' or 'half_open'.
-        Returns False when state is 'open' (not yet recovered).
+        Returns True when state is 'closed', or for a single half-open probe.
+        Returns False when state is 'open' (not yet recovered) or a probe
+        is already in flight.
         Half-open state is automatically transitioned from 'open' when
         recovery_timeout has elapsed.
         """
         if self._state == "open":
             if time.time() - self._open_ts > self.recovery_timeout:
                 self._state = "half_open"
+                self._probe_in_flight = False
                 logger.debug("[%s] Circuit → HALF_OPEN (probing)", self.name)
-                return True
-            return False
-        return True  # closed or half_open
+            else:
+                return False
+        if self._state == "half_open":
+            if self._probe_in_flight:
+                return False
+            self._probe_in_flight = True
+            return True
+        return True
 
     def success(self):
         """Record a successful request. Resets failure count."""
+        self._probe_in_flight = False
         self._failures = 0
         if self._state != "closed":
             self._state = "closed"
@@ -89,6 +98,7 @@ class BaseCircuitBreaker:
 
     def failure(self):
         """Record a failed request. May open the circuit."""
+        self._probe_in_flight = False
         self._failures += 1
         self._last_failure_ts = time.time()
         if self._failures >= self.failure_threshold and self._state != "open":
