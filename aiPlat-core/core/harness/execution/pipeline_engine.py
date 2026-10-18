@@ -6076,7 +6076,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         artifact = None  # Prevent UnboundLocalError in edge cases
 
         try:
-            from core.harness.evaluation.harness_recursion import clear_contrast_signals
+            from core.harness.execution.contrast_signals import clear_contrast_signals
 
             clear_contrast_signals(local_state)
         except Exception:

@@ -517,7 +517,7 @@ class StageRunner:
             ).strip()
             return f"STAGE_ERROR: {_rr_err}"
         try:
-            from core.harness.evaluation.harness_recursion import copy_contrast_signals
+            from core.harness.execution.contrast_signals import copy_contrast_signals
 
             copy_contrast_signals(ctx, state)
         except Exception as e:

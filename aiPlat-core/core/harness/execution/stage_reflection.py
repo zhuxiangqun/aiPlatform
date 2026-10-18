@@ -212,7 +212,7 @@ async def capture_stage_reflection(stage: Any, state: Dict[str, Any]) -> Dict[st
     if step:
         reflection["harness_recursion"] = step
     try:
-        from core.harness.evaluation.harness_recursion import clear_contrast_signals
+        from core.harness.execution.contrast_signals import clear_contrast_signals
 
         clear_contrast_signals(state)
     except Exception:

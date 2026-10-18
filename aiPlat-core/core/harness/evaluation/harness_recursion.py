@@ -99,33 +99,6 @@ def format_library_overlay(rows: Sequence[Dict[str, Any]], max_components: int =
     return "\n".join(lines) if lines else None
 
 
-def clear_contrast_signals(state: Dict[str, Any]) -> None:
-    """Drop contrast flags so the next stage cannot reuse this run's events."""
-    if not isinstance(state, dict):
-        return
-    for key in CONTRAST_STATE_KEYS:
-        state.pop(key, None)
-
-
-def copy_contrast_signals(context: Dict[str, Any], state: Dict[str, Any]) -> None:
-    """Copy contrast flags from the loop context onto the pipeline state."""
-    if not isinstance(context, dict) or not isinstance(state, dict):
-        return
-    surface_contrast_signals(context)
-    for key in CONTRAST_STATE_KEYS:
-        if key in context:
-            state[key] = context[key]
-
-
-def surface_contrast_signals(context: Dict[str, Any]) -> None:
-    """Fill contrast flags from receipts already on the loop context."""
-    if not isinstance(context, dict):
-        return
-    receipts = context.get("_tool_receipts")
-    if isinstance(receipts, list) and receipts:
-        context["_tool_receipts"] = receipts
-
-
 def file_paths_from_text(text: str) -> List[str]:
     """Paths declared as ``## FILE:`` blocks in stage or skill text."""
     return [m.group(1).strip() for m in _FILE_BLOCK.finditer(text or "")]
