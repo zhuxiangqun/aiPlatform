@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2285
+total_capabilities: 2288
 last_updated: 2026-10-15
 version: "30.10"
 auto_sync: true
@@ -588,6 +588,9 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| copy_contrast_signals | `core/harness/execution/contrast_signals.py` | ✅ | 自动同步 | 已合入 |
+| surface_contrast_signals | `core/harness/execution/contrast_signals.py` | ✅ | 自动同步 | 已合入 |
+| clear_contrast_signals | `core/harness/execution/contrast_signals.py` | ✅ | 自动同步 | 已合入 |
 | is_coding_seal_context | `core/harness/execution/execution_seal.py` | ✅ | 自动同步 | 已合入 |
 | apply_repair_selection | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
 | receipt_bind_enabled | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
@@ -828,6 +831,9 @@ scan_hash: 8f9548ec24f4
 | Code 元工具偏好（图灵完备出口） | `harness/execution/meta_tool.py` + `ReActLoop._build_tools_desc` + `PipelineStageConfig.meta_tool` + StageRunner/CoreFacade/team_planner 注入 | ✅ | 算术/日期/解析/逃逸舱口 → `[META TOOL]` 提示 + 置顶 `code`；配置 `{enabled, auto_bind, force}`；`AIPLAT_META_TOOL_AUTO_BIND=auto`（生产 on / 开发 off）；`AIPLAT_META_TOOL_CODE` 总开关；生成物适用：已接线（Harness 横切） | 已合入 |
 | 组织 Harness 暗账本（HITL/审批 Amdahl） | `harness/meta/org_harness_metrics.py` + `CoreFacade.org_harness_status` + `GET /governance/org-harness` + Governance 面板 + eval_observability 可选切片 | ✅ | `serial_ratio`/审批 + **四指标**（P·R·P0miss·comments/time）+ `serial_chain_recommendations`（串行链改造建议）；vite/proxy；生成物不适用（平台横切治理观测） | 已合入 |
 | Governance 值班板（KPI 运营化） | `build_duty_board` + `load_adoption_snapshot` + `collect_merge_gates_posture` + Evidence Envelope 摘要 + Governance「值班板」+ Gold match-only CTA + 无假绿 adoption/机制状态 | ✅ | go/watch/block/unavailable；金标/串行/审批/HITL/Howl/**合入闸门姿态**/信封；任务成功率标 unavailable；gold_gate 加载失败 require_eval；值班板一键 `POST .../code-review-gold/evaluate`（match_only+persist limit=5）写报告并刷新 org-harness；**Gold JSONL 趋势** + **值班员剧本** + **豁免负债账**（owner/cap/到期未复审→block）+ **门禁元评估**（exemption/skip/appeal 率）+ **合入后仓库健康**（god/fanout/deps/Δloc）+ **证据信封**（禁无 envelope 的 BLOCK）；生成物不适用（平台横切治理观测） | 已合入 |
+| 在线采样 + 发布记分卡（值班板折叠） | `online_sample.summarize_online_samples` / `maybe_record_online_sample` + `release_scorecard.build_release_scorecard` / `release_decision` + `duty_board` 折叠 | ✅ | 未配置采样时 `available=False`（禁发明通过率）；记分卡无测量维→unavailable；生成物不适用（平台横切评测） | 进行中 |
+| 任务模型锁定（可选） | `task_model_lock.held_model_for_task` / `summarize_task_model_routes` / `bind_task_model_scope` + `model_injection` / ReActLoop | ✅ | 默认关（`AIPLAT_TASK_MODEL_LOCK`）；关时 held→None 走原选择链；值班板路由摘要不影响 status；生成物不适用（Harness 横切） | 进行中 |
+| Harness 递归库摘要 | `harness_recursion.summarize_library` / `recursion_budget` + duty_board / team_brain | ✅ | 库空或不可用→unavailable 摘要；对比步预算配置驱动；生成物不适用（Harness 横切） | 进行中 |
 | 值班板阈值 YAML | `load_duty_board_thresholds` + `load_duty_board_playbook` + `workspace_seeds/org/duty_board.yaml` | ✅ | override → `AIPLAT_DUTY_BOARD_CONFIG` → `$AIPLAT_HOME/org/duty_board.yaml` → seed；thresholds + playbook（go/watch/block/unavailable 固定动作）共用；含 gate_meta 窗口/率阈值；生成物不适用（平台横切） | 已合入 |
 | 治理闭环补齐（Gold 趋势 + 代理配置化） | `summarize_gold_regression.trend*` + `_apps_yaml_platform_routes` + `apps.yaml` `proxy_prefixes` | ✅ | 复用 gold JSONL 出趋势条；FE proxy 从 registry 生成 platform:8003 路由（禁手写 pin 漂移 #226）；生成物不适用（平台横切） | 已合入 |
 | 物理合入闸门 P0（通胀+形态） | `physical_merge_gates.py` + `scripts/check_physical_merge_gates.py` + `workspace_seeds/org/physical_merge_gates.yaml` + contracts-guard / pre-commit | ✅ | 合入时否决器（≠运行时入口校验/PolicyGate）：净增行/文件/新依赖/新类/新目录 + 禁 generic/framework/EventBus/深继承；mode warn→`block_after`（默认 2026-10-25）升级；`profile_neutral_globs` 使 CAPABILITIES/docs/registry 不逼 business；**豁免即负债**（owner+reason+expires、`max_active_exemptions`、到期未复审/非法/超限→block，值班板可见）；生成物不适用（平台横切发布门禁） | 已合入 |
@@ -3200,7 +3206,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 293 | 1 | 294 |
+| Harness 执行引擎 | 296 | 1 | 297 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 375 | 9 | 384 |
 | RAG 检索 | 52 | 0 | 52 |
@@ -3245,7 +3251,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2275** | **10** | **2285** |
+| **总计** | **2278** | **10** | **2288** |
 
 | **总计** | **1095** | **0** | **1095** |
 

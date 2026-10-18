@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-10-08"
 total_capability_domains: 34
-total_capabilities: 1090
+total_capabilities: 1101
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -1051,6 +1051,18 @@ domains:
         type: function
         signature: 'True when missing review / file delivery must not soft-pass.'
         module: aiPlat-core/core/harness/execution/execution_seal.py
+      - symbol: clear_contrast_signals
+        type: function
+        signature: 'Drop contrast flags so the next stage cannot reuse this run''s events.'
+        module: aiPlat-core/core/harness/execution/contrast_signals.py
+      - symbol: surface_contrast_signals
+        type: function
+        signature: 'Fill contrast flags from receipts already on the loop context.'
+        module: aiPlat-core/core/harness/execution/contrast_signals.py
+      - symbol: copy_contrast_signals
+        type: function
+        signature: 'Copy contrast flags from the loop context onto the pipeline state.'
+        module: aiPlat-core/core/harness/execution/contrast_signals.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"
@@ -4727,6 +4739,38 @@ domains:
         type: "function"
         signature: "serial_chain_recommendations(summary)→List[{severity,action,detail}]"
         module: "core/harness/meta/org_harness_metrics.py"
+      - symbol: "summarize_online_samples"
+        type: "function"
+        signature: "summarize_online_samples()→Dict (available/sampled/metrics; no invented pass rate)"
+        module: "core/harness/evaluation/online_sample.py"
+      - symbol: "maybe_record_online_sample"
+        type: "function"
+        signature: "maybe_record_online_sample(context)→None (no-op unless sampling configured)"
+        module: "core/harness/evaluation/online_sample.py"
+      - symbol: "build_release_scorecard"
+        type: "function"
+        signature: "build_release_scorecard(metrics)→Dict dims/status (unavailable when unmeasured)"
+        module: "core/harness/evaluation/release_scorecard.py"
+      - symbol: "release_decision"
+        type: "function"
+        signature: "release_decision(scorecard, profile)→Dict advisory go/watch/block"
+        module: "core/harness/evaluation/release_scorecard.py"
+      - symbol: "summarize_library"
+        type: "function"
+        signature: "summarize_library(recent=5)→Dict harness recursion library status"
+        module: "core/harness/evaluation/harness_recursion.py"
+      - symbol: "recursion_budget"
+        type: "function"
+        signature: "recursion_budget()→int contrastive recursion step budget"
+        module: "core/harness/evaluation/harness_recursion.py"
+      - symbol: "summarize_task_model_routes"
+        type: "function"
+        signature: "summarize_task_model_routes(limit=500)→Dict route hold summary"
+        module: "core/harness/utils/task_model_lock.py"
+      - symbol: "held_model_for_task"
+        type: "function"
+        signature: "held_model_for_task(purpose, select_fn, messages)→Optional[str]"
+        module: "core/harness/utils/task_model_lock.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
