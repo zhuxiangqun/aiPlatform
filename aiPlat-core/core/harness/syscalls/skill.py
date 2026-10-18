@@ -95,7 +95,7 @@ async def sys_skill_call(
     skill_name = str(getattr(skill, "name", None) or getattr(getattr(skill, "_config", None), "name", "") or "")
 
     try:
-        from core.apps.skills.skill_boundary import skill_skip_reason
+        from core.harness.maintenance.skill_boundary import skill_skip_reason
 
         _skip = skill_skip_reason(skill, params)
     except Exception:

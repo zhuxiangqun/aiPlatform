@@ -594,7 +594,7 @@ class PipelineRunStore:
                ON CONFLICT(run_id, stage_id) DO UPDATE SET
                 stage_idx = excluded.stage_idx,
                 agent_id = CASE
-                    WHEN excluded.agent_id != '' THEN excluded.agent_id
+                    WHEN excluded.agent_id <> '' THEN excluded.agent_id
                     ELSE pipeline_stages.agent_id
                 END,
                 skill_name = CASE

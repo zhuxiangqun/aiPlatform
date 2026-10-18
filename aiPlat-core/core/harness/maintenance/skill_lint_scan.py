@@ -171,7 +171,7 @@ async def run_skill_lint_scan(
             try:
                 skill_md = mgr._find_skill_md(str(getattr(s, "id", "") or ""))
                 if skill_md is not None:
-                    from core.apps.skills.skill_boundary import scan_skill_dir
+                    from core.harness.maintenance.skill_boundary import scan_skill_dir
 
                     scan = scan_skill_dir(str(getattr(s, "id", "") or ""), skill_md)
                     if scan.get("blocked"):
