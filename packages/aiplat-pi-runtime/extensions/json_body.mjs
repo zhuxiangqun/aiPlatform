@@ -30,3 +30,19 @@ export function httpJsonObject(status, bodyText) {
   if (!parsed.ok) return { ok: false, error: "json_parse", value: null };
   return { ok: true, error: "", value: parsed.value };
 }
+
+/**
+ * Tool/handler params_json. Blank means {}. Arrays and non-objects are failures.
+ */
+export function parseParamsObject(raw) {
+  const text = String(raw ?? "").trim();
+  if (!text) return { ok: true, error: "", value: {} };
+  const parsed = parseJsonObject(text);
+  if (!parsed.ok) return { ok: false, error: "json_parse", value: null };
+  return { ok: true, error: "", value: parsed.value };
+}
+
+/** Session sticky cache only after a 2xx JSON object. HTTP/parse failures retry next turn. */
+export function stickyResultCacheable(httpOk, parsedOk) {
+  return Boolean(httpOk) && Boolean(parsedOk);
+}

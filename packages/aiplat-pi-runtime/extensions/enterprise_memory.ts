@@ -12,7 +12,7 @@ import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 import { parseArchiveHits } from "./archive_hits.mjs";
-import { httpJsonObject } from "./json_body.mjs";
+import { httpJsonObject, stickyResultCacheable } from "./json_body.mjs";
 import { bindCompletionToReceipts, receiptsFromMessages } from "./completion_receipt.mjs";
 import { CircuitOpenError, platformFetch } from "./enterprise_http";
 import {
@@ -92,14 +92,9 @@ export async function ensureStickyMemory(cfg?: MemoryBridgeConfig): Promise<stri
       headers: { authorization: `Bearer ${c.token}` },
     });
     const bodyText = await res.text();
-    if (!res.ok) {
-      stickyLoaded = true;
-      stickyCache = "";
-      return "";
-    }
     const parsedBody = httpJsonObject(res.status, bodyText);
-    if (!parsedBody.ok || !parsedBody.value) {
-      // Do not cache a gateway/HTML body as "no pinned facts".
+    if (!stickyResultCacheable(res.ok, parsedBody.ok && parsedBody.value)) {
+      // HTTP errors and HTML/truncated bodies must not stick as "no pinned facts".
       return "";
     }
     const parsed = parsedBody.value as { text?: string; available?: boolean };
@@ -107,7 +102,7 @@ export async function ensureStickyMemory(cfg?: MemoryBridgeConfig): Promise<stri
       parsed.available !== false ? String(parsed.text || "").trim() : "";
     stickyCache = text.slice(0, 2000);
   } catch {
-    stickyCache = "";
+    return "";
   }
   stickyLoaded = true;
   return stickyCache;

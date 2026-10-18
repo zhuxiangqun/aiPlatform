@@ -4,7 +4,11 @@
  * Mirrors packages/aiplat-pi-runtime/extensions/enterprise_memory.ts gating + URL + extract.
  */
 import { parseArchiveHits } from "../extensions/archive_hits.mjs";
-import { httpJsonObject } from "../extensions/json_body.mjs";
+import {
+  httpJsonObject,
+  parseParamsObject,
+  stickyResultCacheable,
+} from "../extensions/json_body.mjs";
 function envTruthy(name) {
   const v = (process.env[name] || "").trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes" || v === "on";
@@ -175,6 +179,27 @@ function main() {
   const httpErr = httpJsonObject(502, "bad gateway");
   assert(!httpErr.ok && httpErr.error === "http_502", "non-2xx stays an HTTP failure");
   console.log("PASS: http json object does not treat garbage as empty success");
+
+  assert(
+    !stickyResultCacheable(false, true),
+    "HTTP error must not cache sticky empty",
+  );
+  assert(
+    !stickyResultCacheable(true, false),
+    "parse failure must not cache sticky empty",
+  );
+  assert(
+    stickyResultCacheable(true, true),
+    "2xx JSON object may cache sticky (including empty text)",
+  );
+  const blankParams = parseParamsObject("");
+  assert(
+    blankParams.ok && blankParams.value && Object.keys(blankParams.value).length === 0,
+    "blank params_json is {}",
+  );
+  const badParams = parseParamsObject("[1]");
+  assert(!badParams.ok, "params_json array is not an object");
+  console.log("PASS: sticky cache and params_json object rules");
 
   console.log("AIPLAT_ENTERPRISE_MEMORY_SMOKE_OK");
 }
