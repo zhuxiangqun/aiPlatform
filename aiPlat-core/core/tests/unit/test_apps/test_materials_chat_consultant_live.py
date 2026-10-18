@@ -28,7 +28,9 @@ async def test_consultant_live_skips_rag(monkeypatch):
         calls["n"] += 1
         assert model is fake_model
         assert kwargs.get("session_id") is None
-        assert (kwargs.get("trace_context") or {}).get("skip_claude_md") is True
+        tc = kwargs.get("trace_context") or {}
+        assert tc.get("skip_claude_md") not in (True, "1", "true")
+        assert tc.get("coding_policy_profile") == "off"
         # Must not have gone through retrieval — payload is the user message only
         assert any("简报" in str(m.get("content") or "") for m in messages)
         return SimpleNamespace(content="按简报：工作区有 factory_agent。")

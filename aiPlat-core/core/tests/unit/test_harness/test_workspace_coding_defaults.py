@@ -82,3 +82,17 @@ def test_coding_policy_profile_alone_does_not_opt_in():
 
 def test_agent_uses_file_output_flag():
     assert workspace_agent_needs_coding_defaults(agent_cfg={"uses_file_output": True}) is True
+
+
+def test_workspace_refactor_sop_opens_full_gate_set(monkeypatch):
+    monkeypatch.delenv("AIPLAT_CODING_STAGE_REFACTOR_SOP", raising=False)
+    state: dict = {}
+    inject_workspace_coding_defaults(
+        state,
+        agent_meta={"uses_file_output": True, "refactor_sop": True},
+    )
+    dv = state.get("_done_verify") or {}
+    assert dv.get("require_diagnosis") is True
+    assert dv.get("require_feature_flag") is True
+    assert dv.get("require_rollback_command") is True
+    assert dv.get("require_tdd") is True

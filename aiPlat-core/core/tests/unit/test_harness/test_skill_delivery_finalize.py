@@ -9,8 +9,102 @@ import pytest
 from core.harness.utils.execute_session import (
     extract_skill_delivery_answer,
     finalize_agent_after_skill_delivery,
+    orphan_finalize_status_payload,
+    orphan_seal_requires_quality_review,
     orphan_skill_delivery_answer,
 )
+
+
+def test_core_facade_respects_force_failed_timeout_seal():
+    from pathlib import Path
+
+    src = (
+        Path(__file__).resolve().parents[3] / "api/core_facade.py"
+    ).read_text(encoding="utf-8")
+    assert "force_failed_status" in src
+    assert "reason_llm_failure_exhausted" in src
+    assert "observe_primary_skill_timeout" in src
+    assert 'do not re-greenwash to completed' in src
+
+
+@pytest.mark.asyncio
+async def test_finalize_honors_force_failed_status_timeout():
+    store = MagicMock()
+    store.get_agent_execution = AsyncMock(
+        return_value={
+            "id": "run-to",
+            "agent_id": "coder",
+            "status": "running",
+            "input": {"message": "写代码"},
+            "start_time": 100.0,
+            "metadata": {},
+        }
+    )
+    store.upsert_agent_execution = AsyncMock()
+    store.list_syscall_events = AsyncMock(return_value={"items": []})
+    store.append_run_event = AsyncMock()
+    body = "## FILE: a.py\n" + ("print(1)\n" * 12)
+    with patch(
+        "core.services.execution_store.get_execution_store", return_value=store
+    ), patch(
+        "core.harness.observation.run_graph.close_node", new_callable=AsyncMock
+    ), patch(
+        "core.harness.observation.run_graph.open_node", new_callable=AsyncMock
+    ), patch(
+        "core.harness.observation.run_graph.mark_run_done", new_callable=AsyncMock
+    ) as mark:
+        ok = await finalize_agent_after_skill_delivery(
+            run_id="run-to",
+            agent_id="coder",
+            output_text=body,
+            start_time=100.0,
+            metadata_extra={
+                "finalize_source": "reason_llm_failure_exhausted",
+                "force_failed_status": "timeout",
+                "done_verify_reason": "llm_timeout",
+            },
+        )
+    assert ok is True
+    sealed = store.upsert_agent_execution.await_args_list[0].args[0]
+    assert sealed["status"] == "timeout"
+    assert "llm_timeout" in str(sealed.get("error") or "")
+    mark.assert_awaited()
+    assert mark.await_args.kwargs.get("status") == "timeout"
+
+
+@pytest.mark.asyncio
+async def test_second_finalize_does_not_recomplete_timeout():
+    store = MagicMock()
+    body = "def add(a, b):\n    return a + b\n\n" * 6
+    store.get_agent_execution = AsyncMock(
+        return_value={
+            "id": "run-keep",
+            "agent_id": "coder",
+            "status": "timeout",
+            "input": {"message": "hello"},
+            "output": {"text": body},
+            "metadata": {
+                "force_failed_status": "timeout",
+                "done_verify_reason": "llm_timeout",
+            },
+            "start_time": 10.0,
+        }
+    )
+    store.upsert_agent_execution = AsyncMock()
+    with patch(
+        "core.services.execution_store.get_execution_store", return_value=store
+    ), patch(
+        "core.harness.observation.run_graph.mark_run_done", new_callable=AsyncMock
+    ) as mark:
+        ok = await finalize_agent_after_skill_delivery(
+            run_id="run-keep",
+            agent_id="coder",
+            output_text=body,
+            metadata_extra={"finalize_source": "status_orphan_watch"},
+        )
+    assert ok is True
+    store.upsert_agent_execution.assert_not_awaited()
+    assert mark.await_args.kwargs.get("status") == "timeout"
 
 
 def test_orphan_skill_delivery_waits_for_delivery_once_not_bare_skill():
@@ -335,9 +429,26 @@ async def test_finalize_marks_failed_when_qr_thin_code_stub():
     )
 
 
+def test_orphan_seal_requires_qr_for_coding_not_conversational():
+    assert orphan_seal_requires_quality_review(
+        output_text="SMK-001 open page and submit\n" * 5
+    ) is False
+    assert orphan_seal_requires_quality_review(
+        output_text="## FILE: app.ts\n" + ("x" * 40)
+    ) is True
+    assert orphan_seal_requires_quality_review(
+        syscall_items=[
+            {"kind": "done", "name": "skill_delivery_once", "status": "ok"},
+        ]
+    ) is True
+    assert orphan_seal_requires_quality_review(
+        metadata_extra={"bound_skills": ["code_generation", "autoreview"]}
+    ) is True
+
+
 @pytest.mark.asyncio
 async def test_finalize_orphan_watch_skips_quality_review():
-    """Status poll budget is 8s — QR on watchdog must not block the seal."""
+    """Status poll budget is 8s — QR on watchdog must not block conversational seal."""
     store = MagicMock()
     store.get_agent_execution = AsyncMock(
         return_value={
@@ -378,6 +489,233 @@ async def test_finalize_orphan_watch_skips_quality_review():
     qr.assert_not_called()
     args = store.upsert_agent_execution.await_args.args[0]
     assert args["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_finalize_orphan_coding_runs_quality_review():
+    """Coding / skill_delivery_once orphan seals must not skip QR."""
+    code_body = "## FILE: app.ts\n" + ("export const x = 1;\n" * 20)
+    store = MagicMock()
+    store.get_agent_execution = AsyncMock(
+        return_value={
+            "id": "run-code-orphan",
+            "agent_id": "coder",
+            "status": "running",
+            "input": {"message": "写一个 TypeScript 模块"},
+            "start_time": 100.0,
+        }
+    )
+    store.upsert_agent_execution = AsyncMock()
+    store.append_run_event = AsyncMock()
+    store.list_syscall_events = AsyncMock(
+        return_value={
+            "items": [
+                {
+                    "kind": "done",
+                    "name": "skill_delivery_once",
+                    "status": "ok",
+                    "result": {"answer": code_body},
+                },
+                {
+                    "kind": "skill",
+                    "name": "code_generation",
+                    "status": "ok",
+                    "result": {"output": code_body},
+                },
+            ]
+        }
+    )
+    store.close_running_syscall_events = AsyncMock(return_value=0)
+    qr = MagicMock(
+        return_value={
+            "ok": False,
+            "verdict": "fail",
+            "headline": "autoreview_incomplete",
+            "issues": [
+                {
+                    "code": "autoreview_incomplete",
+                    "severity": "error",
+                    "message": "missing review",
+                }
+            ],
+        }
+    )
+    with patch(
+        "core.services.execution_store.get_execution_store", return_value=store
+    ), patch(
+        "core.harness.observation.run_graph.close_node", new_callable=AsyncMock
+    ), patch(
+        "core.harness.observation.run_graph.open_node", new_callable=AsyncMock
+    ), patch(
+        "core.harness.observation.run_graph.mark_run_done", new_callable=AsyncMock
+    ) as mark_done, patch(
+        "core.management.execution_quality_review.review_execution_output", qr
+    ), patch(
+        "core.management.execution_quality_review.quality_review_blocks_success",
+        return_value=True,
+    ), patch(
+        "core.management.execution_quality_review.ensure_architecture_section_fields",
+        side_effect=lambda x: x,
+    ), patch(
+        "core.management.execution_quality_review.ensure_architecture_rollout_weeks",
+        side_effect=lambda x, *_a, **_k: x,
+    ), patch(
+        "core.management.execution_quality_review.sanitize_architecture_third_party",
+        side_effect=lambda x, *_a, **_k: x,
+    ), patch(
+        "core.management.execution_quality_review._unwrap_output",
+        side_effect=lambda x: x.get("text") if isinstance(x, dict) else x,
+    ), patch(
+        "core.management.execution_quality_review._input_text",
+        return_value="写一个 TypeScript 模块",
+    ):
+        ok = await finalize_agent_after_skill_delivery(
+            run_id="run-code-orphan",
+            agent_id="coder",
+            output_text=code_body,
+            start_time=100.0,
+            metadata_extra={
+                "orphan_watchdog": True,
+                "finalize_source": "status_orphan_watch",
+                "bound_skills": ["code_generation", "autoreview"],
+            },
+        )
+    assert ok is True
+    qr.assert_called()
+    last = store.upsert_agent_execution.await_args_list[-1].args[0]
+    assert last["status"] == "failed"
+    assert last["metadata"].get("quality_block_completed") is True
+    mark_done.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_finalize_coding_qr_exception_fail_closed():
+    """QR crash on coding seal must not leave completed."""
+    code_body = "## FILE: app.ts\n" + ("export const x = 1;\n" * 20)
+    store = MagicMock()
+    store.get_agent_execution = AsyncMock(
+        return_value={
+            "id": "run-qr-boom",
+            "agent_id": "coder",
+            "status": "running",
+            "input": {"message": "写 TS"},
+            "start_time": 100.0,
+        }
+    )
+    store.upsert_agent_execution = AsyncMock()
+    store.append_run_event = AsyncMock()
+    store.list_syscall_events = AsyncMock(return_value={"items": []})
+    store.close_running_syscall_events = AsyncMock(return_value=0)
+    with patch(
+        "core.services.execution_store.get_execution_store", return_value=store
+    ), patch(
+        "core.harness.observation.run_graph.close_node", new_callable=AsyncMock
+    ), patch(
+        "core.harness.observation.run_graph.open_node", new_callable=AsyncMock
+    ), patch(
+        "core.harness.observation.run_graph.mark_run_done", new_callable=AsyncMock
+    ), patch(
+        "core.management.execution_quality_review.review_execution_output",
+        side_effect=RuntimeError("qr boom"),
+    ), patch(
+        "core.management.execution_quality_review.ensure_architecture_section_fields",
+        side_effect=lambda x: x,
+    ), patch(
+        "core.management.execution_quality_review.ensure_architecture_rollout_weeks",
+        side_effect=lambda x, *_a, **_k: x,
+    ), patch(
+        "core.management.execution_quality_review.sanitize_architecture_third_party",
+        side_effect=lambda x, *_a, **_k: x,
+    ), patch(
+        "core.management.execution_quality_review._unwrap_output",
+        side_effect=lambda x: x.get("text") if isinstance(x, dict) else x,
+    ), patch(
+        "core.management.execution_quality_review._input_text",
+        return_value="写 TS",
+    ):
+        ok = await finalize_agent_after_skill_delivery(
+            run_id="run-qr-boom",
+            agent_id="coder",
+            output_text=code_body,
+            start_time=100.0,
+            metadata_extra={
+                "bound_skills": ["code_generation", "autoreview"],
+                "_skill_delivery": "once",
+            },
+        )
+    assert ok is True
+    last = store.upsert_agent_execution.await_args_list[-1].args[0]
+    assert last["status"] == "failed"
+    assert "quality_review failed" in str(last.get("error") or "")
+
+
+@pytest.mark.asyncio
+async def test_orphan_finalize_status_payload_uses_db_status():
+    store = MagicMock()
+    store.get_agent_execution = AsyncMock(
+        return_value={
+            "id": "run-x",
+            "status": "failed",
+            "error": "done_verify blocked",
+            "output": {"text": "## FILE: a.py\nprint(1)"},
+            "input": {"message": "x"},
+            "end_time": 200.0,
+            "duration_ms": 9000,
+            "metadata": {"quality_review": {"verdict": "fail"}},
+        }
+    )
+    payload = await orphan_finalize_status_payload(
+        store,
+        run_id="run-x",
+        kind="agent",
+        fallback_output="fallback",
+        age=9.0,
+        input_payload={"message": "ignored"},
+    )
+    assert payload["status"] == "failed"
+    assert payload["error"] == "done_verify blocked"
+    assert payload["quality_review"]["verdict"] == "fail"
+    assert payload["recovered_skill_delivery"] is True
+
+
+@pytest.mark.asyncio
+async def test_orphan_finalize_status_payload_empty_row_not_completed():
+    store = MagicMock()
+    store.get_agent_execution = AsyncMock(return_value=None)
+    payload = await orphan_finalize_status_payload(
+        store,
+        run_id="run-missing",
+        kind="agent",
+        fallback_output="## FILE: a.py\nx",
+        age=12.0,
+    )
+    assert payload["status"] == "failed"
+    assert payload["error"]
+
+
+@pytest.mark.asyncio
+async def test_orphan_finalize_status_payload_force_failed_overrides_completed():
+    store = MagicMock()
+    store.get_agent_execution = AsyncMock(
+        return_value={
+            "id": "run-force",
+            "status": "completed",
+            "output": {"text": "partial"},
+            "metadata": {
+                "force_failed_status": "timeout",
+                "done_verify_reason": "llm_timeout",
+            },
+        }
+    )
+    payload = await orphan_finalize_status_payload(
+        store,
+        run_id="run-force",
+        kind="agent",
+        fallback_output="partial",
+        age=8.0,
+    )
+    assert payload["status"] == "timeout"
+    assert "llm_timeout" in str(payload.get("error") or "")
 
 
 @pytest.mark.asyncio

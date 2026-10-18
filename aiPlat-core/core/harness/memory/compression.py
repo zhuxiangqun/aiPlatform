@@ -314,11 +314,20 @@ class ContextCompression:
 
         context: List[Dict],
 
-        state: ContextState
+        state: ContextState,
+
+        *,
+
+        session_id: str = "",
+
+        tenant_id: str = "",
 
     ) -> List[Dict]:
 
         """Compress context based on current level"""
+
+        self._archive_session_id = str(session_id or "")
+        self._archive_tenant_id = str(tenant_id or "")
 
         level = self.get_level(state.usage_ratio)
 
@@ -421,7 +430,11 @@ class ContextCompression:
 
     def _summarize_tool_msg(msg: Dict, idx: int) -> str:
 
-        """Generate a per-tool-type informed summary preserving actionable info."""
+        """Keep a short live-context snippet of tool output (not pinned-fact filter).
+
+        ``memory_content_is_fact`` is for durable MEMORY.md, not conversation
+        compression — command/test output must remain visible to the model.
+        """
 
         import json as _json
 
@@ -435,15 +448,17 @@ class ContextCompression:
 
             stripped = line.strip()
 
-            if stripped and not stripped.startswith(("#", "//", "<!--")):
+            if not stripped or stripped.startswith(("#", "//", "<!--")):
 
-                snippet = stripped[:100]
+                continue
 
-                break
+            snippet = stripped[:160]
 
-        if not snippet:
+            break
 
-            snippet = content[:100].replace("\n", " ").strip()
+        if not snippet and content.strip():
+
+            snippet = content.strip()[:160]
 
         if snippet:
 
@@ -635,6 +650,11 @@ class ContextCompression:
 
         dropped = rest[:len(rest) - len(recent)]
 
+        _archive_dropped_turns(
+            dropped, session_id=getattr(self, "_archive_session_id", "") or "",
+            tenant_id=getattr(self, "_archive_tenant_id", "") or "",
+        )
+
         summarized_count = len(dropped)
 
 
@@ -713,6 +733,11 @@ class ContextCompression:
 
         dropped = rest[:len(rest) - len(keep)]
 
+        _archive_dropped_turns(
+            dropped, session_id=getattr(self, "_archive_session_id", "") or "",
+            tenant_id=getattr(self, "_archive_tenant_id", "") or "",
+        )
+
 
 
         summary_msgs: List[Dict] = []
@@ -731,15 +756,26 @@ class ContextCompression:
 
         return system_msgs + high + summary_msgs + keep
 
-
-
     def should_trigger_compression(self, state: ContextState) -> bool:
-
         """Check if compression should be triggered"""
-
         level = self.get_level(state.usage_ratio)
-
         return level != CompressionLevel.NORMAL
+
+
+def _archive_dropped_turns(
+    messages: List[Dict], session_id: str = "", tenant_id: str = ""
+) -> None:
+    """Persist turns before they leave the live window so session search can find them."""
+    if not messages:
+        return
+    try:
+        from core.harness.memory.file_store import archive_compacted_turns
+
+        archive_compacted_turns(
+            messages, session_id=session_id, tenant_id=tenant_id
+        )
+    except Exception:
+        logging.getLogger(__name__).debug("session archive skipped", exc_info=True)
 
 
 
@@ -913,11 +949,15 @@ async def _llm_summarize_tool_output(tool_name: str, raw_output: str) -> str:
 
                 lines.append(f"💡 {parsed['user_preference']}")
 
-            return " | ".join(lines)
+            cleaned = sanitize_tool_summary(" | ".join(lines))
+
+            return cleaned or f"[{tool_name}] executed"
 
         except (json.JSONDecodeError, KeyError, TypeError):
 
-            return f"[摘要] {content_str}" if content_str else raw_output[:1000]
+            cleaned = sanitize_tool_summary(f"[摘要] {content_str}" if content_str else "")
+
+            return cleaned or f"[{tool_name}] executed"
 
     except Exception:
 
@@ -938,6 +978,60 @@ async def _llm_summarize_tool_output(tool_name: str, raw_output: str) -> str:
 
 
 CONTEXT_SUMMARY_TIMEOUT = 3.0  # seconds — fallback to mechanical placeholder
+
+
+def sanitize_tool_summary(text: str) -> str:
+    """Tool-output summary without command or TODO fragments."""
+    from core.harness.memory.file_store import memory_content_is_fact
+
+    parts = []
+    for raw in (text or "").split(" | "):
+        bit = raw.strip()
+        if not bit:
+            continue
+        body = bit
+        for prefix in ("[摘要]", "✅", "⏳", "💡"):
+            if bit.startswith(prefix):
+                body = bit[len(prefix):].strip(" :")
+                break
+        if body and memory_content_is_fact(body):
+            parts.append(bit)
+    return " | ".join(parts)
+
+
+def sanitize_context_summary(summary: str) -> str:
+    """Keep goal/conclusion lines. Drop command and TODO lines from CONTEXT_SUMMARY."""
+    from core.harness.memory.file_store import memory_content_is_fact
+
+    text = (summary or "").strip()
+    if not text or "CONTEXT_SUMMARY" not in text:
+        return text
+    lines = text.splitlines()
+    head = lines[0].strip() or "CONTEXT_SUMMARY:"
+    kept = []
+    for raw in lines[1:]:
+        line = raw.strip()
+        if not line:
+            continue
+        body = line.split(":", 1)[-1].strip() if ":" in line else line
+        if memory_content_is_fact(body):
+            kept.append(line)
+    if not kept:
+        return ""
+    return head + "\n" + "\n".join(kept)
+
+
+def _fact_bits(values) -> str:
+    from core.harness.memory.file_store import memory_content_is_fact
+
+    kept = []
+    for item in values or []:
+        text = str(item or "").strip()
+        if text and memory_content_is_fact(text):
+            kept.append(text)
+        if len(kept) >= 5:
+            break
+    return "; ".join(kept)
 
 
 
@@ -1073,33 +1167,34 @@ async def _do_llm_conversation_summary(messages: List[Dict], prev_summary: str) 
 
         if start < 0 or end <= start:
 
-            return f"CONTEXT_SUMMARY:\n{content_str[:800]}"
+            return sanitize_context_summary(f"CONTEXT_SUMMARY:\n{content_str[:800]}")
 
         parsed = _json.loads(s[start:end + 1])
 
         lines = ["CONTEXT_SUMMARY (LLM semantic):"]
 
-        if parsed.get("current_goal"):
+        goal = str(parsed.get("current_goal") or "").strip()
+        if goal and _fact_bits([goal]):
+            lines.append(f"🎯 目标: {goal}")
 
-            lines.append(f"🎯 目标: {parsed['current_goal']}")
+        conclusions = _fact_bits(parsed.get("key_conclusions"))
+        if conclusions:
+            lines.append(f"📌 结论: {conclusions}")
 
-        if parsed.get("key_conclusions"):
+        tools = _fact_bits(parsed.get("recent_tools"))
+        if tools:
+            lines.append(f"🔧 工具: {tools}")
 
-            lines.append(f"📌 结论: {'; '.join(str(x) for x in parsed['key_conclusions'][:5])}")
+        todos = _fact_bits(parsed.get("todos"))
+        if todos:
+            lines.append(f"⏳ 待办: {todos}")
 
-        if parsed.get("recent_tools"):
-
-            lines.append(f"🔧 工具: {'; '.join(str(x) for x in parsed['recent_tools'][:5])}")
-
-        if parsed.get("todos"):
-
-            lines.append(f"⏳ 待办: {'; '.join(str(x) for x in parsed['todos'][:5])}")
-
-        return "\n".join(lines) if len(lines) > 1 else f"CONTEXT_SUMMARY:\n{content_str[:800]}"
+        packed = "\n".join(lines) if len(lines) > 1 else f"CONTEXT_SUMMARY:\n{content_str[:800]}"
+        return sanitize_context_summary(packed)
 
     except Exception:
 
-        return f"CONTEXT_SUMMARY:\n{content_str[:800]}"
+        return sanitize_context_summary(f"CONTEXT_SUMMARY:\n{content_str[:800]}")
 
 
 

@@ -513,7 +513,13 @@ class SharedKnowledgePool:
 
         import uuid
 
+        from core.harness.memory.file_store import memory_content_is_fact
 
+        body = (content or "").strip()
+        if not memory_content_is_fact(body):
+            logger.info("[shared_knowledge] refused non-fact topic=%s", topic)
+            return None
+        content = body
 
         self._load()
 
@@ -608,6 +614,11 @@ class SharedKnowledgePool:
                 continue
 
             if not topic_lower or topic_lower in fact.topic.lower():
+
+                from core.harness.memory.file_store import memory_content_is_fact
+
+                if not memory_content_is_fact(fact.content or ""):
+                    continue
 
                 candidates.append(fact)
 

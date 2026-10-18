@@ -225,6 +225,18 @@ ARCHITECTURE_PROFILES: Dict[str, Dict[str, str]] = {
     "reflect_loop": {"execution_backend": "agent", "agent_type": "reflection"},
 }
 
+# Non-file stages of these types use core_chat. File-output stages stay on
+# StageRunner/ReAct even when architecture_profile is plan_execute.
+CONVERSATIONAL_AGENT_TYPES = frozenset({
+    "conversational",
+    "rag",
+    "plan",
+    "plan_execute",
+    "reflection",
+    "review",
+    "materials_chat",
+})
+
 
 def apply_architecture_profile(stage: "PipelineStageConfig") -> "PipelineStageConfig":
     """If architecture_profile is set, it wins over execution_backend/agent_type."""
@@ -243,17 +255,320 @@ def apply_architecture_profile(stage: "PipelineStageConfig") -> "PipelineStageCo
     return apply_coding_stage_defaults(stage)
 
 
+# Persisted on pipeline_stages.config_json so resume keeps coding closed-loop gates.
+STAGE_CONFIG_PERSIST_KEYS = (
+    "uses_file_output",
+    "tdd_enforce",
+    "refactor_sop",
+    "done_verify",
+    "review_gate",
+    "sandbox",
+    "sandbox_mode",
+    "required_skills",
+    "deploy_files_to_disk",
+    "inject_imported_context",
+    "quality_gate",
+    "expected_outcomes",
+    "architecture_profile",
+    "architecture_mode",
+    "execution_backend",
+    "execution_mode",
+    "skill_model_purpose",
+    "code_target",
+    "agent_type",
+    "tools",
+    "prompt_extra",
+    "stage_timeout_seconds",
+    "output_schema",
+    "meta_tool",
+)
+
+
+def extract_stage_persist_config(raw: Any) -> Dict[str, Any]:
+    """Compact stage overlay for SQLite resume (coding closed-loop + schedule)."""
+    if not isinstance(raw, dict):
+        return {}
+    out: Dict[str, Any] = {}
+    for key in STAGE_CONFIG_PERSIST_KEYS:
+        if key not in raw:
+            continue
+        val = raw[key]
+        if val is None or val == "" or val == [] or val == {}:
+            continue
+        out[key] = val
+    return out
+
+
+def apply_template_stage_overlay(
+    dest: Any, src: Any, *, only_missing: bool = False
+) -> Any:
+    """Copy template YAML fields (incl. refactor_sop / done_verify) onto a stage.
+
+    ``dest`` may be a ``PipelineStageConfig`` or a mutable dict. Used by factory
+    recommend_team when merging plan_stages with team template rows.
+    When ``only_missing`` is True, do not overwrite non-empty destination values
+    (bool ``False`` counts as missing so template ``True`` can fill).
+    """
+    if not isinstance(src, dict):
+        return dest
+    extra = ("completeness_check", "hitl", "hitl_phase", "input_artifacts", "skill_name", "output_artifact")
+    keys = tuple(dict.fromkeys((*STAGE_CONFIG_PERSIST_KEYS, *extra)))
+
+    def _empty(val: Any) -> bool:
+        return val in (None, "", [], {})
+
+    def _skip_existing(cur: Any, incoming: Any) -> bool:
+        if not only_missing:
+            return False
+        if isinstance(incoming, bool):
+            return cur is True  # keep explicit on; allow False→True
+        return not _empty(cur)
+
+    if isinstance(dest, dict):
+        for key in keys:
+            if key not in src:
+                continue
+            val = src[key]
+            if _empty(val):
+                continue
+            if _skip_existing(dest.get(key), val):
+                continue
+            dest[key] = val
+        return dest
+    for key in keys:
+        if key not in src or not hasattr(dest, key):
+            continue
+        val = src[key]
+        if _empty(val):
+            continue
+        try:
+            cur = getattr(dest, key)
+        except Exception:
+            cur = None
+        if _skip_existing(cur, val):
+            continue
+        try:
+            setattr(dest, key, val)
+        except Exception:
+            continue
+    # Re-expand coding closed-loop after late refactor_sop / done_verify assignment.
+    try:
+        apply_coding_stage_defaults(dest)
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).debug(
+            "apply_coding_stage_defaults after overlay skipped", exc_info=True
+        )
+    return dest
+
+
+def backfill_stage_from_team_templates(stage: "PipelineStageConfig") -> "PipelineStageConfig":
+    """When resume lacks config_json, fill coding closed-loop from team YAML by agent_id."""
+    aid = str(getattr(stage, "agent_id", "") or "").strip()
+    if not aid:
+        return stage
+    try:
+        from core.harness.execution.team_planner import list_team_templates
+    except Exception:
+        return stage
+    try:
+        for tmpl in list_team_templates():
+            for ts in getattr(tmpl, "stages", None) or []:
+                if isinstance(ts, dict) and str(ts.get("agent_id") or "") == aid:
+                    # only_missing: do not overwrite fields already set on resume
+                    # (first team YAML match must not clobber explicit config).
+                    apply_template_stage_overlay(stage, ts, only_missing=True)
+                    return stage
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).debug(
+            "backfill_stage_from_team_templates skipped", exc_info=True
+        )
+    return stage
+
+
+def pipeline_stage_from_store_row(sr: Any) -> "PipelineStageConfig":
+    """Rebuild ``PipelineStageConfig`` from a pipeline_stages row (+ config_json)."""
+    row = sr if isinstance(sr, dict) else {}
+    input_arts = row.get("input_artifacts", "")
+    if isinstance(input_arts, list):
+        inputs = [str(a).strip() for a in input_arts if str(a).strip()]
+    else:
+        inputs = [a.strip() for a in str(input_arts or "").split(",") if a.strip()]
+    kwargs: Dict[str, Any] = {
+        "id": str(row.get("stage_id") or row.get("id") or "stage"),
+        "agent_id": str(row.get("agent_id") or ""),
+        "agent_name": str(row.get("agent_name") or ""),
+        "skill_name": str(row.get("skill_name") or ""),
+        "output_artifact": str(
+            row.get("output_artifact") or row.get("artifact_key") or ""
+        ),
+        "hitl": bool(row.get("hitl", False)),
+        "hitl_phase": str(row.get("hitl_phase") or ""),
+        "input_artifacts": inputs,
+    }
+    overlay: Dict[str, Any] = {}
+    raw_cfg = row.get("config_json") or row.get("_stage_config") or ""
+    if isinstance(raw_cfg, dict):
+        overlay = dict(raw_cfg)
+    elif isinstance(raw_cfg, str) and raw_cfg.strip():
+        try:
+            import json as _json
+
+            parsed = _json.loads(raw_cfg)
+            if isinstance(parsed, dict):
+                overlay = parsed
+        except Exception:
+            overlay = {}
+    if not overlay:
+        prog = row.get("progress_json") or row.get("progress") or ""
+        if isinstance(prog, dict):
+            nested = prog.get("_stage_config")
+            if isinstance(nested, dict):
+                overlay = dict(nested)
+        elif isinstance(prog, str) and prog.strip():
+            try:
+                import json as _json
+
+                parsed = _json.loads(prog)
+                if isinstance(parsed, dict) and isinstance(parsed.get("_stage_config"), dict):
+                    overlay = dict(parsed["_stage_config"])
+            except Exception:
+                import logging
+
+                logging.getLogger(__name__).debug(
+                    "progress _stage_config json parse skipped", exc_info=True
+                )
+    fields = PipelineStageConfig.model_fields
+    for key, val in overlay.items():
+        if key in fields and key not in ("id",):
+            kwargs[key] = val
+    stage = PipelineStageConfig(**kwargs)
+    # Legacy rows (pre-config_json): restore coding closed-loop from team seeds.
+    if not overlay:
+        backfill_stage_from_team_templates(stage)
+    return stage
+
+
+def stage_uses_react_loop(stage: Any, agent_type: str = "") -> bool:
+    """File-output stages always use StageRunner/ReAct.
+
+    ``plan`` / ``plan_execute`` only take the chat shortcut when the stage
+    does not write files. Pipeline stages remain the schedule layer.
+    """
+    if bool(getattr(stage, "uses_file_output", False)):
+        return True
+    at = str(agent_type or getattr(stage, "agent_type", "") or "")
+    return at not in CONVERSATIONAL_AGENT_TYPES
+
+
+def file_stage_control_stack(stage: Any) -> Dict[str, str]:
+    """Schedule / execute / external-quality stack actually used for a stage.
+
+    Heavy coding is ready when execute is ReAct and quality is an external
+    completion standard. LLM self-critique is not this quality layer.
+    """
+    file_out = bool(getattr(stage, "uses_file_output", False))
+    profile = str(getattr(stage, "architecture_profile", "") or "").strip().lower()
+    dv = getattr(stage, "done_verify", None)
+    dv = dv if isinstance(dv, dict) else {}
+    execute = "react" if stage_uses_react_loop(stage) else "chat"
+    if not file_out:
+        quality = "off"
+    elif dv.get("require_completion_standard") and _file_delivery_has_standard(stage, dv):
+        quality = "external"
+    else:
+        quality = "missing"
+    schedule = "pipeline+plan_execute" if profile == "plan_execute" else "pipeline"
+    return {"schedule": schedule, "execute": execute, "quality": quality}
+
+
+def control_fuses_for_stage(
+    stage: Any,
+    *,
+    max_steps: int = 0,
+    quality_soft_veto_limit: int = 2,
+) -> Dict[str, Any]:
+    """Three-layer stack plus hard fuses (execute / quality / schedule).
+
+    - execute: ReAct ``max_steps``
+    - quality: soft done_verify vetoes before fail-open (hard standards never open)
+    - schedule: ``upgrade_policy`` (off | signals | aggressive)
+    """
+    stack = file_stage_control_stack(stage)
+    try:
+        steps = int(max_steps or 0)
+    except (TypeError, ValueError):
+        steps = 0
+    if steps <= 0:
+        try:
+            steps = max(1, int(os.getenv("AIPLAT_MAX_STEPS_PER_STAGE", "10") or 10))
+        except (TypeError, ValueError):
+            steps = 10
+    try:
+        soft = max(1, int(quality_soft_veto_limit or 2))
+    except (TypeError, ValueError):
+        soft = 2
+    policy = str(getattr(stage, "upgrade_policy", "") or "signals").strip().lower() or "signals"
+    return {
+        "schedule": stack["schedule"],
+        "execute": stack["execute"],
+        "quality": stack["quality"],
+        "fuses": {
+            "execute_max_steps": steps,
+            "quality_soft_veto_limit": soft,
+            "schedule_upgrade_policy": policy,
+        },
+    }
+
+
+def _file_delivery_has_standard(stage: "PipelineStageConfig", dv: Dict[str, Any]) -> bool:
+    """True when a checkable completion standard is already configured."""
+    if dv.get("expected_outcomes") or dv.get("require_keys") or dv.get("require_commands"):
+        return True
+    subs = dv.get("require_substrings")
+    if isinstance(subs, list) and any(str(s).strip() for s in subs):
+        return True
+    for src in (dv.get("output_schema"), getattr(stage, "output_schema", None)):
+        if isinstance(src, dict) and src:
+            return True
+    eo = getattr(stage, "expected_outcomes", None)
+    return bool(isinstance(eo, list) and eo)
+
+
 def apply_coding_stage_defaults(stage: "PipelineStageConfig") -> "PipelineStageConfig":
     """Config-driven coding closed loop for ``uses_file_output`` stages.
 
     Defaults (no agent_id branches): stage sandbox on (unless sandbox_mode=none),
     light done_verify + review_gate, bind autoreview so review_gate can enforce.
+    When ``require_completion_standard`` is on and no standard is set, inject
+    ``require_substrings: ["## FILE:"]`` (same marker as code_generation skill).
     Opt out: ``sandbox_mode: none``, ``review_gate: none``, or
     ``AIPLAT_CODING_STAGE_SANDBOX=false`` / ``AIPLAT_CODING_STAGE_AUTOREVIEW=false``.
+    TDD before DONE: ``tdd_enforce: true`` or ``AIPLAT_CODING_STAGE_TDD=true``.
+    Problem list before DONE: ``AIPLAT_CODING_STAGE_DIAGNOSIS=true`` (``[P0]``/``[P1]``/``[P2]``).
+    Plan before code: ``AIPLAT_CODING_STAGE_PLAN=true`` (``## Refactor Plan`` / ``## 重构计划``).
+    Dependency zones: ``AIPLAT_CODING_STAGE_DEPS=true`` (安全区 + 保护区).
+    Rollback evidence: ``AIPLAT_CODING_STAGE_ROLLBACK=true`` (file checkpoint / git tag).
+    Rollback command: ``AIPLAT_CODING_STAGE_ROLLBACK_CMD=true`` (git checkout/reset or FEATURE_*=false).
+    Feature flag / canary: ``AIPLAT_CODING_STAGE_FLAG=true``.
+    Hard review (Step 5): ``AIPLAT_CODING_STAGE_REQUIRE_REVIEW=true`` / SOP
+    ``require_review`` — binds ``autoreview``, forces ``review_gate=quick``,
+    and upgrades ``execution_backend=llm`` → ``agent`` (or ``oneshot`` →
+    ``react_tools``) so ReAct can dispatch follow-up (oneshot cannot).
+    ``AIPLAT_CODING_STAGE_KEEP_LLM`` is ignored under hard ``require_review``
+    (schema hard-block: oneshot cannot satisfy review receipts).
+    Full refactor SOP (1–7 + review): stage ``refactor_sop: true`` or
+    ``AIPLAT_CODING_STAGE_REFACTOR_SOP=true``.
     File checkpoints remain global (sys_file_write), already default-on.
     """
     if not bool(getattr(stage, "uses_file_output", False)):
         return stage
+
+    def _env_on(name: str) -> bool:
+        return os.getenv(name, "").strip().lower() in ("1", "true", "yes", "on")
 
     mode = str(getattr(stage, "sandbox_mode", "") or "").strip().lower()
     sandbox_default = os.getenv("AIPLAT_CODING_STAGE_SANDBOX", "true").strip().lower() in (
@@ -264,6 +579,24 @@ def apply_coding_stage_defaults(stage: "PipelineStageConfig") -> "PipelineStageC
     )
     if mode != "none" and sandbox_default and not bool(getattr(stage, "sandbox", False)):
         stage.sandbox = True
+
+    sop_default = bool(getattr(stage, "refactor_sop", False)) or _env_on(
+        "AIPLAT_CODING_STAGE_REFACTOR_SOP"
+    )
+    tdd_default = sop_default or _env_on("AIPLAT_CODING_STAGE_TDD")
+    if tdd_default and not bool(getattr(stage, "tdd_enforce", False)):
+        stage.tdd_enforce = True
+    diagnosis_default = sop_default or _env_on("AIPLAT_CODING_STAGE_DIAGNOSIS")
+    plan_default = sop_default or _env_on("AIPLAT_CODING_STAGE_PLAN")
+    deps_default = sop_default or _env_on("AIPLAT_CODING_STAGE_DEPS")
+    rollback_default = sop_default or _env_on("AIPLAT_CODING_STAGE_ROLLBACK")
+    rollback_cmd_default = sop_default or _env_on("AIPLAT_CODING_STAGE_ROLLBACK_CMD")
+    flag_default = sop_default or _env_on("AIPLAT_CODING_STAGE_FLAG")
+    review_default = sop_default or _env_on("AIPLAT_CODING_STAGE_REQUIRE_REVIEW")
+    if sop_default:
+        rg_now = str(getattr(stage, "review_gate", "") or "").strip().lower()
+        if not rg_now or rg_now in ("off", "false", "0", "no"):
+            stage.review_gate = "quick"
 
     dv = getattr(stage, "done_verify", None)
     if not isinstance(dv, dict) or not dv:
@@ -277,11 +610,48 @@ def apply_coding_stage_defaults(stage: "PipelineStageConfig") -> "PipelineStageC
             # P1: handlers in file-output stages must get pure unit tests.
             "require_testability": True,
             "testability_mode": "",  # empty → YAML/env resolve_mode (warn→block_after)
+            # Delivery cannot seal DONE on length alone.
+            "require_completion_standard": True,
+            "require_tdd": bool(getattr(stage, "tdd_enforce", False)),
+            "require_diagnosis": diagnosis_default,
+            "require_refactor_plan": plan_default,
+            "require_dependency_map": deps_default,
+            "require_rollback_checkpoint": rollback_default,
+            "require_rollback_command": rollback_cmd_default,
+            "require_feature_flag": flag_default,
+            "require_review": review_default,
         }
-    elif isinstance(dv, dict) and "require_testability" not in dv:
+    elif isinstance(dv, dict):
         dv = dict(dv)
-        dv["require_testability"] = True
+        if "require_testability" not in dv:
+            dv["require_testability"] = True
+        if "require_completion_standard" not in dv:
+            dv["require_completion_standard"] = True
+        if bool(getattr(stage, "tdd_enforce", False)):
+            dv.setdefault("require_tdd", True)
+        if diagnosis_default:
+            dv.setdefault("require_diagnosis", True)
+        if plan_default:
+            dv.setdefault("require_refactor_plan", True)
+        if deps_default:
+            dv.setdefault("require_dependency_map", True)
+        if rollback_default:
+            dv.setdefault("require_rollback_checkpoint", True)
+        if rollback_cmd_default:
+            dv.setdefault("require_rollback_command", True)
+        if flag_default:
+            dv.setdefault("require_feature_flag", True)
+        if review_default:
+            dv.setdefault("require_review", True)
         stage.done_verify = dv
+
+    # Default checkable standard for file delivery (config-driven; not agent_id).
+    # Explicit empty require_substrings still blocks until another standard is set.
+    dv = dict(getattr(stage, "done_verify", None) or {})
+    if dv.get("require_completion_standard") and not _file_delivery_has_standard(stage, dv):
+        if "require_substrings" not in dv:
+            dv["require_substrings"] = ["## FILE:"]
+            stage.done_verify = dv
 
     rg = str(getattr(stage, "review_gate", "") or "quick").strip().lower()
     autoreview_default = os.getenv("AIPLAT_CODING_STAGE_AUTOREVIEW", "true").strip().lower() in (
@@ -290,11 +660,45 @@ def apply_coding_stage_defaults(stage: "PipelineStageConfig") -> "PipelineStageC
         "yes",
         "on",
     )
-    if autoreview_default and rg not in ("", "none", "off", "false", "0"):
+    # Hard require_review (SOP Step 5) always binds autoreview — even when the
+    # soft AIPLAT_CODING_STAGE_AUTOREVIEW switch is off or review_gate is none.
+    dv_now = getattr(stage, "done_verify", None)
+    hard_review = review_default or (
+        isinstance(dv_now, dict) and bool(dv_now.get("require_review"))
+    )
+    need_ar = hard_review or (
+        autoreview_default and rg not in ("", "none", "off", "false", "0")
+    )
+    if hard_review and rg in ("", "none", "off", "false", "0", "no"):
+        stage.review_gate = "quick"
+        rg = "quick"
+        if isinstance(dv_now, dict):
+            dv_fix = dict(dv_now)
+            dv_fix["review_gate"] = "quick"
+            stage.done_verify = dv_fix
+    if need_ar:
         skills = list(getattr(stage, "required_skills", None) or [])
         if "autoreview" not in skills:
             skills.append("autoreview")
             stage.required_skills = skills
+    # Hard review needs a tool loop — oneshot llm cannot produce autoreview receipts.
+    # KEEP_LLM must not leave an unsatisfiable config (schema hard-block).
+    if hard_review:
+        if _env_on("AIPLAT_CODING_STAGE_KEEP_LLM"):
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "AIPLAT_CODING_STAGE_KEEP_LLM ignored: require_review needs "
+                "react_tools (oneshot cannot dispatch autoreview)"
+            )
+        ap = str(getattr(stage, "architecture_profile", "") or "").strip().lower()
+        eb = str(getattr(stage, "execution_backend", "") or "llm").strip().lower()
+        # plan_execute / reflect_loop / react_tools already run agent loops.
+        if ap not in ("plan_execute", "reflect_loop", "react_tools") and (
+            ap in ("", "oneshot") or eb in ("", "llm")
+        ):
+            stage.architecture_profile = "react_tools"
+            apply_architecture_profile(stage)
     return stage
 
 
@@ -424,6 +828,15 @@ def inject_workspace_coding_defaults(
     if _eo is None and isinstance(meta.get("expected_outcomes"), list):
         _eo = meta.get("expected_outcomes")
     _sm = str(cfg.get("sandbox_mode") or meta.get("sandbox_mode") or "").strip()
+    _refactor_sop = _truthy_flag(cfg.get("refactor_sop")) or _truthy_flag(
+        meta.get("refactor_sop")
+    ) or _truthy_flag(state.get("refactor_sop"))
+    _tdd = (
+        _truthy_flag(cfg.get("tdd_enforce"))
+        or _truthy_flag(meta.get("tdd_enforce"))
+        or _truthy_flag(state.get("tdd_enforce"))
+        or _refactor_sop
+    )
     stage_kw: Dict[str, Any] = {
         "id": "workspace_agent",
         "agent_id": "",
@@ -434,6 +847,8 @@ def inject_workspace_coding_defaults(
         "sandbox": bool(cfg.get("sandbox") or meta.get("sandbox") or state.get("_sandbox")),
         "quality_gate": _qg if isinstance(_qg, dict) else {},
         "expected_outcomes": list(_eo) if isinstance(_eo, list) else [],
+        "refactor_sop": _refactor_sop,
+        "tdd_enforce": _tdd,
     }
     if _sm:
         stage_kw["sandbox_mode"] = _sm
@@ -593,6 +1008,8 @@ class PipelineStageConfig(BaseModel):
     skill_model_purpose: str = ""        # e.g., "reasoning", "code_gen" — passed to best_model_for_purpose
     review_gate: str = "quick"           # "none" | "quick" | "llm" | "hitl" — default quick for safety
     tdd_enforce: bool = False
+    # AI refactor SOP (diagnosis/deps/plan/tdd/review/flag/rollback) without env var.
+    refactor_sop: bool = False
     context_isolation: str = "shared"   # "shared" | "isolated"
     context_profile: str = "code"        # "minimal" | "code" | "debug" | "deep"
     # L2 — imported existing-code context (config-driven, generic: any stage may

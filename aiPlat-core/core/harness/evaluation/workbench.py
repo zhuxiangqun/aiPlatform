@@ -149,7 +149,28 @@ async def persist_evaluation(
     - LearningArtifact(kind=evaluation_report, target_type=run)
     - run_event(type=evaluation_report)
     - audit_log(action=run_evaluation_submit)
+    - optional experience_feedback pending for P0/P1 issues (draft only)
     """
+    try:
+        from core.harness.evaluation.eval_findings_bridge import (
+            register_eval_findings_as_experience,
+        )
+        from core.harness.evaluation.release_scorecard import build_release_scorecard
+
+        score = report.get("score") if isinstance(report.get("score"), dict) else {}
+        metrics = {**score, **{k: report.get(k) for k in ("task_completion", "tool_quality", "safety", "knowledge", "reasoning", "experience") if k in report}}
+        report = dict(report)
+        report["release_scorecard"] = build_release_scorecard(metrics)
+        issues = report.get("issues") if isinstance(report.get("issues"), list) else []
+        if issues and report.get("pass") is False:
+            register_eval_findings_as_experience(
+                [i for i in issues if isinstance(i, dict)],
+                source=f"eval:{evaluator}",
+                run_id=str(run_id or ""),
+            )
+    except Exception:
+        logging.getLogger(__name__).debug("eval findings bridge skipped", exc_info=True)
+
     mgr = LearningManager(execution_store=execution_store)
     version = f"eval:{int(time.time())}"
     meta = {"evaluator": evaluator, "thresholds": thresholds.to_dict(), "pass": bool(report.get("pass"))}
@@ -198,7 +219,10 @@ async def persist_evaluation(
         if not report.get("pass") and report.get("recommendation") == "REJECTED":
             score = report.get("score") if isinstance(report.get("score"), dict) else {}
             dims = get_scoring_dimensions()
-            primary_key = dims[0]["name"] if dims else "overall"
+            # Empty dims must not invent "overall"=0 and auto-rollback.
+            if not dims:
+                return {"artifact_id": art.artifact_id, "version": version}
+            primary_key = dims[0]["name"]
             if score.get(primary_key, 0) < 5.0:
                 import os
                 if os.getenv("AIPLAT_AUTO_ROLLBACK_ON_REGRESSION", "true").lower() not in ("0", "false", "no"):

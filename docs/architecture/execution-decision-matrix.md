@@ -1,7 +1,7 @@
 # 执行决策矩阵
 
 > **一句话**：帮你选「这件事该用程序、LLM、技能、Agent，还是流水线」——先按场景判断，细节与代码证据在文末附录。  
-> **状态**：Living Spec（与实现同步；冲突时以代码为准）· **v1.9** · 2026-10-12  
+> **状态**：Living Spec（与实现同步；冲突时以代码为准）· **v1.12** · 2026-10-17  
 > **互补文档**：[产物怎么验收](execution-quality-gates.md) · [能力剖面细节](capability-profile.md) · [知识 / Memory / CRAG](../knowledge-system.md) · [Agent 总览](../agent-system.md)（后端规则以本文为准）
 
 ---
@@ -102,6 +102,29 @@ blast_radius:     <失败/token/权限影响>
 - 缺任一字段或明显占位符（如 `N/A`、`待补`）→ CI 硬失败。
 
 内联 `# ladder-ok: <reason>` 理由需不少于 15 字；支持 `# ladder-ok: temporary until <date>`，到期后重新校验。仅写 CAPABILITIES 名字、无证明块且无合格 `# ladder-ok` → **不通过**。
+
+### 2.6 执行封存（完成语义 · 平台规范）
+
+「完成」不是模型说 DONE。封存是平台横切：DONE 前校验、DONE 后回执与质量复核。  
+**权威在 aiPlat Core**：公共入口 `execution_seal`（`check_done_verify` / `coding_deliverable_veto` / `seal_answer_with_receipts` / `seal_before_finish`）+ `quality_review_blocks_success`。叶实现 `bind_completion_to_receipts` 仅由 seal 调用；完成路径禁止直调。CoreFacade 有同名 re-export。  
+**Pi 壳不执行封存门禁**（见 [`HYBRID_ENTERPRISE.md`](../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md) 非目标）。混合企业 ≠ 编码闭环已在 Pi 上跑完。
+
+| 路径 | DONE 前 | 完成回执 | 质量复核可翻失败 | 现状 |
+|------|---------|----------|------------------|------|
+| **ReAct**（StageRunner 默认、`coding_closed_loop`） | `done_verify` + coding 交付否决 + `require_review` 跟进技能 | `seal_answer_with_receipts`（→ leaf `bind_completion_to_receipts`） | 有（finalize / orphan 编码路径） | **全套** |
+| **PlanExecute** | 与 ReAct 相同的 coding 交付否决 + `run_done_verify`（异常对编码 fail-closed） | 步骤记 `_tool_receipts` + 完成前 `seal_before_finish` | finalize 会跑 | **封存对齐** — 不自动派发 autoreview，缺跟进则 ERROR，不标完成 |
+| **Pipeline llm oneshot** | `gate_llm_file_output_stage`（落盘前，内走 `seal_answer_with_receipts`） | 无成功工具回执的「已修好 / 路径」**否决落盘**（不改写 `## FILE:` 正文） | stage QR 硬失败可置 FAILED | file + 硬 `require_review` **schema 强制**升 `react_tools`（`KEEP_LLM` 无效）；软审查仍可 oneshot + gate 否决 |
+| **Workspace Execute** | 与 ReAct 相同（`inject_workspace_coding_defaults`） | 同 ReAct | 同 ReAct | `loop_type=plan_execute` 会建 PlanExecute；**file-output / `require_review` 仍强制 ReAct**（自动跟进审查只在 ReAct） |
+| **Pi hybrid** | **无** | 仅 Memory 回写打 `[未核验]`/`[失败]` 与 `completion_*` 标签；**不改用户可见完成** | **无** | 桥只投递；PolicyGate / 编码宪法 / `task_model_lock` 仍在 Core `sys_llm_generate` |
+
+规则（配置驱动，禁止按 `agent_id` 分支）：
+
+1. `uses_file_output` / `refactor_sop` / `require_review` 的完成标准走 `PipelineStageConfig.done_verify`（及 `AIPLAT_CODING_STAGE_*`）。  
+2. 「已修好 / 文件路径」没有成功工具回执 → 前缀 `[未核验]` 或 `[失败]`。多个修复候选只封存得分最高的一个（`select_repair_candidate`）；`code` / `code_execution` / `shell`/`bash`（pytest / python 补丁 / 重定向写入）/ `test_executor` / `canary_runner` / `e2e_test` / `acceptance_checker` 对这组候选只放行一次成功验证（`block_extra_repair_verify`；失败可对同一方案重试）。候选块写入后换轮仍有效（`remember_repair_candidates`）。候选块出现前的 `code` 回执不证明最高分方案已通过。同一次 `code` 若仍包含被跳过方案的正文，则不执行。选型后 `file_operations` / `write` / `edit` 写入被跳过方案正文会被拒绝（ReAct facade 与 compiled react 同门）。选型前新建且正文就是被跳过方案的文件会删掉；覆盖已有文件时按检查点或写入前快照恢复。`code` 脚本中的字面量写入，以及执行后工作区内新建/改动的文件（变量路径；cwd / workdir / `_deploy_files_dir` / `output_dir` / 进程 cwd），也会记入回滚名单。差分写入挂上当次脚本；选型后按正文或脚本归属回滚（含该脚本新建的二进制，以及不超过 8KB 的被覆盖二进制，按基线 `prior_b64` 恢复；更大文件走检查点）。候选块出现前，第二段明显不同的补丁脚本（含短脚本、`python -c`）先不跑；`pytest` / `python -m pytest` / `ruff` 与同一脚本的小改动仍可跑。预测与实测不符（`_prediction_receipt.actual_pass=false`）不能声明已修好。这不是世界模型。契约向量：[`completion_receipt_vectors.json`](fixtures/completion_receipt_vectors.json)（Python 与 Pi JS 同测）。Pi 不记预测回执。  
+3. 对话型 orphan 可跳过质量复核（状态预算）；编码 / `skill_delivery=once` / `## FILE:` **不可**。orphan 状态探针读 DB 真实 status；无行或 `force_failed`/`quality_block` 与 completed 冲突时不得发明 completed。第二次 `finalize` 不得把已封 timeout/failed 再标 completed。`run_end` 载荷没有 status 时探针保持 running，不当完成。Agent / run_graph / run_events 探针均经 `_apply_sealed_failure_status`，元数据失败封存优先于 completed。`run_end` 探针若行状态是 completed 但元数据已封失败，仍返回 timeout/failed。  
+4. 校验环异常、QR 异常、StageRunner 编码默认预注入异常、ReAct eager finalize / PlanExecute finalize 异常、`_force_failed_status`（timeout/LLM 耗尽）、autoreview 不可加载：编码/审阅路径 **fail-closed**；StageRunner 失败优先于 skill 正文；CoreFacade 外层收尾不得把已封 timeout/failed 再改回 completed。  
+5. `skip_claude_md` 仅澄清 / prompt-Skill；材料问答与数字人顾问走 **slim**（`coding_policy_profile=off`），禁止整段 skip。  
+6. Workspace/`StageRunner` 尊重 `loop_type` / `architecture_profile=plan_execute`；**file-output 或 `require_review` 强制 ReAct**（PlanExecute 不自动派发 autoreview）。
 
 ---
 
@@ -289,7 +312,7 @@ Eval / 金标 / 值班板：见 Governance 与 `apps/eval`（`runs_eval` / gold�
 4. 单次「计划→程序」？→ hybrid Skill；多轮纠正？→ Agent 环。  
 5. 多角色？→ Pipeline **编排** stage（stage 内仍是 Agent/Skill）。  
 6. 外部多工具？→ MCP（先证明 Tool/Skill 不够）；合入过 cost ladder。  
-7. 编码落盘？→ 闭环；优先 Agent。  
+7. 编码落盘？→ 闭环 + §2.6 封存；ReAct 与 PlanExecute 完成前都走交付否决与回执绑定；llm oneshot 不能代替审阅。  
 8. 生成物？→ 三类型 + 推荐 `architecture_profile` + 默认 prompt；确定性副作用才用 E2 handler。
 
 ---
@@ -332,8 +355,12 @@ Eval / 金标 / 值班板：见 Governance 与 `apps/eval`（`runs_eval` / gold�
 | meta-tool 意图 | `meta_tool.detect_meta_tool_intent` · `_INTENT_PATTERNS` |
 | 工厂 SOP | `agent_engineering/SKILL.md` |
 | 工作区闭环 | `inject_workspace_coding_defaults` |
+| 执行封存 | §2.6 · `execution_seal`（`coding_deliverable_veto` / `check_done_verify` / `seal_answer_with_receipts`）· `quality_review_blocks_success` · `finalize_agent_after_skill_delivery` · Pi `bindCompletionToReceipts`（仅 Memory） |
+| 回执契约向量 | `docs/architecture/fixtures/completion_receipt_vectors.json` |
+| Memory 寿命 / 选模锁 | [memory-lifetime-and-model-lock.md](memory-lifetime-and-model-lock.md) · sticky 仅 CoreFacade · `task_model_lock` 仅 Core |
 | 成本阶梯 | 根 `CLAUDE.md` §20 · `check_cost_ladder.py` |
 | YAML 漂移 lint | `scripts/lint_team_yaml_profile_drift.py`（v1.9） |
+| UI E2E 规范 | `engine/skills/e2e_test` handler（单页 recon 或 flow 多步）· `parse_flow`/`scaffold_flow_spec` · `validate_e2e_deliverable` + seal veto · `references/flow-rules.md` · **Pi 不重做** |
 | Memory / CRAG | [knowledge-system.md](../knowledge-system.md) |
 
 **维护**：改上表路径时同 PR 更新本文；破坏性语义升 minor。  
@@ -345,6 +372,9 @@ Eval / 金标 / 值班板：见 Governance 与 `apps/eval`（`runs_eval` / gold�
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
+| v1.10 | 2026-10-17 | §2.6 执行封存矩阵；PlanExecute/`seal_before_finish`；ReAct+llm 经 `seal_answer_with_receipts`；共享 `completion_receipt_vectors.json`；Memory/选模边界见 `memory-lifetime-and-model-lock.md` |
+| v1.12 | 2026-10-17 | §2.6：多个修复候选时 `code`/`code_execution` 只放行一次；候选块换轮仍有效（`remember_repair_candidates`） |
+| v1.11 | 2026-10-17 | 附录 B：UI E2E 规范唯一源 `e2e_test` + `browser.list_elements`；Pi 不重做 |
 | v1.9 | 2026-10-12 | 治理增强：O1 MCP 证明质量校验；O2 YAML 漂移 lint（可选启用）；O3 Eval/Memory 接口定义（§6.1）；路径卡扩展 `stage_id`/`skill_name`/`handler_present`/`fail_closed_reason`；FAIL_OPEN 告警与过期提醒；成本阶梯内联 `# ladder-ok` 与质量最低标准 |
 | v1.8.1 | 2026-10-12 | 可选澄清：Stage prompt `effects`=拒演闸门非整跑 PolicyGate；`path`≡`actual_path`（预留分列）；§8 登记 O1–O3 |
 | v1.8 | 2026-10-12 | 细节澄清：Stage vs Syscall hybrid（`hybrid_semantics`）；prompt 在 agent 环用法；meta-tool 意图检测；程序 vs Tool 一句话；MCP 证明模板；ToT/GoT 组合示例；YAML 覆盖与 conformance 边界；推断降级字段预留 |

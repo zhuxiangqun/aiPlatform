@@ -574,6 +574,34 @@ def persist_startable_scaffold_delivery(
     }
 
 
+def _sealed_failure_status(meta: Any) -> str:
+    """``timeout`` or ``failed`` when a seal must not be rewritten as completed."""
+    if not isinstance(meta, dict):
+        return ""
+    force = str(
+        meta.get("force_failed_status") or meta.get("_force_failed_status") or ""
+    ).strip().lower()
+    if force == "timeout":
+        return "timeout"
+    if force in ("failed", "error", "cancelled", "canceled"):
+        return "failed"
+    src = str(meta.get("finalize_source") or "")
+    if src in ("reason_llm_failure_exhausted", "observe_primary_skill_timeout") or (
+        "llm_failure" in src
+    ):
+        return "timeout"
+    if "timeout" in src:
+        return "timeout"
+    if (
+        meta.get("quality_block_completed")
+        or meta.get("require_review_incomplete")
+        or meta.get("_finalize_hard_fail")
+        or str(meta.get("done_verify_reason") or "").startswith("done_verify:")
+    ):
+        return "failed"
+    return ""
+
+
 async def finalize_agent_after_skill_delivery(
     *,
     run_id: str,
@@ -760,58 +788,72 @@ async def finalize_agent_after_skill_delivery(
 
     if prev_st in ("completed", "ok", "success", "done") and len(prev_text) >= 20:
         # Already finalized — still persist startable scaffold if missing.
+        # A sealed failure (timeout / QR / done_verify) must not be re-marked completed.
         prev_meta = existing.get("metadata") if isinstance(existing.get("metadata"), dict) else {}
-        already_ok = str(prev_meta.get("disk_persist") or "") == "ok"
-        if persist_info.get("disk_persist") == "ok" and not already_ok:
+        if not _sealed_failure_status(prev_meta) and not _sealed_failure_status(metadata_extra):
+            already_ok = str(prev_meta.get("disk_persist") or "") == "ok"
+            if persist_info.get("disk_persist") == "ok" and not already_ok:
+                try:
+                    meta_p = dict(prev_meta)
+                    meta_p.update(persist_info)
+                    if isinstance(metadata_extra, dict):
+                        meta_p.update(metadata_extra)
+                    out_p: Dict[str, Any] = {"text": prev_text}
+                    if persist_info.get("persisted_root"):
+                        out_p["persisted_root"] = persist_info["persisted_root"]
+                    if persist_info.get("persisted_files"):
+                        out_p["persisted_files"] = persist_info["persisted_files"]
+                    await store.upsert_agent_execution(
+                        {
+                            "id": rid,
+                            "agent_id": aid,
+                            "status": existing.get("status") or "completed",
+                            "input": existing.get("input"),
+                            "output": out_p,
+                            "error": existing.get("error"),
+                            "start_time": existing.get("start_time"),
+                            "end_time": existing.get("end_time"),
+                            "duration_ms": existing.get("duration_ms"),
+                            "trace_id": str(trace_id or existing.get("trace_id") or ""),
+                            "metadata": meta_p,
+                        }
+                    )
+                except Exception:
+                    logging.getLogger(__name__).debug(
+                        "finalize delivery persist-on-completed skipped", exc_info=True
+                    )
             try:
-                meta_p = dict(prev_meta)
-                meta_p.update(persist_info)
-                if isinstance(metadata_extra, dict):
-                    meta_p.update(metadata_extra)
-                out_p: Dict[str, Any] = {"text": prev_text}
-                if persist_info.get("persisted_root"):
-                    out_p["persisted_root"] = persist_info["persisted_root"]
-                if persist_info.get("persisted_files"):
-                    out_p["persisted_files"] = persist_info["persisted_files"]
-                await store.upsert_agent_execution(
-                    {
-                        "id": rid,
-                        "agent_id": aid,
-                        "status": existing.get("status") or "completed",
-                        "input": existing.get("input"),
-                        "output": out_p,
-                        "error": existing.get("error"),
-                        "start_time": existing.get("start_time"),
-                        "end_time": existing.get("end_time"),
-                        "duration_ms": existing.get("duration_ms"),
-                        "trace_id": str(trace_id or existing.get("trace_id") or ""),
-                        "metadata": meta_p,
-                    }
-                )
+                from core.harness.observation.run_graph import mark_run_done
+
+                await mark_run_done(rid, status="completed")
+            except Exception:
+                logging.getLogger(__name__).debug("finalize delivery mark_run_done skip", exc_info=True)
+            try:
+                closer = getattr(store, "close_running_syscall_events", None)
+                if closer is not None:
+                    maybe = closer(rid, status="ok", error=None)
+                    if hasattr(maybe, "__await__"):
+                        await maybe
             except Exception:
                 logging.getLogger(__name__).debug(
-                    "finalize delivery persist-on-completed skipped", exc_info=True
+                    "finalize delivery close leftover syscalls skip", exc_info=True
                 )
+            return True
+
+    # Refuse a second seal that would turn a stuck failure back into completed.
+    prev_meta_stuck = existing.get("metadata") if isinstance(existing.get("metadata"), dict) else {}
+    stuck = _sealed_failure_status(prev_meta_stuck) or (
+        "timeout" if prev_st == "timeout" else ""
+    )
+    if prev_st in ("failed", "error", "timeout") and stuck:
         try:
             from core.harness.observation.run_graph import mark_run_done
 
-            await mark_run_done(rid, status="completed")
-        except Exception:
-            logging.getLogger(__name__).debug("finalize delivery mark_run_done skip", exc_info=True)
-        try:
-            closer = getattr(store, "close_running_syscall_events", None)
-            if closer is not None:
-                maybe = closer(rid, status="ok", error=None)
-                if hasattr(maybe, "__await__"):
-                    await maybe
+            await mark_run_done(rid, status="timeout" if stuck == "timeout" or prev_st == "timeout" else "failed")
         except Exception:
             logging.getLogger(__name__).debug(
-                "finalize delivery close leftover syscalls skip", exc_info=True
+                "finalize delivery keep-failed mark_run_done skip", exc_info=True
             )
-        return True
-
-    # Also refuse green seal if already failed with substance
-    if prev_st in ("failed", "error", "timeout") and existing.get("metadata", {}).get("quality_block_completed"):
         return True
 
     t0 = float(start_time or existing.get("start_time") or now)
@@ -838,13 +880,74 @@ async def finalize_agent_after_skill_delivery(
         out_payload["persisted_files"] = persist_info["persisted_files"]
     final_status = "completed"
     final_error = ""
-    skip_qr = bool(
+    _stuck_now = _sealed_failure_status(meta)
+    _force_fail = ""
+    if isinstance(meta, dict):
+        _force_fail = str(
+            meta.get("force_failed_status")
+            or meta.get("_force_failed_status")
+            or ""
+        ).strip().lower()
+    if _force_fail in ("timeout", "failed", "error", "cancelled", "canceled"):
+        final_status = "timeout" if _force_fail == "timeout" else "failed"
+        final_error = str(
+            meta.get("done_verify_reason")
+            or meta.get("error")
+            or f"forced_{_force_fail}"
+        )[:500]
+    elif _stuck_now:
+        final_status = _stuck_now
+        final_error = str(
+            meta.get("done_verify_reason")
+            or meta.get("error")
+            or f"sealed_{_stuck_now}"
+        )[:500]
+    elif isinstance(metadata_extra, dict) and (
+        metadata_extra.get("require_review_incomplete")
+        or str(metadata_extra.get("done_verify_reason") or "").startswith("done_verify:")
+        or str(metadata_extra.get("finalize_source") or "")
+        in (
+            "observe_done_verify_blocked",
+            "observe_auto_followup_review_incomplete",
+        )
+    ):
+        final_status = "failed"
+        final_error = str(
+            metadata_extra.get("done_verify_reason")
+            or "done_verify blocked seal"
+        )[:500]
+    orphan_watch = bool(
         isinstance(metadata_extra, dict)
         and (
             metadata_extra.get("orphan_watchdog")
             or str(metadata_extra.get("finalize_source") or "") == "status_orphan_watch"
         )
     )
+    # Peek syscalls so coding / skill_delivery_once seals still run QR.
+    _orphan_items: Any = None
+    if orphan_watch:
+        try:
+            import asyncio as _aio_orphan_peek
+
+            _ev_peek = await _aio_orphan_peek.wait_for(
+                store.list_syscall_events(run_id=rid, limit=80),
+                timeout=1.5,
+            )
+            _orphan_items = (
+                (_ev_peek or {}).get("items")
+                if isinstance(_ev_peek, dict)
+                else (_ev_peek or [])
+            )
+        except Exception:
+            _orphan_items = None
+    coding_orphan = orphan_seal_requires_quality_review(
+        metadata=meta if isinstance(meta, dict) else None,
+        metadata_extra=metadata_extra if isinstance(metadata_extra, dict) else None,
+        syscall_items=_orphan_items,
+        output_text=body,
+    )
+    # Conversational orphan seals skip QR (8s status budget). Coding must not.
+    skip_qr = bool(orphan_watch and not coding_orphan)
     # Leave 「执行中」as soon as the product exists. QR / RunGraph / leftover
     # syscall close can stall on SQLite; a hung review must not keep the row running
     # (qa_agent run-124d89d5ef3f: auto_done ok, Agent still running).
@@ -983,6 +1086,22 @@ async def finalize_agent_after_skill_delivery(
             )
     except Exception:
         logging.getLogger(__name__).debug("finalize delivery QR skipped", exc_info=True)
+        # Coding / review-bound seals must not stay green when QR crashes.
+        _qr_hard = bool(coding_orphan) or orphan_seal_requires_quality_review(
+            metadata=meta if isinstance(meta, dict) else None,
+            metadata_extra=metadata_extra if isinstance(metadata_extra, dict) else None,
+            output_text=body,
+        )
+        if (
+            _qr_hard
+            and final_status == "completed"
+            and not skip_qr
+        ):
+            final_status = "failed"
+            final_error = (
+                "quality_review failed (exception; fail-closed for coding)"
+            )
+            meta["quality_block_completed"] = True
 
     if final_status != "completed" or meta.get("quality_review"):
         try:
@@ -1169,6 +1288,131 @@ _FOLLOWUP_SKILL_IDS = frozenset({"autoreview", "code_review", "code-hygiene"})
 _CODING_PRIMARY_SKILL_IDS = frozenset(
     {"code_generation", "code-hygiene", "file_operations"}
 )
+
+
+def orphan_seal_requires_quality_review(
+    *,
+    metadata: Optional[Dict[str, Any]] = None,
+    metadata_extra: Optional[Dict[str, Any]] = None,
+    syscall_items: Any = None,
+    output_text: str = "",
+) -> bool:
+    """True when orphan seal must run QR (coding / review-bound).
+
+    Conversational ``auto_done`` seals keep skip_qr for the 8s status budget.
+    ``skill_delivery_once`` / coding primary / bound follow-up / ``## FILE:``
+    must not greenwash without ``quality_review_blocks_success``.
+    """
+    bags = [x for x in (metadata, metadata_extra) if isinstance(x, dict)]
+    for bag in bags:
+        if str(bag.get("_skill_delivery") or bag.get("skill_delivery") or "").lower() == "once":
+            return True
+        if bag.get("require_review") or bag.get("require_review_incomplete"):
+            return True
+        if str(bag.get("done_verify_reason") or "").startswith("done_verify:"):
+            return True
+        for k in ("bound_skills", "required_skills", "skill_hint", "_bound_skill_ids"):
+            v = bag.get(k)
+            names: List[str] = []
+            if isinstance(v, (list, tuple, set)):
+                names = [str(x).strip().lower() for x in v if str(x).strip()]
+            elif isinstance(v, str) and v.strip():
+                names = [
+                    p.strip().lower()
+                    for p in re.split(r"[\s,]+", v)
+                    if p.strip()
+                ]
+            for n in names:
+                if n in _FOLLOWUP_SKILL_IDS or n in _CODING_PRIMARY_SKILL_IDS:
+                    return True
+    for it in (syscall_items if isinstance(syscall_items, list) else []) or []:
+        if not isinstance(it, dict):
+            continue
+        nm = str(it.get("name") or "").lower()
+        kind_i = str(it.get("kind") or "").lower()
+        if kind_i == "done" and nm == "skill_delivery_once":
+            return True
+        if kind_i == "skill" and (
+            nm in _CODING_PRIMARY_SKILL_IDS or nm in _FOLLOWUP_SKILL_IDS
+        ):
+            return True
+    if re.search(r"(?m)^##\s*FILE:\s*\S+", str(output_text or "")):
+        return True
+    return False
+
+
+async def orphan_finalize_status_payload(
+    store: Any,
+    *,
+    run_id: str,
+    kind: str,
+    fallback_output: str,
+    age: float,
+    input_payload: Any = None,
+) -> Dict[str, Any]:
+    """Status-probe body after orphan finalize — always use DB status (never hardcode completed)."""
+    import time as _time
+
+    row: Dict[str, Any] = {}
+    try:
+        getter = getattr(store, "get_agent_execution", None)
+        if getter is not None:
+            got = await getter(str(run_id))
+            if isinstance(got, dict):
+                row = got
+    except Exception:
+        row = {}
+    meta = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+    st = str(row.get("status") or "").lower()
+    if st in ("ok", "success", "done"):
+        st = "completed"
+    # Missing row / empty status after orphan finalize must not invent completed.
+    if not st:
+        st = "failed"
+    _force = str(
+        meta.get("force_failed_status") or meta.get("_force_failed_status") or ""
+    ).strip().lower()
+    if (
+        meta.get("quality_block_completed")
+        or meta.get("require_review_incomplete")
+        or meta.get("_finalize_hard_fail")
+        or _force in ("timeout", "failed", "error", "cancelled", "canceled")
+        or str(meta.get("done_verify_reason") or "").startswith("done_verify:")
+    ) and st in ("completed", "ok", "success", "done"):
+        st = "timeout" if _force == "timeout" else "failed"
+    out = row.get("output")
+    if out is None:
+        out = {"text": fallback_output}
+    end_t = row.get("end_time")
+    try:
+        end_f = float(end_t) if end_t is not None else _time.time()
+    except (TypeError, ValueError):
+        end_f = _time.time()
+    dur = row.get("duration_ms")
+    try:
+        dur_i = int(dur) if dur is not None else int(max(0.0, float(age)) * 1000)
+    except (TypeError, ValueError):
+        dur_i = int(max(0.0, float(age)) * 1000)
+    err = row.get("error")
+    if st in ("failed", "error", "timeout") and not err:
+        err = (
+            meta.get("done_verify_reason")
+            or (_force and f"forced_{_force}")
+            or "orphan seal failed"
+        )
+    return {
+        "execution_id": str(run_id),
+        "kind": kind,
+        "status": st,
+        "end_time": end_f,
+        "duration_ms": dur_i,
+        "output": out,
+        "input": row.get("input") if row.get("input") is not None else input_payload,
+        "error": (str(err) if err else None),
+        "quality_review": meta.get("quality_review"),
+        "not_found": False,
+        "recovered_skill_delivery": True,
+    }
 
 
 def resolve_bound_skill_ids(state: Any, skills: Any = None) -> List[str]:

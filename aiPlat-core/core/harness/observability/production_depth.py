@@ -46,6 +46,32 @@ def build_production_depth_report() -> Dict[str, Any]:
         "hint": "pipeline_engine → stage_reflection.capture_stage_reflection",
     })
 
+    recursion_ok = False
+    recursion_detail = ""
+    try:
+        from core.harness.evaluation import harness_recursion as hr
+        from core.harness.execution.langgraph.stage_runner import StageRunner
+
+        src = inspect.getsource(StageRunner.run)
+        recursion_ok = (
+            "copy_contrast_signals" in src
+            and callable(getattr(hr, "step_from_state", None))
+            and callable(getattr(hr, "format_library_overlay", None))
+        )
+        recursion_detail = (
+            f"module={hr.__name__} surface={recursion_ok} "
+            f"library={hr.library_path().name}"
+        )
+    except Exception as e:
+        recursion_detail = f"{type(e).__name__}: {e}"
+    checks.append({
+        "id": "harness_recursion",
+        "title": "对照式 Harness 改进库接线",
+        "status": _status(recursion_ok),
+        "detail": recursion_detail,
+        "hint": "stage_runner.copy_contrast_signals → stage_reflection → harness_recursion",
+    })
+
     # 2) Exec / sandbox docker preference
     prefer_exec = (
         profile == "production"

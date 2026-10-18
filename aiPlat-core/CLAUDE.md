@@ -4,6 +4,18 @@ scope: backend
 language: zh-CN
 ---
 
+<!-- inject:always -->
+# core 核心约束（每次注入）
+
+- 正确性与可验证性 > 最小改动 > 简单 > 风格一致。
+- 不确定先问；与设计文档冲突时以代码为准，结论附 grep 证据。
+- Harness / engine：禁止硬编码业务角色、阶段、artifact key；行为用 PipelineStageConfig / DomainRouter。
+- 选模：`best_model_for_purpose` → infra `unified_pipeline`；任务内锁定后只升不降。
+- 平台进 core 只经 CoreFacade；同能力一个入口。
+- 新 public 符号同步 `AIPLAT_CAPABILITIES.md` + `capability_registry.yaml`，且有非测试调用方。
+- 细则按任务读本文件对应节（模型 §5.31、工具 §5.11、Skill §5.10）；改 infra / platform / management 时读对应子仓 CLAUDE.md。
+<!-- inject:always-end -->
+
 # aiPlat-core AI 编程规约（后端）
 
 本文件用于约束 AI Agent 在 aiPlat-core 仓库内的行为，目标是：
@@ -778,7 +790,7 @@ grep -rn "any(kw in.*for kw in\|_name.*for kw in\|审查.*排查\|售前.*客服
 ### 当前已知违规（截至 2026-05）
 
 - `builder_session.py:238-240`: ~~`session.get("architecture"/"code"/"test_report")` 硬编码 artifact key（KNOWN_DEBT）~~ → ✅ 已修复：`BuilderSessionStateResponse` 已有通用 `artifacts: Dict` 字段，`builder_session.py` 已改为从 `session.get("artifacts", {})` 动态填充。typed 字段（architecture/code/test_report）保留向后兼容。
-<!-- verify: cmd: grep -c artifacts aiPlat-core/core/schemas_builder.py expect: 7 operator: eq desc: BuilderSessionStateResponse.artifacts 字段存在 -->
+<!-- verify: cmd: grep -c artifacts aiPlat-core/core/schemas_builder.py expect: 10 operator: eq desc: BuilderSessionStateResponse.artifacts 字段存在 -->
 - `schemas_builder.py:29-31`: `BuilderSessionPhase` 业务枚举保留用于向后兼容（`awaiting_*` 名称，引擎已不再使用它们做行为分叉）
 - `agent_insight_service.py:70`: 度量层使用业务枚举值（已标注为允许的例外——度量层本质上是业务聚合）
 

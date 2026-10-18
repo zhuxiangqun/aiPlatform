@@ -182,6 +182,13 @@ class PipelineRunStore:
                     conn.execute(f"ALTER TABLE pipeline_runs ADD COLUMN {col} {col_type}")
                 except Exception:
                     pass  # noqa: schema-idempotent
+            # ── v3.8: stage config_json — coding closed-loop / refactor_sop on resume ──
+            try:
+                conn.execute(
+                    "ALTER TABLE pipeline_stages ADD COLUMN config_json TEXT DEFAULT ''"
+                )
+            except Exception:
+                pass  # noqa: schema-idempotent
             conn.commit()
         finally:
             conn.close()
@@ -562,8 +569,15 @@ class PipelineRunStore:
         hitl_phase: str = "",
         agent_name: str = "",
         input_artifacts: str = "",
+        config: Optional[Dict[str, Any]] = None,
     ) -> None:
         progress_str = json.dumps(progress) if progress else ""
+        config_str = ""
+        if isinstance(config, dict) and config:
+            try:
+                config_str = json.dumps(config, ensure_ascii=False)
+            except Exception:
+                config_str = ""
         now = _time.strftime("%Y-%m-%dT%H:%M:%S")
         started = now if status in ("running",) else ""
         finished = now if status in ("completed", "failed", "skipped") else ""
@@ -573,15 +587,25 @@ class PipelineRunStore:
                (run_id, stage_id, stage_idx, agent_id, skill_name,
                 status, progress_json, artifact_key, artifact_output,
                 elapsed_sec, error_message, started_at, finished_at,
-                output_artifact, hitl, hitl_phase, agent_name, input_artifacts)
+                output_artifact, hitl, hitl_phase, agent_name, input_artifacts,
+                config_json)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                       ?, ?, ?, ?, ?)
+                       ?, ?, ?, ?, ?, ?)
                ON CONFLICT(run_id, stage_id) DO UPDATE SET
                 stage_idx = excluded.stage_idx,
-                agent_id = excluded.agent_id,
-                skill_name = excluded.skill_name,
+                agent_id = CASE
+                    WHEN excluded.agent_id <> '' THEN excluded.agent_id
+                    ELSE pipeline_stages.agent_id
+                END,
+                skill_name = CASE
+                    WHEN excluded.skill_name != '' THEN excluded.skill_name
+                    ELSE pipeline_stages.skill_name
+                END,
                 status = excluded.status,
-                progress_json = excluded.progress_json,
+                progress_json = CASE
+                    WHEN excluded.progress_json != '' THEN excluded.progress_json
+                    ELSE pipeline_stages.progress_json
+                END,
                 artifact_key = excluded.artifact_key,
                 artifact_output = excluded.artifact_output,
                 elapsed_sec = excluded.elapsed_sec,
@@ -594,16 +618,33 @@ class PipelineRunStore:
                     WHEN excluded.finished_at != '' THEN excluded.finished_at
                     ELSE pipeline_stages.finished_at
                 END,
-                output_artifact = excluded.output_artifact,
+                output_artifact = CASE
+                    WHEN excluded.output_artifact != '' THEN excluded.output_artifact
+                    ELSE pipeline_stages.output_artifact
+                END,
                 hitl = excluded.hitl,
-                hitl_phase = excluded.hitl_phase,
-                agent_name = excluded.agent_name,
-                input_artifacts = excluded.input_artifacts""",
+                hitl_phase = CASE
+                    WHEN excluded.hitl_phase != '' THEN excluded.hitl_phase
+                    ELSE pipeline_stages.hitl_phase
+                END,
+                agent_name = CASE
+                    WHEN excluded.agent_name != '' THEN excluded.agent_name
+                    ELSE pipeline_stages.agent_name
+                END,
+                input_artifacts = CASE
+                    WHEN excluded.input_artifacts != '' THEN excluded.input_artifacts
+                    ELSE pipeline_stages.input_artifacts
+                END,
+                config_json = CASE
+                    WHEN excluded.config_json != '' THEN excluded.config_json
+                    ELSE pipeline_stages.config_json
+                END""",
             (
                 run_id, stage_id, stage_idx, agent_id, skill_name,
                 status, progress_str, artifact_key, artifact_output,
                 elapsed_sec, error_message, started, finished,
                 output_artifact, 1 if hitl else 0, hitl_phase, agent_name, input_artifacts,
+                config_str,
             ),
         )
 

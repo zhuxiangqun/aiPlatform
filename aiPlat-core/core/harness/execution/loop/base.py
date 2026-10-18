@@ -130,6 +130,20 @@ class BaseLoop(ILoop):
 
         stop_reason = None
 
+        self._task_model_token = None
+
+        try:
+
+            from core.harness.utils.task_model_lock import bind_task_model_scope
+
+            self._task_model_token = bind_task_model_scope(
+                str(state.context.get("_run_id") or "")
+            )
+
+        except Exception:
+
+            logging.getLogger(__name__).debug("task model scope bind skipped", exc_info=True)
+
 
 
         # Session start + pre-loop hooks
@@ -433,6 +447,10 @@ class BaseLoop(ILoop):
                 logging.getLogger(__name__).debug('code failed', exc_info=True)
 
 
+            self._seal_task_model_route(
+                success=self._current_state.current == LoopStateEnum.FINISHED
+            )
+
             return LoopResult(
 
                 success=self._current_state.current == LoopStateEnum.FINISHED,
@@ -499,6 +517,7 @@ class BaseLoop(ILoop):
             except Exception:
 
                 logging.getLogger(__name__).debug('code failed', exc_info=True)
+            self._seal_task_model_route(success=False)
             return LoopResult(
 
                 success=False,
@@ -978,6 +997,35 @@ class BaseLoop(ILoop):
         self._current_state = LoopState()
 
         self._current_node = "init"
+
+
+
+    def _seal_task_model_route(self, *, success: bool) -> None:
+
+        """Write the task route log once, then clear the scope token."""
+
+        try:
+
+            from core.harness.utils.task_model_lock import (
+                finish_task_model_scope,
+                reset_task_model_scope,
+            )
+
+            ctx = getattr(self._current_state, "context", {}) or {}
+
+            finish_task_model_scope(str(ctx.get("_run_id") or ""), success=success)
+
+            token = getattr(self, "_task_model_token", None)
+
+            if token is not None:
+
+                reset_task_model_scope(token)
+
+                self._task_model_token = None
+
+        except Exception:
+
+            logging.getLogger(__name__).debug("task model route seal skipped", exc_info=True)
 
 
 

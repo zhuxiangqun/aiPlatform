@@ -18,6 +18,30 @@ def _store(rt: RuntimeDep):
     return getattr(rt, "execution_store", None) if rt else None
 
 
+def _apply_sealed_failure_status(
+    status: str,
+    meta: Any,
+    *,
+    error: Any = None,
+) -> tuple:
+    """If metadata seals a failure, do not report completed to pollers."""
+    st = str(status or "").lower()
+    if st not in ("completed", "ok", "success", "done"):
+        return status, error
+    try:
+        from core.harness.utils.execute_session import _sealed_failure_status
+
+        stuck = _sealed_failure_status(meta if isinstance(meta, dict) else {})
+    except Exception:
+        stuck = ""
+    if not stuck:
+        return status, error
+    err = error
+    if not err and isinstance(meta, dict):
+        err = meta.get("done_verify_reason") or f"sealed_{stuck}"
+    return stuck, err
+
+
 def _iso(ts: Any) -> Optional[str]:
     if ts is None:
         return None
@@ -243,6 +267,10 @@ async def get_execution_status(execution_id: str, rt: RuntimeDep = Depends(get_k
                             )
                             delivery_early = orphan_skill_delivery_answer(items_early or [])
                             if len(delivery_early) >= 40:
+                                from core.harness.utils.execute_session import (
+                                    orphan_finalize_status_payload,
+                                )
+
                                 ok_early = await _aio.wait_for(
                                     finalize_agent_after_skill_delivery(
                                         run_id=eid,
@@ -259,23 +287,15 @@ async def get_execution_status(execution_id: str, rt: RuntimeDep = Depends(get_k
                                     timeout=5.0,
                                 )
                                 if ok_early:
-                                    return {
-                                        "execution_id": eid,
-                                        "kind": kind,
-                                        "status": "completed",
-                                        "end_time": _time.time(),
-                                        "duration_ms": int(age * 1000),
-                                        "output": {"text": delivery_early},
-                                        "input": record.get("input"),
-                                        "error": None,
-                                        "quality_review": (
-                                            (record.get("metadata") or {}).get("quality_review")
-                                            if isinstance(record.get("metadata"), dict)
-                                            else None
-                                        ),
-                                        "not_found": False,
-                                        "recovered_skill_delivery": True,
-                                    }
+                                    # Never hardcode completed — QR may have flipped to failed.
+                                    return await orphan_finalize_status_payload(
+                                        store,
+                                        run_id=eid,
+                                        kind=kind,
+                                        fallback_output=delivery_early,
+                                        age=age,
+                                        input_payload=record.get("input"),
+                                    )
                         except Exception:
                             logging.debug(
                                 "early skill_delivery orphan finalize failed for %s",
@@ -550,6 +570,10 @@ async def get_execution_status(execution_id: str, rt: RuntimeDep = Depends(get_k
                             items_d = (ev_d or {}).get("items") if isinstance(ev_d, dict) else (ev_d or [])
                             delivery_answer = orphan_skill_delivery_answer(items_d or [])
                             if len(delivery_answer) >= 40:
+                                from core.harness.utils.execute_session import (
+                                    orphan_finalize_status_payload,
+                                )
+
                                 ok = await finalize_agent_after_skill_delivery(
                                     run_id=eid,
                                     agent_id=str(record.get("agent_id") or "unknown"),
@@ -563,23 +587,14 @@ async def get_execution_status(execution_id: str, rt: RuntimeDep = Depends(get_k
                                     },
                                 )
                                 if ok:
-                                    return {
-                                        "execution_id": eid,
-                                        "kind": kind,
-                                        "status": "completed",
-                                        "end_time": _time.time(),
-                                        "duration_ms": int(age * 1000),
-                                        "output": {"text": delivery_answer},
-                                        "input": record.get("input"),
-                                        "error": None,
-                                        "quality_review": (
-                                            (record.get("metadata") or {}).get("quality_review")
-                                            if isinstance(record.get("metadata"), dict)
-                                            else None
-                                        ),
-                                        "not_found": False,
-                                        "recovered_skill_delivery": True,
-                                    }
+                                    return await orphan_finalize_status_payload(
+                                        store,
+                                        run_id=eid,
+                                        kind=kind,
+                                        fallback_output=delivery_answer,
+                                        age=age,
+                                        input_payload=record.get("input"),
+                                    )
                         except Exception:
                             logging.debug(
                                 "skill_delivery orphan finalize failed for %s", eid, exc_info=True
@@ -939,12 +954,17 @@ async def get_execution_status(execution_id: str, rt: RuntimeDep = Depends(get_k
         except Exception:
             logging.debug("nested status unwrap failed for %s", eid, exc_info=True)
         _qr = None
+        _meta: Dict[str, Any] = {}
         try:
             _meta = record.get("metadata") if isinstance(record.get("metadata"), dict) else {}
             if isinstance(_meta.get("quality_review"), dict):
                 _qr = _meta.get("quality_review")
         except Exception:
             _qr = None
+            _meta = {}
+        status_out, err_out = _apply_sealed_failure_status(
+            status_out, _meta, error=err_out
+        )
         return {
             "execution_id": eid,
             "kind": kind,
@@ -994,7 +1014,14 @@ async def get_execution_status(execution_id: str, rt: RuntimeDep = Depends(get_k
                     mapped = row_st if row_st != "error" else "failed"
                     row_terminal = True
                 elif row_st in ("completed", "ok", "success", "done"):
-                    mapped = "completed"
+                    _row_meta = (
+                        record2.get("metadata")
+                        if isinstance(record2.get("metadata"), dict)
+                        else {}
+                    )
+                    mapped, err_out = _apply_sealed_failure_status(
+                        "completed", _row_meta, error=err_out
+                    )
                     row_terminal = True
         except Exception:
             logging.debug("run_graph status row re-read failed for %s", eid, exc_info=True)
@@ -1037,7 +1064,7 @@ async def get_execution_status(execution_id: str, rt: RuntimeDep = Depends(get_k
     # Treat run_events as authoritative so pollers do not see status=unknown mid-flight.
     try:
         if eid and hasattr(store, "has_run_end") and await store.has_run_end(run_id=eid):
-            end_status = "completed"
+            end_status = ""
             end_error = None
             try:
                 if hasattr(store, "list_run_events"):
@@ -1056,7 +1083,7 @@ async def get_execution_status(execution_id: str, rt: RuntimeDep = Depends(get_k
                             end_error = payload.get("error") or payload.get("message")
                         elif st in ("cancelled", "canceled"):
                             end_status = "cancelled"
-                        elif st in ("completed", "ok", "success", "done", ""):
+                        elif st in ("completed", "ok", "success", "done"):
                             end_status = "completed"
                         break
             except Exception:
@@ -1078,10 +1105,20 @@ async def get_execution_status(execution_id: str, rt: RuntimeDep = Depends(get_k
                         end_status = row_st if row_st != "error" else "failed"
                         row_terminal = True
                     elif row_st in ("completed", "ok", "success", "done"):
-                        end_status = "completed"
+                        _row_meta = (
+                            record2.get("metadata")
+                            if isinstance(record2.get("metadata"), dict)
+                            else {}
+                        )
+                        end_status, end_error = _apply_sealed_failure_status(
+                            "completed", _row_meta, error=end_error or record2.get("error")
+                        )
                         row_terminal = True
             except Exception:
                 logging.debug("run_events status row re-read failed for %s", eid, exc_info=True)
+            # Blank run_end status is not a success seal.
+            if not end_status:
+                end_status = "running"
             if end_status == "completed" and not end_error and not row_terminal:
                 textish = ""
                 if isinstance(out_val, str):

@@ -3,19 +3,19 @@ title: "aiPlat 产品能力白皮书"
 volume_id: product-capability
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-16T05:29:45Z"
+generated_at: "2026-10-18T10:42:21Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30"
-caps_sha256: "0fe3644e0b8571725b3c35e9044256ad24e67e0a208159319e6cba04797080a6"
+caps_sha256: "dbf08f325a1057d4fbf75ba538be242bd1fd58f2108d9ca6350b81b2bdf74876"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=0fe3644e0b8571725b3c35e9044256ad24e67e0a208159319e6cba04797080a6 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=dbf08f325a1057d4fbf75ba538be242bd1fd58f2108d9ca6350b81b2bdf74876 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-16T05:29:45Z` |
-| CAPABILITIES sha256 | `0fe3644e0b85…` |
+| 生成时间 (UTC) | `2026-10-18T10:42:21Z` |
+| CAPABILITIES sha256 | `dbf08f325a10…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -85,24 +85,24 @@ language: zh-CN
 
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 248 | 1 | 249 |
-| 记忆子系统 | 58 | 0 | 58 |
+| Harness 执行引擎 | 299 | 1 | 300 |
+| 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 375 | 9 | 384 |
 | RAG 检索 | 52 | 0 | 52 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 168 | 0 | 168 |
-| Skill 系统 | 157 | 0 | 157 |
-| 安全与治理 | 88 | 0 | 88 |
+| Skill 系统 | 169 | 0 | 169 |
+| 安全与治理 | 90 | 0 | 90 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 135 | 0 | 135 |
-| Gate 系统 | 172 | 0 | 172 |
+| Gate 系统 | 174 | 0 | 174 |
 | 评估系统 | 27 | 0 | 27 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
-| 工具生态 | 71 | 0 | 71 |
+| 工具生态 | 74 | 0 | 74 |
 | 微调系统 | 14 | 0 | 14 |
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 44 | 0 | 44 |
@@ -130,7 +130,7 @@ language: zh-CN
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2176** | **10** | **2186** |
+| **总计** | **2281** | **10** | **2291** |
 
 ### 3.2 上手路径（节选）
 

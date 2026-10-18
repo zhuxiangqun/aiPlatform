@@ -1,6 +1,7 @@
 # aiPlat 知识系统 — 完整指南
 
-> 最后更新: 2026-08-11 · 原理优先，细节后置 · API/SQL/操作见附录
+> 最后更新: 2026-08-11 · 原理优先，细节后置 · API/SQL/操作见附录  
+> **Agent 记忆寿命 / sticky / 任务选模锁**（与 RAG 三大存储并列的运行时记忆）：见 [architecture/memory-lifetime-and-model-lock.md](architecture/memory-lifetime-and-model-lock.md)。
 
 ---
 

@@ -2647,6 +2647,91 @@ def quality_review_blocks_success(review: Any) -> bool:
     return False
 
 
+def attach_quality_review_to_execute_response(
+    resp: Any,
+    *,
+    kind: str,
+    asset_id: str,
+    asset_name: str = "",
+    input_payload: Any = None,
+    hints: str = "",
+    fail_closed_on_exception: bool = True,
+) -> Any:
+    """Attach ``review_execution_output``; demote completed→failed on hard QR.
+
+    Shared by engine agent / workspace agent / engine skill HTTP execute paths.
+    On QR crash: coding / review-bound / ``## FILE:`` / skill_delivery=once still
+    fail-closed (same rule as ``orphan_seal_requires_quality_review``).
+    """
+    if not isinstance(resp, dict):
+        return resp
+    st = str(resp.get("status") or "").lower()
+    if st not in ("completed", "ok", "success"):
+        return resp
+    out = resp.get("output")
+    out_text = ""
+    if isinstance(out, str):
+        out_text = out
+    elif isinstance(out, dict):
+        out_text = str(
+            out.get("text") or out.get("output") or out.get("answer") or out.get("code") or ""
+        )
+    try:
+        qr = review_execution_output(
+            kind=str(kind or "agent"),
+            asset_id=str(asset_id or ""),
+            asset_name=str(asset_name or asset_id or ""),
+            input_payload=input_payload,
+            output=out,
+            status=st,
+            hints=str(hints or ""),
+        )
+        resp["quality_review"] = qr
+        if quality_review_blocks_success(qr):
+            resp["status"] = "failed"
+            resp["ok"] = False
+            resp["error"] = str(
+                (qr.get("headline") if isinstance(qr, dict) else None)
+                or resp.get("error")
+                or "coding deliverable failed quality review"
+            )
+            resp["quality_block_completed"] = True
+    except Exception as e:
+        logging.getLogger(__name__).warning(
+            "%s execute quality_review skipped: %s", kind, e, exc_info=True
+        )
+        if not fail_closed_on_exception:
+            return resp
+        try:
+            from core.harness.utils.execute_session import (
+                orphan_seal_requires_quality_review,
+            )
+
+            hard = orphan_seal_requires_quality_review(
+                metadata={"skill_hint": hints} if hints else None,
+                metadata_extra=None,
+                output_text=out_text,
+            )
+        except Exception:
+            hard = bool(
+                re.search(r"(?m)^##\s*FILE:\s*\S+", out_text)
+                or "require_review" in str(hints or "").lower()
+                or "code_generation" in str(hints or "").lower()
+            )
+        if hard and str(resp.get("status") or "").lower() in (
+            "completed",
+            "ok",
+            "success",
+        ):
+            resp["status"] = "failed"
+            resp["ok"] = False
+            resp["error"] = (
+                "quality_review failed (exception; fail-closed for coding)"
+            )
+            resp["quality_block_completed"] = True
+    return resp
+
+
 def _input_text(payload: Any) -> str:
     if payload is None:
         return ""

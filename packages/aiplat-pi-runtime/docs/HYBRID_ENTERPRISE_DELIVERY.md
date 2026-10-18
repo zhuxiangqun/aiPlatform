@@ -7,13 +7,13 @@
 
 ## 0. 定位与原则
 
-| 项 | 说明 |
-|----|------|
-| 本文档是什么 | ① 交付产品化规格 + ② Pi KB citation UX 验收条，可直接交付开发执行 |
-| 本文档不是什么 | 不是再造 RAG/Agent 内核；不在 Pi 内重实现 PolicyGate / Memory / Approval |
-| 架构原则 | Pi = 执行壳；aiPlat = 治理与企业能力；只加 `aiplat_*` 桥，不搬引擎 |
-| 前置状态 | hybrid live 已绿（Memory / Tools / KB / Approvals / 门禁；`AIPLAT_HYBRID_LIVE_SMOKE_OK`） |
-| 对齐话术 | 系列教新手「从零拼出可变现 Agent」；aiPlat 已是企业操作系统，缺的是把现有能力收成可卖的 SKU 与交付节奏。Pi 对齐「可带走成品 + 模块叠加」，用混合回连吃企业 RAG/审批/记忆，不把系列第 8–28 篇在扩展里重做 |
+| 项       | 说明                                                                                                                     |
+| ------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 本文档是什么  | ① 交付产品化规格 + ② Pi KB citation UX 验收条，可直接交付开发执行                                                                          |
+| 本文档不是什么 | 不是再造 RAG/Agent 内核；不在 Pi 内重实现 PolicyGate / Memory / Approval / 执行封存（`done_verify`·QR·`task_model_lock` 见主文档非目标与矩阵 §2.6）/ UI E2E 侦察-自愈闭环（见 `e2e_test` Skill） |
+| 架构原则    | Pi = 执行壳；aiPlat = 治理与企业能力；只加 `aiplat_*` 桥，不搬引擎                                                                         |
+| 前置状态    | hybrid live 已绿（Memory / Tools / KB / Approvals / 门禁；`AIPLAT_HYBRID_LIVE_SMOKE_OK`）                                     |
+| 对齐话术    | 系列教新手「从零拼出可变现 Agent」；aiPlat 已是企业操作系统，缺的是把现有能力收成可卖的 SKU 与交付节奏。Pi 对齐「可带走成品 + 模块叠加」，用混合回连吃企业 RAG/审批/记忆，不把系列第 8–28 篇在扩展里重做 |
 
 **借鉴原则**：抄交付节奏与产品叙事，不抄引擎实现。
 
@@ -45,10 +45,10 @@
 
 ### 2.0 前置依赖：交付清单归属（已决策）
 
-| 方案 | 说明 | 决策 |
-|------|------|:----:|
+| 方案                | 说明                   |  决策  |
+| ----------------- | -------------------- | :--: |
 | A. Builder 出厂自动生成 | 构建产物时自动附带清单骨架 + 扫描结果 | ✅ 执行 |
-| B. FDE 签收勾选 | 交付时人工确认并签字 | ✅ 执行 |
+| B. FDE 签收勾选       | 交付时人工确认并签字           | ✅ 执行 |
 
 **采用 A+B**：Builder/出厂生成骨架与扫描结果 → FDE（或交付负责人）勾选签字 → 纳入交付包。  
 **模板库**：`docs/manuals/fde/fde-delivery-manual.md`（及同目录模板）。  
@@ -58,27 +58,27 @@
 
 落地：挂在 builder 出厂门禁或 FDE 交付手册，**不新建微服务**。
 
-| # | 检查项 | 验收条件 |
-|---|--------|----------|
-| 1 | 调试痕迹 | 产物中无面向客户的 `console.log` / 裸 `print` / `debug=True` / 临时 TODO 暴露 |
-| 2 | 裸环境变量 | 无硬编码密钥、无明文 API Key、无客户包内必依赖的本机 `localhost:xxxx` 残留 |
-| 3 | 假绿端点 | 无 mock/stub 伪装真实能力；接线能力有真实后端响应 |
-| 4 | 未接线能力 | feature-flag 掩盖的未完成功能不暴露，或明确标「预览」 |
-| 5 | 标准化输出 | Agent 回复有统一结构（标题/正文/引用/异常），非裸调试 JSON |
-| 6 | 异常兜底 | 工具失败退回包内 SOP；失败卡片 + 可重试；不向用户抛栈 |
-| 7 | 一键启动 | 含启动说明/脚本；客户无需手搓全栈环境即可跑 Pi 包（企业回连按文档选配） |
+| # | 检查项   | 验收条件                                                            |
+| - | ----- | --------------------------------------------------------------- |
+| 1 | 调试痕迹  | 产物中无面向客户的 `console.log` / 裸 `print` / `debug=True` / 临时 TODO 暴露 |
+| 2 | 裸环境变量 | 无硬编码密钥、无明文 API Key、无客户包内必依赖的本机 `localhost:xxxx` 残留              |
+| 3 | 假绿端点  | 无 mock/stub 伪装真实能力；接线能力有真实后端响应                                  |
+| 4 | 未接线能力 | feature-flag 掩盖的未完成功能不暴露，或明确标「预览」                               |
+| 5 | 标准化输出 | Agent 回复有统一结构（标题/正文/引用/异常），非裸调试 JSON                            |
+| 6 | 异常兜底  | 工具失败退回包内 SOP；失败卡片 + 可重试；不向用户抛栈                                  |
+| 7 | 一键启动  | 含启动说明/脚本；客户无需手搓全栈环境即可跑 Pi 包（企业回连按文档选配）                          |
 
 执行：扫描不通过 → 阻断出厂并返回修复清单；通过 → 「出厂合格证」附交付包；FDE 签字归档。
 
 ### 2.2 标准化交付五步 → 客户可见模板
 
-| 步骤 | 模板 | 客户可见 |
-|------|------|:--------:|
-| 1 | 范围确认单（边界 / 含不含 / 数据范围 / 用户上限） | ✅ 签字 |
-| 2 | 部署确认单（环境 / 依赖 / 网络 / 端口域名） | ✅ 确认 |
-| 3 | 多场景测试报告（用例 / 通过率 / 已知限制） | ✅ 验收 |
-| 4 | 使用边界一页纸（能做/不能做 / FAQ TOP5 / 联系方式） | ✅ 留存 |
-| 5 | 售后/托管协议（SLA / 响应 / 续费 / 升级路径） | ✅ 签字 |
+| 步骤 | 模板                                | 客户可见 |
+| -- | --------------------------------- | :--: |
+| 1  | 范围确认单（边界 / 含不含 / 数据范围 / 用户上限）     | ✅ 签字 |
+| 2  | 部署确认单（环境 / 依赖 / 网络 / 端口域名）        | ✅ 确认 |
+| 3  | 多场景测试报告（用例 / 通过率 / 已知限制）          | ✅ 验收 |
+| 4  | 使用边界一页纸（能做/不能做 / FAQ TOP5 / 联系方式） | ✅ 留存 |
+| 5  | 售后/托管协议（SLA / 响应 / 续费 / 升级路径）     | ✅ 签字 |
 
 不允许跳过模板；每次交付基于模板填写。
 
@@ -87,11 +87,11 @@
 来源映射：系列 **第 39 篇**（运维托管）+ **第 41 篇**（交付级成品感）。  
 落地：挂在 governance 值班板 + daemon，讲「月费价值」，不新建托管微服务。
 
-| 套餐 | 定位 | 包含（客户语言） | 技术落点（已有） |
-|------|------|------------------|------------------|
-| L1 基础巡检 | 入门 | 存活监控、告警、月度运行报告 | daemon_jobs + governance cron |
-| L2 标准入库 | 主力 | L1 + 入库、检索调优、cache 命中报告、库健康分 | KB + rerank + semantic_cache |
-| L3 高级监控 | 旗舰 | L2 + 低置信监控、小版本迭代、专属值班入口 | Quality Bus + eval + 值班板 |
+| 套餐      | 定位 | 包含（客户语言）                     | 技术落点（已有）                      |
+| ------- | -- | ---------------------------- | ----------------------------- |
+| L1 基础巡检 | 入门 | 存活监控、告警、月度运行报告               | daemon_jobs + governance cron |
+| L2 标准入库 | 主力 | L1 + 入库、检索调优、cache 命中报告、库健康分 | KB + rerank + semantic_cache  |
+| L3 高级监控 | 旗舰 | L2 + 低置信监控、小版本迭代、专属值班入口      | Quality Bus + eval + 值班板      |
 
 L2 库健康分面板（属 ④，规格见 §5）：本周入库 N / 漏召 TOP5 / 低置信 TOP5 / cache 命中率 + **建议补哪些文档**（指标→运营动作）。
 
@@ -103,12 +103,12 @@ L2 库健康分面板（属 ④，规格见 §5）：本周入库 N / 漏召 TOP
 
 ### 3.0 现状 vs 缺口（防低估工时）
 
-| 现状（已有） | 缺口（本规格新增） |
-|--------------|-------------------|
-| `enterprise_kb.ts` 将 `items`/`citations` 打成 `[src] snippet`（最多 5 条） | 统一「参考文献」块与固定无源开场文案 |
-| system prompt：`do not invent citations` | enterprise 下强制无源前缀（V2） |
-| — | V3a Markdown 引用契约；V3b 富客户端展开为可选 |
-| — | V1 句级来源、V5「未验证」：**一期 best-effort（prompt）**，非硬 NLP 门禁 |
+| 现状（已有）                                                              | 缺口（本规格新增）                                            |
+| ------------------------------------------------------------------- | ---------------------------------------------------- |
+| `enterprise_kb.ts` 将 `items`/`citations` 打成 `[src] snippet`（最多 5 条） | 统一「参考文献」块与固定无源开场文案                                   |
+| system prompt：`do not invent citations`                             | enterprise 下强制无源前缀（V2）                               |
+| —                                                                   | V3a Markdown 引用契约；V3b 富客户端展开为可选                      |
+| —                                                                   | V1 句级来源、V5「未验证」：**一期 best-effort（prompt）**，非硬 NLP 门禁 |
 
 ### 3.1 溯源三段式（实现分层）
 
@@ -121,14 +121,14 @@ L2 库健康分面板（属 ④，规格见 §5）：本周入库 N / 漏召 TOP
 
 ### 3.2 验收条件
 
-| # | 验收项 | 分期 | enterprise | Pi-only |
-|---|--------|------|:----------:|:-------:|
-| V2 | 无检索结果：回复以「未在知识库中找到相关内容」开头，禁止编造 | **P0 必做** | 强制 | 强制 |
-| V3a | Markdown：`[来源: 文档名]` + 文末「参考文献」含 ≤200 字片段 | **P0 必做** | 强制 | 可选 |
-| V6 | 单次引用 ≤5；超出取 top-5 by score，可注明「共 N 条展示前 5」 | **P0 必做** | 强制 | 强制 |
-| V1 | 事实陈述附带来源标记（基于工具返回，非 NLP 事实句检测） | P1 prompt/契约 ✅ | 强制 | 可选 |
-| V5 | 无源支撑内容标「（未验证）」或避免输出 | P1 best-effort ✅ | 强制意图 | 不要求 |
-| V3b | 点击展开原文片段（`<details>`） | P2 富客户端 ✅ | 可选（`AIPLAT_ENTERPRISE_KB_CITATION_EXPAND=1`） | 可选 |
+| #   | 验收项                                        | 分期               |                  enterprise                  | Pi-only |
+| --- | ------------------------------------------ | ---------------- | :------------------------------------------: | :-----: |
+| V2  | 无检索结果：回复以「未在知识库中找到相关内容」开头，禁止编造             | **P0 必做**        |                      强制                      |    强制   |
+| V3a | Markdown：`[来源: 文档名]` + 文末「参考文献」含 ≤200 字片段  | **P0 必做**        |                      强制                      |    可选   |
+| V6  | 单次引用 ≤5；超出取 top-5 by score，可注明「共 N 条展示前 5」 | **P0 必做**        |                      强制                      |    强制   |
+| V1  | 事实陈述附带来源标记（基于工具返回，非 NLP 事实句检测）             | P1 prompt/契约 ✅   |                      强制                      |    可选   |
+| V5  | 无源支撑内容标「（未验证）」或避免输出                        | P1 best-effort ✅ |                     强制意图                     |   不要求   |
+| V3b | 点击展开原文片段（`<details>`）                      | P2 富客户端 ✅        | 可选（`AIPLAT_ENTERPRISE_KB_CITATION_EXPAND=1`） |    可选   |
 
 **阻断出厂（enterprise）**：V2 + V3a + V6。V1/V5/V3b 不阻断第一期。
 
@@ -146,12 +146,12 @@ L2 库健康分面板（属 ④，规格见 §5）：本周入库 N / 漏召 TOP
 
 ### 3.4 异常路径
 
-| 场景 | 行为 | 验收 |
-|------|------|------|
-| KB 空结果 | 固定开场「未在知识库中找到相关内容」 | V2 |
-| 有结果但 score 均低 | 可标注「以下信息置信度较低」，仍附来源 | V3a |
-| 桥不可达 | 退回包内 SOP；标注「知识库暂不可用」；不编造 | 既有 soft-fail |
-| 来源 >5 | top-5；可注明共 N 条 | V6 |
+| 场景            | 行为                       | 验收           |
+| ------------- | ------------------------ | ------------ |
+| KB 空结果        | 固定开场「未在知识库中找到相关内容」       | V2           |
+| 有结果但 score 均低 | 可标注「以下信息置信度较低」，仍附来源      | V3a          |
+| 桥不可达          | 退回包内 SOP；标注「知识库暂不可用」；不编造 | 既有 soft-fail |
+| 来源 >5         | top-5；可注明共 N 条           | V6           |
 
 ### 3.5 配置形态（⚠️ 语义规格，非现行 YAML）
 
@@ -159,14 +159,14 @@ L2 库健康分面板（属 ④，规格见 §5）：本周入库 N / 漏召 TOP
 
 Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语义意图**，落地可用 env 或 extension options，**勿假定已存在 `kb_citation` YAML 文件**。
 
-| 语义键 | enterprise 默认 | Pi-only 默认 | 对应验收 |
-|--------|:---------------:|:------------:|----------|
-| `enforce_no_hallucination` | true | true | V2 |
-| `reference_list_markdown` | true | false | V3a |
-| `max_sources` | 5 | 5 | V6 |
-| `enforce_source_tag` | true（P1） | false | V1 |
-| `unverified_tag` | true（P1） | false | V5 |
-| `expandable_reference` | env `AIPLAT_ENTERPRISE_KB_CITATION_EXPAND`（默认 false） | false | V3b |
+| 语义键                        |                     enterprise 默认                    | Pi-only 默认 | 对应验收 |
+| -------------------------- | :--------------------------------------------------: | :--------: | ---- |
+| `enforce_no_hallucination` |                         true                         |    true    | V2   |
+| `reference_list_markdown`  |                         true                         |    false   | V3a  |
+| `max_sources`              |                           5                          |      5     | V6   |
+| `enforce_source_tag`       |                       true（P1）                       |    false   | V1   |
+| `unverified_tag`           |                       true（P1）                       |    false   | V5   |
+| `expandable_reference`     | env `AIPLAT_ENTERPRISE_KB_CITATION_EXPAND`（默认 false） |    false   | V3b  |
 
 建议 env 命名（实现时再定，避免与主文档表冲突）：例如 `AIPLAT_ENTERPRISE_KB_CITATION=1` 打开 V2+V3a+V6。
 
@@ -174,13 +174,13 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 
 ## 4. ③ 成本叙事接入交付报告
 
-| 指标 | 数据来源 | 客户可见形式 | 一期状态 |
-|------|----------|--------------|----------|
-| API 调用总量 | billing breakdown 或 `kb/metrics.total_queries` | 「本月共调用 N 次」 | ✅ 有则展示 |
-| 缓存命中率 | `get_semantic_cache().stats` | 「M 次命中 / 命中率 %」 | ✅ **优先** |
-| 模型分流 | 配置快照 + **LLM syscall `args.purpose`**（优先）/`model_selection_log`（回退） | 简单/复杂→模型表 + purpose/档位占比 | ✅ 无数据不编造 %；完成调用优先于选择次数 |
-| 空检索/无效拦截 | `kb/metrics.empty_retrieve_count`（syscall_events 空命中） | 「空检索拦截次数 N」+ 无答案率参考 | ✅ 已接 |
-| 月度成本 ¥ | `billing_records` 或 `AIPLAT_DELIVERY_COST_CNY_PER_CACHE_HIT` | 账单权威 ¥ 或估算 ¥ | ✅ **可选**；无价目不编造 |
+| 指标       | 数据来源                                                                | 客户可见形式                   | 一期状态                   |
+| -------- | ------------------------------------------------------------------- | ------------------------ | ---------------------- |
+| API 调用总量 | billing breakdown 或 `kb/metrics.total_queries`                      | 「本月共调用 N 次」              | ✅ 有则展示                 |
+| 缓存命中率    | `get_semantic_cache().stats`                                        | 「M 次命中 / 命中率 %」          | ✅ **优先**               |
+| 模型分流     | 配置快照 + **LLM syscall `args.purpose`**（优先）/`model_selection_log`（回退） | 简单/复杂→模型表 + purpose/档位占比 | ✅ 无数据不编造 %；完成调用优先于选择次数 |
+| 空检索/无效拦截 | `kb/metrics.empty_retrieve_count`（syscall_events 空命中）               | 「空检索拦截次数 N」+ 无答案率参考      | ✅ 已接                   |
+| 月度成本 ¥   | `billing_records` 或 `AIPLAT_DELIVERY_COST_CNY_PER_CACHE_HIT`        | 账单权威 ¥ 或估算 ¥             | ✅ **可选**；无价目不编造        |
 
 **出口**：
 
@@ -194,11 +194,11 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 
 ## 5. ④ 托管 SKU 对齐（概要）
 
-| SKU | 已有能力 | 客户可见层 |
-|-----|----------|------------|
-| L1 | daemon_jobs + governance cron | ✅ 月度运行报告（`MONTHLY_OPS_REPORT.md` + `GET /platform/delivery/monthly-ops-report`） |
-| L2 | KB + rerank + semantic_cache | ✅ 库健康分面板（见下 + `KB_HEALTH.md`） |
-| L3 | Quality Bus + eval + 值班板 | ✅ 专属值班台（`L3_DUTY_DESK.md` + `GET /platform/delivery/l3-duty-desk` + `/aiplat-duty`） |
+| SKU | 已有能力                          | 客户可见层                                                                               |
+| --- | ----------------------------- | ----------------------------------------------------------------------------------- |
+| L1  | daemon_jobs + governance cron | ✅ 月度运行报告（`MONTHLY_OPS_REPORT.md` + `GET /platform/delivery/monthly-ops-report`）     |
+| L2  | KB + rerank + semantic_cache  | ✅ 库健康分面板（见下 + `KB_HEALTH.md`）                                                       |
+| L3  | Quality Bus + eval + 值班板      | ✅ 专属值班台（`L3_DUTY_DESK.md` + `GET /platform/delivery/l3-duty-desk` + `/aiplat-duty`） |
 
 ### 5.1 库健康分面板（示意）
 
@@ -217,26 +217,26 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 
 ## 6. 刻意不借鉴清单
 
-| 系列内容 | 原因 |
-|----------|------|
-| 闲鱼/成交话术/报价数字 | 销售物料，不进仓库核心 |
-| 「先选 LangChain/CrewAI」 | 与内核无关架构冲突 |
-| 在 Pi/生成物内再实现 RAG/Memory/审批 | 违反混合原则 |
-| APScheduler 级定时 | 已有 daemon_jobs + governance cron |
-| CrewAI 级多 Agent「审议」 | **层级不同**：aiPlat 在治理层（审批/门禁/Quality Bus）仲裁；CrewAI 式协作是执行层仲裁——不是同一件事的强弱版。见系列第 59 篇时勿加「审议 Agent」平行实现 |
+| 系列内容                       | 原因                                                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------------------- |
+| 闲鱼/成交话术/报价数字               | 销售物料，不进仓库核心                                                                                       |
+| 「先选 LangChain/CrewAI」      | 与内核无关架构冲突                                                                                         |
+| 在 Pi/生成物内再实现 RAG/Memory/审批 | 违反混合原则                                                                                            |
+| APScheduler 级定时            | 已有 daemon_jobs + governance cron                                                                  |
+| CrewAI 级多 Agent「审议」        | **层级不同**：aiPlat 在治理层（审批/门禁/Quality Bus）仲裁；CrewAI 式协作是执行层仲裁——不是同一件事的强弱版。见系列第 59 篇时勿加「审议 Agent」平行实现 |
 
 ---
 
 ## 7. 系列篇号交叉索引
 
-| 本章节 | 系列篇号 | 借鉴方式 |
-|--------|----------|----------|
-| §2.1 去开发化 | 29–31、43 | 出厂门禁 checklist |
-| §2.2 交付五步 | 30、32 | 客户可见模板（对齐 FDE 手册） |
-| §2.3 / §5 托管 SKU | **39**、41 | 值班板 + daemon 叙事 |
-| §3 Citation UX | 26 | 零内核复制，改渲染/契约 |
-| §4 成本叙事 | 31、45 | 交付报告成本页 |
-| §6 不借鉴 | 8–28、59 | 明确不进核心 |
+| 本章节              | 系列篇号      | 借鉴方式              |
+| ---------------- | --------- | ----------------- |
+| §2.1 去开发化        | 29–31、43  | 出厂门禁 checklist    |
+| §2.2 交付五步        | 30、32     | 客户可见模板（对齐 FDE 手册） |
+| §2.3 / §5 托管 SKU | **39**、41 | 值班板 + daemon 叙事   |
+| §3 Citation UX   | 26        | 零内核复制，改渲染/契约      |
+| §4 成本叙事          | 31、45     | 交付报告成本页           |
+| §6 不借鉴           | 8–28、59   | 明确不进核心            |
 
 ---
 
@@ -289,6 +289,7 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 
 ### 8.4 ④ 库健康分面板 — 本迭代
 
+
 - [x] `delivery/kb_health.py`（score 公式 + metrics/stats/cache + 建议）
 - [x] `GET /platform/delivery/kb-health`；导出 `KB_HEALTH.md`；`/aiplat-kb-health`
 - [x] 漏召/低置信 TOP best-effort（syscall_events）；无数据不阻断
@@ -311,17 +312,8 @@ Pi 企业侧现行配置为 **环境变量**（见主文档）。下列为**语�
 
 **已补（文档对齐）**：`HYBRID_ENTERPRISE_KB_HEALTH.md` §0/§1.2/§3.2/§5 与代码一致——`miss-top` / `low-confidence-top` / `cache-stats` 标为 ✅ 已合入（不再写「需补 endpoint」）。
 
-### 8.5 ④ 托管 SKU 客户可见层 — 已合入
+**已补（L1 月度运行报告）**：`delivery/monthly_ops_report.py` + `GET /platform/delivery/monthly-ops-report`；导出 `MONTHLY_OPS_REPORT.md`（daemon 存活 + 成本 + KB 健康合成；无数据不编造）。
 
-- [x] L1 月度运行报告：`delivery/monthly_ops_report.py` + `GET /platform/delivery/monthly-ops-report` + 导出 `MONTHLY_OPS_REPORT.md`
-- [x] L3 专属值班台：`delivery/l3_duty_desk.py` + `GET /platform/delivery/l3-duty-desk` + `/aiplat-duty` + 导出 `L3_DUTY_DESK.md`（`AIPLAT_L3_DUTY_*`；无配置不编造联系人）
-- [x] 导出必含 `enterprise_l3_duty.ts`；delivery scan smoke 校验 `MONTHLY_OPS_REPORT.md` / `L3_DUTY_DESK.md`
+**已补（L3 专属值班台）**：`delivery/l3_duty_desk.py` + `GET /platform/delivery/l3-duty-desk` + `/aiplat-duty` + 导出 `L3_DUTY_DESK.md`（`AIPLAT_L3_DUTY_CONTACT/CHANNEL/HOURS`；无配置不编造联系人）。
 
-**交付阶梯闭环**：hybrid ①–④ 客户可见层（含 L1/L2/L3）已齐。运营开通清单：
-
-1. platform 加载当前 `main`（改路由后重启 8003）
-2. L3：在 `.env` / 进程环境配置 `AIPLAT_L3_DUTY_CONTACT`（可选 `CHANNEL`/`HOURS`；模板见仓库根 `.env.example`）→ 重启 platform；冒烟应见 `contact=True`（未配则为 `contact=False` + reason，不编造）
-3. 验收：`PYTHONPATH=aiPlat-platform:aiPlat-core:. python3 scripts/smoke_delivery_sku_live.py`（四端点 200+ok）；Pi `/aiplat-kb-health` · `/aiplat-duty`
-4. 导出包含 `COST_REPORT.md` · `KB_HEALTH.md` · `MONTHLY_OPS_REPORT.md` · `L3_DUTY_DESK.md` · `enterprise_l3_duty.ts`
-
-后续增量按客诉/运营反馈单独立项；本阶梯默认不再开「下一刀」。
+**下一刀（可选）**：hybrid ①–④ 客户可见层（含 L1/L2/L3）已齐；按客户开通 L3 时配置值班 env 并保持 platform 加载当前代码。

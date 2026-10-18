@@ -20,6 +20,24 @@ def test_architecture_health_report_shape(monkeypatch):
     assert "retrieval_crag_entry" in ids
     assert "autonomous_default_off" in ids
     assert "multi_agent_default_single" in ids
+    assert "coding_closed_loop_seeds" in ids
+    assert "execution_seal_wiring" in ids
+    assert "e2e_recon_wiring" in ids
+
+
+def test_coding_closed_loop_seeds_pass():
+    checks = {c["id"]: c for c in build_architecture_health_checks()}
+    assert checks["coding_closed_loop_seeds"]["status"] == "pass"
+
+
+def test_execution_seal_wiring_pass():
+    checks = {c["id"]: c for c in build_architecture_health_checks()}
+    assert checks["execution_seal_wiring"]["status"] == "pass"
+
+
+def test_e2e_recon_wiring_pass():
+    checks = {c["id"]: c for c in build_architecture_health_checks()}
+    assert checks["e2e_recon_wiring"]["status"] == "pass"
 
 
 def test_production_profile_warns_on_open_fail_mode(monkeypatch):

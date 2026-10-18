@@ -1033,24 +1033,46 @@ def _try_inject_claude_md(messages: List[Message], trace_context: Optional[Dict[
 
             if i == 0:
 
-                if mode == "slim":
-                    content_parts.append(
-                        f"[{p.name}·slim] {full[:slim_chars]}\n"
-                        "（非编码策略下注入精简规约；写代码/改仓库时自动恢复全文。）"
-                    )
-                else:
-                    # Root CLAUDE.md: full mode caps at 12K
-                    content_parts.append(f"[{p.name}] {full[:12000]}")
+                # Root: always-block only when marked; otherwise keep the old cap.
+                cap = slim_chars if mode == "slim" else 4000
+                sliced = _always_inject_slice(full, cap if _has_always_markers(full) else (slim_chars if mode == "slim" else 12000))
+                tag = "slim" if mode == "slim" else "always"
+                content_parts.append(
+                    f"[{p.name}·{tag}] {sliced}\n"
+                    "（常驻仅核心约束。场景细则在对应子仓 CLAUDE.md / 本文件标记之后，按任务再取，不要把历史债务当硬规则。）"
+                )
 
             else:
 
+                always_cap = 1500 if mode == "slim" else 2500
+                always_part = _always_inject_slice(
+                    full,
+                    always_cap if _has_always_markers(full) else 1200,
+                )
                 if mode == "slim":
-                    # Core CLAUDE.md is engineering-heavy; slim keeps a short header only.
-                    content_parts.append(f"[{p.name}·slim] {full[:1200]}")
+                    content_parts.append(f"[{p.name}·slim] {always_part}")
                 else:
-                    # aiPlat-core/CLAUDE.md: inject relevant sections only (56K chars)
-                    filtered = _filter_claude_md_sections(full, task_text)
-                    content_parts.append(f"[{p.name}] {filtered}")
+                    # Resident always-block + keyword sections from the rest of the file.
+                    body = _text_after_always_block(full)
+                    filtered = _filter_claude_md_sections(body, task_text)
+                    if filtered.strip():
+                        content_parts.append(
+                            f"[{p.name}] {always_part}\n\n---\n\n{filtered}"
+                        )
+                    else:
+                        content_parts.append(f"[{p.name}] {always_part}")
+
+        # Sibling repo rules once (not once per CLAUDE.md path).
+        for extra in _scenario_claude_paths(project_root, task_text, trace_context):
+            try:
+                if not extra.is_file():
+                    continue
+                extra_text = extra.read_text(encoding="utf-8")
+            except Exception:
+                continue
+            piece = _always_inject_slice(extra_text, 2000)
+            if piece:
+                content_parts.append(f"[{extra.name}·scenario] {piece}")
 
 
 
@@ -1178,14 +1200,72 @@ _CLAUSE_KEYWORDS = {
 
 
 
+_ALWAYS_BEGIN = "<!-- inject:always -->"
+_ALWAYS_END = "<!-- inject:always-end -->"
+
+
+def _has_always_markers(full: str) -> bool:
+    start = full.find(_ALWAYS_BEGIN)
+    end = full.find(_ALWAYS_END)
+    return start >= 0 and end > start
+
+
+def _always_inject_slice(full: str, cap: int) -> str:
+    """Resident rules only. Text after ``inject:always-end`` stays on disk."""
+    if _has_always_markers(full):
+        start = full.find(_ALWAYS_BEGIN) + len(_ALWAYS_BEGIN)
+        end = full.find(_ALWAYS_END)
+        body = full[start:end].strip()
+        if body:
+            return body[:cap]
+    return full[:cap]
+
+
+def _text_after_always_block(full: str) -> str:
+    """Body used for keyword section picks (excludes the always block)."""
+    if not _has_always_markers(full):
+        return full
+    end = full.find(_ALWAYS_END)
+    return full[end + len(_ALWAYS_END):].lstrip()
+
+
+# Touched-repo hints. Only these path fragments pull a sibling CLAUDE.md.
+_SCENARIO_REPO_RULES = (
+    ("aiplat-infra/", "aiPlat-infra/CLAUDE.md"),
+    ("aiplat-platform/", "aiPlat-platform/CLAUDE.md"),
+    ("aiplat-management/", "aiPlat-management/CLAUDE.md"),
+    ("aiplat-app/", "aiPlat-app/CLAUDE.md"),
+)
+
+
+def _scenario_claude_paths(project_root: str, task_text: str, trace_context: Optional[Dict[str, Any]] = None):
+    """Sibling repo rules, only when the task names that tree."""
+    from pathlib import Path
+
+    blob = str(task_text or "")
+    if isinstance(trace_context, dict):
+        blob += " " + str(trace_context.get("modified_file") or "")
+        blob += " " + str(trace_context.get("path") or "")
+    blob = blob.lower().replace("\\", "/")
+    root = Path(project_root)
+    found = []
+    seen = set()
+    for needle, rel in _SCENARIO_REPO_RULES:
+        if needle not in blob:
+            continue
+        path = (root / rel).resolve()
+        if path in seen or not path.is_file():
+            continue
+        seen.add(path)
+        found.append(path)
+    return found
+
+
 def _filter_claude_md_sections(full_text: str, task_text: str) -> str:
 
-    u"""Inject full CLAUDE.md text, but prioritize: always include §0-§5 headers,
+    u"""§0 stays resident. Numbered scenario sections load only on task keywords.
 
-    append matching subsections from the task keyword map. Falls back to first 8000
-
-    chars when no task keywords detected.
-
+    No keyword hit → §0 only (capped). A hit appends the mapped sections, then caps at 8000.
     """
 
     task_lower = task_text.lower()
@@ -1238,15 +1318,7 @@ def _filter_claude_md_sections(full_text: str, task_text: str) -> str:
 
         section_num = heading_match.group(1) if heading_match else ""
 
-        is_always = bool(
-
-            _re.match(r'^0[\.\s)]', section_num) or
-
-            _re.match(r'^[1-6][\).\s]', section_num) or
-
-            section_num.startswith("5.")
-
-        )
+        is_always = bool(_re.match(r"^0(\.|$)", section_num))
 
         if is_always:
 

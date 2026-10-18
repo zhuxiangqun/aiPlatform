@@ -33,7 +33,11 @@ def get_scoring_dimensions(
     """
     Return the active scoring dimensions list.
 
-    Priority: overrides > AIPLAT_EVAL_DIMENSIONS env var.
+    Priority: overrides > AIPLAT_EVAL_DIMENSIONS env var > empty list.
+
+    Do **not** fall back to release_scorecard dimensions: a workbench
+    regression without task dims would invent release keys as score 0 and
+    can falsely trip auto_rollback.
 
     Each dimension is a dict with:
         name: str           dimension name

@@ -1601,17 +1601,34 @@ def _load_llm_profile() -> dict:
     return base
 
 
+def _local_only_requested(purpose: str, profile: Optional[dict] = None) -> bool:
+    """Sensitive / offline: keep selection inside local runners.
+
+    Sources (first wins as True): purpose_profiles.local_only, AIPLAT_LOCAL_ONLY.
+    Model *names* are still not chosen from env — only this residency policy.
+    """
+    data = profile if isinstance(profile, dict) else _load_llm_profile()
+    pprof = (data.get("purpose_profiles") or {}).get(purpose) or {}
+    if bool(pprof.get("local_only")):
+        return True
+    return os.getenv("AIPLAT_LOCAL_ONLY", "").strip().lower() in (
+        "1", "true", "yes", "on",
+    )
+
+
 def _build_preferences(purpose: str) -> dict:
-    """收集偏好参数（model_overrides YAML），不再硬覆盖；不使用 env var
-    （操作员在 infra 注册表声明模型，env 不参与选择，2026-08-19）。
+    """收集偏好参数（model_overrides YAML），不再硬覆盖模型名。
+
+    ``local_only`` is a residency filter (drop external candidates), not a model pick.
     """
     prefs = {}
 
-    # model_overrides（兼容保留）
     profile = _load_llm_profile()
     override = profile.get("model_overrides", {}).get(purpose)
     if override:
         prefs["override_model"] = override
+    if _local_only_requested(purpose, profile):
+        prefs["local_only"] = True
 
     return prefs
 
@@ -1645,11 +1662,32 @@ def best_model_for_purpose(purpose: str, messages: list = None) -> str:
     # Step 2: 加载配置
     profile_data = _load_llm_profile()
 
-    # Step 3: 统一评分管道
-    try:
+    def _select(reasoning_floor: Optional[int]) -> str:
+        prefs = preferences
+        if reasoning_floor:
+            prefs = dict(preferences)
+            prefs["reasoning_floor"] = int(reasoning_floor)
+            prefs["capability_strict"] = True
         mgr = _get_cached_model_manager()
         _ensure_adapter_models_injected(mgr)
-        result = mgr.unified_pipeline(purpose, messages, preferences, profile_data)
+        return mgr.unified_pipeline(purpose, messages, prefs, profile_data)
+
+    # Task hold: first pick sticks; upgrade re-scores with a higher floor.
+    # No bound task → None, and the call below is the original pipeline.
+    try:
+        from core.harness.utils.task_model_lock import held_model_for_task
+        held = held_model_for_task(purpose, _select, messages)
+    except Exception:
+        logging.getLogger(__name__).debug("task model hold skipped", exc_info=True)
+        held = None
+    if held:
+        _log_model_selection(purpose, held, entry="best_model_for_purpose",
+                             source="task_hold")
+        return held
+
+    # Step 3: 统一评分管道
+    try:
+        result = _select(None)
         _log_model_selection(purpose, result, entry="best_model_for_purpose",
                              source="unified_pipeline")
         return result

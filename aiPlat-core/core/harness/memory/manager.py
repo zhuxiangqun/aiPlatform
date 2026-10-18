@@ -557,22 +557,34 @@ class MemoryManager:
                     current_query, tenant_id=self._tenant_id, session_id=self._session_id)
 
         
-        # Phase 52: Inject ConversationIngestor wiki pages (best-effort)
-        if retrieval_budget != "working_only":
+        # Recent wiki pages only when they overlap the current ask (not every turn).
+        if retrieval_budget == "full" and current_query:
             try:
                 import os as _parseos, time as _parsetime
+                from core.harness.memory.file_store import text_overlaps_query
                 wiki_root = _parseos.path.expanduser(_parseos.getenv("AIPLAT_HOME", "~/.aiplat")) + "/wiki/collections"
                 if _parseos.path.isdir(wiki_root):
                     cutoff = _parsetime.time() - 7 * 86400
                     for col in _parseos.listdir(wiki_root)[:3]:
                         col_dir = _parseos.path.join(wiki_root, col)
                         if _parseos.path.isdir(col_dir):
-                            for f in sorted(_parseos.listdir(col_dir), key=lambda x: _parseos.path.getmtime(_parseos.path.join(col_dir, x)), reverse=True)[:3]:
+                            names = [
+                                f for f in _parseos.listdir(col_dir)
+                                if f.endswith(".md")
+                            ]
+                            names.sort(
+                                key=lambda x: _parseos.path.getmtime(_parseos.path.join(col_dir, x)),
+                                reverse=True,
+                            )
+                            for f in names[:3]:
                                 fpath = _parseos.path.join(col_dir, f)
-                                if _parseos.path.isfile(fpath) and _parseos.path.getmtime(fpath) > cutoff:
-                                    with open(fpath, encoding="utf-8", errors="ignore") as fh:
-                                        body = fh.read()[:500]
-                                    relevant_memories.append(type("_IngestorMem", (), {"content": body, "metadata": {"source": "ingestor", "title": f.replace(".md","")}, "importance": 0.7})())
+                                if not (_parseos.path.isfile(fpath) and _parseos.path.getmtime(fpath) > cutoff):
+                                    continue
+                                with open(fpath, encoding="utf-8", errors="ignore") as fh:
+                                    body = fh.read()[:500]
+                                if not text_overlaps_query(current_query, f + "\n" + body):
+                                    continue
+                                relevant_memories.append(type("_IngestorMem", (), {"content": body, "metadata": {"source": "ingestor", "title": f.replace(".md", "")}, "importance": 0.7})())
             except Exception:
                 logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         
@@ -634,13 +646,13 @@ class MemoryManager:
 
         if relevant_memories:
 
-            memory_context = "## Relevant Past Context\n"
+            from core.harness.memory.profile_builder import semantic_context_block
 
-            for mem in relevant_memories[:3]:
+            memory_context = semantic_context_block(relevant_memories)
 
-                memory_context += f"- {mem.content[:200]}...\n"
+            if memory_context:
 
-            messages.append({"role": "system", "content": memory_context})
+                messages.append({"role": "system", "content": memory_context})
 
         
 
@@ -648,13 +660,19 @@ class MemoryManager:
 
         if episodic_summary:
 
-            messages.append({
+            from core.harness.memory.profile_builder import session_summary_block
 
-                "role": "system",
+            summary_text = session_summary_block(str(episodic_summary))
 
-                "content": f"## Session Summary\n{episodic_summary}"
+            if summary_text:
 
-            })
+                messages.append({
+
+                    "role": "system",
+
+                    "content": summary_text,
+
+                })
 
 
 
@@ -662,27 +680,17 @@ class MemoryManager:
 
         if not audit_mode:
 
-            critical = self._episodic.get_critical_episodes(limit=5)
+            from core.harness.memory.profile_builder import critical_episodes_block
 
-            if critical:
+            critical_text = critical_episodes_block(self._episodic.get_critical_episodes(limit=5))
 
-                lines = []
-
-                for ep in critical:
-
-                    ts = ep.get("timestamp", "")[:19]
-
-                    u = str(ep.get("user", ""))[:120]
-
-                    a = str(ep.get("assistant", ""))[:120]
-
-                    lines.append(f"[{ts}] User: {u}\n[{ts}] Assistant: {a}")
+            if critical_text:
 
                 messages.append({
 
                     "role": "system",
 
-                    "content": "## Critical Decisions (Preserved)\n" + "\n---\n".join(lines),
+                    "content": critical_text,
 
                     "meta": {"role": "system_arch"},
 
@@ -690,45 +698,130 @@ class MemoryManager:
 
 
 
-        # Inject user profile from semantic memory (auto-extracted via ProfileBuilder)
+        # Pinned MEMORY.md facts — every turn, hard char budget (not retrieval).
 
-        if not audit_mode:
+        if not audit_mode and retrieval_budget in ("full", "minimal"):
 
             try:
 
-                profiles = await self._semantic.retrieve("user_profile preferences constraints", top_k=1)
+                from core.harness.memory.file_store import pinned_memory_text
 
-                for p in profiles:
+                pinned = pinned_memory_text(
+                    tenant_id=str(self._tenant_id or "default"),
+                )
 
-                    if hasattr(p, 'metadata') and isinstance(p.metadata, dict):
+                if pinned:
 
-                        if p.metadata.get("tag") == "user_profile":
+                    messages.append({
 
-                            import json as _json
+                        "role": "system",
 
-                            data = _json.loads(p.content) if isinstance(p.content, str) else p.content
+                        "content": pinned,
 
-                            prefs = data.get("preferences", []) if isinstance(data, dict) else []
+                        "meta": {"role": "pinned_memory"},
 
-                            constraints = data.get("constraints", []) if isinstance(data, dict) else []
+                    })
 
-                            if prefs or constraints:
+                    total_tokens += len(pinned.split()) * 1.3
 
-                                from core.harness.memory.profile_builder import UserProfile
+            except Exception:
 
-                                profile = UserProfile.from_dict(data)
+                logging.getLogger(__name__).debug("pinned memory inject skipped", exc_info=True)
 
-                                msg = profile.to_system_message()
+        # Inject user profile every turn by tag (not similarity — prefs must always land).
 
-                                if msg:
+        if not audit_mode and retrieval_budget in ("full", "minimal"):
 
-                                    messages.append({"role": "system", "content": msg})
+            try:
 
-                            break
+                from core.harness.memory.profile_builder import MEMORY_PROFILE_TAG, UserProfile
+
+                import json as _json
+
+                p = self._semantic.latest_by_tag(MEMORY_PROFILE_TAG)
+
+                if p is not None:
+
+                    data = _json.loads(p.content) if isinstance(p.content, str) else p.content
+
+                    if isinstance(data, dict):
+
+                        profile = UserProfile.from_dict(data)
+
+                        msg = profile.to_durable_message()
+
+                        if msg:
+
+                            messages.append({
+
+                                "role": "system",
+
+                                "content": msg,
+
+                                "meta": {"role": "user_profile"},
+
+                            })
+
+                            total_tokens += len(msg.split()) * 1.3
 
             except Exception as e:
 
                 logging.warning(str(e), exc_info=True)
+
+        # Session archive search — past turns that left the live window.
+
+        if not audit_mode and retrieval_budget == "full" and current_query:
+
+            try:
+
+                from core.harness.memory.file_store import (
+                    archive_prompt_snippet,
+                    query_asks_about_past,
+                    search_session_archive,
+                )
+
+                hits = (
+                    search_session_archive(
+                        current_query,
+                        limit=3,
+                        session_id=str(self._session_id or ""),
+                        tenant_id=str(self._tenant_id or "default"),
+                    )
+                    if query_asks_about_past(current_query)
+                    else []
+                )
+
+                lines = []
+                for h in hits or []:
+                    snippet = archive_prompt_snippet(str(h.get("text") or ""))
+                    if not snippet:
+                        continue
+                    lines.append(
+                        f"- [{h.get('at') or ''}] {h.get('role')}: {snippet}"
+                    )
+
+                if lines:
+
+                    body = (
+                        "Past session turns (retrieved; not live context):\n"
+                        + "\n".join(lines)
+                    )
+
+                    messages.append({
+
+                        "role": "system",
+
+                        "content": body,
+
+                        "meta": {"role": "session_search", "hits": len(lines)},
+
+                    })
+
+                    total_tokens += len(body.split()) * 1.3
+
+            except Exception:
+
+                logging.getLogger(__name__).debug("session archive search skipped", exc_info=True)
 
 
 
@@ -829,23 +922,27 @@ class MemoryManager:
 
                     hot.sort(key=lambda x: (x[2], x[3]), reverse=True)
 
-                    lines = ["\n[Procedural Memory] High-confidence reuse patterns:"]
+                    from core.harness.routing.skill_routing import procedural_memory_block
 
-                    for name, stub, pr, _tc in hot[:5]:
+                    block = procedural_memory_block(
+                        current_query or "",
+                        [
+                            {"name": name, "stub": stub, "pass_rate": pr}
+                            for name, stub, pr, _tc in hot
+                        ],
+                    )
 
-                        lines.append(f"- {name} (pass_rate={pr:.0%}): {stub[:120]}")
+                    if block:
 
-                    lines.append("→ Use sys_skill_call to load full SOP when needed.")
+                        messages.append({
 
-                    messages.append({
+                            "role": "system",
 
-                        "role": "system",
+                            "content": block,
 
-                        "content": "\n".join(lines),
+                            "meta": {"role": "procedural_memory"},
 
-                        "meta": {"role": "procedural_memory"},
-
-                    })
+                        })
 
             except Exception:
 
@@ -939,7 +1036,12 @@ class MemoryManager:
 
         if self._config.enable_compression and self._compression.should_trigger_compression(state):
 
-            messages = await self._compression.compress(messages, state)
+            messages = await self._compression.compress(
+                messages,
+                state,
+                session_id=str(self._session_id or ""),
+                tenant_id=str(self._tenant_id or "default"),
+            )
 
         
 
@@ -1012,6 +1114,23 @@ class MemoryManager:
                     self._last_team_brain_recall = {"query": _tb_q[:200], "count": 0, "items": []}
             except Exception:
                 logging.getLogger(__name__).debug('team_brain recall failed', exc_info=True)
+            try:
+                from core.harness.evaluation.harness_recursion import (
+                    format_library_overlay,
+                    recall_library,
+                )
+                _h_text = format_library_overlay(
+                    recall_library(current_query or "", limit=3)
+                )
+                if _h_text:
+                    messages.append({
+                        "role": "system",
+                        "content": _h_text,
+                        "meta": {"role": "harness_library", "inherit_whole": False},
+                    })
+                    total_tokens += len(_h_text.split()) * 1.3
+            except Exception:
+                logging.getLogger(__name__).debug('harness library overlay failed', exc_info=True)
 
 
 
@@ -1145,22 +1264,24 @@ class MemoryManager:
 
             try:
 
+                from core.harness.memory.file_store import durable_semantic_content
+
                 recent = self._semantic.recent_entries(limit=3)
 
-                if recent:
-
-                    items = [f"- {e.content[:120]}" for e in recent if e.content]
-
+                items = []
+                for e in recent or []:
+                    body = durable_semantic_content(
+                        str(getattr(e, "content", "") or ""),
+                        getattr(e, "metadata", None) or {},
+                    )
+                    if body:
+                        items.append(f"- {body[:120]}")
+                if items:
                     return (
-
                         f"[Memory Nudge — turn #{turn_number}] "
-
                         f"Key memories from your past sessions:\n"
-
                         + "\n".join(items) + "\n"
-
-                        f"(Use memory:search to recall more if needed.)"
-
+                        "(Use memory:search to recall more if needed.)"
                     )
 
             except Exception:
@@ -1353,77 +1474,33 @@ class MemoryManager:
 
 
 
-        # Auto Memory (P6): detect patterns and auto-save learnings to file
+        # Interaction counter (session checkpoints are not durable MEMORY.md facts).
+        self._interaction_count = getattr(self, "_interaction_count", 0) + 1
 
-        try:
+        # Wiki auto-extraction: high-stability durable insights only (not commands)
 
-            self._interaction_count = getattr(self, "_interaction_count", 0) + 1
-
-            corrections = sum(1 for tc in (tool_calls or []) if isinstance(tc, dict) and tc.get("name") == "correct_agent")
-
-            from core.harness.memory.file_store import auto_save_learning, should_auto_learn
-
-            if should_auto_learn(self._interaction_count, corrections):
-
-                if corrections >= 2:
-
-                    auto_save_learning("correction",
-
-                        f"Agent corrected {corrections} times in session",
-
-                        source="auto")
-
-                if self._interaction_count % 10 == 0:
-
-                    auto_save_learning("pattern",
-
-                        f"Checkpoint: {self._interaction_count} interactions",
-
-                        source="auto")
-
-        except Exception:
-
-            logging.getLogger(__name__).debug('code failed', exc_info=True)
-
-
-            # Wiki auto-extraction: high-stability insights → knowledge atoms
-
+        if stability == "high":
             try:
+                from core.harness.memory.file_store import durable_wiki_insight
+                from core.harness.knowledge.wiki_engine import write_page, search_pages
 
-                import re as _re
-
-                assistant = str(assistant_message or "").strip()
-
-                if len(assistant) > 80:
-
-                    from core.harness.knowledge.wiki_engine import write_page, search_pages
-
-                    existing = search_pages(limit=100)
-
-                    existing_titles = [p["title"] for p in existing]
-
-                    title_match = _re.match(r'^(.{5,60}?)[.!?。！？\n]', assistant)
-
-                    title = (title_match.group(1) if title_match else assistant[:60]).strip()
-
-                    if title and len(title) >= 10:
-
-                        safe_title = _re.sub(r'[<>:"/\\|?*]', '_', title)[:80]
-
-                        if safe_title not in existing_titles:
-
-                            write_page(safe_title, assistant[:5000],
-
-                                       category="topics",
-
-                                       tags=["memory", "auto-extracted"],
-
-                                       summary=assistant[:300].replace('\n', ' '),
-
-                                       source_articles=["memory:episodic"])
-
+                insight = durable_wiki_insight(
+                    str(user_message or ""),
+                    str(assistant_message or ""),
+                )
+                if insight:
+                    title, body = insight
+                    existing_titles = [p["title"] for p in search_pages(limit=100)]
+                    if title not in existing_titles:
+                        write_page(
+                            title,
+                            body,
+                            category="topics",
+                            tags=["memory", "auto-extracted"],
+                            summary=body[:300].replace("\n", " "),
+                            source_articles=["memory:episodic"],
+                        )
             except Exception as e:
-
                 logging.warning(str(e), exc_info=True)
 
 
@@ -1490,11 +1567,16 @@ class MemoryManager:
 
         """
 
+        from core.harness.memory.file_store import durable_semantic_content
+
+        metadata = dict(metadata or {})
+        durable = durable_semantic_content(str(content or ""), metadata)
+        if not durable:
+            return None
+
         # Stamp tenant/session so semantic retrieve can enforce isolation (§5.12).
 
         if self._tenant_id is not None or self._session_id is not None:
-
-            metadata = dict(metadata or {})
 
             if self._tenant_id is not None:
 
@@ -1504,7 +1586,7 @@ class MemoryManager:
 
                 metadata.setdefault("session_id", self._session_id)
 
-        await self._semantic.store(key, content, metadata, expires_at=expires_at)
+        return await self._semantic.store(key, durable, metadata, expires_at=expires_at)
 
 
 
@@ -2359,11 +2441,15 @@ class MemoryManager:
                 timeout=max(5.0, to),
             )
             if result is not None and getattr(result, "summary", None):
-                self._episodic._summary = result.summary
-                logger.info(
-                    "Polished episodic summary (bg LLM): %s",
-                    str(result.summary)[:100],
-                )
+                from core.harness.memory.profile_builder import sanitize_episodic_summary_text
+
+                clean = sanitize_episodic_summary_text(str(result.summary))
+                if clean:
+                    self._episodic._summary = clean
+                    logger.info(
+                        "Polished episodic summary (bg LLM): %s",
+                        clean[:100],
+                    )
         except Exception:
             logging.getLogger("memory").debug(
                 "bg episodic LLM polish skipped", exc_info=True
