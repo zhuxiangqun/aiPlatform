@@ -20,6 +20,7 @@ import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 import { CircuitOpenError, platformFetch } from "./enterprise_http";
+import { httpJsonObject } from "./json_body.mjs";
 import {
   loadEnterpriseConfig,
   type EnterpriseConfig,
@@ -205,22 +206,31 @@ async function fetchJson(
       },
     });
     const bodyText = await res.text();
-    let parsed: unknown = bodyText;
-    try {
-      parsed = JSON.parse(bodyText);
-    } catch {
-      /* keep text */
-    }
+    const parsedBody = httpJsonObject(res.status, bodyText);
     if (!res.ok) {
       return {
         ok: false,
         status: res.status,
         text: bodyText.slice(0, 2000),
         error: `http_${res.status}`,
-        raw: parsed,
+        raw: parsedBody.value ?? bodyText,
       };
     }
-    return { ok: true, status: res.status, text: bodyText.slice(0, 4000), raw: parsed };
+    if (!parsedBody.ok || !parsedBody.value) {
+      return {
+        ok: false,
+        status: res.status,
+        text: bodyText.slice(0, 2000),
+        error: "json_parse",
+        raw: bodyText,
+      };
+    }
+    return {
+      ok: true,
+      status: res.status,
+      text: bodyText.slice(0, 4000),
+      raw: parsedBody.value,
+    };
   } catch (e) {
     if (e instanceof CircuitOpenError) {
       return { ok: false, text: "", error: `circuit: ${e.message}` };

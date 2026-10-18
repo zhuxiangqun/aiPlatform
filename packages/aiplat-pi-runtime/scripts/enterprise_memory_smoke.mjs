@@ -4,6 +4,7 @@
  * Mirrors packages/aiplat-pi-runtime/extensions/enterprise_memory.ts gating + URL + extract.
  */
 import { parseArchiveHits } from "../extensions/archive_hits.mjs";
+import { httpJsonObject } from "../extensions/json_body.mjs";
 function envTruthy(name) {
   const v = (process.env[name] || "").trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes" || v === "on";
@@ -166,6 +167,14 @@ function main() {
   const empty = parseArchiveHits('{"hits":[]}');
   assert(empty.ok && empty.hits.length === 0, "json empty hits stay empty");
   console.log("PASS: archive parse does not treat garbage as no-match");
+
+  const htmlOk = httpJsonObject(200, "<html>gateway</html>");
+  assert(!htmlOk.ok && htmlOk.error === "json_parse", "HTTP 200 HTML is not an empty JSON payload");
+  const emptyObj = httpJsonObject(200, "{}");
+  assert(emptyObj.ok && emptyObj.value && typeof emptyObj.value === "object", "empty object stays success");
+  const httpErr = httpJsonObject(502, "bad gateway");
+  assert(!httpErr.ok && httpErr.error === "http_502", "non-2xx stays an HTTP failure");
+  console.log("PASS: http json object does not treat garbage as empty success");
 
   console.log("AIPLAT_ENTERPRISE_MEMORY_SMOKE_OK");
 }

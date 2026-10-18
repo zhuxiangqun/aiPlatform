@@ -12,6 +12,7 @@ import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 import { parseArchiveHits } from "./archive_hits.mjs";
+import { httpJsonObject } from "./json_body.mjs";
 import { bindCompletionToReceipts, receiptsFromMessages } from "./completion_receipt.mjs";
 import { CircuitOpenError, platformFetch } from "./enterprise_http";
 import {
@@ -96,13 +97,14 @@ export async function ensureStickyMemory(cfg?: MemoryBridgeConfig): Promise<stri
       stickyCache = "";
       return "";
     }
-    let text = "";
-    try {
-      const parsed = JSON.parse(bodyText) as { text?: string; available?: boolean };
-      if (parsed && parsed.available !== false) text = String(parsed.text || "").trim();
-    } catch {
-      text = "";
+    const parsedBody = httpJsonObject(res.status, bodyText);
+    if (!parsedBody.ok || !parsedBody.value) {
+      // Do not cache a gateway/HTML body as "no pinned facts".
+      return "";
     }
+    const parsed = parsedBody.value as { text?: string; available?: boolean };
+    const text =
+      parsed.available !== false ? String(parsed.text || "").trim() : "";
     stickyCache = text.slice(0, 2000);
   } catch {
     stickyCache = "";
@@ -140,17 +142,17 @@ export async function pinStickyFact(
       }),
     });
     const bodyText = await res.text();
+    const parsedBody = httpJsonObject(res.status, bodyText);
     if (!res.ok) {
       return { ok: false, status: res.status, text: bodyText.slice(0, 500), error: "sticky_http" };
     }
-    let ok = true;
-    try {
-      const parsed = JSON.parse(bodyText) as { ok?: boolean; status?: string };
-      if (parsed.ok === false || parsed.status === "error") ok = false;
-    } catch {
-      ok = false;
+    if (!parsedBody.ok || !parsedBody.value) {
+      return { ok: false, status: res.status, text: bodyText.slice(0, 500), error: "json_parse" };
     }
-    if (!ok) return { ok: false, status: res.status, text: bodyText.slice(0, 500), error: "sticky_refused" };
+    const parsed = parsedBody.value as { ok?: boolean; status?: string };
+    if (parsed.ok === false || parsed.status === "error") {
+      return { ok: false, status: res.status, text: bodyText.slice(0, 500), error: "sticky_refused" };
+    }
     resetStickyMemoryCache();
     return { ok: true, status: res.status, text: "Pinned fact saved." };
   } catch (err) {
@@ -291,26 +293,30 @@ export async function captureMemory(
       body: JSON.stringify(body),
     });
     const bodyText = await res.text();
-    let parsed: unknown = bodyText;
-    try {
-      parsed = JSON.parse(bodyText);
-    } catch {
-      /* keep text */
-    }
+    const parsedBody = httpJsonObject(res.status, bodyText);
     if (!res.ok) {
       return {
         ok: false,
         status: res.status,
         text: bodyText.slice(0, 2000),
         error: `http_${res.status}`,
-        raw: parsed,
+        raw: parsedBody.value ?? bodyText,
+      };
+    }
+    if (!parsedBody.ok || !parsedBody.value) {
+      return {
+        ok: false,
+        status: res.status,
+        text: bodyText.slice(0, 2000),
+        error: "json_parse",
+        raw: bodyText,
       };
     }
     return {
       ok: true,
       status: res.status,
       text: `AIPLAT_MEMORY_CAPTURE_OK\n${bodyText.slice(0, 1500)}`,
-      raw: parsed,
+      raw: parsedBody.value,
     };
   } catch (e) {
     if (e instanceof CircuitOpenError) {

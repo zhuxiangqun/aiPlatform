@@ -18,6 +18,7 @@ import {
   formatApprovalRequiredHint,
 } from "./enterprise_approval";
 import { CircuitOpenError, platformFetch } from "./enterprise_http";
+import { httpJsonObject } from "./json_body.mjs";
 import {
   loadEnterpriseConfig,
   type EnterpriseConfig,
@@ -268,21 +269,26 @@ export async function executeEnterpriseTool(
       body: JSON.stringify(body),
     });
     const bodyText = await res.text();
-    let parsed: unknown = bodyText;
-    try {
-      parsed = JSON.parse(bodyText);
-    } catch {
-      /* keep text */
-    }
+    const parsedBody = httpJsonObject(res.status, bodyText);
     if (!res.ok) {
       return {
         ok: false,
         status: res.status,
         text: bodyText.slice(0, 2000),
         error: `http_${res.status}`,
-        raw: parsed,
+        raw: parsedBody.value ?? bodyText,
       };
     }
+    if (!parsedBody.ok || !parsedBody.value) {
+      return {
+        ok: false,
+        status: res.status,
+        text: bodyText.slice(0, 2000),
+        error: "tool_parse",
+        raw: bodyText,
+      };
+    }
+    const parsed = parsedBody.value;
     const summary = summarizeToolResponse(name, parsed);
     const softFail =
       parsed &&
