@@ -1,0 +1,39 @@
+name: Defect Gate
+
+# PR-only unlock for the required check "Zero-findings receipt".
+# Author-committed receipt.json is a local discipline artifact and does NOT
+# unlock CI. CI requires an APPROVED review from someone other than the PR author.
+# Re-run on review events so Approve / dismiss updates the required check.
+on:
+  pull_request:
+    branches: [main]
+  pull_request_review:
+    types: [submitted, dismissed, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  defect-gate:
+    name: Zero-findings receipt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Require non-author APPROVED review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 scripts/defect_gate_independence.py
+      - name: Optional author receipt summary (advisory)
+        if: always()
+        run: |
+          if [[ -f .aiplat/defect_gate/receipt.json ]]; then
+            python3 -c "import json; d=json.load(open('.aiplat/defect_gate/receipt.json')); print('author_receipt status=', d.get('status'), 'findings=', d.get('findings_count'), 'diff=', str(d.get('diff_sha256',''))[:12], '(advisory; CI unlock is non-author Approve)')"
+          else
+            echo "author receipt absent (ok for CI; required only for local push/PR hook)"
+          fi

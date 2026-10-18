@@ -3,7 +3,7 @@ title: "aiPlat 商业价值白皮书"
 volume_id: commercial-value
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-18T10:02:47Z"
+generated_at: "2026-10-18T10:42:21Z"
 audience: "CEO、CFO、业务负责人、投资方"
 core_question: "投资回报与 TCO 如何？"
 priority: P3
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 投资回报与 TCO 如何？ |
 | 优先级 | P3 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-18T10:02:47Z` |
+| 生成时间 (UTC) | `2026-10-18T10:42:21Z` |
 | CAPABILITIES sha256 | `dbf08f325a10…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 

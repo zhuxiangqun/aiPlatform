@@ -3,7 +3,7 @@ title: "aiPlat 安全与治理白皮书"
 volume_id: security-governance
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-18T10:02:47Z"
+generated_at: "2026-10-18T10:42:21Z"
 audience: "CISO、合规、风控"
 core_question: "如何可信可控？"
 priority: P0
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 如何可信可控？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-18T10:02:47Z` |
+| 生成时间 (UTC) | `2026-10-18T10:42:21Z` |
 | CAPABILITIES sha256 | `dbf08f325a10…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 

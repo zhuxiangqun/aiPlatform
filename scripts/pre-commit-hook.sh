@@ -42,7 +42,8 @@ fi
 BOUNDARY_YAML="$WORKSPACE/architecture/boundary_rules.yaml"
 GUARD_SCRIPT="$WORKSPACE/scripts/architecture_guard_rules.sh"
 if [ -f "$BOUNDARY_YAML" ] && [ -f "$GUARD_SCRIPT" ]; then
-    # Generator stores sha256[:16]. A full digest never matches and rewrites GENERATED_AT.
+    # Generator stores sha256[:16]. A full digest never matches, so every commit
+    # rewrote GENERATED_AT and invalidated defect-gate receipts.
     YAML_HASH=$(python3 -c "import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest()[:16])" "$BOUNDARY_YAML")
     GUARD_HASH=$(grep "SOURCE_HASH:" "$GUARD_SCRIPT" 2>/dev/null | awk '{print $NF}' || echo "")
     if [ "$YAML_HASH" != "$GUARD_HASH" ]; then
@@ -306,9 +307,9 @@ if [ -z "${SKIP_ENTITY_GUARD:-}" ]; then
     # P3: SKILL.md 目录白名单 — engine / workspace_seeds / ~/.aiplat / Pi Runtime package skills
     NEW_SKILLS=$(git diff --cached --name-only --diff-filter=A | grep 'SKILL\.md$' || true)
     for f in $NEW_SKILLS; do
-        if ! echo "$f" | grep -qE '(engine/skills/|workspace_seeds/skills/|workspace_seeds/factory_sanitize/|\.aiplat/skills/|packages/aiplat-pi-runtime/)'; then
+        if ! echo "$f" | grep -qE '(engine/skills/|workspace_seeds/skills/|workspace_seeds/factory_sanitize/|\.aiplat/skills/|packages/aiplat-pi-runtime/|\.cursor/skills/)'; then
             echo "  ❌ New SKILL.md outside allowed directories: $f"
-            echo "     → Allowed: core/engine/skills/, workspace_seeds/skills/, factory_sanitize/, ~/.aiplat/skills/, or packages/aiplat-pi-runtime/"
+            echo "     → Allowed: core/engine/skills/, workspace_seeds/skills/, factory_sanitize/, ~/.aiplat/skills/, packages/aiplat-pi-runtime/, or .cursor/skills/"
             ENTITY_ISSUES=1
         fi
     done
@@ -340,13 +341,11 @@ if [ -z "${SKIP_ENTITY_GUARD:-}" ]; then
     # P3.7: O2 team YAML vs AGENT.md profile drift (advisory unless AIPLAT_YAML_DRIFT_STRICT=1)
     if git diff --cached --name-only | grep -qE '(workspace_seeds/.*/.*team.*\.ya?ml|workspace_seeds/teams/|/\.aiplat/teams/|scripts/lint_team_yaml_profile_drift\.py)'; then
         echo "  → Team YAML profile drift lint (O2)..."
-        # Avoid "${arr[@]}" under set -u when empty (bash unbound-variable).
+        _DRIFT_ARGS=()
         if [ "${AIPLAT_YAML_DRIFT_STRICT:-}" = "1" ]; then
-            _DRIFT_CMD=(python3 "$WORKSPACE/scripts/lint_team_yaml_profile_drift.py" --strict)
-        else
-            _DRIFT_CMD=(python3 "$WORKSPACE/scripts/lint_team_yaml_profile_drift.py")
+            _DRIFT_ARGS+=(--strict)
         fi
-        if ! "${_DRIFT_CMD[@]}"; then
+        if ! python3 "$WORKSPACE/scripts/lint_team_yaml_profile_drift.py" "${_DRIFT_ARGS[@]}"; then
             echo "  ❌ Team YAML profile drift (strict mode)"
             echo "     → Align architecture_profile/execution_backend or add # drift-ok: <reason>"
             ENTITY_ISSUES=1
