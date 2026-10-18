@@ -39,4 +39,12 @@ const nonTool = receiptsFromMessages([
   { role: "assistant", content: "already fixed via tool" },
 ]);
 assert.equal(nonTool.length, 0);
+
+const parked = receiptsFromMessages([
+  {
+    role: "toolResult",
+    content: "AIPLAT_TOOL_EXECUTE_APPROVAL_REQUIRED tool=shell",
+  },
+]);
+assert.equal(parked[0].status, "failed");
 console.log("completion_receipt_smoke ok");

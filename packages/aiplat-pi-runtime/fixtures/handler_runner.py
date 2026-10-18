@@ -5,8 +5,11 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
+
+_SKILL_DIR = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,80}$")
 
 
 def _load_execute(handler_path: Path):
@@ -30,6 +33,16 @@ async def _run(fn, params: dict):
 
 def main() -> int:
     handler_path = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path("handler.py").resolve()
+    # Only skills/<safe-name>/handler.py — never fixtures/ or arbitrary trees.
+    if (
+        handler_path.name != "handler.py"
+        or handler_path.parent.parent.name != "skills"
+        or not _SKILL_DIR.fullmatch(handler_path.parent.name)
+    ):
+        print(
+            json.dumps({"ok": False, "error": "handler path refused"}, ensure_ascii=False),
+        )
+        return 2
     try:
         payload = json.loads(sys.stdin.read() or "{}")
         params = payload.get("params") if isinstance(payload.get("params"), dict) else {}

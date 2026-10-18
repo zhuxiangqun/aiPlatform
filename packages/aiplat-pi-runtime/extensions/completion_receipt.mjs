@@ -78,7 +78,12 @@ export function receiptsFromMessages(messages) {
       head.startsWith("file not found") ||
       head.startsWith("tool not found:") ||
       head.includes("policy_denied") ||
-      head.includes("aiplat_tool_execute_failed");
+      head.includes("aiplat_tool_execute_failed") ||
+      head.includes("aiplat_tool_execute_approval_required") ||
+      head.includes("aiplat_approval_wait_denied") ||
+      head.includes("aiplat_unattended_wait_denied") ||
+      head.includes("handler_missing") ||
+      head.includes("invalid_skill_name");
     out.push({
       status: failed ? "failed" : "ok",
       detail: text.slice(0, 500),

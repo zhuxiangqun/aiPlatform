@@ -68,6 +68,13 @@ assert(opened, "circuit opens after threshold failures");
 const snap = getPlatformCircuit(url).snapshot();
 assert(snap.state === "open", "state open");
 
+const half = getPlatformCircuit(url);
+half.openedAt = Date.now() - 120_000;
+assert(half.allow() === true, "half_open first probe allowed");
+assert(half.allow() === false, "half_open second concurrent probe blocked");
+half.recordSuccess();
+assert(half.allow() === true, "success closes circuit");
+
 process.env.AIPLAT_PLATFORM_CIRCUIT = "0";
 resetPlatformCircuits();
 // with circuit off, allow() always true even after failures

@@ -44,6 +44,11 @@ import {
 import { registerEnterpriseKbHealth } from "./enterprise_kb_health";
 import { registerEnterpriseL3Duty } from "./enterprise_l3_duty";
 import { parseParamsObject } from "./json_body.mjs";
+import {
+  allowHandlerEcho,
+  handlerPyUnderRoot,
+  safeSkillDirName,
+} from "./skill_path.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..");
@@ -151,12 +156,14 @@ function listSkillNames(appHome: string | null): string[] {
 }
 
 function resolveHandlerPy(skill: string, appHome: string | null): string | null {
-  const candidates = [
-    appHome ? join(appHome, "skills", skill, "handler.py") : "",
-    join(PKG_ROOT, "skills", skill, "handler.py"),
+  if (!safeSkillDirName(skill)) return null;
+  const roots = [
+    appHome ? join(appHome, "skills") : "",
+    join(PKG_ROOT, "skills"),
   ].filter(Boolean);
-  for (const p of candidates) {
-    if (existsSync(p)) return p;
+  for (const root of roots) {
+    const found = handlerPyUnderRoot(root, skill);
+    if (found) return found;
   }
   return null;
 }
@@ -206,12 +213,18 @@ async function runHandlerBridge(
   params: Record<string, unknown>,
   appHome: string | null,
 ) {
+  if (!safeSkillDirName(skill)) {
+    return { ok: false, error: "invalid_skill_name", exitCode: 1 };
+  }
   const handlerPy = resolveHandlerPy(skill, appHome);
   if (handlerPy && existsSync(HANDLER_RUNNER)) {
     return runPythonJson([HANDLER_RUNNER, handlerPy], { skill, params });
   }
-  // Fallback: Phase 0 echo fixture
-  return runPythonJson([HANDLER_ECHO], { skill, params });
+  // Echo is only the Phase 0 fixture (or AIPLAT_HANDLER_ECHO=1), not a missing handler.
+  if (allowHandlerEcho(skill) && existsSync(HANDLER_ECHO)) {
+    return runPythonJson([HANDLER_ECHO], { skill, params });
+  }
+  return { ok: false, error: "handler_missing", exitCode: 1 };
 }
 
 const handlerTool = defineTool({
