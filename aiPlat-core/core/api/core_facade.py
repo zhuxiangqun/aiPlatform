@@ -5763,11 +5763,22 @@ def ingest_ide_capture(
     )
 
 
-def query_session_archive(query: str, *, limit: int = 3) -> Dict[str, Any]:
+def query_session_archive(
+    query: str,
+    *,
+    limit: int = 3,
+    session_id: str = "",
+    tenant_id: str = "default",
+) -> Dict[str, Any]:
     """Past compacted turns. Not pinned facts — caller asks, we search."""
     from core.harness.memory.file_store import session_archive_query
 
-    return session_archive_query(query, limit=limit)
+    return session_archive_query(
+        query,
+        limit=limit,
+        session_id=session_id,
+        tenant_id=tenant_id or "default",
+    )
 
 
 def sticky_memory_slice(
@@ -5829,6 +5840,7 @@ def upsert_pinned_memory(
     key: str = "preference",
     source: str = "agent",
     old_text: str = "",
+    tenant_id: str = "default",
 ) -> Dict[str, Any]:
     """Write or replace a durable pinned fact. Budget-full same-key merges automatically."""
     from core.harness.memory.file_store import (
@@ -5837,22 +5849,27 @@ def upsert_pinned_memory(
         write_memory,
     )
 
+    tid = (tenant_id or "default").strip() or "default"
     body = (content or "").strip()
     needle = (old_text or "").strip()
     if needle:
-        ok = replace_memory_entry(needle, body, key=key, source=source)
+        ok = replace_memory_entry(
+            needle, body, key=key, source=source, tenant_id=tid
+        )
         return {
             "ok": ok,
             "action": "replace",
             "key": key,
             "budget": memory_char_budget(),
+            "tenant_id": tid,
         }
-    ok = write_memory(body, key=key, source=source)
+    ok = write_memory(body, key=key, source=source, tenant_id=tid)
     return {
         "ok": ok,
         "action": "write",
         "key": key,
         "budget": memory_char_budget(),
+        "tenant_id": tid,
     }
 
 
