@@ -10,6 +10,7 @@ import {
   loadEnterpriseConfig,
   type EnterpriseConfig,
 } from "./enterprise_kb";
+import { httpJsonObject } from "./json_body.mjs";
 
 function joinPlatform(base: string, path: string): string {
   const b = normalizePlatformBaseUrl(base).replace(/\/+$/, "");
@@ -46,18 +47,17 @@ export async function fetchKbHealthSummary(
       },
     });
     const text = await res.text();
-    if (!res.ok) {
-      return {
-        ok: false,
-        text: `知识库健康面板暂不可用（http=${res.status}）`,
-      };
+    const body = httpJsonObject(res.status, text);
+    if (!body.ok || !body.value) {
+      if (String(body.error || "").startsWith("http_")) {
+        return {
+          ok: false,
+          text: `知识库健康面板暂不可用（http=${res.status}）`,
+        };
+      }
+      return { ok: false, text: "知识库健康面板暂不可用（响应非 JSON 对象）" };
     }
-    let parsed: Record<string, unknown> = {};
-    try {
-      parsed = JSON.parse(text) as Record<string, unknown>;
-    } catch {
-      return { ok: false, text: "知识库健康面板暂不可用（响应非 JSON）" };
-    }
+    const parsed = body.value as Record<string, unknown>;
     const health = (parsed.health || {}) as Record<string, unknown>;
     const metrics = (parsed.metrics || {}) as Record<string, unknown>;
     const stats = (parsed.stats || {}) as Record<string, unknown>;

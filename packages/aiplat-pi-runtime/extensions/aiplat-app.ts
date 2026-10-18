@@ -43,6 +43,7 @@ import {
 } from "./enterprise_tools";
 import { registerEnterpriseKbHealth } from "./enterprise_kb_health";
 import { registerEnterpriseL3Duty } from "./enterprise_l3_duty";
+import { parseParamsObject } from "./json_body.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..");
@@ -225,21 +226,20 @@ const handlerTool = defineTool({
     ),
   }),
   async execute(_toolCallId, params) {
-    let parsedParams: Record<string, unknown> = {};
-    if (params.params_json) {
-      try {
-        const v = JSON.parse(params.params_json);
-        if (v && typeof v === "object" && !Array.isArray(v)) {
-          parsedParams = v as Record<string, unknown>;
-        }
-      } catch {
-        return {
-          content: [{ type: "text" as const, text: "invalid params_json" }],
-          details: undefined,
-          isError: true,
-        };
-      }
+    const parsed = parseParamsObject(params.params_json);
+    if (!parsed.ok || !parsed.value) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: "invalid params_json: must be a JSON object",
+          },
+        ],
+        details: undefined,
+        isError: true,
+      };
     }
+    const parsedParams = parsed.value as Record<string, unknown>;
     const appHome = findAppHome();
     const r = await runHandlerBridge(String(params.skill || ""), parsedParams, appHome);
     if (!r.ok) {

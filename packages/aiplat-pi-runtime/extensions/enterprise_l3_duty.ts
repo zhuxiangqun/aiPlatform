@@ -10,6 +10,7 @@ import {
   loadEnterpriseConfig,
   type EnterpriseConfig,
 } from "./enterprise_kb";
+import { httpJsonObject } from "./json_body.mjs";
 
 function joinPlatform(base: string, path: string): string {
   const b = normalizePlatformBaseUrl(base).replace(/\/+$/, "");
@@ -44,15 +45,14 @@ export async function fetchL3DutySummary(
       },
     });
     const text = await res.text();
-    if (!res.ok) {
-      return { ok: false, text: `L3 值班台暂不可用（http=${res.status}）` };
+    const body = httpJsonObject(res.status, text);
+    if (!body.ok || !body.value) {
+      if (String(body.error || "").startsWith("http_")) {
+        return { ok: false, text: `L3 值班台暂不可用（http=${res.status}）` };
+      }
+      return { ok: false, text: "L3 值班台暂不可用（响应非 JSON 对象）" };
     }
-    let parsed: Record<string, unknown> = {};
-    try {
-      parsed = JSON.parse(text) as Record<string, unknown>;
-    } catch {
-      return { ok: false, text: "L3 值班台暂不可用（响应非 JSON）" };
-    }
+    const parsed = body.value as Record<string, unknown>;
     const contact = (parsed.duty_contact || {}) as Record<string, unknown>;
     const iterations = (parsed.iterations || {}) as Record<string, unknown>;
     const evalSnap = (parsed.eval || {}) as Record<string, unknown>;
