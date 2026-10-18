@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# beforeShellExecution: block gh pr create / protected push without a pass receipt.
-# stdin: Cursor hook JSON. stdout: permission JSON.
+# beforeShellExecution: block gh pr create / git push without a local pass receipt.
+# CI unlock is separate (non-author GitHub Approve). stdin: Cursor hook JSON.
 set -u
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 VALIDATE="$ROOT/scripts/defect_gate_validate.py"
@@ -35,21 +35,30 @@ fi
 INPUT="$(cat || true)"
 NEED_GATE="$(
   printf '%s' "$INPUT" | python3 -c '
-import json, re, sys
+import json, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+sys.path.insert(0, str(root / "scripts"))
+import importlib.util
+spec = importlib.util.spec_from_file_location(
+    "defect_gate_validate", root / "scripts" / "defect_gate_validate.py"
+)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
 try:
     data = json.load(sys.stdin)
-except Exception:
-    data = {}
+except Exception as e:
+    print("DETECT_ERROR", e, file=sys.stderr)
+    sys.exit(2)
 cmd = str(data.get("command") or data.get("cmd") or "")
-# Commit messages and heredocs must not look like a push/PR command.
-cmd = re.sub(r"<<-?\s*'\''?\\?EOF'\''?.*?^EOF", " ", cmd, flags=re.S | re.M)
-cmd = re.sub(r"'\''(?:\\.|[^'\''])*'\''", " ", cmd, flags=re.S)
-cmd = re.sub(r"\"(?:\\.|[^\"])*\"", " ", cmd, flags=re.S)
-gate = bool(re.search(r"(?:^|[;&|\s])gh\s+pr\s+create(?:\s|$)", cmd))
-gate = gate or bool(re.search(r"(?:^|[;&|\s])git\s+push(?:\s|$)", cmd))
-print("1" if gate else "0")
-' 2>/dev/null || echo 0
+print("1" if mod.command_needs_gate(cmd) else "0")
+' "$ROOT"
 )"
+DETECT_RC=$?
+
+if [[ "$DETECT_RC" -ne 0 ]]; then
+  deny "defect-gate: failed to detect whether command needs a receipt (fail closed)"
+fi
 
 if [[ "$NEED_GATE" != "1" ]]; then
   allow
@@ -57,7 +66,7 @@ fi
 
 if ! python3 "$VALIDATE" >/tmp/aiplat_defect_gate_hook.out 2>/tmp/aiplat_defect_gate_hook.err; then
   DETAIL="$(head -c 800 /tmp/aiplat_defect_gate_hook.err 2>/dev/null || true)"
-  deny "defect-gate blocked this command. Run the defect-gate skill, write .aiplat/defect_gate/receipt.json with status=pass for current HEAD, then: python3 scripts/defect_gate_validate.py. Detail: ${DETAIL}"
+  deny "defect-gate blocked this command. Local receipt required for push/PR create. CI still needs non-author Approve. Detail: ${DETAIL}"
 fi
 
 allow

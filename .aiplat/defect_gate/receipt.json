@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-18T08:58:00+08:00",
+  "reviewed_at": "2026-10-18T09:33:35+08:00",
   "base_ref": "origin/main",
   "merge_base": "4c213dc2dda4c47601ac241f132355c193b4d67d",
-  "diff_sha256": "d5839dd097d1ea379a03319ab2364409c9254bc699fcf53b388635167d83af2d",
-  "head_sha": "4c213dc2dda4c47601ac241f132355c193b4d67d",
+  "diff_sha256": "05980e8636040f79b3d9d0057ed8b95a41fafa9a5c9399421bcb8bdc94b8904c",
+  "head_sha": "0eb90ab9b6a9ca97e79f06d6e775069f2fb288bd",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Gate-only commit, research freshness lines, and the pre-commit whitelist/hash fix those files need. diff_sha256 excludes this receipt. Local AIPLAT_DEFECT_GATE=0 does not apply in CI."
+  "note": "CI unlock is non-author Approve (independence.py). Local receipt only. P1: dirty fails; hook uses command_needs_gate fail-closed. Five-check on this gate delta: no open findings."
 }

@@ -1,10 +1,18 @@
 name: Defect Gate
 
-# PR-only: after merge, HEAD equals origin/main and the merge diff is empty,
-# which would invalidate a PR-scoped receipt. Branch protection covers the PR.
+# PR-only unlock for the required check "Zero-findings receipt".
+# Author-committed receipt.json is a local discipline artifact and does NOT
+# unlock CI. CI requires an APPROVED review from someone other than the PR author.
+# Re-run on review events so Approve / dismiss updates the required check.
 on:
   pull_request:
     branches: [main]
+  pull_request_review:
+    types: [submitted, dismissed, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   defect-gate:
@@ -12,25 +20,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
-      - name: Validate defect-gate receipt against PR merge diff
+      - name: Require non-author APPROVED review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          if [[ ! -f .aiplat/defect_gate/receipt.json ]]; then
-            echo "::error::Missing .aiplat/defect_gate/receipt.json"
-            echo "Run the defect-gate skill, commit a pass receipt, and push."
-            exit 1
-          fi
-          BASE_REF="${{ github.base_ref }}"
-          git fetch origin "$BASE_REF"
-          python3 scripts/defect_gate_validate.py --base "origin/$BASE_REF" --allow-dirty
-      - name: Show receipt summary
+          python3 scripts/defect_gate_independence.py
+      - name: Optional author receipt summary (advisory)
         if: always()
         run: |
           if [[ -f .aiplat/defect_gate/receipt.json ]]; then
-            python3 -c "import json; d=json.load(open('.aiplat/defect_gate/receipt.json')); print('status=', d.get('status'), 'findings=', d.get('findings_count'), 'diff=', str(d.get('diff_sha256',''))[:12], 'base=', str(d.get('merge_base',''))[:12])"
+            python3 -c "import json; d=json.load(open('.aiplat/defect_gate/receipt.json')); print('author_receipt status=', d.get('status'), 'findings=', d.get('findings_count'), 'diff=', str(d.get('diff_sha256',''))[:12], '(advisory; CI unlock is non-author Approve)')"
+          else
+            echo "author receipt absent (ok for CI; required only for local push/PR hook)"
           fi

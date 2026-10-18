@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Validate `.aiplat/defect_gate/receipt.json` for PR / push unlock.
+"""Validate `.aiplat/defect_gate/receipt.json` for local push / PR unlock.
+
+Local only: Cursor hook + agents. CI unlock is non-author GitHub Approve
+(see scripts/defect_gate_independence.py); an author-signed receipt does not
+unlock the required check.
 
 Exit 0 only when status=pass, findings_count=0, all five checks pass,
-and diff_sha256 matches `git diff <merge-base> HEAD` with the receipt file
-excluded. The receipt may live inside the commit: its own bytes are not part
-of the hash, so a commit SHA cannot be stored inside itself.
+diff_sha256 matches `git diff <merge-base> HEAD` with the receipt excluded,
+and the worktree is clean outside the receipt (unless --allow-dirty).
 """
 
 from __future__ import annotations
@@ -258,41 +261,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    if os.environ.get("AIPLAT_DEFECT_GATE", "1").strip().lower() in (
-        "0",
-        "false",
-        "no",
-        "off",
-    ):
-        print("defect_gate: bypassed via AIPLAT_DEFECT_GATE=0", file=sys.stderr)
-        return 0
-
     root = _repo_root()
     os.chdir(root)
 
-    try:
-        merge_base = merge_base_with(args.base)
-        expect_diff = reviewed_diff_sha(merge_base, "HEAD")
-        head_sha = _git_sha("HEAD")
-    except subprocess.CalledProcessError:
-        print(
-            f"defect_gate: cannot diff HEAD against {args.base}",
-            file=sys.stderr,
-        )
-        return 2
-
-    dirty = dirty_paths_outside_receipt()
-    if dirty and not args.allow_dirty:
-        print(
-            "defect_gate: uncommitted paths are not in HEAD and are not pushed:",
-            file=sys.stderr,
-        )
-        for path in dirty[:8]:
-            print(f"  - {path}", file=sys.stderr)
-        if len(dirty) > 8:
-            print(f"  - … {len(dirty) - 8} more", file=sys.stderr)
-
+    # Template before bypass so AIPLAT_DEFECT_GATE=0 cannot swallow --print-template.
     if args.print_template:
+        try:
+            merge_base = merge_base_with(args.base)
+            expect_diff = reviewed_diff_sha(merge_base, "HEAD")
+            head_sha = _git_sha("HEAD")
+        except subprocess.CalledProcessError:
+            print(
+                f"defect_gate: cannot diff HEAD against {args.base}",
+                file=sys.stderr,
+            )
+            return 2
         template = {
             "schema": SCHEMA,
             "status": "pass",
@@ -305,10 +288,45 @@ def main(argv: Optional[List[str]] = None) -> int:
             "checks": {k: "pass" for k in REQUIRED_CHECKS},
             "findings": [],
             "reviewer": "agent",
-            "note": "head_sha is informational; diff_sha256 is the lock",
+            "note": (
+                "Local lock only. CI unlock is non-author GitHub Approve "
+                "(defect_gate_independence.py). head_sha informational; "
+                "diff_sha256 is the lock."
+            ),
         }
         print(json.dumps(template, ensure_ascii=False, indent=2))
         return 0
+
+    if os.environ.get("AIPLAT_DEFECT_GATE", "1").strip().lower() in (
+        "0",
+        "false",
+        "no",
+        "off",
+    ):
+        print("defect_gate: bypassed via AIPLAT_DEFECT_GATE=0", file=sys.stderr)
+        return 0
+
+    try:
+        merge_base = merge_base_with(args.base)
+        expect_diff = reviewed_diff_sha(merge_base, "HEAD")
+    except subprocess.CalledProcessError:
+        print(
+            f"defect_gate: cannot diff HEAD against {args.base}",
+            file=sys.stderr,
+        )
+        return 2
+
+    dirty = dirty_paths_outside_receipt()
+    if dirty and not args.allow_dirty:
+        print(
+            "defect_gate: uncommitted paths outside receipt (use --allow-dirty to warn only):",
+            file=sys.stderr,
+        )
+        for path in dirty[:8]:
+            print(f"  - {path}", file=sys.stderr)
+        if len(dirty) > 8:
+            print(f"  - … {len(dirty) - 8} more", file=sys.stderr)
+        return 1
 
     path = args.receipt or (root / DEFAULT_RECEIPT)
     if not path.is_file():

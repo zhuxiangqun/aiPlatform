@@ -14,7 +14,7 @@ language: zh-CN
 - 写代码保持 full 注入；澄清和 prompt 型 Skill 才允许 `skip_claude_md`。
 - 新的公共函数要同时写入 `AIPLAT_CAPABILITIES.md` 和 `core/capability_registry.yaml`，并有非测试调用方。
 - 改动保持最小。规则要能在一次 review 里判断有没有遵守。
-- 宣称完成 / 开 PR / push 前：独立缺陷门禁（`.cursor/skills/defect-gate`）→ 零发现回执 → `python3 scripts/defect_gate_validate.py`。架构守卫绿 ≠ 门禁通过。
+- 宣称完成 / 开 PR / push 前：独立缺陷门禁（`.cursor/skills/defect-gate`）→ 本地零发现回执 → `python3 scripts/defect_gate_validate.py`。CI 解锁另需非作者 GitHub Approve（`defect_gate_independence.py`）；作者自签回执不能过 required check。架构守卫绿 ≠ 门禁通过。
 - 历史债务、已修复清单、长架构叙述在本标记之后，不进常驻提示词。改 harness / 模型 / 工具时再读 `aiPlat-core/CLAUDE.md` 对应节。
 
 ## 场景（按需读文件，不要整篇背进对话）
@@ -281,8 +281,9 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
 
     ⑥ 缺陷门禁（宣称完成 / 开 PR / push 前必跑——与①–⑤互补，不互相替代）
        $ # 按 .cursor/skills/defect-gate/SKILL.md 做独立缺陷审查（五条核对）
-       $ # 写入 .aiplat/defect_gate/receipt.json（status=pass；diff_sha256 用 --print-template）
+       $ # 写入 .aiplat/defect_gate/receipt.json（本地锁；diff_sha256 用 --print-template）
        $ python3 scripts/defect_gate_validate.py
+       $ # CI required check「Zero-findings receipt」= 非作者 Approve，不是作者回执
     ```
 
     **归属矩阵**（按变更文件自动选择必须的验证项）：

@@ -11,7 +11,14 @@ description: >-
 
 Author-green tests and architecture health are not enough. Before claiming
 done, opening a PR, or pushing merge-bound work, run an independent
-defect-first review and write a machine-checkable receipt.
+defect-first review and write a machine-checkable **local** receipt.
+
+Trust model:
+
+- Local receipt unlocks Cursor `git push` / `gh pr create` only.
+- CI required check **Zero-findings receipt** unlocks on a **non-author**
+  GitHub `APPROVED` review (`scripts/defect_gate_independence.py`).
+- Author-signed `receipt.json` does **not** unlock CI.
 
 ## When this skill applies
 
@@ -91,5 +98,6 @@ Rules for the file:
 ## Hard stops
 
 - Do not claim the work is done while the receipt is missing, stale, or `fail`.
-- Do not run `gh pr create` / push to `main` without a validated pass receipt.
+- Do not run `gh pr create` / push without a validated local pass receipt.
+- Do not treat a local pass receipt as CI green — merge still needs non-author Approve.
 - Architecture guard green ≠ defect-gate pass.
