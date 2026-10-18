@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-18T23:25:00+08:00",
+  "reviewed_at": "2026-10-19T00:05:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "4f3b779fc9896fca6bafc73fc5682e6b1a319459",
-  "diff_sha256": "7d50b0913aa4dbfbd9647176bfbe0f1aa199062ee07f641420af05ecd341963e",
-  "head_sha": "f30649cc9c58a93e372adcb272542e6b96fecb5f",
+  "merge_base": "94d94de4715b61ffab1b4f4d087bf7c90bc84b99",
+  "diff_sha256": "6fe992518a33cb90d1eb8adc27450c56319df19421921dff156ffca0e82c0954",
+  "head_sha": "89b0d943b23fd1afa4e5dad4b9f23a2118fad6f7",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Receipt markers and single half-open probe; contract row 55. Local lock only."
+  "note": "MCP call_tool uses allow() for single half-open probe; is_open read-only. Local lock only."
 }
