@@ -143,8 +143,12 @@ def dirty_paths_outside_receipt() -> List[str]:
         path = line[3:].strip()
         if " -> " in path:
             path = path.split(" -> ", 1)[1].strip()
-        if path != RECEIPT_REL:
-            dirty.append(path)
+        if path == RECEIPT_REL:
+            continue
+        # Local scratch / clones — not merge-bound product diffs.
+        if path == "tmp" or path.startswith("tmp/"):
+            continue
+        dirty.append(path)
     return dirty
 
 

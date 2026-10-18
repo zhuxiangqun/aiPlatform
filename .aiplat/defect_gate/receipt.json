@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-18T09:33:35+08:00",
+  "reviewed_at": "2026-10-18T09:39:31+08:00",
   "base_ref": "origin/main",
   "merge_base": "4c213dc2dda4c47601ac241f132355c193b4d67d",
-  "diff_sha256": "05980e8636040f79b3d9d0057ed8b95a41fafa9a5c9399421bcb8bdc94b8904c",
-  "head_sha": "0eb90ab9b6a9ca97e79f06d6e775069f2fb288bd",
+  "diff_sha256": "3429904071f199fb43299ad3ed264b22b8791dc89a73ba109971d6d2e2a17c01",
+  "head_sha": "09a08aa6a9a8481cde7244f7e33eeab209196abf",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "CI unlock is non-author Approve (independence.py). Local receipt only. P1: dirty fails; hook uses command_needs_gate fail-closed. Five-check on this gate delta: no open findings."
+  "note": "CI unlock=non-author Approve. Local receipt only. Ignore tmp/ in dirty check. P1 fail-closed hook+dirty."
 }
