@@ -29,6 +29,16 @@ def test_llm_half_open_single_probe():
     assert cb.allow_request() is True
 
 
+def test_is_open_does_not_admit_a_stampede():
+    cb = BaseCircuitBreaker(failure_threshold=1, recovery_timeout=0)
+    cb.failure()
+    cb._open_ts = 0
+    assert cb.is_open is False
+    assert cb._state == "open"
+    assert cb.allow() is True
+    assert cb.allow() is False
+
+
 def test_llm_classified_exit_releases_probe():
     cb = LLMCircuitBreaker(failure_threshold=1, recovery_timeout=0)
     cb.record_failure()

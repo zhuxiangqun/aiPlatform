@@ -57,13 +57,14 @@ class BaseCircuitBreaker:
 
     @property
     def is_open(self) -> bool:
-        """Check if circuit is open (requests blocked)."""
-        if self._state == "open":
-            if time.time() - self._open_ts > self.recovery_timeout:
-                self._state = "half_open"
-                return False
-            return True
-        return False
+        """True only while the breaker is open and the cooldown has not elapsed.
+
+        Does not enter half-open or admit a probe. Callers that want to try
+        recovery must use ``allow()``.
+        """
+        if self._state != "open":
+            return False
+        return time.time() - self._open_ts <= self.recovery_timeout
 
     def allow(self) -> bool:
         """Return True if the request should be attempted.
