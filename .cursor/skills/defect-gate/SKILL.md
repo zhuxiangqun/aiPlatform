@@ -17,7 +17,8 @@ Trust model:
 
 - Local receipt unlocks Cursor `git push` / `gh pr create` only.
 - CI required check **Zero-findings receipt** unlocks on a **non-author**
-  GitHub `APPROVED` review (`scripts/defect_gate_independence.py`).
+  GitHub `APPROVED` review (`scripts/defect_gate_independence.py`), except
+  solo-maintainer repos (no other human write collaborator).
 - Author-signed `receipt.json` does **not** unlock CI.
 
 ## When this skill applies
@@ -99,5 +100,6 @@ Rules for the file:
 
 - Do not claim the work is done while the receipt is missing, stale, or `fail`.
 - Do not run `gh pr create` / push without a validated local pass receipt.
-- Do not treat a local pass receipt as CI green — merge still needs non-author Approve.
+- Do not treat a local pass receipt as CI green — merge still needs non-author
+  Approve when the repo has another write collaborator.
 - Architecture guard green ≠ defect-gate pass.

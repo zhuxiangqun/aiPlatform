@@ -27,4 +27,7 @@ python3 scripts/defect_gate_validate.py
 python3 scripts/defect_gate_independence.py
 ```
 
-Needs an `APPROVED` review from someone other than the PR author. Solo maintainers need a second account or reviewer. Workflow: `.github/workflows/defect-gate.yml` (also runs on `pull_request_review`).
+Needs an `APPROVED` review from someone other than the PR author when the repo
+has another human write collaborator. Solo maintainers (only the author has
+write) pass without that Approve. Workflow: `.github/workflows/defect-gate.yml`
+(also runs on `pull_request_review`).

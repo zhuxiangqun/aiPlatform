@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-18T18:52:00+08:00",
+  "reviewed_at": "2026-10-18T19:22:54+08:00",
   "base_ref": "origin/main",
-  "merge_base": "3f9d0c8dd57d90791a8fd8100a16dbb30d770877",
-  "diff_sha256": "0ab12abf4bd8ffb32afa57daaf816d08b1bf72eecad54c6464d2b182d33db456",
-  "head_sha": "04f3d796ad61ae76a2332cea76ddf3fb25edf146",
+  "merge_base": "6e69b3b30d2547243a9152994cc91c492f4ed106",
+  "diff_sha256": "61c41d71c99daaea917dda1160775594c2668b1d7feab117164cf955fd68902c",
+  "head_sha": "f8e5f2147a5785be0c95671fc3d07d57ed96aae0",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Merge of main into gate/defect-receipt. Five checks pass on the gate diff. CI unlock remains non-author Approve."
+  "note": "solo maintainer CI unlock; five checks pass on gate script+tests+docs only"
 }

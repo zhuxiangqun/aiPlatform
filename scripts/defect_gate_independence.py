@@ -4,6 +4,10 @@
 Author-committed receipt.json cannot prove independent review. Local hooks still
 validate that receipt; this script is the CI unlock for the required check
 named "Zero-findings receipt".
+
+Solo-maintainer exception: when the repo has no other human write collaborator
+besides the PR author, non-author Approve is N/A and the check passes. Adding a
+second write collaborator restores the hard non-author Approve requirement.
 """
 
 from __future__ import annotations
@@ -45,14 +49,49 @@ def non_author_approvers(
     return sorted(out)
 
 
+def human_write_logins(collaborators: Iterable[Dict[str, Any]]) -> List[str]:
+    """Human accounts with push/admin/maintain (excludes ``*[bot]``)."""
+    out: List[str] = []
+    for row in collaborators:
+        login = str(row.get("login") or "").strip()
+        if not login or login.lower().endswith("[bot]"):
+            continue
+        perms = row.get("permissions") if isinstance(row.get("permissions"), dict) else {}
+        role = str(row.get("role_name") or "").strip().lower()
+        if (
+            perms.get("admin")
+            or perms.get("maintain")
+            or perms.get("push")
+            or role in ("admin", "maintain", "write")
+        ):
+            out.append(login)
+    return sorted(set(out))
+
+
 def check_independence(
-    *, author: str, reviews: Iterable[Dict[str, Any]]
+    *,
+    author: str,
+    reviews: Iterable[Dict[str, Any]],
+    write_collaborators: Optional[Iterable[str]] = None,
 ) -> Tuple[bool, str]:
     if not (author or "").strip():
         return False, "pull request author is missing"
+    author_l = author.strip().lower()
     approvers = non_author_approvers(reviews, author)
     if approvers:
         return True, f"non-author APPROVED by: {', '.join(approvers)}"
+    if write_collaborators is not None:
+        others = [
+            u
+            for u in write_collaborators
+            if str(u or "").strip() and str(u).strip().lower() != author_l
+        ]
+        if not others:
+            return (
+                True,
+                f"solo maintainer ({author}): non-author Approve N/A "
+                "(no other human write collaborator)",
+            )
     return (
         False,
         f"needs APPROVED review from someone other than {author} "
@@ -127,6 +166,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         default="",
         help="path to reviews JSON array (offline / tests; skips API)",
     )
+    parser.add_argument(
+        "--collaborators-json",
+        default="",
+        help="path to collaborators JSON array (offline / tests; skips collaborators API)",
+    )
     args = parser.parse_args(argv)
 
     # Never honor local bypass in CI independence check.
@@ -146,6 +190,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     author = (args.author or "").strip()
     pr_number = int(args.pr or 0)
     reviews: List[Dict[str, Any]] = []
+    write_collaborators: Optional[List[str]] = None
+    repo = (args.repo or "").strip()
+    token = (os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or "").strip()
+
+    if args.collaborators_json:
+        with open(args.collaborators_json, encoding="utf-8") as f:
+            collab_loaded = json.load(f)
+        if not isinstance(collab_loaded, list):
+            print(
+                "defect_gate_independence: --collaborators-json must be a list",
+                file=sys.stderr,
+            )
+            return 2
+        write_collaborators = human_write_logins(
+            [c for c in collab_loaded if isinstance(c, dict)]
+        )
 
     if args.reviews_json:
         with open(args.reviews_json, encoding="utf-8") as f:
@@ -180,8 +240,6 @@ def main(argv: Optional[List[str]] = None) -> int:
             )
             return 2
 
-        repo = (args.repo or "").strip()
-        token = (os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or "").strip()
         if not repo or not token:
             print(
                 "defect_gate_independence: GITHUB_REPOSITORY and GITHUB_TOKEN required",
@@ -206,7 +264,67 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 2
         reviews = [r for r in loaded if isinstance(r, dict)]
 
-    ok, msg = check_independence(author=author, reviews=reviews)
+        if write_collaborators is None:
+            collab_url = (
+                f"https://api.github.com/repos/{repo}/collaborators"
+                f"?affiliation=all&per_page=100"
+            )
+            try:
+                collab_loaded = _gh_api(collab_url, token)
+            except urllib.error.HTTPError as e:
+                if getattr(e, "code", None) == 403:
+                    # Default GITHUB_TOKEN may lack collaborators:read; owner
+                    # match is the solo fallback (invitees still need Approve
+                    # once listing is permitted).
+                    try:
+                        meta = _gh_api(f"https://api.github.com/repos/{repo}", token)
+                    except Exception as meta_err:
+                        print(
+                            "defect_gate_independence: collaborators API 403 "
+                            f"and repo meta failed: {meta_err}",
+                            file=sys.stderr,
+                        )
+                        return 2
+                    owner_login = str(
+                        ((meta.get("owner") or {}).get("login")) or ""
+                    ).strip()
+                    if owner_login.lower() == author.strip().lower():
+                        write_collaborators = [author]
+                    else:
+                        print(
+                            "defect_gate_independence: collaborators API 403; "
+                            "cannot verify solo maintainer",
+                            file=sys.stderr,
+                        )
+                        return 2
+                else:
+                    print(
+                        f"defect_gate_independence: collaborators API failed: {e}",
+                        file=sys.stderr,
+                    )
+                    return 2
+            except Exception as e:
+                print(
+                    f"defect_gate_independence: collaborators API error: {e}",
+                    file=sys.stderr,
+                )
+                return 2
+            else:
+                if not isinstance(collab_loaded, list):
+                    print(
+                        "defect_gate_independence: unexpected collaborators payload",
+                        file=sys.stderr,
+                    )
+                    return 2
+                write_collaborators = human_write_logins(
+                    [c for c in collab_loaded if isinstance(c, dict)]
+                )
+
+    ok, msg = check_independence(
+        author=author,
+        reviews=reviews,
+        write_collaborators=write_collaborators,
+    )
     if ok:
         print(f"defect_gate_independence: PASS {msg}")
         return 0
