@@ -12,6 +12,7 @@ coding/review ring. Pi hybrid only tags Memory via its JS twin; see
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 logger = logging.getLogger(__name__)
@@ -200,6 +201,22 @@ def coding_deliverable_veto(
     if veto_n >= limit:
         ctx["_coding_veto_exhausted"] = True
         ctx["_coding_veto_last_reason"] = reason
+        # Dev may soft-seal so quality_review can fail the stage; production /
+        # AIPLAT_CODING_VETO_FAIL_CLOSED keeps vetoing (no incomplete green).
+        fail_closed = (
+            os.getenv("AIPLAT_CODING_VETO_FAIL_CLOSED", "").strip().lower()
+            in ("1", "true", "yes", "on")
+            or (os.getenv("AIPLAT_PROFILE") or "").strip().lower() == "production"
+        )
+        if os.getenv("AIPLAT_CODING_VETO_FAIL_OPEN", "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        ):
+            fail_closed = False
+        if fail_closed:
+            return reason
         return None
     return reason
 

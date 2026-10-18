@@ -232,7 +232,8 @@ def apply_team_factory_seeds(
 
 
 # Coding closed-loop keys seeded into uses_file_output stages (fill-missing only).
-_CODING_CLOSED_LOOP_KEYS = ("refactor_sop", "tdd_enforce", "architecture_profile")
+# Do NOT sync architecture_profile: missing field must not silently change loop type.
+_CODING_CLOSED_LOOP_KEYS = ("refactor_sop", "tdd_enforce")
 _CODING_TEAM_SEED_NAMES = ("code", "code_split", "hybrid")
 
 
@@ -332,6 +333,7 @@ def sync_coding_closed_loop_team_seeds(
     """Fill missing ``refactor_sop`` / ``tdd_enforce`` on runtime team YAMLs from seeds.
 
     Does not overwrite explicit user values (unless ``force`` / env force).
+    Does not sync ``architecture_profile`` (avoids silently changing loop type).
     Opt out: ``AIPLAT_TEAM_CODING_SEED_SYNC=false``.
     """
     if not force and not _truthy_env("AIPLAT_TEAM_CODING_SEED_SYNC", "true"):

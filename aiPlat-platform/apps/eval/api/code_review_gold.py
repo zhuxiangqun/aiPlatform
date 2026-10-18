@@ -88,9 +88,10 @@ async def reevaluate_gold(
         case_ids = [case_ids]
     if case_ids is not None and not isinstance(case_ids, list):
         case_ids = None
+    # Reevaluate is audit/replay: do not write novel→experience unless asked.
     record_novel = body.get("record_novel")
     if record_novel is None:
-        record_novel = True
+        record_novel = False
     baseline = body.get("baseline")
     if baseline is not None and not isinstance(baseline, dict):
         baseline = None

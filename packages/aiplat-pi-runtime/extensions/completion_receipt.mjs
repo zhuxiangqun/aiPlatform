@@ -62,10 +62,14 @@ export function receiptsFromMessages(messages) {
     const role = String(row.role || row.type || "").toLowerCase();
     if (!role.includes("tool")) continue;
     // Match Python infer_receipt_status: prefix / explicit markers only.
-    // Do not treat grep-style "Pattern not found" or every tool blob as ok/fail.
+    // Do not treat grep-style "Pattern not found" as fail. Non-tool roles
+    // never become receipts (role gate above). Explicit ok===false / status
+    // failed count as fail even without isError.
     const head = text.trim().slice(0, 240).toLowerCase();
     const failed =
       row.isError === true ||
+      row.ok === false ||
+      String(row.status || "").toLowerCase() === "failed" ||
       head.startsWith("skill error:") ||
       head.startsWith("denied:") ||
       head.startsWith("error:") ||

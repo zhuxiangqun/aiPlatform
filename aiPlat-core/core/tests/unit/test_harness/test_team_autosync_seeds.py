@@ -199,8 +199,10 @@ def test_sync_coding_closed_loop_fills_missing_keys(tmp_path, monkeypatch):
     assert r.get("ok") is True and not r.get("skipped")
     code = (teams / "code.yaml").read_text(encoding="utf-8")
     assert "refactor_sop: true" in code
+    assert "architecture_profile" not in code
     split = (teams / "code_split.yaml").read_text(encoding="utf-8")
     assert "tdd_enforce: true" in split
+    assert "architecture_profile" not in split
     # Explicit false is preserved on second sync.
     (teams / "code.yaml").write_text(
         "team_name: Opt Out\n"

@@ -23,13 +23,20 @@ const fromMsgs = receiptsFromMessages([
   { role: "toolResult", isError: true, content: "AIPLAT_TOOL_EXECUTE_FAILED: boom" },
   { role: "toolResult", content: [{ type: "text", text: "404 not found" }] },
   { role: "toolResult", content: "read /tmp/ok.py" },
+  { role: "toolResult", ok: false, content: "soft fail without isError" },
 ]);
 assert.equal(fromMsgs[0].status, "failed");
 assert.equal(fromMsgs[1].status, "failed");
 assert.equal(fromMsgs[2].status, "ok");
+assert.equal(fromMsgs[3].status, "failed");
 
 const benign = receiptsFromMessages([
   { role: "toolResult", content: "Pattern not found in src/" },
 ]);
 assert.equal(benign[0].status, "ok");
+
+const nonTool = receiptsFromMessages([
+  { role: "assistant", content: "already fixed via tool" },
+]);
+assert.equal(nonTool.length, 0);
 console.log("completion_receipt_smoke ok");

@@ -430,11 +430,13 @@ class ContextCompression:
 
     def _summarize_tool_msg(msg: Dict, idx: int) -> str:
 
-        """Generate a per-tool-type informed summary preserving actionable info."""
+        """Keep a short live-context snippet of tool output (not pinned-fact filter).
+
+        ``memory_content_is_fact`` is for durable MEMORY.md, not conversation
+        compression — command/test output must remain visible to the model.
+        """
 
         import json as _json
-
-        from core.harness.memory.file_store import memory_content_is_fact
 
         content = str(msg.get("content", ""))
 
@@ -450,11 +452,13 @@ class ContextCompression:
 
                 continue
 
-            if memory_content_is_fact(stripped):
+            snippet = stripped[:160]
 
-                snippet = stripped[:100]
+            break
 
-                break
+        if not snippet and content.strip():
+
+            snippet = content.strip()[:160]
 
         if snippet:
 
