@@ -120,6 +120,7 @@ def create_compiled_react_graph(
         else:
             action_name = _parse_action_from_text(reasoning)
 
+        tool_failed = False
         if action_name and _tools:
             tool = _find_tool(_tools, action_name)
             if tool:
@@ -204,11 +205,24 @@ def create_compiled_react_graph(
                         logging.getLogger(__name__).debug(
                             "maybe_note_repair_fs_delta skipped", exc_info=True
                         )
-                    action_result = str(result.output or result.error or "Success")
+                    tool_failed = getattr(result, "success", True) is False
+                    if tool_failed:
+                        err = str(getattr(result, "error", "") or result.output or "tool_failed")
+                        action_result = (
+                            err
+                            if err.lstrip().lower().startswith(
+                                ("error:", "denied:", "skill error:", "tool not found")
+                            )
+                            else f"Error: {err}"
+                        )
+                    else:
+                        action_result = str(result.output or result.error or "Success")
                 except Exception as e:
                     action_result = f"Error: {str(e)}"
+                    tool_failed = True
             else:
                 action_result = f"Tool not found: {action_name}"
+                tool_failed = True
         elif action_name:
             action_result = f"Action: {action_name}"
         else:
@@ -216,8 +230,33 @@ def create_compiled_react_graph(
 
         state["action"] = action_name
         state["observation"] = action_result
+        # Only real tool attempts become receipts. "No action" / bare Action: must not look like success.
+        attempted = bool(action_name) and bool(_tools)
+        node_ok = True
+        if attempted:
+            try:
+                from core.harness.execution.completion_receipt import (
+                    infer_receipt_status,
+                    record_tool_receipt,
+                )
+
+                ctx = state.get("context")
+                if not isinstance(ctx, dict):
+                    ctx = {}
+                    state["context"] = ctx
+                seal = "failed" if tool_failed else infer_receipt_status(action_result)
+                record_tool_receipt(
+                    ctx,
+                    tool=str(action_name or ""),
+                    status=seal,
+                    detail=str(action_result or "")[:500],
+                )
+                node_ok = seal == "ok"
+            except Exception:
+                logging.getLogger(__name__).debug("tool receipt skipped", exc_info=True)
+                node_ok = not tool_failed
         return NodeResult(
-            success=True,
+            success=node_ok,
             output={"action": action_name, "observation": action_result},
             next_node="observe",
         )

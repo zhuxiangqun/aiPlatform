@@ -1476,22 +1476,27 @@ class ReActLoop(BaseLoop):
 
         tool_name = getattr(parsed, 'tool_name', '') or getattr(parsed, 'fn', '') or str(parsed)[:40] if parsed else ''
 
-        act_status = "completed" if action_result and "error" not in str(action_result).lower() else "failed"
-
         try:
             from core.harness.execution.completion_receipt import (
                 infer_receipt_status,
                 record_tool_receipt,
             )
 
+            _seal = infer_receipt_status(action_result)
             record_tool_receipt(
                 state.context,
                 tool=str(tool_name or ""),
-                status=infer_receipt_status(action_result),
+                status=_seal,
                 detail=str(action_result or "")[:500],
             )
+            act_status = "completed" if _seal == "ok" else "failed"
         except Exception:
             logging.getLogger(__name__).debug("tool receipt skipped", exc_info=True)
+            act_status = (
+                "completed"
+                if action_result and "error" not in str(action_result).lower()
+                else "failed"
+            )
 
         self._recent_actions.append({"tool": tool_name, "status": act_status, "step": state.step_count})
 
