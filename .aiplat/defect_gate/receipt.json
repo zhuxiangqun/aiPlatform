@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-18T09:39:31+08:00",
+  "reviewed_at": "2026-10-18T18:52:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "4c213dc2dda4c47601ac241f132355c193b4d67d",
-  "diff_sha256": "3429904071f199fb43299ad3ed264b22b8791dc89a73ba109971d6d2e2a17c01",
-  "head_sha": "09a08aa6a9a8481cde7244f7e33eeab209196abf",
+  "merge_base": "3f9d0c8dd57d90791a8fd8100a16dbb30d770877",
+  "diff_sha256": "0ab12abf4bd8ffb32afa57daaf816d08b1bf72eecad54c6464d2b182d33db456",
+  "head_sha": "04f3d796ad61ae76a2332cea76ddf3fb25edf146",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "CI unlock=non-author Approve. Local receipt only. Ignore tmp/ in dirty check. P1 fail-closed hook+dirty."
+  "note": "Merge of main into gate/defect-receipt. Five checks pass on the gate diff. CI unlock remains non-author Approve."
 }
