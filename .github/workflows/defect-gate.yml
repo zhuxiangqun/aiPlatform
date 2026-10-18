@@ -2,7 +2,8 @@ name: Defect Gate
 
 # PR-only unlock for the required check "Zero-findings receipt".
 # Author-committed receipt.json is a local discipline artifact and does NOT
-# unlock CI. CI requires an APPROVED review from someone other than the PR author.
+# unlock CI. CI requires an APPROVED review from someone other than the PR
+# author when another human write collaborator exists; solo maintainers pass.
 # Re-run on review events so Approve / dismiss updates the required check.
 on:
   pull_request:

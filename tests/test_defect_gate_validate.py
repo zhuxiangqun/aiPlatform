@@ -133,6 +133,26 @@ def test_author_self_approve_ignored():
     assert "bob" in msg
 
 
+def test_solo_maintainer_passes_without_non_author_approve():
+    ok, msg = indep.check_independence(
+        author="bob",
+        reviews=[],
+        write_collaborators=["bob"],
+    )
+    assert ok, msg
+    assert "solo" in msg.lower()
+
+
+def test_second_write_collaborator_still_needs_approve():
+    ok, msg = indep.check_independence(
+        author="bob",
+        reviews=[],
+        write_collaborators=["bob", "alice"],
+    )
+    assert not ok
+    assert "alice" not in msg or "needs APPROVED" in msg
+
+
 def test_dismissed_latest_state_blocks():
     # Newest-first: CHANGES_REQUESTED then older APPROVED for same user
     reviews = [
