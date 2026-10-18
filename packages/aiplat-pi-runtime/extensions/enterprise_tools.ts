@@ -294,11 +294,12 @@ export async function executeEnterpriseTool(
       parsed &&
       typeof parsed === "object" &&
       (parsed as Record<string, unknown>).ok === false;
+    const parked = summary.startsWith("AIPLAT_TOOL_EXECUTE_APPROVAL_REQUIRED");
     return {
-      ok: !softFail,
+      ok: !softFail && !parked,
       status: res.status,
       text: summary,
-      error: softFail ? "tool_ok_false" : undefined,
+      error: softFail ? "tool_ok_false" : parked ? "approval_required" : undefined,
       raw: parsed,
     };
   } catch (e) {

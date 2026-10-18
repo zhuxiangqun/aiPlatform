@@ -41,6 +41,8 @@ export class PlatformCircuitBreaker {
   state: CircuitState = "closed";
   consecutiveFailures = 0;
   openedAt = 0;
+  /** Half-open allows a single in-flight probe. */
+  probeInFlight = false;
   readonly failureThreshold: number;
   readonly cooldownMs: number;
   readonly origin: string;
@@ -66,13 +68,15 @@ export class PlatformCircuitBreaker {
   allow(now = Date.now()): boolean {
     if (!envCircuitEnabled()) return true;
     if (this.state === "closed") return true;
-    if (this.state === "half_open") return true;
     if (this.state === "open") {
-      if (now - this.openedAt >= this.cooldownMs) {
-        this.state = "half_open";
-        return true;
-      }
-      return false;
+      if (now - this.openedAt < this.cooldownMs) return false;
+      this.state = "half_open";
+      this.probeInFlight = false;
+    }
+    if (this.state === "half_open") {
+      if (this.probeInFlight) return false;
+      this.probeInFlight = true;
+      return true;
     }
     return true;
   }
@@ -82,10 +86,12 @@ export class PlatformCircuitBreaker {
     this.consecutiveFailures = 0;
     this.state = "closed";
     this.openedAt = 0;
+    this.probeInFlight = false;
   }
 
   recordFailure(now = Date.now()): void {
     if (!envCircuitEnabled()) return;
+    this.probeInFlight = false;
     this.consecutiveFailures += 1;
     if (
       this.state === "half_open" ||

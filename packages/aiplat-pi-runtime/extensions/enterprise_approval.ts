@@ -19,6 +19,7 @@
 import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
+import { isNegativeApprovalOutcome } from "./approval_outcome.mjs";
 import { CircuitOpenError, platformFetch } from "./enterprise_http";
 import { httpJsonObject } from "./json_body.mjs";
 import {
@@ -426,14 +427,17 @@ export async function waitForApproval(
     const dec = String(last.decision || "").toLowerCase();
     if (
       st === "approved" ||
-      st === "rejected" ||
-      st === "denied" ||
-      st === "expired" ||
-      st === "cancelled" ||
       dec === "approved" ||
-      dec === "rejected" ||
-      dec === "denied"
+      isNegativeApprovalOutcome(st, dec)
     ) {
+      if (isNegativeApprovalOutcome(st, dec)) {
+        return {
+          ...last,
+          ok: false,
+          error: `approval_${dec || st || "denied"}`,
+          text: `AIPLAT_APPROVAL_WAIT_DENIED\n${last.text}`,
+        };
+      }
       return {
         ...last,
         text: `AIPLAT_APPROVAL_WAIT_DONE\n${last.text}`,
@@ -654,7 +658,20 @@ export async function waitForUnattended(
     if (last.ok) {
       const st = String(last.requestStatus || "").toLowerCase();
       const dec = String(last.decision || "").toLowerCase();
-      if (st === "resolved" || dec === "allow" || dec === "deny" || dec === "always") {
+      if (
+        st === "resolved" ||
+        dec === "allow" ||
+        dec === "always" ||
+        isNegativeApprovalOutcome(st, dec)
+      ) {
+        if (isNegativeApprovalOutcome(st, dec)) {
+          return {
+            ...last,
+            ok: false,
+            error: `unattended_${dec || st || "denied"}`,
+            text: `AIPLAT_UNATTENDED_WAIT_DENIED\n${last.text}`,
+          };
+        }
         return {
           ...last,
           text: `AIPLAT_UNATTENDED_WAIT_DONE\n${last.text}`,

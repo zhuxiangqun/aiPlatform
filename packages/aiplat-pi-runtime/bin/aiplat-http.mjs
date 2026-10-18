@@ -21,6 +21,11 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawn, execSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import {
+  allowHandlerEcho,
+  handlerPyUnderRoot,
+  safeSkillDirName,
+} from "../extensions/skill_path.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PKG = path.resolve(__dirname, "..");
@@ -112,7 +117,9 @@ function loadSop(home) {
 }
 
 function loadSkillMd(home, skill) {
-  const p = path.join(home, "skills", skill, "SKILL.md");
+  const name = safeSkillDirName(skill);
+  if (!name) return null;
+  const p = path.join(home, "skills", name, "SKILL.md");
   if (!fs.existsSync(p)) return null;
   const text = fs.readFileSync(p, "utf8");
   return text.length > 6000 ? `${text.slice(0, 6000)}\n…` : text;
@@ -120,13 +127,26 @@ function loadSkillMd(home, skill) {
 
 function runHandler(home, skill, params) {
   return new Promise((resolvePromise) => {
-    const handlerPy = path.join(home, "skills", skill, "handler.py");
+    const name = safeSkillDirName(skill);
+    if (!name) {
+      resolvePromise({ ok: false, error: "invalid_skill_name" });
+      return;
+    }
+    const handlerPy = handlerPyUnderRoot(path.join(home, "skills"), name);
     const runner = path.join(PKG, "fixtures", "handler_runner.py");
     const echo = path.join(PKG, "fixtures", "handler_echo.py");
-    const args =
-      fs.existsSync(handlerPy) && fs.existsSync(runner)
-        ? [runner, handlerPy]
-        : [echo];
+    let args;
+    let via;
+    if (handlerPy && fs.existsSync(runner)) {
+      args = [runner, handlerPy];
+      via = "handler.py";
+    } else if (allowHandlerEcho(name) && fs.existsSync(echo)) {
+      args = [echo];
+      via = "echo";
+    } else {
+      resolvePromise({ ok: false, error: "handler_missing" });
+      return;
+    }
     const child = spawn("python3", args, { stdio: ["pipe", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
@@ -139,13 +159,13 @@ function runHandler(home, skill, params) {
           ok: Boolean(parsed.ok) && code === 0,
           result: parsed.result,
           error: parsed.error || (code === 0 ? undefined : stderr || `exit ${code}`),
-          via: fs.existsSync(handlerPy) ? "handler.py" : "echo",
+          via,
         });
       } catch (e) {
         resolvePromise({ ok: false, error: `bad_stdout: ${e}; ${stderr}` });
       }
     });
-    child.stdin.write(JSON.stringify({ skill, params: params || {} }));
+    child.stdin.write(JSON.stringify({ skill: name, params: params || {} }));
     child.stdin.end();
   });
 }
@@ -384,7 +404,11 @@ const server = http.createServer(async (req, res) => {
 
     const skillMatch = url.pathname.match(/^\/v1\/skills\/([^/]+)$/);
     if (req.method === "POST" && skillMatch) {
-      const skill = decodeURIComponent(skillMatch[1]);
+      const skillRaw = decodeURIComponent(skillMatch[1]);
+      const skill = safeSkillDirName(skillRaw);
+      if (!skill) {
+        return send(res, 400, { ok: false, error: "invalid_skill_name" });
+      }
       const body = await readJson(req);
       const sessionId = String(body.session_id || randomUUID());
       const params =
@@ -392,8 +416,8 @@ const server = http.createServer(async (req, res) => {
           ? body.params
           : {};
 
-      const handlerPy = path.join(meta.appHome, "skills", skill, "handler.py");
-      if (fs.existsSync(handlerPy) || body.force_handler) {
+      const handlerPy = handlerPyUnderRoot(path.join(meta.appHome, "skills"), skill);
+      if (handlerPy || body.force_handler) {
         const hr = await runHandler(meta.appHome, skill, params);
         if (!hr.ok) {
           return send(res, 500, {

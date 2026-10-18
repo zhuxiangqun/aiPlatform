@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-18T21:38:00+08:00",
+  "reviewed_at": "2026-10-18T22:22:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "2998cab099263bc08c4658c33ff94ee8d73a0326",
-  "diff_sha256": "a0b29eecbb2d552307dbaaa751b307ef875a920798af44393aebe13ce44adec2",
-  "head_sha": "7aa762907f55b8d5c64d0decbd7dbaee82b45002",
+  "merge_base": "08cb8e2b7e681e2026cf55b84088e1087fcd4704",
+  "diff_sha256": "a8ab45433e0a5022db7172c6d9e66ca44ed1d3cdc7196101747b1867a10c5e40",
+  "head_sha": "23020e0eff507db09a39883eb68cbc729645555a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Handler/KB/L3 use shared JSON object helpers. Local lock only."
+  "note": "Pi P1: no echo for missing handler; skill path sandbox; approval deny/park fail receipts; half-open single probe. Local lock only."
 }
