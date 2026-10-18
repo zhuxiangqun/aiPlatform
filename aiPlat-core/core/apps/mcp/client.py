@@ -204,52 +204,56 @@ class MCPClient:
         arguments: Optional[Dict[str, Any]] = None
     ) -> MCPToolResult:
         """Call a tool on the MCP server"""
-        if self._breaker.is_open:
-            raise RuntimeError(f"MCP circuit breaker open for '{self._config.server_url}'")
         if not self._connected:
             raise RuntimeError("Not connected to MCP server")
-            
+
         if name not in self._tools:
             raise ValueError(f"Tool '{name}' not found")
+
+        if not self._breaker.allow():
+            raise RuntimeError(f"MCP circuit breaker open for '{self._config.server_url}'")
         
-        # P0-1: Lazy-load schema on first call if not yet loaded
-        if self._lazy_load and not self._tools[name].input_schema:
-            schema = self._tool_schemas_cached.get(name)
-            if not schema:
-                # Fetch from server
-                tools_resp = await self._transport.call(
-                    self._config.server_url,
-                    self._protocol.create_request(
-                        method="tools/list", params={},
-                        request_id=self._next_id()
+        try:
+            # P0-1: Lazy-load schema on first call if not yet loaded
+            if self._lazy_load and not self._tools[name].input_schema:
+                schema = self._tool_schemas_cached.get(name)
+                if not schema:
+                    tools_resp = await self._transport.call(
+                        self._config.server_url,
+                        self._protocol.create_request(
+                            method="tools/list", params={},
+                            request_id=self._next_id()
+                        )
                     )
-                )
-                for t in (tools_resp.result or {}).get("tools", []):
-                    if t["name"] == name and t.get("inputSchema"):
-                        schema = t["inputSchema"]
-                        self._tool_schemas_cached[name] = schema
-                        break
-            if schema:
-                self._tools[name] = MCPTool(
-                    name=name,
-                    description=self._tools[name].description,
-                    input_schema=schema,
-                )
-            
-        request = self._protocol.create_request(
-            method="tools/call",
-            params={
-                "name": name,
-                "arguments": arguments or {}
-            },
-            request_id=self._next_id()
-        )
-        
-        response = await self._transport.call(
-            self._config.server_url,
-            request
-        )
-        
+                    for t in (tools_resp.result or {}).get("tools", []):
+                        if t["name"] == name and t.get("inputSchema"):
+                            schema = t["inputSchema"]
+                            self._tool_schemas_cached[name] = schema
+                            break
+                if schema:
+                    self._tools[name] = MCPTool(
+                        name=name,
+                        description=self._tools[name].description,
+                        input_schema=schema,
+                    )
+
+            request = self._protocol.create_request(
+                method="tools/call",
+                params={
+                    "name": name,
+                    "arguments": arguments or {}
+                },
+                request_id=self._next_id()
+            )
+
+            response = await self._transport.call(
+                self._config.server_url,
+                request
+            )
+        except Exception:
+            self._breaker.record_failure()
+            raise
+
         if response.is_error:
             self._breaker.record_failure()
             return MCPToolResult(
