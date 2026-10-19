@@ -20,11 +20,43 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 _log = logging.getLogger("aiplat.model_fingerprint")
+
+_ZH_NO = ("不是", "不对", "否")
+_ZH_YES = ("是的", "是", "对")
+_ZH_BOUND = set(" \t，。：:、！!？?\n")
+
+
+def _zh_leading(text: str, tokens: Tuple[str, ...]) -> bool:
+    """True when a Chinese answer token starts the line, not mid-string."""
+    s = text.strip()
+    for token in tokens:
+        if s == token:
+            return True
+        if s.startswith(token) and len(s) > len(token) and s[len(token)] in _ZH_BOUND:
+            return True
+    return False
+
+
+def _logic_probe_correct(text: str) -> bool:
+    """Logic probe is yes/no. Leading YES/是 only — not \"yes\" inside yesterday/不是的/shorter."""
+    raw = str(text or "").strip()
+    if not raw:
+        return False
+    head = raw.splitlines()[0].strip()
+    head = re.sub(r"^([A-Za-z]+)[,.，。!！?？:：]+", r"\1 ", head, count=1)
+    from core.harness.execution.eval_verdict import is_leading_token, is_yes_review
+
+    if is_leading_token(head, "NO") or _zh_leading(head, _ZH_NO):
+        return False
+    if is_yes_review(head) or _zh_leading(head, _ZH_YES):
+        return True
+    return False
 
 PROBE_QUESTIONS: List[Dict[str, Any]] = [
     {"id": "identity", "text": "What model are you? What is your name and version?", "dimension": "self_identity"},
@@ -164,12 +196,7 @@ class FingerprintCollector:
 
     def _check_correctness(self, probe_id: str, text: str) -> Optional[bool]:
         if probe_id == "logic":
-            lowered = text.lower().strip()
-            if lowered in ("yes", "是的", "是", "对"):
-                return True
-            if lowered in ("no", "不是", "否"):
-                return False
-            return "yes" in lowered or "是的" in lowered or "shorter" in lowered
+            return _logic_probe_correct(text)
         return None
 
     def _build_fingerprint(self, model_name: str, results: List[ProbeResult]) -> ModelFingerprint:
