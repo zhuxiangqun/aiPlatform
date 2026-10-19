@@ -389,21 +389,15 @@ def _decode_jwt_claims(token: str) -> Dict[str, Any]:
 
             return jwt.decode(token, secret, algorithms=["HS256", "RS256"], options={"verify_aud": False})
 
-        except jwt.PyJWTError as e:
+        except Exception as e:
 
             import logging
 
             logging.getLogger("aiplat.platform").warning(
 
-                "JWT verification failed (falling back to unverified decode): %s", e)
+                "JWT verification failed: %s", e)
 
-        except Exception:
-
-            import logging
-
-            logging.getLogger("aiplat.platform").error(
-
-                "Unexpected error during JWT verification", exc_info=True)
+            raise HTTPException(status_code=401, detail="invalid_token")
 
     parts = token.split(".")
 
@@ -473,21 +467,25 @@ def _resolve_identity(request: Request) -> Identity:
 
     if tenant_id and actor_id:
 
-        return Identity(
+        from auth.request_identity import header_identity_allowed
 
-            request_id=request_id,
+        if header_identity_allowed(request.headers.get("X-AIPLAT-IDENTITY-SECRET")):
 
-            tenant_id=str(tenant_id),
+            return Identity(
 
-            actor_id=str(actor_id),
+                request_id=request_id,
 
-            scopes=scopes,
+                tenant_id=str(tenant_id),
 
-            actor_role=str(actor_role) if actor_role else None,
+                actor_id=str(actor_id),
 
-            auth_type="header",
+                scopes=scopes,
 
-        )
+                actor_role=str(actor_role) if actor_role else None,
+
+                auth_type="header",
+
+            )
 
 
 
@@ -654,6 +652,20 @@ def _resolve_identity(request: Request) -> Identity:
 def _core_base_url() -> str:
 
     return os.getenv("AIPLAT_CORE_URL", "http://localhost:8002").rstrip("/")
+
+
+
+
+
+def _reject_anonymous_execute(identity: Identity) -> None:
+
+    """Execute routes must not run as the unauthenticated default identity."""
+
+    from auth.request_identity import platform_dev_mode
+
+    if identity.auth_type == "anonymous" and not platform_dev_mode():
+
+        raise HTTPException(status_code=401, detail="authentication required")
 
 
 
@@ -4741,6 +4753,8 @@ async def api_v1_agent_execute(agent_id: str, req: AgentExecuteRequest, request:
 
     identity = _resolve_identity(request)
 
+    _reject_anonymous_execute(identity)
+
     payload_ctx = dict(req.context or {})
 
     payload_ctx.setdefault("source", "app")
@@ -5134,6 +5148,8 @@ async def gateway_metrics(_auth: str = Depends(require_auth)):
 async def gateway_execute(body: Dict[str, Any], request: Request):
 
     identity = _resolve_identity(request)
+
+    _reject_anonymous_execute(identity)
 
     payload = dict(body or {})
 

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2303
+total_capabilities: 2305
 last_updated: 2026-10-19
 version: "30.11"
 auto_sync: true
@@ -626,6 +626,8 @@ scan_hash: 8f9548ec24f4
 | is_complete_evaluation | `core/harness/execution/eval_verdict.py` | ✅ | 完成度评估：JSON complete 优先；否则句首 COMPLETE；拒 false / INCOMPLETE / 中段 COMPLETE | 已合入 |
 | is_same_task_verdict | `core/harness/execution/eval_verdict.py` | ✅ | 任务连续性：JSON same_task 优先；否则句首 SAME；拒 false / NEW / 中段 SAME | 已合入 |
 | line_marker_content_start | `core/harness/execution/tool_calling.py` | ✅ | 行首 ACTION/SKILL 标记定位；拒 INACTION/RETRACTION/UPSKILL 等中段子串 | 已合入 |
+| header_identity_allowed | `aiPlat-platform/auth/request_identity.py` | ✅ | 身份头仅在 dev mode 或内部密钥匹配时可信 | 已合入 |
+| platform_dev_mode | `aiPlat-platform/auth/request_identity.py` | ✅ | 读取 AIPLAT_PLATFORM_DEV_MODE | 已合入 |
 | reevaluate_code_review_gold | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
 | compare_gold_reports | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
 | record_tool_receipt | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
@@ -3218,7 +3220,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 309 | 1 | 310 |
+| Harness 执行引擎 | 311 | 1 | 312 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 375 | 9 | 384 |
 | RAG 检索 | 52 | 0 | 52 |
@@ -3263,7 +3265,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2293** | **10** | **2303** |
+| **总计** | **2295** | **10** | **2305** |
 
 | **总计** | **1095** | **0** | **1095** |
 

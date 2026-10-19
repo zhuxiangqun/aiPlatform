@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-19T20:15:00+08:00",
+  "reviewed_at": "2026-10-19T20:55:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "94b49c71c74afac7c68f9d510392495282b77e42",
-  "diff_sha256": "abfcb53655704f9df869a4256cc63895ccdd9ae9ef955285fa899d263cd4c935",
-  "head_sha": "7061f5e77bfc5e1632901c5128275f8bab682b06",
+  "merge_base": "25327081803072ada030598a400b3e1ae8ffba5c",
+  "diff_sha256": "9c6037df8f491790e980c147c043bd00a1bafbf06a6f43f01da0ffc631be68e8",
+  "head_sha": "5647083972ca082da71df252bfeab71617a52915",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Auth helpers import without FastAPI for unit CI. Local lock only."
+  "note": "Header identity requires dev mode or secret. Bad JWT is 401. Anonymous execute is 401. Quota with no row stays unlimited. Core still consumes forwarded identity headers."
 }
