@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-19T23:45:00+08:00",
+  "reviewed_at": "2026-10-20T06:20:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "0d27aee7c656c0b793d2fedfccc939466f076636",
-  "diff_sha256": "698157793899a0bfded4bef3215deaf0fc348248fbafa986ae4bb89af48611a0",
-  "head_sha": "38418e2862e1e7928ca370bb119b67a0ac576d65",
+  "merge_base": "4dd6e4fa4e0ea2bb018fd9935023d47377b49ab5",
+  "diff_sha256": "6265b9d90ce73e79e57b59db94f05a47a2373401fd8d53dcdb09d4b87ebfe98f",
+  "head_sha": "12ffaa684c4aff88fa2b050a25ed2f8f92cb0f94",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Session paths stay under current. Unsigned Telegram/Slack fail closed unless AIPLAT_CHANNEL_ALLOW_UNSIGNED. Other channel adapters still have no verify function. Local lock only."
+  "note": "Empty localStorage no longer sends admin or apl_dev_local. Context.tsx user_id form default is a request body, not an auth header. Local lock only."
 }
