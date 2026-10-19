@@ -26,7 +26,9 @@ def verify_slack_signature(signing_secret: str, timestamp: str, body: str, signa
     Raises ValueError with 'invalid' code if signature doesn't match.
     """
     if not signing_secret:
-        return True
+        from api.auth import channel_unsigned_allowed
+
+        return channel_unsigned_allowed()
 
     try:
         ts_i = int(timestamp)

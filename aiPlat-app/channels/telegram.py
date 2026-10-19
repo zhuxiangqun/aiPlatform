@@ -21,7 +21,9 @@ class TelegramHandler:
     def verify_webhook(self, data: bytes, signature: str) -> bool:
         """验证 Webhook 请求"""
         if not self.secret_token:
-            return True
+            from api.auth import channel_unsigned_allowed
+
+            return channel_unsigned_allowed()
 
         expected = hmac.new(
             self.secret_token.encode(),
