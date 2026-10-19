@@ -8,7 +8,7 @@ def start_backend():
     """启动后端服务"""
     proc = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "management.server:create_app", 
-         "--host", "0.0.0.0", "--port", "8000"],
+         "--host", "127.0.0.1", "--port", "8000"],
         cwd="/Users/apple/workdata/person/zy/aiPlatform/aiPlat-management",
         stdout=open("/tmp/aiplat-management.log", "w"),
         stderr=subprocess.STDOUT,

@@ -451,8 +451,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 5173
-    with http.server.ThreadingHTTPServer(("0.0.0.0", port), ProxyHandler) as httpd:
-        print(f"Frontend proxy running on http://0.0.0.0:{port}")
+    with http.server.ThreadingHTTPServer(("127.0.0.1", port), ProxyHandler) as httpd:
+        print(f"Frontend proxy running on http://127.0.0.1:{port}")
         print(f"Serving static files from: {STATIC_DIR}")
         print(f"Proxy routes: {list(PROXY_ROUTES.keys())}")
         httpd.serve_forever()
