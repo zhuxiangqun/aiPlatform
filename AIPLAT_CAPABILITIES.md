@@ -626,6 +626,8 @@ scan_hash: 8f9548ec24f4
 | is_complete_evaluation | `core/harness/execution/eval_verdict.py` | ✅ | 完成度评估：JSON complete 优先；否则句首 COMPLETE；拒 false / INCOMPLETE / 中段 COMPLETE | 已合入 |
 | is_same_task_verdict | `core/harness/execution/eval_verdict.py` | ✅ | 任务连续性：JSON same_task 优先；否则句首 SAME；拒 false / NEW / 中段 SAME | 已合入 |
 | line_marker_content_start | `core/harness/execution/tool_calling.py` | ✅ | 行首 ACTION/SKILL 标记定位；拒 INACTION/RETRACTION/UPSKILL 等中段子串 | 已合入 |
+| header_identity_allowed | `aiPlat-platform/auth/request_identity.py` | ✅ | 身份头仅在 dev mode 或内部密钥匹配时可信 | 已合入 |
+| platform_dev_mode | `aiPlat-platform/auth/request_identity.py` | ✅ | 读取 AIPLAT_PLATFORM_DEV_MODE | 已合入 |
 | reevaluate_code_review_gold | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
 | compare_gold_reports | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
 | record_tool_receipt | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |

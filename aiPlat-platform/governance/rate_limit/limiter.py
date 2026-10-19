@@ -121,7 +121,8 @@ class RedisRateLimiter:
     async def check(self, key: str, max_tokens: int = 0, window: int = 60) -> bool:
         """检查是否允许请求（原子操作，Lua 脚本）。"""
         if not await self._ensure_redis():
-            return True  # Redis 不可用 → 放行（避免误拦）
+            # URL configured but Redis is down: fail closed. Empty URL means unused.
+            return not bool(self._redis_url)
 
         max_t = max_tokens or self._default_rate
         script = """
@@ -137,7 +138,7 @@ class RedisRateLimiter:
             result = await self._redis.eval(script, 1, key, max_t, window)
             return bool(result)
         except Exception:
-            return True  # Redis 异常 → 放行（避免误拦）
+            return False
 
     async def get_remaining(self, key: str, max_tokens: int = 0) -> int:
         if not await self._ensure_redis():

@@ -107,7 +107,7 @@ class QuotaManager:
             return usage.concurrent_runs + value <= quota.max_concurrent_runs
         elif resource == "monthly_tokens":
             return usage.monthly_tokens + value <= quota.monthly_tokens
-        return True
+        return False
 
     def consume(self, tenant_id: str, resource: str, value: int = 1) -> bool:
         """消费配额"""
