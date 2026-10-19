@@ -80,3 +80,35 @@ def is_yes_review(text: Any) -> bool:
     if is_leading_token(raw, "NO"):
         return False
     return is_leading_token(raw, "YES")
+
+
+def _coerce_complete_flag(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)) and value in (0, 1):
+        return bool(value)
+    token = str(value or "").strip().lower()
+    return token in ("true", "yes", "1")
+
+
+def is_complete_evaluation(text: Any) -> bool:
+    """LLM completeness judge: JSON ``complete`` wins; else leading COMPLETE.
+
+    ``{"complete": false}`` contains the substring COMPLETE and must not pass.
+    ``COMPLETELY`` / ``NOT COMPLETE`` / mid-string COMPLETE are not a pass.
+    """
+    raw = str(text or "").strip()
+    if not raw:
+        return False
+    from core.utils.json_utils import parse_json
+
+    obj = parse_json(raw)
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            if str(key).strip().lower() == "complete":
+                return _coerce_complete_flag(value)
+        return False
+    head = raw.splitlines()[0].strip()
+    if is_leading_token(head, "INCOMPLETE") or is_leading_token(head, "NOT"):
+        return False
+    return is_leading_token(head, "COMPLETE")
