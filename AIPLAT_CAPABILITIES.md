@@ -1,7 +1,7 @@
 ---
-total_capabilities: 2293
-last_updated: 2026-10-15
-version: "30.10"
+total_capabilities: 2297
+last_updated: 2026-10-19
+version: "30.11"
 auto_sync: true
 core_guarantees:
   auto:  # 23 active, 0 missing
@@ -618,6 +618,10 @@ scan_hash: 8f9548ec24f4
 | infer_receipt_status | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
 | is_terminal_done_marker | `core/harness/execution/completion_receipt.py` | ✅ | 句首 DONE/FINAL/FINISHED 才终止循环 | 已合入 |
 | strip_terminal_done_marker | `core/harness/execution/completion_receipt.py` | ✅ | 去掉句首 DONE/FINAL/FINISHED 前缀，供 facade reason finish-directly | 已合入 |
+| is_leading_token | `core/harness/execution/eval_verdict.py` | ✅ | 句首 token（含可选冒号）才算命中 | 已合入 |
+| is_approved_evaluation | `core/harness/execution/eval_verdict.py` | ✅ | tri_agent：句首 APPROVED，拒 NOT APPROVED/中段 APPROVED | 已合入 |
+| parse_status_line_pass | `core/harness/execution/eval_verdict.py` | ✅ | 解析 STATUS: 行；无 STATUS 返回 None | 已合入 |
+| is_pass_keyword_verdict | `core/harness/execution/eval_verdict.py` | ✅ | reflection：STATUS 优先，否则句首 PASS；拒 BYPASS 子串 | 已合入 |
 | reevaluate_code_review_gold | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
 | compare_gold_reports | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
 | record_tool_receipt | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |

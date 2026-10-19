@@ -280,15 +280,20 @@ class ReflectionGraph:
 
     def _parse_critic_result(self, critic_output: str) -> CriticResult:
         """Parse critic output into structured result."""
-        passed = self._config.pass_keyword.upper() in critic_output.upper()
-        
+        from core.harness.execution.eval_verdict import is_pass_keyword_verdict
+
+        # Mid-string "PASS"/"BYPASS" must not approve; STATUS: line or leading token only.
+        passed = is_pass_keyword_verdict(
+            critic_output, pass_keyword=self._config.pass_keyword
+        )
+
         dimensions = {}
         feedback = []
         summary = ""
-        
+
         lines = critic_output.strip().split('\n')
         current_section = None
-        
+
         for line in lines:
             line = line.strip()
             if line.startswith("SCORES:"):
@@ -311,9 +316,10 @@ class ReflectionGraph:
                 if feedback_content:
                     feedback.append(feedback_content)
             elif line.startswith("STATUS:"):
-                status_val = line.replace("STATUS:", "").strip().upper()
-                if status_val == "PASS" or status_val == self._config.pass_keyword.upper():
-                    passed = True
+                # Re-apply via helper so FAIL/REJECTED clear a false lead token.
+                passed = is_pass_keyword_verdict(
+                    critic_output, pass_keyword=self._config.pass_keyword
+                )
             elif current_section == "feedback" and line.startswith("- "):
                 feedback.append(line[2:])
             elif line:

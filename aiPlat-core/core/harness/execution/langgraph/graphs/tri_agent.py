@@ -245,8 +245,10 @@ Respond with APPROVED if all criteria pass, or REJECTED: <reason> with specific 
         result = await self._evaluator.run({"messages": messages, "context": _eval_ctx})
         
         evaluation = result.observation if hasattr(result, 'observation') else ""
-        approved = "APPROVED" in evaluation.upper()
-        
+        from core.harness.execution.eval_verdict import is_approved_evaluation
+
+        approved = is_approved_evaluation(evaluation)
+
         evaluation_results = self._evaluate_dimensions(metrics)
 
         return {
@@ -411,8 +413,10 @@ Respond with APPROVED if all criteria pass, or REJECTED: <reason> with specific 
             )
             evaluator_result = await self._evaluator.run({"messages": eval_messages, "context": {"_llm_temperature": 0.0}})
             state.evaluation = evaluator_result.observation if hasattr(evaluator_result, 'observation') else ""
-            state.approved = "APPROVED" in state.evaluation.upper()
-            
+            from core.harness.execution.eval_verdict import is_approved_evaluation
+
+            state.approved = is_approved_evaluation(state.evaluation)
+
             if not state.approved:
                 state.feedback.append(state.evaluation)
             
