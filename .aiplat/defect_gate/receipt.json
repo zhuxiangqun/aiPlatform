@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-19T14:26:00+08:00",
+  "reviewed_at": "2026-10-19T15:35:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "a168c93d95415e4f802a0fe7b295bbb78bcf11da",
-  "diff_sha256": "f05267c287797cc6e48047c32dfe98a74a313e133bc8ffba8024d41ee14f0f11",
-  "head_sha": "d7dd4dacb1408300786b54da215ace981f651835",
+  "merge_base": "07001568ac2bd1c3be1c22890a70fe713a382865",
+  "diff_sha256": "006d749391ac61ff3499f222df0ed1072c8602f9f9e033c72f17860898ae86cb",
+  "head_sha": "6f3b66539445254935b8f5036e5e8a8c421d26c9",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. Completeness judge uses JSON complete, else leading COMPLETE. CI unlock is non-author GitHub Approve (defect_gate_independence.py). head_sha informational; diff_sha256 is the lock."
+  "note": "JSON same_task false is not SAME. decide() still does not call _llm_decide; gray-zone heuristic is unchanged. Local lock only."
 }

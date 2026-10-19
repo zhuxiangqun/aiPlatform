@@ -112,3 +112,26 @@ def is_complete_evaluation(text: Any) -> bool:
     if is_leading_token(head, "INCOMPLETE") or is_leading_token(head, "NOT"):
         return False
     return is_leading_token(head, "COMPLETE")
+
+
+def is_same_task_verdict(text: Any) -> bool:
+    """Continuity classifier: JSON ``same_task`` wins; else leading SAME.
+
+    ``{"same_task": false}`` contains the substring SAME and must not match.
+    Leading NEW / mid-string SAME / ``SAMENESS`` are not the same task.
+    """
+    raw = str(text or "").strip()
+    if not raw:
+        return False
+    from core.utils.json_utils import parse_json
+
+    obj = parse_json(raw)
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            if str(key).strip().lower() == "same_task":
+                return _coerce_complete_flag(value)
+        return False
+    head = raw.splitlines()[0].strip()
+    if is_leading_token(head, "NEW"):
+        return False
+    return is_leading_token(head, "SAME")
