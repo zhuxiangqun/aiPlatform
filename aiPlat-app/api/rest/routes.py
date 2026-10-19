@@ -11,14 +11,34 @@ Routes:
 """
 
 import os
+import re
 from pathlib import Path
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
+from typing import Optional
+
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
+from api.auth import AppTokenMiddleware
+
 app = FastAPI(title="aiPlat-app", version="0.1.0")
+app.add_middleware(AppTokenMiddleware)
 
 APPS_HOME = Path(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))) / "apps"
+_SAFE_ID = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+def session_file_under_root(root: Path, relative: str) -> Optional[Path]:
+    """Resolved file path inside ``root``, or None on escape / absolute path."""
+    rel = relative or ""
+    if not rel or rel.startswith(("/", "\\")) or "\\" in rel:
+        return None
+    root_r = root.resolve()
+    target = (root_r / rel).resolve()
+    try:
+        target.relative_to(root_r)
+    except ValueError:
+        return None
+    return target
 
 
 @app.get("/health")
@@ -29,15 +49,17 @@ def health():
 @app.get("/app/sessions/{project_id}")
 async def serve_app_index(project_id: str):
     """Serve the deployed app's index.html."""
-    app_dir = APPS_HOME / project_id / "current"
-    index = app_dir / "index.html"
-    if index.exists():
+    if not _SAFE_ID.fullmatch(project_id or ""):
+        raise HTTPException(status_code=400, detail="invalid_project_id")
+    app_dir = (APPS_HOME / project_id / "current").resolve()
+    index = session_file_under_root(app_dir, "index.html")
+    if index is not None and index.is_file():
         return FileResponse(str(index))
-    # Fallback: serve any HTML file in the directory
-    html_files = sorted(app_dir.glob("*.html"))
-    if html_files:
-        return FileResponse(str(html_files[0]))
-    return {"error": "app not found", "project_id": project_id}, 404
+    if app_dir.is_dir():
+        html_files = sorted(p for p in app_dir.glob("*.html") if p.is_file())
+        if html_files:
+            return FileResponse(str(html_files[0]))
+    raise HTTPException(status_code=404, detail="app not found")
 
 
 @app.get("/app/media/{app_name}/{task_id}/{path:path}")
@@ -66,12 +88,15 @@ async def serve_app_media(app_name: str, task_id: str, path: str):
 @app.get("/app/sessions/{project_id}/{path:path}")
 async def serve_app_files(project_id: str, path: str):
     """Serve static files for the deployed app (JS, CSS, images, etc.)."""
-    app_dir = APPS_HOME / project_id / "current"
-    file_path = app_dir / path
-    if file_path.exists() and file_path.is_file():
+    if not _SAFE_ID.fullmatch(project_id or ""):
+        raise HTTPException(status_code=400, detail="invalid_project_id")
+    app_dir = (APPS_HOME / project_id / "current").resolve()
+    file_path = session_file_under_root(app_dir, path)
+    if file_path is None:
+        raise HTTPException(status_code=403, detail="path_escape")
+    if file_path.is_file():
         return FileResponse(str(file_path))
-    # SPA fallback: serve index.html for client-side routing
-    index = app_dir / "index.html"
-    if index.exists():
+    index = session_file_under_root(app_dir, "index.html")
+    if index is not None and index.is_file():
         return FileResponse(str(index))
-    return {"error": "file not found"}, 404
+    raise HTTPException(status_code=404, detail="file not found")

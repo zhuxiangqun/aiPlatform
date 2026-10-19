@@ -18,8 +18,9 @@ class APIClient:
     """API 客户端"""
 
     def __init__(self, base_url: str = "", api_key: str = ""):
-        self.base_url = base_url or os.environ.get("AIPLAT_PLATFORM_URL", "http://localhost:8003")
-        self.base_url = base_url
+        self.base_url = (
+            base_url or os.environ.get("AIPLAT_PLATFORM_URL", "http://localhost:8003")
+        ).rstrip("/")
         self.api_key = api_key
         self._session = requests.Session()
         self._headers = {

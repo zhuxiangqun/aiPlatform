@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2307
+total_capabilities: 2311
 last_updated: 2026-10-19
 version: "30.11"
 auto_sync: true
@@ -2868,6 +2868,10 @@ scan_hash: 8f9548ec24f4
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 | management_api_token | `aiPlat-management/management/auth.py` | ✅ | 管理面 token；非 loopback 无 token 拒绝启动 | 已合入 |
 | assert_bind_allowed | `aiPlat-management/management/auth.py` | ✅ | 非本机监听必须已配置管理面 token | 已合入 |
+| app_api_token | `aiPlat-app/api/auth.py` | ✅ | 应用静态托管 token；非 loopback 无 token 拒绝启动 | 已合入 |
+| assert_app_bind_allowed | `aiPlat-app/api/auth.py` | ✅ | 非本机监听必须已配置 AIPLAT_APP_API_TOKEN | 已合入 |
+| session_file_under_root | `aiPlat-app/api/rest/routes.py` | ✅ | 会话静态文件必须落在 current 目录内 | 已合入 |
+| channel_unsigned_allowed | `aiPlat-app/api/auth.py` | ✅ | 渠道验签缺 secret 时默认拒绝 | 已合入 |
 | extractInboxItemId | `packages/aiplat-pi-runtime/extensions/enterprise_approval.ts` | ✅ | 自动同步 | 已合入 |
 | waitForUnattended | `packages/aiplat-pi-runtime/extensions/enterprise_approval.ts` | ✅ | 自动同步 | 已合入 |
 | listUnattendedInbox | `packages/aiplat-pi-runtime/extensions/enterprise_approval.ts` | ✅ | 自动同步 | 已合入 |
@@ -3248,7 +3252,7 @@ scan_hash: 8f9548ec24f4
 | Infra 基础设施 | 16 | 0 | 16 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 96 | 0 | 96 |
+| 管理 & 质量 | 100 | 0 | 100 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -3267,7 +3271,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2297** | **10** | **2307** |
+| **总计** | **2301** | **10** | **2311** |
 
 | **总计** | **1095** | **0** | **1095** |
 

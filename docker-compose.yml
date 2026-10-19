@@ -102,6 +102,9 @@ services:
     environment:
       - AIPLAT_HOME=/app/.aiplat
       - AIPLAT_APP_DB_PATH=/app/.aiplat/aiplat_app.sqlite3
+      # Published port is the container's non-loopback interface. Token required.
+      - AIPLAT_APP_BIND=0.0.0.0:8004
+      - AIPLAT_APP_API_TOKEN=${AIPLAT_APP_API_TOKEN:?set AIPLAT_APP_API_TOKEN}
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8004/health', timeout=3)"]
       interval: 15s
