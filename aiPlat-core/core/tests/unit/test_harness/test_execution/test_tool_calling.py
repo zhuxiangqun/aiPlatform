@@ -37,6 +37,30 @@ def test_parse_tool_call_action_fallback():
     assert parsed.format == "action"
 
 
+def test_parse_tool_call_rejects_action_substring_tokens():
+    # Old bug: "ACTION:" in "INACTION:" / "RETRACTION:" / "FRACTION:" → fake tool.
+    assert parse_tool_call("INACTION: leave things alone") is None
+    assert parse_tool_call("RETRACTION: previous claim was wrong") is None
+    assert parse_tool_call("FRACTION: 1/2") is None
+    assert parse_tool_call("No ACTION: do not call tools") is None
+    assert parse_tool_call("The recommendation is INACTION: stay put") is None
+    # Line-leading ACTION still works after prose.
+    multi = "Thought: maybe later.\nACTION: search: {\"q\":\"x\"}"
+    parsed = parse_tool_call(multi)
+    assert parsed is not None
+    assert parsed.tool_name == "search"
+    assert parsed.tool_args == {"q": "x"}
+
+
+def test_parse_action_call_rejects_skill_substring_tokens():
+    assert parse_action_call("UPSKILL: training plan") is None
+    assert parse_action_call("DESKILL: remove this") is None
+    skill = parse_action_call("SKILL: summarize: {\"text\":\"x\"}")
+    assert skill is not None
+    assert skill.kind == "skill"
+    assert skill.name == "summarize"
+
+
 def test_parse_action_call_skill_structured():
     text = '{"skill":"summarize","args":{"text":"x"}}'
     parsed = parse_action_call(text)
