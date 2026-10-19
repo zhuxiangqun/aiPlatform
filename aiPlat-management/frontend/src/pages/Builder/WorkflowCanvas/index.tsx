@@ -10,6 +10,7 @@ import 'reactflow/dist/style.css';
 import { Play, Save, ChevronRight, ChevronDown, Square, Loader2, History, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { Button, toast } from '../../../components/ui';
 import { workspaceAgentApi, workflowApi } from '../../../services';
+import { storedIdentityHeaders } from '../../../services/identityHeaders';
 import { ExecutionViewer } from '../../../components/ExecutionViewer';
 import AssetAuditPanel, { auditRemainToast } from '../../../components/workspace/AssetAuditPanel';
 import type { AssetAuditResult } from '../../../components/workspace/AssetAuditPanel';
@@ -117,7 +118,7 @@ const CanvasInner: React.FC = () => {
     try {
       const resp = await fetch(`/api/core/graphs/runs/${lastRunId}/stages/${encodeURIComponent(stepRunNodeId)}/step-run`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-AIPLAT-ACTOR-ROLE': 'admin' },
+        headers: { 'Content-Type': 'application/json', ...storedIdentityHeaders() },
         body: JSON.stringify({ mock_input: (() => { try { return JSON.parse(stepRunInput); } catch { return { input: stepRunInput }; } })() }),
       });
       const data = await resp.json();

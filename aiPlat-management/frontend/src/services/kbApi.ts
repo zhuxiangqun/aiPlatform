@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import { storedIdentityHeaders } from './identityHeaders';
 
 export type KBCollection = {
   collection_id: string;
@@ -238,23 +239,7 @@ export const kbApi = {
     form.append('kind', kind);
     form.append('collection_id', collection_id);
 
-    const headers: Record<string, string> = {};
-    try {
-      const tenantId = localStorage.getItem('active_tenant_id') || '';
-      const actorId = localStorage.getItem('active_actor_id') || 'admin';
-      const actorRole = localStorage.getItem('active_actor_role') || 'admin';
-      const scopes = localStorage.getItem('active_scopes') || 'kb:read,kb:write';
-      const releaseChannel = localStorage.getItem('active_release_channel') || '';
-      const apiKey = localStorage.getItem('active_api_key') || '';
-      if (tenantId.trim()) headers['X-AIPLAT-TENANT-ID'] = tenantId.trim();
-      if (actorId.trim()) headers['X-AIPLAT-ACTOR-ID'] = actorId.trim();
-      if (actorRole.trim()) headers['X-AIPLAT-ACTOR-ROLE'] = actorRole.trim();
-      if (scopes.trim()) headers['X-AIPLAT-SCOPES'] = scopes.trim();
-      if (releaseChannel.trim()) headers['X-AIPLAT-RELEASE-CHANNEL'] = releaseChannel.trim();
-      if (apiKey.trim()) headers['X-AIPLAT-API-KEY'] = apiKey.trim();
-    } catch {
-      // ignore
-    }
+    const headers = storedIdentityHeaders();
 
     const resp = await fetch(url, { method: 'POST', body: form, headers });
     if (!resp.ok) {
@@ -275,19 +260,7 @@ export const kbApi = {
     form.append('file', file, file.name);
     form.append('kind', kind);
     form.append('collection_id', collection_id);
-    const headers: Record<string, string> = {};
-    try {
-      const tenantId = localStorage.getItem('active_tenant_id') || '';
-      const actorId = localStorage.getItem('active_actor_id') || 'admin';
-      const actorRole = localStorage.getItem('active_actor_role') || 'admin';
-      const scopes = localStorage.getItem('active_scopes') || 'kb:read,kb:write';
-      const apiKey = localStorage.getItem('active_api_key') || '';
-      if (tenantId.trim()) headers['X-AIPLAT-TENANT-ID'] = tenantId.trim();
-      if (actorId.trim()) headers['X-AIPLAT-ACTOR-ID'] = actorId.trim();
-      if (actorRole.trim()) headers['X-AIPLAT-ACTOR-ROLE'] = actorRole.trim();
-      if (scopes.trim()) headers['X-AIPLAT-SCOPES'] = scopes.trim();
-      if (apiKey.trim()) headers['X-AIPLAT-API-KEY'] = apiKey.trim();
-    } catch { /* ignore */ }
+    const headers = storedIdentityHeaders();
     const resp = await fetch(url, { method: 'POST', body: form, headers });
     if (!resp.ok) {
       const payload: any = await resp.json().catch(() => null);
