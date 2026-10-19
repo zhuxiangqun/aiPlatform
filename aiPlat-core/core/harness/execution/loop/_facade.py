@@ -695,9 +695,11 @@ class ReActLoop(BaseLoop):
 
             )
 
-            text = str(resp).upper().strip()
+            from core.harness.execution.eval_verdict import is_complete_evaluation
 
-            if "COMPLETE" in text and "INCOMPLETE" not in text:
+            text = str(resp).strip()
+
+            if is_complete_evaluation(text):
 
                 return None
 

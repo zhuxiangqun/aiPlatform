@@ -2,6 +2,7 @@
 
 from core.harness.execution.eval_verdict import (
     is_approved_evaluation,
+    is_complete_evaluation,
     is_leading_token,
     is_pass_keyword_verdict,
     is_yes_review,
@@ -77,3 +78,17 @@ def test_is_yes_review_leading_only():
     assert not is_yes_review("NO — do not answer YES")
     assert not is_yes_review("The answer is YES later")
     assert not is_yes_review("")
+
+
+def test_is_complete_evaluation_json_and_leading():
+    # Old bug: "COMPLETE" in '{"complete": false}' → false pass.
+    assert is_complete_evaluation('{"complete": false, "reason": "missing"}') is False
+    assert is_complete_evaluation('{"complete": true}') is True
+    assert is_complete_evaluation("```json\n{\"complete\": false}\n```") is False
+    assert is_complete_evaluation("COMPLETE") is True
+    assert is_complete_evaluation("COMPLETE: outputs present") is True
+    assert is_complete_evaluation("INCOMPLETE") is False
+    assert is_complete_evaluation("NOT COMPLETE") is False
+    assert is_complete_evaluation("COMPLETELY WRONG") is False
+    assert is_complete_evaluation("The task looks COMPLETE") is False
+    assert is_complete_evaluation("") is False
