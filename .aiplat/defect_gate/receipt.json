@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-19T01:23:52+00:00",
+  "reviewed_at": "2026-10-19T10:12:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "dc3460efbadf3902c46278568b363a9553759d74",
-  "diff_sha256": "7a62f238e6db3b0215f70b83927544b247b817cdc1a0ae1d80dbaf9ddfb2b1ed",
-  "head_sha": "b1478a681cf4383889f2d0f52230a4ae9d83f596",
+  "merge_base": "43cf47c946ac74cd0151f9f76b50e56cac853fe4",
+  "diff_sha256": "58d1a8e14742f8e8438888347a49328246af9057736f7317d81586525d44dfe0",
+  "head_sha": "14d396c26eee725cee494cc32892ab9e241fc15d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Facade reason finish-directly now shares leading DONE helpers with observe/compiled ReAct. Local lock only."
+  "note": "APPROVED/PASS verdicts are leading-token or STATUS line only. Local lock only."
 }
