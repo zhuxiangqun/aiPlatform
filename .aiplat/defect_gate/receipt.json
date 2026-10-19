@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-19T13:45:00+08:00",
+  "reviewed_at": "2026-10-19T14:26:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "66bfdacf11ab906b28c75db6c537001bf850fff6",
-  "diff_sha256": "ac062fe9c553506f96250c4a5098bbf816611936d9abc295c91c9bc29283fc29",
-  "head_sha": "5ee8936a68bd072234fe79aa499d41bb122c2240",
+  "merge_base": "a168c93d95415e4f802a0fe7b295bbb78bcf11da",
+  "diff_sha256": "f05267c287797cc6e48047c32dfe98a74a313e133bc8ffba8024d41ee14f0f11",
+  "head_sha": "d7dd4dacb1408300786b54da215ace981f651835",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. CI unlock is non-author GitHub Approve (defect_gate_independence.py). head_sha informational; diff_sha256 is the lock."
+  "note": "Local lock only. Completeness judge uses JSON complete, else leading COMPLETE. CI unlock is non-author GitHub Approve (defect_gate_independence.py). head_sha informational; diff_sha256 is the lock."
 }
