@@ -259,8 +259,10 @@ class ProducerReviewerPattern(ICoordinationPattern):
                 "review": review_content
             })
             
-            # Check if approved
-            if "YES" in review_content.upper():
+            # Leading YES only — mid-string YES (e.g. after NO) must not approve.
+            from core.harness.execution.eval_verdict import is_yes_review
+
+            if is_yes_review(review_content):
                 break
             
             # Feedback for next iteration

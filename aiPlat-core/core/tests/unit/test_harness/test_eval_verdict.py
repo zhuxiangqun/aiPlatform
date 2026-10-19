@@ -4,6 +4,7 @@ from core.harness.execution.eval_verdict import (
     is_approved_evaluation,
     is_leading_token,
     is_pass_keyword_verdict,
+    is_yes_review,
     parse_status_line_pass,
 )
 from core.harness.execution.langgraph.graphs.reflection import ReflectionGraph
@@ -64,3 +65,15 @@ def test_reflection_parse_rejects_bypass_substring():
         "STATUS: PASS\nSCORES: factuality=0.9 completeness=0.8 clarity=0.9 format=0.85\nFEEDBACK: None"
     )
     assert result3.passed is True
+
+
+def test_is_yes_review_leading_only():
+    # Old bug: "YES" in "NO — do not answer YES" → false approve.
+    assert is_yes_review("YES")
+    assert is_yes_review("YES: looks good")
+    assert is_yes_review("yes with feedback")
+    assert not is_yes_review("NO")
+    assert not is_yes_review("NO: missing tests")
+    assert not is_yes_review("NO — do not answer YES")
+    assert not is_yes_review("The answer is YES later")
+    assert not is_yes_review("")
