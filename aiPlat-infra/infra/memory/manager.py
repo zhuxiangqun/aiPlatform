@@ -1,3 +1,4 @@
+import os
 import uuid
 import psutil
 import threading
@@ -124,8 +125,15 @@ class VRAMMemoryManager(MemoryManager):
         if gpu_index == -1 and self._gpu_count > 0:
             gpu_index = 0
         mem_info = self._get_gpu_memory_info(gpu_index)
+        simulate = os.getenv("AIPLAT_MEMORY_SIMULATE", "").strip().lower() in (
+            "1", "true", "yes", "y",
+        )
+        if mem_info is None and not simulate:
+            raise MemoryError(
+                "GPU memory info unavailable; set AIPLAT_MEMORY_SIMULATE=1 to allocate a simulated address"
+            )
         if mem_info is None:
-            logger.warning("Unable to get GPU memory info, allocating with simulated address.")
+            logger.warning("AIPLAT_MEMORY_SIMULATE=1: allocating with simulated address.")
             address = self._generate_address()
         else:
             if request.size > mem_info["free"]:

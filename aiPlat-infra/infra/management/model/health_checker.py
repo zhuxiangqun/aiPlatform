@@ -350,13 +350,19 @@ class HealthChecker:
     
     async def _check_local_embedding_connectivity(self, model: ModelInfo) -> Dict[str, Any]:
         """检查本地 Embedding 模型连通性"""
-        try:
-            from sentence_transformers import SentenceTransformer
-            return {"success": True, "model_id": model.id}
-        except ImportError:
-            return {"success": False, "error": "sentence-transformers not installed"}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+        from pathlib import Path
+
+        path = ""
+        cfg = getattr(model, "config", None)
+        if cfg is not None:
+            path = str(getattr(cfg, "base_url", None) or "").strip()
+        if path and Path(path).exists():
+            return {"success": True, "model_id": model.id, "probed": "path"}
+        return {
+            "success": False,
+            "model_id": model.id,
+            "error": "embedding weights not verified",
+        }
     
     async def _check_local_embedding_response(self, model: ModelInfo) -> Dict[str, Any]:
         """检查本地 Embedding 模型响应"""
@@ -389,7 +395,7 @@ class HealthChecker:
         import subprocess
         try:
             r = subprocess.run(["mineru", "--version"], capture_output=True, text=True, timeout=10)
-            ok = r.returncode == 0 or "mineru" in (r.stdout + r.stderr).lower()
+            ok = r.returncode == 0
             if ok:
                 return {"success": True, "model_id": model.id}
             return {"success": False, "model_id": model.id, "error": r.stderr[:200]}

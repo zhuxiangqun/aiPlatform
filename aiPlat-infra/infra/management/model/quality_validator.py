@@ -151,10 +151,12 @@ class QualityValidator:
             except Exception:  # noqa: json-fallback
                 pass
 
-        # Natural language — check if it's useful (non-trivial length, contains clarifying keywords)
-        clarify_keywords = ['追问', '问题', '建议', '步骤', '分析', '确认', '检查', '评估',
-                            'fde', '客户', '流程', '需求', '方案', '补充', '解决', '处理']
-        match_count = sum(1 for kw in clarify_keywords if kw in text)
+        # Natural language usefulness: keywords from env only (infra stays app-agnostic).
+        # AIPLAT_CLARIFY_KEYWORDS=追问,问题,建议  — empty default means length-only scoring.
+        import os as _os
+        _raw_kw = (_os.getenv("AIPLAT_CLARIFY_KEYWORDS") or "").strip()
+        clarify_keywords = [k.strip() for k in _raw_kw.split(",") if k.strip()]
+        match_count = sum(1 for kw in clarify_keywords if kw in text) if clarify_keywords else 0
         if len(text) > 100 and match_count >= 2:
             return QualityResult(ok=True, score_delta=0.01,
                                 details={"reason": "useful_narrative", "keyword_hits": match_count})

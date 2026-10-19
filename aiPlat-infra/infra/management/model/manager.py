@@ -317,16 +317,18 @@ def _filter_health(model) -> bool:
         from .health_checker import HealthChecker
         return HealthChecker.get_failure_rate(model.name) <= 0.5
     except Exception:
-        return True
+        logging.getLogger(__name__).warning("health filter failed closed", exc_info=True)
+        return False
 
 
 def _filter_latency(model) -> bool:
-    """延迟过滤。Level 3 可放宽。取不到数据默认可用。"""
+    """延迟过滤。取不到数据不放行。"""
     try:
         from .latency_tracker import get_latency_tracker
         return get_latency_tracker().p95_latency_seconds(model.name) <= 30
     except Exception:
-        return True
+        logging.getLogger(__name__).warning("latency filter failed closed", exc_info=True)
+        return False
 
 
 def _is_local_model(model) -> bool:
