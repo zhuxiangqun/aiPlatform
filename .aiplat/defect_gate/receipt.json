@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-19T15:35:00+08:00",
+  "reviewed_at": "2026-10-19T18:56:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "07001568ac2bd1c3be1c22890a70fe713a382865",
-  "diff_sha256": "006d749391ac61ff3499f222df0ed1072c8602f9f9e033c72f17860898ae86cb",
-  "head_sha": "6f3b66539445254935b8f5036e5e8a8c421d26c9",
+  "merge_base": "35f8292c1444fe50f8a87d3c6078b811089b30fd",
+  "diff_sha256": "a9ea25cb90337ee71e5914e99340952e2dbaab80728b0192b46ad0cbb81972ab",
+  "head_sha": "873d99ad9fff840794e176e579d8acb30f0dcabb",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "JSON same_task false is not SAME. decide() still does not call _llm_decide; gray-zone heuristic is unchanged. Local lock only."
+  "note": "ACTION/SKILL markers are line-leading only. Compiled ReAct uses parse_tool_call. Local lock only."
 }

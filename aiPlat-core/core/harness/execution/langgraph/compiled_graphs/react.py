@@ -15,7 +15,7 @@ import os
 from typing import Any, Dict, List, Optional
 
 from ..core import GraphBuilder, GraphConfig, NodeResult, CompiledGraph
-from ...tool_calling import parse_action_call
+from ...tool_calling import parse_action_call, parse_tool_call
 from ....syscalls import sys_llm_generate, sys_tool_call
 from ....assembly import MessageFormatter
 
@@ -300,8 +300,8 @@ def create_compiled_react_graph(
 
 
 def _parse_action_from_text(reasoning: str) -> Optional[str]:
-    if "ACTION:" in reasoning.upper():
-        parts = reasoning.upper().split("ACTION:")
-        if len(parts) > 1:
-            return parts[1].strip().split()[0]
+    """Legacy ACTION: fallback — line-leading marker only (not INACTION:/…)."""
+    parsed = parse_tool_call(reasoning)
+    if parsed and parsed.format == "action":
+        return parsed.tool_name
     return None

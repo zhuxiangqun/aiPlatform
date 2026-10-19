@@ -41,6 +41,25 @@ def _try_load_json(s: str) -> Optional[Any]:
         return None
 
 
+def line_marker_content_start(text: str, marker: str) -> Optional[int]:
+    """Index after a line-leading ``MARKER:`` (optional indent).
+
+    Mid-token false hits must not count: ``INACTION:`` / ``RETRACTION:`` /
+    ``FRACTION:`` contain the substring ``ACTION:``; ``UPSKILL:`` contains
+    ``SKILL:``. Only a line that starts with the marker (after whitespace)
+    is accepted — same class as leading-token eval verdicts.
+    """
+    if not text or not marker:
+        return None
+    pat = re.compile(
+        rf"(?im)^[ \t]*{re.escape(marker)}\s*:",
+    )
+    m = pat.search(text)
+    if not m:
+        return None
+    return m.end()
+
+
 def _extract_json_candidate(text: str) -> Optional[str]:
     """Delegates to canonical JSON extraction via CoreFacade."""
     from core.utils.json_utils import extract_json_safe
@@ -106,13 +125,12 @@ def parse_tool_call(text: str) -> Optional[ParsedToolCall]:
         if parsed:
             return parsed
 
-    # 2) ACTION: tool: args
-    up = text.upper()
-    if "ACTION:" not in up:
+    # 2) ACTION: tool: args (line-leading only — not INACTION/RETRACTION/…)
+    content_at = line_marker_content_start(text, "ACTION")
+    if content_at is None:
         return None
 
-    idx = up.find("ACTION:")
-    parts = text[idx + len("ACTION:") :].strip()
+    parts = text[content_at:].strip()
     if not parts:
         return None
 
@@ -225,11 +243,10 @@ def parse_action_call(text: str) -> Optional[ParsedActionCall]:
                     format=tool_parsed.format,
                 )
 
-    # 2) SKILL: ...
-    up = text.upper()
-    if "SKILL:" in up:
-        idx = up.find("SKILL:")
-        parts = text[idx + len("SKILL:") :].strip()
+    # 2) SKILL: ... (line-leading only — not UPSKILL/…)
+    skill_at = line_marker_content_start(text, "SKILL")
+    if skill_at is not None:
+        parts = text[skill_at:].strip()
         if not parts:
             return None
         if ":" in parts:
