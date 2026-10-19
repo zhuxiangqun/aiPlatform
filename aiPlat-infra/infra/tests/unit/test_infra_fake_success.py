@@ -24,6 +24,7 @@ def test_loopback_and_token_compare():
 
 
 def test_token_middleware_blocks_non_health(monkeypatch):
+    pytest.importorskip("fastapi")
     monkeypatch.setenv("AIPLAT_INFRA_API_TOKEN", "secret")
     from fastapi import FastAPI
     from fastapi.testclient import TestClient

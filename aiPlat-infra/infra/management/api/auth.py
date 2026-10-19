@@ -6,17 +6,16 @@ route except ``GET /health`` must present the same value via
 
 Binding non-loopback without a token is refused in ``run_server`` — that is
 the fail-closed half of the P0; this module enforces the token when present.
+
+Pure helpers here must import without FastAPI (infra unit CI may omit it).
+The middleware itself requires FastAPI/Starlette at runtime.
 """
 
 from __future__ import annotations
 
 import os
 import secrets
-from typing import Optional
-
-from fastapi import Request
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse, Response
+from typing import Any, Optional
 
 
 def infra_api_token() -> Optional[str]:
@@ -29,7 +28,7 @@ def is_loopback_host(host: str) -> bool:
     return h in ("127.0.0.1", "localhost", "::1", "0:0:0:0:0:0:0:1")
 
 
-def extract_request_token(request: Request) -> Optional[str]:
+def extract_request_token(request: Any) -> Optional[str]:
     header = (request.headers.get("x-aiplat-infra-token") or "").strip()
     if header:
         return header
@@ -48,10 +47,25 @@ def tokens_match(expected: str, provided: Optional[str]) -> bool:
         return False
 
 
+try:
+    from starlette.middleware.base import BaseHTTPMiddleware
+    from starlette.responses import JSONResponse, Response
+
+    _HAS_ASGI = True
+except ImportError:  # pragma: no cover - CI unit env without FastAPI/Starlette
+    BaseHTTPMiddleware = object  # type: ignore[misc, assignment]
+    JSONResponse = None  # type: ignore[misc, assignment]
+    Response = Any  # type: ignore[misc, assignment]
+    _HAS_ASGI = False
+
+
 class InfraTokenMiddleware(BaseHTTPMiddleware):
     """Require infra API token when env token is configured."""
 
-    async def dispatch(self, request: Request, call_next) -> Response:
+    async def dispatch(self, request: Any, call_next) -> Any:
+        if not _HAS_ASGI:
+            raise RuntimeError("fastapi/starlette required for InfraTokenMiddleware")
+
         path = request.url.path or ""
         if request.method == "GET" and path == "/health":
             return await call_next(request)
