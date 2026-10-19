@@ -1831,6 +1831,8 @@ scan_hash: 8f9548ec24f4
 | **SkillExporter** | apps/skills/skill_exporter.py | ✅ | v2.9: SKILL.md→OpenAI/LangChain/Anthropic三格式导出 | 已合入 |
 | **AdoptionMetrics** | harness/evaluation/adoption_metrics.py | ✅ | v2.9: 员工采纳度(agent调用+GrillRate+HITL行为+抵触热点)+培训效果对比 | 已合入 |
 | **OntologyAudit** | harness/evaluation/ontology_audit.py | ✅ | v2.9: 类覆盖率/关系密度/状态机活跃度/孤儿检测→治理建议 | 已合入 |
+| PostprocessCorrector | `core/harness/evaluation/postprocess.py` | ✅ | 输出小修：JSON 垃圾字符/围栏/尾逗号，避免整段重问模型 | 已合入 |
+| evaluate_tag_assertions | `core/harness/evaluation/tag_assertions.py` | ✅ | 浏览器证据按 tag 断言（快照/控制台/网络/耗时） | 已合入 |
 | Leading Words 术语表 | [概念] | ✅ | 8个工程先验词汇（tight loop/tracer bullet/deep module/seam等） | 已合入 |
 | Action Type 操作契约 | harness/interfaces/skill.py` + `apps/skills/executor.py | ✅ | submission_criteria前置校验 + permissions角色控制 + side_effects声明 + _evaluate_criterion()执行前拦截 | 已合入 |
 | field-assessment HMESI增强 | apps/skills/registry.py:1651-1690 | ✅ | 诊断报告注入历史案例检索(search_pages)+跨域类比(discover_cross_domain_analogs)+§4.65预期干预效果表格(HMESI Step 3) | 已合入 |
