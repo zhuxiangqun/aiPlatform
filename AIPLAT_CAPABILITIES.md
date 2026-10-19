@@ -617,6 +617,7 @@ scan_hash: 8f9548ec24f4
 | select_repair_candidate | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
 | infer_receipt_status | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
 | is_terminal_done_marker | `core/harness/execution/completion_receipt.py` | ✅ | 句首 DONE/FINAL/FINISHED 才终止循环 | 已合入 |
+| strip_terminal_done_marker | `core/harness/execution/completion_receipt.py` | ✅ | 去掉句首 DONE/FINAL/FINISHED 前缀，供 facade reason finish-directly | 已合入 |
 | reevaluate_code_review_gold | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
 | compare_gold_reports | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
 | record_tool_receipt | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
