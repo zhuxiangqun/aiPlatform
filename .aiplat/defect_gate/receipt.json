@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-20T06:20:00+08:00",
+  "reviewed_at": "2026-10-20T07:05:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "4dd6e4fa4e0ea2bb018fd9935023d47377b49ab5",
-  "diff_sha256": "6265b9d90ce73e79e57b59db94f05a47a2373401fd8d53dcdb09d4b87ebfe98f",
-  "head_sha": "12ffaa684c4aff88fa2b050a25ed2f8f92cb0f94",
+  "diff_sha256": "d1da3cb27e10e5899f9322c99a219de6484f9a73593b1f89b02d86b70cf8491a",
+  "head_sha": "ca93774164b777ff7296e6e6ab2fa5f2fc0aa3a0",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Empty localStorage no longer sends admin or apl_dev_local. Context.tsx user_id form default is a request body, not an auth header. Local lock only."
+  "note": "Empty localStorage no longer sends admin or apl_dev_local. postprocess and tag_assertions are indexed. Local lock only."
 }
