@@ -100,8 +100,10 @@ def test_done_stop_uses_leading_marker_not_substring():
     facade = (root / "loop" / "_facade.py").read_text(encoding="utf-8")
     assert '"DONE" in' not in react
     assert '"DONE" in' not in facade
+    assert 'startswith("DONE:")' not in facade
     assert "is_terminal_done_marker" in react
     assert "is_terminal_done_marker" in facade
+    assert "strip_terminal_done_marker" in facade
 
 
 def test_compiled_react_tool_failure_is_not_success_receipt():

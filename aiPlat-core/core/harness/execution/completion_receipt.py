@@ -46,6 +46,15 @@ def is_terminal_done_marker(text: Any) -> bool:
     return _TERMINAL_DONE_RE.match(raw) is not None
 
 
+def strip_terminal_done_marker(text: Any) -> str:
+    """Remove a leading DONE/FINAL/FINISHED marker; return the remainder."""
+    raw = str(text or "").strip()
+    m = _TERMINAL_DONE_RE.match(raw)
+    if not m:
+        return raw
+    return raw[m.end() :].strip()
+
+
 def receipt_bind_enabled() -> bool:
     return os.getenv("AIPLAT_COMPLETION_RECEIPT", "true").strip().lower() not in (
         "0",

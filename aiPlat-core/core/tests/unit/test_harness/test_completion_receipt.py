@@ -3,6 +3,7 @@ from core.harness.execution.completion_receipt import (
     infer_receipt_status,
     is_terminal_done_marker,
     record_tool_receipt,
+    strip_terminal_done_marker,
 )
 
 
@@ -74,3 +75,11 @@ def test_terminal_done_marker_is_leading_only():
     assert not is_terminal_done_marker("Pattern not found")
     assert not is_terminal_done_marker("say DONE later")
     assert not is_terminal_done_marker("")
+
+
+def test_strip_terminal_done_marker():
+    assert strip_terminal_done_marker("DONE: hi") == "hi"
+    assert strip_terminal_done_marker("DONE") == ""
+    assert strip_terminal_done_marker("FINISHED work") == "work"
+    assert strip_terminal_done_marker("FINAL：中文") == "中文"
+    assert strip_terminal_done_marker("say DONE later") == "say DONE later"

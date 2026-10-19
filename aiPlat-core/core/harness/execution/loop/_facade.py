@@ -1055,31 +1055,23 @@ class ReActLoop(BaseLoop):
 
 
 
-        # Support the "finish directly" semantics: when the model emits DONE/FINAL with no action call, end directly.
-
-        # This allows an agent execution to complete even with no tool calls (e.g. mock LLM / pure conversation).
+        # Support the "finish directly" semantics: when the model emits DONE/FINAL
+        # with no action call, end directly (mock LLM / pure conversation).
 
         try:
 
             raw = str(reasoning or "")
 
-            up = raw.strip().upper()
+            from core.harness.execution.completion_receipt import (
+                is_terminal_done_marker,
+                strip_terminal_done_marker,
+            )
 
-            # Only treat as terminal when DONE/FINAL appears at the beginning.
+            # Same leading-marker rule as observe / compiled ReAct (not mid-string).
 
-            # This avoids false positives when the prompt contains JSON examples.
+            if is_terminal_done_marker(raw):
 
-            if up.startswith("DONE:") or up.startswith("FINAL:"):
-
-                final_text = raw.strip()
-
-                for tag in ("DONE:", "FINAL:"):
-
-                    if final_text.upper().startswith(tag):
-
-                        final_text = final_text[len(tag) :].strip()
-
-                        break
+                final_text = strip_terminal_done_marker(raw)
 
                 _skill_body = self._skill_delivery_body(state)
 

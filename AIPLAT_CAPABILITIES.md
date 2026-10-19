@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2292
+total_capabilities: 2293
 last_updated: 2026-10-15
 version: "30.10"
 auto_sync: true
@@ -617,6 +617,7 @@ scan_hash: 8f9548ec24f4
 | select_repair_candidate | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
 | infer_receipt_status | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
 | is_terminal_done_marker | `core/harness/execution/completion_receipt.py` | ✅ | 句首 DONE/FINAL/FINISHED 才终止循环 | 已合入 |
+| strip_terminal_done_marker | `core/harness/execution/completion_receipt.py` | ✅ | 去掉句首 DONE/FINAL/FINISHED 前缀，供 facade reason finish-directly | 已合入 |
 | reevaluate_code_review_gold | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
 | compare_gold_reports | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
 | record_tool_receipt | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
@@ -3207,7 +3208,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 300 | 1 | 301 |
+| Harness 执行引擎 | 301 | 1 | 302 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 375 | 9 | 384 |
 | RAG 检索 | 52 | 0 | 52 |
@@ -3252,7 +3253,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2282** | **10** | **2292** |
+| **总计** | **2283** | **10** | **2293** |
 
 | **总计** | **1095** | **0** | **1095** |
 
