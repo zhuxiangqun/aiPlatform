@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-19T10:12:00+08:00",
+  "reviewed_at": "2026-10-19T10:30:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "43cf47c946ac74cd0151f9f76b50e56cac853fe4",
-  "diff_sha256": "58d1a8e14742f8e8438888347a49328246af9057736f7317d81586525d44dfe0",
-  "head_sha": "14d396c26eee725cee494cc32892ab9e241fc15d",
+  "diff_sha256": "01a4cf3eb2fc62b99264b22d4e744d8a16c3502402ef3289f041d430c72f9aa8",
+  "head_sha": "d2b95e6e99e9b41c60396370a2e948707cb99a5c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "APPROVED/PASS verdicts are leading-token or STATUS line only. Local lock only."
+  "note": "Whitepapers restamped to committed CAPABILITIES. Local lock only."
 }
