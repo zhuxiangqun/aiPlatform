@@ -31,6 +31,8 @@ _management_ready = False
 class ServerReadinessMiddleware(BaseHTTPMiddleware):
     """Reject requests until core service is confirmed reachable."""
     async def dispatch(self, request, call_next):
+        if request.url.path == "/health":
+            return await call_next(request)
         if not _management_ready:
             return JSONResponse(
                 status_code=503,
@@ -64,7 +66,7 @@ def get_default_config() -> Dict[str, Any]:
             "dashboard": {"refresh_interval": 10},
         },
         "server": {
-            "host": "0.0.0.0",
+            "host": "127.0.0.1",
             "port": 8000,
             "api": {"prefix": "/api"},
         }
@@ -124,8 +126,11 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
     
-    # Reject requests until core is ready
+    # Reject requests until core is ready. Token gate is added last so it
+    # runs first: unauthenticated callers get 401 before the readiness 503.
     app.add_middleware(ServerReadinessMiddleware)
+    from management.auth import ManagementTokenMiddleware
+    app.add_middleware(ManagementTokenMiddleware)
 
     # 注册 API 路由
     api_prefix = config.get("server", {}).get("api", {}).get("prefix", "/api")
@@ -333,8 +338,11 @@ def run_server():
     config = load_config()
     server_config = config.get("server", {})
     
-    host = server_config.get("host", "0.0.0.0")
+    from management.auth import assert_bind_allowed
+
+    host = server_config.get("host") or "127.0.0.1"
     port = server_config.get("port", 8000)
+    assert_bind_allowed(str(host))
     
     print(f"\n{'='*60}")
     print("  aiPlat-management - AI Platform Management System")

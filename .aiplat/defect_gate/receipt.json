@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-19T20:55:00+08:00",
+  "reviewed_at": "2026-10-19T22:45:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "25327081803072ada030598a400b3e1ae8ffba5c",
-  "diff_sha256": "9c6037df8f491790e980c147c043bd00a1bafbf06a6f43f01da0ffc631be68e8",
-  "head_sha": "5647083972ca082da71df252bfeab71617a52915",
+  "merge_base": "ab6aa038f12f16a7bafc9f96ca3f0bd3882b08b2",
+  "diff_sha256": "87b9b2ab58ab47552f7f3105643ab12873a3a89f6643a9031ee7701d2fb39989",
+  "head_sha": "ed782b132a3da61726bc3e64ef4b3b343e3a4bfc",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Header identity requires dev mode or secret. Bad JWT is 401. Anonymous execute is 401. Quota with no row stays unlimited. Core still consumes forwarded identity headers."
+  "note": "Docker publish binds 0.0.0.0 only with a management token. GET /health stays open. Local lock only."
 }

@@ -5675,6 +5675,14 @@ domains:
     section_name: "管理 & 质量"
     caps_count: 42
     provides:
+      - symbol: "management_api_token"
+        type: "function"
+        signature: "()→token from AIPLAT_MANAGEMENT_API_TOKEN|AIPLAT_MANAGEMENT_API_KEY or None"
+        module: "aiPlat-management/management/auth.py"
+      - symbol: "assert_bind_allowed"
+        type: "function"
+        signature: "(host)→SystemExit when non-loopback and no management API token"
+        module: "aiPlat-management/management/auth.py"
       - symbol: "apply_path_rewrite"
         type: "function"
         signature: "compat rewrite doctor + eval-observability SPA paths to mgmt/platform"
