@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-19T22:16:00+08:00",
+  "reviewed_at": "2026-10-19T22:45:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "ab6aa038f12f16a7bafc9f96ca3f0bd3882b08b2",
-  "diff_sha256": "b7bcb3f60e1420a6ab315054ffcd6e078951b30baa159136a1445af259279053",
-  "head_sha": "9de6d239f6f58d6027330484c1d5daaf82d6cb5f",
+  "diff_sha256": "87b9b2ab58ab47552f7f3105643ab12873a3a89f6643a9031ee7701d2fb39989",
+  "head_sha": "ed782b132a3da61726bc3e64ef4b3b343e3a4bfc",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Non-loopback bind requires a management token. Loopback without a token stays open. Local lock only."
+  "note": "Docker publish binds 0.0.0.0 only with a management token. GET /health stays open. Local lock only."
 }
