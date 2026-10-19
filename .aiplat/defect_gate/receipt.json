@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-19T18:56:00+08:00",
+  "reviewed_at": "2026-10-19T19:55:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "35f8292c1444fe50f8a87d3c6078b811089b30fd",
-  "diff_sha256": "a9ea25cb90337ee71e5914e99340952e2dbaab80728b0192b46ad0cbb81972ab",
-  "head_sha": "873d99ad9fff840794e176e579d8acb30f0dcabb",
+  "merge_base": "94b49c71c74afac7c68f9d510392495282b77e42",
+  "diff_sha256": "9baaaffdbce3f10b5c6e4c2888ff2866b5e8e394de8ae0e9451564b262d40851",
+  "head_sha": "db51b88916d198b82e8236c305667071685869ab",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "ACTION/SKILL markers are line-leading only. Compiled ReAct uses parse_tool_call. Local lock only."
+  "note": "P0 bind+token and fake-success paths closed. Residual: LLM health still unprobed (DEGRADED/unprobed, not connected); metrics remain synthetic zeros until real counters. Local lock only."
 }
