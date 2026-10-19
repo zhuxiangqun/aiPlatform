@@ -70,3 +70,13 @@ def is_pass_keyword_verdict(text: Any, pass_keyword: str = "PASS") -> bool:
     if status is not None:
         return status
     return is_leading_token(text, pass_keyword)
+
+
+def is_yes_review(text: Any) -> bool:
+    """Producer–reviewer: leading YES only (not mid-string YES / leading NO)."""
+    raw = str(text or "").strip()
+    if not raw:
+        return False
+    if is_leading_token(raw, "NO"):
+        return False
+    return is_leading_token(raw, "YES")
