@@ -4,6 +4,7 @@ from core.harness.execution.eval_verdict import (
     is_approved_evaluation,
     is_complete_evaluation,
     is_leading_token,
+    is_same_task_verdict,
     is_pass_keyword_verdict,
     is_yes_review,
     parse_status_line_pass,
@@ -92,3 +93,17 @@ def test_is_complete_evaluation_json_and_leading():
     assert is_complete_evaluation("COMPLETELY WRONG") is False
     assert is_complete_evaluation("The task looks COMPLETE") is False
     assert is_complete_evaluation("") is False
+
+
+def test_is_same_task_verdict_json_and_leading():
+    # Old bug: "SAME" in '{"same_task": false}' → false same-task.
+    assert is_same_task_verdict('{"same_task": false, "reason": "different"}') is False
+    assert is_same_task_verdict('{"same_task": true}') is True
+    assert is_same_task_verdict("```json\n{\"same_task\": false}\n```") is False
+    assert is_same_task_verdict("SAME") is True
+    assert is_same_task_verdict("SAME: still the original task") is True
+    assert is_same_task_verdict("NEW") is False
+    assert is_same_task_verdict("NEW: switched topic") is False
+    assert is_same_task_verdict("SAMENESS is not a verdict") is False
+    assert is_same_task_verdict("The tasks are the SAME") is False
+    assert is_same_task_verdict("") is False

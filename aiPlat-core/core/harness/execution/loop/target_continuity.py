@@ -102,8 +102,10 @@ class TargetContinuity:
                 model_name=best_model_for_purpose("reasoning"),
                 temperature=0.0,
             )
-            text = str(resp).upper().strip()
-            same = "SAME" in text and "NEW" not in text
+            from core.harness.execution.eval_verdict import is_same_task_verdict
+
+            text = str(resp).strip()
+            same = is_same_task_verdict(text)
             from core.harness.utils.zh_language import TASK_CONTINUITY_VERDICT_TMPL
             return {"same_task": same, "reason": TASK_CONTINUITY_VERDICT_TMPL.format(
                 verdict='SAME' if same else 'NEW', score=score)}
