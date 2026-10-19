@@ -43,6 +43,9 @@ services:
       - AIPLAT_HOME=/app/.aiplat
       - AIPLAT_MANAGEMENT_MODE=docker
       - AIPLAT_TEST_MODE=true
+      # Published port is the container's non-loopback interface. Token required.
+      - AIPLAT_MANAGEMENT_BIND=0.0.0.0:8000
+      - AIPLAT_MANAGEMENT_API_TOKEN=${AIPLAT_MANAGEMENT_API_TOKEN:-e2e-management-token}
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
       interval: 10s
