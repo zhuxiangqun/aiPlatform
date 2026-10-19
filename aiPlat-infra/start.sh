@@ -40,11 +40,18 @@ echo "启动 aiPlat-infra API 服务..."
 echo ""
 
 PORT=${PORT:-8001}
+HOST=${AIPLAT_INFRA_API_HOST:-127.0.0.1}
 
-nohup python3 -m infra.management.api.run_server --host 0.0.0.0 --port $PORT > /tmp/aiplat-infra.log 2>&1 &
+if [ "$HOST" != "127.0.0.1" ] && [ "$HOST" != "localhost" ] && [ -z "${AIPLAT_INFRA_API_TOKEN:-}" ] && [ -z "${AIPLAT_INFRA_API_KEY:-}" ]; then
+    echo "错误: 非本地绑定 ($HOST) 必须设置 AIPLAT_INFRA_API_TOKEN"
+    exit 1
+fi
+
+nohup python3 -m infra.management.api.run_server --host "$HOST" --port $PORT > /tmp/aiplat-infra.log 2>&1 &
 PID=$!
 
 echo "服务 PID: $PID"
+echo "绑定: $HOST:$PORT"
 
 # 等待启动
 sleep 3

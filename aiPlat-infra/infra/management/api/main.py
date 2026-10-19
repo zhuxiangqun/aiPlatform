@@ -114,6 +114,10 @@ def create_app(manager=None) -> FastAPI:
         description="Infrastructure Layer API - Node, Service, Storage, Network, Scheduler, Monitoring, Model",
         version="0.1.0",
     )
+
+    from infra.management.api.auth import InfraTokenMiddleware
+
+    app.add_middleware(InfraTokenMiddleware)
     
     if manager is None:
         manager = get_infra_manager()
@@ -127,7 +131,7 @@ def create_app(manager=None) -> FastAPI:
     
     @app.get("/health")
     async def health_check():
-        """Health check endpoint."""
+        """Liveness probe — intentionally unauthenticated."""
         return {"status": "healthy", "version": "0.1.0"}
     
     @app.get("/")

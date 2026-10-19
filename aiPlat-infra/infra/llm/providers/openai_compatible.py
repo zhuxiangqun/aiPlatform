@@ -133,7 +133,6 @@ class OpenAICompatibleClient(LLMClient):
                 return True
         except Exception:  # noqa: optional-error-detection
             pass
-            return True
         if isinstance(e, TimeoutError):
             return True
         msg = str(e).lower()
@@ -321,7 +320,10 @@ class OpenAICompatibleClient(LLMClient):
 
     async def embed(self, texts: List[str]) -> List[List[float]]:
         client = self._get_client()
-        create_kwargs: dict = dict(model="text-embedding-3-small", input=texts)
+        model_name = (getattr(self.config, "model", None) or "").strip()
+        if not model_name:
+            raise RuntimeError("embedding model is not configured")
+        create_kwargs: dict = dict(model=model_name, input=texts)
         _ka = self._get_keep_alive()
         if _ka:
             create_kwargs["extra_body"] = {"keep_alive": _ka}

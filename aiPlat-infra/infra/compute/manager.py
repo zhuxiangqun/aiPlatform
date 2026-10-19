@@ -113,14 +113,8 @@ class KubernetesComputeManager(ComputeManager):
             )
             self._allocations[allocation.id] = allocation
             return allocation
-        except Exception:
-            allocation = Allocation(
-                id=str(uuid.uuid4()),
-                node_id="k8s-pool",
-                resources={resource_request.resource_type: resource_request.quantity},
-            )
-            self._allocations[allocation.id] = allocation
-            return allocation
+        except Exception as e:
+            raise RuntimeError(f"k8s allocation failed: {e}") from e
 
     def release(self, allocation_id: str) -> bool:
         if allocation_id in self._allocations:

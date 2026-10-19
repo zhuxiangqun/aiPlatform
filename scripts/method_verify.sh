@@ -119,13 +119,14 @@ has_caller() {
         return 0
     fi
     
-    # Search production code across core + platform + app (excluding self and tests)
+    # Search production code across core + platform + app + infra (excluding self and tests)
     local hits
     hits=$(grep -rl "$method_name" \
         "$WORKSPACE/aiPlat-core" \
         "$WORKSPACE/aiPlat-platform" \
         "$WORKSPACE/aiPlat-app" \
         "$WORKSPACE/aiPlat-management" \
+        "$WORKSPACE/aiPlat-infra" \
         --include='*.py' 2>/dev/null \
         | grep -v "$basename" \
         | grep -v '__pycache__' \

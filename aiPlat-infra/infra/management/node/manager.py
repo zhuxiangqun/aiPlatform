@@ -87,21 +87,23 @@ def get_local_node_info() -> NodeInfo:
         memory_total = mem.total
         memory_used = mem.used
         
-        gpus = [
-            GPUStatus(
-                gpu_id="gpu-0",
-                model=gpu_model,
-                utilization=0.0,
-                memory_used=memory_used,
-                memory_total=memory_total,
-                temperature=0.0,
-                power_usage=0.0,
-                status="Ready"
-            )
-        ]
-        
-        if gpu_model.startswith("arm64"):
-            gpus[0].memory_shared = True
+        if gpu_count > 0:
+            gpus = [
+                GPUStatus(
+                    gpu_id="gpu-0",
+                    model=gpu_model,
+                    utilization=0.0,
+                    memory_used=memory_used,
+                    memory_total=memory_total,
+                    temperature=0.0,
+                    power_usage=0.0,
+                    status="Ready"
+                )
+            ]
+            if gpu_model.startswith("arm64"):
+                gpus[0].memory_shared = True
+        else:
+            gpus = []
     except Exception:
         memory_total = 0
         memory_used = 0
@@ -113,7 +115,7 @@ def get_local_node_info() -> NodeInfo:
         gpu_model=gpu_model,
         gpu_count=gpu_count,
         driver_version=driver_version,
-        status="Ready",
+        status="Ready" if gpus else "Unknown",
         gpus=gpus,
         labels={
             "kubernetes.io/hostname": hostname,

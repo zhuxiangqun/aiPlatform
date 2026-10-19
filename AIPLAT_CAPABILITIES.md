@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2301
+total_capabilities: 2303
 last_updated: 2026-10-19
 version: "30.11"
 auto_sync: true
@@ -2814,6 +2814,8 @@ scan_hash: 8f9548ec24f4
 | InfraBridge | `harness/infrastructure/infra_bridge.py` | ✅ | 自动同步 | 已合入 |
 | create_llm_client | `aiPlat-infra/infra/llm/factory.py` | ✅ | 自动同步 | 已合入 |
 | ModelManager | `aiPlat-infra/infra/management/model/manager.py` + `config/providers.yaml` | ✅ | 自动同步；provider 生态 30 家族（2026-08-24 一批 8 + 2026-08-25 二批 8 + 三批 8：gemini/nvidia/huggingface/upstage/arcee/zai/xiaomi/nous，YAML 驱动零代码） | 已合入 |
+| infra_api_token | `aiPlat-infra/infra/management/api/auth.py` | ✅ | 管理 API token；非 loopback 无 token 拒绝启动 | 已合入 |
+| is_loopback_host | `aiPlat-infra/infra/management/api/auth.py` | ✅ | 127.0.0.1/localhost/::1 判定 | 已合入 |
 |------|------|:---:|------|------|
 | Model Health Checker | infra/management/model/health_checker.py | ✅ | 模型可用性/延迟/质量健康监控 | 已合入 |
 | Local Model Scanner | infra/management/model/local_model_scanner.py | ✅ | 自动发现 Ollama/LM Studio/vLLM/oMLX 本地模型 | 已合入 |
@@ -3239,7 +3241,7 @@ scan_hash: 8f9548ec24f4
 | 运行时干预 | 44 | 0 | 44 |
 | Arena & 调度 | 7 | 0 | 7 |
 | 平台治理 | 121 | 0 | 121 |
-| Infra 基础设施 | 14 | 0 | 14 |
+| Infra 基础设施 | 16 | 0 | 16 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
 | 管理 & 质量 | 94 | 0 | 94 |
@@ -3261,7 +3263,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2291** | **10** | **2301** |
+| **总计** | **2293** | **10** | **2303** |
 
 | **总计** | **1095** | **0** | **1095** |
 

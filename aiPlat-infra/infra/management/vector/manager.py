@@ -4,11 +4,23 @@ Vector Manager
 Manages vector database operations.
 """
 
+import math
 from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics
 from datetime import datetime, timezone
 import time
 import os
+
+
+def _cosine(left: List[float], right: List[float]) -> Optional[float]:
+    if not left or not right or len(left) != len(right):
+        return None
+    dot = sum(a * b for a, b in zip(left, right))
+    na = math.sqrt(sum(a * a for a in left))
+    nb = math.sqrt(sum(b * b for b in right))
+    if na == 0 or nb == 0:
+        return None
+    return dot / (na * nb)
 
 
 class VectorManager(ManagementBase):
@@ -297,20 +309,23 @@ class VectorManager(ManagementBase):
         """
         if collection not in self._collections:
             return []
-        
-        # Placeholder: In real implementation, would use actual vector similarity
-        results = []
-        
-        for vector_entry in self._vectors[collection][:top_k]:
-            result = {
-                "id": vector_entry["id"],
-                "score": 0.95,  # Placeholder similarity score
-                "metadata": vector_entry.get("metadata", {}),
-                "vector": vector_entry.get("vector", [])
+
+        scored = []
+        for vector_entry in self._vectors.get(collection, []):
+            score = _cosine(query_vector, vector_entry.get("vector") or [])
+            if score is None:
+                continue
+            scored.append((score, vector_entry))
+        scored.sort(key=lambda item: item[0], reverse=True)
+        return [
+            {
+                "id": entry["id"],
+                "score": score,
+                "metadata": entry.get("metadata", {}),
+                "vector": entry.get("vector", []),
             }
-            results.append(result)
-        
-        return results
+            for score, entry in scored[:top_k]
+        ]
     
     async def delete_vectors(self, collection: str, ids: List[str]) -> int:
         """

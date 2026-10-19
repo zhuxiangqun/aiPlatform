@@ -44,16 +44,16 @@ def get_real_gpu_info() -> Dict[str, Any]:
             if 'apple' in output.lower() or 'm1' in output.lower() or 'm2' in output.lower() or 'm3' in output.lower():
                 gpu_count = 1# Apple Silicon has unified GPU
             
-            result["total_gpus"] = max(gpu_count, 1)
+            result["total_gpus"] = gpu_count
             result["available_gpus"] = result["total_gpus"]
             result["gpu_details"].append({
                 "model": "arm64 accelerated" if "apple" in output.lower() else "Unknown",
                 "count": result["total_gpus"]
             })
     except Exception:
-        # Default to 1 GPUif detection fails
-        result["total_gpus"] = 1
-        result["available_gpus"] = 1
+        # Detection failure is unknown capacity, not one free GPU.
+        result["total_gpus"] = 0
+        result["available_gpus"] = 0
     
     return result
 

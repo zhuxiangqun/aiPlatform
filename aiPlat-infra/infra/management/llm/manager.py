@@ -44,122 +44,43 @@ class LLMManager(ManagementBase):
             return Status.UNKNOWN
     
     async def get_metrics(self) -> List[Metrics]:
-        """Get LLM metrics."""
-        metrics = []
+        """Get LLM metrics.
+
+        Placeholder fiction removed: until real counters are wired, emit zeros
+        marked ``synthetic=true`` so dashboards do not treat them as telemetry.
+        """
         timestamp = datetime.now(timezone.utc).timestamp()
-        
-        # Request metrics
-        metrics.append(Metrics(
-            name="llm.requests_total",
-            value=15234,  # Placeholder
-            unit="count",
-            timestamp=timestamp,
-            labels={"module": "llm", "provider": "openai"}
-        ))
-        
-        metrics.append(Metrics(
-            name="llm.requests_success",
-            value=15100,  # Placeholder
-            unit="count",
-            timestamp=timestamp,
-            labels={"module": "llm"}
-        ))
-        
-        metrics.append(Metrics(
-            name="llm.requests_error",
-            value=134,  # Placeholder
-            unit="count",
-            timestamp=timestamp,
-            labels={"module": "llm"}
-        ))
-        
-        # Latency
-        metrics.append(Metrics(
-            name="llm.latency_ms",
-            value=850,  # Placeholder
-            unit="ms",
-            timestamp=timestamp,
-            labels={"module": "llm", "quantile": "0.95"}
-        ))
-        
-        # Token usage
-        metrics.append(Metrics(
-            name="llm.tokens_input_total",
-            value=523456,  # Placeholder
-            unit="count",
-            timestamp=timestamp,
-            labels={"module": "llm"}
-        ))
-        
-        metrics.append(Metrics(
-            name="llm.tokens_output_total",
-            value=234567,  # Placeholder
-            unit="count",
-            timestamp=timestamp,
-            labels={"module": "llm"}
-        ))
-        
-        # Cost
-        metrics.append(Metrics(
-            name="llm.cost_total",
-            value=15.67,  # Placeholder
-            unit="USD",
-            timestamp=timestamp,
-            labels={"module": "llm", "period": "daily"}
-        ))
-        
-        # Rate limit
-        metrics.append(Metrics(
-            name="llm.rate_limit_hits",
-            value=5,  # Placeholder
-            unit="count",
-            timestamp=timestamp,
-            labels={"module": "llm"}
-        ))
-        
-        # Fallback
-        metrics.append(Metrics(
-            name="llm.fallback_count",
-            value=2,  # Placeholder
-            unit="count",
-            timestamp=timestamp,
-            labels={"module": "llm"}
-        ))
-        
-        return metrics
+        labels = {"module": "llm", "synthetic": "true"}
+        return [
+            Metrics(name="llm.requests_total", value=0, unit="count", timestamp=timestamp, labels=labels),
+            Metrics(name="llm.requests_success", value=0, unit="count", timestamp=timestamp, labels=labels),
+            Metrics(name="llm.requests_error", value=0, unit="count", timestamp=timestamp, labels=labels),
+            Metrics(name="llm.latency_ms", value=0, unit="ms", timestamp=timestamp, labels={**labels, "quantile": "0.95"}),
+            Metrics(name="llm.tokens_input_total", value=0, unit="count", timestamp=timestamp, labels=labels),
+            Metrics(name="llm.tokens_output_total", value=0, unit="count", timestamp=timestamp, labels=labels),
+            Metrics(name="llm.cost_total", value=0.0, unit="USD", timestamp=timestamp, labels={**labels, "period": "daily"}),
+            Metrics(name="llm.rate_limit_hits", value=0, unit="count", timestamp=timestamp, labels=labels),
+            Metrics(name="llm.fallback_count", value=0, unit="count", timestamp=timestamp, labels=labels),
+        ]
     
     async def health_check(self) -> HealthStatus:
         """Perform LLM health check."""
         try:
             status = await self.get_status()
-            
-            # Check API connectivity (placeholder)
-            api_healthy = True  # Would check actual API health
-            
-            if status == Status.HEALTHY and api_healthy:
-                return HealthStatus(
-                    status=status,
-                    message="All LLM services are healthy",
-                    details={"models": len(self._models), "api": "connected"}
-                )
-            elif status == Status.DEGRADED:
-                return HealthStatus(
-                    status=status,
-                    message="Some LLM services are degraded",
-                    details={"models": len(self._models), "api": "connected"}
-                )
-            elif status == Status.DISABLED:
+            if status == Status.DISABLED:
                 return HealthStatus(
                     status=status,
                     message="LLM services not configured (disabled)",
                     details={"models": 0, "api": "not_configured"}
                 )
-            else:
-                return HealthStatus(
-                    status=status,
-                    message="LLM services are unhealthy",
-                    details={"models": len(self._models), "api": "disconnected"}
-                )
+            # HEALTHY without a connectivity probe is not "connected".
+            if status == Status.HEALTHY:
+                status = Status.DEGRADED
+            return HealthStatus(
+                status=status,
+                message="LLM API connectivity not probed; refusing to report connected",
+                details={"models": len(self._models), "api": "unprobed"},
+            )
         
         except Exception as e:
             return HealthStatus(
@@ -210,18 +131,12 @@ class LLMManager(ManagementBase):
         Returns:
             Cost breakdown
         """
-        # Placeholder implementation
+        # No fabricated costs — zeros until a real ledger is wired.
         return CostBreakdown(
             date=date or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-            total=15.67,
-            by_model={
-                "gpt-4": 10.50,
-                "gpt-3.5-turbo": 5.17
-            },
-            by_user={
-                "user-001": 8.50,
-                "user-002": 7.17
-            }
+            total=0.0,
+            by_model={},
+            by_user={},
         )
     
     async def get_budget_status(self) -> BudgetStatus:
@@ -231,18 +146,17 @@ class LLMManager(ManagementBase):
         Returns:
             Budget status
         """
-        # Placeholder implementation
-        daily_limit = self._get_config_value("budget.daily_limit", 100)
-        monthly_limit = self._get_config_value("budget.monthly_limit", 3000)
+        daily_limit = float(self._get_config_value("budget.daily_limit", 100) or 100)
+        monthly_limit = float(self._get_config_value("budget.monthly_limit", 3000) or 3000)
         
         return BudgetStatus(
-            daily_used=15.67,
+            daily_used=0.0,
             daily_limit=daily_limit,
-            daily_percentage=15.67 / daily_limit,
-            monthly_used=450.23,
+            daily_percentage=0.0,
+            monthly_used=0.0,
             monthly_limit=monthly_limit,
-            monthly_percentage=450.23 / monthly_limit,
-            alerts=[]
+            monthly_percentage=0.0,
+            alerts=["synthetic: cost ledger not wired; usage reported as zero"],
         )
     
     async def update_rate_limit(self, model: str, config: Dict[str, Any]) -> None:
