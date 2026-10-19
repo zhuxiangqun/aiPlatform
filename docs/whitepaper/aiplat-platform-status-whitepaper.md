@@ -3,9 +3,9 @@ title: "aiPlat 平台现状白皮书"
 type: platform-status-whitepaper
 authority: derived-from-capabilities
 status: generated
-generated_at: "2026-10-19T01:57:10Z"
+generated_at: "2026-10-19T02:29:25Z"
 source: AIPLAT_CAPABILITIES.md
-source_sha256: "99b95074464693eb86dd4124ddf4082fbfb055c976ce575515b65ec1eaf6b153"
+source_sha256: "71c2e8d8f445e4ad801d3526ba16d4abe4ea0240f85e0f3ea1f71f128066f81c"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 total_capabilities: 2297
 capabilities_version: "30.11"
@@ -14,7 +14,7 @@ language: zh-CN
 packaging: executive-digest
 ---
 
-<!-- whitepaper_stamp source_sha256=99b95074464693eb86dd4124ddf4082fbfb055c976ce575515b65ec1eaf6b153 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 total_capabilities=2297 -->
+<!-- whitepaper_stamp source_sha256=71c2e8d8f445e4ad801d3526ba16d4abe4ea0240f85e0f3ea1f71f128066f81c scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 total_capabilities=2297 -->
 
 # aiPlat 平台现状白皮书
 
@@ -46,8 +46,8 @@ packaging: executive-digest
 
 | 字段 | 值 |
 |------|-----|
-| 生成时间 (UTC) | `2026-10-19T01:57:10Z` |
-| CAPABILITIES SHA-256 | `99b95074464693eb86dd4124ddf4082fbfb055c976ce575515b65ec1eaf6b153` |
+| 生成时间 (UTC) | `2026-10-19T02:29:25Z` |
+| CAPABILITIES SHA-256 | `71c2e8d8f445e4ad801d3526ba16d4abe4ea0240f85e0f3ea1f71f128066f81c` |
 | assessment-scores SHA-256 | `96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687` |
 | CAPABILITIES version | `30.11` |
 | CAPABILITIES last_updated | `2026-10-19` |
@@ -97,7 +97,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 305 | 1 | 306 |
+| Harness 执行引擎 | 301 | 1 | 302 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 375 | 9 | 384 |
 | RAG 检索 | 52 | 0 | 52 |
@@ -142,7 +142,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2287** | **10** | **2297** |
+| **总计** | **2283** | **10** | **2293** |
 
 ## 2.5 对标、评级与五维白皮书体系
 
