@@ -633,6 +633,8 @@ scan_hash: 8f9548ec24f4
 | gateway_unsigned_allowed | `aiPlat-platform/auth/gateway_auth.py` | ✅ | Gateway 未签名访问仅 ALLOW_UNSIGNED 或 platform dev mode | 已合入 |
 | require_gateway_execute_auth | `aiPlat-platform/auth/gateway_auth.py` | ✅ | Gateway execute/webhook 默认要求 token；缺省拒绝 | 已合入 |
 | require_gateway_admin | `aiPlat-platform/auth/gateway_auth.py` | ✅ | Gateway 管理路由须 ADMIN_TOKEN；未配置返回 503 | 已合入 |
+| require_wiki_loop_auth | `core/api/wiki_loop_auth.py` | ✅ | Wiki loop webhook/触发器 CRUD 默认要求 token；缺省拒绝 | 已合入 |
+| wiki_loop_unsigned_allowed | `core/api/wiki_loop_auth.py` | ✅ | Wiki loop 未签名访问仅 AIPLAT_WIKI_LOOP_ALLOW_UNSIGNED | 已合入 |
 | reevaluate_code_review_gold | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
 | compare_gold_reports | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
 | record_tool_receipt | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |

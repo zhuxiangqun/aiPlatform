@@ -3,10 +3,12 @@ Loop Trigger API (event-driven pipeline).
 """
 
 from typing import Any, Dict
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, Depends
 from pydantic import BaseModel
 
-router = APIRouter(tags=["wiki-loop-triggers"])
+from core.api.wiki_loop_auth import require_wiki_loop_auth
+
+router = APIRouter(tags=["wiki-loop-triggers"], dependencies=[Depends(require_wiki_loop_auth)])
 
 
 class TriggerRegisterRequest(BaseModel):
@@ -49,7 +51,11 @@ async def remove_loop_trigger(trigger_id: str):
 
 @router.post("/webhook", response_model=Dict[str, Any])
 async def handle_webhook(source: str = Body(...), payload: Dict[str, Any] = Body(default={})):
-    """Handle incoming webhook — dispatches to matching triggers."""
+    """Handle incoming webhook — dispatches to matching triggers.
+
+    Auth is enforced by router-level ``require_wiki_loop_auth`` (token required
+    unless ``AIPLAT_WIKI_LOOP_ALLOW_UNSIGNED`` is set).
+    """
     from core.harness.execution.event_loop import dispatch_webhook
     count = await dispatch_webhook(source, payload)
     return {"triggered": count}
