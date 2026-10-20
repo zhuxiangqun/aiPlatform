@@ -1,9 +1,18 @@
 u"""
 Ontology Editor API router — platform-layer REST endpoints.
-"""
-from fastapi import APIRouter
 
-router = APIRouter(prefix="/ontology-editor", tags=["ontology-editor"])
+When ``AIPLAT_API_KEY`` / ``AIPLAT_ADMIN_KEY`` is set, every route requires
+``require_auth`` (same as other platform apps modules).
+"""
+from fastapi import APIRouter, Depends
+
+from auth.deps import require_auth
+
+router = APIRouter(
+    prefix="/ontology-editor",
+    tags=["ontology-editor"],
+    dependencies=[Depends(require_auth)],
+)
 
 from .domain_crud import router as _domain_router
 from .view_crud import router as _view_router

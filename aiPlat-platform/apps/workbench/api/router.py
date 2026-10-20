@@ -1,7 +1,9 @@
 """Workbench API router — platform-layer re-export (v2.5 canonical)."""
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-router = APIRouter(tags=["workbench-platform"])
+from auth.deps import require_auth
+
+router = APIRouter(tags=["workbench-platform"], dependencies=[Depends(require_auth)])
 
 from .workbench import router as _w_router
 from .overview import router as _o_router

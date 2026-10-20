@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-20T19:25:00+08:00",
+  "reviewed_at": "2026-10-20T20:05:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "b8039fd0c1ecdf588560fa8ef382394c60e2e428",
-  "diff_sha256": "7a6d318ca623df6040e98ea8bf372d0785d1d5ded103f6483b4ed94e369a637e",
-  "head_sha": "b09bd9d52c9952d4003d8041598be98b7e9d10c3",
+  "merge_base": "f90be325df0815fd1a44b8eadde8dfb907f52308",
+  "diff_sha256": "4e49d7787d83398742634ade13f53574642553aeba14614e8b9fd54cee5ef29e",
+  "head_sha": "ada6e5db8f78dbc4c48f58bde3f5f6ef638c244a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "FDE router-level require_auth. Unset API key still allows local anonymous via deps.py. Local lock only."
+  "note": "Router-level require_auth on eight platform apps. Unset API key still allows local anonymous. Local lock only."
 }
