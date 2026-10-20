@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-20T20:05:00+08:00",
+  "reviewed_at": "2026-10-20T22:52:50+08:00",
   "base_ref": "origin/main",
-  "merge_base": "f90be325df0815fd1a44b8eadde8dfb907f52308",
-  "diff_sha256": "4e49d7787d83398742634ade13f53574642553aeba14614e8b9fd54cee5ef29e",
-  "head_sha": "ada6e5db8f78dbc4c48f58bde3f5f6ef638c244a",
+  "merge_base": "6a0d121a421605e4f2a5198b9d271084b435bc3c",
+  "diff_sha256": "038b1be0c73cd2f6338f57d149bae51f172cf56cab16faa8fb8cecf98aad0426",
+  "head_sha": "2f8291e3a0628aac752c3fed750c83fe26fa0e86",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Router-level require_auth on eight platform apps. Unset API key still allows local anonymous. Local lock only."
+  "note": "Core/platform bind_gate parity with management/app. Docker compose sets AIPLAT_CORE_BIND/PLATFORM_BIND=0.0.0.0 and required tokens. Health exempt intentional. Hook failClosed=false only because Cursor cancels beforeShellExecution."
 }
