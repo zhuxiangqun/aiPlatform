@@ -3,10 +3,16 @@ FDE API router — platform-layer REST endpoints for Field Deployment Engineer.
 
 v2.5 Phase 1: All 20 sub-routers copied to platform/apps/fde/api/.
 Imports from local copies; core originals retained for backward compat.
-"""
-from fastapi import APIRouter
 
-router = APIRouter(tags=["fde-platform"])
+Auth: when ``AIPLAT_API_KEY`` / ``AIPLAT_ADMIN_KEY`` is set, every FDE route
+requires the same key (canary rollback, skill install, recording register, …).
+Unset keys keep the local-dev anonymous path via ``require_auth``.
+"""
+from fastapi import APIRouter, Depends
+
+from auth.deps import require_auth
+
+router = APIRouter(tags=["fde-platform"], dependencies=[Depends(require_auth)])
 
 # ── Local imports (all 20 sub-routers) ──
 from .fde import router as _fde_router
