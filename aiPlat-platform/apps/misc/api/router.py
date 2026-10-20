@@ -1,5 +1,8 @@
-from fastapi import APIRouter
-router = APIRouter(tags=["misc-platform"])
+from fastapi import APIRouter, Depends
+
+from auth.deps import require_auth
+
+router = APIRouter(tags=["misc-platform"], dependencies=[Depends(require_auth)])
 from .finetune import router as _a; router.include_router(_a)
 from .browser_test import router as _b; router.include_router(_b)
 from .code_intel import router as _c; router.include_router(_c)
