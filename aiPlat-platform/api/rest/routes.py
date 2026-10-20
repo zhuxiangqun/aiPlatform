@@ -5151,6 +5151,28 @@ async def gateway_execute(body: Dict[str, Any], request: Request):
 
     _reject_anonymous_execute(identity)
 
+    from auth.gateway_auth import require_gateway_execute_auth
+
+    _gw_store = None
+
+    try:
+
+        from core.api.core_facade import get_execution_store
+
+        _gw_store = get_execution_store()
+
+    except Exception:
+
+        logging.getLogger("aiplat.platform").debug(
+
+            "gateway execute: execution_store unavailable for token check",
+
+            exc_info=True,
+
+        )
+
+    await require_gateway_execute_auth(request, store=_gw_store)
+
     payload = dict(body or {})
 
     payload["context"] = dict(payload.get("context") or {})
