@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Button, Input, Modal, toast } from '../../../components/ui';
 import { kbApi } from '../../../services';
+import { storedIdentityHeaders } from '../../../services/identityHeaders';
 import { useKBStore } from '../../../stores';
 import GrillPanel from '../../../components/grilling/GrillPanel';
 
@@ -164,12 +165,7 @@ export const UploadModal: React.FC<Props> = ({ open, onClose, onComplete }) => {
         form.append('collection_id', collectionId);
         const headers: Record<string, string> = {};
         try {
-          const t = localStorage.getItem('active_tenant_id') || '';
-          if (t) headers['X-AIPLAT-TENANT-ID'] = t;
-          headers['X-AIPLAT-ACTOR-ID'] = localStorage.getItem('active_actor_id') || 'admin';
-          headers['X-AIPLAT-SCOPES'] = localStorage.getItem('active_scopes') || 'kb:read,kb:write';
-          const k = localStorage.getItem('active_api_key') || '';
-          if (k) headers['X-AIPLAT-API-KEY'] = k;
+          Object.assign(headers, storedIdentityHeaders());
         } catch {}
         await fetch(`${baseUrl}/platform/documents/ingest`, { method: 'POST', body: form, headers });
       } else if (tempFilePath) {

@@ -7,6 +7,8 @@
  * 不包装 { data: T } 的 axios 风格。调用方请直接使用 res.xxx 而非 res.data.xxx。
  */
 
+import { storedIdentityHeaders } from './identityHeaders';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // ── Branded response type: prevents accidental .data access ────────────
@@ -32,23 +34,7 @@ class ApiClient {
     const defaultHeaders: HeadersInit = {
       'Content-Type': 'application/json',
     };
-    // PR-01: tenant/actor propagation (best-effort; platformization MVP)
-    try {
-      const tenantId = localStorage.getItem('active_tenant_id') || 'default';
-      const actorId = localStorage.getItem('active_actor_id') || 'admin';
-      const actorRole = localStorage.getItem('active_actor_role') || 'admin';
-      const scopes = localStorage.getItem('active_scopes') || 'kb:read,kb:write';
-      const releaseChannel = localStorage.getItem('active_release_channel') || '';
-      const apiKey = localStorage.getItem('active_api_key') || 'apl_dev_local';
-      if (tenantId.trim()) (defaultHeaders as any)['X-AIPLAT-TENANT-ID'] = tenantId.trim();
-      if (actorId.trim()) (defaultHeaders as any)['X-AIPLAT-ACTOR-ID'] = actorId.trim();
-      if (actorRole.trim()) (defaultHeaders as any)['X-AIPLAT-ACTOR-ROLE'] = actorRole.trim();
-      if (scopes.trim()) (defaultHeaders as any)['X-AIPLAT-SCOPES'] = scopes.trim();
-      if (releaseChannel.trim()) (defaultHeaders as any)['X-AIPLAT-RELEASE-CHANNEL'] = releaseChannel.trim();
-      if (apiKey.trim()) (defaultHeaders as any)['X-AIPLAT-API-KEY'] = apiKey.trim();
-    } catch {
-      // ignore (SSR / privacy mode)
-    }
+    Object.assign(defaultHeaders, storedIdentityHeaders());
 
     const TIMEOUT_MS = typeof timeoutMs === 'number' && timeoutMs > 0 ? timeoutMs : 180_000;
     const controller = new AbortController();
@@ -377,17 +363,7 @@ export const diagnosticsApi = {
     // Return raw Response so caller can download zip
     const url = `${(import.meta as any).env?.VITE_API_URL || '/api'}/diagnostics/change-control/core/${encodeURIComponent(changeId)}/evidence${qs ? `?${qs}` : ''}`;
     // best-effort identity headers (align apiClient.request)
-    const headers: any = {};
-    try {
-      const tenantId = localStorage.getItem('active_tenant_id') || 'default';
-      const actorId = localStorage.getItem('active_actor_id') || 'admin';
-      const actorRole = localStorage.getItem('active_actor_role') || 'admin';
-      if (tenantId.trim()) headers['X-AIPLAT-TENANT-ID'] = tenantId.trim();
-      if (actorId.trim()) headers['X-AIPLAT-ACTOR-ID'] = actorId.trim();
-      if (actorRole.trim()) headers['X-AIPLAT-ACTOR-ROLE'] = actorRole.trim();
-    } catch {
-      // ignore
-    }
+    const headers: Record<string, string> = storedIdentityHeaders();
     return fetch(url, { method: 'GET', headers });
   },
   codeIntelScan: async (params: { roots?: string } = {}) => {
