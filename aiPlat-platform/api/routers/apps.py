@@ -9,6 +9,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, Header, Request
 
 from auth.deps import require_auth
+from auth.studio_register_auth import require_studio_register_auth
 from builder.builder_app_service import AppService
 
 router = APIRouter(prefix="/platform/apps", tags=["apps"])
@@ -52,11 +53,16 @@ async def create_app(req: Dict[str, Any], _auth: str = Depends(require_auth)):
         raise HTTPException(400, detail=str(e))
 
 
-# ── Studio Registration (server-to-server, no auth) ──
+# ── Studio Registration (server-to-server; token required by default) ──
 
 @router.post("/register-from-studio", response_model=StatusResponse)
-async def register_studio_app(req: Dict[str, Any]):
-    """Studio 部署完成后注册应用。由 management studio.py 内部调用。"""
+async def register_studio_app(req: Dict[str, Any], request: Request):
+    """Studio 部署完成后注册应用。由 management studio.py 内部调用。
+
+    Fail closed unless ``X-AiPlat-Studio-Register-Token`` (or API key) matches,
+    or ``AIPLAT_STUDIO_REGISTER_ALLOW_UNSIGNED`` is set for local development.
+    """
+    require_studio_register_auth(request)
     try:
         app = _svc.register_studio(
             app_id=str(req.get("app_id") or ""),
