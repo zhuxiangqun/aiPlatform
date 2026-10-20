@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-20T11:30:00+08:00",
+  "reviewed_at": "2026-10-20T17:50:39+08:00",
   "base_ref": "origin/main",
-  "merge_base": "e5478c2b76fac998ab3c12b877b84035902852d2",
-  "diff_sha256": "dd9782ec823145a8ada0fa1c93bbac67db7135d7ff0b1d0d19aa0f6f47a4d8b1",
-  "head_sha": "8b82a3d6e35960c128598e9e361a2322c076edc8",
+  "merge_base": "feb6147d34933d7cc935e074bae6a9dbe3f174ea",
+  "diff_sha256": "201e07bddaead7f7f5d711c0a22149e80fec3194f0f8c851c406b06227f3fd33",
+  "head_sha": "3a1a0fd1e1c9496bc4902690f09780e3982f8af1",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Wiki loop webhook/CRUD require token by default; unsigned only via AIPLAT_WIKI_LOOP_ALLOW_UNSIGNED. Local lock only."
+  "note": "Studio register-from-studio requires token by default; unsigned only via AIPLAT_STUDIO_REGISTER_ALLOW_UNSIGNED. Local lock only."
 }
