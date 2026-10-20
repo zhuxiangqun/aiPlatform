@@ -11,19 +11,13 @@ Mock 模式: 设置 AIPLAT_LLM_MOCK=true，不需要真实 LLM 调用。
 """
 import time
 import pytest
-import httpx
 
 BASE = "http://localhost:8002"
 BASE_PLATFORM = "http://localhost:8003"
 
 
-@pytest.fixture(scope="module")
-def client():
-    """httpx client with long timeout for E2E tests."""
-    return httpx.Client(timeout=httpx.Timeout(30.0))
-
-
 # ── J1: 入驻→首次任务→价值 ──
+# `client` fixture (edge tokens) lives in conftest.py.
 
 def test_j1_onboarding_health(client):
     """J1A: 核心服务健康检查"""

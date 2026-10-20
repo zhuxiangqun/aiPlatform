@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-20T22:52:50+08:00",
+  "reviewed_at": "2026-10-20T23:37:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "6a0d121a421605e4f2a5198b9d271084b435bc3c",
-  "diff_sha256": "038b1be0c73cd2f6338f57d149bae51f172cf56cab16faa8fb8cecf98aad0426",
-  "head_sha": "2f8291e3a0628aac752c3fed750c83fe26fa0e86",
+  "merge_base": "e3ead780514548c96e7e981488e6f8b10f10b132",
+  "diff_sha256": "89563842d955971028425cf3e55e72a7dcef982f5f1fed6f320fa145df1d65a9",
+  "head_sha": "d41f9fd618b20444a25a4220ef1a385734c1b147",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Core/platform bind_gate parity with management/app. Docker compose sets AIPLAT_CORE_BIND/PLATFORM_BIND=0.0.0.0 and required tokens. Health exempt intentional. Hook failClosed=false only because Cursor cancels beforeShellExecution."
+  "note": "E2E client now sends compose-default edge tokens; health paths still exempt server-side. Local lock only."
 }
