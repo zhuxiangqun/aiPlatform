@@ -9,7 +9,6 @@ from __future__ import annotations
 from api.schemas_response import StatusResponse
 import logging
 
-import os
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -21,6 +20,7 @@ from core.api.facades.runtime_facade import KernelRuntime, ExecutionRequest, get
 from core.schemas_gateway import GatewayExecuteRequest
 from core.schemas_run import RunStatus
 from core.utils.ids import new_prefixed_id
+from auth.gateway_auth import require_gateway_admin, require_gateway_execute_auth
 
 router = APIRouter(prefix="/platform/gateway", tags=["gateway"])
 
@@ -39,19 +39,6 @@ def _harness(rt: RuntimeDep):
     return get_harness()
 
 
-def _require_gateway_admin(http_request: Request) -> None:
-    """
-    Optional admin guard for gateway management endpoints.
-    If AIPLAT_GATEWAY_ADMIN_TOKEN is set, callers must provide X-AiPlat-Admin-Token.
-    """
-    admin = os.environ.get("AIPLAT_GATEWAY_ADMIN_TOKEN")
-    if not admin:
-        return
-    got = http_request.headers.get("x-aiplat-admin-token") or http_request.headers.get("X-AiPlat-Admin-Token")
-    if not got or got != admin:
-        raise HTTPException(status_code=403, detail="admin token required")
-
-
 @router.post("/gateway/execute", response_model=StatusResponse)
 async def gateway_execute(request: GatewayExecuteRequest, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """
@@ -62,6 +49,7 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
     """
     harness = _harness(rt)
     store = _store(rt)
+    await require_gateway_execute_auth(http_request, store=store)
 
     payload = dict(request.payload or {})
     if request.options is not None:
@@ -104,22 +92,6 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
     deny = await rbac_guard(http_request=http_request, payload=payload, action="execute", resource_type="gateway", resource_id=str(request.target_id))
     if deny:
         return deny
-
-    # Optional auth (Roadmap-3): require token when configured.
-    if os.getenv("AIPLAT_GATEWAY_REQUIRE_AUTH", "false").lower() in ("1", "true", "yes", "y"):
-        token = http_request.headers.get("x-aiplat-gateway-token") or http_request.headers.get("X-AiPlat-Gateway-Token")
-        if not token:
-            raise HTTPException(status_code=401, detail="missing gateway token")
-        ok = False
-        if os.getenv("AIPLAT_GATEWAY_TOKEN") and token == os.getenv("AIPLAT_GATEWAY_TOKEN"):
-            ok = True
-        elif store:
-            try:
-                ok = (await store.validate_gateway_token(token=token)) is not None
-            except Exception:
-                ok = False
-        if not ok:
-            raise HTTPException(status_code=403, detail="invalid gateway token")
 
     # Pairing resolution: if user_id/session_id not provided, resolve using (channel, channel_user_id).
     resolved_user = request.user_id
@@ -358,7 +330,7 @@ async def list_gateway_pairings(
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
-    _require_gateway_admin(http_request)
+    require_gateway_admin(http_request)
     return await store.list_gateway_pairings(channel=channel, user_id=user_id, limit=limit, offset=offset)
 
 
@@ -367,7 +339,7 @@ async def upsert_gateway_pairing(http_request: Request, body: Dict[str, Any], rt
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
-    _require_gateway_admin(http_request)
+    require_gateway_admin(http_request)
     channel = str(body.get("channel") or "default")
     channel_user_id = str(body.get("channel_user_id") or "").strip()
     user_id = str(body.get("user_id") or "").strip()
@@ -388,7 +360,7 @@ async def delete_gateway_pairing(http_request: Request, channel: str, channel_us
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
-    _require_gateway_admin(http_request)
+    require_gateway_admin(http_request)
     ok = await store.delete_gateway_pairing(channel=channel, channel_user_id=channel_user_id)
     if not ok:
         raise HTTPException(status_code=404, detail="pairing not found")
@@ -400,7 +372,7 @@ async def list_gateway_tokens(http_request: Request, enabled: Optional[bool] = N
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
-    _require_gateway_admin(http_request)
+    require_gateway_admin(http_request)
     return await store.list_gateway_tokens(limit=limit, offset=offset, enabled=enabled)
 
 
@@ -409,7 +381,7 @@ async def create_gateway_token(http_request: Request, body: Dict[str, Any], rt: 
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
-    _require_gateway_admin(http_request)
+    require_gateway_admin(http_request)
     name = str(body.get("name") or "token")
     token = str(body.get("token") or "")
     if not token:
@@ -430,7 +402,7 @@ async def delete_gateway_token(http_request: Request, token_id: str, rt: Runtime
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
-    _require_gateway_admin(http_request)
+    require_gateway_admin(http_request)
     ok = await store.delete_gateway_token(token_id=token_id)
     if not ok:
         raise HTTPException(status_code=404, detail="token not found")
@@ -450,7 +422,7 @@ async def list_gateway_delivery_dlq(
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
-    _require_gateway_admin(http_request)
+    require_gateway_admin(http_request)
     return await store.list_connector_delivery_dlq(
         status=status,
         tenant_id=tenant_id,
@@ -465,7 +437,7 @@ async def retry_gateway_delivery_dlq(http_request: Request, dlq_id: str, rt: Run
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
-    _require_gateway_admin(http_request)
+    require_gateway_admin(http_request)
     item = await store.get_connector_delivery_dlq_item(dlq_id)
     if not item:
         raise HTTPException(status_code=404, detail="DLQ item not found")
@@ -491,7 +463,7 @@ async def delete_gateway_delivery_dlq(http_request: Request, dlq_id: str, rt: Ru
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
-    _require_gateway_admin(http_request)
+    require_gateway_admin(http_request)
     ok = await store.delete_connector_delivery_dlq_item(dlq_id)
     if not ok:
         raise HTTPException(status_code=404, detail="DLQ item not found")

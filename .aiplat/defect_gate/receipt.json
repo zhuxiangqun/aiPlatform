@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-20T09:50:00+08:00",
+  "reviewed_at": "2026-10-20T10:55:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "85e6264254406f0d900d6b25db8f099229272f4b",
-  "diff_sha256": "23a0b4a184dce7090f7c1f18ed564ffc342dc4bf1a7eaee8615015ac22931e3f",
-  "head_sha": "ed842af2df3fd07257776b8d07421f94323f66f9",
+  "merge_base": "c75964eb0b6c3d733ba18d0bf8d765e5f3c01b1e",
+  "diff_sha256": "8de74bc34792982b46730d5c60d0d73646dc625bb57a7e6b453c8c78f124ab4c",
+  "head_sha": "8a68ae40c3d50bb3f3705d123c9c3b969b8c0632",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "KB Slack slash requires signing secret unless AIPLAT_CHANNEL_ALLOW_UNSIGNED. Widget escapes answers. ResultDashboard markdown no longer uses raw HTML. Local lock only."
+  "note": "Gateway execute/webhook fail closed without token unless AIPLAT_GATEWAY_ALLOW_UNSIGNED or platform-dev. Local lock only."
 }
