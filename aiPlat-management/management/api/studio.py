@@ -405,13 +405,26 @@ _deploy_events_by_project: Dict[str, list] = {}
 async def _register_studio_app(platform_url: str, project_id: str, app_url: str):
     """向平台注册 Studio 生成的应用，使其在管理界面可见。"""
     try:
+        token = (
+            os.getenv("AIPLAT_STUDIO_REGISTER_TOKEN")
+            or os.getenv("AIPLAT_API_KEY")
+            or ""
+        ).strip()
+        headers: Dict[str, str] = {}
+        if token:
+            headers["X-AiPlat-Studio-Register-Token"] = token
+            headers["X-AIPLAT-API-KEY"] = token
         async with httpx.AsyncClient(timeout=5.0) as c:
-            await c.post(f"{platform_url}/platform/apps/register-from-studio", json={
-                "app_id": f"studio_{project_id}",
-                "name": project_id,
-                "project_id": project_id,
-                "app_url": app_url,
-            })
+            await c.post(
+                f"{platform_url}/platform/apps/register-from-studio",
+                json={
+                    "app_id": f"studio_{project_id}",
+                    "name": project_id,
+                    "project_id": project_id,
+                    "app_url": app_url,
+                },
+                headers=headers,
+            )
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
