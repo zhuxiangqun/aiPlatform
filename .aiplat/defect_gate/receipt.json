@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-20T10:55:00+08:00",
+  "reviewed_at": "2026-10-20T11:30:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "c75964eb0b6c3d733ba18d0bf8d765e5f3c01b1e",
-  "diff_sha256": "8de74bc34792982b46730d5c60d0d73646dc625bb57a7e6b453c8c78f124ab4c",
-  "head_sha": "8a68ae40c3d50bb3f3705d123c9c3b969b8c0632",
+  "merge_base": "e5478c2b76fac998ab3c12b877b84035902852d2",
+  "diff_sha256": "dd9782ec823145a8ada0fa1c93bbac67db7135d7ff0b1d0d19aa0f6f47a4d8b1",
+  "head_sha": "8b82a3d6e35960c128598e9e361a2322c076edc8",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Gateway execute/webhook fail closed without token unless AIPLAT_GATEWAY_ALLOW_UNSIGNED or platform-dev. Local lock only."
+  "note": "Wiki loop webhook/CRUD require token by default; unsigned only via AIPLAT_WIKI_LOOP_ALLOW_UNSIGNED. Local lock only."
 }
