@@ -55,7 +55,7 @@ def test_role_alias_hits_acl(aiplat_home):
     assert check_entity_acl("data-gov", "TBL-tmp_export", "platform_admin", "read") is True
 
 
-def test_webhook_ingest_it_ops(aiplat_home):
+def test_webhook_ingest_it_ops(aiplat_home, monkeypatch):
     from core.apps.fde.service.abox_connector import ensure_connector_config, ingest_webhook_payload
     from core.apps.fde.service.it_ops_demo_seed import (
         ensure_it_ops_fault_ontology,
@@ -64,8 +64,9 @@ def test_webhook_ingest_it_ops(aiplat_home):
 
     ensure_it_ops_fault_ontology()
     ensure_connector_config("it-ops")
+    monkeypatch.setenv("AIPLAT_ABOX_WEBHOOK_SECRET", "s3cret")
     payload = load_it_ops_import_sample()
-    result = ingest_webhook_payload("monitor-alerts", payload)
+    result = ingest_webhook_payload("monitor-alerts", payload, secret="s3cret")
     assert result["status"] == "imported"
     assert result["domain_id"] == "it-ops"
     assert result["primary_id"] or result.get("primary_alert_id")
@@ -76,7 +77,7 @@ def test_webhook_ingest_it_ops(aiplat_home):
 
 
 @pytest.mark.asyncio
-async def test_webhook_then_triage(aiplat_home):
+async def test_webhook_then_triage(aiplat_home, monkeypatch):
     from core.apps.fde.service.abox_connector import ensure_connector_config, ingest_webhook_payload
     from core.apps.fde.service.it_ops_demo_seed import (
         ensure_it_ops_fault_ontology,
@@ -85,7 +86,10 @@ async def test_webhook_then_triage(aiplat_home):
 
     ensure_it_ops_fault_ontology()
     ensure_connector_config("it-ops")
-    result = ingest_webhook_payload("monitor-alerts", load_it_ops_import_sample())
+    monkeypatch.setenv("AIPLAT_ABOX_WEBHOOK_SECRET", "s3cret")
+    result = ingest_webhook_payload(
+        "monitor-alerts", load_it_ops_import_sample(), secret="s3cret"
+    )
     primary = result.get("primary_id") or result.get("primary_alert_id")
     assert primary
 
@@ -163,7 +167,35 @@ def test_webhook_secret_rejects(aiplat_home, monkeypatch):
     ensure_it_ops_fault_ontology()
     ensure_connector_config("it-ops")
     monkeypatch.setenv("AIPLAT_ABOX_WEBHOOK_SECRET", "s3cret")
+    monkeypatch.delenv("AIPLAT_ABOX_ALLOW_UNSIGNED", raising=False)
     bad = ingest_webhook_payload("monitor-alerts", load_it_ops_import_sample(), secret="wrong")
     assert bad["status"] == "unauthorized"
     ok = ingest_webhook_payload("monitor-alerts", load_it_ops_import_sample(), secret="s3cret")
     assert ok["status"] == "imported"
+
+
+def test_webhook_secret_unset_fails_closed(aiplat_home, monkeypatch):
+    from core.apps.fde.service.abox_connector import (
+        ensure_connector_config,
+        ingest_webhook_payload,
+        verify_webhook_secret,
+    )
+    from core.apps.fde.service.it_ops_demo_seed import (
+        ensure_it_ops_fault_ontology,
+        load_it_ops_import_sample,
+    )
+
+    ensure_it_ops_fault_ontology()
+    ensure_connector_config("it-ops")
+    monkeypatch.delenv("AIPLAT_ABOX_WEBHOOK_SECRET", raising=False)
+    monkeypatch.delenv("AIPLAT_ABOX_ALLOW_UNSIGNED", raising=False)
+    cfg = {"auth": {"type": "shared_secret_env", "env": "AIPLAT_ABOX_WEBHOOK_SECRET"}}
+    assert verify_webhook_secret(cfg, "anything") is False
+    assert verify_webhook_secret({"auth": {"type": "bearer_env"}}, "x") is False
+    denied = ingest_webhook_payload("monitor-alerts", load_it_ops_import_sample(), secret="x")
+    assert denied["status"] == "unauthorized"
+    monkeypatch.setenv("AIPLAT_ABOX_ALLOW_UNSIGNED", "1")
+    assert verify_webhook_secret(cfg, "") is True
+    allowed = ingest_webhook_payload("monitor-alerts", load_it_ops_import_sample())
+    assert allowed["status"] == "imported"
+    assert verify_webhook_secret({"auth": {"type": "none"}}, None) is True
