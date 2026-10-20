@@ -10,6 +10,6 @@
 | 生态与集成白皮书 (`ecosystem-integration`) | [04-ecosystem-integration.md](./04-ecosystem-integration.md) |
 | 安全与治理白皮书 (`security-governance`) | [05-security-governance.md](./05-security-governance.md) |
 
-suite_sha256=`0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30` · caps_sha256=`d7038614ea3ffefe09a0088bbe126ca7925dac631a03796d584f29d9c48a1463` · scores_sha256=`96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687` · generated_at=`2026-10-20T02:48:53Z`
+suite_sha256=`0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30` · caps_sha256=`eafedc79b46b12a76e5bba023e8d90d2a9e023a853954c61037fa0dd544a3214` · scores_sha256=`96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687` · generated_at=`2026-10-20T03:25:30Z`
 
 同步：`bash scripts/sync_whitepapers.sh`
