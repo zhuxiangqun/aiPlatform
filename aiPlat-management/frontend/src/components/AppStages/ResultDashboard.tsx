@@ -595,15 +595,21 @@ export const ResultDashboard: React.FC<Props> = ({ config, onExecute, skill, sta
             {typeof val === 'string' ? val : JSON.stringify(val, null, 2)}
           </p>
         );
-      case 'markdown':
+      case 'markdown': {
+        // Escape HTML so agent/pipeline strings cannot inject script tags.
+        const safe = String(val ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/\n/g, '<br/>');
         return (
           <div
             className="text-sm text-gray-300 prose prose-invert max-w-none"
-            dangerouslySetInnerHTML={{
-              __html: String(val ?? '').replace(/\n/g, '<br/>'),
-            }}
+            dangerouslySetInnerHTML={{ __html: safe }}
           />
         );
+      }
       case 'table': {
         const rows = Array.isArray(val) ? val : [];
         const cols = rows.length > 0 && isPlainObject(rows[0]) ? Object.keys(rows[0]) : [];

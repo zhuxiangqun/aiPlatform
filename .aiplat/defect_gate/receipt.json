@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-20T07:05:00+08:00",
+  "reviewed_at": "2026-10-20T09:50:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "4dd6e4fa4e0ea2bb018fd9935023d47377b49ab5",
-  "diff_sha256": "d1da3cb27e10e5899f9322c99a219de6484f9a73593b1f89b02d86b70cf8491a",
-  "head_sha": "ca93774164b777ff7296e6e6ab2fa5f2fc0aa3a0",
+  "merge_base": "85e6264254406f0d900d6b25db8f099229272f4b",
+  "diff_sha256": "23a0b4a184dce7090f7c1f18ed564ffc342dc4bf1a7eaee8615015ac22931e3f",
+  "head_sha": "ed842af2df3fd07257776b8d07421f94323f66f9",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Empty localStorage no longer sends admin or apl_dev_local. postprocess and tag_assertions are indexed. Local lock only."
+  "note": "KB Slack slash requires signing secret unless AIPLAT_CHANNEL_ALLOW_UNSIGNED. Widget escapes answers. ResultDashboard markdown no longer uses raw HTML. Local lock only."
 }

@@ -3,37 +3,67 @@ KB Integration router — Slack/IM webhook endpoints for knowledge base Q&A.
 """
 from __future__ import annotations
 
-from api.schemas_response import StatusResponse
+import urllib.parse
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import Response
+
+from api.schemas_response import StatusResponse
 
 router = APIRouter(prefix="/platform", tags=["kb-integration"])
+
+
+def _parse_form_body(raw: bytes) -> Dict[str, str]:
+    form = urllib.parse.parse_qs(raw.decode("utf-8"), keep_blank_values=True)
+
+    def _one(key: str) -> str:
+        vals = form.get(key)
+        return str(vals[0]) if vals else ""
+
+    return {
+        "text": _one("text"),
+        "channel_id": _one("channel_id"),
+        "user_id": _one("user_id"),
+        "team_id": _one("team_id"),
+    }
 
 
 @router.post("/kb/slack/query", response_model=StatusResponse)
 async def kb_slack_query(request: Request):
     """Slack slash-command webhook: answer KB questions from Slack.
 
-    Accepts Slack's application/x-www-form-urlencoded body:
-      - text: the user's question
-      - channel_id, user_id, team_id (for future auth)
-    Returns in_channel response with KB answer.
+    Requires a valid Slack signing secret (``AIPLAT_SLACK_SIGNING_SECRET``)
+    unless ``AIPLAT_CHANNEL_ALLOW_UNSIGNED=1`` is set for local development.
     """
+    raw = await request.body()
+    try:
+        from auth.slack_signature import require_slack_request
+
+        require_slack_request(dict(request.headers), raw)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e)) from e
+
     question = ""
     doc_ids = None
-    try:
-        body = await request.form()
-        question = str(body.get("text") or "").strip()
-        if not question:
-            return {"response_type": "ephemeral", "text": "请输入问题，例如 `/kb 什么是RAG`"}
-    except Exception:
+    content_type = (request.headers.get("content-type") or "").lower()
+    if "application/json" in content_type:
+        import json
+
         try:
-            data = await request.json()
-            question = str(data.get("text") or data.get("question") or "").strip()
-            doc_ids = data.get("doc_ids")
+            data = json.loads(raw.decode("utf-8") or "{}")
         except Exception:
             return {"response_type": "ephemeral", "text": "无法解析问题"}
+        if not isinstance(data, dict):
+            return {"response_type": "ephemeral", "text": "无法解析问题"}
+        question = str(data.get("text") or data.get("question") or "").strip()
+        doc_ids = data.get("doc_ids")
+    else:
+        form = _parse_form_body(raw)
+        question = form.get("text", "").strip()
+
+    if not question:
+        return {"response_type": "ephemeral", "text": "请输入问题，例如 `/kb 什么是RAG`"}
 
     try:
         # W4: canonical Q&A path = CRAG (kb_qa_retrieve), not raw kb_retrieve
@@ -64,10 +94,18 @@ async def kb_slack_query(request: Request):
 
 @router.get("/kb/widget/embed.js", response_model=StatusResponse)
 async def kb_widget_js():
-    """Minimal embeddable JS widget for aiPlat KB."""
-    from fastapi.responses import Response
+    """Minimal embeddable JS widget for aiPlat KB.
+
+    Answers are written with ``textContent`` (not ``innerHTML``) so LLM/HTML
+    payloads cannot execute in the host page.
+    """
     js = """
 (function() {
+  function esc(s) {
+    var t = document.createElement('span');
+    t.textContent = String(s == null ? '' : s);
+    return t.innerHTML;
+  }
   var d = document, s = d.createElement('div');
   s.innerHTML = '<div style="max-width:600px;margin:20px auto;font-family:sans-serif;border:1px solid #e0e0e0;border-radius:12px;padding:20px">'
     + '<h3>📚 AI 知识库问答</h3>'
@@ -79,12 +117,13 @@ async def kb_widget_js():
   d.getElementById('aiplat-kb-ask').onclick = async function() {
     var q = d.getElementById('aiplat-kb-input').value, ans = d.getElementById('aiplat-kb-answer');
     if (!q) return;
-    ans.style.display = 'block'; ans.innerHTML = '思考中...';
+    ans.style.display = 'block';
+    ans.textContent = '思考中...';
     try {
       var r = await fetch('/api/platform/kb/widget/query', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({q:q})});
       var j = await r.json();
-      ans.innerHTML = '<strong>回答：</strong><br>' + (j.answer || '未找到答案');
-    } catch(e) { ans.innerHTML = '查询失败: ' + e.message; }
+      ans.innerHTML = '<strong>回答：</strong><br>' + esc(j.answer || '未找到答案');
+    } catch(e) { ans.textContent = '查询失败: ' + (e && e.message ? e.message : String(e)); }
   };
 })();
 """
