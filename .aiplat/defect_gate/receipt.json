@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-20T17:50:39+08:00",
+  "reviewed_at": "2026-10-20T19:25:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "feb6147d34933d7cc935e074bae6a9dbe3f174ea",
-  "diff_sha256": "201e07bddaead7f7f5d711c0a22149e80fec3194f0f8c851c406b06227f3fd33",
-  "head_sha": "3a1a0fd1e1c9496bc4902690f09780e3982f8af1",
+  "merge_base": "b8039fd0c1ecdf588560fa8ef382394c60e2e428",
+  "diff_sha256": "7a6d318ca623df6040e98ea8bf372d0785d1d5ded103f6483b4ed94e369a637e",
+  "head_sha": "b09bd9d52c9952d4003d8041598be98b7e9d10c3",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Studio register-from-studio requires token by default; unsigned only via AIPLAT_STUDIO_REGISTER_ALLOW_UNSIGNED. Local lock only."
+  "note": "FDE router-level require_auth. Unset API key still allows local anonymous via deps.py. Local lock only."
 }
