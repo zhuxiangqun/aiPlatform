@@ -91,8 +91,9 @@ from core.api.facades.service_facade import llm_generate
 
 app = FastAPI(title="aiPlat-platform", version="0.1.0")
 
+from auth.bind_gate import PlatformTokenMiddleware  # noqa: E402
 
-
+app.add_middleware(PlatformTokenMiddleware)
 
 
 @app.get("/health")
@@ -7319,9 +7320,12 @@ if __name__ == "__main__":
 
     import uvicorn
 
+    from auth.bind_gate import assert_platform_bind_allowed
 
-
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("AIPLAT_PLATFORM_PORT", "8003")))
+    _host = os.getenv("AIPLAT_PLATFORM_HOST", "127.0.0.1")
+    _port = int(os.getenv("AIPLAT_PLATFORM_PORT", "8003"))
+    assert_platform_bind_allowed(_host)
+    uvicorn.run(app, host=_host, port=_port)
 
 # ── FDE module (v2.5) ──
 

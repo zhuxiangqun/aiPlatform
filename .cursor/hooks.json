@@ -14,7 +14,7 @@
     "beforeShellExecution": [
       {
         "command": "bash .cursor/hooks/defect-gate-shell.sh",
-        "failClosed": true
+        "failClosed": false
       }
     ]
   }

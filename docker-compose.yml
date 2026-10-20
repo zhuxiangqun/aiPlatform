@@ -55,6 +55,9 @@ services:
       - AIPLAT_REPO_ROOT=/app
       - AIPLAT_LLM_CONFIG_PATH=/app/aiPlat-infra/config/infra/llm_profile.yaml
       - AIPLAT_EXECUTION_DB_PATH=/app/.aiplat/aiplat_executions.sqlite3
+      # Published port is the container's non-loopback interface. Token required.
+      - AIPLAT_CORE_BIND=0.0.0.0:8002
+      - AIPLAT_CORE_API_TOKEN=${AIPLAT_CORE_API_TOKEN:?set AIPLAT_CORE_API_TOKEN}
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/api/core/health', timeout=3)"]
       interval: 15s
@@ -79,6 +82,9 @@ services:
       - AIPLAT_HOME=/app/.aiplat
       - AIPLAT_REPO_ROOT=/app
       - AIPLAT_PLATFORM_DB_PATH=/app/.aiplat/aiplat_platform.sqlite3
+      # Published port is the container's non-loopback interface. Token required.
+      - AIPLAT_PLATFORM_BIND=0.0.0.0:8003
+      - AIPLAT_PLATFORM_API_TOKEN=${AIPLAT_PLATFORM_API_TOKEN:?set AIPLAT_PLATFORM_API_TOKEN}
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health', timeout=3)"]
       interval: 15s

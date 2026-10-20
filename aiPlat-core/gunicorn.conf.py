@@ -2,7 +2,10 @@ import multiprocessing
 import os
 
 _port = os.getenv("AIPLAT_PORT", "8002")
-bind = f"0.0.0.0:{_port}"
+bind = os.getenv("AIPLAT_CORE_BIND", f"127.0.0.1:{_port}")
+from core.api.bind_gate import assert_core_bind_allowed
+
+assert_core_bind_allowed(bind.rsplit(":", 1)[0].strip().strip("[]"))
 
 workers = multiprocessing.cpu_count() * 2 + 1
 worker_class = "uvicorn.workers.UvicornWorker"

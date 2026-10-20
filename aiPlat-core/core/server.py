@@ -2090,6 +2090,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+from core.api.bind_gate import CoreTokenMiddleware  # noqa: E402
+
+app.add_middleware(CoreTokenMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=os.getenv("AIPLAT_CORS_ORIGINS", "*").split(","),
@@ -2749,8 +2753,11 @@ except Exception as e:
         "Voice chat WebSocket skipped: %s", e)
 
 
-def run_server(host: str = "0.0.0.0", port: int = 8002):
-    """Run the server"""
+def run_server(host: str = "127.0.0.1", port: int = 8002):
+    """Run the server (loopback by default; non-loopback needs API token)."""
+    from core.api.bind_gate import assert_core_bind_allowed
+
+    assert_core_bind_allowed(host)
     uvicorn.run(app, host=host, port=port)
 
 

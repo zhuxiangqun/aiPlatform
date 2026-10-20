@@ -22,6 +22,9 @@ services:
       - AIPLAT_COT_AUTO_INJECT=false
       - AIPLAT_SELF_CORRECT_ENABLED=false
       - AIPLAT_DEBATE_MODE=false
+      # Published port is the container's non-loopback interface. Token required.
+      - AIPLAT_CORE_BIND=0.0.0.0:8002
+      - AIPLAT_CORE_API_TOKEN=${AIPLAT_CORE_API_TOKEN:-e2e-core-token}
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/api/core/health', timeout=3)"]
       interval: 10s
@@ -64,6 +67,9 @@ services:
     environment:
       - AIPLAT_HOME=/app/.aiplat
       - AIPLAT_TEST_MODE=true
+      # Published port is the container's non-loopback interface. Token required.
+      - AIPLAT_PLATFORM_BIND=0.0.0.0:8003
+      - AIPLAT_PLATFORM_API_TOKEN=${AIPLAT_PLATFORM_API_TOKEN:-e2e-platform-token}
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health', timeout=3)"]
       interval: 10s
