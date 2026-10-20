@@ -12,7 +12,8 @@ allow() {
 
 deny() {
   local msg="$1"
-  python3 -c '
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c '
 import json, sys
 msg = sys.argv[1]
 print(json.dumps({
@@ -21,6 +22,9 @@ print(json.dumps({
   "agent_message": msg,
 }, ensure_ascii=False))
 ' "$msg"
+  else
+    printf '%s\n' "{\"permission\":\"deny\",\"user_message\":$(printf '%s' "$msg" | sed 's/"/\\"/g'),\"agent_message\":\"$msg\"}"
+  fi
   exit 0
 }
 
@@ -28,40 +32,32 @@ if [[ "${AIPLAT_DEFECT_GATE:-1}" =~ ^(0|false|no|off)$ ]]; then
   allow
 fi
 
+INPUT="$(cat || true)"
+
+# Fast path (bash only): non-push / non-pr-create Shell must return allow
+# immediately. A slow Python detect was being canceled and fail-closed the
+# whole session, blocking even `git status`.
+CMD="$(printf '%s' "$INPUT" | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
+if [[ -z "$CMD" ]]; then
+  CMD="$(printf '%s' "$INPUT" | sed -n "s/.*\"cmd\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -1)"
+fi
+# Unescape common JSON sequences for matching.
+CMD_FLAT="$(printf '%s' "$CMD" | sed 's/\\n/\n/g; s/\\"/"/g')"
+# Drop heredoc bodies so commit messages mentioning "git push" do not match.
+CMD_FLAT="$(printf '%s' "$CMD_FLAT" | awk '
+  BEGIN { skip=0 }
+  /^[[:space:]]*cat[[:space:]]+<<'\''?EOF'\''?/ { skip=1; next }
+  /^EOF$/ { skip=0; next }
+  !skip { print }
+')"
+
+if ! printf '%s' "$CMD_FLAT" | grep -qE '(^|[;&|[:space:]])gh[[:space:]]+pr[[:space:]]+create([[:space:]]|$)' \
+  && ! printf '%s' "$CMD_FLAT" | grep -qE '(^|[;&|[:space:]])git[[:space:]]+push([[:space:]]|$)'; then
+  allow
+fi
+
 if ! command -v python3 >/dev/null 2>&1; then
   deny "defect-gate: python3 required to validate receipt before PR/push"
-fi
-
-INPUT="$(cat || true)"
-NEED_GATE="$(
-  printf '%s' "$INPUT" | python3 -c '
-import json, sys
-from pathlib import Path
-root = Path(sys.argv[1])
-sys.path.insert(0, str(root / "scripts"))
-import importlib.util
-spec = importlib.util.spec_from_file_location(
-    "defect_gate_validate", root / "scripts" / "defect_gate_validate.py"
-)
-mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(mod)
-try:
-    data = json.load(sys.stdin)
-except Exception as e:
-    print("DETECT_ERROR", e, file=sys.stderr)
-    sys.exit(2)
-cmd = str(data.get("command") or data.get("cmd") or "")
-print("1" if mod.command_needs_gate(cmd) else "0")
-' "$ROOT"
-)"
-DETECT_RC=$?
-
-if [[ "$DETECT_RC" -ne 0 ]]; then
-  deny "defect-gate: failed to detect whether command needs a receipt (fail closed)"
-fi
-
-if [[ "$NEED_GATE" != "1" ]]; then
-  allow
 fi
 
 if ! python3 "$VALIDATE" >/tmp/aiplat_defect_gate_hook.out 2>/tmp/aiplat_defect_gate_hook.err; then
