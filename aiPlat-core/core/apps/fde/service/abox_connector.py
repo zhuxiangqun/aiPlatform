@@ -6,6 +6,7 @@ not hardcoded domain_id branches in core/harness.
 
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import os
@@ -13,6 +14,16 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 logger = logging.getLogger(__name__)
+
+
+def _abox_unsigned_allowed() -> bool:
+    """True only when unsigned ABox webhooks are explicitly opted in."""
+    return os.getenv("AIPLAT_ABOX_ALLOW_UNSIGNED", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "y",
+    )
 
 _DEFAULT_IT_OPS = {
     "source_id": "monitor-alerts",
@@ -129,18 +140,25 @@ def find_domain_for_source(source_id: str) -> Optional[str]:
 
 
 def verify_webhook_secret(cfg: Dict[str, Any], provided: Optional[str]) -> bool:
-    """Return True if secret check passes (or auth disabled / unset env)."""
+    """Return True if secret check passes (or auth explicitly disabled).
+
+    ``shared_secret_env`` with an unset env var fails closed unless
+    ``AIPLAT_ABOX_ALLOW_UNSIGNED`` is set. Unknown auth types also fail closed.
+    """
     auth = cfg.get("auth") or {}
-    if not auth or str(auth.get("type") or "") in ("", "none"):
+    auth_type = str(auth.get("type") or "").strip().lower()
+    if not auth or auth_type in ("", "none"):
         return True
-    if str(auth.get("type")) == "shared_secret_env":
+    if auth_type == "shared_secret_env":
         env_name = str(auth.get("env") or "AIPLAT_ABOX_WEBHOOK_SECRET")
         expected = (os.getenv(env_name) or "").strip()
         if not expected:
-            # Dev-friendly: unset secret → allow (document in PLAYBOOK)
-            return True
-        return (provided or "").strip() == expected
-    return True
+            return _abox_unsigned_allowed()
+        provided_s = (provided or "").strip()
+        if not provided_s:
+            return False
+        return hmac.compare_digest(provided_s, expected)
+    return False
 
 
 def import_abox_payload(
