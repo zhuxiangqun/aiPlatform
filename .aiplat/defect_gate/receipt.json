@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-21T14:15:00+08:00",
+  "reviewed_at": "2026-10-21T22:41:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "9fa77e9a6fd66aeb9717cc4a5c63ce8e49aea106",
-  "diff_sha256": "a6329da7a455773ec9e1419c6ac848855c56df2b7c79413529d435a5d7f34135",
-  "head_sha": "f4dd72f07da86f7cd8654c404b756615fa705fc3",
+  "merge_base": "4a4818e0a913f2ce33dabdd961a675a74ed14176",
+  "diff_sha256": "1356338ea1c53e6864baf38265df5c68de41ac756ba16d411fb1133691a7703d",
+  "head_sha": "99dbbbafb2d89aa480ff7316ddac2b05d5d11795",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Canary sync-ops fail-closed + whitepaper stamp refresh. Display canary status soft-empty on error left as residual P2."
+  "note": "Governance ops mutators require token; ALLOW_UNSIGNED/REQUIRE_AUTH=false are explicit escapes (same pattern as studio_register). GET list/status remain open. Rebased onto #358. Local lock only; CI needs non-author Approve."
 }
