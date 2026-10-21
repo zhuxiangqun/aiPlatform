@@ -3,6 +3,7 @@
  * Starts a run only through POST /goals/{id}/runs. No second runner.
  */
 import React, { useEffect, useState } from 'react';
+import { storedIdentityHeaders } from '../../services/identityHeaders';
 
 const API = (path: string) => `/api/platform/apps/org${path}`;
 
@@ -79,6 +80,8 @@ type H5View = {
 };
 
 const roleHeaders = () => ({
+  ...storedIdentityHeaders(),
+  // UX role picker — trusted only when platform DEV_MODE / identity secret.
   'X-AIPLAT-ROLE': localStorage.getItem('aiplat_role') || '',
 });
 

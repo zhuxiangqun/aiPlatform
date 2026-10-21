@@ -28,20 +28,29 @@ def _resolve_role_from_request(
     header_role: Optional[str] = None,
     scopes_header: Optional[str] = None,
 ) -> str:
+    from auth.request_identity import header_identity_allowed, resolve_request_role
     from core.api.core_facade import resolve_abox_actor_role
 
-    hdr = header_role
     scopes = _parse_scopes(scopes_header)
-    if request is not None:
-        if not hdr:
-            hdr = request.headers.get("X-AIPLAT-ACTOR-ROLE") or request.headers.get(
-                "X-AIPLAT-ROLE"
-            )
-        if not scopes:
-            scopes = _parse_scopes(request.headers.get("X-AIPLAT-SCOPES"))
+    if request is None:
+        return resolve_abox_actor_role(
+            explicit_role="",
+            header_role="",
+            scopes=scopes,
+        )
+    if not scopes:
+        scopes = _parse_scopes(request.headers.get("X-AIPLAT-SCOPES"))
+    trusted = resolve_request_role(request)
+    # Query/Header role claims are spoofable unless identity trust is on.
+    if header_identity_allowed(request.headers.get("X-AIPLAT-IDENTITY-SECRET")):
+        return resolve_abox_actor_role(
+            explicit_role=explicit_role or "",
+            header_role=trusted or (header_role or ""),
+            scopes=scopes,
+        )
     return resolve_abox_actor_role(
-        explicit_role=explicit_role or "",
-        header_role=hdr or "",
+        explicit_role="",
+        header_role=trusted,
         scopes=scopes,
     )
 

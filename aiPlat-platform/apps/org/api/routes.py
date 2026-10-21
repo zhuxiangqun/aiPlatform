@@ -8,6 +8,8 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
+from auth.request_identity import resolve_request_role
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/org", tags=["org-l5"])
@@ -49,7 +51,7 @@ async def org_goal_run(goal_id: str, request: Request, body: Dict[str, Any] = No
 
         gid = "" if goal_id == "_" else goal_id
         auth = org_authorize_console_run(
-            role=request.headers.get("x-aiplat-role") or "",
+            role=resolve_request_role(request),
             domain_id=str(body.get("domain_id") or "it-ops"),
             goal_id=gid,
             post_id=str(body.get("post_id") or ""),
@@ -225,7 +227,7 @@ async def org_rehearsals_route(limit: int = Query(5, ge=1, le=20)):
 @router.post("/rehearsals")
 async def org_rehearsal_start_route(request: Request, body: Dict[str, Any]):
     """Record a sandbox handoff. Does not flip allow_fleet."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_sandbox_rehearsal_start
 
@@ -335,7 +337,7 @@ async def org_signoff_evidence_pack(
     format: str = Query("json"),
 ):
     """H2: customer-safe evidence pack. Read-only. Not a signature."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_evidence_pack
 
@@ -424,7 +426,7 @@ async def org_value_baseline_get_route(
     tenant_id: str = Query("default"),
 ):
     """S2: read tenant value baseline."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_value_baseline_get
 
@@ -443,7 +445,7 @@ async def org_value_baseline_get_route(
 @router.put("/value/baseline")
 async def org_value_baseline_put_route(request: Request, body: Dict[str, Any]):
     """S2: write tenant value baseline. Not a signature."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_value_baseline_put
 
@@ -479,7 +481,7 @@ async def org_domain_packs_route():
 @router.post("/domain-packs/install")
 async def org_domain_packs_install_route(request: Request, body: Dict[str, Any]):
     """S3: install a domain pack. Does not claim M4."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_domain_pack_install
 
@@ -503,7 +505,7 @@ async def org_domain_packs_install_route(request: Request, body: Dict[str, Any])
 @router.get("/signoff/progress")
 async def org_signoff_progress_get_route(request: Request):
     """S4: read signoff progress. m4_claim_allowed stays false."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_signoff_progress_get
 
@@ -522,7 +524,7 @@ async def org_signoff_progress_get_route(request: Request):
 @router.put("/signoff/progress")
 async def org_signoff_progress_put_route(request: Request, body: Dict[str, Any]):
     """S4: write oncall / dual-sign. Never flips m4_claim_allowed."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_signoff_progress_put
 
@@ -564,7 +566,7 @@ async def org_approvals_inbox(
     limit: int = Query(20),
 ):
     """H1: read-only pending queue. Does not approve."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_approval_inbox
 
@@ -596,7 +598,7 @@ def _h4_http(out: Dict[str, Any]) -> Dict[str, Any]:
 @router.get("/approvals/auto-rules")
 async def org_approvals_auto_rules(request: Request):
     """H4: read-only rule switch. Default enabled=false."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_h4_rules
 
@@ -614,7 +616,7 @@ async def org_approvals_auto_audit(
     limit: int = Query(50),
 ):
     """H4: admin-only auto-pass audit. Not for ordinary FDE."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_h4_auto_audit
 
@@ -632,7 +634,7 @@ async def org_approvals_auto_pass(
     domain_id: str = Query("it-ops"),
 ):
     """H4: pass eligible queue items. Does not write live YAML."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_h4_auto_pass
 
@@ -653,7 +655,7 @@ def _h5_http(out: Dict[str, Any]) -> Dict[str, Any]:
 @router.get("/skills/drafts")
 async def org_skill_drafts(request: Request, domain_id: str = Query("it-ops")):
     """H5: draft packs. Not listed until human approve."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_h5_drafts
 
@@ -672,7 +674,7 @@ async def org_skill_draft_create(
     domain_id: str = Query("it-ops"),
 ):
     """H5: create a draft from a skill_candidate case. Does not list it."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_h5_create_draft
 
@@ -728,7 +730,7 @@ async def org_cold_cases_route(domain_id: str = Query("it-ops"), limit: int = Qu
 @router.post("/ontology/cases/archive-cold")
 async def org_archive_cold_route(request: Request, domain_id: str = Query("it-ops")):
     """Move low-yield cases to cold store. Does not delete or write live YAML."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_archive_cold_cases
 
@@ -746,7 +748,7 @@ async def org_archive_cold_route(request: Request, domain_id: str = Query("it-op
 @router.post("/ontology/gap-drafts")
 async def org_gap_drafts_route(request: Request, domain_id: str = Query("it-ops")):
     """Draft from schema_gap cases via the existing proposal ledger. No live YAML."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_draft_schema_gaps
 
@@ -766,7 +768,7 @@ async def org_gap_drafts_route(request: Request, domain_id: str = Query("it-ops"
 @router.post("/skills/drafts/bundle")
 async def org_skill_bundle_route(request: Request, body: Dict[str, Any]):
     """Assemble existing drafts. No SKILL.md."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_skill_bundle
 
@@ -785,7 +787,7 @@ async def org_skill_bundle_route(request: Request, body: Dict[str, Any]):
 @router.post("/skills/drafts/{draft_id}/approve")
 async def org_skill_draft_approve(draft_id: str, request: Request):
     """H5: admin lists the draft on the existing marketplace. Not automatic."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_h5_approve_draft
 
@@ -800,7 +802,7 @@ async def org_skill_draft_approve(draft_id: str, request: Request):
 @router.post("/skills/drafts/{draft_id}/reject")
 async def org_skill_draft_reject(draft_id: str, request: Request):
     """H5: reject a draft. Does not register."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_h5_reject_draft
 
@@ -820,7 +822,7 @@ async def org_approvals_snapshot(
     domain_id: str = Query("it-ops"),
 ):
     """H1: read-only snapshot. Approve via existing routes only."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_approval_snapshot
 
@@ -998,7 +1000,7 @@ async def org_event_previews_route(limit: int = Query(5, ge=1, le=20)):
 @router.post("/events/preview")
 async def org_event_preview_route(request: Request, body: Dict[str, Any]):
     """Whitelist event sandbox preview. No second channel, no live run."""
-    role = request.headers.get("x-aiplat-role") or ""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_event_preview_start
 

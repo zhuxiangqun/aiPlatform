@@ -15,6 +15,8 @@ from typing import Any, Dict, List, Optional
 import os
 from datetime import datetime, timezone
 
+from auth.request_identity import resolve_request_role
+
 _tasks: Dict[str, Dict[str, Any]] = {}
 
 # ── Auth (must be BEFORE router — evaluated at import time) ──────────────
@@ -37,8 +39,8 @@ def _require_auth(request: Request) -> str:
             h_key = h_auth[7:]
         if h_key not in (api_key, admin_key):
             raise HTTPException(status_code=401, detail="Invalid API key")
-        # Prod: role from header or default
-        role = request.headers.get("X-AIPLAT-ROLE", "developer")
+        # Prod: role from trusted identity only (never client-claimed default).
+        role = resolve_request_role(request) or "service"
         request.state.role = role
         return h_key
 
@@ -46,7 +48,7 @@ def _require_auth(request: Request) -> str:
     tenant = request.headers.get("X-AIPLAT-TENANT-ID", "")
     if not tenant:
         tenant = request.headers.get("x-aiplat-tenant-id", "") or "dev-default"
-    role = request.headers.get("X-AIPLAT-ROLE", "")
+    role = resolve_request_role(request)
     if not role:
         # Resolve role from env var lists
         dev_user = os.getenv("AIPLAT_DEV_USER", "anonymous")

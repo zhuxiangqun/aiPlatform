@@ -24,6 +24,8 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 import os
 
 # ── Auth passthrough (shared with workbench) ──
+# Core mirror of platform finetune auth. Role headers are not credentials;
+# without platform identity trust, fall back to env-mapped / service role only.
 
 def _require_auth(request: Request) -> str:
     api_key = os.getenv("AIPLAT_API_KEY", "")
@@ -31,20 +33,20 @@ def _require_auth(request: Request) -> str:
         h_key = request.headers.get("X-AIPLAT-API-KEY", "")
         if h_key != api_key:
             raise HTTPException(status_code=401, detail="Invalid API key")
-        request.state.role = request.headers.get("X-AIPLAT-ROLE", "developer")
+        # Do not trust client X-AIPLAT-ROLE; authenticated key → service.
+        request.state.role = "service"
         return h_key
     tenant = request.headers.get("X-AIPLAT-TENANT-ID", "dev-default")
-    role = request.headers.get("X-AIPLAT-ROLE", "")
-    if not role:
-        dev_user = os.getenv("AIPLAT_DEV_USER", "anonymous")
-        admin_users = os.getenv("AIPLAT_ADMIN_USERS", "").split(",")
-        dev_users = os.getenv("AIPLAT_DEVELOPER_USERS", "").split(",")
-        if dev_user in admin_users:
-            role = "admin"
-        elif dev_user in dev_users:
-            role = "developer"
-        else:
-            role = os.getenv("AIPLAT_DEFAULT_ROLE", "developer")
+    # Core cannot import platform identity helpers; ignore client role headers.
+    dev_user = os.getenv("AIPLAT_DEV_USER", "anonymous")
+    admin_users = os.getenv("AIPLAT_ADMIN_USERS", "").split(",")
+    dev_users = os.getenv("AIPLAT_DEVELOPER_USERS", "").split(",")
+    if dev_user in admin_users:
+        role = "admin"
+    elif dev_user in dev_users:
+        role = "developer"
+    else:
+        role = os.getenv("AIPLAT_DEFAULT_ROLE", "developer")
     request.state.role = role
     return tenant
 

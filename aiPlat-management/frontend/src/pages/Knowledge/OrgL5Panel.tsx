@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, Button } from '../../components/ui';
 import { Play, RefreshCw, Check, X, BarChart3, Search } from 'lucide-react';
+import { storedIdentityHeaders } from '../../services/identityHeaders';
 
 const API = (path: string) => `/api/platform/apps/org${path}`;
 
@@ -126,6 +127,8 @@ export const OrgL5Panel: React.FC<{ compact?: boolean }> = ({ compact }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...storedIdentityHeaders(),
+          // UX role picker — trusted only when platform DEV_MODE / identity secret.
           'X-AIPLAT-ROLE': localStorage.getItem('aiplat_role') || '',
         },
         body: JSON.stringify({ domain_id: 'it-ops', dry_actions: true, week_label: week }),
