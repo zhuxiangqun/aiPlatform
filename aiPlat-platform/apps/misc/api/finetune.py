@@ -23,6 +23,7 @@ from core.apps.finetune.job_manager import JobManager
 from fastapi import APIRouter, HTTPException, Request, Depends
 import os
 from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
+from auth.request_identity import resolve_request_role
 
 # ── Auth passthrough (shared with workbench) ──
 
@@ -32,10 +33,10 @@ def _require_auth(request: Request) -> str:
         h_key = request.headers.get("X-AIPLAT-API-KEY", "")
         if h_key != api_key:
             raise HTTPException(status_code=401, detail="Invalid API key")
-        request.state.role = request.headers.get("X-AIPLAT-ROLE", "developer")
+        request.state.role = resolve_request_role(request) or "service"
         return h_key
     tenant = request.headers.get("X-AIPLAT-TENANT-ID", "dev-default")
-    role = request.headers.get("X-AIPLAT-ROLE", "")
+    role = resolve_request_role(request)
     if not role:
         dev_user = os.getenv("AIPLAT_DEV_USER", "anonymous")
         admin_users = os.getenv("AIPLAT_ADMIN_USERS", "").split(",")

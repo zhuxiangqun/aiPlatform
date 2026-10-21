@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request, UploadFile, File, Form
 
+from auth.request_identity import resolve_request_role
 from core.api.core_facade import ExtractionPipeline, PendingExtractionStore, ExtractionResult
 
 router = APIRouter(tags=["fde-extraction"])
@@ -372,8 +373,8 @@ async def apply_arbitration_ticket(ticket_id: str, body: Optional[Dict[str, Any]
 
 @router.post("/resolution/tickets/{ticket_id}/rollback-edge")
 async def rollback_arbitration_edge(ticket_id: str, request: Request):
-    """E2: undo one snapshotted merge edge. Role is the header, not the body."""
-    role = request.headers.get("x-aiplat-role") or ""
+    """E2: undo one snapshotted merge edge. Role from trusted identity, not body."""
+    role = resolve_request_role(request)
     try:
         from core.api.core_facade import k2_rollback_arbitration_edge
 
@@ -503,13 +504,13 @@ async def list_ontology_proposals(
 
 @router.post("/ontology/proposals/{proposal_id}/approve")
 async def approve_ontology_proposal(proposal_id: str, request: Request, body: Dict[str, Any] = None):
-    """V4: identity from X-AIPLAT-ROLE. Body approver_role is not a grant."""
+    """V4: identity from trusted request role. Body approver_role is not a grant."""
     try:
         from core.api.core_facade import approve_proposal_once
 
         result = await approve_proposal_once(
             proposal_id,
-            role=request.headers.get("x-aiplat-role") or "",
+            role=resolve_request_role(request),
         )
         if result.get("status") == "not_found":
             raise HTTPException(status_code=404, detail=result.get("reason") or "not_found")

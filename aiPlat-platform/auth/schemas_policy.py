@@ -7,7 +7,8 @@ All route permissions, role definitions, and sidebar menu visibility
 belong here — NOT in core.
 
 8 system roles with per-route access defined by management screen.
-Role resolution: X-AIPLAT-ROLE header (from Gateway) → env var → default.
+Role resolution: trusted identity (JWT/API-key/identity-secret) via resolve_request_role;
+client X-AIPLAT-ROLE is not a credential outside DEV_MODE / identity secret.
 """
 from __future__ import annotations
 

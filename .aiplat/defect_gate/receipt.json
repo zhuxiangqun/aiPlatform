@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-21T00:35:00+08:00",
+  "reviewed_at": "2026-10-21T09:10:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "9d700365f1401aade849960290657b06798e0f43",
-  "diff_sha256": "374f8a8c39b4f63c9378478c39d351dedd0cefbd59237aae24a1347aaeb04395",
-  "head_sha": "158839366d9c0fada76e13e513e99702c1e3d9f4",
+  "merge_base": "e48f06ff6fcb467cb79d5bc85bb8c36a52bb1452",
+  "diff_sha256": "7c54f53bbdc09e778b94873962eb6becf1e9039aa809c5c7a1ed9432abcec33c",
+  "head_sha": "3540883ec05f054d5abd43a031743137f8aead36",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "ABox shared_secret_env unset fails closed; ALLOW_UNSIGNED opt-in only. Unknown auth types deny. hmac.compare_digest. Tests lock unset/wrong/allow paths. Local lock only."
+  "note": "Org/extraction/workbench/finetune/ABox edge use resolve_request_role; empty ABox role allow-all in graph_abox_acl is pre-existing residual. Local lock only; CI unlock is non-author Approve."
 }

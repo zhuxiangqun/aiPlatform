@@ -28,6 +28,7 @@ def test_headers_alone_do_not_grant_identity(monkeypatch):
     monkeypatch.delenv("AIPLAT_PLATFORM_IDENTITY_SECRET", raising=False)
     assert header_identity_allowed(None) is False
     from api.rest.routes import _resolve_identity
+    from auth.request_identity import resolve_request_role, trusted_actor_role
 
     ident = _resolve_identity(_Req({
         "X-AIPLAT-TENANT-ID": "victim",
@@ -38,11 +39,18 @@ def test_headers_alone_do_not_grant_identity(monkeypatch):
     assert ident.auth_type == "anonymous"
     assert ident.actor_id == "anonymous"
     assert ident.actor_role is None
+    # Org L5 / extraction must not treat spoofed role headers as credentials.
+    assert trusted_actor_role({
+        "x-aiplat-role": "admin",
+        "X-AIPLAT-ROLE": "admin",
+    }) == ""
+    assert resolve_request_role(_Req({"x-aiplat-role": "admin"})) == ""
 
 
 def test_dev_mode_still_trusts_headers(monkeypatch):
     monkeypatch.setenv("AIPLAT_PLATFORM_DEV_MODE", "1")
     from api.rest.routes import _resolve_identity
+    from auth.request_identity import resolve_request_role
 
     ident = _resolve_identity(_Req({
         "X-AIPLAT-TENANT-ID": "local",
@@ -51,6 +59,7 @@ def test_dev_mode_still_trusts_headers(monkeypatch):
     }))
     assert ident.auth_type == "header"
     assert ident.actor_id == "admin"
+    assert resolve_request_role(_Req({"x-aiplat-role": "operator"})) == "operator"
 
 
 def test_identity_secret_trusts_headers(monkeypatch):
