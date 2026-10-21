@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-21T22:41:00+08:00",
+  "reviewed_at": "2026-10-21T23:48:09+08:00",
   "base_ref": "origin/main",
   "merge_base": "4a4818e0a913f2ce33dabdd961a675a74ed14176",
-  "diff_sha256": "1356338ea1c53e6864baf38265df5c68de41ac756ba16d411fb1133691a7703d",
-  "head_sha": "99dbbbafb2d89aa480ff7316ddac2b05d5d11795",
+  "diff_sha256": "88d7ed52415f05c49f03257e059832e9923f7144b1d1df6eb5a74e5cdd08e7bb",
+  "head_sha": "87074bef673931b893568ad9a1a9672a0ad8ceb1",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Governance ops mutators require token; ALLOW_UNSIGNED/REQUIRE_AUTH=false are explicit escapes (same pattern as studio_register). GET list/status remain open. Rebased onto #358. Local lock only; CI needs non-author Approve."
+  "note": "Governance ops mutators require token; whitepaper stamps refreshed. Local lock only; CI needs non-author Approve."
 }
