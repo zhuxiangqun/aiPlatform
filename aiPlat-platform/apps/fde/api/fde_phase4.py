@@ -15,6 +15,47 @@ from apps.fde.api.schemas import FdeItemResponse, FdeListResponse, FdeStatusResp
 router = APIRouter(tags=["fde-phase4"])
 
 
+def resolve_live_canary_ok() -> tuple[bool, Dict[str, Any]]:
+    """Read skill-router rollout health for evolve ops sync.
+
+    Fail closed: missing router or fetch errors are not healthy
+    (``canary_ok=False``), so observing patches can roll back.
+    """
+    sources: Dict[str, Any] = {}
+    try:
+        from core.api.core_facade import get_skill_router
+
+        router_ = get_skill_router()
+        if router_ is None:
+            sources["canary_error"] = "skill_router_unavailable"
+            return False, sources
+        rollout = router_.get_rollout_status()
+        if rollout is None:
+            sources["canary_error"] = "rollout_status_unavailable"
+            return False, sources
+        bad = False
+        if isinstance(rollout, list):
+            for s in rollout:
+                if not isinstance(s, dict):
+                    continue
+                if s.get("needs_rollback") or s.get("rollback_recommended") or s.get("status") in {
+                    "failed",
+                    "error",
+                    "unhealthy",
+                }:
+                    bad = True
+                    break
+        else:
+            sources["canary_error"] = "rollout_status_not_list"
+            return False, sources
+        ok = not bad
+        sources["canary"] = {"total": len(rollout), "ok": ok}
+        return ok, sources
+    except Exception as e:
+        sources["canary_error"] = str(e)[:160]
+        return False, sources
+
+
 class SecurityPreflightRequest(BaseModel):
     force: bool = False
     max_paths: int = 20
@@ -191,25 +232,8 @@ async def sync_evolve_ops(req: EvolveOpsSyncRequest) -> Dict[str, Any]:
             except Exception as e:
                 sources["quality_error"] = str(e)[:160]
         if canary_ok is None:
-            try:
-                from core.api.core_facade import get_skill_router
-
-                router_ = get_skill_router()
-                rollout = router_.get_rollout_status() if router_ else []
-                # anomaly: any skill flagged needing rollback / error
-                bad = False
-                if isinstance(rollout, list):
-                    for s in rollout:
-                        if not isinstance(s, dict):
-                            continue
-                        if s.get("needs_rollback") or s.get("rollback_recommended") or s.get("status") in {"failed", "error", "unhealthy"}:
-                            bad = True
-                            break
-                canary_ok = not bad
-                sources["canary"] = {"total": len(rollout) if isinstance(rollout, list) else 0, "ok": canary_ok}
-            except Exception as e:
-                sources["canary_error"] = str(e)[:160]
-                canary_ok = True  # fail-open for canary fetch errors
+            canary_ok, canary_src = resolve_live_canary_ok()
+            sources.update(canary_src)
 
     result = sync_fde_evolve_ops_signals(
         quality_score=quality_score,
