@@ -142,7 +142,7 @@ async def workspace_publish_skill_spec_v2_schema(request: Dict[str, Any], http_r
     schema_obj = request.get("schema") if isinstance(request, dict) else None
     if not isinstance(schema_obj, dict):
         schema_obj = load_skill_spec_v2_schema()
-    actor = str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin")
+    actor = str(actor_from_http(http_request, request if isinstance(request, dict) else {}).get("actor_id") or "").strip() or "anonymous"
     note = str(request.get("note") or "") if isinstance(request, dict) else ""
     store = get_config_registry_store()
     key = ConfigRegistryKey(asset_type="skill_spec_v2_schema", scope="workspace", tenant_id=ctx["tenant_id"], channel=ctx["channel"])
@@ -165,7 +165,7 @@ async def workspace_rollback_skill_spec_v2_schema(http_request: Request, tenant_
     from core.services.config_registry_store import ConfigRegistryKey, get_config_registry_store
 
     ctx = req_tenant_channel(http_request, tenant_id=tenant_id, channel=channel)
-    actor = str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin")
+    actor = str(actor_from_http(http_request, {}).get("actor_id") or "").strip() or "anonymous"
     store = get_config_registry_store()
     key = ConfigRegistryKey(asset_type="skill_spec_v2_schema", scope="workspace", tenant_id=ctx["tenant_id"], channel=ctx["channel"])
     ver = await store.rollback(key=key, actor=actor, note="rollback")
@@ -190,7 +190,7 @@ async def workspace_publish_permissions_catalog(request: Dict[str, Any], http_re
     payload = request.get("catalog") if isinstance(request, dict) else None
     if not isinstance(payload, dict) or "items" not in payload:
         payload = permission_catalog(scope="workspace")
-    actor = str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin")
+    actor = str(actor_from_http(http_request, request if isinstance(request, dict) else {}).get("actor_id") or "").strip() or "anonymous"
     note = str(request.get("note") or "") if isinstance(request, dict) else ""
     store = get_config_registry_store()
     key = ConfigRegistryKey(asset_type="permissions_catalog", scope="workspace", tenant_id=ctx["tenant_id"], channel=ctx["channel"])
@@ -213,7 +213,7 @@ async def workspace_rollback_permissions_catalog(http_request: Request, tenant_i
     from core.services.config_registry_store import ConfigRegistryKey, get_config_registry_store
 
     ctx = req_tenant_channel(http_request, tenant_id=tenant_id, channel=channel)
-    actor = str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin")
+    actor = str(actor_from_http(http_request, {}).get("actor_id") or "").strip() or "anonymous"
     store = get_config_registry_store()
     key = ConfigRegistryKey(asset_type="permissions_catalog", scope="workspace", tenant_id=ctx["tenant_id"], channel=ctx["channel"])
     ver = await store.rollback(key=key, actor=actor, note="rollback")
