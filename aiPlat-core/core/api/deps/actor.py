@@ -14,8 +14,8 @@ def _flag(name: str) -> bool:
 def header_identity_allowed(presented_secret: str | None) -> bool:
     """True when spoofable identity headers / payload context may be trusted.
 
-    Mirrors platform ``auth.request_identity.header_identity_allowed`` so core
-    ``rbac_guard`` does not import platform. Same env contract:
+    Same env contract as ``auth.request_identity.header_identity_allowed``
+    (duplicated here so core RBAC stays free of a cross-layer dependency):
     ``AIPLAT_PLATFORM_DEV_MODE`` or matching ``AIPLAT_PLATFORM_IDENTITY_SECRET``.
     """
     if _flag("AIPLAT_PLATFORM_DEV_MODE"):
