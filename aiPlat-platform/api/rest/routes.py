@@ -79,6 +79,8 @@ from auth.authenticator import authenticator as _authenticator  # type: ignore
 
 from auth.deps import require_auth, require_admin
 
+from auth.governance_ops_auth import require_governance_ops_auth
+
 from storage import sqlite as platform_store  # type: ignore
 
 from core.api.core_facade import create_infra_database_client  # P0-A2 修复: CoreFacade 已补 re-export
@@ -7416,8 +7418,11 @@ async def governance_repo_health_status():
 
 
 @app.post("/governance/repo-health/scan")
-async def governance_repo_health_scan(payload: dict = Body(default={})):
+async def governance_repo_health_scan(
+    request: Request, payload: dict = Body(default={}),
+):
     """值班板 CTA：全树扫描并可选写入 org/repo_health JSONL（默认同 CLI persist）。"""
+    require_governance_ops_auth(request)
     import asyncio
 
     from core.api.core_facade import scan_repo_health
@@ -7438,8 +7443,9 @@ async def governance_jobs_list():
 
 
 @app.post("/governance/jobs")
-async def governance_jobs_start(payload: dict = Body(...)):
-    """启动后台任务：{name, command, cwd?}——新会话组，终端关闭不终止。"""
+async def governance_jobs_start(request: Request, payload: dict = Body(...)):
+    """启动后台任务：{name, command, cwd?}——新会话组，终端关闭不终止。须 governance ops token。"""
+    require_governance_ops_auth(request)
     from governance.daemon_jobs import DaemonJobStore
     return DaemonJobStore().start(
         str(payload.get("name", "")), str(payload.get("command", "")),
@@ -7461,8 +7467,9 @@ async def governance_job_output(job_id: str, lines: int = 50):
 
 
 @app.post("/governance/jobs/{job_id}/kill")
-async def governance_job_kill(job_id: str):
-    """终止后台任务（连同其会话组子进程）。"""
+async def governance_job_kill(job_id: str, request: Request):
+    """终止后台任务（连同其会话组子进程）。须 governance ops token。"""
+    require_governance_ops_auth(request)
     from governance.daemon_jobs import DaemonJobStore
     return DaemonJobStore().kill(job_id)
 
@@ -7477,22 +7484,27 @@ async def governance_agents_list():
 
 
 @app.post("/governance/agents/{agent_id}/register")
-async def governance_agent_register(agent_id: str, payload: dict = Body(default={})):
-    """agent 上线注册：{pid?, kind?}。"""
+async def governance_agent_register(
+    agent_id: str, request: Request, payload: dict = Body(default={}),
+):
+    """agent 上线注册：{pid?, kind?}。须 governance ops token。"""
+    require_governance_ops_auth(request)
     from governance.agent_messages import AgentMessageStore
     return AgentMessageStore().register(agent_id, meta=payload)
 
 
 @app.post("/governance/agents/{agent_id}/unregister")
-async def governance_agent_unregister(agent_id: str):
-    """agent 下线。"""
+async def governance_agent_unregister(agent_id: str, request: Request):
+    """agent 下线。须 governance ops token。"""
+    require_governance_ops_auth(request)
     from governance.agent_messages import AgentMessageStore
     return AgentMessageStore().unregister(agent_id)
 
 
 @app.post("/governance/agents/messages")
-async def governance_agent_send(payload: dict = Body(...)):
-    """agent 点对点发消息：{from, to, message}——不经用户中转。"""
+async def governance_agent_send(request: Request, payload: dict = Body(...)):
+    """agent 点对点发消息：{from, to, message}——不经用户中转。须 governance ops token。"""
+    require_governance_ops_auth(request)
     from governance.agent_messages import AgentMessageStore
     return AgentMessageStore().send(
         str(payload.get("from", "")), str(payload.get("to", "")),

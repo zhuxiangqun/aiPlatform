@@ -641,6 +641,8 @@ scan_hash: 8f9548ec24f4
 | wiki_loop_unsigned_allowed | `core/api/wiki_loop_auth.py` | ✅ | Wiki loop 未签名访问仅 AIPLAT_WIKI_LOOP_ALLOW_UNSIGNED | 已合入 |
 | require_studio_register_auth | `aiPlat-platform/auth/studio_register_auth.py` | ✅ | Studio register-from-studio 默认要求 token；缺省拒绝 | 已合入 |
 | studio_register_unsigned_allowed | `aiPlat-platform/auth/studio_register_auth.py` | ✅ | Studio 注册未签名访问仅 AIPLAT_STUDIO_REGISTER_ALLOW_UNSIGNED | 已合入 |
+| require_governance_ops_auth | `aiPlat-platform/auth/governance_ops_auth.py` | ✅ | governance jobs/agents/repo-health 变更端点默认要求 token；缺省拒绝 | 已合入 |
+| governance_ops_unsigned_allowed | `aiPlat-platform/auth/governance_ops_auth.py` | ✅ | governance 运维未签名访问仅 AIPLAT_GOVERNANCE_ALLOW_UNSIGNED | 已合入 |
 | reevaluate_code_review_gold | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
 | compare_gold_reports | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
 | record_tool_receipt | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
