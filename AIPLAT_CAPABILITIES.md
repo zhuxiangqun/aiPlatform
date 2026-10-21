@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2332
+total_capabilities: 2333
 last_updated: 2026-10-20
 version: "30.12"
 auto_sync: true
@@ -641,6 +641,8 @@ scan_hash: 8f9548ec24f4
 | wiki_loop_unsigned_allowed | `core/api/wiki_loop_auth.py` | ✅ | Wiki loop 未签名访问仅 AIPLAT_WIKI_LOOP_ALLOW_UNSIGNED | 已合入 |
 | require_studio_register_auth | `aiPlat-platform/auth/studio_register_auth.py` | ✅ | Studio register-from-studio 默认要求 token；缺省拒绝 | 已合入 |
 | studio_register_unsigned_allowed | `aiPlat-platform/auth/studio_register_auth.py` | ✅ | Studio 注册未签名访问仅 AIPLAT_STUDIO_REGISTER_ALLOW_UNSIGNED | 已合入 |
+| require_governance_ops_auth | `aiPlat-platform/auth/governance_ops_auth.py` | ✅ | governance jobs/agents/repo-health 变更端点默认要求 token；缺省拒绝 | 已合入 |
+| governance_ops_unsigned_allowed | `aiPlat-platform/auth/governance_ops_auth.py` | ✅ | governance 运维未签名访问仅 AIPLAT_GOVERNANCE_ALLOW_UNSIGNED | 已合入 |
 | reevaluate_code_review_gold | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
 | compare_gold_reports | `core/harness/evaluation/code_review_gold.py` | ✅ | 自动同步 | 已合入 |
 | record_tool_receipt | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
@@ -3247,7 +3249,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 324 | 1 | 325 |
+| Harness 执行引擎 | 325 | 1 | 326 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 375 | 9 | 384 |
 | RAG 检索 | 52 | 0 | 52 |
@@ -3292,7 +3294,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2322** | **10** | **2332** |
+| **总计** | **2323** | **10** | **2333** |
 
 | **总计** | **1095** | **0** | **1095** |
 
