@@ -671,7 +671,9 @@ async def workspace_config_registry_publish(
 
     ctx = req_tenant_channel(http_request, tenant_id=tenant_id, channel=channel)
     sc = (scope or "workspace").strip().lower()
-    actor = str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin")
+    actor_info = actor_from_http(http_request, request or {})
+    actor = str(actor_info.get("actor_id") or "").strip() or "anonymous"
+    actor_role = str(actor_info.get("actor_role") or "").strip()
     note = str((request or {}).get("note") or "") or None
     ver = str((request or {}).get("version") or "").strip() or None
     payload = (request or {}).get("payload")
@@ -729,7 +731,6 @@ async def workspace_config_registry_publish(
                     )
             else:
                 # Create an approval request and block publishing.
-                actor_role = str(http_request.headers.get("X-AIPLAT-ACTOR-ROLE") or "admin")
                 diff_text = None
                 try:
                     diff_text = _unified_diff_text(cur_payload, payload)
@@ -826,8 +827,9 @@ async def workspace_config_registry_rollback(
 
     ctx = req_tenant_channel(http_request, tenant_id=tenant_id, channel=channel)
     sc = (scope or "workspace").strip().lower()
-    actor = str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin")
-    actor_role = str(http_request.headers.get("X-AIPLAT-ACTOR-ROLE") or "admin")
+    actor_info = actor_from_http(http_request, {})
+    actor = str(actor_info.get("actor_id") or "").strip() or "anonymous"
+    actor_role = str(actor_info.get("actor_role") or "").strip()
     approval_request_id = str(http_request.headers.get("X-AIPLAT-APPROVAL-REQUEST-ID") or "").strip()
     store = get_config_registry_store()
     key = ConfigRegistryKey(asset_type=str(asset_type), scope=sc, tenant_id=ctx["tenant_id"], channel=ctx["channel"])

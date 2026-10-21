@@ -8,7 +8,7 @@ New code should import from:
 
 from __future__ import annotations
 
-from .actor import actor_from_http
+from .actor import actor_from_http, header_identity_allowed
 from .guard import rbac_guard
 
-__all__ = ["actor_from_http", "rbac_guard"]
+__all__ = ["actor_from_http", "header_identity_allowed", "rbac_guard"]

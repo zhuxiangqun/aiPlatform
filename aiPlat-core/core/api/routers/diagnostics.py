@@ -1132,9 +1132,10 @@ async def diagnostics_prompt_assemble(request: DiagnosticsPromptAssembleRequest,
     try:
         t1 = set_active_workspace_context(ActiveWorkspaceContext(repo_root=request.repo_root))
         actor0 = actor_from_http(http_request, None)
-        tenant_id = actor0.get("tenant_id") or http_request.headers.get("X-AIPLAT-TENANT-ID")
-        actor_id = actor0.get("actor_id") or http_request.headers.get("X-AIPLAT-ACTOR-ID")
-        actor_role = actor0.get("actor_role") or http_request.headers.get("X-AIPLAT-ACTOR-ROLE")
+        # Do not fall back to raw headers — actor_from_http already gates spoofable claims.
+        tenant_id = actor0.get("tenant_id")
+        actor_id = actor0.get("actor_id")
+        actor_role = actor0.get("actor_role")
         req_id = http_request.headers.get("X-AIPLAT-REQUEST-ID") or None
         t2 = set_active_request_context(
             ActiveRequestContext(
