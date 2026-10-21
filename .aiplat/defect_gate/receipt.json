@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-21T09:10:00+08:00",
+  "reviewed_at": "2026-10-21T14:15:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "e48f06ff6fcb467cb79d5bc85bb8c36a52bb1452",
-  "diff_sha256": "7c54f53bbdc09e778b94873962eb6becf1e9039aa809c5c7a1ed9432abcec33c",
-  "head_sha": "3540883ec05f054d5abd43a031743137f8aead36",
+  "merge_base": "9fa77e9a6fd66aeb9717cc4a5c63ce8e49aea106",
+  "diff_sha256": "a6329da7a455773ec9e1419c6ac848855c56df2b7c79413529d435a5d7f34135",
+  "head_sha": "f4dd72f07da86f7cd8654c404b756615fa705fc3",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Org/extraction/workbench/finetune/ABox edge use resolve_request_role; empty ABox role allow-all in graph_abox_acl is pre-existing residual. Local lock only; CI unlock is non-author Approve."
+  "note": "Canary sync-ops fail-closed + whitepaper stamp refresh. Display canary status soft-empty on error left as residual P2."
 }
