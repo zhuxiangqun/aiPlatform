@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-22T15:40:37+08:00",
+  "reviewed_at": "2026-10-22T16:17:47+08:00",
   "base_ref": "origin/main",
-  "merge_base": "bea043c9a2b1dbeb380a866452cfa324d81cc4e8",
-  "diff_sha256": "cb85df18bd7852200be0d0638568a405cf0335e998d1932f7fd0e967baae568a",
-  "head_sha": "c10ba840cff5afc890733eba5632d2f6af6818b9",
+  "merge_base": "c1430fe5e306d47859baf8d16d4f0496ac207563",
+  "diff_sha256": "57eeb09a817db8193fbad81bdaef6c73a4ebbd1c239289102b77a2c25475f0c3",
+  "head_sha": "233a80240a0046ba4836630f7eeca30c2c9116e5",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "After merge with #362: change_control/learning_autocapture + gate_policies/prompt/skill_evals all route actor via actor_from_http; no raw header OR-fallback. Contract \u00a773 lists all modules. Local lock only; CI needs non-author Approve."
+  "note": "Rebased onto #363: whoami/audit/batches via _resolve_identity only; no raw X-AIPLAT-* OR after gate. Gateway tenant still #365. Local lock only; CI needs non-author Approve."
 }
