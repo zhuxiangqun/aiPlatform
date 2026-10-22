@@ -12,7 +12,7 @@ verify_capability_truth.py — 能力声明 ↔ 源码一致性统一入口
 | 检查 | 能证明 | 不能证明 |
 |------|--------|----------|
 | CAPABILITIES path / path:line | 文件存在；行号在文件行数内 | 该行仍是原符号；行为可用 |
-| verify_capability_consistency | 章节 ✅ 数与统计表一致 | 每行对应真实实现 |
+| verify_capability_consistency | AUTO-STATS 块 ≡ 章节 ✅/⚠️ 实算（纯生成物全文） | 每行对应真实实现 |
 | registry caps_count / 头体 | 登记表内部自洽（caps_count==len(provides)） | 符号在源码中存在 |
 | 矩阵临时全文 diff | 工作树矩阵 ≡ 当前 registry 生成结果 | 消费者边在运行时真实 |
 | check_code_doc_gap | harness 下 .py 模块 stem/parent 名在 CAPABILITIES 有登记 | 符号级存在、生产调用方、可运行 |

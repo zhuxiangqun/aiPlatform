@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2342
+total_capabilities: 2345
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -1417,6 +1417,7 @@ scan_hash: 8f9548ec24f4
 | cap_graph_persist | harness/knowledge/cap_graph_persist.py | ✅ | 能力图谱 SQLite + `source_fingerprint` / `evaluate_freshness`（与 code_graph 分路径） | 已合入 |
 | verify_capability_truth | `scripts/verify_capability_truth.py` | ✅ | 能力声明↔源码统一入口：path/一致性/registry/矩阵全文/gap/`provides` AST ratchet；默认 exit0 不写盘；仅 `--ci` 硬失败；软警告（含 AST 存量 baseline）不单独非零 | 已合入 |
 | verify_registry_provides_ast | `scripts/verify_registry_provides_ast.py` + `scripts/baselines/registry_provides_ast_baseline.json` | ✅ | registry `provides.module` 解析 + AST 顶层符号存在；相对 baseline 仅新增债务 `--ci` 硬失败；存量 soft；接线 `verify_capability_truth` | 已合入 |
+| generate_capability_stats | `scripts/generate_capability_stats.py` + `verify_capability_consistency.check_stats_fresh` | ✅ | Phase C：CAPABILITIES `AUTO-STATS` 块由章节 ✅/⚠️ 实算生成；`--ci` 全文对账不改写；接线 truth gate | 已合入 |
 | reparse_queue | harness/knowledge/reparse_queue.py | ✅ | 自动同步 | 已合入 |
 | text_cleaner | harness/knowledge/text_cleaner.py | ✅ | 自动同步 | 已合入 |
 | doc_quality_monitor | harness/knowledge/doc_quality_monitor.py | ✅ | 自动同步 | 已合入 |
@@ -2687,6 +2688,8 @@ scan_hash: 8f9548ec24f4
 ## 二十一、平台治理
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| check_stats_fresh | `scripts/verify_capability_consistency.py` | ✅ | Phase C：AUTO-STATS 全文新鲜度门禁（章节实算） | 已合入 |
+| render_stats_block | `scripts/verify_capability_consistency.py` | ✅ | Phase C：由章节 ✅/⚠️ 渲染统计表块 | 已合入 |
 | audit_registry | `scripts/verify_registry_provides_ast.py` | ✅ | 自动同步 | 已合入 |
 | run_checks | `scripts/verify_capability_truth.py` | ✅ | 自动同步 | 已合入 |
 | TenantStore | `aiPlat-platform/tenants/tenant_store.py` | ✅ | 自动同步 | 已合入 |
@@ -3236,13 +3239,13 @@ scan_hash: 8f9548ec24f4
 
 ## 统计
 
-<!-- AUTO-STATS -->
+<!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
-|------|:---:|:---:|:---:|------|
+|------|:---:|:---:|:---:|
 | Harness 执行引擎 | 329 | 1 | 330 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 375 | 9 | 384 |
-| RAG 检索 | 54 | 0 | 54 |
+| RAG 检索 | 55 | 0 | 55 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 168 | 0 | 168 |
 | Skill 系统 | 171 | 0 | 171 |
@@ -3261,7 +3264,7 @@ scan_hash: 8f9548ec24f4
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 44 | 0 | 44 |
 | Arena & 调度 | 7 | 0 | 7 |
-| 平台治理 | 123 | 0 | 123 |
+| 平台治理 | 125 | 0 | 125 |
 | Infra 基础设施 | 16 | 0 | 16 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
@@ -3284,9 +3287,11 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2332** | **10** | **2342** |
+| **总计** | **2335** | **10** | **2345** |
+<!-- AUTO-STATS:END -->
 
-> 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（✅/⚠️ 行计数）。
+> 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
+> 统计表块（`AUTO-STATS:BEGIN/END`）为**纯生成物**：`python3 scripts/generate_capability_stats.py`；`--ci` 全文对账不改写。
 > `capability_registry.yaml` 登记公开符号（另一口径，勿与本表混算）。
 > 影响矩阵由登记表生成：`python3 scripts/generate_impact_matrix.py`（`--ci` 临时全文 diff，不改写工作树）。
 > 统一门禁：`python3 scripts/verify_capability_truth.py [--ci]`（源码为真；见契约 §74）。
