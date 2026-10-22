@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-22T16:17:47+08:00",
+  "reviewed_at": "2026-10-22T16:39:21+08:00",
   "base_ref": "origin/main",
-  "merge_base": "c1430fe5e306d47859baf8d16d4f0496ac207563",
-  "diff_sha256": "57eeb09a817db8193fbad81bdaef6c73a4ebbd1c239289102b77a2c25475f0c3",
-  "head_sha": "233a80240a0046ba4836630f7eeca30c2c9116e5",
+  "merge_base": "a69c73843937245986a803188b5720f7607764a2",
+  "diff_sha256": "18abc439869d1321c273913b983f4c5711eaadc690d89ab9613cdfd6c7cf041e",
+  "head_sha": "2fceb8cc9b434246d766f250dce80c3e09b5c5ba",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Rebased onto #363: whoami/audit/batches via _resolve_identity only; no raw X-AIPLAT-* OR after gate. Gateway tenant still #365. Local lock only; CI needs non-author Approve."
+  "note": "Rebased onto #364: gateway tenant header only via header_identity_allowed; no ungated setdefault into context. Local lock only; CI needs non-author Approve."
 }
