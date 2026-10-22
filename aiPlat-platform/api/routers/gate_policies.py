@@ -16,7 +16,7 @@ from typing import Annotated, Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from core.api.deps import rbac_guard
+from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import gate_error_envelope, governance_links
 from core.api.core_facade import record_changeset, new_change_id
 from core.api.facades.runtime_facade import KernelRuntime, get_kernel_runtime
@@ -35,6 +35,20 @@ def _approval_mgr(rt: Optional[KernelRuntime]):
 
 
 SETTING_KEY = "gate_policies"
+
+def _identity_from_http(http_request: Optional[Request], *, default_actor: str = "anonymous"):
+    """Spoofable identity only via actor_from_http (DEV_MODE / identity secret)."""
+    if http_request is None:
+        return default_actor, None, None
+    actor = actor_from_http(http_request, None)
+    actor_id = str(actor.get("actor_id") or "").strip() or default_actor
+    tenant_raw = actor.get("tenant_id")
+    tenant_id = str(tenant_raw).strip() if tenant_raw else None
+    role_raw = actor.get("actor_role")
+    actor_role = str(role_raw).strip() if role_raw else None
+    return actor_id, tenant_id, actor_role
+
+
 
 
 def _normalize_policy_id(v: str) -> str:
@@ -162,7 +176,7 @@ async def _create_gate_policy_approval_request(
     )
     approval_manager.register_rule(rule)
     ctx = ApprovalContext(
-        user_id=user_id or "admin",
+        user_id=user_id or "anonymous",
         operation=op,
         operation_context={"details": f"apply gate policy {policy_id} (change_id={change_id})"},
         metadata={
@@ -211,8 +225,8 @@ async def bootstrap_gate_policies(http_request: Request, force: bool = False, rt
             status="success",
             args={"force": bool(force)},
             result={"default_id": "dev", "items": ["dev", "staging", "prod"]},
-            user_id=str((http_request.headers.get("X-AIPLAT-ACTOR-ID") if http_request else None) or "admin"),
-            tenant_id=str((http_request.headers.get("X-AIPLAT-TENANT-ID") if http_request else None) or "") or None,
+            user_id=str((_id := _identity_from_http(http_request))[0]),
+            tenant_id=_id[1],
         )
     except Exception:
         cid = None
@@ -306,8 +320,8 @@ async def upsert_gate_policy(policy_id: str, request: dict, http_request: Reques
             status="success",
             args={"policy_id": pid, "set_default": bool(body.get("set_default")), "prev_sha256": prev_sha},
             result={"new_sha256": new_sha, "version": int(item.get("version") or 1)},
-            user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin"),
-            tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
+            user_id=str((_id := _identity_from_http(http_request))[0]),
+            tenant_id=_id[1],
         )
     except Exception as e:
         logging.warning(str(e), exc_info=True)
@@ -342,8 +356,8 @@ async def delete_gate_policy(policy_id: str, http_request: Request, rt: RuntimeD
             status="success",
             args={"policy_id": pid},
             result={"default_id": data.get("default_id")},
-            user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin"),
-            tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
+            user_id=str((_id := _identity_from_http(http_request))[0]),
+            tenant_id=_id[1],
         )
     except Exception as e:
         logging.warning(str(e), exc_info=True)
@@ -374,8 +388,8 @@ async def set_default_gate_policy(policy_id: str, http_request: Request, rt: Run
             target_id=str(cid),
             status="success",
             args={"default_id": pid},
-            user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin"),
-            tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
+            user_id=str((_id := _identity_from_http(http_request))[0]),
+            tenant_id=_id[1],
         )
     except Exception as e:
         logging.warning(str(e), exc_info=True)
@@ -447,8 +461,8 @@ async def rollback_gate_policy(policy_id: str, request: dict, http_request: Requ
                 status="success",
                 args={"policy_id": pid, "rollback_to_version": ver},
                 result={"new_version": int(it.get("version") or 1), "sha256": _sha(it.get("config") or {})},
-                user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin"),
-                tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
+                user_id=str((_id := _identity_from_http(http_request))[0]),
+                tenant_id=_id[1],
             )
         except Exception as e:
             logging.warning(str(e), exc_info=True)
@@ -508,9 +522,7 @@ async def propose_gate_policy_change(policy_id: str, request: dict, http_request
     approval_request_id = None
     if require_approval:
         mgr = _approval_mgr(rt)
-        actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin"
-        tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID")
-        actor_role = http_request.headers.get("X-AIPLAT-ACTOR-ROLE")
+        actor_id, tenant_id, actor_role = _identity_from_http(http_request)
         approval_request_id = await _create_gate_policy_approval_request(
             approval_manager=mgr,
             user_id=str(actor_id),
@@ -531,8 +543,8 @@ async def propose_gate_policy_change(policy_id: str, request: dict, http_request
         status="approval_required" if approval_request_id else "pending",
         args={"policy_id": pid, "set_default": set_default, "approval_request_id": approval_request_id, "current_version": cur_ver},
         result={"current": {"version": cur_ver, "sha256": _sha(cur_cfg), "config": cur_cfg}, "next": {"sha256": _sha(new_cfg), "config": new_cfg}, "links": links},
-        user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin"),
-        tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
+        user_id=str((_id := _identity_from_http(http_request))[0]),
+        tenant_id=_id[1],
         approval_request_id=str(approval_request_id) if approval_request_id else None,
     )
     return {"status": "ok", "change_id": str(change_id), "approval_request_id": approval_request_id, "links": links}
@@ -549,7 +561,8 @@ async def apply_gate_policy_change(change_id: str, request: dict, http_request: 
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     body = request if isinstance(request, dict) else {}
 
-    cc = await store.get_change_control(change_id=str(change_id), limit=200, offset=0, tenant_id=http_request.headers.get("X-AIPLAT-TENANT-ID"))
+    _, tenant_id, _ = _identity_from_http(http_request)
+    cc = await store.get_change_control(change_id=str(change_id), limit=200, offset=0, tenant_id=tenant_id)
     events = (cc.get("events") or {}).get("items") if isinstance(cc.get("events"), dict) else []
     prop = None
     for e in (events or []):
@@ -643,8 +656,8 @@ async def apply_gate_policy_change(change_id: str, request: dict, http_request: 
         status="success",
         args={"policy_id": pid, "set_default": set_default, "approval_request_id": approval_request_id, "prev_sha256": prev_sha},
         result={"new_sha256": _sha(next_cfg), "version": int(updated.get("version") or 1), "links": links},
-        user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin"),
-        tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
+        user_id=str((_id := _identity_from_http(http_request))[0]),
+        tenant_id=_id[1],
         approval_request_id=str(approval_request_id) if approval_request_id else None,
     )
     return {"status": "ok", "change_id": str(change_id), "item": updated, "default_id": data.get("default_id"), "links": links}

@@ -20,6 +20,15 @@ from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 router = APIRouter()
 
 
+def _autosmoke_identity(http_request: Request):
+    """Spoofable identity only via actor_from_http (DEV_MODE / identity secret)."""
+    actor = actor_from_http(http_request, None)
+    tenant_gated = actor.get("tenant_id")
+    tenant_id = tenant_gated or "ops_smoke"
+    actor_id = actor.get("actor_id") or "anonymous"
+    return str(actor_id), str(tenant_id), (str(tenant_gated) if tenant_gated else None)
+
+
 def _rt():
     return get_kernel_runtime()
 
@@ -652,8 +661,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
                 merge=True,
             )
 
-            tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
-            actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+            actor_id, tenant_id, tenant_write = _autosmoke_identity(http_request)
 
             async def _on_complete(job_run: Dict[str, Any]):
                 st = str(job_run.get("status") or "")
@@ -683,7 +691,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
                         trace_id=ver.get("trace_id"),
                         run_id=str(job_run.get("run_id") or job_run.get("id") or "") or None,
                         approval_request_id=request.approval_request_id,
-                        tenant_id=http_request.headers.get("X-AIPLAT-TENANT-ID", None),
+                        tenant_id=tenant_write,
                     )
                 except Exception as e:
                     logging.warning(str(e), exc_info=True)
@@ -694,7 +702,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
                 resource_type="prompt_template",
                 resource_id=str(request.template_id),
                 tenant_id=tenant_id or "ops_smoke",
-                actor_id=actor_id or "admin",
+                actor_id=actor_id or "anonymous",
                 detail={"op": "prompt_template_upsert", "template_id": str(request.template_id), "change_id": str(change_id)},
                 on_complete=_on_complete,
             )
@@ -824,8 +832,7 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
                 patch={"verification": {"status": "pending", "updated_at": time.time(), "source": "autosmoke"}, "governance": {"latest_change_id": change_id}},
                 merge=True,
             )
-            tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
-            actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+            actor_id, tenant_id, tenant_write = _autosmoke_identity(http_request)
 
             async def _on_complete(job_run: Dict[str, Any]):
                 st = str(job_run.get("status") or "")
@@ -855,7 +862,7 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
                         trace_id=ver.get("trace_id"),
                         run_id=str(job_run.get("run_id") or job_run.get("id") or "") or None,
                         approval_request_id=request.approval_request_id,
-                        tenant_id=http_request.headers.get("X-AIPLAT-TENANT-ID", None),
+                        tenant_id=tenant_write,
                     )
                 except Exception as e:
                     logging.warning(str(e), exc_info=True)
@@ -866,7 +873,7 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
                 resource_type="prompt_template",
                 resource_id=str(template_id),
                 tenant_id=tenant_id or "ops_smoke",
-                actor_id=actor_id or "admin",
+                actor_id=actor_id or "anonymous",
                 detail={"op": "prompt_template_rollback", "template_id": str(template_id), "version": str(request.version), "change_id": str(change_id)},
                 on_complete=_on_complete,
             )
@@ -1100,8 +1107,7 @@ async def delete_prompt_template(
         if ok and js is not None:
             from core.api.core_facade import enqueue_autosmoke
 
-            tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
-            actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+            actor_id, tenant_id, tenant_write = _autosmoke_identity(http_request)
 
             await enqueue_autosmoke(
                 execution_store=store,
@@ -1109,7 +1115,7 @@ async def delete_prompt_template(
                 resource_type="prompt_template",
                 resource_id=str(template_id),
                 tenant_id=tenant_id or "ops_smoke",
-                actor_id=actor_id or "admin",
+                actor_id=actor_id or "anonymous",
                 detail={"op": "prompt_template_delete", "template_id": str(template_id), "change_id": str(change_id)},
             )
     except Exception as e:
