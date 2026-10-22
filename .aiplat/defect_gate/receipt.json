@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-21T23:48:09+08:00",
+  "reviewed_at": "2026-10-22T09:05:48+08:00",
   "base_ref": "origin/main",
-  "merge_base": "4a4818e0a913f2ce33dabdd961a675a74ed14176",
-  "diff_sha256": "88d7ed52415f05c49f03257e059832e9923f7144b1d1df6eb5a74e5cdd08e7bb",
-  "head_sha": "87074bef673931b893568ad9a1a9672a0ad8ceb1",
+  "merge_base": "dc40205767db47f4d354482793c51b6d8fe15564",
+  "diff_sha256": "5715bc2e0726981365b7d5d13cdad08d78f2740da66b96ff4dfc977cb24b495a",
+  "head_sha": "ff72db0ea6a5b1bdb108d5b1425f6446e0844d95",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Governance ops mutators require token; whitepaper stamps refreshed. Local lock only; CI needs non-author Approve."
+  "note": "actor_from_http gated; config-registry + diagnostics + gateway + tools + mcp_admin no raw header OR after gate; docstring avoids false platform-import. Local lock only; CI needs non-author Approve."
 }
