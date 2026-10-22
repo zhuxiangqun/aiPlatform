@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-22T14:30:20+08:00",
+  "reviewed_at": "2026-10-22T15:40:37+08:00",
   "base_ref": "origin/main",
-  "merge_base": "58baf4f7aa65d8a8fe6d266991f55649a4e2d533",
-  "diff_sha256": "65710b1b79d8bcdf4ff9763f575b0b9dab7fa0bd960d76598e3ae1dc27da1b8e",
-  "head_sha": "5884379df15d6304eb8c5ddfde92cd05a0ca1355",
+  "merge_base": "bea043c9a2b1dbeb380a866452cfa324d81cc4e8",
+  "diff_sha256": "cb85df18bd7852200be0d0638568a405cf0335e998d1932f7fd0e967baae568a",
+  "head_sha": "c10ba840cff5afc890733eba5632d2f6af6818b9",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "change_control + learning_autocapture stop OR-ing raw actor/tenant headers after actor_from_http; fallback anonymous/ops_smoke. Local lock only; CI needs non-author Approve."
+  "note": "After merge with #362: change_control/learning_autocapture + gate_policies/prompt/skill_evals all route actor via actor_from_http; no raw header OR-fallback. Contract \u00a773 lists all modules. Local lock only; CI needs non-author Approve."
 }
