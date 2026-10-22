@@ -1,0 +1,52 @@
+# Capability critical-path behavior smoke (Phase D)
+# Source of truth for "行为通过" candidates — NOT CAPABILITIES ✅ rows.
+# static: repo file + AST top-level symbol (always --ci hard)
+# live: HTTP when --live / AIPLAT_SMOKE_LIVE=1 (soft unless --require-live)
+version: 1
+paths:
+  - id: core_health_route
+    title: Core /health route registered
+    kind: static
+    module: aiPlat-core/core/server.py
+    symbol: health_check
+
+  - id: core_facade_entry
+    title: CoreFacade module present (platform sole core entry)
+    kind: static
+    module: aiPlat-core/core/api/core_facade.py
+    # Module-level presence; avoid full import on py3.9 CI images
+    symbol: create_pipeline_engine
+
+  - id: pipeline_engine
+    title: PipelineEngine class present
+    kind: static
+    module: aiPlat-core/core/harness/execution/pipeline_engine.py
+    symbol: PipelineEngine
+
+  - id: kb_qa_retrieve
+    title: Canonical KB Q&A retrieve entry
+    kind: static
+    module: aiPlat-core/core/api/facades/kb_facade.py
+    symbol: kb_qa_retrieve
+
+  - id: platform_gateway_execute
+    title: Platform gateway execute forwarder
+    kind: static
+    module: aiPlat-platform/api/rest/routes.py
+    # route function name in routes.py
+    symbol: null
+    contains: "/platform/gateway/execute"
+
+  - id: live_core_health
+    title: Live GET core /health
+    kind: live
+    method: GET
+    url: "{CORE}/health"
+    expect_status: 200
+
+  - id: live_core_api_health
+    title: Live GET /api/core/health
+    kind: live
+    method: GET
+    url: "{CORE}/api/core/health"
+    expect_status: 200

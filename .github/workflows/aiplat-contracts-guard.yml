@@ -138,6 +138,12 @@ jobs:
         run: |
           python3 ./scripts/verify_capability_truth.py --ci
 
+      # Phase D: critical-path static wiring (file+AST). Live HTTP is opt-in
+      # (AIPLAT_SMOKE_LIVE=1 / --require-live) — not the same as CAPABILITIES ✅.
+      - name: Capability critical-path smoke (static)
+        run: |
+          python3 ./scripts/smoke_capability_critical_paths.py --ci
+
       - name: Tool selection regression (gold dataset)
         working-directory: ./aiPlat-core
         run: |

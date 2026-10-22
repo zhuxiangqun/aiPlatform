@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-22T23:54:09+08:00",
+  "reviewed_at": "2026-10-23T00:19:01+08:00",
   "base_ref": "origin/main",
-  "merge_base": "9112208e568fc91b34e8150b012d02d62a7f455d",
-  "diff_sha256": "bb0fd03cf53ba115e0d7f0933e36099f3d842e6eb234e64c9f26a5f12b71ec02",
-  "head_sha": "14752feaa1c2b6d44e5732a9921e516a2e7fc28b",
+  "merge_base": "81121f22ec9e03d0abcb9d6250c92ad847150825",
+  "diff_sha256": "3c7eef7fa4437e5b8900d761370d8872549e4016596ce56a1684785f860ed3a5",
+  "head_sha": "2418d05fc028506241f850806e65041d0c87ba53",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Rebased Phase C onto main after #371 merge; refresh receipt for push."
+  "note": "Phase D only on main after #372 squash merge."
 }

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 33
-total_capabilities: 1476
+total_capabilities: 1477
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -5613,12 +5613,12 @@ domains:
         reason: "P0-B3 arena/wake-agent REST 端点"
 
   # ══════════════════════════════════════════════════════════════
-  # 二十一、平台治理 (10 caps)
+  # 二十一、平台治理 (11 caps)
   # ══════════════════════════════════════════════════════════════
   platform-governance:
     section: "二十一"
     section_name: "平台治理"
-    caps_count: 10
+    caps_count: 11
     provides:
       - symbol: "GovernancePipeline"
         type: "class"
@@ -5660,6 +5660,10 @@ domains:
         type: "function"
         signature: "render_stats_block(content)→md; pure stats table from chapter counts"
         module: "scripts/verify_capability_consistency.py"
+      - symbol: "run_smoke"
+        type: "function"
+        signature: "run_smoke(live=False)→dict; critical-path static/live behavior smoke (Phase D)"
+        module: "scripts/smoke_capability_critical_paths.py"
     breaks: []
     consumers_expected:
       - module: "core/server.py"
@@ -5669,11 +5673,13 @@ domains:
       - module: "aiPlat-platform/apps/fde/api/fde_dashboard_v2.py"
         reason: "仪表盘治理指标"
       - module: "scripts/verify_capability_truth.py"
-        reason: "统一门禁调用 audit_registry"
+        reason: "统一门禁调用 audit_registry / run_smoke"
       - module: "scripts/verify_doc_sync.sh"
         reason: "doc sync / pre-commit / contracts-guard 向下传 --ci"
       - module: "scripts/generate_capability_stats.py"
         reason: "Phase C 统计表生成入口"
+      - module: ".github/workflows/aiplat-contracts-guard.yml"
+        reason: "Phase D critical-path static smoke in CI"
 
   # ══════════════════════════════════════════════════════════════
   # 二十二、Infra 基础设施 (6 caps)
