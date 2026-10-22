@@ -1,9 +1,9 @@
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 33 domains | 1470 capabilities (caps_count) | 1470 symbols (provides)
+> Version: 1.1.0 | 33 domains | 1472 capabilities (caps_count) | 1472 symbols (provides)
 
-> 口径：`caps_count` = 域声明的产品能力数；`provides` = 登记公开符号数；二者可能不同，勿与 `AIPLAT_CAPABILITIES.md` 行计数混算。
+> 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
 ## Consumer-to-Capability Dependencies
 
@@ -229,7 +229,7 @@
 | extension-and-learning | §十一 扩展与学习 | 10 | Pipeline 故障→StrategySearchEngine |
 | evaluation-system | §十三 评估系统 | 24 | Pipeline 质量评分 |
 | gate-system | §十二 Gate 系统 | 153 | Pipeline 阶段 Gate 检查 |
-| knowledge-infrastructure | §四附 知识基础设施 | 3 | RunContext 运行时上下文 |
+| knowledge-infrastructure | §四附 知识基础设施 | 5 | RunContext 运行时上下文 |
 
 ### core/harness/infrastructure/infra_llm_adapter.py
 
@@ -285,7 +285,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-infrastructure | §四附 知识基础设施 | 3 | SECI 消费 KnowledgeSynthesizer |
+| knowledge-infrastructure | §四附 知识基础设施 | 5 | SECI 消费 KnowledgeSynthesizer |
 
 ### core/harness/memory/manager.py
 
@@ -295,7 +295,7 @@
 | hermes-compression | §三十二 Hermes压缩对标 | 3 | build_context → normalize_roles + reminder dict injection |
 | memory-runtime-filtering | §二十九 记忆运行时过滤 | 2 | save_interaction 过滤逻辑 |
 | extension-and-learning | §十一 扩展与学习 | 10 | build_context → SharedKnowledgePool 注入 |
-| knowledge-infrastructure | §四附 知识基础设施 | 3 | build_context 注入 ContextBus |
+| knowledge-infrastructure | §四附 知识基础设施 | 5 | build_context 注入 ContextBus |
 
 ### core/harness/memory/reminders.py
 
@@ -493,7 +493,7 @@
 - **core/harness/knowledge/domain_maturity.py** — 域成熟度评分
 - **core/harness/knowledge/ontology_completeness.py** — OCS 本体完整性六维评分
 
-### §四附 知识基础设施 (3 caps)
+### §四附 知识基础设施 (5 caps)
 
 - **core/harness/knowledge/seci_engine.py** — SECI 消费 KnowledgeSynthesizer
 - **core/harness/memory/manager.py** — build_context 注入 ContextBus

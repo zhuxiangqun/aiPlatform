@@ -134,13 +134,9 @@ jobs:
         run: |
           bash ./scripts/phase_check.sh
 
-      - name: Generate capability impact matrix
+      - name: Capability truth gate (paths + registry + matrix full diff)
         run: |
-          python3 ./scripts/generate_impact_matrix.py
-          if ! git diff --quiet -- docs/matrix/capability-impact-matrix.md; then
-            echo "::warning::capability-impact-matrix.md drift detected — showing diff:"
-            git diff -- docs/matrix/capability-impact-matrix.md | head -40 || true
-          fi
+          python3 ./scripts/verify_capability_truth.py --ci
 
       - name: Tool selection regression (gold dataset)
         working-directory: ./aiPlat-core

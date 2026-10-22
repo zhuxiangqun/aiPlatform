@@ -10,9 +10,10 @@
 version: "1.1.0"
 generated_at: "2026-10-22"
 # Header totals must match domain bodies (sum caps_count / len(domains)).
-# provides[] is the public-symbol list and may exceed caps_count.
+# caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
+# 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 33
-total_capabilities: 1470
+total_capabilities: 1472
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -2453,12 +2454,12 @@ domains:
         reason: "FDE 追问 → 检索增强"
 
   # ══════════════════════════════════════════════════════════════
-  # 四附、知识基础设施 (3 caps)
+  # 四附、知识基础设施 (5 caps)
   # ══════════════════════════════════════════════════════════════
   knowledge-infrastructure:
     section: "四附"
     section_name: "知识基础设施"
-    caps_count: 3
+    caps_count: 5
     provides:
       - symbol: "ContextBus"
         type: "class"
@@ -2472,6 +2473,14 @@ domains:
         type: "class"
         signature: "load_from_dir, get_source, map_to_ontology"
         module: "core/harness/ontology_engine/data_source.py"
+      - symbol: evaluate_freshness
+        type: function
+        signature: "nodes/repo_root → {stale, reason, stored, computed}; missing meta ⇒ stale"
+        module: "core/harness/knowledge/code_graph_persist.py"
+      - symbol: evaluate_freshness
+        type: function
+        signature: "nodes → {stale, reason}; capability graph cache fingerprint"
+        module: "core/harness/knowledge/cap_graph_persist.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/knowledge/seci_engine.py"

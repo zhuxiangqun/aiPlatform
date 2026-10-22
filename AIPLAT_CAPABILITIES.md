@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2337
+total_capabilities: 2339
 last_updated: 2026-10-20
 version: "30.12"
 auto_sync: true
@@ -189,8 +189,6 @@ core_guarantees:
         - aiPlat-core/core/harness/execution/loop/_facade.py::1973
         - aiPlat-core/core/harness/execution/loop/_facade.py::2006
         - aiPlat-core/core/harness/execution/pipeline_engine.py::3065
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::12012
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::12233
     - id: seci_knowledge_spiral
       description: "SECI 知识螺旋（POST_LOOP→atom→convergence）"
       paths:
@@ -248,13 +246,6 @@ core_guarantees:
       description: "Skill 晶体化（pipeline完成→TaskSkill→SkillRegistry）"
       paths:
         - aiPlat-core/core/harness/execution/pipeline_engine.py::3028
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::9879
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::10103
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::10107
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::10129
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::10142
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::10152
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::10174
     - id: feedback_loops
       description: "交互反馈回路"
       paths:
@@ -270,11 +261,9 @@ core_guarantees:
       schema_default: "react"
       consumed_at:
         - aiPlat-core/core/harness/execution/pipeline_engine.py::4215
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::11367
         - aiPlat-core/core/harness/execution/pipeline_engine.py::4084
         - aiPlat-core/core/harness/execution/pipeline_engine.py::4215
         - aiPlat-core/core/harness/execution/pipeline_engine.py::7071
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::11321
     - id: capability_profile
       field: PipelineStageConfig.capability_profile
       schema_default: "auto"
@@ -336,7 +325,6 @@ core_guarantees:
         - aiPlat-core/core/harness/execution/pipeline_engine.py::4052
         - aiPlat-core/core/harness/execution/pipeline_engine.py::4594
         - aiPlat-core/core/harness/execution/pipeline_engine.py::6954
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::11089
     - id: generate_test_plan
       field: PipelineStageConfig.generate_test_plan
       schema_default: false
@@ -345,7 +333,6 @@ core_guarantees:
         - aiPlat-core/core/harness/execution/pipeline_engine.py::8653
         - aiPlat-core/core/harness/execution/pipeline_engine.py::8911
         - aiPlat-core/core/harness/execution/pipeline_engine.py::8917
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::11371
         - aiPlat-core/core/harness/execution/pipeline_engine.py::4095
         - aiPlat-core/core/harness/execution/pipeline_engine.py::4606
     - id: hitl
@@ -431,8 +418,6 @@ core_guarantees:
         - aiPlat-core/core/harness/execution/pipeline_engine.py::5108
         - aiPlat-core/core/harness/execution/pipeline_engine.py::9521
         - aiPlat-core/core/harness/execution/pipeline_engine.py::9523
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::10681
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::12163
     - id: pipeline_mode
       field: PipelineStageConfig.pipeline_mode
       description: "chain|router|parallel|orchestrator|evaluator_optimizer|agent"
@@ -535,9 +520,6 @@ core_guarantees:
         - aiPlat-core/core/harness/execution/pipeline_engine.py::8855
         - aiPlat-core/core/harness/execution/pipeline_engine.py::8899
         - aiPlat-core/core/harness/execution/pipeline_engine.py::8911
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::10653
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::10679
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::10628
 scan_hash: 8f9548ec24f4
 ---
 
@@ -872,7 +854,7 @@ scan_hash: 8f9548ec24f4
 | 合入后仓库健康扫描（repo health） | `repo_health_scan.py` + `scripts/scan_repo_health.py` + `collect_merge_gates_posture.repo_health` + `envelope_for_repo_health_block` + `CoreFacade.assess_repo_health` / `scan_repo_health` + duty_board.yaml 阈值/剧本 + Governance repo_health= + **值班板 CTA** `POST /governance/repo-health/scan` + `/api/governance`→platform 代理前缀 + cron `repo_health_weekly` | ✅ | 全树 LOC/god/multi_base/fanout/deps JSONL（周度/按需）；绝对+Δloc/Δdeps → go/watch/block；无快照→unavailable（禁发明绿）；合入闸门只管 diff，本扫描抓温水煮青蛙；`AIPLAT_REPO_HEALTH_PERSIST=0` 可关写入；**进程内周扫**：`register_builtin_jobs`→`repo_health_weekly`（默认 168h，`AIPLAT_ENABLE_REPO_HEALTH_CRON` / `AIPLAT_REPO_HEALTH_CRON_HOURS`）；**值班板一键扫**：Governance「Repo health scan」→ persist JSONL → 刷新 org-harness；生成物不适用（平台横切仓库健康） | 已合入 |
 | 可测性闸门 P1（纯 I/O） | `testability_gate.py` + `done_verify.require_testability` + coding stage defaults + `check_physical_merge_gates` 同跑 | ✅ | handler 须有纯单元测（assert、无 DB/网络/消息队列）；integration-only 不算完成；warn→`block_after`（默认 2026-11-01，错开物理门 10-25）；合入侧磁盘补齐测试；**done_verify 从 `## FILE:` / factory 产物抽文件**（不依赖空 `_written_files`）；生成物适用：已接线（编码 stage done_verify） | 已合入 |
 | Evidence Envelope（诚实结论信封） | `evidence_envelope.py` + `ReviewReport.build_evidence`/`to_dict` + `build_duty_board`（`fold_findings_for_duty` + gold BLOCK）+ Governance 信封摘要 + `CoreFacade.validate_evidence_envelope` / `attach_evidence_envelopes` / `assert_evidence_envelope_integrity` / `allow_evidence_release_block` / `fold_findings_for_duty` + experience_feedback register 强制信封 | ✅ | 每条结论带 status/confidence/evidence/limitations/next_check；**confirmed 必须 measured+非空 evidence**（否则 demote→suspected）；**release block 须 measured+limitations**；derived/speculative 不可单独拦发布；**反形式主义**：`compact_evidence` 去重+采样（cap=8）+ `mode=reject`/`assert_envelope_integrity` 硬拒假 confirmed（`integrity_ok`/`envelope_integrity_rejected`）；**值班板** findings fold→watch / measured→block；无 `allow_release_block` → demote watch；gold 经 `envelope_for_gold_block`；豁免负债经 `envelope_for_exemption_debt_block`；门禁元评估经 `envelope_for_gate_meta_block`；autoreview LLM 发现默认 derived + `envelope_integrity_ok`；experience 登记拒 speculative 空证据；生成物适用：已接线（autoreview 报告 + 值班板 + experience_feedback） | 已合入 |
-| Governance 任务采纳/干预 KPI | `pages/Governance/index.tsx` ← `GET /core/diagnostics/adoption-metrics` | ✅ | Agent KPI（调用/7日活跃/HITL 通过·驳回/澄清触发）上治理主面；不可用时显式 unavailable，**不展示假成功率**；生成物不适用（平台横切） | 已合入 |
+| Governance 任务采纳/干预 KPI | `aiPlat-management/frontend/src/pages/Governance/index.tsx` ← `GET /core/diagnostics/adoption-metrics` | ✅ | Agent KPI（调用/7日活跃/HITL 通过·驳回/澄清触发）上治理主面；不可用时显式 unavailable，**不展示假成功率**；生成物不适用（平台横切） | 已合入 |
 | event_loop | harness/execution/event_loop.py | ✅ | 自动同步 | 已合入 |
 | quick_engine | harness/execution/engines/quick_engine.py | ✅ | 自动同步 | 已合入 |
 | graph_engine | harness/execution/engines/graph_engine.py | ✅ | 自动同步 | 已合入 |
@@ -1375,7 +1357,7 @@ scan_hash: 8f9548ec24f4
 | 术语动态注入 | apps/skills/registry.py:1889-1919 | ✅ | 术语字典注入从静态字符串替换为GraphIndex动态加载→随自播种自动增长→零硬编码 | 已合入 |
 | YAML热加载 | harness/knowledge/ontology_bus.py:28-62 | ✅ | mtime缓存→YAML文件变更自动检测→零重启配置更新→新增方案原型实时生效 | 已合入 |
 | 本体治理工程化声明 | platform/apps/fde/api/fde.py:3440-3665 | ✅ | GET /fde/governance — 8项治理能力矩阵成熟度自评+对传统数据治理/睿治Agent行业对标+实时状态 | 已合入 |
-| 治理自审计 | platform/apps/fde/api/fde.py:3668-3760 | ✅ | GET /fde/governance/validate — 8项能力逐一可执行审计(代码可查/端点可调/约束可测)→8/8 pass in 50ms | 已合入 |
+| 治理自审计 | aiPlat-platform/apps/fde/api/fde_governance.py:27 | ✅ | GET /fde/governance/validate — 8项能力逐一可执行审计(代码可查/端点可调/约束可测)→8/8 pass in 50ms | 已合入 |
 | 术语定义自动补全 | apps/skills/registry.py:1298-1390 | ✅ | 术语自播种时关键词匹配生成定义(15个预置定义)→无LLM调用→零延迟→无匹配时留空待人工补全 | 已合入 |
 | 跨域术语去重 | apps/skills/registry.py:1873 | ✅ | 术语播种前检测enterprise-terms中同名概念→已有则创建similar_to跨域关联→防止跨域术语碎片化 | 已合入 |
 | FDE仪表板 | platform/apps/fde/api/fde.py:204 | ✅ | GET /fde/dashboard — 单次请求聚合关键指标+最近活动+主动告警+治理健康度→前端首页即用 | 已合入 |
@@ -1420,7 +1402,7 @@ scan_hash: 8f9548ec24f4
 | compute_domain_ocs | `core/harness/knowledge/ontology_completeness.py` | ✅ | 自动同步 | 已合入 |
 | WikiPageRetriever | `harness/knowledge/retrieval.py` | ✅ | 自动同步 | 已合入 |
 | wiki_engine | harness/knowledge/wiki_engine.py | ✅ | 自动同步 | 已合入 |
-| capability_graph | harness/knowledge/capability_graph.py | ✅ | 能力图谱（agent/skill/tool/mcp/workflow 节点 + requires/uses/provides 边）；工作区扫描经 get_aiplat_home() 解析（2026-08-28 修复） | 已合入 |
+| capability_graph | harness/knowledge/capability_graph.py | ✅ | 能力图谱（agent/skill/tool/mcp/workflow 节点 + requires/uses/provides 边）；工作区扫描经 get_aiplat_home()；缓存带 `stale`/`fingerprint`（缺元数据→stale，诊断不宣称已同步） | 已合入 |
 | sqlite_retriever | harness/knowledge/sqlite_retriever.py | ✅ | 自动同步 | 已合入 |
 | code_graph | harness/knowledge/code_graph.py | ✅ | 代码图谱（AST imports/calls/symbols/routes，5 仓库全量 + mtime 增量 + 新文件发现）；经 get_aiplat_home() 解析（2026-08-28 修复） | 已合入 |
 | **security_view** | harness/knowledge/security_view.py | ✅ | 基于 code_graph 的确定性安全视图编译器（secview.v1：entries/sinks/gates/scored hot_paths）；无 LLM；reachability≠taint（heuristic）；CoreFacade + sys_code_intel_security_* + diagnostics/code-intel/security-view | 已合入 |
@@ -1431,8 +1413,9 @@ scan_hash: 8f9548ec24f4
 | wiki_retriever | harness/knowledge/wiki_retriever.py | ✅ | 自动同步 | 已合入 |
 | cap_health_rules | harness/knowledge/cap_health_rules.py | ✅ | 自动同步 | 已合入 |
 | skill_deps | harness/knowledge/skill_deps.py | ✅ | 自动同步 | 已合入 |
-| code_graph_persist | harness/knowledge/code_graph_persist.py | ✅ | 自动同步 | 已合入 |
-| cap_graph_persist | harness/knowledge/cap_graph_persist.py | ✅ | 自动同步 | 已合入 |
+| code_graph_persist | harness/knowledge/code_graph_persist.py | ✅ | SQLite 持久化 + `source_fingerprint` / `evaluate_freshness`（缺元数据或计算失败→stale） | 已合入 |
+| cap_graph_persist | harness/knowledge/cap_graph_persist.py | ✅ | 能力图谱 SQLite + `source_fingerprint` / `evaluate_freshness`（与 code_graph 分路径） | 已合入 |
+| verify_capability_truth | `scripts/verify_capability_truth.py` | ✅ | 能力声明↔源码统一入口：path/一致性/registry/矩阵全文/gap；默认 exit0 不写盘；仅 `--ci` 硬失败；软警告不单独非零 | 已合入 |
 | reparse_queue | harness/knowledge/reparse_queue.py | ✅ | 自动同步 | 已合入 |
 | text_cleaner | harness/knowledge/text_cleaner.py | ✅ | 自动同步 | 已合入 |
 | doc_quality_monitor | harness/knowledge/doc_quality_monitor.py | ✅ | 自动同步 | 已合入 |
@@ -1658,7 +1641,7 @@ scan_hash: 8f9548ec24f4
 | strategy_agent | harness/agents/strategy_agent.py | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 7 种 Agent 实现类 | apps/agents/ | ✅ | ReAct/Conversational/PlanExecute/RAG/MultiAgent/MaterialsChat/Pipeline | 已合入 |
-| AGENT.md 系统 | apps/agents/discovery.py | ✅ | YAML frontmatter → PipelineStageConfig | 已合入 |
+| AGENT.md 系统 | `aiPlat-core/core/apps/agents/discovery.py` | ✅ | YAML frontmatter → PipelineStageConfig | 已合入 |
 | 交接5字段 | [概念] | ✅ | AGENT.md 规范 — 文档条目；做了什么/产出物/如何验证/已知问题/下一步 | 待核实 |
 | SubAgent 协调器 | apps/agents/subagent/coordinator.py | ✅ | execute_single/parallel/sequential/fanout | 已合入 |
 | 5 个内置 SubAgent | apps/agents/subagent/registry.py | ✅ | reviewer/debugger/tester/docs/perf | 已合入 |
@@ -1691,9 +1674,9 @@ scan_hash: 8f9548ec24f4
 | scan_untrusted_skill_text | `core/apps/skills/skill_boundary.py` | ✅ | 自动同步 | 已合入 |
 | skill_skip_reason | `core/apps/skills/skill_boundary.py` | ✅ | 自动同步 | 已合入 |
 | enable_skill_result | `core/apps/skills/skill_boundary.py` | ✅ | 自动同步 | 已合入 |
-| resolve_e2e_url | `core/engine/skills/e2e_test/handler.py` | ✅ | 自动同步 | 已合入 |
-| scaffold_spec_from_recon | `core/engine/skills/e2e_test/handler.py` | ✅ | 自动同步 | 已合入 |
-| e2e_test | `core/engine/skills/e2e_test/handler.py` | ✅ | 自动同步 | 已合入 |
+| resolve_e2e_url | `aiPlat-core/core/engine/skills/e2e_test/SKILL.md` | ✅ | 自动同步 | 已合入 |
+| scaffold_spec_from_recon | `aiPlat-core/core/engine/skills/e2e_test/SKILL.md` | ✅ | 自动同步 | 已合入 |
+| e2e_test | `aiPlat-core/core/engine/skills/e2e_test/SKILL.md` | ✅ | 自动同步 | 已合入 |
 | orphan_finalize_status_payload | `core/harness/utils/execute_session.py` | ✅ | 自动同步 | 已合入 |
 | orphan_seal_requires_quality_review | `core/harness/utils/execute_session.py` | ✅ | 自动同步 | 已合入 |
 | procedural_memory_block | `core/harness/routing/skill_routing.py` | ✅ | 自动同步 | 已合入 |
@@ -1818,7 +1801,7 @@ scan_hash: 8f9548ec24f4
 | Skill Lint 10规则 | management/lint_rules.yaml | ✅ | name/version/category/schema 校验 | 已合入 |
 | Skill 质量 lint（no-op / FILE 错绑 / invocation_mode） | `management/lint_rules/skill_quality.py` | ✅ | 空话短语、非 codegen 误用 ## FILE: completion、user/auto 与 auto_trigger_allowed 对齐检测 | 已合入 |
 | Engine Skill 全量质量 lint | `scripts/lint_engine_skills.py` + arch_guard §46 `engine_skill_quality_lint` | ✅ | 扫 `core/engine/skills/*/SKILL.md`：handler/hybrid 配对、FILE 验收错绑、no-op、invocation_mode 冲突；**E4** 未知 `execution_type`、prompt+mutating effects 无 handler；CI + pre-commit（改 engine SKILL 时）阻断；生成物不适用（引擎横切） | 已合入 |
-| Skill invocation_mode | SKILL.md `invocation_mode: user\|auto` + `auto_trigger_allowed` | ✅ | user=仅显式调用（SkillMatcher/candidates 跳过）；auto=可自动路由；工作区 autofill 默认 user；engine 默认 auto | 已合入 · 生成物适用（已接线：discovery/contract/routing） |
+| Skill invocation_mode | `aiPlat-core/core/engine/skills/e2e_test/SKILL.md` `invocation_mode: user\|auto` + `auto_trigger_allowed` | ✅ | user=仅显式调用（SkillMatcher/candidates 跳过）；auto=可自动路由；工作区 autofill 默认 user；engine 默认 auto | 已合入 · 生成物适用（已接线：discovery/contract/routing） |
 | Skill Corpus syscalls（agentic skill router） | `harness/syscalls/skill_corpus.py`（`sys_skill_corpus_search` / `inspect` / `select`） | ✅ | 可搜索含 disabled 的 skill 语料 → 检视元数据 → 显式 select 取正文并审计；生成物不适用（引擎横切 syscall） | 已合入 |
 | unrealized_side_effect | management/lint_rules/side_effects.py | ✅ | prompt 声明 write/network 且无 handler → lint error（不一键编造 handler） | 已合入 |
 | 滑动窗口衰减追踪 | apps/skills/registry.py | ✅ | recent_pass_rate + decayed_at | 已合入 |
@@ -1977,7 +1960,7 @@ scan_hash: 8f9548ec24f4
 | start_stdio_kernel | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | register_cc_hooks | `core/harness/infrastructure/hooks/cc_bridge.py` | ✅ | 自动同步 | 已合入 |
 | CCHookBridge | `core/harness/infrastructure/hooks/cc_bridge.py` | ✅ | 自动同步 | 已合入 |
-| AuditLog | `harness/infrastructure/audit.py` | ✅ | 自动同步 | 已合入 |
+| AuditLog | `aiPlat-platform/governance/audit/logger.py` | ✅ | 自动同步 | 已合入 |
 | MetricsAggregator | `harness/observability/metrics/__init__.py` | ✅ | 自动同步 | 已合入 |
 | **StdioKernel（P0-a）** | `core/acp/stdio_server.py` + `core/api/core_facade.py` | ✅ | stdio JSON-RPC 持久内核：thread/start\|resume\|approve\|reject\|events 映射 PipelineSession + run_events；JSON-RPC 2.0 + 背压 -32001；入口 `python -m core.acp.stdio_server`（对标 Codex app-server） | 已合入 |
 | **StdioKernelClient（P1）** | `aiplat-sdk/aiplat/stdio.py` | ✅ | SDK stdio 内核客户端：spawn 内核 + thread/start\|approve\|reject\|events + stream_events 流式监听；可注入 transport（对标 Codex SDK 程序化启停 Thread） | 已合入 |
@@ -2005,7 +1988,7 @@ scan_hash: 8f9548ec24f4
 | **AgentEventIngress** | `harness/infrastructure/agent_event_ingress.py` + server lifespan | ✅ | 外部事件唤醒 Agent：文件 inbox + 可选 Kafka/Redis → run_workspace_agent（AIPLAT_AGENT_EVENT_INGRESS） | 已合入 |
 | **Stage Reflection** | `harness/execution/stage_reflection.py` → pipeline_engine._capture_stage_reflection | ✅ | Pipeline 阶段反思闭合：确定性 health/error/artifact → crystallize 自改进；可选 LLM（AIPLAT_STAGE_REFLECTION_LLM） | 已合入 |
 | enrich_reflection_with_llm | `core/harness/execution/stage_reflection.py` | ✅ | 可选 LLM 增强阶段反思（AIPLAT_STAGE_REFLECTION_LLM） | 已合入 |
-| **Production Exec/Sandbox Prefer Docker** | exec_drivers/registry.py + sandbox.create_sandbox | ✅ | AIPLAT_PROFILE=production / PREFER_DOCKER 时危险执行与 stage sandbox 优先 Docker | 已合入 |
+| **Production Exec/Sandbox Prefer Docker** | aiPlat-core/core/apps/exec_drivers/registry.py + sandbox.create_sandbox | ✅ | AIPLAT_PROFILE=production / PREFER_DOCKER 时危险执行与 stage sandbox 优先 Docker | 已合入 |
 | **resolve_vector_backend** | infra_bridge.resolve_vector_backend | ✅ | 向量后端解析：env → production 默认 milvus → faiss | 已合入 |
 | **Production Depth Report** | `harness/observability/production_depth.py` + `diagnostics/checks/production_depth.py` + GET `/diagnostics/production-depth` + 前端 ProductionDepth | ✅ | 五处生产深度缺口聚合自检；一键诊断类别 production_depth；Doctor 摘要卡；ELK out_of_contract | 已合入 |
 
@@ -2163,7 +2146,7 @@ scan_hash: 8f9548ec24f4
 | research 文档新鲜度守卫 | `scripts/check_research_docs_freshness.py` | ✅ | Rule 6：状态标记矛盾检测 + 符号引用验证 + 最后验证时间戳对账（--ci 阻断） | 已合入 |
 | 应用工厂页面感知 | `frontend/src/pages/App/Factory/index.tsx` | ✅ | P2-4 扩展：/app/factory 上报项目数/阶段/通过率/选中项目；失败与 HITL 计数 + `stuckHints`（列表为何卡样本，最多 3 条）→ 数字人可答「哪些项目卡住」 | 已合入 |
 | voice_pipeline | `harness/digital_human/voice_pipeline.py` | ✅ | ASR→Agent→TTS 编排；优先 platform_consultant + 实况简报；降级 materials_chat 走 consultant_live_only 禁 RAG；页面数据感知（pageDataBridge/captureVisiblePage） | 已合入 |
-| platform_consultant | `workspace_seeds/agents/platform_consultant/AGENT.md` + `control_presets.yaml` | ✅ | 管理端文字顾问种子 Agent + ControlProfile（禁检索工具） | 已合入 |
+| platform_consultant | `aiPlat-core/core/workspace_seeds/agents/platform_consultant/AGENT.md` + `control_presets.yaml` | ✅ | 管理端文字顾问种子 Agent + ControlProfile（禁检索工具） | 已合入 |
 | consultant_live_only | `apps/agents/materials_chat.py` | ✅ | G5：`_consultant_agent` 时跳过 wiki/CRAG，仅靠注入简报 LLM 作答 | 已合入 |
 | MaterialsChat delivery 门 | `apps/agents/materials_chat.py` `_is_delivery_mode` / `_delivery_gate_block` | ✅ | `mode=delivery\|task\|governed` 时高幻觉/低证据不得 `success=True`（须 HITL）；Q&A 模式不阻断；生成物适用：已接线（对话壳 vs 交付壳） | 已合入 |
 |------|------|:---:|------|------|
@@ -2232,7 +2215,7 @@ scan_hash: 8f9548ec24f4
 | Value Center API | ⚠️ deprecated core/api/routers/value.py` + `core/schemas_value.py | ✅ | CRUD endpoints: `/all/goals`, `/all/goals/{id}`, `/all/goals/{id}/trend`, `/all/strategy`; Schemas: `GoalCreateRequest`, `GoalUpdateRequest`, `GoalSourceConfigRequest` | 已合入 |
  `core/api/routers/value.py` | ✅ | `get_all_goals`, `create_goal_all`, `update_goal_all`, `delete_goal_all`, `create_business_goal`, `get_goal_trend_all`, `get_strategy_all` + 4 REST endpoints (`/all/goals`, `/all/strategy`, `/all/goals/{id}`, `/all/goals/{id}/trend`) | 已合入 |
 | Proposal 工作流 | harness/learning/proposal_store.py | ✅ | draft→pending_approval→approved→merged/rejected + branch/merge语义 (Palantir AIP对齐) | 已合入 |
-| FDEBuilderOrchestrator | apps/fde/service/builder.py | ✅ | FDE 对话式 Agent 构建：_clarify()→DomainRouter→SkillRegistry→auto_fill→Builder.deploy_app() | 已合入 |
+| FDEBuilderOrchestrator | aiPlat-core/core/apps/fde/service/_archive/builder.py | ✅ | FDE 对话式 Agent 构建：_clarify()→DomainRouter→SkillRegistry→auto_fill→Builder.deploy_app() | 已合入 |
 | Agent 可发现性 | wiki.py:/ontology/{domain}/discover | ✅ | Agent动态查询 ObjectTypes/Links/Actions/Interfaces，自主发现操作能力 | 已合入 |
 
 ---
@@ -2378,7 +2361,7 @@ scan_hash: 8f9548ec24f4
 | 工厂 C2–C3：HITL resume + PRD 结构化 | `try_resume_schema_gate` + `_hitl_audit` + `format_structured_artifact_block` + `teams/structured_ref.yaml` | ✅ | schema 门暂停可补齐后重验；Architect 优先消费 structured 字段；参考团队嵌套 input_schema；生成物适用：**已接线** | 已合入 |
 | 平台 B：coding intensity | `coding_intensity.py` lite/full/ultra + hard 安全底线；registry/executor/loop/pipeline_prompt；工厂 code→full | ✅ | 三档可切；`karpathy_v1`≡full；安全不降；生成物适用：**已接线** | 已合入 |
 | 工厂 F5a：膨胀指标 | `factory_bloat_metrics` LOC/new_deps/new_files + vs_baseline；Factory 完成面板 | ✅ | 两次构建可对照；无 abstraction_count；生成物适用：**已接线** | 已合入 |
-| 工厂 F5b：canonical SKILL 外置种子 | `workspace_seeds/factory_sanitize/*.SKILL.md` + `load_canonical_media_skill_md` + `factory_artifact_sanitize` 薄加载 | ✅ | 4 个媒体契约模板 + report 通用模板出 sanitize.py；`{{app_name}}` 替换；生成物适用：**已接线** | 已合入 |
+| 工厂 F5b：canonical SKILL 外置种子 | `aiPlat-core/workspace_seeds/factory_sanitize/` + `load_canonical_media_skill_md` + `factory_artifact_sanitize` 薄加载 | ✅ | 4 个媒体契约模板 + report 通用模板出 sanitize.py；`{{app_name}}` 替换；生成物适用：**已接线** | 已合入 |
 | 平台 A3a：output_style 埋点 | `record_output_style_event` / `query_output_style_events` + factory chat 接线 | ✅ | style_version/tokens/followups/first_pass_ok 可查；**无分流**（A3b 另立）；生成物适用：**不适用**（平台横切对话观测） | 已合入 |
 | 平台 A3b：output_style A/B 分流 | `assign_output_style_experiment` + `compare_output_style_arms` + `AIPLAT_OUTPUT_STYLE_EXPERIMENT_PCT` | ✅ | sticky bucket；用户显式 adhd 锁定；默认 pct=0 零差；对照表；生成物适用：**不适用**（平台横切） | 已合入 |
 | 工厂 C4：stage 成败样本库 | `stage_outcome_samples` + `write_stage_handoff`/`apply_gate_failure` 接线 | ✅ | 成功/失败/schema_gate 可查；**不自动改拓扑**（非 AFlow）；生成物适用：**已接线** | 已合入 |
@@ -2736,7 +2719,7 @@ scan_hash: 8f9548ec24f4
 | 管理端执行会话隔离 | `mint_execute_session_id`（Skill/Agent/Tool/Graph/gateway/runs retry·Job） | ✅ | 空/`default` 会话键替换为 `{kind}-exec-{target}-{uuid}`，避免 session lane 泄漏锁导致排队空图；MCP 直连 JSON-RPC 不走该锁 | 已合入 · 生成物不适用（平台试跑横切） |
 | 内联交付→stock autoreview | `staged_inline_worktree` + `_git_work_tree` | ✅ | 物化 `## FILE` 为临时 worktree，经 skill 参数传 cwd；禁止进程级 `GIT_*` 跨 LLM；`load_diff` 超时+`to_thread`；staging 失败不扫 monorepo | 已合入 · 生成物适用（执行横切） |
 | autoreview 自动路由 | `resolve_review_routing` | ✅ | `panel=auto` 按 focus/diff 安全信号选单引擎或 panel（quick/deep）；显式 true/false 可覆盖；结果回传 `routing` | 已合入 · 生成物适用（执行横切） |
-| Tool 配置 AI 审核 | `POST /tools/{name}/audit`（`Tools.tsx` 编辑弹窗） | ✅ | description/parameters 最小 schema/status/源码语法；一键补描述或 parameters | 已合入 |
+| Tool 配置 AI 审核 | `POST /tools/{name}/audit`（`aiPlat-management/frontend/src/pages/Core/Tools/Tools.tsx` 编辑弹窗） | ✅ | description/parameters 最小 schema/status/源码语法；一键补描述或 parameters | 已合入 |
 | MCP 配置 AI 审核 | `POST /workspace/mcp/servers/{name}/audit`（`EditMcpModal`） | ✅ | validate_mcp_server + 运行时字段；HTTP/stdio 连通性探测（仅报告）；**证据填充** url/command（env/简介 HTTPS，禁占位）；**allowed_tools** 从 policy.yaml / 已发现工具缓存写入（无名单不编造；runtime 已有白名单则不重复告警） | 已合入 · 生成物适用（平台横切） |
 | Workflow 配置 AI 审核 | `POST /platform/workflows/{id}/audit`（`WorkflowCanvas`） | ✅ | 画布 data.type/config；Agent/Tool/HTTP/Condition 必填；孤立节点与环路；名称描述可一键写回；HTTP 节点 url 仅从节点说明中的真实地址一键写入；**Agent/Tool 节点缺 id 时按标题精确/slug/唯一别名匹配工作区目录，不对不上时不编造** | 已合入 · 生成物适用（平台横切） |
 | Workflow 防重复 | `core/management/workflow_manager.py` + `POST /platform/workflows/dedupe` | ✅ | name+节点指纹复用；清理同名同构图重复 | 已合入 |
@@ -2806,7 +2789,7 @@ scan_hash: 8f9548ec24f4
 | 生成物契约校验（conformance） | platform/builder/generated_conformance.py + generated_conformance.yaml + builder_project_service.py | ✅ | 注册前契约校验生成 AGENT.md/SKILL.md/agent_manifest：首行 `---`、治理字段、schema 对象格式；**Phase A**：`validate_manifest` 校验 mode/skill_routing/ui_bindings；`multi_agent` 必填 rationale+success_metrics+upgrade_criteria（五条 AND）；**E1** 可选 `architecture_profile`/`execution_backend` 白名单 + 与 agent_type 冲突检测；**E4** 生成 Skill 禁 handler/hybrid（无工厂 handler.py）；不合规跳过注册并记 rejected_artifacts；生成物适用：**已接线** | 已合入 |
 | 工厂跑通晋升门（promotion_gate） | platform/builder/promotion_gate.py + promotion_gate.yaml + hop_metrics.py | ✅ | 四维「跑通」+ multi 五条 AND；**Phase C**：hop JSONL 聚合（N/成功率/failed_stage）→ `GET .../promotion` + 部署 `promotion_gate` 快照；**可解释**：每条检查 `how_to_fix`/`missing` + `next_actions`/`summary`，`format_upgrade_fix_hint` 供部署 rejected_artifacts 与 promotion API；生成物适用：**已接线** | 已合入 |
 | 工厂运行可观测面板（跑到哪/为何卡） | `Factory/runObsSnapshot.ts` + `index.tsx` + `GET .../promotion` + `resumeFromStage`/`regenerateStage` | ✅ | 失败/HITL/完成时聚合 `_hitl_stage_id`/`_current_stage` + handoff.next/known_issues + promotion next_actions/hop；一键续跑（保留产物）或从此阶段重建；列表卡 `formatCardStuckHint` 短提示；阶段解析 vitest；无新后端；生成物适用：**已接线**（工厂 oversight UI） | 已合入 |
-| Agent RACI 责任边界（创建时） | `boundary_hints.normalize_raci` + `AgentManager` AGENT.md frontmatter + AddAgentModal / AssetBoundaryHint + `agent_engineering` Step 0 | ✅ | 可选写入 `raci.{responsible,accountable,consulted,informed}`；边界提示缺 RACI 时提醒「闭环优先单 Agent」；非运行时门禁（升 multi 仍走五条 AND）；生成物适用：**已接线** | 已合入 |
+| Agent RACI 责任边界（创建时） | `aiPlat-core/core/apps/common/boundary_hints.py` + `aiPlat-core/core/management/agent_manager.py`（AGENT.md frontmatter）+ AddAgentModal / AssetBoundaryHint + `agent_engineering` Step 0 | ✅ | 可选写入 `raci.{responsible,accountable,consulted,informed}`；边界提示缺 RACI 时提醒「闭环优先单 Agent」；非运行时门禁（升 multi 仍走五条 AND）；生成物适用：**已接线** | 已合入 |
 | 工厂动态 spawn 门禁（spawn_policy） | ⚠️ deprecated core/harness/coordination/spawn_policy.py + factory_profile + StageRunner + sys_agent_call | ✅ | Phase B W3：工厂阶段 `allow_dynamic_spawn=False`；ContextVar/state 阻断 DynamicOrchestrator.spawn 与 sys_agent_call 自由委派；非工厂默认允许；生成物适用：**已接线**（构建链契约化） | 已合入 |
 | 工厂 Skill hop schema 门（skill_hop_gate） | platform/builder/skill_hop_gate.py + builder_project_service.execute_skill | ✅ | Phase B W4：execute_skill 调用 LLM 前按 SKILL input_schema 校验；缺必填 → 422/结构化错误 + failed_stage=tool_selection + handoff 五字段；生成物适用：**已接线** | 已合入 |
 | 工厂 hop 度量（hop_metrics） | platform/builder/hop_metrics.py | ✅ | Phase C W5：execute_skill 每次写入 JSONL；aggregate + evaluate_project_run_through；`derive_test_evidence` 从 `last_test_report`/state 推导 real_tests+物理证据（run_tests/部署/promotion API 共用）；无 failed_stage 的失败剔除出有效成功率；生成物适用：**已接线** | 已合入 |
@@ -2886,6 +2869,7 @@ scan_hash: 8f9548ec24f4
 ## 二十五、管理 & 质量
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| normalize_raci | `core/apps/common/boundary_hints.py` | ✅ | 自动同步 | 已合入 |
 | management_api_token | `aiPlat-management/management/auth.py` | ✅ | 管理面 token；非 loopback 无 token 拒绝启动 | 已合入 |
 | assert_bind_allowed | `aiPlat-management/management/auth.py` | ✅ | 非本机监听必须已配置管理面 token | 已合入 |
 | core_api_token | `aiPlat-core/core/api/bind_gate.py` | ✅ | core 边缘 token；非 loopback 无 token 拒绝启动 | 已合入 |
@@ -3255,7 +3239,7 @@ scan_hash: 8f9548ec24f4
 | Harness 执行引擎 | 329 | 1 | 330 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 375 | 9 | 384 |
-| RAG 检索 | 52 | 0 | 52 |
+| RAG 检索 | 53 | 0 | 53 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 168 | 0 | 168 |
 | Skill 系统 | 171 | 0 | 171 |
@@ -3278,7 +3262,7 @@ scan_hash: 8f9548ec24f4
 | Infra 基础设施 | 16 | 0 | 16 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 106 | 0 | 106 |
+| 管理 & 质量 | 107 | 0 | 107 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -3297,11 +3281,12 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2327** | **10** | **2337** |
+| **总计** | **2329** | **10** | **2339** |
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（✅/⚠️ 行计数）。
 > `capability_registry.yaml` 登记公开符号（另一口径，勿与本表混算）。
-> 影响矩阵由登记表生成：`python3 scripts/generate_impact_matrix.py`。
+> 影响矩阵由登记表生成：`python3 scripts/generate_impact_matrix.py`（`--ci` 临时全文 diff，不改写工作树）。
+> 统一门禁：`python3 scripts/verify_capability_truth.py [--ci]`（源码为真；见契约 §74）。
 
 ---
 
