@@ -8,9 +8,11 @@
 # Generator: generate_impact_matrix.py → docs/matrix/capability-impact-matrix.md
 
 version: "1.1.0"
-generated_at: "2026-10-08"
-total_capability_domains: 34
-total_capabilities: 1101
+generated_at: "2026-10-22"
+# Header totals must match domain bodies (sum caps_count / len(domains)).
+# provides[] is the public-symbol list and may exceed caps_count.
+total_capability_domains: 33
+total_capabilities: 1047
 
 domains:
   # ══════════════════════════════════════════════════════════════

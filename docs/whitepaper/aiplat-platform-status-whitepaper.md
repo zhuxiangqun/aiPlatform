@@ -3,9 +3,9 @@ title: "aiPlat 平台现状白皮书"
 type: platform-status-whitepaper
 authority: derived-from-capabilities
 status: generated
-generated_at: "2026-10-22T09:05:18Z"
+generated_at: "2026-10-22T11:21:25Z"
 source: AIPLAT_CAPABILITIES.md
-source_sha256: "6a38f5787c83b1d52345b03256307c38348c49a24cb99f6f5f98f76ec94123df"
+source_sha256: "be63e79defb2302370d07b89284a6995f636c66d788a7bf6bf05f5c9d59b4746"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 total_capabilities: 2337
 capabilities_version: "30.12"
@@ -14,7 +14,7 @@ language: zh-CN
 packaging: executive-digest
 ---
 
-<!-- whitepaper_stamp source_sha256=6a38f5787c83b1d52345b03256307c38348c49a24cb99f6f5f98f76ec94123df scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 total_capabilities=2337 -->
+<!-- whitepaper_stamp source_sha256=be63e79defb2302370d07b89284a6995f636c66d788a7bf6bf05f5c9d59b4746 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 total_capabilities=2337 -->
 
 # aiPlat 平台现状白皮书
 
@@ -46,14 +46,14 @@ packaging: executive-digest
 
 | 字段 | 值 |
 |------|-----|
-| 生成时间 (UTC) | `2026-10-22T09:05:18Z` |
-| CAPABILITIES SHA-256 | `6a38f5787c83b1d52345b03256307c38348c49a24cb99f6f5f98f76ec94123df` |
+| 生成时间 (UTC) | `2026-10-22T11:21:25Z` |
+| CAPABILITIES SHA-256 | `be63e79defb2302370d07b89284a6995f636c66d788a7bf6bf05f5c9d59b4746` |
 | assessment-scores SHA-256 | `96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687` |
 | CAPABILITIES version | `30.12` |
 | CAPABILITIES last_updated | `2026-10-20` |
 | frontmatter total_capabilities | `2337` |
-| CAPABILITIES 内 ✅ 计数 | 2347 |
-| CAPABILITIES 内 ⚠️ 计数 | 21 |
+| CAPABILITIES 内 ✅ 计数 | 2348 |
+| CAPABILITIES 内 ⚠️ 计数 | 22 |
 | 能力表行（估） | 2346 |
 | 包装模式 | executive-digest（不含完整能力路径表） |
 
@@ -63,7 +63,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 
 用业务语言概括：aiPlat 把「能跑 Agent」扩展成「能交付、能治理、能积累知识」的平台。
 
-当前能力登记总量约 **2337** 项（✅≈2347 · ⚠️≈21，以 CAPABILITIES 扫描为准）。对外论证时不必通读路径表，可按下面五块理解：
+当前能力登记总量约 **2337** 项（✅≈2348 · ⚠️≈22，以 CAPABILITIES 扫描为准）。对外论证时不必通读路径表，可按下面五块理解：
 
 1. **执行与编排**：多阶段流水线、ReAct 循环、多 Agent 协作——把任务跑完，而不是只聊一轮。
 2. **记忆与知识**：会话记忆 + 企业知识/本体/RAG——回答有出处、可跨会话。

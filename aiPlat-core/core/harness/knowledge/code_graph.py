@@ -753,42 +753,46 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
             # Beyond 100 stale files → fall through to full disk rebuild
             if 0 < len(stale_files) <= 100:
                 for f in stale_files:
-                    rel = str(f.relative_to(_repo_root)) if f.exists() else ""
-                    if rel in nodes:
+                    # Prefer path relative to repo root; for deleted files, f may still
+                    # be under _repo_root even when missing on disk (Path does not require exists).
+                    try:
+                        rel = str(f.relative_to(_repo_root))
+                    except ValueError:
+                        # Absolute path not under repo — fall back to matching by node id
+                        rel = next((nid for nid, n in list(nodes.items())
+                                    if str((_repo_root / nid).resolve()) == str(f.resolve())), "")
+                    if rel and rel in nodes:
                         del nodes[rel]
-                    # Re-scan this file
-                    if f.exists() and f.suffix.lower() == ".py":
-                        if rel not in nodes:
-                            nodes[rel] = {"id": rel, "path": rel, "ext": f.suffix.lower(),
-                                          "out": [], "in": 0, "issue_count": 0, "symbols": []}
-                        for mod, is_top in _extract_py_imports_ast(f):
-                            tgt = resolve_py_module(_repo_root, f, mod)
-                            if tgt and tgt.exists():
-                                rel_to = str(tgt.relative_to(_repo_root))
-                                nodes.setdefault(rel_to, {"id": rel_to, "path": rel_to, "ext": tgt.suffix.lower(),
-                                                "out": [], "in": 0, "issue_count": 0, "symbols": []})
+                    edges = [e for e in edges if e.get("from") != rel and e.get("to") != rel]
+                    # Re-scan this file only if it still exists
+                    if not (rel and f.exists() and f.suffix.lower() == ".py"):
+                        continue
+                    if rel not in nodes:
+                        nodes[rel] = {"id": rel, "path": rel, "ext": f.suffix.lower(),
+                                      "out": [], "in": 0, "issue_count": 0, "symbols": []}
+                    for mod, is_top in _extract_py_imports_ast(f):
+                        tgt = resolve_py_module(_repo_root, f, mod)
+                        if tgt and tgt.exists():
+                            rel_to = str(tgt.relative_to(_repo_root))
+                            nodes.setdefault(rel_to, {"id": rel_to, "path": rel_to, "ext": tgt.suffix.lower(),
+                                            "out": [], "in": 0, "issue_count": 0, "symbols": []})
                     try:
                         nodes[rel]["symbols"] = _extract_symbols_ast(f)
                     except Exception:
                         logging.getLogger("code_graph").debug("Symbol extraction failed", exc_info=True)
-                    # Rebuild edges for stale file
-                    edges = [e for e in edges if e["from"] != rel]
-                    if f.exists():
-                        text = read_text(f)
-                        deps = set()
-                        for mod, is_top in _extract_py_imports_ast(f):
-                            tgt = resolve_py_module(_repo_root, f, mod)
-                            if tgt and tgt.exists():
-                                rel_to = str(tgt.relative_to(_repo_root))
-                                deps.add(rel_to)
-                        for d in sorted(deps):
-                            edges.append({"from": rel, "to": d})
-                            nodes[rel].setdefault("out", []).append(d)
+                    deps = set()
+                    for mod, is_top in _extract_py_imports_ast(f):
+                        tgt = resolve_py_module(_repo_root, f, mod)
+                        if tgt and tgt.exists():
+                            rel_to = str(tgt.relative_to(_repo_root))
+                            deps.add(rel_to)
+                    for d in sorted(deps):
+                        edges.append({"from": rel, "to": d})
+                        nodes[rel].setdefault("out", []).append(d)
 
-            # P3 治理闭环（2026-08-25）：增量同步补"新文件发现"——扫描仓库中未被索引的
-            # 新 .py 文件（git 未跟踪/新增），消除"图索引漏检未提交新文件"漏检窗口。
-            # 只做浅层发现（存在性 + import 依赖 + 符号），不做全量重建（保持增量成本）。
-            if 0 < len(stale_files) <= 100:
+            # P3 治理闭环：新文件发现 — 在「无 stale」时也要跑，否则仅新增文件永远进不了索引。
+            # 只做浅层发现（存在性 + import 依赖 + 符号）；新增过多则退回全量。
+            if len(stale_files) <= 100:
                 try:
                     new_files: List[Path] = []
                     for dp, _dn, fn in os.walk(_repo_root):
@@ -801,8 +805,10 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                             rel = str(f.relative_to(_repo_root))
                             if rel not in nodes:
                                 new_files.append(f)
-                    # 上限保护：新增文件过多视为首次全量（避免增量退化为全扫）
-                    if 0 < len(new_files) <= 100:
+                    if len(new_files) > 100:
+                        # Too many new files → fall through to full rebuild below
+                        raise RuntimeError(f"too many new files for incremental: {len(new_files)}")
+                    if new_files:
                         for f in new_files:
                             rel = str(f.relative_to(_repo_root))
                             nodes[rel] = {"id": rel, "path": rel, "ext": ".py",
@@ -822,10 +828,13 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                                     nodes[rel].setdefault("out", []).append(rel_to)
                         logging.getLogger("code_graph").info(
                             "Incremental sync: discovered %d new file(s)", len(new_files))
+                except RuntimeError as _too_many:
+                    # Same policy as >100 stale: abort incremental and full-rebuild
+                    raise Exception(str(_too_many)) from _too_many
                 except Exception as _e:  # noqa: BLE001
                     logging.getLogger("code_graph").debug("new-file discovery failed: %s", _e)
 
-                # Save incrementally updated graph
+            # Save incrementally updated graph (after delete/rescan and/or new-file discovery)
             try:
                 from core.harness.knowledge.code_graph_persist import save_graph, clear_cross_edges_cache
                 save_graph(nodes, edges, _repo_root)
