@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-22T23:18:00+08:00",
+  "reviewed_at": "2026-10-22T23:54:09+08:00",
   "base_ref": "origin/main",
-  "merge_base": "38bb15e56cc1cb862c7b83d4cddc0c0a34e71a4c",
-  "diff_sha256": "4ed65d704e3ba2ae2fefee1a8a37b7d33ae29453e51200d9b90655ba49852c9e",
-  "head_sha": "c0074a4b1850b18efa7c4021e56a545c853acaba",
+  "merge_base": "9112208e568fc91b34e8150b012d02d62a7f455d",
+  "diff_sha256": "bb0fd03cf53ba115e0d7f0933e36099f3d842e6eb234e64c9f26a5f12b71ec02",
+  "head_sha": "14752feaa1c2b6d44e5732a9921e516a2e7fc28b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Phase B: AST ratchet wired into truth gate; stock baseline soft, NEW ids hard under --ci. Local lock only. CI unlock is non-author GitHub Approve."
+  "note": "Rebased Phase C onto main after #371 merge; refresh receipt for push."
 }

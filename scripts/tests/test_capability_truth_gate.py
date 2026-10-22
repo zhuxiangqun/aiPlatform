@@ -107,6 +107,29 @@ class TestMatrixRender(unittest.TestCase):
         self.assertNotEqual(expected, drifted)
 
 
+class TestCapabilityStatsCodegen(unittest.TestCase):
+    def test_stats_fresh_on_clean_repo(self):
+        vcons = _load("verify_capability_consistency", "verify_capability_consistency.py")
+        self.assertEqual(vcons.check_stats_fresh(), 0)
+
+    def test_stats_drift_detected(self):
+        vcons = _load("verify_capability_consistency", "verify_capability_consistency.py")
+        content = vcons.CAPABILITIES.read_text(encoding="utf-8")
+        expected = vcons.render_stats_block(content)
+        drifted = expected.replace("| RAG 检索 |", "| RAG 检索X |", 1)
+        self.assertNotEqual(expected, drifted)
+
+    def test_apply_stats_idempotent(self):
+        vcons = _load("verify_capability_consistency", "verify_capability_consistency.py")
+        content = vcons.CAPABILITIES.read_text(encoding="utf-8")
+        once, _, _ = vcons.apply_stats(content)
+        twice, _, _ = vcons.apply_stats(once)
+        self.assertEqual(
+            vcons.extract_stats_block(once),
+            vcons.extract_stats_block(twice),
+        )
+
+
 class TestTruthGate(unittest.TestCase):
     def test_ci_soft_warning_still_zero(self):
         truth = _load("verify_capability_truth", "verify_capability_truth.py")
@@ -123,6 +146,7 @@ class TestTruthGate(unittest.TestCase):
         self.assertIn("aiPlat-core/core/harness", truth.__doc__)
         self.assertIn("check_code_doc_gap", truth.__doc__)
         self.assertIn("verify_registry_provides_ast", truth.__doc__)
+        self.assertIn("AUTO-STATS", truth.__doc__)
 
 
 class TestRegistryProvidesAst(unittest.TestCase):
