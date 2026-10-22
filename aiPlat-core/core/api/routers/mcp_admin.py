@@ -452,8 +452,9 @@ async def upsert_workspace_mcp_server(request: dict, http_request: Request):
                 from core.api.core_facade import enqueue_autosmoke  # P0-A2: 经 CoreFacade
 
                 actor0 = actor_from_http(http_request, request if isinstance(request, dict) else None)
-                tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID") or actor0.get("tenant_id") or "ops_smoke"
-                actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID") or actor0.get("actor_id") or "admin"
+                # Do not OR raw headers — actor_from_http already gates spoofable claims.
+                tenant_id = actor0.get("tenant_id") or "ops_smoke"
+                actor_id = actor0.get("actor_id") or "anonymous"
                 sid = str(saved.name)
 
                 wam, wsm, wmm = _workspace_managers()
@@ -467,7 +468,7 @@ async def upsert_workspace_mcp_server(request: dict, http_request: Request):
                     resource_type="mcp",
                     resource_id=sid,
                     tenant_id=str(tenant_id or "ops_smoke"),
-                    actor_id=str(actor_id or "admin"),
+                    actor_id=str(actor_id or "anonymous"),
                     detail={"op": "upsert", "transport": saved.transport},
                     on_complete=_on_complete,
                 )
@@ -613,7 +614,7 @@ async def enable_workspace_mcp_server(server_name: str, http_request: Request):
                 target_id=str(change_id or f"chg-{server_name}"),
                 status="success",
                 args={"targets": [{"type": "mcp", "id": str(server_name)}], "transport": str(s.transport or "")},
-                user_id=str(actor0.get("actor_id") or "admin"),
+                user_id=str(actor0.get("actor_id") or "anonymous"),
                 tenant_id=str(actor0.get("tenant_id") or "") or None,
                 session_id=str(actor0.get("session_id") or "") or None,
             )
