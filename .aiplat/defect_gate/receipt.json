@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-22T13:29:02+08:00",
+  "reviewed_at": "2026-10-22T15:40:37+08:00",
   "base_ref": "origin/main",
-  "merge_base": "58baf4f7aa65d8a8fe6d266991f55649a4e2d533",
-  "diff_sha256": "6a2d0ffe2e780f9650f6d062c99f66fe1ce0dbcff8acd301c899267d6a71922e",
-  "head_sha": "f933f07d0a6d58da9bcea447a6b3279e51136f60",
+  "merge_base": "bea043c9a2b1dbeb380a866452cfa324d81cc4e8",
+  "diff_sha256": "cb85df18bd7852200be0d0638568a405cf0335e998d1932f7fd0e967baae568a",
+  "head_sha": "c10ba840cff5afc890733eba5632d2f6af6818b9",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Platform gate_policies / prompt_templates / skill_evals no longer OR raw X-AIPLAT-ACTOR-* after actor_from_http. Residual: change_control.py, learning_autocapture.py, rest/routes.py. Local lock only."
+  "note": "After merge with #362: change_control/learning_autocapture + gate_policies/prompt/skill_evals all route actor via actor_from_http; no raw header OR-fallback. Contract \u00a773 lists all modules. Local lock only; CI needs non-author Approve."
 }
