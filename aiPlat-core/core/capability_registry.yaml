@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 33
-total_capabilities: 1472
+total_capabilities: 1474
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -5613,12 +5613,12 @@ domains:
         reason: "P0-B3 arena/wake-agent REST 端点"
 
   # ══════════════════════════════════════════════════════════════
-  # 二十一、平台治理 (6 caps)
+  # 二十一、平台治理 (8 caps)
   # ══════════════════════════════════════════════════════════════
   platform-governance:
     section: "二十一"
     section_name: "平台治理"
-    caps_count: 6
+    caps_count: 8
     provides:
       - symbol: "GovernancePipeline"
         type: "class"
@@ -5644,6 +5644,14 @@ domains:
         type: "class"
         signature: "tenant quota/usage/policy persistence (P0-A3, same DB as ExecutionStore)"
         module: "aiPlat-platform/tenants/tenant_store.py"
+      - symbol: "run_checks"
+        type: "function"
+        signature: "run_checks(ci=False)→dict; CAPABILITIES/registry/matrix/gap/provides-AST 统一门禁"
+        module: "scripts/verify_capability_truth.py"
+      - symbol: "audit_registry"
+        type: "function"
+        signature: "audit_registry()→{counts,finding_ids}; provides.module AST ratchet vs baseline"
+        module: "scripts/verify_registry_provides_ast.py"
     breaks: []
     consumers_expected:
       - module: "core/server.py"
@@ -5652,6 +5660,10 @@ domains:
         reason: "本体引擎治理"
       - module: "aiPlat-platform/apps/fde/api/fde_dashboard_v2.py"
         reason: "仪表盘治理指标"
+      - module: "scripts/verify_capability_truth.py"
+        reason: "统一门禁调用 audit_registry"
+      - module: "scripts/verify_doc_sync.sh"
+        reason: "doc sync / pre-commit / contracts-guard 向下传 --ci"
 
   # ══════════════════════════════════════════════════════════════
   # 二十二、Infra 基础设施 (6 caps)

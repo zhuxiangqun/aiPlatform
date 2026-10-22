@@ -19,6 +19,8 @@ def _load(name: str, filename: str):
     path = SCRIPTS / filename
     spec = importlib.util.spec_from_file_location(name, path)
     mod = importlib.util.module_from_spec(spec)
+    # Py3.9 dataclasses need the module in sys.modules during class body
+    sys.modules[name] = mod
     spec.loader.exec_module(mod)
     return mod
 
@@ -120,6 +122,31 @@ class TestTruthGate(unittest.TestCase):
         truth = _load("verify_capability_truth", "verify_capability_truth.py")
         self.assertIn("aiPlat-core/core/harness", truth.__doc__)
         self.assertIn("check_code_doc_gap", truth.__doc__)
+        self.assertIn("verify_registry_provides_ast", truth.__doc__)
+
+
+class TestRegistryProvidesAst(unittest.TestCase):
+    def test_ci_pass_against_baseline(self):
+        vast = _load("verify_registry_provides_ast", "verify_registry_provides_ast.py")
+        self.assertEqual(vast.main(["--ci"]), 0)
+
+    def test_new_finding_detected(self):
+        vast = _load("verify_registry_provides_ast", "verify_registry_provides_ast.py")
+        result = vast.audit_registry()
+        baseline = {"finding_ids": []}
+        novel = vast.new_findings(result, baseline)
+        # Fresh empty baseline must see current stock as new
+        self.assertGreater(len(novel), 0)
+        # Real baseline should swallow them
+        real = vast.load_baseline()
+        self.assertEqual(vast.new_findings(result, real), [])
+
+    def test_pipeline_engine_ok_symbol(self):
+        vast = _load("verify_registry_provides_ast", "verify_registry_provides_ast.py")
+        path = vast.find_module("core/harness/execution/pipeline_engine.py")
+        self.assertIsNotNone(path)
+        names = vast.top_level_names(path)
+        self.assertIn("PipelineEngine", names)
 
 
 class TestGraphFingerprintMeta(unittest.TestCase):
