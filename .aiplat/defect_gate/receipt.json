@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-22T17:49:38+08:00",
+  "reviewed_at": "2026-10-22T19:51:52+08:00",
   "base_ref": "origin/main",
-  "merge_base": "64db47b8dfb3c6bf2005897a10d6cf4c254f02c7",
-  "diff_sha256": "30ed511dd2c948a8a178b8963d8dc9a777d1b6b48e0e7009c36ec396cd604798",
-  "head_sha": "ee84af53b9f4a01040bccbf3ca80ac65bf3a61e9",
+  "merge_base": "ca3073f6e87ab88c708403aecd6e9d3c17cbbdc0",
+  "diff_sha256": "f5699b510f819517e508eee52cf6464a605a14c22d5a3665d69a3354f2becb77",
+  "head_sha": "6ed7811d72dcd3cfa2d9fa02f9bbc58b0b0a5d52",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "memory sticky/archive tenant via _resolve_identity only; no raw X-AIPLAT-TENANT-ID. Local lock only; CI needs non-author Approve."
+  "note": "Rebased onto main after #367. Review: tenant via _resolve_identity/header_identity_allowed; no raw X-AIPLAT-TENANT-ID on no-key paths; DEV_MODE role map only. Five checks pass on merge diff."
 }
