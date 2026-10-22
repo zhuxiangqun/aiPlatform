@@ -16,10 +16,12 @@ verify_capability_truth.py — 能力声明 ↔ 源码一致性统一入口
 | registry caps_count / 头体 | 登记表内部自洽（caps_count==len(provides)） | 符号在源码中存在 |
 | 矩阵临时全文 diff | 工作树矩阵 ≡ 当前 registry 生成结果 | 消费者边在运行时真实 |
 | check_code_doc_gap | harness 下 .py 模块 stem/parent 名在 CAPABILITIES 有登记 | 符号级存在、生产调用方、可运行 |
+| verify_registry_provides_ast | provides.module 可解析且符号在模块 AST 顶层存在；相对 baseline 的**新增**债务 | 生产调用方；行为可用；baseline 内存量 |
 
 明确排除（本轮不硬失败）：
   - 「有生产调用方」——不由 manifest/registry 反推
   - 「行为可用」——另立行为验收
+  - registry provides 存量 AST 债务（baseline 内）——仅新增债务 --ci 硬失败
 
 check_code_doc_gap 实际规则（以 scripts/check_code_doc_gap.py 为准）：
   - 扫描路径: aiPlat-core/core/harness/**/*.py（跳过 __init__.py、tests、__pycache__）
@@ -50,6 +52,8 @@ def _load(name: str, filename: str):
     if spec is None or spec.loader is None:
         raise ImportError(f"cannot load {path}")
     mod = importlib.util.module_from_spec(spec)
+    # Py3.9 dataclasses need the module present in sys.modules during class body
+    sys.modules[name] = mod
     spec.loader.exec_module(mod)
     return mod
 
@@ -168,6 +172,27 @@ def run_checks(*, ci: bool = False) -> Dict[str, Any]:
             "scope": "aiPlat-core/core/harness/**/*.py stem|parent ⊆ CAPABILITIES.md",
         })
 
+    # 6) registry provides.module AST ratchet (new debt only)
+    vast = _load("verify_registry_provides_ast", "verify_registry_provides_ast.py")
+    ast_result = vast.audit_registry()
+    baseline = vast.load_baseline()
+    novel = vast.new_findings(ast_result, baseline)
+    soft.append({
+        "check": "registry_provides_ast",
+        "findings": len(ast_result["finding_ids"]),
+        "baseline": len(baseline.get("finding_ids") or []),
+        "new": len(novel),
+        "counts": ast_result["counts"],
+        "note": "stock debt in baseline is soft; only NEW ids fail --ci",
+    })
+    if novel:
+        hard.append({
+            "check": "registry_provides_ast_new",
+            "new_count": len(novel),
+            "sample": novel[:15],
+            "note": "fix registry or shrink baseline after cleanup",
+        })
+
     return {
         "hard_failures": hard,
         "soft_warnings": soft,
@@ -181,6 +206,11 @@ def run_checks(*, ci: bool = False) -> Dict[str, Any]:
             "line_bad": refs["line_bad"],
         },
         "registry": reg_meta,
+        "provides_ast": {
+            "findings": len(ast_result["finding_ids"]),
+            "new": len(novel),
+            "counts": ast_result["counts"],
+        },
         "ci": ci,
     }
 
@@ -207,6 +237,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         f"registry: domains={result['registry'].get('domains')} "
         f"caps={result['registry'].get('caps')}"
     )
+    past = result.get("provides_ast") or {}
+    if past:
+        print(
+            f"provides_ast: findings={past.get('findings')} new={past.get('new')} "
+            f"counts={past.get('counts')}"
+        )
 
     for s in result["soft_warnings"]:
         print(f"SOFT: {s}")
