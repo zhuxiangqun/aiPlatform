@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-22T09:05:48+08:00",
+  "reviewed_at": "2026-10-22T12:03:40+08:00",
   "base_ref": "origin/main",
-  "merge_base": "dc40205767db47f4d354482793c51b6d8fe15564",
-  "diff_sha256": "5715bc2e0726981365b7d5d13cdad08d78f2740da66b96ff4dfc977cb24b495a",
-  "head_sha": "ff72db0ea6a5b1bdb108d5b1425f6446e0844d95",
+  "merge_base": "298de91359212edb03ebb1951fdcf5b04019f580",
+  "diff_sha256": "ef60b70d9cc387616cce1ff4d868aa12828a9607025c8d7ff312eb97146343fc",
+  "head_sha": "036e9eb089fd2a0eb5f9add981b3a53872fc04ea",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "actor_from_http gated; config-registry + diagnostics + gateway + tools + mcp_admin no raw header OR after gate; docstring avoids false platform-import. Local lock only; CI needs non-author Approve."
+  "note": "Route remaining _inject_http_request_context helpers through actor_from_http (agents/engine_skills/traces_graphs/workspace_*/server) + workspace autosmoke. Residual: packages_registry/workspace_packages still default admin from raw header \u2014 next bite. Local lock only; CI needs non-author Approve."
 }
