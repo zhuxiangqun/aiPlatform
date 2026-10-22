@@ -34,3 +34,12 @@ def test_workspace_agents_autosmoke_does_not_default_admin_from_raw_header():
     src = (_ROOT / "api" / "routers" / "workspace_agents.py").read_text(encoding="utf-8")
     assert 'headers.get("X-AIPLAT-ACTOR-ID", "admin")' not in src
     assert 'headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")' not in src
+
+
+def test_packages_routers_do_not_read_raw_actor_headers():
+    for rel in ("api/routers/packages_registry.py", "api/routers/workspace_packages.py"):
+        src = (_ROOT / rel).read_text(encoding="utf-8")
+        assert "actor_from_http" in src, rel
+        assert 'headers.get("X-AIPLAT-ACTOR-ID"' not in src, rel
+        assert 'headers.get("X-AIPLAT-TENANT-ID"' not in src, rel
+        assert 'headers.get("X-AIPLAT-ACTOR-ID", "admin")' not in src, rel
