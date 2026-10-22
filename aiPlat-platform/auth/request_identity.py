@@ -34,6 +34,38 @@ def platform_dev_mode() -> bool:
     return _flag("AIPLAT_PLATFORM_DEV_MODE")
 
 
+def service_to_core_identity_headers(
+    *,
+    tenant_id: str,
+    actor_id: str,
+    request_id: Optional[str] = None,
+    actor_role: Optional[str] = None,
+    scopes: Optional[list[str]] = None,
+    content_type: str = "application/json",
+) -> dict[str, str]:
+    """Build platform→core identity headers (service-to-service).
+
+    Attaches ``X-AIPLAT-IDENTITY-SECRET`` from ``AIPLAT_PLATFORM_IDENTITY_SECRET``
+    when configured, so core ``actor_from_http`` / ``header_identity_allowed``
+    accept the headers outside DEV_MODE. Never copies a client-presented secret.
+    """
+    headers: dict[str, str] = {
+        "Content-Type": content_type,
+        "X-AIPLAT-TENANT-ID": str(tenant_id),
+        "X-AIPLAT-ACTOR-ID": str(actor_id),
+    }
+    if request_id:
+        headers["X-AIPLAT-REQUEST-ID"] = str(request_id)
+    if actor_role:
+        headers["X-AIPLAT-ACTOR-ROLE"] = str(actor_role)
+    if scopes:
+        headers["X-AIPLAT-SCOPES"] = ",".join(str(s) for s in scopes if s)
+    secret = os.getenv("AIPLAT_PLATFORM_IDENTITY_SECRET", "").strip()
+    if secret:
+        headers["X-AIPLAT-IDENTITY-SECRET"] = secret
+    return headers
+
+
 _ROLE_HEADER_KEYS = (
     "X-AIPLAT-ACTOR-ROLE",
     "x-aiplat-actor-role",

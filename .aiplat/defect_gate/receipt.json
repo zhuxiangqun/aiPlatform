@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-22T16:39:21+08:00",
+  "reviewed_at": "2026-10-22T17:16:18+08:00",
   "base_ref": "origin/main",
-  "merge_base": "a69c73843937245986a803188b5720f7607764a2",
-  "diff_sha256": "18abc439869d1321c273913b983f4c5711eaadc690d89ab9613cdfd6c7cf041e",
-  "head_sha": "2fceb8cc9b434246d766f250dce80c3e09b5c5ba",
+  "merge_base": "944e459d5d52b55e565005853e58babea8c4142e",
+  "diff_sha256": "3530d72248e459066782d027e085193e53f8ad22e1714ce965a08a637bd48f3d",
+  "head_sha": "b776ee6503ab288679d01caf48383e54f56f8ca1",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Rebased onto #364: gateway tenant header only via header_identity_allowed; no ungated setdefault into context. Local lock only; CI needs non-author Approve."
+  "note": "conversations + _core_request use service_to_core_identity_headers (env secret only; never client secret). Local lock only; CI needs non-author Approve."
 }

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2336
+total_capabilities: 2337
 last_updated: 2026-10-20
 version: "30.12"
 auto_sync: true
@@ -635,6 +635,7 @@ scan_hash: 8f9548ec24f4
 | require_slack_request | `aiPlat-platform/auth/slack_signature.py` | ✅ | Slack webhook 缺密钥或坏签名时拒绝；仅 AIPLAT_CHANNEL_ALLOW_UNSIGNED 放行 | 已合入 |
 | verify_slack_signature | `aiPlat-platform/auth/slack_signature.py` | ✅ | Slack v0 HMAC-SHA256 验签 | 已合入 |
 | platform_dev_mode | `aiPlat-platform/auth/request_identity.py` | ✅ | 读取 AIPLAT_PLATFORM_DEV_MODE | 已合入 |
+| service_to_core_identity_headers | `aiPlat-platform/auth/request_identity.py` | ✅ | platform→core 身份头；配置了 AIPLAT_PLATFORM_IDENTITY_SECRET 时附带服务端密钥（conversations/_core_request） | 已接线 |
 | resolve_live_canary_ok | `aiPlat-platform/apps/fde/api/fde_phase4.py` | ✅ | Evolve sync-ops canary 拉取；缺失/异常时 canary_ok=False | 已合入 |
 | gateway_unsigned_allowed | `aiPlat-platform/auth/gateway_auth.py` | ✅ | Gateway 未签名访问仅 ALLOW_UNSIGNED 或 platform dev mode | 已合入 |
 | require_gateway_execute_auth | `aiPlat-platform/auth/gateway_auth.py` | ✅ | Gateway execute/webhook 默认要求 token；缺省拒绝 | 已合入 |
@@ -3251,7 +3252,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 328 | 1 | 329 |
+| Harness 执行引擎 | 329 | 1 | 330 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 375 | 9 | 384 |
 | RAG 检索 | 52 | 0 | 52 |
@@ -3296,7 +3297,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2326** | **10** | **2336** |
+| **总计** | **2327** | **10** | **2337** |
 
 | **总计** | **1095** | **0** | **1095** |
 
