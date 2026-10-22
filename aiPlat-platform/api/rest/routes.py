@@ -1479,25 +1479,15 @@ async def _core_request(
 
 ) -> Dict[str, Any]:
 
-    headers = {
+    from auth.request_identity import service_to_core_identity_headers
 
-        "Content-Type": "application/json",
-
-        "X-AIPLAT-REQUEST-ID": identity.request_id,
-
-        "X-AIPLAT-TENANT-ID": identity.tenant_id,
-
-        "X-AIPLAT-ACTOR-ID": identity.actor_id,
-
-    }
-
-    if identity.scopes:
-
-        headers["X-AIPLAT-SCOPES"] = ",".join(identity.scopes)
-
-    if identity.actor_role:
-
-        headers["X-AIPLAT-ACTOR-ROLE"] = identity.actor_role
+    headers = service_to_core_identity_headers(
+        tenant_id=identity.tenant_id,
+        actor_id=identity.actor_id,
+        request_id=identity.request_id,
+        actor_role=identity.actor_role,
+        scopes=list(identity.scopes or []),
+    )
 
     if extra_headers:
 

@@ -181,19 +181,21 @@ async def query_conversation(session_id: str, request: ConversationQueryRequest,
     # Execute via HTTP call to core gateway (instead of direct in-process harness call)
     import os
     import httpx as _httpx
+    from auth.request_identity import service_to_core_identity_headers
+
     core_url = os.getenv("AIPLAT_CORE_URL", "http://localhost:8002").rstrip("/")
     exec_body = {"kind": "agent", "target_id": "materials_chat_agent", "payload": payload, "user_id": user_id, "session_id": session_id}
+    core_headers = service_to_core_identity_headers(
+        tenant_id=str(tenant_id),
+        actor_id=str(user_id),
+        request_id=http_request.headers.get("X-AIPLAT-REQUEST-ID", f"req-{session_id}"),
+    )
     try:
         async with _httpx.AsyncClient(timeout=300.0) as _client:
             _resp = await _client.post(
                 f"{core_url}/api/core/gateway/execute",
                 json=exec_body,
-                headers={
-                    "Content-Type": "application/json",
-                    "X-AIPLAT-REQUEST-ID": http_request.headers.get("X-AIPLAT-REQUEST-ID", f"req-{session_id}"),
-                    "X-AIPLAT-TENANT-ID": str(tenant_id),
-                    "X-AIPLAT-ACTOR-ID": str(user_id),
-                },
+                headers=core_headers,
             )
             core_result = _resp.json()
     except Exception as e:
