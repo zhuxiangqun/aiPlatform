@@ -23,11 +23,12 @@ from core.apps.finetune.job_manager import JobManager
 from fastapi import APIRouter, HTTPException, Request, Depends
 import os
 from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
-from auth.request_identity import resolve_request_role
+from auth.request_identity import platform_dev_mode, resolve_request_role
 
 # ── Auth passthrough (shared with workbench) ──
 
 def _require_auth(request: Request) -> str:
+    """API-key auth or gated identity; never trust raw tenant headers alone."""
     api_key = os.getenv("AIPLAT_API_KEY", "")
     if api_key:
         h_key = request.headers.get("X-AIPLAT-API-KEY", "")
@@ -35,18 +36,24 @@ def _require_auth(request: Request) -> str:
             raise HTTPException(status_code=401, detail="Invalid API key")
         request.state.role = resolve_request_role(request) or "service"
         return h_key
-    tenant = request.headers.get("X-AIPLAT-TENANT-ID", "dev-default")
+    from api.rest.routes import _resolve_identity
+
+    ident = _resolve_identity(request)
+    tenant = str(ident.tenant_id or "").strip() or "dev-default"
     role = resolve_request_role(request)
     if not role:
-        dev_user = os.getenv("AIPLAT_DEV_USER", "anonymous")
-        admin_users = os.getenv("AIPLAT_ADMIN_USERS", "").split(",")
-        dev_users = os.getenv("AIPLAT_DEVELOPER_USERS", "").split(",")
-        if dev_user in admin_users:
-            role = "admin"
-        elif dev_user in dev_users:
-            role = "developer"
+        if platform_dev_mode():
+            dev_user = os.getenv("AIPLAT_DEV_USER", "anonymous")
+            admin_users = os.getenv("AIPLAT_ADMIN_USERS", "").split(",")
+            dev_users = os.getenv("AIPLAT_DEVELOPER_USERS", "").split(",")
+            if dev_user in admin_users:
+                role = "admin"
+            elif dev_user in dev_users:
+                role = "developer"
+            else:
+                role = os.getenv("AIPLAT_DEFAULT_ROLE", "developer")
         else:
-            role = os.getenv("AIPLAT_DEFAULT_ROLE", "developer")
+            role = "service"
     request.state.role = role
     return tenant
 

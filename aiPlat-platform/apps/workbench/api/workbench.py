@@ -15,19 +15,18 @@ from typing import Any, Dict, List, Optional
 import os
 from datetime import datetime, timezone
 
-from auth.request_identity import resolve_request_role
+from auth.request_identity import platform_dev_mode, resolve_request_role
 
 _tasks: Dict[str, Dict[str, Any]] = {}
 
 # ── Auth (must be BEFORE router — evaluated at import time) ──────────────
 
 def _require_auth(request: Request) -> str:
-    """Platform gateway identity passthrough + dev-mode fallback.
-    
-    Prod mode: validates X-AIPLAT-API-KEY or Bearer token.
-    Dev mode (default): trusts X-AIPLAT-TENANT-ID header from platform gateway.
-    
-    Returns tenant_id. Role is set on request.state for downstream checks.
+    """API-key auth or gated identity; never trust raw tenant headers alone.
+
+    Prod: validates X-AIPLAT-API-KEY / Bearer / admin key.
+    No key: tenant from ``_resolve_identity`` (DEV_MODE / identity secret / JWT).
+    Env-mapped default roles only when ``platform_dev_mode``.
     """
     api_key = os.getenv("AIPLAT_API_KEY", "")
     admin_key = os.getenv("AIPLAT_ADMIN_KEY", "")
@@ -44,22 +43,25 @@ def _require_auth(request: Request) -> str:
         request.state.role = role
         return h_key
 
-    # Dev mode — trust platform gateway identity headers
-    tenant = request.headers.get("X-AIPLAT-TENANT-ID", "")
-    if not tenant:
-        tenant = request.headers.get("x-aiplat-tenant-id", "") or "dev-default"
+    from api.rest.routes import _resolve_identity
+
+    ident = _resolve_identity(request)
+    tenant = str(ident.tenant_id or "").strip() or "dev-default"
     role = resolve_request_role(request)
     if not role:
-        # Resolve role from env var lists
-        dev_user = os.getenv("AIPLAT_DEV_USER", "anonymous")
-        admin_users = os.getenv("AIPLAT_ADMIN_USERS", "").split(",")
-        dev_users = os.getenv("AIPLAT_DEVELOPER_USERS", "").split(",")
-        if dev_user in admin_users:
-            role = "admin"
-        elif dev_user in dev_users:
-            role = "developer"
+        if platform_dev_mode():
+            # Resolve role from env var lists (local only)
+            dev_user = os.getenv("AIPLAT_DEV_USER", "anonymous")
+            admin_users = os.getenv("AIPLAT_ADMIN_USERS", "").split(",")
+            dev_users = os.getenv("AIPLAT_DEVELOPER_USERS", "").split(",")
+            if dev_user in admin_users:
+                role = "admin"
+            elif dev_user in dev_users:
+                role = "developer"
+            else:
+                role = os.getenv("AIPLAT_DEFAULT_ROLE", "developer")
         else:
-            role = os.getenv("AIPLAT_DEFAULT_ROLE", "developer")
+            role = "service"
     request.state.role = role
     return tenant
 

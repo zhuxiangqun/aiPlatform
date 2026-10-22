@@ -25,9 +25,11 @@ import os
 
 # ── Auth passthrough (shared with workbench) ──
 # Core mirror of platform finetune auth. Role headers are not credentials;
-# without platform identity trust, fall back to env-mapped / service role only.
+# tenant headers only when header_identity_allowed (DEV_MODE / identity secret).
 
 def _require_auth(request: Request) -> str:
+    from core.api.deps.actor import header_identity_allowed
+
     api_key = os.getenv("AIPLAT_API_KEY", "")
     if api_key:
         h_key = request.headers.get("X-AIPLAT-API-KEY", "")
@@ -36,17 +38,31 @@ def _require_auth(request: Request) -> str:
         # Do not trust client X-AIPLAT-ROLE; authenticated key → service.
         request.state.role = "service"
         return h_key
-    tenant = request.headers.get("X-AIPLAT-TENANT-ID", "dev-default")
-    # Core cannot import platform identity helpers; ignore client role headers.
-    dev_user = os.getenv("AIPLAT_DEV_USER", "anonymous")
-    admin_users = os.getenv("AIPLAT_ADMIN_USERS", "").split(",")
-    dev_users = os.getenv("AIPLAT_DEVELOPER_USERS", "").split(",")
-    if dev_user in admin_users:
-        role = "admin"
-    elif dev_user in dev_users:
-        role = "developer"
+    secret = request.headers.get("X-AIPLAT-IDENTITY-SECRET") or request.headers.get(
+        "x-aiplat-identity-secret"
+    )
+    if header_identity_allowed(secret):
+        tenant = (
+            request.headers.get("X-AIPLAT-TENANT-ID")
+            or request.headers.get("x-aiplat-tenant-id")
+            or "dev-default"
+        )
     else:
-        role = os.getenv("AIPLAT_DEFAULT_ROLE", "developer")
+        tenant = "dev-default"
+    # Core cannot import platform identity helpers; ignore client role headers.
+    # Env-mapped roles only under AIPLAT_PLATFORM_DEV_MODE.
+    if os.getenv("AIPLAT_PLATFORM_DEV_MODE", "false").lower() in ("1", "true", "yes", "y"):
+        dev_user = os.getenv("AIPLAT_DEV_USER", "anonymous")
+        admin_users = os.getenv("AIPLAT_ADMIN_USERS", "").split(",")
+        dev_users = os.getenv("AIPLAT_DEVELOPER_USERS", "").split(",")
+        if dev_user in admin_users:
+            role = "admin"
+        elif dev_user in dev_users:
+            role = "developer"
+        else:
+            role = os.getenv("AIPLAT_DEFAULT_ROLE", "developer")
+    else:
+        role = "service"
     request.state.role = role
     return tenant
 
