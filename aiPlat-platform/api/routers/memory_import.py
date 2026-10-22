@@ -18,8 +18,13 @@ router = APIRouter(prefix="/platform", tags=["memory"])
 
 
 def _tenant_from_request(request: Request) -> str:
-    """Identity comes from platform headers; never invent cross-tenant defaults."""
-    tid = (request.headers.get("X-AIPLAT-TENANT-ID") or "").strip()
+    """Tenant from gated platform identity only (JWT / API key / DEV_MODE / identity secret).
+
+    Spoofable ``X-AIPLAT-TENANT-ID`` alone must not select sticky/archive partitions.
+    """
+    from api.rest.routes import _resolve_identity
+
+    tid = str(_resolve_identity(request).tenant_id or "").strip()
     return tid or "default"
 
 
