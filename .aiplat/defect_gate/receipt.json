@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-22T12:28:11+08:00",
+  "reviewed_at": "2026-10-22T14:30:20+08:00",
   "base_ref": "origin/main",
-  "merge_base": "298de91359212edb03ebb1951fdcf5b04019f580",
-  "diff_sha256": "cd6ceb6d38826bbfd9daff55fe902909b1cc83155dfd4025914f159632c82cfb",
-  "head_sha": "b28d85d382328aa3dffd045c9bdf72ef916bf2e2",
+  "merge_base": "58baf4f7aa65d8a8fe6d266991f55649a4e2d533",
+  "diff_sha256": "65710b1b79d8bcdf4ff9763f575b0b9dab7fa0bd960d76598e3ae1dc27da1b8e",
+  "head_sha": "5884379df15d6304eb8c5ddfde92cd05a0ca1355",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Inject helpers + packages_registry/workspace_packages actor headers gated via actor_from_http. Local lock only; CI needs non-author Approve."
+  "note": "change_control + learning_autocapture stop OR-ing raw actor/tenant headers after actor_from_http; fallback anonymous/ops_smoke. Local lock only; CI needs non-author Approve."
 }
