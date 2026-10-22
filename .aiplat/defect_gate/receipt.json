@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-22T20:08:17+08:00",
+  "reviewed_at": "2026-10-22T21:44:45+08:00",
   "base_ref": "origin/main",
-  "merge_base": "f4d265b5ac158dcd07c9cf8fc3725d36863c36f2",
-  "diff_sha256": "13498ce8498ce8cc465c0d3a9e5f38cfb8ca4715129e85add5c99f1f7d72a297",
-  "head_sha": "327c35ac7b0fda10fcd7611b8cb9f83536b3b49a",
+  "merge_base": "7081c04939ea9807f42e09b87aa0aa4616104968",
+  "diff_sha256": "830c8b33dd708358f9e5eacd30cd7100115e323ab7631096f2b26acb8b079c8f",
+  "head_sha": "6de8a9ee63e63f83f7ed6f67b6068fbcdd12fd10",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Rebased onto main after #368. Product commits + contract \u00a774. Five checks pass."
+  "note": "Reviewed merge diff 7081c04..6de8a9e: truth gate unifies hard checks; soft ambiguous never alone fails; diagnostics stale≠synced; frontmatter py3.9 fix unblocks --quick. Residual: 94 basename_unique soft warnings."
 }
