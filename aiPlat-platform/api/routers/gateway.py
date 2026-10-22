@@ -67,12 +67,7 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
         ctx.setdefault("channel", request.channel)
         if request.tenant_id:
             ctx.setdefault("tenant_id", str(request.tenant_id))
-        else:
-            # Allow tenant_id to come from header when client doesn't send it in body.
-            h_tenant = http_request.headers.get("X-AIPLAT-TENANT-ID") or http_request.headers.get("x-aiplat-tenant-id")
-            if h_tenant:
-                ctx.setdefault("tenant_id", str(h_tenant))
-        # platform identity passthrough — only when headers are trusted
+        # Spoofable identity headers only when trusted (DEV_MODE / identity secret).
         try:
             from auth.request_identity import header_identity_allowed
 
@@ -80,6 +75,12 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
                 http_request.headers.get("X-AIPLAT-IDENTITY-SECRET")
                 or http_request.headers.get("x-aiplat-identity-secret")
             ):
+                if not request.tenant_id:
+                    h_tenant = http_request.headers.get("X-AIPLAT-TENANT-ID") or http_request.headers.get(
+                        "x-aiplat-tenant-id"
+                    )
+                    if h_tenant:
+                        ctx.setdefault("tenant_id", str(h_tenant))
                 actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID") or http_request.headers.get(
                     "x-aiplat-actor-id"
                 )
