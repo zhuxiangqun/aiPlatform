@@ -59,37 +59,10 @@ check_new_modules() {
 # ══════════════════════════════════════════════════════════════
 check_stale_entries() {
     echo ""
-    echo "━━━ Rule 2: CAPABILITIES.md entries have valid code paths ━━━"
-
-    # Extract code file references from CAPABILITIES.md
-    # Pattern: `module/file.py` or `module/file.py:123`
-    local refs=$(grep -oE '`[a-zA-Z0-9_/.-]+\.py(:[0-9]+)?`' "$CAPABILITIES" 2>/dev/null | \
-                 tr -d '`' | sort -u)
-
-    local stale=0
-    for ref in $refs; do
-        # Strip line number suffix (e.g. :123)
-        local clean_ref="${ref%:*}"
-        local basename="${clean_ref##*/}"
-
-        # Search broadly for the file across all project dirs
-        local found=$(find "$WORKSPACE/aiPlat-core" "$WORKSPACE/aiPlat-platform" \
-            "$WORKSPACE/aiPlat-infra" "$WORKSPACE/aiPlat-management" "$WORKSPACE/scripts" \
-            "$WORKSPACE/packages" "$WORKSPACE/custom_handlers" "$WORKSPACE/aiplat-sdk" \
-            -name "$basename" -not -path "*/__pycache__/*" 2>/dev/null | head -1)
-
-        if [ -z "$found" ]; then
-            echo -e "  ${YELLOW}⚠${NC} CAPABILITIES.md 引用文件未找到: $ref"
-            stale=$((stale + 1))
-            [ $stale -ge 10 ] && break  # cap at 10 violations
-        fi
-    done
-
-    if [ "$stale" -eq 0 ]; then
-        echo -e "  ${GREEN}✓${NC} All CAPABILITIES.md code references valid"
-    else
-        VIOLATIONS=$((VIOLATIONS + stale))
-    fi
+    echo "━━━ Rule 2: CAPABILITIES path existence (delegated) ━━━"
+    # Per-ref `find` over the monorepo was O(refs × tree) and hung pre-commit.
+    # Path / line checks live in verify_capability_truth.py (Step 2–4 below).
+    echo -e "  ${GREEN}✓${NC} Deferred to capability truth gate (verify_capability_doc)"
 }
 
 # ══════════════════════════════════════════════════════════════
@@ -241,62 +214,22 @@ check_research_docs_freshness
 # Pre-commit also calls these scripts directly; keep a single full path here.
 # ══════════════════════════════════════════════════════════════
 
-# Step 2: Capability count consistency (stats table vs section ✅ counts)
+# Step 2–4: Unified capability truth gate (paths / consistency / registry / matrix / gap)
+# Source of truth = repo source. Soft warnings never alone fail. See verify_capability_truth.py.
 echo ""
-echo -e "${YELLOW}═══ Step 2: Capability count consistency ═══${NC}"
-if python3 "$WORKSPACE/scripts/verify_capability_consistency.py" 2>&1; then
-    echo -e "${GREEN}✅ 一致性检查通过${NC}"
+echo -e "${YELLOW}═══ Step 2–4: Capability truth gate ═══${NC}"
+TRUTH_ARGS=""
+if [ "$CI_MODE" = "true" ]; then
+    TRUTH_ARGS="--ci"
+fi
+if python3 "$WORKSPACE/scripts/verify_capability_truth.py" $TRUTH_ARGS 2>&1; then
+    echo -e "${GREEN}✅ capability truth gate 通过${NC}"
 else
-    echo -e "${RED}❌ 统计表与实际章节计数不一致${NC}"
-    echo "  修复: 手动更新统计表，或运行 python3 scripts/verify_capability_consistency.py 查看差异"
+    echo -e "${RED}❌ capability truth gate 失败${NC}"
+    echo "  修复: python3 scripts/verify_capability_truth.py --ci"
+    echo "  矩阵: python3 scripts/generate_impact_matrix.py"
+    echo "  路径: python3 scripts/verify_capability_doc.py --ci"
     VIOLATIONS=$((VIOLATIONS + 1))
-fi
-
-# Step 3: Code-doc capability gap check (new harness modules without CAPABILITIES entry)
-echo ""
-echo -e "${YELLOW}═══ Step 3: Code-Doc capability gap ═══${NC}"
-if python3 "$WORKSPACE/scripts/check_code_doc_gap.py" 2>&1; then
-    echo -e "${GREEN}✅ 无能力缺口${NC}"
-else
-    echo -e "${RED}❌ 新增代码未同步文档${NC}"
-    echo "  修复: 在 AIPLAT_CAPABILITIES.md 对应章节为每个新模块添加一行"
-    echo "  脚本: python3 scripts/check_code_doc_gap.py 查看缺口列表"
-    if [ "$CI_MODE" = "true" ]; then
-        VIOLATIONS=$((VIOLATIONS + 1))
-    else
-        echo -e "  ${YELLOW}(WARNING — 本地不阻断; CI/--ci 强制)${NC}"
-    fi
-fi
-
-# Step 4: Impact matrix freshness vs capability_registry.yaml header/body
-echo ""
-echo -e "${YELLOW}═══ Step 4: Impact matrix freshness ═══${NC}"
-MATRIX="$WORKSPACE/docs/matrix/capability-impact-matrix.md"
-REG="$WORKSPACE/aiPlat-core/core/capability_registry.yaml"
-if [ -f "$MATRIX" ] && [ -f "$REG" ]; then
-    # Rebuild expected header line from domain bodies (same formula as generate_impact_matrix.py)
-    expected=$(WORKSPACE="$WORKSPACE" python3 - <<'PY'
-import yaml
-from pathlib import Path
-import os
-root = Path(os.environ["WORKSPACE"])
-data = yaml.safe_load((root / "aiPlat-core/core/capability_registry.yaml").read_text())
-domains = data.get("domains") or {}
-n_domains = len(domains)
-n_caps = sum(int(d.get("caps_count") or 0) for d in domains.values())
-n_symbols = sum(len(d.get("provides") or []) for d in domains.values())
-print(f"{n_domains} domains | {n_caps} capabilities (caps_count) | {n_symbols} symbols (provides)")
-PY
-)
-    if grep -Fq "$expected" "$MATRIX"; then
-        echo -e "  ${GREEN}✅ 影响矩阵与登记表域合计一致${NC}"
-    else
-        echo -e "  ${RED}❌ 影响矩阵过期 — 期望包含: $expected${NC}"
-        echo "  修复: python3 scripts/generate_impact_matrix.py"
-        VIOLATIONS=$((VIOLATIONS + 1))
-    fi
-else
-    echo -e "  ${YELLOW}⚠ matrix 或 registry 缺失，跳过${NC}"
 fi
 
 echo ""
@@ -308,9 +241,9 @@ else
     echo -e "${RED}═══ DOC SYNC FAILED: $VIOLATIONS violation(s) ═══${NC}"
     echo ""
     echo "  修复方法:"
-    echo "    1. 更新 AIPLAT_CAPABILITIES.md 添加新能力"
-    echo "    2. 更新 AIPLAT_ROADMAP.md 评分（如适用）"
-    echo "    3. python3 scripts/generate_impact_matrix.py（若矩阵过期）"
-    echo "    4. 重新运行: bash scripts/verify_doc_sync.sh"
+    echo "    1. 更新 AIPLAT_CAPABILITIES.md 添加新能力 / 修正路径"
+    echo "    2. python3 scripts/generate_impact_matrix.py（若矩阵过期）"
+    echo "    3. python3 scripts/verify_capability_truth.py --ci"
+    echo "    4. 重新运行: bash scripts/verify_doc_sync.sh [--ci]"
     exit 1  # always block — doc sync is mandatory
 fi

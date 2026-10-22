@@ -135,12 +135,9 @@ bash "$WORKSPACE/scripts/verify_doc_sync.sh" --ci || {
   exit 1
 }
 
-# ── Step 2.6: check_code_doc_gap (harness → CAPABILITIES 符号级漂移) ──
-echo ""
-echo "  Checking code→doc gap (harness modules)..."
-if ! python3 "$WORKSPACE/scripts/check_code_doc_gap.py" --ci 2>&1; then
-    echo "  ⚠️  code→doc gap detected — run: python3 scripts/check_code_doc_gap.py"
-fi
+# ── Step 2.6: (folded into Step 2.5) capability truth gate via verify_doc_sync --ci ──
+# Paths / consistency / registry caps_count / matrix full diff / code_doc_gap
+# are enforced by scripts/verify_capability_truth.py --ci (called from verify_doc_sync).
 
 # ── Step 2.7: registry → CAPABILITIES 方向同步 (P0-C3/P0-C5, 2026-08-19 自动补登) ──
 echo ""

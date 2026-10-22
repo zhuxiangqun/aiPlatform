@@ -13,6 +13,7 @@ Replaces the in-memory _CACHE dict in code_graph.py with persistent storage.
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import time
 from pathlib import Path
@@ -103,15 +104,76 @@ def _get_conn():
     return sqlite3.connect(_db_path(), timeout=5.0)
 
 
+_FP_SCHEMA = "code_graph_fp_v1"
+
+
+def compute_source_fingerprint(nodes: Dict[str, Dict[str, Any]], repo_root: Optional[str] = None) -> str:
+    """Stable fingerprint from sorted file ids (+ optional repo root). Not mtime alone."""
+    import hashlib
+    parts = [f"root={repo_root or ''}"]
+    for nid in sorted(nodes.keys()):
+        parts.append(nid)
+    digest = hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()[:32]
+    return f"{_FP_SCHEMA}|n={len(nodes)}|{digest}"
+
+
+def get_meta(key: str) -> Optional[str]:
+    if not os.path.exists(_db_path()):
+        return None
+    conn = _get_conn()
+    try:
+        row = conn.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+        return row[0] if row else None
+    finally:
+        conn.close()
+
+
+def evaluate_freshness(
+    nodes: Optional[Dict[str, Dict[str, Any]]] = None,
+    repo_root: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Missing meta / unreadable / calc fail → stale=True. generated_at ≠ freshness proof."""
+    stored = get_meta("source_fingerprint")
+    if not stored:
+        return {"stale": True, "reason": "missing_fingerprint_meta", "stored": None, "computed": None}
+    if nodes is None:
+        try:
+            nodes = load_nodes()
+        except Exception as e:
+            logging.getLogger("code_graph_persist").warning("fingerprint load failed: %s", e)
+            return {"stale": True, "reason": "source_unreadable", "stored": stored, "computed": None}
+    try:
+        root = repo_root or get_cached_repo_root() or ""
+        computed = compute_source_fingerprint(nodes, root)
+    except Exception as e:
+        logging.getLogger("code_graph_persist").warning("fingerprint compute failed: %s", e)
+        return {"stale": True, "reason": "fingerprint_compute_failed", "stored": stored, "computed": None}
+    stale = stored != computed
+    return {
+        "stale": stale,
+        "reason": "mismatch" if stale else "ok",
+        "stored": stored,
+        "computed": computed,
+    }
+
+
 def get_cache_info() -> Dict[str, Any]:
-    """Return cache metadata (age, freshness)."""
+    """Return cache metadata (age, freshness). Missing fingerprint meta ⇒ stale."""
     conn = _get_conn()
     try:
         row = conn.execute("SELECT value FROM meta WHERE key='last_build'").fetchone()
         last_build = float(row[0]) if row else 0
         count = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
-        return {"last_build": last_build, "files_indexed": count,
-                "age_seconds": time.time() - last_build if last_build else 0}
+        fp_row = conn.execute(
+            "SELECT value FROM meta WHERE key='source_fingerprint'"
+        ).fetchone()
+        return {
+            "last_build": last_build,
+            "files_indexed": count,
+            "age_seconds": time.time() - last_build if last_build else 0,
+            "source_fingerprint": fp_row[0] if fp_row else None,
+            "stale": fp_row is None,
+        }
     finally:
         conn.close()
 
@@ -246,11 +308,20 @@ def save_graph(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]], re
         # FTS sync
         conn.execute("INSERT INTO fts_files(fts_files) VALUES('rebuild')")
         conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('last_build', ?)", (str(now),))
+        root_s = str(repo_root.resolve()) if repo_root else ""
         if repo_root:
             conn.execute(
                 "INSERT OR REPLACE INTO meta (key, value) VALUES ('repo_root', ?)",
-                (str(repo_root.resolve()),)
+                (root_s,),
             )
+        try:
+            fp = compute_source_fingerprint(nodes, root_s)
+            conn.execute(
+                "INSERT OR REPLACE INTO meta (key, value) VALUES ('source_fingerprint', ?)",
+                (fp,),
+            )
+        except Exception as e:
+            logging.getLogger("code_graph_persist").warning("fingerprint save skipped: %s", e)
         conn.commit()
     finally:
         conn.close()

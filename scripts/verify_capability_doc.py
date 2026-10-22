@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
 """
-verify_capability_doc.py — aiPlat 元治理审计脚本（阶段 0）
+verify_capability_doc.py — CAPABILITIES 声明路径 ↔ 源码存在性审计
 
-功能：只读扫描 AIPLAT_CAPABILITIES.md，审计能力登记与代码文件的一致性。
-     产出 docs/audit/latest.json + docs/audit/latest.md。
+源码为真：本脚本只验证文档声明的 path / path:line 是否对应仓库中的真实文件与行号范围。
+不能证明符号语义、生产调用方或行为可用。
 
-用法：
-  python scripts/verify_capability_doc.py           # 生成报表
-  python scripts/verify_capability_doc.py --ci      # 落地完成度 < 80% 时 exit 1
+用法:
+  python3 scripts/verify_capability_doc.py            # 默认：报告到 stdout，exit 0，不写文件
+  python3 scripts/verify_capability_doc.py --write    # 额外写入 docs/audit/latest.{json,md}
+  python3 scripts/verify_capability_doc.py --ci       # file_missing>0 或 line_bad>0 时 exit 1
+                                                      # （软警告 ambiguous 不单独导致非零）
 
-审计项：
-  1. header total_capabilities vs 实际 ✅/⚠️/❌ 计数
-  2. 文件引用是否存在（相对路径回推 6 个候选根）
-  3. 行号是否越界（行号 <= 文件总行数，轻量模式）
-  4. "已合入" vs "Phase XX" 分布
-  5. 未合并的 auto-generated 碎片
-  6. 过期自审计（ORPHAN 12 字段）复验
+逐条记录字段:
+  source, raw_path, resolved_path, resolve_mode, line, status, name
+  resolve_mode: exact | candidate_root | basename_unique | ambiguous | unresolved
+  status: ok | file_missing | line_bad | ambiguous | unresolved
+
+计数:
+  file_missing 与 ambiguous 互斥；ambiguous 在 total 分母中、不计入 file_ok。
+  line_valid_rate 仅对「带行号且文件已解析」子集；无此类引用时为 null。
 """
 
 from __future__ import annotations
@@ -27,20 +30,14 @@ import sys
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-# ── 配置 ────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DOC_PATH = PROJECT_ROOT / "AIPLAT_CAPABILITIES.md"
 AUDIT_DIR = PROJECT_ROOT / "docs" / "audit"
 OUTPUT_JSON = AUDIT_DIR / "latest.json"
 OUTPUT_MD = AUDIT_DIR / "latest.md"
 
-CI_THRESHOLD = 0.80  # --ci 门禁：落地完成度低于此值 exit 1
-
-FILE_EXT = r"(?:py|tsx?|yaml|yml|json|sh|sql|md)"
-
-# 相对路径回推候选根（表格里的路径丢了 aiPlat-core/core/ 前缀）
 CANDIDATE_ROOTS = [
     "aiPlat-core/core",
     "aiPlat-core",
@@ -51,7 +48,6 @@ CANDIDATE_ROOTS = [
     "aiPlat-app",
 ]
 
-# 首段映射（文档混用 core/...、platform/...、infra/...、frontend/... 等短约定）
 _SEGMENT_ROOTS = {
     "core": ["aiPlat-core/core", "aiPlat-core"],
     "platform": ["aiPlat-platform"],
@@ -72,13 +68,12 @@ _SEGMENT_ROOTS = {
     "kb": ["aiPlat-platform"],
 }
 
-_EXCLUDE_DIRS = {".git", ".venv", "node_modules", "__pycache__", "dist", "build", ".mypy_cache", ".ruff_cache"}
+_EXCLUDE_DIRS = {".git", ".venv", "node_modules", "__pycache__", "dist", "build", ".mypy_cache", ".ruff_cache", "tmp"}
 
 _file_index_cache: Optional[Dict[str, List[Path]]] = None
 
 
 def _build_file_index() -> Dict[str, List[Path]]:
-    """一次性扫描仓库，建立 basename → 全路径列表 索引（排除重目录）。"""
     global _file_index_cache
     if _file_index_cache is not None:
         return _file_index_cache
@@ -91,13 +86,9 @@ def _build_file_index() -> Dict[str, List[Path]]:
     return index
 
 
-# ── 解析器 ──────────────────────────────────────────────
-def _iter_path_blocks(text: str) -> List[Tuple[str, str]]:
-    """frontmatter 格式：- id: xxx + paths: - path::line。
-
-    返回 [(capability_id, path, line), ...]
-    """
-    refs: List[Tuple[str, str]] = []
+def _iter_path_blocks(text: str) -> List[Tuple[str, str, int]]:
+    """frontmatter: - id: xxx + paths: - path::line → (cap_id, path, line)."""
+    refs: List[Tuple[str, str, int]] = []
     ids = list(re.finditer(r"^\s*-\s*id:\s*(\S+)", text, re.M))
     for i, id_m in enumerate(ids):
         cap_id = id_m.group(1)
@@ -109,12 +100,8 @@ def _iter_path_blocks(text: str) -> List[Tuple[str, str]]:
     return refs
 
 
-def _parse_table_rows(text: str) -> List[Dict]:
-    """表格格式：| 能力 | 位置 | 状态 | 说明 | 实施状态 |。
-
-    返回 [{name, path, line, status, impl}]
-    """
-    rows: List[Dict] = []
+def _parse_table_rows(text: str) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
     for line in text.splitlines():
         s = line.strip()
         if not s.startswith("|") or s.startswith("|--") or s.startswith("|---") or s.startswith("|:"):
@@ -124,74 +111,85 @@ def _parse_table_rows(text: str) -> List[Dict]:
             continue
         name, loc, status, impl = cols[0], cols[1], cols[2], cols[4]
         if name in ("能力", "名称", "模块", "能力/端点"):
-            continue  # 表头
-        # 位置列可能含反引号 / `+` 拼接 / 范围 :a-b，只取第一个文件片段
+            continue
         m = re.search(r"([\w\-\./]+\.(?:py|tsx?|yaml|yml|json|sh|sql|md))(?::(\d+))?", loc)
         if not m:
             continue
         rows.append({
             "name": name,
             "path": m.group(1),
-            "line": int(m.group(2)) if m.group(2) else 0,
-            "status": status,
+            "line": int(m.group(2)) if m.group(2) else None,
+            "status_mark": status,
             "impl": impl,
         })
     return rows
 
 
-def resolve_path(rel: str) -> Optional[Path]:
-    """把文档里的路径解析成真实文件（None = 不存在）。"""
-    # 处理 home 目录引用（~/.aiplat/... 或 /.aiplat/... 或 .aiplat/...）
+def _display_path(real: Optional[Path]) -> Optional[str]:
+    """Prefer repo-relative path; fall back to absolute for ~/.aiplat etc."""
+    if real is None:
+        return None
+    try:
+        return str(real.relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(real)
+
+
+def resolve_path_detailed(rel: str) -> Tuple[Optional[Path], str]:
+    """Return (path_or_None, resolve_mode)."""
     if rel.startswith("~"):
         p = Path(os.path.expanduser(rel))
         if p.is_file():
-            return p
+            return p, "exact"
     if rel.startswith(".aiplat") or rel.startswith("/.aiplat"):
         p = Path.home() / rel.lstrip("/")
         if p.is_file():
-            return p
-    # 本体 YAML（~/.aiplat/ontologies/ 下，文档可能只写 basename）
+            return p, "exact"
     if rel.endswith(".yaml") and "/" not in rel:
         home_ont = Path.home() / ".aiplat" / "ontologies" / rel
         if home_ont.is_file():
-            return home_ont
-    # 已是完整路径（含 aiPlat- 前缀）
+            return home_ont, "exact"
+
     if rel.startswith("aiPlat-"):
         c = PROJECT_ROOT / rel
         if c.is_file():
-            return c
-    # 首段映射（文档混用 core/...、platform/...、infra/...、frontend/... 等短约定）
+            return c, "exact"
+
     seg = rel.split("/", 1)[0]
     for root in _SEGMENT_ROOTS.get(seg, []):
         c = PROJECT_ROOT / root / rel
         if c.is_file():
-            return c
-    # repo 短名回推：platform/... → aiPlat-platform/...（strip 首段）
+            return c, "candidate_root"
+
     if seg in ("platform", "core", "infra", "apps"):
         rest = rel.split("/", 1)[1] if "/" in rel else rel
         for repo in ("aiPlat-platform", "aiPlat-core", "aiPlat-infra"):
-            c = PROJECT_ROOT / repo / rest
-            if c.is_file():
-                return c
-            c = PROJECT_ROOT / repo / rel
-            if c.is_file():
-                return c
-    # 候选根回推
+            for c in (PROJECT_ROOT / repo / rest, PROJECT_ROOT / repo / rel):
+                if c.is_file():
+                    return c, "candidate_root"
+
     for root in CANDIDATE_ROOTS:
         c = PROJECT_ROOT / root / rel
         if c.is_file():
-            return c
-    # 直接
+            return c, "candidate_root"
+
     c = PROJECT_ROOT / rel
     if c.is_file():
-        return c
-    # 兜底：按 basename 在仓库索引里唯一匹配（处理纯文件名/短路径引用）
+        return c, "exact"
+
     basename = rel.split("/")[-1]
     if basename and "." in basename:
         hits = _build_file_index().get(basename, [])
         if len(hits) == 1:
-            return hits[0]
-    return None
+            return hits[0], "basename_unique"
+        if len(hits) > 1:
+            return None, "ambiguous"
+    return None, "unresolved"
+
+
+def resolve_path(rel: str) -> Optional[Path]:
+    p, _mode = resolve_path_detailed(rel)
+    return p
 
 
 def _line_count(path: Path) -> int:
@@ -202,11 +200,21 @@ def _line_count(path: Path) -> int:
         return -1
 
 
-# ── 主审计 ──────────────────────────────────────────────
-def audit(doc_path: Path) -> Dict:
+def _grep_field_in_engine(field: str) -> int:
+    engine = PROJECT_ROOT / "aiPlat-core" / "core" / "harness" / "execution" / "pipeline_engine.py"
+    if not engine.is_file():
+        return 0
+    try:
+        text = engine.read_text(encoding="utf-8", errors="ignore")
+        return len(re.findall(re.escape(field), text))
+    except Exception:
+        return 0
+
+
+def audit(doc_path: Path) -> Dict[str, Any]:
+    """Audit CAPABILITIES path declarations against the filesystem (source of truth)."""
     text = doc_path.read_text(encoding="utf-8")
 
-    # 1. marker 计数
     total_declared = None
     m = re.search(r"^total_capabilities:\s*(\d+)", text, re.M)
     if m:
@@ -218,94 +226,134 @@ def audit(doc_path: Path) -> Dict:
         "todo": len(re.findall(r"❌", text)),
     }
 
-    # 2. 解析引用（frontmatter + 表格），按 (path, line) 去重
-    fm_refs = _iter_path_blocks(text)
-    table_rows = _parse_table_rows(text)
+    # Per-record list — do NOT dedupe across sources (table vs frontmatter)
+    records: List[Dict[str, Any]] = []
 
-    unique_refs: Dict[Tuple[str, int], str] = {}
-    for cap_id, path, line in fm_refs:
-        unique_refs.setdefault((path, line), cap_id)
-    for r in table_rows:
-        unique_refs.setdefault((r["path"], r["line"]), r["name"])
+    for cap_id, path, line in _iter_path_blocks(text):
+        real, mode = resolve_path_detailed(path)
+        rec: Dict[str, Any] = {
+            "source": "frontmatter",
+            "name": cap_id,
+            "raw_path": path,
+            "resolved_path": _display_path(real),
+            "resolve_mode": mode,
+            "line": line,
+            "status": "ok",
+        }
+        if mode == "ambiguous":
+            rec["status"] = "ambiguous"
+        elif real is None:
+            rec["status"] = "file_missing" if mode == "unresolved" else "file_missing"
+            if mode == "unresolved":
+                rec["status"] = "unresolved"
+        elif line and line > 0:
+            total = _line_count(real)
+            if total > 0 and line > total:
+                rec["status"] = "line_bad"
+                rec["file_lines"] = total
+        if mode == "basename_unique" and rec["status"] == "ok":
+            rec["soft_warning"] = "basename_unique"
+        records.append(rec)
 
-    # 3. 逐条校验
-    file_ok = 0
-    file_missing = 0
-    line_ok = 0
-    line_bad = 0
-    missing_files: List[str] = []
-    out_of_range: List[Dict] = []
+    for r in _parse_table_rows(text):
+        path = r["path"]
+        line = r["line"]
+        real, mode = resolve_path_detailed(path)
+        rec = {
+            "source": "table",
+            "name": r["name"],
+            "raw_path": path,
+            "resolved_path": _display_path(real),
+            "resolve_mode": mode,
+            "line": line,
+            "status": "ok",
+            "impl": r.get("impl"),
+        }
+        if mode == "ambiguous":
+            rec["status"] = "ambiguous"
+        elif real is None:
+            rec["status"] = "unresolved" if mode == "unresolved" else "file_missing"
+        elif line and line > 0:
+            total = _line_count(real)
+            if total > 0 and line > total:
+                rec["status"] = "line_bad"
+                rec["file_lines"] = total
+        if mode == "basename_unique" and rec["status"] == "ok":
+            rec["soft_warning"] = "basename_unique"
+        records.append(rec)
 
-    for (path, line), name in unique_refs.items():
-        real = resolve_path(path)
-        if real is None:
-            file_missing += 1
-            missing_files.append(path)
-            continue
-        file_ok += 1
-        if line == 0:
-            line_ok += 1  # 无行号，只校验文件存在
-            continue
-        total = _line_count(real)
-        if total > 0 and line <= total:
-            line_ok += 1
-        else:
-            line_bad += 1
-            out_of_range.append({"name": name, "path": path, "line": line, "file_lines": total})
+    # Counts — ambiguous mutually exclusive with file_missing
+    total_refs = len(records)
+    file_ok = sum(1 for x in records if x["status"] == "ok" or x.get("soft_warning") == "basename_unique" and x["status"] == "ok")
+    # basename_unique with ok still counts as file_ok
+    file_ok = sum(1 for x in records if x["status"] == "ok")
+    file_missing = sum(1 for x in records if x["status"] in ("file_missing", "unresolved"))
+    ambiguous_count = sum(1 for x in records if x["status"] == "ambiguous")
+    line_bad = sum(1 for x in records if x["status"] == "line_bad")
 
-    # 4. 实施状态分布
-    impl_counter = Counter(r["impl"] for r in table_rows)
+    # line_ok / line_valid only over records with line and resolved file
+    lined = [
+        x for x in records
+        if x.get("line") and x["line"] > 0 and x["status"] in ("ok", "line_bad")
+    ]
+    line_ok = sum(1 for x in lined if x["status"] == "ok")
+    if not lined:
+        line_valid_rate: Optional[float] = None
+    else:
+        line_valid_rate = round(line_ok / len(lined), 4)
+
+    file_exist_rate = round(file_ok / total_refs, 4) if total_refs else 0.0
+
+    table_rows = [x for x in records if x["source"] == "table"]
+    impl_counter = Counter(x.get("impl") or "" for x in table_rows)
     merged = sum(v for k, v in impl_counter.items() if k == "已合入")
-    phase_tagged = sum(v for k, v in impl_counter.items() if re.match(r"^Phase\s+\d", k))
+    phase_tagged = sum(v for k, v in impl_counter.items() if re.match(r"^Phase\s+\d", k or ""))
     other_impl = len(table_rows) - merged - phase_tagged
 
-    # 5. 未合并碎片
     auto_gen = len(re.findall(r"Auto-generated by scan_inherited_capabilities", text))
     merge_note = len(re.findall(r"Merge into AIPLAT_CAPABILITIES\.md after review", text))
 
-    # 6. ORPHAN 自审计复验
     orphan_fields = re.findall(
         r"Schema defines '(\w+)' but pipeline_engine never reads it", text)
     orphan_recheck = []
-    if orphan_fields:
-        for f in orphan_fields:
-            # 只读 grep pipeline_engine.py 里该字段的引用
-            hit = _grep_field_in_engine(f)
-            orphan_recheck.append({"field": f, "still_orphan": not hit, "engine_hits": hit})
+    for f in orphan_fields:
+        hit = _grep_field_in_engine(f)
+        orphan_recheck.append({"field": f, "still_orphan": not hit, "engine_hits": hit})
 
-    # 7. 落地完成度
-    total_refs = len(unique_refs)
-    if total_refs == 0:
-        completion = 0.0
-        file_exist_rate = line_valid_rate = 0.0
-    else:
-        file_exist_rate = file_ok / total_refs
-        line_valid_rate = line_ok / max(1, file_ok)
-    impl_rate = merged / max(1, total_refs)
-    conflict_penalty = min(1.0, (auto_gen + merge_note) / max(1, total_refs))
-    completion = (
-        file_exist_rate * 0.5
-        + line_valid_rate * 0.2
-        + impl_rate * 0.2
-        + (1 - conflict_penalty) * 0.1
-    )
-    completion = max(0.0, min(1.0, completion))
+    missing_files = sorted({
+        x["raw_path"] for x in records if x["status"] in ("file_missing", "unresolved")
+    })
+    out_of_range = [
+        {
+            "name": x["name"],
+            "path": x["raw_path"],
+            "line": x["line"],
+            "file_lines": x.get("file_lines"),
+            "source": x["source"],
+        }
+        for x in records if x["status"] == "line_bad"
+    ]
 
     return {
         "generated_at": datetime.now().isoformat(),
         "doc": str(doc_path),
         "total_declared": total_declared,
         "markers": markers,
+        "records": records,
         "refs": {
-            "unique_total": total_refs,
-            "frontmatter": len(fm_refs),
-            "table": len(table_rows),
+            "total_records": total_refs,
+            "frontmatter": sum(1 for x in records if x["source"] == "frontmatter"),
+            "table": sum(1 for x in records if x["source"] == "table"),
             "file_ok": file_ok,
             "file_missing": file_missing,
+            "ambiguous_count": ambiguous_count,
             "line_ok": line_ok,
             "line_bad": line_bad,
+            "lined_subset": len(lined),
+            # backward-compat alias used by older callers
+            "unique_total": total_refs,
         },
-        "missing_files": sorted(set(missing_files)),
+        "missing_files": missing_files,
         "out_of_range": out_of_range,
         "impl": {
             "merged": merged,
@@ -315,131 +363,128 @@ def audit(doc_path: Path) -> Dict:
         "fragments": {"auto_generated": auto_gen, "merge_after_review": merge_note},
         "orphan_recheck": orphan_recheck,
         "rates": {
-            "file_exist": round(file_exist_rate, 4),
-            "line_valid": round(line_valid_rate, 4),
-            "impl": round(impl_rate, 4),
-            "completion": round(completion, 4),
+            "file_exist": file_exist_rate,
+            "line_valid": line_valid_rate,  # null when no lined subset
+            "impl": round(merged / max(1, total_refs), 4),
+            # completion removed as CI gate; kept informational without merged/refs inflation
+            "completion": file_exist_rate,
         },
     }
 
 
-def _grep_field_in_engine(field: str) -> int:
-    """只读统计 pipeline_engine.py 里字段的引用次数（用于 ORPHAN 复验）。"""
-    engine = PROJECT_ROOT / "aiPlat-core" / "core" / "harness" / "execution" / "pipeline_engine.py"
-    if not engine.is_file():
-        return 0
-    try:
-        text = engine.read_text(encoding="utf-8", errors="ignore")
-        return len(re.findall(re.escape(field), text))
-    except Exception:
-        return 0
-
-
-# ── 输出 ────────────────────────────────────────────────
-def render_markdown(r: Dict) -> str:
+def render_markdown(r: Dict[str, Any]) -> str:
     L = []
     L.append("# aiPlat 能力审计报告")
     L.append("")
     L.append(f"**生成时间**: {r['generated_at']}")
     L.append(f"**文档**: `{r['doc']}`")
     L.append("")
+    L.append("> 源码为真：本报告只核对声明路径/行号与仓库文件；不能证明接线或行为可用。")
+    L.append("")
     L.append("## 一、概要")
     L.append("")
     L.append(f"- 头部声明 `total_capabilities`: **{r['total_declared']}**")
     L.append(f"- 标记分布：✅ {r['markers']['ok']} · ⚠️ {r['markers']['warn']} · ❌ {r['markers']['todo']}")
-    L.append(f"- 去重后文件引用总数: **{r['refs']['unique_total']}**（frontmatter {r['refs']['frontmatter']} + 表格 {r['refs']['table']}）")
+    L.append(
+        f"- 逐条引用: **{r['refs']['total_records']}**"
+        f"（frontmatter {r['refs']['frontmatter']} + 表格 {r['refs']['table']}；不去重）"
+    )
     L.append("")
-    L.append("## 二、落地完成度")
+    L.append("## 二、文件存在率 / 行号有效率")
     L.append("")
-    L.append(f"**{r['rates']['completion'] * 100:.1f}%**")
-    L.append("")
-    L.append("| 指标 | 值 | 权重 |")
-    L.append("|------|-----|------|")
-    L.append(f"| 文件存在率 | {r['rates']['file_exist'] * 100:.1f}% | 50% |")
-    L.append(f"| 行号有效率 | {r['rates']['line_valid'] * 100:.1f}% | 20% |")
-    L.append(f"| 已合入占比 | {r['rates']['impl'] * 100:.1f}% | 20% |")
-    L.append(f"| 无碎片惩罚 | {(1 - min(1.0, (r['fragments']['auto_generated'] + r['fragments']['merge_after_review']) / max(1, r['refs']['unique_total']))) * 100:.1f}% | 10% |")
+    lv = r["rates"]["line_valid"]
+    lv_s = "N/A" if lv is None else f"{lv * 100:.1f}%"
+    L.append(f"- 文件存在率 file_ok/total: **{r['rates']['file_exist'] * 100:.1f}%** "
+             f"（ok={r['refs']['file_ok']}, missing={r['refs']['file_missing']}, "
+             f"ambiguous={r['refs']['ambiguous_count']}；ambiguous 在分母、不进 ok）")
+    L.append(f"- 行号有效率（有行号且已解析子集）: **{lv_s}** "
+             f"（subset={r['refs']['lined_subset']}, line_bad={r['refs']['line_bad']}）")
     L.append("")
     L.append("## 三、文件引用")
     L.append("")
-    L.append(f"- 文件存在: **{r['refs']['file_ok']}**")
+    L.append(f"- 文件存在 (ok): **{r['refs']['file_ok']}**")
     L.append(f"- 文件缺失: **{r['refs']['file_missing']}**")
-    L.append(f"- 行号有效: **{r['refs']['line_ok']}**")
+    L.append(f"- 歧义 basename: **{r['refs']['ambiguous_count']}**（软警告，不计 missing）")
     L.append(f"- 行号越界: **{r['refs']['line_bad']}**")
     L.append("")
     if r["missing_files"]:
         L.append("### 缺失文件清单")
         L.append("")
-        for f in r["missing_files"][:30]:
+        for f in r["missing_files"][:40]:
             L.append(f"- `{f}`")
-        if len(r["missing_files"]) > 30:
-            L.append(f"- … 共 {len(r['missing_files'])} 个")
     else:
         L.append("### 缺失文件清单：无")
     L.append("")
     if r["out_of_range"]:
         L.append("### 行号越界清单")
         L.append("")
-        for o in r["out_of_range"][:30]:
-            L.append(f"- `{o['path']}:{o['line']}`（文件仅 {o['file_lines']} 行）")
+        for o in r["out_of_range"][:40]:
+            L.append(f"- `{o['path']}:{o['line']}`（文件仅 {o.get('file_lines')} 行，source={o.get('source')}）")
     L.append("")
-    L.append("## 四、实施状态分布")
+    L.append("## 四、实施状态分布（表格行）")
     L.append("")
     L.append(f"- 已合入: **{r['impl']['merged']}**")
     L.append(f"- Phase 标记: **{r['impl']['phase_tagged']}**")
-    L.append(f"- 其它/日期: **{r['impl']['other']}**")
-    L.append("")
-    L.append("## 五、未合并碎片")
-    L.append("")
-    L.append(f"- auto-generated 片段: **{r['fragments']['auto_generated']}**")
-    L.append(f"- 'Merge after review' 标记: **{r['fragments']['merge_after_review']}**")
-    L.append("")
-    L.append("## 六、ORPHAN 自审计复验")
-    L.append("")
-    if r["orphan_recheck"]:
-        for o in r["orphan_recheck"]:
-            tag = "❌ 仍孤儿" if o["still_orphan"] else "✅ 已接线"
-            L.append(f"- `{o['field']}` → {tag}（引擎命中 {o['engine_hits']} 处）")
-    else:
-        L.append("未发现 ORPHAN 自审计标记。")
+    L.append(f"- 其它: **{r['impl']['other']}**")
     L.append("")
     L.append("---")
-    L.append("*本报告由 scripts/verify_capability_doc.py 自动生成，只读审计。*")
+    L.append("*scripts/verify_capability_doc.py — 默认不写盘；`--write` 才落盘。*")
     return "\n".join(L)
 
 
-def main():
-    print("🚀 aiPlat 元治理审计启动（阶段 0）")
-    print(f"📄 文档: {DOC_PATH}")
+def main(argv: Optional[List[str]] = None) -> int:
+    argv = list(argv if argv is not None else sys.argv[1:])
+    ci = "--ci" in argv
+    write = "--write" in argv
+
+    print("aiPlat CAPABILITIES path audit (source of truth = repo files)")
+    print(f"doc: {DOC_PATH}")
     print("-" * 50)
 
     if not DOC_PATH.exists():
-        print(f"❌ 未找到文档: {DOC_PATH}")
-        sys.exit(1)
+        print(f"ERROR: missing {DOC_PATH}")
+        return 1 if ci else 0
 
     r = audit(DOC_PATH)
 
-    AUDIT_DIR.mkdir(parents=True, exist_ok=True)
-    with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
-        json.dump(r, f, indent=2, ensure_ascii=False)
-    with open(OUTPUT_MD, "w", encoding="utf-8") as f:
-        f.write(render_markdown(r))
+    if write:
+        AUDIT_DIR.mkdir(parents=True, exist_ok=True)
+        OUTPUT_JSON.write_text(json.dumps(r, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        OUTPUT_MD.write_text(render_markdown(r), encoding="utf-8")
+        print(f"wrote {OUTPUT_JSON}")
+        print(f"wrote {OUTPUT_MD}")
 
-    print(f"✅ JSON 报告: {OUTPUT_JSON}")
-    print(f"✅ Markdown 报告: {OUTPUT_MD}")
-    print("-" * 50)
-    print(f"🏁 落地完成度: {r['rates']['completion'] * 100:.1f}%")
-    print(f"   文件缺失 {r['refs']['file_missing']} · 行号越界 {r['refs']['line_bad']} · 已合入 {r['impl']['merged']} · Phase {r['impl']['phase_tagged']} · 碎片 {r['fragments']['auto_generated'] + r['fragments']['merge_after_review']}")
+    lv = r["rates"]["line_valid"]
+    lv_s = "N/A" if lv is None else f"{lv * 100:.1f}%"
+    print(
+        f"records={r['refs']['total_records']} "
+        f"file_ok={r['refs']['file_ok']} missing={r['refs']['file_missing']} "
+        f"ambiguous={r['refs']['ambiguous_count']} line_bad={r['refs']['line_bad']} "
+        f"file_exist={r['rates']['file_exist'] * 100:.1f}% line_valid={lv_s}"
+    )
 
-    if "--ci" in sys.argv:
-        if r["rates"]["completion"] < CI_THRESHOLD:
-            print(f"❌ CI 失败: 完成度 {r['rates']['completion'] * 100:.1f}% < {CI_THRESHOLD * 100:.0f}%")
-            sys.exit(1)
-        print("✅ CI 通过")
-        sys.exit(0)
+    hard_fail = r["refs"]["file_missing"] > 0 or r["refs"]["line_bad"] > 0
+    if hard_fail:
+        print(
+            f"HARD findings: file_missing={r['refs']['file_missing']} "
+            f"line_bad={r['refs']['line_bad']}"
+        )
+        if r["missing_files"]:
+            for f in r["missing_files"][:20]:
+                print(f"  missing: {f}")
+        for o in r["out_of_range"][:20]:
+            print(f"  line_bad: {o['path']}:{o['line']}")
 
-    print("✅ 审计完成。详见 docs/audit/latest.md")
+    if r["refs"]["ambiguous_count"]:
+        print(f"SOFT: ambiguous_count={r['refs']['ambiguous_count']} (not a --ci failure alone)")
+
+    if ci and hard_fail:
+        print("CI FAIL")
+        return 1
+    if ci:
+        print("CI PASS")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

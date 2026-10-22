@@ -609,21 +609,46 @@ async def _check_doc_quality():
 # ── P0-A8: 补齐 14 个诊断分类的检查函数（委托现有模块能力，不重复实现）──
 
 async def _check_code_intel():
-    """代码架构 — 委托 CodeGraph 符号覆盖检查。"""
+    """代码架构 — 委托 CodeGraph 符号覆盖检查。stale 时仍返回缓存信息，不宣称已同步。"""
     try:
         from core.api.core_facade import get_code_graph
         g = get_code_graph()
-        return {"status": "pass", "score": 100, "detail": "code_graph available"}
+        stale = False
+        reason = ""
+        try:
+            from core.harness.knowledge.code_graph_persist import get_cache_info, evaluate_freshness
+            info = get_cache_info()
+            stale = bool(info.get("stale"))
+            if not stale:
+                verdict = evaluate_freshness()
+                stale = bool(verdict.get("stale"))
+                reason = str(verdict.get("reason") or "")
+            else:
+                reason = "missing_fingerprint_meta"
+        except Exception:
+            stale = True
+            reason = "freshness_check_failed"
+        detail = "code_graph available"
+        if stale:
+            detail = f"code_graph available (stale={reason or True}; not claiming synced)"
+            return {"status": "warn", "score": 70, "detail": detail, "stale": True, "stale_reason": reason}
+        return {"status": "pass", "score": 100, "detail": detail, "stale": False}
     except Exception:
         return {"status": "warn", "score": 0, "detail": "code_graph unavailable"}
 
 
 async def _check_capability():
-    """能力图谱 — 委托 CapabilityGraph 构建检查。"""
+    """能力图谱 — 委托 CapabilityGraph 构建检查。stale 时返回缓存并标注，不宣称已同步。"""
     try:
         from core.api.core_facade import build_capability_graph
         r = build_capability_graph()
-        return {"status": "pass", "score": 100, "detail": f"{len(r.nodes)} nodes"}
+        stale = bool(getattr(r, "stale", False))
+        reason = str(getattr(r, "stale_reason", "") or "")
+        detail = f"{len(r.nodes)} nodes"
+        if stale:
+            detail = f"{len(r.nodes)} nodes (stale={reason or True}; not claiming synced)"
+            return {"status": "warn", "score": 70, "detail": detail, "stale": True, "stale_reason": reason}
+        return {"status": "pass", "score": 100, "detail": detail, "stale": False}
     except Exception:
         return {"status": "warn", "score": 0, "detail": "capability graph unavailable"}
 

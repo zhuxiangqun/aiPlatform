@@ -10,11 +10,14 @@ Usage:
     python3 scripts/validate_frontmatter.py --path DIR # scan specific directory
 """
 
+from __future__ import annotations
+
 import argparse
 import os
 import sys
 import yaml
 from pathlib import Path
+from typing import Optional
 
 # ── Required fields per file type ──
 AGENT_REQUIRED = ["name", "agent_type"]
@@ -25,7 +28,7 @@ AGENT_RECOMMENDED = ["model", "status", "display_name"]
 SKILL_RECOMMENDED = ["display_name", "version", "status"]
 
 
-def _parse_frontmatter(filepath: Path) -> dict | None:
+def _parse_frontmatter(filepath: Path) -> Optional[dict]:
     """Parse YAML frontmatter from a Markdown file. Returns dict or None on error."""
     try:
         content = filepath.read_text(encoding="utf-8", errors="ignore")

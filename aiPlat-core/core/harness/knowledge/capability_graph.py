@@ -112,6 +112,9 @@ class CapabilityGraphResult:
     created_at: float
     nodes: Dict[str, Dict[str, Any]]   # id -> node
     edges: List[Dict[str, str]]         # [{from, to, relation}]
+    stale: bool = False                 # True if cache meta missing / fp mismatch / calc fail
+    fingerprint: str = ""               # source fingerprint when known
+    stale_reason: str = ""              # missing_fingerprint_meta | mismatch | …
 
 
 # ---------------------------------------------------------------------------
@@ -184,7 +187,7 @@ def build_capability_graph() -> CapabilityGraphResult:
                 _incremental_rescan(nodes, edges, touch_ids)
                 _finalize(nodes, edges)
                 _save_cap_graph(nodes, edges)
-                return _cache_and_return(nodes, edges)
+                return _cache_and_return(nodes, edges, freshly_built=True)
 
             if len(touch_ids) > 10:
                 pass  # fall through to full rebuild below
@@ -227,11 +230,11 @@ def build_capability_graph() -> CapabilityGraphResult:
                     _finalize(nodes, edges)
                     _resolve_cross_namespace_edges(nodes, edges)
                     _save_cap_graph(nodes, edges)
-                    return _cache_and_return(nodes, edges)
+                    return _cache_and_return(nodes, edges, freshly_built=True)
                 else:
                     _finalize(nodes, edges)
                     _resolve_cross_namespace_edges(nodes, edges)
-                    return _cache_and_return(nodes, edges)
+                    return _cache_and_return(nodes, edges, freshly_built=False)
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
@@ -249,7 +252,7 @@ def build_capability_graph() -> CapabilityGraphResult:
     _finalize(nodes, edges)
     _resolve_cross_namespace_edges(nodes, edges)
     _save_cap_graph(nodes, edges)
-    return _cache_and_return(nodes, edges)
+    return _cache_and_return(nodes, edges, freshly_built=True)
 
 
 def _incremental_rescan(nodes, edges, stale_ids):
@@ -348,9 +351,49 @@ def _save_cap_graph(nodes, edges):
         logging.debug(str(e), exc_info=True)
 
 
-def _cache_and_return(nodes, edges):
-    """Save to in-memory cache and return CapabilityGraphResult."""
-    result = CapabilityGraphResult(created_at=time.time(), nodes=nodes, edges=edges)
+def _cache_and_return(nodes, edges, *, freshly_built: bool = False):
+    """Save to in-memory cache and return CapabilityGraphResult.
+
+    Callers must treat stale=True as 'index may lag sources' — return cache with
+    warning, do not claim the graph is synced. Rebuild via clear + rebuild API.
+    """
+    stale = False
+    reason = ""
+    fp = ""
+    try:
+        from core.harness.knowledge.cap_graph_persist import (
+            compute_source_fingerprint,
+            evaluate_freshness,
+        )
+        if freshly_built:
+            fp = compute_source_fingerprint(nodes)
+            stale = False
+            reason = "ok"
+        else:
+            verdict = evaluate_freshness(nodes)
+            stale = bool(verdict.get("stale"))
+            reason = str(verdict.get("reason") or "")
+            fp = str(verdict.get("computed") or verdict.get("stored") or "")
+            if stale:
+                logging.getLogger("capability_graph").warning(
+                    "capability_graph cache stale (%s) — returning cached nodes with stale=true",
+                    reason,
+                )
+    except Exception as e:
+        stale = True
+        reason = "fingerprint_compute_failed"
+        logging.getLogger("capability_graph").warning(
+            "capability_graph freshness check failed: %s — marking stale", e
+        )
+
+    result = CapabilityGraphResult(
+        created_at=time.time(),
+        nodes=nodes,
+        edges=edges,
+        stale=stale,
+        fingerprint=fp,
+        stale_reason=reason,
+    )
     global _CAP_CACHE, _CAP_CACHE_TS, _CAP_CACHE_LOCK
     if _CAP_CACHE_LOCK is None:
         import threading as _th
