@@ -107,6 +107,21 @@ class TestMatrixRender(unittest.TestCase):
         self.assertNotEqual(expected, drifted)
 
 
+class TestCriticalPathSmoke(unittest.TestCase):
+    def test_static_ci_pass(self):
+        smoke = _load("smoke_capability_critical_paths", "smoke_capability_critical_paths.py")
+        self.assertEqual(smoke.main(["--ci"]), 0)
+
+    def test_static_fail_on_missing_symbol(self):
+        smoke = _load("smoke_capability_critical_paths", "smoke_capability_critical_paths.py")
+        ok, detail = smoke._check_static({
+            "module": "aiPlat-core/core/server.py",
+            "symbol": "DefinitelyMissingSymbol_XYZ",
+        })
+        self.assertFalse(ok)
+        self.assertIn("not in AST", detail)
+
+
 class TestCapabilityStatsCodegen(unittest.TestCase):
     def test_stats_fresh_on_clean_repo(self):
         vcons = _load("verify_capability_consistency", "verify_capability_consistency.py")

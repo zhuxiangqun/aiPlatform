@@ -1,11 +1,17 @@
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 33 domains | 1476 capabilities (caps_count) | 1476 symbols (provides)
+> Version: 1.1.0 | 33 domains | 1477 capabilities (caps_count) | 1477 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
 ## Consumer-to-Capability Dependencies
+
+### .github/workflows/aiplat-contracts-guard.yml
+
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| platform-governance | §二十一 平台治理 | 11 | Phase D critical-path static smoke in CI |
 
 ### aiPlat-infra/infra/management/model/config_loader.py
 
@@ -62,7 +68,7 @@
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | memory-subsystem | §二 记忆子系统 | 59 | L6 记忆指标展示 |
-| platform-governance | §二十一 平台治理 | 10 | 仪表盘治理指标 |
+| platform-governance | §二十一 平台治理 | 11 | 仪表盘治理指标 |
 | l6-autonomy | §二十七 L6 自主能力 | 5 | _get_goal_decomposition_stats |
 
 ### aiPlat-platform/apps/fde/api/fde_diagnostics_v2.py
@@ -307,7 +313,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| platform-governance | §二十一 平台治理 | 10 | 本体引擎治理 |
+| platform-governance | §二十一 平台治理 | 11 | 本体引擎治理 |
 | document-intelligence | §十五 文档智能 | 3 | OntologyEngine 文档输入 |
 
 ### core/harness/optimization/goal_executor.py
@@ -387,7 +393,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| platform-governance | §二十一 平台治理 | 10 | Governance cron 定时任务 |
+| platform-governance | §二十一 平台治理 | 11 | Governance cron 定时任务 |
 | l6-autonomy | §二十七 L6 自主能力 | 5 | DiscoveryListener 启动 |
 | deploy-and-operations | §十 部署与运维 | 3 | 启动时挂载 cron + WakeScheduler |
 | extension-and-learning | §十一 扩展与学习 | 10 | GoalExecutor + WakeScheduler 启动 |
@@ -397,19 +403,19 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| platform-governance | §二十一 平台治理 | 10 | Phase C 统计表生成入口 |
+| platform-governance | §二十一 平台治理 | 11 | Phase C 统计表生成入口 |
 
 ### scripts/verify_capability_truth.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| platform-governance | §二十一 平台治理 | 10 | 统一门禁调用 audit_registry |
+| platform-governance | §二十一 平台治理 | 11 | 统一门禁调用 audit_registry / run_smoke |
 
 ### scripts/verify_doc_sync.sh
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| platform-governance | §二十一 平台治理 | 10 | doc sync / pre-commit / contracts-guard 向下传 --ci |
+| platform-governance | §二十一 平台治理 | 11 | doc sync / pre-commit / contracts-guard 向下传 --ci |
 
 ## Capability-to-Consumer Impact
 
@@ -587,14 +593,15 @@
 - **core/harness/execution/pipeline_engine.py** — Pipeline 编排
 - **core/api/routers/pipeline_execution.py** — fork/forks 端点经 CoreFacade 取 store
 
-### §二十一 平台治理 (10 caps)
+### §二十一 平台治理 (11 caps)
 
 - **core/server.py** — Governance cron 定时任务
 - **core/harness/ontology_engine/engine.py** — 本体引擎治理
 - **aiPlat-platform/apps/fde/api/fde_dashboard_v2.py** — 仪表盘治理指标
-- **scripts/verify_capability_truth.py** — 统一门禁调用 audit_registry
+- **scripts/verify_capability_truth.py** — 统一门禁调用 audit_registry / run_smoke
 - **scripts/verify_doc_sync.sh** — doc sync / pre-commit / contracts-guard 向下传 --ci
 - **scripts/generate_capability_stats.py** — Phase C 统计表生成入口
+- **.github/workflows/aiplat-contracts-guard.yml** — Phase D critical-path static smoke in CI
 
 ### §四 RAG 检索 (7 caps)
 

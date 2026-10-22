@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2345
+total_capabilities: 2347
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -1418,6 +1418,7 @@ scan_hash: 8f9548ec24f4
 | verify_capability_truth | `scripts/verify_capability_truth.py` | ✅ | 能力声明↔源码统一入口：path/一致性/registry/矩阵全文/gap/`provides` AST ratchet；默认 exit0 不写盘；仅 `--ci` 硬失败；软警告（含 AST 存量 baseline）不单独非零 | 已合入 |
 | verify_registry_provides_ast | `scripts/verify_registry_provides_ast.py` + `scripts/baselines/registry_provides_ast_baseline.json` | ✅ | registry `provides.module` 解析 + AST 顶层符号存在；相对 baseline 仅新增债务 `--ci` 硬失败；存量 soft；接线 `verify_capability_truth` | 已合入 |
 | generate_capability_stats | `scripts/generate_capability_stats.py` + `verify_capability_consistency.check_stats_fresh` | ✅ | Phase C：CAPABILITIES `AUTO-STATS` 块由章节 ✅/⚠️ 实算生成；`--ci` 全文对账不改写；接线 truth gate | 已合入 |
+| smoke_capability_critical_paths | `scripts/smoke_capability_critical_paths.py` + `scripts/baselines/capability_critical_paths.yaml` | ✅ | Phase D：关键路径行为冒烟；static（文件/AST）`--ci` 硬；live HTTP 需 `--live`；与 CAPABILITIES ✅ 分列；contracts-guard + truth gate | 已合入 |
 | reparse_queue | harness/knowledge/reparse_queue.py | ✅ | 自动同步 | 已合入 |
 | text_cleaner | harness/knowledge/text_cleaner.py | ✅ | 自动同步 | 已合入 |
 | doc_quality_monitor | harness/knowledge/doc_quality_monitor.py | ✅ | 自动同步 | 已合入 |
@@ -2688,6 +2689,7 @@ scan_hash: 8f9548ec24f4
 ## 二十一、平台治理
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| run_smoke | `scripts/smoke_capability_critical_paths.py` | ✅ | Phase D：关键路径 static/live 冒烟入口 | 已合入 |
 | check_stats_fresh | `scripts/verify_capability_consistency.py` | ✅ | Phase C：AUTO-STATS 全文新鲜度门禁（章节实算） | 已合入 |
 | render_stats_block | `scripts/verify_capability_consistency.py` | ✅ | Phase C：由章节 ✅/⚠️ 渲染统计表块 | 已合入 |
 | audit_registry | `scripts/verify_registry_provides_ast.py` | ✅ | 自动同步 | 已合入 |
@@ -3245,7 +3247,7 @@ scan_hash: 8f9548ec24f4
 | Harness 执行引擎 | 329 | 1 | 330 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 375 | 9 | 384 |
-| RAG 检索 | 55 | 0 | 55 |
+| RAG 检索 | 56 | 0 | 56 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 168 | 0 | 168 |
 | Skill 系统 | 171 | 0 | 171 |
@@ -3264,7 +3266,7 @@ scan_hash: 8f9548ec24f4
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 44 | 0 | 44 |
 | Arena & 调度 | 7 | 0 | 7 |
-| 平台治理 | 125 | 0 | 125 |
+| 平台治理 | 126 | 0 | 126 |
 | Infra 基础设施 | 16 | 0 | 16 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
@@ -3287,7 +3289,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2335** | **10** | **2345** |
+| **总计** | **2337** | **10** | **2347** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

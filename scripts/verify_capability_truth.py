@@ -17,10 +17,11 @@ verify_capability_truth.py — 能力声明 ↔ 源码一致性统一入口
 | 矩阵临时全文 diff | 工作树矩阵 ≡ 当前 registry 生成结果 | 消费者边在运行时真实 |
 | check_code_doc_gap | harness 下 .py 模块 stem/parent 名在 CAPABILITIES 有登记 | 符号级存在、生产调用方、可运行 |
 | verify_registry_provides_ast | provides.module 可解析且符号在模块 AST 顶层存在；相对 baseline 的**新增**债务 | 生产调用方；行为可用；baseline 内存量 |
+| smoke_capability_critical_paths (static) | 关键路径清单中文件/AST/子串存在 | 服务可响应；端到端业务成功（见 `--live`） |
 
 明确排除（本轮不硬失败）：
   - 「有生产调用方」——不由 manifest/registry 反推
-  - 「行为可用」——另立行为验收
+  - 「行为可用 / 行为通过」——`smoke_capability_critical_paths --live`；与 CAPABILITIES ✅ 分列
   - registry provides 存量 AST 债务（baseline 内）——仅新增债务 --ci 硬失败
 
 check_code_doc_gap 实际规则（以 scripts/check_code_doc_gap.py 为准）：
@@ -191,6 +192,22 @@ def run_checks(*, ci: bool = False) -> Dict[str, Any]:
             "new_count": len(novel),
             "sample": novel[:15],
             "note": "fix registry or shrink baseline after cleanup",
+        })
+
+    # 7) Phase D critical-path static smoke (live HTTP stays opt-in / soft here)
+    vsmoke = _load("smoke_capability_critical_paths", "smoke_capability_critical_paths.py")
+    smoke = vsmoke.run_smoke(live=False)
+    soft.append({
+        "check": "critical_path_smoke_static",
+        "static_fail": smoke["static_fail"],
+        "live_skip": smoke["live_skip"],
+        "note": "static wiring only; live HTTP via smoke_capability_critical_paths --live",
+    })
+    if smoke["static_fail"]:
+        hard.append({
+            "check": "critical_path_smoke_static",
+            "static_fail": smoke["static_fail"],
+            "sample": [r for r in smoke["results"] if r.get("ok") is False][:10],
         })
 
     return {
