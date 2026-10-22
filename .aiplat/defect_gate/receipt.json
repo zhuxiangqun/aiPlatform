@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-22T17:16:18+08:00",
+  "reviewed_at": "2026-10-22T17:49:38+08:00",
   "base_ref": "origin/main",
-  "merge_base": "944e459d5d52b55e565005853e58babea8c4142e",
-  "diff_sha256": "3530d72248e459066782d027e085193e53f8ad22e1714ce965a08a637bd48f3d",
-  "head_sha": "b776ee6503ab288679d01caf48383e54f56f8ca1",
+  "merge_base": "64db47b8dfb3c6bf2005897a10d6cf4c254f02c7",
+  "diff_sha256": "30ed511dd2c948a8a178b8963d8dc9a777d1b6b48e0e7009c36ec396cd604798",
+  "head_sha": "ee84af53b9f4a01040bccbf3ca80ac65bf3a61e9",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "conversations + _core_request use service_to_core_identity_headers (env secret only; never client secret). Local lock only; CI needs non-author Approve."
+  "note": "memory sticky/archive tenant via _resolve_identity only; no raw X-AIPLAT-TENANT-ID. Local lock only; CI needs non-author Approve."
 }
