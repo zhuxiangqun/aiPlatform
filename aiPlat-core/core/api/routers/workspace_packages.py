@@ -11,6 +11,8 @@ import os
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException, Request
+
+from core.api.deps import actor_from_http
 from fastapi.responses import FileResponse
 
 from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
@@ -346,8 +348,9 @@ async def install_workspace_package(pkg_name: str, http_request: Request, reques
         if store is not None and scheduler is not None:
             from core.api.core_facade import enqueue_autosmoke  # P0-A2: 经 CoreFacade
 
-            tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
-            actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+            actor = actor_from_http(http_request, None)
+            tenant_id = actor.get("tenant_id") or "ops_smoke"
+            actor_id = actor.get("actor_id") or "anonymous"
             for it in (record.get("applied") or []):
                 k = str(it.get("kind") or "")
                 rid = str(it.get("id") or "")
@@ -359,7 +362,7 @@ async def install_workspace_package(pkg_name: str, http_request: Request, reques
                     resource_type=k,
                     resource_id=rid,
                     tenant_id=tenant_id or "ops_smoke",
-                    actor_id=actor_id or "admin",
+                    actor_id=actor_id or "anonymous",
                     detail={"op": "package_install", "package": pkg_name},
                 )
     except Exception as e:

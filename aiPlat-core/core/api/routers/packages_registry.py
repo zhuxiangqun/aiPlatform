@@ -38,6 +38,8 @@ import yaml
 
 from fastapi import APIRouter, HTTPException, Request
 
+from core.api.deps import actor_from_http
+
 
 
 from core.api.utils.governance import gate_error_envelope, governance_links, ui_url
@@ -65,6 +67,22 @@ router = APIRouter()
 
 
 
+
+
+
+def _identity_from_http(http_request: Request, *, default_actor: str = "anonymous", default_tenant: Optional[str] = None):
+
+    """Spoofable identity only via actor_from_http (DEV_MODE / identity secret)."""
+
+    actor = actor_from_http(http_request, None)
+
+    actor_id = str(actor.get("actor_id") or "").strip() or default_actor
+
+    tenant = actor.get("tenant_id")
+
+    tenant_id = str(tenant) if tenant else default_tenant
+
+    return actor_id, tenant_id
 
 def _rt():
 
@@ -425,9 +443,9 @@ async def publish_package(pkg_name: str, http_request: Request, request: Package
 
                     approval_request_id=rid,
 
-                    user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+                    user_id=str((_id := _identity_from_http(http_request))[0]),
 
-                    tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+                    tenant_id=_id[1],
 
                 )
 
@@ -459,9 +477,9 @@ async def publish_package(pkg_name: str, http_request: Request, request: Package
 
                     approval_request_id=request.approval_request_id,
 
-                    user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+                    user_id=str((_id := _identity_from_http(http_request))[0]),
 
-                    tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+                    tenant_id=_id[1],
 
                 )
 
@@ -597,9 +615,9 @@ async def publish_package(pkg_name: str, http_request: Request, request: Package
 
             approval_request_id=request.approval_request_id,
 
-            user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+            user_id=str((_id := _identity_from_http(http_request))[0]),
 
-            tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+            tenant_id=_id[1],
 
         )
 
@@ -681,9 +699,9 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
 
                     approval_request_id=rid,
 
-                    user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+                    user_id=str((_id := _identity_from_http(http_request))[0]),
 
-                    tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+                    tenant_id=_id[1],
 
                 )
 
@@ -715,9 +733,9 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
 
                     approval_request_id=request.approval_request_id,
 
-                    user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+                    user_id=str((_id := _identity_from_http(http_request))[0]),
 
-                    tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+                    tenant_id=_id[1],
 
                 )
 
@@ -865,9 +883,9 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
 
 
 
-            tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
-
-            actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+            actor_id, tenant_id = _identity_from_http(
+                http_request, default_actor="anonymous", default_tenant="ops_smoke"
+            )
 
             wam, wsm, wmm = _workspace_managers()  # noqa: F821
 
@@ -905,7 +923,7 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
 
                     tenant_id=tenant_id or "ops_smoke",
 
-                    actor_id=actor_id or "admin",
+                    actor_id=actor_id or "anonymous",
 
                     detail={"op": "package_install", "package": pkg_name, "version": version},
 
@@ -949,9 +967,9 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
 
             approval_request_id=request.approval_request_id,
 
-            user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+            user_id=str((_id := _identity_from_http(http_request))[0]),
 
-            tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+            tenant_id=_id[1],
 
         )
 
@@ -1055,9 +1073,9 @@ async def uninstall_package(pkg_name: str, http_request: Request, request: Packa
 
                     approval_request_id=rid,
 
-                    user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+                    user_id=str((_id := _identity_from_http(http_request))[0]),
 
-                    tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+                    tenant_id=_id[1],
 
                 )
 
@@ -1089,9 +1107,9 @@ async def uninstall_package(pkg_name: str, http_request: Request, request: Packa
 
                     approval_request_id=request.approval_request_id,
 
-                    user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+                    user_id=str((_id := _identity_from_http(http_request))[0]),
 
-                    tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+                    tenant_id=_id[1],
 
                 )
 
@@ -1177,9 +1195,9 @@ async def uninstall_package(pkg_name: str, http_request: Request, request: Packa
 
             approval_request_id=request.approval_request_id,
 
-            user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")),
+            user_id=str((_id := _identity_from_http(http_request))[0]),
 
-            tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
+            tenant_id=_id[1],
 
         )
 
