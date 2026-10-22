@@ -124,9 +124,11 @@ def _inject_http_request_context(payload: Any, http_request: Request, *, entrypo
         ctx = dict(ctx) if isinstance(ctx, dict) else {}
         ctx.setdefault("entrypoint", str(entrypoint or "api"))
 
-        tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID") or http_request.headers.get("x-aiplat-tenant-id")
-        actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID") or http_request.headers.get("x-aiplat-actor-id")
-        actor_role = http_request.headers.get("X-AIPLAT-ACTOR-ROLE") or http_request.headers.get("x-aiplat-actor-role")
+        # Spoofable identity only via actor_from_http (DEV_MODE / identity secret).
+        actor = actor_from_http(http_request, payload)
+        tenant_id = actor.get("tenant_id")
+        actor_id = actor.get("actor_id")
+        actor_role = actor.get("actor_role")
         req_id = http_request.headers.get("X-AIPLAT-REQUEST-ID") or http_request.headers.get("x-aiplat-request-id")
         if tenant_id:
             ctx.setdefault("tenant_id", str(tenant_id))

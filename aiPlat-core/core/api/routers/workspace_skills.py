@@ -135,9 +135,11 @@ def _inject_http_request_context(payload: Any, http_request: Request, *, entrypo
         ctx = dict(ctx) if isinstance(ctx, dict) else {}
         ctx.setdefault("entrypoint", str(entrypoint or "api"))
 
-        tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID") or http_request.headers.get("x-aiplat-tenant-id")
-        actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID") or http_request.headers.get("x-aiplat-actor-id")
-        actor_role = http_request.headers.get("X-AIPLAT-ACTOR-ROLE") or http_request.headers.get("x-aiplat-actor-role")
+        # Spoofable identity only via actor_from_http (DEV_MODE / identity secret).
+        actor = actor_from_http(http_request, payload)
+        tenant_id = actor.get("tenant_id")
+        actor_id = actor.get("actor_id")
+        actor_role = actor.get("actor_role")
         req_id = http_request.headers.get("X-AIPLAT-REQUEST-ID") or http_request.headers.get("x-aiplat-request-id")
         if tenant_id:
             ctx.setdefault("tenant_id", str(tenant_id))
@@ -610,8 +612,9 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
             if store is not None and sched is not None:
                 from core.api.core_facade import enqueue_autosmoke  # P0-A2: 经 CoreFacade
 
-                tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
-                actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+                actor0 = actor_from_http(http_request, {})
+                tenant_id = actor0.get("tenant_id") or "ops_smoke"
+                actor_id = actor0.get("actor_id") or "anonymous"
                 sid = str(skill.id)
 
                 async def _on_complete(job_run: Dict[str, Any]):
@@ -667,7 +670,7 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
                     resource_type="skill",
                     resource_id=sid,
                     tenant_id=tenant_id or "ops_smoke",
-                    actor_id=actor_id or "admin",
+                    actor_id=actor_id or "anonymous",
                     detail={"op": "create", "name": skill.name},
                     on_complete=_on_complete,
                 )
@@ -865,8 +868,9 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
         if store is not None and sched is not None:
             from core.api.core_facade import enqueue_autosmoke  # P0-A2: 经 CoreFacade
 
-            tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
-            actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+            actor0 = actor_from_http(http_request, {})
+            tenant_id = actor0.get("tenant_id") or "ops_smoke"
+            actor_id = actor0.get("actor_id") or "anonymous"
             sid = str(skill_id)
 
             async def _on_complete(job_run: Dict[str, Any]):

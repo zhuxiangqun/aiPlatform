@@ -122,11 +122,15 @@ def _inject_http_request_context(payload: Any, http_request: Request, *, entrypo
 
 
 
-        tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID") or http_request.headers.get("x-aiplat-tenant-id")
+        # Spoofable identity only via actor_from_http (DEV_MODE / identity secret).
 
-        actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID") or http_request.headers.get("x-aiplat-actor-id")
+        actor = actor_from_http(http_request, payload)
 
-        actor_role = http_request.headers.get("X-AIPLAT-ACTOR-ROLE") or http_request.headers.get("x-aiplat-actor-role")
+        tenant_id = actor.get("tenant_id")
+
+        actor_id = actor.get("actor_id")
+
+        actor_role = actor.get("actor_role")
 
         req_id = http_request.headers.get("X-AIPLAT-REQUEST-ID") or http_request.headers.get("x-aiplat-request-id")
 
