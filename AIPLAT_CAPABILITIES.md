@@ -3299,12 +3299,14 @@ scan_hash: 8f9548ec24f4
 | E2E 端到端验证 | 18 | 0 | 18 |
 | **总计** | **2327** | **10** | **2337** |
 
-| **总计** | **1095** | **0** | **1095** |
+> 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（✅/⚠️ 行计数）。
+> `capability_registry.yaml` 登记公开符号（另一口径，勿与本表混算）。
+> 影响矩阵由登记表生成：`python3 scripts/generate_impact_matrix.py`。
 
 ---
 
-*最后更新: 2026-07-30*
-*版本: 25.0 · +Scenario Simulation(10) +Decision Lineage(11) +Security 3D(7) +Global Branching(10) +EvoX Swarm(16) +ClosedLoop(17)*
+*最后更新: 2026-10-20*
+*版本: 30.12*
 
 **自检命令**：
 ```bash

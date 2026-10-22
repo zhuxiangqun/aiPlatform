@@ -236,6 +236,68 @@ check_research_docs_freshness() {
 }
 check_research_docs_freshness
 
+# ══════════════════════════════════════════════════════════════
+# Step 2/3 MUST run before the final exit (were previously dead code).
+# Pre-commit also calls these scripts directly; keep a single full path here.
+# ══════════════════════════════════════════════════════════════
+
+# Step 2: Capability count consistency (stats table vs section ✅ counts)
+echo ""
+echo -e "${YELLOW}═══ Step 2: Capability count consistency ═══${NC}"
+if python3 "$WORKSPACE/scripts/verify_capability_consistency.py" 2>&1; then
+    echo -e "${GREEN}✅ 一致性检查通过${NC}"
+else
+    echo -e "${RED}❌ 统计表与实际章节计数不一致${NC}"
+    echo "  修复: 手动更新统计表，或运行 python3 scripts/verify_capability_consistency.py 查看差异"
+    VIOLATIONS=$((VIOLATIONS + 1))
+fi
+
+# Step 3: Code-doc capability gap check (new harness modules without CAPABILITIES entry)
+echo ""
+echo -e "${YELLOW}═══ Step 3: Code-Doc capability gap ═══${NC}"
+if python3 "$WORKSPACE/scripts/check_code_doc_gap.py" 2>&1; then
+    echo -e "${GREEN}✅ 无能力缺口${NC}"
+else
+    echo -e "${RED}❌ 新增代码未同步文档${NC}"
+    echo "  修复: 在 AIPLAT_CAPABILITIES.md 对应章节为每个新模块添加一行"
+    echo "  脚本: python3 scripts/check_code_doc_gap.py 查看缺口列表"
+    if [ "$CI_MODE" = "true" ]; then
+        VIOLATIONS=$((VIOLATIONS + 1))
+    else
+        echo -e "  ${YELLOW}(WARNING — 本地不阻断; CI/--ci 强制)${NC}"
+    fi
+fi
+
+# Step 4: Impact matrix freshness vs capability_registry.yaml header/body
+echo ""
+echo -e "${YELLOW}═══ Step 4: Impact matrix freshness ═══${NC}"
+MATRIX="$WORKSPACE/docs/matrix/capability-impact-matrix.md"
+REG="$WORKSPACE/aiPlat-core/core/capability_registry.yaml"
+if [ -f "$MATRIX" ] && [ -f "$REG" ]; then
+    # Rebuild expected header line from domain bodies (same formula as generate_impact_matrix.py)
+    expected=$(WORKSPACE="$WORKSPACE" python3 - <<'PY'
+import yaml
+from pathlib import Path
+import os
+root = Path(os.environ["WORKSPACE"])
+data = yaml.safe_load((root / "aiPlat-core/core/capability_registry.yaml").read_text())
+domains = data.get("domains") or {}
+n_domains = len(domains)
+n_caps = sum(int(d.get("caps_count") or 0) for d in domains.values())
+n_symbols = sum(len(d.get("provides") or []) for d in domains.values())
+print(f"{n_domains} domains | {n_caps} capabilities (caps_count) | {n_symbols} symbols (provides)")
+PY
+)
+    if grep -Fq "$expected" "$MATRIX"; then
+        echo -e "  ${GREEN}✅ 影响矩阵与登记表域合计一致${NC}"
+    else
+        echo -e "  ${RED}❌ 影响矩阵过期 — 期望包含: $expected${NC}"
+        echo "  修复: python3 scripts/generate_impact_matrix.py"
+        VIOLATIONS=$((VIOLATIONS + 1))
+    fi
+else
+    echo -e "  ${YELLOW}⚠ matrix 或 registry 缺失，跳过${NC}"
+fi
 
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
@@ -248,29 +310,7 @@ else
     echo "  修复方法:"
     echo "    1. 更新 AIPLAT_CAPABILITIES.md 添加新能力"
     echo "    2. 更新 AIPLAT_ROADMAP.md 评分（如适用）"
-    echo "    3. 重新运行: bash scripts/verify_doc_sync.sh"
+    echo "    3. python3 scripts/generate_impact_matrix.py（若矩阵过期）"
+    echo "    4. 重新运行: bash scripts/verify_doc_sync.sh"
     exit 1  # always block — doc sync is mandatory
-fi
-
-# Step 3: Code-doc capability gap check (new harness modules without CAPABILITIES entry)
-echo ""
-echo -e "${YELLOW}═══ Step 3: Code-Doc capability gap ═══${NC}"
-if python3 "$WORKSPACE/scripts/check_code_doc_gap.py" 2>&1; then
-    echo -e "${GREEN}✅ 无能力缺口${NC}"
-else
-    echo -e "${RED}❌ 新增代码未同步文档${NC}"
-    echo "  修复: 在 AIPLAT_CAPABILITIES.md 对应章节为每个新模块添加一行"
-    echo "  脚本: python3 scripts/check_code_doc_gap.py 查看缺口列表"
-    exit 1
-fi
-
-# Step 2: Capability count consistency (stats table vs section ✅ counts)
-echo ""
-echo -e "${YELLOW}═══ Step 2: Capability count consistency ═══${NC}"
-if python3 "$WORKSPACE/scripts/verify_capability_consistency.py" 2>&1; then
-    echo -e "${GREEN}✅ 一致性检查通过${NC}"
-else
-    echo -e "${RED}❌ 统计表与实际章节计数不一致${NC}"
-    echo "  修复: 手动更新统计表，或运行 python3 scripts/verify_capability_consistency.py 查看差异"
-    exit 1
 fi

@@ -147,66 +147,88 @@ def build_capability_graph() -> CapabilityGraphResult:
             edges = _le()
 
             # Incremental sync: check mtimes of AGENT.md/SKILL.md files
+            # Missing path / missing md → treat as deleted (must invalidate), not skip.
             stale_ids: List[str] = []
-            for nid, n in nodes.items():
+            deleted_ids: List[str] = []
+            for nid, n in list(nodes.items()):
+                ntype = n.get("type", "")
+                # Only file-backed agent/skill nodes participate in mtime/delete checks
+                if ntype not in ("agent", "skill") and not str(nid).startswith(("agent:", "skill:", "workspace_agent:", "workspace_skill:")):
+                    continue
                 fpath = n.get("path", "")
                 if not fpath or not os.path.exists(fpath):
+                    deleted_ids.append(nid)
                     continue
-                # Check AGENT.md or SKILL.md modification
                 md_file = os.path.join(fpath, "AGENT.md")
                 if not os.path.exists(md_file):
                     md_file = os.path.join(fpath, "SKILL.md")
                 if not os.path.exists(md_file):
+                    deleted_ids.append(nid)
                     continue
                 current_mtime = os.path.getmtime(md_file)
                 if abs(current_mtime - n.get("_mtime", 0)) > 0.001:
                     stale_ids.append(nid)
 
-            if 0 < len(stale_ids) <= 10:
-                # Incremental: remove stale, re-scan only those
-                for sid in stale_ids:
-                    ntype = nodes[sid].get("type", "")
+            # Drop deleted assets immediately (nodes + edges)
+            if deleted_ids:
+                for sid in deleted_ids:
+                    nodes.pop(sid, None)
+                edges = [e for e in edges if e.get("from") not in deleted_ids and e.get("to") not in deleted_ids]
+
+            touch_ids = stale_ids  # modified files to rescan
+            if 0 < len(touch_ids) <= 10:
+                for sid in touch_ids:
                     if sid in nodes:
                         del nodes[sid]
-                edges = [e for e in edges if e["from"] not in stale_ids and e["to"] not in stale_ids]
-                # Rebuild only for stale types
-                _incremental_rescan(nodes, edges, stale_ids)
+                edges = [e for e in edges if e.get("from") not in touch_ids and e.get("to") not in touch_ids]
+                _incremental_rescan(nodes, edges, touch_ids)
                 _finalize(nodes, edges)
+                _save_cap_graph(nodes, edges)
                 return _cache_and_return(nodes, edges)
 
-            if len(stale_ids) > 10:
+            if len(touch_ids) > 10:
                 pass  # fall through to full rebuild below
-            elif stale_ids:
-                 pass  # incremental path handled above, shouldn't reach here
             else:
-                # 0 stale — but check for NEW files on disk not in cache
+                # 0 modified — but check for NEW agent/skill dirs (recursive) + persist deletions
                 cache_ids = set(nodes.keys())
-                # Quick scan: count expected nodes per type
                 new_detected = False
-                for dtype, prefix, subdir in [("agent", "agent:", "agents"), ("skill", "skill:", "skills")]:
+
+                def _walk_asset_dirs(root: Path, md_name: str):
+                    if not root or not root.exists():
+                        return
+                    for dirpath, _dirnames, filenames in os.walk(root):
+                        if md_name in filenames:
+                            yield Path(dirpath)
+
+                for dtype, prefix, subdir, md_name in [
+                    ("agent", "agent:", "agents", "AGENT.md"),
+                    ("skill", "skill:", "skills", "SKILL.md"),
+                ]:
                     engine_dir = _find_engine_dir(subdir)
-                    if engine_dir and engine_dir.exists():
-                        for d in engine_dir.iterdir():
-                            if d.is_dir() and (d / ("AGENT.md" if dtype == "agent" else "SKILL.md")).exists():
-                                if f"{prefix}{d.name}" not in cache_ids:
-                                    new_detected = True
-                                    break
-                    # workspace
-                    import os as _os2
-                    ws = Path(_os2.getenv("AIPLAT_HOME", _os2.path.expanduser("~/.aiplat"))) / subdir
-                    if ws.exists():
-                        for d in ws.iterdir():
-                            if d.is_dir() and (d / ("AGENT.md" if dtype == "agent" else "SKILL.md")).exists():
-                                if f"workspace_{prefix}{d.name}" not in cache_ids:
-                                    new_detected = True
-                                    break
+                    for d in _walk_asset_dirs(engine_dir, md_name) if engine_dir else []:
+                        if f"{prefix}{d.name}" not in cache_ids:
+                            new_detected = True
+                            break
                     if new_detected:
                         break
-                
+                    import os as _os2
+                    ws = Path(_os2.getenv("AIPLAT_HOME", _os2.path.expanduser("~/.aiplat"))) / subdir
+                    for d in _walk_asset_dirs(ws, md_name):
+                        if f"workspace_{prefix}{d.name}" not in cache_ids:
+                            new_detected = True
+                            break
+                    if new_detected:
+                        break
+
                 if new_detected:
                     pass  # fall through to full rebuild
+                elif deleted_ids:
+                    # Deletions already applied; persist and return without full rebuild
+                    _finalize(nodes, edges)
+                    _resolve_cross_namespace_edges(nodes, edges)
+                    _save_cap_graph(nodes, edges)
+                    return _cache_and_return(nodes, edges)
                 else:
-                    # Still 0 stale + 0 new: compute degrees and return
                     _finalize(nodes, edges)
                     _resolve_cross_namespace_edges(nodes, edges)
                     return _cache_and_return(nodes, edges)

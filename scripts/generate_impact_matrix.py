@@ -35,10 +35,23 @@ def main():
     out = root / "docs" / "matrix" / "capability-impact-matrix.md"
     out.parent.mkdir(parents=True, exist_ok=True)
 
+    domains = data.get("domains") or {}
+    # Derive totals from domain bodies — never trust stale header fields alone.
+    n_domains = len(domains)
+    n_caps = sum(int(d.get("caps_count") or 0) for d in domains.values())
+    n_symbols = sum(len(d.get("provides") or []) for d in domains.values())
+
     with open(out, "w") as f:
         f.write(f"# Capability Impact Matrix\n\n")
         f.write(f"> Auto-generated from `capability_registry.yaml`\n")
-        f.write(f"> Version: {data['version']} | {data['total_capability_domains']} domains | {data['total_capabilities']} capabilities\n\n")
+        f.write(
+            f"> Version: {data.get('version', '?')} | {n_domains} domains | "
+            f"{n_caps} capabilities (caps_count) | {n_symbols} symbols (provides)\n\n"
+        )
+        f.write(
+            "> 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；"
+            "勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。\n\n"
+        )
 
         # Section 1: Consumer → Capabilities
         f.write("## Consumer-to-Capability Dependencies\n\n")

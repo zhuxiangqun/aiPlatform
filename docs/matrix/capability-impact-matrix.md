@@ -1,7 +1,9 @@
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 1041 capabilities
+> Version: 1.1.0 | 33 domains | 1470 capabilities (caps_count) | 1470 symbols (provides)
+
+> 口径：`caps_count` = 域声明的产品能力数；`provides` = 登记公开符号数；二者可能不同，勿与 `AIPLAT_CAPABILITIES.md` 行计数混算。
 
 ## Consumer-to-Capability Dependencies
 
@@ -9,14 +11,14 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| infra-infrastructure | §二十二 Infra 基础设施 | 4 | adapters 发现与 CredentialPool 共用 DB 路径 |
+| infra-infrastructure | §二十二 Infra 基础设施 | 6 | adapters 发现与 CredentialPool 共用 DB 路径 |
 
 ### aiPlat-management/frontend/src/components/model/ModelTierPanel.tsx
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | MoA 卡片交互 |
-| model-infrastructure | §九 模型基础设施 | 5 | T1-T5 前端展示 |
+| model-infrastructure | §九 模型基础设施 | 7 | T1-T5 前端展示 |
 
 ### aiPlat-management/frontend/src/pages/Core/Memory/Memory.tsx
 
@@ -28,14 +30,14 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| management-and-quality | §二十五 管理 & 质量 | 37 | 诊断仪表盘 |
-| observability | §八 可观测性 | 21 | 诊断仪表盘 |
+| management-and-quality | §二十五 管理 & 质量 | 101 | 诊断仪表盘 |
+| observability | §八 可观测性 | 23 | 诊断仪表盘 |
 
 ### aiPlat-management/frontend/src/pages/Infra
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| infra-infrastructure | §二十二 Infra 基础设施 | 4 | Infra 管理前端 |
+| infra-infrastructure | §二十二 Infra 基础设施 | 6 | Infra 管理前端 |
 
 ### aiPlat-platform/apps/eval/api/arena_wiring.py
 
@@ -53,13 +55,13 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| rag-retrieval | §四 RAG 检索 | 6 | FDE 追问 → 检索增强 |
+| rag-retrieval | §四 RAG 检索 | 7 | FDE 追问 → 检索增强 |
 
 ### aiPlat-platform/apps/fde/api/fde_dashboard_v2.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| memory-subsystem | §二 记忆子系统 | 7 | L6 记忆指标展示 |
+| memory-subsystem | §二 记忆子系统 | 59 | L6 记忆指标展示 |
 | platform-governance | §二十一 平台治理 | 6 | 仪表盘治理指标 |
 | l6-autonomy | §二十七 L6 自主能力 | 5 | _get_goal_decomposition_stats |
 
@@ -67,19 +69,19 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 230 | FDE 能力自描述 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 231 | FDE 能力自描述 |
 
 ### aiPlat-platform/apps/fde/api/fde_pipeline.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 158 | FDE Pipeline 状态查询 |
+| harness-execution-engine | §一 Harness 执行引擎 | 317 | FDE Pipeline 状态查询 |
 
 ### aiPlat-platform/apps/fde/api/fde_quality_summary.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| evaluation-system | §十三 评估系统 | 5 | FDE 质量摘要 |
+| evaluation-system | §十三 评估系统 | 24 | FDE 质量摘要 |
 
 ### aiPlat-platform/apps/fde/api/router.py
 
@@ -98,25 +100,25 @@
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | /model-override/moa 端点 |
-| runtime-intervention | §十九 运行时干预 | 4 | /model-override 端点 |
+| runtime-intervention | §十九 运行时干预 | 64 | /model-override 端点 |
 
 ### core/api/routers/agents.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 150 | Agent REST 端点 |
+| agent-system | §五 Agent 系统 | 155 | Agent REST 端点 |
 
 ### core/api/routers/builder_project_service.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 158 | PipelineEngine 调度入口 |
+| harness-execution-engine | §一 Harness 执行引擎 | 317 | PipelineEngine 调度入口 |
 
-### core/api/routers/engine_skills.py
+### core/api/routers/diagnostics.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| skill-system | §六 Skill 系统 | 136 | Skill REST 端点 |
+| runtime-intervention | §十九 运行时干预 | 64 | adoption-metrics 附带 Howl 干预次数 |
 
 ### core/api/routers/mcp.py
 
@@ -128,7 +130,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| memory-subsystem | §二 记忆子系统 | 7 | 全量 REST 端点 |
+| memory-subsystem | §二 记忆子系统 | 59 | 全量 REST 端点 |
 | memory-runtime-filtering | §二十九 记忆运行时过滤 | 2 | GET/PUT /memory/rules |
 | memory-white-boxing | §二十八 记忆系统白盒化 | 5 | 全量记忆 REST 端点 |
 
@@ -136,33 +138,27 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| orchestration-system | §二十四 编排系统 | 6 | fork/forks 端点经 CoreFacade 取 store |
+| orchestration-system | §二十四 编排系统 | 4 | fork/forks 端点经 CoreFacade 取 store |
 
 ### core/api/routers/wiki.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 230 | Wiki CRUD + index + ingest 端点 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 231 | Wiki CRUD + index + ingest 端点 |
 | ai-knowledge-layer | §三十一 AI知识层增强 | 3 | /wiki/index-md + /ingest/url 端点 |
-| document-intelligence | §十五 文档智能 | 4 | Upload/ingest 端点 |
+| document-intelligence | §十五 文档智能 | 3 | Upload/ingest 端点 |
 
 ### core/api/routers/wiki_ontology_engine.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 230 | 本体引擎 REST API |
-
-### core/api/routers/workspace_skills.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| skill-system | §六 Skill 系统 | 136 | auto-fill + create-dialog HTTP |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 231 | 本体引擎 REST API |
 
 ### core/apps/agents/materials_chat.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| rag-retrieval | §四 RAG 检索 | 6 | CRAG + HyDE + RRF 自身 |
+| rag-retrieval | §四 RAG 检索 | 7 | CRAG + HyDE + RRF 自身 |
 
 ### core/apps/agents/multi_agent.py
 
@@ -174,25 +170,19 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 150 | Builder 创建 Agent |
+| agent-system | §五 Agent 系统 | 155 | Builder 创建 Agent |
 
 ### core/apps/mcp/adapter.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| tool-ecosystem | §十六 工具生态 | 58 | MCPToolAdapter → BaseTool |
+| tool-ecosystem | §十六 工具生态 | 61 | MCPToolAdapter → BaseTool |
 
 ### core/apps/mcp/server.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | mcp-protocol | §十四 MCP 协议 | 3 | MCP server lifecycle |
-
-### core/engine/skills/autoreview/handler.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| skill-system | §六 Skill 系统 | 136 | autoreview Skill handler |
 
 ### core/harness/coordination/swarm_broker.py
 
@@ -225,78 +215,77 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 158 | 自身消费 PipelineStageConfig + StageRunner |
-| security-and-governance | §七 安全与治理 | 8 | HITL → PolicyGate + ApprovalGate |
+| harness-execution-engine | §一 Harness 执行引擎 | 317 | 自身消费 PipelineStageConfig + StageRunner |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | _run_moa 路由模式 |
-| model-infrastructure | §九 模型基础设施 | 5 | Pipeline 阶段模型选择 |
-| memory-subsystem | §二 记忆子系统 | 7 | _crystallize_skill → save_task_skill |
+| model-infrastructure | §九 模型基础设施 | 7 | Pipeline 阶段模型选择 |
+| memory-subsystem | §二 记忆子系统 | 59 | _crystallize_skill → save_task_skill |
 | arena-and-scheduling | §二十 Arena & 调度 | 6 | Pipeline routing_mode dispatch |
-| management-and-quality | §二十五 管理 & 质量 | 37 | Pipeline 质量评分 |
+| management-and-quality | §二十五 管理 & 质量 | 101 | Pipeline 质量评分 |
 | orchestration-layer | §二十六 编排层 | 5 | Pipeline → Swarm/Debate/Roundtable/MoA dispatch |
-| orchestration-system | §二十四 编排系统 | 6 | Pipeline 编排 |
-| agent-system | §五 Agent 系统 | 150 | Pipeline 调度 Agent |
-| observability | §八 可观测性 | 21 | Pipeline trace 事件 |
-| skill-system | §六 Skill 系统 | 136 | Pipeline 调用 Skill |
+| orchestration-system | §二十四 编排系统 | 4 | Pipeline 编排 |
+| agent-system | §五 Agent 系统 | 155 | Pipeline 调度 Agent |
+| observability | §八 可观测性 | 23 | Pipeline trace 事件 |
+| skill-system | §六 Skill 系统 | 187 | HITL → PolicyGate + ApprovalGate |
 | extension-and-learning | §十一 扩展与学习 | 10 | Pipeline 故障→StrategySearchEngine |
-| evaluation-system | §十三 评估系统 | 5 | Pipeline 质量评分 |
-| gate-system | §十二 Gate 系统 | 133 | Pipeline 阶段 Gate 检查 |
-| knowledge-infrastructure | §四附 知识基础设施 | 4 | RunContext 运行时上下文 |
+| evaluation-system | §十三 评估系统 | 24 | Pipeline 质量评分 |
+| gate-system | §十二 Gate 系统 | 153 | Pipeline 阶段 Gate 检查 |
+| knowledge-infrastructure | §四附 知识基础设施 | 3 | RunContext 运行时上下文 |
 
 ### core/harness/infrastructure/infra_llm_adapter.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| infra-infrastructure | §二十二 Infra 基础设施 | 4 | LLM 适配器 → infra |
+| infra-infrastructure | §二十二 Infra 基础设施 | 6 | LLM 适配器 → infra |
 
 ### core/harness/infrastructure/integration.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| gate-system | §十二 Gate 系统 | 133 | 8 Gate 统一出口 |
+| gate-system | §十二 Gate 系统 | 153 | 8 Gate 统一出口 |
 
 ### core/harness/interfaces/loop.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 158 | ReActLoop 运行时 |
+| harness-execution-engine | §一 Harness 执行引擎 | 317 | ReActLoop 运行时 |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | ReActLoop MoA interception |
-| memory-subsystem | §二 记忆子系统 | 7 | build_context() + save_interaction() 调用 |
+| memory-subsystem | §二 记忆子系统 | 59 | build_context() + save_interaction() 调用 |
 
 ### core/harness/knowledge/context_bus.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 230 | 10层上下文注入 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 231 | 10层上下文注入 |
 
 ### core/harness/knowledge/domain_maturity.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 230 | 域成熟度评分 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 231 | 域成熟度评分 |
 
 ### core/harness/knowledge/domain_router.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| rag-retrieval | §四 RAG 检索 | 6 | 域分类 → 检索范围确定 |
+| rag-retrieval | §四 RAG 检索 | 7 | 域分类 → 检索范围确定 |
 
 ### core/harness/knowledge/knowledge_synthesis.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 230 | KnowledgeSynthesizer 合成 Wiki 页 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 231 | KnowledgeSynthesizer 合成 Wiki 页 |
 
 ### core/harness/knowledge/ontology_completeness.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 230 | OCS 本体完整性六维评分 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 231 | OCS 本体完整性六维评分 |
 
 ### core/harness/knowledge/seci_engine.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-infrastructure | §四附 知识基础设施 | 4 | SECI 消费 KnowledgeSynthesizer |
+| knowledge-infrastructure | §四附 知识基础设施 | 3 | SECI 消费 KnowledgeSynthesizer |
 
 ### core/harness/memory/manager.py
 
@@ -306,7 +295,7 @@
 | hermes-compression | §三十二 Hermes压缩对标 | 3 | build_context → normalize_roles + reminder dict injection |
 | memory-runtime-filtering | §二十九 记忆运行时过滤 | 2 | save_interaction 过滤逻辑 |
 | extension-and-learning | §十一 扩展与学习 | 10 | build_context → SharedKnowledgePool 注入 |
-| knowledge-infrastructure | §四附 知识基础设施 | 4 | build_context 注入 ContextBus |
+| knowledge-infrastructure | §四附 知识基础设施 | 3 | build_context 注入 ContextBus |
 
 ### core/harness/memory/reminders.py
 
@@ -319,7 +308,7 @@
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | platform-governance | §二十一 平台治理 | 6 | 本体引擎治理 |
-| document-intelligence | §十五 文档智能 | 4 | OntologyEngine 文档输入 |
+| document-intelligence | §十五 文档智能 | 3 | OntologyEngine 文档输入 |
 
 ### core/harness/optimization/goal_executor.py
 
@@ -341,8 +330,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| model-infrastructure | §九 模型基础设施 | 5 | ToolBootstrap 模型选择 |
-| skill-system | §六 Skill 系统 | 136 | ToolBootstrap → SkillRegistry.register |
+| model-infrastructure | §九 模型基础设施 | 7 | ToolBootstrap 模型选择 |
 | extension-and-learning | §十一 扩展与学习 | 10 | ToolBootstrap 自举工具创建 |
 | deploy-and-canary | §十八 部署与灰度 | 3 | _trigger_deploy |
 
@@ -356,45 +344,44 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| security-and-governance | §七 安全与治理 | 8 | _guard_messages → PII masking |
-| model-infrastructure | §九 模型基础设施 | 5 | sys_llm_generate → best_model_for_purpose |
-| runtime-intervention | §十九 运行时干预 | 4 | 最佳模型选择 |
+| model-infrastructure | §九 模型基础设施 | 7 | sys_llm_generate → best_model_for_purpose |
+| skill-system | §六 Skill 系统 | 187 | _guard_messages → PII masking |
+| runtime-intervention | §十九 运行时干预 | 64 | 最佳模型选择 |
 
 ### core/harness/syscalls/moa_executor.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| model-infrastructure | §九 模型基础设施 | 5 | MoA 引擎多模型路由 |
+| model-infrastructure | §九 模型基础设施 | 7 | MoA 引擎多模型路由 |
 
 ### core/harness/syscalls/retrieval.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 230 | GraphIndex 遍历检索 |
-| memory-subsystem | §二 记忆子系统 | 7 | 语义记忆检索 |
-| rag-retrieval | §四 RAG 检索 | 6 | 检索路由 + 多路融合 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 231 | GraphIndex 遍历检索 |
+| memory-subsystem | §二 记忆子系统 | 59 | 语义记忆检索 |
+| rag-retrieval | §四 RAG 检索 | 7 | 检索路由 + 多路融合 |
 
 ### core/harness/syscalls/skill.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| security-and-governance | §七 安全与治理 | 8 | sys_skill_call → PolicyGate |
-| skill-system | §六 Skill 系统 | 136 | sys_skill_call |
+| skill-system | §六 Skill 系统 | 187 | sys_skill_call → PolicyGate |
 
 ### core/harness/syscalls/tool.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| security-and-governance | §七 安全与治理 | 8 | sys_tool_call → PolicyGate.check_tool |
-| observability | §八 可观测性 | 21 | 工具调用审计 |
-| tool-ecosystem | §十六 工具生态 | 58 | sys_tool_call → ToolRegistry |
+| observability | §八 可观测性 | 23 | 工具调用审计 |
+| skill-system | §六 Skill 系统 | 187 | sys_tool_call → PolicyGate.check_tool |
+| tool-ecosystem | §十六 工具生态 | 61 | sys_tool_call → ToolRegistry |
 
 ### core/harness/utils/model_injection.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | is_moa_session/get_moa_preset + override filtering |
-| infra-infrastructure | §二十二 Infra 基础设施 | 4 | ModelManager 缓存 |
+| infra-infrastructure | §二十二 Infra 基础设施 | 6 | ModelManager 缓存 |
 
 ### core/server.py
 
@@ -404,7 +391,7 @@
 | l6-autonomy | §二十七 L6 自主能力 | 5 | DiscoveryListener 启动 |
 | deploy-and-operations | §十 部署与运维 | 3 | 启动时挂载 cron + WakeScheduler |
 | extension-and-learning | §十一 扩展与学习 | 10 | GoalExecutor + WakeScheduler 启动 |
-| gate-system | §十二 Gate 系统 | 133 | BackpressureMiddleware 挂载 + backpressure_stats 诊断 |
+| gate-system | §十二 Gate 系统 | 153 | BackpressureMiddleware 挂载 + backpressure_stats 诊断 |
 
 ## Capability-to-Consumer Impact
 
@@ -413,7 +400,7 @@
 - **core/apps/agents/multi_agent.py** — MultiAgent 通信
 - **core/harness/coordination/swarm_broker.py** — SwarmBroker agent discovery
 
-### §五 Agent 系统 (150 caps)
+### §五 Agent 系统 (155 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 调度 Agent
 - **core/apps/builder/builder_project_service.py** — Builder 创建 Agent
@@ -446,12 +433,12 @@
 - **core/server.py** — 启动时挂载 cron + WakeScheduler
 - **core/harness/evolution_engine.py** — self-harness cycle
 
-### §十五 文档智能 (4 caps)
+### §十五 文档智能 (3 caps)
 
 - **core/harness/ontology_engine/engine.py** — OntologyEngine 文档输入
 - **core/api/routers/wiki.py** — Upload/ingest 端点
 
-### §十三 评估系统 (5 caps)
+### §十三 评估系统 (24 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 质量评分
 - **aiPlat-platform/apps/fde/api/fde_quality_summary.py** — FDE 质量摘要
@@ -469,13 +456,13 @@
 - **core/harness/evolution_engine.py** — nightly LoRA trigger
 - **core/harness/optimization/goal_generator.py** — 微调缺口扫描
 
-### §十二 Gate 系统 (133 caps)
+### §十二 Gate 系统 (153 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 阶段 Gate 检查
 - **core/harness/infrastructure/integration.py** — 8 Gate 统一出口
 - **core/server.py** — BackpressureMiddleware 挂载 + backpressure_stats 诊断
 
-### §一 Harness 执行引擎 (158 caps)
+### §一 Harness 执行引擎 (317 caps)
 
 - **core/api/routers/builder_project_service.py** — PipelineEngine 调度入口
 - **core/harness/execution/pipeline_engine.py** — 自身消费 PipelineStageConfig + StageRunner
@@ -488,14 +475,14 @@
 - **core/harness/memory/manager.py** — build_context → normalize_roles + reminder dict injection
 - **core/harness/memory/reminders.py** — 结构化返回 dict 而非裸字符串
 
-### §二十二 Infra 基础设施 (4 caps)
+### §二十二 Infra 基础设施 (6 caps)
 
 - **core/harness/infrastructure/infra_llm_adapter.py** — LLM 适配器 → infra
 - **core/harness/utils/model_injection.py** — ModelManager 缓存
 - **aiPlat-management/frontend/src/pages/Infra** — Infra 管理前端
 - **aiPlat-infra/infra/management/model/config_loader.py** — adapters 发现与 CredentialPool 共用 DB 路径
 
-### §三 知识引擎（本体） (230 caps)
+### §三 知识引擎（本体） (231 caps)
 
 - **core/api/routers/wiki.py** — Wiki CRUD + index + ingest 端点
 - **core/api/routers/wiki_ontology_engine.py** — 本体引擎 REST API
@@ -506,7 +493,7 @@
 - **core/harness/knowledge/domain_maturity.py** — 域成熟度评分
 - **core/harness/knowledge/ontology_completeness.py** — OCS 本体完整性六维评分
 
-### §四附 知识基础设施 (4 caps)
+### §四附 知识基础设施 (3 caps)
 
 - **core/harness/knowledge/seci_engine.py** — SECI 消费 KnowledgeSynthesizer
 - **core/harness/memory/manager.py** — build_context 注入 ContextBus
@@ -520,7 +507,7 @@
 - **core/server.py** — DiscoveryListener 启动
 - **aiPlat-platform/apps/fde/api/fde_dashboard_v2.py** — _get_goal_decomposition_stats
 
-### §二十五 管理 & 质量 (37 caps)
+### §二十五 管理 & 质量 (101 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 质量评分
 - **aiPlat-management/frontend/src/pages/Diagnostics** — 诊断仪表盘
@@ -535,7 +522,7 @@
 - **core/harness/memory/manager.py** — save_interaction 过滤逻辑
 - **core/api/routers/memory.py** — GET/PUT /memory/rules
 
-### §二 记忆子系统 (7 caps)
+### §二 记忆子系统 (59 caps)
 
 - **core/harness/interfaces/loop.py** — build_context() + save_interaction() 调用
 - **core/harness/execution/pipeline_engine.py** — _crystallize_skill → save_task_skill
@@ -557,7 +544,7 @@
 - **aiPlat-management/frontend/src/components/model/ModelTierPanel.tsx** — MoA 卡片交互
 - **core/harness/execution/loop/command_parser.py** — /moa --preset 命令解析
 
-### §九 模型基础设施 (5 caps)
+### §九 模型基础设施 (7 caps)
 
 - **core/harness/syscalls/llm.py** — sys_llm_generate → best_model_for_purpose
 - **core/harness/optimization/tool_bootstrap.py** — ToolBootstrap 模型选择
@@ -565,7 +552,7 @@
 - **core/harness/execution/pipeline_engine.py** — Pipeline 阶段模型选择
 - **aiPlat-management/frontend/src/components/model/ModelTierPanel.tsx** — T1-T5 前端展示
 
-### §八 可观测性 (21 caps)
+### §八 可观测性 (23 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline trace 事件
 - **core/harness/syscalls/tool.py** — 工具调用审计
@@ -577,7 +564,7 @@
 - **core/harness/coordination/swarm_broker.py** — 动态组队
 - **core/harness/optimization/goal_executor.py** — Goal 分解后并行执行
 
-### §二十四 编排系统 (6 caps)
+### §二十四 编排系统 (4 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 编排
 - **core/api/routers/pipeline_execution.py** — fork/forks 端点经 CoreFacade 取 store
@@ -588,35 +575,27 @@
 - **core/harness/ontology_engine/engine.py** — 本体引擎治理
 - **aiPlat-platform/apps/fde/api/fde_dashboard_v2.py** — 仪表盘治理指标
 
-### §四 RAG 检索 (6 caps)
+### §四 RAG 检索 (7 caps)
 
 - **core/apps/agents/materials_chat.py** — CRAG + HyDE + RRF 自身
 - **core/harness/syscalls/retrieval.py** — 检索路由 + 多路融合
 - **core/harness/knowledge/domain_router.py** — 域分类 → 检索范围确定
 - **aiPlat-platform/apps/fde/api/fde_ask.py** — FDE 追问 → 检索增强
 
-### §十九 运行时干预 (4 caps)
+### §十九 运行时干预 (64 caps)
 
 - **core/api/routers/adapters.py** — /model-override 端点
 - **core/harness/syscalls/llm.py** — 最佳模型选择
+- **core/api/routers/diagnostics.py** — adoption-metrics 附带 Howl 干预次数
 
-### §七 安全与治理 (8 caps)
+### §六 Skill 系统 (187 caps)
 
 - **core/harness/syscalls/tool.py** — sys_tool_call → PolicyGate.check_tool
 - **core/harness/syscalls/skill.py** — sys_skill_call → PolicyGate
 - **core/harness/execution/pipeline_engine.py** — HITL → PolicyGate + ApprovalGate
 - **core/harness/syscalls/llm.py** — _guard_messages → PII masking
 
-### §六 Skill 系统 (136 caps)
-
-- **core/harness/execution/pipeline_engine.py** — Pipeline 调用 Skill
-- **core/harness/syscalls/skill.py** — sys_skill_call
-- **core/harness/optimization/tool_bootstrap.py** — ToolBootstrap → SkillRegistry.register
-- **core/api/routers/engine_skills.py** — Skill REST 端点
-- **core/engine/skills/autoreview/handler.py** — autoreview Skill handler
-- **core/api/routers/workspace_skills.py** — auto-fill + create-dialog HTTP
-
-### §十六 工具生态 (58 caps)
+### §十六 工具生态 (61 caps)
 
 - **core/harness/syscalls/tool.py** — sys_tool_call → ToolRegistry
 - **core/apps/mcp/adapter.py** — MCPToolAdapter → BaseTool
