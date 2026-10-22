@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-22T21:58:48+08:00",
+  "reviewed_at": "2026-10-22T23:18:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "7081c04939ea9807f42e09b87aa0aa4616104968",
-  "diff_sha256": "a1782d75975e4f98c44ade0824589d2204ccc30628042e09e8228540c825b2be",
-  "head_sha": "4196ff004c27957255d19fab8376d70dd064bff0",
+  "merge_base": "38bb15e56cc1cb862c7b83d4cddc0c0a34e71a4c",
+  "diff_sha256": "4ed65d704e3ba2ae2fefee1a8a37b7d33ae29453e51200d9b90655ba49852c9e",
+  "head_sha": "c0074a4b1850b18efa7c4021e56a545c853acaba",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Re-reviewed after runtime_home soft fix for CI. Solo maintainer: non-author Approve N/A. Residual: basename_unique soft warnings."
+  "note": "Phase B: AST ratchet wired into truth gate; stock baseline soft, NEW ids hard under --ci. Local lock only. CI unlock is non-author GitHub Approve."
 }
