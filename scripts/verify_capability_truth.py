@@ -108,6 +108,13 @@ def run_checks(*, ci: bool = False) -> Dict[str, Any]:
             "ambiguous_count": refs["ambiguous_count"],
             "note": "basename multi-hit; not a --ci failure alone",
         })
+    if refs.get("runtime_home_count", 0):
+        soft.append({
+            "check": "capability_doc_runtime_home",
+            "runtime_home_count": refs["runtime_home_count"],
+            "sample": doc_result.get("runtime_home_files", [])[:10],
+            "note": "~/.aiplat install path not in repo; prefer workspace_seeds; soft only",
+        })
     basename_soft = sum(
         1 for r in doc_result.get("records", [])
         if r.get("soft_warning") == "basename_unique"
@@ -208,6 +215,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         if h.get("errors"):
             for e in h["errors"][:10]:
                 print(f"  - {e}")
+        for key in ("missing_sample", "oor_sample", "sample"):
+            for item in h.get(key) or []:
+                print(f"  {key}: {item}")
         if h.get("detail"):
             for line in str(h["detail"]).strip().splitlines()[-8:]:
                 print(f"  {line}")

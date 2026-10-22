@@ -135,8 +135,42 @@ def _display_path(real: Optional[Path]) -> Optional[str]:
         return str(real)
 
 
+def _is_runtime_home_ref(rel: str) -> bool:
+    """True for ~/.aiplat / AIPLAT_HOME install paths (not repo source of truth)."""
+    r = rel.strip()
+    if r.startswith("~") or r.startswith(".aiplat") or r.startswith("/.aiplat"):
+        return True
+    # bare ontology yaml historically installed under ~/.aiplat/ontologies/
+    if r.endswith((".yaml", ".yml")) and "/" not in r and not r.startswith("aiPlat-"):
+        return True
+    return False
+
+
+def _try_workspace_seed(rel: str) -> Optional[Path]:
+    """Prefer repo workspace_seeds over home install (CI has no ~/.aiplat)."""
+    basename = rel.split("/")[-1]
+    if not basename:
+        return None
+    seed = PROJECT_ROOT / "aiPlat-core" / "workspace_seeds" / "ontologies" / basename
+    if seed.is_file():
+        return seed
+    actions = PROJECT_ROOT / "aiPlat-core" / "workspace_seeds" / "actions" / basename
+    if actions.is_file():
+        return actions
+    return None
+
+
 def resolve_path_detailed(rel: str) -> Tuple[Optional[Path], str]:
-    """Return (path_or_None, resolve_mode)."""
+    """Return (path_or_None, resolve_mode).
+
+    resolve_mode includes runtime_home when the declaration is a home-install path
+    not present in the repo (soft in --ci; repo seeds are preferred when available).
+    """
+    # Repo seed first (source of truth for CI / clean checkouts)
+    seed = _try_workspace_seed(rel)
+    if seed is not None:
+        return seed, "candidate_root"
+
     if rel.startswith("~"):
         p = Path(os.path.expanduser(rel))
         if p.is_file():
@@ -184,6 +218,9 @@ def resolve_path_detailed(rel: str) -> Tuple[Optional[Path], str]:
             return hits[0], "basename_unique"
         if len(hits) > 1:
             return None, "ambiguous"
+
+    if _is_runtime_home_ref(rel):
+        return None, "runtime_home"
     return None, "unresolved"
 
 
@@ -242,10 +279,10 @@ def audit(doc_path: Path) -> Dict[str, Any]:
         }
         if mode == "ambiguous":
             rec["status"] = "ambiguous"
+        elif mode == "runtime_home":
+            rec["status"] = "runtime_home"
         elif real is None:
-            rec["status"] = "file_missing" if mode == "unresolved" else "file_missing"
-            if mode == "unresolved":
-                rec["status"] = "unresolved"
+            rec["status"] = "unresolved" if mode == "unresolved" else "file_missing"
         elif line and line > 0:
             total = _line_count(real)
             if total > 0 and line > total:
@@ -271,6 +308,8 @@ def audit(doc_path: Path) -> Dict[str, Any]:
         }
         if mode == "ambiguous":
             rec["status"] = "ambiguous"
+        elif mode == "runtime_home":
+            rec["status"] = "runtime_home"
         elif real is None:
             rec["status"] = "unresolved" if mode == "unresolved" else "file_missing"
         elif line and line > 0:
@@ -282,13 +321,12 @@ def audit(doc_path: Path) -> Dict[str, Any]:
             rec["soft_warning"] = "basename_unique"
         records.append(rec)
 
-    # Counts — ambiguous mutually exclusive with file_missing
+    # Counts — ambiguous / runtime_home mutually exclusive with file_missing
     total_refs = len(records)
-    file_ok = sum(1 for x in records if x["status"] == "ok" or x.get("soft_warning") == "basename_unique" and x["status"] == "ok")
-    # basename_unique with ok still counts as file_ok
     file_ok = sum(1 for x in records if x["status"] == "ok")
     file_missing = sum(1 for x in records if x["status"] in ("file_missing", "unresolved"))
     ambiguous_count = sum(1 for x in records if x["status"] == "ambiguous")
+    runtime_home_count = sum(1 for x in records if x["status"] == "runtime_home")
     line_bad = sum(1 for x in records if x["status"] == "line_bad")
 
     # line_ok / line_valid only over records with line and resolved file
@@ -347,12 +385,16 @@ def audit(doc_path: Path) -> Dict[str, Any]:
             "file_ok": file_ok,
             "file_missing": file_missing,
             "ambiguous_count": ambiguous_count,
+            "runtime_home_count": runtime_home_count,
             "line_ok": line_ok,
             "line_bad": line_bad,
             "lined_subset": len(lined),
             # backward-compat alias used by older callers
             "unique_total": total_refs,
         },
+        "runtime_home_files": sorted({
+            x["raw_path"] for x in records if x["status"] == "runtime_home"
+        }),
         "missing_files": missing_files,
         "out_of_range": out_of_range,
         "impl": {

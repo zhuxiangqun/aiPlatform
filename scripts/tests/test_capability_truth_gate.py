@@ -46,6 +46,24 @@ class TestCapabilityDocAudit(unittest.TestCase):
         self.assertEqual(status, "ambiguous")
         self.assertNotEqual(status, "file_missing")
 
+    def test_runtime_home_soft_when_home_absent(self):
+        import os
+        import tempfile
+        vdoc = _load("verify_capability_doc", "verify_capability_doc.py")
+        old_home = os.environ.get("HOME")
+        vdoc._file_index_cache = None
+        try:
+            os.environ["HOME"] = tempfile.mkdtemp()
+            r = vdoc.audit(vdoc.DOC_PATH)
+            self.assertEqual(r["refs"]["file_missing"], 0)
+            self.assertGreaterEqual(r["refs"].get("runtime_home_count", 0), 1)
+        finally:
+            if old_home is None:
+                os.environ.pop("HOME", None)
+            else:
+                os.environ["HOME"] = old_home
+            vdoc._file_index_cache = None
+
     def test_line_valid_null_when_no_lined(self):
         # Fixture with table row that has path but no :line
         with tempfile.TemporaryDirectory() as td:
