@@ -180,9 +180,12 @@ async def _governance_middleware(request: Request, call_next):
 
         try:
 
-            tenant_id = request.headers.get("X-AIPLAT-TENANT-ID", "default")
+            # Spoofable headers only via _resolve_identity (DEV_MODE / identity secret / JWT / API key).
+            ident = _resolve_identity(request)
 
-            actor_id = request.headers.get("X-AIPLAT-ACTOR-ID", "anonymous")
+            tenant_id = ident.tenant_id or "default"
+
+            actor_id = ident.actor_id or "anonymous"
 
             resource = request.url.path
 
@@ -1648,21 +1651,19 @@ def _persist_analysis_run(*, tenant_id: str, doc_id: Optional[str], collection_i
 
 async def platform_whoami(request: Request):
 
-    tenant_id = request.headers.get("X-AIPLAT-TENANT-ID", "default")
+    # Spoofable headers only via _resolve_identity (DEV_MODE / identity secret / JWT / API key).
 
-    actor_id = request.headers.get("X-AIPLAT-ACTOR-ID", "anonymous")
-
-    auth_type = "api_key" if request.headers.get("X-AIPLAT-API-KEY") else "dev"
+    ident = _resolve_identity(request)
 
     return {
 
-        "tenant_id": tenant_id,
+        "tenant_id": ident.tenant_id or "default",
 
-        "actor_id": actor_id,
+        "actor_id": ident.actor_id or "anonymous",
 
-        "auth_type": auth_type,
+        "auth_type": ident.auth_type or "anonymous",
 
-        "request_id": request.headers.get("X-AIPLAT-REQUEST-ID", "00000000-0000-0000-0000-000000000000"),
+        "request_id": ident.request_id or request.headers.get("X-AIPLAT-REQUEST-ID", "00000000-0000-0000-0000-000000000000"),
 
     }
 
@@ -7242,7 +7243,7 @@ async def vault_wiki_backlinks(doc_id: str):
 
 async def create_analysis_batch(request: Request):
 
-    tenant_id = request.headers.get("X-AIPLAT-TENANT-ID", "default")
+    tenant_id = _resolve_identity(request).tenant_id or "default"
 
     body = await request.json()
 
@@ -7270,7 +7271,7 @@ async def create_analysis_batch(request: Request):
 
 async def list_analysis_batches(request: Request, collection_id: Optional[str] = None):
 
-    tenant_id = request.headers.get("X-AIPLAT-TENANT-ID", "default")
+    tenant_id = _resolve_identity(request).tenant_id or "default"
 
     batches = _list_analysis_batches(tenant_id=tenant_id, collection_id=collection_id)
 
@@ -7284,7 +7285,7 @@ async def list_analysis_batches(request: Request, collection_id: Optional[str] =
 
 async def delete_analysis_batch(batch_id: str, request: Request):
 
-    tenant_id = request.headers.get("X-AIPLAT-TENANT-ID", "default")
+    tenant_id = _resolve_identity(request).tenant_id or "default"
 
     ok = _delete_analysis_batch(tenant_id=tenant_id, batch_id=batch_id)
 
