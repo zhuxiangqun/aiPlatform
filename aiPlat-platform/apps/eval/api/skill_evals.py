@@ -674,9 +674,10 @@ async def apply_skill_md_suggestion(suite_id: str, request: dict, http_request: 
             actor0 = actor_from_http(http_request, body)
         except Exception:
             actor0 = {}
-        tenant_id = actor0.get("tenant_id") or http_request.headers.get("X-AIPLAT-TENANT-ID")
-        actor_id = actor0.get("actor_id") or http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
-        actor_role = actor0.get("actor_role") or http_request.headers.get("X-AIPLAT-ACTOR-ROLE")
+        # Do not OR raw headers — actor_from_http already gates spoofable claims.
+        tenant_id = actor0.get("tenant_id")
+        actor_id = actor0.get("actor_id") or "anonymous"
+        actor_role = actor0.get("actor_role")
         change_id = new_prefixed_id("change")
         diff_hash = hashlib.sha256((diff or "").encode("utf-8")).hexdigest()[:16]
         base_hash = hashlib.sha256((raw or "").encode("utf-8")).hexdigest()[:16]
