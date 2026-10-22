@@ -72,14 +72,24 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
             h_tenant = http_request.headers.get("X-AIPLAT-TENANT-ID") or http_request.headers.get("x-aiplat-tenant-id")
             if h_tenant:
                 ctx.setdefault("tenant_id", str(h_tenant))
-        # platform identity passthrough (optional)
+        # platform identity passthrough — only when headers are trusted
         try:
-            actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID") or http_request.headers.get("x-aiplat-actor-id")
-            actor_role = http_request.headers.get("X-AIPLAT-ACTOR-ROLE") or http_request.headers.get("x-aiplat-actor-role")
-            if actor_id:
-                ctx.setdefault("actor_id", str(actor_id))
-            if actor_role:
-                ctx.setdefault("actor_role", str(actor_role))
+            from auth.request_identity import header_identity_allowed
+
+            if header_identity_allowed(
+                http_request.headers.get("X-AIPLAT-IDENTITY-SECRET")
+                or http_request.headers.get("x-aiplat-identity-secret")
+            ):
+                actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID") or http_request.headers.get(
+                    "x-aiplat-actor-id"
+                )
+                actor_role = http_request.headers.get("X-AIPLAT-ACTOR-ROLE") or http_request.headers.get(
+                    "x-aiplat-actor-role"
+                )
+                if actor_id:
+                    ctx.setdefault("actor_id", str(actor_id))
+                if actor_role:
+                    ctx.setdefault("actor_role", str(actor_role))
         except Exception as e:
             logging.warning(str(e), exc_info=True)
         # preserve external identity if present

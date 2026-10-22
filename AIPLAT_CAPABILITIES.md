@@ -627,6 +627,8 @@ scan_hash: 8f9548ec24f4
 | is_same_task_verdict | `core/harness/execution/eval_verdict.py` | ✅ | 任务连续性：JSON same_task 优先；否则句首 SAME；拒 false / NEW / 中段 SAME | 已合入 |
 | line_marker_content_start | `core/harness/execution/tool_calling.py` | ✅ | 行首 ACTION/SKILL 标记定位；拒 INACTION/RETRACTION/UPSKILL 等中段子串 | 已合入 |
 | header_identity_allowed | `aiPlat-platform/auth/request_identity.py` | ✅ | 身份头仅在 dev mode 或内部密钥匹配时可信 | 已合入 |
+| header_identity_allowed | `core/api/deps/actor.py` | ✅ | core 镜像：与 platform 同 env 契约，供 rbac_guard / actor_from_http | 已合入 |
+| actor_from_http | `core/api/deps/actor.py` | ✅ | 未过 identity 门禁时不采纳客户端 actor/role/tenant 头或 payload.context | 已合入 |
 | client_role_header | `aiPlat-platform/auth/request_identity.py` | ✅ | 读取客户端角色头（可伪造，须经 trusted_actor_role 闸门） | 已合入 |
 | trusted_actor_role | `aiPlat-platform/auth/request_identity.py` | ✅ | 优先已解析身份角色；仅 DEV_MODE/identity secret 时采纳客户端角色头 | 已合入 |
 | resolve_request_role | `aiPlat-platform/auth/request_identity.py` | ✅ | 从 FastAPI Request 经 _resolve_identity 解析可信角色 | 已合入 |
@@ -3294,7 +3296,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2323** | **10** | **2333** |
+| **总计** | **2324** | **10** | **2334** |
 
 | **总计** | **1095** | **0** | **1095** |
 
