@@ -28,6 +28,15 @@ from core.api.facades.runtime_facade import get_kernel_runtime
 router = APIRouter(prefix="/platform", tags=["change_control"])
 
 
+def _gated_identity(http_request: Request, *, default_tenant: Optional[str] = None):
+    """Spoofable identity only via actor_from_http (DEV_MODE / identity secret)."""
+    actor = actor_from_http(http_request, None)
+    tenant_gated = actor.get("tenant_id")
+    tenant_id = tenant_gated or default_tenant
+    actor_id = actor.get("actor_id") or "anonymous"
+    return actor, (str(tenant_id) if tenant_id else None), str(actor_id)
+
+
 def _store():
     rt = get_kernel_runtime()
     return getattr(rt, "execution_store", None) if rt else None
@@ -118,9 +127,7 @@ async def autosmoke_change_control(change_id: str, http_request: Request, _auth:
     if not store or not scheduler:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
 
-    actor0 = actor_from_http(http_request, None)
-    tenant_id = actor0.get("tenant_id") or http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
-    actor_id = actor0.get("actor_id") or http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+    actor0, tenant_id, actor_id = _gated_identity(http_request, default_tenant="ops_smoke")
 
     cc = await store.get_change_control(change_id=str(change_id), limit=50, offset=0, tenant_id=tenant_id)
     latest = cc.get("latest") if isinstance(cc, dict) else None
@@ -186,7 +193,7 @@ async def autosmoke_change_control(change_id: str, http_request: Request, _auth:
                     result={"job_run_status": st, "job_run_id": rid2, "job_trace_id": tid2},
                     trace_id=tid2,
                     run_id=rid2,
-                    user_id=str(actor0.get("actor_id") or "admin"),
+                    user_id=str(actor0.get("actor_id") or "anonymous"),
                     tenant_id=str(tenant_id) if tenant_id else None,
                     session_id=str(actor0.get("session_id") or "") or None,
                 )
@@ -200,7 +207,7 @@ async def autosmoke_change_control(change_id: str, http_request: Request, _auth:
                 resource_type=rtype,
                 resource_id=rid,
                 tenant_id=str(tenant_id or "ops_smoke"),
-                actor_id=str(actor_id or "admin"),
+                actor_id=str(actor_id or "anonymous"),
                 detail={"op": "change_control_retry", "change_id": str(change_id)},
                 on_complete=_on_complete,
             )
@@ -217,7 +224,7 @@ async def autosmoke_change_control(change_id: str, http_request: Request, _auth:
             status="success",
             args={"targets": [{"type": t[0], "id": t[1]} for t in uniq]},
             result={"results": results},
-            user_id=str(actor0.get("actor_id") or "admin"),
+            user_id=str(actor0.get("actor_id") or "anonymous"),
             tenant_id=str(tenant_id) if tenant_id else None,
             session_id=str(actor0.get("session_id") or "") or None,
         )
@@ -238,9 +245,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
     if not store or not scheduler:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
 
-    actor0 = actor_from_http(http_request, None)
-    tenant_id = actor0.get("tenant_id") or http_request.headers.get("X-AIPLAT-TENANT-ID")
-    actor_id = actor0.get("actor_id") or http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
+    actor0, tenant_id, actor_id = _gated_identity(http_request)
 
     # Ensure the change exists and contains a proposed patch event.
     cc = await store.get_change_control(change_id=str(change_id), limit=200, offset=0, tenant_id=tenant_id)
@@ -325,7 +330,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
             status="success",
             args={"roots": roots0, "source_path": raw_path, "files": rel_candidates},
             result={"stats": scan.stats, "health": getattr(scan, "health", None), "touched": touched, "notes": "server-side heuristic import graph (CodeFlow-inspired)"},
-            user_id=str(actor_id or "admin"),
+            user_id=str(actor_id or "anonymous"),
             tenant_id=str(tenant_id) if tenant_id else None,
             session_id=str(actor0.get("session_id") or "") or None,
         )
@@ -488,7 +493,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
                         "security_gate": {"mode": security_gate},
                     }
                 },
-                user_id=str(actor_id or "admin"),
+                user_id=str(actor_id or "anonymous"),
                 tenant_id=str(tenant_id) if tenant_id else None,
                 session_id=str(actor0.get("session_id") or "") or None,
             )
@@ -613,7 +618,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
                     "next_actions": next_actions,
                     "recommended_next_action": recommended_type,
                 },
-                user_id=str(actor_id or "admin"),
+                user_id=str(actor_id or "anonymous"),
                 tenant_id=str(tenant_id) if tenant_id else None,
                 session_id=str(actor0.get("session_id") or "") or None,
                 approval_request_id=str(approval_request_id) if approval_request_id else None,
@@ -735,7 +740,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
             status="success" if passed else "failed",
             args={"suite_id": trigger_suite_id, "trigger_f1_min": trigger_f1_min},
             result={"passed": passed, "eval_run_id": eval_run_id, "metrics": metrics, "job_run": job_run},
-            user_id=str(actor_id or "admin"),
+            user_id=str(actor_id or "anonymous"),
             tenant_id=str(tenant_id) if tenant_id else None,
             session_id=str(actor0.get("session_id") or "") or None,
         )
@@ -802,7 +807,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
             status="success" if passed else "failed",
             args={"suite_id": quality_suite_id, "quality_pass_rate_min": quality_pass_rate_min},
             result={"passed": passed, "eval_run_id": eval_run_id, "metrics": metrics, "job_run": job_run},
-            user_id=str(actor_id or "admin"),
+            user_id=str(actor_id or "anonymous"),
             tenant_id=str(tenant_id) if tenant_id else None,
             session_id=str(actor0.get("session_id") or "") or None,
         )
@@ -901,7 +906,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
                     status="success" if passed else "failed",
                     args={"security_gate": security_gate},
                     result=scan_res,
-                    user_id=str(actor_id or "admin"),
+                    user_id=str(actor_id or "anonymous"),
                     tenant_id=str(tenant_id) if tenant_id else None,
                     session_id=str(actor0.get("session_id") or "") or None,
                 )
@@ -968,8 +973,7 @@ async def export_change_control_evidence(change_id: str, http_request: Request, 
 
     tenant_id = None
     try:
-        actor0 = actor_from_http(http_request, None)
-        tenant_id = actor0.get("tenant_id") or http_request.headers.get("X-AIPLAT-TENANT-ID")
+        _, tenant_id, _ = _gated_identity(http_request)
     except Exception:
         tenant_id = None
 

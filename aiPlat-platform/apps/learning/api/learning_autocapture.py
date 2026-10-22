@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, HTTPException, Request
 
 from core.api.core_facade import get_kernel_runtime
+from core.api.deps import actor_from_http
 from core.learning.pipeline import summarize_syscall_events
 from core.learning.workspace_target import ensure_workspace_target
 import logging
@@ -440,7 +441,11 @@ async def record_learning_feedback(request: dict, http_request: Request):
             description=str(suite.get("description") or ""),
             config=cfg,
         )
-        # governance record (traceable)
+        # governance record (traceable) — spoofable identity only via actor_from_http
+        actor0 = actor_from_http(http_request, body)
+        gated_actor = str(actor0.get("actor_id") or "").strip()
+        gated_tenant = str(actor0.get("tenant_id") or "").strip() or None
+        gated_role = str(actor0.get("actor_role") or "").strip() or None
         try:
             await record_changeset(
                 store=store,
@@ -450,8 +455,8 @@ async def record_learning_feedback(request: dict, http_request: Request):
                 status="success",
                 args={"decision": decision, "suite_kind": suite_kind},
                 result={"query": query, "artifact_id": art.artifact_id},
-                user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "system"),
-                tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
+                user_id=gated_actor or "system",
+                tenant_id=gated_tenant,
             )
         except Exception as e:
             logging.warning(str(e), exc_info=True)
@@ -459,9 +464,9 @@ async def record_learning_feedback(request: dict, http_request: Request):
             await store.add_audit_log(
                 action="learning_feedback_recorded",
                 status="ok",
-                tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
-                actor_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "") or None,
-                actor_role=str(http_request.headers.get("X-AIPLAT-ACTOR-ROLE") or "") or None,
+                tenant_id=gated_tenant,
+                actor_id=gated_actor or None,
+                actor_role=gated_role,
                 resource_type="skill_eval_suite",
                 resource_id=str(suite_id),
                 detail={"decision": decision, "suite_kind": suite_kind, "artifact_id": art.artifact_id},
