@@ -12,16 +12,16 @@ generated_at: "2026-10-22"
 # Header totals must match domain bodies (sum caps_count / len(domains)).
 # provides[] is the public-symbol list and may exceed caps_count.
 total_capability_domains: 33
-total_capabilities: 1047
+total_capabilities: 1470
 
 domains:
   # ══════════════════════════════════════════════════════════════
-  # 一、Harness 执行引擎 (34 caps)
+  # 一、Harness 执行引擎 (317 caps)
   # ══════════════════════════════════════════════════════════════
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 158
+    caps_count: 317
     provides:
       - symbol: "PipelineEngine"
       - symbol: get_pricing
@@ -1197,12 +1197,12 @@ domains:
         reason: "FDE Pipeline 状态查询"
 
   # ══════════════════════════════════════════════════════════════
-  # 二、记忆子系统 (31 caps)
+  # 二、记忆子系统 (59 caps)
   # ══════════════════════════════════════════════════════════════
   memory-subsystem:
     section: "二"
     section_name: "记忆子系统"
-    caps_count: 13
+    caps_count: 59
     provides:
       - symbol: "MemoryManager"
         type: "class"
@@ -1454,12 +1454,12 @@ domains:
         reason: "L6 记忆指标展示"
 
   # ══════════════════════════════════════════════════════════════
-  # 三、知识引擎（本体）(113 caps)
+  # 三、知识引擎（本体）(231 caps)
   # ══════════════════════════════════════════════════════════════
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 230
+    caps_count: 231
     provides:
       - symbol: normalize_tier
         type: function
@@ -2406,12 +2406,12 @@ domains:
         reason: "OCS 本体完整性六维评分"
 
   # ══════════════════════════════════════════════════════════════
-  # 四、RAG 检索 (40 caps)
+  # 四、RAG 检索 (7 caps)
   # ══════════════════════════════════════════════════════════════
   rag-retrieval:
     section: "四"
     section_name: "RAG 检索"
-    caps_count: 8
+    caps_count: 7
     provides:
       - symbol: "MaterialsChatAgent"
         type: "class"
@@ -2453,12 +2453,12 @@ domains:
         reason: "FDE 追问 → 检索增强"
 
   # ══════════════════════════════════════════════════════════════
-  # 四附、知识基础设施 (29 caps)
+  # 四附、知识基础设施 (3 caps)
   # ══════════════════════════════════════════════════════════════
   knowledge-infrastructure:
     section: "四附"
     section_name: "知识基础设施"
-    caps_count: 4
+    caps_count: 3
     provides:
       - symbol: "ContextBus"
         type: "class"
@@ -2482,12 +2482,12 @@ domains:
         reason: "RunContext 运行时上下文"
 
   # ══════════════════════════════════════════════════════════════
-  # 五、Agent 系统 (23 caps)
+  # 五、Agent 系统 (155 caps)
   # ══════════════════════════════════════════════════════════════
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 150
+    caps_count: 155
     provides:
       - symbol: generate_agent_eval
         type: function
@@ -3120,12 +3120,12 @@ domains:
         reason: "Agent REST 端点"
 
   # ══════════════════════════════════════════════════════════════
-  # 六、Skill 系统 (23 caps)
+  # 六、Skill 系统 (187 caps)
   # ══════════════════════════════════════════════════════════════
   skill-system:
     section: "六"
     section_name: "Skill 系统"
-    caps_count: 136
+    caps_count: 187
     provides:
       - symbol: "SkillRegistry"
         type: "class"
@@ -3915,12 +3915,12 @@ domains:
         reason: "_guard_messages → PII masking"
 
   # ══════════════════════════════════════════════════════════════
-  # 八、可观测性 (16 caps)
+  # 八、可观测性 (23 caps)
   # ══════════════════════════════════════════════════════════════
   observability:
     section: "八"
     section_name: "可观测性"
-    caps_count: 21
+    caps_count: 23
     provides:
       - symbol: "get_observability_contract"
         type: "function"
@@ -4024,12 +4024,12 @@ domains:
         reason: "诊断仪表盘"
 
   # ══════════════════════════════════════════════════════════════
-  # 九、模型基础设施 (27 caps)
+  # 九、模型基础设施 (7 caps)
   # ══════════════════════════════════════════════════════════════
   model-infrastructure:
     section: "九"
     section_name: "模型基础设施"
-    caps_count: 6
+    caps_count: 7
     provides:
       - symbol: "best_model_for_purpose"
         type: "function"
@@ -4073,7 +4073,7 @@ domains:
         reason: "T1-T5 前端展示"
 
   # ══════════════════════════════════════════════════════════════
-  # 十、部署与运维 (17 caps)
+  # 十、部署与运维 (3 caps)
   # ══════════════════════════════════════════════════════════════
   deploy-and-operations:
     section: "十"
@@ -4100,7 +4100,7 @@ domains:
         reason: "self-harness cycle"
 
   # ══════════════════════════════════════════════════════════════
-  # 十一、扩展与学习 (79 caps)
+  # 十一、扩展与学习 (10 caps)
   # ══════════════════════════════════════════════════════════════
   extension-and-learning:
     section: "十一"
@@ -4161,12 +4161,12 @@ domains:
         reason: "build_context → SharedKnowledgePool 注入"
 
   # ══════════════════════════════════════════════════════════════
-  # 十二、Gate 系统 (17 caps)
+  # 十二、Gate 系统 (153 caps)
   # ══════════════════════════════════════════════════════════════
   gate-system:
     section: "十二"
     section_name: "Gate 系统"
-    caps_count: 133
+    caps_count: 153
     provides:
       - symbol: "ErrorTranslator"
         type: "class"
@@ -4790,12 +4790,12 @@ domains:
         reason: "BackpressureMiddleware 挂载 + backpressure_stats 诊断"
 
   # ══════════════════════════════════════════════════════════════
-  # 十三、评估系统 (13 caps)
+  # 十三、评估系统 (24 caps)
   # ══════════════════════════════════════════════════════════════
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 5
+    caps_count: 24
     provides:
       - symbol: "AdversarialTestSuite"
         type: "module"
@@ -4901,7 +4901,7 @@ domains:
         reason: "FDE 质量摘要"
 
   # ══════════════════════════════════════════════════════════════
-  # 十四、MCP 协议 (6 caps)
+  # 十四、MCP 协议 (3 caps)
   # ══════════════════════════════════════════════════════════════
   mcp-protocol:
     section: "十四"
@@ -4928,7 +4928,7 @@ domains:
         reason: "MCP REST 端点"
 
   # ══════════════════════════════════════════════════════════════
-  # 十四附、A2A 协议 (7 caps)
+  # 十四附、A2A 协议 (2 caps)
   # ══════════════════════════════════════════════════════════════
   a2a-protocol:
     section: "十四附"
@@ -4951,12 +4951,12 @@ domains:
         reason: "SwarmBroker agent discovery"
 
   # ══════════════════════════════════════════════════════════════
-  # 十五、文档智能 (24 caps)
+  # 十五、文档智能 (3 caps)
   # ══════════════════════════════════════════════════════════════
   document-intelligence:
     section: "十五"
     section_name: "文档智能"
-    caps_count: 4
+    caps_count: 3
     provides:
       - symbol: "VideoParser"
         type: "class"
@@ -4978,12 +4978,12 @@ domains:
         reason: "Upload/ingest 端点"
 
   # ══════════════════════════════════════════════════════════════
-  # 十六、工具生态 (21 caps)
+  # 十六、工具生态 (61 caps)
   # ══════════════════════════════════════════════════════════════
   tool-ecosystem:
     section: "十六"
     section_name: "工具生态"
-    caps_count: 58
+    caps_count: 61
     provides:
       - symbol: "BaseTool"
         type: "class"
@@ -5238,7 +5238,7 @@ domains:
         reason: "MCPToolAdapter → BaseTool"
 
   # ══════════════════════════════════════════════════════════════
-  # 十七、微调系统 (12 caps)
+  # 十七、微调系统 (2 caps)
   # ══════════════════════════════════════════════════════════════
   fine-tuning-system:
     section: "十七"
@@ -5261,7 +5261,7 @@ domains:
         reason: "微调缺口扫描"
 
   # ══════════════════════════════════════════════════════════════
-  # 十八、部署与灰度 (4 caps)
+  # 十八、部署与灰度 (3 caps)
   # ══════════════════════════════════════════════════════════════
   deploy-and-canary:
     section: "十八"
@@ -5290,12 +5290,12 @@ domains:
         reason: "FDE canary 端点"
 
   # ══════════════════════════════════════════════════════════════
-  # 十九、运行时干预 (2 caps)
+  # 十九、运行时干预 (64 caps)
   # ══════════════════════════════════════════════════════════════
   runtime-intervention:
     section: "十九"
     section_name: "运行时干预"
-    caps_count: 4
+    caps_count: 64
     provides:
       - symbol: "_model_overrides"
         type: "dict"
@@ -5563,7 +5563,7 @@ domains:
         reason: "adoption-metrics 附带 Howl 干预次数"
 
   # ══════════════════════════════════════════════════════════════
-  # 二十、Arena & 调度 (4 caps)
+  # 二十、Arena & 调度 (6 caps)
   # ══════════════════════════════════════════════════════════════
   arena-and-scheduling:
     section: "二十"
@@ -5604,7 +5604,7 @@ domains:
         reason: "P0-B3 arena/wake-agent REST 端点"
 
   # ══════════════════════════════════════════════════════════════
-  # 二十一、平台治理 (59 caps)
+  # 二十一、平台治理 (6 caps)
   # ══════════════════════════════════════════════════════════════
   platform-governance:
     section: "二十一"
@@ -5645,12 +5645,12 @@ domains:
         reason: "仪表盘治理指标"
 
   # ══════════════════════════════════════════════════════════════
-  # 二十二、Infra 基础设施 (11 caps)
+  # 二十二、Infra 基础设施 (6 caps)
   # ══════════════════════════════════════════════════════════════
   infra-infrastructure:
     section: "二十二"
     section_name: "Infra 基础设施"
-    caps_count: 4
+    caps_count: 6
     provides:
       - symbol: "ModelManager"
         type: "class"
@@ -5688,7 +5688,7 @@ domains:
         reason: "adapters 发现与 CredentialPool 共用 DB 路径"
 
   # ══════════════════════════════════════════════════════════════
-  # 二十三、核心API统一入口 (5 caps)
+  # 二十三、核心API统一入口 (2 caps)
   # ══════════════════════════════════════════════════════════════
   core-api-unified-entry:
     section: "二十三"
@@ -5716,7 +5716,7 @@ domains:
   orchestration-system:
     section: "二十四"
     section_name: "编排系统"
-    caps_count: 6
+    caps_count: 4
     provides:
       - symbol: "RunEventTimeline"
         type: "component"
@@ -5742,12 +5742,12 @@ domains:
         reason: "fork/forks 端点经 CoreFacade 取 store"
 
   # ══════════════════════════════════════════════════════════════
-  # 二十五、管理 & 质量 (21 caps)
+  # 二十五、管理 & 质量 (101 caps)
   # ══════════════════════════════════════════════════════════════
   management-and-quality:
     section: "二十五"
     section_name: "管理 & 质量"
-    caps_count: 42
+    caps_count: 101
     provides:
       - symbol: "management_api_token"
         type: "function"
@@ -6161,7 +6161,7 @@ domains:
         reason: "诊断仪表盘"
 
   # ══════════════════════════════════════════════════════════════
-  # 二十六、编排层 (Orchestration) (17 caps)
+  # 二十六、编排层 (Orchestration) (5 caps)
   # ══════════════════════════════════════════════════════════════
   orchestration-layer:
     section: "二十六"
@@ -6198,7 +6198,7 @@ domains:
         reason: "Goal 分解后并行执行"
 
   # ══════════════════════════════════════════════════════════════
-  # 二十七、L6 自主能力 (8 caps)
+  # 二十七、L6 自主能力 (5 caps)
   # ══════════════════════════════════════════════════════════════
   l6-autonomy:
     section: "二十七"
@@ -6239,7 +6239,7 @@ domains:
         reason: "_get_goal_decomposition_stats"
 
   # ══════════════════════════════════════════════════════════════
-  # 二十八、记忆系统白盒化 (7 caps)
+  # 二十八、记忆系统白盒化 (5 caps)
   # ══════════════════════════════════════════════════════════════
   memory-white-boxing:
     section: "二十八"

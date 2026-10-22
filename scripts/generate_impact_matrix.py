@@ -49,8 +49,8 @@ def main():
             f"{n_caps} capabilities (caps_count) | {n_symbols} symbols (provides)\n\n"
         )
         f.write(
-            "> 口径：`caps_count` = 域声明的产品能力数；`provides` = 登记公开符号数；"
-            "二者可能不同，勿与 `AIPLAT_CAPABILITIES.md` 行计数混算。\n\n"
+            "> 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；"
+            "勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。\n\n"
         )
 
         # Section 1: Consumer → Capabilities
