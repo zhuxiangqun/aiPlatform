@@ -2,6 +2,8 @@
 
 本目录集中存放 aiPlat 与 **Hermes Agent / Claude Code / OpenClaw / DeepSeek Harness / OpenAI Codex** 五家对标的研究与改进文档，供随时查询。
 
+**文档系统现状基线（2026-10）**：[文档系统现状分析-2026-10.md](文档系统现状分析-2026-10.md)（快照报告；非改造方案）。
+
 ## 文档索引
 
 | 文档 | 内容 | 可信度框架位置 | 生成时间 |
@@ -11,8 +13,8 @@
 | `../archive/aiPlat核心能力对标报告-2026-08-六系统.md` | 历史六系统稿（Hermes 双列/Codex-Harness 旧名） | 只读归档 | 2026-08 |
 | **`aiPlat改进方案.md`** | 改进方案：P0 合规修复 → P1 对标差距补齐 → P2 架构演进，每项含代码证据 + 验收命令；附录 A：G1-G15 缺口→任务映射 | 附录 C 方案依据可信度标注 | 2026-08-15（**✅ 已收官：P0-1~P0-5 / P1-1~P1-6 / P2-1~P2-7 全部落地，2026-08-19**） |
 | **`aiPlat问题总清单与行动纲领.md`** | 全量问题总清单 + 行动纲领：按 P0（阻断）/P1（重要缺口）/P2（演进）排序，每项含来源/证据/修复/验收 | （执行纲领类，含核对明细） | 2026-08-15（**✅ 54 项核对 53 DONE / 0 PARTIAL / 0 OPEN，2026-08-19 收官**） |
-| **`plan-pipeline-engine-split.md`** | 专项方案：P2-A4 PipelineEngine 拆分（pipeline_engine.py 12281→8288 行，5 个 Mixin 文件，PR #16-19，`_run_stages_from` 保留主类） | **✅ 已完成（Phase 1-4 全实施）** | 2026-08-18 |
-| **`plan-tenant-tables-migration.md`** | 专项方案：P0-A3 tenant 表迁移（tenant_quotas/tenant_usage_ledger/tenant_policies 3 表 8 方法 → platform `TenantStore`，aiPlat-platform/tenants/tenant_store.py） | **✅ 已完成（宪法真过）** | 2026-08-18 |
+| `../archive/plan-pipeline-engine-split.md` | 专项方案：P2-A4 PipelineEngine 拆分（已完成） | 只读归档 | 2026-08-18 → archive 2026-10-23 |
+| `../archive/plan-tenant-tables-migration.md` | 专项方案：P0-A3 tenant 表迁移（已完成） | 只读归档 | 2026-08-18 → archive 2026-10-23 |
 | **`aiPlat实现完成度审计报告.md`** | 能力"是否实现 + 是否起作用"审计：3 个未接线子系统 + CoreFacade getter 冗余 + 9 个默认关闭 flag | §10 结论可信度标注 | 2026-08-15 |
 | **`aiPlat治理体系元审计报告.md`** | **元审计**：治理体系本身（190 规则/宪法测试/能力登记/证据验证）是否正确/合理/完备/已实现/如何运作；含 12 条规则语法 bug 发现与修复实证 | **§11 阳性可信/阴性有盲区（方法论总纲）** | 2026-08-15 |
 | **`知识管理审计报告.md`** | **代码审计**：知识管理全链路（摄取/抽取/解析/检索/质量门/评估）——三层租户隔离等强项 + P1-1 中文切词缺陷（实测完全包含也 0 分）、P1-2 业务硬编码+全量加载、P2/P3 共 4 项改进点 | 源码级阳性证据（`文件:行号`）+ 实测 | 2026-08-19 |
@@ -25,7 +27,7 @@
 | **`规范体系审计报告.md`** | 规范体系审计：docs/standards + policy + compliance + CLAUDE.md 强制规则 + arch_guard_rules（190 条）是否正确/完整/够用 | （审计报告） | 2026-08-15 |
 | **`合规保证机制分析报告.md`** | 合规保证机制分析：合规链路（hook/CI/pre-commit）每层真实生效性实测 | （审计报告） | 2026-08-15 |
 | **`文档体系与目录结构审计报告.md`** | 文档体系与目录结构审计：重复/可合并/归属核查 + 归档策略 | （审计报告） | 2026-08-15 |
-| **`CI合并门禁核实报告.md`** | 分支保护配置实测：CI 是否真正 gating 合并（gh CLI 查 GitHub API） | （核实报告） | 2026-08-15（**✅ 已核实：8 required contexts + enforce_admins，2026-08-19 基线**） |
+| `../archive/CI合并门禁核实报告.md` | 分支保护配置核实（已核实快照） | 只读归档 | 2026-08-15 → archive 2026-10-23 |
 | **`宪法测试24项违规修复方案.md`** | 宪法测试实跑 **24 failed/119 passed** 的完整违规清单 + 修复方案（A 真实违规 14 项 / B 测试基建 8 项） | §五 结论可信度标注 | 2026-08-15（**✅ 已闭环：24 项违规全部修复，宪法 143 passed + 1 skipped**） |
 | **`architecture-evolution-roadmap.md`** | 架构演进路线图：Phase 0 基线固化 → 1 状态/事件一致性 → 2 扩展缝 → 3 耦合治理 → 4 验证闭环 | （设计规划类，无事实断言） | 2026-08-15 |
 | **`Hermes调研底稿.md`** | Hermes v0.20.1 完整调研原始材料（14 维度 + 存疑清单），供复核追溯 | （原始材料） | 2026-08-15 |
@@ -86,4 +88,4 @@
 - **想知道全量问题清单与行动进度** → 行动纲领（54 项核对明细，53/53 全 DONE）
 - **想知道宪法 24 项违规明细与修复记录** → 宪法测试24项违规修复方案（A/B 分类 + 修复命令 + 已闭环）
 - **想知道架构怎么一步步演进** → 路线图（Phase 0 起，每阶段可独立交付/回退）
-- **想知道专项方案实施记录** → plan-pipeline-engine-split.md（P2-A4 拆分）/ plan-tenant-tables-migration.md（P0-A3 迁移）
+- **想知道专项方案实施记录** → `../archive/plan-pipeline-engine-split.md`（P2-A4）/ `../archive/plan-tenant-tables-migration.md`（P0-A3）

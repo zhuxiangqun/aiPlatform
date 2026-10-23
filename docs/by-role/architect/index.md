@@ -9,7 +9,7 @@
 | 架构全景 | `docs/architecture/overview.md` | 权威架构入口 |
 | 层边界标准 | `docs/architecture/boundary-standard.md` | 跨层规则 |
 | 架构契约 | `docs/architecture/system-architecture-contract.md` | 层间 API 契约 |
-| Core 架构详情 | `docs/architecture/core-layer1-latest.md` | Core 层实现 |
+| Core 架构详情 | `docs/architecture/core/core-layer1-latest.md` | Core 层实现 |
 | 文档治理 | `docs/DOCUMENT_SYSTEM.md` | 文档宪法 |
 
 ## 各层设计文档

@@ -35,6 +35,9 @@
 | `workflow-canvas-comparison.md` | aiPlat vs Dify vs Coze Workflow Canvas 对比（历史，并入 multi-dimension-comparison 定位） |
 | `平台化路线-PR拆解与排期.md` | 平台化（多租户/企业）路线 PR 拆解与排期（历史规划） |
 | `平台化路线-四服务版PR拆解与排期.md` | 平台化路线四服务版 PR 拆解与排期（历史规划，被实际演进取代） |
+| `plan-pipeline-engine-split.md` | 自 `docs/research/` 迁入（2026-10-23）：P2-A4 已完成专项；仅历史参考 |
+| `plan-tenant-tables-migration.md` | 自 `docs/research/` 迁入（2026-10-23）：P0-A3 已完成专项；仅历史参考 |
+| `CI合并门禁核实报告.md` | 自 `docs/research/` 迁入（2026-10-23）：2026-08 分支保护核实快照；仅历史参考 |
 
 > **P1-B6 归档说明（2026-08-16）**：上表 6 份历史对比文档（`aiPlat_arch_vs_hermes` / `架构对照-...` / `aiPlat-vs-hermes-vs-claude-code-vs-openclaw-architecture` / `aiPlat-17dim-comparison-v3` / `aiPlat-22dim-comparison-v4` / `multi-dimension-comparison`）的定位已由 **`docs/research/aiPlat核心能力对标报告.md`**（21 章，Claude Code / DeepSeek Harness / Hermes 核心能力对标）取代。本组文档仅作历史参考。
 

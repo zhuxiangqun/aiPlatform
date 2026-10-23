@@ -15,6 +15,13 @@
 | [../knowledge-system.md](../knowledge-system.md) | 知识系统完整指南：向量KB/GraphIndex/Wiki/本体/检索/运维 |
 | [slo.md](slo.md) | SLO 定义 |
 
+## 当前交付：Pi Thin Runtime
+
+| 文档 | 说明 |
+|------|------|
+| [plans/pi-thin-runtime.md](plans/pi-thin-runtime.md) | Pi 产品定位与轴 A/B living 摘要（Thin；≠ 五产品 Enterprise Runtime） |
+| [../../packages/aiplat-pi-runtime/README.md](../../packages/aiplat-pi-runtime/README.md) | 包入口、Pi-only 与企业可选回连 |
+
 ## ADR 裁决
 
 | 文档 | 说明 |
@@ -24,9 +31,14 @@
 
 ## 规划与路线图（非现状）
 
+> 下列文档描述目标边界或执行草案，**不代表**当前仓库已拆成五服务或已交付完整 Enterprise Runtime。现行 Pi 见上方「当前交付」。
+
 | 文档 | 说明 |
 |------|------|
-| [plans/](plans/) | 竞品对比、优化路线图、路由迁移计划等 13 份规划文档 |
+| [五产品 Decision Brief](plans/ai-platform-five-products-decision-brief.md) | 评审会摘要：批准范围、非目标、5 项当场决策和 Gate |
+| [plans/](plans/) | 其他规划文档（竞品对比、优化路线图、路由迁移等） |
+| [五产品目标架构与 ADR 母稿](plans/ai-platform-five-products-target-architecture.md) | aiPlat / Pi / 本体 / FDE / 诊断的产品边界、数据 owner、共享契约与部署拆分原则 |
+| [五产品评审与首个纵向切片执行计划](plans/ai-platform-five-products-execution-plan.md) | 现状盘点、契约、兼容矩阵、MVP 范围、决策门与端到端验收计划 |
 
 ## 合规
 

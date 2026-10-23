@@ -2,6 +2,11 @@
 
 本目录存放 FDE 工作台演进与 **Org L5（组织级单线闭环）** 的跨仓契约与评审产物。Core 运行时契约仍在 `aiPlat-core/docs/contracts/`。
 
+> **本页职责拆分**  
+> - **阅读顺序**（下表）：接手/评审时读哪些契约文件。  
+> - **阶段 / 签收状态**（下文子弹列表）：以各契约正文、签收包与代码行为为准；本 README 的状态句会过期，**不以本页子弹为验收证据**。  
+> - 操作手册与 UI 真相见 `manuals/` / `pageManifest`，不在本索引重复维护。
+
 **总原则：先方案后改码。**  
 - FDE Phase 0 已于 **2026-09-14** 宣布开工（见 [开工清单 v1](./FDE_PHASE0_KICKOFF_CHECKLIST.md) / [决策记录 v1](./FDE_DECISION_RECORD.md)）。  
 - Org L5 **P0–P4 已接线**（含 Fleet 门禁与 [`ORG_L5_RUNBOOK.md`](./ORG_L5_RUNBOOK.md)；**未**开生产 live IO）。  
