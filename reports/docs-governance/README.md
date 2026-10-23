@@ -21,7 +21,11 @@
 | [d4-contracts-typing-2026-10-23.md](d4-contracts-typing-2026-10-23.md) | D4 contracts：索引分型；0 迁/删 |
 | [docs-reasonable-reduction-plan-2026-10.md](docs-reasonable-reduction-plan-2026-10.md) | 责任导向方案（最终版本 · closed） |
 | [d5-closeout-2026-10-23.md](d5-closeout-2026-10-23.md) | D5 收口：方案最终版移入本目录 |
-| [docs-next-round-manuals-links-2026-10.md](docs-next-round-manuals-links-2026-10.md) | 下一轮草案：manuals 分型 + 链接扩面（**未批准**） |
+| [docs-next-round-manuals-links-2026-10.md](docs-next-round-manuals-links-2026-10.md) | 下一轮 manuals+链接（**closed** · E0–E4） |
+| [e1-manuals-typing-2026-10-23.md](e1-manuals-typing-2026-10-23.md) | E1 manuals 责任分型复核 |
+| [e2-link-gate-expand-2026-10-23.md](e2-link-gate-expand-2026-10-23.md) | E2 链接门禁扩面 |
+| [e3-maint-link-fixes-2026-10-23.md](e3-maint-link-fixes-2026-10-23.md) | E3 维护区断链修链 |
+| [e4-closeout-2026-10-23.md](e4-closeout-2026-10-23.md) | E4 收口 |
 
 **research 指针**：[`docs/research/README.md`](../../docs/research/README.md) → 本 README（单链）。
 

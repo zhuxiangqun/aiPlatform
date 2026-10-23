@@ -317,7 +317,7 @@ CI（`docs-verify.yml`）调用 **`scripts/verify_docs.py`**、**`scripts/verify
 ```bash
 python3 scripts/verify_docs.py
 python3 scripts/verify_doc_structure.py   # 一级目录登记；已接入 docs-verify.yml（S2-CI）
-python3 scripts/verify_doc_links.py       # 仅检查 DOCUMENT_SYSTEM + docs/README + manuals/README 三文件链接
+python3 scripts/verify_doc_links.py       # 维护区 README + DOCUMENT_SYSTEM + governance README + docs/README 入口一层（archive=WARN；E2）
 ```
 
 ### 7.3 配置阈值

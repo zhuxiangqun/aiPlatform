@@ -3,14 +3,16 @@ doc_type: Design
 authority: plan
 scope: docs-next-round-manuals-links
 language: zh-CN
-status: draft
+status: closed
 draft_date: 2026-10-23
+revised: 2026-10-23-e4
+approved_batches: [E0, E1, E2, E3, E4]
 predecessor: docs-reasonable-reduction-plan-2026-10（D0–D5 已收口）
 ---
 
 # 下一轮：manuals 责任分型 + 维护区链接门禁扩面（2026-10）
 
-> **性质**：方案草案；**未批准执行**。  
+> **性质**：已收口方案（E0–E4）。exemption 拆除仍须 **#379 合入 main 之后**。  
 > **前提**：责任导向 D0–D5 已收口；过程材料在 `reports/docs-governance/`。  
 > **仍不追求配额减量**；删除仅当 Q1=无且 R5=无义务。
 
@@ -57,17 +59,30 @@ predecessor: docs-reasonable-reduction-plan-2026-10（D0–D5 已收口）
 
 ---
 
-## 3. manuals 分型（E1 输入 · 未复核）
+## 3. manuals 分型（E1 · 已执行）
 
-以 `docs/manuals/README.md` 现有清单为起点，执行时对每条标：
+以 `docs/manuals/README.md` 为权威索引（三类分区已落地）。复核表：[`e1-manuals-typing-2026-10-23.md`](./e1-manuals-typing-2026-10-23.md)。
 
 | 标签 | 含义 | 默认 |
 |------|------|------|
 | 现行操作 | 用户/运维仍按步骤执行 | 维护区主列表 |
-| 专题合册 | 长手册/合订，仍为权威入口 | 主列表或「合册」区 |
-| 过程/过期 | 已接替或一次性 | 降权；有义务→留路径；无义务→可迁 archive |
+| 专题合册 | 长手册/合订，仍为权威入口 | 「合册」区 |
+| 过程/过期 | 分析快照 / `_archive` / 签收指针 | 降权；本批不迁不删 |
 
 禁止按「FDE / 知识」主题整簇处置。
+
+---
+
+## 3.1 执行记录（2026-10-23）
+
+| 项 | 结果 |
+|----|------|
+| E0 | 本方案 approved |
+| E1 | manuals README 三分型；wiki-fts5 / fde/_archive / M4 指针降权 |
+| E2 | `verify_doc_links` fail=26 warn=1；见 `e2-link-gate-expand-2026-10-23.md` |
+| E3 | 7 断链全部修链；fail broken=0；见 `e3-maint-link-fixes-2026-10-23.md` |
+| 迁/删 | **0 / 0**（E1–E3） |
+| E4 | 收口：`docs/README` 时点；本方案 `closed`；见 `e4-closeout-2026-10-23.md` |
 
 ---
 
@@ -82,11 +97,10 @@ predecessor: docs-reasonable-reduction-plan-2026-10（D0–D5 已收口）
 
 ---
 
-## 5. 建议首批批准
+## 5. 后续
 
-推荐 **E0 + E1**（manuals 索引分型，低风险），随后 **E2+E3**（链接扩面 + 修链）。  
-exemption 拆除作为合并后独立小提交，不阻塞 E0。
+**E0–E4 已收口。** 剩余运维债：**#379 合入后**拆除 physical exemption（§4）。
 
 ---
 
-*版本: 2026-10-23-r0 · **未批准执行***
+*版本: 2026-10-23-e4 · **closed** · exemption 待 #379*

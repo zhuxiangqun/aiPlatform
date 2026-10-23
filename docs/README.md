@@ -69,9 +69,9 @@
 ## 目录速查
 
 > **统计口径**：`docs/**/*.md`，排除路径含 `node_modules`。  
-> **时点**：`2026-10-23`（责任导向 D0–D5 收口后现算）。静态计数会再漂。  
+> **时点**：`2026-10-23`（D0–D5 收口 + E0–E4 manuals/链接轮次后现算）。静态计数会再漂。  
 > **维护区**（C0 公式，同口径）：**178**（≠ 下表合计；合计含 archive / volumes / 生成快照）。  
-> 说明：`docs/` 树内总数 **253**（相对 C0–C4 收口 259：−7 移至根 `reports/docs-governance/`；D2 迁 archive 不减树内总数）。文件仍在仓库。
+> 说明：`docs/` 树内总数 **253**（相对 C0–C4 收口 259：−7 移至根 `reports/docs-governance/`；D2 迁 archive 不减树内总数）。E1–E3 **0 迁/删**，计数相对 D5 不变。
 
 | 目录 | 内容 | 文件数 | 维护？ |
 |------|------|:---:|:---:|
@@ -103,7 +103,7 @@
 ## 文档治理
 
 - **[DOCUMENT_SYSTEM.md](DOCUMENT_SYSTEM.md)**：文档系统宪法（分类、边界、验证）
-- **[reports/docs-governance/](../reports/docs-governance/README.md)**：文档治理过程材料唯一索引（C0–C4 / D0–D5；已移出 `docs/research/`）
+- **[reports/docs-governance/](../reports/docs-governance/README.md)**：文档治理过程材料唯一索引（C0–C4 / D0–D5 / E0–E4；已移出 `docs/research/`）
 - **[AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md)**：能力声明/接线索引（计数见该文件；不等于行为验收）
 - **[whitepaper/aiplat-platform-status-whitepaper.md](whitepaper/aiplat-platform-status-whitepaper.md)**：平台现状白皮书（**从 CAPABILITIES 生成**，`--check` 防过期；非手写第二清单）
 
@@ -112,13 +112,13 @@
 | 脚本 | 实际覆盖 | CI（`docs-verify.yml`） |
 |------|----------|-------------------------|
 | `scripts/verify_doc_structure.py` | `docs/` **一级目录**是否已在 DOCUMENT_SYSTEM §一登记 | **已接入** `docs-verify.yml`（2026-10-23） |
-| `scripts/verify_doc_links.py` | **仅 3 个文件**：DOCUMENT_SYSTEM、docs/README、manuals/README | 未作为独立 job 列出时勿称「全站链接已检」 |
+| `scripts/verify_doc_links.py` | 维护区 `docs/**/README.md`（非 archive）+ DOCUMENT_SYSTEM + governance README + `docs/README` 入口一层；archive README=WARN | **非**全站正文；勿称「全站链接已检」（E2 2026-10） |
 | `scripts/verify_docs.py` | by-role 链接、报告头、archive 免责、能力数裸写等（见 DOCUMENT_SYSTEM §七） | **有**（workflow 调用此脚本） |
 | 白皮书 `--check` | 生成物相对指定权威源的**新鲜度** | 按白皮书/suite 流水线；≠ 无重复正文 |
 
 ---
 
-*最后更新: 2026-10-23（D0–D5 收口；`docs/` 253 / maint 178；archive 60 / research 14）*
+*最后更新: 2026-10-23（D0–D5 + E0–E4 收口；`docs/` 253 / maint 178；archive 60 / research 14）*
 
 ## 按阅读目的查找
 
