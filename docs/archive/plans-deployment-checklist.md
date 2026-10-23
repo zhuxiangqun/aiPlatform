@@ -1,5 +1,8 @@
 # aiPlatform Production Deployment Checklist
 
+> **已归档（C3 · 2026-10-23）**：原路径 `docs/architecture/plans/deployment_checklist.md`。仅历史/过程参考；现行规划见 `docs/architecture/plans/`（如 pi-thin-runtime、app-module-layout）。
+>
+
 ## Pre-Deployment Verification
 
 | # | Check | Command | Expected |

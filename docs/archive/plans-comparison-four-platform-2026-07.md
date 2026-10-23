@@ -1,10 +1,10 @@
 # aiPlat 架构对标 — 四方案深度对比
 
-> **本文档是 aiPlat 竞品对比的唯一入口**。所有旧版对比文件已移至 `docs/archive/`。
-> 最后更新: 2026-07-04 | Phase 5 竞品借鉴已全部合入 | 数据源: 代码级分析
-> 对标对象: [Hermes Agent](https://github.com/NousResearch/hermes-agent) · [Claude Code](https://github.com/anthropics/claude-code) · [OpenClaw](https://github.com/openclaw/openclaw)
+> **已归档（C2 · 2026-10-23）**：原路径 `docs/architecture/plans/comparison.md`。  
+> **现行对比入口**改为 [`docs/architecture/comparison.md`](../architecture/comparison.md)（六平台 · 2026-10）。本文仅作 2026-07 四方案历史参考，**不再是唯一入口**。
 >
-> **规则**: 本文档是 aiPlat 与其他系统的架构对比统一入口。新增对标方只需加一个章节。
+> 最后更新: 2026-07-04 | Phase 5 竞品借鉴已全部合入 | 数据源: 代码级分析  
+> 对标对象: Hermes Agent · Claude Code · OpenClaw
 
 ---
 
@@ -223,4 +223,4 @@ Claude Code (闭源引擎+开源插件层)        OpenClaw (Gateway)
 *历史版本存档: `架构对照-aiPlat-vs-Hermes-vs-ClaudeCode-vs-OpenClaw.md` → `docs/archive/`*  
 *历史版本存档: `aiPlat-vs-hermes-vs-claude-code-vs-openclaw-architecture.md` → `docs/archive/`*
 
-> 参见：[私有控制平面 — aiPlat 四层防御体系](articles/private-control-plane.md) 了解更多 PolicyGate/ApprovalGate 的设计细节。
+> 参见：[私有控制平面 — aiPlat 四层防御体系](../articles/private-control-plane.md)（长文）· [架构短入口](../architecture/private-control-plane.md)。

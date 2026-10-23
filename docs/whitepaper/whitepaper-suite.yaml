@@ -31,9 +31,9 @@ volumes:
         role: 文档权威模型
     supporting:
       - path: docs/architecture/comparison.md
-        role: 架构层对比
-      - path: docs/architecture/plans/comparison.md
-        role: 规划期对比
+        role: 架构层对比（现行六平台入口）
+      - path: docs/archive/plans-comparison-four-platform-2026-07.md
+        role: 规划期四方案对比（已归档 · C2）
       - path: CLAUDE.md
         role: 执行规约 / 层边界
       - path: docs/manuals/deployment.md
@@ -47,16 +47,14 @@ volumes:
       - path: docs/architecture/plans/observability-eval-repair-architecture.md
         role: 可观测性架构
       - path: docs/knowledge-system.md
-        role: 数据 / 知识存储路径
-      - path: docs/architecture/knowledge-base-architecture.md
-        role: 知识库架构
+        role: 数据 / 知识存储路径（含原 knowledge-base-architecture 归并正文）
       - path: docs/security/security-architecture.md
         role: 安全嵌入（技术视角交叉）
       - path: docs/manuals/testing.md
         role: 测试金字塔与策略
       - path: docs/architecture/execution-quality-gates.md
         role: 执行质量门禁
-      - path: docs/research/architecture-evolution-roadmap.md
+      - path: docs/archive/architecture-evolution-roadmap.md
         role: 架构演进路线
       - path: docs/manuals/getting-started.md
         role: 开发上手
@@ -203,7 +201,7 @@ benchmarks_and_ratings:
     - path: docs/research/对标底稿-2026-10-五家.md
       title: 2026-10 五家对标证据底稿
       kind: comparison
-    - path: docs/research/对标吸收与架构纯度评估.md
+    - path: docs/archive/对标吸收与架构纯度评估.md
       title: 对标吸收与架构纯度
       kind: comparison
     - path: docs/framework/hermes-comparison.md
@@ -215,11 +213,11 @@ benchmarks_and_ratings:
     - path: docs/architecture/comparison.md
       title: 六平台 18 维架构对比（2026-10）
       kind: comparison
-    - path: docs/architecture/plans/comparison.md
-      title: 规划对比
+    - path: docs/archive/plans-comparison-four-platform-2026-07.md
+      title: 规划期四方案对比（已归档）
       kind: comparison
-    - path: docs/architecture/plans/comprehensive-comparison.md
-      title: 综合对比
+    - path: docs/archive/plans-comprehensive-comparison-2026-07.md
+      title: 综合对比（已归档 · C3）
       kind: comparison
     - path: docs/research/企业级AI可信落地全景图-aiPlat对照.md
       title: 企业级可信落地对照

@@ -1,5 +1,8 @@
 # PR 架构规范检查清单（Architecture Boundary Checklist）
 
+> **C2 消歧**：本文是 **手册侧 PR 评审清单**（开发者自检入口，见本目录 README）。  
+> CI 硬门禁契约文件为 [`docs/guides/PR_ARCHITECTURE_CHECKLIST.md`](../guides/PR_ARCHITECTURE_CHECKLIST.md)——**同名异职，勿合并、勿互相替代**。
+>
 > 目标：让系统整体架构规范在 PR 评审阶段“硬生效”。  
 > 适用范围：aiPlatform 全系统（management / app / platform / core / infra）。
 

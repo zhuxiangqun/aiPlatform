@@ -30,12 +30,12 @@ code_to_docs:
     docs:
       - AIPLAT_CAPABILITIES.md
       - docs/architecture/overview.md
-      - docs/manuals/knowledge-management.md
+      - docs/knowledge-system.md
       - docs/manuals/ontology.md
       - docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
       - docs/whitepaper/verification-protocol.md
       - docs/framework/aiplat-autonomy-framework.md
-    hint: "知识子系统变更 → 检查知识库和本体操作手册"
+    hint: "知识子系统变更 → 检查 knowledge-system 与本体操作入口"
 
   harness/infrastructure/:
     docs:
@@ -80,9 +80,9 @@ code_to_docs:
   harness/document/:
     docs:
       - AIPLAT_CAPABILITIES.md
-      - docs/manuals/knowledge-management.md
+      - docs/knowledge-system.md
       - docs/architecture/boundary-standard.md
-    hint: "文档解析器变更 → 检查知识库操作手册"
+    hint: "文档解析器变更 → 检查 knowledge-system"
 
   harness/learning/:
     docs:
@@ -164,7 +164,7 @@ code_to_docs:
   harness/context/:
     docs:
       - AIPLAT_CAPABILITIES.md
-      - docs/manuals/knowledge-management.md
+      - docs/knowledge-system.md
     hint: "上下文注入变更"
 
   harness/assembly/:
@@ -254,7 +254,7 @@ code_to_docs:
       - docs/manuals/fde/03-fde-operations.md
       - docs/manuals/fde/04-fde-admin.md
       - docs/manuals/fde/fde-delivery-manual.md
-      - docs/manuals/knowledge-management.md
+      - docs/knowledge-system.md
       - docs/manuals/ontology.md
     hint: "菜单结构变更 → 检查所有操作手册中的导航路径"
 
@@ -281,13 +281,13 @@ routes_to_docs:
     docs: [docs/manuals/management.md, docs/design/model-management.md]
     hint: "模型管理页面变更"
   /platform/kb:
-    docs: [docs/manuals/knowledge-management.md, docs/manuals/management.md]
+    docs: [docs/knowledge-system.md, docs/manuals/management.md]
     hint: "知识库页面变更"
   /infra/ontology:
-    docs: [docs/manuals/ontology.md, docs/manuals/knowledge-management.md]
+    docs: [docs/manuals/ontology.md, docs/knowledge-system.md]
     hint: "本体模型页面变更"
   /ontology-editor:
-    docs: [docs/manuals/ontology.md, docs/manuals/knowledge-management.md]
+    docs: [docs/manuals/ontology.md, docs/knowledge-system.md]
     hint: "本体编辑器页面变更"
 
 
@@ -333,8 +333,6 @@ design_targets:
   - docs/design/ui-design.md
   - docs/design/ui-implementation-status.md
   - docs/design/model-management.md
-  - docs/design/ontology-design.md
-  - docs/design/knowledge-ontology-plan.md
 
 
 # ═══════════════════════════════════════════════════════

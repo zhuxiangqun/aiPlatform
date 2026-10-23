@@ -1,5 +1,8 @@
 # A2.3 看板+Cron 定时调度 — 设计文档
 
+> **已归档（C3 · 2026-10-23）**：原路径 `docs/architecture/plans/design-kanban-cron.md`。仅历史/过程参考；现行规划见 `docs/architecture/plans/`（如 pi-thin-runtime、app-module-layout）。
+>
+
 > 框架一 A2 轴（自调度编排）从 L3→L4 的关键缺口。现有 `KanbanEngine`（kanban_engine.py）和 `CronScheduler`（scheduler/cron.py）已就绪，A2.3 是**接线任务**：把 H4 的 `distribution.yaml` Cron 条目 → CronScheduler → KanbanEngine 状态流转。
 
 last_synced: 2026-07-07

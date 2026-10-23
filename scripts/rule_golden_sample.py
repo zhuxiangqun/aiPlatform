@@ -17,7 +17,7 @@
 设计：
   - 守卫日常（architecture_guard.sh）跑语法级检查（1+2）——防 \| 反模式/编译错误重演，0 成本
   - --verify（检查 3）会标记"规则要求但系统未达标"的真问题（如 meta_agent/caller_verify），
-    这些是真合规缺口，应由对应 P0 修复（见 aiPlat问题总清单与行动纲领.md）
+    这些是真合规缺口，应由对应 P0 修复（见 docs/archive/aiPlat问题总清单与行动纲领.md）
 """
 from __future__ import annotations
 

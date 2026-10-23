@@ -36,7 +36,7 @@
 | 文档 | 说明 |
 |------|------|
 | [五产品 Decision Brief](plans/ai-platform-five-products-decision-brief.md) | 评审会摘要：批准范围、非目标、5 项当场决策和 Gate |
-| [plans/](plans/) | 其他规划文档（竞品对比、优化路线图、路由迁移等） |
+| [plans/](plans/) | 其他**现行**规划（优化路线图、FDE 演进、DR 等）；过期过程稿见 `docs/archive/plans-*`（C3） |
 | [五产品目标架构与 ADR 母稿](plans/ai-platform-five-products-target-architecture.md) | aiPlat / Pi / 本体 / FDE / 诊断的产品边界、数据 owner、共享契约与部署拆分原则 |
 | [五产品评审与首个纵向切片执行计划](plans/ai-platform-five-products-execution-plan.md) | 现状盘点、契约、兼容矩阵、MVP 范围、决策门与端到端验收计划 |
 

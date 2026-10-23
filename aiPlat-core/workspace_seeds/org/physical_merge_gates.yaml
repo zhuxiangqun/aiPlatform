@@ -105,7 +105,13 @@ allowed_bases:
 # Expired entries left in YAML = unreviewed debt → duty board / CI block.
 # Missing owner/reason/expires → invalid debt (not applied, still blocks posture).
 max_active_exemptions: 3
-exemptions: []
+exemptions:
+  - id: "ex-2026-10-docs-cleanup-c0-c4"
+    owner: "platform-oncall"
+    reason: "One-shot C0–C4 docs archive/disambiguate/stub-delete; move-heavy, not code inflation"
+    expires: "2026-11-06"
+    gates: ["inflation"]
+    paths: ["**"]
 # Example:
 # exemptions:
 #   - id: "ex-2026-10-migrate-x"

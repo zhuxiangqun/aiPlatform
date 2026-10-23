@@ -162,7 +162,7 @@ workspace-root/
 | 类型 | 定义 | 生命周期 | 维护频率 | 示例 |
 |------|------|:--:|:--:|------|
 | **规约（Specification）** | 强制性约束，变更需审核 | 长期维护，版本化 | 每次 PR 涉及相关领域 | CLAUDE.md、architecture-contract |
-| **设计文档（Design）** | 描述系统架构和实现细节 | 随代码更新 | 每次架构变更 | harness/index.md、ontology-design.md |
+| **设计文档（Design）** | 描述系统架构和实现细节 | 随代码更新 | 每次架构变更 | harness/index.md、`docs/knowledge-system.md`（本体/知识库权威；原 ontology-design 等 stub 已删） |
 | **指南（Guide）** | 操作步骤和最佳实践 | 随工具/流程更新 | 流程变更时 | DEPLOYMENT.md、TESTING_GUIDE.md |
 | **报告（Report）** | 某个时间点的快照 | **不维护**，过期后归档 | 永不 | ARCHITECTURE_REPORT.md、DIAGNOSTIC_REPORT.md |
 | **裁决（Decision/ADR）** | 架构决策的记录 | 永久留存 | 永不（除非决策推翻） | evaluator_calibration.md |
@@ -316,7 +316,7 @@ CI（`docs-verify.yml`）调用 **`scripts/verify_docs.py`**、**`scripts/verify
 
 ```bash
 python3 scripts/verify_docs.py
-python3 scripts/verify_doc_structure.py   # 一级目录登记；当前未进 docs-verify.yml
+python3 scripts/verify_doc_structure.py   # 一级目录登记；已接入 docs-verify.yml（S2-CI）
 python3 scripts/verify_doc_links.py       # 仅检查 DOCUMENT_SYSTEM + docs/README + manuals/README 三文件链接
 ```
 

@@ -81,7 +81,7 @@ tests/unit/test_harness/test_cc_hooks_bridge.py  ← 测试（新）
 | 文件 | 动作 |
 |---|---|
 | `aiPlat-core/docs/contracts/01-architecture-contract.md` | 追加 G6 落地记录（contracts-guard CORE_BOUNDARY binding） |
-| `docs/research/对标吸收与架构纯度评估.md` | §2.3 改善项 3 状态 ⏳ → ✅ |
+| `docs/archive/对标吸收与架构纯度评估.md` | §2.3 改善项 3 状态 ⏳ → ✅ |
 | `AIPLAT_CAPABILITIES.md` + `capability_registry.yaml` | 补登 cc_bridge 符号 |
 | `docs/standards/规范-core-run_id-trace_id-request_id.md` | 若触及 run 生命周期事件（session/hook 属会话层，视触发面决定） |
 

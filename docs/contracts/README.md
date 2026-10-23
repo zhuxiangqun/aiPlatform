@@ -98,11 +98,20 @@ Org L5（并行）
 | `FDE_WORKBENCH_CONTRACT.md` | 待评 | 架构 |
 | `FDE_GUARD_REGISTRY_LANDING.md` | v1.1 待评 | 架构 / 平台 |
 | `audit_schema.v1.yaml` | 语义冻结待评 | 平台 / harness |
-| `domain_literals_scan.md` | 初扫；分类待签字 | 记录人 + 复核 |
-| `action_branch_scan.md` | v0.2；P8 待签字 | 记录人 + 复核 |
 | `FDE_DECISION_RECORD.md` | v0.3 填写中 | **记录人**（§6 每周） |
 | `FDE_PHASE0_KICKOFF_CHECKLIST.md` | v0.1 | 检查人 / 复核人 |
 | `FDE_WORKBENCH_GUARD_AND_AUDIT_MAPPING.md` | v0.2 设计 | 平台（开工后） |
+
+### 3.1 过程留存（扫描/烟测 · 非阅读顺序主路径 · C3 降权）
+
+> 下列文件仍在 `docs/contracts/`（**未迁 archive**）：被守卫/脚本/契约正文引用，故保留路径；**不计入** §0–§2 推荐阅读顺序，验收不以本表状态句为准。
+
+| 文件 | 说明 | 建议维护人 |
+|------|------|------------|
+| `domain_literals_scan.md` | 域字面量初扫；分类待签字 | 记录人 + 复核 |
+| `action_branch_scan.md` | action 分支扫描 v0.2；P8 待签字 | 记录人 + 复核 |
+| `audit_mapping_report.md` | 审计映射扫描产物（脚本可再生） | 平台 |
+| `FDE_PHASE1_HITL_SMOKE.md` | Phase1 HITL 烟测记录 | 检查人 |
 
 ---
 

@@ -38,6 +38,35 @@
 | `plan-pipeline-engine-split.md` | 自 `docs/research/` 迁入（2026-10-23）：P2-A4 已完成专项；仅历史参考 |
 | `plan-tenant-tables-migration.md` | 自 `docs/research/` 迁入（2026-10-23）：P0-A3 已完成专项；仅历史参考 |
 | `CI合并门禁核实报告.md` | 自 `docs/research/` 迁入（2026-10-23）：2026-08 分支保护核实快照；仅历史参考 |
+| `Codex-Harness开源借鉴分析报告.md` | C1（2026-10-23）：收官借鉴分析；设计依据注释已改指向 archive |
+| `aiPlat实现完成度审计报告.md` | C1：完成度审计快照 |
+| `aiPlat改进方案.md` | C1：P0–P2 已收官方案 |
+| `aiPlat问题总清单与行动纲领.md` | C1：53/53 DONE 行动纲领 |
+| `architecture-evolution-roadmap.md` | C1：Phase 0–4 路线图收官 |
+| `prime-agent-自进化Harness核实分析.md` | C1：核实分析快照 |
+| `sba-harnesseval-执行评测双闭环.md` | C1：HarnessEval×SBA 设计记录 |
+| `sba-借鉴分析报告.md` | C1：SBA 借鉴分析 |
+| `合规保证机制分析报告.md` | C1：合规链路审计快照 |
+| `四元同步体系元审计报告.md` | C1：四元同步元审计快照 |
+| `安全体系审计报告.md` | C1：安全审计快照 |
+| `宪法测试24项违规修复方案.md` | C1：宪法违规修复已闭环记录 |
+| `对标吸收与架构纯度评估.md` | C1：吸收核验快照 |
+| `文档体系与目录结构审计报告.md` | C1：文档体系审计快照 |
+| `知识管理审计报告.md` | C1：知识管理审计（已闭环） |
+| `系统健康审计报告.md` | C1：系统健康审计快照 |
+| `规范体系审计报告.md` | C1：规范体系审计快照 |
+| `plans-comparison-four-platform-2026-07.md` | C2（2026-10-23）：原 `architecture/plans/comparison.md`；现行入口改为 `architecture/comparison.md` |
+| `plans-comprehensive-comparison-2026-07.md` | C3：原 `plans/comprehensive-comparison.md` |
+| `plans-deployment-checklist.md` | C3：原 `plans/deployment_checklist.md`（0 入链过程清单） |
+| `plans-sft-rl-pipeline.md` | C3：原 `plans/sft_rl_pipeline.md` |
+| `plans-design-runtime-extension-slot.md` | C3：原 `plans/design-runtime-extension-slot.md` |
+| `plans-design-distribution-yaml.md` | C3：原 `plans/design-distribution-yaml.md` |
+| `plans-design-kanban-cron.md` | C3：原 `plans/design-kanban-cron.md` |
+| `plans-router-migration-plan.md` | C3：原 `plans/router-migration-plan.md`（迁移已完成；方法论留存） |
+
+> **C1 复核表**：`docs/research/c1-archive-review-2026-10-23.md`（17 迁 / 3 留；未批准删除）。  
+> **C2 复核表**：`docs/research/c2-same-name-review-2026-10-23.md`（3 对消歧并存 / 1 对迁 archive）。  
+> **C3 复核表**：`docs/research/c3-contracts-plans-review-2026-10-23.md`（7 plans 迁档；contracts 扫描区降权）。
 
 > **P1-B6 归档说明（2026-08-16）**：上表 6 份历史对比文档（`aiPlat_arch_vs_hermes` / `架构对照-...` / `aiPlat-vs-hermes-vs-claude-code-vs-openclaw-architecture` / `aiPlat-17dim-comparison-v3` / `aiPlat-22dim-comparison-v4` / `multi-dimension-comparison`）的定位已由 **`docs/research/aiPlat核心能力对标报告.md`**（21 章，Claude Code / DeepSeek Harness / Hermes 核心能力对标）取代。本组文档仅作历史参考。
 

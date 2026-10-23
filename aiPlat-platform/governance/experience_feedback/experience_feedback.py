@@ -1,6 +1,6 @@
 """experience_feedback.py — L2 经验回写链路（gotchas 登记 → 两次验证 → 升级）。
 
-HarnessEval × SBA 落地（docs/research/sba-harnesseval-执行评测双闭环.md §5.5）：
+HarnessEval × SBA 落地（docs/archive/sba-harnesseval-执行评测双闭环.md §5.5）：
 评测失败不再止于"扣分"，而是按 ratchet 哲学沉淀为可升级的经验：
 
   register_failure(登记) ──▶ pending

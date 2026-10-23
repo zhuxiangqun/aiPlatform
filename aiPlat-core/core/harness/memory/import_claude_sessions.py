@@ -4,7 +4,7 @@ Claude Code 会话/记忆导入（P0-b，对标 Codex external_agent_config_migr
 把 Claude Code 会话 JSONL（~/.claude/projects/*.jsonl 或 ~/.claude/transcripts/*.jsonl）
 解析为对话轮次，写入 aiPlat MemoryManager（episodic/semantic 记忆）。
 
-设计依据：docs/research/Codex-Harness开源借鉴分析报告.md §2.2 (P0-b)
+设计依据：docs/archive/Codex-Harness开源借鉴分析报告.md §2.2 (P0-b)
 参考实现：codex-rs/tui/src/external_agent_config_migration（.claude/projects session.jsonl → memories）
 """
 

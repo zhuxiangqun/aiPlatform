@@ -354,4 +354,4 @@ class StrategyAgent:
 | 终端用户 | `UserWorkbench` | 日常 |
 | 新客户 | `OnboardingWizard` | 一次性 |
 
-> 参见：[私有控制平面 — aiPlat 四层防御体系](articles/private-control-plane.md) 了解更多 PolicyGate/ApprovalGate 的设计细节。
+> 参见：[私有控制平面 — aiPlat 四层防御体系](../../articles/private-control-plane.md)（长文）· [架构短入口](../private-control-plane.md)。

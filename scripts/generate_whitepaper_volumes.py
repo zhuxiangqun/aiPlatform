@@ -464,8 +464,7 @@ def _build_volume(
             f"{_link('docs/standards/规范-core-run_id-trace_id-request_id.md') if _rel('docs/standards/规范-core-run_id-trace_id-request_id.md').is_file() else _link('docs/architecture/slo.md')} | "
             "CAPABILITIES「可观测性」· 安全卷可交叉 |",
             f"| **数据架构** | 存什么、隔离、备份？ | "
-            f"{_link('docs/knowledge-system.md')} · "
-            f"{_link('docs/architecture/knowledge-base-architecture.md')} | "
+            f"{_link('docs/knowledge-system.md')} | "
             "CAPABILITIES「知识引擎」· 灾备计划（备份） |",
             f"| **安全嵌入视图** | Gate/信任边界如何嵌进运行时？ | "
             f"{_link('docs/security/security-architecture.md')} | "
@@ -476,7 +475,7 @@ def _build_volume(
             "`.github/workflows/` | CAPABILITIES「管理 & 质量」 |",
             f"| **技术风险与演进** | 技术债、依赖风险、路线？ | "
             f"{_link('AIPLAT_ROADMAP.md')} · "
-            f"{_link('docs/research/architecture-evolution-roadmap.md')} · "
+            f"{_link('docs/archive/architecture-evolution-roadmap.md')} · "
             f"{_link('CLAUDE.md')} §16 | 商业卷 ROADMAP 节选（非财务） |",
             f"| **开发视图** | 代码组织、模块边界、上手？ | "
             f"{_link('CLAUDE.md')} · {_link('docs/DOCUMENT_SYSTEM.md')} · "
