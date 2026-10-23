@@ -12,7 +12,7 @@ predecessor: docs-reasonable-reduction-plan-2026-10（D0–D5 已收口）
 
 # 下一轮：manuals 责任分型 + 维护区链接门禁扩面（2026-10）
 
-> **性质**：已收口方案（E0–E4）。exemption 拆除仍须 **#379 合入 main 之后**。  
+> **性质**：已收口方案（E0–E4）。#379 已合入；exemption 拆除见合入后独立提交。  
 > **前提**：责任导向 D0–D5 已收口；过程材料在 `reports/docs-governance/`。  
 > **仍不追求配额减量**；删除仅当 Q1=无且 R5=无义务。
 
@@ -90,17 +90,17 @@ predecessor: docs-reasonable-reduction-plan-2026-10（D0–D5 已收口）
 
 | 项 | 约定 |
 |----|------|
-| 现状 | `ex-2026-10-docs-cleanup-c0-c4`，`expires: 2026-11-06`，`paths: ["**"]` |
-| 时机 | **#379 合入 main 之后**再拆（合入前拆除会导致相对 `origin/main` 的 inflation 误伤本 PR） |
-| 动作 | 从 `physical_merge_gates.yaml` 删除该条；跑 `check_physical_merge_gates.py --base origin/main` 须无 exemption 且 OK |
+| 现状 | **已拆除**（#379 合入后；`exemptions: []`） |
+| 时机 | ✅ #379 合入后执行 |
+| 动作 | 从 `physical_merge_gates.yaml` 删除该条；`check_physical_merge_gates.py --base origin/main` 无 exemption 且 OK |
 | 若仍 inflation | 不得再加 `paths: ["**"]`；改为证明净增来自合理 docs 或拆更小 PR |
 
 ---
 
 ## 5. 后续
 
-**E0–E4 已收口。** 剩余运维债：**#379 合入后**拆除 physical exemption（§4）。
+**E0–E4 已收口；#379 已合入；physical exemption 已拆除（§4）。**
 
 ---
 
-*版本: 2026-10-23-e4 · **closed** · exemption 待 #379*
+*版本: 2026-10-23-e4-postmerge · **closed** · exemption cleared*
