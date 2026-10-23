@@ -6094,6 +6094,7 @@ from core.apps.fde.service.slice_evidence import (  # noqa: boundary — five-pr
     build_slice_diagnosis_report,
     get_slice_diagnosis_report,
     ingest_slice_evidence,
+    ingest_slice_evidence_from_jsonl,
     validate_slice_signoff_reports,
 )
 from core.apps.fde.service.slice_offline_policy import (  # noqa: boundary — five-products slice

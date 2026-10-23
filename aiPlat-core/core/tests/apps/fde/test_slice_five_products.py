@@ -12,6 +12,7 @@ from core.apps.fde.service.slice_evidence import (
     build_slice_diagnosis_report,
     get_slice_diagnosis_report,
     ingest_slice_evidence,
+    ingest_slice_evidence_from_jsonl,
     validate_slice_signoff_reports,
 )
 
@@ -125,3 +126,39 @@ def test_signoff_not_required_for_legacy(slice_home):
     r = validate_slice_signoff_reports({"spec_id": "legacy-customer-1"})
     assert r.get("ok") is True
     assert r.get("required") is False
+
+
+def test_ingest_from_emit_jsonl(slice_home, tmp_path):
+    """MB-05: Pi extension JSONL → ingest → diagnosis ok when run+bundle present."""
+    jl = tmp_path / "emit.jsonl"
+    lines = [
+        {
+            "v": 1,
+            "type": "emit_open",
+            "run_id": "pi-emit-1",
+            "scenario_id": "fp-internal-bundle-pi-diag-001",
+            "bundle_version": "bv-emit-1",
+            "runtime_version": "pi-thin-emit",
+            "ts": "2026-10-24T00:00:00+00:00",
+        },
+        {"v": 1, "type": "session_start", "run_id": "pi-emit-1", "ts": "2026-10-24T00:00:01+00:00"},
+        {"v": 1, "type": "before_agent_start", "run_id": "pi-emit-1", "ts": "2026-10-24T00:00:02+00:00"},
+    ]
+    jl.write_text("\n".join(json.dumps(x) for x in lines) + "\n", encoding="utf-8")
+    ing = ingest_slice_evidence_from_jsonl(path=str(jl))
+    assert ing.get("ok") is True, ing
+    assert ing.get("run_id") == "pi-emit-1"
+    rep = build_slice_diagnosis_report(
+        scenario_id="fp-internal-bundle-pi-diag-001",
+        ingest_id=ing["ingest_id"],
+    )
+    assert rep.get("status") == "ok"
+    assert rep.get("diagnosis_ok") is True
+
+
+def test_ingest_from_jsonl_missing_file(slice_home, tmp_path):
+    r = ingest_slice_evidence_from_jsonl(
+        path=str(tmp_path / "nope.jsonl"),
+        scenario_id="fp-x",
+    )
+    assert r.get("ok") is False

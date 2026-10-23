@@ -49,6 +49,7 @@ import {
   handlerPyUnderRoot,
   safeSkillDirName,
 } from "./skill_path.mjs";
+import { registerSliceEvidenceEmit } from "./slice_evidence_emit.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..");
@@ -295,6 +296,8 @@ export default function (pi: ExtensionAPI) {
   const approvalOn = registerEnterpriseApproval(pi);
   registerEnterpriseKbHealth(pi);
   registerEnterpriseL3Duty(pi);
+  // MB-05: opt-in JSONL evidence emit (AIPLAT_SLICE_EVIDENCE=1) — off by default
+  const sliceEvidenceOn = registerSliceEvidenceEmit(pi);
 
   pi.registerCommand("aiplat-status", {
     description: "Show aiPlat Pi Runtime status (app home, routing, markers)",
@@ -318,6 +321,7 @@ export default function (pi: ExtensionAPI) {
         `enterprise_tool_gate=${gateOn ? "on" : "off"}`,
         `enterprise_memory=${memoryOn ? "on" : "off"}`,
         `enterprise_approval=${approvalOn ? "on" : "off"}`,
+        `slice_evidence_emit=${sliceEvidenceOn ? "on" : "off"}`,
         ...enterpriseStatusLines(),
         ...toolProxyStatusLines(),
         ...toolGateStatusLines(),
