@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-23T13:41:50+08:00",
+  "reviewed_at": "2026-10-23T14:38:57+08:00",
   "base_ref": "origin/main",
-  "merge_base": "1c11b60fb9a4c5f635822ae9a8ba8e7a5703bbe1",
-  "diff_sha256": "f2fb57babc42b1d302bdf8aa03083ca795b430ab979f6af489d7544f78bff787",
-  "head_sha": "d3695c715fe34b20e255162a15f079f7c94e81f2",
+  "merge_base": "a2ac46193b180ae012b80747e91b28bb440add3d",
+  "diff_sha256": "61eb88260ed9c25c6a507a76b010fb97dab18c58b35ada5104650426ffd0d05b",
+  "head_sha": "e5292f76d165f02c7734c256fc99dd2f018e9e50",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Live smoke hard job; GRAPH_FRESH_REQUIRED on truth gate with cap_graph warmup; code_graph zero-diff fingerprint backfill. Local lock only."
+  "note": "e2e-docker hard; code_graph warm; physical mode=block; neutral docs excluded from max_files on mixed PRs. Local lock only."
 }
