@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-23T21:37:07+08:00",
+  "reviewed_at": "2026-10-23T21:54:55+08:00",
   "base_ref": "origin/main",
   "merge_base": "2f2f1764c2469995d8060b22f7df66cbd7269f35",
-  "diff_sha256": "66395beccef1c37defad1c1337a0af7e262506cadd3d8e4bbcaccbd36e3b50af",
-  "head_sha": "51e070f2e855e0cec0f3731dea73615ae0727f19",
+  "diff_sha256": "0319ffffdd735707a2dc80b4a9d8b1d0c9291fc9dcacbf0df06ca122f1b3fc05",
+  "head_sha": "102febd6eb4c3602bd6c92eb938931b64489a02f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock. Posture test + next-round draft; exemption remains until merge."
+  "note": "E0-E4 docs/link-gate only; archive links remain WARN by design; exemption still required until #379 merges."
 }
