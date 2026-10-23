@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-23T13:10:01+08:00",
+  "reviewed_at": "2026-10-23T13:41:50+08:00",
   "base_ref": "origin/main",
-  "merge_base": "04e6527cf063b42a4476f95104e2634cbd3532ad",
-  "diff_sha256": "3aaa398609e638326ea13e49eca583cd6390a8d4f131b6ba935659403e843632",
-  "head_sha": "9e83a874d059f84fc71e78f091dcdaf31d5ee732",
+  "merge_base": "1c11b60fb9a4c5f635822ae9a8ba8e7a5703bbe1",
+  "diff_sha256": "f2fb57babc42b1d302bdf8aa03083ca795b430ab979f6af489d7544f78bff787",
+  "head_sha": "d3695c715fe34b20e255162a15f079f7c94e81f2",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "contract \u00a774 notes fingerprint backfill; contracts-guard satisfied via system-architecture-contract. Local lock only."
+  "note": "Live smoke hard job; GRAPH_FRESH_REQUIRED on truth gate with cap_graph warmup; code_graph zero-diff fingerprint backfill. Local lock only."
 }
