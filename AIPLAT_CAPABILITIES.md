@@ -1415,11 +1415,11 @@ scan_hash: 8f9548ec24f4
 | skill_deps | harness/knowledge/skill_deps.py | ✅ | 自动同步 | 已合入 |
 | code_graph_persist | harness/knowledge/code_graph_persist.py | ✅ | SQLite 持久化 + `source_fingerprint` / `evaluate_freshness`（缺元数据或计算失败→stale） | 已合入 |
 | cap_graph_persist | harness/knowledge/cap_graph_persist.py | ✅ | 能力图谱 SQLite + `source_fingerprint` / `evaluate_freshness`（与 code_graph 分路径） | 已合入 |
-| verify_capability_truth | `scripts/verify_capability_truth.py` | ✅ | 能力声明↔源码统一入口：path/一致性/registry/矩阵全文/gap/`provides` AST ratchet；有缓存时图谱 fingerprint stale 软警告（`AIPLAT_GRAPH_FRESH_REQUIRED=1` 可硬失败）；默认 exit0 不写盘；仅 `--ci` 硬失败；软警告不单独非零 | 已合入 |
+| verify_capability_truth | `scripts/verify_capability_truth.py` | ✅ | 能力声明↔源码统一入口：path/一致性/registry/矩阵全文/gap/`provides` AST ratchet；有缓存时 fingerprint mismatch 软警告；CI 默认 `AIPLAT_GRAPH_FRESH_REQUIRED=1`（预热 cap_graph）升硬；默认 exit0 不写盘；仅 `--ci` 硬失败；软警告不单独非零 | 已合入 |
 | verify_registry_provides_ast | `scripts/verify_registry_provides_ast.py` + `scripts/baselines/registry_provides_ast_baseline.json` | ✅ | registry `provides.module` 解析 + AST 顶层符号（含 Import 再导出）；baseline 存量已清零；仅**新增**债务 `--ci` 硬失败；接线 `verify_capability_truth` | 已合入 |
 | repair_registry_provides_ast_debt | `scripts/repair_registry_provides_ast_debt.py` | ✅ | 存量 provides 债务修复（填 module / 重定位 / 删幽灵 / prose→doc）；保留 registry 分区注释；修完后 `--write-baseline` | 已合入 |
 | generate_capability_stats | `scripts/generate_capability_stats.py` + `verify_capability_consistency.check_stats_fresh` | ✅ | Phase C：CAPABILITIES `AUTO-STATS` 块由章节 ✅/⚠️ 实算生成；`--ci` 全文对账不改写；接线 truth gate | 已合入 |
-| smoke_capability_critical_paths | `scripts/smoke_capability_critical_paths.py` + `scripts/baselines/capability_critical_paths.yaml` | ✅ | Phase D：关键路径行为冒烟；static `--ci` 硬；live 需 `--live` / `vars.AIPLAT_SMOKE_LIVE`；与 CAPABILITIES ✅ 分列；contracts-guard + truth gate | 已合入 |
+| smoke_capability_critical_paths | `scripts/smoke_capability_critical_paths.py` + `scripts/baselines/capability_critical_paths.yaml` | ✅ | Phase D：关键路径行为冒烟；static `--ci` 硬（contracts-guard）；live 由 job `capability-critical-live` 以 `--require-live` 硬跑；与 CAPABILITIES ✅ 分列 | 已合入 |
 | reparse_queue | harness/knowledge/reparse_queue.py | ✅ | 自动同步 | 已合入 |
 | text_cleaner | harness/knowledge/text_cleaner.py | ✅ | 自动同步 | 已合入 |
 | doc_quality_monitor | harness/knowledge/doc_quality_monitor.py | ✅ | 自动同步 | 已合入 |

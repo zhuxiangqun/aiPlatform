@@ -792,9 +792,9 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
 
             # P3 治理闭环：新文件发现 — 在「无 stale」时也要跑，否则仅新增文件永远进不了索引。
             # 只做浅层发现（存在性 + import 依赖 + 符号）；新增过多则退回全量。
+            new_files: List[Path] = []
             if len(stale_files) <= 100:
                 try:
-                    new_files: List[Path] = []
                     for dp, _dn, fn in os.walk(_repo_root):
                         if any(x in dp for x in (".git", "__pycache__", ".venv", "node_modules")):
                             continue
@@ -834,47 +834,56 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                 except Exception as _e:  # noqa: BLE001
                     logging.getLogger("code_graph").debug("new-file discovery failed: %s", _e)
 
-            # Save incrementally updated graph (after delete/rescan and/or new-file discovery)
-            try:
-                from core.harness.knowledge.code_graph_persist import save_graph, clear_cross_edges_cache
-                save_graph(nodes, edges, _repo_root)
-                clear_cross_edges_cache()  # invalidate cross-call edges after file changes
-            except Exception:
-                logging.getLogger("code_graph").debug("Graph persistence skipped", exc_info=True)
-
-                with _CACHE_LOCK:
-                    _CACHE = {"nodes": nodes, "edges": edges, "issues": [], "_ts": _t.time()}
-                    _CACHE_ROOTS = ";".join(str(r) for r in roots)
-                import sys; sys.stderr.write("code_graph: cache valid — " + str(len(nodes)) + " nodes\n")
-                return nodes, edges, []
-
-            # 0 stale or >100 stale → if >100, force full disk rebuild below
             if len(stale_files) > 100:
                 raise Exception("Too many stale files (>100), force full rebuild")
+
+            did_change = bool(stale_files) or bool(new_files)
+            if did_change:
+                # Persist incremental updates and invalidate cross-call edges.
+                try:
+                    from core.harness.knowledge.code_graph_persist import save_graph, clear_cross_edges_cache
+                    save_graph(nodes, edges, _repo_root)
+                    clear_cross_edges_cache()
+                except Exception:
+                    logging.getLogger("code_graph").debug("Graph persistence skipped", exc_info=True)
+                    with _CACHE_LOCK:
+                        _CACHE = {"nodes": nodes, "edges": edges, "issues": [], "_ts": _t.time()}
+                        _CACHE_ROOTS = ";".join(str(r) for r in roots)
+                    import sys; sys.stderr.write("code_graph: cache valid — " + str(len(nodes)) + " nodes\n")
+                    return nodes, edges, []
             else:
-                # 0 stale: return loaded data with mtime updated
-                for nid, n in nodes.items():
-                    fpath = _repo_root / nid
-                    if fpath.exists():
-                        n["_mtime"] = fpath.stat().st_mtime
-                # Check if cross-call edges already cached in SQLite
-                from core.harness.knowledge.code_graph_persist import cross_edges_cached
-                if not cross_edges_cached():
-                    edges = [e for e in edges if e.get("kind", "import") != "calls"]
-                    loaded_files = [_repo_root / nid for nid in nodes if (_repo_root / nid).exists()]
-                    _resolve_cross_call_edges(nodes, edges, loaded_files, _repo_root)
-                    _link_frontend_to_backend(nodes, edges, loaded_files, loaded_files, _repo_root)
-                    try:
-                        from core.harness.knowledge.code_graph_persist import save_cross_edges, set_cross_edges_cached
-                        save_cross_edges(edges)
-                        set_cross_edges_cached()
-                    except Exception as e:
-                        logging.debug(str(e), exc_info=True)
-                with _CACHE_LOCK:
-                    _CACHE = {"nodes": nodes, "edges": edges, "issues": [], "_ts": _t.time()}
-                    _CACHE_ROOTS = ";".join(str(r) for r in roots)
-                import sys; sys.stderr.write("code_graph: cache valid — " + str(len(nodes)) + " nodes\n")
-                return nodes, edges, []
+                # Zero-diff hit: backfill missing source_fingerprint only (cap_graph parity).
+                # Do not clear_cross_edges_cache — avoid rewrite on every cache hit.
+                try:
+                    from core.harness.knowledge.code_graph_persist import get_meta, save_graph
+                    if not get_meta("source_fingerprint"):
+                        save_graph(nodes, edges, _repo_root)
+                except Exception:
+                    logging.getLogger("code_graph").debug(
+                        "code_graph fingerprint backfill skipped", exc_info=True)
+
+            # Return loaded/updated graph (refresh mtimes; rebuild cross edges if needed)
+            for nid, n in nodes.items():
+                fpath = _repo_root / nid
+                if fpath.exists():
+                    n["_mtime"] = fpath.stat().st_mtime
+            from core.harness.knowledge.code_graph_persist import cross_edges_cached
+            if not cross_edges_cached():
+                edges = [e for e in edges if e.get("kind", "import") != "calls"]
+                loaded_files = [_repo_root / nid for nid in nodes if (_repo_root / nid).exists()]
+                _resolve_cross_call_edges(nodes, edges, loaded_files, _repo_root)
+                _link_frontend_to_backend(nodes, edges, loaded_files, loaded_files, _repo_root)
+                try:
+                    from core.harness.knowledge.code_graph_persist import save_cross_edges, set_cross_edges_cached
+                    save_cross_edges(edges)
+                    set_cross_edges_cached()
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+            with _CACHE_LOCK:
+                _CACHE = {"nodes": nodes, "edges": edges, "issues": [], "_ts": _t.time()}
+                _CACHE_ROOTS = ";".join(str(r) for r in roots)
+            import sys; sys.stderr.write("code_graph: cache valid — " + str(len(nodes)) + " nodes\n")
+            return nodes, edges, []
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 

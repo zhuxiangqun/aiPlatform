@@ -4,14 +4,15 @@ smoke_capability_critical_paths.py — Phase D critical-path behavior smoke
 
 Separates 「行为通过」 from CAPABILITIES ✅:
   - static checks: repo file + AST symbol / substring (always available in CI)
-  - live checks: HTTP against CORE/PLATFORM (opt-in)
+  - live checks: HTTP against CORE/PLATFORM (opt-in locally;
+    CI hard gate = job capability-critical-live with --require-live)
 
 Usage:
   python3 scripts/smoke_capability_critical_paths.py           # report, exit 0
   python3 scripts/smoke_capability_critical_paths.py --ci      # static fail → exit 1
   python3 scripts/smoke_capability_critical_paths.py --live    # also attempt HTTP
   python3 scripts/smoke_capability_critical_paths.py --ci --require-live
-      # live failures also hard-fail (for full-stack CI jobs)
+      # live failures also hard-fail (capability-critical-live CI job)
 
 Env:
   AIPLAT_SMOKE_CORE_URL   default http://127.0.0.1:8002

@@ -18,11 +18,11 @@ verify_capability_truth.py — 能力声明 ↔ 源码一致性统一入口
 | check_code_doc_gap | harness 下 .py 模块 stem/parent 名在 CAPABILITIES 有登记 | 符号级存在、生产调用方、可运行 |
 | verify_registry_provides_ast | provides.module 可解析且符号在模块 AST 顶层存在；相对 baseline 的**新增**债务（存量已清零） | 生产调用方；行为可用 |
 | smoke_capability_critical_paths (static) | 关键路径清单中文件/AST/子串存在 | 服务可响应；端到端业务成功（见 `--live`） |
-| graph fingerprint (optional) | 已填充缓存且 reason=mismatch → soft（`AIPLAT_GRAPH_FRESH_REQUIRED=1` 可硬） | 无缓存；legacy 缺 fingerprint |
+| graph fingerprint (optional) | 已填充缓存且 reason=mismatch → soft；CI 默认 `AIPLAT_GRAPH_FRESH_REQUIRED=1` 升硬 | 无缓存；legacy 缺 fingerprint |
 
 明确排除（本轮不硬失败）：
   - 「有生产调用方」——不由 manifest/registry 反推
-  - 「行为可用 / 行为通过」——`smoke_capability_critical_paths --live`；与 CAPABILITIES ✅ 分列
+  - 「行为可用 / 行为通过」——`smoke_capability_critical_paths --live`（CI job `capability-critical-live --require-live`）；与 CAPABILITIES ✅ 分列
   - live_skip / 无图谱缓存 —— 不记 soft 债
 
 check_code_doc_gap 实际规则（以 scripts/check_code_doc_gap.py 为准）：

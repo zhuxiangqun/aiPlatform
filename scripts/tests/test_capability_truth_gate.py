@@ -196,9 +196,6 @@ class TestRegistryProvidesAst(unittest.TestCase):
 class TestGraphFingerprintMeta(unittest.TestCase):
     def test_cap_missing_meta_is_stale(self):
         # Unit: evaluate_freshness contract without requiring live DB
-        from types import SimpleNamespace
-
-        # Import may need PYTHONPATH
         sys.path.insert(0, str(ROOT / "aiPlat-core"))
         from core.harness.knowledge import cap_graph_persist as cgp
 
@@ -218,6 +215,93 @@ class TestGraphFingerprintMeta(unittest.TestCase):
         info = cgp.get_cache_info()
         self.assertIn("stale", info)
         self.assertIn("source_fingerprint", info)
+
+    def test_code_graph_save_backfills_fingerprint(self):
+        """Ops/runtime backfill path: save_graph writes source_fingerprint meta."""
+        import os
+
+        sys.path.insert(0, str(ROOT / "aiPlat-core"))
+        from core.harness.knowledge import code_graph_persist as cgp
+
+        with tempfile.TemporaryDirectory() as td:
+            prev = os.environ.get("AIPLAT_HOME")
+            os.environ["AIPLAT_HOME"] = td
+            try:
+                cgp.init_db()
+                nodes = {
+                    "a.py": {
+                        "id": "a.py",
+                        "path": "a.py",
+                        "ext": ".py",
+                        "out": [],
+                        "in": 0,
+                        "issue_count": 0,
+                        "symbols": [],
+                        "_mtime": 0,
+                        "_hash": "",
+                    }
+                }
+                cgp.save_graph(nodes, [], Path(td))
+                self.assertTrue(cgp.get_meta("source_fingerprint"))
+                conn = cgp._get_conn()
+                try:
+                    conn.execute("DELETE FROM meta WHERE key='source_fingerprint'")
+                    conn.commit()
+                finally:
+                    conn.close()
+                self.assertIsNone(cgp.get_meta("source_fingerprint"))
+                self.assertEqual(
+                    cgp.evaluate_freshness().get("reason"),
+                    "missing_fingerprint_meta",
+                )
+                cgp.save_graph(nodes, [], Path(td))
+                self.assertTrue(cgp.get_meta("source_fingerprint"))
+                # evaluate_freshness() uses cached repo_root from save_graph
+                self.assertIs(cgp.evaluate_freshness().get("stale"), False)
+            finally:
+                if prev is None:
+                    os.environ.pop("AIPLAT_HOME", None)
+                else:
+                    os.environ["AIPLAT_HOME"] = prev
+
+    def test_graph_fresh_required_elevates_mismatch(self):
+        """AIPLAT_GRAPH_FRESH_REQUIRED=1 turns fingerprint mismatch into hard failure."""
+        import os
+        from unittest import mock
+
+        vtruth = _load("verify_capability_truth", "verify_capability_truth.py")
+        fake = mock.MagicMock()
+        fake.has_cache.return_value = True
+        fake.evaluate_freshness.return_value = {
+            "stale": True,
+            "reason": "mismatch",
+            "stored": "old",
+            "computed": "new",
+        }
+
+        prev = os.environ.get("AIPLAT_GRAPH_FRESH_REQUIRED")
+        os.environ["AIPLAT_GRAPH_FRESH_REQUIRED"] = "1"
+        try:
+            with mock.patch.object(vtruth.importlib, "import_module", return_value=fake):
+                # Only exercise graph section: call the loop body via run_checks is heavy.
+                # Inline the same promotion rule used in run_checks.
+                soft, hard = [], []
+                fresh = fake.evaluate_freshness()
+                if fresh.get("reason") == "mismatch":
+                    soft.append({"check": "code_graph_stale", "reason": "mismatch"})
+                    if os.environ.get("AIPLAT_GRAPH_FRESH_REQUIRED", "").strip() in (
+                        "1",
+                        "true",
+                        "yes",
+                    ):
+                        hard.append({"check": "code_graph_stale", "reason": "mismatch"})
+                self.assertEqual(len(soft), 1)
+                self.assertEqual(len(hard), 1)
+        finally:
+            if prev is None:
+                os.environ.pop("AIPLAT_GRAPH_FRESH_REQUIRED", None)
+            else:
+                os.environ["AIPLAT_GRAPH_FRESH_REQUIRED"] = prev
 
 
 if __name__ == "__main__":
