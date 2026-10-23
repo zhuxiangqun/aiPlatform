@@ -197,7 +197,6 @@ jobs:
       - name: Physical merge gates (inflation + shape + testability)
         env:
           PYTHONPATH: ${{ github.workspace }}/aiPlat-core
-          AIPLAT_PHYSICAL_GATES_MODE: block
         run: |
           set -euo pipefail
           if [ -n "${{ github.event.pull_request.base.sha }}" ]; then
@@ -205,7 +204,10 @@ jobs:
           else
             BASE_REF="origin/main"
           fi
-          python3 ./scripts/check_physical_merge_gates.py --base "$BASE_REF"
+          # Block for the merge check only — do not leak into unit tests
+          # (resolve_mode prefers AIPLAT_PHYSICAL_GATES_MODE over YAML).
+          AIPLAT_PHYSICAL_GATES_MODE=block \
+            python3 ./scripts/check_physical_merge_gates.py --base "$BASE_REF"
           pytest -q \
             ./aiPlat-core/core/tests/unit/test_harness/test_physical_merge_gates.py \
             ./aiPlat-core/core/tests/unit/test_harness/test_testability_gate.py \
