@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-23T12:56:28+08:00",
+  "reviewed_at": "2026-10-23T13:10:01+08:00",
   "base_ref": "origin/main",
   "merge_base": "04e6527cf063b42a4476f95104e2634cbd3532ad",
-  "diff_sha256": "60fdc0682f976cdbca92e8293c4db733e9ce883bc5bcf411cc715ec764065f4a",
-  "head_sha": "a158dd06bb28b7de471612412696bf658e127e3d",
+  "diff_sha256": "3aaa398609e638326ea13e49eca583cd6390a8d4f131b6ba935659403e843632",
+  "head_sha": "9e83a874d059f84fc71e78f091dcdaf31d5ee732",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "cap_graph zero-diff hit backfills source_fingerprint via _save_cap_graph; CLI covers code_graph+cap_graph missing_fingerprint_meta. Local lock only."
+  "note": "contract \u00a774 notes fingerprint backfill; contracts-guard satisfied via system-architecture-contract. Local lock only."
 }
