@@ -4,9 +4,11 @@ from __future__ import annotations
 from datetime import date
 
 from core.harness.meta.physical_merge_gates import (
+    DiffStats,
     assess_exemption_debt,
     collect_diff_stats,
     evaluate_diff,
+    inflation_stats_for_caps,
     resolve_mode,
     select_profile,
 )
@@ -62,6 +64,33 @@ def test_select_profile_framework_when_all_match():
         == "framework"
     )
     assert select_profile(["aiPlat-platform/apps/foo/api.py"], cfg) == "business"
+
+
+def test_inflation_excludes_neutral_on_mixed_pr():
+    cfg = _cfg(
+        profile_neutral_globs=["AIPLAT_CAPABILITIES.md", "docs/**"],
+    )
+    stats = DiffStats(
+        files_changed=10,
+        paths=[
+            "aiPlat-core/core/harness/meta/x.py",
+            "AIPLAT_CAPABILITIES.md",
+            "docs/whitepaper/volumes/01-tech-architecture.md",
+            "docs/whitepaper/volumes/02-product-capability.md",
+        ],
+    )
+    capped = inflation_stats_for_caps(stats, cfg)
+    assert capped.files_changed == 1
+    # Pure docs: keep full count
+    docs_only = DiffStats(
+        files_changed=3,
+        paths=[
+            "AIPLAT_CAPABILITIES.md",
+            "docs/a.md",
+            "docs/b.md",
+        ],
+    )
+    assert inflation_stats_for_caps(docs_only, cfg).files_changed == 3
 
 
 def test_select_profile_neutral_globs_do_not_force_business():

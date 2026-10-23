@@ -350,27 +350,59 @@ def _match_glob(path: str, pattern: str) -> bool:
     return fnmatch.fnmatch(p, pat)
 
 
+def _non_neutral_paths(paths: Sequence[str], config: Mapping[str, Any]) -> List[str]:
+    """Paths that count toward profile selection and inflation file caps."""
+    neutral = list(config.get("profile_neutral_globs") or [])
+    out: List[str] = []
+    for p in paths:
+        if not p:
+            continue
+        if neutral and any(_match_glob(p, g) for g in neutral):
+            continue
+        out.append(p)
+    return out
+
+
 def select_profile(paths: Sequence[str], config: Mapping[str, Any], forced: str = "") -> str:
     if forced:
         return forced
     globs = list(config.get("framework_globs") or [])
-    neutral = list(config.get("profile_neutral_globs") or [])
     # Docs / CAPABILITIES / registry sync must not force business profile —
     # those files are required by workspace sync rules alongside harness changes.
-    scored = [
-        p
-        for p in paths
-        if p
-        and not (
-            neutral and any(_match_glob(p, g) for g in neutral)
-        )
-    ]
+    scored = _non_neutral_paths(paths, config)
     if not scored:
         # Pure docs/sync PR — still use business (tight) so docs-only bloat is visible.
         return "business"
     if globs and all(any(_match_glob(p, g) for g in globs) for p in scored):
         return "framework"
     return "business"
+
+
+def inflation_stats_for_caps(stats: DiffStats, config: Mapping[str, Any]) -> DiffStats:
+    """For max_files: count only non-neutral paths when the PR also has code.
+
+    Pure docs/sync PRs (all paths neutral) still use full ``files_changed`` so
+    docs-only bloat remains visible. Mixed PRs exclude CAPABILITIES/docs/registry
+    stamps from the file cap so mandatory sync cannot trip inflation alone.
+    """
+    scored = _non_neutral_paths(stats.paths, config)
+    if not scored:
+        return stats
+    if len(scored) == stats.files_changed:
+        return stats
+    return DiffStats(
+        files_changed=len(scored),
+        files_added=stats.files_added,
+        net_lines=stats.net_lines,
+        insertions=stats.insertions,
+        deletions=stats.deletions,
+        new_deps_files=stats.new_deps_files,
+        new_classes=stats.new_classes,
+        new_dirs=list(stats.new_dirs),
+        paths=list(stats.paths),
+        added_paths=list(stats.added_paths),
+        added_snippets=dict(stats.added_snippets),
+    )
 
 
 def resolve_mode(config: Mapping[str, Any], now: Optional[date] = None) -> str:
@@ -795,7 +827,8 @@ def evaluate_diff(
     profiles = cfg.get("profiles") or {}
     profile = dict(profiles.get(prof_name) or profiles.get("business") or {})
 
-    raw = check_inflation(stats, profile) + check_shape(stats, cfg, profile)
+    infl_stats = inflation_stats_for_caps(stats, cfg)
+    raw = check_inflation(infl_stats, profile) + check_shape(stats, cfg, profile)
     debt = assess_exemption_debt(cfg, now=now)
     exemptions = _active_exemptions(cfg, now=now)
     applied: List[str] = []

@@ -44,8 +44,9 @@ framework_globs:
   - "**/tests/**"
   - "**/test_*.py"
 
-# Ignored when choosing business vs framework (still counted in inflation stats).
-# Required doc/registry sync must not force the tight business profile.
+# Ignored when choosing business vs framework.
+# Mixed PRs: also excluded from inflation max_files (mandatory CAPABILITIES/docs
+# stamp sync must not alone trip the file cap). Pure docs PRs still count fully.
 profile_neutral_globs:
   - "AIPLAT_CAPABILITIES.md"
   - "docs/**"
