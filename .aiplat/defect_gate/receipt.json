@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-23T20:13:49+08:00",
+  "reviewed_at": "2026-10-23T21:19:27+08:00",
   "base_ref": "origin/main",
   "merge_base": "2f2f1764c2469995d8060b22f7df66cbd7269f35",
-  "diff_sha256": "281614190e47a4aeebfc6b9d5530ed8b1fc04d5e0d647ea215278d0aed0bda25",
-  "head_sha": "ebc87e668a056e9a73486708471844fd6a7eb851",
+  "diff_sha256": "d5fc28ae3cd4c7d61159f6f22cc19246f9eb18f157d923963805e459d555a6fb",
+  "head_sha": "97837720c12724e858d360ad44f8f085ed9bfc18",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. CI unlock is non-author GitHub Approve (defect_gate_independence.py). Docs C0-C4 cleanup review."
+  "note": "Local lock only. CI unlock is non-author GitHub Approve. Docs D0-D5 responsibility-oriented reduction; five checks N/A for docs moves (no runtime fallback/signature paths)."
 }
