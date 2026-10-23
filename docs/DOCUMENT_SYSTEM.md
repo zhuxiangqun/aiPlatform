@@ -48,30 +48,28 @@ workspace-root/
 │   ├── architecture/                 ← 架构设计
 │   │   ├── overview.md               ← 权威架构全景（唯一出处）
 │   │   ├── boundary-standard.md      ← 层边界判定标准
-│   │   ├── core-layer1-latest.md     ← Core 层最新架构详述
 │   │   ├── system-architecture-contract.md ← 跨层契约
-│   │   ├── role_system.md            ← 角色体系
+│   │   ├── core/                     ← Core 层详述
+│   │   │   └── core-layer1-latest.md
+│   │   ├── plans/                    ← 规划（非现状；含 pi-thin-runtime、五产品等）
 │   │   └── decisions/                ← 架构裁决记录 (ADR)
 │   │       ├── evaluator_calibration.md
 │   │       └── tot_reserve.md
 │   │
+│   ├── contracts/                    ← 跨仓契约（FDE / Ontology 等；索引见 README.md）
+│   │   └── README.md
+│   │
+│   ├── guides/                       ← 补充指南（如 PR 架构检查清单）
+│   │   └── PR_ARCHITECTURE_CHECKLIST.md
+│   │
 │   ├── design/                       ← 设计文档（To-Be / Plan）
-│   │   ├── ontology-design.md         ← 本体框架设计
-│   │   ├── knowledge-ontology-plan.md ← 知识本体模型
-│   │   ├── model-management.md        ← 模型管理设计
-│   │   ├── ui-design.md               ← UI 设计规范
-│   │   └── ui-implementation-status.md ← UI 实施状态
+│   │   └── ...（见目录；非现状）
 │   │
 │   ├── framework/                     ← 成熟度评估框架
-│   │   ├── aiplat-autonomy-framework.md
-│   │   ├── aiplat-complete-assessment.md
 │   │   ├── assessment-scores.json     ← 唯一评估分数源
-│   │   └── ...（8 个文件）
+│   │   └── ...
 │   │
 │   ├── security/                      ← 安全架构与测试
-│   │   ├── security-architecture.md
-│   │   ├── security-testing.md
-│   │   └── ...（4 个文件）
 │   │
 │   ├── API/                           ← API 协议与契约
 │   │   ├── api-reference.md
@@ -81,10 +79,7 @@ workspace-root/
 │   │   ├── external-allowlist.md
 │   │   └── mcp-stdio-prod-allowlist.md
 │   │
-│   ├── standards/                     ← 跨层规范（强制性）
-│   │   ├── 规范-core-run_id-trace_id-request_id.md
-│   │   ├── 规范-platform-鉴权与身份透传.md
-│   │   └── 规范-app-session_id与conversation_key.md
+│   ├── standards/                     ← 跨层规范（强制性；`规范-*.md` 多份）
 │   │
 │   ├── agents/                        ← Agent 架构设计
 │   │   └── subagent.md
@@ -98,9 +93,7 @@ workspace-root/
 │   ├── tools/                         ← 工具系统增强
 │   │   └── enhancement.md
 │   │
-│   ├── whitepaper/                    ← 白皮书
-│   │   ├── aiplat-l4-autonomy-assessment-v1.0.0.md
-│   │   └── verification-protocol.md
+│   ├── whitepaper/                    ← 白皮书（生成卷 + WHITEPAPER_SYSTEM + suite）
 │   │
 │   ├── strategy/                      ← 战略分析 / 竞品对比
 │   │   └── comparison-vs-vendors.md
@@ -122,15 +115,12 @@ workspace-root/
 │   ├── articles/                     ← 技术文章（对外发布）
 │   │   └── private-control-plane.md
 │   │
-│   ├── matrix/                        ← 🆕 能力影响矩阵
-│   │   └── capability-impact-matrix.md ← 能力变更影响矩阵
+│   ├── matrix/                        ← 能力影响矩阵
+│   │   └── capability-impact-matrix.md
 │   │
-│   ├── research/                      ← 🆕 研究报告（审计/对标/方案，含 8 份审计报告）
-│   │   ├── README.md                 ← 研究索引（报告清单 + 定位）
-│   │   ├── aiPlat核心能力对标报告.md  ← 21 章核心能力对标（Claude Code / DeepSeek Harness / Hermes）
-│   │   ├── aiPlat问题总清单与行动纲领.md ← 54 项问题总清单 + 6 Phase 行动纲领
-│   │   ├── aiPlat改进方案.md          ← 完整改进方案
-│   │   └── ...（审计/元审计报告 8 份）
+│   ├── research/                      ← 研究报告（审计/对标/方案；含收官稿与现行主报告）
+│   │   ├── README.md
+│   │   └── ...
 │   │
 │   ├── archive/                      ← 归档（历史版本，只读）
 │   │   ├── README.md                 ← 归档说明 + "仅做历史参考"免责声明
@@ -167,7 +157,7 @@ workspace-root/
 
 ## 二、文档类型与边界定义
 
-### 2.1 五类文档
+### 2.1 六类文档
 
 | 类型 | 定义 | 生命周期 | 维护频率 | 示例 |
 |------|------|:--:|:--:|------|
@@ -235,7 +225,7 @@ workspace-root/
 | Arch Guard 规则 | `arch_guard_rules.yaml` | `grep -c '^  - id:' arch_guard_rules.yaml` | 172 |
 | 本体引擎模块 | `ontology_engine/*.py` | `ls ontology_engine/*.py \| wc -l` | 23 |
 | 本体引擎总行数 | `ontology_engine/*.py` | `wc -l ontology_engine/*.py` | ~6,800 |
-| 文档目录数 | `docs/` | `ls -d docs/*/ \| wc -l` | 23 |
+| 文档目录数 | `docs/` | `ls -d docs/*/ \| wc -l` | 现算（S1 时点为 26） |
 
 ---
 
@@ -246,7 +236,7 @@ workspace-root/
 | 能力总数 | `AIPLAT_CAPABILITIES.md` | `grep -c '✅'` |
 | 能力详情 | `AIPLAT_CAPABILITIES.md` 各节 | 每行标注的文件路径 |
 | 架构边界 | `docs/architecture/boundary-standard.md` | 引用 § 编号 |
-| 架构契约 | `aiPlat-core/docs/contracts/01-08` | 文件存在 |
+| 架构契约 | `aiPlat-core/docs/contracts/`（编号契约文件） | 目录存在且含 `01`–`07` 等 |
 | 模型管理 | `aiPlat-infra/CLAUDE.md` §5.6 | `ModelManager.list_models()` |
 | 身份/权限 | `aiPlat-platform/CLAUDE.md` | JWT → tenant/actor/scopes |
 | AI 编程规则 | 各层 `CLAUDE.md` | 文件存在 |
@@ -308,9 +298,11 @@ workspace-root/
 
 ### 7.1 CI 验证（`.github/workflows/docs-verify.yml`）
 
+CI（`docs-verify.yml`）调用 **`scripts/verify_docs.py`**、**`scripts/verify_doc_structure.py`**（S2-CI，2026-10-23）及 stale 辅助脚本。
+
 | 检查项 | 类型 | 触发 |
 |--------|:--:|------|
-| by-role 链接有效性 | **阻断** | PR 触及 docs/ |
+| by-role 链接有效性 | **阻断** | PR 触及 docs/（经 `verify_docs.py`） |
 | 报告缺少"不手动编辑"头部 | **阻断** | PR 触及 docs/ |
 | archive/README.md 缺少免责声明 | **阻断** | PR 触及 docs/ |
 | 非 CAPABILITIES 文件裸写能力数 | **告警**（不阻断） | PR 触及 docs/ |
@@ -318,11 +310,14 @@ workspace-root/
 | 架构文件重复了控制平面内容 | **告警**（不阻断） | PR 触及 docs/architecture/ |
 | 设计文档超过 90 天未更新 | **告警**（不阻断） | PR 触及 docs/design/ |
 | 骨架 draft 超过 180 天 | **告警**（不阻断） | PR 全仓库 |
+| `docs/` 一级目录是否已在本文件 §一登记 | **阻断**（本地 + CI） | `python3 scripts/verify_doc_structure.py` |
 
 ### 7.2 本地验证
 
 ```bash
-python scripts/verify_docs.py
+python3 scripts/verify_docs.py
+python3 scripts/verify_doc_structure.py   # 一级目录登记；当前未进 docs-verify.yml
+python3 scripts/verify_doc_links.py       # 仅检查 DOCUMENT_SYSTEM + docs/README + manuals/README 三文件链接
 ```
 
 ### 7.3 配置阈值
@@ -345,17 +340,18 @@ python scripts/verify_docs.py
 | 3 | `docs/architecture/` 4 个文件提及控制平面模块但未引用 PCP | 低优先级 — 这些是架构全景描述，非重复内容 |
 | 4 | `docs/index.md` 存在断链引用 | 已修复（2026-07-17） |
 | 5 | `docs/ops/` 与 `docs/operations/` 平行存在 | 已合并为 `manuals/`（2026-07-17） |
+| 6 | `verify_doc_structure.py` 接入 CI | **✅ 已接线**（`docs-verify.yml`，2026-10-23） |
 
-### 8.1 自动化验证（新增）
+### 8.1 目录登记验证
 
 ```bash
-# 验证文档目录树与 DOCUMENT_SYSTEM.md 一致
-python scripts/verify_doc_structure.py
+# 验证文档目录树与 DOCUMENT_SYSTEM.md 一致（本地与 CI）
+python3 scripts/verify_doc_structure.py
 ```
 
-每次新增 `docs/` 子目录时，**必须**在本文件 §一 中登记。CI 会检测新增目录是否已登记。未登记的目录 → **阻断**。
+每次新增 `docs/` 子目录时，**必须**在本文件 §一 中登记。未登记 → `verify_doc_structure.py` 退出码 1（本地与 `docs-verify.yml` 均阻断）。
 
 ---
 
-*最后更新: 2026-07-18*
-*版本: 2.1 · 文档入口简化 — index.md 并入 README.md，architecture/ 子目录化，project/ 目录新建*
+*最后更新: 2026-10-23*
+*版本: 2.3 · S2-CI 接入 structure；S3 白书生成源去 Pi 粘贴；S4 部分 research 归档*

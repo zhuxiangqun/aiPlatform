@@ -2,7 +2,7 @@
 
 本目录集中存放 aiPlat 与 **Hermes Agent / Claude Code / OpenClaw / DeepSeek Harness / OpenAI Codex** 五家对标的研究与改进文档，供随时查询。
 
-**文档系统现状基线（2026-10）**：[文档系统现状分析-2026-10.md](文档系统现状分析-2026-10.md)（快照报告；非改造方案）。
+**文档系统现状基线（2026-10）**：[docs-system-status-analysis-2026-10.md](docs-system-status-analysis-2026-10.md)（快照报告；非改造方案）。
 
 ## 文档索引
 

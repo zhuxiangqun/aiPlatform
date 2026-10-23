@@ -555,15 +555,18 @@ def _build_volume(
                 "",
                 "### 3.3 交付边界（Pi 薄 Runtime）",
                 "",
-            ]
-            excerpt, _ = _read_excerpt(
-                _rel("docs/architecture/plans/pi-thin-runtime.md"), 8000
-            )
-            parts += [
-                excerpt,
+                "厂外默认 **Pi-only**（薄 Runtime 跑工厂产物）；企业厚度为可选 "
+                "**Pi + aiPlat 回连**，**不等于**五产品目标方案中的完整 Enterprise Runtime，"
+                "也不等于在用户机默认安装全栈。",
                 "",
-                "> 完整能力表见总白皮书第 3 章或直接打开 "
-                f"{_link('AIPLAT_CAPABILITIES.md')}。",
+                "| 权威源 | 读什么 |",
+                "|--------|--------|",
+                f"| {_link('docs/architecture/plans/pi-thin-runtime.md')} | 产品定位、轴 A/B、Thin≠Enterprise |",
+                f"| {_link('packages/aiplat-pi-runtime/README.md')} | 包入口、Pi-only / 企业回连用法 |",
+                f"| {_link('packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md')} | 企业混合阶梯（技术） |",
+                "",
+                "> 本卷**不粘贴**上述 living 正文。接线以 "
+                f"{_link('AIPLAT_CAPABILITIES.md')} 为准；完整能力表见总白皮书第 3 章。",
                 "",
             ]
         else:
@@ -689,11 +692,25 @@ def _build_volume(
         )
         parts += [excerpt, "", "### 3.6 API 参考（节选）", ""]
         excerpt, _ = _read_excerpt(_rel("docs/API/api-reference.md"), 8000)
-        parts += [excerpt, "", "### 3.7 厂外 Pi Package", ""]
-        excerpt, _ = _read_excerpt(
-            _rel("packages/aiplat-pi-runtime/README.md"), 6000
-        )
-        parts += [excerpt, ""]
+        parts += [
+            excerpt,
+            "",
+            "### 3.7 厂外 Pi Package",
+            "",
+            "默认交付为 **Pi-only** 薄包；企业混合为可选回连（KB / 工具 / Memory / Approval），"
+            "详情以包文档为准，本卷不复制 README 全文。",
+            "",
+            "| 权威源 | 读什么 |",
+            "|--------|--------|",
+            f"| {_link('packages/aiplat-pi-runtime/README.md')} | 包入口与双轴（厂外交付 / 厂内已关闭） |",
+            f"| {_link('docs/architecture/plans/pi-thin-runtime.md')} | 战略边界 living 摘要 |",
+            f"| {_link('packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md')} | 企业回连配置 |",
+            f"| {_link('packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE_DELIVERY.md')} | SKU / 验收 |",
+            "",
+            "> 「Hybrid」在此指 **Pi↔aiPlat 企业回连**，与 Skill `execution_type`、"
+            "Builder 工厂模式中的其它 “hybrid” 用语不是同一概念。",
+            "",
+        ]
         if _rel("docs/API/AttributionSchema.md").is_file():
             parts += ["### 3.8 归因协议（节选）", ""]
             excerpt, _ = _read_excerpt(
