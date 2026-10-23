@@ -21,6 +21,7 @@
 | [d4-contracts-typing-2026-10-23.md](d4-contracts-typing-2026-10-23.md) | D4 contracts：索引分型；0 迁/删 |
 | [docs-reasonable-reduction-plan-2026-10.md](docs-reasonable-reduction-plan-2026-10.md) | 责任导向方案（最终版本 · closed） |
 | [d5-closeout-2026-10-23.md](d5-closeout-2026-10-23.md) | D5 收口：方案最终版移入本目录 |
+| [docs-next-round-manuals-links-2026-10.md](docs-next-round-manuals-links-2026-10.md) | 下一轮草案：manuals 分型 + 链接扩面（**未批准**） |
 
 **research 指针**：[`docs/research/README.md`](../../docs/research/README.md) → 本 README（单链）。
 

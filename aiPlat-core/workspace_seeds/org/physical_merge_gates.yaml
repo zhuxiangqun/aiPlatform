@@ -108,7 +108,7 @@ max_active_exemptions: 3
 exemptions:
   - id: "ex-2026-10-docs-cleanup-c0-c4"
     owner: "platform-oncall"
-    reason: "One-shot C0–C4 docs archive/disambiguate/stub-delete; move-heavy, not code inflation"
+    reason: "One-shot docs C0–C4 + D0–D5 move-heavy cleanup; remove after PR merges to main (inflation vs pre-merge base is false positive)"
     expires: "2026-11-06"
     gates: ["inflation"]
     paths: ["**"]
