@@ -5,9 +5,8 @@ version: 1
 
 # warn | block — env AIPLAT_PHYSICAL_GATES_MODE overrides.
 # After block_after (UTC date), warn findings escalate to block unless exempted.
-# Pulled forward 2026-10-11: sidecar-neutral profile so docs sync no longer masks
-# framework diffs; grace shortened so block bites after one more warn cycle.
-mode: warn
+# Promoted to block 2026-10-23 (ahead of scheduled 2026-10-25 grace end).
+mode: block
 block_after: "2026-10-25"
 
 profiles:

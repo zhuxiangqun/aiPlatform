@@ -151,7 +151,7 @@ def load_physical_gates_config(
 def _builtin_fallback() -> Dict[str, Any]:
     return {
         "version": 1,
-        "mode": "warn",
+        "mode": "block",
         "block_after": "2026-10-25",
         "profiles": {
             "business": {

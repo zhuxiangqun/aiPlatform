@@ -18,7 +18,7 @@ verify_capability_truth.py — 能力声明 ↔ 源码一致性统一入口
 | check_code_doc_gap | harness 下 .py 模块 stem/parent 名在 CAPABILITIES 有登记 | 符号级存在、生产调用方、可运行 |
 | verify_registry_provides_ast | provides.module 可解析且符号在模块 AST 顶层存在；相对 baseline 的**新增**债务（存量已清零） | 生产调用方；行为可用 |
 | smoke_capability_critical_paths (static) | 关键路径清单中文件/AST/子串存在 | 服务可响应；端到端业务成功（见 `--live`） |
-| graph fingerprint (optional) | 已填充缓存且 reason=mismatch → soft；CI 默认 `AIPLAT_GRAPH_FRESH_REQUIRED=1` 升硬 | 无缓存；legacy 缺 fingerprint |
+| graph fingerprint (optional) | 已填充缓存且 reason=mismatch → soft；CI 默认 `AIPLAT_GRAPH_FRESH_REQUIRED=1` 升硬（预热 cap_graph + code_graph） | 无缓存；legacy 缺 fingerprint |
 
 明确排除（本轮不硬失败）：
   - 「有生产调用方」——不由 manifest/registry 反推
