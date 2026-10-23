@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 33
-total_capabilities: 1487
+total_capabilities: 1488
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -2543,7 +2543,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 162
+    caps_count: 163
     provides:
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
@@ -2834,6 +2834,10 @@ domains:
         module: aiPlat-core/core/apps/fde/service/slice_evidence.py
         type: function
         signature: "ingest_slice_evidence(scenario_id, run_id=, bundle_version=, events=, ...)"
+      - symbol: "ingest_slice_evidence_from_jsonl"
+        module: aiPlat-core/core/apps/fde/service/slice_evidence.py
+        type: function
+        signature: "ingest_slice_evidence_from_jsonl(path, scenario_id=, aiplat_reachable=True)"
       - symbol: "build_slice_diagnosis_report"
         module: aiPlat-core/core/apps/fde/service/slice_evidence.py
         type: function

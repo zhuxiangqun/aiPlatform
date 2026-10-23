@@ -12,6 +12,7 @@
 
 | 项 | 说明 |
 |----|------|
-| Pi 模型目录告警 | provider 对 `batiai/qwen3.5-9b` 有 “not found” 警告但 custom id 仍可跑；运维可后置整理 models.json |
+| Pi 模型目录告警 | MB-02：模板+本机 `~/.pi/agent/models.json` 已对齐；其它环境仍须拷贝 |
+| MB-05 内嵌发射 | **已接线（opt-in）**：`slice_evidence_emit.mjs` + `ingest_slice_evidence_from_jsonl` |
 | E-06 FDE→harness 直连 | Gate 2 模块化候选 |
 | 对外 E4 / Gate 2 | 未授权；本切片非客户验收 |

@@ -108,6 +108,12 @@ class SliceOfflineEvalRequest(BaseModel):
     has_revocation_channel: bool = False
 
 
+class SliceEvidenceJsonlIngestRequest(BaseModel):
+    path: str = Field(..., min_length=1)
+    scenario_id: str = ""
+    aiplat_reachable: bool = True
+
+
 @router.post("/offline/evaluate", response_model=FdeItemResponse)
 async def slice_offline_evaluate(body: SliceOfflineEvalRequest):
     from core.api.core_facade import evaluate_slice_offline_policy
@@ -118,4 +124,19 @@ async def slice_offline_evaluate(body: SliceOfflineEvalRequest):
         requested_ops=body.requested_ops,
         has_revocation_channel=body.has_revocation_channel,
     )
+    return FdeItemResponse(data=result)
+
+
+@router.post("/evidence/ingest-jsonl", response_model=FdeItemResponse)
+async def slice_evidence_ingest_jsonl(body: SliceEvidenceJsonlIngestRequest):
+    """MB-05: ingest Pi extension emit JSONL into evidence store."""
+    from core.api.core_facade import ingest_slice_evidence_from_jsonl
+
+    result = ingest_slice_evidence_from_jsonl(
+        path=body.path,
+        scenario_id=body.scenario_id,
+        aiplat_reachable=body.aiplat_reachable,
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result)
     return FdeItemResponse(data=result)

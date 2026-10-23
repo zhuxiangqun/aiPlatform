@@ -174,6 +174,67 @@ def get_slice_diagnosis_report(report_id: str) -> Dict[str, Any]:
     return data
 
 
+def ingest_slice_evidence_from_jsonl(
+    *,
+    path: str,
+    scenario_id: str = "",
+    aiplat_reachable: bool = True,
+) -> Dict[str, Any]:
+    """Ingest MB-05 Pi emit JSONL (one JSON object per line) into evidence store.
+
+    Envelope fields (run_id / bundle_version / runtime_version / scenario_id) are
+    taken from the first non-empty line that provides them; all lines become events.
+    """
+    p = Path((path or "").strip())
+    if not p.is_file():
+        return {"ok": False, "error": f"jsonl not found: {p}"}
+
+    events: List[Dict[str, Any]] = []
+    run_id = ""
+    bundle_version = ""
+    runtime_version = ""
+    sid = (scenario_id or "").strip()
+
+    for line in p.read_text(encoding="utf-8").splitlines():
+        raw = line.strip()
+        if not raw:
+            continue
+        try:
+            obj = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            return {"ok": False, "error": f"invalid jsonl: {exc}", "path": str(p)}
+        if not isinstance(obj, dict):
+            return {"ok": False, "error": "jsonl line must be object", "path": str(p)}
+        events.append(obj)
+        if not run_id:
+            run_id = str(obj.get("run_id") or "").strip()
+        if not bundle_version:
+            bundle_version = str(obj.get("bundle_version") or "").strip()
+        if not runtime_version:
+            runtime_version = str(obj.get("runtime_version") or "").strip()
+        if not sid:
+            sid = str(obj.get("scenario_id") or "").strip()
+
+    if not sid:
+        return {"ok": False, "error": "scenario_id required (arg or jsonl)"}
+    if not events:
+        return {"ok": False, "error": "empty jsonl", "path": str(p)}
+
+    assets: Dict[str, Any] = {}
+    if bundle_version:
+        assets["bundle_version"] = bundle_version
+
+    return ingest_slice_evidence(
+        scenario_id=sid,
+        run_id=run_id,
+        bundle_version=bundle_version,
+        runtime_version=runtime_version or "pi-thin-emit",
+        events=events,
+        asset_versions=assets,
+        aiplat_reachable=aiplat_reachable,
+    )
+
+
 def slice_signoff_requires_report(body: Dict[str, Any]) -> bool:
     """Whether acceptance signoff must bind a diagnosis report_id."""
     if os.getenv("AIPLAT_FDE_REQUIRE_DIAG_REPORT_FOR_SLICE", "1").strip() == "0":
