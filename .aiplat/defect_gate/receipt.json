@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-23T11:00:03+08:00",
+  "reviewed_at": "2026-10-23T12:56:28+08:00",
   "base_ref": "origin/main",
-  "merge_base": "c1eb108e565071f9d8d96641be09b6495797ccd1",
-  "diff_sha256": "aa6b020694b51b6a9a4b81016af8b9cc3a21674b0de58646b4cd3af7737a3bf4",
-  "head_sha": "5b621fa5d49da68d70d6487865ef864cd74dcd5b",
+  "merge_base": "04e6527cf063b42a4476f95104e2634cbd3532ad",
+  "diff_sha256": "60fdc0682f976cdbca92e8293c4db733e9ce883bc5bcf411cc715ec764065f4a",
+  "head_sha": "a158dd06bb28b7de471612412696bf658e127e3d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "WAL pragma retry for multi-worker e2e-docker sqlite lock; soft-debt-zero unchanged."
+  "note": "cap_graph zero-diff hit backfills source_fingerprint via _save_cap_graph; CLI covers code_graph+cap_graph missing_fingerprint_meta. Local lock only."
 }
