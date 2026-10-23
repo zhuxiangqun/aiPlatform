@@ -12,6 +12,7 @@
 | 对外 E4 | **未做**（默认非对外承诺） |
 | Gate 2 | **建议：维持 / 暂停扩大** — 缺 D13（见 §3） |
 | Gate 3 | **不建议** — 无独立部署驱动证据 |
+| 合入 main | ✅ [PR #381](https://github.com/zhuxiangqun/aiPlatform/pull/381) → `5bfdb86`（2026-10-23） |
 
 ## 2. ADR 状态
 

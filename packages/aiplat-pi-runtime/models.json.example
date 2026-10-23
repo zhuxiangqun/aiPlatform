@@ -13,6 +13,15 @@
           "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
           "contextWindow": 8192,
           "maxTokens": 2048
+        },
+        {
+          "id": "batiai/qwen3.5-9b:latest",
+          "name": "batiai/qwen3.5-9b:latest",
+          "reasoning": false,
+          "input": ["text"],
+          "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+          "contextWindow": 32768,
+          "maxTokens": 8192
         }
       ]
     }
