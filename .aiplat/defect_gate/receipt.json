@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T05:08:07+08:00",
+  "reviewed_at": "2026-10-24T05:14:10+08:00",
   "base_ref": "origin/main",
-  "merge_base": "840e3fbd7cf1e4d1596116514029513c421e10c4",
+  "merge_base": "92ae1bdc5b6588a604f4b9848080c9d06c05bc95",
   "diff_sha256": "887518391e6761c20217c69cf9f5cd4464cf8115b1c3f949f010d1d1d2f83b17",
-  "head_sha": "f47a2873f7b6ef518fac187b2d8bce9763e1e5ec",
+  "head_sha": "6b70ea17085a1449462623c2a2fd3ee4d12eb6fc",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Five-products first slice f47a287. Evidence transport ok≠diagnosis_ok; fp- signoff requires report presence only (ACCEPTANCE_CRITERIA). Offline deny is decision=deny not HTTP fail. Residual: callers must not treat default acceptance_decision=accepted as diagnosis health. Gate2 still held (no D13)."
+  "note": "Five-products first slice after merge main(#380). Evidence transport ok≠diagnosis_ok; fp- signoff requires report presence only. Gate2 still held (no D13)."
 }
