@@ -605,3 +605,15 @@ reports/aiPlat_设计文档与实现一致性复审_Round2.docx,aiPlat 设计文
 reports/aiPlat_设计文档与实现一致性复审_Round3.docx,aiPlat 设计文档与实现一致性审查报告,保留（历史审计证据，退出现行导航）,中高,Round2–13/专项复审的时间点证据；不代表当前状态，但其审查结果、结论与审计记录有追溯价值。建议仅在确认留存政策后决定冷归档或删除。,2026-04-16,,11468,0,未由 Markdown 链接扫描发现；JSON/脚本/外部引用另核
 reports/aiPlat_设计文档与实现一致性复审_Round5.docx,aiPlat 设计文档与实现一致性复审报告（Round5）,保留（历史审计证据，退出现行导航）,中高,Round2–13/专项复审的时间点证据；不代表当前状态，但其审查结果、结论与审计记录有追溯价值。建议仅在确认留存政策后决定冷归档或删除。,2026-04-16,,9486,0,未由 Markdown 链接扫描发现；JSON/脚本/外部引用另核
 reports/aiPlat_设计文档与实现一致性审查报告.docx,aiPlat 设计文档与实现一致性审查报告,保留（对照同主题根级稿后裁决）,中,审计体系 README/日志将其列为生成报告；与根级同主题 DOCX 存在明显重叠，需比对其与 audit_findings.json 的一致性。,2026-04-15,,17462,0,未由 Markdown 链接扫描发现；JSON/脚本/外部引用另核
+docs/research/docs-system-status-analysis-2026-10.md→reports/docs-governance/,文档治理过程纸,移动（D1·只移不删）,高,D0+D1 2026-10-23; 唯一索引 reports/docs-governance/README.md,,,,,
+docs/research/docs-cleanup-plan-2026-10.md→reports/docs-governance/,文档治理过程纸,移动（D1·只移不删）,高,D0+D1 2026-10-23,,,,,
+docs/research/c1-archive-review-2026-10-23.md→reports/docs-governance/,文档治理过程纸,移动（D1·只移不删）,高,D0+D1 2026-10-23; R5未核实故不删,,,,,
+docs/research/c2-same-name-review-2026-10-23.md→reports/docs-governance/,文档治理过程纸,移动（D1·只移不删）,高,D0+D1 2026-10-23,,,,,
+docs/research/c3-contracts-plans-review-2026-10-23.md→reports/docs-governance/,文档治理过程纸,移动（D1·只移不删）,高,D0+D1 2026-10-23,,,,,
+docs/research/c4-delete-review-2026-10-23.md→reports/docs-governance/,文档治理过程纸,移动（D1·只移不删）,高,D0+D1 2026-10-23,,,,,
+docs/research/Hermes调研底稿.md→docs/archive/,调研底稿,迁archive（D2）,中,结论在对标主报告; 无验收MUST,,,,,
+docs/research/LLM自动选择策略审计报告.md→docs/archive/,审计快照,迁archive（D2）,中,已闭环; 无验收MUST,,,,,
+docs/research/记忆系统审计报告.md→docs/archive/,审计快照,迁archive（D2）,中,无操作/验收MUST; 留存走archive,,,,,
+docs/archive/doc_full_scan_report.md,历史扫描快照,修链（D3）,中,断链≠无留存; 指向 aiPlat-core/docs/ARCHITECTURE_STATUS.md; 删除0,,,,,
+docs/contracts/README.md,契约索引,索引分型（D4）,高,约束/操作/过程/签收四分；0迁0删,,,,,
+docs/research/docs-reasonable-reduction-plan-2026-10.md→reports/docs-governance/,责任导向方案,移动最终版（D5）,高,status=closed; research单指针,,,,,

@@ -25,13 +25,15 @@
 | 1 | [`ORG_L5_CHARTER.md`](./ORG_L5_CHARTER.md) | L5 验收定义、非目标、阶段、话术 |
 | 2 | [`ORG_L5_PILOT_SPEC.md`](./ORG_L5_PILOT_SPEC.md) | it-ops 试点故事、状态机、KPI、API 草图 |
 | 3 | [`ORG_L5_DECISION_RECORD.md`](./ORG_L5_DECISION_RECORD.md) | D1–D5；**§5 D6–D10**；**§7 D-V**；**§8 D-E**；**§9 D-H** |
-| 4 | [`ORG_L5_PHASE0_KICKOFF_CHECKLIST.md`](./ORG_L5_PHASE0_KICKOFF_CHECKLIST.md) | **勾完才准 Phase 1 改码** |
-| 5 | [`ORG_CHANNEL_INTERFACE_CHARTER.md`](./ORG_CHANNEL_INTERFACE_CHARTER.md) | **Phase C**：渠道入站 / Interface / 岗位 / 用量 |
-| 6 | [`ORG_M4_SIGNOFF_PACK.md`](./ORG_M4_SIGNOFF_PACK.md) | **C5 签收包**；≠ 客户已签字 |
-| 7 | [`ORG_K_WAVE_CHARTER.md`](./ORG_K_WAVE_CHARTER.md) | **K 波 K0–K5**；不称规则已自动固化 |
-| 8 | [`ORG_V_WAVE_CHARTER.md`](./ORG_V_WAVE_CHARTER.md) | **V 波 V0–V5**。不称 M4/L5 |
-| 9 | [`ORG_EDGE_ROLLBACK_CHARTER.md`](./ORG_EDGE_ROLLBACK_CHARTER.md) | **E 波 E2**。带快照的 merge 边可撤回 |
-| 10 | [`ORG_H_WAVE_CHARTER.md`](./ORG_H_WAVE_CHARTER.md) | **H 波 H0–H5**。H4 沙箱开、live 拒；H5 人批才登记 |
+| 4 | [`ORG_CHANNEL_INTERFACE_CHARTER.md`](./ORG_CHANNEL_INTERFACE_CHARTER.md) | **Phase C**：渠道入站 / Interface / 岗位 / 用量 |
+| 5 | [`ORG_M4_SIGNOFF_PACK.md`](./ORG_M4_SIGNOFF_PACK.md) | **C5 签收包**；≠ 客户已签字（**留存义务 · 不删**） |
+| 6 | [`ORG_K_WAVE_CHARTER.md`](./ORG_K_WAVE_CHARTER.md) | **K 波 K0–K5**；不称规则已自动固化 |
+| 7 | [`ORG_V_WAVE_CHARTER.md`](./ORG_V_WAVE_CHARTER.md) | **V 波 V0–V5**。不称 M4/L5 |
+| 8 | [`ORG_EDGE_ROLLBACK_CHARTER.md`](./ORG_EDGE_ROLLBACK_CHARTER.md) | **E 波 E2**。带快照的 merge 边可撤回 |
+| 9 | [`ORG_H_WAVE_CHARTER.md`](./ORG_H_WAVE_CHARTER.md) | **H 波 H0–H5**。H4 沙箱开、live 拒；H5 人批才登记 |
+| 10 | [`ORG_S_WAVE_CHARTER.md`](./ORG_S_WAVE_CHARTER.md) | **S 波**商业短板；不称 M4 |
+
+> Phase 0 开工勾选（已宣布）见 **§3.1**，不占主阅读顺序。
 
 **注意**：本文 L5 ≠ 工厂 `release_engine` L5；≠ Action 阶梯 P2-L5 命名。
 
@@ -47,12 +49,12 @@
 | 2 | [`FDE_WORKBENCH_CONTRACT.md`](./FDE_WORKBENCH_CONTRACT.md) | 控制台边界、两类 Action、否定清单、**路径事实** |
 | 3 | [`FDE_GUARD_REGISTRY_LANDING.md`](./FDE_GUARD_REGISTRY_LANDING.md) | 接到现有 guard/Registry/Store；**§2.0 路径修正** |
 | 4 | [`audit_schema.v1.yaml`](../../aiPlat-core/core/harness/schemas/audit_schema.v1.yaml) | 审计字段、Eval 门、变更面白名单 |
-| 5 | [`domain_literals_scan.md`](./domain_literals_scan.md) + [`action_branch_scan.md`](./action_branch_scan.md) | 存量量化与分类 |
-| 6 | [`FDE_DECISION_RECORD.md`](./FDE_DECISION_RECORD.md) | 六问、假设、依赖、生效门禁 |
-| 7 | [`FDE_PHASE0_KICKOFF_CHECKLIST.md`](./FDE_PHASE0_KICKOFF_CHECKLIST.md) | **勾完即开工** |
-| 8 | [`FDE_WORKBENCH_GUARD_AND_AUDIT_MAPPING.md`](./FDE_WORKBENCH_GUARD_AND_AUDIT_MAPPING.md) | Phase 0/1 实施设计骨架（开工后） |
-| 9 | [`audit_mapping_report.md`](./audit_mapping_report.md) | Phase 1 dry-run：schema↔ActionStore 分类报告 |
-| 10 | [`FDE_PHASE1_HITL_SMOKE.md`](./FDE_PHASE1_HITL_SMOKE.md) | Phase 1 HITL 冒烟（自动化 + 手工） |
+| 5 | [`FDE_DECISION_RECORD.md`](./FDE_DECISION_RECORD.md) | 六问、假设、依赖、生效门禁 |
+| 6 | [`FDE_WORKBENCH_GUARD_AND_AUDIT_MAPPING.md`](./FDE_WORKBENCH_GUARD_AND_AUDIT_MAPPING.md) | Phase 0/1 实施设计骨架 |
+| 7 | [`FDE_PHASE5_CUSTOMER_ONBOARDING.md`](./FDE_PHASE5_CUSTOMER_ONBOARDING.md) | **现行**新客户接入操作清单（配置驱动） |
+| 8 | [`FDE_ESCORT_EXIT_CHECKLIST.md`](./FDE_ESCORT_EXIT_CHECKLIST.md) | **现行**护航退出条件清单 |
+
+> 开工勾选 / 扫描 / 烟测过程纸见 **§3.1**（路径仍在本目录；D4 已移出主阅读顺序）。
 
 ---
 
@@ -79,39 +81,53 @@ Org L5（并行）
 
 ---
 
-## 3. 文件一览与维护责任
+## 3. 文件一览与责任分型（D4 · 2026-10-23）
+
+> 本批 **0 迁 archive、0 删除**。能指认：**约束 / 现行操作 / 过程留存 / 签收**。
+
+### 3.0 约束正文 / Charter / 现行操作
 
 | 文件 | 状态 | 建议维护人 |
 |------|------|------------|
 | **`ORG_L5_CHARTER.md`** | **v1.5 · P0–P4** | 架构 |
 | **`ORG_L5_PILOT_SPEC.md`** | **v1.0 · 规格冻结** | 架构 / 试点 Owner |
 | **`ORG_L5_DECISION_RECORD.md`** | **v1.4 · D1–D10 + D-V + D-E + D-H** | **记录人**（每周） |
-| **`ORG_L5_PHASE0_KICKOFF_CHECKLIST.md`** | **v1.0 · Phase 1 已宣布** | 检查人 / 复核人 |
 | **`ORG_CHANNEL_INTERFACE_CHARTER.md`** | **v1.5 · C5 签收包就绪** | 架构 / Org Owner |
-| **`ORG_M4_SIGNOFF_PACK.md`** | **v1.0 · 包就绪，未签字** | 试点 Owner |
 | **`ORG_K_WAVE_CHARTER.md`** | **v1.6 · K5 落地；F2 直写已拒绝** | 架构 / Org Owner |
 | **`ORG_V_WAVE_CHARTER.md`** | **v1.0 · V0–V5 已落地；不称 M4** | 架构 / Org Owner |
 | **`ORG_EDGE_ROLLBACK_CHARTER.md`** | **v1.0 · E2 已落地；不称 M4** | 架构 / Org Owner |
-| **`ORG_H_WAVE_CHARTER.md`** | **v1.0 · H0–H5 已落地；H4 沙箱开、live 拒；H5 人批才登记** | 架构 / Org Owner |
+| **`ORG_H_WAVE_CHARTER.md`** | **v1.0 · H0–H5 已落地** | 架构 / Org Owner |
+| **`ORG_S_WAVE_CHARTER.md`** | **v1.0 · S 波** | 架构 / Org Owner |
 | **`ORG_L5_RUNBOOK.md`** | **现场运行** | 试点 Owner |
 | 演进方案 | v1.1+ 待评 | 架构 |
 | `FDE_WORKBENCH_CONTRACT.md` | 待评 | 架构 |
 | `FDE_GUARD_REGISTRY_LANDING.md` | v1.1 待评 | 架构 / 平台 |
 | `audit_schema.v1.yaml` | 语义冻结待评 | 平台 / harness |
 | `FDE_DECISION_RECORD.md` | v0.3 填写中 | **记录人**（§6 每周） |
-| `FDE_PHASE0_KICKOFF_CHECKLIST.md` | v0.1 | 检查人 / 复核人 |
-| `FDE_WORKBENCH_GUARD_AND_AUDIT_MAPPING.md` | v0.2 设计 | 平台（开工后） |
+| `FDE_WORKBENCH_GUARD_AND_AUDIT_MAPPING.md` | v0.2 设计 | 平台 |
+| `FDE_PHASE5_CUSTOMER_ONBOARDING.md` | **现行操作** | 交付 / FDE |
+| `FDE_ESCORT_EXIT_CHECKLIST.md` | **现行操作** | 交付 / FDE |
+| `FDE_USAGE_SIGNAL_MINIMAL_SET.md` | 用量信号约束（代码引用） | 平台 |
 
-### 3.1 过程留存（扫描/烟测 · 非阅读顺序主路径 · C3 降权）
+### 3.1 过程留存（路径保留 · 阅读降权 · C3+D4）
 
-> 下列文件仍在 `docs/contracts/`（**未迁 archive**）：被守卫/脚本/契约正文引用，故保留路径；**不计入** §0–§2 推荐阅读顺序，验收不以本表状态句为准。
+> 仍在 `docs/contracts/`（**未迁 archive、未删**）：有契约/代码/手册入链或开工证据价值。  
+> **不计入** §0–§1 推荐阅读主路径；验收不以本表状态句为准。
 
-| 文件 | 说明 | 建议维护人 |
-|------|------|------------|
-| `domain_literals_scan.md` | 域字面量初扫；分类待签字 | 记录人 + 复核 |
-| `action_branch_scan.md` | action 分支扫描 v0.2；P8 待签字 | 记录人 + 复核 |
-| `audit_mapping_report.md` | 审计映射扫描产物（脚本可再生） | 平台 |
-| `FDE_PHASE1_HITL_SMOKE.md` | Phase1 HITL 烟测记录 | 检查人 |
+| 文件 | 责任分型 | 建议维护人 |
+|------|----------|------------|
+| `domain_literals_scan.md` | 扫描过程纸 | 记录人 + 复核 |
+| `action_branch_scan.md` | 扫描过程纸 | 记录人 + 复核 |
+| `audit_mapping_report.md` | 扫描产物（可再生） | 平台 |
+| `FDE_PHASE1_HITL_SMOKE.md` | 烟测过程纸 | 检查人 |
+| `FDE_PHASE0_KICKOFF_CHECKLIST.md` | 开工勾选（已宣布；留存证据） | 检查人 / 复核人 |
+| `ORG_L5_PHASE0_KICKOFF_CHECKLIST.md` | 开工勾选（已宣布；留存证据） | 检查人 / 复核人 |
+
+### 3.2 签收包（留存义务 · 默认不删）
+
+| 文件 | 说明 |
+|------|------|
+| `ORG_M4_SIGNOFF_PACK.md` | C5 签收包就绪 ≠ 客户已签字；**Q2 有留存义务** |
 
 ---
 

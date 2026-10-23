@@ -6,7 +6,7 @@ language: zh-CN
 status: draft
 draft_date: 2026-10-23
 revised: 2026-10-23-r3
-based_on: docs/research/docs-system-status-analysis-2026-10.md
+based_on: reports/docs-governance/docs-system-status-analysis-2026-10.md
 ---
 
 # aiPlat / Pi 文档减量清理方案（2026-10）
@@ -157,7 +157,7 @@ contracts 须区分：
 | **`docs/reports/`** | 计入 **仓库总数**；是否计入 **维护区** 由 C0 按 §4 清单决定，**禁止仅凭目录标签一刀切** | R3/R5 查生成约定与手工维护属性 |
 | **仓库根 `reports/`** | **不计入**本方案两个数量指标 | R3/R5 **必须**检查：`audit_findings*.json`、`audit_changelog*.md`、复审 DOCX、相关生成/审计脚本与外部留存要求 |
 
-[`docs/reports/README.md`](../reports/README.md) 将目录概括为自动生成快照，但清单中 `AIPLAT_ARCHITECTURE_REPORT.md` 又标为「手动整理综合架构报告」——目录标签不可靠。
+[`docs/reports/README.md`](../../docs/reports/README.md) 将目录概括为自动生成快照，但清单中 `AIPLAT_ARCHITECTURE_REPORT.md` 又标为「手动整理综合架构报告」——目录标签不可靠。
 
 根目录 `reports/README` 或变更日志若暗示「删除不影响完整性」，**禁止**据此批量删除；须按本表做 R3/R5。
 
@@ -516,4 +516,6 @@ README / by-role `index.md` 同名：**不在** C2 队列。
 
 ---
 
-*方案版本: 2026-10-23-r3+C0b · C0 已冻结 · **C1–C4 已执行并收口**（C4：路径 A 删 4 stub；无路径 B；无 C5）*
+*方案版本: 2026-10-23-r3+C0b · C0 已冻结 · **C1–C4 已执行并收口**（C4：路径 A 删 4 stub；无路径 B；无 C5）*  
+
+**后续**：责任导向合理减量见 [`docs/research/docs-reasonable-reduction-plan-2026-10.md`](../../docs/research/docs-reasonable-reduction-plan-2026-10.md)（D0+D1 已执行；过程材料落点为本目录）。

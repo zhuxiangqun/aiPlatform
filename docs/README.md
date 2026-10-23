@@ -69,16 +69,17 @@
 ## 目录速查
 
 > **统计口径**：`docs/**/*.md`，排除路径含 `node_modules`。  
-> **时点**：`2026-10-23T12:01:38Z`（C0–C4 清理收口后现算）。静态计数会再漂。  
-> **维护区**（C0 公式，同口径）：**187**（≠ 下表合计；合计含 archive / volumes / 生成快照）。
+> **时点**：`2026-10-23`（责任导向 D0–D5 收口后现算）。静态计数会再漂。  
+> **维护区**（C0 公式，同口径）：**178**（≠ 下表合计；合计含 archive / volumes / 生成快照）。  
+> 说明：`docs/` 树内总数 **253**（相对 C0–C4 收口 259：−7 移至根 `reports/docs-governance/`；D2 迁 archive 不减树内总数）。文件仍在仓库。
 
 | 目录 | 内容 | 文件数 | 维护？ |
 |------|------|:---:|:---:|
-| `archive/` | 历史文档 | 57 | **否**（只读） |
-| `contracts/` | 跨仓契约（FDE / Ontology 等） | 43 | 是（索引见 README；扫描区已降权） |
+| `archive/` | 历史文档 | 60 | **否**（只读） |
+| `contracts/` | 跨仓契约（FDE / Ontology 等） | 43 | 是（索引见 README；§3 责任分型） |
 | `manuals/` | 操作手册 | 38 | 是 |
 | `architecture/` | 架构设计 + ADR + 规划 | 29 | 核心参考是；plans 非现状 |
-| `research/` | 研究报告 / 对标 / 方案 / 清理复核 | 23 | 现行主报告 + 方案；收官见 archive |
+| `research/` | 对标 / 验收钉死规划 | 14 | 主报告 + factory/G6/tier；治理过程见根 reports |
 | `whitepaper/` | 白皮书体系与分卷 | 16 | 生成物按 suite；体系文档是 |
 | `standards/` | 跨层强制性规范 | 10 | 是 |
 | `framework/` | 成熟度评估框架 | 6 | 评估时更新 |
@@ -93,7 +94,7 @@
 | `matrix/` | 能力影响矩阵 | 1 | 是 |
 | `guides/` | 补充指南（如 PR 架构检查清单） | 1 | 按需 |
 | 根下散文件（5）+ 其余 1 文件专题 | knowledge-system 等 | 5+专题 | 按需 |
-| **合计** | | **259** | |
+| **合计** | | **253** | |
 
 顶层子目录数：**26**（含上表各簇）。
 
@@ -102,7 +103,7 @@
 ## 文档治理
 
 - **[DOCUMENT_SYSTEM.md](DOCUMENT_SYSTEM.md)**：文档系统宪法（分类、边界、验证）
-- **[research/docs-system-status-analysis-2026-10.md](research/docs-system-status-analysis-2026-10.md)**：文档系统现状快照（2026-10；事实与机制诊断，非改造方案）
+- **[reports/docs-governance/](../reports/docs-governance/README.md)**：文档治理过程材料唯一索引（C0–C4 / D0–D5；已移出 `docs/research/`）
 - **[AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md)**：能力声明/接线索引（计数见该文件；不等于行为验收）
 - **[whitepaper/aiplat-platform-status-whitepaper.md](whitepaper/aiplat-platform-status-whitepaper.md)**：平台现状白皮书（**从 CAPABILITIES 生成**，`--check` 防过期；非手写第二清单）
 
@@ -117,7 +118,7 @@
 
 ---
 
-*最后更新: 2026-10-23（S1 入口对齐；C0–C4 文档清理收口后计数刷新）*
+*最后更新: 2026-10-23（D0–D5 收口；`docs/` 253 / maint 178；archive 60 / research 14）*
 
 ## 按阅读目的查找
 

@@ -1,7 +1,7 @@
 # 历史文档归档
 
-> 存档时间: 2026-07-01  
-> 原因: 文档精简 — 合并重复文档，淘汰过期文档  
+> 归档区最近更新: 2026-10-23（含 C1–C3 / D2 迁入；机制创建可追溯至 2026-07）  
+> 原因: 历史与收官材料只读留存 — 不以本目录为现行约束  
 
 **重要声明：归档内容仅做历史参考，不构成当前系统的约束。如有冲突，以 `docs/architecture/` 和 `CLAUDE.md` 为准。**
 
@@ -25,7 +25,7 @@
 | `INTEGRATION_TESTS_SUMMARY.md` | 集成测试完成总结（历史 As-Is 快照） |
 | `MESSAGING_INTEGRATION_REPORT.md` | Messaging 模块集成测试完成报告（历史 As-Is 快照） |
 | `TESTCONTAINERS_FINAL_REPORT.md` | Testcontainers 集成测试完成报告（历史 As-Is 快照） |
-| `doc_full_scan_report.md` | 文档一致性全量扫描报告（历史快照，单次执行结果） |
+| `doc_full_scan_report.md` | 文档一致性全量扫描报告（历史快照）；D3 已修链至 `aiPlat-core/docs/ARCHITECTURE_STATUS.md` |
 | `Roadmap-全量目标-Gap清单.md` | 基于 aiPlat_arch_vs_hermes 的全量目标 Gap 清单（历史） |
 | `agent_platform_execution_plan.md` | 基于差距评分表的可执行落地计划（历史规划） |
 | `agent_platform_gap_analysis.md` | 对标 OpenClaw/Hermes/Superagent 差距评分表初版（历史） |
@@ -64,9 +64,9 @@
 | `plans-design-kanban-cron.md` | C3：原 `plans/design-kanban-cron.md` |
 | `plans-router-migration-plan.md` | C3：原 `plans/router-migration-plan.md`（迁移已完成；方法论留存） |
 
-> **C1 复核表**：`docs/research/c1-archive-review-2026-10-23.md`（17 迁 / 3 留；未批准删除）。  
-> **C2 复核表**：`docs/research/c2-same-name-review-2026-10-23.md`（3 对消歧并存 / 1 对迁 archive）。  
-> **C3 复核表**：`docs/research/c3-contracts-plans-review-2026-10-23.md`（7 plans 迁档；contracts 扫描区降权）。
+> **C1–C3 复核表**（已移动）：见 [`reports/docs-governance/`](../../reports/docs-governance/README.md)（C1 17 迁 / 3 留；C2 消歧；C3 plans 迁档）。  
+> **D2（2026-10-23）**：`Hermes调研底稿.md` / `LLM自动选择策略审计报告.md` / `记忆系统审计报告.md` 自 `docs/research/` 迁入；`plan-app-factory-*` / `plan-g6` / `plan-tier` **保留 research**（验收 MUST 或代码设计依据）。  
+> **D3（2026-10-23）**：archive 相对链扫描 broken 1→0；`doc_full_scan_report.md` **修链**（未删）。
 
 > **P1-B6 归档说明（2026-08-16）**：上表 6 份历史对比文档（`aiPlat_arch_vs_hermes` / `架构对照-...` / `aiPlat-vs-hermes-vs-claude-code-vs-openclaw-architecture` / `aiPlat-17dim-comparison-v3` / `aiPlat-22dim-comparison-v4` / `multi-dimension-comparison`）的定位已由 **`docs/research/aiPlat核心能力对标报告.md`**（21 章，Claude Code / DeepSeek Harness / Hermes 核心能力对标）取代。本组文档仅作历史参考。
 
