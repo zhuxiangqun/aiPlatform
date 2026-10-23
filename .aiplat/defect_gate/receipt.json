@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-23T14:51:28+08:00",
+  "reviewed_at": "2026-10-23T20:13:49+08:00",
   "base_ref": "origin/main",
-  "merge_base": "a2ac46193b180ae012b80747e91b28bb440add3d",
-  "diff_sha256": "b091615e050bbc8a5c6a3c1187b8cbc65bd6b13c9db150ed50b67810a62cd2fe",
-  "head_sha": "094812089aefdabb271a1ca96c6d003482ddd37b",
+  "merge_base": "2f2f1764c2469995d8060b22f7df66cbd7269f35",
+  "diff_sha256": "281614190e47a4aeebfc6b9d5530ed8b1fc04d5e0d647ea215278d0aed0bda25",
+  "head_sha": "ebc87e668a056e9a73486708471844fd6a7eb851",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Also isolate PHYSICAL_GATES_MODE from pytest. Local lock only."
+  "note": "Local lock only. CI unlock is non-author GitHub Approve (defect_gate_independence.py). Docs C0-C4 cleanup review."
 }
