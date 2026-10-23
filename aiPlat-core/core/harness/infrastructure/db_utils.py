@@ -18,6 +18,7 @@ import asyncio
 import logging
 import os
 import sqlite3
+import time
 from contextlib import contextmanager
 from typing import Generator, Optional
 
@@ -26,6 +27,22 @@ logger = logging.getLogger("aiplat.db_utils")
 _DEFAULT_DB_PATH = os.path.join(
     os.path.expanduser("~"), ".aiplat", "aiplat_executions.sqlite3",
 )
+
+
+def _pragma_wal(conn: sqlite3.Connection, *, attempts: int = 8) -> None:
+    """Set WAL with retry — gunicorn multi-worker boot races on first open."""
+    last: Optional[BaseException] = None
+    for i in range(max(1, attempts)):
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+            return
+        except sqlite3.OperationalError as e:
+            last = e
+            if "locked" not in str(e).lower():
+                raise
+            time.sleep(0.05 * (i + 1))
+    if last is not None:
+        raise last
 
 
 def ensure_wal_enabled(db_path: Optional[str] = None) -> None:
@@ -38,8 +55,8 @@ def ensure_wal_enabled(db_path: Optional[str] = None) -> None:
     if not os.path.exists(path):
         return
     try:
-        conn = sqlite3.connect(path)
-        conn.execute("PRAGMA journal_mode=WAL")
+        conn = sqlite3.connect(path, timeout=3.0)
+        _pragma_wal(conn)
         conn.close()
         logger.debug("WAL enabled for %s", path)
     except Exception:
@@ -70,7 +87,7 @@ def get_db_connection(
     conn.row_factory = sqlite3.Row
 
     if wal:
-        conn.execute("PRAGMA journal_mode=WAL")
+        _pragma_wal(conn)
     conn.execute(f"PRAGMA busy_timeout={busy_timeout}")
 
     try:
@@ -111,7 +128,7 @@ def create_persistent_conn(
     conn.row_factory = sqlite3.Row
 
     if wal:
-        conn.execute("PRAGMA journal_mode=WAL")
+        _pragma_wal(conn)
     conn.execute(f"PRAGMA busy_timeout={busy_timeout}")
 
     return conn
