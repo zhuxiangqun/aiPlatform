@@ -1,0 +1,5 @@
+Error: Failed to load extension "/Users/apple/workdata/person/zy/aiPlatform/reports/five-products/slice-fp-internal-bundle-pi-diag-001/bundle/extensions/aiplat-app.ts": Failed to load extension: Cannot find module './json_body.mjs'
+Require stack:
+- /Users/apple/workdata/person/zy/aiPlatform/reports/five-products/slice-fp-internal-bundle-pi-diag-001/bundle/extensions/enterprise_kb.ts
+Warning: Model "batiai/qwen3.5-9b:latest" not found for provider "ollama". Using custom model id.
+Hint: Start without extensions using "pi -ne".

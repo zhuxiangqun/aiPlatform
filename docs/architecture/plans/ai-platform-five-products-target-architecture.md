@@ -160,7 +160,13 @@ LLM Provider、数据库、向量、缓存、观测 SDK、MCP 和外部连接器
 | Eval/Test/Diagnostic Report | 诊断 | FDE/aiPlat 链接与摘要，不覆盖原始运行事实 |
 | 源系统运行日志/业务事实 | 各源产品 | 诊断可保留受控遥测与证据引用 |
 
-## 8. 五类核心契约
+## 8. 六类核心契约
+
+> 含 Identity/Policy。落地字段与首切片路径以 [落地方案](./ai-platform-five-products-landing-plan.md) 为准。
+
+### 8.0 Identity / Policy Contract
+
+Tenant/Actor 或 service identity、scopes、audience、request/trace ID、product/environment、签发源与过期。最终授权在目标服务执行；禁止仅信任客户端传入的身份头。
 
 ### 8.1 Agent Bundle Contract
 
@@ -209,7 +215,9 @@ products/
 shared/{contracts,sdk,identity,observability,security,connectors}/
 ```
 
-现有目录先保留，通过 facade、依赖守卫和 owner 文档建立逻辑归属。模块稳定且有独立迁移收益后再移动；每次移动需有行为回归、导入兼容策略和回滚方案。
+`shared/identity` **仅契约与 SDK**；默认实现在 aiPlat，不构成第六产品。
+
+现有目录先保留，通过 facade、依赖守卫和 owner 文档建立逻辑归属。模块稳定且有独立迁移收益后再移动；每次移动需有行为回归、导入兼容策略和回滚方案。落地步骤见 [落地方案](./ai-platform-five-products-landing-plan.md)。
 
 现有代码归属方向：
 

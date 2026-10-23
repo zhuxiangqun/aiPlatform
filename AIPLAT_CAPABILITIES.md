@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2348
+total_capabilities: 2360
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -1500,6 +1500,13 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| slice_signoff_requires_report | `core/apps/fde/service/slice_evidence.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_slice_offline_policy | `core/apps/fde/service/slice_offline_policy.py` | ✅ | 自动同步 | 已合入 |
+| validate_slice_signoff_reports | `core/apps/fde/service/slice_evidence.py` | ✅ | 自动同步 | 已合入 |
+| get_slice_diagnosis_report | `core/apps/fde/service/slice_evidence.py` | ✅ | 自动同步 | 已合入 |
+| build_slice_diagnosis_report | `core/apps/fde/service/slice_evidence.py` | ✅ | 自动同步 | 已合入 |
+| ingest_slice_evidence | `core/apps/fde/service/slice_evidence.py` | ✅ | 自动同步 | 已合入 |
+| export_slice_bundle | `core/apps/fde/service/slice_bundle_export.py` | ✅ | 自动同步 | 已合入 |
 | handoff_card_payload | `core/harness/digital_human/operational_handoff.py` | ✅ | 自动同步 | 已合入 |
 | append_handoff_action | `core/harness/digital_human/operational_handoff.py` | ✅ | 自动同步 | 已合入 |
 | classify_operational_handoff | `core/harness/digital_human/operational_handoff.py` | ✅ | 自动同步 | 已合入 |
@@ -2750,6 +2757,11 @@ scan_hash: 8f9548ec24f4
 | fde_quality_summary | apps/fde/api/fde_quality_summary.py | ✅ | 自动同步 | 已合入 |
 | wiki_field_security | api/routers/wiki_field_security.py | ✅ | 自动同步 | 已合入 |
 | fde_acceptance | apps/fde/api/fde_acceptance.py | ✅ | 自动同步 | 已合入 |
+| five_products_slice_bundle_export | `core/apps/fde/service/slice_bundle_export.py` + `apps/fde/api/fde_slice.py` + CoreFacade | ✅ | 首切片：复用 export_pi_bundle 的场景 Bundle 导出（thin）；permission_claims 不可单独授权；生成物适用：已接线（切片路径） | 已合入 |
+| five_products_slice_evidence_mvp | `core/apps/fde/service/slice_evidence.py` + `fde_slice` ingest/report + signoff 绑定 | ✅ | 首切片诊断 MVP：Pi+aiPlat 证据→ok/unknown/stale/fail；fp- 验收须 evidence_report_ids；生成物适用：已接线 | 已合入 |
+| five_products_slice_offline_policy | `core/apps/fde/service/slice_offline_policy.py` + `POST /fde/slice/offline/evaluate` | ✅ | 对齐 pi-thin-offline TTL/denied_ops；故障注入#4；生成物适用：已接线 | 已合入 |
+| export_pi_bundle_mjs_helpers | `scripts/export_pi_bundle.py` | ✅ | 导出时复制 extensions/*.mjs（修复 live Pi 缺 json_body.mjs）；生成物适用：已接线 | 已合入 |
+| five_products_slice_offline_policy | `core/apps/fde/service/slice_offline_policy.py` + `POST /fde/slice/offline/evaluate` | ✅ | 对齐 pi-thin-offline：TTL/denied_ops 可审计 deny；生成物适用：待接线 | 已合入 |
 | wiki_health_quality | api/routers/wiki_health_quality.py | ✅ | 自动同步 | 已合入 |
 | wiki_writeback | api/routers/wiki_writeback.py | ✅ | 自动同步 | 已合入 |
 | fde_trends | apps/fde/api/fde_trends.py | ✅ | 自动同步 | 已合入 |
@@ -3250,7 +3262,7 @@ scan_hash: 8f9548ec24f4
 | 知识引擎（本体） | 375 | 9 | 384 |
 | RAG 检索 | 57 | 0 | 57 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 168 | 0 | 168 |
+| Agent 系统 | 175 | 0 | 175 |
 | Skill 系统 | 171 | 0 | 171 |
 | 安全与治理 | 90 | 0 | 90 |
 | 可观测性 | 43 | 0 | 43 |
@@ -3267,7 +3279,7 @@ scan_hash: 8f9548ec24f4
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 44 | 0 | 44 |
 | Arena & 调度 | 7 | 0 | 7 |
-| 平台治理 | 126 | 0 | 126 |
+| 平台治理 | 131 | 0 | 131 |
 | Infra 基础设施 | 16 | 0 | 16 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
@@ -3290,7 +3302,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2338** | **10** | **2348** |
+| **总计** | **2350** | **10** | **2360** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

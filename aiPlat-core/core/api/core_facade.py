@@ -6087,6 +6087,18 @@ from core.apps.fde.service.security_preflight import (  # noqa: boundary
     save_preflight_run as save_fde_security_preflight_run,
     summarize_security_dry_run as summarize_fde_security_dry_run,
 )
+from core.apps.fde.service.slice_bundle_export import (  # noqa: boundary — five-products slice
+    export_slice_bundle,
+)
+from core.apps.fde.service.slice_evidence import (  # noqa: boundary — five-products slice
+    build_slice_diagnosis_report,
+    get_slice_diagnosis_report,
+    ingest_slice_evidence,
+    validate_slice_signoff_reports,
+)
+from core.apps.fde.service.slice_offline_policy import (  # noqa: boundary — five-products slice
+    evaluate_slice_offline_policy,
+)
 from core.apps.fde.service.evolve_proposal_gate import (  # noqa: boundary
     approve_evolve_proposal as approve_fde_evolve_proposal,
     apply_evolve_proposal as apply_fde_evolve_proposal,

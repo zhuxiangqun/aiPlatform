@@ -105,12 +105,18 @@ allowed_bases:
 # Expired entries left in YAML = unreviewed debt → duty board / CI block.
 # Missing owner/reason/expires → invalid debt (not applied, still blocks posture).
 max_active_exemptions: 3
-exemptions: []
+exemptions:
+  - id: "ex-2026-10-five-products-first-slice"
+    owner: "architecture-owner"
+    reason: "First five-products slice L1–WP5 SSOT + thin wiring + evidence pack (single landing; not bloat). Aggregate inflation findings have no path — paths must be ** to apply."
+    expires: "2026-11-06"
+    gates: ["inflation"]
+    paths: ["**"]
 # Example:
 # exemptions:
 #   - id: "ex-2026-10-migrate-x"
 #     owner: "platform-oncall"
 #     reason: "one-shot migration"
 #     expires: "2026-10-20"
-#     gates: ["inflation", "shape"]
+#     gates: ["inflation"]
 #     paths: ["aiPlat-platform/apps/foo/**"]

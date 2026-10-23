@@ -217,6 +217,10 @@ def export_bundle(
     else:
         _die(f"enterprise L3 duty extension missing: {RUNTIME_EXT_L3_DUTY}")
 
+    # Shared ESM helpers imported by aiplat-app / enterprise_*.ts (e.g. json_body.mjs)
+    for mjs in sorted((RUNTIME_PKG / "extensions").glob("*.mjs")):
+        shutil.copy2(mjs, ext_dir / mjs.name)
+
     fixtures = out / "fixtures"
     fixtures.mkdir(parents=True, exist_ok=True)
     if RUNTIME_HANDLER.is_file():

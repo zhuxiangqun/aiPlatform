@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 33
-total_capabilities: 1480
+total_capabilities: 1487
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -2543,7 +2543,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 155
+    caps_count: 162
     provides:
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
@@ -2826,6 +2826,30 @@ domains:
         module: aiPlat-core/core/apps/fde/service/security_preflight.py
         type: function
         signature: "list_preflight_runs(limit)"
+      - symbol: "export_slice_bundle"
+        module: aiPlat-core/core/apps/fde/service/slice_bundle_export.py
+        type: function
+        signature: "export_slice_bundle(scenario_id, app_home, out_dir=, runtime_mode=thin)"
+      - symbol: "ingest_slice_evidence"
+        module: aiPlat-core/core/apps/fde/service/slice_evidence.py
+        type: function
+        signature: "ingest_slice_evidence(scenario_id, run_id=, bundle_version=, events=, ...)"
+      - symbol: "build_slice_diagnosis_report"
+        module: aiPlat-core/core/apps/fde/service/slice_evidence.py
+        type: function
+        signature: "build_slice_diagnosis_report(scenario_id, ingest_id=, ...)->report_id+status"
+      - symbol: "get_slice_diagnosis_report"
+        module: aiPlat-core/core/apps/fde/service/slice_evidence.py
+        type: function
+        signature: "get_slice_diagnosis_report(report_id)"
+      - symbol: "validate_slice_signoff_reports"
+        module: aiPlat-core/core/apps/fde/service/slice_evidence.py
+        type: function
+        signature: "validate_slice_signoff_reports(body)->ok for fp-/for_slice signoff"
+      - symbol: "evaluate_slice_offline_policy"
+        module: aiPlat-core/core/apps/fde/service/slice_offline_policy.py
+        type: function
+        signature: "evaluate_slice_offline_policy(last_bundle_validated_at, requested_ops=, ...)"
       - symbol: "refresh_handover_from_usage"
         module: aiPlat-core/core/apps/fde/service/customer_success.py
         type: function
@@ -3155,6 +3179,10 @@ domains:
         module: aiPlat-core/core/harness/digital_human/operational_handoff.py
         type: function
         signature: "Structured payload for APIs/UI (route + label)."
+      - symbol: slice_signoff_requires_report
+        type: function
+        signature: 'Whether acceptance signoff must bind a diagnosis report_id.'
+        module: aiPlat-core/core/apps/fde/service/slice_evidence.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"

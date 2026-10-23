@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "model": "ollama/batiai/qwen3.5-9b:latest",
+  "run_at": "2026-10-23T15:52:06.253326+00:00",
+  "bundle": "/Users/apple/workdata/person/zy/aiPlatform/reports/five-products/slice-fp-internal-bundle-pi-diag-001/bundle",
+  "token": "AIPLAT_PI_OK",
+  "evidence_file": "RUNLOG/pi-live.out"
+}
