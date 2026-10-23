@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-23T00:19:01+08:00",
+  "reviewed_at": "2026-10-23T09:28:55+08:00",
   "base_ref": "origin/main",
-  "merge_base": "81121f22ec9e03d0abcb9d6250c92ad847150825",
-  "diff_sha256": "3c7eef7fa4437e5b8900d761370d8872549e4016596ce56a1684785f860ed3a5",
-  "head_sha": "2418d05fc028506241f850806e65041d0c87ba53",
+  "merge_base": "c1eb108e565071f9d8d96641be09b6495797ccd1",
+  "diff_sha256": "292cccce20bbeed47f71b706529283b6305023f64428a235605a2076a53c32eb",
+  "head_sha": "aba979f716b419f2587681a09089bda48b78db5b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Phase D only on main after #372 squash merge."
+  "note": "Stock AST/basename cleared; soft=0. Live HTTP still opt-in. Graph soft only on fingerprint mismatch. Registry trailing TestUnregisteredFeature garbage stripped."
 }
