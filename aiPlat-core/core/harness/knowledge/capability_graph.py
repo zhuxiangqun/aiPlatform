@@ -234,6 +234,15 @@ def build_capability_graph() -> CapabilityGraphResult:
                 else:
                     _finalize(nodes, edges)
                     _resolve_cross_namespace_edges(nodes, edges)
+                    # Legacy DBs may lack source_fingerprint; backfill on read-hit
+                    # so evaluate_freshness is not stuck on missing_fingerprint_meta.
+                    try:
+                        from core.harness.knowledge.cap_graph_persist import get_meta
+                        if not get_meta("source_fingerprint"):
+                            _save_cap_graph(nodes, edges)
+                            return _cache_and_return(nodes, edges, freshly_built=True)
+                    except Exception:
+                        logging.debug("cap_graph fingerprint backfill skipped", exc_info=True)
                     return _cache_and_return(nodes, edges, freshly_built=False)
     except Exception as e:
         logging.debug(str(e), exc_info=True)
