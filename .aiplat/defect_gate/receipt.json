@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-23T14:38:57+08:00",
+  "reviewed_at": "2026-10-23T14:51:28+08:00",
   "base_ref": "origin/main",
   "merge_base": "a2ac46193b180ae012b80747e91b28bb440add3d",
-  "diff_sha256": "61eb88260ed9c25c6a507a76b010fb97dab18c58b35ada5104650426ffd0d05b",
-  "head_sha": "e5292f76d165f02c7734c256fc99dd2f018e9e50",
+  "diff_sha256": "b091615e050bbc8a5c6a3c1187b8cbc65bd6b13c9db150ed50b67810a62cd2fe",
+  "head_sha": "094812089aefdabb271a1ca96c6d003482ddd37b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "e2e-docker hard; code_graph warm; physical mode=block; neutral docs excluded from max_files on mixed PRs. Local lock only."
+  "note": "Also isolate PHYSICAL_GATES_MODE from pytest. Local lock only."
 }
