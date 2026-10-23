@@ -1,7 +1,7 @@
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 33 domains | 1477 capabilities (caps_count) | 1477 symbols (provides)
+> Version: 1.1.0 | 33 domains | 1480 capabilities (caps_count) | 1480 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -11,7 +11,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| platform-governance | §二十一 平台治理 | 11 | Phase D critical-path static smoke in CI |
+| platform-governance | §二十一 平台治理 | 12 | Phase D critical-path static smoke in CI |
 
 ### aiPlat-infra/infra/management/model/config_loader.py
 
@@ -36,7 +36,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| management-and-quality | §二十五 管理 & 质量 | 101 | 诊断仪表盘 |
+| management-and-quality | §二十五 管理 & 质量 | 102 | 诊断仪表盘 |
 | observability | §八 可观测性 | 23 | 诊断仪表盘 |
 
 ### aiPlat-management/frontend/src/pages/Infra
@@ -68,7 +68,7 @@
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | memory-subsystem | §二 记忆子系统 | 59 | L6 记忆指标展示 |
-| platform-governance | §二十一 平台治理 | 11 | 仪表盘治理指标 |
+| platform-governance | §二十一 平台治理 | 12 | 仪表盘治理指标 |
 | l6-autonomy | §二十七 L6 自主能力 | 5 | _get_goal_decomposition_stats |
 
 ### aiPlat-platform/apps/fde/api/fde_diagnostics_v2.py
@@ -81,7 +81,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 317 | FDE Pipeline 状态查询 |
+| harness-execution-engine | §一 Harness 执行引擎 | 316 | FDE Pipeline 状态查询 |
 
 ### aiPlat-platform/apps/fde/api/fde_quality_summary.py
 
@@ -106,7 +106,7 @@
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | /model-override/moa 端点 |
-| runtime-intervention | §十九 运行时干预 | 64 | /model-override 端点 |
+| runtime-intervention | §十九 运行时干预 | 66 | /model-override 端点 |
 
 ### core/api/routers/agents.py
 
@@ -118,13 +118,13 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 317 | PipelineEngine 调度入口 |
+| harness-execution-engine | §一 Harness 执行引擎 | 316 | PipelineEngine 调度入口 |
 
 ### core/api/routers/diagnostics.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| runtime-intervention | §十九 运行时干预 | 64 | adoption-metrics 附带 Howl 干预次数 |
+| runtime-intervention | §十九 运行时干预 | 66 | adoption-metrics 附带 Howl 干预次数 |
 
 ### core/api/routers/mcp.py
 
@@ -221,12 +221,12 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 317 | 自身消费 PipelineStageConfig + StageRunner |
+| harness-execution-engine | §一 Harness 执行引擎 | 316 | 自身消费 PipelineStageConfig + StageRunner |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | _run_moa 路由模式 |
 | model-infrastructure | §九 模型基础设施 | 7 | Pipeline 阶段模型选择 |
 | memory-subsystem | §二 记忆子系统 | 59 | _crystallize_skill → save_task_skill |
 | arena-and-scheduling | §二十 Arena & 调度 | 6 | Pipeline routing_mode dispatch |
-| management-and-quality | §二十五 管理 & 质量 | 101 | Pipeline 质量评分 |
+| management-and-quality | §二十五 管理 & 质量 | 102 | Pipeline 质量评分 |
 | orchestration-layer | §二十六 编排层 | 5 | Pipeline → Swarm/Debate/Roundtable/MoA dispatch |
 | orchestration-system | §二十四 编排系统 | 4 | Pipeline 编排 |
 | agent-system | §五 Agent 系统 | 155 | Pipeline 调度 Agent |
@@ -253,7 +253,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 317 | ReActLoop 运行时 |
+| harness-execution-engine | §一 Harness 执行引擎 | 316 | ReActLoop 运行时 |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | ReActLoop MoA interception |
 | memory-subsystem | §二 记忆子系统 | 59 | build_context() + save_interaction() 调用 |
 
@@ -313,7 +313,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| platform-governance | §二十一 平台治理 | 11 | 本体引擎治理 |
+| platform-governance | §二十一 平台治理 | 12 | 本体引擎治理 |
 | document-intelligence | §十五 文档智能 | 3 | OntologyEngine 文档输入 |
 
 ### core/harness/optimization/goal_executor.py
@@ -352,7 +352,7 @@
 |--------|---------|:---:|--------|
 | model-infrastructure | §九 模型基础设施 | 7 | sys_llm_generate → best_model_for_purpose |
 | skill-system | §六 Skill 系统 | 187 | _guard_messages → PII masking |
-| runtime-intervention | §十九 运行时干预 | 64 | 最佳模型选择 |
+| runtime-intervention | §十九 运行时干预 | 66 | 最佳模型选择 |
 
 ### core/harness/syscalls/moa_executor.py
 
@@ -393,7 +393,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| platform-governance | §二十一 平台治理 | 11 | Governance cron 定时任务 |
+| platform-governance | §二十一 平台治理 | 12 | Governance cron 定时任务 |
 | l6-autonomy | §二十七 L6 自主能力 | 5 | DiscoveryListener 启动 |
 | deploy-and-operations | §十 部署与运维 | 3 | 启动时挂载 cron + WakeScheduler |
 | extension-and-learning | §十一 扩展与学习 | 10 | GoalExecutor + WakeScheduler 启动 |
@@ -403,19 +403,19 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| platform-governance | §二十一 平台治理 | 11 | Phase C 统计表生成入口 |
+| platform-governance | §二十一 平台治理 | 12 | Phase C 统计表生成入口 |
 
 ### scripts/verify_capability_truth.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| platform-governance | §二十一 平台治理 | 11 | 统一门禁调用 audit_registry / run_smoke |
+| platform-governance | §二十一 平台治理 | 12 | 统一门禁调用 audit_registry / run_smoke |
 
 ### scripts/verify_doc_sync.sh
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| platform-governance | §二十一 平台治理 | 11 | doc sync / pre-commit / contracts-guard 向下传 --ci |
+| platform-governance | §二十一 平台治理 | 12 | doc sync / pre-commit / contracts-guard 向下传 --ci |
 
 ## Capability-to-Consumer Impact
 
@@ -486,7 +486,7 @@
 - **core/harness/infrastructure/integration.py** — 8 Gate 统一出口
 - **core/server.py** — BackpressureMiddleware 挂载 + backpressure_stats 诊断
 
-### §一 Harness 执行引擎 (317 caps)
+### §一 Harness 执行引擎 (316 caps)
 
 - **core/api/routers/builder_project_service.py** — PipelineEngine 调度入口
 - **core/harness/execution/pipeline_engine.py** — 自身消费 PipelineStageConfig + StageRunner
@@ -531,7 +531,7 @@
 - **core/server.py** — DiscoveryListener 启动
 - **aiPlat-platform/apps/fde/api/fde_dashboard_v2.py** — _get_goal_decomposition_stats
 
-### §二十五 管理 & 质量 (101 caps)
+### §二十五 管理 & 质量 (102 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 质量评分
 - **aiPlat-management/frontend/src/pages/Diagnostics** — 诊断仪表盘
@@ -593,7 +593,7 @@
 - **core/harness/execution/pipeline_engine.py** — Pipeline 编排
 - **core/api/routers/pipeline_execution.py** — fork/forks 端点经 CoreFacade 取 store
 
-### §二十一 平台治理 (11 caps)
+### §二十一 平台治理 (12 caps)
 
 - **core/server.py** — Governance cron 定时任务
 - **core/harness/ontology_engine/engine.py** — 本体引擎治理
@@ -610,7 +610,7 @@
 - **core/harness/knowledge/domain_router.py** — 域分类 → 检索范围确定
 - **aiPlat-platform/apps/fde/api/fde_ask.py** — FDE 追问 → 检索增强
 
-### §十九 运行时干预 (64 caps)
+### §十九 运行时干预 (66 caps)
 
 - **core/api/routers/adapters.py** — /model-override 端点
 - **core/harness/syscalls/llm.py** — 最佳模型选择

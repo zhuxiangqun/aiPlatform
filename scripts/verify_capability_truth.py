@@ -16,13 +16,14 @@ verify_capability_truth.py — 能力声明 ↔ 源码一致性统一入口
 | registry caps_count / 头体 | 登记表内部自洽（caps_count==len(provides)） | 符号在源码中存在 |
 | 矩阵临时全文 diff | 工作树矩阵 ≡ 当前 registry 生成结果 | 消费者边在运行时真实 |
 | check_code_doc_gap | harness 下 .py 模块 stem/parent 名在 CAPABILITIES 有登记 | 符号级存在、生产调用方、可运行 |
-| verify_registry_provides_ast | provides.module 可解析且符号在模块 AST 顶层存在；相对 baseline 的**新增**债务 | 生产调用方；行为可用；baseline 内存量 |
+| verify_registry_provides_ast | provides.module 可解析且符号在模块 AST 顶层存在；相对 baseline 的**新增**债务（存量已清零） | 生产调用方；行为可用 |
 | smoke_capability_critical_paths (static) | 关键路径清单中文件/AST/子串存在 | 服务可响应；端到端业务成功（见 `--live`） |
+| graph fingerprint (optional) | 已填充缓存且 reason=mismatch → soft（`AIPLAT_GRAPH_FRESH_REQUIRED=1` 可硬） | 无缓存；legacy 缺 fingerprint |
 
 明确排除（本轮不硬失败）：
   - 「有生产调用方」——不由 manifest/registry 反推
   - 「行为可用 / 行为通过」——`smoke_capability_critical_paths --live`；与 CAPABILITIES ✅ 分列
-  - registry provides 存量 AST 债务（baseline 内）——仅新增债务 --ci 硬失败
+  - live_skip / 无图谱缓存 —— 不记 soft 债
 
 check_code_doc_gap 实际规则（以 scripts/check_code_doc_gap.py 为准）：
   - 扫描路径: aiPlat-core/core/harness/**/*.py（跳过 __init__.py、tests、__pycache__）
@@ -36,8 +37,10 @@ check_code_doc_gap 实际规则（以 scripts/check_code_doc_gap.py 为准）：
 
 from __future__ import annotations
 
+import importlib
 import importlib.util
 import io
+import os
 import sys
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -178,14 +181,17 @@ def run_checks(*, ci: bool = False) -> Dict[str, Any]:
     ast_result = vast.audit_registry()
     baseline = vast.load_baseline()
     novel = vast.new_findings(ast_result, baseline)
-    soft.append({
-        "check": "registry_provides_ast",
-        "findings": len(ast_result["finding_ids"]),
-        "baseline": len(baseline.get("finding_ids") or []),
-        "new": len(novel),
-        "counts": ast_result["counts"],
-        "note": "stock debt in baseline is soft; only NEW ids fail --ci",
-    })
+    n_findings = len(ast_result["finding_ids"])
+    n_base = len(baseline.get("finding_ids") or [])
+    if n_findings or novel:
+        soft.append({
+            "check": "registry_provides_ast",
+            "findings": n_findings,
+            "baseline": n_base,
+            "new": len(novel),
+            "counts": ast_result["counts"],
+            "note": "stock debt in baseline is soft; only NEW ids fail --ci",
+        })
     if novel:
         hard.append({
             "check": "registry_provides_ast_new",
@@ -194,21 +200,65 @@ def run_checks(*, ci: bool = False) -> Dict[str, Any]:
             "note": "fix registry or shrink baseline after cleanup",
         })
 
-    # 7) Phase D critical-path static smoke (live HTTP stays opt-in / soft here)
+    # 7) Phase D critical-path static smoke (live HTTP stays opt-in; live_skip alone ≠ soft)
     vsmoke = _load("smoke_capability_critical_paths", "smoke_capability_critical_paths.py")
     smoke = vsmoke.run_smoke(live=False)
-    soft.append({
-        "check": "critical_path_smoke_static",
-        "static_fail": smoke["static_fail"],
-        "live_skip": smoke["live_skip"],
-        "note": "static wiring only; live HTTP via smoke_capability_critical_paths --live",
-    })
     if smoke["static_fail"]:
+        soft.append({
+            "check": "critical_path_smoke_static",
+            "static_fail": smoke["static_fail"],
+            "live_skip": smoke["live_skip"],
+            "note": "static wiring only; live HTTP via smoke_capability_critical_paths --live",
+        })
         hard.append({
             "check": "critical_path_smoke_static",
             "static_fail": smoke["static_fail"],
             "sample": [r for r in smoke["results"] if r.get("ok") is False][:10],
         })
+
+    # 8) Graph cache freshness — only when a populated cache exists (no cache ≠ debt)
+    for label, mod_file, pkg in (
+        ("code_graph", "code_graph_persist.py", "code_graph_persist"),
+        ("cap_graph", "cap_graph_persist.py", "cap_graph_persist"),
+    ):
+        try:
+            gpath = (
+                ROOT
+                / "aiPlat-core"
+                / "core"
+                / "harness"
+                / "knowledge"
+                / mod_file
+            )
+            if not gpath.is_file():
+                continue
+            # Prefer package import so sibling imports resolve
+            sys.path.insert(0, str(ROOT / "aiPlat-core"))
+            mod = importlib.import_module(f"core.harness.knowledge.{pkg}")
+            if not getattr(mod, "has_cache", lambda: False)():
+                continue
+            fresh = mod.evaluate_freshness()
+            # Only fingerprint *mismatch* is debt. missing_fingerprint_meta on legacy
+            # caches is "unknown", not CI soft debt (runtime still marks stale).
+            if fresh.get("reason") == "mismatch":
+                soft.append({
+                    "check": f"{label}_stale",
+                    "reason": "mismatch",
+                    "note": "populated graph cache fingerprint mismatch; rebuild before claiming synced",
+                })
+                if os.environ.get("AIPLAT_GRAPH_FRESH_REQUIRED", "").strip() in (
+                    "1",
+                    "true",
+                    "yes",
+                ):
+                    hard.append({
+                        "check": f"{label}_stale",
+                        "reason": "mismatch",
+                        "note": "AIPLAT_GRAPH_FRESH_REQUIRED=1",
+                    })
+        except Exception:
+            # Optional: missing AIPLAT_HOME / import deps must not inflate soft or fail --ci
+            continue
 
     return {
         "hard_failures": hard,

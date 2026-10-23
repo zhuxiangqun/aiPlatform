@@ -3,19 +3,19 @@ title: "aiPlat 安全与治理白皮书"
 volume_id: security-governance
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-22T15:50:16Z"
+generated_at: "2026-10-23T01:27:30Z"
 audience: "CISO、合规、风控"
 core_question: "如何可信可控？"
 priority: P0
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30"
-caps_sha256: "5c0c84038c9ebca0d9be755333662f7df72d26b1321affa623cea099a614d949"
+caps_sha256: "c64a0fd016c225ec1b1ba9b8fa66ae9b220c388567607a2e77fed379c61d310e"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=security-governance suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=5c0c84038c9ebca0d9be755333662f7df72d26b1321affa623cea099a614d949 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=security-governance suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=c64a0fd016c225ec1b1ba9b8fa66ae9b220c388567607a2e77fed379c61d310e scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 安全与治理白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 如何可信可控？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-22T15:50:16Z` |
-| CAPABILITIES sha256 | `5c0c84038c9e…` |
+| 生成时间 (UTC) | `2026-10-23T01:27:30Z` |
+| CAPABILITIES sha256 | `c64a0fd016c2…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -209,7 +209,7 @@ rules:
 | coupling_metrics | `scripts/coupling_metrics.py` + `scripts/baselines/coupling_baseline.json` | ✅ | 耦合度量基线：AST import-degree → avg_degree/max_degree(non-agg)/top-20 + baseline ratchet（roadmap §0.2） | 待合入 |
 | §94b BOUNDARY 覆盖 | `scripts/architecture_guard.sh` | ✅ | harness 48 一级子目录 BOUNDARY.yaml 全量覆盖检查（roadmap §0.3，缺则 FAIL） | 待合入 |
 | ManagedPolicy | `aiPlat-platform/auth/schemas_policy.py` | ✅ | 企业远程托管策略 (managed 键本地不可覆盖, P1-A6) | 已合入 |
-| PIIDetector | `harness/infrastructure/pii_detector.py` | ✅ | 自动同步 | 已合入 |
+| PIIDetector | `aiPlat-core/core/services/pii_detector.py` | ✅ | 自动同步 | 已合入 |
 | prompt_auditor | harness/audit/prompt_auditor.py | ✅ | 自动同步 | 已合入 |
 | semantic_gate | harness/infrastructure/gates/semantic_gate.py | ✅ | 自动同步 | 已合入 |
 | cross_validation_gate | harness/infrastructure/gates/cross_validation_gate.py | ✅ | 自动同步 | 已合入 |
@@ -270,7 +270,7 @@ rules:
 | EmotionTracker | harness/security/emotion_tracker.py | ✅ | 跨会话情绪弧追踪 + 过度依赖检测 | 已合入 |
 | ApprovalGate (危险命令) | harness/infrastructure/gates/approval_gate.py | ✅ | 25规则危险操作检测，CRITICAL/HIGH/MEDIUM/LOW 四级，集成 PolicyGate；**Hard floors**：CRITICAL 不可被 auto_approve / session 批准 / `AIPLAT_APPROVALS_DISABLED` 降低（仅 `AIPLAT_HARD_FLOOR_DISABLED` 逃生）；审计写 `approval_provenance` | 已合入 |
 | Tool RiskClass | harness/infrastructure/gates/risk_class.py | ✅ | OpenWorker 启发：`READ/EGRESS/WRITE_LOCAL/EXEC/EXTERNAL`；覆盖只可加严；`PolicyGate.check_tool` + `sys_tool_call` 审计透传；生成物不适用（平台横切治理） | 已合入 |
-| Shell command risk | harness/infrastructure/gates/shell_command_risk.py | ✅ | OpenWorker P1：opaque/`$()`/管道、arg-executo
+| Shell command risk | harness/infrastructure/gates/shell_command_risk.py | ✅ | OpenWorker P1：opaque/`$()`/管道、arg-exec
 
 …
 

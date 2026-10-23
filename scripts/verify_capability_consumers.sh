@@ -48,12 +48,16 @@ def find_module(rel_path):
         if os.path.exists(full):
             return full
     return None
-for domain_id, domain in data.get('domains', {}).items():
-    for prov in domain.get('provides', []):
-        mod = prov.get('module', '')
-        sym = prov.get('symbol', '')
-        ptype = prov.get('type', '')
-        if not mod or ptype in ('config_file', 'react_component', 'api_endpoint', 'pattern'):
+for domain_id, domain in (data.get('domains') or {}).items():
+    if not isinstance(domain, dict):
+        continue
+    for prov in (domain.get('provides') or []):
+        if not isinstance(prov, dict):
+            continue
+        mod = prov.get('module', '') or ''
+        sym = prov.get('symbol', '') or ''
+        ptype = prov.get('type', '') or ''
+        if not mod or ptype in ('config_file', 'react_component', 'api_endpoint', 'pattern', 'doc', 'module'):
             continue
         fpath = find_module(mod)
         if not fpath:
@@ -89,18 +93,24 @@ def find_module(rel_path):
     return None
 data = yaml.safe_load(open('$REG_FILE'))
 gaps = []
-for domain_id, domain in data.get('domains', {}).items():
-    avoids = domain.get('provides', [])
-    # Build a search pattern from the first 2 provides symbols
+for domain_id, domain in (data.get('domains') or {}).items():
+    if not isinstance(domain, dict):
+        continue
+    avoids = domain.get('provides') or []
     search_terms = []
     for prov in avoids[:2]:
-        search = prov['symbol'].split('.')[-1]
-        search_terms.append(search)
+        if not isinstance(prov, dict):
+            continue
+        search = str(prov.get('symbol') or '').split('.')[-1]
+        if search:
+            search_terms.append(search)
     pattern = '|'.join(search_terms[:2])
     if not pattern:
         continue
-    for cons in domain.get('consumers_expected', []):
-        mod = cons.get('module', '')
+    for cons in (domain.get('consumers_expected') or []):
+        if not isinstance(cons, dict):
+            continue
+        mod = cons.get('module', '') or ''
         if not mod:
             continue
         fpath = find_module(mod)
@@ -139,26 +149,30 @@ changed_files = subprocess.run(
     capture_output=True, text=True, cwd=root
 ).stdout.strip().split('\n')
 affected_domains = set()
-for domain_id, domain in data.get('domains', {}).items():
-    for prov in domain.get('provides', []):
-        mod = prov.get('module', '')
-        if any(mod in cf for cf in changed_files):
+for domain_id, domain in (data.get('domains') or {}).items():
+    if not isinstance(domain, dict):
+        continue
+    for prov in (domain.get('provides') or []):
+        if not isinstance(prov, dict):
+            continue
+        mod = prov.get('module', '') or ''
+        if any(mod and mod in cf for cf in changed_files):
             affected_domains.add(domain_id)
-# Also check if registry itself changed
-if '$REG_FILE' in '\n'.join(changed_files):
-    for domain_id in data.get('domains', {}):
+if any('capability_registry.yaml' in cf for cf in changed_files):
+    for domain_id in (data.get('domains') or {}):
         affected_domains.add(domain_id)
 
 if affected_domains:
     total_consumers = 0
     for domain_id in sorted(affected_domains):
         domain = data['domains'][domain_id]
-        consumers = domain.get('consumers_expected', [])
+        consumers = domain.get('consumers_expected') or []
         total_consumers += len(consumers)
-        print(f'  Domain: {domain_id} ({domain[\"section_name\"]}, {len(consumers)} consumers)')
+        print(f'  Domain: {domain_id} ({domain.get(\"section_name\",\"\")}, {len(consumers)} consumers)')
         if len(consumers) <= 10:
             for c in consumers:
-                print(f'    → {c[\"module\"]}  — {c.get(\"reason\",\"\")[:60]}')
+                if isinstance(c, dict):
+                    print(f'    → {c.get(\"module\",\"\")}  — {str(c.get(\"reason\",\"\"))[:60]}')
     print(f'  Total: {len(affected_domains)} domains affected, {total_consumers} consumers to verify')
 " 2>/dev/null
 

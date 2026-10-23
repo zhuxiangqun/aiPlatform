@@ -90,6 +90,7 @@ def find_module(rel_path: str) -> Optional[Path]:
 
 
 def top_level_names(path: Path) -> Set[str]:
+    """Top-level defs/assigns plus Import/ImportFrom aliases (facade re-exports)."""
     try:
         tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
     except (SyntaxError, OSError):
@@ -104,11 +105,48 @@ def top_level_names(path: Path) -> Set[str]:
                     names.add(t.id)
         elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
             names.add(node.target.id)
+        elif isinstance(node, ast.Import):
+            for a in node.names:
+                names.add(a.asname or a.name.split(".")[0])
+        elif isinstance(node, ast.ImportFrom):
+            for a in node.names:
+                if a.name == "*":
+                    continue
+                names.add(a.asname or a.name)
     return names
 
 
 def _symbol_leaf(symbol: str) -> str:
     return str(symbol or "").split(".")[-1].strip().strip("\"'")
+
+
+def symbol_in_module(path: Path, symbol: str) -> bool:
+    """True if leaf is top-level, or Class.method exists on a top-level class."""
+    raw = str(symbol or "").strip().strip("\"'")
+    leaf = _symbol_leaf(raw)
+    if not leaf or not IDENT_RE.match(leaf):
+        return False
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
+    except (SyntaxError, OSError):
+        return False
+    top = top_level_names(path)
+    if leaf in top:
+        return True
+    parts = [p for p in raw.split(".") if p]
+    if len(parts) < 2:
+        return False
+    cls_name, meth = parts[0], parts[-1]
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, ast.ClassDef) and node.name == cls_name:
+            for child in node.body:
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name == meth:
+                    return True
+                if isinstance(child, ast.Assign):
+                    for t in child.targets:
+                        if isinstance(t, ast.Name) and t.id == meth:
+                            return True
+    return False
 
 
 def audit_registry(data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -140,6 +178,10 @@ def audit_registry(data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
             if ptype in SKIP_TYPES:
                 counts["skipped_type"] += 1
                 continue
+            # Filename / path used as "symbol" under type:module — not an AST export
+            if ptype == "module" or symbol.endswith(".py") or "/" in symbol:
+                counts["skipped_type"] += 1
+                continue
             if not module:
                 findings.append(Finding(domain_id, symbol, "", "missing_module"))
                 counts["missing_module"] += 1
@@ -157,8 +199,7 @@ def audit_registry(data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
                 findings.append(Finding(domain_id, symbol, module, "module_not_found"))
                 counts["module_not_found"] += 1
                 continue
-            names = top_level_names(fpath)
-            if leaf in names:
+            if symbol_in_module(fpath, symbol):
                 counts["ok"] += 1
             else:
                 findings.append(Finding(domain_id, symbol, module, "symbol_missing"))

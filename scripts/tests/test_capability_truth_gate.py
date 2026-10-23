@@ -172,13 +172,18 @@ class TestRegistryProvidesAst(unittest.TestCase):
     def test_new_finding_detected(self):
         vast = _load("verify_registry_provides_ast", "verify_registry_provides_ast.py")
         result = vast.audit_registry()
-        baseline = {"finding_ids": []}
-        novel = vast.new_findings(result, baseline)
-        # Fresh empty baseline must see current stock as new
-        self.assertGreater(len(novel), 0)
-        # Real baseline should swallow them
+        # Stock AST debt cleared — live audit must be clean
+        self.assertEqual(result["finding_ids"], [])
         real = vast.load_baseline()
         self.assertEqual(vast.new_findings(result, real), [])
+        # Injected debt vs empty baseline is detected as new
+        poisoned = {
+            "finding_ids": result["finding_ids"]
+            + ["test-domain|FakeSymbol|core/fake.py|symbol_missing"]
+        }
+        novel = vast.new_findings(poisoned, {"finding_ids": []})
+        self.assertEqual(len(novel), 1)
+        self.assertIn("FakeSymbol", novel[0])
 
     def test_pipeline_engine_ok_symbol(self):
         vast = _load("verify_registry_provides_ast", "verify_registry_provides_ast.py")
