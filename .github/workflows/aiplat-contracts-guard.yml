@@ -144,6 +144,14 @@ jobs:
         run: |
           python3 ./scripts/smoke_capability_critical_paths.py --ci
 
+      # Optional live HTTP smoke (needs core listening). Enable via repo variable
+      # AIPLAT_SMOKE_LIVE=1 or workflow_dispatch; --require-live makes failures hard.
+      - name: Capability critical-path smoke (live, optional)
+        if: ${{ vars.AIPLAT_SMOKE_LIVE == '1' || github.event_name == 'workflow_dispatch' }}
+        continue-on-error: true
+        run: |
+          python3 ./scripts/smoke_capability_critical_paths.py --ci --live
+
       - name: Tool selection regression (gold dataset)
         working-directory: ./aiPlat-core
         run: |
