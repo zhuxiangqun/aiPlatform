@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-23T21:54:55+08:00",
+  "reviewed_at": "2026-10-23T22:18:45+08:00",
   "base_ref": "origin/main",
-  "merge_base": "2f2f1764c2469995d8060b22f7df66cbd7269f35",
-  "diff_sha256": "0319ffffdd735707a2dc80b4a9d8b1d0c9291fc9dcacbf0df06ca122f1b3fc05",
-  "head_sha": "102febd6eb4c3602bd6c92eb938931b64489a02f",
+  "merge_base": "515ac90884855dd9afc01b9526ef3f7e550b8873",
+  "diff_sha256": "b9fc8cd3e0c90ebc718f5b61a3caf79d10dfe22c4a6be7a3716525c6cd7df39f",
+  "head_sha": "455df90550cdd950e925a60c4da0b94505bc3c3a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "E0-E4 docs/link-gate only; archive links remain WARN by design; exemption still required until #379 merges."
+  "note": "Remove blanket docs cleanup exemption after #379 merge; gates OK with exemptions:[]."
 }
