@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-23T09:28:55+08:00",
+  "reviewed_at": "2026-10-23T11:00:03+08:00",
   "base_ref": "origin/main",
   "merge_base": "c1eb108e565071f9d8d96641be09b6495797ccd1",
-  "diff_sha256": "292cccce20bbeed47f71b706529283b6305023f64428a235605a2076a53c32eb",
-  "head_sha": "aba979f716b419f2587681a09089bda48b78db5b",
+  "diff_sha256": "aa6b020694b51b6a9a4b81016af8b9cc3a21674b0de58646b4cd3af7737a3bf4",
+  "head_sha": "5b621fa5d49da68d70d6487865ef864cd74dcd5b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Stock AST/basename cleared; soft=0. Live HTTP still opt-in. Graph soft only on fingerprint mismatch. Registry trailing TestUnregisteredFeature garbage stripped."
+  "note": "WAL pragma retry for multi-worker e2e-docker sqlite lock; soft-debt-zero unchanged."
 }
