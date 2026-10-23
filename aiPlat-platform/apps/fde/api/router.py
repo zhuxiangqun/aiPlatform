@@ -40,6 +40,7 @@ from .action_routes import router as _action_router
 from .extraction_routes import router as _extraction_router
 from .rapid_insight import router as _rapid_insight_router
 from .fde_phase4 import router as _phase4_router
+from .fde_slice import router as _slice_router
 
 # ── Mount ──
 # fde.py has prefix="/fde" and already nests many legacy sub-routers.
@@ -73,3 +74,4 @@ router.include_router(_action_router, prefix="/fde")
 router.include_router(_extraction_router, prefix="/fde")
 router.include_router(_rapid_insight_router, prefix="/fde")
 router.include_router(_phase4_router, prefix="/fde")
+router.include_router(_slice_router, prefix="/fde")

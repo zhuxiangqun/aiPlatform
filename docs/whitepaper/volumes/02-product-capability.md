@@ -3,19 +3,19 @@ title: "aiPlat 产品能力白皮书"
 volume_id: product-capability
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-23T12:12:29Z"
+generated_at: "2026-10-23T21:04:18Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324"
-caps_sha256: "d5282dffed22016eb78ebe29f746ecf9f3e1b2ca7e383bba49d3b7cdce13e103"
+caps_sha256: "bc32c27e4d98f49f4e00aa50d4362a12561deb091ef8067fbd5843d55d3315e2"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=d5282dffed22016eb78ebe29f746ecf9f3e1b2ca7e383bba49d3b7cdce13e103 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=bc32c27e4d98f49f4e00aa50d4362a12561deb091ef8067fbd5843d55d3315e2 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-23T12:12:29Z` |
-| CAPABILITIES sha256 | `d5282dffed22…` |
+| 生成时间 (UTC) | `2026-10-23T21:04:18Z` |
+| CAPABILITIES sha256 | `bc32c27e4d98…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -90,7 +90,7 @@ language: zh-CN
 | 知识引擎（本体） | 375 | 9 | 384 |
 | RAG 检索 | 57 | 0 | 57 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 168 | 0 | 168 |
+| Agent 系统 | 175 | 0 | 175 |
 | Skill 系统 | 171 | 0 | 171 |
 | 安全与治理 | 90 | 0 | 90 |
 | 可观测性 | 43 | 0 | 43 |
@@ -107,7 +107,7 @@ language: zh-CN
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 44 | 0 | 44 |
 | Arena & 调度 | 7 | 0 | 7 |
-| 平台治理 | 126 | 0 | 126 |
+| 平台治理 | 131 | 0 | 131 |
 | Infra 基础设施 | 16 | 0 | 16 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
@@ -130,7 +130,7 @@ language: zh-CN
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2338** | **10** | **2348** |
+| **总计** | **2350** | **10** | **2360** |
 
 ### 3.2 上手路径（节选）
 
@@ -226,7 +226,7 @@ curl -X POST http://localhost:8000/api/diagnostics/run-all
 
 操作手册入口：[`manuals/README.md`](README.md) · 合册 [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) · Org [`../contracts/ORG_L5_RUNBOOK.md`](../contracts/ORG_L5_RUNBOOK.md)。
 
-- [API Reference](api-reference.md) — 完整 API 文档（若仓库内仍保留）
+- [API Reference](../API/api-reference.md) — 完整 API 文档
 - [自主性评估报告](../framework/aiplat-complete-assessment.md) — 系统能力评估
 - [验证协议](../framework/verification-protocol.md) — 独立复现验证
 

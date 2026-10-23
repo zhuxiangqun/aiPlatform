@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-23T15:52:06.253326+00:00",
+  "fi1_auth": "test_slice_fault_injection.py (401/403)",
+  "fi2_bad_bundle": "test_export_rejects_missing_manifest",
+  "fi3_missing_evidence": "test_evidence_unknown_without_pi",
+  "fi4_offline_ttl": {
+    "ok": false,
+    "decision": "deny",
+    "reason": "offline_ttl_exceeded",
+    "ttl_hours": 12.0,
+    "age_seconds": 46800.001959,
+    "has_revocation_channel": false,
+    "requested_ops": [
+      "read_status"
+    ]
+  },
+  "fi4_denied_ops": {
+    "ok": false,
+    "decision": "deny",
+    "reason": "denied_ops",
+    "denied_ops_hit": [
+      "heal"
+    ],
+    "ttl_hours": 12.0,
+    "age_seconds": 0.001967,
+    "requested_ops": [
+      "heal"
+    ]
+  },
+  "pi_live": {
+    "ok": true,
+    "model": "ollama/batiai/qwen3.5-9b:latest",
+    "run_at": "2026-10-23T15:52:06.253326+00:00",
+    "bundle": "/Users/apple/workdata/person/zy/aiPlatform/reports/five-products/slice-fp-internal-bundle-pi-diag-001/bundle",
+    "token": "AIPLAT_PI_OK",
+    "evidence_file": "RUNLOG/pi-live.out"
+  },
+  "report_id": "rep-2551f299acf5"
+}

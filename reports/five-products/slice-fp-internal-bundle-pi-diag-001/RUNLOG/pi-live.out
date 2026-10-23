@@ -1,0 +1,2 @@
+Warning: Model "batiai/qwen3.5-9b:latest" not found for provider "ollama". Using custom model id.
+AIPLAT_PI_OK

@@ -178,14 +178,32 @@ async def acceptance_signoff(body: Dict[str, Any]):
             },
         )
 
-    spec_id = str(body.get("spec_id") or "unknown").strip()
+    from core.api.core_facade import validate_slice_signoff_reports
+
+    slice_gate = validate_slice_signoff_reports(body if isinstance(body, dict) else {})
+    if not slice_gate.get("ok"):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": slice_gate.get("error") or "slice_report_required",
+                "detail": slice_gate.get("detail"),
+                "slice_gate": slice_gate,
+            },
+        )
+
+    spec_id = str(body.get("spec_id") or body.get("scenario_id") or "unknown").strip()
     signed_by = str(body.get("signed_by") or "fde").strip()
     notes = str(body.get("notes") or "").strip()
+    decision = str(body.get("acceptance_decision") or body.get("decision") or "accepted").strip()
 
     record = {
         "spec_id": spec_id,
+        "scenario_id": str(body.get("scenario_id") or spec_id).strip(),
         "signed_by": signed_by,
         "notes": notes,
+        "acceptance_decision": decision,
+        "evidence_report_ids": list(slice_gate.get("report_ids") or []),
+        "for_slice": bool(slice_gate.get("required")),
         "signed_at": datetime.now(timezone.utc).isoformat(),
         "checklist": (await acceptance_checklist(spec_id)) if spec_id != "unknown" else {},
         "preflight_gate": gate,

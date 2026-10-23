@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-23T22:18:45+08:00",
+  "reviewed_at": "2026-10-24T05:14:10+08:00",
   "base_ref": "origin/main",
-  "merge_base": "515ac90884855dd9afc01b9526ef3f7e550b8873",
-  "diff_sha256": "b9fc8cd3e0c90ebc718f5b61a3caf79d10dfe22c4a6be7a3716525c6cd7df39f",
-  "head_sha": "455df90550cdd950e925a60c4da0b94505bc3c3a",
+  "merge_base": "92ae1bdc5b6588a604f4b9848080c9d06c05bc95",
+  "diff_sha256": "887518391e6761c20217c69cf9f5cd4464cf8115b1c3f949f010d1d1d2f83b17",
+  "head_sha": "6b70ea17085a1449462623c2a2fd3ee4d12eb6fc",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Remove blanket docs cleanup exemption after #379 merge; gates OK with exemptions:[]."
+  "note": "Five-products first slice after merge main(#380). Evidence transport ok≠diagnosis_ok; fp- signoff requires report presence only. Gate2 still held (no D13)."
 }
