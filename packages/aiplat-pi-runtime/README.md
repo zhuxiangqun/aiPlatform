@@ -143,4 +143,11 @@ python3 scripts/factory_in_evidence_smoke.py
 
 See [docs/FACTORY_IN_EXPERIMENT.md](./docs/FACTORY_IN_EXPERIMENT.md) §⓪.
 
-See [PHASE0.md](./PHASE0.md) and `docs/architecture/plans/pi-thin-runtime.md`.
+## Phase 0 验证记录（归档入口）
+
+阶段门禁与结果已收敛为历史记录，日常以本文 Quick start / Live smoke 为准：
+
+- [PHASE0.md](./PHASE0.md) — 阶段检查项  
+- [PHASE0_RESULTS.md](./PHASE0_RESULTS.md) — 结果摘录  
+
+战略边界见 [`docs/architecture/plans/pi-thin-runtime.md`](../../docs/architecture/plans/pi-thin-runtime.md)。

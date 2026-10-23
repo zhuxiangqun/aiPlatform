@@ -12,7 +12,7 @@ AST 扫描 aiPlat-core/core 下每个 .py 的 import 依赖，输出：
   python3 scripts/coupling_metrics.py --baseline PATH  # 对比基线（超基线 → exit 1）
   python3 scripts/coupling_metrics.py --write-baseline PATH  # 生成基线快照
 
-设计依据：docs/research/architecture-evolution-roadmap.md §0.2。
+设计依据：docs/archive/architecture-evolution-roadmap.md §0.2。
 聚合点（允许高入度）：core_facade / integration / schemas 等门面枢纽。
 """
 from __future__ import annotations

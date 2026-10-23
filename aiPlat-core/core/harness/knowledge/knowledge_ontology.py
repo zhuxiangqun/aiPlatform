@@ -8,7 +8,7 @@ Design foundations:
   1. Bottom-up: Extracted from existing FRONTMATTER_FIELDS, KBDocument schema,
      RELATIONSHIP_TYPES found in wiki_engine.py and platform/kb/db.py
   2. Standard mapping: Dublin Core (dc:), SKOS (skos:), PROV-O (prov:),
-     CIDOC-CRM (crm:), FOAF (foaf:) — per docs/knowledge-ontology-plan.md
+     CIDOC-CRM (crm:), FOAF (foaf:) — per docs/knowledge-system.md（本体模型；原 knowledge-ontology-plan stub 已删）
   3. Domain-specific: aiplat: namespace for AI knowledge base semantics
      (contradictions, LLM generation, knowledge atoms)
 

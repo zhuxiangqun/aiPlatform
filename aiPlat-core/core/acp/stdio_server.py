@@ -5,7 +5,7 @@ Stdio JSON-RPC persistent kernel (P0-a, 对标 Codex app-server).
 暴露为 JSON-RPC over stdio 协议——外部程序/CI/SRE 面板可 spawn 本进程，通过
 stdin/stdout JSONL 驱动 Thread（会话），断线后按 thread_id resume。
 
-设计依据：docs/research/Codex-Harness开源借鉴分析报告.md §2.1 (P0-a)
+设计依据：docs/archive/Codex-Harness开源借鉴分析报告.md §2.1 (P0-a)
 参考实现：codex-rs/app-server-transport/src/transport/stdio.rs（JSONL 行协议）
 
 协议方法（JSON-RPC 2.0，每行一个 JSON 消息）：

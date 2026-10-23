@@ -1,6 +1,10 @@
 # aiPlat — 六平台深度对标摘要（2026-10）
 
+> **C2 消歧 / SoT**：本文是 **现行架构对比权威入口**（六平台 · 18 维 · 2026-10）。  
+> 旧四方案规划稿已迁 [`docs/archive/plans-comparison-four-platform-2026-07.md`](../archive/plans-comparison-four-platform-2026-07.md)——勿与本文并行当作现行入口。
+>
 > **生成/调研时点**：2026-10-13（六列）· 2026-10-16（OpenWorker 收口 · 认知分层旁路）  
+
 > **对标范围**：aiPlat × Hermes Agent × Claude Code × OpenClaw × DeepSeek Harness × OpenAI Codex  
 > **旁路吸收（非列）**：OpenWorker — **§0.2**（#315–#319）；认知分层（想·判·行·呈）— **§0.3**；aisuite/LangChain 框架层不入列  
 > **细节与证据权威**：[`docs/research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) · 底稿 [`docs/research/对标底稿-2026-10-五家.md`](../research/对标底稿-2026-10-五家.md)  

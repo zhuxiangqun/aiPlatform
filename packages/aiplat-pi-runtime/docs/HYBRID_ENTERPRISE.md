@@ -138,7 +138,7 @@ node packages/aiplat-pi-runtime/scripts/enterprise_hybrid_live_smoke.mjs
 - 无允许列表时开放任意平台工具
 - 把「厚运行时私有化」写成默认交付（仅驻场例外）
 - **执行封存不在 Pi 上**：`done_verify` / `require_review` / 质量复核翻失败 / 编码宪法（karpathy）/ `task_model_lock` / 修复候选筛选与预测回执（`select_repair_candidate`、`_prediction_receipt`）只在 Core。Pi 的 `completion_receipt` **只**给企业 Memory 回写打 `[未核验]`/`[失败]` 与 `completion_*` 标签，不改用户可见完成、不记预测、不代替平台 Execute。矩阵见 [`execution-decision-matrix.md`](../../../docs/architecture/execution-decision-matrix.md) §2.6。混合开通 ≠ 编码闭环已在壳上跑完。
-- **Memory / 选模边界**：sticky=固定事实，capture/archive=过程；任务选模锁不进 Pi。详见 [`memory-lifetime-and-model-lock.md`](../../../docs/architecture/memory-lifetime-and-model-lock.md)。
+- **Memory / 选模边界**：sticky=固定事实，capture/archive=过程；任务选模锁不进 Pi。详见 [`system-architecture-contract.md`](../../../docs/architecture/system-architecture-contract.md) Sticky 行与根目录 `AIPLAT_CAPABILITIES.md`（`task_model_lock`）。
 - **UI E2E 闭环不在 Pi 上**：先侦察再写用例、语义定位、等待规范、定位变更回执只在 Core `engine/skills/e2e_test` + `browser.list_elements`。不在 Pi 装社区 Playwright Skill，不另起 UI-Agent 子系统。
 
 ## 与厂内轴（A）的关系

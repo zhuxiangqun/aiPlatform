@@ -120,7 +120,7 @@ blast_radius:     <失败/token/权限影响>
 规则（配置驱动，禁止按 `agent_id` 分支）：
 
 1. `uses_file_output` / `refactor_sop` / `require_review` 的完成标准走 `PipelineStageConfig.done_verify`（及 `AIPLAT_CODING_STAGE_*`）。  
-2. 「已修好 / 文件路径」没有成功工具回执 → 前缀 `[未核验]` 或 `[失败]`。多个修复候选只封存得分最高的一个（`select_repair_candidate`）；`code` / `code_execution` / `shell`/`bash`（pytest / python 补丁 / 重定向写入）/ `test_executor` / `canary_runner` / `e2e_test` / `acceptance_checker` 对这组候选只放行一次成功验证（`block_extra_repair_verify`；失败可对同一方案重试）。候选块写入后换轮仍有效（`remember_repair_candidates`）。候选块出现前的 `code` 回执不证明最高分方案已通过。同一次 `code` 若仍包含被跳过方案的正文，则不执行。选型后 `file_operations` / `write` / `edit` 写入被跳过方案正文会被拒绝（ReAct facade 与 compiled react 同门）。选型前新建且正文就是被跳过方案的文件会删掉；覆盖已有文件时按检查点或写入前快照恢复。`code` 脚本中的字面量写入，以及执行后工作区内新建/改动的文件（变量路径；cwd / workdir / `_deploy_files_dir` / `output_dir` / 进程 cwd），也会记入回滚名单。差分写入挂上当次脚本；选型后按正文或脚本归属回滚（含该脚本新建的二进制，以及不超过 8KB 的被覆盖二进制，按基线 `prior_b64` 恢复；更大文件走检查点）。候选块出现前，第二段明显不同的补丁脚本（含短脚本、`python -c`）先不跑；`pytest` / `python -m pytest` / `ruff` 与同一脚本的小改动仍可跑。预测与实测不符（`_prediction_receipt.actual_pass=false`）不能声明已修好。这不是世界模型。契约向量：[`completion_receipt_vectors.json`](fixtures/completion_receipt_vectors.json)（Python 与 Pi JS 同测）。Pi 不记预测回执。  
+2. 「已修好 / 文件路径」没有成功工具回执 → 前缀 `[未核验]` 或 `[失败]`。多个修复候选只封存得分最高的一个（`select_repair_candidate`）；`code` / `code_execution` / `shell`/`bash`（pytest / python 补丁 / 重定向写入）/ `test_executor` / `canary_runner` / `e2e_test` / `acceptance_checker` 对这组候选只放行一次成功验证（`block_extra_repair_verify`；失败可对同一方案重试）。候选块写入后换轮仍有效（`remember_repair_candidates`）。候选块出现前的 `code` 回执不证明最高分方案已通过。同一次 `code` 若仍包含被跳过方案的正文，则不执行。选型后 `file_operations` / `write` / `edit` 写入被跳过方案正文会被拒绝（ReAct facade 与 compiled react 同门）。选型前新建且正文就是被跳过方案的文件会删掉；覆盖已有文件时按检查点或写入前快照恢复。`code` 脚本中的字面量写入，以及执行后工作区内新建/改动的文件（变量路径；cwd / workdir / `_deploy_files_dir` / `output_dir` / 进程 cwd），也会记入回滚名单。差分写入挂上当次脚本；选型后按正文或脚本归属回滚（含该脚本新建的二进制，以及不超过 8KB 的被覆盖二进制，按基线 `prior_b64` 恢复；更大文件走检查点）。候选块出现前，第二段明显不同的补丁脚本（含短脚本、`python -c`）先不跑；`pytest` / `python -m pytest` / `ruff` 与同一脚本的小改动仍可跑。预测与实测不符（`_prediction_receipt.actual_pass=false`）不能声明已修好。这不是世界模型。契约向量：Python [`test_completion_receipt.py`](../../aiPlat-core/core/tests/unit/test_harness/test_completion_receipt.py) + 实现 [`completion_receipt.py`](../../aiPlat-core/core/harness/execution/completion_receipt.py)（与 Pi JS 同语义）。Pi 不记预测回执。  
 3. 对话型 orphan 可跳过质量复核（状态预算）；编码 / `skill_delivery=once` / `## FILE:` **不可**。orphan 状态探针读 DB 真实 status；无行或 `force_failed`/`quality_block` 与 completed 冲突时不得发明 completed。第二次 `finalize` 不得把已封 timeout/failed 再标 completed。`run_end` 载荷没有 status 时探针保持 running，不当完成。Agent / run_graph / run_events 探针均经 `_apply_sealed_failure_status`，元数据失败封存优先于 completed。`run_end` 探针若行状态是 completed 但元数据已封失败，仍返回 timeout/failed。  
 4. 校验环异常、QR 异常、StageRunner 编码默认预注入异常、ReAct eager finalize / PlanExecute finalize 异常、`_force_failed_status`（timeout/LLM 耗尽）、autoreview 不可加载：编码/审阅路径 **fail-closed**；StageRunner 失败优先于 skill 正文；CoreFacade 外层收尾不得把已封 timeout/failed 再改回 completed。  
 5. `skip_claude_md` 仅澄清 / prompt-Skill；材料问答与数字人顾问走 **slim**（`coding_policy_profile=off`），禁止整段 skip。  
@@ -356,8 +356,8 @@ Eval / 金标 / 值班板：见 Governance 与 `apps/eval`（`runs_eval` / gold�
 | 工厂 SOP | `agent_engineering/SKILL.md` |
 | 工作区闭环 | `inject_workspace_coding_defaults` |
 | 执行封存 | §2.6 · `execution_seal`（`coding_deliverable_veto` / `check_done_verify` / `seal_answer_with_receipts`）· `quality_review_blocks_success` · `finalize_agent_after_skill_delivery` · Pi `bindCompletionToReceipts`（仅 Memory） |
-| 回执契约向量 | `docs/architecture/fixtures/completion_receipt_vectors.json` |
-| Memory 寿命 / 选模锁 | [memory-lifetime-and-model-lock.md](memory-lifetime-and-model-lock.md) · sticky 仅 CoreFacade · `task_model_lock` 仅 Core |
+| 回执契约向量 | `aiPlat-core/.../test_completion_receipt.py` + `completion_receipt.py`（原 `fixtures/completion_receipt_vectors.json` 未落地，以测试为准） |
+| Memory 寿命 / 选模锁 | [system-architecture-contract.md](system-architecture-contract.md) Sticky 行 · sticky 仅 CoreFacade · `task_model_lock` 仅 Core（`AIPLAT_CAPABILITIES.md`） |
 | 成本阶梯 | 根 `CLAUDE.md` §20 · `check_cost_ladder.py` |
 | YAML 漂移 lint | `scripts/lint_team_yaml_profile_drift.py`（v1.9） |
 | UI E2E 规范 | `engine/skills/e2e_test` handler（单页 recon 或 flow 多步）· `parse_flow`/`scaffold_flow_spec` · `validate_e2e_deliverable` + seal veto · `references/flow-rules.md` · **Pi 不重做** |
@@ -372,7 +372,7 @@ Eval / 金标 / 值班板：见 Governance 与 `apps/eval`（`runs_eval` / gold�
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
-| v1.10 | 2026-10-17 | §2.6 执行封存矩阵；PlanExecute/`seal_before_finish`；ReAct+llm 经 `seal_answer_with_receipts`；共享 `completion_receipt_vectors.json`；Memory/选模边界见 `memory-lifetime-and-model-lock.md` |
+| v1.10 | 2026-10-17 | §2.6 执行封存矩阵；PlanExecute/`seal_before_finish`；ReAct+llm 经 `seal_answer_with_receipts`；回执以 `test_completion_receipt` 为准；Memory/选模见 system-architecture-contract + CAPABILITIES |
 | v1.12 | 2026-10-17 | §2.6：多个修复候选时 `code`/`code_execution` 只放行一次；候选块换轮仍有效（`remember_repair_candidates`） |
 | v1.11 | 2026-10-17 | 附录 B：UI E2E 规范唯一源 `e2e_test` + `browser.list_elements`；Pi 不重做 |
 | v1.9 | 2026-10-12 | 治理增强：O1 MCP 证明质量校验；O2 YAML 漂移 lint（可选启用）；O3 Eval/Memory 接口定义（§6.1）；路径卡扩展 `stage_id`/`skill_name`/`handler_present`/`fail_closed_reason`；FAIL_OPEN 告警与过期提醒；成本阶梯内联 `# ladder-ok` 与质量最低标准 |

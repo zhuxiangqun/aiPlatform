@@ -6,7 +6,7 @@ DONE-after: ``seal_answer_with_receipts`` (fix/path claims need tool receipts).
 Shared by ReActLoop and PlanExecuteLoop so plan_execute cannot skip the
 coding/review ring. Pi hybrid only tags Memory via its JS twin; see
 ``docs/architecture/execution-decision-matrix.md`` §2.6 and
-``docs/architecture/fixtures/completion_receipt_vectors.json``.
+``core/tests/unit/test_harness/test_completion_receipt.py``.
 """
 
 from __future__ import annotations

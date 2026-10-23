@@ -269,7 +269,7 @@ LLM syscall 事件记录（`add_syscall_event`）**必须**写入 `execution_sto
 系统整体规范只定义跨层契约；各层内部规范请参考：
 
 - `aiPlat-core`（Layer 1）
-  - 核心能力层架构与执行流程（As‑Is）：[`docs/architecture/core-layer1-latest.md`](core-layer1-latest.md)
+  - 核心能力层架构与执行流程（As‑Is）：[`docs/architecture/core/core-layer1-latest.md`](core/core-layer1-latest.md)
   - core 内部边界契约（harness/policy/agent/skill）：`aiPlat-core/docs/contracts/01-architecture-contract.md`
 - `aiPlat-platform`（Layer 2）：`aiPlat-platform/docs/index.md`（Auth/Tenants/Gateway 等）
 - `aiPlat-app`（Layer 3）：`aiPlat-app/docs/index.md`

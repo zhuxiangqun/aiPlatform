@@ -1,5 +1,8 @@
 # 核心层应用路由迁移计划 v1.0
 
+> **已归档（C3 · 2026-10-23）**：原路径 `docs/architecture/plans/router-migration-plan.md`。仅历史/过程参考；现行规划见 `docs/architecture/plans/`（如 pi-thin-runtime、app-module-layout）。
+>
+
 ## 一、现状
 
 `aiPlat-core/core/api/routers/` 下有 103 个 router 文件（47,188 行），其中：

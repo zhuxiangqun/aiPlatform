@@ -274,7 +274,7 @@ bash scripts/check_doc_sync.sh   # 新增符号已登记
 | 既有计划 | 关系 |
 |---|---|
 | `docs/architecture/plans/worker-split-plan.md` | 本路线图 Phase 1 的事件源双写**为未来 worker 拆分提供一致性基础**（多进程共享 run_events 单一真相源）；worker 拆分本身维持"触发条件驱动、当前不拆分"结论。**2026-08-19：事件源双写已落地（P2-A1）**，一致性基础已就绪 |
-| `docs/architecture/plans/router-migration-plan.md` | Phase 3 耦合治理沿用其迁移方法论（核心 router → 模块 router）。**2026-08-19：P0-A2 api→CoreFacade 292 行 harness 直导清零，路由/门面收敛完成** |
+| `docs/archive/plans-router-migration-plan.md` | Phase 3 耦合治理沿用其迁移方法论（核心 router → 模块 router）。**2026-08-19：P0-A2 api→CoreFacade 292 行 harness 直导清零，路由/门面收敛完成**（C3 已迁 archive） |
 | `docs/architecture/plans/optimization-roadmap.md` | 本路线图专注架构面，优化路线图专注性能面，两者互补 |
 | 改进方案 `aiPlat改进方案.md` | 本路线图是改进方案 P2 部分的"架构专项展开"（P2-1/P2-2/P2-3/P2-4 在此细化到阶段与验收）。**2026-08-19：改进方案 P0/P1/P2 全部落地（行动纲领 53/53 DONE）** |
 

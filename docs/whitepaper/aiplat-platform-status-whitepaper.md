@@ -3,7 +3,7 @@ title: "aiPlat 平台现状白皮书"
 type: platform-status-whitepaper
 authority: derived-from-capabilities
 status: generated
-generated_at: "2026-10-23T06:22:05Z"
+generated_at: "2026-10-23T12:12:29Z"
 source: AIPLAT_CAPABILITIES.md
 source_sha256: "d5282dffed22016eb78ebe29f746ecf9f3e1b2ca7e383bba49d3b7cdce13e103"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
@@ -46,7 +46,7 @@ packaging: executive-digest
 
 | 字段 | 值 |
 |------|-----|
-| 生成时间 (UTC) | `2026-10-23T06:22:05Z` |
+| 生成时间 (UTC) | `2026-10-23T12:12:29Z` |
 | CAPABILITIES SHA-256 | `d5282dffed22016eb78ebe29f746ecf9f3e1b2ca7e383bba49d3b7cdce13e103` |
 | assessment-scores SHA-256 | `96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687` |
 | CAPABILITIES version | `30.12` |
@@ -171,7 +171,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 | [`../architecture/comparison.md`](../architecture/comparison.md) | 六平台 18 维架构对比入口 |
 | [`../strategy/comparison-vs-vendors.md`](../strategy/comparison-vs-vendors.md) | 厂商/策略对比 |
 | [`../framework/hermes-comparison.md`](../framework/hermes-comparison.md) | Hermes 专项 |
-| [`../research/对标吸收与架构纯度评估.md`](../research/对标吸收与架构纯度评估.md) | 吸收核验 |
+| [`../archive/对标吸收与架构纯度评估.md`](../archive/对标吸收与架构纯度评估.md) | 吸收核验 |
 | [`../archive/`](../archive/) | 历史对比（只读，已被主报告取代） |
 
 ### 2.5.3 五维白皮书 ↔ 仓库映射（摘要）

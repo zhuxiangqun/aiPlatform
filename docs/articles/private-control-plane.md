@@ -1,3 +1,6 @@
+> **C2 消歧**：本文是 **对外叙述长文**（四层防御 / 控制平面故事）。  
+> 架构簇内 PolicyGate/ApprovalGate **短权威入口**见 [`docs/architecture/private-control-plane.md`](../architecture/private-control-plane.md)——同名异职，勿互相覆盖。
+
 ## 精华版（~1500 字）
 
 *适合微信公众号/即刻/Threads 等碎片阅读场景*

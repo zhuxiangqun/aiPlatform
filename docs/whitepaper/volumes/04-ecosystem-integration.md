@@ -3,19 +3,19 @@ title: "aiPlat 生态与集成白皮书"
 volume_id: ecosystem-integration
 type: whitepaper-volume
 status: generated
-generated_at: "2026-10-23T06:22:05Z"
+generated_at: "2026-10-23T12:12:29Z"
 audience: "ISV、集成商、开源社区、渠道"
 core_question: "如何接入、贡献、协作？"
 priority: P2
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
-suite_sha256: "0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30"
+suite_sha256: "3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324"
 caps_sha256: "d5282dffed22016eb78ebe29f746ecf9f3e1b2ca7e383bba49d3b7cdce13e103"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=ecosystem-integration suite_sha256=0907c52c20c69036b0d8cc541668dabb4d8811d1109716aa545cf27a8ff56a30 caps_sha256=d5282dffed22016eb78ebe29f746ecf9f3e1b2ca7e383bba49d3b7cdce13e103 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=ecosystem-integration suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=d5282dffed22016eb78ebe29f746ecf9f3e1b2ca7e383bba49d3b7cdce13e103 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 生态与集成白皮书
 
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 如何接入、贡献、协作？ |
 | 优先级 | P2 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-10-23T06:22:05Z` |
+| 生成时间 (UTC) | `2026-10-23T12:12:29Z` |
 | CAPABILITIES sha256 | `d5282dffed22…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -611,150 +611,16 @@ find aiPlat-core/core/api/routers -name '*.py' | \
 
 ### 3.7 厂外 Pi Package
 
-### @aiplat/pi-runtime
+默认交付为 **Pi-only** 薄包；企业混合为可选回连（KB / 工具 / Memory / Approval），详情以包文档为准，本卷不复制 README 全文。
 
-Thin **Pi Package** Runtime for aiPlat factory **Agent-mode** artifacts.
+| 权威源 | 读什么 |
+|--------|--------|
+| [`packages/aiplat-pi-runtime/README.md`](../../packages/aiplat-pi-runtime/README.md) | 包入口与双轴（厂外交付 / 厂内已关闭） |
+| [`docs/architecture/plans/pi-thin-runtime.md`](../architecture/plans/pi-thin-runtime.md) | 战略边界 living 摘要 |
+| [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md) | 企业回连配置 |
+| [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE_DELIVERY.md`](../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE_DELIVERY.md) | SKU / 验收 |
 
-- **aiPlat** = heavy factory (PRD → AGENT.md / SKILL.md / `agent_manifest.json`)
-- **This package** = **厂外** user-side thin host (Pi extensions + package `skills/`)
-
-#### Two axes (do not merge)
-
-See [`docs/architecture/plans/pi-thin-runtime.md`](../../docs/architecture/plans/pi-thin-runtime.md).
-
-| Axis | Role of Pi | Status |
-|------|------------|--------|
-| **(B) Factory-out** | User-side host for artifacts | **Shipped** — this package |
-| **(A) Factory-in** | Optional coding exec kernel behind PolicyGate | **Merge-closed** (`blank_not_proven`) — Execute bypass removed; offline probes only |
-
-**Product decision (locked)**
-
-| Mode | Meaning |
-|------|---------|
-| **Pi-only** (default) | Artifacts run with Pi alone: SOP + skills + handler + your LLM. No 8002/8003. |
-| **Pi + aiPlat** (enterprise) | Same Pi shell; opt-in hybrid (`AIPLAT_ENTERPRISE=1`). **KB** + **allowlisted tools** + **native tool gate** + **Memory capture** + **Approval wait** (`AIPLAT_ENTERPRISE_APPROVAL=1` → status/pending/wait + Unattended Inbox via `AIPLAT_ENTERPRISE_ATTENDANCE`; humans approve in platform UI). |
-| Thick aiPlat-only on user machine | **Not** the default delivery shape. |
-
-**Layered, not two parallel products:** aiPlat already has agent loops / tools / multi-model in the **platform** sense. Pi exists so **factory artifacts can run without installing the full stack**. Overlap in capability lists ≠ redundant delivery. Do not market Pi and aiPlat as two peer platforms with separate auth/audit. Enterprise entry remains aiPlat (or Pi shell reconnecting to aiPlat).
-
-Do not claim Pi-only equals full in-factory agent. Enterprise thickness is **Pi + aiPlat**, not “stuff the platform into the Pi process”.
-
-#### Enterprise hybrid (opt-in)
-
-Default remains Pi-only. See [`docs/HYBRID_ENTERPRISE.md`](./docs/HYBRID_ENTERPRISE.md) and delivery appendix [`docs/HYBRID_ENTERPRISE_DELIVERY.md`](./docs/HYBRID_ENTERPRISE_DELIVERY.md) (SKU + KB citation acceptance).
-
-```bash
-export AIPLAT_ENTERPRISE=1
-export AIPLAT_PLATFORM_URL=http://127.0.0.1:8003      # or :8000/api GW; NOT :8003/api
-export AIPLAT_TENANT_TOKEN=<bearer>                # or AIPLAT_API_KEY
-### optional KB: AIPLAT_KB_COLLECTION_ID=default
-### optional tools (empty = tools off, KB only):
-export AIPLAT_ENTERPRISE_TOOLS=calculator
-### optional: AIPLAT_CORE_URL=http://127.0.0.1:8002
-### native gate ON by default under ENTERPRISE=1 (bash/write/edit blocked)
-### escape: AIPLAT_ENTERPRISE_ALLOW_NATIVE=1  or  AIPLAT_ENTERPRISE_TOOL_GATE=0
-### optional memory writeback:
-### export AIPLAT_ENTERPRISE_MEMORY=1
-### optional approval wait (no approve from Pi):
-### export AIPLAT_ENTERPRISE_APPROVAL=1
-### export AIPLAT_ENTERPRISE_ATTENDANCE=inbox   # attended|inbox|auto
-### export AIPLAT_ENTERPRISE_SESSION_ID=my-pi-session
-
-pi -e .
-### /aiplat-status          → enterprise_hybrid / tools / tool_gate / memory / approval
-### /aiplat-enterprise      → KB reconnect status
-### /aiplat-memory          → memory writeback status
-### /aiplat-approval        → approval wait-bridge status
-### tools: aiplat_kb_retrieve | aiplat_tool_execute | aiplat_memory_capture
-### | aiplat_approval_status | aiplat_approval_pending | aiplat_approval_wait
-### | aiplat_unattended_inbox | aiplat_unattended_wait
-```
-
-Offline gates (mock HTTP / pure policy, no platform process):
-
-```bash
-node packages/aiplat-pi-runtime/scripts/enterprise_kb_smoke.mjs
-node --experimental-strip-types packages/aiplat-pi-runtime/scripts/enterprise_kb_citation_smoke.mjs
-node packages/aiplat-pi-runtime/scripts/enterprise_delivery_scan_smoke.mjs
-node packages/aiplat-pi-runtime/scripts/enterprise_kb_health_smoke.mjs
-node packages/aiplat-pi-runtime/scripts/enterprise_tools_smoke.mjs
-node packages/aiplat-pi-runtime/scripts/enterprise_tool_gate_smoke.mjs
-node packages/aiplat-pi-runtime/scripts/enterprise_memory_smoke.mjs
-node packages/aiplat-pi-runtime/scripts/enterprise_approval_smoke.mjs
-```
-
-PolicyGate / RBAC stay on the server; extensions only forward the bearer token. The native gate **blocks** host-mutating Pi tools so they cannot bypass that server path.
-
-#### Scheme A (Skills)
-
-Skills are **copied into** the package `skills/` directory at export time. Pi auto-discovers them. There is **no** `registerSkill` API.
-
-#### Quick start
-
-```bash
-### Install Pi (Node >= 22.19)
-npm install -g --ignore-scripts @earendil-works/pi-coding-agent
-
-### Smoke this package
-cd packages/aiplat-pi-runtime
-pi -e .
-### /aiplat-status
-### /skill:fixture-skill
-### /aiplat-sop-check
-```
-
-With an exported app:
-
-```bash
-export AIPLAT_APP_HOME=/path/to/exported-app   # contains agent_manifest.json
-pi -e /path/to/aiplat-pi-runtime
-### or: aiplat-run
-```
-
-Export from aiPlat disk deploy:
-
-```bash
-python3 scripts/export_pi_bundle.py --app-home ~/.aiplat/apps/<project_id>/current --out dist/aiplat-app-<id>
-pi install ./dist/aiplat-app-<id>
-```
-
-#### Thin HTTP (Phase 2)
-
-```bash
-AIPLAT_HTTP_STUB=1 AIPLAT_APP_HOME=./fixtures/sample-app \
-  AIPLAT_HTTP_API_KEY=dev node bin/aiplat-http.mjs
-### GET  /health
-### POST /v1/chat            Authorization: Bearer dev
-### POST /v1/skills/demo_skill   → handler.py if present
-
-bash scripts/http_smoke.sh
-```
-
-Agent mode (OpenAI-compatible — Ollama default):
-
-```bash
-### ensures ~/.pi/agent/models.json has ollama provider (for CLI)
-bash scripts/ensure_ollama_models_json.sh
-
-AIPLAT_PI_MODEL=ollama/qwen2.5:3b AIPLAT_APP_HOME=./fixtures/sample-app \
-  AIPLAT_HTTP_API_KEY=dev node bin/aiplat-http.mjs
-### Optional: AIPLAT_PI_BASE_URL / AIPLAT_PI_API_KEY / AIPLAT_PI_SDK_ROOT
-
-### Full live gate (offline + stub HTTP + CLI + HTTP agent)
-AIPLAT_PI_MODEL=ollama/qwen2.5:3b bash scripts/live_smoke.sh
-```
-
-#### Factory-in (merge-closed — offline archive only)
-
-Way-4 Execute bypass was **removed** (`blank_not_proven`). Optional offline CLI remains for probes only; it does **not** replace ReActLoop / PipelineEngine and is **not** on the Workspace Execute path.
-
-```bash
-python3 scripts/test_coding_exe
-
-…
-
-_(节选；全文见权威源)_
-
+> 「Hybrid」在此指 **Pi↔aiPlat 企业回连**，与 Skill `execution_type`、Builder 工厂模式中的其它 “hybrid” 用语不是同一概念。
 
 ### 3.8 归因协议（节选）
 

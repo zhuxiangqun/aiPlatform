@@ -1,7 +1,7 @@
 # aiPlat 部署手册
 
-> **新用户？** [15 分钟快速入门 →](docs/getting-started.md)
-> **开发者？** [API Reference →](docs/api-reference.md) | [评估报告 →](docs/framework/aiplat-complete-assessment.md)
+> **新用户？** [15 分钟快速入门 →](docs/manuals/getting-started.md)
+> **开发者？** [API Reference →](docs/API/api-reference.md) | [评估报告 →](docs/framework/aiplat-complete-assessment.md)
 
 ## 系统要求
 

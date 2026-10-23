@@ -189,7 +189,7 @@ def _ratings_and_system_chapter() -> str:
 | [`../architecture/comparison.md`](../architecture/comparison.md) | 六平台 18 维架构对比入口 |
 | [`../strategy/comparison-vs-vendors.md`](../strategy/comparison-vs-vendors.md) | 厂商/策略对比 |
 | [`../framework/hermes-comparison.md`](../framework/hermes-comparison.md) | Hermes 专项 |
-| [`../research/对标吸收与架构纯度评估.md`](../research/对标吸收与架构纯度评估.md) | 吸收核验 |
+| [`../archive/对标吸收与架构纯度评估.md`](../archive/对标吸收与架构纯度评估.md) | 吸收核验 |
 | [`../archive/`](../archive/) | 历史对比（只读，已被主报告取代） |
 
 ### 2.5.3 五维白皮书 ↔ 仓库映射（摘要）

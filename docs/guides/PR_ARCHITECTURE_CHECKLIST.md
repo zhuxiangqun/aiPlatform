@@ -1,7 +1,9 @@
 # PR Architecture Checklist
 
-> 架构契约门禁要求：本文件必须存在（`.github/workflows/aiplat-contracts-guard.yml` 检查 `test -f`）。
-> 每次 PR 合并前，对照以下清单逐项确认架构边界未被破坏。
+> **C2 消歧**：本文是 **CI 契约门禁清单**（`.github/workflows/aiplat-contracts-guard.yml` 要求 `test -f` 本路径）。  
+> 开发者 PR 评审用的更长清单见 [`docs/manuals/PR_ARCHITECTURE_CHECKLIST.md`](../manuals/PR_ARCHITECTURE_CHECKLIST.md)——**同名异职，勿合并**。
+>
+> 架构契约门禁要求：本文件必须存在。每次 PR 合并前，对照以下清单逐项确认架构边界未被破坏。
 
 ## 1. 依赖方向（单向链）
 

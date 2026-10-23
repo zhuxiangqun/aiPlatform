@@ -4,6 +4,16 @@
 > **状态**：Phase 0–2 + 工厂/FE/ZIP **已合并 main**（PR [#251](https://github.com/zhuxiangqun/aiPlatform/pull/251)）  
 > **Live 门**：✅ `bash packages/aiplat-pi-runtime/scripts/live_smoke.sh`（Ollama `ollama/qwen2.5:3b` — CLI print + SOP + `/aiplat-status` + HTTP `createAgentSession`）
 
+## 术语：「Hybrid」消歧
+
+| 语境 | 含义 | 权威入口 |
+|------|------|----------|
+| **Pi ↔ aiPlat 企业回连** | `AIPLAT_ENTERPRISE=1` 等可选厚能力（KB/工具/Memory/审批） | `packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md` |
+| **Skill 执行类型** | `execution_type` 等技能实现模式（与企业回连无关） | 各 `SKILL.md` / 引擎 Skill 规约 |
+| **Builder / 工厂模式** | 应用工厂产物或流水线形态中的 “hybrid” 措辞 | Builder / 工厂相关 docs（勿与上表第一行混用） |
+
+本文其余「混合 / Hybrid」若未特别说明，均指 **第一行：Pi↔aiPlat 企业回连**。
+
 ## 战略：两条轴，勿合成一条
 
 Pi 是极简 Agent Harness（非治理平台）。与 aiPlat 的关系拆成**两条产品轴**，禁止写成「一个 Pi 集成路径解决所有问题」。

@@ -396,4 +396,4 @@
 **最后更新**: 2026-07-01  
 **变更**: 新增每步精确耗时、决策分支、产出字段、心理状态轨迹
 
-> 参见：[私有控制平面 — aiPlat 四层防御体系](articles/private-control-plane.md) 了解更多 PolicyGate/ApprovalGate 的设计细节。
+> 参见：[私有控制平面 — aiPlat 四层防御体系](../../articles/private-control-plane.md)（长文）· [架构短入口](../private-control-plane.md)。

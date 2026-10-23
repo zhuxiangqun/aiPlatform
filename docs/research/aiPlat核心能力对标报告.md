@@ -260,7 +260,7 @@ Codex/DSH/CC：hooks/diagnostics/transcript。Hermes/OpenClaw：偏运行洞察�
 | N4 | app-server 级可嵌入协议完备度 | Codex | 已有 Pi/Facade/hooks，协议面仍可加深 |
 | N5 | 会话内学习闭环产品化完整度 | Hermes | 机制有吸收，体验形态不同 |
 
-> 2026-08 行动纲领 G1–G15 史实不推翻；见 archive 旧报告与 [`对标吸收与架构纯度评估.md`](./对标吸收与架构纯度评估.md)。
+> 2026-08 行动纲领 G1–G15 史实不推翻；见 archive 旧报告与 [`对标吸收与架构纯度评估.md`](../archive/对标吸收与架构纯度评估.md)。
 
 ### 16.3 可借鉴优先级（建议）
 

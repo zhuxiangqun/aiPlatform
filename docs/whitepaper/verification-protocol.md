@@ -31,8 +31,10 @@ tags: [audit, verification, L4+, reproducibility, negative-check, L5-proximate, 
 
 # aiPlat L5 评估验证协议
 
-> **用途**：供外部审稿人或系统审计员独立验证白皮书中 L5 定级结论的准确性和一致性。
+> **C2 消歧**：本文验证 **白皮书 L5 定级 / verify_l5_runtime**。  
+> 三框架评估验证协议见 [`docs/framework/verification-protocol.md`](../framework/verification-protocol.md)——**同名异职，勿合并**。
 >
+> **用途**：供外部审稿人或系统审计员独立验证白皮书中 L5 定级结论的准确性和一致性。  
 > **前提**：不要求审稿人通读白皮书。本协议自包含所有验证步骤。
 
 ---

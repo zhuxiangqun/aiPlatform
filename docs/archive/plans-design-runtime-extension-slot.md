@@ -1,5 +1,8 @@
 # 设计：运行时扩展缝（Runtime Extension Slot）
 
+> **已归档（C3 · 2026-10-23）**：原路径 `docs/architecture/plans/design-runtime-extension-slot.md`。仅历史/过程参考；现行规划见 `docs/architecture/plans/`（如 pi-thin-runtime、app-module-layout）。
+>
+
 > 状态：设计稿（P2-A2，2026-08-16）· 范围：仅设计 + 能力缝声明，**不落地代码执行**（对齐 DSH"自修改不是安全边界"原则）
 
 ## 1. 目标

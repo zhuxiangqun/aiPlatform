@@ -173,4 +173,4 @@ A2A 交互路径:
 
 按时间投入分层：参见 [`docs/README.md`](../README.md)。
 
-> 参见：[私有控制平面 — aiPlat 四层防御体系](articles/private-control-plane.md) 了解更多 PolicyGate/ApprovalGate 的设计细节。
+> 参见：[私有控制平面 — aiPlat 四层防御体系](../articles/private-control-plane.md)（长文）· [架构短入口](./private-control-plane.md)。

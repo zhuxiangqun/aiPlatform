@@ -13,7 +13,7 @@ OS 原生沙箱执行器（P1, 对标 Codex sandboxing crate）。
     cmd = build_os_sandbox_cmd(["python3", "main.py"], workdir="/tmp/proj", network=False)
     # → ["bwrap", ...] 或 seatbelt；生产无沙箱 → SandboxRequiredError
 
-设计依据：docs/research/Codex-Harness开源借鉴分析报告.md §2.4 (P1)
+设计依据：docs/archive/Codex-Harness开源借鉴分析报告.md §2.4 (P1)
 参考实现：codex-rs/bwrap/ + codex-rs/sandboxing/（Landlock/seccomp/Seatbelt）
 """
 

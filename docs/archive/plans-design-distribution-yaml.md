@@ -1,5 +1,8 @@
 # H4 配置即代码分发（distribution.yaml）— 设计文档
 
+> **已归档（C3 · 2026-10-23）**：原路径 `docs/architecture/plans/design-distribution-yaml.md`。仅历史/过程参考；现行规划见 `docs/architecture/plans/`（如 pi-thin-runtime、app-module-layout）。
+>
+
 > 框架一 H 轴（产品化交付）从 L2→L3/L4 的关键缺口。现有基础 (`profile_packager.py`/`hermes-profile-install.sh`) 已可用，需补三个缺口：Cron 条目格式、版本解析、Profile 注册表。
 
 last_synced: 2026-07-07
