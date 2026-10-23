@@ -134,23 +134,30 @@ jobs:
         run: |
           bash ./scripts/phase_check.sh
 
+      # Populate graph caches under AIPLAT_HOME so fingerprint mismatch can hard-fail
+      # when AIPLAT_GRAPH_FRESH_REQUIRED=1 (no cache ⇒ skip, not debt).
       - name: Capability truth gate (paths + registry + matrix full diff)
+        env:
+          PYTHONPATH: ${{ github.workspace }}/aiPlat-core
+          AIPLAT_HOME: ${{ runner.temp }}/aiplat_home
+          AIPLAT_GRAPH_FRESH_REQUIRED: "1"
         run: |
+          set -euo pipefail
+          mkdir -p "$AIPLAT_HOME"
+          python3 - <<'PY'
+          # Cap graph is cheap; warm so GRAPH_FRESH_REQUIRED exercises fingerprint path.
+          # Full code_graph AST scan is too slow for this step — skip (no cache ≠ debt).
+          from core.harness.knowledge.capability_graph import build_capability_graph
+          build_capability_graph()
+          print("cap_graph warmup ok")
+          PY
           python3 ./scripts/verify_capability_truth.py --ci
 
-      # Phase D: critical-path static wiring (file+AST). Live HTTP is opt-in
-      # (AIPLAT_SMOKE_LIVE=1 / --require-live) — not the same as CAPABILITIES ✅.
+      # Phase D: critical-path static wiring (file+AST). Live HTTP hard gate is
+      # job capability-critical-live (not CAPABILITIES ✅).
       - name: Capability critical-path smoke (static)
         run: |
           python3 ./scripts/smoke_capability_critical_paths.py --ci
-
-      # Optional live HTTP smoke (needs core listening). Enable via repo variable
-      # AIPLAT_SMOKE_LIVE=1 or workflow_dispatch; --require-live makes failures hard.
-      - name: Capability critical-path smoke (live, optional)
-        if: ${{ vars.AIPLAT_SMOKE_LIVE == '1' || github.event_name == 'workflow_dispatch' }}
-        continue-on-error: true
-        run: |
-          python3 ./scripts/smoke_capability_critical_paths.py --ci --live
 
       - name: Tool selection regression (gold dataset)
         working-directory: ./aiPlat-core
@@ -296,6 +303,69 @@ jobs:
         run: |
           python -m pip install pytest pytest-asyncio python-multipart httpx
           python -m pytest tests/e2e/ -v --tb=short || echo "::warning::E2E API smoke test failed"
+
+  # Hard merge gate: critical-path live HTTP (--require-live). Not CAPABILITIES ✅.
+  # Separate from e2e-docker (warn-only full pytest) so flake in e2e does not dilute this.
+  capability-critical-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: contracts-guard
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.10"
+
+      - name: Build images
+        run: |
+          docker build -t aiplat-core:latest -f aiPlat-core/Dockerfile .
+          docker build -t aiplat-platform:latest -f aiPlat-platform/Dockerfile .
+          docker build -t aiplat-management:latest -f aiPlat-management/Dockerfile .
+
+      - name: Start services
+        run: |
+          docker compose -f docker-compose.test.yml up -d || {
+            echo "::group::core container logs (startup failure)"
+            docker compose -f docker-compose.test.yml logs core 2>&1 | tail -80
+            echo "::endgroup::"
+            echo "::group::platform container logs (startup failure)"
+            docker compose -f docker-compose.test.yml logs platform 2>&1 | tail -80
+            echo "::endgroup::"
+            echo "::group::management container logs (startup failure)"
+            docker compose -f docker-compose.test.yml logs management 2>&1 | tail -80
+            echo "::endgroup::"
+            docker compose -f docker-compose.test.yml down -v >/dev/null 2>&1 || true
+            exit 1
+          }
+
+      - name: Wait for health
+        run: |
+          bash scripts/wait_for_health.sh 90 || {
+            echo "::group::core container logs (not healthy)"
+            docker compose -f docker-compose.test.yml logs core 2>&1 | tail -60
+            echo "::endgroup::"
+            echo "::group::platform container logs (not healthy)"
+            docker compose -f docker-compose.test.yml logs platform 2>&1 | tail -60
+            echo "::endgroup::"
+            echo "::group::management container logs (not healthy)"
+            docker compose -f docker-compose.test.yml logs management 2>&1 | tail -60
+            echo "::endgroup::"
+            exit 1
+          }
+
+      - name: Capability critical-path smoke (live, require-live)
+        env:
+          AIPLAT_SMOKE_CORE_URL: http://127.0.0.1:8002
+          AIPLAT_SMOKE_PLATFORM_URL: http://127.0.0.1:8003
+        run: |
+          python -m pip install --quiet pyyaml
+          python3 ./scripts/smoke_capability_critical_paths.py --ci --live --require-live
+
+      - name: Cleanup
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v
 
   e2e-docker:
     runs-on: ubuntu-latest

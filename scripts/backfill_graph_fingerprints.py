@@ -4,6 +4,10 @@
 Fixes evaluate_freshness stuck on missing_fingerprint_meta (legacy DBs)
 without requiring a full rebuild when node data is already present.
 
+Runtime also backfills on zero-diff cache hit:
+  capability_graph.build_capability_graph / code_graph.build_graph
+(this CLI is the ops/offline equivalent).
+
 Usage:
   PYTHONPATH=aiPlat-core python3 scripts/backfill_graph_fingerprints.py
   AIPLAT_HOME=/path/to/home PYTHONPATH=aiPlat-core python3 scripts/backfill_graph_fingerprints.py

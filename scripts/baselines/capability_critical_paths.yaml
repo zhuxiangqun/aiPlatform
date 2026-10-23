@@ -1,7 +1,7 @@
 # Capability critical-path behavior smoke (Phase D)
 # Source of truth for "行为通过" candidates — NOT CAPABILITIES ✅ rows.
 # static: repo file + AST top-level symbol (always --ci hard)
-# live: HTTP when --live / AIPLAT_SMOKE_LIVE=1 (soft unless --require-live)
+# live: HTTP when --live / AIPLAT_SMOKE_LIVE=1; CI hard gate = capability-critical-live (--require-live)
 version: 1
 paths:
   - id: core_health_route
