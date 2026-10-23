@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-23T13:41:50+08:00",
+  "reviewed_at": "2026-10-23T14:51:28+08:00",
   "base_ref": "origin/main",
-  "merge_base": "1c11b60fb9a4c5f635822ae9a8ba8e7a5703bbe1",
-  "diff_sha256": "f2fb57babc42b1d302bdf8aa03083ca795b430ab979f6af489d7544f78bff787",
-  "head_sha": "d3695c715fe34b20e255162a15f079f7c94e81f2",
+  "merge_base": "a2ac46193b180ae012b80747e91b28bb440add3d",
+  "diff_sha256": "b091615e050bbc8a5c6a3c1187b8cbc65bd6b13c9db150ed50b67810a62cd2fe",
+  "head_sha": "094812089aefdabb271a1ca96c6d003482ddd37b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Live smoke hard job; GRAPH_FRESH_REQUIRED on truth gate with cap_graph warmup; code_graph zero-diff fingerprint backfill. Local lock only."
+  "note": "Also isolate PHYSICAL_GATES_MODE from pytest. Local lock only."
 }

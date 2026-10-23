@@ -145,11 +145,16 @@ jobs:
           set -euo pipefail
           mkdir -p "$AIPLAT_HOME"
           python3 - <<'PY'
-          # Cap graph is cheap; warm so GRAPH_FRESH_REQUIRED exercises fingerprint path.
-          # Full code_graph AST scan is too slow for this step — skip (no cache ≠ debt).
+          # Warm both graphs so GRAPH_FRESH_REQUIRED exercises fingerprint paths.
           from core.harness.knowledge.capability_graph import build_capability_graph
+          from core.harness.knowledge.code_graph import build_graph, default_roots, repo_root
+
           build_capability_graph()
           print("cap_graph warmup ok")
+          repo = repo_root()
+          abs_roots = [(repo / r).resolve() for r in default_roots()]
+          nodes, _edges, _issues = build_graph(repo, abs_roots)
+          print(f"code_graph warmup ok n={len(nodes)}")
           PY
           python3 ./scripts/verify_capability_truth.py --ci
 
@@ -187,7 +192,7 @@ jobs:
           mkdir -p "$AIPLAT_HOME"
           bash ./scripts/ops_harness_ready_check.sh
 
-      # P0/P1 merge gates: inflation + shape + testability (warn until block_after).
+      # P0 physical merge gates: mode=block (seed). P1 testability still warn until 2026-11-01.
       # Merge-time veto only — separate from runtime entry fail-fast / PolicyGate.
       - name: Physical merge gates (inflation + shape + testability)
         env:
@@ -199,7 +204,10 @@ jobs:
           else
             BASE_REF="origin/main"
           fi
-          python3 ./scripts/check_physical_merge_gates.py --base "$BASE_REF"
+          # Block for the merge check only — do not leak into unit tests
+          # (resolve_mode prefers AIPLAT_PHYSICAL_GATES_MODE over YAML).
+          AIPLAT_PHYSICAL_GATES_MODE=block \
+            python3 ./scripts/check_physical_merge_gates.py --base "$BASE_REF"
           pytest -q \
             ./aiPlat-core/core/tests/unit/test_harness/test_physical_merge_gates.py \
             ./aiPlat-core/core/tests/unit/test_harness/test_testability_gate.py \
@@ -305,7 +313,7 @@ jobs:
           python -m pytest tests/e2e/ -v --tb=short || echo "::warning::E2E API smoke test failed"
 
   # Hard merge gate: critical-path live HTTP (--require-live). Not CAPABILITIES ✅.
-  # Separate from e2e-docker (warn-only full pytest) so flake in e2e does not dilute this.
+  # Separate from e2e-docker (full pytest) so live smoke stays a focused hard gate.
   capability-critical-live:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -369,10 +377,9 @@ jobs:
 
   e2e-docker:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     needs: contracts-guard
-    if: true  # Enabled: runs E2E tests in docker-compose.test.yml (warn-only, see continue-on-error)
-    continue-on-error: true  # Docker runtime diagnostics — container startup needs manual env prep; do not block merges
+    # Hard merge gate: docker-compose.test E2E must pass (live smoke is capability-critical-live).
     steps:
       - uses: actions/checkout@v7
 

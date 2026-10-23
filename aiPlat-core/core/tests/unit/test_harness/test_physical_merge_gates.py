@@ -4,9 +4,11 @@ from __future__ import annotations
 from datetime import date
 
 from core.harness.meta.physical_merge_gates import (
+    DiffStats,
     assess_exemption_debt,
     collect_diff_stats,
     evaluate_diff,
+    inflation_stats_for_caps,
     resolve_mode,
     select_profile,
 )
@@ -46,7 +48,8 @@ def _cfg(**overrides):
     return base
 
 
-def test_resolve_mode_block_after_escalates():
+def test_resolve_mode_block_after_escalates(monkeypatch):
+    monkeypatch.delenv("AIPLAT_PHYSICAL_GATES_MODE", raising=False)
     cfg = {"mode": "warn", "block_after": "2026-01-01"}
     assert resolve_mode(cfg, now=date(2026, 11, 1)) == "block"
     assert resolve_mode(cfg, now=date(2025, 12, 1)) == "warn"
@@ -62,6 +65,33 @@ def test_select_profile_framework_when_all_match():
         == "framework"
     )
     assert select_profile(["aiPlat-platform/apps/foo/api.py"], cfg) == "business"
+
+
+def test_inflation_excludes_neutral_on_mixed_pr():
+    cfg = _cfg(
+        profile_neutral_globs=["AIPLAT_CAPABILITIES.md", "docs/**"],
+    )
+    stats = DiffStats(
+        files_changed=10,
+        paths=[
+            "aiPlat-core/core/harness/meta/x.py",
+            "AIPLAT_CAPABILITIES.md",
+            "docs/whitepaper/volumes/01-tech-architecture.md",
+            "docs/whitepaper/volumes/02-product-capability.md",
+        ],
+    )
+    capped = inflation_stats_for_caps(stats, cfg)
+    assert capped.files_changed == 1
+    # Pure docs: keep full count
+    docs_only = DiffStats(
+        files_changed=3,
+        paths=[
+            "AIPLAT_CAPABILITIES.md",
+            "docs/a.md",
+            "docs/b.md",
+        ],
+    )
+    assert inflation_stats_for_caps(docs_only, cfg).files_changed == 3
 
 
 def test_select_profile_neutral_globs_do_not_force_business():
@@ -132,7 +162,8 @@ def test_inflation_blocks_large_diff():
     assert "inflation_net_lines" in codes
 
 
-def test_warn_mode_exits_ok_with_findings():
+def test_warn_mode_exits_ok_with_findings(monkeypatch):
+    monkeypatch.delenv("AIPLAT_PHYSICAL_GATES_MODE", raising=False)
     name_status = "A\ta.py\nA\tb.py\nA\tc.py\nA\td.py"
     numstat = "100\t0\ta.py\n100\t0\tb.py\n100\t0\tc.py\n100\t0\td.py"
     report = evaluate_diff(
