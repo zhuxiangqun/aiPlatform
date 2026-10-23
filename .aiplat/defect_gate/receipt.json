@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T05:14:10+08:00",
+  "reviewed_at": "2026-10-24T05:35:52+08:00",
   "base_ref": "origin/main",
-  "merge_base": "92ae1bdc5b6588a604f4b9848080c9d06c05bc95",
-  "diff_sha256": "887518391e6761c20217c69cf9f5cd4464cf8115b1c3f949f010d1d1d2f83b17",
-  "head_sha": "6b70ea17085a1449462623c2a2fd3ee4d12eb6fc",
+  "merge_base": "5bfdb86eed30867da00a260bb080b3e67ffa02ae",
+  "diff_sha256": "1b950ac94a9801d0fa2234f3cc241c7721addc8f167b3d7a7750702e27238dcb",
+  "head_sha": "5392c72b5c51eae269500b10c457e3ed9de3748d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Five-products first slice after merge main(#380). Evidence transport ok≠diagnosis_ok; fp- signoff requires report presence only. Gate2 still held (no D13)."
+  "note": "MB-02 models.json.example + WP5 merge note after #381. No product path change."
 }
