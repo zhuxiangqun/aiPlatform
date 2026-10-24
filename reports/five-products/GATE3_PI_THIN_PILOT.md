@@ -133,7 +133,7 @@ bash packages/aiplat-pi-runtime/scripts/gate3_observation_rerun.sh
 GATE3_OBS_INCLUDE_EF=1 bash packages/aiplat-pi-runtime/scripts/gate3_observation_rerun.sh
 ```
 
-结束复跑须 ≤2026-10-31；见 `GATE3_PI_THIN_ROLLBACK_DRILL.md`。
+观察窗口已修订为**同日双端**（起跑 + close）；见 `GATE3_OBSERVATION_WINDOW_DECISION.md` / ROLLBACK。
 
 ## 14. 后续 PR 约束
 

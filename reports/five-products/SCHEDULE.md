@@ -15,7 +15,7 @@
 | Gate 3 Phase D | ✅ FDE 验收绑定 report_id 已接线（#402 → `58ac428`；`GATE3_PHASE_D_DECISION.md`） |
 | Gate 3 Phase E | ✅ lock-service Bundle 物化（#404 → `a9790f7`；`GATE3_PHASE_E_DECISION.md`） |
 | Gate 3 Phase F | ✅ HTTP ⑥b 签收（#405 → `4d47ae2`；`GATE3_PHASE_F_DECISION.md`） |
-| Gate3 观察窗口 | ✅ 已批 7 日（#408 → `d859559`）；mid-window helper #409 → `1626b28`；**结束复跑待 ≤10-31** |
+| Gate3 观察窗口 | ✅ **同日双端已关闭**（起跑 + close PASS；#408/#409 + 本批 OBS 修订）；原 7 日等待废止 |
 | 第二产品拆分 | ❌ 未授权（ADR-10 **Proposed** 草案；非落地） |
 | 五产品全拆 / 对外 E4 | ❌ 未授权（ADR-09 **Proposed** · #406 → `f6a3a9a`；非落地） |
 
