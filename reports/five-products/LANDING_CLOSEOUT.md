@@ -27,7 +27,9 @@
 | ADR-09 全拆/E4 草案 | PR [#406](https://github.com/zhuxiangqun/aiPlatform/pull/406) → `f6a3a9a`：**Proposed**（非落地） |
 | Gate3 观察窗口（后修订同日双端） | PR [#408](https://github.com/zhuxiangqun/aiPlatform/pull/408) → `d859559`；同日双端关闭见本批 OBS/ROLLBACK |
 | 观察复跑脚本 + mid-window | PR [#409](https://github.com/zhuxiangqun/aiPlatform/pull/409) → `1626b28`：`gate3_observation_rerun.sh` |
-| ADR-10 第二产品拆分草案 | `ADR-10-second-product-split-draft.md`：**Proposed**（非落地） |
+| 观察同日双端关闭 | PR [#412](https://github.com/zhuxiangqun/aiPlatform/pull/412) → `9a6471b` |
+| ADR-09 §10 再闭合 + ADR-10 Accepted | PR [#413](https://github.com/zhuxiangqun/aiPlatform/pull/413) → `ca03f00`：`ADR09_S10_DRIVER_CLOSURE.md` + 诊断 MVP |
+| CLOSEOUT 引用 #412/#413 | PR [#414](https://github.com/zhuxiangqun/aiPlatform/pull/414) |
 
 ## Gate 2 / D13 / Gate 3
 
@@ -35,9 +37,9 @@
 |----|------|
 | Gate 2 | ✅ 已落地 |
 | D13 | ✅ 客户场景 `fp-customer-lock-service-bundle-pi-diag-001`（江苏锁安 / lock-service）；见 `D13_CUSTOMER_ENDORSEMENT.md` |
-| Gate 3 | ✅ **有条件** — Pi Thin A–F + 观察**同日双端已关闭**（ADR-08 / OBS 决定）；ADR-09 前置 #1 仅候选齐 |
-| 第二产品拆分 | ❌ 未授权（ADR-10 仅 Proposed） |
-| 五产品全拆 / 对外 E4 宣传 | ❌ 未授权（ADR-09 仅 Proposed） |
+| Gate 3 | ✅ **有条件** — Pi Thin A–F + 观察**同日双端已关闭**（#412）；ADR-09 前置 #1–#2 齐，#4–#5 未齐 |
+| 第二产品拆分 | ✅ **有条件 Accepted**（ADR-10 诊断 MVP；**落地接线另批**；≠ 改生产默认路径） |
+| 五产品全拆 / 对外 E4 宣传 | ❌ 未授权（ADR-09 仍 Proposed） |
 
 ## 运维备忘
 
