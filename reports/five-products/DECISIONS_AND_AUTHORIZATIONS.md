@@ -16,7 +16,8 @@
 | **Gate 2 / MB-01·03** | ✅ **已授权并落地（2026-10-24）** | `GATE2_DECISION.md`；PR #387–#389 |
 | **D13 客户场景** | ✅ **已升格（2026-10-24）** | `D13_CUSTOMER_ENDORSEMENT.md` + `SCENE.md`（江苏锁安 / lock-service） |
 | **Gate 3 / 拆部署** | ✅ **有条件（仅 Pi Thin 试点）** | `GATE3_DECISION.md` + ADR-08；**≠** 五产品全拆 |
-| **对外 E4 / 全拆** | ❌ 未授权 | 草案见 ADR-09（**Proposed**）；观察窗口见 `GATE3_OBSERVATION_WINDOW_DECISION.md`；第二产品草案 ADR-10（**Proposed**） |
+| **对外 E4 / 全拆** | ❌ 未授权 | ADR-09 仍 **Proposed**（#1–#2 有进展；#4–#5 未齐） |
+| **第二产品拆分（诊断 MVP）** | ✅ **有条件 Accepted** | `ADR-10-second-product-split.md`；**≠** 改生产默认路径 / 全拆 |
 
 **仍须守住**：五产品全拆、对外产品化宣传、诊断二期 — 不得默示批准。
 
@@ -102,7 +103,7 @@
 | B1 | 启动 WP3–WP4、改代码接主路径、宣称切片开跑 | **Gate 1** |
 | B2 | 降低 §3.4 E3 完成标准，或把「无 E3」当 Gate 1 通过条件反过来用 | **禁止**（任何门） |
 | B3 | 扩大模块化、全仓搬迁、解耦 E-06 大规模改造 | **部分已批**：Gate 2 仅授权 `core/apps/fde` 分批改经 CoreFacade（禁搬仓/拆微服务）；其余扩大仍须另批 |
-| B4 | 独立部署 / 拆服务拆库 | **部分已批**：Gate3 仅 Pi Thin 试点 + 观察窗口（`GATE3_OBSERVATION_WINDOW_DECISION.md`）；第二产品须 ADR-10 **Accepted**；全拆须 ADR-09 **Accepted** |
+| B4 | 独立部署 / 拆服务拆库 | **部分已批**：Pi Thin（ADR-08）+ 诊断 MVP 第二产品门槛（ADR-10 Accepted）；落地接线另 PR；全拆仍须 ADR-09 **Accepted** |
 | B5 | 取消 D13 或内部场景充客户验收 | **ADR** |
 | B6 | 对外宣传五产品已产品化 / 升格 E4 对外承诺 | **单独书面** + ADR-09 **Accepted**（现为 Proposed 草案） |
 | B7 | 启用本体步骤进主路径 | **WP1 变更 + Semantic 升启用集**（现批未开） |
