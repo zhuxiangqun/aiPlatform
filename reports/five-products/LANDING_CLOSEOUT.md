@@ -10,7 +10,7 @@
 | MB-02 models 模板 | [#382](https://github.com/zhuxiangqun/aiPlatform/pull/382) |
 | MB-05 emit opt-in | [#383](https://github.com/zhuxiangqun/aiPlatform/pull/383) |
 | MB-01 再核实 + MB-03 RFC + MB-04 清单 | [#384](https://github.com/zhuxiangqun/aiPlatform/pull/384) |
-| inflation 豁免退役 | 本收口：`physical_merge_gates.yaml` → `exemptions: []` |
+| inflation 豁免退役 | PR [#385](https://github.com/zhuxiangqun/aiPlatform/pull/385) → `a4c4e0c`：`exemptions: []` |
 
 ## 明确未做 / 未批
 
