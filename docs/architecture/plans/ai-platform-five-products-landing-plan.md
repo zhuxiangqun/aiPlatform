@@ -1,12 +1,12 @@
 # 五产品域落地方案（唯一执行真源）
 
 > **文档类型**：落地方案 / Design Plan  
-> **状态**：v1.3 · 2026-10-23 · **有条件批准进入 L1 的执行基线**  
+> **状态**：v1.3 · 2026-10-23 基线 · **2026-10-24 首切片落地收口**（见 [`reports/five-products/LANDING_CLOSEOUT.md`](../../../reports/five-products/LANDING_CLOSEOUT.md)）  
 > **性质**：指导盘点、契约、首切片、模块化与按需拆部署的**完整执行真源**。  
 > **冲突裁决**：本文 > 执行计划摘要 > Decision Brief / PPT / 发言稿。目标边界细节仍引用 [目标架构母稿](./ai-platform-five-products-target-architecture.md)；若与本文路径/门禁冲突，**以本文为准并回写母稿**。  
-> **本文不是**：评审会脚本；也**不**表示写成即自动开工；**更不是**首切片已获准开跑或全面改造已获批。  
-> **当前批准范围**：**仅**有条件批准 L1（WP0–WP2）——须 §2.3 + 书面获准 L1（标准件：`reports/five-products/L1_AUTHORIZATION.md`）。**不批准 WP3–WP4**（须独立 Gate 1）。Gate 1 区分阻塞项 / 已知缺口 / E3 阶段归属（§3.6）。  
-> **卫星材料**：Brief / 发言稿 / PPT 大纲 / 执行摘要已于同日按 v1.3 口径回写；会前仍须抽查 Gate、E3 归属、D13 表述是否与本文一致。
+> **本文不是**：评审会脚本；也**不**表示全面改造已获批或五产品已对外产品化。  
+> **当前批准范围**：L1（WP0–WP2）已书面获准；Gate 1 修订已批准本切片完整 WP3–WP4 并合入 main（E3 / 非客户验收）。**Gate 2 / Gate 3 / D13 扩大仍未批**（建议维持：`reports/five-products/GATE2_RECOMMENDATION.md`）。  
+> **卫星材料**：Brief / 发言稿 / PPT 大纲 / 执行摘要已于同日按 v1.3 口径回写；收口后抽查以 `LANDING_CLOSEOUT.md` 为准。
 
 ---
 

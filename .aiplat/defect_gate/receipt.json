@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T08:29:43+08:00",
+  "reviewed_at": "2026-10-24T08:48:47+08:00",
   "base_ref": "origin/main",
-  "merge_base": "b6ca3171cce86bc375c045f127eb50f96f048338",
-  "diff_sha256": "f0235a91f3cc626f822b560eca3a4d559fce3725d222e899faacf6276986c456",
-  "head_sha": "739b0e12fe8f447d363855e3784687d2fd8b7d71",
+  "merge_base": "a4c4e0cc3d43b9039532dd218aedc3037cd06e07",
+  "diff_sha256": "c6c14223cf6cfacf69178fc0de67471dc9a3e41a2c1df9e4d31b9f04e24197df",
+  "head_sha": "d36d965f15fddcd1eaab673cb939f2093da7be1b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Retire five-products inflation exemption (exemptions:[]). Docs closeout + seed yaml. Gate2 still held."
+  "note": "SSOT header sync to LANDING_CLOSEOUT only. No product code. Gate2 held."
 }
