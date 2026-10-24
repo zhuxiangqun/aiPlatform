@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T10:00:58+08:00",
+  "reviewed_at": "2026-10-24T10:45:48+08:00",
   "base_ref": "origin/main",
-  "merge_base": "a88ca0c8a45e3bd7a03345f10b2082ae5c9779a4",
-  "diff_sha256": "b432e0f07c8e3476e34d737f8f9bbef51a491e7414fee9998952a50e58aac89c",
-  "head_sha": "96d1c5e229a8d8eb100fd4f99aab2ec5f5f03e7e",
+  "merge_base": "5b56477e1ccaa010857a7a6020b694925d106471",
+  "diff_sha256": "6588336cbbe52b91939281b3d02d5099c9880f25cb4c7dbcc77c36865e0c5c04",
+  "head_sha": "efcf30e6eb8b8c2e5345634a56c4e04b5418298f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Gate2 PR: circular-import fix + temporary inflation exemption (retire after #387 merge)."
+  "note": "Retire Gate2 inflation exemption post-#387; docs only + yaml clear."
 }
