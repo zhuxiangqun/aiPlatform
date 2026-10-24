@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T11:24:10+08:00",
+  "reviewed_at": "2026-10-24T11:53:32+08:00",
   "base_ref": "origin/main",
-  "merge_base": "3530d9a3fb386b0e3244a119305ca0b17b7cd341",
-  "diff_sha256": "68b5ac2b3cf4373312ae190678aa2717f7af85eca2eefa3c265a5d3c702d1b25",
-  "head_sha": "4a6da01e4a8162107021a5412668d92045118dea",
+  "merge_base": "e0b089a10d48426fb3c739906d1ae9f3502fb374",
+  "diff_sha256": "b608c3376b82a67b5237f599d7d90a45da2b137a16f097a1b246fcf8aa59c0cc",
+  "head_sha": "64a352702a37f9ee1a1d4e6056dad079e511dd90",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "MB-01 agent Facade lazy import; prompts keep harness (cycle); docs sync #388."
+  "note": "Docs-only: D13 customer scene + Gate3 Pi Thin conditional auth; no deploy code yet."
 }
