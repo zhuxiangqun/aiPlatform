@@ -104,3 +104,6 @@ deploy-kit/images/*.tar
 .aiplat/execution.db  # legacy path
 
 pentest-reports/
+
+# Gate3 Pi Thin local env (from scripts/gate3_pi_thin.env.example)
+packages/aiplat-pi-runtime/.env.gate3-pi-thin
