@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T14:16:09+08:00",
+  "reviewed_at": "2026-10-24T15:44:24+08:00",
   "base_ref": "origin/main",
-  "merge_base": "34f69ebc52e32bf8e1be64b2a361ed37ff36a360",
-  "diff_sha256": "6478d1a5e9430149863adecd6a2ff67103c7eb5bffbd054e6ddf1f81ebbf93be",
-  "head_sha": "5d2e0d52224e4290edce46084e92dc1baf3d2a2e",
+  "merge_base": "79dc33acb910a987de753d0708a63fa813eec780",
+  "diff_sha256": "c3c18ef9f150105a80c082a2b17b21d0e27cc4d9a2eba6d6c94a40a6cdbf2a49",
+  "head_sha": "4555d2d754463f991b2706c118819e654ddb3d4d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "G3-2/G3-3 trimmed \u22648 files; compose+HOST+rollback; smoke PASS."
+  "note": "Docs-only closeout for #396; README compose line; gitignore local env; backlog cites."
 }
