@@ -486,7 +486,7 @@ def ingest_webhook_payload(
             logger.debug("ensure_it_ops_fault_ontology skipped", exc_info=True)
 
     if graph_factory is None:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
 
         GraphIndex._loaded_instances.clear()
         g = GraphIndex.load(did)
@@ -600,7 +600,7 @@ def fetch_entity_snapshot(
 
     node_payload: Dict[str, Any] = {}
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
 
         g = GraphIndex.load(did)
         node = (getattr(g, "_nodes", {}) or {}).get(eid)

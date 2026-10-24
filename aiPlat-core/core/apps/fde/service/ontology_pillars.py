@@ -55,7 +55,7 @@ def get_ontology_pillars(domain_id: str) -> Dict[str, Any]:
 
     # ── data pillar ──
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
 
         GraphIndex._loaded_instances.clear()
         g = GraphIndex.load(did)
@@ -77,7 +77,7 @@ def get_ontology_pillars(domain_id: str) -> Dict[str, Any]:
     yaml_path = _domain_yaml_path(did)
     if yaml_path:
         try:
-            from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+            from core.api.core_facade import load_ontology_from_yaml
 
             dom = load_ontology_from_yaml(str(yaml_path))
             axioms: List[Dict[str, Any]] = []
@@ -113,8 +113,8 @@ def get_ontology_pillars(domain_id: str) -> Dict[str, Any]:
 
     # ── action pillar ──
     try:
-        from core.harness.ontology_engine.action_registry import get_action_registry
-        from core.harness.ontology_engine.builtin_actions import register_all
+        from core.api.core_facade import get_action_registry
+        from core.api.core_facade import register_all
 
         reg = get_action_registry()
         register_all(reg)

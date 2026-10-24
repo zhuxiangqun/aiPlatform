@@ -311,7 +311,7 @@ async def evaluate_escort_exit_from_signals(
 
     st = store
     if st is None:
-        from core.harness.ontology_engine.action_registry import get_action_registry
+        from core.api.core_facade import get_action_registry
 
         st = get_action_registry()._store
         await st.initialize()
@@ -481,7 +481,7 @@ async def list_domain_peers(
 
     st = store
     if st is None:
-        from core.harness.ontology_engine.action_registry import get_action_registry
+        from core.api.core_facade import get_action_registry
 
         st = get_action_registry()._store
         await st.initialize()

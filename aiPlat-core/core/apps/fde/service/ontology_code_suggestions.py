@@ -81,7 +81,7 @@ def suggest_classes_from_snippets(
         try:
             import asyncio
 
-            from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore
+            from core.api.core_facade import VersionedOntologyStore
 
             store = VersionedOntologyStore(did)
             first = suggestions[0]
@@ -141,7 +141,7 @@ async def suggest_classes_from_snippets_async(
     if not enqueue or not base.get("suggestions"):
         return base
     try:
-        from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore
+        from core.api.core_facade import VersionedOntologyStore
 
         store = VersionedOntologyStore(domain_id)
         first = base["suggestions"][0]
@@ -397,7 +397,7 @@ async def suggest_classes_from_table_schema_async(
         return base
     first = base["suggestions"][0]
     try:
-        from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore
+        from core.api.core_facade import VersionedOntologyStore
 
         store = VersionedOntologyStore(domain_id)
         proposal_id = await store.create_proposal(

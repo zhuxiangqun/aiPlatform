@@ -16,7 +16,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from core.harness.infrastructure.action_audit_validate import (
+from core.api.core_facade import (
     check_change_surface,
     load_audit_schema,
 )

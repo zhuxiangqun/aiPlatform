@@ -6148,7 +6148,11 @@ from core.harness.infrastructure.lineage_store import LineageStore  # noqa: boun
 from core.harness.learning.operation_recorder import OperationRecorder  # noqa: boundary
 from core.harness.knowledge.scoring_engine import load_models  # noqa: boundary
 from core.harness.knowledge.metric_engine import load_metrics  # noqa: boundary
-from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore  # noqa: boundary
+from core.harness.knowledge.versioned_ontology_store import (  # noqa: boundary
+    VersionedOntologyStore,
+    json_change_diff,
+    project_ontology_changes,
+)
 from core.harness.execution.team_planner import load_team_template  # noqa: boundary
 from core.harness.knowledge.knowledge_roi import KnowledgeROI  # noqa: boundary
 from core.harness.learning.kpi_tracker import get_kpi_tracker  # noqa: boundary
@@ -6172,6 +6176,7 @@ from core.harness.infrastructure.workbench_runtime_guard import WorkbenchRuntime
 from core.harness.infrastructure.action_audit_validate import (  # noqa: boundary
     check_change_surface,
     load_change_surface_whitelist,
+    load_audit_schema,
     classify_audit_fields,
     render_mapping_report,
 )
@@ -6196,7 +6201,11 @@ from core.harness.document.converters._mineru import MineruConverter  # noqa: bo
 from core.harness.knowledge.okf_exporter import OKFExporter  # noqa: boundary
 from core.harness.ontology_engine.engine import OntologyEngine  # noqa: boundary
 from core.harness.learning.partner_selector import PartnerSelector  # noqa: boundary
-from core.harness.infrastructure.gates.policy_gate import PolicyGate  # noqa: boundary
+from core.harness.infrastructure.gates.policy_gate import PolicyGate, PolicyDecision  # noqa: boundary
+from core.harness.ontology_engine.builtin_actions import register_all  # noqa: boundary
+from core.harness.knowledge.ontology_case_learning import OntologyCaseStore, _evolve_min_reward  # noqa: boundary
+from core.harness.knowledge.embedder import embed_text_semantic  # noqa: boundary
+from core.harness.knowledge.knowledge_ontology import export_to_owl_rdf, TIER_EDGE  # noqa: boundary
 from core.harness.execution.programmatic_collector import ProgrammaticCollector  # noqa: boundary
 from core.harness.infrastructure.gates.purpose_registry import PurposeRegistry  # noqa: boundary
 from core.harness.execution.simulation import SimulationOrchestrator  # noqa: boundary
