@@ -20,6 +20,7 @@
 | 第二产品拆分 | ✅ ADR-10 **Accepted（有条件）** — 诊断 MVP |
 | ADR-10 接线 Phase A | ✅ 清单 + env + 沙箱烟测（`ADR10_DIAGNOSIS_MVP_WIRING_DECISION.md`）；**≠** 改生产默认路径 |
 | ADR-10 接线 Phase B | ✅ compose 容器烟测（`ADR10_DIAGNOSIS_MVP_PHASE_B_DECISION.md`）；**≠** 改生产默认 / 长驻微服务 |
-| 五产品全拆 / 对外 E4 | ❌ 未授权（ADR-09 仍 **Proposed**；#4–#5 未齐） |
+| ADR-09 前置 #4/#5 草案 | 🟡 文案草案 + 干净环境脚本（`ADR09_E4_*`）；**≠** Accepted / 对外宣传 |
+| 五产品全拆 / 对外 E4 | ❌ 未授权（ADR-09 仍 **Proposed**；#4–#5 未联签） |
 
 路径证据目录：`reports/five-products/slice-fp-internal-bundle-pi-diag-001/`（历史内部 id；新场景 id 见 SCENE.md）。

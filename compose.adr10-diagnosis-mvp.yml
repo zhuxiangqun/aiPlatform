@@ -15,7 +15,13 @@ services:
       AIPLAT_DIAGNOSIS_PROD_DEFAULT: "0"
       AIPLAT_SLICE_SCENARIO_ID: fp-customer-lock-service-bundle-pi-diag-001
       ADR10_DIAG_PYTHON: python3
-    command: ["bash", "scripts/adr10_diagnosis_mvp_pilot.sh"]
+    command:
+      - bash
+      - -c
+      - |
+        set -euo pipefail
+        pip install -q anyio pydantic aiosqlite typing_extensions
+        bash scripts/adr10_diagnosis_mvp_pilot.sh
 
 volumes:
   adr10-diag-home:
