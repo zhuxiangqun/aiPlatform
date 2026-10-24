@@ -9,18 +9,20 @@
 | **platform** `aiPlat-platform/apps/fde` | **0** `from core.harness` — 经 CoreFacade |
 | **core** `aiPlat-core/core/apps/fde` | Gate2 首批：knowledge / ontology_engine / knowledge_pipeline / 相关 gates·store **已改** `from core.api.core_facade` |
 
-残留（非 E-06 主债 / 下一批）：
+残留：
 
-- `service/agent.py` → `interfaces.agent`（AgentContext/Config）
-- `prompts/__init__.py` → `prompt_loader._register`
-- `service/_archive/builder.py` → archive，不接线
+- `service/_archive/builder.py` → archive，不接线（不改）
+- `prompts/__init__.py` → 仍用 harness `_register`（`fde/__init__` 包导入期注册，经 Facade 会循环导入）
+
+已清：`service/agent.py` → Facade `AgentContext`/`AgentConfig`（函数内懒加载）。
 
 ## 2. 结论
 
 | 项 | 状态 |
 |----|------|
-| MB-01 首批 | ✅ 已实施（Gate2） |
-| 全量清零 | 未宣称；按残留清单续批 |
+| MB-01 knowledge/ontology + agent interfaces | ✅ 已实施（Gate2） |
+| prompts 包导入期注册 | 有意保留 harness（防循环） |
+| archive | 故意保留，不接线 |
 | Gate 3 | ❌ 未批 |
 
 ## 3. 解耦顺序（续）

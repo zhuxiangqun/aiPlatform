@@ -5,7 +5,7 @@
 
 | ID | 边/问题 | 严重度 | 建议手法 | 契约/facade | 后置条件 |
 |----|---------|--------|----------|-------------|----------|
-| MB-01 | FDE → `core.harness.knowledge|ontology` 直连（E-06） | 中 | platform 已干净；`core/apps/fde` 首批已改经 CoreFacade（见 `MB01_E06_REVERIFY.md`） | CoreFacade | **Gate2 首批已落地**；残留 interfaces/prompts |
+| MB-01 | FDE → `core.harness.knowledge|ontology` 直连（E-06） | 中 | platform 已干净；`core/apps/fde` 经 CoreFacade（agent interfaces 已迁；prompts 包导入期保留 harness 防循环；archive 除外） | CoreFacade | **Gate2 已落地** |
 | MB-02 | Pi models.json 与本地 Ollama 模型 id 告警 | 低 | 运维：`~/.pi/agent/models.json`（模板含 `batiai/qwen3.5-9b:latest`） | n/a | 已对齐模板 |
 | MB-03 | 诊断 MVP 持久化 | 中 | RFC 方案 B：SQLite 默认；`AIPLAT_SLICE_EVIDENCE_STORE=file` 回退 | evidence-fp-001 | **已实现（SQLite 默认）** |
 | MB-04 | 正式五产品 owner 转正 | 中 | 见 `MB04_OWNER_TRANSFER.md` / `ROLES.md` | ROLES.md | **已转正（2026-10-24）** |

@@ -1,5 +1,7 @@
 """Domain prompts — migrated from harness/utils/prompt_loader.py per CLAUDE.md §17."""
 
+# Keep harness _register here: fde/__init__.py calls register_fde_prompts() at
+# package import, which can run while core_facade is still loading (cycle).
 from core.harness.utils.prompt_loader import _register as register_prompt
 
 def register_fde_prompts():

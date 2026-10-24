@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T10:45:48+08:00",
+  "reviewed_at": "2026-10-24T11:24:10+08:00",
   "base_ref": "origin/main",
-  "merge_base": "5b56477e1ccaa010857a7a6020b694925d106471",
-  "diff_sha256": "6588336cbbe52b91939281b3d02d5099c9880f25cb4c7dbcc77c36865e0c5c04",
-  "head_sha": "efcf30e6eb8b8c2e5345634a56c4e04b5418298f",
+  "merge_base": "3530d9a3fb386b0e3244a119305ca0b17b7cd341",
+  "diff_sha256": "68b5ac2b3cf4373312ae190678aa2717f7af85eca2eefa3c265a5d3c702d1b25",
+  "head_sha": "4a6da01e4a8162107021a5412668d92045118dea",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Retire Gate2 inflation exemption post-#387; docs only + yaml clear."
+  "note": "MB-01 agent Facade lazy import; prompts keep harness (cycle); docs sync #388."
 }

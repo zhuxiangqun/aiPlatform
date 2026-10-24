@@ -34,7 +34,7 @@ async def run_fde_agent_one_shot(
     _t0 = time.time()
     try:
         from core.apps.agents.base import BaseAgent
-        from core.harness.interfaces.agent import AgentContext, AgentConfig
+        from core.api.core_facade import AgentContext, AgentConfig
         from core.management.agent_manager import get_agent_manager
         from core.apps.skills import get_skill_registry
 
