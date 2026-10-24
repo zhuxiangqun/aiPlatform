@@ -6,6 +6,7 @@
 # GATE3_PI_THIN_PHASE=b: export_pi_bundle → smoke + AIPLAT_SLICE_EVIDENCE assert
 # GATE3_PI_THIN_PHASE=c: b → ingest_slice_evidence_from_jsonl → diagnosis report
 # GATE3_PI_THIN_PHASE=d: c → FDE slice signoff bind report_id (SCENE F1)
+# GATE3_PI_THIN_PHASE=e: materialize lock-service sample → d chain (Phase E)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO="$(cd "$ROOT/../.." && pwd)"
@@ -116,6 +117,112 @@ if [[ "$PHASE" == "c" || "$PHASE" == "C" ]]; then
   run_phase_b
   echo "Gate3 Phase C: ingest JSONL → diagnosis MVP ($EVIDENCE_PATH)"
   run_phase_c_python
+  exit $?
+fi
+
+materialize_lock_service_sample() {
+  # Copy sample-app → /tmp and stamp domain/scene (no deep tree committed to git).
+  local SRC="${GATE3_PI_THIN_BASE_SAMPLE:-$ROOT/fixtures/sample-app}"
+  local DST="${GATE3_PI_THIN_SAMPLE:-/tmp/aiplat-gate3-lock-service-sample}"
+  rm -rf "$DST"
+  mkdir -p "$DST"
+  cp -a "$SRC/." "$DST/"
+  PYTHONPATH= python3 - "$DST" <<'PY'
+import json, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+man = root / "agent_manifest.json"
+data = json.loads(man.read_text(encoding="utf-8"))
+data["domain_id"] = "lock-service"
+data["scene_id"] = "fp-customer-lock-service-bundle-pi-diag-001"
+data["customer_org"] = "江苏锁安"
+man.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+agent = root / "agents" / "demo_agent" / "AGENT.md"
+if agent.is_file():
+    text = agent.read_text(encoding="utf-8")
+    if "lock-service" not in text:
+        agent.write_text(
+            text.rstrip()
+            + "\n\n## Scene\n\nDomain `lock-service` / 江苏锁安 / `fp-customer-lock-service-bundle-pi-diag-001`.\n",
+            encoding="utf-8",
+        )
+print(root)
+PY
+  export GATE3_PI_THIN_SAMPLE="$DST"
+  echo "Gate3 Phase E: materialized lock-service sample at $DST"
+}
+
+if [[ "$PHASE" == "e" || "$PHASE" == "E" ]]; then
+  materialize_lock_service_sample
+  export AIPLAT_HOME="${GATE3_PI_THIN_AIPLAT_HOME:-/tmp/aiplat-gate3-phase-e-home}"
+  mkdir -p "$AIPLAT_HOME"
+  EVIDENCE_PATH="${AIPLAT_SLICE_EVIDENCE_PATH:-/tmp/aiplat-gate3-phase-e-evidence.jsonl}"
+  export AIPLAT_SLICE_EVIDENCE_PATH="$EVIDENCE_PATH"
+  export AIPLAT_SLICE_BUNDLE_VERSION="${AIPLAT_SLICE_BUNDLE_VERSION:-gate3-phase-e-lock-service}"
+  run_phase_b
+  if ! grep -q 'lock-service' "$AIPLAT_APP_HOME/agent_manifest.json" 2>/dev/null; then
+    echo "ERROR: Phase E export missing domain_id=lock-service in agent_manifest.json" >&2
+    exit 13
+  fi
+  echo "Gate3 Phase E: lock-service Bundle → Phase C/D bind"
+  C_OUT="$(run_phase_c_python)"
+  echo "$C_OUT"
+  REPORT_ID="$(printf '%s\n' "$C_OUT" | awk -F= '/^REPORT_ID=/{print $2}' | tail -1)"
+  if [[ -z "$REPORT_ID" ]]; then
+    echo "ERROR: Phase E missing REPORT_ID from Phase C" >&2
+    exit 10
+  fi
+  export GATE3_PHASE_D_REPORT_ID="$REPORT_ID"
+  PYTHONPATH="${REPO}/aiPlat-core${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+from core.apps.fde.service.slice_evidence import validate_slice_signoff_reports
+
+sid = os.environ.get("AIPLAT_SLICE_SCENARIO_ID", "fp-customer-lock-service-bundle-pi-diag-001")
+rid = os.environ["GATE3_PHASE_D_REPORT_ID"]
+home = Path(os.environ["AIPLAT_HOME"])
+manifest = Path(os.environ["AIPLAT_APP_HOME"]) / "agent_manifest.json"
+meta = json.loads(manifest.read_text(encoding="utf-8"))
+if meta.get("domain_id") != "lock-service":
+    print("ERROR: manifest domain_id not lock-service:", meta.get("domain_id"), file=sys.stderr)
+    sys.exit(13)
+
+neg = validate_slice_signoff_reports({"scenario_id": sid, "for_slice": True})
+if neg.get("ok"):
+    print("ERROR: expected signoff without report_id to fail", json.dumps(neg), file=sys.stderr)
+    sys.exit(11)
+
+pos = validate_slice_signoff_reports(
+    {"scenario_id": sid, "for_slice": True, "evidence_report_ids": [rid]}
+)
+if not pos.get("ok"):
+    print("ERROR: signoff with report_id failed:", json.dumps(pos, ensure_ascii=False), file=sys.stderr)
+    sys.exit(12)
+
+acc_dir = home / "five_products_slice" / "acceptance"
+acc_dir.mkdir(parents=True, exist_ok=True)
+fid = "%s-%d" % (sid, int(time.time()))
+record = {
+    "ok": True,
+    "phase": "gate3-e",
+    "domain_id": "lock-service",
+    "scenario_id": sid,
+    "spec_id": sid,
+    "acceptance_decision": "accepted",
+    "evidence_report_ids": list(pos.get("report_ids") or [rid]),
+    "for_slice": True,
+    "signed_by": "gate3-phase-e-pilot",
+    "notes": "lock-service fixture Bundle → diagnosis → FDE bind",
+    "record_id": fid,
+}
+path = acc_dir / ("%s.json" % fid)
+path.write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+print("PASS: Gate3 Phase E lock-service report_id=%s record=%s" % (rid, path))
+PY
   exit $?
 fi
 

@@ -101,10 +101,21 @@ GATE3_PI_THIN_PHASE=c bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilo
 GATE3_PI_THIN_PHASE=d bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh
 ```
 
-## 11. 后续 PR 约束
+## 11. Phase E（已批 · `GATE3_PHASE_E_DECISION.md`）
+
+| DoD | 状态 |
+|-----|:----:|
+| 运行时物化 lock-service Bundle（sample-app + `domain_id`/`scene_id`） | 避免深层 fixture 树 inflation |
+| `GATE3_PI_THIN_PHASE=e` → export → ingest → FDE bind | 同 D 链 |
+
+```bash
+GATE3_PI_THIN_PHASE=e bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh
+```
+
+## 12. 后续 PR 约束
 
 - 单 PR 遵守 physical merge inflation；超限则拆 PR 或短豁免并退役  
 - 仅允许本包 + `reports/five-products/GATE3_*`；禁止 core/platform 拆服务  
-- Phase B/C/D **不**授权五产品全拆 / 对外 E4  
+- Phase E **不**授权五产品全拆 / 对外 E4；顺序第 2/3 另批 Phase F / ADR  
 
 
