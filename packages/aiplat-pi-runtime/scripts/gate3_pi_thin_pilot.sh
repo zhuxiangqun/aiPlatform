@@ -4,7 +4,8 @@
 #
 # GATE3_PI_THIN_PHASE=a (default): stub smoke against fixtures/sample-app
 # GATE3_PI_THIN_PHASE=b: export_pi_bundle → smoke + AIPLAT_SLICE_EVIDENCE assert
-# GATE3_PI_THIN_PHASE=c: b → ingest_slice_evidence_from_jsonl → diagnosis report (Phase C)
+# GATE3_PI_THIN_PHASE=c: b → ingest_slice_evidence_from_jsonl → diagnosis report
+# GATE3_PI_THIN_PHASE=d: c → FDE slice signoff bind report_id (SCENE F1)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO="$(cd "$ROOT/../.." && pwd)"
@@ -69,19 +70,7 @@ run_phase_b() {
   return 0
 }
 
-if [[ "$PHASE" == "b" || "$PHASE" == "B" ]]; then
-  run_phase_b
-  exit $?
-fi
-
-if [[ "$PHASE" == "c" || "$PHASE" == "C" ]]; then
-  # Isolated evidence store — do not touch developer ~/.aiplat production DB
-  export AIPLAT_HOME="${GATE3_PI_THIN_AIPLAT_HOME:-/tmp/aiplat-gate3-phase-c-home}"
-  mkdir -p "$AIPLAT_HOME"
-  EVIDENCE_PATH="${AIPLAT_SLICE_EVIDENCE_PATH:-/tmp/aiplat-gate3-phase-c-evidence.jsonl}"
-  export AIPLAT_SLICE_EVIDENCE_PATH="$EVIDENCE_PATH"
-  run_phase_b
-  echo "Gate3 Phase C: ingest JSONL → diagnosis MVP ($EVIDENCE_PATH)"
+run_phase_c_python() {
   PYTHONPATH="${REPO}/aiPlat-core${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
 import json
 import os
@@ -105,10 +94,93 @@ if not rep.get("ok"):
 if rep.get("status") != "ok" or not rep.get("diagnosis_ok"):
     print("ERROR: diagnosis not ok:", json.dumps(rep, ensure_ascii=False), file=sys.stderr)
     sys.exit(9)
+rid = rep.get("report_id")
 print(
-    f"PASS: Gate3 Phase C ingest_id={ing.get('ingest_id')} "
-    f"report_id={rep.get('report_id')} status={rep.get('status')}"
+    "PASS: Gate3 Phase C ingest_id=%s report_id=%s status=%s"
+    % (ing.get("ingest_id"), rid, rep.get("status"))
 )
+print("REPORT_ID=%s" % rid)
+PY
+}
+
+if [[ "$PHASE" == "b" || "$PHASE" == "B" ]]; then
+  run_phase_b
+  exit $?
+fi
+
+if [[ "$PHASE" == "c" || "$PHASE" == "C" ]]; then
+  export AIPLAT_HOME="${GATE3_PI_THIN_AIPLAT_HOME:-/tmp/aiplat-gate3-phase-c-home}"
+  mkdir -p "$AIPLAT_HOME"
+  EVIDENCE_PATH="${AIPLAT_SLICE_EVIDENCE_PATH:-/tmp/aiplat-gate3-phase-c-evidence.jsonl}"
+  export AIPLAT_SLICE_EVIDENCE_PATH="$EVIDENCE_PATH"
+  run_phase_b
+  echo "Gate3 Phase C: ingest JSONL → diagnosis MVP ($EVIDENCE_PATH)"
+  run_phase_c_python
+  exit $?
+fi
+
+if [[ "$PHASE" == "d" || "$PHASE" == "D" ]]; then
+  export AIPLAT_HOME="${GATE3_PI_THIN_AIPLAT_HOME:-/tmp/aiplat-gate3-phase-d-home}"
+  mkdir -p "$AIPLAT_HOME"
+  EVIDENCE_PATH="${AIPLAT_SLICE_EVIDENCE_PATH:-/tmp/aiplat-gate3-phase-d-evidence.jsonl}"
+  export AIPLAT_SLICE_EVIDENCE_PATH="$EVIDENCE_PATH"
+  run_phase_b
+  echo "Gate3 Phase D: Phase C then FDE signoff bind report_id"
+  C_OUT="$(run_phase_c_python)"
+  echo "$C_OUT"
+  REPORT_ID="$(printf '%s\n' "$C_OUT" | awk -F= '/^REPORT_ID=/{print $2}' | tail -1)"
+  if [[ -z "$REPORT_ID" ]]; then
+    echo "ERROR: Phase D missing REPORT_ID from Phase C" >&2
+    exit 10
+  fi
+  export GATE3_PHASE_D_REPORT_ID="$REPORT_ID"
+  PYTHONPATH="${REPO}/aiPlat-core${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+from core.apps.fde.service.slice_evidence import validate_slice_signoff_reports
+
+sid = os.environ.get("AIPLAT_SLICE_SCENARIO_ID", "fp-customer-lock-service-bundle-pi-diag-001")
+rid = os.environ["GATE3_PHASE_D_REPORT_ID"]
+home = Path(os.environ["AIPLAT_HOME"])
+
+neg = validate_slice_signoff_reports({"scenario_id": sid, "for_slice": True})
+if neg.get("ok"):
+    print("ERROR: expected signoff without report_id to fail", json.dumps(neg), file=sys.stderr)
+    sys.exit(11)
+
+pos = validate_slice_signoff_reports(
+    {
+        "scenario_id": sid,
+        "for_slice": True,
+        "evidence_report_ids": [rid],
+    }
+)
+if not pos.get("ok"):
+    print("ERROR: signoff with report_id failed:", json.dumps(pos, ensure_ascii=False), file=sys.stderr)
+    sys.exit(12)
+
+acc_dir = home / "five_products_slice" / "acceptance"
+acc_dir.mkdir(parents=True, exist_ok=True)
+fid = "%s-%d" % (sid, int(time.time()))
+record = {
+    "ok": True,
+    "phase": "gate3-d",
+    "scenario_id": sid,
+    "spec_id": sid,
+    "acceptance_decision": "accepted",
+    "evidence_report_ids": list(pos.get("report_ids") or [rid]),
+    "for_slice": True,
+    "signed_by": "gate3-phase-d-pilot",
+    "notes": "sandbox bind record (no HTTP preflight); SCENE F1",
+    "record_id": fid,
+}
+path = acc_dir / ("%s.json" % fid)
+path.write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+print("PASS: Gate3 Phase D bound report_id=%s record=%s" % (rid, path))
 PY
   exit $?
 fi
