@@ -42,7 +42,7 @@
 ## 5. 验收（试点 DoD）
 
 - [x] 试点环境与控制面**不同进程**可启动 Thin — `scripts/gate3_pi_thin_pilot.sh` → `http_smoke.sh`（独立 Node 进程，默认端口 `18787`）  
-- [x] 密钥/env 与控制面文件分离 — `.env.gate3-pi-thin.example` → `.env.gate3-pi-thin`；脚本在 `AIPLAT_ENTERPRISE=1` 时 exit 3  
+- [x] 密钥/env 与控制面文件分离 — `scripts/gate3_pi_thin.env.example` → `.env.gate3-pi-thin`；脚本在 `AIPLAT_ENTERPRISE=1` 时 exit 3  
 - [x] 跑通客户场景主路径技术夹具（sample-app）— 默认 `AIPLAT_APP_HOME=fixtures/sample-app`；诊断不降标（仍走既有切片证据规则）  
 - [x] 回滚演练记录 — `GATE3_PI_THIN_ROLLBACK_DRILL.md`  
 - [x] 无新增跨域私有 import / 无搬仓 — 仅本包脚本 + `reports/five-products/GATE3_*`  
@@ -51,7 +51,7 @@
 
 | 产物 | 路径 |
 |------|------|
-| Env 示例 | `packages/aiplat-pi-runtime/.env.gate3-pi-thin.example` |
+| Env 示例 | `packages/aiplat-pi-runtime/scripts/gate3_pi_thin.env.example` |
 | Pilot 脚本 | `packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh` |
 | 回滚演练 | `reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md` |
 | README | `packages/aiplat-pi-runtime/README.md` § Gate3 |

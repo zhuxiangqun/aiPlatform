@@ -123,8 +123,8 @@ Independent env from the aiPlat control plane (`AIPLAT_ENTERPRISE` must stay `0`
 
 ```bash
 cd packages/aiplat-pi-runtime
-cp .env.gate3-pi-thin.example .env.gate3-pi-thin   # optional local copy
-bash scripts/gate3_pi_thin_pilot.sh                # stub smoke; refuses ENTERPRISE=1
+cp scripts/gate3_pi_thin.env.example .env.gate3-pi-thin   # optional local copy
+bash scripts/gate3_pi_thin_pilot.sh                      # stub smoke; refuses ENTERPRISE=1
 # Rollback drill record: reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md
 ```
 

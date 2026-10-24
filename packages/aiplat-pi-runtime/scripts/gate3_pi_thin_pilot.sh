@@ -3,8 +3,9 @@
 # Does not start platform/core control plane. Exits non-zero if AIPLAT_ENTERPRISE=1.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ENV_FILE="${GATE3_PI_THIN_ENV:-$ROOT/.env.gate3-pi-thin}"
-EXAMPLE="$ROOT/.env.gate3-pi-thin.example"
+EXAMPLE="$SCRIPT_DIR/gate3_pi_thin.env.example"
 
 if [[ ! -f "$ENV_FILE" ]]; then
   if [[ -f "$EXAMPLE" ]]; then
