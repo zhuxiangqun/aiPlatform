@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T09:40:47+08:00",
+  "reviewed_at": "2026-10-24T09:52:48+08:00",
   "base_ref": "origin/main",
   "merge_base": "a88ca0c8a45e3bd7a03345f10b2082ae5c9779a4",
-  "diff_sha256": "12ac2be4780b2717d2ae9e75e3c58a0db05ee862e15b9bed14d7e9e181e6798e",
-  "head_sha": "24f67748a4504709c8a6d42768d9f97cea58ddbf",
+  "diff_sha256": "730d55873f1421c5450e5fd969fc95095051a02e7a4212e87e2ae2dd8fc0172f",
+  "head_sha": "7f04fbab2c5bafc4287dd762426706b1468ee979",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Gate2 auth + MB-03 SQLite default + MB-01 Facade import batch; status rules unchanged; file fallback via env only."
+  "note": "Fix circular import: evolve_proposal_gate lazy CoreFacade imports; status/API unchanged."
 }
