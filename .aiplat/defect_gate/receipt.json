@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T12:48:00+08:00",
+  "reviewed_at": "2026-10-24T13:02:55+08:00",
   "base_ref": "origin/main",
-  "merge_base": "3afc58eba50b7f03cb34faabdc6a628372bd5345",
-  "diff_sha256": "f7c7d8a5f9c8bfbc7fb7c22709ffa6c75dc04d8973cd69f6279f4baec870388d",
-  "head_sha": "4f1080358bdcb6cfac5584b4b6b96c35459730a4",
+  "merge_base": "d1d2ccb45db84f62c433fc6ffdac1003a39daec3",
+  "diff_sha256": "8d0d6d9e7ec8412ff2e888e95499e0dfc0a61e0ec6994b54f5866af7887b2e46",
+  "head_sha": "ccfd3aaed931a83f97ef951fed476fa5585ce979",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs-only: LANDING_CLOSEOUT cite #392."
+  "note": "G3-1 Pi Thin pilot rebased on main after #393; ENTERPRISE=1 exit 3; stub smoke PASS; no core/platform split."
 }
