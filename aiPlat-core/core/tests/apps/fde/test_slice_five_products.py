@@ -162,3 +162,39 @@ def test_ingest_from_jsonl_missing_file(slice_home, tmp_path):
         scenario_id="fp-x",
     )
     assert r.get("ok") is False
+
+
+def test_evidence_store_default_sqlite(slice_home):
+    """MB-03: default backend is SQLite under AIPLAT_HOME."""
+    ing = ingest_slice_evidence(
+        scenario_id="fp-internal-bundle-pi-diag-001",
+        run_id="run-sqlite",
+        bundle_version="bv-sql",
+        events=[{"type": "x"}],
+    )
+    assert ing.get("ok")
+    assert ing.get("store") == "sqlite"
+    assert str(ing.get("path", "")).startswith("sqlite:")
+    home = Path(os.environ["AIPLAT_HOME"])
+    assert (home / "five_products_slice" / "evidence" / "evidence.db").is_file()
+    rep = build_slice_diagnosis_report(
+        scenario_id="fp-internal-bundle-pi-diag-001",
+        ingest_id=ing["ingest_id"],
+    )
+    assert rep.get("status") == "ok"
+    assert rep.get("store") == "sqlite"
+
+
+def test_evidence_store_file_fallback(slice_home, monkeypatch):
+    """MB-03: AIPLAT_SLICE_EVIDENCE_STORE=file keeps JSON files."""
+    monkeypatch.setenv("AIPLAT_SLICE_EVIDENCE_STORE", "file")
+    ing = ingest_slice_evidence(
+        scenario_id="fp-internal-bundle-pi-diag-001",
+        run_id="run-file",
+        bundle_version="bv-file",
+        events=[{"type": "y"}],
+    )
+    assert ing.get("ok")
+    assert ing.get("store") == "file"
+    assert Path(ing["path"]).is_file()
+    assert ing["path"].endswith(".json")
