@@ -26,6 +26,7 @@ import {
   handlerPyUnderRoot,
   safeSkillDirName,
 } from "../extensions/skill_path.mjs";
+import { emitSliceEvidenceEvent } from "../extensions/slice_evidence_emit.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PKG = path.resolve(__dirname, "..");
@@ -401,6 +402,7 @@ const server = http.createServer(async (req, res) => {
       if (!message) return send(res, 400, { ok: false, error: "message required" });
       const session = await ensureAgent(sessionId, meta);
       const result = await runPrompt(session, message);
+      emitSliceEvidenceEvent("http_chat", { session_id: sessionId, mode: session?.mode || _agentMode });
       return send(res, 200, { ok: true, session_id: sessionId, ...result });
     }
 
@@ -428,6 +430,7 @@ const server = http.createServer(async (req, res) => {
             skill,
           });
         }
+        emitSliceEvidenceEvent("http_skill_handler", { session_id: sessionId, skill });
         return send(res, 200, {
           ok: true,
           session_id: sessionId,
@@ -446,6 +449,7 @@ const server = http.createServer(async (req, res) => {
       ].join("\n");
       const session = await ensureAgent(sessionId, meta);
       const result = await runPrompt(session, message);
+      emitSliceEvidenceEvent("http_skill_prompt", { session_id: sessionId, skill });
       return send(res, 200, { ok: true, session_id: sessionId, skill, ...result });
     }
 
