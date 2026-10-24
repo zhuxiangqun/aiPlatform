@@ -31,3 +31,20 @@ bash scripts/gate3_pi_thin_pilot.sh   # expect PASS smoke
 # 3) bash scripts/gate3_pi_thin_pilot.sh   # expect PASS with prior bundle fixtures
 # 4) If still bad → Runtime 备选 (stop process / compose down)
 ```
+
+## Re-run — observation kickoff（2026-10-24）
+
+| Field | Value |
+|-------|-------|
+| Authority | `GATE3_OBSERVATION_WINDOW_DECISION.md`（G3-OBS2） |
+| Window | 2026-10-24 → 2026-10-31（7 日历日） |
+| Operator | architecture × business (dual-role) |
+| Runtime | `GATE3_PI_THIN_PHASE=a` → **PASS**（stub smoke） |
+| Bundle / slice path | `GATE3_PI_THIN_PHASE=d` → **PASS**（export → ingest → FDE bind `rep-caaf208cdfcd`） |
+| Result | **PASS** — kickoff re-run complete |
+| Next | 窗口结束前（≤2026-10-31）同等复跑一轮 → 候选勾 ADR-09 前置 #1 |
+
+```bash
+GATE3_PI_THIN_PHASE=a bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh
+GATE3_PI_THIN_PHASE=d bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh
+```
