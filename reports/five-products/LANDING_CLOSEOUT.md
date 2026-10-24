@@ -20,6 +20,7 @@
 | G3-1 Pi Thin 试点接线 | PR [#394](https://github.com/zhuxiangqun/aiPlatform/pull/394) → `028f922`：`scripts/gate3_pi_thin_pilot.sh` + env + 回滚演练 |
 | G3-2/G3-3 compose + Bundle 优先回滚 | PR [#396](https://github.com/zhuxiangqun/aiPlatform/pull/396) → `79dc33a`：`compose.gate3-pi-thin.yml` + `AIPLAT_HTTP_HOST` |
 | Gate3 Phase B（Bundle + 证据） | PR [#398](https://github.com/zhuxiangqun/aiPlatform/pull/398) → `f92897d`：`GATE3_PI_THIN_PHASE=b` + `emitSliceEvidenceEvent` |
+| Gate3 Phase C（JSONL → 诊断 ingest） | PR [#400](https://github.com/zhuxiangqun/aiPlatform/pull/400) → `30e8154`：`GATE3_PI_THIN_PHASE=c` |
 
 ## Gate 2 / D13 / Gate 3
 
@@ -35,4 +36,4 @@
 - Pi models：`~/.pi/agent/models.json`（模板见 `packages/aiplat-pi-runtime/models.json.example`）  
 - 证据发射：`AIPLAT_SLICE_EVIDENCE=1`（默认关）  
 - 证据存储：默认 SQLite；`AIPLAT_SLICE_EVIDENCE_STORE=file` 回退  
-- Gate3 试点：`bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh`；Phase B：`GATE3_PI_THIN_PHASE=b bash ...`；可选 compose（见 `GATE3_PI_THIN_PILOT.md`）  
+- Gate3 试点：`bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh`；Phase B/C：`GATE3_PI_THIN_PHASE=b|c bash ...`；可选 compose（见 `GATE3_PI_THIN_PILOT.md`）  

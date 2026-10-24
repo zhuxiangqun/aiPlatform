@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T17:00:56+08:00",
+  "reviewed_at": "2026-10-24T17:22:32+08:00",
   "base_ref": "origin/main",
-  "merge_base": "8b2286d5e465cbbfcad7e659c0673b51a5531c89",
-  "diff_sha256": "7a1cfe59cee2ede7c2bab50bb030a5a47eea94d4df6df8216a900cb7d1d0f633",
-  "head_sha": "3034c245024e73dd60efc999f829e19916e83cf5",
+  "merge_base": "30e8154110972d1d81fce91507344fc4d8cdf00c",
+  "diff_sha256": "825141a90ba88da24e62f9b4b6145d2bd1575a201d161b83e1038f9bbea06fda",
+  "head_sha": "574ca1a6424e84134015934c8aaf96ab1601adbb",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Gate3 Phase C: JSONL\u2192ingest\u2192report ok; sandbox AIPLAT_HOME; no new API; phase=c smoke PASS."
+  "note": "Docs-only cite #400 Phase C; backlog/CLOSEOUT/SCHEDULE."
 }
