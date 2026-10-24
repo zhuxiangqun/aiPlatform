@@ -29,7 +29,7 @@
 | 观察复跑脚本 + mid-window | PR [#409](https://github.com/zhuxiangqun/aiPlatform/pull/409) → `1626b28`：`gate3_observation_rerun.sh` |
 | 观察同日双端关闭 | PR [#412](https://github.com/zhuxiangqun/aiPlatform/pull/412) → `9a6471b` |
 | ADR-09 §10 再闭合 + ADR-10 Accepted | PR [#413](https://github.com/zhuxiangqun/aiPlatform/pull/413) → `ca03f00`：`ADR09_S10_DRIVER_CLOSURE.md` + 诊断 MVP |
-| CLOSEOUT 引用 #412/#413 | 本 PR |
+| CLOSEOUT 引用 #412/#413 | PR [#414](https://github.com/zhuxiangqun/aiPlatform/pull/414) |
 
 ## Gate 2 / D13 / Gate 3
 
