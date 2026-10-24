@@ -14,7 +14,8 @@
 | Gate2 批准 + MB-03 SQLite + MB-01 Facade | PR [#387](https://github.com/zhuxiangqun/aiPlatform/pull/387) → `5b56477` |
 | Gate2 inflation 豁免退役 | PR [#388](https://github.com/zhuxiangqun/aiPlatform/pull/388) → `3530d9a` |
 | MB-01 agent interfaces | PR [#389](https://github.com/zhuxiangqun/aiPlatform/pull/389) → `e0b089a` |
-| D13 升格 + Gate3 有条件批准（文书） | 本分支 / 后续 PR |
+| D13 升格 + Gate3 有条件批准（文书） | PR [#391](https://github.com/zhuxiangqun/aiPlatform/pull/391) → `364f319` |
+| Gate3/D13 inflation 豁免退役 | 本 PR：`exemptions: []` |
 
 ## Gate 2 / D13 / Gate 3
 
