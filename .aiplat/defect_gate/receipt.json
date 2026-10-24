@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T11:24:10+08:00",
+  "reviewed_at": "2026-10-24T11:44:40+08:00",
   "base_ref": "origin/main",
-  "merge_base": "3530d9a3fb386b0e3244a119305ca0b17b7cd341",
-  "diff_sha256": "68b5ac2b3cf4373312ae190678aa2717f7af85eca2eefa3c265a5d3c702d1b25",
-  "head_sha": "4a6da01e4a8162107021a5412668d92045118dea",
+  "merge_base": "e0b089a10d48426fb3c739906d1ae9f3502fb374",
+  "diff_sha256": "399c221339303fc82425f5adf4c4a6fbb78f2fa381f864e131b0d1846403f813",
+  "head_sha": "966cb214d91c84b9a52702a7aeba7c5054ef8942",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "MB-01 agent Facade lazy import; prompts keep harness (cycle); docs sync #388."
+  "note": "Docs-only: sync Gate2 landed status into SSOT + closeout."
 }
