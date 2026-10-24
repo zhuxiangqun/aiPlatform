@@ -51,6 +51,7 @@ yarn-error.log*
 .env.local
 .env.*.local
 .env.e2e
+packages/aiplat-pi-runtime/.env.gate3-pi-thin
 
 # Logs
 *.log
