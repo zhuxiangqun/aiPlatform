@@ -6215,6 +6215,7 @@ from core.harness.knowledge.system_evolver import SystemEvolver  # noqa: boundar
 from core.harness.knowledge.system_diagnostician import SystemHealer  # noqa: boundary
 from core.harness.document.template_engine import TemplateRegistry, TemplateRenderer  # noqa: boundary
 from core.harness.utils.prompt_loader import _async_prompt_resolve, auto_classify, get_metadata, list_templates  # noqa: boundary
+from core.harness.interfaces.agent import AgentConfig, AgentContext  # noqa: boundary
 from core.harness.execution.team_planner import _enrich_stage_from_agent  # noqa: boundary
 from core.harness.knowledge.governance_dashboard import aggregate_dashboard  # noqa: boundary
 from core.harness.evaluation.workbench import apply_threshold_gate, persist_evaluation, validate_report  # noqa: boundary
