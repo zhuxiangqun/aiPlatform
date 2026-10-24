@@ -1,12 +1,12 @@
 # 五产品域落地方案（唯一执行真源）
 
 > **文档类型**：落地方案 / Design Plan  
-> **状态**：v1.3 · 2026-10-23 基线 · **2026-10-24 首切片落地收口**（见 [`reports/five-products/LANDING_CLOSEOUT.md`](../../../reports/five-products/LANDING_CLOSEOUT.md)）  
+> **状态**：v1.3 · 2026-10-23 基线 · **2026-10-24 首切片 + Gate2 落地 + Gate3 有条件批准**（见 [`reports/five-products/LANDING_CLOSEOUT.md`](../../../reports/five-products/LANDING_CLOSEOUT.md)）  
 > **性质**：指导盘点、契约、首切片、模块化与按需拆部署的**完整执行真源**。  
 > **冲突裁决**：本文 > 执行计划摘要 > Decision Brief / PPT / 发言稿。目标边界细节仍引用 [目标架构母稿](./ai-platform-five-products-target-architecture.md)；若与本文路径/门禁冲突，**以本文为准并回写母稿**。  
 > **本文不是**：评审会脚本；也**不**表示全面改造已获批或五产品已对外产品化。  
-> **当前批准范围**：L1（WP0–WP2）已书面获准；Gate 1 修订已批准本切片完整 WP3–WP4 并合入 main（E3 / 非客户验收）。**Gate 2 / Gate 3 / D13 扩大仍未批**（建议维持：`reports/five-products/GATE2_RECOMMENDATION.md`）。  
-> **卫星材料**：Brief / 发言稿 / PPT 大纲 / 执行摘要已于同日按 v1.3 口径回写；收口后抽查以 `LANDING_CLOSEOUT.md` 为准。
+> **当前批准范围**：L1 + Gate1 修订（E3）已合入；**Gate 2 已批准并落地**（PR #387–#389）；**D13 已升格**为江苏锁安/`lock-service` 客户场景（`D13_CUSTOMER_ENDORSEMENT.md`）；**Gate 3 有条件批准** — 仅 Pi Thin 独立部署试点（`GATE3_DECISION.md` / ADR-08）。**五产品全拆 / 对外 E4 产品化宣传仍未批**。  
+> **卫星材料**：收口抽查以 `LANDING_CLOSEOUT.md` 为准。
 
 ---
 
