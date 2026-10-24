@@ -19,8 +19,8 @@
 | G3-C1 | JSONL → 诊断 MVP ingest | 中 | `ingest_slice_evidence_from_jsonl` | **已接线** [#400](https://github.com/zhuxiangqun/aiPlatform/pull/400) → `30e8154` |
 | G3-C2 | 诊断报告 ok 断言 | 中 | `build_slice_diagnosis_report` | **已接线** [#400](https://github.com/zhuxiangqun/aiPlatform/pull/400) → `30e8154` |
 | G3-C3 | `GATE3_PI_THIN_PHASE=c` | 低 | pilot 沙箱 `AIPLAT_HOME` | **已接线** [#400](https://github.com/zhuxiangqun/aiPlatform/pull/400) → `30e8154` |
-| G3-D1 | FDE 验收须绑 report_id | 中 | `validate_slice_signoff_reports` | **已接线**（本 PR） |
-| G3-D2 | 负向拒签 + 正向绑定 | 中 | `GATE3_PI_THIN_PHASE=d` | **已接线**（本 PR） |
-| G3-D3 | 沙箱验收绑定落盘 | 低 | `$AIPLAT_HOME/.../acceptance/` | **已接线**（本 PR） |
+| G3-D1 | FDE 验收须绑 report_id | 中 | `validate_slice_signoff_reports` | **已接线** [#402](https://github.com/zhuxiangqun/aiPlatform/pull/402) → `58ac428` |
+| G3-D2 | 负向拒签 + 正向绑定 | 中 | `GATE3_PI_THIN_PHASE=d` | **已接线** [#402](https://github.com/zhuxiangqun/aiPlatform/pull/402) → `58ac428` |
+| G3-D3 | 沙箱验收绑定落盘 | 低 | `$AIPLAT_HOME/.../acceptance/` | **已接线** [#402](https://github.com/zhuxiangqun/aiPlatform/pull/402) → `58ac428` |
 
 **明确不做**：全仓搬目录、五产品一次全拆、诊断全功能、启用本体进主路径（除非另改 WP1/ADR）。
