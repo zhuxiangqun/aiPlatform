@@ -93,7 +93,7 @@ def extract_industry_consensus(
     top = all_conclusions[:top_n]
 
     # Get supporting entities from aligned domains
-    from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.api.core_facade import GraphIndex
     entities = []
     for d in aligned_domains[:3]:
         try:
@@ -120,7 +120,7 @@ def detect_industry_controversies(
     aligned_domains: List[str],
 ) -> Dict[str, Any]:
     """Q2: 路线之争 — 图结构分歧检测 + 竞争域数据."""
-    from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.api.core_facade import GraphIndex
 
     controversies = []
 
@@ -182,7 +182,7 @@ def generate_penetrating_questions(
     count: int = 10,
 ) -> Dict[str, Any]:
     """Q3: 穿透性试题生成 + 穿透力过滤."""
-    from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.api.core_facade import GraphIndex
 
     # Collect graph context for LLM
     all_entities = []
@@ -427,7 +427,7 @@ def _llm_generate_questions(
     """Generate penetrating questions via LLM with graph context."""
     # Try using sys_llm_generate if running in server context
     try:
-        from core.harness.syscalls.llm import sys_llm_generate
+        from core.api.core_facade import sys_llm_generate
 
         prompt = f"""基于以下行业知识图谱的实体和关系，生成 {count} 道"穿透性试题"。
 每道题必须：① 包含一个"结构钩子"——必须理解至少 2 个实体之间的 1 条关系链才能答对，
@@ -587,7 +587,7 @@ def auto_suggest_domains(
     """
     suggestions = []
     try:
-        from core.harness.knowledge.embedder import embed_text_semantic
+        from core.api.core_facade import embed_text_semantic
     except ImportError:
         return suggestions
 

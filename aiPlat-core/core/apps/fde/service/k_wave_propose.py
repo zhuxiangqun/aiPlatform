@@ -93,7 +93,7 @@ def _class_name(action_id: str) -> str:
 
 
 def _groups(domain_id: str, *, now: float) -> Dict[str, Dict[str, Any]]:
-    from core.harness.knowledge.ontology_case_learning import OntologyCaseStore, _evolve_min_reward
+    from core.api.core_facade import OntologyCaseStore, _evolve_min_reward
 
     store = OntologyCaseStore(domain_id)
     groups: Dict[str, Dict[str, Any]] = {}
@@ -174,7 +174,7 @@ async def enqueue_repeat_failure_proposals(
             if hasattr(result, "__await__"):
                 result = await result
             return str(result or "")
-        from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore
+        from core.api.core_facade import VersionedOntologyStore
 
         return await VersionedOntologyStore(did).create_proposal(changes, author="k5-repeat-failure")
 
@@ -266,8 +266,8 @@ def _gap_change(case: Any, *, class_name: str) -> Dict[str, Any]:
 
 def preview_schema_gaps(domain_id: str = "it-ops", *, limit: int = 5) -> Dict[str, Any]:
     """Read-only Diff for schema_gap cases. Does not create proposals or write YAML."""
-    from core.harness.knowledge.ontology_case_learning import OntologyCaseStore
-    from core.harness.knowledge.versioned_ontology_store import (
+    from core.api.core_facade import (
+        OntologyCaseStore,
         VersionedOntologyStore,
         json_change_diff,
         project_ontology_changes,
@@ -327,7 +327,7 @@ async def draft_schema_gaps(
 ) -> Dict[str, Any]:
     """One edge draft per schema_gap case. Same ledger as K5. Never applies."""
     from core.apps.fde.service.v_wave_guard import edge_auto_apply_block
-    from core.harness.knowledge.ontology_case_learning import OntologyCaseStore
+    from core.api.core_facade import OntologyCaseStore
 
     blocked = edge_auto_apply_block()
     if blocked:
@@ -346,7 +346,7 @@ async def draft_schema_gaps(
             if hasattr(result, "__await__"):
                 result = await result
             return str(result or "")
-        from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore
+        from core.api.core_facade import VersionedOntologyStore
 
         return await VersionedOntologyStore(did).create_proposal(changes, author="schema-gap")
 

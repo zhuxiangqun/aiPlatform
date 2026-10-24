@@ -2758,7 +2758,7 @@ scan_hash: 8f9548ec24f4
 | wiki_field_security | api/routers/wiki_field_security.py | ✅ | 自动同步 | 已合入 |
 | fde_acceptance | apps/fde/api/fde_acceptance.py | ✅ | 自动同步 | 已合入 |
 | five_products_slice_bundle_export | `core/apps/fde/service/slice_bundle_export.py` + `apps/fde/api/fde_slice.py` + CoreFacade | ✅ | 首切片：复用 export_pi_bundle 的场景 Bundle 导出（thin）；permission_claims 不可单独授权；生成物适用：已接线（切片路径） | 已合入 |
-| five_products_slice_evidence_mvp | `core/apps/fde/service/slice_evidence.py` + `fde_slice` ingest/report + signoff 绑定 | ✅ | 首切片诊断 MVP：Pi+aiPlat 证据→ok/unknown/stale/fail；fp- 验收须 evidence_report_ids；生成物适用：已接线 | 已合入 |
+| five_products_slice_evidence_mvp | `core/apps/fde/service/slice_evidence.py` + `fde_slice` ingest/report + signoff 绑定 | ✅ | 首切片诊断 MVP：Pi+aiPlat 证据→ok/unknown/stale/fail；MB-03 默认 SQLite（`AIPLAT_SLICE_EVIDENCE_STORE=file` 回退）；fp- 验收须 evidence_report_ids；生成物适用：已接线 | 已合入 |
 | five_products_slice_evidence_emit | `packages/aiplat-pi-runtime/extensions/slice_evidence_emit.mjs` + `ingest_slice_evidence_from_jsonl` + `POST /fde/slice/evidence/ingest-jsonl` | ✅ | MB-05：Pi 扩展 opt-in 发射 JSONL（AIPLAT_SLICE_EVIDENCE=1）→ ingest；默认关闭不改生产路径；生成物适用：已接线 | 已合入 |
 | five_products_slice_offline_policy | `core/apps/fde/service/slice_offline_policy.py` + `POST /fde/slice/offline/evaluate` | ✅ | 对齐 pi-thin-offline TTL/denied_ops；故障注入#4；生成物适用：已接线 | 已合入 |
 | export_pi_bundle_mjs_helpers | `scripts/export_pi_bundle.py` | ✅ | 导出时复制 extensions/*.mjs（修复 live Pi 缺 json_body.mjs）；生成物适用：已接线 | 已合入 |

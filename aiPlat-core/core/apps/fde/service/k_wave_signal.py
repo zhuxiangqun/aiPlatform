@@ -113,7 +113,7 @@ async def confirm_extraction_k1(
             return {**row, "ok": True, "idempotent": True}
 
     if store is None:
-        from core.harness.knowledge_pipeline.extractor import PendingExtractionStore
+        from core.api.core_facade import PendingExtractionStore
 
         store = PendingExtractionStore()
         await store.initialize()

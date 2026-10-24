@@ -55,7 +55,7 @@ def review_domain_owl_offline(domain_id: str) -> Dict[str, Any]:
     # Prefer knowledge_ontology export when available
     ttl = ""
     try:
-        from core.harness.knowledge.knowledge_ontology import export_to_owl_rdf
+        from core.api.core_facade import export_to_owl_rdf
 
         ttl = export_to_owl_rdf(format="turtle") or ""
         result["export"] = "knowledge_ontology"

@@ -2,17 +2,26 @@
 
 Minimal ingest + report. Missing Pi or aiPlat evidence forces unknown/stale —
 never default healthy/success.
+
+Storage (MB-03 / Gate2): default SQLite under AIPLAT_HOME; set
+AIPLAT_SLICE_EVIDENCE_STORE=file to force JSON files (rollback).
 """
 from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 _VALID_STATUS = frozenset({"ok", "unknown", "stale", "fail"})
+
+
+def _store_mode() -> str:
+    raw = (os.getenv("AIPLAT_SLICE_EVIDENCE_STORE") or "sqlite").strip().lower()
+    return "file" if raw in ("file", "json", "fs") else "sqlite"
 
 
 def _store_root() -> Path:
@@ -22,8 +31,82 @@ def _store_root() -> Path:
     return root
 
 
+def _db_path() -> Path:
+    return _store_root() / "evidence.db"
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _connect() -> sqlite3.Connection:
+    path = _db_path()
+    conn = sqlite3.connect(str(path), timeout=30)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA busy_timeout=30000")
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS slice_records (
+            id TEXT PRIMARY KEY,
+            kind TEXT NOT NULL,
+            scenario_id TEXT NOT NULL DEFAULT '',
+            payload TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_slice_records_kind ON slice_records(kind)"
+    )
+    return conn
+
+
+def _put_record(kind: str, record_id: str, scenario_id: str, payload: Dict[str, Any]) -> str:
+    """Persist record; returns storage path or db URI for response."""
+    if _store_mode() == "file":
+        path = _store_root() / f"{record_id}.json"
+        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        return str(path)
+
+    blob = json.dumps(payload, ensure_ascii=False)
+    with _connect() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO slice_records (id, kind, scenario_id, payload, created_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (record_id, kind, scenario_id or "", blob, _now()),
+        )
+        conn.commit()
+    return f"sqlite:{_db_path()}#{record_id}"
+
+
+def _get_record(record_id: str) -> Optional[Dict[str, Any]]:
+    rid = (record_id or "").strip()
+    if not rid:
+        return None
+
+    # Prefer active backend; fall back to the other for migration/read.
+    if _store_mode() == "file":
+        path = _store_root() / f"{rid}.json"
+        if path.is_file():
+            return json.loads(path.read_text(encoding="utf-8"))
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT payload FROM slice_records WHERE id = ?", (rid,)
+            ).fetchone()
+        if row:
+            return json.loads(row["payload"])
+        return None
+
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT payload FROM slice_records WHERE id = ?", (rid,)
+        ).fetchone()
+    if row:
+        return json.loads(row["payload"])
+    path = _store_root() / f"{rid}.json"
+    if path.is_file():
+        return json.loads(path.read_text(encoding="utf-8"))
+    return None
 
 
 def ingest_slice_evidence(
@@ -53,9 +136,8 @@ def ingest_slice_evidence(
         "aiplat_reachable": bool(aiplat_reachable),
         "ingested_at": _now(),
     }
-    path = _store_root() / f"{ingest_id}.json"
-    path.write_text(json.dumps(rec, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {"ok": True, "ingest_id": ingest_id, "path": str(path), **rec}
+    storage = _put_record("ingest", ingest_id, sid, rec)
+    return {"ok": True, "ingest_id": ingest_id, "path": storage, "store": _store_mode(), **rec}
 
 
 def _derive_status(
@@ -96,10 +178,9 @@ def build_slice_diagnosis_report(
     loaded: Dict[str, Any] = {}
     iid = (ingest_id or "").strip()
     if iid:
-        path = _store_root() / f"{iid}.json"
-        if not path.is_file():
+        loaded = _get_record(iid) or {}
+        if not loaded:
             return {"ok": False, "error": f"ingest not found: {iid}"}
-        loaded = json.loads(path.read_text(encoding="utf-8"))
 
     run_id = (run_id or loaded.get("run_id") or "").strip()
     bundle_version = (bundle_version or loaded.get("bundle_version") or "").strip()
@@ -151,14 +232,12 @@ def build_slice_diagnosis_report(
             "aiPlat unreachable with otherwise complete evidence → stale; "
             "never default to healthy/success."
         ),
+        "diagnosis_ok": status == "ok",
     }
 
-    # Product rule: ok flag for transport vs diagnosis status
-    report["diagnosis_ok"] = status == "ok"
-
-    out = _store_root() / f"{report_id}.json"
-    out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    report["path"] = str(out)
+    storage = _put_record("report", report_id, sid, report)
+    report["path"] = storage
+    report["store"] = _store_mode()
     return report
 
 
@@ -166,10 +245,9 @@ def get_slice_diagnosis_report(report_id: str) -> Dict[str, Any]:
     rid = (report_id or "").strip()
     if not rid:
         return {"ok": False, "error": "report_id required"}
-    path = _store_root() / f"{rid}.json"
-    if not path.is_file():
+    data = _get_record(rid)
+    if not data:
         return {"ok": False, "error": f"report not found: {rid}"}
-    data = json.loads(path.read_text(encoding="utf-8"))
     data["ok"] = True
     return data
 
@@ -180,11 +258,7 @@ def ingest_slice_evidence_from_jsonl(
     scenario_id: str = "",
     aiplat_reachable: bool = True,
 ) -> Dict[str, Any]:
-    """Ingest MB-05 Pi emit JSONL (one JSON object per line) into evidence store.
-
-    Envelope fields (run_id / bundle_version / runtime_version / scenario_id) are
-    taken from the first non-empty line that provides them; all lines become events.
-    """
+    """Ingest MB-05 Pi emit JSONL (one JSON object per line) into evidence store."""
     p = Path((path or "").strip())
     if not p.is_file():
         return {"ok": False, "error": f"jsonl not found: {p}"}
@@ -272,7 +346,11 @@ def validate_slice_signoff_reports(body: Dict[str, Any]) -> Dict[str, Any]:
     for rid in ids:
         got = get_slice_diagnosis_report(rid)
         if not got.get("ok") or got.get("error"):
-            return {"ok": False, "required": True, "error": "invalid_report_id", "report_id": rid, "detail": got.get("error")}
-        # Binding a fail/unknown report is allowed for explicit reject flows;
-        # "pass" decision should be caller's responsibility — we only require presence.
+            return {
+                "ok": False,
+                "required": True,
+                "error": "invalid_report_id",
+                "report_id": rid,
+                "detail": got.get("error"),
+            }
     return {"ok": True, "required": True, "report_ids": ids}

@@ -290,7 +290,7 @@ def _copy_json(value: Any) -> Any:
 
 
 def _read_cross_domain(domain_id: str, entity_id: str) -> Any:
-    from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.api.core_facade import GraphIndex
 
     node = GraphIndex.load(domain_id).get_node(entity_id)
     if node is None or not isinstance(getattr(node, "metadata", None), dict):
@@ -369,7 +369,7 @@ def apply_ticket(ticket_id: str, *, actor: str = "") -> Dict[str, Any]:
     rows[idx] = found
     _rewrite(rows)
 
-    from core.harness.knowledge_pipeline.resolver import CrossDomainResolver
+    from core.api.core_facade import CrossDomainResolver
 
     ok = CrossDomainResolver.resolve(
         str(found.get("view_name") or "default"),
@@ -407,7 +407,7 @@ def _points_at(current: Any, other_id: str, other_domain: str) -> bool:
 
 
 def _restore_cross_domain(domain_id: str, entity_id: str, value: Any) -> bool:
-    from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.api.core_facade import GraphIndex
 
     graph = GraphIndex.load(domain_id)
     if graph.get_node(entity_id) is None:
@@ -418,8 +418,8 @@ def _restore_cross_domain(domain_id: str, entity_id: str, value: Any) -> bool:
 
 def rollback_ticket_edge(ticket_id: str, *, role: str) -> Dict[str, Any]:
     """E2: restore one merge ticket's _cross_domain from edge_before. Not live YAML."""
-    from core.harness.infrastructure.gates.policy_gate import PolicyDecision, PolicyGate
-    from core.harness.knowledge.knowledge_ontology import TIER_EDGE
+    from core.api.core_facade import PolicyDecision, PolicyGate
+    from core.api.core_facade import TIER_EDGE
 
     decision = PolicyGate().decide_ontology_approval(role, TIER_EDGE)
     if decision.decision != PolicyDecision.ALLOW:

@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 async def approve_proposal_once(proposal_id: str, *, role: str) -> Dict[str, Any]:
     """Identity is the caller role. Body roles are not consulted."""
     from core.apps.fde.service.k_wave_signal import live_yaml_hash
-    from core.harness.infrastructure.action_store import ActionStore
-    from core.harness.infrastructure.gates.policy_gate import PolicyDecision, PolicyGate
-    from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore
+    from core.api.core_facade import ActionStore
+    from core.api.core_facade import PolicyDecision, PolicyGate
+    from core.api.core_facade import VersionedOntologyStore
 
     store = ActionStore()
     await store.initialize()

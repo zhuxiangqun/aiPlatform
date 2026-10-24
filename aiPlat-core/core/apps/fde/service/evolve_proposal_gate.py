@@ -16,10 +16,8 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from core.harness.infrastructure.action_audit_validate import (
-    check_change_surface,
-    load_audit_schema,
-)
+# Lazy CoreFacade imports inside call sites — this module is re-exported by
+# core_facade at import time; top-level facade imports cause circular ImportError.
 
 
 GATE_ID = "evolve_proposal"
@@ -86,6 +84,8 @@ def evaluate_evolve_proposal(
     touches_ontology: bool = False,
 ) -> Dict[str, Any]:
     """Run evolve_proposal gate. Whitelist violations → require HITL / reject."""
+    from core.api.core_facade import check_change_surface, load_audit_schema
+
     schema = load_audit_schema()
     gates = ((schema.get("eval_gate") or {}).get("gates") or {})
     gate_def = gates.get(GATE_ID) or {}
@@ -257,6 +257,8 @@ def apply_evolve_proposal(proposal_id: str, actor: str = "approver") -> Dict[str
         raise ValueError("proposal must be approved (or auto_recorded) before apply")
     if rec.get("touches_abox") or rec.get("touches_ontology"):
         raise ValueError("abox/ontology proposals cannot be applied by this path")
+
+    from core.api.core_facade import check_change_surface
 
     changes = rec.get("proposed_changes") or {}
     keys = list(rec.get("keys") or changes.keys())

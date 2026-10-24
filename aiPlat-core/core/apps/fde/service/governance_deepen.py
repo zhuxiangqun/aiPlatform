@@ -19,7 +19,7 @@ def governance_quality_snapshot(domain_id: str = "data-gov") -> Dict[str, Any]:
     did = (domain_id or "data-gov").strip() or "data-gov"
     ocs: Dict[str, Any] = {}
     try:
-        from core.harness.knowledge.ontology_completeness import compute_domain_ocs
+        from core.api.core_facade import compute_domain_ocs
 
         ocs = compute_domain_ocs(did, credit_test_evidence=True)
     except Exception as e:
@@ -120,7 +120,7 @@ def locate_via_ontology(
     tokens = set(t.lower() for t in _TOKEN.findall(q.lower()))
     hits: List[Dict[str, Any]] = []
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
 
         g = GraphIndex.load(did)
         nodes = list((getattr(g, "_nodes", None) or {}).values())
@@ -203,7 +203,7 @@ async def locate_via_ontology_async(
     if not with_graphrag or not base.get("hits"):
         return base
     try:
-        from core.harness.knowledge_pipeline.retriever import GraphRAGRetriever
+        from core.api.core_facade import GraphRAGRetriever
 
         rag = GraphRAGRetriever()
         ctx = await rag.retrieve(query, domain_id=domain_id, top_k=min(5, top_k))

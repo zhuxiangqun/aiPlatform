@@ -37,7 +37,7 @@ async def get_usage_signal(
 
     if require_domain:
         try:
-            from core.harness.knowledge.domain_router import DomainRouter
+            from core.api.core_facade import DomainRouter
 
             DomainRouter().require_known_domain(domain)
         except Exception as e:
@@ -49,7 +49,7 @@ async def get_usage_signal(
     try:
         st = store
         if st is None:
-            from core.harness.ontology_engine.action_registry import get_action_registry
+            from core.api.core_facade import get_action_registry
 
             st = get_action_registry()._store
             await st.initialize()
@@ -79,7 +79,7 @@ async def get_usage_trend(
 
     if require_domain:
         try:
-            from core.harness.knowledge.domain_router import DomainRouter
+            from core.api.core_facade import DomainRouter
 
             DomainRouter().require_known_domain(domain)
         except Exception as e:
@@ -94,7 +94,7 @@ async def get_usage_trend(
     try:
         st = store
         if st is None:
-            from core.harness.ontology_engine.action_registry import get_action_registry
+            from core.api.core_facade import get_action_registry
 
             st = get_action_registry()._store
             await st.initialize()
@@ -126,7 +126,7 @@ async def get_usage_trend(
 
 
 def _store_default() -> Any:
-    from core.harness.ontology_engine.action_registry import get_action_registry
+    from core.api.core_facade import get_action_registry
 
     return get_action_registry()._store
 

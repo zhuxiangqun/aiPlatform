@@ -1,6 +1,6 @@
 # 五产品首切片落地收口（2026-10-24）
 
-> 授权范围（L1 + Gate1 修订）内工作已合入 main；**Gate 2 仍未批**。
+> L1 + Gate1 修订内工作已合入 main。**Gate 2 / D13 已批准**（见 `GATE2_DECISION.md`）。Gate 3 仍未批。
 
 ## 已合入（摘要）
 
@@ -11,23 +11,30 @@
 | MB-05 emit opt-in | [#383](https://github.com/zhuxiangqun/aiPlatform/pull/383) |
 | MB-01 再核实 + MB-03 RFC + MB-04 清单 | [#384](https://github.com/zhuxiangqun/aiPlatform/pull/384) |
 | inflation 豁免退役 | PR [#385](https://github.com/zhuxiangqun/aiPlatform/pull/385) → `a4c4e0c`：`exemptions: []` |
+| Gate2 批准文书 + MB-03 SQLite + MB-01 首批 Facade | 本分支 / 后续 PR |
+
+## Gate 2 已批可做 / 已做
+
+| 项 | 状态 |
+|----|------|
+| Gate 2 / D13（内部背书） | ✅ `GATE2_DECISION.md` |
+| MB-04 正式 R | ✅ `ROLES.md` + `MB04_OWNER_TRANSFER.md` |
+| MB-03 存储迁移（方案 B） | ✅ 默认 SQLite；`AIPLAT_SLICE_EVIDENCE_STORE=file` 回退 |
+| MB-01 core 解耦（首批） | ✅ `core/apps/fde` knowledge/ontology 调用改经 CoreFacade；残留：`agent.py` interfaces、`prompts/` register |
 
 ## 明确未做 / 未批
 
 | 项 | 状态 |
 |----|------|
-| Gate 2 / D13 | 维持不进入（见 `GATE2_RECOMMENDATION.md`） |
-| MB-01 core 解耦实施 | 须 Gate 2 |
-| MB-03 存储迁移实现 | 须另签 RFC |
-| MB-04 正式 R 签字 | 清单已备；临时 R 继续有效（见下） |
-| Gate 3 / 拆部署 / 对外产品化 | 未授权 |
+| Gate 3 / 拆部署 / 对外产品化 | ❌ 未授权 |
+| MB-01 全量清零（interfaces/prompts/archive） | 后续小批；不阻塞 Gate2 交付 |
 
-## 临时 R 延期（组织）
+## 临时 R → 正式表
 
-在 `MB04_OWNER_TRANSFER.md` §3 签字表填满之前，继续采用 `ROLES.md` / `L1_AUTHORIZATION.md` 的兼任与临时 R。  
-**本延期 ≠ Gate 2 批准。**
+见 `MB04_OWNER_TRANSFER.md` / `ROLES.md`（2026-10-24 生效）。
 
 ## 运维备忘
 
 - 本机 Pi 告警：`~/.pi/agent/models.json` 须含实际 `ollama list` id（模板见 `packages/aiplat-pi-runtime/models.json.example`）  
 - 证据发射：`AIPLAT_SLICE_EVIDENCE=1`（默认关）  
+- 证据存储：默认 SQLite（`~/.aiplat/five_products_slice/evidence/evidence.db`）；回退 `AIPLAT_SLICE_EVIDENCE_STORE=file`  

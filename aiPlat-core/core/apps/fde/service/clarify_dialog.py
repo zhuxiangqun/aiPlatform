@@ -172,7 +172,7 @@ def prioritize_gaps(gaps: list) -> list:
 
 
 def _rotate_default_question(gaps: list, pending_qs: list, turn: int) -> str:
-    from core.harness.utils.prompt_loader import _sync_resolve
+    from core.api.core_facade import _sync_resolve
 
     if pending_qs and turn <= len(pending_qs):
         return _sync_resolve("fde-dialog-pending-q", question=pending_qs[turn - 1])
@@ -238,7 +238,7 @@ async def _extract_pending_questions(session_id: str = "", report_text: str = ""
 
     if not questions and session_id:
         try:
-            from core.harness.ontology_engine.graph_index import GraphIndex
+            from core.api.core_facade import GraphIndex
             fd = GraphIndex.load("fde-delivery")
             for _nid, node in list(fd._nodes.items()):
                 if getattr(node, "class_name", "") == "SessionMeta" and getattr(node, "entity_id", "") == session_id:
@@ -254,8 +254,8 @@ async def _extract_pending_questions(session_id: str = "", report_text: str = ""
 
     if not questions and len(rpt) >= 200:
         try:
-            from core.harness.syscalls.llm import sys_llm_generate
-            from core.harness.utils.model_injection import best_model_for_purpose
+            from core.api.core_facade import sys_llm_generate
+            from core.api.core_facade import best_model_for_purpose
             extract_prompt = (
                 f'从以下诊断报告中提取所有需要客户确认的问题，以JSON返回。\n\n'
                 f'报告内容:\n{rpt[:8000]}\n\n'
@@ -346,9 +346,9 @@ async def run_clarify_turn(req: ClarifyTurnInput) -> Dict[str, Any]:
     """One clarify turn. Returns dialog payload (without FdeStatusResponse wrapper)."""
     from core.apps.skills.registry import _compute_readiness
     from core.apps.fde.service.agent import run_fde_agent_one_shot
-    from core.harness.syscalls.llm import sys_llm_generate
-    from core.harness.utils.model_injection import best_model_for_purpose
-    from core.harness.utils.prompt_loader import _sync_resolve
+    from core.api.core_facade import sys_llm_generate
+    from core.api.core_facade import best_model_for_purpose
+    from core.api.core_facade import _sync_resolve
 
     mem_key = _dialog_memory_key(req)
 
