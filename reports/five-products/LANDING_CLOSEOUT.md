@@ -13,6 +13,7 @@
 | inflation 豁免退役（首切片） | PR [#385](https://github.com/zhuxiangqun/aiPlatform/pull/385) → `a4c4e0c`：`exemptions: []` |
 | Gate2 批准文书 + MB-03 SQLite + MB-01 首批 Facade | PR [#387](https://github.com/zhuxiangqun/aiPlatform/pull/387) → `5b56477` |
 | Gate2 inflation 豁免退役 | PR [#388](https://github.com/zhuxiangqun/aiPlatform/pull/388) → `3530d9a`：`exemptions: []` |
+| MB-01 agent interfaces 残留 | PR [#389](https://github.com/zhuxiangqun/aiPlatform/pull/389) → `e0b089a` |
 
 ## Gate 2 已批可做 / 已做
 
@@ -21,14 +22,15 @@
 | Gate 2 / D13（内部背书） | ✅ `GATE2_DECISION.md` |
 | MB-04 正式 R | ✅ `ROLES.md` + `MB04_OWNER_TRANSFER.md` |
 | MB-03 存储迁移（方案 B） | ✅ 默认 SQLite；`AIPLAT_SLICE_EVIDENCE_STORE=file` 回退 |
-| MB-01 core 解耦 | ✅ knowledge/ontology + agent interfaces 经 CoreFacade；prompts 包导入期仍 harness（防循环）；archive 除外 |
+| MB-01 core 解耦 | ✅ knowledge/ontology + agent interfaces 经 CoreFacade；prompts 包导入期仍 harness（防循环，有意）；archive 除外 |
+| MB-02 / MB-05 | ✅ 模板对齐 / emit opt-in |
 
 ## 明确未做 / 未批
 
 | 项 | 状态 |
 |----|------|
 | Gate 3 / 拆部署 / 对外产品化 | ❌ 未授权 |
-| MB-01 全量清零（interfaces/prompts/archive） | 后续小批；不阻塞 Gate2 交付 |
+| 外部客户场景替换 D13 | ❌ 未做（当前为内部背书） |
 
 ## 临时 R → 正式表
 
