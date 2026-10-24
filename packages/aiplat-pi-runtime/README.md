@@ -125,7 +125,8 @@ Independent env from the aiPlat control plane (`AIPLAT_ENTERPRISE` must stay `0`
 cd packages/aiplat-pi-runtime
 cp scripts/gate3_pi_thin.env.example .env.gate3-pi-thin   # optional local copy
 bash scripts/gate3_pi_thin_pilot.sh                      # stub smoke; refuses ENTERPRISE=1
-# Rollback drill record: reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md
+# optional container (G3-2): docker compose -f compose.gate3-pi-thin.yml up
+# Rollback (G3-3 Bundle-first): reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md
 ```
 
 

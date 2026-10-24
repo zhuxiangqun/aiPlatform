@@ -18,6 +18,7 @@
 | Gate3/D13 inflation 豁免退役 | PR [#392](https://github.com/zhuxiangqun/aiPlatform/pull/392) → `3afc58e`：`exemptions: []` |
 | CLOSEOUT 引用 #392 | PR [#393](https://github.com/zhuxiangqun/aiPlatform/pull/393) → `d1d2ccb` |
 | G3-1 Pi Thin 试点接线 | PR [#394](https://github.com/zhuxiangqun/aiPlatform/pull/394) → `028f922`：`scripts/gate3_pi_thin_pilot.sh` + env + 回滚演练 |
+| G3-2/G3-3 compose + Bundle 优先回滚 | PR [#396](https://github.com/zhuxiangqun/aiPlatform/pull/396) → `79dc33a`：`compose.gate3-pi-thin.yml` + `AIPLAT_HTTP_HOST` |
 
 ## Gate 2 / D13 / Gate 3
 
@@ -33,4 +34,4 @@
 - Pi models：`~/.pi/agent/models.json`（模板见 `packages/aiplat-pi-runtime/models.json.example`）  
 - 证据发射：`AIPLAT_SLICE_EVIDENCE=1`（默认关）  
 - 证据存储：默认 SQLite；`AIPLAT_SLICE_EVIDENCE_STORE=file` 回退  
-- Gate3 试点：`bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh`（env：`scripts/gate3_pi_thin.env.example`；见 `GATE3_PI_THIN_PILOT.md`）  
+- Gate3 试点：`bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh`；可选 `docker compose -f packages/aiplat-pi-runtime/compose.gate3-pi-thin.yml up`（见 `GATE3_PI_THIN_PILOT.md`）  
