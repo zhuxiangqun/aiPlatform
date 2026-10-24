@@ -65,9 +65,22 @@
 | 控制面 | 仍走既有 aiPlat 发布；本试点不改生产默认共部署路径 |
 | 节奏 owner | 运维兼任（见 ADR-08）；无独立 7×24 |
 
-## 8. 后续 PR 约束
+## 8. Phase B（已批 · `GATE3_PHASE_B_DECISION.md`）
+
+| DoD | 状态 |
+|-----|:----:|
+| `export_pi_bundle` 产物作为 `AIPLAT_APP_HOME` | 见 `GATE3_PI_THIN_PHASE=b` |
+| HTTP Thin `AIPLAT_SLICE_EVIDENCE=1` 写 JSONL（含 `scenario_id`） | `emitSliceEvidenceEvent` |
+| 试点脚本断言证据落盘 | exit 4/5/6 失败 |
+
+```bash
+GATE3_PI_THIN_PHASE=b bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh
+```
+
+## 9. 后续 PR 约束
 
 - 单 PR 遵守 physical merge inflation；超限则拆 PR 或短豁免并退役  
 - 仅允许本包 + `reports/five-products/GATE3_*`；禁止 core/platform 拆服务  
+- Phase B **不**授权五产品全拆 / 对外 E4  
 
 

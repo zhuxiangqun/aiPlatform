@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T15:44:24+08:00",
+  "reviewed_at": "2026-10-24T16:20:20+08:00",
   "base_ref": "origin/main",
-  "merge_base": "79dc33acb910a987de753d0708a63fa813eec780",
-  "diff_sha256": "c3c18ef9f150105a80c082a2b17b21d0e27cc4d9a2eba6d6c94a40a6cdbf2a49",
-  "head_sha": "4555d2d754463f991b2706c118819e654ddb3d4d",
+  "merge_base": "e97f2fda39279212bb1ab1cdf82e058f50260278",
+  "diff_sha256": "0def9b922a2634f500c95e367f4583b331900f873ee818528eefbf74586504cc",
+  "head_sha": "6923b0f2fb837e05c21f7042c24209c2bcfa09bf",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs-only closeout for #396; README compose line; gitignore local env; backlog cites."
+  "note": "Gate3 Phase B: export bundle + HTTP evidence emit; phase a/b smoke PASS; no five-product/E4."
 }

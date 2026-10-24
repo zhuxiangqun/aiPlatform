@@ -39,6 +39,48 @@ function append(path, obj) {
   appendFileSync(path, `${JSON.stringify(obj)}\n`, "utf8");
 }
 
+let _httpCtx = null;
+
+/** Shared base fields for Pi extension + HTTP Thin (Gate3 Phase B). */
+function evidenceBase(runId) {
+  return {
+    v: 1,
+    run_id: runId,
+    scenario_id: String(process.env.AIPLAT_SLICE_SCENARIO_ID || "").trim() || undefined,
+    bundle_version: String(process.env.AIPLAT_SLICE_BUNDLE_VERSION || "").trim() || undefined,
+    runtime_version: String(process.env.AIPLAT_SLICE_RUNTIME_VERSION || "pi-thin-emit").trim(),
+  };
+}
+
+/**
+ * Opt-in JSONL emit for HTTP Thin (no Pi ExtensionAPI).
+ * @param {string} type
+ * @param {Record<string, unknown>} [extra]
+ * @returns {string|null} evidence path or null when disabled
+ */
+export function emitSliceEvidenceEvent(type, extra = {}) {
+  if (!enabled()) return null;
+  if (!_httpCtx) {
+    const runId = String(process.env.AIPLAT_SLICE_RUN_ID || "").trim() || newRunId();
+    const path = resolvePath(runId);
+    _httpCtx = { runId, path, base: evidenceBase(runId) };
+    append(path, {
+      ..._httpCtx.base,
+      type: "emit_open",
+      ts: new Date().toISOString(),
+      source: "slice_evidence_http",
+    });
+    console.log(`AIPLAT_SLICE_EVIDENCE_EMIT path=${path} run_id=${runId}`);
+  }
+  append(_httpCtx.path, {
+    ..._httpCtx.base,
+    type,
+    ts: new Date().toISOString(),
+    ...extra,
+  });
+  return _httpCtx.path;
+}
+
 /**
  * @param {import("@earendil-works/pi-coding-agent").ExtensionAPI} pi
  * @returns {boolean} whether emitter registered
@@ -48,17 +90,7 @@ export function registerSliceEvidenceEmit(pi) {
 
   const runId = String(process.env.AIPLAT_SLICE_RUN_ID || "").trim() || newRunId();
   const path = resolvePath(runId);
-  const bundleVersion = String(process.env.AIPLAT_SLICE_BUNDLE_VERSION || "").trim();
-  const scenarioId = String(process.env.AIPLAT_SLICE_SCENARIO_ID || "").trim();
-  const runtimeVersion = String(process.env.AIPLAT_SLICE_RUNTIME_VERSION || "pi-thin-emit").trim();
-
-  const base = {
-    v: 1,
-    run_id: runId,
-    scenario_id: scenarioId || undefined,
-    bundle_version: bundleVersion || undefined,
-    runtime_version: runtimeVersion,
-  };
+  const base = evidenceBase(runId);
 
   append(path, {
     ...base,
