@@ -13,8 +13,8 @@
 | G3-1 | Pi Thin 独立部署试点 | 中 | `GATE3_PI_THIN_PILOT.md` 清单内接线 | **已接线** [#394](https://github.com/zhuxiangqun/aiPlatform/pull/394) → `028f922` |
 | G3-2 | 试点 compose / 启动说明 / env | 低 | `compose.gate3-pi-thin.yml` + README | **已接线** [#396](https://github.com/zhuxiangqun/aiPlatform/pull/396) → `79dc33a` |
 | G3-3 | 回滚：Bundle 优先；Runtime 备选 | 低 | `GATE3_PI_THIN_ROLLBACK_DRILL.md` | **已接线** [#396](https://github.com/zhuxiangqun/aiPlatform/pull/396) → `79dc33a` |
-| G3-B1 | 试点消费 export Bundle | 中 | `GATE3_PI_THIN_PHASE=b` | **已接线**（本 PR） |
-| G3-B2 | HTTP Thin 切片证据发射 | 中 | `emitSliceEvidenceEvent` | **已接线**（本 PR） |
-| G3-B3 | Phase B 脚本断言证据 | 低 | pilot exit 4/5/6 | **已接线**（本 PR） |
+| G3-B1 | 试点消费 export Bundle | 中 | `GATE3_PI_THIN_PHASE=b` | **已接线** [#398](https://github.com/zhuxiangqun/aiPlatform/pull/398) → `f92897d` |
+| G3-B2 | HTTP Thin 切片证据发射 | 中 | `emitSliceEvidenceEvent` | **已接线** [#398](https://github.com/zhuxiangqun/aiPlatform/pull/398) → `f92897d` |
+| G3-B3 | Phase B 脚本断言证据 | 低 | pilot exit 4/5/6 | **已接线** [#398](https://github.com/zhuxiangqun/aiPlatform/pull/398) → `f92897d` |
 
 **明确不做**：全仓搬目录、五产品一次全拆、诊断全功能、启用本体进主路径（除非另改 WP1/ADR）。
