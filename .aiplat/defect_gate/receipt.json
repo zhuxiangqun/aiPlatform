@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T09:52:48+08:00",
+  "reviewed_at": "2026-10-24T10:00:58+08:00",
   "base_ref": "origin/main",
   "merge_base": "a88ca0c8a45e3bd7a03345f10b2082ae5c9779a4",
-  "diff_sha256": "730d55873f1421c5450e5fd969fc95095051a02e7a4212e87e2ae2dd8fc0172f",
-  "head_sha": "7f04fbab2c5bafc4287dd762426706b1468ee979",
+  "diff_sha256": "b432e0f07c8e3476e34d737f8f9bbef51a491e7414fee9998952a50e58aac89c",
+  "head_sha": "96d1c5e229a8d8eb100fd4f99aab2ec5f5f03e7e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Fix circular import: evolve_proposal_gate lazy CoreFacade imports; status/API unchanged."
+  "note": "Gate2 PR: circular-import fix + temporary inflation exemption (retire after #387 merge)."
 }
