@@ -47,4 +47,22 @@ bash scripts/gate3_pi_thin_pilot.sh   # expect PASS smoke
 ```bash
 GATE3_PI_THIN_PHASE=a bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh
 GATE3_PI_THIN_PHASE=d bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh
+# or: bash packages/aiplat-pi-runtime/scripts/gate3_observation_rerun.sh
+```
+
+## Re-run — mid-window health（2026-10-24）
+
+| Field | Value |
+|-------|-------|
+| Authority | 观察窗口内可选健康复跑（不替代 G3-OBS3 结束复跑） |
+| Helper | `scripts/gate3_observation_rerun.sh` + `GATE3_OBS_INCLUDE_EF=1` |
+| Runtime | `phase=a` → **PASS** |
+| Bundle / slice | `phase=d` → **PASS** |
+| Phase E | **PASS** `rep-9d7a82131134` |
+| Phase F | **PASS** HTTP `signed_off` `rep-78319c54b756` |
+| Result | **PASS** — mid-window；结束复跑仍须 ≤2026-10-31 再跑 a+d（或 helper 默认） |
+
+```bash
+GATE3_OBS_LABEL=mid-window-2026-10-24 GATE3_OBS_INCLUDE_EF=1 \
+  bash packages/aiplat-pi-runtime/scripts/gate3_observation_rerun.sh
 ```

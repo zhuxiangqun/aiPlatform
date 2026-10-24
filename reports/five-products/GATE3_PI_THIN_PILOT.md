@@ -124,10 +124,21 @@ GATE3_PI_THIN_PHASE=e bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilo
 GATE3_PI_THIN_PHASE=f bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh
 ```
 
-## 13. 后续 PR 约束
+## 13. 观察窗口复跑（`GATE3_OBSERVATION_WINDOW_DECISION.md`）
+
+```bash
+# 默认 a+d（起跑/结束同等）
+bash packages/aiplat-pi-runtime/scripts/gate3_observation_rerun.sh
+# 可选含 E/F
+GATE3_OBS_INCLUDE_EF=1 bash packages/aiplat-pi-runtime/scripts/gate3_observation_rerun.sh
+```
+
+结束复跑须 ≤2026-10-31；见 `GATE3_PI_THIN_ROLLBACK_DRILL.md`。
+
+## 14. 后续 PR 约束
 
 - 单 PR 遵守 physical merge inflation；超限则拆 PR 或短豁免并退役  
 - 仅允许本包 + `reports/five-products/GATE3_*`；禁止 core/platform 拆服务  
-- Phase E/F **不**授权五产品全拆 / 对外 E4；顺序第 3 仅 ADR 草案  
+- Phase E/F / 观察窗口 **不**授权五产品全拆 / 对外 E4；ADR-09/10 仍为 Proposed  
 
 

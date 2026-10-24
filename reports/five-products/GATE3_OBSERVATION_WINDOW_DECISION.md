@@ -19,6 +19,7 @@
 | G3-OBS2 | **窗口起跑复跑**：按 `GATE3_PI_THIN_ROLLBACK_DRILL.md` 复跑 Runtime + Bundle-first 清单；结果写入该文件「Re-run」节 |
 | G3-OBS3 | **窗口结束复跑**：2026-10-31 前再跑一轮同等演练；PASS 方可在 ADR-09 前置 #1 标注「窗口证据齐」候选 |
 | G3-OBS4 | 文书：本文件 + ROLLBACK 复跑记录；**不**改生产默认路径 |
+| G3-OBS5 | 辅助脚本：`packages/aiplat-pi-runtime/scripts/gate3_observation_rerun.sh`（默认 a+d；`GATE3_OBS_INCLUDE_EF=1` 含 e/f） |
 
 ## 明确不在本批
 
