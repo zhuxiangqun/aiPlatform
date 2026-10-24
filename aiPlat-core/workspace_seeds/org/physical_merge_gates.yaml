@@ -105,15 +105,8 @@ allowed_bases:
 # Expired entries left in YAML = unreviewed debt → duty board / CI block.
 # Missing owner/reason/expires → invalid debt (not applied, still blocks posture).
 max_active_exemptions: 3
-# Cleared 2026-10-24: first-slice #381 exemption retired (#385).
-# Gate2 one-shot (MB-01/03 + auth docs) — retire immediately after #387 merges.
-exemptions:
-  - id: "ex-2026-10-five-products-gate2"
-    owner: "platform-oncall"
-    reason: "Gate2 authorized MB-01 CoreFacade batch + MB-03 SQLite + auth docs (PR #387); import rewires span many fde service files"
-    expires: "2026-11-07"
-    gates: ["inflation"]
-    paths: ["**"]
+# Cleared 2026-10-24: first-slice #381 (#385) and Gate2 #387 exemptions retired.
+exemptions: []
 # Example:
 # exemptions:
 #   - id: "ex-2026-10-migrate-x"
