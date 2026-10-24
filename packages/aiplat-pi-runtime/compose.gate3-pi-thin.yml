@@ -1,0 +1,23 @@
+# Gate3 Pi Thin pilot — container separated from aiPlat control plane (G3-2).
+# Does not start platform/core. AIPLAT_ENTERPRISE must stay 0.
+#
+#   docker compose -f compose.gate3-pi-thin.yml up
+#   curl -fsS http://127.0.0.1:18787/health
+#
+# Prefer host smoke for CI/dev: bash scripts/gate3_pi_thin_pilot.sh
+services:
+  gate3-pi-thin:
+    image: node:22-bookworm-slim
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+    environment:
+      AIPLAT_HTTP_STUB: "1"
+      AIPLAT_HTTP_PORT: "18787"
+      AIPLAT_HTTP_HOST: "0.0.0.0"
+      AIPLAT_HTTP_API_KEY: gate3-pi-thin-pilot-key
+      AIPLAT_APP_HOME: /app/fixtures/sample-app
+      AIPLAT_ENTERPRISE: "0"
+    ports:
+      - "18787:18787"
+    command: ["node", "bin/aiplat-http.mjs"]

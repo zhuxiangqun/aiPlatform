@@ -5,15 +5,29 @@
 | Scene | `fp-customer-lock-service-bundle-pi-diag-001` |
 | Date | 2026-10-24 |
 | Operator | platform owner + delivery owner (dual-role) |
-| Procedure | Stop Pi Thin HTTP process → remove/rename `.env.gate3-pi-thin` → verify control plane still serves `/health` without Pi Thin |
-| Result | **PASS** (scripted): `scripts/gate3_pi_thin_pilot.sh` is stoppable via Ctrl-C / process exit; no shared SQLite/volume with control plane in stub mode |
-| Residual risk | None for stub; agent mode must not leave `AIPLAT_PI_*` in control-plane env |
-| Sign-off | Dual-role owner — drill procedure documented; re-run before any non-stub Gate3 expansion |
+| Result | **PASS** (scripted process stop + documented Bundle-first path) |
+| Residual risk | Stub only; agent mode must not leave `AIPLAT_PI_*` in control-plane env |
+| Sign-off | Dual-role owner — re-run before any non-stub Gate3 expansion |
 
-## Commands used
+## Priority (ADR-08 / G3-3)
+
+1. **Bundle 版本回滚优先** — 控制面仍用既有 `export_pi_bundle` / 部署目录：将试点 `AIPLAT_APP_HOME` 指回上一已签名 Bundle 目录（或 `current` → 上一版本 symlink），再重启 Thin。  
+2. **Runtime 备选** — 停试点进程/容器，切回共置 Thin；删除或改名 `.env.gate3-pi-thin`；控制面路径不变。
+
+## Runtime drill (executed)
 
 ```bash
 cd packages/aiplat-pi-runtime
 bash scripts/gate3_pi_thin_pilot.sh   # expect PASS smoke
 # Ctrl-C / kill → process gone; control plane unchanged
+# optional container: docker compose -f compose.gate3-pi-thin.yml down
+```
+
+## Bundle-first drill (checklist)
+
+```bash
+# 1) Note current AIPLAT_APP_HOME / bundle_id from pilot env
+# 2) Point AIPLAT_APP_HOME at previous exported app dir (or flip current→prev)
+# 3) bash scripts/gate3_pi_thin_pilot.sh   # expect PASS with prior bundle fixtures
+# 4) If still bad → Runtime 备选 (stop process / compose down)
 ```

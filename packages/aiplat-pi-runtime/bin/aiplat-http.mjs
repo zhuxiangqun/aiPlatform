@@ -12,8 +12,8 @@
  *            endpoints via AIPLAT_PI_BASE_URL, default Ollama)
  *
  * Auth: AIPLAT_HTTP_API_KEY → Authorization: Bearer <key>
- * Env: AIPLAT_HTTP_PORT (8787), AIPLAT_APP_HOME, AIPLAT_PI_MODEL=provider/id
- *      AIPLAT_PI_BASE_URL, AIPLAT_PI_API_KEY, AIPLAT_PI_SDK_ROOT
+ * Env: AIPLAT_HTTP_PORT (8787), AIPLAT_HTTP_HOST (127.0.0.1), AIPLAT_APP_HOME,
+ *      AIPLAT_PI_MODEL=provider/id, AIPLAT_PI_BASE_URL, AIPLAT_PI_API_KEY, AIPLAT_PI_SDK_ROOT
  */
 import http from "node:http";
 import fs from "node:fs";
@@ -30,6 +30,8 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PKG = path.resolve(__dirname, "..");
 const PORT = Number(process.env.AIPLAT_HTTP_PORT || 8787);
+/** Bind host: default loopback; set AIPLAT_HTTP_HOST=0.0.0.0 for container publish (Gate3 compose). */
+const HOST = (process.env.AIPLAT_HTTP_HOST || "127.0.0.1").trim() || "127.0.0.1";
 const API_KEY = (process.env.AIPLAT_HTTP_API_KEY || "").trim();
 const FORCE_STUB = process.env.AIPLAT_HTTP_STUB === "1";
 const MODEL_SPEC = (process.env.AIPLAT_PI_MODEL || "").trim();
@@ -453,8 +455,8 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, "127.0.0.1", () => {
+server.listen(PORT, HOST, () => {
   console.log(
-    `[aiplat-http] http://127.0.0.1:${PORT} appHome=${meta.appHome} auth=${API_KEY ? "on" : "off"} model=${MODEL_SPEC || "(none)"} stub=${FORCE_STUB ? "force" : "auto"}`,
+    `[aiplat-http] http://${HOST}:${PORT} appHome=${meta.appHome} auth=${API_KEY ? "on" : "off"} model=${MODEL_SPEC || "(none)"} stub=${FORCE_STUB ? "force" : "auto"}`,
   );
 });

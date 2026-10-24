@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T13:38:06+08:00",
+  "reviewed_at": "2026-10-24T14:16:09+08:00",
   "base_ref": "origin/main",
-  "merge_base": "028f922185727dad8c57a25a4cd195cc0a772971",
-  "diff_sha256": "8a17d7f62c1ca5fc3a3a3821d0ff06667abecf5456839c63444c8c4dfabe30e8",
-  "head_sha": "98d55077cebc54de4a55e1f9529afe9dc8060ae2",
+  "merge_base": "34f69ebc52e32bf8e1be64b2a361ed37ff36a360",
+  "diff_sha256": "6478d1a5e9430149863adecd6a2ff67103c7eb5bffbd054e6ddf1f81ebbf93be",
+  "head_sha": "5d2e0d52224e4290edce46084e92dc1baf3d2a2e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs-only: CLOSEOUT+#MODULE_BACKLOG cite G3-1/#394; no runtime change."
+  "note": "G3-2/G3-3 trimmed \u22648 files; compose+HOST+rollback; smoke PASS."
 }
