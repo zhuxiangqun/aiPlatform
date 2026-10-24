@@ -14,5 +14,5 @@
 |----|------|
 | Pi 模型目录告警 | MB-02：模板+本机 `~/.pi/agent/models.json` 已对齐；其它环境仍须拷贝 |
 | MB-05 内嵌发射 | **已接线（opt-in）**：`slice_evidence_emit.mjs` + `ingest_slice_evidence_from_jsonl` |
-| E-06 FDE→harness 直连 | Gate 2 模块化候选 |
+| E-06 FDE→harness 直连 | platform 干净；**core/apps/fde 仍 Known Gap** — 见 `MB01_E06_REVERIFY.md`；解耦须 Gate 2 |
 | 对外 E4 / Gate 2 | 未授权；本切片非客户验收 |

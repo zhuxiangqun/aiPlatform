@@ -32,7 +32,7 @@
 | E-03 | Pi 运行 → 诊断摄入证据 | Pi 侧有 `run_id` / `bundle_version` 等字段（enterprise 烟测）；诊断侧无标准摄入 API 对接本切片 | **Known Gap** `KG-EDGE-02` | 拟建：Evidence ingest（Pi 事件 + aiPlat 资产版本）→ 报告 |
 | E-04 | 诊断报告 → FDE 验收 | signoff 存在；未强制绑定诊断报告引用 | **Known Gap** `KG-EDGE-03` | 拟建：Acceptance 证据链字段含 report_id / 版本 |
 | E-05 | 控制面身份 → 各目标服务 | `require_auth`、`_resolve_identity`、PolicyGate（CoreFacade） | **As-Is** E1 | 双重授权禁止已锁定；切片须跑伪造身份负向（WP4） |
-| E-06 | FDE → harness knowledge/ontology 直连 | `core/apps/fde/service/*` 多处 `from core.harness.knowledge|ontology` | **后置 / 非本切片主路径** | 本场景未启用本体；记风险：与「FDE 不直触内部」目标冲突，**不**因本边阻塞 Gate 1；Gate 2 模块化候选 |
+| E-06 | FDE → harness knowledge/ontology 直连 | 2026-10-24：platform `apps/fde` **0** 直连（走 CoreFacade）；`core/apps/fde` **仍有** knowledge/ontology_engine 直连 | **Known Gap（core 层）** / platform As-Is | 见 `MB01_E06_REVERIFY.md`；解耦须 Gate 2 + D13 |
 
 ---
 
