@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T17:22:32+08:00",
+  "reviewed_at": "2026-10-24T17:50:27+08:00",
   "base_ref": "origin/main",
-  "merge_base": "30e8154110972d1d81fce91507344fc4d8cdf00c",
-  "diff_sha256": "825141a90ba88da24e62f9b4b6145d2bd1575a201d161b83e1038f9bbea06fda",
-  "head_sha": "574ca1a6424e84134015934c8aaf96ab1601adbb",
+  "merge_base": "bbd91314ca179d27a5832b4c90cee80fadff42c1",
+  "diff_sha256": "c0668ceac8bbcef7da639f57ae93c102f0b978e5740450650d476f7d422c1de4",
+  "head_sha": "b8958495c18e639bb69ed3c643dc213a3384f2cf",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs-only cite #400 Phase C; backlog/CLOSEOUT/SCHEDULE."
+  "note": "Gate3 Phase D: FDE bind report_id; neg/pos validate; sandbox acceptance; phase=d smoke PASS."
 }
