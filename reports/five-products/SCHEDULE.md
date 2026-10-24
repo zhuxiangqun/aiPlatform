@@ -17,7 +17,8 @@
 | Gate 3 Phase F | ✅ HTTP ⑥b 签收（#405 → `4d47ae2`；`GATE3_PHASE_F_DECISION.md`） |
 | Gate3 观察窗口 | ✅ **同日双端已关闭**（#412） |
 | ADR-09 前置 #2 §10 | ✅ 再闭合 2 项（`ADR09_S10_DRIVER_CLOSURE.md`）；扩缩容仍 ⬜ |
-| 第二产品拆分 | ✅ ADR-10 **Accepted（有条件）** — 诊断 MVP；**落地接线另批** |
+| 第二产品拆分 | ✅ ADR-10 **Accepted（有条件）** — 诊断 MVP |
+| ADR-10 接线 Phase A | ✅ 清单 + env + 沙箱烟测（`ADR10_DIAGNOSIS_MVP_WIRING_DECISION.md`）；**≠** 改生产默认路径 |
 | 五产品全拆 / 对外 E4 | ❌ 未授权（ADR-09 仍 **Proposed**；#4–#5 未齐） |
 
 路径证据目录：`reports/five-products/slice-fp-internal-bundle-pi-diag-001/`（历史内部 id；新场景 id 见 SCENE.md）。
