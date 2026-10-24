@@ -117,6 +117,18 @@ AIPLAT_HTTP_STUB=1 AIPLAT_APP_HOME=./fixtures/sample-app \
 bash scripts/http_smoke.sh
 ```
 
+## Gate3 Pi Thin pilot (process-separated)
+
+Independent env from the aiPlat control plane (`AIPLAT_ENTERPRISE` must stay `0`). See `reports/five-products/GATE3_PI_THIN_PILOT.md`.
+
+```bash
+cd packages/aiplat-pi-runtime
+cp scripts/gate3_pi_thin.env.example .env.gate3-pi-thin   # optional local copy
+bash scripts/gate3_pi_thin_pilot.sh                      # stub smoke; refuses ENTERPRISE=1
+# Rollback drill record: reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md
+```
+
+
 Agent mode (OpenAI-compatible — Ollama default):
 
 ```bash
