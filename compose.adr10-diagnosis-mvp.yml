@@ -1,0 +1,21 @@
+# ADR-10 diagnosis MVP pilot — container separated from control-plane defaults (Phase B).
+# Does not start platform HTTP. Does not set AIPLAT_DIAGNOSIS_PROD_DEFAULT=1.
+#
+#   docker compose -f compose.adr10-diagnosis-mvp.yml run --rm adr10-diagnosis-mvp
+# Prefer host smoke: bash scripts/adr10_diagnosis_mvp_pilot.sh
+services:
+  adr10-diagnosis-mvp:
+    image: python:3.11-slim
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace:ro
+      - adr10-diag-home:/tmp/aiplat-adr10-diag-home
+    environment:
+      ADR10_DIAG_AIPLAT_HOME: /tmp/aiplat-adr10-diag-home
+      AIPLAT_DIAGNOSIS_PROD_DEFAULT: "0"
+      AIPLAT_SLICE_SCENARIO_ID: fp-customer-lock-service-bundle-pi-diag-001
+      ADR10_DIAG_PYTHON: python3
+    command: ["bash", "scripts/adr10_diagnosis_mvp_pilot.sh"]
+
+volumes:
+  adr10-diag-home:
