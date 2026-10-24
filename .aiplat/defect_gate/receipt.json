@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T11:24:10+08:00",
+  "reviewed_at": "2026-10-24T12:04:50+08:00",
   "base_ref": "origin/main",
-  "merge_base": "3530d9a3fb386b0e3244a119305ca0b17b7cd341",
-  "diff_sha256": "68b5ac2b3cf4373312ae190678aa2717f7af85eca2eefa3c265a5d3c702d1b25",
-  "head_sha": "4a6da01e4a8162107021a5412668d92045118dea",
+  "merge_base": "e0b089a10d48426fb3c739906d1ae9f3502fb374",
+  "diff_sha256": "c0e010502dfe247a41b1494c69028fa4eb17542b47fa7ae7d49dd11091175097",
+  "head_sha": "e59b2a26755dbc9e80479990392de079567707a1",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "MB-01 agent Facade lazy import; prompts keep harness (cycle); docs sync #388."
+  "note": "Gate3/D13 docs + temporary inflation exemption for #391; retire after merge."
 }

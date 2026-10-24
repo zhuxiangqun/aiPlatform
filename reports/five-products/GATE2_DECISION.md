@@ -13,9 +13,10 @@
 
 ## D13
 
-内部场景 `fp-internal-bundle-pi-diag-001` **保留**。  
-业务场景 owner 书面将本仓库自用/内部路径视为 Gate 2 适用范围之背书（§6.0.1 效力由兼任 owner 签署，**非伪造外部客户**）。  
-若日后切换真实客户场景，须另档替换 SCENE 并复核本决定。
+**（2026-10-24 升格）** 原内部场景背书已被客户场景替换 **supersede**：  
+见 [`D13_CUSTOMER_ENDORSEMENT.md`](./D13_CUSTOMER_ENDORSEMENT.md) + [`SCENE.md`](./SCENE.md)（`fp-customer-lock-service-bundle-pi-diag-001` / 江苏锁安 / `lock-service`）。  
+
+Gate 2 **技术批准范围仍有效**；D13 段以升格文件为准。历史内部 id 仅对照。
 
 ## 批准范围（可执行）
 
