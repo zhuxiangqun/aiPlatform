@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T13:38:06+08:00",
+  "reviewed_at": "2026-10-24T14:15:39+08:00",
   "base_ref": "origin/main",
-  "merge_base": "028f922185727dad8c57a25a4cd195cc0a772971",
-  "diff_sha256": "8a17d7f62c1ca5fc3a3a3821d0ff06667abecf5456839c63444c8c4dfabe30e8",
-  "head_sha": "98d55077cebc54de4a55e1f9529afe9dc8060ae2",
+  "merge_base": "34f69ebc52e32bf8e1be64b2a361ed37ff36a360",
+  "diff_sha256": "c0c9b25df4913addcd54f99437a496a8426dc7a652f72605822ab99bce4c8884",
+  "head_sha": "6446e0d9c53d826a4ec2e00b3cafc5e7831d7aa1",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs-only: CLOSEOUT+#MODULE_BACKLOG cite G3-1/#394; no runtime change."
+  "note": "G3-2 compose + AIPLAT_HTTP_HOST; G3-3 Bundle-first rollback; gitignore local env; smoke PASS."
 }
