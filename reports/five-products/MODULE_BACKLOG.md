@@ -10,6 +10,6 @@
 | MB-03 | 诊断证据持久化 | 中 | SQLite 默认 | **已实现** |
 | MB-04 | 正式 R 转正 | 中 | ROLES | **已转正** |
 | MB-05 | Pi emit opt-in | 低 | slice_evidence_emit | **已接线** |
-| G3-1 | Pi Thin 独立部署试点 | 中 | `GATE3_PI_THIN_PILOT.md` 清单内接线 | **已批；接线待开** |
+| G3-1 | Pi Thin 独立部署试点 | 中 | `GATE3_PI_THIN_PILOT.md` 清单内接线 | **接线中**（env + `gate3_pi_thin_pilot.sh` + 回滚演练） |
 
 **明确不做**：全仓搬目录、五产品一次全拆、诊断全功能、启用本体进主路径（除非另改 WP1/ADR）。
