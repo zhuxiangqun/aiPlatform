@@ -18,6 +18,7 @@
 | Gate3/D13 inflation 豁免退役 | PR [#392](https://github.com/zhuxiangqun/aiPlatform/pull/392) → `3afc58e`：`exemptions: []` |
 | CLOSEOUT 引用 #392 | PR [#393](https://github.com/zhuxiangqun/aiPlatform/pull/393) → `d1d2ccb` |
 | G3-1 Pi Thin 试点接线 | PR [#394](https://github.com/zhuxiangqun/aiPlatform/pull/394) → `028f922`：`scripts/gate3_pi_thin_pilot.sh` + env + 回滚演练 |
+| G3-2/G3-3 compose + Bundle 优先回滚 | 本 PR：`compose.gate3-pi-thin.yml` + `AIPLAT_HTTP_HOST` + 回滚文书升格 |
 
 ## Gate 2 / D13 / Gate 3
 

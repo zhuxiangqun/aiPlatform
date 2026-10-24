@@ -53,11 +53,21 @@
 |------|------|
 | Env 示例 | `packages/aiplat-pi-runtime/scripts/gate3_pi_thin.env.example` |
 | Pilot 脚本 | `packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh` |
-| 回滚演练 | `reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md` |
+| Compose（G3-2） | `packages/aiplat-pi-runtime/compose.gate3-pi-thin.yml`（`AIPLAT_HTTP_HOST=0.0.0.0`） |
+| 回滚演练（G3-3） | `reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md`（Bundle 优先） |
 | README | `packages/aiplat-pi-runtime/README.md` § Gate3 |
 
-## 7. 后续 PR 约束
+## 7. 试点发布节奏（独立于控制面）
+
+| 项 | 约定 |
+|----|------|
+| Thin 试点 | 可按 Bundle 版本单独重启/换 `AIPLAT_APP_HOME`；不强制与控制面同发 |
+| 控制面 | 仍走既有 aiPlat 发布；本试点不改生产默认共部署路径 |
+| 节奏 owner | 运维兼任（见 ADR-08）；无独立 7×24 |
+
+## 8. 后续 PR 约束
 
 - 单 PR 遵守 physical merge inflation；超限则拆 PR 或短豁免并退役  
-- 文书已合入；本接线 PR 仅上表路径；禁止 core/platform 拆服务  
+- 仅允许本包 + `reports/five-products/GATE3_*`；禁止 core/platform 拆服务  
+
 
