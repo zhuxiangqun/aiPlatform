@@ -112,10 +112,22 @@ GATE3_PI_THIN_PHASE=d bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilo
 GATE3_PI_THIN_PHASE=e bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh
 ```
 
-## 12. 后续 PR 约束
+## 12. Phase F（已批 · `GATE3_PHASE_F_DECISION.md`）
+
+| DoD | 状态 |
+|-----|:----:|
+| 无 ⑥b → HTTP 409 `preflight_gate_blocked` | exit 14 |
+| 有 ⑥b、无 report → HTTP 409 slice gate | exit 15 |
+| ⑥b + `report_id` → HTTP `signed_off` + 落盘 | exit 16/17 |
+
+```bash
+GATE3_PI_THIN_PHASE=f bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh
+```
+
+## 13. 后续 PR 约束
 
 - 单 PR 遵守 physical merge inflation；超限则拆 PR 或短豁免并退役  
 - 仅允许本包 + `reports/five-products/GATE3_*`；禁止 core/platform 拆服务  
-- Phase E **不**授权五产品全拆 / 对外 E4；顺序第 2/3 另批 Phase F / ADR  
+- Phase E/F **不**授权五产品全拆 / 对外 E4；顺序第 3 仅 ADR 草案  
 
 
