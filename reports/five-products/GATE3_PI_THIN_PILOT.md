@@ -77,10 +77,22 @@
 GATE3_PI_THIN_PHASE=b bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh
 ```
 
-## 9. 后续 PR 约束
+## 9. Phase C（已批 · `GATE3_PHASE_C_DECISION.md`）
+
+| DoD | 状态 |
+|-----|:----:|
+| JSONL → 既有 `ingest_slice_evidence_from_jsonl` | 无新平行 ingest API |
+| `build_slice_diagnosis_report` → `status=ok` | 夹具路径 |
+| 独立 `AIPLAT_HOME` 沙箱 | 默认 `/tmp/aiplat-gate3-phase-c-home` |
+
+```bash
+GATE3_PI_THIN_PHASE=c bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh
+```
+
+## 10. 后续 PR 约束
 
 - 单 PR 遵守 physical merge inflation；超限则拆 PR 或短豁免并退役  
 - 仅允许本包 + `reports/five-products/GATE3_*`；禁止 core/platform 拆服务  
-- Phase B **不**授权五产品全拆 / 对外 E4  
+- Phase B/C **不**授权五产品全拆 / 对外 E4  
 
 
