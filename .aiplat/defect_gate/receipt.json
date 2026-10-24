@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T13:18:37+08:00",
+  "reviewed_at": "2026-10-24T13:38:06+08:00",
   "base_ref": "origin/main",
-  "merge_base": "d1d2ccb45db84f62c433fc6ffdac1003a39daec3",
-  "diff_sha256": "f25974c32eb11e59a863262dc1f60febe781759248df75b4eb77bd4e75542a8a",
-  "head_sha": "e9b85aba9120b3e4d73716fde95188935400fc49",
+  "merge_base": "028f922185727dad8c57a25a4cd195cc0a772971",
+  "diff_sha256": "8a17d7f62c1ca5fc3a3a3821d0ff06667abecf5456839c63444c8c4dfabe30e8",
+  "head_sha": "98d55077cebc54de4a55e1f9529afe9dc8060ae2",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "G3-1 fix inflation_new_dirs: env under scripts/; smoke PASS; ENTERPRISE refuse exit 3."
+  "note": "Docs-only: CLOSEOUT+#MODULE_BACKLOG cite G3-1/#394; no runtime change."
 }
