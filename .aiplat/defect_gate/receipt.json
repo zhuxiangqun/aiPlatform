@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T12:04:50+08:00",
+  "reviewed_at": "2026-10-24T12:25:24+08:00",
   "base_ref": "origin/main",
-  "merge_base": "e0b089a10d48426fb3c739906d1ae9f3502fb374",
-  "diff_sha256": "c0e010502dfe247a41b1494c69028fa4eb17542b47fa7ae7d49dd11091175097",
-  "head_sha": "e59b2a26755dbc9e80479990392de079567707a1",
+  "merge_base": "364f31993009cd57bb727b6ffae4a8301f16aba3",
+  "diff_sha256": "9f49b95025a46ab8c9b499116212ef87b2d32f068c449a606e37b57627771783",
+  "head_sha": "78f8fc93358aeada91d9a5d56318dead526ab4c4",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Gate3/D13 docs + temporary inflation exemption for #391; retire after merge."
+  "note": "Retire Gate3/D13 inflation exemption post-#391."
 }
