@@ -22,5 +22,6 @@
 | G3-D1 | FDE 验收须绑 report_id | 中 | `validate_slice_signoff_reports` | **已接线** [#402](https://github.com/zhuxiangqun/aiPlatform/pull/402) → `58ac428` |
 | G3-D2 | 负向拒签 + 正向绑定 | 中 | `GATE3_PI_THIN_PHASE=d` | **已接线** [#402](https://github.com/zhuxiangqun/aiPlatform/pull/402) → `58ac428` |
 | G3-D3 | 沙箱验收绑定落盘 | 低 | `$AIPLAT_HOME/.../acceptance/` | **已接线** [#402](https://github.com/zhuxiangqun/aiPlatform/pull/402) → `58ac428` |
+| G3-F1 | HTTP 验收签收 + ⑥b | 中 | `GATE3_PI_THIN_PHASE=f` ASGI | **本批**（`GATE3_PHASE_F_DECISION.md`） |
 
 **明确不做**：全仓搬目录、五产品一次全拆、诊断全功能、启用本体进主路径（除非另改 WP1/ADR）。

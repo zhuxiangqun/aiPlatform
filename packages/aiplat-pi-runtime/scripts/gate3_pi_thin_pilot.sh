@@ -7,6 +7,7 @@
 # GATE3_PI_THIN_PHASE=c: b → ingest_slice_evidence_from_jsonl → diagnosis report
 # GATE3_PI_THIN_PHASE=d: c → FDE slice signoff bind report_id (SCENE F1)
 # GATE3_PI_THIN_PHASE=e: materialize lock-service sample → d chain (Phase E)
+# GATE3_PI_THIN_PHASE=f: c → HTTP acceptance/signoff via ⑥b preflight (ASGI TestClient)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO="$(cd "$ROOT/../.." && pwd)"
@@ -14,6 +15,17 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ENV_FILE="${GATE3_PI_THIN_ENV:-$ROOT/.env.gate3-pi-thin}"
 EXAMPLE="$SCRIPT_DIR/gate3_pi_thin.env.example"
 PHASE="${GATE3_PI_THIN_PHASE:-a}"
+
+# Prefer repo venv (3.11+) for platform HTTP / CoreFacade; fall back to python3.
+resolve_gate3_python() {
+  if [[ -n "${GATE3_PI_THIN_PYTHON:-}" ]]; then
+    echo "$GATE3_PI_THIN_PYTHON"
+  elif [[ -x "$REPO/.venv/bin/python" ]]; then
+    echo "$REPO/.venv/bin/python"
+  else
+    echo "python3"
+  fi
+}
 
 if [[ ! -f "$ENV_FILE" ]]; then
   if [[ -f "$EXAMPLE" ]]; then
@@ -288,6 +300,125 @@ record = {
 path = acc_dir / ("%s.json" % fid)
 path.write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 print("PASS: Gate3 Phase D bound report_id=%s record=%s" % (rid, path))
+PY
+  exit $?
+fi
+
+if [[ "$PHASE" == "f" || "$PHASE" == "F" ]]; then
+  export AIPLAT_HOME="${GATE3_PI_THIN_AIPLAT_HOME:-/tmp/aiplat-gate3-phase-f-home}"
+  mkdir -p "$AIPLAT_HOME"
+  # Always under this phase home (ignore ambient AIPLAT_ACCEPTANCE_DIR).
+  export AIPLAT_ACCEPTANCE_DIR="${GATE3_PI_THIN_ACCEPTANCE_DIR:-$AIPLAT_HOME/acceptance}"
+  mkdir -p "$AIPLAT_ACCEPTANCE_DIR"
+  EVIDENCE_PATH="${AIPLAT_SLICE_EVIDENCE_PATH:-/tmp/aiplat-gate3-phase-f-evidence.jsonl}"
+  export AIPLAT_SLICE_EVIDENCE_PATH="$EVIDENCE_PATH"
+  export AIPLAT_SLICE_BUNDLE_VERSION="${AIPLAT_SLICE_BUNDLE_VERSION:-gate3-phase-f-http}"
+  # Fresh home → no leftover ⑥b latest.json from prior runs
+  rm -rf "$AIPLAT_HOME/fde_security_preflight"
+  run_phase_b
+  echo "Gate3 Phase F: Phase C then HTTP acceptance/signoff (⑥b preflight)"
+  C_OUT="$(run_phase_c_python)"
+  echo "$C_OUT"
+  REPORT_ID="$(printf '%s\n' "$C_OUT" | awk -F= '/^REPORT_ID=/{print $2}' | tail -1)"
+  if [[ -z "$REPORT_ID" ]]; then
+    echo "ERROR: Phase F missing REPORT_ID from Phase C" >&2
+    exit 10
+  fi
+  export GATE3_PHASE_F_REPORT_ID="$REPORT_ID"
+  export GATE3_PI_THIN_REPO="$REPO"
+  GATE3_PY="$(resolve_gate3_python)"
+  echo "Gate3 Phase F: HTTP ASGI client via $GATE3_PY"
+  PYTHONPATH="${REPO}/aiPlat-core:${REPO}/aiPlat-platform${PYTHONPATH:+:$PYTHONPATH}" \
+    "$GATE3_PY" - <<'PY'
+import importlib.util
+import os
+import sys
+import types
+from pathlib import Path
+
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from core.apps.fde.service.security_preflight import save_preflight_run
+
+sid = os.environ.get("AIPLAT_SLICE_SCENARIO_ID", "fp-customer-lock-service-bundle-pi-diag-001")
+rid = os.environ["GATE3_PHASE_F_REPORT_ID"]
+repo = Path(os.environ["GATE3_PI_THIN_REPO"]).resolve()
+plat_api = repo / "aiPlat-platform" / "apps" / "fde" / "api"
+# Load acceptance router without apps.fde package __init__ (heavy / version-sensitive).
+apps = types.ModuleType("apps")
+sys.modules["apps"] = apps
+apps_fde = types.ModuleType("apps.fde")
+apps_fde.__path__ = [str(plat_api.parent)]
+sys.modules["apps.fde"] = apps_fde
+apps_fde_api = types.ModuleType("apps.fde.api")
+apps_fde_api.__path__ = [str(plat_api)]
+sys.modules["apps.fde.api"] = apps_fde_api
+
+def _load(name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+    return mod
+
+_load("apps.fde.api.schemas", plat_api / "schemas.py")
+acc = _load("apps.fde.api.fde_acceptance", plat_api / "fde_acceptance.py")
+
+app = FastAPI()
+app.include_router(acc.router, prefix="/api/platform/apps/fde")
+client = TestClient(app, raise_server_exceptions=False)
+url = "/api/platform/apps/fde/acceptance/signoff"
+base = {
+    "spec_id": sid,
+    "scenario_id": sid,
+    "for_slice": True,
+    "signed_by": "gate3-phase-f-pilot",
+    "notes": "HTTP ⑥b preflight + slice report_id",
+}
+
+r0 = client.post(url, json={**base, "evidence_report_ids": [rid]})
+if r0.status_code != 409:
+    print("ERROR: expected 409 without ⑥b, got", r0.status_code, r0.text[:400], file=sys.stderr)
+    sys.exit(14)
+detail0 = (r0.json() or {}).get("detail") or {}
+if detail0.get("error") != "preflight_gate_blocked":
+    print("ERROR: expected preflight_gate_blocked:", detail0, file=sys.stderr)
+    sys.exit(14)
+
+save_preflight_run(
+    dry_run={"status": "ok", "phase": "B", "security_report": {"findings": []}},
+    actor="gate3-phase-f-pilot",
+)
+
+r1 = client.post(url, json=base)  # ⑥b ok, no report_id
+if r1.status_code != 409:
+    print("ERROR: expected 409 without report_id, got", r1.status_code, r1.text[:400], file=sys.stderr)
+    sys.exit(15)
+detail1 = (r1.json() or {}).get("detail") or {}
+if "slice" not in str(detail1.get("error") or "").lower() and "evidence_report" not in str(detail1):
+    print("ERROR: expected slice report gate:", detail1, file=sys.stderr)
+    sys.exit(15)
+
+r2 = client.post(url, json={**base, "evidence_report_ids": [rid]})
+if r2.status_code != 200:
+    print("ERROR: expected 200 signed_off, got", r2.status_code, r2.text[:500], file=sys.stderr)
+    sys.exit(16)
+body2 = r2.json() or {}
+if body2.get("status") != "signed_off":
+    print("ERROR: status not signed_off:", body2, file=sys.stderr)
+    sys.exit(16)
+
+acc_dir = Path(os.environ["AIPLAT_ACCEPTANCE_DIR"])
+files = sorted(acc_dir.glob("%s-*.json" % sid))
+if not files:
+    print("ERROR: HTTP signoff did not persist under", acc_dir, file=sys.stderr)
+    sys.exit(17)
+print(
+    "PASS: Gate3 Phase F HTTP signoff report_id=%s status=%s record=%s"
+    % (rid, body2.get("status"), files[-1])
+)
 PY
   exit $?
 fi
