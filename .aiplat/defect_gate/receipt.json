@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T14:15:39+08:00",
+  "reviewed_at": "2026-10-24T14:16:09+08:00",
   "base_ref": "origin/main",
   "merge_base": "34f69ebc52e32bf8e1be64b2a361ed37ff36a360",
-  "diff_sha256": "c0c9b25df4913addcd54f99437a496a8426dc7a652f72605822ab99bce4c8884",
-  "head_sha": "6446e0d9c53d826a4ec2e00b3cafc5e7831d7aa1",
+  "diff_sha256": "6478d1a5e9430149863adecd6a2ff67103c7eb5bffbd054e6ddf1f81ebbf93be",
+  "head_sha": "5d2e0d52224e4290edce46084e92dc1baf3d2a2e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "G3-2 compose + AIPLAT_HTTP_HOST; G3-3 Bundle-first rollback; gitignore local env; smoke PASS."
+  "note": "G3-2/G3-3 trimmed \u22648 files; compose+HOST+rollback; smoke PASS."
 }
