@@ -3,7 +3,8 @@
 # Does not start platform/core control plane. Exits non-zero if AIPLAT_ENTERPRISE=1.
 #
 # GATE3_PI_THIN_PHASE=a (default): stub smoke against fixtures/sample-app
-# GATE3_PI_THIN_PHASE=b: export_pi_bundle → smoke + AIPLAT_SLICE_EVIDENCE assert (Phase B)
+# GATE3_PI_THIN_PHASE=b: export_pi_bundle → smoke + AIPLAT_SLICE_EVIDENCE assert
+# GATE3_PI_THIN_PHASE=c: b → ingest_slice_evidence_from_jsonl → diagnosis report (Phase C)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO="$(cd "$ROOT/../.." && pwd)"
@@ -36,9 +37,9 @@ export AIPLAT_HTTP_STUB="${AIPLAT_HTTP_STUB:-1}"
 export AIPLAT_HTTP_PORT="${AIPLAT_HTTP_PORT:-18787}"
 export AIPLAT_HTTP_API_KEY="${AIPLAT_HTTP_API_KEY:-gate3-pi-thin-pilot-key}"
 
-if [[ "$PHASE" == "b" || "$PHASE" == "B" ]]; then
-  SAMPLE="${GATE3_PI_THIN_SAMPLE:-$ROOT/fixtures/sample-app}"
-  EXPORT_DIR="${GATE3_PI_THIN_EXPORT:-/tmp/aiplat-gate3-export-sample}"
+run_phase_b() {
+  local SAMPLE="${GATE3_PI_THIN_SAMPLE:-$ROOT/fixtures/sample-app}"
+  local EXPORT_DIR="${GATE3_PI_THIN_EXPORT:-/tmp/aiplat-gate3-export-sample}"
   EVIDENCE_PATH="${AIPLAT_SLICE_EVIDENCE_PATH:-/tmp/aiplat-gate3-phase-b-evidence.jsonl}"
   mkdir -p "$EXPORT_DIR" "$(dirname "$EVIDENCE_PATH")"
   rm -f "$EVIDENCE_PATH"
@@ -54,18 +55,62 @@ if [[ "$PHASE" == "b" || "$PHASE" == "B" ]]; then
   bash "$ROOT/scripts/http_smoke.sh"
   if [[ ! -s "$EVIDENCE_PATH" ]]; then
     echo "ERROR: Phase B evidence file missing or empty: $EVIDENCE_PATH" >&2
-    exit 4
+    return 4
   fi
   if ! grep -q 'fp-customer-lock-service-bundle-pi-diag-001' "$EVIDENCE_PATH"; then
     echo "ERROR: Phase B evidence missing scenario_id" >&2
-    exit 5
+    return 5
   fi
   if ! grep -q 'http_chat' "$EVIDENCE_PATH"; then
     echo "ERROR: Phase B evidence missing http_chat event" >&2
-    exit 6
+    return 6
   fi
   echo "PASS: Gate3 Phase B (exported bundle + slice evidence)"
-  exit 0
+  return 0
+}
+
+if [[ "$PHASE" == "b" || "$PHASE" == "B" ]]; then
+  run_phase_b
+  exit $?
+fi
+
+if [[ "$PHASE" == "c" || "$PHASE" == "C" ]]; then
+  # Isolated evidence store — do not touch developer ~/.aiplat production DB
+  export AIPLAT_HOME="${GATE3_PI_THIN_AIPLAT_HOME:-/tmp/aiplat-gate3-phase-c-home}"
+  mkdir -p "$AIPLAT_HOME"
+  EVIDENCE_PATH="${AIPLAT_SLICE_EVIDENCE_PATH:-/tmp/aiplat-gate3-phase-c-evidence.jsonl}"
+  export AIPLAT_SLICE_EVIDENCE_PATH="$EVIDENCE_PATH"
+  run_phase_b
+  echo "Gate3 Phase C: ingest JSONL → diagnosis MVP ($EVIDENCE_PATH)"
+  PYTHONPATH="${REPO}/aiPlat-core${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
+import json
+import os
+import sys
+
+from core.apps.fde.service.slice_evidence import (
+    build_slice_diagnosis_report,
+    ingest_slice_evidence_from_jsonl,
+)
+
+path = os.environ["AIPLAT_SLICE_EVIDENCE_PATH"]
+sid = os.environ.get("AIPLAT_SLICE_SCENARIO_ID", "fp-customer-lock-service-bundle-pi-diag-001")
+ing = ingest_slice_evidence_from_jsonl(path=path, scenario_id=sid, aiplat_reachable=True)
+if not ing.get("ok"):
+    print("ERROR: ingest failed:", json.dumps(ing, ensure_ascii=False), file=sys.stderr)
+    sys.exit(7)
+rep = build_slice_diagnosis_report(scenario_id=sid, ingest_id=ing["ingest_id"])
+if not rep.get("ok"):
+    print("ERROR: report failed:", json.dumps(rep, ensure_ascii=False), file=sys.stderr)
+    sys.exit(8)
+if rep.get("status") != "ok" or not rep.get("diagnosis_ok"):
+    print("ERROR: diagnosis not ok:", json.dumps(rep, ensure_ascii=False), file=sys.stderr)
+    sys.exit(9)
+print(
+    f"PASS: Gate3 Phase C ingest_id={ing.get('ingest_id')} "
+    f"report_id={rep.get('report_id')} status={rep.get('status')}"
+)
+PY
+  exit $?
 fi
 
 if [[ -z "${AIPLAT_APP_HOME:-}" ]]; then
