@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T08:03:56+08:00",
+  "reviewed_at": "2026-10-24T08:06:04+08:00",
   "base_ref": "origin/main",
   "merge_base": "aeae9c3bcb33bc0dc5b97e146d6e77a55a9832b0",
-  "diff_sha256": "a9e64423c16c013f9e42cb05159d0e6b7e7c19b057c8578e26d7ec95eead1185",
-  "head_sha": "b636c2f8d6b997a3369e4693dcb4bd8d7c32c8c5",
+  "diff_sha256": "0f089784931d9eab0bac9afa93510cbcb25916d19f7770f14b4024016d6f2dfc",
+  "head_sha": "311ac853c4c72643d9031f4643870e8c1a4f391b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs only: MB-01 E-06 reverify (platform clean, core still gap) + MB-03 RFC (no impl). No product code."
+  "note": "Docs: MB-01 reverify + MB-03 RFC + MB-04 owner transfer checklist. No product code; no owners invented."
 }
