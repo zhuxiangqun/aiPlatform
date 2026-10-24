@@ -22,6 +22,9 @@
 | Gate3 Phase B（Bundle + 证据） | PR [#398](https://github.com/zhuxiangqun/aiPlatform/pull/398) → `f92897d`：`GATE3_PI_THIN_PHASE=b` + `emitSliceEvidenceEvent` |
 | Gate3 Phase C（JSONL → 诊断 ingest） | PR [#400](https://github.com/zhuxiangqun/aiPlatform/pull/400) → `30e8154`：`GATE3_PI_THIN_PHASE=c` |
 | Gate3 Phase D（FDE 绑 report_id） | PR [#402](https://github.com/zhuxiangqun/aiPlatform/pull/402) → `58ac428`：`GATE3_PI_THIN_PHASE=d` |
+| Gate3 Phase E（lock-service Bundle） | PR [#404](https://github.com/zhuxiangqun/aiPlatform/pull/404) → `a9790f7`：`GATE3_PI_THIN_PHASE=e` |
+| Gate3 Phase F（HTTP ⑥b 签收） | PR [#405](https://github.com/zhuxiangqun/aiPlatform/pull/405) → `4d47ae2`：`GATE3_PI_THIN_PHASE=f` |
+| ADR-09 全拆/E4 草案 | PR [#406](https://github.com/zhuxiangqun/aiPlatform/pull/406) → `f6a3a9a`：**Proposed**（非落地） |
 
 ## Gate 2 / D13 / Gate 3
 
@@ -29,12 +32,12 @@
 |----|------|
 | Gate 2 | ✅ 已落地 |
 | D13 | ✅ 客户场景 `fp-customer-lock-service-bundle-pi-diag-001`（江苏锁安 / lock-service）；见 `D13_CUSTOMER_ENDORSEMENT.md` |
-| Gate 3 | ✅ **有条件** — 仅 Pi Thin 试点（`GATE3_DECISION.md` + `ADR-08-deploy-split.md` + `GATE3_PI_THIN_PILOT.md`） |
-| 五产品全拆 / 对外 E4 宣传 | ❌ 未授权 |
+| Gate 3 | ✅ **有条件** — Pi Thin 试点 Phase A–F（`GATE3_DECISION.md` + ADR-08 + `GATE3_PI_THIN_PILOT.md`） |
+| 五产品全拆 / 对外 E4 宣传 | ❌ 未授权（ADR-09 仅 Proposed） |
 
 ## 运维备忘
 
 - Pi models：`~/.pi/agent/models.json`（模板见 `packages/aiplat-pi-runtime/models.json.example`）  
 - 证据发射：`AIPLAT_SLICE_EVIDENCE=1`（默认关）  
 - 证据存储：默认 SQLite；`AIPLAT_SLICE_EVIDENCE_STORE=file` 回退  
-- Gate3 试点：`bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh`；Phase B/C/D：`GATE3_PI_THIN_PHASE=b|c|d bash ...`；可选 compose（见 `GATE3_PI_THIN_PILOT.md`）  
+- Gate3 试点：`bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh`；Phase B–F：`GATE3_PI_THIN_PHASE=b|c|d|e|f bash ...`；可选 compose（见 `GATE3_PI_THIN_PILOT.md`）  
