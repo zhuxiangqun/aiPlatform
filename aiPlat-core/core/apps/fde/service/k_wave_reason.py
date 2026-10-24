@@ -34,7 +34,7 @@ def build_org_run_reasoning(
     paths: List[str] = []
     entities: List[Dict[str, Any]] = []
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
 
         g = GraphIndex.load(did)
         nodes = getattr(g, "_nodes", {}) or {}

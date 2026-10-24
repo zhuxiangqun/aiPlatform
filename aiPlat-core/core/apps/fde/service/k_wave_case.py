@@ -20,7 +20,7 @@ def _outcome_from_run(status: str) -> str:
 def record_case_from_org_run(run: Dict[str, Any]) -> Dict[str, Any]:
     """Best-effort OrgRun → OntologyCaseStore. Never raises; never mutates TBox."""
     try:
-        from core.harness.knowledge.ontology_case_learning import OntologyCaseStore
+        from core.api.core_facade import OntologyCaseStore
 
         domain_id = str(run.get("domain_id") or "it-ops")
         run_id = str(run.get("run_id") or "")
@@ -75,7 +75,7 @@ def record_case_from_tool_streak(
 ) -> Dict[str, Any]:
     """Same Run, same tool, same error class, consecutive ≥2 → one failure case."""
     try:
-        from core.harness.knowledge.ontology_case_learning import OntologyCaseStore
+        from core.api.core_facade import OntologyCaseStore
 
         did = (domain_id or "").strip() or "default"
         tool = (tool_name or "").strip() or "tool"
