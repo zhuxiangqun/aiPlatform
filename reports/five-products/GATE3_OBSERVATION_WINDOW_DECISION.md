@@ -30,6 +30,17 @@
 | 第二产品拆分落地（草案另见 `ADR-10-second-product-split-draft.md`） |
 | 本体进主路径 / 拆 FDE·诊断中台 |
 
+## 执行计划（2026-10-24 确认 · 按建议）
+
+| 项 | 约定 |
+|----|------|
+| 策略 | **不缩短窗口、不取消结束复跑**；窗口期内静默，**2026-10-31** 执行 G3-OBS3 |
+| 结束复跑命令 | `bash packages/aiplat-pi-runtime/scripts/gate3_observation_rerun.sh`（与起跑同等 a+d） |
+| 可选加强 | `GATE3_OBS_INCLUDE_EF=1` 同上脚本（含 e/f） |
+| 本地耗时参考（本机 2026-10-24） | 默认 a+d ≈ **1–2s**；含 e/f ≈ **3–4s**（`time` real）；文书落盘另计 **≤5min** |
+| 结束后 | 结果写入 `GATE3_PI_THIN_ROLLBACK_DRILL.md`「Re-run — observation close」；再评估 ADR-09 前置 #1 |
+
 ## 签署
 
 架构 × 业务（兼任）：**批准 Gate3 观察窗口 7 日 + 回滚复跑** · 2026-10-24  
+确认执行计划：等到 **2026-10-31** 跑结束复跑 · 同日  
