@@ -105,15 +105,8 @@ allowed_bases:
 # Expired entries left in YAML = unreviewed debt → duty board / CI block.
 # Missing owner/reason/expires → invalid debt (not applied, still blocks posture).
 max_active_exemptions: 3
-# Cleared 2026-10-24: first-slice #381 (#385) and Gate2 #387 (#388) exemptions retired.
-# Gate3/D13 auth docs one-shot — retire immediately after #391 merges.
-exemptions:
-  - id: "ex-2026-10-five-products-gate3-d13"
-    owner: "platform-oncall"
-    reason: "Gate3/D13 authorization docs package (SCENE+ADR-08+GATE3+SSOT); retire after #391"
-    expires: "2026-11-07"
-    gates: ["inflation"]
-    paths: ["**"]
+# Cleared 2026-10-24: #381/#385, Gate2 #387/#388, Gate3/D13 #391 exemptions retired.
+exemptions: []
 # Example:
 # exemptions:
 #   - id: "ex-2026-10-migrate-x"
