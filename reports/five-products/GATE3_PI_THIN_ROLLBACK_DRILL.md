@@ -37,12 +37,12 @@ bash scripts/gate3_pi_thin_pilot.sh   # expect PASS smoke
 | Field | Value |
 |-------|-------|
 | Authority | `GATE3_OBSERVATION_WINDOW_DECISION.md`（G3-OBS2） |
-| Window | 2026-10-24 → 2026-10-31（7 日历日） |
+| Window | 同日双端（修订后；原 7 日计划废止） |
 | Operator | architecture × business (dual-role) |
 | Runtime | `GATE3_PI_THIN_PHASE=a` → **PASS**（stub smoke） |
 | Bundle / slice path | `GATE3_PI_THIN_PHASE=d` → **PASS**（export → ingest → FDE bind `rep-caaf208cdfcd`） |
 | Result | **PASS** — kickoff re-run complete |
-| Next | 窗口结束前（≤2026-10-31）同等复跑一轮 → 候选勾 ADR-09 前置 #1 |
+| Next | 同日结束复跑（见下节 close） |
 
 ```bash
 GATE3_PI_THIN_PHASE=a bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh
@@ -60,9 +60,24 @@ GATE3_PI_THIN_PHASE=d bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilo
 | Bundle / slice | `phase=d` → **PASS** |
 | Phase E | **PASS** `rep-9d7a82131134` |
 | Phase F | **PASS** HTTP `signed_off` `rep-78319c54b756` |
-| Result | **PASS** — mid-window；结束复跑仍须 ≤2026-10-31 再跑 a+d（或 helper 默认） |
+| Result | **PASS** — mid-window（可选；不替代 close） |
 
 ```bash
 GATE3_OBS_LABEL=mid-window-2026-10-24 GATE3_OBS_INCLUDE_EF=1 \
+  bash packages/aiplat-pi-runtime/scripts/gate3_observation_rerun.sh
+```
+
+## Re-run — observation close（2026-10-24 · 同日双端）
+
+| Field | Value |
+|-------|-------|
+| Authority | `GATE3_OBSERVATION_WINDOW_DECISION.md`（G3-OBS3 修订 · 同日双端） |
+| Helper | `GATE3_OBS_LABEL=observation-close-2026-10-24 bash .../gate3_observation_rerun.sh` |
+| Runtime | `phase=a` → **PASS** |
+| Bundle / slice | `phase=d` → **PASS** `rep-f4ae669e858e` |
+| Result | **PASS** — 同日双端关闭；ADR-09 前置 #1 **候选齐**（仍非 Accepted） |
+
+```bash
+GATE3_OBS_LABEL=observation-close-2026-10-24 \
   bash packages/aiplat-pi-runtime/scripts/gate3_observation_rerun.sh
 ```

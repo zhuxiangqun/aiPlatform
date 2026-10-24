@@ -25,8 +25,8 @@
 | Gate3 Phase E（lock-service Bundle） | PR [#404](https://github.com/zhuxiangqun/aiPlatform/pull/404) → `a9790f7`：`GATE3_PI_THIN_PHASE=e` |
 | Gate3 Phase F（HTTP ⑥b 签收） | PR [#405](https://github.com/zhuxiangqun/aiPlatform/pull/405) → `4d47ae2`：`GATE3_PI_THIN_PHASE=f` |
 | ADR-09 全拆/E4 草案 | PR [#406](https://github.com/zhuxiangqun/aiPlatform/pull/406) → `f6a3a9a`：**Proposed**（非落地） |
-| Gate3 观察窗口 + 回滚起跑复跑 | PR [#408](https://github.com/zhuxiangqun/aiPlatform/pull/408) → `d859559`：`GATE3_OBSERVATION_WINDOW_DECISION.md`（7 日；起跑 PASS） |
-| 观察复跑脚本 + mid-window | PR [#409](https://github.com/zhuxiangqun/aiPlatform/pull/409) → `1626b28`：`gate3_observation_rerun.sh`；结束复跑仍 ≤10-31 |
+| Gate3 观察窗口（后修订同日双端） | PR [#408](https://github.com/zhuxiangqun/aiPlatform/pull/408) → `d859559`；同日双端关闭见本批 OBS/ROLLBACK |
+| 观察复跑脚本 + mid-window | PR [#409](https://github.com/zhuxiangqun/aiPlatform/pull/409) → `1626b28`：`gate3_observation_rerun.sh` |
 | ADR-10 第二产品拆分草案 | `ADR-10-second-product-split-draft.md`：**Proposed**（非落地） |
 
 ## Gate 2 / D13 / Gate 3
@@ -35,7 +35,7 @@
 |----|------|
 | Gate 2 | ✅ 已落地 |
 | D13 | ✅ 客户场景 `fp-customer-lock-service-bundle-pi-diag-001`（江苏锁安 / lock-service）；见 `D13_CUSTOMER_ENDORSEMENT.md` |
-| Gate 3 | ✅ **有条件** — Pi Thin 试点 Phase A–F + 观察窗口（`GATE3_DECISION.md` + ADR-08 + `GATE3_OBSERVATION_WINDOW_DECISION.md`） |
+| Gate 3 | ✅ **有条件** — Pi Thin A–F + 观察**同日双端已关闭**（ADR-08 / OBS 决定）；ADR-09 前置 #1 仅候选齐 |
 | 第二产品拆分 | ❌ 未授权（ADR-10 仅 Proposed） |
 | 五产品全拆 / 对外 E4 宣传 | ❌ 未授权（ADR-09 仅 Proposed） |
 
