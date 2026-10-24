@@ -42,7 +42,7 @@ def auto_fill_weekly_report(domain_id: str) -> Dict[str, Any]:
 
     try:
 
-        from core.harness.knowledge.domain_maturity import compute_domain_maturity
+        from core.api.core_facade import compute_domain_maturity
 
         maturity = compute_domain_maturity(domain_id)
 
@@ -80,7 +80,7 @@ def auto_fill_weekly_report(domain_id: str) -> Dict[str, Any]:
 
         if _os.path.exists(db_path):
 
-            from core.harness.infrastructure.infra_bridge import create_infra_database_client
+            from core.api.core_facade import create_infra_database_client
 
             conn = create_infra_database_client(db_path)
 
@@ -113,7 +113,7 @@ def auto_fill_weekly_report(domain_id: str) -> Dict[str, Any]:
 
     try:
 
-        from core.harness.knowledge.scoring_engine import load_models, get_alerts
+        from core.api.core_facade import load_models, get_alerts
 
         import yaml
 
@@ -184,7 +184,7 @@ def auto_fill_monthly_report(domain_id: str) -> Dict[str, Any]:
 
         if _os.path.exists(db_path):
 
-            from core.harness.infrastructure.infra_bridge import create_infra_database_client
+            from core.api.core_facade import create_infra_database_client
 
             conn = create_infra_database_client(db_path)
 

@@ -68,7 +68,7 @@ async def _trigger_conversation_ingest() -> None:
     try:
         import asyncio
         async def _ingest():
-            from core.harness.knowledge.conversation_ingestor import ConversationIngestor
+            from core.api.core_facade import ConversationIngestor
             ingestor = ConversationIngestor()
             await ingestor.ingest_recent(hours=1, max_messages=5)
         asyncio.ensure_future(_ingest())
@@ -96,9 +96,9 @@ async def run_voice_brainstorm(
         return {"success": False, "error": "转录文本过短 (需≥20字符)", "summary": {}}
 
     try:
-        from core.harness.utils.model_injection import best_model_for_purpose
-        from core.harness.utils.prompt_loader import _sync_resolve
-        from core.harness.syscalls.llm import sys_llm_generate
+        from core.api.core_facade import best_model_for_purpose
+        from core.api.core_facade import _sync_resolve
+        from core.api.core_facade import sys_llm_generate
 
         prompt = _sync_resolve(
             "voice-brainstorm",
