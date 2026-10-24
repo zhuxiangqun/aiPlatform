@@ -89,10 +89,22 @@ GATE3_PI_THIN_PHASE=b bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilo
 GATE3_PI_THIN_PHASE=c bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh
 ```
 
-## 10. 后续 PR 约束
+## 10. Phase D（已批 · `GATE3_PHASE_D_DECISION.md`）
+
+| DoD | 状态 |
+|-----|:----:|
+| 无 `evidence_report_ids` → 拒签 | exit 11 |
+| 绑定 Phase C `report_id` → 通过 | exit 12 失败码 |
+| 沙箱验收绑定落盘 | `$AIPLAT_HOME/five_products_slice/acceptance/` |
+
+```bash
+GATE3_PI_THIN_PHASE=d bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh
+```
+
+## 11. 后续 PR 约束
 
 - 单 PR 遵守 physical merge inflation；超限则拆 PR 或短豁免并退役  
 - 仅允许本包 + `reports/five-products/GATE3_*`；禁止 core/platform 拆服务  
-- Phase B/C **不**授权五产品全拆 / 对外 E4  
+- Phase B/C/D **不**授权五产品全拆 / 对外 E4  
 
 
