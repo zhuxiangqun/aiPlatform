@@ -16,6 +16,8 @@
 | MB-01 agent interfaces | PR [#389](https://github.com/zhuxiangqun/aiPlatform/pull/389) → `e0b089a` |
 | D13 升格 + Gate3 有条件批准（文书） | PR [#391](https://github.com/zhuxiangqun/aiPlatform/pull/391) → `364f319` |
 | Gate3/D13 inflation 豁免退役 | PR [#392](https://github.com/zhuxiangqun/aiPlatform/pull/392) → `3afc58e`：`exemptions: []` |
+| CLOSEOUT 引用 #392 | PR [#393](https://github.com/zhuxiangqun/aiPlatform/pull/393) → `d1d2ccb` |
+| G3-1 Pi Thin 试点接线 | PR [#394](https://github.com/zhuxiangqun/aiPlatform/pull/394) → `028f922`：`scripts/gate3_pi_thin_pilot.sh` + env + 回滚演练 |
 
 ## Gate 2 / D13 / Gate 3
 
@@ -31,4 +33,4 @@
 - Pi models：`~/.pi/agent/models.json`（模板见 `packages/aiplat-pi-runtime/models.json.example`）  
 - 证据发射：`AIPLAT_SLICE_EVIDENCE=1`（默认关）  
 - 证据存储：默认 SQLite；`AIPLAT_SLICE_EVIDENCE_STORE=file` 回退  
-- Gate3 试点：见 `GATE3_PI_THIN_PILOT.md`（密钥与控制面分离）  
+- Gate3 试点：`bash packages/aiplat-pi-runtime/scripts/gate3_pi_thin_pilot.sh`（env：`scripts/gate3_pi_thin.env.example`；见 `GATE3_PI_THIN_PILOT.md`）  
