@@ -7,7 +7,7 @@
 | WP3 DESIGN | ✅ |
 | WP4 执行 + 证据包 | ✅ **收口**（`slice-.../WP4_CLOSEOUT.md`） |
 | WP5 回顾 | ✅ `WP5_RETROSPECTIVE.md` + `MODULE_BACKLOG.md` |
-| Gate 2 | ❌ **建议维持**（`GATE2_RECOMMENDATION.md`；缺 D13） |
+| Gate 2 | ✅ **已批准**（`GATE2_DECISION.md`；D13 内部背书 2026-10-24） |
 | Gate 3 | ❌ 未授权 |
 
 路径 E3 证据目录：`reports/five-products/slice-fp-internal-bundle-pi-diag-001/`。
