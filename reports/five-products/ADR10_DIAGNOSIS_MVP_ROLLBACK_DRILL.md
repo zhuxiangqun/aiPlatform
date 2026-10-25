@@ -5,7 +5,7 @@
 | Scene | `fp-customer-lock-service-bundle-pi-diag-001` |
 | Date | 2026-10-24 |
 | Result | **PASS**（宿主 smoke + refuse；compose 文件已交付） |
-| Residual | 本机 Docker daemon 未起，compose `run` skip；无生产默认切换；无 7×24 |
+| Residual | compose 需联网 `pip install` 最小依赖；无生产默认切换；无 7×24 |
 
 ## Priority
 

@@ -17,7 +17,7 @@
 
 1. `compose.adr10-diagnosis-mvp.yml` 合入；`AIPLAT_DIAGNOSIS_PROD_DEFAULT` 固定 `"0"`  
 2. 宿主 `bash scripts/adr10_diagnosis_mvp_pilot.sh` → PASS（本批）  
-3. compose `run`：本机 Docker daemon 未起 → **skip**（残差）；有 daemon 时须 `run --rm` PASS  
-4. 回滚：`docker compose -f compose.adr10-diagnosis-mvp.yml down -v`（有 daemon 时）
+3. compose `run --rm`：须 PASS（slim 内 `pip install` 最小依赖后跑宿主同款烟测）  
+4. 回滚：`docker compose -f compose.adr10-diagnosis-mvp.yml down -v`
 
 签署：架构 × 业务 × 诊断 R（兼任）· 2026-10-24  
