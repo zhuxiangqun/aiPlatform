@@ -31,9 +31,11 @@
 | ADR-09 §10 再闭合 + ADR-10 Accepted | PR [#413](https://github.com/zhuxiangqun/aiPlatform/pull/413) → `ca03f00`：`ADR09_S10_DRIVER_CLOSURE.md` + 诊断 MVP |
 | CLOSEOUT 引用 #412/#413 | PR [#414](https://github.com/zhuxiangqun/aiPlatform/pull/414) |
 | ADR-10 接线 Phase A | PR [#415](https://github.com/zhuxiangqun/aiPlatform/pull/415) → `80cc8e2`：沙箱 ingest→report；禁生产默认切换 |
-| ADR-10 接线 Phase B | PR [#417](https://github.com/zhuxiangqun/aiPlatform/pull/417) → `01f34da`：compose 一键烟测；daemon 本机 skip |
+| ADR-10 接线 Phase B | PR [#417](https://github.com/zhuxiangqun/aiPlatform/pull/417) → `01f34da`：compose 一键烟测（后补宿主/compose PASS 见 #422） |
 | CLOSEOUT 引用 #417 | PR [#418](https://github.com/zhuxiangqun/aiPlatform/pull/418) → `61d9d0b` |
 | ADR-09 前置 #4/#5 草案 | PR [#419](https://github.com/zhuxiangqun/aiPlatform/pull/419) → `c2c1d45`：`ADR09_E4_*` + 干净环境脚本；**≠** Accepted / 对外 |
+| CLOSEOUT 引用 #419 | PR [#420](https://github.com/zhuxiangqun/aiPlatform/pull/420) → `c20edb7` |
+| ADR-09 前置 #3 + #5 PASS 归档 | PR [#422](https://github.com/zhuxiangqun/aiPlatform/pull/422) → `1a96f40`：on-call 再确认 + 宿主/compose PASS；**≠** Accepted / 对外 |
 
 ## Gate 2 / D13 / Gate 3
 
@@ -41,7 +43,7 @@
 |----|------|
 | Gate 2 | ✅ 已落地 |
 | D13 | ✅ 客户场景 `fp-customer-lock-service-bundle-pi-diag-001`（江苏锁安 / lock-service）；见 `D13_CUSTOMER_ENDORSEMENT.md` |
-| Gate 3 | ✅ **有条件** — Pi Thin A–F + 观察**同日双端已关闭**（#412）；ADR-09 前置 #1–#2 齐，#4–#5 **草案已落**（#419）仍未联签 |
+| Gate 3 | ✅ **有条件** — Pi Thin A–F + 观察**同日双端已关闭**（#412）；ADR-09 前置 #1–#2 齐，#3–#5 **草案/证据已落**（#419/#422）仍未联签 |
 | 第二产品拆分 | ✅ **有条件 Accepted**（ADR-10）；Phase A/B [#415](https://github.com/zhuxiangqun/aiPlatform/pull/415)/[#417](https://github.com/zhuxiangqun/aiPlatform/pull/417)；≠ 改生产默认 / 长驻微服务 |
 | 五产品全拆 / 对外 E4 宣传 | ❌ 未授权（ADR-09 仍 Proposed） |
 
