@@ -1,0 +1,19 @@
+ADR-09 E4 clean-env check (draft evidence) ts=20261025T152952Z
+NOTE: not publicity approval; ADR-09 remains Proposed
+== ADR-10 diagnosis MVP host pilot ==
+NOTE: /Users/apple/workdata/person/zy/aiPlatform/.env.adr10-diagnosis-mvp missing — loading example defaults from /Users/apple/workdata/person/zy/aiPlatform/scripts/adr10_diagnosis_mvp.env.example
+ADR-10 diagnosis MVP pilot: AIPLAT_HOME=/tmp/aiplat-adr10-diag-home scenario=fp-customer-lock-service-bundle-pi-diag-001 evidence=/tmp/aiplat-adr10-diag-home/pilot-emit.jsonl
+PASS: ADR-10 diagnosis MVP pilot ingest_id=ing-5a7b10db9da8 report_id=rep-0bf667587df6 status=ok
+REPORT_ID=rep-0bf667587df6
+== Gate3 Pi Thin phase=a (stub) ==
+Gate3 Pi Thin pilot phase=a stub=1 port=18787 app=/Users/apple/workdata/person/zy/aiPlatform/packages/aiplat-pi-runtime/fixtures/sample-app enterprise=0
+[aiplat-http] http://127.0.0.1:18787 appHome=/Users/apple/workdata/person/zy/aiPlatform/packages/aiplat-pi-runtime/fixtures/sample-app auth=on model=(none) stub=force
+PASS: aiplat-http smoke (health + chat SOP + demo_skill handler)
+PASS: clean-env host checks (compose optional; skip if no daemon)
+== ADR-10 compose one-shot ==
+NOTE: /workspace/.env.adr10-diagnosis-mvp missing — loading example defaults from /workspace/scripts/adr10_diagnosis_mvp.env.example
+ADR-10 diagnosis MVP pilot: AIPLAT_HOME=/tmp/aiplat-adr10-diag-home scenario=fp-customer-lock-service-bundle-pi-diag-001 evidence=/tmp/aiplat-adr10-diag-home/pilot-emit.jsonl
+PASS: ADR-10 diagnosis MVP pilot ingest_id=ing-994d8ddb3c4b report_id=rep-d4b5ffd5d359 status=ok
+REPORT_ID=rep-d4b5ffd5d359
+PASS: adr09 clean-env scaffold complete
+REPORT_LOG=/tmp/aiplat-adr09-e4-clean-env/run-20261025T152952Z.txt
