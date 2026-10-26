@@ -16,7 +16,7 @@
 | **Gate 2 / MB-01·03** | ✅ **已授权并落地（2026-10-24）** | `GATE2_DECISION.md`；PR #387–#389 |
 | **D13 客户场景** | ✅ **已升格（2026-10-24）** | `D13_CUSTOMER_ENDORSEMENT.md` + `SCENE.md`（江苏锁安 / lock-service） |
 | **Gate 3 / 拆部署** | ✅ **有条件（仅 Pi Thin 试点）** | `GATE3_DECISION.md` + ADR-08；**≠** 五产品全拆 |
-| **对外 E4 / 全拆** | ❌ 未授权 | ADR-09 仍 **Proposed**（#1–#2 齐；#3–#5 草案/证据已落仍未联签） |
+| **对外 E4 / 全拆** | ❌ 未授权 | ADR-09 **Proposed / 停泊**（`ADR09_PREWORK_COSIGN_PARK.md`；#1–#5 确认齐仍 ≠ Accepted） |
 | **第二产品拆分（诊断 MVP）** | ✅ **有条件 Accepted** | `ADR-10-second-product-split.md`；**≠** 改生产默认路径 / 全拆 |
 
 **仍须守住**：五产品全拆、对外产品化宣传、诊断二期 — 不得默示批准。
@@ -105,7 +105,7 @@
 | B3 | 扩大模块化、全仓搬迁、解耦 E-06 大规模改造 | **部分已批**：Gate 2 仅授权 `core/apps/fde` 分批改经 CoreFacade（禁搬仓/拆微服务）；其余扩大仍须另批 |
 | B4 | 独立部署 / 拆服务拆库 | **部分已批**：Pi Thin（ADR-08）+ 诊断 MVP 第二产品门槛（ADR-10 Accepted）；落地接线另 PR；全拆仍须 ADR-09 **Accepted** |
 | B5 | 取消 D13 或内部场景充客户验收 | **ADR** |
-| B6 | 对外宣传五产品已产品化 / 升格 E4 对外承诺 | **单独书面** + ADR-09 **Accepted**（现为 Proposed 草案） |
+| B6 | 对外宣传五产品已产品化 / 升格 E4 对外承诺 | **单独书面** + ADR-09 **Accepted**（现为 Proposed / 停泊；PARK 已拒签对外发布） |
 | B7 | 启用本体步骤进主路径 | **WP1 变更 + Semantic 升启用集**（现批未开） |
 | B8 | 启用厂内 Pi 或 Enterprise 为必经 | **ADR + 书面子集** |
 
