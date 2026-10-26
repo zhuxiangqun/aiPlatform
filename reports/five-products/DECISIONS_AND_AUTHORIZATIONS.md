@@ -17,7 +17,7 @@
 | **D13 客户场景** | ✅ **已升格（2026-10-24）** | `D13_CUSTOMER_ENDORSEMENT.md` + `SCENE.md`（江苏锁安 / lock-service） |
 | **Gate 3 / 拆部署** | ✅ **有条件（仅 Pi Thin 试点）** | `GATE3_DECISION.md` + ADR-08；**≠** 五产品全拆 |
 | **对外 E4 / 全拆 / 改生产默认** | ❌ **本阶段不授权** | `ADR09_DEFER_FULL_SPLIT_E4_PROD.md`（PARK 之上书面延期；ADR-09 仍 Proposed） |
-| **第二产品拆分（诊断 MVP）** | ✅ **有条件 Accepted** | ADR-10；Phase A–C 已接线；**≠** 改生产默认 / 全拆 / E4 |
+| **第二产品拆分（诊断 MVP）** | ✅ **有条件 Accepted** | ADR-10；Phase A–D（**仅 D1** 共享 home）；**≠** D2 / 全拆 / E4 |
 
 **仍须守住**：五产品全拆、对外产品化宣传、改生产默认、诊断二期 — 不得默示批准（见 DEFER）。
 
