@@ -29,7 +29,7 @@
 | ADR-09 第 3 步（对外 E4） | ✅ **已批（窄）** — #436 / `ADR09_E4_STEP3_DECISION.md`；**≠** SLA |
 | ADR-09 第 4 步（全拆） | ✅ **已批（窄）** — #438；BOUNDARY A–C #439/#440/#441 |
 | 建议顺序主轨收口 | ✅ `SUGGESTED_ORDER_CLOSEOUT.md` — 诊断 MVP 轨结案 |
-| 下一单产品（Pi Thin） | ✅ **已批** — `ADR09_NEXT_PI_THIN_DECISION.md`；compose 长驻 **不含** |
+| 下一单产品（Pi Thin） | ✅ **已批** — #443 / `ADR09_NEXT_PI_THIN_DECISION.md`；边界=`ADR09_PI_THIN_BOUNDARY.md`；长驻不含 |
 | FDE / 本体 / 控制面 / compose 长驻 | ❌ **未批** — DEFER；须另点名 |
 
 路径证据目录：`reports/five-products/slice-fp-internal-bundle-pi-diag-001/`（历史内部 id；新场景 id 见 SCENE.md）。
