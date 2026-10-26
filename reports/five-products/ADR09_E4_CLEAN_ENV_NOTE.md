@@ -1,6 +1,7 @@
-# ADR-09 前置 #5 · E4 干净环境验收（草案脚手架）
+# ADR-09 前置 #5 · E4 干净环境验收（证据形态已确认）
 
-- **状态**：**草案** · 2026-10-25 — 脚本可跑且本机已记 PASS；**≠** E4 对外批准；**≠** ADR-09 Accepted  
+- **状态**：**证据形态已签** · 2026-10-26 — 脚本可跑且本机已记 PASS；**≠** E4 对外批准；**≠** ADR-09 Accepted  
+- **真源**：`ADR09_PREWORK_COSIGN_PARK.md`  
 - **脚本**：`scripts/adr09_e4_clean_env_check.sh` → 日志默认 `/tmp/aiplat-adr09-e4-clean-env/run-*.txt`  
 - **内容**：宿主 ADR-10 烟测 + Gate3 phase=a；compose 有 daemon 才跑  
 
@@ -19,4 +20,9 @@ bash scripts/adr09_e4_clean_env_check.sh
 | compose one-shot | PASS · `report_id=rep-d4b5ffd5d359` · 随后 `down -v` |
 | 生产默认 | 拒绝 `AIPLAT_DIAGNOSIS_PROD_DEFAULT=1` / `AIPLAT_ENTERPRISE=1` |
 
-联签前须：产品/架构书面确认「可作 E4 证据」——本页与 RUNLOG **不**代替。
+## 确认栏
+
+| 角色 | 确认「PASS 可作升格清单证据形态；不作 E4 对外验收批准」 | 日期 |
+|------|:---:|------|
+| 架构 × 业务 | ✅ 已签（本仓库维护者 · 兼任双签） | 2026-10-26 |
+| 产品宣传 owner | ❌ **拒签 E4 对外批准**（与 PARK 一致） | 2026-10-26 |

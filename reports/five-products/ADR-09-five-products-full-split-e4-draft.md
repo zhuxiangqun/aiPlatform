@@ -1,6 +1,6 @@
 # ADR-09 五产品全拆 / 对外 E4（草案）
 
-- **状态**：**Proposed（草案）** · 2026-10-24 — **未 Accepted；禁止据此落地**  
+- **状态**：**Proposed / 停泊** · 2026-10-24（起草）· 2026-10-26（`ADR09_PREWORK_COSIGN_PARK.md`）— **未 Accepted；禁止据此落地**  
 - **关联**：落地方案 v1.3 §3.6 / §10 · ADR-08 · `GATE3_DECISION.md` · `DECISIONS_AND_AUTHORIZATIONS.md` B6  
 - **起草触发**：2026-10-24「批准按照顺序实施」顺序第 3 项（仅开 ADR，不直接全拆）  
 - **决策人（定稿时）**：架构决策 owner × 业务场景 owner × 产品宣传 owner（联签）
@@ -30,9 +30,11 @@ Gate3 已有条件批准 **Pi Thin 独立部署试点**（ADR-08）。五产品�
 |---|------|----------|-------------------|
 | 1 | ADR-08 试点稳定运行 ≥ 约定窗口 | 试点 RUNLOG + 回滚演练复跑 | ✅ **候选齐（同日双端）**：起跑 + close PASS（ROLLBACK）；弱于原 7 日，联签须知情 |
 | 2 | §10 驱动表至少再闭合 2 项 | 书面驱动说明 + owner | ✅ **已闭合** — `ADR09_S10_DRIVER_CLOSURE.md`（共享部署可量化故障 + ≥2 消费者/多平台；**扩缩容仍 ⬜**） |
-| 3 | 每拟拆产品正式 R + on-call | `ROLES.md` 转正签字 | 🟡 **再确认草案** — `ADR09_ROLES_ONCALL_CONFIRM.md`（R 齐；**无** 7×24；联签栏空） |
-| 4 | 对外文案（若要 E4） | 产品 owner 书面；含「非承诺」边界 | 🟡 **草案已起** — `ADR09_E4_COPY_DRAFT.md`（**未**产品 owner 联签） |
-| 5 | E4 干净环境验收脚本与结果 | 独立环境报告；禁止仅 CAPABILITIES 声明 | 🟡 **宿主+compose PASS 已归档** — `ADR09_E4_CLEAN_ENV_NOTE.md` + `RUNLOG/adr09-e4-clean-env-20261025T152952Z.txt`（**未**作 E4 批准） |
+| 3 | 每拟拆产品正式 R + on-call | `ROLES.md` 转正签字 | ✅ **知情接受兼任** — `ADR09_ROLES_ONCALL_CONFIRM.md`（**无** 7×24；宣传侧拒签 E4）；见 `ADR09_PREWORK_COSIGN_PARK.md` |
+| 4 | 对外文案（若要 E4） | 产品 owner 书面；含「非承诺」边界 | ✅ **边界确认 + 拒签对外发布** — `ADR09_E4_COPY_DRAFT.md`（**≠** 批准 E4 口径） |
+| 5 | E4 干净环境验收脚本与结果 | 独立环境报告；禁止仅 CAPABILITIES 声明 | ✅ **证据形态确认** — `ADR09_E4_CLEAN_ENV_NOTE.md` + RUNLOG（**≠** E4 对外批准） |
+
+> **2026-10-26**：前置 #1–#5 证据/确认齐；ADR 仍 **Proposed / 停泊**（PARK）。齐清单 ≠ Accepted。
 
 ## 影响（仅在 Accepted 后）
 
