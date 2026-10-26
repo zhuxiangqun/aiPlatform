@@ -37,7 +37,8 @@
 | CLOSEOUT 引用 #419 | PR [#420](https://github.com/zhuxiangqun/aiPlatform/pull/420) → `c20edb7` |
 | ADR-09 前置 #3 + #5 PASS 归档 | PR [#422](https://github.com/zhuxiangqun/aiPlatform/pull/422) → `1a96f40`：on-call 再确认 + 宿主/compose PASS；**≠** Accepted / 对外 |
 | ADR-09 前置联签 + 停泊 | PR [#424](https://github.com/zhuxiangqun/aiPlatform/pull/424) → `df79936`：`ADR09_PREWORK_COSIGN_PARK.md`；仍 **Proposed**；拒签对外 E4 |
-| 全拆/E4/改生产默认延期 | （本批）`ADR09_DEFER_FULL_SPLIT_E4_PROD.md`：**本阶段明确不授权** |
+| 全拆/E4/改生产默认延期 | PR [#425](https://github.com/zhuxiangqun/aiPlatform/pull/425) → `0c7ac34`：`ADR09_DEFER_FULL_SPLIT_E4_PROD.md` |
+| ADR-10 Phase C 单产品加深 | PR [#426](https://github.com/zhuxiangqun/aiPlatform/pull/426) → `bef8e4a`：双端加深 + 拒切默认；**≠** 第 2–4 步 |
 
 ## Gate 2 / D13 / Gate 3
 
@@ -46,8 +47,8 @@
 | Gate 2 | ✅ 已落地 |
 | D13 | ✅ 客户场景 `fp-customer-lock-service-bundle-pi-diag-001`（江苏锁安 / lock-service）；见 `D13_CUSTOMER_ENDORSEMENT.md` |
 | Gate 3 | ✅ **有条件** — Pi Thin A–F + 观察**同日双端已关闭**（#412）；ADR-09 前置 #1–#5 确认齐（PARK）；仍 **Proposed** |
-| 第二产品拆分 | ✅ **有条件 Accepted**（ADR-10）；Phase A/B [#415](https://github.com/zhuxiangqun/aiPlatform/pull/415)/[#417](https://github.com/zhuxiangqun/aiPlatform/pull/417)；≠ 改生产默认 / 长驻微服务 |
-| 五产品全拆 / 对外 E4 / 改生产默认 | ❌ **本阶段不授权**（`ADR09_DEFER_FULL_SPLIT_E4_PROD.md`） |
+| 第二产品拆分 | ✅ **有条件 Accepted**（ADR-10）；Phase A/B/C [#415](https://github.com/zhuxiangqun/aiPlatform/pull/415)/[#417](https://github.com/zhuxiangqun/aiPlatform/pull/417)/[#426](https://github.com/zhuxiangqun/aiPlatform/pull/426)；≠ 改生产默认 / E4 / 全拆 |
+| 五产品全拆 / 对外 E4 / 改生产默认 | ❌ **本阶段不授权**（DEFER）；建议顺序仅完成第 1 步 |
 
 ## 运维备忘
 
