@@ -1,0 +1,31 @@
+ADR-10 Phase C diagnosis deepen ts=20261026T004852Z gap=15s repeat=2
+NOTE: not prod-default switch; not E4; not ADR-09 Accepted
+== refuse prod default ==
+NOTE: /Users/apple/workdata/person/zy/aiPlatform/.env.adr10-diagnosis-mvp missing — loading example defaults from /Users/apple/workdata/person/zy/aiPlatform/scripts/adr10_diagnosis_mvp.env.example
+PASS: refuse AIPLAT_DIAGNOSIS_PROD_DEFAULT=1 (exit 3)
+== host start (repeat=2) ==
+-- host pass 1/2 --
+NOTE: /Users/apple/workdata/person/zy/aiPlatform/.env.adr10-diagnosis-mvp missing — loading example defaults from /Users/apple/workdata/person/zy/aiPlatform/scripts/adr10_diagnosis_mvp.env.example
+ADR-10 diagnosis MVP pilot: AIPLAT_HOME=/tmp/aiplat-adr10-diag-home-c-start-1 scenario=fp-customer-lock-service-bundle-pi-diag-001 evidence=/tmp/aiplat-adr10-diag-home-c-start-1/pilot-emit.jsonl
+PASS: ADR-10 diagnosis MVP pilot ingest_id=ing-f38e36b17d77 report_id=rep-f0c87f3296b5 status=ok
+REPORT_ID=rep-f0c87f3296b5
+-- host pass 2/2 --
+NOTE: /Users/apple/workdata/person/zy/aiPlatform/.env.adr10-diagnosis-mvp missing — loading example defaults from /Users/apple/workdata/person/zy/aiPlatform/scripts/adr10_diagnosis_mvp.env.example
+ADR-10 diagnosis MVP pilot: AIPLAT_HOME=/tmp/aiplat-adr10-diag-home-c-start-2 scenario=fp-customer-lock-service-bundle-pi-diag-001 evidence=/tmp/aiplat-adr10-diag-home-c-start-2/pilot-emit.jsonl
+PASS: ADR-10 diagnosis MVP pilot ingest_id=ing-4c95316b2bbf report_id=rep-36db624fd863 status=ok
+REPORT_ID=rep-36db624fd863
+== gap 15s ==
+== host close (repeat=2) ==
+-- host close 1/2 --
+NOTE: /Users/apple/workdata/person/zy/aiPlatform/.env.adr10-diagnosis-mvp missing — loading example defaults from /Users/apple/workdata/person/zy/aiPlatform/scripts/adr10_diagnosis_mvp.env.example
+ADR-10 diagnosis MVP pilot: AIPLAT_HOME=/tmp/aiplat-adr10-diag-home-c-close-1 scenario=fp-customer-lock-service-bundle-pi-diag-001 evidence=/tmp/aiplat-adr10-diag-home-c-close-1/pilot-emit.jsonl
+PASS: ADR-10 diagnosis MVP pilot ingest_id=ing-7ab7dfb71546 report_id=rep-485782207011 status=ok
+REPORT_ID=rep-485782207011
+-- host close 2/2 --
+NOTE: /Users/apple/workdata/person/zy/aiPlatform/.env.adr10-diagnosis-mvp missing — loading example defaults from /Users/apple/workdata/person/zy/aiPlatform/scripts/adr10_diagnosis_mvp.env.example
+ADR-10 diagnosis MVP pilot: AIPLAT_HOME=/tmp/aiplat-adr10-diag-home-c-close-2 scenario=fp-customer-lock-service-bundle-pi-diag-001 evidence=/tmp/aiplat-adr10-diag-home-c-close-2/pilot-emit.jsonl
+PASS: ADR-10 diagnosis MVP pilot ingest_id=ing-b4cc323693fb report_id=rep-29d05b5f9860 status=ok
+REPORT_ID=rep-29d05b5f9860
+SKIP: docker daemon unavailable (host dual-end still required)
+PASS: ADR-10 Phase C complete
+REPORT_LOG=/tmp/aiplat-adr10-phase-c/run-20261026T004852Z.txt

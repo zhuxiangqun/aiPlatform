@@ -28,10 +28,17 @@ if [[ ! -f "$ENV_FILE" ]]; then
   fi
 fi
 
+# Preserve caller-exported home across env-file source (Phase C isolates runs).
+_CALLER_DIAG_HOME="${ADR10_DIAG_AIPLAT_HOME:-}"
+
 set -a
 # shellcheck disable=SC1090
 source "$ENV_FILE"
 set +a
+
+if [[ -n "$_CALLER_DIAG_HOME" ]]; then
+  ADR10_DIAG_AIPLAT_HOME="$_CALLER_DIAG_HOME"
+fi
 
 if [[ "${AIPLAT_DIAGNOSIS_PROD_DEFAULT:-0}" == "1" ]]; then
   echo "ERROR: ADR-10 Phase A forbids AIPLAT_DIAGNOSIS_PROD_DEFAULT=1 (prod default-path switch)." >&2
