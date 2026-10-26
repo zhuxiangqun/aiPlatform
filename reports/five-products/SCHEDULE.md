@@ -26,7 +26,7 @@
 | ADR-09 前置 #3 再确认 | ✅ 知情接受兼任（无 7×24）；宣传侧拒签 E4 — `ADR09_ROLES_ONCALL_CONFIRM.md` |
 | ADR-09 前置 #4/#5 | ✅ 边界确认 + PASS 证据形态；**拒签**对外发布 / E4 批准 — `ADR09_E4_*` |
 | ADR-09 停泊 | ✅ `ADR09_PREWORK_COSIGN_PARK.md` — 仍 **Proposed**；默认维持 ADR-08/10 试点 |
-| ADR-09 第 3 步（对外 E4） | 🟡 **草案** `ADR09_E4_STEP3_DRAFT.md` — 待点名批准；宣传拒签仍挡；「按顺序」≠ 批准 |
+| ADR-09 第 3 步（对外 E4） | ✅ **已批（窄）** — `ADR09_E4_STEP3_DECISION.md`（边界内文案 + CLEAN_ENV 引用）；**≠** 全拆 / SLA |
 | 全拆 / compose 长驻 | ❌ **本阶段明确不授权** — `ADR09_DEFER_FULL_SPLIT_E4_PROD.md`（再议须另批） |
 
 路径证据目录：`reports/five-products/slice-fp-internal-bundle-pi-diag-001/`（历史内部 id；新场景 id 见 SCENE.md）。
