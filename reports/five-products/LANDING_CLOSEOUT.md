@@ -48,7 +48,7 @@
 | 建议顺序主轨收口 | `SUGGESTED_ORDER_CLOSEOUT.md`（诊断 MVP 轨结案） |
 | 下一单产品 Pi Thin | [#443](https://github.com/zhuxiangqun/aiPlatform/pull/443)–[#446](https://github.com/zhuxiangqun/aiPlatform/pull/446) → `2286cbe`；收口 `ADR09_PI_THIN_BOUNDARY_CLOSEOUT.md` |
 | 下一单产品 FDE | [#448](https://github.com/zhuxiangqun/aiPlatform/pull/448)–[#451](https://github.com/zhuxiangqun/aiPlatform/pull/451) → `40891a2`；收口 `ADR09_FDE_BOUNDARY_CLOSEOUT.md` |
-| 下一单产品 本体 | `ADR09_NEXT_ONTOLOGY_DECISION.md`（长驻不含；不含控制面） |
+| 下一单产品 本体 | [#453](https://github.com/zhuxiangqun/aiPlatform/pull/453) → `b8e5627`；BOUNDARY A `ADR09_ONTOLOGY_BOUNDARY.md`（长驻不含） |
 
 ## Gate 2 / D13 / Gate 3
 
@@ -62,7 +62,7 @@
 | 建议顺序主轨 | ✅ **已收口** — `SUGGESTED_ORDER_CLOSEOUT.md` |
 | Pi Thin 单产品 + 边界 A–C | ✅ **已收口** — `ADR09_PI_THIN_BOUNDARY_CLOSEOUT.md` |
 | FDE 单产品 + 边界 A–C | ✅ **已收口** — `ADR09_FDE_BOUNDARY_CLOSEOUT.md`（长驻不含） |
-| 本体单产品立项 | ✅ **已批** — `ADR09_NEXT_ONTOLOGY_DECISION.md`（长驻不含；不含控制面） |
+| 本体单产品立项 | ✅ **已批** — #453；BOUNDARY A `ADR09_ONTOLOGY_BOUNDARY.md`（长驻不含） |
 | 控制面 / compose 长驻 | ❌ **不授权**（DEFER）；草案 `ADR09_REMAINING_PRODUCTS_DRAFT.md` |
 
 ## 运维备忘
