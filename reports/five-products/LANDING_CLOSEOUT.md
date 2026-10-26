@@ -48,7 +48,7 @@
 | 建议顺序主轨收口 | `SUGGESTED_ORDER_CLOSEOUT.md`（诊断 MVP 轨结案） |
 | 下一单产品 Pi Thin | [#443](https://github.com/zhuxiangqun/aiPlatform/pull/443)–[#446](https://github.com/zhuxiangqun/aiPlatform/pull/446) → `2286cbe`；收口 `ADR09_PI_THIN_BOUNDARY_CLOSEOUT.md` |
 | 下一单产品 FDE | [#448](https://github.com/zhuxiangqun/aiPlatform/pull/448)–[#451](https://github.com/zhuxiangqun/aiPlatform/pull/451) → `40891a2`；收口 `ADR09_FDE_BOUNDARY_CLOSEOUT.md` |
-| 下一单产品 本体 | [#453](https://github.com/zhuxiangqun/aiPlatform/pull/453)–[#455](https://github.com/zhuxiangqun/aiPlatform/pull/455) + BOUNDARY C；收口 `ADR09_ONTOLOGY_BOUNDARY_CLOSEOUT.md` |
+| 下一单产品 本体 | [#453](https://github.com/zhuxiangqun/aiPlatform/pull/453)–[#456](https://github.com/zhuxiangqun/aiPlatform/pull/456) → `549b86a`；收口 `ADR09_ONTOLOGY_BOUNDARY_CLOSEOUT.md` |
 
 ## Gate 2 / D13 / Gate 3
 
