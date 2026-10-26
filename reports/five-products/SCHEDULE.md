@@ -23,10 +23,10 @@
 | ADR-10 接线 Phase C | ✅ 双端×2 + 拒切默认 + **compose PASS**（`ADR10_PHASE_C_COMPOSE_RERUN.txt`）；**≠** 第 2–4 步 |
 | ADR-10 Phase D（第 2 步） | ✅ **仅 D1** 已批 — `ADR10_DIAGNOSIS_MVP_PHASE_D_DECISION.md` |
 | ADR-10 D2（第 2 步剩余） | ✅ **已批** — #434 / `ADR10_DIAGNOSIS_MVP_D2_DECISION.md`（入口=`acceptance/signoff`；回滚 flag=0）；**≠** E4 / 全拆 / compose 长驻 |
-| ADR-09 前置 #3 再确认 | ✅ 知情接受兼任（无 7×24）；宣传侧拒签 E4 — `ADR09_ROLES_ONCALL_CONFIRM.md` |
-| ADR-09 前置 #4/#5 | ✅ 边界确认 + PASS 证据形态；**拒签**对外发布 / E4 批准 — `ADR09_E4_*` |
-| ADR-09 停泊 | ✅ `ADR09_PREWORK_COSIGN_PARK.md` — 仍 **Proposed**；默认维持 ADR-08/10 试点 |
-| ADR-09 第 3 步（对外 E4） | ✅ **已批（窄）** — `ADR09_E4_STEP3_DECISION.md`（边界内文案 + CLEAN_ENV 引用）；**≠** 全拆 / SLA |
+| ADR-09 前置 #3 再确认 | ✅ 知情接受兼任（无 7×24）；宣传 E4 已翻签 — `ADR09_ROLES_ONCALL_CONFIRM.md` |
+| ADR-09 前置 #4/#5 | ✅ 边界内文案可发布 + CLEAN_ENV 对外证据引用 — `ADR09_E4_*`（第 3 步） |
+| ADR-09 停泊 | ✅ `ADR09_PREWORK_COSIGN_PARK.md` — ADR-09 仍 **Proposed**（≠ Accepted）；默认维持 ADR-08/10 试点 |
+| ADR-09 第 3 步（对外 E4） | ✅ **已批（窄）** — #436 / `ADR09_E4_STEP3_DECISION.md`；**≠** 全拆 / SLA |
 | 全拆 / compose 长驻 | ❌ **本阶段明确不授权** — `ADR09_DEFER_FULL_SPLIT_E4_PROD.md`（再议须另批） |
 
 路径证据目录：`reports/five-products/slice-fp-internal-bundle-pi-diag-001/`（历史内部 id；新场景 id 见 SCENE.md）。
