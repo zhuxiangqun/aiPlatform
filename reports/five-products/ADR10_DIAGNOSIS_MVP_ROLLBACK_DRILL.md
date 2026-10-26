@@ -18,6 +18,7 @@
 6. 禁用以本演练证明其余四产品拆 / compose 长驻
 
 ```bash
+bash scripts/adr10_diagnosis_mvp_phase_health.sh   # BOUNDARY C one-shot; kills server
 bash scripts/adr10_diagnosis_mvp_phase_split.sh
 ADR10_PHASE=d2 bash scripts/adr10_diagnosis_mvp_phase_d.sh
 ADR10_PHASE=d1 bash scripts/adr10_diagnosis_mvp_phase_d.sh
