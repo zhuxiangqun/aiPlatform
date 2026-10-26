@@ -25,4 +25,5 @@
 | 项 | 状态 |
 |----|------|
 | 诊断 MVP / Pi Thin / FDE 边界 | ✅ 均已收口 |
-| 本体 / 控制面 / compose 长驻 | ❌ 见 `ADR09_REMAINING_PRODUCTS_DRAFT.md` |
+| 本体单产品立项 | ✅ `ADR09_NEXT_ONTOLOGY_DECISION.md`（长驻不含） |
+| 控制面 / compose 长驻 | ❌ 见 `ADR09_REMAINING_PRODUCTS_DRAFT.md` |
