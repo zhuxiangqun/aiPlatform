@@ -31,7 +31,7 @@
 | 建议顺序主轨收口 | ✅ `SUGGESTED_ORDER_CLOSEOUT.md` — 诊断 MVP 轨结案 |
 | 下一单产品（Pi Thin） | ✅ **已批+边界收口** — #443–#446 / `ADR09_PI_THIN_BOUNDARY_CLOSEOUT.md` |
 | 下一单产品（FDE） | ✅ **已批+边界收口** — #448–#451 / `ADR09_FDE_BOUNDARY_CLOSEOUT.md`；compose 长驻 **不含** |
-| 下一单产品（本体） | ✅ **已批+边界收口** — #453–#455 + BOUNDARY C / `ADR09_ONTOLOGY_BOUNDARY_CLOSEOUT.md`；compose 长驻 **不含** |
+| 下一单产品（本体） | ✅ **已批+边界收口** — #453–#456 / `ADR09_ONTOLOGY_BOUNDARY_CLOSEOUT.md`；compose 长驻 **不含** |
 | 控制面 / compose 长驻 | ❌ **未批** — `ADR09_REMAINING_PRODUCTS_DRAFT.md` |
 
 路径证据目录：`reports/five-products/slice-fp-internal-bundle-pi-diag-001/`（历史内部 id；新场景 id 见 SCENE.md）。
