@@ -13,8 +13,8 @@
 | compose 长驻诊断微服务 | ❌ **不批** | 第 4 步批句未含 |
 | 改生产默认（D1+D2） | ✅ 已批 | #431 / #434 |
 
-**建议顺序进度**：第 1–4 步 → ✅（第 4=诊断 MVP 窄 Accepted）。其余四产品拆分 / compose 长驻仍 ❌。  
-「继续」**不得**默示批准其余产品一次拆或 compose 长驻。
+**建议顺序进度**：第 1–4 步 + BOUNDARY A–C → ✅ **主轨收口**（`SUGGESTED_ORDER_CLOSEOUT.md`；#441）。其余四产品拆分 / compose 长驻仍 ❌（草案 `ADR09_NEXT_PRODUCT_SPLIT_DRAFT.md`）。  
+「继续 / 根据建议实施」**不得**默示批准其余产品一次拆或 compose 长驻。
 
 ## 再议门槛（其余产品 / 长驻）
 
