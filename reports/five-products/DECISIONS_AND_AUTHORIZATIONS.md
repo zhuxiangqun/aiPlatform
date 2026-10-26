@@ -21,7 +21,7 @@
 | **ADR-09 下一单产品（Pi Thin）** | ✅ **已批** | `ADR09_NEXT_PI_THIN_DECISION.md`；compose 长驻不含 |
 | **ADR-09 下一单产品（FDE）** | ✅ **已批+边界收口** | #448–#451 / `ADR09_FDE_BOUNDARY_CLOSEOUT.md`；compose 长驻不含 |
 | **ADR-09 下一单产品（本体）** | ✅ **已批+边界收口** | #453–#456 / `ADR09_ONTOLOGY_BOUNDARY_CLOSEOUT.md`；compose 长驻不含 |
-| **ADR-09 下一单产品（控制面）** | ✅ **已批** | `ADR09_NEXT_CONTROL_PLANE_DECISION.md`；compose 长驻不含 |
+| **ADR-09 下一单产品（控制面）** | ✅ **已批** | #458 / `ADR09_NEXT_CONTROL_PLANE_DECISION.md`；BOUNDARY A `ADR09_CONTROL_PLANE_BOUNDARY.md`；compose 长驻不含 |
 | **compose 长驻** | ❌ **本阶段不授权** | `ADR09_DEFER_FULL_SPLIT_E4_PROD.md` |
 | **第二产品拆分（诊断 MVP）** | ✅ **有条件 Accepted** | ADR-10 + 第 4 步立项；Phase A–D（D1 #431 + D2 #434） |
 

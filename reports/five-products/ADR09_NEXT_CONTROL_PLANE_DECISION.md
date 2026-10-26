@@ -25,8 +25,8 @@
 
 ## 后续（另 PR）
 
-1. 控制面部署边界清单（进程 / 端口 / Identity·Policy 入口 / 回滚）  
-2. 分 PR 落地（BOUNDARY 序 A→B→C）；禁止一次大搬仓；**不含** compose 长驻  
+1. 控制面部署边界清单 → ✅ `ADR09_CONTROL_PLANE_BOUNDARY.md`（BOUNDARY A）  
+2. 分 PR 落地（BOUNDARY 序 B/C）；禁止一次大搬仓；**不含** compose 长驻  
 
 ## 签署
 
