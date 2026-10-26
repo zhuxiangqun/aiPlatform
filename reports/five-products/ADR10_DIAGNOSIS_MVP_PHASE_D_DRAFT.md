@@ -34,7 +34,7 @@ D2 须在批准句中**点名**，不得由 D1 默示。
 | 1 | 兼任 on-call 后果明示（仅诊断第 2 步） | ⬜ 批句内写明 |
 | 2 | 范围仅 (c) 改诊断生产默认；**不含** (a)(b) E4/全拆 | ⬜ |
 | 3 | 选定 D1 或 D2 | ⬜ |
-| 4 | Phase C compose 复跑 PASS（有 daemon）或书面接受 SKIP 残差 | 🟡 宿主双端已 PASS；compose SKIP |
+| 4 | Phase C compose 复跑 PASS（有 daemon）或书面接受 SKIP 残差 | ✅ compose PASS（`ADR10_PHASE_C_COMPOSE_RERUN.txt` · `rep-07dcb770bbd6`） |
 | 5 | 回滚演练步骤写入 ROLLBACK（含 flag=0） | ⬜ 随实现 PR |
 
 ## 批准句模板（复制即用）

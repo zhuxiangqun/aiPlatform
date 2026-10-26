@@ -1,0 +1,21 @@
+ADR-10 Phase C compose residual close ts=20261026T021816Z
+NOTE: host dual-end already PASS in ADR10_PHASE_C_RUNLOG.txt; this closes compose SKIP
+== compose one-shot ==
+ Network aiplatform_default Creating 
+ Network aiplatform_default Created 
+ Volume aiplatform_adr10-diag-home Creating 
+ Volume aiplatform_adr10-diag-home Created 
+ Container aiplatform-adr10-diagnosis-mvp-run-41f41a334f19 Creating 
+ Container aiplatform-adr10-diagnosis-mvp-run-41f41a334f19 Created 
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+
+[notice] A new release of pip is available: 24.0 -> 26.2.2
+[notice] To update, run: pip install --upgrade pip
+NOTE: /workspace/.env.adr10-diagnosis-mvp missing — loading example defaults from /workspace/scripts/adr10_diagnosis_mvp.env.example
+ADR-10 diagnosis MVP pilot: AIPLAT_HOME=/tmp/aiplat-adr10-diag-home scenario=fp-customer-lock-service-bundle-pi-diag-001 evidence=/tmp/aiplat-adr10-diag-home/pilot-emit.jsonl
+PASS: ADR-10 diagnosis MVP pilot ingest_id=ing-d931c00ef266 report_id=rep-07dcb770bbd6 status=ok
+REPORT_ID=rep-07dcb770bbd6
+COMPOSE_EXIT=0 report_id=rep-07dcb770bbd6
+== rollback down -v ==
+DOWN_EXIT=0
+PASS: Phase C compose residual closed

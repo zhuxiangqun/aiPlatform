@@ -3,10 +3,10 @@
 | Field | Value |
 |-------|-------|
 | Scene | `fp-customer-lock-service-bundle-pi-diag-001` |
-| Date | 2026-10-24（A–B）· **2026-10-26 Phase C 复跑** |
-| Result | **PASS** — Phase C 宿主双端×2 + 拒切生产默认；compose 本机无 daemon → SKIP（与 A–B 交付文件仍在） |
-| Residual | 无生产默认切换；无 7×24；compose 依赖本机 Docker daemon |
-| Archive | [`ADR10_PHASE_C_RUNLOG.txt`](./ADR10_PHASE_C_RUNLOG.txt) |
+| Date | 2026-10-24（A–B）· **2026-10-26 Phase C** · compose 复跑同日 |
+| Result | **PASS** — 宿主双端×2 + 拒切生产默认 + compose one-shot + `down -v` |
+| Residual | 无生产默认切换；无 7×24 |
+| Archive | [`ADR10_PHASE_C_RUNLOG.txt`](./ADR10_PHASE_C_RUNLOG.txt) · [`ADR10_PHASE_C_COMPOSE_RERUN.txt`](./ADR10_PHASE_C_COMPOSE_RERUN.txt) |
 
 ## Priority
 
