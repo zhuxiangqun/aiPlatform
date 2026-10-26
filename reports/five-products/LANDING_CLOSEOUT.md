@@ -43,7 +43,10 @@
 | ADR-10 Phase D 仅 D1 | PR [#431](https://github.com/zhuxiangqun/aiPlatform/pull/431) → `ba0243d`：共享 home opt-in；**≠** D2 / E4 / 全拆 |
 | ADR-10 D2 签收默认绑定 | PR [#434](https://github.com/zhuxiangqun/aiPlatform/pull/434) → `968f3a7`：`acceptance/signoff` + `PROD_DEFAULT=1`；**≠** E4 / 全拆 / compose 长驻 |
 | ADR-09 第 3 步对外 E4（窄） | PR [#436](https://github.com/zhuxiangqun/aiPlatform/pull/436) → `87a49c5`：边界内文案 + CLEAN_ENV 引用；**≠** 全拆 / SLA |
-| ADR-09 第 4 步全拆（诊断 MVP） | PR [#438](https://github.com/zhuxiangqun/aiPlatform/pull/438) → `05281fe`：单产品 Accepted；边界清单见 `ADR09_STEP4_DIAGNOSIS_MVP_BOUNDARY.md` |
+| ADR-09 第 4 步全拆（诊断 MVP） | PR [#438](https://github.com/zhuxiangqun/aiPlatform/pull/438) → `05281fe`：单产品 Accepted |
+| BOUNDARY A / B / C | [#439](https://github.com/zhuxiangqun/aiPlatform/pull/439) / [#440](https://github.com/zhuxiangqun/aiPlatform/pull/440) / [#441](https://github.com/zhuxiangqun/aiPlatform/pull/441) → `385d4a8` |
+| 建议顺序主轨收口 | `SUGGESTED_ORDER_CLOSEOUT.md`（诊断 MVP 轨结案） |
+| 下一单产品 Pi Thin | `ADR09_NEXT_PI_THIN_DECISION.md`（compose 长驻不含） |
 
 ## Gate 2 / D13 / Gate 3
 
@@ -52,9 +55,11 @@
 | Gate 2 | ✅ 已落地 |
 | D13 | ✅ 客户场景 `fp-customer-lock-service-bundle-pi-diag-001`（江苏锁安 / lock-service）；见 `D13_CUSTOMER_ENDORSEMENT.md` |
 | Gate 3 | ✅ **有条件** — Pi Thin A–F + 观察**同日双端已关闭**（#412）；ADR-09 **Accepted（仅诊断 MVP）** |
-| 第二产品拆分 | ✅ ADR-10 + 第 4 步立项；Phase A–D（D1 #431 + D2 #434） |
+| 第二产品拆分 | ✅ ADR-10 + 第 4 步 + BOUNDARY A–C |
 | 对外 E4（窄） | ✅ **第 3 步已批**（#436）；边界见 `ADR09_E4_COPY_DRAFT.md` |
-| 其余四产品拆 / compose 长驻 | ❌ **本阶段不授权**（DEFER） |
+| 建议顺序主轨 | ✅ **已收口** — `SUGGESTED_ORDER_CLOSEOUT.md` |
+| Pi Thin 单产品立项 | ✅ **已批** — `ADR09_NEXT_PI_THIN_DECISION.md` |
+| FDE / 本体 / 控制面 / compose 长驻 | ❌ **不授权**（DEFER） |
 
 ## 运维备忘
 
