@@ -34,7 +34,8 @@ Gate3 已有条件批准 **Pi Thin 独立部署试点**（ADR-08）。五产品�
 | 4 | 对外文案（若要 E4） | 产品 owner 书面；含「非承诺」边界 | ✅ **边界确认 + 拒签对外发布** — `ADR09_E4_COPY_DRAFT.md`（**≠** 批准 E4 口径） |
 | 5 | E4 干净环境验收脚本与结果 | 独立环境报告；禁止仅 CAPABILITIES 声明 | ✅ **证据形态确认** — `ADR09_E4_CLEAN_ENV_NOTE.md` + RUNLOG（**≠** E4 对外批准） |
 
-> **2026-10-26**：前置 #1–#5 证据/确认齐；ADR 仍 **Proposed / 停泊**（PARK）。齐清单 ≠ Accepted。
+> **2026-10-26**：前置 #1–#5 证据/确认齐；ADR 仍 **Proposed / 停泊**（PARK）。齐清单 ≠ Accepted。  
+> **同日**：`ADR09_DEFER_FULL_SPLIT_E4_PROD.md` — **本阶段不授权** 全拆落地 / 对外 E4 / 改生产默认。
 
 ## 影响（仅在 Accepted 后）
 
