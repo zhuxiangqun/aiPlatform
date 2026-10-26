@@ -29,7 +29,7 @@
 | 序 | PR 主题 | 非目标 |
 |----|---------|--------|
 | A | 本清单 + CLOSEOUT 引用 #438 | 搬仓 |
-| B | 独立 home/路径约定 + 烟测脚本开关（仍 one-shot） | 长驻 service |
+| B | ✅ 独立 home：`ADR10_DIAGNOSIS_MVP_SPLIT=1` → `/tmp/aiplat-diagnosis-mvp` 或 `$HOME/.aiplat/diagnosis-mvp`；`phase_split.sh` | 长驻 service |
 | C | （可选）薄 HTTP health 仅诊断进程 | 拆 FDE/控制面 |
 
 ## 回滚总则

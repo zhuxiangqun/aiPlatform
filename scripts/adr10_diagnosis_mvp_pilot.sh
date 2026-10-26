@@ -42,6 +42,19 @@ if [[ -n "$_CALLER_DIAG_HOME" ]]; then
   ADR10_DIAG_AIPLAT_HOME="$_CALLER_DIAG_HOME"
 fi
 
+# BOUNDARY B (ADR-09 step4): ADR10_DIAGNOSIS_MVP_SPLIT=1 → canonical diagnosis-mvp home.
+# Explicit caller ADR10_DIAG_AIPLAT_HOME wins; env.example legacy home is ignored.
+# Still one-shot; not compose long-running.
+if [[ "${ADR10_DIAGNOSIS_MVP_SPLIT:-0}" == "1" ]]; then
+  if [[ -n "$_CALLER_DIAG_HOME" ]]; then
+    ADR10_DIAG_AIPLAT_HOME="$_CALLER_DIAG_HOME"
+  elif [[ "${ADR10_ALLOW_USER_HOME:-0}" == "1" ]]; then
+    ADR10_DIAG_AIPLAT_HOME="${HOME}/.aiplat/diagnosis-mvp"
+  else
+    ADR10_DIAG_AIPLAT_HOME="/tmp/aiplat-diagnosis-mvp"
+  fi
+fi
+
 HOME_DIR="${ADR10_DIAG_AIPLAT_HOME:-/tmp/aiplat-adr10-diag-home}"
 # Resolve ~ for comparisons
 HOME_DIR="${HOME_DIR/#\~/$HOME}"
