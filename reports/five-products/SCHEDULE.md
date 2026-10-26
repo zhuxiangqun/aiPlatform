@@ -27,6 +27,7 @@
 | ADR-09 前置 #4/#5 | ✅ 边界内文案可发布 + CLEAN_ENV 对外证据引用 — `ADR09_E4_*`（第 3 步） |
 | ADR-09 停泊 | ✅ `ADR09_PREWORK_COSIGN_PARK.md` — ADR-09 仍 **Proposed**（≠ Accepted）；默认维持 ADR-08/10 试点 |
 | ADR-09 第 3 步（对外 E4） | ✅ **已批（窄）** — #436 / `ADR09_E4_STEP3_DECISION.md`；**≠** 全拆 / SLA |
-| 全拆 / compose 长驻 | ❌ **本阶段明确不授权** — `ADR09_DEFER_FULL_SPLIT_E4_PROD.md`（再议须另批） |
+| ADR-09 第 4 步（全拆） | 🟡 **草案** `ADR09_STEP4_FULL_SPLIT_DRAFT.md` — 单产品立项；待填空批准；「按建议」≠ 批准 |
+| compose 长驻 | ❌ **本阶段明确不授权** — `ADR09_DEFER_FULL_SPLIT_E4_PROD.md` |
 
 路径证据目录：`reports/five-products/slice-fp-internal-bundle-pi-diag-001/`（历史内部 id；新场景 id 见 SCENE.md）。
