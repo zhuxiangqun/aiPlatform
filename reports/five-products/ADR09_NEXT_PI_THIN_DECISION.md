@@ -25,8 +25,9 @@
 
 ## 后续（另 PR）
 
-1. Pi Thin 部署边界清单（对照 `GATE3_PI_THIN_PILOT.md` / ADR-08）  
-2. 分 PR 落地；禁止本决定 PR 大搬仓  
+1. Pi Thin 部署边界清单 → ✅ `ADR09_PI_THIN_BOUNDARY.md`  
+2. 分 PR 落地（BOUNDARY 序 B/C）；禁止一次大搬仓；**不含** compose 长驻  
+
 
 ## 签署
 
