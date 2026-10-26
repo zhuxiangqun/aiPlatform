@@ -21,7 +21,7 @@
 | ADR-10 接线 Phase A | ✅ 清单 + env + 沙箱烟测（`ADR10_DIAGNOSIS_MVP_WIRING_DECISION.md`）；**≠** 改生产默认路径 |
 | ADR-10 接线 Phase B | ✅ compose 容器烟测（`ADR10_DIAGNOSIS_MVP_PHASE_B_DECISION.md`）；**≠** 改生产默认 / 长驻微服务 |
 | ADR-10 接线 Phase C | ✅ 双端×2 + 拒切默认 + **compose PASS**（`ADR10_PHASE_C_COMPOSE_RERUN.txt`）；**≠** 第 2–4 步 |
-| ADR-10 Phase D（第 2 步） | 🟡 **草案** `ADR10_DIAGNOSIS_MVP_PHASE_D_DRAFT.md` — 待书面批句；「继续」≠ 批准 |
+| ADR-10 Phase D（第 2 步） | ✅ **仅 D1** 已批 — `ADR10_DIAGNOSIS_MVP_PHASE_D_DECISION.md`；**≠** D2 / E4 / 全拆 |
 | ADR-09 前置 #3 再确认 | ✅ 知情接受兼任（无 7×24）；宣传侧拒签 E4 — `ADR09_ROLES_ONCALL_CONFIRM.md` |
 | ADR-09 前置 #4/#5 | ✅ 边界确认 + PASS 证据形态；**拒签**对外发布 / E4 批准 — `ADR09_E4_*` |
 | ADR-09 停泊 | ✅ `ADR09_PREWORK_COSIGN_PARK.md` — 仍 **Proposed**；默认维持 ADR-08/10 试点 |
