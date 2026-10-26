@@ -122,7 +122,37 @@ def test_signoff_requires_report_for_fp_scenario(slice_home):
     assert rep["report_id"] in good.get("report_ids", [])
 
 
-def test_signoff_not_required_for_legacy(slice_home):
+def test_signoff_not_required_for_legacy(slice_home, monkeypatch):
+    monkeypatch.setenv("AIPLAT_DIAGNOSIS_PROD_DEFAULT", "0")
+    r = validate_slice_signoff_reports({"spec_id": "legacy-customer-1"})
+    assert r.get("ok") is True
+    assert r.get("required") is False
+
+
+def test_signoff_prod_default_requires_report(slice_home, monkeypatch):
+    """ADR-10 D2: PROD_DEFAULT=1 forces diagnosis binding on acceptance/signoff."""
+    monkeypatch.setenv("AIPLAT_DIAGNOSIS_PROD_DEFAULT", "1")
+    bad = validate_slice_signoff_reports({"spec_id": "legacy-customer-1"})
+    assert bad.get("ok") is False
+    assert bad.get("required") is True
+    rep = build_slice_diagnosis_report(
+        scenario_id="legacy-customer-1",
+        run_id="r-d2",
+        bundle_version="b",
+        events=[{}],
+    )
+    good = validate_slice_signoff_reports(
+        {
+            "spec_id": "legacy-customer-1",
+            "evidence_report_ids": [rep["report_id"]],
+        }
+    )
+    assert good.get("ok") is True
+    assert good.get("required") is True
+
+
+def test_signoff_prod_default_off_is_rollback(slice_home, monkeypatch):
+    monkeypatch.setenv("AIPLAT_DIAGNOSIS_PROD_DEFAULT", "0")
     r = validate_slice_signoff_reports({"spec_id": "legacy-customer-1"})
     assert r.get("ok") is True
     assert r.get("required") is False
