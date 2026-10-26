@@ -309,10 +309,18 @@ def ingest_slice_evidence_from_jsonl(
     )
 
 
+def _diagnosis_prod_default_enabled() -> bool:
+    """ADR-10 D2: AIPLAT_DIAGNOSIS_PROD_DEFAULT=1 → platform default diagnosis binding."""
+    return os.getenv("AIPLAT_DIAGNOSIS_PROD_DEFAULT", "0").strip().lower() in ("1", "true", "yes")
+
+
 def slice_signoff_requires_report(body: Dict[str, Any]) -> bool:
     """Whether acceptance signoff must bind a diagnosis report_id."""
     if os.getenv("AIPLAT_FDE_REQUIRE_DIAG_REPORT_FOR_SLICE", "1").strip() == "0":
         return False
+    # D2 unique entry: POST .../fde/acceptance/signoff → validate_slice_signoff_reports
+    if _diagnosis_prod_default_enabled():
+        return True
     if body.get("for_slice") is True or str(body.get("for_slice") or "").strip().lower() in ("1", "true", "yes"):
         return True
     sid = str(body.get("scenario_id") or body.get("spec_id") or "").strip()
@@ -332,11 +340,16 @@ def validate_slice_signoff_reports(body: Dict[str, Any]) -> Dict[str, Any]:
     if raw is None and body.get("report_id"):
         raw = [body.get("report_id")]
     if not isinstance(raw, list) or not raw:
+        detail = (
+            "AIPLAT_DIAGNOSIS_PROD_DEFAULT=1 requires evidence_report_ids with valid report_id"
+            if _diagnosis_prod_default_enabled()
+            else "for_slice/fp-* signoff requires evidence_report_ids with valid report_id"
+        )
         return {
             "ok": False,
             "required": True,
             "error": "slice_signoff_requires_evidence_report_ids",
-            "detail": "for_slice/fp-* signoff requires evidence_report_ids with valid report_id",
+            "detail": detail,
         }
 
     ids = [str(x).strip() for x in raw if str(x).strip()]
