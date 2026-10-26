@@ -23,5 +23,5 @@
 
 | 项 | 状态 |
 |----|------|
-| FDE 单产品立项 | ✅ #448；BOUNDARY A `ADR09_FDE_BOUNDARY.md`（长驻不含） |
+| FDE 单产品 + 边界 A–C | ✅ #448–#451 / `ADR09_FDE_BOUNDARY_CLOSEOUT.md`（长驻不含） |
 | 本体 / 控制面 / compose 长驻 | ❌ 见 `ADR09_REMAINING_PRODUCTS_DRAFT.md` |
