@@ -19,11 +19,9 @@
 - 入口：`pi_thin_optional_pilot.sh` / `compose.pi-thin-optional.yml`（one-shot + `down -v`）  
 - 回滚：`GATE3_PI_THIN_ROLLBACK_DRILL.md`
 
-## 仍未开（须另批）
+## 主轨后进度
 
-| 项 |
-|----|
-| FDE / 本体 / 控制面 单产品拆 |
-| compose **长驻** |
-
-批准句模板见 `ADR09_REMAINING_PRODUCTS_DRAFT.md`。
+| 项 | 状态 |
+|----|------|
+| FDE 单产品立项 | ✅ `ADR09_NEXT_FDE_DECISION.md`（长驻不含） |
+| 本体 / 控制面 / compose 长驻 | ❌ 见 `ADR09_REMAINING_PRODUCTS_DRAFT.md` |
