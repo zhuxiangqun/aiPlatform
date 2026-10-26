@@ -14,7 +14,7 @@
 | compose 长驻诊断微服务 | ❌ **不批** | 第 4 步批句未含 |
 | 改生产默认（D1+D2） | ✅ 已批 | #431 / #434 |
 
-**建议顺序进度**：第 1–4 步 + BOUNDARY A–C → ✅ 主轨收口。下一单产品 → ✅ **Pi Thin**（`ADR09_NEXT_PI_THIN_DECISION.md`）。FDE / 本体 / 控制面 / compose 长驻仍 ❌。  
+**建议顺序进度**：诊断 MVP 主轨 ✅；Pi Thin 立项+边界 A–C ✅（#443–#446 收口）。FDE / 本体 / 控制面 / compose 长驻仍 ❌（`ADR09_REMAINING_PRODUCTS_DRAFT.md`）。  
 「继续」**不得**默示批准未点名产品或 compose 长驻。
 
 ## 再议门槛（其余产品 / 长驻）
