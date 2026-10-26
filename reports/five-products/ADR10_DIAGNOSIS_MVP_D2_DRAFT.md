@@ -1,40 +1,8 @@
 # ADR-10 D2 草案 — 平台默认绑定（第 2 步剩余）
 
-- **状态**：**Proposed（草案）** · 2026-10-26 — **未批准；禁止据此改平台路由/启动默认**  
-- **上级**：`ADR10_DIAGNOSIS_MVP_PHASE_D_DECISION.md`（仅 D1 已批）；`ADR09_DEFER_FULL_SPLIT_E4_PROD.md`  
-- **触发**：「继续」→ 落第 2 步剩余就绪清单；**≠** 批准 D2 / E4 / 全拆
+- **状态**：**已升格 Accepted** · 2026-10-26 — 见 `ADR10_DIAGNOSIS_MVP_D2_DECISION.md`；落地 PR [#434](https://github.com/zhuxiangqun/aiPlatform/pull/434) → `968f3a7`  
+- **入口**：`POST /api/platform/apps/fde/acceptance/signoff` → `validate_slice_signoff_reports`  
+- **回滚**：`AIPLAT_DIAGNOSIS_PROD_DEFAULT=0`  
+- **仍禁止**：对外 E4；ADR-09 Accepted / 全拆；compose 长驻 profile（本批未含）
 
-## 与 D1 的边界
-
-| | D1（已批 #431） | D2（本草案 · 未批） |
-|--|----------------|-------------------|
-| 含义 | 双 flag opt-in，数据进 `$HOME/.aiplat/adr10-diagnosis-mvp-d1` | 平台启动/路由在 flag=1 时**默认**走 slice diagnosis |
-| 爆破半径 | 小（脚本级） | 中（控制面入口行为） |
-| 回滚 | 清 flag；可删 d1 目录 | flag=0；保留沙箱/D1 脚本 |
-
-## 若获批将授权什么（窄）
-
-| 项 | 获批后 | 仍禁止 |
-|----|:------:|--------|
-| 定义并实现：`AIPLAT_DIAGNOSIS_PROD_DEFAULT=1` 时平台某**唯一**入口默认绑定 diagnosis MVP | ✅ | — |
-| 可选：compose **长驻** profile（可 `down -v`，非 one-shot） | ✅ | — |
-| 对外 E4 / ADR-09 Accepted / 五产品全拆 | — | ❌ |
-| 拆 FDE / 本体 / 新诊断中台微服务 | — | ❌ |
-
-## 获批前检查表
-
-| # | 项 | 现状 |
-|---|------|------|
-| 1 | D1 已 PASS 且可回滚 | ✅ #431 |
-| 2 | 书面点名 **D2**（不得由 D1 /「继续」默示） | ⬜ |
-| 3 | 指定**唯一**平台入口（路由/启动钩子）+ 回滚 flag=0 | ⬜ 随实现 PR |
-| 4 | 兼任 on-call 后果明示（D2 范围） | ⬜ 批句内 |
-| 5 | 不含 E4 / 全拆 | ⬜ 批句内 |
-
-## 批准句模板
-
-> 批准 ADR-10 **D2**（平台默认绑定）：指定入口为 ___ ；回滚 `AIPLAT_DIAGNOSIS_PROD_DEFAULT=0`。接受兼任。**不含**对外 E4、**不含** ADR-09 Accepted / 全拆。可选含 / 不含 compose 长驻 profile。
-
-## 明确不在本草案效力内
-
-未出现上列批准句之前：不得改平台路由默认、不得长驻诊断服务、不得宣称第 2 步「生产默认」已切。
+获批前检查表与批准句模板已归档于 git 历史；本文件仅保留升格指针，避免与 DECISION 双源。

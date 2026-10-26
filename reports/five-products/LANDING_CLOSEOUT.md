@@ -41,6 +41,7 @@
 | ADR-10 Phase C 单产品加深 | PR [#426](https://github.com/zhuxiangqun/aiPlatform/pull/426) → `bef8e4a`：双端加深 + 拒切默认；**≠** 第 2–4 步 |
 | ADR-10 Phase C compose 残差 | PR [#429](https://github.com/zhuxiangqun/aiPlatform/pull/429) → `907120b`：compose PASS + `down -v` |
 | ADR-10 Phase D 仅 D1 | PR [#431](https://github.com/zhuxiangqun/aiPlatform/pull/431) → `ba0243d`：共享 home opt-in；**≠** D2 / E4 / 全拆 |
+| ADR-10 D2 签收默认绑定 | PR [#434](https://github.com/zhuxiangqun/aiPlatform/pull/434) → `968f3a7`：`acceptance/signoff` + `PROD_DEFAULT=1`；**≠** E4 / 全拆 / compose 长驻 |
 
 ## Gate 2 / D13 / Gate 3
 
@@ -49,8 +50,8 @@
 | Gate 2 | ✅ 已落地 |
 | D13 | ✅ 客户场景 `fp-customer-lock-service-bundle-pi-diag-001`（江苏锁安 / lock-service）；见 `D13_CUSTOMER_ENDORSEMENT.md` |
 | Gate 3 | ✅ **有条件** — Pi Thin A–F + 观察**同日双端已关闭**（#412）；ADR-09 前置 #1–#5 确认齐（PARK）；仍 **Proposed** |
-| 第二产品拆分 | ✅ **有条件 Accepted**（ADR-10）；Phase A–D（D **仅 D1** #431）；≠ D2 / E4 / 全拆 |
-| 五产品全拆 / 对外 E4 / D2 平台默认 | ❌ **本阶段不授权**（DEFER）；第 2 步仅 D1 |
+| 第二产品拆分 | ✅ **有条件 Accepted**（ADR-10）；Phase A–D（D1 #431 + D2 #434）；≠ E4 / 全拆 / compose 长驻 |
+| 五产品全拆 / 对外 E4 / compose 长驻 | ❌ **本阶段不授权**（DEFER）；第 2 步 D1+D2 已合 |
 
 ## 运维备忘
 
