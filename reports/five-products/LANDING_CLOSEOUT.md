@@ -47,7 +47,7 @@
 | BOUNDARY A / B / C | [#439](https://github.com/zhuxiangqun/aiPlatform/pull/439) / [#440](https://github.com/zhuxiangqun/aiPlatform/pull/440) / [#441](https://github.com/zhuxiangqun/aiPlatform/pull/441) → `385d4a8` |
 | 建议顺序主轨收口 | `SUGGESTED_ORDER_CLOSEOUT.md`（诊断 MVP 轨结案） |
 | 下一单产品 Pi Thin | [#443](https://github.com/zhuxiangqun/aiPlatform/pull/443)–[#446](https://github.com/zhuxiangqun/aiPlatform/pull/446) → `2286cbe`；收口 `ADR09_PI_THIN_BOUNDARY_CLOSEOUT.md` |
-| 下一单产品 FDE | [#448](https://github.com/zhuxiangqun/aiPlatform/pull/448) → `36ad7a2`；BOUNDARY A `ADR09_FDE_BOUNDARY.md`（长驻不含） |
+| 下一单产品 FDE | [#448](https://github.com/zhuxiangqun/aiPlatform/pull/448) → `36ad7a2`；BOUNDARY A [#449](https://github.com/zhuxiangqun/aiPlatform/pull/449)；B `apps/fde` README+env（长驻不含） |
 
 ## Gate 2 / D13 / Gate 3
 

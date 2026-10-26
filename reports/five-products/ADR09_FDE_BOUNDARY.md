@@ -33,7 +33,7 @@
 | 序 | 主题 | 非目标 |
 |----|------|--------|
 | A | ✅ 本清单 + CLOSEOUT / SCHEDULE 引用立项 | 搬仓 |
-| B | README / env.example：「正式可选」独立部署用语（非强制默认共置改独立） | 改生产默认强制独立；compose 长驻 |
+| B | ✅ `apps/fde/README.md` + `fde_optional.env.example`：「正式可选」用语（非强制默认独立） | 改生产默认强制独立；compose 长驻 |
 | C | 可选 one-shot 健康 / 启动别名（若需要）→ 共部署真源不改名 | 第二套 signoff；拆本体 / 控制面 |
 
 ## 回滚总则
