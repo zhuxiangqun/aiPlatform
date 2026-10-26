@@ -16,10 +16,11 @@
 | **Gate 2 / MB-01·03** | ✅ **已授权并落地（2026-10-24）** | `GATE2_DECISION.md`；PR #387–#389 |
 | **D13 客户场景** | ✅ **已升格（2026-10-24）** | `D13_CUSTOMER_ENDORSEMENT.md` + `SCENE.md`（江苏锁安 / lock-service） |
 | **Gate 3 / 拆部署** | ✅ **有条件（仅 Pi Thin 试点）** | `GATE3_DECISION.md` + ADR-08；**≠** 五产品全拆 |
-| **对外 E4 / 全拆 / 改生产默认** | ❌ **本阶段不授权** | `ADR09_DEFER_FULL_SPLIT_E4_PROD.md`（PARK 之上书面延期；ADR-09 仍 Proposed） |
-| **第二产品拆分（诊断 MVP）** | ✅ **有条件 Accepted** | ADR-10；Phase A–D（D1 #431 + D2 #434 签收绑定）；**≠** 全拆 / E4 / compose 长驻 |
+| **对外 E4（窄）** | ✅ **第 3 步已批** | #436 / `ADR09_E4_STEP3_DECISION.md`；边界内文案；**≠** SLA / 全拆 |
+| **全拆 / compose 长驻** | ❌ **本阶段不授权** | `ADR09_DEFER_FULL_SPLIT_E4_PROD.md`；ADR-09 仍 Proposed（≠ Accepted） |
+| **第二产品拆分（诊断 MVP）** | ✅ **有条件 Accepted** | ADR-10；Phase A–D（D1 #431 + D2 #434 签收绑定）；**≠** 全拆 / compose 长驻 |
 
-**仍须守住**：五产品全拆、对外产品化宣传、compose 长驻诊断微服务 — 不得默示批准（见 DEFER）。
+**仍须守住**：五产品全拆、compose 长驻、超边界宣传 — 不得由「继续」默示批准（见 DEFER）。
 
 ---
 
