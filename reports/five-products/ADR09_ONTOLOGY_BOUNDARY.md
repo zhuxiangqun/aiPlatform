@@ -32,7 +32,7 @@
 |----|------|--------|
 | A | ✅ 本清单 + SCHEDULE / CLOSEOUT 引用立项 | 搬仓 |
 | B | ✅ `apps/ontology_editor/README.md` + `ontology_optional.env.example`：「正式可选」用语 | 改生产默认强制独立；compose 长驻；拆控制面 |
-| C | 可选 one-shot 健康 / 启动别名（若需要）→ 共部署真源不改名 | 第二套 DomainRouter；compose 长驻 |
+| C | ✅ one-shot health：`adr09_ontology_optional_phase_health.sh` + `health_server.py`（127.0.0.1，停即退） | 第二套 DomainRouter；compose 长驻；拆控制面 |
 
 ## 回滚总则
 
