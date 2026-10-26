@@ -30,7 +30,7 @@
 |----|---------|--------|
 | A | 本清单 + CLOSEOUT 引用 #438 | 搬仓 |
 | B | ✅ 独立 home：`ADR10_DIAGNOSIS_MVP_SPLIT=1` → `/tmp/aiplat-diagnosis-mvp` 或 `$HOME/.aiplat/diagnosis-mvp`；`phase_split.sh` | 长驻 service |
-| C | （可选）薄 HTTP health 仅诊断进程 | 拆 FDE/控制面 |
+| C | ✅ 薄 HTTP health one-shot：`phase_health.sh` + `health_server.py`（127.0.0.1，停即退） | 长驻 compose / 拆 FDE |
 
 ## 回滚总则
 
