@@ -127,12 +127,20 @@ bash scripts/http_smoke.sh
 
 ```bash
 cd packages/aiplat-pi-runtime
-cp scripts/gate3_pi_thin.env.example .env.gate3-pi-thin   # optional local copy
-bash scripts/gate3_pi_thin_pilot.sh                      # stub smoke; refuses ENTERPRISE=1
-# optional one-shot container (G3-2): docker compose -f compose.gate3-pi-thin.yml up
-#   then: docker compose -f compose.gate3-pi-thin.yml down -v
+# ADR-09 names (aliases) — same behavior as Gate3 pilot paths:
+cp scripts/pi_thin_optional.env.example .env.gate3-pi-thin   # or gate3_pi_thin.env.example
+bash scripts/pi_thin_optional_pilot.sh                       # alias → gate3_pi_thin_pilot.sh
+# optional one-shot container:
+#   docker compose -f compose.pi-thin-optional.yml up        # include → compose.gate3-pi-thin.yml
+#   docker compose -f compose.pi-thin-optional.yml down -v
 # Rollback (Bundle-first): reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md
 ```
+
+| ADR-09 name | Gate3 canonical (unchanged) |
+|-------------|------------------------------|
+| `pi_thin_optional_pilot.sh` | `gate3_pi_thin_pilot.sh` |
+| `pi_thin_optional.env.example` | `gate3_pi_thin.env.example` |
+| `compose.pi-thin-optional.yml` | `compose.gate3-pi-thin.yml` |
 
 Historical Gate3 pilot spec: `reports/five-products/GATE3_PI_THIN_PILOT.md`.
 

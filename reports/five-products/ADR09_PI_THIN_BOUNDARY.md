@@ -32,7 +32,7 @@
 |----|------|--------|
 | A | ✅ 本清单 + CLOSEOUT 引用 #443 / #444 | 搬仓 |
 | B | ✅ README / env.example 对齐「正式可选」立项用语（非强制默认） | 改生产默认强制独立 |
-| C | （可选）试点 compose 与 Gate3 脚本命名收敛 | compose 长驻 |
+| C | ✅ ADR-09 别名：`pi_thin_optional_*` / `compose.pi-thin-optional.yml` → Gate3 真源不改名 | compose 长驻 |
 
 ## 回滚总则
 
