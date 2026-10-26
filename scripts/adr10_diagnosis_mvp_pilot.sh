@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# ADR-10 diagnosis MVP pilot — isolated AIPLAT_HOME smoke (Phase A).
+# ADR-10 diagnosis MVP pilot — isolated AIPLAT_HOME smoke (Phase A–D).
 # Reuses ingest_slice_evidence_from_jsonl + build_slice_diagnosis_report.
-# Does NOT change production default path. Refuses AIPLAT_DIAGNOSIS_PROD_DEFAULT=1.
+# Phase D D1: AIPLAT_DIAGNOSIS_PROD_DEFAULT=1 requires ADR10_ALLOW_USER_HOME=1
+# and AIPLAT_HOME under $HOME (default $HOME/.aiplat/adr10-diagnosis-mvp-d1).
+# Not D2 platform route binding. Not E4 / ADR-09.
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -40,15 +42,26 @@ if [[ -n "$_CALLER_DIAG_HOME" ]]; then
   ADR10_DIAG_AIPLAT_HOME="$_CALLER_DIAG_HOME"
 fi
 
-if [[ "${AIPLAT_DIAGNOSIS_PROD_DEFAULT:-0}" == "1" ]]; then
-  echo "ERROR: ADR-10 Phase A forbids AIPLAT_DIAGNOSIS_PROD_DEFAULT=1 (prod default-path switch)." >&2
-  exit 3
-fi
-
 HOME_DIR="${ADR10_DIAG_AIPLAT_HOME:-/tmp/aiplat-adr10-diag-home}"
-if [[ "$HOME_DIR" == "$HOME/.aiplat" || "$HOME_DIR" == ~/.aiplat ]]; then
+# Resolve ~ for comparisons
+HOME_DIR="${HOME_DIR/#\~/$HOME}"
+
+if [[ "${AIPLAT_DIAGNOSIS_PROD_DEFAULT:-0}" == "1" ]]; then
+  # Phase D D1: dual opt-in only — bare PROD_DEFAULT=1 still refused (exit 3).
   if [[ "${ADR10_ALLOW_USER_HOME:-0}" != "1" ]]; then
-    echo "ERROR: refuse ~/.aiplat without ADR10_ALLOW_USER_HOME=1" >&2
+    echo "ERROR: AIPLAT_DIAGNOSIS_PROD_DEFAULT=1 requires ADR10_ALLOW_USER_HOME=1 (Phase D D1)." >&2
+    exit 3
+  fi
+  case "$HOME_DIR" in
+    "$HOME"|"$HOME"/*) ;;
+    *)
+      echo "ERROR: Phase D D1 requires AIPLAT_HOME under \$HOME (got $HOME_DIR)" >&2
+      exit 3
+      ;;
+  esac
+elif [[ "$HOME_DIR" == "$HOME/.aiplat" || "$HOME_DIR" == "$HOME/.aiplat"/* || "$HOME_DIR" == "$HOME"/* ]]; then
+  if [[ "${ADR10_ALLOW_USER_HOME:-0}" != "1" ]]; then
+    echo "ERROR: refuse \$HOME paths without ADR10_ALLOW_USER_HOME=1" >&2
     exit 4
   fi
 fi

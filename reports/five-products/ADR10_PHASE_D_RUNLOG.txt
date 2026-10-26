@@ -1,0 +1,14 @@
+ADR-10 Phase D D1 shared-home ts=20261026T032228Z
+NOTE: D1 only; not D2; not E4; not ADR-09 Accepted
+D1_HOME=/Users/apple/.aiplat/adr10-diagnosis-mvp-d1
+== guard: bare PROD_DEFAULT=1 still refused ==
+NOTE: /Users/apple/workdata/person/zy/aiPlatform/.env.adr10-diagnosis-mvp missing — loading example defaults from /Users/apple/workdata/person/zy/aiPlatform/scripts/adr10_diagnosis_mvp.env.example
+PASS: bare PROD_DEFAULT=1 → exit 3
+== D1 smoke ==
+NOTE: /Users/apple/workdata/person/zy/aiPlatform/.env.adr10-diagnosis-mvp missing — loading example defaults from /Users/apple/workdata/person/zy/aiPlatform/scripts/adr10_diagnosis_mvp.env.example
+ADR-10 diagnosis MVP pilot: AIPLAT_HOME=/Users/apple/.aiplat/adr10-diagnosis-mvp-d1 scenario=fp-customer-lock-service-bundle-pi-diag-001 evidence=/Users/apple/.aiplat/adr10-diagnosis-mvp-d1/pilot-emit.jsonl
+PASS: ADR-10 diagnosis MVP pilot ingest_id=ing-f1ba7c0c8276 report_id=rep-29d565cf2f5b status=ok
+REPORT_ID=rep-29d565cf2f5b
+PASS: ADR-10 Phase D D1 complete
+ROLLBACK: unset AIPLAT_DIAGNOSIS_PROD_DEFAULT ADR10_ALLOW_USER_HOME; optional rm -rf /Users/apple/.aiplat/adr10-diagnosis-mvp-d1
+REPORT_LOG=/tmp/aiplat-adr10-phase-d/run-20261026T032228Z.txt
