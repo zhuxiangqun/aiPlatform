@@ -33,7 +33,7 @@
 |----|------|
 | 拒切 `AIPLAT_DIAGNOSIS_PROD_DEFAULT=1` | PASS（exit 3） |
 | 宿主 start×2 → gap → close×2 | PASS（隔离 `AIPLAT_HOME`） |
-| compose | SKIP（本机无 Docker daemon） |
-| 归档 | [`ADR10_PHASE_C_RUNLOG.txt`](./ADR10_PHASE_C_RUNLOG.txt) |
+| compose | ✅ **PASS**（复跑）· `report_id=rep-07dcb770bbd6` + `down -v` |
+| 归档 | [`ADR10_PHASE_C_RUNLOG.txt`](./ADR10_PHASE_C_RUNLOG.txt)（宿主）· [`ADR10_PHASE_C_COMPOSE_RERUN.txt`](./ADR10_PHASE_C_COMPOSE_RERUN.txt)（compose） |
 
 签署：架构 × 业务 × 诊断 R（兼任）· 2026-10-26 · **仅 Phase C；不停泊 DEFER 对第 2–4 步的否决**  
