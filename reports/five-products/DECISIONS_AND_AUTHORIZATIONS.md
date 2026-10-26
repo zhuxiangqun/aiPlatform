@@ -16,10 +16,10 @@
 | **Gate 2 / MB-01·03** | ✅ **已授权并落地（2026-10-24）** | `GATE2_DECISION.md`；PR #387–#389 |
 | **D13 客户场景** | ✅ **已升格（2026-10-24）** | `D13_CUSTOMER_ENDORSEMENT.md` + `SCENE.md`（江苏锁安 / lock-service） |
 | **Gate 3 / 拆部署** | ✅ **有条件（仅 Pi Thin 试点）** | `GATE3_DECISION.md` + ADR-08；**≠** 五产品全拆 |
-| **对外 E4 / 全拆** | ❌ 未授权 | ADR-09 **Proposed / 停泊**（`ADR09_PREWORK_COSIGN_PARK.md`；#1–#5 确认齐仍 ≠ Accepted） |
+| **对外 E4 / 全拆 / 改生产默认** | ❌ **本阶段不授权** | `ADR09_DEFER_FULL_SPLIT_E4_PROD.md`（PARK 之上书面延期；ADR-09 仍 Proposed） |
 | **第二产品拆分（诊断 MVP）** | ✅ **有条件 Accepted** | `ADR-10-second-product-split.md`；**≠** 改生产默认路径 / 全拆 |
 
-**仍须守住**：五产品全拆、对外产品化宣传、诊断二期 — 不得默示批准。
+**仍须守住**：五产品全拆、对外产品化宣传、改生产默认、诊断二期 — 不得默示批准（见 DEFER）。
 
 ---
 
