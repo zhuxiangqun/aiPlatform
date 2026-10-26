@@ -117,17 +117,24 @@ AIPLAT_HTTP_STUB=1 AIPLAT_APP_HOME=./fixtures/sample-app \
 bash scripts/http_smoke.sh
 ```
 
-## Gate3 Pi Thin pilot (process-separated)
+## Pi Thin independent process (optional · ADR-09)
 
-Independent env from the aiPlat control plane (`AIPLAT_ENTERPRISE` must stay `0`). See `reports/five-products/GATE3_PI_THIN_PILOT.md`.
+**Status**: Gate3 pilot remains the operational path; ADR-09 accepted **Pi Thin** as a single-product optional deploy (`reports/five-products/ADR09_NEXT_PI_THIN_DECISION.md`). Boundary: `ADR09_PI_THIN_BOUNDARY.md`.
+
+- **Optional** process separation from the aiPlat control plane — **not** a forced production default.
+- Independent env (`AIPLAT_ENTERPRISE` must stay `0`). Do **not** reuse control-plane secret files.
+- Compose: pilot / one-shot only — **long-running compose not authorized**.
 
 ```bash
 cd packages/aiplat-pi-runtime
 cp scripts/gate3_pi_thin.env.example .env.gate3-pi-thin   # optional local copy
 bash scripts/gate3_pi_thin_pilot.sh                      # stub smoke; refuses ENTERPRISE=1
-# optional container (G3-2): docker compose -f compose.gate3-pi-thin.yml up
-# Rollback (G3-3 Bundle-first): reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md
+# optional one-shot container (G3-2): docker compose -f compose.gate3-pi-thin.yml up
+#   then: docker compose -f compose.gate3-pi-thin.yml down -v
+# Rollback (Bundle-first): reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md
 ```
+
+Historical Gate3 pilot spec: `reports/five-products/GATE3_PI_THIN_PILOT.md`.
 
 
 Agent mode (OpenAI-compatible — Ollama default):
