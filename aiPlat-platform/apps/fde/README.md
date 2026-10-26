@@ -20,8 +20,15 @@
 # 复制示例 env（可选独立进程时使用；共部署可不拷）
 cp fde_optional.env.example .env.fde-optional
 
-# 生产默认仍为控制面共置挂载本模块；独立进程须另 PR 接线（BOUNDARY C）
+# 生产默认仍为控制面共置挂载本模块
 # 回滚：停独立进程 → 切回共部署；签收入口不变
+```
+
+## One-shot health（BOUNDARY C）
+
+```bash
+# 起薄 health → curl → 立刻停；非 compose 长驻；不暴露第二套 signoff
+bash scripts/adr09_fde_optional_phase_health.sh
 ```
 
 业务手册（现场交付 SOP）见仓库 `docs/manuals/fde/`，与本部署说明分工不同。
