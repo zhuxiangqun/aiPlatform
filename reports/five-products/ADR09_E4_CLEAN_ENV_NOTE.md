@@ -1,7 +1,7 @@
-# ADR-09 前置 #5 · E4 干净环境验收（证据形态已确认）
+# ADR-09 前置 #5 · E4 干净环境验收（**对外证据引用已批**）
 
-- **状态**：**证据形态已签** · 2026-10-26 — 脚本可跑且本机已记 PASS；**≠** E4 对外批准；**≠** ADR-09 Accepted  
-- **真源**：`ADR09_PREWORK_COSIGN_PARK.md`  
+- **状态**：**对外验收证据引用已批（非 SLA）** · 2026-10-26 — 见 `ADR09_E4_STEP3_DECISION.md`；**≠** ADR-09 Accepted  
+- **真源**：`ADR09_E4_STEP3_DECISION.md`  
 - **脚本**：`scripts/adr09_e4_clean_env_check.sh` → 日志默认 `/tmp/aiplat-adr09-e4-clean-env/run-*.txt`  
 - **内容**：宿主 ADR-10 烟测 + Gate3 phase=a；compose 有 daemon 才跑  
 
@@ -9,7 +9,7 @@
 bash scripts/adr09_e4_clean_env_check.sh
 ```
 
-## 本机归档（草案证据 · 非宣传）
+## 本机归档（可对外引用 · 非 SLA）
 
 | 字段 | 值 |
 |------|-----|
@@ -18,11 +18,11 @@ bash scripts/adr09_e4_clean_env_check.sh
 | 宿主 ADR-10 | PASS · `report_id=rep-0bf667587df6` |
 | Gate3 phase=a | PASS · aiplat-http smoke |
 | compose one-shot | PASS · `report_id=rep-d4b5ffd5d359` · 随后 `down -v` |
-| 生产默认 | 拒绝 `AIPLAT_DIAGNOSIS_PROD_DEFAULT=1` / `AIPLAT_ENTERPRISE=1` |
+| 备注 | 归档当时拒绝裸 `PROD_DEFAULT=1`；此后 D1/D2 为**另批** opt-in，不改变本包「非 SLA」性质 |
 
 ## 确认栏
 
-| 角色 | 确认「PASS 可作升格清单证据形态；不作 E4 对外验收批准」 | 日期 |
+| 角色 | 确认 | 日期 |
 |------|:---:|------|
-| 架构 × 业务 | ✅ 已签（本仓库维护者 · 兼任双签） | 2026-10-26 |
-| 产品宣传 owner | ❌ **拒签 E4 对外批准**（与 PARK 一致） | 2026-10-26 |
+| 架构 × 业务 | ✅ PASS 可作**对外验收证据引用**（非 SLA） | 2026-10-26 |
+| 产品宣传 owner | ✅ **批准**引用本包作对外证据（翻此前拒签；第 3 步） | 2026-10-26 |
