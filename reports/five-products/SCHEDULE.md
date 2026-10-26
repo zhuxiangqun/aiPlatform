@@ -27,7 +27,7 @@
 | ADR-09 前置 #4/#5 | ✅ 边界内文案可发布 + CLEAN_ENV 对外证据引用 — `ADR09_E4_*`（第 3 步） |
 | ADR-09 停泊（其余产品） | ✅ `ADR09_PREWORK_COSIGN_PARK.md` — 其余四产品 / 长驻仍停泊；诊断 MVP 见第 4 步 |
 | ADR-09 第 3 步（对外 E4） | ✅ **已批（窄）** — #436 / `ADR09_E4_STEP3_DECISION.md`；**≠** SLA |
-| ADR-09 第 4 步（全拆） | ✅ **已批（窄）** — `ADR09_STEP4_DECISION.md`；产品=**诊断 MVP**；**≠** 五产品一次 / 长驻 |
+| ADR-09 第 4 步（全拆） | ✅ **已批（窄）** — #438 / `ADR09_STEP4_DECISION.md`；产品=**诊断 MVP**；边界=`ADR09_STEP4_DIAGNOSIS_MVP_BOUNDARY.md` |
 | compose 长驻 | ❌ **本阶段明确不授权** — `ADR09_DEFER_FULL_SPLIT_E4_PROD.md` |
 
 路径证据目录：`reports/five-products/slice-fp-internal-bundle-pi-diag-001/`（历史内部 id；新场景 id 见 SCENE.md）。
