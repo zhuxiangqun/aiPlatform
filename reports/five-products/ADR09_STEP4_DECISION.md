@@ -18,8 +18,9 @@
 
 ## 后续（须另开 PR，非本决定自动执行）
 
-1. 诊断 MVP 部署边界清单（进程 / 端口 / 数据目录 / 回滚）  
-2. 按 inflation 分 PR 落地；禁止本 PR 大搬仓  
+1. 诊断 MVP 部署边界清单（进程 / 端口 / 数据目录 / 回滚） → ✅ `ADR09_STEP4_DIAGNOSIS_MVP_BOUNDARY.md`  
+2. 按 inflation 分 PR 落地（BOUNDARY 序 B/C）；禁止一次大搬仓；**不含** compose 长驻  
+
 
 ## 签署
 
