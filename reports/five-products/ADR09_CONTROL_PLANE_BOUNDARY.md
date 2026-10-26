@@ -31,7 +31,7 @@
 |----|------|--------|
 | A | ✅ 本清单 + SCHEDULE / LANDING 引用立项 | 搬仓 |
 | B | ✅ `aiPlat-platform/README.md` + `control_plane_optional.env.example`：「正式可选」用语 | 改生产默认强制独立；compose 长驻；双重 Identity |
-| C | 可选 one-shot 健康 / 启动别名（若需要）→ 共部署真源不改名 | compose 长驻；第二 PolicyGate |
+| C | ✅ one-shot health：`adr09_control_plane_optional_phase_health.sh` + `health_server.py`（127.0.0.1，停即退） | compose 长驻；第二 PolicyGate |
 
 ## 回滚总则
 
