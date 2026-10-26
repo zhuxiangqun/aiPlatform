@@ -20,6 +20,13 @@
 # 复制示例 env（可选独立进程时使用；共部署可不拷）
 cp ontology_optional.env.example .env.ontology-optional
 
-# 生产默认仍为控制面共置；独立进程健康探针见 BOUNDARY C
+# 生产默认仍为控制面共置
 # 回滚：停独立进程 → 切回共部署；配置权威不变
+```
+
+## One-shot health（BOUNDARY C）
+
+```bash
+# 起薄 health → curl → 立刻停；非 compose 长驻；不拆控制面 / 不另起 registry
+bash scripts/adr09_ontology_optional_phase_health.sh
 ```
