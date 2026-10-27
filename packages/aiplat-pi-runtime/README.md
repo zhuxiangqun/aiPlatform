@@ -133,9 +133,10 @@ bash scripts/pi_thin_optional_pilot.sh                       # alias → gate3_p
 # optional one-shot container:
 #   docker compose -f compose.pi-thin-optional.yml up        # include → compose.gate3-pi-thin.yml
 #   docker compose -f compose.pi-thin-optional.yml down -v
-# optional long-running (ADR-09 compose 长驻 · BOUNDARY B):
+# optional long-running (ADR-09 compose 长驻 · BOUNDARY B/C):
 #   docker compose -f compose.pi-thin-long-running.yml up -d
 #   docker compose -f compose.pi-thin-long-running.yml down -v
+#   # or: bash ../../scripts/adr09_compose_pi_thin_long_running_smoke.sh
 # Rollback (Bundle-first): reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md
 ```
 
