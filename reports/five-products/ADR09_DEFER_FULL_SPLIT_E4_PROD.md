@@ -1,28 +1,25 @@
-# 决定：延期范围更新（2026-10-27；控制面窄批后）
+# 决定：延期范围更新（2026-10-27；compose 长驻窄批后）
 
 - **效力**：架构决策 owner × 业务场景 owner（兼任 · 本仓库维护者）  
-- **上级**：`ADR09_NEXT_CONTROL_PLANE_DECISION.md`；`ADR09_NEXT_ONTOLOGY_DECISION.md`；`ADR09_NEXT_FDE_DECISION.md`；`ADR09_NEXT_PI_THIN_DECISION.md`；`ADR09_STEP4_DECISION.md`
+- **上级**：`ADR09_COMPOSE_LONG_RUNNING_DECISION.md`；五产品 Next/Step4 决定书
 
 ## 裁决
 
 | 事项 | 本阶段 | 理由（一句话） |
 |------|:------:|----------------|
-| 五产品一次全拆 | ❌ **不批** | 仅已点名单产品；禁止一次五服务 |
-| ADR-09 Accepted（诊断 MVP） | ✅ | 第 4 步 |
-| ADR-09 Accepted（Pi Thin） | ✅ | #443；长驻不含 |
-| ADR-09 Accepted（FDE） | ✅ | #448；长驻不含 |
-| ADR-09 Accepted（本体） | ✅ | #453；长驻不含 |
-| ADR-09 Accepted（控制面） | ✅ | `ADR09_NEXT_CONTROL_PLANE_DECISION.md`；长驻不含 |
-| 对外 E4（窄） | ✅ | #436 |
-| compose 长驻 | ❌ **不批** | 控制面批句明确「不含」 |
+| 五产品一次全拆 | ❌ **不批** | 仅已点名单产品分批；禁止一次五服务 |
+| ADR-09 五产品立项 + 边界 | ✅ | 诊断 / Pi / FDE / 本体 / 控制面 |
+| ADR-09 compose 长驻 | ✅ | `ADR09_COMPOSE_LONG_RUNNING_DECISION.md`；批句 **含** |
+| 对外 E4（窄） | ✅ | #436；**≠** SLA / 超边界 |
+| 强制全环境生产默认长驻 | ❌ **不批** | 长驻为正式可选；默认策略另决 |
 | 改生产默认（D1+D2） | ✅ | #431 / #434 |
 
-**进度**：五产品单产品立项均 ✅（诊断+Pi+FDE+本体+控制面）。compose 长驻仍 ❌（`ADR09_REMAINING_PRODUCTS_DRAFT.md`）。  
-「继续」**不得**默示批准 compose 长驻。
+**进度**：ADR-09 点名项（五产品 + compose 长驻）均 ✅。超边界 E4 / 强制默认长驻仍 ❌。  
+「继续」**不得**默示扩大为 SLA 或强制生产默认。
 
 ## 签字
 
 | 角色 | 决定 | 日期 |
 |------|------|------|
-| 架构决策 owner | ✅ 五产品立项；**仍不授权** compose 长驻 | 2026-10-27 |
+| 架构决策 owner | ✅ 五产品+compose 长驻；**仍不授权**强制默认长驻 / 超边界 E4 | 2026-10-27 |
 | 业务场景 owner | ✅ 同上（兼任双签） | 2026-10-27 |

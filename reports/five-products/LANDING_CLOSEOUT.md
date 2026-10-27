@@ -50,6 +50,7 @@
 | 下一单产品 FDE | [#448](https://github.com/zhuxiangqun/aiPlatform/pull/448)–[#451](https://github.com/zhuxiangqun/aiPlatform/pull/451) → `40891a2`；收口 `ADR09_FDE_BOUNDARY_CLOSEOUT.md` |
 | 下一单产品 本体 | [#453](https://github.com/zhuxiangqun/aiPlatform/pull/453)–[#456](https://github.com/zhuxiangqun/aiPlatform/pull/456) → `549b86a`；收口 `ADR09_ONTOLOGY_BOUNDARY_CLOSEOUT.md` |
 | 下一单产品 控制面 | [#458](https://github.com/zhuxiangqun/aiPlatform/pull/458)–[#461](https://github.com/zhuxiangqun/aiPlatform/pull/461) → `868a8df`；收口 `ADR09_CONTROL_PLANE_BOUNDARY_CLOSEOUT.md` |
+| compose 长驻 | `ADR09_COMPOSE_LONG_RUNNING_DECISION.md`（含；≠ 强制默认） |
 
 ## Gate 2 / D13 / Gate 3
 
@@ -64,8 +65,8 @@
 | Pi Thin 单产品 + 边界 A–C | ✅ **已收口** — `ADR09_PI_THIN_BOUNDARY_CLOSEOUT.md` |
 | FDE 单产品 + 边界 A–C | ✅ **已收口** — `ADR09_FDE_BOUNDARY_CLOSEOUT.md`（长驻不含） |
 | 本体单产品 + 边界 A–C | ✅ **已收口** — `ADR09_ONTOLOGY_BOUNDARY_CLOSEOUT.md`（长驻不含） |
-| 控制面单产品 + 边界 A–C | ✅ **已收口** — `ADR09_CONTROL_PLANE_BOUNDARY_CLOSEOUT.md`（长驻不含） |
-| compose 长驻 | ❌ **不授权**（DEFER）；草案 `ADR09_REMAINING_PRODUCTS_DRAFT.md` |
+| 控制面单产品 + 边界 A–C | ✅ **已收口** — `ADR09_CONTROL_PLANE_BOUNDARY_CLOSEOUT.md` |
+| compose 长驻 | ✅ **已批** — `ADR09_COMPOSE_LONG_RUNNING_DECISION.md`（含；≠ 强制默认） |
 
 ## 运维备忘
 
