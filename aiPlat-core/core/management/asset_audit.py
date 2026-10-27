@@ -34,21 +34,29 @@ def _collapse_audit_appendices(body: str) -> str:
     Repeat 一键修复 used to append GOAL/SKILL/HANDOFF plus a headless ``# 角色``
     skeleton. Regex-per-heading upsert still left stacks when inner ``## 目标``
     split the body on save. Collapse by split, last copy wins.
+
+    Headless ``# 角色`` is stripped only from the pre-appendix core. Do **not**
+    strip the same skeleton inside ``build_sop_role_appendix()`` (it is the
+    ROLE appendix body).
     """
     text = str(body or "").replace("\r\n", "\n")
-    starts: List[int] = []
-    m_skel = _SKELETON_ROLE.search(text)
-    if m_skel:
-        starts.append(int(m_skel.start()))
+    appendix_starts: List[int] = []
     for h in _APPENDIX_HEADINGS:
         for m in re.finditer(rf"(?:^|\n){re.escape(h)}\s*$", text, re.M):
-            starts.append(int(m.start()) + (1 if text[m.start()] == "\n" else 0))
+            appendix_starts.append(int(m.start()) + (1 if text[m.start()] == "\n" else 0))
             break
-    if not starts:
+    idx_app = min(appendix_starts) if appendix_starts else len(text)
+    m_skel = _SKELETON_ROLE.search(text)
+    if m_skel and int(m_skel.start()) < idx_app:
+        core = text[: int(m_skel.start())].rstrip()
+        between = _SKELETON_ROLE.sub("\n", text[int(m_skel.end()) : idx_app]).strip()
+        if between:
+            core = f"{core}\n\n{between}".strip() if core else between
+    else:
+        core = text[:idx_app].rstrip()
+    rest = text[idx_app:].strip()
+    if not appendix_starts and not m_skel:
         return text.rstrip()
-    idx = min(starts)
-    core = text[:idx].rstrip()
-    rest = _SKELETON_ROLE.sub("\n", text[idx:]).strip()
     blocks: Dict[str, str] = {}
     extra_order: List[str] = []
     for part in _APPENDIX_SPLIT.split(rest):
@@ -143,12 +151,21 @@ def _strip_orphan_audit_skeleton(text: str, heading: str) -> str:
         if "（本阶段完成的工作摘要）" in t:
             t = orphan.sub("\n", t)
     elif heading == SOP_ROLE_HEADING:
+        # Strip headless skeleton only — keep the copy under ## 角色（审核附录）.
         orphan = re.compile(
             r"(?:\n|^)# 角色\n"
             r"你是本任务的执行 Agent。职责边界：只做本阶段约定工作，不越权改上游契约。\s*",
             re.MULTILINE,
         )
-        t = orphan.sub("\n", t)
+        pieces = _APPENDIX_SPLIT.split(t)
+        rebuilt: List[str] = []
+        for part in pieces:
+            head = part.split("\n", 1)[0].strip() if str(part or "").strip() else ""
+            if head == SOP_ROLE_HEADING:
+                rebuilt.append(part)
+            else:
+                rebuilt.append(orphan.sub("\n", part))
+        t = "".join(rebuilt)
     elif heading == SOP_GOAL_HEADING:
         orphan = re.compile(
             r"(?:\n|^)## 目标\n"

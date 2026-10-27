@@ -104,6 +104,18 @@ async def test_audit_allows_engine_only_skill_as_info(tmp_path, monkeypatch):
     agent_dir = home / "agents" / "audit_engine_only_skill"
     agent_dir.mkdir(parents=True)
     (home / "skills").mkdir(parents=True)
+    # Rich enough SOP so sop_* warnings do not drown the engine-skill assertion.
+    sop = (
+        "# 角色\n你是架构审核 Agent。\n\n"
+        "## 目标\n产出可交接的架构说明。\n\n"
+        "## 输出要求\n- 产出：架构 JSON\n- 输出格式：与上游契约一致\n\n"
+        "## 工作流程\n"
+        "1. 读取 PRD\n"
+        "2. 调用 `architecture_design` 生成架构 JSON\n"
+        "3. 自检验收\n\n"
+        "## 输出格式\n"
+        "必须包含 components；禁止臆造。Checklist：字段齐全。\n"
+    )
     (agent_dir / "AGENT.md").write_text(
         "---\n"
         "name: audit_engine_only_skill\n"
@@ -111,21 +123,30 @@ async def test_audit_allows_engine_only_skill_as_info(tmp_path, monkeypatch):
         "status: ready\n"
         "required_skills:\n"
         "  - architecture_design\n"
+        "loop_type: react\n"
+        "toolset: workspace_default\n"
+        "permissions:\n"
+        "  - llm:generate\n"
         "config:\n"
         "  system_prompt: you are a test agent\n"
         "---\n"
-        "## Persona\n"
-        "test\n",
+        f"{sop}\n",
         encoding="utf-8",
     )
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("AIPLAT_HOME", str(home))
-
-    class _Reg:
-        def list_tools(self):
-            return []
-
-    monkeypatch.setattr("core.apps.tools.base.get_tool_registry", lambda: _Reg())
+    monkeypatch.setattr(
+        "core.apps.tools.base.get_tool_registry",
+        lambda: type("R", (), {"list_tools": lambda self: []})(),
+    )
+    monkeypatch.setattr(
+        "core.harness.utils.model_injection.best_model_for_purpose_with_meta",
+        lambda purpose, messages=None: {
+            "model": "qwen2.5:7b",
+            "model_tier": "medium",
+            "model_purpose": purpose,
+        },
+    )
     from core.api.routers.workspace_agents import audit_agent_config
 
     resp = await audit_agent_config("audit_engine_only_skill")

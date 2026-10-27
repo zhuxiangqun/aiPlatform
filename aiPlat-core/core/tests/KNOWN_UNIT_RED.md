@@ -40,11 +40,15 @@ Already green in PR (#468/#469):
 - `unit/test_harness/test_completion_receipt.py`
 - `unit/test_harness/test_circuit_half_open.py`
 
+**Week 2 (+):**
+
+- `unit/test_api/` (100 passed) — fixed ROLE appendix collapse eating
+  `build_sop_role_appendix` body; engine-only skill fixture uses rich SOP.
+
 **Not yet (still red or partial):**
 
 - `test_harness/test_execution/test_loop.py` — 1 fail (`test_loop_config_defaults`)
 - `test_harness/test_integration.py` / planning graphs — API drift cluster
-- `unit/test_api/` — 2 fail / 98 pass (candidate for week 2 after those 2)
 
 ## Process
 
