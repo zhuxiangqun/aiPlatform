@@ -5,7 +5,7 @@ Tests:
   - _extract_py_imports_ast: correct import extraction
   - _extract_calls_ast: correct call extraction
   - _route_matches: route pattern matching
-  - _is_code_file / _should_skip: file filtering
+  - is_code_file / should_skip: file filtering
   - build_graph: graph construction on temp directory
   - count_cycles: cycle detection on known graph
 """
@@ -23,8 +23,8 @@ from core.harness.knowledge.code_graph import (
     _extract_py_imports_ast,
     _extract_calls_ast,
     _route_matches,
-    _is_code_file,
-    _should_skip,
+    is_code_file,
+    should_skip,
     build_graph,
     count_cycles,
     report_cycles,
@@ -111,28 +111,28 @@ class TestFileFiltering:
         with tempfile.TemporaryDirectory() as tmp:
             fp = Path(tmp) / "test.py"
             fp.write_text("# test")
-            assert _is_code_file(fp)
+            assert is_code_file(fp)
 
     def test_is_code_file_ts(self):
         with tempfile.TemporaryDirectory() as tmp:
             fp = Path(tmp) / "component.tsx"
             fp.write_text("// test")
-            assert _is_code_file(fp)
+            assert is_code_file(fp)
 
     def test_is_code_file_non_code(self):
         with tempfile.TemporaryDirectory() as tmp:
             fp = Path(tmp) / "README.md"
             fp.write_text("# test")
-            assert not _is_code_file(fp)
+            assert not is_code_file(fp)
 
     def test_should_skip_pycache(self):
-        assert _should_skip(Path("__pycache__/module.pyc"))
+        assert should_skip(Path("__pycache__/module.pyc"))
 
     def test_should_skip_node_modules(self):
-        assert _should_skip(Path("node_modules/react/index.js"))
+        assert should_skip(Path("node_modules/react/index.js"))
 
     def test_should_skip_dot_git(self):
-        assert _should_skip(Path(".git/objects/ab/cdef"))
+        assert should_skip(Path(".git/objects/ab/cdef"))
 
 
 class TestBuildGraph:
