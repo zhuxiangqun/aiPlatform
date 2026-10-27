@@ -11,7 +11,7 @@ Tests cover:
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
 
-from harness.integration import (
+from core.harness.integration import (
     HarnessConfig,
     HarnessIntegration,
     create_harness,

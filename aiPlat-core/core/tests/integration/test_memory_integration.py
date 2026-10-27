@@ -12,10 +12,10 @@ import pytest
 from datetime import datetime, timedelta
 import asyncio
 
-from harness.memory.base import MemoryEntry, MemoryType, MemoryScope
-from harness.memory.short_term import ShortTermMemory, ConversationMemory
-from harness.memory.long_term import LongTermMemory, SemanticMemory
-from harness.memory.session import Session, SessionManager
+from core.harness.memory.base import MemoryEntry, MemoryType, MemoryScope
+from core.harness.memory.short_term import ShortTermMemory, ConversationMemory
+from core.harness.memory.long_term import LongTermMemory, SemanticMemory
+from core.harness.memory.session import Session, SessionManager
 
 
 @pytest.mark.integration
@@ -157,7 +157,7 @@ class TestMemoryIntegrationWithHarness:
     @pytest.mark.asyncio
     async def test_memory_with_harness_integration(self):
         """Test memory integration with Harness."""
-        from harness.integration import HarnessIntegration, HarnessConfig
+        from core.harness.integration import HarnessIntegration, HarnessConfig
         
         config = HarnessConfig(
             enable_memory=True,

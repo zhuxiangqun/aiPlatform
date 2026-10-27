@@ -366,4 +366,15 @@ def validate_slice_signoff_reports(body: Dict[str, Any]) -> Dict[str, Any]:
                 "report_id": rid,
                 "detail": got.get("error"),
             }
+        # Fail-closed: existence alone is not healthy. stale/unknown/fail must not unlock signoff.
+        status = str(got.get("status") or "").strip()
+        if status != "ok" or got.get("diagnosis_ok") is False:
+            return {
+                "ok": False,
+                "required": True,
+                "error": "diagnosis_not_ok",
+                "report_id": rid,
+                "status": status or "unknown",
+                "detail": "slice signoff requires diagnosis status=ok (never treat stale/fail as success)",
+            }
     return {"ok": True, "required": True, "report_ids": ids}

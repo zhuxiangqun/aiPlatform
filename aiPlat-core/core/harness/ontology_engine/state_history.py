@@ -6,8 +6,8 @@ Schema:
                 from_state, to_state, trigger_type, transition_desc,
                 doc_id, chunk_id, timestamp, tags)
 
-Connection: module-level persistent WAL connection + threading.Lock.
-Eliminates per-call connect/disconnect overhead on the hot write path.
+Connection: lazy persistent WAL connection (get_conn) + threading.RLock.
+Import must not mkdir / open DB — hermetic tests and read-only HOME require laziness.
 """
 
 from __future__ import annotations
@@ -28,15 +28,15 @@ def _db_path() -> str:
     return str(db_dir / "state_changes.db")
 
 
-# ── Module-level persistent connection ──
+# ── Lazy module-level persistent connection ──
 from core.harness.infrastructure.db_utils import create_persistent_conn
 
-_conn = create_persistent_conn(_db_path())
-_lock = threading.Lock()
+_conn = None
+_lock = threading.RLock()
 
 
-def _ensure_schema(conn):
-    _conn.execute("""
+def _ensure_schema(conn) -> None:
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS state_changes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             domain_id TEXT NOT NULL,
@@ -52,10 +52,10 @@ def _ensure_schema(conn):
             tags TEXT DEFAULT '[]'
         )
     """)
-    _conn.execute("CREATE INDEX IF NOT EXISTS idx_domain_entity ON state_changes(domain_id, entity_name)")
-    _conn.execute("CREATE INDEX IF NOT EXISTS idx_domain_ts ON state_changes(domain_id, timestamp)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_domain_entity ON state_changes(domain_id, entity_name)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_domain_ts ON state_changes(domain_id, timestamp)")
     # Feedback table for L5 satisfaction scoring
-    _conn.execute("""
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS feedback (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT NOT NULL DEFAULT '',
@@ -66,20 +66,27 @@ def _ensure_schema(conn):
             timestamp REAL NOT NULL
         )
     """)
-    _conn.execute("CREATE INDEX IF NOT EXISTS idx_feedback_domain ON feedback(domain_id, timestamp)")
-    _conn.commit()
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_feedback_domain ON feedback(domain_id, timestamp)")
+    conn.commit()
 
 
-# Run once at module load
-_ensure_schema(_conn)
+def get_conn():
+    """Open (once) the state_history DB. Safe to call repeatedly; no-op on import."""
+    global _conn
+    with _lock:
+        if _conn is None:
+            _conn = create_persistent_conn(_db_path())
+            _ensure_schema(_conn)
+        return _conn
 
 
 def close_connection():
     """Close the persistent connection (called on server shutdown)."""
     global _conn
-    if _conn:
-        _conn.close()
-        _conn = None
+    with _lock:
+        if _conn:
+            _conn.close()
+            _conn = None
 
 
 def record_transition(
@@ -97,7 +104,7 @@ def record_transition(
 ) -> None:
     """Record a single state transition."""
     with _lock:
-        _conn.execute(
+        get_conn().execute(
             """INSERT INTO state_changes
                (domain_id, entity_name, class_name, from_state, to_state,
                 trigger_type, transition_desc, doc_id, chunk_id, timestamp, tags)
@@ -108,13 +115,13 @@ def record_transition(
                 _time.time(), _json.dumps(tags or [], ensure_ascii=False),
             ),
         )
-        _conn.commit()
+        get_conn().commit()
 
 
 def get_entity_history(domain_id: str, entity_name: str) -> List[Dict[str, Any]]:
     """Get all state changes for a specific entity in a domain."""
     with _lock:
-        rows = _conn.execute(
+        rows = get_conn().execute(
             """SELECT id, entity_name, class_name, from_state, to_state,
                       trigger_type, transition_desc, doc_id, chunk_id, timestamp, tags
                FROM state_changes
@@ -128,7 +135,7 @@ def get_entity_history(domain_id: str, entity_name: str) -> List[Dict[str, Any]]
 def get_domain_history(domain_id: str, limit: int = 200) -> List[Dict[str, Any]]:
     """Get recent state changes for a domain."""
     with _lock:
-        rows = _conn.execute(
+        rows = get_conn().execute(
             """SELECT id, entity_name, class_name, from_state, to_state,
                       trigger_type, transition_desc, doc_id, chunk_id, timestamp, tags
                FROM state_changes
@@ -190,7 +197,7 @@ def get_entity_window_stats(
             params.append(class_name)
 
         # Transition count
-        count_row = _conn.execute(
+        count_row = get_conn().execute(
             f"SELECT COUNT(*) FROM state_changes WHERE {where}", params
         ).fetchone()
         total = count_row[0] if count_row else 0
@@ -199,19 +206,19 @@ def get_entity_window_stats(
         velocity = round(total / window_hours, 2) if window_hours > 0 else 0
 
         # State distribution
-        dist_rows = _conn.execute(
+        dist_rows = get_conn().execute(
             f"SELECT to_state, COUNT(*) as cnt FROM state_changes WHERE {where} "
             f"GROUP BY to_state ORDER BY cnt DESC LIMIT 10", params
         ).fetchall()
 
         # Most recent transition
-        latest = _conn.execute(
+        latest = get_conn().execute(
             f"SELECT entity_name, from_state, to_state, trigger_type, timestamp "
             f"FROM state_changes WHERE {where} ORDER BY timestamp DESC LIMIT 1", params
         ).fetchone()
 
         # Transition sequences (chains of 2+ transitions close in time)
-        chain_rows = _conn.execute(
+        chain_rows = get_conn().execute(
             f"SELECT entity_name, COUNT(*) as chain_len FROM state_changes "
             f"WHERE {where} GROUP BY entity_name HAVING chain_len >= 2 ORDER BY chain_len DESC LIMIT 10",
             params
@@ -255,7 +262,7 @@ def get_domain_transition_rate(
         bucket_secs = bucket_minutes * 60
         num_buckets = int(window_hours * 3600 / bucket_secs)
 
-        rows = _conn.execute(
+        rows = get_conn().execute(
             """SELECT timestamp FROM state_changes
                WHERE domain_id = ? AND timestamp >= ?
                ORDER BY timestamp""",
@@ -296,7 +303,7 @@ def get_state_distribution(
             params.append(class_name)
 
         # Latest state per entity (subquery by max timestamp)
-        rows = _conn.execute(
+        rows = get_conn().execute(
             f"""SELECT sc.to_state, COUNT(*) as cnt FROM state_changes sc
                 INNER JOIN (
                     SELECT entity_name, MAX(timestamp) as max_ts
@@ -329,28 +336,28 @@ def record_feedback(
 ) -> None:
     """Record user feedback on an answer."""
     with _lock:
-        _conn.execute(
+        get_conn().execute(
             """INSERT INTO feedback (session_id, query_text, rating, is_helpful, domain_id, timestamp)
                VALUES (?,?,?,?,?,?)""",
             (session_id, query_text, rating, int(is_helpful) if is_helpful is not None else None,
              domain_id, _time.time()),
         )
-        _conn.commit()
+        get_conn().commit()
 
 
 def get_feedback_stats(domain_id: str = "default") -> Dict[str, Any]:
     """Get aggregated feedback statistics."""
     with _lock:
-        total = _conn.execute(
+        total = get_conn().execute(
             "SELECT COUNT(*) FROM feedback WHERE domain_id=?", (domain_id,)
         ).fetchone()[0]
-        helpful = _conn.execute(
+        helpful = get_conn().execute(
             "SELECT COUNT(*) FROM feedback WHERE domain_id=? AND is_helpful=1", (domain_id,)
         ).fetchone()[0]
-        avg_rating = _conn.execute(
+        avg_rating = get_conn().execute(
             "SELECT AVG(rating) FROM feedback WHERE domain_id=? AND rating > 0", (domain_id,)
         ).fetchone()[0] or 0
-        recent = _conn.execute(
+        recent = get_conn().execute(
             "SELECT query_text, rating, is_helpful, timestamp FROM feedback WHERE domain_id=? ORDER BY timestamp DESC LIMIT 10",
             (domain_id,),
         ).fetchall()
@@ -379,7 +386,7 @@ def get_feedback_driven_thresholds(
     Low satisfaction (<0.4) → more strict (higher threshold)
     """
     with _lock:
-        rows = _conn.execute(
+        rows = get_conn().execute(
             """SELECT sc.class_name, AVG(f.is_helpful) as sat, COUNT(*) as cnt
                FROM feedback f
                INNER JOIN state_changes sc ON sc.domain_id = f.domain_id

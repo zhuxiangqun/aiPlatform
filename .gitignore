@@ -105,3 +105,7 @@ deploy-kit/images/*.tar
 .aiplat/execution.db  # legacy path
 
 pentest-reports/
+
+# Local E2E / bench scratch (slice_e2e.sh default OUT; hermes clones)
+tmp/slice-e2e/
+tmp/bench-clones/

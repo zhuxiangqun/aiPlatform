@@ -14,7 +14,7 @@ Tests cover:
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from harness.execution.langgraph.graphs.reflection import (
+from core.harness.execution.langgraph.graphs.reflection import (
     ReflectionConfig,
     ReflectionState,
     ReflectionStatus,

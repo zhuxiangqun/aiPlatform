@@ -122,6 +122,26 @@ def test_signoff_requires_report_for_fp_scenario(slice_home):
     assert rep["report_id"] in good.get("report_ids", [])
 
 
+def test_signoff_rejects_stale_diagnosis_report(slice_home):
+    """Disconnect / unreachable must not unlock acceptance via report_id alone."""
+    rep = build_slice_diagnosis_report(
+        scenario_id="fp-internal-bundle-pi-diag-001",
+        run_id="r-stale",
+        bundle_version="b",
+        events=[{}],
+        aiplat_reachable=False,
+    )
+    assert rep.get("status") == "stale"
+    gate = validate_slice_signoff_reports(
+        {
+            "scenario_id": "fp-internal-bundle-pi-diag-001",
+            "evidence_report_ids": [rep["report_id"]],
+        }
+    )
+    assert gate.get("ok") is False
+    assert gate.get("error") == "diagnosis_not_ok"
+
+
 def test_signoff_not_required_for_legacy(slice_home, monkeypatch):
     monkeypatch.setenv("AIPLAT_DIAGNOSIS_PROD_DEFAULT", "0")
     r = validate_slice_signoff_reports({"spec_id": "legacy-customer-1"})

@@ -128,8 +128,10 @@ core 层运行时数据库/状态文件路径**必须**经 `core.utils.paths.get
 | 契约 | 说明 |
 |------|------|
 | 禁止硬编码 `~/.aiplat` | `expanduser("~/.aiplat/xxx")` 绕过 AIPLAT_HOME（`paths.py` 已标注反模式）——受限环境（~/.aiplat 只读）下启动写库抛 `readonly database` → 服务僵死 |
+| 禁止导入期开库 | 运行时状态库（如 `state_history`）**必须**懒打开：`import` 不得 mkdir/写 SQLite；仅在 `get_conn()`（或等价首次写读）时经 `get_aiplat_home()` 建连（2026-10-27）——否则只读 HOME / pytest 收集即污染本机 `~/.aiplat` |
+| 测试隔离 | `core/tests` session 级 **必须** 把 `AIPLAT_HOME` 指到临时目录并种子必要 presets/ontology（`core/tests/conftest.py`）；禁止依赖开发者本机 `~/.aiplat` 内容才能 collect/pass |
 | 已修复 | `TripleStore`（`core/harness/ontology_engine/triple_store.py`）：`ontology_triples.sqlite3` 路径改经 `get_aiplat_home()`；`code_graph_persist`/`cap_graph_persist`（图谱缓存库 `code_graph.db`/`cap_graph.db`）与 `capability_graph` 工作区扫描同改（2026-08-28）；其余存量硬编码（memory/file_store、knowledge_pipeline、management/* 等）为已知存量，逐步迁移 |
-| 验证 | 受限 HOME 启动 core server → `/api/core/diagnostics/*` 三端点 200 毫秒响应（修复前全超时） |
+| 验证 | 受限 HOME 启动 core server → `/api/core/diagnostics/*` 三端点 200 毫秒响应（修复前全超时）；`AIPLAT_HOME=/nonexistent/...` 下 `import core.harness.ontology_engine.state_history` 不创建库 |
 
 ### 5.1.3 诊断时效性契约（MUST，2026-08-28）
 

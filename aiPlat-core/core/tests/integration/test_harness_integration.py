@@ -11,13 +11,13 @@ Tests cover:
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 
-from harness.integration import (
+from core.harness.integration import (
     HarnessIntegration,
     HarnessConfig,
     create_harness,
     get_harness,
 )
-from harness.memory.base import MemoryEntry, MemoryType
+from core.harness.memory.base import MemoryEntry, MemoryType
 
 
 @pytest.mark.integration
@@ -112,7 +112,7 @@ class TestHarnessIntegration:
         
         # Note: create_loop doesn't currently accept agent parameter
         # This test verifies the create_loop function works
-        from harness.execution.loop import create_loop, ReActLoop
+        from core.harness.execution.loop import create_loop, ReActLoop
         
         loop = create_loop("react")
         

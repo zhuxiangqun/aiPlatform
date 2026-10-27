@@ -12,7 +12,7 @@ import pytest
 from unittest.mock import MagicMock, AsyncMock
 from datetime import datetime
 
-from harness.coordination.patterns import (
+from core.harness.coordination.patterns import (
     CoordinationContext,
     CoordinationResult,
     ICoordinationPattern,

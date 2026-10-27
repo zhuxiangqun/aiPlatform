@@ -1,6 +1,13 @@
 # VERSIONS
 
-Bundle 目录不入库（可 `python3 scripts/five_products_slice_smoke.py` 或 `export_slice_bundle` 再生）。证据与 RUNLOG 入库。
+Bundle 目录不入库。再生与验收请走 live E2E（禁止合成 smoke_ok）：
+
+```bash
+bash scripts/slice_e2e.sh --scenario lock-service
+bash scripts/slice_e2e.sh --scenario lock-service --inject disconnect
+```
+
+`five_products_slice_smoke.py` 仅为兼容包装，已委托 `slice_e2e.sh`。证据与 RUNLOG 入库。
 
 ```json
 {
