@@ -27,7 +27,7 @@
 | 序 | 主题 | 非目标 |
 |----|------|--------|
 | A | ✅ 本清单 + SCHEDULE / LANDING 引用 | 搬仓；一次五套 |
-| B | 首个长驻 profile（建议 Pi Thin：`compose.pi-thin-long-running.yml` 或 profile 文档）+ README 启停 | 强制生产默认；改 Identity |
+| B | ✅ Pi Thin：`compose.pi-thin-long-running.yml` + README 启停 | 强制生产默认；改 Identity；一次五套 |
 | C | 烟测脚本：`up -d` → health → `down -v`（可重复） | 常驻 CI 占资源不清理 |
 
 ## 回滚总则

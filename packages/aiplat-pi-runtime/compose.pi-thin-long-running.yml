@@ -1,0 +1,18 @@
+# ADR-09 compose long-running — Pi Thin (first profile).
+# Authorize: reports/five-products/ADR09_COMPOSE_LONG_RUNNING_DECISION.md (#463)
+# Boundary: ADR09_COMPOSE_LONG_RUNNING_BOUNDARY.md
+#
+# Formal OPTIONAL long-running. NOT forced production default.
+# Canonical service def remains compose.gate3-pi-thin.yml (no duplicate drift).
+#
+#   docker compose -f compose.pi-thin-long-running.yml up -d
+#   curl -fsS http://127.0.0.1:18787/health
+#   docker compose -f compose.pi-thin-long-running.yml down -v
+#
+# Prefer host smoke when not exercising long-running: bash scripts/pi_thin_optional_pilot.sh
+include:
+  - path: compose.gate3-pi-thin.yml
+
+services:
+  gate3-pi-thin:
+    restart: unless-stopped
