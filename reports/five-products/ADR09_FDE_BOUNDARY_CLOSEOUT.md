@@ -26,4 +26,5 @@
 |----|------|
 | 诊断 MVP / Pi Thin / FDE 边界 | ✅ 均已收口 |
 | 本体单产品 + 边界 A–C | ✅ #453–#456 / `ADR09_ONTOLOGY_BOUNDARY_CLOSEOUT.md`（长驻不含） |
-| 控制面 / compose 长驻 | ❌ 见 `ADR09_REMAINING_PRODUCTS_DRAFT.md` |
+| 控制面单产品 + 边界 A–C | ✅ #458–#461 / `ADR09_CONTROL_PLANE_BOUNDARY_CLOSEOUT.md`（长驻不含） |
+| compose 长驻 | ❌ 见 `ADR09_REMAINING_PRODUCTS_DRAFT.md` |
