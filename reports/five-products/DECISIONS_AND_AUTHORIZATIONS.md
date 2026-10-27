@@ -22,7 +22,7 @@
 | **ADR-09 下一单产品（FDE）** | ✅ **已批+边界收口** | #448–#451 / `ADR09_FDE_BOUNDARY_CLOSEOUT.md`；compose 长驻不含 |
 | **ADR-09 下一单产品（本体）** | ✅ **已批+边界收口** | #453–#456 / `ADR09_ONTOLOGY_BOUNDARY_CLOSEOUT.md`；compose 长驻不含 |
 | **ADR-09 下一单产品（控制面）** | ✅ **已批+边界收口** | #458–#461 / `ADR09_CONTROL_PLANE_BOUNDARY_CLOSEOUT.md` |
-| **ADR-09 compose 长驻** | ✅ **已批+边界收口** | #463–#465 + C / `ADR09_COMPOSE_LONG_RUNNING_CLOSEOUT.md`（含；≠ 强制默认） |
+| **ADR-09 compose 长驻** | ✅ **已批+边界收口** | #463–#466 / `ADR09_COMPOSE_LONG_RUNNING_CLOSEOUT.md`（含；≠ 强制默认） |
 | **第二产品拆分（诊断 MVP）** | ✅ **有条件 Accepted** | ADR-10 + 第 4 步立项；Phase A–D（D1 #431 + D2 #434） |
 
 **仍须守住**：其余四产品一次拆、compose 长驻、超边界宣传 — 不得由「继续」默示批准（见 DEFER）。

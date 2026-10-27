@@ -11,7 +11,7 @@
 | 立项 | compose 长驻 Accepted（可选 profile；≠ 强制默认） | #463 → `a0e5b1a` |
 | A | 部署边界清单 | #464 → `0f33829` |
 | B | 首个长驻 profile：Pi Thin | #465 → `fa0c341` |
-| C | 烟测：`up -d` → health → `down -v` | 本 PR |
+| C | 烟测：`up -d` → health → `down -v` | #466 → `30a16aa` |
 
 ## 生产含义（窄）
 

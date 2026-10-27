@@ -25,4 +25,4 @@
 | 项 | 状态 |
 |----|------|
 | 五产品单产品边界 | ✅ 诊断 / Pi / FDE / 本体 / 控制面均已收口 |
-| compose 长驻 | ✅ `ADR09_COMPOSE_LONG_RUNNING_DECISION.md`（含） |
+| compose 长驻 | ✅ #463–#466 / `ADR09_COMPOSE_LONG_RUNNING_CLOSEOUT.md`（含） |
