@@ -1,0 +1,39 @@
+name: Slice E2E (live evidence)
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "30 18 * * *"
+  workflow_dispatch:
+
+jobs:
+  slice-e2e:
+    name: lock-service positive + disconnect
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Python deps
+        run: |
+          pip install -e ./aiPlat-infra -e ./aiPlat-core
+          pip install anyio pydantic aiosqlite typing_extensions
+      - name: Positive path
+        run: bash scripts/slice_e2e.sh --scenario lock-service --out "$RUNNER_TEMP/slice-e2e"
+      - name: Disconnect fail-closed
+        run: bash scripts/slice_e2e.sh --scenario lock-service --inject disconnect --out "$RUNNER_TEMP/slice-e2e"
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slice-e2e-logs
+          path: ${{ runner.temp }}/slice-e2e
+          if-no-files-found: ignore

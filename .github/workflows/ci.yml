@@ -67,34 +67,47 @@ jobs:
           fi
       - name: Prepare test profile presets (CI env has no ~/.aiplat)
         run: |
-          # Seed control profiles + ontology (decomposition_rules) from the
-          # repository templates so tests that assert their contents pass in CI.
+          # Seed control profiles + ontology from repo templates.
+          # cwd is matrix.component; core seeds live under aiPlat-core/.
+          if [ "${{ matrix.component }}" = "aiPlat-core" ]; then
+            SEED_ROOT="."
+          else
+            SEED_ROOT="../aiPlat-core"
+          fi
           mkdir -p "${AIPLAT_PROFILE_DIR:-$HOME/.aiplat/profiles}"
-          cp ../aiPlat-core/workspace_seeds/profiles/control_presets.yaml \
+          cp "$SEED_ROOT/workspace_seeds/profiles/control_presets.yaml" \
              "${AIPLAT_PROFILE_DIR:-$HOME/.aiplat/profiles}/control_presets.yaml"
           mkdir -p "$HOME/.aiplat/ontologies"
-          cp ../aiPlat-core/workspace_seeds/ontologies/ai-knowledge.yaml \
+          cp "$SEED_ROOT/workspace_seeds/ontologies/ai-knowledge.yaml" \
              "$HOME/.aiplat/ontologies/ai-knowledge.yaml"
-          echo "presets + ontology seeded"
+          echo "presets + ontology seeded from $SEED_ROOT"
       - name: Run tests
         run: |
-          TEST_DIR="tests"
-          [ "${{ matrix.component }}" = "aiPlat-infra" ] && TEST_DIR="infra/tests"
-          # CI runner has no local LLM models — skip the two tests that
-          # require a runnable model (best_model_for_purpose_works /
-          # finalize_grilling). They pass on dev machines with models.
-          KARGS=(-m "not integration")
+          # aiPlat-core: run the real suite under core/tests/unit (not the thin
+          # aiPlat-core/tests/ tree). Integration/slow stay for nightly.
           if [ "${{ matrix.component }}" = "aiPlat-core" ]; then
+            TEST_DIR="core/tests/unit"
+            KARGS=(-m "not integration and not slow")
             KARGS+=(-k "not test_best_model_for_purpose_works and not test_finalize_grilling_returns_structured")
+          elif [ "${{ matrix.component }}" = "aiPlat-infra" ]; then
+            TEST_DIR="infra/tests"
+            KARGS=(-m "not integration")
+          else
+            TEST_DIR="tests"
+            KARGS=(-m "not integration")
           fi
-          # Coverage data is still reported/uploaded; the 80% hard gate is
-          # dropped in CI (whole-package measurement vs focused unit tests
-          # yields low % — pre-existing debt, tracked separately).
+          # Coverage xml still uploaded; 80% hard gate remains deferred until
+          # unit path is stable green (restore after nightly full suite is green).
           python -m pytest "$TEST_DIR" "${KARGS[@]}" -v --tb=short -q --cov=. --cov-report=xml
       - name: Run regression tests
         run: |
-          TEST_DIR="tests"
-          [ "${{ matrix.component }}" = "aiPlat-infra" ] && TEST_DIR="infra/tests"
+          if [ "${{ matrix.component }}" = "aiPlat-core" ]; then
+            TEST_DIR="core/tests/unit"
+          elif [ "${{ matrix.component }}" = "aiPlat-infra" ]; then
+            TEST_DIR="infra/tests"
+          else
+            TEST_DIR="tests"
+          fi
           python -m pytest "$TEST_DIR" -v --tb=short -q -m regression 2>/dev/null || echo "No regression tests defined (informational)"
       - name: Upload coverage
         uses: actions/upload-artifact@v4

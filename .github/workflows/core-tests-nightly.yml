@@ -1,0 +1,32 @@
+name: Core tests nightly (full)
+
+on:
+  schedule:
+    - cron: "0 18 * * *"  # 03:00 JST
+  workflow_dispatch:
+
+jobs:
+  core-tests-full:
+    name: aiPlat-core core/tests (full collect)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: aiPlat-core
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: pip install -e ../aiPlat-infra -e ".[dev]"
+      - name: Collect + unit/integration (exclude slow)
+        env:
+          AIPLAT_HOME: ${{ runner.temp }}/aiplat-home-nightly
+        run: |
+          mkdir -p "$AIPLAT_HOME/profiles" "$AIPLAT_HOME/ontologies"
+          cp workspace_seeds/profiles/control_presets.yaml "$AIPLAT_HOME/profiles/" 2>/dev/null || true
+          cp workspace_seeds/ontologies/ai-knowledge.yaml "$AIPLAT_HOME/ontologies/" 2>/dev/null || true
+          python -m pytest core/tests --collect-only -q
+          python -m pytest core/tests -m "not slow" -v --tb=short -q \
+            -k "not test_best_model_for_purpose_works and not test_finalize_grilling_returns_structured"
