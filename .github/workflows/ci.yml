@@ -91,6 +91,8 @@ jobs:
           if [ "${{ matrix.component }}" = "aiPlat-core" ]; then
             # Collect-only: prove harness.* → core.harness import rot is fixed
             # (execution/planning/integration still have pre-existing API drift).
+            # Collect: previously broken imports + week-1 green track packages.
+            # Expand list only when a package is full-green (see core/tests/KNOWN_UNIT_RED.md).
             COLLECT=(
               core/tests/unit/test_harness/test_observability.py
               core/tests/unit/test_harness/test_execution/test_loop.py
@@ -99,13 +101,23 @@ jobs:
               core/tests/tool_correctness/test_code_graph.py
               core/tests/integration/test_harness_integration.py
               core/tests/integration/test_phaseR1_repo_diff_context_injection.py
+              core/tests/unit/test_agents
+              core/tests/unit/test_utils
+              core/tests/unit/test_harness/test_eval_verdict.py
+              core/tests/unit/test_harness/test_completion_receipt.py
+              core/tests/unit/test_harness/test_circuit_half_open.py
             )
             python -m pytest "${COLLECT[@]}" --collect-only -q
-            # Execute only suites green for this track (hermetic + code_graph + slice)
+            # Execute only suites green for this track (see KNOWN_UNIT_RED.md week list)
             python -m pytest -v --tb=short -q \
               core/tests/unit/test_harness/test_observability.py \
               core/tests/tool_correctness/test_code_graph.py \
-              core/tests/apps/fde/test_slice_five_products.py
+              core/tests/apps/fde/test_slice_five_products.py \
+              core/tests/unit/test_agents \
+              core/tests/unit/test_utils \
+              core/tests/unit/test_harness/test_eval_verdict.py \
+              core/tests/unit/test_harness/test_completion_receipt.py \
+              core/tests/unit/test_harness/test_circuit_half_open.py
           elif [ "${{ matrix.component }}" = "aiPlat-infra" ]; then
             python -m pytest infra/tests -m "not integration" -v --tb=short -q --cov=. --cov-report=xml
           else
