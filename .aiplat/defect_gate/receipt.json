@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-27T16:32:58+09:00",
+  "reviewed_at": "2026-10-27T17:08:34+09:00",
   "base_ref": "origin/main",
   "merge_base": "dd267c70f5d69cc8244059018c4ba21545da3903",
-  "diff_sha256": "252a6475e0e314b5595180876315d969097cbb04613efaa16a7fff6eba6e665e",
-  "head_sha": "c06fea40a0a488e02ebb97fab2cef355231fda1a",
+  "diff_sha256": "f6cdc407a96479f08ce0705fc066b5387a3740da3f57c05d74cfd826bfa91931",
+  "head_sha": "a1d61515d49f4203e44db502d93c7f36647a8f4d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Zero findings after CI fix: system-architecture-contract hermetic/lazy AIPLAT_HOME; short-lived inflation exemption ex-2026-10-27 for PR #468. Local lock only."
+  "note": "Zero findings: drop --cov=. on aiPlat-core PR unit path to unblock hung CI. Local lock only."
 }
