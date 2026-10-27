@@ -233,6 +233,10 @@ domains:
         module: aiPlat-core/core/harness/execution/loop/_facade.py
         type: class
         signature: "Reason→Act→Observe, integrate Hooks/compression/memory"
+      - symbol: "locale_markers"
+        module: core/harness/utils/locale_markers.py
+        type: module
+        signature: "CJK/locale regex + seal strings for completion_receipt / done_verify (engine §78b)"
       - symbol: "run_done_verify"
         module: core/harness/execution/done_verify.py
         type: function
