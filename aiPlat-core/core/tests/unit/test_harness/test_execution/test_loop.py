@@ -68,7 +68,8 @@ class TestLoopConfig:
         """Test LoopConfig default values."""
         config = LoopConfig()
         
-        assert config.max_steps == 10
+        # Product default raised 10→20 (context_assembler / LoopConfig align).
+        assert config.max_steps == 20
         assert config.stop_on_error is True
         assert config.timeout == 60
     
