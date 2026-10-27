@@ -15,7 +15,7 @@ Tests cover:
 import pytest
 from datetime import datetime, timedelta
 
-from harness.infrastructure.approval.types import (
+from core.harness.infrastructure.approval.types import (
     RuleType,
     RequestStatus,
     ApprovalRule,
@@ -23,7 +23,7 @@ from harness.infrastructure.approval.types import (
     ApprovalResult,
     ApprovalContext,
 )
-from harness.infrastructure.approval.manager import (
+from core.harness.infrastructure.approval.manager import (
     ApprovalManager,
     ApprovalValidationError,
     create_approval_manager,

@@ -12,13 +12,13 @@ import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 from datetime import datetime
 
-from harness.execution.loop import (
+from core.harness.execution.loop import (
     BaseLoop,
     ReActLoop,
     PlanExecuteLoop,
     create_loop,
 )
-from harness.interfaces.loop import (
+from core.harness.interfaces.loop import (
     LoopState,
     LoopStateEnum,
     LoopConfig,

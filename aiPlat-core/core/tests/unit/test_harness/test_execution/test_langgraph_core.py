@@ -13,7 +13,7 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
-from harness.execution.langgraph.core import (
+from core.harness.execution.langgraph.core import (
     GraphState,
     NodeType,
     NodeResult,

@@ -14,7 +14,7 @@ Tests cover:
 import pytest
 from datetime import datetime
 
-from harness.observability.metrics import (
+from core.harness.observability.metrics import (
     MetricSource,
     MetricCategory,
     MetricData,
@@ -22,7 +22,7 @@ from harness.observability.metrics import (
     MetricsAggregator,
     MetricsCollector,
 )
-from harness.observability.events import (
+from core.harness.observability.events import (
     EventType,
     EventPriority,
     Event,

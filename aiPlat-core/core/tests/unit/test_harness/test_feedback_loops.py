@@ -16,7 +16,7 @@ import pytest
 from datetime import datetime
 from unittest.mock import MagicMock, AsyncMock
 
-from harness.feedback_loops import (
+from core.harness.feedback_loops import (
     # Enums
     FeedbackLevel,
     FeedbackType,
@@ -29,7 +29,7 @@ from harness.feedback_loops import (
     EvolutionEngine,
     EvolutionTriggerManager,
 )
-from harness.evolution_engine import get_evolution_engine
+from core.harness.evolution_engine import get_evolution_engine
 
 
 class TestFeedbackLevel:
