@@ -11,7 +11,7 @@
 | 立项 | 控制面单产品 Accepted（compose 长驻不含） | #458 → `e5c9364` |
 | A | 部署边界清单 | #459 → `92d8e0c` |
 | B | README / env「正式可选」用语 | #460 → `8ab4aa3` |
-| C | one-shot health（127.0.0.1，停即退） | 本 PR |
+| C | one-shot health（127.0.0.1，停即退） | #461 → `868a8df` |
 
 ## 生产含义（窄）
 
