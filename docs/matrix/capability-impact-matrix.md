@@ -1,7 +1,7 @@
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 33 domains | 1488 capabilities (caps_count) | 1488 symbols (provides)
+> Version: 1.1.0 | 33 domains | 1488 capabilities (caps_count) | 1489 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
