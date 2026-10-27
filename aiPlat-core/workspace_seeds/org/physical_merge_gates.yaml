@@ -106,7 +106,13 @@ allowed_bases:
 # Missing owner/reason/expires → invalid debt (not applied, still blocks posture).
 max_active_exemptions: 3
 # Cleared 2026-10-24: #381/#385, Gate2 #387/#388, Gate3/D13 #391 exemptions retired.
-exemptions: []
+exemptions:
+  - id: "ex-2026-10-27-core-tests-ci-slice-e2e"
+    owner: "platform-oncall"
+    reason: "PR #468 one-shot: restore collectable core/tests + live slice E2E (many import-path files; per-commit already under cap)"
+    expires: "2026-11-03"
+    gates: ["inflation"]
+    paths: ["**"]
 # Example:
 # exemptions:
 #   - id: "ex-2026-10-migrate-x"
