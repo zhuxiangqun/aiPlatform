@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-27T16:15:51+09:00",
+  "reviewed_at": "2026-10-27T16:32:58+09:00",
   "base_ref": "origin/main",
   "merge_base": "dd267c70f5d69cc8244059018c4ba21545da3903",
-  "diff_sha256": "753da1521b10fe9734dbc476b20c3f8c9fb49c2a5f556a006dc1b9e3d742c009",
-  "head_sha": "338c43bf076097556b42adf27b53391b27bd931a",
+  "diff_sha256": "252a6475e0e314b5595180876315d969097cbb04613efaa16a7fff6eba6e665e",
+  "head_sha": "c06fea40a0a488e02ebb97fab2cef355231fda1a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Zero findings on merge diff: core.harness imports; lazy state_history; hermetic conftest; CI core/tests/unit + nightly + slice-e2e; validate_slice_signoff_reports rejects stale; live disconnect asserts signoff_ok=False. Local lock only."
+  "note": "Zero findings after CI fix: system-architecture-contract hermetic/lazy AIPLAT_HOME; short-lived inflation exemption ex-2026-10-27 for PR #468. Local lock only."
 }
