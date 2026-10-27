@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T00:20:00+09:00",
+  "reviewed_at": "2026-10-28T08:23:29+09:00",
   "base_ref": "origin/main",
-  "merge_base": "66177bcbc0f539c795a12cc5145503e6795cb318",
-  "diff_sha256": "a07204c57d34095667456798be889aa0d7d76bea3302312d75c16108fc5db5d9",
-  "head_sha": "fe6c65fe25cfe2220ec0b2c1fe1e78f810d2876d",
+  "merge_base": "00f2f7fa7095780a81f5c0b43eba4c5737503d21",
+  "diff_sha256": "6e1222359d20d9994d931e350592c9de0c8bdc95afbbda034a90136b161ef820",
+  "head_sha": "1ae7b7565b2ed1542c069e633ce7548b4a9b83b6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-1 CI expand only; local 133 passed on new execute list. Local lock only."
+  "note": "ROLE appendix body preserved under collapse/upsert; test_api 100 green. Local lock only."
 }
