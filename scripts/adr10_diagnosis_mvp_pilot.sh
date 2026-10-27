@@ -110,7 +110,7 @@ from core.apps.fde.service.slice_evidence import (
 
 path = os.environ["AIPLAT_SLICE_EVIDENCE_PATH"]
 sid = os.environ.get("AIPLAT_SLICE_SCENARIO_ID", "fp-customer-lock-service-bundle-pi-diag-001")
-ing = ingest_slice_evidence_from_jsonl(path=path, scenario_id=sid, aiplat_reachable=True)
+ing = ingest_slice_evidence_from_jsonl(path=path, scenario_id=sid, assumed_reachable=True)
 if not ing.get("ok"):
     print("ERROR: ingest failed:", json.dumps(ing, ensure_ascii=False), file=sys.stderr)
     sys.exit(7)

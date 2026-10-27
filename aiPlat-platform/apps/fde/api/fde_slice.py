@@ -25,7 +25,9 @@ class SliceEvidenceIngestRequest(BaseModel):
     runtime_version: str = ""
     events: List[Dict[str, Any]] = Field(default_factory=list)
     asset_versions: Dict[str, Any] = Field(default_factory=dict)
-    aiplat_reachable: bool = True
+    # Caller assumption — not a live control-plane probe.
+    assumed_reachable: bool = True
+    aiplat_reachable: Optional[bool] = None  # legacy alias
 
 
 class SliceEvidenceReportRequest(BaseModel):
@@ -36,7 +38,8 @@ class SliceEvidenceReportRequest(BaseModel):
     runtime_version: str = ""
     events: Optional[List[Dict[str, Any]]] = None
     asset_versions: Optional[Dict[str, Any]] = None
-    aiplat_reachable: bool = True
+    assumed_reachable: bool = True
+    aiplat_reachable: Optional[bool] = None  # legacy alias
 
 
 @router.post("/bundle/export", response_model=FdeItemResponse)
@@ -58,6 +61,11 @@ async def slice_bundle_export(body: SliceBundleExportRequest):
 async def slice_evidence_ingest(body: SliceEvidenceIngestRequest):
     from core.api.core_facade import ingest_slice_evidence
 
+    assumed = (
+        body.aiplat_reachable
+        if body.aiplat_reachable is not None
+        else body.assumed_reachable
+    )
     result = ingest_slice_evidence(
         scenario_id=body.scenario_id,
         run_id=body.run_id,
@@ -65,7 +73,7 @@ async def slice_evidence_ingest(body: SliceEvidenceIngestRequest):
         runtime_version=body.runtime_version,
         events=body.events,
         asset_versions=body.asset_versions,
-        aiplat_reachable=body.aiplat_reachable,
+        assumed_reachable=assumed,
     )
     if not result.get("ok"):
         raise HTTPException(status_code=400, detail=result)
@@ -76,6 +84,11 @@ async def slice_evidence_ingest(body: SliceEvidenceIngestRequest):
 async def slice_evidence_report(body: SliceEvidenceReportRequest):
     from core.api.core_facade import build_slice_diagnosis_report
 
+    assumed = (
+        body.aiplat_reachable
+        if body.aiplat_reachable is not None
+        else body.assumed_reachable
+    )
     result = build_slice_diagnosis_report(
         scenario_id=body.scenario_id,
         ingest_id=body.ingest_id,
@@ -84,7 +97,7 @@ async def slice_evidence_report(body: SliceEvidenceReportRequest):
         runtime_version=body.runtime_version,
         events=body.events,
         asset_versions=body.asset_versions,
-        aiplat_reachable=body.aiplat_reachable,
+        assumed_reachable=assumed,
     )
     if not result.get("ok"):
         raise HTTPException(status_code=400, detail=result)
@@ -111,7 +124,8 @@ class SliceOfflineEvalRequest(BaseModel):
 class SliceEvidenceJsonlIngestRequest(BaseModel):
     path: str = Field(..., min_length=1)
     scenario_id: str = ""
-    aiplat_reachable: bool = True
+    assumed_reachable: bool = True
+    aiplat_reachable: Optional[bool] = None  # legacy alias
 
 
 @router.post("/offline/evaluate", response_model=FdeItemResponse)
@@ -132,10 +146,15 @@ async def slice_evidence_ingest_jsonl(body: SliceEvidenceJsonlIngestRequest):
     """MB-05: ingest Pi extension emit JSONL into evidence store."""
     from core.api.core_facade import ingest_slice_evidence_from_jsonl
 
+    assumed = (
+        body.aiplat_reachable
+        if body.aiplat_reachable is not None
+        else body.assumed_reachable
+    )
     result = ingest_slice_evidence_from_jsonl(
         path=body.path,
         scenario_id=body.scenario_id,
-        aiplat_reachable=body.aiplat_reachable,
+        assumed_reachable=assumed,
     )
     if not result.get("ok"):
         raise HTTPException(status_code=400, detail=result)

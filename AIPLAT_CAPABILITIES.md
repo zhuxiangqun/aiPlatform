@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2361
+total_capabilities: 2362
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -599,6 +599,7 @@ scan_hash: 8f9548ec24f4
 | select_repair_candidate | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
 | infer_receipt_status | `core/harness/execution/completion_receipt.py` | ✅ | 自动同步 | 已合入 |
 | is_terminal_done_marker | `core/harness/execution/completion_receipt.py` | ✅ | 句首 DONE/FINAL/FINISHED 才终止循环 | 已合入 |
+| locale_markers | `core/harness/utils/locale_markers.py` | ✅ | 回执/done_verify 中英文标记（CJK 移出 harness/execution，§78b） | 已合入 |
 | strip_terminal_done_marker | `core/harness/execution/completion_receipt.py` | ✅ | 去掉句首 DONE/FINAL/FINISHED 前缀，供 facade reason finish-directly | 已合入 |
 | is_leading_token | `core/harness/execution/eval_verdict.py` | ✅ | 句首 token（含可选冒号）才算命中 | 已合入 |
 | is_approved_evaluation | `core/harness/execution/eval_verdict.py` | ✅ | tri_agent：句首 APPROVED，拒 NOT APPROVED/中段 APPROVED | 已合入 |
@@ -3258,7 +3259,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 329 | 1 | 330 |
+| Harness 执行引擎 | 330 | 1 | 331 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 375 | 9 | 384 |
 | RAG 检索 | 57 | 0 | 57 |
@@ -3303,7 +3304,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2351** | **10** | **2361** |
+| **总计** | **2352** | **10** | **2362** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

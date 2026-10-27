@@ -308,19 +308,6 @@ def _filter_capability(model, purpose: str, profile: dict, profile_data: dict = 
     return True
 
 
-def _filter_health(model) -> bool:
-    """健康过滤 + unavailable discard。本地模型文件不存在则直接丢弃。"""
-    # v3: discard models that don't have local files (e.g. deleted Ollama models)
-    if _derive_model_state(model) == "unavailable":
-        return False
-    try:
-        from .health_checker import HealthChecker
-        return HealthChecker.get_failure_rate(model.name) <= 0.5
-    except Exception:
-        logging.getLogger(__name__).warning("health filter failed closed", exc_info=True)
-        return False
-
-
 def _filter_latency(model) -> bool:
     """延迟过滤。取不到数据不放行。"""
     try:
@@ -1146,6 +1133,22 @@ class ModelManager:
             return 0.0
         return sum(1 for s in stats if not s) / len(stats)
 
+    def _filter_health(self, model) -> bool:
+        """健康过滤 + unavailable discard。本地模型文件不存在则直接丢弃。
+
+        Uses passive ModelManager._failure_rate (no samples → 0.0 = healthy).
+        On unexpected errors: fail-open so health filter cannot wipe the pool.
+        """
+        if _derive_model_state(model) == "unavailable":
+            return False
+        try:
+            return self._failure_rate(model.name) <= 0.5
+        except Exception:
+            logging.getLogger(__name__).warning(
+                "health filter failed open (keeping model)", exc_info=True
+            )
+            return True
+
     def get_default_model(self, purpose: str = "default") -> str:
         """Resolve purpose to model name via env vars (unique resolution point).
 
@@ -1424,9 +1427,9 @@ class ModelManager:
         # ── 降级链路（硬约束不变，逐级放宽软约束） ──
         soft_filters = [
             ("full",     lambda m: (_filter_capability(m, purpose, profile, profile_data)
-                                    and _filter_health(m)
+                                    and self._filter_health(m)
                                     and _filter_latency(m))),
-            ("-cap",     lambda m: (_filter_health(m)
+            ("-cap",     lambda m: (self._filter_health(m)
                                     and _filter_latency(m))),
             ("-cap-hlt", lambda m: _filter_latency(m)),
             ("none",     lambda m: True),
@@ -1445,7 +1448,7 @@ class ModelManager:
                     # P2-8: degraded levels (-cap-hlt / none) drop the health filter —
                     # log which candidates are health-poor so the relaxation is observable.
                     _health_bad = [
-                        m.name for m in passed if not _filter_health(m)
+                        m.name for m in passed if not self._filter_health(m)
                     ]
                     logging.getLogger(__name__).warning(
                         "Model selection degraded to level=%s for purpose=%s; "
@@ -1466,7 +1469,7 @@ class ModelManager:
                         if not _filter_capability(_m, purpose, profile, profile_data):
                             _near.append(f"{_m.name}:cap_fail")
                             continue
-                        if not _filter_health(_m):
+                        if not self._filter_health(_m):
                             _near.append(f"{_m.name}:health_fail")
                             continue
                         if not _filter_latency(_m):

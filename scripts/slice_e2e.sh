@@ -6,7 +6,8 @@
 #
 # - Clean AIPLAT_HOME under tmp/ (no ~/.aiplat, no reports/ writes)
 # - Live Gate3 Pi Thin process + JSONL evidence (HTTP stub allowed)
-# - --inject disconnect → diagnosis status must NOT be ok (fail-closed)
+# - --inject disconnect → diagnosis status must NOT be ok (fail-closed);
+#   never runs Phase E (no accepted under acceptance/)
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 RUNTIME="$REPO/packages/aiplat-pi-runtime"
@@ -20,7 +21,7 @@ while [[ $# -gt 0 ]]; do
     --scenario) SCENARIO="${2:-}"; shift 2 ;;
     --inject) INJECT="${2:-}"; shift 2 ;;
     --out) OUT_ROOT="${2:-}"; shift 2 ;;
-    -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
     *) echo "Unknown arg: $1" >&2; exit 2 ;;
   esac
 done
@@ -38,6 +39,7 @@ RUN_DIR="$OUT_ROOT/$STAMP${INJECT:+-$INJECT}"
 HOME_DIR="$RUN_DIR/aiplat-home"
 EVIDENCE_PATH="$RUN_DIR/evidence.jsonl"
 EXPORT_DIR="$RUN_DIR/export"
+SAMPLE_DIR="$RUN_DIR/lock-service-sample"
 mkdir -p "$RUN_DIR" "$HOME_DIR" "$EXPORT_DIR"
 rm -f "$EVIDENCE_PATH"
 
@@ -49,6 +51,7 @@ export AIPLAT_SLICE_SCENARIO_ID="fp-customer-lock-service-bundle-pi-diag-001"
 export AIPLAT_SLICE_BUNDLE_VERSION="slice-e2e-$STAMP"
 export AIPLAT_SLICE_RUNTIME_VERSION="pi-thin-slice-e2e"
 export GATE3_PI_THIN_EXPORT="$EXPORT_DIR"
+export GATE3_PI_THIN_SAMPLE="$SAMPLE_DIR"
 export GATE3_PI_THIN_ENV="${GATE3_PI_THIN_ENV:-$RUNTIME/scripts/gate3_pi_thin.env.example}"
 export SLICE_E2E_RUN_DIR="$RUN_DIR"
 
@@ -66,7 +69,9 @@ run_gate3() {
       AIPLAT_SLICE_BUNDLE_VERSION="$AIPLAT_SLICE_BUNDLE_VERSION" \
       AIPLAT_SLICE_RUNTIME_VERSION="$AIPLAT_SLICE_RUNTIME_VERSION" \
       GATE3_PI_THIN_EXPORT="$EXPORT_DIR" \
+      GATE3_PI_THIN_SAMPLE="$SAMPLE_DIR" \
       GATE3_PI_THIN_ENV="$GATE3_PI_THIN_ENV" \
+      GATE3_PI_THIN_LOCK_SAMPLE="${GATE3_PI_THIN_LOCK_SAMPLE:-0}" \
       bash scripts/gate3_pi_thin_pilot.sh
   )
 }
@@ -92,17 +97,32 @@ if [[ -z "$INJECT" ]]; then
 fi
 
 # --- disconnect inject ---
-# Need live JSONL first (Phase E materialize+B evidence); then re-diagnose with aiplat_reachable=0
+# Materialize lock-service + Phase B only (evidence JSONL). Do NOT run Phase E
+# (which writes acceptance_decision=accepted into the same HOME).
+# Diagnose on a clean AIPLAT_HOME with assumed_reachable=False.
 set +e
-run_gate3 e >"$RUN_DIR/gate3.log" 2>&1
+GATE3_PI_THIN_LOCK_SAMPLE=1 run_gate3 b >"$RUN_DIR/gate3.log" 2>&1
 set -e
 if [[ ! -s "$EVIDENCE_PATH" ]]; then
   echo "ERROR: no evidence for disconnect inject; see $RUN_DIR/gate3.log" >&2
   exit 7
 fi
+if ! grep -q 'http_chat' "$EVIDENCE_PATH"; then
+  echo "ERROR: disconnect evidence not live (no http_chat); see $RUN_DIR/gate3.log" >&2
+  exit 7
+fi
+if [[ -f "$EXPORT_DIR/agent_manifest.json" ]] && ! grep -q 'lock-service' "$EXPORT_DIR/agent_manifest.json"; then
+  echo "ERROR: disconnect path must use lock-service sample (got non-lock export)" >&2
+  exit 7
+fi
+
+# Fresh home for diagnosis — never reuse a home that Phase E may have tainted.
+DIAG_HOME="$RUN_DIR/aiplat-home-disconnect"
+mkdir -p "$DIAG_HOME"
+rm -rf "$DIAG_HOME/five_products_slice"
 
 PYTHONPATH="${REPO}/aiPlat-core${PYTHONPATH:+:$PYTHONPATH}" \
-AIPLAT_HOME="$HOME_DIR" \
+AIPLAT_HOME="$DIAG_HOME" \
 AIPLAT_SLICE_EVIDENCE_PATH="$EVIDENCE_PATH" \
 AIPLAT_SLICE_SCENARIO_ID="$AIPLAT_SLICE_SCENARIO_ID" \
 SLICE_E2E_RUN_DIR="$RUN_DIR" \
@@ -121,14 +141,17 @@ from core.apps.fde.service.slice_evidence import (
 path = os.environ["AIPLAT_SLICE_EVIDENCE_PATH"]
 sid = os.environ["AIPLAT_SLICE_SCENARIO_ID"]
 out = Path(os.environ["SLICE_E2E_RUN_DIR"])
+home = Path(os.environ["AIPLAT_HOME"])
 
-ing = ingest_slice_evidence_from_jsonl(path=path, scenario_id=sid, aiplat_reachable=False)
+ing = ingest_slice_evidence_from_jsonl(
+    path=path, scenario_id=sid, assumed_reachable=False
+)
 if not ing.get("ok"):
     print("ERROR: disconnect ingest failed", ing, file=sys.stderr)
     sys.exit(8)
 
 rep = build_slice_diagnosis_report(
-    scenario_id=sid, ingest_id=ing["ingest_id"], aiplat_reachable=False
+    scenario_id=sid, ingest_id=ing["ingest_id"], assumed_reachable=False
 )
 (out / "disconnect_report.json").write_text(
     json.dumps(rep, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -142,7 +165,7 @@ if status == "ok" or diag_ok:
 # Explicit non-acceptance decision (never write accepted)
 decision = {
     "decision": "rejected",
-    "reason": "aiplat_unreachable_disconnect_inject",
+    "reason": "assumed_unreachable_disconnect_inject",
     "report_id": rep.get("report_id"),
     "status": status,
 }
@@ -167,8 +190,46 @@ if gate.get("ok"):
 if gate.get("error") != "diagnosis_not_ok":
     print("ERROR: expected diagnosis_not_ok", gate, file=sys.stderr)
     sys.exit(12)
+
+# Hard assert: no acceptance_decision=accepted anywhere under the run dir
+accepted_hits = []
+for p in out.rglob("*.json"):
+    try:
+        text = p.read_text(encoding="utf-8")
+    except OSError:
+        continue
+    if '"accepted"' not in text and "'accepted'" not in text:
+        continue
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        continue
+    blob = json.dumps(data, ensure_ascii=False)
+    if '"acceptance_decision": "accepted"' in blob or '"decision": "accepted"' in blob:
+        accepted_hits.append(str(p.relative_to(out)))
+if accepted_hits:
+    print("ERROR: disconnect run must not contain accepted records:", accepted_hits, file=sys.stderr)
+    sys.exit(13)
+
+acc_roots = [
+    home / "five_products_slice" / "acceptance",
+    out / "aiplat-home" / "five_products_slice" / "acceptance",
+]
+for acc in acc_roots:
+    if not acc.is_dir():
+        continue
+    for p in acc.rglob("*.json"):
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if data.get("acceptance_decision") == "accepted" or data.get("decision") == "accepted":
+            print("ERROR: found accepted under", p, file=sys.stderr)
+            sys.exit(14)
+
 print(
-    "PASS: slice_e2e disconnect fail-closed status=%s diagnosis_ok=%s decision=rejected signoff_ok=False"
+    "PASS: slice_e2e disconnect fail-closed status=%s diagnosis_ok=%s decision=rejected "
+    "signoff_ok=False no_accepted=True"
     % (status, diag_ok)
 )
 print("REPORT_ID=%s" % rep.get("report_id"))

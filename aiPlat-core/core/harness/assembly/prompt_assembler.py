@@ -721,6 +721,11 @@ class MessageFormatter:
 
 
 
+
+# Canonical alias (diagnostics + tests import submodule directly)
+PromptAssembler = MessageFormatter
+
+
 # Small in-process cache for stable system prompts (Roadmap-1).
 
 _STABLE_PROMPT_CACHE: Dict[str, str] = {}

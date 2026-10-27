@@ -117,12 +117,20 @@ def ingest_slice_evidence(
     runtime_version: str = "",
     events: Optional[List[Dict[str, Any]]] = None,
     asset_versions: Optional[Dict[str, Any]] = None,
-    aiplat_reachable: bool = True,
+    assumed_reachable: bool = True,
+    # Legacy alias (pre-rename); prefer assumed_reachable.
+    aiplat_reachable: Optional[bool] = None,
 ) -> Dict[str, Any]:
-    """Persist one evidence batch. Returns ingest record id."""
+    """Persist one evidence batch. Returns ingest record id.
+
+    ``assumed_reachable`` is a caller assumption (not a live control-plane probe).
+    """
     sid = (scenario_id or "").strip()
     if not sid:
         return {"ok": False, "error": "scenario_id required"}
+
+    if aiplat_reachable is not None:
+        assumed_reachable = bool(aiplat_reachable)
 
     ingest_id = f"ing-{uuid.uuid4().hex[:12]}"
     rec = {
@@ -133,7 +141,9 @@ def ingest_slice_evidence(
         "runtime_version": (runtime_version or "").strip(),
         "events": list(events or []),
         "asset_versions": dict(asset_versions or {}),
-        "aiplat_reachable": bool(aiplat_reachable),
+        "assumed_reachable": bool(assumed_reachable),
+        # Keep legacy key for older readers until consumers migrate.
+        "aiplat_reachable": bool(assumed_reachable),
         "ingested_at": _now(),
     }
     storage = _put_record("ingest", ingest_id, sid, rec)
@@ -146,7 +156,7 @@ def _derive_status(
     bundle_version: str,
     events: List[Any],
     asset_versions: Dict[str, Any],
-    aiplat_reachable: bool,
+    assumed_reachable: bool,
 ) -> str:
     has_pi = bool(run_id) or bool(events)
     has_bundle = bool(bundle_version) or bool(asset_versions.get("bundle_version"))
@@ -154,7 +164,7 @@ def _derive_status(
         return "fail"
     if not has_pi or not has_bundle:
         return "unknown"
-    if not aiplat_reachable:
+    if not assumed_reachable:
         return "stale"
     return "ok"
 
@@ -168,12 +178,19 @@ def build_slice_diagnosis_report(
     runtime_version: str = "",
     events: Optional[List[Dict[str, Any]]] = None,
     asset_versions: Optional[Dict[str, Any]] = None,
-    aiplat_reachable: bool = True,
+    assumed_reachable: bool = True,
+    aiplat_reachable: Optional[bool] = None,
 ) -> Dict[str, Any]:
-    """Build a diagnosis report. Loads ingest_id when provided."""
+    """Build a diagnosis report. Loads ingest_id when provided.
+
+    ``assumed_reachable`` is not a live probe of the aiPlat control plane.
+    """
     sid = (scenario_id or "").strip()
     if not sid:
         return {"ok": False, "error": "scenario_id required"}
+
+    if aiplat_reachable is not None:
+        assumed_reachable = bool(aiplat_reachable)
 
     loaded: Dict[str, Any] = {}
     iid = (ingest_id or "").strip()
@@ -187,17 +204,20 @@ def build_slice_diagnosis_report(
     runtime_version = (runtime_version or loaded.get("runtime_version") or "").strip()
     events_l = list(events if events is not None else loaded.get("events") or [])
     assets = dict(asset_versions if asset_versions is not None else loaded.get("asset_versions") or {})
-    if iid and loaded and "aiplat_reachable" in loaded:
-        reachable = bool(loaded.get("aiplat_reachable"))
+    if iid and loaded and ("assumed_reachable" in loaded or "aiplat_reachable" in loaded):
+        if "assumed_reachable" in loaded:
+            reachable = bool(loaded.get("assumed_reachable"))
+        else:
+            reachable = bool(loaded.get("aiplat_reachable"))
     else:
-        reachable = bool(aiplat_reachable)
+        reachable = bool(assumed_reachable)
 
     status = _derive_status(
         run_id=run_id,
         bundle_version=bundle_version,
         events=events_l,
         asset_versions=assets,
-        aiplat_reachable=reachable,
+        assumed_reachable=reachable,
     )
     if status not in _VALID_STATUS:
         status = "unknown"
@@ -226,10 +246,15 @@ def build_slice_diagnosis_report(
         "freshness": freshness,
         "asset_versions": assets,
         "event_count": len(events_l),
+        "assumed_reachable": reachable,
+        "reachable_note": (
+            "assumed_reachable is a caller assumption, not a live aiPlat "
+            "control-plane probe (Pi host liveness ≠ control-plane reachability)."
+        ),
         "created_at": _now(),
         "rule": (
             "Missing Pi run/events or bundle/asset version → unknown/fail; "
-            "aiPlat unreachable with otherwise complete evidence → stale; "
+            "assumed_reachable=False with otherwise complete evidence → stale; "
             "never default to healthy/success."
         ),
         "diagnosis_ok": status == "ok",
@@ -256,12 +281,16 @@ def ingest_slice_evidence_from_jsonl(
     *,
     path: str,
     scenario_id: str = "",
-    aiplat_reachable: bool = True,
+    assumed_reachable: bool = True,
+    aiplat_reachable: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Ingest MB-05 Pi emit JSONL (one JSON object per line) into evidence store."""
     p = Path((path or "").strip())
     if not p.is_file():
         return {"ok": False, "error": f"jsonl not found: {p}"}
+
+    if aiplat_reachable is not None:
+        assumed_reachable = bool(aiplat_reachable)
 
     events: List[Dict[str, Any]] = []
     run_id = ""
@@ -305,7 +334,7 @@ def ingest_slice_evidence_from_jsonl(
         runtime_version=runtime_version or "pi-thin-emit",
         events=events,
         asset_versions=assets,
-        aiplat_reachable=aiplat_reachable,
+        assumed_reachable=assumed_reachable,
     )
 
 

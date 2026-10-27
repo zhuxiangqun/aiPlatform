@@ -81,7 +81,7 @@ def test_evidence_ok_with_pi_and_bundle(slice_home):
         bundle_version="bv-1",
         events=[{"type": "start"}],
         asset_versions={"bundle_version": "bv-1"},
-        aiplat_reachable=True,
+        assumed_reachable=True,
     )
     assert ing.get("ok")
     rep = build_slice_diagnosis_report(
@@ -90,6 +90,8 @@ def test_evidence_ok_with_pi_and_bundle(slice_home):
     )
     assert rep.get("status") == "ok"
     assert rep.get("diagnosis_ok") is True
+    assert rep.get("assumed_reachable") is True
+    assert "caller assumption" in (rep.get("reachable_note") or "")
 
 
 def test_evidence_stale_when_aiplat_unreachable(slice_home):
@@ -98,7 +100,7 @@ def test_evidence_stale_when_aiplat_unreachable(slice_home):
         run_id="run-1",
         bundle_version="bv-1",
         events=[{"type": "x"}],
-        aiplat_reachable=False,
+        assumed_reachable=False,
     )
     assert rep.get("status") == "stale"
 
@@ -129,7 +131,7 @@ def test_signoff_rejects_stale_diagnosis_report(slice_home):
         run_id="r-stale",
         bundle_version="b",
         events=[{}],
-        aiplat_reachable=False,
+        assumed_reachable=False,
     )
     assert rep.get("status") == "stale"
     gate = validate_slice_signoff_reports(
