@@ -96,9 +96,15 @@ jobs:
             TEST_DIR="tests"
             KARGS=(-m "not integration")
           fi
-          # Coverage xml still uploaded; 80% hard gate remains deferred until
-          # unit path is stable green (restore after nightly full suite is green).
-          python -m pytest "$TEST_DIR" "${KARGS[@]}" -v --tb=short -q --cov=. --cov-report=xml
+          # aiPlat-core unit tree is large: skip whole-tree --cov=. in PR (was
+          # hanging 30m+). Coverage artifact remains for infra/platform only.
+          # 80% hard gate still deferred.
+          if [ "${{ matrix.component }}" = "aiPlat-core" ]; then
+            python -m pytest "$TEST_DIR" "${KARGS[@]}" -v --tb=short -q \
+              --maxfail=30
+          else
+            python -m pytest "$TEST_DIR" "${KARGS[@]}" -v --tb=short -q --cov=. --cov-report=xml
+          fi
       - name: Run regression tests
         run: |
           if [ "${{ matrix.component }}" = "aiPlat-core" ]; then
@@ -110,6 +116,7 @@ jobs:
           fi
           python -m pytest "$TEST_DIR" -v --tb=short -q -m regression 2>/dev/null || echo "No regression tests defined (informational)"
       - name: Upload coverage
+        if: matrix.component != 'aiPlat-core'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.component }}
