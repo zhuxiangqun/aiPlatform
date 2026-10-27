@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-24T18:13:53+08:00",
+  "reviewed_at": "2026-10-27T16:15:51+09:00",
   "base_ref": "origin/main",
-  "merge_base": "58ac4280ec6bffff604cb8b5be503c39bc3f2244",
-  "diff_sha256": "cb920e7f619fc3de1e229b90d386a6081340bed38a8dab098492999a4e35c9a0",
-  "head_sha": "13ce2766a0331f3fe9dd1dd3368fa8552dac014d",
+  "merge_base": "dd267c70f5d69cc8244059018c4ba21545da3903",
+  "diff_sha256": "753da1521b10fe9734dbc476b20c3f8c9fb49c2a5f556a006dc1b9e3d742c009",
+  "head_sha": "338c43bf076097556b42adf27b53391b27bd931a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs-only cite #402 Phase D; backlog/CLOSEOUT/SCHEDULE."
+  "note": "Zero findings on merge diff: core.harness imports; lazy state_history; hermetic conftest; CI core/tests/unit + nightly + slice-e2e; validate_slice_signoff_reports rejects stale; live disconnect asserts signoff_ok=False. Local lock only."
 }
