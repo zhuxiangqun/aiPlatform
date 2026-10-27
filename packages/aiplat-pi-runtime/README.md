@@ -123,7 +123,7 @@ bash scripts/http_smoke.sh
 
 - **Optional** process separation from the aiPlat control plane — **not** a forced production default.
 - Independent env (`AIPLAT_ENTERPRISE` must stay `0`). Do **not** reuse control-plane secret files.
-- Compose: pilot / one-shot only — **long-running compose not authorized**.
+- Compose: one-shot (`compose.pi-thin-optional.yml`) **or** optional long-running (`compose.pi-thin-long-running.yml`) — **not** forced production default.
 
 ```bash
 cd packages/aiplat-pi-runtime
@@ -133,6 +133,9 @@ bash scripts/pi_thin_optional_pilot.sh                       # alias → gate3_p
 # optional one-shot container:
 #   docker compose -f compose.pi-thin-optional.yml up        # include → compose.gate3-pi-thin.yml
 #   docker compose -f compose.pi-thin-optional.yml down -v
+# optional long-running (ADR-09 compose 长驻 · BOUNDARY B):
+#   docker compose -f compose.pi-thin-long-running.yml up -d
+#   docker compose -f compose.pi-thin-long-running.yml down -v
 # Rollback (Bundle-first): reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md
 ```
 
@@ -141,6 +144,7 @@ bash scripts/pi_thin_optional_pilot.sh                       # alias → gate3_p
 | `pi_thin_optional_pilot.sh` | `gate3_pi_thin_pilot.sh` |
 | `pi_thin_optional.env.example` | `gate3_pi_thin.env.example` |
 | `compose.pi-thin-optional.yml` | `compose.gate3-pi-thin.yml` |
+| `compose.pi-thin-long-running.yml` | `compose.gate3-pi-thin.yml` + `restart: unless-stopped` |
 
 Historical Gate3 pilot spec: `reports/five-products/GATE3_PI_THIN_PILOT.md`.
 

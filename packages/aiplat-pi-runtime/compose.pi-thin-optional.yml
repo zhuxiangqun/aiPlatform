@@ -1,6 +1,6 @@
 # ADR-09 Pi Thin optional-deploy compose alias (name convergence).
 # Canonical implementation remains compose.gate3-pi-thin.yml (Gate3 G3-2).
-# NOT authorized as production long-running — one-shot / explicit up then down -v.
+# One-shot / explicit up then down -v. For optional long-running see compose.pi-thin-long-running.yml.
 #
 #   docker compose -f compose.pi-thin-optional.yml up
 #   docker compose -f compose.pi-thin-optional.yml down -v
