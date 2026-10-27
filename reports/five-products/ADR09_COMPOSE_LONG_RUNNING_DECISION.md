@@ -25,8 +25,8 @@
 
 ## 后续（另 PR）
 
-1. compose 长驻边界清单（哪些产品 profile / 端口 / 数据卷 / 回滚）  
-2. 分 PR 落地（BOUNDARY 序 A→B→C）；禁止一次全仓写满五套长驻  
+1. compose 长驻边界清单 → ✅ `ADR09_COMPOSE_LONG_RUNNING_BOUNDARY.md`（BOUNDARY A）  
+2. 分 PR 落地（BOUNDARY 序 B/C）；禁止一次全仓写满五套长驻  
 
 ## 签署
 
