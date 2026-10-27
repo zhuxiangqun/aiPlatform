@@ -20,6 +20,13 @@
 # 复制示例 env（可选独立控制面进程时使用；共部署可不拷）
 cp control_plane_optional.env.example .env.control-plane-optional
 
-# 生产默认仍为共置；独立进程健康探针见 BOUNDARY C
+# 生产默认仍为共置
 # 回滚：停独立进程 → 切回共部署；Identity 权威不变
+```
+
+## One-shot health（BOUNDARY C）
+
+```bash
+# 起薄 health → curl → 立刻停；非 compose 长驻；不另起 Identity/PolicyGate
+bash scripts/adr09_control_plane_optional_phase_health.sh
 ```
