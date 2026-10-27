@@ -383,7 +383,7 @@ class TestLocalOnlyFilter:
             gpu_vendor=None,
             cpu_cores=8,
         ))
-        monkeypatch.setattr(mm, "_filter_health", lambda m: True)
+        monkeypatch.setattr(mgr, "_filter_health", lambda m: True)
         monkeypatch.setattr(mm, "_filter_latency", lambda m: True)
         monkeypatch.setattr(mm, "_filter_capability", lambda *a, **k: True)
         monkeypatch.setattr(mm, "_score_model", lambda m, *a, **k: 100 if m.name == "deepseek-chat" else 10)
@@ -415,7 +415,7 @@ class TestLocalOnlyFilter:
             gpu_vendor=None,
             cpu_cores=8,
         ))
-        monkeypatch.setattr(mm, "_filter_health", lambda m: True)
+        monkeypatch.setattr(mgr, "_filter_health", lambda m: True)
         monkeypatch.setattr(mm, "_filter_latency", lambda m: True)
         monkeypatch.setattr(mm, "_filter_capability", lambda *a, **k: True)
 

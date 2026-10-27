@@ -98,6 +98,7 @@ jobs:
               core/tests/unit/test_harness/test_integration.py
               core/tests/tool_correctness/test_code_graph.py
               core/tests/integration/test_harness_integration.py
+              core/tests/integration/test_phaseR1_repo_diff_context_injection.py
             )
             python -m pytest "${COLLECT[@]}" --collect-only -q
             # Execute only suites green for this track (hermetic + code_graph + slice)

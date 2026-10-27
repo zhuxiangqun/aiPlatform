@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from core.harness.assembly.prompt_assembler import PromptAssembler
+from core.harness.assembly import PromptAssembler
 from core.harness.kernel.execution_context import ActiveWorkspaceContext, set_active_workspace_context, reset_active_workspace_context
 
 

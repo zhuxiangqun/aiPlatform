@@ -96,7 +96,8 @@ from core.apps.fde.service.slice_evidence import (
 
 path = os.environ["AIPLAT_SLICE_EVIDENCE_PATH"]
 sid = os.environ.get("AIPLAT_SLICE_SCENARIO_ID", "fp-customer-lock-service-bundle-pi-diag-001")
-ing = ingest_slice_evidence_from_jsonl(path=path, scenario_id=sid, aiplat_reachable=True)
+# assumed_reachable=True is a pilot assumption (not a live control-plane probe).
+ing = ingest_slice_evidence_from_jsonl(path=path, scenario_id=sid, assumed_reachable=True)
 if not ing.get("ok"):
     print("ERROR: ingest failed:", json.dumps(ing, ensure_ascii=False), file=sys.stderr)
     sys.exit(7)
@@ -115,22 +116,6 @@ print(
 print("REPORT_ID=%s" % rid)
 PY
 }
-
-if [[ "$PHASE" == "b" || "$PHASE" == "B" ]]; then
-  run_phase_b
-  exit $?
-fi
-
-if [[ "$PHASE" == "c" || "$PHASE" == "C" ]]; then
-  export AIPLAT_HOME="${GATE3_PI_THIN_AIPLAT_HOME:-/tmp/aiplat-gate3-phase-c-home}"
-  mkdir -p "$AIPLAT_HOME"
-  EVIDENCE_PATH="${AIPLAT_SLICE_EVIDENCE_PATH:-/tmp/aiplat-gate3-phase-c-evidence.jsonl}"
-  export AIPLAT_SLICE_EVIDENCE_PATH="$EVIDENCE_PATH"
-  run_phase_b
-  echo "Gate3 Phase C: ingest JSONL → diagnosis MVP ($EVIDENCE_PATH)"
-  run_phase_c_python
-  exit $?
-fi
 
 materialize_lock_service_sample() {
   # Copy sample-app → /tmp and stamp domain/scene (no deep tree committed to git).
@@ -161,8 +146,28 @@ if agent.is_file():
 print(root)
 PY
   export GATE3_PI_THIN_SAMPLE="$DST"
-  echo "Gate3 Phase E: materialized lock-service sample at $DST"
+  echo "Gate3: materialized lock-service sample at $DST"
 }
+
+if [[ "$PHASE" == "b" || "$PHASE" == "B" ]]; then
+  # Optional: same lock-service fixture as Phase E (for disconnect / evidence-only paths).
+  if [[ "${GATE3_PI_THIN_LOCK_SAMPLE:-0}" == "1" ]]; then
+    materialize_lock_service_sample
+  fi
+  run_phase_b
+  exit $?
+fi
+
+if [[ "$PHASE" == "c" || "$PHASE" == "C" ]]; then
+  export AIPLAT_HOME="${GATE3_PI_THIN_AIPLAT_HOME:-/tmp/aiplat-gate3-phase-c-home}"
+  mkdir -p "$AIPLAT_HOME"
+  EVIDENCE_PATH="${AIPLAT_SLICE_EVIDENCE_PATH:-/tmp/aiplat-gate3-phase-c-evidence.jsonl}"
+  export AIPLAT_SLICE_EVIDENCE_PATH="$EVIDENCE_PATH"
+  run_phase_b
+  echo "Gate3 Phase C: ingest JSONL → diagnosis MVP ($EVIDENCE_PATH)"
+  run_phase_c_python
+  exit $?
+fi
 
 if [[ "$PHASE" == "e" || "$PHASE" == "E" ]]; then
   materialize_lock_service_sample
