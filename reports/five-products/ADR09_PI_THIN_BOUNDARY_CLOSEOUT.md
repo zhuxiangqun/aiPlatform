@@ -26,4 +26,4 @@
 | FDE 单产品 + 边界 A–C | ✅ #448–#451 / `ADR09_FDE_BOUNDARY_CLOSEOUT.md`（长驻不含） |
 | 本体单产品 + 边界 A–C | ✅ #453–#456 / `ADR09_ONTOLOGY_BOUNDARY_CLOSEOUT.md`（长驻不含） |
 | 控制面单产品 + 边界 A–C | ✅ #458–#461 / `ADR09_CONTROL_PLANE_BOUNDARY_CLOSEOUT.md`（长驻不含） |
-| compose 长驻 | ❌ 见 `ADR09_REMAINING_PRODUCTS_DRAFT.md` |
+| compose 长驻 | ✅ #463–#466 / `ADR09_COMPOSE_LONG_RUNNING_CLOSEOUT.md`（含） |
