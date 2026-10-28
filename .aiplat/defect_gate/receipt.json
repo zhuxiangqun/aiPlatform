@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T08:45:00+09:00",
+  "reviewed_at": "2026-10-28T09:10:00+09:00",
   "base_ref": "origin/main",
-  "merge_base": "103b43aba052f70a0cce4a9ebb9e2ff3711d56f8",
-  "diff_sha256": "1fae0a48a5bad4d8f68efaf96b420509712604f131eef4b21f5823952b37b142",
-  "head_sha": "83f06bf09e4d3d58380afcdf36321e6e34e6c8de",
+  "merge_base": "4810faf947d939916c7d6b43297b476e8e56318e",
+  "diff_sha256": "1ebc4e9eabe0f1ff12ab41631ec15b2d0f445f76b050f05a1bd55268c2e64145",
+  "head_sha": "25d99df1cc1d9fd0f60e7157691c2d23b0d64a1d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Test-only max_steps 10→20 align; test_loop 18 green. Local lock only."
+  "note": "PlanningState dataclass restores attr access; none-deps via unicode escape. Local lock only."
 }
