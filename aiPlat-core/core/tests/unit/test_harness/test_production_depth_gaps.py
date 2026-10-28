@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import os
 from types import SimpleNamespace
 
@@ -55,7 +54,8 @@ def test_observability_contract_shape():
     assert elk["status"] == "out_of_contract"
 
 
-def test_get_exec_backend_prefer_docker(monkeypatch):
+@pytest.mark.asyncio
+async def test_get_exec_backend_prefer_docker(monkeypatch):
     from core.apps.exec_drivers import registry as reg
 
     monkeypatch.delenv("AIPLAT_EXEC_BACKEND", raising=False)
@@ -73,7 +73,7 @@ def test_get_exec_backend_prefer_docker(monkeypatch):
         execution_store = None
 
     monkeypatch.setattr(reg, "get_kernel_runtime", lambda: _RT())
-    backend = asyncio.get_event_loop().run_until_complete(reg.get_exec_backend())
+    backend = await reg.get_exec_backend()
     assert backend == "docker"
 
 
@@ -109,15 +109,17 @@ def test_build_production_depth_report_shape():
     assert ref["status"] == "pass"
 
 
-def test_diag_check_production_depth():
+@pytest.mark.asyncio
+async def test_diag_check_production_depth():
     from core.diagnostics.checks.production_depth import check_production_depth
 
-    out = asyncio.get_event_loop().run_until_complete(check_production_depth())
+    out = await check_production_depth()
     assert out["status"] in ("pass", "warn", "fail")
     assert out.get("href") == "/diagnostics/production-depth"
 
 
-def test_agent_event_ingress_dispatch():
+@pytest.mark.asyncio
+async def test_agent_event_ingress_dispatch():
     from core.harness.infrastructure.agent_event_ingress import AgentEventIngress
 
     called = {}
@@ -128,9 +130,7 @@ def test_agent_event_ingress_dispatch():
         return {"run_id": "run-test", "status": "running"}
 
     ingress = AgentEventIngress(enabled=True, run_agent=_fake_run)
-    asyncio.get_event_loop().run_until_complete(
-        ingress._dispatch({"agent_id": "demo", "message": "hello"}, source="test")
-    )
+    await ingress._dispatch({"agent_id": "demo", "message": "hello"}, source="test")
     assert called["agent_id"] == "demo"
     assert called["message"] == "hello"
     assert ingress._dispatched == 1

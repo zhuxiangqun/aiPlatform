@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 from datetime import datetime, timezone, timedelta
+
+import pytest
 
 from core.management.agent_manager import AgentInfo, AgentManager
 
@@ -54,7 +55,8 @@ def test_find_equivalent_by_display_name_and_fp():
     assert miss is None
 
 
-def test_dedupe_keeps_newest():
+@pytest.mark.asyncio
+async def test_dedupe_keeps_newest():
     mgr = AgentManager.__new__(AgentManager)
     mgr._agents = {}
     mgr._stats = {}
@@ -102,7 +104,7 @@ def test_dedupe_keeps_newest():
     # Avoid filesystem side effects in delete_agent
     mgr._resolve_agents_base_path = lambda: __import__("pathlib").Path("/tmp/aiplat-test-agents-none")  # type: ignore
 
-    result = asyncio.get_event_loop().run_until_complete(mgr.dedupe_agents())
+    result = await mgr.dedupe_agents()
     assert result["removed_count"] == 1
     assert result["removed"] == ["agent_a"]
     assert "agent_b" in mgr._agents
