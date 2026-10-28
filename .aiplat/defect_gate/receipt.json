@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T14:38:39+09:00",
+  "reviewed_at": "2026-10-28T14:42:55+09:00",
   "base_ref": "origin/main",
   "merge_base": "71d289afc0dc05998bbf524f932f8db64107fc71",
-  "diff_sha256": "e8c0fad4beb49334e5c1f95d7015f0f4948794cec0f7f8df98b30adb7d661ba1",
-  "head_sha": "acebfa8110608653976fb15d1c69c8e288ed4d20",
+  "diff_sha256": "ba2bcbebe3faf9f55627ab73295dce9733ef65cb52b09c184d2d7d8422072a80",
+  "head_sha": "fb4f78f06e46ff2bde9d68f54d05ac76e482e14f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-10 expand + hermetic model/api stubs. Local lock only."
+  "note": "Week-10 + asset_audit path scrub. Local lock only."
 }
