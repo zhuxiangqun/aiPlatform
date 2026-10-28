@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T09:45:00+09:00",
+  "reviewed_at": "2026-10-28T10:22:00+09:00",
   "base_ref": "origin/main",
-  "merge_base": "4810faf947d939916c7d6b43297b476e8e56318e",
-  "diff_sha256": "03dfdf07f33e15094ed25ae7f651b4cd55ab6635270787de99d57011fc658751",
-  "head_sha": "66fe3aa0397d2b703734cad65e689eab6ba15b0b",
+  "merge_base": "a67645e5efc5e5e78c4af2ac808e87ae9839de27",
+  "diff_sha256": "6c8e34c2e696913be807e372a8711afd652ea49089a6f85d3a32c9e9117dc107",
+  "head_sha": "946958a5a9e66af260dee46db411e16d3c1f3b3d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "PlanningState dataclass + HarnessIntegration facade restore; start() bg-task. Local lock only."
+  "note": "duration_ms tz harden + week-5 suites; 353 local. Local lock only."
 }
