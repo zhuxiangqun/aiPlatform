@@ -145,13 +145,15 @@ Already green in PR (#468/#469):
 - `unit/test_skill_routing_triggers.py` + `test_skill_invocation_mode.py` (13)
 
 
-**Week 12 (+):** (CI expand only — already green, 495 passed / ~33s; execute list needs `\` continuations)
+**Week 12 (+):** (CI expand only — green after dropping CI-env deps; ~470 local; `\` continuations fixed)
 
 - 69 harness/unit singles: factory/openworker/org metrics/os_sandbox, gates,
   run_state/*, team_*, skill_*, pipeline_engine p0/p1b/eval, team_planner,
   physical_merge_gates, stdio_kernel, writing_profile, …
 - Skipped reds: production_depth_gaps / stage_reflection / true_test_runtime /
-  l2_import_context / llm_syscall_store / model_injection_updates_loop / output_style
+  l2_import_context / llm_syscall_store / model_injection_updates_loop / output_style /
+  media_skill_handlers_vocab (CI no ffmpeg) / stage_runner_preferred_language (CI no model) /
+  team_wave4 (push dry-run env)
 
 **Not yet (still red or partial):**
 

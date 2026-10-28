@@ -190,7 +190,6 @@ jobs:
               core/tests/unit/test_harness/test_import_claude_sessions.py
               core/tests/unit/test_harness/test_llm_message_guard.py
               core/tests/unit/test_harness/test_llm_profile_deep_merge.py
-              core/tests/unit/test_harness/test_media_skill_handlers_vocab.py
               core/tests/unit/test_harness/test_meta_tool.py
               core/tests/unit/test_harness/test_model_fingerprint_logic.py
               core/tests/unit/test_harness/test_novel_experience_bridge.py
@@ -227,7 +226,6 @@ jobs:
               core/tests/unit/test_harness/test_skills_desc_budget.py
               core/tests/unit/test_harness/test_spawn_policy.py
               core/tests/unit/test_harness/test_stage_outcome_samples.py
-              core/tests/unit/test_harness/test_stage_runner_preferred_language.py
               core/tests/unit/test_harness/test_stdio_kernel.py
               core/tests/unit/test_harness/test_subagent_discipline.py
               core/tests/unit/test_harness/test_tag_assertions.py
@@ -236,7 +234,6 @@ jobs:
               core/tests/unit/test_harness/test_team_friction.py
               core/tests/unit/test_harness/test_team_harness.py
               core/tests/unit/test_harness/test_team_wave3.py
-              core/tests/unit/test_harness/test_team_wave4.py
               core/tests/unit/test_harness/test_testability_gate.py
               core/tests/unit/test_harness/test_tools_desc_budget.py
               core/tests/unit/test_harness/test_video_summarizer.py
@@ -353,7 +350,6 @@ jobs:
               core/tests/unit/test_harness/test_import_claude_sessions.py \
               core/tests/unit/test_harness/test_llm_message_guard.py \
               core/tests/unit/test_harness/test_llm_profile_deep_merge.py \
-              core/tests/unit/test_harness/test_media_skill_handlers_vocab.py \
               core/tests/unit/test_harness/test_meta_tool.py \
               core/tests/unit/test_harness/test_model_fingerprint_logic.py \
               core/tests/unit/test_harness/test_novel_experience_bridge.py \
@@ -390,7 +386,6 @@ jobs:
               core/tests/unit/test_harness/test_skills_desc_budget.py \
               core/tests/unit/test_harness/test_spawn_policy.py \
               core/tests/unit/test_harness/test_stage_outcome_samples.py \
-              core/tests/unit/test_harness/test_stage_runner_preferred_language.py \
               core/tests/unit/test_harness/test_stdio_kernel.py \
               core/tests/unit/test_harness/test_subagent_discipline.py \
               core/tests/unit/test_harness/test_tag_assertions.py \
@@ -399,7 +394,6 @@ jobs:
               core/tests/unit/test_harness/test_team_friction.py \
               core/tests/unit/test_harness/test_team_harness.py \
               core/tests/unit/test_harness/test_team_wave3.py \
-              core/tests/unit/test_harness/test_team_wave4.py \
               core/tests/unit/test_harness/test_testability_gate.py \
               core/tests/unit/test_harness/test_tools_desc_budget.py \
               core/tests/unit/test_harness/test_video_summarizer.py \
