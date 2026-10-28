@@ -147,6 +147,15 @@ async def test_workflow_structure_audit_detects_cycle_and_missing_agent(monkeypa
     plat = str(root / "aiPlat-platform")
     if plat not in sys.path:
         sys.path.insert(0, plat)
+    # Drop a polluted `api` that may point at core.api (e.g. core/ on PYTHONPATH).
+    for key in list(sys.modules):
+        if key == "api" or key.startswith("api."):
+            mod = sys.modules.get(key)
+            f = getattr(mod, "__file__", "") or ""
+            if "/aiPlat-core/" in f.replace("\\", "/") and "/aiPlat-platform/" not in f.replace(
+                "\\", "/"
+            ):
+                del sys.modules[key]
 
     from api.routers import workflows as wf_mod
 

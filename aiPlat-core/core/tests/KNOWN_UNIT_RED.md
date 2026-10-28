@@ -104,14 +104,14 @@ Already green in PR (#468/#469):
 
 **Week 10 (+):** (CI expand only — already green, 187 passed / ~12s)
 
-- `unit/test_autosmoke_dedup_and_callback.py` (1)
+- `unit/test_autosmoke_dedup_and_callback.py` (1) — stub `_default_agent_model` (CI catalog empty)
 - `unit/test_governance_preview_permission_details.py` (1)
 - `unit/test_harness/test_auto_done_finalize.py` (11)
 - `unit/test_harness/test_backpressure_protocol.py` (5)
 - `unit/test_harness/test_canary_escalation.py` + `test_canary_recommendation.py` (8)
 - `unit/test_harness/test_cc_hooks_bridge.py` (16)
 - `unit/test_harness/test_code_review_gold.py` (8)
-- `unit/test_harness/test_coding_deliverable_veto.py` (25)
+- `unit/test_harness/test_coding_deliverable_veto.py` (25) — hermetic `best_model_for_purpose`
 - `unit/test_harness/test_coding_intensity.py` + `test_coding_stage_defaults.py` (28)
 - `unit/test_harness/test_context_*` (compaction / engine / shaping) (7)
 - `unit/test_harness/test_coverage_gate.py` (2)

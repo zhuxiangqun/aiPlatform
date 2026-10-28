@@ -44,6 +44,12 @@ async def test_autosmoke_dedup_and_callback(monkeypatch):
     async def on_complete(run: dict):
         calls["completed"] += 1
 
+    # CI runners often have no loadable local model catalog.
+    monkeypatch.setattr(
+        "core.harness.smoke.autoscheduler._default_agent_model",
+        lambda: "test-model",
+    )
+
     r1 = await enqueue_autosmoke(execution_store=store, job_scheduler=sched, resource_type="agent", resource_id="a1", on_complete=on_complete)
     assert r1["enqueued"] is True
 
