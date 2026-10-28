@@ -165,6 +165,16 @@ Already green in PR (#468/#469):
 - policy_approval_integration, rl_trainer
 - Skipped slow (~100s) config_registry / permissions_catalog / routing_explain
 
+
+**Week 14 (+):** (CI expand only — 120 passed local batch / ~5m)
+
+- routing funnel/metrics/replay APIs + skill conflicts/metrics/spec/lint_scan/stable_schema
+- run_contract_ok, semi_auto_agents, skill_config/fix_proposals/lint_*, skillopt_*,
+  skills_guard(+wiring), smoke_e2e_dispatch, tool_drift/search, value_calculator
+- Still red (omit): sft_rl_integration / trend_detector / v27_modules
+- Still skip slow singles: config_registry_* / permissions_catalog / routing_explain /
+  apply_lint_fix_workspace / coding_policy_profile_injection
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /

@@ -255,6 +255,30 @@ jobs:
               core/tests/unit/test_lint_engine_skills_script.py
               core/tests/unit/test_policy_approval_integration.py
               core/tests/unit/test_rl_trainer.py
+              core/tests/unit/test_routing_funnel_api.py
+              core/tests/unit/test_routing_funnel_explain_fields.py
+              core/tests/unit/test_routing_metric_tags_api.py
+              core/tests/unit/test_routing_metrics_api.py
+              core/tests/unit/test_routing_replay_api.py
+              core/tests/unit/test_run_contract_ok_status_consistency.py
+              core/tests/unit/test_semi_auto_agents.py
+              core/tests/unit/test_skill_config.py
+              core/tests/unit/test_skill_conflicts_api.py
+              core/tests/unit/test_skill_fix_proposals.py
+              core/tests/unit/test_skill_lint_alert_contract.py
+              core/tests/unit/test_skill_lint_routing_fix.py
+              core/tests/unit/test_skill_lint_scan_job_kind.py
+              core/tests/unit/test_skill_metrics_api.py
+              core/tests/unit/test_skill_spec_schema_registry.py
+              core/tests/unit/test_skillopt_features.py
+              core/tests/unit/test_skillopt_production.py
+              core/tests/unit/test_skills_guard.py
+              core/tests/unit/test_skills_guard_wiring.py
+              core/tests/unit/test_smoke_e2e_dispatch.py
+              core/tests/unit/test_stable_schema_rollback_requires_approval.py
+              core/tests/unit/test_tool_drift_detector.py
+              core/tests/unit/test_tool_search_tool.py
+              core/tests/unit/test_value_calculator.py
               core/tests/tool_correctness/test_code_graph.py
               core/tests/integration/test_harness_integration.py
               core/tests/integration/test_phaseR1_repo_diff_context_injection.py
@@ -429,6 +453,30 @@ jobs:
               core/tests/unit/test_lint_engine_skills_script.py \
               core/tests/unit/test_policy_approval_integration.py \
               core/tests/unit/test_rl_trainer.py \
+              core/tests/unit/test_routing_funnel_api.py \
+              core/tests/unit/test_routing_funnel_explain_fields.py \
+              core/tests/unit/test_routing_metric_tags_api.py \
+              core/tests/unit/test_routing_metrics_api.py \
+              core/tests/unit/test_routing_replay_api.py \
+              core/tests/unit/test_run_contract_ok_status_consistency.py \
+              core/tests/unit/test_semi_auto_agents.py \
+              core/tests/unit/test_skill_config.py \
+              core/tests/unit/test_skill_conflicts_api.py \
+              core/tests/unit/test_skill_fix_proposals.py \
+              core/tests/unit/test_skill_lint_alert_contract.py \
+              core/tests/unit/test_skill_lint_routing_fix.py \
+              core/tests/unit/test_skill_lint_scan_job_kind.py \
+              core/tests/unit/test_skill_metrics_api.py \
+              core/tests/unit/test_skill_spec_schema_registry.py \
+              core/tests/unit/test_skillopt_features.py \
+              core/tests/unit/test_skillopt_production.py \
+              core/tests/unit/test_skills_guard.py \
+              core/tests/unit/test_skills_guard_wiring.py \
+              core/tests/unit/test_smoke_e2e_dispatch.py \
+              core/tests/unit/test_stable_schema_rollback_requires_approval.py \
+              core/tests/unit/test_tool_drift_detector.py \
+              core/tests/unit/test_tool_search_tool.py \
+              core/tests/unit/test_value_calculator.py \
               core/tests/tool_correctness/test_code_graph.py \
               core/tests/apps/fde/test_slice_five_products.py \
               core/tests/unit/test_agents \
