@@ -27,7 +27,7 @@ Decomposition strategies:
 
 
 
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, Optional
 
 from dataclasses import dataclass, field
 
@@ -189,9 +189,10 @@ class PlanningConfig:
 
 
 
-class PlanningState(TypedDict, total=False):
+@dataclass
+class PlanningState:
 
-    """Planning pattern state.
+    """Planning pattern state (dataclass: nodes use attribute access).
 
     
 
@@ -215,21 +216,21 @@ class PlanningState(TypedDict, total=False):
 
     """
 
-    task: str
+    task: str = ""
 
-    subtasks: List[SubTask]
+    subtasks: List[SubTask] = field(default_factory=list)
 
-    completed_ids: set
+    completed_ids: set = field(default_factory=set)
 
-    failed_ids: set
+    failed_ids: set = field(default_factory=set)
 
-    current_phase: str
+    current_phase: str = "decompose"
 
-    results: Dict[str, str]
+    results: Dict[str, str] = field(default_factory=dict)
 
-    final_result: Any
+    final_result: Any = None
 
-    context: Dict[str, Any]
+    context: Dict[str, Any] = field(default_factory=dict)
 
 
 
@@ -507,9 +508,14 @@ Requirements:
 
                     dep_str = dep_str.replace("[depends_on:", "").replace("]", "").strip()
 
-                    if dep_str and dep_str != "none":
-
-                        dependencies = [d.strip() for d in dep_str.split(",")]
+                    # Prompt examples use "none"; CJK "none" token via escape (engine no CJK).
+                    _none = {"", "none", "n/a", "-", "null", "none.", "\u65e0"}
+                    if dep_str and dep_str.lower() not in _none:
+                        dependencies = [
+                            d.strip()
+                            for d in dep_str.split(",")
+                            if d.strip() and d.strip().lower() not in _none
+                        ]
 
             
 

@@ -113,6 +113,7 @@ jobs:
             python -m pytest -v --tb=short -q \
               core/tests/unit/test_harness/test_observability.py \
               core/tests/unit/test_harness/test_execution/test_loop.py \
+              core/tests/unit/test_harness/test_graphs/test_planning.py \
               core/tests/tool_correctness/test_code_graph.py \
               core/tests/apps/fde/test_slice_five_products.py \
               core/tests/unit/test_agents \

@@ -50,9 +50,16 @@ Already green in PR (#468/#469):
 - `unit/test_harness/test_execution/test_loop.py` (18 passed) — stale
   `max_steps` default assertion (10→20) aligned with `LoopConfig`.
 
+**Week 4 (+):**
+
+- `unit/test_harness/test_graphs/test_planning.py` (22 passed) —
+  `PlanningState` TypedDict→dataclass (matches attribute access); parse
+  `depends_on: 无` as empty deps.
+
 **Not yet (still red or partial):**
 
-- `test_harness/test_integration.py` / planning graphs — API drift cluster
+- `test_harness/test_integration.py` — HarnessIntegration API drift
+  (`config`/`monitoring`/`reset`/`start`/…)
 
 ## Process
 
