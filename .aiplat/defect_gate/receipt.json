@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-29T00:25:43+09:00",
+  "reviewed_at": "2026-10-29T01:25:36+09:00",
   "base_ref": "origin/main",
-  "merge_base": "bb8346b7affd7124ddb333f39929c60e32709cc6",
-  "diff_sha256": "9410bf56e024ad1f4025622580322b50a971f5043f03ca4c123c9c5c2102fbb0",
-  "head_sha": "180c0e61cc0155bc9da4d2856be32f1e14647aae",
+  "merge_base": "8b42f048554b5c326778cef370f4f94710f8ec7a",
+  "diff_sha256": "5cd62c3204469a5355743900f0fe077e7bf79d8afd56ef9849256228c20cef3e",
+  "head_sha": "65c92043a70262a4be643adc7decdaaccdc055a7",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-18 fork: catch best_model_for_purpose on CI. Local lock only."
+  "note": "Week-19 code_generation timeout:600 + unlock timeout metadata. Local lock only."
 }
