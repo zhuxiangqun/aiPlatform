@@ -24,11 +24,15 @@ class _DummyRegistry:
 
 
 def test_fork_mode_returns_clear_error_when_no_model(monkeypatch):
-    # Adapter resolution can fall back across providers/env; stub creation to fail
-    # so fork mode must return the clear "requires configured LLM" error.
-    def _boom(**_kwargs):
+    # Stub both purpose→model and adapter creation: CI without GPU/RAM can raise
+    # from best_model_for_purpose before create_selected_adapter is reached.
+    def _boom(*_args, **_kwargs):
         raise RuntimeError("no adapter in test")
 
+    monkeypatch.setattr(
+        "core.apps.skills.executor.best_model_for_purpose",
+        _boom,
+    )
     monkeypatch.setattr(
         "core.harness.utils.model_injection.create_selected_adapter",
         _boom,

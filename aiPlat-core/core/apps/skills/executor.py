@@ -451,14 +451,19 @@ class SkillExecutor:
                 from core.harness.interfaces import AgentConfig, AgentContext
 
                 # Prefer skill-injected model if available; otherwise use centralized resolution.
-                model_name = str((params or {}).get("model") or "").strip() or best_model_for_purpose("chat")
+                # Resolve name+adapter in one try: CI without GPU/RAM can raise from
+                # best_model_for_purpose before create_selected_adapter runs.
+                model_name = str((params or {}).get("model") or "").strip()
                 model = getattr(skill, "_model", None)
                 if model is None:
                     try:
+                        if not model_name:
+                            model_name = best_model_for_purpose("chat")
                         from core.harness.utils.model_injection import create_selected_adapter
                         model = create_selected_adapter(model_name=model_name)
                     except Exception:
                         model = None
+                        model_name = model_name or "unresolved"
 
                 if model is None:
                     return type(
