@@ -59,9 +59,17 @@ Already green in PR (#468/#469):
   HarnessIntegration facade methods mis-nested under KernelRuntime;
   `start()` schedules monitor loop as background task.
 
+**Week 5 (+):**
+
+- `unit/test_harness/test_feedback_loops.py` (19 passed / 10 skipped)
+- `unit/test_harness/test_coordination/` (22 passed)
+- `unit/test_harness/test_execution/test_langgraph_core.py` (21 passed) —
+  `ExecutionTrace.duration_ms` normalizes naive/aware datetimes.
+
 **Not yet (still red or partial):**
 
-- Remaining unit reds: see maxfail=40 snapshot above (hooks / apps / …)
+- Remaining unit reds: scattered (hooks / apps / adapter injection / …);
+  ~25 fail / 1013 pass on maxfail=25 sample after week-4 greens ignored.
 
 ## Process
 
