@@ -75,11 +75,15 @@ Already green in PR (#468/#469):
 - `unit/test_harness/test_convergence/` (1)
 - `unit/test_harness/test_diagnostics/` (11)
 
+**Week 7 (+):**
+
+- `unit/test_permissions/` (2 passed) — grant/revoke HTTP moved to
+  `platform/api/routers/permissions.py`; unit test targets PermissionManager.
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / adapter injection / …);
   ~25 fail / 1013 pass on maxfail=25 sample after week-4 greens ignored.
-- `unit/test_permissions/` — 1 fail / 1 pass (candidate after fix)
 
 ## Process
 
