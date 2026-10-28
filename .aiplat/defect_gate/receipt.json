@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T10:45:00+09:00",
+  "reviewed_at": "2026-10-28T11:00:00+09:00",
   "base_ref": "origin/main",
-  "merge_base": "08503b6b1bd5aa4a6e20793045650b6fce6f9442",
-  "diff_sha256": "4b265972a89886ad7a361ccb43f97eff0718ecdcb4cf023fa219afb382371635",
-  "head_sha": "3c3465a8b2a8f568a0d34a9910962ca95316f60d",
+  "merge_base": "c52e91d5fe0619df08f4cdf78dfdc759acbb324f",
+  "diff_sha256": "06caa376756d3be1bad779fde37a9ffcb660ae20876f310b6318f922d1c7d804",
+  "head_sha": "f162691ff6234b10ef491cab82d38474328ce11a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "CI-only week-6 expand; 394 local. Local lock only."
+  "note": "Permissions unit test retargeted to PermissionManager; 396 local. Local lock only."
 }

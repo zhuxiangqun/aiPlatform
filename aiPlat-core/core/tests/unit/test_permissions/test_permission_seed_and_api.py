@@ -1,5 +1,3 @@
-import asyncio
-
 import core.apps.tools.permission as perm_mod
 
 
@@ -27,21 +25,13 @@ def test_seed_default_permissions_grants_system_execute():
     assert pm.check_permission("u1", "calculator", perm_mod.Permission.EXECUTE) is False
 
 
-def test_permission_grant_and_revoke_endpoints():
-    _reset_perm_mgr()
-    from core import server as server_mod
-
-    out = asyncio.run(
-        server_mod.grant_permission(
-            {"user_id": "u1", "resource_id": "calculator", "permission": "execute", "granted_by": "admin"}
-        )
+def test_permission_grant_and_revoke_via_manager():
+    """HTTP grant/revoke live in platform/api/routers/permissions.py; they call this manager."""
+    pm = _reset_perm_mgr()
+    pm.grant_permission(
+        "u1", "calculator", perm_mod.Permission.EXECUTE, granted_by="admin"
     )
-    assert out["status"] == "granted"
-
-    pm = perm_mod.get_permission_manager()
     assert pm.check_permission("u1", "calculator", perm_mod.Permission.EXECUTE) is True
 
-    out2 = asyncio.run(server_mod.revoke_permission({"user_id": "u1", "resource_id": "calculator"}))
-    assert out2["status"] == "revoked"
+    pm.revoke_permission("u1", "calculator")
     assert pm.check_permission("u1", "calculator", perm_mod.Permission.EXECUTE) is False
-
