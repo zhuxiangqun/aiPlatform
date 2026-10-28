@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T17:46:43+09:00",
+  "reviewed_at": "2026-10-28T21:02:16+09:00",
   "base_ref": "origin/main",
   "merge_base": "87aa12d9eacf3862b5d7c5132c2700d7aeccc6a1",
-  "diff_sha256": "9811870ff010c3d37c50cfcb4bfe27e70fc57e5c08085f02abac64268e21afb2",
-  "head_sha": "4b48d308ef1d2886bb49bc49756ebbe7836c9a00",
+  "diff_sha256": "19fc05ebd4b3030075bab44dcca018c17e17051ea1b70ecfdb8db409a0764881",
+  "head_sha": "bd4d34bab9c2ae100f3d183fe2239fd47ad9c157",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-13 CI expand only (94 greens). Local lock only."
+  "note": "Week-13 drop event-loop flakes. Local lock only."
 }
