@@ -145,7 +145,7 @@ Already green in PR (#468/#469):
 - `unit/test_skill_routing_triggers.py` + `test_skill_invocation_mode.py` (13)
 
 
-**Week 12 (+):** (CI expand only — already green, 495 passed / ~33s)
+**Week 12 (+):** (CI expand only — already green, 495 passed / ~33s; execute list needs `\` continuations)
 
 - 69 harness/unit singles: factory/openworker/org metrics/os_sandbox, gates,
   run_state/*, team_*, skill_*, pipeline_engine p0/p1b/eval, team_planner,
