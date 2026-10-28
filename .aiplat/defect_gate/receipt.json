@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T21:50:21+09:00",
+  "reviewed_at": "2026-10-28T22:38:01+09:00",
   "base_ref": "origin/main",
-  "merge_base": "a3d293bbeb0cac93f16fdfa49b9395df620b5844",
-  "diff_sha256": "538a6b14b7dbcf49f3144e3ce602eac2d1f277c7b03fa884f2656945e9d352dc",
-  "head_sha": "557728636bfe376a11c20b55842fd2a5192b3805",
+  "merge_base": "4a63332338639ebe62b6a0a924b4bb357b825dab",
+  "diff_sha256": "4a4d19effd3d3a2457ec14c5584e2716d815be80ab317be11f32026ae95aa1f9",
+  "head_sha": "be598651c41f053fa659c4ccdbdc2ea9616af789",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-14 CI expand + env COMPONENT for 21k expr limit. Local lock only."
+  "note": "Week-15 CI expand knowledge/apps/DH greens. Local lock only. CI unlock is non-author GitHub Approve."
 }

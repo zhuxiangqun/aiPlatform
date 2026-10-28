@@ -283,6 +283,108 @@ jobs:
               core/tests/unit/test_tool_drift_detector.py
               core/tests/unit/test_tool_search_tool.py
               core/tests/unit/test_value_calculator.py
+              core/tests/unit/test_harness/test_execution/test_langgraph_resume.py
+              core/tests/unit/test_apply_lint_fix_workspace.py
+              core/tests/unit/test_coding_policy_profile_injection.py
+              core/tests/unit/test_config_registry_diff_api.py
+              core/tests/unit/test_config_registry_rollback_changeset.py
+              core/tests/unit/test_config_registry_status_api.py
+              core/tests/unit/test_permissions_catalog_api.py
+              core/tests/unit/test_routing_explain_api.py
+              core/tests/unit/test_harness/test_digital_human/test_consultant_knowledge.py
+              core/tests/unit/test_harness/test_digital_human/test_consultant_personal.py
+              core/tests/unit/test_harness/test_digital_human/test_consultant_reload.py
+              core/tests/unit/test_harness/test_digital_human/test_operational_handoff.py
+              core/tests/unit/test_harness/test_digital_human/test_platform_status_brief.py
+              core/tests/unit/test_harness/test_digital_human/test_trajectory_curated.py
+              core/tests/unit/test_harness/test_knowledge/test_action_audit_validate.py
+              core/tests/unit/test_harness/test_knowledge/test_action_ladder_gate.py
+              core/tests/unit/test_harness/test_knowledge/test_agent_autofill_sop_bind.py
+              core/tests/unit/test_harness/test_knowledge/test_business_event_bridge.py
+              core/tests/unit/test_harness/test_knowledge/test_counterfactual_perturb.py
+              core/tests/unit/test_harness/test_knowledge/test_customer_success.py
+              core/tests/unit/test_harness/test_knowledge/test_data_gov_p4.py
+              core/tests/unit/test_harness/test_knowledge/test_domain_axioms_load.py
+              core/tests/unit/test_harness/test_knowledge/test_executable_ontology_phase12.py
+              core/tests/unit/test_harness/test_knowledge/test_executable_ontology_phase_ae.py
+              core/tests/unit/test_harness/test_knowledge/test_fde_phase2_accept_order.py
+              core/tests/unit/test_harness/test_knowledge/test_fde_phase4_security_evolve.py
+              core/tests/unit/test_harness/test_knowledge/test_fde_phase5_domain_literals.py
+              core/tests/unit/test_harness/test_knowledge/test_fde_service_domain_assign.py
+              core/tests/unit/test_harness/test_knowledge/test_four_questions.py
+              core/tests/unit/test_harness/test_knowledge/test_governance_loop.py
+              core/tests/unit/test_harness/test_knowledge/test_graph_persist_path.py
+              core/tests/unit/test_harness/test_knowledge/test_graph_validate_no_false_pass.py
+              core/tests/unit/test_harness/test_knowledge/test_inference_suggestion_authority.py
+              core/tests/unit/test_harness/test_knowledge/test_it_ops_alert_lifecycle.py
+              core/tests/unit/test_harness/test_knowledge/test_json_change_diff.py
+              core/tests/unit/test_harness/test_knowledge/test_knowledge_audit_p2.py
+              core/tests/unit/test_harness/test_knowledge/test_lock_service_ontology_loop.py
+              core/tests/unit/test_harness/test_knowledge/test_ontology_case_learning.py
+              core/tests/unit/test_harness/test_knowledge/test_ontology_completeness_ocs.py
+              core/tests/unit/test_harness/test_knowledge/test_ontology_constraint_compiler.py
+              core/tests/unit/test_harness/test_knowledge/test_ontology_learning.py
+              core/tests/unit/test_harness/test_knowledge/test_ontology_remove_class_proposal.py
+              core/tests/unit/test_harness/test_knowledge/test_ontology_schema_suggestions.py
+              core/tests/unit/test_harness/test_knowledge/test_ontology_tier.py
+              core/tests/unit/test_harness/test_knowledge/test_ontology_yaml_gate.py
+              core/tests/unit/test_harness/test_knowledge/test_org_edge_rollback_e1.py
+              core/tests/unit/test_harness/test_knowledge/test_org_edge_rollback_e2.py
+              core/tests/unit/test_harness/test_knowledge/test_org_event_preview.py
+              core/tests/unit/test_harness/test_knowledge/test_org_gap_probe.py
+              core/tests/unit/test_harness/test_knowledge/test_org_h_wave_auto_pass.py
+              core/tests/unit/test_harness/test_knowledge/test_org_h_wave_evidence.py
+              core/tests/unit/test_harness/test_knowledge/test_org_h_wave_skill_draft.py
+              core/tests/unit/test_harness/test_knowledge/test_org_h_wave_value.py
+              core/tests/unit/test_harness/test_knowledge/test_org_joint_health.py
+              core/tests/unit/test_harness/test_knowledge/test_org_k_wave_phase_k1.py
+              core/tests/unit/test_harness/test_knowledge/test_org_k_wave_phase_k2.py
+              core/tests/unit/test_harness/test_knowledge/test_org_k_wave_phase_k3.py
+              core/tests/unit/test_harness/test_knowledge/test_org_k_wave_phase_k4.py
+              core/tests/unit/test_harness/test_knowledge/test_org_k_wave_phase_k5.py
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_fetch.py
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_phase3.py
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_phase4.py
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_phase_c1.py
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_phase_c15.py
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_phase_c2.py
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_phase_c3.py
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_phase_c4.py
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_phase_c5.py
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_runtime.py
+              core/tests/unit/test_harness/test_knowledge/test_org_rehearsal.py
+              core/tests/unit/test_harness/test_knowledge/test_org_signoff_prep.py
+              core/tests/unit/test_harness/test_knowledge/test_org_v_wave_access.py
+              core/tests/unit/test_harness/test_knowledge/test_org_v_wave_guard.py
+              core/tests/unit/test_harness/test_knowledge/test_org_v_wave_replay.py
+              core/tests/unit/test_harness/test_knowledge/test_org_v_wave_rollback.py
+              core/tests/unit/test_harness/test_knowledge/test_org_v_wave_signoff.py
+              core/tests/unit/test_harness/test_knowledge/test_retrieval_gate_and_graph.py
+              core/tests/unit/test_harness/test_knowledge/test_routed_retrieve.py
+              core/tests/unit/test_harness/test_knowledge/test_security_view.py
+              core/tests/unit/test_harness/test_knowledge/test_sirg_auditor.py
+              core/tests/unit/test_harness/test_knowledge/test_state_machine_simulate_action.py
+              core/tests/unit/test_harness/test_knowledge/test_usage_signal.py
+              core/tests/unit/test_harness/test_knowledge/test_web_result_quality.py
+              core/tests/unit/test_apps/test_agent_create_dialog_ready.py
+              core/tests/unit/test_apps/test_agent_eval.py
+              core/tests/unit/test_apps/test_agent_execution_examples.py
+              core/tests/unit/test_apps/test_agent_execution_examples_llm.py
+              core/tests/unit/test_apps/test_agent_id_slugify.py
+              core/tests/unit/test_apps/test_agent_permissions_derive.py
+              core/tests/unit/test_apps/test_boundary_hints.py
+              core/tests/unit/test_apps/test_create_dialog_extract_json.py
+              core/tests/unit/test_apps/test_materials_chat_consultant_live.py
+              core/tests/unit/test_apps/test_materials_chat_logging_import.py
+              core/tests/unit/test_apps/test_materials_delivery_gate.py
+              core/tests/unit/test_apps/test_param_smoke_examples.py
+              core/tests/unit/test_apps/test_requirement_analysis_execution_examples.py
+              core/tests/unit/test_apps/test_skill_boundary.py
+              core/tests/unit/test_apps/test_skill_execution_examples_llm.py
+              core/tests/unit/test_apps/test_tool_create_dialog_prompts.py
+              core/tests/unit/test_apps/test_tool_input_schema_parameters.py
+              core/tests/unit/test_apps/test_tool_lifecycle.py
+              core/tests/unit/test_apps/test_upload_create_clarify.py
               core/tests/tool_correctness/test_code_graph.py
               core/tests/integration/test_harness_integration.py
               core/tests/integration/test_phaseR1_repo_diff_context_injection.py
@@ -481,6 +583,108 @@ jobs:
               core/tests/unit/test_tool_drift_detector.py \
               core/tests/unit/test_tool_search_tool.py \
               core/tests/unit/test_value_calculator.py \
+              core/tests/unit/test_harness/test_execution/test_langgraph_resume.py \
+              core/tests/unit/test_apply_lint_fix_workspace.py \
+              core/tests/unit/test_coding_policy_profile_injection.py \
+              core/tests/unit/test_config_registry_diff_api.py \
+              core/tests/unit/test_config_registry_rollback_changeset.py \
+              core/tests/unit/test_config_registry_status_api.py \
+              core/tests/unit/test_permissions_catalog_api.py \
+              core/tests/unit/test_routing_explain_api.py \
+              core/tests/unit/test_harness/test_digital_human/test_consultant_knowledge.py \
+              core/tests/unit/test_harness/test_digital_human/test_consultant_personal.py \
+              core/tests/unit/test_harness/test_digital_human/test_consultant_reload.py \
+              core/tests/unit/test_harness/test_digital_human/test_operational_handoff.py \
+              core/tests/unit/test_harness/test_digital_human/test_platform_status_brief.py \
+              core/tests/unit/test_harness/test_digital_human/test_trajectory_curated.py \
+              core/tests/unit/test_harness/test_knowledge/test_action_audit_validate.py \
+              core/tests/unit/test_harness/test_knowledge/test_action_ladder_gate.py \
+              core/tests/unit/test_harness/test_knowledge/test_agent_autofill_sop_bind.py \
+              core/tests/unit/test_harness/test_knowledge/test_business_event_bridge.py \
+              core/tests/unit/test_harness/test_knowledge/test_counterfactual_perturb.py \
+              core/tests/unit/test_harness/test_knowledge/test_customer_success.py \
+              core/tests/unit/test_harness/test_knowledge/test_data_gov_p4.py \
+              core/tests/unit/test_harness/test_knowledge/test_domain_axioms_load.py \
+              core/tests/unit/test_harness/test_knowledge/test_executable_ontology_phase12.py \
+              core/tests/unit/test_harness/test_knowledge/test_executable_ontology_phase_ae.py \
+              core/tests/unit/test_harness/test_knowledge/test_fde_phase2_accept_order.py \
+              core/tests/unit/test_harness/test_knowledge/test_fde_phase4_security_evolve.py \
+              core/tests/unit/test_harness/test_knowledge/test_fde_phase5_domain_literals.py \
+              core/tests/unit/test_harness/test_knowledge/test_fde_service_domain_assign.py \
+              core/tests/unit/test_harness/test_knowledge/test_four_questions.py \
+              core/tests/unit/test_harness/test_knowledge/test_governance_loop.py \
+              core/tests/unit/test_harness/test_knowledge/test_graph_persist_path.py \
+              core/tests/unit/test_harness/test_knowledge/test_graph_validate_no_false_pass.py \
+              core/tests/unit/test_harness/test_knowledge/test_inference_suggestion_authority.py \
+              core/tests/unit/test_harness/test_knowledge/test_it_ops_alert_lifecycle.py \
+              core/tests/unit/test_harness/test_knowledge/test_json_change_diff.py \
+              core/tests/unit/test_harness/test_knowledge/test_knowledge_audit_p2.py \
+              core/tests/unit/test_harness/test_knowledge/test_lock_service_ontology_loop.py \
+              core/tests/unit/test_harness/test_knowledge/test_ontology_case_learning.py \
+              core/tests/unit/test_harness/test_knowledge/test_ontology_completeness_ocs.py \
+              core/tests/unit/test_harness/test_knowledge/test_ontology_constraint_compiler.py \
+              core/tests/unit/test_harness/test_knowledge/test_ontology_learning.py \
+              core/tests/unit/test_harness/test_knowledge/test_ontology_remove_class_proposal.py \
+              core/tests/unit/test_harness/test_knowledge/test_ontology_schema_suggestions.py \
+              core/tests/unit/test_harness/test_knowledge/test_ontology_tier.py \
+              core/tests/unit/test_harness/test_knowledge/test_ontology_yaml_gate.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_edge_rollback_e1.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_edge_rollback_e2.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_event_preview.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_gap_probe.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_h_wave_auto_pass.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_h_wave_evidence.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_h_wave_skill_draft.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_h_wave_value.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_joint_health.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_k_wave_phase_k1.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_k_wave_phase_k2.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_k_wave_phase_k3.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_k_wave_phase_k4.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_k_wave_phase_k5.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_fetch.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_phase3.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_phase4.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_phase_c1.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_phase_c15.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_phase_c2.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_phase_c3.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_phase_c4.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_phase_c5.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_l5_runtime.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_rehearsal.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_signoff_prep.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_v_wave_access.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_v_wave_guard.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_v_wave_replay.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_v_wave_rollback.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_v_wave_signoff.py \
+              core/tests/unit/test_harness/test_knowledge/test_retrieval_gate_and_graph.py \
+              core/tests/unit/test_harness/test_knowledge/test_routed_retrieve.py \
+              core/tests/unit/test_harness/test_knowledge/test_security_view.py \
+              core/tests/unit/test_harness/test_knowledge/test_sirg_auditor.py \
+              core/tests/unit/test_harness/test_knowledge/test_state_machine_simulate_action.py \
+              core/tests/unit/test_harness/test_knowledge/test_usage_signal.py \
+              core/tests/unit/test_harness/test_knowledge/test_web_result_quality.py \
+              core/tests/unit/test_apps/test_agent_create_dialog_ready.py \
+              core/tests/unit/test_apps/test_agent_eval.py \
+              core/tests/unit/test_apps/test_agent_execution_examples.py \
+              core/tests/unit/test_apps/test_agent_execution_examples_llm.py \
+              core/tests/unit/test_apps/test_agent_id_slugify.py \
+              core/tests/unit/test_apps/test_agent_permissions_derive.py \
+              core/tests/unit/test_apps/test_boundary_hints.py \
+              core/tests/unit/test_apps/test_create_dialog_extract_json.py \
+              core/tests/unit/test_apps/test_materials_chat_consultant_live.py \
+              core/tests/unit/test_apps/test_materials_chat_logging_import.py \
+              core/tests/unit/test_apps/test_materials_delivery_gate.py \
+              core/tests/unit/test_apps/test_param_smoke_examples.py \
+              core/tests/unit/test_apps/test_requirement_analysis_execution_examples.py \
+              core/tests/unit/test_apps/test_skill_boundary.py \
+              core/tests/unit/test_apps/test_skill_execution_examples_llm.py \
+              core/tests/unit/test_apps/test_tool_create_dialog_prompts.py \
+              core/tests/unit/test_apps/test_tool_input_schema_parameters.py \
+              core/tests/unit/test_apps/test_tool_lifecycle.py \
+              core/tests/unit/test_apps/test_upload_create_clarify.py \
               core/tests/tool_correctness/test_code_graph.py \
               core/tests/apps/fde/test_slice_five_products.py \
               core/tests/unit/test_agents \
