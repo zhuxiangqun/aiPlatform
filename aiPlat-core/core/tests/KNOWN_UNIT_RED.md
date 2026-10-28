@@ -86,9 +86,26 @@ Already green in PR (#468/#469):
 - `unit/test_gates/` (15 passed)
 - `unit/test_document_protocol.py` (46 passed) — category assert `text`→`txt`
 
+**Week 9 (+):** (CI expand only — already green, 180 passed / 1.4s)
+
+- `unit/test_approval_gate.py` (23)
+- `unit/test_error_translator.py` (39)
+- `unit/test_delegate_tool.py` (15)
+- `unit/test_file_checkpoint.py` (12)
+- `unit/test_conversation_summary.py` (12)
+- `unit/test_dynamic_router.py` + `test_dynamic_router_opt_in.py` (20) — default-model test hermetic (no live catalog)
+- `unit/test_architecture_profile.py` (11)
+- `unit/test_core_modules.py` + `test_core_module_deps.py` (4)
+- `unit/test_execution_modules.py` + `test_execution_snapshot_facade.py` (12)
+- `unit/test_data_recipes.py` (12)
+- `unit/test_claude_md_enforcement.py` + `test_claude_md_pre_reasoning_infer.py` (5)
+- `unit/test_guard_regression.py` + `test_graph_incremental_paths.py` (12)
+- `unit/test_harness/test_ontology_engine/` (3)
+
 **Not yet (still red or partial):**
 
-- Remaining unit reds: scattered (hooks / apps / skills / adapter injection / …);
+- Remaining unit reds: scattered (hooks / apps / skills / adapter injection /
+  `test_management` status drift / oversized AGENT.md / approval_expiry hang / …);
   ~25 fail / 1013 pass on maxfail=25 sample after week-4 greens ignored.
 
 ## Process
