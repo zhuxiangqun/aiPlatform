@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T09:10:00+09:00",
+  "reviewed_at": "2026-10-28T09:45:00+09:00",
   "base_ref": "origin/main",
   "merge_base": "4810faf947d939916c7d6b43297b476e8e56318e",
-  "diff_sha256": "1ebc4e9eabe0f1ff12ab41631ec15b2d0f445f76b050f05a1bd55268c2e64145",
-  "head_sha": "25d99df1cc1d9fd0f60e7157691c2d23b0d64a1d",
+  "diff_sha256": "03dfdf07f33e15094ed25ae7f651b4cd55ab6635270787de99d57011fc658751",
+  "head_sha": "66fe3aa0397d2b703734cad65e689eab6ba15b0b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "PlanningState dataclass restores attr access; none-deps via unicode escape. Local lock only."
+  "note": "PlanningState dataclass + HarnessIntegration facade restore; start() bg-task. Local lock only."
 }
