@@ -83,11 +83,12 @@ def test_runtime_guard_action_registered():
 
 
 def test_runtime_guard_kpi_stub():
+    # pending_decisions is wired; stub set is trace_anomalies / training
     bad = WorkbenchRuntimeGuard.check_kpi_not_stub(
-        {"pending_decisions": [], "signal_alerts": [{"x": 1}]}
+        {"trace_anomalies": [], "signal_alerts": [{"x": 1}]}
     )
     assert bad["ok"] is False
-    assert "pending_decisions" in bad["stub_keys"]
+    assert "trace_anomalies" in bad["stub_keys"]
     good = WorkbenchRuntimeGuard.check_kpi_not_stub({"signal_alerts": [{"x": 1}]})
     assert good["ok"] is True
 

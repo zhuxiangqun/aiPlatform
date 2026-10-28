@@ -49,7 +49,8 @@ async def test_confirm_route_enqueues_proposal_after_k1():
     assert out["signal_id"] == "sig-x"
     assert out["proposal_id"] == "prop_lock-service_test"
     assert out["wrote_live_yaml"] is False
-    assert out.get("graph_write", {}).get("created_entities") == ["e1"]
+    # Graph write uses entity names from extraction row (not opaque e1 ids)
+    assert out.get("graph_write", {}).get("created_entities") == ["张三"]
 
 
 def test_cross_domain_name_score_without_primary_keys():

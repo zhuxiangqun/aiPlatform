@@ -31,9 +31,17 @@ def test_sys_llm_generate_uses_execution_store_not_tenant_store():
 
 def test_sys_llm_generate_does_not_construct_model_manager():
     """Post-generate health ping must use the cached manager (Ollama re-scan hangs)."""
+    import ast
+
     src = (_CORE_ROOT / "core/harness/syscalls/llm.py").read_text(encoding="utf-8")
-    assert "ModelManager()" not in src
-    assert "_get_cached_model_manager" in src
+    # Ignore comments/docstrings that mention ``ModelManager()`` as a forbid note.
+    tree = ast.parse(src)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "ModelManager":
+            raise AssertionError("sys_llm_generate must not construct ModelManager()")
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "ModelManager":
+            raise AssertionError("sys_llm_generate must not construct ModelManager()")
+    assert "_record_cached_model_outcome" in src
 
 
 def test_tenant_store_has_no_syscall_event_method():

@@ -250,6 +250,14 @@ Already green in PR (#468/#469):
 - `test_test_executor_pytest_assemble` (6; `@pytest.mark.asyncio`)
 - `test_skill_installer` (5)
 
+**Week 23 (+):** (cheap expectation sync — 39 passed / flake ×2)
+
+- `test_llm_syscall_store` (3; AST-guard ModelManager + `_record_cached_model_outcome`)
+- `test_agent_status_canonical` (1; ready + runtime_state start/stop)
+- `test_voice_pipeline_fixes` (25; factory handoff CTA after LLM)
+- `test_factory_confirm_proposal` (2; entity name from extraction row)
+- `test_fde_phase1_audit` (8; stub KPI keys = trace_anomalies/training)
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /
