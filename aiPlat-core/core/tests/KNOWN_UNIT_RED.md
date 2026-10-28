@@ -242,6 +242,14 @@ Already green in PR (#468/#469):
 - Withdrawn after CI red: `media_skill_handlers_vocab` (ffmpeg_not_found on
   runners) / `team_wave4` (push dry-run flake under full COLLECT)
 
+**Week 22 (+):** (cheap expectation sync + asyncio — 46 passed / flake ×2)
+
+- `test_types` (21; KnowledgeType count 8→9 + WEB)
+- `test_security_review_phase_b` (10; stages 4→5 + hitl on report)
+- `test_skill_autofill_parse` (4; auto invocation_mode for trigger pad)
+- `test_test_executor_pytest_assemble` (6; `@pytest.mark.asyncio`)
+- `test_skill_installer` (5)
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /

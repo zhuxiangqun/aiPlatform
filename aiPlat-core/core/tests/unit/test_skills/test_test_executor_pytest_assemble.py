@@ -1,7 +1,7 @@
 """test_executor: pytest mode must assemble code from code_split input_artifacts."""
 from __future__ import annotations
 
-import asyncio
+import pytest
 
 from core.engine.skills.test_executor.handler import (
     _assemble_code_from_params,
@@ -67,10 +67,9 @@ def test_hydrate_sets_code_in_pytest_mode():
     assert "## FILE: backend/app/main.py" in str(out.get("code") or "")
 
 
-def test_pytest_mode_missing_code_does_not_document_check_approve():
-    result = asyncio.get_event_loop().run_until_complete(
-        _execute_body({"test_execution_mode": "pytest", "project": "demo"})
-    )
+@pytest.mark.asyncio
+async def test_pytest_mode_missing_code_does_not_document_check_approve():
+    result = await _execute_body({"test_execution_mode": "pytest", "project": "demo"})
     assert result.get("error") == "pytest_mode_missing_code"
     assert result.get("recommendation") == "NEEDS_FIX"
     assert (result.get("header") or {}).get("test_mode") == "pytest"

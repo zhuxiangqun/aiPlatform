@@ -104,6 +104,7 @@ def test_enrich_file_write_forces_executable_and_perms():
         ),
         "category": "general",
         "skill_kind": "rule",
+        "invocation_mode": "auto",
         "permissions": [],
         "trigger_conditions": [],
         "input_schema": {},

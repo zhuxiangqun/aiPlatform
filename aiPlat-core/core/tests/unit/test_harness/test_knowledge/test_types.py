@@ -38,10 +38,11 @@ class TestKnowledgeType:
         assert KnowledgeType.FACT.value == "fact"
         assert KnowledgeType.RELATION.value == "relation"
         assert KnowledgeType.METADATA.value == "metadata"
+        assert KnowledgeType.WEB.value == "web"
     
     def test_knowledge_type_count(self):
         """Test KnowledgeType has all expected types."""
-        assert len(KnowledgeType) == 8
+        assert len(KnowledgeType) == 9
 
 
 class TestKnowledgeSource:

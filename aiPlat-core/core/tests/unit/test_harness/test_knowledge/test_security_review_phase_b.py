@@ -18,20 +18,22 @@ def test_security_review_team_loads():
     tpl = load_team_template("security_review")
     assert tpl is not None
     assert tpl.name == "security_review"
-    assert len(tpl.stages) == 4
+    assert len(tpl.stages) == 5
     ids = [s.get("id") for s in tpl.stages]
     assert ids == [
         "security_plan",
         "security_trace",
         "security_critique",
         "security_report",
+        "security_evidence",
     ]
     for s in tpl.stages:
         assert s.get("allow_dynamic_spawn") is False
         assert s.get("skill_name")
         assert s.get("output_artifact")
     assert tpl.stages[0]["skill_name"] == "security_plan"
-    assert tpl.stages[-1].get("hitl") is True
+    report = next(s for s in tpl.stages if s.get("id") == "security_report")
+    assert report.get("hitl") is True
     assert tpl.stages[0].get("failure_strategy") == "fail_pipeline"
     for s in tpl.stages:
         assert s.get("execution_backend") == "llm"

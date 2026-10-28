@@ -436,6 +436,11 @@ jobs:
               core/tests/unit/test_harness/test_knowledge/test_clarify_dialog.py
               core/tests/unit/test_harness/test_knowledge/test_ontology_version_sidecar_layout.py
               core/tests/unit/test_apps/test_agent_bound_skill_approval.py
+              core/tests/unit/test_harness/test_knowledge/test_types.py
+              core/tests/unit/test_harness/test_knowledge/test_security_review_phase_b.py
+              core/tests/unit/test_apps/test_skill_autofill_parse.py
+              core/tests/unit/test_skills/test_test_executor_pytest_assemble.py
+              core/tests/unit/test_skills/test_skill_installer.py
               core/tests/tool_correctness/test_code_graph.py
               core/tests/integration/test_harness_integration.py
               core/tests/integration/test_phaseR1_repo_diff_context_injection.py
@@ -785,6 +790,11 @@ jobs:
               core/tests/unit/test_harness/test_knowledge/test_clarify_dialog.py \
               core/tests/unit/test_harness/test_knowledge/test_ontology_version_sidecar_layout.py \
               core/tests/unit/test_apps/test_agent_bound_skill_approval.py \
+              core/tests/unit/test_harness/test_knowledge/test_types.py \
+              core/tests/unit/test_harness/test_knowledge/test_security_review_phase_b.py \
+              core/tests/unit/test_apps/test_skill_autofill_parse.py \
+              core/tests/unit/test_skills/test_test_executor_pytest_assemble.py \
+              core/tests/unit/test_skills/test_skill_installer.py \
               core/tests/tool_correctness/test_code_graph.py \
               core/tests/apps/fde/test_slice_five_products.py \
               core/tests/unit/test_agents \
