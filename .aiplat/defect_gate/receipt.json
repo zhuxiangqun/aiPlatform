@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T23:40:25+09:00",
+  "reviewed_at": "2026-10-29T00:16:22+09:00",
   "base_ref": "origin/main",
-  "merge_base": "3091e0998c3bcfa729f68ce5a6e18f2a8ec3af3f",
-  "diff_sha256": "d5d41f46fcd674bde4f53b77e4e84c81be9d7f8ec132bc613286534a8f3d88c3",
-  "head_sha": "86cd6a64388f1f8ace5815f15a220186f6f26f89",
+  "merge_base": "bb8346b7affd7124ddb333f39929c60e32709cc6",
+  "diff_sha256": "797dcf2a19eedfb82acfb383136baeba6300fb2fb57443da9568d5c71380c9ab",
+  "head_sha": "f5b19ad4c5fbab56ec2ba8903adae59c31f2126b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-17 CI expand constitution. Local lock only."
+  "note": "Week-18 tool_correctness + fork model_name fix. Local lock only."
 }
