@@ -241,8 +241,6 @@ jobs:
               core/tests/unit/test_harness/test_wake_scheduler.py
               core/tests/unit/test_harness/test_workspace_coding_defaults.py
               core/tests/unit/test_harness/test_writing_profile.py
-              core/tests/unit/test_harness/test_production_depth_gaps.py
-              core/tests/unit/test_harness/test_stage_reflection.py
               core/tests/unit/test_builder_pipeline_e2e.py
               core/tests/unit/test_cross_role_e2e.py
               core/tests/unit/test_four_agent_e2e.py
@@ -417,8 +415,6 @@ jobs:
               core/tests/unit/test_harness/test_wake_scheduler.py \
               core/tests/unit/test_harness/test_workspace_coding_defaults.py \
               core/tests/unit/test_harness/test_writing_profile.py \
-              core/tests/unit/test_harness/test_production_depth_gaps.py \
-              core/tests/unit/test_harness/test_stage_reflection.py \
               core/tests/unit/test_builder_pipeline_e2e.py \
               core/tests/unit/test_cross_role_e2e.py \
               core/tests/unit/test_four_agent_e2e.py \

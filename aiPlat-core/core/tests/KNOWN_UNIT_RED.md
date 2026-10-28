@@ -156,9 +156,9 @@ Already green in PR (#468/#469):
   team_wave4 (push dry-run env)
 
 
-**Week 13 (+):** (CI expand only — already green, 94 passed / ~2s)
+**Week 13 (+):** (CI expand only — 83 local after dropping event-loop-order flakes)
 
-- `test_production_depth_gaps` + `test_stage_reflection` (re-probe green)
+- dropped `production_depth_gaps` / `stage_reflection` (event-loop order flake on CI)
 - builder/cross_role/four_agent e2e, immune_memory, infra_llm_adapter_response_format
 - job_scheduler_delivery_events, kb_qa_retrieve, knowledge_db_utils/retriever
 - lint_change_contract / conflict_pair / engine_skills_script
