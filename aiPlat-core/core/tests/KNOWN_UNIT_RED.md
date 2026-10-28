@@ -175,6 +175,18 @@ Already green in PR (#468/#469):
 - Still skip slow singles: config_registry_* / permissions_catalog / routing_explain /
   apply_lint_fix_workspace / coding_policy_profile_injection
 
+
+**Week 15 (+):** (CI expand only — 450 passed local batch / ~4m after dropping order flakes)
+
+- langgraph_resume + previously-skipped ~100s API singles (apply_lint / coding_policy /
+  config_registry_* / permissions_catalog / routing_explain)
+- digital_human greens (omit voice_pipeline_fixes)
+- knowledge greens (~70 files; omit factory_confirm / fde_phase1* / phase3 / org_* reds /
+  security_review_phase_b / types; drop batch flakes clarify_dialog /
+  extraction_parse_filter / ontology_version_sidecar_layout)
+- apps greens (~20 files; omit agent_bound_skill_approval / code_generation_input /
+  execution_quality_review / skill_autofill_parse; drop batch flake agent_dedupe)
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /
