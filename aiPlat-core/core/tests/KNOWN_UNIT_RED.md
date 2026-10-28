@@ -203,6 +203,15 @@ Already green in PR (#468/#469):
 - Integration probe deferred (many hang / no hermetic summary under 60s)
 - Remaining unit surface mostly known reds / 1-fail cheap-fix candidates
 
+
+**Week 18 (+):** (CI expand + cheap fix — 68 passed / 3 skipped / ~27s)
+
+- tool_correctness greens: batch / capability_graph / capability_manifest / graph /
+  guard_ast / guard_frontend / method_verify (omit eval red; arch_guard/caller_verify/
+  phase_check/tool_invariants hang or incomplete under timeout)
+- Fix fork-mode `model_name` NameError in `apps/skills/executor.py`; unlock
+  `test_executor_fork` (test stubs adapter creation)
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /

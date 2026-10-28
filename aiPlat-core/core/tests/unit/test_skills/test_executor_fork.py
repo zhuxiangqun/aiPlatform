@@ -24,10 +24,19 @@ class _DummyRegistry:
 
 
 def test_fork_mode_returns_clear_error_when_no_model(monkeypatch):
-    # Force create_adapter to fail via invalid provider so fork mode must return a clear error.
-    monkeypatch.setenv("LLM_PROVIDER", "unknown-provider")
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    # Stub both purpose→model and adapter creation: CI without GPU/RAM can raise
+    # from best_model_for_purpose before create_selected_adapter is reached.
+    def _boom(*_args, **_kwargs):
+        raise RuntimeError("no adapter in test")
+
+    monkeypatch.setattr(
+        "core.apps.skills.executor.best_model_for_purpose",
+        _boom,
+    )
+    monkeypatch.setattr(
+        "core.harness.utils.model_injection.create_selected_adapter",
+        _boom,
+    )
 
     executor = SkillExecutor(registry=_DummyRegistry())
     result = asyncio.run(
