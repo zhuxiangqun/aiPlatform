@@ -45,9 +45,13 @@ Already green in PR (#468/#469):
 - `unit/test_api/` (100 passed) — fixed ROLE appendix collapse eating
   `build_sop_role_appendix` body; engine-only skill fixture uses rich SOP.
 
+**Week 3 (+):**
+
+- `unit/test_harness/test_execution/test_loop.py` (18 passed) — stale
+  `max_steps` default assertion (10→20) aligned with `LoopConfig`.
+
 **Not yet (still red or partial):**
 
-- `test_harness/test_execution/test_loop.py` — 1 fail (`test_loop_config_defaults`)
 - `test_harness/test_integration.py` / planning graphs — API drift cluster
 
 ## Process
