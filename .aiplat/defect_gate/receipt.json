@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T15:22:04+09:00",
+  "reviewed_at": "2026-10-28T15:39:54+09:00",
   "base_ref": "origin/main",
   "merge_base": "637fe5f9ea3203cd7f394f340e97f4d9b1ff25a5",
-  "diff_sha256": "bbabfafe402c6b1170b8f08ac40b7becca098d382fe1f255c9a69880437cf257",
-  "head_sha": "3f6bade6d9b6f2e31b605a3bee269521d76d5619",
+  "diff_sha256": "18da7492c86c4eac180a5ebb5b49941c96806644038fb3cb06b51431f8057a41",
+  "head_sha": "24710dee4966103a08528f8522081ff3fcdf87ff",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-12 CI expand only (495 greens). Local lock only."
+  "note": "Week-12 + fix execute list backslash continuations. Local lock only."
 }
