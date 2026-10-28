@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T21:28:57+09:00",
+  "reviewed_at": "2026-10-28T21:50:21+09:00",
   "base_ref": "origin/main",
   "merge_base": "a3d293bbeb0cac93f16fdfa49b9395df620b5844",
-  "diff_sha256": "a3c1bd05368c6e3558420ee18905ba5f47ba2a7180eec16cd2c74bb1accb7beb",
-  "head_sha": "d3f80851293193013614462bb21c19d7f067a4ef",
+  "diff_sha256": "538a6b14b7dbcf49f3144e3ce602eac2d1f277c7b03fa884f2656945e9d352dc",
+  "head_sha": "557728636bfe376a11c20b55842fd2a5192b3805",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-14 CI expand skill/routing greens. Local lock only. CI unlock is non-author GitHub Approve."
+  "note": "Week-14 CI expand + env COMPONENT for 21k expr limit. Local lock only."
 }
