@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-29T00:16:22+09:00",
+  "reviewed_at": "2026-10-29T00:25:43+09:00",
   "base_ref": "origin/main",
   "merge_base": "bb8346b7affd7124ddb333f39929c60e32709cc6",
-  "diff_sha256": "797dcf2a19eedfb82acfb383136baeba6300fb2fb57443da9568d5c71380c9ab",
-  "head_sha": "f5b19ad4c5fbab56ec2ba8903adae59c31f2126b",
+  "diff_sha256": "9410bf56e024ad1f4025622580322b50a971f5043f03ca4c123c9c5c2102fbb0",
+  "head_sha": "180c0e61cc0155bc9da4d2856be32f1e14647aae",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-18 tool_correctness + fork model_name fix. Local lock only."
+  "note": "Week-18 fork: catch best_model_for_purpose on CI. Local lock only."
 }
