@@ -144,6 +144,15 @@ Already green in PR (#468/#469):
 - `unit/test_stage_change_contract.py` (4)
 - `unit/test_skill_routing_triggers.py` + `test_skill_invocation_mode.py` (13)
 
+
+**Week 12 (+):** (CI expand only — already green, 495 passed / ~33s)
+
+- 69 harness/unit singles: factory/openworker/org metrics/os_sandbox, gates,
+  run_state/*, team_*, skill_*, pipeline_engine p0/p1b/eval, team_planner,
+  physical_merge_gates, stdio_kernel, writing_profile, …
+- Skipped reds: production_depth_gaps / stage_reflection / true_test_runtime /
+  l2_import_context / llm_syscall_store / model_injection_updates_loop / output_style
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /
