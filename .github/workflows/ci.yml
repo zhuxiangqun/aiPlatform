@@ -241,6 +241,22 @@ jobs:
               core/tests/unit/test_harness/test_wake_scheduler.py
               core/tests/unit/test_harness/test_workspace_coding_defaults.py
               core/tests/unit/test_harness/test_writing_profile.py
+              core/tests/unit/test_harness/test_production_depth_gaps.py
+              core/tests/unit/test_harness/test_stage_reflection.py
+              core/tests/unit/test_builder_pipeline_e2e.py
+              core/tests/unit/test_cross_role_e2e.py
+              core/tests/unit/test_four_agent_e2e.py
+              core/tests/unit/test_immune_memory.py
+              core/tests/unit/test_infra_llm_adapter_response_format.py
+              core/tests/unit/test_job_scheduler_delivery_events.py
+              core/tests/unit/test_kb_qa_retrieve.py
+              core/tests/unit/test_knowledge_db_utils.py
+              core/tests/unit/test_knowledge_retriever.py
+              core/tests/unit/test_lint_change_contract_fix.py
+              core/tests/unit/test_lint_conflict_pair_fix.py
+              core/tests/unit/test_lint_engine_skills_script.py
+              core/tests/unit/test_policy_approval_integration.py
+              core/tests/unit/test_rl_trainer.py
               core/tests/tool_correctness/test_code_graph.py
               core/tests/integration/test_harness_integration.py
               core/tests/integration/test_phaseR1_repo_diff_context_injection.py
@@ -401,6 +417,22 @@ jobs:
               core/tests/unit/test_harness/test_wake_scheduler.py \
               core/tests/unit/test_harness/test_workspace_coding_defaults.py \
               core/tests/unit/test_harness/test_writing_profile.py \
+              core/tests/unit/test_harness/test_production_depth_gaps.py \
+              core/tests/unit/test_harness/test_stage_reflection.py \
+              core/tests/unit/test_builder_pipeline_e2e.py \
+              core/tests/unit/test_cross_role_e2e.py \
+              core/tests/unit/test_four_agent_e2e.py \
+              core/tests/unit/test_immune_memory.py \
+              core/tests/unit/test_infra_llm_adapter_response_format.py \
+              core/tests/unit/test_job_scheduler_delivery_events.py \
+              core/tests/unit/test_kb_qa_retrieve.py \
+              core/tests/unit/test_knowledge_db_utils.py \
+              core/tests/unit/test_knowledge_retriever.py \
+              core/tests/unit/test_lint_change_contract_fix.py \
+              core/tests/unit/test_lint_conflict_pair_fix.py \
+              core/tests/unit/test_lint_engine_skills_script.py \
+              core/tests/unit/test_policy_approval_integration.py \
+              core/tests/unit/test_rl_trainer.py \
               core/tests/tool_correctness/test_code_graph.py \
               core/tests/apps/fde/test_slice_five_products.py \
               core/tests/unit/test_agents \

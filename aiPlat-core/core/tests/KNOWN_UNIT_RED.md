@@ -155,6 +155,16 @@ Already green in PR (#468/#469):
   media_skill_handlers_vocab (CI no ffmpeg) / stage_runner_preferred_language (CI no model) /
   team_wave4 (push dry-run env)
 
+
+**Week 13 (+):** (CI expand only — already green, 94 passed / ~2s)
+
+- `test_production_depth_gaps` + `test_stage_reflection` (re-probe green)
+- builder/cross_role/four_agent e2e, immune_memory, infra_llm_adapter_response_format
+- job_scheduler_delivery_events, kb_qa_retrieve, knowledge_db_utils/retriever
+- lint_change_contract / conflict_pair / engine_skills_script
+- policy_approval_integration, rl_trainer
+- Skipped slow (~100s) config_registry / permissions_catalog / routing_explain
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /
