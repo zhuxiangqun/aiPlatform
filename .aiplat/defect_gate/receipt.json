@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T14:59:53+09:00",
+  "reviewed_at": "2026-10-28T17:32:19+09:00",
   "base_ref": "origin/main",
-  "merge_base": "a0a03a01359d8a8704c6e640899a7ef80a0894da",
-  "diff_sha256": "89c93c86dd963dbe6e7a05da7576875a3cfb10a72f650e68e93c1c499feb8253",
-  "head_sha": "ff61e0536568411dd20ef1bc231cdf10a47e5a17",
+  "merge_base": "637fe5f9ea3203cd7f394f340e97f4d9b1ff25a5",
+  "diff_sha256": "a8eda2ea683d3647c5252dbcc0caa387dacda5a9f74471ff79322e1181bb1a3b",
+  "head_sha": "55ae6021a8d4a632b8a3b1db45c5fca28b9073ee",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-11 CI expand only (184 greens). Local lock only."
+  "note": "Week-12 drop ffmpeg/model/env suites. Local lock only."
 }
