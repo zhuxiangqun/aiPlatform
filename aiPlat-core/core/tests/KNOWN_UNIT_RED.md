@@ -66,10 +66,20 @@ Already green in PR (#468/#469):
 - `unit/test_harness/test_execution/test_langgraph_core.py` (21 passed) —
   `ExecutionTrace.duration_ms` normalizes naive/aware datetimes.
 
+**Week 6 (+):** (CI expand only — already green)
+
+- `unit/test_persistence/` (22)
+- `unit/test_exec_drivers/` (3)
+- `unit/test_mcp/` (1)
+- `unit/test_docs/` (3)
+- `unit/test_harness/test_convergence/` (1)
+- `unit/test_harness/test_diagnostics/` (11)
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / adapter injection / …);
   ~25 fail / 1013 pass on maxfail=25 sample after week-4 greens ignored.
+- `unit/test_permissions/` — 1 fail / 1 pass (candidate after fix)
 
 ## Process
 
