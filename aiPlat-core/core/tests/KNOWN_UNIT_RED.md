@@ -102,10 +102,31 @@ Already green in PR (#468/#469):
 - `unit/test_guard_regression.py` + `test_graph_incremental_paths.py` (12)
 - `unit/test_harness/test_ontology_engine/` (3)
 
+**Week 10 (+):** (CI expand only — already green, 187 passed / ~12s)
+
+- `unit/test_autosmoke_dedup_and_callback.py` (1)
+- `unit/test_governance_preview_permission_details.py` (1)
+- `unit/test_harness/test_auto_done_finalize.py` (11)
+- `unit/test_harness/test_backpressure_protocol.py` (5)
+- `unit/test_harness/test_canary_escalation.py` + `test_canary_recommendation.py` (8)
+- `unit/test_harness/test_cc_hooks_bridge.py` (16)
+- `unit/test_harness/test_code_review_gold.py` (8)
+- `unit/test_harness/test_coding_deliverable_veto.py` (25)
+- `unit/test_harness/test_coding_intensity.py` + `test_coding_stage_defaults.py` (28)
+- `unit/test_harness/test_context_*` (compaction / engine / shaping) (7)
+- `unit/test_harness/test_coverage_gate.py` (2)
+- `unit/test_harness/test_done_verify.py` (32)
+- `unit/test_harness/test_evaluation_policy_{merge,parse}.py` (2)
+- `unit/test_harness/test_event_bus_dlq_filter.py` (3)
+- `unit/test_harness/test_evidence_{diff,envelope}.py` (15)
+- `unit/test_harness/test_executable_skill_policy_gate.py` (1)
+- `unit/test_harness/test_execute_session.py` (22)
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /
-  `test_management` status drift / oversized AGENT.md / approval_expiry hang / …);
+  `test_management` status drift / oversized AGENT.md / approval_expiry hang /
+  architecture_health / chaos_fault_injection / …);
   ~25 fail / 1013 pass on maxfail=25 sample after week-4 greens ignored.
 
 ## Process
