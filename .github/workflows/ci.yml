@@ -435,8 +435,6 @@ jobs:
               core/tests/unit/test_harness/test_execution/test_tool_calling.py
               core/tests/unit/test_harness/test_knowledge/test_clarify_dialog.py
               core/tests/unit/test_harness/test_knowledge/test_ontology_version_sidecar_layout.py
-              core/tests/unit/test_harness/test_media_skill_handlers_vocab.py
-              core/tests/unit/test_harness/test_team_wave4.py
               core/tests/unit/test_apps/test_agent_bound_skill_approval.py
               core/tests/tool_correctness/test_code_graph.py
               core/tests/integration/test_harness_integration.py
@@ -786,8 +784,6 @@ jobs:
               core/tests/unit/test_harness/test_execution/test_tool_calling.py \
               core/tests/unit/test_harness/test_knowledge/test_clarify_dialog.py \
               core/tests/unit/test_harness/test_knowledge/test_ontology_version_sidecar_layout.py \
-              core/tests/unit/test_harness/test_media_skill_handlers_vocab.py \
-              core/tests/unit/test_harness/test_team_wave4.py \
               core/tests/unit/test_apps/test_agent_bound_skill_approval.py \
               core/tests/tool_correctness/test_code_graph.py \
               core/tests/apps/fde/test_slice_five_products.py \

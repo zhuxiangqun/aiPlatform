@@ -56,9 +56,9 @@ def test_dialog_memory_key_prefers_dialog_id():
 @pytest.mark.asyncio
 async def test_run_clarify_turn_structured_memory_across_turns(monkeypatch):
     """Empty company on turn 3 still recovers from dialog_id field cache."""
-    # Force no LLM so path is deterministic
+    # Force no LLM so path is deterministic (run_clarify_turn imports via CoreFacade)
     monkeypatch.setattr(
-        "core.harness.utils.model_injection.best_model_for_purpose",
+        "core.api.core_facade.best_model_for_purpose",
         lambda *a, **k: None,
     )
 
