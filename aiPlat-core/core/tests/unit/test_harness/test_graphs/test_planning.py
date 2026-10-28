@@ -180,7 +180,8 @@ TASK_3: 报告生成 [depends_on: TASK_2]"""
     def test_should_continue_approved_not_applicable(self):
         pass
 
-    def test_aggregate_wrapper_completed(self):
+    @pytest.mark.asyncio
+    async def test_aggregate_wrapper_completed(self):
         graph = PlanningGraph()
         state = PlanningState(
             task="Test task",
@@ -191,10 +192,7 @@ TASK_3: 报告生成 [depends_on: TASK_2]"""
                 SubTask(task_id="T2", description="Task 2", status=SubTaskStatus.COMPLETED),
             ]
         )
-        import asyncio
-        result = asyncio.get_event_loop().run_until_complete(
-            graph._aggregate_wrapper(state)
-        )
+        result = await graph._aggregate_wrapper(state)
         assert result["current_phase"] == "completed"
         assert result["final_result"] is not None
 
