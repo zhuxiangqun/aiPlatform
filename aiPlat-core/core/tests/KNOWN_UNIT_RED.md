@@ -187,6 +187,15 @@ Already green in PR (#468/#469):
 - apps greens (~20 files; omit agent_bound_skill_approval / code_generation_input /
   execution_quality_review / skill_autofill_parse; drop batch flake agent_dedupe)
 
+
+**Week 16 (+):** (CI expand only — 143 passed local batch / ~1.5s)
+
+- memory greens (base/ide_*/long_term/session_wiki/short_term/team_brain; omit hang session.py)
+- skills greens (autoreview/discovery/evolution/skillmanager_*/trigger/version/…)
+- Omit reds: hooks, observability_control, management status/uninstall, executor_fork,
+  skill_installer, skill_rollback_semantics, skill_timeout_metadata
+- Drop batch flake: test_executor_pytest_assemble (event-loop order)
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /
