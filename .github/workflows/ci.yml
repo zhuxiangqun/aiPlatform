@@ -385,6 +385,33 @@ jobs:
               core/tests/unit/test_apps/test_tool_input_schema_parameters.py
               core/tests/unit/test_apps/test_tool_lifecycle.py
               core/tests/unit/test_apps/test_upload_create_clarify.py
+              core/tests/unit/test_harness/test_memory/test_base.py
+              core/tests/unit/test_harness/test_memory/test_ide_capture.py
+              core/tests/unit/test_harness/test_memory/test_ide_governed_handoff.py
+              core/tests/unit/test_harness/test_memory/test_long_term.py
+              core/tests/unit/test_harness/test_memory/test_session_wiki.py
+              core/tests/unit/test_harness/test_memory/test_short_term.py
+              core/tests/unit/test_harness/test_memory/test_team_brain.py
+              core/tests/unit/test_skills/test_autoreview_routing.py
+              core/tests/unit/test_skills/test_discovery.py
+              core/tests/unit/test_skills/test_evolution.py
+              core/tests/unit/test_skills/test_generic_skill_json_output.py
+              core/tests/unit/test_skills/test_output_schema_payload_keys.py
+              core/tests/unit/test_skills/test_skill_install_plan_token.py
+              core/tests/unit/test_skills/test_skill_kind_detection.py
+              core/tests/unit/test_skills/test_skill_lint_prompt_analysis.py
+              core/tests/unit/test_skills/test_skill_linter.py
+              core/tests/unit/test_skills/test_skill_signature_verification.py
+              core/tests/unit/test_skills/test_skill_sop_injection.py
+              core/tests/unit/test_skills/test_skill_tool_orchestration_wiring.py
+              core/tests/unit/test_skills/test_skillmanager_bridge_schema_to_registry.py
+              core/tests/unit/test_skills/test_skillmanager_delete_skill_semantics.py
+              core/tests/unit/test_skills/test_skillmanager_directory_materialization.py
+              core/tests/unit/test_skills/test_skillmanager_load_from_filesystem.py
+              core/tests/unit/test_skills/test_skillmanager_multipath_merge.py
+              core/tests/unit/test_skills/test_skillmanager_update_skill_writeback.py
+              core/tests/unit/test_skills/test_trigger_conditions.py
+              core/tests/unit/test_skills/test_version_api.py
               core/tests/tool_correctness/test_code_graph.py
               core/tests/integration/test_harness_integration.py
               core/tests/integration/test_phaseR1_repo_diff_context_injection.py
@@ -685,6 +712,33 @@ jobs:
               core/tests/unit/test_apps/test_tool_input_schema_parameters.py \
               core/tests/unit/test_apps/test_tool_lifecycle.py \
               core/tests/unit/test_apps/test_upload_create_clarify.py \
+              core/tests/unit/test_harness/test_memory/test_base.py \
+              core/tests/unit/test_harness/test_memory/test_ide_capture.py \
+              core/tests/unit/test_harness/test_memory/test_ide_governed_handoff.py \
+              core/tests/unit/test_harness/test_memory/test_long_term.py \
+              core/tests/unit/test_harness/test_memory/test_session_wiki.py \
+              core/tests/unit/test_harness/test_memory/test_short_term.py \
+              core/tests/unit/test_harness/test_memory/test_team_brain.py \
+              core/tests/unit/test_skills/test_autoreview_routing.py \
+              core/tests/unit/test_skills/test_discovery.py \
+              core/tests/unit/test_skills/test_evolution.py \
+              core/tests/unit/test_skills/test_generic_skill_json_output.py \
+              core/tests/unit/test_skills/test_output_schema_payload_keys.py \
+              core/tests/unit/test_skills/test_skill_install_plan_token.py \
+              core/tests/unit/test_skills/test_skill_kind_detection.py \
+              core/tests/unit/test_skills/test_skill_lint_prompt_analysis.py \
+              core/tests/unit/test_skills/test_skill_linter.py \
+              core/tests/unit/test_skills/test_skill_signature_verification.py \
+              core/tests/unit/test_skills/test_skill_sop_injection.py \
+              core/tests/unit/test_skills/test_skill_tool_orchestration_wiring.py \
+              core/tests/unit/test_skills/test_skillmanager_bridge_schema_to_registry.py \
+              core/tests/unit/test_skills/test_skillmanager_delete_skill_semantics.py \
+              core/tests/unit/test_skills/test_skillmanager_directory_materialization.py \
+              core/tests/unit/test_skills/test_skillmanager_load_from_filesystem.py \
+              core/tests/unit/test_skills/test_skillmanager_multipath_merge.py \
+              core/tests/unit/test_skills/test_skillmanager_update_skill_writeback.py \
+              core/tests/unit/test_skills/test_trigger_conditions.py \
+              core/tests/unit/test_skills/test_version_api.py \
               core/tests/tool_correctness/test_code_graph.py \
               core/tests/apps/fde/test_slice_five_products.py \
               core/tests/unit/test_agents \
