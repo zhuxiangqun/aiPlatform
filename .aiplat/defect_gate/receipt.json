@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T11:25:00+09:00",
+  "reviewed_at": "2026-10-28T11:50:25+09:00",
   "base_ref": "origin/main",
-  "merge_base": "eef266f15a16b87834db9f2f89704d31cd0546cb",
-  "diff_sha256": "19354c45dd23fdfcf59ee9889e2c0f723e2f488e3c1812cdd70520e8c833af75",
-  "head_sha": "099a5d654c8d9b1289ee56694b1a78d4773ddb19",
+  "merge_base": "c3d4f7233c5337d6fc9d076aef89063fddd139ac",
+  "diff_sha256": "03830f18edf3b30f18aaac32a75ab491795223a94fffe8332e7963a5c42b2d16",
+  "head_sha": "a3fc42ef993ebb24689191f73e0ec8663f06caf2",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-8 tools/gates/docproto; tenant_store isolate. 486 local. Local lock only."
+  "note": "Week-9 CI expand only (180 unit greens). Local lock only. CI unlock is non-author Approve."
 }
