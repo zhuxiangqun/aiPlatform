@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T14:42:55+09:00",
+  "reviewed_at": "2026-10-28T14:59:53+09:00",
   "base_ref": "origin/main",
-  "merge_base": "71d289afc0dc05998bbf524f932f8db64107fc71",
-  "diff_sha256": "ba2bcbebe3faf9f55627ab73295dce9733ef65cb52b09c184d2d7d8422072a80",
-  "head_sha": "fb4f78f06e46ff2bde9d68f54d05ac76e482e14f",
+  "merge_base": "a0a03a01359d8a8704c6e640899a7ef80a0894da",
+  "diff_sha256": "89c93c86dd963dbe6e7a05da7576875a3cfb10a72f650e68e93c1c499feb8253",
+  "head_sha": "ff61e0536568411dd20ef1bc231cdf10a47e5a17",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-10 + asset_audit path scrub. Local lock only."
+  "note": "Week-11 CI expand only (184 greens). Local lock only."
 }

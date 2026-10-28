@@ -122,6 +122,28 @@ Already green in PR (#468/#469):
 - `unit/test_harness/test_executable_skill_policy_gate.py` (1)
 - `unit/test_harness/test_execute_session.py` (22)
 
+**Week 11 (+):** (CI expand only — already green, 184 passed / ~3s)
+
+- `unit/test_harness/test_adapter_model_injection.py` (2)
+- `unit/test_harness/test_app_page_skill_inject.py` (10)
+- `unit/test_harness/test_auto_eval_prompt_includes_browser_evidence.py` (1)
+- `unit/test_harness/test_evaluator_workbench.py` (1)
+- `unit/test_harness/test_execution_decision_e3.py` (7)
+- `unit/test_harness/test_graphs/` (22; includes planning already unlocked)
+- `unit/test_harness/test_factory_mode_f2b.py` (5)
+- `unit/test_harness/test_openworker_governance_p1.py` (18)
+- `unit/test_harness/test_pipeline_run_events.py` + `test_pipeline_context_clean.py` (11)
+- `unit/test_harness/test_prd_gate_loader.py` (5)
+- `unit/test_harness/test_review_known_defects.py` (15)
+- `unit/test_harness/test_self_correct_skip_skill_error.py` (4)
+- `unit/test_harness/test_skill_delivery_finalize.py` (19)
+- `unit/test_harness/test_stage_handoff.py` (15)
+- `unit/test_harness/test_post_llm_no_nested_hang.py` (7)
+- `unit/test_sandbox.py` + `test_skills_base.py` (13)
+- `unit/test_tool_error_enrichment.py` (12)
+- `unit/test_stage_change_contract.py` (4)
+- `unit/test_skill_routing_triggers.py` + `test_skill_invocation_mode.py` (13)
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /
