@@ -17,6 +17,8 @@ completion_criterion: |
   3. 所有依赖项已声明，所有外部引用已校验
 execution_mode: handler
 execution_type: prompt
+# Outer skill budget must cover nested code_gen LLM (420s) + slack.
+timeout: 600
 triggers:
   - 写代码
   - 实现

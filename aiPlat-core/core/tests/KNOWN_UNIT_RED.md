@@ -212,6 +212,13 @@ Already green in PR (#468/#469):
 - Fix fork-mode `model_name` NameError in `apps/skills/executor.py`; unlock
   `test_executor_fork` (test stubs adapter creation)
 
+
+**Week 19 (+):** (cheap fix + CI expand — 8 passed)
+
+- Add `timeout: 600` to `engine/skills/code_generation/SKILL.md` (covers nested
+  code_gen 420s + slack); unlock `test_skill_timeout_metadata`
+- Remaining unit surface still red / tool_correctness hang under long runs
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /
