@@ -231,6 +231,17 @@ Already green in PR (#468/#469):
 - Also: `syscalls/__init__.py` move `import logging` out of docstring (react_loop
   NameError swallow); conftest clears `GIT_DIR`/`GIT_WORK_TREE` between tests.
 
+**Week 21 (+):** (CI expand only — 60 passed / ~3.5m batch; flake ×2)
+
+- `test_sft_rl_integration` (8; previously listed red, now green)
+- `test_autoreview_diff_timeout` (6)
+- `test_execution/test_tool_calling` (11)
+- `test_clarify_dialog` + `test_ontology_version_sidecar_layout` (8; sidecar
+  converted to `@pytest.mark.asyncio`)
+- `test_media_skill_handlers_vocab` (16)
+- `test_team_wave4` (4)
+- `test_apps/test_agent_bound_skill_approval` (7)
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /
