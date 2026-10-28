@@ -80,9 +80,15 @@ Already green in PR (#468/#469):
 - `unit/test_permissions/` (2 passed) — grant/revoke HTTP moved to
   `platform/api/routers/permissions.py`; unit test targets PermissionManager.
 
+**Week 8 (+):**
+
+- `unit/test_tools/` (29 passed)
+- `unit/test_gates/` (15 passed)
+- `unit/test_document_protocol.py` (46 passed) — category assert `text`→`txt`
+
 **Not yet (still red or partial):**
 
-- Remaining unit reds: scattered (hooks / apps / adapter injection / …);
+- Remaining unit reds: scattered (hooks / apps / skills / adapter injection / …);
   ~25 fail / 1013 pass on maxfail=25 sample after week-4 greens ignored.
 
 ## Process

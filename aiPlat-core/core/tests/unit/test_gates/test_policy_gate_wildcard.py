@@ -30,6 +30,9 @@ async def test_policy_gate_wildcard_approval_required(tmp_path, monkeypatch):
 
     # PolicyGate imported get_kernel_runtime by name; patch the symbol in its module.
     monkeypatch.setattr(pg_mod, "get_kernel_runtime", lambda: _Runtime())
+    # Prefer mocked runtime.execution_store — a live get_tenant_store() from other
+    # tests would shadow the fixture and skip approval_required_tools=["*"].
+    monkeypatch.setattr(pg_mod, "get_tenant_store", lambda: None)
 
     from core.harness.infrastructure.gates.policy_gate import PolicyGate, PolicyDecision
 

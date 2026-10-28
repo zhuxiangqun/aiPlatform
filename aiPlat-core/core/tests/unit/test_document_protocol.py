@@ -165,7 +165,7 @@ class TestConverterRegistry:
         assert "xlsx" in cats
         assert "audio" in cats
         assert "video" in cats
-        assert "text" in cats
+        assert "txt" in cats  # TextConverter category (was "text")
 
     def test_find_converter_pdf(self, registry):
         conv = registry.find_converter(StreamInfo(extension=".pdf"))
