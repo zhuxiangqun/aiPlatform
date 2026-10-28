@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T13:59:40+09:00",
+  "reviewed_at": "2026-10-28T14:19:48+09:00",
   "base_ref": "origin/main",
-  "merge_base": "c3d4f7233c5337d6fc9d076aef89063fddd139ac",
-  "diff_sha256": "804c6093849691e1abbc17b86c2737a28acc1f5d71178020c2ffb108f050624c",
-  "head_sha": "ea9872c4dc20d4f38136a49efa1a1435ad84fd04",
+  "merge_base": "71d289afc0dc05998bbf524f932f8db64107fc71",
+  "diff_sha256": "0bdcbbe96e10bb2f5ed98289b4cd2931e54bbffbb1dc33aec5683810c6b51d8f",
+  "head_sha": "74ec7d7277d3b99a8bc30576ff80d943e4f47a96",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-9 CI expand + hermetic dynamic_router default model. Local lock only."
+  "note": "Week-10 CI expand only (187 harness unit greens). Local lock only."
 }
