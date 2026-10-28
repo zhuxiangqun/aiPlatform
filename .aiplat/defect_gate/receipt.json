@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T17:32:19+09:00",
+  "reviewed_at": "2026-10-28T21:02:26+09:00",
   "base_ref": "origin/main",
-  "merge_base": "637fe5f9ea3203cd7f394f340e97f4d9b1ff25a5",
-  "diff_sha256": "a8eda2ea683d3647c5252dbcc0caa387dacda5a9f74471ff79322e1181bb1a3b",
-  "head_sha": "55ae6021a8d4a632b8a3b1db45c5fca28b9073ee",
+  "merge_base": "87aa12d9eacf3862b5d7c5132c2700d7aeccc6a1",
+  "diff_sha256": "19fc05ebd4b3030075bab44dcca018c17e17051ea1b70ecfdb8db409a0764881",
+  "head_sha": "8e4dc07f6b1594c551cea4252d14dd8ee70c96d2",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-12 drop ffmpeg/model/env suites. Local lock only."
+  "note": "Week-13 drop event-loop flakes. Local lock only."
 }
