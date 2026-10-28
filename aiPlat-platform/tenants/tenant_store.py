@@ -41,10 +41,14 @@ def _json_loads(s: Optional[str]) -> Any:
 
 
 def _default_db_path() -> str:
-    return os.environ.get(
-        "AIPLAT_EXECUTION_DB_PATH",
-        os.path.join(os.path.expanduser("~"), ".aiplat", "aiplat_executions.sqlite3"),
-    )
+    """Same resolution as core ``default_execution_db_path`` (shared SQLite file)."""
+    env = os.environ.get("AIPLAT_EXECUTION_DB_PATH")
+    if env:
+        return env
+    home = os.environ.get("AIPLAT_HOME")
+    if home:
+        return os.path.join(home, "aiplat_executions.sqlite3")
+    return os.path.join(os.path.expanduser("~"), ".aiplat", "aiplat_executions.sqlite3")
 
 
 class TenantStore:

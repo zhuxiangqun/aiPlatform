@@ -18,7 +18,13 @@ from .context_service import (
     ContextFile,
 )
 from .file_service import FileService
-from .execution_store import ExecutionStore, ExecutionStoreConfig, get_execution_store
+from .execution_store import (
+    ExecutionStore,
+    ExecutionStoreConfig,
+    default_execution_db_path,
+    get_execution_store,
+    reset_execution_store,
+)
 
 __all__ = [
     "TraceService",
@@ -32,5 +38,7 @@ __all__ = [
     "FileService",
     "ExecutionStore",
     "ExecutionStoreConfig",
+    "default_execution_db_path",
     "get_execution_store",
+    "reset_execution_store",
 ]

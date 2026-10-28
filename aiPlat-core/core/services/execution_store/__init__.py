@@ -72,13 +72,38 @@ class ExecutionStore(
 _execution_store: Optional[ExecutionStore] = None
 
 
-def get_execution_store(db_path: Optional[str] = None) -> ExecutionStore:
-    """Process-wide singleton."""
+def default_execution_db_path() -> str:
+    """Resolve ExecutionStore path without opening a connection.
+
+    Order: ``AIPLAT_EXECUTION_DB_PATH`` → ``$AIPLAT_HOME/aiplat_executions.sqlite3``
+    → ``~/.aiplat/aiplat_executions.sqlite3``.
+    """
+    env = os.environ.get("AIPLAT_EXECUTION_DB_PATH")
+    if env:
+        return env
+    home = os.environ.get("AIPLAT_HOME")
+    if home:
+        return os.path.join(home, "aiplat_executions.sqlite3")
+    return os.path.join(os.path.expanduser("~"), ".aiplat", "aiplat_executions.sqlite3")
+
+
+def reset_execution_store() -> None:
+    """Drop the process singleton (tests / hermetic teardown)."""
     global _execution_store
-    desired_path = db_path or os.environ.get(
-        "AIPLAT_EXECUTION_DB_PATH",
-        os.path.join(os.path.expanduser("~"), ".aiplat", "aiplat_executions.sqlite3")
-    )
+    _execution_store = None
+
+
+def get_execution_store(db_path: Optional[str] = None) -> ExecutionStore:
+    """Process-wide singleton.
+
+    Path resolution (first match wins):
+      1. ``db_path`` argument
+      2. ``AIPLAT_EXECUTION_DB_PATH`` env var
+      3. ``$AIPLAT_HOME/aiplat_executions.sqlite3`` when ``AIPLAT_HOME`` is set
+      4. ``~/.aiplat/aiplat_executions.sqlite3`` (default)
+    """
+    global _execution_store
+    desired_path = db_path or default_execution_db_path()
     if _execution_store is not None:
         try:
             if str(getattr(getattr(_execution_store, "_config", None), "db_path", "")) != str(desired_path):
@@ -113,4 +138,10 @@ def get_execution_store(db_path: Optional[str] = None) -> ExecutionStore:
     return _execution_store
 
 
-__all__ = ["ExecutionStore", "ExecutionStoreConfig", "get_execution_store"]
+__all__ = [
+    "ExecutionStore",
+    "ExecutionStoreConfig",
+    "default_execution_db_path",
+    "get_execution_store",
+    "reset_execution_store",
+]

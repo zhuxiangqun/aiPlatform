@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 33
-total_capabilities: 1489
+total_capabilities: 1491
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -5730,12 +5730,12 @@ domains:
         reason: "P0-B3 arena/wake-agent REST 端点"
 
   # ══════════════════════════════════════════════════════════════
-  # 二十一、平台治理 (11 caps)
+  # 二十一、平台治理 (14 caps)
   # ══════════════════════════════════════════════════════════════
   platform-governance:
     section: "二十一"
     section_name: "平台治理"
-    caps_count: 12
+    caps_count: 14
     provides:
       - symbol: "GovernancePipeline"
         module: core/harness/knowledge/governance_pipeline.py
@@ -5765,7 +5765,15 @@ domains:
       - symbol: "TenantStore"
         module: aiPlat-platform/tenants/tenant_store.py
         type: class
-        signature: "tenant quota/usage/policy persistence (P0-A3, same DB as ExecutionStore)"
+        signature: "tenant quota/usage/policy persistence (P0-A3, same DB as ExecutionStore; AIPLAT_HOME-aware default path)"
+      - symbol: "default_execution_db_path"
+        module: core/services/execution_store/__init__.py
+        type: function
+        signature: "default_execution_db_path()→str; EXECUTION_DB_PATH → AIPLAT_HOME → ~/.aiplat"
+      - symbol: "reset_execution_store"
+        module: core/services/execution_store/__init__.py
+        type: function
+        signature: "reset_execution_store()→None; drop process singleton (pytest hermetic teardown)"
       - symbol: "run_checks"
         module: scripts/verify_capability_truth.py
         type: function

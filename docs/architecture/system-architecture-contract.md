@@ -129,7 +129,8 @@ core 层运行时数据库/状态文件路径**必须**经 `core.utils.paths.get
 |------|------|
 | 禁止硬编码 `~/.aiplat` | `expanduser("~/.aiplat/xxx")` 绕过 AIPLAT_HOME（`paths.py` 已标注反模式）——受限环境（~/.aiplat 只读）下启动写库抛 `readonly database` → 服务僵死 |
 | 禁止导入期开库 | 运行时状态库（如 `state_history`）**必须**懒打开：`import` 不得 mkdir/写 SQLite；仅在 `get_conn()`（或等价首次写读）时经 `get_aiplat_home()` 建连（2026-10-27）——否则只读 HOME / pytest 收集即污染本机 `~/.aiplat` |
-| 测试隔离 | `core/tests` session 级 **必须** 把 `AIPLAT_HOME` 指到临时目录并种子必要 presets/ontology（`core/tests/conftest.py`）；禁止依赖开发者本机 `~/.aiplat` 内容才能 collect/pass |
+| 测试隔离 | `core/tests` **必须**在 `pytest_configure`（早于 collection/import）把 `AIPLAT_HOME`、`AIPLAT_EXECUTION_DB_PATH`、`AIPLAT_PLATFORM_DB_PATH` 钉到会话临时目录并种子 presets；session 结束须 `reset_execution_store()`。禁止只设 `AIPLAT_HOME` 却让 ExecutionStore/TenantStore/PlatformDB 逃逸写 `~/.aiplat` 或仓库内生产 sqlite（含 symlink）（2026-10-29） |
+| ExecutionStore / TenantStore 默认路径 | 未设 `AIPLAT_EXECUTION_DB_PATH` 时 **必须**尊重 `AIPLAT_HOME`（`$AIPLAT_HOME/aiplat_executions.sqlite3`），禁止硬编码仅 `~/.aiplat/...`；PlatformDB / platform `storage/sqlite` 对 `AIPLAT_PLATFORM_DB_PATH` 同理（2026-10-29） |
 | PromptAssembler 别名 | `core/harness/assembly/prompt_assembler.py` **必须**导出 `PromptAssembler = MessageFormatter`（与包 `__init__` 一致）；diagnostics / 测试直导子模块不得因缺别名 ImportError（2026-10-27） |
 | PlanningState 形态 | `core/harness/execution/langgraph/graphs/planning.py` 的 `PlanningState` **必须**为 dataclass（节点用属性访问）；禁止 TypedDict 却写 `state.task`/`state.results`。`depends_on` 解析须把 `none` / 空 / CJK-none（`\u65e0`）视为无依赖（2026-10-28） |
 | HarnessIntegration 门面 | `config` / `monitoring` / `memory` / `event_bus` / `create_agent_loop` / `start`/`stop`/`reset` **必须**挂在 `HarnessIntegration` 上，禁止误缩进到 `KernelRuntime` dataclass（2026-10-28） |
