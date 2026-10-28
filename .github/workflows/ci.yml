@@ -101,6 +101,12 @@ jobs:
               core/tests/unit/test_harness/test_feedback_loops.py
               core/tests/unit/test_harness/test_coordination
               core/tests/unit/test_harness/test_execution/test_langgraph_core.py
+              core/tests/unit/test_persistence
+              core/tests/unit/test_exec_drivers
+              core/tests/unit/test_mcp
+              core/tests/unit/test_docs
+              core/tests/unit/test_harness/test_convergence
+              core/tests/unit/test_harness/test_diagnostics
               core/tests/tool_correctness/test_code_graph.py
               core/tests/integration/test_harness_integration.py
               core/tests/integration/test_phaseR1_repo_diff_context_injection.py
@@ -121,6 +127,12 @@ jobs:
               core/tests/unit/test_harness/test_feedback_loops.py \
               core/tests/unit/test_harness/test_coordination \
               core/tests/unit/test_harness/test_execution/test_langgraph_core.py \
+              core/tests/unit/test_persistence \
+              core/tests/unit/test_exec_drivers \
+              core/tests/unit/test_mcp \
+              core/tests/unit/test_docs \
+              core/tests/unit/test_harness/test_convergence \
+              core/tests/unit/test_harness/test_diagnostics \
               core/tests/tool_correctness/test_code_graph.py \
               core/tests/apps/fde/test_slice_five_products.py \
               core/tests/unit/test_agents \
