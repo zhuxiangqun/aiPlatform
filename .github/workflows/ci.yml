@@ -82,13 +82,17 @@ jobs:
              "$HOME/.aiplat/ontologies/ai-knowledge.yaml"
           echo "presets + ontology seeded from $SEED_ROOT"
       - name: Run tests
+        # Keep ${{ }} out of this large script — GHA counts the whole run block
+        # toward the 21000 expression limit once any ${{ }} appears (week-14).
+        env:
+          COMPONENT: ${{ matrix.component }}
         run: |
           # aiPlat-core: do NOT run all of core/tests/unit in PR yet — large
           # pre-existing red surface (maxfail tripped). PR proves:
           #   1) previously-broken modules collect
           #   2) focused suites for hermetic/import/slice signoff fixes
           # Full unit path stays on core-tests-nightly.yml until green.
-          if [ "${{ matrix.component }}" = "aiPlat-core" ]; then
+          if [ "$COMPONENT" = "aiPlat-core" ]; then
             # Collect-only: prove harness.* → core.harness import rot is fixed
             # (execution/planning/integration still have pre-existing API drift).
             # Collect: previously broken imports + week-1 green track packages.
@@ -485,17 +489,19 @@ jobs:
               core/tests/unit/test_harness/test_eval_verdict.py \
               core/tests/unit/test_harness/test_completion_receipt.py \
               core/tests/unit/test_harness/test_circuit_half_open.py
-          elif [ "${{ matrix.component }}" = "aiPlat-infra" ]; then
+          elif [ "$COMPONENT" = "aiPlat-infra" ]; then
             python -m pytest infra/tests -m "not integration" -v --tb=short -q --cov=. --cov-report=xml
           else
             python -m pytest tests -m "not integration" -v --tb=short -q --cov=. --cov-report=xml
           fi
       - name: Run regression tests
+        env:
+          COMPONENT: ${{ matrix.component }}
         run: |
-          if [ "${{ matrix.component }}" = "aiPlat-core" ]; then
+          if [ "$COMPONENT" = "aiPlat-core" ]; then
             echo "core regression covered by focused unit/slice path above"
             exit 0
-          elif [ "${{ matrix.component }}" = "aiPlat-infra" ]; then
+          elif [ "$COMPONENT" = "aiPlat-infra" ]; then
             TEST_DIR="infra/tests"
           else
             TEST_DIR="tests"
