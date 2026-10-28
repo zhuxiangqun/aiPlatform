@@ -129,6 +129,30 @@ jobs:
               core/tests/unit/test_guard_regression.py
               core/tests/unit/test_graph_incremental_paths.py
               core/tests/unit/test_harness/test_ontology_engine
+              core/tests/unit/test_autosmoke_dedup_and_callback.py
+              core/tests/unit/test_governance_preview_permission_details.py
+              core/tests/unit/test_harness/test_auto_done_finalize.py
+              core/tests/unit/test_harness/test_backpressure_protocol.py
+              core/tests/unit/test_harness/test_canary_escalation.py
+              core/tests/unit/test_harness/test_canary_recommendation.py
+              core/tests/unit/test_harness/test_cc_hooks_bridge.py
+              core/tests/unit/test_harness/test_code_review_gold.py
+              core/tests/unit/test_harness/test_coding_deliverable_veto.py
+              core/tests/unit/test_harness/test_coding_intensity.py
+              core/tests/unit/test_harness/test_coding_stage_defaults.py
+              core/tests/unit/test_harness/test_context_compaction.py
+              core/tests/unit/test_harness/test_context_engine_compaction.py
+              core/tests/unit/test_harness/test_context_engine_project_context_policy.py
+              core/tests/unit/test_harness/test_context_shaping_pipeline.py
+              core/tests/unit/test_harness/test_coverage_gate.py
+              core/tests/unit/test_harness/test_done_verify.py
+              core/tests/unit/test_harness/test_evaluation_policy_merge.py
+              core/tests/unit/test_harness/test_evaluation_policy_parse.py
+              core/tests/unit/test_harness/test_event_bus_dlq_filter.py
+              core/tests/unit/test_harness/test_evidence_diff.py
+              core/tests/unit/test_harness/test_evidence_envelope.py
+              core/tests/unit/test_harness/test_executable_skill_policy_gate.py
+              core/tests/unit/test_harness/test_execute_session.py
               core/tests/tool_correctness/test_code_graph.py
               core/tests/integration/test_harness_integration.py
               core/tests/integration/test_phaseR1_repo_diff_context_injection.py
@@ -177,6 +201,30 @@ jobs:
               core/tests/unit/test_guard_regression.py \
               core/tests/unit/test_graph_incremental_paths.py \
               core/tests/unit/test_harness/test_ontology_engine \
+              core/tests/unit/test_autosmoke_dedup_and_callback.py \
+              core/tests/unit/test_governance_preview_permission_details.py \
+              core/tests/unit/test_harness/test_auto_done_finalize.py \
+              core/tests/unit/test_harness/test_backpressure_protocol.py \
+              core/tests/unit/test_harness/test_canary_escalation.py \
+              core/tests/unit/test_harness/test_canary_recommendation.py \
+              core/tests/unit/test_harness/test_cc_hooks_bridge.py \
+              core/tests/unit/test_harness/test_code_review_gold.py \
+              core/tests/unit/test_harness/test_coding_deliverable_veto.py \
+              core/tests/unit/test_harness/test_coding_intensity.py \
+              core/tests/unit/test_harness/test_coding_stage_defaults.py \
+              core/tests/unit/test_harness/test_context_compaction.py \
+              core/tests/unit/test_harness/test_context_engine_compaction.py \
+              core/tests/unit/test_harness/test_context_engine_project_context_policy.py \
+              core/tests/unit/test_harness/test_context_shaping_pipeline.py \
+              core/tests/unit/test_harness/test_coverage_gate.py \
+              core/tests/unit/test_harness/test_done_verify.py \
+              core/tests/unit/test_harness/test_evaluation_policy_merge.py \
+              core/tests/unit/test_harness/test_evaluation_policy_parse.py \
+              core/tests/unit/test_harness/test_event_bus_dlq_filter.py \
+              core/tests/unit/test_harness/test_evidence_diff.py \
+              core/tests/unit/test_harness/test_evidence_envelope.py \
+              core/tests/unit/test_harness/test_executable_skill_policy_gate.py \
+              core/tests/unit/test_harness/test_execute_session.py \
               core/tests/tool_correctness/test_code_graph.py \
               core/tests/apps/fde/test_slice_five_products.py \
               core/tests/unit/test_agents \

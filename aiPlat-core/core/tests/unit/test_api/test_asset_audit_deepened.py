@@ -144,9 +144,16 @@ async def test_mcp_audit_missing_url_has_no_placeholder_fix(monkeypatch, tmp_pat
 async def test_workflow_structure_audit_detects_cycle_and_missing_agent(monkeypatch):
     # Workspace root (…/aiPlatform), not aiPlat-core
     root = Path(__file__).resolve().parents[5]
-    plat = str(root / "aiPlat-platform")
-    if plat not in sys.path:
-        sys.path.insert(0, plat)
+    plat_s = str(root / "aiPlat-platform")
+    core_pkg = str(root / "aiPlat-core" / "core")
+    # Drop path entries that make `import api` resolve to core.api.
+    sys.path[:] = [p for p in sys.path if Path(p).resolve() != Path(core_pkg).resolve()]
+    while plat_s in sys.path:
+        sys.path.remove(plat_s)
+    sys.path.insert(0, plat_s)
+    for key in list(sys.modules):
+        if key == "api" or key.startswith("api."):
+            del sys.modules[key]
 
     from api.routers import workflows as wf_mod
 

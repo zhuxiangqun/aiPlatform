@@ -351,6 +351,11 @@ async def test_coding_defaults_pre_resolve_fail_closed(monkeypatch):
         raise RuntimeError("defaults down")
 
     monkeypatch.setattr("core.schemas_builder.apply_coding_stage_defaults", _boom)
+    # Hermetic: StageRunner.run resolves a model when model=None (local import).
+    monkeypatch.setattr(
+        "core.harness.utils.model_injection.best_model_for_purpose",
+        lambda _p: "test-model",
+    )
 
     class _Cfg:
         loop_type = "react"
@@ -403,6 +408,10 @@ async def test_require_review_fails_when_autoreview_not_loadable(monkeypatch):
     monkeypatch.setattr(
         "core.harness.execution.done_verify.missing_completion_standard_reason",
         lambda _s: None,
+    )
+    monkeypatch.setattr(
+        "core.harness.utils.model_injection.best_model_for_purpose",
+        lambda _p: "test-model",
     )
     out = await runner.run("write the module", {}, stage=stage)
     assert str(out).startswith("STAGE_ERROR:")
