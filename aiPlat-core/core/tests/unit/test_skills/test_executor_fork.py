@@ -24,10 +24,15 @@ class _DummyRegistry:
 
 
 def test_fork_mode_returns_clear_error_when_no_model(monkeypatch):
-    # Force create_adapter to fail via invalid provider so fork mode must return a clear error.
-    monkeypatch.setenv("LLM_PROVIDER", "unknown-provider")
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    # Adapter resolution can fall back across providers/env; stub creation to fail
+    # so fork mode must return the clear "requires configured LLM" error.
+    def _boom(**_kwargs):
+        raise RuntimeError("no adapter in test")
+
+    monkeypatch.setattr(
+        "core.harness.utils.model_injection.create_selected_adapter",
+        _boom,
+    )
 
     executor = SkillExecutor(registry=_DummyRegistry())
     result = asyncio.run(

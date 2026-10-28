@@ -451,11 +451,12 @@ class SkillExecutor:
                 from core.harness.interfaces import AgentConfig, AgentContext
 
                 # Prefer skill-injected model if available; otherwise use centralized resolution.
+                model_name = str((params or {}).get("model") or "").strip() or best_model_for_purpose("chat")
                 model = getattr(skill, "_model", None)
                 if model is None:
                     try:
                         from core.harness.utils.model_injection import create_selected_adapter
-                        model = create_selected_adapter(model_name=(params.get("model") or best_model_for_purpose("chat")))
+                        model = create_selected_adapter(model_name=model_name)
                     except Exception:
                         model = None
 
@@ -519,7 +520,7 @@ class SkillExecutor:
 
                 agent_config = AgentConfig(
                     name=f"fork-{skill_name}",
-                    model=model_name,  # noqa: F821
+                    model=model_name,
                     metadata={"role": "fork-agent", "skill": skill_name},
                 )
                 # Use ReAct agent so fork mode can also orchestrate tools when provided.
