@@ -412,6 +412,7 @@ jobs:
               core/tests/unit/test_skills/test_skillmanager_update_skill_writeback.py
               core/tests/unit/test_skills/test_trigger_conditions.py
               core/tests/unit/test_skills/test_version_api.py
+              core/tests/constitution
               core/tests/tool_correctness/test_code_graph.py
               core/tests/integration/test_harness_integration.py
               core/tests/integration/test_phaseR1_repo_diff_context_injection.py
@@ -739,6 +740,7 @@ jobs:
               core/tests/unit/test_skills/test_skillmanager_update_skill_writeback.py \
               core/tests/unit/test_skills/test_trigger_conditions.py \
               core/tests/unit/test_skills/test_version_api.py \
+              core/tests/constitution \
               core/tests/tool_correctness/test_code_graph.py \
               core/tests/apps/fde/test_slice_five_products.py \
               core/tests/unit/test_agents \
