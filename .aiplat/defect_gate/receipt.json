@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T14:19:48+09:00",
+  "reviewed_at": "2026-10-28T14:38:39+09:00",
   "base_ref": "origin/main",
   "merge_base": "71d289afc0dc05998bbf524f932f8db64107fc71",
-  "diff_sha256": "0bdcbbe96e10bb2f5ed98289b4cd2931e54bbffbb1dc33aec5683810c6b51d8f",
-  "head_sha": "74ec7d7277d3b99a8bc30576ff80d943e4f47a96",
+  "diff_sha256": "e8c0fad4beb49334e5c1f95d7015f0f4948794cec0f7f8df98b30adb7d661ba1",
+  "head_sha": "acebfa8110608653976fb15d1c69c8e288ed4d20",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-10 CI expand only (187 harness unit greens). Local lock only."
+  "note": "Week-10 expand + hermetic model/api stubs. Local lock only."
 }
