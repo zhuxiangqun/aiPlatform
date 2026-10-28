@@ -153,6 +153,28 @@ jobs:
               core/tests/unit/test_harness/test_evidence_envelope.py
               core/tests/unit/test_harness/test_executable_skill_policy_gate.py
               core/tests/unit/test_harness/test_execute_session.py
+              core/tests/unit/test_harness/test_adapter_model_injection.py
+              core/tests/unit/test_harness/test_app_page_skill_inject.py
+              core/tests/unit/test_harness/test_auto_eval_prompt_includes_browser_evidence.py
+              core/tests/unit/test_harness/test_evaluator_workbench.py
+              core/tests/unit/test_harness/test_execution_decision_e3.py
+              core/tests/unit/test_harness/test_graphs
+              core/tests/unit/test_harness/test_factory_mode_f2b.py
+              core/tests/unit/test_harness/test_openworker_governance_p1.py
+              core/tests/unit/test_harness/test_pipeline_run_events.py
+              core/tests/unit/test_harness/test_pipeline_context_clean.py
+              core/tests/unit/test_harness/test_prd_gate_loader.py
+              core/tests/unit/test_harness/test_review_known_defects.py
+              core/tests/unit/test_harness/test_self_correct_skip_skill_error.py
+              core/tests/unit/test_harness/test_skill_delivery_finalize.py
+              core/tests/unit/test_harness/test_stage_handoff.py
+              core/tests/unit/test_harness/test_post_llm_no_nested_hang.py
+              core/tests/unit/test_sandbox.py
+              core/tests/unit/test_skills_base.py
+              core/tests/unit/test_tool_error_enrichment.py
+              core/tests/unit/test_stage_change_contract.py
+              core/tests/unit/test_skill_routing_triggers.py
+              core/tests/unit/test_skill_invocation_mode.py
               core/tests/tool_correctness/test_code_graph.py
               core/tests/integration/test_harness_integration.py
               core/tests/integration/test_phaseR1_repo_diff_context_injection.py
@@ -225,6 +247,28 @@ jobs:
               core/tests/unit/test_harness/test_evidence_envelope.py \
               core/tests/unit/test_harness/test_executable_skill_policy_gate.py \
               core/tests/unit/test_harness/test_execute_session.py \
+              core/tests/unit/test_harness/test_adapter_model_injection.py \
+              core/tests/unit/test_harness/test_app_page_skill_inject.py \
+              core/tests/unit/test_harness/test_auto_eval_prompt_includes_browser_evidence.py \
+              core/tests/unit/test_harness/test_evaluator_workbench.py \
+              core/tests/unit/test_harness/test_execution_decision_e3.py \
+              core/tests/unit/test_harness/test_graphs \
+              core/tests/unit/test_harness/test_factory_mode_f2b.py \
+              core/tests/unit/test_harness/test_openworker_governance_p1.py \
+              core/tests/unit/test_harness/test_pipeline_run_events.py \
+              core/tests/unit/test_harness/test_pipeline_context_clean.py \
+              core/tests/unit/test_harness/test_prd_gate_loader.py \
+              core/tests/unit/test_harness/test_review_known_defects.py \
+              core/tests/unit/test_harness/test_self_correct_skip_skill_error.py \
+              core/tests/unit/test_harness/test_skill_delivery_finalize.py \
+              core/tests/unit/test_harness/test_stage_handoff.py \
+              core/tests/unit/test_harness/test_post_llm_no_nested_hang.py \
+              core/tests/unit/test_sandbox.py \
+              core/tests/unit/test_skills_base.py \
+              core/tests/unit/test_tool_error_enrichment.py \
+              core/tests/unit/test_stage_change_contract.py \
+              core/tests/unit/test_skill_routing_triggers.py \
+              core/tests/unit/test_skill_invocation_mode.py \
               core/tests/tool_correctness/test_code_graph.py \
               core/tests/apps/fde/test_slice_five_products.py \
               core/tests/unit/test_agents \
