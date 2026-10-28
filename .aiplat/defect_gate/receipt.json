@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T11:00:00+09:00",
+  "reviewed_at": "2026-10-28T11:25:00+09:00",
   "base_ref": "origin/main",
-  "merge_base": "c52e91d5fe0619df08f4cdf78dfdc759acbb324f",
-  "diff_sha256": "06caa376756d3be1bad779fde37a9ffcb660ae20876f310b6318f922d1c7d804",
-  "head_sha": "f162691ff6234b10ef491cab82d38474328ce11a",
+  "merge_base": "eef266f15a16b87834db9f2f89704d31cd0546cb",
+  "diff_sha256": "19354c45dd23fdfcf59ee9889e2c0f723e2f488e3c1812cdd70520e8c833af75",
+  "head_sha": "099a5d654c8d9b1289ee56694b1a78d4773ddb19",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Permissions unit test retargeted to PermissionManager; 396 local. Local lock only."
+  "note": "Week-8 tools/gates/docproto; tenant_store isolate. 486 local. Local lock only."
 }
