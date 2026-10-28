@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T14:59:53+09:00",
+  "reviewed_at": "2026-10-28T15:22:04+09:00",
   "base_ref": "origin/main",
-  "merge_base": "a0a03a01359d8a8704c6e640899a7ef80a0894da",
-  "diff_sha256": "89c93c86dd963dbe6e7a05da7576875a3cfb10a72f650e68e93c1c499feb8253",
-  "head_sha": "ff61e0536568411dd20ef1bc231cdf10a47e5a17",
+  "merge_base": "637fe5f9ea3203cd7f394f340e97f4d9b1ff25a5",
+  "diff_sha256": "bbabfafe402c6b1170b8f08ac40b7becca098d382fe1f255c9a69880437cf257",
+  "head_sha": "3f6bade6d9b6f2e31b605a3bee269521d76d5619",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-11 CI expand only (184 greens). Local lock only."
+  "note": "Week-12 CI expand only (495 greens). Local lock only."
 }
