@@ -55,11 +55,13 @@ Already green in PR (#468/#469):
 - `unit/test_harness/test_graphs/test_planning.py` (22 passed) —
   `PlanningState` TypedDict→dataclass (matches attribute access); parse
   `depends_on: 无` as empty deps.
+- `unit/test_harness/test_integration.py` (18 passed) — restore
+  HarnessIntegration facade methods mis-nested under KernelRuntime;
+  `start()` schedules monitor loop as background task.
 
 **Not yet (still red or partial):**
 
-- `test_harness/test_integration.py` — HarnessIntegration API drift
-  (`config`/`monitoring`/`reset`/`start`/…)
+- Remaining unit reds: see maxfail=40 snapshot above (hooks / apps / …)
 
 ## Process
 
