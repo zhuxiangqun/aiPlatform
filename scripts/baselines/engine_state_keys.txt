@@ -109,11 +109,13 @@ _user_task|OK|engine-internal
 agent_id|OK|generic pipeline
 context|OK|generic pipeline
 conversation_state|OK|generic pipeline
+current_node|OK|generic langgraph resume cursor (CompiledGraph)
 description|OK|generic pipeline
 domain_id|OK|generic pipeline
 error|OK|generic pipeline
 issues|OK|generic pipeline
 iteration|OK|generic pipeline
+max_steps|OK|generic langgraph/loop budget
 messages|OK|generic pipeline
 output_dir|OK|generic pipeline
 phase|OK|generic pipeline

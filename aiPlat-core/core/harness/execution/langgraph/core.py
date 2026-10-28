@@ -91,7 +91,13 @@ class ExecutionTrace:
     @property
     def duration_ms(self) -> float:
         end = self.end_time or datetime.now(timezone.utc)
-        return (end - self.start_time).total_seconds() * 1000
+        start = self.start_time
+        # Callers may assign naive datetimes; normalize to UTC before subtract.
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+        return (end - start).total_seconds() * 1000
     
     @property
     def success_rate(self) -> float:

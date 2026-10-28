@@ -10,7 +10,7 @@ Tests cover:
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 from core.harness.execution.langgraph.core import (
@@ -231,7 +231,7 @@ class TestExecutionTrace:
     def test_duration_ms(self):
         """Test duration calculation."""
         trace = ExecutionTrace(graph_id="test-graph")
-        trace.start_time = datetime.now() - timedelta(milliseconds=100)
+        trace.start_time = datetime.now(timezone.utc) - timedelta(milliseconds=100)
         trace.finalize()
         
         duration = trace.duration_ms
