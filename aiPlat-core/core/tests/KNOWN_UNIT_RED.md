@@ -196,6 +196,13 @@ Already green in PR (#468/#469):
   skill_installer, skill_rollback_semantics, skill_timeout_metadata
 - Drop batch flake: test_executor_pytest_assemble (event-loop order)
 
+
+**Week 17 (+):** (CI expand only — constitution 12 passed / ~0.2s)
+
+- `core/tests/constitution` (core_genericity + engine_agnostic)
+- Integration probe deferred (many hang / no hermetic summary under 60s)
+- Remaining unit surface mostly known reds / 1-fail cheap-fix candidates
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /
