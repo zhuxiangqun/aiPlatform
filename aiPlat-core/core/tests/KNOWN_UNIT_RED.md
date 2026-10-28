@@ -93,7 +93,7 @@ Already green in PR (#468/#469):
 - `unit/test_delegate_tool.py` (15)
 - `unit/test_file_checkpoint.py` (12)
 - `unit/test_conversation_summary.py` (12)
-- `unit/test_dynamic_router.py` + `test_dynamic_router_opt_in.py` (20)
+- `unit/test_dynamic_router.py` + `test_dynamic_router_opt_in.py` (20) — default-model test hermetic (no live catalog)
 - `unit/test_architecture_profile.py` (11)
 - `unit/test_core_modules.py` + `test_core_module_deps.py` (4)
 - `unit/test_execution_modules.py` + `test_execution_snapshot_facade.py` (12)

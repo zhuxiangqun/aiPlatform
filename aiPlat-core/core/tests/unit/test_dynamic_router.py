@@ -94,10 +94,18 @@ class TestDynamicRouter:
         assert router.max_steps == 5
         assert router.supervisor_model == "test-model"
 
-    def test_router_uses_default_model(self):
-        from core.harness.execution.dynamic_router import DynamicRouter
-        router = DynamicRouter()
+    def test_router_uses_default_model(self, monkeypatch):
+        # Hermetic: CI runners may have no loadable local model catalog.
+        from core.harness.execution import dynamic_router as dr
+
+        monkeypatch.setattr(
+            dr.DynamicRouter,
+            "_default_supervisor_model",
+            staticmethod(lambda: "test-default-model"),
+        )
+        router = dr.DynamicRouter()
         assert router.max_steps == 15
+        assert router.supervisor_model == "test-default-model"
 
     @pytest.mark.asyncio
     async def test_router_trace_accumulation(self):
