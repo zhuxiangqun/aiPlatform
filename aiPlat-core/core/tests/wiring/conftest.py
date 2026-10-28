@@ -1,10 +1,11 @@
 """
 Wiring test conftest: pre-build symbol→caller_files index once per session.
+
+Cache file ``.wiring_index_cache.json`` is intentionally not written: it was
+write-only, machine-absolute, ~20MB, and kept the worktree dirty.
 """
-import json
 import os
-import subprocess
-import sys
+import re
 from pathlib import Path
 
 import pytest
@@ -23,11 +24,6 @@ def _build_index():
     if _index_built:
         return _index
 
-    cache_file = os.path.join(
-        os.path.dirname(__file__), ".wiring_index_cache.json"
-    )
-
-    # Rebuild every session (cheap, ~2s)
     files = []
     for root, dirs, filenames in os.walk(str(CORE_ROOT)):
         dirs[:] = [d for d in dirs if d not in ("__pycache__", ".git", "node_modules")]
@@ -40,9 +36,7 @@ def _build_index():
         try:
             with open(fp, encoding="utf-8", errors="ignore") as f:
                 content = f.read()
-            # Extract all identifiers (crude but fast)
-            import re
-            tokens = set(re.findall(r'\b[A-Za-z_][A-Za-z0-9_]*\b', content))
+            tokens = set(re.findall(r"\b[A-Za-z_][A-Za-z0-9_]*\b", content))
             for t in tokens:
                 if len(t) >= 4:  # skip short tokens to reduce noise
                     sym_to_files.setdefault(t, set()).add(fp)
@@ -51,12 +45,6 @@ def _build_index():
 
     _index = sym_to_files
     _index_built = True
-    # Save cache
-    try:
-        with open(cache_file, "w") as f:
-            json.dump({k: list(v) for k, v in sym_to_files.items()}, f)
-    except Exception:
-        pass
     return _index
 
 

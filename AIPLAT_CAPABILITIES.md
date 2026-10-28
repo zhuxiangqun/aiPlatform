@@ -2869,7 +2869,7 @@ scan_hash: 8f9548ec24f4
 | CoreFacade Wiki API | aiPlat-core/core/api/core_facade.py:wiki_search_pages | ✅ | Wiki 全文搜索，经 CoreFacade 暴露 | 已合入 |
 | ContextService | core/services/context_service.py | ✅ | 完整对话上下文管理 + 记忆集成 | 已合入 |
 | ConfigRegistry | core/services/config_registry_store.py | ✅ | 版本化/哈希校验的配置注册中心 | 已合入 |
-| ExecutionStore | core/services/execution_store/ | ✅ | 综合执行/审计存储 + Schema管理 | 已合入 |
+| ExecutionStore | core/services/execution_store/ | ✅ | 综合执行/审计存储 + Schema管理；`default_execution_db_path`/`reset_execution_store`（AIPLAT_HOME 优先，pytest hermetic） | 已合入 |
 
 ---
 

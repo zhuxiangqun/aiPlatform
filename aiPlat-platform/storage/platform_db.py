@@ -16,10 +16,15 @@ from typing import Any, Dict, List, Optional
 
 
 def _ensure_db_path() -> str:
-    db_path = os.getenv(
-        "AIPLAT_PLATFORM_DB_PATH",
-        str(Path.home() / ".aiplat" / "platform.sqlite3"),
-    )
+    env = os.getenv("AIPLAT_PLATFORM_DB_PATH")
+    if env:
+        db_path = env
+    else:
+        home = os.getenv("AIPLAT_HOME")
+        if home:
+            db_path = str(Path(home) / "data" / "aiplat_platform.sqlite3")
+        else:
+            db_path = str(Path.home() / ".aiplat" / "platform.sqlite3")
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     return db_path
 

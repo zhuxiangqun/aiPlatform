@@ -9,7 +9,13 @@ import logging
 
 
 def _db_path() -> str:
-    return os.getenv("AIPLAT_PLATFORM_DB_PATH", "data/aiplat_platform.sqlite3")
+    env = os.getenv("AIPLAT_PLATFORM_DB_PATH")
+    if env:
+        return env
+    home = os.getenv("AIPLAT_HOME")
+    if home:
+        return str(Path(home) / "data" / "aiplat_platform.sqlite3")
+    return "data/aiplat_platform.sqlite3"
 
 
 _INITED: bool = False

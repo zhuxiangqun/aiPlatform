@@ -39,6 +39,8 @@ jobs:
   test:
     name: Test (pytest)
     runs-on: ubuntu-latest
+    # PR core COLLECT ≈2.4k cases; local >25m observed — cap runaway lock/hang
+    timeout-minutes: 60
     strategy:
       matrix:
         component: [aiPlat-core, aiPlat-infra, aiPlat-platform]

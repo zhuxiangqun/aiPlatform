@@ -26,6 +26,8 @@ htmlcov/
 *.cover
 .tox/
 .nox/
+# wiring index dump (write-only historically; absolute paths; never commit)
+**/tests/wiring/.wiring_index_cache.json
 
 # IDE
 .idea/

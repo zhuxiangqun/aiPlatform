@@ -97,6 +97,7 @@ platform 对外提供：
 多租户治理数据的**存储所有权**在 platform 层（`aiPlat-platform/tenants/tenant_store.py`）：
 
 - **表归属**：`tenant_quotas` / `tenant_usage_ledger` / `tenant_policies` 的 DDL + CRUD 由 platform `TenantStore` 拥有（与 ExecutionStore 同 DB 文件，零数据迁移）；
+- **路径解析（2026-10-29）**：默认 db 与 ExecutionStore 一致——`AIPLAT_EXECUTION_DB_PATH` → `$AIPLAT_HOME/aiplat_executions.sqlite3` → `~/.aiplat/aiplat_executions.sqlite3`；pytest 经 `pytest_configure` 钉临时路径，禁止测试写本机/生产库；
 - **注入**：platform 挂载（`apps.fde`）时 `set_tenant_store()` 经 CoreFacade 注入；core 消费方（policy gate / llm 记账 / policy engine）经 `core.services.tenant_store_protocol` 解析，未注入时 fallback execution_store（零破坏）；
 - **保留 core**：`audit_logs` / `connector_delivery` / `tenants` 主表（执行基础设施，非 tenant 业务 CRUD）；
 - **宪法**：`TestNoQuotaEnforcementInCore` / `TestPlatformResponsibilitiesNotInCore` 真过（不再依赖 DEPRECATED 豁免）。
