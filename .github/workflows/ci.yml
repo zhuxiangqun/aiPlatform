@@ -111,6 +111,24 @@ jobs:
               core/tests/unit/test_tools
               core/tests/unit/test_gates
               core/tests/unit/test_document_protocol.py
+              core/tests/unit/test_approval_gate.py
+              core/tests/unit/test_error_translator.py
+              core/tests/unit/test_delegate_tool.py
+              core/tests/unit/test_file_checkpoint.py
+              core/tests/unit/test_conversation_summary.py
+              core/tests/unit/test_dynamic_router.py
+              core/tests/unit/test_dynamic_router_opt_in.py
+              core/tests/unit/test_architecture_profile.py
+              core/tests/unit/test_core_modules.py
+              core/tests/unit/test_core_module_deps.py
+              core/tests/unit/test_execution_modules.py
+              core/tests/unit/test_execution_snapshot_facade.py
+              core/tests/unit/test_data_recipes.py
+              core/tests/unit/test_claude_md_enforcement.py
+              core/tests/unit/test_claude_md_pre_reasoning_infer.py
+              core/tests/unit/test_guard_regression.py
+              core/tests/unit/test_graph_incremental_paths.py
+              core/tests/unit/test_harness/test_ontology_engine
               core/tests/tool_correctness/test_code_graph.py
               core/tests/integration/test_harness_integration.py
               core/tests/integration/test_phaseR1_repo_diff_context_injection.py
@@ -141,6 +159,24 @@ jobs:
               core/tests/unit/test_tools \
               core/tests/unit/test_gates \
               core/tests/unit/test_document_protocol.py \
+              core/tests/unit/test_approval_gate.py \
+              core/tests/unit/test_error_translator.py \
+              core/tests/unit/test_delegate_tool.py \
+              core/tests/unit/test_file_checkpoint.py \
+              core/tests/unit/test_conversation_summary.py \
+              core/tests/unit/test_dynamic_router.py \
+              core/tests/unit/test_dynamic_router_opt_in.py \
+              core/tests/unit/test_architecture_profile.py \
+              core/tests/unit/test_core_modules.py \
+              core/tests/unit/test_core_module_deps.py \
+              core/tests/unit/test_execution_modules.py \
+              core/tests/unit/test_execution_snapshot_facade.py \
+              core/tests/unit/test_data_recipes.py \
+              core/tests/unit/test_claude_md_enforcement.py \
+              core/tests/unit/test_claude_md_pre_reasoning_infer.py \
+              core/tests/unit/test_guard_regression.py \
+              core/tests/unit/test_graph_incremental_paths.py \
+              core/tests/unit/test_harness/test_ontology_engine \
               core/tests/tool_correctness/test_code_graph.py \
               core/tests/apps/fde/test_slice_five_products.py \
               core/tests/unit/test_agents \
