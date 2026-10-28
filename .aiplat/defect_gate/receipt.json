@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-29T01:25:36+09:00",
+  "reviewed_at": "2026-10-29T01:35:40+09:00",
   "base_ref": "origin/main",
   "merge_base": "8b42f048554b5c326778cef370f4f94710f8ec7a",
-  "diff_sha256": "5cd62c3204469a5355743900f0fe077e7bf79d8afd56ef9849256228c20cef3e",
-  "head_sha": "65c92043a70262a4be643adc7decdaaccdc055a7",
+  "diff_sha256": "abf78c3cc951634f638494ec75f2d4737b62450ff3773d0d66efb89310dc8b0f",
+  "head_sha": "adc6d8739232170cb7e0c93786a948a60730b6ca",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-19 code_generation timeout:600 + unlock timeout metadata. Local lock only."
+  "note": "Week-19 + contracts clause-sync for skill timeout. Local lock only."
 }
