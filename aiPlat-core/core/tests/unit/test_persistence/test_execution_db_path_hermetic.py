@@ -13,10 +13,14 @@ def test_pytest_configure_pins_execution_and_platform_db_under_tmp():
     assert "aiplat-pytest" in str(home)
     exec_path = Path(os.environ["AIPLAT_EXECUTION_DB_PATH"])
     plat_path = Path(os.environ["AIPLAT_PLATFORM_DB_PATH"])
-    assert exec_path.is_relative_to(home) or str(exec_path).startswith(str(home))
-    assert plat_path.is_relative_to(home) or str(plat_path).startswith(str(home))
+    action_path = Path(os.environ["AIPLAT_ACTION_DB_PATH"])
+    profile_dir = Path(os.environ["AIPLAT_PROFILE_DIR"])
+    for p in (exec_path, plat_path, action_path, profile_dir):
+        assert str(p).startswith(str(home))
     # Must not be the developer symlink target under the repo.
     assert "core/data/aiplat_executions.sqlite3" not in str(exec_path)
+    assert str(action_path) != "data/execution_store.db"
+    assert "./data/execution_store.db" not in str(action_path)
 
 
 def test_default_execution_db_path_respects_aiplat_home(monkeypatch, tmp_path):

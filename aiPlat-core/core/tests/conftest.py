@@ -35,6 +35,8 @@ def pytest_configure(config: pytest.Config) -> None:
     _pin_env("AIPLAT_HOME", str(home))
     _pin_env("AIPLAT_EXECUTION_DB_PATH", str(home / "aiplat_executions.sqlite3"))
     _pin_env("AIPLAT_PLATFORM_DB_PATH", str(home / "data" / "aiplat_platform.sqlite3"))
+    _pin_env("AIPLAT_ACTION_DB_PATH", str(home / "data" / "action_store.sqlite3"))
+    _pin_env("AIPLAT_PROFILE_DIR", str(home / "profiles"))
 
     # Seed minimal llm_profile so model injection works without real ~/.aiplat.
     profile = home / "profiles" / "llm_profile.yaml"
@@ -114,7 +116,13 @@ def _session_hermetic_home():
 @pytest.fixture(autouse=True)
 def _isolate_shared_state():
     """Clean up global singletons between tests to prevent cross-test contamination."""
+    # Drop process-global git env left by inline-autoreview helpers so later
+    # ``git init`` in tmp_path is not pointed at a deleted worktree.
+    for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY"):
+        os.environ.pop(key, None)
     yield
+    for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY"):
+        os.environ.pop(key, None)
     try:
         import core.harness.memory.shared_pool as sp
 

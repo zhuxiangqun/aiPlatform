@@ -32,6 +32,10 @@ async def test_stage_runner_propagates_preferred_language(monkeypatch):
         "core.harness.execution.langgraph.stage_runner.ReActLoop",
         _FakeLoop,
     )
+    monkeypatch.setattr(
+        "core.harness.utils.model_injection.best_model_for_purpose",
+        lambda *_a, **_k: "stub-model",
+    )
 
     class _Cfg:
         max_steps_per_stage = 3

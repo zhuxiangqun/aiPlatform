@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 33
-total_capabilities: 1491
+total_capabilities: 1492
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -5093,7 +5093,7 @@ domains:
   tool-ecosystem:
     section: "十六"
     section_name: "工具生态"
-    caps_count: 61
+    caps_count: 62
     provides:
       - symbol: "BaseTool"
         module: core/apps/tools/base.py
@@ -5231,6 +5231,10 @@ domains:
         module: aiPlat-core/core/apps/fde/service/usage_signal.py
         type: function
         signature: "per-day usage trend for Tab⑧"
+      - symbol: "default_action_db_path"
+        module: core/harness/infrastructure/action_store.py
+        type: function
+        signature: "default_action_db_path()→str; ACTION/EXECUTION_DB_PATH → AIPLAT_HOME → ./data"
       - symbol: "query_usage_signal"
         module: aiPlat-core/core/harness/infrastructure/action_store.py
         type: doc

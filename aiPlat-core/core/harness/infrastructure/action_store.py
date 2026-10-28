@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Literal
 
 logger = logging.getLogger(__name__)
@@ -20,11 +22,27 @@ logger = logging.getLogger(__name__)
 USAGE_SUCCESS_STATUSES = frozenset({"success", "executed", "done", "completed", "ok"})
 
 
+def default_action_db_path() -> str:
+    """Resolve ActionStore path (must not escape pytest AIPLAT_HOME).
+
+    Order: ``AIPLAT_ACTION_DB_PATH`` → ``AIPLAT_EXECUTION_DB_PATH`` →
+    ``$AIPLAT_HOME/data/action_store.sqlite3`` → ``./data/execution_store.db``.
+    """
+    for key in ("AIPLAT_ACTION_DB_PATH", "AIPLAT_EXECUTION_DB_PATH"):
+        env = os.environ.get(key)
+        if env:
+            return env
+    home = os.environ.get("AIPLAT_HOME")
+    if home:
+        return str(Path(home) / "data" / "action_store.sqlite3")
+    return "./data/execution_store.db"
+
+
 class ActionStore:
     """Async persistence for action audit trail and pending approvals."""
 
-    def __init__(self, db_path: str = "./data/execution_store.db"):
-        self.db_path = db_path
+    def __init__(self, db_path: Optional[str] = None):
+        self.db_path = db_path or default_action_db_path()
 
     async def initialize(self) -> None:
         """Create tables (idempotent)."""

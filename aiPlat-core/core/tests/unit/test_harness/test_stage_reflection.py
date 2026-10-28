@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 from types import SimpleNamespace
+
+import pytest
 
 from core.harness.execution.stage_reflection import (
     build_stage_reflection,
@@ -42,10 +43,11 @@ def test_build_reflection_failed_on_error():
     assert "token_budget_exhausted" in ref["problems"][0]
 
 
-def test_capture_stage_reflection_async_no_llm(monkeypatch):
+@pytest.mark.asyncio
+async def test_capture_stage_reflection_async_no_llm(monkeypatch):
     monkeypatch.delenv("AIPLAT_STAGE_REFLECTION_LLM", raising=False)
     stage = SimpleNamespace(id="s3", agent_id="pm", output_artifact="prd")
     state = {"prd": {"title": "x"}}
-    ref = asyncio.get_event_loop().run_until_complete(capture_stage_reflection(stage, state))
+    ref = await capture_stage_reflection(stage, state)
     assert ref["verdict"] == "passed"
     assert ref["source"] == "deterministic"

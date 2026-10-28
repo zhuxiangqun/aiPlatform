@@ -219,14 +219,17 @@ Already green in PR (#468/#469):
   code_gen 420s + slack); unlock `test_skill_timeout_metadata`
 - Remaining unit surface still red / tool_correctness hang under long runs
 
-**Week 20 (+):** (CI expand only — 22 passed / ~1s; after hermetic DB pin #489)
+**Week 20 (+):** (CI expand + isolation fix — 22 passed)
 
-- Re-admit prior event-loop dropouts now stable x3: `production_depth_gaps`,
-  `stage_reflection`
-- `test_extraction_parse_filter` + `test_org_h_wave_approvals` (prior knowledge
-  batch flakes, now green alone)
-- `test_stage_runner_preferred_language` (1; CI has model path)
-- `test_apps/test_agent_dedupe` (prior apps batch flake, now green alone)
+- Re-admit `production_depth_gaps` / `stage_reflection` / `agent_dedupe` /
+  `extraction_parse_filter`: replace `get_event_loop().run_until_complete` with
+  `@pytest.mark.asyncio` (batch event-loop order flake).
+- `test_org_h_wave_approvals`: inbox query `kind=arbitration`; ActionStore /
+  PendingExtractionStore default via `default_action_db_path()` + pytest pin
+  `AIPLAT_ACTION_DB_PATH` / `AIPLAT_PROFILE_DIR`.
+- `test_stage_runner_preferred_language` (1; stub `best_model_for_purpose`)
+- Also: `syscalls/__init__.py` move `import logging` out of docstring (react_loop
+  NameError swallow); conftest clears `GIT_DIR`/`GIT_WORK_TREE` between tests.
 
 **Not yet (still red or partial):**
 

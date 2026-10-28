@@ -771,7 +771,12 @@ def write_extraction_to_graph_index(
 class PendingExtractionStore:
     """Persist pending extractions for FDE workbench review."""
 
-    def __init__(self, db_path: str = "./data/execution_store.db"):
+    def __init__(self, db_path: Optional[str] = None):
+        # Same resolution as ActionStore — never hardcode cwd ./data under pytest.
+        if db_path is None:
+            from core.harness.infrastructure.action_store import default_action_db_path
+
+            db_path = default_action_db_path()
         self.db_path = db_path
 
     async def initialize(self) -> None:

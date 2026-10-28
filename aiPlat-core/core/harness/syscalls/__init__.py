@@ -1,32 +1,18 @@
-"""
-
-import logging
-Kernel syscalls (Phase 2).
-
-
+"""Kernel syscalls (Phase 2).
 
 Syscalls are the only permitted execution entry points for:
 
 - LLM calls
-
 - Tool calls
-
 - Skill calls
 
-
-
 NOTE: Keep imports lazy to reduce circular dependencies with execution/skills/tools.
-
 """
-
-
 
 from __future__ import annotations
 
-
-
 import importlib
-
+import logging
 from typing import TYPE_CHECKING, Any
 
 

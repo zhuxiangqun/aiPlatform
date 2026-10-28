@@ -31,7 +31,11 @@ async def test_inbox_lists_arbitration_and_paginates(tmp_path, monkeypatch):
             suggested="merge",
             trace_id=f"trace-{i}",
         )
-    page = await list_approval_inbox(role="operator", domain_id="it-ops", limit=2, offset=0)
+    # kind=arbitration: inbox merges extraction/proposal/hitl by default; those
+    # stores historically defaulted to cwd ./data/execution_store.db and polluted pages.
+    page = await list_approval_inbox(
+        role="operator", domain_id="it-ops", kind="arbitration", limit=2, offset=0
+    )
     assert page["ok"] is True
     assert page["writable"] is False
     assert page["limit"] == 2
