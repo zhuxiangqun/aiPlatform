@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-28T23:05:47+09:00",
+  "reviewed_at": "2026-10-28T23:40:25+09:00",
   "base_ref": "origin/main",
-  "merge_base": "951fdd07157f8914f07e5fc2b89c95705fabeb7d",
-  "diff_sha256": "9a15c354145c5e6d194fbb6ed419184ac24a9166c61dc93306a578ae6b0c0417",
-  "head_sha": "bd621d4903846a27b78ad3711ddde08baec156e4",
+  "merge_base": "3091e0998c3bcfa729f68ce5a6e18f2a8ec3af3f",
+  "diff_sha256": "d5d41f46fcd674bde4f53b77e4e84c81be9d7f8ec132bc613286534a8f3d88c3",
+  "head_sha": "86cd6a64388f1f8ace5815f15a220186f6f26f89",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-16 CI expand memory/skills greens. Local lock only."
+  "note": "Week-17 CI expand constitution. Local lock only."
 }
