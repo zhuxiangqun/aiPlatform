@@ -219,6 +219,15 @@ Already green in PR (#468/#469):
   code_gen 420s + slack); unlock `test_skill_timeout_metadata`
 - Remaining unit surface still red / tool_correctness hang under long runs
 
+**Week 20 (+):** (CI expand only — 22 passed / ~1s; after hermetic DB pin #489)
+
+- Re-admit prior event-loop dropouts now stable x3: `production_depth_gaps`,
+  `stage_reflection`
+- `test_extraction_parse_filter` + `test_org_h_wave_approvals` (prior knowledge
+  batch flakes, now green alone)
+- `test_stage_runner_preferred_language` (1; CI has model path)
+- `test_apps/test_agent_dedupe` (prior apps batch flake, now green alone)
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /
