@@ -3,13 +3,15 @@
 Baseline after #469 (`66177bc`). PR CI stays focused; nightly collect is hard-fail,
 full run informational (`not integration and not slow`).
 
-## Snapshot (local, 2026-10-27)
+## Snapshot (local, 2026-10-29 — week-34 path-escape)
 
 | Metric | Value |
 |--------|------:|
-| `pytest core/tests --collect-only` | 3177 / 0 error |
-| `core/tests/unit` (maxfail=40) | **40 failed**, 1204 passed, 11 skipped (~5m) |
-| Estimated remaining reds | ≫40 (run stopped at maxfail) |
+| Prior week-33 unit (writable HOME) | **2718–2720 passed** (order-flake fixed) |
+| Full 388-target gate (real HOME read-only escape) | **21 failed** → media fixtures + ontology_approval |
+| After AIPLAT_HOME call-time fix (targeted) | media vocab + true_test + OntologyApproval **57 passed** |
+| `pytest core/tests/unit` (venv 3.11, fake HOME) | **2719 passed**, 11 skipped, **0 failed** (~9m37s) |
+| Nightly `core/tests` | still informational (`continue-on-error`); harden unit job next |
 
 ## Failure clusters (first 40)
 
@@ -345,11 +347,33 @@ the PR COLLECT/execute lists (0 locked packages remaining on that track).
 - `_do_inject_adapter_models` — prefer explicit `AIPLAT_EXECUTION_DB_PATH` over
   kernel runtime store (align with `default_execution_db_path` env-wins).
 
+**Week 34 (+):** (`~/.aiplat` import-time escape — production + hermetic)
+
+- Root cause of 21 reds under restricted HOME: modules froze
+  `expanduser("~/.aiplat/…")` at import and ignored `AIPLAT_HOME`.
+- Call-time resolve via `core.utils.paths.get_aiplat_home()`:
+  `ontology_approval`, `media_ops` storage/fixtures, `DraftYamlWriter`,
+  `resolver` registry, `usage_tracker`, `wiki_quality_monitor`,
+  `knowledge_roi`.
+- `conftest`: pin fake `HOME` + symlink `$HOME/.aiplat` → hermetic
+  `AIPLAT_HOME` so residual `expanduser("~/.aiplat")` cannot hit the real
+  user tree.
+- Targeted verify (venv 3.11): media vocab + true_test + OntologyApproval +
+  ontology_completeness_ocs → **57 passed**.
+- Full `pytest core/tests/unit`: **2719 passed / 11 skipped / 0 failed**.
+
+**Week 34 CI/nightly/HTTP (+):**
+
+- Nightly: new hard job `core-tests-unit`; broader `core-tests-full` stays
+  informational (`continue-on-error`, `--ignore=core/tests/unit`).
+- PR `ci.yml`: collapse duplicated COLLECT/execute lists → one `CORE_TARGETS`
+  (~1011 → ~246 lines).
+- Platform HTTP: `test_approvals_http_expiry` + `test_permissions_http_grant_revoke`;
+  approvals router expiry gate no longer falls through when `expires_at` is float.
+
 **Not yet (still red or partial):**
 
-- Nightly job still runs `core/tests` with `continue-on-error` (broader than
-  unit-only; may include integration-adjacent failures). Re-survey after week-33
-  lands. `tool_correctness` long-run hangs remain a separate track.
+- `tool_correctness` long-run hangs remain a separate track.
 
 ## Process
 

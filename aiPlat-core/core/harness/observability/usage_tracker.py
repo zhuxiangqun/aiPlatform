@@ -16,7 +16,6 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("usage_tracker")
 
-_DB_PATH = _os.path.expanduser("~/.aiplat/usage_metrics.db")
 _FLUSH_INTERVAL = 5.0  # seconds between batch flushes
 _BATCH_SIZE = 100      # max events before forced flush
 
@@ -24,8 +23,18 @@ _event_queue: List[Dict[str, Any]] = []
 _last_flush = 0.0
 
 
+def _db_path() -> str:
+    from core.utils.paths import get_aiplat_home
+
+    return _os.path.join(get_aiplat_home(), "usage_metrics.db")
+
+
 def _get_conn() -> _sqlite3.Connection:
-    conn = _sqlite3.connect(_DB_PATH, timeout=5.0)
+    path = _db_path()
+    parent = _os.path.dirname(path)
+    if parent:
+        _os.makedirs(parent, exist_ok=True)
+    conn = _sqlite3.connect(path, timeout=5.0)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
     return conn

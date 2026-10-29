@@ -463,9 +463,10 @@ class EntityExtractor:
 class DraftYamlWriter:
     """Write extracted entities/relations as draft YAML for expert review."""
 
-    DRAFT_DIR = os.path.expanduser("~/.aiplat/ontologies/drafts")
+    def __init__(self, draft_dir: Optional[str] = None):
+        from core.utils.paths import get_ontologies_dir
 
-    def __init__(self):
+        self.DRAFT_DIR = draft_dir or os.path.join(get_ontologies_dir(), "drafts")
         os.makedirs(self.DRAFT_DIR, exist_ok=True)
 
     def write(self, result: ExtractionResult) -> str:
