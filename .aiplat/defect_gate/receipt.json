@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-29T17:10:00+09:00",
+  "reviewed_at": "2026-10-29T19:41:05+08:00",
   "base_ref": "origin/main",
-  "merge_base": "a155c0a5b82d25276a7198a51efbdf0773d3936d",
-  "diff_sha256": "7ca796cd1e125c9e472fbcbf3c396b1475c9188e0c5ec74f5dd09a547843f69a",
-  "head_sha": "4bf6b3b0e6b19249b14e881635af9c0c2d8e39f3",
+  "merge_base": "5eb0b9ef7f4e5466ca068d5ca7faeb9c85ed5ac1",
+  "diff_sha256": "d3d9b597185ec6a719b2e313600737c877f3fd2a8126165f82c49ba60512e508",
+  "head_sha": "384aad27a540863dc548943ba7682462cc237c16",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-31: tool-dispatch result=None + observability unlock; team_wave4 withdrawn after CI flake."
+  "note": "Week-32: unlock 15 locked unit pkgs (181 hermetic). Media stubs only when ffmpeg/ffprobe absent (stub:true). Session unlocked delete; approval UTC; hooks _security_scan; quality PRD unwrap; e2e_test restore. Local lock only."
 }
