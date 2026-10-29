@@ -306,6 +306,12 @@ Already green in PR (#468/#469):
   frontend_module_incomplete + auth-todo gates)
 - `test_v27_modules` (37; ActionRegistry → AsyncActionRegistry / builtin_* ids)
 
+**Week 31 (+):** (permission grant + tool-dispatch guard — 5 passed)
+
+- `test_observability_control` (1; grant EXECUTE + model `_config`; facade
+  guards `result is None` after tool exception)
+- Re-admit `test_team_wave4` (4; was withdrawn for push dry-run flake)
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /

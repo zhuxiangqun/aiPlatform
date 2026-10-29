@@ -5255,13 +5255,15 @@ class ReActLoop(BaseLoop):
 
                     ok = False
 
+                    result = None
+
                 try:
 
-                    if getattr(result, "error", None) == "approval_required":
+                    if result is not None and getattr(result, "error", None) == "approval_required":
 
                         st = "approval_required"
 
-                    elif getattr(result, "error", None) == "policy_denied":
+                    elif result is not None and getattr(result, "error", None) == "policy_denied":
 
                         st = "policy_denied"
 
@@ -5269,7 +5271,15 @@ class ReActLoop(BaseLoop):
 
                         st = "success" if ok else "failed"
 
-                    await self._emit_routing_explain(state, routing_decision_id, "tool", str(tool_name), top, st, str(getattr(result, "error", "") or ""))
+                    await self._emit_routing_explain(
+                        state,
+                        routing_decision_id,
+                        "tool",
+                        str(tool_name),
+                        top,
+                        st,
+                        str((getattr(result, "error", None) or "") if result is not None else ""),
+                    )
 
                 except Exception as e:
 
