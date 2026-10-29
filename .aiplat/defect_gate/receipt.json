@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-29T16:35:00+09:00",
+  "reviewed_at": "2026-10-29T17:00:00+09:00",
   "base_ref": "origin/main",
-  "merge_base": "d736a607c75835d3e058ebe36f822ad8a4ea87e8",
-  "diff_sha256": "4a174e87b27ad5f91930a7ab1bd167694fe64f717aaf66b6f92f9708e35d4e40",
-  "head_sha": "6f63f9fb16f7dd464f4af9c1a082ec8cb4127c78",
+  "merge_base": "a155c0a5b82d25276a7198a51efbdf0773d3936d",
+  "diff_sha256": "742cf08b3c7bd71176d7adf6896d21d51819609a9e85e89415e1a4289aca965e",
+  "head_sha": "05c43a6a5574b8a4e06109f55954f1c44b6c4d82",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-30: test-only (codegen fixture + ActionRegistry v3 import sync). No product paths changed."
+  "note": "Week-31: tool-dispatch result=None guard + observability EXECUTE grant; re-admit team_wave4."
 }
