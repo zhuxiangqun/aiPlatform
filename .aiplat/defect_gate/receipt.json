@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-29T19:43:56+08:00",
+  "reviewed_at": "2026-10-29T19:57:42+08:00",
   "base_ref": "origin/main",
   "merge_base": "5eb0b9ef7f4e5466ca068d5ca7faeb9c85ed5ac1",
-  "diff_sha256": "b9a9aeab9c7d792e46f62f528b4675dc47e4a6638aa134a5ce91ba37a36bca94",
-  "head_sha": "502cac302488ca4a646148edcfe8da69a552db65",
+  "diff_sha256": "a424168ca8e2329d03103d2a2569d3ad017504e57162a5153a9f96634c26ed24",
+  "head_sha": "24c96228f3b5a4471e40eb40f233eb020be32fb2",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-32 unlock + clause-sync docs. Media stubs only when ffmpeg/ffprobe absent. Session unlocked delete; approval UTC; hooks security scan; quality PRD unwrap; e2e_test restore. Local lock only."
+  "note": "Week-32 unlock + clause-sync + team_harness git identity for CI. Media stubs only without ffmpeg. Local lock only."
 }
