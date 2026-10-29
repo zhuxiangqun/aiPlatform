@@ -259,7 +259,9 @@ def apply_repair_selection(context: Dict[str, Any]) -> Optional[str]:
 
 _VERIFY_TOOLS = frozenset({"code", "code_execution"})
 _SHELL_TOOLS = frozenset({"shell", "bash", "shell_exec", "process", "terminal"})
-_VERIFY_SKILLS = frozenset({"test_executor", "canary_runner", "e2e_test"})
+_VERIFY_SKILLS = frozenset(
+    {"test_executor", "canary_runner", "e2e_test", "acceptance_checker"}
+)
 _VERIFY_NAMES = _VERIFY_TOOLS | _VERIFY_SKILLS
 _WRITE_TOOLS = frozenset({
     "file_operations",
@@ -269,6 +271,8 @@ _WRITE_TOOLS = frozenset({
     "sys_file_edit",
 })
 _PYTHON_PATCH = re.compile(r"^python3?\b", re.IGNORECASE)
+# Shell redirects that write files count as repair patch paths (not exploration).
+_SHELL_REDIRECT = re.compile(r"(?:^|[;&|]\s*)(?:.+?)\s*(?:>>?|tee(?:\s+-a)?)\s+\S+", re.I)
 
 
 def _parse_candidate_rows(text: Any) -> Optional[list]:
@@ -389,6 +393,8 @@ def _is_repair_shell_body(body: str) -> bool:
     if not text:
         return False
     if _is_shell_check(text):
+        return True
+    if _SHELL_REDIRECT.search(text):
         return True
     return bool(_PYTHON_PATCH.match(text.splitlines()[0].strip()))
 

@@ -88,7 +88,7 @@ class SessionManager:
         async with self._lock:
             session = self._sessions.get(session_id)
             if session and session.is_expired(self.session_ttl):
-                await self.delete_session(session_id)
+                self._delete_session_unlocked(session_id)
                 return None
             return session
     
@@ -109,24 +109,28 @@ class SessionManager:
             
             return True
     
+    def _delete_session_unlocked(self, session_id: str) -> bool:
+        """Delete a session without acquiring ``_lock`` (caller must hold it)."""
+        if session_id not in self._sessions:
+            return False
+
+        session = self._sessions[session_id]
+        user_id = session.user_id
+
+        del self._sessions[session_id]
+
+        if user_id in self._user_sessions:
+            self._user_sessions[user_id].discard(session_id)
+
+        if session_id in self._conversation_memories:
+            del self._conversation_memories[session_id]
+
+        return True
+
     async def delete_session(self, session_id: str) -> bool:
         """删除会话"""
         async with self._lock:
-            if session_id not in self._sessions:
-                return False
-            
-            session = self._sessions[session_id]
-            user_id = session.user_id
-            
-            del self._sessions[session_id]
-            
-            if user_id in self._user_sessions:
-                self._user_sessions[user_id].discard(session_id)
-            
-            if session_id in self._conversation_memories:
-                del self._conversation_memories[session_id]
-            
-            return True
+            return self._delete_session_unlocked(session_id)
     
     async def get_user_sessions(self, user_id: str) -> list[Session]:
         """获取用户的所有会话"""
@@ -146,7 +150,11 @@ class SessionManager:
         return self._conversation_memories.get(session_id)
     
     async def _cleanup_user_sessions(self, user_id: str) -> int:
-        """清理用户的旧会话"""
+        """清理用户的旧会话。
+
+        Must only be called while ``self._lock`` is held (e.g. from
+        ``create_session``). Uses unlocked delete to avoid asyncio.Lock reentry.
+        """
         if user_id not in self._user_sessions:
             return 0
         
@@ -163,8 +171,8 @@ class SessionManager:
         
         count = 0
         for session in sessions_to_delete:
-            await self.delete_session(session.id)
-            count += 1
+            if self._delete_session_unlocked(session.id):
+                count += 1
         
         return count
     
@@ -192,6 +200,6 @@ class SessionManager:
             ]
             
             for sid in expired_ids:
-                await self.delete_session(sid)
+                self._delete_session_unlocked(sid)
             
             return len(expired_ids)

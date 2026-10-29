@@ -38,6 +38,22 @@ def pytest_configure(config: pytest.Config) -> None:
     _pin_env("AIPLAT_ACTION_DB_PATH", str(home / "data" / "action_store.sqlite3"))
     _pin_env("AIPLAT_PROFILE_DIR", str(home / "profiles"))
 
+    # Unit tests that boot FastAPI TestClient(srv.app) must not inherit production
+    # lifespan defaults (docs sync sleep(30), graph warm of the monorepo, cron
+    # loops). Those background tasks make TestClient __exit__ hang for minutes.
+    _pin_env("AIPLAT_DOCS_AUTO_SYNC", "false")
+    _pin_env("AIPLAT_DOCS_WATCH", "false")
+    _pin_env("AIPLAT_WARM_GRAPHS", "false")
+    _pin_env("AIPLAT_GOVERNANCE_CRON_HOURS", "0")
+    _pin_env("AIPLAT_ENABLE_AUTO_DIAG", "false")
+    _pin_env("AIPLAT_ENABLE_JOBS", "false")
+    _pin_env("AIPLAT_ENABLE_SKILL_LINT_CRON", "false")
+    _pin_env("AIPLAT_ENABLE_PRUNE_SCHEDULER", "false")
+    _pin_env("AIPLAT_ENABLE_LEARNING_SCHEDULER", "false")
+    _pin_env("AIPLAT_DISCOVERY_ENABLED", "false")
+    _pin_env("AIPLAT_AUTO_HEAL_INTERVAL", "0")
+    _pin_env("AIPLAT_SEED_DEFAULT_PERMISSIONS", "false")
+
     # Seed minimal llm_profile so model injection works without real ~/.aiplat.
     profile = home / "profiles" / "llm_profile.yaml"
     if not profile.exists():

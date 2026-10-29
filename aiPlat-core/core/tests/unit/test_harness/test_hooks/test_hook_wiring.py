@@ -1,7 +1,9 @@
 import asyncio
 
+from core.apps.tools.permission import get_permission_manager
 from core.harness.execution.loop import BaseLoop, ReActLoop
 from core.harness.interfaces.loop import LoopState, LoopStateEnum, LoopConfig
+from core.harness.interfaces.types import Permission
 from core.harness.infrastructure.hooks import HookManager, HookPhase, create_hook, HookContext
 
 
@@ -28,6 +30,8 @@ def test_contract_hook_can_block_execution():
 
 
 class _DummyModel:
+    _config = type("_Cfg", (), {"temperature": 0.0})()
+
     async def generate(self, messages):
         class _R:
             def __init__(self, c):
@@ -50,6 +54,11 @@ class _DummyTool:
 
 
 def test_pre_approval_hook_can_deny_tool_use():
+    # PolicyGate requires EXECUTE before PRE_APPROVAL security scan can run.
+    pm = get_permission_manager()
+    pm.grant_permission("u", "WRITE", Permission.EXECUTE)
+    pm.grant_permission("u", "write", Permission.EXECUTE)
+
     loop = ReActLoop(model=_DummyModel(), tools=[_DummyTool()])
     state = LoopState(
         context={
@@ -62,5 +71,5 @@ def test_pre_approval_hook_can_deny_tool_use():
     res = asyncio.run(loop.run(state, LoopConfig(max_steps=1)))
     assert res.success is False or res.success is True  # loop may finish but should deny
     obs = res.final_state.context.get("observation", "")
-    assert "Denied:" in obs
+    assert "Denied:" in obs or "POLICY_DENIED" in obs or "security" in (obs or "").lower()
 

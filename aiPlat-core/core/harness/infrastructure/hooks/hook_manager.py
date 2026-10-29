@@ -405,6 +405,72 @@ def get_default_hooks() -> Dict[str, Hook]:
         priority=90,
     )
 
+    # Secret scan on write/edit tool args (PRE_APPROVAL). Env:
+    #   AIPLAT_SECURITY_SCAN_TOOLS=write,edit
+    #   AIPLAT_SECURITY_SCAN_TOOL_ALLOWLIST=write   (only these tools scanned)
+    #   AIPLAT_SECURITY_SCAN_TOOL_DENYLIST=write    (skip scan for these)
+    async def _security_scan_tool_args_hook(context: HookContext):
+        import json
+        import re
+
+        meta = context.state or {}
+        tool_name = str(meta.get("tool_name") or meta.get("tool") or "").strip()
+        tool_l = tool_name.lower()
+        if not tool_l:
+            return {"allow": True}
+
+        allow_raw = (os.getenv("AIPLAT_SECURITY_SCAN_TOOL_ALLOWLIST") or "").strip()
+        deny_raw = (os.getenv("AIPLAT_SECURITY_SCAN_TOOL_DENYLIST") or "").strip()
+        tools_raw = (os.getenv("AIPLAT_SECURITY_SCAN_TOOLS") or "write,edit,WRITE,EDIT").strip()
+        allow = {t.strip().lower() for t in allow_raw.split(",") if t.strip()} if allow_raw else set()
+        deny = {t.strip().lower() for t in deny_raw.split(",") if t.strip()} if deny_raw else set()
+        scan_tools = {t.strip().lower() for t in tools_raw.split(",") if t.strip()} or {"write", "edit"}
+
+        if tool_l in deny:
+            return {"allow": True, "security_scan": "skipped_denylist"}
+        if allow and tool_l not in allow:
+            return {"allow": True, "security_scan": "skipped_not_allowlisted"}
+        if tool_l not in scan_tools and tool_l not in allow:
+            return {"allow": True, "security_scan": "skipped_not_in_tools"}
+
+        args = meta.get("tool_args") or {}
+        try:
+            blob = json.dumps(args, ensure_ascii=False) if not isinstance(args, str) else args
+        except Exception:
+            blob = str(args)
+        # OpenAI-style keys and common credential shapes
+        secret_re = re.compile(
+            r"(sk-[A-Za-z0-9]{16,}|api[_-]?key\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{16,})",
+            re.I,
+        )
+        hit = secret_re.search(blob or "")
+        if hit:
+            events = None
+            ctx = meta.get("context")
+            if isinstance(ctx, dict):
+                events = ctx.setdefault("audit_events", [])
+                if isinstance(events, list):
+                    events.append(
+                        {
+                            "event": "security_scan",
+                            "tool_name": tool_name,
+                            "reason": "secret_pattern",
+                            "match": hit.group(0)[:12] + "…",
+                        }
+                    )
+            return {
+                "allow": False,
+                "reason": f"security_scan: secret-like content blocked for tool {tool_name}",
+            }
+        return {"allow": True, "security_scan": "clean"}
+
+    hooks["pre_approval_security_scan"] = create_hook(
+        name="pre_approval_security_scan",
+        callback=_security_scan_tool_args_hook,
+        phase=HookPhase.PRE_APPROVAL_CHECK,
+        priority=95,
+    )
+
     # Session hooks (lightweight defaults)
     async def session_start_hook(context: HookContext):
         context.state = context.state or {}

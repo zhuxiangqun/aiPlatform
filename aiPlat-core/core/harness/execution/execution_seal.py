@@ -18,7 +18,17 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 logger = logging.getLogger(__name__)
 
 _CODING_PRIMARY = frozenset({"code_generation", "code-hygiene", "file_operations"})
+_E2E_SKILLS = frozenset({"e2e_test"})
 _FOLLOWUP_ORDER = ("autoreview", "code_review", "code-hygiene")
+
+
+def _e2e_deliverable_veto(output_text: str) -> Optional[str]:
+    """Seal helper: refuse DONE when e2e_test output violates recon/locator contract."""
+    try:
+        from core.engine.skills.e2e_test.validate import validate_e2e_deliverable
+    except Exception:
+        return None
+    return validate_e2e_deliverable(output_text, require_recon=True)
 
 
 def seal_answer_with_receipts(
@@ -129,6 +139,7 @@ def coding_deliverable_veto(
     skill_once = str(ctx.get("_skill_delivery") or "").strip().lower() == "once"
     bound_s = {str(x).strip() for x in (bound_skill_ids or []) if str(x).strip()}
     coding_skills = bound_s & _CODING_PRIMARY
+    e2e_skills = bound_s & _E2E_SKILLS
     in_text = str(ctx.get("_user_task") or "").strip()
     if not in_text:
         task = str(ctx.get("task") or "").strip()
@@ -137,13 +148,18 @@ def coding_deliverable_veto(
         else:
             in_text = task
     asks = _input_asks_coding_delivery(in_text) if in_text else False
-    if not (skill_once or coding_skills or asks):
+    if not (skill_once or coding_skills or asks or e2e_skills):
         return None
 
     out = str(ctx.get("output") or "").strip()
     reason: Optional[str] = None
 
-    if not out:
+    if e2e_skills and out:
+        e2e_reason = _e2e_deliverable_veto(out)
+        if e2e_reason:
+            reason = e2e_reason
+
+    if reason is None and not out:
         if skill_once and not ctx.get("_primary_skill_delivered"):
             reason = (
                 "skill_delivery=once requires a successful primary skill call "
@@ -153,7 +169,7 @@ def coding_deliverable_veto(
         try:
             from core.harness.utils.execute_session import looks_like_pending_action_envelope
 
-            if looks_like_pending_action_envelope(out):
+            if reason is None and looks_like_pending_action_envelope(out):
                 ctx["_pseudo_tool"] = True
                 reason = (
                     "output is still a skill_call/tool_call envelope — execute the skill "

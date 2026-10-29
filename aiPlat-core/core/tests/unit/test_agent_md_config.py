@@ -12,19 +12,25 @@ from pathlib import Path
 import yaml
 
 
-AGENTS_DIR = Path(os.path.expanduser("~/.aiplat/agents"))
-AUTO_DIR = AGENTS_DIR / "auto"
+def _agents_dir() -> Path:
+    # Prefer hermetic AIPLAT_HOME (pytest conftest); fall back to ~/.aiplat.
+    home = os.environ.get("AIPLAT_HOME") or os.path.expanduser("~/.aiplat")
+    return Path(home) / "agents"
+
+
 HANDOFF_KEYWORDS = ["做了什么", "产出", "验证", "已知问题", "下一步", "变更", "deliverable", "verify", "known issue", "next step"]
 
 
 def _get_agent_dirs() -> list[Path]:
-    if not AGENTS_DIR.exists():
+    agents_dir = _agents_dir()
+    auto_dir = agents_dir / "auto"
+    if not agents_dir.exists():
         return []
     out = []
-    for item in sorted(AGENTS_DIR.iterdir()):
+    for item in sorted(agents_dir.iterdir()):
         if item.is_dir() and (item / "AGENT.md").exists():
             # Skip auto-generated agents
-            if str(item).startswith(str(AUTO_DIR)):
+            if str(item).startswith(str(auto_dir)):
                 continue
             out.append(item)
     return out

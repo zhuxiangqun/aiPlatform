@@ -31,6 +31,8 @@ EXCLUDE_FILES = {
     "conversational.py",
     # Programmatic fallback strings (not LLM prompts)
     "multi_agent.py",
+    # Domain prompt registration modules (_register / register_*_prompts)
+    "prompts.py",
 }
 
 EXCLUDE_DIRS = {

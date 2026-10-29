@@ -313,12 +313,28 @@ Already green in PR (#468/#469):
 - Withdrawn again after CI red: `test_team_wave4` (push dry-run /
   event-loop flake under full COLLECT)
 
+**Week 32 (+):** (remaining locked unlock — 181 passed hermetic, no ffmpeg)
+
+- `test_adapters/test_llm/test_base` — clear package skip; import
+  `core.adapters.llm.base`
+- `test_agent_md_config` — hermetic `AIPLAT_HOME` AGENT.md fixtures
+- `test_approval_expiry_gate` — UTC-aware `expires_at` + manager unit path
+- `test_execution_quality_review` — PRD / lone-API unwrap order + markers
+- `test_coding_contract_gate` — skill category/tags → contract
+- `test_config_registry_publish_requires_approval` — approval wiring
+- `test_architecture_health` — e2e_test skill restore + seal wiring
+- hooks (`hook_wiring` / `security_scan_config`) — grant EXECUTE + restore
+  `pre_approval_security_scan`
+- `media_skill_handlers_vocab` + `true_test_runtime` — `probe_media` /
+  keyframe / speech stubs when ffmpeg/ffprobe missing
+- `test_memory/test_session` — unlock reentry via `_delete_session_unlocked`
+- `test_team_wave4` — re-unlocked after hang/flake fixes
+- `test_prompt_loading` / `test_repo_diff_gate_metadata` — hermetic pins
+
 **Not yet (still red or partial):**
 
-- Remaining unit reds: scattered (hooks / apps / skills / adapter injection /
-  oversized AGENT.md / approval_expiry hang / architecture_health /
-  chaos_fault_injection / observability_control policy early-pause / …);
-  ~25 fail / 1013 pass on maxfail=25 sample after week-4 greens ignored.
+- Nightly/informational unit surface outside PR COLLECT may still have
+  scattered reds; PR unlock list for the former locked 15 is green.
 
 ## Process
 
