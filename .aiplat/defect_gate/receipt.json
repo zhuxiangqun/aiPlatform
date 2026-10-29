@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-29T22:33:39+09:00",
+  "reviewed_at": "2026-10-29T22:40:43+09:00",
   "base_ref": "origin/main",
   "merge_base": "a78b5710ea88216013f0204cc92bfddf6f0e295e",
-  "diff_sha256": "816a954c9ccf81da8a60e51a06f32cacb45ddbba30c9bc0799521256cee17aff",
-  "head_sha": "032bcddc788edd32a9d736356ba42b81067d5d14",
+  "diff_sha256": "4df1680a90bfd197d941e87d1f417ca85ab8b75bf04ed1952e2a6e61ae1c929c",
+  "head_sha": "76d2a9184d8eb6b421af8a6cd386b98640e2ea7d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-34: AIPLAT_HOME call-time resolve + fake HOME; approvals expiry no longer falls through on float expires_at; nightly unit hard-gated. Residual: other modules may still expanduser(~/.aiplat) outside this diff."
+  "note": "Week-34 + clause-sync docs (system/auth/run/core contracts). Approvals float expiry fall-through fixed; AIPLAT_HOME call-time + fake HOME."
 }
