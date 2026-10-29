@@ -126,9 +126,13 @@ class ApprovalRequest:
 
     def is_expired(self) -> bool:
         """Check if request has expired."""
-        if self.expires_at:
-            return datetime.now(timezone.utc) > self.expires_at
-        return False
+        if not self.expires_at:
+            return False
+        exp = self.expires_at
+        # Store reload historically used utcfromtimestamp (naive); compare in UTC.
+        if getattr(exp, "tzinfo", None) is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) > exp
 
     def is_resolved(self) -> bool:
         """Check if request has been resolved."""

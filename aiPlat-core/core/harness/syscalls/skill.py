@@ -948,7 +948,13 @@ async def sys_skill_call(
 
                     meta = meta if isinstance(meta, dict) else {}
 
-                    is_coding = bool(meta.get("uses_file_output"))
+                    tags = meta.get("tags") if isinstance(meta.get("tags"), (list, tuple, set)) else []
+                    cat = str(meta.get("category") or "").strip().lower()
+                    is_coding = bool(meta.get("uses_file_output")) or cat in {
+                        "coding",
+                        "code",
+                        "codegen",
+                    } or any(str(t).strip().lower() in {"coding", "code", "codegen"} for t in tags)
 
                     if is_coding:
 

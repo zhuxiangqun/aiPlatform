@@ -13,6 +13,9 @@ async def test_repo_tool_attaches_status_snapshot(tmp_path, monkeypatch):
     # create a tiny git repo with one modified file
     repo = tmp_path / "repo"
     repo.mkdir()
+    # Drop process-global git env so init is not pointed at a deleted worktree.
+    for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY"):
+        monkeypatch.delenv(key, raising=False)
     subprocess.run(["git", "init"], cwd=str(repo), check=True, capture_output=True, text=True)
     (repo / "a.txt").write_text("v1\n", encoding="utf-8")
     (repo / "b.txt").write_text("v1\n", encoding="utf-8")

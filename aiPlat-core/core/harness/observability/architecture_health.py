@@ -184,9 +184,13 @@ def _execution_seal_wiring() -> Dict[str, Any]:
         gate_src = gate.read_text(encoding="utf-8") if gate.is_file() else ""
         # Production finish paths: seal helper, not direct bind (record_tool_receipt OK).
         seal_src = seal.read_text(encoding="utf-8")
-        if "apply_repair_selection" not in seal_src or "note_prediction_outcome" not in seal_src:
+        # note_prediction_outcome is settled from execution_seal; apply_repair_selection
+        # lives in completion_receipt and is invoked from done_verify (not seal text).
+        if "note_prediction_outcome" not in seal_src:
             return {"ok": False, "detail": "seal missing repair-candidate selection"}
         receipt_src = (root / "completion_receipt.py").read_text(encoding="utf-8")
+        if "def apply_repair_selection" not in receipt_src or "apply_repair_selection" not in gate_src:
+            return {"ok": False, "detail": "seal missing repair-candidate selection"}
         if "def ingest_repair_candidates" not in receipt_src or "ingest_repair_candidates(context)" not in receipt_src:
             return {"ok": False, "detail": "repair candidates are not ingested before selection"}
         if "def block_extra_repair_verify" not in receipt_src or "block_extra_repair_verify(" not in facade_src:

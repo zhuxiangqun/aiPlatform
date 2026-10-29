@@ -3679,11 +3679,22 @@ def _looks_architecture(asset_id: str, asset_name: str, output: Any, hints: str 
         return True
     if not isinstance(output, dict):
         return False
+    keys = set(output.keys())
+    # PRD / requirements drafts must not be reclassified as architecture just
+    # because ensure_architecture_rollout_weeks injected rollout_and_risks.
+    prd_markers = {
+        "functional_requirements",
+        "user_stories",
+        "non_functional",
+        "acceptance_criteria",
+    }
+    if keys & prd_markers and str(output.get("document_type") or "") != "architecture_design":
+        if not (keys & {"components", "folder_structure", "api_contracts", "api_design"}):
+            return False
     if str(output.get("document_type") or "") == "architecture_design":
         return True
     if str(output.get("architecture_mode") or "") in ("agent", "code"):
         return True
-    keys = set(output.keys())
     return bool(
         keys
         & {
@@ -4275,13 +4286,25 @@ def review_execution_output(
     sop = _sop_fix(kind, label)
     in_text = _input_text(input_payload)
     persist_envelope = output
-    raw_out = sanitize_architecture_third_party(
-        ensure_architecture_rollout_weeks(
-            ensure_architecture_section_fields(_unwrap_output(output)),
-            in_text,
-        ),
-        in_text,
+    # Unwrap first so lone-API detection sees method/path before ensure_* injects
+    # architecture filler keys (which would hide architecture_output_is_lone_api).
+    unwrapped = _unwrap_output(output)
+    arch_by_asset = _looks_architecture(
+        f"{asset_id} {hints}",
+        f"{asset_name} {hints}",
+        unwrapped if isinstance(unwrapped, dict) else {},
+        hints=hints,
     )
+    if arch_by_asset and not _architecture_output_is_lone_api(unwrapped):
+        raw_out = sanitize_architecture_third_party(
+            ensure_architecture_rollout_weeks(
+                ensure_architecture_section_fields(unwrapped),
+                in_text,
+            ),
+            in_text,
+        )
+    else:
+        raw_out = unwrapped
     out_text = _text_blob(raw_out)
     st = str(status or "").lower()
 

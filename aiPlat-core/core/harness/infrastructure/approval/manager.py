@@ -276,11 +276,21 @@ class ApprovalManager:
 
             is_first_time=bool(rec.get("is_first_time") or False),
 
-            created_at=datetime.utcfromtimestamp(float(rec.get("created_at") or datetime.now(timezone.utc).timestamp())),
+            created_at=datetime.fromtimestamp(
+                float(rec.get("created_at") or datetime.now(timezone.utc).timestamp()),
+                tz=timezone.utc,
+            ),
 
-            updated_at=datetime.utcfromtimestamp(float(rec.get("updated_at") or datetime.now(timezone.utc).timestamp())),
+            updated_at=datetime.fromtimestamp(
+                float(rec.get("updated_at") or datetime.now(timezone.utc).timestamp()),
+                tz=timezone.utc,
+            ),
 
-            expires_at=datetime.utcfromtimestamp(float(rec["expires_at"])) if rec.get("expires_at") else None,
+            expires_at=(
+                datetime.fromtimestamp(float(rec["expires_at"]), tz=timezone.utc)
+                if rec.get("expires_at")
+                else None
+            ),
 
             metadata=rec.get("metadata") or {},
 

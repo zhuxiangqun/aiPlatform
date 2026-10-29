@@ -178,3 +178,25 @@ output_schema:
 - 数据库Schema必须包含字段类型（如VARCHAR(255)、INT、TEXT）和约束（NOT NULL、UNIQUE、FOREIGN KEY）
 - 输出必须可被json.loads()直接解析，不要任何注释或markdown代码块
 - 所有技术选型需说明版本号和选择理由
+
+<!-- eq_fix:architecture_sections_thin -->
+### 一键加固：架构输出覆盖评审章节
+- 输入要求「上下文与假设」时：必须输出非空字段 `context` 或 `assumptions`（或 `context_and_assumptions`），写明边界/假设/待确认；仅有 `open_questions` 不算覆盖该章节。
+- 输入要求「数据流 / 安全与合规 / 分期与风险」时，输出须有对应章节或等价字段，禁止只丢 components 清单。
+- 若输入含「6 周 / 试点 / 分期」，必须输出非空字段 `rollout_and_risks`（或 `phases`+`risks` / 中文键「分期切片与风险」），写明周次切片与风险；禁止省略。
+- API 契约须含方法/路径/请求响应要点；禁止编造未给定的第三方接口细节。
+- 输入要求上报/审批/派修/看板数据流时，data_flow 须覆盖四段业务，禁止只写「拍照上传」。
+- 输入要求安全与合规（落地/脱敏/内网）时，须有独立 security 叙述，禁止只用 overview 里的「安全性」一词冒充。
+- API 的 request/response 禁止占位空壳（如 body=「处理结果」/「照片数据」）；字段须可评审。
+- 输入要求标明待确认时，context/assumptions/open_questions 须含「待确认」类表述。
+
+<!-- eq_fix:public_cloud_photo_storage -->
+### 一键加固：照片不上公网 → 禁止公有云对象存储
+- 输入含「不上公网 / 不可上公网 / 照片不外传」时，存储选型禁止：阿里云 OSS、腾讯云 COS、七牛、AWS S3、公有云对象存储。
+- 须写内网/私有化落地（私有桶、VPC 内 MinIO/本地盘等），并在假设中标明钉钉 API 未开放时不编造对接细节。
+
+<!-- eq_fix:invented_third_party_api -->
+### 一键加固：无 API 文档时禁止编造第三方调用
+- 输入含「暂无 API 文档 / API 未开放 / 禁止编造」时：禁止写「发送至钉钉审批/派修/看板接口」等具体调用步骤。
+- 允许：组件 tech 标「钉钉 API（待确认）」；未知项写入 `open_questions` / 假设「待确认」。
+- 数据流写到「待对接 / 占位通知通道」即可，勿假装已有钉钉业务 API。

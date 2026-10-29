@@ -94,8 +94,9 @@ def test_t1c_push_dry_run_and_branch(tmp_path, monkeypatch):
         branch="teamai/test-contrib",
         message="test contribute",
     )
-    assert pushed["ok"] is True and pushed.get("pushed") is True
-    assert pushed.get("commit")
+    assert pushed.get("ok") is True, pushed
+    assert pushed.get("pushed") is True, pushed
+    assert pushed.get("commit"), pushed
 
 
 def test_t3b_merge_never_overwrites_primary(tmp_path, monkeypatch):

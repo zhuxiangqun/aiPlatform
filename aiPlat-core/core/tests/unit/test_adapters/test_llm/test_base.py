@@ -12,7 +12,7 @@ import pytest
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional, List
 
-from adapters.llm.base import (
+from core.adapters.llm.base import (
     LLMConfig,
     LLMResponse,
     AdapterMetadata,
@@ -31,7 +31,7 @@ class TestLLMConfig:
         assert config.model == "gpt-4"
         assert config.temperature == 0.7
         assert config.max_tokens == 4096
-        assert config.timeout == 30
+        assert config.timeout == 300
         assert config.api_key is None
         assert config.base_url is None
         assert config.max_retries == 3

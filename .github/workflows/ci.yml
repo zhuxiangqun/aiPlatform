@@ -464,6 +464,21 @@ jobs:
               core/tests/unit/test_apps/test_code_generation_input_and_substance.py
               core/tests/unit/test_v27_modules.py
               core/tests/unit/test_harness/test_observability/test_observability_control.py
+              core/tests/unit/test_adapters/test_llm/test_base.py
+              core/tests/unit/test_agent_md_config.py
+              core/tests/unit/test_approval_expiry_gate.py
+              core/tests/unit/test_apps/test_execution_quality_review.py
+              core/tests/unit/test_coding_contract_gate.py
+              core/tests/unit/test_config_registry_publish_requires_approval.py
+              core/tests/unit/test_harness/test_architecture_health.py
+              core/tests/unit/test_harness/test_hooks/test_hook_wiring.py
+              core/tests/unit/test_harness/test_hooks/test_security_scan_config.py
+              core/tests/unit/test_harness/test_media_skill_handlers_vocab.py
+              core/tests/unit/test_harness/test_memory/test_session.py
+              core/tests/unit/test_harness/test_team_wave4.py
+              core/tests/unit/test_harness/test_true_test_runtime.py
+              core/tests/unit/test_prompt_loading.py
+              core/tests/unit/test_repo_diff_gate_metadata.py
               core/tests/apps/fde/test_slice_fault_injection.py
               core/tests/apps/fde/test_slice_five_products.py
               core/tests/tool_correctness/test_code_graph.py
@@ -843,6 +858,21 @@ jobs:
               core/tests/unit/test_apps/test_code_generation_input_and_substance.py \
               core/tests/unit/test_v27_modules.py \
               core/tests/unit/test_harness/test_observability/test_observability_control.py \
+              core/tests/unit/test_adapters/test_llm/test_base.py \
+              core/tests/unit/test_agent_md_config.py \
+              core/tests/unit/test_approval_expiry_gate.py \
+              core/tests/unit/test_apps/test_execution_quality_review.py \
+              core/tests/unit/test_coding_contract_gate.py \
+              core/tests/unit/test_config_registry_publish_requires_approval.py \
+              core/tests/unit/test_harness/test_architecture_health.py \
+              core/tests/unit/test_harness/test_hooks/test_hook_wiring.py \
+              core/tests/unit/test_harness/test_hooks/test_security_scan_config.py \
+              core/tests/unit/test_harness/test_media_skill_handlers_vocab.py \
+              core/tests/unit/test_harness/test_memory/test_session.py \
+              core/tests/unit/test_harness/test_team_wave4.py \
+              core/tests/unit/test_harness/test_true_test_runtime.py \
+              core/tests/unit/test_prompt_loading.py \
+              core/tests/unit/test_repo_diff_gate_metadata.py \
               core/tests/apps/fde/test_slice_fault_injection.py \
               core/tests/tool_correctness/test_code_graph.py \
               core/tests/apps/fde/test_slice_five_products.py \

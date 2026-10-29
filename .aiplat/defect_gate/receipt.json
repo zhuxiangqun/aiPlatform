@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-29T17:10:00+09:00",
+  "reviewed_at": "2026-10-29T19:57:42+08:00",
   "base_ref": "origin/main",
-  "merge_base": "a155c0a5b82d25276a7198a51efbdf0773d3936d",
-  "diff_sha256": "7ca796cd1e125c9e472fbcbf3c396b1475c9188e0c5ec74f5dd09a547843f69a",
-  "head_sha": "4bf6b3b0e6b19249b14e881635af9c0c2d8e39f3",
+  "merge_base": "5eb0b9ef7f4e5466ca068d5ca7faeb9c85ed5ac1",
+  "diff_sha256": "a424168ca8e2329d03103d2a2569d3ad017504e57162a5153a9f96634c26ed24",
+  "head_sha": "24c96228f3b5a4471e40eb40f233eb020be32fb2",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-31: tool-dispatch result=None + observability unlock; team_wave4 withdrawn after CI flake."
+  "note": "Week-32 unlock + clause-sync + team_harness git identity for CI. Media stubs only without ffmpeg. Local lock only."
 }
