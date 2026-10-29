@@ -81,12 +81,14 @@ class TestProductionSelfLearningPipeline:
     def test_dynamic_router_writes_route_after(self):
         """DynamicRouter produces valid state['_route_after'] for engine consumption."""
         from core.harness.execution.dynamic_router import DynamicRouter, _Decision
-        router = DynamicRouter(max_steps=5)
+        # Explicit model: hermetic CI has no GPU / model catalog.
+        router = DynamicRouter(max_steps=5, supervisor_model="stub-chat-model")
 
         # Test decision parsing works
         d = _Decision("call_agent", "CodeAgent", "Need to fix the build")
         assert d.decision == "call_agent"
         assert d.agent_name == "CodeAgent"
+        assert router.max_steps == 5
 
 
 class TestSFTEndToEnd:
@@ -149,21 +151,22 @@ class TestSFTEndToEnd:
 class TestEvolutionEngineNightly:
 
     def test_all_12_steps_present(self):
-        """EvolutionEngine.nightly_evolution has exactly 12 steps."""
+        """EvolutionEngine.nightly_evolution has exactly 14 steps."""
         from core.harness.evolution_engine import EvolutionEngine
         import inspect
         src = inspect.getsource(EvolutionEngine.nightly_evolution)
         step_count = src.count("self._step(")
-        assert step_count == 12, f"Expected 12 nightly steps, found {step_count}"
+        assert step_count == 14, f"Expected 14 nightly steps, found {step_count}"
 
     def test_all_step_handlers_exist(self):
-        """All 12 step handler methods exist on EvolutionEngine."""
+        """All 14 step handler methods exist on EvolutionEngine."""
         from core.harness.evolution_engine import EvolutionEngine
         handlers = [
             "_do_meta_analysis", "_do_skill_processing", "_do_pattern_prune",
             "_do_rollback_check", "_do_experience_evict", "_do_sft_trigger",
             "_do_drift_detect", "_do_defense_export", "_do_self_harness",
             "_do_cross_tenant_scan", "_do_rl_trigger", "_do_value_snapshot",
+            "_do_spec_health", "_do_agent_refinement",
         ]
         for h in handlers:
             assert hasattr(EvolutionEngine, h), f"Missing handler: {h}"
@@ -187,6 +190,7 @@ class TestDynamicRouterGrayscale:
     def test_dynamic_router_defaults(self):
         """DynamicRouter ships with safe defaults."""
         from core.harness.execution.dynamic_router import DynamicRouter
-        router = DynamicRouter()
+        # Explicit model: hermetic CI has no GPU / model catalog.
+        router = DynamicRouter(supervisor_model="stub-chat-model")
         assert router.max_steps == 15
         assert router.supervisor_model != ""
