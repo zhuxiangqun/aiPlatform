@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-29T13:50:00+09:00",
+  "reviewed_at": "2026-10-29T16:10:00+09:00",
   "base_ref": "origin/main",
-  "merge_base": "0e29a775b2ceca8b5d3a456b05d4de92569d5958",
-  "diff_sha256": "ecf1f89400b1bd62dac7aa9bb87512101c16816d8666698042a5103f68590af7",
-  "head_sha": "9599c9b9706f57556cd7e3c9f4a7aaa3a47d173e",
+  "merge_base": "5d6369a808069e10b286fc1f76bcd36ab7fcda23",
+  "diff_sha256": "a91beec5519b61980468fcf74eb6683ccde163c85974fce00e4d404828166d52",
+  "head_sha": "a059fc22972782f0a42b3cb7274a5c72d08bb0ae",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-28: test stubs only (ActionStore impact/status + best_model messages=); COLLECT/execute unlock. No product paths changed."
+  "note": "Week-29: restore fde_delivery_v1 seed + test stubs (healing path, SkillConfig.effects). No product behavior change."
 }
