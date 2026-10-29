@@ -7,7 +7,7 @@ from core.management.agent_manager import AgentManager
 def test_agent_manager_uses_canonical_status_values():
     mgr = AgentManager(seed=False)
 
-    # create_agent should start as INITIALIZING
+    # create_agent: catalog status is ready (auto-smoke gates execute readiness)
     agent = asyncio.run(
         mgr.create_agent(
             name="My Agent",
@@ -15,11 +15,13 @@ def test_agent_manager_uses_canonical_status_values():
             config={"model": "gpt-4"},
         )
     )
-    assert agent.status == AgentStateEnum.INITIALIZING.value
+    assert agent.status == AgentStateEnum.READY.value
 
-    # start/stop should use RUNNING/STOPPED
+    # start/stop update runtime_state (catalog status stays ready while enabled)
     assert asyncio.run(mgr.start_agent(agent.id)) is True
-    assert asyncio.run(mgr.get_agent(agent.id)).status == AgentStateEnum.RUNNING.value
+    started = asyncio.run(mgr.get_agent(agent.id))
+    assert started.runtime_state == AgentStateEnum.RUNNING.value
 
     assert asyncio.run(mgr.stop_agent(agent.id)) is True
-    assert asyncio.run(mgr.get_agent(agent.id)).status == AgentStateEnum.STOPPED.value
+    stopped = asyncio.run(mgr.get_agent(agent.id))
+    assert stopped.runtime_state == AgentStateEnum.STOPPED.value

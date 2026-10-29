@@ -481,8 +481,9 @@ def test_generate_answer_does_not_template_audit_or_factory(monkeypatch):
 
     q2 = "我想做一个分析视频的应用，应该是做一个agent还是通过应用工厂做一个应用？"
     answer2, _ = asyncio.run(voice_pipeline.generate_answer(q2))
-    assert answer2 == "LLM_RAN"
-    assert "/app/factory" in captured["msg"] or "应用工厂" in captured["msg"]
+    # Consultant answer may append factory handoff CTA after LLM output
+    assert answer2.startswith("LLM_RAN")
+    assert "/app/factory" in answer2 or "应用工厂" in answer2 or "/app/factory" in captured["msg"] or "应用工厂" in captured["msg"]
 
 
 def test_generate_answer_injects_this_session_dialogue(monkeypatch, tmp_path):
