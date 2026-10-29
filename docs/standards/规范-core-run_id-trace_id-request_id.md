@@ -193,3 +193,5 @@ management 展示层建议以：
 - **落地记录（2026-10-29 week-24）**：`core/harness/utils/llm_env.py` — `get_llm_base_url` except 路径补齐 `import logging`（此前 NameError 掩盖 infra 桥接失败）；run/trace/request_id 语义不变，仅凭证/base_url 解析降级日志可达。测试：`test_model_injection_updates_loop`（hermetic stub adapter）。
 
 - **落地记录（2026-10-29 week-26）**：`core/harness/coordination/kanban_engine.py` — 增加 `from __future__ import annotations`，避免 3.9 对 `list[str] | None` 求值 TypeError；Kanban 任务/调度与 run_id/trace 语义不变。验证：`from core.harness.coordination.kanban_engine import KanbanEngine`。
+
+- **落地记录（2026-10-29 week-31）**：`core/harness/execution/loop/_facade.py` — tool 异常路径将 `result=None` 后再做 routing explain，避免 UnboundLocalError；run_id/trace/request_id 语义不变，仅失败工具可继续累计 `tool_calls`/`tool_failures` 以触发 observability pause。验证：`pytest .../test_observability_control.py` + `test_team_wave4.py`。
