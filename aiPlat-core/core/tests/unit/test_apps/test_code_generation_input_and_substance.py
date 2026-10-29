@@ -232,17 +232,40 @@ async def test_locked_language_not_overridden_by_python_word_in_task(monkeypatch
     seen = {}
 
     class _Fake:
+        # Same multi-file shape as auth-todo fixture — avoids frontend_module_incomplete.
         content = (
-            "## FILE: src/apiClient.ts\n```typescript\n"
-            "export async function createReport(body: {\n"
+            "## FILE: frontend/src/types.ts\n```typescript\n"
+            "export type InspectionReportRequest = {\n"
             "  reporter_id: string; equipment_id: string;\n"
             "  description: string; photo_uris: string[];\n"
-            "}) {\n"
-            "  // TODO: auth/鉴权\n"
-            "  return fetch('/api/v1/inspection/reports', {\n"
-            "    method: 'POST', body: JSON.stringify(body),\n"
+            "};\n"
+            "export type InspectionReportResponse = { id: string };\n```\n\n"
+            "## FILE: frontend/src/api/apiClient.ts\n```typescript\n"
+            "import type { InspectionReportRequest, InspectionReportResponse } from '../types';\n"
+            "export async function postReports(\n"
+            "  data: InspectionReportRequest\n"
+            "): Promise<InspectionReportResponse> {\n"
+            "  // TODO: auth\n"
+            "  const response = await fetch('/api/v1/inspection/reports', {\n"
+            "    method: 'POST',\n"
+            "    headers: { 'Content-Type': 'application/json' },\n"
+            "    body: JSON.stringify(data),\n"
             "  });\n"
-            "}\n```\n"
+            "  if (!response.ok) throw new Error('postReports failed');\n"
+            "  return response.json();\n"
+            "}\n```\n\n"
+            "## FILE: frontend/src/pages/ReportFaultPage.tsx\n```tsx\n"
+            "import React, { useState } from 'react';\n"
+            "import { postReports } from '../api/apiClient';\n"
+            "import type { InspectionReportRequest } from '../types';\n"
+            "export const ReportFaultPage: React.FC = () => {\n"
+            "  const [data, setData] = useState<InspectionReportRequest>({\n"
+            "    reporter_id: '', equipment_id: '', description: '', photo_uris: [],\n"
+            "  });\n"
+            "  return (\n"
+            "    <button onClick={() => postReports(data)}>Submit</button>\n"
+            "  );\n"
+            "};\n```\n"
         )
 
     async def _fake_llm(model, msgs, **k):

@@ -300,6 +300,12 @@ Already green in PR (#468/#469):
 - `test_chaos_fault_injection` (3; healing strategies live in pipeline_healing)
 - `test_skill_rollback_semantics` (2; SkillConfig.effects for §5.19)
 
+**Week 30 (+):** (fixture + ActionRegistry v3 sync — 46 passed)
+
+- `test_code_generation_input_and_substance` (9; locked-lang fixture passes
+  frontend_module_incomplete + auth-todo gates)
+- `test_v27_modules` (37; ActionRegistry → AsyncActionRegistry / builtin_* ids)
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /

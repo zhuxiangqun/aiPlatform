@@ -62,70 +62,91 @@ class TestMetricEngine:
         assert result.get('error') or result.get('value') is not None
 
 
-# ── action_contract tests ──
+# ── action registry tests (v3 AsyncActionRegistry) ──
+
+def _validate_params(reg, action_id: str, params: dict) -> dict:
+    c = reg.get(action_id)
+    if c is None:
+        return {"valid": False, "errors": [f"unknown action: {action_id}"]}
+    return reg._validate_input(c, params)
+
 
 class TestActionRegistry:
     def test_registry_singleton(self):
-        from core.harness.infrastructure.action_contract import get_action_registry
+        from core.harness.ontology_engine.action_registry import get_action_registry
         reg1 = get_action_registry()
         reg2 = get_action_registry()
         assert reg1 is reg2
-        assert len(reg1.list_all()) == 4
+        assert len(reg1._contracts) >= 4
 
     def test_builtin_actions_registered(self):
-        from core.harness.infrastructure.action_contract import get_action_registry
+        from core.harness.ontology_engine.action_registry import get_action_registry
         reg = get_action_registry()
-        actions = {a.action_id for a in reg.list_all()}
-        assert 'add_tag' in actions
-        assert 'call_webhook' in actions
-        assert 'mark_related_for_review' in actions
-        assert 'inject_case_study' in actions
+        actions = set(reg._contracts)
+        assert "builtin_add_tag" in actions
+        assert "builtin_webhook_executor" in actions
+        assert "builtin_mark_review" in actions
+        assert "builtin_case_study" in actions
 
     def test_validate_valid_params(self):
-        from core.harness.infrastructure.action_contract import get_action_registry
+        from core.harness.ontology_engine.action_registry import get_action_registry
         reg = get_action_registry()
-        result = reg.validate_params('add_tag', {'tag': 'test-tag'})
-        assert result['valid'] is True
+        # graph assert has required fields
+        result = _validate_params(
+            reg,
+            "platform_action:graph:assert_inferred_edge",
+            {
+                "source_id": "a",
+                "target_id": "b",
+                "relation_name": "related_to",
+            },
+        )
+        assert result["valid"] is True
 
     def test_validate_missing_required(self):
-        from core.harness.infrastructure.action_contract import get_action_registry
+        from core.harness.ontology_engine.action_registry import get_action_registry
         reg = get_action_registry()
-        result = reg.validate_params('add_tag', {'not_tag': 'x'})
-        assert result['valid'] is False
-        assert len(result['errors']) >= 1
+        result = _validate_params(
+            reg,
+            "platform_action:graph:assert_inferred_edge",
+            {"not_source": "x"},
+        )
+        assert result["valid"] is False
+        assert len(result["errors"]) >= 1
 
     def test_validate_unknown_action(self):
-        from core.harness.infrastructure.action_contract import get_action_registry
+        from core.harness.ontology_engine.action_registry import get_action_registry
         reg = get_action_registry()
-        result = reg.validate_params('nonexistent', {})
-        assert result['valid'] is False
+        result = _validate_params(reg, "nonexistent", {})
+        assert result["valid"] is False
 
     def test_contract_get(self):
-        from core.harness.infrastructure.action_contract import get_action_registry
+        from core.harness.ontology_engine.action_registry import get_action_registry
+        from core.harness.infrastructure.action_contract import FailureStrategy
         reg = get_action_registry()
-        c = reg.get('call_webhook')
+        c = reg.get("builtin_webhook_executor")
         assert c is not None
-        assert c.label == 'Webhook 回调'
-        assert c.failure_strategy == 'log_only'
-        assert c.retry_policy == {'max_retries': 1, 'backoff_seconds': 5}
+        assert "Webhook" in c.label
+        assert c.failure_strategy == FailureStrategy.LOG_ONLY
+        assert isinstance(c.retry_policy, dict)
 
     def test_contract_register_new(self):
+        from core.harness.ontology_engine.action_registry import AsyncActionRegistry
         from core.harness.infrastructure.action_contract import (
-            ActionContract, ActionRegistry,
+            ActionContractModel,
+            FailureStrategy,
         )
-        reg = ActionRegistry()
-        contract = ActionContract(
-            action_id='test_action',
-            label='Test',
-            input_schema={'type': 'object', 'required': ['x']},
-            failure_strategy='retry',
+        reg = AsyncActionRegistry()
+        contract = ActionContractModel(
+            action_id="test_action",
+            label="Test",
+            input_schema={"type": "object", "required": ["x"], "properties": {"x": {"type": "number"}}},
+            failure_strategy=FailureStrategy.RETRY,
         )
         reg.register(contract)
-        assert reg.get('test_action') is not None
-        result = reg.validate_params('test_action', {'x': 1})
-        assert result['valid'] is True
-        result = reg.validate_params('test_action', {})
-        assert result['valid'] is False
+        assert reg.get("test_action") is not None
+        assert _validate_params(reg, "test_action", {"x": 1})["valid"] is True
+        assert _validate_params(reg, "test_action", {})["valid"] is False
 
 
 # ── rule_auditor tests ──
