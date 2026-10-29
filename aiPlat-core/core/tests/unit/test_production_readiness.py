@@ -81,12 +81,14 @@ class TestProductionSelfLearningPipeline:
     def test_dynamic_router_writes_route_after(self):
         """DynamicRouter produces valid state['_route_after'] for engine consumption."""
         from core.harness.execution.dynamic_router import DynamicRouter, _Decision
-        router = DynamicRouter(max_steps=5)
+        # Explicit model: hermetic CI has no GPU / model catalog.
+        router = DynamicRouter(max_steps=5, supervisor_model="stub-chat-model")
 
         # Test decision parsing works
         d = _Decision("call_agent", "CodeAgent", "Need to fix the build")
         assert d.decision == "call_agent"
         assert d.agent_name == "CodeAgent"
+        assert router.max_steps == 5
 
 
 class TestSFTEndToEnd:
@@ -188,6 +190,7 @@ class TestDynamicRouterGrayscale:
     def test_dynamic_router_defaults(self):
         """DynamicRouter ships with safe defaults."""
         from core.harness.execution.dynamic_router import DynamicRouter
-        router = DynamicRouter()
+        # Explicit model: hermetic CI has no GPU / model catalog.
+        router = DynamicRouter(supervisor_model="stub-chat-model")
         assert router.max_steps == 15
         assert router.supervisor_model != ""
