@@ -248,3 +248,4 @@ aiPlat 逻辑上分为：
 
 - **week-32 hermetic media + hooks/session（2026-10-29，clause-sync）**：无 ffmpeg/ffprobe 时 media 探测/抽帧/语音能量走 stub（`stub:true`），有二进制仍走真实路径；恢复 `pre_approval_security_scan`；Session 持锁删除防重入；审批过期 UTC；质量门先 unwrap 再架构 ensure；恢复 `e2e_test` handler skill 供 architecture_health；`push_team_harness` 补本地 git identity（CI 无全局配置）。分层边界与 syscall 语义不变。验证：`pytest` 15 locked packages（无 ffmpeg）181 passed；`test_team_wave4` 空 HOME 4 passed。
 - **week-33 full-unit hermetic pins（2026-10-29，clause-sync）**：adapter 注入 env 优先于 runtime store；conftest 恢复 session hermetic home。分层边界与 syscall 语义不变。验证：`pytest core/tests/unit` 2720 passed。
+- **week-34 AIPLAT_HOME call-time + fake HOME（2026-10-29，clause-sync）**：harness 侧禁止 import 时冻结 `~/.aiplat`；pytest 钉假 `HOME`；platform approvals 过期 HTTP 409 不得因 float `expires_at` 静默放行。分层边界与 syscall 语义不变。验证：`pytest core/tests/unit` 2719 passed；`test_approvals_http_expiry` / `test_permissions_http_grant_revoke`。
