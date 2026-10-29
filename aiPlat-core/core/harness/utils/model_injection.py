@@ -246,36 +246,42 @@ def _do_inject_adapter_models(mgr: Any) -> int:
 
 
 
-        # Resolve execution DB path from multiple sources
+        # Resolve execution DB path from multiple sources.
+        # Explicit env wins (ops pin / hermetic tests) — same as default_execution_db_path.
 
-        db_path = None
+        db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH") or ""
 
-        # Priority 1: kernel runtime (most reliable in server process)
+        if db_path and not os.path.isfile(db_path):
 
-        try:
+            db_path = ""
 
-            from core.harness.kernel.runtime import get_kernel_runtime
+        # Priority 2: kernel runtime (server process default when env unset)
 
-            runtime = get_kernel_runtime()
+        if not db_path:
 
-            store = getattr(runtime, "execution_store", None) if runtime else None
+            try:
 
-            db_path = getattr(getattr(store, "_config", None), "db_path", None)
+                from core.harness.kernel.runtime import get_kernel_runtime
 
-        except Exception:
+                runtime = get_kernel_runtime()
 
-            logging.getLogger(__name__).debug('_do_inject_adapter_models failed', exc_info=True)
-        # Priority 2: env var
+                store = getattr(runtime, "execution_store", None) if runtime else None
 
-        if not db_path or not os.path.isfile(db_path):
+                db_path = getattr(getattr(store, "_config", None), "db_path", None) or ""
 
-            db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH") or ""
+                if db_path and not os.path.isfile(db_path):
 
-            if db_path and not os.path.isfile(db_path):
+                    db_path = ""
+
+            except Exception:
+
+                logging.getLogger(__name__).debug(
+                    "_do_inject_adapter_models failed", exc_info=True
+                )
 
                 db_path = ""
 
-        # Priority 3: known paths
+        # Priority 3: known paths under AIPLAT_HOME
 
         if not db_path:
 
