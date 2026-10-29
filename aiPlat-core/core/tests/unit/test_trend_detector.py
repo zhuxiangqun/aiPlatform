@@ -311,12 +311,17 @@ class TestTrendDetectorIntegration:
 
     def test_set_trend_recorder_injection(self):
         """set_trend_recorder() injects a callable that _record_classification invokes."""
+        import asyncio
         from core.harness.infrastructure.gates.error_translator import (
             set_trend_recorder,
             _record_classification,
         )
         counter = []
-        set_trend_recorder(lambda k: counter.append(k))
-        _record_classification("rate_limit")
-        _record_classification("__total__")
+
+        async def _rec(k):
+            counter.append(k)
+
+        set_trend_recorder(_rec)
+        asyncio.run(_record_classification("rate_limit"))
+        asyncio.run(_record_classification("__total__"))
         assert counter == ["rate_limit", "__total__"]

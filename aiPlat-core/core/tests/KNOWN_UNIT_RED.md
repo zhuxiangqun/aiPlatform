@@ -266,11 +266,19 @@ Already green in PR (#468/#469):
 - `test_package_manager_uninstall` (1)
 - `test_org_gap_draft` (3; preview must not write live domain YAML)
 
+**Week 25 (+):** (seed + cheap sync — 39 passed)
+
+- Seed `workspace_seeds/skills/output_style_adhd/SKILL.md` (style hash)
+- `test_production_readiness` (13; nightly steps 12→14 + handlers)
+- `test_trend_detector` (15; await async `_record_classification`)
+- `test_output_style` (6)
+- `test_slice_fault_injection` (5)
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /
-  `test_management` status drift / oversized AGENT.md / approval_expiry hang /
-  architecture_health / chaos_fault_injection / …);
+  oversized AGENT.md / approval_expiry hang / architecture_health /
+  chaos_fault_injection / observability_control policy early-pause / …);
   ~25 fail / 1013 pass on maxfail=25 sample after week-4 greens ignored.
 
 ## Process
