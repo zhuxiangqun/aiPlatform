@@ -52,13 +52,17 @@ def new_task_id(hint: str = "") -> str:
 
 
 def storage_root(app_name: str = "media") -> Path:
-    root = Path(os.path.expanduser("~/.aiplat/apps")) / (app_name or "app") / "media"
+    from core.utils.paths import get_aiplat_home
+
+    root = Path(get_aiplat_home()) / "apps" / (app_name or "app") / "media"
     root.mkdir(parents=True, exist_ok=True)
     return root
 
 
 def fixtures_root(app_name: str = "media") -> Path:
-    root = Path(os.path.expanduser("~/.aiplat/apps")) / (app_name or "app") / "fixtures"
+    from core.utils.paths import get_aiplat_home
+
+    root = Path(get_aiplat_home()) / "apps" / (app_name or "app") / "fixtures"
     root.mkdir(parents=True, exist_ok=True)
     return root
 

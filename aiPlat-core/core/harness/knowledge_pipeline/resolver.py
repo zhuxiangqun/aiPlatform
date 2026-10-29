@@ -22,7 +22,17 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-REGISTRY_PATH = os.path.expanduser("~/.aiplat/ontologies/registry.json")
+# Empty = resolve from AIPLAT_HOME at call time. Tests may monkeypatch this
+# attribute to a concrete path string.
+REGISTRY_PATH = ""
+
+
+def _resolve_registry_path() -> str:
+    if REGISTRY_PATH:
+        return os.path.expanduser(REGISTRY_PATH)
+    from core.utils.paths import get_ontologies_dir
+
+    return os.path.join(get_ontologies_dir(), "registry.json")
 
 
 def _normalize_cross_domain_views(raw: Any) -> Dict[str, Any]:
@@ -103,9 +113,12 @@ class CrossDomainResolver:
     """Scan entities across domains and propose merge candidates."""
 
     def __init__(self, registry_path: Optional[str] = None):
-        # Resolve REGISTRY_PATH at call time so monkeypatches / env rebinding work
-        # (default-arg freeze would pin the import-time path).
-        self.registry_path = os.path.expanduser(registry_path or REGISTRY_PATH)
+        # Resolve at call time so AIPLAT_HOME / monkeypatches are visible.
+        self.registry_path = (
+            os.path.expanduser(registry_path)
+            if registry_path
+            else _resolve_registry_path()
+        )
         self._cache: Dict[str, Any] = {}
         self._cache_ts = 0.0
         self._cache_ttl = 120  # 2 min
@@ -325,11 +338,12 @@ def seed_cross_domain_config() -> bool:
 
     No domain IDs are hardcoded in harness — pilot views live in workspace_seeds.
     """
-    if not os.path.exists(REGISTRY_PATH):
+    registry_path = _resolve_registry_path()
+    if not os.path.exists(registry_path):
         return False
 
     try:
-        with open(REGISTRY_PATH, encoding="utf-8") as f:
+        with open(registry_path, encoding="utf-8") as f:
             reg = json.load(f)
 
         changed = False
@@ -360,7 +374,7 @@ def seed_cross_domain_config() -> bool:
         if changed or isinstance(reg.get("cross_domain_views"), list):
             reg["cross_domain_views"] = views
             reg.setdefault("cross_domain_actions", {})
-            with open(REGISTRY_PATH, "w", encoding="utf-8") as f:
+            with open(registry_path, "w", encoding="utf-8") as f:
                 json.dump(reg, f, ensure_ascii=False, indent=2)
             logger.info("Ensured cross_domain_views from workspace seed / registry.json")
             return True

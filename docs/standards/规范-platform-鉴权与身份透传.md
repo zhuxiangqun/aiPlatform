@@ -345,3 +345,13 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 - 删除不可逆（batch-delete 破坏半径更大），权限不得低于 create；
 - 实现位于 `aiPlat-platform/api/routers/builder.py:113-119`；
 - 回归测试：`aiPlat-platform/tests/test_builder_p1_fixes.py::TestP1_3AuthConsistency`。
+
+## 补充：Approvals 过期拒绝 + Permissions HTTP 契约（2026-10-29 week-34，clause-sync）
+
+| 端点 | 鉴权 | 契约 |
+|---|---|---|
+| `POST /platform/approvals/{id}/approve` | `require_auth` + `rbac_guard(approve)` | 过期 → **409** `code=approval_expired`；`is_expired()` 为真即拒绝，禁止因 `expires_at` epoch float 与 datetime 比较异常后静默 `approve()` |
+| `POST /platform/permissions/permissions/grant` | `require_admin` | 经 `get_permission_manager().grant_permission`；router **不**重做裁决 |
+| `POST /platform/permissions/permissions/revoke` | `require_admin` | 经 `get_permission_manager().revoke_permission` |
+
+**约束**：鉴权权威仍为 platform `require_auth`/`require_admin`；权限裁决仍委托 Core PermissionManager / ApprovalManager，本轮仅修过期门禁可达性与 HTTP 契约测试。验证：`aiPlat-platform/tests/test_approvals_http_expiry.py`、`test_permissions_http_grant_revoke.py`。

@@ -397,7 +397,7 @@ async def approve_request(request_id: str, request: dict, http_request: Request,
     # SLA enforcement: disallow approving expired requests (product-level).
     try:
         r0 = await mgr.get_request_async(str(request_id)) if hasattr(mgr, "get_request_async") else mgr.get_request(str(request_id))
-        if r0 and getattr(r0, "expires_at", None) and getattr(r0, "status", None):
+        if r0 and getattr(r0, "status", None):
             from datetime import datetime, timezone
             from core.api.core_facade import RequestStatus
 
@@ -406,7 +406,19 @@ async def approve_request(request_id: str, request: dict, http_request: Request,
                 expired = bool(r0.is_expired())
             except Exception:
                 expired = False
-            if r0.status in (RequestStatus.EXPIRED,) or (r0.status == RequestStatus.PENDING and expired and datetime.now(timezone.utc) > r0.expires_at):
+            if not expired and getattr(r0, "expires_at", None) is not None:
+                try:
+                    exp = r0.expires_at
+                    if isinstance(exp, (int, float)):
+                        exp = datetime.fromtimestamp(float(exp), tz=timezone.utc)
+                    elif getattr(exp, "tzinfo", None) is None and hasattr(exp, "replace"):
+                        exp = exp.replace(tzinfo=timezone.utc)
+                    expired = datetime.now(timezone.utc) > exp
+                except Exception:
+                    expired = False
+            if r0.status in (RequestStatus.EXPIRED,) or (
+                r0.status == RequestStatus.PENDING and expired
+            ):
                 raise HTTPException(
                     status_code=409,
                     detail=gate_error_envelope(

@@ -124,14 +124,14 @@ class WikiQualityScore:
 
 
 
-_DB_PATH = os.path.expanduser(
+def _db_path() -> str:
+    """Resolve wiki quality DB at call time (env → AIPLAT_HOME)."""
+    explicit = (os.getenv("AIPLAT_WIKI_QUALITY_DB") or "").strip()
+    if explicit:
+        return os.path.expanduser(explicit)
+    from core.utils.paths import get_aiplat_home
 
-    os.getenv("AIPLAT_WIKI_QUALITY_DB", "~/.aiplat/wiki_quality.sqlite3")
-
-)
-
-
-
+    return os.path.join(get_aiplat_home(), "wiki_quality.sqlite3")
 
 
 def _ensure_schema(conn: sqlite3.Connection) -> None:
@@ -198,7 +198,11 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
 
 def _get_conn() -> sqlite3.Connection:
 
-    conn = sqlite3.connect(_DB_PATH)
+    path = _db_path()
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    conn = sqlite3.connect(path)
 
     conn.row_factory = sqlite3.Row
 

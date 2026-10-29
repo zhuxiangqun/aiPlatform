@@ -29,6 +29,17 @@ def _restore_hermetic_pins() -> None:
     if _HERMETIC_HOME is None:
         return
     home = _HERMETIC_HOME
+    user_home = home.parent / f"{home.name}-user"
+    user_home.mkdir(parents=True, exist_ok=True)
+    link = user_home / ".aiplat"
+    if not link.exists() and not link.is_symlink():
+        try:
+            link.symlink_to(home, target_is_directory=True)
+        except OSError:
+            # Fallback: create a real dir so expanduser("~/.aiplat") is still writable
+            # under the fake HOME (not the developer's real home).
+            link.mkdir(parents=True, exist_ok=True)
+    os.environ["HOME"] = str(user_home)
     os.environ["AIPLAT_HOME"] = str(home)
     os.environ["AIPLAT_EXECUTION_DB_PATH"] = str(home / "aiplat_executions.sqlite3")
     os.environ["AIPLAT_PLATFORM_DB_PATH"] = str(home / "data" / "aiplat_platform.sqlite3")
@@ -44,6 +55,19 @@ def pytest_configure(config: pytest.Config) -> None:
     (home / "profiles").mkdir(parents=True, exist_ok=True)
     _HERMETIC_HOME = home
 
+    # Fake HOME so expanduser("~/.aiplat") cannot escape to the real user home.
+    # Symlink $HOME/.aiplat → AIPLAT_HOME so both resolution paths agree.
+    user_home = home.parent / f"{home.name}-user"
+    if user_home.exists():
+        shutil.rmtree(user_home, ignore_errors=True)
+    user_home.mkdir(parents=True, exist_ok=True)
+    link = user_home / ".aiplat"
+    try:
+        link.symlink_to(home, target_is_directory=True)
+    except OSError:
+        link.mkdir(parents=True, exist_ok=True)
+
+    _pin_env("HOME", str(user_home))
     _pin_env("AIPLAT_HOME", str(home))
     _pin_env("AIPLAT_EXECUTION_DB_PATH", str(home / "aiplat_executions.sqlite3"))
     _pin_env("AIPLAT_PLATFORM_DB_PATH", str(home / "data" / "aiplat_platform.sqlite3"))
@@ -93,6 +117,11 @@ def pytest_unconfigure(config: pytest.Config) -> None:
 
     global _HERMETIC_HOME
     if _HERMETIC_HOME is not None:
+        user_home = _HERMETIC_HOME.parent / f"{_HERMETIC_HOME.name}-user"
+        try:
+            shutil.rmtree(user_home, ignore_errors=True)
+        except Exception:
+            pass
         try:
             shutil.rmtree(_HERMETIC_HOME, ignore_errors=True)
         except Exception:

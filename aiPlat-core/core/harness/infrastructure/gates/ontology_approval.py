@@ -15,7 +15,12 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("ontology_approval")
 
-DB_PATH = _os.path.expanduser("~/.aiplat/state_changes.db")
+
+def _db_path() -> str:
+    """Resolve approval DB under AIPLAT_HOME (call-time; never freeze ~/.aiplat)."""
+    from core.utils.paths import get_aiplat_home
+
+    return _os.path.join(get_aiplat_home(), "state_changes.db")
 
 
 @dataclass
@@ -36,7 +41,11 @@ class ChangeRequest:
 
 
 def _ensure_schema():
-    conn = _sqlite3.connect(DB_PATH, timeout=5.0)
+    path = _db_path()
+    parent = _os.path.dirname(path)
+    if parent:
+        _os.makedirs(parent, exist_ok=True)
+    conn = _sqlite3.connect(path, timeout=5.0)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS change_requests (
             id TEXT PRIMARY KEY,
@@ -74,7 +83,7 @@ def submit(
     now = _time.time()
     diff_str = json.dumps(diff or {}, ensure_ascii=False)
 
-    conn = _sqlite3.connect(DB_PATH, timeout=5.0)
+    conn = _sqlite3.connect(_db_path(), timeout=5.0)
     conn.execute(
         "INSERT INTO change_requests (id, domain_id, change_type, diff_json, requested_by, justification, status, requested_at) VALUES (?,?,?,?,?,?,?,?)",
         (rid, domain_id, change_type, diff_str, requested_by, justification, "pending", now),
@@ -93,7 +102,7 @@ def submit(
 def approve(request_id: str, approved_by: str, comment: str = "") -> Dict[str, Any]:
     u"""Approve a change request."""
     _ensure_schema()
-    conn = _sqlite3.connect(DB_PATH, timeout=5.0)
+    conn = _sqlite3.connect(_db_path(), timeout=5.0)
     row = conn.execute("SELECT id, status FROM change_requests WHERE id = ?", (request_id,)).fetchone()
     if not row:
         conn.close()
@@ -116,7 +125,7 @@ def approve(request_id: str, approved_by: str, comment: str = "") -> Dict[str, A
 def reject(request_id: str, rejected_by: str, reason: str = "") -> Dict[str, Any]:
     u"""Reject a change request."""
     _ensure_schema()
-    conn = _sqlite3.connect(DB_PATH, timeout=5.0)
+    conn = _sqlite3.connect(_db_path(), timeout=5.0)
     row = conn.execute("SELECT id, status FROM change_requests WHERE id = ?", (request_id,)).fetchone()
     if not row:
         conn.close()
@@ -136,7 +145,7 @@ def reject(request_id: str, rejected_by: str, reason: str = "") -> Dict[str, Any
 def list_pending(domain_id: str = "") -> List[Dict[str, Any]]:
     u"""List pending change requests."""
     _ensure_schema()
-    conn = _sqlite3.connect(DB_PATH, timeout=5.0)
+    conn = _sqlite3.connect(_db_path(), timeout=5.0)
     conn.row_factory = _sqlite3.Row
     if domain_id:
         rows = conn.execute(
@@ -154,7 +163,7 @@ def list_pending(domain_id: str = "") -> List[Dict[str, Any]]:
 def get_history(domain_id: str = "", limit: int = 50) -> List[Dict[str, Any]]:
     u"""Get approval history."""
     _ensure_schema()
-    conn = _sqlite3.connect(DB_PATH, timeout=5.0)
+    conn = _sqlite3.connect(_db_path(), timeout=5.0)
     conn.row_factory = _sqlite3.Row
     if domain_id:
         rows = conn.execute(

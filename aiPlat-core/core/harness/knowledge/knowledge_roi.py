@@ -24,9 +24,21 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-ROI_DB_PATH = _os.path.expanduser(
-    _os.getenv("AIPLAT_ROI_DB_PATH", "~/.aiplat/data/aiplat_platform.sqlite3")
-)
+def _roi_db_path() -> str:
+    """Resolve ROI DB at call time (AIPLAT_ROI_DB_PATH → platform DB → AIPLAT_HOME)."""
+    explicit = (_os.getenv("AIPLAT_ROI_DB_PATH") or "").strip()
+    if explicit:
+        return _os.path.expanduser(explicit)
+    platform = (_os.getenv("AIPLAT_PLATFORM_DB_PATH") or "").strip()
+    if platform:
+        return _os.path.expanduser(platform)
+    from core.utils.paths import get_aiplat_data_dir
+
+    return _os.path.join(get_aiplat_data_dir("data"), "aiplat_platform.sqlite3")
+
+
+# Deprecated import-time alias — kept for monkeypatch/tests; prefer _roi_db_path().
+ROI_DB_PATH = ""
 
 
 # ── Data Models ──────────────────────────────────────────────────────────
@@ -101,7 +113,11 @@ class KnowledgeROI:
         conn.commit()
 
     def _get_conn(self) -> _sqlite3.Connection:
-        conn = _sqlite3.connect(ROI_DB_PATH)
+        path = ROI_DB_PATH or _roi_db_path()
+        parent = _os.path.dirname(path)
+        if parent:
+            _os.makedirs(parent, exist_ok=True)
+        conn = _sqlite3.connect(path)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.row_factory = _sqlite3.Row
         return conn

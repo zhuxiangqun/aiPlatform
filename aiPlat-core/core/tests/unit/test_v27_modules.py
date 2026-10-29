@@ -397,9 +397,10 @@ class TestOntologyApproval:
         assert result["success"]
 
         # Clean up — delete test request
-        import sqlite3, os
-        db = os.path.expanduser("~/.aiplat/state_changes.db")
-        conn = sqlite3.connect(db, timeout=5.0)
+        import sqlite3
+        from core.harness.infrastructure.gates.ontology_approval import _db_path
+
+        conn = sqlite3.connect(_db_path(), timeout=5.0)
         conn.execute("DELETE FROM change_requests WHERE domain_id = 'test_domain'")
         conn.commit()
         conn.close()
