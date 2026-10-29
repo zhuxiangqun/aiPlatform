@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-29T17:00:00+09:00",
+  "reviewed_at": "2026-10-29T17:05:00+09:00",
   "base_ref": "origin/main",
   "merge_base": "a155c0a5b82d25276a7198a51efbdf0773d3936d",
-  "diff_sha256": "742cf08b3c7bd71176d7adf6896d21d51819609a9e85e89415e1a4289aca965e",
-  "head_sha": "05c43a6a5574b8a4e06109f55954f1c44b6c4d82",
+  "diff_sha256": "d5a2afca879cddc62e7bea29bf3d6fd46ccfdf13f615d93791a6b086a9c8ce29",
+  "head_sha": "8d0b3dd7efff35b0ef5859c797cd80d59f6e66bb",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-31: tool-dispatch result=None guard + observability EXECUTE grant; re-admit team_wave4."
+  "note": "Week-31: tool-dispatch result=None guard + observability EXECUTE grant + team_wave4; contracts clause-sync."
 }
