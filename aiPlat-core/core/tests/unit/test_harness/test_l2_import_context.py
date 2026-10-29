@@ -69,7 +69,10 @@ class TestImportedContextInjection:
             "core.harness.syscalls.llm.sys_llm_generate", fake_llm)
         monkeypatch.setattr(
             "core.harness.utils.model_injection.best_model_for_purpose",
-            lambda purpose: "test-model")
+            lambda purpose, messages=None: "test-model")
+        monkeypatch.setattr(
+            "core.harness.execution.pipeline_engine.best_model_for_purpose",
+            lambda purpose, messages=None: "test-model")
 
         engine = _make_engine()
         state = {
@@ -109,7 +112,10 @@ class TestImportedContextInjection:
             "core.harness.syscalls.llm.sys_llm_generate", fake_llm)
         monkeypatch.setattr(
             "core.harness.utils.model_injection.best_model_for_purpose",
-            lambda purpose: "test-model")
+            lambda purpose, messages=None: "test-model")
+        monkeypatch.setattr(
+            "core.harness.execution.pipeline_engine.best_model_for_purpose",
+            lambda purpose, messages=None: "test-model")
 
         stage = PipelineStageConfig(
             id="s1", agent_id="programmer", skill_name="code_generation",

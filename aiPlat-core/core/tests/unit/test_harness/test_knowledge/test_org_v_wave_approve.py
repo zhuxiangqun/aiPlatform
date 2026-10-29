@@ -37,6 +37,14 @@ class _Store:
     async def get_ontology_proposal(self, _pid):
         return self.proposal
 
+    async def update_ontology_proposal_impact(self, _pid, impact):
+        self.proposal["impact_analysis"] = impact
+        return True
+
+    async def update_ontology_proposal_status(self, _pid, status):
+        self.proposal["status"] = status
+        return True
+
 
 class _Version:
     def __init__(self, _domain):
@@ -55,10 +63,8 @@ async def test_denied_does_not_record_or_write_yaml(tmp_path, monkeypatch):
     yaml_path.parent.mkdir(parents=True)
     yaml_path.write_text("domain: it-ops\n", encoding="utf-8")
     before = live_yaml_hash("it-ops")
-    monkeypatch.setattr(
-        "core.harness.infrastructure.action_store.ActionStore",
-        _Store,
-    )
+    monkeypatch.setattr("core.harness.infrastructure.action_store.ActionStore", _Store)
+    monkeypatch.setattr("core.api.core_facade.ActionStore", _Store)
     out = await approve_proposal_once("prop-1", role="operator")
     assert out["success"] is False
     assert out["reason"] == "role_not_in_tier"
@@ -72,11 +78,16 @@ async def test_allowed_approve_leaves_yaml_hash(tmp_path, monkeypatch):
     yaml_path.parent.mkdir(parents=True)
     yaml_path.write_text("domain: it-ops\n", encoding="utf-8")
     before = live_yaml_hash("it-ops")
+    # approve_proposal_once imports ActionStore/VersionedOntologyStore from
+    # core_facade; VersionedOntologyStore.__init__ re-imports ActionStore from
+    # action_store — patch both so either path hits the stubs.
     monkeypatch.setattr("core.harness.infrastructure.action_store.ActionStore", _Store)
+    monkeypatch.setattr("core.api.core_facade.ActionStore", _Store)
     monkeypatch.setattr(
         "core.harness.knowledge.versioned_ontology_store.VersionedOntologyStore",
         _Version,
     )
+    monkeypatch.setattr("core.api.core_facade.VersionedOntologyStore", _Version)
     out = await approve_proposal_once("prop-1", role="admin")
     assert out["success"] is True
     assert out["live_yaml_unchanged"] is True
