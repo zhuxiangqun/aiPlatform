@@ -245,3 +245,5 @@ aiPlat 逻辑上分为：
 - **kanban_engine 注解延迟求值（2026-10-29 week-26）**：`core/harness/coordination/kanban_engine.py` 增加 `from __future__ import annotations`，避免 3.9 运行时对 `list[str] | None` 求值 TypeError；Kanban 语义与调度边界不变。验证：`from core.harness.coordination.kanban_engine import KanbanEngine`。
 
 - **tool 异常后 result 守卫（2026-10-29 week-31）**：`core/harness/execution/loop/_facade.py` `_dispatch_tool_call` 在 `sys_tool_call` 抛错时置 `result=None`，routing explain 不访问未绑定 result；分层边界与 syscall 语义不变。验证：`pytest .../test_observability_control.py`。
+
+- **week-32 hermetic media + hooks/session（2026-10-29，clause-sync）**：无 ffmpeg/ffprobe 时 media 探测/抽帧/语音能量走 stub（`stub:true`），有二进制仍走真实路径；恢复 `pre_approval_security_scan`；Session 持锁删除防重入；审批过期 UTC；质量门先 unwrap 再架构 ensure；恢复 `e2e_test` handler skill 供 architecture_health。分层边界与 syscall 语义不变。验证：`pytest` 15 locked packages（无 ffmpeg）181 passed。
