@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-29T20:41:46+08:00",
+  "reviewed_at": "2026-10-29T22:33:39+09:00",
   "base_ref": "origin/main",
-  "merge_base": "a8e259dafbd504b5cf8e66eb5c72d28611806a9a",
-  "diff_sha256": "d505aa8d30320db2643a1598950598a7c453f69156102cfd610e9358132ecd22",
-  "head_sha": "1f8dee23f6831b449626723ebadc6d56b18a9d1e",
+  "merge_base": "a78b5710ea88216013f0204cc92bfddf6f0e295e",
+  "diff_sha256": "816a954c9ccf81da8a60e51a06f32cacb45ddbba30c9bc0799521256cee17aff",
+  "head_sha": "032bcddc788edd32a9d736356ba42b81067d5d14",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-33: conftest hermetic pin restore + adapter inject env-wins. Full core/tests/unit 2720 passed. Local lock only."
+  "note": "Week-34: AIPLAT_HOME call-time resolve + fake HOME; approvals expiry no longer falls through on float expires_at; nightly unit hard-gated. Residual: other modules may still expanduser(~/.aiplat) outside this diff."
 }
