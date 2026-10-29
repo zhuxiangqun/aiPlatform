@@ -9,6 +9,8 @@ and configurable timed scheduling.
 
 """
 
+from __future__ import annotations
+
 import asyncio, json, os, sqlite3, threading, time, uuid
 
 from datetime import datetime, timezone

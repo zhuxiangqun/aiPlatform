@@ -241,3 +241,5 @@ aiPlat 逻辑上分为：
 - **Skill 外层 timeout 覆盖嵌套 LLM（2026-10，clause-sync）**：含嵌套 LLM 调用的 engine Skill（如 `code_generation`）MUST 在 `SKILL.md` frontmatter 声明 `timeout`，且 **MUST** ≥ 嵌套 `timeout_seconds` + slack（`code_generation`：嵌套 420 → 外层 600）。契约：SkillExecutor 以 metadata/SKILL.md timeout 为准，禁止依赖过短默认值截断嵌套生成。验证：`pytest .../test_skill_timeout_metadata.py`。
 
 - **llm_env 降级日志可达（2026-10-29 week-24）**：`core/harness/utils/llm_env.py` except 路径补齐 `logging`（NameError 修复）；凭证/base_url 解析失败仅 debug 日志，分层边界与 syscall 语义不变。验证：`pytest .../test_model_injection_updates_loop.py`。
+
+- **kanban_engine 注解延迟求值（2026-10-29 week-26）**：`core/harness/coordination/kanban_engine.py` 增加 `from __future__ import annotations`，避免 3.9 运行时对 `list[str] | None` 求值 TypeError；Kanban 语义与调度边界不变。验证：`from core.harness.coordination.kanban_engine import KanbanEngine`。
