@@ -4,13 +4,15 @@ Centralized LLM API key resolution — infra CredentialPool ONLY.
 Single source of truth: infra ModelManager → CredentialPool.
 No env var fallbacks — if a model isn't registered in infra, it doesn't exist.
 """
+import logging
 import os
 from typing import Optional
+
+_log = logging.getLogger(__name__)
 
 
 def get_llm_api_key(provider: str = "") -> Optional[str]:
     """Resolve LLM API key — infra ModelManager credential pool ONLY."""
-    import os as _os
     try:
         from core.harness.infrastructure.infra_bridge import get_infra_bridge
         bridge = get_infra_bridge()
@@ -23,8 +25,7 @@ def get_llm_api_key(provider: str = "") -> Optional[str]:
                 if creds and creds.get("api_key"):
                     return creds["api_key"]
     except Exception:
-        import logging
-        logging.getLogger(__name__).debug("infra credential lookup failed")
+        _log.debug("infra credential lookup failed", exc_info=True)
     return None
 
 
@@ -39,5 +40,5 @@ def get_llm_base_url(provider: str = "") -> Optional[str]:
             if info and info.get("base_url"):
                 return info["base_url"]
     except Exception:
-        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+        _log.debug("infra base_url lookup failed", exc_info=True)
     return None

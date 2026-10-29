@@ -76,10 +76,10 @@ class PackageInfo:
     name: str
     scope: str  # engine|workspace
     version: str
-    status: str = "draft"  # draft | ready | published | listed | deprecated
     description: str
     manifest_path: str
     package_dir: str
+    status: str = "draft"  # draft | ready | published | listed | deprecated
     resources: List[Dict[str, Any]] = field(default_factory=list)
 
 
