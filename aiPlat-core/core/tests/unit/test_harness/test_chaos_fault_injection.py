@@ -18,16 +18,15 @@ async def test_wiki_circuit_breaker_exists():
 
 @pytest.mark.asyncio
 async def test_healing_strategies_exist():
-    """6.9: 5 healing 策略全部定义在 PipelineEngine."""
-    import os
-    # Test runs from workspace root — use relative path
-    fp = os.path.join("aiPlat-core", "core", "harness", "execution", "pipeline_engine.py")
-    if not os.path.exists(fp):
-        fp = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))),
-            "aiPlat-core", "core", "harness", "execution", "pipeline_engine.py")
-    with open(fp) as f:
-        content = f.read()
+    """6.9: 5 healing 策略在 PipelineHealingMixin（PipelineEngine 继承）."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve()
+    # .../core/tests/unit/test_harness/test_chaos_fault_injection.py → aiPlat-core/
+    core_root = root.parents[4]
+    healing = core_root / "core" / "harness" / "execution" / "pipeline_healing.py"
+    engine = core_root / "core" / "harness" / "execution" / "pipeline_engine.py"
+    content = healing.read_text(encoding="utf-8") + "\n" + engine.read_text(encoding="utf-8")
     strategies = [
         "_strategy_rotate_credential",
         "_strategy_compress_retry",
