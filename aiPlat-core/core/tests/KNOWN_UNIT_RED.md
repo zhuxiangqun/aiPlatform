@@ -310,8 +310,8 @@ Already green in PR (#468/#469):
 
 - `test_observability_control` (1; grant EXECUTE + model `_config`; facade
   guards `result is None` after tool exception)
-- Withdrawn again after CI red: `test_team_wave4` (push dry-run /
-  event-loop flake under full COLLECT)
+- Note: `test_team_wave4` briefly withdrawn for CI flake; re-unlocked in
+  week-32 after `push_team_harness` local git identity fix.
 
 **Week 32 (+):** (remaining locked unlock — 181 passed hermetic, no ffmpeg)
 
@@ -328,13 +328,28 @@ Already green in PR (#468/#469):
 - `media_skill_handlers_vocab` + `true_test_runtime` — `probe_media` /
   keyframe / speech stubs when ffmpeg/ffprobe missing
 - `test_memory/test_session` — unlock reentry via `_delete_session_unlocked`
-- `test_team_wave4` — re-unlocked after hang/flake fixes
+- `test_team_wave4` — re-unlocked (`_ensure_git_identity` for CI)
 - `test_prompt_loading` / `test_repo_diff_gate_metadata` — hermetic pins
+
+**PR COLLECT status (after week-32):** all `core/tests/unit` files are on
+the PR COLLECT/execute lists (0 locked packages remaining on that track).
+
+**Week 33 (+):** (full-unit hermetic survey — 2 order flakes fixed)
+
+- Local `pytest core/tests/unit --maxfail=40`: **2718 passed / 2 failed**
+  (no ffmpeg PATH); both failures were cross-test env pollution, not product
+  reds on the unlocked packages.
+- `conftest._restore_hermetic_pins` — re-pin `AIPLAT_HOME` + DB paths before/
+  after each test (undo bare `os.environ["AIPLAT_HOME"]=tmp` polluters such as
+  `test_pipeline_run_events`).
+- `_do_inject_adapter_models` — prefer explicit `AIPLAT_EXECUTION_DB_PATH` over
+  kernel runtime store (align with `default_execution_db_path` env-wins).
 
 **Not yet (still red or partial):**
 
-- Nightly/informational unit surface outside PR COLLECT may still have
-  scattered reds; PR unlock list for the former locked 15 is green.
+- Nightly job still runs `core/tests` with `continue-on-error` (broader than
+  unit-only; may include integration-adjacent failures). Re-survey after week-33
+  lands. `tool_correctness` long-run hangs remain a separate track.
 
 ## Process
 

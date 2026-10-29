@@ -24,6 +24,18 @@ def _pin_env(key: str, value: str) -> None:
     os.environ[key] = value
 
 
+def _restore_hermetic_pins() -> None:
+    """Re-apply session hermetic home/DB pins after tests that mutate os.environ."""
+    if _HERMETIC_HOME is None:
+        return
+    home = _HERMETIC_HOME
+    os.environ["AIPLAT_HOME"] = str(home)
+    os.environ["AIPLAT_EXECUTION_DB_PATH"] = str(home / "aiplat_executions.sqlite3")
+    os.environ["AIPLAT_PLATFORM_DB_PATH"] = str(home / "data" / "aiplat_platform.sqlite3")
+    os.environ["AIPLAT_ACTION_DB_PATH"] = str(home / "data" / "action_store.sqlite3")
+    os.environ["AIPLAT_PROFILE_DIR"] = str(home / "profiles")
+
+
 def pytest_configure(config: pytest.Config) -> None:
     """Force all store defaults under a disposable home before imports run."""
     global _HERMETIC_HOME
@@ -136,9 +148,12 @@ def _isolate_shared_state():
     # ``git init`` in tmp_path is not pointed at a deleted worktree.
     for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY"):
         os.environ.pop(key, None)
+    # Undo bare ``os.environ["AIPLAT_HOME"]=…`` from older tests that skip monkeypatch.
+    _restore_hermetic_pins()
     yield
     for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY"):
         os.environ.pop(key, None)
+    _restore_hermetic_pins()
     try:
         import core.harness.memory.shared_pool as sp
 
