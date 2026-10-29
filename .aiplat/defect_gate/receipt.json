@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-29T19:57:42+08:00",
+  "reviewed_at": "2026-10-29T20:41:46+08:00",
   "base_ref": "origin/main",
-  "merge_base": "5eb0b9ef7f4e5466ca068d5ca7faeb9c85ed5ac1",
-  "diff_sha256": "a424168ca8e2329d03103d2a2569d3ad017504e57162a5153a9f96634c26ed24",
-  "head_sha": "24c96228f3b5a4471e40eb40f233eb020be32fb2",
+  "merge_base": "a8e259dafbd504b5cf8e66eb5c72d28611806a9a",
+  "diff_sha256": "d505aa8d30320db2643a1598950598a7c453f69156102cfd610e9358132ecd22",
+  "head_sha": "1f8dee23f6831b449626723ebadc6d56b18a9d1e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-32 unlock + clause-sync + team_harness git identity for CI. Media stubs only without ffmpeg. Local lock only."
+  "note": "Week-33: conftest hermetic pin restore + adapter inject env-wins. Full core/tests/unit 2720 passed. Local lock only."
 }
