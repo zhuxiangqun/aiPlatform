@@ -463,6 +463,7 @@ jobs:
               core/tests/unit/test_skills/test_skill_rollback_semantics.py
               core/tests/unit/test_apps/test_code_generation_input_and_substance.py
               core/tests/unit/test_v27_modules.py
+              core/tests/unit/test_harness/test_observability/test_observability_control.py
               core/tests/apps/fde/test_slice_fault_injection.py
               core/tests/apps/fde/test_slice_five_products.py
               core/tests/tool_correctness/test_code_graph.py
@@ -841,6 +842,7 @@ jobs:
               core/tests/unit/test_skills/test_skill_rollback_semantics.py \
               core/tests/unit/test_apps/test_code_generation_input_and_substance.py \
               core/tests/unit/test_v27_modules.py \
+              core/tests/unit/test_harness/test_observability/test_observability_control.py \
               core/tests/apps/fde/test_slice_fault_injection.py \
               core/tests/tool_correctness/test_code_graph.py \
               core/tests/apps/fde/test_slice_five_products.py \

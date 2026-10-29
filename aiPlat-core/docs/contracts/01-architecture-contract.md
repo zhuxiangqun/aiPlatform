@@ -243,3 +243,5 @@ aiPlat 逻辑上分为：
 - **llm_env 降级日志可达（2026-10-29 week-24）**：`core/harness/utils/llm_env.py` except 路径补齐 `logging`（NameError 修复）；凭证/base_url 解析失败仅 debug 日志，分层边界与 syscall 语义不变。验证：`pytest .../test_model_injection_updates_loop.py`。
 
 - **kanban_engine 注解延迟求值（2026-10-29 week-26）**：`core/harness/coordination/kanban_engine.py` 增加 `from __future__ import annotations`，避免 3.9 运行时对 `list[str] | None` 求值 TypeError；Kanban 语义与调度边界不变。验证：`from core.harness.coordination.kanban_engine import KanbanEngine`。
+
+- **tool 异常后 result 守卫（2026-10-29 week-31）**：`core/harness/execution/loop/_facade.py` `_dispatch_tool_call` 在 `sys_tool_call` 抛错时置 `result=None`，routing explain 不访问未绑定 result；分层边界与 syscall 语义不变。验证：`pytest .../test_observability_control.py`。

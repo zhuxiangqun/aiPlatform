@@ -1,10 +1,14 @@
 import asyncio
 
+from core.apps.tools.permission import get_permission_manager
 from core.harness.execution.loop import ReActLoop
 from core.harness.interfaces.loop import LoopState, LoopConfig, LoopStateEnum
+from core.harness.interfaces.types import Permission
 
 
 class _AlwaysFailModel:
+    _config = type("_Cfg", (), {"temperature": 0.0})()
+
     def __init__(self):
         self._i = 0
 
@@ -26,6 +30,11 @@ class _FailTool:
 
 
 def test_observability_control_pauses_on_high_tool_error_rate():
+    # PolicyGate requires EXECUTE before tools can fail and accumulate error rate.
+    pm = get_permission_manager()
+    pm.grant_permission("u", "failtool", Permission.EXECUTE)
+    pm.grant_permission("u", "FAILTOOL", Permission.EXECUTE)
+
     loop = ReActLoop(model=_AlwaysFailModel(), tools=[_FailTool()])
     state = LoopState(
         context={
@@ -39,4 +48,3 @@ def test_observability_control_pauses_on_high_tool_error_rate():
     assert res.final_state.current in (LoopStateEnum.PAUSED, LoopStateEnum.ERROR)
     assert res.final_state.metadata.get("control_action") == "require_manual"
     assert res.final_state.metadata.get("tool_calls") >= 10
-
