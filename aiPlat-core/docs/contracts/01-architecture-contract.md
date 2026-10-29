@@ -239,3 +239,5 @@ aiPlat 逻辑上分为：
 - **对话创建 JSON 提取收敛（2026-10，clause-sync）**：`extract_json_object`→`parse_json`；去掉 Agent/Skill 本地 `_extract_json`。系统契约 §5.2 #50 + acceptance 1.76。验证：`pytest .../test_create_dialog_extract_json.py`。
 - **LLM JSON 容忍解析收敛（2026-10，clause-sync）**：`parse_json` 确定性修复；true_test/workspace 委托。系统契约 §5.2 #51 + acceptance 1.77。验证：`pytest .../test_parse_json_tolerant.py`。
 - **Skill 外层 timeout 覆盖嵌套 LLM（2026-10，clause-sync）**：含嵌套 LLM 调用的 engine Skill（如 `code_generation`）MUST 在 `SKILL.md` frontmatter 声明 `timeout`，且 **MUST** ≥ 嵌套 `timeout_seconds` + slack（`code_generation`：嵌套 420 → 外层 600）。契约：SkillExecutor 以 metadata/SKILL.md timeout 为准，禁止依赖过短默认值截断嵌套生成。验证：`pytest .../test_skill_timeout_metadata.py`。
+
+- **llm_env 降级日志可达（2026-10-29 week-24）**：`core/harness/utils/llm_env.py` except 路径补齐 `logging`（NameError 修复）；凭证/base_url 解析失败仅 debug 日志，分层边界与 syscall 语义不变。验证：`pytest .../test_model_injection_updates_loop.py`。
