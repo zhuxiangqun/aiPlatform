@@ -46,23 +46,23 @@ def _make_stage(
 class TestLoadDefaultModel:
     """Test model selection and routing."""
 
+    @patch("core.harness.utils.model_injection.best_model_for_purpose", return_value="deepseek-reasoner")
     @patch("core.harness.utils.model_injection.create_selected_adapter")
-    def test_default_model_category_agent(self, mock_create):
-        """Agent category should use AIPLAT_AGENT_MODEL."""
+    def test_default_model_category_agent(self, mock_create, _mock_best):
+        """Agent category resolves via best_model_for_purpose('agent')."""
         mock_create.return_value = MagicMock(model_name="deepseek-reasoner")
-        with patch.dict(os.environ, {"AIPLAT_AGENT_MODEL": "deepseek-reasoner"}, clear=False):
-            model = PipelineEngine._load_default_model(category="agent")
-            assert model is not None
-            mock_create.assert_called_once_with(model_name="deepseek-reasoner")
+        model = PipelineEngine._load_default_model(category="agent")
+        assert model is not None
+        mock_create.assert_called_once_with(model_name="deepseek-reasoner")
 
+    @patch("core.harness.utils.model_injection.best_model_for_purpose", return_value="deepseek-chat")
     @patch("core.harness.utils.model_injection.create_selected_adapter")
-    def test_default_model_category_default(self, mock_create):
-        """Default category should use AIPLAT_LLM_MODEL."""
+    def test_default_model_category_default(self, mock_create, _mock_best):
+        """Default category resolves via best_model_for_purpose('chat')."""
         mock_create.return_value = MagicMock(model_name="deepseek-chat")
-        with patch.dict(os.environ, {"AIPLAT_LLM_MODEL": "deepseek-chat"}, clear=False):
-            model = PipelineEngine._load_default_model(category="default")
-            assert model is not None
-            mock_create.assert_called_once_with(model_name="deepseek-chat")
+        model = PipelineEngine._load_default_model(category="default")
+        assert model is not None
+        mock_create.assert_called_once_with(model_name="deepseek-chat")
 
     @patch("core.harness.utils.model_injection.create_selected_adapter")
     def test_explicit_model_name_overrides_env(self, mock_create):
@@ -96,8 +96,9 @@ class TestStateKeyConsistency:
 class TestModelMutation:
     """Test that model downgrade doesn't infect subsequent stages."""
 
+    @patch("core.harness.utils.model_injection.best_model_for_purpose", return_value="mock-model")
     @patch("core.harness.utils.model_injection.create_selected_adapter")
-    def test_model_downgrade_should_not_mutate_runner(self, mock_create):
+    def test_model_downgrade_should_not_mutate_runner(self, mock_create, _mock_best):
         """BUG: _stage_runner._model is permanently mutated on simple tasks.
         
         Fix: use temporary model assignment instead of permanent mutation.

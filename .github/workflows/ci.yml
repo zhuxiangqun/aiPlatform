@@ -449,6 +449,7 @@ jobs:
               core/tests/unit/test_harness/test_model_injection_updates_loop.py
               core/tests/unit/test_management/test_package_manager_uninstall.py
               core/tests/unit/test_harness/test_knowledge/test_org_gap_draft.py
+              core/tests/unit/test_pipeline_engine_core.py
               core/tests/unit/test_production_readiness.py
               core/tests/unit/test_trend_detector.py
               core/tests/unit/test_harness/test_output_style.py
@@ -815,6 +816,7 @@ jobs:
               core/tests/unit/test_harness/test_model_injection_updates_loop.py \
               core/tests/unit/test_management/test_package_manager_uninstall.py \
               core/tests/unit/test_harness/test_knowledge/test_org_gap_draft.py \
+              core/tests/unit/test_pipeline_engine_core.py \
               core/tests/unit/test_production_readiness.py \
               core/tests/unit/test_trend_detector.py \
               core/tests/unit/test_harness/test_output_style.py \
