@@ -258,6 +258,14 @@ Already green in PR (#468/#469):
 - `test_factory_confirm_proposal` (2; entity name from extraction row)
 - `test_fde_phase1_audit` (8; stub KPI keys = trace_anomalies/training)
 
+**Week 24 (+):** (product fix + cheap sync — 5 passed / flake ×2)
+
+- `llm_env.py`: import `logging` on base_url except path (NameError)
+- `PackageInfo`: required fields before defaults (dataclass TypeError)
+- `test_model_injection_updates_loop` (1; stub `create_selected_adapter`)
+- `test_package_manager_uninstall` (1)
+- `test_org_gap_draft` (3; preview must not write live domain YAML)
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /

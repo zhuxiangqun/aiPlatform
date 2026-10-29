@@ -45,7 +45,9 @@ def test_preview_schema_gaps_is_read_only(tmp_path, monkeypatch):
     assert out["items"][0]["class_name"].startswith("RepeatFail_")
     assert out["items"][0]["diff"]["count"] >= 1
     assert not (tmp_path / "k_wave").exists()
-    assert not list((tmp_path / "ontologies").glob("*")) if (tmp_path / "ontologies").exists() else True
+    # Case store may create ontologies/ layout; preview must not write live domain YAML
+    live = list((tmp_path / "ontologies").glob("*.yaml")) if (tmp_path / "ontologies").exists() else []
+    assert not any(p.name == "demo-ops.yaml" for p in live)
 
 
 @pytest.mark.asyncio

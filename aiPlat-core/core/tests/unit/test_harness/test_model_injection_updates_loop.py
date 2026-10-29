@@ -23,9 +23,14 @@ class DummyAgent:
 
 @pytest.mark.anyio
 async def test_ensure_agent_model_updates_loop(monkeypatch):
-    # Force mock adapter selection
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    monkeypatch.setenv("AIPLAT_LLM_PROVIDER", "openai")
+    # Stub adapter creation — hermetic CI has no remote credentials
+    class _StubModel:
+        pass
+
+    monkeypatch.setattr(
+        "core.harness.utils.model_injection.create_selected_adapter",
+        lambda **_kw: _StubModel(),
+    )
 
     from core.harness.utils.model_injection import ensure_agent_model
 
