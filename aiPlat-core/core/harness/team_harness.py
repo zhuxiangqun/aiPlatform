@@ -227,6 +227,22 @@ def _run_git(
     )
 
 
+def _ensure_git_identity(cwd: Path) -> None:
+    """Ensure local user.name/email so CI (no global git identity) can commit.
+
+    Only sets missing keys; never overwrites an existing local or inherited identity.
+    """
+    for key, val in (
+        ("user.email", "team-harness@aiplat.local"),
+        ("user.name", "aiplat-team-harness"),
+    ):
+        got = _run_git(["config", "--get", key], cwd=cwd, check=False)
+        if got.returncode != 0 or not (got.stdout or "").strip():
+            _run_git(["config", key, val], cwd=cwd, check=False)
+    # CI runners often enable gpgsign globally; local contribute must not require a key.
+    _run_git(["config", "commit.gpgsign", "false"], cwd=cwd, check=False)
+
+
 def is_git_repo(path: Path) -> bool:
     return (path / ".git").exists()
 
@@ -825,6 +841,7 @@ def push_team_harness(
         with team_harness_lock(timeout_sec=lock_timeout_sec):
             # Create/switch branch from current HEAD
             _run_git(["checkout", "-B", br], cwd=root, check=False)
+            _ensure_git_identity(root)
             for rel in rels:
                 _run_git(["add", "--", rel], cwd=root, check=False)
             status = _run_git(["status", "--porcelain"], cwd=root, check=False)
