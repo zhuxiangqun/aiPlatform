@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-29T01:35:40+09:00",
+  "reviewed_at": "2026-10-29T13:50:00+09:00",
   "base_ref": "origin/main",
-  "merge_base": "8b42f048554b5c326778cef370f4f94710f8ec7a",
-  "diff_sha256": "abf78c3cc951634f638494ec75f2d4737b62450ff3773d0d66efb89310dc8b0f",
-  "head_sha": "adc6d8739232170cb7e0c93786a948a60730b6ca",
+  "merge_base": "0e29a775b2ceca8b5d3a456b05d4de92569d5958",
+  "diff_sha256": "ecf1f89400b1bd62dac7aa9bb87512101c16816d8666698042a5103f68590af7",
+  "head_sha": "9599c9b9706f57556cd7e3c9f4a7aaa3a47d173e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-19 + contracts clause-sync for skill timeout. Local lock only."
+  "note": "Week-28: test stubs only (ActionStore impact/status + best_model messages=); COLLECT/execute unlock. No product paths changed."
 }
