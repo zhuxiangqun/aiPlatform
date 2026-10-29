@@ -6,14 +6,24 @@ from core.apps.skills.registry import SkillRegistry, _GenericSkill
 from core.harness.interfaces import SkillConfig
 
 
+def _cfg(name: str, description: str, version: str) -> SkillConfig:
+    # §5.19: register() requires effects when AIPLAT_SKILL_STRICT_VALIDATION=true
+    return SkillConfig(
+        name=name,
+        description=description,
+        metadata={"version": version},
+        effects=[{"type": "read", "idempotent": True}],
+    )
+
+
 def test_skill_registry_rollback_updates_instance_config():
     reg = SkillRegistry()
 
-    cfg_v1 = SkillConfig(name="s1", description="desc-v1", metadata={"version": "v1"})
+    cfg_v1 = _cfg("s1", "desc-v1", "v1")
     skill = _GenericSkill(cfg_v1)
     reg.register(skill)
 
-    cfg_v2 = SkillConfig(name="s1", description="desc-v2", metadata={"version": "v2"})
+    cfg_v2 = _cfg("s1", "desc-v2", "v2")
     # simulate a new version entry + make it active
     reg._add_version("s1", "v2", cfg_v2)  # type: ignore[attr-defined]
     for v in reg.get_versions("s1"):
@@ -35,7 +45,7 @@ def test_rollback_endpoint_returns_active_version(monkeypatch):
     import core.api.routers.engine_skills as engine_skills
 
     reg = SkillRegistry()
-    cfg_v1 = SkillConfig(name="s1", description="desc-v1", metadata={"version": "v1"})
+    cfg_v1 = _cfg("s1", "desc-v1", "v1")
     skill = _GenericSkill(cfg_v1)
     reg.register(skill)
 

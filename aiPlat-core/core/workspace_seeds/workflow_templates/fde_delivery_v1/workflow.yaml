@@ -1,0 +1,168 @@
+---
+name: Fde_Delivery_V1
+description: Fde_Delivery_V1
+execution_type: prompt
+category: general
+status: draft
+_auto_adapted: true
+---
+{
+  "name": "FDE标准交付流程",
+  "description": "四角色标准交付：业务分析师→方案架构师→交付工程师→交付经理",
+  "version": "1.0.0",
+  "pipeline_mode": "chain",
+  "nodes": [
+    {
+      "id": "canvas_node_start",
+      "type": "stageNode",
+      "position": { "x": 100, "y": 120 },
+      "data": {
+        "type": "start",
+        "label": "Start",
+        "config": {},
+        "status": "idle",
+        "output_variables": []
+      }
+    },
+    {
+      "id": "canvas_node_ba",
+      "type": "stageNode",
+      "position": { "x": 100, "y": 250 },
+      "data": {
+        "type": "human",
+        "label": "FDE业务分析师",
+        "config": {
+          "agentId": "fde_business_analyst",
+          "outputArtifact": "customer_profile",
+          "inputArtifacts": [],
+          "hitl": true,
+          "hitlPhase": "customer_profile_review"
+        },
+        "status": "idle",
+        "output_variables": ["customer_profile"]
+      }
+    },
+    {
+      "id": "canvas_node_sa",
+      "type": "stageNode",
+      "position": { "x": 420, "y": 250 },
+      "data": {
+        "type": "agent",
+        "label": "FDE方案架构师",
+        "config": {
+          "agentId": "fde_solution_architect",
+          "outputArtifact": "solution_design",
+          "inputArtifacts": ["customer_profile"],
+          "hitl": true,
+          "hitlPhase": "solution_review"
+        },
+        "status": "idle",
+        "output_variables": ["solution_design"]
+      }
+    },
+    {
+      "id": "canvas_node_de",
+      "type": "stageNode",
+      "position": { "x": 740, "y": 250 },
+      "data": {
+        "type": "agent",
+        "label": "FDE交付工程师",
+        "config": {
+          "agentId": "fde_delivery_engineer",
+          "outputArtifact": "deployment_package",
+          "inputArtifacts": ["customer_profile", "solution_design"],
+          "hitl": false,
+          "hitlPhase": ""
+        },
+        "status": "idle",
+        "output_variables": ["deployment_package"]
+      }
+    },
+    {
+      "id": "canvas_node_dm",
+      "type": "stageNode",
+      "position": { "x": 1060, "y": 250 },
+      "data": {
+        "type": "human",
+        "label": "FDE交付经理",
+        "config": {
+          "agentId": "fde_delivery_manager",
+          "outputArtifact": "acceptance_report",
+          "inputArtifacts": ["deployment_package", "customer_profile"],
+          "hitl": true,
+          "hitlPhase": "signoff_approval"
+        },
+        "status": "idle",
+        "output_variables": ["acceptance_report"]
+      }
+    },
+    {
+      "id": "canvas_node_end",
+      "type": "stageNode",
+      "position": { "x": 1060, "y": 120 },
+      "data": {
+        "type": "end",
+        "label": "End",
+        "config": {},
+        "status": "idle",
+        "output_variables": []
+      }
+    }
+  ],
+  "edges": [
+    { "source": "canvas_node_start", "target": "canvas_node_ba", "sourceHandle": "output", "targetHandle": "input" },
+    { "source": "canvas_node_ba", "target": "canvas_node_sa", "sourceHandle": "output", "targetHandle": "input" },
+    { "source": "canvas_node_sa", "target": "canvas_node_de", "sourceHandle": "output", "targetHandle": "input" },
+    { "source": "canvas_node_de", "target": "canvas_node_dm", "sourceHandle": "output", "targetHandle": "input" },
+    { "source": "canvas_node_dm", "target": "canvas_node_end", "sourceHandle": "output", "targetHandle": "input" }
+  ],
+  "stages": [
+    {
+      "id": "fde_business_analyst",
+      "agent_id": "fde_business_analyst",
+      "agent_name": "FDE业务分析师",
+      "node_type": "human",
+      "order": 0,
+      "depends_on": [],
+      "output_artifact": "customer_profile",
+      "input_artifacts": [],
+      "hitl": true,
+      "hitl_phase": "customer_profile_review"
+    },
+    {
+      "id": "fde_solution_architect",
+      "agent_id": "fde_solution_architect",
+      "agent_name": "FDE方案架构师",
+      "node_type": "agent",
+      "order": 1,
+      "depends_on": ["fde_business_analyst"],
+      "output_artifact": "solution_design",
+      "input_artifacts": ["customer_profile"],
+      "hitl": true,
+      "hitl_phase": "solution_review"
+    },
+    {
+      "id": "fde_delivery_engineer",
+      "agent_id": "fde_delivery_engineer",
+      "agent_name": "FDE交付工程师",
+      "node_type": "agent",
+      "order": 2,
+      "depends_on": ["fde_business_analyst", "fde_solution_architect"],
+      "output_artifact": "deployment_package",
+      "input_artifacts": ["customer_profile", "solution_design"],
+      "hitl": false
+    },
+    {
+      "id": "fde_delivery_manager",
+      "agent_id": "fde_delivery_manager",
+      "agent_name": "FDE交付经理",
+      "node_type": "human",
+      "order": 3,
+      "depends_on": ["fde_delivery_engineer"],
+      "output_artifact": "acceptance_report",
+      "input_artifacts": ["deployment_package", "customer_profile"],
+      "hitl": true,
+      "hitl_phase": "signoff_approval"
+    }
+  ]
+}

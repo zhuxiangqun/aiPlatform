@@ -293,6 +293,13 @@ Already green in PR (#468/#469):
 - `test_l2_import_context` (4; `best_model_for_purpose(..., messages=)`)
 - COLLECT parity: `test_slice_five_products` (15; already on execute)
 
+**Week 29 (+):** (seed restore + stub sync — 13 passed)
+
+- Restore `workspace_seeds/workflow_templates/fde_delivery_v1/workflow.yaml`
+- `test_fde_phase1b_delivery` (5) + `test_fde_phase3_builder_link` (3)
+- `test_chaos_fault_injection` (3; healing strategies live in pipeline_healing)
+- `test_skill_rollback_semantics` (2; SkillConfig.effects for §5.19)
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /
