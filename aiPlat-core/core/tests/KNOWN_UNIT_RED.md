@@ -274,11 +274,11 @@ Already green in PR (#468/#469):
 - `test_output_style` (6)
 - `test_slice_fault_injection` (5)
 
-**Week 26 (+):** (typing + cheap sync — 38 passed)
+**Week 26 (+):** (typing + cheap sync — 9 passed; media withdraw)
 
 - `kanban_engine.py`: `from __future__ import annotations` (3.9 `|` TypeError)
 - `test_pipeline_engine_core` (9; stub `best_model_for_purpose`)
-- `test_true_test_runtime` (29; video_qa catalog + SUCCESS status)
+- Withdrawn after CI red: `test_true_test_runtime` (ffmpeg_not_found on runners)
 
 **Not yet (still red or partial):**
 

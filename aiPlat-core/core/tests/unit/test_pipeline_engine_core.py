@@ -96,8 +96,9 @@ class TestStateKeyConsistency:
 class TestModelMutation:
     """Test that model downgrade doesn't infect subsequent stages."""
 
+    @patch("core.harness.utils.model_injection.best_model_for_purpose", return_value="mock-model")
     @patch("core.harness.utils.model_injection.create_selected_adapter")
-    def test_model_downgrade_should_not_mutate_runner(self, mock_create):
+    def test_model_downgrade_should_not_mutate_runner(self, mock_create, _mock_best):
         """BUG: _stage_runner._model is permanently mutated on simple tasks.
         
         Fix: use temporary model assignment instead of permanent mutation.
