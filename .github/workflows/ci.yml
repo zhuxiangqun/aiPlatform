@@ -361,6 +361,7 @@ jobs:
               core/tests/unit/test_harness/test_knowledge/test_org_v_wave_replay.py
               core/tests/unit/test_harness/test_knowledge/test_org_v_wave_rollback.py
               core/tests/unit/test_harness/test_knowledge/test_org_v_wave_signoff.py
+              core/tests/unit/test_harness/test_knowledge/test_org_v_wave_approve.py
               core/tests/unit/test_harness/test_knowledge/test_retrieval_gate_and_graph.py
               core/tests/unit/test_harness/test_knowledge/test_routed_retrieve.py
               core/tests/unit/test_harness/test_knowledge/test_security_view.py
@@ -368,6 +369,7 @@ jobs:
               core/tests/unit/test_harness/test_knowledge/test_state_machine_simulate_action.py
               core/tests/unit/test_harness/test_knowledge/test_usage_signal.py
               core/tests/unit/test_harness/test_knowledge/test_web_result_quality.py
+              core/tests/unit/test_harness/test_l2_import_context.py
               core/tests/unit/test_apps/test_agent_create_dialog_ready.py
               core/tests/unit/test_apps/test_agent_eval.py
               core/tests/unit/test_apps/test_agent_execution_examples.py
@@ -456,6 +458,7 @@ jobs:
               core/tests/unit/test_trend_detector.py
               core/tests/unit/test_harness/test_output_style.py
               core/tests/apps/fde/test_slice_fault_injection.py
+              core/tests/apps/fde/test_slice_five_products.py
               core/tests/tool_correctness/test_code_graph.py
               core/tests/integration/test_harness_integration.py
               core/tests/integration/test_phaseR1_repo_diff_context_injection.py
@@ -730,6 +733,7 @@ jobs:
               core/tests/unit/test_harness/test_knowledge/test_org_v_wave_replay.py \
               core/tests/unit/test_harness/test_knowledge/test_org_v_wave_rollback.py \
               core/tests/unit/test_harness/test_knowledge/test_org_v_wave_signoff.py \
+              core/tests/unit/test_harness/test_knowledge/test_org_v_wave_approve.py \
               core/tests/unit/test_harness/test_knowledge/test_retrieval_gate_and_graph.py \
               core/tests/unit/test_harness/test_knowledge/test_routed_retrieve.py \
               core/tests/unit/test_harness/test_knowledge/test_security_view.py \
@@ -737,6 +741,7 @@ jobs:
               core/tests/unit/test_harness/test_knowledge/test_state_machine_simulate_action.py \
               core/tests/unit/test_harness/test_knowledge/test_usage_signal.py \
               core/tests/unit/test_harness/test_knowledge/test_web_result_quality.py \
+              core/tests/unit/test_harness/test_l2_import_context.py \
               core/tests/unit/test_apps/test_agent_create_dialog_ready.py \
               core/tests/unit/test_apps/test_agent_eval.py \
               core/tests/unit/test_apps/test_agent_execution_examples.py \

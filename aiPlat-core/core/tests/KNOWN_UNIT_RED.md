@@ -286,6 +286,13 @@ Already green in PR (#468/#469):
 - `test_knowledge_embedder` (7; AIPLAT_EMBED_BACKEND=hash)
 - `test_org_s_wave` (3)
 
+**Week 28 (+):** (stub sync + COLLECT parity — 24 passed)
+
+- `test_org_v_wave_approve` (5; `_Store` + core_facade patches for
+  `update_ontology_proposal_impact` / status)
+- `test_l2_import_context` (4; `best_model_for_purpose(..., messages=)`)
+- COLLECT parity: `test_slice_five_products` (15; already on execute)
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /
