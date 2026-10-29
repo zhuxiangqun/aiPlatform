@@ -44,9 +44,10 @@ class TestEmbedderFunctions:
         result = cosine_similarity([1.0], [1.0, 2.0])
         assert result == 0.0  # different lengths return 0
 
-    @pytest.mark.asyncio
-    async def test_embed_text_semantic(self):
+    def test_embed_text_semantic(self, monkeypatch):
+        # Hermetic: hash backend (no infra ModelManager / GPU).
+        monkeypatch.setenv("AIPLAT_EMBED_BACKEND", "hash")
         from core.harness.knowledge.embedder import embed_text_semantic
-        vec = embed_text_semantic("hello")  # may be sync or async
-        assert isinstance(vec, list) or hasattr(vec, '__await__')
-        assert True  # at minimum callable
+        vec = embed_text_semantic("hello")
+        assert isinstance(vec, list)
+        assert len(vec) > 0

@@ -280,6 +280,12 @@ Already green in PR (#468/#469):
 - `test_pipeline_engine_core` (9; stub `best_model_for_purpose`)
 - Withdrawn after CI red: `test_true_test_runtime` (ffmpeg_not_found on runners)
 
+**Week 27 (+):** (seed + hermetic embed — 10 passed)
+
+- Domain pack manifests (+ alert_triage ontology.yaml) so S3 catalog lists packs
+- `test_knowledge_embedder` (7; AIPLAT_EMBED_BACKEND=hash)
+- `test_org_s_wave` (3)
+
 **Not yet (still red or partial):**
 
 - Remaining unit reds: scattered (hooks / apps / skills / adapter injection /

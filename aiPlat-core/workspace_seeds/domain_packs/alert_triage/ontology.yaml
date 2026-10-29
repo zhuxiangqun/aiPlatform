@@ -1,0 +1,12 @@
+domain_id: "{{domain_id}}"
+name: "{{name}}"
+description: Alert triage ontology scaffold
+classes:
+  Alert:
+    description: Operational alert
+    properties:
+      severity:
+        type: string
+      status:
+        type: string
+        enum: [open, ack, closed]
