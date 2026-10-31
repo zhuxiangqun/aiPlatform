@@ -1,5 +1,6 @@
 """Wiki Ontology Engine API — parsing, classification, resolution, synthesis"""
 
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Body
@@ -190,7 +191,7 @@ async def cleanup_cross_domain_nodes(domain_id: str):
 
     domain_vocab = set()
 
-    onto_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    onto_path = _Path(get_aiplat_home()) / "ontologies" / f"{domain_id}.yaml"
 
     if onto_path.exists():
 
@@ -348,7 +349,7 @@ async def _get_kb_docs_for_domain(domain_id: str, limit: int) -> list:
 
     from pathlib import Path
 
-    home = Path(os.getenv("AIPLAT_HOME", Path("~").expanduser() / ".aiplat"))
+    home = Path(get_aiplat_home())
 
     kb_db = str(home / "kb" / "tenants" / "default" / "kb.sqlite3")
 
@@ -505,7 +506,7 @@ async def build_instances_batch(domain_id: str, collection: str = "", limit: int
 
     from pathlib import Path as _Path
 
-    built_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "graph" / f"{domain_id}_built.json"
+    built_path = _Path(get_aiplat_home()) / "graph" / f"{domain_id}_built.json"
 
     built_pages = set()
 
@@ -707,7 +708,7 @@ async def build_cross_page_edges(domain_id: str):
 
     # Load domain relation type definitions
 
-    onto_path = _Path(_os.getenv("AIPLAT_HOME", _Path.home() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    onto_path = _Path(get_aiplat_home()) / "ontologies" / f"{domain_id}.yaml"
 
     domain = load_ontology_from_yaml(str(onto_path))
 
@@ -1085,7 +1086,7 @@ def _get_cached_vector(title: str, *, collection_id: str = "default") -> list:
 
     from pathlib import Path
 
-    cache_path = Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat")) / "wiki" / "collections" / collection_id / "vectors.json"
+    cache_path = Path(get_aiplat_home()) / "wiki" / "collections" / collection_id / "vectors.json"
 
     if not cache_path.exists():
 
@@ -1259,7 +1260,7 @@ async def ontology_engine_trace(instance_title: str, doc_id: str = ""):
 
     from pathlib import Path as _Path
 
-    traces_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontology_traces"
+    traces_dir = _Path(get_aiplat_home()) / "ontology_traces"
 
     traces_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1828,7 +1829,7 @@ async def list_ontology_reviews(domain_id: str):
 
 
 
-    reviews_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontology_reviews"
+    reviews_dir = _Path(get_aiplat_home()) / "ontology_reviews"
 
     review_file = reviews_dir / f"{domain_id}.json"
 
@@ -1882,7 +1883,7 @@ async def resolve_ontology_review(domain_id: str, req: dict):
 
 
 
-    reviews_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontology_reviews"
+    reviews_dir = _Path(get_aiplat_home()) / "ontology_reviews"
 
     review_file = reviews_dir / f"{domain_id}.json"
 
@@ -1954,7 +1955,7 @@ async def get_graph_stats(domain_id: str):
 
     """Get graph statistics: nodes, edges, inferred edges."""
 
-    from core.api.core_facade import GraphIndex
+    from core.api.core_facade import GraphIndex, attach_ontology_api, ontology_api_from_graph_health
 
     graph = GraphIndex.load(domain_id)
 
@@ -1962,7 +1963,9 @@ async def get_graph_stats(domain_id: str):
 
     inferred = sum(1 for n in graph._nodes.values() for e in n.out_edges if getattr(e, "inferred", False))
 
-    return {"domain_id": domain_id, "node_count": base["node_count"], "edge_count": base["edge_count"], "inferred_edges": inferred, "avg_degree": base["avg_degree"]}
+    out = {"domain_id": domain_id, "domain": domain_id, "node_count": base["node_count"], "edge_count": base["edge_count"], "inferred_edges": inferred, "avg_degree": base["avg_degree"], "exists": True}
+
+    return attach_ontology_api(out, ontology_api_from_graph_health(out, domain_id=domain_id))
 
 
 
@@ -2012,7 +2015,7 @@ async def cross_source_resolve(req: dict):
 
 
 
-    ont_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    ont_path = _Path(get_aiplat_home()) / "ontologies" / f"{domain_id}.yaml"
 
     domain = load_ontology_from_yaml(str(ont_path)) if ont_path.exists() else None
 
@@ -2088,7 +2091,7 @@ async def resolve_entities(req: dict):
 
 
 
-    ont_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    ont_path = _Path(get_aiplat_home()) / "ontologies" / f"{domain_id}.yaml"
 
     if not ont_path.exists():
 
@@ -2682,7 +2685,7 @@ async def generate_ontology_sdk(domain_id: str, language: str = "python"):
 
 
 
-    ont_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    ont_path = _Path(get_aiplat_home()) / "ontologies" / f"{domain_id}.yaml"
 
     if not ont_path.exists():
 
@@ -2817,7 +2820,7 @@ async def run_graph_inference(req: dict):
     from pathlib import Path as _Path
     import os as _os
 
-    ont_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    ont_path = _Path(get_aiplat_home()) / "ontologies" / f"{domain_id}.yaml"
     if not ont_path.exists():
         raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
 
@@ -2928,7 +2931,7 @@ def _remove_from_registry(domain_id: str) -> None:
 
     import os as _os, json
 
-    registry_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / "registry.json"
+    registry_path = _Path(get_aiplat_home()) / "ontologies" / "registry.json"
 
     if not registry_path.exists():
 
@@ -2971,7 +2974,7 @@ def _write_domain_yaml(domain_id: str, data: dict) -> None:
 
     import os as _os
 
-    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    d = _Path(get_aiplat_home()) / "ontologies"
 
     d.mkdir(parents=True, exist_ok=True)
 
@@ -3037,8 +3040,7 @@ async def sync_search_index_all():
     Zero LLM calls. Returns per-domain sync counts.
     """
     import os as _os, glob as _glob
-    graph_dir = _os.path.expanduser(
-        _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))) + "/graph"
+    graph_dir = get_aiplat_data_dir("graph")
     
     results = {}
     total_synced = 0

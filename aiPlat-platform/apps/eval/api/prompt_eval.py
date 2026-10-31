@@ -186,7 +186,19 @@ async def create_eval_run(req: PromptEvalRunCreate):
             logging.warning("Prompt evaluation failed for run %s", run_id, exc_info=True)
     _aio.create_task(_safe_eval())
 
-    return {"run_id": run_id, "status": "running", "total_cases": total}
+    from core.api.core_facade import attach_eval_protocol, eval_protocol_from_generic
+
+    out = {"run_id": run_id, "status": "running", "total_cases": total}
+    return attach_eval_protocol(
+        out,
+        eval_protocol_from_generic(
+            task_id=f"prompt-eval:{run_id}",
+            target_kind="workflow",
+            target_ref=str(req.template_id),
+            result=out,
+            suite="prompt",
+        ),
+    )
 
 
 async def _run_evaluation(run_id: str, req: PromptEvalRunCreate, case_rows, tpl, db_path: str):
@@ -287,4 +299,16 @@ async def get_eval_run(run_id: str):
                 raise HTTPException(status_code=404, detail="Eval run not found")
             return dict(row)
     import anyio
-    return await anyio.to_thread.run_sync(_sync)
+    row = await anyio.to_thread.run_sync(_sync)
+    from core.api.core_facade import attach_eval_protocol, eval_protocol_from_generic
+
+    return attach_eval_protocol(
+        row if isinstance(row, dict) else {"item": row},
+        eval_protocol_from_generic(
+            task_id=f"prompt-eval:{run_id}",
+            target_kind="workflow",
+            target_ref=str((row or {}).get("template_id") or run_id) if isinstance(row, dict) else run_id,
+            result=row if isinstance(row, dict) else None,
+            suite="prompt",
+        ),
+    )

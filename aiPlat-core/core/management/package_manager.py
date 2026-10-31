@@ -37,6 +37,8 @@ import hashlib
 
 import yaml
 
+from core.utils.paths import get_aiplat_data_dir
+
 
 def _sha256_dir(path: Path) -> str:
     h = hashlib.sha256()
@@ -95,7 +97,7 @@ class PackageManager:
     def _resolve_packages_paths(self) -> List[Path]:
         repo_root = Path(__file__).resolve().parents[2]  # aiPlat-core/
         engine_default = repo_root / "core" / "engine" / "packages"
-        workspace_default = Path.home() / ".aiplat" / "packages"
+        workspace_default = Path(get_aiplat_data_dir("packages"))
 
         paths_env = os.environ.get(f"AIPLAT_{self._scope.upper()}_PACKAGES_PATHS")
         if paths_env:
@@ -211,7 +213,7 @@ class PackageManager:
     # ---------- install/uninstall ----------
 
     def _installs_dir(self) -> Path:
-        return (Path.home() / ".aiplat" / "packages" / ".installs").resolve()
+        return Path(get_aiplat_data_dir("packages/.installs")).resolve()
 
     def _install_record_path(self, pkg_name: str) -> Path:
         return self._installs_dir() / f"{pkg_name}.json"
@@ -239,10 +241,10 @@ class PackageManager:
             "engine_agents": (repo_root / "core" / "engine" / "agents").resolve(),
             "engine_skills": (repo_root / "core" / "engine" / "skills").resolve(),
             "engine_mcps": (repo_root / "core" / "engine" / "mcps").resolve(),
-            "workspace_agents": (Path.home() / ".aiplat" / "agents").resolve(),
-            "workspace_skills": (Path.home() / ".aiplat" / "skills").resolve(),
-            "workspace_mcps": (Path.home() / ".aiplat" / "mcps").resolve(),
-            "workspace_hooks": (Path.home() / ".aiplat" / "hooks").resolve(),
+            "workspace_agents": Path(get_aiplat_data_dir("agents")).resolve(),
+            "workspace_skills": Path(get_aiplat_data_dir("skills")).resolve(),
+            "workspace_mcps": Path(get_aiplat_data_dir("mcps")).resolve(),
+            "workspace_hooks": Path(get_aiplat_data_dir("hooks")).resolve(),
         }
 
     def install(

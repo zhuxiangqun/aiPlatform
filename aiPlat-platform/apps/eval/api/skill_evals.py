@@ -1,4 +1,5 @@
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import os
 import re
@@ -203,7 +204,7 @@ def _resolve_skill_md_path(*, skill_id: str, scope: str) -> Optional[Path]:
             base = Path(single).expanduser().resolve()
     else:
         # workspace default mirrors SkillManager
-        base = Path.home() / ".aiplat" / "skills"
+        base = Path(get_aiplat_home()) / "skills"
         paths_env = os.environ.get("AIPLAT_WORKSPACE_SKILLS_PATHS")
         if paths_env:
             parts = [p.strip() for p in paths_env.split(os.pathsep) if p.strip()]
@@ -410,7 +411,18 @@ async def run_skill_eval_suite(suite_id: str, request: dict, http_request: Reque
             execution_id=str(eval_run_id),
         )
     run_row = await store.get_skill_eval_run(run_id=str(eval_run_id))
-    return {"status": "ok", "run_id": str(eval_run_id), "result": res, "run": run_row}
+    from core.api.core_facade import attach_eval_protocol, eval_protocol_from_skill_eval_run
+
+    out = {"status": "ok", "run_id": str(eval_run_id), "result": res, "run": run_row}
+    return attach_eval_protocol(
+        out,
+        eval_protocol_from_skill_eval_run(
+            run_id=str(eval_run_id),
+            suite_id=str(suite_id),
+            run_row=run_row if isinstance(run_row, dict) else None,
+            result=res,
+        ),
+    )
 
 
 @router.get("/skill-evals/runs/{run_id}", response_model=ItemResponse)
@@ -421,7 +433,18 @@ async def get_skill_eval_run(run_id: str):
     row = await store.get_skill_eval_run(run_id=str(run_id))
     if not row:
         raise HTTPException(status_code=404, detail="not_found")
-    return row
+    from core.api.core_facade import attach_eval_protocol, eval_protocol_from_skill_eval_run
+
+    out = dict(row) if isinstance(row, dict) else {"item": row}
+    suite_id = str((row or {}).get("suite_id") or "") if isinstance(row, dict) else ""
+    return attach_eval_protocol(
+        out,
+        eval_protocol_from_skill_eval_run(
+            run_id=str(run_id),
+            suite_id=suite_id,
+            run_row=row if isinstance(row, dict) else None,
+        ),
+    )
 
 
 @router.get("/skill-evals/runs/{run_id}/results", response_model=ItemResponse)

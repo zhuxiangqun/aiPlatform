@@ -1,0 +1,43 @@
+# Pi Edge — D2 admin/security pack (offline-first; enterprise opt-in only)
+schema_version: aiplat.pi.security.baseline.v0
+updated: "2026-10-30"
+checks:
+  - id: pi_d1_install_enterprise_off
+    description: D1 install defaults AIPLAT_ENTERPRISE=0
+    path: packages/aiplat-pi-runtime/scripts/d1_install.sh
+    must_contain:
+      - "AIPLAT_ENTERPRISE=0"
+  - id: pi_d1_smoke_enterprise_off
+    description: D1 smoke forces enterprise off
+    path: packages/aiplat-pi-runtime/scripts/d1_smoke.sh
+    must_contain:
+      - "AIPLAT_ENTERPRISE=0"
+  - id: pi_healthz_product_edge
+    description: healthz schema product_id=pi deploy_unit=edge
+    path: packages/aiplat-pi-runtime/contracts/schemas/healthz.schema.json
+    must_contain:
+      - '"const": "pi"'
+      - '"const": "edge"'
+  - id: pi_chart_enterprise_default_off
+    description: Chart annotates enterprise_default=0 and d3 unauthorized
+    path: packages/aiplat-pi-runtime/chart/Chart.yaml
+    must_contain:
+      - 'aiplat.enterprise_default: "0"'
+      - 'aiplat.d2_admin_pack: "true"'
+      - 'aiplat.d3_production_authorized: "false"'
+  - id: pi_d2_admin_doc
+    description: D2 admin pack scope document
+    path: packages/aiplat-pi-runtime/docs/D2_ADMIN.md
+    must_contain:
+      - "enterprise opt-in"
+      - "AIPLAT_ENTERPRISE=0"
+  - id: pi_no_platform_import_in_bin
+    description: HTTP entry must not import platform/core Python
+    path: packages/aiplat-pi-runtime/bin/aiplat-http.mjs
+    must_contain:
+      - "healthz"
+  - id: pi_hybrid_enterprise_doc
+    description: Enterprise reconnect documented as optional
+    path: packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md
+    must_contain:
+      - "AIPLAT_ENTERPRISE"

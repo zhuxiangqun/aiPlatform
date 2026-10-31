@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2362
+total_capabilities: 2405
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -570,6 +570,14 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| aiplat_fde_d1_prep_install | `packages/aiplat-fde/scripts/d1_install.sh` | ✅ | 自动同步 | 已合入 |
+| fde_healthz_payload | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| aiplat_a2_version_check | `packages/aiplat-central/scripts/a2_version_check.sh` | ✅ | 自动同步 | 已合入 |
+| aiplat_central_d2_security_check | `packages/aiplat-central/scripts/d2_security_check.sh` | ✅ | 自动同步 | 已合入 |
+| aiplat_central_d2_compat_check | `packages/aiplat-central/scripts/d2_compat_check.sh` | ✅ | 自动同步 | 已合入 |
+| aiplat_central_d1_install | `packages/aiplat-central/scripts/d1_install.sh` | ✅ | 自动同步 | 已合入 |
+| to_aiplat_healthz | `core/harness/meta/control_plane.py` | ✅ | 自动同步 | 已合入 |
+| to_control_plane_v0 | `core/harness/meta/control_plane.py` | ✅ | 自动同步 | 已合入 |
 | copy_contrast_signals | `core/harness/execution/contrast_signals.py` | ✅ | 自动同步 | 已合入 |
 | surface_contrast_signals | `core/harness/execution/contrast_signals.py` | ✅ | 自动同步 | 已合入 |
 | clear_contrast_signals | `core/harness/execution/contrast_signals.py` | ✅ | 自动同步 | 已合入 |
@@ -1008,6 +1016,11 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| attach_ontology_api | `core/harness/knowledge/ontology_api.py` | ✅ | 自动同步 | 已合入 |
+| from_structured_query | `core/harness/knowledge/ontology_api.py` | ✅ | 自动同步 | 已合入 |
+| aiplat_ontology_d1_install | `packages/aiplat-ontology/scripts/d1_install.sh` | ✅ | 自动同步 | 已合入 |
+| to_ontology_healthz | `core/harness/knowledge/ontology_api.py` | ✅ | 自动同步 | 已合入 |
+| to_ontology_api_v0 | `core/harness/knowledge/ontology_api.py` | ✅ | 自动同步 | 已合入 |
 | live_yaml_write_allowed | `core/harness/knowledge/ontology_yaml_gate.py` | ✅ | 自动同步 | 已合入 |
 | LiveYamlDirectWriteDenied | `core/harness/knowledge/ontology_yaml_gate.py` | ✅ | 自动同步 | 已合入 |
 | find_case | `core/harness/knowledge/ontology_case_learning.py` | ✅ | 自动同步 | 已合入 |
@@ -1217,6 +1230,8 @@ scan_hash: 8f9548ec24f4
 | compile_ontology_constraints | `` | ✅ | 自动同步 | 已合入 |
 | publish_business_action | `core/harness/ontology_engine/graph_index.py` | ✅ | 自动同步 | 已合入 |
 | WikiEngine | `harness/knowledge/wiki_engine.py` | ✅ | 自动同步 | 已合入 |
+| Ontology API v0 | `harness/knowledge/ontology_api.py` + `CoreFacade.wiki_structured_query_api` / `wiki_search_pages_api` / `get_graph_health_api`；契约 `reports/five-products/modules/ontology/contracts/` | ✅ | 统一 `ontology.api.v0` 交换形；`/wiki/query-structured`、`/wiki/pages`、`/wiki/engine/graph-stats/{id}` 附加 `ontology_api`；生成物适用：已接线（知识检索横切） | 已合入 |
+| Ontology D1 Thin | `packages/aiplat-ontology` + `GET /api/core/ontology/healthz`（`ontology_healthz_payload`） | ✅ | 共宿 Central；`product_id=ontology`；无 A3 拆分；生成物适用：不适用（平台共宿打包） | 已合入 |
 | build_prompt_to_agent_bridge | `` | ✅ | 自动同步 | 已合入 |
 | build_model_usage_bridge | `` | ✅ | 自动同步 | 已合入 |
 | build_wiki_to_agent_bridge | `` | ✅ | 自动同步 | 已合入 |
@@ -2192,6 +2207,45 @@ scan_hash: 8f9548ec24f4
 | Canary 灰度部署 | harness/canary/ | ✅ | Canary/A-B/Shadow/Auto-Rollback 四种灰度模式 + 自动回滚 | 已合入 |
 | FeedbackLoops 反馈闭环 | harness/feedback_loops/ | ✅ | local + prod + push 三通道反馈收集 + drain wired | 已合入 |
 | Health 健康检查 | harness/health/ | ✅ | 子系统健康状态聚合 + Capability Health + Symbol Health | 已合入 |
+| aiPlat Control Plane v0 | `harness/meta/control_plane.py` + `GET /api/core/healthz`（`CoreFacade.aiplat_healthz_payload`）；契约 `reports/five-products/modules/aiplat/contracts/` | ✅ | 宿主 `aiplat.control.v0` + A1 healthz（`product_id=aiplat`）；`/health` 仍为仪表盘 legacy；生成物适用：不适用（平台横切宿主探针） | 已合入 |
+| aiPlat Central D1 Thin | `packages/aiplat-central`（`d1_install/upgrade/rollback/backup/smoke` + healthz schema） | ✅ | Central 宿主 Thin 安装布局 + `/api/core/healthz` smoke；无 PG/HA；生成物适用：不适用（平台宿主打包） | 已合入 |
+| aiPlat Central D2 compat | `packages/aiplat-central/compat/matrix.yaml` + `scripts/d2_compat_check.sh` | ✅ | Central/Pi/Ontology/Eval/FDE-PREP 兼容矩阵；生成物适用：不适用（平台宿主打包） | 已合入 |
+| aiPlat Central D2+ security | `packages/aiplat-central/security/baseline.yaml` + `scripts/d2_security_check.sh` | ✅ | 宿主安全基线（token middleware / admin MFA / Pi enterprise-off / FDE draft gate）；生成物适用：不适用 | 已合入 |
+| Five-capability A2 versioning | `reports/five-products/versions.yaml` + `VERSIONING.md` + `packages/aiplat-central/scripts/a2_version_check.sh` | ✅ | 五包 semver SSOT（0.1.0）对齐 package.json / module.yaml / compat min；生成物适用：不适用（交付版本门禁） | 已合入 |
+| resolve_capability_version | `harness/meta/capability_version.py` + CoreFacade healthz payloads | ✅ | healthz `version` 读 SSOT；`/api/core/{ontology,eval,fde}/healthz`；生成物适用：不适用 | 已合入 |
+| five_products_gate | `scripts/five_products_gate.sh` | ✅ | 本地一键：A2 + compat + security + 契约 + adapter + ontology/eval/fde smoke + A3 prep + PG/HA rehearsal/prep；生成物适用：不适用 | 已合入 |
+| FDE Field D1 | `packages/aiplat-fde` + `ADR-FDE-FIELD-DEPLOY` **Accepted**；`production_field=true` | ✅ | Field 安装/备份/回滚；N-1/驻留文档；生成物适用：不适用（现场交付打包） | 已合入 |
+| Central PG/HA ADR | `ADR-CONTROL-PLANE-PG-HA` **Accepted（有条件）** + `docs/pg_ha/*` | ✅ | 批准产品化路径；切流硬门 checklist 未绿前禁止生产默认切库；生成物适用：不适用 | 已合入 |
+| pg_ha_prep_check | `packages/aiplat-central/scripts/pg_ha_prep_check.sh` + `chart/` skeleton | ✅ | 自动验 #5 契约耦合 / #6 Chart / #1 MFA 单测；发现本地 rehearsal 工件标 🟨；永不擅自 cutover_authorized；生成物适用：不适用 | 已合入 |
+| pg_ha_local_rehearsal | `packages/aiplat-central/scripts/pg_ha_local_rehearsal.sh` | ✅ | SQLite #3/#7→🟨；可选 DSN 或 docker ephemeral PG schema #2→🟨；切流恒 false；生成物适用：不适用 | 已合入 |
+| pg_ha_ha_failover_rehearsal | `packages/aiplat-central/scripts/pg_ha_ha_failover_rehearsal.sh` | ✅ | docker ephemeral 主备逻辑 dump failover/failback；#4→🟨；无 VIP/流复制；切流恒 false；生成物适用：不适用 | 已合入 |
+| pg_ha_cutover_authorize | `packages/aiplat-central/scripts/pg_ha_cutover_authorize.sh` | ✅ | status/authorize；checklist 未全 ✅ 则 REFUSE；🟨≠授权；生成物适用：不适用 | 已合入 |
+| ontology_a3_split_authorize | `packages/aiplat-ontology/scripts/a3_split_authorize.sh` | ✅ | status/authorize；SPLIT 未全 ✅ 则 REFUSE；生成物适用：不适用 | 已合入 |
+| evaluation_a3_split_authorize | `packages/aiplat-evaluation/scripts/a3_split_authorize.sh` | ✅ | status/authorize；SPLIT 未全 ✅ 则 REFUSE；生成物适用：不适用 | 已合入 |
+| pg_ha_record_live_drill | `packages/aiplat-central/scripts/pg_ha_record_live_drill.sh` + `LIVE_DRILL_EVIDENCE.md` | ✅ | 生产 live 证据落盘；不改 checklist、不授权 cutover；生成物适用：不适用 | 已合入 |
+| ontology_a3_record_live_drill | `packages/aiplat-ontology/scripts/a3_record_live_drill.sh` | ✅ | Ontology live 证据落盘；不授权拆分；生成物适用：不适用 | 已合入 |
+| evaluation_a3_record_live_drill | `packages/aiplat-evaluation/scripts/a3_record_live_drill.sh` | ✅ | Evaluation live 证据落盘；不授权拆分；生成物适用：不适用 | 已合入 |
+| five_products_engineering_closeout | `reports/five-products/ENGINEERING_CLOSEOUT.md` | ✅ | 工程收口声明 + 运维 backlog；生成物适用：不适用 | 已合入 |
+| five_products_ops_live_runbook | `reports/five-products/OPS_LIVE_RUNBOOK.md` + `scripts/ops_live_status.sh` | ✅ | 四轨 live 总册 + 只读 authorize 聚合；不授权切流/拆分/D3；生成物适用：不适用 | 已合入 |
+| five_products_live_evidence_gate | `scripts/lib/aiplat_live_evidence.py` + 四轨 `*_authorize.sh` | ✅ | authorize 双硬门：checklist 全 ✅ + 最新 live-*.json `production_signed=true`；缺则 REFUSE；生成物适用：不适用 | 已合入 |
+| five_products_live_evidence_gate_test | `scripts/test_live_evidence_authorize_gate.sh` | ✅ | 临时目录回归：未签 live REFUSE / 已签可 AUTHORIZE；不改动包内硬门；生成物适用：不适用 | 已合入 |
+| five_products_ops_live_scaffold | `scripts/ops_live_scaffold.sh` + `OPS_HANDOFF.md` | ✅ | 四轨未签 live 脚手架 + 运维交接卡；永不 production_signed/authorize；生成物适用：不适用 | 已合入 |
+| five_products_ops_live_sign | `scripts/ops_live_sign.sh` + `scripts/lib/aiplat_live_sign.py` | ✅ | items 齐且非 scaffold env 才可签 production_signed；不改 checklist/authorize；生成物适用：不适用 | 已合入 |
+| five_products_ops_pgha_live_kickoff | `scripts/ops_pgha_live_kickoff.sh` + `ops/PGHA_LIVE_RUNLOG.md` | ✅ | PG/HA live 开票；缺 DSN/OIDC 写 blockers exit 2；不授权；生成物适用：不适用 | 已合入 |
+| five_products_local_defer | `reports/five-products/ops/LOCAL_DEFER.md` | ✅ | 四轨暂用本机：local 🟨；切流/拆分/D3 硬门 false；生成物适用：不适用 | 已合入 |
+| pi_d2_admin_check | `packages/aiplat-pi-runtime/scripts/d2_admin_check.sh` + `security/baseline.yaml` + `docs/D2_ADMIN.md` | ✅ | Pi Edge D2 admin/security；enterprise 默认 0；生成物适用：不适用 | 已合入 |
+| Pi D3 ADR | `ADR-PI-D3` **Accepted（有条件）**；草案对照 `ADR-DRAFT-pi-d3` | ✅ | 批准 Edge 深度运维/SOC 路径；`d3_production_authorized` 未绿前禁止生产宣称；生成物适用：不适用 | 已合入 |
+| pi_d3_prep_check | `packages/aiplat-pi-runtime/scripts/d3_prep_check.sh` + `docs/d3/` | ✅ | D3 硬门自动项；永不擅自 d3_production_authorized；生成物适用：不适用 | 已合入 |
+| pi_d3_local_rehearsal | `packages/aiplat-pi-runtime/scripts/d3_local_rehearsal.sh` | ✅ | Bundle checksum/回滚本地演练；#3/#4/#6→🟨；生成物适用：不适用 | 已合入 |
+| pi_d3_authorize | `packages/aiplat-pi-runtime/scripts/d3_authorize.sh` | ✅ | status/authorize；未全 ✅ 则 REFUSE；生成物适用：不适用 | 已合入 |
+| pi_d3_soc_local_rehearsal | `packages/aiplat-pi-runtime/scripts/d3_soc_local_rehearsal.sh` | ✅ | enterprise off 丢弃 / on→本地 file sink；#5→🟨；无外联；生成物适用：不适用 | 已合入 |
+| pi_d3_record_live_drill | `packages/aiplat-pi-runtime/scripts/d3_record_live_drill.sh` + `LIVE_DRILL_EVIDENCE.md` | ✅ | 生产 live 证据落盘；不授权 d3_production；生成物适用：不适用 | 已合入 |
+| Ontology A3 ADR | `ADR-ONTOLOGY-A3` **Accepted（有条件）**；草案对照 `ADR-DRAFT-ontology-a3` | ✅ | 批准图服务独立路径；`process_split_authorized` 未绿前禁止拆分；生成物适用：不适用 | 已合入 |
+| Evaluation A3 ADR | `ADR-EVALUATION-A3` **Accepted（有条件）**；草案对照 `ADR-DRAFT-evaluation-a3` | ✅ | 批准评测服务独立路径；`process_split_authorized` 未绿前禁止拆分；生成物适用：不适用 | 已合入 |
+| ontology_a3_prep_check | `packages/aiplat-ontology/scripts/a3_prep_check.sh` + `chart/` + `docs/a3/` | ✅ | Chart/契约/零 harness.knowledge 直导；发现 local rehearsal 标 🟨；`process_split_authorized` 恒 false；生成物适用：不适用 | 已合入 |
+| evaluation_a3_prep_check | `packages/aiplat-evaluation/scripts/a3_prep_check.sh` + `chart/` + `docs/a3/` | ✅ | Chart/protocol/零 harness 直导；发现 local rehearsal 标 🟨；`process_split_authorized` 恒 false；生成物适用：不适用 | 已合入 |
+| ontology_a3_local_rehearsal | `packages/aiplat-ontology/scripts/a3_local_rehearsal.sh` | ✅ | 文件树双写+回滚指针演练；checklist #3/#5→🟨；拆分恒 false；生成物适用：不适用 | 已合入 |
+| evaluation_a3_local_rehearsal | `packages/aiplat-evaluation/scripts/a3_local_rehearsal.sh` | ✅ | SQLite 备份/回滚指针演练；checklist #4→🟨；拆分恒 false；生成物适用：不适用 | 已合入 |
 | Observation 观测总线 | harness/observation/ | ✅ | EventBus 发布/订阅 + PipelineTrace 每阶段跟踪 | 已合入 |
 | Smoke 全链路冒烟 | harness/smoke/ | ✅ | 生产级全链路冒烟测试 + 自动清理 | 已合入 |
 | A2A 协议 | apps/a2a/ | ✅ | Agent Card + Task Send/Get/Stream/Cancel/Artifacts 全实现 | 已合入 |
@@ -2416,6 +2470,10 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| from_run_evaluation | `core/harness/evaluation/eval_protocol.py` | ✅ | 自动同步 | 已合入 |
+| aiplat_evaluation_d1_install | `packages/aiplat-evaluation/scripts/d1_install.sh` | ✅ | 自动同步 | 已合入 |
+| to_evaluation_healthz | `core/harness/evaluation/eval_protocol.py` | ✅ | 自动同步 | 已合入 |
+| to_eval_protocol_v0 | `core/harness/evaluation/eval_protocol.py` | ✅ | 自动同步 | 已合入 |
 | collect_harness_factors | `core/harness/evaluation/harness_factors.py` | ✅ | 自动同步 | 已合入 |
 | register_novel_as_experience | `core/harness/evaluation/novel_experience_bridge.py` | ✅ | 自动同步 | 已合入 |
 | attach_gold_gate_to_diff | `core/harness/evaluation/gold_profile_gate.py` | ✅ | 自动同步 | 已合入 |
@@ -2437,6 +2495,8 @@ scan_hash: 8f9548ec24f4
 | RAG Evaluator | harness/evaluation/rag_evaluator.py | ✅ | Ragas: faithfulness/relevancy/precision/recall | 已合入 |
 | DriftDetector | harness/evaluation/drift_detector.py | ✅ | 零成本推理质量下降检测 (confidence/error/stagnation) | 已合入 |
 | EvaluationWorkbench | harness/evaluation/workbench.py | ✅ | 标准化评估报告 + 阈值门 + 制品持久化 | 已合入 |
+| Eval Protocol v0 | `harness/evaluation/eval_protocol.py` + runs evaluate/auto/latest + skill-evals run/GET + gold + kb + prompt + arena；契约 `reports/five-products/modules/evaluation/contracts/` | ✅ | 统一 `eval.protocol.v0` 交换形；响应附加 `eval_protocol`；生成物适用：已接线（apps/eval） | 已合入 |
+| Evaluation D1 Thin | `packages/aiplat-evaluation` + `GET /api/core/eval/healthz`（`evaluation_healthz_payload`） | ✅ | 共宿 Central；`product_id=evaluation`；无 A3 拆分；生成物适用：不适用（平台共宿打包） | 已合入 |
 | AB Optimizer | harness/evaluation/ab_optimizer.py | ✅ | A/B 测试优化 | 已合入 |
 | CoverageGate | harness/evaluation/coverage_gate.py | ✅ | 覆盖率阈值强制执行 | 已合入 |
 | GraphDiff | harness/evaluation/graph_diff.py | ✅ | 本体图状态对比，回归检测 | 已合入 |
@@ -3261,7 +3321,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|
 | Harness 执行引擎 | 330 | 1 | 331 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 375 | 9 | 384 |
+| 知识引擎（本体） | 377 | 9 | 386 |
 | RAG 检索 | 57 | 0 | 57 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 175 | 0 | 175 |
@@ -3270,9 +3330,9 @@ scan_hash: 8f9548ec24f4
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
 | 部署与运维 | 23 | 0 | 23 |
-| 扩展与学习 | 135 | 0 | 135 |
+| 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 174 | 0 | 174 |
-| 评估系统 | 27 | 0 | 27 |
+| 评估系统 | 29 | 0 | 29 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3304,7 +3364,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2352** | **10** | **2362** |
+| **总计** | **2395** | **10** | **2405** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

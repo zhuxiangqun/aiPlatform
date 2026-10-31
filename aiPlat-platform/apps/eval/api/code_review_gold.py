@@ -56,7 +56,13 @@ async def evaluate_gold(
         )
     except ValueError as e:
         return {"data": {"ok": False, "error": str(e)}}
-    return {"data": out}
+    from core.api.core_facade import attach_eval_protocol, eval_protocol_from_gold
+
+    payload = {"data": out}
+    return attach_eval_protocol(
+        payload,
+        eval_protocol_from_gold(result=out if isinstance(out, dict) else None, profile=str(body.get("profile") or "balanced")),
+    )
 
 
 @router.get("/reports", response_model=ItemResponse)
@@ -110,4 +116,10 @@ async def reevaluate_gold(
         )
     except ValueError as e:
         return {"data": {"ok": False, "error": str(e)}}
-    return {"data": out}
+    from core.api.core_facade import attach_eval_protocol, eval_protocol_from_gold
+
+    payload = {"data": out}
+    return attach_eval_protocol(
+        payload,
+        eval_protocol_from_gold(result=out if isinstance(out, dict) else None, profile=str(body.get("profile") or "balanced")),
+    )

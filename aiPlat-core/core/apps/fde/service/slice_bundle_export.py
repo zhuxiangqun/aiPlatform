@@ -4,6 +4,7 @@ Reuses workspace ``scripts/export_pi_bundle.py`` — does not create a parallel 
 ``permission_claims`` in export meta are declarative only and must not authorize alone.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import importlib.util
 import json
@@ -75,7 +76,7 @@ def export_slice_bundle(
         if not dest.is_absolute():
             dest = (_WORKSPACE / dest).resolve()
     else:
-        home = Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat"))
+        home = Path(get_aiplat_home())
         dest = home / "five_products_slice" / sid / "bundle"
 
     spec = importlib.util.spec_from_file_location("aiplat_export_pi_bundle_slice", _EXPORT_SCRIPT)

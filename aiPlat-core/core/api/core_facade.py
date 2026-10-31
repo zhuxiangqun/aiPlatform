@@ -12,6 +12,7 @@ PipelineSession — the sole interface for pipeline execution.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import os
 from pathlib import Path
@@ -555,10 +556,10 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
             import os as _os
             import yaml as _yaml
             seeds = _os.getenv("AIPLAT_WORKSPACE_SEEDS",
-                _os.path.join(_os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat")), "workspace_seeds"))
+                get_aiplat_data_dir("workspace_seeds"))
             md_path = _os.path.join(seeds, "agents", ctx.agent_name, "AGENT.md")
             if not _os.path.exists(md_path):
-                md_path = _os.path.join(_os.path.expanduser("~/.aiplat"), "agents", ctx.agent_name, "AGENT.md")
+                md_path = get_aiplat_data_dir(f"agents/{ctx.agent_name}/AGENT.md")
             if _os.path.exists(md_path):
                 with open(md_path, "r") as f:
                     raw = f.read()
@@ -689,9 +690,9 @@ def get_agent_frontmatter(agent_id: str) -> Dict[str, Any]:
     import os
     import yaml
 
-    agent_home = os.path.join(os.path.expanduser("~/.aiplat"), "agents", agent_id, "AGENT.md")
+    agent_home = get_aiplat_data_dir(f"agents/{agent_id}/AGENT.md")
     seeds = os.getenv("AIPLAT_WORKSPACE_SEEDS",
-        os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "workspace_seeds"))
+        get_aiplat_data_dir("workspace_seeds"))
     seeds_path = os.path.join(seeds, "agents", agent_id, "AGENT.md")
 
     found_path = None
@@ -964,9 +965,9 @@ def apply_agent_md_to_stage(stage: Any, agent_id: str) -> None:
     import yaml
 
     # Find AGENT.md
-    agent_home = os.path.join(os.path.expanduser("~/.aiplat"), "agents", agent_id, "AGENT.md")
+    agent_home = get_aiplat_data_dir(f"agents/{agent_id}/AGENT.md")
     seeds = os.getenv("AIPLAT_WORKSPACE_SEEDS",
-        os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "workspace_seeds"))
+        get_aiplat_data_dir("workspace_seeds"))
     seeds_path = os.path.join(seeds, "agents", agent_id, "AGENT.md")
 
     found_path = None
@@ -1352,7 +1353,7 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
             # Track curation success for metrics
             try:
                 import json as _json, os as _os, time as _time
-                stats_path = _os.path.join(_os.path.expanduser(_os.getenv("AIPLAT_HOME", "~/.aiplat")),
+                stats_path = _os.path.join(get_aiplat_home(),
                                            "wiki", "curation_stats.json")
                 stats = {}
                 if _os.path.exists(stats_path):
@@ -1410,7 +1411,7 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
     # Update wiki_status in KB database for unified document→wiki tracking
     try:
         import sqlite3 as _sq
-        kb_db = os.path.join(os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat")),
+        kb_db = os.path.join(get_aiplat_home(),
                               "kb", "tenants", "default", "kb.sqlite3")
         if os.path.exists(kb_db):
             with _sq.connect(kb_db) as _conn:
@@ -1704,7 +1705,7 @@ def _load_grilling_dimensions(entry_point: str, domain_id: str) -> List[Dict[str
     from pathlib import Path as _Path
     dimensions = []
     if domain_id:
-        yaml_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+        yaml_path = _Path(get_aiplat_home()) / "ontologies" / f"{domain_id}.yaml"
         if yaml_path.exists():
             try:
                 data = _yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
@@ -1797,6 +1798,23 @@ def wiki_search_pages(query: str = "", *, tags: List[str] = None, category: str 
                          limit=limit, collection_id=collection_id)
 
 
+def wiki_search_pages_api(query: str = "", *, tags: List[str] = None, category: str = "",
+                          limit: int = 20, collection_id: str = "default") -> Dict[str, Any]:
+    """Wiki search with ontology.api.v0 envelope (A1 contract)."""
+    from core.harness.knowledge.ontology_api import attach_ontology_api, from_wiki_pages
+
+    pages = wiki_search_pages(
+        query, tags=tags, category=category, limit=limit, collection_id=collection_id
+    ) or []
+    out: Dict[str, Any] = {"items": pages, "total": len(pages)}
+    return dict(
+        attach_ontology_api(
+            out,
+            from_wiki_pages(pages, query=query, collection_id=collection_id),
+        )
+    )
+
+
 def get_graph_health(domain: str = "") -> Dict[str, Any]:
     u"""Phase 45: Get GraphIndex health stats for a domain."""
     from core.harness.ontology_engine.graph_index import GraphIndex
@@ -1808,6 +1826,95 @@ def get_graph_health(domain: str = "") -> Dict[str, Any]:
         return {"domain": domain, "exists": False, "error": "not found"}
     except Exception as e:
         return {"domain": domain, "exists": False, "error": str(e)[:200]}
+
+
+def get_graph_health_api(domain: str = "") -> Dict[str, Any]:
+    """Graph health with ontology.api.v0 envelope (A1 contract)."""
+    from core.harness.knowledge.ontology_api import attach_ontology_api, from_graph_health
+
+    raw = get_graph_health(domain)
+    out = dict(raw) if isinstance(raw, dict) else {"domain": domain, "payload": raw}
+    return dict(attach_ontology_api(out, from_graph_health(out, domain_id=domain)))
+
+
+def wiki_structured_query_api(query: str, *, domain_id: str = "") -> Dict[str, Any]:
+    """Deterministic wiki structured query + ontology.api.v0 envelope."""
+    from core.harness.knowledge.wiki_structured_query import structured_query
+    from core.harness.knowledge.ontology_api import attach_ontology_api, from_structured_query
+
+    raw = structured_query(query)
+    out = dict(raw) if isinstance(raw, dict) else {"result": raw}
+    return attach_ontology_api(out, from_structured_query(out, domain_id=domain_id))
+
+
+def aiplat_healthz_payload(
+    *,
+    status: Any = "ok",
+    version: str = "",
+    hosted: Optional[List[str]] = None,
+    checks: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Central host /healthz shape (aiPlat A1) + control_plane.v0 status envelope."""
+    from core.harness.meta.capability_version import resolve_capability_version
+    from core.harness.meta.control_plane import (
+        attach_control_plane,
+        to_aiplat_healthz,
+        to_control_plane_v0,
+    )
+
+    ver = str(version or "").strip() or resolve_capability_version("aiplat")
+    out = to_aiplat_healthz(status=status, version=ver, hosted=hosted, checks=checks)
+    return dict(
+        attach_control_plane(
+            out,
+            to_control_plane_v0(kind="status", payload={"health": out.get("status")}),
+        )
+    )
+
+
+def ontology_healthz_payload(*, version: str = "", mode: str = "read_only") -> Dict[str, Any]:
+    """Ontology co-hosted healthz (product_id=ontology)."""
+    from core.harness.knowledge.domain_router import DomainRouter
+    from core.harness.knowledge.ontology_api import to_ontology_healthz
+    from core.harness.meta.capability_version import resolve_capability_version
+
+    ver = str(version or "").strip() or resolve_capability_version("ontology")
+    domains = 0
+    status = "ok"
+    try:
+        domains = len(DomainRouter().list_domains() or [])
+    except Exception as e:
+        logging.getLogger(__name__).warning("ontology_healthz domain count failed: %s", e)
+        status = "degraded"
+    return to_ontology_healthz(status=status, version=ver, domains=domains, mode=mode)
+
+
+def evaluation_healthz_payload(*, version: str = "") -> Dict[str, Any]:
+    """Evaluation co-hosted healthz (product_id=evaluation)."""
+    from core.harness.evaluation.eval_protocol import SCHEMA_VERSION, to_evaluation_healthz
+    from core.harness.meta.capability_version import resolve_capability_version
+
+    ver = str(version or "").strip() or resolve_capability_version("evaluation")
+    return to_evaluation_healthz(status="ok", version=ver, protocol=SCHEMA_VERSION)
+
+
+def fde_healthz_payload(*, version: str = "", mode: str = "field_d1") -> Dict[str, Any]:
+    """FDE Field D1 healthz (ADR-FDE-FIELD-DEPLOY Accepted)."""
+    from core.harness.meta.capability_version import resolve_capability_version
+
+    ver = str(version or "").strip() or resolve_capability_version("fde")
+    return {
+        "status": "ok",
+        "version": ver,
+        "product_id": "fde",
+        "capability_id": "fde",
+        "deploy_unit": "field",
+        "mode": str(mode or "field_d1"),
+        "signoff": "POST /api/platform/apps/fde/acceptance/signoff",
+        "field_d1_adr": "accepted",
+        "production_field": True,
+        "adr": "reports/five-products/ADR-FDE-FIELD-DEPLOY.md",
+    }
 
 
 def code_intel_context(task: str) -> Any:
@@ -2034,7 +2141,7 @@ def _get_latest_eval_score(agent_id: str):
     import json as _json, os as _os, glob as _glob
     from pathlib import Path as _Path
     try:
-        results_dir = _Path(_os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))) / "eval_results"
+        results_dir = Path(get_aiplat_data_dir("eval_results"))
         files = sorted(
             [f for f in _glob.glob(str(results_dir / f"{agent_id}_*.json"))],
             key=_os.path.getmtime, reverse=True,
@@ -6219,6 +6326,33 @@ from core.harness.interfaces.agent import AgentConfig, AgentContext  # noqa: bou
 from core.harness.execution.team_planner import _enrich_stage_from_agent  # noqa: boundary
 from core.harness.knowledge.governance_dashboard import aggregate_dashboard  # noqa: boundary
 from core.harness.evaluation.workbench import apply_threshold_gate, persist_evaluation, validate_report  # noqa: boundary
+from core.harness.evaluation.eval_protocol import (  # noqa: boundary
+    SCHEMA_VERSION as EVAL_PROTOCOL_SCHEMA_VERSION,
+    attach_protocol as attach_eval_protocol,
+    from_generic_eval as eval_protocol_from_generic,
+    from_gold_eval_result as eval_protocol_from_gold,
+    from_run_evaluation as eval_protocol_from_run_evaluation,
+    from_skill_eval_run as eval_protocol_from_skill_eval_run,
+    to_eval_protocol_v0,
+)
+from core.harness.knowledge.ontology_api import (  # noqa: boundary
+    SCHEMA_VERSION as ONTOLOGY_API_SCHEMA_VERSION,
+    attach_ontology_api,
+    from_graph_health as ontology_api_from_graph_health,
+    from_structured_query as ontology_api_from_structured_query,
+    from_wiki_pages as ontology_api_from_wiki_pages,
+    to_ontology_api_v0,
+)
+from core.harness.meta.control_plane import (  # noqa: boundary
+    SCHEMA_VERSION as AIPLAT_CONTROL_SCHEMA_VERSION,
+    attach_control_plane,
+    to_aiplat_healthz,
+    to_control_plane_v0,
+)
+from core.harness.meta.capability_version import (  # noqa: boundary
+    load_versions_ssot,
+    resolve_capability_version,
+)
 from core.harness.learning.proposal_store import ProposalStore as _ProposalStore  # noqa: boundary
 
 def approve(request_id: str, approved_by: str = "admin", comment: str = "") -> bool:

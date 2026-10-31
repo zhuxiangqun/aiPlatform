@@ -1,0 +1,72 @@
+{
+  "schema_version": "aiplat.pg_ha.prep.v0",
+  "checked_at": "2026-10-31T15:12:16Z",
+  "cutover_authorized": false,
+  "items": {
+    "5_contract_coupling": {
+      "ok": true,
+      "detail": "no core.harness imports under aiPlat-platform/apps"
+    },
+    "6_chart_release": {
+      "ok": true,
+      "detail": "chart skeleton present (packages/aiplat-central/chart/Chart.yaml); cutover=false annotated"
+    },
+    "runbook_MIGRATION.md": {
+      "ok": true,
+      "detail": "present"
+    },
+    "runbook_BACKUP_RESTORE.md": {
+      "ok": true,
+      "detail": "present"
+    },
+    "runbook_HA.md": {
+      "ok": true,
+      "detail": "present"
+    },
+    "runbook_ROLLBACK.md": {
+      "ok": true,
+      "detail": "present"
+    },
+    "runbook_CUTOVER_CHECKLIST.md": {
+      "ok": true,
+      "detail": "present"
+    },
+    "1_identity_mfa_unit": {
+      "ok": true,
+      "detail": "test_mfa.py passed (admin MFA gate)"
+    },
+    "tabletop_log": {
+      "ok": true,
+      "detail": "packages/aiplat-central/docs/pg_ha/drills/tabletop-2026-10-31T151216Z.json"
+    },
+    "3_backup_sqlite_rehearsal": {
+      "ok": true,
+      "detail": "packages/aiplat-central/docs/pg_ha/drills/sqlite-rehearsal-20261031T151206Z.json"
+    },
+    "7_rollback_sqlite_rehearsal": {
+      "ok": true,
+      "detail": "packages/aiplat-central/docs/pg_ha/drills/sqlite-rehearsal-20261031T151206Z.json"
+    },
+    "2_pg_schema_rehearsal": {
+      "ok": true,
+      "detail": "packages/aiplat-central/docs/pg_ha/drills/pg-rehearsal-20261031T151206Z.json"
+    },
+    "4_ha_failover_local_rehearsal": {
+      "ok": true,
+      "detail": "packages/aiplat-central/docs/pg_ha/drills/ha-rehearsal-20261031T151211Z.json"
+    },
+    "live_drill_evidence_present": {
+      "ok": true,
+      "detail": "packages/aiplat-central/docs/pg_ha/drills/live-scaffold-pgha-20261031.json"
+    }
+  },
+  "auto_prep_green": true,
+  "local_rehearsal_green": true,
+  "manual_still_required": [
+    "2_pg_migration_live_drill",
+    "3_backup_restore_live_drill",
+    "4_ha_failover_live_drill",
+    "7_rollback_live_drill",
+    "1_oidc_full_regression"
+  ]
+}

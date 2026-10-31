@@ -1,0 +1,308 @@
+# Central / Edge Thin — admin & security baseline (D2+)
+schema_version: aiplat.security.baseline.v0
+updated: "2026-10-30"
+checks:
+  - id: core_token_middleware
+    description: CoreTokenMiddleware present; health paths exempt when token configured
+    path: aiPlat-core/core/api/bind_gate.py
+    must_contain:
+      - "class CoreTokenMiddleware"
+      - "/health"
+  - id: platform_token_middleware
+    description: PlatformTokenMiddleware present
+    path: aiPlat-platform/auth/bind_gate.py
+    must_contain:
+      - "PlatformTokenMiddleware"
+  - id: admin_mfa_api_keys
+    description: admin must enable MFA before creating API keys
+    path: aiPlat-platform/api/rest/routes.py
+    must_contain:
+      - "mfa_required: admin must enable MFA"
+  - id: pi_thin_enterprise_off
+    description: Pi D1 install defaults AIPLAT_ENTERPRISE=0
+    path: packages/aiplat-pi-runtime/scripts/d1_install.sh
+    must_contain:
+      - "AIPLAT_ENTERPRISE=0"
+  - id: pi_d2_admin_pack
+    description: Pi D2 admin pack baseline + chart enterprise_default=0
+    path: packages/aiplat-pi-runtime/security/baseline.yaml
+    must_contain:
+      - "aiplat.pi.security.baseline.v0"
+      - "pi_chart_enterprise_default_off"
+  - id: pi_d2_admin_check_script
+    description: Pi D2 admin check script present
+    path: packages/aiplat-pi-runtime/scripts/d2_admin_check.sh
+    must_contain:
+      - "d2_admin_check"
+      - "AIPLAT_SECURITY_BASELINE"
+  - id: pi_d3_adr_conditional
+    description: Pi D3 ADR Accepted conditional + checklist hard gate
+    path: reports/five-products/ADR-PI-D3.md
+    must_contain:
+      - "Accepted（有条件）"
+      - "D3_CHECKLIST"
+  - id: pi_d3_authorize_script
+    description: Pi D3 authorize refuses unless checklist all green
+    path: packages/aiplat-pi-runtime/scripts/d3_authorize.sh
+    must_contain:
+      - "REFUSED"
+      - "d3_production_authorized"
+  - id: pi_d3_chart_unauthorized
+    description: Pi chart keeps d3_production_authorized false
+    path: packages/aiplat-pi-runtime/chart/Chart.yaml
+    must_contain:
+      - 'aiplat.d3_production_authorized: "false"'
+  - id: pi_d3_soc_local_rehearsal_script
+    description: Pi D3 SOC local file-sink rehearsal never authorizes production
+    path: packages/aiplat-pi-runtime/scripts/d3_soc_local_rehearsal.sh
+    must_contain:
+      - "d3_production_authorized=false"
+      - "outbound"
+  - id: pi_d3_live_drill_evidence_doc
+    description: Pi D3 live drill evidence template
+    path: packages/aiplat-pi-runtime/docs/d3/LIVE_DRILL_EVIDENCE.md
+    must_contain:
+      - "production_signed"
+      - "d3_record_live_drill"
+  - id: five_products_ops_live_runbook
+    description: Ops live runbook is read-only and does not authorize
+    path: reports/five-products/OPS_LIVE_RUNBOOK.md
+    must_contain:
+      - "禁止"
+      - "ops_live_status"
+  - id: five_products_ops_live_status_script
+    description: ops_live_status never authorizes
+    path: scripts/ops_live_status.sh
+    must_contain:
+      - "does_not_authorize"
+      - "READ-ONLY"
+  - id: five_products_live_evidence_gate
+    description: authorize requires production_signed live evidence helper
+    path: scripts/lib/aiplat_live_evidence.py
+    must_contain:
+      - "require_signed_live"
+      - "production_signed"
+  - id: pg_ha_authorize_requires_signed_live
+    description: PG/HA cutover authorize refuses without signed live
+    path: packages/aiplat-central/scripts/pg_ha_cutover_authorize.sh
+    must_contain:
+      - "require_signed_live"
+      - "production_signed=true"
+  - id: pi_d3_authorize_requires_signed_live
+    description: Pi D3 authorize refuses without production_signed live
+    path: packages/aiplat-pi-runtime/scripts/d3_authorize.sh
+    must_contain:
+      - "require_signed_live"
+      - "production_signed=true"
+  - id: ontology_a3_authorize_requires_signed_live
+    description: Ontology A3 authorize refuses without production_signed live
+    path: packages/aiplat-ontology/scripts/a3_split_authorize.sh
+    must_contain:
+      - "require_signed_live"
+      - "production_signed=true"
+  - id: evaluation_a3_authorize_requires_signed_live
+    description: Evaluation A3 authorize refuses without production_signed live
+    path: packages/aiplat-evaluation/scripts/a3_split_authorize.sh
+    must_contain:
+      - "require_signed_live"
+      - "production_signed=true"
+  - id: ops_live_refuse_proof_script
+    description: Temp-dir proof of signed live gate; never authorizes
+    path: scripts/ops_live_refuse_proof.sh
+    must_contain:
+      - "no authorize"
+      - "require_signed_live"
+  - id: five_products_live_evidence_gate_test
+    description: Dual-gate regression uses temp dirs only
+    path: scripts/test_live_evidence_authorize_gate.sh
+    must_contain:
+      - "temp only"
+      - "production_signed"
+      - "package gates still false"
+  - id: five_products_ops_live_scaffold
+    description: Ops live scaffold never signs or authorizes
+    path: scripts/ops_live_scaffold.sh
+    must_contain:
+      - "unsigned only"
+      - "does not authorize"
+  - id: five_products_ops_handoff
+    description: Ops handoff card warns against fake signoff
+    path: reports/five-products/OPS_HANDOFF.md
+    must_contain:
+      - "production_signed"
+      - "禁止"
+      - "第一刀：PG/HA"
+  - id: ops_live_status_json_mode
+    description: ops_live_status supports --json for machine readiness
+    path: scripts/ops_live_status.sh
+    must_contain:
+      - "--json"
+      - "AIPLAT_OPS_LIVE_JSON_ONLY"
+  - id: five_products_ops_live_sign
+    description: ops_live_sign refuses incomplete or scaffold env
+    path: scripts/ops_live_sign.sh
+    must_contain:
+      - "scaffold"
+      - "does not authorize"
+      - "items"
+  - id: five_products_ops_pgha_live_kickoff
+    description: PG/HA live kickoff never authorizes cutover
+    path: scripts/ops_pgha_live_kickoff.sh
+    must_contain:
+      - "does not authorize"
+      - "AIPLAT_PG_DSN"
+      - "cutover_authorized"
+  - id: fde_field_adr_accepted
+    description: FDE Field D1 install marks ADR accepted + production_field
+    path: packages/aiplat-fde/scripts/d1_install.sh
+    must_contain:
+      - '"production_field":true'
+      - '"field_d1_adr":"accepted"'
+  - id: fde_field_adr_doc
+    description: Field deploy ADR Accepted document exists
+    path: reports/five-products/ADR-FDE-FIELD-DEPLOY.md
+    must_contain:
+      - "**Accepted**"
+  - id: pg_ha_adr_conditional
+    description: PG/HA ADR Accepted conditional + cutover checklist
+    path: reports/five-products/ADR-CONTROL-PLANE-PG-HA.md
+    must_contain:
+      - "Accepted（有条件）"
+      - "cutover"
+  - id: pg_ha_cutover_checklist
+    description: PG/HA cutover hard gate checklist present
+    path: packages/aiplat-central/docs/pg_ha/CUTOVER_CHECKLIST.md
+    must_contain:
+      - "cutover_authorized: false"
+  - id: pg_ha_prep_check_script
+    description: PG/HA prep auto-check script
+    path: packages/aiplat-central/scripts/pg_ha_prep_check.sh
+    must_contain:
+      - "cutover_authorized"
+      - "5_contract_coupling"
+  - id: pg_ha_local_rehearsal_script
+    description: PG/HA local SQLite/optional-PG/docker rehearsal (never cutover true)
+    path: packages/aiplat-central/scripts/pg_ha_local_rehearsal.sh
+    must_contain:
+      - "cutover_authorized=false"
+      - "sqlite"
+      - "docker_ephemeral"
+  - id: pg_ha_ha_failover_rehearsal_script
+    description: PG/HA docker ephemeral failover/failback (never cutover true)
+    path: packages/aiplat-central/scripts/pg_ha_ha_failover_rehearsal.sh
+    must_contain:
+      - "cutover_authorized=false"
+      - "failover"
+      - "failback"
+  - id: pg_ha_cutover_authorize_script
+    description: Cutover authorize refuses unless checklist all green
+    path: packages/aiplat-central/scripts/pg_ha_cutover_authorize.sh
+    must_contain:
+      - "REFUSED"
+      - "all_green"
+  - id: ontology_a3_split_authorize_script
+    description: Ontology split authorize refuses unless checklist all green
+    path: packages/aiplat-ontology/scripts/a3_split_authorize.sh
+    must_contain:
+      - "REFUSED"
+      - "process_split_authorize"
+  - id: evaluation_a3_split_authorize_script
+    description: Evaluation split authorize refuses unless checklist all green
+    path: packages/aiplat-evaluation/scripts/a3_split_authorize.sh
+    must_contain:
+      - "REFUSED"
+      - "process_split_authorize"
+  - id: pg_ha_live_drill_evidence_doc
+    description: PG/HA live drill evidence template present
+    path: packages/aiplat-central/docs/pg_ha/LIVE_DRILL_EVIDENCE.md
+    must_contain:
+      - "production_signed"
+      - "pg_ha_record_live_drill"
+  - id: five_products_engineering_closeout
+    description: Engineering closeout doc points at ops live backlog
+    path: reports/five-products/ENGINEERING_CLOSEOUT.md
+    must_contain:
+      - "cutover_authorized=false"
+      - "运维 backlog"
+  - id: central_chart_stub
+    description: Central Helm chart skeleton with cutover=false
+    path: packages/aiplat-central/chart/Chart.yaml
+    must_contain:
+      - 'aiplat.pg_ha_cutover_authorized: "false"'
+  - id: ontology_a3_adr_conditional
+    description: Ontology A3 ADR Accepted conditional + split checklist
+    path: reports/five-products/ADR-ONTOLOGY-A3.md
+    must_contain:
+      - "Accepted（有条件）"
+      - "SPLIT_CHECKLIST"
+  - id: ontology_a3_chart_stub
+    description: Ontology A3 chart skeleton with process split unauthorized
+    path: packages/aiplat-ontology/chart/Chart.yaml
+    must_contain:
+      - 'aiplat.a3_process_split_authorized: "false"'
+  - id: ontology_a3_prep_script
+    description: Ontology A3 prep check never authorizes split
+    path: packages/aiplat-ontology/scripts/a3_prep_check.sh
+    must_contain:
+      - "process_split_authorized"
+      - "6_adr_accept_cosign"
+  - id: ontology_a3_local_rehearsal_script
+    description: Ontology A3 local file rehearsal never authorizes split
+    path: packages/aiplat-ontology/scripts/a3_local_rehearsal.sh
+    must_contain:
+      - "process_split_authorized=false"
+      - "dual_write"
+  - id: evaluation_a3_adr_conditional
+    description: Evaluation A3 ADR Accepted conditional + split checklist
+    path: reports/five-products/ADR-EVALUATION-A3.md
+    must_contain:
+      - "Accepted（有条件）"
+      - "SPLIT_CHECKLIST"
+  - id: evaluation_a3_chart_stub
+    description: Evaluation A3 chart skeleton with process split unauthorized
+    path: packages/aiplat-evaluation/chart/Chart.yaml
+    must_contain:
+      - 'aiplat.a3_process_split_authorized: "false"'
+  - id: evaluation_a3_prep_script
+    description: Evaluation A3 prep check never authorizes split
+    path: packages/aiplat-evaluation/scripts/a3_prep_check.sh
+    must_contain:
+      - "process_split_authorized"
+      - "5_adr_accept_cosign"
+  - id: evaluation_a3_local_rehearsal_script
+    description: Evaluation A3 local SQLite rehearsal never authorizes split
+    path: packages/aiplat-evaluation/scripts/a3_local_rehearsal.sh
+    must_contain:
+      - "process_split_authorized=false"
+      - "rollback_to_cohost_pointer"
+  - id: central_healthz_product
+    description: Central healthz schema product_id=aiplat
+    path: packages/aiplat-central/contracts/schemas/healthz.schema.json
+    must_contain:
+      - '"const": "aiplat"'
+  - id: a2_version_ssot
+    description: A2 versions.yaml lists five capabilities
+    path: reports/five-products/versions.yaml
+    must_contain:
+      - "id: aiplat"
+      - "id: fde"
+      - 'version: "0.1.0"'
+  - id: a2_version_gate_script
+    description: a2_version_check.sh exists
+    path: packages/aiplat-central/scripts/a2_version_check.sh
+    must_contain:
+      - "a2 version check"
+  - id: capability_version_resolver
+    description: runtime healthz version resolver
+    path: aiPlat-core/core/harness/meta/capability_version.py
+    must_contain:
+      - "def resolve_capability_version"
+  - id: fde_core_healthz_route
+    description: co-hosted FDE healthz probe on core
+    path: aiPlat-core/core/api/routers/health.py
+    must_contain:
+      - '/fde/healthz'
+forbidden_without_adr:
+  - disable_admin_mfa_gate
+  - pg_ha_production_cutover_without_checklist_green
+  - five_process_full_split_e4

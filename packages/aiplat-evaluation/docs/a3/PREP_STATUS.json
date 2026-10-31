@@ -1,0 +1,46 @@
+{
+  "schema_version": "aiplat.evaluation.a3.prep.v0",
+  "capability_id": "evaluation",
+  "checked_at": "2026-10-31T15:12:53Z",
+  "process_split_authorized": false,
+  "adr_status": "accepted_conditional",
+  "items": {
+    "2_chart_skeleton": {
+      "ok": true,
+      "detail": "packages/aiplat-evaluation/chart/Chart.yaml; split=false"
+    },
+    "3_no_harness_direct": {
+      "ok": true,
+      "detail": "no core.harness under aiPlat-platform/apps"
+    },
+    "runbook_SPLIT_CHECKLIST.md": {
+      "ok": true,
+      "detail": "present"
+    },
+    "runbook_README.md": {
+      "ok": true,
+      "detail": "present"
+    },
+    "5_adr_accept_cosign": {
+      "ok": true,
+      "detail": "reports/five-products/ADR-EVALUATION-A3.md"
+    },
+    "adr_draft_对照": {
+      "ok": true,
+      "detail": "reports/five-products/ADR-DRAFT-evaluation-a3.md"
+    },
+    "1_eval_protocol_unit": {
+      "ok": true,
+      "detail": "test_eval_protocol_v0.py passed"
+    },
+    "4_local_backup_rollback_rehearsal": {
+      "ok": true,
+      "detail": "packages/aiplat-evaluation/docs/a3/drills/local-rehearsal-20261031T151253Z.json"
+    }
+  },
+  "auto_prep_green": true,
+  "local_rehearsal_green": true,
+  "manual_still_required": [
+    "4_backup_restore_rollback_live_drill"
+  ]
+}

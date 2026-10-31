@@ -17,6 +17,14 @@ router = APIRouter(tags=["ontology"])
 MAX_DEPTH = 5  # 硬上限，防止 BFS 遍历爆炸
 
 
+@router.get("/healthz")
+async def ontology_healthz() -> Dict[str, Any]:
+    """Ontology capability healthz (D1 co-hosted; product_id=ontology)."""
+    from core.api.core_facade import ontology_healthz_payload
+
+    return ontology_healthz_payload()
+
+
 @router.post("/query")
 async def ontology_query(body: dict = Body(...)) -> Dict[str, Any]:
     """跨域本体查询。

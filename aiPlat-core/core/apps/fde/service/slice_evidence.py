@@ -7,6 +7,7 @@ Storage (MB-03 / Gate2): default SQLite under AIPLAT_HOME; set
 AIPLAT_SLICE_EVIDENCE_STORE=file to force JSON files (rollback).
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import os
@@ -25,7 +26,7 @@ def _store_mode() -> str:
 
 
 def _store_root() -> Path:
-    home = Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat"))
+    home = Path(get_aiplat_home())
     root = home / "five_products_slice" / "evidence"
     root.mkdir(parents=True, exist_ok=True)
     return root
