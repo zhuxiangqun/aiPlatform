@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T07:52:00+08:00",
+  "reviewed_at": "2026-11-01T07:58:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "d13b701571c46617d8f52952998e0e8356e2e4a0",
-  "diff_sha256": "7684cb210fdd8605c6120c8d024f266025828fa1155298815bde76422d949d9b",
-  "head_sha": "1e3e1d81f389a895cce851b7021384dd9ee2ee92",
+  "merge_base": "4ab3251d80f2f091e9a6ff846fcf34945819c78e",
+  "diff_sha256": "bd65271b72eee081808ee2b28bbd7f0f668d10f043092d7a0357009954ee0a34",
+  "head_sha": "015dc02e3309d53a08563579a9d14571fc70a026",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local-staging path only; production_signed/cutover remain false; env harden refuses local live."
+  "note": "local_signed OIDC path only; CONFIGURE_TOTP blocks password grant; cutover still false."
 }
