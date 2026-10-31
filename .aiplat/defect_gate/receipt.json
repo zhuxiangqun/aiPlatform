@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T07:48:00+08:00",
+  "reviewed_at": "2026-11-01T07:52:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "ad2557a9783460e646631f08e6dba747379aceda",
-  "diff_sha256": "bbb06decb6d06c794829f4d1f615e19676987ef2be7d8410a7b484bafc272651",
-  "head_sha": "ddc44595f898d83cd5f3dcf79886e5aa39314a0d",
+  "merge_base": "d13b701571c46617d8f52952998e0e8356e2e4a0",
+  "diff_sha256": "7684cb210fdd8605c6120c8d024f266025828fa1155298815bde76422d949d9b",
+  "head_sha": "1e3e1d81f389a895cce851b7021384dd9ee2ee92",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Pi D1 local regression + upgrade slot fix; hard gates/staging authorize untouched."
+  "note": "Local-staging path only; production_signed/cutover remain false; env harden refuses local live."
 }
