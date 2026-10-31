@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-10-29T22:40:43+09:00",
+  "reviewed_at": "2026-11-01T01:49:21+08:00",
   "base_ref": "origin/main",
-  "merge_base": "a78b5710ea88216013f0204cc92bfddf6f0e295e",
-  "diff_sha256": "4df1680a90bfd197d941e87d1f417ca85ab8b75bf04ed1952e2a6e61ae1c929c",
-  "head_sha": "76d2a9184d8eb6b421af8a6cd386b98640e2ea7d",
+  "merge_base": "b46e286e3dc061263e2972f7d6bfad9edb597c5e",
+  "diff_sha256": "7e9a034451e0b090aab59aea538e0adc000d6edbd66a8ff3f5392a8b571a28d8",
+  "head_sha": "f7219e3c20541d7f1b489882cd520a7f233d1407",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Week-34 + clause-sync docs (system/auth/run/core contracts). Approvals float expiry fall-through fixed; AIPLAT_HOME call-time + fake HOME."
+  "note": "Batch A fallout: docstring-trapped imports + wrong harness.utils.paths locals fixed; tests on AIPLAT_HOME. Local lock only; CI needs non-author Approve."
 }
