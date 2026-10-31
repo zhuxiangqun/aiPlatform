@@ -1,0 +1,13 @@
+apiVersion: v2
+name: aiplat-evaluation
+description: Evaluation A3 chart skeleton (ADR-DRAFT). Co-host D1 remains default until split authorized.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - aiplat
+  - evaluation
+annotations:
+  aiplat.capability_id: evaluation
+  aiplat.deploy_unit: central
+  aiplat.a3_process_split_authorized: "false"

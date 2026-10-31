@@ -1,0 +1,16 @@
+# Skeleton values — SQLite/dev default until CUTOVER_CHECKLIST green.
+replicaCount: 1
+image:
+  repository: aiplat/central
+  tag: "0.1.0"
+service:
+  port: 8002
+env:
+  AIPLAT_CORE_PORT: "8002"
+  # Production PG cutover: set only after checklist authorized
+  # DATABASE_URL: ""
+persistence:
+  enabled: false
+  # size: 20Gi
+ha:
+  enabled: false

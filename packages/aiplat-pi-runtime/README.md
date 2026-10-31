@@ -111,10 +111,19 @@ pi install ./dist/aiplat-app-<id>
 AIPLAT_HTTP_STUB=1 AIPLAT_APP_HOME=./fixtures/sample-app \
   AIPLAT_HTTP_API_KEY=dev node bin/aiplat-http.mjs
 # GET  /health
+# GET  /healthz            # D1 contract: status/version/product_id
 # POST /v1/chat            Authorization: Bearer dev
 # POST /v1/skills/demo_skill   → handler.py if present
 
 bash scripts/http_smoke.sh
+```
+
+## D1 install (edge prefix)
+
+```bash
+export AIPLAT_HOME=/tmp/aiplat-pi-d1   # optional isolate
+bash scripts/d1_install.sh --smoke
+# docs: docs/INSTALL.md — upgrade / rollback / backup reuse Gate3 Thin
 ```
 
 ## Pi Thin independent process (optional · ADR-09)

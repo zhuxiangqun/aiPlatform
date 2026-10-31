@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiplat.local/schemas/evaluation/healthz.schema.json",
+  "title": "EvaluationHealthzResponse",
+  "type": "object",
+  "required": ["status", "product_id"],
+  "properties": {
+    "status": { "type": "string", "enum": ["ok", "degraded", "fail"] },
+    "version": { "type": "string" },
+    "product_id": { "type": "string", "const": "evaluation" },
+    "capability_id": { "type": "string", "const": "evaluation" },
+    "deploy_unit": { "type": "string", "const": "central" },
+    "protocol": { "type": "string", "const": "eval.protocol.v0" }
+  },
+  "additionalProperties": true
+}

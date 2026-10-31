@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiplat.local/schemas/aiplat/control_plane.schema.json",
+  "title": "ControlPlaneEnvelopeV0",
+  "description": "Minimal host control-plane exchange: bundle/identity/tenant/policy refs.",
+  "type": "object",
+  "required": ["schema_version", "kind", "payload"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "aiplat.control.v0" },
+    "kind": {
+      "type": "string",
+      "enum": ["bundle", "identity", "tenant", "policy", "run", "status"]
+    },
+    "payload": { "type": "object" },
+    "tenant_id": { "type": "string" },
+    "refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true
+}

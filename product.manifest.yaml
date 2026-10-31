@@ -1,0 +1,26 @@
+# DEPRECATED — prefer capabilities.manifest.yaml (V2)
+#
+# Superseded by:
+#   docs/architecture/plans/five-capability-independent-engineering-plan.md
+#   capabilities.manifest.yaml
+#
+# Old D0/D1c naming and "diagnosis" product id are obsolete.
+# Kept so historical P0 links do not 404.
+
+version: 1
+status: deprecated
+superseded_by: capabilities.manifest.yaml
+updated: "2026-10-29"
+head_baseline: b46e286
+
+products:
+  - id: pi
+    maps_to_capability: pi
+  - id: diagnosis
+    maps_to_capability: evaluation  # V2 rename
+  - id: fde
+    maps_to_capability: fde
+  - id: ontology
+    maps_to_capability: ontology
+  - id: control_plane
+    maps_to_capability: aiplat

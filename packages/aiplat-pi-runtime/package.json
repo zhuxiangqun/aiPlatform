@@ -1,7 +1,7 @@
 {
   "name": "@aiplat/pi-runtime",
   "version": "0.1.0",
-  "description": "Thin Pi package Runtime for aiPlat factory Agent artifacts (manifest + skills + SOP)",
+  "description": "Thin Pi Edge runtime (D1 + D2 admin pack). Enterprise reconnect opt-in; default AIPLAT_ENTERPRISE=0.",
   "keywords": ["pi-package", "aiplat"],
   "license": "MIT",
   "type": "module",
@@ -28,6 +28,9 @@
     "skills",
     "fixtures",
     "bin",
+    "contracts",
+    "scripts",
+    "docs",
     "README.md",
     "PHASE0.md"
   ]

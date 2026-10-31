@@ -1,0 +1,6 @@
+apiVersion: v2
+name: aiplat-product-stub
+description: P0 Helm skeleton for five-product packaging (replace name/appVersion per product)
+type: application
+version: 0.0.1
+appVersion: "0.0.0"
