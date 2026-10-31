@@ -250,6 +250,7 @@ class EntityExtractor:
             return None
         try:
             import os as _os
+            from core.utils.paths import get_aiplat_data_dir
             path = get_aiplat_data_dir(f"ontologies/{domain_id}.yaml")
             if not _os.path.exists(path):
                 return None

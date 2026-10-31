@@ -22,6 +22,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
+from core.utils.paths import get_aiplat_data_dir, get_aiplat_home
+
 
 # ---------------------------------------------------------------------------
 # Helpers (shared with skill_deps.py)
