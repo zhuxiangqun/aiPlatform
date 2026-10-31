@@ -26,6 +26,6 @@
 1. 记 blockers 到 [`PGHA_LIVE_RUNLOG.md`](./PGHA_LIVE_RUNLOG.md)  
 2. 保持 `cutover_authorized=false` 等硬门  
 3. 主轨转不依赖预发的工作（如 Pi D1）  
-4. 可选：本地 PG 演练仅 `environment=local`，**不得** `production_signed` / authorize  
+4. 可选：零预算 [`LOCAL_STAGING.md`](./LOCAL_STAGING.md)（`local-*.json` / `local_signed`）推进工程；**不得** `production_signed` / authorize  
 
 齐套后：`bash scripts/ops_pgha_live_kickoff.sh` → 交接卡 live → sign → authorize。

@@ -53,17 +53,39 @@ echo "$out1" | grep -q 'production_signed=true' \
   || { echo "FAIL: refuse message must mention production_signed" >&2; echo "$out1" >&2; exit 1; }
 grep -q 'cutover_authorized: false' "$TMP/CUTOVER_CHECKLIST.md"
 
-echo "== case2: all ✅ + signed live → AUTHORIZE (temp only) =="
+echo "== case2a: all ✅ + signed but environment=local → REFUSE =="
 "$PY" - <<PY
 import json
 from pathlib import Path
 p = Path("$TMP/drills/live-unsigned.json")
 d = json.loads(p.read_text())
 d["production_signed"] = True
-d["drill_id"] = "temp-signed"
+d["environment"] = "local"
+d["drill_id"] = "temp-local-fake"
 p.write_text(json.dumps(d) + "\n")
-# rename so latest is signed
-p.rename(Path("$TMP/drills/live-signed.json"))
+p.rename(Path("$TMP/drills/live-local-fake.json"))
+PY
+set +e
+out2a="$(bash packages/aiplat-central/scripts/pg_ha_cutover_authorize.sh authorize 2>&1)"
+rc2a=$?
+set -e
+[[ "$rc2a" -ne 0 ]] || { echo "FAIL: local env must not authorize" >&2; echo "$out2a" >&2; exit 1; }
+grep -q 'cutover_authorized: false' "$TMP/CUTOVER_CHECKLIST.md"
+
+echo "== case2: all ✅ + signed staging live → AUTHORIZE (temp only) =="
+"$PY" - <<PY
+import json
+from pathlib import Path
+# remove local fake so staging file is latest
+Path("$TMP/drills/live-local-fake.json").unlink(missing_ok=True)
+p = Path("$TMP/drills/live-signed.json")
+d = {
+  "kind": "pg_ha_live_drill_evidence",
+  "drill_id": "temp-signed",
+  "environment": "staging",
+  "production_signed": True,
+}
+p.write_text(json.dumps(d) + "\n")
 PY
 bash packages/aiplat-central/scripts/pg_ha_cutover_authorize.sh authorize
 grep -q 'cutover_authorized: true' "$TMP/CUTOVER_CHECKLIST.md"

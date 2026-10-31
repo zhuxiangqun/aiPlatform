@@ -44,3 +44,5 @@ bash scripts/five_products_gate.sh
 `staging_ready=true` 后再按交接卡 live → sign → authorize；此前工程主轨走 Pi D1。
 
 Pi D1 本地回归（2026-11-01）：[`ops/PI_D1_LOCAL_REGRESSION.md`](./ops/PI_D1_LOCAL_REGRESSION.md) **PASS**（`d1_local_regression.sh`；environment=local，未授权）。
+
+Local staging（零预算 · 非预发）：[`ops/LOCAL_STAGING.md`](./ops/LOCAL_STAGING.md) — `compose.local-staging.yml` + `pg_ha_local_staging.sh`；证据 `local-*.json`；`cutover_authorized` 仍 **false**。

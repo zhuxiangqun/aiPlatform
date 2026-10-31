@@ -1,6 +1,6 @@
 {
   "schema_version": "aiplat.pg_ha.prep.v0",
-  "checked_at": "2026-10-31T15:12:16Z",
+  "checked_at": "2026-10-31T23:51:10Z",
   "cutover_authorized": false,
   "items": {
     "5_contract_coupling": {
@@ -37,23 +37,23 @@
     },
     "tabletop_log": {
       "ok": true,
-      "detail": "packages/aiplat-central/docs/pg_ha/drills/tabletop-2026-10-31T151216Z.json"
+      "detail": "packages/aiplat-central/docs/pg_ha/drills/tabletop-2026-10-31T235110Z.json"
     },
     "3_backup_sqlite_rehearsal": {
       "ok": true,
-      "detail": "packages/aiplat-central/docs/pg_ha/drills/sqlite-rehearsal-20261031T151206Z.json"
+      "detail": "packages/aiplat-central/docs/pg_ha/drills/sqlite-rehearsal-20261031T235019Z.json"
     },
     "7_rollback_sqlite_rehearsal": {
       "ok": true,
-      "detail": "packages/aiplat-central/docs/pg_ha/drills/sqlite-rehearsal-20261031T151206Z.json"
+      "detail": "packages/aiplat-central/docs/pg_ha/drills/sqlite-rehearsal-20261031T235019Z.json"
     },
     "2_pg_schema_rehearsal": {
       "ok": true,
-      "detail": "packages/aiplat-central/docs/pg_ha/drills/pg-rehearsal-20261031T151206Z.json"
+      "detail": "packages/aiplat-central/docs/pg_ha/drills/pg-rehearsal-20261031T235019Z.json"
     },
     "4_ha_failover_local_rehearsal": {
       "ok": true,
-      "detail": "packages/aiplat-central/docs/pg_ha/drills/ha-rehearsal-20261031T151211Z.json"
+      "detail": "packages/aiplat-central/docs/pg_ha/drills/ha-rehearsal-20261031T235024Z.json"
     },
     "live_drill_evidence_present": {
       "ok": true,

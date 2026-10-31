@@ -22,11 +22,14 @@
 - 把 scaffold live 写成 `production_signed=true`
 - 假造 DSN / OIDC
 
-## 并行允许（路径 C · 非授权）
+## 并行允许（路径 A · local staging · 非授权）
 
-本机 / docker rehearsal，证据环境必须为 `local`（或 rehearsal 脚本自带标记），**不能** authorize：
+本机 Docker「local staging」可推进迁移/备份/手动 failover/OIDC 工程验证；证据必须 `environment=local`（`local-*.json`），**不能** authorize。详见 [`LOCAL_STAGING.md`](./LOCAL_STAGING.md)。
 
 ```bash
+# PG/HA local staging（PG :5433 + Keycloak :8081）
+bash packages/aiplat-central/scripts/pg_ha_local_staging.sh all
+# 轻量 rehearsal（无 compose）：
 bash packages/aiplat-central/scripts/pg_ha_local_rehearsal.sh
 bash packages/aiplat-central/scripts/pg_ha_ha_failover_rehearsal.sh
 bash packages/aiplat-ontology/scripts/a3_local_rehearsal.sh

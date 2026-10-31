@@ -1,0 +1,55 @@
+# Local staging topology (zero-budget) — NOT production / NOT authorize evidence.
+# Ports isolated from default stack: PG 5433, Keycloak 8081.
+# Usage:
+#   docker compose -f packages/aiplat-central/compose.local-staging.yml up -d
+#   export AIPLAT_PG_DSN='postgresql://aiplat:aiplat_local@127.0.0.1:5433/aiplat_local'
+#   export AIPLAT_OIDC_ISSUER='http://127.0.0.1:8081/realms/aiplat-local'
+# Evidence must use environment=local (see reports/five-products/ops/LOCAL_STAGING.md).
+
+name: aiplat-local-staging
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aiplat-local-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aiplat
+      POSTGRES_PASSWORD: aiplat_local
+      POSTGRES_DB: aiplat_local
+    ports:
+      - "5433:5432"
+    volumes:
+      - aiplat_local_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiplat -d aiplat_local"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    networks:
+      - aiplat_local
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: aiplat-local-keycloak
+    restart: unless-stopped
+    command: ["start-dev", "--http-port=8080"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin_local_only
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - aiplat_local
+
+networks:
+  aiplat_local:
+    name: aiplat-local-staging
+
+volumes:
+  aiplat_local_pg_data:
+    name: aiplat-local-pg-data
