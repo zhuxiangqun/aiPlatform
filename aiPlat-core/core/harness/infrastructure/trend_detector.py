@@ -12,6 +12,7 @@ Architecture:
   - State machine: single-spike dampening, persistent-degradation escalation
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import asyncio
 import json
@@ -572,8 +573,8 @@ Hypothesis-driven diagnosis checklist:
 
             # Review the infrastructure configuration files
             infra_config_paths = [
-                _os.path.expanduser("~/.aiplat/config/infra/llm_profile.yaml"),
-                _os.path.expanduser("~/.aiplat/config/infra/models.yaml"),
+                get_aiplat_data_dir("config/infra/llm_profile.yaml"),
+                get_aiplat_data_dir("config/infra/models.yaml"),
             ]
             for cfg_path in infra_config_paths:
                 if _os.path.exists(cfg_path):

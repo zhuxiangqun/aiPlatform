@@ -7,6 +7,7 @@ performs light pre-flight validation.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import asyncio
 import logging
@@ -201,7 +202,7 @@ class SandboxGate:
                 return (False, f"REJECT: path '{path}' matches forbidden pattern '{forbidden}'")
 
         # Must be within workspace or an allowed prefix (boundary-aware)
-        workspace = os.environ.get("AIPLAT_WORKSPACE_ROOT", os.path.expanduser("~/.aiplat"))
+        workspace = os.environ.get("AIPLAT_WORKSPACE_ROOT", get_aiplat_home())
         if _under(workspace):
             return (True, f"path in workspace: {expanded}")
 

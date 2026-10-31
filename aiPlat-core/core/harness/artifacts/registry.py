@@ -9,6 +9,7 @@ Storage: ~/.aiplat/artifacts/<project_id>/<artifact_name>/<version>/
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import json
@@ -36,7 +37,7 @@ class ArtifactRecord:
 class ArtifactRegistry:
     def __init__(self, base_dir: str = ""):
         self._base_dir = os.path.realpath(
-            base_dir or os.path.expanduser("~/.aiplat/artifacts")
+            base_dir or get_aiplat_data_dir("artifacts")
         )
         os.makedirs(self._base_dir, exist_ok=True)
 

@@ -5,6 +5,7 @@ block OrgRun. No prices, invoices, or SKUs.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def _home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    return Path(get_aiplat_home())
 
 
 def ledger_path() -> Path:

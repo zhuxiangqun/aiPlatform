@@ -4,6 +4,7 @@ Phase 2: goals + runs + HITL resume. No live customer DB writes.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -22,7 +23,7 @@ _RUN_STATUSES = frozenset(
 
 
 def _home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _org_dir() -> Path:

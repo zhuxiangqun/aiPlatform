@@ -37,6 +37,7 @@ Integration:
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -58,7 +59,7 @@ logger = logging.getLogger("aiplat.shared_knowledge")
 
 
 
-POOL_ROOT = os.path.expanduser("~/.aiplat/shared_knowledge")
+POOL_ROOT = get_aiplat_data_dir("shared_knowledge")
 
 POOL_FILE = os.path.join(POOL_ROOT, "pool.json")
 

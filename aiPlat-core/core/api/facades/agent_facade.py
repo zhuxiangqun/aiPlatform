@@ -1,5 +1,6 @@
 """Agent Facade — agent configuration (no core_facade dependency)."""
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from typing import Any, Dict
 
 
@@ -11,9 +12,9 @@ def get_agent_frontmatter(agent_id: str) -> Dict[str, Any]:
     import os
     import yaml
 
-    agent_home = os.path.join(os.path.expanduser("~/.aiplat"), "agents", agent_id, "AGENT.md")
+    agent_home = os.path.join(get_aiplat_home(), "agents", agent_id, "AGENT.md")
     seeds = os.getenv("AIPLAT_WORKSPACE_SEEDS",
-        os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "workspace_seeds"))
+        os.path.join(os.getenv("AIPLAT_HOME", get_aiplat_home()), "workspace_seeds"))
     seeds_path = os.path.join(seeds, "agents", agent_id, "AGENT.md")
 
     found_path = None

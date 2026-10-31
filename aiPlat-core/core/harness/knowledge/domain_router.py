@@ -15,6 +15,7 @@ Callers:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 import sys as _sys
 
@@ -34,7 +35,7 @@ class DomainRouter:
     @staticmethod
     def _home() -> str:
         """AIPLAT_HOME or ~/.aiplat — Phase 5: new customers register without harness edits."""
-        return os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+        return get_aiplat_home()
 
     @staticmethod
     def _registry_path() -> str:

@@ -24,6 +24,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 from urllib.parse import urljoin, urlparse
 
+from core.utils.paths import get_aiplat_data_dir
+
 from .browser import _BrowserSession
 
 
@@ -656,7 +658,7 @@ class BrowserTestEngine:
             video_dir = ""
             if self._config.video_enabled:
                 video_dir = self._config.screenshot_dir or os.path.join(
-                    os.environ.get("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "videos",
+                    get_aiplat_data_dir("videos"),
                     f"test_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
                 )
                 os.makedirs(video_dir, exist_ok=True)

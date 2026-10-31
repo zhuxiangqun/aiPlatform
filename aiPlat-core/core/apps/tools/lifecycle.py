@@ -8,6 +8,7 @@ Workspace tools still default to ``draft``. Explicit entries in
 ``tool_lifecycle.json`` / ``*.TOOL.manifest.json`` always win.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -22,7 +23,7 @@ _DEFAULT = "draft"
 
 
 def _home() -> Path:
-    return Path(os.environ.get("AIPLAT_HOME", os.path.expanduser("~/.aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _store_path() -> Path:

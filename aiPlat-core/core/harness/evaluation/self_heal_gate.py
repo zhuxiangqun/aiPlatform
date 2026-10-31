@@ -12,6 +12,7 @@ Rules table (revised per architecture review):
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import os, json, time, logging
 from dataclasses import dataclass, field
@@ -54,7 +55,7 @@ class SelfHealGate:
     """Automated system health response with safety gating."""
 
     def __init__(self):
-        self._home = Path(os.getenv("AIPLAT_HOME", Path("~").expanduser() / ".aiplat"))
+        self._home = Path(get_aiplat_home())
         self._log_path = self._home / "self_heal_log.json"
         self._pending_path = self._home / "self_heal_pending.json"
         # Review-first: auto=false → all fixes need human approval via dashboard

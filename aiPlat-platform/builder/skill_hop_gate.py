@@ -7,6 +7,7 @@ Supports:
 Empty / missing schema → pass (backward compatible).
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import os
 from pathlib import Path
@@ -29,7 +30,7 @@ def load_skill_input_schema(skill_name: str, app_home: Optional[str] = None) -> 
     if not name:
         return {}
     candidates: List[Path] = []
-    home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    home = get_aiplat_home()
     if app_home:
         candidates.append(Path(app_home) / "skills" / name / "SKILL.md")
         # nested under app current

@@ -13,13 +13,14 @@ Callers:
 - ``core.api.core_facade`` canonical re-export (locate_max_error_node)
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import os
 import threading
 from typing import Any, Dict, List, Optional
 
-_TRACE_DIR = os.path.expanduser("~/.aiplat/decision_traces")
+_TRACE_DIR = get_aiplat_data_dir("decision_traces")
 _DEFAULT_CONFIDENCE = 0.7
 
 _lock = threading.RLock()

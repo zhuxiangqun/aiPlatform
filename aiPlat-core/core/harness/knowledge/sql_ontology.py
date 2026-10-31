@@ -26,6 +26,7 @@ Usage (YAML extension):
           tier: "tier_level"
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -65,7 +66,7 @@ class SqlOntologyTranslator:
             import os as _os
             from pathlib import Path as _Path
 
-            base_dir = _Path(_os.getenv("AIPLAT_HOME", _Path.home() / ".aiplat")) / "ontologies"
+            base_dir = _Path(get_aiplat_home()) / "ontologies"
             file_path = base_dir / f"{self._domain_id}.yaml"
             if not file_path.exists():
                 logger.debug("No ontology YAML for domain '%s'", self._domain_id)

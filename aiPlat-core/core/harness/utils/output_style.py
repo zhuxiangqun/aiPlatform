@@ -3,6 +3,7 @@
 Locked ADHD ruleset + whitelist overrides. Does not rewrite tool/stack payloads.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import hashlib
 import logging
@@ -64,7 +65,7 @@ def whitelist_overrides(source: Optional[Mapping[str, Any]] = None) -> Dict[str,
 
 
 def skill_body_path() -> Path:
-    home = Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat"))
+    home = Path(get_aiplat_home())
     ws = home / "skills" / "output_style_adhd" / "SKILL.md"
     if ws.is_file():
         return ws
@@ -166,7 +167,7 @@ _EVENTS_FILENAME = "output_style_events.json"
 
 
 def output_style_events_path() -> Path:
-    home = Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat"))
+    home = Path(get_aiplat_home())
     return home / "wiki" / _EVENTS_FILENAME
 
 

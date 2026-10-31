@@ -1,6 +1,7 @@
 """S1 — ensure sandbox approval_rules seed when missing."""
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def _home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _seed_path() -> Path:

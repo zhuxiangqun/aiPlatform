@@ -17,6 +17,7 @@ refactoring PRs, following Stripe's "small PR, frequent merge" pattern.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -55,7 +56,7 @@ class CodeEntropyDetector:
     _ACTIVATION_THRESHOLD = 1000  # minimum total lines to activate
 
     def __init__(self, db_path: str = None):
-        self._db_path = db_path or os.path.expanduser("~/.aiplat/code_entropy.sqlite3")
+        self._db_path = db_path or get_aiplat_data_dir("code_entropy.sqlite3")
         self._ensure_schema()
 
     def _ensure_schema(self):

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -503,7 +504,7 @@ def _scan_skills_direct(*, workspace_only: bool = False) -> List[Dict[str, Any]]
             except Exception as e:
                 logging.warning(str(e), exc_info=True)
 
-    aiplat_home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
+    aiplat_home = _os.getenv("AIPLAT_HOME", _get_aiplat_home())
     workspace_root = _Py(aiplat_home) / "skills"
 
     roots = (workspace_root,) if workspace_only else (workspace_root, engine_root)
@@ -766,7 +767,7 @@ _TASK_TTL = 300  # 5 minutes
 
 
 def _tasks_dir() -> _Path:
-    d = _Path(os.getenv("AIPLAT_HOME", _Path.home() / ".aiplat")) / "tasks"
+    d = _Path(os.getenv("AIPLAT_HOME", _Path(get_aiplat_home()))) / "tasks"
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -1263,7 +1264,7 @@ def _binding_catalogs() -> Dict[str, set]:
     agents: set = set()
     workflows: set = set()
 
-    home = _P(os.path.expanduser("~/.aiplat"))
+    home = _P(get_aiplat_home())
     for root in (home / "skills",):
         if not root.exists():
             continue
@@ -2009,7 +2010,7 @@ async def _build_wf_catalog() -> List[str]:
     from pathlib import Path as _WPath
     entries = []
     try:
-        wf_dir = _WPath(_wos.getenv("AIPLAT_HOME", _wos.path.expanduser("~/.aiplat"))) / "workflow_templates"
+        wf_dir = _WPath(_wos.getenv("AIPLAT_HOME", _wget_aiplat_home())) / "workflow_templates"
         if wf_dir.exists():
             for f in sorted(wf_dir.glob("*.json")):
                 try:
@@ -3607,7 +3608,7 @@ async def upload_workspace_template(
     if not _re.search(r"\.(pptx|potx)$", safe, _re.I):
         safe = f"{safe}.pptx"
 
-    home = _Path(os.environ.get("AIPLAT_HOME") or _Path.home() / ".aiplat")
+    home = _Path(os.environ.get("AIPLAT_HOME") or _Path(get_aiplat_home()))
     dest_dir = home / "templates"
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest = dest_dir / safe
@@ -3643,7 +3644,7 @@ async def list_workspace_templates(http_request: Request = None, rt: RuntimeDep 
         if deny:
             return deny
 
-    home = _Path(os.environ.get("AIPLAT_HOME") or _Path.home() / ".aiplat")
+    home = _Path(os.environ.get("AIPLAT_HOME") or _Path(get_aiplat_home()))
     dest_dir = home / "templates"
     items = []
     if dest_dir.is_dir():
@@ -4128,7 +4129,7 @@ async def audit_agent_config(
     issues = []
     # Load AGENT.md
     from pathlib import Path as _P
-    md_path = _P(os.path.expanduser("~/.aiplat")) / "agents" / agent_id / "AGENT.md"
+    md_path = _P(get_aiplat_home()) / "agents" / agent_id / "AGENT.md"
     if not md_path.exists():
         raise HTTPException(status_code=404, detail=f"Agent '{agent_id}' 的 AGENT.md 不存在")
 
@@ -4192,7 +4193,7 @@ async def audit_agent_config(
     skill_statuses: Dict[str, str] = {}
     workspace_skill_ids: set = set()
     engine_skill_ids: set = set()
-    skill_dir = _P(os.path.expanduser("~/.aiplat")) / "skills"
+    skill_dir = _P(get_aiplat_home()) / "skills"
     if skill_dir.exists():
         for d in skill_dir.iterdir():
             if d.is_dir() and (d / "SKILL.md").exists():
@@ -5146,7 +5147,7 @@ async def audit_agent_config(
 
     # ── Bound assets: MCP / sub-agents / workflows（存在性 + 上架态）──
     _OK_ASSET = frozenset({"published", "listed"})
-    agents_home = _P(os.path.expanduser("~/.aiplat")) / "agents"
+    agents_home = _P(get_aiplat_home()) / "agents"
 
     def _agent_status_on_disk(aid: str) -> Optional[str]:
         p = agents_home / aid / "AGENT.md"
@@ -5284,7 +5285,7 @@ async def audit_agent_config(
     if wf_bound:
         known_wf: dict = {}  # id/name -> status
         try:
-            wf_dir = _P(os.path.expanduser("~/.aiplat")) / "workflows"
+            wf_dir = _P(get_aiplat_home()) / "workflows"
             if wf_dir.exists():
                 for d in wf_dir.iterdir():
                     if d.is_dir():

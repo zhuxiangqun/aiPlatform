@@ -5,6 +5,7 @@ May append one audit read line. That line is not a business step.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -19,7 +20,7 @@ _ABSENT = "该步未发生"
 
 
 def _home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _jsonl(path: Path) -> List[Dict[str, Any]]:

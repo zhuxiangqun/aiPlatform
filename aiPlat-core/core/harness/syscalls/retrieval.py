@@ -21,6 +21,7 @@ Callers:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -1603,7 +1604,7 @@ def sys_knowledge_retrieve(
 
         lat_path = _l_os.path.join(
 
-            _l_os.path.expanduser(_l_os.getenv("AIPLAT_HOME", "~/.aiplat")),
+            get_aiplat_home(),
 
             "wiki", "retrieval_latency.json")
 

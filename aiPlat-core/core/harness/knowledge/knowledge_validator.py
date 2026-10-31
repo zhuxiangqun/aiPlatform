@@ -8,6 +8,7 @@ No external SPARQL engine required — uses in-memory triple matching.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 from datetime import datetime, timezone
@@ -463,8 +464,7 @@ def detect_ontology_patterns(collection_id: str = "default") -> OntologyPatterns
 
     # 5. Undefined relations (scan relationships field in frontmatter)
     import os as _os, json as _json, re as _re
-    wiki_root = _os.path.expanduser(
-        _os.getenv("AIPLAT_HOME", "~/.aiplat"))
+    wiki_root = get_aiplat_home()
     wiki_dir = _os.path.join(wiki_root, "wiki", "collections", collection_id)
     rel_counts: Dict[str, List[str]] = {}
     if _os.path.exists(wiki_dir):
@@ -557,7 +557,7 @@ import time as _time
 
 
 def _metrics_cache_path(collection_id: str = "default") -> str:
-    wiki_root = _os.path.expanduser(_os.getenv("AIPLAT_HOME", "~/.aiplat"))
+    wiki_root = get_aiplat_home()
     return _os.path.join(wiki_root, "wiki", "collections", collection_id, "metrics_cache.json")
 
 
@@ -645,7 +645,7 @@ def run_golden_query_regression(collection_id: str = "default",
     """
     import yaml as _yaml
     golden_path = _os.path.join(
-        _os.path.expanduser(_os.getenv("AIPLAT_HOME", "~/.aiplat")),
+        get_aiplat_home(),
         "wiki", "golden_queries.yaml"
     )
     if not _os.path.exists(golden_path):
@@ -914,8 +914,7 @@ def compute_ontology_metrics(collection_id: str = "default",
     # ── 8. Ontology evolution stats (classes/properties added over generations) ──
     onto_ev = {"classes_added": 0, "properties_added": 0, "total_generations": 0}
     try:
-        ev_path = _os.path.expanduser(
-            f"~/.aiplat/wiki/collections/{collection_id}/evolution_ontology_state.json")
+        ev_path = get_aiplat_data_dir(f"wiki/collections/{collection_id}/evolution_ontology_state.json")
         if _os.path.exists(ev_path):
             ev_data = _json.load(open(ev_path))
             generations = ev_data.get("generations", [])
@@ -985,7 +984,7 @@ def compute_ontology_metrics(collection_id: str = "default",
 
     # ── Golden regression history (keep 90 days) ──
     try:
-        hist_path = _os.path.expanduser("~/.aiplat/wiki/golden_regression_history.json")
+        hist_path = get_aiplat_data_dir("wiki/golden_regression_history.json")
         history = []
         if _os.path.exists(hist_path):
             history = _json.loads(open(hist_path).read())
@@ -1005,7 +1004,7 @@ def compute_ontology_metrics(collection_id: str = "default",
         logging.debug(str(e), exc_info=True)
 
     # ── Latency percentiles ──
-    lat_path2 = _os.path.expanduser("~/.aiplat/wiki/retrieval_latency.json")
+    lat_path2 = get_aiplat_data_dir("wiki/retrieval_latency.json")
     if _os.path.exists(lat_path2):
         try:
             lat_samples = _json.loads(open(lat_path2).read())
@@ -1022,7 +1021,7 @@ def compute_ontology_metrics(collection_id: str = "default",
             logging.debug(str(e), exc_info=True)
 
     # ── Curation stats ──
-    curation_path = _os.path.expanduser("~/.aiplat/wiki/curation_stats.json")
+    curation_path = get_aiplat_data_dir("wiki/curation_stats.json")
     if _os.path.exists(curation_path):
         try:
             cs = _json.loads(open(curation_path).read())
@@ -1042,8 +1041,8 @@ def compute_ontology_metrics(collection_id: str = "default",
         "avg_conflict_marked": 0, "avg_composite_score": 0, "avg_cutoff_score": 0,
     }
     try:
-        gov_path = _os.path.expanduser("~/.aiplat/wiki/governance_stats.json")
-        history_path = _os.path.expanduser("~/.aiplat/wiki/governance_history.json")
+        gov_path = get_aiplat_data_dir("wiki/governance_stats.json")
+        history_path = get_aiplat_data_dir("wiki/governance_history.json")
 
         # Collect stats from recent retrieval traces
         gov_history = []

@@ -3,6 +3,7 @@
 Caller: aiPlat-platform/kb/intelligence/summarize.py (re-export stub)
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import json
@@ -51,7 +52,7 @@ async def summarize_document(
     from core.harness.infrastructure.infra_bridge import create_infra_database_client
     import os as _os
     from pathlib import Path as _Path
-    _aiplat_home = _os.getenv("AIPLAT_HOME", str(_Path.home() / ".aiplat"))
+    _aiplat_home = get_aiplat_home()
     _db_path = str(_Path(_aiplat_home).expanduser() / "kb" / "tenants" / (tenant_id or "default") / "kb.sqlite3")
     conn = create_infra_database_client(_db_path)
     try:

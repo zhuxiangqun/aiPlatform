@@ -4,6 +4,7 @@ Voice Brainstorm — 语音漫谈意图提取服务.
 接收 Whisper 转录文本，通过 LLM 提取核心意图、可执行步骤、待澄清模糊点。
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import logging
@@ -41,7 +42,7 @@ def _store_emotion_state(session_id: str, data: Dict[str, Any]) -> None:
         style = data.get("response_style", {})
         if not tone:
             return
-        emo_dir = os.path.expanduser("~/.aiplat/emotion")
+        emo_dir = get_aiplat_data_dir("emotion")
         os.makedirs(emo_dir, exist_ok=True)
         emo_file = os.path.join(emo_dir, f"{session_id}.json")
         recent = []

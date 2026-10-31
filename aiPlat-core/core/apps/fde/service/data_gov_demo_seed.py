@@ -1,6 +1,7 @@
 """data-gov demo GraphIndex seeds — B4 治理教学真实层（路径 C）+ ACL 种子."""
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -17,7 +18,7 @@ _CLS_DRAFT = "抽取草稿"
 
 
 def _aiplat_home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _workspace_data_gov_yaml() -> Path:

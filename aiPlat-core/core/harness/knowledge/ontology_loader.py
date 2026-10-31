@@ -12,6 +12,7 @@ enabling domain experts to define ontologies without writing code.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import os as _os
@@ -224,7 +225,7 @@ def list_domain_files(base_dir: str = "") -> List[str]:
     """List available ontology domain files (excludes version sidecars ``*_vN``)."""
     import re as _re
 
-    d = _Path(base_dir or _os.getenv("AIPLAT_HOME", _Path.home() / ".aiplat")) / "ontologies"
+    d = _Path(base_dir or get_aiplat_home()) / "ontologies"
     if not d.exists():
         return []
     sidecar = _re.compile(r"_v\d+$")
@@ -239,7 +240,7 @@ def load_all_domains(base_dir: str = "") -> Dict[str, OntologyDomain]:
     """Load all ontology domain files."""
     domains = {}
     for domain_id in list_domain_files(base_dir):
-        d = _Path(base_dir or _os.getenv("AIPLAT_HOME", _Path.home() / ".aiplat")) / "ontologies"
+        d = _Path(base_dir or get_aiplat_home()) / "ontologies"
         file_path = d / f"{domain_id}.yaml"
         try:
             domains[domain_id] = load_ontology_from_yaml(str(file_path))
@@ -309,7 +310,7 @@ def save_domain_yaml(domain_id: str, yaml_text: str) -> str:
     data["name"] = domain_id
     yaml_text = _yaml.dump(data, allow_unicode=True, sort_keys=False)
 
-    dest_dir = _Path(_os.getenv("AIPLAT_HOME", _Path.home() / ".aiplat")) / "ontologies"
+    dest_dir = _Path(get_aiplat_home()) / "ontologies"
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest_path = dest_dir / f"{domain_id}.yaml"
     dest_path.write_text(yaml_text, encoding="utf-8")
@@ -332,7 +333,7 @@ def get_entities_by_interface(domain_id: str, interface_name: str, *, base_dir: 
     Returns:
         List of class names (e.g., ["CentrifugalPump", "ElectricMotor"])
     """
-    d = _Path(base_dir or _os.getenv("AIPLAT_HOME", _Path.home() / ".aiplat")) / "ontologies"
+    d = _Path(base_dir or get_aiplat_home()) / "ontologies"
     file_path = d / f"{domain_id}.yaml"
     if not file_path.exists():
         return []
@@ -349,7 +350,7 @@ def get_interface_definition(domain_id: str, interface_name: str, *, base_dir: s
     """
     Return the full Interface definition from a domain.
     """
-    d = _Path(base_dir or _os.getenv("AIPLAT_HOME", _Path.home() / ".aiplat")) / "ontologies"
+    d = _Path(base_dir or get_aiplat_home()) / "ontologies"
     file_path = d / f"{domain_id}.yaml"
     if not file_path.exists():
         return None

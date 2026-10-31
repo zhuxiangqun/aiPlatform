@@ -9,13 +9,14 @@ Used for runtime verification: "which consumers are actually calling
 through the syscall layer, and which are bypassing it?"
 """
 
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import json
 import os
 import time
 import inspect as _inspect
 
 _TRACE_ENABLED = os.getenv("AIPLAT_SYSCALL_TRACE", "false").lower() in ("1", "true", "yes")
-_TRACE_FILE = os.path.expanduser("~/.aiplat/traces/syscall_calls.jsonl")
+_TRACE_FILE = get_aiplat_data_dir("traces/syscall_calls.jsonl")
 
 
 def trace_syscall_entry(name: str) -> None:

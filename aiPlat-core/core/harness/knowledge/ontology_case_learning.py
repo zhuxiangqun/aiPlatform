@@ -8,6 +8,7 @@ Authority: live TBox stays YAML; this module never writes ontology YAML directly
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -38,7 +39,7 @@ def _enabled() -> bool:
 
 
 def _home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _cases_dir() -> Path:

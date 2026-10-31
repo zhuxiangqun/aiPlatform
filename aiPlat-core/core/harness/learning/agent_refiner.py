@@ -45,7 +45,7 @@ class AgentRefiner:
     """AGENTS.md 自动优化建议器."""
 
     def __init__(self):
-        self._db_path = _os.path.expanduser("~/.aiplat/data/aiplat_platform.sqlite3")
+        self._db_path = get_aiplat_data_dir("data/aiplat_platform.sqlite3")
 
     def run(self, *, lookback_days: int = 7) -> Dict[str, Any]:
         """每晚运行: 扫描所有 Agent → 生成优化建议.
@@ -86,7 +86,7 @@ class AgentRefiner:
         """扫描所有 Agent 目录."""
         agents = set()
         for root in [
-            _os.path.expanduser("~/.aiplat/agents"),
+            get_aiplat_data_dir("agents"),
             _os.path.join(_os.path.dirname(__file__), "../../..", "engine/agents"),
         ]:
             try:
@@ -268,7 +268,7 @@ class AgentRefiner:
     def _write_suggestions(self, agent_id: str, suggestions: List[str]) -> str:
         """将建议写入 agent 目录下的 _evolution_suggestions.md."""
         for root in [
-            _os.path.expanduser(f"~/.aiplat/agents/{agent_id}"),
+            get_aiplat_data_dir(f"agents/{agent_id}"),
             _os.path.join(_os.path.dirname(__file__), "../../..", "engine/agents", agent_id),
         ]:
             if _os.path.isdir(root):

@@ -15,6 +15,7 @@ LineageStore — 决策血缘持久化层 (Phase 41 Decision Lineage)
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import logging
@@ -128,7 +129,7 @@ class LineageStore:
     def __init__(self, db_path: str = ""):
         if not db_path:
             import os as _os
-            db_path = _os.path.expanduser("~/.aiplat/data/aiplat_platform.sqlite3")
+            db_path = get_aiplat_data_dir("data/aiplat_platform.sqlite3")
         self._db_path = db_path
 
     @classmethod

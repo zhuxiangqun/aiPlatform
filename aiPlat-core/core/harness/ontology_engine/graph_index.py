@@ -12,6 +12,7 @@ Exports to ~/.aiplat/graph/{domain_id}.json (optional, backward compat)
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import json as _json
@@ -111,7 +112,7 @@ class GraphIndex:
         self.tenant_id = tenant_id
         self._nodes: Dict[str, GraphNode] = {}
         self._hyperedges: Dict[str, HyperEdge] = {}
-        home = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat"))
+        home = _Path(get_aiplat_home())
         db_dir = home / "graph"
         db_dir.mkdir(parents=True, exist_ok=True)
         db_prefix = f"{tenant_id}:" if tenant_id and tenant_id != "default" else ""
@@ -799,8 +800,7 @@ class GraphIndex:
             import yaml, os
             from pathlib import Path
             did = domain_id or self.domain_id
-            yaml_path = Path(os.getenv("AIPLAT_HOME",
-                Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{did}.yaml"
+            yaml_path = Path(get_aiplat_home()) / "ontologies" / f"{did}.yaml"
             if not yaml_path.exists():
                 return 0.5  # Unknown → medium distance
 
@@ -1210,7 +1210,7 @@ class GraphIndex:
         constraints = {}
         try:
             import os
-            path = os.path.expanduser(f"~/.aiplat/ontologies/{self.domain_id}.yaml")
+            path = get_aiplat_data_dir(f"ontologies/{self.domain_id}.yaml")
             if os.path.exists(path):
                 from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
                 dom = load_ontology_from_yaml(path)

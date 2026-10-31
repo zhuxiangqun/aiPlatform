@@ -174,7 +174,7 @@ class PipelinePromptMixin:
 
             import os as _os, glob as _glob
 
-            from core.utils.paths import get_aiplat_data_dir
+            from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
             output_root = get_aiplat_data_dir("output")
 
@@ -308,7 +308,7 @@ class PipelinePromptMixin:
 
                 import os as _os
 
-                skill_path = _os.path.expanduser("~/.aiplat/skills/ponytail-lazy/SKILL.md")
+                skill_path = get_aiplat_data_dir("skills/ponytail-lazy/SKILL.md")
 
                 if _os.path.exists(skill_path):
 
@@ -440,7 +440,7 @@ class PipelinePromptMixin:
 
                 try:
 
-                    snapshot_dir = os.path.expanduser("~/.aiplat/traces/history")
+                    snapshot_dir = get_aiplat_data_dir("traces/history")
 
                     os.makedirs(snapshot_dir, exist_ok=True)
 

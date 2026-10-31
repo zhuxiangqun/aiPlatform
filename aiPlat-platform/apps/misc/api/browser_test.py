@@ -9,6 +9,7 @@ POST   /browser/test/generate-cases — 生成用例 Excel
 POST   /browser/test/execute-cases  — 执行用例 Excel
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import asyncio
 import os
@@ -291,7 +292,7 @@ async def download_file(path: str = ""):
                 roots.append(_Path(c).expanduser().resolve())
     else:
         roots = [
-            (_Path.home() / ".aiplat").resolve(),
+            (_Path(get_aiplat_home())).resolve(),
             _Path(_os.environ.get("TMPDIR") or "/tmp").resolve(),
         ]
     allowed = any(str(target) == str(r) or str(target).startswith(str(r) + _os.sep) for r in roots)

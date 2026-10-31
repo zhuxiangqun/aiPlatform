@@ -9,6 +9,7 @@ Phase F: AI-assisted business rule design.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -196,7 +197,7 @@ def deploy_rule(domain_id: str, rule: Dict[str, Any]) -> Dict[str, Any]:
             "error": "Rule validation failed",
         }
 
-    path = Path(os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}.yaml"))
+    path = Path(get_aiplat_data_dir(f"ontologies/{domain_id}.yaml"))
     if not path.exists():
         return {
             "deployed": False,
@@ -273,7 +274,7 @@ def list_rules(domain_id: str) -> Dict[str, Any]:
 # ── Helpers ──
 
 def _load_domain(domain_id: str) -> Optional[Dict[str, Any]]:
-    path = Path(os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}.yaml"))
+    path = Path(get_aiplat_data_dir(f"ontologies/{domain_id}.yaml"))
     if not path.exists():
         return None
     try:

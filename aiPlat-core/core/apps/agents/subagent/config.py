@@ -1,3 +1,4 @@
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 """
 Subagent Configuration
@@ -118,8 +119,8 @@ def _load_subagent_prompt(name: str) -> str:
     import os as __os
     import yaml as __yaml
     paths = [
-        __os.path.join(__os.path.expanduser("~/.aiplat"), "agents", "builtin", name, "AGENT.md"),
-        __os.path.join(__os.getenv("AIPLAT_HOME", __os.path.expanduser("~/.aiplat")), "agents", "builtin", name, "AGENT.md"),
+        __os.path.join(get_aiplat_home(), "agents", "builtin", name, "AGENT.md"),
+        __os.path.join(__os.getenv("AIPLAT_HOME", get_aiplat_home()), "agents", "builtin", name, "AGENT.md"),
         __os.path.join(__os.getenv("AIPLAT_WORKSPACE_SEEDS", ""), "agents", "builtin", name, "AGENT.md"),
     ]
     for p in paths:

@@ -8,6 +8,7 @@ Security: keys are stored as-is in the JSON file. The API returns masked keys
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import os
@@ -36,7 +37,7 @@ class CredentialUpdate(BaseModel):
 
 
 def _storage_path() -> Path:
-    home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    home = get_aiplat_home()
     return Path(home) / "credentials.json"
 
 

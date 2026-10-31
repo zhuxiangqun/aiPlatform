@@ -6,6 +6,7 @@ False-green ban (same as graph_validate):
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def _aiplat_home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _find_domain_yaml(domain_id: str) -> Optional[Path]:

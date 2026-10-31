@@ -7,6 +7,7 @@ Contracts:
 Persists JSON under $AIPLAT_HOME/fde_customer_success/ (no ROI computation).
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -22,7 +23,7 @@ _SAFE = re.compile(r"[^a-zA-Z0-9._-]+")
 
 
 def _home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _dir() -> Path:

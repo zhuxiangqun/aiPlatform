@@ -17,6 +17,7 @@ OntologyBranchManager — 本体分支管理 (Palantir Global Branching 对齐)
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import logging
@@ -30,7 +31,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-HOME = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat"))
+HOME = _Path(get_aiplat_home())
 GRAPH_DIR = HOME / "graph"
 BRANCH_REGISTRY_PATH = HOME / "branches.json"
 

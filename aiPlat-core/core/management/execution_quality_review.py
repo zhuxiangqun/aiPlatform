@@ -8,6 +8,7 @@ One-click fix: appends idempotent SOP iron-law snippets into SKILL.md body
 (same pattern as workspace apply-lint-fix `_sop_append`).
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -539,7 +540,7 @@ def candidate_agent_md_paths(
     if primary is not None:
         out.append(Path(primary))
     if aid:
-        out.append(Path.home() / ".aiplat" / "agents" / aid / "AGENT.md")
+        out.append(Path(get_aiplat_home()) / "agents" / aid / "AGENT.md")
         aiplat_home = str(os.environ.get("AIPLAT_HOME") or "").strip()
         if aiplat_home:
             out.append(Path(aiplat_home) / "agents" / aid / "AGENT.md")
@@ -690,7 +691,7 @@ def candidate_skill_md_paths(
     if sid:
         core_root = Path(__file__).resolve().parents[1]  # .../core
         out.append(core_root / "engine" / "skills" / sid / "SKILL.md")
-        out.append(Path.home() / ".aiplat" / "skills" / sid / "SKILL.md")
+        out.append(Path(get_aiplat_home()) / "skills" / sid / "SKILL.md")
         aiplat_home = str(os.environ.get("AIPLAT_HOME") or "").strip()
         if aiplat_home:
             out.append(Path(aiplat_home) / "skills" / sid / "SKILL.md")
@@ -5467,7 +5468,7 @@ def _workspace_delivery_on_disk(run_id: str, raw_out: Any = None) -> bool:
     rid = re.sub(r"[^A-Za-z0-9._-]+", "_", str(run_id or "").strip())[:80]
     if not rid:
         return False
-    home = os.path.realpath(os.path.expanduser(os.environ.get("AIPLAT_HOME") or "~/.aiplat"))
+    home = os.path.realpath(get_aiplat_home())
     path = os.path.join(home, "run_workspaces", rid)
     try:
         return os.path.isdir(path) and any(os.scandir(path))
@@ -5499,7 +5500,7 @@ def _attach_persist_fields(
             files = meta.get("persisted_files")
         if not root and str(meta.get("disk_persist") or "") == "ok" and execution_id:
             home = os.path.realpath(
-                os.path.expanduser(os.environ.get("AIPLAT_HOME") or "~/.aiplat")
+                get_aiplat_home()
             )
             cand = os.path.join(home, "run_workspaces", str(execution_id).strip())
             if os.path.isdir(cand):

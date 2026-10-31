@@ -1,3 +1,4 @@
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from api.schemas_response import StatusResponse
 u"""Governance API — 治理管线 + 审批 + 映射验证 + 仪表盘 (v2.8)."""
 from fastapi import APIRouter, HTTPException, Query
@@ -23,7 +24,7 @@ async def audit_log(days: int = Query(7), domain: str = Query("")):
     u"""Governance audit log."""
     try:
         import sqlite3, os, time
-        db = os.path.expanduser("~/.aiplat/usage_metrics.db")
+        db = get_aiplat_data_dir("usage_metrics.db")
         if not os.path.exists(db):
             return {"events": [], "total": 0}
         cutoff = time.time() - days * 86400

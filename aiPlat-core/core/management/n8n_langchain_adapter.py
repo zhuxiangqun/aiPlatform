@@ -3,6 +3,7 @@ n8n + LangChain → aiPlatform format adapters.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import json as _json
@@ -88,7 +89,7 @@ class N8nAdapter:
                                 })
 
                 if stages:
-                    dest = Path.home() / ".aiplat" / "workflow_templates"
+                    dest = Path(get_aiplat_home()) / "workflow_templates"
                     dest.mkdir(parents=True, exist_ok=True)
                     (dest / f"{safe}.json").write_text(_json.dumps({
                         "name": safe, "description": f"Imported from n8n: {name}", "stages": stages
@@ -233,7 +234,7 @@ class LangChainAdapter:
                     if "StateGraph" in text or "langgraph" in text.lower():
                         wf = _extract_langgraph(item, text)
                         if wf:
-                            dest = Path.home() / ".aiplat" / "workflow_templates"
+                            dest = Path(get_aiplat_home()) / "workflow_templates"
                             dest.mkdir(parents=True, exist_ok=True)
                             (dest / f"{wf['name']}.json").write_text(_json.dumps(wf["stages"], indent=2, ensure_ascii=False), encoding="utf-8")
                             converted.append(f"workflow:{wf['name']}")

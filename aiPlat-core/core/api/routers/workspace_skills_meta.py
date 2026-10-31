@@ -6,6 +6,7 @@ FastAPI server for historical reasons. Migration plan: move to platform/api/rout
 and proxy through platform's API gateway.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import json
@@ -1519,7 +1520,7 @@ async def workspace_skills_installer_catalog(
     """
     try:
         import yaml as _yaml
-        catalog_path = os.path.expanduser("~/.aiplat/skills/catalog.yaml")
+        catalog_path = get_aiplat_data_dir("skills/catalog.yaml")
         if not os.path.isfile(catalog_path):
             return {"catalog": [], "source": "none"}
 

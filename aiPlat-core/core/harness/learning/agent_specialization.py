@@ -13,6 +13,7 @@ AgentSpecialization — Agent 专长计算引擎 (EvoMap 自组织对齐)
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import logging
@@ -190,7 +191,7 @@ class AgentSpecialization:
                 db_path = _get_platform_db_path()
             except Exception:
                 import os
-                db_path = os.path.expanduser("~/.aiplat/data/aiplat_platform.sqlite3")
+                db_path = get_aiplat_data_dir("data/aiplat_platform.sqlite3")
 
             if not db_path or not __import__("os").path.exists(db_path):
                 return []

@@ -13,6 +13,7 @@ Usage:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import re as _re
@@ -414,7 +415,7 @@ class StateMachine:
             return False
 
         domain_id = context.domain_id if hasattr(context, "domain_id") else ""
-        db_path = _os.path.expanduser("~/.aiplat/state_changes.db")
+        db_path = get_aiplat_data_dir("state_changes.db")
         if not _os.path.exists(db_path):
             return False
 

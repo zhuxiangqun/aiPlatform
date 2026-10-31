@@ -5,6 +5,7 @@ Reuses state_history.db for aggregation—no separate table needed.
 Provides: state distribution, bottleneck analysis, SLA violations, trends.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import os as _os
 import sqlite3 as _sqlite3
@@ -12,7 +13,7 @@ import time as _time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-DB_PATH = _os.path.expanduser("~/.aiplat/state_changes.db")
+DB_PATH = get_aiplat_data_dir("state_changes.db")
 
 
 def _get_conn():

@@ -50,6 +50,7 @@ Canonical location: harness/execution/pipeline_engine.py (CLAUDE.md §5.23).
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -1281,7 +1282,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
                     import lancedb
 
-                    db_path = node_cfg.get('vector_db_path', os.path.expanduser('~/.aiplat/vectors'))
+                    db_path = node_cfg.get('vector_db_path', get_aiplat_data_dir("vectors"))
 
                     db = lancedb.connect(db_path)
 
@@ -4425,7 +4426,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         _here = _os.path.dirname(_os.path.abspath(__file__))
         _sp = _os.path.join(_here, "..", "..", "engine", "skills", _skill_name, "SKILL.md")
         _sp = _os.path.abspath(_sp)
-        _alt = _os.path.expanduser(f"~/.aiplat/skills/{_skill_name}/SKILL.md")
+        _alt = get_aiplat_data_dir(f"skills/{_skill_name}/SKILL.md")
         if not _os.path.isfile(_sp):
             _sp = _alt
         if _os.path.isfile(_sp):
@@ -5485,7 +5486,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         _here = _os.path.dirname(_os.path.abspath(__file__))
         _sp = _os.path.join(_here, "..", "..", "engine", "skills", skill_name, "SKILL.md")
         _sp = _os.path.abspath(_sp)
-        _alt = _os.path.expanduser(f"~/.aiplat/skills/{skill_name}/SKILL.md")
+        _alt = get_aiplat_data_dir(f"skills/{skill_name}/SKILL.md")
         if not _os.path.isfile(_sp):
             _sp = _alt
         if not _os.path.isfile(_sp):
@@ -5637,7 +5638,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
         if not _target:
             # Default: ~/.aiplat/apps/{project_id}/current
             _pid = state.get("project_id", "") or state.get("_project_id", "")
-            _home = _os2.getenv("AIPLAT_HOME", _os2.path.expanduser("~/.aiplat"))
+            _home = get_aiplat_home()
             _target = _os2.path.join(_home, "apps", _pid, "current")
         _os2.makedirs(_target, exist_ok=True)
         state["_deploy_files_dir"] = _target
@@ -7884,7 +7885,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
 
 
-            skills_dir = os.path.expanduser("~/.aiplat/skills/auto")
+            skills_dir = get_aiplat_data_dir("skills/auto")
 
             os.makedirs(skills_dir, exist_ok=True)
 
@@ -8147,7 +8148,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
         import os as _os
 
-        agent_md = _os.path.expanduser(f"~/.aiplat/agents/{agent_id}/AGENT.md")
+        agent_md = get_aiplat_data_dir(f"agents/{agent_id}/AGENT.md")
 
         if not _os.path.isfile(agent_md):
 
@@ -8755,7 +8756,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
 
 
-            auto_dir = os.path.expanduser("~/.aiplat/auto_pipelines")
+            auto_dir = get_aiplat_data_dir("auto_pipelines")
 
             os.makedirs(auto_dir, exist_ok=True)
 

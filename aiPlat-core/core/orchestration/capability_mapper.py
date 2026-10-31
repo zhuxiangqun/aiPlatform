@@ -5,6 +5,7 @@ Only loaded when AGENT.md capabilities frontmatter scanning fails to find a matc
 Per CLAUDE.md §5.29: no hardcoded business role names or agent IDs in core.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import json
@@ -61,8 +62,8 @@ def _scan_agent_capabilities() -> Dict[str, List[str]]:
 
     caps: Dict[str, List[str]] = {}
     search_dirs = [
-        os.path.expanduser("~/.aiplat/agents"),
-        os.path.join(os.path.expanduser("~/.aiplat"), "workspace_seeds/agents"),
+        get_aiplat_data_dir("agents"),
+        os.path.join(get_aiplat_home(), "workspace_seeds/agents"),
     ]
     for base in search_dirs:
         if not os.path.isdir(base):

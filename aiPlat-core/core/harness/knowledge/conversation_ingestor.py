@@ -12,6 +12,7 @@ ConversationIngestor — 对话→Wiki 自动管线 (CodeAlmanac sync 对齐)
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import logging
@@ -58,10 +59,8 @@ class ConversationIngestor:
     """
 
     def __init__(self):
-        self._processed_file = _Path(
-            _os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")
-        ) / "data" / ".conversation_ingested.json"
-        self._db_path = _os.path.expanduser("~/.aiplat/data/aiplat_platform.sqlite3")
+        self._processed_file = _Path(get_aiplat_data_dir("data/.conversation_ingested.json"))
+        self._db_path = get_aiplat_data_dir("data/aiplat_platform.sqlite3")
 
     async def ingest_recent(
         self,
@@ -269,9 +268,7 @@ class ConversationIngestor:
 
         # 1. 平台级 Wiki
         try:
-            wiki_dir = _Path(
-                _os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")
-            ) / "wiki" / "collections" / (domain_id or "default")
+            wiki_dir = _Path(get_aiplat_data_dir(f"wiki/collections/{domain_id or 'default'}"))
             wiki_dir.mkdir(parents=True, exist_ok=True)
             page_path = wiki_dir / f"{topic_slug}.md"
 

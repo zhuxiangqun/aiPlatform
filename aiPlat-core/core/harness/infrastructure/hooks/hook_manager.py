@@ -2,6 +2,7 @@
 Hooks System Module
 """
 
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -667,7 +668,7 @@ def get_default_hooks() -> Dict[str, Hook]:
             }
             
             from pathlib import Path as _Path
-            results_dir = _Path(_os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))) / "eval_results"
+            results_dir = _Path(get_aiplat_home()) / "eval_results"
             results_dir.mkdir(parents=True, exist_ok=True)
             out_path = results_dir / f"{agent_id}_{int(_time.time())}_auto.json"
             out_path.write_text(_json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")

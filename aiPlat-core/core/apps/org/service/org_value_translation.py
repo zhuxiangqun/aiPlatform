@@ -1,6 +1,7 @@
 """H3 — value translation. Read-only. Not a second KPI engine. Not a signature."""
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -16,7 +17,7 @@ _SOURCES = frozenset({"customer_provided", "platform_default", "missing"})
 
 
 def _home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _safe_tenant(tenant_id: str) -> str:

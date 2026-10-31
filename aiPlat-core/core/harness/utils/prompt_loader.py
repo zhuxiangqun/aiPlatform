@@ -7,6 +7,7 @@ Core/Prompts frontend without code changes.
 
 Resolution chain: cache → DB → default (code-embedded, always available)
 """
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 import time
 from typing import Any, Dict, List, Optional, Tuple
@@ -877,7 +878,7 @@ def _scan_domain_prompts(_force: bool = False):
         import glob as _glob
         import os as _os
 
-        ontology_dir = _os.path.expanduser("~/.aiplat/ontologies")
+        ontology_dir = get_aiplat_data_dir("ontologies")
         for yaml_path in _glob.glob(_os.path.join(ontology_dir, "*.yaml")):
             try:
                 domain_id = _os.path.splitext(_os.path.basename(yaml_path))[0]

@@ -1,3 +1,4 @@
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from typing import Dict, Any, Optional, Callable, List, Awaitable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -194,7 +195,7 @@ class AlertManager:
         import sqlite3, os
         if self._db_path is not None:
             return
-        db_dir = os.path.expanduser("~/.aiplat")
+        db_dir = get_aiplat_home()
         os.makedirs(db_dir, exist_ok=True)
         self._db_path = os.path.join(db_dir, "alerts.db")
         with sqlite3.connect(self._db_path) as conn:

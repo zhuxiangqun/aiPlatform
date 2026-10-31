@@ -250,7 +250,7 @@ class EntityExtractor:
             return None
         try:
             import os as _os
-            path = _os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}.yaml")
+            path = get_aiplat_data_dir(f"ontologies/{domain_id}.yaml")
             if not _os.path.exists(path):
                 return None
             from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
@@ -464,7 +464,7 @@ class DraftYamlWriter:
     """Write extracted entities/relations as draft YAML for expert review."""
 
     def __init__(self, draft_dir: Optional[str] = None):
-        from core.utils.paths import get_ontologies_dir
+        from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
         self.DRAFT_DIR = draft_dir or os.path.join(get_ontologies_dir(), "drafts")
         os.makedirs(self.DRAFT_DIR, exist_ok=True)

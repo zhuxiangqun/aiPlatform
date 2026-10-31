@@ -1,4 +1,5 @@
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 from pydantic import BaseModel
 
@@ -76,7 +77,7 @@ async def system_overview():
 
         import json, os
 
-        path = os.path.expanduser("~/.aiplat/ontologies/registry.json")
+        path = get_aiplat_data_dir("ontologies/registry.json")
 
         with open(path) as f:
 
@@ -756,7 +757,7 @@ async def system_status():
 
         import os as _os_ss
 
-        mdir = _os_ss.path.expanduser("~/.aiplat/fde-manuals")
+        mdir = get_aiplat_data_dir("fde-manuals")
 
         manuals = [f for f in _os_ss.listdir(mdir) if f.endswith("-current.md")] if _os_ss.path.exists(mdir) else []
 

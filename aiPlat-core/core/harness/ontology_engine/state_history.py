@@ -11,6 +11,7 @@ Import must not mkdir / open DB — hermetic tests and read-only HOME require la
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 import threading
 
@@ -22,7 +23,7 @@ from typing import Any, Dict, List, Optional
 
 
 def _db_path() -> str:
-    home = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat"))
+    home = _Path(get_aiplat_home())
     db_dir = home / "state_history"
     db_dir.mkdir(parents=True, exist_ok=True)
     return str(db_dir / "state_changes.db")

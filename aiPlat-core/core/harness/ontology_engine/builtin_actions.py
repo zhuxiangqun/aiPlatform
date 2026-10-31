@@ -5,6 +5,7 @@ Built-in action contracts + YAML auto-loader (v3, 2026-07-29).
 register_all() also scans ~/.aiplat/actions/*.yaml and workspace_seeds/actions/.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import glob
 import logging
@@ -142,7 +143,7 @@ def register_all(registry) -> int:
         count += 1
 
     # 2. Scan YAML directories: $AIPLAT_HOME/actions + workspace seeds
-    home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    home = get_aiplat_home()
     scan_dirs = [
         os.path.join(home, "actions"),
         os.path.abspath(

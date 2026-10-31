@@ -29,6 +29,7 @@ AbstractGoalDecomposer — 模糊业务目标分解器 (Phase 39).
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -116,7 +117,7 @@ class AbstractGoalDecomposer:
 
 
 
-    _PENDING_DIR = _os.path.expanduser("~/.aiplat/goals/pending")
+    _PENDING_DIR = get_aiplat_data_dir("goals/pending")
 
 
 

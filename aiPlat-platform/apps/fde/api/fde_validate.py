@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from core.utils.paths import get_aiplat_data_dir
 from typing import Any, Dict
 from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
@@ -39,7 +40,7 @@ async def fde_validate():
     # 1. Domain registry load
     def _ck_domains():
         import json
-        with open(os.path.expanduser("~/.aiplat/ontologies/registry.json")) as f:
+        with open(get_aiplat_data_dir("ontologies/registry.json")) as f:
             r = json.load(f)
         return len(r.get("domains", {})) >= 2
 
@@ -64,14 +65,14 @@ async def fde_validate():
     # 5. Ontology YAML load
     def _ck_ontology():
         from core.api.core_facade import load_ontology_from_yaml
-        path = os.path.expanduser("~/.aiplat/ontologies/ai-knowledge.yaml")
+        path = get_aiplat_data_dir("ontologies/ai-knowledge.yaml")
         dom = load_ontology_from_yaml(path)
         return len(dom.classes) > 0
 
     # 6. Solution YAML load
     def _ck_solution():
         from core.api.core_facade import load_ontology_from_yaml
-        path = os.path.expanduser("~/.aiplat/ontologies/ai-solution.yaml")
+        path = get_aiplat_data_dir("ontologies/ai-solution.yaml")
         dom = load_ontology_from_yaml(path)
         return len(dom.classes) > 0
 

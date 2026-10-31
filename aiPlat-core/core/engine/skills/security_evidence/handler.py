@@ -4,6 +4,7 @@ Default OFF. No exploit PoCs. No live SSH / network. Writes regression_evidence 
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import os
@@ -32,7 +33,7 @@ def _evidence_dir() -> Path:
 
         root = Path(get_aiplat_home())
     except Exception:
-        root = Path.home() / ".aiplat"
+        root = Path(get_aiplat_home())
     d = root / "cache" / "security_evidence"
     d.mkdir(parents=True, exist_ok=True)
     return d

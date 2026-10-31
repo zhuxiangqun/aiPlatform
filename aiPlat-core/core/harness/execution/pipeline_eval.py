@@ -7,6 +7,7 @@ resolve via the MRO at runtime.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import datetime
 import json
@@ -1079,7 +1080,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
 
                         trace = state.get("_graph_trace", [])
 
-                        out_path = os.getenv("AIPLAT_OTEL_EXPORT_PATH", os.path.expanduser("~/.aiplat/traces/latest.json"))
+                        out_path = os.getenv("AIPLAT_OTEL_EXPORT_PATH", get_aiplat_data_dir("traces/latest.json"))
 
                         export_otel_trace(trace, out_path)
 
@@ -1089,7 +1090,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
 
                 try:
 
-                    snapshot_dir = os.path.expanduser("~/.aiplat/traces/history")
+                    snapshot_dir = get_aiplat_data_dir("traces/history")
 
                     os.makedirs(snapshot_dir, exist_ok=True)
 

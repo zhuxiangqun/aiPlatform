@@ -5,6 +5,7 @@ Maps external raw JSON to internal ontology entities without pre-modeling.
 Three-stage key matching: exact → normalized → fuzzy.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -30,7 +31,7 @@ class DynamicSchemaMapper:
         if cache_key in self._cache:
             return self._cache[cache_key]
 
-        yaml_path = os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}.yaml")
+        yaml_path = get_aiplat_data_dir(f"ontologies/{domain_id}.yaml")
         if not os.path.exists(yaml_path):
             raise FileNotFoundError(f"Domain ontology not found: {yaml_path}")
 

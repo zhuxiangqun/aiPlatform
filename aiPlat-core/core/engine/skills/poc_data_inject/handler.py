@@ -1,4 +1,5 @@
 """POC Data Injector handler — 客户数据快速注入 (FDE POC)."""
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import json
 import logging
 import os
@@ -16,7 +17,7 @@ _HANDLERS = {
     ".txt": "text", ".md": "text",
 }
 
-_POC_KB = os.path.expanduser("~/.aiplat/kb/poc")
+_POC_KB = get_aiplat_data_dir("kb/poc")
 
 
 def _save_as_document(file_path: str, content: str, fmt: str = "text") -> str:

@@ -10,6 +10,7 @@ TextCleaner — 可配置的文本清洗规则引擎。
   3. 用户规则覆盖同名默认规则；enabled: false 禁用该规则
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -29,8 +30,8 @@ class TextCleaner:
     def _load_rules(self):
         """Load rules: built-in defaults → industry packs → user overrides."""
         builtin_path = Path(__file__).parent.parent / "ontology_engine" / "cleanup_rules.yaml"
-        user_path = Path(os.path.expanduser("~/.aiplat/cleanup_rules.yaml"))
-        industry_dir = Path(os.path.expanduser("~/.aiplat/cleanup_rules"))
+        user_path = Path(get_aiplat_data_dir("cleanup_rules.yaml"))
+        industry_dir = Path(get_aiplat_data_dir("cleanup_rules"))
 
         # Load built-in defaults
         default_rules = {}

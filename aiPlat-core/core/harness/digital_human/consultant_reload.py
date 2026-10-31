@@ -4,6 +4,7 @@ Avoids requiring a gunicorn restart when editing ~/.aiplat/agents/.../AGENT.md
 or consultant_constitution.md during consultant iteration.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -18,7 +19,7 @@ _CONST_TEXT: str = ""
 
 
 def _aiplat_home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")))
+    return Path(get_aiplat_home())
 
 
 def agent_md_path(agent_id: str = "platform_consultant") -> Path:

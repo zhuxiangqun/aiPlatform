@@ -1,6 +1,7 @@
 """Org L5 KPI weekly report (it-ops pilot D2) + Phase 3 attribution."""
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import os
@@ -150,7 +151,7 @@ def weekly_kpi_report(
 def joint_health_view(domain_id: str = "it-ops") -> Dict[str, Any]:
     """Read-only joint health. Does not write YAML, register actions, or start a fleet."""
     did = (domain_id or "").strip() or "it-ops"
-    home = Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    home = Path(get_aiplat_home())
 
     explained = 0
     gap = 0

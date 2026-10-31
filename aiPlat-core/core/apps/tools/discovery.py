@@ -7,6 +7,7 @@ Per CLAUDE.md §5.30: called from core/server.py lifespan.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import hashlib
 import importlib.util
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 def _default_tools_dir() -> Path:
     return Path(os.getenv("AIPLAT_TOOLS_PATH",
-        os.path.join(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")), "tools")))
+        os.path.join(get_aiplat_home(), "tools")))
 
 
 def _sha256_file(p: Path) -> str:

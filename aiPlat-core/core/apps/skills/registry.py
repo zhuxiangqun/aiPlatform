@@ -5,6 +5,7 @@ Provides enhanced SkillRegistry with version management, enable/disable,
 and binding statistics.
 """
 
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import os
 import math
 import logging
@@ -1290,8 +1291,7 @@ class SkillRegistry:
         try:
             import os as _os
             from core.apps.skills.skill_execution_record import SkillExecutionStore
-            store_path = _os.path.expanduser(
-                _os.getenv("AIPLAT_HOME", "~/.aiplat")) + "/data/execution_store.db"
+            store_path = get_aiplat_home() + "/data/execution_store.db"
             return SkillExecutionStore.get_adopted_count(store_path, domain_id)
         except Exception:
             return 0
@@ -2050,7 +2050,7 @@ class _GenericSkill(BaseSkill):
                         gaps = []
                         if did:
                             known_labels = set()
-                            onto_path = _os_pg.path.expanduser(f"~/.aiplat/ontologies/{did}.yaml")
+                            onto_path = get_aiplat_data_dir(f"ontologies/{did}.yaml")
                             if _os_pg.path.exists(onto_path):
                                 from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
                                 dom = load_ontology_from_yaml(onto_path)

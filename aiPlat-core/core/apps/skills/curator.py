@@ -11,6 +11,7 @@ the next version?".
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import json
@@ -68,7 +69,7 @@ class SkillCurator:
 
     def __init__(self, skill_dir: Optional[Path] = None, config: Optional[CuratorConfig] = None):
         self._skill_dir = skill_dir or Path(
-            os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat"))
+            get_aiplat_home()
         ) / "skills"
         self._config = config or CuratorConfig()
         self._state: Dict = {}

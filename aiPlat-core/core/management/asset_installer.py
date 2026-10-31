@@ -10,6 +10,7 @@ Security:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import json
@@ -621,7 +622,7 @@ _auto_adapted: true
         manifest: Dict[str, Any] = {"converted": [], "skipped": [], "mcp_hints": []}
         import shutil as _shutil
 
-        base = _os.path.expanduser("~/.aiplat")
+        base = get_aiplat_home()
         skills_dest = Path(base) / "skills"
         agents_dest = Path(base) / "agents"
         hooks_dest = Path(base) / "hooks"

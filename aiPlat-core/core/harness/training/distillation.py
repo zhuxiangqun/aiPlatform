@@ -41,6 +41,7 @@ Usage:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -134,7 +135,7 @@ class DistillationEngine:
 
         self._jobs: Dict[str, DistillationJob] = {}
 
-        self._job_dir = os.path.expanduser("~/.aiplat/distillation")
+        self._job_dir = get_aiplat_data_dir("distillation")
 
         os.makedirs(self._job_dir, exist_ok=True)
 

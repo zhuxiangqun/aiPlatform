@@ -1,5 +1,6 @@
 """Skill Marketplace — skill discovery, installation, and rating.
 
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 H-axis L4→L5 enabler: ecosystem foundation.
 
@@ -181,7 +182,7 @@ class SkillMarketplace:
 
                 import subprocess
 
-                skills_dir = os.path.expanduser("~/.aiplat/skills")
+                skills_dir = get_aiplat_data_dir("skills")
 
                 target = os.path.join(skills_dir, skill_id)
 
@@ -344,7 +345,7 @@ class SkillMarketplace:
         Maps aiPlat SKILL.md frontmatter → agentskills.io metadata.
         aiPlat extensions (effects/permissions) use safe defaults when absent.
         """
-        base = skill_dir or os.path.expanduser("~/.aiplat/skills")
+        base = skill_dir or get_aiplat_data_dir("skills")
         skill_path = os.path.join(base, skill_id, "SKILL.md")
         if not os.path.exists(skill_path):
             return {"error": f"skill not found: {skill_id}"}

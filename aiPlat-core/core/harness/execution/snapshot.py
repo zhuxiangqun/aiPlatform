@@ -11,6 +11,7 @@ Storage: ~/.aiplat/snapshots/{session_id}/{snapshot_id}.json
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import hashlib
 import json
@@ -22,7 +23,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("aiplat.execution_snapshot")
 
-SNAPSHOT_ROOT = os.path.expanduser("~/.aiplat/snapshots")
+SNAPSHOT_ROOT = get_aiplat_data_dir("snapshots")
 MAX_SNAPSHOTS_PER_SESSION = 50
 
 

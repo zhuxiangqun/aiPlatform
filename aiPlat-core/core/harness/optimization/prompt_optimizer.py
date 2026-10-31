@@ -8,6 +8,7 @@ Fully event-driven — runs autonomously for N rounds, detects stagnation, stops
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -27,9 +28,9 @@ def _load_yml(path: str) -> Dict[str, Any]:
 
 def _load_optimization_config(agent_id: str) -> Dict[str, Any]:
     """Load optimization config from ~/.aiplat/optimizations/{agent_id}.yaml"""
-    base = os.path.expanduser(f"~/.aiplat/optimizations/{agent_id}.yaml")
+    base = get_aiplat_data_dir(f"optimizations/{agent_id}.yaml")
     return _load_yml(base) or _load_yml(
-        os.path.expanduser(f"~/.aiplat/optimizations/default.yaml")
+        get_aiplat_data_dir(f"optimizations/default.yaml")
     )
 
 
@@ -227,7 +228,7 @@ class PromptOptimizer:
 
     def _read_agent_md(self) -> str:
         """Read current AGENT.md content (bypassing cache)."""
-        path = os.path.expanduser(f"~/.aiplat/agents/{self.agent_id}/AGENT.md")
+        path = get_aiplat_data_dir(f"agents/{self.agent_id}/AGENT.md")
         if not os.path.exists(path):
             return ""
         with open(path, "r", encoding="utf-8") as f:

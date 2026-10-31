@@ -12,6 +12,7 @@ Endpoints:
   GET  /roles/metrics              — realtime role performance metrics
   POST /roles/strategy/override    — manual strategy override per agent
 """
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from fastapi import APIRouter, HTTPException
 from typing import Any, Dict, List, Optional
 
@@ -66,7 +67,7 @@ async def get_role_agents() -> List[Dict[str, Any]]:
         })
 
     # Scan workspace agents directory
-    workspace_dir = os.path.expanduser("~/.aiplat/agents")
+    workspace_dir = get_aiplat_data_dir("agents")
     if os.path.isdir(workspace_dir):
         for name in os.listdir(workspace_dir):
             if name not in _role_configs and os.path.isdir(os.path.join(workspace_dir, name)):

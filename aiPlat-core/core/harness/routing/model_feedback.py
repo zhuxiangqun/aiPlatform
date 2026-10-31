@@ -15,6 +15,7 @@ How it works:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import json as _json
@@ -24,7 +25,7 @@ from typing import Any, Dict, List
 
 
 def _quality_dir() -> _Path:
-    d = _Path(_os.getenv("AIPLAT_HOME", _Path.home() / ".aiplat")) / "model_quality"
+    d = _Path(get_aiplat_home()) / "model_quality"
     d.mkdir(parents=True, exist_ok=True)
     return d
 

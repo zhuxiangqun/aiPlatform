@@ -23,6 +23,7 @@ Phase E-H (正式交付) — 2026-07:
   /fde/handover/close — archive project + revoke FDE access
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import asyncio
 import json
@@ -273,7 +274,7 @@ async def _collect_timeline() -> List[Dict[str, Any]]:
     """Real collector: acceptance signoffs + evolve apply/reject/rollback events."""
     events: List[Dict[str, Any]] = []
     try:
-        ad = os.path.expanduser(os.environ.get("AIPLAT_ACCEPTANCE_DIR", "~/.aiplat/acceptance"))
+        ad = os.path.expanduser(os.environ.get("AIPLAT_ACCEPTANCE_DIR", get_aiplat_data_dir("acceptance")))
         if os.path.isdir(ad):
             for fn in sorted(os.listdir(ad), reverse=True)[:30]:
                 if not fn.endswith(".json"):
@@ -1105,8 +1106,7 @@ async def infer_industry(body: Dict[str, Any]):
 async def submit_clarified_feedback(body: Dict[str, Any]):
     """Store clarified feedback conversation + summary with pipeline context."""
     import json as _json
-    fd = os.path.expanduser(os.environ.get("AIPLAT_FEEDBACK_DIR",
-        "~/.aiplat/field_feedback"))
+    fd = os.path.expanduser(os.environ.get("AIPLAT_FEEDBACK_DIR", get_aiplat_data_dir("field_feedback")))
     os.makedirs(fd, exist_ok=True)
     fid = f"fb-{int(time.time())}-{uuid.uuid4().hex[:8]}"
     record = {
@@ -1163,7 +1163,7 @@ async def submit_fde_feedback(body: Dict[str, Any]):
 def _fallback_submit(data: dict) -> str:
     """Fallback: write feedback directly to ~/.aiplat/field_feedback/."""
     import json
-    fd = os.path.expanduser(os.environ.get("AIPLAT_FEEDBACK_DIR", "~/.aiplat/field_feedback"))
+    fd = os.path.expanduser(os.environ.get("AIPLAT_FEEDBACK_DIR", get_aiplat_data_dir("field_feedback")))
     os.makedirs(fd, exist_ok=True)
     fid = f"fb-{int(time.time())}-{uuid.uuid4().hex[:8]}"
     record = {"id": fid, "created_at": datetime.now(timezone.utc).isoformat(), **data}
@@ -1179,7 +1179,7 @@ async def fde_feedback_history(
     step: str = Query("", description="Filter by pipeline step"),
 ):
     """返回最近 N 条现场反馈，支持按客户/步骤筛选。"""
-    fd = os.path.expanduser(os.environ.get("AIPLAT_FEEDBACK_DIR", "~/.aiplat/field_feedback"))
+    fd = os.path.expanduser(os.environ.get("AIPLAT_FEEDBACK_DIR", get_aiplat_data_dir("field_feedback")))
     if not os.path.isdir(fd):
         return {"feedback": [], "total": 0}
     try:
@@ -1835,14 +1835,12 @@ async def fde_health():
 
     # ── 1. Domain registry ──
     try:
-        reg_path = _os_health.path.expanduser("~/.aiplat/ontologies/registry.json")
+        reg_path = get_aiplat_data_dir("ontologies/registry.json")
         with open(reg_path) as f:
             reg = _json_health.load(f)
         domains = list(reg.get("domains", {}).keys())
         yaml_ok = all(
-            _os_health.path.exists(_os_health.path.expanduser(
-                f"~/.aiplat/ontologies/{cfg.get('ontology_file', d + '.yaml')}"
-            )) for d, cfg in reg.get("domains", {}).items()
+            _os_health.path.exists(get_aiplat_data_dir(f"ontologies/{cfg.get('ontology_file', d + '.yaml')}")) for d, cfg in reg.get("domains", {}).items()
         )
         result["components"]["domains"] = {
             "count": len(domains),
@@ -1901,7 +1899,7 @@ async def fde_health():
         from core.api.core_facade import load_ontology_from_yaml
         yaml_stats = {}
         for did in domains[:6]:
-            path = _os_health.path.expanduser(f"~/.aiplat/ontologies/{did}.yaml")
+            path = get_aiplat_data_dir(f"ontologies/{did}.yaml")
             if _os_health.path.exists(path):
                 dom = load_ontology_from_yaml(path)
                 yaml_stats[did] = f"{len(dom.classes)} classes v{dom.version}"
@@ -2273,7 +2271,7 @@ def _get_manual_stats() -> dict:
     """Quick project manual stats for dashboard."""
     try:
         import os as _os_ms
-        manuals_dir = _os_ms.path.expanduser("~/.aiplat/fde-manuals")
+        manuals_dir = get_aiplat_data_dir("fde-manuals")
         manuals = [f for f in _os_ms.listdir(manuals_dir) if f.endswith("-current.md")]
         meta = _load_manual_meta() if _os_ms.path.exists(_os_ms.path.join(manuals_dir, "meta.json")) else {}
         active = sum(1 for m in manuals if meta.get(m.replace("-current.md", ""), {}).get("status", "active") != "archived")
@@ -2394,7 +2392,7 @@ def _get_governance_live_status() -> dict:
     try:
         # Domains
         import os as _os_gov
-        path = _os_gov.path.expanduser("~/.aiplat/ontologies/registry.json")
+        path = get_aiplat_data_dir("ontologies/registry.json")
         with open(path) as f:
             reg = _json_gov.load(f)
         status["configured_domains"] = len(reg.get("domains", {}))
@@ -3184,7 +3182,7 @@ async def run_auto_garden(payload: dict = Body(...)):
 async def list_garden_reports(limit: int = Query(10)):
     """列出花园整理报告."""
     import os, json
-    wiki_root = os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat")) + "/wiki"
+    wiki_root = get_aiplat_data_dir("wiki")
     reports_dir = os.path.join(wiki_root, "garden_reports")
     if not os.path.isdir(reports_dir):
         return {"reports": []}
@@ -3341,7 +3339,7 @@ async def install_skill(payload: dict = Body(...)):
     if not source or not skill_name:
         raise HTTPException(status_code=400, detail="需要 url 或 path + skill_name")
 
-    target_dir = os.path.expanduser(f"~/.aiplat/skills/{skill_name}")
+    target_dir = get_aiplat_data_dir(f"skills/{skill_name}")
     os.makedirs(target_dir, exist_ok=True)
 
     if payload.get("url"):

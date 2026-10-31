@@ -20,6 +20,7 @@ callers:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import logging
@@ -61,7 +62,7 @@ class GrowthSnapshot:
 
 
 def _snapshots_path(collection_id: str = "default") -> str:
-    home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
+    home = get_aiplat_home()
     return _os.path.join(home, "wiki", "collections", collection_id, "growth_snapshots.json")
 
 

@@ -8,6 +8,7 @@ measurement = per-instance formula   (e.g., "completed_at - created_at")
 aggregation = multi-instance method  (p95, avg, sum, count, none)
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os as _os
@@ -19,7 +20,7 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("metric_engine")
 
-DB_PATH = _os.path.expanduser("~/.aiplat/state_changes.db")
+DB_PATH = get_aiplat_data_dir("state_changes.db")
 
 
 @dataclass

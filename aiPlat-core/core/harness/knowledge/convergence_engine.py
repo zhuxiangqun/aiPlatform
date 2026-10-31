@@ -13,6 +13,7 @@ callers: POST_LOOP hook, nightly evolution, on-demand scan
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import time as _time
@@ -47,7 +48,7 @@ class ConvergenceEngine:
         """Load convergence trigger thresholds from knowledge-atom.yaml."""
         try:
             import os, yaml
-            path = os.path.expanduser("~/.aiplat/ontologies/knowledge-atom.yaml")
+            path = get_aiplat_data_dir("ontologies/knowledge-atom.yaml")
             with open(path, "r", encoding="utf-8") as f:
                 raw = yaml.safe_load(f)
             return raw.get("convergence", {}).get("triggers", {})

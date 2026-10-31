@@ -8,6 +8,7 @@ Term Resolver — 跨域术语消歧引擎 (v2.6).
 数据存储: ~/.aiplat/terms/ambiguities.json
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import logging
@@ -17,7 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("term_resolver")
 
-_TERMS_DIR = _os.path.expanduser("~/.aiplat/terms")
+_TERMS_DIR = get_aiplat_data_dir("terms")
 
 
 def _ensure_dir() -> Path:

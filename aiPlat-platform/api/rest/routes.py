@@ -35,6 +35,7 @@ What this file provides:
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -705,7 +706,7 @@ def _require_scope(identity: Identity, scope: str) -> None:
 
 def _platform_home() -> str:
 
-    return os.getenv("AIPLAT_HOME", str((__import__('pathlib').Path.home() / '.aiplat')))
+    return get_aiplat_home()
 
 
 

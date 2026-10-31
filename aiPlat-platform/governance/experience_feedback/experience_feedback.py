@@ -30,6 +30,7 @@ HarnessEval × SBA 落地（docs/archive/sba-harnesseval-执行评测双闭环.m
 存储：JSON 文件（环境变量 AIPLAT_EXPERIENCE_FILE 指定；默认 $AIPLAT_HOME/experience_feedback.json）。
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import os
@@ -141,7 +142,7 @@ def _default_path() -> str:
     env = os.environ.get("AIPLAT_EXPERIENCE_FILE")
     if env:
         return env
-    home = os.environ.get("AIPLAT_HOME") or os.path.expanduser("~/.aiplat")
+    home = get_aiplat_home()
     return os.path.join(home, "experience_feedback.json")
 
 

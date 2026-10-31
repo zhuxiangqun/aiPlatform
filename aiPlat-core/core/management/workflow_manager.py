@@ -11,6 +11,7 @@ Supports the same governance pipeline as Skills/Agents:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -66,7 +67,7 @@ class WorkflowManager:
     def _resolve_paths(self) -> List[Path]:
         repo_root = Path(__file__).resolve().parents[2]
         engine_default = repo_root / "core" / "engine" / "workflows"
-        workspace_default = Path.home() / ".aiplat" / "workflows"
+        workspace_default = Path(get_aiplat_home()) / "workflows"
 
         if self._scope == "engine":
             env_path = os.environ.get("AIPLAT_ENGINE_WORKFLOWS_PATH")
@@ -76,7 +77,7 @@ class WorkflowManager:
 
     def _resolve_base_path(self) -> Path:
         paths = self._resolve_paths()
-        return paths[-1] if paths else (Path.home() / ".aiplat" / "workflows")
+        return paths[-1] if paths else (Path(get_aiplat_home()) / "workflows")
 
     # ==================== Load & Save ====================
 

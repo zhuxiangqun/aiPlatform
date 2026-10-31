@@ -2,6 +2,7 @@
 App service — publish workflows as apps (API / Chat / Webhook).
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import hashlib
 import hmac
@@ -78,7 +79,7 @@ class AppService:
             project_id = app_id.replace("factory_", "", 1)
             # Clear deploy_dir from projects.json
             projects_file = os.path.join(
-                os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+                get_aiplat_home(),
                 "projects.json",
             )
             if os.path.exists(projects_file):
@@ -98,7 +99,7 @@ class AppService:
                     pass  # noqa: cleanup-best-effort
             # Remove deployed files from disk
             deploy_root = os.path.join(
-                os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+                get_aiplat_home(),
                 "apps", project_id,
             )
             if os.path.isdir(deploy_root):

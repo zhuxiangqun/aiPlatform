@@ -33,6 +33,7 @@ SpecLifecycle — Spec 版本状态机 (P0: Andrew Ng 三层 Loop 传动轴)
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -290,7 +291,7 @@ class SpecLifecycle:
 
     def __init__(self, db_path: Optional[str] = None):
 
-        self._db_path = db_path or os.path.expanduser("~/.aiplat/spec_lifecycle.db")
+        self._db_path = db_path or get_aiplat_data_dir("spec_lifecycle.db")
 
         os.makedirs(os.path.dirname(self._db_path), exist_ok=True)
 

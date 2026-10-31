@@ -22,6 +22,7 @@ Usage:
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -93,7 +94,7 @@ class StalenessMonitor:
 
     def __init__(self):
 
-        self._kb_db_path = Path(os.getenv("AIPLAT_HOME", Path("~").expanduser() / ".aiplat")) / "kb" / "tenants" / "default" / "kb.sqlite3"
+        self._kb_db_path = Path(get_aiplat_home()) / "kb" / "tenants" / "default" / "kb.sqlite3"
 
 
 
@@ -105,7 +106,7 @@ class StalenessMonitor:
 
         try:
 
-            wiki_root = Path(os.getenv("AIPLAT_HOME", Path("~").expanduser() / ".aiplat")) / "wiki" / "collections"
+            wiki_root = Path(get_aiplat_home()) / "wiki" / "collections"
 
             if not wiki_root.exists():
 

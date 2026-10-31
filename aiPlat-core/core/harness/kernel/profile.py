@@ -9,6 +9,7 @@ This module provides the declarative config layer to wire the three resource typ
 together under one profile name.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -72,7 +73,7 @@ class ProfileManager:
     """
 
     def __init__(self, home_dir: str = ""):
-        h = home_dir or os.path.expanduser(os.environ.get("AIPLAT_HOME", "~/.aiplat"))
+        h = home_dir or get_aiplat_home()
         self._profiles_dir = os.path.join(h, "profiles")
         self._profiles: Dict[str, ProfileConfig] = {}
         self._loaded = False

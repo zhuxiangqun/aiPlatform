@@ -18,6 +18,7 @@ Callers:
   - Any agent that needs governed context assembly
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import os
@@ -417,7 +418,7 @@ class PostRetrievalGovernor:
         try:
             import json as _sj
             hist_path = os.path.join(
-                os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat")),
+                get_aiplat_home(),
                 "wiki", "governance_history.json")
             history = []
             if os.path.exists(hist_path):

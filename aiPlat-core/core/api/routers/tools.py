@@ -1,4 +1,5 @@
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -128,7 +129,7 @@ async def list_tools(limit: int = 100, offset: int = 0, available_only: bool = F
     try:
         import importlib.util, sys, os
         from core.apps.tools.base import BaseTool, ToolConfig
-        tools_dir = os.path.join(os.environ.get("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "tools")
+        tools_dir = os.path.join(get_aiplat_home(), "tools")
         for f in sorted(os.listdir(tools_dir)):
             if not f.endswith('.py'): continue
             fpath = os.path.join(tools_dir, f)
@@ -471,7 +472,7 @@ async def create_workspace_tool(request: dict, http_request: Request, rt: Runtim
 
     # Write to workspace tools directory
     import os
-    tools_dir = Path(os.getenv("AIPLAT_TOOLS_PATH", os.path.expanduser("~/.aiplat/tools")))
+    tools_dir = Path(os.getenv("AIPLAT_TOOLS_PATH", get_aiplat_data_dir("tools")))
     tools_dir.mkdir(parents=True, exist_ok=True)
     tool_file = tools_dir / f"{name}.py"
     if tool_file.exists():
@@ -509,10 +510,10 @@ async def create_workspace_tool(request: dict, http_request: Request, rt: Runtim
         else:
             # Fallback: use full discovery
             from core.apps.tools.discovery import ToolDiscovery
-            ToolDiscovery(Path(os.getenv("AIPLAT_TOOLS_PATH", os.path.expanduser("~/.aiplat/tools")))).register_all()
+            ToolDiscovery(Path(os.getenv("AIPLAT_TOOLS_PATH", get_aiplat_data_dir("tools")))).register_all()
     except Exception:
         from core.apps.tools.discovery import ToolDiscovery
-        ToolDiscovery(Path(os.getenv("AIPLAT_TOOLS_PATH", os.path.expanduser("~/.aiplat/tools")))).register_all()
+        ToolDiscovery(Path(os.getenv("AIPLAT_TOOLS_PATH", get_aiplat_data_dir("tools")))).register_all()
 
     return {"status": "created", "name": name, "path": str(tool_file)}
 

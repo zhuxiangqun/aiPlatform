@@ -7,6 +7,7 @@ with the existing KnowledgeRetriever pipeline.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 from typing import Any, Dict, List, Optional
@@ -79,7 +80,7 @@ class WikiPageRetriever(IRetriever):
         try:
             from pathlib import Path
             cid = self._collection_ids[0] if self._collection_ids else "default"
-            cache_path = Path.home() / ".aiplat" / "wiki" / "collections" / cid / "vectors.json"
+            cache_path = Path(get_aiplat_home()) / "wiki" / "collections" / cid / "vectors.json"
             if cache_path.exists():
                 import json as _json
                 cache = _json.loads(cache_path.read_text(encoding="utf-8"))
@@ -198,7 +199,7 @@ class WikiPageRetriever(IRetriever):
         any_stale = False
 
         for cid in self._collection_ids:
-            cache_path = _Path.home() / ".aiplat" / "wiki" / "collections" / cid / "inference_cache.json"
+            cache_path = _Path(get_aiplat_home()) / "wiki" / "collections" / cid / "inference_cache.json"
             if cache_path.exists():
                 try:
                     cache_data = _cache_json.loads(cache_path.read_text(encoding="utf-8"))
@@ -222,7 +223,7 @@ class WikiPageRetriever(IRetriever):
                 inference = run_full_inference(store)
                 merged["transitive"] = inference.get("transitive", [])
                 merged["source_chain"] = inference.get("source_chain", [])
-                cache_path = _Path.home() / ".aiplat" / "wiki" / "collections" / primary_cid / "inference_cache.json"
+                cache_path = _Path(get_aiplat_home()) / "wiki" / "collections" / primary_cid / "inference_cache.json"
                 cache_path.write_text(_cache_json.dumps(
                     {"ts": _time.time(), "inference": inference}, ensure_ascii=False))
                 # For secondary collections, trigger async build if possible
@@ -233,7 +234,7 @@ class WikiPageRetriever(IRetriever):
                         inf2 = run_full_inference(store2)
                         merged["transitive"].extend(inf2.get("transitive", []))
                         merged["source_chain"].extend(inf2.get("source_chain", []))
-                        cp2 = _Path.home() / ".aiplat" / "wiki" / "collections" / cid / "inference_cache.json"
+                        cp2 = _Path(get_aiplat_home()) / "wiki" / "collections" / cid / "inference_cache.json"
                         cp2.write_text(_cache_json.dumps(
                             {"ts": _time.time(), "inference": inf2}, ensure_ascii=False))
                     except Exception as e:
@@ -370,7 +371,7 @@ class WikiPageRetriever(IRetriever):
             try:
                 from pathlib import Path
                 cid = self._collection_ids[0] if self._collection_ids else "default"
-                cache_path = Path.home() / ".aiplat" / "wiki" / "collections" / cid / "vectors.json"
+                cache_path = Path(get_aiplat_home()) / "wiki" / "collections" / cid / "vectors.json"
                 cache_path.parent.mkdir(parents=True, exist_ok=True)
                 import json as _json
                 cache = {}

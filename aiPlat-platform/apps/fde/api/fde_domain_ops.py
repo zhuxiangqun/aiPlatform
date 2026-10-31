@@ -1,5 +1,6 @@
 """FDE Domain Operations — expose domain ontology operations for Agent discovery (split from fde.py)."""
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 from typing import Any, Dict, List
 from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
@@ -23,7 +24,7 @@ async def fde_domain_operations(domain: str):
     from core.api.core_facade import load_ontology_from_yaml
     from .fde_governance import _list_available_domains
 
-    path = _os_do.path.expanduser(f"~/.aiplat/ontologies/{domain}.yaml")
+    path = get_aiplat_data_dir(f"ontologies/{domain}.yaml")
     if not _os_do.path.exists(path):
         raise HTTPException(
             status_code=404,

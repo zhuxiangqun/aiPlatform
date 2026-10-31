@@ -4,6 +4,7 @@ Skill Marketplace API router — list, install, and uninstall skills.
 Mounted at /api/management/skills
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from api.schemas_response import StatusResponse
 import logging
 
@@ -22,7 +23,7 @@ from pydantic import BaseModel
 
 router = APIRouter(prefix="/skills", tags=["skill-marketplace"])
 
-SKILLS_HOME = os.path.expanduser("~/.aiplat/skills")
+SKILLS_HOME = get_aiplat_data_dir("skills")
 CATALOG_PATH = os.path.join(SKILLS_HOME, "catalog.yaml")
 
 

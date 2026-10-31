@@ -14,6 +14,7 @@ Team templates are external YAML files — engine carries zero business assumpti
 New domain? New team YAML. No code change required.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import glob
 import logging
@@ -135,7 +136,7 @@ def _team_search_dirs() -> List[str]:
     except Exception:
         logger.debug("team yaml candidate dirs probe skipped", exc_info=True)
     home = os.path.join(
-        os.environ.get("AIPLAT_HOME") or os.path.expanduser("~/.aiplat"),
+        os.environ.get("AIPLAT_HOME") or get_aiplat_home(),
         "teams",
     )
     seeds_dir = os.path.normpath(
@@ -198,7 +199,7 @@ def _team_yaml_candidates(name: str) -> List[str]:
         if not n:
             return []
         home = os.path.join(
-            os.environ.get("AIPLAT_HOME") or os.path.expanduser("~/.aiplat"),
+            os.environ.get("AIPLAT_HOME") or get_aiplat_home(),
             "teams",
             f"{n}.yaml",
         )
@@ -256,7 +257,7 @@ def _load_skill_frontmatter(skill_name: str) -> Dict[str, Any]:
     _here = _os.path.dirname(_os.path.abspath(__file__))
     candidates = [
         _os.path.join(_here, "..", "..", "engine", "skills", skill_name, "SKILL.md"),
-        _os.path.expanduser(f"~/.aiplat/skills/{skill_name}/SKILL.md"),
+        get_aiplat_data_dir(f"skills/{skill_name}/SKILL.md"),
     ]
     for p in candidates:
         try:
@@ -285,9 +286,9 @@ def list_available_agents() -> List[AgentCatalogEntry]:
     seen: set = set()
 
     for base in [
-        os.path.expanduser("~/.aiplat/agents"),
+        get_aiplat_data_dir("agents"),
         os.path.join(
-            os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+            os.getenv("AIPLAT_HOME", get_aiplat_home()),
             "workspace_seeds", "agents",
         ),
     ]:
@@ -515,7 +516,7 @@ def _ensure_capability_profile(stage: dict) -> None:
 def _load_capability_defaults_yaml() -> dict:
     """Load production capability defaults from YAML (single source of truth)."""
     import os as _os
-    config_path = _os.path.expanduser("~/.aiplat/capability_defaults.yaml")
+    config_path = get_aiplat_data_dir("capability_defaults.yaml")
     if not _os.path.isfile(config_path):
         return {}
     try:

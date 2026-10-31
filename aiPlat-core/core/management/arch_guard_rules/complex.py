@@ -1,5 +1,6 @@
 """Complex architecture guard checks: SKILL.md, AGENT.md, BOUNDARY.yaml, core/apps."""
 
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import subprocess
 import sys
 import re
@@ -170,7 +171,7 @@ class AgentHandoffCheck(ArchRule):
                          "frontend_engineer", "backend_developer", "qa_agent"]
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
-        agents_dir = Path.home() / ".aiplat/agents"
+        agents_dir = Path(get_aiplat_data_dir("agents"))
         missing = []
         for agent in self._PIPELINE_AGENTS:
             agent_md = agents_dir / agent / "AGENT.md"

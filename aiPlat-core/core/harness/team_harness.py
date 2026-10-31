@@ -5,6 +5,7 @@ Runtime = ~/.aiplat/team/ (pull-only) + ~/.aiplat/local/ (never overwritten by p
 T1b: SESSION_START / factory entry fires background pull when AUTOSYNC=1; never blocks.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -32,7 +33,7 @@ _SEED_SCHEMA = (
 
 
 def aiplat_home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat")).expanduser()
+    return Path(get_aiplat_home()).expanduser()
 
 
 def load_team_harness_schema() -> Dict[str, Any]:

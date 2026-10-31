@@ -4,6 +4,7 @@ Scans live workspace assets + menu catalog. No LLM. Answers must cite this brief
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -20,7 +21,7 @@ _BRIEF_TTL_SEC = 60.0
 
 
 def _aiplat_home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _page_manifest_path() -> Path:

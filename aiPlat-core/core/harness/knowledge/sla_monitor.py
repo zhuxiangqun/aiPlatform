@@ -6,6 +6,7 @@ Reads state_history.db timestamps, triggers state transitions on timeout.
 Thread-safe: uses read-only snapshots, never directly mutates active GraphIndex.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os as _os
@@ -103,7 +104,7 @@ def _check_class_timeout(
         from_states = [from_states]
     to_state = transition.get("to", "")
 
-    db_path = _os.path.expanduser("~/.aiplat/state_changes.db")
+    db_path = get_aiplat_data_dir("state_changes.db")
     if not _os.path.exists(db_path):
         return []
 

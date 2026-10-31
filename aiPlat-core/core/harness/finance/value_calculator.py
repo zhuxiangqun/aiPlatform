@@ -39,6 +39,7 @@ Integration:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -178,7 +179,7 @@ class BusinessGoalTracker:
 
         self._goals: Dict[str, BusinessGoal] = {}
 
-        self._storage_path = os.path.expanduser("~/.aiplat/value/goals.json")
+        self._storage_path = get_aiplat_data_dir("value/goals.json")
 
         self._load()
 
@@ -350,7 +351,7 @@ class ValueCalculator:
 
         self._prod_gain = float(os.getenv("AIPLAT_VALUE_PRODUCTIVITY_GAIN", "0.15"))
 
-        self._report_path = os.path.expanduser("~/.aiplat/value/monthly.jsonl")
+        self._report_path = get_aiplat_data_dir("value/monthly.jsonl")
 
 
 

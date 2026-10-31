@@ -8,6 +8,7 @@ Returns four-layer structure with per-component health indicators:
   app      — channels, conversations, sessions, apps
 """
 
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from typing import Any, Dict, List, Optional
 import asyncio
 import httpx
@@ -31,7 +32,7 @@ _OV_CACHE_TS: float = 0.0
 
 def _ov_cache_path() -> str:
     import os
-    return os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "overview_cache.json")
+    return os.path.join(os.getenv("AIPLAT_HOME", get_aiplat_home()), "overview_cache.json")
 
 
 def _load_ov_cache():
@@ -152,7 +153,7 @@ async def _scan_governance() -> Dict[str, Any]:
     Used by both system_overview() and diagnostics._check_governance().
     """
     import json as _json
-    home = os.environ.get("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    home = os.environ.get("AIPLAT_HOME", get_aiplat_home())
     entity_globs = {
         "skills": ("skills", "SKILL.manifest.json"),
         "agents": ("agents", "AGENT.manifest.json"),
@@ -426,7 +427,7 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
             workspace_count = mgr.get_agent_count().get("total", 0)
         else:
             # Fallback: scan ~/.aiplat/agents/ directory
-            ws_dir = Path.home() / ".aiplat" / "agents"
+            ws_dir = Path(get_aiplat_home()) / "agents"
             if ws_dir.exists():
                 workspace_count = sum(1 for _ in ws_dir.rglob("AGENT.md"))
         core["agents"] = {

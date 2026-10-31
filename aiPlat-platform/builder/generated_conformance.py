@@ -21,6 +21,7 @@ AGENT.md / SKILL.md 在注册到工作区前，必须通过本校验器 —— �
     violations = validate_manifest(manifest_dict)             # mode/routing/multi 门禁
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import os
@@ -446,7 +447,7 @@ def validate_generated_file_and_report(path: str, kind: str) -> List[str]:
 def _rejections_path() -> str:
     """拒绝审计文件路径：AIPLAT_HOME/builder/conformance_rejections.jsonl。"""
     import os as _os
-    _home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
+    _home = get_aiplat_home()
     _dir = _os.path.join(_home, "builder")
     _os.makedirs(_dir, exist_ok=True)
     return _os.path.join(_dir, "conformance_rejections.jsonl")

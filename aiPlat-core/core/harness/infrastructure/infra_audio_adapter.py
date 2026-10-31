@@ -4,6 +4,7 @@ Inherits BaseModelAdapter for shared model resolution + caching.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import os
@@ -117,7 +118,7 @@ class InfraAudioAdapter(BaseModelAdapter):
         except Exception:
             model_name = "piper_zh_CN"
 
-        model_path = os.path.expanduser("~/.aiplat/models/piper_zh_CN.onnx")
+        model_path = get_aiplat_data_dir("models/piper_zh_CN.onnx")
         if not os.path.isfile(model_path):
             # Try to resolve via ModelManager
             try:

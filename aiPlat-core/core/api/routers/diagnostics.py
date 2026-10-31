@@ -1,4 +1,5 @@
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import asyncio
 import json
@@ -311,7 +312,7 @@ _HISTORY_MAX = 30
 
 def _diag_cache_path() -> str:
     import os
-    return os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "diag_cache.json")
+    return os.path.join(os.getenv("AIPLAT_HOME", get_aiplat_home()), "diag_cache.json")
 
 
 def _load_diag_cache():
@@ -396,7 +397,7 @@ async def _auto_fill_agents_async(names: list):
 
 
 def _history_path() -> str:
-    return os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "diag_history.json")
+    return os.path.join(os.getenv("AIPLAT_HOME", get_aiplat_home()), "diag_history.json")
 
 
 def _load_diag_history() -> list:
@@ -2222,7 +2223,7 @@ async def get_observability_stats(project_id: str = None):
     try:
         import sqlite3, time, os
 
-        db_path = os.path.expanduser("~/.aiplat/aiplat_executions.sqlite3")
+        db_path = get_aiplat_data_dir("aiplat_executions.sqlite3")
         if not os.path.exists(db_path):
             return _empty_obs_stats()
 
@@ -3076,7 +3077,7 @@ async def trigger_drift_rebuild(max_pages: int = 10):
             for doc_id in doc_ids:
                 try:
                     import sqlite3 as _sq
-                    kb_db = os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat")) + "/kb/tenants/default/kb.sqlite3"
+                    kb_db = get_aiplat_home() + "/kb/tenants/default/kb.sqlite3"
                     conn = _sq.connect(kb_db)
                     row = conn.execute("SELECT source_uri FROM documents WHERE doc_id=?", (doc_id,)).fetchone()
                     conn.close()

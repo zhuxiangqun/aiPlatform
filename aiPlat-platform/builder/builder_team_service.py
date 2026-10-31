@@ -3,6 +3,7 @@ Builder team service — team CRUD + file persistence + execution via CoreFacade
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import json
@@ -20,7 +21,7 @@ from core.schemas_builder import (
 from core.api.core_facade import create_pipeline_session  # changed from create_pipeline_engine
 
 _TEAMS_FILE = os.path.join(
-    os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat")),
+    get_aiplat_home(),
     "teams.json",
 )
 

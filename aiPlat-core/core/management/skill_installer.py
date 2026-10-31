@@ -12,6 +12,7 @@ Security posture (production):
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -354,7 +355,7 @@ def adapt_claude_plugin(root_dir: Path, target_skills_dir: Path, target_agents_d
     # hooks/ → ~/.aiplat/hooks/
     hooks_src = root_dir / "hooks"
     if hooks_src.is_dir():
-        hooks_dest = Path(os.path.expanduser("~/.aiplat/hooks"))
+        hooks_dest = Path(get_aiplat_data_dir("hooks"))
         hooks_dest.mkdir(parents=True, exist_ok=True)
         for item in hooks_src.iterdir():
             if item.suffix == ".py":

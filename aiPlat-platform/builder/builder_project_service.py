@@ -5,6 +5,7 @@ Pipeline operations use CoreFacade.PipelineSession — the sole interface for
 pipeline execution per architecture contract (docs/index.md §Layer 2 boundary).
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 from builder.builder_l2l5_mixin import BuilderL2L5Mixin
 from builder.builder_deploy_mixin import BuilderDeployMixin
@@ -122,13 +123,13 @@ _AIPLAT_NO_PRD = os.getenv(
     "AIPLAT_NO_PRD", "No PRD data available. Complete the PM dialogue first.")
 
 _PROJECTS_FILE = os.path.join(
-    os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "projects.json"
+    get_aiplat_home(), "projects.json"
 )
 _PROJECTS_DIR = os.path.join(
-    os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "projects"
+    get_aiplat_home(), "projects"
 )
 _BUILDER_STATES_DIR = os.path.join(
-    os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat")),
+    get_aiplat_home(),
     "builder_states",
 )
 
@@ -208,8 +209,7 @@ def _copy_existing_path(existing_path: str, import_root: str) -> None:
     """Copy a user-specified directory into import_root — whitelisted to
     AIPLAT_HOME/~/ .aiplat only (L2 §3.5: existing_path 白名单)."""
     import shutil as _sh
-    _home = os.path.abspath(os.path.expanduser(
-        os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))))
+    _home = os.path.abspath(get_aiplat_home())
     _src = os.path.abspath(os.path.expanduser(existing_path))
     if not os.path.isdir(_src):
         raise ValueError(f"路径不存在或不是目录：{existing_path}")
@@ -1153,11 +1153,11 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         if project_id not in self._projects:
             return False
         import shutil
-        home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+        home = get_aiplat_home()
         # Output directories may use legacy "bare ID" or new "name-ID" format
         dirs_to_check = [
             (os.path.join(home, "output"), project_id),
-            (os.path.join(os.getenv("AIPLAT_APP_DEPLOY_DIR", os.path.expanduser("~/.aiplat/apps")), ""), project_id),
+            (os.path.join(os.getenv("AIPLAT_APP_DEPLOY_DIR", get_aiplat_data_dir("apps")), ""), project_id),
         ]
         for base_dir, pid in dirs_to_check:
             try:
@@ -1227,10 +1227,10 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         if project_id not in self._projects:
             return False
         import shutil
-        home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+        home = get_aiplat_home()
         dirs_to_check = [
             (os.path.join(home, "output"), project_id),
-            (os.path.join(os.getenv("AIPLAT_APP_DEPLOY_DIR", os.path.expanduser("~/.aiplat/apps")), ""), project_id),
+            (os.path.join(os.getenv("AIPLAT_APP_DEPLOY_DIR", get_aiplat_data_dir("apps")), ""), project_id),
         ]
         for base_dir, pid in dirs_to_check:
             try:
@@ -1835,7 +1835,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         import json, os, re as _re
         if state.get("agent_manifest"):
             return  # already resolved
-        _app_home = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "apps", project_id, "current")
+        _app_home = os.path.join(get_aiplat_home(), "apps", project_id, "current")
         _manifest_path = os.path.join(_app_home, "agent_manifest.json")
         if not os.path.isfile(_manifest_path):
             # Also try parsing from agent_app raw_output if not yet deployed to disk
@@ -1973,7 +1973,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
 
         # Phase B W4: hop schema gate — missing required params never enter LLM
         _app_home = _os_hop.path.join(
-            _os_hop.getenv("AIPLAT_HOME", _os_hop.path.expanduser("~/.aiplat")),
+            get_aiplat_home(),
             "apps", project_id, "current",
         )
         try:
@@ -3121,7 +3121,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         if not str(test_report or "").strip():
             # Fallback: last written test_report artifact on disk
             try:
-                out_fp = os.path.join(os.path.expanduser("~/.aiplat/output"), project_id, "test_report.json")
+                out_fp = os.path.join(get_aiplat_data_dir("output"), project_id, "test_report.json")
                 if os.path.isfile(out_fp):
                     with open(out_fp, "r", encoding="utf-8") as fh:
                         test_report = fh.read()
@@ -3176,7 +3176,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             # Disk fallback
             if not aa_raw:
                 try:
-                    p = os.path.join(os.path.expanduser("~/.aiplat/output"), project_id, "agent_app.json")
+                    p = os.path.join(get_aiplat_data_dir("output"), project_id, "agent_app.json")
                     if os.path.isfile(p):
                         with open(p, "r", encoding="utf-8") as fh:
                             aa_raw = fh.read()
@@ -3184,7 +3184,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                     logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
             if tc_raw is None:
                 try:
-                    p = os.path.join(os.path.expanduser("~/.aiplat/output"), project_id, "test_cases.json")
+                    p = os.path.join(get_aiplat_data_dir("output"), project_id, "test_cases.json")
                     if os.path.isfile(p):
                         with open(p, "r", encoding="utf-8") as fh:
                             tc_raw = fh.read()
@@ -3507,7 +3507,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             logging.getLogger(__name__).debug("bloat baseline promote skipped", exc_info=True)
         self._runs.pop(project_id, None)
         import shutil
-        out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
+        out_dir = os.path.join(get_aiplat_home(), "output", project_id)
         if os.path.isdir(out_dir):
             try: shutil.rmtree(out_dir)
             except OSError: pass  # noqa: cleanup-best-effort
@@ -3623,7 +3623,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             "total_stages": len(stages),
             "tokens_budget": int(os.getenv("AIPLAT_BUILDER_MAX_TOKENS", "100000")),
             "output_dir": os.path.join(
-                os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+                get_aiplat_home(),
                 "output", project_id),
             "description": proj.get("description", ""),
             "app_name": _app_name,
@@ -3658,7 +3658,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             "total_stages": len(stages),
             "tokens_budget": int(os.getenv("AIPLAT_BUILDER_MAX_TOKENS", "100000")),
             "output_dir": os.path.join(
-                os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+                get_aiplat_home(),
                 "output", project_id),
             "description": proj.get("description", ""),
             "app_name": _app_name,
@@ -3840,7 +3840,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             out_dir = out_dir or str(run.get("output_dir") or "")
             if not out_dir:
                 out_dir = os.path.join(
-                    os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+                    get_aiplat_home(),
                     "output",
                     project_id,
                 )
@@ -4474,20 +4474,20 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
     import os, json as _json, re as _re
     if not deploy_dir:
         deploy_dir = proj.get("deploy_dir", "") or os.path.join(
-            os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id, "deploy")
+            get_aiplat_home(), "output", project_id, "deploy")
     
-    _app_home = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "apps", project_id, "current")
+    _app_home = os.path.join(get_aiplat_home(), "apps", project_id, "current")
     os.makedirs(_app_home, exist_ok=True)
     _name = proj.get("name", project_id)
     _desc = proj.get("description", "")
     _stages = proj.get("team_stages", [])
-    _app_prefix = os.path.expanduser("~/.aiplat/apps/")
+    _app_prefix = get_aiplat_data_dir("apps") + "/"
     
     # ── Extract generated code files from pipeline state ──
     _file_count = 0
     try:
         import json
-        out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
+        out_dir = os.path.join(get_aiplat_home(), "output", project_id)
         final_state = os.path.join(out_dir, "_final_state.json")
         code_text = ""
         if os.path.isfile(final_state):
@@ -4591,7 +4591,7 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
     _app_page_json = ""
     try:
         import json as _j2
-        out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
+        out_dir = os.path.join(get_aiplat_home(), "output", project_id)
         final_state = os.path.join(out_dir, "_final_state.json")
         _state: dict = {}
         fp_raw = ""
@@ -4766,8 +4766,8 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
         import shutil
         import logging as _log_dep
         from builder.generated_conformance import validate_file, record_rejection, validate_manifest_file
-        _agents_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "agents")
-        _skills_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "skills")
+        _agents_dir = os.path.join(get_aiplat_home(), "agents")
+        _skills_dir = os.path.join(get_aiplat_home(), "skills")
         _blog = _log_dep.getLogger("aiplat.builder")
         # Scan recursively for AGENT.md and SKILL.md files (may be nested under app dir)
         for _root, _dirs, _files in os.walk(_app_home):
@@ -4955,7 +4955,7 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
     # Persist a minimal _final_state.json so later deploys/tools don't miss artifacts
     try:
         import json as _jfinal
-        out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
+        out_dir = os.path.join(get_aiplat_home(), "output", project_id)
         os.makedirs(out_dir, exist_ok=True)
         final_path = os.path.join(out_dir, "_final_state.json")
         if not os.path.isfile(final_path):
@@ -5044,7 +5044,7 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
         _proj_flags: Dict[str, Any] = {}
         try:
             _projects_path = os.path.join(
-                os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+                get_aiplat_home(),
                 "projects.json",
             )
             if os.path.isfile(_projects_path):

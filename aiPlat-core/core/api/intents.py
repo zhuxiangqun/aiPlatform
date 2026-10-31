@@ -17,6 +17,7 @@ at their layer (PRD ready detection, approval logic, etc.).
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 from typing import Any, Dict, List, Optional
@@ -228,10 +229,10 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
             import os as _os
             import yaml as _yaml
             seeds = _os.getenv("AIPLAT_WORKSPACE_SEEDS",
-                _os.path.join(_os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat")), "workspace_seeds"))
+                _os.path.join(_os.getenv("AIPLAT_HOME", get_aiplat_home()), "workspace_seeds"))
             md_path = _os.path.join(seeds, "agents", ctx.agent_name, "AGENT.md")
             if not _os.path.exists(md_path):
-                md_path = _os.path.join(_os.path.expanduser("~/.aiplat"), "agents", ctx.agent_name, "AGENT.md")
+                md_path = _os.path.join(get_aiplat_home(), "agents", ctx.agent_name, "AGENT.md")
             if _os.path.exists(md_path):
                 with open(md_path, "r") as f:
                     raw = f.read()

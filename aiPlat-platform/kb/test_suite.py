@@ -16,6 +16,7 @@ Usage:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import os
@@ -123,7 +124,7 @@ def load_test_suite(path: str = "") -> Dict[str, Any]:
         return _parse_suite(data)
 
     # Use embedded default suite
-    suite_path = Path(os.path.expanduser("~/.aiplat/kb_test_suite.yaml"))
+    suite_path = Path(get_aiplat_data_dir("kb_test_suite.yaml"))
     if not suite_path.exists():
         suite_path.parent.mkdir(parents=True, exist_ok=True)
         suite_path.write_text(DEFAULT_TEST_SUITE, encoding="utf-8")

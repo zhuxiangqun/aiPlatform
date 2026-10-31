@@ -20,6 +20,7 @@ Reuses:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import asyncio
 import json
@@ -76,7 +77,7 @@ class ToolBootstrapEngine:
     """
 
     # Skills output directory (engine built-in path)
-    SKILLS_DIR = os.path.expanduser("~/.aiplat/skills/bootstrap")
+    SKILLS_DIR = get_aiplat_data_dir("skills/bootstrap")
 
     def __init__(self):
         os.makedirs(self.SKILLS_DIR, exist_ok=True)

@@ -5,6 +5,7 @@ apply copies into ``~/.aiplat/{teams,factory_sanitize}/`` with hash-backed rollb
 Never touches ``local/``.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import hashlib
 import json
@@ -26,7 +27,7 @@ _SEED_SANITIZE = (
 
 
 def aiplat_home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat")).expanduser()
+    return Path(get_aiplat_home()).expanduser()
 
 
 def team_resource_dir(name: str) -> Path:

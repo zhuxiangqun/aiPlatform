@@ -215,7 +215,7 @@ def build_capability_graph() -> CapabilityGraphResult:
                     if new_detected:
                         break
                     import os as _os2
-                    ws = Path(_os2.getenv("AIPLAT_HOME", _os2.path.expanduser("~/.aiplat"))) / subdir
+                    ws = Path(_os2.getenv("AIPLAT_HOME", get_aiplat_home())) / subdir
                     for d in _walk_asset_dirs(ws, md_name):
                         if f"workspace_{prefix}{d.name}" not in cache_ids:
                             new_detected = True
@@ -521,7 +521,7 @@ def _scan_agents(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
     _scan_agents_dir(engine_root, node_prefix="agent", nodes=nodes, edges=edges)
 
     # Workspace agents (~/.aiplat/agents/)
-    from core.utils.paths import get_aiplat_home
+    from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
     workspace_root = Path(get_aiplat_home()) / "agents"
     _scan_agents_dir(workspace_root, node_prefix="workspace_agent", nodes=nodes, edges=edges)
 
@@ -701,7 +701,7 @@ def _scan_tool_source_files(nodes: Dict[str, Dict[str, Any]]):
 
     search_dirs = [
         Path(__file__).parent.parent.parent / "apps" / "tools",  # engine tools
-        Path(_os.path.expanduser("~/.aiplat/tools")),  # workspace tools
+        Path(get_aiplat_data_dir("tools")),  # workspace tools
     ]
 
     for search_dir in search_dirs:

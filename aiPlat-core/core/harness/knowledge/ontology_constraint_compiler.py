@@ -13,6 +13,7 @@ need business-rule awareness (opt-in via prompt_assembler meta flag), so it
 never changes default behaviour or breaks prompt-cache stability.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 from typing import List, Optional, Tuple
@@ -30,7 +31,7 @@ def _load_domain_or_none(domain_id: str):
         from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
         import os
         from pathlib import Path
-        home = Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat"))
+        home = Path(get_aiplat_home())
         path = home / "ontologies" / f"{domain_id}.yaml"
         if path.is_file():
             return load_ontology_from_yaml(str(path))

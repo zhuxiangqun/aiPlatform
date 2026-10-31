@@ -7,6 +7,7 @@ builder_project_service imports this mixin). Cross-field helpers (self._save_pro
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import os
@@ -36,7 +37,7 @@ class BuilderL2L5Mixin:
             return {"status": "error", "detail": "项目不存在"}
 
         _apps_home = os.path.join(
-            os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "apps", project_id)
+            get_aiplat_home(), "apps", project_id)
         import_root = self._module_root(project_id, module_id)
         os.makedirs(import_root, exist_ok=True)
 
@@ -112,7 +113,7 @@ class BuilderL2L5Mixin:
     def _module_root(self, project_id: str, module_id: str = "default") -> str:
         """Resolve a module's imported/ root. default → legacy layout."""
         _apps_home = os.path.join(
-            os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "apps", project_id)
+            get_aiplat_home(), "apps", project_id)
         if module_id == "default":
             return os.path.join(_apps_home, "imported")
         return os.path.join(_apps_home, "modules", module_id, "imported")
@@ -186,7 +187,7 @@ class BuilderL2L5Mixin:
         if module_id not in roots:
             return {"status": "error", "detail": f"模块 {module_id} 不存在"}
         modules = [{"module_id": mid, "root": root} for mid, root in roots.items()]
-        result = analyze_cross_module(modules, os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")))
+        result = analyze_cross_module(modules, get_aiplat_home())
         closure = impact_closure(module_id, result["graph"])
         return {
             "status": "ok",
@@ -209,7 +210,7 @@ class BuilderL2L5Mixin:
         if not module_ids:
             return {"status": "error", "detail": "module_ids 不能为空"}
         modules = [{"module_id": mid, "root": root} for mid, root in roots.items()]
-        result = analyze_cross_module(modules, os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")))
+        result = analyze_cross_module(modules, get_aiplat_home())
         closure: List[str] = []
         for mid in module_ids:
             for m in impact_closure(mid, result["graph"]):
@@ -451,7 +452,7 @@ class BuilderL2L5Mixin:
             return {"status": "error", "detail": "未导入既有代码，请先导入"}
         # Read pipeline output (code_generation raw_output with ## FILE: blocks)
         out_dir = os.path.join(
-            os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
+            get_aiplat_home(), "output", project_id)
         final_path = os.path.join(out_dir, "_final_state.json")
         code_text = ""
         if os.path.isfile(final_path):
@@ -493,7 +494,7 @@ class BuilderL2L5Mixin:
                 from builder.cross_module import analyze_cross_module, verify_changed_module_contracts
                 roots = self._module_roots(project_id)
                 modules = [{"module_id": mid, "root": root} for mid, root in roots.items()]
-                result = analyze_cross_module(modules, os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")))
+                result = analyze_cross_module(modules, get_aiplat_home())
                 cross_contracts = verify_changed_module_contracts(
                     module_id, previews, result["graph"], module_root=roots.get(module_id, ""))
                 cross_contracts["note"] = "依赖方模块引用的端点/实体在变更模块新版本中的存活性检查"
@@ -528,7 +529,7 @@ class BuilderL2L5Mixin:
         imp = self._module_repo(project_id, module_id)
         import_root = str(imp.get("root") or "")
         deploy_dir = proj.get("deploy_dir") or os.path.join(
-            os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+            get_aiplat_home(),
             "output", project_id, "deploy")
 
         # ── P0-01: atomic gate — all preview paths must be approved ──

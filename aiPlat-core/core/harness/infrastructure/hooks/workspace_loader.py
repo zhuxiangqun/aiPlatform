@@ -13,6 +13,7 @@ implementation safe-ish and optional (env controlled).
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 from pathlib import Path
 from typing import Any, List, Dict
@@ -27,7 +28,7 @@ def _enabled() -> bool:
 def load_workspace_hooks(*, hook_manager: Any) -> Dict[str, Any]:
     if not _enabled():
         return {"enabled": False, "loaded": 0, "errors": []}
-    base = Path.home() / ".aiplat" / "hooks"
+    base = Path(get_aiplat_home()) / "hooks"
     if not base.exists():
         return {"enabled": True, "loaded": 0, "errors": []}
 

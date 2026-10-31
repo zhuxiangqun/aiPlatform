@@ -12,6 +12,8 @@ from typing import Any, Dict, List, Optional
 import json as _json
 from pathlib import Path
 
+from core.utils.paths import get_aiplat_data_dir
+
 # ── Query Templates ─────────────────────────────────────────────
 # Each template maps a query intent to a deterministic execution plan.
 
@@ -376,8 +378,7 @@ def _extract_comparison_entities(query: str) -> List[str]:
 
 def run_golden_tests() -> Dict[str, Any]:
     """Run regression tests against golden queries to detect quality degradation."""
-    root = Path(__import__('os').environ.get("AIPLAT_HOME", 
-                __import__('os').path.expanduser("~/.aiplat"))) / "wiki"
+    root = Path(get_aiplat_data_dir("wiki"))
     gq_path = root / "golden_queries.yaml"
     
     tests = _load_golden_queries(gq_path)
@@ -468,8 +469,7 @@ def _load_golden_queries(path: Path) -> List[Dict[str, Any]]:
 
 def seed_golden_queries() -> str:
     """Create a default golden_queries.yaml template if none exists."""
-    root = Path(__import__('os').environ.get("AIPLAT_HOME",
-                __import__('os').path.expanduser("~/.aiplat"))) / "wiki"
+    root = Path(get_aiplat_data_dir("wiki"))
     gq_path = root / "golden_queries.yaml"
     if gq_path.exists():
         return "golden_queries.yaml already exists"

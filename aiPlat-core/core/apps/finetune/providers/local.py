@@ -10,6 +10,7 @@ integration with the existing fine-tuning pipeline.
 
 """
 
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import json
 
 import logging
@@ -519,7 +520,7 @@ class LocalFineTuneProvider:
 
     def _resolve_jobs_dir() -> Path:
 
-        home = os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat"))
+        home = get_aiplat_home()
 
         return Path(home) / "finetune_jobs"
 

@@ -6,6 +6,7 @@ exists. Never write both. Never arbitrary SQL; never plaintext credentials.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -37,7 +38,7 @@ def load_live_raw(domain_id: str) -> Dict[str, Any]:
 
 
 def _home_interface_dir() -> Path:
-    root = Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    root = Path(get_aiplat_home())
     return root / "interfaces"
 
 

@@ -503,7 +503,9 @@ fi
 # 契约被改弱后静默放行不合格生成物（校验器自指守卫）。
 echo -n "§95: 生成物 conformance 契约有效性: "
 _CONF_RESULT=$(python3 -c "
-import importlib.util
+import importlib.util, sys
+from pathlib import Path
+sys.path.insert(0, str(Path('aiPlat-core').resolve()))
 spec = importlib.util.spec_from_file_location(
     'gc', 'aiPlat-platform/builder/generated_conformance.py')
 gc = importlib.util.module_from_spec(spec); spec.loader.exec_module(gc)
@@ -529,7 +531,9 @@ fi
 # ratchet 模式：存量违规入基线容忍，新增违规阻断（同 ruff F821 先例）——推动逐步治理。
 echo -n "§96: workspace agent 符合度: "
 _NEW_AGENT=$(python3 -c "
-import importlib.util, json
+import importlib.util, json, sys
+from pathlib import Path
+sys.path.insert(0, str(Path('aiPlat-core').resolve()))
 spec = importlib.util.spec_from_file_location('ac', 'aiPlat-platform/builder/agent_conformance.py')
 ac = importlib.util.module_from_spec(spec); spec.loader.exec_module(ac)
 cur = ac.validate_agents_dir()

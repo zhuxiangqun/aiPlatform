@@ -10,6 +10,7 @@ Provides CRUD operations for skills and execution management.
 
 
 
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from dataclasses import dataclass, field
 
 from typing import Dict, List, Optional, Any
@@ -1841,7 +1842,7 @@ class SkillManager:
 
         engine_default = repo_root / "core" / "engine" / "skills"
 
-        workspace_default = Path.home() / ".aiplat" / "skills"
+        workspace_default = Path(get_aiplat_home()) / "skills"
 
 
 

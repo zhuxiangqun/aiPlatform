@@ -7,6 +7,7 @@ Default: no ACL file → allow all (backward compatible).
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -81,7 +82,7 @@ def resolve_abox_actor_role(
 
 
 def _acl_path(domain_id: str) -> str:
-    home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    home = get_aiplat_home()
     return os.path.join(home, "ontologies", domain_id, "abox_acl.json")
 
 

@@ -11,6 +11,7 @@ draw.io 图表生成器 — LLM 直接输出 draw.io XML，零外部依赖
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import logging
@@ -152,7 +153,7 @@ def _fallback_diagram(description: str) -> str:
 
 # ── Storage ─────────────────────────────────────────────────────────
 
-_DIAGRAMS_DIR = Path(_os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))) / "diagrams"
+_DIAGRAMS_DIR = Path(get_aiplat_home()) / "diagrams"
 
 
 def save_diagram(xml: str, diagram_id: Optional[str] = None) -> str:

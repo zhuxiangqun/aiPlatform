@@ -25,6 +25,7 @@ JobManager — 微调作业生命周期管理。
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 
@@ -108,7 +109,7 @@ class JobManager:
 
     def __init__(self, base_dir: str = ""):
 
-        self._base = _Path(base_dir or _os.getenv("AIPLAT_HOME", _Path.home() / ".aiplat")) / "finetune_jobs"
+        self._base = _Path(base_dir or _os.getenv("AIPLAT_HOME", _Path(get_aiplat_home()))) / "finetune_jobs"
 
         self._base.mkdir(parents=True, exist_ok=True)
 
@@ -546,7 +547,7 @@ class JobManager:
 
                 import json, time as _time2
 
-                pending_path = os.path.join(os.path.expanduser("~/.aiplat"), "pending_models.json")
+                pending_path = os.path.join(get_aiplat_home(), "pending_models.json")
 
                 pending = []
 
@@ -627,7 +628,7 @@ class JobManager:
 
         try:
 
-            signal_path = os.path.expanduser("~/.aiplat/sft_models/latest.json")
+            signal_path = get_aiplat_data_dir("sft_models/latest.json")
 
             os.makedirs(os.path.dirname(signal_path), exist_ok=True)
 
@@ -647,7 +648,7 @@ class JobManager:
 
             # Append to history log
 
-            history_path = os.path.expanduser("~/.aiplat/sft_models/history.jsonl")
+            history_path = get_aiplat_data_dir("sft_models/history.jsonl")
 
             os.makedirs(os.path.dirname(history_path), exist_ok=True)
 

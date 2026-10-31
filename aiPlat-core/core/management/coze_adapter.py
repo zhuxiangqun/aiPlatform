@@ -8,6 +8,7 @@ Handles:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import re
@@ -96,7 +97,7 @@ class CozeAdapter:
                 wf = _convert_coze_workflow(wf_file)
                 if wf:
                     name = wf["name"]
-                    dest = Path.home() / ".aiplat" / "workflow_templates"
+                    dest = Path(get_aiplat_home()) / "workflow_templates"
                     dest.mkdir(parents=True, exist_ok=True)
                     (dest / f"{name}.json").write_text(_json.dumps(wf["stages"], indent=2, ensure_ascii=False), encoding="utf-8")
                     converted.append(f"workflow:{name}")

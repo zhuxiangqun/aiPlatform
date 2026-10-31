@@ -5,6 +5,7 @@ Business entry is only ``run_org_goal``. No customer SQL. No second channel.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import hashlib
 import json
@@ -26,7 +27,7 @@ _REPLAY_SEC = 300
 
 
 def _home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _state_path() -> Path:

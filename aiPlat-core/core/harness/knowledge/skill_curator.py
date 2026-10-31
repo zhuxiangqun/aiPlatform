@@ -21,6 +21,7 @@ callers: background scheduler (_scheduler_loop), GET /system/curate-skills
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -40,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 
 
-_CURATOR_STATE = _os.path.expanduser("~/.aiplat/curator_state.json")
+_CURATOR_STATE = get_aiplat_data_dir("curator_state.json")
 
 
 

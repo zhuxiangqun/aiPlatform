@@ -10,6 +10,7 @@ Migrates from SQLite prompt_app_templates on first load (one-time).
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -49,7 +50,7 @@ class PromptAppManager:
         self.reload()
 
     def _base_dir(self) -> Path:
-        return Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat"))) / "prompt-apps"
+        return Path(get_aiplat_home()) / "prompt-apps"
 
     # ==================== Load & Save ====================
 

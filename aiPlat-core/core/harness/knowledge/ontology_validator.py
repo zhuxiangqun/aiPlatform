@@ -9,6 +9,7 @@ Callers:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 from dataclasses import dataclass, field
@@ -62,7 +63,7 @@ def validate_domain(domain_id: str, *, collection_id: str = None) -> ValidationR
     report = ValidationReport(domain_id=domain_id)
     report.generated_at = _time.time()
 
-    home = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat"))
+    home = _Path(get_aiplat_home())
     onto_path = home / "ontologies" / f"{domain_id}.yaml"
     if not onto_path.exists():
         report.add(ValidationItem("orphan_page", "error", f"Ontology YAML not found: {onto_path}"))

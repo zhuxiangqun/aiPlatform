@@ -7,6 +7,7 @@ Closed signals:
 Learnings land under ~/.aiplat/local/learnings/ — never team/ by default.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -45,7 +46,7 @@ STATE_CTA_KEY = "_friction_share_cta"
 
 
 def aiplat_home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat")).expanduser()
+    return Path(get_aiplat_home()).expanduser()
 
 
 def local_learnings_dir() -> Path:

@@ -6,6 +6,7 @@ Complements embedding-based semantic search (embedder.py) with exact name lookup
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import os
@@ -15,7 +16,7 @@ from typing import Any, Dict, List, Optional
 
 def _fts_db_path() -> Path:
     home = os.getenv("AIPLAT_WIKI_FTS_PATH",
-                     os.path.expanduser("~/.aiplat/wiki/fts.db"))
+                     get_aiplat_data_dir("wiki/fts.db"))
     return Path(home)
 
 

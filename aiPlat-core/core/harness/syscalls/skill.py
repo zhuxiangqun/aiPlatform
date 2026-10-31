@@ -15,6 +15,7 @@ Centralizes skill invocation so future gates can be enforced here:
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -1995,7 +1996,7 @@ async def sys_skill_call(
 
             )
 
-            store_path = os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat")) + "/data/execution_store.db"
+            store_path = get_aiplat_home() + "/data/execution_store.db"
 
             os.makedirs(os.path.dirname(store_path), exist_ok=True)
 

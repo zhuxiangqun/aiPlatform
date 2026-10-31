@@ -1,5 +1,6 @@
 """FDE — 追问端点：基于诊断上下文回答后续问题 (B0)."""
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import re
 from typing import Any, Dict, List
@@ -82,7 +83,7 @@ async def fde_ask(req: FdeAskRequest):
         try:
             import os as _os_ask
             from core.api.core_facade import load_ontology_from_yaml
-            sol_path = _os_ask.path.expanduser("~/.aiplat/ontologies/ai-solution.yaml")
+            sol_path = get_aiplat_data_dir("ontologies/ai-solution.yaml")
             if _os_ask.path.exists(sol_path):
                 sol = load_ontology_from_yaml(sol_path)
                 arch_count = sum(1 for c in sol.classes if getattr(c, 'label', '') == '方案原型')

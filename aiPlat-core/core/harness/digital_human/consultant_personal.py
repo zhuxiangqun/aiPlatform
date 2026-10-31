@@ -5,6 +5,7 @@ Tenant isolation (G9):
   default     → prefer tenants/default/…；若无文件则回退旧路径 memory/xiaozhu.md
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -67,7 +68,7 @@ def sanitize_tenant_id(tenant_id: Optional[str]) -> str:
 
 
 def _aiplat_home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _legacy_memory_path() -> Path:

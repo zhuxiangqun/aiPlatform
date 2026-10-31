@@ -6,6 +6,7 @@ trends them on the duty board. Never invents green without a snapshot.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import ast
 import json
@@ -83,7 +84,7 @@ def repo_health_dir() -> Path:
     env = (os.getenv("AIPLAT_REPO_HEALTH_DIR") or "").strip()
     if env:
         return Path(env).expanduser()
-    home = Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    home = Path(get_aiplat_home())
     return home / "org" / "repo_health"
 
 

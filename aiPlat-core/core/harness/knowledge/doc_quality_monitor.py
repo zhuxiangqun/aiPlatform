@@ -23,6 +23,7 @@ and stored per-industry (insurance/finance/gov/general).
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -699,7 +700,7 @@ class DocumentQualityMonitor:
 
             # Best-effort: re-parse from stored path
 
-            source_path = os.path.expanduser(f"~/.aiplat/vault/{doc_id}")
+            source_path = get_aiplat_data_dir(f"vault/{doc_id}")
 
             if os.path.exists(source_path):
 

@@ -10,6 +10,7 @@ recall_*  → ranked list for Auto-Recall injection / API
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -58,12 +59,12 @@ def _experience_path() -> Path:
     env = os.environ.get("AIPLAT_EXPERIENCE_FILE")
     if env:
         return Path(env)
-    home = os.environ.get("AIPLAT_HOME") or str(Path.home() / ".aiplat")
+    home = os.environ.get("AIPLAT_HOME") or str(Path(get_aiplat_home()))
     return Path(home) / "experience_feedback.json"
 
 
 def _task_skills_dir() -> Path:
-    return Path(os.path.expanduser("~/.aiplat/task_skills"))
+    return Path(get_aiplat_data_dir("task_skills"))
 
 
 def publish_task_skill_solution(

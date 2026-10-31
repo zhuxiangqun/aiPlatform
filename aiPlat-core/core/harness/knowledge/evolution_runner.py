@@ -10,6 +10,7 @@ Uses local LLM (qwen2.5:7b via Ollama) for zero API cost.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import asyncio
 import json as _json
@@ -473,7 +474,7 @@ class EvolutionRunner:
     # ── Ontology State Persistence ──────────────────────────────────
 
     def _onto_state_path(self) -> str:
-        wiki_root = _os.path.expanduser(_os.getenv("AIPLAT_HOME", "~/.aiplat"))
+        wiki_root = get_aiplat_home()
         return _os.path.join(wiki_root, "wiki", "collections", self.collection_id,
                              "evolution_ontology_state.json")
 
@@ -526,8 +527,7 @@ class EvolutionRunner:
     # ── Generation History ──
 
     def _history_path(self) -> str:
-        wiki_root = _os.path.expanduser(
-            _os.getenv("AIPLAT_HOME", "~/.aiplat"))
+        wiki_root = get_aiplat_home()
         return _os.path.join(
             wiki_root, "wiki", "collections", self.collection_id,
             "evolution_history.json")
@@ -653,7 +653,7 @@ def _load_latest_generation(agent_id: str) -> Optional[Dict]:
     """Load the latest generation record for an agent."""
     import os as _os
     import json as _json
-    path = _os.path.expanduser(f"~/.aiplat/evolution/{agent_id}_generations.json")
+    path = get_aiplat_data_dir(f"evolution/{agent_id}_generations.json")
     if not _os.path.exists(path):
         return None
     with open(path) as f:

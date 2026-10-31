@@ -13,6 +13,7 @@ collects trace data, computes metrics, and produces reports.
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 
@@ -59,7 +60,7 @@ class _RunTaskResult:
 
 def _eval_dir() -> Path:
 
-    home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    home = get_aiplat_home()
 
     return Path(home) / "eval_sets"
 
@@ -237,7 +238,7 @@ def delete_eval_set(set_id: str) -> bool:
 
 def _eval_results_dir() -> Path:
 
-    home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    home = get_aiplat_home()
 
     d = Path(home) / "eval_results"
 

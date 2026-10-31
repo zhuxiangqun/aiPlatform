@@ -33,6 +33,7 @@ Network Discovery Agent — 外部系统自主发现 (Phase 41).
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -312,7 +313,7 @@ def save_and_report(
 
     if output_dir is None:
 
-        output_dir = _os.path.expanduser("~/.aiplat/datasources/auto_discovered")
+        output_dir = get_aiplat_data_dir("datasources/auto_discovered")
 
     _os.makedirs(output_dir, exist_ok=True)
 

@@ -2,6 +2,7 @@
 Wiki Ontology Patterns API — pattern detector, metrics, and regression testing.
 """
 
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from typing import Any, Dict
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
@@ -61,7 +62,7 @@ async def get_ontology_metrics(collection: str = "default", refresh: bool = Fals
 
         if refresh:
             # Invalidate cache and trigger background rebuild
-            cache_path = _os.path.join(_os.path.expanduser(_os.getenv("AIPLAT_HOME", "~/.aiplat")),
+            cache_path = _os.path.join(get_aiplat_home(),
                                         "wiki", "collections", collection, "metrics_cache.json")
             try:
                 if _os.path.exists(cache_path):

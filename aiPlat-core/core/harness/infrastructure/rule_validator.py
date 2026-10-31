@@ -8,6 +8,7 @@ Checks inference_rules from domain YAML for:
 Integrating into ActionRegistry Step 3.5 prevents rule-violating transitions.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -25,7 +26,7 @@ class RuleValidator:
         self.rules = self._load_rules()
 
     def _load_rules(self) -> Dict:
-        yaml_path = os.path.expanduser(f"~/.aiplat/ontologies/{self.domain_id}.yaml")
+        yaml_path = get_aiplat_data_dir(f"ontologies/{self.domain_id}.yaml")
         if not os.path.exists(yaml_path):
             return {}
         try:

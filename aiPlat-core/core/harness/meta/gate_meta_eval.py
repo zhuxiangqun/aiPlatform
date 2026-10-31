@@ -11,6 +11,7 @@ pre-commit skip log, CoreFacade, collect_merge_gates_posture.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -43,7 +44,7 @@ def gate_meta_dir() -> Path:
     env = (os.getenv("AIPLAT_GATE_META_DIR") or "").strip()
     if env:
         return Path(env).expanduser()
-    home = Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    home = Path(get_aiplat_home())
     return home / "org" / "gate_meta"
 
 

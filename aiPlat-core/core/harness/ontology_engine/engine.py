@@ -19,6 +19,7 @@ Usage:
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 
@@ -1770,7 +1771,7 @@ def load_engine(domain_id: str = "ai-knowledge") -> Optional[OntologyEngine]:
 
     import os as _os
 
-    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    d = _Path(get_aiplat_home()) / "ontologies"
 
     file_path = d / f"{domain_id}.yaml"
 
@@ -1864,7 +1865,7 @@ def _persist_trace(trace: Dict[str, Any]) -> None:
 
     import os as _os2
 
-    traces_dir = _Path(_os2.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontology_traces"
+    traces_dir = _Path(get_aiplat_home()) / "ontology_traces"
 
     traces_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1935,7 +1936,7 @@ def _persist_reviews(domain_id: str, affected: List[Dict[str, Any]]) -> None:
 
     import os as _os3
 
-    reviews_dir = _Path(_os3.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontology_reviews"
+    reviews_dir = _Path(get_aiplat_home()) / "ontology_reviews"
 
     reviews_dir.mkdir(parents=True, exist_ok=True)
 

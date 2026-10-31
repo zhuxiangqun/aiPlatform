@@ -43,6 +43,7 @@ execute given tasks. This is the final piece of the self-evolution puzzle.
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -587,7 +588,7 @@ class GoalGenerator:
 
                     skill_path = os.path.join(
 
-                        os.path.expanduser("~/.aiplat/skills/bootstrap"),
+                        get_aiplat_data_dir("skills/bootstrap"),
 
                         f"{et.replace(' ', '_')}/SKILL.md"
 
@@ -878,7 +879,7 @@ class GoalGenerator:
 
             import os as _os_module
 
-            pending_dir = _os_module.path.expanduser("~/.aiplat/goals/pending")
+            pending_dir = get_aiplat_data_dir("goals/pending")
 
             if not _os_module.path.isdir(pending_dir):
 

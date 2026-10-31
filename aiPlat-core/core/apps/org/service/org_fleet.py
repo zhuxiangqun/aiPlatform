@@ -5,6 +5,7 @@ Does not spawn multi-agent fleets yet; gates readiness for future wiring.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -177,7 +178,7 @@ _ROLE = re.compile(r"^[\w ·\-]{1,24}$")
 
 
 def _home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _rehearsal_dir() -> Path:

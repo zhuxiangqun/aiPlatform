@@ -1,3 +1,4 @@
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 """
 Skill Executor Module
@@ -151,7 +152,7 @@ class SkillExecutor:
 
                 domain_ctx = {"domain_id": domain_id}
                 # Load ontology class schema
-                yaml_path = _os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}.yaml")
+                yaml_path = get_aiplat_data_dir(f"ontologies/{domain_id}.yaml")
                 if _os.path.isfile(yaml_path):
                     onto = load_ontology_from_yaml(yaml_path)
                     domain_ctx["classes"] = [

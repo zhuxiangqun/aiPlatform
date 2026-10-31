@@ -37,6 +37,7 @@ DeployEngine — 自主部署流水线 (Phase 40).
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -687,7 +688,7 @@ def get_deploy_engine() -> DeployEngine:
 
 import json as _json
 
-_ROLLBACK_LOG = __import__("pathlib").Path.home() / ".aiplat" / "data" / "rollback_events.jsonl"
+_ROLLBACK_LOG = __import__("pathlib").Path(get_aiplat_home()) / "data" / "rollback_events.jsonl"
 
 
 def _persist_rollback_event(

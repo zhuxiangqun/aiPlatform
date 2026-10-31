@@ -17,6 +17,7 @@ SkillGenerator — 从操作序列自动生成 SKILL.md (Agent 闭环执行 — 
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import logging
@@ -29,7 +30,7 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-SKILL_DIR = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "skills"
+SKILL_DIR = _Path(get_aiplat_home()) / "skills"
 
 
 # ── Data Models ──────────────────────────────────────────────────────────

@@ -59,6 +59,7 @@ import asyncio
 import logging
 
 import os
+from core.utils.paths import get_aiplat_data_dir
 
 from typing import List, Optional, Dict, Any
 
@@ -562,7 +563,7 @@ class MemoryManager:
             try:
                 import os as _parseos, time as _parsetime
                 from core.harness.memory.file_store import text_overlaps_query
-                wiki_root = _parseos.path.expanduser(_parseos.getenv("AIPLAT_HOME", "~/.aiplat")) + "/wiki/collections"
+                wiki_root = get_aiplat_data_dir("wiki/collections")
                 if _parseos.path.isdir(wiki_root):
                     cutoff = _parsetime.time() - 7 * 86400
                     for col in _parseos.listdir(wiki_root)[:3]:
@@ -833,7 +834,7 @@ class MemoryManager:
 
                 import os as _os_br, yaml as _yaml_br
 
-                rules_path = _os_br.path.expanduser("~/.aiplat/brand_rules.yaml")
+                rules_path = get_aiplat_data_dir("brand_rules.yaml")
 
                 # Also check the module-local fallback
 
@@ -1662,7 +1663,7 @@ class MemoryManager:
 
 
 
-    _RULES_PATH = os.path.expanduser("~/.aiplat/memory_rules.json")
+    _RULES_PATH = get_aiplat_data_dir("memory_rules.json")
 
     _DEFAULT_RULES = {
 
@@ -1735,7 +1736,7 @@ class MemoryManager:
 
         import os as _os
 
-        skills_dir = _os.path.expanduser("~/.aiplat/task_skills")
+        skills_dir = get_aiplat_data_dir("task_skills")
 
         _os.makedirs(skills_dir, exist_ok=True)
 
@@ -1830,7 +1831,7 @@ class MemoryManager:
 
         import os as _os
 
-        skill_path = _os.path.expanduser(f"~/.aiplat/task_skills/{skill_id}.json")
+        skill_path = get_aiplat_data_dir(f"task_skills/{skill_id}.json")
 
         if not _os.path.exists(skill_path):
 
@@ -1882,7 +1883,7 @@ class MemoryManager:
 
         import json as _json
 
-        skills_dir = _os.path.expanduser("~/.aiplat/task_skills")
+        skills_dir = get_aiplat_data_dir("task_skills")
 
         if not _os.path.isdir(skills_dir):
 
@@ -2076,7 +2077,7 @@ class MemoryManager:
 
         import json as _json
 
-        skills_dir = _os.path.expanduser("~/.aiplat/task_skills")
+        skills_dir = get_aiplat_data_dir("task_skills")
 
         if not _os.path.isdir(skills_dir):
 
@@ -2198,7 +2199,7 @@ class MemoryManager:
 
 
 
-        skills_dir = _os.path.expanduser("~/.aiplat/task_skills")
+        skills_dir = get_aiplat_data_dir("task_skills")
 
         if _os.path.isdir(skills_dir):
 
@@ -2282,7 +2283,7 @@ class MemoryManager:
 
         import os as _os
 
-        skills_dir = _os.path.expanduser("~/.aiplat/task_skills")
+        skills_dir = get_aiplat_data_dir("task_skills")
 
         for skill_data in memory.get("task_skills", []):
 
@@ -2370,7 +2371,7 @@ class MemoryManager:
 
         import json as _json
 
-        skills_dir = _os.path.expanduser("~/.aiplat/task_skills")
+        skills_dir = get_aiplat_data_dir("task_skills")
 
         if _os.path.isdir(skills_dir):
 

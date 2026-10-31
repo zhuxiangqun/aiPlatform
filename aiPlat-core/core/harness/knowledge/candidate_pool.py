@@ -17,6 +17,7 @@ Matches 3Chat's "feedback → product iteration" pipeline on the knowledge side.
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -172,7 +173,7 @@ class CandidateKnowledgePool:
 
         return os.path.join(
 
-            os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+            get_aiplat_home(),
 
             "candidate_pool.json",
 

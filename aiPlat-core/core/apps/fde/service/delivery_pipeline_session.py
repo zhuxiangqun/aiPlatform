@@ -6,6 +6,7 @@ start + poll honestly (no local fake progress).
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import os
@@ -20,7 +21,7 @@ TEMPLATE_ID = "fde_delivery_v1"
 
 
 def _home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _sessions_dir() -> Path:

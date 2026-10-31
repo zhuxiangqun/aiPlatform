@@ -4,6 +4,7 @@ Records compact, queryable outcomes. Never mutates pipeline topology.
 Kernel-generic: uses stage config fields only (no agent_id branching).
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -25,7 +26,7 @@ OUTCOME_GATE_FAIL = "schema_gate_fail_pipeline"
 
 
 def stage_outcome_samples_path() -> Path:
-    home = Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat"))
+    home = Path(get_aiplat_home())
     return home / "wiki" / _SAMPLES_FILENAME
 
 

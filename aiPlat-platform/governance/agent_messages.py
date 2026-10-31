@@ -26,6 +26,7 @@
     python3 .../agent_messages.py --agents
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import os
@@ -41,7 +42,7 @@ def _default_path() -> str:
     env = os.environ.get("AIPLAT_AGENT_MESSAGES_FILE")
     if env:
         return env
-    home = os.environ.get("AIPLAT_HOME") or os.path.expanduser("~/.aiplat")
+    home = get_aiplat_home()
     return os.path.join(home, "agent_messages.json")
 
 

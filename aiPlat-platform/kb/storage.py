@@ -1,4 +1,5 @@
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import os
 from dataclasses import dataclass
@@ -34,10 +35,10 @@ def get_aiplat_home() -> Path:
     - 默认 ~/.aiplat
     - 可通过 AIPLAT_HOME 覆盖
     """
-    env = (os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")) or "").strip()
+    env = (os.getenv("AIPLAT_HOME", get_aiplat_home()) or "").strip()
     if env:
         return Path(env).expanduser()
-    return Path.home() / ".aiplat"
+    return Path(get_aiplat_home())
 
 
 def get_tenant_storage(tenant_id: str) -> TenantStorage:
