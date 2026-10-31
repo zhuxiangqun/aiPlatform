@@ -37,13 +37,20 @@ $AIPLAT_PI_PREFIX/bin/aiplat-http
 
 ```bash
 bash packages/aiplat-pi-runtime/scripts/d1_upgrade.sh
+# Same package.json version re-upgrade materializes versions/<ver>+<UTC> so runtime rollback can flip.
 # Bundle-first (preferred — Gate3):
 bash packages/aiplat-pi-runtime/scripts/d1_rollback.sh --bundle /path/to/prev-export
 # Runtime:
 bash packages/aiplat-pi-runtime/scripts/d1_rollback.sh --runtime
 ```
 
-Drill record: [`GATE3_PI_THIN_ROLLBACK_DRILL.md`](../../../reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md)
+Local regression (hermetic; **not** staging authorize):
+
+```bash
+bash packages/aiplat-pi-runtime/scripts/d1_local_regression.sh
+```
+
+Drill record: [`GATE3_PI_THIN_ROLLBACK_DRILL.md`](../../../reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md) · [`PI_D1_LOCAL_REGRESSION.md`](../../../reports/five-products/ops/PI_D1_LOCAL_REGRESSION.md)
 
 ## Backup
 

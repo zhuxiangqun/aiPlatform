@@ -41,6 +41,12 @@ bash scripts/ops_live_status.sh --json
 不依赖预发：**Pi D1**（安装器 / healthz / Gate3 回滚面）及其他本地可验工程。  
 PG/HA live → sign → authorize 等 `staging_ready=true`。
 
+本地回归（2026-11-01）：[`PI_D1_LOCAL_REGRESSION.md`](./PI_D1_LOCAL_REGRESSION.md) **PASS**
+
+```bash
+bash packages/aiplat-pi-runtime/scripts/d1_local_regression.sh
+```
+
 ## 复审后走路径 A
 
 见 [`PGHA_LIVE_RUNLOG.md`](./PGHA_LIVE_RUNLOG.md) 复审条件 + [`OPS_HANDOFF.md`](../OPS_HANDOFF.md)。

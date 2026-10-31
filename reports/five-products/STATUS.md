@@ -42,3 +42,5 @@ bash scripts/five_products_gate.sh
 运维入口：[`OPS_LIVE_RUNBOOK.md`](./OPS_LIVE_RUNBOOK.md) · [`OPS_HANDOFF.md`](./OPS_HANDOFF.md) · [`ops/STAGING_READY.md`](./ops/STAGING_READY.md) · `bash scripts/ops_live_status.sh`
 
 `staging_ready=true` 后再按交接卡 live → sign → authorize；此前工程主轨走 Pi D1。
+
+Pi D1 本地回归（2026-11-01）：[`ops/PI_D1_LOCAL_REGRESSION.md`](./ops/PI_D1_LOCAL_REGRESSION.md) **PASS**（`d1_local_regression.sh`；environment=local，未授权）。

@@ -81,3 +81,18 @@ GATE3_OBS_LABEL=mid-window-2026-10-24 GATE3_OBS_INCLUDE_EF=1 \
 GATE3_OBS_LABEL=observation-close-2026-10-24 \
   bash packages/aiplat-pi-runtime/scripts/gate3_observation_rerun.sh
 ```
+
+## Re-run — path B defer local regression（2026-11-01）
+
+| Field | Value |
+|-------|-------|
+| Authority | [`ops/LOCAL_DEFER.md`](./ops/LOCAL_DEFER.md) · PG/HA `staging_ready=false` |
+| Helper | `bash packages/aiplat-pi-runtime/scripts/d1_local_regression.sh` |
+| Scope | hermetic D1 install/smoke/backup/upgrade/runtime+bundle rollback + Gate3 a/b/c |
+| Environment | **local** — not staging; **no** `production_signed` / authorize |
+| Result | **PASS** — see [`ops/PI_D1_LOCAL_REGRESSION.md`](./ops/PI_D1_LOCAL_REGRESSION.md) |
+| Fix landed | same-version `d1_upgrade` → `versions/<ver>+<UTC>` so `--runtime` rollback flips |
+
+```bash
+bash packages/aiplat-pi-runtime/scripts/d1_local_regression.sh
+```

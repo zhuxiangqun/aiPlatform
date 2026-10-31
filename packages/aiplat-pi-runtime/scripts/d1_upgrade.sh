@@ -19,10 +19,17 @@ mkdir -p "$PREFIX"
 echo "${PREV:-}" >"$PREFIX/.previous_current"
 echo "$VER" >"$PREFIX/.pending_version"
 
-VER_DIR="$PREFIX/versions/$VER"
+# Same package.json version re-upgrade → distinct slot so --runtime rollback is meaningful.
+VER_SLOT="$VER"
+VER_DIR="$PREFIX/versions/$VER_SLOT"
+if [[ -d "$VER_DIR" ]]; then
+  STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+  VER_SLOT="${VER}+${STAMP}"
+  VER_DIR="$PREFIX/versions/$VER_SLOT"
+fi
 echo "Pi D1 upgrade → $VER_DIR (was: ${PREV:-none})"
 d1_materialize_version "$VER_DIR"
-ln -sfn "versions/$VER" "$PREFIX/current"
+ln -sfn "versions/$VER_SLOT" "$PREFIX/current"
 
 # Refresh wrapper if missing
 if [[ ! -x "$PREFIX/bin/aiplat-http" ]]; then
@@ -37,6 +44,7 @@ if p.exists():
 meta.update({
   "capability_id": "pi",
   "version": "$VER",
+  "version_slot": "$VER_SLOT",
   "prefix": "$PREFIX",
   "upgraded_at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
   "previous": "$PREV",
@@ -46,5 +54,5 @@ p.write_text(json.dumps(meta, indent=2) + "\n")
 PY
 fi
 
-echo "PASS: Pi D1 upgrade current=versions/$VER previous=${PREV:-none}"
+echo "PASS: Pi D1 upgrade current=versions/$VER_SLOT previous=${PREV:-none}"
 echo "Hint: bundle rollback = flip $PREFIX/bundles/current (see GATE3_PI_THIN_ROLLBACK_DRILL.md)"
