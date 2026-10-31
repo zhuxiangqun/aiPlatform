@@ -3,6 +3,7 @@ DatasetManager — 数据集 CRUD + 血缘追踪 + 快照 + streaming 校验。
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import os as _os
@@ -21,7 +22,7 @@ class DatasetManager:
     """Manage fine-tuning datasets stored in SQLite + JSONL files."""
 
     def __init__(self, base_dir: str = ""):
-        self._base = _Path(base_dir or _os.getenv("AIPLAT_HOME", _Path.home() / ".aiplat")) / "finetune_data"
+        self._base = _Path(base_dir or get_aiplat_home()) / "finetune_data"
         self._base.mkdir(parents=True, exist_ok=True)
         self._meta_path = self._base / "datasets_meta.json"
 

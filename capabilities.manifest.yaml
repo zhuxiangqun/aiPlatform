@@ -1,0 +1,88 @@
+# Five-capability autonomy manifest (V2)
+# SSOT: docs/architecture/plans/five-capability-independent-engineering-plan.md
+version: 1
+updated: "2026-10-29"
+head_baseline: b46e286
+naming:
+  autonomy: [A1, A2, A3]
+  delivery: [D1, D2, D3]
+  evidence_do_not_reuse: [E0, E1, E2, E3, E4, E5]
+
+deploy_units:
+  central: [aiplat, ontology, evaluation]
+  field: [fde]
+  edge: [pi]
+
+capabilities:
+  - id: pi
+    label: Pi Runtime
+    deploy_unit: edge
+    current_autonomy: A3  # Gate3 Thin
+    current_delivery: D1
+    target: A3/D3
+    package: packages/aiplat-pi-runtime
+    charter: reports/five-products/modules/pi/MODULE.md
+    install: packages/aiplat-pi-runtime/scripts/d1_install.sh
+    healthz: GET /healthz
+    a3_adr: reports/five-products/ADR-08-deploy-split.md  # Gate3 Thin already approved
+
+  - id: fde
+    label: FDE Workbench
+    deploy_unit: field
+    current_autonomy: A1
+    current_delivery: D0
+    target: A2/D2
+    package: aiPlat-platform/apps/fde
+    charter: reports/five-products/modules/fde/MODULE.md
+    field_scope: reports/five-products/modules/fde/FIELD_SCOPE.md
+    field_deploy_adr: reports/five-products/ADR-DRAFT-fde-field-deploy.md
+    field_deploy_adr_required: true
+    contracts_test: reports/five-products/modules/fde/contracts/validate_sample.py
+
+  - id: evaluation
+    label: Evaluation Service
+    deploy_unit: central
+    current_autonomy: A2
+    current_delivery: D1
+    target: A3/D2
+    package: packages/aiplat-evaluation
+    charter: reports/five-products/modules/evaluation/MODULE.md
+    protocol: reports/five-products/modules/evaluation/EVAL_PROTOCOL.md
+    a3_adr: reports/five-products/ADR-EVALUATION-A3.md
+    a3_adr_status: accepted_conditional
+    process_split_authorized: false
+    contracts_test: reports/five-products/modules/evaluation/contracts/validate_sample.py
+
+  - id: ontology
+    label: Ontology Service
+    deploy_unit: central
+    current_autonomy: A2
+    current_delivery: D1
+    target: A3/D2
+    package: packages/aiplat-ontology
+    charter: reports/five-products/modules/ontology/MODULE.md
+    protocol: reports/five-products/modules/ontology/ONTOLOGY_API.md
+    a3_adr: reports/five-products/ADR-ONTOLOGY-A3.md
+    a3_adr_status: accepted_conditional
+    process_split_authorized: false
+    contracts_test: reports/five-products/modules/ontology/contracts/validate_sample.py
+
+  - id: aiplat
+    label: aiPlat Platform
+    deploy_unit: central
+    current_autonomy: A0
+    target: A2/D2
+    package: aiPlat-platform
+    charter: reports/five-products/modules/aiplat/MODULE.md
+    pg_ha_adr_required: true
+
+shared_kernel:
+  - contracts
+  - identity_client
+  - telemetry
+  - config_conventions
+  - test_harness
+
+notes:
+  - "product.manifest.yaml is legacy five-product naming; prefer this file"
+  - "A3 / process-DB split requires per-capability ADR except Pi Thin (Gate3)"

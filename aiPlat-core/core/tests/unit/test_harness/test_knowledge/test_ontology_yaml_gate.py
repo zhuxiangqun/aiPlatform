@@ -40,12 +40,11 @@ def test_import_denied(tmp_path, monkeypatch):
 
 
 def test_deploy_rule_denied(tmp_path, monkeypatch):
-    home = tmp_path / "home"
-    onto = home / ".aiplat" / "ontologies"
+    monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+    onto = tmp_path / "ontologies"
     onto.mkdir(parents=True)
     target = onto / "it-ops.yaml"
     target.write_text("name: it-ops\ninference_rules: []\n", encoding="utf-8")
-    monkeypatch.setenv("HOME", str(home))
     from core.harness.ontology_engine.rule_designer import deploy_rule
 
     with pytest.raises(LiveYamlDirectWriteDenied):

@@ -6,6 +6,7 @@ Design: docs/contracts/FDE_AI_FDE_CONTROLLED_APPLY_LOOP.md
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import calendar
 import json
@@ -28,7 +29,7 @@ _ACTIVE_PATCH = frozenset({"observing", "applied", "stable"})
 
 
 def _home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _queue_dir() -> Path:

@@ -3,10 +3,13 @@ from pathlib import Path
 
 
 def test_package_manager_install_bundle_and_uninstall(tmp_path, monkeypatch):
-    # Redirect HOME to tmp so ~/.aiplat/* is isolated
-    monkeypatch.setenv("HOME", str(tmp_path))
+    # Workspace installs go through get_aiplat_data_dir (AIPLAT_HOME SSOT)
+    home = tmp_path / "aiplat_home"
+    home.mkdir()
+    monkeypatch.setenv("AIPLAT_HOME", str(home))
 
     from core.management.package_manager import PackageManager
+    from core.utils.paths import get_aiplat_data_dir
 
     mgr = PackageManager(scope="workspace")
 
@@ -18,9 +21,10 @@ def test_package_manager_install_bundle_and_uninstall(tmp_path, monkeypatch):
     manifest = {"name": "starter", "version": "0.1.0", "resources": [{"kind": "agent", "id": "a1"}]}
     rec = mgr.install_bundle(pkg_name="starter", pkg_version="0.1.0", manifest=manifest, bundle_dir=bundle, allow_overwrite=True)
     assert rec["package"]["name"] == "starter"
-    assert (Path.home() / ".aiplat" / "agents" / "a1" / "AGENT.md").exists()
+    agent_md = Path(get_aiplat_data_dir("agents")) / "a1" / "AGENT.md"
+    assert agent_md.exists()
 
     res = mgr.uninstall(pkg_name="starter", keep_modified=False)
     assert res["package"]["name"] == "starter"
-    assert not (Path.home() / ".aiplat" / "agents" / "a1").exists()
+    assert not agent_md.exists()
 

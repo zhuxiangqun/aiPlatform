@@ -143,6 +143,8 @@ core 层运行时数据库/状态文件路径**必须**经 `core.utils.paths.get
 | 五产品切片可达性 | 切片诊断入参为 `assumed_reachable`（legacy `aiplat_reachable` 别名）：**调用方假设**，不是控制面探活；报告须带 `reachable_note`。`--inject disconnect` 只跑 lock-service Phase B 证据 + `assumed_reachable=False`，**禁止** Phase E 在同 run 写 `accepted`（2026-10-27） |
 | 已修复 | `TripleStore`（`core/harness/ontology_engine/triple_store.py`）：`ontology_triples.sqlite3` 路径改经 `get_aiplat_home()`；`code_graph_persist`/`cap_graph_persist`（图谱缓存库 `code_graph.db`/`cap_graph.db`）与 `capability_graph` 工作区扫描同改（2026-08-28）；week-34：`ontology_approval`/`media_ops`/knowledge_pipeline drafts·registry/`usage_tracker`/`wiki_quality_monitor`/`knowledge_roi` 改调用时解析；其余存量硬编码逐步迁移 |
 | 验证 | 受限 HOME 启动 core server → `/api/core/diagnostics/*` 三端点 200 毫秒响应（修复前全超时）；`AIPLAT_HOME=/nonexistent/...` 下 `import core.harness.ontology_engine.state_history` 不创建库；`pytest core/tests --collect-only` 0 error；`pytest core/tests/unit` 2719 passed（假 HOME）；`scripts/slice_e2e.sh --inject disconnect` 无 accepted；`test_approvals_http_expiry` 409 |
+| **platform / gateway 路径 SSOT（2026-11-01 · clause-sync）** | `aiPlat-platform/api/**` 与网关侧家目录解析**必须**经 `get_aiplat_home()` / `get_aiplat_data_dir()`（与 core 同契约）；**不改变**鉴权/租户/身份透传语义——仅消除硬编码 `~/.aiplat`。验证：`grep -rn "expanduser.*\\.aiplat" aiPlat-platform/api --include='*.py'` 存量迁移；鉴权规范仍见 `docs/standards/规范-platform-鉴权与身份透传.md` |
+| **五能力信封与 healthz（2026-11-01 · clause-sync）** | 控制面 / 本体 / 评测对外 JSON **必须**挂 `control_plane.v0` / `ontology.api.v0` / `eval.protocol.v0`（经 CoreFacade）；`/api/core/healthz` 与 co-host `/eval/healthz` `/fde/healthz` `/ontology/healthz` 为产品探针形；**不等于**生产切流/进程拆分/D3 授权（硬门默认 false）。SSOT：`capabilities.manifest.yaml` + `reports/five-products/STATUS.md` |
 
 ### 5.1.3 诊断时效性契约（MUST，2026-08-28）
 

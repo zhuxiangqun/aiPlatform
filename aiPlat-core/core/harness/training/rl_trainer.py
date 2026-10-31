@@ -62,6 +62,7 @@ Environment variables:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -537,7 +538,7 @@ class RLTrainer:
 
         try:
 
-            signal_path = os.path.expanduser("~/.aiplat/sft_models/latest.json")
+            signal_path = get_aiplat_data_dir("sft_models/latest.json")
 
             if os.path.exists(signal_path):
 
@@ -1052,7 +1053,7 @@ class RLTrainer:
 
         """Export RL training data for external RL frameworks (SkyRL / Harbor compatible)."""
 
-        output = output_path or os.path.expanduser(f"~/.aiplat/rl_data/{run.run_id}.jsonl")
+        output = output_path or get_aiplat_data_dir(f"rl_data/{run.run_id}.jsonl")
 
         os.makedirs(os.path.dirname(output), exist_ok=True)
 

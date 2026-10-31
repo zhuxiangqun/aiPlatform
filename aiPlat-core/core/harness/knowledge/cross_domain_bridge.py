@@ -15,6 +15,7 @@ V1 准确率:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -50,7 +51,7 @@ def _get_agent_dirs() -> list:
         from core.harness.ontology_engine.triple_scanner import _get_agent_dirs
         return _get_agent_dirs()
     except ImportError:
-        return [os.path.expanduser("~/.aiplat/agents")]
+        return [get_aiplat_data_dir("agents")]
 
 
 def _parse_frontmatter(path: Path) -> Dict[str, Any]:

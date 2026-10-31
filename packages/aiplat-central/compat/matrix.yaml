@@ -1,0 +1,62 @@
+# Central + Edge Thin compatibility matrix (D2 slice — packaging only)
+schema_version: aiplat.compat.v0
+updated: "2026-10-30"
+units:
+  - id: aiplat-central
+    deploy_unit: central
+    package: packages/aiplat-central
+    version_file: packages/aiplat-central/package.json
+    healthz_schema: packages/aiplat-central/contracts/schemas/healthz.schema.json
+    product_id: aiplat
+    min_version: "0.1.0"
+    smoke: packages/aiplat-central/scripts/d1_smoke.sh
+    notes: "Thin host; no PG/HA"
+  - id: ontology
+    deploy_unit: central
+    package: packages/aiplat-ontology
+    version_file: packages/aiplat-ontology/package.json
+    healthz_schema: packages/aiplat-ontology/contracts/schemas/healthz.schema.json
+    product_id: ontology
+    min_version: "0.1.0"
+    smoke: packages/aiplat-ontology/scripts/d1_smoke.sh
+    notes: "Co-hosted on Central; no A3 split"
+  - id: evaluation
+    deploy_unit: central
+    package: packages/aiplat-evaluation
+    version_file: packages/aiplat-evaluation/package.json
+    healthz_schema: packages/aiplat-evaluation/contracts/schemas/healthz.schema.json
+    product_id: evaluation
+    min_version: "0.1.0"
+    smoke: packages/aiplat-evaluation/scripts/d1_smoke.sh
+    notes: "Co-hosted on Central; no A3 split"
+  - id: pi-runtime
+    deploy_unit: edge
+    package: packages/aiplat-pi-runtime
+    version_file: packages/aiplat-pi-runtime/package.json
+    healthz_schema: packages/aiplat-pi-runtime/contracts/schemas/healthz.schema.json
+    product_id: pi
+    min_version: "0.1.0"
+    smoke: packages/aiplat-pi-runtime/scripts/d1_smoke.sh
+    notes: "Gate3 Thin; ADR-08"
+  - id: fde
+    deploy_unit: field
+    package: packages/aiplat-fde
+    version_file: packages/aiplat-fde/package.json
+    healthz_schema: packages/aiplat-fde/contracts/schemas/healthz.schema.json
+    product_id: fde
+    min_version: "0.1.0"
+    smoke: packages/aiplat-fde/scripts/d1_smoke.sh
+    notes: "Field D1 Accepted; production_field=true; compose long-running excluded"
+contracts:
+  - id: ontology.api.v0
+    path: reports/five-products/modules/ontology/contracts/schemas/ontology_api.schema.json
+  - id: eval.protocol.v0
+    path: reports/five-products/modules/evaluation/contracts/schemas/eval_protocol.schema.json
+  - id: aiplat.control.v0
+    path: reports/five-products/modules/aiplat/contracts/schemas/control_plane.schema.json
+forbidden_without_adr:
+  - pg_ha_production_cutover_without_checklist_green
+  - five_process_full_split_e4
+  - ontology_a3_process_split
+  - evaluation_a3_process_split
+  - fde_compose_long_running

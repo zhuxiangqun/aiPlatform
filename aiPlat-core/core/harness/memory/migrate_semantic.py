@@ -8,13 +8,14 @@ Usage:
   python -m core.harness.memory.migrate_semantic
 """
 
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import json, logging, os, sqlite3, sys
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("migrate_semantic")
 
-SRC_DB = os.path.expanduser("~/.aiplat/memory_semantic.sqlite3")
-DST_DIR = os.path.expanduser("~/.aiplat")
+SRC_DB = get_aiplat_data_dir("memory_semantic.sqlite3")
+DST_DIR = get_aiplat_home()
 
 
 def run(dry_run: bool = True):

@@ -7,6 +7,7 @@ Curated path: thumbs / verbal correction → quality flags →
 ``export_curated_sharegpt_dataset`` (gold pairs only).
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -19,7 +20,7 @@ from typing import Any, Dict, List, Optional, Tuple
 logger = logging.getLogger("aiplat.trajectory")
 
 _TRAJ_DIR = Path(os.getenv("AIPLAT_TRAJECTORY_DIR",
-    os.path.expanduser("~/.aiplat/trajectories")))
+    get_aiplat_data_dir("trajectories")))
 
 _GOOD_MARKERS = (
     "讲得对", "说得对", "答对了", "有用", "谢谢小朱", "不错", "正确",
@@ -264,7 +265,7 @@ def export_sharegpt_dataset(
     """
     try:
         ensure_dir()
-        out_dir = output_dir or os.path.expanduser("~/.aiplat/training")
+        out_dir = output_dir or get_aiplat_data_dir("training")
         os.makedirs(out_dir, exist_ok=True)
 
         # 按 session 聚合对话
@@ -328,7 +329,7 @@ def export_curated_sharegpt_dataset(
     """
     try:
         ensure_dir()
-        out_dir = output_dir or os.path.expanduser("~/.aiplat/training")
+        out_dir = output_dir or get_aiplat_data_dir("training")
         os.makedirs(out_dir, exist_ok=True)
 
         samples: List[Dict[str, Any]] = []
@@ -445,7 +446,7 @@ def export_seed_sharegpt_dataset(*, output_dir: str = "", force: bool = False) -
     never replaces live brief for inventory facts.
     """
     try:
-        out_dir = output_dir or os.path.expanduser("~/.aiplat/training")
+        out_dir = output_dir or get_aiplat_data_dir("training")
         os.makedirs(out_dir, exist_ok=True)
         out_path = os.path.join(out_dir, "sft_digital_human_seed.jsonl")
         if os.path.isfile(out_path) and not force:

@@ -4,6 +4,7 @@ Best-effort helper used after deploy and via explicit API. Never raises into
 the deploy critical path — callers should catch and surface warnings.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -25,12 +26,12 @@ def workspace_root() -> Path:
 
 
 def default_out_dir(project_id: str) -> Path:
-    home = Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat"))
+    home = Path(get_aiplat_home())
     return home / "apps" / project_id / "pi-bundle"
 
 
 def app_home_for(project_id: str) -> Path:
-    home = Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat"))
+    home = Path(get_aiplat_home())
     return home / "apps" / project_id / "current"
 
 
@@ -141,7 +142,7 @@ def zip_pi_bundle_for_project(
         return None, {**meta, "ok": False, "error": f"pi_bundle missing: {bundle}"}
 
     # Prefer stable path next to bundle; fall back to temp
-    home = Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat"))
+    home = Path(get_aiplat_home())
     out_dir = home / "apps" / str(project_id).strip()
     out_dir.mkdir(parents=True, exist_ok=True)
     zip_base = out_dir / f"pi-bundle-{project_id}"

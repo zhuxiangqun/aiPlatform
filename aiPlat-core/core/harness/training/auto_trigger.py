@@ -12,6 +12,7 @@ LoRA AutoTrigger — 自动微调触发 (Phase 4.3)
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import asyncio, json, os, time, logging
@@ -48,7 +49,7 @@ class LoRAAutoTrigger:
         self._quality_threshold = float(os.getenv("AIPLAT_SFT_MIN_QUALITY", "0.8"))
         self._max_samples = int(os.getenv("AIPLAT_SFT_MAX_SAMPLES", "1000"))
         self._enabled = os.getenv("AIPLAT_SFT_ENABLED", "true").lower() not in ("0", "false", "no")
-        self._dataset_dir = os.path.expanduser("~/.aiplat/training")
+        self._dataset_dir = get_aiplat_data_dir("training")
         os.makedirs(self._dataset_dir, exist_ok=True)
 
     async def on_skill_approved(self, skill_draft: Any):

@@ -6,6 +6,7 @@ move: method bodies unchanged, no API/semantics change. self._collect_files
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -206,7 +207,7 @@ class PipelineStateMixin:
 
         import re
 
-        home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+        home = get_aiplat_home()
 
         if project_name:
 

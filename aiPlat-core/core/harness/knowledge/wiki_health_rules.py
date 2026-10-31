@@ -17,6 +17,7 @@ Scoring: each rule has a penalty_weight. Final score = max(0, 100 - total_penalt
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 
@@ -1208,7 +1209,7 @@ def _save_health_snapshot(report: WikiHealthReport) -> None:
 
     from pathlib import Path
 
-    root = Path(os.environ.get("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))) / "wiki"
+    root = Path(get_aiplat_home()) / "wiki"
 
     history_file = root / "health_history.json"
 
@@ -1300,7 +1301,7 @@ def get_health_trend() -> Dict[str, Any]:
 
     from pathlib import Path
 
-    root = Path(os.environ.get("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))) / "wiki"
+    root = Path(get_aiplat_home()) / "wiki"
 
     history_file = root / "health_history.json"
 

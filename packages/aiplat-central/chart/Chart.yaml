@@ -1,0 +1,13 @@
+apiVersion: v2
+name: aiplat-central
+description: Central host Thin chart skeleton (ADR-CONTROL-PLANE-PG-HA). Not a production HA cutover.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - aiplat
+  - central
+annotations:
+  aiplat.capability_id: aiplat
+  aiplat.deploy_unit: central
+  aiplat.pg_ha_cutover_authorized: "false"

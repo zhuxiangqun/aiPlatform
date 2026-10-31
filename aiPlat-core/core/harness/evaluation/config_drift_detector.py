@@ -21,6 +21,7 @@ Usage:
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -64,7 +65,7 @@ class ConfigDriftDetector:
 
     def __init__(self):
 
-        self._home = Path(os.getenv("AIPLAT_HOME", Path("~").expanduser() / ".aiplat"))
+        self._home = Path(get_aiplat_home())
 
         self._agents_dir = self._home / "agents"
 

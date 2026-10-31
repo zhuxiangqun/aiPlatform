@@ -1,0 +1,21 @@
+id: ontology
+version: 0.1.0
+owner: platform
+deploy_unit: central
+autonomy_target: A2
+delivery_target: D2
+current_autonomy: A2-versioning
+current_delivery: D1
+a2_versioning: true
+wiring: ontology.api.v0
+hosted_by: aiplat
+build:
+  command: "echo aiPlat-core/core/harness/knowledge"
+test:
+  command: "bash packages/aiplat-ontology/scripts/d1_smoke.sh"
+contracts:
+  - contracts/schemas/healthz.schema.json
+  - contracts/schemas/ontology_api.schema.json
+migrations:
+  path: null
+adr_for_a3: null

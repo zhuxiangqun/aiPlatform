@@ -1,4 +1,5 @@
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import asyncio as _asyncio
 import re
@@ -2074,7 +2075,7 @@ async def list_workspace_skill_revisions(skill_id: str, limit: int = 50, offset:
         if isinstance(fs, dict) and fs.get("skill_dir"):
             raw = str(fs.get("skill_dir"))
             candidate = Path(raw).resolve()
-            allowed_base = Path(os.path.expanduser("~/.aiplat/skills")).resolve()
+            allowed_base = Path(get_aiplat_data_dir("skills")).resolve()
             try:
                 candidate.relative_to(allowed_base)
             except ValueError:

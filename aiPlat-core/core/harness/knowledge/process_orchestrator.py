@@ -15,6 +15,7 @@ Cross-domain support:
 Process instances tracked in SQLite (process_instances table) in state_changes.db.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import logging
@@ -28,7 +29,7 @@ logger = logging.getLogger("process_orchestrator")
 
 
 def _db_path() -> str:
-    return _os.path.expanduser("~/.aiplat/state_changes.db")
+    return get_aiplat_data_dir("state_changes.db")
 
 
 def _ensure_schema():

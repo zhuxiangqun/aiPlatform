@@ -15,6 +15,7 @@ AdversarialTestSuite — 认知安全对抗验证 (Cognitive Robustness Testing)
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 from dataclasses import dataclass, field
@@ -184,7 +185,7 @@ class AdversarialTestSuite:
             return ""
 
         import os, json, time as _time
-        output_dir = os.path.expanduser("~/.aiplat/training/adversarial")
+        output_dir = get_aiplat_data_dir("training/adversarial")
         os.makedirs(output_dir, exist_ok=True)
 
         timestamp = _time.strftime("%Y%m%d_%H%M%S")

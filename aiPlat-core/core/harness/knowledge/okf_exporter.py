@@ -27,6 +27,7 @@ OKF 文件结构:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import logging
@@ -39,7 +40,7 @@ from typing import Any, Dict, List, Optional, Set
 
 logger = logging.getLogger(__name__)
 
-OKF_EXPORT_DIR = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "okf_export"
+OKF_EXPORT_DIR = _Path(get_aiplat_home()) / "okf_export"
 
 
 # ── Data Models ──────────────────────────────────────────────────────────

@@ -27,6 +27,7 @@ Design:
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -64,7 +65,7 @@ def _ensure_profile_dir() -> Path:
 
         "AIPLAT_PROFILE_DIR",
 
-        str(Path.home() / ".aiplat" / "profiles"),
+        str(Path(get_aiplat_home()) / "profiles"),
 
     ))
 

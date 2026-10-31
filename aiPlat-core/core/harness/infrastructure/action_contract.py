@@ -10,6 +10,7 @@ Extends the original 4 built-in actions with enterprise-grade fields:
   - YAML sandbox: path whitelist for from_yaml()
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import os
 import yaml
@@ -216,7 +217,7 @@ class ActionContractModel(BaseModel):
         ALLOWED_DIRS = _yaml_allowed_dirs()
         # Also allow $AIPLAT_HOME/actions when set
         home_actions = os.path.realpath(
-            os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "actions")
+            os.path.join(os.getenv("AIPLAT_HOME", get_aiplat_home()), "actions")
         )
         if home_actions not in ALLOWED_DIRS:
             ALLOWED_DIRS = list(ALLOWED_DIRS) + [home_actions]
@@ -255,7 +256,7 @@ class ActionContractModel(BaseModel):
         ALLOWED_DIRS = _yaml_allowed_dirs()
         # Also allow $AIPLAT_HOME/actions when set
         home_actions = os.path.realpath(
-            os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "actions")
+            os.path.join(os.getenv("AIPLAT_HOME", get_aiplat_home()), "actions")
         )
         if home_actions not in ALLOWED_DIRS:
             ALLOWED_DIRS = list(ALLOWED_DIRS) + [home_actions]
@@ -279,7 +280,7 @@ def _yaml_allowed_dirs() -> List[str]:
     """Path sandbox for Action YAML — home actions + config + workspace seeds."""
     dirs = [
         os.path.realpath("./config/actions/"),
-        os.path.realpath(os.path.expanduser("~/.aiplat/actions/")),
+        os.path.realpath(get_aiplat_data_dir("actions/")),
         os.path.realpath(
             os.path.join(
                 os.path.dirname(__file__), "..", "..", "workspace_seeds", "actions"

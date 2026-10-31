@@ -7,6 +7,7 @@ Goal:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 from dataclasses import dataclass, field
@@ -59,7 +60,7 @@ class MCPManager:
     def _resolve_mcp_paths(self) -> List[Path]:
         repo_root = Path(__file__).resolve().parents[2]  # aiPlat-core/
         engine_default = repo_root / "core" / "engine" / "mcps"
-        workspace_default = Path.home() / ".aiplat" / "mcps"
+        workspace_default = Path(get_aiplat_home()) / "mcps"
 
         scope = (self._scope or "engine").strip().lower()
         if scope not in {"engine", "workspace"}:

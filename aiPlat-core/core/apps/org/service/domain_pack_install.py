@@ -1,6 +1,7 @@
 """S3 — install named domain packs. No harness domain-name branches."""
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -17,7 +18,7 @@ _SAFE = re.compile(r"^[a-z][a-z0-9-]{1,48}$")
 
 
 def _home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    return Path(get_aiplat_home())
 
 
 def packs_root() -> Path:

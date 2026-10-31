@@ -15,6 +15,7 @@ Produces GovernanceCycleResult with health scores and actionable recommendations
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -34,7 +35,7 @@ logger = logging.getLogger("governance_pipeline")
 
 
 
-HISTORY_DIR = _os.path.expanduser("~/.aiplat/governance_cycles")
+HISTORY_DIR = get_aiplat_data_dir("governance_cycles")
 
 
 
@@ -393,7 +394,7 @@ def _run_mapping_check(domain_id: str, step: StepResult):
 
         import json, os
 
-        base = os.path.expanduser("~/.aiplat/datasources")
+        base = get_aiplat_data_dir("datasources")
 
         sources = 0
 
@@ -499,7 +500,7 @@ def _run_feedback_check(domain_id: str, step: StepResult):
 
         import sqlite3, os, time
 
-        db = os.path.expanduser("~/.aiplat/state_changes.db")
+        db = get_aiplat_data_dir("state_changes.db")
 
         feedback_count = 0
 

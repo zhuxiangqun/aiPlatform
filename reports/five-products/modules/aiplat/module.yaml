@@ -1,0 +1,22 @@
+id: aiplat
+version: 0.1.0
+owner: platform
+deploy_unit: central
+autonomy_target: A2
+delivery_target: D2
+# SSOT: capabilities.manifest.yaml current_autonomy A0 (A2-versioning flag ≠ autonomy A2)
+current_autonomy: A0
+current_delivery: D2
+a2_versioning: true
+build:
+  command: "echo aiPlat-platform"
+test:
+  command: "bash packages/aiplat-central/scripts/a2_version_check.sh && bash packages/aiplat-central/scripts/d2_compat_check.sh && bash packages/aiplat-central/scripts/d2_security_check.sh && bash packages/aiplat-central/scripts/d1_smoke.sh"
+contracts:
+  - contracts/schemas/healthz.schema.json
+  - contracts/schemas/control_plane.schema.json
+migrations:
+  path: null
+adr_for_a3: reports/five-products/ADR-CONTROL-PLANE-PG-HA.md
+pg_ha_adr: accepted_conditional
+pg_ha_cutover_authorized: false

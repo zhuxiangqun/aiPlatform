@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiplat.local/schemas/pi/healthz.schema.json",
+  "title": "PiHealthzResponse",
+  "type": "object",
+  "required": ["status"],
+  "properties": {
+    "status": { "type": "string", "enum": ["ok", "degraded", "fail"] },
+    "version": { "type": "string" },
+    "product_id": { "type": "string", "const": "pi" },
+    "capability_id": { "type": "string", "const": "pi" },
+    "deploy_unit": { "type": "string", "const": "edge" }
+  },
+  "additionalProperties": true
+}

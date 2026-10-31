@@ -5,6 +5,7 @@ an approved merge ticket is applied. Exact-key hits still need a human click.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -25,7 +26,7 @@ _CONFLICT_HOLD_SEC = 7 * 86400
 
 
 def _home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    return Path(get_aiplat_home())
 
 
 def tickets_path() -> Path:

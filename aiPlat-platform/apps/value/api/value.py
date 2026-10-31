@@ -2,6 +2,7 @@
 
 
 
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 Endpoints:
 
@@ -337,7 +338,7 @@ async def get_goal_trend(tenant_id: str, goal_id: str) -> Dict[str, Any]:
 
         import json as _j
 
-        report_path = os.path.expanduser("~/.aiplat/value/monthly.jsonl")
+        report_path = get_aiplat_data_dir("value/monthly.jsonl")
 
         trend = []
 

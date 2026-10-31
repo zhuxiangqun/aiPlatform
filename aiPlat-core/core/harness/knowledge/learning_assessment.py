@@ -13,6 +13,7 @@ callers: wiki.py /learning/chapter/{id}/complete, core_facade
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import logging
@@ -552,7 +553,7 @@ def _enqueue_pending_assessment(
     import os as _os, json as _json, time as _time
 
     try:
-        home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
+        home = get_aiplat_home()
         path = _os.path.join(home, "learning", "pending", f"{learner_id}_{chapter_id}.json")
         _os.makedirs(_os.path.dirname(path), exist_ok=True)
 

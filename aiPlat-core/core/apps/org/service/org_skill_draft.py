@@ -1,6 +1,7 @@
 """H5 — skill draft pack. Human approval lists it. Never auto-lists, never writes SKILL.md."""
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -15,7 +16,7 @@ _APPROVE_ROLES = frozenset({"admin"})
 
 
 def _home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    return Path(get_aiplat_home())
 
 
 def drafts_dir() -> Path:

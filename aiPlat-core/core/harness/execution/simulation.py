@@ -20,6 +20,7 @@ callers: POST /simulate (REST), FDE 工作台 SimulationPanel
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import asyncio
 import copy
@@ -762,7 +763,7 @@ class SimulationOrchestrator:
     def _persist_report(self, report: SimulationReport) -> None:
         """将报告持久化到磁盘 (best-effort)。"""
         try:
-            sim_dir = _os.path.expanduser(f"~/.aiplat/simulations/{report.simulation_id}")
+            sim_dir = get_aiplat_data_dir(f"simulations/{report.simulation_id}")
             _os.makedirs(sim_dir, exist_ok=True)
 
             # 序列化为 JSON (dataclasses → dict)
@@ -815,7 +816,7 @@ class SimulationOrchestrator:
 def load_simulation_report(simulation_id: str) -> Optional[Dict[str, Any]]:
     """从磁盘加载历史模拟报告。"""
     try:
-        path = _os.path.expanduser(f"~/.aiplat/simulations/{simulation_id}/report.json")
+        path = get_aiplat_data_dir(f"simulations/{simulation_id}/report.json")
         if not _os.path.exists(path):
             return None
         with open(path) as f:
@@ -826,7 +827,7 @@ def load_simulation_report(simulation_id: str) -> Optional[Dict[str, Any]]:
 
 def list_simulations(limit: int = 20) -> List[Dict[str, Any]]:
     """列出最近的模拟报告。"""
-    sim_dir = _os.path.expanduser("~/.aiplat/simulations")
+    sim_dir = get_aiplat_data_dir("simulations")
     if not _os.path.isdir(sim_dir):
         return []
 

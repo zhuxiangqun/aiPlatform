@@ -18,17 +18,20 @@ Usage:
     # Load A-Box
     from core.harness.knowledge.knowledge_abox_builder import build_abox
     build_abox(onto)
-
-from pathlib import Path
     # Reason
     onto.sync_reasoner_pellet()
     # Query
     results = list(onto.world.sparql("SELECT ..."))
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 import logging
+
+from core.utils.paths import get_aiplat_data_dir, get_aiplat_home
 
 logger = logging.getLogger(__name__)
 
@@ -670,7 +673,7 @@ def get_classes_with_templates() -> List[OntologyClass]:
 def _extension_path(collection_id: str):
     from pathlib import Path
     import os as _oss
-    home = _oss.getenv("AIPLAT_HOME", _oss.path.expanduser("~/.aiplat"))
+    home = get_aiplat_home()
     return Path(home) / "wiki" / "collections" / collection_id / "ontology_extension.yaml"
 
 
@@ -1099,7 +1102,7 @@ import time as _time
 
 
 def _suggestions_path(collection_id: str = "default") -> str:
-    home = _os.path.expanduser(_os.getenv("AIPLAT_HOME", "~/.aiplat"))
+    home = get_aiplat_home()
     return _os.path.join(home, "wiki", "collections", collection_id, "ontology_suggestions.json")
 
 
@@ -1635,7 +1638,7 @@ def write_suggestions_owl_file(collection_id: str = "default",
     if "owl:Class" not in ttl:
         return None
     import os as _os
-    base = _os.path.expanduser(_os.getenv("AIPLAT_HOME", "~/.aiplat"))
+    base = get_aiplat_home()
     ont_dir = _os.path.join(base, "ontologies")
     _os.makedirs(ont_dir, exist_ok=True)
     path = _os.path.join(ont_dir, f"{collection_id}.learned.ttl")

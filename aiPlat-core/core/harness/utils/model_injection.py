@@ -33,6 +33,7 @@ Model injection helpers.
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import contextvars
 import logging
@@ -287,7 +288,7 @@ def _do_inject_adapter_models(mgr: Any) -> int:
 
             for candidate in [
 
-                os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+                os.path.join(get_aiplat_home(),
 
                             "aiplat_executions.sqlite3"),
 
@@ -457,7 +458,7 @@ def _log_model_selection(purpose: str, selected: str, entry: str = "best_model_f
 
         log_path = _log_os.path.join(
 
-            _log_os.path.expanduser(_log_os.getenv("AIPLAT_HOME", "~/.aiplat")),
+            get_aiplat_home(),
 
             "wiki", "model_selection_log.json")
 

@@ -17,6 +17,7 @@ Storage: ~/.aiplat/file_checkpoints/{session_id}/{checkpoint_id}.{header.json,co
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import hashlib
 import json
@@ -28,7 +29,7 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("aiplat.file_checkpoint")
 
-CHECKPOINT_ROOT = os.path.expanduser("~/.aiplat/file_checkpoints")
+CHECKPOINT_ROOT = get_aiplat_data_dir("file_checkpoints")
 MAX_FILE_BYTES = 1_048_576          # 1 MB — skip larger files (Hermes: large files auto-skipped)
 MAX_CHECKPOINTS_PER_PATH = 50       # bounded retention per file path
 

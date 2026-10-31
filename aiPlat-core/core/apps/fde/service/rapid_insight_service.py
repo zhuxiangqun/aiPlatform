@@ -4,6 +4,7 @@ Rapid Industry Insight Service — 48h industry cognition core algorithms.
 P0: normalize confidence, divergence detection, penetration scoring, blind spot location.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -593,7 +594,7 @@ def auto_suggest_domains(
 
     # Load existing class embeddings from vector cache
     import os as _os
-    vec_path = _os.path.expanduser("~/.aiplat/wiki/collections/default/vectors.json")
+    vec_path = get_aiplat_data_dir("wiki/collections/default/vectors.json")
     class_embeddings = {}
     if _os.path.isfile(vec_path):
         try:

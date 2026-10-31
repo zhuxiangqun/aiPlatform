@@ -19,17 +19,29 @@ class _Handler(BaseHTTPRequestHandler):
             self.end_headers()
             return
         home = os.environ.get("AIPLAT_HOME", "")
-        body = json.dumps(
-            {
+        path = self.path.rstrip("/") or "/"
+        if path == "/healthz":
+            # V2 module healthz contract (Field A1); Thin optional probe only
+            payload = {
+                "status": "ok",
+                "version": os.environ.get("AIPLAT_FDE_VERSION", "0.0.0"),
+                "product_id": "fde",
+                "capability_id": "fde",
+                "deploy_unit": "field",
+                "mode": "optional_probe",
+                "signoff": "POST /api/platform/apps/fde/acceptance/signoff",
+                "aiplat_home": home,
+            }
+        else:
+            payload = {
                 "ok": True,
                 "product": "fde",
                 "aiplat_home": home,
                 "home_exists": bool(home) and os.path.isdir(home),
                 "optional_split": os.environ.get("AIPLAT_FDE_OPTIONAL_SPLIT", "0"),
                 "signoff": "POST /api/platform/apps/fde/acceptance/signoff",
-            },
-            ensure_ascii=False,
-        ).encode("utf-8")
+            }
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))

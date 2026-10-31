@@ -4,6 +4,7 @@ Extracted from builder_project_service.py — method bodies unchanged.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import os  # P1-18 修复：deploy_to_app 原文件依赖模块级 import os，拆分后 Mixin 文件需自带
 import time  # noqa: F401 — deploy_to_app/get_health_report 方法体使用（P1-14 拆分遗留）
@@ -18,7 +19,7 @@ class BuilderDeployMixin:
         """Deploy pipeline output to the app layer."""
         proj = self._projects.get(project_id, {})
         # Sync pass_rate from final state if available
-        _out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
+        _out_dir = os.path.join(get_aiplat_home(), "output", project_id)
         _final_path = os.path.join(_out_dir, "_final_state.json")
         _pr = None
         _pr_source = "none"

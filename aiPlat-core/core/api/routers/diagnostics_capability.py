@@ -5,6 +5,7 @@ GET /api/core/diagnostics/capability-boundary?domain=supply-chain
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json, logging, os, time
 from typing import Any, Dict, List, Optional, Tuple
@@ -20,7 +21,7 @@ router = APIRouter(tags=["diagnostics-capability"])
 
 
 def _load_registry() -> dict:
-    path = os.path.expanduser("~/.aiplat/ontologies/registry.json")
+    path = get_aiplat_data_dir("ontologies/registry.json")
     if not os.path.isfile(path):
         return {"domains": {}}
     with open(path, encoding="utf-8") as f:
@@ -28,7 +29,7 @@ def _load_registry() -> dict:
 
 
 def _load_golden_queries() -> dict:
-    path = os.path.expanduser("~/.aiplat/wiki/golden_queries.yaml")
+    path = get_aiplat_data_dir("wiki/golden_queries.yaml")
     if not os.path.isfile(path):
         return {}
     with open(path, encoding="utf-8") as f:
@@ -36,7 +37,7 @@ def _load_golden_queries() -> dict:
 
 
 def _load_gaps(domain_id: str) -> List[dict]:
-    path = os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}_gaps.yaml")
+    path = get_aiplat_data_dir(f"ontologies/{domain_id}_gaps.yaml")
     if not os.path.isfile(path):
         return []
     try:
@@ -159,7 +160,7 @@ def _get_domain_prompt_ready(domain_id: str) -> bool:
 
 
 def _get_seed_data_ready(domain_id: str) -> bool:
-    return os.path.isfile(os.path.expanduser(f"~/.aiplat/seed_data/{domain_id}.json"))
+    return os.path.isfile(get_aiplat_data_dir(f"seed_data/{domain_id}.json"))
 
 
 async def build_capability_boundary(domain_filter: Optional[str] = None) -> dict:

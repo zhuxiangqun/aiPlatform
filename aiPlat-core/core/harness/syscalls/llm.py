@@ -23,6 +23,7 @@ error classification and truncation awareness.
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -671,7 +672,7 @@ def _guard_messages(messages: List[Message], trace_context: Optional[Dict[str, A
         if isinstance(session_id, str) and session_id and out and out[0].get("role") == "system":
             import json
             import os as _os
-            emo_file = _os.path.expanduser(f"~/.aiplat/emotion/{session_id}.json")
+            emo_file = get_aiplat_data_dir(f"emotion/{session_id}.json")
             if _os.path.exists(emo_file):
                 with open(emo_file) as f:
                     recent = json.load(f)
@@ -1008,7 +1009,7 @@ def _try_inject_claude_md(messages: List[Message], trace_context: Optional[Dict[
 
         # §5.27: SOUL.md — persona layer (loaded first)
 
-        soul_path = Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat"))) / "SOUL.md"
+        soul_path = Path(os.getenv("AIPLAT_HOME", str(Path(get_aiplat_home())))) / "SOUL.md"
 
         if not soul_path.exists():
 

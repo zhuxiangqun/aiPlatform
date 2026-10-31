@@ -15,6 +15,7 @@ Architecture:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import json as _json
@@ -189,7 +190,7 @@ class DataSourceRegistry:
 
     @classmethod
     def load_from_dir(cls, dir_path: str = "") -> int:
-        d = _Path(dir_path or _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "datasources")
+        d = _Path(dir_path or _Path(get_aiplat_home()) / "datasources")
         if not d.exists():
             return 0
         count = 0

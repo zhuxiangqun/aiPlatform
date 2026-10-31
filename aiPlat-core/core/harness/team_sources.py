@@ -4,6 +4,7 @@ Secondary sources live under ``~/.aiplat/team/sources/{namespace}/``.
 Locked primary resources (skills/rules/…) are never overwritten by a source merge.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -24,7 +25,7 @@ _SEED_SOURCES = (
 
 
 def aiplat_home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat")).expanduser()
+    return Path(get_aiplat_home()).expanduser()
 
 
 def _read_yaml(path: Path) -> Dict[str, Any]:

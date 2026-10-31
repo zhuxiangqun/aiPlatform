@@ -3,6 +3,7 @@ u"""Governance Dashboard — 治理仪表盘后端聚合 (v2.8).
 Aggregates all governance data sources into a single dashboard JSON.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os as _os
@@ -103,7 +104,7 @@ def aggregate_dashboard() -> Dict[str, Any]:
 
     # 5. Audit summary
     try:
-        db = _os.path.expanduser("~/.aiplat/usage_metrics.db")
+        db = get_aiplat_data_dir("usage_metrics.db")
         if _os.path.exists(db):
             conn = _sqlite3.connect(db, timeout=5.0)
             today_start = _time.time() - (_time.time() % 86400)

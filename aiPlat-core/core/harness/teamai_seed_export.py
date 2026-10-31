@@ -4,6 +4,7 @@ Output under ``~/.aiplat/exports/teamai-seed/`` (or custom dest).
 Forbidden targets: ``.cursor``, ``.claude``, ``.codex``, IDE adapter dirs.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -40,7 +41,7 @@ _EXPORT_RESOURCES = (
 
 
 def aiplat_home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat")).expanduser()
+    return Path(get_aiplat_home()).expanduser()
 
 
 def default_export_dir() -> Path:

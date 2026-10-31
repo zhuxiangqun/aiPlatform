@@ -17,6 +17,7 @@ Requirements: torch, transformers, datasets
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -132,7 +133,7 @@ class FullTrainingEngine:
 
         self._jobs: Dict[str, FullTrainingJob] = {}
 
-        self._job_dir = os.path.expanduser("~/.aiplat/full_training")
+        self._job_dir = get_aiplat_data_dir("full_training")
 
         os.makedirs(self._job_dir, exist_ok=True)
 

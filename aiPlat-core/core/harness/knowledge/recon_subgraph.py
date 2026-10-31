@@ -13,6 +13,7 @@ Key features:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import logging
@@ -51,7 +52,7 @@ class ReconSubgraph:
         self.domain_id = f"_recon_{run_id}"
         
         if not data_dir:
-            data_dir = _os.path.expanduser("~/.aiplat/data/recon")
+            data_dir = get_aiplat_data_dir("data/recon")
         _os.makedirs(data_dir, exist_ok=True)
         
         self._db_path = _os.path.join(data_dir, f"{run_id}.db")

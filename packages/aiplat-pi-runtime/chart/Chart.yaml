@@ -1,0 +1,16 @@
+apiVersion: v2
+name: aiplat-pi-runtime
+description: Pi Edge Thin chart skeleton (D2 admin pack). Enterprise reconnect remains opt-in.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - aiplat
+  - pi
+  - edge
+annotations:
+  aiplat.capability_id: pi
+  aiplat.deploy_unit: edge
+  aiplat.enterprise_default: "0"
+  aiplat.d2_admin_pack: "true"
+  aiplat.d3_production_authorized: "false"

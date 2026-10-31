@@ -1,5 +1,6 @@
 """Service Facade — service creation (no core_facade dependency)."""
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from typing import Any
 
 
@@ -16,7 +17,7 @@ def create_conversation_service(store: Any = None) -> Any:
     from core.services.execution_store import ExecutionStore, ExecutionStoreConfig
     db_path = os.environ.get(
         "AIPLAT_EXECUTION_DB_PATH",
-        os.path.expanduser("~/.aiplat/aiplat_executions.sqlite3"),
+        get_aiplat_data_dir("aiplat_executions.sqlite3"),
     )
     default_store = ExecutionStore(
         ExecutionStoreConfig(db_path=db_path)

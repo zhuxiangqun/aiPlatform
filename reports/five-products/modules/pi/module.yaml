@@ -1,0 +1,20 @@
+id: pi
+version: 0.1.0
+owner: platform
+deploy_unit: edge
+autonomy_target: A3
+delivery_target: D3
+current_delivery: D1
+a2_versioning: true
+build:
+  command: "echo packages/aiplat-pi-runtime"
+test:
+  command: "bash packages/aiplat-pi-runtime/scripts/d1_smoke.sh"
+install:
+  command: "bash packages/aiplat-pi-runtime/scripts/d1_install.sh --smoke"
+contracts:
+  - ../../../packages/aiplat-pi-runtime/contracts/schemas/healthz.schema.json
+migrations:
+  path: null
+adr_for_a3: reports/five-products/ADR-08-deploy-split.md
+

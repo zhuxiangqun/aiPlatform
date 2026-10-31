@@ -1,0 +1,12 @@
+# Pi Edge Thin — D2 skeleton. Default offline / enterprise off.
+replicaCount: 1
+image:
+  repository: aiplat/pi-runtime
+  tag: "0.1.0"
+service:
+  port: 18787
+env:
+  AIPLAT_ENTERPRISE: "0"
+  AIPLAT_HTTP_HOST: "127.0.0.1"
+enterprise:
+  enabled: false

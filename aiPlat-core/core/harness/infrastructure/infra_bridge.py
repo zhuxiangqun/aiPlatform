@@ -26,6 +26,7 @@ through core/adapters/llm/base.py::create_adapter() → InfraLLMAdapter.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import os
 import logging
@@ -151,7 +152,7 @@ def create_infra_database_client(db_path: str) -> Any:
 
             path = execution_db_path()
         except Exception:
-            path = os.path.expanduser("~/.aiplat/aiplat_executions.sqlite3")
+            path = get_aiplat_data_dir("aiplat_executions.sqlite3")
     if not os.path.isabs(path):
         path = os.path.join(os.getcwd(), path)
 

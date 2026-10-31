@@ -23,6 +23,7 @@ Usage:
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -113,7 +114,7 @@ class OntologyAuditor:
 
     def __init__(self):
 
-        self._ontologies_dir = Path(os.getenv("AIPLAT_HOME", Path("~").expanduser() / ".aiplat")) / "ontologies"
+        self._ontologies_dir = Path(get_aiplat_home()) / "ontologies"
 
 
 

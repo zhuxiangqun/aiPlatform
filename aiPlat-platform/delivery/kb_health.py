@@ -5,6 +5,7 @@ Phase-2 soft: miss/low-confidence TOP from syscall_events when store available.
 Cache hit rate reuses cost_report._cache_stats (no fake ¥ here).
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -143,7 +144,7 @@ def _kb_sqlite_path(tenant_id: str) -> str:
     home = (
         os.environ.get("AIPLAT_PLATFORM_HOME")
         or os.environ.get("AIPLAT_HOME")
-        or str(Path.home() / ".aiplat")
+        or str(Path(get_aiplat_home()))
     )
     return str(Path(home).expanduser() / "kb" / "tenants" / tid / "kb.sqlite3")
 
@@ -333,7 +334,7 @@ def _execution_db_path() -> Optional[str]:
     home = (
         os.environ.get("AIPLAT_PLATFORM_HOME")
         or os.environ.get("AIPLAT_HOME")
-        or str(Path.home() / ".aiplat")
+        or str(Path(get_aiplat_home()))
     )
     for name in ("aiplat_executions.sqlite3", "executions.sqlite3"):
         cand = Path(home).expanduser() / name

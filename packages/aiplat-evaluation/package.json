@@ -1,0 +1,9 @@
+{
+  "name": "aiplat-evaluation",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Evaluation Service D1 Thin (co-hosted). A3 prep only; process_split_authorized=false.",
+  "capability_id": "evaluation",
+  "deploy_unit": "central",
+  "hosted_by": "aiplat"
+}

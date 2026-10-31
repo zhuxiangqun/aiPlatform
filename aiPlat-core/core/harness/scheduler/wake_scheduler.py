@@ -39,6 +39,7 @@ Disabled by default (AIPLAT_WAKE_ENABLED=false) — safety-first, human opt-in.
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -239,7 +240,7 @@ class WakeScheduler:
 
         import os as _os_module
 
-        pending_dir = _os_module.path.expanduser("~/.aiplat/goals/pending")
+        pending_dir = get_aiplat_data_dir("goals/pending")
 
         if not _os_module.path.isdir(pending_dir):
 

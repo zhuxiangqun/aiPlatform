@@ -4,6 +4,7 @@ Storage: ~/.aiplat/workflow_templates/{name}.json
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import json
@@ -29,7 +30,7 @@ class TemplateSave(BaseModel):
 
 
 def _templates_dir() -> Path:
-    home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    home = get_aiplat_home()
     return Path(home) / "workflow_templates"
 
 

@@ -9,6 +9,7 @@ Vertical packs MUST NOT live under ``prd_gate_packs/`` (kernel-agnostic).
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -34,7 +35,7 @@ def _user_packs_dir() -> Path:
     override = os.getenv("AIPLAT_PRD_GATES_DIR", "").strip()
     if override:
         return Path(os.path.expanduser(override))
-    return Path(os.path.expanduser("~/.aiplat/prd_gates"))
+    return Path(get_aiplat_data_dir("prd_gates"))
 
 
 def materialize_prd_gate_seeds(*, overwrite: bool = False) -> Path:

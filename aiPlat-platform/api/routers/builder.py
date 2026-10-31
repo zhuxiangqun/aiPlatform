@@ -3,6 +3,7 @@ Builder API router — backed by platform-local builder services.
 Each endpoint proxies to the local Builder service with proper type deserialization.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import logging
@@ -166,7 +167,7 @@ async def project_file_upload(
     if not file.filename:
         raise HTTPException(status_code=400, detail="file_required")
 
-    _app_home = Path(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))) / "apps" / project_id / "current"
+    _app_home = Path(get_aiplat_home()) / "apps" / project_id / "current"
     _upload_dir = _app_home / "uploads"
     _upload_dir.mkdir(parents=True, exist_ok=True)
 
@@ -909,7 +910,7 @@ async def deploy_project_to_app(project_id: str, _auth: str = Depends(require_bu
         if proj and proj.get("metadata", {}).get("provenance", {}).get("signature"):
             import os, json as _json, hashlib as _hashlib
             from core.api.core_facade import verify_skill_signature  # v2.5: canonical path
-            proj_dir = os.path.join(os.environ.get("AIPLAT_HOME", str(Path.home() / ".aiplat")), "projects", project_id)
+            proj_dir = os.path.join(get_aiplat_home(), "projects", project_id)
             manifest_path = os.path.join(proj_dir, "PROJECT.manifest.json")
             proj_json = os.path.join(proj_dir, "project.json")
             if os.path.exists(manifest_path) and os.path.exists(proj_json):
@@ -1028,7 +1029,7 @@ async def sign_project(project_id: str, req: Dict[str, Any], _auth: str = Depend
         import hashlib
 
         # Compute project integrity from the per-project JSON
-        proj_dir = Path(os.environ.get("AIPLAT_HOME", str(Path.home() / ".aiplat"))) / "projects" / project_id
+        proj_dir = Path(get_aiplat_home()) / "projects" / project_id
         proj_dir.mkdir(parents=True, exist_ok=True)
         proj_json = proj_dir / "project.json"
 

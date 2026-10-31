@@ -10,6 +10,7 @@ Checks:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import os, yaml, logging
 from dataclasses import dataclass, field
@@ -30,7 +31,7 @@ class ConstraintValidator:
     """Scan configuration references for stale or invalid entries."""
 
     def __init__(self):
-        self._home = Path(os.getenv("AIPLAT_HOME", Path("~").expanduser() / ".aiplat"))
+        self._home = Path(get_aiplat_home())
 
     def scan_all(self) -> List[ConstraintIssue]:
         issues = []

@@ -22,6 +22,7 @@
     python3 .../daemon_jobs.py --kill <id>
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import os
@@ -59,7 +60,7 @@ def _default_path() -> str:
     env = os.environ.get("AIPLAT_DAEMON_JOBS_FILE")
     if env:
         return env
-    home = os.environ.get("AIPLAT_HOME") or os.path.expanduser("~/.aiplat")
+    home = get_aiplat_home()
     return os.path.join(home, "daemon_jobs.json")
 
 

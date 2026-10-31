@@ -11,6 +11,7 @@ Usage:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import os
 from pathlib import Path
@@ -21,7 +22,7 @@ import yaml as _yaml
 
 def _load_domain(domain_id: str) -> Optional[Dict[str, Any]]:
     """Load domain ontology YAML from ~/.aiplat/ontologies/{domain_id}.yaml."""
-    path = Path(os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}.yaml"))
+    path = Path(get_aiplat_data_dir(f"ontologies/{domain_id}.yaml"))
     if not path.exists():
         return None
     try:

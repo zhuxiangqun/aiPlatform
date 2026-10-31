@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiplat.local/schemas/evaluation/eval_protocol.schema.json",
+  "title": "EvalProtocolV0",
+  "type": "object",
+  "required": ["schema_version", "task", "status"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "eval.protocol.v0" },
+    "task": {
+      "type": "object",
+      "required": ["id", "target_kind", "target_ref"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "target_kind": {
+          "type": "string",
+          "enum": ["agent", "skill", "workflow", "bundle", "http", "cli"]
+        },
+        "target_ref": { "type": "string", "minLength": 1 },
+        "suite": { "type": "string" },
+        "params": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "running", "passed", "failed", "skipped", "error"]
+    },
+    "trajectory_ref": { "type": "string" },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": { "type": ["number", "string", "boolean", "null"] }
+    },
+    "report": {
+      "type": "object",
+      "properties": {
+        "summary": { "type": "string" },
+        "score": { "type": "number" },
+        "gate": { "type": "string", "enum": ["pass", "fail", "warn", "skip"] }
+      },
+      "additionalProperties": true
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,12 @@
+replicaCount: 1
+image:
+  repository: aiplat/product-stub
+  tag: "0.0.0"
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 8080
+resources: {}
+# Product-specific: database.url, objectStore, oidc — fill at D1c/D1
+config: {}
+secrets: {}

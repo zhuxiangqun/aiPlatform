@@ -11,6 +11,7 @@ state_history to auto-populate report placeholders.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -76,7 +77,7 @@ def auto_fill_weekly_report(domain_id: str) -> Dict[str, Any]:
 
     try:
 
-        db_path = _os.path.expanduser("~/.aiplat/state_changes.db")
+        db_path = get_aiplat_data_dir("state_changes.db")
 
         if _os.path.exists(db_path):
 
@@ -180,7 +181,7 @@ def auto_fill_monthly_report(domain_id: str) -> Dict[str, Any]:
 
     try:
 
-        db_path = _os.path.expanduser("~/.aiplat/state_changes.db")
+        db_path = get_aiplat_data_dir("state_changes.db")
 
         if _os.path.exists(db_path):
 

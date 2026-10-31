@@ -9,6 +9,7 @@ A2.3 runtime scheduling (kanban task board).
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -71,7 +72,7 @@ def load_cron_from_profile(home_dir: str = "") -> int:
 
     """
 
-    h = home_dir or os.path.expanduser(os.environ.get("AIPLAT_HOME", "~/.aiplat"))
+    h = home_dir or get_aiplat_home()
 
     cron_dir = os.path.join(h, "cron")
 

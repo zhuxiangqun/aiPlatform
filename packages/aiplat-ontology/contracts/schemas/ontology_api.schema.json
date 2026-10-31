@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiplat.local/schemas/ontology/ontology_api.schema.json",
+  "title": "OntologyApiEnvelopeV0",
+  "description": "Minimal public Ontology API envelope (entity/relation/graph/wiki/asset).",
+  "type": "object",
+  "required": ["schema_version", "kind", "payload"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "ontology.api.v0" },
+    "kind": {
+      "type": "string",
+      "enum": ["entity", "relation", "graph", "wiki", "asset", "query_result"]
+    },
+    "payload": { "type": "object" },
+    "domain_id": { "type": "string" },
+    "refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true
+}

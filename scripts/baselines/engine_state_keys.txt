@@ -52,7 +52,14 @@ _last_error_stage|OK|engine-internal
 _last_healing_reason|OK|engine-internal
 _last_review|OK|engine-internal
 _last_snapshot_id|OK|engine-internal
+_last_snapshot_pair|OK|engine-internal (snapshot pre/post pair)
 _llm_rate_limit_retry|OK|engine-internal
+_scenario_id|OK|engine-internal (simulation)
+_sim_model_override|OK|engine-internal (simulation)
+_sim_scenario_type|OK|engine-internal (simulation)
+_sim_tool_whitelist|OK|engine-internal (simulation)
+_simulation_id|OK|engine-internal (simulation)
+_simulation_mode|OK|engine-internal (simulation)
 _meta_diagnosis|OK|engine-internal
 _meta_optimized|OK|engine-internal
 _meta_strategy_source|OK|engine-internal

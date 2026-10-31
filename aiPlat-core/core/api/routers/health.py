@@ -82,6 +82,31 @@ async def health_check(rt: RuntimeDep = Depends(get_kernel_runtime)):
 
 @router.get("/healthz", response_model=Dict[str, Any])
 async def healthz(rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """K8s style health check (alias)."""
-    return await health_check(rt)
+    """K8s / deploy probe — aiPlat A1 healthz (product_id + hosted).
+
+    `/health` stays legacy (`status: healthy|degraded`) for dashboard consumers.
+    """
+    from core.api.core_facade import aiplat_healthz_payload
+
+    legacy = await health_check(rt)
+    return aiplat_healthz_payload(
+        status=legacy.get("status"),
+        checks=legacy.get("checks") if isinstance(legacy.get("checks"), dict) else None,
+    )
+
+
+@router.get("/eval/healthz", response_model=Dict[str, Any])
+async def evaluation_healthz():
+    """Evaluation capability healthz (D1 co-hosted; product_id=evaluation)."""
+    from core.api.core_facade import evaluation_healthz_payload
+
+    return evaluation_healthz_payload()
+
+
+@router.get("/fde/healthz", response_model=Dict[str, Any])
+async def fde_healthz():
+    """FDE capability healthz (Field A1 prep/probe; product_id=fde)."""
+    from core.api.core_facade import fde_healthz_payload
+
+    return fde_healthz_payload()
 

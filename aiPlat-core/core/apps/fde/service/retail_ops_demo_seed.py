@@ -1,6 +1,7 @@
 """retail-ops demo seed — Phase 2 isomorphic second domain (Path C)."""
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -17,7 +18,7 @@ _log = logging.getLogger(__name__)
 
 
 def _aiplat_home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _workspace_yaml() -> Path:

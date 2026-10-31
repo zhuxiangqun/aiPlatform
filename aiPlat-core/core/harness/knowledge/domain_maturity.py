@@ -12,6 +12,7 @@ Computes 6-dimensional maturity score (0-100) per domain from real data:
 Levels: seeding(0-20) → growing(20-40) → building(40-60) → stable(60-80) → production-ready(80-100)
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os as _os
@@ -62,7 +63,7 @@ def _load_golden_eval_score(domain_id: str) -> Optional[float]:
     Returns 0-100 if golden_queries.yaml has entries for this domain, None otherwise.
     """
     import os, yaml
-    gq_path = os.path.expanduser("~/.aiplat/golden_queries.yaml")
+    gq_path = get_aiplat_data_dir("golden_queries.yaml")
     if not os.path.exists(gq_path):
         return None
     try:
@@ -138,7 +139,7 @@ def compute_domain_maturity(
     dims["skills"] = skill_count
 
     # ── 4. Pass Rate ──
-    db_path = _os.path.expanduser("~/.aiplat/state_changes.db")
+    db_path = get_aiplat_data_dir("state_changes.db")
     try:
         if _os.path.exists(db_path):
             conn = _sqlite3.connect(db_path, timeout=5.0)

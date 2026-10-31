@@ -11,6 +11,7 @@ callers: registry.py field-assessment system_parts injection
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os as _os
@@ -20,7 +21,7 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
-_ONTOLOGY_DIR = _os.path.expanduser("~/.aiplat/ontologies")
+_ONTOLOGY_DIR = get_aiplat_data_dir("ontologies")
 
 # Hot-reload cache: { "file_name:section" → (data, mtime) }
 _cache: Dict[str, tuple] = {}

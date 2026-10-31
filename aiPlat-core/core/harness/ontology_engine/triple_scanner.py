@@ -9,6 +9,7 @@ Usage:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import os
@@ -25,7 +26,7 @@ def _get_agent_dirs() -> List[str]:
     return [
         os.path.join(core_path, "core", "engine", "agents"),
         os.path.join(core_path, "core", "apps", "agents"),
-        os.path.expanduser("~/.aiplat/agents"),
+        get_aiplat_data_dir("agents"),
     ]
 
 
@@ -34,7 +35,7 @@ def _get_skill_dirs() -> List[str]:
     return [
         os.path.join(core_path, "core", "engine", "skills"),
         os.path.join(core_path, "core", "apps", "skills"),
-        os.path.expanduser("~/.aiplat/skills"),
+        get_aiplat_data_dir("skills"),
     ]
 
 

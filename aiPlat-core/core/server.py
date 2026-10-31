@@ -34,7 +34,7 @@ from pathlib import Path
 import uvicorn
 
 from core.utils.ids import new_prefixed_id
-from core.utils.paths import get_aiplat_data_dir
+from core.utils.paths import get_aiplat_data_dir, get_aiplat_home
 from core.security.rbac import check_permission as rbac_check_permission, should_enforce as rbac_should_enforce
 from core.api.deps.rbac import actor_from_http as _actor_from_http_dep, rbac_guard as _rbac_guard_dep
 from core.api.utils import governance as _gov
@@ -476,8 +476,7 @@ async def lifespan(app: FastAPI):
                     except Exception:
                         log.debug(f"Governance: failed to sign engine entity {ent_dir.name}", exc_info=True)
             # Also auto-sign workspace entities
-            home = os.environ.get("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
-            ws_root = _Path(home)
+            ws_root = _Path(get_aiplat_home())
             for ent_type, mf_name in [("skills", "SKILL.manifest.json"), ("agents", "AGENT.manifest.json"),
                                        ("mcps", "MCP.manifest.json"), ("workflows", "WORKFLOW.manifest.json"),
                                        ("projects", "PROJECT.manifest.json"), ("prompt-apps", "TEMPLATE.manifest.json")]:
@@ -758,7 +757,7 @@ async def lifespan(app: FastAPI):
         from pathlib import Path
 
         seeds_dir = Path(__file__).resolve().parent / "workspace_seeds" / "skills"
-        workspace_dir = Path.home() / ".aiplat" / "skills"
+        workspace_dir = Path(get_aiplat_data_dir("skills"))
         if seeds_dir.exists():
             workspace_dir.mkdir(parents=True, exist_ok=True)
             for item in seeds_dir.iterdir():
@@ -779,7 +778,7 @@ async def lifespan(app: FastAPI):
         from pathlib import Path
 
         seeds_dir = Path(__file__).resolve().parent / "workspace_seeds" / "agents"
-        workspace_dir = Path.home() / ".aiplat" / "agents"
+        workspace_dir = Path(get_aiplat_data_dir("agents"))
         if seeds_dir.exists():
             workspace_dir.mkdir(parents=True, exist_ok=True)
             for item in seeds_dir.iterdir():
@@ -800,7 +799,7 @@ async def lifespan(app: FastAPI):
         from pathlib import Path
 
         seeds_dir = Path(__file__).resolve().parent / "workspace_seeds" / "personas"
-        workspace_dir = Path.home() / ".aiplat" / "personas"
+        workspace_dir = Path(get_aiplat_data_dir("personas"))
         if seeds_dir.exists():
             workspace_dir.mkdir(parents=True, exist_ok=True)
             for item in seeds_dir.iterdir():
@@ -821,7 +820,7 @@ async def lifespan(app: FastAPI):
         from pathlib import Path
 
         seeds_dir = Path(__file__).resolve().parent / "workspace_seeds" / "teams"
-        workspace_dir = Path.home() / ".aiplat" / "teams"
+        workspace_dir = Path(get_aiplat_data_dir("teams"))
         if seeds_dir.exists():
             workspace_dir.mkdir(parents=True, exist_ok=True)
             for item in seeds_dir.iterdir():
@@ -849,7 +848,7 @@ async def lifespan(app: FastAPI):
         from pathlib import Path
 
         seeds_dir = Path(__file__).resolve().parent / "workspace_seeds" / "mcps"
-        workspace_dir = Path.home() / ".aiplat" / "mcps"
+        workspace_dir = Path(get_aiplat_data_dir("mcps"))
         if seeds_dir.exists():
             workspace_dir.mkdir(parents=True, exist_ok=True)
             for item in seeds_dir.iterdir():
@@ -870,7 +869,7 @@ async def lifespan(app: FastAPI):
         from pathlib import Path
 
         seeds_dir = Path(__file__).resolve().parent / "workspace_seeds" / "hooks"
-        workspace_dir = Path.home() / ".aiplat" / "hooks"
+        workspace_dir = Path(get_aiplat_data_dir("hooks"))
         if seeds_dir.exists():
             workspace_dir.mkdir(parents=True, exist_ok=True)
             for item in seeds_dir.iterdir():
@@ -1088,7 +1087,7 @@ async def lifespan(app: FastAPI):
 
     # ── Workspace AGENT.md config validation ──
     try:
-        workspace_dir = Path.home() / ".aiplat" / "agents"
+        workspace_dir = Path(get_aiplat_data_dir("agents"))
         if workspace_dir.exists():
             _run_agent_config_validation(str(workspace_dir), scope="workspace")
     except Exception:
@@ -1096,7 +1095,7 @@ async def lifespan(app: FastAPI):
 
     # ── Workspace SKILL.md config validation ──
     try:
-        workspace_skills_dir = Path.home() / ".aiplat" / "skills"
+        workspace_skills_dir = Path(get_aiplat_data_dir("skills"))
         if workspace_skills_dir.exists():
             _run_skill_config_validation(str(workspace_skills_dir), scope="workspace")
     except Exception:
@@ -1743,7 +1742,7 @@ async def lifespan(app: FastAPI):
             listener = get_discovery_listener()
             asyncio.create_task(listener.start())
             log.info("DiscoveryListener started (watch dir=%s)",
-                     os.path.expanduser("~/.aiplat/datasources/auto_discovered"))
+                     get_aiplat_data_dir("datasources/auto_discovered"))
         except Exception as e:
             logging.debug("DiscoveryListener startup skipped: %s", e)
 
@@ -1756,7 +1755,10 @@ async def lifespan(app: FastAPI):
             log.info(
                 "AgentEventIngress started (inbox=%s)",
                 os.path.expanduser(
-                    os.getenv("AIPLAT_AGENT_EVENT_INBOX", "~/.aiplat/agent_events/inbox")
+                    os.getenv(
+                        "AIPLAT_AGENT_EVENT_INBOX",
+                        get_aiplat_data_dir("agent_events/inbox"),
+                    )
                 ),
             )
         except Exception as e:
@@ -1899,7 +1901,7 @@ async def lifespan(app: FastAPI):
         from core.harness.evolution_engine import get_evolution_engine
         engine = get_evolution_engine()
         _cron_hour = int(os.getenv("AIPLAT_EVOLUTION_CRON_HOUR", "3"))
-        _last_run_file = os.path.expanduser("~/.aiplat/evolution/last_run.json")
+        _last_run_file = get_aiplat_data_dir("evolution/last_run.json")
 
         # Read last run date (YYYY-MM-DD) to prevent double-runs
         _last_run_date = ""

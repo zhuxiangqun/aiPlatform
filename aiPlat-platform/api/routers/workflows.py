@@ -2,6 +2,7 @@
 Workflow API router — CRUD + execute for workflow definitions.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 from api.schemas_response import StatusResponse
 import json
@@ -176,7 +177,7 @@ async def audit_workflow_endpoint(workflow_id: str, _auth: str = Depends(require
                 # Existence + listed on disk
                 from pathlib import Path as _P
                 import os as _os
-                ap = _P(_os.path.expanduser("~/.aiplat")) / "agents" / agent_id / "AGENT.md"
+                ap = _P(get_aiplat_home()) / "agents" / agent_id / "AGENT.md"
                 if not ap.exists():
                     guess = None
                     try:

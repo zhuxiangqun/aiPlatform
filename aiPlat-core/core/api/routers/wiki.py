@@ -2,6 +2,7 @@
 Wiki API — persistent LLM-curated knowledge base endpoints.
 """
 
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query, Body
 from pydantic import BaseModel
@@ -144,6 +145,7 @@ async def list_pages(
     offset: int = 0,
     collection: str = "default",
 ):
+    from core.api.core_facade import attach_ontology_api, ontology_api_from_wiki_pages
     from core.harness.knowledge.wiki_engine import search_pages, list_all_pages
     if query or tag:
         tags = [tag] if tag else None
@@ -158,7 +160,11 @@ async def list_pages(
         pages = [p for p in pages if any(
             s.startswith(source + ":") for s in (p.get("source_articles") or [])
         )]
-    return {"items": pages, "total": len(pages)}
+    out = {"items": pages, "total": len(pages)}
+    return attach_ontology_api(
+        out,
+        ontology_api_from_wiki_pages(pages or [], query=query, collection_id=collection),
+    )
 
 
 @router.get("/pages/{title}", response_model=Dict[str, Any])
@@ -332,7 +338,7 @@ async def install_skills_from_directory(search_path: str = Body(..., embed=True)
                    f"or {{path}}/<name>/SKILL.md"
         )
 
-    workspace = _os.path.expanduser("~/.aiplat/skills")
+    workspace = get_aiplat_data_dir("skills")
     _os.makedirs(workspace, exist_ok=True)
 
     installed = []
@@ -689,7 +695,7 @@ def _build_diagnosis(run_id: str, state: Dict[str, Any]) -> Dict[str, Any]:
 def _check_skill_available(skill_name: str):
     u"""Check if a persona skill is installed in workspace."""
     import os as _os
-    skill_dir = _os.path.expanduser(f"~/.aiplat/skills/{skill_name}")
+    skill_dir = get_aiplat_data_dir(f"skills/{skill_name}")
     if _os.path.isdir(skill_dir):
         return True, f"Skill '{skill_name}' found in workspace"
     return False, f"Skill '{skill_name}' not installed. Install from agent-skills or skip this gate."
@@ -698,7 +704,7 @@ def _check_skill_available(skill_name: str):
 def _check_session_notes(pipeline_id: str) -> bool:
     u"""Check if SESSION_NOTES.md exists for a pipeline run."""
     import os as _os, glob as _glob
-    home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
+    home = _os.getenv("AIPLAT_HOME", _get_aiplat_home())
     pattern = _os.path.join(home, "output", "*", "SESSION_NOTES.md")
     return len(_glob.glob(pattern)) > 0
 
@@ -1072,7 +1078,7 @@ async def generate_domain(
     from core.harness.knowledge.wiki_engine import _wiki_root, list_all_pages
 
     logger = logging.getLogger(__name__)
-    ont_dir = Path(os.path.expanduser("~/.aiplat/ontologies"))
+    ont_dir = Path(get_aiplat_data_dir("ontologies"))
     ont_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. 收集该集合中所有页面
@@ -1610,13 +1616,17 @@ async def run_golden_tests():
 
 @router.get("/query-structured", response_model=Dict[str, Any])
 async def wiki_structured_query(q: str = ""):
-    """Deterministic structured query — same question, same answer."""
+    """Deterministic structured query — same question, same answer.
+
+    Response keeps legacy fields and adds ``ontology_api`` (ontology.api.v0).
+    """
     if not q:
         return {"error": "Missing query parameter ?q=", 
                 "examples": ["?q=什么是RAG", "?q=RAG与Wiki有什么区别", "?q=wiki健康报告"]}
     try:
-        from core.harness.knowledge.wiki_structured_query import structured_query
-        return structured_query(q)
+        from core.api.core_facade import wiki_structured_query_api
+
+        return wiki_structured_query_api(q)
     except HTTPException:
         raise
     except Exception as e:
@@ -2102,7 +2112,7 @@ async def evolve_ontology_domain(
     import json as _json, asyncio, os as _os
     from pathlib import Path as _Path
 
-    gen_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontology_gen" / domain_id
+    gen_dir = _Path(get_aiplat_home()) / "ontology_gen" / domain_id
 
     # 1. Load cached hashes
     cache_file = gen_dir / "vault_hashes.json"
@@ -2143,7 +2153,7 @@ async def evolve_ontology_domain(
                 "new_files_found": 0}
 
     # 4. Load current ontology
-    onto_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    onto_path = _Path(get_aiplat_home()) / "ontologies" / f"{domain_id}.yaml"
     existing_classes = []
     if onto_path.exists():
         try:
@@ -2224,7 +2234,7 @@ async def repair_ontology_domain(
     from pathlib import Path as _Path
 
     # 1. Load current ontology
-    onto_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    onto_path = _Path(get_aiplat_home()) / "ontologies" / f"{domain_id}.yaml"
     if not onto_path.exists():
         return {"repair_suggestions": {}, "error": f"Domain '{domain_id}' not found"}
 
@@ -2360,7 +2370,7 @@ def _discover_vault_path():
     try:
         import sqlite3
         from pathlib import Path as _Path
-        db = _Path.home() / ".aiplat" / "kb" / "tenants" / "default" / "kb.sqlite3"
+        db = _Path(get_aiplat_home()) / "kb" / "tenants" / "default" / "kb.sqlite3"
         if db.exists():
             conn = sqlite3.connect(str(db))
             row = conn.execute(
@@ -2426,7 +2436,7 @@ def _load_few_shot_yaml():
     """Load an existing ontology YAML as few-shot example."""
     from pathlib import Path as _Path
     import os as _os
-    base = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    base = _Path(get_aiplat_home()) / "ontologies"
     for fname in ["ai-knowledge.yaml", "it-ops.yaml"]:
         p = base / fname
         if p.exists():
@@ -2495,7 +2505,7 @@ def _save_step(domain_id: str, filename: str, data):
     """Save step output to disk for debugging and caching."""
     import json as _json, os as _os
     from pathlib import Path as _Path
-    dir_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontology_gen" / domain_id
+    dir_path = _Path(get_aiplat_home()) / "ontology_gen" / domain_id
     dir_path.mkdir(parents=True, exist_ok=True)
     try:
         if isinstance(data, str):
@@ -2585,7 +2595,7 @@ async def create_ontology_domain(req: OntologyDomainCreate):
     """Create a new domain ontology (YAML file)."""
     from pathlib import Path as _Path
     import os as _os
-    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    d = _Path(get_aiplat_home()) / "ontologies"
     file_path = d / f"{req.id}.yaml"
     if file_path.exists():
         raise HTTPException(status_code=409, detail=f"Domain '{req.id}' already exists")
@@ -2625,7 +2635,7 @@ async def update_ontology_domain(domain_id: str, req: OntologyDomainCreate):
     from core.api.core_facade import load_ontology_from_yaml
     from pathlib import Path as _Path
     import os as _os
-    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    d = _Path(get_aiplat_home()) / "ontologies"
     file_path = d / f"{domain_id}.yaml"
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
@@ -2732,7 +2742,7 @@ async def delete_ontology_domain(domain_id: str):
     """Delete a domain ontology file + cascade cleanup."""
     from pathlib import Path as _Path
     import os as _os
-    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat"))
+    d = _Path(get_aiplat_home())
     file_path = d / "ontologies" / f"{domain_id}.yaml"
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
@@ -2791,7 +2801,7 @@ async def add_ontology_class(domain_id: str, req: OntologyClassCreate):
     """Add a class to a domain ontology."""
     from pathlib import Path as _Path
     import os as _os
-    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    d = _Path(get_aiplat_home()) / "ontologies"
     file_path = d / f"{domain_id}.yaml"
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
@@ -2816,7 +2826,7 @@ async def update_ontology_class(domain_id: str, class_name: str, req: OntologyCl
     """Update an existing class in a domain ontology."""
     from pathlib import Path as _Path
     import os as _os
-    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    d = _Path(get_aiplat_home()) / "ontologies"
     file_path = d / f"{domain_id}.yaml"
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
@@ -2864,7 +2874,7 @@ async def update_ontology_property(domain_id: str, prop_name: str, req: Ontology
     """Update an existing object property in a domain ontology."""
     from pathlib import Path as _Path
     import os as _os
-    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    d = _Path(get_aiplat_home()) / "ontologies"
     file_path = d / f"{domain_id}.yaml"
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
@@ -2895,7 +2905,7 @@ async def delete_ontology_class(domain_id: str, class_name: str, force: bool = F
     """Delete a class from a domain ontology. Use ?force=true for cascade cleanup."""
     from pathlib import Path as _Path
     import os as _os
-    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    d = _Path(get_aiplat_home()) / "ontologies"
     file_path = d / f"{domain_id}.yaml"
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
@@ -2972,7 +2982,7 @@ async def migrate_classify(domain_id: str, req: MigrateClassifyRequest):
     """
     from pathlib import Path as _Path
     import os as _os
-    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    d = _Path(get_aiplat_home()) / "ontologies"
     file_path = d / f"{domain_id}.yaml"
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
@@ -3022,7 +3032,7 @@ async def add_ontology_property(domain_id: str, req: OntologyPropertyCreate):
     """Add an object property to a domain ontology."""
     from pathlib import Path as _Path
     import os as _os
-    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    d = _Path(get_aiplat_home()) / "ontologies"
     file_path = d / f"{domain_id}.yaml"
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
@@ -3045,7 +3055,7 @@ async def delete_ontology_property(domain_id: str, prop_name: str):
     """Delete an object property from a domain ontology."""
     from pathlib import Path as _Path
     import os as _os
-    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    d = _Path(get_aiplat_home()) / "ontologies"
     file_path = d / f"{domain_id}.yaml"
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
@@ -3353,7 +3363,7 @@ async def get_evolution_history(collection: str = "default"):
     """Get evolution generation history."""
     import json as _json, os as _os
     hist_path = _os.path.join(
-        _os.path.expanduser(_os.getenv("AIPLAT_HOME", "~/.aiplat")),
+        get_aiplat_home(),
         "wiki", "collections", collection, "evolution_history.json")
     if not _os.path.exists(hist_path):
         return {"generations": [], "total": 0}
@@ -3372,7 +3382,7 @@ async def get_model_selection_log():
     """Return recent model selection log entries."""
     try:
         import json, os
-        log_path = os.path.expanduser("~/.aiplat/wiki/model_selection_log.json")
+        log_path = get_aiplat_data_dir("wiki/model_selection_log.json")
         if not os.path.exists(log_path):
             return {"entries": [], "total": 0}
         with open(log_path) as f:

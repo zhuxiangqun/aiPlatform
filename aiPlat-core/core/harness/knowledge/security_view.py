@@ -7,6 +7,7 @@ All risk labels are heuristic (call/import reachability ≠ taint).
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import hashlib
 import json
@@ -175,12 +176,7 @@ def _default_rules() -> Dict[str, Any]:
 
 def _rules_search_paths() -> List[Path]:
     paths: List[Path] = []
-    try:
-        from core.harness.utils.paths import get_aiplat_home
-
-        paths.append(Path(get_aiplat_home()) / "security_view_rules.yaml")
-    except Exception:
-        paths.append(Path.home() / ".aiplat" / "security_view_rules.yaml")
+    paths.append(Path(get_aiplat_home()) / "security_view_rules.yaml")
     here = Path(__file__).resolve()
     # aiPlat-core/core/harness/knowledge → workspace_seeds
     for cand in (
@@ -226,13 +222,7 @@ def _layer_of(file_path: str) -> str:
 
 
 def _cache_path() -> Path:
-    try:
-        from core.harness.utils.paths import get_aiplat_home
-
-        root = Path(get_aiplat_home())
-    except Exception:
-        root = Path.home() / ".aiplat"
-    return root / "cache" / "security_view.json"
+    return Path(get_aiplat_home()) / "cache" / "security_view.json"
 
 
 def _fingerprint(nodes: Dict[str, Any], edges: List[Any]) -> str:

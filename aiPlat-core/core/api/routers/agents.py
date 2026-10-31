@@ -1,4 +1,5 @@
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 from core.schemas_common import MessageResponse
 
@@ -1929,7 +1930,7 @@ async def export_skill(skill_name: str, format: str = "all"):
 
     # Read SKILL.md content
 
-    skill_path = Path(os.getenv("AIPLAT_HOME", Path("~").expanduser() / ".aiplat")) / "skills" / skill_name / "SKILL.md"
+    skill_path = Path(get_aiplat_home()) / "skills" / skill_name / "SKILL.md"
 
     if not skill_path.exists():
 

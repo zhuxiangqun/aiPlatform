@@ -11,6 +11,7 @@ returning APPROVAL_REQUIRED. Daemon / cron paths should set attendance to ``inbo
 or ``auto`` and must call ``refuse_unattended_self_approve`` before any auto path.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -87,7 +88,7 @@ class InboxItem:
 
 
 def _default_store_path() -> Path:
-    home = os.environ.get("AIPLAT_HOME") or os.path.expanduser("~/.aiplat")
+    home = get_aiplat_home()
     override = os.environ.get("AIPLAT_APPROVAL_INBOX_FILE")
     if override:
         return Path(override).expanduser()

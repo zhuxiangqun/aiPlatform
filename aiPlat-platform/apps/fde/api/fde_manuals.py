@@ -10,13 +10,14 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel as _PydanticBaseModel
 
 import os
+from core.utils.paths import get_aiplat_data_dir
 import re as _re_manual
 import json
 from datetime import datetime, timezone
 
 router = APIRouter(tags=["fde-manuals"])
 
-_MANUALS_DIR = os.path.expanduser("~/.aiplat/fde-manuals")
+_MANUALS_DIR = get_aiplat_data_dir("fde-manuals")
 os.makedirs(_MANUALS_DIR, exist_ok=True)
 
 

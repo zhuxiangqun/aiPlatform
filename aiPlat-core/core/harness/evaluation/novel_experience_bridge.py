@@ -6,6 +6,7 @@ Does **not** rewrite gold cases.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -21,7 +22,7 @@ def _experience_path() -> str:
     env = (os.environ.get("AIPLAT_EXPERIENCE_FILE") or "").strip()
     if env:
         return env
-    home = os.environ.get("AIPLAT_HOME") or os.path.expanduser("~/.aiplat")
+    home = get_aiplat_home()
     return os.path.join(home, "experience_feedback.json")
 
 

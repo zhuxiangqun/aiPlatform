@@ -10,6 +10,7 @@ adaptation layer between generic core infrastructure and the KB application.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import os
 from typing import Any, Optional
@@ -29,7 +30,7 @@ _load_doc_kinds_fn: Optional[KBLoadDocKindsCallback] = None
 
 def get_tenant_storage(tenant_id: str) -> str:
     """Get tenant-specific storage path under AIPLAT_HOME."""
-    base = os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat"))
+    base = get_aiplat_home()
     return os.path.join(base, "data", "kb", "tenants", tenant_id)
 
 

@@ -27,6 +27,7 @@ Markdown 文件作为记忆的标准答案载体。SQLite FTS5 只做检索增�
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -44,7 +45,7 @@ _log = logging.getLogger("aiplat.memory.file_store")
 
 
 
-MEMORY_DIR = os.path.expanduser("~/.aiplat/memory")
+MEMORY_DIR = get_aiplat_data_dir("memory")
 
 
 def _safe_tenant_key(tenant_id: str = "") -> str:

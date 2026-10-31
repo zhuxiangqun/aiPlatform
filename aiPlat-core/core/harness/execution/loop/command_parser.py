@@ -5,6 +5,7 @@ Parses "/assess finance credit-risk" style commands from AGENT.md frontmatter
 and routes them to the corresponding skill invocation.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 from dataclasses import dataclass, field
@@ -71,7 +72,7 @@ def get_agent_commands(agent_name: str) -> List[Dict[str, Any]]:
     u"""Load command definitions from an agent's AGENT.md frontmatter."""
     import os, yaml
 
-    agent_dir = os.path.expanduser(f"~/.aiplat/agents/{agent_name}")
+    agent_dir = get_aiplat_data_dir(f"agents/{agent_name}")
     agent_md = os.path.join(agent_dir, "AGENT.md")
     if not os.path.exists(agent_md):
         return []

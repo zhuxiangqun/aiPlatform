@@ -7,6 +7,7 @@ Per CLAUDE.md §5.30: called from core/server.py lifespan.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import base64
 import json
@@ -21,8 +22,8 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_KEY_PATH = Path.home() / ".aiplat" / "secrets.key"
-DEFAULT_STORE_PATH = Path.home() / ".aiplat" / "secrets.enc"
+DEFAULT_KEY_PATH = Path(get_aiplat_home()) / "secrets.key"
+DEFAULT_STORE_PATH = Path(get_aiplat_home()) / "secrets.enc"
 
 
 def _derive_key_path() -> Path:

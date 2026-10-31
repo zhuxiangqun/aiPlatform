@@ -4,6 +4,7 @@ Agent Manager - Manages Agent instances
 Provides CRUD operations for agents and skill/tool bindings.
 """
 
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 import json
@@ -135,7 +136,7 @@ class AgentManager:
         """Resolve all agents paths in increasing priority order (low -> high)."""
         repo_root = Path(__file__).resolve().parents[2]  # aiPlat-core/
         engine_default = repo_root / "core" / "engine" / "agents"
-        workspace_default = Path.home() / ".aiplat" / "agents"
+        workspace_default = Path(get_aiplat_home()) / "agents"
 
         scope = (self._scope or "engine").strip().lower()
         if scope not in {"engine", "workspace"}:

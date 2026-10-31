@@ -12,6 +12,7 @@ Adding a new rule:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import importlib
@@ -388,7 +389,7 @@ class RuleRegistry:
     def _load_yaml_rules(self) -> None:
         config_paths = [
             Path(__file__).parent / "lint_rules.yaml",
-            Path(os.path.expanduser("~/.aiplat/lint_rules.yaml")),
+            Path(get_aiplat_data_dir("lint_rules.yaml")),
         ]
         for cfg_path in config_paths:
             if not cfg_path.exists():

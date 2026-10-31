@@ -1,0 +1,13 @@
+# Skeleton — co-hosted until ADR Accepted + SPLIT_CHECKLIST all ✅.
+replicaCount: 1
+image:
+  repository: aiplat/evaluation
+  tag: "0.1.0"
+service:
+  port: 8012
+env:
+  AIPLAT_EVAL_MODE: cohost
+processSplit:
+  authorized: false
+persistence:
+  enabled: false

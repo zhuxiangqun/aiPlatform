@@ -5,6 +5,7 @@ standardized operators (gt/lt/eq/in/contains/regex) to match agent decisions.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import re as _re
 from typing import Any, Dict, List
@@ -26,7 +27,7 @@ def load_audit_rules(domain_id: str) -> List[Dict[str, Any]]:
     import os as _os
     import yaml as _yaml
 
-    onto_dir = _os.path.expanduser("~/.aiplat/ontologies")
+    onto_dir = get_aiplat_data_dir("ontologies")
     yaml_path = _os.path.join(onto_dir, f"{domain_id}.yaml")
     if not _os.path.exists(yaml_path):
         return []

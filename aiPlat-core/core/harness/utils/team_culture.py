@@ -4,6 +4,7 @@ Injection order (plan v2): hard constraints → Culture → output_style.
 Culture ≤ ~200 tokens; independent hash + switch; never rewrites tool/JSON.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import hashlib
 import logging
@@ -26,7 +27,7 @@ _SEED_CULTURE = (
 
 
 def aiplat_home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat")).expanduser()
+    return Path(get_aiplat_home()).expanduser()
 
 
 def culture_body_path() -> Path:

@@ -1,0 +1,8 @@
+{
+  "name": "aiplat-central",
+  "version": "0.1.0",
+  "private": true,
+  "description": "aiPlat Central host D1 Thin packaging (install/healthz/smoke). No PG/HA split.",
+  "capability_id": "aiplat",
+  "deploy_unit": "central"
+}

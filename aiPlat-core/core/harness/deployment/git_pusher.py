@@ -11,6 +11,7 @@ GitPusher — git push + PR 创建 + Docker 构建 (Phase 40).
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os as _os
@@ -119,7 +120,7 @@ class GitPusher:
             dockerfile_dir: Dockerfile 所在目录 (默认 ~/.aiplat/deploy/templates/)
         """
         if dockerfile_dir is None:
-            dockerfile_dir = _os.path.expanduser("~/.aiplat/deploy/templates")
+            dockerfile_dir = get_aiplat_data_dir("deploy/templates")
         tag = f"{skill_name}:{version}"
         try:
             result = _subprocess.run(

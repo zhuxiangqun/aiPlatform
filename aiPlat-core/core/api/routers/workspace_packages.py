@@ -5,6 +5,7 @@ aiPlat-platform's API layer. Currently served from core's FastAPI server.
 Migration plan: move to platform/api/routers/.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 import os
 
@@ -137,7 +138,7 @@ async def export_workspace_package(data: Dict[str, Any]):
     if not isinstance(resources, list) or not resources:
         raise HTTPException(status_code=400, detail="resources list is required")
 
-    workspace_root = Path.home() / ".aiplat"
+    workspace_root = Path(get_aiplat_home())
 
     # Create temp package directory
     tmpdir = tempfile.mkdtemp(prefix=f"aiplat-plugin-{name}-")
@@ -264,10 +265,10 @@ async def create_workspace_package(request: Dict[str, Any]) -> Dict[str, Any]:
             engine_agents = (repo_root / "engine" / "agents").resolve()
             engine_skills = (repo_root / "engine" / "skills").resolve()
             engine_mcps = (repo_root / "engine" / "mcps").resolve()
-            wk_agents = (Path.home() / ".aiplat" / "agents").resolve()
-            wk_skills = (Path.home() / ".aiplat" / "skills").resolve()
-            wk_mcps = (Path.home() / ".aiplat" / "mcps").resolve()
-            wk_hooks = (Path.home() / ".aiplat" / "hooks").resolve()
+            wk_agents = (Path(get_aiplat_home()) / "agents").resolve()
+            wk_skills = (Path(get_aiplat_home()) / "skills").resolve()
+            wk_mcps = (Path(get_aiplat_home()) / "mcps").resolve()
+            wk_hooks = (Path(get_aiplat_home()) / "hooks").resolve()
 
             for r in resources:
                 if not isinstance(r, dict):

@@ -10,12 +10,13 @@
 NOTE: V2 需对接 K8s Event API 或 ArgoCD Webhook 获取更精确的部署层回滚信号。
 """
 
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import json
 import time
 from pathlib import Path
 from typing import Any, Dict, List
 
-_ROLLBACK_LOG = Path.home() / ".aiplat" / "data" / "rollback_events.jsonl"
+_ROLLBACK_LOG = Path(get_aiplat_home()) / "data" / "rollback_events.jsonl"
 
 
 async def check_rollback_rate() -> Dict[str, Any]:

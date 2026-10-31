@@ -6,6 +6,7 @@ prefer LLM syscall completions with ``args.purpose``; else fall back to
 ``model_selection_log`` selection counts. Missing both → no fake percentages.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -25,7 +26,7 @@ _SKIP_ENTRIES = frozenset({"create_selected_adapter"})
 
 
 def _selection_log_path() -> str:
-    home = os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat"))
+    home = get_aiplat_home()
     return os.path.join(home, "wiki", "model_selection_log.json")
 
 

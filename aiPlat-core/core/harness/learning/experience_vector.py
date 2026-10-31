@@ -1,4 +1,5 @@
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from core.utils.math_utils import cosine_similarity
 """
 Experience Vector Cache — 经验向量存储与检索 (Phase 5.1)
@@ -59,7 +60,7 @@ class ExperienceVectorCache:
         self._entries: Dict[str, ExperienceEntry] = {}
         self._max_size = int(os.getenv("AIPLAT_EXPERIENCE_CACHE_SIZE", "5000"))
         self._enabled = os.getenv("AIPLAT_EXPERIENCE_CACHE_ENABLED", "true").lower() not in ("0", "false", "no")
-        self._storage_path = os.path.expanduser("~/.aiplat/experience_cache.json")
+        self._storage_path = get_aiplat_data_dir("experience_cache.json")
         self._load_from_disk()
 
     # ── Public API ──────────────────────────────────────────────────────

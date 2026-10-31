@@ -20,6 +20,7 @@ callers: learning_paths.py, learning_assessment.py, core_facade.py, wiki.py
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import os as _os
@@ -192,7 +193,7 @@ class ExerciseResult:
 # ══════════════════════════════════════════════════════════════
 
 def _learning_dir() -> str:
-    home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
+    home = get_aiplat_home()
     return _os.path.join(home, "learning")
 
 

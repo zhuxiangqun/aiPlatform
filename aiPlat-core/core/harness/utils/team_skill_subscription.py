@@ -5,6 +5,7 @@ allow_roles from stage config, project overlay, or team subscription seed.
 No agent_id branching.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -22,7 +23,7 @@ _SEED_SUB = (
 
 
 def aiplat_home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat")).expanduser()
+    return Path(get_aiplat_home()).expanduser()
 
 
 def _read_yaml(path: Path) -> Dict[str, Any]:

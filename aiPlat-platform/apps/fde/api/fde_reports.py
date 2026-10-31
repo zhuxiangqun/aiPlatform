@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from core.utils.paths import get_aiplat_data_dir
 from datetime import datetime, timezone
 from typing import Any, Dict
 from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
@@ -101,7 +102,7 @@ async def generate_training_materials(spec_id: str = Query(""), download: bool =
 
     # Agent overview
     try:
-        agents_dir = os.path.expanduser("~/.aiplat/agents")
+        agents_dir = get_aiplat_data_dir("agents")
         if os.path.isdir(agents_dir):
             agent_count = len([d for d in os.listdir(agents_dir)
                               if os.path.isdir(os.path.join(agents_dir, d))])
@@ -123,7 +124,7 @@ async def generate_training_materials(spec_id: str = Query(""), download: bool =
 
     # Skills overview
     try:
-        skills_dir = os.path.expanduser("~/.aiplat/skills")
+        skills_dir = get_aiplat_data_dir("skills")
         if os.path.isdir(skills_dir):
             skill_count = len([d for d in os.listdir(skills_dir)
                               if os.path.isdir(os.path.join(skills_dir, d))])

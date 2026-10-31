@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiplat.local/schemas/fde/healthz.schema.json",
+  "title": "FdeHealthzResponse",
+  "type": "object",
+  "required": ["status", "product_id"],
+  "properties": {
+    "status": { "type": "string", "enum": ["ok", "degraded", "fail"] },
+    "version": { "type": "string" },
+    "product_id": { "type": "string", "const": "fde" },
+    "capability_id": { "type": "string", "const": "fde" },
+    "deploy_unit": { "type": "string", "const": "field" },
+    "signoff": { "type": "string" }
+  },
+  "additionalProperties": true
+}

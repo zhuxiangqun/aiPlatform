@@ -1,5 +1,6 @@
 """Workspace hooks — scan and manage ~/.aiplat/hooks/*.py files."""
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import os
 from pathlib import Path
@@ -11,7 +12,7 @@ router = APIRouter()
 
 
 def _hooks_dir() -> Path:
-    return Path.home() / ".aiplat" / "hooks"
+    return Path(get_aiplat_home()) / "hooks"
 
 
 def _list_hook_files() -> List[Dict[str, Any]]:

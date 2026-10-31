@@ -5,6 +5,7 @@ not hardcoded domain_id branches in core/harness.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import hmac
 import json
@@ -36,7 +37,7 @@ _DEFAULT_IT_OPS = {
 
 
 def _aiplat_home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _workspace_connector_seed(domain_id: str) -> Path:

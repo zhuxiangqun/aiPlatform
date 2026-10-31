@@ -52,6 +52,13 @@ fi
   echo "$out" | grep -q '"product": "fde"'
   echo "PASS: health JSON ok"
 
+  echo "== curl /healthz (V2 A1 contract) =="
+  hz="$(curl -sf "http://127.0.0.1:${PORT}/healthz")"
+  echo "$hz"
+  echo "$hz" | grep -q '"status": "ok"'
+  echo "$hz" | grep -q '"product_id": "fde"'
+  echo "PASS: healthz contract ok"
+
   cleanup
   PID=""
   echo "PASS: FDE BOUNDARY C complete (server stopped)"

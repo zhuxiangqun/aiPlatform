@@ -9,6 +9,7 @@ Manages versioned domain YAML under ~/.aiplat/ontologies/:
 Integrates with ActionStore for proposal persistence and approval workflow.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -139,7 +140,7 @@ def project_ontology_changes(current: Any, changes: Any) -> Dict[str, Any]:
 
 def _ontology_base() -> str:
     """Resolve ontology directory, honoring AIPLAT_HOME (aligns with ontology_loader)."""
-    return os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "ontologies")
+    return os.path.join(get_aiplat_home(), "ontologies")
 
 # P2-L1: 治理规则矩阵 — tier 所需审批角色（对应 plan-tier-ontology-layering.md §3）
 #   core → 全员/架构评审（阻断）  logic → 产品侧确认  edge → 自服务

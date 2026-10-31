@@ -21,6 +21,8 @@ from datetime import datetime, timezone
 
 from typing import Any, Dict, List, Optional
 
+from core.utils.paths import get_aiplat_data_dir
+
 
 
 from openpyxl import load_workbook
@@ -205,9 +207,9 @@ class TestCaseExecutor:
 
         video_dir = os.path.join(
 
-            os.environ.get("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+            get_aiplat_data_dir("videos"),
 
-            "videos", f"test_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}",
+            f"test_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}",
 
         )
 

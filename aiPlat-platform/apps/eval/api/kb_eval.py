@@ -16,7 +16,11 @@ router = APIRouter(prefix="/kb-eval", tags=["kb-eval"])
 
 
 def _db_path() -> str:
-    base = os.path.expanduser(os.getenv("AIPLAT_KB_TENANTS_DIR", "~/.aiplat/kb/tenants"))
+    from core.utils.paths import get_aiplat_data_dir
+
+    base = os.path.expanduser(
+        os.getenv("AIPLAT_KB_TENANTS_DIR", get_aiplat_data_dir("kb/tenants"))
+    )
     return os.path.join(base, "default", "kb.sqlite3")
 
 
@@ -136,9 +140,41 @@ async def run_evaluation(body: Dict[str, Any]):
             failure_counts = {}
             for r in reports:
                 failure_counts[r.failure_type] = failure_counts.get(r.failure_type, 0) + 1
-            return {"samples": len(samples), "reports": len(reports), "avg_metrics": avg, "failure_distribution": failure_counts}
+            out = {
+                "samples": len(samples),
+                "reports": len(reports),
+                "avg_metrics": avg,
+                "failure_distribution": failure_counts,
+                "status": "passed",
+                "metrics": avg,
+                "score": avg.get("faithfulness"),
+            }
+            from core.api.core_facade import attach_eval_protocol, eval_protocol_from_generic
 
-        return {"samples": len(samples), "reports": 0}
+            return attach_eval_protocol(
+                out,
+                eval_protocol_from_generic(
+                    task_id=f"kb-eval:{int(now)}",
+                    target_kind="workflow",
+                    target_ref="kb_eval",
+                    result=out,
+                    suite=str(tag or "kb"),
+                ),
+            )
+
+        out = {"samples": len(samples), "reports": 0, "status": "skipped"}
+        from core.api.core_facade import attach_eval_protocol, eval_protocol_from_generic
+
+        return attach_eval_protocol(
+            out,
+            eval_protocol_from_generic(
+                task_id="kb-eval:empty",
+                target_kind="workflow",
+                target_ref="kb_eval",
+                result=out,
+                suite="kb",
+            ),
+        )
     finally:
         conn.close()
 

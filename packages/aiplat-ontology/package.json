@@ -1,0 +1,9 @@
+{
+  "name": "aiplat-ontology",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ontology Service D1 Thin (co-hosted). A3 prep only; process_split_authorized=false.",
+  "capability_id": "ontology",
+  "deploy_unit": "central",
+  "hosted_by": "aiplat"
+}

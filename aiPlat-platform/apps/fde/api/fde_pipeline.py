@@ -1,5 +1,6 @@
 """FDE Pipeline — ContextBus pipeline health diagnostics (split from fde.py)."""
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 from typing import Any, Dict, List
 from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
@@ -62,7 +63,7 @@ async def fde_pipeline_status():
         # YAMLs
         import os as _os_ps
         for yaml_name in ["ai-solution.yaml", "enterprise-terms.yaml"]:
-            path = _os_ps.path.expanduser(f"~/.aiplat/ontologies/{yaml_name}")
+            path = get_aiplat_data_dir(f"ontologies/{yaml_name}")
             data_status[f"yaml:{yaml_name}"] = "ok" if _os_ps.path.exists(path) else "missing"
     except Exception:
         data_status["_error"] = "Could not check data sources"

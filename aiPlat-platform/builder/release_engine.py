@@ -8,6 +8,7 @@
   or roll back to a historical version (append-only history).
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import os
 import shutil
@@ -33,7 +34,7 @@ _POINTER_FILE = "current.txt"  # Windows-compatible pointer; symlink used when p
 
 
 def _apps_home(project_id: str) -> str:
-    return os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "apps", project_id)
+    return os.path.join(get_aiplat_home(), "apps", project_id)
 
 
 def release_root(project_id: str) -> str:

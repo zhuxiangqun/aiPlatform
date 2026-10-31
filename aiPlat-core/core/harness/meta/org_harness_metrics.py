@@ -8,6 +8,7 @@ governance eval_observability (optional slice).
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -470,7 +471,7 @@ def _load_duty_board_raw(
     env_path = (os.getenv("AIPLAT_DUTY_BOARD_CONFIG") or "").strip()
     if env_path:
         candidates.append(Path(env_path).expanduser())
-    home = Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    home = Path(get_aiplat_home())
     candidates.append(home / "org" / "duty_board.yaml")
     candidates.append(_duty_seed_path())
     for path in candidates:

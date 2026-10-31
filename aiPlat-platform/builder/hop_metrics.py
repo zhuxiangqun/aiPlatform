@@ -4,6 +4,7 @@ Append-only JSONL per project under AIPLAT_HOME/builder/hop_metrics/{project_id}
 Feeds promotion_gate evaluate_run_through (N≥20 / success_rate / failed_stage).
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import os
@@ -23,7 +24,7 @@ _VALID_STAGES = frozenset({
 
 
 def _metrics_dir() -> Path:
-    home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    home = get_aiplat_home()
     d = Path(home) / "builder" / "hop_metrics"
     d.mkdir(parents=True, exist_ok=True)
     return d

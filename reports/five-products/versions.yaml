@@ -1,0 +1,31 @@
+# Five-capability A2 versioning SSOT — package.json ↔ module.yaml must match.
+schema_version: aiplat.versions.v0
+updated: "2026-10-30"
+policy: reports/five-products/VERSIONING.md
+capabilities:
+  - id: aiplat
+    package: packages/aiplat-central
+    package_json: packages/aiplat-central/package.json
+    module_yaml: reports/five-products/modules/aiplat/module.yaml
+    version: "0.1.0"
+  - id: pi
+    package: packages/aiplat-pi-runtime
+    package_json: packages/aiplat-pi-runtime/package.json
+    module_yaml: reports/five-products/modules/pi/module.yaml
+    version: "0.1.0"
+  - id: ontology
+    package: packages/aiplat-ontology
+    package_json: packages/aiplat-ontology/package.json
+    module_yaml: reports/five-products/modules/ontology/module.yaml
+    version: "0.1.0"
+  - id: evaluation
+    package: packages/aiplat-evaluation
+    package_json: packages/aiplat-evaluation/package.json
+    module_yaml: reports/five-products/modules/evaluation/module.yaml
+    version: "0.1.0"
+  - id: fde
+    package: packages/aiplat-fde
+    package_json: packages/aiplat-fde/package.json
+    module_yaml: reports/five-products/modules/fde/module.yaml
+    version: "0.1.0"
+    notes: "Field D1 Accepted 2026-10-30; production_field=true"

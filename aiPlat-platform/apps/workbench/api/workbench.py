@@ -10,6 +10,7 @@ Endpoints:
   GET    /workbench/spec/{id}/history — Spec version history
   GET    /workbench/specs            — list all active Specs
 """
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from fastapi import APIRouter, HTTPException, Request, Depends
 from typing import Any, Dict, List, Optional
 import os
@@ -512,7 +513,7 @@ async def get_training_status() -> Dict[str, Any]:
 
         # Check latest SFT model
         model_info: Dict[str, Any] = {}
-        model_path = os.path.expanduser("~/.aiplat/sft_models/latest.json")
+        model_path = get_aiplat_data_dir("sft_models/latest.json")
         if os.path.exists(model_path):
             try:
                 import json as _json
@@ -522,7 +523,7 @@ async def get_training_status() -> Dict[str, Any]:
                 logging.getLogger(__name__).debug('get_training_status failed', exc_info=True)
 
         # Check dataset files
-        dataset_dir = os.path.expanduser("~/.aiplat/training")
+        dataset_dir = get_aiplat_data_dir("training")
         dataset_count = 0
         if os.path.isdir(dataset_dir):
             dataset_count = len([f for f in os.listdir(dataset_dir) if f.startswith("sft_train_")])

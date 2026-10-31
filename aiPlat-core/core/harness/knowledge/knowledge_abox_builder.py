@@ -11,6 +11,7 @@ Sources:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import logging
@@ -159,7 +160,7 @@ def _parse_simple_frontmatter(fm_text: str) -> Dict[str, Any]:
 def _scan_kb_documents(partial: Optional[str] = None) -> List[Dict[str, Any]]:
     """Scan KB SQLite database for document records."""
     docs: List[Dict[str, Any]] = []
-    kb_dir = Path(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))) / "kb" / "tenants"
+    kb_dir = Path(os.getenv("AIPLAT_HOME", get_aiplat_home())) / "kb" / "tenants"
     if not kb_dir.exists():
         return docs
     
@@ -388,7 +389,7 @@ def _domain_class_labels(domain_id: str) -> Optional[Set[str]]:
     if not domain_id:
         return None
     try:
-        path = os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}.yaml")
+        path = get_aiplat_data_dir(f"ontologies/{domain_id}.yaml")
         if not os.path.exists(path):
             return None
         from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
@@ -408,7 +409,7 @@ def _domain_property_names(domain_id: str) -> Optional[Set[str]]:
     if not domain_id:
         return None
     try:
-        path = os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}.yaml")
+        path = get_aiplat_data_dir(f"ontologies/{domain_id}.yaml")
         if not os.path.exists(path):
             return None
         from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
@@ -490,7 +491,7 @@ def _extract_cross_modal_relations(onto: KnowledgeOntology) -> None:
     """
     import sqlite3
 
-    kb_dir = Path(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))) / "kb" / "tenants"
+    kb_dir = Path(os.getenv("AIPLAT_HOME", get_aiplat_home())) / "kb" / "tenants"
     if not kb_dir.exists():
         return
 

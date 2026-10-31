@@ -15,6 +15,7 @@ Usage:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -89,7 +90,7 @@ class SystemHealthCalculator:
 
     def __init__(self):
 
-        self._home = Path(os.getenv("AIPLAT_HOME", Path("~").expanduser() / ".aiplat"))
+        self._home = Path(get_aiplat_home())
 
         self._history_path = self._home / "system_health_history.json"
 

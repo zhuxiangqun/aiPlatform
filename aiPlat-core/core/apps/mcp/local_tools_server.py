@@ -15,6 +15,7 @@ Protocol:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import importlib.util
@@ -28,7 +29,7 @@ from typing import Any, Dict, List, Optional
 def _scan_tools() -> List[Dict[str, Any]]:
     """Scan ~/.aiplat/tools/ for TOOL_DEF exports."""
     tools: List[Dict[str, Any]] = []
-    tools_dir = Path(os.environ.get("AIPLAT_TOOLS_PATH", Path.home() / ".aiplat" / "tools"))
+    tools_dir = Path(os.environ.get("AIPLAT_TOOLS_PATH", Path(get_aiplat_home()) / "tools"))
     if not tools_dir.is_dir():
         return tools
 

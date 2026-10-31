@@ -11,6 +11,7 @@ Migration plan: move to platform/api/routers/.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 
@@ -173,7 +174,7 @@ def _engine_mcp_manager():
 
 def _packages_registry_dir() -> Path:
 
-    return Path.home() / ".aiplat" / "packages" / "registry"
+    return Path(get_aiplat_home()) / "packages" / "registry"
 
 
 
@@ -293,7 +294,7 @@ def _build_bundle_dir_for_package(pkg_info: dict, bundle_dir: Path):
 
             else:
 
-                src = Path.home() / ".aiplat" / f"{kind}s" / rid
+                src = Path(get_aiplat_home()) / f"{kind}s" / rid
 
             if src.exists():
 

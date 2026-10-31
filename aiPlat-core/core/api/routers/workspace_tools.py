@@ -5,6 +5,7 @@ Routes are prefixed with /workspace/tools (registered in server.py).
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import json
@@ -107,7 +108,7 @@ async def create_workspace_tool(request: dict, http_request: Request):
     if not name.replace("_", "").replace("-", "").isalnum():
         raise HTTPException(status_code=400, detail="name must be alphanumeric (underscores and hyphens allowed)")
 
-    tools_dir = Path(os.getenv("AIPLAT_TOOLS_PATH", os.path.expanduser("~/.aiplat/tools")))
+    tools_dir = Path(os.getenv("AIPLAT_TOOLS_PATH", get_aiplat_data_dir("tools")))
     tools_dir.mkdir(parents=True, exist_ok=True)
     tool_file = tools_dir / f"{name}.py"
     if tool_file.exists():
@@ -238,7 +239,7 @@ async def sign_workspace_tool(tool_name: str, request: dict):
 async def discover_workspace_tools():
     """Scan ~/.aiplat/tools/ and return available tool definitions (no subprocess)."""
     import importlib.util, sys
-    tools_dir = Path(os.getenv("AIPLAT_TOOLS_PATH", os.path.expanduser("~/.aiplat/tools")))
+    tools_dir = Path(os.getenv("AIPLAT_TOOLS_PATH", get_aiplat_data_dir("tools")))
     results = []
     if not tools_dir.is_dir():
         return {"tools": results, "total": 0}

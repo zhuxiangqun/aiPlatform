@@ -1,0 +1,67 @@
+{
+  "schema_version": "aiplat.pi.d3.prep.v0",
+  "capability_id": "pi",
+  "checked_at": "2026-10-31T15:12:54Z",
+  "d3_production_authorized": false,
+  "adr_status": "accepted_conditional",
+  "items": {
+    "1_d2_admin": {
+      "ok": true,
+      "detail": "d2_admin_check passed"
+    },
+    "2_chart_docs": {
+      "ok": true,
+      "detail": "chart d3_production_authorized=false"
+    },
+    "runbook_D3_CHECKLIST.md": {
+      "ok": true,
+      "detail": "present"
+    },
+    "runbook_README.md": {
+      "ok": true,
+      "detail": "present"
+    },
+    "runbook_BUNDLE_INTEGRITY.md": {
+      "ok": true,
+      "detail": "present"
+    },
+    "runbook_OPS_SURFACE.md": {
+      "ok": true,
+      "detail": "present"
+    },
+    "7_enterprise_default_off": {
+      "ok": true,
+      "detail": "d1_install AIPLAT_ENTERPRISE=0"
+    },
+    "8_adr_accept_cosign": {
+      "ok": true,
+      "detail": "reports/five-products/ADR-PI-D3.md"
+    },
+    "3_bundle_local_rehearsal": {
+      "ok": true,
+      "detail": "packages/aiplat-pi-runtime/docs/d3/drills/local-rehearsal-20261031T151254Z.json"
+    },
+    "4_ops_docs": {
+      "ok": true,
+      "detail": "OPS_SURFACE.md + local reh"
+    },
+    "6_rollback_local_rehearsal": {
+      "ok": true,
+      "detail": "packages/aiplat-pi-runtime/docs/d3/drills/local-rehearsal-20261031T151254Z.json"
+    },
+    "5_soc_local_rehearsal": {
+      "ok": true,
+      "detail": "packages/aiplat-pi-runtime/docs/d3/drills/soc-rehearsal-20261031T151254Z.json"
+    },
+    "live_drill_evidence_present": {
+      "ok": true,
+      "detail": "packages/aiplat-pi-runtime/docs/d3/drills/live-scaffold-pi-d3-20261031.json"
+    }
+  },
+  "auto_prep_green": true,
+  "local_rehearsal_green": true,
+  "manual_still_required": [
+    "5_soc_live_drill",
+    "3_4_6_production_signoff"
+  ]
+}

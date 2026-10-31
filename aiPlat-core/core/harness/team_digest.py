@@ -3,6 +3,7 @@
 Aggregates adoption-style counters: pull/friction/Culture/bloat/gate outcomes.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def aiplat_home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat")).expanduser()
+    return Path(get_aiplat_home()).expanduser()
 
 
 def digest_store_path() -> Path:

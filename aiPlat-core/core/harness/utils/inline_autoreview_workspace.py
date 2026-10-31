@@ -9,6 +9,7 @@ concurrent coroutines / other git ops saw the wrong repo, and a lock held across
 ``await`` could wedge the event loop.
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -142,7 +143,7 @@ def _file_op_allowed_roots() -> List[str]:
     # Same default as start.sh: empty env must not disable harness persist.
     # file_operations *tool* still refuses writes in apps/tools/base.py when env is empty.
     home = os.path.realpath(
-        os.path.expanduser(os.environ.get("AIPLAT_HOME") or "~/.aiplat")
+        get_aiplat_home()
     )
     return [home] if home else []
 
@@ -164,7 +165,7 @@ def resolve_run_persist_root(run_id: str) -> str:
     """
     rid = re.sub(r"[^A-Za-z0-9._-]+", "_", str(run_id or "").strip())[:80] or "run"
     home = os.path.realpath(
-        os.path.expanduser(os.environ.get("AIPLAT_HOME") or "~/.aiplat")
+        get_aiplat_home()
     )
     candidate = os.path.join(home, "run_workspaces", rid)
     roots = _file_op_allowed_roots()

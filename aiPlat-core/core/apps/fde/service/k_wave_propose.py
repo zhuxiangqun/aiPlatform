@@ -6,6 +6,7 @@ Open drafts are not duplicated. Drafts older than 30 days expire without apply.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -23,7 +24,7 @@ _EXPIRE_SEC = 30 * 86400
 def _home() -> Path:
     import os
 
-    return Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat")))
+    return Path(get_aiplat_home())
 
 
 def ledger_path() -> Path:

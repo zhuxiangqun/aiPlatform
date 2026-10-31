@@ -7,6 +7,7 @@ Validates DataSource field_mapping correctness:
   - Coverage (mapped fields / ontology required_fields)
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os as _os
@@ -38,7 +39,7 @@ class MappingValidationResult:
 
 def validate_source(source_id: str) -> MappingValidationResult:
     u"""Validate a single DataSource's field mappings."""
-    base = _os.path.expanduser("~/.aiplat/datasources")
+    base = get_aiplat_data_dir("datasources")
     yaml_path = _os.path.join(base, f"{source_id}.yaml")
     if not _os.path.exists(yaml_path):
         return MappingValidationResult(
@@ -109,7 +110,7 @@ def validate_source(source_id: str) -> MappingValidationResult:
 
 def validate_all_sources(domain_id: str = "") -> List[MappingValidationResult]:
     u"""Validate all data sources (filtered by domain if provided)."""
-    base = _os.path.expanduser("~/.aiplat/datasources")
+    base = get_aiplat_data_dir("datasources")
     if not _os.path.isdir(base):
         return []
 

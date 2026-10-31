@@ -1,4 +1,5 @@
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from core.utils.math_utils import cosine_similarity
 """
 ImmuneMemory — 对抗性输入免疫积累 (L4 Security Layer)
@@ -211,7 +212,7 @@ class ImmuneMemory:
 
     @classmethod
     def save_persistent(cls, filepath: str = None) -> None:
-        filepath = filepath or os.path.expanduser("~/.aiplat/immune_memory.json")
+        filepath = filepath or get_aiplat_data_dir("immune_memory.json")
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         data = {
             t: [{"text": r.text_snippet, "attack_type": r.attack_type,
@@ -223,7 +224,7 @@ class ImmuneMemory:
 
     @classmethod
     def load_persistent(cls, filepath: str = None) -> None:
-        filepath = filepath or os.path.expanduser("~/.aiplat/immune_memory.json")
+        filepath = filepath or get_aiplat_data_dir("immune_memory.json")
         if not os.path.exists(filepath):
             return
         with open(filepath) as f:

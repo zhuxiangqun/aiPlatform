@@ -17,6 +17,7 @@ OntologyValidator — 本体驱动确定性校验 (注入 Agent Harness L 组件
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 from dataclasses import dataclass, field
@@ -245,7 +246,7 @@ class OntologyValidator:
             import yaml as _yaml
 
             yaml_path = ""
-            home = os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat"))
+            home = get_aiplat_home()
             yaml_path = f"{home}/ontologies/{domain_id}.yaml"
             if not os.path.exists(yaml_path):
                 # Prefer history version archives; never treat live *_vN as domains.

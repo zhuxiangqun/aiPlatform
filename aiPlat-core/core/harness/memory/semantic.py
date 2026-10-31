@@ -1,3 +1,4 @@
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 """
 Semantic Memory
@@ -42,7 +43,7 @@ class SemanticMemory:
     def _init_sqlite(self) -> None:
         import sqlite3
         import os
-        base = os.path.expanduser("~/.aiplat")
+        base = get_aiplat_home()
         tid = getattr(self, '_tenant_id', 'default') or 'default'
         if tid != "default":
             db_path = os.path.join(base, f"memory_semantic_{tid}.sqlite3")

@@ -6,6 +6,7 @@ Uses read-through cache pattern: memory is primary, SQLite is persisted backing.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import os
@@ -24,7 +25,7 @@ def _ensure_db_path() -> str:
         if home:
             db_path = str(Path(home) / "data" / "aiplat_platform.sqlite3")
         else:
-            db_path = str(Path.home() / ".aiplat" / "platform.sqlite3")
+            db_path = str(Path(get_aiplat_home()) / "platform.sqlite3")
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     return db_path
 

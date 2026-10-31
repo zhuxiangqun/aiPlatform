@@ -19,6 +19,7 @@ Manifest Format (manifest.json):
   }
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -158,7 +159,7 @@ async def pack_playbook(manifest: PlaybookManifest, output_path: str = "") -> st
             ont_dir = Path(export_dir) / "ontology"
             ont_dir.mkdir(parents=True, exist_ok=True)
             for domain_id in manifest.ontology:
-                src = Path(os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}.yaml"))
+                src = Path(get_aiplat_data_dir(f"ontologies/{domain_id}.yaml"))
                 if src.exists():
                     import shutil
                     shutil.copy(src, ont_dir / f"{domain_id}.yaml")
@@ -196,7 +197,7 @@ async def pack_playbook(manifest: PlaybookManifest, output_path: str = "") -> st
             clean_dir = Path(export_dir) / "cleanup_rules"
             clean_dir.mkdir(parents=True, exist_ok=True)
             for rules_name in manifest.cleanup_rules:
-                src = Path(os.path.expanduser(f"~/.aiplat/cleanup_rules/{rules_name}.yaml"))
+                src = Path(get_aiplat_data_dir(f"cleanup_rules/{rules_name}.yaml"))
                 if src.exists():
                     import shutil
                     shutil.copy(src, clean_dir / f"{rules_name}.yaml")
@@ -273,7 +274,7 @@ async def unpack_playbook(archive_path: str, *,
                     continue
                 data = json.loads(Path(skills_dir / fname).read_text(encoding="utf-8"))
                 # Store skill definition for later registration
-                dest = Path(os.path.expanduser(f"~/.aiplat/skills/{skill_id}"))
+                dest = Path(get_aiplat_data_dir(f"skills/{skill_id}"))
                 dest.mkdir(parents=True, exist_ok=True)
                 (dest / "SKILL.md").write_text(
                     _skill_to_yaml(data), encoding="utf-8",
@@ -284,7 +285,7 @@ async def unpack_playbook(archive_path: str, *,
         ont_dir = os.path.join(import_dir, "ontology")
         if os.path.isdir(ont_dir):
             import shutil
-            dest_ont = Path(os.path.expanduser("~/.aiplat/ontologies"))
+            dest_ont = Path(get_aiplat_data_dir("ontologies"))
             dest_ont.mkdir(parents=True, exist_ok=True)
             for fname in os.listdir(ont_dir):
                 if not fname.endswith(".yaml"):
@@ -334,7 +335,7 @@ async def unpack_playbook(archive_path: str, *,
         clean_dir = os.path.join(import_dir, "cleanup_rules")
         if os.path.isdir(clean_dir):
             import shutil
-            dest_clean = Path(os.path.expanduser("~/.aiplat/cleanup_rules"))
+            dest_clean = Path(get_aiplat_data_dir("cleanup_rules"))
             dest_clean.mkdir(parents=True, exist_ok=True)
             for fname in os.listdir(clean_dir):
                 dest = dest_clean / fname

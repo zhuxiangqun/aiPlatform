@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiplat.local/schemas/fde/evidence_export.schema.json",
+  "title": "FdeEvidenceExport",
+  "type": "object",
+  "required": ["schema_version", "scenario_id", "exported_at", "items"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "fde.evidence.v0" },
+    "scenario_id": { "type": "string", "minLength": 1 },
+    "exported_at": { "type": "string", "description": "ISO-8601 UTC" },
+    "report_id": { "type": "string" },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "ref"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["slice_evidence", "diagnosis_report", "acceptance_signoff", "other"]
+          },
+          "ref": { "type": "string" },
+          "payload": { "type": "object" }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

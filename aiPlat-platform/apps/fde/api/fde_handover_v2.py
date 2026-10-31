@@ -11,6 +11,8 @@ import json, time, os
 from datetime import datetime, timezone
 import logging
 
+from core.utils.paths import get_aiplat_data_dir
+
 router = APIRouter(tags=["fde-handover-v2"])
 
 _handover_records: Dict[str, dict] = {}
@@ -57,7 +59,7 @@ async def handover_transfer(body: Dict[str, Any]):
                      "detail": f"Profile transfer skipped: {str(e)[:100]}"})
 
     # 2) Record handover
-    hd = os.path.expanduser("~/.aiplat/handovers")
+    hd = get_aiplat_data_dir("handovers")
     os.makedirs(hd, exist_ok=True)
     import json as _json
     record = {
@@ -96,7 +98,7 @@ async def handover_close(body: Dict[str, Any]):
         raise HTTPException(400, "spec_id is required")
 
     # Archive
-    ar = os.path.expanduser("~/.aiplat/archive")
+    ar = get_aiplat_data_dir("archive")
     os.makedirs(ar, exist_ok=True)
     import json as _json
     archive_record = {
@@ -153,7 +155,7 @@ async def schedule_post_health(body: Dict[str, Any]):
     }
 
     # Persist
-    sd = os.path.expanduser("~/.aiplat/post_health")
+    sd = get_aiplat_data_dir("post_health")
     os.makedirs(sd, exist_ok=True)
     import json as _json
     fid = f"health-{spec_id}-{int(time.time())}"
@@ -172,7 +174,7 @@ async def list_health_schedules(spec_id: str = Query("")):
         if not spec_id or sid == spec_id:
             results.append(s)
 
-    sd = os.path.expanduser("~/.aiplat/post_health")
+    sd = get_aiplat_data_dir("post_health")
     if os.path.isdir(sd):
         import json as _json
         for fn in sorted(os.listdir(sd), reverse=True)[:20]:
@@ -223,7 +225,7 @@ async def create_training_sandbox(body: Dict[str, Any]):
     }
 
     # Persist
-    sd = os.path.expanduser("~/.aiplat/training")
+    sd = get_aiplat_data_dir("training")
     os.makedirs(sd, exist_ok=True)
     import json as _json
     with open(os.path.join(sd, f"{sandbox_id}.json"), "w") as fh:
@@ -244,7 +246,7 @@ async def create_training_sandbox(body: Dict[str, Any]):
 async def list_training_sandboxes():
     """列出活跃的培训沙盒。"""
     results = list(_training_sandboxes.values())
-    sd = os.path.expanduser("~/.aiplat/training")
+    sd = get_aiplat_data_dir("training")
     if os.path.isdir(sd):
         import json as _json
         for fn in sorted(os.listdir(sd), reverse=True)[:10]:

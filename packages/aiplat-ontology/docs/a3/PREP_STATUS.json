@@ -1,0 +1,51 @@
+{
+  "schema_version": "aiplat.ontology.a3.prep.v0",
+  "capability_id": "ontology",
+  "checked_at": "2026-10-31T15:12:53Z",
+  "process_split_authorized": false,
+  "adr_status": "accepted_conditional",
+  "items": {
+    "2_chart_skeleton": {
+      "ok": true,
+      "detail": "packages/aiplat-ontology/chart/Chart.yaml; split=false"
+    },
+    "4_no_harness_knowledge": {
+      "ok": true,
+      "detail": "no core.harness.knowledge under aiPlat-platform/apps"
+    },
+    "runbook_SPLIT_CHECKLIST.md": {
+      "ok": true,
+      "detail": "present"
+    },
+    "runbook_README.md": {
+      "ok": true,
+      "detail": "present"
+    },
+    "6_adr_accept_cosign": {
+      "ok": true,
+      "detail": "reports/five-products/ADR-ONTOLOGY-A3.md"
+    },
+    "adr_draft_对照": {
+      "ok": true,
+      "detail": "reports/five-products/ADR-DRAFT-ontology-a3.md"
+    },
+    "1_ontology_api_unit": {
+      "ok": true,
+      "detail": "test_ontology_api_v0.py passed"
+    },
+    "3_local_dual_write_rehearsal": {
+      "ok": true,
+      "detail": "packages/aiplat-ontology/docs/a3/drills/local-rehearsal-20261031T151253Z.json"
+    },
+    "5_local_rollback_rehearsal": {
+      "ok": true,
+      "detail": "packages/aiplat-ontology/docs/a3/drills/local-rehearsal-20261031T151253Z.json"
+    }
+  },
+  "auto_prep_green": true,
+  "local_rehearsal_green": true,
+  "manual_still_required": [
+    "3_storage_migration_dual_write_live_drill",
+    "5_rollback_to_cohost_live_drill"
+  ]
+}

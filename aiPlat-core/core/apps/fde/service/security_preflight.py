@@ -5,6 +5,7 @@ Calls go through CoreFacade.run_security_review_dry from the platform API layer.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import os
@@ -15,7 +16,7 @@ from typing import Any, Dict, List, Optional
 
 
 def _home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")))
+    return Path(get_aiplat_home())
 
 
 def _dir() -> Path:

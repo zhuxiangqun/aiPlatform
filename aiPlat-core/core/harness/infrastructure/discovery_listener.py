@@ -8,6 +8,7 @@ DiscoveryListener — 监听自动发现的数据源目录变更 (Phase 41).
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import asyncio
 import logging
@@ -24,7 +25,7 @@ class DiscoveryListener:
     轮询 ~/.aiplat/datasources/auto_discovered/ 发现新 YAML 文件。
     """
 
-    _WATCH_DIR = _os.path.expanduser("~/.aiplat/datasources/auto_discovered")
+    _WATCH_DIR = get_aiplat_data_dir("datasources/auto_discovered")
     _CHECK_INTERVAL = 30  # seconds
 
     def __init__(self, *, enabled: bool = False):

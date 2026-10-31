@@ -30,11 +30,12 @@ Usage:
     # Auto-discovery at startup
     new_count = auto_discover_and_register("agents", [
         "core/engine/agents",
-        os.path.expanduser("~/.aiplat/agents"),
+        get_aiplat_data_dir("agents"),
     ])
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -62,7 +63,7 @@ _ENTITY_TYPES = {
 
 
 def _registry_home() -> Path:
-    return Path(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))) / "registry"
+    return Path(os.getenv("AIPLAT_HOME", get_aiplat_home())) / "registry"
 
 
 def _engine_root() -> Path:
@@ -341,7 +342,7 @@ def verify_registry_consistency(entity_type: str, scan_dirs: List[str] = None) -
 
 def _default_scan_dirs(entity_type: str) -> List[str]:
     """Default directory scan paths for each entity type."""
-    home = os.path.expanduser("~/.aiplat")
+    home = get_aiplat_home()
     engine = str(_engine_root())
     return {
         "agents":    [f"{engine}/agents", f"{home}/agents"],

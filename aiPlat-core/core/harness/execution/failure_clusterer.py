@@ -14,6 +14,7 @@ callers: pipeline_engine (post-execution), wiki.py (view clusters), core_facade
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import hashlib
 import json as _json
@@ -284,7 +285,7 @@ def cluster_failures(
 # ══════════════════════════════════════════════════════════════
 
 def _cluster_path() -> str:
-    home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
+    home = get_aiplat_home()
     return _os.path.join(home, "harness", "failure_clusters.json")
 
 

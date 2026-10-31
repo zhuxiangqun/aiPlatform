@@ -8,6 +8,7 @@ from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResp
 from fastapi import APIRouter, HTTPException
 
 import os
+from core.utils.paths import get_aiplat_data_dir
 import json
 
 router = APIRouter(tags=["fde-governance"])
@@ -15,7 +16,7 @@ router = APIRouter(tags=["fde-governance"])
 
 def _list_available_domains() -> str:
     import os, json
-    path = os.path.expanduser("~/.aiplat/ontologies/registry.json")
+    path = get_aiplat_data_dir("ontologies/registry.json")
     try:
         with open(path) as f:
             domains = json.load(f).get("domains", {})
@@ -75,7 +76,7 @@ async def fde_governance_validate():
     def _ck4():
         import os
         from core.api.core_facade import load_ontology_from_yaml
-        path = os.path.expanduser("~/.aiplat/ontologies/fde-delivery.yaml")
+        path = get_aiplat_data_dir("ontologies/fde-delivery.yaml")
         dom = load_ontology_from_yaml(path)
         return any(c.label == "证据" for c in dom.classes)
 

@@ -1,5 +1,6 @@
 """Shared helpers for asset config AI audit (Agent/Skill/Tool/MCP/Workflow)."""
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import re
 from typing import Any, Dict, List, Optional, Set
@@ -761,7 +762,7 @@ def list_workspace_agent_catalog(home: Any = None) -> Dict[str, str]:
     import os
     from pathlib import Path
 
-    root = Path(home) if home else Path(os.path.expanduser("~/.aiplat"))
+    root = Path(home) if home else Path(get_aiplat_home())
     agents_dir = root / "agents"
     out: Dict[str, str] = {}
     if not agents_dir.is_dir():
@@ -796,7 +797,7 @@ def list_workspace_tool_names(home: Any = None) -> List[str]:
     import os
     from pathlib import Path
 
-    root = Path(home) if home else Path(os.path.expanduser("~/.aiplat"))
+    root = Path(home) if home else Path(get_aiplat_home())
     tdir = root / "tools"
     names: List[str] = []
     if not tdir.is_dir():

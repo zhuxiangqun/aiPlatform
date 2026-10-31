@@ -11,6 +11,7 @@ TemplateEngine — 文档模板引擎 (Agent 闭环执行 — 本地结果输出
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import logging
@@ -23,7 +24,7 @@ from typing import Any, Dict, List, Optional, Set
 
 logger = logging.getLogger(__name__)
 
-TEMPLATE_DIR = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "templates"
+TEMPLATE_DIR = _Path(get_aiplat_home()) / "templates"
 ALLOWED_EXTENSIONS: Set[str] = {".docx", ".xlsx", ".md", ".txt", ".csv"}
 
 
@@ -259,6 +260,6 @@ class TemplateRenderer:
     @staticmethod
     def _default_output(template: Template, ext: str) -> str:
         ts = _time.strftime("%Y%m%d_%H%M%S")
-        out_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "output"
+        out_dir = _Path(get_aiplat_home()) / "output"
         out_dir.mkdir(parents=True, exist_ok=True)
         return str(out_dir / f"{template.template_id}_{ts}{ext}")

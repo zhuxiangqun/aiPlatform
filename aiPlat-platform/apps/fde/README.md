@@ -28,7 +28,14 @@ cp fde_optional.env.example .env.fde-optional
 
 ```bash
 # 起薄 health → curl → 立刻停；非 compose 长驻；不暴露第二套 signoff
+# 同时校验 /healthz（V2 D1：status/product_id）
 bash scripts/adr09_fde_optional_phase_health.sh
 ```
+
+## V2 现场范围 / A1 契约
+
+- 现场范围：`reports/five-products/modules/fde/FIELD_SCOPE.md`
+- 契约：`reports/five-products/modules/fde/contracts/`（`validate_sample.py`）
+- Field D1 ADR（**未 Accepted**）：`reports/five-products/ADR-DRAFT-fde-field-deploy.md`
 
 业务手册（现场交付 SOP）见仓库 `docs/manuals/fde/`，与本部署说明分工不同。

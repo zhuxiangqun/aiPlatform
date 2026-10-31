@@ -8,6 +8,7 @@ Safety: never overwrites existing AGENT.md content — only appends.
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -54,7 +55,7 @@ async def apply_mature_refinements() -> dict:
 
                 # Find AGENT.md path
                 agent_paths = [
-                    os.path.expanduser(f"~/.aiplat/agents/{target}/AGENT.md"),
+                    get_aiplat_data_dir(f"agents/{target}/AGENT.md"),
                     os.path.join(os.getcwd(), f"agents/{target}/AGENT.md"),
                 ]
                 target_path = None

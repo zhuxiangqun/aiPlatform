@@ -11,6 +11,7 @@ Agent 失败后自动分析根因 → 生成 SkillDraft.yaml → SkillSimulator 
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import logging
@@ -336,7 +337,7 @@ class AutoLearner:
         try:
             # Register in SkillRegistry
             # (Actual registration is done by management API)
-            approved_path = Path(os.path.expanduser("~/.aiplat/skills")) / draft_name
+            approved_path = Path(get_aiplat_data_dir("skills")) / draft_name
             approved_path.mkdir(parents=True, exist_ok=True)
             (approved_path / "SKILL.md").write_text(draft.to_yaml(), encoding="utf-8")
             # ── Register in SkillRegistry so it's immediately available ──

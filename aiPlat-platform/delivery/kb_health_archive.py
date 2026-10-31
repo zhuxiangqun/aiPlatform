@@ -4,6 +4,7 @@ Writes ``kb-health-{YYYY-WW}.md`` under a governance reports directory.
 Cron is opt-in via ``AIPLAT_KB_HEALTH_ARCHIVE_HOURS`` (default 168; ``0`` = off).
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 import os
@@ -21,7 +22,7 @@ def reports_dir() -> Path:
     home = (
         os.getenv("AIPLAT_PLATFORM_HOME")
         or os.getenv("AIPLAT_HOME")
-        or str(Path.home() / ".aiplat")
+        or str(Path(get_aiplat_home()))
     )
     return Path(home).expanduser() / "governance" / "reports"
 

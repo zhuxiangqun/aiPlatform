@@ -28,6 +28,7 @@ Usage:
 
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
 
@@ -99,7 +100,7 @@ class SourceStatus:
 
 
 
-_STATUS_FILE = Path(os.path.expanduser("~/.aiplat/datasources/.sync_status.json"))
+_STATUS_FILE = Path(get_aiplat_data_dir("datasources/.sync_status.json"))
 
 
 
@@ -109,7 +110,7 @@ def _load_sources() -> List[Dict[str, Any]]:
 
     """Load all registered datasource YAML files."""
 
-    sources_dir = Path(os.path.expanduser("~/.aiplat/datasources"))
+    sources_dir = Path(get_aiplat_data_dir("datasources"))
 
     if not sources_dir.is_dir():
 

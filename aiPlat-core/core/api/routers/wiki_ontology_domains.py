@@ -6,6 +6,7 @@ Wiki Domain Ontology CRUD API
 
 
 
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Body
@@ -65,7 +66,7 @@ async def discover_domain_assets(domain_id: str):
 
 
 
-    base_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    base_dir = _Path(get_aiplat_home()) / "ontologies"
 
     file_path = base_dir / f"{domain_id}.yaml"
 
@@ -209,7 +210,7 @@ async def get_domain_interfaces(domain_id: str):
 
     import os as _os
 
-    base_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    base_dir = _Path(get_aiplat_home()) / "ontologies"
 
     file_path = base_dir / f"{domain_id}.yaml"
 
@@ -297,7 +298,7 @@ async def list_ontology_domains():
 
 
 
-    base_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    base_dir = _Path(get_aiplat_home()) / "ontologies"
 
     router = DomainRouter()
 
@@ -379,7 +380,7 @@ async def get_ontology_domain(domain_id: str):
 
 
 
-    base_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    base_dir = _Path(get_aiplat_home()) / "ontologies"
 
     file_path = base_dir / f"{domain_id}.yaml"
 
@@ -837,7 +838,7 @@ async def list_instances_by_class(domain_id: str, class_label: str = ""):
 
     # Resolve class_label → category names
 
-    onto_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    onto_path = _Path(get_aiplat_home()) / "ontologies" / f"{domain_id}.yaml"
 
     categories = []
 
@@ -1079,7 +1080,7 @@ async def classify_all_pages(domain_id: str, collection: str = "", limit: int = 
 
 
 
-    onto_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+    onto_path = _Path(get_aiplat_home()) / "ontologies" / f"{domain_id}.yaml"
 
     all_classes = []
 

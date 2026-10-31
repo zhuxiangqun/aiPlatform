@@ -31,6 +31,7 @@ Example violation:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
 from dataclasses import dataclass, field
@@ -69,7 +70,7 @@ class CrossValidationGate:
         try:
             import os
             import yaml
-            onto_dir = os.path.expanduser("~/.aiplat/ontologies")
+            onto_dir = get_aiplat_data_dir("ontologies")
             if not os.path.isdir(onto_dir):
                 return False
 
@@ -144,7 +145,7 @@ class CrossValidationGate:
         """Load all cross-domain object_properties from YAML ontology files."""
         import os as _os
         import yaml as _yaml
-        onto_dir = _os.path.expanduser("~/.aiplat/ontologies")
+        onto_dir = get_aiplat_data_dir("ontologies")
         if not _os.path.isdir(onto_dir):
             return []
         constraints = []

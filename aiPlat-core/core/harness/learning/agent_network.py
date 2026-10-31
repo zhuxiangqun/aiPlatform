@@ -14,6 +14,7 @@ AgentNetwork — Agent 关系网络分析与演化追踪 (EvoMap 自组织对齐
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
 import logging
@@ -85,7 +86,7 @@ class AgentNetwork:
         self._network_file = ""
         try:
             import os
-            self._network_file = os.path.expanduser("~/.aiplat/agent_network.json")
+            self._network_file = get_aiplat_data_dir("agent_network.json")
         except Exception:
             logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 

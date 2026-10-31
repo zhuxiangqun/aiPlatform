@@ -1,0 +1,9 @@
+{
+  "name": "aiplat-fde",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FDE Field D1 packaging. ADR-FDE-FIELD-DEPLOY Accepted 2026-10-30.",
+  "capability_id": "fde",
+  "deploy_unit": "field",
+  "field_d1_adr": "accepted"
+}

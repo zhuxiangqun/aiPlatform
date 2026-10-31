@@ -1,4 +1,5 @@
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import asyncio
 import json
@@ -1211,7 +1212,7 @@ async def audit_mcp_server_config(server_name: str):
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
 
     issues: List[Dict[str, Any]] = []
-    home = _Path.home() / ".aiplat" / "mcps" / server_name / "server.yaml"
+    home = _Path(get_aiplat_home()) / "mcps" / server_name / "server.yaml"
     yaml_data: Dict[str, Any] = {}
     if home.exists():
         try:
@@ -1482,7 +1483,7 @@ async def submit_mcp_for_review(server_name: str):
     lint_warnings = 0
     lint_messages = []
 
-    home = _Path.home() / ".aiplat" / "mcps" / server_name / "server.yaml"
+    home = _Path(get_aiplat_home()) / "mcps" / server_name / "server.yaml"
     if home.exists():
         try:
             from core.management.mcp_config_validator import validate_mcp_server
@@ -1569,7 +1570,7 @@ async def list_mcp_seeds():
             continue
         try:
             data = _yaml.safe_load(server_yaml.read_text(encoding="utf-8")) or {}
-            installed = (Path.home() / ".aiplat" / "mcps" / item.name).exists()
+            installed = (Path(get_aiplat_home()) / "mcps" / item.name).exists()
             seeds.append({
                 "id": item.name,
                 "name": str(data.get("name") or item.name),
@@ -1592,7 +1593,7 @@ async def install_mcp_seed(seed_id: str):
     if not seed_dir.exists():
         raise HTTPException(status_code=404, detail=f"Seed template '{seed_id}' not found")
 
-    workspace_dir = Path.home() / ".aiplat" / "mcps"
+    workspace_dir = Path(get_aiplat_home()) / "mcps"
     dst = workspace_dir / seed_id
     if dst.exists():
         raise HTTPException(status_code=409, detail=f"MCP server '{seed_id}' already installed")

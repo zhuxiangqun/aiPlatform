@@ -113,7 +113,15 @@ async def submit_run_evaluation(run_id: str, request: dict, http_request: Reques
         logging.warning(str(e), exc_info=True)
     if enforce_gate and not bool(gated_report.get("pass")):
         raise HTTPException(status_code=409, detail={"code": "evaluation_failed", "artifact_id": saved.get("artifact_id"), "report": gated_report})
-    return {"status": "ok", "artifact_id": saved.get("artifact_id"), "report": gated_report}
+    from core.api.core_facade import attach_eval_protocol, eval_protocol_from_run_evaluation
+
+    out = {"status": "ok", "artifact_id": saved.get("artifact_id"), "report": gated_report}
+    return attach_eval_protocol(
+        out,
+        eval_protocol_from_run_evaluation(
+            run_id=rid, evaluator=evaluator, report=gated_report, artifact=saved
+        ),
+    )
 
 
 @router.post("/runs/{run_id}/evaluate/auto", response_model=StatusResponse)
@@ -158,12 +166,22 @@ async def auto_evaluate_run(run_id: str, http_request: Request, rt: RuntimeDep =
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
-    return {
+    from core.api.core_facade import attach_eval_protocol, eval_protocol_from_run_evaluation
+
+    out = {
         "trace_id": run.get("trace_id"),
         "latest_eval": (latest_eval or {}).get("payload", {}) if isinstance(latest_eval, dict) else {},
         "latest_pack": (latest_pack or {}).get("payload", {}) if isinstance(latest_pack, dict) else {},
         "syscall_summary": syscall_summary,
     }
+    return attach_eval_protocol(
+        out,
+        eval_protocol_from_run_evaluation(
+            run_id=rid,
+            artifact=latest_eval if isinstance(latest_eval, dict) else None,
+            report=out["latest_eval"] if isinstance(out.get("latest_eval"), dict) else None,
+        ),
+    )
 
 
 @router.get("/runs/{run_id}/evaluation/latest", response_model=ItemResponse)
@@ -180,7 +198,14 @@ async def get_latest_run_evaluation(run_id: str, rt: RuntimeDep = None):
     if not isinstance(items, list) or not items:
         return {"status": "ok", "item": None}
     items2 = sorted(items, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True)
-    return {"status": "ok", "item": items2[0]}
+    latest = items2[0]
+    from core.api.core_facade import attach_eval_protocol, eval_protocol_from_run_evaluation
+
+    out = {"status": "ok", "item": latest}
+    return attach_eval_protocol(
+        out,
+        eval_protocol_from_run_evaluation(run_id=rid, artifact=latest if isinstance(latest, dict) else None),
+    )
 
 
 @router.get("/runs/{run_id}/investigate/latest", response_model=ItemResponse)

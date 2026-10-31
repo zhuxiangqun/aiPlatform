@@ -1,0 +1,22 @@
+id: fde
+version: 0.1.0
+owner: platform
+deploy_unit: field
+autonomy_target: A2
+delivery_target: D2
+current_autonomy: A2-versioning
+current_delivery: D1
+a2_versioning: true
+production_field: true
+field_d1_adr: accepted
+build:
+  command: "echo aiPlat-platform/apps/fde"
+test:
+  command: "bash packages/aiplat-fde/scripts/d1_smoke.sh"
+contracts:
+  - contracts/schemas/healthz.schema.json
+  - contracts/schemas/evidence_export.schema.json
+migrations:
+  path: null
+adr_for_a3: null
+field_deploy_adr: reports/five-products/ADR-FDE-FIELD-DEPLOY.md

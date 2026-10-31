@@ -42,7 +42,19 @@ async def run_arena(payload: dict = Body(...)) -> Dict[str, Any]:
         contenders=contenders,
         matches_per_pair=int(payload.get("matches_per_pair", 3)),
     )
-    return result
+    from core.api.core_facade import attach_eval_protocol, eval_protocol_from_generic
+
+    out = dict(result) if isinstance(result, dict) else {"result": result}
+    return attach_eval_protocol(
+        out,
+        eval_protocol_from_generic(
+            task_id="arena:round-robin",
+            target_kind="agent",
+            target_ref="darwin-arena",
+            result=out,
+            suite="arena",
+        ),
+    )
 
 
 # ═══════════════════════════════════════════════════════════

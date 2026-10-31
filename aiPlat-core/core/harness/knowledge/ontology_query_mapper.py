@@ -17,6 +17,7 @@ callers: sys_wiki_context, sys_kb_retrieve, sys_ontology_context
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 from typing import Any, Dict, List, Optional, Tuple
@@ -67,7 +68,7 @@ def map_query_to_ontology(
     all_classes = list(CLASSES)
     adaptive_thresholds: Dict[str, float] = {}
 
-    onto_path = os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}.yaml")
+    onto_path = get_aiplat_data_dir(f"ontologies/{domain_id}.yaml")
     if os.path.exists(onto_path):
         try:
             from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
@@ -447,7 +448,7 @@ def discover_cross_domain_analogs(
 
     results: Dict[str, List[Dict[str, Any]]] = {}
     for did in target_domains:
-        path = os.path.expanduser(f"~/.aiplat/ontologies/{did}.yaml")
+        path = get_aiplat_data_dir(f"ontologies/{did}.yaml")
         if not os.path.exists(path):
             continue
         domain = load_ontology_from_yaml(path)
@@ -502,7 +503,7 @@ def _apply_decompositions(
         return []
 
     import os as _os, json as _json
-    onto_path = _os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}.yaml")
+    onto_path = get_aiplat_data_dir(f"ontologies/{domain_id}.yaml")
     if not _os.path.exists(onto_path):
         return []
 

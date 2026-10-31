@@ -18,6 +18,7 @@
   - 启动/停止 best-effort，失败不抛异常（冒烟失败由测试结果呈现）
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
 import os
@@ -50,13 +51,13 @@ def _now_ms() -> str:
 def _app_home(project_id: str) -> str:
     """生成 app 部署根目录（~/.aiplat/apps/{project_id}/current）。"""
     return os.path.join(
-        os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+        get_aiplat_home(),
         "apps", project_id, "current")
 
 
 def _runtime_record_path() -> str:
     return os.path.join(
-        os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+        get_aiplat_home(),
         "gen_app_runtime.json")
 
 

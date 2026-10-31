@@ -23,6 +23,8 @@ import time as _time
 from pathlib import Path as _Path
 from typing import Any, Dict, List, Optional
 
+from core.utils.paths import get_aiplat_data_dir
+
 logger = logging.getLogger(__name__)
 
 
@@ -57,9 +59,7 @@ class AutoGarden:
     """
 
     def __init__(self):
-        self._wiki_root = _Path(
-            _os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")
-        ) / "wiki"
+        self._wiki_root = _Path(get_aiplat_data_dir("wiki"))
 
     def run(
         self,

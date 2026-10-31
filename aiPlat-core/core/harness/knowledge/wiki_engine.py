@@ -14,6 +14,7 @@ Directory structure:
 """
 
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 import os
@@ -84,7 +85,7 @@ def _inc_change_counter() -> None:
 
 
 def _wiki_root(collection_id: str = "default") -> Path:
-    home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    home = get_aiplat_home()
     root = Path(home) / "wiki"
     _migrate_legacy_wiki(root)
     return root / "collections" / (collection_id or "default")
@@ -121,7 +122,7 @@ def _init_global_index(root: Path) -> None:
         gidx.write_text(_json.dumps({"collections": {}, "last_updated": ""}, indent=2))
 
 def list_collections() -> List[Dict[str, Any]]:
-    home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    home = get_aiplat_home()
     root = Path(home) / "wiki"
     _migrate_legacy_wiki(root)
     collections_dir = root / "collections"
@@ -145,7 +146,7 @@ def list_collections() -> List[Dict[str, Any]]:
     return result
 
 def create_collection(collection_id: str) -> Dict[str, Any]:
-    home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    home = get_aiplat_home()
     root = Path(home) / "wiki"
     _migrate_legacy_wiki(root)
     coll_dir = root / "collections" / collection_id
@@ -158,7 +159,7 @@ def delete_collection(collection_id: str) -> Dict[str, Any]:
     if collection_id == "default":
         return {"status": "protected", "reason": "cannot delete default collection"}
     import shutil
-    home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    home = get_aiplat_home()
     coll_dir = Path(home) / "wiki" / "collections" / collection_id
     if not coll_dir.exists():
         return {"status": "not_found"}
@@ -764,7 +765,7 @@ def _reconcile_source_articles(title: str, sources: list, collection_id: str = "
     try:
         from pathlib import Path
         import os as _os
-        kb_db = Path(_os.getenv("AIPLAT_HOME", Path.home() / ".aiplat")) / "kb" / "tenants" / collection_id / "kb.sqlite3"
+        kb_db = Path(get_aiplat_home()) / "kb" / "tenants" / collection_id / "kb.sqlite3"
         if kb_db.exists():
             conn = sqlite3.connect(str(kb_db, timeout=5.0))
             placeholders = ",".join("?" * len(kb_ids))
@@ -902,8 +903,7 @@ def _check_regression(title: str, collection_id: str) -> None:
     import os as _os
     _log = logging.getLogger("wiki_engine")
 
-    gq_path = _Path(_os.path.expanduser(
-        _os.getenv("AIPLAT_HOME", "~/.aiplat"))) / "wiki" / "golden_queries.yaml"
+    gq_path = _Path(get_aiplat_home()) / "wiki" / "golden_queries.yaml"
     if not gq_path.exists():
         return
 
@@ -2909,7 +2909,7 @@ def backfill_evidence_batch_sync(collection_id: str = "default",
 
     if failures:
         fail_path = _os.path.join(
-            _os.path.expanduser(_os.getenv("AIPLAT_HOME", "~/.aiplat")),
+            get_aiplat_home(),
             "wiki", "collections", collection_id, "backfill_failures.json"
         )
         _os.makedirs(_os.path.dirname(fail_path), exist_ok=True)

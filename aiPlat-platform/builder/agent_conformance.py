@@ -16,6 +16,7 @@
     violations = validate_agents_dir()   # {agent_name: [违规消息]}
 """
 from __future__ import annotations
+from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import os
 import re
@@ -66,7 +67,7 @@ def validate_agent_md(path: str) -> List[str]:
 
 def validate_agents_dir(agents_dir: str | None = None) -> Dict[str, List[str]]:
     """扫描 agents 目录下所有 AGENT.md，返回 {agent_name: [违规]}（空 dict = 全部通过）。"""
-    base = agents_dir or os.path.expanduser("~/.aiplat/agents")
+    base = agents_dir or get_aiplat_data_dir("agents")
     result: Dict[str, List[str]] = {}
     if not os.path.isdir(base):
         return result

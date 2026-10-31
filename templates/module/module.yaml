@@ -1,0 +1,16 @@
+# module.yaml — fill per capability
+id: example
+version: 0.0.0
+owner: unset
+deploy_unit: central  # central | field | edge
+autonomy_target: A1   # A1 | A2 | A3
+delivery_target: D1   # D1 | D2 | D3
+build:
+  command: "echo fill-me"
+test:
+  command: "echo fill-me"
+contracts:
+  - contracts/schemas/healthz.schema.json
+migrations:
+  path: null
+adr_for_a3: null
