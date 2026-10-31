@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Phase 2 thin HTTP (sync first):
- *   GET  /health
+ *   GET  /health             legacy smoke ({ ok: true, ... })
+ *   GET  /healthz            D1 contract ({ status, version, product_id })
  *   POST /v1/chat            { session_id?, message }
  *   POST /v1/skills/:name    { session_id?, message?, params? }
  *
@@ -390,6 +391,30 @@ const server = http.createServer(async (req, res) => {
         model: MODEL_SPEC || null,
         detail: _agentModeDetail,
         stub: FORCE_STUB || _agentMode === "stub",
+      });
+    }
+
+    // D1: module healthz contract (templates/module/contracts/schemas/healthz.schema.json)
+    if (req.method === "GET" && url.pathname === "/healthz") {
+      let version = "0.0.0";
+      try {
+        const pkg = JSON.parse(
+          fs.readFileSync(path.join(PKG, "package.json"), "utf8"),
+        );
+        version = String(pkg.version || version);
+      } catch {
+        /* keep default */
+      }
+      const stub = FORCE_STUB || _agentMode === "stub";
+      return send(res, 200, {
+        status: "ok",
+        version,
+        product_id: "pi",
+        capability_id: "pi",
+        deploy_unit: "edge",
+        mode: FORCE_STUB ? "stub" : _agentMode,
+        stub,
+        appHome: meta.appHome,
       });
     }
 
