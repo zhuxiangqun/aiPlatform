@@ -1,0 +1,27 @@
+{
+  "kind": "evaluation_a3_local_drill_evidence",
+  "schema_version": "aiplat.evaluation.a3.local_drill.v0",
+  "drill_id": "evaluation-a3-local-20261031T235857Z",
+  "environment": "local",
+  "operator": "apple",
+  "recorded_at": "2026-10-31T23:58:58Z",
+  "production_signed": false,
+  "local_signed": true,
+  "items": {
+    "backup_restore_rollback": {
+      "done": true,
+      "evidence": "a3_local_rehearsal sqlite dump/restore + cohost rollback (local)"
+    },
+    "healthz_protocol": {
+      "done": true,
+      "evidence": "modules/evaluation/contracts/validate_sample.py (local schema; not live HTTP)"
+    }
+  },
+  "limitations": [
+    "Local SQLite+prefix only — not production eval store",
+    "healthz may be schema/sample validate only (not production HTTP)",
+    "Cannot authorize process_split (environment=local)"
+  ],
+  "note": "Local A3 rehearsal only. Does NOT authorize process split.",
+  "does_not_authorize_process_split": true
+}

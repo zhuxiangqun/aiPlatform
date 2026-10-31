@@ -48,7 +48,11 @@ PG/HA live → sign → authorize 等 `staging_ready=true`。
 
 ```bash
 bash packages/aiplat-pi-runtime/scripts/d1_local_regression.sh
+# Ontology/Eval A3 local_signed（不 authorize）：
+bash scripts/ops_local_rehearse_tracks.sh
 ```
+
+跨轨 runlog：[`LOCAL_TRACKS_RUNLOG.md`](./LOCAL_TRACKS_RUNLOG.md)
 
 ## 复审后走路径 A
 

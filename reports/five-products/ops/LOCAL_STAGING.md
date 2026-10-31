@@ -61,6 +61,20 @@ bash packages/aiplat-central/scripts/pg_ha_cutover_authorize.sh status
 bash packages/aiplat-central/scripts/pg_ha_local_staging.sh down
 ```
 
+## 多轨本地演练（Ontology / Eval A3）
+
+不启 Docker PG 时：
+
+```bash
+bash scripts/ops_local_rehearse_tracks.sh
+# 含 PG/HA docker：
+AIPLAT_LOCAL_INCLUDE_PGHA=1 bash scripts/ops_local_rehearse_tracks.sh
+```
+
+- Ontology / Eval：`a3_record_local_drill.sh` → `local-*.json` + `local_signed`  
+- 汇总：[`LOCAL_TRACKS_RUNLOG.md`](./LOCAL_TRACKS_RUNLOG.md)  
+- **全部** `ready_to_authorize=false`
+
 ## 与 defer / 预发 Gate 的关系
 
 - [`LOCAL_DEFER.md`](./LOCAL_DEFER.md)：生产 authorize 正式 defer；本页是 **路径 A 并行**。  
@@ -88,3 +102,12 @@ bash packages/aiplat-central/scripts/pg_ha_local_staging.sh all
 ```
 
 Authorize hardening：`require_signed_live` 要求 `environment ∈ {staging, prod-canary}`；`local_signed` **不能**解锁 cutover。
+
+## 跨轨本地演练（Ontology / Eval A3）
+
+```bash
+bash scripts/ops_local_rehearse_tracks.sh
+# optional PG/HA docker: AIPLAT_LOCAL_INCLUDE_PGHA=1 bash scripts/ops_local_rehearse_tracks.sh
+```
+
+Runlog：[`LOCAL_TRACKS_RUNLOG.md`](./LOCAL_TRACKS_RUNLOG.md)（三轨 `local_signed=true`，authorize 全 false）。
