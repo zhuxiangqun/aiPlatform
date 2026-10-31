@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2422
+total_capabilities: 2425
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2446,6 +2446,9 @@ scan_hash: 8f9548ec24f4
 | 平台 T6'：TeamAI 兼容 seed 仓 | `export_teamai_seed` + `/team-harness/export-seed` | ✅ | 导出至 `exports/teamai-seed`；**永不写** `.cursor`/`.claude`；生成物适用：**不适用**（发布种子） | 已合入 |
 | 工厂 F4：部署诚实反馈 | `builder_deploy_mixin` post-deploy smoke + `rejected_artifacts` + `app_runtime.MAX_REPAIR_ATTEMPTS=2` + `generated_conformance` `completion_criterion` + Factory 拒绝面板/可打开门控 | ✅ | 契约拒绝可见；不健康不展示打开；修复超限→HITL；生成物适用：**已接线** | 已合入 |
 | ContextGate | harness/infrastructure/gates/context_gate.py | ✅ | Token预算强制执行 + 上下文去重/陈旧校验 | 已合入 |
+| ContextValidator | harness/infrastructure/gates/context_validator.py | ✅ | ContextGate 组装前去重/陈旧/冲突校验，降 token 浪费 | 已合入 |
+| DecisionThrottle | harness/infrastructure/throttle.py | ✅ | 决策节流：按 action_audit 速度限制 rubber-stamp | 已合入 |
+| RecursivePatternDetector | harness/infrastructure/recursive_pattern_detector.py | ✅ | 递归自指/标签泄漏模式检测（`_guard_messages` 前） | 已合入 |
 | SchemaGate | harness/infrastructure/gates/schema_gate.py | ✅ | JSON Schema 强制校验，Agent输出在下游阶段前验证 | 已合入 |
 | ResilienceGate | harness/infrastructure/gates/resilience_gate.py | ✅ | 可配置重试策略 + 回退链 + 熔断器包装 | 已合入 |
 | BackpressureMiddleware | core/server.py | ✅ | 协议级背压：inflight 超限 → 429 + Retry-After 指数退避（AIPLAT_BACKPRESSURE_MAX_INFLIGHT 门控，对齐 codex -32001） | 已合入 |
@@ -3331,7 +3334,7 @@ scan_hash: 8f9548ec24f4
 | 模型基础设施 | 46 | 0 | 46 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
-| Gate 系统 | 174 | 0 | 174 |
+| Gate 系统 | 177 | 0 | 177 |
 | 评估系统 | 33 | 0 | 33 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
@@ -3364,7 +3367,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2412** | **10** | **2422** |
+| **总计** | **2415** | **10** | **2425** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
