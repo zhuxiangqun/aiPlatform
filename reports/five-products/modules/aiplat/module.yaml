@@ -4,7 +4,8 @@ owner: platform
 deploy_unit: central
 autonomy_target: A2
 delivery_target: D2
-current_autonomy: A2-versioning
+# SSOT: capabilities.manifest.yaml current_autonomy A0 (A2-versioning flag ≠ autonomy A2)
+current_autonomy: A0
 current_delivery: D2
 a2_versioning: true
 build:
