@@ -28,13 +28,7 @@ def _phase_c_enabled(params: Dict[str, Any]) -> bool:
 
 
 def _evidence_dir() -> Path:
-    try:
-        from core.harness.utils.paths import get_aiplat_home
-
-        root = Path(get_aiplat_home())
-    except Exception:
-        root = Path(get_aiplat_home())
-    d = root / "cache" / "security_evidence"
+    d = Path(get_aiplat_home()) / "cache" / "security_evidence"
     d.mkdir(parents=True, exist_ok=True)
     return d
 

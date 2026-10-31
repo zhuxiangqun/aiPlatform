@@ -18,18 +18,20 @@ Usage:
     # Load A-Box
     from core.harness.knowledge.knowledge_abox_builder import build_abox
     build_abox(onto)
-
-from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
-from pathlib import Path
     # Reason
     onto.sync_reasoner_pellet()
     # Query
     results = list(onto.world.sparql("SELECT ..."))
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 import logging
+
+from core.utils.paths import get_aiplat_data_dir, get_aiplat_home
 
 logger = logging.getLogger(__name__)
 

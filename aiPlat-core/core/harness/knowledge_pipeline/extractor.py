@@ -465,7 +465,7 @@ class DraftYamlWriter:
     """Write extracted entities/relations as draft YAML for expert review."""
 
     def __init__(self, draft_dir: Optional[str] = None):
-        from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
+        from core.utils.paths import get_ontologies_dir
 
         self.DRAFT_DIR = draft_dir or os.path.join(get_ontologies_dir(), "drafts")
         os.makedirs(self.DRAFT_DIR, exist_ok=True)
