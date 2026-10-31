@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T01:49:21+08:00",
+  "reviewed_at": "2026-11-01T07:40:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "b46e286e3dc061263e2972f7d6bfad9edb597c5e",
-  "diff_sha256": "7e9a034451e0b090aab59aea538e0adc000d6edbd66a8ff3f5392a8b571a28d8",
-  "head_sha": "f7219e3c20541d7f1b489882cd520a7f233d1407",
+  "merge_base": "8a63189b5e8e433113842b75f7f58e8248f6a305",
+  "diff_sha256": "b1580166f0f71cbeef76985bde5e1aff2ed711d9a442239fa5b18e9b5e04ada8",
+  "head_sha": "734cccd984c8bafdafa0ca926e0627430c2c3408",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Batch A fallout: docstring-trapped imports + wrong harness.utils.paths locals fixed; tests on AIPLAT_HOME. Local lock only; CI needs non-author Approve."
+  "note": "Docs-only path-B defer; hard gates/checklists/authorize untouched. Local lock; solo-maintainer CI path."
 }
