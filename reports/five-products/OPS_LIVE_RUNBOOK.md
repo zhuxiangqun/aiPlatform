@@ -1,6 +1,8 @@
 # 运维 Live 演练总册（五产品硬门）
 
 > 工程本地/docker 🟨 **不能**替代本册。任何 `*_authorize.sh authorize` 仅在对应 checklist **全部 ✅** 后由运维执行。  
+> **预发就绪 Gate**（先于 PG/HA live）：[`ops/STAGING_READY.md`](./ops/STAGING_READY.md) — 未齐则正式 defer，禁止 staging live。  
+> 当前决策：[`ops/LOCAL_DEFER.md`](./ops/LOCAL_DEFER.md)（路径 B · `staging_ready=false` · 复审 2026-11-08）。  
 > 聚合状态（只读）：`bash scripts/ops_live_status.sh`  
 > 交接卡（复制粘贴）：[`OPS_HANDOFF.md`](./OPS_HANDOFF.md)  
 > 未签脚手架（可选，不授权）：`bash scripts/ops_live_scaffold.sh`

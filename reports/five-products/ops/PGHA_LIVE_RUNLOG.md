@@ -1,20 +1,33 @@
 # PG/HA Live Kickoff Runlog
 
-- recorded_at: `2026-10-31T15:11:00Z`
-- decision: **暂用本机** — 不宣称 staging live，不授权 cutover
+- recorded_at: `2026-10-31T23:35:04Z`
+- drill_id: `pgha-live-20261031`
+- environment: `staging`（意图；**未实际进入 record**）
+- operator: `apple`
+- decision: **正式 defer（路径 B）** — 预发未齐；kickoff exit 2 = 硬门按设计生效
 - cutover_authorized: **false** (unchanged)
+- staging_ready: **false**（[`STAGING_READY.md`](./STAGING_READY.md)）
+- review_by: **2026-11-08**
 
-## Operator decision
+## Prerequisites（探测结果）
 
-本机 / docker ephemeral 仅维持 checklist **🟨** 与 prep 绿。  
-**不做** `production_signed=true`、**不改** checklist 🟨→✅、**不跑** `pg_ha_cutover_authorize.sh authorize` 成功路径。
+- note: 本机 `docker` 可用；local/docker rehearsal **≠** live authorize 证据
+- note: `AIPLAT_PG_DSN` / `DATABASE_URL` **UNSET**
+- note: `AIPLAT_OIDC_ISSUER` / `OIDC_ISSUER` **UNSET**
 
-## Prerequisites (staging — deferred)
+## Blockers（must clear before live / sign / authorize）
 
-- [ ] `AIPLAT_PG_DSN`（预发 Postgres）— 暂缓
-- [ ] `AIPLAT_OIDC_ISSUER`（预发 IdP）— 暂缓
+- [ ] missing `AIPLAT_PG_DSN` (or `DATABASE_URL`) for staging/prod-canary Postgres（含 TLS / 备份 / 最小权限）
+- [ ] missing `AIPLAT_OIDC_ISSUER` (or `OIDC_ISSUER`) for tenant login / admin MFA / 测试租户
+- [ ] operator + 变更窗口 + 回滚预案书面就绪
+- [ ] `AIPLAT_LIVE_DRILL_ENV=staging`（或 `prod-canary`；禁止 scaffold/local/docker-ephemeral）
 
-有预发后：
+## 复审条件（全部齐 → 重跑 kickoff）
+
+1. 预发 PG DSN 可用（TLS、备份/PITR、最小权限、独立库）  
+2. OIDC issuer + client + admin MFA + 测试租户可达  
+3. operator / 窗口 / 回滚预案确认  
+4. 上三项齐后：`staging_ready=true`，再执行：
 
 ```bash
 export AIPLAT_LIVE_DRILL_ENV=staging
@@ -22,15 +35,7 @@ export AIPLAT_LIVE_DRILL_OPERATOR=$USER
 export AIPLAT_PG_DSN='postgresql://…@staging-host/aiplat'
 export AIPLAT_OIDC_ISSUER='https://…/realms/…'
 bash scripts/ops_pgha_live_kickoff.sh
-```
-
-## Local / docker (allowed now)
-
-```bash
-bash packages/aiplat-central/scripts/pg_ha_local_rehearsal.sh
-bash packages/aiplat-central/scripts/pg_ha_ha_failover_rehearsal.sh
-bash packages/aiplat-central/scripts/pg_ha_prep_check.sh
-bash scripts/ops_live_status.sh --json
+# → record → ops_live_sign → checklist 🟨→✅ → cutover_authorize
 ```
 
 ## Explicitly not done
@@ -38,5 +43,6 @@ bash scripts/ops_live_status.sh --json
 - no checklist 🟨→✅
 - no production_signed=true
 - no cutover authorize
+- no fake staging DSN/OIDC
 
-See [`OPS_HANDOFF.md`](../OPS_HANDOFF.md).
+See [`LOCAL_DEFER.md`](./LOCAL_DEFER.md) · [`STAGING_READY.md`](./STAGING_READY.md) · [`OPS_HANDOFF.md`](../OPS_HANDOFF.md).

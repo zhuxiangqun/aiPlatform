@@ -1,7 +1,11 @@
-# 四轨暂用本机（Live / Authorize 暂缓）
+# 四轨正式 defer（Live / Authorize 暂缓）
 
 - decided_at: `2026-10-31`
-- decision: 无预发前只跑 local/docker rehearsal；硬门保持 false
+- formalized_at: `2026-11-01`
+- decision: **路径 B — 正式 defer**（无预发 DSN/OIDC；不假造 staging）
+- `staging_ready`: **false**（见 [`STAGING_READY.md`](./STAGING_READY.md)）
+- last_kickoff: `2026-10-31T23:35:04Z` · `ops_pgha_live_kickoff.sh` **exit 2**（按设计）
+- review_by: **2026-11-08**（若仍无预发则续 defer；有则走路径 A）
 
 | 轨 | 本地状态 | 硬门 |
 |----|----------|------|
@@ -10,7 +14,17 @@
 | Evaluation A3 | local reh 🟨 | `process_split_authorized=false` |
 | Pi D3 | bundle + SOC file-sink 🟨 | `d3_production_authorized=false` |
 
-刷新本机：
+## 禁止（硬门生效期间）
+
+- 用本地 Docker PG 冒充 `staging`
+- 手改 checklist 🟨→✅
+- 改 `authorize` 脚本放行
+- 把 scaffold live 写成 `production_signed=true`
+- 假造 DSN / OIDC
+
+## 并行允许（路径 C · 非授权）
+
+本机 / docker rehearsal，证据环境必须为 `local`（或 rehearsal 脚本自带标记），**不能** authorize：
 
 ```bash
 bash packages/aiplat-central/scripts/pg_ha_local_rehearsal.sh
@@ -22,4 +36,11 @@ bash packages/aiplat-pi-runtime/scripts/d3_soc_local_rehearsal.sh
 bash scripts/ops_live_status.sh --json
 ```
 
-有预发后再按 [`OPS_HANDOFF.md`](../OPS_HANDOFF.md) 做 live → sign → authorize。
+## 主轨（defer 期间）
+
+不依赖预发：**Pi D1**（安装器 / healthz / Gate3 回滚面）及其他本地可验工程。  
+PG/HA live → sign → authorize 等 `staging_ready=true`。
+
+## 复审后走路径 A
+
+见 [`PGHA_LIVE_RUNLOG.md`](./PGHA_LIVE_RUNLOG.md) 复审条件 + [`OPS_HANDOFF.md`](../OPS_HANDOFF.md)。

@@ -1,7 +1,10 @@
 # Five-products engineering status (2026-11-01)
 
 > **SSOT autonomy/delivery**：[`capabilities.manifest.yaml`](../../capabilities.manifest.yaml)（本表必须与之一致）。  
-> 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md)。当前：**暂用本机**（[`ops/LOCAL_DEFER.md`](./ops/LOCAL_DEFER.md)）；预发 live 暂缓。  
+> 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md)。  
+> **运维决策（2026-11-01）**：**路径 B — 正式 defer** PG/HA（及依赖预发的 live）；`staging_ready=false`（[`ops/STAGING_READY.md`](./ops/STAGING_READY.md)）。  
+> Blocker：缺预发 `AIPLAT_PG_DSN` + `AIPLAT_OIDC_ISSUER`（kickoff exit 2 = 硬门按设计）。复审：**2026-11-08**。  
+> 主轨暂转 **Pi D1**（不依赖预发）；本地 rehearsal 仅路径 C（`local`，不 authorize）。  
 > **Accepted（有条件）** = 聊天联签通过路径 + 硬门仍 false；**≠** 生产切流/拆分/D3 就绪。
 
 | Capability | Autonomy | Delivery | Package | Healthz | ADR |
@@ -34,8 +37,8 @@ bash scripts/five_products_gate.sh
 | Ontology / Eval `process_split_authorized` | **false** |
 | Pi `d3_production_authorized` | **false**（本地多为 🟨；SOC live 仍须） |
 
-**暂用本机**（[`ops/LOCAL_DEFER.md`](./ops/LOCAL_DEFER.md)）：四轨 local/docker 🟨 已刷新；切流/拆分/D3 硬门全 **false**。
+**正式 defer**（[`ops/LOCAL_DEFER.md`](./ops/LOCAL_DEFER.md) · [`ops/PGHA_LIVE_RUNLOG.md`](./ops/PGHA_LIVE_RUNLOG.md)）：四轨 checklist 仍 🟨；切流/拆分/D3 硬门全 **false**；未改 authorize / 未假造 DSN。
 
-运维入口：[`OPS_LIVE_RUNBOOK.md`](./OPS_LIVE_RUNBOOK.md) · [`OPS_HANDOFF.md`](./OPS_HANDOFF.md) · `bash scripts/ops_live_status.sh`
+运维入口：[`OPS_LIVE_RUNBOOK.md`](./OPS_LIVE_RUNBOOK.md) · [`OPS_HANDOFF.md`](./OPS_HANDOFF.md) · [`ops/STAGING_READY.md`](./ops/STAGING_READY.md) · `bash scripts/ops_live_status.sh`
 
-有预发后再按交接卡 live → sign → authorize；否则工程侧可收工。
+`staging_ready=true` 后再按交接卡 live → sign → authorize；此前工程主轨走 Pi D1。
