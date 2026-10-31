@@ -1,7 +1,7 @@
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 33 domains | 1540 capabilities (caps_count) | 1540 symbols (provides)
+> Version: 1.1.0 | 33 domains | 1545 capabilities (caps_count) | 1545 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -75,13 +75,13 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 237 | FDE 能力自描述 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 239 | FDE 能力自描述 |
 
 ### aiPlat-platform/apps/fde/api/fde_pipeline.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 354 | FDE Pipeline 状态查询 |
+| harness-execution-engine | §一 Harness 执行引擎 | 357 | FDE Pipeline 状态查询 |
 
 ### aiPlat-platform/apps/fde/api/fde_quality_summary.py
 
@@ -118,7 +118,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 354 | PipelineEngine 调度入口 |
+| harness-execution-engine | §一 Harness 执行引擎 | 357 | PipelineEngine 调度入口 |
 
 ### core/api/routers/diagnostics.py
 
@@ -150,7 +150,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 237 | Wiki CRUD + index + ingest 端点 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 239 | Wiki CRUD + index + ingest 端点 |
 | ai-knowledge-layer | §三十一 AI知识层增强 | 3 | /wiki/index-md + /ingest/url 端点 |
 | document-intelligence | §十五 文档智能 | 3 | Upload/ingest 端点 |
 
@@ -158,7 +158,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 237 | 本体引擎 REST API |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 239 | 本体引擎 REST API |
 
 ### core/apps/agents/materials_chat.py
 
@@ -221,7 +221,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 354 | 自身消费 PipelineStageConfig + StageRunner |
+| harness-execution-engine | §一 Harness 执行引擎 | 357 | 自身消费 PipelineStageConfig + StageRunner |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | _run_moa 路由模式 |
 | model-infrastructure | §九 模型基础设施 | 7 | Pipeline 阶段模型选择 |
 | memory-subsystem | §二 记忆子系统 | 59 | _crystallize_skill → save_task_skill |
@@ -253,7 +253,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 354 | ReActLoop 运行时 |
+| harness-execution-engine | §一 Harness 执行引擎 | 357 | ReActLoop 运行时 |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | ReActLoop MoA interception |
 | memory-subsystem | §二 记忆子系统 | 59 | build_context() + save_interaction() 调用 |
 
@@ -261,13 +261,13 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 237 | 10层上下文注入 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 239 | 10层上下文注入 |
 
 ### core/harness/knowledge/domain_maturity.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 237 | 域成熟度评分 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 239 | 域成熟度评分 |
 
 ### core/harness/knowledge/domain_router.py
 
@@ -279,13 +279,13 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 237 | KnowledgeSynthesizer 合成 Wiki 页 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 239 | KnowledgeSynthesizer 合成 Wiki 页 |
 
 ### core/harness/knowledge/ontology_completeness.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 237 | OCS 本体完整性六维评分 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 239 | OCS 本体完整性六维评分 |
 
 ### core/harness/knowledge/seci_engine.py
 
@@ -364,7 +364,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 237 | GraphIndex 遍历检索 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 239 | GraphIndex 遍历检索 |
 | memory-subsystem | §二 记忆子系统 | 59 | 语义记忆检索 |
 | rag-retrieval | §四 RAG 检索 | 7 | 检索路由 + 多路融合 |
 
@@ -486,7 +486,7 @@
 - **core/harness/infrastructure/integration.py** — 8 Gate 统一出口
 - **core/server.py** — BackpressureMiddleware 挂载 + backpressure_stats 诊断
 
-### §一 Harness 执行引擎 (354 caps)
+### §一 Harness 执行引擎 (357 caps)
 
 - **core/api/routers/builder_project_service.py** — PipelineEngine 调度入口
 - **core/harness/execution/pipeline_engine.py** — 自身消费 PipelineStageConfig + StageRunner
@@ -506,7 +506,7 @@
 - **aiPlat-management/frontend/src/pages/Infra** — Infra 管理前端
 - **aiPlat-infra/infra/management/model/config_loader.py** — adapters 发现与 CredentialPool 共用 DB 路径
 
-### §三 知识引擎（本体） (237 caps)
+### §三 知识引擎（本体） (239 caps)
 
 - **core/api/routers/wiki.py** — Wiki CRUD + index + ingest 端点
 - **core/api/routers/wiki_ontology_engine.py** — 本体引擎 REST API

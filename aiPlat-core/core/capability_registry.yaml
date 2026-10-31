@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 33
-total_capabilities: 1540
+total_capabilities: 1545
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 354
+    caps_count: 357
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1396,6 +1396,18 @@ domains:
         module: aiPlat-core/core/harness/execution/contrast_signals.py
         type: function
         signature: "Copy contrast flags from the loop context onto the pipeline state."
+      - symbol: load_versions_ssot
+        type: function
+        signature: 'load_versions_ssot()'
+        module: aiPlat-core/core/harness/meta/capability_version.py
+      - symbol: normalize_health_status
+        type: function
+        signature: 'normalize_health_status(raw)'
+        module: aiPlat-core/core/harness/meta/control_plane.py
+      - symbol: attach_control_plane
+        type: function
+        signature: 'attach_control_plane(response, envelope)'
+        module: aiPlat-core/core/harness/meta/control_plane.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"
@@ -1672,7 +1684,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 237
+    caps_count: 239
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -2609,6 +2621,14 @@ domains:
         module: aiPlat-core/core/harness/knowledge/ontology_yaml_gate.py
         type: function
         signature: "live_yaml_write_allowed()"
+      - symbol: from_wiki_pages
+        type: function
+        signature: 'from_wiki_pages(pages)'
+        module: aiPlat-core/core/harness/knowledge/ontology_api.py
+      - symbol: from_graph_health
+        type: function
+        signature: 'from_graph_health(health)'
+        module: aiPlat-core/core/harness/knowledge/ontology_api.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/wiki.py"
