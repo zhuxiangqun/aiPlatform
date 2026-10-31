@@ -71,12 +71,20 @@ bash packages/aiplat-central/scripts/pg_ha_local_staging.sh down
 
 | Field | Value |
 |-------|-------|
-| Command | `bash packages/aiplat-central/scripts/pg_ha_local_staging.sh all` |
-| Result | **PASS** (compose up → local/PG/HA rehearse → `local-*.json` → authorize still not ready → down) |
-| Sample evidence | [`evidence/local-pgha-local-20261031T235030Z.json`](./evidence/local-pgha-local-20261031T235030Z.json) |
+| Command | `bash packages/aiplat-central/scripts/pg_ha_local_staging.sh all` / `rehearse` |
+| Result | **PASS**（含 OIDC setup；`local_signed=true`；authorize 仍未就绪） |
+| Local drill | [`evidence/local-pgha-local-20261031T235626Z.json`](./evidence/local-pgha-local-20261031T235626Z.json) |
+| OIDC drill | [`evidence/oidc-local-20261031T235626Z.json`](./evidence/oidc-local-20261031T235626Z.json) |
 | `environment` | `local` |
 | `production_signed` | **false** |
-| `oidc_full` | still open（Keycloak UI realm/MFA 待手工） |
+| `local_signed` | **true**（工程签字；≠ 生产） |
+| `oidc_full` | realm `aiplat-local` + client + user；`CONFIGURE_TOTP` required（password grant → Account not fully set up = MFA 门生效） |
+| Checklist | 仍 🟨（未改 ✅） |
 | `cutover_authorized` | **false** |
 
-Authorize hardening：`require_signed_live` 现要求 `environment ∈ {staging, prod-canary}`；`environment=local` 即使误写 `production_signed=true` 也会 REFUSE。
+```bash
+bash packages/aiplat-central/scripts/pg_ha_local_staging.sh all
+# or: up → oidc → rehearse → down
+```
+
+Authorize hardening：`require_signed_live` 要求 `environment ∈ {staging, prod-canary}`；`local_signed` **不能**解锁 cutover。

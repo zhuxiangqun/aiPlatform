@@ -4,6 +4,7 @@
 #   docker compose -f packages/aiplat-central/compose.local-staging.yml up -d
 #   export AIPLAT_PG_DSN='postgresql://aiplat:aiplat_local@127.0.0.1:5433/aiplat_local'
 #   export AIPLAT_OIDC_ISSUER='http://127.0.0.1:8081/realms/aiplat-local'
+#   bash packages/aiplat-central/scripts/pg_ha_local_oidc_setup.sh   # realm/client/user + CONFIGURE_TOTP
 # Evidence must use environment=local (see reports/five-products/ops/LOCAL_STAGING.md).
 
 name: aiplat-local-staging

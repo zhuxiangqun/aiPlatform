@@ -12,11 +12,12 @@ CMD="${1:-up}"
 
 usage() {
   cat <<EOF
-Usage: $0 [up|down|status|rehearse|all]
+Usage: $0 [up|down|status|rehearse|oidc|all]
   up       docker compose up -d (PG :5433 + Keycloak :8081)
   down     docker compose down
   status   compose ps + authorize status (expect not ready)
-  rehearse pg_ha_local_rehearsal + ha_failover + record local-*.json
+  oidc     Keycloak realm/client/user + CONFIGURE_TOTP (local only)
+  rehearse pg_ha_local_rehearsal + ha_failover + oidc + record local-*.json
   all      up → wait → rehearse
 EOF
 }
@@ -65,33 +66,49 @@ case "$CMD" in
     compose ps || true
     bash "$ROOT/packages/aiplat-central/scripts/pg_ha_cutover_authorize.sh" status | head -40
     ;;
+  oidc)
+    need_docker
+    bash "$ROOT/packages/aiplat-central/scripts/pg_ha_local_oidc_setup.sh"
+    ;;
   rehearse)
     export AIPLAT_PG_DSN="${AIPLAT_PG_DSN:-postgresql://aiplat:aiplat_local@127.0.0.1:5433/aiplat_local}"
     echo "== local SQLite + optional PG schema rehearsal =="
     bash "$ROOT/packages/aiplat-central/scripts/pg_ha_local_rehearsal.sh"
     echo "== docker HA failover rehearsal (ephemeral; still local) =="
     bash "$ROOT/packages/aiplat-central/scripts/pg_ha_ha_failover_rehearsal.sh"
+    echo "== local OIDC (Keycloak realm + CONFIGURE_TOTP) =="
+    OIDC_EVIDENCE=""
+    if bash "$ROOT/packages/aiplat-central/scripts/pg_ha_local_oidc_setup.sh"; then
+      OIDC_EVIDENCE="$(ls -1t "$ROOT/packages/aiplat-central/docs/pg_ha/drills"/oidc-local-*.json 2>/dev/null | head -1 || true)"
+    fi
     echo "== record local-*.json (not live-*.json) =="
-    # Best-effort items from latest rehearsal stamps (operator fills OIDC later)
     STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
     ITEMS="$(mktemp)"
+    if [[ -n "$OIDC_EVIDENCE" && -f "$OIDC_EVIDENCE" ]]; then
+      OIDC_DONE=true
+      OIDC_EV="pg_ha_local_oidc_setup → $(basename "$OIDC_EVIDENCE") (local; CONFIGURE_TOTP required; not production MFA E2E)"
+      LOCAL_SIGN=1
+    else
+      OIDC_DONE=false
+      OIDC_EV=""
+      LOCAL_SIGN=0
+    fi
     cat >"$ITEMS" <<JSON
 {
   "pg_migration": {"done": true, "evidence": "pg_ha_local_rehearsal PG schema via AIPLAT_PG_DSN=$AIPLAT_PG_DSN (local)"},
   "backup_restore": {"done": true, "evidence": "sqlite-rehearsal + optional pg_dump/restore under docs/pg_ha/drills (local)"},
   "ha_failover": {"done": true, "evidence": "pg_ha_ha_failover_rehearsal docker primary/standby dump-promote (local; no VIP)"},
   "rollback": {"done": true, "evidence": "sqlite/pg schema rollback path in local rehearsal (local)"},
-  "oidc_full": {"done": false, "evidence": ""}
+  "oidc_full": {"done": $OIDC_DONE, "evidence": "$OIDC_EV"}
 }
 JSON
     export AIPLAT_LOCAL_DRILL_ID="pgha-local-${STAMP}"
     export AIPLAT_LOCAL_DRILL_OPERATOR="${USER:-ops}"
     export AIPLAT_LOCAL_DRILL_ITEMS_FILE="$ITEMS"
-    export AIPLAT_LOCAL_SIGN=0
+    export AIPLAT_LOCAL_SIGN="$LOCAL_SIGN"
     bash "$ROOT/packages/aiplat-central/scripts/pg_ha_record_local_drill.sh"
     rm -f "$ITEMS"
-    echo "NOTE: oidc_full still undone until Keycloak realm + MFA path exercised"
-    echo "NOTE: do NOT flip checklist 🟨→✅; do NOT authorize"
+    echo "NOTE: do NOT flip checklist 🟨→✅; do NOT authorize (local_signed ≠ production_signed)"
     bash "$ROOT/packages/aiplat-central/scripts/pg_ha_cutover_authorize.sh" status >/dev/null
     echo "PASS: local-staging rehearse (cutover still unauthorized)"
     ;;
