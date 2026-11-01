@@ -39,19 +39,22 @@ run_budget "fde contracts" "$CONTRACT_BUDGET_S" \
   "$PY" reports/five-products/modules/fde/contracts/validate_sample.py
 run_budget "pi contracts" "$CONTRACT_BUDGET_S" \
   "$PY" reports/five-products/modules/pi/contracts/validate_sample.py
+run_budget "diagnosis contracts" "$CONTRACT_BUDGET_S" \
+  "$PY" reports/five-products/modules/diagnosis/contracts/validate_sample.py
 
 for doc in \
   packages/aiplat-central/docs/PERF_BASELINE.md \
   packages/aiplat-pi-runtime/docs/PERF_BASELINE.md \
   packages/aiplat-fde/docs/PERF_BASELINE.md \
   packages/aiplat-ontology/docs/PERF_BASELINE.md \
-  packages/aiplat-evaluation/docs/PERF_BASELINE.md
+  packages/aiplat-evaluation/docs/PERF_BASELINE.md \
+  packages/aiplat-diagnosis/docs/PERF_BASELINE.md
 do
   [[ -f "$doc" ]] || fail "missing $doc"
   grep -q "不是.*生产" "$doc" || grep -qi "not.*production\|不是生产" "$doc" \
     || fail "$doc must state not production SLA"
 done
-pass "PERF_BASELINE.md present for 5 packages"
+pass "PERF_BASELINE.md present for 6 packages"
 
 if [[ "$INCLUDE_SMOKE" == "1" ]]; then
   run_budget "central d1_smoke" "$SMOKE_BUDGET_S" bash packages/aiplat-central/scripts/d1_smoke.sh
@@ -59,6 +62,7 @@ if [[ "$INCLUDE_SMOKE" == "1" ]]; then
   run_budget "evaluation d1_smoke" "$SMOKE_BUDGET_S" bash packages/aiplat-evaluation/scripts/d1_smoke.sh
   run_budget "fde d1_smoke" "$SMOKE_BUDGET_S" bash packages/aiplat-fde/scripts/d1_smoke.sh
   run_budget "pi d1_smoke" "$SMOKE_BUDGET_S" bash packages/aiplat-pi-runtime/scripts/d1_smoke.sh
+  run_budget "diagnosis d1_smoke" "$SMOKE_BUDGET_S" bash packages/aiplat-diagnosis/scripts/d1_smoke.sh
 fi
 
 pass "five_products local perf baseline"

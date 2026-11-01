@@ -1,0 +1,41 @@
+# Diagnosis — D2 cohost security/ops baseline
+schema_version: aiplat.diagnosis.security.baseline.v0
+updated: "2026-11-01"
+checks:
+  - id: diagnosis_healthz_central
+    path: packages/aiplat-diagnosis/contracts/schemas/healthz.schema.json
+    must_contain:
+      - '"const": "diagnosis"'
+      - '"const": "central"'
+  - id: diagnosis_evidence_schema
+    path: packages/aiplat-diagnosis/contracts/schemas/diagnosis_evidence.schema.json
+    must_contain:
+      - "DiagnosisReport"
+      - "accuracy_claim"
+  - id: diagnosis_module_doc
+    path: reports/five-products/modules/diagnosis/MODULE.md
+    must_contain:
+      - "accuracy_claim=false"
+      - "process_split_authorized=false"
+  - id: diagnosis_d2_doc
+    path: packages/aiplat-diagnosis/docs/D2_COHOST.md
+    must_contain:
+      - "D1c"
+      - "process_split_authorized=false"
+  - id: diagnosis_security_doc
+    path: packages/aiplat-diagnosis/docs/SECURITY.md
+    must_contain:
+      - "cohost"
+      - "不自动修复"
+  - id: diagnosis_perf_doc
+    path: packages/aiplat-diagnosis/docs/PERF_BASELINE.md
+    must_contain:
+      - "validate_sample"
+  - id: diagnosis_chart_split_false
+    path: packages/aiplat-diagnosis/chart/Chart.yaml
+    must_contain:
+      - 'aiplat.a3_process_split_authorized: "false"'
+  - id: diagnosis_install_a3_false
+    path: packages/aiplat-diagnosis/scripts/d1_install.sh
+    must_contain:
+      - '"a3_split":false'

@@ -1,0 +1,13 @@
+apiVersion: v2
+name: aiplat-diagnosis
+description: Diagnosis A3 chart skeleton (ADR draft). Co-host D1 remains default until split authorized.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - aiplat
+  - diagnosis
+annotations:
+  aiplat.capability_id: diagnosis
+  aiplat.deploy_unit: central
+  aiplat.a3_process_split_authorized: "false"

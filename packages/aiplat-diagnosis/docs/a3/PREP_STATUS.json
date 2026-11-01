@@ -1,0 +1,43 @@
+{
+  "schema_version": "aiplat.diagnosis.a3.prep.v0",
+  "capability_id": "diagnosis",
+  "checked_at": "2026-11-01T14:57:19Z",
+  "process_split_authorized": false,
+  "adr_status": "draft",
+  "items": {
+    "2_chart_skeleton": {
+      "ok": true,
+      "detail": "packages/aiplat-diagnosis/chart/Chart.yaml; split=false"
+    },
+    "3_no_harness_direct": {
+      "ok": true,
+      "detail": "diagnosis platform app uses CoreFacade only"
+    },
+    "runbook_SPLIT_CHECKLIST.md": {
+      "ok": true,
+      "detail": "present"
+    },
+    "runbook_README.md": {
+      "ok": true,
+      "detail": "present"
+    },
+    "5_adr_accept_cosign": {
+      "ok": false,
+      "detail": "reports/five-products/ADR-DRAFT-diagnosis-d1.md still draft"
+    },
+    "1_healthz_schema": {
+      "ok": true,
+      "detail": "contracts/schemas/healthz.schema.json"
+    },
+    "4_local_backup_rollback_rehearsal": {
+      "ok": true,
+      "detail": "packages/aiplat-diagnosis/docs/a3/drills/local-rehearsal-*.json"
+    }
+  },
+  "auto_prep_green": true,
+  "local_rehearsal_green": true,
+  "manual_still_required": [
+    "4_backup_restore_rollback_live_drill",
+    "5_adr_accept_cosign"
+  ]
+}

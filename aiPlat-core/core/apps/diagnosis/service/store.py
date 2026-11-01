@@ -114,7 +114,10 @@ class DiagnosisStore:
                 n = conn.execute("SELECT COUNT(*) AS c FROM diagnosis_cases").fetchone()["c"]
         return {
             "ok": True,
+            "status": "ok",
             "product_id": "diagnosis",
+            "capability_id": "diagnosis",
+            "deploy_unit": "central",
             "schema_version": STORE_SCHEMA_VERSION,
             "case_count": int(n),
             "accuracy_claim": False,

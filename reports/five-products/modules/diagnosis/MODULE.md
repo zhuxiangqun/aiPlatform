@@ -1,8 +1,8 @@
-# Diagnosis module（第六能力 · C1）
+# Diagnosis module（第六能力 · C1–C3）
 
-> **状态**：C1 **PASS** · C2 **PASS** · `capabilities.manifest`（A0 / D1 cohost）  
+> **状态**：C1 **PASS** · C2 **PASS** · C3 D2 pack（本地）· `capabilities.manifest`（A0 / D1 cohost）  
 > **Charter**：[`diagnosis-v1-charter.md`](../../../../docs/architecture/plans/diagnosis-v1-charter.md)  
-> **解冻 / 出口**：[`C1`](../../ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md) · [`C1 closeout`](../../ops/DIAGNOSIS_V1_C1_CLOSEOUT.md) · [`C2`](../../ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C2.md) · [`C2 closeout`](../../ops/DIAGNOSIS_V1_C2_CLOSEOUT.md)
+> **解冻 / 出口**：[`C1`](../../ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md) · [`C1 closeout`](../../ops/DIAGNOSIS_V1_C1_CLOSEOUT.md) · [`C2`](../../ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C2.md) · [`C2 closeout`](../../ops/DIAGNOSIS_V1_C2_CLOSEOUT.md) · [`C3`](../../ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C3.md)
 
 ## 定位
 
