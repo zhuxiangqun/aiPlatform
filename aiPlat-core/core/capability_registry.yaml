@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1577
+total_capabilities: 1586
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -5095,16 +5095,52 @@ domains:
   diagnosis-system:
     section: "十三-b"
     section_name: "诊断系统"
-    caps_count: 8
+    caps_count: 17
     provides:
       - symbol: "DiagnosisStore"
         type: "class"
         signature: "DiagnosisStore(db_path) — Case/Evidence/Report SQLite store"
         module: "core/apps/diagnosis/service/store.py"
+      - symbol: "get_diagnosis_store"
+        type: "function"
+        signature: "get_diagnosis_store(tenant_id='')→DiagnosisStore"
+        module: "core/apps/diagnosis/service/store.py"
+      - symbol: "default_db_path"
+        type: "function"
+        signature: "default_db_path(tenant_id='')→Path"
+        module: "core/apps/diagnosis/service/store.py"
+      - symbol: "fixture_root"
+        type: "function"
+        signature: "fixture_root()→Path"
+        module: "core/apps/diagnosis/service/adapters.py"
+      - symbol: "resolve_fixture_id"
+        type: "function"
+        signature: "resolve_fixture_id(subject_ref)→Optional[str]"
+        module: "core/apps/diagnosis/service/adapters.py"
+      - symbol: "load_fixture"
+        type: "function"
+        signature: "load_fixture(case_id)→(evidence, expected)"
+        module: "core/apps/diagnosis/service/adapters.py"
+      - symbol: "collect_from_fixture"
+        type: "function"
+        signature: "collect_from_fixture(case_id)→Dict"
+        module: "core/apps/diagnosis/service/adapters.py"
+      - symbol: "collect_live_stubs"
+        type: "function"
+        signature: "collect_live_stubs(scenario, subject_ref, baseline_ref?)→Dict"
+        module: "core/apps/diagnosis/service/adapters.py"
       - symbol: "collect_evidence"
         type: "function"
         signature: "collect_evidence(scenario, subject_ref, baseline_ref?)→Dict read-only adapters/fixtures"
         module: "core/apps/diagnosis/service/adapters.py"
+      - symbol: "infer_root_causes"
+        type: "function"
+        signature: "infer_root_causes(...)→(findings, hypotheses, uncertainty, status)"
+        module: "core/apps/diagnosis/service/engine.py"
+      - symbol: "build_recommendations"
+        type: "function"
+        signature: "build_recommendations(hypotheses)→List (auto_execute=false)"
+        module: "core/apps/diagnosis/service/engine.py"
       - symbol: "diagnose_case"
         type: "function"
         signature: "diagnose_case(case_id, evidence, payload?, expected?)→Dict report (accuracy_claim=false)"
