@@ -102,6 +102,12 @@ grep -q 'lock-v0' aiPlat-platform/apps/eval/api/store_api.py \
   || fail "missing EVAL_V1 E7 closeout"
 [[ -f reports/five-products/ops/EVALUATION_D2_LOCAL_CLOSEOUT.md ]] \
   || fail "missing evaluation D2 local closeout"
+[[ -f reports/five-products/ops/ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md ]] \
+  || fail "missing EVAL G2c self-consistency decision"
+grep -q 'self-consistency' reports/five-products/ops/ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md \
+  || fail "G2c decision must state self-consistency"
+grep -q '工程指标' reports/five-products/ops/DIAGNOSIS_V1_C3_CLOSEOUT.md \
+  || fail "DIAGNOSIS C3 closeout must state fixture metrics are engineering-only"
 [[ -f aiPlat-management/frontend/src/pages/Eval/EvalCenter.tsx ]] \
   || fail "missing EvalCenter (E6)"
 grep -q "EvalCenter" aiPlat-management/frontend/src/App.tsx \

@@ -71,4 +71,5 @@ python3 scripts/check_five_products_status_sync.py
 - **UI preview unfreeze**（2026-11-01）：[`ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md`](./ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md) + `/eval` preview 页。
 - **E6**（2026-11-01）：**PASS** — [`EVAL_V1_E6_CLOSEOUT.md`](./EVAL_V1_E6_CLOSEOUT.md)（评测中心 UI；accuracy 仍禁）。
 - **E7**（2026-11-01）：**PASS** — [`EVAL_V1_E7_CLOSEOUT.md`](./EVAL_V1_E7_CLOSEOUT.md)（D2/D3 本地收口；split 仍 false）。
-- G2b accuracy / 外部 gate / E8 A3：`_pending_`
+- **G2b**：`_deferred_`（无独立第二标注者）。**Claim 降级**：[`ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md`](./ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md)。
+- E8 A3 / 外部 gate：`_pending_`

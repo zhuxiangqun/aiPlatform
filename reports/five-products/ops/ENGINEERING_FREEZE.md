@@ -10,7 +10,7 @@
 
 本地工程增量已闭合（安装面、D2 pack、D3 本地验收、跨能力 E2E、compat/security、perf、packaging）。  
 **本地五产品工程轨无必须任务；EVAL_V1 仍为显式解冻；DIAGNOSIS C1–C3 已出口 PASS。**  
-再改须有明确缺陷、**已列 Still open**、复审驱动、或**显式解冻新范围**（EVAL G2b / Diagnosis C4 / EVAL E8）；禁止用本地证据推动 authorize。  
+再改须有明确缺陷、**已列 Still open**、复审驱动、或**显式解冻新范围**（可选 G2c self-consistency / Diagnosis fixture 硬化 / C4 需 staging）；禁止用本地证据推动 authorize。**G2b defer**（见 G2c 决策）。  
 
 ### 解冻史
 
@@ -30,8 +30,9 @@
 | [`DIAGNOSIS_V1 C3 closeout`](./DIAGNOSIS_V1_C3_CLOSEOUT.md) | **C3 PASS**（#518）；D2 pack local；保持 A0/D1c |
 | [`EVAL_V1 E6`](./ENGINEERING_UNFREEZE_EVAL_E6.md) | 解冻评测中心 UI v1；[`E6 closeout`](./EVAL_V1_E6_CLOSEOUT.md) **PASS**；G2b/accuracy 仍冻 |
 | [`EVAL_V1 E7`](./ENGINEERING_UNFREEZE_EVAL_E7.md) | 解冻 D2/D3 本地收口；[`E7 closeout`](./EVAL_V1_E7_CLOSEOUT.md) **PASS**；split 仍 false |
+| [`EVAL G2c decision`](./ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md) | **Accepted**：claim 降级为 self-consistency；**不开 G2b**；禁止 accuracy |
 
-- ❌ **仍不解冻**：staging_ready / production_signed / 任何 authorize 成功 / accuracy 宣称 / 自动修复 / A3 / EVAL G2b  
+- ❌ **仍不解冻**：staging_ready / production_signed / 任何 authorize 成功 / accuracy 宣称 / 自动修复 / A3 / **EVAL G2b（已 defer）**  
 - 计划同步：工程方案 **V2.2** + [`eval-v1-charter.md`](../../../docs/architecture/plans/eval-v1-charter.md) + [`diagnosis-v1-charter.md`](../../../docs/architecture/plans/diagnosis-v1-charter.md)
 
 ### Active unfreeze
