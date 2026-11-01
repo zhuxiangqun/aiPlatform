@@ -5,6 +5,7 @@
 - **用途**：诊断准确度评测的标签集；**不是**生产诊断结论  
 - **数量**：25（≥20；预留扩展到 30）  
 - **场景**：S1 = run 失败；S2 = 版本回归  
+- **Provenance（强制）**：本表 **全部为 `synthetic/constructed`**（设计构造用例，**无**已落盘真实证据 fixture）。在 ≥10 个真实证据 fixture 到位前，**禁止宣称诊断准确率**。  
 - **规则**：每个 case 有且仅有一个 **gold_root_cause**；允许 `secondary_causes`；无证据路径必须标 `expect_unknown` 或 `expect_stale`
 
 ## 标签约定
@@ -82,12 +83,23 @@
 
 ---
 
+## Fixture 计划（C1）
+
+| 阶段 | 要求 |
+|---|---|
+| C0（本文件） | 25 条标签 + 根因枚举；`provenance=synthetic` |
+| C1 开工前 | 书面 fixture 计划（路径/来源/脱敏）；目录预留 `packages/aiplat-diagnosis/fixtures/` 或 `workspace_seeds/diagnosis/` |
+| C1 中期 | **≥10 个真实证据 fixture**（脱敏的 run/trace/eval/gate/fde 引用或导出包）映射到 seed `case_id` |
+| C1 出口 | 25 标签可跑；真实 fixture ≥10；Top-1/Top-3 等指标只在有 fixture 的子集上报告，并标注 synthetic vs real |
+
+建议优先落地的 10 个真实 fixture 候选：`dx.s1.tool_timeout`、`dx.s1.tool_wrong_args`、`dx.s1.model_route_cheap`、`dx.s1.policy_tool_deny`、`dx.s1.context_trunc`、`dx.s1.no_trace`（unknown）、`dx.s1.stale_kb`（stale）、`dx.s2.prompt_edit`、`dx.s2.eval_gate_fail`、`dx.s2.no_baseline`（unknown）。
+
 ## 使用方式（C1+）
 
-1. 每个 case 配一份最小证据 fixture（或指向现有 traces/eval reports）；  
+1. 每个 case 配 fixture（真实优先；synthetic 仅作规则回归）；  
 2. 诊断引擎输出 Top-K 假设；与 `gold_root_cause` 比对算 Top-1/Top-3；  
 3. `insufficient_evidence` / `data_stale` case 必须分别产出 `unknown` / `stale`，否则计错；  
-4. **禁止**在无 seed 时宣称诊断准确率。
+4. **禁止**在仅有 synthetic、无 ≥10 真实 fixture 时宣称诊断准确率。
 
 ## 扩展到 30
 

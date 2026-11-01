@@ -31,12 +31,13 @@
 
 ## C0 出口条件
 
-- [x] 20–30 个 seed case + 根因标签 → [`DIAGNOSIS_V1_C0_SEED_CASES.md`](./DIAGNOSIS_V1_C0_SEED_CASES.md)（25）
+- [x] 20–30 个 seed case + 根因标签 → [`DIAGNOSIS_V1_C0_SEED_CASES.md`](./DIAGNOSIS_V1_C0_SEED_CASES.md)（25；**synthetic** + fixture 计划）
 - [x] Evidence schema v0 → [`../modules/diagnosis/contracts/schemas/diagnosis_evidence.schema.json`](../modules/diagnosis/contracts/schemas/diagnosis_evidence.schema.json)
-- [x] API/UI 设计稿 → [`DIAGNOSIS_V1_C0_API_UI_DESIGN.md`](./DIAGNOSIS_V1_C0_API_UI_DESIGN.md)
-- [x] manifest/module/apps.yaml 更新提案 → [`DIAGNOSIS_V1_C0_MANIFEST_PROPOSAL.md`](./DIAGNOSIS_V1_C0_MANIFEST_PROPOSAL.md) + [`../modules/diagnosis/MODULE.md`](../modules/diagnosis/MODULE.md)
-- [ ] 与 EVAL_V1 排期确认（串行，不并行开两条重轨）— **待你确认**
-- [ ] 你确认进入 C1。
+- [x] API/UI 设计稿 → [`DIAGNOSIS_V1_C0_API_UI_DESIGN.md`](./DIAGNOSIS_V1_C0_API_UI_DESIGN.md)（含 auth/tenant/error/retention/unknown·stale）
+- [x] manifest/module/apps.yaml 更新提案 → [`DIAGNOSIS_V1_C0_MANIFEST_PROPOSAL.md`](./DIAGNOSIS_V1_C0_MANIFEST_PROPOSAL.md)（**真实 list/map 形状**；现状 A0；目标 A2/D1c）
+- [x] Validator：jsonschema 正/负样例（`accuracy_claim=false` 强制）
+- [x] 与 EVAL_V1 排期确认（串行）— 见下节
+- [x] C1 进入附条件 — 见下节；**C1 代码另开 PR + `ENGINEERING_UNFREEZE_DIAGNOSIS_C1`**
 
 ## C1 启动条件
 
@@ -57,8 +58,26 @@ bash scripts/ops_engineering_freeze_check.sh
 - 任何 staging/authorize 动作 → 不在本解冻内。
 - 完成/中止 → 在本文件追加 Outcome，并更新 `ENGINEERING_FREEZE.md` 解冻史。
 
+## 与 EVAL_V1 串行排期（已拍板）
+
+| 顺序 | 轨道 | 状态 |
+|---|---|---|
+| 1 | EVAL_V1 收尾 | G2a 已锁；`/eval` preview 合入后**冻结新功能**（仅缺陷修复） |
+| 2 | EVAL_V1 暂停 G2b | 等第二标注者；**不阻塞** Diagnosis |
+| 3 | **DIAGNOSIS C1 独占** | 4–6 周 MVP |
+| 4 | 之后 | 再开 EVAL G2b / Diagnosis C2 |
+
+C1 开工后：**不开 EVAL 新功能**；只允许 EVAL 缺陷修复。
+
+## C1 进入条件（已拍板：进入，附条件）
+
+1. 本 C0 四项补齐（本 PR）；
+2. 新解冻 `ENGINEERING_UNFREEZE_DIAGNOSIS_C1`（C0 合并后另开）；
+3. 生产门继续冻；
+4. 不自动修复。
+
 ## Outcome
 
 - **2026-11-01**：Charter Accepted for C0；本解冻生效。
-- **2026-11-01**：Seed 25 + evidence schema v0 + API/UI 设计 + manifest 提案已落文档；**未改业务代码 / 未改 capabilities.manifest**。
-- 待确认：与 EVAL_V1 串行排期 + 是否进入 C1。
+- **2026-11-01**：Seed 25 + schema + API/UI + manifest 提案；**未改业务代码 / 未改 capabilities.manifest**。
+- **2026-11-01（评审补丁）**：① seed 标 synthetic + fixture 计划；② manifest 提案改为真实 list/map、A0 现状；③ validator jsonschema 正/负样例；④ API/UI 补 auth/tenant/error/retention/unknown·stale；⑤ EVAL 串行 + C1 附条件进入。
