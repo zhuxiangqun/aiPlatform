@@ -5,7 +5,7 @@
 > **计划**：[`five-capability-independent-engineering-plan.md`](../../docs/architecture/plans/five-capability-independent-engineering-plan.md) **V2.2** · packaging base [`templates/module/PACKAGING_BASE.md`](../../templates/module/PACKAGING_BASE.md)。  
 > **冻结**：[`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md)（本地无必须代码；authorize 仍冻）。  
 > **EVAL_V1**：**E0–E7 + G2c PASS** — [`ops/EVAL_V1_G2C_CLOSEOUT.md`](./ops/EVAL_V1_G2C_CLOSEOUT.md)；`accuracy_claim=false`；G2c=`intra_rater` self-consistency。**G2b defer**；决策 [`ops/ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md`](./ops/ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md)。  
-> **DIAGNOSIS_V1**：**C1–C3 + C3.5 PASS** — [`ops/DIAGNOSIS_V1_C35_CLOSEOUT.md`](./ops/DIAGNOSIS_V1_C35_CLOSEOUT.md)；core/adversarial 分报；fixture Top-1=工程指标，非准确率。下一外部前置：staging（C4）。  
+> **DIAGNOSIS_V1**：**C1–C3 + C3.5 PASS** — [`ops/DIAGNOSIS_V1_C35_CLOSEOUT.md`](./ops/DIAGNOSIS_V1_C35_CLOSEOUT.md)；**分报**：core top1=1.00 / adversarial top1≈0.17（盲测）；禁止用 core 1.00 宣称准确率。下一外部前置：staging（C4）。  
 > 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md) · 本地收口 [`ops/ENGINEERING_LOCAL_CLOSEOUT.md`](./ops/ENGINEERING_LOCAL_CLOSEOUT.md)。  
 > **运维决策**：**继续 defer** + **事件驱动复审**（[`ops/STAGING_REVIEW_EVENT_DRIVEN.md`](./ops/STAGING_REVIEW_EVENT_DRIVEN.md)）· `staging_ready=false`。  
 > **工程环境**：**方案 B 本机 VM/Docker 全轨**（[`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md)）· `bash scripts/ops_option_b_all.sh`。  
