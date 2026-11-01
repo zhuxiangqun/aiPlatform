@@ -11,8 +11,9 @@
 | 项 | 值 |
 |----|-----|
 | 基线起点 | `b46e286` |
-| 本轮终点 | `17f21d67`（Option B lock-in + receipt） |
-| 提交数 | **`git rev-list --count b46e286..HEAD` → 19**（勿手数） |
+| 工程收口终点（CI 证据锚点） | `17f21d67`（Option B lock-in + receipt） |
+| 提交数（锚点） | **`git rev-list --count b46e286..17f21d67` → 19** |
+| 含本结论文档后 | `git rev-list --count b46e286..HEAD` 会 **>19**（文档/receipt 追加；勿手数） |
 | collect | **3209** / 0 error（G0_REPORT 2026-11-01） |
 | unit | **2735** passed / 11 skipped / 0 failed |
 | Tier A 逃逸 | **0**（`paths.py` SSOT fallback 除外） |
