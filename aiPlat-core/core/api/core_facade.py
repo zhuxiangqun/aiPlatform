@@ -6255,6 +6255,164 @@ def eval_get_report(report_id: str, *, tenant_id: str = "eval-v1") -> Optional[D
     return get_eval_store(tenant_id=tenant_id).get_report(report_id)
 
 
+# ── DIAGNOSIS_V1 C1 ───────────────────────────────────────
+
+
+def diagnosis_health(*, tenant_id: str = "") -> Dict[str, Any]:
+    from core.apps.diagnosis.service.store import get_diagnosis_store
+
+    return get_diagnosis_store(tenant_id=tenant_id).health(tenant_id=tenant_id)
+
+
+def diagnosis_create_case(
+    *,
+    scenario: str,
+    subject_ref: str,
+    tenant_id: str = "",
+    baseline_ref: Optional[str] = None,
+    case_id: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    from core.apps.diagnosis.service.store import get_diagnosis_store
+
+    return get_diagnosis_store(tenant_id=tenant_id).create_case(
+        scenario=scenario,
+        subject_ref=subject_ref,
+        tenant_id=tenant_id,
+        baseline_ref=baseline_ref,
+        case_id=case_id,
+        meta=meta,
+    )
+
+
+def diagnosis_list_cases(*, tenant_id: str = "", limit: int = 100) -> list:
+    from core.apps.diagnosis.service.store import get_diagnosis_store
+
+    return get_diagnosis_store(tenant_id=tenant_id).list_cases(tenant_id=tenant_id, limit=limit)
+
+
+def diagnosis_get_case(case_id: str, *, tenant_id: str = "") -> Optional[Dict[str, Any]]:
+    from core.apps.diagnosis.service.store import get_diagnosis_store
+
+    return get_diagnosis_store(tenant_id=tenant_id).get_case(case_id, tenant_id=tenant_id)
+
+
+def diagnosis_collect(case_id: str, *, tenant_id: str = "") -> Dict[str, Any]:
+    """Read-only collect via adapters; never writes source systems."""
+    from core.apps.diagnosis.service.adapters import collect_evidence
+    from core.apps.diagnosis.service.store import get_diagnosis_store
+
+    store = get_diagnosis_store(tenant_id=tenant_id)
+    case = store.get_case(case_id, tenant_id=tenant_id)
+    if not case:
+        raise KeyError("case_not_found")
+    bundle = collect_evidence(
+        scenario=str(case.get("scenario") or ""),
+        subject_ref=str(case.get("subject_ref") or ""),
+        baseline_ref=case.get("baseline_ref"),
+    )
+    evidence = list(bundle.get("evidence") or [])
+    store.replace_evidence(
+        case_id,
+        evidence,
+        tenant_id=tenant_id,
+        payload={
+            "adapter_payload": bundle.get("payload") or {},
+            "expected": bundle.get("expected") or {},
+            "fixture_id": bundle.get("fixture_id"),
+            "collect_source": bundle.get("source"),
+        },
+    )
+    return {
+        "case_id": case_id,
+        "evidence": evidence,
+        "fixture_id": bundle.get("fixture_id"),
+        "source": bundle.get("source"),
+        "adapters": bundle.get("adapters") or {},
+    }
+
+
+def diagnosis_get_evidence(case_id: str, *, tenant_id: str = "") -> Optional[Dict[str, Any]]:
+    from core.apps.diagnosis.service.store import get_diagnosis_store
+
+    return get_diagnosis_store(tenant_id=tenant_id).get_evidence_bundle(
+        case_id, tenant_id=tenant_id
+    )
+
+
+def diagnosis_run_report(case_id: str, *, tenant_id: str = "") -> Dict[str, Any]:
+    from core.apps.diagnosis.service.engine import diagnose_case
+    from core.apps.diagnosis.service.store import get_diagnosis_store
+
+    store = get_diagnosis_store(tenant_id=tenant_id)
+    case = store.get_case(case_id, tenant_id=tenant_id)
+    if not case:
+        raise KeyError("case_not_found")
+    bundle = store.get_evidence_bundle(case_id, tenant_id=tenant_id) or {}
+    evidence = list(bundle.get("evidence") or [])
+    if not evidence:
+        raise RuntimeError("case_not_ready")
+    payload_wrap = bundle.get("payload") or {}
+    adapter_payload = payload_wrap.get("adapter_payload") or payload_wrap
+    expected = payload_wrap.get("expected") or None
+    out = diagnose_case(
+        case_id=case_id,
+        evidence=evidence,
+        payload=adapter_payload if isinstance(adapter_payload, dict) else {},
+        expected=expected if isinstance(expected, dict) else None,
+    )
+    report = store.save_report(
+        case_id,
+        report=out["report"],
+        findings=out["findings"],
+        hypotheses=out["hypotheses"],
+        recommendations=out["recommendations"],
+        status=str(out["status"]),
+        tenant_id=tenant_id,
+    )
+    return {
+        "case_id": case_id,
+        "status": out["status"],
+        "report": report,
+        "findings": out["findings"],
+        "hypotheses": out["hypotheses"],
+        "recommendations": out["recommendations"],
+    }
+
+
+def diagnosis_get_report(case_id: str, *, tenant_id: str = "") -> Optional[Dict[str, Any]]:
+    from core.apps.diagnosis.service.store import get_diagnosis_store
+
+    return get_diagnosis_store(tenant_id=tenant_id).get_report_bundle(
+        case_id, tenant_id=tenant_id
+    )
+
+
+def diagnosis_recommendations(case_id: str, *, tenant_id: str = "") -> Dict[str, Any]:
+    """Return recommendations with auto_execute forced false."""
+    from core.apps.diagnosis.service.engine import build_recommendations
+    from core.apps.diagnosis.service.store import get_diagnosis_store
+
+    store = get_diagnosis_store(tenant_id=tenant_id)
+    case = store.get_case(case_id, tenant_id=tenant_id)
+    if not case:
+        raise KeyError("case_not_found")
+    bundle = store.get_report_bundle(case_id, tenant_id=tenant_id)
+    if not bundle:
+        raise RuntimeError("case_not_ready")
+    hyps = list(bundle.get("hypotheses") or [])
+    recs = build_recommendations(hyps)
+    for r in recs:
+        r["auto_execute"] = False
+    return {"case_id": case_id, "recommendations": recs, "auto_execute": False}
+
+
+def diagnosis_fixture_metrics(*, limit: int = 10) -> Dict[str, Any]:
+    from core.apps.diagnosis.service.metrics import fixture_metrics
+
+    return fixture_metrics(limit=limit)
+
+
 def list_code_review_gold_profiles() -> Dict[str, Any]:
     """噪声档位 → autoreview 参数映射。"""
     from core.harness.evaluation.code_review_gold import list_profiles

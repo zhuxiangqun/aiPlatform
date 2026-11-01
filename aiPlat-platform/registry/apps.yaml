@@ -119,6 +119,18 @@ modules:
     agents: []
     skills: []
 
+  diagnosis:
+    name: "诊断产品"
+    description: "跨平台证据驱动诊断（Case/Evidence/Hypothesis/Report）；不自动修复"
+    enabled: true
+    api_prefix: "/api/platform/apps/diagnosis"
+    api_module: "apps.diagnosis.api.router"
+    service_module: "core.apps.diagnosis.service"
+    prompts_module: null
+    domains: []
+    agents: []
+    skills: []
+
   misc:
     name: "其他工具"
     description: "微调、浏览器测试、代码智能、角色管理、组件目录、剧本、自动化测试"

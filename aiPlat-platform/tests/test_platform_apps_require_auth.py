@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 # (import path, probe GET path under /api/platform/apps)
 _MODULES = (
     ("apps.eval.api.router", "/code-review-gold/profiles"),
+    ("apps.diagnosis.api.router", "/diagnosis/healthz"),
     ("apps.workbench.api.router", "/workbench/capabilities"),
     ("apps.learning.api.router", "/learning/artifacts"),
     ("apps.prompt.api.router", "/prompts/app/templates"),

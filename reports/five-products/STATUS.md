@@ -5,7 +5,7 @@
 > **计划**：[`five-capability-independent-engineering-plan.md`](../../docs/architecture/plans/five-capability-independent-engineering-plan.md) **V2.2** · packaging base [`templates/module/PACKAGING_BASE.md`](../../templates/module/PACKAGING_BASE.md)。  
 > **冻结**：[`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md)（本地无必须代码；authorize 仍冻）。  
 > **EVAL_V1**：**E0–E5 完成 · G2a 已锁 v0**（≥30 solo adjudicated → `lock-v0` → local `gate_claim`；`accuracy_claim=false`；κ=null）；**`/eval` UI preview 已解冻** — [`ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md`](./ops/ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md)；A3/authorize / accuracy 仍冻 — [`eval-v1-charter.md`](../../docs/architecture/plans/eval-v1-charter.md) · [`ops/ENGINEERING_UNFREEZE_EVAL_V1.md`](./ops/ENGINEERING_UNFREEZE_EVAL_V1.md)。  
-> **DIAGNOSIS_V1**：**C0 已合入 #510 / `5c01721f`**；**C1 解冻 PR 评审中**（D1c MVP：两场景/10 真实 fixture/不自动修复；串行：EVAL 在 G2a 暂停新功能）— [`diagnosis-v1-charter.md`](../../docs/architecture/plans/diagnosis-v1-charter.md) · [`ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md`](./ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md)。  
+> **DIAGNOSIS_V1**：**C1 实现中**（解冻 #511 · fixtures #512 · D1c MVP：两场景/≥10 真实 fixture/不自动修复；串行：EVAL `/eval` 冻结新功能）— [`diagnosis-v1-charter.md`](../../docs/architecture/plans/diagnosis-v1-charter.md) · [`ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md`](./ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md)。  
 > 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md) · 本地收口 [`ops/ENGINEERING_LOCAL_CLOSEOUT.md`](./ops/ENGINEERING_LOCAL_CLOSEOUT.md)。  
 > **运维决策**：**继续 defer** + **事件驱动复审**（[`ops/STAGING_REVIEW_EVENT_DRIVEN.md`](./ops/STAGING_REVIEW_EVENT_DRIVEN.md)）· `staging_ready=false`。  
 > **工程环境**：**方案 B 本机 VM/Docker 全轨**（[`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md)）· `bash scripts/ops_option_b_all.sh`。  
@@ -18,6 +18,7 @@
 | **pi** | **A3** (Thin) | **D1** (+ D2 admin / D3 prep) | edge | `aiplat-pi-runtime` **0.1.0** | `/healthz` | ADR-08 · [D3 Accepted（有条件）](./ADR-PI-D3.md)；`d3_production=false` |
 | **ontology** | **A2** | **D1** (D1c + D2 pack) | **cohost** | `aiplat-ontology` **0.1.0** | `/ontology/healthz` | [A3 Accepted（有条件）](./ADR-ONTOLOGY-A3.md)；`process_split=false` |
 | **evaluation** | **A2** | **D1** (D1c + D2 pack) | **cohost** | `aiplat-evaluation` **0.1.0** | `/eval/healthz` | [A3 Accepted（有条件）](./ADR-EVALUATION-A3.md)；`process_split=false` |
+| **diagnosis** | **A0** | **D1** (D1c) | **cohost** | `aiplat-diagnosis` | `/api/platform/apps/diagnosis/healthz` | C1 MVP；`process_split=false`；无自动修复；`accuracy_claim=false` |
 | **fde** | **A1** | **D1** Field (+ D2 ops) | field | `aiplat-fde` **0.1.0** | `/fde/healthz` | [Field Accepted](./ADR-FDE-FIELD-DEPLOY.md)；D2 pack 见下 |
 
 **Delivery 语义**：**D1c** = `delivery_mode: cohost`（契约/healthz 独立，**进程仍共宿中心**；≠ 独立部署）。独立拆分仍受 A3 `process_split_authorized=false` 约束。
@@ -41,7 +42,7 @@ bash scripts/five_products_gate.sh
 | 门 | 值 |
 |----|-----|
 | `cutover_authorized` | **false** |
-| Ontology / Eval `process_split_authorized` | **false** |
+| Ontology / Eval / Diagnosis `process_split_authorized` | **false** |
 | Pi `d3_production_authorized` | **false** |
 
 **正式 defer**：[`ops/LOCAL_DEFER.md`](./ops/LOCAL_DEFER.md) · [`ops/PGHA_LIVE_RUNLOG.md`](./ops/PGHA_LIVE_RUNLOG.md)
