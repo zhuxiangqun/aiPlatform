@@ -9,8 +9,8 @@
 ## Frozen means
 
 本地工程增量已闭合（安装面、D2 pack、D3 本地验收、跨能力 E2E、compat/security、perf、packaging）。  
-**本地五产品工程轨无必须任务；EVAL_V1 仍为显式解冻；DIAGNOSIS C1/C2 已出口 PASS。**  
-再改须有明确缺陷、**已列 Still open**、复审驱动、或**显式解冻新范围**（C3 / EVAL G2b）；禁止用本地证据推动 authorize。  
+**本地五产品工程轨无必须任务；EVAL_V1 仍为显式解冻；DIAGNOSIS C1–C3 已出口 PASS。**  
+再改须有明确缺陷、**已列 Still open**、复审驱动、或**显式解冻新范围**（EVAL G2b / Diagnosis C4）；禁止用本地证据推动 authorize。  
 
 ### 解冻史
 
@@ -25,7 +25,9 @@
 | [`DIAGNOSIS_V1 C1`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md) | 解冻诊断 **C1**（D1c MVP）；无自动修复；A3/生产冻 |
 | [`DIAGNOSIS_V1 C1 closeout`](./DIAGNOSIS_V1_C1_CLOSEOUT.md) | **C1 PASS**（#513/#514）；盲测 fixture 出口 |
 | [`DIAGNOSIS_V1 C2`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C2.md) | 解冻诊断 **C2**（Eval/Ontology 加深 + 置信度/unknown·stale；无自动修复）；G2b 仍冻 |
-| [`DIAGNOSIS_V1 C2 closeout`](./DIAGNOSIS_V1_C2_CLOSEOUT.md) | **C2 PASS**（#516）；report.v1；保持 A0；下一决策 C3 或 EVAL G2b |
+| [`DIAGNOSIS_V1 C2 closeout`](./DIAGNOSIS_V1_C2_CLOSEOUT.md) | **C2 PASS**（#516）；report.v1；保持 A0 |
+| [`DIAGNOSIS_V1 C3`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C3.md) | 解冻诊断 **C3**（D2/D3 本地收口）；G2b / A3 仍冻 |
+| [`DIAGNOSIS_V1 C3 closeout`](./DIAGNOSIS_V1_C3_CLOSEOUT.md) | **C3 PASS**（#518）；D2 pack local；保持 A0/D1c；下一决策 EVAL G2b 或 C4 |
 
 - ❌ **仍不解冻**：staging_ready / production_signed / 任何 authorize 成功 / accuracy 宣称 / 自动修复 / A3 / EVAL G2b  
 - 计划同步：工程方案 **V2.2** + [`eval-v1-charter.md`](../../../docs/architecture/plans/eval-v1-charter.md) + [`diagnosis-v1-charter.md`](../../../docs/architecture/plans/diagnosis-v1-charter.md)
@@ -37,7 +39,8 @@
 | EVAL_V1 | [`ENGINEERING_UNFREEZE_EVAL_V1.md`](./ENGINEERING_UNFREEZE_EVAL_V1.md) | E0–E5 + G2a local gate | A3 / staging / authorize / accuracy |
 | EVAL_V1 UI preview | [`ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md`](./ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md) | `/eval` local preview | 完整 E6 / accuracy / 外部 gate |
 | DIAGNOSIS_V1 C1 | [`ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md) | **Closed PASS** — 见 [`DIAGNOSIS_V1_C1_CLOSEOUT.md`](./DIAGNOSIS_V1_C1_CLOSEOUT.md) | 自动修复 / A3 / staging / authorize |
-| DIAGNOSIS_V1 C2 | [`ENGINEERING_UNFREEZE_DIAGNOSIS_C2.md`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C2.md) | **Closed PASS** — 见 [`DIAGNOSIS_V1_C2_CLOSEOUT.md`](./DIAGNOSIS_V1_C2_CLOSEOUT.md) | 自动修复 / A3 / staging / authorize / G2b accuracy / 静默开 C3 |
+| DIAGNOSIS_V1 C2 | [`ENGINEERING_UNFREEZE_DIAGNOSIS_C2.md`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C2.md) | **Closed PASS** — 见 [`DIAGNOSIS_V1_C2_CLOSEOUT.md`](./DIAGNOSIS_V1_C2_CLOSEOUT.md) | 自动修复 / A3 / staging / authorize / G2b accuracy |
+| DIAGNOSIS_V1 C3 | [`ENGINEERING_UNFREEZE_DIAGNOSIS_C3.md`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C3.md) | **Closed PASS** — 见 [`DIAGNOSIS_V1_C3_CLOSEOUT.md`](./DIAGNOSIS_V1_C3_CLOSEOUT.md) | 自动修复 / A3 / staging / authorize / G2b accuracy / 静默开 C4 |
 
 ## Verify
 

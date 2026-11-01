@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiplat.local/schemas/diagnosis/healthz.schema.json",
+  "title": "DiagnosisHealthzResponse",
+  "type": "object",
+  "required": ["status", "product_id"],
+  "properties": {
+    "status": { "type": "string", "enum": ["ok", "degraded", "fail"] },
+    "ok": { "type": "boolean" },
+    "product_id": { "type": "string", "const": "diagnosis" },
+    "capability_id": { "type": "string", "const": "diagnosis" },
+    "deploy_unit": { "type": "string", "const": "central" },
+    "schema_version": { "type": "string" },
+    "case_count": { "type": "integer", "minimum": 0 },
+    "accuracy_claim": { "type": "boolean", "const": false },
+    "auto_execute": { "type": "boolean", "const": false },
+    "process_split_authorized": { "type": "boolean", "const": false }
+  },
+  "additionalProperties": true
+}

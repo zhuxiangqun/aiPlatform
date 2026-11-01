@@ -86,6 +86,20 @@ require_files aiplat-evaluation \
   docs/PERF_BASELINE.md \
   docs/uat/UAT.md
 
+# Sixth capability (DIAGNOSIS_V1 C3) — same D1/D2 surface; still D1c/cohost
+require_files aiplat-diagnosis \
+  "${D1_COMMON[@]}" \
+  scripts/d1_backup.sh \
+  scripts/d2_admin_check.sh \
+  scripts/d2_local_closeout.sh \
+  scripts/d3_local_acceptance.sh \
+  security/baseline.yaml \
+  docs/PERF_BASELINE.md \
+  docs/uat/UAT.md \
+  docs/D2_COHOST.md \
+  docs/SECURITY.md \
+  chart/Chart.yaml
+
 # Shared baseline checker + template stubs
 [[ -f scripts/lib/aiplat_security_baseline.py ]] || fail "missing shared security baseline checker"
 [[ -f scripts/check_five_products_perf_baseline.sh ]] || fail "missing perf baseline gate"

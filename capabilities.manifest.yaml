@@ -89,8 +89,8 @@ capabilities:
     healthz: GET /api/platform/apps/diagnosis/healthz
     contracts_test: reports/five-products/modules/diagnosis/contracts/validate_sample.py
     notes:
-      - "C1+C2 PASS (#513–#516 / ops/DIAGNOSIS_V1_C2_CLOSEOUT.md): report.v1 + Eval/Ontology read-only; A0 retained; no auto-remediation"
-      - "D1c/cohost = healthz+API on central host; not independent process deploy"
+      - "C1–C3 PASS (ops/DIAGNOSIS_V1_C3_CLOSEOUT.md): report.v1 + D2 cohost pack local; A0/D1 retained; no auto-remediation"
+      - "D1c/cohost = healthz+API on central host; D2 pack = ops/security/perf local only; not independent process deploy"
       - "accuracy_claim=false; fixture blind metrics are engineering-only, not accuracy certification"
 
   - id: ontology

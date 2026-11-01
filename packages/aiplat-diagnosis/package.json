@@ -1,0 +1,9 @@
+{
+  "name": "aiplat-diagnosis",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Diagnosis Service D1 Thin (co-hosted). D2 cohost ops pack; process_split_authorized=false.",
+  "capability_id": "diagnosis",
+  "deploy_unit": "central",
+  "hosted_by": "aiplat"
+}

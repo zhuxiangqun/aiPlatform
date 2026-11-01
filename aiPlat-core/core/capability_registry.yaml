@@ -5159,7 +5159,7 @@ domains:
         module: "core/apps/diagnosis/service/metrics.py"
       - symbol: "diagnosis_health"
         type: "function"
-        signature: "diagnosis_health(tenant_id='')→Dict product_id=diagnosis"
+        signature: "diagnosis_health(tenant_id='')→Dict product_id=diagnosis status/capability_id/deploy_unit"
         module: "core/api/core_facade.py"
       - symbol: "diagnosis_collect"
         type: "function"

@@ -1,0 +1,10 @@
+{
+  "kind": "diagnosis_a3_sqlite_prefix_rehearsal_not_live",
+  "at": "20261101T145719Z",
+  "backup_restore": true,
+  "rollback_to_cohost_pointer": true,
+  "install_prefix_switch": true,
+  "production_split": false,
+  "note": "Local SQLite+prefix only; checklist #4 \ud83d\udfe8 until live drills; split unauthorized.",
+  "workdir": "/tmp/aiplat-diagnosis-a3-rehearsal.dezojo"
+}
