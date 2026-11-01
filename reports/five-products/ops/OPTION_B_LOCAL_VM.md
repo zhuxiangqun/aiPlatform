@@ -59,7 +59,7 @@ bash scripts/ops_option_b_all.sh
 本机方案 B **能**推进 schema/OIDC/备份/回滚/手动 failover 工程准备。  
 本机方案 B **不能**作为真实多机 HA / 云 PITR / 生产负载证据，也不能解锁 authorize。
 
-复审 **2026-11-22** → **continue_defer**；下次 **2026-11-29**。仍无方案 A/C 则继续本文件 + [`LOCAL_DEFER.md`](./LOCAL_DEFER.md)；有可信独立预发再谈 `staging_ready`。
+复审已改 **事件驱动**（[`STAGING_REVIEW_EVENT_DRIVEN.md`](./STAGING_REVIEW_EVENT_DRIVEN.md)）。无主机则继续本文件 + [`LOCAL_DEFER.md`](./LOCAL_DEFER.md)；有可信独立预发再谈 `staging_ready`。
 
 ## 详见
 

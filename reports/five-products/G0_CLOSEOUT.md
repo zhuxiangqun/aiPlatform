@@ -11,131 +11,70 @@
 | 项 | 值 |
 |----|-----|
 | 基线起点 | `b46e286` |
-| 初版 CI 锚点 | `17f21d67`（Option B lock-in · **19** 提交） |
-| 中间锚点 | `1992e8e1`（47）· `66a6e07a`（52）· `500b4287`（54） |
-| **现行 CI 锚点（HEAD）** | **`979778d2`**（G0 54→56 docs/receipt · 11-22 预填） |
-| 提交数（锚点） | **`git rev-list --count b46e286..979778d2` → 56** |
-| 说明 | 本结论文档再推后 `HEAD` 会 **>56**；CI 证据以本锚点为准 |
-| collect | **3209** / 0 error（G0_REPORT 2026-11-01；初版锚点） |
-| unit | **2735** passed / 11 skipped / 0 failed（初版锚点） |
-| Tier A 逃逸 | **0**（`paths.py` SSOT fallback 除外） |
-| STATUS↔manifest | `check_five_products_status_sync.py` PASS |
-| 硬门 | 全 false；`staging_ready=false`；defer → **2026-11-29** |
-| 工程环境 | **方案 B** 本机 VM/Docker（[`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md)） |
+| 初版 CI 锚点 | `17f21d67`（**19**） |
+| 中间锚点 | `1992e8e1`（47）· `66a6e07a`（52）· `500b4287`（54）· `979778d2`（56） |
+| **现行 CI 锚点** | **`35829e96`**（continue_defer 11-29 receipt · 含全部本地收口） |
+| 提交数（锚点） | **`git rev-list --count b46e286..35829e96` → 61** |
+| 说明 | 本结论文档再推后 `HEAD` 会 **>61**；CI 以本锚点为准 |
+| collect / unit | **3209** / 0 · **2735** passed（G0_REPORT 初版） |
+| Tier A 逃逸 | **0** |
+| STATUS↔manifest | PASS |
+| 硬门 | 全 false；`staging_ready=false`；复审 **事件驱动** |
+| 工程环境 | 方案 B 本机 VM/Docker |
 
 ## 正式例外：P0-3′
 
-| | |
-|--|--|
-| 原判据 | 字面只读 / chmod-555 HOME 下 unit 绿 |
-| 例外 | **不作为硬门**（字面只读下 git 红属已知例外，非逃逸） |
-| 现行判据 | 假 HOME 可写 + hermetic `AIPLAT_HOME`（与 conftest 同路径）下 collect/unit 绿 |
-| 逃逸门 | 仍看 Tier A=0 + hermetic `AIPLAT_HOME` |
-| 计划同步 | 计划 §2.2 / §9.1 已改为 P0-3′（2026-11-01） |
-
-## D1c 语义（报告/计划统一）
-
-| 作废 | 保留 |
-|------|------|
-| 旧 **D0** 叙事；「只停在 D1c 天花板」的旧读法 | **D1c = `delivery_mode: cohost`**（契约/healthz 独立，进程共宿） |
-
-G0_REPORT 第 16 行已改为「旧 D0 作废；D1c 保留为 cohost 别名」。
+字面只读 HOME **不作为硬门**；逃逸门仍看 Tier A=0 + hermetic `AIPLAT_HOME`。计划 §2.2 / §9.1 已同步。
 
 ## CI 证据（P0 · receipt ≠ CI）
 
-defect-gate receipt **不能**替代 CI。
-
-### HEAD `979778d2`（56 提交 · 现行）
+### HEAD `35829e96`（61 提交 · 现行）
 
 | Workflow | 结论 | Run |
 |----------|------|-----|
-| **CI**（unit/collect 主门） | **success** | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41271354807 |
-| Architecture Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41271354779 |
-| L5 Verification Suite | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41271354768 |
-| Slice E2E (live evidence) | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41271354790 |
-| AI Penetration Test | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41271354792 |
-| aiPlat Contracts Guard | **success** | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41271354761 |
+| **CI** | **success** | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41275525881 |
+| Architecture Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41275525852 |
+| L5 Verification Suite | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41275525865 |
+| Slice E2E (live evidence) | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41275525871 |
+| AI Penetration Test | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41275525926 |
+| aiPlat Contracts Guard | **success** | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41275525845 |
 
-### 中间锚点 `500b4287`（54 提交 · 历史）
+### 中间锚点 `979778d2`（56）
 
-| Workflow | 结论 | Run |
-|----------|------|-----|
-| **CI** | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41269618527 |
-| Architecture Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41269618598 |
-| L5 Verification Suite | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41269618500 |
-| Slice E2E | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41269618570 |
-| AI Penetration Test | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41269618546 |
-| aiPlat Contracts Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41269618504 |
+| Workflow | Run |
+|----------|-----|
+| CI | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41271354807 |
+| Architecture Guard | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41271354779 |
+| L5 | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41271354768 |
+| Slice E2E | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41271354790 |
+| PenTest | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41271354792 |
+| Contracts | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41271354761 |
 
-### 中间锚点 `66a6e07a`（52 提交 · 历史 · 含 D2++ SOC）
-
-| Workflow | 结论 | Run |
-|----------|------|-----|
-| **CI** | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417524 |
-| Architecture Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417471 |
-| L5 Verification Suite | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417553 |
-| Slice E2E | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417609 |
-| AI Penetration Test | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417600 |
-| aiPlat Contracts Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417570 |
-
-### 中间锚点 `1992e8e1`（47 提交 · 历史）
-
-| Workflow | 结论 | Run |
-|----------|------|-----|
-| **CI** | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488889 |
-| Architecture Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488885 |
-| L5 Verification Suite | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488882 |
-| Slice E2E | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488887 |
-| AI Penetration Test | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488902 |
-| aiPlat Contracts Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488906 |
-
-### 初版锚点 `17f21d67`（19 提交 · 历史）
-
-| Workflow | 结论 | Run |
-|----------|------|-----|
-| **CI** | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41257435177 |
-| Architecture Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41257435355 |
-| L5 Verification Suite | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41257435281 |
-| Slice E2E | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41257435090 |
-| AI Penetration Test | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41257435091 |
-| aiPlat Contracts Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41257435152 |
-
-复验命令：
+复验：
 
 ```bash
-git rev-list --count b46e286..979778d2   # expect 56
-git rev-list --count b46e286..HEAD       # may be >56 after this doc
+git rev-list --count b46e286..35829e96   # expect 61
 python3 scripts/check_five_products_status_sync.py
-gh run list --branch main --limit 10
 bash scripts/ops_engineering_freeze_check.sh
 ```
 
-## 本地冻结自检（HEAD 同期）
+## 本地冻结自检
 
 | 检查 | 结果 |
 |------|------|
-| `ops_engineering_freeze_check.sh` | **PASS**（authorize 全 REFUSE · 下次里程碑 11-22） |
-| `five_products_gate.sh` | **PASS**（2026-11-01 复跑 · 含 D3/E2E local） |
-| `ops_option_b_all.sh` | **PASS**（`pgha_mode=docker` · `OPTION_B_LAST_RUN.md`） |
-| 11-22 复审预填 | **READY**（[`STAGING_REVIEW_2026-11-22.md`](./ops/STAGING_REVIEW_2026-11-22.md) · 无主机） |
-| Field compose ADR | **继续 Draft**（[`ADR-DRAFT-fde-field-compose.md`](./ADR-DRAFT-fde-field-compose.md)） |
+| freeze_check | **PASS** |
+| five_products_gate / option_b | **PASS**（既有证据） |
+| 预发复审 | **事件驱动**（[`STAGING_REVIEW_EVENT_DRIVEN.md`](./ops/STAGING_REVIEW_EVENT_DRIVEN.md)） |
+| Field ADR | **继续 Draft** |
+| 本地代码任务 | **无必须项** |
 
 ## 非结论
 
-- 不表示五能力生产就绪  
-- 不表示 `cutover` / `process_split` / `d3_production` 可 authorize  
-- 本机 `local_signed` ≠ `production_signed`
+不表示生产就绪；`local_signed` ≠ `production_signed`；不 authorize。
 
-## 下一步（基线 backlog）
+## 下一步
 
-1. ✅ HEAD **CI + Contracts Guard** 均 **success**（**56** 提交 · `979778d2` 上表）  
-2. ✅ Pi D3 本地收尾 → FDE Field D2 → Eval/Onto D2 → aiPlat D2 thin  
-3. ✅ **Plan V2.1 + shared packaging base**  
-4. ✅ **D2 local perf baseline**  
-5. ✅ **Engineering freeze** + 显式解冻 D3/E2E → 完成后 **再冻结**  
-6. ✅ **2026-11-08 / 11-15 / 11-22 预发复审** → **continue_defer**；下次 **2026-11-29**  
-7. ✅ **Pi D2++ SOC** schema 硬核（`d2_soc_deeper_check`）  
-8. ✅ **Field compose ADR v2** → **继续 Draft**（不实施）  
-9. ⏳ **真实预发供给**（可选）— **不实施 / 不买服务器**；无主机则 11-22 续 defer  
-
-**工程收口声明**：本地侧已无必须做的产品代码任务；瓶颈是真实预发环境，不是代码。再开代码须显式解冻新范围。  
+1. ✅ G0 CI 锚点 **61** / `35829e96`  
+2. ✅ 停日历空转 → 事件驱动复审  
+3. ⏳ 有闲置机/免费云时才开 STAGING_READY / live → sign → authorize  
+4. ❌ 不为“有进展”写产品代码（须显式解冻）

@@ -19,8 +19,8 @@
 | `staging_ready=true` | 上表齐套，允许 `ops_pgha_live_kickoff.sh` 进入 record 路径 |
 | `staging_ready=false` | 正式 defer（见 [`LOCAL_DEFER.md`](./LOCAL_DEFER.md)）；硬门保持 false |
 
-当前：**`staging_ready=false`**（2026-11-01 续 defer：无独立预发；本机 `:5433` ≠ staging；OIDC 缺；kickoff `can_record=false`；**不买服务器**）。  
-复审记录：[`STAGING_REVIEW_2026-11-22.md`](./STAGING_REVIEW_2026-11-22.md)（承继 11-15 / 11-08）· 下次：**2026-11-29**。
+当前：**`staging_ready=false`**（续 defer：无独立预发；**不买服务器**；复审改 **事件驱动**）。  
+最近空转：[`STAGING_REVIEW_2026-11-22.md`](./STAGING_REVIEW_2026-11-22.md)。策略：[`STAGING_REVIEW_EVENT_DRIVEN.md`](./STAGING_REVIEW_EVENT_DRIVEN.md)（有主机/DSN/OIDC 才开审）。
 
 ## 未满足时
 

@@ -1,11 +1,11 @@
 # Five-products engineering status (2026-11-01)
 
 > **SSOT autonomy/delivery**：[`capabilities.manifest.yaml`](../../capabilities.manifest.yaml)（本表必须与之一致；禁止写高于 manifest 的 A/D）。  
-> **G0**：[`G0_CLOSEOUT.md`](./G0_CLOSEOUT.md)（通过 · P0-3′ · CI 锚点 **56** 提交 · `979778d2`）。  
+> **G0**：[`G0_CLOSEOUT.md`](./G0_CLOSEOUT.md)（通过 · P0-3′ · CI 锚点 **61** 提交 · `35829e96`）。  
 > **计划**：[`five-capability-independent-engineering-plan.md`](../../docs/architecture/plans/five-capability-independent-engineering-plan.md) **V2.2** · packaging base [`templates/module/PACKAGING_BASE.md`](../../templates/module/PACKAGING_BASE.md)。  
-> **冻结**：[`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md)（D3/E2E 完成后再冻结；authorize 仍冻）。  
+> **冻结**：[`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md)（本地无必须代码；authorize 仍冻）。  
 > 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md) · 本地收口 [`ops/ENGINEERING_LOCAL_CLOSEOUT.md`](./ops/ENGINEERING_LOCAL_CLOSEOUT.md)。  
-> **运维决策（2026-11-01）**：**运维路径 B — 继续 defer**；`staging_ready=false`（[`ops/STAGING_READY.md`](./ops/STAGING_READY.md) · [`ops/LOCAL_DEFER.md`](./ops/LOCAL_DEFER.md)）。下次复审：**2026-11-29**。  
+> **运维决策**：**继续 defer** + **事件驱动复审**（[`ops/STAGING_REVIEW_EVENT_DRIVEN.md`](./ops/STAGING_REVIEW_EVENT_DRIVEN.md)）· `staging_ready=false`。  
 > **工程环境**：**方案 B 本机 VM/Docker 全轨**（[`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md)）· `bash scripts/ops_option_b_all.sh`。  
 > Blocker：缺**真实**预发 DSN/OIDC（本机 local ≠ staging）；kickoff exit 2 = 硬门按设计。  
 > **Accepted（有条件）** ≠ 生产授权；硬门全 **false**。
@@ -65,7 +65,8 @@ bash scripts/five_products_gate.sh
 | Staging review 11-08 | [`ops/STAGING_REVIEW_2026-11-08.md`](./ops/STAGING_REVIEW_2026-11-08.md) → **continue_defer** |
 | Staging review 11-15 | [`ops/STAGING_REVIEW_2026-11-15.md`](./ops/STAGING_REVIEW_2026-11-15.md) → **continue_defer**（提前开审） |
 | Staging review 11-22 | [`ops/STAGING_REVIEW_2026-11-22.md`](./ops/STAGING_REVIEW_2026-11-22.md) → **continue_defer** |
-| Staging review 11-29 草稿 | [`ops/STAGING_REVIEW_2026-11-29.md`](./ops/STAGING_REVIEW_2026-11-29.md) · 供给备查 [`ops/STAGING_PROVISIONING.md`](./ops/STAGING_PROVISIONING.md) |
+| Staging review 策略 | [`ops/STAGING_REVIEW_EVENT_DRIVEN.md`](./ops/STAGING_REVIEW_EVENT_DRIVEN.md)（**停日历空转**） |
+| Staging review 11-29 | [`ops/STAGING_REVIEW_2026-11-29.md`](./ops/STAGING_REVIEW_2026-11-29.md) → **cancelled** |
 | Field compose ADR | [`ADR-DRAFT-fde-field-compose.md`](./ADR-DRAFT-fde-field-compose.md) → **继续 Draft** |
 | D3 local acceptance | [`ops/D3_LOCAL_ACCEPTANCE.md`](./ops/D3_LOCAL_ACCEPTANCE.md)（解冻后跑 `ops_d3_local_acceptance_all.sh`） |
 | Cross-capability E2E | [`ops/FIVE_PRODUCTS_E2E_LOCAL.md`](./ops/FIVE_PRODUCTS_E2E_LOCAL.md) · `ops_five_products_e2e_local.sh` |

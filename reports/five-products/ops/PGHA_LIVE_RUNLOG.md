@@ -6,7 +6,7 @@
 - environment: `local`（诚实；**不是** staging）
 - cutover_authorized: **false**
 - staging_ready: **false**
-- review_by: **2026-11-29**
+- review_policy: **event-driven**（[`STAGING_REVIEW_EVENT_DRIVEN.md`](./STAGING_REVIEW_EVENT_DRIVEN.md)）
 
 ## Latest kickoff
 

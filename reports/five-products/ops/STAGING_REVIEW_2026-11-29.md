@@ -1,27 +1,17 @@
-# Staging review checklist — 2026-11-29（草稿）
+# Staging review — 2026-11-29（**作废 · 不排期**）
 
-> 承继 [`STAGING_REVIEW_2026-11-22.md`](./STAGING_REVIEW_2026-11-22.md)（**continue_defer**）。  
-> **禁止**本机 Docker 冒充 staging / 手改 🟨→✅ / 假 DSN·OIDC。
+> **状态**：superseded · **不执行**  
+> 承继 [`STAGING_REVIEW_2026-11-22.md`](./STAGING_REVIEW_2026-11-22.md)（continue_defer）后，改为  
+> **事件驱动复审**：[`STAGING_REVIEW_EVENT_DRIVEN.md`](./STAGING_REVIEW_EVENT_DRIVEN.md)。
 
-## Pre-work（复审前可做）
+## 作废原因
 
-| # | 准备项 | 状态模板 |
-|---|--------|----------|
-| 1 | 独立主机候选（旧笔记本 / 闲置机 / 免费云） | `_TBD_` |
-| 2 | 按 [`STAGING_PROVISIONING.md`](./STAGING_PROVISIONING.md) 装 PG+Keycloak | `_not_started_` |
-| 3 | 填 [`STAGING_READY.md`](./STAGING_READY.md) 四项 | 当前全 **未齐** |
-| 4 | operator / 变更窗口 / 回滚预案书面 | `_TBD_` |
-| 5 | 冻结自检绿 | `bash scripts/ops_engineering_freeze_check.sh` |
+连续三次日历复审（11-08 / 15 / 22）均为 continue_defer（无主机 / 无 DSN·OIDC）。  
+再排 11-29 只会重复空转；**有主机候选时再开审**。
 
-## Decision tree（复审日）
+## Outcome
 
-1. 四项 STAGING_READY 是否齐？  
-   - **否** → 再 `continue_defer`；写下次 `review_by`；Option B 继续。  
-   - **是** → 置 `staging_ready=true` 仅当证据齐 → kickoff → live → sign → checklist ✅ → authorize。
-
-## Outcome（复审日填写）
-
-- reviewed_at: `_TBD_`
-- decision: `_continue_defer | enter_staging_A_or_C_`
-- staging_ready: `_false until conditions met_`
-- notes: `_…_`
+- reviewed_at: `2026-11-01`（流程变更，非开审）
+- decision: **`cancelled_calendar_review`** → 改事件驱动
+- staging_ready: **false**
+- next_calendar_review: **none**

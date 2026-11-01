@@ -29,7 +29,8 @@
 | Option B all | **PASS**（`OPTION_B_LAST_RUN.md` · docker PGHA） |
 | five_products_gate | **PASS**（含 authorize REFUSE） |
 | STATUS↔manifest sync | **PASS**（`scripts/check_five_products_status_sync.py`） |
-| G0 HEAD CI | **PASS**（`G0_CLOSEOUT.md` · `979778d2` · **56** 提交 · 含 D2++ SOC） |
+| G0 HEAD CI | **PASS**（`G0_CLOSEOUT.md` · `35829e96` · **61** 提交） |
+| 预发复审 | **事件驱动**（停 11-29 日历空转） |
 | 本地代码任务 | **无必须项**（瓶颈=真实预发；再开代码须显式解冻） |
 | 11-22 复审预填 | **READY**（无主机；Outcome 待复审日） |
 | Field ADR | **继续 Draft**（不实施） |
@@ -48,7 +49,7 @@ bash scripts/ops_live_status.sh --json   # 期望全部 ready_to_authorize=false
 
 ## 下一步（非本收口）
 
-1. 复审：[`STAGING_REVIEW_2026-11-22.md`](./STAGING_REVIEW_2026-11-22.md) → **continue_defer**；下次 [`STAGING_REVIEW_2026-11-29.md`](./STAGING_REVIEW_2026-11-29.md)
+1. 复审策略：[`STAGING_REVIEW_EVENT_DRIVEN.md`](./STAGING_REVIEW_EVENT_DRIVEN.md)（有主机才审）
 2. 真实预发（可选）：[`STAGING_READY.md`](./STAGING_READY.md) → `staging_ready=true`（当前 **false**；不买服务器）
 3. 按 [`OPS_HANDOFF.md`](../OPS_HANDOFF.md) live → sign → authorize  
 4. 本地工程冻结：[`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md) · `bash scripts/ops_engineering_freeze_check.sh`
