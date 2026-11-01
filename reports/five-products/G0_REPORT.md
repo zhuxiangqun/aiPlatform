@@ -1,9 +1,9 @@
 # G0 报告（P0 · 2026-10-29 · honesty refresh 2026-11-01）
 
-> HEAD at refresh: see `git log -1 --oneline`（原基线 `b46e286`）  
+> HEAD at refresh: see `git log -1 --oneline`（原基线 `b46e286`；本轮数字 refresh **2026-11-01**）  
 > **SSOT**：[`five-capability-independent-engineering-plan.md`](../../docs/architecture/plans/five-capability-independent-engineering-plan.md) **V2** · [`capabilities.manifest.yaml`](../../capabilities.manifest.yaml)  
 > 逃逸：[`P0_ESCAPE_SCAN.md`](./P0_ESCAPE_SCAN.md)  
-> **诚实性**：`STATUS.md` 必须跟 manifest（aiplat **A0**，勿写 A2）；**Accepted（有条件）≠ 生产授权**（硬门全 false）。
+> **诚实性**：`STATUS.md` 必须跟 manifest（aiplat **A0**/D2 thin；FDE **A1**/Field D1；ontology/eval **D1 cohost**）；**Accepted（有条件）≠ 生产授权**（硬门全 false）。
 
 ---
 
@@ -16,7 +16,7 @@
 | A1–A3 + D1–D3 | ✅ 旧 D0/D1c 作废；`product.manifest.yaml` → deprecated |
 | `templates/module/` | ✅ 已落盘；`templates/product/` 标 DEPRECATED |
 | G0 §9.1 逃逸扫描 **= 0** | Tier A **0** ✅ · Tier B soft **0** ✅（`paths.py` SSOT fallback 除外） |
-| G0 只读 HOME unit 绿 | 字面只读 HOME 16 红（git）；**P0-3′** 假 HOME 可写 = 与 P0-2 同绿 |
+| G0 只读 HOME unit 绿 | **正式例外 P0-3′**：字面 chmod-555 HOME 仍有 git 红（非逃逸）；判据改为假 HOME 可写 + hermetic `AIPLAT_HOME` = 与 P0-2 同绿 |
 
 ## 决策锁定（按 V2 · Agent 代决）
 
@@ -32,9 +32,9 @@
 
 | ID | 结果 | 证据 |
 |----|:----:|------|
-| P0-1 collect | **PASS** | 3193 collected / 0 error |
-| P0-2 unit | **PASS** | **2719 passed** / 11 skipped / 0 failed |
-| P0-3′ | **PASS** | 与 P0-2 同路径（conftest hermetic）；字面只读 HOME = 16 git 红（非逃逸） |
+| P0-1 collect | **PASS** | **3209** collected / 0 error（2026-11-01 re-run） |
+| P0-2 unit | **PASS** | **2735 passed** / 11 skipped / 0 failed（`core/tests/unit`，2026-11-01 re-run） |
+| P0-3′ | **PASS（有条件判据）** | 与 P0-2 同路径（conftest hermetic）；**不**要求字面只读 HOME；字面 chmod-555 HOME 红 = 已知例外非逃逸 |
 | P0-4 CI | **PASS** | 242 行；`CORE_TARGETS` |
 | P0-5 nightly | **PASS** | `core-tests-unit` 硬门 |
 | P0-6 逃逸 | **PASS (Tier A=0)** | 259 → **0** hard；见 [`P0_ESCAPE_SCAN.md`](./P0_ESCAPE_SCAN.md) |
@@ -68,8 +68,9 @@
 - [x] P0-11/12/13 SBOM stub + runbook + flake 策略  
 - [x] P0-14/15 ADR 草案 + 本报告  
 
-**G0 工程结论（2026-11-01）**：**通过（骨架 + Tier A=0）** — 模板/manifest/charter/Chart 与逃逸清扫已落地。  
-**非结论**：不表示五能力生产就绪；PG/HA 切流、A3 进程拆分、Pi D3 生产宣称仍受硬门约束（全 false）。  
+**G0 工程结论（2026-11-01）**：**通过（骨架 + Tier A=0 + P0-3′ 判据）** — 模板/manifest/charter/Chart 与逃逸清扫已落地；collect/unit 数字已按本轮重跑刷新。  
+**非结论**：不表示五能力生产就绪；PG/HA 切流、A3 进程拆分、Pi D3 生产宣称仍受硬门约束（全 false）；`staging_ready=false`。  
+**P0-3′ 例外声明**：不以「字面只读 HOME 全绿」为硬条件；逃逸门仍看 Tier A=0 + hermetic `AIPLAT_HOME`。  
 历史注记：早期「有条件通过」曾因 Tier A 未清；现 Tier A=0，该条件已解除。
 
 ---
@@ -77,7 +78,7 @@
 ## 推荐下一刀
 
 1. ✅ **Pi D1 Thin**  
-2. ✅ **FDE A1**：`FIELD_SCOPE` + healthz/evidence 契约；Field D1 ADR **Draft**  
+2. ✅ **FDE A1 + Field D1 Accepted**：`packages/aiplat-fde` + local install/meta drill（`d1_local_regression`）  
 3. ✅ **评测协议 v0** 草案 + 契约样例  
 4. ✅ 评测端点已挂 `eval_protocol`（run evaluate / latest / skill-eval run）  
 5. ✅ 更多 eval 端点 + Tier B soft **清零**  

@@ -121,3 +121,6 @@ packages/aiplat-pi-runtime/docs/d3/drills/
 
 # Accidental local agent scaffold (not a product)
 aiPlat-core/core/engine/agents/my_agent/
+
+# FDE local drills (samples under reports/five-products/ops/evidence)
+packages/aiplat-fde/docs/drills/

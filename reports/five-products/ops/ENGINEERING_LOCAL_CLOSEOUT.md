@@ -12,6 +12,7 @@
 | Evaluation A3 local | **PASS** · `local_signed` |
 | Pi D3 local | **PASS** · `local_signed`（本收口纳入） |
 | Pi D1 hermetic regression | **PASS**（另见 `PI_D1_LOCAL_REGRESSION.md`） |
+| FDE Field D1 install/meta/backup/rollback | **PASS**（`FDE_FIELD_LOCAL_REGRESSION.md` · `INSTALL_META` 已生成） |
 | 四轨 `ready_to_authorize` | **false** |
 | 硬门 cutover / process_split / d3_production | **false** |
 
@@ -24,6 +25,7 @@ bash scripts/ops_local_rehearse_tracks.sh
 # 含 Docker PG+Keycloak：
 AIPLAT_LOCAL_INCLUDE_PGHA=1 bash scripts/ops_local_rehearse_tracks.sh
 bash packages/aiplat-pi-runtime/scripts/d1_local_regression.sh
+bash packages/aiplat-fde/scripts/d1_local_regression.sh
 bash scripts/ops_live_status.sh --json   # 期望全部 ready_to_authorize=false
 ```
 

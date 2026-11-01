@@ -1,11 +1,14 @@
 # Five-capability autonomy manifest (V2)
 # SSOT: docs/architecture/plans/five-capability-independent-engineering-plan.md
+# STATUS.md must mirror this file (do not invent higher autonomy/delivery here).
 version: 1
-updated: "2026-10-29"
-head_baseline: b46e286
+updated: "2026-11-01"
+head_baseline: c06f3732
 naming:
-  autonomy: [A1, A2, A3]
+  autonomy: [A0, A1, A2, A3]
   delivery: [D1, D2, D3]
+  # cohost = delivery D1 but process shares central host (not independent deploy)
+  delivery_mode: [standalone, cohost, field, edge]
   evidence_do_not_reuse: [E0, E1, E2, E3, E4, E5]
 
 deploy_units:
@@ -19,31 +22,41 @@ capabilities:
     deploy_unit: edge
     current_autonomy: A3  # Gate3 Thin
     current_delivery: D1
+    delivery_mode: edge
     target: A3/D3
     package: packages/aiplat-pi-runtime
     charter: reports/five-products/modules/pi/MODULE.md
     install: packages/aiplat-pi-runtime/scripts/d1_install.sh
     healthz: GET /healthz
-    a3_adr: reports/five-products/ADR-08-deploy-split.md  # Gate3 Thin already approved
+    a3_adr: reports/five-products/ADR-08-deploy-split.md
+    d3_production_authorized: false
 
   - id: fde
     label: FDE Workbench
     deploy_unit: field
     current_autonomy: A1
-    current_delivery: D0
+    current_delivery: D1
+    delivery_mode: field
     target: A2/D2
-    package: aiPlat-platform/apps/fde
+    package: packages/aiplat-fde
+    platform_app: aiPlat-platform/apps/fde
     charter: reports/five-products/modules/fde/MODULE.md
     field_scope: reports/five-products/modules/fde/FIELD_SCOPE.md
-    field_deploy_adr: reports/five-products/ADR-DRAFT-fde-field-deploy.md
+    field_deploy_adr: reports/five-products/ADR-FDE-FIELD-DEPLOY.md
+    field_deploy_adr_status: accepted
     field_deploy_adr_required: true
+    install: packages/aiplat-fde/scripts/d1_install.sh
+    healthz: GET /api/core/fde/healthz
     contracts_test: reports/five-products/modules/fde/contracts/validate_sample.py
+    notes:
+      - "Field D1 path Accepted; local install/meta/backup drill required for evidence (see ops/evidence)"
 
   - id: evaluation
     label: Evaluation Service
     deploy_unit: central
     current_autonomy: A2
     current_delivery: D1
+    delivery_mode: cohost
     target: A3/D2
     package: packages/aiplat-evaluation
     charter: reports/five-products/modules/evaluation/MODULE.md
@@ -51,13 +64,17 @@ capabilities:
     a3_adr: reports/five-products/ADR-EVALUATION-A3.md
     a3_adr_status: accepted_conditional
     process_split_authorized: false
+    healthz: GET /api/core/eval/healthz
     contracts_test: reports/five-products/modules/evaluation/contracts/validate_sample.py
+    notes:
+      - "D1 cohost = healthz+protocol on central host; not independent process deploy"
 
   - id: ontology
     label: Ontology Service
     deploy_unit: central
     current_autonomy: A2
     current_delivery: D1
+    delivery_mode: cohost
     target: A3/D2
     package: packages/aiplat-ontology
     charter: reports/five-products/modules/ontology/MODULE.md
@@ -65,16 +82,28 @@ capabilities:
     a3_adr: reports/five-products/ADR-ONTOLOGY-A3.md
     a3_adr_status: accepted_conditional
     process_split_authorized: false
+    healthz: GET /api/core/ontology/healthz
     contracts_test: reports/five-products/modules/ontology/contracts/validate_sample.py
+    notes:
+      - "D1 cohost = healthz+API on central host; not independent process deploy"
 
   - id: aiplat
     label: aiPlat Platform
     deploy_unit: central
     current_autonomy: A0
+    current_delivery: D2
+    delivery_mode: standalone
     target: A2/D2
     package: aiPlat-platform
+    central_package: packages/aiplat-central
     charter: reports/five-products/modules/aiplat/MODULE.md
+    healthz: GET /api/core/healthz
     pg_ha_adr_required: true
+    pg_ha_adr: reports/five-products/ADR-CONTROL-PLANE-PG-HA.md
+    pg_ha_adr_status: accepted_conditional
+    cutover_authorized: false
+    notes:
+      - "D2 thin = central package + compat/security pack; PG/HA cutover still unauthorized"
 
 shared_kernel:
   - contracts
@@ -86,3 +115,5 @@ shared_kernel:
 notes:
   - "product.manifest.yaml is legacy five-product naming; prefer this file"
   - "A3 / process-DB split requires per-capability ADR except Pi Thin (Gate3)"
+  - "STATUS.md is a generated view of this file — never claim higher A/D than here"
+  - "local_signed ≠ production_signed; hard gates stay false until staging live"

@@ -1,19 +1,20 @@
 # Five-products engineering status (2026-11-01)
 
-> **SSOT autonomy/delivery**：[`capabilities.manifest.yaml`](../../capabilities.manifest.yaml)（本表必须与之一致）。  
-> 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md)。  
-> **运维决策（2026-11-01）**：**路径 B — 正式 defer** PG/HA（及依赖预发的 live）；`staging_ready=false`（[`ops/STAGING_READY.md`](./ops/STAGING_READY.md)）。  
-> Blocker：缺预发 `AIPLAT_PG_DSN` + `AIPLAT_OIDC_ISSUER`（kickoff exit 2 = 硬门按设计）。复审：**2026-11-08**。  
-> 主轨暂转 **Pi D1**（不依赖预发）；本地 rehearsal 仅路径 C（`local`，不 authorize）。  
-> **Accepted（有条件）** = 聊天联签通过路径 + 硬门仍 false；**≠** 生产切流/拆分/D3 就绪。
+> **SSOT autonomy/delivery**：[`capabilities.manifest.yaml`](../../capabilities.manifest.yaml)（本表必须与之一致；禁止写高于 manifest 的 A/D）。  
+> 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md) · 本地收口 [`ops/ENGINEERING_LOCAL_CLOSEOUT.md`](./ops/ENGINEERING_LOCAL_CLOSEOUT.md)。  
+> **运维决策（2026-11-01）**：**路径 B — 正式 defer**；`staging_ready=false`（[`ops/STAGING_READY.md`](./ops/STAGING_READY.md)）。复审：**2026-11-08**。  
+> Blocker：缺预发 `AIPLAT_PG_DSN` + `AIPLAT_OIDC_ISSUER`（kickoff exit 2 = 硬门按设计）。  
+> **Accepted（有条件）** ≠ 生产授权；硬门全 **false**。
 
-| Capability | Autonomy | Delivery | Package | Healthz | ADR |
-|------------|----------|----------|---------|---------|-----|
-| **aiplat** | **A0** | D2 thin | `aiplat-central` **0.1.0** | `/api/core/healthz` | PG/HA **Accepted（有条件）** |
-| **pi** | Thin | **D1** · D2 admin · D3 prep | `aiplat-pi-runtime` **0.1.0** | Pi `/healthz` | ADR-08 · [D3 Accepted（有条件）](./ADR-PI-D3.md) |
-| **ontology** | A2 | D1 co-host | `aiplat-ontology` **0.1.0** | `/ontology/healthz` | [A3 Accepted（有条件）](./ADR-ONTOLOGY-A3.md) |
-| **evaluation** | A2 | D1 co-host | `aiplat-evaluation` **0.1.0** | `/eval/healthz` | [A3 Accepted（有条件）](./ADR-EVALUATION-A3.md) |
-| **fde** | A2 | **Field D1** | `aiplat-fde` **0.1.0** | `/fde/healthz` | **Field Accepted** |
+| Capability | Autonomy | Delivery | Mode | Package | Healthz | ADR / notes |
+|------------|----------|----------|------|---------|---------|-------------|
+| **aiplat** | **A0** | **D2** | standalone (thin) | `aiplat-central` + platform | `/api/core/healthz` | PG/HA Accepted（有条件）；`cutover=false` |
+| **pi** | **A3** (Thin) | **D1** (+ D2 admin / D3 prep) | edge | `aiplat-pi-runtime` **0.1.0** | `/healthz` | ADR-08 · [D3 Accepted（有条件）](./ADR-PI-D3.md)；`d3_production=false` |
+| **ontology** | **A2** | **D1** | **cohost** | `aiplat-ontology` **0.1.0** | `/ontology/healthz` | [A3 Accepted（有条件）](./ADR-ONTOLOGY-A3.md)；`process_split=false` |
+| **evaluation** | **A2** | **D1** | **cohost** | `aiplat-evaluation` **0.1.0** | `/eval/healthz` | [A3 Accepted（有条件）](./ADR-EVALUATION-A3.md)；`process_split=false` |
+| **fde** | **A1** | **D1** Field | field | `aiplat-fde` **0.1.0** | `/fde/healthz` | [Field Accepted](./ADR-FDE-FIELD-DEPLOY.md)；local install drill 见下 |
+
+**Delivery 语义**：`cohost` = 中心宿主上的 healthz/协议（**不是**独立进程拆分）。独立拆分仍受 A3 `process_split_authorized=false` 约束。
 
 ## Gate
 
@@ -27,22 +28,25 @@ bash scripts/five_products_gate.sh
 2. PG/HA Accepted（有条件）  
 3. Ontology A3 Accepted（有条件）  
 4. Evaluation A3 Accepted（有条件）  
-5. [`ADR-PI-D3.md`](./ADR-PI-D3.md) — Pi D3 Accepted（有条件）  
+5. Pi D3 Accepted（有条件）  
 
-## 硬门（全部 false，直至 checklist 全 ✅ + signed live）
+## 硬门（全部 false）
 
 | 门 | 值 |
 |----|-----|
 | `cutover_authorized` | **false** |
 | Ontology / Eval `process_split_authorized` | **false** |
-| Pi `d3_production_authorized` | **false**（本地多为 🟨；SOC live 仍须） |
+| Pi `d3_production_authorized` | **false** |
 
-**正式 defer**（[`ops/LOCAL_DEFER.md`](./ops/LOCAL_DEFER.md) · [`ops/PGHA_LIVE_RUNLOG.md`](./ops/PGHA_LIVE_RUNLOG.md)）：四轨 checklist 仍 🟨；切流/拆分/D3 硬门全 **false**；未改 authorize / 未假造 DSN。
+**正式 defer**：[`ops/LOCAL_DEFER.md`](./ops/LOCAL_DEFER.md) · [`ops/PGHA_LIVE_RUNLOG.md`](./ops/PGHA_LIVE_RUNLOG.md)
 
-运维入口：[`OPS_LIVE_RUNBOOK.md`](./OPS_LIVE_RUNBOOK.md) · [`OPS_HANDOFF.md`](./OPS_HANDOFF.md) · [`ops/STAGING_READY.md`](./ops/STAGING_READY.md) · `bash scripts/ops_live_status.sh`
+运维：[`OPS_LIVE_RUNBOOK.md`](./OPS_LIVE_RUNBOOK.md) · [`OPS_HANDOFF.md`](./OPS_HANDOFF.md) · [`ops/STAGING_READY.md`](./ops/STAGING_READY.md) · `bash scripts/ops_live_status.sh`
 
-`staging_ready=true` 后再按交接卡 live → sign → authorize；此前工程主轨走 Pi D1。
+## 本地证据（非生产）
 
-Pi D1 本地回归（2026-11-01）：[`ops/PI_D1_LOCAL_REGRESSION.md`](./ops/PI_D1_LOCAL_REGRESSION.md) **PASS**（`d1_local_regression.sh`；environment=local，未授权）。
-
-Local staging（零预算 · 非预发）：四轨 **local_signed**（[`ops/LOCAL_TRACKS_RUNLOG.md`](./ops/LOCAL_TRACKS_RUNLOG.md) · [`ops/ENGINEERING_LOCAL_CLOSEOUT.md`](./ops/ENGINEERING_LOCAL_CLOSEOUT.md)）；checklist 仍 🟨；硬门全 **false**。
+| 项 | 状态 |
+|----|------|
+| Pi D1 hermetic | [`ops/PI_D1_LOCAL_REGRESSION.md`](./ops/PI_D1_LOCAL_REGRESSION.md) **PASS** |
+| 四轨 local_signed | [`ops/LOCAL_TRACKS_RUNLOG.md`](./ops/LOCAL_TRACKS_RUNLOG.md) |
+| FDE Field install/meta | [`ops/FDE_FIELD_LOCAL_REGRESSION.md`](./ops/FDE_FIELD_LOCAL_REGRESSION.md)（本轮补齐） |
+| Local staging 总册 | [`ops/LOCAL_STAGING.md`](./ops/LOCAL_STAGING.md) |
