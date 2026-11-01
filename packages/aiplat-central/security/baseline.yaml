@@ -316,6 +316,30 @@ checks:
     must_contain:
       - "2026-11-08"
       - "continue_defer"
+  - id: staging_review_2026_11_15_draft
+    description: Next staging review draft present
+    path: reports/five-products/ops/STAGING_REVIEW_2026-11-15.md
+    must_contain:
+      - "2026-11-15"
+      - "STAGING_PROVISIONING"
+  - id: staging_provisioning_pack
+    description: Remote staging provisioning pack (not Option B)
+    path: reports/five-products/ops/STAGING_PROVISIONING.md
+    must_contain:
+      - "非本机 Option B"
+      - "environment=staging"
+  - id: fde_field_compose_adr_draft
+    description: Field compose long-running ADR remains Draft
+    path: reports/five-products/ADR-DRAFT-fde-field-compose.md
+    must_contain:
+      - "Draft"
+      - "非 Accepted"
+  - id: pi_d2_plus_soc_doc
+    description: Pi D2++ SOC deeper local scope doc
+    path: packages/aiplat-pi-runtime/docs/D2_PLUS_SOC.md
+    must_contain:
+      - "d2_soc_deeper_check"
+      - "不打开"
   - id: shared_security_baseline_checker
     description: Shared D2 security baseline checker
     path: scripts/lib/aiplat_security_baseline.py

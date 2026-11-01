@@ -43,10 +43,10 @@ with tempfile.TemporaryDirectory(prefix="aiplat-live-proof-") as td:
     ok, s = require_signed_live(drill)
     assert ok is False and s["latest"].endswith("live-proof-unsigned.json"), s
 
-    # Newest by mtime must be signed — remove unsigned so signed is latest.
+    # Newest by mtime: signed but missing production-class env → still refuse.
     unsigned.unlink()
-    signed = drill / "live-proof-signed.json"
-    signed.write_text(
+    signed_bad_env = drill / "live-proof-signed.json"
+    signed_bad_env.write_text(
         json.dumps(
             {
                 "kind": "proof",
@@ -59,9 +59,30 @@ with tempfile.TemporaryDirectory(prefix="aiplat-live-proof-") as td:
         encoding="utf-8",
     )
     ok, s = require_signed_live(drill)
-    assert ok is True and s["production_signed"] is True, s
-    assert summarize_live_drills(drill)["latest"].endswith("live-proof-signed.json")
+    assert ok is False and s.get("refuse_reason") == "non_production_class_environment", s
 
-print("PASS: ops_live_refuse_proof (unsigned→refuse logic; signed→ok; no authorize)")
+    signed_bad_env.unlink()
+    signed_ok = drill / "live-proof-signed-staging.json"
+    signed_ok.write_text(
+        json.dumps(
+            {
+                "kind": "proof",
+                "drill_id": "proof-signed-staging",
+                "environment": "staging",
+                "production_signed": True,
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    ok, s = require_signed_live(drill)
+    assert ok is True and s["production_signed"] is True, s
+    assert s.get("environment_ok_for_authorize") is True, s
+    assert summarize_live_drills(drill)["latest"].endswith(
+        "live-proof-signed-staging.json"
+    )
+
+print("PASS: ops_live_refuse_proof (unsigned/env→refuse; staging+signed→ok; no authorize)")
 print("NOTE: real *_authorize.sh still REFUSE until checklist all ✅ + signed live on track drills/")
 PY
