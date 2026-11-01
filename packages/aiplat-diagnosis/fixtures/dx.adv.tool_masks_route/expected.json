@@ -1,0 +1,10 @@
+{
+  "case_id": "dx.adv.tool_masks_route",
+  "scenario": "run_failure",
+  "gold_root_cause": "wrong_model_route",
+  "expect_unknown": false,
+  "expect_stale": false,
+  "adversarial": true,
+  "note": "tool_error outranks route by confidence; Top-1 may fail under blind",
+  "provenance": "desensitized_local_export"
+}

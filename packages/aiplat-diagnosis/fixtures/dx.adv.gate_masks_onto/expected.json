@@ -1,0 +1,10 @@
+{
+  "case_id": "dx.adv.gate_masks_onto",
+  "scenario": "version_regression",
+  "gold_root_cause": "ontology_coverage_gap",
+  "expect_unknown": false,
+  "expect_stale": false,
+  "adversarial": true,
+  "note": "eval_score_drop distractor vs ontology_coverage_gap gold",
+  "provenance": "desensitized_local_export"
+}

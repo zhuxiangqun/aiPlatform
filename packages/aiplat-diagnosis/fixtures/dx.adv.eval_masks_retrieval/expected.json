@@ -1,0 +1,10 @@
+{
+  "case_id": "dx.adv.eval_masks_retrieval",
+  "scenario": "version_regression",
+  "gold_root_cause": "retrieval_miss",
+  "expect_unknown": false,
+  "expect_stale": false,
+  "adversarial": true,
+  "note": "eval_score_drop distractor vs retrieval_miss gold",
+  "provenance": "desensitized_local_export"
+}

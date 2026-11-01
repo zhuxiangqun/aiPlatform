@@ -31,6 +31,8 @@
 | [`EVAL_V1 E6`](./ENGINEERING_UNFREEZE_EVAL_E6.md) | 解冻评测中心 UI v1；[`E6 closeout`](./EVAL_V1_E6_CLOSEOUT.md) **PASS**；G2b/accuracy 仍冻 |
 | [`EVAL_V1 E7`](./ENGINEERING_UNFREEZE_EVAL_E7.md) | 解冻 D2/D3 本地收口；[`E7 closeout`](./EVAL_V1_E7_CLOSEOUT.md) **PASS**；split 仍 false |
 | [`EVAL G2c decision`](./ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md) | **Accepted**：claim 降级为 self-consistency；**不开 G2b**；禁止 accuracy |
+| [`DIAGNOSIS C3.5`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C35_FIXTURE_HARDENING.md) | adversarial fixtures + metrics subset；[`C35 closeout`](./DIAGNOSIS_V1_C35_CLOSEOUT.md) **PASS** |
+| [`EVAL G2c`](./ENGINEERING_UNFREEZE_EVAL_G2C.md) | self-consistency / intra-rater；[`G2C closeout`](./EVAL_V1_G2C_CLOSEOUT.md) **PASS**；≠ accuracy |
 
 - ❌ **仍不解冻**：staging_ready / production_signed / 任何 authorize 成功 / accuracy 宣称 / 自动修复 / A3 / **EVAL G2b（已 defer）**  
 - 计划同步：工程方案 **V2.2** + [`eval-v1-charter.md`](../../../docs/architecture/plans/eval-v1-charter.md) + [`diagnosis-v1-charter.md`](../../../docs/architecture/plans/diagnosis-v1-charter.md)
@@ -46,6 +48,8 @@
 | DIAGNOSIS_V1 C1 | [`ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md) | **Closed PASS** — 见 [`DIAGNOSIS_V1_C1_CLOSEOUT.md`](./DIAGNOSIS_V1_C1_CLOSEOUT.md) | 自动修复 / A3 / staging / authorize |
 | DIAGNOSIS_V1 C2 | [`ENGINEERING_UNFREEZE_DIAGNOSIS_C2.md`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C2.md) | **Closed PASS** — 见 [`DIAGNOSIS_V1_C2_CLOSEOUT.md`](./DIAGNOSIS_V1_C2_CLOSEOUT.md) | 自动修复 / A3 / staging / authorize / G2b accuracy |
 | DIAGNOSIS_V1 C3 | [`ENGINEERING_UNFREEZE_DIAGNOSIS_C3.md`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C3.md) | **Closed PASS** — 见 [`DIAGNOSIS_V1_C3_CLOSEOUT.md`](./DIAGNOSIS_V1_C3_CLOSEOUT.md) | 自动修复 / A3 / staging / authorize / G2b accuracy / 静默开 C4 |
+| DIAGNOSIS_V1 C3.5 | [`ENGINEERING_UNFREEZE_DIAGNOSIS_C35_FIXTURE_HARDENING.md`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C35_FIXTURE_HARDENING.md) | **Closed PASS** — 见 [`DIAGNOSIS_V1_C35_CLOSEOUT.md`](./DIAGNOSIS_V1_C35_CLOSEOUT.md) | 准确率宣称 / remediate / A3 / staging |
+| EVAL_V1 G2c | [`ENGINEERING_UNFREEZE_EVAL_G2C.md`](./ENGINEERING_UNFREEZE_EVAL_G2C.md) | **Closed PASS** — 见 [`EVAL_V1_G2C_CLOSEOUT.md`](./EVAL_V1_G2C_CLOSEOUT.md) | accuracy / G2b / inter-annotator κ |
 
 ## Verify
 

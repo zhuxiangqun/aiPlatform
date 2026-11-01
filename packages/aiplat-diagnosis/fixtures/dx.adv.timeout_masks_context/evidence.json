@@ -1,0 +1,49 @@
+{
+  "schema_version": "diagnosis.evidence.v0",
+  "case_id": "dx.adv.timeout_masks_context",
+  "provenance": "desensitized_local_export",
+  "scenario": "run_failure",
+  "subject_ref": "run:adv-timeout-ctx",
+  "payload": {
+    "syscall": {
+      "name": "sys_tool_call",
+      "duration_ms": 35000,
+      "timeout_seconds": 30,
+      "error": "timeout waiting for tool result"
+    },
+    "context_assemble": {
+      "dropped_layers": [
+        "policy",
+        "ontology_neighbors"
+      ]
+    }
+  },
+  "evidence": [
+    {
+      "id": "e-sys",
+      "source": "aiplat",
+      "kind": "syscall",
+      "ref": "fixture://adv/to-sys",
+      "version": "adv-v0",
+      "captured_at": "2026-11-02T00:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {}
+    },
+    {
+      "id": "e-ctx",
+      "source": "aiplat",
+      "kind": "context",
+      "ref": "fixture://adv/to-ctx",
+      "version": "adv-v0",
+      "captured_at": "2026-11-02T00:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {
+        "dropped": [
+          "policy"
+        ]
+      }
+    }
+  ]
+}

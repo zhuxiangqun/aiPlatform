@@ -36,12 +36,18 @@ async def healthz(
 
 @router.get("/metrics/fixtures", response_model=ItemResponse)
 async def metrics_fixtures(
-    limit: int = Query(10, ge=1, le=30),
+    limit: int = Query(10, ge=1, le=50),
+    blind: bool = Query(True),
+    subset: str = Query("core", pattern="^(core|adversarial|all)$"),
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
     from core.api.core_facade import diagnosis_fixture_metrics
 
-    return {"data": diagnosis_fixture_metrics(limit=limit)}
+    try:
+        out = diagnosis_fixture_metrics(limit=limit, blind=blind, subset=subset)
+    except ValueError as e:
+        raise _detail("invalid_subset", str(e), 422)
+    return {"data": out}
 
 
 @router.post("/cases", response_model=ItemResponse)

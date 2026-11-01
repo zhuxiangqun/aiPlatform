@@ -63,6 +63,8 @@
             "deploy_record",
             "fde_evidence",
             "log_ref",
+            "ontology_health",
+            "retrieval",
             "other"
           ]
         },
