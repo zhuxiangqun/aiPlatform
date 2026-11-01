@@ -30,10 +30,9 @@
 | five_products_gate | **PASS**（含 authorize REFUSE） |
 | STATUS↔manifest sync | **PASS**（`scripts/check_five_products_status_sync.py`） |
 | G0 HEAD CI | **PASS**（`G0_CLOSEOUT.md` · `35829e96` · **61** 提交） |
-| 预发复审 | **事件驱动**（停 11-29 日历空转） |
-| 本地代码任务 | **无必须项**（瓶颈=真实预发；再开代码须显式解冻） |
-| 11-22 复审预填 | **READY**（无主机；Outcome 待复审日） |
+| 预发复审 | **事件驱动**（[`STAGING_REVIEW_EVENT_DRIVEN.md`](./STAGING_REVIEW_EVENT_DRIVEN.md)） |
 | Field ADR | **继续 Draft**（不实施） |
+| 本地代码任务 | **无必须项**（瓶颈=真实预发；再开代码须显式解冻） |
 | 四轨 `ready_to_authorize` | **false** |
 | 硬门 cutover / process_split / d3_production | **false** |
 
