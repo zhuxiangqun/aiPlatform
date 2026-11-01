@@ -1,0 +1,17 @@
+{
+  "kind": "evaluation_d3_local_acceptance",
+  "at": "20261101T154508Z",
+  "environment": "local",
+  "delivery_mode": "cohost",
+  "uat_steps": [
+    "clean_install",
+    "contract_sample",
+    "upgrade_n1",
+    "runtime_rollback",
+    "backup",
+    "a3_local_rehearsal",
+    "split_authorize_refused"
+  ],
+  "process_split_authorized": false,
+  "production_signed": false
+}

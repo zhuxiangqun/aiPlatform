@@ -4,7 +4,7 @@
 > **G0**：[`G0_CLOSEOUT.md`](./G0_CLOSEOUT.md)（通过 · P0-3′ · CI 锚点 **61** 提交 · `35829e96`）。  
 > **计划**：[`five-capability-independent-engineering-plan.md`](../../docs/architecture/plans/five-capability-independent-engineering-plan.md) **V2.2** · packaging base [`templates/module/PACKAGING_BASE.md`](../../templates/module/PACKAGING_BASE.md)。  
 > **冻结**：[`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md)（本地无必须代码；authorize 仍冻）。  
-> **EVAL_V1**：**E0–E6 PASS**（G2a locked + 评测中心 UI）— [`ops/EVAL_V1_E6_CLOSEOUT.md`](./ops/EVAL_V1_E6_CLOSEOUT.md)；`accuracy_claim=false`；κ=null；A3/authorize / G2b 仍冻 — [`eval-v1-charter.md`](../../docs/architecture/plans/eval-v1-charter.md)。  
+> **EVAL_V1**：**E0–E7 PASS**（G2a + 评测中心 + D2/D3 本地收口）— [`ops/EVAL_V1_E7_CLOSEOUT.md`](./ops/EVAL_V1_E7_CLOSEOUT.md)；`accuracy_claim=false`；κ=null；A3/authorize / G2b 仍冻 — [`eval-v1-charter.md`](../../docs/architecture/plans/eval-v1-charter.md)。  
 > **DIAGNOSIS_V1**：**C1–C3 PASS**（#518）— [`ops/DIAGNOSIS_V1_C3_CLOSEOUT.md`](./ops/DIAGNOSIS_V1_C3_CLOSEOUT.md)。下一决策：EVAL G2b（第二标注者）或 Diagnosis C4（A3/staging）。  
 > 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md) · 本地收口 [`ops/ENGINEERING_LOCAL_CLOSEOUT.md`](./ops/ENGINEERING_LOCAL_CLOSEOUT.md)。  
 > **运维决策**：**继续 defer** + **事件驱动复审**（[`ops/STAGING_REVIEW_EVENT_DRIVEN.md`](./ops/STAGING_REVIEW_EVENT_DRIVEN.md)）· `staging_ready=false`。  

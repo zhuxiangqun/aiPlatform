@@ -96,6 +96,12 @@ grep -q 'lock-v0' aiPlat-platform/apps/eval/api/store_api.py \
   || fail "missing EVAL_V1 E6 unfreeze"
 [[ -f reports/five-products/ops/EVAL_V1_E6_CLOSEOUT.md ]] \
   || fail "missing EVAL_V1 E6 closeout"
+[[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_E7.md ]] \
+  || fail "missing EVAL_V1 E7 unfreeze"
+[[ -f reports/five-products/ops/EVAL_V1_E7_CLOSEOUT.md ]] \
+  || fail "missing EVAL_V1 E7 closeout"
+[[ -f reports/five-products/ops/EVALUATION_D2_LOCAL_CLOSEOUT.md ]] \
+  || fail "missing evaluation D2 local closeout"
 [[ -f aiPlat-management/frontend/src/pages/Eval/EvalCenter.tsx ]] \
   || fail "missing EvalCenter (E6)"
 grep -q "EvalCenter" aiPlat-management/frontend/src/App.tsx \

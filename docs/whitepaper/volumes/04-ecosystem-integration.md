@@ -3,19 +3,19 @@ title: "aiPlat 生态与集成白皮书"
 volume_id: ecosystem-integration
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-01T15:32:38Z"
+generated_at: "2026-11-01T15:56:00Z"
 audience: "ISV、集成商、开源社区、渠道"
 core_question: "如何接入、贡献、协作？"
 priority: P2
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324"
-caps_sha256: "03ab7af6b1b667f7c9446ae160ec8ba0de183e897f402172bf0b459d03fc584d"
+caps_sha256: "c07d19ac3911c617a036b14a1718fb0688d1888021289fa11092b8d6940be14a"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=ecosystem-integration suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=03ab7af6b1b667f7c9446ae160ec8ba0de183e897f402172bf0b459d03fc584d scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=ecosystem-integration suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=c07d19ac3911c617a036b14a1718fb0688d1888021289fa11092b8d6940be14a scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 生态与集成白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 如何接入、贡献、协作？ |
 | 优先级 | P2 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-01T15:32:38Z` |
-| CAPABILITIES sha256 | `03ab7af6b1b6…` |
+| 生成时间 (UTC) | `2026-11-01T15:56:00Z` |
+| CAPABILITIES sha256 | `c07d19ac3911…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 **备注**：

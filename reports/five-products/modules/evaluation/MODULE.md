@@ -99,7 +99,12 @@ A3 process/DB split **forbidden** without ADR Accepted + `process_split_authoriz
 | Checklist / prep | `docs/a3/SPLIT_CHECKLIST.md` · `scripts/a3_prep_check.sh` |
 | Local rehearsal | `scripts/a3_local_rehearsal.sh`（#4→🟨；非 live） |
 
+## EVAL_V1 E7
+
+- Charter E7 **PASS** — [`ops/EVAL_V1_E7_CLOSEOUT.md`](../../ops/EVAL_V1_E7_CLOSEOUT.md)
+- D3 local UAT：`scripts/d3_local_acceptance.sh`（environment=local；不 authorize）
+
 ## Next
 
-- Live backup/restore + rollback-to-cohost drills → then authorize split
+- EVAL G2b（第二标注者 + κ）或 E8/A3 live drills → authorize split
 - Field/edge eval hosting not in scope
