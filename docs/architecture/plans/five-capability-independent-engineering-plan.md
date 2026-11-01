@@ -1,8 +1,9 @@
-# 五能力独立化工程方案（V2 · 模块自治 + 三类部署）
+# 五能力独立化工程方案（V2.1 · 模块自治 + 三类部署）
 
 > **文档类型**：工程规划 / Design Plan  
-> **状态**：工程基线 · 2026-10-29 · **G0 结论文档同步 2026-11-01**（P0-3′ 正式例外；D1c=cohost）  
-> **基线**：`main` @ `b46e286`（week-34）→ 工程推进至 `git rev-list --count b46e286..HEAD`（当前 **19** 提交）；CI 242 行、nightly unit 硬门  
+> **状态**：工程基线 · **V2.1 @ 2026-11-01**（G0 通过；五包 D1/D2 本地收口；打包共用面；预发仍 defer → 2026-11-08）  
+> **基线**：`main` @ `b46e286`（week-34）→ G0 锚点 **19** 提交（见 [`G0_CLOSEOUT.md`](../../../reports/five-products/G0_CLOSEOUT.md)）；其后继续工程推进；CI 242 行、nightly unit 硬门  
+> **V2.1 打包共用面**：`templates/module/PACKAGING_BASE.md` · `scripts/check_five_products_packaging_surface.sh` · `scripts/lib/aiplat_security_baseline.py`（硬门仍 false；不 authorize）  
 
 > **范围**：仅工程侧（架构、代码、测试、打包、文档、验证、模板化）；不含销售、定价、合同、SLA 运营、24×7  
 > **批准边界**：本文**不改变** ADR-09 / ADR-08 / Gate3 的已批范围。Pi 之外的进程/DB 拆分，逐产品另走 ADR。  
@@ -312,7 +313,7 @@
 
 每模块固定文档：README、install、upgrade、admin、API、security、troubleshooting、backup/restore、compatibility、CHANGELOG、UAT。
 
-`templates/module/` 含：charter、`module.yaml`、Dockerfile、Chart、CI、contract tests、docs 骨架、runbook、UAT。
+`templates/module/` 含：charter、`module.yaml`、Dockerfile、Chart、CI、contract tests、docs 骨架、runbook、UAT；**V2.1** 另含 `PACKAGING_BASE.md`、D1/D2 stub（`scripts/d1_lib.sh`、`d2_admin_check.sh`、`security/baseline.yaml`）。门禁：`bash scripts/check_five_products_packaging_surface.sh`。
 
 ---
 
@@ -387,4 +388,5 @@
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
+| 2026-11-01 | **V2.1** | G0 通过（P0-3′）；D1c=cohost；Pi D3 / FDE·Onto·Eval D2 / Central D2 Thin 本地收口；共享 packaging base + baseline checker；`staging_ready=false`、硬门 false；复审 2026-11-08 |
 | 2026-10-29 | V2 | 从“五产品 E1–E3”改为“五能力 A/D 级 + 三类部署”；对齐 week-34 基线、ADR-09 边界、E0–E5 命名 |

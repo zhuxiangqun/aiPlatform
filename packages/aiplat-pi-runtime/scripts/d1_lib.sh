@@ -6,6 +6,10 @@ d1_repo_pkg() {
   cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd
 }
 
+d1_repo_root() {
+  cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd
+}
+
 d1_aiplat_home() {
   if [[ -n "${AIPLAT_HOME:-}" ]]; then
     echo "$AIPLAT_HOME"
@@ -24,6 +28,10 @@ d1_pkg_version() {
   pkg="$(d1_repo_pkg)/package.json"
   python3 -c "import json; print(json.load(open('$pkg')).get('version','0.0.0'))" 2>/dev/null \
     || grep -m1 '"version"' "$pkg" | sed 's/.*: *"\([^"]*\)".*/\1/'
+}
+
+d1_require_python() {
+  command -v python3 >/dev/null 2>&1 || { echo "ERROR: python3 not found" >&2; return 2; }
 }
 
 d1_require_node() {

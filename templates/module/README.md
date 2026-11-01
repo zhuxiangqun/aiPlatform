@@ -1,11 +1,13 @@
-# templates/module/ (V2)
+# templates/module/ (V2.1)
 
 Per-capability packaging skeleton for
 [`five-capability-independent-engineering-plan.md`](../../docs/architecture/plans/five-capability-independent-engineering-plan.md).
 
 **Copy → fill diffs.** Second/third module = copy this tree + edit `module.yaml` / `MODULE.md`.
 
-## Required files (V2 §5)
+Packaging surface (D1/D2): [`PACKAGING_BASE.md`](./PACKAGING_BASE.md) · gate `bash scripts/check_five_products_packaging_surface.sh`.
+
+## Required files (V2 §5 + V2.1 packaging)
 
 | File | Purpose |
 |------|---------|
@@ -15,6 +17,9 @@ Per-capability packaging skeleton for
 | `contracts/` | Schema + sample validator |
 | `docs/` / `runbooks/` / `uat/` | Delivery docs |
 | `scripts/sbom-sign.stub.sh` | SBOM/sign placeholders |
+| `scripts/d1_lib.sh` | D1 Thin helpers stub |
+| `scripts/d2_admin_check.sh` | D2 security pack → shared baseline checker |
+| `security/baseline.yaml` | D2 file/snippet baseline stub |
 
 ## Levels
 

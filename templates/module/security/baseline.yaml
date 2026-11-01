@@ -1,0 +1,17 @@
+# Template D2 security baseline — copy and fill paths/snippets per capability.
+schema_version: aiplat.module.security.baseline.v0
+updated: "2026-11-01"
+checks:
+  - id: package_readme
+    description: Package README present
+    path: packages/REPLACE_ME/README.md
+    must_contain:
+      - "aiplat"
+  - id: d1_install_present
+    description: D1 install script present
+    path: packages/REPLACE_ME/scripts/d1_install.sh
+    must_contain:
+      - "d1_install"
+forbidden_without_adr:
+  - production_authorize_without_checklist_green
+  - process_split_without_adr

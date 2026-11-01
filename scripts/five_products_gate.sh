@@ -11,6 +11,9 @@ PY=python3
 echo "== STATUS↔manifest sync =="
 "$PY" scripts/check_five_products_status_sync.py
 
+echo "== Packaging surface (shared D1/D2 base) =="
+bash scripts/check_five_products_packaging_surface.sh
+
 echo "== A2 version =="
 bash packages/aiplat-central/scripts/a2_version_check.sh
 

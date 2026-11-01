@@ -2,6 +2,7 @@
 
 > **SSOT autonomy/delivery**：[`capabilities.manifest.yaml`](../../capabilities.manifest.yaml)（本表必须与之一致；禁止写高于 manifest 的 A/D）。  
 > **G0**：[`G0_CLOSEOUT.md`](./G0_CLOSEOUT.md)（通过 · P0-3′ · 19 提交 · CI 证据）。  
+> **计划**：[`five-capability-independent-engineering-plan.md`](../../docs/architecture/plans/five-capability-independent-engineering-plan.md) **V2.1** · packaging base [`templates/module/PACKAGING_BASE.md`](../../templates/module/PACKAGING_BASE.md)。  
 > 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md) · 本地收口 [`ops/ENGINEERING_LOCAL_CLOSEOUT.md`](./ops/ENGINEERING_LOCAL_CLOSEOUT.md)。  
 > **运维决策（2026-11-01）**：**运维路径 B — 正式 defer**；`staging_ready=false`（[`ops/STAGING_READY.md`](./ops/STAGING_READY.md)）。复审：**2026-11-08**。  
 > **工程环境**：**方案 B 本机 VM/Docker 全轨**（[`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md)）· `bash scripts/ops_option_b_all.sh`。  
@@ -57,6 +58,7 @@ bash scripts/five_products_gate.sh
 | Ontology D2 cohost pack | [`ops/ONTOLOGY_D2_LOCAL_CLOSEOUT.md`](./ops/ONTOLOGY_D2_LOCAL_CLOSEOUT.md) **PASS** |
 | Evaluation D2 cohost pack | [`ops/EVALUATION_D2_LOCAL_CLOSEOUT.md`](./ops/EVALUATION_D2_LOCAL_CLOSEOUT.md) **PASS** |
 | aiPlat Central D2 Thin | [`ops/AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md`](./ops/AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md) **PASS**（cutover REFUSE） |
+| Packaging base V2.1 | [`ops/PACKAGING_BASE_V21.md`](./ops/PACKAGING_BASE_V21.md) **PASS**（surface gate + shared baseline） |
 | Local staging 总册 | [`ops/LOCAL_STAGING.md`](./ops/LOCAL_STAGING.md) · 方案 B [`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md) |
 | Option B 最近全跑 | [`ops/OPTION_B_LAST_RUN.md`](./ops/OPTION_B_LAST_RUN.md) **PASS** |
 | STATUS↔manifest | `python3 scripts/check_five_products_status_sync.py` |

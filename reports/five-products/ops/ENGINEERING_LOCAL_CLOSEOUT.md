@@ -20,6 +20,7 @@
 | Ontology D2 cohost pack | **PASS**（`ONTOLOGY_D2_LOCAL_CLOSEOUT.md` · process_split 仍 false） |
 | Evaluation D2 cohost pack | **PASS**（`EVALUATION_D2_LOCAL_CLOSEOUT.md` · process_split 仍 false） |
 | aiPlat Central D2 Thin | **PASS**（`AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md` · cutover REFUSE） |
+| Shared packaging base (V2.1) | **PASS**（`check_five_products_packaging_surface.sh` · shared baseline checker） |
 | STATUS↔manifest sync | **PASS**（`scripts/check_five_products_status_sync.py`） |
 | 四轨 `ready_to_authorize` | **false** |
 | 硬门 cutover / process_split / d3_production | **false** |

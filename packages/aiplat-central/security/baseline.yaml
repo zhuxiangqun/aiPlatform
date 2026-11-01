@@ -292,6 +292,24 @@ checks:
     path: packages/aiplat-central/scripts/a2_version_check.sh
     must_contain:
       - "a2 version check"
+  - id: packaging_surface_gate
+    description: Shared five-products packaging surface gate
+    path: scripts/check_five_products_packaging_surface.sh
+    must_contain:
+      - "packaging surface"
+      - "d2_local_closeout.sh"
+  - id: shared_security_baseline_checker
+    description: Shared D2 security baseline checker
+    path: scripts/lib/aiplat_security_baseline.py
+    must_contain:
+      - "def check_baseline"
+      - "aiplat_security_baseline"
+  - id: packaging_base_template
+    description: templates/module packaging base doc
+    path: templates/module/PACKAGING_BASE.md
+    must_contain:
+      - "Packaging base"
+      - "never"
   - id: central_d2_thin_doc
     description: Central D2 Thin scope doc
     path: packages/aiplat-central/docs/D2_THIN.md
