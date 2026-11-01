@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiplat.local/schemas/evaluation/eval_store.schema.json",
+  "title": "EvalStoreV0",
+  "description": "EVAL_V1 E2 store envelope (charter §5.3). SQLite tables mirror these object shapes.",
+  "type": "object",
+  "required": ["schema_version", "entity"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "eval.store.v0" },
+    "entity": {
+      "type": "string",
+      "enum": [
+        "eval_set",
+        "eval_task",
+        "eval_run",
+        "eval_judgment",
+        "eval_label",
+        "eval_report",
+        "eval_judge",
+        "eval_gate"
+      ]
+    },
+    "eval_set": {
+      "type": "object",
+      "required": ["id", "name", "version", "split"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string" },
+        "split": { "type": "string" },
+        "meta": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "eval_task": {
+      "type": "object",
+      "required": ["id", "set_id"],
+      "properties": {
+        "id": { "type": "string" },
+        "set_id": { "type": "string" },
+        "input": { "type": "object" },
+        "expected": { "type": "object" },
+        "rubric": { "type": "object" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "hard_negative": { "type": "boolean" },
+        "source": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "eval_run": {
+      "type": "object",
+      "required": ["id", "task_id", "status", "versions"],
+      "properties": {
+        "id": { "type": "string" },
+        "task_id": { "type": "string" },
+        "target_kind": { "type": "string" },
+        "target_ref": { "type": "string" },
+        "model": { "type": "string" },
+        "params": { "type": "object" },
+        "trace": { "type": "object" },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "running", "passed", "failed", "skipped", "error"]
+        },
+        "versions": {
+          "type": "object",
+          "description": "dataset / judge / prompt / model / code_commit",
+          "properties": {
+            "dataset": { "type": "string" },
+            "judge": { "type": "string" },
+            "prompt": { "type": "string" },
+            "model": { "type": "string" },
+            "code_commit": { "type": "string" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

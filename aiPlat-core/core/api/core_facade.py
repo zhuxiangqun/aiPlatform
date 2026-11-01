@@ -6026,6 +6026,171 @@ async def run_code_review_gold_eval(
     )
 
 
+# ── EVAL_V1 E2 EvalStore ──────────────────────────────────
+
+
+def eval_store_health(*, tenant_id: str = "") -> Dict[str, Any]:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).health()
+
+
+def eval_store_list_sets(*, tenant_id: str = "", limit: int = 100) -> list:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).list_sets(limit=limit)
+
+
+def eval_store_get_set(set_id: str, *, tenant_id: str = "") -> Optional[Dict[str, Any]]:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).get_set(set_id)
+
+
+def eval_store_create_set(
+    *,
+    name: str,
+    version: str = "0",
+    split: str = "dev",
+    meta: Optional[Dict[str, Any]] = None,
+    set_id: Optional[str] = None,
+    tenant_id: str = "",
+) -> Dict[str, Any]:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).create_set(
+        name=name, version=version, split=split, meta=meta, set_id=set_id
+    )
+
+
+def eval_store_list_tasks(*, set_id: str = "", tenant_id: str = "", limit: int = 500) -> list:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).list_tasks(set_id=set_id, limit=limit)
+
+
+def eval_store_create_task(
+    *,
+    set_id: str,
+    input_data: Optional[Dict[str, Any]] = None,
+    expected: Optional[Dict[str, Any]] = None,
+    rubric: Optional[Dict[str, Any]] = None,
+    tags: Optional[list] = None,
+    hard_negative: bool = False,
+    source: str = "",
+    task_id: Optional[str] = None,
+    tenant_id: str = "",
+) -> Dict[str, Any]:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).create_task(
+        set_id=set_id,
+        input_data=input_data,
+        expected=expected,
+        rubric=rubric,
+        tags=tags,
+        hard_negative=hard_negative,
+        source=source,
+        task_id=task_id,
+    )
+
+
+def eval_store_import_code_review_gold(
+    *,
+    gold_dir: Optional[str] = None,
+    tenant_id: str = "",
+    set_name: str = "code-review-gold",
+    set_version: str = "v0-seed",
+) -> Dict[str, Any]:
+    from core.apps.eval.service.store import import_code_review_gold
+
+    return import_code_review_gold(
+        gold_dir=gold_dir,
+        tenant_id=tenant_id,
+        set_name=set_name,
+        set_version=set_version,
+    )
+
+
+def eval_bootstrap_e3_gold(
+    *,
+    tenant_id: str = "eval-v1",
+    gold_dir: Optional[str] = None,
+    annotator: str = "solo_reviewer",
+) -> Dict[str, Any]:
+    """EVAL_V1 E3: ≥15 runnable gold + solo review queue (no κ)."""
+    from core.apps.eval.service.gold_bootstrap import bootstrap_e3_gold
+
+    return bootstrap_e3_gold(
+        tenant_id=tenant_id, gold_dir=gold_dir, annotator=annotator
+    )
+
+
+def eval_e3_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    from core.apps.eval.service.gold_bootstrap import e3_status
+
+    return e3_status(tenant_id=tenant_id)
+
+
+def eval_run_e4_calibration(
+    *,
+    tenant_id: str = "eval-v1",
+    set_id: str = "",
+    k: int = 3,
+    limit: int = 500,
+) -> Dict[str, Any]:
+    """EVAL_V1 E4: deterministic judge v1 + k-repeat / ECE calibration report."""
+    from core.apps.eval.service.judge_v1 import run_e4_calibration
+
+    return run_e4_calibration(tenant_id=tenant_id, set_id=set_id, k=k, limit=limit)
+
+
+def eval_run_e5_gate(
+    *,
+    mode: str = "pr",
+    tenant_id: str = "eval-v1",
+    set_id: str = "",
+    baseline: str = "gold",
+    candidate: str = "local",
+    limit: Optional[int] = None,
+) -> Dict[str, Any]:
+    """EVAL_V1 E5: local engineering gate + failure taxonomy (not accuracy / G2a)."""
+    from core.apps.eval.service.gate_v1 import run_e5_gate
+
+    return run_e5_gate(
+        mode=mode,
+        tenant_id=tenant_id,
+        set_id=set_id,
+        baseline=baseline,
+        candidate=candidate,
+        limit=limit,
+    )
+
+
+def eval_list_gates(*, tenant_id: str = "eval-v1", limit: int = 50) -> list:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).list_gates(limit=limit)
+
+
+def eval_get_gate(gate_id: str, *, tenant_id: str = "eval-v1") -> Optional[Dict[str, Any]]:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).get_gate(gate_id)
+
+
+def eval_list_judges(*, tenant_id: str = "eval-v1", limit: int = 50) -> list:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).list_judges(limit=limit)
+
+
+def eval_get_report(report_id: str, *, tenant_id: str = "eval-v1") -> Optional[Dict[str, Any]]:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).get_report(report_id)
+
+
 def list_code_review_gold_profiles() -> Dict[str, Any]:
     """噪声档位 → autoreview 参数映射。"""
     from core.harness.evaluation.code_review_gold import list_profiles

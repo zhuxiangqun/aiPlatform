@@ -13,9 +13,17 @@ from core.apps.eval.agent_eval import (
     generate_agent_eval,
     inspect_agent_eval,
 )
+from core.apps.eval.service import (
+    EvalStore,
+    get_eval_store,
+    import_code_review_gold,
+)
 
 __all__ = [
     "generate_agent_eval",
     "inspect_agent_eval",
     "enqueue_listed_agent_eval",
+    "EvalStore",
+    "get_eval_store",
+    "import_code_review_gold",
 ]

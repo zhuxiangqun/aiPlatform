@@ -48,9 +48,12 @@ export default defineConfig({
         changeOrigin: true,
         timeout: 600000,
       },
+      // EVAL_V1 E1: shim FE legacy /api/core/kb-eval → platform canonical
       '/api/core/kb-eval': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8003',
         changeOrigin: true,
+        rewrite: (p) =>
+          p.replace(/^\/api\/core\/kb-eval/, '/api/platform/apps/eval/kb-eval'),
         timeout: 600000,
       },
       '/api/core/workflow': {

@@ -9,3 +9,4 @@ from .kb_eval import router as _c; router.include_router(_c)
 from .prompt_eval import router as _d; router.include_router(_d)
 from .arena_wiring import router as _e; router.include_router(_e)
 from .code_review_gold import router as _f; router.include_router(_f)
+from .store_api import router as _g; router.include_router(_g)  # EVAL_V1 E2

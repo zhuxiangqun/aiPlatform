@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiplat.local/schemas/evaluation/eval_gate.schema.json",
+  "title": "EvalGateV0",
+  "description": "EVAL_V1 E5 local engineering gate metrics (not accuracy / not G2a claim).",
+  "type": "object",
+  "required": ["schema_version", "mode", "judge_id", "accuracy_claim", "gate_claim"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "eval.gate.v0" },
+    "mode": { "type": "string", "enum": ["pr", "nightly", "release"] },
+    "judge_id": { "type": "string", "minLength": 1 },
+    "task_count": { "type": "integer" },
+    "pass_rate": { "type": ["number", "null"] },
+    "mean_score": { "type": ["number", "null"] },
+    "k_repeat_stdev_mean": { "type": "number" },
+    "regression_detection_rate": { "type": "number" },
+    "false_block_rate": { "type": "number" },
+    "failure_taxonomy": { "type": "object" },
+    "kappa": { "type": ["number", "null"] },
+    "accuracy_claim": { "type": "boolean", "const": false },
+    "gate_claim": { "type": "boolean", "const": false },
+    "decision": { "type": "string" },
+    "note": { "type": "string" }
+  },
+  "additionalProperties": true
+}

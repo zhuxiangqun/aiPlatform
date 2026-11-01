@@ -45,6 +45,43 @@ print("PASS: ops_live_status all ready_to_authorize=false")
 '
 
 [[ -f reports/five-products/ops/ENGINEERING_FREEZE.md ]] || fail "missing ENGINEERING_FREEZE.md"
+[[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_V1.md ]] || fail "missing EVAL_V1 unfreeze"
+[[ -f reports/five-products/ops/EVAL_V1_E1_INVENTORY.md ]] || fail "missing EVAL_V1 E1 inventory"
+grep -q 'prefix="/api/platform/apps/eval"' aiPlat-platform/api/rest/routes.py \
+  || fail "eval canonical mount /api/platform/apps/eval missing"
+grep -q 'EvalLegacyDeprecationMiddleware' aiPlat-platform/api/rest/routes.py \
+  || fail "eval legacy deprecation middleware not wired"
+[[ -f aiPlat-core/core/apps/eval/service/store.py ]] || fail "missing EVAL_V1 E2 EvalStore"
+[[ -f packages/aiplat-evaluation/contracts/schemas/eval_store.schema.json ]] \
+  || fail "missing eval_store.schema.json"
+grep -q 'class EvalStore' aiPlat-core/core/apps/eval/service/store.py \
+  || fail "EvalStore class missing"
+grep -q 'store_api' aiPlat-platform/apps/eval/api/router.py \
+  || fail "eval store_api not mounted on eval router"
+[[ -f reports/five-products/ops/EVAL_V1_E3_GOLD_SOURCES.md ]] \
+  || fail "missing EVAL_V1 E3 gold sources inventory"
+[[ -f aiPlat-core/core/apps/eval/service/gold_bootstrap.py ]] \
+  || fail "missing EVAL_V1 E3 gold_bootstrap"
+grep -q 'bootstrap_e3_gold' aiPlat-core/core/apps/eval/service/gold_bootstrap.py \
+  || fail "bootstrap_e3_gold missing"
+grep -q 'bootstrap-e3' aiPlat-platform/apps/eval/api/store_api.py \
+  || fail "bootstrap-e3 API not wired"
+[[ -f aiPlat-core/core/apps/eval/service/judge_v1.py ]] \
+  || fail "missing EVAL_V1 E4 judge_v1"
+grep -q 'run_e4_calibration' aiPlat-core/core/apps/eval/service/judge_v1.py \
+  || fail "run_e4_calibration missing"
+grep -q 'calibrate-e4' aiPlat-platform/apps/eval/api/store_api.py \
+  || fail "calibrate-e4 API not wired"
+[[ -f packages/aiplat-evaluation/contracts/schemas/eval_calibration.schema.json ]] \
+  || fail "missing eval_calibration.schema.json"
+[[ -f aiPlat-core/core/apps/eval/service/gate_v1.py ]] \
+  || fail "missing EVAL_V1 E5 gate_v1"
+grep -q 'run_e5_gate' aiPlat-core/core/apps/eval/service/gate_v1.py \
+  || fail "run_e5_gate missing"
+grep -q 'gate-e5' aiPlat-platform/apps/eval/api/store_api.py \
+  || fail "gate-e5 API not wired"
+[[ -f packages/aiplat-evaluation/contracts/schemas/eval_gate.schema.json ]] \
+  || fail "missing eval_gate.schema.json"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-08.md ]] || fail "missing STAGING_REVIEW 2026-11-08"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-15.md ]] || fail "missing STAGING_REVIEW 2026-11-15"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-22.md ]] || fail "missing STAGING_REVIEW 2026-11-22"
