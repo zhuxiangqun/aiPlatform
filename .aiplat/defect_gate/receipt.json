@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T10:00:00+08:00",
+  "reviewed_at": "2026-11-01T10:01:46+08:00",
   "base_ref": "origin/main",
-  "merge_base": "1a12807d1bebb8057f3373bd6453edd6b9994d4c",
-  "diff_sha256": "93cfbdd378cc6a78b40605d549ffe8b9ead1c63bb12e7b25c8770e0deb492844",
-  "head_sha": "967c3d67e1a0ca9a02a6c4a30c1c34273a8e788d",
+  "merge_base": "cc796a64eb3d85284565146e6819d066041f8104",
+  "diff_sha256": "74d810c06966062ee9732ee80d16222610c594a136c405ed2aa352d3723f3fe3",
+  "head_sha": "9dfe583f5e087714ab67eda2f91f2919c3976d2f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Unfreeze D3/E2E only; authorize remains refused."
+  "note": "Docs/gates-only polish after D3/E2E unfreeze: UAT.md \u00d75, template stub, packaging/security require_files. No authorize path. Local lock only."
 }
