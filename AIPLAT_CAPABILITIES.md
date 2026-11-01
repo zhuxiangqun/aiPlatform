@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2472
+total_capabilities: 2474
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -1250,6 +1250,8 @@ scan_hash: 8f9548ec24f4
 | StateMachine | harness/ontology_engine/state_machine.py:113 | ✅ | YAML驱动，3触发器×7联动 | 已合入 |
 | StateHistory | harness/ontology_engine/state_history.py | ✅ | SQLite 状态变更审计表 | 已合入 |
 | GraphIndex | harness/ontology_engine/graph_index.py:68 | ✅ | 有向图 + HyperEdge (SAG风格) | 已合入 |
+| business_event_bridge | `core/harness/ontology_engine/business_event_bridge.py` | ✅ | 业务动作 → GraphIndex 增量更新（EventBus 审计） | 已合入 |
+| run_context_builder | `core/harness/ontology_engine/run_context_builder.py` | ✅ | 问题实体扫描 → GraphIndex 邻居 → RunContext | 已合入 |
 | GraphTraversal | harness/ontology_engine/graph_traversal.py:88 | ✅ | BFS遍历 + traverse_multi + ranked_terminals | 已合入 |
 | GraphInference | harness/ontology_engine/graph_inference.py:47 | ✅ | YAML推理规则 → 传递闭包推断边 | 已合入 |
 | KnowledgeSynthesizer | harness/ontology_engine/knowledge_synthesis.py:37 | ✅ | 推理链/事实卡/综合结论 → Wiki页面 | 已合入 |
@@ -3372,7 +3374,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|
 | Harness 执行引擎 | 341 | 1 | 342 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 384 | 9 | 393 |
+| 知识引擎（本体） | 386 | 9 | 395 |
 | RAG 检索 | 57 | 0 | 57 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 175 | 0 | 175 |
@@ -3415,7 +3417,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2462** | **10** | **2472** |
+| **总计** | **2464** | **10** | **2474** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
