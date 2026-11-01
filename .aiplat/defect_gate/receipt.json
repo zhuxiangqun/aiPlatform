@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T11:15:05+08:00",
+  "reviewed_at": "2026-11-01T11:32:50+08:00",
   "base_ref": "origin/main",
-  "merge_base": "7709efc2d4ad63997a82ddc862e75c72ab6402dc",
-  "diff_sha256": "4de1bc80e4c137c3de7d719ef4bc69d9f903a031ebdb1855319f944a71f2b129",
-  "head_sha": "dea34edc2952f944b98d779e37f894d6a06a84d6",
+  "merge_base": "66a6e07a8f4998bcec8eb0fc2e791354971685f7",
+  "diff_sha256": "fd198c1bb5f68b5675f9caed19d9db5dc36a3cef298dfb07dfbaf4d19aa65fa2",
+  "head_sha": "087c0afed4860a648083f9f10ad8a5998d987727",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs-only continue_defer: staging_ready=false, next review 2026-11-22. No authorize. Local lock only."
+  "note": "Docs/evidence only: G0 CI anchor \u2192 66a6e07a (52). No authorize. Local lock only."
 }
