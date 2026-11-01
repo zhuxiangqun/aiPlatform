@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T09:13:00+08:00",
+  "reviewed_at": "2026-11-01T09:16:43+08:00",
   "base_ref": "origin/main",
-  "merge_base": "6c4798184f626b778009b24ae9b4be4bd6b9ec7f",
-  "diff_sha256": "a347ead4a872649c5b57a65262f4c700763633a5d401c12f3b2188d841f1dd13",
-  "head_sha": "d15e1b4ee9b8f724dc93c92e7a68eff6c125c0f8",
+  "merge_base": "2139a3323ea0b735e90f1a89041028b27c1053c6",
+  "diff_sha256": "3945c4af51aeb1244b732f4d05ad0a9b8e406e459ca86dfc7984c7f27aced785",
+  "head_sha": "9269a29288c8cbebdf616996e16a56fc03dff11d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Ontology+Evaluation D2 cohost packs; process_split stays false; delivery remains D1/D1c."
+  "note": "Central D2 Thin closeout; cutover stays false; authorize REFUSE path verified."
 }
