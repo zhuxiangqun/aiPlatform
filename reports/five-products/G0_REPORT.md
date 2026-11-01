@@ -3,7 +3,7 @@
 > HEAD at refresh: see `git log -1 --oneline`（原基线 `b46e286`；本轮数字 refresh **2026-11-01**）  
 > **SSOT**：[`five-capability-independent-engineering-plan.md`](../../docs/architecture/plans/five-capability-independent-engineering-plan.md) **V2** · [`capabilities.manifest.yaml`](../../capabilities.manifest.yaml)  
 > 逃逸：[`P0_ESCAPE_SCAN.md`](./P0_ESCAPE_SCAN.md)  
-> **诚实性**：`STATUS.md` 必须跟 manifest（aiplat **A0**/D2 thin；FDE **A1**/Field D1；ontology/eval **D1 cohost**）；**Accepted（有条件）≠ 生产授权**（硬门全 false）。
+> **诚实性**：`STATUS.md` 必须跟 manifest（aiplat **A0**/D2 thin；FDE **A1**/Field D1；ontology/eval **D1c/cohost**）；门禁 `check_five_products_status_sync.py`；**Accepted（有条件）≠ 生产授权**（硬门全 false）。
 
 ---
 

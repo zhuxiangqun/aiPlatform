@@ -41,13 +41,20 @@ bash scripts/ops_live_status.sh --json
 
 ## 主轨（defer 期间）
 
-不依赖预发：**Pi D1**（安装器 / healthz / Gate3 回滚面）及其他本地可验工程。  
+不依赖预发：**Pi D1/D2**（安装器 / healthz / Gate3 回滚面 / D2 admin pack）+ 本地可验工程。  
 PG/HA live → sign → authorize 等 `staging_ready=true`。
 
-本地回归（2026-11-01）：[`PI_D1_LOCAL_REGRESSION.md`](./PI_D1_LOCAL_REGRESSION.md) **PASS**
+本地回归（2026-11-01）：
+- Pi D1：[`PI_D1_LOCAL_REGRESSION.md`](./PI_D1_LOCAL_REGRESSION.md) **PASS**
+- Pi D2：[`PI_D2_ADMIN_LOCAL.md`](./PI_D2_ADMIN_LOCAL.md) **PASS**
+- FDE Field：[`FDE_FIELD_LOCAL_REGRESSION.md`](./FDE_FIELD_LOCAL_REGRESSION.md) **PASS**
+- STATUS↔manifest：`python3 scripts/check_five_products_status_sync.py`
 
 ```bash
 bash packages/aiplat-pi-runtime/scripts/d1_local_regression.sh
+bash packages/aiplat-pi-runtime/scripts/d2_admin_check.sh
+bash packages/aiplat-fde/scripts/d1_local_regression.sh
+python3 scripts/check_five_products_status_sync.py
 # Ontology/Eval A3 local_signed（不 authorize）：
 bash scripts/ops_local_rehearse_tracks.sh
 ```

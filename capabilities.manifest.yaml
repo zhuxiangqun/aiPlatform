@@ -3,10 +3,12 @@
 # STATUS.md must mirror this file (do not invent higher autonomy/delivery here).
 version: 1
 updated: "2026-11-01"
-head_baseline: c06f3732
+head_baseline: f4c77d8a
 naming:
   autonomy: [A0, A1, A2, A3]
   delivery: [D1, D2, D3]
+  # D1c = colloquial alias when delivery_mode=cohost (contract/healthz ok; process still shared)
+  delivery_alias_cohost: D1c
   # cohost = delivery D1 but process shares central host (not independent deploy)
   delivery_mode: [standalone, cohost, field, edge]
   evidence_do_not_reuse: [E0, E1, E2, E3, E4, E5]
@@ -49,7 +51,7 @@ capabilities:
     healthz: GET /api/core/fde/healthz
     contracts_test: reports/five-products/modules/fde/contracts/validate_sample.py
     notes:
-      - "Field D1 path Accepted; local install/meta/backup drill required for evidence (see ops/evidence)"
+      - "Field D1 path Accepted; local install/meta/backup drill PASS (ops/FDE_FIELD_LOCAL_REGRESSION.md)"
 
   - id: evaluation
     label: Evaluation Service
@@ -67,7 +69,7 @@ capabilities:
     healthz: GET /api/core/eval/healthz
     contracts_test: reports/five-products/modules/evaluation/contracts/validate_sample.py
     notes:
-      - "D1 cohost = healthz+protocol on central host; not independent process deploy"
+      - "D1c/cohost = healthz+protocol on central host; not independent process deploy"
 
   - id: ontology
     label: Ontology Service
@@ -85,7 +87,7 @@ capabilities:
     healthz: GET /api/core/ontology/healthz
     contracts_test: reports/five-products/modules/ontology/contracts/validate_sample.py
     notes:
-      - "D1 cohost = healthz+API on central host; not independent process deploy"
+      - "D1c/cohost = healthz+API on central host; not independent process deploy"
 
   - id: aiplat
     label: aiPlat Platform

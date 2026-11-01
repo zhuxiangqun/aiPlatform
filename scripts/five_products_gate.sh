@@ -8,6 +8,9 @@ cd "$ROOT"
 PY=python3
 [[ -x "$ROOT/.venv/bin/python" ]] && PY="$ROOT/.venv/bin/python"
 
+echo "== STATUS↔manifest sync =="
+"$PY" scripts/check_five_products_status_sync.py
+
 echo "== A2 version =="
 bash packages/aiplat-central/scripts/a2_version_check.sh
 
