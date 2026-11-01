@@ -1,21 +1,31 @@
-"""Read-only evidence adapters (aiPlat / Pi / FDE / Evaluation) + fixture pack."""
+"""Read-only evidence adapters (aiPlat / Pi / FDE / Evaluation / Ontology) + fixture pack."""
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+_LOG = logging.getLogger(__name__)
 
 _FIXTURE_ROOT_CANDIDATES = (
     Path(__file__).resolve().parents[5] / "packages" / "aiplat-diagnosis" / "fixtures",
     Path(__file__).resolve().parents[4] / "packages" / "aiplat-diagnosis" / "fixtures",
 )
 
+_ADAPTER_MODES = {
+    "aiplat": "read_only",
+    "pi": "read_only",
+    "fde": "read_only",
+    "evaluation": "read_only",
+    "ontology": "read_only",
+}
+
 
 def fixture_root() -> Path:
     for p in _FIXTURE_ROOT_CANDIDATES:
         if p.is_dir():
             return p
-    # workspace root relative to cwd
     cwd = Path.cwd() / "packages" / "aiplat-diagnosis" / "fixtures"
     return cwd
 
@@ -30,7 +40,6 @@ def resolve_fixture_id(subject_ref: str) -> Optional[str]:
             break
     if s.startswith("dx."):
         return s
-    # allow bare seed id without prefix
     root = fixture_root()
     if (root / s).is_dir():
         return s
@@ -46,6 +55,85 @@ def load_fixture(case_id: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     return evidence, expected
 
 
+def read_evaluation_refs(
+    *,
+    subject_ref: str,
+    baseline_ref: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """C2: deeper Evaluation adapter — CoreFacade read-only snapshot (no writes)."""
+    captured = "1970-01-01T00:00:00+00:00"
+    meta: Dict[str, Any] = {
+        "adapter": "evaluation",
+        "baseline_ref": baseline_ref,
+        "path": "core_facade.eval_g2a_status",
+    }
+    try:
+        from core.api.core_facade import eval_g2a_status
+
+        st = eval_g2a_status(tenant_id="eval-v1") or {}
+        meta.update(
+            {
+                "locked": bool(st.get("locked") or st.get("v0_locked")),
+                "accuracy_claim": bool(st.get("accuracy_claim")),
+                "gate_claim": bool(st.get("gate_claim")),
+                "status_keys": sorted(list(st.keys()))[:12],
+            }
+        )
+        freshness = "fresh" if st else "unknown"
+    except Exception as e:  # noqa: BLE001 — adapter must not fail collect
+        _LOG.warning("diagnosis evaluation adapter failed: %s", e)
+        meta["error"] = type(e).__name__
+        freshness = "unknown"
+    return [
+        {
+            "id": "e-eval-live",
+            "source": "evaluation",
+            "kind": "eval_report",
+            "ref": f"evaluation://g2a/{subject_ref}",
+            "captured_at": captured,
+            "freshness": freshness,
+            "meta": meta,
+        }
+    ]
+
+
+def read_ontology_refs(*, subject_ref: str) -> List[Dict[str, Any]]:
+    """C2: Ontology adapter — healthz/domain count only (read_only)."""
+    captured = "1970-01-01T00:00:00+00:00"
+    meta: Dict[str, Any] = {
+        "adapter": "ontology",
+        "path": "core_facade.ontology_healthz_payload",
+        "mode": "read_only",
+    }
+    try:
+        from core.api.core_facade import ontology_healthz_payload
+
+        hz = ontology_healthz_payload(mode="read_only") or {}
+        meta.update(
+            {
+                "status": hz.get("status"),
+                "domains": hz.get("domains"),
+                "version": hz.get("version"),
+            }
+        )
+        freshness = "fresh" if hz else "unknown"
+    except Exception as e:  # noqa: BLE001
+        _LOG.warning("diagnosis ontology adapter failed: %s", e)
+        meta["error"] = type(e).__name__
+        freshness = "unknown"
+    return [
+        {
+            "id": "e-ontology-health",
+            "source": "ontology",
+            "kind": "ontology_health",
+            "ref": f"ontology://healthz/{subject_ref}",
+            "captured_at": captured,
+            "freshness": freshness,
+            "meta": meta,
+        }
+    ]
+
+
 def collect_from_fixture(case_id: str) -> Dict[str, Any]:
     evidence_doc, expected = load_fixture(case_id)
     refs = list(evidence_doc.get("evidence") or [])
@@ -55,12 +143,7 @@ def collect_from_fixture(case_id: str) -> Dict[str, Any]:
         "evidence": refs,
         "payload": evidence_doc.get("payload") or {},
         "expected": expected,
-        "adapters": {
-            "aiplat": "read_only",
-            "pi": "read_only",
-            "fde": "read_only",
-            "evaluation": "read_only",
-        },
+        "adapters": dict(_ADAPTER_MODES),
     }
 
 
@@ -70,7 +153,7 @@ def collect_live_stubs(
     subject_ref: str,
     baseline_ref: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Read-only stub refs when no fixture pack match — never invents root cause."""
+    """Read-only refs when no fixture pack match — never invents root cause."""
     captured = "1970-01-01T00:00:00+00:00"
     refs: List[Dict[str, Any]] = [
         {
@@ -100,35 +183,26 @@ def collect_live_stubs(
             "freshness": "unknown",
             "meta": {"adapter": "fde"},
         },
-        {
-            "id": "e-eval",
-            "source": "evaluation",
-            "kind": "eval_report" if scenario == "version_regression" else "other",
-            "ref": f"evaluation://subject/{subject_ref}",
-            "captured_at": captured,
-            "freshness": "unknown",
-            "meta": {
-                "adapter": "evaluation",
-                "baseline_ref": baseline_ref,
-            },
-        },
     ]
+    # C2: prefer live Evaluation / Ontology snapshots over static stubs
+    refs.extend(
+        read_evaluation_refs(subject_ref=subject_ref, baseline_ref=baseline_ref)
+    )
+    refs.extend(read_ontology_refs(subject_ref=subject_ref))
     return {
         "source": "live_stub",
         "fixture_id": None,
         "evidence": refs,
-        "payload": {"note": "adapters returned refs only; insufficient for confirmed root cause"},
+        "payload": {
+            "note": "adapters returned refs only; insufficient for confirmed root cause",
+            "scenario": scenario,
+        },
         "expected": {
             "gold_root_cause": "insufficient_evidence",
             "expect_unknown": True,
             "expect_stale": False,
         },
-        "adapters": {
-            "aiplat": "read_only",
-            "pi": "read_only",
-            "fde": "read_only",
-            "evaluation": "read_only",
-        },
+        "adapters": dict(_ADAPTER_MODES),
     }
 
 

@@ -1,5 +1,5 @@
 /**
- * DIAGNOSIS_V1 /diagnosis — C1 D1c MVP list/detail/report.
+ * DIAGNOSIS_V1 /diagnosis — C2 D1c (confidence / reason_codes / counter_evidence).
  * Honesty: engineering diagnosis only; never accuracy / auto-repair / authorize.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -24,13 +24,24 @@ type DxCase = {
 
 type ReportBundle = {
   status?: string;
+  top_confidence?: number;
+  uncertainty?: { unknown?: string[]; stale?: string[]; reason_codes?: string[] };
   report?: {
     summary?: string;
-    uncertainty?: { unknown?: string[]; stale?: string[]; notes?: string };
+    schema_version?: string;
+    top_confidence?: number;
+    uncertainty?: { unknown?: string[]; stale?: string[]; reason_codes?: string[]; notes?: string };
     accuracy_claim?: boolean;
   };
   findings?: Array<{ id: string; summary: string; severity: string; confidence: number }>;
-  hypotheses?: Array<{ id: string; root_cause: string; confidence: number; rationale?: string }>;
+  hypotheses?: Array<{
+    id: string;
+    root_cause: string;
+    confidence: number;
+    rationale?: string;
+    support_evidence_ids?: string[];
+    counter_evidence_ids?: string[];
+  }>;
   recommendations?: Array<{ id: string; action: string; auto_execute?: boolean; target_api?: string }>;
 };
 
@@ -287,17 +298,26 @@ const DiagnosisDetail: React.FC = () => {
     }
   };
 
-  const uncertainty = report?.report?.uncertainty || {};
+  const uncertainty = report?.report?.uncertainty || report?.uncertainty || {};
   const unknown = uncertainty.unknown || [];
   const stale = uncertainty.stale || [];
+  const reasonCodes = uncertainty.reason_codes || [...unknown, ...stale];
   const top = report?.hypotheses?.[0];
+  const topConf = report?.report?.top_confidence ?? report?.top_confidence ?? top?.confidence;
 
   const banner = useMemo(() => {
     if (unknown.length || report?.status === 'blocked_unknown') {
       return (
         <div className="rounded border border-amber-700 bg-amber-950/40 px-4 py-3 text-sm text-amber-100 flex gap-2">
           <ShieldAlert className="w-4 h-4 mt-0.5" />
-          证据不足，结论 unknown — 不展示「根因已确认」
+          <div>
+            <div>证据不足，结论 unknown — 不展示「根因已确认」</div>
+            {reasonCodes.length ? (
+              <div className="mt-1 font-mono text-xs opacity-90">
+                reason_codes: {reasonCodes.join(', ')}
+              </div>
+            ) : null}
+          </div>
         </div>
       );
     }
@@ -305,12 +325,19 @@ const DiagnosisDetail: React.FC = () => {
       return (
         <div className="rounded border border-orange-700 bg-orange-950/40 px-4 py-3 text-sm text-orange-100 flex gap-2">
           <ShieldAlert className="w-4 h-4 mt-0.5" />
-          证据过期 (stale) — 假设可展示但低置信
+          <div>
+            <div>证据过期 (stale) — 假设可展示但低置信</div>
+            {reasonCodes.length ? (
+              <div className="mt-1 font-mono text-xs opacity-90">
+                reason_codes: {reasonCodes.join(', ')}
+              </div>
+            ) : null}
+          </div>
         </div>
       );
     }
     return null;
-  }, [unknown, stale, report?.status]);
+  }, [unknown, stale, reasonCodes, report?.status]);
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6 text-gray-200">
@@ -372,14 +399,27 @@ const DiagnosisDetail: React.FC = () => {
         <h2 className="text-lg font-medium">Hypotheses (Top-K)</h2>
         {top && !unknown.length && report?.status !== 'blocked_unknown' ? (
           <div className="text-sm text-gray-300">
-            Top-1 候选：<code>{top.root_cause}</code>（置信 {top.confidence}）— 非「已确认」徽章
+            Top-1 候选：<code>{top.root_cause}</code>（置信 {topConf ?? top.confidence}）— 非「已确认」徽章
           </div>
+        ) : null}
+        {reasonCodes.length && report?.status === 'reported' ? (
+          <div className="text-xs font-mono text-gray-500">reason_codes: {reasonCodes.join(', ') || '—'}</div>
         ) : null}
         <ul className="space-y-2">
           {(report?.hypotheses || []).map((h, i) => (
             <li key={h.id} className="rounded border border-gray-700 px-3 py-2 text-sm">
-              #{i + 1} <code>{h.root_cause}</code> · {h.confidence}
+              #{i + 1} <code>{h.root_cause}</code> · confidence={h.confidence}
               {h.rationale ? <div className="text-gray-400 mt-1">{h.rationale}</div> : null}
+              {(h.support_evidence_ids || []).length ? (
+                <div className="text-xs text-gray-500 mt-1 font-mono">
+                  support: {(h.support_evidence_ids || []).join(', ')}
+                </div>
+              ) : null}
+              {(h.counter_evidence_ids || []).length ? (
+                <div className="text-xs text-orange-400/90 mt-0.5 font-mono">
+                  counter: {(h.counter_evidence_ids || []).join(', ')}
+                </div>
+              ) : null}
             </li>
           ))}
           {!report?.hypotheses?.length ? <li className="text-gray-500 text-sm">无假设</li> : null}
@@ -417,7 +457,8 @@ const DiagnosisDetail: React.FC = () => {
       </section>
 
       <footer className="text-xs text-gray-500 border-t border-gray-800 pt-3">
-        accuracy_claim={String(report?.report?.accuracy_claim ?? false)} · 工程诊断 ≠ authorize
+        {report?.report?.schema_version || 'diagnosis.report.v1'} · accuracy_claim=
+        {String(report?.report?.accuracy_claim ?? false)} · 工程诊断 ≠ authorize
       </footer>
     </div>
   );
