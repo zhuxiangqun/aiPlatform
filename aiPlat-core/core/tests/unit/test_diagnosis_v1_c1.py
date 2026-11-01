@@ -88,11 +88,16 @@ def test_invalid_scenario(dx_db):
 def test_fixture_metrics_rates():
     from core.apps.diagnosis.service.metrics import fixture_metrics
 
-    m = fixture_metrics(limit=10)
+    m = fixture_metrics(limit=10, blind=True)
     assert m["accuracy_claim"] is False
+    assert m["blind"] is True
     assert m["n"] == 10
     assert m["top1_rate"] >= 0.7
-    assert m["top3_rate"] >= 0.7
+    assert m["top3_rate"] >= 0.85
+    assert m["evidence_complete_rate"] >= 0.9
+    assert m["bare_conclusion_count"] == 0
+    assert m["unknown_correct_rate"] is None or m["unknown_correct_rate"] >= 0.9
+    assert m["stale_correct_rate"] is None or m["stale_correct_rate"] >= 0.9
 
 
 def test_recommendations_force_auto_execute_false(dx_db):

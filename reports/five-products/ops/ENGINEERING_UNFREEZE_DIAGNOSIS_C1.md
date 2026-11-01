@@ -1,7 +1,7 @@
 # Engineering unfreeze — DIAGNOSIS_V1 C1（D1c MVP）
 
 - **decided_at**: `2026-11-01`
-- **status**: **Active — C1 only**
+- **status**: **Closed — C1 PASS**（[`DIAGNOSIS_V1_C1_CLOSEOUT.md`](./DIAGNOSIS_V1_C1_CLOSEOUT.md) · #513）
 - **C0**: [`DIAGNOSIS_V1`](./ENGINEERING_UNFREEZE_DIAGNOSIS_V1.md) · PR #510 / `5c01721f`
 - **charter**: [`diagnosis-v1-charter.md`](../../../docs/architecture/plans/diagnosis-v1-charter.md)
 - **freeze**: [`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md)
@@ -114,4 +114,8 @@ bash scripts/ops_engineering_freeze_check.sh
 
 ## Outcome
 
-- `_pending_`（C1 出口填写）
+- **PASS** · `20261101T131134Z` · PR #513 / merge `5ba444ac`
+- Blind fixture metrics（n=10）：Top-1=1.00 · Top-3=1.00 · evidence_complete=1.00 · bare=0 · unknown/stale=1.00
+- `accuracy_claim=false` · 无 `remediate` · `process_split_authorized=false`
+- Closeout：[`DIAGNOSIS_V1_C1_CLOSEOUT.md`](./DIAGNOSIS_V1_C1_CLOSEOUT.md)
+- 下一决策（需新 unfreeze）：DIAGNOSIS C2 **或** EVAL G2b

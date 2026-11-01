@@ -89,9 +89,9 @@ capabilities:
     healthz: GET /api/platform/apps/diagnosis/healthz
     contracts_test: reports/five-products/modules/diagnosis/contracts/validate_sample.py
     notes:
-      - "C1 D1c MVP: Case/Evidence/Hypothesis/Report; no auto-remediation"
+      - "C1 D1c MVP PASS (ops/DIAGNOSIS_V1_C1_CLOSEOUT.md / #513): Case/Evidence/Hypothesis/Report; no auto-remediation"
       - "D1c/cohost = healthz+API on central host; not independent process deploy"
-      - "Do not claim diagnosis accuracy until ≥10 real evidence fixtures + seed eval"
+      - "accuracy_claim=false; fixture blind metrics are engineering-only, not accuracy certification"
 
   - id: ontology
     label: Ontology Service
