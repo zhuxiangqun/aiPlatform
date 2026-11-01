@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2457
+total_capabilities: 2460
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2478,6 +2478,9 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| adjudicate_label | `core/apps/eval/service/g2a.py` | ✅ | 自动同步 | 已合入 |
+| preannotate_review_queue | `core/apps/eval/service/g2a.py` | ✅ | 自动同步 | 已合入 |
+| list_review_queue | `core/apps/eval/service/g2a.py` | ✅ | 自动同步 | 已合入 |
 | eval_lock_v0 | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | eval_run_g2a_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | g2a_status | `core/apps/eval/service/g2a.py` | ✅ | 自动同步 | 已合入 |
@@ -3367,7 +3370,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 60 | 0 | 60 |
+| 评估系统 | 63 | 0 | 63 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3399,7 +3402,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2447** | **10** | **2457** |
+| **总计** | **2450** | **10** | **2460** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

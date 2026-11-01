@@ -5,6 +5,7 @@
 > **计划**：[`five-capability-independent-engineering-plan.md`](../../docs/architecture/plans/five-capability-independent-engineering-plan.md) **V2.2** · packaging base [`templates/module/PACKAGING_BASE.md`](../../templates/module/PACKAGING_BASE.md)。  
 > **冻结**：[`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md)（本地无必须代码；authorize 仍冻）。  
 > **EVAL_V1**：**E0–E5 完成 · G2a 已锁 v0**（≥30 solo adjudicated → `lock-v0` → local `gate_claim`；`accuracy_claim=false`；κ=null）；**`/eval` UI preview 已解冻** — [`ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md`](./ops/ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md)；A3/authorize / accuracy 仍冻 — [`eval-v1-charter.md`](../../docs/architecture/plans/eval-v1-charter.md) · [`ops/ENGINEERING_UNFREEZE_EVAL_V1.md`](./ops/ENGINEERING_UNFREEZE_EVAL_V1.md)。  
+> **DIAGNOSIS_V1**：**C0 评审通过（附补丁）→ C1 附条件进入**（串行：EVAL 在 G2a 暂停新功能；Diagnosis C1 独占；不自动修复；seed=synthetic 在 ≥10 真实 fixture 前禁准确率宣称）— [`diagnosis-v1-charter.md`](../../docs/architecture/plans/diagnosis-v1-charter.md) · [`ops/ENGINEERING_UNFREEZE_DIAGNOSIS_V1.md`](./ops/ENGINEERING_UNFREEZE_DIAGNOSIS_V1.md)。  
 > 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md) · 本地收口 [`ops/ENGINEERING_LOCAL_CLOSEOUT.md`](./ops/ENGINEERING_LOCAL_CLOSEOUT.md)。  
 > **运维决策**：**继续 defer** + **事件驱动复审**（[`ops/STAGING_REVIEW_EVENT_DRIVEN.md`](./ops/STAGING_REVIEW_EVENT_DRIVEN.md)）· `staging_ready=false`。  
 > **工程环境**：**方案 B 本机 VM/Docker 全轨**（[`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md)）· `bash scripts/ops_option_b_all.sh`。  
