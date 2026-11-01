@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T08:05:00+08:00",
+  "reviewed_at": "2026-11-01T08:23:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "fbe75f02afe832d11a8c550210f86976d8fbc8fc",
-  "diff_sha256": "4472de2695e86be205a1043776c0ad03a7717bb5dc76adfaa4c230f1d375b7a9",
-  "head_sha": "500a5ef70e76bb55027c50be68826de2579efa32",
+  "merge_base": "c06f37324b38ef513c2c7e40ae4c98612c226975",
+  "diff_sha256": "adbcfb11eff79d4f7062a699104e0e18e34ba88d4d51c614e323724bca983e5b",
+  "head_sha": "ad5e53ba761c8a098fe48c32f30e56c12701be3b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Four-track local_signed closeout; production authorize/hard gates untouched."
+  "note": "STATUS↔manifest alignment + FDE INSTALL_META local evidence; hard gates/staging defer untouched."
 }
