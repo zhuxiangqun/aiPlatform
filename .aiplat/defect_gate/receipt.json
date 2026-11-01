@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T20:17:58+08:00",
+  "reviewed_at": "2026-11-01T20:30:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "559e25328d0ed911dfb3340c229b073969fd3ad7",
-  "diff_sha256": "242fc8c550cb7c302214e6430d8475f4cf3aa7eaee0196f4f5f029cab4d84408",
-  "head_sha": "d8c74de85c86302bf00bb2ba7712300bd42e4b10",
+  "diff_sha256": "a2b7c455c54d869ef295279dabb1c064e212691853e851a1346e2a22de7706ae",
+  "head_sha": "a88768734e325d7b8b54b277c90a11702e196b76",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "DIAGNOSIS_V1 C1 MVP + registry placement fix; no remediate."
+  "note": "CI unblock: §9 allowlist diagnosis + contracts #76/#68 + auth appendix. C1 honesty locks accuracy_claim=false/auto_execute=false. Local lock only; CI unlock needs non-author Approve."
 }
