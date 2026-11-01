@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T09:03:30+08:00",
+  "reviewed_at": "2026-11-01T09:13:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "7c09008727f920bcbb0beb597f399ce7e45b62be",
-  "diff_sha256": "8aa833ca5623239a2a6f293e5b468c28173393c7f7f1fe7bcff5a3ca888c4239",
-  "head_sha": "477f738dc260063fdede9c3102e51d6678e827a1",
+  "merge_base": "6c4798184f626b778009b24ae9b4be4bd6b9ec7f",
+  "diff_sha256": "a347ead4a872649c5b57a65262f4c700763633a5d401c12f3b2188d841f1dd13",
+  "head_sha": "d15e1b4ee9b8f724dc93c92e7a68eff6c125c0f8",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "FDE Field D2 ops pack; current_delivery stays D1; no authorize/staging flips."
+  "note": "Ontology+Evaluation D2 cohost packs; process_split stays false; delivery remains D1/D1c."
 }
