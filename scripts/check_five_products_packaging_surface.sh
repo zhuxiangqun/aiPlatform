@@ -37,6 +37,7 @@ require_files aiplat-central \
   scripts/d2_compat_check.sh \
   scripts/d2_security_check.sh \
   scripts/d2_local_closeout.sh \
+  scripts/d3_local_acceptance.sh \
   security/baseline.yaml \
   docs/D2_THIN.md \
   docs/PERF_BASELINE.md \
@@ -48,6 +49,7 @@ require_files aiplat-pi-runtime \
   scripts/d1_local_regression.sh \
   scripts/d2_admin_check.sh \
   scripts/d3_local_closeout.sh \
+  scripts/d3_local_acceptance.sh \
   security/baseline.yaml \
   docs/PERF_BASELINE.md
 
@@ -57,6 +59,7 @@ require_files aiplat-fde \
   scripts/d1_local_regression.sh \
   scripts/d2_admin_check.sh \
   scripts/d2_local_closeout.sh \
+  scripts/d3_local_acceptance.sh \
   security/baseline.yaml \
   docs/PERF_BASELINE.md
 
@@ -65,6 +68,7 @@ require_files aiplat-ontology \
   scripts/d1_backup.sh \
   scripts/d2_admin_check.sh \
   scripts/d2_local_closeout.sh \
+  scripts/d3_local_acceptance.sh \
   security/baseline.yaml \
   docs/PERF_BASELINE.md
 
@@ -73,12 +77,16 @@ require_files aiplat-evaluation \
   scripts/d1_backup.sh \
   scripts/d2_admin_check.sh \
   scripts/d2_local_closeout.sh \
+  scripts/d3_local_acceptance.sh \
   security/baseline.yaml \
   docs/PERF_BASELINE.md
 
 # Shared baseline checker + template stubs
 [[ -f scripts/lib/aiplat_security_baseline.py ]] || fail "missing shared security baseline checker"
 [[ -f scripts/check_five_products_perf_baseline.sh ]] || fail "missing perf baseline gate"
+[[ -f scripts/ops_d3_local_acceptance_all.sh ]] || fail "missing D3 acceptance aggregator"
+[[ -f scripts/ops_five_products_e2e_local.sh ]] || fail "missing cross-capability E2E"
+[[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_D3_E2E.md ]] || fail "missing D3/E2E unfreeze record"
 [[ -f templates/module/PACKAGING_BASE.md ]] || fail "missing templates/module/PACKAGING_BASE.md"
 [[ -f templates/module/docs/PERF_BASELINE.md ]] || fail "missing template PERF_BASELINE.md"
 [[ -f templates/module/security/baseline.yaml ]] || fail "missing template security baseline"

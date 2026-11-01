@@ -125,7 +125,17 @@ bash scripts/test_live_evidence_authorize_gate.sh
 echo "== Ops live sign gate regression (temp dirs; package scaffold stays unsigned) =="
 bash scripts/test_ops_live_sign.sh
 
+echo "== D3 local acceptance (unfrozen 2026-11-01; Pi covered by d3_local_closeout above) =="
+bash packages/aiplat-central/scripts/d3_local_acceptance.sh
+bash packages/aiplat-fde/scripts/d3_local_acceptance.sh
+bash packages/aiplat-ontology/scripts/d3_local_acceptance.sh
+bash packages/aiplat-evaluation/scripts/d3_local_acceptance.sh
+
+echo "== Cross-capability E2E local (unfrozen; never authorize) =="
+bash scripts/ops_five_products_e2e_local.sh
+
 echo "PASS: five_products_gate"
 echo "NOTE: Field · PG/HA · Ontology A3 · Evaluation A3 · Pi D3 Accepted(conditional)."
 echo "NOTE: cutover/process_split/d3_production unauthorized until checklists all ✅."
-echo "See reports/five-products/STATUS.md · OPS_LIVE_RUNBOOK.md"
+echo "NOTE: D3 local acceptance + cross E2E unfrozen; authorize still frozen."
+echo "See reports/five-products/STATUS.md · OPS_LIVE_RUNBOOK.md · ENGINEERING_UNFREEZE_D3_E2E.md"

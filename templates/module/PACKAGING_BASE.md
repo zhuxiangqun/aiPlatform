@@ -22,11 +22,14 @@ Shared D1/D2 file surface for capability packages. Copy stubs from this tree; do
 | `scripts/d2_local_closeout.sh` | local evidence; **never** flips authorize hard gates |
 | `docs/PERF_BASELINE.md` | local wall-clock budgets（**不是**生产 SLA） |
 | `scripts/sbom-sign.stub.sh` | SBOM/sign 命令打印桩（不执行 syft/cosign） |
+| `scripts/d3_local_acceptance.sh` | D3 本地 UAT dry-run（解冻后必选；不 authorize） |
 
 Central extras: `d2_compat_check.sh` · `d2_security_check.sh` · `docs/D2_THIN.md`.
 
 Perf gate: `bash scripts/check_five_products_perf_baseline.sh`  
-Freeze gate: `bash scripts/ops_engineering_freeze_check.sh`
+D3 acceptance: `bash scripts/ops_d3_local_acceptance_all.sh`  
+Cross E2E: `bash scripts/ops_five_products_e2e_local.sh`  
+Freeze gate: `bash scripts/ops_engineering_freeze_check.sh`（authorize 仍拒绝）
 
 ## Hard rules
 

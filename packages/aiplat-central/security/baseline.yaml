@@ -340,6 +340,24 @@ checks:
     must_contain:
       - "d2_soc_deeper_check"
       - "不打开"
+  - id: engineering_unfreeze_d3_e2e
+    description: Explicit D3/E2E unfreeze record keeps authorize frozen
+    path: reports/five-products/ops/ENGINEERING_UNFREEZE_D3_E2E.md
+    must_contain:
+      - "解冻"
+      - "仍冻结"
+  - id: ops_d3_local_acceptance_all
+    description: Aggregator for five-pack D3 local acceptance
+    path: scripts/ops_d3_local_acceptance_all.sh
+    must_contain:
+      - "Never authorize"
+      - "d3_local_acceptance"
+  - id: ops_five_products_e2e_local
+    description: Cross-capability local E2E never authorizes
+    path: scripts/ops_five_products_e2e_local.sh
+    must_contain:
+      - "slice_e2e"
+      - "Never authorize"
   - id: shared_security_baseline_checker
     description: Shared D2 security baseline checker
     path: scripts/lib/aiplat_security_baseline.py

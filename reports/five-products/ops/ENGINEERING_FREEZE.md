@@ -9,7 +9,15 @@
 
 本地工程增量（安装面、D2 pack、compat/security、perf baseline、packaging surface）已闭合。  
 再改须有明确缺陷、**已列 Still open**、或复审驱动；禁止用本地证据推动 authorize。  
-**未**解冻：D3 本地验收 harness（除 Pi 已有）/ 跨能力 E2E / 计划 V2.2（需显式决策）。
+
+### 显式解冻（2026-11-01）
+
+见 [`ENGINEERING_UNFREEZE_D3_E2E.md`](./ENGINEERING_UNFREEZE_D3_E2E.md)：
+
+- ✅ **解冻**：D3 本地验收 harness · 跨能力 E2E（`environment=local`）  
+- ❌ **不解冻**：staging_ready / production_signed / 任何 authorize 成功  
+
+计划同步：工程方案 **V2.2**。
 
 ## Verify
 
