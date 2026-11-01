@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T08:35:00+08:00",
+  "reviewed_at": "2026-11-01T08:53:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "5961f4de71d429f2eb812deb47daa6e8927d852c",
-  "diff_sha256": "e0ef4dca07d69f1189620b5e735f7a1fea3ce864ce1aecd8374106de9819f172",
-  "head_sha": "a103d58b9200bda068314d65694d05085470ef60",
+  "merge_base": "17f21d67dc1d8f9c1a6ec27df305320e235dbe0d",
+  "diff_sha256": "813e1eb84450b2b715048b94ccac8b616bfd7f185b3cc3d225c8c08876e3eb37",
+  "head_sha": "7558100787f2d221ba5ded2f8696c456659481b6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Option B local VM/Docker exclusive engineering env; all tracks local_signed; hard gates/staging_ready false."
+  "note": "G0 closeout docs only: P0-3 in plan, D1c wording, CI evidence links; no business code."
 }
