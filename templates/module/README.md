@@ -20,6 +20,7 @@ Packaging surface (D1/D2): [`PACKAGING_BASE.md`](./PACKAGING_BASE.md) · gate `b
 | `scripts/d1_lib.sh` | D1 Thin helpers stub |
 | `scripts/d2_admin_check.sh` | D2 security pack → shared baseline checker |
 | `security/baseline.yaml` | D2 file/snippet baseline stub |
+| `docs/PERF_BASELINE.md` | D2 local wall-clock budgets（非生产 SLA） |
 
 ## Levels
 

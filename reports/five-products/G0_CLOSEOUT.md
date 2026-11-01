@@ -71,4 +71,5 @@ gh run list --branch main --limit 10
 1. ✅ HEAD **CI + Contracts Guard** 均 **success**（已写入上表）  
 2. ✅ Pi D3 本地收尾 → FDE Field D2 → Eval/Onto D2 → aiPlat D2 thin  
 3. ✅ **Plan V2.1 + shared packaging base**（`PACKAGING_BASE.md` · `check_five_products_packaging_surface.sh`）  
-4. **2026-11-08** 预发复审（方案 A/C）；否则续 defer + 方案 B  
+4. ✅ **D2 local perf baseline**（五包 `PERF_BASELINE.md` · `check_five_products_perf_baseline.sh`；非生产 SLA）  
+5. **2026-11-08** 预发复审（方案 A/C）；否则续 defer + 方案 B  

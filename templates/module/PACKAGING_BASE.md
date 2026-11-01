@@ -11,7 +11,7 @@ Shared D1/D2 file surface for capability packages. Copy stubs from this tree; do
 | `scripts/d1_upgrade.sh` | distinct version slot + `.previous_current` |
 | `scripts/d1_rollback.sh` | `--version` / `--backup` / `--runtime` |
 | `scripts/d1_smoke.sh` | contract / healthz smoke |
-| `scripts/d1_backup.sh` | optional but preferred for Field/Edge/Central |
+| `scripts/d1_backup.sh` | required for all five packages (Thin tarball) |
 
 ## Required D2 pack
 
@@ -20,8 +20,11 @@ Shared D1/D2 file surface for capability packages. Copy stubs from this tree; do
 | `security/baseline.yaml` | file-path + snippet checks |
 | `scripts/d2_admin_check.sh` | runs shared `scripts/lib/aiplat_security_baseline.py` |
 | `scripts/d2_local_closeout.sh` | local evidence; **never** flips authorize hard gates |
+| `docs/PERF_BASELINE.md` | local wall-clock budgets（**不是**生产 SLA） |
 
 Central extras: `d2_compat_check.sh` · `d2_security_check.sh` · `docs/D2_THIN.md`.
+
+Perf gate: `bash scripts/check_five_products_perf_baseline.sh`
 
 ## Hard rules
 

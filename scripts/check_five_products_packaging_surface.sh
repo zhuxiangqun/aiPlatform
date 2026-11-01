@@ -38,6 +38,7 @@ require_files aiplat-central \
   scripts/d2_local_closeout.sh \
   security/baseline.yaml \
   docs/D2_THIN.md \
+  docs/PERF_BASELINE.md \
   compat/matrix.yaml
 
 require_files aiplat-pi-runtime \
@@ -46,7 +47,8 @@ require_files aiplat-pi-runtime \
   scripts/d1_local_regression.sh \
   scripts/d2_admin_check.sh \
   scripts/d3_local_closeout.sh \
-  security/baseline.yaml
+  security/baseline.yaml \
+  docs/PERF_BASELINE.md
 
 require_files aiplat-fde \
   "${D1_COMMON[@]}" \
@@ -54,23 +56,30 @@ require_files aiplat-fde \
   scripts/d1_local_regression.sh \
   scripts/d2_admin_check.sh \
   scripts/d2_local_closeout.sh \
-  security/baseline.yaml
+  security/baseline.yaml \
+  docs/PERF_BASELINE.md
 
 require_files aiplat-ontology \
   "${D1_COMMON[@]}" \
+  scripts/d1_backup.sh \
   scripts/d2_admin_check.sh \
   scripts/d2_local_closeout.sh \
-  security/baseline.yaml
+  security/baseline.yaml \
+  docs/PERF_BASELINE.md
 
 require_files aiplat-evaluation \
   "${D1_COMMON[@]}" \
+  scripts/d1_backup.sh \
   scripts/d2_admin_check.sh \
   scripts/d2_local_closeout.sh \
-  security/baseline.yaml
+  security/baseline.yaml \
+  docs/PERF_BASELINE.md
 
 # Shared baseline checker + template stubs
 [[ -f scripts/lib/aiplat_security_baseline.py ]] || fail "missing shared security baseline checker"
+[[ -f scripts/check_five_products_perf_baseline.sh ]] || fail "missing perf baseline gate"
 [[ -f templates/module/PACKAGING_BASE.md ]] || fail "missing templates/module/PACKAGING_BASE.md"
+[[ -f templates/module/docs/PERF_BASELINE.md ]] || fail "missing template PERF_BASELINE.md"
 [[ -f templates/module/security/baseline.yaml ]] || fail "missing template security baseline"
 [[ -f templates/module/scripts/d2_admin_check.sh ]] || fail "missing template d2_admin_check"
 

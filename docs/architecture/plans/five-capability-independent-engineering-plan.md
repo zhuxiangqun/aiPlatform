@@ -388,5 +388,5 @@
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
-| 2026-11-01 | **V2.1** | G0 通过（P0-3′）；D1c=cohost；Pi D3 / FDE·Onto·Eval D2 / Central D2 Thin 本地收口；共享 packaging base + baseline checker；`staging_ready=false`、硬门 false；复审 2026-11-08 |
+| 2026-11-01 | **V2.1** | G0 通过（P0-3′）；D1c=cohost；Pi D3 / FDE·Onto·Eval D2 / Central D2 Thin 本地收口；共享 packaging base + baseline checker；五包 `PERF_BASELINE.md` + `check_five_products_perf_baseline.sh`（非生产 SLA）；`staging_ready=false`、硬门 false；复审 2026-11-08 |
 | 2026-10-29 | V2 | 从“五产品 E1–E3”改为“五能力 A/D 级 + 三类部署”；对齐 week-34 基线、ADR-09 边界、E0–E5 命名 |

@@ -14,6 +14,9 @@ echo "== STATUS↔manifest sync =="
 echo "== Packaging surface (shared D1/D2 base) =="
 bash scripts/check_five_products_packaging_surface.sh
 
+echo "== D2 local perf baseline (contracts; not production SLA) =="
+bash scripts/check_five_products_perf_baseline.sh
+
 echo "== A2 version =="
 bash packages/aiplat-central/scripts/a2_version_check.sh
 

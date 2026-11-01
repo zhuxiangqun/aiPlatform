@@ -131,6 +131,6 @@ Aggregates A2 + compat + security + sibling D2 packs + install/N-1 + PG/HA local
 
 ## Next
 
-- D2++: deeper SOC/admin pack（可选）
-- **PG/HA 切流**勾齐 checklist + production_signed live 后再 authorize
+- **PG/HA 切流**勾齐 checklist + production_signed live 后再 authorize（预发复审 2026-11-08）
 - Field compose 长驻另批
+- D2++ deeper SOC/admin（可选；本地 perf baseline 已齐）
