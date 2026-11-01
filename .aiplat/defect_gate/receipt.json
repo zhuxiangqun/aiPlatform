@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T01:06:34+08:00",
+  "reviewed_at": "2026-11-02T01:30:35+08:00",
   "base_ref": "origin/main",
-  "merge_base": "1a720df034c0ff75b2db560c8dd19e023160a5b5",
-  "diff_sha256": "28cbe9208a47570a241cba01e038b288e38c51807c8417601b166e0f20dd5d4a",
-  "head_sha": "23eb764f888d5653748251c91ac2506f708e35f2",
+  "merge_base": "cb8920ead2772d0f193ddf5eea6236a2a4d006f3",
+  "diff_sha256": "1de382bcb089c310e027f34c41898fd4d9bf23eaf357251d5c3707162586e13d",
+  "head_sha": "37d1cd5cb7fea83de44a91f0a682ad0b8566e7b4",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "docs-only: C3.5 honesty rates snapshot; no code paths."
+  "note": "docs-only A3 local plan/unfreeze + FREEZE/STATUS; no process_split flip; no product code."
 }
