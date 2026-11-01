@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T09:51:30+08:00",
+  "reviewed_at": "2026-11-01T10:00:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "cda60fa8c06da0a2fb3662efeb73ae26ac94f1d8",
-  "diff_sha256": "14cf8d1051e7ba449223b89407856910e56211ead29ee3d08d294d0c627b736a",
-  "head_sha": "78a8bd333ec0cbb9e497bebec4a59250b20d5693",
+  "merge_base": "1a12807d1bebb8057f3373bd6453edd6b9994d4c",
+  "diff_sha256": "93cfbdd378cc6a78b40605d549ffe8b9ead1c63bb12e7b25c8770e0deb492844",
+  "head_sha": "967c3d67e1a0ca9a02a6c4a30c1c34273a8e788d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Freeze-lane P1 + refuse-proof defect fix; hard gates unchanged."
+  "note": "Unfreeze D3/E2E only; authorize remains refused."
 }
