@@ -1,8 +1,9 @@
 # 五能力独立化工程方案（V2 · 模块自治 + 三类部署）
 
 > **文档类型**：工程规划 / Design Plan  
-> **状态**：草案 · 2026-10-29 · 待 P0 只读复核  
-> **基线**：`main` @ `b46e286`（week-34：CI 242 行、nightly unit 硬门）  
+> **状态**：工程基线 · 2026-10-29 · **G0 结论文档同步 2026-11-01**（P0-3′ 正式例外；D1c=cohost）  
+> **基线**：`main` @ `b46e286`（week-34）→ 工程推进至 `git rev-list --count b46e286..HEAD`（当前 **19** 提交）；CI 242 行、nightly unit 硬门  
+
 > **范围**：仅工程侧（架构、代码、测试、打包、文档、验证、模板化）；不含销售、定价、合同、SLA 运营、24×7  
 > **批准边界**：本文**不改变** ADR-09 / ADR-08 / Gate3 的已批范围。Pi 之外的进程/DB 拆分，逐产品另走 ADR。  
 > **关联**：  
@@ -91,9 +92,9 @@
 
 ### 2.2 P0 必须复核（不得当既成事实）
 
-- 只读 HOME 下 `pytest core/tests` collect 0 error，`core/tests/unit` 绿。
-- 21 条逃逸是否全清。
-- CI 242 行 job / nightly unit 硬门是否真绿。
+- **P0-3′（正式例外，2026-11-01）**：不以「字面 chmod-555 / 只读 HOME」为硬条件；判据改为 **假 HOME 可写 + hermetic `AIPLAT_HOME`** 下 `pytest core/tests` collect 0 error，`core/tests/unit` 绿（与 conftest 同路径）。字面只读 HOME 下 git 红 = 已知例外，**非**逃逸。证据见 [`G0_REPORT.md`](../../../reports/five-products/G0_REPORT.md)。
+- Tier A 逃逸是否为 0（`paths.py` SSOT fallback 除外）。
+- CI 242 行 job / nightly unit 硬门是否真绿（**defect-gate receipt ≠ CI**；须有完整 CI run 证据）。
 
 ### 2.3 主要耦合点
 
@@ -277,7 +278,7 @@
 | aiPlat PG/HA/多租户 | ❌ 需 ADR | 控制面产品化 |
 | 五个进程全拆 | ❌ 逐产品 ADR | ADR-09 只批 Pi Thin |
 
-**未批前只到 A2 / D1c（契约/schema 独立，进程共部署）。**
+**未批前只到 A2 / D1c**：此处 **D1c = `delivery_mode: cohost`**（契约/healthz 独立，进程仍共宿中心；≠ 独立部署）。旧「D0」叙事作废；勿与「旧 D1c 天花板」混读。见 `capabilities.manifest.yaml` `delivery_alias_cohost: D1c`。
 
 ---
 
@@ -285,14 +286,14 @@
 
 ### 9.1 G0 通过条件
 
-1. 只读 HOME 下 `pytest core/tests` collect 0 error，`core/tests/unit` 绿。
-2. PR CI 242 行 job 绿；nightly unit 硬门绿。
-3. 生产代码中 `~/.aiplat` / `expanduser` 逃逸扫描为 0。
+1. **P0-3′**：假 HOME 可写 + hermetic `AIPLAT_HOME` 下 `pytest core/tests` collect 0 error，`core/tests/unit` 绿。字面只读 HOME **不是**硬门（正式例外；见 G0 报告）。
+2. PR CI 242 行 job 绿；nightly unit 硬门绿（须有可引用的 Actions run；receipt 不能替代）。
+3. 生产代码中 Tier A `~/.aiplat` / `expanduser` 逃逸扫描为 0。
 4. 干净环境可复现构建 + SBOM + 签名。
 5. 契约测试脚手架可跑（至少 1 个样例）。
 6. 每模块 Chart/manifest 骨架存在。
 7. flake 隔离策略落地（owner + 过期）。
-8. G0 报告一页，含命令与输出。
+8. G0 报告一页，含命令与输出；若有正式例外须在报告与本计划同步声明。
 
 ### 9.2 测试
 

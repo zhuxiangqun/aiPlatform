@@ -13,7 +13,7 @@
 |---------|----------|
 | 五能力：Pi / FDE / 本体 / **评测** / aiPlat | ✅ `capabilities.manifest.yaml` + `modules/*/MODULE.md` |
 | 3 类部署：中心 / 现场 / 边缘 | ✅ manifest `deploy_units` |
-| A1–A3 + D1–D3 | ✅ 旧 D0/D1c 作废；`product.manifest.yaml` → deprecated |
+| A1–A3 + D1–D3 | ✅ 旧 **D0** 作废；**D1c 保留为 cohost 别名**（契约/healthz 独立、进程共宿）；`product.manifest.yaml` → deprecated |
 | `templates/module/` | ✅ 已落盘；`templates/product/` 标 DEPRECATED |
 | G0 §9.1 逃逸扫描 **= 0** | Tier A **0** ✅ · Tier B soft **0** ✅（`paths.py` SSOT fallback 除外） |
 | G0 只读 HOME unit 绿 | **正式例外 P0-3′**：字面 chmod-555 HOME 仍有 git 红（非逃逸）；判据改为假 HOME 可写 + hermetic `AIPLAT_HOME` = 与 P0-2 同绿 |
@@ -69,8 +69,9 @@
 - [x] P0-14/15 ADR 草案 + 本报告  
 
 **G0 工程结论（2026-11-01）**：**通过（骨架 + Tier A=0 + P0-3′ 判据）** — 模板/manifest/charter/Chart 与逃逸清扫已落地；collect/unit 数字已按本轮重跑刷新。  
+**结论文档**：[`G0_CLOSEOUT.md`](./G0_CLOSEOUT.md)（19 提交计数、P0-3′、D1c 语义、CI 证据）。  
 **非结论**：不表示五能力生产就绪；PG/HA 切流、A3 进程拆分、Pi D3 生产宣称仍受硬门约束（全 false）；`staging_ready=false`。  
-**P0-3′ 例外声明**：不以「字面只读 HOME 全绿」为硬条件；逃逸门仍看 Tier A=0 + hermetic `AIPLAT_HOME`。  
+**P0-3′ 例外声明**：不以「字面只读 HOME 全绿」为硬条件；逃逸门仍看 Tier A=0 + hermetic `AIPLAT_HOME`；**已同步进主计划 §2.2 / §9.1**。  
 历史注记：早期「有条件通过」曾因 Tier A 未清；现 Tier A=0，该条件已解除。
 
 ---
