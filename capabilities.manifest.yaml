@@ -71,6 +71,7 @@ capabilities:
     contracts_test: reports/five-products/modules/evaluation/contracts/validate_sample.py
     notes:
       - "D1c/cohost = healthz+protocol on central host; not independent process deploy"
+      - "D2 cohost ops/security pack local PASS (ops/EVALUATION_D2_LOCAL_CLOSEOUT.md); current_delivery remains D1"
 
   - id: ontology
     label: Ontology Service
@@ -89,6 +90,7 @@ capabilities:
     contracts_test: reports/five-products/modules/ontology/contracts/validate_sample.py
     notes:
       - "D1c/cohost = healthz+API on central host; not independent process deploy"
+      - "D2 cohost ops/security pack local PASS (ops/ONTOLOGY_D2_LOCAL_CLOSEOUT.md); current_delivery remains D1"
 
   - id: aiplat
     label: aiPlat Platform

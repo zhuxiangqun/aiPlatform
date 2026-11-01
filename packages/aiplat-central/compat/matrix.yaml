@@ -19,7 +19,7 @@ units:
     product_id: ontology
     min_version: "0.1.0"
     smoke: packages/aiplat-ontology/scripts/d1_smoke.sh
-    notes: "Co-hosted on Central; no A3 split"
+    notes: "D1c/cohost + D2 ops pack; process_split unauthorized"
   - id: evaluation
     deploy_unit: central
     package: packages/aiplat-evaluation
@@ -28,7 +28,7 @@ units:
     product_id: evaluation
     min_version: "0.1.0"
     smoke: packages/aiplat-evaluation/scripts/d1_smoke.sh
-    notes: "Co-hosted on Central; no A3 split"
+    notes: "D1c/cohost + D2 ops pack; process_split unauthorized"
   - id: pi-runtime
     deploy_unit: edge
     package: packages/aiplat-pi-runtime

@@ -42,4 +42,6 @@ cat >"$PREFIX/INSTALL_META.json" <<EOF
 {"capability_id":"fde","product_id":"fde","deploy_unit":"field","version":"$VER","prefix":"$PREFIX","installed_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","thin":true,"field_d1_adr":"accepted","production_field":true,"adr":"reports/five-products/ADR-FDE-FIELD-DEPLOY.md","signoff":"POST /api/platform/apps/fde/acceptance/signoff"}
 EOF
 echo "OK installed FDE Field D1 → $PREFIX/current (production_field=true)"
-[[ "$SMOKE" -eq 1 ]] && bash "$SCRIPT_DIR/d1_smoke.sh"
+if [[ "$SMOKE" -eq 1 ]]; then
+  bash "$SCRIPT_DIR/d1_smoke.sh"
+fi

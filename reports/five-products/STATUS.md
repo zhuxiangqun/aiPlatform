@@ -12,8 +12,8 @@
 |------------|----------|----------|------|---------|---------|-------------|
 | **aiplat** | **A0** | **D2** | standalone (thin) | `aiplat-central` + platform | `/api/core/healthz` | PG/HA Accepted（有条件）；`cutover=false` |
 | **pi** | **A3** (Thin) | **D1** (+ D2 admin / D3 prep) | edge | `aiplat-pi-runtime` **0.1.0** | `/healthz` | ADR-08 · [D3 Accepted（有条件）](./ADR-PI-D3.md)；`d3_production=false` |
-| **ontology** | **A2** | **D1** (D1c) | **cohost** | `aiplat-ontology` **0.1.0** | `/ontology/healthz` | [A3 Accepted（有条件）](./ADR-ONTOLOGY-A3.md)；`process_split=false` |
-| **evaluation** | **A2** | **D1** (D1c) | **cohost** | `aiplat-evaluation` **0.1.0** | `/eval/healthz` | [A3 Accepted（有条件）](./ADR-EVALUATION-A3.md)；`process_split=false` |
+| **ontology** | **A2** | **D1** (D1c + D2 pack) | **cohost** | `aiplat-ontology` **0.1.0** | `/ontology/healthz` | [A3 Accepted（有条件）](./ADR-ONTOLOGY-A3.md)；`process_split=false` |
+| **evaluation** | **A2** | **D1** (D1c + D2 pack) | **cohost** | `aiplat-evaluation` **0.1.0** | `/eval/healthz` | [A3 Accepted（有条件）](./ADR-EVALUATION-A3.md)；`process_split=false` |
 | **fde** | **A1** | **D1** Field (+ D2 ops) | field | `aiplat-fde` **0.1.0** | `/fde/healthz` | [Field Accepted](./ADR-FDE-FIELD-DEPLOY.md)；D2 pack 见下 |
 
 **Delivery 语义**：**D1c** = `delivery_mode: cohost`（契约/healthz 独立，**进程仍共宿中心**；≠ 独立部署）。独立拆分仍受 A3 `process_split_authorized=false` 约束。
@@ -54,6 +54,8 @@ bash scripts/five_products_gate.sh
 | 四轨 local_signed | [`ops/LOCAL_TRACKS_RUNLOG.md`](./ops/LOCAL_TRACKS_RUNLOG.md) |
 | FDE Field install/meta | [`ops/FDE_FIELD_LOCAL_REGRESSION.md`](./ops/FDE_FIELD_LOCAL_REGRESSION.md) **PASS** |
 | FDE Field D2 ops pack | [`ops/FDE_FIELD_D2_LOCAL_CLOSEOUT.md`](./ops/FDE_FIELD_D2_LOCAL_CLOSEOUT.md) **PASS** |
+| Ontology D2 cohost pack | [`ops/ONTOLOGY_D2_LOCAL_CLOSEOUT.md`](./ops/ONTOLOGY_D2_LOCAL_CLOSEOUT.md) **PASS** |
+| Evaluation D2 cohost pack | [`ops/EVALUATION_D2_LOCAL_CLOSEOUT.md`](./ops/EVALUATION_D2_LOCAL_CLOSEOUT.md) **PASS** |
 | Local staging 总册 | [`ops/LOCAL_STAGING.md`](./ops/LOCAL_STAGING.md) · 方案 B [`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md) |
 | Option B 最近全跑 | [`ops/OPTION_B_LAST_RUN.md`](./ops/OPTION_B_LAST_RUN.md) **PASS** |
 | STATUS↔manifest | `python3 scripts/check_five_products_status_sync.py` |

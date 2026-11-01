@@ -1,0 +1,40 @@
+# Ontology — D2 cohost security/ops baseline
+schema_version: aiplat.ontology.security.baseline.v0
+updated: "2026-11-01"
+checks:
+  - id: ontology_healthz_central
+    path: packages/aiplat-ontology/contracts/schemas/healthz.schema.json
+    must_contain:
+      - '"const": "ontology"'
+      - '"const": "central"'
+  - id: ontology_api_schema
+    path: packages/aiplat-ontology/contracts/schemas/ontology_api.schema.json
+    must_contain:
+      - "ontology.api.v0"
+  - id: ontology_api_doc
+    path: reports/five-products/modules/ontology/ONTOLOGY_API.md
+    must_contain:
+      - "ontology.api.v0"
+      - "CoreFacade"
+  - id: ontology_d2_doc
+    path: packages/aiplat-ontology/docs/D2_COHOST.md
+    must_contain:
+      - "D1c"
+      - "process_split_authorized=false"
+  - id: ontology_security_doc
+    path: packages/aiplat-ontology/docs/SECURITY.md
+    must_contain:
+      - "cohost"
+      - "process_split"
+  - id: ontology_perf_doc
+    path: packages/aiplat-ontology/docs/PERF_BASELINE.md
+    must_contain:
+      - "validate_sample"
+  - id: ontology_chart_split_false
+    path: packages/aiplat-ontology/chart/Chart.yaml
+    must_contain:
+      - 'aiplat.a3_process_split_authorized: "false"'
+  - id: ontology_install_a3_false
+    path: packages/aiplat-ontology/scripts/d1_install.sh
+    must_contain:
+      - '"a3_split":false'

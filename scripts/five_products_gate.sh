@@ -43,8 +43,14 @@ echo "== Unit adapters =="
 echo "== Ontology D1 smoke =="
 bash packages/aiplat-ontology/scripts/d1_smoke.sh
 
+echo "== Ontology D2 cohost admin pack =="
+bash packages/aiplat-ontology/scripts/d2_admin_check.sh
+
 echo "== Evaluation D1 smoke =="
 bash packages/aiplat-evaluation/scripts/d1_smoke.sh
+
+echo "== Evaluation D2 cohost admin pack =="
+bash packages/aiplat-evaluation/scripts/d2_admin_check.sh
 
 echo "== FDE Field D1 smoke =="
 bash packages/aiplat-fde/scripts/d1_smoke.sh

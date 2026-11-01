@@ -1,0 +1,40 @@
+# Evaluation — D2 cohost security/ops baseline
+schema_version: aiplat.evaluation.security.baseline.v0
+updated: "2026-11-01"
+checks:
+  - id: evaluation_healthz_central
+    path: packages/aiplat-evaluation/contracts/schemas/healthz.schema.json
+    must_contain:
+      - '"const": "evaluation"'
+      - '"const": "central"'
+  - id: evaluation_protocol_schema
+    path: packages/aiplat-evaluation/contracts/schemas/eval_protocol.schema.json
+    must_contain:
+      - "eval.protocol.v0"
+  - id: evaluation_protocol_doc
+    path: reports/five-products/modules/evaluation/EVAL_PROTOCOL.md
+    must_contain:
+      - "eval.protocol.v0"
+      - "evidence_refs"
+  - id: evaluation_d2_doc
+    path: packages/aiplat-evaluation/docs/D2_COHOST.md
+    must_contain:
+      - "D1c"
+      - "process_split_authorized=false"
+  - id: evaluation_security_doc
+    path: packages/aiplat-evaluation/docs/SECURITY.md
+    must_contain:
+      - "cohost"
+      - "签收"
+  - id: evaluation_perf_doc
+    path: packages/aiplat-evaluation/docs/PERF_BASELINE.md
+    must_contain:
+      - "validate_sample"
+  - id: evaluation_chart_split_false
+    path: packages/aiplat-evaluation/chart/Chart.yaml
+    must_contain:
+      - 'aiplat.a3_process_split_authorized: "false"'
+  - id: evaluation_install_a3_false
+    path: packages/aiplat-evaluation/scripts/d1_install.sh
+    must_contain:
+      - '"a3_split":false'

@@ -17,6 +17,8 @@
 | Pi D3 local closeout | **PASS**（`PI_D3_LOCAL_CLOSEOUT.md` · N-1 + SOC file-sink · authorize REFUSE） |
 | FDE Field D1 install/meta/backup/rollback | **PASS**（`FDE_FIELD_LOCAL_REGRESSION.md` · `INSTALL_META` 已生成） |
 | FDE Field D2 ops pack | **PASS**（`FDE_FIELD_D2_LOCAL_CLOSEOUT.md` · upgrade/N-1 + security baseline） |
+| Ontology D2 cohost pack | **PASS**（`ONTOLOGY_D2_LOCAL_CLOSEOUT.md` · process_split 仍 false） |
+| Evaluation D2 cohost pack | **PASS**（`EVALUATION_D2_LOCAL_CLOSEOUT.md` · process_split 仍 false） |
 | STATUS↔manifest sync | **PASS**（`scripts/check_five_products_status_sync.py`） |
 | 四轨 `ready_to_authorize` | **false** |
 | 硬门 cutover / process_split / d3_production | **false** |

@@ -24,4 +24,6 @@ cat >"$PREFIX/INSTALL_META.json" <<EOF
 {"capability_id":"ontology","product_id":"ontology","deploy_unit":"central","hosted_by":"aiplat","version":"$VER","prefix":"$PREFIX","installed_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","thin":true,"a3_split":false}
 EOF
 echo "OK installed Ontology Thin → $PREFIX/current"
-[[ "$SMOKE" -eq 1 ]] && bash "$SCRIPT_DIR/d1_smoke.sh"
+if [[ "$SMOKE" -eq 1 ]]; then
+  bash "$SCRIPT_DIR/d1_smoke.sh"
+fi

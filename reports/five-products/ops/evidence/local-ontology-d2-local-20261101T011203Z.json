@@ -1,0 +1,13 @@
+{
+  "kind": "ontology_d2_cohost_local_closeout",
+  "at": "20261101T011203Z",
+  "environment": "local",
+  "delivery_mode": "cohost",
+  "delivery_alias": "D1c",
+  "perf_contract_seconds": 1,
+  "before_current": "versions/0.1.0",
+  "after_upgrade": "versions/0.1.0+20261101T011204Z",
+  "after_runtime_rollback": "versions/0.1.0",
+  "process_split_authorized": false,
+  "production_signed": false
+}

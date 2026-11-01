@@ -25,8 +25,8 @@
 | 轨 | 命令 | 证据 |
 |----|------|------|
 | PG/HA + OIDC | `pg_ha_local_staging.sh all` | `local-pgha-*.json` · `oidc-local-*.json` |
-| Ontology A3 | `a3_*` via `ops_local_rehearse_tracks` | `local-ontology-a3-*.json` |
-| Evaluation A3 | 同上 | `local-evaluation-a3-*.json` |
+| Ontology A3 + D2 | `a3_*` + `d2_local_closeout` | `local-ontology-*.json` · [`ONTOLOGY_D2_LOCAL_CLOSEOUT.md`](./ONTOLOGY_D2_LOCAL_CLOSEOUT.md) |
+| Evaluation A3 + D2 | 同上 | `local-evaluation-*.json` · [`EVALUATION_D2_LOCAL_CLOSEOUT.md`](./EVALUATION_D2_LOCAL_CLOSEOUT.md) |
 | Pi D3 | `d3_local_closeout.sh` | [`PI_D3_LOCAL_CLOSEOUT.md`](./PI_D3_LOCAL_CLOSEOUT.md) · `local-rehearsal` / `soc` / `n1` |
 | Pi D1 | `d1_local_regression.sh` | [`PI_D1_LOCAL_REGRESSION.md`](./PI_D1_LOCAL_REGRESSION.md) |
 | Pi D2 | `d2_admin_check.sh` | [`PI_D2_ADMIN_LOCAL.md`](./PI_D2_ADMIN_LOCAL.md) |

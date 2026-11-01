@@ -1,6 +1,6 @@
 # MODULE.md — Ontology Service
 
-> Status: **A2 + D1 Thin (co-hosted)** · A3 **Accepted（有条件）** · Owner: platform · Deploy unit: **Central**
+> Status: **A2 + D1 Thin (D1c/cohost) + D2 ops pack** · A3 **Accepted（有条件）** · Owner: platform · Deploy unit: **Central**
 
 ## Scope
 
@@ -73,6 +73,17 @@ See [`ONTOLOGY_API.md`](./ONTOLOGY_API.md).
 | Package | `packages/aiplat-ontology` |
 | Install / smoke | `scripts/d1_install.sh` / `d1_smoke.sh` |
 | Docs | `packages/aiplat-ontology/docs/INSTALL.md` |
+
+## D2 cohost ops pack — done (local)
+
+| Item | Path |
+|------|------|
+| Scope | `docs/D2_COHOST.md` · `SECURITY.md` · `PERF_BASELINE.md` |
+| Baseline | `security/baseline.yaml` · `scripts/d2_admin_check.sh` |
+| Upgrade / rollback | `d1_upgrade.sh` · `d1_rollback.sh --runtime` |
+| Closeout | `scripts/d2_local_closeout.sh` · [`ops/ONTOLOGY_D2_LOCAL_CLOSEOUT.md`](../../ops/ONTOLOGY_D2_LOCAL_CLOSEOUT.md) |
+
+`current_delivery` 仍为 **D1**（D1c）；`process_split_authorized=false`。
 
 A3 process split **forbidden** without ADR Accepted + `process_split_authorized`.
 
