@@ -92,6 +92,14 @@ grep -q 'lock-v0' aiPlat-platform/apps/eval/api/store_api.py \
   || fail "lock-v0 API not wired"
 [[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md ]] \
   || fail "missing EVAL_V1 UI preview unfreeze"
+[[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_DIAGNOSIS_V1.md ]] \
+  || fail "missing DIAGNOSIS_V1 C0 unfreeze"
+[[ -f docs/architecture/plans/diagnosis-v1-charter.md ]] \
+  || fail "missing diagnosis-v1-charter"
+[[ -f reports/five-products/ops/DIAGNOSIS_V1_C0_SEED_CASES.md ]] \
+  || fail "missing DIAGNOSIS_V1 C0 seed cases"
+[[ -f reports/five-products/modules/diagnosis/contracts/schemas/diagnosis_evidence.schema.json ]] \
+  || fail "missing diagnosis evidence schema v0"
 [[ -f aiPlat-management/frontend/src/pages/Eval/EvalPreview.tsx ]] \
   || fail "missing /eval preview page"
 grep -q "path: 'eval'" aiPlat-management/frontend/src/App.tsx \

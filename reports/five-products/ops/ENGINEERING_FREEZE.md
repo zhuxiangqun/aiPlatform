@@ -9,7 +9,7 @@
 ## Frozen means
 
 本地工程增量已闭合（安装面、D2 pack、D3 本地验收、跨能力 E2E、compat/security、perf、packaging）。  
-**本地五产品工程轨无必须任务；EVAL_V1 为显式解冻新范围**（评测准确性/唯一入口/gate；UI/A3/生产仍冻）。  
+**本地五产品工程轨无必须任务；EVAL_V1 / DIAGNOSIS_V1 为显式解冻新范围**（评测 E0–E5 + UI preview；诊断 C0；A3/生产仍冻）。  
 再改须有明确缺陷、**已列 Still open**、复审驱动、或**显式解冻新范围**；禁止用本地证据推动 authorize。  
 
 ### 解冻史
@@ -21,9 +21,10 @@
 | **本再冻结** | 上述两项已 PASS；Pi D2++ SOC schema 硬核；Field compose ADR → **v2 草案** |
 | [`EVAL_V1`](./ENGINEERING_UNFREEZE_EVAL_V1.md) | 解冻评测 **E0–E5**（唯一 API/准确性/gate）；A3/生产仍冻 |
 | [`EVAL_V1 UI preview`](./ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md) | G2a locked 后解冻 `/eval` **local preview**（accuracy 仍禁） |
+| [`DIAGNOSIS_V1`](./ENGINEERING_UNFREEZE_DIAGNOSIS_V1.md) | 解冻诊断 **C0**（产品定义/seed case/设计）；C1 代码另批；A3/生产冻 |
 
-- ❌ **仍不解冻**：staging_ready / production_signed / 任何 authorize 成功 / accuracy 宣称  
-- 计划同步：工程方案 **V2.2** + [`eval-v1-charter.md`](../../../docs/architecture/plans/eval-v1-charter.md)
+- ❌ **仍不解冻**：staging_ready / production_signed / 任何 authorize 成功 / accuracy 宣称 / C1 诊断代码  
+- 计划同步：工程方案 **V2.2** + [`eval-v1-charter.md`](../../../docs/architecture/plans/eval-v1-charter.md) + [`diagnosis-v1-charter.md`](../../../docs/architecture/plans/diagnosis-v1-charter.md)
 
 ### Active unfreeze
 
@@ -31,6 +32,7 @@
 |---|---|---|---|
 | EVAL_V1 | [`ENGINEERING_UNFREEZE_EVAL_V1.md`](./ENGINEERING_UNFREEZE_EVAL_V1.md) | E0–E5 + G2a local gate | A3 / staging / authorize / accuracy |
 | EVAL_V1 UI preview | [`ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md`](./ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md) | `/eval` local preview | 完整 E6 / accuracy / 外部 gate |
+| DIAGNOSIS_V1 | [`ENGINEERING_UNFREEZE_DIAGNOSIS_V1.md`](./ENGINEERING_UNFREEZE_DIAGNOSIS_V1.md) | C0 文档/设计/seed case | C1 代码 / A3 / staging / authorize |
 
 ## Verify
 

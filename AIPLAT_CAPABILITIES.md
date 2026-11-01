@@ -2478,6 +2478,9 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| adjudicate_label | `core/apps/eval/service/g2a.py` | ✅ | 自动同步 | 已合入 |
+| preannotate_review_queue | `core/apps/eval/service/g2a.py` | ✅ | 自动同步 | 已合入 |
+| list_review_queue | `core/apps/eval/service/g2a.py` | ✅ | 自动同步 | 已合入 |
 | eval_lock_v0 | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | eval_run_g2a_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | g2a_status | `core/apps/eval/service/g2a.py` | ✅ | 自动同步 | 已合入 |

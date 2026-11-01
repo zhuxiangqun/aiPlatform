@@ -1,0 +1,351 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiplat.local/schemas/diagnosis/diagnosis_evidence.schema.json",
+  "title": "DiagnosisEvidenceV0",
+  "description": "DIAGNOSIS_V1 evidence ref + case/report shapes. References only; does not own source facts.",
+  "type": "object",
+  "required": [
+    "schema_version"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "diagnosis.evidence.v0"
+    },
+    "note": {
+      "type": "string",
+      "description": "Use $defs.DiagnosisReport for report documents"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "EvidenceRef": {
+      "type": "object",
+      "required": [
+        "id",
+        "source",
+        "kind",
+        "ref",
+        "captured_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "aiplat",
+            "pi",
+            "fde",
+            "evaluation",
+            "ontology",
+            "external"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "run",
+            "trace",
+            "syscall",
+            "context",
+            "tool_result",
+            "policy_decision",
+            "audit",
+            "model_route",
+            "config_snapshot",
+            "version_diff",
+            "eval_report",
+            "gate_report",
+            "healthz",
+            "deploy_record",
+            "fde_evidence",
+            "log_ref",
+            "other"
+          ]
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque locator in source system"
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "freshness": {
+          "type": "string",
+          "enum": [
+            "fresh",
+            "stale",
+            "unknown"
+          ]
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Finding": {
+      "type": "object",
+      "required": [
+        "id",
+        "summary",
+        "severity",
+        "confidence",
+        "evidence_ids"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "P0",
+            "P1",
+            "P2",
+            "info"
+          ]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "Hypothesis": {
+      "type": "object",
+      "required": [
+        "id",
+        "root_cause",
+        "confidence",
+        "support_evidence_ids"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "root_cause": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "support_evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "counter_evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rationale": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "Recommendation": {
+      "type": "object",
+      "required": [
+        "id",
+        "action",
+        "target_api",
+        "auto_execute"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "target_api": {
+          "type": "string",
+          "description": "Target product API path; not executed by diagnosis"
+        },
+        "auto_execute": {
+          "type": "boolean",
+          "const": false
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "P0",
+            "P1",
+            "P2"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "DiagnosisCase": {
+      "type": "object",
+      "required": [
+        "id",
+        "scenario",
+        "status",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "scenario": {
+          "type": "string",
+          "enum": [
+            "run_failure",
+            "version_regression"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "running",
+            "reported",
+            "blocked_unknown",
+            "blocked_stale",
+            "closed"
+          ]
+        },
+        "subject_ref": {
+          "type": "string"
+        },
+        "baseline_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": true
+    },
+    "DiagnosisReport": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "case_id",
+        "findings",
+        "hypotheses",
+        "recommendations",
+        "uncertainty",
+        "accuracy_claim"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "diagnosis.report.v0"
+        },
+        "case_id": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Finding"
+          }
+        },
+        "hypotheses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Hypothesis"
+          }
+        },
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Recommendation"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          }
+        },
+        "uncertainty": {
+          "type": "object",
+          "required": [
+            "unknown",
+            "stale"
+          ],
+          "properties": {
+            "unknown": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "stale": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "accuracy_claim": {
+          "type": "boolean",
+          "const": false
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}
