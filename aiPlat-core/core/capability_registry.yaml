@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 33
-total_capabilities: 1566
+total_capabilities: 1569
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -5095,7 +5095,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 50
+    caps_count: 53
     provides:
       - symbol: "run_g2a_gate"
         type: "function"
@@ -5108,6 +5108,18 @@ domains:
       - symbol: "g2a_status"
         type: "function"
         signature: "g2a_status(tenant_id)→Dict readiness (accuracy_claim=false)"
+        module: "core/apps/eval/service/g2a.py"
+      - symbol: "list_review_queue"
+        type: "function"
+        signature: "list_review_queue(tenant_id, annotator?, limit?)→Dict pending labels"
+        module: "core/apps/eval/service/g2a.py"
+      - symbol: "preannotate_review_queue"
+        type: "function"
+        signature: "preannotate_review_queue(...)→Dict AI suggest only; not adjudicate"
+        module: "core/apps/eval/service/g2a.py"
+      - symbol: "adjudicate_label"
+        type: "function"
+        signature: "adjudicate_label(label_id, passed, ...)→Dict solo human label"
         module: "core/apps/eval/service/g2a.py"
       - symbol: "eval_run_g2a_gate"
         type: "function"
