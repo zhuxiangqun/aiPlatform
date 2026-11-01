@@ -1,10 +1,10 @@
 {
   "kind": "ontology_a3_local_drill_evidence",
   "schema_version": "aiplat.ontology.a3.local_drill.v0",
-  "drill_id": "ontology-a3-local-20261101T000452Z",
+  "drill_id": "ontology-a3-local-20261101T003320Z",
   "environment": "local",
   "operator": "apple",
-  "recorded_at": "2026-11-01T00:04:53Z",
+  "recorded_at": "2026-11-01T00:33:20Z",
   "production_signed": false,
   "local_signed": true,
   "items": {

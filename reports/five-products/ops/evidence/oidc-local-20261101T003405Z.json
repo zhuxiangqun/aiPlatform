@@ -1,0 +1,26 @@
+{
+  "kind": "pg_ha_local_oidc_setup",
+  "schema_version": "aiplat.pg_ha.local_oidc.v0",
+  "at": "20261101T003405Z",
+  "environment": "local",
+  "production_signed": false,
+  "issuer": "http://127.0.0.1:8081/realms/aiplat-local",
+  "realm": "aiplat-local",
+  "realm_created": false,
+  "client_id": "aiplat-local",
+  "test_user": "tenant-admin",
+  "required_actions": [
+    "CONFIGURE_TOTP"
+  ],
+  "discovery_ok": true,
+  "password_grant_ok": false,
+  "password_grant_note": "password_grant_http_400_body={'error': 'invalid_grant', 'error_description': 'Account is not fully set up'}",
+  "admin_api_users_visible": true,
+  "limitations": [
+    "Local Keycloak start-dev only — not HA IdP",
+    "CONFIGURE_TOTP required action = MFA path configured; full OTP enrollment UI not automated",
+    "Not production tenant MFA / API-key path E2E",
+    "Does not authorize cutover"
+  ],
+  "does_not_authorize_cutover": true
+}

@@ -1,6 +1,8 @@
 # Local staging（零预算 · 工程验证 · 非生产预发）
 
-> **诚实边界**：本机 VM / Docker 可推进 PG/HA **70–80%** 工程准备；**不能**把 `cutover_authorized` 置 true。  
+> **当前选型（2026-11-01）**：**环境方案 B — 本机 VM/Docker 全轨**（[`OPTION_B_LOCAL_VM.md`](./OPTION_B_LOCAL_VM.md)）。  
+> 不买服务器；不用免费云档冒充生产预发；一键：`bash scripts/ops_option_b_all.sh`。  
+> **诚实边界**：本机可推进 PG/HA **70–80%** 工程准备；**不能**把 `cutover_authorized` 置 true。  
 > 证据必须 `environment=local`；签名用 `local_signed`（可选）；**禁止** `staging` / `production_signed`。  
 > 生产 authorize 仍要求 [`STAGING_READY.md`](./STAGING_READY.md) + `live-*.json`。
 

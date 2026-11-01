@@ -26,6 +26,6 @@
 1. 记 blockers 到 [`PGHA_LIVE_RUNLOG.md`](./PGHA_LIVE_RUNLOG.md)  
 2. 保持 `cutover_authorized=false` 等硬门  
 3. 主轨转不依赖预发的工作（如 Pi D1）  
-4. 可选：零预算 [`LOCAL_STAGING.md`](./LOCAL_STAGING.md)（`local-*.json` / `local_signed`）推进工程；**不得** `production_signed` / authorize  
+4. **当前默认**：环境方案 B 全轨 [`OPTION_B_LOCAL_VM.md`](./OPTION_B_LOCAL_VM.md) · [`LOCAL_STAGING.md`](./LOCAL_STAGING.md)（`local-*.json` / `local_signed`）；**不得** `production_signed` / authorize；**不得**把本机 B 标成本 Gate 已满足
 
 齐套后：`bash scripts/ops_pgha_live_kickoff.sh` → 交接卡 live → sign → authorize。

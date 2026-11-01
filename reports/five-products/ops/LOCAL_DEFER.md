@@ -2,10 +2,11 @@
 
 - decided_at: `2026-10-31`
 - formalized_at: `2026-11-01`
-- decision: **路径 B — 正式 defer**（无预发 DSN/OIDC；不假造 staging）
+- decision: **运维路径 B — 正式 defer**（无预发 DSN/OIDC；不假造 staging）
+- **工程环境**：同期锁定 **环境方案 B（本机 VM/Docker）全轨** — 见 [`OPTION_B_LOCAL_VM.md`](./OPTION_B_LOCAL_VM.md) · `bash scripts/ops_option_b_all.sh`
 - `staging_ready`: **false**（见 [`STAGING_READY.md`](./STAGING_READY.md)）
 - last_kickoff: `2026-10-31T23:35:04Z` · `ops_pgha_live_kickoff.sh` **exit 2**（按设计）
-- review_by: **2026-11-08**（若仍无预发则续 defer；有则走路径 A）
+- review_by: **2026-11-08**（若仍无预发则续 defer；有则再评估方案 A/C 进真实 staging）
 
 | 轨 | 本地状态 | 硬门 |
 |----|----------|------|
@@ -22,45 +23,24 @@
 - 把 scaffold live 写成 `production_signed=true`
 - 假造 DSN / OIDC
 
-## 并行允许（路径 A · local staging · 非授权）
+## 当前唯一工程环境（环境方案 B · 非授权）
 
-本机 Docker「local staging」可推进迁移/备份/手动 failover/OIDC 工程验证；证据必须 `environment=local`（`local-*.json`），**不能** authorize。详见 [`LOCAL_STAGING.md`](./LOCAL_STAGING.md)。
+**全部轨**走本机 Docker/VM local staging；证据必须 `environment=local`（`local-*.json`），**不能** authorize。  
+决策与范围：[`OPTION_B_LOCAL_VM.md`](./OPTION_B_LOCAL_VM.md) · 拓扑：[`LOCAL_STAGING.md`](./LOCAL_STAGING.md)。
 
 ```bash
-# PG/HA local staging（PG :5433 + Keycloak :8081）
-bash packages/aiplat-central/scripts/pg_ha_local_staging.sh all
-# 轻量 rehearsal（无 compose）：
-bash packages/aiplat-central/scripts/pg_ha_local_rehearsal.sh
-bash packages/aiplat-central/scripts/pg_ha_ha_failover_rehearsal.sh
-bash packages/aiplat-ontology/scripts/a3_local_rehearsal.sh
-bash packages/aiplat-evaluation/scripts/a3_local_rehearsal.sh
-bash packages/aiplat-pi-runtime/scripts/d3_local_rehearsal.sh
-bash packages/aiplat-pi-runtime/scripts/d3_soc_local_rehearsal.sh
-bash scripts/ops_live_status.sh --json
+# 一键全轨（含 PG :5433 + Keycloak :8081 + A3/D3 + Pi D1/D2 + FDE）
+bash scripts/ops_option_b_all.sh
 ```
 
 ## 主轨（defer 期间）
 
-不依赖预发：**Pi D1/D2**（安装器 / healthz / Gate3 回滚面 / D2 admin pack）+ 本地可验工程。  
-PG/HA live → sign → authorize 等 `staging_ready=true`。
+不依赖真实预发：**环境方案 B 全轨**（上表）+ Pi D1/D2。  
+PG/HA live → sign → authorize 等 `staging_ready=true`（需方案 A/C 级独立预发，**不是**本机 B）。
 
-本地回归（2026-11-01）：
-- Pi D1：[`PI_D1_LOCAL_REGRESSION.md`](./PI_D1_LOCAL_REGRESSION.md) **PASS**
-- Pi D2：[`PI_D2_ADMIN_LOCAL.md`](./PI_D2_ADMIN_LOCAL.md) **PASS**
-- FDE Field：[`FDE_FIELD_LOCAL_REGRESSION.md`](./FDE_FIELD_LOCAL_REGRESSION.md) **PASS**
-- STATUS↔manifest：`python3 scripts/check_five_products_status_sync.py`
+跨轨 runlog：[`LOCAL_TRACKS_RUNLOG.md`](./LOCAL_TRACKS_RUNLOG.md) · 最近全跑：[`OPTION_B_LAST_RUN.md`](./OPTION_B_LAST_RUN.md) · 工程收口：[`ENGINEERING_LOCAL_CLOSEOUT.md`](./ENGINEERING_LOCAL_CLOSEOUT.md)
 
-```bash
-bash packages/aiplat-pi-runtime/scripts/d1_local_regression.sh
-bash packages/aiplat-pi-runtime/scripts/d2_admin_check.sh
-bash packages/aiplat-fde/scripts/d1_local_regression.sh
-python3 scripts/check_five_products_status_sync.py
-# Ontology/Eval A3 local_signed（不 authorize）：
-bash scripts/ops_local_rehearse_tracks.sh
-```
+## 复审后（真实预发 · 方案 A/C）
 
-跨轨 runlog：[`LOCAL_TRACKS_RUNLOG.md`](./LOCAL_TRACKS_RUNLOG.md) · 工程收口：[`ENGINEERING_LOCAL_CLOSEOUT.md`](./ENGINEERING_LOCAL_CLOSEOUT.md)
-
-## 复审后走路径 A
-
-见 [`PGHA_LIVE_RUNLOG.md`](./PGHA_LIVE_RUNLOG.md) 复审条件 + [`OPS_HANDOFF.md`](../OPS_HANDOFF.md)。
+若有闲置机或免费云档满足 [`STAGING_READY.md`](./STAGING_READY.md)：再谈 live → sign → authorize。  
+否则续本文件 + 继续环境方案 B。见 [`PGHA_LIVE_RUNLOG.md`](./PGHA_LIVE_RUNLOG.md) · [`OPS_HANDOFF.md`](../OPS_HANDOFF.md)。

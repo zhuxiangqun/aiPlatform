@@ -2,8 +2,9 @@
 
 > **SSOT autonomy/delivery**：[`capabilities.manifest.yaml`](../../capabilities.manifest.yaml)（本表必须与之一致；禁止写高于 manifest 的 A/D）。  
 > 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md) · 本地收口 [`ops/ENGINEERING_LOCAL_CLOSEOUT.md`](./ops/ENGINEERING_LOCAL_CLOSEOUT.md)。  
-> **运维决策（2026-11-01）**：**路径 B — 正式 defer**；`staging_ready=false`（[`ops/STAGING_READY.md`](./ops/STAGING_READY.md)）。复审：**2026-11-08**。  
-> Blocker：缺预发 `AIPLAT_PG_DSN` + `AIPLAT_OIDC_ISSUER`（kickoff exit 2 = 硬门按设计）。  
+> **运维决策（2026-11-01）**：**运维路径 B — 正式 defer**；`staging_ready=false`（[`ops/STAGING_READY.md`](./ops/STAGING_READY.md)）。复审：**2026-11-08**。  
+> **工程环境**：**方案 B 本机 VM/Docker 全轨**（[`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md)）· `bash scripts/ops_option_b_all.sh`。  
+> Blocker：缺**真实**预发 DSN/OIDC（本机 local ≠ staging）；kickoff exit 2 = 硬门按设计。  
 > **Accepted（有条件）** ≠ 生产授权；硬门全 **false**。
 
 | Capability | Autonomy | Delivery | Mode | Package | Healthz | ADR / notes |
@@ -50,5 +51,6 @@ bash scripts/five_products_gate.sh
 | Pi D2 admin pack | [`ops/PI_D2_ADMIN_LOCAL.md`](./ops/PI_D2_ADMIN_LOCAL.md) **PASS**（enterprise 默认 off） |
 | 四轨 local_signed | [`ops/LOCAL_TRACKS_RUNLOG.md`](./ops/LOCAL_TRACKS_RUNLOG.md) |
 | FDE Field install/meta | [`ops/FDE_FIELD_LOCAL_REGRESSION.md`](./ops/FDE_FIELD_LOCAL_REGRESSION.md) **PASS** |
-| Local staging 总册 | [`ops/LOCAL_STAGING.md`](./ops/LOCAL_STAGING.md) |
+| Local staging 总册 | [`ops/LOCAL_STAGING.md`](./ops/LOCAL_STAGING.md) · 方案 B [`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md) |
+| Option B 最近全跑 | [`ops/OPTION_B_LAST_RUN.md`](./ops/OPTION_B_LAST_RUN.md) **PASS** |
 | STATUS↔manifest | `python3 scripts/check_five_products_status_sync.py` |

@@ -1,10 +1,10 @@
 {
   "kind": "fde_field_local_drill_evidence",
   "schema_version": "aiplat.fde.field.local_drill.v0",
-  "drill_id": "fde-field-local-20261101T002215Z",
+  "drill_id": "fde-field-local-20261101T003342Z",
   "environment": "local",
   "operator": "apple",
-  "recorded_at": "2026-11-01T00:22:17Z",
+  "recorded_at": "2026-11-01T00:33:44Z",
   "production_signed": false,
   "local_signed": true,
   "items": {

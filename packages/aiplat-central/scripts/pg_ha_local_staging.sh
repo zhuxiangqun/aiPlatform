@@ -45,6 +45,18 @@ wait_pg() {
   return 1
 }
 
+wait_keycloak() {
+  local i
+  for i in $(seq 1 60); do
+    if curl -sf -o /dev/null "http://127.0.0.1:8081/" 2>/dev/null; then
+      return 0
+    fi
+    sleep 2
+  done
+  echo "WARN: Keycloak :8081 not ready after wait (OIDC may fail; local_signed may stay false)" >&2
+  return 1
+}
+
 case "$CMD" in
   -h|--help) usage; exit 0 ;;
   up)
@@ -114,6 +126,7 @@ JSON
     ;;
   all)
     bash "$0" up
+    wait_keycloak || true
     bash "$0" rehearse
     ;;
   *)

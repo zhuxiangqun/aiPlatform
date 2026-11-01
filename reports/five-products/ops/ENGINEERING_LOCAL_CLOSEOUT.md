@@ -1,7 +1,8 @@
 # 工程侧 Local Staging 收口（2026-11-01）
 
+> **选型**：环境方案 B — 本机 VM/Docker 全轨（[`OPTION_B_LOCAL_VM.md`](./OPTION_B_LOCAL_VM.md)）。  
 > **范围**：零预算 `environment=local` 演练。  
-> **非范围**：`staging_ready`、`production_signed`、任何 `*_authorize` 成功路径。
+> **非范围**：`staging_ready`、`production_signed`、任何 `*_authorize` 成功路径；不买服务器。
 
 ## 结论
 
@@ -23,11 +24,8 @@
 ## 复跑
 
 ```bash
-bash scripts/ops_local_rehearse_tracks.sh
-# 含 Docker PG+Keycloak：
-AIPLAT_LOCAL_INCLUDE_PGHA=1 bash scripts/ops_local_rehearse_tracks.sh
-bash packages/aiplat-pi-runtime/scripts/d1_local_regression.sh
-bash packages/aiplat-fde/scripts/d1_local_regression.sh
+bash scripts/ops_option_b_all.sh
+# 等价拆步见 OPTION_B_LOCAL_VM.md
 bash scripts/ops_live_status.sh --json   # 期望全部 ready_to_authorize=false
 ```
 
