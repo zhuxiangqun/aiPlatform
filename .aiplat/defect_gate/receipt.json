@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T11:10:52+08:00",
+  "reviewed_at": "2026-11-01T11:15:05+08:00",
   "base_ref": "origin/main",
-  "merge_base": "fc2da56783f69262f4b8f45fb9a7096c754ecf62",
-  "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "head_sha": "fc2da56783f69262f4b8f45fb9a7096c754ecf62",
+  "merge_base": "7709efc2d4ad63997a82ddc862e75c72ab6402dc",
+  "diff_sha256": "4de1bc80e4c137c3de7d719ef4bc69d9f903a031ebdb1855319f944a71f2b129",
+  "head_sha": "dea34edc2952f944b98d779e37f894d6a06a84d6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Post-push receipt refresh on clean HEAD after G0/SOC/re-freeze. Local lock only."
+  "note": "Docs-only continue_defer: staging_ready=false, next review 2026-11-22. No authorize. Local lock only."
 }
