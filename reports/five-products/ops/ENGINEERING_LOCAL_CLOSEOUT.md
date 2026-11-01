@@ -22,6 +22,7 @@
 | aiPlat Central D2 Thin | **PASS**（`AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md` · cutover REFUSE） |
 | Shared packaging base (V2.1) | **PASS**（`check_five_products_packaging_surface.sh` · shared baseline checker） |
 | D2 local perf baseline | **PASS**（`PERF_BASELINE_LOCAL.md` · contract budgets；非生产 SLA） |
+| Engineering freeze | **PASS**（`ENGINEERING_FREEZE.md` · authorize 全 REFUSE） |
 | STATUS↔manifest sync | **PASS**（`scripts/check_five_products_status_sync.py`） |
 | 四轨 `ready_to_authorize` | **false** |
 | 硬门 cutover / process_split / d3_production | **false** |
@@ -38,9 +39,10 @@ bash scripts/ops_live_status.sh --json   # 期望全部 ready_to_authorize=false
 
 ## 下一步（非本收口）
 
-1. 真实预发：[`STAGING_READY.md`](./STAGING_READY.md) → `staging_ready=true`  
-2. 按 [`OPS_HANDOFF.md`](../OPS_HANDOFF.md) live → sign → authorize  
-3. 复审日：[`LOCAL_DEFER.md`](./LOCAL_DEFER.md) **2026-11-08**
+1. 复审清单：[`STAGING_REVIEW_2026-11-08.md`](./STAGING_REVIEW_2026-11-08.md)  
+2. 真实预发：[`STAGING_READY.md`](./STAGING_READY.md) → `staging_ready=true`  
+3. 按 [`OPS_HANDOFF.md`](../OPS_HANDOFF.md) live → sign → authorize  
+4. 本地工程冻结：[`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md) · `bash scripts/ops_engineering_freeze_check.sh`
 
 ## 禁止回退
 

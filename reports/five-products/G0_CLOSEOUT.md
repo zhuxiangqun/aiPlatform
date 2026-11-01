@@ -72,4 +72,5 @@ gh run list --branch main --limit 10
 2. ✅ Pi D3 本地收尾 → FDE Field D2 → Eval/Onto D2 → aiPlat D2 thin  
 3. ✅ **Plan V2.1 + shared packaging base**（`PACKAGING_BASE.md` · `check_five_products_packaging_surface.sh`）  
 4. ✅ **D2 local perf baseline**（五包 `PERF_BASELINE.md` · `check_five_products_perf_baseline.sh`；非生产 SLA）  
-5. **2026-11-08** 预发复审（方案 A/C）；否则续 defer + 方案 B  
+5. ✅ **Engineering freeze**（`ENGINEERING_FREEZE.md` · `ops_engineering_freeze_check.sh`；硬门仍 false）  
+6. **2026-11-08** 预发复审（[`STAGING_REVIEW_2026-11-08.md`](./ops/STAGING_REVIEW_2026-11-08.md)）；否则续 defer + 方案 B  

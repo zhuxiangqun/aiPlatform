@@ -21,10 +21,12 @@ Shared D1/D2 file surface for capability packages. Copy stubs from this tree; do
 | `scripts/d2_admin_check.sh` | runs shared `scripts/lib/aiplat_security_baseline.py` |
 | `scripts/d2_local_closeout.sh` | local evidence; **never** flips authorize hard gates |
 | `docs/PERF_BASELINE.md` | local wall-clock budgets（**不是**生产 SLA） |
+| `scripts/sbom-sign.stub.sh` | SBOM/sign 命令打印桩（不执行 syft/cosign） |
 
 Central extras: `d2_compat_check.sh` · `d2_security_check.sh` · `docs/D2_THIN.md`.
 
-Perf gate: `bash scripts/check_five_products_perf_baseline.sh`
+Perf gate: `bash scripts/check_five_products_perf_baseline.sh`  
+Freeze gate: `bash scripts/ops_engineering_freeze_check.sh`
 
 ## Hard rules
 

@@ -304,6 +304,18 @@ checks:
     must_contain:
       - "local perf baseline"
       - "Not production SLA"
+  - id: engineering_freeze_gate
+    description: Engineering freeze check keeps authorize refused
+    path: scripts/ops_engineering_freeze_check.sh
+    must_contain:
+      - "does NOT authorize"
+      - "all authorize paths REFUSED"
+  - id: staging_review_checklist
+    description: 2026-11-08 staging review checklist present
+    path: reports/five-products/ops/STAGING_REVIEW_2026-11-08.md
+    must_contain:
+      - "2026-11-08"
+      - "continue_defer"
   - id: shared_security_baseline_checker
     description: Shared D2 security baseline checker
     path: scripts/lib/aiplat_security_baseline.py

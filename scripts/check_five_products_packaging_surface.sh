@@ -26,6 +26,7 @@ D1_COMMON=(
   scripts/d1_upgrade.sh
   scripts/d1_rollback.sh
   scripts/d1_smoke.sh
+  scripts/sbom-sign.stub.sh
   package.json
 )
 

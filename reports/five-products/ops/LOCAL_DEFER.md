@@ -38,7 +38,7 @@ bash scripts/ops_option_b_all.sh
 不依赖真实预发：**环境方案 B 全轨**（上表）+ Pi D1/D2。  
 PG/HA live → sign → authorize 等 `staging_ready=true`（需方案 A/C 级独立预发，**不是**本机 B）。
 
-跨轨 runlog：[`LOCAL_TRACKS_RUNLOG.md`](./LOCAL_TRACKS_RUNLOG.md) · 最近全跑：[`OPTION_B_LAST_RUN.md`](./OPTION_B_LAST_RUN.md) · 工程收口：[`ENGINEERING_LOCAL_CLOSEOUT.md`](./ENGINEERING_LOCAL_CLOSEOUT.md)
+跨轨 runlog：[`LOCAL_TRACKS_RUNLOG.md`](./LOCAL_TRACKS_RUNLOG.md) · 最近全跑：[`OPTION_B_LAST_RUN.md`](./OPTION_B_LAST_RUN.md) · 工程收口：[`ENGINEERING_LOCAL_CLOSEOUT.md`](./ENGINEERING_LOCAL_CLOSEOUT.md) · **工程冻结**：[`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md) · 复审清单：[`STAGING_REVIEW_2026-11-08.md`](./STAGING_REVIEW_2026-11-08.md)
 
 ## 复审后（真实预发 · 方案 A/C）
 
