@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T21:43:00+08:00",
+  "reviewed_at": "2026-11-01T22:12:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "72e0117f5d8aa4ec7d640bd42ac980670e749ff4",
-  "diff_sha256": "a965d4b3bc3876b8af6de6eaa5de77f832a3ba820acbb7c5db2f04718efd323f",
-  "head_sha": "3b08e6b03d6ae54593934aa15a82666b29136640",
+  "merge_base": "ac853186ba7692a1c38f78c218191c116f535af2",
+  "diff_sha256": "afd89989fcdbb8eebfbd0dc2d5fd69143424517fe8bd55a71a922a252f6e3c1e",
+  "head_sha": "d13d7f278740759f59b6fd279282c3dc18ec682d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "C2 unfreeze docs only; no product code. G2b still frozen. Local lock only."
+  "note": "C2: report.v1 reason_codes + eval/ontology adapters; accuracy_claim=false; no remediate. Local lock only."
 }
