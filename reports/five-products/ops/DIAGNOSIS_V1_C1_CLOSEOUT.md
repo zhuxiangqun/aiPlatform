@@ -39,9 +39,7 @@ bash scripts/ops_engineering_freeze_check.sh
 - Blind mode: `diagnose_case(..., expected=None)`; gold labels only used for scoring.
 - Production gates remain frozen (`staging_ready` / authorize / A3).
 
-## Next（决策，非本 closeout 实现）
+## Next（已拍板默认）
 
-C1 完成后按 charter 串行二选一（需新 unfreeze，禁止静默扩大）：
-
-1. **DIAGNOSIS C2** — Evaluation/Ontology 更深接入、置信度、unknown/stale 产品化  
-2. **EVAL G2b** — 评测下一闸（C1 期间 `/eval` 新功能冻结可解除）
+- **DIAGNOSIS C2** 解冻：[`ENGINEERING_UNFREEZE_DIAGNOSIS_C2.md`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C2.md)（G2b 仍等第二标注者，不阻塞 Diagnosis）
+- EVAL G2b 另批；C2 期间不开 accuracy / 外部 gate

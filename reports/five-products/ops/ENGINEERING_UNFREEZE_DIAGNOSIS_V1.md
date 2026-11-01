@@ -66,8 +66,9 @@ bash scripts/ops_engineering_freeze_check.sh
 | 2 | EVAL_V1 暂停 G2b | 等第二标注者；**不阻塞** Diagnosis |
 | 3 | **DIAGNOSIS C1 独占** | 4–6 周 MVP |
 | 4 | 之后 | 再开 EVAL G2b / Diagnosis C2 |
+| 5 | **DIAGNOSIS C2**（默认） | [`ENGINEERING_UNFREEZE_DIAGNOSIS_C2.md`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C2.md) — G2b 仍等第二标注者 |
 
-C1 开工后：**不开 EVAL 新功能**；只允许 EVAL 缺陷修复。
+C1 已 PASS；C2 解冻后：**不开 EVAL G2b**；EVAL 仅缺陷修复 + G2a preview。
 
 ## C1 进入条件（已拍板：进入，附条件）
 

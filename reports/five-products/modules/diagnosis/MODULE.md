@@ -1,8 +1,8 @@
 # Diagnosis module（第六能力 · C1）
 
-> **状态**：C1 出口 **PASS** · 已入 `capabilities.manifest`（A0 / D1 cohost）  
+> **状态**：C1 **PASS** · C2 **解冻中（文档）** · `capabilities.manifest`（A0 / D1 cohost）  
 > **Charter**：[`diagnosis-v1-charter.md`](../../../../docs/architecture/plans/diagnosis-v1-charter.md)  
-> **解冻 / 出口**：[`ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md`](../../ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md) · [`DIAGNOSIS_V1_C1_CLOSEOUT.md`](../../ops/DIAGNOSIS_V1_C1_CLOSEOUT.md)
+> **解冻 / 出口**：[`C1`](../../ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md) · [`C1 closeout`](../../ops/DIAGNOSIS_V1_C1_CLOSEOUT.md) · [`C2`](../../ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C2.md)
 
 ## 定位
 
