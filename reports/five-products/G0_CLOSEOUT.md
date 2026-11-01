@@ -11,14 +11,14 @@
 | 项 | 值 |
 |----|-----|
 | 基线起点 | `b46e286` |
-| 工程收口终点（CI 证据锚点） | `17f21d67`（Option B lock-in + receipt） |
-| 提交数（锚点） | **`git rev-list --count b46e286..17f21d67` → 19** |
-| 含本结论文档后 | `git rev-list --count b46e286..HEAD` 会 **>19**（文档/receipt 追加；勿手数） |
-| collect | **3209** / 0 error（G0_REPORT 2026-11-01） |
-| unit | **2735** passed / 11 skipped / 0 failed |
+| 初版 CI 锚点 | `17f21d67`（Option B lock-in · **19** 提交） |
+| **现行 CI 锚点（HEAD）** | **`1992e8e1`**（D3 UAT polish + receipt） |
+| 提交数（HEAD） | **`git rev-list --count b46e286..1992e8e1` → 47** |
+| collect | **3209** / 0 error（G0_REPORT 2026-11-01；初版锚点） |
+| unit | **2735** passed / 11 skipped / 0 failed（初版锚点） |
 | Tier A 逃逸 | **0**（`paths.py` SSOT fallback 除外） |
 | STATUS↔manifest | `check_five_products_status_sync.py` PASS |
-| 硬门 | 全 false；`staging_ready=false`；defer → **2026-11-08** |
+| 硬门 | 全 false；`staging_ready=false`；defer → **2026-11-15** |
 | 工程环境 | **方案 B** 本机 VM/Docker（[`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md)） |
 
 ## 正式例外：P0-3′
@@ -41,24 +41,47 @@ G0_REPORT 第 16 行已改为「旧 D0 作废；D1c 保留为 cohost 别名」�
 
 ## CI 证据（P0 · receipt ≠ CI）
 
-defect-gate receipt **不能**替代 CI。HEAD `17f21d67` Actions：
+defect-gate receipt **不能**替代 CI。
+
+### HEAD `1992e8e1`（47 提交 · 现行）
 
 | Workflow | 结论 | Run |
 |----------|------|-----|
-| **CI**（unit/collect 主门） | **success** | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41257435177 |
+| **CI**（unit/collect 主门） | **success** | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488889 |
+| Architecture Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488885 |
+| L5 Verification Suite | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488882 |
+| Slice E2E (live evidence) | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488887 |
+| AI Penetration Test | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488902 |
+| aiPlat Contracts Guard | **success** | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488906 |
+
+### 初版锚点 `17f21d67`（19 提交 · 历史）
+
+| Workflow | 结论 | Run |
+|----------|------|-----|
+| **CI** | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41257435177 |
 | Architecture Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41257435355 |
 | L5 Verification Suite | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41257435281 |
-| Slice E2E (live evidence) | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41257435090 |
+| Slice E2E | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41257435090 |
 | AI Penetration Test | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41257435091 |
-| aiPlat Contracts Guard | **success** | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41257435152 |
+| aiPlat Contracts Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41257435152 |
 
 复验命令：
 
 ```bash
-git rev-list --count b46e286..HEAD   # expect 19+
+git rev-list --count b46e286..HEAD   # expect 47+
 python3 scripts/check_five_products_status_sync.py
 gh run list --branch main --limit 10
+bash scripts/ops_engineering_freeze_check.sh
+bash scripts/five_products_gate.sh
 ```
+
+## 本地冻结自检（HEAD 同期）
+
+| 检查 | 结果 |
+|------|------|
+| `ops_engineering_freeze_check.sh` | **PASS**（authorize 全 REFUSE） |
+| `five_products_gate.sh` | **PASS**（含 D3/E2E local） |
+| `ops_option_b_all.sh` | **PASS**（`pgha_mode=docker` · `OPTION_B_LAST_RUN.md`） |
 
 ## 非结论
 
@@ -68,10 +91,12 @@ gh run list --branch main --limit 10
 
 ## 下一步（基线 backlog）
 
-1. ✅ HEAD **CI + Contracts Guard** 均 **success**（已写入上表）  
+1. ✅ HEAD **CI + Contracts Guard** 均 **success**（47 提交 · 上表）  
 2. ✅ Pi D3 本地收尾 → FDE Field D2 → Eval/Onto D2 → aiPlat D2 thin  
-3. ✅ **Plan V2.1 + shared packaging base**（`PACKAGING_BASE.md` · `check_five_products_packaging_surface.sh`）  
-4. ✅ **D2 local perf baseline**（五包 `PERF_BASELINE.md` · `check_five_products_perf_baseline.sh`；非生产 SLA）  
-5. ✅ **Engineering freeze**（`ENGINEERING_FREEZE.md` · `ops_engineering_freeze_check.sh`；硬门仍 false）  
-6. ✅ **2026-11-08 预发复审（提前开审）** → **continue_defer**（本机 DSN ≠ 预发；OIDC 缺）；下次 **2026-11-15**（[`STAGING_REVIEW_2026-11-08.md`](./ops/STAGING_REVIEW_2026-11-08.md)）  
-7. ✅ **显式解冻 D3 本地验收 + 跨能力 E2E**（[`ENGINEERING_UNFREEZE_D3_E2E.md`](./ops/ENGINEERING_UNFREEZE_D3_E2E.md)；authorize 仍冻）  
+3. ✅ **Plan V2.1 + shared packaging base**  
+4. ✅ **D2 local perf baseline**  
+5. ✅ **Engineering freeze** + 显式解冻 D3/E2E → 完成后 **再冻结**  
+6. ✅ **2026-11-08 预发复审** → **continue_defer**；下次 **2026-11-15**  
+7. ✅ **Pi D2++ SOC** schema 硬核（`d2_soc_deeper_check`）  
+8. ✅ **Field compose ADR 草案 v2**（未 Accepted）  
+9. ⏳ **真实预发供给**（[`STAGING_PROVISIONING.md`](./ops/STAGING_PROVISIONING.md)）→ 11-15 复审  

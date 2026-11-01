@@ -12,9 +12,9 @@
 
 | 项 | 说明 | 状态 |
 |----|------|------|
-| 事件 schema 固定字段 | `kind` / `severity` / `severity` / `environment=local` | 由 `d2_soc_deeper_check.sh` 核对最近 soc-rehearsal |
-| 默认外联关闭 | `AIPLAT_ENTERPRISE=0` 时无强制 webhook | 既有 rehearsal |
-| 与 D2 admin 关系 | D2++ 不替代 `d2_admin_check`；叠加证据 | |
+| 事件 schema 固定字段 | `kind` / `severity` / `actor` / `environment=local` | ✅ `d3_soc_local_rehearsal` 写出 + `d2_soc_deeper_check` 硬核 |
+| 默认外联关闭 | `AIPLAT_ENTERPRISE=0` 时无强制 webhook；证据禁 HTTP(S) | ✅ |
+| 与 D2 admin 关系 | D2++ 不替代 `d2_admin_check`；叠加证据 | ✅ |
 
 ```bash
 bash packages/aiplat-pi-runtime/scripts/d3_soc_local_rehearsal.sh

@@ -1,0 +1,15 @@
+{
+  "kind": "aiplat_central_d2_thin_local_closeout",
+  "at": "20261101T030647Z",
+  "environment": "local",
+  "delivery": "D2_thin",
+  "before_current": "versions/0.1.0",
+  "after_upgrade": "versions/0.1.0+20261101T030648Z",
+  "after_runtime_rollback": "versions/0.1.0",
+  "compat_check": true,
+  "security_check": true,
+  "a2_version_check": true,
+  "pg_ha_local_rehearsal": true,
+  "cutover_authorized": false,
+  "production_signed": false
+}

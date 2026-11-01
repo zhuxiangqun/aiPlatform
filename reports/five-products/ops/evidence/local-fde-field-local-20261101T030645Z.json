@@ -1,0 +1,35 @@
+{
+  "kind": "fde_field_local_drill_evidence",
+  "schema_version": "aiplat.fde.field.local_drill.v0",
+  "drill_id": "fde-field-local-20261101T030645Z",
+  "environment": "local",
+  "operator": "apple",
+  "recorded_at": "2026-11-01T03:06:47Z",
+  "production_signed": false,
+  "local_signed": true,
+  "items": {
+    "install_meta": {
+      "done": true,
+      "evidence": "d1_install wrote INSTALL_META.json production_field=true (local hermetic prefix)"
+    },
+    "smoke_contracts": {
+      "done": true,
+      "evidence": "d1_smoke contracts + CoreFacade healthz (local)"
+    },
+    "backup": {
+      "done": true,
+      "evidence": "d1_backup under $AIPLAT_FDE_PREFIX/backups (local)"
+    },
+    "rollback": {
+      "done": true,
+      "evidence": "d1_rollback + smoke (local)"
+    }
+  },
+  "limitations": [
+    "Local Field prefix only — not customer-site soak",
+    "Smoke uses CoreFacade healthz shape; optional live probe is AIPLAT_FDE_SMOKE_LIVE=1",
+    "Does not authorize production field rollout beyond ADR path"
+  ],
+  "note": "Local Field D1 install/meta/backup/rollback. production_signed always false.",
+  "does_not_authorize_production_field_extra": true
+}

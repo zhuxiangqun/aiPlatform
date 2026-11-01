@@ -45,15 +45,32 @@ def emit(enterprise: str, sink: Path | None, event: dict) -> dict:
         f.write(json.dumps(event, ensure_ascii=False) + "\n")
     return {"emitted": True, "sink": str(sink), "outbound": False}
 
-off = emit("0", work / "soc.jsonl", {"type": "pi.d3.alert", "level": "info", "msg": "should-drop"})
+def event(severity: str, msg: str) -> dict:
+    """D2++ fixed local SOC schema (file-sink only)."""
+    return {
+        "kind": "pi.d3.alert",
+        "severity": severity,
+        "actor": "pi-d3-soc-rehearsal",
+        "environment": "local",
+        "msg": msg,
+        "outbound_network": False,
+    }
+
+off = emit("0", work / "soc.jsonl", event("info", "should-drop"))
 assert off["emitted"] is False and off["outbound"] is False
 assert not (work / "soc.jsonl").exists()
 
-on = emit("1", work / "soc.jsonl", {"type": "pi.d3.alert", "level": "warn", "msg": "local-sink-only"})
+on = emit("1", work / "soc.jsonl", event("warn", "local-sink-only"))
 assert on["emitted"] is True and on["outbound"] is False
 lines = (work / "soc.jsonl").read_text(encoding="utf-8").strip().splitlines()
 assert len(lines) == 1
-assert "local-sink-only" in lines[0]
+payload = json.loads(lines[0])
+for req in ("kind", "severity", "actor", "environment"):
+    assert req in payload, req
+assert payload["environment"] == "local"
+assert payload["kind"] == "pi.d3.alert"
+assert payload["severity"] == "warn"
+assert payload["actor"] == "pi-d3-soc-rehearsal"
 assert "http://" not in lines[0] and "https://" not in lines[0]
 
 out = drill_dir / f"soc-rehearsal-{stamp}.json"
@@ -62,10 +79,16 @@ out.write_text(
         {
             "kind": "pi_d3_soc_local_file_sink_not_production",
             "at": stamp,
+            "environment": "local",
+            "severity": "warn",
+            "actor": "pi-d3-soc-rehearsal",
+            "sink": str(work / "soc.jsonl"),
+            "events_sample": [payload],
             "enterprise_off_drops": True,
             "enterprise_on_local_sink": True,
             "outbound_network": False,
             "production_soc": False,
+            "production_signed": False,
             "note": "File sink mock only; checklist #5 partial until live SOC.",
             "workdir": str(work),
         },

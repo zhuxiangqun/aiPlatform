@@ -1,0 +1,15 @@
+{
+  "kind": "fde_d3_local_acceptance",
+  "at": "20261101T020903Z",
+  "environment": "local",
+  "uat_steps": [
+    "clean_install",
+    "contract_sample",
+    "upgrade_n1",
+    "runtime_rollback",
+    "backup",
+    "smoke"
+  ],
+  "production_signed": false,
+  "authorize": false
+}

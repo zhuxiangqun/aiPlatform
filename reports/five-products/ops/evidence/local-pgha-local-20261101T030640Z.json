@@ -1,0 +1,40 @@
+{
+  "kind": "pg_ha_local_drill_evidence",
+  "schema_version": "aiplat.pg_ha.local_drill.v0",
+  "drill_id": "pgha-local-20261101T030640Z",
+  "environment": "local",
+  "operator": "apple",
+  "recorded_at": "2026-11-01T03:06:40Z",
+  "production_signed": false,
+  "local_signed": true,
+  "items": {
+    "oidc_full": {
+      "done": true,
+      "evidence": "pg_ha_local_oidc_setup → oidc-local-20261101T030640Z.json (local; CONFIGURE_TOTP required; not production MFA E2E)"
+    },
+    "pg_migration": {
+      "done": true,
+      "evidence": "pg_ha_local_rehearsal PG schema via AIPLAT_PG_DSN=postgresql://aiplat:aiplat_local@127.0.0.1:5433/aiplat_local (local)"
+    },
+    "backup_restore": {
+      "done": true,
+      "evidence": "sqlite-rehearsal + optional pg_dump/restore under docs/pg_ha/drills (local)"
+    },
+    "ha_failover": {
+      "done": true,
+      "evidence": "pg_ha_ha_failover_rehearsal docker primary/standby dump-promote (local; no VIP)"
+    },
+    "rollback": {
+      "done": true,
+      "evidence": "sqlite/pg schema rollback path in local rehearsal (local)"
+    }
+  },
+  "limitations": [
+    "Single-host Docker/VM — not multi-node HA / VIP / shared storage",
+    "Not cloud managed Postgres / PITR parity",
+    "Not production load or latency proof",
+    "Cannot authorize cutover (environment=local)"
+  ],
+  "note": "Local staging / zero-budget rehearsal only. Does NOT authorize cutover. Use live-*.json + staging for authorize.",
+  "does_not_authorize_cutover": true
+}

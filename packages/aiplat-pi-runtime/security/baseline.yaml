@@ -41,3 +41,10 @@ checks:
     path: packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md
     must_contain:
       - "AIPLAT_ENTERPRISE"
+  - id: pi_d2_soc_deeper
+    description: D2++ SOC deeper check requires local schema fields
+    path: packages/aiplat-pi-runtime/scripts/d2_soc_deeper_check.sh
+    must_contain:
+      - 'environment must be ''local'''
+      - "events_sample"
+      - "Never production_signed"

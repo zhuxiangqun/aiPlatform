@@ -1,0 +1,19 @@
+{
+  "kind": "aiplat_central_d3_local_acceptance",
+  "at": "20261101T020901Z",
+  "environment": "local",
+  "uat_steps": [
+    "a2_version",
+    "compat",
+    "security",
+    "contract_sample",
+    "clean_install",
+    "upgrade_n1",
+    "runtime_rollback",
+    "backup",
+    "pg_ha_local_rehearsal",
+    "cutover_authorize_refused"
+  ],
+  "cutover_authorized": false,
+  "production_signed": false
+}

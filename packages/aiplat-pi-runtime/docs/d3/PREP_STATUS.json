@@ -1,7 +1,7 @@
 {
   "schema_version": "aiplat.pi.d3.prep.v0",
   "capability_id": "pi",
-  "checked_at": "2026-11-01T00:59:12Z",
+  "checked_at": "2026-11-01T02:05:09Z",
   "d3_production_authorized": false,
   "adr_status": "accepted_conditional",
   "items": {
@@ -39,7 +39,7 @@
     },
     "3_bundle_local_rehearsal": {
       "ok": true,
-      "detail": "packages/aiplat-pi-runtime/docs/d3/drills/local-rehearsal-20261101T005911Z.json"
+      "detail": "packages/aiplat-pi-runtime/docs/d3/drills/local-rehearsal-20261101T020507Z.json"
     },
     "4_ops_docs": {
       "ok": true,
@@ -47,11 +47,11 @@
     },
     "6_rollback_local_rehearsal": {
       "ok": true,
-      "detail": "packages/aiplat-pi-runtime/docs/d3/drills/n1-rehearsal-20261101T005911Z.json"
+      "detail": "packages/aiplat-pi-runtime/docs/d3/drills/n1-rehearsal-20261101T020508Z.json"
     },
     "5_soc_local_rehearsal": {
       "ok": true,
-      "detail": "packages/aiplat-pi-runtime/docs/d3/drills/soc-rehearsal-20261101T005911Z.json"
+      "detail": "packages/aiplat-pi-runtime/docs/d3/drills/soc-rehearsal-20261101T020508Z.json"
     },
     "live_drill_evidence_present": {
       "ok": true,

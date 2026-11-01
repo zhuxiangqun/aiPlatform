@@ -1,10 +1,10 @@
 # aiPlat Central D2 Thin Local Closeout
 
-- recorded_at: `20261101T011539Z`
+- recorded_at: `20261101T030647Z`
 - environment: `local` (Option B)
 - result: **PASS**
 - `cutover_authorized`: **false**
-- evidence: `ops/evidence/local-aiplat-d2-thin-local-20261101T011539Z.json`
+- evidence: `ops/evidence/local-aiplat-d2-thin-local-20261101T030647Z.json`
 
 ## Covered
 

@@ -1,7 +1,7 @@
 {
   "schema_version": "aiplat.ontology.a3.prep.v0",
   "capability_id": "ontology",
-  "checked_at": "2026-10-31T15:12:53Z",
+  "checked_at": "2026-11-01T02:08:49Z",
   "process_split_authorized": false,
   "adr_status": "accepted_conditional",
   "items": {
@@ -35,11 +35,11 @@
     },
     "3_local_dual_write_rehearsal": {
       "ok": true,
-      "detail": "packages/aiplat-ontology/docs/a3/drills/local-rehearsal-20261031T151253Z.json"
+      "detail": "packages/aiplat-ontology/docs/a3/drills/local-rehearsal-20261101T020849Z.json"
     },
     "5_local_rollback_rehearsal": {
       "ok": true,
-      "detail": "packages/aiplat-ontology/docs/a3/drills/local-rehearsal-20261031T151253Z.json"
+      "detail": "packages/aiplat-ontology/docs/a3/drills/local-rehearsal-20261101T020849Z.json"
     }
   },
   "auto_prep_green": true,

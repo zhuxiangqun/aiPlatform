@@ -1,0 +1,35 @@
+{
+  "kind": "pi_d3_local_drill_evidence",
+  "schema_version": "aiplat.pi.d3.local_drill.v0",
+  "drill_id": "pi-d3-local-20261101T030631Z",
+  "environment": "local",
+  "operator": "apple",
+  "recorded_at": "2026-11-01T03:06:32Z",
+  "production_signed": false,
+  "local_signed": true,
+  "items": {
+    "bundle_integrity": {
+      "done": true,
+      "evidence": "d3_local_rehearsal bundle checksum (local)"
+    },
+    "ops_surface": {
+      "done": true,
+      "evidence": "docs/d3/OPS_SURFACE.md + local rehearsal (local; not prod healthz SLA)"
+    },
+    "soc_alert_export": {
+      "done": true,
+      "evidence": "d3_soc_local_rehearsal file-sink (local; no external SOC)"
+    },
+    "n1_upgrade_rollback": {
+      "done": true,
+      "evidence": "d1_upgrade/rollback or d3_local_rehearsal N-1 path (local)"
+    }
+  },
+  "limitations": [
+    "Local checksum/file-sink/SOC only — not production SOC egress",
+    "N-1 upgrade/rollback may be D1 local path, not production channel",
+    "Cannot authorize d3_production (environment=local)"
+  ],
+  "note": "Local D3 rehearsal only. Does NOT authorize d3_production_authorized.",
+  "does_not_authorize_d3_production": true
+}

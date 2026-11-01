@@ -1,9 +1,9 @@
 # Option B last full run
 
-- recorded_at: `20261101T003405Z`
-- command: `bash scripts/ops_option_b_all.sh` (+ Keycloak wait / OIDC re-sign)
+- recorded_at: `20261101T030630Z`
+- command: `bash scripts/ops_option_b_all.sh`
 - result: **PASS**
-- pgha_mode: `docker` (PG :5433 + Keycloak :8081)
+- pgha_mode: `docker`
 - environment: `local`
 - staging_ready: **false**
 - production_signed: **false**
@@ -15,5 +15,5 @@
 ## Notes
 
 - Prefer `pgha_mode=docker` (PG :5433 + Keycloak :8081).
-- `pg_ha_local_staging.sh all` waits for Keycloak before OIDC.
-- Hard gates remain false.
+- If docker down: sqlite/file rehearsal still counts as Option B engineering; re-run after daemon up for full stack.
+- Prior docker PASS sample: `evidence/local-pgha-local-20261031T235626Z.json`.

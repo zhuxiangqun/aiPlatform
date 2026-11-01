@@ -1,0 +1,31 @@
+{
+  "kind": "ontology_a3_local_drill_evidence",
+  "schema_version": "aiplat.ontology.a3.local_drill.v0",
+  "drill_id": "ontology-a3-local-20261101T030631Z",
+  "environment": "local",
+  "operator": "apple",
+  "recorded_at": "2026-11-01T03:06:32Z",
+  "production_signed": false,
+  "local_signed": true,
+  "items": {
+    "storage_migration": {
+      "done": true,
+      "evidence": "a3_local_rehearsal dual-write/file copy (local)"
+    },
+    "rollback_cohost": {
+      "done": true,
+      "evidence": "a3_local_rehearsal prefix rollback to cohost (local)"
+    },
+    "healthz_contract": {
+      "done": true,
+      "evidence": "modules/ontology/contracts/validate_sample.py (local schema; not live HTTP)"
+    }
+  },
+  "limitations": [
+    "Local file/prefix dual-write only — not live storage migration",
+    "healthz may be schema/sample validate only (not production HTTP)",
+    "Cannot authorize process_split (environment=local)"
+  ],
+  "note": "Local A3 rehearsal only. Does NOT authorize process split.",
+  "does_not_authorize_process_split": true
+}

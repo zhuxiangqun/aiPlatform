@@ -1,7 +1,7 @@
 {
   "schema_version": "aiplat.evaluation.a3.prep.v0",
   "capability_id": "evaluation",
-  "checked_at": "2026-10-31T15:12:53Z",
+  "checked_at": "2026-11-01T02:08:50Z",
   "process_split_authorized": false,
   "adr_status": "accepted_conditional",
   "items": {
@@ -35,7 +35,7 @@
     },
     "4_local_backup_rollback_rehearsal": {
       "ok": true,
-      "detail": "packages/aiplat-evaluation/docs/a3/drills/local-rehearsal-20261031T151253Z.json"
+      "detail": "packages/aiplat-evaluation/docs/a3/drills/local-rehearsal-20261101T020849Z.json"
     }
   },
   "auto_prep_green": true,

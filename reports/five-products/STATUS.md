@@ -1,11 +1,11 @@
 # Five-products engineering status (2026-11-01)
 
 > **SSOT autonomy/delivery**：[`capabilities.manifest.yaml`](../../capabilities.manifest.yaml)（本表必须与之一致；禁止写高于 manifest 的 A/D）。  
-> **G0**：[`G0_CLOSEOUT.md`](./G0_CLOSEOUT.md)（通过 · P0-3′ · 19 提交 · CI 证据）。  
+> **G0**：[`G0_CLOSEOUT.md`](./G0_CLOSEOUT.md)（通过 · P0-3′ · **47** 提交 · HEAD CI=`1992e8e1`）。  
 > **计划**：[`five-capability-independent-engineering-plan.md`](../../docs/architecture/plans/five-capability-independent-engineering-plan.md) **V2.2** · packaging base [`templates/module/PACKAGING_BASE.md`](../../templates/module/PACKAGING_BASE.md)。  
-> **解冻**：D3 本地验收 + 跨能力 E2E — [`ops/ENGINEERING_UNFREEZE_D3_E2E.md`](./ops/ENGINEERING_UNFREEZE_D3_E2E.md)（authorize 仍冻）。  
+> **冻结**：[`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md)（D3/E2E 完成后再冻结；authorize 仍冻）。  
 > 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md) · 本地收口 [`ops/ENGINEERING_LOCAL_CLOSEOUT.md`](./ops/ENGINEERING_LOCAL_CLOSEOUT.md)。  
-> **运维决策（2026-11-01）**：**运维路径 B — 正式 defer**；`staging_ready=false`（[`ops/STAGING_READY.md`](./ops/STAGING_READY.md)）。复审：**2026-11-08**。  
+> **运维决策（2026-11-01）**：**运维路径 B — 正式 defer**；`staging_ready=false`（[`ops/STAGING_READY.md`](./ops/STAGING_READY.md)）。下次复审：**2026-11-15**。  
 > **工程环境**：**方案 B 本机 VM/Docker 全轨**（[`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md)）· `bash scripts/ops_option_b_all.sh`。  
 > Blocker：缺**真实**预发 DSN/OIDC（本机 local ≠ staging）；kickoff exit 2 = 硬门按设计。  
 > **Accepted（有条件）** ≠ 生产授权；硬门全 **false**。
