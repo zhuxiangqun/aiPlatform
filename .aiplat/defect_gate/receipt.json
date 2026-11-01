@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T09:24:28+08:00",
+  "reviewed_at": "2026-11-01T09:29:32+08:00",
   "base_ref": "origin/main",
-  "merge_base": "1dfc1239c5d4e505ed2a8b525b2c29774f4e7542",
-  "diff_sha256": "abbeee42b84941e522947837493ce84a571208972830f2d68d4f52e75112a4a4",
-  "head_sha": "9f24099b1091bafe06ac427fcb14f75c0001d817",
+  "merge_base": "24b6299e999e0a063daadf194f2ec751c174034e",
+  "diff_sha256": "64b83697c790aa842c3cfb071b29115bf4527c652c5383b1df60e39e083b8fcd",
+  "head_sha": "86999228f5736441bc014936883d170137ad5a61",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Packaging V2.1 shared baseline; hard gates unchanged."
+  "note": "D2 local perf baselines; not production SLA; hard gates unchanged."
 }
