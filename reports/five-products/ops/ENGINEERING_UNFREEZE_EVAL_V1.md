@@ -66,4 +66,5 @@ python3 scripts/check_five_products_status_sync.py
 - **E3**（2026-11-01）：`bootstrap_e3_gold` ≥15 可跑 + [`EVAL_V1_E3_GOLD_SOURCES.md`](./EVAL_V1_E3_GOLD_SOURCES.md) + solo 复核队列；**未锁 v0 / 不报 κ**；测试 `test_eval_v1_e3_gold.py`。
 - **E4**（2026-11-01）：`judge.deterministic.code_review_gold.v1` + k=3/ECE/bias 校准报告（`eval.calibration.v0`）；`POST …/store/calibrate-e4`；**accuracy_claim=false**；测试 `test_eval_v1_e4_judge.py`。
 - **E5**（2026-11-01）：failure taxonomy + local gate（pr/nightly/release）；`POST …/store/gate-e5` + schema `eval_gate.schema.json`；**gate_claim=false / accuracy_claim=false**（未达 G2a）；测试 `test_eval_v1_e5_gate.py`。
-- G2a/G2b accuracy claim：`_pending_`
+- **G2a machinery**（2026-11-01）：`g2a.py` + `POST …/store/{review-queue,labels/*/adjudicate,lock-v0,gate-g2a}`；种子已 ≥30 可跑；**待你单人 adjudicate ≥30 后 `lock-v0`**；锁后 local `gate_claim` 可开，**accuracy 仍禁**；测试 `test_eval_v1_g2a.py`。
+- G2a human lock / UI preview unfreeze / G2b accuracy：`_pending_`

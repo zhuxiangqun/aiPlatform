@@ -132,6 +132,11 @@ def e3_status(*, tenant_id: str = "eval-v1", db_path: Optional[str] = None) -> D
                 ).fetchone()[0]
             )
     n = len(tasks)
+    v0_locked = (store.get_meta("v0_locked") or "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
     return {
         "ok": True,
         "set_id": set_id,
@@ -140,7 +145,7 @@ def e3_status(*, tenant_id: str = "eval-v1", db_path: Optional[str] = None) -> D
         "labels_adjudicated": adjudicated,
         "runnable_gate": n >= E3_MIN_RUNNABLE,
         "v0_lock_ready": n >= E3_V0_LOCK_TARGET and adjudicated >= E3_V0_LOCK_TARGET,
-        "v0_locked": False,
+        "v0_locked": v0_locked,
         "kappa": None,  # D5: not computed on solo review
         "e3_min_runnable": E3_MIN_RUNNABLE,
         "e3_v0_lock_target": E3_V0_LOCK_TARGET,

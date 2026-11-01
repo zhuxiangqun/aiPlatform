@@ -424,6 +424,125 @@ class EvalStore:
             "created_at": row["created_at"],
         }
 
+    def get_label(self, label_id: str) -> Optional[Dict[str, Any]]:
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM eval_labels WHERE id=?", (label_id,)).fetchone()
+        if not row:
+            return None
+        return {
+            "id": row["id"],
+            "task_id": row["task_id"],
+            "annotator": row["annotator"],
+            "label": _loads(row["label_json"]),
+            "rationale": row["rationale"],
+            "adjudicated": bool(row["adjudicated"]),
+            "created_at": row["created_at"],
+        }
+
+    def list_labels(
+        self,
+        *,
+        set_id: str = "",
+        annotator: str = "",
+        adjudicated: Optional[bool] = None,
+        limit: int = 500,
+    ) -> List[Dict[str, Any]]:
+        sql = (
+            "SELECT l.* FROM eval_labels l "
+            "JOIN eval_tasks t ON t.id=l.task_id WHERE 1=1"
+        )
+        args: List[Any] = []
+        if set_id:
+            sql += " AND t.set_id=?"
+            args.append(set_id)
+        if annotator:
+            sql += " AND l.annotator=?"
+            args.append(annotator)
+        if adjudicated is not None:
+            sql += " AND l.adjudicated=?"
+            args.append(1 if adjudicated else 0)
+        sql += " ORDER BY l.created_at ASC LIMIT ?"
+        args.append(int(limit))
+        with self._connect() as conn:
+            rows = conn.execute(sql, tuple(args)).fetchall()
+        return [
+            {
+                "id": row["id"],
+                "task_id": row["task_id"],
+                "annotator": row["annotator"],
+                "label": _loads(row["label_json"]),
+                "rationale": row["rationale"],
+                "adjudicated": bool(row["adjudicated"]),
+                "created_at": row["created_at"],
+            }
+            for row in rows
+        ]
+
+    def update_label_payload(
+        self,
+        label_id: str,
+        *,
+        label: Optional[Dict[str, Any]] = None,
+        rationale: Optional[str] = None,
+        adjudicated: Optional[bool] = None,
+    ) -> Dict[str, Any]:
+        existing = self.get_label(label_id)
+        if not existing:
+            raise ValueError(f"unknown label_id: {label_id}")
+        new_label = label if label is not None else existing.get("label") or {}
+        new_rat = existing.get("rationale") or "" if rationale is None else rationale
+        adj = existing.get("adjudicated") if adjudicated is None else bool(adjudicated)
+        with self._connect() as conn:
+            conn.execute(
+                "UPDATE eval_labels SET label_json=?, rationale=?, adjudicated=? WHERE id=?",
+                (_dumps(new_label), new_rat, 1 if adj else 0, label_id),
+            )
+            conn.commit()
+        out = self.get_label(label_id)
+        assert out is not None
+        return out
+
+    def adjudicate_label(
+        self,
+        label_id: str,
+        *,
+        passed: Optional[bool] = None,
+        notes: str = "",
+        rationale: str = "",
+        label_extra: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Mark a solo-review label as adjudicated (D5 human ground truth)."""
+        existing = self.get_label(label_id)
+        if not existing:
+            raise ValueError(f"unknown label_id: {label_id}")
+        label = dict(existing.get("label") or {})
+        if label_extra:
+            label.update(label_extra)
+        label["status"] = "adjudicated"
+        if passed is not None:
+            label["pass"] = bool(passed)
+        if notes:
+            label["notes"] = notes
+        rat = rationale or existing.get("rationale") or "solo adjudicated (D5)"
+        return self.update_label_payload(
+            label_id, label=label, rationale=rat, adjudicated=True
+        )
+
+    def get_meta(self, key: str) -> Optional[str]:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT value FROM eval_store_meta WHERE key=?", (key,)
+            ).fetchone()
+        return row["value"] if row else None
+
+    def set_meta(self, key: str, value: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO eval_store_meta(key, value) VALUES (?, ?)",
+                (key, value),
+            )
+            conn.commit()
+
     # ── judges / judgments / reports (E4) ─────────────────
 
     def upsert_judge(

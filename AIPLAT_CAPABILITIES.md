@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2450
+total_capabilities: 2456
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2478,6 +2478,11 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| eval_lock_v0 | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_run_g2a_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| g2a_status | `core/apps/eval/service/g2a.py` | ✅ | 自动同步 | 已合入 |
+| lock_v0 | `core/apps/eval/service/g2a.py` | ✅ | 自动同步 | 已合入 |
+| run_g2a_gate | `core/apps/eval/service/g2a.py` | ✅ | 自动同步 | 已合入 |
 | expected_calibration_error | `core/apps/eval/service/judge_v1.py` | ✅ | 自动同步 | 已合入 |
 | score_task_match_only | `core/apps/eval/service/judge_v1.py` | ✅ | 自动同步 | 已合入 |
 | register_judge_v1 | `core/apps/eval/service/judge_v1.py` | ✅ | 自动同步 | 已合入 |
@@ -2524,6 +2529,7 @@ scan_hash: 8f9548ec24f4
 | Eval Gold Bootstrap E3（EVAL_V1） | `core/apps/eval/service/gold_bootstrap.py` + `POST …/store/bootstrap-e3` + sources [`EVAL_V1_E3_GOLD_SOURCES.md`](reports/five-products/ops/EVAL_V1_E3_GOLD_SOURCES.md) | ✅ | ≥15 可跑金标 + solo_reviewer 复核队列；不报 κ / 不锁 v0；生成物适用：已接线（apps/eval） | 已合入 |
 | Eval Judge v1 + Calibration E4（EVAL_V1） | `core/apps/eval/service/judge_v1.py` + `POST …/store/calibrate-e4` + schema `eval_calibration.schema.json` | ✅ | deterministic match_only judge；k=3 / ECE / bias 报告；`accuracy_claim=false`；生成物适用：已接线（apps/eval） | 已合入 |
 | Eval Gate v1 E5（EVAL_V1） | `core/apps/eval/service/gate_v1.py` + `POST …/store/gate-e5` + `GET …/store/gates` + schema `eval_gate.schema.json` | ✅ | failure taxonomy + pr/nightly/release local gate；seeded regression 检出；`gate_claim=false`/`accuracy_claim=false`（未达 G2a）；生成物适用：已接线（apps/eval） | 已合入 |
+| Eval G2a lock + local gate claim（EVAL_V1） | `core/apps/eval/service/g2a.py` + `POST …/store/{lock-v0,gate-g2a,labels/*/adjudicate,review-queue/preannotate}` | ✅ | ≥30 单人 adjudicated → lock v0 → local `gate_claim`；`accuracy_claim=false` / κ=null（D5）；生成物适用：已接线（apps/eval） | 已合入 |
 | Evaluation D1 Thin | `packages/aiplat-evaluation` + `GET /api/core/eval/healthz`（`evaluation_healthz_payload`） | ✅ | 共宿 Central；`product_id=evaluation`；无 A3 拆分；生成物适用：不适用（平台共宿打包） | 已合入 |
 | AB Optimizer | harness/evaluation/ab_optimizer.py | ✅ | A/B 测试优化 | 已合入 |
 | CoverageGate | harness/evaluation/coverage_gate.py | ✅ | 覆盖率阈值强制执行 | 已合入 |
@@ -3360,7 +3366,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 53 | 0 | 53 |
+| 评估系统 | 59 | 0 | 59 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3392,7 +3398,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2440** | **10** | **2450** |
+| **总计** | **2446** | **10** | **2456** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
