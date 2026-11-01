@@ -40,6 +40,7 @@ bash packages/aiplat-pi-runtime/scripts/d3_local_closeout.sh
 echo "== Module contract samples =="
 python3 reports/five-products/modules/ontology/contracts/validate_sample.py
 python3 reports/five-products/modules/evaluation/contracts/validate_sample.py
+python3 reports/five-products/modules/diagnosis/contracts/validate_sample.py
 python3 reports/five-products/modules/aiplat/contracts/validate_sample.py
 python3 reports/five-products/modules/fde/contracts/validate_sample.py
 
@@ -49,6 +50,8 @@ echo "== Unit adapters =="
   aiPlat-core/core/tests/unit/test_control_plane_v0.py \
   aiPlat-core/core/tests/unit/test_ontology_api_v0.py \
   aiPlat-core/core/tests/unit/test_eval_protocol_v0.py \
+  aiPlat-core/core/tests/unit/test_diagnosis_v1_c1.py \
+  aiPlat-core/core/tests/unit/test_diagnosis_v1_c2.py \
   -q --tb=line
 
 echo "== Ontology D1 smoke =="
@@ -63,6 +66,12 @@ bash packages/aiplat-evaluation/scripts/d1_smoke.sh
 echo "== Evaluation D2 cohost admin pack =="
 bash packages/aiplat-evaluation/scripts/d2_admin_check.sh
 
+echo "== Diagnosis D1 smoke =="
+bash packages/aiplat-diagnosis/scripts/d1_smoke.sh
+
+echo "== Diagnosis D2 cohost admin pack =="
+bash packages/aiplat-diagnosis/scripts/d2_admin_check.sh
+
 echo "== FDE Field D1 smoke =="
 bash packages/aiplat-fde/scripts/d1_smoke.sh
 
@@ -74,6 +83,9 @@ bash packages/aiplat-ontology/scripts/a3_local_rehearsal.sh
 
 echo "== Evaluation A3 local rehearsal (SQLite backup/rollback; not live) =="
 bash packages/aiplat-evaluation/scripts/a3_local_rehearsal.sh
+
+echo "== Diagnosis A3 local rehearsal (SQLite backup/rollback; not live) =="
+bash packages/aiplat-diagnosis/scripts/a3_local_rehearsal.sh
 
 echo "== Ontology A3 prep (split stays unauthorized; ADR Accepted conditional) =="
 bash packages/aiplat-ontology/scripts/a3_prep_check.sh
@@ -94,6 +106,7 @@ echo "== Authorize hard gates (expect REFUSE while checklist has 🟨) =="
 bash packages/aiplat-central/scripts/pg_ha_cutover_authorize.sh status
 bash packages/aiplat-ontology/scripts/a3_split_authorize.sh status
 bash packages/aiplat-evaluation/scripts/a3_split_authorize.sh status
+bash packages/aiplat-diagnosis/scripts/a3_split_authorize.sh status
 if bash packages/aiplat-central/scripts/pg_ha_cutover_authorize.sh authorize; then
   echo "FAIL: cutover authorize must REFUSE while not all ✅" >&2
   exit 1
@@ -104,6 +117,10 @@ if bash packages/aiplat-ontology/scripts/a3_split_authorize.sh authorize; then
 fi
 if bash packages/aiplat-evaluation/scripts/a3_split_authorize.sh authorize; then
   echo "FAIL: evaluation split authorize must REFUSE while not all ✅" >&2
+  exit 1
+fi
+if bash packages/aiplat-diagnosis/scripts/a3_split_authorize.sh authorize; then
+  echo "FAIL: diagnosis split authorize must REFUSE while not all ✅" >&2
   exit 1
 fi
 bash packages/aiplat-pi-runtime/scripts/d3_authorize.sh status
@@ -130,12 +147,13 @@ bash packages/aiplat-central/scripts/d3_local_acceptance.sh
 bash packages/aiplat-fde/scripts/d3_local_acceptance.sh
 bash packages/aiplat-ontology/scripts/d3_local_acceptance.sh
 bash packages/aiplat-evaluation/scripts/d3_local_acceptance.sh
+bash packages/aiplat-diagnosis/scripts/d3_local_acceptance.sh
 
 echo "== Cross-capability E2E local (unfrozen; never authorize) =="
 bash scripts/ops_five_products_e2e_local.sh
 
 echo "PASS: five_products_gate"
-echo "NOTE: Field · PG/HA · Ontology A3 · Evaluation A3 · Pi D3 Accepted(conditional)."
+echo "NOTE: Field · PG/HA · Ontology A3 · Evaluation A3 · Diagnosis D2 pack · Pi D3 Accepted(conditional)."
 echo "NOTE: cutover/process_split/d3_production unauthorized until checklists all ✅."
 echo "NOTE: D3 local acceptance + cross E2E unfrozen; authorize still frozen."
 echo "See reports/five-products/STATUS.md · OPS_LIVE_RUNBOOK.md · ENGINEERING_UNFREEZE_D3_E2E.md"

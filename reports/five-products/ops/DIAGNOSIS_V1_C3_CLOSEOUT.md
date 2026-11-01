@@ -12,6 +12,7 @@
 | 项 | 结果 |
 |---|---|
 | packaging surface | `aiplat-diagnosis` 纳入 `check_five_products_packaging_surface.sh` · PASS |
+| gate wiring | `five_products_gate.sh` + `ops_d3_local_acceptance_all.sh` 含 diagnosis |
 | D1 Thin | `d1_install` / `upgrade` / `rollback --runtime` / `backup` / `smoke` |
 | D2 admin | `d2_admin_check` + `security/baseline.yaml` · 8 checks |
 | D2 closeout | `d2_local_closeout.sh` PASS · split authorize REFUSE |

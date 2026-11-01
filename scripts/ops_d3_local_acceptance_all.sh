@@ -16,11 +16,12 @@ bash packages/aiplat-central/scripts/d3_local_acceptance.sh || fail "central"
 bash packages/aiplat-fde/scripts/d3_local_acceptance.sh || fail "fde"
 bash packages/aiplat-ontology/scripts/d3_local_acceptance.sh || fail "ontology"
 bash packages/aiplat-evaluation/scripts/d3_local_acceptance.sh || fail "evaluation"
+bash packages/aiplat-diagnosis/scripts/d3_local_acceptance.sh || fail "diagnosis"
 # Pi last — starts HTTP listeners
 bash packages/aiplat-pi-runtime/scripts/d3_local_acceptance.sh || fail "pi"
 
 cat >"$CLOSEOUT" <<EOF
-# D3 Local Acceptance (all five)
+# D3 Local Acceptance (five + diagnosis)
 
 - recorded_at: \`$STAMP\`
 - environment: \`local\`

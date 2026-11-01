@@ -100,6 +100,14 @@ grep -q 'lock-v0' aiPlat-platform/apps/eval/api/store_api.py \
   || fail "missing DIAGNOSIS_V1 C0 seed cases"
 [[ -f reports/five-products/modules/diagnosis/contracts/schemas/diagnosis_evidence.schema.json ]] \
   || fail "missing diagnosis evidence schema v0"
+[[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C3.md ]] \
+  || fail "missing DIAGNOSIS_V1 C3 unfreeze"
+[[ -f reports/five-products/ops/DIAGNOSIS_V1_C3_CLOSEOUT.md ]] \
+  || fail "missing DIAGNOSIS_V1 C3 closeout"
+[[ -x packages/aiplat-diagnosis/scripts/d2_local_closeout.sh ]] \
+  || fail "missing diagnosis d2_local_closeout"
+[[ -f packages/aiplat-diagnosis/security/baseline.yaml ]] \
+  || fail "missing diagnosis security baseline"
 [[ -f aiPlat-management/frontend/src/pages/Eval/EvalPreview.tsx ]] \
   || fail "missing /eval preview page"
 grep -q "path: 'eval'" aiPlat-management/frontend/src/App.tsx \
