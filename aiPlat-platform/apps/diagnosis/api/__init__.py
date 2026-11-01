@@ -1,0 +1,1 @@
+"""Diagnosis API routers."""

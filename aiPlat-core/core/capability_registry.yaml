@@ -12,8 +12,8 @@ generated_at: "2026-10-22"
 # Header totals must match domain bodies (sum caps_count / len(domains)).
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
-total_capability_domains: 33
-total_capabilities: 1569
+total_capability_domains: 34
+total_capabilities: 1577
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -5088,6 +5088,51 @@ domains:
         reason: "8 Gate 统一出口"
       - module: "core/server.py"
         reason: "BackpressureMiddleware 挂载 + backpressure_stats 诊断"
+
+  # ══════════════════════════════════════════════════════════════
+  # 十三-b、诊断系统 DIAGNOSIS_V1 C1
+  # ══════════════════════════════════════════════════════════════
+  diagnosis-system:
+    section: "十三-b"
+    section_name: "诊断系统"
+    caps_count: 8
+    provides:
+      - symbol: "DiagnosisStore"
+        type: "class"
+        signature: "DiagnosisStore(db_path) — Case/Evidence/Report SQLite store"
+        module: "core/apps/diagnosis/service/store.py"
+      - symbol: "collect_evidence"
+        type: "function"
+        signature: "collect_evidence(scenario, subject_ref, baseline_ref?)→Dict read-only adapters/fixtures"
+        module: "core/apps/diagnosis/service/adapters.py"
+      - symbol: "diagnose_case"
+        type: "function"
+        signature: "diagnose_case(case_id, evidence, payload?, expected?)→Dict report (accuracy_claim=false)"
+        module: "core/apps/diagnosis/service/engine.py"
+      - symbol: "fixture_metrics"
+        type: "function"
+        signature: "fixture_metrics(limit=10)→Dict Top-1/Top-3 on real fixtures"
+        module: "core/apps/diagnosis/service/metrics.py"
+      - symbol: "diagnosis_health"
+        type: "function"
+        signature: "diagnosis_health(tenant_id='')→Dict product_id=diagnosis"
+        module: "core/api/core_facade.py"
+      - symbol: "diagnosis_collect"
+        type: "function"
+        signature: "diagnosis_collect(case_id, tenant_id='')→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "diagnosis_run_report"
+        type: "function"
+        signature: "diagnosis_run_report(case_id, tenant_id='')→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "diagnosis_fixture_metrics"
+        type: "function"
+        signature: "diagnosis_fixture_metrics(limit=10)→Dict"
+        module: "core/api/core_facade.py"
+    breaks: []
+    consumers_expected:
+      - module: "aiPlat-platform/apps/diagnosis/api/cases.py"
+        reason: "canonical diagnosis HTTP API"
 
   # ══════════════════════════════════════════════════════════════
   # 十三、评估系统 (24 caps)

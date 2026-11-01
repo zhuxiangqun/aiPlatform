@@ -1,7 +1,7 @@
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 33 domains | 1569 capabilities (caps_count) | 1569 symbols (provides)
+> Version: 1.1.0 | 34 domains | 1577 capabilities (caps_count) | 1577 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -44,6 +44,12 @@
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | infra-infrastructure | §二十二 Infra 基础设施 | 6 | Infra 管理前端 |
+
+### aiPlat-platform/apps/diagnosis/api/cases.py
+
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| diagnosis-system | §十三-b 诊断系统 | 8 | canonical diagnosis HTTP API |
 
 ### aiPlat-platform/apps/eval/api/arena_wiring.py
 
@@ -456,6 +462,10 @@
 
 - **core/server.py** — 启动时挂载 cron + WakeScheduler
 - **core/harness/evolution_engine.py** — self-harness cycle
+
+### §十三-b 诊断系统 (8 caps)
+
+- **aiPlat-platform/apps/diagnosis/api/cases.py** — canonical diagnosis HTTP API
 
 ### §十五 文档智能 (3 caps)
 

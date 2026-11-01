@@ -1,7 +1,8 @@
-# Diagnosis module（第六能力 · C0）
+# Diagnosis module（第六能力 · C1）
 
-> **状态**：C0 设计中 · 未入 capabilities.manifest  
-> **Charter**：[`diagnosis-v1-charter.md`](../../../../docs/architecture/plans/diagnosis-v1-charter.md)
+> **状态**：C1 D1c MVP · 已入 `capabilities.manifest`（A0 / D1 cohost）  
+> **Charter**：[`diagnosis-v1-charter.md`](../../../../docs/architecture/plans/diagnosis-v1-charter.md)  
+> **解冻**：[`ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md`](../../ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md)
 
 ## 定位
 
@@ -10,21 +11,21 @@
 
 ## 首发场景
 
-1. run 失败诊断  
-2. 版本回归诊断  
+1. run 失败诊断（`run_failure`）  
+2. 版本回归诊断（`version_regression`）
 
-## 契约
+## 契约 / 代码
 
 - Evidence / Report schema：[`contracts/schemas/diagnosis_evidence.schema.json`](./contracts/schemas/diagnosis_evidence.schema.json)
 - Seed cases：[`../../ops/DIAGNOSIS_V1_C0_SEED_CASES.md`](../../ops/DIAGNOSIS_V1_C0_SEED_CASES.md)
+- Fixtures：`packages/aiplat-diagnosis/fixtures/`（≥10 脱敏真实包）
+- API：`/api/platform/apps/diagnosis`（`aiPlat-platform/apps/diagnosis`）
+- Service：`aiPlat-core/core/apps/diagnosis/service/`
+- UI：`/diagnosis`
 
-## As-is
+## 硬边界
 
-- 内部工具箱：`/diagnostics/*` + 管理端 Diagnostics 页面  
-- **不是**本产品；C1 起作为证据采集器复用  
-
-## To-be（C1）
-
-- API：`/api/platform/apps/diagnosis`  
-- UI：`/diagnosis`  
-- Package：`packages/aiplat-diagnosis`（D1c cohost）  
+- 无 `remediate` / `auto_execute=true`
+- `accuracy_claim=false`
+- `process_split_authorized=false`
+- 旧 `/diagnostics/*` 仍为工程工具箱，不是本产品

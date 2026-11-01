@@ -7358,6 +7358,8 @@ from apps.prompt.api.router import router as prompt_platform_router  # noqa: E40
 from apps.eval.api.router import router as eval_platform_router  # noqa: E402
 from apps.eval.api.legacy_shim import EvalLegacyDeprecationMiddleware  # noqa: E402
 
+from apps.diagnosis.api.router import router as diagnosis_platform_router  # noqa: E402
+
 from apps.misc.api.router import router as misc_platform_router  # noqa: E402
 
 app.include_router(learning_platform_router, prefix="/api/platform/apps")
@@ -7368,6 +7370,10 @@ app.include_router(prompt_platform_router, prefix="/api/platform/apps")
 app.include_router(eval_platform_router, prefix="/api/platform/apps/eval")
 app.include_router(eval_platform_router, prefix="/api/platform/apps")
 app.add_middleware(EvalLegacyDeprecationMiddleware)
+
+# DIAGNOSIS_V1 C1: cases router carries prefix=/diagnosis → /api/platform/apps/diagnosis/*
+# (do not alias under /diagnostics toolbox).
+app.include_router(diagnosis_platform_router, prefix="/api/platform/apps")
 
 app.include_router(misc_platform_router, prefix="/api/platform/apps")
 
