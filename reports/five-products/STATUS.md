@@ -1,7 +1,7 @@
 # Five-products engineering status (2026-11-01)
 
 > **SSOT autonomy/delivery**：[`capabilities.manifest.yaml`](../../capabilities.manifest.yaml)（本表必须与之一致；禁止写高于 manifest 的 A/D）。  
-> **G0**：[`G0_CLOSEOUT.md`](./G0_CLOSEOUT.md)（通过 · P0-3′ · **54** 提交 · HEAD CI=`500b4287`）。  
+> **G0**：[`G0_CLOSEOUT.md`](./G0_CLOSEOUT.md)（通过 · P0-3′ · CI 锚点 **56** 提交 · `979778d2`）。  
 > **计划**：[`five-capability-independent-engineering-plan.md`](../../docs/architecture/plans/five-capability-independent-engineering-plan.md) **V2.2** · packaging base [`templates/module/PACKAGING_BASE.md`](../../templates/module/PACKAGING_BASE.md)。  
 > **冻结**：[`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md)（D3/E2E 完成后再冻结；authorize 仍冻）。  
 > 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md) · 本地收口 [`ops/ENGINEERING_LOCAL_CLOSEOUT.md`](./ops/ENGINEERING_LOCAL_CLOSEOUT.md)。  

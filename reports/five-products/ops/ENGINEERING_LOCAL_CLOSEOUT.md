@@ -29,7 +29,8 @@
 | Option B all | **PASS**（`OPTION_B_LAST_RUN.md` · docker PGHA） |
 | five_products_gate | **PASS**（含 authorize REFUSE） |
 | STATUS↔manifest sync | **PASS**（`scripts/check_five_products_status_sync.py`） |
-| G0 HEAD CI | **PASS**（`G0_CLOSEOUT.md` · `500b4287` · **54** 提交 · 含 D2++ SOC） |
+| G0 HEAD CI | **PASS**（`G0_CLOSEOUT.md` · `979778d2` · **56** 提交 · 含 D2++ SOC） |
+| 本地代码任务 | **无必须项**（瓶颈=真实预发；再开代码须显式解冻） |
 | 11-22 复审预填 | **READY**（无主机；Outcome 待复审日） |
 | Field ADR | **继续 Draft**（不实施） |
 | 四轨 `ready_to_authorize` | **false** |

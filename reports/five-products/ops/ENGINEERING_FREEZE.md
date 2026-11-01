@@ -9,7 +9,8 @@
 ## Frozen means
 
 本地工程增量已闭合（安装面、D2 pack、D3 本地验收、跨能力 E2E、compat/security、perf、packaging）。  
-再改须有明确缺陷、**已列 Still open**、或复审驱动；禁止用本地证据推动 authorize。  
+**已无必须做的产品代码任务**；瓶颈是真实预发，不是代码。  
+再改须有明确缺陷、**已列 Still open**、复审驱动、或**显式解冻新范围**；禁止用本地证据推动 authorize。  
 
 ### 解冻史
 

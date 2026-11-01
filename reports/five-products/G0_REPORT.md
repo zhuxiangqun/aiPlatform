@@ -69,7 +69,7 @@
 - [x] P0-14/15 ADR 草案 + 本报告  
 
 **G0 工程结论（2026-11-01）**：**通过（骨架 + Tier A=0 + P0-3′ 判据）** — 模板/manifest/charter/Chart 与逃逸清扫已落地；collect/unit 数字已按本轮重跑刷新。  
-**结论文档**：[`G0_CLOSEOUT.md`](./G0_CLOSEOUT.md)（HEAD **54** 提交 / `500b4287`；中间 52/47；初版 19；P0-3′、D1c 语义、CI 证据）。  
+**结论文档**：[`G0_CLOSEOUT.md`](./G0_CLOSEOUT.md)（CI 锚点 **56** 提交 / `979778d2`；中间 54/52/47；初版 19；P0-3′、D1c 语义）。  
 **非结论**：不表示五能力生产就绪；PG/HA 切流、A3 进程拆分、Pi D3 生产宣称仍受硬门约束（全 false）；`staging_ready=false`。  
 **P0-3′ 例外声明**：不以「字面只读 HOME 全绿」为硬条件；逃逸门仍看 Tier A=0 + hermetic `AIPLAT_HOME`；**已同步进主计划 §2.2 / §9.1**。  
 历史注记：早期「有条件通过」曾因 Tier A 未清；现 Tier A=0，该条件已解除。
