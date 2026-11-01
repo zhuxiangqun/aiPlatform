@@ -27,6 +27,11 @@ from core.apps.eval.service.g2a import (
     lock_v0,
     run_g2a_gate,
 )
+from core.apps.eval.service.g2c import (
+    compute_g2c_report,
+    g2c_status,
+    record_g2c_retest,
+)
 
 __all__ = [
     "EvalStore",
@@ -47,4 +52,7 @@ __all__ = [
     "g2a_status",
     "lock_v0",
     "run_g2a_gate",
+    "g2c_status",
+    "record_g2c_retest",
+    "compute_g2c_report",
 ]

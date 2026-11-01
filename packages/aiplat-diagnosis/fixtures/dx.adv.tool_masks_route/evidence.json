@@ -1,0 +1,47 @@
+{
+  "schema_version": "diagnosis.evidence.v0",
+  "case_id": "dx.adv.tool_masks_route",
+  "provenance": "desensitized_local_export",
+  "scenario": "run_failure",
+  "subject_ref": "run:adv-tool-masks-route",
+  "payload": {
+    "tool_result": {
+      "ok": false,
+      "status": 400,
+      "body": {
+        "detail": "surface schema noise"
+      }
+    },
+    "routing": {
+      "selected_model": "local-9b-small",
+      "policy_hint": "prefer_local_cheap",
+      "purpose": "reasoning"
+    }
+  },
+  "evidence": [
+    {
+      "id": "e-tool",
+      "source": "aiplat",
+      "kind": "tool_result",
+      "ref": "fixture://adv/tool",
+      "version": "adv-v0",
+      "captured_at": "2026-11-02T00:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {}
+    },
+    {
+      "id": "e-route",
+      "source": "aiplat",
+      "kind": "model_route",
+      "ref": "fixture://adv/route",
+      "version": "adv-v0",
+      "captured_at": "2026-11-02T00:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {
+        "model": "local-9b-small"
+      }
+    }
+  ]
+}

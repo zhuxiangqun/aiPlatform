@@ -1,0 +1,25 @@
+{
+  "schema_version": "diagnosis.evidence.v0",
+  "case_id": "dx.adv.sparse_hard_guess",
+  "provenance": "desensitized_local_export",
+  "scenario": "run_failure",
+  "subject_ref": "run:adv-sparse",
+  "payload": {
+    "run": {
+      "status": "failed"
+    }
+  },
+  "evidence": [
+    {
+      "id": "e-run",
+      "source": "aiplat",
+      "kind": "run",
+      "ref": "fixture://adv/sparse",
+      "version": "adv-v0",
+      "captured_at": "2026-11-02T00:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {}
+    }
+  ]
+}
