@@ -23,6 +23,7 @@ Shared D1/D2 file surface for capability packages. Copy stubs from this tree; do
 | `docs/PERF_BASELINE.md` | local wall-clock budgets（**不是**生产 SLA） |
 | `scripts/sbom-sign.stub.sh` | SBOM/sign 命令打印桩（不执行 syft/cosign） |
 | `scripts/d3_local_acceptance.sh` | D3 本地 UAT dry-run（解冻后必选；不 authorize） |
+| `docs/uat/UAT.md` | D3 本地验收步骤表 |
 
 Central extras: `d2_compat_check.sh` · `d2_security_check.sh` · `docs/D2_THIN.md`.
 

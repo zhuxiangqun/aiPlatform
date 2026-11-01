@@ -32,6 +32,8 @@
 | Pi D2 | `d2_admin_check.sh` | [`PI_D2_ADMIN_LOCAL.md`](./PI_D2_ADMIN_LOCAL.md) |
 | FDE Field | `d1_local_regression` + `d2_local_closeout` | `local-fde-*.json` · [`FDE_FIELD_D2_LOCAL_CLOSEOUT.md`](./FDE_FIELD_D2_LOCAL_CLOSEOUT.md) |
 | aiPlat Central D2 Thin | `d2_local_closeout.sh` | [`AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md`](./AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md) · cutover REFUSE |
+| D3 local acceptance（解冻） | `ops_d3_local_acceptance_all.sh` | [`D3_LOCAL_ACCEPTANCE.md`](./D3_LOCAL_ACCEPTANCE.md) |
+| Cross-capability E2E（解冻） | `ops_five_products_e2e_local.sh` | [`FIVE_PRODUCTS_E2E_LOCAL.md`](./FIVE_PRODUCTS_E2E_LOCAL.md) |
 
 一键：
 

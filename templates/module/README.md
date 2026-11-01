@@ -21,6 +21,8 @@ Packaging surface (D1/D2): [`PACKAGING_BASE.md`](./PACKAGING_BASE.md) · gate `b
 | `scripts/d2_admin_check.sh` | D2 security pack → shared baseline checker |
 | `security/baseline.yaml` | D2 file/snippet baseline stub |
 | `docs/PERF_BASELINE.md` | D2 local wall-clock budgets（非生产 SLA） |
+| `scripts/d3_local_acceptance.sh` | D3 本地 UAT dry-run stub（不解冻 authorize） |
+| `uat/UAT.md` | D3 本地验收步骤模板 |
 
 ## Levels
 

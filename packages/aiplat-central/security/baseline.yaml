@@ -358,6 +358,18 @@ checks:
     must_contain:
       - "slice_e2e"
       - "Never authorize"
+  - id: template_d3_local_acceptance
+    description: Module template includes d3_local_acceptance stub
+    path: templates/module/scripts/d3_local_acceptance.sh
+    must_contain:
+      - "Never production_signed"
+      - "d3_local_acceptance"
+  - id: central_uat_doc
+    description: Central D3 local UAT doc present
+    path: packages/aiplat-central/docs/uat/UAT.md
+    must_contain:
+      - "不是"
+      - "d3_local_acceptance"
   - id: shared_security_baseline_checker
     description: Shared D2 security baseline checker
     path: scripts/lib/aiplat_security_baseline.py

@@ -41,6 +41,7 @@ require_files aiplat-central \
   security/baseline.yaml \
   docs/D2_THIN.md \
   docs/PERF_BASELINE.md \
+  docs/uat/UAT.md \
   compat/matrix.yaml
 
 require_files aiplat-pi-runtime \
@@ -51,7 +52,8 @@ require_files aiplat-pi-runtime \
   scripts/d3_local_closeout.sh \
   scripts/d3_local_acceptance.sh \
   security/baseline.yaml \
-  docs/PERF_BASELINE.md
+  docs/PERF_BASELINE.md \
+  docs/uat/UAT.md
 
 require_files aiplat-fde \
   "${D1_COMMON[@]}" \
@@ -61,7 +63,8 @@ require_files aiplat-fde \
   scripts/d2_local_closeout.sh \
   scripts/d3_local_acceptance.sh \
   security/baseline.yaml \
-  docs/PERF_BASELINE.md
+  docs/PERF_BASELINE.md \
+  docs/uat/UAT.md
 
 require_files aiplat-ontology \
   "${D1_COMMON[@]}" \
@@ -70,7 +73,8 @@ require_files aiplat-ontology \
   scripts/d2_local_closeout.sh \
   scripts/d3_local_acceptance.sh \
   security/baseline.yaml \
-  docs/PERF_BASELINE.md
+  docs/PERF_BASELINE.md \
+  docs/uat/UAT.md
 
 require_files aiplat-evaluation \
   "${D1_COMMON[@]}" \
@@ -79,7 +83,8 @@ require_files aiplat-evaluation \
   scripts/d2_local_closeout.sh \
   scripts/d3_local_acceptance.sh \
   security/baseline.yaml \
-  docs/PERF_BASELINE.md
+  docs/PERF_BASELINE.md \
+  docs/uat/UAT.md
 
 # Shared baseline checker + template stubs
 [[ -f scripts/lib/aiplat_security_baseline.py ]] || fail "missing shared security baseline checker"
@@ -87,6 +92,8 @@ require_files aiplat-evaluation \
 [[ -f scripts/ops_d3_local_acceptance_all.sh ]] || fail "missing D3 acceptance aggregator"
 [[ -f scripts/ops_five_products_e2e_local.sh ]] || fail "missing cross-capability E2E"
 [[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_D3_E2E.md ]] || fail "missing D3/E2E unfreeze record"
+[[ -f templates/module/scripts/d3_local_acceptance.sh ]] || fail "missing template d3_local_acceptance"
+[[ -f templates/module/uat/UAT.md ]] || fail "missing template UAT.md"
 [[ -f templates/module/PACKAGING_BASE.md ]] || fail "missing templates/module/PACKAGING_BASE.md"
 [[ -f templates/module/docs/PERF_BASELINE.md ]] || fail "missing template PERF_BASELINE.md"
 [[ -f templates/module/security/baseline.yaml ]] || fail "missing template security baseline"

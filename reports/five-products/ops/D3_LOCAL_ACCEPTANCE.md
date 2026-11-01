@@ -22,6 +22,11 @@
 bash scripts/ops_d3_local_acceptance_all.sh
 ```
 
+## UAT checklists
+
+Per-pack `docs/uat/UAT.md`（五包）+ template `templates/module/uat/UAT.md` · `templates/module/scripts/d3_local_acceptance.sh`。  
+Evidence JSON 落 `docs/drills/`（部分包 gitignore；中央 `local-aiplat-d3-uat-*.json` 入库）。
+
 ## Unfreeze
 
 See [`ENGINEERING_UNFREEZE_D3_E2E.md`](./ENGINEERING_UNFREEZE_D3_E2E.md).

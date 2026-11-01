@@ -23,6 +23,8 @@
 | Shared packaging base (V2.1) | **PASS**（`check_five_products_packaging_surface.sh` · shared baseline checker） |
 | D2 local perf baseline | **PASS**（`PERF_BASELINE_LOCAL.md` · contract budgets；非生产 SLA） |
 | Engineering freeze | **PASS**（`ENGINEERING_FREEZE.md` · authorize 全 REFUSE） |
+| D3 local acceptance（解冻） | **PASS**（`D3_LOCAL_ACCEPTANCE.md` · 五包 UAT dry-run） |
+| Cross-capability E2E（解冻） | **PASS**（`FIVE_PRODUCTS_E2E_LOCAL.md` · slice + smokes） |
 | STATUS↔manifest sync | **PASS**（`scripts/check_five_products_status_sync.py`） |
 | 四轨 `ready_to_authorize` | **false** |
 | 硬门 cutover / process_split / d3_production | **false** |
