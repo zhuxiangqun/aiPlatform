@@ -7356,6 +7356,7 @@ from apps.learning.api.router import router as learning_platform_router  # noqa:
 from apps.prompt.api.router import router as prompt_platform_router  # noqa: E402
 
 from apps.eval.api.router import router as eval_platform_router  # noqa: E402
+from apps.eval.api.legacy_shim import EvalLegacyDeprecationMiddleware  # noqa: E402
 
 from apps.misc.api.router import router as misc_platform_router  # noqa: E402
 
@@ -7363,7 +7364,10 @@ app.include_router(learning_platform_router, prefix="/api/platform/apps")
 
 app.include_router(prompt_platform_router, prefix="/api/platform/apps")
 
+# EVAL_V1 E1: canonical under /eval; legacy flat mount kept as shim (Deprecation headers).
+app.include_router(eval_platform_router, prefix="/api/platform/apps/eval")
 app.include_router(eval_platform_router, prefix="/api/platform/apps")
+app.add_middleware(EvalLegacyDeprecationMiddleware)
 
 app.include_router(misc_platform_router, prefix="/api/platform/apps")
 

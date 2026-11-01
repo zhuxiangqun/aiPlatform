@@ -2093,8 +2093,10 @@ app = FastAPI(
 )
 
 from core.api.bind_gate import CoreTokenMiddleware  # noqa: E402
+from core.api.routers.eval_legacy_shim import EvalCoreLegacyDeprecationMiddleware  # noqa: E402
 
 app.add_middleware(CoreTokenMiddleware)
+app.add_middleware(EvalCoreLegacyDeprecationMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

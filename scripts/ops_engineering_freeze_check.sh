@@ -45,6 +45,12 @@ print("PASS: ops_live_status all ready_to_authorize=false")
 '
 
 [[ -f reports/five-products/ops/ENGINEERING_FREEZE.md ]] || fail "missing ENGINEERING_FREEZE.md"
+[[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_V1.md ]] || fail "missing EVAL_V1 unfreeze"
+[[ -f reports/five-products/ops/EVAL_V1_E1_INVENTORY.md ]] || fail "missing EVAL_V1 E1 inventory"
+grep -q 'prefix="/api/platform/apps/eval"' aiPlat-platform/api/rest/routes.py \
+  || fail "eval canonical mount /api/platform/apps/eval missing"
+grep -q 'EvalLegacyDeprecationMiddleware' aiPlat-platform/api/rest/routes.py \
+  || fail "eval legacy deprecation middleware not wired"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-08.md ]] || fail "missing STAGING_REVIEW 2026-11-08"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-15.md ]] || fail "missing STAGING_REVIEW 2026-11-15"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-22.md ]] || fail "missing STAGING_REVIEW 2026-11-22"
