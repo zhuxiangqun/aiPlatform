@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T14:12:13+08:00",
+  "reviewed_at": "2026-11-01T16:01:11+08:00",
   "base_ref": "origin/main",
-  "merge_base": "35829e962fd9bfde16b64a6d3f45930c14bda574",
-  "diff_sha256": "416b827d4d9f6ad7f0a8149e5579f2cb7d0cda07d7d5ac3cecd699b1586cd819",
-  "head_sha": "1e80aef251dd0d548b318848bc938fa163adc4ec",
+  "merge_base": "460976bcd2f884bd9e5aed1b04930c76bdc50a73",
+  "diff_sha256": "26128d00bb7130a0b02f65e22da70ced74635502ec728f46db50431809e65085",
+  "head_sha": "9d5929e63ff47cd2c34364c236c4932c410adc5d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs: G0\u219235829e96 (61) + event-driven staging review; cancel 11-29 churn. No authorize. Local lock only."
+  "note": "EVAL_V1 E0\u2013E5. gate_claim/accuracy_claim forced false; release without v0 lock \u2192 advisory_pass only. false_block measured on uncorrupted inject cohort (not hard-coded). Top-level ok means gate ran, not decision=pass. Local lock only; CI needs non-author Approve."
 }
