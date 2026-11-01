@@ -1,7 +1,7 @@
 # Engineering unfreeze — DIAGNOSIS_V1 C2（深度接入 + 置信度）
 
 - **decided_at**: `2026-11-01`
-- **status**: **Active — C2 only**（本 PR 解冻文档；**代码另开实现 PR**）
+- **status**: **Closed — C2 PASS**（[`DIAGNOSIS_V1_C2_CLOSEOUT.md`](./DIAGNOSIS_V1_C2_CLOSEOUT.md) · #516）
 - **C1**: [`ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md) · closeout [`DIAGNOSIS_V1_C1_CLOSEOUT.md`](./DIAGNOSIS_V1_C1_CLOSEOUT.md) · #513/#514
 - **charter**: [`diagnosis-v1-charter.md`](../../../docs/architecture/plans/diagnosis-v1-charter.md) §4 / §8 C2
 - **freeze**: [`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md)
@@ -99,4 +99,8 @@ bash scripts/ops_engineering_freeze_check.sh
 
 ## Outcome
 
-- `_pending_`（C2 出口填写）
+- **PASS** · `20261101T143228Z` · PR #516 / merge `29c00960`
+- Eval/Ontology 只读 adapters 已接线；`diagnosis.report.v1` + UI reason_codes/confidence/counter
+- Blind fixture 回归 Top-1/Top-3=1.00 · bare=0；`accuracy_claim=false`；**保持 A0**（新场景未开）
+- Closeout：[`DIAGNOSIS_V1_C2_CLOSEOUT.md`](./DIAGNOSIS_V1_C2_CLOSEOUT.md)
+- 下一决策（需新 unfreeze）：C3 **或** EVAL G2b **或** C2 新场景补齐后再评 A2

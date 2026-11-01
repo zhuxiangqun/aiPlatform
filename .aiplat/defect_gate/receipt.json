@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T22:12:00+08:00",
+  "reviewed_at": "2026-11-01T22:34:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "ac853186ba7692a1c38f78c218191c116f535af2",
-  "diff_sha256": "afd89989fcdbb8eebfbd0dc2d5fd69143424517fe8bd55a71a922a252f6e3c1e",
-  "head_sha": "d13d7f278740759f59b6fd279282c3dc18ec682d",
+  "merge_base": "29c00960000c2702c858ecf8ba5c9875121319cd",
+  "diff_sha256": "00194403248ef6178c92cde87ecbc02d03e3e9c8bfb04161192196725ff271a3",
+  "head_sha": "5b373c35b9e61ee1e3abf1760537ee755d80ef95",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "C2: report.v1 reason_codes + eval/ontology adapters; accuracy_claim=false; no remediate. Local lock only."
+  "note": "C2 closeout docs only after #516; A0 retained. Local lock only."
 }
