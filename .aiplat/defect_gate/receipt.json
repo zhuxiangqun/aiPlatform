@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T00:39:54+08:00",
+  "reviewed_at": "2026-11-02T00:48:18+08:00",
   "base_ref": "origin/main",
   "merge_base": "e2c51bc4cde04f3e210efa88883332f937786304",
-  "diff_sha256": "81067fb94fc40876b088c841c05d5936d4a6db4fb6b21cdbfcce1f5d2f1f856b",
-  "head_sha": "9f591fdd4e7e37737ebdae462b3bd757edffd1ab",
+  "diff_sha256": "3e38d9778ae3237124f26319cd5603f4db3303fcc0c227432dccd2fda7320bfa",
+  "head_sha": "5fae1adb38a32cf7c322f8022346e559ea32881f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "C3.5+G2c: default subset=core preserves C1 rates; adversarial honesty (top1~0.17); G2c accuracy_claim always false; single facade/API surface; metrics subset not self-certifying accuracy."
+  "note": "C3.5+G2c + CAPABILITIES register business_event_bridge/run_context_builder for Rule1 CI; adversarial top1=0.1667 honesty; accuracy_claim=false."
 }
