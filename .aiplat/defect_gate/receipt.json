@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T09:01:00+08:00",
+  "reviewed_at": "2026-11-01T09:03:30+08:00",
   "base_ref": "origin/main",
-  "merge_base": "2ce9d80a1b60981eb439215e7c5284d20a3b1321",
-  "diff_sha256": "2473fd3f30389d7f27a7006ebdb7501276c2c43bcac0d1a3af707a99d20c81f3",
-  "head_sha": "0b6e2ad1bfd4fe39859f4971400c1ff1d44f23c9",
+  "merge_base": "7c09008727f920bcbb0beb597f399ce7e45b62be",
+  "diff_sha256": "8aa833ca5623239a2a6f293e5b468c28173393c7f7f1fe7bcff5a3ca888c4239",
+  "head_sha": "477f738dc260063fdede9c3102e51d6678e827a1",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Track leftover Pi D3 local evidence sample; no gate flips."
+  "note": "FDE Field D2 ops pack; current_delivery stays D1; no authorize/staging flips."
 }
