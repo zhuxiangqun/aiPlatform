@@ -1,0 +1,14 @@
+{
+  "case_id": "dx.s1.tool_wrong_args",
+  "scenario": "run_failure",
+  "gold_root_cause": "tool_error",
+  "expect_unknown": false,
+  "expect_stale": false,
+  "required_evidence": [
+    "run",
+    "syscall",
+    "tool_result"
+  ],
+  "recommended_action": "fix skill/tool schema binding",
+  "provenance": "desensitized_local_export"
+}

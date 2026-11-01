@@ -1,0 +1,61 @@
+{
+  "schema_version": "diagnosis.evidence.v0",
+  "case_id": "dx.s1.stale_kb",
+  "provenance": "desensitized_local_export",
+  "scenario": "run_failure",
+  "subject_ref": "pi:fault:fi4_offline_ttl",
+  "payload": {
+    "offline_ttl": {
+      "ok": false,
+      "decision": "deny",
+      "reason": "offline_ttl_exceeded",
+      "ttl_hours": 12.0,
+      "age_seconds": 46800.0
+    },
+    "doc": {
+      "doc_id": "wiki-fixture-stale-001",
+      "version": "2026-09-01T00:00:00+00:00",
+      "retrieved_at": "2026-11-01T11:00:00+00:00"
+    }
+  },
+  "evidence": [
+    {
+      "id": "e-pol",
+      "source": "pi",
+      "kind": "policy_decision",
+      "ref": "fixture://pi/faults/fi4_offline_ttl",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": "2026-10-23T03:52:06+00:00",
+      "freshness": "stale",
+      "meta": {
+        "reason": "offline_ttl_exceeded",
+        "age_seconds": 46800
+      }
+    },
+    {
+      "id": "e-ctx",
+      "source": "aiplat",
+      "kind": "context",
+      "ref": "fixture://kb/wiki-fixture-stale-001",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": "2026-09-08T00:00:00+00:00",
+      "freshness": "stale",
+      "meta": {
+        "doc_version": "2026-09-01T00:00:00+00:00"
+      }
+    },
+    {
+      "id": "e-run",
+      "source": "pi",
+      "kind": "run",
+      "ref": "fixture://pi/faults/stale_kb_run",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "stale",
+      "meta": {}
+    }
+  ]
+}

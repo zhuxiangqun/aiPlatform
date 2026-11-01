@@ -1,0 +1,74 @@
+{
+  "schema_version": "diagnosis.evidence.v0",
+  "case_id": "dx.s1.context_trunc",
+  "provenance": "desensitized_local_export",
+  "scenario": "run_failure",
+  "subject_ref": "run:fixture-run-ctx-trunc-001",
+  "payload": {
+    "context_assemble": {
+      "budget_tokens": 2048,
+      "used_tokens": 2048,
+      "dropped_layers": [
+        "materials_critical",
+        "wiki_entity"
+      ],
+      "kept_layers": [
+        "system",
+        "recent_turns"
+      ]
+    },
+    "retrieve": {
+      "hits": 0,
+      "query": "[REDACTED_QUERY]",
+      "kb_version": "wiki-local-fixture-v0"
+    },
+    "run": {
+      "run_id": "fixture-run-ctx-trunc-001",
+      "status": "failed",
+      "symptom": "answer_not_grounded"
+    }
+  },
+  "evidence": [
+    {
+      "id": "e-run",
+      "source": "aiplat",
+      "kind": "run",
+      "ref": "fixture://runs/fixture-run-ctx-trunc-001",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {}
+    },
+    {
+      "id": "e-ctx",
+      "source": "aiplat",
+      "kind": "context",
+      "ref": "fixture://context/fixture-run-ctx-trunc-001",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {
+        "budget_tokens": 2048,
+        "dropped_layers": [
+          "materials_critical",
+          "wiki_entity"
+        ]
+      }
+    },
+    {
+      "id": "e-other",
+      "source": "aiplat",
+      "kind": "other",
+      "ref": "fixture://retrieve/fixture-run-ctx-trunc-001",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {
+        "hits": 0
+      }
+    }
+  ]
+}

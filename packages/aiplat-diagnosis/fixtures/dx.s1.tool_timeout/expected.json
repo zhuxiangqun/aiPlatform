@@ -1,0 +1,14 @@
+{
+  "case_id": "dx.s1.tool_timeout",
+  "scenario": "run_failure",
+  "gold_root_cause": "timeout",
+  "expect_unknown": false,
+  "expect_stale": false,
+  "required_evidence": [
+    "run",
+    "syscall",
+    "duration"
+  ],
+  "recommended_action": "increase tool timeout or split long calls",
+  "provenance": "desensitized_local_export"
+}

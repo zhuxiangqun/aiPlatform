@@ -1,0 +1,58 @@
+{
+  "schema_version": "diagnosis.evidence.v0",
+  "case_id": "dx.s1.model_route_cheap",
+  "provenance": "desensitized_local_export",
+  "scenario": "run_failure",
+  "subject_ref": "run:pi-live-20261023T155206Z",
+  "payload": {
+    "routing": {
+      "purpose": "reasoning",
+      "selected_model": "ollama/local-small-9b:latest",
+      "policy_hint": "prefer_local_cheap",
+      "expected_min_class": "strong_reasoning"
+    },
+    "run": {
+      "run_id": "pi-live-20261023T155206Z",
+      "status": "failed",
+      "quality_signal": "hallucinated_structured_output"
+    }
+  },
+  "evidence": [
+    {
+      "id": "e-run",
+      "source": "pi",
+      "kind": "run",
+      "ref": "fixture://pi/runs/pi-live-20261023T155206Z",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {}
+    },
+    {
+      "id": "e-route",
+      "source": "pi",
+      "kind": "model_route",
+      "ref": "fixture://pi/routing/pi-live-20261023T155206Z",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {
+        "selected_model": "ollama/local-small-9b:latest",
+        "purpose": "reasoning"
+      }
+    },
+    {
+      "id": "e-cfg",
+      "source": "pi",
+      "kind": "config_snapshot",
+      "ref": "fixture://pi/config/model_route_v0",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {}
+    }
+  ]
+}

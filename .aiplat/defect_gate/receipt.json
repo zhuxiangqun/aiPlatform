@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T16:17:06+08:00",
+  "reviewed_at": "2026-11-01T19:43:05+08:00",
   "base_ref": "origin/main",
-  "merge_base": "460976bcd2f884bd9e5aed1b04930c76bdc50a73",
-  "diff_sha256": "18602f5a5f5ac89ea8fb57282aaf71e209938dc2c88c89b66e7605b89574a128",
-  "head_sha": "e15889a56f1d9e90a9d85607b3c9d9fc85d216a8",
+  "merge_base": "00fb81585dbebf9d56a28268c3deda573c5fcf2b",
+  "diff_sha256": "342c287f574934edc4cab633dcac1ac1cdcdf00a09476dadee4441f65e3b93f1",
+  "head_sha": "dfcc897973da6affd8f16a0dc574c86a270c7e47",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "EVAL_V1 E0\u2013E5 + contract \u00a775 + AUTO-STATS/whitepaper sync. Local lock only."
+  "note": "DIAGNOSIS_V1 C1 fixture pack only; desensitized local exports; no product code."
 }

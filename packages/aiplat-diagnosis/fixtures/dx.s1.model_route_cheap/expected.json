@@ -1,0 +1,13 @@
+{
+  "case_id": "dx.s1.model_route_cheap",
+  "scenario": "run_failure",
+  "gold_root_cause": "wrong_model_route",
+  "expect_unknown": false,
+  "expect_stale": false,
+  "required_evidence": [
+    "run",
+    "model_route"
+  ],
+  "recommended_action": "lock purpose→model / raise route tier",
+  "provenance": "desensitized_local_export"
+}

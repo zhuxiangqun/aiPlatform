@@ -1,0 +1,10 @@
+{
+  "case_id": "dx.s2.no_baseline",
+  "scenario": "version_regression",
+  "gold_root_cause": "insufficient_evidence",
+  "expect_unknown": true,
+  "expect_stale": false,
+  "required_evidence": [],
+  "recommended_action": "return unknown; establish baseline first",
+  "provenance": "desensitized_local_export"
+}
