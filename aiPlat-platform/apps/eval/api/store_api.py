@@ -183,6 +183,55 @@ async def calibrate_e4(
     return {"data": out}
 
 
+@router.post("/gate-e5", response_model=ItemResponse)
+async def gate_e5(
+    body: Optional[Dict[str, Any]] = None,
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """EVAL_V1 E5: local engineering gate (pr/nightly/release); not accuracy/G2a claim."""
+    from core.api.core_facade import eval_run_e5_gate
+
+    body = body or {}
+    limit_raw = body.get("limit")
+    limit = int(limit_raw) if limit_raw is not None and str(limit_raw) != "" else None
+    try:
+        out = eval_run_e5_gate(
+            mode=str(body.get("mode") or "pr"),
+            tenant_id=str(body.get("tenant_id") or "eval-v1"),
+            set_id=str(body.get("set_id") or ""),
+            baseline=str(body.get("baseline") or "gold"),
+            candidate=str(body.get("candidate") or "local"),
+            limit=limit,
+        )
+    except ValueError as e:
+        return {"data": {"ok": False, "error": str(e)}}
+    return {"data": out}
+
+
+@router.get("/gates", response_model=ListResponse)
+async def list_gates(
+    tenant_id: str = "eval-v1",
+    limit: int = Query(50, ge=1, le=200),
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    from core.api.core_facade import eval_list_gates
+
+    items = eval_list_gates(tenant_id=tenant_id, limit=limit)
+    return {"data": {"items": items, "total": len(items)}}
+
+
+@router.get("/gates/{gate_id}", response_model=ItemResponse)
+async def get_gate(
+    gate_id: str,
+    tenant_id: str = "eval-v1",
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    from core.api.core_facade import eval_get_gate
+
+    row = eval_get_gate(gate_id, tenant_id=tenant_id)
+    return {"data": row or {"error": "not_found", "id": gate_id}}
+
+
 @router.get("/reports/{report_id}", response_model=ItemResponse)
 async def get_store_report(
     report_id: str,

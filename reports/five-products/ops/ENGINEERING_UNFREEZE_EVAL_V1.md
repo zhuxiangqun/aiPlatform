@@ -65,4 +65,5 @@ python3 scripts/check_five_products_status_sync.py
 - **E2**（2026-11-01）：`EvalStore` SQLite（charter §5.3）+ `eval_store.schema.json` + `POST …/store/migrate/code-review-gold`；测试 `test_eval_v1_e2_store.py`。
 - **E3**（2026-11-01）：`bootstrap_e3_gold` ≥15 可跑 + [`EVAL_V1_E3_GOLD_SOURCES.md`](./EVAL_V1_E3_GOLD_SOURCES.md) + solo 复核队列；**未锁 v0 / 不报 κ**；测试 `test_eval_v1_e3_gold.py`。
 - **E4**（2026-11-01）：`judge.deterministic.code_review_gold.v1` + k=3/ECE/bias 校准报告（`eval.calibration.v0`）；`POST …/store/calibrate-e4`；**accuracy_claim=false**；测试 `test_eval_v1_e4_judge.py`。
+- **E5**（2026-11-01）：failure taxonomy + local gate（pr/nightly/release）；`POST …/store/gate-e5` + schema `eval_gate.schema.json`；**gate_claim=false / accuracy_claim=false**（未达 G2a）；测试 `test_eval_v1_e5_gate.py`。
 - G2a/G2b accuracy claim：`_pending_`

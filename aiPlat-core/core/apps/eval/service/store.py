@@ -136,6 +136,7 @@ CREATE TABLE IF NOT EXISTS eval_gates (
     candidate TEXT NOT NULL DEFAULT '',
     thresholds_json TEXT NOT NULL DEFAULT '{}',
     decision TEXT NOT NULL DEFAULT 'pending',
+    meta_json TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS eval_store_meta (
@@ -163,6 +164,15 @@ class EvalStore:
     def _ensure_schema(self) -> None:
         with self._connect() as conn:
             conn.executescript(_SCHEMA_SQL)
+            # Additive column for DBs created before E5 meta_json
+            cols = {
+                (r["name"] if hasattr(r, "keys") else r[1])
+                for r in conn.execute("PRAGMA table_info(eval_gates)").fetchall()
+            }
+            if "meta_json" not in cols:
+                conn.execute(
+                    "ALTER TABLE eval_gates ADD COLUMN meta_json TEXT NOT NULL DEFAULT '{}'"
+                )
             conn.execute(
                 "INSERT OR REPLACE INTO eval_store_meta(key, value) VALUES (?, ?)",
                 ("schema_version", STORE_SCHEMA_VERSION),
@@ -571,6 +581,75 @@ class EvalStore:
             "failures": _loads(row["failures_json"], []),
             "created_at": row["created_at"],
         }
+
+    # ── gates (E5) ────────────────────────────────────────
+
+    def create_gate(
+        self,
+        *,
+        baseline: str = "",
+        candidate: str = "",
+        thresholds: Optional[Dict[str, Any]] = None,
+        decision: str = "pending",
+        meta: Optional[Dict[str, Any]] = None,
+        gate_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        gid = gate_id or _new_id("gate")
+        now = _now()
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO eval_gates(id, baseline, candidate, thresholds_json, "
+                "decision, meta_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    gid,
+                    baseline or "",
+                    candidate or "",
+                    _dumps(thresholds or {}),
+                    decision or "pending",
+                    _dumps(meta or {}),
+                    now,
+                ),
+            )
+            conn.commit()
+        return self.get_gate(gid) or {"id": gid}
+
+    def get_gate(self, gate_id: str) -> Optional[Dict[str, Any]]:
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM eval_gates WHERE id=?", (gate_id,)).fetchone()
+        if not row:
+            return None
+        keys = row.keys()
+        return {
+            "id": row["id"],
+            "baseline": row["baseline"],
+            "candidate": row["candidate"],
+            "thresholds": _loads(row["thresholds_json"]),
+            "decision": row["decision"],
+            "meta": _loads(row["meta_json"]) if "meta_json" in keys else {},
+            "created_at": row["created_at"],
+        }
+
+    def list_gates(self, *, limit: int = 50) -> List[Dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM eval_gates ORDER BY created_at DESC LIMIT ?",
+                (int(limit),),
+            ).fetchall()
+        out: List[Dict[str, Any]] = []
+        for row in rows:
+            keys = row.keys()
+            out.append(
+                {
+                    "id": row["id"],
+                    "baseline": row["baseline"],
+                    "candidate": row["candidate"],
+                    "thresholds": _loads(row["thresholds_json"]),
+                    "decision": row["decision"],
+                    "meta": _loads(row["meta_json"]) if "meta_json" in keys else {},
+                    "created_at": row["created_at"],
+                }
+            )
+        return out
 
 
 def get_eval_store(*, tenant_id: str = "", db_path: Optional[str] = None) -> EvalStore:

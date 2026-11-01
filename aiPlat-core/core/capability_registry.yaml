@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 33
-total_capabilities: 1553
+total_capabilities: 1561
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -5095,8 +5095,40 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 37
+    caps_count: 45
     provides:
+      - symbol: "run_e5_gate"
+        type: "function"
+        signature: "run_e5_gate(mode=pr|nightly|release, ...)→Dict local gate + taxonomy"
+        module: "core/apps/eval/service/gate_v1.py"
+      - symbol: "build_failure_taxonomy"
+        type: "function"
+        signature: "build_failure_taxonomy(items)→Dict failure taxonomy aggregate"
+        module: "core/apps/eval/service/gate_v1.py"
+      - symbol: "classify_failure"
+        type: "function"
+        signature: "classify_failure(scored)→str failure taxonomy bucket"
+        module: "core/apps/eval/service/gate_v1.py"
+      - symbol: "eval_run_e5_gate"
+        type: "function"
+        signature: "eval_run_e5_gate(mode='pr', tenant_id='eval-v1', ...)→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "eval_list_gates"
+        type: "function"
+        signature: "eval_list_gates(tenant_id='eval-v1', limit=50)→list"
+        module: "core/api/core_facade.py"
+      - symbol: "register_judge_v1"
+        type: "function"
+        signature: "register_judge_v1(store)→Dict"
+        module: "core/apps/eval/service/judge_v1.py"
+      - symbol: "score_task_match_only"
+        type: "function"
+        signature: "score_task_match_only(task)→Dict F1/pass/confidence"
+        module: "core/apps/eval/service/judge_v1.py"
+      - symbol: "expected_calibration_error"
+        type: "function"
+        signature: "expected_calibration_error(pairs, n_bins=5)→Dict ECE"
+        module: "core/apps/eval/service/judge_v1.py"
       - symbol: "run_e4_calibration"
         type: "function"
         signature: "run_e4_calibration(tenant_id, set_id?, k=3, ...)→Dict calibration report"

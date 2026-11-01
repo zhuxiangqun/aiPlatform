@@ -16,6 +16,12 @@ from core.apps.eval.service.judge_v1 import (
     register_judge_v1,
     run_e4_calibration,
 )
+from core.apps.eval.service.gate_v1 import (
+    SCHEMA_VERSION as GATE_SCHEMA_VERSION,
+    build_failure_taxonomy,
+    classify_failure,
+    run_e5_gate,
+)
 
 __all__ = [
     "EvalStore",
@@ -29,4 +35,8 @@ __all__ = [
     "JUDGE_V1_ID",
     "register_judge_v1",
     "run_e4_calibration",
+    "GATE_SCHEMA_VERSION",
+    "build_failure_taxonomy",
+    "classify_failure",
+    "run_e5_gate",
 ]

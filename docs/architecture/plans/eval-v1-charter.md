@@ -1,7 +1,7 @@
 # EVAL_V1 Charter — 评测准确性、唯一入口与评测中心
 
 > **文档类型**：Product / Design Charter  
-> **状态**：**Accepted · E0–E4 done**（v0 未锁；校准≠accuracy）· 2026-11-01  
+> **状态**：**Accepted · E0–E5 done**（v0 未锁；local gate≠accuracy/G2a）· 2026-11-01  
 > **范围**：Evaluation 产品 v1（本地工程 + 产品设计）；不含 A3 进程拆分、生产 staging/authorize/SLA  
 > **解冻**：[`ENGINEERING_UNFREEZE_EVAL_V1.md`](../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_V1.md)  
 > **上游计划**：[`five-capability-independent-engineering-plan.md`](./five-capability-independent-engineering-plan.md) V2.2  

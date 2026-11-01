@@ -74,6 +74,14 @@ grep -q 'calibrate-e4' aiPlat-platform/apps/eval/api/store_api.py \
   || fail "calibrate-e4 API not wired"
 [[ -f packages/aiplat-evaluation/contracts/schemas/eval_calibration.schema.json ]] \
   || fail "missing eval_calibration.schema.json"
+[[ -f aiPlat-core/core/apps/eval/service/gate_v1.py ]] \
+  || fail "missing EVAL_V1 E5 gate_v1"
+grep -q 'run_e5_gate' aiPlat-core/core/apps/eval/service/gate_v1.py \
+  || fail "run_e5_gate missing"
+grep -q 'gate-e5' aiPlat-platform/apps/eval/api/store_api.py \
+  || fail "gate-e5 API not wired"
+[[ -f packages/aiplat-evaluation/contracts/schemas/eval_gate.schema.json ]] \
+  || fail "missing eval_gate.schema.json"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-08.md ]] || fail "missing STAGING_REVIEW 2026-11-08"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-15.md ]] || fail "missing STAGING_REVIEW 2026-11-15"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-22.md ]] || fail "missing STAGING_REVIEW 2026-11-22"
