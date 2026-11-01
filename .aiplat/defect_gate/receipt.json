@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T09:31:57+08:00",
+  "reviewed_at": "2026-11-01T09:34:51+08:00",
   "base_ref": "origin/main",
-  "merge_base": "1a1437041571717159f8048499c79605efdf993c",
-  "diff_sha256": "6b1b8a35d8592a2be6f7add9de6a65338b808ff07a24409a5acd1984c8d95e31",
-  "head_sha": "6ba6c943f091c0b3b56383c29c0ee299ce0221cf",
+  "merge_base": "5f659e032eef3137180110024d5bb9542338c209",
+  "diff_sha256": "a8605d41f08b1047d3b409b513273c9e6a755744d5cc3f7714483fbb6c0eae4c",
+  "head_sha": "c999a22c9fc3a1bc30fee5078b502cc0e1d0d887",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Engineering freeze; staging_ready false; authorize REFUSE verified."
+  "note": "Staging review continue_defer; staging_ready remains false."
 }
