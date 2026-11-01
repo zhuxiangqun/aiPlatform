@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T09:00:00+08:00",
+  "reviewed_at": "2026-11-01T09:01:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "18f0703ad6c33f8b9dfa72839b2354f018d00647",
-  "diff_sha256": "9192215126e1148f1ec89087255b1b5bdf26495f99835f5bcea41560275ceb64",
-  "head_sha": "ce465290f103fa9f7a5ad010a77a4d0d3df9f291",
+  "merge_base": "2ce9d80a1b60981eb439215e7c5284d20a3b1321",
+  "diff_sha256": "2473fd3f30389d7f27a7006ebdb7501276c2c43bcac0d1a3af707a99d20c81f3",
+  "head_sha": "0b6e2ad1bfd4fe39859f4971400c1ff1d44f23c9",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Pi D3 local closeout + N-1; checklist stays yellow; d3_production_authorized false."
+  "note": "Track leftover Pi D3 local evidence sample; no gate flips."
 }
