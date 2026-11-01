@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T22:34:00+08:00",
+  "reviewed_at": "2026-11-01T23:01:31+08:00",
   "base_ref": "origin/main",
-  "merge_base": "29c00960000c2702c858ecf8ba5c9875121319cd",
-  "diff_sha256": "00194403248ef6178c92cde87ecbc02d03e3e9c8bfb04161192196725ff271a3",
-  "head_sha": "5b373c35b9e61ee1e3abf1760537ee755d80ef95",
+  "merge_base": "c65349c5ba210edb623457abf54511f65db8421a",
+  "diff_sha256": "17cde4593e6611e4fd2baee4be18d95c0cdf8e4f384444182d558e43c935be53",
+  "head_sha": "5491a3d64aa7914cdacf6dd8c52eb594088d4a13",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "C2 closeout docs only after #516; A0 retained. Local lock only."
+  "note": "C3 D2 pack: packaging surface + d2_local_closeout PASS; a3_split_authorize REFUSE; A0/D1c retained; no remediate."
 }
