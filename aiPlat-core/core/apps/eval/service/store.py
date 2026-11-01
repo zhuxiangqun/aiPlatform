@@ -512,24 +512,55 @@ def import_code_review_gold(
                 skipped += 1
                 continue
             task_id = f"crg:{cid}"
+            input_data = {
+                "description": c.get("description"),
+                "profile": c.get("profile"),
+                "line_window": c.get("line_window"),
+                "predicted": c.get("predicted"),
+            }
+            expected = {"gold_findings": c.get("gold_findings") or []}
+            rubric = {"kind": "code_review_gold", "match": "file_line_severity"}
+            tags = ["code-review-gold", str(c.get("profile") or "balanced")]
+            hard_neg = 1 if c.get("hard_negative") else 0
+            src = str(path)
+            now = _now()
             with store._connect() as conn:
-                conn.execute("DELETE FROM eval_tasks WHERE id=?", (task_id,))
+                exists = conn.execute(
+                    "SELECT 1 FROM eval_tasks WHERE id=?", (task_id,)
+                ).fetchone()
+                if exists:
+                    conn.execute(
+                        "UPDATE eval_tasks SET set_id=?, input_json=?, expected_json=?, "
+                        "rubric_json=?, tags_json=?, hard_negative=?, source=? WHERE id=?",
+                        (
+                            set_id,
+                            _dumps(input_data),
+                            _dumps(expected),
+                            _dumps(rubric),
+                            _dumps(tags),
+                            hard_neg,
+                            src,
+                            task_id,
+                        ),
+                    )
+                else:
+                    conn.execute(
+                        "INSERT INTO eval_tasks(id, set_id, input_json, expected_json, "
+                        "rubric_json, tags_json, hard_negative, source, created_at) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (
+                            task_id,
+                            set_id,
+                            _dumps(input_data),
+                            _dumps(expected),
+                            _dumps(rubric),
+                            _dumps(tags),
+                            hard_neg,
+                            src,
+                            now,
+                        ),
+                    )
                 conn.commit()
-            store.create_task(
-                set_id=set_id,
-                task_id=task_id,
-                input_data={
-                    "description": c.get("description"),
-                    "profile": c.get("profile"),
-                    "line_window": c.get("line_window"),
-                    "predicted": c.get("predicted"),
-                },
-                expected={"gold_findings": c.get("gold_findings") or []},
-                rubric={"kind": "code_review_gold", "match": "file_line_severity"},
-                tags=["code-review-gold", str(c.get("profile") or "balanced")],
-                hard_negative=bool(c.get("hard_negative")),
-                source=str(path),
-            )
             imported += 1
 
     return {

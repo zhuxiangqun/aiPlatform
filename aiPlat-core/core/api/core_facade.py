@@ -6112,6 +6112,26 @@ def eval_store_import_code_review_gold(
     )
 
 
+def eval_bootstrap_e3_gold(
+    *,
+    tenant_id: str = "eval-v1",
+    gold_dir: Optional[str] = None,
+    annotator: str = "solo_reviewer",
+) -> Dict[str, Any]:
+    """EVAL_V1 E3: ≥15 runnable gold + solo review queue (no κ)."""
+    from core.apps.eval.service.gold_bootstrap import bootstrap_e3_gold
+
+    return bootstrap_e3_gold(
+        tenant_id=tenant_id, gold_dir=gold_dir, annotator=annotator
+    )
+
+
+def eval_e3_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    from core.apps.eval.service.gold_bootstrap import e3_status
+
+    return e3_status(tenant_id=tenant_id)
+
+
 def list_code_review_gold_profiles() -> Dict[str, Any]:
     """噪声档位 → autoreview 参数映射。"""
     from core.harness.evaluation.code_review_gold import list_profiles

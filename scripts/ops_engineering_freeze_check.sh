@@ -58,6 +58,14 @@ grep -q 'class EvalStore' aiPlat-core/core/apps/eval/service/store.py \
   || fail "EvalStore class missing"
 grep -q 'store_api' aiPlat-platform/apps/eval/api/router.py \
   || fail "eval store_api not mounted on eval router"
+[[ -f reports/five-products/ops/EVAL_V1_E3_GOLD_SOURCES.md ]] \
+  || fail "missing EVAL_V1 E3 gold sources inventory"
+[[ -f aiPlat-core/core/apps/eval/service/gold_bootstrap.py ]] \
+  || fail "missing EVAL_V1 E3 gold_bootstrap"
+grep -q 'bootstrap_e3_gold' aiPlat-core/core/apps/eval/service/gold_bootstrap.py \
+  || fail "bootstrap_e3_gold missing"
+grep -q 'bootstrap-e3' aiPlat-platform/apps/eval/api/store_api.py \
+  || fail "bootstrap-e3 API not wired"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-08.md ]] || fail "missing STAGING_REVIEW 2026-11-08"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-15.md ]] || fail "missing STAGING_REVIEW 2026-11-15"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-22.md ]] || fail "missing STAGING_REVIEW 2026-11-22"

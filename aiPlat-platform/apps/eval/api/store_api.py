@@ -118,3 +118,33 @@ async def migrate_code_review_gold(
     except FileNotFoundError as e:
         return {"data": {"ok": False, "error": str(e)}}
     return {"data": out}
+
+
+@router.post("/bootstrap-e3", response_model=ItemResponse)
+async def bootstrap_e3(
+    body: Optional[Dict[str, Any]] = None,
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """EVAL_V1 E3: import ≥15 gold tasks + open solo review label queue."""
+    from core.api.core_facade import eval_bootstrap_e3_gold
+
+    body = body or {}
+    try:
+        out = eval_bootstrap_e3_gold(
+            tenant_id=str(body.get("tenant_id") or "eval-v1"),
+            gold_dir=str(body.get("gold_dir") or "") or None,
+            annotator=str(body.get("annotator") or "solo_reviewer"),
+        )
+    except FileNotFoundError as e:
+        return {"data": {"ok": False, "error": str(e)}}
+    return {"data": out}
+
+
+@router.get("/e3-status", response_model=ItemResponse)
+async def get_e3_status(
+    tenant_id: str = "eval-v1",
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    from core.api.core_facade import eval_e3_status
+
+    return {"data": eval_e3_status(tenant_id=tenant_id)}
