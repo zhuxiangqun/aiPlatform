@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T07:58:00+08:00",
+  "reviewed_at": "2026-11-01T08:00:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "4ab3251d80f2f091e9a6ff846fcf34945819c78e",
-  "diff_sha256": "bd65271b72eee081808ee2b28bbd7f0f668d10f043092d7a0357009954ee0a34",
-  "head_sha": "015dc02e3309d53a08563579a9d14571fc70a026",
+  "merge_base": "95671e7c4c0e345e251710a1af6843babec18b1e",
+  "diff_sha256": "2665998ddfad0358f3a6cdc259dbaa10c1bb70d50f48b0bdf49ffa59716e38a8",
+  "head_sha": "a524cff2b216b3f33bc647258856c3931b1dabaf",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "local_signed OIDC path only; CONFIGURE_TOTP blocks password grant; cutover still false."
+  "note": "Ontology/Eval local_signed only; all ready_to_authorize remain false."
 }
