@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T01:32:08+08:00",
+  "reviewed_at": "2026-11-02T06:31:09+08:00",
   "base_ref": "origin/main",
-  "merge_base": "cb8920ead2772d0f193ddf5eea6236a2a4d006f3",
-  "diff_sha256": "1de382bcb089c310e027f34c41898fd4d9bf23eaf357251d5c3707162586e13d",
-  "head_sha": "edcd38032c6e0cc80761481cd8cd4952a4aeed07",
+  "merge_base": "c3856ca5f98382973d6a26a184976143c566213f",
+  "diff_sha256": "faba7942c31d88c4b227d0a0f36d6068cba742d9485b9a084497f5028e7b7ce5",
+  "head_sha": "b1cc9c7619549e75c0addaa16ede1d6a0f4ba4f3",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "docs-only A3 local plan/unfreeze + FREEZE/STATUS after main sync; process_split stays false."
+  "note": "A1 standalone FastAPI :8010 healthz/readyz; no core.harness imports; process_split_authorized=false; tests cover healthz+import guard."
 }
