@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T23:06:52+08:00",
+  "reviewed_at": "2026-11-01T23:30:56+08:00",
   "base_ref": "origin/main",
-  "merge_base": "c65349c5ba210edb623457abf54511f65db8421a",
-  "diff_sha256": "c0007a659a1368f4724bb4a91205791f702d9d69bde1ba5e738a61882443ca08",
-  "head_sha": "f1c927d1cff9299c9a8b42fb38a025df73fcc03c",
+  "merge_base": "492245136c3312ba629c685f93e135a8fa2f1fd4",
+  "diff_sha256": "4eb9bcd943139ab7dbf0a0a41af8e7f49f392622c1072d7b4ae08f7e59bbdc57",
+  "head_sha": "a2126ddd011382e68e372139f9740aec0a270c13",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "C3 pack + gate wiring; diagnosis authorize REFUSE; freeze docs updated; no remediate/A3."
+  "note": "E6 EvalCenter + soft redirect; accuracy_claim remains false; no G2b/A3."
 }
