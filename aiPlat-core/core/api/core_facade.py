@@ -6231,6 +6231,47 @@ def eval_run_g2a_gate(
     )
 
 
+def eval_g2c_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    from core.apps.eval.service.g2c import g2c_status
+
+    return g2c_status(tenant_id=tenant_id)
+
+
+def eval_list_g2c_retest_queue(
+    *, tenant_id: str = "eval-v1", limit: int = 100
+) -> Dict[str, Any]:
+    from core.apps.eval.service.g2c import list_g2c_retest_queue
+
+    return list_g2c_retest_queue(tenant_id=tenant_id, limit=limit)
+
+
+def eval_record_g2c_retest(
+    task_id: str,
+    *,
+    passed: bool,
+    notes: str = "",
+    rationale: str = "",
+    tenant_id: str = "eval-v1",
+) -> Dict[str, Any]:
+    from core.apps.eval.service.g2c import record_g2c_retest
+
+    return record_g2c_retest(
+        task_id,
+        passed=passed,
+        notes=notes,
+        rationale=rationale,
+        tenant_id=tenant_id,
+    )
+
+
+def eval_compute_g2c_report(
+    *, tenant_id: str = "eval-v1", persist: bool = True
+) -> Dict[str, Any]:
+    from core.apps.eval.service.g2c import compute_g2c_report
+
+    return compute_g2c_report(tenant_id=tenant_id, persist=persist)
+
+
 def eval_list_gates(*, tenant_id: str = "eval-v1", limit: int = 50) -> list:
     from core.apps.eval.service.store import get_eval_store
 
@@ -6407,10 +6448,12 @@ def diagnosis_recommendations(case_id: str, *, tenant_id: str = "") -> Dict[str,
     return {"case_id": case_id, "recommendations": recs, "auto_execute": False}
 
 
-def diagnosis_fixture_metrics(*, limit: int = 10) -> Dict[str, Any]:
+def diagnosis_fixture_metrics(
+    *, limit: int = 10, blind: bool = True, subset: str = "core"
+) -> Dict[str, Any]:
     from core.apps.diagnosis.service.metrics import fixture_metrics
 
-    return fixture_metrics(limit=limit)
+    return fixture_metrics(limit=limit, blind=blind, subset=subset)
 
 
 def list_code_review_gold_profiles() -> Dict[str, Any]:

@@ -1,0 +1,10 @@
+{
+  "case_id": "dx.adv.stale_without_flag",
+  "scenario": "run_failure",
+  "gold_root_cause": "data_stale",
+  "expect_unknown": false,
+  "expect_stale": true,
+  "adversarial": true,
+  "note": "freshness field lies; engine may miss blocked_stale",
+  "provenance": "desensitized_local_export"
+}

@@ -1,0 +1,10 @@
+{
+  "case_id": "dx.adv.timeout_masks_context",
+  "scenario": "run_failure",
+  "gold_root_cause": "context_missing",
+  "expect_unknown": false,
+  "expect_stale": false,
+  "adversarial": true,
+  "note": "timeout outranks context_missing by confidence",
+  "provenance": "desensitized_local_export"
+}

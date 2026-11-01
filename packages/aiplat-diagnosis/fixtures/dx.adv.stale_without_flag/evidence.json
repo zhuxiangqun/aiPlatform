@@ -1,0 +1,32 @@
+{
+  "schema_version": "diagnosis.evidence.v0",
+  "case_id": "dx.adv.stale_without_flag",
+  "provenance": "desensitized_local_export",
+  "scenario": "run_failure",
+  "subject_ref": "run:adv-stale-no-flag",
+  "payload": {
+    "run": {
+      "status": "failed",
+      "error_class": "StaleContext"
+    },
+    "retrieval": {
+      "hit_rate": 0.9,
+      "note": "index from last week"
+    }
+  },
+  "evidence": [
+    {
+      "id": "e-run",
+      "source": "aiplat",
+      "kind": "run",
+      "ref": "fixture://adv/stale-run",
+      "version": "adv-v0",
+      "captured_at": "2026-10-01T00:00:00+00:00",
+      "expires_at": "2026-10-08T00:00:00+00:00",
+      "freshness": "fresh",
+      "meta": {
+        "captured_week_ago": true
+      }
+    }
+  ]
+}

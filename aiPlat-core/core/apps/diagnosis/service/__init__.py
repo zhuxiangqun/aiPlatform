@@ -13,7 +13,7 @@ from core.apps.diagnosis.service.engine import (
     build_recommendations,
     diagnose_case,
 )
-from core.apps.diagnosis.service.metrics import fixture_metrics
+from core.apps.diagnosis.service.metrics import fixture_metrics, fixture_metrics_by_subset
 
 __all__ = [
     "DiagnosisStore",
@@ -25,4 +25,5 @@ __all__ = [
     "diagnose_case",
     "build_recommendations",
     "fixture_metrics",
+    "fixture_metrics_by_subset",
 ]

@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T00:09:09+08:00",
+  "reviewed_at": "2026-11-02T01:06:34+08:00",
   "base_ref": "origin/main",
-  "merge_base": "eb47ee009a5f7461033d5042ddd786cfdd984db1",
-  "diff_sha256": "1c8ca28b9231efb9c77f6a5a10124dd85530db7e2658042c20a2135c6dd3b0a7",
-  "head_sha": "70284575d67f0dc64e0a9b6704a6e3ce4ce2a805",
+  "merge_base": "1a720df034c0ff75b2db560c8dd19e023160a5b5",
+  "diff_sha256": "28cbe9208a47570a241cba01e038b288e38c51807c8417601b166e0f20dd5d4a",
+  "head_sha": "23eb764f888d5653748251c91ac2506f708e35f2",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "E7 + CAPABILITIES 2462 sync + G2c self-consistency decision; truth gate PASS; #509 closed."
+  "note": "docs-only: C3.5 honesty rates snapshot; no code paths."
 }

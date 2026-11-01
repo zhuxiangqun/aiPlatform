@@ -1,0 +1,43 @@
+{
+  "schema_version": "diagnosis.evidence.v0",
+  "case_id": "dx.adv.eval_masks_retrieval",
+  "provenance": "desensitized_local_export",
+  "scenario": "version_regression",
+  "subject_ref": "eval:adv-eval-masks-rag",
+  "payload": {
+    "eval_report": {
+      "delta": -0.25,
+      "pass_rate": 0.5
+    },
+    "retrieval": {
+      "hit_rate": 0.12,
+      "corpus": "wiki"
+    }
+  },
+  "evidence": [
+    {
+      "id": "e-eval",
+      "source": "evaluation",
+      "kind": "eval_report",
+      "ref": "fixture://adv/eval",
+      "version": "adv-v0",
+      "captured_at": "2026-11-02T00:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {}
+    },
+    {
+      "id": "e-rag",
+      "source": "aiplat",
+      "kind": "retrieval",
+      "ref": "fixture://adv/rag",
+      "version": "adv-v0",
+      "captured_at": "2026-11-02T00:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {
+        "hit_rate": 0.12
+      }
+    }
+  ]
+}

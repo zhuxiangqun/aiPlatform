@@ -4,8 +4,8 @@
 > **G0**：[`G0_CLOSEOUT.md`](./G0_CLOSEOUT.md)（通过 · P0-3′ · CI 锚点 **61** 提交 · `35829e96`）。  
 > **计划**：[`five-capability-independent-engineering-plan.md`](../../docs/architecture/plans/five-capability-independent-engineering-plan.md) **V2.2** · packaging base [`templates/module/PACKAGING_BASE.md`](../../templates/module/PACKAGING_BASE.md)。  
 > **冻结**：[`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md)（本地无必须代码；authorize 仍冻）。  
-> **EVAL_V1**：**E0–E7 PASS**（G2a + 评测中心 + D2/D3 本地收口）— [`ops/EVAL_V1_E7_CLOSEOUT.md`](./ops/EVAL_V1_E7_CLOSEOUT.md)；`accuracy_claim=false`；κ=null。**G2b defer**；claim 降级见 [`ops/ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md`](./ops/ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md)（self-consistency，非第二标注者）。  
-> **DIAGNOSIS_V1**：**C1–C3 PASS**（#518）— [`ops/DIAGNOSIS_V1_C3_CLOSEOUT.md`](./ops/DIAGNOSIS_V1_C3_CLOSEOUT.md)。fixture Top-1=1.00 = **工程指标**，非准确率认证。下一外部前置：staging（C4）或 adversarial fixture 硬化。  
+> **EVAL_V1**：**E0–E7 + G2c PASS** — [`ops/EVAL_V1_G2C_CLOSEOUT.md`](./ops/EVAL_V1_G2C_CLOSEOUT.md)；`accuracy_claim=false`；G2c=`intra_rater` self-consistency。**G2b defer**；决策 [`ops/ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md`](./ops/ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md)。  
+> **DIAGNOSIS_V1**：**C1–C3 + C3.5 PASS** — [`ops/DIAGNOSIS_V1_C35_CLOSEOUT.md`](./ops/DIAGNOSIS_V1_C35_CLOSEOUT.md)；**分报**：core top1=1.00 / adversarial top1≈0.17（盲测）；禁止用 core 1.00 宣称准确率。下一外部前置：staging（C4）。  
 > 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md) · 本地收口 [`ops/ENGINEERING_LOCAL_CLOSEOUT.md`](./ops/ENGINEERING_LOCAL_CLOSEOUT.md)。  
 > **运维决策**：**继续 defer** + **事件驱动复审**（[`ops/STAGING_REVIEW_EVENT_DRIVEN.md`](./ops/STAGING_REVIEW_EVENT_DRIVEN.md)）· `staging_ready=false`。  
 > **工程环境**：**方案 B 本机 VM/Docker 全轨**（[`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md)）· `bash scripts/ops_option_b_all.sh`。  
@@ -18,7 +18,7 @@
 | **pi** | **A3** (Thin) | **D1** (+ D2 admin / D3 prep) | edge | `aiplat-pi-runtime` **0.1.0** | `/healthz` | ADR-08 · [D3 Accepted（有条件）](./ADR-PI-D3.md)；`d3_production=false` |
 | **ontology** | **A2** | **D1** (D1c + D2 pack) | **cohost** | `aiplat-ontology` **0.1.0** | `/ontology/healthz` | [A3 Accepted（有条件）](./ADR-ONTOLOGY-A3.md)；`process_split=false` |
 | **evaluation** | **A2** | **D1** (D1c + D2 pack) | **cohost** | `aiplat-evaluation` **0.1.0** | `/eval/healthz` | [A3 Accepted（有条件）](./ADR-EVALUATION-A3.md)；`process_split=false` |
-| **diagnosis** | **A0** | **D1** (D1c + D2 pack) | **cohost** | `aiplat-diagnosis` **0.1.0** | `/api/platform/apps/diagnosis/healthz` | C1–C3 PASS；[C3 closeout](./ops/DIAGNOSIS_V1_C3_CLOSEOUT.md)；[D2 local](./ops/DIAGNOSIS_D2_LOCAL_CLOSEOUT.md)；`process_split=false`；无自动修复；`accuracy_claim=false` |
+| **diagnosis** | **A0** | **D1** (D1c + D2 pack) | **cohost** | `aiplat-diagnosis` **0.1.0** | `/api/platform/apps/diagnosis/healthz` | C1–C3+C3.5 PASS；[C35 closeout](./ops/DIAGNOSIS_V1_C35_CLOSEOUT.md)；[D2 local](./ops/DIAGNOSIS_D2_LOCAL_CLOSEOUT.md)；`process_split=false`；无自动修复；`accuracy_claim=false` |
 | **fde** | **A1** | **D1** Field (+ D2 ops) | field | `aiplat-fde` **0.1.0** | `/fde/healthz` | [Field Accepted](./ADR-FDE-FIELD-DEPLOY.md)；D2 pack 见下 |
 
 **Delivery 语义**：**D1c** = `delivery_mode: cohost`（契约/healthz 独立，**进程仍共宿中心**；≠ 独立部署）。独立拆分仍受 A3 `process_split_authorized=false` 约束。

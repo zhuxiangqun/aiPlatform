@@ -315,6 +315,88 @@ async def gate_g2a(
     return {"data": out}
 
 
+@router.get("/g2c-status", response_model=ItemResponse)
+async def get_g2c_status(
+    tenant_id: str = "eval-v1",
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """G2c self-consistency status (intra-rater; never accuracy)."""
+    from core.api.core_facade import eval_g2c_status
+
+    return {"data": eval_g2c_status(tenant_id=tenant_id)}
+
+
+@router.get("/g2c-retest-queue", response_model=ItemResponse)
+async def get_g2c_retest_queue(
+    tenant_id: str = "eval-v1",
+    limit: int = Query(100, ge=1, le=500),
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    from core.api.core_facade import eval_list_g2c_retest_queue
+
+    return {"data": eval_list_g2c_retest_queue(tenant_id=tenant_id, limit=limit)}
+
+
+@router.post("/g2c-retest", response_model=ItemResponse)
+async def post_g2c_retest(
+    body: Optional[Dict[str, Any]] = None,
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """Record same-annotator retest — not a second annotator / not accuracy."""
+    from core.api.core_facade import eval_record_g2c_retest
+
+    body = body or {}
+    if body.get("accuracy_claim") is True:
+        return {
+            "data": {
+                "ok": False,
+                "error": "accuracy_claim_forbidden",
+                "accuracy_claim": False,
+            }
+        }
+    task_id = str(body.get("task_id") or "").strip()
+    if not task_id:
+        return {"data": {"ok": False, "error": "task_id required"}}
+    if "pass" not in body and "passed" not in body:
+        return {"data": {"ok": False, "error": "pass (bool) required"}}
+    passed = body.get("pass") if "pass" in body else body.get("passed")
+    try:
+        out = eval_record_g2c_retest(
+            task_id,
+            passed=bool(passed),
+            notes=str(body.get("notes") or ""),
+            rationale=str(body.get("rationale") or ""),
+            tenant_id=str(body.get("tenant_id") or "eval-v1"),
+        )
+    except ValueError as e:
+        return {"data": {"ok": False, "error": str(e)}}
+    return {"data": out}
+
+
+@router.post("/g2c-report", response_model=ItemResponse)
+async def post_g2c_report(
+    body: Optional[Dict[str, Any]] = None,
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """Compute intra-rater κ / agreement; accuracy_claim stays false."""
+    from core.api.core_facade import eval_compute_g2c_report
+
+    body = body or {}
+    if body.get("accuracy_claim") is True:
+        return {
+            "data": {
+                "ok": False,
+                "error": "accuracy_claim_forbidden",
+                "accuracy_claim": False,
+            }
+        }
+    out = eval_compute_g2c_report(
+        tenant_id=str(body.get("tenant_id") or "eval-v1"),
+        persist=bool(body.get("persist", True)),
+    )
+    return {"data": out}
+
+
 @router.get("/gates", response_model=ListResponse)
 async def list_gates(
     tenant_id: str = "eval-v1",

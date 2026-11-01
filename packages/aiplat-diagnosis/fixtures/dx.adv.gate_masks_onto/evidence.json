@@ -1,0 +1,45 @@
+{
+  "schema_version": "diagnosis.evidence.v0",
+  "case_id": "dx.adv.gate_masks_onto",
+  "provenance": "desensitized_local_export",
+  "scenario": "version_regression",
+  "subject_ref": "eval:adv-gate-masks-onto",
+  "payload": {
+    "gate_report": {
+      "pass_rate": 0.55,
+      "threshold": 0.8,
+      "gate_claim": false,
+      "accuracy_claim": false
+    },
+    "ontology_stats": {
+      "coverage": 0.22,
+      "domains": 3
+    }
+  },
+  "evidence": [
+    {
+      "id": "e-gate",
+      "source": "evaluation",
+      "kind": "gate_report",
+      "ref": "fixture://adv/gate",
+      "version": "adv-v0",
+      "captured_at": "2026-11-02T00:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {}
+    },
+    {
+      "id": "e-onto",
+      "source": "ontology",
+      "kind": "ontology_health",
+      "ref": "fixture://adv/onto",
+      "version": "adv-v0",
+      "captured_at": "2026-11-02T00:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {
+        "coverage": 0.22
+      }
+    }
+  ]
+}

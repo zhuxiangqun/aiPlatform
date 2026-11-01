@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1588
+total_capabilities: 1598
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -5095,7 +5095,7 @@ domains:
   diagnosis-system:
     section: "十三-b"
     section_name: "诊断系统"
-    caps_count: 19
+    caps_count: 20
     provides:
       - symbol: "DiagnosisStore"
         type: "class"
@@ -5155,7 +5155,11 @@ domains:
         module: "core/apps/diagnosis/service/engine.py"
       - symbol: "fixture_metrics"
         type: "function"
-        signature: "fixture_metrics(limit=10, blind=True)→Dict Top-1/Top-3 on real fixtures"
+        signature: "fixture_metrics(limit=10, blind=True, subset=core|adversarial|all)→Dict Top-1/Top-3"
+        module: "core/apps/diagnosis/service/metrics.py"
+      - symbol: "fixture_metrics_by_subset"
+        type: "function"
+        signature: "fixture_metrics_by_subset(limit_core=10, limit_adv=30, blind=True)→Dict core+adversarial"
         module: "core/apps/diagnosis/service/metrics.py"
       - symbol: "diagnosis_health"
         type: "function"
@@ -5171,7 +5175,7 @@ domains:
         module: "core/api/core_facade.py"
       - symbol: "diagnosis_fixture_metrics"
         type: "function"
-        signature: "diagnosis_fixture_metrics(limit=10)→Dict"
+        signature: "diagnosis_fixture_metrics(limit=10, blind=True, subset=core)→Dict"
         module: "core/api/core_facade.py"
     breaks: []
     consumers_expected:
@@ -5184,7 +5188,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 53
+    caps_count: 62
     provides:
       - symbol: "run_g2a_gate"
         type: "function"
@@ -5217,6 +5221,42 @@ domains:
       - symbol: "eval_lock_v0"
         type: "function"
         signature: "eval_lock_v0(tenant_id='eval-v1')→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "g2c_status"
+        type: "function"
+        signature: "g2c_status(tenant_id)→Dict self-consistency readiness (accuracy_claim=false)"
+        module: "core/apps/eval/service/g2c.py"
+      - symbol: "cohen_kappa_binary"
+        type: "function"
+        signature: "cohen_kappa_binary(pairs)→Dict agreement + intra_rater_kappa"
+        module: "core/apps/eval/service/g2c.py"
+      - symbol: "list_g2c_retest_queue"
+        type: "function"
+        signature: "list_g2c_retest_queue(tenant_id, limit?)→Dict pending retest tasks"
+        module: "core/apps/eval/service/g2c.py"
+      - symbol: "record_g2c_retest"
+        type: "function"
+        signature: "record_g2c_retest(task_id, passed, ...)→Dict same-annotator retest label"
+        module: "core/apps/eval/service/g2c.py"
+      - symbol: "compute_g2c_report"
+        type: "function"
+        signature: "compute_g2c_report(tenant_id, persist?)→Dict intra_rater_kappa (never accuracy)"
+        module: "core/apps/eval/service/g2c.py"
+      - symbol: "eval_g2c_status"
+        type: "function"
+        signature: "eval_g2c_status(tenant_id='eval-v1')→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "eval_list_g2c_retest_queue"
+        type: "function"
+        signature: "eval_list_g2c_retest_queue(tenant_id, limit?)→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "eval_record_g2c_retest"
+        type: "function"
+        signature: "eval_record_g2c_retest(task_id, passed, ...)→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "eval_compute_g2c_report"
+        type: "function"
+        signature: "eval_compute_g2c_report(tenant_id, persist?)→Dict"
         module: "core/api/core_facade.py"
       - symbol: "run_e5_gate"
         type: "function"
