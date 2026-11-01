@@ -52,7 +52,7 @@ bash packages/aiplat-pi-runtime/scripts/d1_local_regression.sh
 bash scripts/ops_local_rehearse_tracks.sh
 ```
 
-跨轨 runlog：[`LOCAL_TRACKS_RUNLOG.md`](./LOCAL_TRACKS_RUNLOG.md)
+跨轨 runlog：[`LOCAL_TRACKS_RUNLOG.md`](./LOCAL_TRACKS_RUNLOG.md) · 工程收口：[`ENGINEERING_LOCAL_CLOSEOUT.md`](./ENGINEERING_LOCAL_CLOSEOUT.md)
 
 ## 复审后走路径 A
 

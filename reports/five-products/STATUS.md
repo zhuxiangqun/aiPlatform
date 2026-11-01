@@ -45,4 +45,4 @@ bash scripts/five_products_gate.sh
 
 Pi D1 本地回归（2026-11-01）：[`ops/PI_D1_LOCAL_REGRESSION.md`](./ops/PI_D1_LOCAL_REGRESSION.md) **PASS**（`d1_local_regression.sh`；environment=local，未授权）。
 
-Local staging（零预算 · 非预发）：[`ops/LOCAL_STAGING.md`](./ops/LOCAL_STAGING.md) — PG/HA/OIDC + Ontology/Eval A3 **local_signed**（[`ops/LOCAL_TRACKS_RUNLOG.md`](./ops/LOCAL_TRACKS_RUNLOG.md)）；checklist 仍 🟨；硬门全 **false**。
+Local staging（零预算 · 非预发）：四轨 **local_signed**（[`ops/LOCAL_TRACKS_RUNLOG.md`](./ops/LOCAL_TRACKS_RUNLOG.md) · [`ops/ENGINEERING_LOCAL_CLOSEOUT.md`](./ops/ENGINEERING_LOCAL_CLOSEOUT.md)）；checklist 仍 🟨；硬门全 **false**。

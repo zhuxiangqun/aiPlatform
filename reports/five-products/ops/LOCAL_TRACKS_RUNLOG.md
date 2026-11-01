@@ -1,6 +1,6 @@
 # Local tracks runlog (non-authorize)
 
-- recorded_at: `20261031T235857Z`
+- recorded_at: `20261101T000452Z`
 - operator: `apple`
 - environment: `local`
 - production_signed: **false** (all tracks)
@@ -9,8 +9,9 @@
 | Track | local_signed | latest |
 |-------|:------------:|--------|
 | pg_ha | true | `local-pgha-local-20261031T235626Z.json` |
-| ontology_a3 | true | `local-ontology-a3-local-20261031T235857Z.json` |
-| evaluation_a3 | true | `local-evaluation-a3-local-20261031T235857Z.json` |
+| ontology_a3 | true | `local-ontology-a3-local-20261101T000452Z.json` |
+| evaluation_a3 | true | `local-evaluation-a3-local-20261101T000452Z.json` |
+| pi_d3 | true | `local-pi-d3-local-20261101T000452Z.json` |
 
 ## Notes
 

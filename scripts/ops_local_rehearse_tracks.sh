@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local (non-authorize) rehearsal for Ontology/Eval A3 (+ optional PG/HA).
+# Local (non-authorize) rehearsal for Ontology/Eval A3 + Pi D3 (+ optional PG/HA).
 # Writes local-*.json with local_signed; never production_signed / authorize.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -62,6 +62,28 @@ rm -f "$ITEMS"
 bash packages/aiplat-evaluation/scripts/a3_split_authorize.sh status >/dev/null
 pass "evaluation A3 local_signed (process_split still unauthorized)"
 
+# --- Pi D3 ---
+bash packages/aiplat-pi-runtime/scripts/d3_local_rehearsal.sh || fail "d3_local_rehearsal"
+bash packages/aiplat-pi-runtime/scripts/d3_soc_local_rehearsal.sh || fail "d3_soc_local_rehearsal"
+ITEMS="$(mktemp)"
+cat >"$ITEMS" <<JSON
+{
+  "bundle_integrity": {"done": true, "evidence": "d3_local_rehearsal bundle checksum (local)"},
+  "ops_surface": {"done": true, "evidence": "docs/d3/OPS_SURFACE.md + local rehearsal (local; not prod healthz SLA)"},
+  "soc_alert_export": {"done": true, "evidence": "d3_soc_local_rehearsal file-sink (local; no external SOC)"},
+  "n1_upgrade_rollback": {"done": true, "evidence": "d1_upgrade/rollback or d3_local_rehearsal N-1 path (local)"}
+}
+JSON
+export AIPLAT_LOCAL_DRILL_ITEMS_FILE="$ITEMS"
+export AIPLAT_LOCAL_DRILL_ID="pi-d3-local-${STAMP}"
+export AIPLAT_LOCAL_SIGN=1
+bash packages/aiplat-pi-runtime/scripts/d3_record_local_drill.sh
+PI_LOCAL="$(ls -1t packages/aiplat-pi-runtime/docs/d3/drills/local-pi-d3-local-*.json | head -1)"
+cp "$PI_LOCAL" "$EVID_DIR/$(basename "$PI_LOCAL")"
+rm -f "$ITEMS"
+bash packages/aiplat-pi-runtime/scripts/d3_authorize.sh status >/dev/null
+pass "pi D3 local_signed (d3_production still unauthorized)"
+
 # --- Optional PG/HA (docker) ---
 if [[ "$INCLUDE_PGHA" == "1" ]]; then
   bash packages/aiplat-central/scripts/pg_ha_local_staging.sh all || fail "pg_ha local staging"
@@ -81,6 +103,7 @@ tracks = [
     ("pg_ha", root / "packages/aiplat-central/docs/pg_ha/drills"),
     ("ontology_a3", root / "packages/aiplat-ontology/docs/a3/drills"),
     ("evaluation_a3", root / "packages/aiplat-evaluation/docs/a3/drills"),
+    ("pi_d3", root / "packages/aiplat-pi-runtime/docs/d3/drills"),
 ]
 rows = []
 for name, d in tracks:
