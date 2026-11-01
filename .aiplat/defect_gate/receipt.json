@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T20:30:00+08:00",
+  "reviewed_at": "2026-11-01T21:15:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "559e25328d0ed911dfb3340c229b073969fd3ad7",
-  "diff_sha256": "a2b7c455c54d869ef295279dabb1c064e212691853e851a1346e2a22de7706ae",
-  "head_sha": "a88768734e325d7b8b54b277c90a11702e196b76",
+  "merge_base": "5ba444ac1a0c6f6edcc1e38a2733e8efb80692b9",
+  "diff_sha256": "495ce6bc5f58dfbc8f039769010184091c17b31c9f8477390338800de288c172",
+  "head_sha": "bc5e87c7616466c7563d4dd52fe8ffea06ca2308",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "CI unblock: §9 allowlist diagnosis + contracts #76/#68 + auth appendix. C1 honesty locks accuracy_claim=false/auto_execute=false. Local lock only; CI unlock needs non-author Approve."
+  "note": "C1 closeout: blind fixture metrics default; accuracy_claim remains false. Local lock only."
 }
