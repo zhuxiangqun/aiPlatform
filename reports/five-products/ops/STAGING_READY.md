@@ -20,7 +20,7 @@
 | `staging_ready=false` | 正式 defer（见 [`LOCAL_DEFER.md`](./LOCAL_DEFER.md)）；硬门保持 false |
 
 当前：**`staging_ready=false`**（2026-11-01 续 defer：无独立预发；本机 `:5433` ≠ staging；OIDC 缺；kickoff `can_record=false`；**不买服务器**）。  
-复审记录：[`STAGING_REVIEW_2026-11-15.md`](./STAGING_REVIEW_2026-11-15.md)（承继 [`STAGING_REVIEW_2026-11-08.md`](./STAGING_REVIEW_2026-11-08.md)）· 下次：**2026-11-22**。
+复审记录：[`STAGING_REVIEW_2026-11-22.md`](./STAGING_REVIEW_2026-11-22.md)（承继 11-15 / 11-08）· 下次：**2026-11-29**。
 
 ## 未满足时
 

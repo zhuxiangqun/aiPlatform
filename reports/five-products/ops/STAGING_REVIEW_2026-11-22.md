@@ -1,39 +1,19 @@
 # Staging review checklist — 2026-11-22
 
 > 承继 [`STAGING_REVIEW_2026-11-15.md`](./STAGING_REVIEW_2026-11-15.md)（**continue_defer**）。  
-> **禁止**本机 Docker 冒充 staging / 手改 🟨→✅ / 假 DSN·OIDC。  
-> **本文件**：复审日前预填包（2026-11-01）；**Outcome 仍待复审日填写**。
+> **禁止**本机 Docker 冒充 staging / 手改 🟨→✅ / 假 DSN·OIDC。
 
-## Pre-work（复审前 · 已预填）
+## Pre-work（复审前）
 
-| # | 准备项 | 状态（2026-11-01） |
-|---|--------|-------------------|
-| 1 | 独立主机候选（旧笔记本 / 闲置机 / 免费云） | **无候选**（明确不买服务器；无闲置机登记） |
-| 2 | 按 [`STAGING_PROVISIONING.md`](./STAGING_PROVISIONING.md) 装 PG+Keycloak | **not_started**（无主机 → 不实施） |
-| 3 | 填 [`STAGING_READY.md`](./STAGING_READY.md) 四项 | 全 **未齐**（见下表） |
-| 4 | operator / 变更窗口 / 回滚预案书面 | **未提交**（无预发对象可写） |
+| # | 准备项 | 状态（开审时） |
+|---|--------|----------------|
+| 1 | 独立主机候选（旧笔记本 / 闲置机 / 免费云） | **无候选**（不买服务器） |
+| 2 | 按 [`STAGING_PROVISIONING.md`](./STAGING_PROVISIONING.md) 装 PG+Keycloak | **not_started** |
+| 3 | 填 [`STAGING_READY.md`](./STAGING_READY.md) 四项 | 全 **未齐** |
+| 4 | operator / 变更窗口 / 回滚预案书面 | **未提交** |
 | 5 | 冻结自检绿 | **PASS** · `ops_engineering_freeze_check.sh` |
-| 6 | 本地门禁复验 | **PASS** · `five_products_gate.sh`（authorize REFUSE） |
-| 7 | G0 / HEAD CI | **PASS** · 锚点见 [`G0_CLOSEOUT.md`](../G0_CLOSEOUT.md) |
-
-### STAGING_READY 预检（复审前快照）
-
-| # | 项 | 预检 | 备注 |
-|---|----|------|------|
-| 1 | Staging Postgres DSN | **FAIL** | 仅有 Option B `127.0.0.1:5433` ≠ 独立预发 |
-| 2 | OIDC | **FAIL** | 无预发 issuer；kickoff 需 `AIPLAT_OIDC_ISSUER` |
-| 3 | Operator / 窗口 / 回滚 | **FAIL** | 无书面变更窗（无主机可挂） |
-| 4 | `AIPLAT_LIVE_DRILL_ENV` | **N/A→local only** | 复验必须用 `local`；禁止伪标 `staging` |
-
-### 复审材料包（齐套才进入 A/C）
-
-- [ ] 主机身份（主机名、所有者、与开发隔离证明）  
-- [ ] PG DSN（redacted 可入库；密钥不进 git）  
-- [ ] OIDC issuer + client id（无 secret 进 git）  
-- [ ] 备份/快照证明  
-- [ ] 变更窗口 + 回滚一段话  
-
-模板来源：[`STAGING_PROVISIONING.md`](./STAGING_PROVISIONING.md) · Gate：[`STAGING_READY.md`](./STAGING_READY.md)。
+| 6 | 本地门禁 | **PASS** · authorize 全 REFUSE |
+| 7 | G0 CI | **PASS** · 锚点见 [`G0_CLOSEOUT.md`](../G0_CLOSEOUT.md) |
 
 ## Decision tree（复审日）
 
@@ -41,15 +21,33 @@
    - **否** → 再 `continue_defer`；写下次 `review_by`；Option B 继续。  
    - **是** → 置 `staging_ready=true` 仅当证据齐 → kickoff → live → sign → checklist ✅ → authorize。
 
-## Outcome（复审日填写）
+## Outcome（提前开审 · 2026-11-01）
 
-- reviewed_at: `_TBD_`
-- decision: `_continue_defer | enter_staging_A_or_C_`
-- staging_ready: `_false until conditions met_`
-- next_review_by: `_if continue_defer_`
-- notes: `_…_`
+- reviewed_at: `2026-11-01T13:03+08:00`（按 11-22 清单提前开审；用户明确 **继续 defer**）
+- decision: **`continue_defer`**
+- staging_ready: **`false`**（不变）
+- next_review_by: **`2026-11-29`**
+- freeze_check: **PASS**
+- authorize: 四轨 **REFUSE**；`ready_to_authorize=false`
+- kickoff: `ops_pgha_live_kickoff.sh`（`AIPLAT_LIVE_DRILL_ENV=local`）→ **`can_record=false`**
 
-### Explicitly not done（预填时点）
+### STAGING_READY 四项核对
+
+| # | 项 | 结果 | 证据 |
+|---|----|------|------|
+| 1 | Staging Postgres DSN | **FAIL** | 仅 Option B `127.0.0.1:5433` ≠ 独立预发 |
+| 2 | OIDC | **FAIL** | kickoff：`missing AIPLAT_OIDC_ISSUER` |
+| 3 | Operator / 窗口 / 回滚 | **FAIL** | 无书面预发变更窗 |
+| 4 | `AIPLAT_LIVE_DRILL_ENV` | **FAIL（诚实）** | 复验用 `local`；禁止伪标 `staging` |
+
+### Notes
+
+1. 本地工程已冻结收口；**无必须代码任务**。  
+2. 不买服务器、不实施供给包。  
+3. 工程环境仍为 Option B：`bash scripts/ops_option_b_all.sh`。  
+4. 下次复审：**2026-11-29**（[`STAGING_REVIEW_2026-11-29.md`](./STAGING_REVIEW_2026-11-29.md)）。
+
+### Explicitly not done
 
 - no `staging_ready=true`
 - no host provisioned / no server purchase
