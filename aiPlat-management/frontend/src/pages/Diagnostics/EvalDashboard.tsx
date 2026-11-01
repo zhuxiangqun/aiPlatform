@@ -183,6 +183,13 @@ const EvalDashboard: React.FC = () => {
   if (loading) return <div className="p-6 text-gray-400">加载中...</div>;
 
   return (
+    <>
+    <div className="mx-4 mt-4 mb-0 rounded border border-blue-800/40 bg-blue-950/20 px-3 py-2 text-sm text-blue-100">
+      EVAL_V1 评测中心 Preview 已解冻（G2a local，非 accuracy）→{' '}
+      <Link to="/eval" className="text-blue-300 underline hover:text-blue-200">
+        /eval
+      </Link>
+    </div>
     <div className="space-y-6 p-4">
       <div>
         <h1 className="text-2xl font-semibold text-gray-200">Agent 运行评估</h1>
@@ -564,6 +571,7 @@ const EvalDashboard: React.FC = () => {
         </Card>
       )}
     </div>
+    </>
   );
 };
 

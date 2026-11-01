@@ -92,6 +92,7 @@ const DiagnosticsSyscalls = lazy(() => import('./pages/Diagnostics/Syscalls'));
 const DiagnosticsSmoke = lazy(() => import('./pages/Diagnostics/Smoke/Smoke'));
 const DiagnosticsBrowserTest = lazy(() => import('./pages/Diagnostics/BrowserTest/BrowserTestPanel'));
 const DiagnosticsEvalDashboard = lazy(() => import('./pages/Diagnostics/EvalDashboard'));
+const EvalPreview = lazy(() => import('./pages/Eval/EvalPreview'));
 const BusinessValueReport = lazy(() => import('./pages/Diagnostics/BusinessValueReport'));
 const ReleasesPage = lazy(() => import('./pages/Releases/ReleasesPage'));
 const ApprovalCenter = lazy(() => import('./pages/Management/ApprovalCenter'));
@@ -274,6 +275,7 @@ const router = createBrowserRouter([
       { path: 'diagnostics/model-playground', element: withSuspense(ModelPlayground) },
       { path: 'diagnostics/model-audit', element: withSuspense(ModelAuditPanel) },
       { path: 'diagnostics/safety', element: withSuspense(SafetyPanel) },
+      { path: 'eval', element: withSuspense(EvalPreview) },
       { path: 'diagnostics/eval', element: withSuspense(DiagnosticsEvalDashboard) },
       { path: 'diagnostics/business-value', element: withSuspense(BusinessValueReport) },
       { path: 'diagnostics/knowledge-health', element: withSuspense(DiagnosticsHome) },

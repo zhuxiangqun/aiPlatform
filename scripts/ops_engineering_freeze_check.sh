@@ -90,6 +90,14 @@ grep -q 'gate-g2a' aiPlat-platform/apps/eval/api/store_api.py \
   || fail "gate-g2a API not wired"
 grep -q 'lock-v0' aiPlat-platform/apps/eval/api/store_api.py \
   || fail "lock-v0 API not wired"
+[[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md ]] \
+  || fail "missing EVAL_V1 UI preview unfreeze"
+[[ -f aiPlat-management/frontend/src/pages/Eval/EvalPreview.tsx ]] \
+  || fail "missing /eval preview page"
+grep -q "path: 'eval'" aiPlat-management/frontend/src/App.tsx \
+  || fail "/eval route missing in App.tsx"
+grep -q "key: '/eval'" aiPlat-management/frontend/src/pageManifest.ts \
+  || fail "/eval menu entry missing in pageManifest"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-08.md ]] || fail "missing STAGING_REVIEW 2026-11-08"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-15.md ]] || fail "missing STAGING_REVIEW 2026-11-15"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-22.md ]] || fail "missing STAGING_REVIEW 2026-11-22"

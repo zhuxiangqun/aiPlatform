@@ -38,7 +38,7 @@ curl '.../store/g2a-status?tenant_id=eval-v1'
 
 | 条件 | 结果 |
 |---|---|
-| `v0_locked=true` + engineering gate pass | local `gate_claim=true`；可另批解冻 UI `/eval` preview |
+| `v0_locked=true` + engineering gate pass | local `gate_claim=true`；`/eval` preview 已解冻（见 UI preview unfreeze） |
 | 未满 30 adjudicated | 不可 lock；E0–E5 仍可用 |
 | accuracy / κ / 外部 gate | **G2b 后置** |
 
