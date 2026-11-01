@@ -14,6 +14,7 @@
 | Pi D3 local | **PASS** · `local_signed`（本收口纳入） |
 | Pi D1 hermetic regression | **PASS**（另见 `PI_D1_LOCAL_REGRESSION.md`） |
 | Pi D2 admin pack | **PASS**（`PI_D2_ADMIN_LOCAL.md` · enterprise 默认 off） |
+| Pi D3 local closeout | **PASS**（`PI_D3_LOCAL_CLOSEOUT.md` · N-1 + SOC file-sink · authorize REFUSE） |
 | FDE Field D1 install/meta/backup/rollback | **PASS**（`FDE_FIELD_LOCAL_REGRESSION.md` · `INSTALL_META` 已生成） |
 | STATUS↔manifest sync | **PASS**（`scripts/check_five_products_status_sync.py`） |
 | 四轨 `ready_to_authorize` | **false** |

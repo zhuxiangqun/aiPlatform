@@ -1,0 +1,10 @@
+{
+  "kind": "pi_d3_local_rehearsal_not_production",
+  "at": "20261101T005911Z",
+  "bundle_checksum": true,
+  "corruption_detected": true,
+  "rollback_pointer": true,
+  "soc_live": false,
+  "d3_production": false,
+  "workdir": "/tmp/aiplat-pi-d3-rehearsal.M6lB2H"
+}

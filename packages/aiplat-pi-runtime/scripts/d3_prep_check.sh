@@ -73,13 +73,23 @@ else:
 # local rehearsal
 drill_dir = root / "packages/aiplat-pi-runtime/docs/d3/drills"
 reh = sorted(drill_dir.glob("local-rehearsal-*.json")) if drill_dir.is_dir() else []
+n1 = sorted(drill_dir.glob("n1-rehearsal-*.json")) if drill_dir.is_dir() else []
 if reh:
     ok("3_bundle_local_rehearsal", str(reh[-1].relative_to(root)))
     ok("4_ops_docs", "OPS_SURFACE.md + local reh")
-    ok("6_rollback_local_rehearsal", str(reh[-1].relative_to(root)))
 else:
-    for k in ("3_bundle_local_rehearsal", "4_ops_docs", "6_rollback_local_rehearsal"):
+    for k in ("3_bundle_local_rehearsal", "4_ops_docs"):
         results["items"][k] = {"ok": False, "detail": "run d3_local_rehearsal.sh"}
+# #6 prefers dedicated N-1 install/upgrade/rollback; falls back to pointer rollback
+if n1:
+    ok("6_rollback_local_rehearsal", str(n1[-1].relative_to(root)))
+elif reh:
+    ok("6_rollback_local_rehearsal", f"pointer-only fallback: {reh[-1].relative_to(root)}")
+else:
+    results["items"]["6_rollback_local_rehearsal"] = {
+        "ok": False,
+        "detail": "run d3_n1_local_rehearsal.sh (or d3_local_rehearsal.sh)",
+    }
 soc = sorted(drill_dir.glob("soc-rehearsal-*.json")) if drill_dir.is_dir() else []
 if soc:
     ok("5_soc_local_rehearsal", str(soc[-1].relative_to(root)))

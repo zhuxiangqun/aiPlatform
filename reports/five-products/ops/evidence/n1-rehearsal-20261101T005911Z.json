@@ -1,0 +1,12 @@
+{
+  "kind": "pi_d3_n1_local_rehearsal_not_production",
+  "at": "20261101T005911Z",
+  "environment": "local",
+  "demo_root": "/tmp/aiplat-pi-d3-n1-20261101T005911Z",
+  "before_current": "versions/0.1.0",
+  "after_upgrade": "versions/0.1.0+20261101T005912Z",
+  "after_rollback": "versions/0.1.0",
+  "smoke_after_rollback": true,
+  "d3_production": false,
+  "production_signed": false
+}

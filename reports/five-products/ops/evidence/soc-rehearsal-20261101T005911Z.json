@@ -1,0 +1,10 @@
+{
+  "kind": "pi_d3_soc_local_file_sink_not_production",
+  "at": "20261101T005911Z",
+  "enterprise_off_drops": true,
+  "enterprise_on_local_sink": true,
+  "outbound_network": false,
+  "production_soc": false,
+  "note": "File sink mock only; checklist #5 partial until live SOC.",
+  "workdir": "/tmp/aiplat-pi-d3-soc.eby0F3"
+}

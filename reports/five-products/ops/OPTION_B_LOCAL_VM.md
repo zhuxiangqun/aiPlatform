@@ -27,7 +27,7 @@
 | PG/HA + OIDC | `pg_ha_local_staging.sh all` | `local-pgha-*.json` · `oidc-local-*.json` |
 | Ontology A3 | `a3_*` via `ops_local_rehearse_tracks` | `local-ontology-a3-*.json` |
 | Evaluation A3 | 同上 | `local-evaluation-a3-*.json` |
-| Pi D3 | 同上 | `local-pi-d3-*.json` |
+| Pi D3 | `d3_local_closeout.sh` | [`PI_D3_LOCAL_CLOSEOUT.md`](./PI_D3_LOCAL_CLOSEOUT.md) · `local-rehearsal` / `soc` / `n1` |
 | Pi D1 | `d1_local_regression.sh` | [`PI_D1_LOCAL_REGRESSION.md`](./PI_D1_LOCAL_REGRESSION.md) |
 | Pi D2 | `d2_admin_check.sh` | [`PI_D2_ADMIN_LOCAL.md`](./PI_D2_ADMIN_LOCAL.md) |
 | FDE Field | `packages/aiplat-fde/.../d1_local_regression.sh` | `local-fde-*.json` |

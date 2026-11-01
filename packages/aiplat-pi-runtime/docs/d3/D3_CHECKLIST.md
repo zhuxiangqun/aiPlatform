@@ -2,7 +2,7 @@
 
 > `d3_production_authorized` 仅当下列全部为 ✅（🟨 = 本地/自动部分绿，≠ 生产宣称）。  
 > ADR：[`ADR-PI-D3.md`](../../../../reports/five-products/ADR-PI-D3.md) **Accepted（有条件）**  
-> 刷新：`d3_local_rehearsal` → `d3_soc_local_rehearsal` → `d3_prep_check`
+> 刷新：`d3_local_closeout.sh`（= local + soc + n1 + prep）；或分步 `d3_local_rehearsal` → `d3_soc_local_rehearsal` → `d3_n1_local_rehearsal` → `d3_prep_check`
 
 | # | 项 | Owner | Done |
 |---|----|-------|:----:|

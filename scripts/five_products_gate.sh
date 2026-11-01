@@ -23,14 +23,8 @@ bash packages/aiplat-central/scripts/d2_security_check.sh
 echo "== Pi D2 admin/security pack =="
 bash packages/aiplat-pi-runtime/scripts/d2_admin_check.sh
 
-echo "== Pi D3 local rehearsal (bundle checksum; not production) =="
-bash packages/aiplat-pi-runtime/scripts/d3_local_rehearsal.sh
-
-echo "== Pi D3 SOC local rehearsal (file sink; not production) =="
-bash packages/aiplat-pi-runtime/scripts/d3_soc_local_rehearsal.sh
-
-echo "== Pi D3 prep (production claim stays unauthorized) =="
-bash packages/aiplat-pi-runtime/scripts/d3_prep_check.sh
+echo "== Pi D3 local closeout (bundle/SOC/N-1; not production) =="
+bash packages/aiplat-pi-runtime/scripts/d3_local_closeout.sh
 
 echo "== Module contract samples =="
 python3 reports/five-products/modules/ontology/contracts/validate_sample.py

@@ -50,6 +50,7 @@ bash scripts/five_products_gate.sh
 |----|------|
 | Pi D1 hermetic | [`ops/PI_D1_LOCAL_REGRESSION.md`](./ops/PI_D1_LOCAL_REGRESSION.md) **PASS** |
 | Pi D2 admin pack | [`ops/PI_D2_ADMIN_LOCAL.md`](./ops/PI_D2_ADMIN_LOCAL.md) **PASS**（enterprise 默认 off） |
+| Pi D3 local closeout | [`ops/PI_D3_LOCAL_CLOSEOUT.md`](./ops/PI_D3_LOCAL_CLOSEOUT.md) **PASS**（#3–#6 🟨；authorize REFUSE） |
 | 四轨 local_signed | [`ops/LOCAL_TRACKS_RUNLOG.md`](./ops/LOCAL_TRACKS_RUNLOG.md) |
 | FDE Field install/meta | [`ops/FDE_FIELD_LOCAL_REGRESSION.md`](./ops/FDE_FIELD_LOCAL_REGRESSION.md) **PASS** |
 | Local staging 总册 | [`ops/LOCAL_STAGING.md`](./ops/LOCAL_STAGING.md) · 方案 B [`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md) |
