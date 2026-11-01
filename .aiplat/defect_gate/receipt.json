@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T19:43:05+08:00",
+  "reviewed_at": "2026-11-01T20:14:52+08:00",
   "base_ref": "origin/main",
-  "merge_base": "00fb81585dbebf9d56a28268c3deda573c5fcf2b",
-  "diff_sha256": "342c287f574934edc4cab633dcac1ac1cdcdf00a09476dadee4441f65e3b93f1",
-  "head_sha": "dfcc897973da6affd8f16a0dc574c86a270c7e47",
+  "merge_base": "559e25328d0ed911dfb3340c229b073969fd3ad7",
+  "diff_sha256": "cbffd1fb418cc32a31c45b7b1703bc92d7c0c41c26fd1c5629b4815f0f326fff",
+  "head_sha": "0732b43a98adf74d5876a1307ff3c23ba644c7d5",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "DIAGNOSIS_V1 C1 fixture pack only; desensitized local exports; no product code."
+  "note": "DIAGNOSIS_V1 C1 MVP: API/service/UI/manifest A0/D1c; no remediate; fixture metrics Top-1=1.0 on 10 fixtures."
 }
