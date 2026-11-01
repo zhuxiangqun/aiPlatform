@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T16:01:11+08:00",
+  "reviewed_at": "2026-11-01T16:06:37+08:00",
   "base_ref": "origin/main",
   "merge_base": "460976bcd2f884bd9e5aed1b04930c76bdc50a73",
-  "diff_sha256": "26128d00bb7130a0b02f65e22da70ced74635502ec728f46db50431809e65085",
-  "head_sha": "9d5929e63ff47cd2c34364c236c4932c410adc5d",
+  "diff_sha256": "7c7ff15377677bc5982bd23d7fde095ead89ce57ecde5bad58d975e7f4f62b9d",
+  "head_sha": "0c846b7884243908ebc1c9b137d00f8566ef6e3d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "EVAL_V1 E0\u2013E5. gate_claim/accuracy_claim forced false; release without v0 lock \u2192 advisory_pass only. false_block measured on uncorrupted inject cohort (not hard-coded). Top-level ok means gate ran, not decision=pass. Local lock only; CI needs non-author Approve."
+  "note": "EVAL_V1 E0\u2013E5 + contract \u00a775 + whitepaper sync. Docs-only CI fix; prior five-check pass still holds. Local lock only."
 }
