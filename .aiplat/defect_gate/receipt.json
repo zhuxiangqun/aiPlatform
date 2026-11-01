@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T08:23:00+08:00",
+  "reviewed_at": "2026-11-01T08:27:30+08:00",
   "base_ref": "origin/main",
-  "merge_base": "c06f37324b38ef513c2c7e40ae4c98612c226975",
-  "diff_sha256": "adbcfb11eff79d4f7062a699104e0e18e34ba88d4d51c614e323724bca983e5b",
-  "head_sha": "ad5e53ba761c8a098fe48c32f30e56c12701be3b",
+  "merge_base": "f4c77d8ae4da3ecdc475c2753c2a32e8997032a5",
+  "diff_sha256": "cf53665a88b795ce2229771d6d9f8d734c4392be48b1ebf4a8fd1edc57fe17d4",
+  "head_sha": "70fced874c2a558ce5c5ee8bbc49bf1df98ad0a6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "STATUS↔manifest alignment + FDE INSTALL_META local evidence; hard gates/staging defer untouched."
+  "note": "STATUS↔manifest sync gate + D1c cohost label + Pi D2 admin local; hard gates/staging defer untouched."
 }
