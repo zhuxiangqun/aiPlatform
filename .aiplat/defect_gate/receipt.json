@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T12:16:10+08:00",
+  "reviewed_at": "2026-11-01T13:04:57+08:00",
   "base_ref": "origin/main",
-  "merge_base": "979778d2291c50dc60a26c58e094f8a465b010f6",
-  "diff_sha256": "e7a7dda950de00a437f60cccf6d72fbb1d12a2696a96601b35cba1be1942816f",
-  "head_sha": "8ebc273d66df2a425abb2b3cd43008d8a5185cca",
+  "merge_base": "168dc736afcb992d525ca411e3150e47e9e383ba",
+  "diff_sha256": "5c701e30c2735a012882ac7191aa3df54c2e8d6f10a17abfee4150c47b5bb8e3",
+  "head_sha": "bd013392c9b9c945a783ff5de733d4d5d9e3a70d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs-only: G0 CI anchor \u2192 979778d2 (56). No authorize. Local lock only."
+  "note": "Docs-only continue_defer 11-22\u219211-29. No authorize. Local lock only."
 }
