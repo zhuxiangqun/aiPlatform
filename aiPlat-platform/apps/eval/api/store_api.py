@@ -29,7 +29,8 @@ async def list_sets(
     from core.api.core_facade import eval_store_list_sets
 
     items = eval_store_list_sets(tenant_id=tenant_id, limit=limit)
-    return {"data": {"items": items, "total": len(items)}}
+    # ListResponse is flat {items,total} — nesting under data zeros the list via response_model
+    return {"items": items, "total": len(items)}
 
 
 @router.post("/sets", response_model=ItemResponse)
@@ -72,7 +73,7 @@ async def list_tasks(
     from core.api.core_facade import eval_store_list_tasks
 
     items = eval_store_list_tasks(set_id=set_id, tenant_id=tenant_id, limit=limit)
-    return {"data": {"items": items, "total": len(items)}}
+    return {"items": items, "total": len(items)}
 
 
 @router.post("/tasks", response_model=ItemResponse)
@@ -159,7 +160,7 @@ async def list_judges(
     from core.api.core_facade import eval_list_judges
 
     items = eval_list_judges(tenant_id=tenant_id, limit=limit)
-    return {"data": {"items": items, "total": len(items)}}
+    return {"items": items, "total": len(items)}
 
 
 @router.post("/calibrate-e4", response_model=ItemResponse)
@@ -324,7 +325,7 @@ async def list_gates(
     from core.api.core_facade import eval_list_gates
 
     items = eval_list_gates(tenant_id=tenant_id, limit=limit)
-    return {"data": {"items": items, "total": len(items)}}
+    return {"items": items, "total": len(items)}
 
 
 @router.get("/gates/{gate_id}", response_model=ItemResponse)

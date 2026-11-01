@@ -34,6 +34,15 @@ def g2a_status(*, tenant_id: str = "eval-v1", db_path: Optional[str] = None) -> 
         int(st.get("task_count") or 0) >= E3_V0_LOCK_TARGET
         and int(st.get("labels_adjudicated") or 0) >= E3_V0_LOCK_TARGET
     )
+    latest_gate = (store.list_gates(limit=1) or [None])[0]
+    latest_report = None
+    report_id = ""
+    if isinstance(latest_gate, dict):
+        report_id = str((latest_gate.get("meta") or {}).get("report_id") or "")
+        if not report_id:
+            report_id = (store.get_meta(META_G2A_REPORT) or "").strip()
+        if report_id:
+            latest_report = store.get_report(report_id)
     return {
         "ok": True,
         "schema_version": "eval.g2a.v0",
@@ -53,6 +62,10 @@ def g2a_status(*, tenant_id: str = "eval-v1", db_path: Optional[str] = None) -> 
             "Not accuracy; κ N/A under D5 solo review."
         ),
         "e3": st,
+        # Embedded for /eval preview — avoids ListResponse shape pitfalls on /gates
+        "latest_gate": latest_gate,
+        "latest_report": latest_report,
+        "g2a_report_id": report_id or (store.get_meta(META_G2A_REPORT) or ""),
     }
 
 

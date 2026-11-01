@@ -1,26 +1,13 @@
 /**
  * EVAL_V1 /eval local preview — human-readable G2a summary.
  * Honesty: engineering calibration only — never claim accuracy / κ / external gate.
+ *
+ * Data source: single GET …/store/g2a-status (embeds latest_gate + latest_report).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, RefreshCw, XCircle } from 'lucide-react';
 import { apiClient } from '../../services';
-
-type G2aStatus = {
-  ok?: boolean;
-  tenant_id?: string;
-  set_id?: string;
-  task_count?: number;
-  labels_pending?: number;
-  labels_adjudicated?: number;
-  v0_lock_target?: number;
-  v0_locked?: boolean;
-  g2a_ready?: boolean;
-  accuracy_claim?: boolean;
-  kappa?: number | null;
-  note?: string;
-};
 
 type GateRow = {
   id?: string;
@@ -45,7 +32,6 @@ type GateReport = {
     mean_score?: number;
     regression_detection_rate?: number;
     false_block_rate?: number;
-    k_repeat_stdev_mean?: number;
     decision?: string;
     gate_claim?: boolean;
     accuracy_claim?: boolean;
@@ -56,6 +42,24 @@ type GateReport = {
     };
     checks?: Record<string, boolean>;
   };
+};
+
+type G2aStatus = {
+  ok?: boolean;
+  tenant_id?: string;
+  set_id?: string;
+  task_count?: number;
+  labels_pending?: number;
+  labels_adjudicated?: number;
+  v0_lock_target?: number;
+  v0_locked?: boolean;
+  g2a_ready?: boolean;
+  accuracy_claim?: boolean;
+  kappa?: number | null;
+  note?: string;
+  latest_gate?: GateRow | null;
+  latest_report?: GateReport | null;
+  g2a_report_id?: string;
 };
 
 type Envelope<T> = { data?: T } & T;
@@ -78,8 +82,6 @@ const CHECK_LABELS: Record<string, string> = {
 
 const EvalPreview: React.FC = () => {
   const [status, setStatus] = useState<G2aStatus | null>(null);
-  const [gate, setGate] = useState<GateRow | null>(null);
-  const [report, setReport] = useState<GateReport | null>(null);
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
@@ -90,33 +92,10 @@ const EvalPreview: React.FC = () => {
       const stRes = await apiClient.get<Envelope<G2aStatus>>(
         '/platform/apps/eval/store/g2a-status?tenant_id=eval-v1',
       );
-      const st = unwrap(stRes);
-      setStatus(st);
-
-      const gatesRes = await apiClient.get<
-        Envelope<{ items?: GateRow[]; total?: number } | GateRow[]>
-      >('/platform/apps/eval/store/gates?tenant_id=eval-v1&limit=5');
-      const gatesBody = unwrap(gatesRes) as { items?: GateRow[] } | GateRow[];
-      const items = Array.isArray(gatesBody)
-        ? gatesBody
-        : gatesBody?.items || [];
-      const latest = items[0] || null;
-      setGate(latest);
-
-      const reportId = latest?.meta?.report_id;
-      if (reportId) {
-        const rptRes = await apiClient.get<Envelope<GateReport>>(
-          `/platform/apps/eval/store/reports/${encodeURIComponent(reportId)}?tenant_id=eval-v1`,
-        );
-        setReport(unwrap(rptRes));
-      } else {
-        setReport(null);
-      }
+      setStatus(unwrap(stRes));
     } catch (e: any) {
       setError(String(e?.message || e));
       setStatus(null);
-      setGate(null);
-      setReport(null);
     } finally {
       setLoading(false);
     }
@@ -126,6 +105,8 @@ const EvalPreview: React.FC = () => {
     void load();
   }, [load]);
 
+  const gate = status?.latest_gate || null;
+  const report = status?.latest_report || null;
   const m = report?.metrics;
   const checks = m?.checks || gate?.meta?.checks || {};
   const failSamples = useMemo(() => {
@@ -142,6 +123,7 @@ const EvalPreview: React.FC = () => {
     m?.decision === 'pass' || gate?.meta?.engineering_pass || gate?.decision === 'pass',
   );
   const gateClaim = Boolean(m?.gate_claim ?? gate?.meta?.gate_claim);
+  const hasGate = Boolean(gate || m);
   const verdictOk = locked && engPass;
 
   return (
@@ -169,7 +151,6 @@ const EvalPreview: React.FC = () => {
         </div>
       ) : null}
 
-      {/* 1. Plain summary */}
       <section
         className={`rounded-lg border px-4 py-4 space-y-2 ${
           verdictOk
@@ -189,7 +170,9 @@ const EvalPreview: React.FC = () => {
                 ? '加载中…'
                 : verdictOk
                   ? '本地校准门禁：通过'
-                  : '本地校准尚未就绪或未通过'}
+                  : locked && !hasGate
+                    ? '金标已锁，但还没有门禁报告（需重启后端加载新接口，或重跑 gate-g2a）'
+                    : '本地校准尚未就绪或未通过'}
             </div>
             <p className="text-gray-300 leading-relaxed">
               测的是：<strong>代码审查金标</strong>
@@ -218,11 +201,12 @@ const EvalPreview: React.FC = () => {
         </div>
       </section>
 
-      {/* 2. Checklist */}
       <section className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 space-y-3">
         <div className="text-sm font-medium">本地门禁检查（工程校准）</div>
-        {Object.keys(checks).length === 0 ? (
-          <p className="text-sm text-gray-500">还没有门禁报告。先跑 lock-v0 → gate-g2a。</p>
+        {!hasGate ? (
+          <p className="text-sm text-gray-500">
+            还没有门禁报告。金标锁好后应有一次 gate-g2a；重启 platform/management 后再点刷新。
+          </p>
         ) : (
           <ul className="space-y-2 text-sm">
             {Object.entries(checks).map(([k, ok]) => (
@@ -259,13 +243,13 @@ const EvalPreview: React.FC = () => {
         ) : null}
       </section>
 
-      {/* 3. Problems */}
       <section className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 space-y-3">
         <div className="text-sm font-medium">有没有问题？</div>
         {(m?.failure_taxonomy?.total_failures || 0) === 0 && failSamples.length === 0 ? (
           <p className="text-sm text-gray-300">
-            最近一次门禁抽样里，没有记入失败分类的题（或尚未跑门禁）。
-            抽样通过率未必 100%，低于阈值才算门禁失败。
+            {hasGate
+              ? '最近一次门禁抽样里，没有记入失败分类的题（或失败数为 0）。抽样通过率未必 100%，低于阈值才算门禁失败。'
+              : '还没有门禁抽样结果可展示。'}
           </p>
         ) : (
           <>
@@ -286,7 +270,6 @@ const EvalPreview: React.FC = () => {
         )}
       </section>
 
-      {/* 4. Honesty — short */}
       <div
         className="rounded-lg border border-amber-700/40 bg-amber-950/20 px-4 py-3 flex gap-3 items-start"
         role="note"

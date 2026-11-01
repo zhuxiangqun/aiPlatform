@@ -80,6 +80,11 @@ def test_g2a_lock_and_gate_claim(tmp_path):
         assert out["gate_claim"] is True
         assert out["decision"] == "pass"
 
+    st3 = g2a_status(tenant_id="g2a-unit", db_path=str(db))
+    assert st3.get("latest_gate") is not None
+    assert (st3.get("latest_gate") or {}).get("decision") in {"pass", "fail", "advisory_pass"}
+    assert st3.get("latest_report") is not None or not out.get("engineering_pass")
+
 
 def test_g2a_gate_requires_lock(tmp_path):
     db = tmp_path / "g2a2.sqlite3"
