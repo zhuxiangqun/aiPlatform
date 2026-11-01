@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T09:16:43+08:00",
+  "reviewed_at": "2026-11-01T09:24:28+08:00",
   "base_ref": "origin/main",
-  "merge_base": "2139a3323ea0b735e90f1a89041028b27c1053c6",
-  "diff_sha256": "3945c4af51aeb1244b732f4d05ad0a9b8e406e459ca86dfc7984c7f27aced785",
-  "head_sha": "9269a29288c8cbebdf616996e16a56fc03dff11d",
+  "merge_base": "1dfc1239c5d4e505ed2a8b525b2c29774f4e7542",
+  "diff_sha256": "abbeee42b84941e522947837493ce84a571208972830f2d68d4f52e75112a4a4",
+  "head_sha": "9f24099b1091bafe06ac427fcb14f75c0001d817",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Central D2 Thin closeout; cutover stays false; authorize REFUSE path verified."
+  "note": "Packaging V2.1 shared baseline; hard gates unchanged."
 }
