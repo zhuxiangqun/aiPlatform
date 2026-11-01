@@ -18,7 +18,7 @@
     "failure_taxonomy": { "type": "object" },
     "kappa": { "type": ["number", "null"] },
     "accuracy_claim": { "type": "boolean", "const": false },
-    "gate_claim": { "type": "boolean", "const": false },
+    "gate_claim": { "type": "boolean", "description": "true only after G2a v0 lock + engineering pass; never accuracy" },
     "decision": { "type": "string" },
     "note": { "type": "string" }
   },

@@ -4,7 +4,7 @@
 > **G0**：[`G0_CLOSEOUT.md`](./G0_CLOSEOUT.md)（通过 · P0-3′ · CI 锚点 **61** 提交 · `35829e96`）。  
 > **计划**：[`five-capability-independent-engineering-plan.md`](../../docs/architecture/plans/five-capability-independent-engineering-plan.md) **V2.2** · packaging base [`templates/module/PACKAGING_BASE.md`](../../templates/module/PACKAGING_BASE.md)。  
 > **冻结**：[`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md)（本地无必须代码；authorize 仍冻）。  
-> **EVAL_V1**：**E0–E5 完成**（local engineering gate + failure taxonomy；`gate_claim=false`；不宣称 accuracy；v0 未锁）；UI/A3/authorize 仍冻 — [`eval-v1-charter.md`](../../docs/architecture/plans/eval-v1-charter.md) · [`ops/ENGINEERING_UNFREEZE_EVAL_V1.md`](./ops/ENGINEERING_UNFREEZE_EVAL_V1.md)。  
+> **EVAL_V1**：**E0–E5 完成 · G2a 路径已接线**（`lock-v0` / `gate-g2a` / review queue；**v0 待你单人复核 ≥30**；`accuracy_claim=false`）；UI preview 等 G2a 锁后另批；A3/authorize 仍冻 — [`eval-v1-charter.md`](../../docs/architecture/plans/eval-v1-charter.md) · [`ops/ENGINEERING_UNFREEZE_EVAL_V1.md`](./ops/ENGINEERING_UNFREEZE_EVAL_V1.md)。  
 > 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md) · 本地收口 [`ops/ENGINEERING_LOCAL_CLOSEOUT.md`](./ops/ENGINEERING_LOCAL_CLOSEOUT.md)。  
 > **运维决策**：**继续 defer** + **事件驱动复审**（[`ops/STAGING_REVIEW_EVENT_DRIVEN.md`](./ops/STAGING_REVIEW_EVENT_DRIVEN.md)）· `staging_ready=false`。  
 > **工程环境**：**方案 B 本机 VM/Docker 全轨**（[`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md)）· `bash scripts/ops_option_b_all.sh`。  

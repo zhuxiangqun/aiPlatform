@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 33
-total_capabilities: 1561
+total_capabilities: 1566
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -5095,8 +5095,28 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 45
+    caps_count: 50
     provides:
+      - symbol: "run_g2a_gate"
+        type: "function"
+        signature: "run_g2a_gate(mode=nightly, ...)→Dict local gate_claim after v0 lock"
+        module: "core/apps/eval/service/g2a.py"
+      - symbol: "lock_v0"
+        type: "function"
+        signature: "lock_v0(tenant_id)→Dict when ≥30 tasks + ≥30 adjudicated"
+        module: "core/apps/eval/service/g2a.py"
+      - symbol: "g2a_status"
+        type: "function"
+        signature: "g2a_status(tenant_id)→Dict readiness (accuracy_claim=false)"
+        module: "core/apps/eval/service/g2a.py"
+      - symbol: "eval_run_g2a_gate"
+        type: "function"
+        signature: "eval_run_g2a_gate(mode='nightly', ...)→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "eval_lock_v0"
+        type: "function"
+        signature: "eval_lock_v0(tenant_id='eval-v1')→Dict"
+        module: "core/api/core_facade.py"
       - symbol: "run_e5_gate"
         type: "function"
         signature: "run_e5_gate(mode=pr|nightly|release, ...)→Dict local gate + taxonomy"

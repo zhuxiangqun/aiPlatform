@@ -136,11 +136,12 @@ def _decide(
         <= float(thresholds["max_false_block"]),
     }
     engineering_pass = all(checks.values()) and task_count > 0
-    # Honesty: never claim external/G2a gate until v0 locked (30)
-    gate_claim = False
+    # Honesty: accuracy never claimed here. Local gate_claim only after v0 lock (G2a).
     accuracy_claim = False
+    gate_claim = bool(v0_locked and engineering_pass)
     if mode == "release" and not v0_locked:
         decision = "advisory_pass" if engineering_pass else "fail"
+        gate_claim = False
         note = (
             "E5 local engineering gate only; release claim blocked "
             f"(v0 not locked; need {E3_V0_LOCK_TARGET} tasks). accuracy_claim=false"
@@ -148,11 +149,16 @@ def _decide(
     elif engineering_pass:
         decision = "pass"
         note = (
-            "E5 local engineering gate passed; not G2a/accuracy claim "
-            "(D5 solo review). gate_claim=false"
+            "G2a local gate claim (engineering calibration); accuracy_claim=false"
+            if gate_claim
+            else (
+                "E5 local engineering gate passed; not G2a/accuracy claim "
+                "(D5 solo review). gate_claim=false"
+            )
         )
     else:
         decision = "fail"
+        gate_claim = False
         note = "E5 local engineering gate failed one or more thresholds; not an accuracy claim"
     return {
         "decision": decision,
@@ -296,7 +302,7 @@ def run_e5_gate(
             "report_id": report["id"],
             "set_id": set_id,
             "judge_id": JUDGE_V1_ID,
-            "gate_claim": False,
+            "gate_claim": decision_info["gate_claim"],
             "accuracy_claim": False,
             "engineering_pass": decision_info["engineering_pass"],
             "checks": decision_info["checks"],
@@ -312,7 +318,7 @@ def run_e5_gate(
         "report_id": report["id"],
         "decision": decision_info["decision"],
         "engineering_pass": decision_info["engineering_pass"],
-        "gate_claim": False,
+        "gate_claim": decision_info["gate_claim"],
         "accuracy_claim": False,
         "thresholds": thresholds,
         "metrics": metrics,

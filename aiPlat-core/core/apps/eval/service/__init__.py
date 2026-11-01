@@ -22,6 +22,11 @@ from core.apps.eval.service.gate_v1 import (
     classify_failure,
     run_e5_gate,
 )
+from core.apps.eval.service.g2a import (
+    g2a_status,
+    lock_v0,
+    run_g2a_gate,
+)
 
 __all__ = [
     "EvalStore",
@@ -39,4 +44,7 @@ __all__ = [
     "build_failure_taxonomy",
     "classify_failure",
     "run_e5_gate",
+    "g2a_status",
+    "lock_v0",
+    "run_g2a_gate",
 ]

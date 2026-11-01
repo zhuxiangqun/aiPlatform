@@ -6167,6 +6167,70 @@ def eval_run_e5_gate(
     )
 
 
+def eval_g2a_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    from core.apps.eval.service.g2a import g2a_status
+
+    return g2a_status(tenant_id=tenant_id)
+
+
+def eval_list_review_queue(
+    *, tenant_id: str = "eval-v1", annotator: str = "solo_reviewer", limit: int = 100
+) -> Dict[str, Any]:
+    from core.apps.eval.service.g2a import list_review_queue
+
+    return list_review_queue(tenant_id=tenant_id, annotator=annotator, limit=limit)
+
+
+def eval_preannotate_review_queue(
+    *, tenant_id: str = "eval-v1", annotator: str = "solo_reviewer", limit: int = 500
+) -> Dict[str, Any]:
+    from core.apps.eval.service.g2a import preannotate_review_queue
+
+    return preannotate_review_queue(
+        tenant_id=tenant_id, annotator=annotator, limit=limit
+    )
+
+
+def eval_adjudicate_label(
+    label_id: str,
+    *,
+    passed: bool,
+    notes: str = "",
+    rationale: str = "",
+    tenant_id: str = "eval-v1",
+) -> Dict[str, Any]:
+    from core.apps.eval.service.g2a import adjudicate_label
+
+    return adjudicate_label(
+        label_id,
+        passed=passed,
+        notes=notes,
+        rationale=rationale,
+        tenant_id=tenant_id,
+    )
+
+
+def eval_lock_v0(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    from core.apps.eval.service.g2a import lock_v0
+
+    return lock_v0(tenant_id=tenant_id)
+
+
+def eval_run_g2a_gate(
+    *,
+    mode: str = "nightly",
+    tenant_id: str = "eval-v1",
+    set_id: str = "",
+    limit: Optional[int] = None,
+) -> Dict[str, Any]:
+    """EVAL_V1 G2a: local gate claim after v0 lock (never accuracy)."""
+    from core.apps.eval.service.g2a import run_g2a_gate
+
+    return run_g2a_gate(
+        mode=mode, tenant_id=tenant_id, set_id=set_id, limit=limit
+    )
+
+
 def eval_list_gates(*, tenant_id: str = "eval-v1", limit: int = 50) -> list:
     from core.apps.eval.service.store import get_eval_store
 

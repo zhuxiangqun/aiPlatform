@@ -82,6 +82,14 @@ grep -q 'gate-e5' aiPlat-platform/apps/eval/api/store_api.py \
   || fail "gate-e5 API not wired"
 [[ -f packages/aiplat-evaluation/contracts/schemas/eval_gate.schema.json ]] \
   || fail "missing eval_gate.schema.json"
+[[ -f aiPlat-core/core/apps/eval/service/g2a.py ]] \
+  || fail "missing EVAL_V1 G2a g2a.py"
+grep -q 'lock_v0' aiPlat-core/core/apps/eval/service/g2a.py \
+  || fail "lock_v0 missing"
+grep -q 'gate-g2a' aiPlat-platform/apps/eval/api/store_api.py \
+  || fail "gate-g2a API not wired"
+grep -q 'lock-v0' aiPlat-platform/apps/eval/api/store_api.py \
+  || fail "lock-v0 API not wired"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-08.md ]] || fail "missing STAGING_REVIEW 2026-11-08"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-15.md ]] || fail "missing STAGING_REVIEW 2026-11-15"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-22.md ]] || fail "missing STAGING_REVIEW 2026-11-22"

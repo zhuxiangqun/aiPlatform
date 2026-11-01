@@ -208,6 +208,113 @@ async def gate_e5(
     return {"data": out}
 
 
+@router.get("/g2a-status", response_model=ItemResponse)
+async def get_g2a_status(
+    tenant_id: str = "eval-v1",
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    from core.api.core_facade import eval_g2a_status
+
+    return {"data": eval_g2a_status(tenant_id=tenant_id)}
+
+
+@router.get("/review-queue", response_model=ItemResponse)
+async def get_review_queue(
+    tenant_id: str = "eval-v1",
+    annotator: str = "solo_reviewer",
+    limit: int = Query(100, ge=1, le=500),
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    from core.api.core_facade import eval_list_review_queue
+
+    return {
+        "data": eval_list_review_queue(
+            tenant_id=tenant_id, annotator=annotator, limit=limit
+        )
+    }
+
+
+@router.post("/review-queue/preannotate", response_model=ItemResponse)
+async def preannotate_queue(
+    body: Optional[Dict[str, Any]] = None,
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """AI pre-annotation only — does not adjudicate (D5)."""
+    from core.api.core_facade import eval_preannotate_review_queue
+
+    body = body or {}
+    try:
+        out = eval_preannotate_review_queue(
+            tenant_id=str(body.get("tenant_id") or "eval-v1"),
+            annotator=str(body.get("annotator") or "solo_reviewer"),
+            limit=int(body.get("limit") or 500),
+        )
+    except ValueError as e:
+        return {"data": {"ok": False, "error": str(e)}}
+    return {"data": out}
+
+
+@router.post("/labels/{label_id}/adjudicate", response_model=ItemResponse)
+async def adjudicate_label_api(
+    label_id: str,
+    body: Optional[Dict[str, Any]] = None,
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """Solo human adjudication (D5). Required before lock_v0 / G2a."""
+    from core.api.core_facade import eval_adjudicate_label
+
+    body = body or {}
+    if "pass" not in body and "passed" not in body:
+        return {"data": {"ok": False, "error": "pass (bool) required"}}
+    passed = body.get("pass") if "pass" in body else body.get("passed")
+    try:
+        out = eval_adjudicate_label(
+            label_id,
+            passed=bool(passed),
+            notes=str(body.get("notes") or ""),
+            rationale=str(body.get("rationale") or ""),
+            tenant_id=str(body.get("tenant_id") or "eval-v1"),
+        )
+    except ValueError as e:
+        return {"data": {"ok": False, "error": str(e)}}
+    return {"data": out}
+
+
+@router.post("/lock-v0", response_model=ItemResponse)
+async def lock_v0_api(
+    body: Optional[Dict[str, Any]] = None,
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """Lock gold v0 when ≥30 tasks + ≥30 solo adjudicated. Not an accuracy claim."""
+    from core.api.core_facade import eval_lock_v0
+
+    body = body or {}
+    return {"data": eval_lock_v0(tenant_id=str(body.get("tenant_id") or "eval-v1"))}
+
+
+@router.post("/gate-g2a", response_model=ItemResponse)
+async def gate_g2a(
+    body: Optional[Dict[str, Any]] = None,
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """EVAL_V1 G2a: local gate claim after v0 lock; accuracy_claim stays false."""
+    from core.api.core_facade import eval_run_g2a_gate
+
+    body = body or {}
+    limit_raw = body.get("limit")
+    limit = int(limit_raw) if limit_raw is not None and str(limit_raw) != "" else None
+    try:
+        out = eval_run_g2a_gate(
+            mode=str(body.get("mode") or "nightly"),
+            tenant_id=str(body.get("tenant_id") or "eval-v1"),
+            set_id=str(body.get("set_id") or ""),
+            limit=limit,
+        )
+    except ValueError as e:
+        return {"data": {"ok": False, "error": str(e)}}
+    return {"data": out}
+
+
 @router.get("/gates", response_model=ListResponse)
 async def list_gates(
     tenant_id: str = "eval-v1",
