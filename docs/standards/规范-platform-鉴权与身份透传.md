@@ -355,3 +355,10 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 | `POST /platform/permissions/permissions/revoke` | `require_admin` | 经 `get_permission_manager().revoke_permission` |
 
 **约束**：鉴权权威仍为 platform `require_auth`/`require_admin`；权限裁决仍委托 Core PermissionManager / ApprovalManager，本轮仅修过期门禁可达性与 HTTP 契约测试。验证：`aiPlat-platform/tests/test_approvals_http_expiry.py`、`test_permissions_http_grant_revoke.py`。
+## 补充：DIAGNOSIS_V1 C1 诊断产品鉴权（2026-11-01）
+
+`/api/platform/apps/diagnosis/**`（Case / Evidence / Report；无 `remediate` 自动执行）经
+`apps/diagnosis/api/router.py` 的 router-level `dependencies=[Depends(require_auth)]` 统一鉴权，
+与 FDE / EVAL 同策略。业务经 CoreFacade `diagnosis_*`；**不改变** JWT/API key 签发权威。
+`accuracy_claim=false`。验证：`test_platform_apps_require_auth.py`（diagnosis/healthz）。
+

@@ -199,7 +199,7 @@ class CoreAppsDirectoryCheck(ArchRule):
 
     _KNOWN_APPS = {"agents", "skills", "tools", "mcp", "evaluation", "eval", "plugins",
                    "exec_drivers", "ops", "quality", "document_intelligence", "connectors",
-                   "finetune", "fde", "org"}
+                   "finetune", "fde", "org", "diagnosis"}
     _CONCERN_PATTERNS = r"sqlite3\.connect|threading\.Thread|ThreadPool|job_queue|enqueue|tenant.*storage|video.*ingest|multimodal_kb|KBSqlite"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
