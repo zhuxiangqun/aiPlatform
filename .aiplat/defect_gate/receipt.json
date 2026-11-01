@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T23:30:56+08:00",
+  "reviewed_at": "2026-11-01T23:33:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "492245136c3312ba629c685f93e135a8fa2f1fd4",
-  "diff_sha256": "4eb9bcd943139ab7dbf0a0a41af8e7f49f392622c1072d7b4ae08f7e59bbdc57",
-  "head_sha": "a2126ddd011382e68e372139f9740aec0a270c13",
+  "diff_sha256": "710d0492d6461250d2c39fa6be10baaefc1ab0c3379c22ab2c6c129345a52d28",
+  "head_sha": "3a5f3c1258c39f5d96fc35a87f5088767cdf6d78",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "E6 EvalCenter + soft redirect; accuracy_claim remains false; no G2b/A3."
+  "note": "E6 + whitepaper sync; accuracy still false."
 }
