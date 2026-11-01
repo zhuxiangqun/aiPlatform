@@ -1,26 +1,28 @@
 # PG/HA Live Kickoff Runlog
 
-- recorded_at: `2026-10-31T23:35:04Z`
+- recorded_at: `2026-10-31T23:35:04Z`（初审）
+- reviewed_at: `2026-11-01T09:33+08:00`（按 [`STAGING_REVIEW_2026-11-08.md`](./STAGING_REVIEW_2026-11-08.md) 开审）
 - drill_id: `pgha-live-20261031`
-- environment: `staging`（意图；**未实际进入 record**）
+- environment: **intent was staging；未进入 record**（本机 DSN ≠ 预发）
 - operator: `apple`
-- decision: **正式 defer（路径 B）** — 预发未齐；kickoff exit 2 = 硬门按设计生效
+- decision: **续 defer（路径 B）** — 复审仍无独立预发；kickoff `can_record=false`
 - cutover_authorized: **false** (unchanged)
 - staging_ready: **false**（[`STAGING_READY.md`](./STAGING_READY.md)）
-- review_by: **2026-11-08**
+- review_by: **2026-11-15**（续）
 
-## Prerequisites（探测结果）
+## Prerequisites（2026-11-01 复审探测）
 
-- note: 本机 `docker` 可用；local/docker rehearsal **≠** live authorize 证据
-- note: `AIPLAT_PG_DSN` / `DATABASE_URL` **UNSET**
+- note: `AIPLAT_PG_DSN` 指向 `127.0.0.1:5433`（Option B local）→ **不计** staging
 - note: `AIPLAT_OIDC_ISSUER` / `OIDC_ISSUER` **UNSET**
+- note: shell 中 `AIPLAT_LIVE_DRILL_ENV=staging` 与本机 DSN 并存 → **标签不诚实；不得 unlock**
+- note: docker daemon 本次探测不可用；即便可用，local/docker ≠ live authorize 证据
 
 ## Blockers（must clear before live / sign / authorize）
 
-- [ ] missing `AIPLAT_PG_DSN` (or `DATABASE_URL`) for staging/prod-canary Postgres（含 TLS / 备份 / 最小权限）
+- [ ] `AIPLAT_PG_DSN` 指向**独立预发** Postgres（非 `127.0.0.1` / 本机 Docker；含 TLS / 备份 / 最小权限）
 - [ ] missing `AIPLAT_OIDC_ISSUER` (or `OIDC_ISSUER`) for tenant login / admin MFA / 测试租户
 - [ ] operator + 变更窗口 + 回滚预案书面就绪
-- [ ] `AIPLAT_LIVE_DRILL_ENV=staging`（或 `prod-canary`；禁止 scaffold/local/docker-ephemeral）
+- [ ] `AIPLAT_LIVE_DRILL_ENV=staging`（或 `prod-canary`）且 DSN/OIDC 与标签一致；禁止用 local DSN 挂 staging 名
 
 ## 复审条件（全部齐 → 重跑 kickoff）
 
@@ -43,6 +45,5 @@ bash scripts/ops_pgha_live_kickoff.sh
 - no checklist 🟨→✅
 - no production_signed=true
 - no cutover authorize
-- no fake staging DSN/OIDC
 
-See [`LOCAL_DEFER.md`](./LOCAL_DEFER.md) · [`STAGING_READY.md`](./STAGING_READY.md) · [`OPS_HANDOFF.md`](../OPS_HANDOFF.md).
+See [`OPS_HANDOFF.md`](../OPS_HANDOFF.md) · [`STAGING_REVIEW_2026-11-08.md`](./STAGING_REVIEW_2026-11-08.md).

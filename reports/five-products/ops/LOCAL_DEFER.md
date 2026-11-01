@@ -2,11 +2,13 @@
 
 - decided_at: `2026-10-31`
 - formalized_at: `2026-11-01`
-- decision: **运维路径 B — 正式 defer**（无预发 DSN/OIDC；不假造 staging）
+- reviewed_at: `2026-11-01`（按 11-08 清单提前开审 → **续 defer**）
+- decision: **运维路径 B — 正式 defer（续）**（无独立预发 DSN/OIDC；本机 `:5433` 不计 staging）
 - **工程环境**：同期锁定 **环境方案 B（本机 VM/Docker）全轨** — 见 [`OPTION_B_LOCAL_VM.md`](./OPTION_B_LOCAL_VM.md) · `bash scripts/ops_option_b_all.sh`
 - `staging_ready`: **false**（见 [`STAGING_READY.md`](./STAGING_READY.md)）
-- last_kickoff: `2026-10-31T23:35:04Z` · `ops_pgha_live_kickoff.sh` **exit 2**（按设计）
-- review_by: **2026-11-08**（若仍无预发则续 defer；有则再评估方案 A/C 进真实 staging）
+- last_kickoff: `2026-11-01` 复审复跑 · `can_record=false`（按设计）
+- review_by: **2026-11-15**（仍无独立预发则再续；有则评估方案 A/C）
+- 复审结论：[`STAGING_REVIEW_2026-11-08.md`](./STAGING_REVIEW_2026-11-08.md)
 
 | 轨 | 本地状态 | 硬门 |
 |----|----------|------|

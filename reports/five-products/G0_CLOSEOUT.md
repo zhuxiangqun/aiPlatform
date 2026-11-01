@@ -73,4 +73,4 @@ gh run list --branch main --limit 10
 3. ✅ **Plan V2.1 + shared packaging base**（`PACKAGING_BASE.md` · `check_five_products_packaging_surface.sh`）  
 4. ✅ **D2 local perf baseline**（五包 `PERF_BASELINE.md` · `check_five_products_perf_baseline.sh`；非生产 SLA）  
 5. ✅ **Engineering freeze**（`ENGINEERING_FREEZE.md` · `ops_engineering_freeze_check.sh`；硬门仍 false）  
-6. **2026-11-08** 预发复审（[`STAGING_REVIEW_2026-11-08.md`](./ops/STAGING_REVIEW_2026-11-08.md)）；否则续 defer + 方案 B  
+6. ✅ **2026-11-08 预发复审（提前开审）** → **continue_defer**（本机 DSN ≠ 预发；OIDC 缺）；下次 **2026-11-15**（[`STAGING_REVIEW_2026-11-08.md`](./ops/STAGING_REVIEW_2026-11-08.md)）  

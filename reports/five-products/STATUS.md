@@ -60,7 +60,8 @@ bash scripts/five_products_gate.sh
 | aiPlat Central D2 Thin | [`ops/AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md`](./ops/AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md) **PASS**（cutover REFUSE） |
 | Packaging base V2.1 | [`ops/PACKAGING_BASE_V21.md`](./ops/PACKAGING_BASE_V21.md) **PASS**（surface gate + shared baseline） |
 | D2 local perf baseline | [`ops/PERF_BASELINE_LOCAL.md`](./ops/PERF_BASELINE_LOCAL.md) **PASS**（contract budgets；非生产 SLA） |
-| Engineering freeze | [`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md) · 复审 [`ops/STAGING_REVIEW_2026-11-08.md`](./ops/STAGING_REVIEW_2026-11-08.md) |
+| Engineering freeze | [`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md) |
+| Staging review 11-08 | [`ops/STAGING_REVIEW_2026-11-08.md`](./ops/STAGING_REVIEW_2026-11-08.md) → **continue_defer**；下次 **2026-11-15** |
 | Local staging 总册 | [`ops/LOCAL_STAGING.md`](./ops/LOCAL_STAGING.md) · 方案 B [`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md) |
 | Option B 最近全跑 | [`ops/OPTION_B_LAST_RUN.md`](./ops/OPTION_B_LAST_RUN.md) **PASS** |
 | STATUS↔manifest | `python3 scripts/check_five_products_status_sync.py` |

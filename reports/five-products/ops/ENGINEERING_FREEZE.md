@@ -20,7 +20,7 @@ bash scripts/ops_engineering_freeze_check.sh
 
 | 项 | 说明 |
 |----|------|
-| 真实预发 | [`STAGING_REVIEW_2026-11-08.md`](./STAGING_REVIEW_2026-11-08.md) |
+| 真实预发 | [`STAGING_REVIEW_2026-11-08.md`](./STAGING_REVIEW_2026-11-08.md) → **continue_defer**；下次 **2026-11-15** |
 | live → sign → authorize | [`OPS_HANDOFF.md`](../OPS_HANDOFF.md) |
 | Field compose 长驻 | 另批 ADR |
 | D2++ deeper SOC | 可选 |
