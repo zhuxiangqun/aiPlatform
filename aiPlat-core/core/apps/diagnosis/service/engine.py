@@ -1,4 +1,7 @@
-"""Heuristic diagnosis engine — evidence required; never auto-executes fixes."""
+"""Heuristic diagnosis engine — evidence required; never auto-executes fixes.
+
+C2: confidence + counter_evidence + unknown/stale reason_codes on reports.
+"""
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
@@ -10,13 +13,15 @@ def _hyp(
     confidence: float,
     support: List[str],
     rationale: str,
+    *,
+    counter: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     return {
         "id": hid,
         "root_cause": root_cause,
         "confidence": max(0.0, min(1.0, confidence)),
         "support_evidence_ids": support,
-        "counter_evidence_ids": [],
+        "counter_evidence_ids": list(counter or []),
         "rationale": rationale,
     }
 
@@ -37,20 +42,48 @@ def _finding(
     }
 
 
+def _uncertainty(
+    unknown: List[str],
+    stale: List[str],
+    *,
+    extra_codes: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    codes = list(dict.fromkeys([*stale, *unknown, *(extra_codes or [])]))
+    return {
+        "unknown": list(unknown),
+        "stale": list(stale),
+        "reason_codes": codes,
+    }
+
+
+def _attach_counters(hypotheses: List[Dict[str, Any]]) -> None:
+    """C2: when multiple competing causes, cross-link support ids as counters."""
+    if len(hypotheses) < 2:
+        return
+    for i, h in enumerate(hypotheses):
+        others: List[str] = []
+        for j, o in enumerate(hypotheses):
+            if i == j:
+                continue
+            others.extend(str(x) for x in (o.get("support_evidence_ids") or []) if x)
+        # keep distinct, exclude own support
+        own = set(str(x) for x in (h.get("support_evidence_ids") or []))
+        h["counter_evidence_ids"] = [x for x in dict.fromkeys(others) if x not in own][:6]
+
+
 def infer_root_causes(
     *,
     evidence: List[Dict[str, Any]],
     payload: Dict[str, Any],
     expected: Optional[Dict[str, Any]] = None,
-) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, List[str]], str]:
-    """Return findings, hypotheses, uncertainty, case status."""
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, Any], str]:
+    """Return findings, hypotheses, uncertainty (with reason_codes), case status."""
     findings: List[Dict[str, Any]] = []
     hypotheses: List[Dict[str, Any]] = []
     unknown: List[str] = []
     stale: List[str] = []
 
     ids = [str(e.get("id") or "") for e in evidence if e.get("id")]
-    kinds = {str(e.get("kind") or "") for e in evidence}
     freshness = [str(e.get("freshness") or "unknown") for e in evidence]
 
     if any(f == "stale" for f in freshness) or (expected or {}).get("expect_stale"):
@@ -62,7 +95,7 @@ def infer_root_causes(
         hypotheses.append(
             _hyp("h-stale", "data_stale", 0.88, support, "Stale or TTL-exceeded evidence present")
         )
-        return findings, hypotheses, {"unknown": unknown, "stale": stale}, "blocked_stale"
+        return findings, hypotheses, _uncertainty(unknown, stale), "blocked_stale"
 
     if (expected or {}).get("expect_unknown"):
         unknown.append("insufficient_evidence")
@@ -79,9 +112,8 @@ def infer_root_causes(
                 "Fixture/live policy requires unknown; no confirmed Top-1",
             )
         )
-        return findings, hypotheses, {"unknown": unknown, "stale": stale}, "blocked_unknown"
+        return findings, hypotheses, _uncertainty(unknown, stale), "blocked_unknown"
 
-    # Heuristics from payload / evidence kinds
     syscall = (payload.get("syscall") or {}) if isinstance(payload, dict) else {}
     tool = (payload.get("tool_result") or {}) if isinstance(payload, dict) else {}
     policy = (payload.get("policy_decision") or {}) if isinstance(payload, dict) else {}
@@ -91,6 +123,8 @@ def infer_root_causes(
     vdiff = (payload.get("version_diff") or {}) if isinstance(payload, dict) else {}
     eval_rep = (payload.get("eval_report") or {}) if isinstance(payload, dict) else {}
     closeout = (payload.get("closeout") or {}) if isinstance(payload, dict) else {}
+    onto = (payload.get("ontology_stats") or {}) if isinstance(payload, dict) else {}
+    retrieval = (payload.get("retrieval") or {}) if isinstance(payload, dict) else {}
 
     if syscall.get("error") == "timeout waiting for tool result" or (
         isinstance(syscall.get("duration_ms"), (int, float))
@@ -136,7 +170,9 @@ def infer_root_causes(
     if "changed" in vdiff and "system_prompt" in (vdiff.get("changed") or []):
         support = [i for i, e in zip(ids, evidence) if e.get("kind") in ("version_diff", "eval_report")] or ids
         findings.append(_finding("f-prompt", "System prompt changed with eval drop", "P0", 0.86, support))
-        hypotheses.append(_hyp("h-prompt", "prompt_regression", 0.84, support, "version_diff includes system_prompt"))
+        hypotheses.append(
+            _hyp("h-prompt", "prompt_regression", 0.84, support, "version_diff includes system_prompt")
+        )
 
     if gate:
         pr = gate.get("pass_rate")
@@ -146,7 +182,9 @@ def infer_root_causes(
             findings.append(
                 _finding("f-gate", f"Gate pass_rate {pr} < threshold {thr}", "P0", 0.9, support)
             )
-            hypotheses.append(_hyp("h-gate", "eval_score_drop", 0.88, support, "Nightly gate below threshold"))
+            hypotheses.append(
+                _hyp("h-gate", "eval_score_drop", 0.88, support, "Nightly gate below threshold")
+            )
 
     if eval_rep and isinstance(eval_rep.get("delta"), (int, float)) and float(eval_rep["delta"]) < -0.1:
         support = [i for i, e in zip(ids, evidence) if e.get("kind") == "eval_report"] or ids
@@ -156,6 +194,27 @@ def infer_root_causes(
                 _hyp("h-eval-drop", "eval_score_drop", 0.75, support, f"delta={eval_rep.get('delta')}")
             )
 
+    # C2: ontology / retrieval coverage signals (optional payload)
+    coverage = onto.get("coverage")
+    if isinstance(coverage, (int, float)) and float(coverage) < 0.4:
+        support = [i for i, e in zip(ids, evidence) if e.get("kind") in ("ontology_health", "ontology")] or ids[:1]
+        findings.append(
+            _finding("f-onto", f"Ontology coverage low: {coverage}", "P2", 0.7, support or ids[:1])
+        )
+        hypotheses.append(
+            _hyp("h-onto", "ontology_coverage_gap", 0.68, support or ids[:1], "coverage < 0.4")
+        )
+
+    hit_rate = retrieval.get("hit_rate")
+    if isinstance(hit_rate, (int, float)) and float(hit_rate) < 0.3:
+        support = [i for i, e in zip(ids, evidence) if e.get("kind") in ("retrieval", "wiki")] or ids[:1]
+        findings.append(
+            _finding("f-rag", f"Retrieval hit_rate low: {hit_rate}", "P2", 0.72, support or ids[:1])
+        )
+        hypotheses.append(
+            _hyp("h-rag", "retrieval_miss", 0.7, support or ids[:1], "hit_rate < 0.3")
+        )
+
     if closeout and "before_current" not in closeout and closeout.get("after_upgrade"):
         unknown.append("baseline_missing")
         support = ids[:1] or ["e-missing"]
@@ -163,19 +222,17 @@ def infer_root_causes(
         hypotheses.append(
             _hyp("h-base", "insufficient_evidence", 0.92, support, "before_current absent")
         )
-        return findings, hypotheses, {"unknown": unknown, "stale": stale}, "blocked_unknown"
+        return findings, hypotheses, _uncertainty(unknown, stale), "blocked_unknown"
 
-    # trace-less run
     report = (payload.get("report") or {}) if isinstance(payload, dict) else {}
     if report.get("trace_id") == "" and int(report.get("event_count") or 0) == 0:
         unknown.append("no_trace")
         support = ids[:1] or ["e-run"]
         findings.append(_finding("f-trace", "Failure status without trace", "P1", 0.9, support))
         hypotheses.append(_hyp("h-trace", "insufficient_evidence", 0.9, support, "trace_id empty"))
-        return findings, hypotheses, {"unknown": unknown, "stale": stale}, "blocked_unknown"
+        return findings, hypotheses, _uncertainty(unknown, stale), "blocked_unknown"
 
     if not hypotheses:
-        # Prefer gold only as soft ranking hint when evidence exists — still require ids
         gold = (expected or {}).get("gold_root_cause")
         if gold and ids and gold not in ("insufficient_evidence", "data_stale"):
             findings.append(
@@ -195,19 +252,22 @@ def infer_root_causes(
             hypotheses.append(
                 _hyp("h-insuf", "insufficient_evidence", 0.85, support, "No evidence-backed hypothesis")
             )
-            return findings, hypotheses, {"unknown": unknown, "stale": stale}, "blocked_unknown"
+            return findings, hypotheses, _uncertainty(unknown, stale), "blocked_unknown"
 
-    # Prefer expected gold as Top-1 when present among hypotheses (fixture eval path)
     gold = (expected or {}).get("gold_root_cause")
     if gold:
-        hypotheses.sort(key=lambda h: (0 if h.get("root_cause") == gold else 1, -float(h.get("confidence") or 0)))
+        hypotheses.sort(
+            key=lambda h: (0 if h.get("root_cause") == gold else 1, -float(h.get("confidence") or 0))
+        )
     else:
         hypotheses.sort(key=lambda h: -float(h.get("confidence") or 0))
+
+    _attach_counters(hypotheses)
 
     status = "reported"
     if unknown:
         status = "blocked_unknown"
-    return findings, hypotheses, {"unknown": unknown, "stale": stale}, status
+    return findings, hypotheses, _uncertainty(unknown, stale), status
 
 
 def build_recommendations(hypotheses: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -238,9 +298,8 @@ def diagnose_case(
         payload=payload or {},
         expected=expected,
     )
-    # Hard rule: no evidence ids → force unknown
     if not evidence:
-        uncertainty = {"unknown": ["no_evidence"], "stale": []}
+        uncertainty = _uncertainty(["no_evidence"], [])
         findings = [
             _finding("f-none", "No evidence collected", "P0", 1.0, ["e-missing"])
         ]
@@ -250,10 +309,12 @@ def diagnose_case(
         status = "blocked_unknown"
 
     recommendations = build_recommendations(hypotheses)
+    top_conf = float(hypotheses[0]["confidence"]) if hypotheses else 0.0
     report = {
-        "schema_version": "diagnosis.report.v0",
+        "schema_version": "diagnosis.report.v1",
         "case_id": case_id,
         "summary": hypotheses[0]["root_cause"] if hypotheses else "unknown",
+        "top_confidence": top_conf,
         "findings": findings,
         "hypotheses": hypotheses,
         "recommendations": recommendations,
@@ -267,4 +328,6 @@ def diagnose_case(
         "findings": findings,
         "hypotheses": hypotheses,
         "recommendations": recommendations,
+        "uncertainty": uncertainty,
+        "top_confidence": top_conf,
     }

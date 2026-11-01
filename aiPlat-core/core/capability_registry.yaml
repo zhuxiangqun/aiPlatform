@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1586
+total_capabilities: 1588
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -5095,7 +5095,7 @@ domains:
   diagnosis-system:
     section: "十三-b"
     section_name: "诊断系统"
-    caps_count: 17
+    caps_count: 19
     provides:
       - symbol: "DiagnosisStore"
         type: "class"
@@ -5129,13 +5129,21 @@ domains:
         type: "function"
         signature: "collect_live_stubs(scenario, subject_ref, baseline_ref?)→Dict"
         module: "core/apps/diagnosis/service/adapters.py"
+      - symbol: "read_evaluation_refs"
+        type: "function"
+        signature: "read_evaluation_refs(subject_ref, baseline_ref?)→List[EvidenceRef] read-only"
+        module: "core/apps/diagnosis/service/adapters.py"
+      - symbol: "read_ontology_refs"
+        type: "function"
+        signature: "read_ontology_refs(subject_ref)→List[EvidenceRef] healthz read-only"
+        module: "core/apps/diagnosis/service/adapters.py"
       - symbol: "collect_evidence"
         type: "function"
         signature: "collect_evidence(scenario, subject_ref, baseline_ref?)→Dict read-only adapters/fixtures"
         module: "core/apps/diagnosis/service/adapters.py"
       - symbol: "infer_root_causes"
         type: "function"
-        signature: "infer_root_causes(...)→(findings, hypotheses, uncertainty, status)"
+        signature: "infer_root_causes(...)→(findings, hypotheses, uncertainty+reason_codes, status)"
         module: "core/apps/diagnosis/service/engine.py"
       - symbol: "build_recommendations"
         type: "function"
@@ -5143,11 +5151,11 @@ domains:
         module: "core/apps/diagnosis/service/engine.py"
       - symbol: "diagnose_case"
         type: "function"
-        signature: "diagnose_case(case_id, evidence, payload?, expected?)→Dict report (accuracy_claim=false)"
+        signature: "diagnose_case(case_id, evidence, payload?, expected?)→Dict report.v1 (accuracy_claim=false)"
         module: "core/apps/diagnosis/service/engine.py"
       - symbol: "fixture_metrics"
         type: "function"
-        signature: "fixture_metrics(limit=10)→Dict Top-1/Top-3 on real fixtures"
+        signature: "fixture_metrics(limit=10, blind=True)→Dict Top-1/Top-3 on real fixtures"
         module: "core/apps/diagnosis/service/metrics.py"
       - symbol: "diagnosis_health"
         type: "function"

@@ -279,13 +279,18 @@
       "properties": {
         "schema_version": {
           "type": "string",
-          "const": "diagnosis.report.v0"
+          "enum": ["diagnosis.report.v0", "diagnosis.report.v1"]
         },
         "case_id": {
           "type": "string"
         },
         "summary": {
           "type": "string"
+        },
+        "top_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         },
         "findings": {
           "type": "array",
@@ -332,6 +337,12 @@
             },
             "notes": {
               "type": "string"
+            },
+            "reason_codes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false
