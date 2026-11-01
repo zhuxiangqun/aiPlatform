@@ -69,4 +69,5 @@ python3 scripts/check_five_products_status_sync.py
 - **G2a machinery**（2026-11-01）：`g2a.py` + `POST …/store/{review-queue,labels/*/adjudicate,lock-v0,gate-g2a}`；测试 `test_eval_v1_g2a.py`。
 - **G2a human lock**（2026-11-01）：本机 tenant `eval-v1` — 30 条 solo（用户授权采信 AI preannotate）→ `lock-v0` → `gate-g2a`（`gate_claim=true`，`rpt_c12dfe23ba70`）；**accuracy_claim=false**；κ=null。
 - **UI preview unfreeze**（2026-11-01）：[`ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md`](./ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md) + `/eval` preview 页。
-- G2b accuracy / 外部 gate / 完整 E6：`_pending_`
+- **E6**（2026-11-01）：**PASS** — [`EVAL_V1_E6_CLOSEOUT.md`](./EVAL_V1_E6_CLOSEOUT.md)（评测中心 UI；accuracy 仍禁）。
+- G2b accuracy / 外部 gate：`_pending_`

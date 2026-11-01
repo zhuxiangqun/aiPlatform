@@ -92,6 +92,14 @@ grep -q 'lock-v0' aiPlat-platform/apps/eval/api/store_api.py \
   || fail "lock-v0 API not wired"
 [[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md ]] \
   || fail "missing EVAL_V1 UI preview unfreeze"
+[[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_E6.md ]] \
+  || fail "missing EVAL_V1 E6 unfreeze"
+[[ -f reports/five-products/ops/EVAL_V1_E6_CLOSEOUT.md ]] \
+  || fail "missing EVAL_V1 E6 closeout"
+[[ -f aiPlat-management/frontend/src/pages/Eval/EvalCenter.tsx ]] \
+  || fail "missing EvalCenter (E6)"
+grep -q "EvalCenter" aiPlat-management/frontend/src/App.tsx \
+  || fail "App.tsx must mount EvalCenter"
 [[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_DIAGNOSIS_V1.md ]] \
   || fail "missing DIAGNOSIS_V1 C0 unfreeze"
 [[ -f docs/architecture/plans/diagnosis-v1-charter.md ]] \
