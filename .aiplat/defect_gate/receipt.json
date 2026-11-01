@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T08:53:00+08:00",
+  "reviewed_at": "2026-11-01T08:54:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "17f21d67dc1d8f9c1a6ec27df305320e235dbe0d",
-  "diff_sha256": "813e1eb84450b2b715048b94ccac8b616bfd7f185b3cc3d225c8c08876e3eb37",
-  "head_sha": "7558100787f2d221ba5ded2f8696c456659481b6",
+  "merge_base": "c9442231481f5638dfdefa54177a7042d7019910",
+  "diff_sha256": "f3c0db66740ff5b91f241592db1f9250df5c3dde4aa4a81b3b8531a4c819f287",
+  "head_sha": "c04986d9cf9f01820d8bc477a582e88d390f2157",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "G0 closeout docs only: P0-3 in plan, D1c wording, CI evidence links; no business code."
+  "note": "Clarify 19-commit CI anchor vs post-closeout HEAD; docs only."
 }
