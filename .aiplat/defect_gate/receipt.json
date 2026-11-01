@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T16:06:37+08:00",
+  "reviewed_at": "2026-11-01T16:17:06+08:00",
   "base_ref": "origin/main",
   "merge_base": "460976bcd2f884bd9e5aed1b04930c76bdc50a73",
-  "diff_sha256": "7c7ff15377677bc5982bd23d7fde095ead89ce57ecde5bad58d975e7f4f62b9d",
-  "head_sha": "0c846b7884243908ebc1c9b137d00f8566ef6e3d",
+  "diff_sha256": "18602f5a5f5ac89ea8fb57282aaf71e209938dc2c88c89b66e7605b89574a128",
+  "head_sha": "e15889a56f1d9e90a9d85607b3c9d9fc85d216a8",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "EVAL_V1 E0\u2013E5 + contract \u00a775 + whitepaper sync. Docs-only CI fix; prior five-check pass still holds. Local lock only."
+  "note": "EVAL_V1 E0\u2013E5 + contract \u00a775 + AUTO-STATS/whitepaper sync. Local lock only."
 }
