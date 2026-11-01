@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T09:29:32+08:00",
+  "reviewed_at": "2026-11-01T09:31:57+08:00",
   "base_ref": "origin/main",
-  "merge_base": "24b6299e999e0a063daadf194f2ec751c174034e",
-  "diff_sha256": "64b83697c790aa842c3cfb071b29115bf4527c652c5383b1df60e39e083b8fcd",
-  "head_sha": "86999228f5736441bc014936883d170137ad5a61",
+  "merge_base": "1a1437041571717159f8048499c79605efdf993c",
+  "diff_sha256": "6b1b8a35d8592a2be6f7add9de6a65338b808ff07a24409a5acd1984c8d95e31",
+  "head_sha": "6ba6c943f091c0b3b56383c29c0ee299ce0221cf",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "D2 local perf baselines; not production SLA; hard gates unchanged."
+  "note": "Engineering freeze; staging_ready false; authorize REFUSE verified."
 }
