@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T00:09:09+08:00",
+  "reviewed_at": "2026-11-02T00:39:54+08:00",
   "base_ref": "origin/main",
-  "merge_base": "eb47ee009a5f7461033d5042ddd786cfdd984db1",
-  "diff_sha256": "1c8ca28b9231efb9c77f6a5a10124dd85530db7e2658042c20a2135c6dd3b0a7",
-  "head_sha": "70284575d67f0dc64e0a9b6704a6e3ce4ce2a805",
+  "merge_base": "e2c51bc4cde04f3e210efa88883332f937786304",
+  "diff_sha256": "81067fb94fc40876b088c841c05d5936d4a6db4fb6b21cdbfcce1f5d2f1f856b",
+  "head_sha": "9f591fdd4e7e37737ebdae462b3bd757edffd1ab",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "E7 + CAPABILITIES 2462 sync + G2c self-consistency decision; truth gate PASS; #509 closed."
+  "note": "C3.5+G2c: default subset=core preserves C1 rates; adversarial honesty (top1~0.17); G2c accuracy_claim always false; single facade/API surface; metrics subset not self-certifying accuracy."
 }
