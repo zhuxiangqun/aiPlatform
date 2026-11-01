@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T11:32:50+08:00",
+  "reviewed_at": "2026-11-01T12:00:18+08:00",
   "base_ref": "origin/main",
-  "merge_base": "66a6e07a8f4998bcec8eb0fc2e791354971685f7",
-  "diff_sha256": "fd198c1bb5f68b5675f9caed19d9db5dc36a3cef298dfb07dfbaf4d19aa65fa2",
-  "head_sha": "087c0afed4860a648083f9f10ad8a5998d987727",
+  "merge_base": "500b42879fc840fb8ef59c1b6c74e35b9452a629",
+  "diff_sha256": "fc7a84399e61c463a99659d023440bfd7d5ce39054eb35cf9c912c9c2bdf1e52",
+  "head_sha": "348a782818f81497aff2624148b9cddb851a2175",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs/evidence only: G0 CI anchor \u2192 66a6e07a (52). No authorize. Local lock only."
+  "note": "Docs-only: G0\u2192500b4287, 11-22 prework, Field ADR continue-Draft. No authorize. Local lock only."
 }
