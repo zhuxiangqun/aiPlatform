@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T08:00:00+08:00",
+  "reviewed_at": "2026-11-01T08:05:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "95671e7c4c0e345e251710a1af6843babec18b1e",
-  "diff_sha256": "2665998ddfad0358f3a6cdc259dbaa10c1bb70d50f48b0bdf49ffa59716e38a8",
-  "head_sha": "a524cff2b216b3f33bc647258856c3931b1dabaf",
+  "merge_base": "fbe75f02afe832d11a8c550210f86976d8fbc8fc",
+  "diff_sha256": "4472de2695e86be205a1043776c0ad03a7717bb5dc76adfaa4c230f1d375b7a9",
+  "head_sha": "500a5ef70e76bb55027c50be68826de2579efa32",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Ontology/Eval local_signed only; all ready_to_authorize remain false."
+  "note": "Four-track local_signed closeout; production authorize/hard gates untouched."
 }
