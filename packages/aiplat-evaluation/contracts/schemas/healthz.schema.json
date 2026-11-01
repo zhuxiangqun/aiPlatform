@@ -9,7 +9,11 @@
     "version": { "type": "string" },
     "product_id": { "type": "string", "const": "evaluation" },
     "capability_id": { "type": "string", "const": "evaluation" },
-    "deploy_unit": { "type": "string", "const": "central" },
+    "deploy_unit": {
+      "type": "string",
+      "enum": ["central", "evaluation"],
+      "description": "central=cohost; evaluation=A1 local standalone (process_split still false)"
+    },
     "protocol": { "type": "string", "const": "eval.protocol.v0" }
   },
   "additionalProperties": true

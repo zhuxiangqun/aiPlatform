@@ -2,8 +2,12 @@
   "name": "aiplat-evaluation",
   "version": "0.1.0",
   "private": true,
-  "description": "Evaluation Service D1 Thin (co-hosted). A3 prep only; process_split_authorized=false.",
+  "description": "Evaluation Service D1c cohost + A1 local standalone entry (:8010). process_split_authorized=false.",
   "capability_id": "evaluation",
   "deploy_unit": "central",
-  "hosted_by": "aiplat"
+  "hosted_by": "aiplat",
+  "scripts": {
+    "start:local": "bash scripts/run_local.sh",
+    "test:a1": "PYTHONPATH=. python3 -m pytest tests/test_a1_standalone_healthz.py -q"
+  }
 }
