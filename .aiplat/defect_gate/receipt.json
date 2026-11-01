@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T08:54:00+08:00",
+  "reviewed_at": "2026-11-01T09:00:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "c9442231481f5638dfdefa54177a7042d7019910",
-  "diff_sha256": "f3c0db66740ff5b91f241592db1f9250df5c3dde4aa4a81b3b8531a4c819f287",
-  "head_sha": "c04986d9cf9f01820d8bc477a582e88d390f2157",
+  "merge_base": "18f0703ad6c33f8b9dfa72839b2354f018d00647",
+  "diff_sha256": "9192215126e1148f1ec89087255b1b5bdf26495f99835f5bcea41560275ceb64",
+  "head_sha": "ce465290f103fa9f7a5ad010a77a4d0d3df9f291",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Clarify 19-commit CI anchor vs post-closeout HEAD; docs only."
+  "note": "Pi D3 local closeout + N-1; checklist stays yellow; d3_production_authorized false."
 }
