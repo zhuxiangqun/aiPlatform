@@ -19,16 +19,18 @@
 | 初冻 | D1/D2 / packaging / Option B 收口 |
 | [`ENGINEERING_UNFREEZE_D3_E2E.md`](./ENGINEERING_UNFREEZE_D3_E2E.md) | 解冻 D3 本地验收 + 跨能力 E2E |
 | **本再冻结** | 上述两项已 PASS；Pi D2++ SOC schema 硬核；Field compose ADR → **v2 草案** |
-| [`EVAL_V1`](./ENGINEERING_UNFREEZE_EVAL_V1.md) | 解冻评测 **E0–E5**（唯一 API/准确性/gate）；UI/A3/生产仍冻 |
+| [`EVAL_V1`](./ENGINEERING_UNFREEZE_EVAL_V1.md) | 解冻评测 **E0–E5**（唯一 API/准确性/gate）；A3/生产仍冻 |
+| [`EVAL_V1 UI preview`](./ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md) | G2a locked 后解冻 `/eval` **local preview**（accuracy 仍禁） |
 
-- ❌ **仍不解冻**：staging_ready / production_signed / 任何 authorize 成功  
+- ❌ **仍不解冻**：staging_ready / production_signed / 任何 authorize 成功 / accuracy 宣称  
 - 计划同步：工程方案 **V2.2** + [`eval-v1-charter.md`](../../../docs/architecture/plans/eval-v1-charter.md)
 
 ### Active unfreeze
 
 | 范围 | 文档 | 允许 | 禁止 |
 |---|---|---|---|
-| EVAL_V1 | [`ENGINEERING_UNFREEZE_EVAL_V1.md`](./ENGINEERING_UNFREEZE_EVAL_V1.md) | E0–E5 | UI / A3 / staging / authorize |
+| EVAL_V1 | [`ENGINEERING_UNFREEZE_EVAL_V1.md`](./ENGINEERING_UNFREEZE_EVAL_V1.md) | E0–E5 + G2a local gate | A3 / staging / authorize / accuracy |
+| EVAL_V1 UI preview | [`ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md`](./ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md) | `/eval` local preview | 完整 E6 / accuracy / 外部 gate |
 
 ## Verify
 

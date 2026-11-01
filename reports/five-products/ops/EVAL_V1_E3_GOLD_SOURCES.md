@@ -11,7 +11,7 @@
 |------|------|--------|
 | Runnable | ≥15 tasks in EvalStore | via `bootstrap_e3_gold` ← workspace seeds |
 | Source inventory | this file | **done** |
-| v0 lock | 30 tasks + solo adjudication | **not yet**（不挡 E3 启动；挡 G2a） |
+| v0 lock | 30 tasks + solo adjudication | **locked**（2026-11-01 · local `eval-v1`；accuracy 仍禁） |
 | κ / accuracy | second annotator | **N/A**（D5） |
 
 ## Sources (v0 seed plan)

@@ -1,7 +1,7 @@
 # Engineering unfreeze — EVAL_V1（评测准确性 + 唯一入口 + gate）
 
 - **decided_at**: `2026-11-01`
-- **status**: **Active**（仅 E0–E5）
+- **status**: **Active**（E0–E5 + G2a locked；UI preview 见子解冻）
 - **charter**: [`eval-v1-charter.md`](../../../docs/architecture/plans/eval-v1-charter.md)
 - **freeze**: [`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md)
 - **owner**: evaluation（local engineering）
@@ -11,14 +11,14 @@
 
 | 允许（E0–E5） | 禁止 |
 |---|---|
-| E0 charter / 决策 / 指标 | UI `/eval`（G2a 后 preview 另批） |
+| E0 charter / 决策 / 指标 | 完整 E6 评测中心（仅 preview，见 UI 子解冻） |
 | E1 canonical API `/api/platform/apps/eval` + shim | A3 进程/DB 拆分 |
 | E2 数据模型 / store | staging / production_signed |
 | E3 gold set：≥15 启动，30 锁 v0；单人复核 | 任何 `*_authorize` 成功路径 |
 | E4 judge 校准 / 偏差 / k=3 | 改 checklist 🟨→✅ |
 | E5 eval gate（PR/nightly/release） | 用 local 证据推动 authorize |
 
-**一句话**：只解冻“评测准确性 + 唯一入口 + gate”，不解冻“UI/A3/生产”。
+**一句话**：解冻“评测准确性 + 唯一入口 + gate”；G2a 锁后 `/eval` preview 见 [`ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md`](./ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md)；A3/生产仍冻。
 
 ## 允许的代码面
 
@@ -29,7 +29,7 @@
 - `aiPlat-platform/registry/apps.yaml`（如需注册/路由）
 - 对应测试/文档
 
-**不允许**：`aiPlat-management` UI 页面（G2a 后 preview 另批）；`packages/aiplat-evaluation` 独立进程入口（A3）。
+**不允许**：完整 E6 评测中心冒充交付（preview 另见 [`ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md`](./ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md)）；`packages/aiplat-evaluation` 独立进程入口（A3）。
 
 ## 退出条件
 
@@ -63,8 +63,10 @@ python3 scripts/check_five_products_status_sync.py
 - **E0**：charter + unfreeze 已合入（`cb6d4b18`）。
 - **E1**（2026-11-01）：canonical `/api/platform/apps/eval` dual-mount + `EvalLegacyDeprecationMiddleware`；core `/kb-eval` shim；inventory [`EVAL_V1_E1_INVENTORY.md`](./EVAL_V1_E1_INVENTORY.md)；契约测试 `test_eval_v1_e1_canonical.py`。
 - **E2**（2026-11-01）：`EvalStore` SQLite（charter §5.3）+ `eval_store.schema.json` + `POST …/store/migrate/code-review-gold`；测试 `test_eval_v1_e2_store.py`。
-- **E3**（2026-11-01）：`bootstrap_e3_gold` ≥15 可跑 + [`EVAL_V1_E3_GOLD_SOURCES.md`](./EVAL_V1_E3_GOLD_SOURCES.md) + solo 复核队列；**未锁 v0 / 不报 κ**；测试 `test_eval_v1_e3_gold.py`。
+- **E3**（2026-11-01）：`bootstrap_e3_gold` ≥15 可跑 + [`EVAL_V1_E3_GOLD_SOURCES.md`](./EVAL_V1_E3_GOLD_SOURCES.md) + solo 复核队列；测试 `test_eval_v1_e3_gold.py`（v0 锁见下方 G2a human lock）。
 - **E4**（2026-11-01）：`judge.deterministic.code_review_gold.v1` + k=3/ECE/bias 校准报告（`eval.calibration.v0`）；`POST …/store/calibrate-e4`；**accuracy_claim=false**；测试 `test_eval_v1_e4_judge.py`。
 - **E5**（2026-11-01）：failure taxonomy + local gate（pr/nightly/release）；`POST …/store/gate-e5` + schema `eval_gate.schema.json`；**gate_claim=false / accuracy_claim=false**（未达 G2a）；测试 `test_eval_v1_e5_gate.py`。
-- **G2a machinery**（2026-11-01）：`g2a.py` + `POST …/store/{review-queue,labels/*/adjudicate,lock-v0,gate-g2a}`；种子已 ≥30 可跑；**待你单人 adjudicate ≥30 后 `lock-v0`**；锁后 local `gate_claim` 可开，**accuracy 仍禁**；测试 `test_eval_v1_g2a.py`。
-- G2a human lock / UI preview unfreeze / G2b accuracy：`_pending_`
+- **G2a machinery**（2026-11-01）：`g2a.py` + `POST …/store/{review-queue,labels/*/adjudicate,lock-v0,gate-g2a}`；测试 `test_eval_v1_g2a.py`。
+- **G2a human lock**（2026-11-01）：本机 tenant `eval-v1` — 30 条 solo（用户授权采信 AI preannotate）→ `lock-v0` → `gate-g2a`（`gate_claim=true`，`rpt_c12dfe23ba70`）；**accuracy_claim=false**；κ=null。
+- **UI preview unfreeze**（2026-11-01）：[`ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md`](./ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md) + `/eval` preview 页。
+- G2b accuracy / 外部 gate / 完整 E6：`_pending_`

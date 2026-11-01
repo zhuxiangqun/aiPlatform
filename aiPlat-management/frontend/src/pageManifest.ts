@@ -118,6 +118,7 @@ export const menuItems: MenuEntry[] = [
     { key: '/diagnostics/routing-dashboard', icon: Share2, label: '路由仪表盘' },
     { key: '/diagnostics/routing-replay', icon: Play, label: '路由回放' },
     { key: '/diagnostics/policy-debug', icon: Search, label: '策略调试', roles: ['admin','developer'] },
+    { key: '/eval', icon: BarChart3, label: '评测中心 Preview' },
     { key: '/diagnostics/eval', icon: BarChart3, label: 'Agent 评估' },
     { key: '/infra/nodes', icon: Server, label: '节点管理', roles: ['admin','operator'] },
     { key: '/infra/services', icon: Layers, label: '服务管理', roles: ['admin','operator'] },
