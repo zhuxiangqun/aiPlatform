@@ -1,7 +1,7 @@
 # Five-products engineering status (2026-11-01)
 
 > **SSOT autonomy/delivery**：[`capabilities.manifest.yaml`](../../capabilities.manifest.yaml)（本表必须与之一致；禁止写高于 manifest 的 A/D）。  
-> **G0**：[`G0_CLOSEOUT.md`](./G0_CLOSEOUT.md)（通过 · P0-3′ · **52** 提交 · HEAD CI=`66a6e07a`）。  
+> **G0**：[`G0_CLOSEOUT.md`](./G0_CLOSEOUT.md)（通过 · P0-3′ · **54** 提交 · HEAD CI=`500b4287`）。  
 > **计划**：[`five-capability-independent-engineering-plan.md`](../../docs/architecture/plans/five-capability-independent-engineering-plan.md) **V2.2** · packaging base [`templates/module/PACKAGING_BASE.md`](../../templates/module/PACKAGING_BASE.md)。  
 > **冻结**：[`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md)（D3/E2E 完成后再冻结；authorize 仍冻）。  
 > 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md) · 本地收口 [`ops/ENGINEERING_LOCAL_CLOSEOUT.md`](./ops/ENGINEERING_LOCAL_CLOSEOUT.md)。  
@@ -64,7 +64,8 @@ bash scripts/five_products_gate.sh
 | Engineering freeze | [`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md) |
 | Staging review 11-08 | [`ops/STAGING_REVIEW_2026-11-08.md`](./ops/STAGING_REVIEW_2026-11-08.md) → **continue_defer** |
 | Staging review 11-15 | [`ops/STAGING_REVIEW_2026-11-15.md`](./ops/STAGING_REVIEW_2026-11-15.md) → **continue_defer**（提前开审） |
-| Staging review 11-22 草稿 | [`ops/STAGING_REVIEW_2026-11-22.md`](./ops/STAGING_REVIEW_2026-11-22.md) · 供给 [`ops/STAGING_PROVISIONING.md`](./ops/STAGING_PROVISIONING.md)（不实施直至有主机） |
+| Staging review 11-22 预填 | [`ops/STAGING_REVIEW_2026-11-22.md`](./ops/STAGING_REVIEW_2026-11-22.md)（无主机 · Outcome 待复审日）· 供给备查 [`ops/STAGING_PROVISIONING.md`](./ops/STAGING_PROVISIONING.md) |
+| Field compose ADR | [`ADR-DRAFT-fde-field-compose.md`](./ADR-DRAFT-fde-field-compose.md) → **继续 Draft** |
 | D3 local acceptance | [`ops/D3_LOCAL_ACCEPTANCE.md`](./ops/D3_LOCAL_ACCEPTANCE.md)（解冻后跑 `ops_d3_local_acceptance_all.sh`） |
 | Cross-capability E2E | [`ops/FIVE_PRODUCTS_E2E_LOCAL.md`](./ops/FIVE_PRODUCTS_E2E_LOCAL.md) · `ops_five_products_e2e_local.sh` |
 | Local staging 总册 | [`ops/LOCAL_STAGING.md`](./ops/LOCAL_STAGING.md) · 方案 B [`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md) |

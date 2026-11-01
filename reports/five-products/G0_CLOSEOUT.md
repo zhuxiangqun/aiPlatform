@@ -12,9 +12,9 @@
 |----|-----|
 | 基线起点 | `b46e286` |
 | 初版 CI 锚点 | `17f21d67`（Option B lock-in · **19** 提交） |
-| 中间锚点 | `1992e8e1`（D3 UAT polish · **47** 提交） |
-| **现行 CI 锚点（HEAD）** | **`66a6e07a`**（continue_defer receipt · 含 D2++ SOC `9fcbedda`） |
-| 提交数（HEAD） | **`git rev-list --count b46e286..66a6e07a` → 52** |
+| 中间锚点 | `1992e8e1`（47）· `66a6e07a`（52 · 含 D2++ SOC） |
+| **现行 CI 锚点（HEAD）** | **`500b4287`**（G0 52-commit receipt · docs 收口） |
+| 提交数（HEAD） | **`git rev-list --count b46e286..500b4287` → 54** |
 | collect | **3209** / 0 error（G0_REPORT 2026-11-01；初版锚点） |
 | unit | **2735** passed / 11 skipped / 0 failed（初版锚点） |
 | Tier A 逃逸 | **0**（`paths.py` SSOT fallback 除外） |
@@ -44,16 +44,27 @@ G0_REPORT 第 16 行已改为「旧 D0 作废；D1c 保留为 cohost 别名」�
 
 defect-gate receipt **不能**替代 CI。
 
-### HEAD `66a6e07a`（52 提交 · 现行 · 覆盖 D2++ SOC）
+### HEAD `500b4287`（54 提交 · 现行）
 
 | Workflow | 结论 | Run |
 |----------|------|-----|
-| **CI**（unit/collect 主门） | **success** | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417524 |
+| **CI**（unit/collect 主门） | **success** | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41269618527 |
+| Architecture Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41269618598 |
+| L5 Verification Suite | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41269618500 |
+| Slice E2E (live evidence) | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41269618570 |
+| AI Penetration Test | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41269618546 |
+| aiPlat Contracts Guard | **success** | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41269618504 |
+
+### 中间锚点 `66a6e07a`（52 提交 · 历史 · 含 D2++ SOC）
+
+| Workflow | 结论 | Run |
+|----------|------|-----|
+| **CI** | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417524 |
 | Architecture Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417471 |
 | L5 Verification Suite | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417553 |
-| Slice E2E (live evidence) | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417609 |
+| Slice E2E | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417609 |
 | AI Penetration Test | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417600 |
-| aiPlat Contracts Guard | **success** | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417570 |
+| aiPlat Contracts Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417570 |
 
 ### 中间锚点 `1992e8e1`（47 提交 · 历史）
 
@@ -80,7 +91,7 @@ defect-gate receipt **不能**替代 CI。
 复验命令：
 
 ```bash
-git rev-list --count b46e286..HEAD   # expect 52+
+git rev-list --count b46e286..HEAD   # expect 54+
 python3 scripts/check_five_products_status_sync.py
 gh run list --branch main --limit 10
 bash scripts/ops_engineering_freeze_check.sh
@@ -94,6 +105,8 @@ bash scripts/five_products_gate.sh
 | `ops_engineering_freeze_check.sh` | **PASS**（authorize 全 REFUSE · 下次里程碑 11-22） |
 | `five_products_gate.sh` | **PASS**（2026-11-01 复跑 · 含 D3/E2E local） |
 | `ops_option_b_all.sh` | **PASS**（`pgha_mode=docker` · `OPTION_B_LAST_RUN.md`） |
+| 11-22 复审预填 | **READY**（[`STAGING_REVIEW_2026-11-22.md`](./ops/STAGING_REVIEW_2026-11-22.md) · 无主机） |
+| Field compose ADR | **继续 Draft**（[`ADR-DRAFT-fde-field-compose.md`](./ADR-DRAFT-fde-field-compose.md)） |
 
 ## 非结论
 
@@ -103,12 +116,12 @@ bash scripts/five_products_gate.sh
 
 ## 下一步（基线 backlog）
 
-1. ✅ HEAD **CI + Contracts Guard** 均 **success**（**52** 提交 · `66a6e07a` 上表）  
+1. ✅ HEAD **CI + Contracts Guard** 均 **success**（**54** 提交 · `500b4287` 上表）  
 2. ✅ Pi D3 本地收尾 → FDE Field D2 → Eval/Onto D2 → aiPlat D2 thin  
 3. ✅ **Plan V2.1 + shared packaging base**  
 4. ✅ **D2 local perf baseline**  
 5. ✅ **Engineering freeze** + 显式解冻 D3/E2E → 完成后 **再冻结**  
-6. ✅ **2026-11-08 / 11-15 预发复审** → **continue_defer**；下次 **2026-11-22**  
+6. ✅ **2026-11-08 / 11-15 预发复审** → **continue_defer**；下次 **2026-11-22**（预填包已就绪）  
 7. ✅ **Pi D2++ SOC** schema 硬核（`d2_soc_deeper_check`）  
-8. ✅ **Field compose ADR 草案 v2**（未 Accepted）  
+8. ✅ **Field compose ADR v2** → **继续 Draft**（不实施）  
 9. ⏳ **真实预发供给**（可选；[`STAGING_PROVISIONING.md`](./ops/STAGING_PROVISIONING.md)）— 当前决策：**不实施 / 不买服务器**  

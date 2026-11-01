@@ -1,6 +1,6 @@
 # ADR-DRAFT — FDE Field compose 长驻（v2）
 
-> **状态**：Draft v2 · **非 Accepted** · 冻结期仅文档  
+> **状态**：Draft v2 · **继续 Draft**（2026-11-01 决议）· **非 Accepted / 非 Rejected**  
 > **范围**：现场长驻 compose（进程常驻、卷持久、可选本地 DB）  
 > **非范围**：本草案不实施；不改 Field Accepted D1；不触碰 PG/HA cutover；不 authorize。
 
@@ -77,9 +77,16 @@ v1 仅列选项；v2 补齐运行面、失败模式、证据模板与验收门�
 # bash packages/aiplat-fde/scripts/d1_backup.sh
 ```
 
+## 决策记录（冻结兼容）
+
+| 日期 | 决议 | 说明 |
+|------|------|------|
+| 2026-11-01 | **继续 Draft** | 本地工程已冻结；无独立预发 / Field 长驻需求未触发；**不 Accepted、不实施、不 Reject**。下次可在 11-22 复审或显式解冻后重开。 |
+
 ## Changelog
 
 | 版 | 日期 | 变更 |
 |----|------|------|
 | v1 | 2026-11-01 | 初稿：选项 A/B/C + 四条约束 |
 | v2 | 2026-11-01 | 运行面 / 失败模式 / 证据模板 / 验收门槛 |
+| v2.1 | 2026-11-01 | 记录「继续 Draft」；仍禁止实施 |
