@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T10:01:46+08:00",
+  "reviewed_at": "2026-11-01T11:10:10+08:00",
   "base_ref": "origin/main",
-  "merge_base": "cc796a64eb3d85284565146e6819d066041f8104",
-  "diff_sha256": "74d810c06966062ee9732ee80d16222610c594a136c405ed2aa352d3723f3fe3",
-  "head_sha": "9dfe583f5e087714ab67eda2f91f2919c3976d2f",
+  "merge_base": "1992e8e18fa4b604ce641c852ffc7ceba2c59e0e",
+  "diff_sha256": "493b4a0617a5a53408e4523591f20999cecf338508498bc5156a3d6cfebc5a8e",
+  "head_sha": "9fcbedda107a018866f3c92fffa76141b125baac",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs/gates-only polish after D3/E2E unfreeze: UAT.md \u00d75, template stub, packaging/security require_files. No authorize path. Local lock only."
+  "note": "Docs/ops + SOC schema harden + G0 HEAD CI refresh. No authorize path. Local lock only."
 }
