@@ -21,6 +21,15 @@
 - Adversarial 故意含误导信号；分报 core / adversarial，禁止用 core 1.00 对外宣称。
 - 无 remediate / 无 A3 / 无 staging（C4 仍需独立解冻）。
 
+### Blind snapshot（2026-11-02，本机）
+
+| subset | n | top1 | top3 | unknown_correct | stale_correct |
+|---|---:|---:|---:|---:|---:|
+| **core** | 10 | **1.00** | 1.00 | 1.00 | 1.00 |
+| **adversarial** | 6 | **0.17** | 0.83 | 1.00 | **0.00** |
+
+Adversarial Top-1 miss 5/6（误导根因 / freshness 撒谎）；holdout 有效，**无需再加难例**。对外只报分报，不报「诊断准确率 100%」。
+
 ## Verify
 
 ```bash
