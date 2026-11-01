@@ -62,4 +62,5 @@ python3 scripts/check_five_products_status_sync.py
 
 - **E0**：charter + unfreeze 已合入（`cb6d4b18`）。
 - **E1**（2026-11-01）：canonical `/api/platform/apps/eval` dual-mount + `EvalLegacyDeprecationMiddleware`；core `/kb-eval` shim；inventory [`EVAL_V1_E1_INVENTORY.md`](./EVAL_V1_E1_INVENTORY.md)；契约测试 `test_eval_v1_e1_canonical.py`。
+- **E2**（2026-11-01）：`EvalStore` SQLite（charter §5.3）+ `eval_store.schema.json` + `POST …/store/migrate/code-review-gold`；测试 `test_eval_v1_e2_store.py`。
 - G2a/G2b accuracy claim：`_pending_`

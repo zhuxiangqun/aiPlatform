@@ -51,6 +51,13 @@ grep -q 'prefix="/api/platform/apps/eval"' aiPlat-platform/api/rest/routes.py \
   || fail "eval canonical mount /api/platform/apps/eval missing"
 grep -q 'EvalLegacyDeprecationMiddleware' aiPlat-platform/api/rest/routes.py \
   || fail "eval legacy deprecation middleware not wired"
+[[ -f aiPlat-core/core/apps/eval/service/store.py ]] || fail "missing EVAL_V1 E2 EvalStore"
+[[ -f packages/aiplat-evaluation/contracts/schemas/eval_store.schema.json ]] \
+  || fail "missing eval_store.schema.json"
+grep -q 'class EvalStore' aiPlat-core/core/apps/eval/service/store.py \
+  || fail "EvalStore class missing"
+grep -q 'store_api' aiPlat-platform/apps/eval/api/router.py \
+  || fail "eval store_api not mounted on eval router"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-08.md ]] || fail "missing STAGING_REVIEW 2026-11-08"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-15.md ]] || fail "missing STAGING_REVIEW 2026-11-15"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-22.md ]] || fail "missing STAGING_REVIEW 2026-11-22"

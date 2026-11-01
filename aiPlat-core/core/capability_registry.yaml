@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 33
-total_capabilities: 1545
+total_capabilities: 1549
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -5095,7 +5095,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 29
+    caps_count: 33
     provides:
       - symbol: "AdversarialTestSuite"
         type: "module"
@@ -5113,6 +5113,22 @@ domains:
         type: "class"
         signature: "5 metrics: pipeline P95, graph P95, retrieval recall, state accuracy, calibration"
         module: "core/harness/evaluation/eval_runner.py"
+      - symbol: "EvalStore"
+        type: "class"
+        signature: "EvalStore(db_path?, tenant_id?) — EVAL_V1 E2 SQLite store (sets/tasks/runs/labels/...)"
+        module: "core/apps/eval/service/store.py"
+      - symbol: "import_code_review_gold"
+        type: "function"
+        signature: "import_code_review_gold(gold_dir?, tenant_id?, ...)→Dict (set_id, imported)"
+        module: "core/apps/eval/service/store.py"
+      - symbol: "eval_store_health"
+        type: "function"
+        signature: "eval_store_health(tenant_id='')→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "eval_store_import_code_review_gold"
+        type: "function"
+        signature: "eval_store_import_code_review_gold(gold_dir?, tenant_id?, ...)→Dict"
+        module: "core/api/core_facade.py"
       - symbol: "to_eval_protocol_v0"
         type: "function"
         signature: "to_eval_protocol_v0(task_id, target_kind, target_ref, status, ...)→Dict eval.protocol.v0"

@@ -6026,6 +6026,92 @@ async def run_code_review_gold_eval(
     )
 
 
+# ── EVAL_V1 E2 EvalStore ──────────────────────────────────
+
+
+def eval_store_health(*, tenant_id: str = "") -> Dict[str, Any]:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).health()
+
+
+def eval_store_list_sets(*, tenant_id: str = "", limit: int = 100) -> list:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).list_sets(limit=limit)
+
+
+def eval_store_get_set(set_id: str, *, tenant_id: str = "") -> Optional[Dict[str, Any]]:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).get_set(set_id)
+
+
+def eval_store_create_set(
+    *,
+    name: str,
+    version: str = "0",
+    split: str = "dev",
+    meta: Optional[Dict[str, Any]] = None,
+    set_id: Optional[str] = None,
+    tenant_id: str = "",
+) -> Dict[str, Any]:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).create_set(
+        name=name, version=version, split=split, meta=meta, set_id=set_id
+    )
+
+
+def eval_store_list_tasks(*, set_id: str = "", tenant_id: str = "", limit: int = 500) -> list:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).list_tasks(set_id=set_id, limit=limit)
+
+
+def eval_store_create_task(
+    *,
+    set_id: str,
+    input_data: Optional[Dict[str, Any]] = None,
+    expected: Optional[Dict[str, Any]] = None,
+    rubric: Optional[Dict[str, Any]] = None,
+    tags: Optional[list] = None,
+    hard_negative: bool = False,
+    source: str = "",
+    task_id: Optional[str] = None,
+    tenant_id: str = "",
+) -> Dict[str, Any]:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).create_task(
+        set_id=set_id,
+        input_data=input_data,
+        expected=expected,
+        rubric=rubric,
+        tags=tags,
+        hard_negative=hard_negative,
+        source=source,
+        task_id=task_id,
+    )
+
+
+def eval_store_import_code_review_gold(
+    *,
+    gold_dir: Optional[str] = None,
+    tenant_id: str = "",
+    set_name: str = "code-review-gold",
+    set_version: str = "v0-seed",
+) -> Dict[str, Any]:
+    from core.apps.eval.service.store import import_code_review_gold
+
+    return import_code_review_gold(
+        gold_dir=gold_dir,
+        tenant_id=tenant_id,
+        set_name=set_name,
+        set_version=set_version,
+    )
+
+
 def list_code_review_gold_profiles() -> Dict[str, Any]:
     """噪声档位 → autoreview 参数映射。"""
     from core.harness.evaluation.code_review_gold import list_profiles
