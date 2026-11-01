@@ -1,0 +1,14 @@
+{
+  "kind": "fde_field_d2_local_closeout",
+  "at": "20261101T010250Z",
+  "environment": "local",
+  "demo_root": "/tmp/aiplat-fde-d2-20261101T010250Z",
+  "before_current": "versions/0.1.0",
+  "after_upgrade": "versions/0.1.0+20261101T010251Z",
+  "after_runtime_rollback": "versions/0.1.0",
+  "backup_rollback": true,
+  "d2_admin_check": true,
+  "compat_matrix": true,
+  "production_signed": false,
+  "production_field": true
+}

@@ -46,7 +46,7 @@ units:
     product_id: fde
     min_version: "0.1.0"
     smoke: packages/aiplat-fde/scripts/d1_smoke.sh
-    notes: "Field D1 Accepted; production_field=true; compose long-running excluded"
+    notes: "Field D1 Accepted + D2 ops pack; production_field=true; compose long-running excluded"
 contracts:
   - id: ontology.api.v0
     path: reports/five-products/modules/ontology/contracts/schemas/ontology_api.schema.json

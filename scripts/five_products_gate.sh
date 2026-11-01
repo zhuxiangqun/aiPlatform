@@ -49,6 +49,9 @@ bash packages/aiplat-evaluation/scripts/d1_smoke.sh
 echo "== FDE Field D1 smoke =="
 bash packages/aiplat-fde/scripts/d1_smoke.sh
 
+echo "== FDE Field D2 admin/security pack =="
+bash packages/aiplat-fde/scripts/d2_admin_check.sh
+
 echo "== Ontology A3 local rehearsal (file dual-write/rollback; not live) =="
 bash packages/aiplat-ontology/scripts/a3_local_rehearsal.sh
 

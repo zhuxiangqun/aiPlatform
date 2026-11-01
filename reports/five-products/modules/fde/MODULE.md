@@ -1,6 +1,6 @@
 # MODULE.md — FDE Workbench
 
-> Status: **A1 + Field D1 Accepted** · Owner: platform · Target: **A2 / D2** · Deploy unit: **Field**  
+> Status: **A1 + Field D1 Accepted + Field D2 ops pack** · Owner: platform · Target: **A2 / D2** · Deploy unit: **Field**  
 > Version: **0.1.0** · ADR: [`ADR-FDE-FIELD-DEPLOY.md`](../../ADR-FDE-FIELD-DEPLOY.md)
 
 ## Scope
@@ -34,6 +34,17 @@ See [`FIELD_SCOPE.md`](./FIELD_SCOPE.md).
 | Data residency | `docs/DATA_RESIDENCY.md` |
 | ADR | `ADR-FDE-FIELD-DEPLOY.md` **Accepted** |
 
+## Field D2 ops pack — done (local)
+
+| Item | Path |
+|------|------|
+| Scope | `packages/aiplat-fde/docs/D2_FIELD.md` |
+| Upgrade / runtime rollback | `scripts/d1_upgrade.sh` · `d1_rollback.sh --runtime` |
+| Security baseline | `security/baseline.yaml` · `scripts/d2_admin_check.sh` |
+| Local closeout | `scripts/d2_local_closeout.sh` · [`ops/FDE_FIELD_D2_LOCAL_CLOSEOUT.md`](../../ops/FDE_FIELD_D2_LOCAL_CLOSEOUT.md) |
+
+`capabilities.manifest` **current_delivery** 仍为 **D1**（D2 = Field ops pack，与 Pi D2 admin 同级叙事）。
+
 ## CODEOWNERS
 
 - `aiPlat-platform/apps/fde/ @platform`
@@ -42,4 +53,4 @@ See [`FIELD_SCOPE.md`](./FIELD_SCOPE.md).
 ## Next
 
 - Optional independent process / compose（另 ADR）
-- A2 deeper Field ops pack
+- A2 deeper Field productization（非本 pack）

@@ -52,6 +52,7 @@ capabilities:
     contracts_test: reports/five-products/modules/fde/contracts/validate_sample.py
     notes:
       - "Field D1 path Accepted; local install/meta/backup drill PASS (ops/FDE_FIELD_LOCAL_REGRESSION.md)"
+      - "Field D2 ops/security pack local PASS (ops/FDE_FIELD_D2_LOCAL_CLOSEOUT.md); current_delivery remains D1"
 
   - id: evaluation
     label: Evaluation Service

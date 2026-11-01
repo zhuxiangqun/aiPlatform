@@ -1,0 +1,46 @@
+# FDE Field — D2 admin/security pack (local-first; enterprise opt-in only)
+schema_version: aiplat.fde.security.baseline.v0
+updated: "2026-11-01"
+checks:
+  - id: fde_d1_install_enterprise_off
+    description: Field install defaults AIPLAT_ENTERPRISE=0
+    path: packages/aiplat-fde/scripts/d1_install.sh
+    must_contain:
+      - "AIPLAT_ENTERPRISE=0"
+      - "production_field"
+  - id: fde_install_meta_field
+    description: INSTALL_META marks production_field + Accepted ADR
+    path: packages/aiplat-fde/scripts/d1_install.sh
+    must_contain:
+      - "field_d1_adr"
+      - '"production_field":true'
+  - id: fde_healthz_field
+    description: healthz schema product_id=fde deploy_unit=field
+    path: packages/aiplat-fde/contracts/schemas/healthz.schema.json
+    must_contain:
+      - '"const": "fde"'
+      - '"const": "field"'
+  - id: fde_n1_doc
+    description: N-1 Pi Bundle / report_id compatibility page
+    path: packages/aiplat-fde/docs/N1_COMPAT.md
+    must_contain:
+      - "report_id"
+      - "Bundle"
+  - id: fde_data_residency_doc
+    description: Data residency / security one-pager
+    path: packages/aiplat-fde/docs/DATA_RESIDENCY.md
+    must_contain:
+      - "AIPLAT_ENTERPRISE=0"
+      - "签收"
+  - id: fde_d2_field_doc
+    description: Field D2 ops pack scope
+    path: packages/aiplat-fde/docs/D2_FIELD.md
+    must_contain:
+      - "Field D2"
+      - "AIPLAT_ENTERPRISE=0"
+  - id: fde_upgrade_script
+    description: Upgrade path for N-1 runtime slots
+    path: packages/aiplat-fde/scripts/d1_upgrade.sh
+    must_contain:
+      - "versions/"
+      - "field_d2_pack"
