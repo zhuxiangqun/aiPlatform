@@ -1,0 +1,13 @@
+{
+  "case_id": "dx.s1.context_trunc",
+  "scenario": "run_failure",
+  "gold_root_cause": "context_missing",
+  "expect_unknown": false,
+  "expect_stale": false,
+  "required_evidence": [
+    "run",
+    "context"
+  ],
+  "recommended_action": "raise budget / protect critical layers",
+  "provenance": "desensitized_local_export"
+}

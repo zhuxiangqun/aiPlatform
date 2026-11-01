@@ -1,0 +1,48 @@
+{
+  "schema_version": "diagnosis.evidence.v0",
+  "case_id": "dx.s2.no_baseline",
+  "provenance": "desensitized_local_export",
+  "scenario": "version_regression",
+  "subject_ref": "eval:versions/0.1.0+20261101T011205Z",
+  "baseline_ref": null,
+  "payload": {
+    "closeout": {
+      "kind": "evaluation_d2_cohost_local_closeout",
+      "at": "20261101T011204Z",
+      "environment": "local",
+      "delivery_mode": "cohost",
+      "after_upgrade": "versions/0.1.0+20261101T011205Z",
+      "process_split_authorized": false,
+      "production_signed": false
+    }
+  },
+  "evidence": [
+    {
+      "id": "e-ver",
+      "source": "evaluation",
+      "kind": "version_diff",
+      "ref": "fixture://eval/versions/candidate-only",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "unknown",
+      "meta": {
+        "has_baseline": false,
+        "after_upgrade": "versions/0.1.0+20261101T011205Z"
+      }
+    },
+    {
+      "id": "e-eval",
+      "source": "evaluation",
+      "kind": "eval_report",
+      "ref": "fixture://eval/reports/candidate-only",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "unknown",
+      "meta": {
+        "baseline_missing": true
+      }
+    }
+  ]
+}

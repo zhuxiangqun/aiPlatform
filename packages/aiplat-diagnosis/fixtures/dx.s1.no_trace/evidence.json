@@ -1,0 +1,33 @@
+{
+  "schema_version": "diagnosis.evidence.v0",
+  "case_id": "dx.s1.no_trace",
+  "provenance": "desensitized_local_export",
+  "scenario": "run_failure",
+  "subject_ref": "run:pi-live-20261023T155206Z",
+  "payload": {
+    "report": {
+      "report_id": "rep-2551f299acf5",
+      "status": "failed",
+      "run_id": "pi-live-20261023T155206Z",
+      "trace_id": "",
+      "event_count": 0,
+      "note": "status-only failure; no syscall/trace attached"
+    }
+  },
+  "evidence": [
+    {
+      "id": "e-run",
+      "source": "pi",
+      "kind": "run",
+      "ref": "fixture://pi/runs/pi-live-20261023T155206Z#status_only",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "unknown",
+      "meta": {
+        "trace_id": "",
+        "has_trace": false
+      }
+    }
+  ]
+}

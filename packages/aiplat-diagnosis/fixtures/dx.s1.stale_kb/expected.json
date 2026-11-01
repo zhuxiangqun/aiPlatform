@@ -1,0 +1,13 @@
+{
+  "case_id": "dx.s1.stale_kb",
+  "scenario": "run_failure",
+  "gold_root_cause": "data_stale",
+  "expect_unknown": false,
+  "expect_stale": true,
+  "required_evidence": [
+    "evidence_time",
+    "doc_version"
+  ],
+  "recommended_action": "mark stale; refresh knowledge",
+  "provenance": "desensitized_local_export"
+}

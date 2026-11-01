@@ -1,0 +1,12 @@
+{
+  "case_id": "dx.s1.no_trace",
+  "scenario": "run_failure",
+  "gold_root_cause": "insufficient_evidence",
+  "expect_unknown": true,
+  "expect_stale": false,
+  "required_evidence": [
+    "run_status_only"
+  ],
+  "recommended_action": "return unknown; require trace",
+  "provenance": "desensitized_local_export"
+}

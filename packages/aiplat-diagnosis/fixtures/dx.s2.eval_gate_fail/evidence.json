@@ -1,0 +1,65 @@
+{
+  "schema_version": "diagnosis.evidence.v0",
+  "case_id": "dx.s2.eval_gate_fail",
+  "provenance": "desensitized_local_export",
+  "scenario": "version_regression",
+  "subject_ref": "eval:gate:nightly-fixture-001",
+  "baseline_ref": "eval:gate:baseline-lock-v0",
+  "payload": {
+    "gate_report": {
+      "gate_id": "nightly-fixture-001",
+      "v0_locked": true,
+      "gate_claim": false,
+      "accuracy_claim": false,
+      "pass_rate": 0.62,
+      "threshold": 0.8,
+      "lock": "lock-v0"
+    },
+    "baseline": {
+      "pass_rate": 0.84,
+      "lock": "lock-v0"
+    }
+  },
+  "evidence": [
+    {
+      "id": "e-gate",
+      "source": "evaluation",
+      "kind": "gate_report",
+      "ref": "fixture://eval/gates/nightly-fixture-001",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {
+        "pass_rate": 0.62,
+        "threshold": 0.8,
+        "gate_claim": false,
+        "accuracy_claim": false
+      }
+    },
+    {
+      "id": "e-eval",
+      "source": "evaluation",
+      "kind": "eval_report",
+      "ref": "fixture://eval/reports/nightly-fixture-001",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {}
+    },
+    {
+      "id": "e-base",
+      "source": "evaluation",
+      "kind": "eval_report",
+      "ref": "fixture://eval/baselines/lock-v0",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {
+        "pass_rate": 0.84
+      }
+    }
+  ]
+}

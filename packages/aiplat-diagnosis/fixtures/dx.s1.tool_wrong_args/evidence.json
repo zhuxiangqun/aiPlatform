@@ -1,0 +1,60 @@
+{
+  "schema_version": "diagnosis.evidence.v0",
+  "case_id": "dx.s1.tool_wrong_args",
+  "provenance": "desensitized_local_export",
+  "scenario": "run_failure",
+  "subject_ref": "pi:fault:fi2_bad_bundle",
+  "payload": {
+    "fault": {
+      "id": "fi2_bad_bundle",
+      "source_test": "test_export_rejects_missing_manifest",
+      "http_status": 400,
+      "error": "bundle export rejected: missing agent_manifest"
+    },
+    "tool_result": {
+      "ok": false,
+      "status": 400,
+      "body": {
+        "detail": "schema mismatch: required field agent_manifest missing"
+      }
+    }
+  },
+  "evidence": [
+    {
+      "id": "e-run",
+      "source": "pi",
+      "kind": "run",
+      "ref": "fixture://pi/faults/fi2_bad_bundle",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {}
+    },
+    {
+      "id": "e-tool",
+      "source": "pi",
+      "kind": "tool_result",
+      "ref": "fixture://pi/faults/fi2_bad_bundle/result",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {
+        "http_status": 400,
+        "schema_error": true
+      }
+    },
+    {
+      "id": "e-log",
+      "source": "pi",
+      "kind": "log_ref",
+      "ref": "fixture://pi/RUNLOG/fault_injection_results.json#fi2_bad_bundle",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {}
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "case_id": "dx.s2.prompt_edit",
+  "scenario": "version_regression",
+  "gold_root_cause": "prompt_regression",
+  "expect_unknown": false,
+  "expect_stale": false,
+  "required_evidence": [
+    "version_diff",
+    "eval_report"
+  ],
+  "recommended_action": "rollback prompt / diff review",
+  "provenance": "desensitized_local_export"
+}

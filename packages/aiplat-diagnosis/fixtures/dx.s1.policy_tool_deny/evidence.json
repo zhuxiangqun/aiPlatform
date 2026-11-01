@@ -1,0 +1,71 @@
+{
+  "schema_version": "diagnosis.evidence.v0",
+  "case_id": "dx.s1.policy_tool_deny",
+  "provenance": "desensitized_local_export",
+  "scenario": "run_failure",
+  "subject_ref": "pi:fault:fi4_denied_ops",
+  "payload": {
+    "policy_decision": {
+      "ok": false,
+      "decision": "deny",
+      "reason": "denied_ops",
+      "denied_ops_hit": [
+        "heal"
+      ],
+      "requested_ops": [
+        "heal"
+      ]
+    },
+    "auth_signal": {
+      "kind": "http_auth_deny",
+      "statuses": [
+        401,
+        403
+      ],
+      "source_test": "test_slice_fault_injection.py"
+    }
+  },
+  "evidence": [
+    {
+      "id": "e-pol",
+      "source": "pi",
+      "kind": "policy_decision",
+      "ref": "fixture://pi/faults/fi4_denied_ops",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {
+        "decision": "deny",
+        "reason": "denied_ops"
+      }
+    },
+    {
+      "id": "e-aud",
+      "source": "pi",
+      "kind": "audit",
+      "ref": "fixture://pi/faults/fi1_auth",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {
+        "http_status_examples": [
+          401,
+          403
+        ]
+      }
+    },
+    {
+      "id": "e-run",
+      "source": "pi",
+      "kind": "run",
+      "ref": "fixture://pi/faults/policy_deny_run",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {}
+    }
+  ]
+}

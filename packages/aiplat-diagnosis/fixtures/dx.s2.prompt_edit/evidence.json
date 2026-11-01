@@ -1,0 +1,65 @@
+{
+  "schema_version": "diagnosis.evidence.v0",
+  "case_id": "dx.s2.prompt_edit",
+  "provenance": "desensitized_local_export",
+  "scenario": "version_regression",
+  "subject_ref": "eval:versions/0.1.0+20261101T011205Z",
+  "baseline_ref": "eval:versions/0.1.0",
+  "payload": {
+    "version_diff": {
+      "before_current": "versions/0.1.0",
+      "after_upgrade": "versions/0.1.0+20261101T011205Z",
+      "changed": [
+        "system_prompt"
+      ]
+    },
+    "eval_report": {
+      "baseline_pass_rate": 0.86,
+      "candidate_pass_rate": 0.51,
+      "delta": -0.35,
+      "suite": "code_review_gold_sample"
+    }
+  },
+  "evidence": [
+    {
+      "id": "e-diff",
+      "source": "evaluation",
+      "kind": "version_diff",
+      "ref": "fixture://eval/versions/0.1.0→0.1.0+20261101T011205Z",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {
+        "changed": [
+          "system_prompt"
+        ]
+      }
+    },
+    {
+      "id": "e-eval",
+      "source": "evaluation",
+      "kind": "eval_report",
+      "ref": "fixture://eval/reports/prompt_edit_ab",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {
+        "baseline_pass_rate": 0.86,
+        "candidate_pass_rate": 0.51
+      }
+    },
+    {
+      "id": "e-cfg",
+      "source": "evaluation",
+      "kind": "config_snapshot",
+      "ref": "fixture://eval/prompts/system_prompt_diff",
+      "version": "fixture-v0",
+      "captured_at": "2026-11-01T11:00:00+00:00",
+      "expires_at": null,
+      "freshness": "fresh",
+      "meta": {}
+    }
+  ]
+}

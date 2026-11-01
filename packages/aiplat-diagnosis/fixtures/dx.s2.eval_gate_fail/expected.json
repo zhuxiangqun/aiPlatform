@@ -1,0 +1,13 @@
+{
+  "case_id": "dx.s2.eval_gate_fail",
+  "scenario": "version_regression",
+  "gold_root_cause": "eval_score_drop",
+  "expect_unknown": false,
+  "expect_stale": false,
+  "required_evidence": [
+    "gate_report",
+    "baseline"
+  ],
+  "recommended_action": "inspect failure taxonomy; block release",
+  "provenance": "desensitized_local_export"
+}

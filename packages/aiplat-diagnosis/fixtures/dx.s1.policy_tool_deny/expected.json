@@ -1,0 +1,14 @@
+{
+  "case_id": "dx.s1.policy_tool_deny",
+  "scenario": "run_failure",
+  "gold_root_cause": "policy_deny",
+  "expect_unknown": false,
+  "expect_stale": false,
+  "required_evidence": [
+    "run",
+    "policy_decision",
+    "audit"
+  ],
+  "recommended_action": "change policy or use safer path",
+  "provenance": "desensitized_local_export"
+}
