@@ -6132,6 +6132,31 @@ def eval_e3_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
     return e3_status(tenant_id=tenant_id)
 
 
+def eval_run_e4_calibration(
+    *,
+    tenant_id: str = "eval-v1",
+    set_id: str = "",
+    k: int = 3,
+    limit: int = 500,
+) -> Dict[str, Any]:
+    """EVAL_V1 E4: deterministic judge v1 + k-repeat / ECE calibration report."""
+    from core.apps.eval.service.judge_v1 import run_e4_calibration
+
+    return run_e4_calibration(tenant_id=tenant_id, set_id=set_id, k=k, limit=limit)
+
+
+def eval_list_judges(*, tenant_id: str = "eval-v1", limit: int = 50) -> list:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).list_judges(limit=limit)
+
+
+def eval_get_report(report_id: str, *, tenant_id: str = "eval-v1") -> Optional[Dict[str, Any]]:
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).get_report(report_id)
+
+
 def list_code_review_gold_profiles() -> Dict[str, Any]:
     """噪声档位 → autoreview 参数映射。"""
     from core.harness.evaluation.code_review_gold import list_profiles

@@ -66,6 +66,14 @@ grep -q 'bootstrap_e3_gold' aiPlat-core/core/apps/eval/service/gold_bootstrap.py
   || fail "bootstrap_e3_gold missing"
 grep -q 'bootstrap-e3' aiPlat-platform/apps/eval/api/store_api.py \
   || fail "bootstrap-e3 API not wired"
+[[ -f aiPlat-core/core/apps/eval/service/judge_v1.py ]] \
+  || fail "missing EVAL_V1 E4 judge_v1"
+grep -q 'run_e4_calibration' aiPlat-core/core/apps/eval/service/judge_v1.py \
+  || fail "run_e4_calibration missing"
+grep -q 'calibrate-e4' aiPlat-platform/apps/eval/api/store_api.py \
+  || fail "calibrate-e4 API not wired"
+[[ -f packages/aiplat-evaluation/contracts/schemas/eval_calibration.schema.json ]] \
+  || fail "missing eval_calibration.schema.json"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-08.md ]] || fail "missing STAGING_REVIEW 2026-11-08"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-15.md ]] || fail "missing STAGING_REVIEW 2026-11-15"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-22.md ]] || fail "missing STAGING_REVIEW 2026-11-22"

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiplat.local/schemas/evaluation/eval_calibration.schema.json",
+  "title": "EvalCalibrationV0",
+  "description": "EVAL_V1 E4 calibration report metrics (engineering only; not accuracy).",
+  "type": "object",
+  "required": ["schema_version", "judge_id", "k", "accuracy_claim"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "eval.calibration.v0" },
+    "judge_id": { "type": "string", "minLength": 1 },
+    "k": { "type": "integer", "minimum": 1 },
+    "task_count": { "type": "integer" },
+    "pass_rate": { "type": ["number", "null"] },
+    "mean_score": { "type": ["number", "null"] },
+    "k_repeat_stdev_mean": { "type": "number" },
+    "k_repeat_stdev_gate_v0": { "type": "boolean" },
+    "ece": { "type": ["number", "null"] },
+    "kappa": { "type": ["number", "null"] },
+    "accuracy_claim": { "type": "boolean", "const": false },
+    "bias_by_profile": { "type": "object" },
+    "note": { "type": "string" }
+  },
+  "additionalProperties": true
+}

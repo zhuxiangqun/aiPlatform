@@ -148,3 +148,48 @@ async def get_e3_status(
     from core.api.core_facade import eval_e3_status
 
     return {"data": eval_e3_status(tenant_id=tenant_id)}
+
+
+@router.get("/judges", response_model=ListResponse)
+async def list_judges(
+    tenant_id: str = "eval-v1",
+    limit: int = Query(50, ge=1, le=200),
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    from core.api.core_facade import eval_list_judges
+
+    items = eval_list_judges(tenant_id=tenant_id, limit=limit)
+    return {"data": {"items": items, "total": len(items)}}
+
+
+@router.post("/calibrate-e4", response_model=ItemResponse)
+async def calibrate_e4(
+    body: Optional[Dict[str, Any]] = None,
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """EVAL_V1 E4: judge v1 k-repeat calibration report (not an accuracy claim)."""
+    from core.api.core_facade import eval_run_e4_calibration
+
+    body = body or {}
+    try:
+        out = eval_run_e4_calibration(
+            tenant_id=str(body.get("tenant_id") or "eval-v1"),
+            set_id=str(body.get("set_id") or ""),
+            k=int(body.get("k") or 3),
+            limit=int(body.get("limit") or 500),
+        )
+    except ValueError as e:
+        return {"data": {"ok": False, "error": str(e)}}
+    return {"data": out}
+
+
+@router.get("/reports/{report_id}", response_model=ItemResponse)
+async def get_store_report(
+    report_id: str,
+    tenant_id: str = "eval-v1",
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    from core.api.core_facade import eval_get_report
+
+    row = eval_get_report(report_id, tenant_id=tenant_id)
+    return {"data": row or {"error": "not_found", "id": report_id}}

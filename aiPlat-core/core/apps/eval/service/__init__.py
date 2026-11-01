@@ -11,6 +11,11 @@ from core.apps.eval.service.gold_bootstrap import (
     E3_MIN_RUNNABLE,
     E3_V0_LOCK_TARGET,
 )
+from core.apps.eval.service.judge_v1 import (
+    JUDGE_V1_ID,
+    register_judge_v1,
+    run_e4_calibration,
+)
 
 __all__ = [
     "EvalStore",
@@ -21,4 +26,7 @@ __all__ = [
     "e3_status",
     "E3_MIN_RUNNABLE",
     "E3_V0_LOCK_TARGET",
+    "JUDGE_V1_ID",
+    "register_judge_v1",
+    "run_e4_calibration",
 ]

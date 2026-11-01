@@ -414,6 +414,164 @@ class EvalStore:
             "created_at": row["created_at"],
         }
 
+    # ── judges / judgments / reports (E4) ─────────────────
+
+    def upsert_judge(
+        self,
+        *,
+        judge_id: str,
+        model: str = "",
+        prompt_version: str = "",
+        calibration: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        now = _now()
+        with self._connect() as conn:
+            exists = conn.execute(
+                "SELECT 1 FROM eval_judges WHERE id=?", (judge_id,)
+            ).fetchone()
+            if exists:
+                conn.execute(
+                    "UPDATE eval_judges SET model=?, prompt_version=?, calibration_json=? WHERE id=?",
+                    (model, prompt_version, _dumps(calibration or {}), judge_id),
+                )
+            else:
+                conn.execute(
+                    "INSERT INTO eval_judges(id, model, prompt_version, calibration_json, created_at) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (judge_id, model, prompt_version, _dumps(calibration or {}), now),
+                )
+            conn.commit()
+        return self.get_judge(judge_id) or {"id": judge_id}
+
+    def get_judge(self, judge_id: str) -> Optional[Dict[str, Any]]:
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM eval_judges WHERE id=?", (judge_id,)).fetchone()
+        if not row:
+            return None
+        return {
+            "id": row["id"],
+            "model": row["model"],
+            "prompt_version": row["prompt_version"],
+            "calibration": _loads(row["calibration_json"]),
+            "created_at": row["created_at"],
+        }
+
+    def list_judges(self, *, limit: int = 50) -> List[Dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM eval_judges ORDER BY created_at DESC LIMIT ?",
+                (max(1, min(int(limit), 200)),),
+            ).fetchall()
+        return [
+            {
+                "id": r["id"],
+                "model": r["model"],
+                "prompt_version": r["prompt_version"],
+                "calibration": _loads(r["calibration_json"]),
+                "created_at": r["created_at"],
+            }
+            for r in rows
+        ]
+
+    def create_judgment(
+        self,
+        *,
+        run_id: str,
+        judge_id: str,
+        score: Optional[float] = None,
+        passed: Optional[bool] = None,
+        reason: str = "",
+        evidence: Optional[Dict[str, Any]] = None,
+        confidence: Optional[float] = None,
+        judgment_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        jid = judgment_id or _new_id("jdg")
+        now = _now()
+        with self._connect() as conn:
+            if not conn.execute("SELECT 1 FROM eval_runs WHERE id=?", (run_id,)).fetchone():
+                raise ValueError(f"unknown run_id: {run_id}")
+            conn.execute(
+                "INSERT INTO eval_judgments(id, run_id, judge_id, score, pass, reason, "
+                "evidence_json, confidence, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    jid,
+                    run_id,
+                    judge_id,
+                    score,
+                    None if passed is None else (1 if passed else 0),
+                    reason or "",
+                    _dumps(evidence or {}),
+                    confidence,
+                    now,
+                ),
+            )
+            conn.commit()
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM eval_judgments WHERE id=?", (jid,)).fetchone()
+        assert row is not None
+        return {
+            "id": row["id"],
+            "run_id": row["run_id"],
+            "judge_id": row["judge_id"],
+            "score": row["score"],
+            "pass": None if row["pass"] is None else bool(row["pass"]),
+            "reason": row["reason"],
+            "evidence": _loads(row["evidence_json"]),
+            "confidence": row["confidence"],
+            "created_at": row["created_at"],
+        }
+
+    def create_report(
+        self,
+        *,
+        run_ids: Optional[Sequence[str]] = None,
+        metrics: Optional[Dict[str, Any]] = None,
+        slices: Optional[Dict[str, Any]] = None,
+        failures: Optional[list] = None,
+        report_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        rid = report_id or _new_id("rpt")
+        now = _now()
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO eval_reports(id, run_ids_json, metrics_json, slices_json, "
+                "failures_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    rid,
+                    _dumps(list(run_ids or [])),
+                    _dumps(metrics or {}),
+                    _dumps(slices or {}),
+                    _dumps(list(failures or [])),
+                    now,
+                ),
+            )
+            conn.commit()
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM eval_reports WHERE id=?", (rid,)).fetchone()
+        assert row is not None
+        return {
+            "id": row["id"],
+            "run_ids": _loads(row["run_ids_json"], []),
+            "metrics": _loads(row["metrics_json"]),
+            "slices": _loads(row["slices_json"]),
+            "failures": _loads(row["failures_json"], []),
+            "created_at": row["created_at"],
+        }
+
+    def get_report(self, report_id: str) -> Optional[Dict[str, Any]]:
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM eval_reports WHERE id=?", (report_id,)).fetchone()
+        if not row:
+            return None
+        return {
+            "id": row["id"],
+            "run_ids": _loads(row["run_ids_json"], []),
+            "metrics": _loads(row["metrics_json"]),
+            "slices": _loads(row["slices_json"]),
+            "failures": _loads(row["failures_json"], []),
+            "created_at": row["created_at"],
+        }
+
 
 def get_eval_store(*, tenant_id: str = "", db_path: Optional[str] = None) -> EvalStore:
     return EvalStore(db_path=db_path, tenant_id=tenant_id)
