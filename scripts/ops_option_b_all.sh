@@ -38,6 +38,9 @@ bash packages/aiplat-pi-runtime/scripts/d2_admin_check.sh || fail "pi d2_admin_c
 # 3) FDE Field local install/meta/backup/rollback
 bash packages/aiplat-fde/scripts/d1_local_regression.sh || fail "fde d1_local_regression"
 
+# 3b) aiPlat Central D2 Thin (compat/security/N-1; cutover stays false)
+bash packages/aiplat-central/scripts/d2_local_closeout.sh || fail "aiplat d2_local_closeout"
+
 # 4) STATUS↔manifest honesty
 "$PY" scripts/check_five_products_status_sync.py || fail "STATUS sync"
 

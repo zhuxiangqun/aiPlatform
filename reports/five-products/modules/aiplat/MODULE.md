@@ -119,8 +119,18 @@ Package / module / SSOT locked at **0.1.0**. PG/HA still Draft ADR.
 | Runbooks | `packages/aiplat-central/docs/pg_ha/` |
 | Cutover | `CUTOVER_CHECKLIST.md` → `cutover_authorized=false` until green |
 
+## D2 Thin local closeout — done (engineering)
+
+| Item | Path |
+|------|------|
+| Scope | `packages/aiplat-central/docs/D2_THIN.md` |
+| Closeout | `packages/aiplat-central/scripts/d2_local_closeout.sh` |
+| Evidence | `reports/five-products/ops/AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md` |
+
+Aggregates A2 + compat + security + sibling D2 packs + install/N-1 + PG/HA local rehearsal; **cutover stays false**.
+
 ## Next
 
-- D2++: deeper SOC/admin pack
-- **PG/HA 切流演练**勾齐 checklist 后再改生产默认库
+- D2++: deeper SOC/admin pack（可选）
+- **PG/HA 切流**勾齐 checklist + production_signed live 后再 authorize
 - Field compose 长驻另批

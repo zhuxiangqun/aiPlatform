@@ -10,7 +10,7 @@
 
 | Capability | Autonomy | Delivery | Mode | Package | Healthz | ADR / notes |
 |------------|----------|----------|------|---------|---------|-------------|
-| **aiplat** | **A0** | **D2** | standalone (thin) | `aiplat-central` + platform | `/api/core/healthz` | PG/HA Accepted（有条件）；`cutover=false` |
+| **aiplat** | **A0** | **D2** (+ Thin local) | standalone (thin) | `aiplat-central` + platform | `/api/core/healthz` | PG/HA Accepted（有条件）；`cutover=false`；[D2 Thin](../../packages/aiplat-central/docs/D2_THIN.md) |
 | **pi** | **A3** (Thin) | **D1** (+ D2 admin / D3 prep) | edge | `aiplat-pi-runtime` **0.1.0** | `/healthz` | ADR-08 · [D3 Accepted（有条件）](./ADR-PI-D3.md)；`d3_production=false` |
 | **ontology** | **A2** | **D1** (D1c + D2 pack) | **cohost** | `aiplat-ontology` **0.1.0** | `/ontology/healthz` | [A3 Accepted（有条件）](./ADR-ONTOLOGY-A3.md)；`process_split=false` |
 | **evaluation** | **A2** | **D1** (D1c + D2 pack) | **cohost** | `aiplat-evaluation` **0.1.0** | `/eval/healthz` | [A3 Accepted（有条件）](./ADR-EVALUATION-A3.md)；`process_split=false` |
@@ -56,6 +56,7 @@ bash scripts/five_products_gate.sh
 | FDE Field D2 ops pack | [`ops/FDE_FIELD_D2_LOCAL_CLOSEOUT.md`](./ops/FDE_FIELD_D2_LOCAL_CLOSEOUT.md) **PASS** |
 | Ontology D2 cohost pack | [`ops/ONTOLOGY_D2_LOCAL_CLOSEOUT.md`](./ops/ONTOLOGY_D2_LOCAL_CLOSEOUT.md) **PASS** |
 | Evaluation D2 cohost pack | [`ops/EVALUATION_D2_LOCAL_CLOSEOUT.md`](./ops/EVALUATION_D2_LOCAL_CLOSEOUT.md) **PASS** |
+| aiPlat Central D2 Thin | [`ops/AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md`](./ops/AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md) **PASS**（cutover REFUSE） |
 | Local staging 总册 | [`ops/LOCAL_STAGING.md`](./ops/LOCAL_STAGING.md) · 方案 B [`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md) |
 | Option B 最近全跑 | [`ops/OPTION_B_LAST_RUN.md`](./ops/OPTION_B_LAST_RUN.md) **PASS** |
 | STATUS↔manifest | `python3 scripts/check_five_products_status_sync.py` |

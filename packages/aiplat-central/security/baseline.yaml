@@ -292,6 +292,33 @@ checks:
     path: packages/aiplat-central/scripts/a2_version_check.sh
     must_contain:
       - "a2 version check"
+  - id: central_d2_thin_doc
+    description: Central D2 Thin scope doc
+    path: packages/aiplat-central/docs/D2_THIN.md
+    must_contain:
+      - "cutover_authorized=true"
+      - "D2 Thin"
+  - id: central_d2_local_closeout
+    description: Central D2 Thin local closeout never authorizes cutover
+    path: packages/aiplat-central/scripts/d2_local_closeout.sh
+    must_contain:
+      - "cutover_authorized"
+      - "Never sets cutover_authorized=true"
+  - id: fde_d2_admin_pack
+    description: FDE Field D2 admin pack present
+    path: packages/aiplat-fde/scripts/d2_admin_check.sh
+    must_contain:
+      - "d2_admin_check"
+  - id: ontology_d2_admin_pack
+    description: Ontology D2 cohost admin pack present
+    path: packages/aiplat-ontology/scripts/d2_admin_check.sh
+    must_contain:
+      - "d2_admin_check"
+  - id: evaluation_d2_admin_pack
+    description: Evaluation D2 cohost admin pack present
+    path: packages/aiplat-evaluation/scripts/d2_admin_check.sh
+    must_contain:
+      - "d2_admin_check"
   - id: capability_version_resolver
     description: runtime healthz version resolver
     path: aiPlat-core/core/harness/meta/capability_version.py

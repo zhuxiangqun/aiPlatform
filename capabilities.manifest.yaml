@@ -109,6 +109,7 @@ capabilities:
     cutover_authorized: false
     notes:
       - "D2 thin = central package + compat/security pack; PG/HA cutover still unauthorized"
+      - "D2 Thin local closeout PASS (ops/AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md); cutover_authorized remains false"
 
 shared_kernel:
   - contracts

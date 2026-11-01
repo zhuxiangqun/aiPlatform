@@ -31,6 +31,7 @@
 | Pi D1 | `d1_local_regression.sh` | [`PI_D1_LOCAL_REGRESSION.md`](./PI_D1_LOCAL_REGRESSION.md) |
 | Pi D2 | `d2_admin_check.sh` | [`PI_D2_ADMIN_LOCAL.md`](./PI_D2_ADMIN_LOCAL.md) |
 | FDE Field | `d1_local_regression` + `d2_local_closeout` | `local-fde-*.json` · [`FDE_FIELD_D2_LOCAL_CLOSEOUT.md`](./FDE_FIELD_D2_LOCAL_CLOSEOUT.md) |
+| aiPlat Central D2 Thin | `d2_local_closeout.sh` | [`AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md`](./AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md) · cutover REFUSE |
 
 一键：
 

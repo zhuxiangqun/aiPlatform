@@ -20,6 +20,11 @@ bash packages/aiplat-central/scripts/d2_compat_check.sh
 echo "== D2+ security =="
 bash packages/aiplat-central/scripts/d2_security_check.sh
 
+echo "== aiPlat Central D2 Thin scope =="
+test -f packages/aiplat-central/docs/D2_THIN.md
+test -x packages/aiplat-central/scripts/d2_local_closeout.sh
+grep -q 'Never sets cutover_authorized=true' packages/aiplat-central/scripts/d2_local_closeout.sh
+
 echo "== Pi D2 admin/security pack =="
 bash packages/aiplat-pi-runtime/scripts/d2_admin_check.sh
 
