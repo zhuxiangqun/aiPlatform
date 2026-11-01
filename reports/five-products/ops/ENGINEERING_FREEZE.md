@@ -33,7 +33,7 @@ bash scripts/five_products_gate.sh   # 需本机 listen（非沙箱）
 
 | 项 | 说明 |
 |----|------|
-| 真实预发 | 11-08 → continue_defer；下次 [`STAGING_REVIEW_2026-11-15.md`](./STAGING_REVIEW_2026-11-15.md) · 供给包 [`STAGING_PROVISIONING.md`](./STAGING_PROVISIONING.md) |
+| 真实预发 | 11-08/11-15 → **continue_defer**；下次 [`STAGING_REVIEW_2026-11-22.md`](./STAGING_REVIEW_2026-11-22.md) · 供给包备查 [`STAGING_PROVISIONING.md`](./STAGING_PROVISIONING.md)（不实施直至有主机） |
 | live → sign → authorize | [`OPS_HANDOFF.md`](../OPS_HANDOFF.md) |
 | Field compose 长驻 | 草案 **v2** [`ADR-DRAFT-fde-field-compose.md`](../ADR-DRAFT-fde-field-compose.md)（**未 Accepted** · 不实施） |
 | D2++ deeper SOC | ✅ 本地 schema 硬核已闭合；真实 SIEM/webhook 仍须 staging |

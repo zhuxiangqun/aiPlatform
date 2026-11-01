@@ -45,8 +45,8 @@ bash scripts/ops_live_status.sh --json   # 期望全部 ready_to_authorize=false
 
 ## 下一步（非本收口）
 
-1. 复审清单：[`STAGING_REVIEW_2026-11-08.md`](./STAGING_REVIEW_2026-11-08.md)  
-2. 真实预发：[`STAGING_READY.md`](./STAGING_READY.md) → `staging_ready=true`  
+1. 复审：[`STAGING_REVIEW_2026-11-15.md`](./STAGING_REVIEW_2026-11-15.md) → **continue_defer**；下次 [`STAGING_REVIEW_2026-11-22.md`](./STAGING_REVIEW_2026-11-22.md)
+2. 真实预发（可选）：[`STAGING_READY.md`](./STAGING_READY.md) → `staging_ready=true`（当前 **false**；不买服务器）
 3. 按 [`OPS_HANDOFF.md`](../OPS_HANDOFF.md) live → sign → authorize  
 4. 本地工程冻结：[`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md) · `bash scripts/ops_engineering_freeze_check.sh`
 

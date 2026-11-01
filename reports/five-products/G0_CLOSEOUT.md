@@ -18,7 +18,7 @@
 | unit | **2735** passed / 11 skipped / 0 failed（初版锚点） |
 | Tier A 逃逸 | **0**（`paths.py` SSOT fallback 除外） |
 | STATUS↔manifest | `check_five_products_status_sync.py` PASS |
-| 硬门 | 全 false；`staging_ready=false`；defer → **2026-11-15** |
+| 硬门 | 全 false；`staging_ready=false`；defer → **2026-11-22** |
 | 工程环境 | **方案 B** 本机 VM/Docker（[`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md)） |
 
 ## 正式例外：P0-3′
@@ -96,7 +96,7 @@ bash scripts/five_products_gate.sh
 3. ✅ **Plan V2.1 + shared packaging base**  
 4. ✅ **D2 local perf baseline**  
 5. ✅ **Engineering freeze** + 显式解冻 D3/E2E → 完成后 **再冻结**  
-6. ✅ **2026-11-08 预发复审** → **continue_defer**；下次 **2026-11-15**  
+6. ✅ **2026-11-08 / 11-15 预发复审** → **continue_defer**；下次 **2026-11-22**  
 7. ✅ **Pi D2++ SOC** schema 硬核（`d2_soc_deeper_check`）  
 8. ✅ **Field compose ADR 草案 v2**（未 Accepted）  
-9. ⏳ **真实预发供给**（[`STAGING_PROVISIONING.md`](./ops/STAGING_PROVISIONING.md)）→ 11-15 复审  
+9. ⏳ **真实预发供给**（可选；[`STAGING_PROVISIONING.md`](./ops/STAGING_PROVISIONING.md)）— 当前决策：**不实施 / 不买服务器**  

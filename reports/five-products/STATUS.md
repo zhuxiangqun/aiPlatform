@@ -5,7 +5,7 @@
 > **计划**：[`five-capability-independent-engineering-plan.md`](../../docs/architecture/plans/five-capability-independent-engineering-plan.md) **V2.2** · packaging base [`templates/module/PACKAGING_BASE.md`](../../templates/module/PACKAGING_BASE.md)。  
 > **冻结**：[`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md)（D3/E2E 完成后再冻结；authorize 仍冻）。  
 > 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md) · 本地收口 [`ops/ENGINEERING_LOCAL_CLOSEOUT.md`](./ops/ENGINEERING_LOCAL_CLOSEOUT.md)。  
-> **运维决策（2026-11-01）**：**运维路径 B — 正式 defer**；`staging_ready=false`（[`ops/STAGING_READY.md`](./ops/STAGING_READY.md)）。下次复审：**2026-11-15**。  
+> **运维决策（2026-11-01）**：**运维路径 B — 继续 defer**；`staging_ready=false`（[`ops/STAGING_READY.md`](./ops/STAGING_READY.md) · [`ops/LOCAL_DEFER.md`](./ops/LOCAL_DEFER.md)）。下次复审：**2026-11-22**。  
 > **工程环境**：**方案 B 本机 VM/Docker 全轨**（[`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md)）· `bash scripts/ops_option_b_all.sh`。  
 > Blocker：缺**真实**预发 DSN/OIDC（本机 local ≠ staging）；kickoff exit 2 = 硬门按设计。  
 > **Accepted（有条件）** ≠ 生产授权；硬门全 **false**。
@@ -63,7 +63,8 @@ bash scripts/five_products_gate.sh
 | D2 local perf baseline | [`ops/PERF_BASELINE_LOCAL.md`](./ops/PERF_BASELINE_LOCAL.md) **PASS**（contract budgets；非生产 SLA） |
 | Engineering freeze | [`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md) |
 | Staging review 11-08 | [`ops/STAGING_REVIEW_2026-11-08.md`](./ops/STAGING_REVIEW_2026-11-08.md) → **continue_defer** |
-| Staging review 11-15 草稿 | [`ops/STAGING_REVIEW_2026-11-15.md`](./ops/STAGING_REVIEW_2026-11-15.md) · 供给 [`ops/STAGING_PROVISIONING.md`](./ops/STAGING_PROVISIONING.md) |
+| Staging review 11-15 | [`ops/STAGING_REVIEW_2026-11-15.md`](./ops/STAGING_REVIEW_2026-11-15.md) → **continue_defer**（提前开审） |
+| Staging review 11-22 草稿 | [`ops/STAGING_REVIEW_2026-11-22.md`](./ops/STAGING_REVIEW_2026-11-22.md) · 供给 [`ops/STAGING_PROVISIONING.md`](./ops/STAGING_PROVISIONING.md)（不实施直至有主机） |
 | D3 local acceptance | [`ops/D3_LOCAL_ACCEPTANCE.md`](./ops/D3_LOCAL_ACCEPTANCE.md)（解冻后跑 `ops_d3_local_acceptance_all.sh`） |
 | Cross-capability E2E | [`ops/FIVE_PRODUCTS_E2E_LOCAL.md`](./ops/FIVE_PRODUCTS_E2E_LOCAL.md) · `ops_five_products_e2e_local.sh` |
 | Local staging 总册 | [`ops/LOCAL_STAGING.md`](./ops/LOCAL_STAGING.md) · 方案 B [`ops/OPTION_B_LOCAL_VM.md`](./ops/OPTION_B_LOCAL_VM.md) |

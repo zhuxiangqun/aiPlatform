@@ -47,8 +47,11 @@ print("PASS: ops_live_status all ready_to_authorize=false")
 [[ -f reports/five-products/ops/ENGINEERING_FREEZE.md ]] || fail "missing ENGINEERING_FREEZE.md"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-08.md ]] || fail "missing STAGING_REVIEW 2026-11-08"
 [[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-15.md ]] || fail "missing STAGING_REVIEW 2026-11-15"
+[[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-22.md ]] || fail "missing STAGING_REVIEW 2026-11-22"
 grep -q 'staging_ready=false' reports/five-products/ops/STAGING_READY.md \
   || fail "STAGING_READY must remain false until review"
+grep -q 'continue_defer' reports/five-products/ops/STAGING_REVIEW_2026-11-15.md \
+  || fail "STAGING_REVIEW_2026-11-15 must record continue_defer"
 
 pass "engineering freeze check"
-echo "NOTE: next ops milestone = 2026-11-15 staging review (or continue_defer) + Option B local."
+echo "NOTE: next ops milestone = 2026-11-22 staging review (or continue_defer) + Option B local."

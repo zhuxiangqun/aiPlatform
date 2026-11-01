@@ -1,8 +1,9 @@
 # Staging 供给包（远程预发 · 非本机 Option B）
 
-> **用途**：旧笔记本 / 闲置机 / 免费云上搭**独立**预发，供 11-15 复审填 [`STAGING_READY.md`](./STAGING_READY.md)。  
+> **用途**：旧笔记本 / 闲置机 / 免费云上搭**独立**预发，供复审填 [`STAGING_READY.md`](./STAGING_READY.md)。  
 > **不是** [`OPTION_B_LOCAL_VM.md`](./OPTION_B_LOCAL_VM.md)。证据环境名必须是 `staging`（或 `prod-canary`），**禁止** `local` / `scaffold`。  
-> **不**自动改 `staging_ready`；齐套后人工更新 STAGING_READY + 复审 Outcome。
+> **不**自动改 `staging_ready`；齐套后人工更新 STAGING_READY + 复审 Outcome。  
+> **2026-11-01 决策**：继续 defer — **本包不实施、不买服务器**；下次看 [`STAGING_REVIEW_2026-11-22.md`](./STAGING_REVIEW_2026-11-22.md)。
 
 ## 目标拓扑（最小）
 
@@ -53,4 +54,4 @@ Compose 可参考本机 `compose.local-staging.yml`，但必须：
 - [ ] 备份/快照证明（截图或脚本输出）  
 - [ ] 变更窗口 + 回滚预案一段话  
 
-齐套后打开 [`STAGING_REVIEW_2026-11-15.md`](./STAGING_REVIEW_2026-11-15.md) 填 Outcome。
+齐套后打开 [`STAGING_REVIEW_2026-11-22.md`](./STAGING_REVIEW_2026-11-22.md) 填 Outcome。
