@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-01T11:10:10+08:00",
+  "reviewed_at": "2026-11-01T11:10:52+08:00",
   "base_ref": "origin/main",
-  "merge_base": "1992e8e18fa4b604ce641c852ffc7ceba2c59e0e",
-  "diff_sha256": "493b4a0617a5a53408e4523591f20999cecf338508498bc5156a3d6cfebc5a8e",
-  "head_sha": "9fcbedda107a018866f3c92fffa76141b125baac",
+  "merge_base": "fc2da56783f69262f4b8f45fb9a7096c754ecf62",
+  "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "head_sha": "fc2da56783f69262f4b8f45fb9a7096c754ecf62",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs/ops + SOC schema harden + G0 HEAD CI refresh. No authorize path. Local lock only."
+  "note": "Post-push receipt refresh on clean HEAD after G0/SOC/re-freeze. Local lock only."
 }
