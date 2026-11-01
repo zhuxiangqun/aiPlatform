@@ -1,0 +1,20 @@
+{
+  "kind": "five_products_e2e_local",
+  "at": "20261101T032316Z",
+  "environment": "local",
+  "steps": [
+    "status_sync",
+    "packaging",
+    "perf",
+    "a2",
+    "compat",
+    "slice_e2e_lock_service",
+    "slice_e2e_disconnect",
+    "ontology_smoke",
+    "evaluation_smoke",
+    "fde_smoke",
+    "authorize_refused"
+  ],
+  "production_signed": false,
+  "staging_ready": false
+}

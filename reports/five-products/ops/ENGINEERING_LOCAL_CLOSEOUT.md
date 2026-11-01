@@ -29,7 +29,7 @@
 | Option B all | **PASS**（`OPTION_B_LAST_RUN.md` · docker PGHA） |
 | five_products_gate | **PASS**（含 authorize REFUSE） |
 | STATUS↔manifest sync | **PASS**（`scripts/check_five_products_status_sync.py`） |
-| G0 HEAD CI | **PASS**（`G0_CLOSEOUT.md` · `1992e8e1` · 47 提交） |
+| G0 HEAD CI | **PASS**（`G0_CLOSEOUT.md` · `66a6e07a` · **52** 提交 · 含 D2++ SOC） |
 | 四轨 `ready_to_authorize` | **false** |
 | 硬门 cutover / process_split / d3_production | **false** |
 

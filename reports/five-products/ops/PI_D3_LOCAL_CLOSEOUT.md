@@ -1,6 +1,6 @@
 # Pi D3 Local Closeout
 
-- recorded_at: `20261101T020507Z`
+- recorded_at: `20261101T031919Z`
 - environment: `local` (Option B · not staging)
 - result: **PASS** (engineering local only)
 - `d3_production_authorized`: **false**
@@ -17,9 +17,9 @@ bash packages/aiplat-pi-runtime/scripts/d3_local_closeout.sh
 
 | Item | File |
 |------|------|
-| Bundle checksum + pointer rollback | `local-rehearsal-20261101T020507Z.json` |
-| SOC file-sink (enterprise opt-in) | `soc-rehearsal-20261101T020508Z.json` |
-| N-1 install/upgrade/runtime rollback | `n1-rehearsal-20261101T020508Z.json` |
+| Bundle checksum + pointer rollback | `local-rehearsal-20261101T031919Z.json` |
+| SOC file-sink (enterprise opt-in) | `soc-rehearsal-20261101T031919Z.json` |
+| N-1 install/upgrade/runtime rollback | `n1-rehearsal-20261101T031919Z.json` |
 | Prep status | `packages/aiplat-pi-runtime/docs/d3/PREP_STATUS.json` |
 | Checklist | `packages/aiplat-pi-runtime/docs/d3/D3_CHECKLIST.md` |
 

@@ -1,0 +1,25 @@
+{
+  "kind": "pi_d3_soc_local_file_sink_not_production",
+  "at": "20261101T031919Z",
+  "environment": "local",
+  "severity": "warn",
+  "actor": "pi-d3-soc-rehearsal",
+  "sink": "/tmp/aiplat-pi-d3-soc.uSjomd/soc.jsonl",
+  "events_sample": [
+    {
+      "kind": "pi.d3.alert",
+      "severity": "warn",
+      "actor": "pi-d3-soc-rehearsal",
+      "environment": "local",
+      "msg": "local-sink-only",
+      "outbound_network": false
+    }
+  ],
+  "enterprise_off_drops": true,
+  "enterprise_on_local_sink": true,
+  "outbound_network": false,
+  "production_soc": false,
+  "production_signed": false,
+  "note": "File sink mock only; checklist #5 partial until live SOC.",
+  "workdir": "/tmp/aiplat-pi-d3-soc.uSjomd"
+}

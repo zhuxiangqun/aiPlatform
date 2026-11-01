@@ -12,8 +12,9 @@
 |----|-----|
 | 基线起点 | `b46e286` |
 | 初版 CI 锚点 | `17f21d67`（Option B lock-in · **19** 提交） |
-| **现行 CI 锚点（HEAD）** | **`1992e8e1`**（D3 UAT polish + receipt） |
-| 提交数（HEAD） | **`git rev-list --count b46e286..1992e8e1` → 47** |
+| 中间锚点 | `1992e8e1`（D3 UAT polish · **47** 提交） |
+| **现行 CI 锚点（HEAD）** | **`66a6e07a`**（continue_defer receipt · 含 D2++ SOC `9fcbedda`） |
+| 提交数（HEAD） | **`git rev-list --count b46e286..66a6e07a` → 52** |
 | collect | **3209** / 0 error（G0_REPORT 2026-11-01；初版锚点） |
 | unit | **2735** passed / 11 skipped / 0 failed（初版锚点） |
 | Tier A 逃逸 | **0**（`paths.py` SSOT fallback 除外） |
@@ -43,16 +44,27 @@ G0_REPORT 第 16 行已改为「旧 D0 作废；D1c 保留为 cohost 别名」�
 
 defect-gate receipt **不能**替代 CI。
 
-### HEAD `1992e8e1`（47 提交 · 现行）
+### HEAD `66a6e07a`（52 提交 · 现行 · 覆盖 D2++ SOC）
 
 | Workflow | 结论 | Run |
 |----------|------|-----|
-| **CI**（unit/collect 主门） | **success** | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488889 |
+| **CI**（unit/collect 主门） | **success** | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417524 |
+| Architecture Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417471 |
+| L5 Verification Suite | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417553 |
+| Slice E2E (live evidence) | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417609 |
+| AI Penetration Test | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417600 |
+| aiPlat Contracts Guard | **success** | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41268417570 |
+
+### 中间锚点 `1992e8e1`（47 提交 · 历史）
+
+| Workflow | 结论 | Run |
+|----------|------|-----|
+| **CI** | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488889 |
 | Architecture Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488885 |
 | L5 Verification Suite | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488882 |
-| Slice E2E (live evidence) | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488887 |
+| Slice E2E | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488887 |
 | AI Penetration Test | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488902 |
-| aiPlat Contracts Guard | **success** | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488906 |
+| aiPlat Contracts Guard | success | https://github.com/zhuxiangqun/aiPlatform/actions/runs/41263488906 |
 
 ### 初版锚点 `17f21d67`（19 提交 · 历史）
 
@@ -68,7 +80,7 @@ defect-gate receipt **不能**替代 CI。
 复验命令：
 
 ```bash
-git rev-list --count b46e286..HEAD   # expect 47+
+git rev-list --count b46e286..HEAD   # expect 52+
 python3 scripts/check_five_products_status_sync.py
 gh run list --branch main --limit 10
 bash scripts/ops_engineering_freeze_check.sh
@@ -79,8 +91,8 @@ bash scripts/five_products_gate.sh
 
 | 检查 | 结果 |
 |------|------|
-| `ops_engineering_freeze_check.sh` | **PASS**（authorize 全 REFUSE） |
-| `five_products_gate.sh` | **PASS**（含 D3/E2E local） |
+| `ops_engineering_freeze_check.sh` | **PASS**（authorize 全 REFUSE · 下次里程碑 11-22） |
+| `five_products_gate.sh` | **PASS**（2026-11-01 复跑 · 含 D3/E2E local） |
 | `ops_option_b_all.sh` | **PASS**（`pgha_mode=docker` · `OPTION_B_LAST_RUN.md`） |
 
 ## 非结论
@@ -91,7 +103,7 @@ bash scripts/five_products_gate.sh
 
 ## 下一步（基线 backlog）
 
-1. ✅ HEAD **CI + Contracts Guard** 均 **success**（47 提交 · 上表）  
+1. ✅ HEAD **CI + Contracts Guard** 均 **success**（**52** 提交 · `66a6e07a` 上表）  
 2. ✅ Pi D3 本地收尾 → FDE Field D2 → Eval/Onto D2 → aiPlat D2 thin  
 3. ✅ **Plan V2.1 + shared packaging base**  
 4. ✅ **D2 local perf baseline**  
