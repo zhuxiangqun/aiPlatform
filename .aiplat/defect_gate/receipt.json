@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T20:17:07.364080+08:00",
+  "reviewed_at": "2026-11-02T20:31:44.673848+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "293804abbcc15dcdbb9dbb177e6cfc655a440041e188809212239e0b04a5f65c",
-  "head_sha": "21cc5baa508d057c386647c69cf19b81c89ee7cd",
+  "diff_sha256": "9a44ea62086c9bc675f057115599a92958e71658438c4e2590f27262ed660cf7",
+  "head_sha": "0bb984dcfdb45135cfed6980cbc045ca519e3026",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "B3-L closeout; probe body forward fix; skill_suite still denied; sandbox_real_isolation=false."
+  "note": "skill_suite fixture-only; tools still sandbox_required; skill_suite_real_tools=false."
 }
