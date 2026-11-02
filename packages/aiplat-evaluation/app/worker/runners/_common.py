@@ -1,8 +1,10 @@
-"""Shared result envelope for B2-L runners."""
+"""Shared result envelope for eval runners (+ P1 scoring semantics)."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
+
+from app.scoring.semantics import enrich_runner_result
 
 
 def _now() -> str:
@@ -19,7 +21,7 @@ def runner_result(
     detail: str = "",
     mode: str = "local_deterministic",
 ) -> Dict[str, Any]:
-    return {
+    raw = {
         "ok": bool(ok),
         "runner_id": runner_id,
         "job_id": job_id,
@@ -31,3 +33,4 @@ def runner_result(
         "process_split_authorized": False,
         "accuracy_claim": False,
     }
+    return enrich_runner_result(raw)

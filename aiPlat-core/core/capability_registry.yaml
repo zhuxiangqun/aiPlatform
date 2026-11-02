@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1653
+total_capabilities: 1658
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 412
+    caps_count: 417
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1472,6 +1472,26 @@ domains:
         type: "script"
         signature: "packages/aiplat-evaluation/scripts/s1_local_gate.sh"
         module: "packages/aiplat-evaluation/scripts/s1_local_gate.sh"
+      - symbol: "classify_metric"
+        type: "function"
+        signature: "classify_metric(name)→MetricFamily"
+        module: "packages/aiplat-evaluation/app/scoring/semantics.py"
+      - symbol: "build_scoring_block"
+        type: "function"
+        signature: "build_scoring_block(metrics, g2b_unlocked=False)→dict"
+        module: "packages/aiplat-evaluation/app/scoring/semantics.py"
+      - symbol: "enrich_runner_result"
+        type: "function"
+        signature: "enrich_runner_result(result)→dict"
+        module: "packages/aiplat-evaluation/app/scoring/semantics.py"
+      - symbol: "prompt_eval_p1_metrics"
+        type: "function"
+        signature: "prompt_eval_p1_metrics(...)→dict"
+        module: "packages/aiplat-evaluation/app/scoring/semantics.py"
+      - symbol: "aiplat_eval_p1_local_gate"
+        type: "script"
+        signature: "packages/aiplat-evaluation/scripts/p1_local_gate.sh"
+        module: "packages/aiplat-evaluation/scripts/p1_local_gate.sh"
       - symbol: "aiplat_fde_d1_prep_install"
         type: "script"
         signature: "packages/aiplat-fde/scripts/d1_install.sh [--smoke] (ADR draft)"
