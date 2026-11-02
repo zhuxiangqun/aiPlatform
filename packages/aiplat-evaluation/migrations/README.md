@@ -15,5 +15,6 @@ bash packages/aiplat-evaluation/scripts/migrate_local.sh
 | `0001_eval_store_v0.sql` | `eval.store.v0` |
 | `0002_tenant_id.sql` | tenant columns + indexes |
 | `0003_eval_jobs.sql` | B2-L job queue (`eval_jobs`) |
+| `0004_eval_jobs_lease.sql` | `leased_by` for claim/heartbeat |
 
 **Honesty**: local engineering only; `process_split_authorized=false`; no production data migration.

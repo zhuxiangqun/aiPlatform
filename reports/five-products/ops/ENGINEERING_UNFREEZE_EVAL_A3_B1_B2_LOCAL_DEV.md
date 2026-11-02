@@ -59,6 +59,6 @@
 
 ## Outcome
 
-- **In progress** — B1-L closeout path + **B2-L allowlist enqueue**（202 / 422 dual-point #1+#2）；see [`B2L_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/B2L_LOCAL.md).
-- Next B2-L：SKIP LOCKED claim + lease/heartbeat + allowlist runner execute.
+- **In progress** — B2-L allowlist enqueue + **claim/lease/heartbeat**；see [`B2L_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/B2L_LOCAL.md).
+- Next B2-L：allowlist runner execute（prompt/kb/replay…）+ Worker loop.
 - `process_split_authorized=false`；证据 `environment=local`。

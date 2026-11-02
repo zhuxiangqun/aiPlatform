@@ -39,9 +39,11 @@ def healthz_payload(cfg: EvalServiceConfig) -> Dict[str, Any]:
         "environment": "local",
         "b1l_execution_stubs": True,
         "b2l_allowlist_enqueue": True,
+        "b2l_claim_lease": True,
         "note": (
             "B2-L local standalone — store/read OK; allowlist enqueue 202; "
-            "sandbox/forbidden denied; not staging; process_split_authorized=false."
+            "claim/lease ready; sandbox/forbidden denied; not staging; "
+            "process_split_authorized=false."
         ),
     }
 

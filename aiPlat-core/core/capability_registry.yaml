@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1621
+total_capabilities: 1624
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 380
+    caps_count: 383
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1344,6 +1344,18 @@ domains:
         type: "function"
         signature: "reject_forged_job(db_url, job_id)→dict|None"
         module: "packages/aiplat-evaluation/app/worker/allowlist_guard.py"
+      - symbol: "claim_next_job"
+        type: "function"
+        signature: "claim_next_job(db_url, worker_id, ...)→dict|None"
+        module: "packages/aiplat-evaluation/app/store/jobs.py"
+      - symbol: "heartbeat_job"
+        type: "function"
+        signature: "heartbeat_job(db_url, job_id, worker_id, ...)→dict|None"
+        module: "packages/aiplat-evaluation/app/store/jobs.py"
+      - symbol: "process_once"
+        type: "function"
+        signature: "process_once(db_url, worker_id=...)→dict|None"
+        module: "packages/aiplat-evaluation/app/worker/claim.py"
       - symbol: "aiplat_fde_d1_prep_install"
         type: "script"
         signature: "packages/aiplat-fde/scripts/d1_install.sh [--smoke] (ADR draft)"
