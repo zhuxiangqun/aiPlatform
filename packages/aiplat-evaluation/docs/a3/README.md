@@ -13,7 +13,8 @@
 | [`LLM_LOCAL.md`](./LLM_LOCAL.md) | 可选 prompt_eval LLM（stub/http，无 Central） |
 | [`B3L_LOCAL_CLOSEOUT.md`](./B3L_LOCAL_CLOSEOUT.md) | B3-L 本地工程验收（≠ staging authorize） |
 | [`S1_LOCAL.md`](./S1_LOCAL.md) | S1 SECURITY_EVAL_V1 fixture 门禁（ASR≠accuracy） |
-| [`P1_LOCAL.md`](./P1_LOCAL.md) | P1 / P1.1 评分语义（quality/safety/efficiency/security≠accuracy） |
+| [`P1_LOCAL.md`](./P1_LOCAL.md) | P1–P1.2 评分语义（B2 runners family metrics；≠accuracy） |
+| [`B4S_PREP.md`](./B4S_PREP.md) | B4-S 主机前置（未确认 → 阻塞；≠ authorize） |
 | `scripts/local_track_closeout.sh` | 本地轨收口（P1+S1+authorize locked；≠ B4） |
 
 ```bash

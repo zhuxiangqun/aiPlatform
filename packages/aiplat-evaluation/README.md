@@ -16,6 +16,7 @@ Evaluation Service **D1 Thin (D1c/cohost)** · **D2 ops pack** · A3 Accepted（
 | **S1 security fixture** | `bash scripts/s1_local_gate.sh` | SECURITY_EVAL_V1 fixture ASR gate; **not** accuracy; see [`docs/a3/S1_LOCAL.md`](./docs/a3/S1_LOCAL.md) |
 | **P1 scoring semantics** | `bash scripts/p1_local_gate.sh` | metric families; `accuracy_claim=false` until G2b; see [`docs/a3/P1_LOCAL.md`](./docs/a3/P1_LOCAL.md) |
 | **Local track closeout** | `bash scripts/local_track_closeout.sh` | P1+S1 gates + authorize locked; not B4/staging |
+| **B4-S prep (blocked)** | [`docs/a3/B4S_PREP.md`](./docs/a3/B4S_PREP.md) | host prerequisites only; no authorize |
 | **B1-L Compose + PG store** | `compose/docker-compose.b1l.yml` + `AIPLAT_EVAL_DB_URL=postgresql://…` | PG16 + MinIO; EvalStore via asyncpg; SQLite still default if unset |
 | **Central proxy (optional)** | `AIPLAT_EVAL_SERVICE_URL=http://127.0.0.1:8010` | Central authenticates then forwards store subset |
 

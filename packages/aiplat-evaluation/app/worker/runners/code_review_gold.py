@@ -1,8 +1,12 @@
-"""code_review_gold — static/semi-static gold match (no sandbox tools)."""
+"""code_review_gold — static/semi-static gold match (no sandbox tools).
+
+Honesty: P1 exact_match/coverage are engineering scores; accuracy_claim=false.
+"""
 from __future__ import annotations
 
 from typing import Any, Dict, List
 
+from app.scoring.semantics import code_review_gold_p1_metrics
 from app.worker.runners._common import runner_result
 
 
@@ -16,7 +20,7 @@ def run_code_review_gold(job: Dict[str, Any]) -> Dict[str, Any]:
             runner_id="code_review_gold",
             job_id=job_id,
             ok=False,
-            metrics={"pass": 0.0, "gold_n": 0, "findings_n": len(findings)},
+            metrics=code_review_gold_p1_metrics(findings=findings, gold=[], ok=False),
             evidence={},
             detail="code_review_gold requires payload.gold",
         )
@@ -28,11 +32,7 @@ def run_code_review_gold(job: Dict[str, Any]) -> Dict[str, Any]:
         runner_id="code_review_gold",
         job_id=job_id,
         ok=ok,
-        metrics={
-            "pass": 1.0 if ok else 0.0,
-            "gold_n": len(gold),
-            "findings_n": len(findings),
-        },
+        metrics=code_review_gold_p1_metrics(findings=findings, gold=gold, ok=ok),
         evidence={"exact_set_match": ok},
         detail="" if ok else "findings != gold",
     )

@@ -13,7 +13,8 @@ export PYTHONPATH="${ROOT}${PYTHONPATH:+:$PYTHONPATH}"
 
 PYTHONPATH=. python3 -m pytest \
   tests/test_p1_scoring_semantics.py \
-  tests/test_p1_1_kb_arena_metrics.py -q --tb=line
+  tests/test_p1_1_kb_arena_metrics.py \
+  tests/test_p1_2_gold_replay_metrics.py -q --tb=line
 
 python3 - <<PY
 import json

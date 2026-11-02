@@ -23,6 +23,19 @@ _METRIC_FAMILY: Dict[str, MetricFamily] = {
     "pass": "quality",
     "text_quality": "quality",
     "groundedness": "quality",
+    "coverage": "quality",
+    "gold_n": "quality",
+    "findings_n": "quality",
+    "hit_count": "quality",
+    "steps": "efficiency",
+    "len_a": "efficiency",
+    "len_b": "efficiency",
+    "cases": "quality",
+    "passed": "quality",
+    "parsed": "quality",
+    "fetched": "efficiency",
+    "winner": "quality",
+
     "content_safety": "safety",
     "refusal": "safety",
     "asr": "security",
@@ -238,10 +251,56 @@ def arena_p1_metrics(
     }
 
 
+def code_review_gold_p1_metrics(
+    *,
+    findings: Iterable[Any],
+    gold: Iterable[Any],
+    ok: bool,
+) -> Dict[str, float]:
+    """Compose P1 metrics for code_review_gold (exact-set engineering score)."""
+    f_list = list(findings or ())
+    g_list = list(gold or ())
+    joined = "\n".join(str(x) for x in f_list)
+    gold_text = "\n".join(str(x) for x in g_list)
+    coverage = 0.0
+    if g_list:
+        gset = {str(x) for x in g_list}
+        hit = sum(1 for x in f_list if str(x) in gset)
+        coverage = round(hit / float(len(g_list)), 4)
+    return {
+        "pass": 1.0 if ok else 0.0,
+        "gold_n": float(len(g_list)),
+        "findings_n": float(len(f_list)),
+        "exact_match": 1.0 if ok else 0.0,
+        "groundedness": score_groundedness(actual=joined, context=gold_text),
+        "coverage": coverage,
+        "text_quality": score_text_quality(actual=joined or gold_text),
+        "content_safety": score_content_safety(text=joined or gold_text),
+    }
+
+
+def replay_trace_p1_metrics(
+    *,
+    steps: int,
+    ok: bool,
+    duration_ms: float = 0.0,
+) -> Dict[str, float]:
+    """Compose P1 metrics for replay_trace (readonly; no accuracy key)."""
+    out: Dict[str, float] = {
+        "pass": 1.0 if ok else 0.0,
+        "steps": float(steps),
+    }
+    if duration_ms > 0:
+        out["latency_ms"] = float(duration_ms)
+    return out
+
+
 def _wire_scoring() -> Dict[str, Any]:
     """Same-file caller for method_verify."""
     _ = classify_metric("exact_match")
     _ = score_text_quality(actual="hello world", expected="hello world")
     _ = kb_rag_p1_metrics(query="q", hits=[{"text": "q answer"}], ok=True)
     _ = arena_p1_metrics(response_a="aa", response_b="b", winner="a", ok=True)
+    _ = code_review_gold_p1_metrics(findings=["a"], gold=["a"], ok=True)
+    _ = replay_trace_p1_metrics(steps=2, ok=True, duration_ms=1.0)
     return build_scoring_block({"exact_match": 1.0, "asr": 0.0})
