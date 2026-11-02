@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T16:50:09+08:00",
+  "reviewed_at": "2026-11-02T18:39:55+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "661499b7c1d487f018aeecbfb6b45e5b04e47b0b301f74d14c583270cb1d3a04",
-  "head_sha": "0a85713b6d7bbfd67cb933209ab570184b6e1f01",
+  "diff_sha256": "080f8a5bcce4ee3fd992a34bf037410e27badcdfe9390ecdd6d81b1534d4209e",
+  "head_sha": "bdd8bd56709caf8e9072658460b7367288fc9714",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Banner only for proxy/stubs; cohost unchanged; copy matches B1 route matrix; store tabs stay usable."
+  "note": "API enqueue dual-point + Worker reject_forged_job; 202/422 not success-as-execute; split stays false."
 }
