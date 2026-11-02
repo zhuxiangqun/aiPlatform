@@ -1,7 +1,7 @@
 # Engineering unfreeze — EVAL_A3_LOCAL（独立进程/DB 本地验证）
 
 - **decided_at**: `2026-11-02`
-- **status**: **Active — A-local only**（A1 entrypoint in flight / landed on branch）
+- **status**: **Active — A-local only**（A1–A3 landed · A4 independence in flight）
 - **plan**: [`eval-a3-independent-service.md`](../../../docs/architecture/plans/eval-a3-independent-service.md)
 - **A3 ADR**: [`ADR-EVALUATION-A3.md`](../ADR-EVALUATION-A3.md)（Accepted 有条件）
 - **checklist**: [`SPLIT_CHECKLIST.md`](../../../packages/aiplat-evaluation/docs/a3/SPLIT_CHECKLIST.md)

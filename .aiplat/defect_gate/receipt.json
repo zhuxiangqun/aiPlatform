@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T06:31:09+08:00",
+  "reviewed_at": "2026-11-02T09:16:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "c3856ca5f98382973d6a26a184976143c566213f",
-  "diff_sha256": "faba7942c31d88c4b227d0a0f36d6068cba742d9485b9a084497f5028e7b7ce5",
-  "head_sha": "b1cc9c7619549e75c0addaa16ede1d6a0f4ba4f3",
+  "diff_sha256": "aff8aa4c05fad0a0b00177f7eecd25377ae24c5fce5963e8c4b38def33cbf723",
+  "head_sha": "ab59867aaf693462597bb18801fa278fa19d485a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "A1 standalone FastAPI :8010 healthz/readyz; no core.harness imports; process_split_authorized=false; tests cover healthz+import guard."
+  "note": "A4: eval reads without Central call; evidence environment=local; process_split_authorized=false."
 }

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1598
+total_capabilities: 1605
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 357
+    caps_count: 364
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1252,6 +1252,34 @@ domains:
         type: "script"
         signature: "packages/aiplat-evaluation/scripts/a3_local_rehearsal.sh"
         module: "packages/aiplat-evaluation/scripts/a3_local_rehearsal.sh"
+      - symbol: "evaluation_a1_run_local"
+        type: "script"
+        signature: "packages/aiplat-evaluation/scripts/run_local.sh (:8010 standalone)"
+        module: "packages/aiplat-evaluation/scripts/run_local.sh"
+      - symbol: "evaluation_a2_migrate_local"
+        type: "script"
+        signature: "packages/aiplat-evaluation/scripts/migrate_local.sh"
+        module: "packages/aiplat-evaluation/scripts/migrate_local.sh"
+      - symbol: "apply_migrations"
+        type: "function"
+        signature: "apply_migrations(db_url_or_path, migrations_dir=None)→Dict"
+        module: "packages/aiplat-evaluation/app/store/migrate.py"
+      - symbol: "open_store"
+        type: "function"
+        signature: "open_store(db_url, migrate=True)→EvalStore"
+        module: "packages/aiplat-evaluation/app/store/store.py"
+      - symbol: "register_store_routes"
+        type: "function"
+        signature: "register_store_routes(application)→None"
+        module: "packages/aiplat-evaluation/app/api/store_routes.py"
+      - symbol: "proxy_eval_store"
+        type: "function"
+        signature: "proxy_eval_store(request, path, method=None)→Optional[Response]"
+        module: "aiPlat-platform/apps/eval/api/eval_upstream.py"
+      - symbol: "evaluation_a4_independence_check"
+        type: "script"
+        signature: "packages/aiplat-evaluation/scripts/independence_check.sh"
+        module: "packages/aiplat-evaluation/scripts/independence_check.sh"
       - symbol: "aiplat_fde_d1_prep_install"
         type: "script"
         signature: "packages/aiplat-fde/scripts/d1_install.sh [--smoke] (ADR draft)"
