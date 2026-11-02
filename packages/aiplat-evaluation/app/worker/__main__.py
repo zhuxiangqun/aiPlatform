@@ -49,6 +49,7 @@ def main(argv: list[str] | None = None) -> int:
         lease_seconds=knobs["lease_seconds"],
         max_attempts=knobs["max_attempts"],
         job_timeout_sec_override=knobs["job_timeout_sec"],
+        job_cost_cap_override=knobs.get("job_cost_cap"),
         should_stop=lambda: stop["flag"],
     )
     print(

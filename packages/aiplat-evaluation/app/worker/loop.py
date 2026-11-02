@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from app.store.jobs import DEFAULT_LEASE_SECONDS, DEFAULT_MAX_ATTEMPTS
 from app.worker.claim import process_once
+from app.worker.cost_cap import job_cost_cap
 from app.worker.timeout import DEFAULT_JOB_TIMEOUT_SEC, job_timeout_sec
 
 
@@ -33,6 +34,7 @@ def run_worker_loop(
     lease_seconds: int = DEFAULT_LEASE_SECONDS,
     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
     job_timeout_sec_override: Optional[float] = None,
+    job_cost_cap_override: Optional[float] = None,
     should_stop: Optional[Callable[[], bool]] = None,
     process_fn: Optional[Callable[..., Optional[Dict[str, Any]]]] = None,
 ) -> WorkerLoopResult:
@@ -62,11 +64,18 @@ def run_worker_loop(
                 if job_timeout_sec_override is None
                 else float(job_timeout_sec_override)
             )
+        if fn is process_once or job_cost_cap_override is not None:
+            kwargs["job_cost_cap_override"] = (
+                job_cost_cap()
+                if job_cost_cap_override is None
+                else float(job_cost_cap_override)
+            )
         try:
             job = fn(db_url, **kwargs)
         except TypeError:
-            # Custom process_fn in tests may omit timeout kw.
+            # Custom process_fn in tests may omit timeout/cost kw.
             kwargs.pop("job_timeout_sec_override", None)
+            kwargs.pop("job_cost_cap_override", None)
             job = fn(db_url, **kwargs)
         if job is None:
             out.idle_rounds += 1
@@ -123,6 +132,7 @@ def load_worker_env() -> Dict[str, Any]:
         "max_attempts": int(_float("AIPLAT_EVAL_WORKER_MAX_ATTEMPTS", float(DEFAULT_MAX_ATTEMPTS))),
         "job_timeout_sec": job_timeout_sec(),
         "job_timeout_default": float(DEFAULT_JOB_TIMEOUT_SEC),
+        "job_cost_cap": job_cost_cap(),
     }
 
 

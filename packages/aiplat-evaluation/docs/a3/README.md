@@ -17,6 +17,7 @@
 | [`B4S_PREP.md`](./B4S_PREP.md) | B4-S 主机前置（未确认 → 阻塞；≠ authorize） |
 | B2 wall-clock | `AIPLAT_EVAL_JOB_TIMEOUT_SEC` → `timed_out`（见 `app/worker/timeout.py`） |
 | B2 cancel | `POST .../jobs/{id}/cancel` → `cancelled`（`cancel_job`） |
+| B2 cost cap | `AIPLAT_EVAL_JOB_COST_CAP` / `cost_cap` → `timed_out` |
 | `scripts/local_track_closeout.sh` | 本地轨收口（P1+S1+authorize locked；≠ B4） |
 
 ```bash

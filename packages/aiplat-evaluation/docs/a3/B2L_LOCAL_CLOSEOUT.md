@@ -15,6 +15,7 @@
 | 4 | lease expire reclaim / `max_attempts` → dead_letter | ✅ | `test_b2l_claim_lease` |
 | 4b | wall-clock → `timed_out` (never succeeded) | ✅ | `test_b2l_job_wall_timeout` |
 | 4c | cancel queued/running → `cancelled` | ✅ | `test_b2l_job_cancel` |
+| 4d | cost hard-top → `timed_out`/`cost_cap_exceeded` | ✅ | `test_b2l_job_cost_cap` |
 | 5 | import guard: no `core.harness` in `app/` | ✅ | closeout AST scan |
 | 6 | Worker poll loop drains queue | ✅ | `run_worker_loop` e2e in closeout |
 | 7 | `process_split_authorized` false | ✅ | healthz / authorize status / closeout JSON |

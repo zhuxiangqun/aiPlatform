@@ -1,7 +1,7 @@
 """B2-L Worker claim / heartbeat / execute-once (allowlist runners).
 
 Honesty: process_split_authorized=false; no core.harness; local deterministic runners.
-Wall-clock exceed → status timed_out (never succeeded).
+Wall-clock / cost hard-top → status timed_out (never succeeded).
 """
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from app.store.jobs import (
     update_job_status,
 )
 from app.worker.allowlist_guard import admit_job_for_execute
+from app.worker.cost_cap import cost_cap_exceeded, job_cost_cap
 from app.worker.runners import execute_runner
 from app.worker.timeout import job_timeout_sec, run_with_timeout
 
@@ -27,6 +28,7 @@ def process_once(
     lease_seconds: int = DEFAULT_LEASE_SECONDS,
     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
     job_timeout_sec_override: Optional[float] = None,
+    job_cost_cap_override: Optional[float] = None,
 ) -> Optional[Dict[str, Any]]:
     """Claim → allowlist → heartbeat → execute+collect → succeeded|failed|dead_letter|timed_out."""
     job = claim_next_job(
@@ -127,6 +129,36 @@ def process_once(
             "claimed": True,
             "executed": False,
             "cancelled": (updated or {}).get("status") == "cancelled",
+            "process_split_authorized": False,
+        }
+
+    payload = job.get("payload") if isinstance(job.get("payload"), dict) else {}
+    cap = job_cost_cap(override=job_cost_cap_override, payload=payload)
+    exceeded, observed = cost_cap_exceeded(result, cap=cap)
+    if exceeded:
+        capped = dict(result) if isinstance(result, dict) else {"ok": False}
+        capped["ok"] = False
+        capped["accuracy_claim"] = False
+        capped["detail"] = f"cost_cap_exceeded:{observed}>{cap}"
+        capped["cost_cap"] = cap
+        capped["cost_observed"] = observed
+        updated = _write_unless_cancelled(
+            db_url,
+            job["job_id"],
+            status="timed_out",
+            error_code="cost_cap_exceeded",
+            error_detail=f"cost_estimate {observed} exceeds cap {cap}"[:500],
+            result=capped,
+        )
+        return {
+            **(updated or job),
+            "admitted": True,
+            "claimed": True,
+            "executed": False,
+            "timed_out": (updated or {}).get("status") == "timed_out",
+            "cost_cap_exceeded": True,
+            "cancelled": (updated or {}).get("status") == "cancelled",
+            "result": capped,
             "process_split_authorized": False,
         }
 

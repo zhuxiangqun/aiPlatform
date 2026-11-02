@@ -35,6 +35,7 @@ out = process_once(db_url, worker_id="w1")  # claim → allowlist → run → su
 - Expired lease reclaimable; `attempts >= max_attempts` → `dead_letter`
 - Wall-clock: `AIPLAT_EVAL_JOB_TIMEOUT_SEC` (default 300) → status `timed_out` (never `succeeded`)
 - Cancel: `POST /api/platform/apps/eval/jobs/{id}/cancel` → `cancelled` (queued|running; cooperative vs Worker finalize)
+- Cost hard-top: `AIPLAT_EVAL_JOB_COST_CAP` / payload `cost_cap` → `timed_out` + `cost_cap_exceeded` (never `succeeded`)
 - Runners: local deterministic fixtures (`accuracy_claim=false`); `arena`+tools → `sandbox_required`
 - Optional LLM: [`LLM_LOCAL.md`](./LLM_LOCAL.md) (`AIPLAT_EVAL_LLM=stub|http`) — accuracy_claim=false
 

@@ -140,6 +140,7 @@
 - [x] lease 过期可被另一 Worker 接管或 dead_letter — **B2-L local**。  
 - [x] 墙钟硬顶 → `timed_out`（不得 `succeeded`）— **B2-L local**（`AIPLAT_EVAL_JOB_TIMEOUT_SEC`）。  
 - [x] `cancel` → `cancelled`（queued|running；Worker 不覆盖）— **B2-L local**（`POST .../jobs/{id}/cancel`）。  
+- [x] 成本硬顶 → `timed_out`/`cost_cap_exceeded`（不得 `succeeded`）— **B2-L local**（`AIPLAT_EVAL_JOB_COST_CAP` / payload `cost_cap`）。  
 - [x] import guard：Worker 包无 `core.harness` 私有 import — **B2-L local**。  
 
 ---
