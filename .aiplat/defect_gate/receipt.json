@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T18:39:55+08:00",
+  "reviewed_at": "2026-11-02T18:49:34+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "080f8a5bcce4ee3fd992a34bf037410e27badcdfe9390ecdd6d81b1534d4209e",
-  "head_sha": "bdd8bd56709caf8e9072658460b7367288fc9714",
+  "diff_sha256": "a7059ba4926dfd1d1c48b2161d910aa6c2a1bd6ce0ae173a23a09253ff96efa0",
+  "head_sha": "05d21446bc01955e3015fa94b59c9c4d391ba952",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "API enqueue dual-point + Worker reject_forged_job; 202/422 not success-as-execute; split stays false."
+  "note": "Claim does not mark succeeded; deny\u2192dead_letter; lease reclaim bounded by max_attempts; split=false."
 }
