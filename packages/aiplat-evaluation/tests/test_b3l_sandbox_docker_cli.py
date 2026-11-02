@@ -136,7 +136,7 @@ def test_enqueue_and_process_cli(tmp_path: Path, monkeypatch):
     assert stored and stored["status"] == "succeeded"
 
 
-def test_skill_still_denied_under_docker(tmp_path: Path, monkeypatch):
+def test_skill_tools_still_denied_under_docker(tmp_path: Path, monkeypatch):
     fake = _fake_docker(tmp_path)
     monkeypatch.setenv("AIPLAT_EVAL_REQUIRE_AUTH", "1")
     monkeypatch.setenv("AIPLAT_EVAL_SANDBOX_BACKEND", "docker")
@@ -146,7 +146,14 @@ def test_skill_still_denied_under_docker(tmp_path: Path, monkeypatch):
     r = client.post(
         "/api/platform/apps/eval/skill-evals/suites/s1/run",
         headers=headers,
-        json={},
+        json={"tools": ["shell"]},
     )
     assert r.status_code == 422
     assert r.json()["error"]["code"] == "sandbox_required"
+    # bare body without fixture mode stays fail-closed
+    r2 = client.post(
+        "/api/platform/apps/eval/skill-evals/suites/s1/run",
+        headers=headers,
+        json={},
+    )
+    assert r2.status_code == 422

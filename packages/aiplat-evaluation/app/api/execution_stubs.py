@@ -45,13 +45,16 @@ def _enqueue_or_deny(
     from app.runner_allowlist import is_enqueue_allowed
     from app.sandbox.policy import sandbox_backend
 
+    body = payload or {}
     kind = classify_runner(runner_id)
     if kind == "forbidden":
         return runner_forbidden_response(runner_id=runner_id)
-    if kind == "sandbox_required" and not is_enqueue_allowed(runner_id):
-        return sandbox_required_response(runner_id=runner_id)
+    if kind == "sandbox_required" and not is_enqueue_allowed(runner_id, body):
+        detail = None
+        if runner_id == "skill_suite":
+            detail = "skill_suite requires fixture mode without tools under docker sandbox"
+        return sandbox_required_response(runner_id=runner_id, detail=detail)
 
-    body = payload or {}
     idem = str(body.get("idempotency_key") or body.get("idempotencyKey") or "")
     job = enqueue_job(
         _db_url(request),
@@ -62,7 +65,10 @@ def _enqueue_or_deny(
     )
     note = "B2-L enqueued; Worker execute is allowlist-gated."
     if kind == "sandbox_required":
-        note = f"B3-L local_stub enqueued (backend={sandbox_backend()}); not real isolation."
+        note = (
+            f"B3-L sandbox enqueued (backend={sandbox_backend()}); "
+            "not microVM; skill tools still denied."
+        )
     return JSONResponse(
         status_code=202,
         content={

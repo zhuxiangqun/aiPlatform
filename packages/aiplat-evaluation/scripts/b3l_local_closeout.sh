@@ -46,6 +46,7 @@ bash "$ROOT/scripts/migrate_local.sh" >/dev/null
 PYTHONPATH=. python3 -m pytest \
   tests/test_b3l_sandbox_local_stub.py \
   tests/test_b3l_sandbox_docker_cli.py \
+  tests/test_b3l_skill_suite_fixture.py \
   tests/test_b3l_dual_read.py \
   tests/test_b2l_allowlist_enqueue.py \
   tests/test_prompt_eval_llm.py::test_llm_off_by_default \
@@ -101,7 +102,13 @@ cfg = EvalServiceConfig(
 client = TestClient(create_app(cfg))
 headers = {"Authorization": f"Bearer {mint_local_token(tenant_id='tenant-b3l')}"}
 
-# skill still denied under docker
+# live skill tools still denied; bare body fail-closed
+r = client.post(
+    "/api/platform/apps/eval/skill-evals/suites/s1/run",
+    headers=headers,
+    json={"tools": ["shell"]},
+)
+assert r.status_code == 422 and r.json()["error"]["code"] == "sandbox_required", r.text
 r = client.post("/api/platform/apps/eval/skill-evals/suites/s1/run", headers=headers, json={})
 assert r.status_code == 422 and r.json()["error"]["code"] == "sandbox_required", r.text
 

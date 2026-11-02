@@ -10,6 +10,7 @@ from app.worker.runners.http_probe import run_http_probe
 from app.worker.runners.kb_rag import run_kb_rag
 from app.worker.runners.prompt_eval import run_prompt_eval
 from app.worker.runners.replay_trace import run_replay_trace
+from app.worker.runners.skill_suite import run_skill_suite
 
 _RUNNERS = {
     "replay_trace": run_replay_trace,
@@ -19,6 +20,7 @@ _RUNNERS = {
     "arena": run_arena,
     "http_probe": run_http_probe,
     "cli_probe": run_cli_probe,
+    "skill_suite": run_skill_suite,
 }
 
 

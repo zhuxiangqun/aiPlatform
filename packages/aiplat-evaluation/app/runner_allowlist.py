@@ -5,7 +5,7 @@ B3 local_stub may admit a tiny sandbox subset via ``app.sandbox.policy``.
 """
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal, Mapping, Optional
 
 from app.sandbox.policy import sandbox_admits
 
@@ -44,22 +44,28 @@ def classify_runner(runner_id: str) -> RunnerClass:
     return "forbidden"
 
 
-def is_enqueue_allowed(runner_id: str) -> bool:
+def is_enqueue_allowed(
+    runner_id: str,
+    payload: Optional[Mapping[str, Any]] = None,
+) -> bool:
     kind = classify_runner(runner_id)
     if kind == "allowed":
         return True
-    if kind == "sandbox_required" and sandbox_admits(runner_id):
+    if kind == "sandbox_required" and sandbox_admits(runner_id, payload=payload):
         return True
     return False
 
 
-def assert_runner_allowed_for_execute(runner_id: str) -> None:
+def assert_runner_allowed_for_execute(
+    runner_id: str,
+    payload: Optional[Mapping[str, Any]] = None,
+) -> None:
     """Worker dual-point: raise ValueError with stable code prefix if not allowed."""
     kind = classify_runner(runner_id)
     if kind == "allowed":
         return
     if kind == "sandbox_required":
-        if sandbox_admits(runner_id):
+        if sandbox_admits(runner_id, payload=payload):
             return
         raise ValueError(f"sandbox_required:{runner_id}")
     raise ValueError(f"runner_forbidden:{runner_id}")

@@ -60,6 +60,6 @@
 ## Outcome
 
 - **B2-L local closed** — enqueue + claim/lease + runners + worker loop + closeout。
-- **B3-L local closed** — stub/docker/dual-read/LLM optional + closeout；见 [`B3L_LOCAL_CLOSEOUT.md`](../../../packages/aiplat-evaluation/docs/a3/B3L_LOCAL_CLOSEOUT.md).
-- Next under unfreeze：microVM / skill_suite 沙箱 → S1；生产回填仍禁（B4 PITR 前）。
-- `process_split_authorized=false`；证据 `environment=local`；`sandbox_real_isolation=false`.
+- **B3-L local closed** — stub/docker/dual-read/LLM + **skill_suite fixture-only** + closeout；见 [`B3L_LOCAL_CLOSEOUT.md`](../../../packages/aiplat-evaluation/docs/a3/B3L_LOCAL_CLOSEOUT.md).
+- Next under unfreeze：**S1** SECURITY_EVAL 本地门；microVM/live tools 仍后置；生产回填仍禁（B4 PITR 前）。
+- `process_split_authorized=false`；证据 `environment=local`；`sandbox_real_isolation=false`；`skill_suite_real_tools=false`.

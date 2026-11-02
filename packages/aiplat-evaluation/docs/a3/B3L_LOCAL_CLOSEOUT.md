@@ -10,7 +10,7 @@
 |---|------|:------:|----------|
 | 1 | `local_stub` admits `http_probe` (no network) | ✅ | closeout e2e + `test_b3l_sandbox_local_stub` |
 | 2 | `docker` admits allowlisted `cli_probe` (`--network=none`) | ✅ | fake docker bin in closeout |
-| 3 | `skill_suite` / redteam still `sandbox_required` | ✅ | closeout + tests |
+| 3 | live `skill_suite` tools / redteam still `sandbox_required` | ✅ | closeout + tests; fixture-only allowed under docker |
 | 4 | Dual-read fixture ETL + reconcile + pointer rollback | ✅ | `b3l_dual_read_drill.sh` |
 | 5 | Optional `AIPLAT_EVAL_LLM` stub/http path | ✅ | `test_prompt_eval_llm` |
 | 6 | import guard: no `core.harness` | ✅ | closeout AST scan |

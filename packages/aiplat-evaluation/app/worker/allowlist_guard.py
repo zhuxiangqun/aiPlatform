@@ -13,13 +13,14 @@ from app.store.jobs import get_job, update_job_status
 def admit_job_for_execute(job: Dict[str, Any]) -> Tuple[bool, str, str]:
     """Return (ok, error_code, detail). ok=False → do not execute."""
     rid = str(job.get("runner_id") or "")
+    payload = job.get("payload") if isinstance(job.get("payload"), dict) else {}
     try:
-        assert_runner_allowed_for_execute(rid)
+        assert_runner_allowed_for_execute(rid, payload)
         return True, "", ""
     except ValueError as exc:
         msg = str(exc)
         if msg.startswith("sandbox_required:"):
-            return False, "sandbox_required", f"runner {rid} requires B3 sandbox (backend off or not admitted)"
+            return False, "sandbox_required", f"runner {rid} requires B3 sandbox (backend off, not admitted, or skill tools)"
         return False, "runner_forbidden", f"runner {rid} not on B2/B3 allowlist"
 
 
