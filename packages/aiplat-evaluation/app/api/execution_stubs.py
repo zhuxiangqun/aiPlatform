@@ -42,11 +42,14 @@ def _enqueue_or_deny(
     claims: Dict[str, Any],
     payload: Optional[Dict[str, Any]] = None,
 ) -> JSONResponse:
+    from app.runner_allowlist import is_enqueue_allowed
+    from app.sandbox.policy import sandbox_backend
+
     kind = classify_runner(runner_id)
-    if kind == "sandbox_required":
-        return sandbox_required_response(runner_id=runner_id)
     if kind == "forbidden":
         return runner_forbidden_response(runner_id=runner_id)
+    if kind == "sandbox_required" and not is_enqueue_allowed(runner_id):
+        return sandbox_required_response(runner_id=runner_id)
 
     body = payload or {}
     idem = str(body.get("idempotency_key") or body.get("idempotencyKey") or "")
@@ -57,6 +60,9 @@ def _enqueue_or_deny(
         payload=body,
         idempotency_key=idem,
     )
+    note = "B2-L enqueued; Worker execute is allowlist-gated."
+    if kind == "sandbox_required":
+        note = f"B3-L local_stub enqueued (backend={sandbox_backend()}); not real isolation."
     return JSONResponse(
         status_code=202,
         content={
@@ -65,7 +71,8 @@ def _enqueue_or_deny(
             "runner_id": job["runner_id"],
             "tenant_id": job.get("tenant_id") or "",
             "process_split_authorized": False,
-            "note": "B2-L enqueued; Worker execute is allowlist-gated (lease slice next).",
+            "sandbox_backend": sandbox_backend() if kind == "sandbox_required" else "off",
+            "note": note,
         },
     )
 

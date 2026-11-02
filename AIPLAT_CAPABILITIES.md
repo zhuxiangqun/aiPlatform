@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2518
+total_capabilities: 2525
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2583,6 +2583,11 @@ scan_hash: 8f9548ec24f4
 | Evaluation B2-L worker loop | `packages/aiplat-evaluation/app/worker/loop.py` + `scripts/run_worker.sh` | ✅ | poll process_once；MAX_JOBS/MAX_IDLE/signal 停；≠ staging；生成物适用：不适用 | 本批 |
 | Evaluation B2-L local closeout | `packages/aiplat-evaluation/scripts/b2l_local_closeout.sh` + `docs/a3/B2L_LOCAL_CLOSEOUT.md` | ✅ | allowlist+claim+execute+loop 证据；authorize 恒 false；≠ B3/B4；生成物适用：不适用 | 本批 |
 | aiplat_eval_b2l_local_closeout | `packages/aiplat-evaluation/scripts/b2l_local_closeout.sh` | ✅ | B2-L 本地验收脚本 | 本批 |
+| Evaluation B3-L sandbox local_stub | `packages/aiplat-evaluation/app/sandbox/policy.py` + `runners/http_probe.py` | ✅ | AIPLAT_EVAL_SANDBOX_BACKEND=local_stub 仅 admit http_probe；无网络/无容器；sandbox_real_isolation=false；≠ staging；生成物适用：不适用 | 本批 |
+| sandbox_admits | `packages/aiplat-evaluation/app/sandbox/policy.py` | ✅ | B3-L sandbox runner 准入 | 本批 |
+| sandbox_backend | `packages/aiplat-evaluation/app/sandbox/policy.py` | ✅ | off\|local_stub | 本批 |
+| sandbox_health | `packages/aiplat-evaluation/app/sandbox/policy.py` | ✅ | healthz sandbox 字段 | 本批 |
+| run_http_probe | `packages/aiplat-evaluation/app/worker/runners/http_probe.py` | ✅ | local_stub http_probe（无 fetch） | 本批 |
 | execute_runner | `packages/aiplat-evaluation/app/worker/runners/__init__.py` | ✅ | 按 runner_id 分发 | 本批 |
 | run_worker_loop | `packages/aiplat-evaluation/app/worker/loop.py` | ✅ | Worker 轮询主循环 | 本批 |
 | classify_runner | `packages/aiplat-evaluation/app/runner_allowlist.py` | ✅ | B2 allowlist 分类 | 本批 |
@@ -3432,7 +3437,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 102 | 0 | 102 |
+| 评估系统 | 109 | 0 | 109 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3464,7 +3469,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2508** | **10** | **2518** |
+| **总计** | **2515** | **10** | **2525** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

@@ -59,6 +59,7 @@
 
 ## Outcome
 
-- **B2-L local closed** — enqueue + claim/lease + runners + worker loop + closeout；见 [`B2L_LOCAL_CLOSEOUT.md`](../../../packages/aiplat-evaluation/docs/a3/B2L_LOCAL_CLOSEOUT.md) · [`B2L_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/B2L_LOCAL.md).
-- Next under this unfreeze：optional infra LLM for `prompt_eval`；然后 **B3-L** sandbox 雏形。
-- `process_split_authorized=false`；证据 `environment=local`。
+- **B2-L local closed** — enqueue + claim/lease + runners + worker loop + closeout；见 [`B2L_LOCAL_CLOSEOUT.md`](../../../packages/aiplat-evaluation/docs/a3/B2L_LOCAL_CLOSEOUT.md).
+- **B3-L in progress** — `local_stub` sandbox admit for `http_probe`（无真实隔离）；见 [`B3L_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/B3L_LOCAL.md).
+- Next：container/microVM 或 dual-read 迁移演练；optional infra LLM。
+- `process_split_authorized=false`；证据 `environment=local`；`sandbox_real_isolation=false`.

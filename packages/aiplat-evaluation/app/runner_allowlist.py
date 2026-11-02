@@ -1,10 +1,13 @@
-"""B2 runner allowlist — fail-closed classification (EVAL_RUNTIME_CONTRACT §3).
+"""B2/B3 runner allowlist — fail-closed classification (EVAL_RUNTIME_CONTRACT §3).
 
-Honesty: process_split_authorized stays false; tool/sandbox runners wait for B3.
+Honesty: process_split_authorized stays false.
+B3 local_stub may admit a tiny sandbox subset via ``app.sandbox.policy``.
 """
 from __future__ import annotations
 
 from typing import Literal
+
+from app.sandbox.policy import sandbox_admits
 
 # B2 may enqueue + Worker-execute (no tool/sandbox).
 B2_ALLOWED: frozenset[str] = frozenset(
@@ -17,7 +20,7 @@ B2_ALLOWED: frozenset[str] = frozenset(
     }
 )
 
-# Need B3 sandbox — never silently run on B2.
+# Need B3 sandbox — never silently run on B2 (unless sandbox_admits).
 B2_SANDBOX_REQUIRED: frozenset[str] = frozenset(
     {
         "skill_suite",
@@ -42,7 +45,12 @@ def classify_runner(runner_id: str) -> RunnerClass:
 
 
 def is_enqueue_allowed(runner_id: str) -> bool:
-    return classify_runner(runner_id) == "allowed"
+    kind = classify_runner(runner_id)
+    if kind == "allowed":
+        return True
+    if kind == "sandbox_required" and sandbox_admits(runner_id):
+        return True
+    return False
 
 
 def assert_runner_allowed_for_execute(runner_id: str) -> None:
@@ -51,6 +59,8 @@ def assert_runner_allowed_for_execute(runner_id: str) -> None:
     if kind == "allowed":
         return
     if kind == "sandbox_required":
+        if sandbox_admits(runner_id):
+            return
         raise ValueError(f"sandbox_required:{runner_id}")
     raise ValueError(f"runner_forbidden:{runner_id}")
 

@@ -9,6 +9,7 @@
 | [`PREP_STATUS.json`](./PREP_STATUS.json) | 自动检查结果 |
 | [`LIVE_DRILL_EVIDENCE.md`](./LIVE_DRILL_EVIDENCE.md) | 生产 live 证据模板 |
 | [`B2L_LOCAL_CLOSEOUT.md`](./B2L_LOCAL_CLOSEOUT.md) | B2-L 本地工程验收（≠ staging authorize） |
+| [`B3L_LOCAL.md`](./B3L_LOCAL.md) | B3-L local_stub 沙箱雏形（无真实隔离） |
 
 ```bash
 bash packages/aiplat-evaluation/scripts/a3_local_rehearsal.sh  # #4 → 🟨

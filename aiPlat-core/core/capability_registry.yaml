@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1629
+total_capabilities: 1634
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 388
+    caps_count: 393
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1380,6 +1380,22 @@ domains:
         type: "script"
         signature: "packages/aiplat-evaluation/scripts/b2l_local_closeout.sh"
         module: "packages/aiplat-evaluation/scripts/b2l_local_closeout.sh"
+      - symbol: "sandbox_admits"
+        type: "function"
+        signature: "sandbox_admits(runner_id)→bool"
+        module: "packages/aiplat-evaluation/app/sandbox/policy.py"
+      - symbol: "sandbox_backend"
+        type: "function"
+        signature: "sandbox_backend()→off|local_stub"
+        module: "packages/aiplat-evaluation/app/sandbox/policy.py"
+      - symbol: "sandbox_health"
+        type: "function"
+        signature: "sandbox_health()→dict"
+        module: "packages/aiplat-evaluation/app/sandbox/policy.py"
+      - symbol: "run_http_probe"
+        type: "function"
+        signature: "run_http_probe(job)→dict"
+        module: "packages/aiplat-evaluation/app/worker/runners/http_probe.py"
       - symbol: "aiplat_fde_d1_prep_install"
         type: "script"
         signature: "packages/aiplat-fde/scripts/d1_install.sh [--smoke] (ADR draft)"

@@ -19,8 +19,8 @@ def admit_job_for_execute(job: Dict[str, Any]) -> Tuple[bool, str, str]:
     except ValueError as exc:
         msg = str(exc)
         if msg.startswith("sandbox_required:"):
-            return False, "sandbox_required", f"runner {rid} requires B3 sandbox"
-        return False, "runner_forbidden", f"runner {rid} not on B2 allowlist"
+            return False, "sandbox_required", f"runner {rid} requires B3 sandbox (backend off or not admitted)"
+        return False, "runner_forbidden", f"runner {rid} not on B2/B3 allowlist"
 
 
 def reject_forged_job(db_url: str, job_id: str) -> Optional[Dict[str, Any]]:

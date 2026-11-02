@@ -1,10 +1,11 @@
-"""B2-L allowlist runners — dispatch by runner_id (no core.harness)."""
+"""B2-L allowlist + B3-L local_stub runners — dispatch by runner_id (no core.harness)."""
 from __future__ import annotations
 
 from typing import Any, Dict
 
 from app.worker.runners.arena import run_arena
 from app.worker.runners.code_review_gold import run_code_review_gold
+from app.worker.runners.http_probe import run_http_probe
 from app.worker.runners.kb_rag import run_kb_rag
 from app.worker.runners.prompt_eval import run_prompt_eval
 from app.worker.runners.replay_trace import run_replay_trace
@@ -15,6 +16,7 @@ _RUNNERS = {
     "kb_rag": run_kb_rag,
     "code_review_gold": run_code_review_gold,
     "arena": run_arena,
+    "http_probe": run_http_probe,
 }
 
 
