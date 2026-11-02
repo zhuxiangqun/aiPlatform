@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any, Dict
 
 from app.worker.runners.arena import run_arena
+from app.worker.runners.cli_probe import run_cli_probe
 from app.worker.runners.code_review_gold import run_code_review_gold
 from app.worker.runners.http_probe import run_http_probe
 from app.worker.runners.kb_rag import run_kb_rag
@@ -17,6 +18,7 @@ _RUNNERS = {
     "code_review_gold": run_code_review_gold,
     "arena": run_arena,
     "http_probe": run_http_probe,
+    "cli_probe": run_cli_probe,
 }
 
 
