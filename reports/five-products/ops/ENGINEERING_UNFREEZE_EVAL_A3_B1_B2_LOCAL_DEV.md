@@ -59,4 +59,6 @@
 
 ## Outcome
 
-- （实施中填写）
+- **In progress** — B1-L slice: dynamic execute **503** + unified error body; Compose PG/MinIO; see [`B1L_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/B1L_LOCAL.md).
+- PG EvalStore adapter + Keycloak Compose realm：后续 slice。
+- `process_split_authorized=false`；证据 `environment=local`。

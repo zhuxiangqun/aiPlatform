@@ -7,7 +7,8 @@ Evaluation Service **D1 Thin (D1c/cohost)** · **D2 ops pack** · A3 Accepted（
 | Mode | How | Notes |
 |---|---|---|
 | **cohost (default production)** | Central `GET /api/core/eval/healthz` | `deploy_unit=central` |
-| **standalone (A1–A5 local)** | `bash scripts/run_local.sh` → `:8010` | SQLite + canonical `/store/*`; **`process_split_authorized=false`** |
+| **standalone (A1–A6 / B1-L)** | `bash scripts/run_local.sh` → `:8010` | SQLite + `/store/*`; dynamic execute → **503**; **`process_split_authorized=false`**; `environment=local` |
+| **B1-L Compose sidecars** | `docker compose -f compose/docker-compose.b1l.yml up -d` | PG16 + MinIO for local practice (store PG adapter next) |
 | **Central proxy (optional)** | `AIPLAT_EVAL_SERVICE_URL=http://127.0.0.1:8010` | Central authenticates then forwards store subset |
 
 ## A5 closeout
@@ -48,6 +49,8 @@ cd packages/aiplat-evaluation && PYTHONPATH=. python3 -m pytest \
 - Migrations: [`migrations/`](./migrations/)
 - D2 pack: [`docs/D2_COHOST.md`](./docs/D2_COHOST.md)
 - A3 local plan: [`eval-a3-independent-service.md`](../../docs/architecture/plans/eval-a3-independent-service.md)
-- Unfreeze: [`ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md`](../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md)
+- Unfreeze local: [`ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)
+- B1-L runbook: [`docs/a3/B1L_LOCAL.md`](./docs/a3/B1L_LOCAL.md)
+- Production plan: [`eval-production-independent-service.md`](../../docs/architecture/plans/eval-production-independent-service.md)
 
-`process_split_authorized` stays **false** until live checklist ✅ + staging (track B).
+`process_split_authorized` stays **false** until B4-S/B6 (staging live + checklist). Local ≠ staging.
