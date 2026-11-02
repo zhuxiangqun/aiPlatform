@@ -43,8 +43,9 @@ payload = {
     "sandbox_real_isolation": False,
     "security_live_attacks": False,
     "closed": ["B1-L", "B2-L", "B3-L", "S1", "P1", "P1.1", "P1.2"],
-    "deferred": ["microVM", "live_tools", "B4-S", "B5-S", "B6"],
+    "deferred": ["microVM_runtime", "live_tools", "B4-S", "B5-S", "B6"],
     "b4s_prep_doc": "docs/a3/B4S_PREP.md",
+    "microvm_prep_doc": "docs/a3/MICROVM_PREP.md",
     "recorded_at": stamp or datetime.now(timezone.utc).isoformat(),
     "honesty": "local product track closeout — not staging authorize; not B4 PITR",
 }
@@ -53,4 +54,4 @@ path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encodi
 print(json.dumps({"closeout": "ok", "evidence": str(path)}, ensure_ascii=False))
 PY
 
-echo "LOCAL TRACK CLOSEOUT PASS (authorize=false; next=host for B4-S / microVM)"
+echo "LOCAL TRACK CLOSEOUT PASS (authorize=false; next=host for B4-S / microVM runtime)"

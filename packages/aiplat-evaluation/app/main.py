@@ -51,9 +51,11 @@ def healthz_payload(cfg: EvalServiceConfig) -> Dict[str, Any]:
         "sandbox_real_isolation": sb["sandbox_real_isolation"],
         "security_live_attacks": sb.get("security_live_attacks", False),
         "skill_suite_real_tools": sb.get("skill_suite_real_tools", False),
+        "microvm_ready": sb.get("microvm_ready", False),
+        "microvm_block_reason": sb.get("microvm_block_reason", "microvm_not_enabled"),
         "note": (
             "B2-L/B3-L/S1 local standalone — store/read OK; allowlist enqueue 202; "
-            "sandbox fixture paths; security ASR ≠ accuracy; "
+            "sandbox fixture paths; microVM prep only; security ASR ≠ accuracy; "
             "not staging; process_split_authorized=false."
         ),
     }

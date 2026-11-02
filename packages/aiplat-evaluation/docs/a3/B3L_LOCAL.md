@@ -14,7 +14,7 @@
 | Admit `cli_probe` under docker | ✅ B3-L.3 — allowlist argv + `docker run --network=none` |
 | Admit `skill_suite` fixture-only | ✅ B3-L.4 — `mode=fixture` / cases; **tools still denied** |
 | Deny live skill tools / redteam | ✅ still `sandbox_required` |
-| microVM / live skill tools | ❌ deferred |
+| microVM / live skill tools | ❌ deferred — prep only: [`MICROVM_PREP.md`](./MICROVM_PREP.md) |
 | Data dual-read migration drill | ✅ B3-L.2 — `scripts/b3l_dual_read_drill.sh` |
 | Local closeout | ✅ [`B3L_LOCAL_CLOSEOUT.md`](./B3L_LOCAL_CLOSEOUT.md) + `scripts/b3l_local_closeout.sh` |
 

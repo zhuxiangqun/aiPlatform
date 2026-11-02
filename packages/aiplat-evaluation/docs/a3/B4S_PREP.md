@@ -35,6 +35,6 @@ bash packages/aiplat-evaluation/scripts/a3_split_authorize.sh status
 
 ## Out of scope here
 
-- microVM / live skill tools (separate sandbox track)
+- microVM / live skill tools — see [`MICROVM_PREP.md`](./MICROVM_PREP.md)
 - G2b accuracy unlock
 - Chart `a3_process_split_authorized=true`

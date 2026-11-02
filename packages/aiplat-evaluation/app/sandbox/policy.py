@@ -4,8 +4,9 @@ Backends:
 - ``off`` (default): sandbox runners stay ``sandbox_required``
 - ``local_stub``: admit ``http_probe`` in-process (no network)
 - ``docker``: http_probe + cli_probe + skill_suite fixture + security_redteam fixture
+- ``microvm``: **prep only** — admits **nothing** (live tools stay locked)
 
-Env: ``AIPLAT_EVAL_SANDBOX_BACKEND=off|local_stub|docker``
+Env: ``AIPLAT_EVAL_SANDBOX_BACKEND=off|local_stub|docker|microvm``
 """
 from __future__ import annotations
 
@@ -13,10 +14,11 @@ import os
 from typing import Any, Dict, Literal, Mapping, Optional
 
 from app.sandbox.docker_exec import docker_available
+from app.sandbox.microvm import microvm_status
 from app.sandbox.security_policy import security_redteam_is_fixture
 from app.sandbox.skill_policy import skill_suite_is_fixture
 
-SandboxBackend = Literal["off", "local_stub", "docker"]
+SandboxBackend = Literal["off", "local_stub", "docker", "microvm"]
 
 B3_LOCAL_STUB_RUNNERS: frozenset[str] = frozenset({"http_probe"})
 B3_DOCKER_RUNNERS: frozenset[str] = frozenset(
@@ -31,6 +33,8 @@ def sandbox_backend() -> SandboxBackend:
         return "local_stub"
     if raw in ("docker", "container"):
         return "docker"
+    if raw in ("microvm", "firecracker", "kvm"):
+        return "microvm"
     return "off"
 
 
@@ -56,6 +60,9 @@ def sandbox_admits(
         if rid == "security_redteam":
             return security_redteam_is_fixture(payload)
         return True
+    if backend == "microvm":
+        # Prep slice: never admit runners (incl. live skill tools).
+        return False
     return False
 
 
@@ -74,21 +81,33 @@ def sandbox_health() -> Dict[str, Any]:
                 admitted.append("security_redteam(fixture)")
             else:
                 admitted.append(r)
+    elif backend == "microvm":
+        admitted = []
+    mvm = microvm_status()
+    isolation = "none"
+    if backend == "docker":
+        isolation = "container"
+    elif backend == "local_stub":
+        isolation = "process_stub"
+    elif backend == "microvm":
+        isolation = "microvm_prep"
     return {
         "b3l_sandbox": True,
         "s1_security_eval": True,
         "sandbox_backend": backend,
         "sandbox_admitted_runners": admitted,
         "sandbox_real_isolation": False,
-        "sandbox_isolation": (
-            "container" if backend == "docker" else ("none" if backend == "off" else "process_stub")
-        ),
+        "sandbox_isolation": isolation,
         "docker_available": docker_available() if backend == "docker" else False,
         "skill_suite_real_tools": False,
         "security_live_attacks": False,
+        "microvm_available": mvm["microvm_available"],
+        "microvm_enabled": mvm["microvm_enabled"],
+        "microvm_ready": mvm["microvm_ready"],
+        "microvm_block_reason": mvm["microvm_block_reason"],
         "note": (
             "B3-L/S1 sandbox prototype — docker network=none; "
-            "skill/security fixture-only; not microVM; "
+            "skill/security fixture-only; microVM prep only (no live tools); "
             "process_split_authorized=false."
         ),
     }

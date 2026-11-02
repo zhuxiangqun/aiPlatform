@@ -48,7 +48,7 @@
 | `prompt_eval` | ✅ | 纯文本 LLM；**无工具** |
 | `kb_rag` | ✅ | **只读**检索；无写 KB |
 | `code_review_gold` | ✅ | 静态/半静态；无沙箱工具链 |
-| `skill_suite`（含工具/代码/终端） | ❌ live tools | B3-L.4：**fixture-only** under docker；live tools 仍 `sandbox_required`（microVM 后） |
+| `skill_suite`（含工具/代码/终端） | ❌ live tools | B3-L.4：**fixture-only** under docker；live tools 仍 `sandbox_required`（microVM **runtime** 后；prep 见 `docs/a3/MICROVM_PREP.md`） |
 | `arena` | ⚠️ | **仅**纯文本模型对战；触发工具 → 禁止 |
 | `http_probe` / `cli_probe` | ❌ | B3 + 容器/微 VM |
 | `security_redteam` | ❌ live | S1：**fixture-only** under docker（ASR=`security_eval_v1`，≠ accuracy）；live attacks 仍拒 |

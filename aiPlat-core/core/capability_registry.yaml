@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1675
+total_capabilities: 1678
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 434
+    caps_count: 437
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1386,7 +1386,7 @@ domains:
         module: "packages/aiplat-evaluation/app/sandbox/policy.py"
       - symbol: "sandbox_backend"
         type: "function"
-        signature: "sandbox_backend()→off|local_stub"
+        signature: "sandbox_backend()→off|local_stub|docker|microvm"
         module: "packages/aiplat-evaluation/app/sandbox/policy.py"
       - symbol: "sandbox_health"
         type: "function"
@@ -1560,6 +1560,18 @@ domains:
         type: "script"
         signature: "packages/aiplat-evaluation/scripts/b2l_llm_dynamic_gate.sh"
         module: "packages/aiplat-evaluation/scripts/b2l_llm_dynamic_gate.sh"
+      - symbol: "microvm_status"
+        type: "function"
+        signature: "microvm_status()→dict"
+        module: "packages/aiplat-evaluation/app/sandbox/microvm.py"
+      - symbol: "microvm_ready"
+        type: "function"
+        signature: "microvm_ready()→bool"
+        module: "packages/aiplat-evaluation/app/sandbox/microvm.py"
+      - symbol: "aiplat_eval_microvm_local_prep_gate"
+        type: "script"
+        signature: "packages/aiplat-evaluation/scripts/microvm_local_prep_gate.sh"
+        module: "packages/aiplat-evaluation/scripts/microvm_local_prep_gate.sh"
       - symbol: "aiplat_fde_d1_prep_install"
         type: "script"
         signature: "packages/aiplat-fde/scripts/d1_install.sh [--smoke] (ADR draft)"

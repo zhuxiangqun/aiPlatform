@@ -15,7 +15,7 @@
 | 5 | Optional `AIPLAT_EVAL_LLM` stub/http path | ✅ | `test_prompt_eval_llm` |
 | 6 | import guard: no `core.harness` | ✅ | closeout AST scan |
 | 7 | `process_split_authorized` false | ✅ | healthz / authorize status / JSON |
-| 8 | microVM / real skill tools | ❌ | deferred |
+| 8 | microVM / real skill tools | ❌ | deferred — prep gate: [`MICROVM_PREP.md`](./MICROVM_PREP.md) |
 
 ## Commands
 

@@ -18,6 +18,7 @@ Evaluation Service **D1 Thin (D1c/cohost)** · **D2 ops pack** · A3 Accepted（
 | **P1 scoring semantics** | `bash scripts/p1_local_gate.sh` | families + engineering composite (text/safety scored; asr report-only); `accuracy_claim=false`; see [`docs/a3/P1_LOCAL.md`](./docs/a3/P1_LOCAL.md) |
 | **Local track closeout** | `bash scripts/local_track_closeout.sh` | P1+S1 gates + authorize locked; not B4/staging |
 | **B4-S prep (blocked)** | [`docs/a3/B4S_PREP.md`](./docs/a3/B4S_PREP.md) | host prerequisites only; no authorize |
+| **microVM prep (blocked)** | [`docs/a3/MICROVM_PREP.md`](./docs/a3/MICROVM_PREP.md) + `scripts/microvm_local_prep_gate.sh` | probe + refuse live tools; no real isolation |
 | **Job wall-clock** | `AIPLAT_EVAL_JOB_TIMEOUT_SEC` (default 300) | exceed → `timed_out` (never succeeded) |
 | **Job cancel** | `POST /api/platform/apps/eval/jobs/{id}/cancel` | queued\|running → `cancelled` |
 | **Job cost cap** | `AIPLAT_EVAL_JOB_COST_CAP` / payload `cost_cap` | exceed → `timed_out` (`cost_cap_exceeded`) |
