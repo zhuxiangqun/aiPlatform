@@ -13,7 +13,7 @@ from typing import Any, Dict
 from fastapi import FastAPI, Request
 
 from app.api import register_store_routes
-from app.auth import require_bearer
+from app.auth import jwks_enabled, require_bearer
 from app.config import EvalServiceConfig, load_config
 from app.store import open_store, store_health
 from app.store.store import local_roundtrip
@@ -34,8 +34,9 @@ def healthz_payload(cfg: EvalServiceConfig) -> Dict[str, Any]:
         "schema_version": SCHEMA_HEALTHZ,
         "process_split_authorized": False,
         "require_auth": cfg.require_auth,
+        "jwks_enabled": jwks_enabled(),
         "note": (
-            "A6 local standalone healthz — engineering verification only; "
+            "A6/B0 local standalone healthz — engineering verification only; "
             "not production split authorization."
         ),
     }

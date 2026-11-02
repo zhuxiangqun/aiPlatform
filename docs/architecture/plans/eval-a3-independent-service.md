@@ -206,19 +206,25 @@ packages/aiplat-evaluation/
 
 ---
 
-## 10. B（未来，不在本方案）
+## 10. B（分阶段；B0 ≠ 授权）
 
 ```
-真实 staging PG/OIDC
-→ 数据迁移/双跑/对账
-→ split checklist 全 ✅
-→ signed live
-→ process_split_authorized=true
-→ 生产切流/回滚
+B0（本解冻）：本地 JWKS/RS256 校验路径 + fixture 测例
+  → process_split 仍 false；无 staging 主机要求
+B1+（另解冻）：真实 staging PG + Keycloak
+  → 数据迁移/双跑/对账
+  → split checklist 全 ✅
+  → signed live
+  → process_split_authorized=true
+  → 生产切流/回滚
 ```
 
-B 需要：staging 主机、备份/PITR、HA 演练、operator、变更窗口。  
-**A-local 完成 ≠ B 可授权。**
+| 阶段 | 内容 | 解冻 |
+|---|---|---|
+| **B0** | `AIPLAT_EVAL_JWKS_JSON` / `AIPLAT_EVAL_JWKS_URL`；RS256 401 测例 | [`ENGINEERING_UNFREEZE_EVAL_A3_B0_JWKS.md`](../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B0_JWKS.md) |
+| **B1+** | staging 主机、备份/PITR、HA、operator、变更窗口 | 另开；A-local/B0 完成 ≠ 可授权 |
+
+**A-local / B0 完成 ≠ B 可授权。**
 
 ---
 
@@ -241,3 +247,4 @@ B 需要：staging 主机、备份/PITR、HA 演练、operator、变更窗口。
 |---|---|---|
 | 2026-11-02 | v1.0 | 初版：A-local 独立进程/DB/API 验证；B 后置；process_split 保持 false |
 | 2026-11-02 | v1.1 | A0–A6 PASS：#6 本地 HS256；Keycloak JWKS 明确归 B；#529 合入 |
+| 2026-11-02 | v1.2 | B0：本地 JWKS/RS256 路径解冻；仍禁止 authorize |
