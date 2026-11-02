@@ -51,7 +51,7 @@
 | `skill_suite`（含工具/代码/终端） | ❌ live tools | B3-L.4：**fixture-only** under docker；live tools 仍 `sandbox_required`（microVM 后） |
 | `arena` | ⚠️ | **仅**纯文本模型对战；触发工具 → 禁止 |
 | `http_probe` / `cli_probe` | ❌ | B3 + 容器/微 VM |
-| `security_redteam` | ❌ | S1 + 沙箱 |
+| `security_redteam` | ❌ live | S1：**fixture-only** under docker（ASR=`security_eval_v1`，≠ accuracy）；live attacks 仍拒 |
 
 不在 allowlist → **禁止静默执行**；返回统一错误体（`sandbox_required` 或 `runner_forbidden`）。
 

@@ -11,6 +11,7 @@ from app.sandbox.policy import (
     sandbox_backend,
     sandbox_health,
 )
+from app.sandbox.security_policy import security_redteam_is_fixture
 from app.sandbox.skill_policy import skill_suite_is_fixture
 
 __all__ = [
@@ -19,5 +20,6 @@ __all__ = [
     "sandbox_admits",
     "sandbox_backend",
     "sandbox_health",
+    "security_redteam_is_fixture",
     "skill_suite_is_fixture",
 ]

@@ -53,6 +53,8 @@ def _enqueue_or_deny(
         detail = None
         if runner_id == "skill_suite":
             detail = "skill_suite requires fixture mode without tools under docker sandbox"
+        elif runner_id == "security_redteam":
+            detail = "security_redteam requires S1 fixture cases under docker (no live attacks)"
         return sandbox_required_response(runner_id=runner_id, detail=detail)
 
     idem = str(body.get("idempotency_key") or body.get("idempotencyKey") or "")
@@ -132,6 +134,14 @@ async def _stub_code_review_run(request: Request):
     return _enqueue_or_deny(request, runner_id="code_review_gold", claims=claims, payload=body)
 
 
+async def _stub_security_redteam_run(request: Request):
+    claims = require_bearer(request)
+    body = await _read_json(request)
+    return _enqueue_or_deny(
+        request, runner_id="security_redteam", claims=claims, payload=body
+    )
+
+
 async def _get_job(request: Request, job_id: str):
     require_bearer(request)
     from app.store.jobs import get_job
@@ -185,6 +195,11 @@ def register_execution_stubs(application: FastAPI) -> None:
     application.add_api_route(
         f"{prefix}/code-review-gold/run",
         _stub_code_review_run,
+        methods=["POST"],
+    )
+    application.add_api_route(
+        f"{prefix}/security/redteam/run",
+        _stub_security_redteam_run,
         methods=["POST"],
     )
     application.add_api_route(

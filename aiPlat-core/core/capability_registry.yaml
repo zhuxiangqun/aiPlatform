@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1650
+total_capabilities: 1653
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 409
+    caps_count: 412
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1460,6 +1460,18 @@ domains:
         type: "function"
         signature: "run_skill_suite(job)→dict"
         module: "packages/aiplat-evaluation/app/worker/runners/skill_suite.py"
+      - symbol: "security_redteam_is_fixture"
+        type: "function"
+        signature: "security_redteam_is_fixture(payload)→bool"
+        module: "packages/aiplat-evaluation/app/sandbox/security_policy.py"
+      - symbol: "run_security_redteam"
+        type: "function"
+        signature: "run_security_redteam(job)→dict"
+        module: "packages/aiplat-evaluation/app/worker/runners/security_redteam.py"
+      - symbol: "aiplat_eval_s1_local_gate"
+        type: "script"
+        signature: "packages/aiplat-evaluation/scripts/s1_local_gate.sh"
+        module: "packages/aiplat-evaluation/scripts/s1_local_gate.sh"
       - symbol: "aiplat_fde_d1_prep_install"
         type: "script"
         signature: "packages/aiplat-fde/scripts/d1_install.sh [--smoke] (ADR draft)"

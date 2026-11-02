@@ -46,11 +46,14 @@ def healthz_payload(cfg: EvalServiceConfig) -> Dict[str, Any]:
         "b2l_runner_execute": True,
         "b2l_worker_loop": True,
         "b3l_sandbox": sb["b3l_sandbox"],
+        "s1_security_eval": sb.get("s1_security_eval", True),
         "sandbox_backend": sb["sandbox_backend"],
         "sandbox_real_isolation": sb["sandbox_real_isolation"],
+        "security_live_attacks": sb.get("security_live_attacks", False),
+        "skill_suite_real_tools": sb.get("skill_suite_real_tools", False),
         "note": (
-            "B2-L/B3-L local standalone — store/read OK; allowlist enqueue 202; "
-            "claim/lease + runners + worker loop; sandbox local_stub optional; "
+            "B2-L/B3-L/S1 local standalone — store/read OK; allowlist enqueue 202; "
+            "sandbox fixture paths; security ASR ≠ accuracy; "
             "not staging; process_split_authorized=false."
         ),
     }
