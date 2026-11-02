@@ -1,6 +1,6 @@
-"""B2-L Worker claim / heartbeat / one-shot process (lease before execute).
+"""B2-L Worker claim / heartbeat / execute-once (allowlist runners).
 
-Honesty: process_split_authorized=false; execute runners land in a later slice.
+Honesty: process_split_authorized=false; no core.harness; local deterministic runners.
 """
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from app.store.jobs import (
     update_job_status,
 )
 from app.worker.allowlist_guard import admit_job_for_execute
+from app.worker.runners import execute_runner
 
 
 def process_once(
@@ -23,11 +24,7 @@ def process_once(
     lease_seconds: int = DEFAULT_LEASE_SECONDS,
     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
 ) -> Optional[Dict[str, Any]]:
-    """Claim one job, dual-point allowlist, heartbeat; no runner execute yet.
-
-    Returns None if queue empty. Denied jobs → dead_letter. Admitted jobs stay
-    ``running`` under lease (execute plane next B2-L slice).
-    """
+    """Claim → allowlist → heartbeat → execute+collect → succeeded|failed|dead_letter."""
     job = claim_next_job(
         db_url,
         worker_id=worker_id,
@@ -51,21 +48,73 @@ def process_once(
             **(updated or job),
             "admitted": False,
             "claimed": True,
+            "executed": False,
             "process_split_authorized": False,
         }
 
-    hb = heartbeat_job(
+    heartbeat_job(
         db_url,
         job["job_id"],
         worker_id=worker_id,
         lease_seconds=lease_seconds,
     )
+
+    try:
+        result = execute_runner(job)
+    except ValueError as exc:
+        msg = str(exc)
+        if msg.startswith("sandbox_required:"):
+            err_code, err_detail = "sandbox_required", msg
+        elif msg.startswith("runner_forbidden:"):
+            err_code, err_detail = "runner_forbidden", msg
+        else:
+            err_code, err_detail = "failed", msg
+        updated = update_job_status(
+            db_url,
+            job["job_id"],
+            status="dead_letter" if err_code != "failed" else "failed",
+            error_code=err_code,
+            error_detail=err_detail,
+        )
+        return {
+            **(updated or job),
+            "admitted": True,
+            "claimed": True,
+            "executed": False,
+            "process_split_authorized": False,
+        }
+    except Exception as exc:
+        updated = update_job_status(
+            db_url,
+            job["job_id"],
+            status="failed",
+            error_code="failed",
+            error_detail=str(exc)[:500],
+        )
+        return {
+            **(updated or job),
+            "admitted": True,
+            "claimed": True,
+            "executed": False,
+            "process_split_authorized": False,
+        }
+
+    final_status = "succeeded" if result.get("ok") else "failed"
+    updated = update_job_status(
+        db_url,
+        job["job_id"],
+        status=final_status,
+        error_code="" if result.get("ok") else str(result.get("detail") or "runner_failed")[:120],
+        error_detail="" if result.get("ok") else str(result.get("detail") or "")[:500],
+        result=result,
+    )
     return {
-        **(hb or job),
+        **(updated or job),
         "admitted": True,
         "claimed": True,
+        "executed": True,
+        "result": result,
         "process_split_authorized": False,
-        "note": "B2-L claimed+leased; runner execute deferred",
     }
 
 

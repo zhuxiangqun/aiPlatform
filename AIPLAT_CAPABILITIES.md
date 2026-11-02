@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2511
+total_capabilities: 2513
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -570,6 +570,7 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| runner_result | `packages/aiplat-evaluation/app/worker/runners/_common.py` | ✅ | 自动同步 | 已合入 |
 | heartbeat_job | `packages/aiplat-evaluation/app/store/jobs.py` | ✅ | 自动同步 | 已合入 |
 | admit_job_for_execute | `packages/aiplat-evaluation/app/worker/allowlist_guard.py` | ✅ | 自动同步 | 已合入 |
 | evalExecutionErrorCode | `aiPlat-management/frontend/src/pages/Eval/evalExecutionErrors.ts` | ✅ | 自动同步 | 已合入 |
@@ -2576,6 +2577,8 @@ scan_hash: 8f9548ec24f4
 | Evaluation B1-L /eval UI 降级 | `aiPlat-management/frontend/src/pages/Eval/evalExecutionErrors.ts` + `EvalExecutionPlaneBanner.tsx` | ✅ | `execution_not_migrated`/`sandbox_required` 固定文案；proxy/stubs 显示 Banner；store 只读可用；生成物适用：不适用 | 本批 |
 | Evaluation B2-L allowlist enqueue | `packages/aiplat-evaluation/app/runner_allowlist.py` + `store/jobs.py` + `worker/allowlist_guard.py` | ✅ | 双点校验：API enqueue 202/422 + Worker 拒伪造 job→dead_letter；≠ staging；生成物适用：不适用 | 本批 |
 | Evaluation B2-L claim/lease | `packages/aiplat-evaluation/app/store/jobs.py` + `worker/claim.py` | ✅ | PG SKIP LOCKED / SQLite IMMEDIATE claim；heartbeat；过期回收；max_attempts→dead_letter；生成物适用：不适用 | 本批 |
+| Evaluation B2-L runner execute | `packages/aiplat-evaluation/app/worker/runners/*` + `execute_runner` | ✅ | allowlist 本地确定性 runner；result_json；accuracy_claim=false；无 core.harness；生成物适用：不适用 | 本批 |
+| execute_runner | `packages/aiplat-evaluation/app/worker/runners/__init__.py` | ✅ | 按 runner_id 分发 | 本批 |
 | classify_runner | `packages/aiplat-evaluation/app/runner_allowlist.py` | ✅ | B2 allowlist 分类 | 本批 |
 | enqueue_job | `packages/aiplat-evaluation/app/store/jobs.py` | ✅ | 写入 eval_jobs 队列 | 本批 |
 | claim_next_job | `packages/aiplat-evaluation/app/store/jobs.py` | ✅ | 领取 queued/过期 lease job | 本批 |
@@ -3423,7 +3426,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 98 | 0 | 98 |
+| 评估系统 | 100 | 0 | 100 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3455,7 +3458,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2501** | **10** | **2511** |
+| **总计** | **2503** | **10** | **2513** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

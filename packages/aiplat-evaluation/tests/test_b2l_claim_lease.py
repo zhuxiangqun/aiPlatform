@@ -68,7 +68,12 @@ def test_expired_lease_reclaim(tmp_path: Path):
 
 def test_process_once_admits_and_denies(tmp_path: Path):
     db = _db(tmp_path)
-    enqueue_job(db, runner_id="prompt_eval", tenant_id="t")
+    enqueue_job(
+        db,
+        runner_id="prompt_eval",
+        tenant_id="t",
+        payload={"prompt": "p", "expected": "e", "actual": "e"},
+    )
     enqueue_job(db, runner_id="skill_suite", tenant_id="t")
 
     first = process_once(db, worker_id="w1")
@@ -77,7 +82,8 @@ def test_process_once_admits_and_denies(tmp_path: Path):
     assert second is not None
     by_runner = {first["runner_id"]: first, second["runner_id"]: second}
     assert by_runner["prompt_eval"]["admitted"] is True
-    assert by_runner["prompt_eval"]["status"] == "running"
+    assert by_runner["prompt_eval"]["executed"] is True
+    assert by_runner["prompt_eval"]["status"] == "succeeded"
     assert by_runner["skill_suite"]["admitted"] is False
     assert by_runner["skill_suite"]["status"] == "dead_letter"
 

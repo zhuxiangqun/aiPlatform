@@ -64,6 +64,7 @@ def _row_to_job(row: Any) -> Dict[str, Any]:
         "heartbeat_at": _g("heartbeat_at"),
         "leased_by": _g("leased_by", ""),
         "payload": _loads(_g("payload_json", "{}")),
+        "result": _loads(_g("result_json", "{}")),
         "error_code": _g("error_code", ""),
         "error_detail": _g("error_detail", ""),
         "created_at": _g("created_at"),
@@ -188,6 +189,7 @@ def update_job_status(
     error_detail: str = "",
     attempts: Optional[int] = None,
     lease_expires_at: Optional[str] = None,
+    result: Optional[Dict[str, Any]] = None,
 ) -> Optional[Dict[str, Any]]:
     now = _now()
     jid = (job_id or "").strip()
@@ -199,6 +201,9 @@ def update_job_status(
     if lease_expires_at is not None:
         sets.append("lease_expires_at=?")
         args.append(lease_expires_at)
+    if result is not None:
+        sets.append("result_json=?")
+        args.append(_dumps(result))
     args.append(jid)
     sql = f"UPDATE eval_jobs SET {', '.join(sets)} WHERE id=?"
 

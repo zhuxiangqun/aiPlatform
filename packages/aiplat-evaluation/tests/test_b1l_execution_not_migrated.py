@@ -81,3 +81,4 @@ def test_healthz_local_not_split(tmp_path: Path, monkeypatch):
     assert body["b1l_execution_stubs"] is True
     assert body["b2l_allowlist_enqueue"] is True
     assert body["b2l_claim_lease"] is True
+    assert body["b2l_runner_execute"] is True

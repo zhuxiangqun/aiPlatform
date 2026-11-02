@@ -13,7 +13,7 @@
 | Jobs table `eval_jobs` | ✅ migration `0003_eval_jobs.sql` |
 | Worker dual-point #2 | ✅ `reject_forged_job` → `dead_letter` |
 | SKIP LOCKED claim / lease / heartbeat | ✅ `claim_next_job` / `heartbeat_job` / `process_once` |
-| Real runner execute (prompt/kb/…) | ⏳ next B2-L slice |
+| Allowlist runner execute | ✅ local deterministic (`replay_trace`/`prompt_eval`/…); LLM provider later |
 
 ## Allowed vs denied (B2)
 
@@ -21,21 +21,23 @@
 - **422 sandbox_required**: `skill_suite`, `http_probe`, `cli_probe`, `security_redteam`
 - **422 runner_forbidden**: any other `runner_id`
 
-## Claim / lease
+## Claim / lease / execute
 
 ```python
-from app.worker import process_once, claim_next_job, heartbeat_job
-job = process_once(db_url, worker_id="w1")  # claim → allowlist → heartbeat
+from app.worker import process_once
+out = process_once(db_url, worker_id="w1")  # claim → allowlist → run → succeeded|failed
 ```
 
 - Postgres: `FOR UPDATE SKIP LOCKED`
 - SQLite: `BEGIN IMMEDIATE` + single-row claim
 - Expired lease reclaimable; `attempts >= max_attempts` → `dead_letter`
+- Runners: local deterministic fixtures (`accuracy_claim=false`); `arena`+tools → `sandbox_required`
+- Live infra LLM (`AIPLAT_EVAL_LLM`) reserved — not required for this slice
 
 ## Tests
 
 ```bash
 cd packages/aiplat-evaluation && PYTHONPATH=. pytest \
   tests/test_b2l_allowlist_enqueue.py tests/test_b2l_claim_lease.py \
-  tests/test_b1l_execution_not_migrated.py -q
+  tests/test_b2l_runner_execute.py tests/test_b1l_execution_not_migrated.py -q
 ```
