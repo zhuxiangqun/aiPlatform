@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T09:10:00+08:00",
+  "reviewed_at": "2026-11-02T09:16:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "c3856ca5f98382973d6a26a184976143c566213f",
-  "diff_sha256": "9709ebb739ea8a838c3675bf4a8d3d513d3d85499ec935cc242aec9f7b836892",
-  "head_sha": "d4fa8c82bc96ab6eab44c35703db55f010ca002b",
+  "diff_sha256": "aff8aa4c05fad0a0b00177f7eecd25377ae24c5fce5963e8c4b38def33cbf723",
+  "head_sha": "ab59867aaf693462597bb18801fa278fa19d485a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "A3: default cohost; proxy only when AIPLAT_EVAL_SERVICE_URL set. process_split_authorized stays false."
+  "note": "A4: eval reads without Central call; evidence environment=local; process_split_authorized=false."
 }
