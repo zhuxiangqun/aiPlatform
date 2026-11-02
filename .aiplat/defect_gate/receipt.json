@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T21:55:16+08:00",
+  "reviewed_at": "2026-11-02T22:04:42+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "7700f34dbd97e36275b986436a159ee3f35fb2d2debce4207cfa0892a5b52220",
-  "head_sha": "9f519657b7f5868d9f4d94212ed8934a5c4cc96d",
+  "diff_sha256": "53a48af7b2794271444f5effbe1d6d253333132aedc55878f88c28d1a19df092",
+  "head_sha": "40c6040121f15736b17483418c942c0c6cf3473a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "B2 timed_out: run_with_timeout wraps execute_runner; TimeoutError→timed_out never succeeded. Residual: thread may linger after timeout; cancel still deferred."
+  "note": "B2 cancel: cancel_job + POST cancel; _write_unless_cancelled prevents overwrite. Residual: in-flight thread not killed; cost hard-top still deferred."
 }
