@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T06:31:09+08:00",
+  "reviewed_at": "2026-11-02T08:58:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "c3856ca5f98382973d6a26a184976143c566213f",
-  "diff_sha256": "faba7942c31d88c4b227d0a0f36d6068cba742d9485b9a084497f5028e7b7ce5",
-  "head_sha": "b1cc9c7619549e75c0addaa16ede1d6a0f4ba4f3",
+  "diff_sha256": "d2cc0356d858f97b9d1bfb5cd6ca4c41ba7178768b03a15e856066b7252fab91",
+  "head_sha": "c6cbfc2223dd168084a5d3f50ac35b1a65b19c11",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "A1 standalone FastAPI :8010 healthz/readyz; no core.harness imports; process_split_authorized=false; tests cover healthz+import guard."
+  "note": "A2: readyz requires db_ok; healthz is liveness-only. process_split_authorized stays false. Local lock only."
 }
