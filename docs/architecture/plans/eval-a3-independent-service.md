@@ -1,7 +1,8 @@
 # EVAL_A3 Independent Service — 本地独立运行验证（A0 方案）
 
 > **文档类型**：Design / Implementation Plan  
-> **状态**：**A0–A5 A-local closeout PASS**（#6 OIDC 🟨 → B）· 2026-11-02  
+> **状态**：**A0–A6 A-local closeout PASS**（#6 本地 HS256 JWT ✅；Keycloak JWKS → B）· 2026-11-02 · [#529](https://github.com/zhuxiangqun/aiPlatform/pull/529)  
+
 > **范围**：先证明 Evaluation **本地独立进程/DB/API**；不做生产拆分  
 > **解冻**：[`ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md`](../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md)  
 > **A3 ADR**：[`ADR-EVALUATION-A3.md`](../../../reports/five-products/ADR-EVALUATION-A3.md)（Accepted 有条件）  
@@ -20,24 +21,23 @@ A-local：独立进程 :8010 + 独立 DB + 独立 API + Central 停掉仍可读
 B-prod ：staging + checklist + signed live → process_split_authorized=true
 ```
 
-当前只做 A-local。
+A-local **已完成**；B 需另开解冻（staging + 真实 OIDC/JWKS + checklist + signed live）。
 
 ---
 
-## 1. 现状
+## 1. 现状（A-local 后）
 
-| 维度 | 现状 | 差距 |
+| 维度 | A-local 后 | 仍属 B |
 |---|---|---|
-| 运行 | Evaluation D1c **cohost** | 没有独立进程/端口 |
-| 服务入口 | `packages/aiplat-evaluation` 无 FastAPI/uvicorn 入口 | 不能单独启动 |
-| API | canonical `/api/platform/apps/eval`，但仍由 Central 进程提供 | 无独立 API 宿主 |
-| DB | 与 Central 共用运行环境 | 无独立 eval DB/schema |
-| 健康 | `/api/core/eval/healthz` 由 core 提供 | 无独立 healthz/readyz |
-| 授权 | `process_split_authorized=false` | A3 未授权 |
-| A3 ADR | Accepted（有条件） | 条件未齐 |
-| staging | `staging_ready=false` | B 不能开始 |
+| 运行 | standalone `:8010`（`run_local.sh`） | staging HA / Chart |
+| 服务入口 | `packages/aiplat-evaluation/app/main.py` | 生产运维面 |
+| API | canonical store 子集独立宿主；Central 可代理 | 全量 canonical + 生产切流 |
+| DB | 独立 SQLite + migrations | staging PG / 生产迁移 |
+| 健康 | `/healthz` `/readyz`；`process_split_authorized=false` | authorize |
+| 认证 | 本地 HS256 Bearer + `tenant_id` | Keycloak JWKS |
+| staging | `staging_ready=false` | B 前置 |
 
-**结论**：现在能“独立使用”，不能“独立运行”。
+**结论**：本地已证明“独立运行”；生产拆分授权仍未开。
 
 ---
 
@@ -48,7 +48,7 @@ A-local 必须全部满足：
 1. **独立进程**：`:8010` 启动，不依赖 Central 进程。
 2. **独立 DB**：eval 自有 schema；不直读 Central/FDE/Ontology 表。
 3. **独立 API**：canonical `/api/platform/apps/eval` 由 eval 服务提供；Central 只代理。
-4. **独立认证**：本地 OIDC（Keycloak）校验；不依赖 Central session。
+4. **独立认证**：standalone Bearer JWT（A-local：HS256）；不依赖 Central session。真实 Keycloak JWKS → B。
 5. **故障域**：Central 停止后，eval 的已有报告/查询仍可用。
 6. **独立运维**：可单独启动/停止/升级/回滚；有 healthz/readyz。
 
@@ -66,7 +66,7 @@ A-local 必须全部满足：
               ├─ API (FastAPI)
               ├─ Eval Engine / Store
               ├─ eval DB (SQLite local / PG optional)
-              ├─ OIDC (Keycloak local)
+              ├─ Auth (A-local HS256 JWT; Keycloak JWKS → B)
               └─ healthz / readyz / metrics
 ```
 
@@ -101,7 +101,7 @@ packages/aiplat-evaluation/
 - canonical：`/api/platform/apps/eval`
 - OpenAPI + `eval.protocol.v0` / report schema
 - N-1 兼容
-- 认证：OIDC JWT；tenant claim；无匿名
+- 认证：Bearer JWT + `tenant_id` claim；无 token → 401；跨租户 → 404
 - 健康：`/healthz`、`/readyz`
 
 ### 3.4 配置
@@ -110,7 +110,8 @@ packages/aiplat-evaluation/
 |---|---|
 | `AIPLAT_EVAL_SERVICE_URL` | Central 代理目标（默认空=cohost） |
 | `AIPLAT_EVAL_DB_URL` | eval DB（本地 SQLite / PG） |
-| `AIPLAT_OIDC_ISSUER` | 本地 Keycloak issuer |
+| `AIPLAT_EVAL_REQUIRE_AUTH` | `1`/`0`；standalone 默认要求 Bearer |
+| `AIPLAT_EVAL_JWT_SECRET` / `AIPLAT_EVAL_JWT_ISSUER` | A-local HS256；B 换 JWKS |
 | `AIPLAT_EVAL_PORT` | 默认 `8010` |
 | `AIPLAT_EVAL_MODE` | `cohost` / `standalone` |
 
@@ -128,8 +129,9 @@ packages/aiplat-evaluation/
 | **A3** | canonical API 由独立服务提供；Central 代理/回退 | 双模式 | 1–2 周 |
 | **A4** | 本地双进程独立性测试：Central down，eval 仍读 | 证据 | 3–5 天 |
 | **A5** | 回滚/备份/文档/契约测试/收口 | A-local closeout | 3–5 天 |
+| **A6** | 本地 Bearer JWT + `tenant_id` 隔离（401/404） | 验收 #6 | 1–2 天 |
 
-**A-local 总工期：5–8 周**（不含 B）。
+**A-local 总工期：5–8 周**（不含 B）。**状态：A0–A6 已合入 main。**
 
 ---
 
@@ -149,10 +151,9 @@ packages/aiplat-evaluation/
 
 ## 6. 认证 / 租户
 
-- 本地 Keycloak：realm `aiplat-eval-local`；client + 测试用户。
-- eval 服务直接校验 OIDC JWT；不调用 Central session。
-- 所有 Case/Report 按 `tenant_id` 隔离；越权返回 404。
-- 本地测试用户可为 admin/developer/viewer；生产接真实 OIDC。
+- **A-local（已交付）**：`app/auth.py` HS256 Bearer；`mint_local_token` 供脚本/测试；无 Central session。
+- 所有 set/report 按 `tenant_id` 隔离；越权返回 **404**（非 403）。
+- **B**：Keycloak JWKS / 真实 issuer；staging 用户体系。
 
 ---
 
@@ -192,7 +193,7 @@ packages/aiplat-evaluation/
 | 仍依赖 core 私有 import | A1 起用 import guard；发现即停 |
 | DB 迁移丢数据 | 先只读双跑 + 对账；不删源 |
 | Central 代理破坏旧路径 | feature flag + 回退 cohost |
-| 认证耦合 Central session | 直接用 OIDC；不接受平台 cookie |
+| 认证耦合 Central session | 直接校验 Bearer JWT；不接受平台 cookie |
 | 双写不一致 | 先 dual-read，后 dual-write；有对账 |
 | 范围膨胀到 B | 明确 A-local 不含 staging/authorize |
 | 单人并行重轨 | A3 local 期间不新开 EVAL/Diagnosis 功能 |
@@ -221,16 +222,16 @@ B 需要：staging 主机、备份/PITR、HA 演练、operator、变更窗口。
 
 ---
 
-## 11. A0 出口
+## 11. A0 出口 / A-local 收口
 
 - [x] A-local 目标/边界/验收。
 - [x] 独立进程/DB/API/auth 设计。
-- [x] A1–A5 WBS。
+- [x] A1–A6 WBS（含本地 JWT）。
 - [x] 非目标与停止条件。
-- [ ] 代码布局评审通过。
-- [ ] 本地 Keycloak/DB 方案确认。
-- [ ] 新解冻 `ENGINEERING_UNFREEZE_EVAL_A3_LOCAL` 合入。
-- [ ] #521 合并后启动 A1（避免并行重轨）。
+- [x] 代码布局落地（`packages/aiplat-evaluation/app/`）。
+- [x] 本地 DB（SQLite + migrations）；Keycloak → B。
+- [x] 解冻 `ENGINEERING_UNFREEZE_EVAL_A3_LOCAL` **Closed PASS**。
+- [x] A1–A6 合入 main（至 #529）；`process_split_authorized=false`。
 
 ---
 
@@ -239,3 +240,4 @@ B 需要：staging 主机、备份/PITR、HA 演练、operator、变更窗口。
 | 日期 | 版本 | 变更 |
 |---|---|---|
 | 2026-11-02 | v1.0 | 初版：A-local 独立进程/DB/API 验证；B 后置；process_split 保持 false |
+| 2026-11-02 | v1.1 | A0–A6 PASS：#6 本地 HS256；Keycloak JWKS 明确归 B；#529 合入 |
