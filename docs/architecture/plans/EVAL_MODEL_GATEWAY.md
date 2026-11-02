@@ -60,10 +60,10 @@
 
 ## 5. 验收
 
-- [ ] Worker 单元/集成：无 Central 进程时仍可完成一次 `prompt_eval`（独立 provider）。  
-- [ ] 同机捆绑 provider 的场景在验收文档中标记为 **不适用/失败**。  
-- [ ] 调用审计字段齐全。  
-- [ ] 无 `core` 内平行 `model_registry`。
+- [x] Worker 单元/集成：无 Central 进程时仍可完成一次 `prompt_eval`（独立 provider）— **local**：`AIPLAT_EVAL_LLM` stub/http via `packages/aiplat-evaluation/app/llm/client.py`（[`LLM_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/LLM_LOCAL.md)）。  
+- [x] 同机捆绑 provider 的场景在验收文档中标记为 **不适用/失败** — 文档诚实声明：须独立生命周期。  
+- [x] 调用审计字段齐全 — purpose/model/tokens/latency/job/tenant/`central_http=false`。  
+- [x] 无 `core` 内平行 `model_registry` — Eval 包 stdlib HTTP；不 import `core.harness`。
 
 ---
 

@@ -34,7 +34,7 @@ out = process_once(db_url, worker_id="w1")  # claim → allowlist → run → su
 - SQLite: `BEGIN IMMEDIATE` + single-row claim
 - Expired lease reclaimable; `attempts >= max_attempts` → `dead_letter`
 - Runners: local deterministic fixtures (`accuracy_claim=false`); `arena`+tools → `sandbox_required`
-- Live infra LLM (`AIPLAT_EVAL_LLM`) reserved — not required for this slice
+- Optional LLM: [`LLM_LOCAL.md`](./LLM_LOCAL.md) (`AIPLAT_EVAL_LLM=stub|http`) — accuracy_claim=false
 
 ## Worker loop
 

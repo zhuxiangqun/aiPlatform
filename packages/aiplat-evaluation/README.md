@@ -11,6 +11,7 @@ Evaluation Service **D1 Thin (D1c/cohost)** · **D2 ops pack** · A3 Accepted（
 | **B2-L worker** | `bash scripts/run_worker.sh` | poll `process_once` until idle/signal; same DB URL |
 | **B3-L local_stub** | `AIPLAT_EVAL_SANDBOX_BACKEND=local_stub` | admits `http_probe` stub only; **no** network/container; see [`docs/a3/B3L_LOCAL.md`](./docs/a3/B3L_LOCAL.md) |
 | **B3-L.2 dual-read** | `bash scripts/b3l_dual_read_drill.sh` | local fixture ETL + reconcile + pointer rollback; **not** production backfill |
+| **Optional LLM** | `AIPLAT_EVAL_LLM=stub\|http` + BASE_URL | `prompt_eval` without Central; see [`docs/a3/LLM_LOCAL.md`](./docs/a3/LLM_LOCAL.md) |
 | **B1-L Compose + PG store** | `compose/docker-compose.b1l.yml` + `AIPLAT_EVAL_DB_URL=postgresql://…` | PG16 + MinIO; EvalStore via asyncpg; SQLite still default if unset |
 | **Central proxy (optional)** | `AIPLAT_EVAL_SERVICE_URL=http://127.0.0.1:8010` | Central authenticates then forwards store subset |
 

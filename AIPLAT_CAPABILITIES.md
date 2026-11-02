@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2532
+total_capabilities: 2536
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2595,6 +2595,10 @@ scan_hash: 8f9548ec24f4
 | write_read_pointer | `packages/aiplat-evaluation/app/migrate/dual_read.py` | ✅ | cohost\|eval 本地切读指针 | 本批 |
 | read_read_pointer | `packages/aiplat-evaluation/app/migrate/dual_read.py` | ✅ | 读取本地切读指针 | 本批 |
 | aiplat_eval_b3l_dual_read_drill | `packages/aiplat-evaluation/scripts/b3l_dual_read_drill.sh` | ✅ | B3-L.2 dual-read 演练脚本 | 本批 |
+| Evaluation optional LLM (prompt_eval) | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | AIPLAT_EVAL_LLM stub/http；无 Central；accuracy_claim=false；生成物适用：不适用 | 本批 |
+| complete_text | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | OpenAI-compatible / stub completion | 本批 |
+| llm_enabled | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | LLM 开关 | 本批 |
+| llm_mode | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | off\|stub\|http | 本批 |
 | execute_runner | `packages/aiplat-evaluation/app/worker/runners/__init__.py` | ✅ | 按 runner_id 分发 | 本批 |
 | run_worker_loop | `packages/aiplat-evaluation/app/worker/loop.py` | ✅ | Worker 轮询主循环 | 本批 |
 | classify_runner | `packages/aiplat-evaluation/app/runner_allowlist.py` | ✅ | B2 allowlist 分类 | 本批 |
@@ -3444,7 +3448,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 116 | 0 | 116 |
+| 评估系统 | 120 | 0 | 120 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3476,7 +3480,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2522** | **10** | **2532** |
+| **总计** | **2526** | **10** | **2536** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
