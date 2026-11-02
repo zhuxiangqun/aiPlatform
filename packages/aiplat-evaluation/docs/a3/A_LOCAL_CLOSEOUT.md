@@ -13,7 +13,7 @@
 | 3 | Independent DB | ✅ | A2 migrations + A5 backup |
 | 4 | No core private imports | ✅ | package import-guard tests |
 | 5 | Canonical store API | ✅ | A3 standalone + optional Central proxy |
-| 6 | OIDC / tenant 401–404 | 🟨 | Central `require_auth` on proxy path; **standalone OIDC deferred to B** |
+| 6 | OIDC / tenant 401–404 | ✅ | A6 local HS256 JWT (`AIPLAT_EVAL_REQUIRE_AUTH`); no token → 401; cross-tenant → 404; Keycloak JWKS still B |
 | 7 | Backup / rollback | ✅ | `backup_local.sh` / `rollback_local.sh` |
 | 8 | Contracts | ✅ | `validate_sample.py` in closeout |
 | 9 | `process_split_authorized` false | ✅ | healthz / authorize status / closeout JSON |
@@ -28,5 +28,5 @@ bash packages/aiplat-evaluation/scripts/rollback_local.sh   # latest or path arg
 
 ## Exit
 
-- A-local **engineering proof complete** (with #6 partial).
-- **Not** production split. Track B needs staging + checklist ✅ + signed live.
+- A-local **engineering proof complete** (incl. #6 local JWT).
+- **Not** production split. Track B needs staging + real OIDC/JWKS + checklist ✅ + signed live.

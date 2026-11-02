@@ -21,6 +21,7 @@ def _cfg(*, mode: str = "standalone") -> EvalServiceConfig:
         db_url="sqlite:///./data/eval_local.sqlite3",
         version="0.1.0",
         protocol="eval.protocol.v0",
+        require_auth=False,
     )
 
 

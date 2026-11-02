@@ -119,7 +119,9 @@ has_caller() {
         return 0
     fi
     
-    # Search production code across core + platform + app + infra (excluding self and tests)
+    # Search production code across core + platform + app + infra + packages
+    # (packages/ holds standalone services e.g. aiplat-evaluation; staged filter
+    # already includes evaluation/ paths, so callers there must count).
     local hits
     hits=$(grep -rl "$method_name" \
         "$WORKSPACE/aiPlat-core" \
@@ -127,6 +129,7 @@ has_caller() {
         "$WORKSPACE/aiPlat-app" \
         "$WORKSPACE/aiPlat-management" \
         "$WORKSPACE/aiPlat-infra" \
+        "$WORKSPACE/packages" \
         --include='*.py' 2>/dev/null \
         | grep -v "$basename" \
         | grep -v '__pycache__' \

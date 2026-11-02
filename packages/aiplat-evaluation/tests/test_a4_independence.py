@@ -22,6 +22,7 @@ def _cfg(tmp_path: Path) -> EvalServiceConfig:
         db_url=f"sqlite:///{tmp_path / 'a4.sqlite3'}",
         version="0.1.0",
         protocol="eval.protocol.v0",
+        require_auth=False,
     )
 
 

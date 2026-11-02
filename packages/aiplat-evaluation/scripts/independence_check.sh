@@ -52,7 +52,17 @@ assert d.get("process_split_authorized") is False, d
 print("eval healthz ok")
 '
 
-SEED_JSON="$(curl -fsS -X POST "${BASE}/api/platform/apps/eval/store/roundtrip")"
+# A6: mint local JWT when auth required (default standalone).
+export AIPLAT_EVAL_JWT_SECRET="${AIPLAT_EVAL_JWT_SECRET:-aiplat-eval-local-dev-secret}"
+TOKEN="$(
+  PYTHONPATH="${ROOT}${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
+from app.auth import mint_local_token
+print(mint_local_token(tenant_id="tenant-local"))
+PY
+)"
+AUTH_H=(-H "Authorization: Bearer ${TOKEN}")
+
+SEED_JSON="$(curl -fsS "${AUTH_H[@]}" -X POST "${BASE}/api/platform/apps/eval/store/roundtrip")"
 REPORT_ID="$(printf '%s' "$SEED_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["report_id"])')"
 SET_ID="$(printf '%s' "$SEED_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["set_id"])')"
 test -n "$REPORT_ID"
@@ -64,7 +74,7 @@ if curl -fsS --max-time 2 "${CENTRAL_URL}/healthz" >/dev/null 2>&1 \
   CENTRAL_UP=1
 fi
 
-GOT_REPORT="$(curl -fsS "${BASE}/api/platform/apps/eval/store/reports/${REPORT_ID}")"
+GOT_REPORT="$(curl -fsS "${AUTH_H[@]}" "${BASE}/api/platform/apps/eval/store/reports/${REPORT_ID}")"
 printf '%s' "$GOT_REPORT" | python3 -c '
 import json,sys
 rid=sys.argv[1]
@@ -73,7 +83,7 @@ assert d.get("data",{}).get("id")==rid, d
 print("eval report readable", rid)
 ' "$REPORT_ID"
 
-GOT_SET="$(curl -fsS "${BASE}/api/platform/apps/eval/store/sets/${SET_ID}")"
+GOT_SET="$(curl -fsS "${AUTH_H[@]}" "${BASE}/api/platform/apps/eval/store/sets/${SET_ID}")"
 printf '%s' "$GOT_SET" | python3 -c '
 import json,sys
 sid=sys.argv[1]

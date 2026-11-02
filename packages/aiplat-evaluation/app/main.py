@@ -13,6 +13,7 @@ from typing import Any, Dict
 from fastapi import FastAPI, Request
 
 from app.api import register_store_routes
+from app.auth import require_bearer
 from app.config import EvalServiceConfig, load_config
 from app.store import open_store, store_health
 from app.store.store import local_roundtrip
@@ -32,8 +33,9 @@ def healthz_payload(cfg: EvalServiceConfig) -> Dict[str, Any]:
         "mode": cfg.mode,
         "schema_version": SCHEMA_HEALTHZ,
         "process_split_authorized": False,
+        "require_auth": cfg.require_auth,
         "note": (
-            "A3 local standalone healthz — engineering verification only; "
+            "A6 local standalone healthz — engineering verification only; "
             "not production split authorization."
         ),
     }
@@ -90,6 +92,7 @@ async def _canonical_healthz(request: Request) -> Dict[str, Any]:
 
 async def _store_health_alias(request: Request) -> Dict[str, Any]:
     """A2 alias (non-wrapped). Prefer /store/healthz for canonical."""
+    require_bearer(request)
     store = getattr(request.app.state, "store", None)
     if store is None:
         return {"ok": False, "error": "store_not_initialized", "process_split_authorized": False}
@@ -97,10 +100,12 @@ async def _store_health_alias(request: Request) -> Dict[str, Any]:
 
 
 async def _store_roundtrip(request: Request) -> Dict[str, Any]:
+    claims = require_bearer(request)
     store = getattr(request.app.state, "store", None)
     if store is None:
         return {"ok": False, "error": "store_not_initialized", "process_split_authorized": False}
-    return local_roundtrip(store)
+    tid = str(claims.get("tenant_id") or "tenant-local")
+    return local_roundtrip(store, tenant_id=tid)
 
 
 async def _root(request: Request) -> Dict[str, Any]:
@@ -127,7 +132,7 @@ def create_app(cfg: EvalServiceConfig | None = None) -> FastAPI:
         title="aiplat-evaluation",
         version=config.version,
         description=(
-            "Evaluation standalone service (A3 local). "
+            "Evaluation standalone service (A6 local JWT). "
             "process_split_authorized=false."
         ),
         lifespan=_lifespan,

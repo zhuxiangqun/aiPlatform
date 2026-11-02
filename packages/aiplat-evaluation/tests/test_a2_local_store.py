@@ -34,6 +34,7 @@ def _cfg(tmp_path: Path, *, mode: str = "standalone") -> EvalServiceConfig:
         db_url=f"sqlite:///{db}",
         version="0.1.0",
         protocol="eval.protocol.v0",
+        require_auth=False,
     )
 
 

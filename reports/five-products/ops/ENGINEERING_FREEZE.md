@@ -51,7 +51,7 @@
 | DIAGNOSIS_V1 C3 | [`ENGINEERING_UNFREEZE_DIAGNOSIS_C3.md`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C3.md) | **Closed PASS** — 见 [`DIAGNOSIS_V1_C3_CLOSEOUT.md`](./DIAGNOSIS_V1_C3_CLOSEOUT.md) | 自动修复 / A3 / staging / authorize / G2b accuracy / 静默开 C4 |
 | DIAGNOSIS_V1 C3.5 | [`ENGINEERING_UNFREEZE_DIAGNOSIS_C35_FIXTURE_HARDENING.md`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C35_FIXTURE_HARDENING.md) | **Closed PASS** — 见 [`DIAGNOSIS_V1_C35_CLOSEOUT.md`](./DIAGNOSIS_V1_C35_CLOSEOUT.md) | 准确率宣称 / remediate / A3 / staging |
 | EVAL_V1 G2c | [`ENGINEERING_UNFREEZE_EVAL_G2C.md`](./ENGINEERING_UNFREEZE_EVAL_G2C.md) | **Closed PASS** — 见 [`EVAL_V1_G2C_CLOSEOUT.md`](./EVAL_V1_G2C_CLOSEOUT.md) | accuracy / G2b / inter-annotator κ |
-| EVAL A3 local | [`ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md`](./ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md) | **Closed PASS** — A0–A5 本地独立验证（#6 OIDC 🟨）；[`A_LOCAL_CLOSEOUT.md`](../../../packages/aiplat-evaluation/docs/a3/A_LOCAL_CLOSEOUT.md) | `process_split_authorized=true` / staging / authorize / production_signed / track B |
+| EVAL A3 local | [`ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md`](./ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md) | **Closed PASS** — A0–A6 本地独立验证（#6 local JWT ✅）；[`A_LOCAL_CLOSEOUT.md`](../../../packages/aiplat-evaluation/docs/a3/A_LOCAL_CLOSEOUT.md) | `process_split_authorized=true` / staging / authorize / production_signed / track B |
 
 ## Verify
 

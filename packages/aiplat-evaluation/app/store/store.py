@@ -84,14 +84,16 @@ class _EvalStore:
         split: str = "dev",
         meta: Optional[Dict[str, Any]] = None,
         set_id: Optional[str] = None,
+        tenant_id: str = "",
     ) -> Dict[str, Any]:
         sid = set_id or _new_id("set")
         now = _now()
+        tid = (tenant_id or "").strip()
         with self._connect() as conn:
             conn.execute(
-                "INSERT INTO eval_sets(id, name, version, split, meta_json, created_at, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (sid, name, version, split, _dumps(meta or {}), now, now),
+                "INSERT INTO eval_sets(id, name, version, split, meta_json, created_at, updated_at, tenant_id) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (sid, name, version, split, _dumps(meta or {}), now, now, tid),
             )
             conn.commit()
         return self._get_set(sid) or {"id": sid}
@@ -103,23 +105,32 @@ class _EvalStore:
             ).fetchone()
         if not row:
             return None
+        keys = row.keys()
         return {
             "id": row["id"],
             "name": row["name"],
             "version": row["version"],
             "split": row["split"],
             "meta": _loads(row["meta_json"]),
+            "tenant_id": row["tenant_id"] if "tenant_id" in keys else "",
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],
         }
 
-    def _list_sets(self, *, limit: int = 100) -> List[Dict[str, Any]]:
+    def _list_sets(self, *, limit: int = 100, tenant_id: str = "") -> List[Dict[str, Any]]:
         lim = max(1, min(int(limit), 1000))
+        tid = (tenant_id or "").strip()
         with self._connect() as conn:
-            rows = conn.execute(
-                "SELECT * FROM eval_sets ORDER BY updated_at DESC LIMIT ?",
-                (lim,),
-            ).fetchall()
+            if tid:
+                rows = conn.execute(
+                    "SELECT * FROM eval_sets WHERE tenant_id=? ORDER BY updated_at DESC LIMIT ?",
+                    (tid, lim),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM eval_sets ORDER BY updated_at DESC LIMIT ?",
+                    (lim,),
+                ).fetchall()
         out: List[Dict[str, Any]] = []
         for row in rows:
             got = self._get_set(row["id"])
@@ -135,13 +146,15 @@ class _EvalStore:
         slices: Optional[Dict[str, Any]] = None,
         failures: Optional[List[Any]] = None,
         report_id: Optional[str] = None,
+        tenant_id: str = "",
     ) -> Dict[str, Any]:
         rid = report_id or _new_id("rpt")
         now = _now()
+        tid = (tenant_id or "").strip()
         with self._connect() as conn:
             conn.execute(
                 "INSERT INTO eval_reports(id, run_ids_json, metrics_json, slices_json, "
-                "failures_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                "failures_json, created_at, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (
                     rid,
                     _dumps(list(run_ids or [])),
@@ -149,6 +162,7 @@ class _EvalStore:
                     _dumps(slices or {}),
                     _dumps(list(failures or [])),
                     now,
+                    tid,
                 ),
             )
             conn.commit()
@@ -161,22 +175,31 @@ class _EvalStore:
             ).fetchone()
         if not row:
             return None
+        keys = row.keys()
         return {
             "id": row["id"],
             "run_ids": _loads(row["run_ids_json"], []),
             "metrics": _loads(row["metrics_json"]),
             "slices": _loads(row["slices_json"]),
             "failures": _loads(row["failures_json"], []),
+            "tenant_id": row["tenant_id"] if "tenant_id" in keys else "",
             "created_at": row["created_at"],
         }
 
-    def _list_reports(self, *, limit: int = 100) -> List[Dict[str, Any]]:
+    def _list_reports(self, *, limit: int = 100, tenant_id: str = "") -> List[Dict[str, Any]]:
         lim = max(1, min(int(limit), 1000))
+        tid = (tenant_id or "").strip()
         with self._connect() as conn:
-            rows = conn.execute(
-                "SELECT id FROM eval_reports ORDER BY created_at DESC LIMIT ?",
-                (lim,),
-            ).fetchall()
+            if tid:
+                rows = conn.execute(
+                    "SELECT id FROM eval_reports WHERE tenant_id=? ORDER BY created_at DESC LIMIT ?",
+                    (tid, lim),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT id FROM eval_reports ORDER BY created_at DESC LIMIT ?",
+                    (lim,),
+                ).fetchall()
         out: List[Dict[str, Any]] = []
         for row in rows:
             got = self._get_report(row["id"])
@@ -212,8 +235,8 @@ def get_set(store: EvalStore, set_id: str) -> Optional[Dict[str, Any]]:
     return store._get_set(set_id)
 
 
-def list_sets(store: EvalStore, *, limit: int = 100) -> List[Dict[str, Any]]:
-    return store._list_sets(limit=limit)
+def list_sets(store: EvalStore, *, limit: int = 100, tenant_id: str = "") -> List[Dict[str, Any]]:
+    return store._list_sets(limit=limit, tenant_id=tenant_id)
 
 
 def create_report(store: EvalStore, **kwargs: Any) -> Dict[str, Any]:
@@ -224,17 +247,22 @@ def get_report(store: EvalStore, report_id: str) -> Optional[Dict[str, Any]]:
     return store._get_report(report_id)
 
 
-def list_reports(store: EvalStore, *, limit: int = 100) -> List[Dict[str, Any]]:
-    return store._list_reports(limit=limit)
+def list_reports(
+    store: EvalStore, *, limit: int = 100, tenant_id: str = ""
+) -> List[Dict[str, Any]]:
+    return store._list_reports(limit=limit, tenant_id=tenant_id)
 
 
-def local_roundtrip(store: EvalStore) -> Dict[str, Any]:
+def local_roundtrip(store: EvalStore, *, tenant_id: str = "tenant-local") -> Dict[str, Any]:
     """Write set+report to local DB and read back — A2 independence proof helper."""
-    s = create_set(store, name="a2-local-roundtrip", meta={"phase": "A2"})
+    s = create_set(
+        store, name="a2-local-roundtrip", meta={"phase": "A2"}, tenant_id=tenant_id
+    )
     r = create_report(
         store,
         metrics={"phase": "A2", "process_split_authorized": False},
         run_ids=[],
+        tenant_id=tenant_id,
     )
     got_set = get_set(store, s["id"])
     got_rpt = get_report(store, r["id"])
@@ -242,8 +270,9 @@ def local_roundtrip(store: EvalStore) -> Dict[str, Any]:
         "ok": bool(got_set and got_rpt),
         "set_id": s["id"],
         "report_id": r["id"],
-        "sets": len(list_sets(store, limit=10)),
-        "reports": len(list_reports(store, limit=10)),
+        "tenant_id": tenant_id,
+        "sets": len(list_sets(store, limit=10, tenant_id=tenant_id)),
+        "reports": len(list_reports(store, limit=10, tenant_id=tenant_id)),
         "process_split_authorized": False,
     }
 
