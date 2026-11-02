@@ -1,20 +1,37 @@
-"""EVAL_V1 E2 — thin CRUD / migrate over EvalStore (canonical under /eval)."""
+"""EVAL_V1 E2 — thin CRUD / migrate over EvalStore (canonical under /eval).
+
+A3-local: when AIPLAT_EVAL_SERVICE_URL is set, healthz/sets/reports proxy to
+standalone :8010; otherwise cohost CoreFacade (default).
+process_split_authorized stays false.
+"""
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request, Response
 from auth.deps import require_auth
 from apps.common_schemas import ItemResponse, ListResponse
+from apps.eval.api.eval_upstream import proxy_eval_store, proxy_status
 
 router = APIRouter(prefix="/store", tags=["eval-store"])
 
 
-@router.get("/healthz", response_model=ItemResponse)
-async def store_health(
-    tenant_id: str = "",
+@router.get("/upstream-status", response_model=ItemResponse)
+async def store_upstream_status(
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    return {"data": proxy_status()}
+
+
+@router.get("/healthz", response_model=ItemResponse)
+async def store_health(
+    request: Request,
+    tenant_id: str = "",
+    _auth: str = Depends(require_auth),
+) -> Union[Dict[str, Any], Response]:
+    proxied = await proxy_eval_store(request, path="/store/healthz")
+    if proxied is not None:
+        return proxied
     from core.api.core_facade import eval_store_health
 
     return {"data": eval_store_health(tenant_id=tenant_id)}
@@ -22,10 +39,14 @@ async def store_health(
 
 @router.get("/sets", response_model=ListResponse)
 async def list_sets(
+    request: Request,
     tenant_id: str = "",
     limit: int = Query(100, ge=1, le=1000),
     _auth: str = Depends(require_auth),
-) -> Dict[str, Any]:
+) -> Union[Dict[str, Any], Response]:
+    proxied = await proxy_eval_store(request, path="/store/sets")
+    if proxied is not None:
+        return proxied
     from core.api.core_facade import eval_store_list_sets
 
     items = eval_store_list_sets(tenant_id=tenant_id, limit=limit)
@@ -34,9 +55,13 @@ async def list_sets(
 
 @router.post("/sets", response_model=ItemResponse)
 async def create_set(
+    request: Request,
     body: Dict[str, Any],
     _auth: str = Depends(require_auth),
-) -> Dict[str, Any]:
+) -> Union[Dict[str, Any], Response]:
+    proxied = await proxy_eval_store(request, path="/store/sets")
+    if proxied is not None:
+        return proxied
     from core.api.core_facade import eval_store_create_set
 
     row = eval_store_create_set(
@@ -52,10 +77,14 @@ async def create_set(
 
 @router.get("/sets/{set_id}", response_model=ItemResponse)
 async def get_set(
+    request: Request,
     set_id: str,
     tenant_id: str = "",
     _auth: str = Depends(require_auth),
-) -> Dict[str, Any]:
+) -> Union[Dict[str, Any], Response]:
+    proxied = await proxy_eval_store(request, path=f"/store/sets/{set_id}")
+    if proxied is not None:
+        return proxied
     from core.api.core_facade import eval_store_get_set
 
     row = eval_store_get_set(set_id, tenant_id=tenant_id)
@@ -423,10 +452,14 @@ async def get_gate(
 
 @router.get("/reports/{report_id}", response_model=ItemResponse)
 async def get_store_report(
+    request: Request,
     report_id: str,
     tenant_id: str = "eval-v1",
     _auth: str = Depends(require_auth),
-) -> Dict[str, Any]:
+) -> Union[Dict[str, Any], Response]:
+    proxied = await proxy_eval_store(request, path=f"/store/reports/{report_id}")
+    if proxied is not None:
+        return proxied
     from core.api.core_facade import eval_get_report
 
     row = eval_get_report(report_id, tenant_id=tenant_id)

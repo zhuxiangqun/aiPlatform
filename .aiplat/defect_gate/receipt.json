@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T06:31:09+08:00",
+  "reviewed_at": "2026-11-02T09:10:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "c3856ca5f98382973d6a26a184976143c566213f",
-  "diff_sha256": "faba7942c31d88c4b227d0a0f36d6068cba742d9485b9a084497f5028e7b7ce5",
-  "head_sha": "b1cc9c7619549e75c0addaa16ede1d6a0f4ba4f3",
+  "diff_sha256": "9709ebb739ea8a838c3675bf4a8d3d513d3d85499ec935cc242aec9f7b836892",
+  "head_sha": "d4fa8c82bc96ab6eab44c35703db55f010ca002b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "A1 standalone FastAPI :8010 healthz/readyz; no core.harness imports; process_split_authorized=false; tests cover healthz+import guard."
+  "note": "A3: default cohost; proxy only when AIPLAT_EVAL_SERVICE_URL set. process_split_authorized stays false."
 }
