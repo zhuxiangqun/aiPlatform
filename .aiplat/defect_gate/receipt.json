@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T08:58:00+08:00",
+  "reviewed_at": "2026-11-02T09:02:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "c3856ca5f98382973d6a26a184976143c566213f",
-  "diff_sha256": "d2cc0356d858f97b9d1bfb5cd6ca4c41ba7178768b03a15e856066b7252fab91",
-  "head_sha": "c6cbfc2223dd168084a5d3f50ac35b1a65b19c11",
+  "diff_sha256": "b671bb963a85016e04d0bbe7127d67587acbd0768c642ea4bbd1da4485ca9a1a",
+  "head_sha": "80257a46f894cb5f04419883f16d77e562abd64e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "A2: readyz requires db_ok; healthz is liveness-only. process_split_authorized stays false. Local lock only."
+  "note": "A2 whitepaper resync after CAPABILITIES bump. process_split_authorized stays false."
 }
