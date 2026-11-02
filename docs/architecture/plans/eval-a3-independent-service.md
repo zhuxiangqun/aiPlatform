@@ -224,7 +224,8 @@ B1+（另解冻）：真实 staging PG + Keycloak
 | **B0** | `AIPLAT_EVAL_JWKS_JSON` / `AIPLAT_EVAL_JWKS_URL`；RS256 401 测例 | [`ENGINEERING_UNFREEZE_EVAL_A3_B0_JWKS.md`](../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B0_JWKS.md) |
 | **B1+** | staging 主机、备份/PITR、HA、operator、变更窗口 | 另开；A-local/B0 完成 ≠ 可授权 |
 
-**A-local / B0 完成 ≠ B 可授权。**
+**A-local / B0 完成 ≠ B 可授权。**  
+**完整生产方案（B1–B6 + P1 + S1）**：见 [`eval-production-independent-service.md`](./eval-production-independent-service.md)（v1.1 + P0 契约：Runtime / Route Matrix / Model / Migration）。
 
 ---
 
