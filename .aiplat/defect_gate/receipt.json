@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T21:00:17+08:00",
+  "reviewed_at": "2026-11-02T21:08:22+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "00c55ad1c49ff5a9515037f27e3cc39040dd853a5be346f79aa2159914ac3b04",
-  "head_sha": "587e151487a0e2e016de3df4bd4a6191e3457c40",
+  "diff_sha256": "2eb80d16b8f924c8b322395092cbcbd52b9ce19798e9c15e7295a8083d205a3a",
+  "head_sha": "e9308490df063108efbc3bd80e9c6708a1c5b5f2",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P1.1: kb_rag/arena use family helpers; closeout keeps authorize false. Residual: microVM/live tools/B4-S need host."
+  "note": "P1.2: all B2 runners family-scored; B4S_PREP docs host-blocked. Residual: B4 needs host; microVM deferred."
 }
