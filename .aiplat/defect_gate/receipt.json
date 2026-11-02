@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T18:49:34+08:00",
+  "reviewed_at": "2026-11-02T19:02:45+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "a7059ba4926dfd1d1c48b2161d910aa6c2a1bd6ce0ae173a23a09253ff96efa0",
-  "head_sha": "05d21446bc01955e3015fa94b59c9c4d391ba952",
+  "diff_sha256": "df801732c24eb84cf2287f9233c96de762871c60c466e1da87ac06c3591c2f39",
+  "head_sha": "fcf371b7f09d2e9c1051c83320d7f126823c22d0",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Claim does not mark succeeded; deny\u2192dead_letter; lease reclaim bounded by max_attempts; split=false."
+  "note": "Runners fail-closed without fixtures; arena+tools\u2192sandbox; accuracy_claim=false; no silent LLM success."
 }
