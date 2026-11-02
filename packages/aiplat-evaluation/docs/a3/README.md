@@ -8,6 +8,7 @@
 | [`SPLIT_CHECKLIST.md`](./SPLIT_CHECKLIST.md) | 进程拆分硬门 |
 | [`PREP_STATUS.json`](./PREP_STATUS.json) | 自动检查结果 |
 | [`LIVE_DRILL_EVIDENCE.md`](./LIVE_DRILL_EVIDENCE.md) | 生产 live 证据模板 |
+| [`B2L_LOCAL_CLOSEOUT.md`](./B2L_LOCAL_CLOSEOUT.md) | B2-L 本地工程验收（≠ staging authorize） |
 
 ```bash
 bash packages/aiplat-evaluation/scripts/a3_local_rehearsal.sh  # #4 → 🟨

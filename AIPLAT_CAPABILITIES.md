@@ -2581,6 +2581,8 @@ scan_hash: 8f9548ec24f4
 | Evaluation B2-L claim/lease | `packages/aiplat-evaluation/app/store/jobs.py` + `worker/claim.py` | ✅ | PG SKIP LOCKED / SQLite IMMEDIATE claim；heartbeat；过期回收；max_attempts→dead_letter；生成物适用：不适用 | 本批 |
 | Evaluation B2-L runner execute | `packages/aiplat-evaluation/app/worker/runners/*` + `execute_runner` | ✅ | allowlist 本地确定性 runner；result_json；accuracy_claim=false；无 core.harness；生成物适用：不适用 | 本批 |
 | Evaluation B2-L worker loop | `packages/aiplat-evaluation/app/worker/loop.py` + `scripts/run_worker.sh` | ✅ | poll process_once；MAX_JOBS/MAX_IDLE/signal 停；≠ staging；生成物适用：不适用 | 本批 |
+| Evaluation B2-L local closeout | `packages/aiplat-evaluation/scripts/b2l_local_closeout.sh` + `docs/a3/B2L_LOCAL_CLOSEOUT.md` | ✅ | allowlist+claim+execute+loop 证据；authorize 恒 false；≠ B3/B4；生成物适用：不适用 | 本批 |
+| aiplat_eval_b2l_local_closeout | `packages/aiplat-evaluation/scripts/b2l_local_closeout.sh` | ✅ | B2-L 本地验收脚本 | 本批 |
 | execute_runner | `packages/aiplat-evaluation/app/worker/runners/__init__.py` | ✅ | 按 runner_id 分发 | 本批 |
 | run_worker_loop | `packages/aiplat-evaluation/app/worker/loop.py` | ✅ | Worker 轮询主循环 | 本批 |
 | classify_runner | `packages/aiplat-evaluation/app/runner_allowlist.py` | ✅ | B2 allowlist 分类 | 本批 |

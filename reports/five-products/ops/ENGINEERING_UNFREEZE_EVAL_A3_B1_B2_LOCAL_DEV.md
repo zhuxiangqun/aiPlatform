@@ -59,6 +59,6 @@
 
 ## Outcome
 
-- **In progress** — B2-L enqueue + claim/lease + runners + **worker loop**；see [`B2L_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/B2L_LOCAL.md).
-- Next：optional infra LLM for `prompt_eval`；B2-L closeout；然后 B3-L sandbox 雏形。
+- **B2-L local closed** — enqueue + claim/lease + runners + worker loop + closeout；见 [`B2L_LOCAL_CLOSEOUT.md`](../../../packages/aiplat-evaluation/docs/a3/B2L_LOCAL_CLOSEOUT.md) · [`B2L_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/B2L_LOCAL.md).
+- Next under this unfreeze：optional infra LLM for `prompt_eval`；然后 **B3-L** sandbox 雏形。
 - `process_split_authorized=false`；证据 `environment=local`。

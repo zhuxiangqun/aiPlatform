@@ -21,6 +21,15 @@ bash packages/aiplat-evaluation/scripts/a5_local_closeout.sh
 
 See [`docs/a3/A_LOCAL_CLOSEOUT.md`](./docs/a3/A_LOCAL_CLOSEOUT.md).
 
+## B2-L closeout
+
+```bash
+bash packages/aiplat-evaluation/scripts/b2l_local_closeout.sh
+# allowlist + claim/execute + loop e2e → docs/a3/drills/local-eval-b2l-closeout-*.json
+```
+
+See [`docs/a3/B2L_LOCAL_CLOSEOUT.md`](./docs/a3/B2L_LOCAL_CLOSEOUT.md) · [`docs/a3/B2L_LOCAL.md`](./docs/a3/B2L_LOCAL.md).
+
 ## A4 independence
 
 ```bash

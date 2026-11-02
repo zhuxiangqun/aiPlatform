@@ -131,11 +131,14 @@
 
 ## 7. B2 验收清单（契约）
 
-- [ ] enqueue 拒绝 `skill_suite` / `http_probe`（统一错误体）。  
-- [ ] Worker 对伪造 job 行二次拒绝（fail-closed）。  
-- [ ] `replay_trace` / `prompt_eval` / `kb_rag`(只读) 可在 Central down + 独立 provider 下跑通。  
-- [ ] lease 过期可被另一 Worker 接管或 dead_letter。  
-- [ ] import guard：Worker 镜像/包无 `core.harness` 私有 import。  
+> **B2-L local**（工程证明，≠ staging）：见 `packages/aiplat-evaluation/docs/a3/B2L_LOCAL_CLOSEOUT.md` + `scripts/b2l_local_closeout.sh`。  
+> Live infra LLM / staging Central-down provider 仍属后续；本地确定性 fixture 不计 accuracy。
+
+- [x] enqueue 拒绝 `skill_suite` / `http_probe`（统一错误体）— **B2-L local**。  
+- [x] Worker 对伪造 job 行二次拒绝（fail-closed）— **B2-L local**。  
+- [x] `replay_trace` / `prompt_eval` / `kb_rag`(只读) 本地确定性路径跑通（Central 不依赖）；live provider 待接线。  
+- [x] lease 过期可被另一 Worker 接管或 dead_letter — **B2-L local**。  
+- [x] import guard：Worker 包无 `core.harness` 私有 import — **B2-L local**。  
 
 ---
 
