@@ -59,6 +59,6 @@
 
 ## Outcome
 
-- **In progress** — B1-L: execute **503** stubs + Compose PG/MinIO + PG EvalStore + **`/eval` UI 降级文案**；see [`B1L_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/B1L_LOCAL.md).
-- Keycloak Compose realm：可选后续；下一步优先 **B2-L Worker allowlist**。
+- **In progress** — B1-L closeout path + **B2-L allowlist enqueue**（202 / 422 dual-point #1+#2）；see [`B2L_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/B2L_LOCAL.md).
+- Next B2-L：SKIP LOCKED claim + lease/heartbeat + allowlist runner execute.
 - `process_split_authorized=false`；证据 `environment=local`。

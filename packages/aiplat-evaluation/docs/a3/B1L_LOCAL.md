@@ -8,7 +8,7 @@
 | Item | Status |
 |---|---|
 | Store/read on `:8010` | ✅ (A2–A6) |
-| Dynamic execute routes | ✅ **503** + unified `error` body |
+| Dynamic execute routes | ✅ superseded by B2-L allowlist enqueue / 422 deny — see [`B2L_LOCAL.md`](./B2L_LOCAL.md) |
 | Compose PG16 + MinIO | ✅ infra up (`compose/docker-compose.b1l.yml`) |
 | PG-backed EvalStore adapter | ✅ `AIPLAT_EVAL_DB_URL=postgresql://…` (asyncpg) |
 | Keycloak full realm | ⏳ optional; JWKS/HS256 already (A6/B0) |

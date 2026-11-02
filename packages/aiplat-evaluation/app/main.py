@@ -1,8 +1,8 @@
-"""EVAL standalone FastAPI entrypoint (:8010) — A-local + B1-L.
+"""EVAL standalone FastAPI entrypoint (:8010) — A-local + B1-L + B2-L enqueue.
 
 Honesty:
 - Independent process + healthz/readyz + local store + canonical store subset.
-- B1-L: dynamic execute routes → 503 execution_not_migrated (not cohost-in-port).
+- B2-L: allowlist runners enqueue (202); sandbox/forbidden → unified error body.
 - Does NOT set process_split_authorized=true. environment=local only.
 - No imports from core.harness / Central private modules.
 """
@@ -38,9 +38,10 @@ def healthz_payload(cfg: EvalServiceConfig) -> Dict[str, Any]:
         "jwks_enabled": jwks_enabled(),
         "environment": "local",
         "b1l_execution_stubs": True,
+        "b2l_allowlist_enqueue": True,
         "note": (
-            "B1-L local standalone — store/read OK; dynamic execute returns 503; "
-            "not staging; process_split_authorized=false."
+            "B2-L local standalone — store/read OK; allowlist enqueue 202; "
+            "sandbox/forbidden denied; not staging; process_split_authorized=false."
         ),
     }
 

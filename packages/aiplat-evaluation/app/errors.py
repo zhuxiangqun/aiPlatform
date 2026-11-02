@@ -47,12 +47,27 @@ def sandbox_required_response(
     *,
     runner_id: str,
     detail: str | None = None,
-    status_code: int = 503,
+    status_code: int = 422,
 ) -> JSONResponse:
     body = execution_error(
         code="sandbox_required",
         runner_id=runner_id,
         detail=detail or "runner requires B3 sandbox",
+        retryable=False,
+    )
+    return JSONResponse(status_code=status_code, content=body)
+
+
+def runner_forbidden_response(
+    *,
+    runner_id: str,
+    detail: str | None = None,
+    status_code: int = 422,
+) -> JSONResponse:
+    body = execution_error(
+        code="runner_forbidden",
+        runner_id=runner_id,
+        detail=detail or "runner not on B2 allowlist",
         retryable=False,
     )
     return JSONResponse(status_code=status_code, content=body)
@@ -64,3 +79,4 @@ _ = execution_error(
     runner_id="__probe__",
     detail="probe",
 )
+_ = runner_forbidden_response(runner_id="__probe__")

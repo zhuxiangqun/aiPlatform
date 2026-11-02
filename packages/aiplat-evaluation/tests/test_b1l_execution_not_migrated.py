@@ -1,4 +1,4 @@
-"""B1-L — dynamic execute → 503 + unified error body; process_split false."""
+"""B1-L/B2-L — execute routes: deny sandbox runners; allowlist enqueue (B2)."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -26,7 +26,7 @@ def _headers() -> dict:
     return {"Authorization": f"Bearer {mint_local_token(tenant_id='tenant-local')}"}
 
 
-def test_skill_run_503_error_body(tmp_path: Path, monkeypatch):
+def test_skill_run_sandbox_required(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("AIPLAT_EVAL_REQUIRE_AUTH", "1")
     client = TestClient(create_app(_cfg(tmp_path)))
     r = client.post(
@@ -34,15 +34,14 @@ def test_skill_run_503_error_body(tmp_path: Path, monkeypatch):
         headers=_headers(),
         json={},
     )
-    assert r.status_code == 503
+    assert r.status_code == 422
     err = r.json()["error"]
-    assert err["code"] == "execution_not_migrated"
+    assert err["code"] == "sandbox_required"
     assert err["runner_id"] == "skill_suite"
     assert err["retryable"] is False
-    assert "detail" in err
 
 
-def test_prompt_eval_and_arena_503(tmp_path: Path, monkeypatch):
+def test_prompt_eval_and_arena_enqueue(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("AIPLAT_EVAL_REQUIRE_AUTH", "1")
     client = TestClient(create_app(_cfg(tmp_path)))
     for path, rid in (
@@ -51,9 +50,11 @@ def test_prompt_eval_and_arena_503(tmp_path: Path, monkeypatch):
         ("/api/platform/apps/eval/kb-eval/run", "kb_rag"),
     ):
         r = client.post(path, headers=_headers(), json={})
-        assert r.status_code == 503, path
-        assert r.json()["error"]["code"] == "execution_not_migrated"
-        assert r.json()["error"]["runner_id"] == rid
+        assert r.status_code == 202, path
+        body = r.json()
+        assert body["runner_id"] == rid
+        assert body["status"] == "queued"
+        assert body["process_split_authorized"] is False
 
 
 def test_http_probe_sandbox_required(tmp_path: Path, monkeypatch):
@@ -64,7 +65,7 @@ def test_http_probe_sandbox_required(tmp_path: Path, monkeypatch):
         headers=_headers(),
         json={},
     )
-    assert r.status_code == 503
+    assert r.status_code == 422
     assert r.json()["error"]["code"] == "sandbox_required"
     assert r.json()["error"]["runner_id"] == "http_probe"
 
@@ -78,3 +79,4 @@ def test_healthz_local_not_split(tmp_path: Path, monkeypatch):
     assert body["process_split_authorized"] is False
     assert body["environment"] == "local"
     assert body["b1l_execution_stubs"] is True
+    assert body["b2l_allowlist_enqueue"] is True
