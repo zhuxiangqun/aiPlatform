@@ -1,6 +1,7 @@
 """B2-L Worker claim / heartbeat / execute-once (allowlist runners).
 
 Honesty: process_split_authorized=false; no core.harness; local deterministic runners.
+Wall-clock exceed → status timed_out (never succeeded).
 """
 from __future__ import annotations
 
@@ -15,6 +16,7 @@ from app.store.jobs import (
 )
 from app.worker.allowlist_guard import admit_job_for_execute
 from app.worker.runners import execute_runner
+from app.worker.timeout import job_timeout_sec, run_with_timeout
 
 
 def process_once(
@@ -23,8 +25,9 @@ def process_once(
     worker_id: str = "worker-local",
     lease_seconds: int = DEFAULT_LEASE_SECONDS,
     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
+    job_timeout_sec_override: Optional[float] = None,
 ) -> Optional[Dict[str, Any]]:
-    """Claim → allowlist → heartbeat → execute+collect → succeeded|failed|dead_letter."""
+    """Claim → allowlist → heartbeat → execute+collect → succeeded|failed|dead_letter|timed_out."""
     job = claim_next_job(
         db_url,
         worker_id=worker_id,
@@ -59,8 +62,32 @@ def process_once(
         lease_seconds=lease_seconds,
     )
 
+    timeout = job_timeout_sec(job_timeout_sec_override)
     try:
-        result = execute_runner(job)
+        result = run_with_timeout(lambda: execute_runner(job), timeout_sec=timeout)
+    except TimeoutError as exc:
+        updated = update_job_status(
+            db_url,
+            job["job_id"],
+            status="timed_out",
+            error_code="timed_out",
+            error_detail=str(exc)[:500],
+            result={
+                "ok": False,
+                "accuracy_claim": False,
+                "process_split_authorized": False,
+                "detail": "timed_out",
+                "timeout_sec": timeout,
+            },
+        )
+        return {
+            **(updated or job),
+            "admitted": True,
+            "claimed": True,
+            "executed": False,
+            "timed_out": True,
+            "process_split_authorized": False,
+        }
     except ValueError as exc:
         msg = str(exc)
         if msg.startswith("sandbox_required:"):

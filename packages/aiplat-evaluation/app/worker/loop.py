@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from app.store.jobs import DEFAULT_LEASE_SECONDS, DEFAULT_MAX_ATTEMPTS
 from app.worker.claim import process_once
+from app.worker.timeout import DEFAULT_JOB_TIMEOUT_SEC, job_timeout_sec
 
 
 @dataclass
@@ -31,6 +32,7 @@ def run_worker_loop(
     max_idle_rounds: Optional[int] = None,
     lease_seconds: int = DEFAULT_LEASE_SECONDS,
     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
+    job_timeout_sec_override: Optional[float] = None,
     should_stop: Optional[Callable[[], bool]] = None,
     process_fn: Optional[Callable[..., Optional[Dict[str, Any]]]] = None,
 ) -> WorkerLoopResult:
@@ -49,12 +51,23 @@ def run_worker_loop(
             out.stopped_reason = "max_jobs"
             break
 
-        job = fn(
-            db_url,
-            worker_id=worker_id,
-            lease_seconds=lease_seconds,
-            max_attempts=max_attempts,
-        )
+        kwargs: Dict[str, Any] = {
+            "worker_id": worker_id,
+            "lease_seconds": lease_seconds,
+            "max_attempts": max_attempts,
+        }
+        if fn is process_once or job_timeout_sec_override is not None:
+            kwargs["job_timeout_sec_override"] = (
+                job_timeout_sec()
+                if job_timeout_sec_override is None
+                else float(job_timeout_sec_override)
+            )
+        try:
+            job = fn(db_url, **kwargs)
+        except TypeError:
+            # Custom process_fn in tests may omit timeout kw.
+            kwargs.pop("job_timeout_sec_override", None)
+            job = fn(db_url, **kwargs)
         if job is None:
             out.idle_rounds += 1
             if max_idle_rounds is not None and out.idle_rounds >= int(max_idle_rounds):
@@ -108,6 +121,8 @@ def load_worker_env() -> Dict[str, Any]:
         "max_idle_rounds": _int_opt("AIPLAT_EVAL_WORKER_MAX_IDLE"),
         "lease_seconds": int(_float("AIPLAT_EVAL_WORKER_LEASE_SECONDS", float(DEFAULT_LEASE_SECONDS))),
         "max_attempts": int(_float("AIPLAT_EVAL_WORKER_MAX_ATTEMPTS", float(DEFAULT_MAX_ATTEMPTS))),
+        "job_timeout_sec": job_timeout_sec(),
+        "job_timeout_default": float(DEFAULT_JOB_TIMEOUT_SEC),
     }
 
 

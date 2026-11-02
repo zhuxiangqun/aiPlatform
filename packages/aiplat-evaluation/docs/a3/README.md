@@ -15,6 +15,7 @@
 | [`S1_LOCAL.md`](./S1_LOCAL.md) | S1 SECURITY_EVAL_V1 fixture 门禁（ASR≠accuracy） |
 | [`P1_LOCAL.md`](./P1_LOCAL.md) | P1–P1.2 评分语义（B2 runners family metrics；≠accuracy） |
 | [`B4S_PREP.md`](./B4S_PREP.md) | B4-S 主机前置（未确认 → 阻塞；≠ authorize） |
+| B2 wall-clock | `AIPLAT_EVAL_JOB_TIMEOUT_SEC` → `timed_out`（见 `app/worker/timeout.py`） |
 | `scripts/local_track_closeout.sh` | 本地轨收口（P1+S1+authorize locked；≠ B4） |
 
 ```bash

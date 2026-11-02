@@ -13,6 +13,7 @@
 | 2 | Worker dual-point rejects forged job (`dead_letter`) | ✅ | `test_worker_rejects_forged_skill_job` |
 | 3 | `replay_trace` / `prompt_eval` / `kb_rag` / `code_review_gold` / `arena` local path | ✅ | deterministic runners; **live infra LLM deferred** (`accuracy_claim=false`) |
 | 4 | lease expire reclaim / `max_attempts` → dead_letter | ✅ | `test_b2l_claim_lease` |
+| 4b | wall-clock → `timed_out` (never succeeded) | ✅ | `test_b2l_job_wall_timeout` |
 | 5 | import guard: no `core.harness` in `app/` | ✅ | closeout AST scan |
 | 6 | Worker poll loop drains queue | ✅ | `run_worker_loop` e2e in closeout |
 | 7 | `process_split_authorized` false | ✅ | healthz / authorize status / closeout JSON |
