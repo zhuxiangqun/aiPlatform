@@ -62,5 +62,6 @@
 - **B2-L / B3-L local closed** — allowlist worker + sandbox stub/docker/fixtures + closeout。
 - **S1 local fixture gate** — SECURITY_EVAL_V1 ASR（≠ accuracy）；见 [`S1_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/S1_LOCAL.md).
 - **P1 scoring semantics** — quality/safety/efficiency/security families；`accuracy_claim=false` until G2b；见 [`P1_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/P1_LOCAL.md).
-- Next under unfreeze：microVM·live tools；生产回填仍禁（B4 PITR 前）。
+- **P1.1** — `kb_rag` / `arena` 接入同一 family 指标；`scripts/local_track_closeout.sh` 收口本地轨。
+- Next：**独立主机** 开 B4-S 解冻；microVM·live tools 仍 deferred；生产回填仍禁（B4 PITR 前）。
 - `process_split_authorized=false`；`sandbox_real_isolation=false`；`security_live_attacks=false`.

@@ -1,8 +1,12 @@
-"""arena — pure-text pairwise compare only (tools → sandbox_required)."""
+"""arena — pure-text pairwise compare only (tools → sandbox_required).
+
+Honesty: P1 text_quality/content_safety are engineering scores; accuracy_claim=false.
+"""
 from __future__ import annotations
 
 from typing import Any, Dict
 
+from app.scoring.semantics import arena_p1_metrics
 from app.worker.runners._common import runner_result
 
 
@@ -20,7 +24,7 @@ def run_arena(job: Dict[str, Any]) -> Dict[str, Any]:
             runner_id="arena",
             job_id=job_id,
             ok=False,
-            metrics={"pass": 0.0},
+            metrics=arena_p1_metrics(response_a=a, response_b=b, winner="", ok=False),
             evidence={},
             detail="arena requires response_a and response_b",
         )
@@ -33,12 +37,7 @@ def run_arena(job: Dict[str, Any]) -> Dict[str, Any]:
         runner_id="arena",
         job_id=job_id,
         ok=ok,
-        metrics={
-            "pass": 1.0 if ok else 0.0,
-            "winner": winner,
-            "len_a": len(a),
-            "len_b": len(b),
-        },
+        metrics=arena_p1_metrics(response_a=a, response_b=b, winner=winner, ok=ok),
         evidence={"pure_text": True},
         detail="" if ok else f"winner={winner} prefer={prefer}",
     )

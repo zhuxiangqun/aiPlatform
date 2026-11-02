@@ -186,8 +186,62 @@ def prompt_eval_p1_metrics(
     return out
 
 
+def kb_rag_p1_metrics(
+    *,
+    query: str,
+    hits: Iterable[Any],
+    ok: bool,
+) -> Dict[str, float]:
+    """Compose P1 metrics for kb_rag fixture (no accuracy key)."""
+    hit_list = list(hits or ())
+    texts: List[str] = []
+    for h in hit_list:
+        if isinstance(h, dict):
+            texts.append(str(h.get("text") or h.get("content") or h.get("snippet") or ""))
+        else:
+            texts.append(str(h))
+    context = "\n".join(t for t in texts if t)
+    return {
+        "pass": 1.0 if ok else 0.0,
+        "hit_count": float(len(hit_list)),
+        "groundedness": score_groundedness(actual=query, context=context, sources=texts),
+        "text_quality": score_text_quality(actual=context or query),
+        "content_safety": score_content_safety(text=context or query),
+    }
+
+
+def arena_p1_metrics(
+    *,
+    response_a: str,
+    response_b: str,
+    winner: str,
+    ok: bool,
+) -> Dict[str, Any]:
+    """Compose P1 metrics for pure-text arena (no accuracy key)."""
+    return {
+        "pass": 1.0 if ok else 0.0,
+        "winner": winner,
+        "len_a": float(len(response_a or "")),
+        "len_b": float(len(response_b or "")),
+        "text_quality": round(
+            0.5
+            * (
+                score_text_quality(actual=response_a)
+                + score_text_quality(actual=response_b)
+            ),
+            4,
+        ),
+        "content_safety": min(
+            score_content_safety(text=response_a),
+            score_content_safety(text=response_b),
+        ),
+    }
+
+
 def _wire_scoring() -> Dict[str, Any]:
     """Same-file caller for method_verify."""
     _ = classify_metric("exact_match")
     _ = score_text_quality(actual="hello world", expected="hello world")
+    _ = kb_rag_p1_metrics(query="q", hits=[{"text": "q answer"}], ok=True)
+    _ = arena_p1_metrics(response_a="aa", response_b="b", winner="a", ok=True)
     return build_scoring_block({"exact_match": 1.0, "asr": 0.0})

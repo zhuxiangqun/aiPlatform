@@ -11,7 +11,9 @@ EVID_DIR="${AIPLAT_EVAL_P1_EVIDENCE_DIR:-$ROOT/docs/a3/drills}"
 mkdir -p "$EVID_DIR"
 export PYTHONPATH="${ROOT}${PYTHONPATH:+:$PYTHONPATH}"
 
-PYTHONPATH=. python3 -m pytest tests/test_p1_scoring_semantics.py -q --tb=line
+PYTHONPATH=. python3 -m pytest \
+  tests/test_p1_scoring_semantics.py \
+  tests/test_p1_1_kb_arena_metrics.py -q --tb=line
 
 python3 - <<PY
 import json

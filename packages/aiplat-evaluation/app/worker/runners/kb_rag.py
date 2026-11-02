@@ -1,8 +1,12 @@
-"""kb_rag — readonly local retrieval fixture scorer (no KB writes)."""
+"""kb_rag — readonly local retrieval fixture scorer (no KB writes).
+
+Honesty: P1 groundedness/text_quality are engineering scores; accuracy_claim=false.
+"""
 from __future__ import annotations
 
 from typing import Any, Dict, List
 
+from app.scoring.semantics import kb_rag_p1_metrics
 from app.worker.runners._common import runner_result
 
 
@@ -21,7 +25,7 @@ def run_kb_rag(job: Dict[str, Any]) -> Dict[str, Any]:
             runner_id="kb_rag",
             job_id=job_id,
             ok=False,
-            metrics={"pass": 0.0, "hit_count": 0},
+            metrics=kb_rag_p1_metrics(query=query, hits=[], ok=False),
             evidence={"query_len": len(query)},
             detail="kb_rag requires payload.hits (readonly fixture); no live KB write",
         )
@@ -40,7 +44,7 @@ def run_kb_rag(job: Dict[str, Any]) -> Dict[str, Any]:
         runner_id="kb_rag",
         job_id=job_id,
         ok=ok,
-        metrics={"pass": 1.0 if ok else 0.0, "hit_count": len(hits)},
+        metrics=kb_rag_p1_metrics(query=query, hits=hits, ok=ok),
         evidence={"query_len": len(query), "readonly": True},
         detail="" if ok else "expected_ids not covered by hits",
     )

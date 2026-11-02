@@ -15,9 +15,19 @@
 
 Every `runner_result` attaches `scoring` (`eval.scoring.semantics.v0`).
 
+## P1.1 runners
+
+| Runner | Extra P1 metrics |
+|---|---|
+| `prompt_eval` | text_quality / groundedness / safety / efficiency (LLM audit) |
+| `kb_rag` | groundedness vs hit texts + text_quality + content_safety |
+| `arena` | avg text_quality + min content_safety (pure-text only) |
+
 ## Tests / gate
 
 ```bash
-cd packages/aiplat-evaluation && PYTHONPATH=. pytest tests/test_p1_scoring_semantics.py -q
+cd packages/aiplat-evaluation && PYTHONPATH=. pytest \
+  tests/test_p1_scoring_semantics.py \
+  tests/test_p1_1_kb_arena_metrics.py -q
 bash packages/aiplat-evaluation/scripts/p1_local_gate.sh
 ```
