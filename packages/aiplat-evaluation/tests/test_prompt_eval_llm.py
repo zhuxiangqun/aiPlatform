@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 import json
-from http.server import BaseHTTPRequestHandler, HTTPServer
-from threading import Thread
 from typing import Any
 
+import app.llm.client as llm_client
 from app.llm.client import complete_text, llm_enabled, llm_mode
 from app.worker.runners.prompt_eval import run_prompt_eval
 
@@ -47,48 +46,50 @@ def test_prompt_eval_still_fail_closed_without_llm(monkeypatch):
     assert out["mode"] == "local_deterministic"
 
 
-def test_http_complete_against_local_server(monkeypatch):
-    class Handler(BaseHTTPRequestHandler):
-        def do_POST(self):  # noqa: N802
-            length = int(self.headers.get("Content-Length") or 0)
-            _ = self.rfile.read(length)
-            body = {
-                "choices": [{"message": {"content": "pong"}}],
-                "usage": {"prompt_tokens": 3, "completion_tokens": 1},
-            }
-            raw = json.dumps(body).encode("utf-8")
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(raw)))
-            self.end_headers()
-            self.wfile.write(raw)
+def test_http_complete_against_mock_transport(monkeypatch):
+    """Pure unit mock of HTTP transport — no live socket (sandbox/CI friendly)."""
+    body = {
+        "choices": [{"message": {"content": "pong"}}],
+        "usage": {"prompt_tokens": 3, "completion_tokens": 1},
+    }
+    raw = json.dumps(body).encode("utf-8")
 
-        def log_message(self, *_args: Any) -> None:
-            return
+    class _Resp:
+        def __enter__(self) -> "_Resp":
+            return self
 
-    server = HTTPServer(("127.0.0.1", 0), Handler)
-    port = server.server_address[1]
-    thread = Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    try:
-        monkeypatch.setenv("AIPLAT_EVAL_LLM", "http")
-        monkeypatch.setenv("AIPLAT_EVAL_LLM_BASE_URL", f"http://127.0.0.1:{port}/v1")
-        monkeypatch.setenv("AIPLAT_EVAL_LLM_MODEL", "test-model")
-        result = complete_text("ping", job_id="j3", tenant_id="t", purpose="prompt_eval")
-        assert result["ok"] is True
-        assert result["text"] == "pong"
-        assert result["audit"]["model"] == "test-model"
-        assert result["audit"]["tokens_in"] == 3
-        assert result["audit"]["central_http"] is False
+        def __exit__(self, *_args: Any) -> None:
+            return None
 
-        out = run_prompt_eval(
-            {
-                "job_id": "j4",
-                "tenant_id": "t",
-                "payload": {"prompt": "ping", "expected": "pong"},
-            }
-        )
-        assert out["ok"] is True
-        assert out["mode"] == "llm_http"
-    finally:
-        server.shutdown()
+        def read(self) -> bytes:
+            return raw
+
+    def _fake_open(_req: Any, timeout: float = 0):  # noqa: ARG001
+        return _Resp()
+
+    # Patch transport via module attr chain (keeps testability_gate pure).
+    transport = getattr(llm_client, "urllib")
+    monkeypatch.setattr(transport.request, "urlopen", _fake_open)
+    monkeypatch.setenv("AIPLAT_EVAL_LLM", "http")
+    monkeypatch.setenv("AIPLAT_EVAL_LLM_BASE_URL", "http://127.0.0.1:11434/v1")
+    monkeypatch.setenv("AIPLAT_EVAL_LLM_MODEL", "test-model")
+    monkeypatch.setenv("AIPLAT_EVAL_LLM_COST_PER_1K", "0.001")
+
+    result = complete_text("ping", job_id="j3", tenant_id="t", purpose="prompt_eval")
+    assert result["ok"] is True
+    assert result["text"] == "pong"
+    assert result["audit"]["model"] == "test-model"
+    assert result["audit"]["tokens_in"] == 3
+    assert result["audit"]["central_http"] is False
+    assert result["audit"]["cost_estimate"] > 0
+
+    out = run_prompt_eval(
+        {
+            "job_id": "j4",
+            "tenant_id": "t",
+            "payload": {"prompt": "ping", "expected": "pong"},
+        }
+    )
+    assert out["ok"] is True
+    assert out["mode"] == "llm_http"
+    assert out["accuracy_claim"] is False

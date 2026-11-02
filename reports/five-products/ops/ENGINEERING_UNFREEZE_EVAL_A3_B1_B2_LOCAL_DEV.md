@@ -68,6 +68,7 @@
 - **B2 cancel** — `POST .../jobs/{id}/cancel` → `cancelled`（协作；Worker 不覆盖）。
 - **B2 cost cap** — `AIPLAT_EVAL_JOB_COST_CAP` / payload `cost_cap` → `timed_out`/`cost_cap_exceeded`。
 - **P1 composite** — `text_quality`/`content_safety`/`refusal`/`groundedness` **计分**进 engineering composite；`asr` 显式 report-only；仍 ≠ accuracy。
-- Next：live infra LLM 动态执行 / microVM；**独立主机** 开 B4-S；生产回填仍禁（B4 PITR 前）。
+- **B2 LLM dynamic** — stub Worker e2e + 拒 Central URL；可选独立 provider live（`AIPLAT_EVAL_LLM_LIVE=1`）；仍 ≠ 生产 live 认证。
+- Next：microVM / live skill tools；**独立主机** 开 B4-S；生产回填仍禁（B4 PITR 前）。
 - Central `AgentEvalResult` 7 维权重仍为另一路径（本解冻不宣称已统一）。
 - `process_split_authorized=false`；`sandbox_real_isolation=false`；`security_live_attacks=false`.

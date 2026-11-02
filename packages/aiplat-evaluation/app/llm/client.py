@@ -13,6 +13,7 @@ Env:
 - ``AIPLAT_EVAL_LLM_MODEL`` — model id (default ``local``)
 - ``AIPLAT_EVAL_LLM_TIMEOUT`` — seconds (default 30)
 - ``AIPLAT_EVAL_LLM_STUB_OUTPUT`` — stub mode fixed output
+- ``AIPLAT_EVAL_LLM_COST_PER_1K`` — optional USD-ish per 1k tokens (alias: ``_COST_PER_1K_TOKENS``)
 """
 from __future__ import annotations
 
@@ -24,6 +25,46 @@ import urllib.request
 from typing import Any, Dict, Literal, Optional
 
 LlmMode = Literal["off", "stub", "http"]
+
+
+def provider_base_url() -> str:
+    return (os.environ.get("AIPLAT_EVAL_LLM_BASE_URL") or "").rstrip("/")
+
+
+def looks_like_central_llm_url(url: str = "") -> bool:
+    """Heuristic: Eval LLM must not point at Central HTTP."""
+    u = (url or provider_base_url() or "").lower()
+    if not u:
+        return False
+    if "/api/core/" in u or "/api/platform/" in u:
+        return True
+    if "localhost:8000" in u or "127.0.0.1:8000" in u:
+        return True
+    return False
+
+
+def assert_provider_independence(url: str = "") -> None:
+    """Raise when BASE_URL looks like Central — keep Worker independent."""
+    if looks_like_central_llm_url(url):
+        raise ValueError(
+            "runner_forbidden:eval_llm_must_not_use_central_http "
+            "(set AIPLAT_EVAL_LLM_BASE_URL to an independent provider)"
+        )
+
+
+def estimate_cost(*, tokens_in: int = 0, tokens_out: int = 0) -> float:
+    """Cheap USD-ish estimate from tokens."""
+    raw = (
+        os.environ.get("AIPLAT_EVAL_LLM_COST_PER_1K")
+        or os.environ.get("AIPLAT_EVAL_LLM_COST_PER_1K_TOKENS")
+        or ""
+    ).strip()
+    try:
+        per_1k = float(raw) if raw else 0.0
+    except ValueError:
+        per_1k = 0.0
+    total = max(0, int(tokens_in)) + max(0, int(tokens_out))
+    return round((total / 1000.0) * max(0.0, per_1k), 6)
 
 
 def llm_mode() -> LlmMode:
@@ -73,6 +114,9 @@ def complete_text(
         text = (os.environ.get("AIPLAT_EVAL_LLM_STUB_OUTPUT") or "").strip()
         if not text:
             text = f"[stub]{prompt[:200]}"
+        # Rough token stand-in so cost_cap path can exercise without a live provider.
+        tin = max(1, len(prompt) // 4)
+        tout = max(1, len(text) // 4)
         return {
             "ok": True,
             "text": text,
@@ -84,6 +128,8 @@ def complete_text(
                 tenant_id=tenant_id,
                 runner_id=runner_id,
                 latency_ms=0,
+                tokens_in=tin,
+                tokens_out=tout,
                 detail="stub_no_network",
             ),
         }
@@ -106,7 +152,23 @@ def _http_complete(
     purpose: str,
     model: Optional[str],
 ) -> Dict[str, Any]:
-    base = (os.environ.get("AIPLAT_EVAL_LLM_BASE_URL") or "").rstrip("/")
+    try:
+        assert_provider_independence()
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "text": "",
+            "audit": _audit(
+                mode="http",
+                purpose=purpose,
+                model="",
+                job_id=job_id,
+                tenant_id=tenant_id,
+                runner_id=runner_id,
+                detail=str(exc)[:200],
+            ),
+        }
+    base = provider_base_url()
     if not base:
         return {
             "ok": False,
@@ -216,7 +278,7 @@ def _audit(
         "latency_ms": latency_ms,
         "tokens_in": tokens_in,
         "tokens_out": tokens_out,
-        "cost_estimate": 0.0,
+        "cost_estimate": estimate_cost(tokens_in=tokens_in, tokens_out=tokens_out),
         "detail": detail,
         "central_http": False,
         "process_split_authorized": False,
@@ -226,4 +288,6 @@ def _audit(
 def _wire_llm() -> Dict[str, Any]:
     """Same-file caller for method_verify."""
     _ = llm_enabled()
+    _ = estimate_cost(tokens_in=10, tokens_out=5)
+    _ = looks_like_central_llm_url("http://127.0.0.1:9000/v1")
     return complete_text("ping", job_id="job_wire", purpose="prompt_eval")

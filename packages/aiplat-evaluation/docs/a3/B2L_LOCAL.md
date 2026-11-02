@@ -38,6 +38,7 @@ out = process_once(db_url, worker_id="w1")  # claim → allowlist → run → su
 - Cost hard-top: `AIPLAT_EVAL_JOB_COST_CAP` / payload `cost_cap` → `timed_out` + `cost_cap_exceeded` (never `succeeded`)
 - Runners: local deterministic fixtures (`accuracy_claim=false`); `arena`+tools → `sandbox_required`
 - Optional LLM: [`LLM_LOCAL.md`](./LLM_LOCAL.md) (`AIPLAT_EVAL_LLM=stub|http`) — accuracy_claim=false
+- Dynamic LLM gate: `bash scripts/b2l_llm_dynamic_gate.sh`（stub e2e 必过；`AIPLAT_EVAL_LLM_LIVE=1` 可选真实独立 provider）
 
 ## Worker loop
 

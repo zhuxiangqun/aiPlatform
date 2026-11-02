@@ -11,7 +11,8 @@
 |---|------|:------:|----------|
 | 1 | enqueue rejects `skill_suite` / `http_probe` (unified body) | ✅ | closeout e2e + `test_b2l_allowlist_enqueue` |
 | 2 | Worker dual-point rejects forged job (`dead_letter`) | ✅ | `test_worker_rejects_forged_skill_job` |
-| 3 | `replay_trace` / `prompt_eval` / `kb_rag` / `code_review_gold` / `arena` local path | ✅ | deterministic runners; **live infra LLM deferred** (`accuracy_claim=false`) |
+| 3 | `replay_trace` / `prompt_eval` / `kb_rag` / `code_review_gold` / `arena` local path | ✅ | deterministic runners; stub LLM dynamic e2e via `b2l_llm_dynamic_gate.sh` (`accuracy_claim=false`) |
+| 3b | LLM dynamic (stub) + Central URL refuse | ✅ | `test_b2l_llm_dynamic_execute`; live provider optional (`AIPLAT_EVAL_LLM_LIVE=1`) |
 | 4 | lease expire reclaim / `max_attempts` → dead_letter | ✅ | `test_b2l_claim_lease` |
 | 4b | wall-clock → `timed_out` (never succeeded) | ✅ | `test_b2l_job_wall_timeout` |
 | 4c | cancel queued/running → `cancelled` | ✅ | `test_b2l_job_cancel` |
