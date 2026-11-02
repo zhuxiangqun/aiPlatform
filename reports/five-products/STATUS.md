@@ -3,8 +3,9 @@
 > **SSOT autonomy/delivery**：[`capabilities.manifest.yaml`](../../capabilities.manifest.yaml)（本表必须与之一致；禁止写高于 manifest 的 A/D）。  
 > **G0**：[`G0_CLOSEOUT.md`](./G0_CLOSEOUT.md)（通过 · P0-3′ · CI 锚点 **61** 提交 · `35829e96`）。  
 > **计划**：[`five-capability-independent-engineering-plan.md`](../../docs/architecture/plans/five-capability-independent-engineering-plan.md) **V2.2** · packaging base [`templates/module/PACKAGING_BASE.md`](../../templates/module/PACKAGING_BASE.md)。  
-> **冻结**：[`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md)（A3 local + B0 JWKS **Closed**；`process_split`/authorize 仍冻）。  
-> **EVAL_V1**：**E0–E7 + G2c PASS** — [`ops/EVAL_V1_G2C_CLOSEOUT.md`](./ops/EVAL_V1_G2C_CLOSEOUT.md)；`accuracy_claim=false`；G2c=`intra_rater`。**G2b defer**。**A3 local Closed PASS** — [`ops/ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md`](./ops/ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md)。**B0 JWKS Closed PASS** #531 — [`ops/ENGINEERING_UNFREEZE_EVAL_A3_B0_JWKS.md`](./ops/ENGINEERING_UNFREEZE_EVAL_A3_B0_JWKS.md)；`process_split_authorized=false`；方案 [`eval-a3-independent-service.md`](../../docs/architecture/plans/eval-a3-independent-service.md)。下一外部前置：staging（B1）。  
+> **冻结**：[`ops/ENGINEERING_FREEZE.md`](./ops/ENGINEERING_FREEZE.md)（A3 local + B0 **Closed**；**B1-L/B2-L local Active**；`process_split`/authorize 仍冻）。  
+> **EVAL_V1**：**E0–E7 + G2c PASS** — [`ops/EVAL_V1_G2C_CLOSEOUT.md`](./ops/EVAL_V1_G2C_CLOSEOUT.md)；`accuracy_claim=false`。**A3 local + B0 Closed**。**B1-L/B2-L Active** — [`ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](./ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)（本机开发；staging 只挡 B4-S/B6）；方案 [`eval-production-independent-service.md`](../../docs/architecture/plans/eval-production-independent-service.md) v1.2；`process_split_authorized=false`。  
+
 
 > **DIAGNOSIS_V1**：**C1–C3 + C3.5 PASS** — [`ops/DIAGNOSIS_V1_C35_CLOSEOUT.md`](./ops/DIAGNOSIS_V1_C35_CLOSEOUT.md)；**分报**：core top1=1.00 / adversarial top1≈0.17（盲测）；禁止用 core 1.00 宣称准确率。下一外部前置：staging（C4）。  
 > 工程收口见 [`ENGINEERING_CLOSEOUT.md`](./ENGINEERING_CLOSEOUT.md) · 本地收口 [`ops/ENGINEERING_LOCAL_CLOSEOUT.md`](./ops/ENGINEERING_LOCAL_CLOSEOUT.md)。  

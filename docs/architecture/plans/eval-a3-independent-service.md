@@ -225,7 +225,7 @@ B1+（另解冻）：真实 staging PG + Keycloak
 | **B1+** | staging 主机、备份/PITR、HA、operator、变更窗口 | 另开；A-local/B0 完成 ≠ 可授权 |
 
 **A-local / B0 完成 ≠ B 可授权。**  
-**完整生产方案（B1–B6 + P1 + S1）**：见 [`eval-production-independent-service.md`](./eval-production-independent-service.md)（v1.1 + P0 契约：Runtime / Route Matrix / Model / Migration）。
+**完整生产方案**：见 [`eval-production-independent-service.md`](./eval-production-independent-service.md) v1.2（**B1-L/B2-L 本机可开工**；staging 仅 B4-S/B6；P0 契约齐全）。
 
 ---
 
