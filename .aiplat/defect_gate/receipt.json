@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T21:08:22+08:00",
+  "reviewed_at": "2026-11-02T21:55:16+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "2eb80d16b8f924c8b322395092cbcbd52b9ce19798e9c15e7295a8083d205a3a",
-  "head_sha": "e9308490df063108efbc3bd80e9c6708a1c5b5f2",
+  "diff_sha256": "7700f34dbd97e36275b986436a159ee3f35fb2d2debce4207cfa0892a5b52220",
+  "head_sha": "9f519657b7f5868d9f4d94212ed8934a5c4cc96d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P1.2: all B2 runners family-scored; B4S_PREP docs host-blocked. Residual: B4 needs host; microVM deferred."
+  "note": "B2 timed_out: run_with_timeout wraps execute_runner; TimeoutError→timed_out never succeeded. Residual: thread may linger after timeout; cancel still deferred."
 }
