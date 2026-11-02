@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T22:38:35+08:00",
+  "reviewed_at": "2026-11-02T23:05:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "7effdc6137aa32525ebc9577db3f220ad8467b0301e2da875ca8598040ed3454",
-  "head_sha": "bc0585a9249d1b64dca04a08f13993322d4a158f",
+  "diff_sha256": "dd6f30c4457e26aa8cdb854cc2e075bbbca83dda4da39279199f430f7efd0f28",
+  "head_sha": "389d292e08579a0bb8c7275c601a69cae989aca8",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P1 composite: text/safety/groundedness scored; asr report-only; accuracy_claim false. Residual: Central AgentEvalResult 7-dim not unified; live LLM/G2b still deferred."
+  "note": "B2 LLM dynamic: stub e2e + Central URL refuse + optional live; gate PASS does not imply live_ok/accuracy. Residual: microVM/B4-S/G2b deferred."
 }
