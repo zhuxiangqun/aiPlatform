@@ -13,6 +13,7 @@ class _EvalServiceConfig:
     db_url: str
     version: str
     protocol: str
+    require_auth: bool
 
     @property
     def is_standalone(self) -> bool:
@@ -44,6 +45,13 @@ def load_config() -> EvalServiceConfig:
         db_url = "sqlite:///./data/eval_local.sqlite3"
     version = (os.getenv("AIPLAT_EVAL_VERSION") or "0.1.0").strip() or "0.1.0"
     protocol = (os.getenv("AIPLAT_EVAL_PROTOCOL") or "eval.protocol.v0").strip()
+    auth_raw = (os.getenv("AIPLAT_EVAL_REQUIRE_AUTH") or "").strip().lower()
+    if auth_raw in {"0", "false", "no", "off"}:
+        require_auth = False
+    elif auth_raw in {"1", "true", "yes", "on"}:
+        require_auth = True
+    else:
+        require_auth = mode == "standalone"
     return EvalServiceConfig(
         mode=mode,
         host=host,
@@ -51,4 +59,5 @@ def load_config() -> EvalServiceConfig:
         db_url=db_url,
         version=version,
         protocol=protocol,
+        require_auth=require_auth,
     )
