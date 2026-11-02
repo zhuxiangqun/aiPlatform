@@ -2,9 +2,10 @@
 # Does NOT set process_split_authorized / staging_ready.
 # Usage:
 #   docker compose -f compose/docker-compose.b1l.yml up -d postgres minio
-#   # API still via scripts/run_local.sh (SQLite default) or point AIPLAT_EVAL_DB_URL later
+#   export AIPLAT_EVAL_DB_URL='postgresql://eval:eval_local@127.0.0.1:5433/eval'
+#   bash scripts/migrate_local.sh && bash scripts/run_local.sh
 #
-# PG is provisioned for B1-L/B2-L practice; SQLite remains default until store PG adapter lands.
+# SQLite remains default when AIPLAT_EVAL_DB_URL is unset.
 
 services:
   postgres:

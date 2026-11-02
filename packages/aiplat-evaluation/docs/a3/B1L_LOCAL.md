@@ -10,7 +10,7 @@
 | Store/read on `:8010` | ✅ (A2–A6) |
 | Dynamic execute routes | ✅ **503** + unified `error` body |
 | Compose PG16 + MinIO | ✅ infra up (`compose/docker-compose.b1l.yml`) |
-| PG-backed EvalStore adapter | ⏳ next B1-L slice |
+| PG-backed EvalStore adapter | ✅ `AIPLAT_EVAL_DB_URL=postgresql://…` (asyncpg) |
 | Keycloak full realm | ⏳ optional; JWKS/HS256 already (A6/B0) |
 
 ## Run API (SQLite default)
@@ -41,10 +41,22 @@ docker compose -f compose/docker-compose.b1l.yml up -d postgres minio
 # minio:    localhost:9000  console :9001
 ```
 
+## API on Postgres (optional)
+
+```bash
+export AIPLAT_EVAL_DB_URL='postgresql://eval:eval_local@127.0.0.1:5433/eval'
+bash packages/aiplat-evaluation/scripts/migrate_local.sh
+bash packages/aiplat-evaluation/scripts/run_local.sh
+# /readyz → db_ok; store health → backend=postgres (password redacted)
+```
+
+Requires `asyncpg` (monorepo venv). SQLite remains the default when `AIPLAT_EVAL_DB_URL` is unset.
+
 ## Tests
 
 ```bash
-cd packages/aiplat-evaluation && PYTHONPATH=. pytest tests/test_b1l_execution_not_migrated.py -q
+cd packages/aiplat-evaluation && PYTHONPATH=. pytest tests/test_b1l_execution_not_migrated.py tests/test_b1l_pg_store.py -q
+# live PG (integration): pytest tests/test_b1l_pg_live.py -q  # needs compose :5433
 ```
 
 ## UI note

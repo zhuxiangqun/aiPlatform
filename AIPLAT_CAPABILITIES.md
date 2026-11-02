@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2494
+total_capabilities: 2498
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -570,6 +570,7 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| qmark_to_dollar | `packages/aiplat-evaluation/app/store/pg_runtime.py` | ✅ | 自动同步 | 已合入 |
 | require_bearer | `packages/aiplat-evaluation/app/auth.py` | ✅ | 自动同步 | 已合入 |
 | mint_local_token | `packages/aiplat-evaluation/app/auth.py` | ✅ | 自动同步 | 已合入 |
 | evaluation_a5_local_closeout | `packages/aiplat-evaluation/scripts/a5_local_closeout.sh` | ✅ | 自动同步 | 已合入 |
@@ -2568,6 +2569,9 @@ scan_hash: 8f9548ec24f4
 | Evaluation A6 local JWT auth | `packages/aiplat-evaluation/app/auth.py` + `migrations/0002_tenant_id.sql` | ✅ | standalone Bearer HS256；无 token→401；跨租户→404；`process_split_authorized=false`；Keycloak JWKS→B；生成物适用：不适用（评测本地认证） | 本批 |
 | Evaluation B0 local JWKS RS256 | `packages/aiplat-evaluation/app/auth.py` (`jwks_enabled` / `AIPLAT_EVAL_JWKS_JSON|_URL`) | ✅ | RS256 JWKS fixture/URL 校验；错误 kid/issuer→401；`process_split_authorized=false`；≠ staging authorize；生成物适用：不适用（评测认证加固） | 本批 |
 | Evaluation B1-L execute stubs 503 | `packages/aiplat-evaluation/app/api/execution_stubs.py` + `app/errors.py` | ✅ | 动态执行统一 `execution_not_migrated` 503；`environment=local`；≠ staging；生成物适用：不适用 | 本批 |
+| Evaluation B1-L PG EvalStore | `packages/aiplat-evaluation/app/store/pg_store.py` + `pg_runtime.py` + `migrate.py` | ✅ | `postgresql://` via asyncpg；同 schema migrations；密码脱敏；SQLite 仍默认；生成物适用：不适用 | 本批 |
+| backend_from_url | `packages/aiplat-evaluation/app/store/paths.py` | ✅ | sqlite|postgres URL 判定 | 本批 |
+| open_pg_store | `packages/aiplat-evaluation/app/store/pg_store.py` | ✅ | 打开 PG EvalStore | 本批 |
 | execution_error | `packages/aiplat-evaluation/app/errors.py` | ✅ | B1 Route Matrix 统一错误体 | 本批 |
 | register_execution_stubs | `packages/aiplat-evaluation/app/api/execution_stubs.py` | ✅ | 注册 skill/prompt/arena/kb 503 stubs | 本批 |
 | jwks_enabled | `packages/aiplat-evaluation/app/auth.py` | ✅ | B0：是否启用 JWKS 校验路径 | 本批 |
@@ -3393,7 +3397,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 351 | 1 | 352 |
+| Harness 执行引擎 | 352 | 1 | 353 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 386 | 9 | 395 |
 | RAG 检索 | 57 | 0 | 57 |
@@ -3406,7 +3410,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 85 | 0 | 85 |
+| 评估系统 | 88 | 0 | 88 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3438,7 +3442,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2484** | **10** | **2494** |
+| **总计** | **2488** | **10** | **2498** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
