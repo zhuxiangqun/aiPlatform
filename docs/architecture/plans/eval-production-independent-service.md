@@ -1,12 +1,13 @@
 # EVAL Production Independent Service — 完整方案（B 轨）
 
 > **文档类型**：Design / Implementation Plan（生产级独立评测服务）  
-> **版本**：v1.1 · 2026-11-02  
-> **状态**：Design baseline（P0 契约已齐）· **未解冻实施**（须新 `ENGINEERING_UNFREEZE_*` + **D2 staging 主机**）  
-> **前置已完成**：A-local A0–A6（#529）· B0 JWKS（#531）  
+> **版本**：v1.2 · 2026-11-02  
+> **状态**：P0 契约已齐 · **B1-L/B2-L 本地开发已解冻**（[`ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)）  
+> **前置已完成**：A-local A0–A6（#529）· B0 JWKS（#531）· P0 docs（#533）  
 > **P0 契约**：[`EVAL_RUNTIME_CONTRACT.md`](./EVAL_RUNTIME_CONTRACT.md) · [`B1_ROUTE_MATRIX.md`](./B1_ROUTE_MATRIX.md) · [`EVAL_MODEL_GATEWAY.md`](./EVAL_MODEL_GATEWAY.md) · [`EVAL_DATA_MIGRATION.md`](./EVAL_DATA_MIGRATION.md)  
 > **关联**：[`eval-a3-independent-service.md`](./eval-a3-independent-service.md) · [`eval-v1-charter.md`](./eval-v1-charter.md) · [`ADR-EVALUATION-A3.md`](../../../reports/five-products/ADR-EVALUATION-A3.md) · [`SPLIT_CHECKLIST.md`](../../../packages/aiplat-evaluation/docs/a3/SPLIT_CHECKLIST.md)  
-> **诚实性**：本稿不设 `process_split_authorized=true`；不宣称 accuracy / 安全认证；无 staging 则 **不写 B1 生产代码**。
+> **诚实性**：本稿不设 `process_split_authorized=true`；不宣称 accuracy / 安全认证。  
+> **闸门**：staging = **验收/授权证**（B4-S/B6），**不是** B1-L/B2-L 开工证。本地证据 `environment=local`，不得标 staging。
 
 ---
 
@@ -40,9 +41,10 @@
 | 路由 | [`B1_ROUTE_MATRIX.md`](./B1_ROUTE_MATRIX.md)；B1 动态执行默认 **503** + 统一错误体 |
 | Allowlist | **enqueue + execute 双点 fail-closed** |
 | 沙箱 | 工具/代码/文件/网络 → **必须沙箱（B3）**；B2 仅只读/纯文本 allowlist |
-| 阶段序 | **B1 → B2 → P1 → B3 → S1**（再 B4→B5→B6） |
+| 阶段序 | **本地**：B1-L → B2-L → P1 → B3-L → S1；**有主机后**：B4-S → B5-S → B6 |
+| staging | 只挡 **B4-S / B6**；不挡本机写代码 |
 | staging SLO | **只采基线**；不承诺 99.9% |
-| 工期（单人+AI） | 整体约 **5–6 个月**；B2 **5–7 周** |
+| 工期（单人+AI） | 整体约 **5–6 个月**；B2-L **5–7 周** |
 
 ---
 
@@ -160,59 +162,64 @@
 
 ---
 
-## 6. 分阶段路线图
+## 6. 分阶段路线图（本地开发 vs staging 验收）
 
-> 每阶段独立解冻。无 staging → 停在设计，不写 B1 代码。
+> **staging = 授权证，不是开工证。**  
+> 本地解冻：[`ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)。
 
-| 阶段 | 核心 | 工期 |
-|---|---|---|
-| A/B0 ✅ | 本地独立 + JWKS | — |
-| **B1** | PG + OIDC + 全量 API 宿主；动态路由 **503**；UI 降级 | 2–3 周 |
-| **B2** | SKIP LOCKED + Worker；**allowlist only**；独立 provider | **5–7 周** |
-| **P1** | 评分语义 | 1–2 周 |
-| **B3** | 沙箱 + 数据双跑 | 2–4 周 |
-| **S1** | SECURITY_EVAL_V1 | 4–8 周 |
-| **B4** | staging live 备份/PITR/回滚 | 1–2 周 |
-| **B5** | HA / 生产 SLO / 限流 | 2–3 周 |
-| **B6** | checklist ✅ + signed → `process_split_authorized=true` | 变更窗口 |
+| 阶段 | 环境 | 核心 | 要 staging？ | 工期 |
+|---|---|---|---|---|
+| A/B0 ✅ | local | 独立进程 + JWKS | ❌ | — |
+| **B1-L** | 本机 VM/Docker | API + PG + 本地 OIDC/JWKS；动态 **503**；UI 降级 | ❌ | 2–3 周 |
+| **B2-L** | 本机 VM/Docker | SKIP LOCKED + Worker；allowlist；独立 provider | ❌ | **5–7 周** |
+| **P1** | local | 评分语义 | ❌ | 1–2 周 |
+| **B3-L** | local | 沙箱原型 + 本地迁移/回滚演练 | ❌ | 2–4 周 |
+| **S1** | local | SECURITY_EVAL 套件 | ❌ | 4–8 周 |
+| **B4-S** | **独立 staging** | live：备份/PITR/故障/回滚 | ✅ | 1–2 周 |
+| **B5-S** | staging/生产 | HA、生产 SLO、限流 | ✅ | 2–3 周 |
+| **B6** | staging | checklist ✅ + signed → `process_split_authorized=true` | ✅ | 变更窗口 |
 
 ```
-A/B0 ✅ → B1 → B2 → P1 → B3 → S1 → B4 → B5 → B6
+本地（无需独立主机）
+  A/B0 ✅ → B1-L → B2-L → P1 → B3-L → S1
+有独立 staging 后（验收/授权）
+  → B4-S → B5-S → B6(authorize)
 ```
 
-单人+AI 合计约 **5–6 个月**（含缓冲）。
+单人+AI 合计约 **5–6 个月**；本地可完成约 **70–80%** 工程量。
 
-### B1
+### B1-L（本机）
 
-- 独立 API 挂全量 canonical；**动态执行 503** + 统一错误体；`/eval` UI 降级。  
-- PG 空库/脱敏；真实 JWKS。  
-- **`temporary_proxy` closeout 必须清零**。  
+- Compose：`eval-api` + PG + Keycloak（或 JWKS fixture）+ MinIO。  
+- 全量 canonical **read/store**；动态执行 **503** + 统一错误体；`/eval` UI 降级。  
+- `temporary_proxy` closeout 清零；证据 `environment=local`。  
 - 详见 [`B1_ROUTE_MATRIX.md`](./B1_ROUTE_MATRIX.md)。
 
-### B2
+### B2-L（本机）
 
-- API 只入队；Worker + lease/heartbeat/DLQ。  
-- allowlist 双点校验；Central 停机验收见依赖矩阵（**MODEL_PROVIDER 必须独立**）。  
+- API 只入队；Worker + lease/heartbeat/DLQ；allowlist 双点。  
+- Central 停机 **本地**测；**MODEL_PROVIDER 须独立于 Central 进程**（可同物理机不同进程/容器）。  
 - 详见 [`EVAL_RUNTIME_CONTRACT.md`](./EVAL_RUNTIME_CONTRACT.md) · [`EVAL_MODEL_GATEWAY.md`](./EVAL_MODEL_GATEWAY.md)。
 
-### B3
+### B3-L / P1 / S1（本机）
 
-- 工具类 runner 入沙箱；数据 dual-read；迁移前备份硬门。  
-- 详见 [`EVAL_DATA_MIGRATION.md`](./EVAL_DATA_MIGRATION.md)。
+- 沙箱原型 + 脱敏迁移演练；评分语义；安全套件本地 gate。  
+- **无生产数据**；不签 staging。
 
-### B4–B6
+### B4-S / B5-S / B6（独立主机）
 
-- live 证据 → 硬化 → 授权切流（checklist 无 🟨 充数）。
+- 另开 `ENGINEERING_UNFREEZE_EVAL_A3_B1_STAGING`（或 B4 专用解冻）。  
+- live 证据 → 硬化 → 授权切流。本机 local **不能**替代。
 
 ---
 
-## 7. 产品轨（串行）
+## 7. 产品轨（串在本地序内）
 
-### 7.1 P1 — 评分语义（B2 之后）
+### 7.1 P1 — 评分语义（B2-L 之后）
 
 `content_safety`/`refusal`/`text_quality` 计分或显式非计分；groundedness；latency/cost_per_success。`accuracy_claim=false` 直至 G2b。
 
-### 7.2 S1 — SECURITY_EVAL_V1（B3 沙箱后）
+### 7.2 S1 — SECURITY_EVAL_V1（B3-L 沙箱雏形后）
 
 红队套件 + ASR 等；确定性检查优先；不与 G2a 混称。
 
@@ -246,21 +253,21 @@ JWKS 必选（staging+）；禁默认 HS256 当生产；租户隔离；红队包
 | # | 决策 | 状态 |
 |---|---|---|
 | D1 | A/B0 为前置 | **是** |
-| D2 | staging 主机 | **未确认 → 阻塞 B1 代码** |
+| D2 | staging 主机 | **未确认 → 只阻塞 B4-S/B6**；**不**阻塞 B1-L/B2-L |
 | D3 | 仅 aiPlat v1 | **锁定** |
 | D4 | PG SKIP LOCKED | **锁定** |
 | D5 | MinIO/S3 + 加密/隔离 | **锁定方向** |
-| D6 | 企业/Keycloak OIDC | staging 选定 |
-| D7 | 串行 B1→B2→P1→B3→S1 | **锁定** |
-| D8 | HA 在 B5 | **锁定** |
+| D6 | 本地可用 Keycloak Compose；staging 再接企业 IdP | **锁定** |
+| D7 | 本地串行后 staging 验收 | **锁定** |
+| D8 | HA 在 B5-S | **锁定** |
 
 ---
 
 ## 12. 成功标准
 
-- B2：allowlist 任务在 Central down + **独立 provider** 下可消化。  
-- B1：无假独立（无残留 temporary_proxy；动态 503 可测）。  
-- B6：checklist ✅ + signed + authorize。  
+- B1-L / B2-L：本地验收绿；`environment=local`；无假 staging。  
+- B2-L：allowlist 任务在 Central down + **独立 provider 进程**下可消化。  
+- B6：checklist ✅ + **staging** signed live + authorize（本机不可替代）。  
 - P1/S1：计分诚实；安全有独立入口（非 accuracy）。
 
 ---
@@ -269,20 +276,20 @@ JWKS 必选（staging+）；禁默认 HS256 当生产；租户隔离；红队包
 
 | 风险 | 止损 |
 |---|---|
-| 无 staging 写 B1 | **停** |
-| B2 跑 skill/tool | allowlist 拒绝 |
-| provider 与 Central 同机冒充独立 | 验收不计通过 |
+| 把 local 标成 staging | authorize / closeout **拒绝** |
+| B2-L 跑 skill/tool | allowlist 拒绝 |
+| provider 与 Central 同进程冒充独立 | 验收不计通过 |
 | 无备份做生产回填 | 迁移硬门拒绝 |
-| 用本地证据授权 | authorize 拒绝 |
+| 无主机却开 B4-S | **停** |
 
 ---
 
 ## 14. 下一步
 
-1. **本批**：P0 四契约 + 本方案 v1.1 合入（文档 PR）。  
-2. **确认 D2** staging 主机。  
-3. 有主机后再开 `ENGINEERING_UNFREEZE_EVAL_A3_B1_STAGING`（**本批不激活**）。  
-4. B1：PG → OIDC → 路由 503/UI → closeout 清零 proxy。
+1. 合入本解冻 + 方案 v1.2（**本批**）。  
+2. 开 **B1-L**：Compose（api+PG+Keycloak/JWKS+MinIO）→ migrations → 503 路由 → UI 降级。  
+3. 续 **B2-L** Worker。  
+4. 有独立主机后再开 B4-S 解冻 → B6。
 
 ---
 
@@ -291,7 +298,8 @@ JWKS 必选（staging+）；禁默认 HS256 当生产；租户隔离；红队包
 | 日期 | 版本 | 变更 |
 |---|---|---|
 | 2026-11-02 | v1.0 | 初版 B1–B6 + P1/S1 |
-| 2026-11-02 | v1.1 | P0 契约链接；SKIP LOCKED；B2 allowlist；503 错误体；串行序；工期与 staging 基线 SLO |
+| 2026-11-02 | v1.1 | P0 契约；SKIP LOCKED；allowlist；503；串行 |
+| 2026-11-02 | v1.2 | **B1-L/B2-L 本地解冻**；staging 仅挡 B4-S/B6 |
 
 ---
 
