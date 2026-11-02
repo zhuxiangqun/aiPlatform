@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T20:39:10.698392+08:00",
+  "reviewed_at": "2026-11-02T20:51:10+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "f6c9e18aa99757b55d61e90b6b7a7b77f2ef2ed1161d372f8d2bb8aba93555e0",
-  "head_sha": "5e1a511c74a5e8f06ec4698cba2c1234736d7841",
+  "diff_sha256": "74fb1e672284193cc4da1ee8b35a029ea530c85485cda017bbf96e1258cdd7e6",
+  "head_sha": "f61540cbb005f07fe685bf0aef8314f964607a12",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "S1 fixture ASR only; accuracy_claim=false; security_live_attacks=false."
+  "note": "P1: enrich_runner_result forces accuracy_claim=false; prompt_eval uses family metrics only; gate asserts empty accuracy family. Residual: heuristic scores not calibrated; G2b still locked."
 }
