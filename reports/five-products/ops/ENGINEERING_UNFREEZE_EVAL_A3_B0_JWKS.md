@@ -1,7 +1,7 @@
 # Engineering unfreeze — EVAL_A3 B0（本地 JWKS / RS256）
 
 - **decided_at**: `2026-11-02`
-- **status**: **Active** — B0 local JWKS only
+- **status**: **Closed PASS** — B0 local JWKS (#531)
 - **parent**: [`ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md`](./ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md) Closed PASS
 - **plan**: [`eval-a3-independent-service.md`](../../../docs/architecture/plans/eval-a3-independent-service.md) §10
 - **freeze**: [`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md)
@@ -36,4 +36,5 @@
 
 ## Outcome
 
-- **In progress / shipping** — `jwks_enabled` + `AIPLAT_EVAL_JWKS_JSON` RS256 path；bad kid/issuer → 401；`process_split_authorized=false`。
+- **PASS (B0)** — `jwks_enabled` + `AIPLAT_EVAL_JWKS_JSON`/`_URL` RS256 path；bad kid/issuer → 401；[#531](https://github.com/zhuxiangqun/aiPlatform/pull/531)。
+- `process_split_authorized` **仍 false**；**不**自动进 B1（staging Keycloak / authorize）。
