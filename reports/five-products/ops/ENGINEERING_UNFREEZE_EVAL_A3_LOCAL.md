@@ -1,7 +1,8 @@
 # Engineering unfreeze — EVAL_A3_LOCAL（独立进程/DB 本地验证）
 
 - **decided_at**: `2026-11-02`
-- **status**: **Active — A-local only**（A1–A3 landed · A4 independence in flight）
+- **status**: **Closed PASS — A-local only**（A0–A5；#6 OIDC 🟨 deferred to B）
+- **closeout**: [`A_LOCAL_CLOSEOUT.md`](../../../packages/aiplat-evaluation/docs/a3/A_LOCAL_CLOSEOUT.md)
 - **plan**: [`eval-a3-independent-service.md`](../../../docs/architecture/plans/eval-a3-independent-service.md)
 - **A3 ADR**: [`ADR-EVALUATION-A3.md`](../ADR-EVALUATION-A3.md)（Accepted 有条件）
 - **checklist**: [`SPLIT_CHECKLIST.md`](../../../packages/aiplat-evaluation/docs/a3/SPLIT_CHECKLIST.md)
@@ -65,4 +66,6 @@ bash scripts/ops_engineering_freeze_check.sh
 
 ## Outcome
 
-- `_pending_`（A-local 出口填写）
+- **PASS (A-local)** — 独立进程/DB/API/独立性/备份回滚已本地证明；`process_split_authorized` **仍 false**。
+- **#6 OIDC** 🟨：Central 代理路径有 `require_auth`；standalone 无 OIDC → **不进 B** 仅凭本出口。
+- **不自动** 开启 staging / authorize / 生产拆分。
