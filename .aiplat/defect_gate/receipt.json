@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T09:02:00+08:00",
+  "reviewed_at": "2026-11-02T09:10:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "c3856ca5f98382973d6a26a184976143c566213f",
-  "diff_sha256": "b671bb963a85016e04d0bbe7127d67587acbd0768c642ea4bbd1da4485ca9a1a",
-  "head_sha": "80257a46f894cb5f04419883f16d77e562abd64e",
+  "diff_sha256": "9709ebb739ea8a838c3675bf4a8d3d513d3d85499ec935cc242aec9f7b836892",
+  "head_sha": "d4fa8c82bc96ab6eab44c35703db55f010ca002b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "A2 whitepaper resync after CAPABILITIES bump. process_split_authorized stays false."
+  "note": "A3: default cohost; proxy only when AIPLAT_EVAL_SERVICE_URL set. process_split_authorized stays false."
 }
