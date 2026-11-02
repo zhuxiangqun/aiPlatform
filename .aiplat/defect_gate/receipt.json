@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T10:36:00+08:00",
+  "reviewed_at": "2026-11-02T16:28:36+08:00",
   "base_ref": "origin/main",
-  "merge_base": "ba0758675763656d61af1faa7eafe358d5d86e68",
-  "diff_sha256": "13ad93487d33ff7148b35558e88ba8e8915ce1fbe5e4246e99d662c29c30d1f6",
-  "head_sha": "d83b54f00a250be1a420279f71eeb4aa445e1c5a",
+  "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
+  "diff_sha256": "9de140f1081cf3fbf0864b582ac7df22f7b052ec484eb6fad7b6cbe786f075fc",
+  "head_sha": "48dbc6f1f2c6b3fe669c9f94f26ae78cd4b2c96f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "A5 rebased onto main after #527. A-local closeout; process_split_authorized=false."
+  "note": "B1-L stubs only on standalone; retryable=false; healthz honest (stubs+local+split=false). Platform cohost execute out of scope."
 }
