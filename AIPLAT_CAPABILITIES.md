@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2483
+total_capabilities: 2485
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -570,6 +570,7 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluation_a4_independence_check | `packages/aiplat-evaluation/scripts/independence_check.sh` | ✅ | 自动同步 | 已合入 |
 | proxy_eval_store | `aiPlat-platform/apps/eval/api/eval_upstream.py` | ✅ | 自动同步 | 已合入 |
 | register_store_routes | `packages/aiplat-evaluation/app/api/store_routes.py` | ✅ | 自动同步 | 已合入 |
 | open_store | `packages/aiplat-evaluation/app/store/store.py` | ✅ | 自动同步 | 已合入 |
@@ -2559,6 +2560,7 @@ scan_hash: 8f9548ec24f4
 | Evaluation A1 local standalone entry | `packages/aiplat-evaluation/app/main.py` + `scripts/run_local.sh`（`:8010` healthz/readyz） | ✅ | A-local 独立进程入口；`process_split_authorized=false`；无私有 core import；生成物适用：不适用（评测独立宿主验证） | 本批 |
 | Evaluation A2 local store/migrations | `packages/aiplat-evaluation/migrations/` + `app/store/*` + `scripts/migrate_local.sh` | ✅ | 独立 SQLite `eval.store.v0`；readyz 查库；roundtrip 证明本地读写；`process_split_authorized=false`；生成物适用：不适用（评测独立 DB 验证） | 本批 |
 | Evaluation A3 local canonical API + proxy | `packages/aiplat-evaluation/app/api/store_routes.py` + `apps/eval/api/eval_upstream.py`（`AIPLAT_EVAL_SERVICE_URL`） | ✅ | 独立宿主提供 `/api/platform/apps/eval/store/*` 子集；Central 可选代理；默认 cohost；`process_split_authorized=false`；生成物适用：不适用（评测双模式验证） | 本批 |
+| Evaluation A4 local independence check | `packages/aiplat-evaluation/scripts/independence_check.sh` + `docs/a3/drills/local-eval-a3-independent-*.json` | ✅ | Central 不可达/未调用时 eval 仍可读 set/report；`environment=local`；`process_split_authorized=false`；生成物适用：不适用（评测独立性证据） | 本批 |
 | AB Optimizer | harness/evaluation/ab_optimizer.py | ✅ | A/B 测试优化 | 已合入 |
 | CoverageGate | harness/evaluation/coverage_gate.py | ✅ | 覆盖率阈值强制执行 | 已合入 |
 | GraphDiff | harness/evaluation/graph_diff.py | ✅ | 本体图状态对比，回归检测 | 已合入 |
@@ -3381,7 +3383,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 347 | 1 | 348 |
+| Harness 执行引擎 | 348 | 1 | 349 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 386 | 9 | 395 |
 | RAG 检索 | 57 | 0 | 57 |
@@ -3394,7 +3396,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 78 | 0 | 78 |
+| 评估系统 | 79 | 0 | 79 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3426,7 +3428,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2473** | **10** | **2483** |
+| **总计** | **2475** | **10** | **2485** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

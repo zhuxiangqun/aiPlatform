@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1604
+total_capabilities: 1605
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 363
+    caps_count: 364
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1276,6 +1276,10 @@ domains:
         type: "function"
         signature: "proxy_eval_store(request, path, method=None)→Optional[Response]"
         module: "aiPlat-platform/apps/eval/api/eval_upstream.py"
+      - symbol: "evaluation_a4_independence_check"
+        type: "script"
+        signature: "packages/aiplat-evaluation/scripts/independence_check.sh"
+        module: "packages/aiplat-evaluation/scripts/independence_check.sh"
       - symbol: "aiplat_fde_d1_prep_install"
         type: "script"
         signature: "packages/aiplat-fde/scripts/d1_install.sh [--smoke] (ADR draft)"

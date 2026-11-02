@@ -1,14 +1,22 @@
 # aiplat-evaluation
 
-Evaluation Service **D1 Thin (D1c/cohost)** · **D2 ops pack** · A3 Accepted（有条件）· **A1–A3 local standalone**.
+Evaluation Service **D1 Thin (D1c/cohost)** · **D2 ops pack** · A3 Accepted（有条件）· **A1–A4 local standalone**.
 
 ## Modes
 
 | Mode | How | Notes |
 |---|---|---|
 | **cohost (default production)** | Central `GET /api/core/eval/healthz` | `deploy_unit=central` |
-| **standalone (A1–A3 local)** | `bash scripts/run_local.sh` → `:8010` | SQLite + canonical `/store/*`; **`process_split_authorized=false`** |
+| **standalone (A1–A4 local)** | `bash scripts/run_local.sh` → `:8010` | SQLite + canonical `/store/*`; **`process_split_authorized=false`** |
 | **Central proxy (optional)** | `AIPLAT_EVAL_SERVICE_URL=http://127.0.0.1:8010` | Central authenticates then forwards store subset |
+
+## A4 independence
+
+```bash
+bash packages/aiplat-evaluation/scripts/independence_check.sh
+# seeds report on :8010, re-reads without calling Central, writes
+# docs/a3/drills/local-eval-a3-independent-*.json (environment=local)
+```
 
 ## A3 local quickstart
 
@@ -25,7 +33,7 @@ curl -fsS http://127.0.0.1:8010/api/platform/apps/eval/store/sets
 Tests (no server required):
 
 ```bash
-cd packages/aiplat-evaluation && PYTHONPATH=. python3 -m pytest tests/test_a1_standalone_healthz.py tests/test_a2_local_store.py tests/test_a3_canonical_store_api.py -q
+cd packages/aiplat-evaluation && PYTHONPATH=. python3 -m pytest tests/test_a1_standalone_healthz.py tests/test_a2_local_store.py tests/test_a3_canonical_store_api.py tests/test_a4_independence.py -q
 ```
 
 ## Other

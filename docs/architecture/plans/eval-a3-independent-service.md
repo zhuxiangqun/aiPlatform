@@ -1,7 +1,7 @@
 # EVAL_A3 Independent Service — 本地独立运行验证（A0 方案）
 
 > **文档类型**：Design / Implementation Plan  
-> **状态**：**A0–A2 完成 · A3 实施中** · 2026-11-02  
+> **状态**：**A0–A3 完成 · A4 实施中** · 2026-11-02  
 > **范围**：先证明 Evaluation **本地独立进程/DB/API**；不做生产拆分  
 > **解冻**：[`ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md`](../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md)  
 > **A3 ADR**：[`ADR-EVALUATION-A3.md`](../../../reports/five-products/ADR-EVALUATION-A3.md)（Accepted 有条件）  
