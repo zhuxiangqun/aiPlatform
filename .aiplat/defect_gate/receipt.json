@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T09:02:00+08:00",
+  "reviewed_at": "2026-11-02T09:12:30+08:00",
   "base_ref": "origin/main",
   "merge_base": "c3856ca5f98382973d6a26a184976143c566213f",
-  "diff_sha256": "b671bb963a85016e04d0bbe7127d67587acbd0768c642ea4bbd1da4485ca9a1a",
-  "head_sha": "80257a46f894cb5f04419883f16d77e562abd64e",
+  "diff_sha256": "3a243713d5bcbf8f4ed0f5af7c31a9f7146cfa9a219f1cec102a2d181d4ec1d2",
+  "head_sha": "b7e424e97b58de4d42c6da72fd26d0d3657b2ac5",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "A2 whitepaper resync after CAPABILITIES bump. process_split_authorized stays false."
+  "note": "A2 AUTO-STATS refresh for contracts-guard. process_split_authorized stays false."
 }
