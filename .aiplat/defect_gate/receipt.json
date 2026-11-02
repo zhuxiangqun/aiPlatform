@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T23:05:00+08:00",
+  "reviewed_at": "2026-11-03T06:50:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "dd6f30c4457e26aa8cdb854cc2e075bbbca83dda4da39279199f430f7efd0f28",
-  "head_sha": "389d292e08579a0bb8c7275c601a69cae989aca8",
+  "diff_sha256": "553937b1671f9ba70e82a1fe06c441b4cad0951a5c437e881f50cedc6e03faa8",
+  "head_sha": "ad44440057561acb1ec1712933e554beb70e7f25",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "B2 LLM dynamic: stub e2e + Central URL refuse + optional live; gate PASS does not imply live_ok/accuracy. Residual: microVM/B4-S/G2b deferred."
+  "note": "microVM prep only: backend admits nothing; live tools denied; isolation=false. Residual: runtime unlock needs KVM host; B4-S/S1-live/API converge still deferred."
 }
