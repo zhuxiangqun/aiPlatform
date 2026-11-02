@@ -134,7 +134,9 @@ def build_scoring_block(
     *,
     g2b_unlocked: bool = False,
 ) -> Dict[str, Any]:
-    """Group metrics by family; accuracy remains non-claiming until G2b."""
+    """Group metrics by family; attach engineering composite; no accuracy claim."""
+    from app.scoring.composite import build_composite, metric_role
+
     m = dict(metrics or {})
     by_family: Dict[str, Dict[str, Any]] = {
         "accuracy": {},
@@ -143,17 +145,23 @@ def build_scoring_block(
         "efficiency": {},
         "security": {},
     }
+    roles: Dict[str, str] = {}
     for k, v in m.items():
-        fam = classify_metric(str(k))
-        by_family.setdefault(fam, {})[str(k)] = v
+        name = str(k)
+        fam = classify_metric(name)
+        by_family.setdefault(fam, {})[name] = v
+        roles[name] = metric_role(name)
+    composite = build_composite(m, family_of=classify_metric)
     return {
         "schema": "eval.scoring.semantics.v0",
         "g2b_unlocked": bool(g2b_unlocked),
         "accuracy_claim": False,  # forced until G2b
         "families": by_family,
+        "metric_roles": roles,
+        "composite": composite,
         "note": (
-            "P1 scoring semantics — quality/safety/efficiency/security are not accuracy; "
-            "accuracy_claim stays false until G2b."
+            "P1 scoring semantics — quality/safety/efficiency scored into engineering "
+            "composite; security/accuracy report-only; accuracy_claim stays false until G2b."
         ),
     }
 

@@ -14,7 +14,8 @@ export PYTHONPATH="${ROOT}${PYTHONPATH:+:$PYTHONPATH}"
 PYTHONPATH=. python3 -m pytest \
   tests/test_p1_scoring_semantics.py \
   tests/test_p1_1_kb_arena_metrics.py \
-  tests/test_p1_2_gold_replay_metrics.py -q --tb=line
+  tests/test_p1_2_gold_replay_metrics.py \
+  tests/test_p1_composite_semantics.py -q --tb=line
 
 python3 - <<PY
 import json
@@ -46,6 +47,12 @@ out = execute_runner(
 assert out["accuracy_claim"] is False
 assert out["scoring"]["g2b_unlocked"] is False
 assert "accuracy" not in out["metrics"]
+comp = out["scoring"]["composite"]
+assert comp["accuracy_claim"] is False
+assert comp["score"] is not None
+assert "text_quality" in comp["scored_metrics"]
+assert "content_safety" in comp["scored_metrics"]
+
 
 stamp = "${STAMP}"
 evid = Path("${EVID_DIR}")
