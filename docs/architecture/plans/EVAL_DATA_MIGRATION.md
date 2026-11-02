@@ -91,10 +91,10 @@
 
 ## 7. 验收
 
-- [ ] B1：空库/脱敏 migrations 可上可下。  
-- [ ] B3：对账报告零未解释差异。  
-- [ ] 演练：切读 Eval → 回滚 cohost 成功。  
-- [ ] 迁移前备份/PITR 清单已勾选。
+- [x] B1：空库/脱敏 migrations 可上可下 — **local**（A2/A5）。  
+- [x] B3：对账报告零未解释差异 — **B3-L.2 local fixture**（`scripts/b3l_dual_read_drill.sh`）；≠ 生产回填。  
+- [x] 演练：切读 Eval → 回滚 cohost 成功 — **B3-L.2 local pointer**；≠ staging authorize。  
+- [ ] 迁移前备份/PITR 清单已勾选 — **仍挂 B4**；无勾选禁止生产回填。
 
 ---
 

@@ -13,7 +13,7 @@
 | In-process stub (no network I/O) | ✅ `runners/http_probe.py` |
 | Deny `skill_suite` / `cli_probe` / redteam | ✅ still `sandbox_required` |
 | Real container / microVM | ❌ deferred |
-| Data dual-read migration drill | ❌ deferred (B3-L.2) |
+| Data dual-read migration drill | ✅ B3-L.2 — `app/migrate/dual_read.py` + `scripts/b3l_dual_read_drill.sh` |
 
 ## Enable
 
@@ -26,8 +26,18 @@ AIPLAT_EVAL_SANDBOX_BACKEND=local_stub bash packages/aiplat-evaluation/scripts/r
 
 Default backend is `off` (B2 behavior unchanged).
 
+## Dual-read (B3-L.2)
+
+Local fixture only (cohost SQLite → eval SQLite): ETL copy → inventory reconcile →
+pointer cutover `eval` → rollback `cohost`. **Not** production backfill.
+
+```bash
+bash packages/aiplat-evaluation/scripts/b3l_dual_read_drill.sh
+```
+
 ## Tests
 
 ```bash
-cd packages/aiplat-evaluation && PYTHONPATH=. pytest tests/test_b3l_sandbox_local_stub.py -q
+cd packages/aiplat-evaluation && PYTHONPATH=. pytest \
+  tests/test_b3l_sandbox_local_stub.py tests/test_b3l_dual_read.py -q
 ```
