@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T20:08:00.784676+08:00",
+  "reviewed_at": "2026-11-02T20:17:07.364080+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "7bbe5a37580da54ff2cc71c22875e09fc9450b668b806ce1608d861674e8da69",
-  "head_sha": "70479c8e440c2ae0d813fb89ef7aee24edee19b8",
+  "diff_sha256": "293804abbcc15dcdbb9dbb177e6cfc655a440041e188809212239e0b04a5f65c",
+  "head_sha": "21cc5baa508d057c386647c69cf19b81c89ee7cd",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "docker cli allowlist + network=none; skill_suite still denied; sandbox_real_isolation=false."
+  "note": "B3-L closeout; probe body forward fix; skill_suite still denied; sandbox_real_isolation=false."
 }
