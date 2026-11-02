@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2579
+total_capabilities: 2583
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -570,6 +570,9 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| aiplat_eval_b12_contract_gate | `packages/aiplat-evaluation/scripts/b12_contract_gate.sh` | ✅ | 自动同步 | 已合入 |
+| count_temporary_proxy_markers | `packages/aiplat-evaluation/app/contract/b12.py` | ✅ | 自动同步 | 已合入 |
+| assert_error_envelope | `packages/aiplat-evaluation/app/contract/b12.py` | ✅ | 自动同步 | 已合入 |
 | aiplat_eval_microvm_local_prep_gate | `packages/aiplat-evaluation/scripts/microvm_local_prep_gate.sh` | ✅ | 自动同步 | 已合入 |
 | microvm_ready | `packages/aiplat-evaluation/app/sandbox/microvm.py` | ✅ | 自动同步 | 已合入 |
 | microvm_status | `packages/aiplat-evaluation/app/sandbox/microvm.py` | ✅ | 自动同步 | 已合入 |
@@ -2641,6 +2644,7 @@ scan_hash: 8f9548ec24f4
 | metric_role | `packages/aiplat-evaluation/app/scoring/composite.py` | ✅ | scored vs report_only | 本批 |
 | Evaluation B2 LLM dynamic gate | `packages/aiplat-evaluation/scripts/b2l_llm_dynamic_gate.sh` + `app/llm/client.py` | ✅ | stub Worker e2e；拒 Central URL；可选 live；accuracy_claim=false；生成物适用：不适用 | 本批 |
 | Evaluation microVM prep probe | `packages/aiplat-evaluation/app/sandbox/microvm.py` + `scripts/microvm_local_prep_gate.sh` | ✅ | 探测 ready/block_reason；backend=microvm 不放行 runner；live tools 仍拒；isolation=false；生成物适用：不适用 | 本批 |
+| Evaluation B1/B2 contract converge | `packages/aiplat-evaluation/app/contract/b12.py` + `scripts/b12_contract_gate.sh` | ✅ | 错误体字段门禁；temporary_proxy=0；双点拒绝；≠ staging authorize；生成物适用：不适用 | 本批 |
 | estimate_cost | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | token→cost_estimate | 本批 |
 | assert_provider_independence | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | 拒绝 Central-looking BASE_URL | 本批 |
 | looks_like_central_llm_url | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | Central URL 启发式 | 本批 |
@@ -3481,7 +3485,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 358 | 1 | 359 |
+| Harness 执行引擎 | 361 | 1 | 362 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 386 | 9 | 395 |
 | RAG 检索 | 57 | 0 | 57 |
@@ -3494,7 +3498,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 163 | 0 | 163 |
+| 评估系统 | 164 | 0 | 164 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3526,7 +3530,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2569** | **10** | **2579** |
+| **总计** | **2573** | **10** | **2583** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

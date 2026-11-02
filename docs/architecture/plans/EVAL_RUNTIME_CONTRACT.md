@@ -1,11 +1,11 @@
 # EVAL Runtime Contract — Worker / Runner（B 轨）
 
 > **类型**：契约（B2 实施前置）  
-> **版本**：v1.0 · 2026-11-02  
-> **状态**：Design baseline · **未实施**  
+> **版本**：v1.1 · 2026-11-03  
+> **状态**：Standalone local **已实施**（B2-L + contract gate）· ≠ staging authorize  
 > **父方案**：[`eval-production-independent-service.md`](./eval-production-independent-service.md)  
-> **关联**：[`B1_ROUTE_MATRIX.md`](./B1_ROUTE_MATRIX.md) · [`EVAL_MODEL_GATEWAY.md`](./EVAL_MODEL_GATEWAY.md)  
-> **诚实性**：不设 `process_split_authorized=true`；B2 仅 allowlist runner；工具执行等 B3 沙箱。
+> **关联**：[`B1_ROUTE_MATRIX.md`](./B1_ROUTE_MATRIX.md) · [`EVAL_MODEL_GATEWAY.md`](./EVAL_MODEL_GATEWAY.md) · [`CONTRACT_LOCAL.md`](../../packages/aiplat-evaluation/docs/a3/CONTRACT_LOCAL.md)  
+> **诚实性**：不设 `process_split_authorized=true`；B2 仅 allowlist runner；工具执行等 B3 沙箱 / microVM prep。
 
 ---
 
@@ -149,4 +149,5 @@
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
+| 2026-11-03 | v1.1 | 标注 standalone 已实施；链到 `b12_contract_gate.sh` |
 | 2026-11-02 | v1.0 | 初版：Runner 生命周期、allowlist、双点校验、lease、依赖矩阵 |

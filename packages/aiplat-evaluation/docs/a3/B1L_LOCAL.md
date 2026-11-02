@@ -29,7 +29,7 @@ TOKEN=$(python3 -c "from app.auth import mint_local_token; print(mint_local_toke
 curl -sS -o /tmp/e.json -w "%{http_code}" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{}' http://127.0.0.1:8010/api/platform/apps/eval/skill-evals/suites/s1/run
-# 503 + {"error":{"code":"execution_not_migrated","runner_id":"skill_suite",...}}
+# 422 + {"error":{"code":"sandbox_required","runner_id":"skill_suite",...}}  （B2 allowlist；helper 仍保留 503 execution_not_migrated）
 ```
 
 ## Compose sidecars

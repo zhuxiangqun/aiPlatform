@@ -16,6 +16,7 @@
 | [`P1_LOCAL.md`](./P1_LOCAL.md) | P1–P1.2 + engineering composite（text/safety 计分；asr 报告项；≠accuracy） |
 | [`B4S_PREP.md`](./B4S_PREP.md) | B4-S 主机前置（未确认 → 阻塞；≠ authorize） |
 | [`MICROVM_PREP.md`](./MICROVM_PREP.md) | microVM 前置探测（无 KVM/runtime → 阻塞；≠ live tools） |
+| [`CONTRACT_LOCAL.md`](./CONTRACT_LOCAL.md) | B1/B2 契约 standalone 收敛门禁（temporary_proxy=0） |
 | B2 wall-clock | `AIPLAT_EVAL_JOB_TIMEOUT_SEC` → `timed_out`（见 `app/worker/timeout.py`） |
 | B2 cancel | `POST .../jobs/{id}/cancel` → `cancelled`（`cancel_job`） |
 | B2 cost cap | `AIPLAT_EVAL_JOB_COST_CAP` / `cost_cap` → `timed_out` |
