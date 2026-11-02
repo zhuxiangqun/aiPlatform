@@ -33,7 +33,8 @@
 | [`EVAL G2c decision`](./ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md) | **Accepted**：claim 降级为 self-consistency；**不开 G2b**；禁止 accuracy |
 | [`DIAGNOSIS C3.5`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C35_FIXTURE_HARDENING.md) | adversarial fixtures + metrics subset；[`C35 closeout`](./DIAGNOSIS_V1_C35_CLOSEOUT.md) **PASS** |
 | [`EVAL G2c`](./ENGINEERING_UNFREEZE_EVAL_G2C.md) | self-consistency / intra-rater；[`G2C closeout`](./EVAL_V1_G2C_CLOSEOUT.md) **PASS**；≠ accuracy |
-| [`EVAL A3 local`](./ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md) | 本地独立进程/DB 验证（A0–A6）；**Closed PASS** #529；`process_split` 仍 false；Keycloak/JWKS → B |
+| [`EVAL A3 local`](./ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md) | 本地独立进程/DB 验证（A0–A6）；**Closed PASS** #529；`process_split` 仍 false |
+| [`EVAL A3 B0 JWKS`](./ENGINEERING_UNFREEZE_EVAL_A3_B0_JWKS.md) | 本地 RS256 JWKS 校验（fixture/URL）；**不解冻** staging / authorize |
 
 - ❌ **仍不解冻**：staging_ready / production_signed / 任何 authorize 成功 / accuracy 宣称 / 自动修复 / A3 **生产拆分** / **EVAL G2b（已 defer）**（A3 **local** 已解冻，见上表）  
 - 计划同步：工程方案 **V2.2** + [`eval-v1-charter.md`](../../../docs/architecture/plans/eval-v1-charter.md) + [`diagnosis-v1-charter.md`](../../../docs/architecture/plans/diagnosis-v1-charter.md)
@@ -51,7 +52,8 @@
 | DIAGNOSIS_V1 C3 | [`ENGINEERING_UNFREEZE_DIAGNOSIS_C3.md`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C3.md) | **Closed PASS** — 见 [`DIAGNOSIS_V1_C3_CLOSEOUT.md`](./DIAGNOSIS_V1_C3_CLOSEOUT.md) | 自动修复 / A3 / staging / authorize / G2b accuracy / 静默开 C4 |
 | DIAGNOSIS_V1 C3.5 | [`ENGINEERING_UNFREEZE_DIAGNOSIS_C35_FIXTURE_HARDENING.md`](./ENGINEERING_UNFREEZE_DIAGNOSIS_C35_FIXTURE_HARDENING.md) | **Closed PASS** — 见 [`DIAGNOSIS_V1_C35_CLOSEOUT.md`](./DIAGNOSIS_V1_C35_CLOSEOUT.md) | 准确率宣称 / remediate / A3 / staging |
 | EVAL_V1 G2c | [`ENGINEERING_UNFREEZE_EVAL_G2C.md`](./ENGINEERING_UNFREEZE_EVAL_G2C.md) | **Closed PASS** — 见 [`EVAL_V1_G2C_CLOSEOUT.md`](./EVAL_V1_G2C_CLOSEOUT.md) | accuracy / G2b / inter-annotator κ |
-| EVAL A3 local | [`ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md`](./ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md) | **Closed PASS** — A0–A6 本地独立验证（#6 local JWT ✅）；[`A_LOCAL_CLOSEOUT.md`](../../../packages/aiplat-evaluation/docs/a3/A_LOCAL_CLOSEOUT.md) | `process_split_authorized=true` / staging / authorize / production_signed / track B |
+| EVAL A3 local | [`ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md`](./ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md) | **Closed PASS** — A0–A6 本地独立验证（#6 local JWT ✅）；[`A_LOCAL_CLOSEOUT.md`](../../../packages/aiplat-evaluation/docs/a3/A_LOCAL_CLOSEOUT.md) | `process_split_authorized=true` / staging / authorize / production_signed |
+| EVAL A3 B0 JWKS | [`ENGINEERING_UNFREEZE_EVAL_A3_B0_JWKS.md`](./ENGINEERING_UNFREEZE_EVAL_A3_B0_JWKS.md) | **Active** — RS256 JWKS（`AIPLAT_EVAL_JWKS_JSON`/`_URL`）；HS256 仍为默认 | staging_ready / authorize / production_signed / Keycloak 集群宣称 |
 
 ## Verify
 
