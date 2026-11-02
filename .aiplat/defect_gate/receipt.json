@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T16:28:36+08:00",
+  "reviewed_at": "2026-11-02T16:44:31+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "9de140f1081cf3fbf0864b582ac7df22f7b052ec484eb6fad7b6cbe786f075fc",
-  "head_sha": "48dbc6f1f2c6b3fe669c9f94f26ae78cd4b2c96f",
+  "diff_sha256": "095c382b388b5b270d31c9f45659ab1e9abe377782178a57a7ea1722346f31b5",
+  "head_sha": "3fc2fb75aba2eaa686e4c5a8fc895f9222e5c936",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "B1-L stubs only on standalone; retryable=false; healthz honest (stubs+local+split=false). Platform cohost execute out of scope."
+  "note": "PG dispatch only on postgresql URL; SQLite default unchanged; health redacts password; live test integration-marked."
 }
