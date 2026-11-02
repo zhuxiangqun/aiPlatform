@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T19:02:45+08:00",
+  "reviewed_at": "2026-11-02T19:25:12+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "df801732c24eb84cf2287f9233c96de762871c60c466e1da87ac06c3591c2f39",
-  "head_sha": "fcf371b7f09d2e9c1051c83320d7f126823c22d0",
+  "diff_sha256": "bb922740fd9def85770e6a2b6e043778d97b00723f7c3af7b68fecd6db3862d2",
+  "head_sha": "98fa7d12638acca003b4b28ef207b9214689d36d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Runners fail-closed without fixtures; arena+tools\u2192sandbox; accuracy_claim=false; no silent LLM success."
+  "note": "Loop idle\u2260success; max_jobs/idle/signal stop; process_once still fail-closed; split=false."
 }
