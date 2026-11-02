@@ -1,4 +1,4 @@
-"""aiplat-evaluation standalone service package (A1 local).
+"""aiplat-evaluation standalone service package (A1/A2 local).
 
 No imports from core.harness / Central internals.
 process_split_authorized remains false.
