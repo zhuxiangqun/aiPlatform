@@ -155,6 +155,46 @@ async def _get_job(request: Request, job_id: str):
     return job
 
 
+async def _cancel_job(request: Request, job_id: str):
+    """POST cancel — best-effort queued|running → cancelled (contract §2)."""
+    require_bearer(request)
+    from app.store.jobs import cancel_job
+
+    out = cancel_job(_db_url(request), job_id)
+    if out.get("reason") == "job_not_found":
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "job_not_found",
+                    "runner_id": "",
+                    "retryable": False,
+                    "detail": job_id,
+                }
+            },
+        )
+    if not out.get("ok"):
+        return JSONResponse(
+            status_code=409,
+            content={
+                "error": {
+                    "code": "not_cancellable",
+                    "runner_id": str((out.get("job") or {}).get("runner_id") or ""),
+                    "retryable": False,
+                    "detail": str(out.get("reason") or "not_cancellable"),
+                },
+                "job": out.get("job"),
+                "process_split_authorized": False,
+            },
+        )
+    return {
+        "ok": True,
+        "reason": out.get("reason"),
+        "job": out.get("job"),
+        "process_split_authorized": False,
+    }
+
+
 def register_execution_stubs(application: FastAPI) -> None:
     prefix = "/api/platform/apps/eval"
     application.add_api_route(
@@ -206,6 +246,11 @@ def register_execution_stubs(application: FastAPI) -> None:
         f"{prefix}/jobs/{{job_id}}",
         _get_job,
         methods=["GET"],
+    )
+    application.add_api_route(
+        f"{prefix}/jobs/{{job_id}}/cancel",
+        _cancel_job,
+        methods=["POST"],
     )
 
 

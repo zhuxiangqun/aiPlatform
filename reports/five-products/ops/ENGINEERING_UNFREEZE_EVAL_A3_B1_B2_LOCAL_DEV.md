@@ -65,5 +65,6 @@
 - **P1.1 / P1.2** — 全部 B2 runners（含 `code_review_gold` / `replay_trace`）接入 family 指标；`local_track_closeout.sh` 收口。
 - **B4-S prep** — 清单见 [`B4S_PREP.md`](../../../packages/aiplat-evaluation/docs/a3/B4S_PREP.md)；**无主机不激活**。
 - **B2 wall-clock** — `AIPLAT_EVAL_JOB_TIMEOUT_SEC` → `timed_out`（契约 §5.2）。
+- **B2 cancel** — `POST .../jobs/{id}/cancel` → `cancelled`（协作；Worker 不覆盖）。
 - Next：**独立主机** 开 B4-S 解冻；microVM·live tools 仍 deferred；生产回填仍禁（B4 PITR 前）。
 - `process_split_authorized=false`；`sandbox_real_isolation=false`；`security_live_attacks=false`.

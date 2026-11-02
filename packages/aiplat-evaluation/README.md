@@ -18,6 +18,7 @@ Evaluation Service **D1 Thin (D1c/cohost)** · **D2 ops pack** · A3 Accepted（
 | **Local track closeout** | `bash scripts/local_track_closeout.sh` | P1+S1 gates + authorize locked; not B4/staging |
 | **B4-S prep (blocked)** | [`docs/a3/B4S_PREP.md`](./docs/a3/B4S_PREP.md) | host prerequisites only; no authorize |
 | **Job wall-clock** | `AIPLAT_EVAL_JOB_TIMEOUT_SEC` (default 300) | exceed → `timed_out` (never succeeded) |
+| **Job cancel** | `POST /api/platform/apps/eval/jobs/{id}/cancel` | queued\|running → `cancelled` |
 | **B1-L Compose + PG store** | `compose/docker-compose.b1l.yml` + `AIPLAT_EVAL_DB_URL=postgresql://…` | PG16 + MinIO; EvalStore via asyncpg; SQLite still default if unset |
 | **Central proxy (optional)** | `AIPLAT_EVAL_SERVICE_URL=http://127.0.0.1:8010` | Central authenticates then forwards store subset |
 

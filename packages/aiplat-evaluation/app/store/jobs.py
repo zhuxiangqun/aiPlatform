@@ -180,6 +180,61 @@ def get_job(db_url: str, job_id: str) -> Optional[Dict[str, Any]]:
         conn.close()
 
 
+def cancel_job(db_url: str, job_id: str) -> Dict[str, Any]:
+    """Best-effort cancel for queued|running → cancelled; release lease.
+
+    Terminal jobs (succeeded/failed/timed_out/dead_letter/cancelled) are unchanged.
+    Returns ``{ok, job, reason}``; ``ok=False`` when not found or already terminal.
+    """
+    jid = (job_id or "").strip()
+    job = get_job(db_url, jid)
+    if not job:
+        return {"ok": False, "job": None, "reason": "job_not_found", "process_split_authorized": False}
+    status = str(job.get("status") or "")
+    if status == "cancelled":
+        return {"ok": True, "job": job, "reason": "already_cancelled", "process_split_authorized": False}
+    if status not in ("queued", "running"):
+        return {
+            "ok": False,
+            "job": job,
+            "reason": "not_cancellable",
+            "process_split_authorized": False,
+        }
+    now = _now()
+    if backend_from_url(db_url) == "postgres":
+        from app.store.pg_runtime import pg_execute
+
+        pg_execute(
+            postgres_dsn_from_url(db_url),
+            "UPDATE eval_jobs SET status='cancelled', error_code='cancelled', "
+            "error_detail='cancelled by client', lease_expires_at=NULL, leased_by='', "
+            "heartbeat_at=NULL, updated_at=? "
+            "WHERE id=? AND status IN ('queued','running')",
+            (now, jid),
+        )
+    else:
+        path = sqlite_path_from_url(db_url)
+        conn = sqlite3.connect(str(path), timeout=30)
+        try:
+            conn.execute(
+                "UPDATE eval_jobs SET status='cancelled', error_code='cancelled', "
+                "error_detail='cancelled by client', lease_expires_at=NULL, leased_by='', "
+                "heartbeat_at=NULL, updated_at=? "
+                "WHERE id=? AND status IN ('queued','running')",
+                (now, jid),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    updated = get_job(db_url, jid)
+    return {
+        "ok": True,
+        "job": updated,
+        "reason": "cancelled",
+        "process_split_authorized": False,
+    }
+
+
 def update_job_status(
     db_url: str,
     job_id: str,
@@ -352,3 +407,9 @@ def _wire_enqueue(db_url: str) -> Dict[str, Any]:
 def _wire_claim(db_url: str) -> Optional[Dict[str, Any]]:
     """Same-file caller for method_verify."""
     return claim_next_job(db_url, worker_id="w-verify")
+
+
+def _wire_cancel(db_url: str) -> Dict[str, Any]:
+    """Same-file caller for method_verify."""
+    j = enqueue_job(db_url, runner_id="replay_trace", tenant_id="t-cancel", payload={})
+    return cancel_job(db_url, str(j.get("job_id") or ""))

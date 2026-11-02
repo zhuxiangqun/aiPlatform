@@ -11,6 +11,7 @@ from app.store.jobs import (
     DEFAULT_LEASE_SECONDS,
     DEFAULT_MAX_ATTEMPTS,
     claim_next_job,
+    get_job,
     heartbeat_job,
     update_job_status,
 )
@@ -66,7 +67,7 @@ def process_once(
     try:
         result = run_with_timeout(lambda: execute_runner(job), timeout_sec=timeout)
     except TimeoutError as exc:
-        updated = update_job_status(
+        updated = _write_unless_cancelled(
             db_url,
             job["job_id"],
             status="timed_out",
@@ -85,7 +86,8 @@ def process_once(
             "admitted": True,
             "claimed": True,
             "executed": False,
-            "timed_out": True,
+            "timed_out": updated.get("status") == "timed_out" if updated else True,
+            "cancelled": (updated or {}).get("status") == "cancelled",
             "process_split_authorized": False,
         }
     except ValueError as exc:
@@ -96,7 +98,7 @@ def process_once(
             err_code, err_detail = "runner_forbidden", msg
         else:
             err_code, err_detail = "failed", msg
-        updated = update_job_status(
+        updated = _write_unless_cancelled(
             db_url,
             job["job_id"],
             status="dead_letter" if err_code != "failed" else "failed",
@@ -108,10 +110,11 @@ def process_once(
             "admitted": True,
             "claimed": True,
             "executed": False,
+            "cancelled": (updated or {}).get("status") == "cancelled",
             "process_split_authorized": False,
         }
     except Exception as exc:
-        updated = update_job_status(
+        updated = _write_unless_cancelled(
             db_url,
             job["job_id"],
             status="failed",
@@ -123,11 +126,12 @@ def process_once(
             "admitted": True,
             "claimed": True,
             "executed": False,
+            "cancelled": (updated or {}).get("status") == "cancelled",
             "process_split_authorized": False,
         }
 
     final_status = "succeeded" if result.get("ok") else "failed"
-    updated = update_job_status(
+    updated = _write_unless_cancelled(
         db_url,
         job["job_id"],
         status=final_status,
@@ -139,10 +143,34 @@ def process_once(
         **(updated or job),
         "admitted": True,
         "claimed": True,
-        "executed": True,
+        "executed": (updated or {}).get("status") != "cancelled",
         "result": result,
+        "cancelled": (updated or {}).get("status") == "cancelled",
         "process_split_authorized": False,
     }
+
+
+def _write_unless_cancelled(
+    db_url: str,
+    job_id: str,
+    *,
+    status: str,
+    error_code: str = "",
+    error_detail: str = "",
+    result: Optional[Dict[str, Any]] = None,
+) -> Optional[Dict[str, Any]]:
+    """Do not overwrite a cooperative cancel with succeeded/failed/timed_out."""
+    current = get_job(db_url, job_id)
+    if current and str(current.get("status") or "") == "cancelled":
+        return current
+    return update_job_status(
+        db_url,
+        job_id,
+        status=status,
+        error_code=error_code,
+        error_detail=error_detail,
+        result=result,
+    )
 
 
 def _wire_process_once(db_url: str) -> Optional[Dict[str, Any]]:
