@@ -1,7 +1,7 @@
-"""EVAL A3-local A1/A2 — standalone FastAPI entrypoint (:8010).
+"""EVAL A3-local A1–A3 — standalone FastAPI entrypoint (:8010).
 
 Honesty:
-- Proves independent process + healthz/readyz + local SQLite store.
+- Independent process + healthz/readyz + local SQLite + canonical store subset.
 - Does NOT set process_split_authorized=true.
 - No imports from core.harness / Central private modules.
 """
@@ -12,6 +12,7 @@ from typing import Any, Dict
 
 from fastapi import FastAPI, Request
 
+from app.api import register_store_routes
 from app.config import EvalServiceConfig, load_config
 from app.store import open_store, store_health
 from app.store.store import local_roundtrip
@@ -32,7 +33,7 @@ def healthz_payload(cfg: EvalServiceConfig) -> Dict[str, Any]:
         "schema_version": SCHEMA_HEALTHZ,
         "process_split_authorized": False,
         "note": (
-            "A2 local standalone healthz — engineering verification only; "
+            "A3 local standalone healthz — engineering verification only; "
             "not production split authorization."
         ),
     }
@@ -84,11 +85,11 @@ async def _readyz(request: Request) -> Dict[str, Any]:
 
 
 async def _canonical_healthz(request: Request) -> Dict[str, Any]:
-    """Canonical path preview; A3 hosts full /api/platform/apps/eval/* here."""
     return healthz_payload(request.app.state.config)
 
 
-async def _store_health(request: Request) -> Dict[str, Any]:
+async def _store_health_alias(request: Request) -> Dict[str, Any]:
+    """A2 alias (non-wrapped). Prefer /store/healthz for canonical."""
     store = getattr(request.app.state, "store", None)
     if store is None:
         return {"ok": False, "error": "store_not_initialized", "process_split_authorized": False}
@@ -96,7 +97,6 @@ async def _store_health(request: Request) -> Dict[str, Any]:
 
 
 async def _store_roundtrip(request: Request) -> Dict[str, Any]:
-    """A2 local proof: write/read set+report in eval SQLite (not for production)."""
     store = getattr(request.app.state, "store", None)
     if store is None:
         return {"ok": False, "error": "store_not_initialized", "process_split_authorized": False}
@@ -112,7 +112,9 @@ async def _root(request: Request) -> Dict[str, Any]:
             "/healthz",
             "/readyz",
             "/api/platform/apps/eval/healthz",
-            "/api/platform/apps/eval/store/health",
+            "/api/platform/apps/eval/store/healthz",
+            "/api/platform/apps/eval/store/sets",
+            "/api/platform/apps/eval/store/reports",
             "/api/platform/apps/eval/store/roundtrip",
         ],
         "process_split_authorized": False,
@@ -125,21 +127,21 @@ def create_app(cfg: EvalServiceConfig | None = None) -> FastAPI:
         title="aiplat-evaluation",
         version=config.version,
         description=(
-            "Evaluation standalone service (A2 local). "
+            "Evaluation standalone service (A3 local). "
             "process_split_authorized=false."
         ),
         lifespan=_lifespan,
     )
     application.state.config = config
-    # Eager attach so TestClient works without context manager; lifespan re-attaches.
     _attach_store(application, config)
     application.add_api_route("/healthz", _healthz, methods=["GET"])
     application.add_api_route("/readyz", _readyz, methods=["GET"])
     application.add_api_route(
         "/api/platform/apps/eval/healthz", _canonical_healthz, methods=["GET"]
     )
+    register_store_routes(application)
     application.add_api_route(
-        "/api/platform/apps/eval/store/health", _store_health, methods=["GET"]
+        "/api/platform/apps/eval/store/health", _store_health_alias, methods=["GET"]
     )
     application.add_api_route(
         "/api/platform/apps/eval/store/roundtrip", _store_roundtrip, methods=["POST"]
@@ -155,7 +157,6 @@ def main() -> None:
     import uvicorn
 
     cfg = load_config()
-    # Warm payload builders (also doubles as same-file call sites for wiring).
     _ = healthz_payload(cfg)
     _ = readyz_payload(cfg, {"ok": True, "db_path": cfg.db_url, "schema_version": "eval.store.v0"})
     uvicorn.run(

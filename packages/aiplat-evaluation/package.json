@@ -2,7 +2,7 @@
   "name": "aiplat-evaluation",
   "version": "0.1.0",
   "private": true,
-  "description": "Evaluation Service D1c cohost + A1/A2 local standalone (:8010 + SQLite). process_split_authorized=false.",
+  "description": "Evaluation Service D1c cohost + A1–A3 local standalone (:8010 + SQLite + store API). process_split_authorized=false.",
   "capability_id": "evaluation",
   "deploy_unit": "central",
   "hosted_by": "aiplat",
@@ -10,6 +10,7 @@
     "start:local": "bash scripts/run_local.sh",
     "migrate:local": "bash scripts/migrate_local.sh",
     "test:a1": "PYTHONPATH=. python3 -m pytest tests/test_a1_standalone_healthz.py -q",
-    "test:a2": "PYTHONPATH=. python3 -m pytest tests/test_a2_local_store.py -q"
+    "test:a2": "PYTHONPATH=. python3 -m pytest tests/test_a2_local_store.py -q",
+    "test:a3": "PYTHONPATH=. python3 -m pytest tests/test_a3_canonical_store_api.py -q"
   }
 }
