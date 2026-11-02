@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T19:54:47.356692+08:00",
+  "reviewed_at": "2026-11-02T20:02:17.729745+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "eb577064b3b6c711ec7d14a2e497ac04e79239edb0f50f2172fa498c37719708",
-  "head_sha": "d6cdd8aa0e5ce5373cf8c178e0612329264e6063",
+  "diff_sha256": "940bb59660e26461121838f380deaac7f29b3d2895816ae4faf67cec7c9391e6",
+  "head_sha": "7ab7fa2be3333e98242d4be3572ff16f2def4bbb",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "B3-L.2 local fixture dual-read only; pointer flip is not staging authorize; PITR still B4."
+  "note": "LLM default off; stub/http accuracy_claim=false; no Central HTTP."
 }
