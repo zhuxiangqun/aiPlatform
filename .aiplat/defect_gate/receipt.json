@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T06:31:09+08:00",
+  "reviewed_at": "2026-11-02T09:12:30+08:00",
   "base_ref": "origin/main",
   "merge_base": "c3856ca5f98382973d6a26a184976143c566213f",
-  "diff_sha256": "faba7942c31d88c4b227d0a0f36d6068cba742d9485b9a084497f5028e7b7ce5",
-  "head_sha": "b1cc9c7619549e75c0addaa16ede1d6a0f4ba4f3",
+  "diff_sha256": "3a243713d5bcbf8f4ed0f5af7c31a9f7146cfa9a219f1cec102a2d181d4ec1d2",
+  "head_sha": "b7e424e97b58de4d42c6da72fd26d0d3657b2ac5",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "A1 standalone FastAPI :8010 healthz/readyz; no core.harness imports; process_split_authorized=false; tests cover healthz+import guard."
+  "note": "A2 AUTO-STATS refresh for contracts-guard. process_split_authorized stays false."
 }

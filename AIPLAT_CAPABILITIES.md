@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2474
+total_capabilities: 2480
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -570,6 +570,10 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| open_store | `packages/aiplat-evaluation/app/store/store.py` | ✅ | 自动同步 | 已合入 |
+| apply_migrations | `packages/aiplat-evaluation/app/store/migrate.py` | ✅ | 自动同步 | 已合入 |
+| evaluation_a2_migrate_local | `packages/aiplat-evaluation/scripts/migrate_local.sh` | ✅ | 自动同步 | 已合入 |
+| evaluation_a1_run_local | `packages/aiplat-evaluation/scripts/run_local.sh` | ✅ | 自动同步 | 已合入 |
 | attach_control_plane | `core/harness/meta/control_plane.py` | ✅ | 自动同步 | 已合入 |
 | normalize_health_status | `core/harness/meta/control_plane.py` | ✅ | 自动同步 | 已合入 |
 | load_versions_ssot | `core/harness/meta/capability_version.py` | ✅ | 自动同步 | 已合入 |
@@ -2550,6 +2554,8 @@ scan_hash: 8f9548ec24f4
 | Diagnosis Service C1–C3 D1c+D2 pack（DIAGNOSIS_V1） | `core/apps/diagnosis/service/*` + CoreFacade `diagnosis_*` + `/api/platform/apps/diagnosis` + `/diagnosis` UI + `packages/aiplat-diagnosis/`（fixtures + D1/D2 scripts） | ✅ | C3：D2 cohost ops/security/perf 本地收口；`process_split=false`；无 remediate；`accuracy_claim=false`；blind fixture metrics；生成物适用：已接线（diagnosis app） | 已合入 |
 | Diagnosis C3.5 adversarial fixtures（DIAGNOSIS_V1） | `packages/aiplat-diagnosis/fixtures/dx.adv.*` + `fixture_metrics(subset=core|adversarial|all)` + `GET …/metrics/fixtures?subset=` | ✅ | ≥6 holdout；core/adversarial 分报；`accuracy_claim=false`；禁止用 core 1.00 宣称准确率；生成物适用：已接线（diagnosis app） | 本批 |
 | Evaluation D1 Thin | `packages/aiplat-evaluation` + `GET /api/core/eval/healthz`（`evaluation_healthz_payload`） | ✅ | 共宿 Central；`product_id=evaluation`；无 A3 拆分；生成物适用：不适用（平台共宿打包） | 已合入 |
+| Evaluation A1 local standalone entry | `packages/aiplat-evaluation/app/main.py` + `scripts/run_local.sh`（`:8010` healthz/readyz） | ✅ | A-local 独立进程入口；`process_split_authorized=false`；无私有 core import；生成物适用：不适用（评测独立宿主验证） | 本批 |
+| Evaluation A2 local store/migrations | `packages/aiplat-evaluation/migrations/` + `app/store/*` + `scripts/migrate_local.sh` | ✅ | 独立 SQLite `eval.store.v0`；readyz 查库；roundtrip 证明本地读写；`process_split_authorized=false`；生成物适用：不适用（评测独立 DB 验证） | 本批 |
 | AB Optimizer | harness/evaluation/ab_optimizer.py | ✅ | A/B 测试优化 | 已合入 |
 | CoverageGate | harness/evaluation/coverage_gate.py | ✅ | 覆盖率阈值强制执行 | 已合入 |
 | GraphDiff | harness/evaluation/graph_diff.py | ✅ | 本体图状态对比，回归检测 | 已合入 |
@@ -3372,7 +3378,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 341 | 1 | 342 |
+| Harness 执行引擎 | 345 | 1 | 346 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 386 | 9 | 395 |
 | RAG 检索 | 57 | 0 | 57 |
@@ -3385,7 +3391,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 75 | 0 | 75 |
+| 评估系统 | 77 | 0 | 77 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3417,7 +3423,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2464** | **10** | **2474** |
+| **总计** | **2470** | **10** | **2480** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
