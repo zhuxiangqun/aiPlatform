@@ -59,6 +59,6 @@
 
 ## Outcome
 
-- **In progress** — B1-L: execute **503** stubs + Compose PG/MinIO + **PG EvalStore** (`AIPLAT_EVAL_DB_URL=postgresql://…`); see [`B1L_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/B1L_LOCAL.md).
-- Keycloak Compose realm / `/eval` UI 503 降级：后续 slice；然后 B2-L Worker。
+- **In progress** — B1-L: execute **503** stubs + Compose PG/MinIO + PG EvalStore + **`/eval` UI 降级文案**；see [`B1L_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/B1L_LOCAL.md).
+- Keycloak Compose realm：可选后续；下一步优先 **B2-L Worker allowlist**。
 - `process_split_authorized=false`；证据 `environment=local`。

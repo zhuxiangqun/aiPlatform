@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2498
+total_capabilities: 2501
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2570,6 +2570,9 @@ scan_hash: 8f9548ec24f4
 | Evaluation B0 local JWKS RS256 | `packages/aiplat-evaluation/app/auth.py` (`jwks_enabled` / `AIPLAT_EVAL_JWKS_JSON|_URL`) | ✅ | RS256 JWKS fixture/URL 校验；错误 kid/issuer→401；`process_split_authorized=false`；≠ staging authorize；生成物适用：不适用（评测认证加固） | 本批 |
 | Evaluation B1-L execute stubs 503 | `packages/aiplat-evaluation/app/api/execution_stubs.py` + `app/errors.py` | ✅ | 动态执行统一 `execution_not_migrated` 503；`environment=local`；≠ staging；生成物适用：不适用 | 本批 |
 | Evaluation B1-L PG EvalStore | `packages/aiplat-evaluation/app/store/pg_store.py` + `pg_runtime.py` + `migrate.py` | ✅ | `postgresql://` via asyncpg；同 schema migrations；密码脱敏；SQLite 仍默认；生成物适用：不适用 | 本批 |
+| Evaluation B1-L /eval UI 降级 | `aiPlat-management/frontend/src/pages/Eval/evalExecutionErrors.ts` + `EvalExecutionPlaneBanner.tsx` | ✅ | `execution_not_migrated`/`sandbox_required` 固定文案；proxy/stubs 显示 Banner；store 只读可用；生成物适用：不适用 | 本批 |
+| messageForEvalExecutionCode | `aiPlat-management/frontend/src/pages/Eval/evalExecutionErrors.ts` | ✅ | B1 Route Matrix 错误码→UI 文案 | 本批 |
+| shouldShowExecutionPlaneBanner | `aiPlat-management/frontend/src/pages/Eval/evalExecutionErrors.ts` | ✅ | proxy/stubs/lastError 决定是否展示 Banner | 本批 |
 | backend_from_url | `packages/aiplat-evaluation/app/store/paths.py` | ✅ | sqlite|postgres URL 判定 | 本批 |
 | open_pg_store | `packages/aiplat-evaluation/app/store/pg_store.py` | ✅ | 打开 PG EvalStore | 本批 |
 | execution_error | `packages/aiplat-evaluation/app/errors.py` | ✅ | B1 Route Matrix 统一错误体 | 本批 |
@@ -3410,7 +3413,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 88 | 0 | 88 |
+| 评估系统 | 91 | 0 | 91 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3442,7 +3445,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2488** | **10** | **2498** |
+| **总计** | **2491** | **10** | **2501** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

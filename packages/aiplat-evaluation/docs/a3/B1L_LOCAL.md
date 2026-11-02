@@ -61,4 +61,7 @@ cd packages/aiplat-evaluation && PYTHONPATH=. pytest tests/test_b1l_execution_no
 
 ## UI note
 
-`/eval` should treat `error.code=execution_not_migrated` as “执行平面尚未迁移（B2）”; store/read remain usable.
+`/eval` (`EvalCenter` + `evalExecutionErrors.ts`):
+- Banner when upstream `mode=proxy` / `b1l_execution_stubs` / last error `execution_not_migrated`
+- Copy: **执行平面尚未迁移（B2）**；`sandbox_required` → 需沙箱（B3）
+- Store/read tabs remain usable
