@@ -59,6 +59,6 @@
 
 ## Outcome
 
-- **In progress** — B2-L enqueue + claim/lease + **local allowlist runners**；see [`B2L_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/B2L_LOCAL.md).
-- Next：Worker loop daemon + optional infra LLM for `prompt_eval`；B3-L sandbox 雏形。
+- **In progress** — B2-L enqueue + claim/lease + runners + **worker loop**；see [`B2L_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/B2L_LOCAL.md).
+- Next：optional infra LLM for `prompt_eval`；B2-L closeout；然后 B3-L sandbox 雏形。
 - `process_split_authorized=false`；证据 `environment=local`。

@@ -8,6 +8,7 @@ Evaluation Service **D1 Thin (D1c/cohost)** · **D2 ops pack** · A3 Accepted（
 |---|---|---|
 | **cohost (default production)** | Central `GET /api/core/eval/healthz` | `deploy_unit=central` |
 | **standalone (A1–A6 / B1–B2-L)** | `bash scripts/run_local.sh` → `:8010` | store OK; allowlist enqueue **202**; sandbox/forbidden **422**; **`process_split_authorized=false`**; `environment=local` |
+| **B2-L worker** | `bash scripts/run_worker.sh` | poll `process_once` until idle/signal; same DB URL |
 | **B1-L Compose + PG store** | `compose/docker-compose.b1l.yml` + `AIPLAT_EVAL_DB_URL=postgresql://…` | PG16 + MinIO; EvalStore via asyncpg; SQLite still default if unset |
 | **Central proxy (optional)** | `AIPLAT_EVAL_SERVICE_URL=http://127.0.0.1:8010` | Central authenticates then forwards store subset |
 

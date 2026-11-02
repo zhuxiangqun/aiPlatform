@@ -14,6 +14,7 @@
 | Worker dual-point #2 | ✅ `reject_forged_job` → `dead_letter` |
 | SKIP LOCKED claim / lease / heartbeat | ✅ `claim_next_job` / `heartbeat_job` / `process_once` |
 | Allowlist runner execute | ✅ local deterministic (`replay_trace`/`prompt_eval`/…); LLM provider later |
+| Worker poll loop | ✅ `run_worker_loop` + `scripts/run_worker.sh` / `python -m app.worker` |
 
 ## Allowed vs denied (B2)
 
@@ -34,10 +35,24 @@ out = process_once(db_url, worker_id="w1")  # claim → allowlist → run → su
 - Runners: local deterministic fixtures (`accuracy_claim=false`); `arena`+tools → `sandbox_required`
 - Live infra LLM (`AIPLAT_EVAL_LLM`) reserved — not required for this slice
 
+## Worker loop
+
+```bash
+# API (terminal A)
+bash packages/aiplat-evaluation/scripts/run_local.sh
+
+# Worker (terminal B) — drains allowlist jobs
+AIPLAT_EVAL_WORKER_MAX_IDLE=5 bash packages/aiplat-evaluation/scripts/run_worker.sh
+# or: cd packages/aiplat-evaluation && PYTHONPATH=. python3 -m app.worker
+```
+
+Env: `AIPLAT_EVAL_WORKER_ID`, `AIPLAT_EVAL_WORKER_IDLE_SLEEP`, `AIPLAT_EVAL_WORKER_MAX_JOBS`, `AIPLAT_EVAL_WORKER_MAX_IDLE`.
+
 ## Tests
 
 ```bash
 cd packages/aiplat-evaluation && PYTHONPATH=. pytest \
   tests/test_b2l_allowlist_enqueue.py tests/test_b2l_claim_lease.py \
-  tests/test_b2l_runner_execute.py tests/test_b1l_execution_not_migrated.py -q
+  tests/test_b2l_runner_execute.py tests/test_b2l_worker_loop.py \
+  tests/test_b1l_execution_not_migrated.py -q
 ```

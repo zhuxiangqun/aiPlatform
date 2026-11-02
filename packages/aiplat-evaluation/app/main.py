@@ -41,10 +41,11 @@ def healthz_payload(cfg: EvalServiceConfig) -> Dict[str, Any]:
         "b2l_allowlist_enqueue": True,
         "b2l_claim_lease": True,
         "b2l_runner_execute": True,
+        "b2l_worker_loop": True,
         "note": (
             "B2-L local standalone — store/read OK; allowlist enqueue 202; "
-            "claim/lease + local runners; sandbox/forbidden denied; not staging; "
-            "process_split_authorized=false."
+            "claim/lease + runners + worker loop; sandbox/forbidden denied; "
+            "not staging; process_split_authorized=false."
         ),
     }
 
