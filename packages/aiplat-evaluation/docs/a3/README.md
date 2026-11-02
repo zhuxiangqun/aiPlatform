@@ -11,6 +11,7 @@
 | [`B2L_LOCAL_CLOSEOUT.md`](./B2L_LOCAL_CLOSEOUT.md) | B2-L 本地工程验收（≠ staging authorize） |
 | [`B3L_LOCAL.md`](./B3L_LOCAL.md) | B3-L local_stub 沙箱雏形（无真实隔离） |
 | [`LLM_LOCAL.md`](./LLM_LOCAL.md) | 可选 prompt_eval LLM（stub/http，无 Central） |
+| [`B3L_LOCAL_CLOSEOUT.md`](./B3L_LOCAL_CLOSEOUT.md) | B3-L 本地工程验收（≠ staging authorize） |
 
 ```bash
 bash packages/aiplat-evaluation/scripts/a3_local_rehearsal.sh  # #4 → 🟨

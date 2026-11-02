@@ -15,6 +15,7 @@
 | Deny `skill_suite` / redteam | ✅ still `sandbox_required` |
 | microVM / full skill tools | ❌ deferred |
 | Data dual-read migration drill | ✅ B3-L.2 — `scripts/b3l_dual_read_drill.sh` |
+| Local closeout | ✅ [`B3L_LOCAL_CLOSEOUT.md`](./B3L_LOCAL_CLOSEOUT.md) + `scripts/b3l_local_closeout.sh` |
 
 ## Enable
 
@@ -38,11 +39,13 @@ Default backend is `off` (B2 behavior unchanged). Without a docker binary, `cli_
 bash packages/aiplat-evaluation/scripts/b3l_dual_read_drill.sh
 ```
 
-## Tests
+## Tests / closeout
 
 ```bash
 cd packages/aiplat-evaluation && PYTHONPATH=. pytest \
   tests/test_b3l_sandbox_local_stub.py \
   tests/test_b3l_sandbox_docker_cli.py \
   tests/test_b3l_dual_read.py -q
+
+bash packages/aiplat-evaluation/scripts/b3l_local_closeout.sh
 ```

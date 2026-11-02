@@ -60,7 +60,6 @@
 ## Outcome
 
 - **B2-L local closed** — enqueue + claim/lease + runners + worker loop + closeout。
-- **B3-L local slices** — `local_stub` / **docker cli_probe** + dual-read；见 [`B3L_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/B3L_LOCAL.md).
-- **Optional LLM** — `AIPLAT_EVAL_LLM` stub/http for `prompt_eval`；见 [`LLM_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/LLM_LOCAL.md).
-- Next：microVM / skill_suite 沙箱；生产回填仍禁（B4 PITR 前）。
+- **B3-L local closed** — stub/docker/dual-read/LLM optional + closeout；见 [`B3L_LOCAL_CLOSEOUT.md`](../../../packages/aiplat-evaluation/docs/a3/B3L_LOCAL_CLOSEOUT.md).
+- Next under unfreeze：microVM / skill_suite 沙箱 → S1；生产回填仍禁（B4 PITR 前）。
 - `process_split_authorized=false`；证据 `environment=local`；`sandbox_real_isolation=false`.

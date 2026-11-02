@@ -34,6 +34,15 @@ bash packages/aiplat-evaluation/scripts/b2l_local_closeout.sh
 
 See [`docs/a3/B2L_LOCAL_CLOSEOUT.md`](./docs/a3/B2L_LOCAL_CLOSEOUT.md) · [`docs/a3/B2L_LOCAL.md`](./docs/a3/B2L_LOCAL.md).
 
+## B3-L closeout
+
+```bash
+bash packages/aiplat-evaluation/scripts/b3l_local_closeout.sh
+# stub/docker/dual-read + skill denied → docs/a3/drills/local-eval-b3l-closeout-*.json
+```
+
+See [`docs/a3/B3L_LOCAL_CLOSEOUT.md`](./docs/a3/B3L_LOCAL_CLOSEOUT.md).
+
 ## A4 independence
 
 ```bash

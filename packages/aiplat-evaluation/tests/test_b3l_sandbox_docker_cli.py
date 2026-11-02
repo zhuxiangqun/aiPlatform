@@ -124,13 +124,14 @@ def test_enqueue_and_process_cli(tmp_path: Path, monkeypatch):
     )
     assert r.status_code == 202, r.text
     assert r.json()["runner_id"] == "cli_probe"
-
+    job_id = r.json()["job_id"]
     db = f"sqlite:///{tmp_path / 'b3d.sqlite3'}"
-    # app already migrated; process_once on same db
+    queued = get_job(db, job_id)
+    assert queued and queued.get("payload", {}).get("argv") == ["true"]
+
     out = process_once(db, worker_id="w-docker")
     assert out is not None
     assert out["status"] == "succeeded"
-    job_id = r.json()["job_id"]
     stored = get_job(db, job_id)
     assert stored and stored["status"] == "succeeded"
 

@@ -104,12 +104,14 @@ async def _stub_kb_eval_run(request: Request):
 
 async def _stub_http_probe(request: Request):
     claims = require_bearer(request)
-    return _enqueue_or_deny(request, runner_id="http_probe", claims=claims)
+    body = await _read_json(request)
+    return _enqueue_or_deny(request, runner_id="http_probe", claims=claims, payload=body)
 
 
 async def _stub_cli_probe(request: Request):
     claims = require_bearer(request)
-    return _enqueue_or_deny(request, runner_id="cli_probe", claims=claims)
+    body = await _read_json(request)
+    return _enqueue_or_deny(request, runner_id="cli_probe", claims=claims, payload=body)
 
 
 async def _stub_replay_run(request: Request):

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2541
+total_capabilities: 2543
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2604,6 +2604,8 @@ scan_hash: 8f9548ec24f4
 | validate_cli_argv | `packages/aiplat-evaluation/app/sandbox/docker_exec.py` | ✅ | cli_probe argv 白名单 | 本批 |
 | docker_available | `packages/aiplat-evaluation/app/sandbox/docker_exec.py` | ✅ | docker 二进制探测 | 本批 |
 | run_cli_probe | `packages/aiplat-evaluation/app/worker/runners/cli_probe.py` | ✅ | docker cli_probe runner | 本批 |
+| Evaluation B3-L local closeout | `packages/aiplat-evaluation/scripts/b3l_local_closeout.sh` + `docs/a3/B3L_LOCAL_CLOSEOUT.md` | ✅ | stub/docker/dual-read 证据；authorize 恒 false；≠ microVM/B4；生成物适用：不适用 | 本批 |
+| aiplat_eval_b3l_local_closeout | `packages/aiplat-evaluation/scripts/b3l_local_closeout.sh` | ✅ | B3-L 本地验收脚本 | 本批 |
 | execute_runner | `packages/aiplat-evaluation/app/worker/runners/__init__.py` | ✅ | 按 runner_id 分发 | 本批 |
 | run_worker_loop | `packages/aiplat-evaluation/app/worker/loop.py` | ✅ | Worker 轮询主循环 | 本批 |
 | classify_runner | `packages/aiplat-evaluation/app/runner_allowlist.py` | ✅ | B2 allowlist 分类 | 本批 |
@@ -3453,7 +3455,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 125 | 0 | 125 |
+| 评估系统 | 127 | 0 | 127 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3485,7 +3487,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2531** | **10** | **2541** |
+| **总计** | **2533** | **10** | **2543** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
