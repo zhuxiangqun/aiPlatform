@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-02T16:44:31+08:00",
+  "reviewed_at": "2026-11-02T16:50:09+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "095c382b388b5b270d31c9f45659ab1e9abe377782178a57a7ea1722346f31b5",
-  "head_sha": "3fc2fb75aba2eaa686e4c5a8fc895f9222e5c936",
+  "diff_sha256": "661499b7c1d487f018aeecbfb6b45e5b04e47b0b301f74d14c583270cb1d3a04",
+  "head_sha": "0a85713b6d7bbfd67cb933209ab570184b6e1f01",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "PG dispatch only on postgresql URL; SQLite default unchanged; health redacts password; live test integration-marked."
+  "note": "Banner only for proxy/stubs; cohost unchanged; copy matches B1 route matrix; store tabs stay usable."
 }
