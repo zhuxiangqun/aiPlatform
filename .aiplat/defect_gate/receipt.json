@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T22:52:04+08:00",
+  "reviewed_at": "2026-11-04T00:11:42+08:00",
   "base_ref": "origin/main",
-  "merge_base": "abcb9021cd5ee26769108eaace5d7439f726d2b4",
-  "diff_sha256": "9bd3abf827c84d03515052af3820e0fd1bb6be763a71f5182fe0ac5804739023",
-  "head_sha": "b94cae27b0f440f72892fdd1e46a892b08c84dc9",
+  "merge_base": "1cc40402d5dd9d945dcc6a40cdab257498fc82b1",
+  "diff_sha256": "bac97475396ee9d897018374162c5db5eb5017041a5d45fce139e05b827754e2",
+  "head_sha": "40b57b6d90cf748e2a905524b93479eb0ccdf2e5",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "scorecard misread table sync; v1 three axes at 5; accuracy/authorize false; local lock only"
+  "note": "Evidence audit: feature rolled to 4.0 until dual_human_attestation confirmed; gate verifies tracked aggregate SHA256; silent feature 5 refused."
 }
