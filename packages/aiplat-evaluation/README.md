@@ -14,6 +14,7 @@ Evaluation Service **D1 Thin (D1c/cohost)** · **D2 ops pack** · A3 Accepted（
 | **B3-L.2 dual-read** | `bash scripts/b3l_dual_read_drill.sh` | local fixture ETL + reconcile + pointer rollback; **not** production backfill |
 | **Optional LLM** | `AIPLAT_EVAL_LLM=stub\|http` + BASE_URL | `prompt_eval` without Central; see [`docs/a3/LLM_LOCAL.md`](./docs/a3/LLM_LOCAL.md) |
 | **LLM dynamic gate** | `bash scripts/b2l_llm_dynamic_gate.sh` | stub Worker e2e; optional live via `AIPLAT_EVAL_LLM_LIVE=1` |
+| **Live LLM 10-task smoke** | `bash scripts/live_llm_smoke.sh` | stub baseline + optional live×3; see `docs/a3/LIVE_LLM_SMOKE.md` |
 | **S1 security fixture** | `bash scripts/s1_local_gate.sh` | SECURITY_EVAL_V1 fixture ASR gate; **not** accuracy; see [`docs/a3/S1_LOCAL.md`](./docs/a3/S1_LOCAL.md) |
 | **P1 scoring semantics** | `bash scripts/p1_local_gate.sh` | families + engineering composite (text/safety scored; asr report-only); `accuracy_claim=false`; see [`docs/a3/P1_LOCAL.md`](./docs/a3/P1_LOCAL.md) |
 | **Local track closeout** | `bash scripts/local_track_closeout.sh` | P1+S1 gates + authorize locked; not B4/staging |

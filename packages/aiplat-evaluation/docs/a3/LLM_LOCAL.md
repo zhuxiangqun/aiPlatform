@@ -31,10 +31,22 @@ bash packages/aiplat-evaluation/scripts/b2l_llm_dynamic_gate.sh
 Evidence: `docs/a3/drills/local-eval-b2l-llm-dynamic-gate-*.json`  
 `live_ok=true` only when an independent provider answered; stub path alone ≠ production live LLM certification.
 
+## 10-task live smoke (stub vs live ×3)
+
+See [`LIVE_LLM_SMOKE.md`](./LIVE_LLM_SMOKE.md) — Agent/Skill/Prompt/KB pack, variance, cost cap; evidence `local-eval-live-llm-*.json`.
+
+```bash
+bash packages/aiplat-evaluation/scripts/live_llm_smoke.sh
+# live:
+AIPLAT_EVAL_LLM_LIVE=1 AIPLAT_EVAL_LLM_BASE_URL=http://127.0.0.1:11434/v1 \
+AIPLAT_EVAL_LLM_MODEL=qwen2.5:3b bash packages/aiplat-evaluation/scripts/live_llm_smoke.sh
+```
+
 ## Tests
 
 ```bash
 cd packages/aiplat-evaluation && PYTHONPATH=. pytest \
   tests/test_prompt_eval_llm.py \
-  tests/test_b2l_llm_dynamic_execute.py -q
+  tests/test_b2l_llm_dynamic_execute.py \
+  tests/test_live_llm_smoke_stub.py -q
 ```
