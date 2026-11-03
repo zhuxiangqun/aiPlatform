@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1683
+total_capabilities: 1691
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -5528,7 +5528,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 62
+    caps_count: 70
     provides:
       - symbol: "run_g2a_gate"
         type: "function"
@@ -5598,6 +5598,38 @@ domains:
         type: "function"
         signature: "eval_compute_g2c_report(tenant_id, persist?)→Dict"
         module: "core/api/core_facade.py"
+      - symbol: "kb_eval_list_samples"
+        type: "function"
+        signature: "kb_eval_list_samples(limit?, offset?, tag?)→Dict items/total"
+        module: "core/apps/eval/service/kb_eval_ops.py"
+      - symbol: "kb_eval_create_sample"
+        type: "function"
+        signature: "kb_eval_create_sample(body)→Dict id/status"
+        module: "core/apps/eval/service/kb_eval_ops.py"
+      - symbol: "kb_eval_delete_sample"
+        type: "function"
+        signature: "kb_eval_delete_sample(sample_id)→Dict status"
+        module: "core/apps/eval/service/kb_eval_ops.py"
+      - symbol: "kb_eval_run"
+        type: "function"
+        signature: "async kb_eval_run(body)→Dict reports+protocol"
+        module: "core/apps/eval/service/kb_eval_ops.py"
+      - symbol: "kb_eval_list_reports"
+        type: "function"
+        signature: "kb_eval_list_reports(limit?, offset?)→Dict items/total"
+        module: "core/apps/eval/service/kb_eval_ops.py"
+      - symbol: "kb_eval_import_csv_text"
+        type: "function"
+        signature: "kb_eval_import_csv_text(text)→Dict imported"
+        module: "core/apps/eval/service/kb_eval_ops.py"
+      - symbol: "kb_eval_reports_series"
+        type: "function"
+        signature: "kb_eval_reports_series(days?)→Dict series"
+        module: "core/apps/eval/service/kb_eval_ops.py"
+      - symbol: "kb_eval_compare_reports"
+        type: "function"
+        signature: "kb_eval_compare_reports(session_a?, session_b?)→Dict compare"
+        module: "core/apps/eval/service/kb_eval_ops.py"
       - symbol: "run_e5_gate"
         type: "function"
         signature: "run_e5_gate(mode=pr|nightly|release, ...)→Dict local gate + taxonomy"

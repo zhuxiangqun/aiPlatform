@@ -41,12 +41,21 @@ core/apps/eval/service/* + harness evaluation ← Central AgentEvalResult legacy
 3. **禁止**新代码把 Central `legacy_7dim` 标成 engineering canonical（P1 仍以 package `build_composite` 为准）。
 4. 新 eval HTTP 能力必须挂在 **`/api/platform/apps/eval`**；若不得不加 legacy 别名，必须走 Deprecation middleware 可检测路径。
 
-## 后续切片（不在本 PR 一次做完）
+## v1.1 进度（本仓步进）
+
+| 模块 | 状态 |
+|------|------|
+| `platform/.../kb_eval.py` | ✅ 已变薄 → `core.apps.eval.service.kb_eval_ops` + CoreFacade |
+| `code_review_gold.py` / `arena_wiring.py` | ✅ 已是 CoreFacade 薄路由 |
+| `prompt_eval.py` / `skill_evals.py` / `runs_eval.py` | ❌ 仍厚（sqlite / 大业务） |
+| platform `sqlite3` allowlist | 仅 `prompt_eval.py`（gate 强制） |
+
+## 后续切片
 
 | 切片 | 内容 |
 |------|------|
-| v1.1 | 业务从 `platform/apps/eval/api/prompt_eval.py` 等下沉 package 或 core_facade 唯一入口；platform 变薄 |
-| v1.2 | 卸 flat mount（或只留显式 redirect 表）；core `kb_eval` 转纯代理/删除 |
+| v1.1b | 下沉 `prompt_eval` / `runs_eval` / `skill_evals` |
+| v1.2 | 卸 flat mount（或只留显式 redirect 表）；core `kb_eval` stub 可删 |
 | v1.3 | contracts 单包 SSOT + CODEOWNERS + package release |
 
 ## 非目标

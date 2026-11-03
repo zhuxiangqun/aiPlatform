@@ -20,18 +20,17 @@
       ]
     },
     "engineering_architecture": {
-      "score": 3.7,
+      "score": 3.9,
       "max": 5.0,
       "scope": "SCORE_SCOPE_V1 architecture in-scope",
       "full_score_eligible": false,
-      "note": "ARCH_CONSOLIDATION_V1 freeze landed (mount=2 ratchet + core eval router allowlist); still dual-path / thick platform",
+      "note": "freeze + kb_eval thinned to CoreFacade; prompt/runs/skill still thick; legacy flat mount remains",
       "gaps": [
         "dual_path_package_vs_central_legacy",
         "legacy_flat_mount_still_present",
         "contracts_ssot_package_only",
         "product_root_complete",
-        "platform_thin_adapter_only",
-        "core_apps_eval_service_residue"
+        "platform_prompt_eval_runs_skill_still_thick"
       ]
     },
     "local_independence_no_microvm": {

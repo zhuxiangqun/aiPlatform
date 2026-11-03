@@ -34,6 +34,12 @@ def test_core_eval_router_allowlist():
     assert names == ["eval_legacy_shim.py", "kb_eval.py"]
 
 
+def test_platform_eval_sqlite_allowlist():
+    api = REPO / "aiPlat-platform/apps/eval/api"
+    hit = sorted(p.name for p in api.glob("*.py") if "sqlite3" in p.read_text(encoding="utf-8"))
+    assert hit == ["prompt_eval.py"]
+
+
 def test_arch_consolidation_gate_script():
     proc = subprocess.run(
         ["bash", str(SCRIPT)],

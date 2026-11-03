@@ -51,6 +51,21 @@ assert "def build_composite" in comp.read_text(encoding="utf-8")
 shim = repo / "aiPlat-platform/apps/eval/api/legacy_shim.py"
 assert "CANONICAL_PREFIX = \"/api/platform/apps/eval\"" in shim.read_text(encoding="utf-8")
 
+# v1.1: platform eval API may keep sqlite3 only in allowlisted thick leftovers.
+api_dir = repo / "aiPlat-platform/apps/eval/api"
+sqlite_files = sorted(
+    p.name
+    for p in api_dir.glob("*.py")
+    if "sqlite3" in p.read_text(encoding="utf-8")
+)
+sqlite_allowed = {"prompt_eval.py"}
+assert set(sqlite_files) <= sqlite_allowed, (
+    f"platform eval sqlite3 drift: {sqlite_files} (allowed {sorted(sqlite_allowed)})"
+)
+kb_eval_plat = (api_dir / "kb_eval.py").read_text(encoding="utf-8")
+assert "sqlite3" not in kb_eval_plat
+assert "kb_eval_list_samples" in kb_eval_plat
+
 evid = Path("$EVID_DIR")
 stamp = "$STAMP"
 payload = {
@@ -66,16 +81,17 @@ payload = {
         "max_eval_platform_router_mounts": 2,
         "allowed_core_eval_routers": sorted(allowed),
     },
+    "platform_sqlite_files": sqlite_files,
     "remaining_gaps": [
         "legacy_flat_mount_still_present",
-        "platform_eval_api_not_thin",
-        "core_apps_eval_service_residue",
+        "platform_prompt_eval_runs_skill_still_thick",
         "central_legacy_7dim_dual_path",
+        "product_root_incomplete",
     ],
     "honesty": (
-        "v1 freeze only — dual mount allowed at exactly 2; "
-        "no new core *eval* routers; package build_composite remains engineering canonical; "
-        "not product-root complete; not authorize"
+        "v1 freeze + v1.1 kb_eval thinned; dual mount==2; "
+        "platform sqlite allowlist=prompt_eval only; "
+        "package build_composite remains engineering canonical; not authorize"
     ),
     "recorded_at": stamp or datetime.now(timezone.utc).isoformat(),
 }

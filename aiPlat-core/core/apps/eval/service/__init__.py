@@ -32,6 +32,16 @@ from core.apps.eval.service.g2c import (
     g2c_status,
     record_g2c_retest,
 )
+from core.apps.eval.service.kb_eval_ops import (
+    kb_eval_list_samples,
+    kb_eval_create_sample,
+    kb_eval_delete_sample,
+    kb_eval_run,
+    kb_eval_list_reports,
+    kb_eval_import_csv_text,
+    kb_eval_reports_series,
+    kb_eval_compare_reports,
+)
 
 __all__ = [
     "EvalStore",
@@ -55,4 +65,12 @@ __all__ = [
     "g2c_status",
     "record_g2c_retest",
     "compute_g2c_report",
+    "kb_eval_list_samples",
+    "kb_eval_create_sample",
+    "kb_eval_delete_sample",
+    "kb_eval_run",
+    "kb_eval_list_reports",
+    "kb_eval_import_csv_text",
+    "kb_eval_reports_series",
+    "kb_eval_compare_reports",
 ]

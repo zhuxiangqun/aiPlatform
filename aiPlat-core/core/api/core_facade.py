@@ -6470,6 +6470,55 @@ def list_code_review_gold_reports(*, tenant_id: str = "", limit: int = 20) -> li
     return list_eval_reports(tenant_id=tenant_id, limit=limit)
 
 
+def kb_eval_list_samples(*, limit: int = 100, offset: int = 0, tag: Optional[str] = None):
+    """KB eval golden samples list (platform thin route)."""
+    from core.apps.eval.service.kb_eval_ops import kb_eval_list_samples as _fn
+
+    return _fn(limit=limit, offset=offset, tag=tag)
+
+
+def kb_eval_create_sample(body: Dict[str, Any]):
+    from core.apps.eval.service.kb_eval_ops import kb_eval_create_sample as _fn
+
+    return _fn(body)
+
+
+def kb_eval_delete_sample(sample_id: str):
+    from core.apps.eval.service.kb_eval_ops import kb_eval_delete_sample as _fn
+
+    return _fn(sample_id)
+
+
+async def kb_eval_run(body: Dict[str, Any]):
+    from core.apps.eval.service.kb_eval_ops import kb_eval_run as _fn
+
+    return await _fn(body)
+
+
+def kb_eval_list_reports(*, limit: int = 50, offset: int = 0):
+    from core.apps.eval.service.kb_eval_ops import kb_eval_list_reports as _fn
+
+    return _fn(limit=limit, offset=offset)
+
+
+def kb_eval_import_csv_text(text: str):
+    from core.apps.eval.service.kb_eval_ops import kb_eval_import_csv_text as _fn
+
+    return _fn(text)
+
+
+def kb_eval_reports_series(*, days: int = 30):
+    from core.apps.eval.service.kb_eval_ops import kb_eval_reports_series as _fn
+
+    return _fn(days=days)
+
+
+def kb_eval_compare_reports(*, session_a: str = "", session_b: str = ""):
+    from core.apps.eval.service.kb_eval_ops import kb_eval_compare_reports as _fn
+
+    return _fn(session_a=session_a, session_b=session_b)
+
+
 async def reevaluate_code_review_gold(
     *,
     profile: str = "balanced",
