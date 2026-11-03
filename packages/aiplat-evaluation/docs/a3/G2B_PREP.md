@@ -20,13 +20,14 @@ bash packages/aiplat-evaluation/scripts/human_worksheet_pack.sh
 # → docs/a3/human_pack/<stamp>/ 含 g2b_facilitator + g2b_annotator_{a,b} + pref_*
 ```
 
-1. 协调人在 `g2b_facilitator.json` 填每条 `model_output`（同一候选模型）。  
-2. 同步到两份标注表：
+1. 协调人**只编辑** `model_outputs.json`（扁平 `{ "g2b-01": "…" }`；可含换行/引号）。  
+   **不要**往 `g2b_facilitator.json` 里手贴多行答案（易弄坏 JSON）。  
+2. 同步到 facilitator + 两份标注表：
 
 ```bash
 PYTHONPATH=packages/aiplat-evaluation python3 \
   packages/aiplat-evaluation/scripts/human_worksheet_pack.py \
-  --apply-facilitator-outputs packages/aiplat-evaluation/docs/a3/human_pack/<stamp>
+  --from-outputs packages/aiplat-evaluation/docs/a3/human_pack/<stamp>
 ```
 
 3. **只把** `g2b_annotator_a.json` / `g2b_annotator_b.json` 发给两名标注者（**不要**发 facilitator / `gold_pass_hint`）。  

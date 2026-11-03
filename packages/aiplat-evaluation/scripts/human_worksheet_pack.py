@@ -15,7 +15,17 @@ from typing import Any, Dict, List
 
 
 def _load(path: Path) -> Dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    raw = path.read_text(encoding="utf-8")
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise SystemExit(
+            f"Invalid JSON in {path}: {e}\n"
+            "Tip: do not paste multi-line / quoted model answers into "
+            "g2b_facilitator.json by hand. Edit model_outputs.json "
+            '(flat map {"g2b-01": "..."}) then run:\n'
+            f"  python3 scripts/human_worksheet_pack.py --from-outputs {path.parent}"
+        ) from e
 
 
 def build_g2b_annotator(
@@ -124,17 +134,20 @@ def write_json(path: Path, payload: Dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def apply_facilitator_outputs(pack_dir: Path) -> Dict[str, Any]:
-    """Copy facilitator model_output → both G2b annotator sheets (in place)."""
+def _apply_output_map(pack_dir: Path, by_id: Dict[str, str]) -> Dict[str, Any]:
+    """Write outputs into facilitator + both annotator sheets."""
     fac_path = pack_dir / "g2b_facilitator.json"
     if not fac_path.is_file():
         raise SystemExit(f"missing {fac_path}")
     fac = _load(fac_path)
-    by_id = {
-        str(t.get("task_id")): str(t.get("model_output") or "")
-        for t in (fac.get("tasks") or [])
-        if isinstance(t, dict) and t.get("task_id")
-    }
+    for t in fac.get("tasks") or []:
+        if not isinstance(t, dict):
+            continue
+        tid = str(t.get("task_id") or "")
+        if tid in by_id:
+            t["model_output"] = by_id[tid]
+    write_json(fac_path, fac)
+
     filled = 0
     empty = 0
     for name in ("g2b_annotator_a.json", "g2b_annotator_b.json"):
@@ -144,9 +157,11 @@ def apply_facilitator_outputs(pack_dir: Path) -> Dict[str, Any]:
             if not isinstance(row, dict):
                 continue
             tid = str(row.get("task_id") or "")
-            out = by_id.get(tid, "")
+            out = by_id.get(tid, str(row.get("model_output") or ""))
+            if tid in by_id:
+                out = by_id[tid]
             row["model_output"] = out
-            if out.strip():
+            if str(out).strip():
                 filled += 1
             else:
                 empty += 1
@@ -159,6 +174,42 @@ def apply_facilitator_outputs(pack_dir: Path) -> Dict[str, Any]:
         "empty_model_output_slots": empty,
         "note": "annotator pass fields unchanged; still need two humans to label",
     }
+
+
+def apply_facilitator_outputs(pack_dir: Path) -> Dict[str, Any]:
+    """Copy facilitator model_output → both G2b annotator sheets (in place)."""
+    fac_path = pack_dir / "g2b_facilitator.json"
+    if not fac_path.is_file():
+        raise SystemExit(f"missing {fac_path}")
+    fac = _load(fac_path)
+    by_id = {
+        str(t.get("task_id")): str(t.get("model_output") or "")
+        for t in (fac.get("tasks") or [])
+        if isinstance(t, dict) and t.get("task_id")
+    }
+    return _apply_output_map(pack_dir, by_id)
+
+
+def apply_from_outputs_file(pack_dir: Path) -> Dict[str, Any]:
+    """Load flat model_outputs.json map and sync into facilitator + annotators.
+
+    Format::
+        {"g2b-01": "4", "g2b-02": "…"}
+    Safe for multi-line strings and embedded quotes — edit this file, not facilitator.
+    """
+    path = pack_dir / "model_outputs.json"
+    if not path.is_file():
+        raise SystemExit(
+            f"missing {path}\n"
+            "Create a flat JSON object mapping task_id → model_output string."
+        )
+    data = _load(path)
+    if not isinstance(data, dict):
+        raise SystemExit(f"{path} must be a JSON object {{task_id: output}}")
+    by_id = {str(k): str(v if v is not None else "") for k, v in data.items()}
+    result = _apply_output_map(pack_dir, by_id)
+    result["source"] = str(path)
+    return result
 
 
 def main() -> int:
@@ -189,7 +240,19 @@ def main() -> int:
         metavar="PACK_DIR",
         help="copy g2b_facilitator.json model_output into both annotator sheets",
     )
+    ap.add_argument(
+        "--from-outputs",
+        type=Path,
+        default=None,
+        metavar="PACK_DIR",
+        help="load pack_dir/model_outputs.json (flat map) into facilitator + annotators",
+    )
     args = ap.parse_args()
+
+    if args.from_outputs is not None:
+        result = apply_from_outputs_file(args.from_outputs)
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
 
     if args.apply_facilitator_outputs is not None:
         result = apply_facilitator_outputs(args.apply_facilitator_outputs)
@@ -232,14 +295,27 @@ def main() -> int:
         write_json(fac, build_g2b_facilitator(tasks))
         write_json(a, build_g2b_annotator(tasks, annotator_id="A"))
         write_json(b, build_g2b_annotator(tasks, annotator_id="B"))
+        # Flat map — safe place to paste multi-line / JSON-looking model answers.
+        outputs_stub = {str(t.get("id")): "" for t in tasks if t.get("id")}
+        outputs_path = out_dir / "model_outputs.json"
+        write_json(outputs_path, outputs_stub)
         readme_g2b = out_dir / "G2B_SEND.md"
         readme_g2b.write_text(
             "\n".join(
                 [
                     "# G2b send checklist",
                     "",
+                    "1. Edit **`model_outputs.json`** only (flat `{task_id: answer}`).",
+                    "   Do **not** hand-paste multi-line answers into `g2b_facilitator.json`.",
+                    "2. Sync:",
+                    "",
+                    "```bash",
+                    "python3 packages/aiplat-evaluation/scripts/human_worksheet_pack.py \\",
+                    f"  --from-outputs {out_dir}",
+                    "```",
+                    "",
                     "- **Send to annotators**: `g2b_annotator_a.json`, `g2b_annotator_b.json` only",
-                    "- **Keep private**: `g2b_facilitator.json` (has `gold_pass_hint`)",
+                    "- **Keep private**: `g2b_facilitator.json` / `model_outputs.json` (gold hints)",
                     "- After fill: `scripts/g2b_kappa.py --a … --b … --tasks docs/a3/g2b_tasks.v0.json`",
                     "",
                 ]
@@ -247,7 +323,13 @@ def main() -> int:
             encoding="utf-8",
         )
         manifest["files"].extend(
-            [str(fac.name), str(a.name), str(b.name), str(readme_g2b.name)]
+            [
+                str(fac.name),
+                str(a.name),
+                str(b.name),
+                str(outputs_path.name),
+                str(readme_g2b.name),
+            ]
         )
         manifest["g2b_task_n"] = len(tasks)
 

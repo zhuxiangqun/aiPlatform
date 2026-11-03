@@ -36,13 +36,14 @@ def test_pack_generates_g2b_and_preference(tmp_path: Path):
     assert pref_a["labels"][0]["a"]
     assert pref_a["accuracy_claim"] is False
 
-    # Facilitator fills one output → apply copies into both annotator sheets.
-    fac["tasks"][0]["model_output"] = "sample-output-for-g2b-01"
-    (out / "g2b_facilitator.json").write_text(
-        json.dumps(fac, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    assert (out / "model_outputs.json").is_file()
+    # Prefer flat model_outputs.json (safe for newlines / quotes).
+    outs = {"g2b-01": 'line1\nline2 {"k":1}'}
+    (out / "model_outputs.json").write_text(
+        json.dumps(outs, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     proc2 = subprocess.run(
-        [sys.executable, str(SCRIPT), "--apply-facilitator-outputs", str(out)],
+        [sys.executable, str(SCRIPT), "--from-outputs", str(out)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -50,4 +51,6 @@ def test_pack_generates_g2b_and_preference(tmp_path: Path):
     )
     assert proc2.returncode == 0, proc2.stderr
     a2 = json.loads((out / "g2b_annotator_a.json").read_text(encoding="utf-8"))
-    assert a2["labels"][0]["model_output"] == "sample-output-for-g2b-01"
+    assert a2["labels"][0]["model_output"] == 'line1\nline2 {"k":1}'
+    fac2 = json.loads((out / "g2b_facilitator.json").read_text(encoding="utf-8"))
+    assert fac2["tasks"][0]["model_output"] == 'line1\nline2 {"k":1}'
