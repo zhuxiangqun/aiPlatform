@@ -12,6 +12,8 @@ Env:
 - ``AIPLAT_EVAL_LLM_API_KEY`` — optional Bearer
 - ``AIPLAT_EVAL_LLM_MODEL`` — model id (default ``local``)
 - ``AIPLAT_EVAL_LLM_TIMEOUT`` — seconds (default 30)
+- ``AIPLAT_EVAL_LLM_TEMPERATURE`` — float (default 0)
+- ``AIPLAT_EVAL_LLM_SEED`` — optional int seed (provider-dependent)
 - ``AIPLAT_EVAL_LLM_STUB_OUTPUT`` — stub mode fixed output
 - ``AIPLAT_EVAL_LLM_COST_PER_1K`` — optional USD-ish per 1k tokens (alias: ``_COST_PER_1K_TOKENS``)
 """
@@ -25,6 +27,24 @@ import urllib.request
 from typing import Any, Dict, Literal, Optional
 
 LlmMode = Literal["off", "stub", "http"]
+
+
+def llm_temperature() -> float:
+    raw = (os.environ.get("AIPLAT_EVAL_LLM_TEMPERATURE") or "0").strip()
+    try:
+        return float(raw)
+    except ValueError:
+        return 0.0
+
+
+def llm_seed() -> Optional[int]:
+    raw = (os.environ.get("AIPLAT_EVAL_LLM_SEED") or "").strip()
+    if not raw:
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        return None
 
 
 def provider_base_url() -> str:
@@ -185,12 +205,16 @@ def _http_complete(
         }
     model_id = (model or os.environ.get("AIPLAT_EVAL_LLM_MODEL") or "local").strip()
     timeout = float(os.environ.get("AIPLAT_EVAL_LLM_TIMEOUT") or "30")
+    temperature = llm_temperature()
+    seed = llm_seed()
     url = f"{base}/chat/completions"
-    body = {
+    body: Dict[str, Any] = {
         "model": model_id,
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0,
+        "temperature": temperature,
     }
+    if seed is not None:
+        body["seed"] = seed
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
     key = (os.environ.get("AIPLAT_EVAL_LLM_API_KEY") or "").strip()
     if key:
@@ -216,6 +240,9 @@ def _http_complete(
                 tenant_id=tenant_id,
                 runner_id=runner_id,
                 latency_ms=latency_ms,
+                temperature=temperature,
+                seed=seed,
+                timeout_s=timeout,
                 detail=f"provider_error:{type(exc).__name__}",
             ),
         }
@@ -238,6 +265,9 @@ def _http_complete(
             latency_ms=latency_ms,
             tokens_in=tokens_in,
             tokens_out=tokens_out,
+            temperature=temperature,
+            seed=seed,
+            timeout_s=timeout,
             detail="" if ok else "empty_completion",
         ),
     }
@@ -266,6 +296,9 @@ def _audit(
     latency_ms: int = 0,
     tokens_in: int = 0,
     tokens_out: int = 0,
+    temperature: Optional[float] = None,
+    seed: Optional[int] = None,
+    timeout_s: Optional[float] = None,
     detail: str = "",
 ) -> Dict[str, Any]:
     return {
@@ -279,6 +312,11 @@ def _audit(
         "tokens_in": tokens_in,
         "tokens_out": tokens_out,
         "cost_estimate": estimate_cost(tokens_in=tokens_in, tokens_out=tokens_out),
+        "temperature": temperature if temperature is not None else llm_temperature(),
+        "seed": seed if seed is not None else llm_seed(),
+        "timeout_s": timeout_s
+        if timeout_s is not None
+        else float(os.environ.get("AIPLAT_EVAL_LLM_TIMEOUT") or "30"),
         "detail": detail,
         "central_http": False,
         "process_split_authorized": False,

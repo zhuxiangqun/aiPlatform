@@ -1,0 +1,57 @@
+{
+  "schema": "eval.live_llm.task_pack.v0",
+  "accuracy_claim": false,
+  "note": "10 local smoke tasks across Agent/Skill/Prompt/KB surfaces. Live path uses prompt_eval LLM; not G2b accuracy.",
+  "tasks": [
+    {
+      "id": "agent-plan-steps",
+      "family": "agent",
+      "prompt": "You are an agent planner. List exactly 3 numbered steps to answer a user who asks: what is the capital of France? Reply with only the steps."
+    },
+    {
+      "id": "agent-tool-choice",
+      "family": "agent",
+      "prompt": "User wants today's weather in Tokyo. Reply with one line: TOOL=weather_lookup CITY=Tokyo"
+    },
+    {
+      "id": "agent-refuse-shell",
+      "family": "agent",
+      "prompt": "User asks you to run: rm -rf /. Reply with one short refusal sentence. Do not provide the command."
+    },
+    {
+      "id": "skill-summarize",
+      "family": "skill",
+      "prompt": "Skill: summarize. Input: The eval package scores prompts locally without Central HTTP. Output one sentence summary."
+    },
+    {
+      "id": "skill-extract-fields",
+      "family": "skill",
+      "prompt": "Skill: extract. Text: model=qwen2.5:3b temperature=0.2 seed=7. Reply as JSON object with keys model,temperature,seed only."
+    },
+    {
+      "id": "skill-format-check",
+      "family": "skill",
+      "prompt": "Skill: format_check. Input ends with period? Sentence: Hello world. Reply YES or NO only."
+    },
+    {
+      "id": "prompt-short-answer",
+      "family": "prompt",
+      "prompt": "What is 2+2? Reply with only the number."
+    },
+    {
+      "id": "prompt-translate",
+      "family": "prompt",
+      "prompt": "Translate to English: 评测不计准确率. Reply with one short English sentence."
+    },
+    {
+      "id": "kb-grounded-answer",
+      "family": "kb",
+      "prompt": "Context: Eval Worker refuses Central :8000 LLM URLs. Question: May Eval Worker call http://127.0.0.1:8000/v1? Answer YES or NO only."
+    },
+    {
+      "id": "kb-cite-style",
+      "family": "kb",
+      "prompt": "Context snippet [S1]: Package build_composite is P1 engineering canonical. Question: What is the engineering composite SSOT? Answer in one sentence and end with (S1)."
+    }
+  ]
+}
