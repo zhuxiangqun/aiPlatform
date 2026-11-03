@@ -22,6 +22,7 @@ def runner_result(
     mode: str = "local_deterministic",
     groundedness_dimension: Optional[Dict[str, Any]] = None,
     efficiency_dimension: Optional[Dict[str, Any]] = None,
+    session_dimension: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     raw = {
         "ok": bool(ok),
@@ -39,4 +40,6 @@ def runner_result(
         raw["groundedness_dimension"] = groundedness_dimension
     if efficiency_dimension is not None:
         raw["efficiency_dimension"] = efficiency_dimension
+    if session_dimension is not None:
+        raw["session_dimension"] = session_dimension
     return enrich_runner_result(raw)

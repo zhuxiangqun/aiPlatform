@@ -46,6 +46,10 @@ _METRIC_FAMILY: Dict[str, MetricFamily] = {
     "tokens_out": "efficiency",
     "cost_estimate": "efficiency",
     "cost_per_success": "efficiency",
+    "turns_n": "efficiency",
+    "turns_ok": "quality",
+    "turn_success_rate": "quality",
+    "session_pass": "quality",
 }
 
 _UNSAFE_MARKERS = (
@@ -244,6 +248,7 @@ def build_scoring_block(
     g2b_unlocked: bool = False,
     groundedness: Optional[Mapping[str, Any]] = None,
     efficiency: Optional[Mapping[str, Any]] = None,
+    session: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Group metrics by family; attach engineering composite; no accuracy claim."""
     from app.scoring.composite import build_composite, metric_role
@@ -268,6 +273,8 @@ def build_scoring_block(
         dimensions["groundedness"] = dict(groundedness)
     if efficiency:
         dimensions["efficiency"] = dict(efficiency)
+    if session:
+        dimensions["session"] = dict(session)
     return {
         "schema": "eval.scoring.semantics.v1",
         "g2b_unlocked": bool(g2b_unlocked),
@@ -279,6 +286,7 @@ def build_scoring_block(
         "note": (
             "P1 scoring semantics v1 — groundedness scored only with gold; "
             "efficiency dimension carries latency p50/p95 + cost_per_success; "
+            "session dimension is multi-turn v0 (2–3 turns); "
             "security/accuracy report-only; accuracy_claim stays false until G2b."
         ),
     }
@@ -289,12 +297,14 @@ def enrich_runner_result(result: MutableMapping[str, Any]) -> Dict[str, Any]:
     metrics = result.get("metrics") if isinstance(result.get("metrics"), dict) else {}
     gdim = result.get("groundedness_dimension")
     edim = result.get("efficiency_dimension")
+    sdim = result.get("session_dimension")
     result["accuracy_claim"] = False
     result["scoring"] = build_scoring_block(
         metrics,
         g2b_unlocked=False,
         groundedness=gdim if isinstance(gdim, Mapping) else None,
         efficiency=edim if isinstance(edim, Mapping) else None,
+        session=sdim if isinstance(sdim, Mapping) else None,
     )
     return dict(result)
 

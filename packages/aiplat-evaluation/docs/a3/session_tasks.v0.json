@@ -1,0 +1,39 @@
+{
+  "schema": "eval.session.task_pack.v0",
+  "accuracy_claim": false,
+  "note": "Multi-turn v0 fixtures — 2–3 turns each; not full dialogue / G2b accuracy.",
+  "sessions": [
+    {
+      "session_id": "sess-math-2",
+      "turns": [
+        {"prompt": "What is 1+1?", "expected": "2", "actual": "2"},
+        {"prompt": "Add 1 more.", "expected": "3", "actual": "3"}
+      ]
+    },
+    {
+      "session_id": "sess-color-3",
+      "turns": [
+        {"prompt": "Name a primary color.", "expected": "red", "actual": "red"},
+        {"prompt": "Name another.", "expected": "blue", "actual": "blue"},
+        {"prompt": "And one more.", "expected": "yellow", "actual": "yellow"}
+      ]
+    },
+    {
+      "session_id": "sess-kb-2",
+      "turns": [
+        {
+          "prompt": "May Eval Worker call Central :8000 LLM?",
+          "expected": "NO",
+          "actual": "NO",
+          "context": "Eval Worker refuses Central :8000 LLM URLs."
+        },
+        {
+          "prompt": "What is the engineering composite SSOT path keyword?",
+          "expected": "build_composite",
+          "actual": "build_composite",
+          "context": "Package build_composite is P1 engineering canonical."
+        }
+      ]
+    }
+  ]
+}
