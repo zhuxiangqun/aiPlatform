@@ -33,7 +33,8 @@
 | [`B4S_LOCAL_REHEARSAL.md`](./B4S_LOCAL_REHEARSAL.md) | B4-S 本机 Docker 预演（`environment=local`；≠ staging） |
 | [`B4S_RUNBOOK.md`](./B4S_RUNBOOK.md) | B4-S 操作手册（local → 将来 staging 复用） |
 | [`MICROVM_PREP.md`](./MICROVM_PREP.md) | microVM 前置探测（无 KVM/runtime → 阻塞；≠ live tools） |
-| [`MICROVM_LINUX_TRACK.md`](./MICROVM_LINUX_TRACK.md) | Linux/KVM 轨 v1（admit 非 live + host allowlist；guest_boot 延后；Darwin 不可打 with_microvm 分） |
+| [`MICROVM_LINUX_TRACK.md`](./MICROVM_LINUX_TRACK.md) | Linux/KVM 轨（admit 非 live + host allowlist；Darwin 不可打 with_microvm 分） |
+| [`MICROVM_GUEST_BOOT.md`](./MICROVM_GUEST_BOOT.md) | guest_boot authorize（GUEST_BOOT+assets+InstanceStart；≠ process_split） |
 | [`CONTRACT_LOCAL.md`](./CONTRACT_LOCAL.md) | B1/B2 契约 standalone 收敛门禁（temporary_proxy=0） |
 | [`P1_CANONICAL.md`](./P1_CANONICAL.md) | P1 双路径：package 计分 canonical；Central legacy report-only |
 | B2 wall-clock | `AIPLAT_EVAL_JOB_TIMEOUT_SEC` → `timed_out`（见 `app/worker/timeout.py`） |

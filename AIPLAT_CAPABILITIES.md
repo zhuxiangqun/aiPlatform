@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2647
+total_capabilities: 2654
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -576,6 +576,9 @@ scan_hash: 8f9548ec24f4
 | assert_error_envelope | `packages/aiplat-evaluation/app/contract/b12.py` | ✅ | 自动同步 | 已合入 |
 | aiplat_eval_microvm_local_prep_gate | `packages/aiplat-evaluation/scripts/microvm_local_prep_gate.sh` | ✅ | 自动同步 | 已合入 |
 | aiplat_eval_microvm_linux_track_gate | `packages/aiplat-evaluation/scripts/microvm_linux_track_gate.sh` | ✅ | Linux/KVM track honesty gate | 本批 |
+| aiplat_eval_microvm_guest_boot_gate | `packages/aiplat-evaluation/scripts/microvm_guest_boot_gate.sh` | ✅ | guest_boot authorize gate（≠ process_split） | 本批 |
+| microvm_guest_boot_authorized | `packages/aiplat-evaluation/app/sandbox/microvm.py` | ✅ | host_ok+GUEST_BOOT+assets 授权门 | 本批 |
+| probe_guest_boot | `packages/aiplat-evaluation/app/sandbox/guest_boot.py` | ✅ | Firecracker InstanceStart 探针 | 本批 |
 | microvm_ready | `packages/aiplat-evaluation/app/sandbox/microvm.py` | ✅ | 自动同步 | 已合入 |
 | microvm_status | `packages/aiplat-evaluation/app/sandbox/microvm.py` | ✅ | 自动同步 | 已合入 |
 | kvm_available | `packages/aiplat-evaluation/app/sandbox/microvm.py` | ✅ | Linux /dev/kvm 探测 | 本批 |
@@ -2696,14 +2699,18 @@ scan_hash: 8f9548ec24f4
 | metric_role | `packages/aiplat-evaluation/app/scoring/composite.py` | ✅ | scored vs report_only | 本批 |
 | Evaluation B2 LLM dynamic gate | `packages/aiplat-evaluation/scripts/b2l_llm_dynamic_gate.sh` + `app/llm/client.py` | ✅ | stub Worker e2e；拒 Central URL；可选 live；accuracy_claim=false；生成物适用：不适用 | 本批 |
 | Evaluation microVM prep probe | `packages/aiplat-evaluation/app/sandbox/microvm.py` + `scripts/microvm_local_prep_gate.sh` | ✅ | 探测 ready/block_reason；默认 backend=microvm 不放行 runner；live tools 仍拒；isolation=false；生成物适用：不适用 | 本批 |
-| Evaluation microVM Linux/KVM track v1 | `packages/aiplat-evaluation/app/sandbox/microvm.py` + `microvm_exec.py` + `policy.py` + `docs/a3/MICROVM_LINUX_TRACK.md` | ✅ | host_ok+ADMIT_RUNNERS 放行非 live runners；cli_probe host allowlist；guest_boot=false；Darwin 不可打 with_microvm 分；≠ isolation cert；生成物适用：不适用 | 本批 |
+| Evaluation microVM Linux/KVM track v1 | `packages/aiplat-evaluation/app/sandbox/microvm.py` + `microvm_exec.py` + `policy.py` + `docs/a3/MICROVM_LINUX_TRACK.md` | ✅ | host_ok+ADMIT_RUNNERS 放行非 live runners；cli_probe host allowlist；Darwin 不可打 with_microvm 分；≠ isolation cert；生成物适用：不适用 | 本批 |
+| Evaluation microVM guest_boot authorize | `packages/aiplat-evaluation/app/sandbox/guest_boot.py` + `microvm.py` + `docs/a3/MICROVM_GUEST_BOOT.md` + `scripts/microvm_guest_boot_gate.sh` | ✅ | GUEST_BOOT+KERNEL/ROOTFS+InstanceStart；guest_boot=true 仅探针成功；≠ process_split；≠ live tools；生成物适用：不适用 | 本批 |
 | kvm_available | `packages/aiplat-evaluation/app/sandbox/microvm.py` | ✅ | Linux /dev/kvm | 本批 |
 | microvm_host_ok | `packages/aiplat-evaluation/app/sandbox/microvm.py` | ✅ | Linux track 主机门 | 本批 |
 | microvm_can_admit_runners | `packages/aiplat-evaluation/app/sandbox/microvm.py` | ✅ | admit 非 live runners | 本批 |
+| microvm_guest_boot_authorized | `packages/aiplat-evaluation/app/sandbox/microvm.py` | ✅ | guest_boot 授权门 | 本批 |
+| probe_guest_boot | `packages/aiplat-evaluation/app/sandbox/guest_boot.py` | ✅ | Firecracker InstanceStart | 本批 |
 | probe_runtime | `packages/aiplat-evaluation/app/sandbox/microvm_exec.py` | ✅ | runtime --version 探针 | 本批 |
 | run_allowlisted_cli | `packages/aiplat-evaluation/app/sandbox/microvm_exec.py` | ✅ | microVM policy 下 host allowlist | 本批 |
 | run_sandbox_probe_wrap | `packages/aiplat-evaluation/app/sandbox/microvm_exec.py` | ✅ | docker/microVM backend-aware true wrap | 本批 |
 | aiplat_eval_microvm_linux_track_gate | `packages/aiplat-evaluation/scripts/microvm_linux_track_gate.sh` | ✅ | Linux track 诚实门禁 | 本批 |
+| aiplat_eval_microvm_guest_boot_gate | `packages/aiplat-evaluation/scripts/microvm_guest_boot_gate.sh` | ✅ | guest_boot authorize 门禁 | 本批 |
 | Evaluation B1/B2 contract converge | `packages/aiplat-evaluation/app/contract/b12.py` + `scripts/b12_contract_gate.sh` | ✅ | 错误体字段门禁；temporary_proxy=0；双点拒绝；≠ staging authorize；生成物适用：不适用 | 本批 |
 | Evaluation P1 canonical honesty | `AgentEvalResult.scoring_honesty` + `scripts/p1_canonical_gate.sh` | ✅ | package build_composite=计分真相源；Central legacy_7dim 标 report-only；accuracy_claim=false；生成物适用：不适用 | 本批 |
 | estimate_cost | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | token→cost_estimate | 本批 |
@@ -3546,7 +3553,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 374 | 1 | 375 |
+| Harness 执行引擎 | 377 | 1 | 378 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 386 | 9 | 395 |
 | RAG 检索 | 57 | 0 | 57 |
@@ -3559,7 +3566,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 215 | 0 | 215 |
+| 评估系统 | 219 | 0 | 219 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3591,7 +3598,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2637** | **10** | **2647** |
+| **总计** | **2644** | **10** | **2654** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

@@ -1,19 +1,25 @@
-"""microVM track exec helpers — version probe + allowlisted host CLI (v1).
+"""microVM track exec helpers — version probe + allowlisted host CLI.
 
 Honesty:
-- ``guest_boot=false`` in this slice (no Firecracker rootfs boot yet).
 - Allowlisted CLI runs on the **host** under microVM **policy** when
   ``microvm_can_admit_runners()``; audit records ``backend=microvm_track``.
+- Guest Firecracker boot is separate (``app.sandbox.guest_boot.probe_guest_boot``);
+  CLI audit ``guest_boot`` mirrors the process cache (InstanceStart success).
 - Not a certification of isolation (``sandbox_real_isolation`` stays false).
 """
 from __future__ import annotations
 
 import os
 import subprocess
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, Sequence
 
 from app.sandbox.docker_exec import CLI_ALLOWLIST, validate_cli_argv
-from app.sandbox.microvm import microvm_bin, microvm_can_admit_runners, microvm_status
+from app.sandbox.microvm import (
+    guest_boot_cached,
+    microvm_bin,
+    microvm_can_admit_runners,
+    microvm_status,
+)
 
 
 def probe_runtime(timeout_s: float = 5.0) -> Dict[str, Any]:
@@ -56,7 +62,7 @@ def probe_runtime(timeout_s: float = 5.0) -> Dict[str, Any]:
                     "backend": "microvm_track",
                     "probe": "version",
                     "args": args,
-                    "guest_boot": False,
+                    "guest_boot": guest_boot_cached(),
                     "kvm_available": st.get("kvm_available"),
                     "microvm_host_ok": st.get("microvm_host_ok"),
                 },
@@ -65,7 +71,11 @@ def probe_runtime(timeout_s: float = 5.0) -> Dict[str, Any]:
         "ok": False,
         "stdout": "",
         "stderr": "version_probe_failed",
-        "audit": {"backend": "microvm_track", "probe": "version", "guest_boot": False},
+        "audit": {
+            "backend": "microvm_track",
+            "probe": "version",
+            "guest_boot": guest_boot_cached(),
+        },
     }
 
 
@@ -74,7 +84,8 @@ def run_allowlisted_cli(
     *,
     timeout_s: float | None = None,
 ) -> Dict[str, Any]:
-    """Allowlisted argv under microVM track policy (host process; guest_boot=false)."""
+    """Allowlisted argv under microVM track policy (host process)."""
+    boot = guest_boot_cached()
     if not microvm_can_admit_runners():
         return {
             "ok": False,
@@ -83,7 +94,7 @@ def run_allowlisted_cli(
             "stderr": "microvm_admit_denied",
             "audit": {
                 "backend": "microvm_track",
-                "guest_boot": False,
+                "guest_boot": boot,
                 "detail": "microvm_can_admit_runners=false",
                 **microvm_status(),
             },
@@ -97,7 +108,7 @@ def run_allowlisted_cli(
             "stderr": detail,
             "audit": {
                 "backend": "microvm_track",
-                "guest_boot": False,
+                "guest_boot": boot,
                 "detail": detail,
                 "allowlist": sorted(CLI_ALLOWLIST),
             },
@@ -124,7 +135,7 @@ def run_allowlisted_cli(
             "stderr": "timeout",
             "audit": {
                 "backend": "microvm_track",
-                "guest_boot": False,
+                "guest_boot": boot,
                 "detail": "timeout",
                 "argv": list(argv),
             },
@@ -137,13 +148,13 @@ def run_allowlisted_cli(
         "stderr": (proc.stderr or "")[:2000],
         "audit": {
             "backend": "microvm_track",
-            "guest_boot": False,
+            "guest_boot": boot,
             "isolation": "host_allowlist_under_microvm_policy",
             "kvm_available": True,
             "argv": list(argv),
             "honesty": (
-                "v1 host allowlist under microVM policy; "
-                "Firecracker guest boot not yet wired; "
+                "host allowlist under microVM policy; "
+                "guest_boot mirrors InstanceStart cache; "
                 "sandbox_real_isolation=false"
             ),
         },

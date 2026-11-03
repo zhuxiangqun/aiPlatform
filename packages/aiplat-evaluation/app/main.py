@@ -56,11 +56,12 @@ def healthz_payload(cfg: EvalServiceConfig) -> Dict[str, Any]:
         "microvm_admit_runners": sb.get("microvm_admit_runners", False),
         "kvm_available": sb.get("kvm_available", False),
         "guest_boot": sb.get("guest_boot", False),
+        "guest_boot_authorized": sb.get("guest_boot_authorized", False),
         "microvm_block_reason": sb.get("microvm_block_reason", "microvm_not_enabled"),
         "note": (
             "B2-L/B3-L/S1 local standalone — store/read OK; allowlist enqueue 202; "
             "sandbox fixture paths; microVM Linux track admits non-live when host_ok; "
-            "guest_boot deferred; security ASR ≠ accuracy; "
+            "guest_boot via GUEST_BOOT+assets+InstanceStart; security ASR ≠ accuracy; "
             "not staging; process_split_authorized=false."
         ),
     }

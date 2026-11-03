@@ -87,9 +87,10 @@ payload = {
     "microvm": st,
     "live_tools_admitted": False,
     "honesty": (
-        "linux track v1 — host allowlist under microVM policy; "
-        "guest_boot deferred; live tools denied; not certified isolation; "
-        "not staging authorize; Darwin ineligible for with_microvm score"
+        "linux track — host allowlist under microVM policy; "
+        "guest_boot separate gate (MICROVM_GUEST_BOOT); live tools denied; "
+        "not certified isolation; process_split_authorized=false; "
+        "Darwin ineligible for with_microvm score"
     ),
     "recorded_at": stamp or datetime.now(timezone.utc).isoformat(),
 }
@@ -114,4 +115,4 @@ print(
 PY
 
 bash "$ROOT/scripts/a3_split_authorize.sh" status >/dev/null
-echo "microVM linux track gate PASS (guest_boot=false; live_tools=false; authorize=false)"
+echo "microVM linux track gate PASS (default guest_boot=false; live_tools=false; process_split=false)"

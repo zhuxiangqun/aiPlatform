@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T00:44:32+08:00",
+  "reviewed_at": "2026-11-04T06:33:41+08:00",
   "base_ref": "origin/main",
-  "merge_base": "c1f345719acbf4b398f21a1de215a1d115cb4f50",
-  "diff_sha256": "a39df4648de6e0cb170b8feb4fc5a0b2af37cb92a372a345a6b16d0c6e13be28",
-  "head_sha": "06ba8cfa2e15947026a6f46c28ae927cd26535c4",
+  "merge_base": "990c08d40f3364562fa3237bb72bc8c3e86d658d",
+  "diff_sha256": "47533fd077cf6ccd596779bb00ecd80a80d427199144df556e599050d030fcd6",
+  "head_sha": "58f9d623d3dca3405e8e9f49693576894bc5523d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "microVM Linux track v1 rebased onto #574: admit deny-all without ADMIT_RUNNERS; security_redteam fixture-only on microvm; guest_boot/isolation/authorize false; Darwin with_microvm null; sandbox_health + run_sandbox_probe_wrap; skills_disclosure already registered on main."
+  "note": "microVM guest_boot authorize: GUEST_BOOT+KERNEL/ROOTFS+InstanceStart; guest_boot=true only after probe success; Darwin ineligible; process_split_authorized remains false (checklist+signed live still required); sandbox_real_isolation=false; live skill tools still denied."
 }
