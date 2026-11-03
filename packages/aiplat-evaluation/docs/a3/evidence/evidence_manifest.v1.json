@@ -13,7 +13,7 @@
     },
     "G2B_PREP.md": {
       "path": "docs/a3/G2B_PREP.md",
-      "sha256": "ed1509a6143439fbfae2ab6e330933e2f43007c1c96fe5d07975467eda839d2c"
+      "sha256": "59d62ae42324e834373ddc6303d5fdc3b12b77b1712c31e878dfdc21e6303f43"
     },
     "PREFERENCE_V0.md": {
       "path": "docs/a3/PREFERENCE_V0.md",
@@ -34,6 +34,17 @@
       "preference_kappa": 0.47,
       "script": "scripts/preference_v0_report.py",
       "gate_note": "≠ accuracy certification"
+    },
+    "g2b_accuracy": {
+      "n": 30,
+      "pass_rate": 0.7667,
+      "wilson_ci95": [
+        0.5907,
+        0.8821
+      ],
+      "disputed_n": 5,
+      "script": "scripts/g2b_accuracy_closeout.py",
+      "gate_note": "model pass-rate vs adjudicated gold; accuracy_claim=false until attestation"
     }
   },
   "tracked_aggregates": [
@@ -48,6 +59,27 @@
       "path": "docs/a3/evidence/preference_aggregate.v1.json",
       "sha256": "bc7d8175989ec696c795e6756a8485ff9bba8156aa3f5fbc09924b6798d675e6",
       "required_for_feature_5": true
+    },
+    {
+      "id": "g2b_accuracy_aggregate",
+      "path": "docs/a3/evidence/g2b_accuracy_aggregate.v1.json",
+      "sha256": "b760e3c4852959d25a202be40e366d5d604905ff296181319d96bebba600790f",
+      "required_for_feature_5": false,
+      "note": "G2b accuracy closeout; claim stays false"
+    },
+    {
+      "id": "g2b_adjudicated_gold",
+      "path": "docs/a3/evidence/g2b_adjudicated_gold.v1.json",
+      "sha256": "8d1845d9c2e6e8e1ac910026bd56ec04716d522d14b0a73fd9be7683dca284e0",
+      "required_for_feature_5": false,
+      "note": "G2b accuracy closeout; claim stays false"
+    },
+    {
+      "id": "g2b_adjudication",
+      "path": "docs/a3/evidence/g2b_adjudication.v1.json",
+      "sha256": "f64b9f4dfa1e51ae647658ffd993ac531122be5b9c627f2eca5bc222701e887b",
+      "required_for_feature_5": false,
+      "note": "G2b accuracy closeout; claim stays false"
     }
   ],
   "local_worksheets": [
@@ -102,5 +134,5 @@
     "attestation_channel": "chat_confirm_yes",
     "note": "Operator confirmed A/B were two distinct humans, independent blind, not script/AI/same-person. κ/agreement still ≠ accuracy_claim."
   },
-  "honesty": "Hashes + aggregates are auditable in-repo; raw worksheets stay gitignored. κ/agreement ≠ accuracy. Feature 5 requires confirmed dual-human attestation and matching aggregate SHA256."
+  "honesty": "Hashes + aggregates are auditable in-repo; raw worksheets stay gitignored. κ/agreement ≠ accuracy. G2b accuracy closeout reports pass-rate vs gold with accuracy_claim=false until product-owner attestation. Feature 5 requires confirmed dual-human attestation and matching aggregate SHA256."
 }

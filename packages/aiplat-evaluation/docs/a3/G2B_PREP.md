@@ -50,6 +50,11 @@ PYTHONPATH=packages/aiplat-evaluation python3 \
 |---|---|
 | 两人各 ≥30 配对；κ 写出证据 JSON | 宣称 accuracy / 外部 gate / 同人填两份表 |
 
+## Accuracy closeout (separate)
+
+κ done → next is adjudicated gold + model pass-rate: [`G2B_ACCURACY_CLOSEOUT.md`](./G2B_ACCURACY_CLOSEOUT.md).  
+Still **`accuracy_claim=false`** until product-owner attestation.
+
 ## Not claimed
 
-≠ G2b closeout · ≠ staging · ≠ authorize · ≠ security cert
+≠ accuracy certification (see closeout) · ≠ staging · ≠ authorize · ≠ security cert
