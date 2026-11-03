@@ -1,12 +1,12 @@
 # B1 / B2 Route Matrix — Eval API · UI · Errors
 
 > **类型**：契约（B1 实施前置）  
-> **版本**：v1.0 · 2026-11-02  
-> **状态**：Design baseline · **未实施**  
+> **版本**：v1.1 · 2026-11-03  
+> **状态**：Standalone local **已收敛**（`:8010`）· Central cohost D1 仍为产品默认  
 > **父方案**：[`eval-production-independent-service.md`](./eval-production-independent-service.md)  
-> **关联**：[`EVAL_RUNTIME_CONTRACT.md`](./EVAL_RUNTIME_CONTRACT.md)  
-> **对照路由**：`aiPlat-platform/apps/eval/api/`  
-> **诚实性**：B1 **禁止**在 API 进程跑动态评测（防「换端口共宿」）；`process_split_authorized=false`。
+> **关联**：[`EVAL_RUNTIME_CONTRACT.md`](./EVAL_RUNTIME_CONTRACT.md) · 本地门禁 [`CONTRACT_LOCAL.md`](../../packages/aiplat-evaluation/docs/a3/CONTRACT_LOCAL.md)  
+> **对照路由**：standalone `packages/aiplat-evaluation/app/api/`；Central `aiPlat-platform/apps/eval/api/`（D1 residual）  
+> **诚实性**：standalone 动态执行走 Worker allowlist；**禁止** `temporary_proxy`；`process_split_authorized=false`。
 
 ---
 
@@ -76,11 +76,15 @@
 
 ## 4. B1 / B2 验收钩子
 
-- [ ] 动态执行路由 503 + 完整错误体（字段级）。  
-- [ ] `/eval` UI 对 503 有降级文案（手工或 E2E）。  
-- [ ] store/health 在独立 API 上绿。  
-- [ ] B1 closeout：`temporary_proxy` 计数 = 0。  
-- [ ] B2：enqueue + Worker 双点拒绝 `skill_suite`（见 Runtime Contract）。
+> Standalone 证据：`bash packages/aiplat-evaluation/scripts/b12_contract_gate.sh`
+
+- [x] 动态执行统一错误体（字段级）— sandbox/forbidden → **422**；`execution_not_migrated` helper 仍保留 **503**。  
+- [x] `/eval` UI 对已知错误码有降级文案（`evalExecutionErrors.ts` 单测）。  
+- [x] store/health 在独立 API 上绿（A1–A5）。  
+- [x] B1 closeout：`temporary_proxy` 在 standalone `app/` 计数 = 0。  
+- [x] B2：enqueue + Worker 双点拒绝 `skill_suite`（见 Runtime Contract / B2-L）。  
+
+**Residual**：Central cohost 仍有历史 in-process eval 路由（D1 产品路径，≠ temporary_proxy；authorize 前不假装已拆）。
 
 ---
 
@@ -88,4 +92,5 @@
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
+| 2026-11-03 | v1.1 | Standalone 本地收敛；验收钩子勾选；残留 Central cohost 明示 |
 | 2026-11-02 | v1.0 | 初版：矩阵、统一错误体、UI 降级、temporary_proxy 清零 |

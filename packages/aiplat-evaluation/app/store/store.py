@@ -1,4 +1,4 @@
-"""Local EvalStore — SQLite, no core imports (A2)."""
+"""Local EvalStore — SQLite default + Postgres dispatch (A2 / B1-L)."""
 from __future__ import annotations
 
 import json
@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from app.store.migrate import STORE_SCHEMA_VERSION, apply_migrations
-from app.store.paths import sqlite_path_from_url
+from app.store.paths import backend_from_url, sqlite_path_from_url
 
 
 def _now() -> str:
@@ -70,6 +70,7 @@ class _EvalStore:
             ).fetchone()
         return {
             "ok": True,
+            "backend": "sqlite",
             "schema_version": (ver["value"] if ver else STORE_SCHEMA_VERSION),
             "db_path": str(self.db_path),
             "counts": counts,
@@ -212,9 +213,19 @@ class _EvalStore:
 EvalStore = _EvalStore
 
 
-def open_store(db_url: str, *, migrate: bool = True) -> EvalStore:
-    """Open (and optionally migrate) the standalone eval SQLite store."""
-    path = sqlite_path_from_url(db_url)
+def open_store(db_url: str, *, migrate: bool = True) -> Any:
+    """Open (and optionally migrate) standalone eval store (sqlite|postgres)."""
+    raw = (db_url or "").strip()
+    if "://" in raw and backend_from_url(raw) == "postgres":
+        if migrate:
+            apply_migrations(raw)
+        from app.store.pg_store import open_pg_store
+
+        store = open_pg_store(raw)
+        _ = store_health(store)
+        return store
+
+    path = sqlite_path_from_url(raw)
     if migrate:
         apply_migrations(path)
     store = _EvalStore(path)
@@ -223,37 +234,37 @@ def open_store(db_url: str, *, migrate: bool = True) -> EvalStore:
     return store
 
 
-def store_health(store: EvalStore) -> Dict[str, Any]:
+def store_health(store: Any) -> Dict[str, Any]:
     return store._health()
 
 
-def create_set(store: EvalStore, *, name: str, **kwargs: Any) -> Dict[str, Any]:
+def create_set(store: Any, *, name: str, **kwargs: Any) -> Dict[str, Any]:
     return store._create_set(name=name, **kwargs)
 
 
-def get_set(store: EvalStore, set_id: str) -> Optional[Dict[str, Any]]:
+def get_set(store: Any, set_id: str) -> Optional[Dict[str, Any]]:
     return store._get_set(set_id)
 
 
-def list_sets(store: EvalStore, *, limit: int = 100, tenant_id: str = "") -> List[Dict[str, Any]]:
+def list_sets(store: Any, *, limit: int = 100, tenant_id: str = "") -> List[Dict[str, Any]]:
     return store._list_sets(limit=limit, tenant_id=tenant_id)
 
 
-def create_report(store: EvalStore, **kwargs: Any) -> Dict[str, Any]:
+def create_report(store: Any, **kwargs: Any) -> Dict[str, Any]:
     return store._create_report(**kwargs)
 
 
-def get_report(store: EvalStore, report_id: str) -> Optional[Dict[str, Any]]:
+def get_report(store: Any, report_id: str) -> Optional[Dict[str, Any]]:
     return store._get_report(report_id)
 
 
 def list_reports(
-    store: EvalStore, *, limit: int = 100, tenant_id: str = ""
+    store: Any, *, limit: int = 100, tenant_id: str = ""
 ) -> List[Dict[str, Any]]:
     return store._list_reports(limit=limit, tenant_id=tenant_id)
 
 
-def local_roundtrip(store: EvalStore, *, tenant_id: str = "tenant-local") -> Dict[str, Any]:
+def local_roundtrip(store: Any, *, tenant_id: str = "tenant-local") -> Dict[str, Any]:
     """Write set+report to local DB and read back — A2 independence proof helper."""
     s = create_set(
         store, name="a2-local-roundtrip", meta={"phase": "A2"}, tenant_id=tenant_id
@@ -274,14 +285,15 @@ def local_roundtrip(store: EvalStore, *, tenant_id: str = "tenant-local") -> Dic
         "sets": len(list_sets(store, limit=10, tenant_id=tenant_id)),
         "reports": len(list_reports(store, limit=10, tenant_id=tenant_id)),
         "process_split_authorized": False,
+        "backend": getattr(store, "backend", "sqlite"),
     }
 
 
-def _bootstrap_store(db_url: str) -> EvalStore:
+def _bootstrap_store(db_url: str) -> Any:
     """Same-file caller for open_store (method_verify)."""
     return open_store(db_url, migrate=True)
 
 
-def _proof_roundtrip(store: EvalStore) -> Dict[str, Any]:
+def _proof_roundtrip(store: Any) -> Dict[str, Any]:
     """Same-file caller for local_roundtrip (method_verify)."""
     return local_roundtrip(store)

@@ -1,8 +1,10 @@
-"""EVAL A3-local A1–A3 — standalone FastAPI entrypoint (:8010).
+"""EVAL standalone FastAPI entrypoint (:8010) — A-local + B1–B3-L local.
 
 Honesty:
-- Independent process + healthz/readyz + local SQLite + canonical store subset.
-- Does NOT set process_split_authorized=true.
+- Independent process + healthz/readyz + local store + canonical store subset.
+- B2-L: allowlist runners enqueue (202); sandbox/forbidden → unified error body.
+- B3-L: optional ``AIPLAT_EVAL_SANDBOX_BACKEND=local_stub`` admits http_probe stub.
+- Does NOT set process_split_authorized=true. environment=local only.
 - No imports from core.harness / Central private modules.
 """
 from __future__ import annotations
@@ -12,9 +14,10 @@ from typing import Any, Dict
 
 from fastapi import FastAPI, Request
 
-from app.api import register_store_routes
+from app.api import register_execution_stubs, register_store_routes
 from app.auth import jwks_enabled, require_bearer
 from app.config import EvalServiceConfig, load_config
+from app.sandbox.policy import sandbox_health
 from app.store import open_store, store_health
 from app.store.store import local_roundtrip
 
@@ -23,6 +26,7 @@ SCHEMA_READYZ = "evaluation.readyz.v0"
 
 
 def healthz_payload(cfg: EvalServiceConfig) -> Dict[str, Any]:
+    sb = sandbox_health()
     return {
         "status": "ok",
         "version": cfg.version,
@@ -35,9 +39,24 @@ def healthz_payload(cfg: EvalServiceConfig) -> Dict[str, Any]:
         "process_split_authorized": False,
         "require_auth": cfg.require_auth,
         "jwks_enabled": jwks_enabled(),
+        "environment": "local",
+        "b1l_execution_stubs": True,
+        "b2l_allowlist_enqueue": True,
+        "b2l_claim_lease": True,
+        "b2l_runner_execute": True,
+        "b2l_worker_loop": True,
+        "b3l_sandbox": sb["b3l_sandbox"],
+        "s1_security_eval": sb.get("s1_security_eval", True),
+        "sandbox_backend": sb["sandbox_backend"],
+        "sandbox_real_isolation": sb["sandbox_real_isolation"],
+        "security_live_attacks": sb.get("security_live_attacks", False),
+        "skill_suite_real_tools": sb.get("skill_suite_real_tools", False),
+        "microvm_ready": sb.get("microvm_ready", False),
+        "microvm_block_reason": sb.get("microvm_block_reason", "microvm_not_enabled"),
         "note": (
-            "A6/B0 local standalone healthz — engineering verification only; "
-            "not production split authorization."
+            "B2-L/B3-L/S1 local standalone — store/read OK; allowlist enqueue 202; "
+            "sandbox fixture paths; microVM prep only; security ASR ≠ accuracy; "
+            "not staging; process_split_authorized=false."
         ),
     }
 
@@ -146,6 +165,7 @@ def create_app(cfg: EvalServiceConfig | None = None) -> FastAPI:
         "/api/platform/apps/eval/healthz", _canonical_healthz, methods=["GET"]
     )
     register_store_routes(application)
+    register_execution_stubs(application)
     application.add_api_route(
         "/api/platform/apps/eval/store/health", _store_health_alias, methods=["GET"]
     )

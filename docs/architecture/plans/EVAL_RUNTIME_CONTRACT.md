@@ -1,11 +1,11 @@
 # EVAL Runtime Contract — Worker / Runner（B 轨）
 
 > **类型**：契约（B2 实施前置）  
-> **版本**：v1.0 · 2026-11-02  
-> **状态**：Design baseline · **未实施**  
+> **版本**：v1.1 · 2026-11-03  
+> **状态**：Standalone local **已实施**（B2-L + contract gate）· ≠ staging authorize  
 > **父方案**：[`eval-production-independent-service.md`](./eval-production-independent-service.md)  
-> **关联**：[`B1_ROUTE_MATRIX.md`](./B1_ROUTE_MATRIX.md) · [`EVAL_MODEL_GATEWAY.md`](./EVAL_MODEL_GATEWAY.md)  
-> **诚实性**：不设 `process_split_authorized=true`；B2 仅 allowlist runner；工具执行等 B3 沙箱。
+> **关联**：[`B1_ROUTE_MATRIX.md`](./B1_ROUTE_MATRIX.md) · [`EVAL_MODEL_GATEWAY.md`](./EVAL_MODEL_GATEWAY.md) · [`CONTRACT_LOCAL.md`](../../packages/aiplat-evaluation/docs/a3/CONTRACT_LOCAL.md)  
+> **诚实性**：不设 `process_split_authorized=true`；B2 仅 allowlist runner；工具执行等 B3 沙箱 / microVM prep。
 
 ---
 
@@ -48,10 +48,10 @@
 | `prompt_eval` | ✅ | 纯文本 LLM；**无工具** |
 | `kb_rag` | ✅ | **只读**检索；无写 KB |
 | `code_review_gold` | ✅ | 静态/半静态；无沙箱工具链 |
-| `skill_suite`（含工具/代码/终端） | ❌ | 等 B3 沙箱 |
+| `skill_suite`（含工具/代码/终端） | ❌ live tools | B3-L.4：**fixture-only** under docker；live tools 仍 `sandbox_required`（microVM **runtime** 后；prep 见 `docs/a3/MICROVM_PREP.md`） |
 | `arena` | ⚠️ | **仅**纯文本模型对战；触发工具 → 禁止 |
 | `http_probe` / `cli_probe` | ❌ | B3 + 容器/微 VM |
-| `security_redteam` | ❌ | S1 + 沙箱 |
+| `security_redteam` | ❌ live | S1：**fixture-only** under docker（ASR=`security_eval_v1`，≠ accuracy）；live attacks 仍拒 |
 
 不在 allowlist → **禁止静默执行**；返回统一错误体（`sandbox_required` 或 `runner_forbidden`）。
 
@@ -131,11 +131,17 @@
 
 ## 7. B2 验收清单（契约）
 
-- [ ] enqueue 拒绝 `skill_suite` / `http_probe`（统一错误体）。  
-- [ ] Worker 对伪造 job 行二次拒绝（fail-closed）。  
-- [ ] `replay_trace` / `prompt_eval` / `kb_rag`(只读) 可在 Central down + 独立 provider 下跑通。  
-- [ ] lease 过期可被另一 Worker 接管或 dead_letter。  
-- [ ] import guard：Worker 镜像/包无 `core.harness` 私有 import。  
+> **B2-L local**（工程证明，≠ staging）：见 `packages/aiplat-evaluation/docs/a3/B2L_LOCAL_CLOSEOUT.md` + `scripts/b2l_local_closeout.sh`。  
+> Live infra LLM / staging Central-down provider 仍属后续；本地确定性 fixture 不计 accuracy。
+
+- [x] enqueue 拒绝 `skill_suite` / `http_probe`（统一错误体）— **B2-L local**。  
+- [x] Worker 对伪造 job 行二次拒绝（fail-closed）— **B2-L local**。  
+- [x] `replay_trace` / `prompt_eval` / `kb_rag`(只读) 本地确定性路径跑通（Central 不依赖）；live provider 待接线。  
+- [x] lease 过期可被另一 Worker 接管或 dead_letter — **B2-L local**。  
+- [x] 墙钟硬顶 → `timed_out`（不得 `succeeded`）— **B2-L local**（`AIPLAT_EVAL_JOB_TIMEOUT_SEC`）。  
+- [x] `cancel` → `cancelled`（queued|running；Worker 不覆盖）— **B2-L local**（`POST .../jobs/{id}/cancel`）。  
+- [x] 成本硬顶 → `timed_out`/`cost_cap_exceeded`（不得 `succeeded`）— **B2-L local**（`AIPLAT_EVAL_JOB_COST_CAP` / payload `cost_cap`）。  
+- [x] import guard：Worker 包无 `core.harness` 私有 import — **B2-L local**。  
 
 ---
 
@@ -143,4 +149,5 @@
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
+| 2026-11-03 | v1.1 | 标注 standalone 已实施；链到 `b12_contract_gate.sh` |
 | 2026-11-02 | v1.0 | 初版：Runner 生命周期、allowlist、双点校验、lease、依赖矩阵 |

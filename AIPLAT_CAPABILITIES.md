@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2491
+total_capabilities: 2586
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -570,6 +570,19 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| aiplat_eval_b12_contract_gate | `packages/aiplat-evaluation/scripts/b12_contract_gate.sh` | ✅ | 自动同步 | 已合入 |
+| count_temporary_proxy_markers | `packages/aiplat-evaluation/app/contract/b12.py` | ✅ | 自动同步 | 已合入 |
+| assert_error_envelope | `packages/aiplat-evaluation/app/contract/b12.py` | ✅ | 自动同步 | 已合入 |
+| aiplat_eval_microvm_local_prep_gate | `packages/aiplat-evaluation/scripts/microvm_local_prep_gate.sh` | ✅ | 自动同步 | 已合入 |
+| microvm_ready | `packages/aiplat-evaluation/app/sandbox/microvm.py` | ✅ | 自动同步 | 已合入 |
+| microvm_status | `packages/aiplat-evaluation/app/sandbox/microvm.py` | ✅ | 自动同步 | 已合入 |
+| aiplat_eval_run_worker | `packages/aiplat-evaluation/scripts/run_worker.sh` | ✅ | 自动同步 | 已合入 |
+| load_worker_env | `packages/aiplat-evaluation/app/worker/loop.py` | ✅ | 自动同步 | 已合入 |
+| runner_result | `packages/aiplat-evaluation/app/worker/runners/_common.py` | ✅ | 自动同步 | 已合入 |
+| heartbeat_job | `packages/aiplat-evaluation/app/store/jobs.py` | ✅ | 自动同步 | 已合入 |
+| admit_job_for_execute | `packages/aiplat-evaluation/app/worker/allowlist_guard.py` | ✅ | 自动同步 | 已合入 |
+| evalExecutionErrorCode | `aiPlat-management/frontend/src/pages/Eval/evalExecutionErrors.ts` | ✅ | 自动同步 | 已合入 |
+| qmark_to_dollar | `packages/aiplat-evaluation/app/store/pg_runtime.py` | ✅ | 自动同步 | 已合入 |
 | require_bearer | `packages/aiplat-evaluation/app/auth.py` | ✅ | 自动同步 | 已合入 |
 | mint_local_token | `packages/aiplat-evaluation/app/auth.py` | ✅ | 自动同步 | 已合入 |
 | evaluation_a5_local_closeout | `packages/aiplat-evaluation/scripts/a5_local_closeout.sh` | ✅ | 自动同步 | 已合入 |
@@ -2567,6 +2580,88 @@ scan_hash: 8f9548ec24f4
 | Evaluation A5 local closeout | `packages/aiplat-evaluation/scripts/{backup_local,rollback_local,a5_local_closeout}.sh` + [`A_LOCAL_CLOSEOUT.md`](packages/aiplat-evaluation/docs/a3/A_LOCAL_CLOSEOUT.md) | ✅ | 备份/回滚 + 契约 + 9 项验收收口；`process_split_authorized=false`；不启动 B；生成物适用：不适用（评测本地收口） | 本批 |
 | Evaluation A6 local JWT auth | `packages/aiplat-evaluation/app/auth.py` + `migrations/0002_tenant_id.sql` | ✅ | standalone Bearer HS256；无 token→401；跨租户→404；`process_split_authorized=false`；Keycloak JWKS→B；生成物适用：不适用（评测本地认证） | 本批 |
 | Evaluation B0 local JWKS RS256 | `packages/aiplat-evaluation/app/auth.py` (`jwks_enabled` / `AIPLAT_EVAL_JWKS_JSON|_URL`) | ✅ | RS256 JWKS fixture/URL 校验；错误 kid/issuer→401；`process_split_authorized=false`；≠ staging authorize；生成物适用：不适用（评测认证加固） | 本批 |
+| Evaluation B1-L execute stubs 503 | `packages/aiplat-evaluation/app/api/execution_stubs.py` + `app/errors.py` | ✅ | 动态执行统一 `execution_not_migrated` 503；`environment=local`；≠ staging；生成物适用：不适用 | 本批 |
+| Evaluation B1-L PG EvalStore | `packages/aiplat-evaluation/app/store/pg_store.py` + `pg_runtime.py` + `migrate.py` | ✅ | `postgresql://` via asyncpg；同 schema migrations；密码脱敏；SQLite 仍默认；生成物适用：不适用 | 本批 |
+| Evaluation B1-L /eval UI 降级 | `aiPlat-management/frontend/src/pages/Eval/evalExecutionErrors.ts` + `EvalExecutionPlaneBanner.tsx` | ✅ | `execution_not_migrated`/`sandbox_required` 固定文案；proxy/stubs 显示 Banner；store 只读可用；生成物适用：不适用 | 本批 |
+| Evaluation B2-L allowlist enqueue | `packages/aiplat-evaluation/app/runner_allowlist.py` + `store/jobs.py` + `worker/allowlist_guard.py` | ✅ | 双点校验：API enqueue 202/422 + Worker 拒伪造 job→dead_letter；≠ staging；生成物适用：不适用 | 本批 |
+| Evaluation B2-L claim/lease | `packages/aiplat-evaluation/app/store/jobs.py` + `worker/claim.py` | ✅ | PG SKIP LOCKED / SQLite IMMEDIATE claim；heartbeat；过期回收；max_attempts→dead_letter；生成物适用：不适用 | 本批 |
+| Evaluation B2-L runner execute | `packages/aiplat-evaluation/app/worker/runners/*` + `execute_runner` | ✅ | allowlist 本地确定性 runner；result_json；accuracy_claim=false；无 core.harness；生成物适用：不适用 | 本批 |
+| Evaluation B2-L worker loop | `packages/aiplat-evaluation/app/worker/loop.py` + `scripts/run_worker.sh` | ✅ | poll process_once；MAX_JOBS/MAX_IDLE/signal 停；≠ staging；生成物适用：不适用 | 本批 |
+| Evaluation B2-L local closeout | `packages/aiplat-evaluation/scripts/b2l_local_closeout.sh` + `docs/a3/B2L_LOCAL_CLOSEOUT.md` | ✅ | allowlist+claim+execute+loop 证据；authorize 恒 false；≠ B3/B4；生成物适用：不适用 | 本批 |
+| aiplat_eval_b2l_local_closeout | `packages/aiplat-evaluation/scripts/b2l_local_closeout.sh` | ✅ | B2-L 本地验收脚本 | 本批 |
+| Evaluation B3-L sandbox local_stub | `packages/aiplat-evaluation/app/sandbox/policy.py` + `runners/http_probe.py` | ✅ | AIPLAT_EVAL_SANDBOX_BACKEND=local_stub 仅 admit http_probe；无网络/无容器；sandbox_real_isolation=false；≠ staging；生成物适用：不适用 | 本批 |
+| sandbox_admits | `packages/aiplat-evaluation/app/sandbox/policy.py` | ✅ | B3-L sandbox runner 准入 | 本批 |
+| sandbox_backend | `packages/aiplat-evaluation/app/sandbox/policy.py` | ✅ | off\|local_stub | 本批 |
+| sandbox_health | `packages/aiplat-evaluation/app/sandbox/policy.py` | ✅ | healthz sandbox 字段 | 本批 |
+| run_http_probe | `packages/aiplat-evaluation/app/worker/runners/http_probe.py` | ✅ | local_stub http_probe（无 fetch） | 本批 |
+| Evaluation B3-L dual-read drill | `packages/aiplat-evaluation/app/migrate/dual_read.py` + `scripts/b3l_dual_read_drill.sh` | ✅ | 本地 fixture ETL+对账+pointer 回滚；≠ 生产回填；authorize 恒 false；生成物适用：不适用 | 本批 |
+| inventory_store | `packages/aiplat-evaluation/app/migrate/dual_read.py` | ✅ | dual-read 库存快照 | 本批 |
+| reconcile_inventories | `packages/aiplat-evaluation/app/migrate/dual_read.py` | ✅ | sets/reports 对账 | 本批 |
+| etl_copy_sets_reports | `packages/aiplat-evaluation/app/migrate/dual_read.py` | ✅ | 本地 ETL 拷贝 | 本批 |
+| write_read_pointer | `packages/aiplat-evaluation/app/migrate/dual_read.py` | ✅ | cohost\|eval 本地切读指针 | 本批 |
+| read_read_pointer | `packages/aiplat-evaluation/app/migrate/dual_read.py` | ✅ | 读取本地切读指针 | 本批 |
+| aiplat_eval_b3l_dual_read_drill | `packages/aiplat-evaluation/scripts/b3l_dual_read_drill.sh` | ✅ | B3-L.2 dual-read 演练脚本 | 本批 |
+| Evaluation optional LLM (prompt_eval) | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | AIPLAT_EVAL_LLM stub/http；无 Central；accuracy_claim=false；生成物适用：不适用 | 本批 |
+| complete_text | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | OpenAI-compatible / stub completion | 本批 |
+| llm_enabled | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | LLM 开关 | 本批 |
+| llm_mode | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | off\|stub\|http | 本批 |
+| Evaluation B3-L docker cli sandbox | `packages/aiplat-evaluation/app/sandbox/docker_exec.py` + `runners/cli_probe.py` | ✅ | AIPLAT_EVAL_SANDBOX_BACKEND=docker；allowlist argv；network=none；≠ microVM；生成物适用：不适用 | 本批 |
+| run_in_docker | `packages/aiplat-evaluation/app/sandbox/docker_exec.py` | ✅ | 受限 docker run | 本批 |
+| validate_cli_argv | `packages/aiplat-evaluation/app/sandbox/docker_exec.py` | ✅ | cli_probe argv 白名单 | 本批 |
+| docker_available | `packages/aiplat-evaluation/app/sandbox/docker_exec.py` | ✅ | docker 二进制探测 | 本批 |
+| run_cli_probe | `packages/aiplat-evaluation/app/worker/runners/cli_probe.py` | ✅ | docker cli_probe runner | 本批 |
+| Evaluation B3-L local closeout | `packages/aiplat-evaluation/scripts/b3l_local_closeout.sh` + `docs/a3/B3L_LOCAL_CLOSEOUT.md` | ✅ | stub/docker/dual-read 证据；authorize 恒 false；≠ microVM/B4；生成物适用：不适用 | 本批 |
+| aiplat_eval_b3l_local_closeout | `packages/aiplat-evaluation/scripts/b3l_local_closeout.sh` | ✅ | B3-L 本地验收脚本 | 本批 |
+| Evaluation B3-L skill_suite fixture | `packages/aiplat-evaluation/app/sandbox/skill_policy.py` + `runners/skill_suite.py` | ✅ | docker 下 fixture-only；tools 仍拒；≠ microVM；生成物适用：不适用 | 本批 |
+| skill_suite_is_fixture | `packages/aiplat-evaluation/app/sandbox/skill_policy.py` | ✅ | skill fixture 判定 | 本批 |
+| run_skill_suite | `packages/aiplat-evaluation/app/worker/runners/skill_suite.py` | ✅ | fixture skill_suite runner | 本批 |
+| Evaluation S1 security_redteam fixture | `packages/aiplat-evaluation/app/sandbox/security_policy.py` + `runners/security_redteam.py` | ✅ | SECURITY_EVAL_V1 fixture ASR；≠ accuracy；无 live attack；生成物适用：不适用 | 本批 |
+| security_redteam_is_fixture | `packages/aiplat-evaluation/app/sandbox/security_policy.py` | ✅ | S1 fixture 判定 | 本批 |
+| run_security_redteam | `packages/aiplat-evaluation/app/worker/runners/security_redteam.py` | ✅ | S1 fixture runner | 本批 |
+| aiplat_eval_s1_local_gate | `packages/aiplat-evaluation/scripts/s1_local_gate.sh` | ✅ | S1 本地 ASR 门禁脚本 | 本批 |
+| Evaluation P1 scoring semantics | `packages/aiplat-evaluation/app/scoring/semantics.py` + `runners/_common.py` | ✅ | metric families quality/safety/efficiency/security；accuracy_claim=false until G2b；生成物适用：不适用 | 本批 |
+| classify_metric | `packages/aiplat-evaluation/app/scoring/semantics.py` | ✅ | 指标名→family | 本批 |
+| build_scoring_block | `packages/aiplat-evaluation/app/scoring/semantics.py` | ✅ | runner_result.scoring 分组块 | 本批 |
+| enrich_runner_result | `packages/aiplat-evaluation/app/scoring/semantics.py` | ✅ | 强制 accuracy_claim=false + scoring | 本批 |
+| prompt_eval_p1_metrics | `packages/aiplat-evaluation/app/scoring/semantics.py` | ✅ | prompt_eval P1 组合指标 | 本批 |
+| aiplat_eval_p1_local_gate | `packages/aiplat-evaluation/scripts/p1_local_gate.sh` | ✅ | P1 本地评分语义门禁 | 本批 |
+| kb_rag_p1_metrics | `packages/aiplat-evaluation/app/scoring/semantics.py` | ✅ | kb_rag P1 groundedness/safety 组合指标 | 本批 |
+| arena_p1_metrics | `packages/aiplat-evaluation/app/scoring/semantics.py` | ✅ | arena P1 text_quality/safety 组合指标 | 本批 |
+| aiplat_eval_local_track_closeout | `packages/aiplat-evaluation/scripts/local_track_closeout.sh` | ✅ | 本地轨 B3/S1/P1 收口（authorize 恒 false） | 本批 |
+| code_review_gold_p1_metrics | `packages/aiplat-evaluation/app/scoring/semantics.py` | ✅ | code_review_gold P1 exact_match/coverage | 本批 |
+| replay_trace_p1_metrics | `packages/aiplat-evaluation/app/scoring/semantics.py` | ✅ | replay_trace P1 steps/latency | 本批 |
+| Evaluation B2 job wall-clock timeout | `packages/aiplat-evaluation/app/worker/timeout.py` + `claim.py` | ✅ | AIPLAT_EVAL_JOB_TIMEOUT_SEC → timed_out；不得 succeeded；生成物适用：不适用 | 本批 |
+| run_with_timeout | `packages/aiplat-evaluation/app/worker/timeout.py` | ✅ | 墙钟截断执行 | 本批 |
+| job_timeout_sec | `packages/aiplat-evaluation/app/worker/timeout.py` | ✅ | 解析超时秒数 | 本批 |
+| Evaluation B2 job cancel | `packages/aiplat-evaluation/app/store/jobs.py` + `api/execution_stubs.py` | ✅ | cancel_job + POST .../cancel；协作不覆盖；生成物适用：不适用 | 本批 |
+| cancel_job | `packages/aiplat-evaluation/app/store/jobs.py` | ✅ | queued\|running → cancelled | 本批 |
+| Evaluation B2 job cost cap | `packages/aiplat-evaluation/app/worker/cost_cap.py` + `claim.py` | ✅ | AIPLAT_EVAL_JOB_COST_CAP → timed_out/cost_cap_exceeded；生成物适用：不适用 | 本批 |
+| job_cost_cap | `packages/aiplat-evaluation/app/worker/cost_cap.py` | ✅ | 解析成本上限 | 本批 |
+| cost_cap_exceeded | `packages/aiplat-evaluation/app/worker/cost_cap.py` | ✅ | 比对 cost_estimate 与 cap | 本批 |
+| extract_cost_estimate | `packages/aiplat-evaluation/app/worker/cost_cap.py` | ✅ | 从 result 提取 cost_estimate | 本批 |
+| Evaluation P1 engineering composite | `packages/aiplat-evaluation/app/scoring/composite.py` | ✅ | text/safety/groundedness 计分；asr report-only；accuracy_claim=false；生成物适用：不适用 | 本批 |
+| build_composite | `packages/aiplat-evaluation/app/scoring/composite.py` | ✅ | 工程综合分 0–100 | 本批 |
+| metric_role | `packages/aiplat-evaluation/app/scoring/composite.py` | ✅ | scored vs report_only | 本批 |
+| Evaluation B2 LLM dynamic gate | `packages/aiplat-evaluation/scripts/b2l_llm_dynamic_gate.sh` + `app/llm/client.py` | ✅ | stub Worker e2e；拒 Central URL；可选 live；accuracy_claim=false；生成物适用：不适用 | 本批 |
+| Evaluation microVM prep probe | `packages/aiplat-evaluation/app/sandbox/microvm.py` + `scripts/microvm_local_prep_gate.sh` | ✅ | 探测 ready/block_reason；backend=microvm 不放行 runner；live tools 仍拒；isolation=false；生成物适用：不适用 | 本批 |
+| Evaluation B1/B2 contract converge | `packages/aiplat-evaluation/app/contract/b12.py` + `scripts/b12_contract_gate.sh` | ✅ | 错误体字段门禁；temporary_proxy=0；双点拒绝；≠ staging authorize；生成物适用：不适用 | 本批 |
+| estimate_cost | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | token→cost_estimate | 本批 |
+| assert_provider_independence | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | 拒绝 Central-looking BASE_URL | 本批 |
+| looks_like_central_llm_url | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | Central URL 启发式 | 本批 |
+| aiplat_eval_b2l_llm_dynamic_gate | `packages/aiplat-evaluation/scripts/b2l_llm_dynamic_gate.sh` | ✅ | B2 LLM 动态门禁脚本 | 本批 |
+| execute_runner | `packages/aiplat-evaluation/app/worker/runners/__init__.py` | ✅ | 按 runner_id 分发 | 本批 |
+| run_worker_loop | `packages/aiplat-evaluation/app/worker/loop.py` | ✅ | Worker 轮询主循环 | 本批 |
+| classify_runner | `packages/aiplat-evaluation/app/runner_allowlist.py` | ✅ | B2 allowlist 分类 | 本批 |
+| enqueue_job | `packages/aiplat-evaluation/app/store/jobs.py` | ✅ | 写入 eval_jobs 队列 | 本批 |
+| claim_next_job | `packages/aiplat-evaluation/app/store/jobs.py` | ✅ | 领取 queued/过期 lease job | 本批 |
+| process_once | `packages/aiplat-evaluation/app/worker/claim.py` | ✅ | claim→allowlist→heartbeat 单步 | 本批 |
+| reject_forged_job | `packages/aiplat-evaluation/app/worker/allowlist_guard.py` | ✅ | Worker 双点拒绝 | 本批 |
+| messageForEvalExecutionCode | `aiPlat-management/frontend/src/pages/Eval/evalExecutionErrors.ts` | ✅ | B1 Route Matrix 错误码→UI 文案 | 本批 |
+| shouldShowExecutionPlaneBanner | `aiPlat-management/frontend/src/pages/Eval/evalExecutionErrors.ts` | ✅ | proxy/stubs/lastError 决定是否展示 Banner | 本批 |
+| backend_from_url | `packages/aiplat-evaluation/app/store/paths.py` | ✅ | sqlite|postgres URL 判定 | 本批 |
+| open_pg_store | `packages/aiplat-evaluation/app/store/pg_store.py` | ✅ | 打开 PG EvalStore | 本批 |
+| execution_error | `packages/aiplat-evaluation/app/errors.py` | ✅ | B1 Route Matrix 统一错误体 | 本批 |
+| register_execution_stubs | `packages/aiplat-evaluation/app/api/execution_stubs.py` | ✅ | 注册 skill/prompt/arena/kb 503 stubs | 本批 |
 | jwks_enabled | `packages/aiplat-evaluation/app/auth.py` | ✅ | B0：是否启用 JWKS 校验路径 | 本批 |
 | AB Optimizer | harness/evaluation/ab_optimizer.py | ✅ | A/B 测试优化 | 已合入 |
 | CoverageGate | harness/evaluation/coverage_gate.py | ✅ | 覆盖率阈值强制执行 | 已合入 |
@@ -3390,7 +3485,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 351 | 1 | 352 |
+| Harness 执行引擎 | 364 | 1 | 365 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 386 | 9 | 395 |
 | RAG 检索 | 57 | 0 | 57 |
@@ -3403,7 +3498,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 82 | 0 | 82 |
+| 评估系统 | 164 | 0 | 164 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3435,7 +3530,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2481** | **10** | **2491** |
+| **总计** | **2576** | **10** | **2586** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

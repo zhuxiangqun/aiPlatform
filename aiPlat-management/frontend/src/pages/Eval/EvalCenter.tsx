@@ -7,6 +7,11 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react';
 import { apiClient } from '../../services';
 import DiagnosticsEvalDashboard from '../Diagnostics/EvalDashboard';
+import EvalExecutionPlaneBanner from './EvalExecutionPlaneBanner';
+import {
+  EXECUTION_NOT_MIGRATED_COPY,
+  shouldShowExecutionPlaneBanner,
+} from './evalExecutionErrors';
 
 type G2aStatus = {
   ok?: boolean;
@@ -91,12 +96,14 @@ const EvalCenter: React.FC = () => {
   const [queue, setQueue] = useState<ReviewQueue | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [upstreamMode, setUpstreamMode] = useState<string | null>(null);
+  const [b1lStubs, setB1lStubs] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const [st, setsRes, gatesRes, qRes] = await Promise.all([
+      const [st, setsRes, gatesRes, qRes, upRes] = await Promise.all([
         apiClient.get<Envelope<G2aStatus>>(
           `/platform/apps/eval/store/g2a-status?tenant_id=${TENANT}`,
         ),
@@ -109,11 +116,32 @@ const EvalCenter: React.FC = () => {
         apiClient.get<Envelope<ReviewQueue>>(
           `/platform/apps/eval/store/review-queue?tenant_id=${TENANT}`,
         ),
+        apiClient
+          .get<Envelope<{ mode?: string; enabled?: boolean }>>(
+            `/platform/apps/eval/store/upstream-status`,
+          )
+          .catch(() => null),
       ]);
       setStatus(unwrap(st));
       setSets(unwrapList(setsRes));
       setGates(unwrapList(gatesRes));
       setQueue(unwrap(qRes));
+      const up = upRes ? unwrap(upRes) : null;
+      setUpstreamMode(up?.mode ? String(up.mode) : null);
+      // Standalone B1-L advertises stubs on product healthz; optional when proxied.
+      setB1lStubs(false);
+      if (up?.mode === 'proxy') {
+        try {
+          const hz = await apiClient.get<Envelope<{ b1l_execution_stubs?: boolean }>>(
+            `/platform/apps/eval/healthz`,
+          );
+          const body = unwrap(hz) as { b1l_execution_stubs?: boolean };
+          setB1lStubs(Boolean(body?.b1l_execution_stubs));
+        } catch {
+          // Proxy without product healthz still means standalone store → show banner.
+          setB1lStubs(true);
+        }
+      }
     } catch (e: any) {
       setError(String(e?.message || e));
     } finally {
@@ -133,6 +161,11 @@ const EvalCenter: React.FC = () => {
     if (Array.isArray(queue?.items)) return queue.items.length;
     return null;
   }, [queue, status]);
+
+  const showExecBanner = shouldShowExecutionPlaneBanner({
+    upstreamMode,
+    b1lExecutionStubs: b1lStubs,
+  });
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-5 text-gray-200">
@@ -154,6 +187,17 @@ const EvalCenter: React.FC = () => {
           {' · '}tenant <code className="text-blue-300">{TENANT}</code>
         </p>
       </header>
+
+      {showExecBanner ? (
+        <EvalExecutionPlaneBanner
+          code="execution_not_migrated"
+          detail={
+            upstreamMode === 'proxy'
+              ? `上游 mode=proxy · ${EXECUTION_NOT_MIGRATED_COPY}`
+              : null
+          }
+        />
+      ) : null}
 
       <div
         className="rounded-lg border border-amber-700/50 bg-amber-950/30 px-4 py-3 flex gap-3 items-start"
@@ -322,6 +366,11 @@ const EvalCenter: React.FC = () => {
 
       {tab === 'agents' && (
         <section className="space-y-3">
+          {showExecBanner ? (
+            <p className="text-sm text-sky-200/90" data-testid="eval-agents-exec-note">
+              {EXECUTION_NOT_MIGRATED_COPY} — Agents 动态 run 请等 B2 Worker；下方为只读/共宿诊断视图。
+            </p>
+          ) : null}
           <p className="text-sm text-gray-400">
             承接旧页 <code>/diagnostics/eval</code>。需要原布局可{' '}
             <Link className="text-blue-400 hover:underline" to="/diagnostics/eval?legacy=1">
@@ -336,7 +385,10 @@ const EvalCenter: React.FC = () => {
       {tab === 'knowledge' && (
         <section className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 text-sm space-y-2">
           <h2 className="font-medium">Knowledge 评测</h2>
-          <p className="text-gray-400">迁移入口：知识库 eval tab。</p>
+          {showExecBanner ? (
+            <p className="text-sky-200/90">{EXECUTION_NOT_MIGRATED_COPY}</p>
+          ) : null}
+          <p className="text-gray-400">迁移入口：知识库 eval tab（只读可用；执行类等 B2）。</p>
           <Link className="text-blue-400 hover:underline" to="/knowledge/library?tab=eval">
             打开 Knowledge · eval
           </Link>
@@ -346,7 +398,10 @@ const EvalCenter: React.FC = () => {
       {tab === 'prompts' && (
         <section className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 text-sm space-y-2">
           <h2 className="font-medium">Prompt 评测</h2>
-          <p className="text-gray-400">承接 Prompt eval 能力入口。</p>
+          {showExecBanner ? (
+            <p className="text-sky-200/90">{EXECUTION_NOT_MIGRATED_COPY}</p>
+          ) : null}
+          <p className="text-gray-400">承接 Prompt eval 能力入口（动态 run → B2）。</p>
           <Link className="text-blue-400 hover:underline" to="/core/prompts">
             打开 Prompts
           </Link>
