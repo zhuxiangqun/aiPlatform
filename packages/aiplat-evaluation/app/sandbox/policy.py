@@ -15,7 +15,7 @@ from typing import Any, Dict, Literal, Mapping, Optional
 
 from app.sandbox.docker_exec import docker_available
 from app.sandbox.microvm import microvm_status
-from app.sandbox.security_policy import security_redteam_is_fixture
+from app.sandbox.security_policy import s1_live_enabled, security_redteam_admits
 from app.sandbox.skill_policy import skill_suite_is_fixture
 
 SandboxBackend = Literal["off", "local_stub", "docker", "microvm"]
@@ -58,7 +58,7 @@ def sandbox_admits(
         if rid == "skill_suite":
             return skill_suite_is_fixture(payload)
         if rid == "security_redteam":
-            return security_redteam_is_fixture(payload)
+            return security_redteam_admits(payload)
         return True
     if backend == "microvm":
         # Prep slice: never admit runners (incl. live skill tools).
@@ -78,7 +78,10 @@ def sandbox_health() -> Dict[str, Any]:
             if r == "skill_suite":
                 admitted.append("skill_suite(fixture)")
             elif r == "security_redteam":
-                admitted.append("security_redteam(fixture)")
+                if s1_live_enabled():
+                    admitted.append("security_redteam(fixture|live_llm)")
+                else:
+                    admitted.append("security_redteam(fixture)")
             else:
                 admitted.append(r)
     elif backend == "microvm":
@@ -100,15 +103,16 @@ def sandbox_health() -> Dict[str, Any]:
         "sandbox_isolation": isolation,
         "docker_available": docker_available() if backend == "docker" else False,
         "skill_suite_real_tools": False,
-        "security_live_attacks": False,
+        # True only when env-gated live_llm path is unlocked (still ≠ security cert).
+        "security_live_attacks": bool(s1_live_enabled() and backend == "docker"),
         "microvm_available": mvm["microvm_available"],
         "microvm_enabled": mvm["microvm_enabled"],
         "microvm_ready": mvm["microvm_ready"],
         "microvm_block_reason": mvm["microvm_block_reason"],
         "note": (
-            "B3-L/S1 sandbox prototype — docker network=none; "
-            "skill/security fixture-only; microVM prep only (no live tools); "
-            "process_split_authorized=false."
+            "B3-L/S1 sandbox — docker network=none; skill fixture-only / no live tools; "
+            "security fixture default; live_llm opt-in via AIPLAT_EVAL_S1_LIVE=1; "
+            "microVM prep only; process_split_authorized=false; not a security certification."
         ),
     }
 

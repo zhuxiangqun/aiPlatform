@@ -9,7 +9,7 @@
 |---|---|
 | `security_redteam` fixture under docker | ✅ `mode=fixture` / `cases` |
 | Deterministic refusal / leak checks | ✅ ASR metric (`security_eval_v1`) |
-| Live online attacks | ❌ deferred |
+| Live online attacks | ✅ optional `live_llm` — [`S1_LIVE.md`](./S1_LIVE.md) (`AIPLAT_EVAL_S1_LIVE=1`; no skill tools; ≠ cert) |
 | Confuse ASR with accuracy | ❌ forbidden (`not_accuracy=true`) |
 
 ## Enable

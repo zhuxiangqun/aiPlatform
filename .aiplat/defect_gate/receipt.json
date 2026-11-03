@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T12:24:20+08:00",
+  "reviewed_at": "2026-11-03T12:50:05+08:00",
   "base_ref": "origin/main",
-  "merge_base": "bbde55d6623c95a6c74dafd394b22e3b8c735281",
-  "diff_sha256": "70503ece813cc596ec877157abd0e344a6ee2edb907ee0520c11ba9b65d61c72",
-  "head_sha": "92f189e2a78e9b4e5b81a3296a33c64133310600",
+  "merge_base": "ac992464bec812e530b8351147207c6547828f12",
+  "diff_sha256": "0145e9a8bca84fdf49cda07f8da693966301ae56e06db0cd6bc5b9168589c968",
+  "head_sha": "0d77f2f7d960c8a2f737c68c0a8f9f8b6785a934",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P1 dims: groundedness gold-gated; efficiency p50/p95+cost_per_success; composite/semantics v1; accuracy_claim=false. Local lock only."
+  "note": "S1 live_llm: env-gated; docker network=none; no skill tools; ASR/leak/false_refusal reported; accuracy_claim=false; not cert. Local lock only."
 }

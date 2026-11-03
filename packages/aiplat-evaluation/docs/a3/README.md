@@ -15,6 +15,7 @@
 | [`P1_DIMENSIONS.md`](./P1_DIMENSIONS.md) | groundedness（有 gold 才计分）+ latency p50/p95 / cost_per_success；composite v1 |
 | [`B3L_LOCAL_CLOSEOUT.md`](./B3L_LOCAL_CLOSEOUT.md) | B3-L 本地工程验收（≠ staging authorize） |
 | [`S1_LOCAL.md`](./S1_LOCAL.md) | S1 SECURITY_EVAL_V1 fixture 门禁（ASR≠accuracy） |
+| [`S1_LIVE.md`](./S1_LIVE.md) | S1 live_llm 攻击集（ASR/leak/false_refusal；无 skill tools；≠安全认证） |
 | [`P1_LOCAL.md`](./P1_LOCAL.md) | P1–P1.2 + engineering composite（text/safety 计分；asr 报告项；≠accuracy） |
 | [`B4S_PREP.md`](./B4S_PREP.md) | B4-S 主机前置（未确认 → 阻塞；≠ authorize） |
 | [`MICROVM_PREP.md`](./MICROVM_PREP.md) | microVM 前置探测（无 KVM/runtime → 阻塞；≠ live tools） |
