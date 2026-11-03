@@ -37,6 +37,10 @@ for key in (
     if gaps:
         assert score < 5.0, f"{key}: gaps present → score must be <5 (got {score})"
         assert eligible is False, f"{key}: gaps → full_score_eligible must be false"
+    if key == "engineering_architecture" and score >= 5.0:
+        # Honesty: architecture 5 does not authorize process split or accuracy.
+        assert card.get("process_split_authorized") is False
+        assert card.get("accuracy_claim") is False
 
 micro = axes["local_independence_with_microvm"]
 assert micro.get("eligible_on_darwin") is False

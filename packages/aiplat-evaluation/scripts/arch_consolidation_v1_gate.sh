@@ -85,6 +85,7 @@ assert sorted(p.name for p in reports_schemas.glob("*.json")) == []
 codeowners = (repo / ".github/CODEOWNERS").read_text(encoding="utf-8")
 assert "/packages/aiplat-evaluation/" in codeowners
 assert (repo / "packages/aiplat-evaluation/scripts/package_release_check.sh").is_file()
+assert (repo / "packages/aiplat-evaluation/docs/a3/PRODUCT_ROOT_V1.md").is_file()
 
 evid = Path("$EVID_DIR")
 stamp = "$STAMP"
@@ -103,13 +104,11 @@ payload = {
     },
     "platform_sqlite_files": sqlite_files,
     "contracts_ssot": "packages/aiplat-evaluation/contracts",
-    "remaining_gaps": [
-        "central_legacy_7dim_dual_path",
-        "product_root_incomplete",
-    ],
+    "product_root_doc": "packages/aiplat-evaluation/docs/a3/PRODUCT_ROOT_V1.md",
+    "remaining_gaps": [],
     "honesty": (
-        "v1.3 contracts SSOT in package + CODEOWNERS + release check; "
-        "v1.2 single mount + 308; kb/prompt/runs/skill thinned; "
+        "v1.4 architecture in-scope complete: single mount+308, thin routes, "
+        "contracts SSOT, PRODUCT_ROOT_V1, legacy_7dim deprecated_for_engineering; "
         "package build_composite remains engineering canonical; not authorize"
     ),
     "recorded_at": stamp or datetime.now(timezone.utc).isoformat(),

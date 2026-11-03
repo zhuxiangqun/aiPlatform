@@ -20,15 +20,12 @@
       ]
     },
     "engineering_architecture": {
-      "score": 4.8,
+      "score": 5.0,
       "max": 5.0,
       "scope": "SCORE_SCOPE_V1 architecture in-scope",
-      "full_score_eligible": false,
-      "note": "single mount + 308; thin routes; contracts SSOT+CODEOWNERS+release check; legacy_7dim + product_root remain",
-      "gaps": [
-        "dual_path_package_vs_central_legacy",
-        "product_root_complete"
-      ]
+      "full_score_eligible": true,
+      "note": "v1.4: single mount+308; thin routes; contracts SSOT; PRODUCT_ROOT_V1; legacy_7dim frozen deprecated_for_engineering (not silent reweight)",
+      "gaps": []
     },
     "local_independence_no_microvm": {
       "score": 4.2,

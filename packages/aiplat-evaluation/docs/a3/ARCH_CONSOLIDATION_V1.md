@@ -9,10 +9,10 @@
 |---|------|-----------|
 | 1 | 单一 canonical API `/api/platform/apps/eval` | ✅ 单挂 |
 | 2 | Legacy 仅 shim / Deprecation | ✅ Middleware **308 redirect**（无业务双挂） |
-| 3 | Contracts SSOT = package | ✅ `packages/aiplat-evaluation/contracts/`；reports 仅 shim（[`P1_CANONICAL.md`](./P1_CANONICAL.md) 计分双路径仍在） |
-| 4 | 产品根 package | ⚠️ API 仍薄挂 platform；ops 在 `core/apps/eval/service/*` |
+| 3 | Contracts SSOT = package | ✅ `packages/aiplat-evaluation/contracts/`；reports 仅 shim |
+| 4 | 产品根 package | ✅ [`PRODUCT_ROOT_V1.md`](./PRODUCT_ROOT_V1.md)（monorepo 声明；ops 在 core service = 共享层，非第二产品根） |
 | 5 | platform 薄适配 | ✅ kb/prompt/runs/skill 已薄 |
-| 6 | core 无 eval 专属业务层 | ⚠️ `core/apps/eval/service/*` 仍有；**core `kb_eval` stub 已删** |
+| 6 | core 无 eval 专属业务层 | ✅ 无 HTTP 业务层；`service/*` = 共享 ops；**core `kb_eval` stub 已删**；Central = `deprecated_for_engineering` |
 | 7 | 独立 build/test/release | ✅ `package.json` + `release:check` + CODEOWNERS（完整外部 release 未钉） |
 
 ## 当前拓扑（代码事实）
@@ -63,7 +63,7 @@ core/apps/eval/service/* + harness evaluation ← Central AgentEvalResult legacy
 | v1.1c | 下沉 `runs_eval` / `skill_evals` — ✅ |
 | v1.2 | 卸 flat mount + 删 core kb_eval stub — ✅ |
 | v1.3 | contracts 单包 SSOT + CODEOWNERS + package release — ✅ |
-| 余量 | Central `legacy_7dim` 收口；产品根进一步上收（非拆仓） |
+| v1.4 | PRODUCT_ROOT_V1 + `deprecated_for_engineering` + scorecard **5.0** — ✅ |
 
 ## 非目标
 

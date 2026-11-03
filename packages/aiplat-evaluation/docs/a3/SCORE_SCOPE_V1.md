@@ -61,9 +61,10 @@
 - 当日无条件进程拆分 / `process_split_authorized=true`  
 - 多区域多活评测拓扑  
 
-### 当前为何不是 5
+### 架构 5 判定（v1.4）
 
-仍存在 package canonical vs Central `legacy_7dim` 双路径；platform/core/package 职责未完全收束。见 [`P1_CANONICAL.md`](./P1_CANONICAL.md) · 收口计划 [`ARCH_CONSOLIDATION_V1.md`](./ARCH_CONSOLIDATION_V1.md)（v1 = freeze，未宣称 5/5）。
+In-scope 收口完成：单挂 + 308、薄路由、contracts SSOT、CODEOWNERS、产品根声明（[`PRODUCT_ROOT_V1.md`](./PRODUCT_ROOT_V1.md)）。  
+Central `legacy_7dim` **保留为历史 report-only**（`deprecated_for_engineering=true`），**不**静默重加权——此为诚实终态，非未完成项。见 [`P1_CANONICAL.md`](./P1_CANONICAL.md)。
 
 ---
 

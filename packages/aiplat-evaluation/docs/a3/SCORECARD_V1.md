@@ -8,7 +8,7 @@
 | 轴 | 当前分 | 首版 5/5？ | 主要缺口 |
 |----|--------|-----------|----------|
 | 功能覆盖 | **4.0 / 5** | 否 | 真人 preference κ、G2b 双人；合规/PII 未建；覆盖度矩阵未闭环 |
-| 工程架构 | **4.8 / 5** | 否 | 单挂+308；薄路由；contracts SSOT+CODEOWNERS；仍 legacy_7dim / 产品根未满 |
+| 工程架构 | **5.0 / 5** | 是（首版范围） | 单挂+308；薄路由；contracts SSOT；产品根声明；legacy_7dim 永久 report-only |
 | 本地独立（不含 microVM） | **4.2 / 5** | 否 | OIDC 最小企业路径弱；B4-S 本机预演可再固化证据；隔离未认证（范围内可接受但未钉满） |
 | 本地独立（含 microVM） | **N/A（Mac）** | 不可 | 需 Linux/KVM — 见 scope §三 |
 | 生产独立 | **不计首版** | — | staging + B4-S/B5/B6 |
@@ -26,10 +26,11 @@
 3. 合规/PII v0 schema+测试+报告  
 4. 维度矩阵行全部 `evidence_ok=true`（见 JSON `dimensions`）  
 
-### 架构 4.8 → 5 清单
+### 架构 5.0（首版范围）
 
-见 [`ARCH_CONSOLIDATION_V1.md`](./ARCH_CONSOLIDATION_V1.md) + scope §二。  
-已完成：canonical 单挂、legacy **308**、薄路由、contracts **SSOT** + CODEOWNERS + `release:check`。待：legacy_7dim 收口、产品根完整（ops 仍在 core service）。
+见 [`ARCH_CONSOLIDATION_V1.md`](./ARCH_CONSOLIDATION_V1.md) + [`PRODUCT_ROOT_V1.md`](./PRODUCT_ROOT_V1.md) + scope §二。  
+完成：单挂、308、薄路由、contracts SSOT、CODEOWNERS、`release:check`、产品根声明。  
+Central `legacy_7dim` = 永久诚实终态（`deprecated_for_engineering`），**≠** 未完成迁移。
 
 ### 本地 4.2 → 5（不含 microVM）清单
 
