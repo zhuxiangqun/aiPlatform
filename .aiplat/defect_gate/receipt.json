@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T18:05:18+08:00",
+  "reviewed_at": "2026-11-03T20:10:59+08:00",
   "base_ref": "origin/main",
   "merge_base": "abcb9021cd5ee26769108eaace5d7439f726d2b4",
-  "diff_sha256": "f15f8277f1f33140918fc51b61fd864ae80654b811fa7f787e6926059cfae6a7",
-  "head_sha": "1bc29e663ebe66eaa1653b21e5dee088964c564d",
+  "diff_sha256": "bea67040169c319e451e65611e381e2161353f3761db9b8b361ad91262732d5e",
+  "head_sha": "75ce56d8038e135195887c080ea014199bfe9356",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Score/arch v1.1c: kb/prompt/runs/skill thinned. Local lock only."
+  "note": "Arch v1.2 single mount + 308 redirect; kb/prompt/runs/skill thin. Local lock only."
 }
