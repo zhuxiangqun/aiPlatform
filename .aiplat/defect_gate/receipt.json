@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T20:25:48+08:00",
+  "reviewed_at": "2026-11-03T20:49:39+08:00",
   "base_ref": "origin/main",
   "merge_base": "abcb9021cd5ee26769108eaace5d7439f726d2b4",
-  "diff_sha256": "7085768f8a3b9436e8610054c30bb69cdf339f3cbcd270eec36cd0961981360f",
-  "head_sha": "cc20a5c998e5f97f2177719e373b20f239905809",
+  "diff_sha256": "8c03ad83cbc4f3b9eb82deefbc8960c7a0a89c11f290c62b7ac43950806f6a24",
+  "head_sha": "6ace95e5b3682defedfdb847345d8fbac287e5f6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "ARCH v1.4: PRODUCT_ROOT_V1 + deprecated_for_engineering + contract §75/§77 clause-sync; architecture 5.0; accuracy_claim/process_split still false. Local lock only."
+  "note": "v1.5: COMPLIANCE_PII_V0 + local 5.0 gates; feature 4.3; human G2b/preference still open; accuracy_claim/process_split false. Local lock only."
 }
