@@ -1467,7 +1467,7 @@ def _path_covered_in_output(path: str, blob: str) -> bool:
     """True if path appears literally or as base URL + leaf (common apiClient style).
 
     Example: task asks ``/api/v1/inspection/reports`` while code has
-    ``const API_BASE_URL = '/api/v1/inspection'`` + ``axios.post(\`\${API_BASE_URL}/reports\`)``.
+    ``API_BASE_URL = '/api/v1/inspection'`` and posts to ``${API_BASE_URL}/reports``.
     """
     p = str(path or "").strip()
     b = str(blob or "")

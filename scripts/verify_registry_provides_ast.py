@@ -57,6 +57,24 @@ SKIP_TYPES = frozenset({
 
 IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
+# Cache AST per path — audit_registry calls symbol_in_module once per provide;
+# without cache, a large module is re-parsed hundreds of times (and re-emits
+# any SyntaxWarning from invalid escapes in docstrings).
+_AST_CACHE: Dict[str, Optional[ast.AST]] = {}
+
+
+def _parse_module(path: Path) -> Optional[ast.AST]:
+    key = str(path.resolve())
+    if key in _AST_CACHE:
+        return _AST_CACHE[key]
+    try:
+        src = path.read_text(encoding="utf-8", errors="ignore")
+        tree = ast.parse(src, filename=str(path))
+    except (SyntaxError, OSError):
+        tree = None
+    _AST_CACHE[key] = tree
+    return tree
+
 
 class Finding(NamedTuple):
     domain: str
@@ -91,9 +109,8 @@ def find_module(rel_path: str) -> Optional[Path]:
 
 def top_level_names(path: Path) -> Set[str]:
     """Top-level defs/assigns plus Import/ImportFrom aliases (facade re-exports)."""
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
-    except (SyntaxError, OSError):
+    tree = _parse_module(path)
+    if tree is None:
         return set()
     names: Set[str] = set()
     for node in ast.iter_child_nodes(tree):
@@ -126,9 +143,8 @@ def symbol_in_module(path: Path, symbol: str) -> bool:
     leaf = _symbol_leaf(raw)
     if not leaf or not IDENT_RE.match(leaf):
         return False
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
-    except (SyntaxError, OSError):
+    tree = _parse_module(path)
+    if tree is None:
         return False
     top = top_level_names(path)
     if leaf in top:
