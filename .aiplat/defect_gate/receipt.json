@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T06:33:41+08:00",
+  "reviewed_at": "2026-11-04T06:57:01+08:00",
   "base_ref": "origin/main",
-  "merge_base": "990c08d40f3364562fa3237bb72bc8c3e86d658d",
-  "diff_sha256": "47533fd077cf6ccd596779bb00ecd80a80d427199144df556e599050d030fcd6",
-  "head_sha": "58f9d623d3dca3405e8e9f49693576894bc5523d",
+  "merge_base": "f7c7df08dbd860e086d36c94768dd7511065b7dc",
+  "diff_sha256": "ff128c5b95bd3d7c20621605c18106081a6e378b87dc7b1a0d0835ccf9374144",
+  "head_sha": "438d3d8864865de884cf4c4d354ff43b177b6e5c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "microVM guest_boot authorize: GUEST_BOOT+KERNEL/ROOTFS+InstanceStart; guest_boot=true only after probe success; Darwin ineligible; process_split_authorized remains false (checklist+signed live still required); sandbox_real_isolation=false; live skill tools still denied."
+  "note": "G2b accuracy closeout rebased onto #575: pass_rate≈0.7667 Wilson[0.59,0.88]; accuracy_claim=false; pending_human_confirm; registry 1741 includes guest_boot+accuracy; process_split locked."
 }
