@@ -1,7 +1,7 @@
 # Engineering unfreeze — EVAL_A3 B1-L / B2-L（本地开发，非 staging 授权）
 
 - **decided_at**: `2026-11-02`
-- **status**: **Active** — local engineering only
+- **status**: **Closed PASS (local)** — 2026-11-03；待 integration tip→`main`（收口 stacked #535–#560）
 - **plan**: [`eval-production-independent-service.md`](../../../docs/architecture/plans/eval-production-independent-service.md) v1.2+
 - **P0 契约**：[`EVAL_RUNTIME_CONTRACT.md`](../../../docs/architecture/plans/EVAL_RUNTIME_CONTRACT.md) · [`B1_ROUTE_MATRIX.md`](../../../docs/architecture/plans/B1_ROUTE_MATRIX.md) · [`EVAL_MODEL_GATEWAY.md`](../../../docs/architecture/plans/EVAL_MODEL_GATEWAY.md) · [`EVAL_DATA_MIGRATION.md`](../../../docs/architecture/plans/EVAL_DATA_MIGRATION.md)
 - **parent**：A-local Closed · B0 Closed
@@ -71,6 +71,7 @@
 - **B2 LLM dynamic** — stub Worker e2e + 拒 Central URL；可选独立 provider live（`AIPLAT_EVAL_LLM_LIVE=1`）；仍 ≠ 生产 live 认证。
 - **microVM prep** — 探测 + 拒 live tools（[`MICROVM_PREP.md`](../../../packages/aiplat-evaluation/docs/a3/MICROVM_PREP.md)）；**无**真实隔离；**无** runtime unlock。
 - **B1/B2 contract converge** — standalone 错误体 / 双点拒绝 / temporary_proxy=0（[`CONTRACT_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/CONTRACT_LOCAL.md)）；Central cohost 残留明示。
-- Next：Central→Worker 执行面收敛（仍需 authorize 策略）；microVM **runtime** / S1 live（需主机）；**独立主机** 开 B4-S；生产回填仍禁（B4 PITR 前）。
+- **Integration**：`feat/eval-b12-contract-converge` → `main` 一次收口（不再叠第 9 层）；中间 PR #535–#560 由 integration 取代。
+- Next（合 main 后）：P1 canonical（core legacy 7 维 vs package composite）；B2 live provider 证据；microVM **runtime** / S1 live（需主机）；**独立主机** 开 B4-S；生产回填仍禁（B4 PITR 前）。
 - Central `AgentEvalResult` 7 维权重仍为另一路径（本解冻不宣称已统一）。
 - `process_split_authorized=false`；`sandbox_real_isolation=false`；`security_live_attacks=false`.
