@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2588
+total_capabilities: 2630
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2504,6 +2504,44 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| create_skill_eval_job | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| compare_skill_eval_runs | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| apply_skill_md_suggestion | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| apply_skill_eval_suggestion | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| suggest_trigger_improvements | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| list_skill_eval_results | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| get_skill_eval_run | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| run_skill_eval_suite | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| delete_skill_eval_suite | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| get_skill_eval_suite | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| list_skill_eval_suites | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| upsert_skill_eval_suite | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| RunsEvalGateFailed | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| get_run_evidence | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| upsert_run_state | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| compute_run_evidence_diff | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| get_latest_evidence_pack | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| get_latest_run_state | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| auto_investigate_run | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| get_latest_investigate_report | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| get_latest_run_evaluation | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| auto_evaluate_run | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| submit_run_evaluation | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| prompt_eval_get_run_async | `core/apps/eval/service/prompt_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| prompt_eval_list_runs_async | `core/apps/eval/service/prompt_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| prompt_eval_delete_test_case_async | `core/apps/eval/service/prompt_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| prompt_eval_update_test_case_async | `core/apps/eval/service/prompt_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| prompt_eval_create_test_case_async | `core/apps/eval/service/prompt_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| prompt_eval_list_test_cases_async | `core/apps/eval/service/prompt_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| prompt_eval_start_run | `core/apps/eval/service/prompt_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| kb_eval_compare_reports | `core/apps/eval/service/kb_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| kb_eval_reports_series | `core/apps/eval/service/kb_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| kb_eval_import_csv_text | `core/apps/eval/service/kb_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| kb_eval_list_reports | `core/apps/eval/service/kb_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| kb_eval_run | `core/apps/eval/service/kb_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| kb_eval_delete_sample | `core/apps/eval/service/kb_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| kb_eval_create_sample | `core/apps/eval/service/kb_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| kb_eval_list_samples | `core/apps/eval/service/kb_eval_ops.py` | ✅ | 自动同步 | 已合入 |
 | eval_compute_g2c_report | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | eval_record_g2c_retest | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | eval_list_g2c_retest_queue | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -2535,6 +2573,10 @@ scan_hash: 8f9548ec24f4
 | bootstrap_e3_gold | `core/apps/eval/service/gold_bootstrap.py` | ✅ | 自动同步 | 已合入 |
 | eval_store_import_code_review_gold | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | eval_store_health | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| kb_eval_ops (list/create/delete/run/reports/import/series/compare) | `core/apps/eval/service/kb_eval_ops.py` + CoreFacade | ✅ | platform kb_eval 薄路由；生成物适用：已接线（apps/eval） | 本批 |
+| prompt_eval_ops (cases/runs) | `core/apps/eval/service/prompt_eval_ops.py` + CoreFacade | ✅ | platform prompt_eval 薄路由；生成物适用：已接线（apps/eval） | 本批 |
+| runs_eval_ops (evaluate/investigate/state/evidence) | `core/apps/eval/service/runs_eval_ops.py` + CoreFacade | ✅ | platform runs_eval 薄路由；生成物适用：已接线（apps/eval） | 本批 |
+| skill_evals_ops (suites/runs/suggest/apply/compare/jobs) | `core/apps/eval/service/skill_evals_ops.py` + CoreFacade | ✅ | platform skill_evals 薄路由；生成物适用：已接线（apps/eval） | 本批 |
 | import_code_review_gold | `core/apps/eval/service/store.py` | ✅ | 自动同步 | 已合入 |
 | EvalStore | `core/apps/eval/service/store.py` | ✅ | 自动同步 | 已合入 |
 | from_run_evaluation | `core/harness/evaluation/eval_protocol.py` | ✅ | 自动同步 | 已合入 |
@@ -2562,7 +2604,7 @@ scan_hash: 8f9548ec24f4
 | RAG Evaluator | harness/evaluation/rag_evaluator.py | ✅ | Ragas: faithfulness/relevancy/precision/recall | 已合入 |
 | DriftDetector | harness/evaluation/drift_detector.py | ✅ | 零成本推理质量下降检测 (confidence/error/stagnation) | 已合入 |
 | EvaluationWorkbench | harness/evaluation/workbench.py | ✅ | 标准化评估报告 + 阈值门 + 制品持久化 | 已合入 |
-| Eval Protocol v0 | `harness/evaluation/eval_protocol.py` + runs evaluate/auto/latest + skill-evals run/GET + gold + kb + prompt + arena；契约 `reports/five-products/modules/evaluation/contracts/` | ✅ | 统一 `eval.protocol.v0` 交换形；响应附加 `eval_protocol`；生成物适用：已接线（apps/eval） | 已合入 |
+| Eval Protocol v0 | `harness/evaluation/eval_protocol.py` + runs evaluate/auto/latest + skill-evals run/GET + gold + kb + prompt + arena；契约 SSOT `packages/aiplat-evaluation/contracts/`（reports 仅 shim） | ✅ | 统一 `eval.protocol.v0` 交换形；响应附加 `eval_protocol`；生成物适用：已接线（apps/eval） | 已合入 |
 | Eval Store v0（EVAL_V1 E2） | `core/apps/eval/service/store.py` + CoreFacade `eval_store_*` + `GET/POST /api/platform/apps/eval/store/*` + schema `eval_store.schema.json` | ✅ | charter §5.3 八表 SQLite；code-review-gold YAML→tasks 迁移；生成物适用：已接线（apps/eval store API） | 已合入 |
 | Eval Gold Bootstrap E3（EVAL_V1） | `core/apps/eval/service/gold_bootstrap.py` + `POST …/store/bootstrap-e3` + sources [`EVAL_V1_E3_GOLD_SOURCES.md`](reports/five-products/ops/EVAL_V1_E3_GOLD_SOURCES.md) | ✅ | ≥15 可跑金标 + solo_reviewer 复核队列；不报 κ / 不锁 v0；生成物适用：已接线（apps/eval） | 已合入 |
 | Eval Judge v1 + Calibration E4（EVAL_V1） | `core/apps/eval/service/judge_v1.py` + `POST …/store/calibrate-e4` + schema `eval_calibration.schema.json` | ✅ | deterministic match_only judge；k=3 / ECE / bias 报告；`accuracy_claim=false`；生成物适用：已接线（apps/eval） | 已合入 |
@@ -3500,7 +3542,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 165 | 0 | 165 |
+| 评估系统 | 207 | 0 | 207 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3532,7 +3574,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2578** | **10** | **2588** |
+| **总计** | **2620** | **10** | **2630** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

@@ -17,6 +17,8 @@
     "test:a2": "PYTHONPATH=. python3 -m pytest tests/test_a2_local_store.py -q",
     "test:a3": "PYTHONPATH=. python3 -m pytest tests/test_a3_canonical_store_api.py -q",
     "test:a4": "PYTHONPATH=. python3 -m pytest tests/test_a4_independence.py -q",
-    "test:a5": "PYTHONPATH=. python3 -m pytest tests/test_a5_backup_rollback.py -q"
+    "test:a5": "PYTHONPATH=. python3 -m pytest tests/test_a5_backup_rollback.py -q",
+    "contracts": "python3 contracts/validate_sample.py",
+    "release:check": "bash scripts/package_release_check.sh"
   }
 }

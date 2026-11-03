@@ -64,7 +64,7 @@ def test_matches_repo_schema_sample_keys():
     repo = Path(__file__).resolve().parents[4]
     schema_path = (
         repo
-        / "reports/five-products/modules/evaluation/contracts/schemas/eval_protocol.schema.json"
+        / "packages/aiplat-evaluation/contracts/schemas/eval_protocol.schema.json"
     )
     assert schema_path.is_file(), schema_path
     schema = json.loads(schema_path.read_text(encoding="utf-8"))

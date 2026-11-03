@@ -41,6 +41,7 @@ assert comp["score"] is not None
 assert "asr" in (comp.get("report_only_metrics") or {})
 h = AgentEvalResult(agent_id="gate").scoring_honesty()
 assert h["composite_policy"] == "legacy_7dim"
+assert h["deprecated_for_engineering"] is True
 assert "text_quality" in h["report_only_dimensions"]
 assert h["accuracy_claim"] is False
 
@@ -54,11 +55,13 @@ payload = {
     "accuracy_claim": False,
     "package_canonical": "packages/aiplat-evaluation/app/scoring/composite.py",
     "central_policy": h["composite_policy"],
+    "central_deprecated_for_engineering": True,
     "central_report_only": h["report_only_dimensions"],
     "honesty": (
         "standalone build_composite is P1 engineering canonical; "
         "Central AgentEvalResult.composite_score remains legacy_7dim "
-        "with text/safety/refusal report-only (no silent reweight)"
+        "deprecated_for_engineering with text/safety/refusal report-only "
+        "(no silent reweight; ARCH v1.4 honesty end-state)"
     ),
     "recorded_at": stamp or datetime.now(timezone.utc).isoformat(),
 }

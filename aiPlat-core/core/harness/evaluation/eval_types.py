@@ -391,6 +391,9 @@ class AgentEvalResult:
             "schema": "eval.scoring.honesty.v0",
             "composite_policy": self.COMPOSITE_POLICY,
             "accuracy_claim": False,
+            # ARCH v1.4: Central composite stays forever for historical grades;
+            # engineering surfaces must use package build_composite.
+            "deprecated_for_engineering": True,
             "report_only_dimensions": list(self.REPORT_ONLY_DIMENSIONS),
             "scored_dimensions": [
                 "task_completion",
@@ -403,7 +406,8 @@ class AgentEvalResult:
             ],
             "canonical_engineering_composite": self.CANONICAL_ENGINEERING_COMPOSITE,
             "note": (
-                "Central AgentEvalResult.composite_score is legacy_7dim; "
+                "Central AgentEvalResult.composite_score is legacy_7dim and "
+                "deprecated_for_engineering; "
                 "text_quality/content_safety/refusal are report-only here. "
                 "Standalone package build_composite is P1 engineering canonical."
             ),

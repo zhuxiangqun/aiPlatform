@@ -2687,12 +2687,7 @@ try:
 except Exception as e:
     logging.debug("Wiki router: %s", e)
 
-# KB Evaluation stubs (field manual & quality feedback pages)
-try:
-    from core.api.routers.kb_eval import router as kb_eval_router
-    api_router.include_router(kb_eval_router)
-except Exception as e:
-    logging.debug("KB eval router: %s", e)
+# ARCH v1.2: core kb_eval stub removed — EvalCoreLegacyDeprecationMiddleware 308 → platform
 
 # System self-evolution (core capability, not FDE-specific)
 try:

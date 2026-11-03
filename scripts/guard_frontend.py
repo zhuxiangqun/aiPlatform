@@ -387,8 +387,12 @@ def _build_mount_prefixes() -> dict[str, str]:
                 basename = os.path.basename(import_name)
                 if basename not in prefix_map:
                     prefix_map[basename] = effective_prefix
-                # Also try the full module path
+                # Full module path (authoritative for nested platform apps)
                 prefix_map[import_name] = effective_prefix
+                # App-scoped key used by _propagate_platform_app_prefixes
+                # (avoids basename collisions across many */api/router.py files).
+                if import_name.startswith("apps/"):
+                    prefix_map[import_name[len("apps/") :]] = effective_prefix
         
         # ── Auto-discovery detection: pkgutil.iter_modules pattern ──
         # server.py uses dynamic import for all routers under core/api/routers/:
@@ -465,7 +469,17 @@ def _propagate_platform_app_prefixes(prefix_map: dict[str, str]):
             if child_file in prefix_map:
                 continue
             for parent_file, parent_path in parent_entries:
-                parent_prefix = prefix_map.get(parent_file, "")
+                # Prefer app-scoped keys (eval/api/router.py) over ambiguous basename.
+                try:
+                    app_name = parent_path.parent.parent.name
+                    scoped_parent = f"{app_name}/api/{parent_file}"
+                except Exception:
+                    scoped_parent = parent_file
+                parent_prefix = (
+                    prefix_map.get(scoped_parent)
+                    or prefix_map.get(f"apps/{scoped_parent}")
+                    or prefix_map.get(parent_file, "")
+                )
                 if parent_prefix:
                     # Also find the parent router's self-prefix (e.g., router.py has APIRouter(prefix="/ontology-editor"))
                     parent_self_prefix = ""
@@ -476,11 +490,13 @@ def _propagate_platform_app_prefixes(prefix_map: dict[str, str]):
                             parent_self_prefix = m.group(1)
                     except Exception:
                         pass
-                    prefix_map[child_file] = parent_prefix + parent_self_prefix
-                    # 同时按 basename 冗余注册（供旧逻辑 fallback），但不覆盖已存在的完整路径
+                    full = parent_prefix + parent_self_prefix
+                    prefix_map[child_file] = full
                     child_basename = child_file.split("/")[-1]
-                    if child_basename not in prefix_map or prefix_map[child_basename] == "/api/core":
-                        prefix_map[child_basename] = parent_prefix + parent_self_prefix
+                    prev = prefix_map.get(child_basename)
+                    # App-scoped children win basename (eval/api/kb_eval.py → kb_eval.py).
+                    if "/" in child_file or prev is None or prev == "/api/core":
+                        prefix_map[child_basename] = full
                     changed = True
                     break
 

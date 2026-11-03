@@ -340,32 +340,37 @@ export const kbApi = {
     return apiClient.post<any>(`/platform/conversations/${encodeURIComponent(sessionId)}/query`, payload);
   },
 
-  // ── Eval ──
+  // ── Eval (canonical /api/platform/apps/eval/kb-eval) ──
   listEvalSamples: async (limit = 50, offset = 0) => {
-    return apiClient.get<any>(`/core/kb-eval/samples?limit=${limit}&offset=${offset}`);
+    return apiClient.get<any>(`/platform/apps/eval/kb-eval/samples?limit=${limit}&offset=${offset}`);
   },
   createEvalSample: async (data: { question: string; ground_truth: string; doc_ids: string[]; tags: string[] }) => {
-    return apiClient.post<any>('/core/kb-eval/samples', data);
+    return apiClient.post<any>('/platform/apps/eval/kb-eval/samples', data);
   },
   deleteEvalSample: async (id: string) => {
-    return apiClient.delete<any>(`/core/kb-eval/samples/${id}`);
+    return apiClient.delete<any>(`/platform/apps/eval/kb-eval/samples/${id}`);
   },
   runEval: async (body: { tag?: string; sample_ids?: string[] }) => {
-    return apiClient.post<any>('/core/kb-eval/run', body);
+    return apiClient.post<any>('/platform/apps/eval/kb-eval/run', body);
   },
   listEvalReports: async (limit = 50, offset = 0) => {
-    return apiClient.get<any>(`/core/kb-eval/reports?limit=${limit}&offset=${offset}`);
+    return apiClient.get<any>(`/platform/apps/eval/kb-eval/reports?limit=${limit}&offset=${offset}`);
   },
   reportsTimeSeries: async (days = 30) => {
-    return apiClient.get<any>(`/core/kb-eval/reports/series?days=${days}`);
+    return apiClient.get<any>(`/platform/apps/eval/kb-eval/reports/series?days=${days}`);
   },
   compareReports: async (sessionA = '', sessionB = '') => {
-    return apiClient.get<any>(`/core/kb-eval/reports/compare?session_a=${sessionA}&session_b=${sessionB}`);
+    return apiClient.get<any>(
+      `/platform/apps/eval/kb-eval/reports/compare?session_a=${sessionA}&session_b=${sessionB}`,
+    );
   },
   importEvalSamples: async (file: File) => {
     const fd = new FormData();
     fd.append('file', file);
-    const res = await fetch('/api/core/kb-eval/samples/import', { method: 'POST', body: fd });
+    const res = await fetch('/api/platform/apps/eval/kb-eval/samples/import', {
+      method: 'POST',
+      body: fd,
+    });
     return res.json();
   },
 

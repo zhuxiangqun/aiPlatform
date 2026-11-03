@@ -1,6 +1,6 @@
 """Eval Protocol v0 — normalize internal eval artifacts to the public exchange shape.
 
-SSOT schema: reports/five-products/modules/evaluation/contracts/schemas/eval_protocol.schema.json
+SSOT schema: packages/aiplat-evaluation/contracts/schemas/eval_protocol.schema.json
 """
 from __future__ import annotations
 

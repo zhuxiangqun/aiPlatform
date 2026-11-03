@@ -117,6 +117,8 @@ packages/aiplat-central/docs/pg_ha/drills/
 # Ontology / Evaluation A3 local rehearsal drill logs
 packages/aiplat-ontology/docs/a3/drills/
 packages/aiplat-evaluation/docs/a3/drills/
+# Generated human A/B worksheet packs (local; do not commit filled sheets)
+packages/aiplat-evaluation/docs/a3/human_pack/
 packages/aiplat-pi-runtime/docs/d3/drills/
 
 # Accidental local agent scaffold (not a product)

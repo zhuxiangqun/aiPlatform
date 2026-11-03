@@ -1,19 +1,18 @@
-"""EVAL_V1 E1 — core /kb-eval legacy shim returns deprecation headers."""
+"""EVAL_V1 ARCH v1.2 — core /kb-eval redirects 308 to platform canonical."""
 from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from core.api.routers.kb_eval import router as kb_eval_router
+from core.api.routers.eval_legacy_shim import EvalCoreLegacyDeprecationMiddleware
 
 
-def test_core_kb_eval_shim_deprecation():
+def test_core_kb_eval_redirects_to_canonical():
     app = FastAPI()
-    app.include_router(kb_eval_router, prefix="/api/core")
-    client = TestClient(app)
+    app.add_middleware(EvalCoreLegacyDeprecationMiddleware)
+    client = TestClient(app, follow_redirects=False)
     r = client.get("/api/core/kb-eval/samples")
-    assert r.status_code == 200
+    assert r.status_code == 308
     assert r.headers.get("Deprecation") == "true"
-    body = r.json()
-    assert body.get("deprecated") is True
-    assert body.get("successor_prefix") == "/api/platform/apps/eval/kb-eval"
+    loc = r.headers.get("location") or r.headers.get("Location") or ""
+    assert loc.startswith("/api/platform/apps/eval/kb-eval/samples")

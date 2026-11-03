@@ -8,7 +8,7 @@
 | Surface | Composite | text/safety/refusal |
 |---|---|---|
 | **Standalone Eval** (`packages/aiplat-evaluation`) | `build_composite` — **P1 engineering canonical** | **scored** (ASR report-only) |
-| **Central** `AgentEvalResult.composite_score` | **legacy_7dim** (task/tool/traj/eff/recovery/safety/cost) | **report-only** (computed, not weighted) |
+| **Central** `AgentEvalResult.composite_score` | **legacy_7dim** (task/tool/traj/eff/recovery/safety/cost) | **report-only** (computed, not weighted); **`deprecated_for_engineering=true`** |
 
 Machine marker on Central serialize:
 
@@ -18,6 +18,7 @@ Machine marker on Central serialize:
   "scoring": {
     "schema": "eval.scoring.honesty.v0",
     "composite_policy": "legacy_7dim",
+    "deprecated_for_engineering": true,
     "report_only_dimensions": ["text_quality", "content_safety", "refusal"],
     "canonical_engineering_composite": "packages/aiplat-evaluation/app/scoring/composite.py"
   }
@@ -26,7 +27,7 @@ Machine marker on Central serialize:
 
 ## Why not silently reweight legacy?
 
-Changing Central weights would move historical grades without a G2b/accuracy unlock. This slice **labels** the dual path instead of migrating weights.
+Changing Central weights would move historical grades without a G2b/accuracy unlock. **ARCH v1.4** freezes this dual path as the honesty end-state: engineering → package `build_composite`; Central → labeled legacy only.
 
 ## Gate
 

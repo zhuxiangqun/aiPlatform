@@ -5,7 +5,8 @@
 - **联签**：架构 × 业务 · 用户指令「联签 A3」· 2026-10-30  
 - **前置**：Evaluation D1 Thin 共宿（`packages/aiplat-evaluation` · `eval.protocol.v0`）
 
-> **诚实性**：聊天联签 ≠ 生产硬门齐；`cutover_authorized` / `process_split_authorized` / `d3_production_authorized` 未全 ✅ 前禁止生产宣称。
+> **诚实性**：聊天联签 ≠ 生产硬门齐；`cutover_authorized` / `process_split_authorized` / `d3_production_authorized` 未全 ✅ 前禁止生产宣称。  
+> **首版满分范围**：[`SCORE_SCOPE_V1.md`](../../packages/aiplat-evaluation/docs/a3/SCORE_SCOPE_V1.md) · 记分卡 [`SCORECARD_V1.md`](../../packages/aiplat-evaluation/docs/a3/SCORECARD_V1.md)（功能覆盖 ≠ 准确性；本地独立 ≠ 生产授权）。
 
 ## 决策（有条件）
 

@@ -10,6 +10,7 @@ def test_agent_eval_result_marks_report_only_dims():
     h = r.scoring_honesty()
     assert h["composite_policy"] == "legacy_7dim"
     assert h["accuracy_claim"] is False
+    assert h["deprecated_for_engineering"] is True
     assert "text_quality" in h["report_only_dimensions"]
     assert "content_safety" in h["report_only_dimensions"]
     assert "refusal" in h["report_only_dimensions"]
@@ -24,6 +25,7 @@ def test_serialize_eval_result_embeds_scoring_honesty():
     assert payload["accuracy_claim"] is False
     assert payload["scoring"]["composite_policy"] == "legacy_7dim"
     assert payload["scoring"]["accuracy_claim"] is False
+    assert payload["scoring"]["deprecated_for_engineering"] is True
     assert "refusal" in payload["scoring"]["report_only_dimensions"]
     # Formula unchanged: empty dims still produce a finite legacy score.
     assert isinstance(payload["composite_score"], (int, float))

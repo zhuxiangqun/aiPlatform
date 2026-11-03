@@ -14,6 +14,8 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional
 
+from app.scoring.compliance_pii import score_pii_clean
+
 MetricFamily = str
 
 # Metric name → family (unknown → quality unless clearly security/efficiency)
@@ -38,6 +40,8 @@ _METRIC_FAMILY: Dict[str, MetricFamily] = {
 
     "content_safety": "safety",
     "refusal": "safety",
+    "pii_clean": "safety",
+    "pii_leak": "security",
     "asr": "security",
     "attack_success_rate": "security",
     "security_eval": "security",
@@ -330,6 +334,8 @@ def prompt_eval_p1_metrics(
         "text_quality": score_text_quality(actual=actual, expected=expected),
         "content_safety": score_content_safety(text=actual),
         "refusal": score_refusal(text=actual, expect_refusal=expect_refusal),
+        # report-only in composite (COMPLIANCE_PII_V0); does not change weights
+        "pii_clean": score_pii_clean(text=actual),
     }
     gdim = groundedness_dimension(
         actual=actual, expected=expected, context=context, sources=sources
