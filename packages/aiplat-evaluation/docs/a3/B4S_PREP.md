@@ -8,8 +8,9 @@
 | Gate | State |
 |---|---|
 | Local B1–B3 / S1 / P1–P1.2 / dims / live_llm / session_v0 | ✅ engineering complete on laptop（`local_track_closeout.sh` v1） |
-| Independent staging host | ❌ **not confirmed** → B4-S blocked |
-| PITR / backup live drill | ❌ needs host |
+| Local B4-S rehearsal (Docker PG on :5434) | ✅ script PASS — [`B4S_LOCAL_REHEARSAL.md`](./B4S_LOCAL_REHEARSAL.md) · [`B4S_RUNBOOK.md`](./B4S_RUNBOOK.md) · evidence `local-eval-b4s-rehearsal-*.json` · **≠ staging evidence** |
+| Independent staging host | ❌ **not confirmed** → B4-S **staging** blocked |
+| PITR / backup live drill on staging | ❌ needs host |
 | Production dual-read backfill | ❌ forbidden until B4 PITR |
 | `process_split_authorized` | **false** (refuse until checklist + signed staging) |
 

@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T13:37:59+08:00",
+  "reviewed_at": "2026-11-03T14:40:30+08:00",
   "base_ref": "origin/main",
-  "merge_base": "c602568fe5bc35a68b382b89aeba852b4bfc5e7d",
-  "diff_sha256": "b9043a598cc8b0322c2aaa6cc97654603e0f96ce6dfa0d98bd30d5cabde74c66",
-  "head_sha": "d3e834a3c884b280f10b3dff626dbe89171499de",
+  "merge_base": "61f45fc391ba9825c467fa68425bb9956b611776",
+  "diff_sha256": "be7dea57c994e40e282ace5b34655a73899d5a4ee6489184a1be43c707bf3b80",
+  "head_sha": "b5158ec2452926dd538db6cc33d20a939ac30cc0",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. CI unlock is non-author GitHub Approve. Reviewed closeout v1 + llm_ok_n honesty: no old fallback undoes fail-all; gate asserts ok+llm_ok_n; failure-all is ok=false; single runner path; healthz/fixture still require S1_LIVE unset in hermetic closeout."
+  "note": "Local lock only. Reviewed G2b prep (accuracy stays false), prod_live refuse-3b, B4-S local rehearsal not_staging_evidence; no authorize flip; no accuracy claim."
 }
