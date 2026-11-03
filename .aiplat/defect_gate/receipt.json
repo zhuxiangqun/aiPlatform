@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T10:05:29+08:00",
+  "reviewed_at": "2026-11-03T10:23:36+08:00",
   "base_ref": "origin/main",
-  "merge_base": "9a95f9fd67c0f2fa1d4c48e0d70bc39fe5821677",
-  "diff_sha256": "918104d055f49b63e0c7240c87023530195f0c8df770e5ca157da10ffd71f5fb",
-  "head_sha": "8630e55f7313c8cabfa86b54e2223b4f77076489",
+  "merge_base": "2d4ab4a4e58369b73706e2f2b4f4fca3935bed85",
+  "diff_sha256": "8e559898424d64ba1daf78ba5f9bf3c188efd026e6ef3b21ced6342191e5ea6b",
+  "head_sha": "2879b6a3466d0d5165676b50d126ce4232f2b580",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "AUTO-STATS/whitepaper refresh after P1 caps; contract \u00a777 already on branch. Local lock only."
+  "note": "STATUS/FREEZE only: #562 merged marker. Local lock only."
 }
