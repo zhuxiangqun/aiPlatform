@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T00:11:42+08:00",
+  "reviewed_at": "2026-11-04T00:16:48+08:00",
   "base_ref": "origin/main",
   "merge_base": "1cc40402d5dd9d945dcc6a40cdab257498fc82b1",
-  "diff_sha256": "bac97475396ee9d897018374162c5db5eb5017041a5d45fce139e05b827754e2",
-  "head_sha": "40b57b6d90cf748e2a905524b93479eb0ccdf2e5",
+  "diff_sha256": "ca27086b09bded364fa638e1eb06614f8c2f5d42670f86bc2fbefaaf688e3c5c",
+  "head_sha": "eaa2a60d59f3a54f2e0ddc4e310d39f353cf9cec",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Evidence audit: feature rolled to 4.0 until dual_human_attestation confirmed; gate verifies tracked aggregate SHA256; silent feature 5 refused."
+  "note": "Dual-human attestation confirmed; feature 5 restored behind evidence manifest gate; accuracy_claim still false."
 }
