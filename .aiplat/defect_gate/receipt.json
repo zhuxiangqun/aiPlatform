@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T17:31:29+08:00",
+  "reviewed_at": "2026-11-03T17:39:32+08:00",
   "base_ref": "origin/main",
   "merge_base": "abcb9021cd5ee26769108eaace5d7439f726d2b4",
-  "diff_sha256": "17fafc432673a2a96fe12acfb473507141e61fcc7bc214c9c9a3d685fcb20c25",
-  "head_sha": "efd8fde0390a6e0f03fc7a8addb8f47a0592144a",
+  "diff_sha256": "1be0d558c049b253e2734e4c05329dd8d0219593fa175f2c31557f1776605dcb",
+  "head_sha": "5731aba1ee9ed74d8e86c09f8835204a43f28392",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Score Scope v1 + ARCH_CONSOLIDATION_V1 freeze (mount=2, core eval allowlist). No authorize; scorecard arch 3.7 with gaps. Local lock only."
+  "note": "Score scope + arch freeze + kb_eval thinned to CoreFacade. platform sqlite allowlist=prompt_eval. No authorize. Local lock only."
 }
