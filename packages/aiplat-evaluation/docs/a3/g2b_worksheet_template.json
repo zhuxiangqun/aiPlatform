@@ -1,0 +1,8 @@
+{
+  "schema": "eval.g2b.worksheet.v0",
+  "accuracy_claim": false,
+  "annotator_id": "REPLACE_WITH_A_OR_B",
+  "blind": true,
+  "instructions": "For each task_id, set pass=true if the model/output meets the rubric; pass=false otherwise. Do not share with the other annotator. Do not look at gold.",
+  "labels": []
+}

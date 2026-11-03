@@ -18,7 +18,11 @@
 | [`S1_LOCAL.md`](./S1_LOCAL.md) | S1 SECURITY_EVAL_V1 fixture 门禁（ASR≠accuracy） |
 | [`S1_LIVE.md`](./S1_LIVE.md) | S1 live_llm 攻击集（ASR/leak/false_refusal；无 skill tools；≠安全认证） |
 | [`P1_LOCAL.md`](./P1_LOCAL.md) | P1–P1.2 + engineering composite（text/safety 计分；asr 报告项；≠accuracy） |
-| [`B4S_PREP.md`](./B4S_PREP.md) | B4-S 主机前置（未确认 → 阻塞；≠ authorize） |
+| [`G2B_PREP.md`](./G2B_PREP.md) | G2b 第二标注者预备（30 条 + κ；`accuracy_claim=false`） |
+| [`PROD_LIVE.md`](./PROD_LIVE.md) | 生产候选模型 live 基线（25×3；≠ 3B smoke） |
+| [`B4S_PREP.md`](./B4S_PREP.md) | B4-S 主机前置（未确认 → 阻塞 staging；≠ authorize） |
+| [`B4S_LOCAL_REHEARSAL.md`](./B4S_LOCAL_REHEARSAL.md) | B4-S 本机 Docker 预演（`environment=local`；≠ staging） |
+| [`B4S_RUNBOOK.md`](./B4S_RUNBOOK.md) | B4-S 操作手册（local → 将来 staging 复用） |
 | [`MICROVM_PREP.md`](./MICROVM_PREP.md) | microVM 前置探测（无 KVM/runtime → 阻塞；≠ live tools） |
 | [`CONTRACT_LOCAL.md`](./CONTRACT_LOCAL.md) | B1/B2 契约 standalone 收敛门禁（temporary_proxy=0） |
 | [`P1_CANONICAL.md`](./P1_CANONICAL.md) | P1 双路径：package 计分 canonical；Central legacy report-only |
@@ -26,6 +30,10 @@
 | B2 cancel | `POST .../jobs/{id}/cancel` → `cancelled`（`cancel_job`） |
 | B2 cost cap | `AIPLAT_EVAL_JOB_COST_CAP` / `cost_cap` → `timed_out` |
 | `scripts/local_track_closeout.sh` | 本地轨收口 v1（P1+dims+S1+S1_live+live_llm smoke+session_v0；authorize locked；≠ B4） |
+| `scripts/g2b_kappa.py` | G2b inter-annotator κ（prep；≠ accuracy） |
+| `scripts/prod_live_baseline.sh` | 生产候选模型 live 基线 |
+| `scripts/s1_prod_model_gate.sh` | 生产候选模型 S1 红队重跑 |
+| `scripts/b4s_local_rehearsal.sh` | B4-S 本机预演（PG backup/restore；≠ staging） |
 
 ```bash
 bash packages/aiplat-evaluation/scripts/a3_local_rehearsal.sh  # #4 → 🟨

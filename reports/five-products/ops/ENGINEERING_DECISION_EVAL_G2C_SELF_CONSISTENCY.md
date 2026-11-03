@@ -23,7 +23,7 @@
 | 档位 | 现状 |
 |---|---|
 | **G2a** | **PASS**（30 条 solo；`accuracy_claim=false`；κ=null） |
-| **G2b** | **Defer** — 无独立第二人则不开 |
+| **G2b** | **Prep unfrozen**（2026-11-03）— [`ENGINEERING_UNFREEZE_EVAL_G2B_PREP.md`](./ENGINEERING_UNFREEZE_EVAL_G2B_PREP.md)；**accuracy 仍禁**直至双人盲标 + 独立 closeout |
 | **G2c** | **Accepted as optional track** — 若做，须新 unfreeze；报告必须写 `self-consistency, not accuracy` |
 
 ## 触发 G2c 实现时（另批）

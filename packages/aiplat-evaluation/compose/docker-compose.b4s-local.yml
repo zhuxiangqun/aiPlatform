@@ -1,0 +1,54 @@
+# B4-S local rehearsal stack — environment=local ONLY.
+# Does NOT equal staging host evidence. Does NOT set process_split_authorized.
+#
+#   docker compose -f compose/docker-compose.b4s-local.yml up -d
+#   bash scripts/b4s_local_rehearsal.sh
+#
+# Images pinned to tags commonly cached offline; override via COMPOSE if needed.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: eval
+      POSTGRES_PASSWORD: eval_local
+      POSTGRES_DB: eval
+    ports:
+      # 5434 — leave Option B / B1-L :5433 (aiplat_local) alone
+      - "5434:5432"
+    volumes:
+      - b4s_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eval -d eval"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  minio:
+    # Pin release tag (docker.io :latest often blocked on mirrors).
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: evalminio
+      MINIO_ROOT_PASSWORD: evalminio_local
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - b4s_minio_data:/data
+    profiles: ["minio"]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--http-port=8080"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: 8080
+    ports:
+      - "8088:8080"
+    profiles: ["keycloak"]
+
+volumes:
+  b4s_pg_data:
+  b4s_minio_data:
