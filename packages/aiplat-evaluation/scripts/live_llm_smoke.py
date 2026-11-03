@@ -210,6 +210,15 @@ def main() -> int:
         if str(r.get("mode_label", "")).startswith("live_")
     ]
     efficiency = efficiency_dimension(live_audits, success_flags=live_flags)
+    # Provider honesty (same spirit as S1 llm_ok_n): all-URLError / empty fills must not PASS.
+    llm_ok_n = sum(
+        1
+        for r in rows
+        if str(r.get("mode_label", "")).startswith("live_") and bool(r.get("ok"))
+    )
+    llm_attempt_n = sum(
+        1 for r in rows if str(r.get("mode_label", "")).startswith("live_")
+    )
 
     # acceptance: each of 10 tasks has ≥1 stub result; if live, each has ≥1 live result
     task_ids = [str(t.get("id")) for t in tasks]
@@ -223,6 +232,8 @@ def main() -> int:
     live_complete = (not live_req) or all(tid in live_ids for tid in task_ids)
     gate_ok = stub_complete and live_complete and cost_ok and not provider["looks_like_central"]
     if live_req and live_error:
+        gate_ok = False
+    if live_req and llm_ok_n < 1:
         gate_ok = False
 
     payload = {
@@ -241,12 +252,15 @@ def main() -> int:
         "task_count": len(tasks),
         "stub_complete": stub_complete,
         "live_complete": live_complete,
+        "llm_ok_n": llm_ok_n,
+        "llm_attempt_n": llm_attempt_n,
         "gate_ok": gate_ok,
         "variance": variance,
         "efficiency_dimension": efficiency,
         "runs": rows,
         "honesty": (
             "stub vs live smoke only; failures/timeouts recorded; "
+            "live requires llm_ok_n>=1 (provider errors alone ≠ PASS); "
             "efficiency_dimension carries latency p50/p95 + cost_per_success; "
             "not G2b accuracy; not staging authorize; not security certification"
         ),
@@ -260,6 +274,8 @@ def main() -> int:
         "live_requested": live_req,
         "stub_complete": stub_complete,
         "live_complete": live_complete,
+        "llm_ok_n": llm_ok_n,
+        "llm_attempt_n": llm_attempt_n,
         "cost_ok": cost_ok,
         "total_cost_estimate": payload["total_cost_estimate"],
         "accuracy_claim": False,
